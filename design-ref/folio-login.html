@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>운영부 · OPSROOM 로그인</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    /* ---- Palette (dashboard5와 동일) ---- */
+    --washi: #ede6d2;
+    --washi-raised: #f4eddd;
+    --cream: #faf4e6;
+    --ink: #15120c;
+    --ink-soft: #3d3529;
+    --muted: #716855;
+    --faint: #a8a08a;
+    --line: #15120c;
+    --line-soft: rgba(21, 18, 12, 0.12);
+    --vermilion: #b8331e;
+    --vermilion-deep: #8e2412;
+    --indigo: #1f3a5f;
+    --gold: #9c7a2c;
+    --sage: #556b2f;
+
+    /* ---- Typography scale ---- */
+    --text-xs:  11px;
+    --text-sm:  12px;
+    --text-md:  13px;
+    --text-lg:  15px;
+    --text-xl:  20px;
+    --text-2xl: 26px;
+    --text-3xl: 40px;
+
+    /* ---- Spacing scale ---- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 28px;
+    --space-7: 40px;
+    --space-8: 56px;
+
+    /* ---- Touch target ---- */
+    --tap-min: 36px;
+  }
+
+  @media (max-width: 767px) {
+    :root {
+      --text-md: 14px;
+      --text-xl: 18px;
+      --text-2xl: 22px;
+      --text-3xl: 32px;
+      --tap-min: 44px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 120ms !important; }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--washi);
+    color: var(--ink);
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: var(--text-md);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    letter-spacing: -0.01em;
+    font-feature-settings: 'ss06' on;
+  }
+
+  /* 숫자/ID/타임스탬프 정렬 */
+  .ref, .date, .shift, .meta-row, .build, .titlebar-right, .code {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Washi texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' seed='5'/><feColorMatrix values='0 0 0 0 0.82 0 0 0 0 0.74 0 0 0 0 0.58 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  @media (max-width: 767px) {
+    body::before { opacity: 0.3; }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: 34px 1fr 26px;
+  }
+
+  /* ============== TITLE BAR ============== */
+  .titlebar {
+    background: var(--ink);
+    color: var(--cream);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .window-ctrls {
+    display: flex;
+    gap: 7px;
+    margin-right: 18px;
+  }
+  .window-ctrls .c {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(250, 244, 230, 0.2);
+  }
+  .window-ctrls .c:nth-child(1) { background: var(--vermilion); }
+  .window-ctrls .c:nth-child(2) { background: var(--gold); }
+  .window-ctrls .c:nth-child(3) { background: var(--sage); }
+
+  .titlebar-text {
+    text-align: center;
+    font-size: var(--text-md);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .titlebar-text em {
+    font-style: normal;
+    color: var(--vermilion);
+    margin: 0 3px;
+  }
+  .titlebar-text .label-en {
+    color: var(--faint);
+    font-size: var(--text-sm);
+    margin-left: 6px;
+  }
+  .titlebar-right {
+    font-size: var(--text-xs);
+    color: var(--faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* ============== MAIN 2-PANEL LAYOUT ============== */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 0;
+  }
+
+  /* ============== BRAND (LEFT) ============== */
+  .brand {
+    padding: var(--space-8) var(--space-7);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    background: var(--washi);
+    overflow: hidden;
+  }
+
+  /* 배경 큰 글자 장식 — 사용자 요청으로 제거 (2026-04-26) */
+  /* .brand::after {
+    content: '운영';
+    ...
+  } */
+
+  .brand-top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  /* 낙관 (seal) */
+  .seal {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--vermilion);
+    color: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: 0.02em;
+    position: relative;
+    flex-shrink: 0;
+    box-shadow:
+      0 0 0 1px var(--vermilion-deep) inset,
+      0 2px 4px rgba(21, 18, 12, 0.1);
+  }
+  .seal::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border: 1px solid var(--vermilion);
+    border-radius: 50%;
+    opacity: 0.35;
+  }
+  .seal span {
+    font-family: 'Pretendard Variable', serif;
+    transform: translateY(-1px);
+  }
+
+  .brand-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .brand-meta .line-1 {
+    font-size: var(--text-sm);
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .brand-meta .line-2 {
+    font-size: var(--text-md);
+    color: var(--ink-soft);
+  }
+  .brand-meta em {
+    font-style: normal;
+    color: var(--vermilion);
+    margin: 0 4px;
+  }
+
+  .brand-center {
+    max-width: 440px;
+    position: relative;
+    z-index: 1;
+  }
+  .brand-title {
+    font-size: var(--text-3xl);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: var(--space-5);
+  }
+  .brand-title em {
+    font-style: normal;
+    color: var(--vermilion);
+    margin: 0 0.08em;
+    font-weight: 400;
+  }
+  .brand-title .label-en {
+    display: block;
+    font-size: var(--text-lg);
+    font-weight: 300;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-top: var(--space-2);
+  }
+  .brand-sub {
+    color: var(--ink-soft);
+    font-size: var(--text-md);
+    line-height: 1.7;
+    max-width: 400px;
+  }
+
+  .brand-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: var(--text-xs);
+    color: var(--muted);
+    position: relative;
+    z-index: 1;
+    gap: var(--space-5);
+  }
+  .tagline {
+    font-family: 'Pretendard Variable', serif;
+    font-size: var(--text-xl);
+    color: var(--vermilion);
+    letter-spacing: 0.22em;
+    opacity: 0.85;
+    font-weight: 300;
+  }
+  .brand-foot .date-stack {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .brand-foot .date {
+    font-size: var(--text-md);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .brand-foot .shift em {
+    font-style: normal;
+    color: var(--vermilion);
+    margin: 0 4px;
+  }
+
+  /* ============== AUTH (RIGHT) ============== */
+  .auth {
+    padding: var(--space-8) var(--space-7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .auth-inner {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .auth-crumb {
+    font-size: var(--text-xs);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+    letter-spacing: 0.04em;
+  }
+  .auth-crumb .sep { color: var(--faint); }
+  .auth-crumb strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .auth-title {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-2);
+  }
+  .auth-title em {
+    font-style: normal;
+    color: var(--vermilion);
+    font-weight: 400;
+    margin: 0 0.1em;
+  }
+  .auth-sub {
+    color: var(--muted);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-6);
+    line-height: 1.6;
+  }
+
+  /* Form */
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .field label {
+    font-size: var(--text-xs);
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .field .input-wrap {
+    position: relative;
+    border-bottom: 1px solid var(--ink);
+    transition: border-color 120ms;
+  }
+  .field .input-wrap:focus-within {
+    border-color: var(--vermilion);
+  }
+  .field input {
+    width: 100%;
+    padding: var(--space-3) 0;
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    font-size: var(--text-md);
+    color: var(--ink);
+    outline: none;
+    letter-spacing: -0.005em;
+  }
+  .field input::placeholder {
+    color: var(--faint);
+  }
+  .field .toggle-pw {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    padding: var(--space-2);
+    min-height: var(--tap-min);
+  }
+  .field .toggle-pw:hover { color: var(--ink); }
+
+  .field-hint {
+    font-size: var(--text-xs);
+    color: var(--faint);
+    margin-top: 2px;
+  }
+  .field-err {
+    font-size: var(--text-xs);
+    color: var(--vermilion);
+    margin-top: 2px;
+    display: none;
+  }
+  .field.invalid .field-err { display: block; }
+  .field.invalid .input-wrap { border-color: var(--vermilion); }
+
+  .auth-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-1);
+  }
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+    min-height: var(--tap-min);
+  }
+  .check input {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--line);
+    background: transparent;
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .check input:checked {
+    background: var(--ink);
+  }
+  .check input:checked::after {
+    content: '✓';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -52%);
+    font-size: 11px;
+    color: var(--cream);
+    line-height: 1;
+  }
+  .muted-link {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    letter-spacing: 0.02em;
+    min-height: var(--tap-min);
+    display: inline-flex;
+    align-items: center;
+  }
+  .muted-link:hover {
+    color: var(--vermilion);
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--cream);
+    border: 1px solid var(--ink);
+    padding: 0 var(--space-5);
+    min-height: 48px;
+    font-family: inherit;
+    font-size: var(--text-md);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    width: 100%;
+    margin-top: var(--space-4);
+    transition: background 160ms, border-color 160ms, transform 100ms;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+  .btn-primary:hover {
+    background: var(--vermilion);
+    border-color: var(--vermilion);
+  }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary .kr {
+    font-weight: 400;
+    color: rgba(250, 244, 230, 0.75);
+  }
+  .btn-primary:hover .kr { color: rgba(250, 244, 230, 0.9); }
+
+  /* Divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    color: var(--faint);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    margin: var(--space-6) 0;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line-soft);
+  }
+
+  /* SSO */
+  .btn-sso {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line-soft);
+    padding: 0 var(--space-5);
+    min-height: 48px;
+    font-family: inherit;
+    font-size: var(--text-md);
+    cursor: pointer;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    letter-spacing: 0.02em;
+    transition: background 120ms, border-color 120ms;
+  }
+  .btn-sso:hover {
+    background: var(--washi-raised);
+    border-color: var(--ink);
+  }
+  /* SSO가 주 경로일 때: 테두리 강조 + 호버 시 반전 */
+  .btn-sso.primary-sso {
+    border-color: var(--ink);
+    box-shadow: 0 1px 0 rgba(21, 18, 12, 0.04);
+  }
+  .btn-sso.primary-sso:hover {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .ms-mark {
+    width: 16px;
+    height: 16px;
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 1px;
+    flex-shrink: 0;
+  }
+  .ms-mark span {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .ms-mark span:nth-child(1) { background: #f25022; }  /* 주홍 */
+  .ms-mark span:nth-child(2) { background: #7fba00; }  /* 녹색 */
+  .ms-mark span:nth-child(3) { background: #00a4ef; }  /* 파랑 */
+  .ms-mark span:nth-child(4) { background: #ffb900; }  /* 노랑 */
+
+  /* Auth footer */
+  .auth-foot {
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--muted);
+  }
+  .auth-foot .sep { color: var(--faint); }
+
+  /* ============== STATUS BAR ============== */
+  .statusbar {
+    background: var(--washi-raised);
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: var(--text-xs);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 0 14px;
+    gap: var(--space-5);
+    letter-spacing: 0.02em;
+  }
+  .statusbar .s-left,
+  .statusbar .s-mid,
+  .statusbar .s-right {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+  }
+  .statusbar .s-mid { justify-content: center; }
+  .statusbar .s-right { justify-content: flex-end; }
+  .statusbar strong {
+    font-weight: 500;
+    color: var(--ink-soft);
+    margin-right: 4px;
+  }
+  .statusbar .led {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--sage);
+    box-shadow: 0 0 4px var(--sage);
+    margin-right: 6px;
+  }
+
+  /* ============== RESPONSIVE ============== */
+  /* Tier: 태블릿 이하 — 2분할 해제 */
+  @media (max-width: 1023px) {
+    .main {
+      grid-template-columns: 1fr;
+    }
+    .brand {
+      padding: var(--space-6) var(--space-5);
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand::after {
+      font-size: 220px;
+      right: -20px;
+      bottom: -40px;
+    }
+    .brand-center { max-width: none; }
+    .brand-sub { max-width: 560px; }
+    .auth {
+      padding: var(--space-6) var(--space-5);
+    }
+  }
+
+  /* Tier: 모바일 */
+  @media (max-width: 767px) {
+    .titlebar { padding: 0 var(--space-3); }
+    .titlebar-text .label-en { display: none; }
+    .titlebar-right { font-size: 10px; }
+
+    .brand {
+      padding: var(--space-5) var(--space-4);
+    }
+    .brand::after {
+      font-size: 180px;
+      bottom: -30px;
+    }
+    .brand-top {
+      gap: var(--space-3);
+    }
+    .seal {
+      width: 48px;
+      height: 48px;
+      font-size: 18px;
+    }
+    .brand-center { margin-top: var(--space-4); }
+    .brand-foot {
+      margin-top: var(--space-5);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-3);
+    }
+    .brand-foot .date-stack { text-align: left; }
+    .tagline { font-size: var(--text-lg); }
+
+    .auth { padding: var(--space-5) var(--space-4); }
+
+    .auth-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-2);
+    }
+
+    .statusbar {
+      padding: 0 var(--space-3);
+      gap: var(--space-3);
+    }
+    .statusbar .s-mid { display: none; }
+  }
+
+  /* Tier: 모바일 콤팩트 */
+  @media (max-width: 479px) {
+    .titlebar .window-ctrls { display: none; }
+    .brand-meta .line-1 { font-size: 10px; }
+    .statusbar .s-right strong { display: none; }
+  }
+
+  /* 모드 탭 (signin/signup) — 시각만, 동작은 React. 폼 너비 50/50 균등 분할. */
+  .auth-tabs {
+    display: flex;
+    margin-bottom: var(--space-5);
+    font-size: var(--text-sm);
+  }
+  .auth-tabs span {
+    flex: 1;
+    text-align: center;
+    padding-bottom: 4px;
+    position: relative;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .auth-tabs span.active {
+    color: var(--vermilion);
+    font-weight: 700;
+  }
+  .auth-tabs span.active::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--vermilion);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ TITLE BAR ============ -->
+  <div class="titlebar">
+    <div class="window-ctrls">
+      <span class="c"></span><span class="c"></span><span class="c"></span>
+    </div>
+    <div class="titlebar-text">운영부 <em>·</em> 로그인 <span class="label-en">OPSROOM</span></div>
+    <div class="titlebar-right">2026.04.25 · 14:12 KST</div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <!-- BRAND PANEL -->
+    <aside class="brand">
+      <div class="brand-top">
+        <div class="seal"><span>운</span></div>
+        <div class="brand-meta">
+          <span class="line-1">OPSROOM <em>·</em> v4.2.1</span>
+          <span class="line-2"><span class="kr">운영부 상황실</span></span>
+        </div>
+      </div>
+
+      <div class="brand-center">
+        <h1 class="brand-title">
+          로그인 <em>—</em> 운영부
+          <span class="label-en">OBSERVE · RESPOND · RESOLVE</span>
+        </h1>
+        <p class="brand-sub">
+          12개 서비스, 17개 인프라, 8명의 온콜이 한 화면에서 움직입니다.
+          사번 또는 운영실 이메일로 입실하면 지정된 시프트 컨텍스트로 바로 연결됩니다.
+        </p>
+      </div>
+
+      <div class="brand-foot">
+        <div class="tagline">기록 · 응대 · 해결</div>
+        <div class="date-stack">
+          <span class="date">2026 · 04 · 25 · 월</span>
+          <span class="shift">14:30 KST</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- AUTH PANEL -->
+    <main class="auth">
+      <div class="auth-inner">
+
+        <div class="auth-crumb">
+          <span class="kr">운영부</span>
+          <span class="sep">/</span>
+          <span class="kr">인증</span>
+          <span class="sep">/</span>
+          <strong>로그인</strong>
+        </div>
+
+        <h2 class="auth-title">계정 인증</h2>
+        <p class="auth-sub">회사 계정(Microsoft)으로 로그인 하거나, 직접 계정 생성하여 로그인 하세요.</p>
+
+        <button type="button" class="btn-sso primary-sso" onclick="location.href='folio-dashboard.html'">
+          <span class="ms-mark" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </span>
+          <span>Microsoft SSO로 계속</span>
+        </button>
+
+        <div class="divider"><span>또는 이메일로 로그인</span></div>
+
+        <!-- 모드 탭 (시각만, 동작은 React) -->
+        <div class="auth-tabs">
+          <span class="active">로그인</span>
+          <span>계정 생성</span>
+        </div>
+
+        <form class="auth-form" id="loginForm" action="folio-dashboard.html" method="get" novalidate>
+          <div class="field">
+            <label for="email">이메일</label>
+            <div class="input-wrap">
+              <input id="email" name="email" type="text"
+                     autocomplete="username"
+                     placeholder="jinhakID@jinhakapply.com"
+                     required>
+            </div>
+            <div class="field-err" id="emailErr">이메일 또는 사번 형식이 맞지 않습니다.</div>
+          </div>
+
+          <div class="field">
+            <label for="password">비밀번호</label>
+            <div class="input-wrap">
+              <input id="password" name="password" type="password"
+                     autocomplete="current-password"
+                     placeholder="••••••••"
+                     required minlength="6">
+              <button type="button" class="toggle-pw" aria-label="비밀번호 표시/숨김"
+                      data-target="password" data-show="표시" data-hide="숨김">표시</button>
+            </div>
+            <div class="field-err" id="passErr">비밀번호는 6자 이상이어야 합니다.</div>
+          </div>
+
+          <div class="auth-row">
+            <label class="check">
+              <input type="checkbox" name="remember" checked>
+              <span class="kr">이 기기 기억 · 14일</span>
+            </label>
+            <a href="#" class="muted-link">비밀번호 찾기 →</a>
+          </div>
+
+          <button type="submit" class="btn-primary">
+            로그인
+          </button>
+        </form>
+
+        <div class="auth-foot">
+          <span>운영부 상황실 계정이 없으신가요?</span>
+          <a href="#" class="muted-link" style="color: var(--vermilion); font-weight: 500;">계정 생성 바로가기</a>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ============ STATUS BAR ============ -->
+  <div class="statusbar">
+    <div class="s-left">
+      <span><span class="led"></span><span class="kr">연결됨</span></span>
+      <span><strong>서버</strong> auth.opsroom.local</span>
+    </div>
+    <div class="s-mid">
+      <span>TLS 1.3 · HSTS</span>
+      <span>KR / EN · UTF-8</span>
+    </div>
+    <div class="s-right">
+      <span><strong>빌드</strong> v 4.2.1</span>
+      <span class="code">sha 8c3f2a1</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 비밀번호 표시/숨김 토글
+  document.querySelectorAll('.toggle-pw').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+      const isPw = target.type === 'password';
+      target.type = isPw ? 'text' : 'password';
+      btn.textContent = isPw ? btn.dataset.hide : btn.dataset.show;
+    });
+  });
+
+  // 간단한 인라인 검증 (데모)
+  const form = document.getElementById('loginForm');
+  const emailField = document.getElementById('email').closest('.field');
+  const passField = document.getElementById('password').closest('.field');
+
+  form.addEventListener('submit', (e) => {
+    emailField.classList.remove('invalid');
+    passField.classList.remove('invalid');
+
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('password').value;
+    let ok = true;
+
+    // 이메일 또는 사번(EMP-숫자) 허용
+    const looksLikeEmail = /.+@.+\..+/.test(email);
+    const looksLikeId = /^EMP-\d{2,}$/i.test(email);
+    if (!looksLikeEmail && !looksLikeId) {
+      emailField.classList.add('invalid');
+      ok = false;
+    }
+    if (pass.length < 6) {
+      passField.classList.add('invalid');
+      ok = false;
+    }
+    if (!ok) e.preventDefault();
+  });
+
+  // 입력 시 에러 상태 해제
+  document.querySelectorAll('.field input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      inp.closest('.field').classList.remove('invalid');
+    });
+  });
+</script>
+
+</body>
+</html>

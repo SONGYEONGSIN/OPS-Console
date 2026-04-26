@@ -1,0 +1,2423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>운영부 · OPSROOM 운영 상황실</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+  :root {
+    --washi: #ede6d2;
+    --washi-raised: #f4eddd;
+    --cream: #faf4e6;
+    --sidebar: #e5dec8;
+    --sidebar-hover: #dcd4bc;
+    --ink: #15120c;
+    --ink-soft: #3d3529;
+    --muted: #716855;
+    --faint: #a8a08a;
+    --line: #15120c;
+    --line-soft: rgba(21, 18, 12, 0.12);
+    --vermilion: #b8331e;
+    --vermilion-deep: #8e2412;
+    --indigo: #1f3a5f;
+    --gold: #9c7a2c;
+    --sage: #556b2f;
+    /* ---- Typography scale ---- */
+    --text-xs:  11px;
+    --text-sm:  12px;
+    --text-md:  13px;
+    --text-lg:  15px;
+    --text-xl:  20px;
+    --text-2xl: 26px;
+
+    /* ---- Spacing scale ---- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 28px;
+
+    /* ---- Touch target ---- */
+    --tap-min: 36px;
+
+    /* ---- Motion ---- */
+    --drawer-ease: cubic-bezier(0.2, 0.0, 0.2, 1);
+    --drawer-ms: 250ms;
+  }
+
+  @media (max-width: 767px) {
+    :root {
+      --text-md: 14px;
+      --text-xl: 18px;
+      --text-2xl: 22px;
+      --tap-min: 44px;
+      --drawer-ms: 220ms;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --drawer-ms: 120ms;
+    }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--washi);
+    color: var(--ink);
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: var(--text-md);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    overflow: hidden;
+    letter-spacing: -0.01em;
+    font-feature-settings: 'ss06' on; /* Pretendard stylistic set */
+  }
+
+  /* 숫자/ID/타임스탬프는 tabular-nums로 정렬 */
+  .ref, .ins-field .v, .doc-meta, .doc-name small, .sb-item .count,
+  .dd-shortcut, .crumb, .menu-right .search kbd, .sb-footer .usage strong,
+  .tl-row .tm, .titlebar-right {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Washi texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' seed='5'/><feColorMatrix values='0 0 0 0 0.82 0 0 0 0 0.74 0 0 0 0 0.58 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 34px auto 1fr 26px;
+  }
+
+  /* ============== TITLE BAR ============== */
+  .titlebar {
+    background: var(--ink);
+    color: var(--cream);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .window-ctrls {
+    display: flex;
+    gap: 7px;
+    margin-right: 18px;
+  }
+  .window-ctrls .c {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(250, 244, 230, 0.2);
+  }
+  .window-ctrls .c:nth-child(1) { background: var(--vermilion); }
+  .window-ctrls .c:nth-child(2) { background: var(--gold); }
+  .window-ctrls .c:nth-child(3) { background: var(--sage); }
+
+  .titlebar-text {
+    text-align: center;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .titlebar-text em {
+    color: var(--vermilion);
+    font-style: normal;
+    margin: 0 6px;
+  }
+  .titlebar-text .label-en {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 12px;
+    opacity: 0.8;
+    margin-left: 8px;
+  }
+
+  .titlebar-right {
+    display: flex;
+    gap: 14px;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    opacity: 0.75;
+  }
+
+  /* ============== MENU BAR ============== */
+  .menubar {
+    display: flex;
+    background: var(--washi-raised);
+    border-bottom: 1px solid var(--line);
+    padding: 0 14px;
+    height: 32px;
+    align-items: center;
+    position: relative;
+    z-index: 100;
+  }
+  .menu-item {
+    padding: 0 12px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    border-right: 1px solid transparent;
+    border-left: 1px solid transparent;
+    position: relative;
+    user-select: none;
+  }
+  .menu-item:first-child {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-weight: 700;
+    color: var(--vermilion);
+    font-size: 14px;
+    padding: 0 14px 0 4px;
+  }
+  .menu-item:hover, .menu-item.open {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .menu-item:first-child:hover, .menu-item:first-child.open {
+    color: var(--vermilion);
+    background: transparent;
+  }
+
+  .menu-spacer { flex: 1; }
+
+  .menu-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-right: 4px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .menu-right .search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--washi);
+    border: 1px solid var(--line-soft);
+    min-width: 240px;
+    cursor: text;
+  }
+  .menu-right .search svg {
+    width: 11px; height: 11px;
+    fill: var(--muted);
+  }
+  .menu-right .search span { color: var(--faint); font-size: 12px; }
+  .menu-right .search kbd {
+    margin-left: auto;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 9px;
+    padding: 1px 5px;
+    border: 1px solid var(--line-soft);
+    background: var(--washi-raised);
+    color: var(--muted);
+  }
+  .menu-right .notif {
+    position: relative;
+    width: 20px; height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .menu-right .notif .badge {
+    position: absolute;
+    top: -2px; right: -4px;
+    background: var(--vermilion);
+    color: var(--cream);
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-weight: 700;
+  }
+  .menu-right .user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .menu-right .user .av {
+    width: 22px; height: 22px;
+    background: var(--vermilion);
+    color: var(--cream);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* ============== DROPDOWN ============== */
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 300px;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    box-shadow: 4px 6px 0 rgba(21, 18, 12, 0.15);
+    z-index: 200;
+    display: none;
+    padding: 4px 0;
+  }
+  .menu-item.open .dropdown { display: block; }
+
+  .dd-group {
+    padding: 2px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .dd-group:last-child { border-bottom: none; }
+
+  .dd-row {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 5px 12px 5px 8px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .dd-row:hover {
+    background: var(--vermilion);
+    color: var(--cream);
+  }
+  .dd-row:hover .dd-shortcut { color: rgba(250, 244, 230, 0.65); }
+  .dd-row:hover .dd-check { color: var(--cream); }
+
+  .dd-row.disabled {
+    color: var(--faint);
+    cursor: default;
+  }
+  .dd-row.disabled:hover {
+    background: transparent;
+    color: var(--faint);
+  }
+
+  .dd-check {
+    font-size: 11px;
+    color: var(--vermilion);
+    text-align: center;
+  }
+  .dd-shortcut {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .dd-submenu-arrow {
+    font-size: 9px;
+    color: var(--muted);
+  }
+  .dd-row:hover .dd-submenu-arrow { color: var(--cream); }
+
+  .dd-header {
+    padding: 6px 12px 4px;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ============== MAIN LAYOUT ============== */
+  .main {
+    display: grid;
+    grid-template-columns: 240px 1fr 300px;
+    overflow: hidden;
+  }
+
+  /* ============== SIDEBAR ============== */
+  .sidebar {
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    padding: 18px 0 18px;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--faint); }
+
+  .sb-section {
+    padding: 0 16px;
+    margin-bottom: 22px;
+  }
+  .sb-title {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sb-title .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .sb-title .dash {
+    flex: 1;
+    height: 1px;
+    background: var(--line-soft);
+    margin-left: 10px;
+  }
+
+  .sb-item {
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 10px 6px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink-soft);
+    border-left: 2px solid transparent;
+    margin-left: -16px;
+    padding-left: 22px;
+    transition: background 0.1s;
+  }
+  .sb-item:hover {
+    background: var(--sidebar-hover);
+  }
+  .sb-item.active {
+    background: var(--washi-raised);
+    border-left-color: var(--vermilion);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .sb-item .ico {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 14px;
+    color: var(--vermilion);
+    text-align: center;
+    line-height: 1;
+  }
+  .sb-item .count {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .sb-item.active .count { color: var(--vermilion); font-weight: 500; }
+
+  .sb-nest {
+    margin-left: 8px;
+    border-left: 1px dashed var(--line-soft);
+    padding-left: 0;
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+  .sb-nest .sb-item {
+    grid-template-columns: 10px 1fr auto;
+    padding-left: 18px;
+    margin-left: 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .sb-nest .sb-item .ico {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--faint);
+  }
+  .sb-nest .sb-item.active {
+    background: transparent;
+    color: var(--vermilion);
+    font-weight: 500;
+  }
+  .sb-nest .sb-item.active .ico { color: var(--vermilion); }
+
+  .sb-group-head {
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 10px 6px 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 500;
+    margin-left: -16px;
+    padding-left: 22px;
+  }
+  .sb-group-head .chev {
+    font-size: 10px;
+    color: var(--muted);
+    transition: transform 0.2s;
+  }
+  .sb-group.open .chev { transform: rotate(90deg); }
+  .sb-group:not(.open) .sb-nest { display: none; }
+
+  .sb-footer {
+    margin: 20px 16px 0;
+    padding: 12px 14px;
+    background: var(--washi-raised);
+    border: 1px solid var(--line-soft);
+  }
+  .sb-footer .usage {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .sb-footer .usage .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: none;
+  }
+  .sb-footer .usage strong { color: var(--ink); font-weight: 500; }
+  .sb-footer .usage-bar {
+    height: 3px;
+    background: var(--sidebar);
+    border: 1px solid var(--line-soft);
+    position: relative;
+  }
+  .sb-footer .usage-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: 62%;
+    background: linear-gradient(90deg, var(--vermilion), var(--gold));
+  }
+  .sb-footer .plan {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  /* ============== CONTENT ============== */
+  .content {
+    background: var(--cream);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .content::-webkit-scrollbar { width: 6px; }
+  .content::-webkit-scrollbar-thumb { background: var(--faint); }
+
+  /* Breadcrumb + tabs */
+  .crumb-bar {
+    padding: 10px 28px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--line-soft);
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--washi-raised);
+    padding-bottom: 0;
+  }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0;
+  }
+  .crumb a { color: var(--muted); text-decoration: none; }
+  .crumb a:hover { color: var(--ink); }
+  .crumb .sep { color: var(--faint); }
+  .crumb strong { color: var(--ink); font-weight: 500; }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    align-items: flex-end;
+  }
+  .tab {
+    padding: 7px 16px 7px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    margin-bottom: -1px;
+    color: var(--muted);
+    position: relative;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    background: var(--cream);
+    border-color: var(--line-soft);
+    border-bottom-color: var(--cream);
+    color: var(--ink);
+  }
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--vermilion);
+  }
+  .tab .close {
+    display: inline-block;
+    width: 14px; height: 14px;
+    text-align: center;
+    line-height: 12px;
+    font-size: 11px;
+    margin-left: 8px;
+    opacity: 0.4;
+  }
+  .tab:hover .close { opacity: 1; }
+
+  /* Content header */
+  .content-head {
+    padding: 24px 36px 18px;
+  }
+  .content-head .over {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .content-head .over .label-en {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--vermilion);
+    text-transform: none;
+  }
+  .content-head .over .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    font-size: 11px;
+  }
+  .content-head h1 {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 44px;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .content-head h1 em {
+    color: var(--vermilion);
+    font-style: normal;
+    font-weight: 500;
+  }
+  .content-head .subt {
+    color: var(--ink-soft);
+    font-size: 14px;
+    max-width: 680px;
+    line-height: 1.65;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    padding: 0 36px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .toolbar-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .tool-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    background: var(--washi-raised);
+    border: 1px solid var(--line-soft);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .tool-btn:hover {
+    background: var(--washi);
+    border-color: var(--line);
+  }
+  .tool-btn.primary {
+    background: var(--vermilion);
+    color: var(--cream);
+    border-color: var(--vermilion-deep);
+  }
+  .tool-btn.primary:hover { background: var(--vermilion-deep); }
+  .tool-btn .ico {
+    font-size: 11px;
+  }
+
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+  }
+  .chip {
+    padding: 4px 10px;
+    border: 1px solid var(--line-soft);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .chip:hover { border-color: var(--line); color: var(--ink); }
+  .chip.on {
+    background: var(--ink);
+    color: var(--cream);
+    border-color: var(--ink);
+  }
+
+  .view-switch {
+    display: flex;
+    border: 1px solid var(--line-soft);
+  }
+  .view-switch button {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--muted);
+    border-right: 1px solid var(--line-soft);
+    font-family: inherit;
+    font-size: 12px;
+  }
+  .view-switch button:last-child { border-right: none; }
+  .view-switch button.on { background: var(--ink); color: var(--cream); }
+
+  /* Document list */
+  .doc-list {
+    padding: 0 36px 36px;
+  }
+  .doc-list-head {
+    display: grid;
+    grid-template-columns: 30px 2fr 110px 120px 100px 80px;
+    gap: 14px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .doc-list-head .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: none;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .doc-row {
+    display: grid;
+    grid-template-columns: 30px 2fr 110px 120px 100px 80px;
+    gap: 14px;
+    padding: 12px 0;
+    align-items: center;
+    border-bottom: 1px dashed var(--line-soft);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .doc-row:hover { background: var(--washi-raised); }
+  .doc-row.selected {
+    background: var(--washi-raised);
+    position: relative;
+  }
+  .doc-row.selected::before {
+    content: '';
+    position: absolute;
+    left: -36px; right: -36px;
+    top: 0; bottom: 0;
+    border-top: 1px solid var(--vermilion);
+    border-bottom: 1px solid var(--vermilion);
+    pointer-events: none;
+  }
+
+  .doc-ico {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 22px;
+    text-align: center;
+    line-height: 1;
+    color: var(--ink-soft);
+  }
+  .doc-ico.vm { color: var(--vermilion); }
+  .doc-ico.ig { color: var(--indigo); }
+  .doc-ico.gd { color: var(--gold); }
+  .doc-ico.sg { color: var(--sage); }
+
+  .doc-name {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.4;
+  }
+  .doc-name small {
+    display: block;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    margin-top: 3px;
+    font-weight: 400;
+  }
+  .doc-name small .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0;
+  }
+
+  .doc-meta {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .doc-meta .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+
+  .doc-status {
+    display: inline-block;
+    padding: 3px 10px 4px;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--line-soft);
+    background: var(--washi);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .doc-status.draft { background: var(--gold); color: var(--cream); border-color: var(--gold); }
+  .doc-status.review { background: var(--indigo); color: var(--cream); border-color: var(--indigo); }
+  .doc-status.approved { background: var(--sage); color: var(--cream); border-color: var(--sage); }
+  .doc-status.urgent { background: var(--vermilion); color: var(--cream); border-color: var(--vermilion); }
+
+  .doc-tags {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .doc-tags .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .doc-tags span { color: var(--vermilion); }
+
+  /* ============== INSPECTOR ============== */
+  .inspector {
+    background: var(--washi-raised);
+    border-left: 1px solid var(--line);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .inspector::-webkit-scrollbar { width: 4px; }
+
+  .ins-head {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--cream);
+    position: relative;
+  }
+  .ins-head .over {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .ins-head .over .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: none;
+    font-size: 10px;
+  }
+  .ins-head .over .seal {
+    width: 40px; height: 40px;
+    background: var(--vermilion);
+    color: var(--cream);
+    border-radius: 50%;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 700;
+    position: absolute;
+    right: 20px;
+    top: 24px;
+    box-shadow: 1px 1px 0 var(--vermilion-deep);
+    letter-spacing: 0;
+  }
+  .ins-head .over .seal span {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 8px;
+    margin-top: 2px;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .ins-head h2 {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 19px;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-right: 56px;
+  }
+  .ins-head .ref {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  .ins-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .ins-section h3 {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .ins-section h3 .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0.06em;
+    text-transform: none;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .ins-section h3 a {
+    color: var(--vermilion);
+    text-decoration: none;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0;
+    font-weight: 500;
+    text-transform: none;
+  }
+
+  .ins-field {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 10px;
+    padding: 5px 0;
+    align-items: baseline;
+    font-size: 12.5px;
+  }
+  .ins-field .k {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .ins-field .v {
+    color: var(--ink);
+  }
+  .ins-field .v.link { color: var(--indigo); cursor: pointer; }
+  .ins-field .v .tg {
+    display: inline-block;
+    padding: 1px 7px 2px;
+    font-size: 10px;
+    background: var(--washi);
+    border: 1px solid var(--line-soft);
+    margin-right: 4px;
+    font-weight: 500;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 16px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 4px; top: 4px; bottom: 4px;
+    width: 1px;
+    background: var(--line-soft);
+  }
+  .tl-row {
+    position: relative;
+    padding: 0 0 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+  .tl-row::before {
+    content: '';
+    position: absolute;
+    left: -16px; top: 5px;
+    width: 9px; height: 9px;
+    border: 1.5px solid var(--vermilion);
+    background: var(--washi-raised);
+    border-radius: 50%;
+  }
+  .tl-row:first-child::before {
+    background: var(--vermilion);
+  }
+  .tl-row .who {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .tl-row .act { color: var(--ink-soft); }
+  .tl-row .tm {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    display: block;
+    margin-top: 2px;
+  }
+  .tl-row .tm .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0;
+    font-size: 11px;
+  }
+
+  .ins-actions {
+    padding: 14px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: auto;
+    border-top: 1px solid var(--line);
+    background: var(--cream);
+  }
+  .ins-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--line);
+    background: var(--washi-raised);
+    cursor: pointer;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .ins-btn:hover { background: var(--washi); }
+  .ins-btn.primary {
+    background: var(--vermilion);
+    color: var(--cream);
+    border-color: var(--vermilion-deep);
+    grid-column: 1 / -1;
+  }
+  .ins-btn.primary:hover { background: var(--vermilion-deep); }
+
+  .drawer-close {
+    display: none;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    border-radius: 50%;
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+  }
+  .drawer-close:hover {
+    background: var(--washi-raised);
+  }
+
+  .btn-inspector-toggle {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    min-height: var(--tap-min);
+    padding: 0 var(--space-3);
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+  .btn-inspector-toggle:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-inspector-toggle[aria-expanded="true"] {
+    background: var(--washi-raised);
+  }
+
+  /* ============== STATUS BAR ============== */
+  .statusbar {
+    background: var(--ink);
+    color: var(--cream);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: center;
+    padding: 0 16px;
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    border-top: 1px solid var(--line);
+  }
+  .statusbar .s-left, .statusbar .s-right, .statusbar .s-mid {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+  .statusbar .s-mid { justify-content: center; }
+  .statusbar .s-item { opacity: 0.75; }
+  .statusbar .s-item strong { opacity: 1; color: var(--cream); font-weight: 500; }
+  .statusbar .s-item .kr {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+    letter-spacing: 0;
+    font-size: 11px;
+  }
+  .statusbar .led {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    background: var(--sage);
+    box-shadow: 0 0 4px var(--sage);
+  }
+  .statusbar .led.v { background: var(--vermilion); box-shadow: 0 0 4px var(--vermilion); }
+
+  /* ============== MOBILE APP BAR ============== */
+  .appbar {
+    display: none;
+    align-items: center;
+    gap: var(--space-2);
+    height: 48px;
+    padding: 0 var(--space-3);
+    background: var(--washi);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    z-index: 30;
+  }
+  .appbar-title {
+    flex: 1;
+    text-align: center;
+    font-size: var(--text-md);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .appbar-title em {
+    font-style: normal;
+    color: var(--vermilion);
+    margin: 0 2px;
+  }
+  .appbar-title .label-en {
+    color: var(--muted);
+    font-size: var(--text-sm);
+  }
+  .btn-hamburger,
+  .btn-notif,
+  .btn-inspector-mobile {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    padding: 0 var(--space-2);
+    background: transparent;
+    border: 1px solid var(--line-soft);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-md);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-notif sup {
+    color: var(--vermilion);
+    font-size: var(--text-xs);
+    margin-left: 2px;
+  }
+  .btn-inspector-mobile:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .appbar-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--sage);
+    box-shadow: 0 0 6px var(--sage);
+  }
+
+  /* ============== DRAWER SCRIM ============== */
+  .scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(21, 18, 12, 0.35);
+    z-index: 35;
+    opacity: 0;
+    transition: opacity var(--drawer-ms) var(--drawer-ease);
+  }
+  .scrim.open {
+    display: block;
+    opacity: 1;
+  }
+
+  /* ============== RESPONSIVE ============== */
+  /* Tier 1: 데스크탑 축약 (1024–1279) */
+  @media (max-width: 1279px) {
+    .main { grid-template-columns: 200px 1fr 260px; }
+    .doc-list-head, .doc-row { grid-template-columns: 26px 2fr 100px 100px 80px; }
+    .doc-list-head > div:nth-child(5), .doc-row > div:nth-child(5) { display: none; }
+  }
+
+  /* Tier 2: 태블릿 (768–1023) — 인스펙터 드로어 */
+  @media (max-width: 1023px) {
+    .main {
+      grid-template-columns: 200px 1fr;
+    }
+    .inspector {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(92vw, 360px);
+      z-index: 40;
+      transform: translateX(100%);
+      transition: transform var(--drawer-ms) var(--drawer-ease);
+      box-shadow: -8px 0 24px rgba(21, 18, 12, 0.08);
+      overflow-y: auto;
+    }
+    .inspector.open {
+      transform: translateX(0);
+    }
+    .drawer-close { display: inline-flex; align-items: center; justify-content: center; }
+    .btn-inspector-toggle { display: inline-flex; }
+    body { overflow-y: auto; height: auto; }
+    .app { height: auto; min-height: 100vh; }
+    .doc-list-head, .doc-row { grid-template-columns: 26px 2fr 110px 90px; }
+    .doc-list-head > div:nth-child(5), .doc-row > div:nth-child(5),
+    .doc-list-head > div:nth-child(6), .doc-row > div:nth-child(6) { display: none; }
+  }
+
+  /* Tier 3: 모바일 와이드 (480–767) — 양쪽 드로어 */
+  @media (max-width: 767px) {
+    .appbar { display: flex; }
+    .titlebar { display: none; }
+    .menubar { display: none; }
+    /* 태블릿 전용 인스펙터 토글은 모바일에선 숨김 (앱바에 .btn-inspector-mobile 존재) */
+    .btn-inspector-toggle { display: none !important; }
+
+    /* 모바일에선 titlebar/menubar 숨김 + statusbar fixed → grid 플로우 아이템은 appbar + main뿐 */
+    .app {
+      grid-template-rows: 48px 1fr;
+    }
+
+    .main {
+      grid-template-columns: 1fr;
+    }
+
+    /* 사이드바 드로어 */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: min(84vw, 300px);
+      z-index: 40;
+      transform: translateX(-100%);
+      transition: transform var(--drawer-ms) var(--drawer-ease);
+      box-shadow: 8px 0 24px rgba(21, 18, 12, 0.08);
+      overflow-y: auto;
+      padding-top: var(--space-5);
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    /* 인스펙터 드로어는 Tier 2 규칙 재사용 (이미 fixed) */
+
+    /* 콘텐츠 풀 폭 + 세로 스크롤 */
+    .content {
+      overflow: visible;
+    }
+
+    /* 탭 바 가로 스크롤 */
+    .crumb-bar {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 0;
+    }
+    .tabs {
+      overflow-x: auto;
+      scrollbar-width: thin;
+      padding: 0 var(--space-3);
+      gap: var(--space-2);
+    }
+    .tabs::-webkit-scrollbar { height: 3px; }
+    .tabs::-webkit-scrollbar-track { background: var(--washi-raised); }
+    .tabs::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: 2px; }
+    .tab {
+      flex-shrink: 0;
+      max-width: 160px;
+      font-size: var(--text-sm);
+    }
+    .tab:last-child { position: sticky; right: 0; background: var(--washi); }
+
+    /* 크럼 */
+    .crumb {
+      padding: var(--space-2) var(--space-3);
+      font-size: var(--text-xs);
+    }
+
+    /* 툴바 — 버튼 스택 */
+    .toolbar {
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      padding: var(--space-3);
+    }
+    .toolbar-left {
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      width: 100%;
+    }
+    .filter-chips {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .filter-chips::-webkit-scrollbar { display: none; }
+    .view-switch {
+      width: 100%;
+      justify-content: flex-end;
+    }
+
+    /* 스크림이 드로어 뒤로 들어가지 않도록 */
+    .scrim { z-index: 35; }
+
+    /* 서비스 목록 — 축약 리스트 (모바일) */
+    .doc-list-head { display: none; }
+
+    .doc-row {
+      display: block;
+      position: relative;
+      padding: var(--space-3) var(--space-3) var(--space-3) calc(40px + var(--space-3) * 2);
+      min-height: 64px;
+      border-bottom: 1px solid var(--line-soft);
+      cursor: pointer;
+      grid-template-columns: none;
+    }
+
+    /* 아이콘 — 좌측 절대 배치 */
+    .doc-row > .doc-ico {
+      position: absolute;
+      left: var(--space-3);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      font-size: var(--text-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 이름 — 상단 블록, 우측에 상태 배지 공간 확보 */
+    .doc-row > .doc-name {
+      display: block;
+      margin-bottom: 2px;
+      padding-right: 60px;
+      font-size: var(--text-md);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-row > .doc-name small { display: none; }
+
+    /* 상태 배지 — 우상단 절대 배치 */
+    .doc-row > div:nth-child(3) {
+      position: absolute;
+      right: var(--space-3);
+      top: var(--space-3);
+    }
+
+    /* 메타 (4~6번째) — 인라인 흐름 */
+    .doc-row > .doc-meta,
+    .doc-row > .doc-tags {
+      display: inline;
+      font-size: var(--text-xs);
+      color: var(--muted);
+    }
+    .doc-row > .doc-meta::after {
+      content: " · ";
+      color: var(--faint);
+    }
+    .doc-row > .doc-tags::before {
+      content: " · ";
+      color: var(--faint);
+    }
+
+    /* 좌측 세로 띠 — 장애/주의 */
+    .doc-row:has(.doc-status.urgent)::before,
+    .doc-row:has(.doc-status.draft)::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+    }
+    .doc-row:has(.doc-status.urgent)::before { background: var(--vermilion); }
+    .doc-row:has(.doc-status.draft)::before { background: var(--gold); }
+
+    /* 선택 상태 */
+    .doc-row.selected {
+      background: var(--washi-raised);
+    }
+
+    /* 인스펙터 — 플렉스 정렬, 액션바 sticky, 아코디언 (모바일) */
+    .inspector {
+      display: flex;
+      flex-direction: column;
+    }
+    /*
+     * 인스펙터 자식 순서 (Task 3·4 DOM 수정 후):
+     *   1: button.drawer-close
+     *   2: div.ins-head
+     *   3: div.ins-section (속성)
+     *   4: div.ins-section (실시간 지표)
+     *   5: div.ins-section (담당 · 온콜)
+     *   6: div.ins-section (분류 및 의존)
+     *   7: div.ins-section (활동 기록)
+     *   8: div.ins-actions
+     *
+     * 모바일 시각 순서: head → actions(sticky) → 실시간 → 담당 → 활동 → 속성(접힘) → 분류(접힘)
+     */
+    .inspector > .drawer-close { order: -1; }
+    .inspector > .ins-head { order: 0; }
+    .inspector > .ins-actions {
+      order: 1;
+      position: sticky;
+      top: 0;
+      background: var(--washi);
+      padding: var(--space-3);
+      border-bottom: 1px solid var(--line-soft);
+      z-index: 2;
+      display: flex;
+      gap: var(--space-2);
+    }
+    .inspector > .ins-section:nth-child(4) { order: 2; } /* 실시간 지표 */
+    .inspector > .ins-section:nth-child(5) { order: 3; } /* 담당 · 온콜 */
+    .inspector > .ins-section:nth-child(7) { order: 4; } /* 활동 기록 */
+    .inspector > .ins-section:nth-child(3) { order: 10; } /* 속성 (접힘) */
+    .inspector > .ins-section:nth-child(6) { order: 11; } /* 분류 및 의존 (접힘) */
+
+    .inspector .ins-section h3 {
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .inspector .ins-section h3::before {
+      content: "▼";
+      font-size: 9px;
+      color: var(--muted);
+      margin-right: var(--space-2);
+      transition: transform 120ms;
+    }
+    .inspector .ins-section.collapsed h3::before {
+      transform: rotate(-90deg);
+    }
+    .inspector .ins-section.collapsed > *:not(h3) {
+      display: none;
+    }
+
+    /* 키-값 필드 그리드 축약 */
+    .ins-field {
+      grid-template-columns: 88px 1fr !important;
+    }
+
+    /* 타임라인 시간 줄바꿈 */
+    .tl-row .tm {
+      display: block;
+      margin-top: 2px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* 인스펙터 액션 버튼 공평 분배 */
+    .inspector .ins-actions .ins-btn {
+      flex: 1;
+      min-height: var(--tap-min);
+    }
+
+    /* 상태바 — 모바일 축약 (하단 고정 24px, sb-keep 항목만) */
+    .statusbar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 25;
+      height: 24px;
+      padding: 0 var(--space-3);
+      font-size: var(--text-xs);
+    }
+    .statusbar .s-mid { display: none; }
+    .statusbar .s-item:not(.sb-keep) { display: none; }
+    .statusbar .s-left,
+    .statusbar .s-right { gap: var(--space-3); }
+    /* 콘텐츠 영역 padding 보정 */
+    .content { padding-bottom: 28px; }
+  }
+
+  /* Tier 4: 모바일 콤팩트 (≤479) */
+  @media (max-width: 479px) {
+    .appbar-title .label-en { display: none; }
+    .titlebar .window-ctrls { display: none; }  /* 태블릿 이상에서 혹시 다시 보여도 숨김 */
+
+    /* 서비스 목록 — "최근 이벤트"(5번째) 완전 숨김 */
+    .doc-row > div:nth-child(5) { display: none; }
+    .doc-row > div:nth-child(4)::after { content: ""; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ MOBILE APP BAR (≤767px only) ============ -->
+  <header class="appbar" role="banner">
+    <button class="btn-hamburger" type="button"
+            aria-label="메뉴 열기" aria-expanded="false" aria-controls="sidebar">
+      <span aria-hidden="true">☰</span>
+    </button>
+    <div class="appbar-title">
+      <span class="kr">운영부</span> <em>·</em> <span class="label-en">OPSROOM</span>
+    </div>
+    <button class="btn-notif" type="button" aria-label="알림 3건">
+      <span aria-hidden="true">✉</span><sup>3</sup>
+    </button>
+    <span class="appbar-led" role="status" aria-label="연결됨"></span>
+    <button class="btn-inspector-mobile" type="button"
+            aria-label="상세 보기" aria-expanded="false" aria-controls="inspector" disabled>
+      <span class="kr">상세</span> ▸
+    </button>
+  </header>
+
+  <!-- ============ DRAWER SCRIM ============ -->
+  <div class="scrim" data-drawer-scrim aria-hidden="true"></div>
+
+  <!-- ============ TITLE BAR ============ -->
+  <div class="titlebar">
+    <div class="window-ctrls">
+      <span class="c"></span><span class="c"></span><span class="c"></span>
+    </div>
+    <div class="titlebar-text">운영부 <em>·</em> 운영 상황실 <span class="label-en">OPSROOM</span></div>
+    <div class="titlebar-right">
+      <span>근무 · 2교대 · 14:00~22:00</span>
+      <span>● 실시간 연결</span>
+    </div>
+  </div>
+
+  <!-- ============ MENU BAR ============ -->
+  <div class="menubar" id="menubar">
+    <div class="menu-item">◆</div>
+
+    <div class="menu-item" data-menu="file">파일
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>새 장애 등록</span><span class="dd-shortcut">⌘N</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>새 점검 리스트</span><span class="dd-shortcut">⇧⌘N</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>새 배치 작업 정의…</span><span class="dd-submenu-arrow">▸</span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>대시보드 열기…</span><span class="dd-shortcut">⌘O</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>최근 항목</span><span class="dd-submenu-arrow">▸</span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>일일 보고서 내보내기 (PDF)</span><span class="dd-shortcut">⌘E</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>운영 로그 CSV 내보내기</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>인쇄…</span><span class="dd-shortcut">⌘P</span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>탭 닫기</span><span class="dd-shortcut">⌘W</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>로그아웃</span><span class="dd-shortcut">⇧⌘Q</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="edit">편집
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row disabled"><span class="dd-check"></span><span>실행 취소</span><span class="dd-shortcut">⌘Z</span></div>
+          <div class="dd-row disabled"><span class="dd-check"></span><span>다시 실행</span><span class="dd-shortcut">⇧⌘Z</span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>복사</span><span class="dd-shortcut">⌘C</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>서비스 URL 복사</span><span class="dd-shortcut">⇧⌘C</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>CLI 명령어로 복사</span><span class="dd-shortcut">⌥⌘C</span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>찾기…</span><span class="dd-shortcut">⌘F</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>전역 검색</span><span class="dd-shortcut">⇧⌘F</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>명령 팔레트</span><span class="dd-shortcut">⌘K</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="view">보기
+      <div class="dropdown">
+        <div class="dd-header">레이아웃</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check">✓</span><span>사이드바 표시</span><span class="dd-shortcut">⌘1</span></div>
+          <div class="dd-row"><span class="dd-check">✓</span><span>인스펙터 표시</span><span class="dd-shortcut">⌘2</span></div>
+          <div class="dd-row"><span class="dd-check">✓</span><span>상태 표시줄 표시</span><span class="dd-shortcut">⌘/</span></div>
+        </div>
+        <div class="dd-header">보기 모드</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check">✓</span><span>서비스 목록</span><span class="dd-shortcut">⌘3</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>카드 그리드</span><span class="dd-shortcut">⌘4</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>토폴로지 그래프</span><span class="dd-shortcut">⌘5</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>타임라인</span><span class="dd-shortcut">⌘6</span></div>
+        </div>
+        <div class="dd-header">자동 새로고침</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>지금 새로고침</span><span class="dd-shortcut">⌘R</span></div>
+          <div class="dd-row"><span class="dd-check">✓</span><span>10초마다</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>30초마다</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>수동</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-header">테마</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check">✓</span><span>한지 (라이트)</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>먹빛 (다크)</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>고대비</span><span class="dd-shortcut"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="service">서비스
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>헬스체크 일괄 실행</span><span class="dd-shortcut">⌘H</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>서비스 시작…</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>서비스 중지…</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>서비스 재시작…</span><span class="dd-shortcut">⇧⌘R</span></div>
+        </div>
+        <div class="dd-header">스케일링</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>인스턴스 추가</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>인스턴스 축소</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>오토스케일 정책 편집…</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-header">트래픽 제어</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>점검 모드 진입</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>부하 분산 재설정</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>Rate Limit 조정…</span><span class="dd-shortcut"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="batch">배치
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>배치 수동 실행…</span><span class="dd-shortcut">⌘B</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>실패 배치 재실행</span><span class="dd-shortcut">⌥⌘B</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>배치 중단</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-header">스케줄</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>스케줄 편집기…</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>주간 배치 캘린더</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>실행 이력 (30일)</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-header">일 마감</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>일 마감 실행 현황</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>마감 선행 체크</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>마감 결과 승인…</span><span class="dd-shortcut"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="check">점검
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>일일 점검 시작</span><span class="dd-shortcut">⌘D</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>주간 점검 시작</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>월간 점검 시작</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>점검 템플릿 관리…</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>점검 이력 조회</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>미완료 항목 리포트</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>교대 인수인계서 작성…</span><span class="dd-shortcut">⇧⌘H</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="tools">도구
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>로그 뷰어 열기</span><span class="dd-shortcut">⌘L</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>SSH 콘솔…</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>SQL 쿼리 도구</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>파일 전송 (SFTP)</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-header">외부 연동</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>Grafana 열기</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>Kibana 로그</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>Prometheus 조회…</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check">✓</span><span>데스크톱 알림</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check">✓</span><span>경보음 (경고 이상)</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>SMS 발송 (장애)</span><span class="dd-shortcut"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="window">창
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>최소화</span><span class="dd-shortcut">⌘M</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>전체화면 전환</span><span class="dd-shortcut">⌃⌘F</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>탭을 새 창으로 이동</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-header">열린 창</div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check">✓</span><span>실시간 대시보드</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>배치 진행 현황</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>장애 대응 콘솔</span><span class="dd-shortcut"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="help">도움말
+      <div class="dropdown">
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>운영 가이드</span><span class="dd-shortcut">⌘?</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>키보드 단축키</span><span class="dd-shortcut">⌘/</span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>장애 대응 매뉴얼</span><span class="dd-shortcut"></span></div>
+        </div>
+        <div class="dd-group">
+          <div class="dd-row"><span class="dd-check"></span><span>문제 신고하기…</span><span class="dd-shortcut"></span></div>
+          <div class="dd-row"><span class="dd-check"></span><span>운영실 정보 · v6.4</span><span class="dd-shortcut"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-spacer"></div>
+
+    <div class="menu-right">
+      <div class="search">
+        <svg viewBox="0 0 16 16"><path d="M11 6.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM10.5 10l3 3" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>서비스, 배치, 점검 항목 검색…</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="notif">
+        ◎<span class="badge">3</span>
+      </div>
+      <div class="user">
+        <span class="av">송</span>
+        <span style="font-size: 12px; color: var(--ink); font-weight: 500;">송영석</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-labelledby="sidebar-title">
+      <button class="drawer-close" data-close="sidebar" aria-label="메뉴 닫기" type="button">×</button>
+      <h2 class="sr-only" id="sidebar-title">운영실 메뉴</h2>
+      <div class="sb-section">
+        <div class="sb-title"><span class="kr">개요</span><span class="dash"></span></div>
+        <div class="sb-item">
+          <span class="ico">◉</span>
+          <span>실시간 현황</span>
+          <span class="count"></span>
+        </div>
+        <div class="sb-item">
+          <span class="ico">✦</span>
+          <span>실시간 알림</span>
+          <span class="count">3</span>
+        </div>
+        <div class="sb-item">
+          <span class="ico">◈</span>
+          <span>인수인계</span>
+          <span class="count">1</span>
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title"><span class="kr">서비스 그룹</span><span class="dash"></span></div>
+
+        <div class="sb-group open">
+          <div class="sb-group-head">
+            <span class="chev">▸</span>
+            <span>주요 서비스</span>
+            <span class="count">12</span>
+          </div>
+          <div class="sb-nest">
+            <div class="sb-item active">
+              <span class="ico">·</span>
+              <span>전체 서비스</span>
+              <span class="count">12</span>
+            </div>
+            <div class="sb-item">
+              <span class="ico">·</span>
+              <span>웹 · 프론트</span>
+              <span class="count">4</span>
+            </div>
+            <div class="sb-item">
+              <span class="ico">·</span>
+              <span>API 게이트웨이</span>
+              <span class="count">3</span>
+            </div>
+            <div class="sb-item">
+              <span class="ico">·</span>
+              <span>백엔드 서비스</span>
+              <span class="count">5</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-group">
+          <div class="sb-group-head">
+            <span class="chev">▸</span>
+            <span>인프라</span>
+            <span class="count">17</span>
+          </div>
+          <div class="sb-nest">
+            <div class="sb-item"><span class="ico">·</span><span>DB · 저장소</span><span class="count">8</span></div>
+            <div class="sb-item"><span class="ico">·</span><span>캐시</span><span class="count">3</span></div>
+            <div class="sb-item"><span class="ico">·</span><span>메시지 큐</span><span class="count">6</span></div>
+          </div>
+        </div>
+
+        <div class="sb-item">
+          <span class="ico">▣</span>
+          <span>배치 워커</span>
+          <span class="count">6</span>
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title"><span class="kr">운영 작업</span><span class="dash"></span></div>
+        <div class="sb-item"><span class="ico">▦</span><span>배치 작업</span><span class="count">14</span></div>
+        <div class="sb-item"><span class="ico">◎</span><span>일일 점검</span><span class="count">8/12</span></div>
+        <div class="sb-item"><span class="ico">⚠</span><span>장애 대응</span><span class="count">2</span></div>
+        <div class="sb-item"><span class="ico">◊</span><span>변경 관리</span><span class="count">7</span></div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title"><span class="kr">관측 · 로그</span><span class="dash"></span></div>
+        <div class="sb-item"><span class="ico">◰</span><span>Grafana 지표</span><span class="count"></span></div>
+        <div class="sb-item"><span class="ico">≡</span><span>Kibana 로그</span><span class="count"></span></div>
+        <div class="sb-item"><span class="ico">⤳</span><span>APM 트레이스</span><span class="count"></span></div>
+        <div class="sb-item"><span class="ico">✉</span><span>알림 이력</span><span class="count">47</span></div>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title"><span class="kr">관리</span><span class="dash"></span></div>
+        <div class="sb-item"><span class="ico">☏</span><span>온콜 일정</span><span class="count"></span></div>
+        <div class="sb-item"><span class="ico">◐</span><span>팀 · 권한</span><span class="count">8</span></div>
+        <div class="sb-item"><span class="ico">⚙</span><span>환경설정</span><span class="count"></span></div>
+      </div>
+
+      <div class="sb-footer">
+        <div class="usage"><span class="kr">현재 근무</span><strong>송영석 · 1차</strong></div>
+        <div class="usage-bar"></div>
+        <div class="plan">2교대 · 14:00 ~ 22:00 KST</div>
+      </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="content">
+      <div class="crumb-bar">
+        <div class="crumb">
+          <a href="#">개요</a>
+          <span class="sep">/</span>
+          <a href="#">서비스 그룹</a>
+          <span class="sep">/</span>
+          <strong>전체 서비스 · 2교대</strong>
+        </div>
+        <div class="tabs">
+          <div class="tab active">실시간 대시보드 <span class="close">×</span></div>
+          <div class="tab">배치 진행 #2471 <span class="close">×</span></div>
+          <div class="tab">주간 점검 내역 <span class="close">×</span></div>
+          <div class="tab" style="color: var(--faint);">+</div>
+        </div>
+      </div>
+
+      <div class="content-head">
+        <div class="over">
+          <span class="label-en">근무 II · 2026-04-24</span>
+          <span>·</span>
+          <span class="kr">서비스 12개</span>
+          <span>·</span>
+          <span class="kr">자동 새로고침 10초</span>
+        </div>
+        <h1>실시간 <em>—</em> 서비스 운영</h1>
+        <p class="subt">현재 운영 중인 서비스 목록입니다. 각 서비스의 상태·담당 팀·최근 이벤트를 확인하고, 선택 시 인스펙터에서 실시간 지표를 볼 수 있습니다. 주의 상태는 주홍색 낙관으로 표시됩니다.</p>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="tool-btn primary"><span class="ico">＋</span>장애 등록</button>
+          <button class="tool-btn"><span class="ico">↻</span>새로고침</button>
+          <button class="tool-btn"><span class="ico">⇣</span>일일 보고서</button>
+          <button class="tool-btn"><span class="ico">⚏</span>필터</button>
+          <div class="filter-chips">
+            <span class="chip on">전체</span>
+            <span class="chip">장애 · 주의</span>
+            <span class="chip">내 담당</span>
+            <span class="chip">PROD</span>
+          </div>
+          <button class="btn-inspector-toggle" type="button"
+                  aria-expanded="false" aria-controls="inspector" disabled>
+            <span class="kr">상세</span> ▸
+          </button>
+        </div>
+        <div class="view-switch">
+          <button class="on">☰ 목록</button>
+          <button>▦ 카드</button>
+          <button>◫ 토폴로지</button>
+        </div>
+      </div>
+
+      <div class="doc-list">
+        <div class="doc-list-head">
+          <div>#</div>
+          <div><span class="kr">서비스</span></div>
+          <div><span class="kr">상태</span></div>
+          <div><span class="kr">담당 팀</span></div>
+          <div><span class="kr">최근 이벤트</span></div>
+          <div><span class="kr">분류</span></div>
+        </div>
+
+        <div class="doc-row selected">
+          <div class="doc-ico vm">긴</div>
+          <div class="doc-name">결제 게이트웨이<small>SVC-PAY-001 · <span class="kr">v2.14.3 · 12 인스턴스 · p99 184ms</span></small></div>
+          <div><span class="doc-status urgent">장애</span></div>
+          <div class="doc-meta"><span class="kr">박현주 · 결제팀</span></div>
+          <div class="doc-meta"><span class="kr">12분 전</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">API</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico vm">긴</div>
+          <div class="doc-name">알림 큐 (Kafka)<small>SVC-MSG-003 · <span class="kr">v3.6.0 · 브로커 3 · Lag 18.2K</span></small></div>
+          <div><span class="doc-status urgent">장애</span></div>
+          <div class="doc-meta"><span class="kr">김지현 · 플랫폼팀</span></div>
+          <div class="doc-meta"><span class="kr">2시간 전</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">큐</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico ig">접</div>
+          <div class="doc-name">회원 서비스<small>SVC-USR-001 · <span class="kr">v4.8.1 · 8 인스턴스 · p99 42ms</span></small></div>
+          <div><span class="doc-status approved">정상</span></div>
+          <div class="doc-meta"><span class="kr">운영팀 공통</span></div>
+          <div class="doc-meta"><span class="kr">1시간 전 배포</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">서비스</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico ig">접</div>
+          <div class="doc-name">인증 · SSO<small>SVC-AUTH-001 · <span class="kr">v5.1.7 · 24.1K req/s · p99 18ms</span></small></div>
+          <div><span class="doc-status approved">정상</span></div>
+          <div class="doc-meta"><span class="kr">보안팀</span></div>
+          <div class="doc-meta"><span class="kr">어제 18:22</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">서비스</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico ig">접</div>
+          <div class="doc-name">상품 카탈로그<small>SVC-CAT-001 · <span class="kr">v3.2.0 · 6 인스턴스 · p99 58ms</span></small></div>
+          <div><span class="doc-status approved">정상</span></div>
+          <div class="doc-meta"><span class="kr">박현주 · 카탈로그팀</span></div>
+          <div class="doc-meta"><span class="kr">4월 20일</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">서비스</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico sg">저</div>
+          <div class="doc-name">DB 마스터 (Postgres)<small>DB-PRI-001 · <span class="kr">PG 15.4 · 연결 42/100 · QPS 1.8K</span></small></div>
+          <div><span class="doc-status approved">정상</span></div>
+          <div class="doc-meta"><span class="kr">DBA · 데이터팀</span></div>
+          <div class="doc-meta"><span class="kr">4월 19일 백업</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">DB</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico sg">저</div>
+          <div class="doc-name">Redis 캐시 클러스터<small>CACHE-RDS-001 · <span class="kr">v7.2.3 · 3 노드 · Hit 94% · Mem 52%</span></small></div>
+          <div><span class="doc-status draft">주의</span></div>
+          <div class="doc-meta"><span class="kr">박현주 · 플랫폼팀</span></div>
+          <div class="doc-meta"><span class="kr">1시간 전</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">캐시</span></div>
+        </div>
+
+        <div class="doc-row">
+          <div class="doc-ico gd">배</div>
+          <div class="doc-name">배치 워커 · 일 마감<small>BATCH-WRK-001 · <span class="kr">v1.9.4 · 6 워커 · 큐 12 · 성공률 99.6%</span></small></div>
+          <div><span class="doc-status approved">정상</span></div>
+          <div class="doc-meta"><span class="kr">운영팀 · 배치 담당</span></div>
+          <div class="doc-meta"><span class="kr">방금</span></div>
+          <div class="doc-tags"><span>#</span><span class="kr">배치</span></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- INSPECTOR -->
+    <aside class="inspector" id="inspector" role="complementary" aria-labelledby="inspector-title">
+      <button class="drawer-close" data-close="inspector" aria-label="인스펙터 닫기" type="button">×</button>
+      <div class="ins-head">
+        <div class="over">
+          <span class="kr">인스펙터 · 서비스 상세</span>
+          <span class="seal">★<span>장애</span></span>
+        </div>
+        <h2 id="inspector-title">결제 게이트웨이</h2>
+        <div class="ref">SVC-PAY-001 · v2.14.3 · PROD</div>
+      </div>
+
+      <div class="ins-section collapsed">
+        <h3><span class="kr">속성</span> <a href="#">구성 편집</a></h3>
+        <div class="ins-field"><div class="k">서비스 ID</div><div class="v">svc-pay-gw-001</div></div>
+        <div class="ins-field"><div class="k">네임스페이스</div><div class="v">acme / payments</div></div>
+        <div class="ins-field"><div class="k">인스턴스</div><div class="v">12개 실행 중 · 오토스케일 3 – 20</div></div>
+        <div class="ins-field"><div class="k">포트</div><div class="v">:8080 HTTP · :9000 gRPC</div></div>
+        <div class="ins-field"><div class="k">리전</div><div class="v">ap-northeast-2 · 3 AZ</div></div>
+        <div class="ins-field"><div class="k">런타임</div><div class="v">Java 17 · Spring Boot 3.1</div></div>
+        <div class="ins-field"><div class="k">상태</div><div class="v"><span class="doc-status urgent">장애</span></div></div>
+      </div>
+
+      <div class="ins-section">
+        <h3><span class="kr">실시간 지표</span></h3>
+        <div class="ins-field"><div class="k">처리량</div><div class="v">12,480 req/s <span style="color: var(--sage-deep); font-size: 11px;">▲ 8.2% 전일 대비</span></div></div>
+        <div class="ins-field"><div class="k">p99 응답</div><div class="v" style="color: var(--vermilion); font-weight: 600;">184 ms · 임계 150ms 초과</div></div>
+        <div class="ins-field"><div class="k">오류율</div><div class="v" style="color: var(--vermilion); font-weight: 600;">0.42% · 경고 단계</div></div>
+        <div class="ins-field"><div class="k">CPU</div><div class="v">62% · 12 인스턴스 평균</div></div>
+        <div class="ins-field"><div class="k">메모리</div><div class="v" style="color: var(--gold);">78% · 임계 85% 근접</div></div>
+      </div>
+
+      <div class="ins-section">
+        <h3><span class="kr">담당 · 온콜</span></h3>
+        <div class="ins-field"><div class="k">담당 팀</div><div class="v">결제팀 · L3 엔지니어링</div></div>
+        <div class="ins-field"><div class="k">1차 온콜</div><div class="v">박현주 · 다음 교대까지 7시간</div></div>
+        <div class="ins-field"><div class="k">2차 온콜</div><div class="v">김지현</div></div>
+        <div class="ins-field"><div class="k">에스컬레이션</div><div class="v">플랫폼 엔지니어링 (자동 · T+30m)</div></div>
+      </div>
+
+      <div class="ins-section collapsed">
+        <h3><span class="kr">분류 및 의존</span></h3>
+        <div class="ins-field"><div class="k">환경</div><div class="v">
+          <span class="tg">#PROD</span><span class="tg">#다중리전</span>
+        </div></div>
+        <div class="ins-field"><div class="k">업스트림</div><div class="v">
+          <span class="tg">#auth</span><span class="tg">#user</span>
+        </div></div>
+        <div class="ins-field"><div class="k">다운스트림</div><div class="v">
+          <span class="tg">#stripe</span><span class="tg">#fraud</span><span class="tg">#inv-db</span>
+        </div></div>
+      </div>
+
+      <div class="ins-section">
+        <h3><span class="kr">활동 기록</span></h3>
+        <div class="timeline">
+          <div class="tl-row">
+            <span class="who">박현주</span> <span class="act">DB 커넥션 풀 재시작 스크립트 실행</span>
+            <span class="tm"><span class="kr">지금 · 14:32</span></span>
+          </div>
+          <div class="tl-row">
+            <span class="who">시스템</span> <span class="act">런북 RB-087 자동 실행 · 커넥션 풀 소진 대응</span>
+            <span class="tm"><span class="kr">14:28 · 4분 전</span></span>
+          </div>
+          <div class="tl-row">
+            <span class="who">박현주</span> <span class="act">장애 등록 · P1으로 승격</span>
+            <span class="tm"><span class="kr">14:12 · 20분 전</span></span>
+          </div>
+          <div class="tl-row">
+            <span class="who">Prometheus</span> <span class="act">자동 감지 · 오류율 0.5% 임계값 초과</span>
+            <span class="tm"><span class="kr">13:50 · 42분 전</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ins-actions">
+        <button class="ins-btn primary">점검 모드 진입</button>
+        <button class="ins-btn">로그 보기</button>
+        <button class="ins-btn">재시작</button>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ============ STATUS BAR ============ -->
+  <div class="statusbar">
+    <div class="s-left">
+      <span class="s-item sb-keep"><span class="led"></span><span class="kr">연결됨</span></span>
+      <span class="s-item"><strong>브랜치</strong> main</span>
+      <span class="s-item sb-keep"><strong><span class="kr">동기화</span></strong> <span class="kr">12초 전</span></span>
+    </div>
+    <div class="s-mid">
+      <span class="s-item"><span class="kr">MS-2026-042 · 14,280 단어 · 47페이지 · 한/영</span></span>
+    </div>
+    <div class="s-right">
+      <span class="s-item"><span class="led v"></span><span class="kr">알림 3건</span></span>
+      <span class="s-item"><strong>줄</strong> 214:32</span>
+      <span class="s-item">UTF-8</span>
+      <span class="s-item sb-keep">v 4.2.1</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 초기 선택된 행이 있으면 인스펙터 토글 버튼을 미리 활성화
+  const preSelected = document.querySelector('.doc-row.selected');
+  if (preSelected) {
+    document.querySelectorAll('.btn-inspector-mobile, .btn-inspector-toggle')
+      .forEach(btn => { btn.disabled = false; });
+  }
+
+  // Menu bar open/close on click
+  const menubar = document.getElementById('menubar');
+  const menuItems = menubar.querySelectorAll('.menu-item[data-menu]');
+
+  menuItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wasOpen = item.classList.contains('open');
+      menuItems.forEach(m => m.classList.remove('open'));
+      if (!wasOpen) item.classList.add('open');
+    });
+    item.addEventListener('mouseenter', () => {
+      if (menubar.querySelector('.menu-item.open')) {
+        menuItems.forEach(m => m.classList.remove('open'));
+        item.classList.add('open');
+      }
+    });
+  });
+
+  document.addEventListener('click', () => {
+    menuItems.forEach(m => m.classList.remove('open'));
+  });
+
+  // Sidebar group toggle
+  document.querySelectorAll('.sb-group-head').forEach(head => {
+    head.addEventListener('click', () => {
+      head.parentElement.classList.toggle('open');
+    });
+  });
+
+  // Tab active
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      if (tab.textContent.trim() === '+') return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+    });
+  });
+
+  // Doc row selection → enable inspector toggle buttons + auto-open on mobile
+  const inspectorTriggers = [
+    document.querySelector('.btn-inspector-mobile'),
+    document.querySelector('.btn-inspector-toggle'),
+  ].filter(Boolean);
+  const mqMobile = window.matchMedia('(max-width: 767px)');
+
+  document.querySelectorAll('.doc-row').forEach(row => {
+    row.addEventListener('click', () => {
+      document.querySelectorAll('.doc-row').forEach(r => r.classList.remove('selected'));
+      row.classList.add('selected');
+
+      // 서비스가 선택되면 인스펙터 토글 버튼 활성화
+      inspectorTriggers.forEach(btn => { btn.disabled = false; });
+
+      // 모바일(≤767)에서는 자동으로 인스펙터 드로어 열기
+      // trigger를 null로 전달 → 닫을 때 포커스가 화면 위쪽 버튼으로 점프하지 않도록
+      if (mqMobile.matches && window.__drawers) {
+        window.__drawers.open('inspector', null);
+      }
+    });
+  });
+
+  // Sidebar item active
+  document.querySelectorAll('.sb-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // Filter chips
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+      chip.classList.add('on');
+    });
+  });
+
+  // View switch
+  document.querySelectorAll('.view-switch button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.view-switch button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+    });
+  });
+
+  // ================================================================
+  // Drawer system (mobile sidebar + inspector drawers)
+  // ================================================================
+  (function initDrawers() {
+    const sidebar = document.getElementById('sidebar');
+    const inspector = document.getElementById('inspector');
+    const scrim = document.querySelector('[data-drawer-scrim]');
+    const hamburger = document.querySelector('.btn-hamburger');
+    const inspectorBtnMobile = document.querySelector('.btn-inspector-mobile');
+    const inspectorBtnTablet = document.querySelector('.btn-inspector-toggle');
+    const closeButtons = document.querySelectorAll('[data-close]');
+
+    const drawers = {
+      sidebar: {
+        el: sidebar,
+        triggers: [hamburger],
+      },
+      inspector: {
+        el: inspector,
+        triggers: [inspectorBtnMobile, inspectorBtnTablet],
+      },
+    };
+
+    let lastTriggerByDrawer = {};
+
+    function trapFocus(container, event) {
+      const focusables = container.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        last.focus();
+        event.preventDefault();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        first.focus();
+        event.preventDefault();
+      }
+    }
+
+    function openDrawer(name, trigger) {
+      const d = drawers[name];
+      if (!d || !d.el) return;
+      d.el.classList.add('open');
+      d.el.setAttribute('role', 'dialog');
+      d.el.setAttribute('aria-modal', 'true');
+      scrim.classList.add('open');
+      document.body.dataset.prevOverflow = document.body.style.overflow || '';
+      document.body.style.overflow = 'hidden';
+      d.triggers.forEach(t => t && t.setAttribute('aria-expanded', 'true'));
+      // trigger가 명시적으로 null이면 포커스 복귀를 생략 (자동 열기 등)
+      lastTriggerByDrawer[name] = (trigger === null ? null : (trigger || d.triggers[0]));
+
+      // 드로어 내부 첫 focusable로 포커스 이동
+      const firstFocusable = d.el.querySelector(
+        'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (firstFocusable) setTimeout(() => firstFocusable.focus(), 60);
+    }
+
+    function closeDrawer(name) {
+      const d = drawers[name];
+      if (!d || !d.el) return;
+      d.el.classList.remove('open');
+      d.el.removeAttribute('role');
+      d.el.removeAttribute('aria-modal');
+      d.triggers.forEach(t => t && t.setAttribute('aria-expanded', 'false'));
+      // 모두 닫혔을 때만 스크림·스크롤락 해제
+      if (!sidebar.classList.contains('open') && !inspector.classList.contains('open')) {
+        scrim.classList.remove('open');
+        document.body.style.overflow = document.body.dataset.prevOverflow || '';
+        delete document.body.dataset.prevOverflow;
+      }
+      const trig = lastTriggerByDrawer[name];
+      if (trig && typeof trig.focus === 'function') trig.focus();
+      delete lastTriggerByDrawer[name];
+    }
+
+    function closeAll() {
+      Object.keys(drawers).forEach(closeDrawer);
+    }
+
+    if (hamburger) {
+      hamburger.addEventListener('click', () => {
+        if (sidebar.classList.contains('open')) closeDrawer('sidebar');
+        else openDrawer('sidebar', hamburger);
+      });
+    }
+
+    [inspectorBtnMobile, inspectorBtnTablet].forEach(btn => {
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        if (inspector.classList.contains('open')) closeDrawer('inspector');
+        else openDrawer('inspector', btn);
+      });
+    });
+
+    closeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        closeDrawer(btn.dataset.close);
+      });
+    });
+
+    if (scrim) {
+      scrim.addEventListener('click', closeAll);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAll();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const activeDrawer = [sidebar, inspector].find(el => el && el.classList.contains('open'));
+        if (activeDrawer) trapFocus(activeDrawer, e);
+      }
+    });
+
+    // viewport 상승 시 드로어 자동 해제 (예: 회전으로 1024px 넘어감)
+    const mq = window.matchMedia('(min-width: 1024px)');
+    mq.addEventListener('change', (ev) => {
+      if (ev.matches) {
+        sidebar.classList.remove('open');
+        scrim.classList.remove('open');
+      }
+    });
+
+    // ---- 스와이프로 닫기 ----
+    function attachSwipe(el, direction) {
+      // direction: -1 = 왼쪽으로 닫기(사이드바), +1 = 오른쪽으로 닫기(인스펙터)
+      let startX = null;
+      let currentDelta = 0;
+      let active = false;
+      const width = () => el.getBoundingClientRect().width;
+
+      el.addEventListener('pointerdown', (e) => {
+        if (!el.classList.contains('open')) return;
+        if (e.pointerType !== 'touch') return;
+        startX = e.clientX;
+        currentDelta = 0;
+        active = true;
+        el.style.transition = 'none';
+      });
+
+      el.addEventListener('pointermove', (e) => {
+        if (!active || startX === null) return;
+        const delta = e.clientX - startX;
+        const bounded = direction === -1 ? Math.min(0, delta) : Math.max(0, delta);
+        currentDelta = bounded;
+        el.style.transform = `translateX(${bounded}px)`;
+      });
+
+      function end() {
+        if (!active) return;
+        active = false;
+        el.style.transition = '';
+        el.style.transform = '';
+        if (Math.abs(currentDelta) > width() * 0.5) {
+          const name = el.id; // 'sidebar' or 'inspector'
+          closeDrawer(name);
+        }
+        startX = null;
+        currentDelta = 0;
+      }
+
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+    }
+
+    attachSwipe(sidebar, -1);
+    attachSwipe(inspector, +1);
+
+    // 외부 사용을 위한 노출
+    window.__drawers = { open: openDrawer, close: closeDrawer, closeAll };
+  })();
+
+  // ================================================================
+  // Inspector accordion (mobile only)
+  // ================================================================
+  (function initAccordion() {
+    const mq = window.matchMedia('(max-width: 767px)');
+    document.querySelectorAll('.inspector .ins-section h3').forEach(h3 => {
+      h3.setAttribute('tabindex', '0');
+      h3.setAttribute('role', 'button');
+      h3.addEventListener('click', (e) => {
+        // 구성 편집 같은 링크 클릭은 아코디언 토글 제외
+        if (e.target.tagName === 'A') return;
+        if (!mq.matches) return;
+        h3.parentElement.classList.toggle('collapsed');
+      });
+      h3.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && mq.matches) {
+          e.preventDefault();
+          h3.parentElement.classList.toggle('collapsed');
+        }
+      });
+    });
+  })();
+</script>
+</body>
+</html>
