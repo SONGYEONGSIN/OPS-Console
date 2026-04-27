@@ -40,7 +40,7 @@ export default function LoginPage() {
   return (
     <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
       <TitleBar now={now} />
-      <main className="grid h-full min-h-0 grid-cols-1 grid-rows-1 lg:grid-cols-2">
+      <main className="grid h-full min-h-0 grid-cols-1 grid-rows-1 overflow-y-auto lg:grid-cols-2">
         <BrandPanel now={now} />
         <AuthPanel
           mode={mode}
