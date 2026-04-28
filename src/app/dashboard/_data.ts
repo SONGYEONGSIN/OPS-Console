@@ -6,7 +6,15 @@
 /* ════════════════════════════════════════════════════════════
    Sidebar
    ════════════════════════════════════════════════════════════ */
-export type SbItem = { ico: string; label: string; count?: string };
+export type SbPattern = "list" | "dash" | "log" | "settings";
+
+export type SbItem = {
+  ico: string;
+  label: string;
+  count?: string;
+  slug?: string;
+  pattern?: SbPattern;
+};
 export type SbGroup = {
   kind: "group";
   label: string;
@@ -22,8 +30,22 @@ export const sidebarSections: SbSection[] = [
     title: "개요",
     entries: [
       { kind: "item", ico: "◉", label: "실시간 현황" },
-      { kind: "item", ico: "✦", label: "실시간 알림", count: "3" },
-      { kind: "item", ico: "◈", label: "인수인계", count: "1" },
+      {
+        kind: "item",
+        ico: "✦",
+        label: "실시간 알림",
+        count: "3",
+        slug: "alerts",
+        pattern: "dash",
+      },
+      {
+        kind: "item",
+        ico: "◈",
+        label: "인수인계",
+        count: "1",
+        slug: "handover",
+        pattern: "dash",
+      },
     ],
   },
   {
@@ -35,10 +57,34 @@ export const sidebarSections: SbSection[] = [
         count: "12",
         defaultOpen: true,
         items: [
-          { ico: "·", label: "전체 서비스", count: "12" },
-          { ico: "·", label: "웹 · 프론트", count: "4" },
-          { ico: "·", label: "API 게이트웨이", count: "3" },
-          { ico: "·", label: "백엔드 서비스", count: "5" },
+          {
+            ico: "·",
+            label: "전체 서비스",
+            count: "12",
+            slug: "services",
+            pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "웹 · 프론트",
+            count: "4",
+            slug: "services-web",
+            pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "API 게이트웨이",
+            count: "3",
+            slug: "services-api",
+            pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "백엔드 서비스",
+            count: "5",
+            slug: "services-backend",
+            pattern: "list",
+          },
         ],
       },
       {
@@ -46,41 +92,158 @@ export const sidebarSections: SbSection[] = [
         label: "인프라",
         count: "17",
         items: [
-          { ico: "·", label: "DB · 저장소", count: "8" },
-          { ico: "·", label: "캐시", count: "3" },
-          { ico: "·", label: "메시지 큐", count: "6" },
+          {
+            ico: "·",
+            label: "DB · 저장소",
+            count: "8",
+            slug: "infra-db",
+            pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "캐시",
+            count: "3",
+            slug: "infra-cache",
+            pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "메시지 큐",
+            count: "6",
+            slug: "infra-mq",
+            pattern: "list",
+          },
         ],
       },
-      { kind: "item", ico: "▣", label: "배치 워커", count: "6" },
+      {
+        kind: "item",
+        ico: "▣",
+        label: "배치 워커",
+        count: "6",
+        slug: "batch-worker",
+        pattern: "list",
+      },
     ],
   },
   {
     title: "운영 작업",
     entries: [
-      { kind: "item", ico: "▦", label: "배치 작업", count: "14" },
-      { kind: "item", ico: "◎", label: "일일 점검", count: "8/12" },
-      { kind: "item", ico: "⚠", label: "장애 대응", count: "2" },
-      { kind: "item", ico: "◊", label: "변경 관리", count: "7" },
+      {
+        kind: "item",
+        ico: "▦",
+        label: "배치 작업",
+        count: "14",
+        slug: "batch-jobs",
+        pattern: "list",
+      },
+      {
+        kind: "item",
+        ico: "◎",
+        label: "일일 점검",
+        count: "8/12",
+        slug: "daily-check",
+        pattern: "list",
+      },
+      {
+        kind: "item",
+        ico: "⚠",
+        label: "장애 대응",
+        count: "2",
+        slug: "incidents",
+        pattern: "list",
+      },
+      {
+        kind: "item",
+        ico: "◊",
+        label: "변경 관리",
+        count: "7",
+        slug: "changes",
+        pattern: "list",
+      },
     ],
   },
   {
     title: "관측 · 로그",
     entries: [
-      { kind: "item", ico: "◰", label: "Grafana 지표" },
-      { kind: "item", ico: "≡", label: "Kibana 로그" },
-      { kind: "item", ico: "⤳", label: "APM 트레이스" },
-      { kind: "item", ico: "✉", label: "알림 이력", count: "47" },
+      {
+        kind: "item",
+        ico: "◰",
+        label: "Grafana 지표",
+        slug: "grafana",
+        pattern: "dash",
+      },
+      {
+        kind: "item",
+        ico: "≡",
+        label: "Kibana 로그",
+        slug: "kibana",
+        pattern: "log",
+      },
+      {
+        kind: "item",
+        ico: "⤳",
+        label: "APM 트레이스",
+        slug: "apm",
+        pattern: "log",
+      },
+      {
+        kind: "item",
+        ico: "✉",
+        label: "알림 이력",
+        count: "47",
+        slug: "notifications",
+        pattern: "dash",
+      },
     ],
   },
   {
     title: "관리",
     entries: [
-      { kind: "item", ico: "☏", label: "온콜 일정" },
-      { kind: "item", ico: "◐", label: "팀 · 권한", count: "8" },
-      { kind: "item", ico: "⚙", label: "환경설정" },
+      {
+        kind: "item",
+        ico: "☏",
+        label: "온콜 일정",
+        slug: "oncall",
+        pattern: "list",
+      },
+      {
+        kind: "item",
+        ico: "◐",
+        label: "팀 · 권한",
+        count: "8",
+        slug: "team",
+        pattern: "list",
+      },
+      {
+        kind: "item",
+        ico: "⚙",
+        label: "환경설정",
+        slug: "settings",
+        pattern: "settings",
+      },
     ],
   },
 ];
+
+export function findSidebarMeta(
+  slug: string
+): { label: string; pattern: SbPattern } | null {
+  for (const section of sidebarSections) {
+    for (const entry of section.entries) {
+      if (entry.kind === "item" && entry.slug === slug && entry.pattern) {
+        return { label: entry.label, pattern: entry.pattern };
+      }
+      if (entry.kind === "group") {
+        for (const item of entry.items) {
+          if (item.slug === slug && item.pattern) {
+            return { label: item.label, pattern: item.pattern };
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
 
 /* ════════════════════════════════════════════════════════════
    Service rows (콘텐츠 본체)
