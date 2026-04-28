@@ -123,7 +123,7 @@ test.describe("/dashboard — 데스크탑", () => {
 
     await infraToggle.first().click();
     await expect(infraToggle.first()).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("button", { name: /DB · 저장소/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /DB · 저장소/ })).toBeVisible();
 
     // 다시 클릭 → 닫힘
     await infraToggle.first().click();

@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { SbSection, SbGroup } from "../_data";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { SbSection, SbGroup, SbItem } from "../_data";
 
 /**
  * 사이드바 — 데스크탑 고정 240px (1024–1279에서 200px), 1023↓에서 드로어.
- * 그룹은 클릭으로 펼침/접힘. 아이템은 단일 active.
+ * 그룹은 클릭으로 펼침/접힘. active는 usePathname() 기반.
+ * slug 있는 항목은 <Link>, 없는 항목은 div (네비게이션 비활성).
+ * "실시간 현황"은 slug 없지만 /dashboard index와 매칭.
  */
 export function Sidebar({
   sections,
@@ -16,7 +20,7 @@ export function Sidebar({
   open: boolean;
   onClose: () => void;
 }) {
-  const [activeKey, setActiveKey] = useState<string>("group:0:0:item:0"); // 초기 active = "전체 서비스"
+  const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     const init = new Set<string>();
     sections.forEach((s, si) =>
@@ -59,15 +63,14 @@ export function Sidebar({
 
           {section.entries.map((entry, ei) => {
             if (entry.kind === "item") {
-              const key = `s${si}:i${ei}`;
               return (
-                <Item
-                  key={key}
-                  active={activeKey === key}
+                <ItemRow
+                  key={ei}
                   ico={entry.ico}
                   label={entry.label}
                   count={entry.count}
-                  onClick={() => setActiveKey(key)}
+                  slug={entry.slug}
+                  pathname={pathname}
                 />
               );
             }
@@ -78,9 +81,7 @@ export function Sidebar({
                 group={entry}
                 open={openGroups.has(groupKey)}
                 onToggle={() => toggleGroup(groupKey)}
-                groupKey={groupKey}
-                activeKey={activeKey}
-                onItemClick={(itemKey) => setActiveKey(itemKey)}
+                pathname={pathname}
               />
             );
           })}
@@ -92,57 +93,76 @@ export function Sidebar({
   );
 }
 
-function Item({
+/**
+ * ItemRow — section.entries 직접 item.
+ * - slug 있으면 <Link href={`/dashboard/${slug}`}>
+ * - "실시간 현황"은 slug 없지만 pathname === "/dashboard"이면 active
+ * - 그 외 slug 없으면 비활성 div
+ */
+function ItemRow({
   ico,
   label,
   count,
-  active,
-  onClick,
+  slug,
+  pathname,
 }: {
   ico: string;
   label: string;
   count?: string;
-  active: boolean;
-  onClick: () => void;
+  slug?: string;
+  pathname: string;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`-ml-4 grid w-[calc(100%+1rem)] cursor-pointer grid-cols-[18px_1fr_auto] items-center gap-2.5 border-l-2 bg-transparent px-2 py-1.5 pl-[22px] text-left text-md transition-colors ${
-        active
-          ? "border-vermilion bg-washi-raised font-medium text-ink"
-          : "border-transparent text-ink-soft hover:bg-sidebar-hover"
-      }`}
-    >
+  const isIndexItem = !slug && label === "실시간 현황";
+  const isActive = slug
+    ? pathname === `/dashboard/${slug}`
+    : isIndexItem && pathname === "/dashboard";
+  const href = slug ? `/dashboard/${slug}` : isIndexItem ? "/dashboard" : null;
+
+  const className = `-ml-4 grid w-[calc(100%+1rem)] grid-cols-[18px_1fr_auto] items-center gap-2.5 border-l-2 bg-transparent px-2 py-1.5 pl-[22px] text-left text-md transition-colors ${
+    isActive
+      ? "border-vermilion bg-washi-raised font-medium text-ink"
+      : "border-transparent text-ink-soft hover:bg-sidebar-hover"
+  }`;
+
+  const inner = (
+    <>
       <span className="text-center text-sm leading-none text-vermilion">
         {ico}
       </span>
       <span>{label}</span>
       <span
-        className={`text-2xs tracking-[0.04em] ${active ? "font-medium text-vermilion" : "text-muted"}`}
+        className={`text-2xs tracking-[0.04em] ${isActive ? "font-medium text-vermilion" : "text-muted"}`}
       >
         {count ?? ""}
       </span>
-    </button>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        prefetch={false}
+        aria-current={isActive ? "page" : undefined}
+        className={`${className} cursor-pointer`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={`${className} cursor-default`}>{inner}</div>;
 }
 
 function GroupBlock({
   group,
   open,
   onToggle,
-  groupKey,
-  activeKey,
-  onItemClick,
+  pathname,
 }: {
   group: SbGroup;
   open: boolean;
   onToggle: () => void;
-  groupKey: string;
-  activeKey: string;
-  onItemClick: (itemKey: string) => void;
+  pathname: string;
 }) {
   return (
     <div>
@@ -164,39 +184,60 @@ function GroupBlock({
       </button>
       {open && (
         <div className="mb-1 ml-2 mt-0.5 border-l border-dashed border-line-soft">
-          {group.items.map((it, ii) => {
-            const itemKey = `group:${groupKey}:item:${ii}`;
-            const isActive = activeKey === itemKey;
-            return (
-              <button
-                type="button"
-                key={ii}
-                onClick={() => onItemClick(itemKey)}
-                aria-pressed={isActive}
-                className={`grid w-full cursor-pointer grid-cols-[10px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[18px] text-left text-xs transition-colors ${
-                  isActive
-                    ? "font-medium text-vermilion"
-                    : "text-muted hover:bg-sidebar-hover"
-                }`}
-              >
-                <span
-                  className={`text-center text-2xs leading-none ${isActive ? "text-vermilion" : "text-faint"}`}
-                >
-                  {it.ico}
-                </span>
-                <span>{it.label}</span>
-                <span
-                  className={`text-2xs tracking-[0.04em] ${isActive ? "font-medium text-vermilion" : "text-muted"}`}
-                >
-                  {it.count ?? ""}
-                </span>
-              </button>
-            );
-          })}
+          {group.items.map((it, ii) => (
+            <SubItemRow key={ii} item={it} pathname={pathname} />
+          ))}
         </div>
       )}
     </div>
   );
+}
+
+function SubItemRow({
+  item,
+  pathname,
+}: {
+  item: SbItem;
+  pathname: string;
+}) {
+  const isActive = !!item.slug && pathname === `/dashboard/${item.slug}`;
+  const href = item.slug ? `/dashboard/${item.slug}` : null;
+
+  const className = `grid w-full grid-cols-[10px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[18px] text-left text-xs transition-colors ${
+    isActive
+      ? "font-medium text-vermilion"
+      : "text-muted hover:bg-sidebar-hover"
+  }`;
+
+  const inner = (
+    <>
+      <span
+        className={`text-center text-2xs leading-none ${isActive ? "text-vermilion" : "text-faint"}`}
+      >
+        {item.ico}
+      </span>
+      <span>{item.label}</span>
+      <span
+        className={`text-2xs tracking-[0.04em] ${isActive ? "font-medium text-vermilion" : "text-muted"}`}
+      >
+        {item.count ?? ""}
+      </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        prefetch={false}
+        aria-current={isActive ? "page" : undefined}
+        className={`${className} cursor-pointer`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={`${className} cursor-default`}>{inner}</div>;
 }
 
 function SidebarFooter() {
