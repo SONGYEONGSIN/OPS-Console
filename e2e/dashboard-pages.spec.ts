@@ -96,7 +96,7 @@ test.describe("/dashboard/[slug] — 인증 후 페이지 (TEST_USER 미설정 �
     await expect(page.locator('input[placeholder*="쿼리"]')).toBeVisible();
   });
 
-  test("SettingsPattern: 좌 nav 클릭 시 우 form 전환", async ({ page, isMobile }) => {
+  test("SettingsPattern: 좌 nav 클릭 시 우 form 전환", async ({ page }) => {
     await page.goto("/dashboard/settings");
     // 초기 active = 일반
     await expect(page.locator("h3:has-text('일반 설정')")).toBeVisible();
