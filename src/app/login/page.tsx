@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { Suspense, useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { signIn, signUp, type AuthState } from "@/features/auth/actions";
 import { ALLOWED_EMAILS } from "@/features/auth/operators";
@@ -13,8 +13,19 @@ import { ALLOWED_EMAILS } from "@/features/auth/operators";
  * 폼: useActionState + features/auth/actions.ts의 signIn Server Action.
  * 검증: zod (features/auth/schemas.ts) — 에러 한 줄을 폼 위에 표시.
  * Microsoft SSO: 현재 미구현 — 버튼은 disabled + "준비 중" 라벨.
+ *
+ * useSearchParams는 Next.js 16에서 Suspense boundary 안에서만 prerender 가능.
+ * page export는 Suspense 래퍼 — 실제 UI는 LoginPageContent가 담당.
  */
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
