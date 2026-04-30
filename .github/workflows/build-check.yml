@@ -1,0 +1,37 @@
+name: build-check
+
+on:
+  push:
+    branches:
+      - main
+      - fix/**
+      - feat/**
+      - chore/**
+  pull_request:
+
+jobs:
+  build:
+    name: lint + typecheck + test + build (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npx tsc --noEmit
+
+      - name: Vitest
+        run: npm test
+
+      - name: Production build
+        run: npm run build
