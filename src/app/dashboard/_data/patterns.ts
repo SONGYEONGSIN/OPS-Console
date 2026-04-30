@@ -5,6 +5,23 @@ import type { LogLine } from "../_components/patterns/LogPattern";
 import type { SettingsField, SettingsSection } from "../_components/patterns/SettingsPattern";
 import type { SbPattern } from "../_data";
 
+export type ProjectMockData = {
+  meta: {
+    manager: string;
+    status: string;
+    quarterTarget: string;
+    serviceCount: string;
+  };
+  attributes: { k: string; v: string }[];
+  improvements: {
+    title: string;
+    pm: string;
+    due: string;
+    status: "run" | "rev" | "wait";
+  }[];
+  activities: { time: string; who: string; act: string }[];
+};
+
 const listMockRows: ListRow[] = [
   { id: "SVC-001", name: "결제 게이트웨이", status: "urgent",   owner: "김슬기",   meta: "최근 배포 14:23" },
   { id: "SVC-002", name: "회원 서비스",     status: "active",   owner: "정윤나",   meta: "정상" },
@@ -122,11 +139,157 @@ const settingsMockSections: SettingsSection[] = [
   },
 ];
 
+/* ════════════════════════════════════════════════════════════
+   Project mock — 12 프로젝트별 ProjectMockData
+   ════════════════════════════════════════════════════════════ */
+function makeProject(args: {
+  manager: string;
+  team: string;
+  status?: string;
+  quarterTarget: string;
+  serviceCount: string;
+  improvements: ProjectMockData["improvements"];
+}): ProjectMockData {
+  return {
+    meta: {
+      manager: args.manager,
+      status: args.status ?? "진행",
+      quarterTarget: args.quarterTarget,
+      serviceCount: args.serviceCount,
+    },
+    attributes: [
+      { k: "담당자", v: `${args.manager} · ${args.team}` },
+      { k: "서비스 수", v: args.serviceCount },
+      { k: "분기 목표", v: args.quarterTarget },
+    ],
+    improvements: args.improvements,
+    activities: [
+      { time: "2026-04-29", who: args.manager, act: "분기 점검 및 진행률 업데이트" },
+      { time: "2026-04-25", who: args.manager, act: "팀 회의 — 다음 분기 우선순위 정렬" },
+    ],
+  };
+}
+
+const projectMap: Record<string, ProjectMockData> = {
+  pims: makeProject({
+    manager: "박지연",
+    team: "운영1팀",
+    quarterTarget: "2026 Q2 · 62%",
+    serviceCount: "14건 (배포 12 / 마감 2)",
+    improvements: [
+      { title: "접수 폼 검증 강화", pm: "박지연", due: "2026-05-15", status: "run" },
+      { title: "알림 SMS 템플릿 통일", pm: "김민수", due: "2026-04-30", status: "rev" },
+      { title: "관리자 권한 분리", pm: "미정", due: "2026-Q3", status: "wait" },
+      { title: "통계 export 자동화", pm: "박지연", due: "2026-Q3", status: "wait" },
+    ],
+  }),
+  "reception-admin": makeProject({
+    manager: "김민수",
+    team: "운영1팀",
+    quarterTarget: "2026 Q2 · 48%",
+    serviceCount: "8건",
+    improvements: [
+      { title: "접수 처리 자동화", pm: "김민수", due: "2026-05-20", status: "run" },
+      { title: "권한 등급 재정의", pm: "김민수", due: "2026-Q3", status: "wait" },
+    ],
+  }),
+  "internal-admin": makeProject({
+    manager: "이지훈",
+    team: "운영2팀",
+    quarterTarget: "2026 Q2 · 55%",
+    serviceCount: "6건",
+    improvements: [
+      { title: "관리자 UI 개편", pm: "이지훈", due: "2026-06-01", status: "run" },
+    ],
+  }),
+  competition: makeProject({
+    manager: "정수아",
+    team: "운영2팀",
+    quarterTarget: "2026 Q2 · 70%",
+    serviceCount: "3건",
+    improvements: [
+      { title: "실시간 경쟁률 캐시 도입", pm: "정수아", due: "2026-05-10", status: "rev" },
+    ],
+  }),
+  generator: makeProject({
+    manager: "최영준",
+    team: "운영2팀",
+    quarterTarget: "2026 Q2 · 35%",
+    serviceCount: "2건",
+    improvements: [
+      { title: "생성툴 배포 파이프라인", pm: "최영준", due: "2026-Q3", status: "wait" },
+    ],
+  }),
+  revenue: makeProject({
+    manager: "박지연",
+    team: "운영1팀",
+    quarterTarget: "2026 Q2 · 80%",
+    serviceCount: "5건",
+    improvements: [
+      { title: "월간 매출 리포트 자동화", pm: "박지연", due: "2026-05-30", status: "run" },
+    ],
+  }),
+  "jh-cash": makeProject({
+    manager: "한지민",
+    team: "운영1팀",
+    quarterTarget: "2026 Q2 · 45%",
+    serviceCount: "1건",
+    improvements: [
+      { title: "진학캐쉬 정산 검증 강화", pm: "한지민", due: "2026-06-15", status: "run" },
+    ],
+  }),
+  k12: makeProject({
+    manager: "송영석",
+    team: "운영2팀",
+    quarterTarget: "2026 Q2 · 25%",
+    serviceCount: "준비",
+    improvements: [
+      { title: "초중고 사업 운영 정책 수립", pm: "송영석", due: "2026-Q3", status: "wait" },
+    ],
+  }),
+  kcue: makeProject({
+    manager: "정수아",
+    team: "운영2팀",
+    quarterTarget: "2026 Q2 · 30%",
+    serviceCount: "2건",
+    improvements: [
+      { title: "대교협 API 연계 검토", pm: "정수아", due: "2026-Q3", status: "wait" },
+    ],
+  }),
+  referral: makeProject({
+    manager: "김유민",
+    team: "운영1팀",
+    quarterTarget: "2026 Q2 · 65%",
+    serviceCount: "7건",
+    improvements: [
+      { title: "추천인 검증 로직 강화", pm: "김유민", due: "2026-05-25", status: "run" },
+    ],
+  }),
+  guarantee: makeProject({
+    manager: "임종우",
+    team: "운영2팀",
+    status: "보류",
+    quarterTarget: "2026 Q3 예정",
+    serviceCount: "검토",
+    improvements: [],
+  }),
+  performance: makeProject({
+    manager: "이해영",
+    team: "운영2팀",
+    quarterTarget: "2026 Q2 · 50%",
+    serviceCount: "4건",
+    improvements: [
+      { title: "실적증명 자료 표준화", pm: "이해영", due: "2026-06-01", status: "rev" },
+    ],
+  }),
+};
+
 export function getPatternMockData(slug: string, pattern: SbPattern):
   | { rows: ListRow[] }
   | { widgets: DashWidget[] }
   | { lines: LogLine[] }
-  | { sections: SettingsSection[] } {
+  | { sections: SettingsSection[] }
+  | ProjectMockData {
   // 팀 페이지는 OPERATORS 활용 (실제 17명 운영자)
   if (slug === "team") {
     const teamRows: ListRow[] = OPERATORS.map((op) => ({
@@ -137,6 +300,10 @@ export function getPatternMockData(slug: string, pattern: SbPattern):
       meta: op.role,
     }));
     return { rows: teamRows };
+  }
+
+  if (pattern === "project") {
+    return projectMap[slug] ?? projectMap.pims;
   }
 
   if (pattern === "list") return { rows: listMockRows };
