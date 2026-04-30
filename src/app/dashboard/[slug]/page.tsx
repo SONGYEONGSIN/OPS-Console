@@ -11,6 +11,8 @@ import { LogPattern } from "../_components/patterns/LogPattern";
 import type { LogLine } from "../_components/patterns/LogPattern";
 import { SettingsPattern } from "../_components/patterns/SettingsPattern";
 import type { SettingsSection } from "../_components/patterns/SettingsPattern";
+import { ProjectPattern } from "../_components/patterns/ProjectPattern";
+import type { ProjectMockData } from "../_data/patterns";
 
 /**
  * /dashboard/[slug] — slug → 사이드바 메타 lookup → 패턴 컴포넌트 렌더.
@@ -33,6 +35,10 @@ export default function DynamicDashboardPage() {
   if (meta.pattern === "log") {
     const data = getPatternMockData(params.slug, "log") as { lines: LogLine[] };
     return <LogPattern title={meta.label} data={data} />;
+  }
+  if (meta.pattern === "project") {
+    const data = getPatternMockData(params.slug, "project") as ProjectMockData;
+    return <ProjectPattern title={meta.label} data={data} />;
   }
   const data = getPatternMockData(params.slug, "settings") as { sections: SettingsSection[] };
   return <SettingsPattern title={meta.label} data={data} />;
