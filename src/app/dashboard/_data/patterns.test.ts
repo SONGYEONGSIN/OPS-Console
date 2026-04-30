@@ -1,5 +1,23 @@
 import { describe, it, expect } from "vitest";
-import type { ProjectMockData } from "./patterns";
+import { getPatternMockData, type ProjectMockData } from "./patterns";
+import { findSidebarMeta } from "../_data";
+
+const ALL_SLUGS = [
+  "alerts", "my-todo", "schedule",
+  "handover", "data-requests", "incidents", "contacts", "backup", "vault",
+  "services", "contracts", "dev-test", "deploy", "closing", "settlement", "invoice", "receivables",
+  "pims", "reception-admin", "internal-admin", "competition", "generator",
+  "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
+  "worklog", "outcomes", "reports",
+  "ai-insight", "ai-assistant", "my-ai-work", "ai-tips",
+  "manual", "sop", "vibe-coding", "meetings", "faq",
+  "team", "settings", "onboarding", "feedback", "notices",
+];
+
+const PROJECT_SLUGS = [
+  "pims", "reception-admin", "internal-admin", "competition", "generator",
+  "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
+];
 
 describe("ProjectMockData type", () => {
   it("필수 필드 4개 (meta / attributes / improvements / activities)를 가진다", () => {
@@ -30,5 +48,25 @@ describe("ProjectMockData type", () => {
       "wait",
     ];
     expect(statuses).toEqual(["run", "rev", "wait"]);
+  });
+});
+
+describe("getPatternMockData 47 slug 매칭", () => {
+  it.each(ALL_SLUGS)("%s slug에 대해 mock 데이터 반환 (null 아님)", (slug) => {
+    const meta = findSidebarMeta(slug);
+    expect(meta).not.toBeNull();
+    if (!meta) return;
+    const data = getPatternMockData(slug, meta.pattern);
+    expect(data).not.toBeNull();
+    expect(data).toBeDefined();
+  });
+
+  it.each(PROJECT_SLUGS)("%s 프로젝트 mock에 4 필드 모두 존재", (slug) => {
+    const data = getPatternMockData(slug, "project") as ProjectMockData;
+    expect(data.meta).toBeDefined();
+    expect(data.meta.manager).toBeTruthy();
+    expect(Array.isArray(data.attributes)).toBe(true);
+    expect(Array.isArray(data.improvements)).toBe(true);
+    expect(Array.isArray(data.activities)).toBe(true);
   });
 });
