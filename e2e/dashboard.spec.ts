@@ -33,7 +33,9 @@ test.describe("/dashboard — 데스크탑", () => {
   }) => {
     await expect(page.getByText("운영부 · 운영 상황실")).toBeVisible();
     await expect(page.getByRole("button", { name: /송영석/ })).toBeVisible();
-    await expect(page.getByText("주요 서비스", { exact: true })).toBeVisible();
+    await expect(
+      page.getByLabel("운영부 메뉴").getByText("서비스 그룹", { exact: true })
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: /실시간.*서비스 운영/ })
     ).toBeVisible();
@@ -117,17 +119,17 @@ test.describe("/dashboard — 데스크탑", () => {
     await expect(logoutItem).not.toBeVisible();
   });
 
-  test("사이드바 그룹 토글: '인프라' 닫힘 상태 → 클릭 → 열림", async ({ page }) => {
-    const infraToggle = page.getByRole("button", { name: /인프라/, exact: false });
-    await expect(infraToggle.first()).toHaveAttribute("aria-expanded", "false");
+  test("사이드바 그룹 토글: '프로젝트' 닫힘 상태 → 클릭 → 열림", async ({ page }) => {
+    const projectToggle = page.getByRole("button", { name: /프로젝트/, exact: false });
+    await expect(projectToggle.first()).toHaveAttribute("aria-expanded", "false");
 
-    await infraToggle.first().click();
-    await expect(infraToggle.first()).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByRole("link", { name: /DB · 저장소/ })).toBeVisible();
+    await projectToggle.first().click();
+    await expect(projectToggle.first()).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("link", { name: /PIMS/ })).toBeVisible();
 
     // 다시 클릭 → 닫힘
-    await infraToggle.first().click();
-    await expect(infraToggle.first()).toHaveAttribute("aria-expanded", "false");
+    await projectToggle.first().click();
+    await expect(projectToggle.first()).toHaveAttribute("aria-expanded", "false");
   });
 
   test("필터 칩: '내 담당' 클릭하면 '전체'가 비활성", async ({ page }) => {
