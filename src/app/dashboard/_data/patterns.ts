@@ -5,6 +5,23 @@ import type { LogLine } from "../_components/patterns/LogPattern";
 import type { SettingsField, SettingsSection } from "../_components/patterns/SettingsPattern";
 import type { SbPattern } from "../_data";
 
+export type ProjectMockData = {
+  meta: {
+    manager: string;
+    status: string;
+    quarterTarget: string;
+    serviceCount: string;
+  };
+  attributes: { k: string; v: string }[];
+  improvements: {
+    title: string;
+    pm: string;
+    due: string;
+    status: "run" | "rev" | "wait";
+  }[];
+  activities: { time: string; who: string; act: string }[];
+};
+
 const listMockRows: ListRow[] = [
   { id: "SVC-001", name: "결제 게이트웨이", status: "urgent",   owner: "김슬기",   meta: "최근 배포 14:23" },
   { id: "SVC-002", name: "회원 서비스",     status: "active",   owner: "정윤나",   meta: "정상" },

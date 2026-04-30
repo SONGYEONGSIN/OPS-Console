@@ -6,7 +6,7 @@
 /* ════════════════════════════════════════════════════════════
    Sidebar
    ════════════════════════════════════════════════════════════ */
-export type SbPattern = "list" | "dash" | "log" | "settings";
+export type SbPattern = "list" | "dash" | "log" | "settings" | "project";
 
 export type SbItem = {
   ico: string;
