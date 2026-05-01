@@ -42,6 +42,23 @@ const dashMockWidgets: DashWidget[] = [
   { id: "W6", tone: "ok",     label: "활성 사용자",        value: "1,287", time: "현재" },
 ];
 
+/**
+ * alerts 페이지 전용 mock — JINHAK 운영부 알림 도메인.
+ * 진학사 운영2팀(2교대 14:00~22:00 KST) 시점 가정의 실시간 운영 신호.
+ * dashMockWidgets와 분리해 페이지 의도(알림 트리아지)에 맞춤.
+ */
+const alertsWidgets: DashWidget[] = [
+  { id: "ALERT-01", tone: "urgent", label: "신규 긴급 알림",        value: "3건",     time: "지난 1h" },
+  { id: "ALERT-02", tone: "urgent", label: "결제 게이트웨이 응답",  value: "350ms",   time: "14:23" },
+  { id: "ALERT-03", tone: "urgent", label: "새 사고 보고",          value: "2건",     time: "오늘" },
+  { id: "ALERT-04", tone: "review", label: "처리 대기 알림",        value: "12건",    time: "현재" },
+  { id: "ALERT-05", tone: "review", label: "미처리 자료 요청",      value: "5건",     time: "24h" },
+  { id: "ALERT-06", tone: "ok",     label: "오늘 처리 완료",        value: "47건",    time: "완료율 92%" },
+  { id: "ALERT-07", tone: "ok",     label: "온콜 응답시간 (평균)",  value: "8.2분",   time: "주간" },
+  { id: "ALERT-08", tone: "review", label: "TLS 인증서 만료 임박",  value: "2개",     time: "30일 내" },
+  { id: "ALERT-09", tone: "ok",     label: "백업 성공",              value: "4.7GB",   time: "오늘 02:00" },
+];
+
 const logMockLines: LogLine[] = [
   { ts: "14:23:45", level: "INFO",  msg: "결제 게이트웨이 헬스체크 통과 (200ms)" },
   { ts: "14:23:42", level: "WARN",  msg: "API latency 350ms (>200) — payment-svc" },
@@ -305,6 +322,8 @@ export function getPatternMockData(slug: string, pattern: SbPattern):
   if (pattern === "project") {
     return projectMap[slug] ?? projectMap.pims;
   }
+
+  if (pattern === "dash" && slug === "alerts") return { widgets: alertsWidgets };
 
   if (pattern === "list") return { rows: listMockRows };
   if (pattern === "dash") return { widgets: dashMockWidgets };
