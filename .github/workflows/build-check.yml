@@ -9,6 +9,11 @@ on:
       - chore/**
   pull_request:
 
+# 2026-06-02 Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 미리 동작하도록 강제.
+# 참고: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: lint + typecheck + test + build (Linux)
