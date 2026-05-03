@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { sidebarSections } from "./_data";
+import { LiveClock } from "./_components/LiveClock";
 import { MenuBar } from "./_components/MenuBar";
 import { Sidebar } from "./_components/Sidebar";
 
@@ -62,19 +63,13 @@ export default function DashboardLayout({
    ════════════════════════════════════════════════════════════ */
 function TitleBar() {
   return (
-    <div className="hidden grid-cols-[auto_1fr_auto] items-center border-b border-line bg-ink px-3.5 text-cream md:grid">
-      <div className="mr-4 flex gap-[7px]">
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-vermilion" />
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-gold" />
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-sage" />
-      </div>
+    <div className="hidden grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-ink px-3.5 text-cream md:grid">
+      <div />
       <div className="text-center text-[13px] font-medium tracking-[0.02em]">
-        운영부 <em className="not-italic mx-1.5 text-vermilion">·</em> 운영 상황실
-        <span className="ml-2 text-[12px] opacity-80">OPSROOM</span>
+        운영부 <em className="not-italic mx-1.5 text-vermilion">·</em> 상황실
       </div>
-      <div className="ref flex gap-3.5 text-[10px] tracking-[0.08em] opacity-75">
-        <span>근무 · 2교대 · 14:00~22:00</span>
-        <span>● 실시간 연결</span>
+      <div className="flex justify-end">
+        <LiveClock />
       </div>
     </div>
   );
@@ -100,8 +95,7 @@ function AppBar({ onHamburger }: { onHamburger: () => void }) {
         ☰
       </button>
       <div className="flex-1 text-center text-md font-semibold tracking-[0.02em]">
-        운영부 <em className="not-italic mx-0.5 text-vermilion">·</em>{" "}
-        <span className="text-sm text-muted max-[479px]:hidden">OPSROOM</span>
+        운영부 <em className="not-italic mx-0.5 text-vermilion">·</em> 상황실
       </div>
       <button
         type="button"
