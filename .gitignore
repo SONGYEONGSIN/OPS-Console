@@ -53,3 +53,5 @@ playwright/.cache/
 .claude/session-logs/
 .claude/messages/inbox/
 .claude/messages/archive/
+.claude/events.jsonl
+.claude/messages/.last-*
