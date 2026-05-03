@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "TZ=Asia/Seoul vitest run",
+    "test:watch": "TZ=Asia/Seoul vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "design-sync": "node scripts/design-sync.mjs"

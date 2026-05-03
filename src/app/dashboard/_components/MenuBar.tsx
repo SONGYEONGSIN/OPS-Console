@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "@/features/auth/actions";
+import { AlertsBell } from "./AlertsBell";
+import { SearchBox } from "./SearchBox";
+import { getPatternMockData } from "../_data/patterns";
+import type { DashWidget } from "./patterns/DashPattern";
 
 /**
  * 메뉴바 — 데스크탑 전용 (≥768px). 좌측 ◆ 마커 + 우측 검색/알림/사용자.
@@ -9,12 +13,14 @@ import { signOut } from "@/features/auth/actions";
  */
 export function MenuBar() {
   return (
-    <div className="relative z-[100] hidden h-8 items-center border-b border-line bg-washi-raised px-3.5 md:flex">
+    <div className="relative z-[100] hidden h-8 grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-washi-raised px-3.5 md:grid">
       <div className="px-3.5 pl-1 text-[14px] font-bold text-vermilion select-none">
         ◆
       </div>
 
-      <div className="flex-1" />
+      <div className="w-[560px] max-w-[60vw] justify-self-center">
+        <SearchBox />
+      </div>
 
       <MenuRight />
     </div>
@@ -34,29 +40,11 @@ function MenuRight() {
     return () => document.removeEventListener("click", onDocClick);
   }, [userOpen]);
 
-  return (
-    <div className="flex items-center gap-4 pr-1 text-xs text-muted">
-      <div className="flex min-w-[240px] cursor-text items-center gap-1.5 border border-line-soft bg-washi px-2.5 py-1">
-        <svg viewBox="0 0 16 16" className="h-[11px] w-[11px]">
-          <path
-            d="M11 6.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM10.5 10l3 3"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-        </svg>
-        <span className="text-sm text-faint">서비스, 배치, 점검 항목 검색…</span>
-        <kbd className="ml-auto border border-line-soft bg-washi-raised px-1.5 py-px text-3xs text-muted">
-          ⌘K
-        </kbd>
-      </div>
+  const alerts = getPatternMockData("alerts", "dash") as { widgets: DashWidget[] };
 
-      <div className="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center text-sm">
-        ◎
-        <span className="absolute -right-1 -top-0.5 rounded-full bg-vermilion px-1 py-px text-[8px] font-bold text-cream">
-          3
-        </span>
-      </div>
+  return (
+    <div className="flex items-center justify-end gap-4 pr-1 text-xs text-muted">
+      <AlertsBell items={alerts.widgets} />
 
       <div ref={userRef} className="relative">
         <button
