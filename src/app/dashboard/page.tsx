@@ -27,7 +27,7 @@ export default function DashboardIndexPage() {
   const alerts = getPatternMockData("alerts", "dash") as { widgets: DashWidget[] };
 
   return (
-    <div className="h-full overflow-y-auto bg-washi">
+    <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-[1200px] px-5 py-6 md:px-8 md:py-8">
         <Masthead
           now={new Date()}

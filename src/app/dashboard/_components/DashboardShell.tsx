@@ -44,7 +44,7 @@ export function DashboardShell({
       {chrome}
       <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
         <Sidebar sections={sidebarSections} open={sidebarOpen} onClose={closeSidebar} />
-        <div className="min-h-0 overflow-y-auto">{children}</div>
+        <div className="min-h-0 overflow-y-auto bg-cream">{children}</div>
       </div>
       {statusBar}
       <div
