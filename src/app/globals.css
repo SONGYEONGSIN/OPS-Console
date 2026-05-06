@@ -241,3 +241,17 @@ body::before {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* dashboard sidebar — mockup 4px 얇은 스크롤 (folio-dashboard.html 패턴) */
+.dashboard-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+}
+.dashboard-sidebar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+  background: var(--faint);
+  border-radius: 0;
+}
