@@ -73,20 +73,29 @@ test.describe("/dashboard — 데스크탑 (1면 신문 레이아웃)", () => {
     await expect(page.getByText(/박지연/).first()).toBeVisible();
   });
 
-  test("레이아웃 chrome: TitleBar/MenuBar/Sidebar 노출", async ({ page }) => {
-    await expect(page.getByText(/운영부.*상황실/).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: /송영석/ })).toBeVisible();
+  test("desktop chrome — PIVOT brand + 검색 + 우측 zone", async ({ page }) => {
+    await expect(page.getByText("PIVOT", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("OPS DESK").first()).toBeVisible();
+    await expect(page.locator('input[placeholder*="검색"]')).toBeVisible();
+    await expect(page.getByText("15:00")).toBeVisible();
+    await expect(page.getByText("세션", { exact: true })).toBeVisible();
     await expect(
       page.getByLabel("운영부 메뉴").getByText("서비스 그룹", { exact: true })
     ).toBeVisible();
   });
 
-  test("사용자 dropdown: 송영석 클릭으로 토글, 외부 클릭으로 닫힘", async ({
+  test("AlertsBell 클릭 시 /dashboard/alerts 이동", async ({ page }) => {
+    await page.getByRole("button", { name: /알림/ }).click();
+    await expect(page).toHaveURL(/\/dashboard\/alerts$/);
+  });
+
+  test("사용자 dropdown: 풀네임 클릭으로 토글, 외부 클릭으로 닫힘", async ({
     page,
   }) => {
-    const userBtn = page.getByRole("button", { name: /송영석/ });
+    const userBtn = page.getByRole("button", { name: /송영신/ });
     const logoutItem = page.getByRole("menuitem", { name: /로그아웃/ });
 
+    await expect(userBtn).toBeVisible();
     await userBtn.click();
     await expect(userBtn).toHaveAttribute("aria-expanded", "true");
     await expect(logoutItem).toBeVisible();
