@@ -45,7 +45,7 @@ export function Sidebar({
       role={open ? "dialog" : "navigation"}
       aria-modal={open ? "true" : undefined}
       aria-label="운영부 메뉴"
-      className={`overflow-y-auto border-r border-line bg-sidebar py-4 lg:static lg:translate-x-0 max-lg:fixed max-lg:left-0 max-lg:top-0 max-lg:bottom-0 max-lg:z-40 max-lg:w-[min(84vw,300px)] max-lg:pt-5 max-lg:transition-transform max-lg:duration-[var(--drawer-ms)] max-lg:ease-[var(--drawer-ease)] max-lg:[box-shadow:var(--shadow-drawer-left)] ${
+      className={`overflow-y-auto border-r border-line bg-sidebar py-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-line-soft lg:static lg:translate-x-0 max-lg:fixed max-lg:left-0 max-lg:top-0 max-lg:bottom-0 max-lg:z-40 max-lg:w-[min(84vw,300px)] max-lg:pt-5 max-lg:transition-transform max-lg:duration-[var(--drawer-ms)] max-lg:ease-[var(--drawer-ease)] max-lg:[box-shadow:var(--shadow-drawer-left)] ${
         open ? "max-lg:translate-x-0" : "max-lg:-translate-x-full"
       }`}
     >
