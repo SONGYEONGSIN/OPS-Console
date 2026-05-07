@@ -31,7 +31,7 @@ export const colors = {
   indigo: '#1f3a5f',
   gold: '#9c7a2c',
   sage: '#556b2f',
-  // PIVOT chrome 전용 (별도 레이어 — chrome bar만 적용)
+  // OPS Console chrome 전용 (별도 레이어 — chrome bar만 적용)
   chromeGraphite: '#18181b',
   chromeSnow: '#f5f5f4',
   chromeMuted: '#71717a',
