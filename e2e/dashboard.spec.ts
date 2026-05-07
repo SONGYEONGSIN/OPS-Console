@@ -73,9 +73,9 @@ test.describe("/dashboard — 데스크탑 (1면 신문 레이아웃)", () => {
     await expect(page.getByText(/박지연/).first()).toBeVisible();
   });
 
-  test("desktop chrome — PIVOT brand + 검색 + 우측 zone", async ({ page }) => {
-    await expect(page.getByText("PIVOT", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("OPS DESK").first()).toBeVisible();
+  test("desktop chrome — OPS Console brand + 검색 + 우측 zone", async ({ page }) => {
+    await expect(page.getByText("OPS Console", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(">_").first()).toBeVisible();
     await expect(page.locator('input[placeholder*="검색"]')).toBeVisible();
     await expect(page.getByText("15:00")).toBeVisible();
     await expect(page.getByText("세션", { exact: true })).toBeVisible();
