@@ -15,10 +15,10 @@ const operator = {
 };
 
 describe("Chrome", () => {
-  it("좌측 PIVOT brand 노출", () => {
+  it("좌측 OPS Console brand 노출", () => {
     render(<Chrome operator={operator} alerts={[]} />);
-    expect(screen.getByText("PIVOT")).toBeInTheDocument();
-    expect(screen.getByText("OPS DESK")).toBeInTheDocument();
+    expect(screen.getByText("OPS Console")).toBeInTheDocument();
+    expect(screen.getByText(">_")).toBeInTheDocument();
   });
 
   it("우측 사용자 풀네임 + 부제 노출", () => {
