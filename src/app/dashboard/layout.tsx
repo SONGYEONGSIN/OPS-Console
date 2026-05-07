@@ -45,7 +45,7 @@ function AppBar() {
       className="relative z-30 hidden h-12 items-center gap-2 border-b border-line bg-washi px-3 max-md:flex"
     >
       <div className="flex-1 text-center text-md font-semibold tracking-[0.02em]">
-        PIVOT <em className="not-italic mx-0.5 text-vermilion">·</em> OPS DESK
+        OPS Console
       </div>
       <LiveClock />
     </header>
