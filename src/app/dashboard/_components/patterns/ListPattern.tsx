@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { InspectorPanel } from "../inspector/InspectorPanel";
+import { InspectorListBody } from "../inspector/InspectorListBody";
+import { useInspectorState } from "../inspector/useInspectorState";
 
 export type ListRow = {
   id: string;
@@ -24,79 +27,40 @@ const STATUS_COLOR: Record<ListRow["status"], string> = {
   approved: "bg-line-soft text-muted",
 };
 
-export function ListPattern({
-  title,
-  data,
-}: {
-  title: string;
-  data: { rows: ListRow[] };
-}) {
-  const [filter, setFilter] = useState<"all" | ListRow["status"]>("all");
-  const [selectedId, setSelectedId] = useState<string | null>(data.rows[0]?.id ?? null);
+type Props = { title: string; data: { rows: ListRow[] } };
 
-  const filtered =
-    filter === "all" ? data.rows : data.rows.filter((r) => r.status === filter);
-
-  const selected = data.rows.find((r) => r.id === selectedId) ?? null;
+export function ListPattern({ title, data }: Props) {
+  const [rows, setRows] = useState<ListRow[]>(data.rows);
+  const inspector = useInspectorState<ListRow>();
 
   return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-[1fr_320px]">
-      {/* 좌: Content */}
-      <section className="min-h-0 overflow-y-auto p-5 md:p-6 lg:p-7">
-        <nav className="mb-4 flex items-center gap-2 text-xs tracking-[0.04em] text-muted">
-          <span>운영부</span>
-          <span className="text-faint">/</span>
-          <strong className="font-semibold text-ink">{title}</strong>
-        </nav>
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-semibold tracking-[-0.02em]">
-            {title} · {data.rows.length}건
-          </h2>
-        </div>
-        <p className="mb-4 text-xs text-muted">Demo · 실제 데이터 미연결</p>
-
-        <div className="mb-4 flex flex-wrap gap-2">
-          {(["all", "urgent", "active", "review", "approved"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              className={`border px-3 py-1 text-xs tracking-[0.04em] transition-colors ${
-                filter === f
-                  ? "border-ink bg-ink text-cream"
-                  : "border-line bg-transparent text-ink hover:border-vermilion hover:text-vermilion"
-              }`}
-            >
-              {f === "all" ? "전체" : STATUS_LABEL[f]}
-            </button>
-          ))}
-        </div>
-
-        <div className="overflow-x-auto border border-line">
+    <>
+      <section className="p-7">
+        <h2 className="mb-5 text-xl font-bold text-ink">{title}</h2>
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-washi-raised text-xs tracking-[0.06em] text-muted">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium uppercase">ID</th>
-                <th className="px-3 py-2 text-left font-medium uppercase">이름</th>
-                <th className="px-3 py-2 text-left font-medium uppercase">상태</th>
-                <th className="px-3 py-2 text-left font-medium uppercase">담당</th>
+            <thead>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                <th className="px-3 py-2">ID</th>
+                <th className="px-3 py-2">이름</th>
+                <th className="px-3 py-2">상태</th>
+                <th className="px-3 py-2">담당</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-muted">
-                    조회 결과가 없습니다.
+                  <td colSpan={4} className="px-3 py-6 text-center text-muted">
+                    데이터 없음
                   </td>
                 </tr>
               ) : (
-                filtered.map((row) => (
+                rows.map((row) => (
                   <tr
                     key={row.id}
-                    onClick={() => setSelectedId(row.id)}
-                    aria-pressed={row.id === selectedId}
-                    className={`cursor-pointer border-t border-line transition-colors ${
-                      row.id === selectedId ? "bg-vermilion/10" : "hover:bg-line-soft"
+                    onClick={() => inspector.open(row)}
+                    className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                      inspector.selected?.id === row.id ? "bg-washi-raised" : ""
                     }`}
                   >
                     <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
@@ -115,44 +79,37 @@ export function ListPattern({
         </div>
       </section>
 
-      {/* 우: Inspector (lg+ 전용) */}
-      <aside className="hidden border-l border-line bg-washi-raised lg:block">
-        <div className="p-5 lg:p-6">
-          <h3 className="mb-4 text-xs font-medium uppercase tracking-[0.06em] text-muted">
-            상세
-          </h3>
-          {selected ? (
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="text-xs text-muted">ID</div>
-                <div className="font-mono text-sm">{selected.id}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">이름</div>
-                <div className="text-md font-semibold">{selected.name}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">상태</div>
-                <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[selected.status]}`}>
-                  {STATUS_LABEL[selected.status]}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs text-muted">담당</div>
-                <div className="text-sm">{selected.owner}</div>
-              </div>
-              {selected.meta && (
-                <div>
-                  <div className="text-xs text-muted">메타</div>
-                  <div className="text-sm text-ink-soft">{selected.meta}</div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted">행을 선택하세요.</p>
-          )}
-        </div>
-      </aside>
-    </div>
+      <InspectorPanel
+        open={inspector.selected !== null}
+        onClose={inspector.close}
+      >
+        {inspector.selected && (
+          <>
+            <header className="mb-4 border-b border-line-soft pb-3">
+              <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+                인스펙터 · 항목 상세
+              </p>
+              <h3 className="mt-1 text-lg font-bold text-ink">{inspector.selected.name}</h3>
+              <button
+                type="button"
+                onClick={inspector.toggleEdit}
+                className="mt-2 cursor-pointer text-xs text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
+              >
+                {inspector.editing ? "읽기 모드" : "편집"}
+              </button>
+            </header>
+            <InspectorListBody
+              row={inspector.selected}
+              editing={inspector.editing}
+              onSave={(next) => {
+                setRows((prev) => prev.map((r) => (r.id === next.id ? next : r)));
+                inspector.close();
+              }}
+              onCancel={inspector.toggleEdit}
+            />
+          </>
+        )}
+      </InspectorPanel>
+    </>
   );
 }
