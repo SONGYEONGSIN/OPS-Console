@@ -4,6 +4,7 @@ import { useParams, notFound } from "next/navigation";
 import { findSidebarMeta } from "../_data";
 import { getPatternMockData } from "../_data/patterns";
 import { PAGE_META } from "../_data/page-meta-config";
+import { derivePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
@@ -28,9 +29,7 @@ export default function DynamicDashboardPage() {
   if (!meta) notFound();
 
   const pathname = `/dashboard/${params.slug}`;
-  const config = PAGE_META[params.slug] ?? {
-    headline: { title: meta.label },
-  };
+  const config = PAGE_META[params.slug] ?? derivePageMeta(params.slug, meta);
 
   let body: React.ReactNode;
   if (meta.pattern === "list") {
