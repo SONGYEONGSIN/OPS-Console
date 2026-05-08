@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { ProjectMockData } from "../../_data/patterns";
 
+export type ProjectImprovement = ProjectMockData["improvements"][number];
+
 const STATUS_LABEL: Record<ProjectMockData["improvements"][number]["status"], string> = {
   run: "진행",
   rev: "검토",
