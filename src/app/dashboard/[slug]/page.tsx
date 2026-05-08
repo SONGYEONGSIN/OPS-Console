@@ -3,6 +3,8 @@
 import { useParams, notFound } from "next/navigation";
 import { findSidebarMeta } from "../_data";
 import { getPatternMockData } from "../_data/patterns";
+import { PAGE_META } from "../_data/page-meta-config";
+import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { DashPattern } from "../_components/patterns/DashPattern";
@@ -18,28 +20,45 @@ import type { ProjectMockData } from "../_data/patterns";
  * /dashboard/[slug] — slug → 사이드바 메타 lookup → 패턴 컴포넌트 렌더.
  *
  * 잘못된 slug는 notFound() → Next.js 404. 셸은 layout.tsx가 처리.
+ * PageHeader는 PAGE_META 명시 정의 우선, 없으면 sidebar label로 fallback.
  */
 export default function DynamicDashboardPage() {
   const params = useParams<{ slug: string }>();
   const meta = findSidebarMeta(params.slug);
   if (!meta) notFound();
 
+  const pathname = `/dashboard/${params.slug}`;
+  const config = PAGE_META[params.slug] ?? {
+    headline: { title: meta.label },
+  };
+
+  let body: React.ReactNode;
   if (meta.pattern === "list") {
     const data = getPatternMockData(params.slug, "list") as { rows: ListRow[] };
-    return <ListPattern title={meta.label} data={data} />;
-  }
-  if (meta.pattern === "dash") {
+    body = <ListPattern title={meta.label} data={data} />;
+  } else if (meta.pattern === "dash") {
     const data = getPatternMockData(params.slug, "dash") as { widgets: DashWidget[] };
-    return <DashPattern title={meta.label} data={data} />;
-  }
-  if (meta.pattern === "log") {
+    body = <DashPattern title={meta.label} data={data} />;
+  } else if (meta.pattern === "log") {
     const data = getPatternMockData(params.slug, "log") as { lines: LogLine[] };
-    return <LogPattern title={meta.label} data={data} />;
-  }
-  if (meta.pattern === "project") {
+    body = <LogPattern title={meta.label} data={data} />;
+  } else if (meta.pattern === "project") {
     const data = getPatternMockData(params.slug, "project") as ProjectMockData;
-    return <ProjectPattern title={meta.label} data={data} />;
+    body = <ProjectPattern title={meta.label} data={data} />;
+  } else {
+    const data = getPatternMockData(params.slug, "settings") as { sections: SettingsSection[] };
+    body = <SettingsPattern title={meta.label} data={data} />;
   }
-  const data = getPatternMockData(params.slug, "settings") as { sections: SettingsSection[] };
-  return <SettingsPattern title={meta.label} data={data} />;
+
+  return (
+    <div className="flex flex-col">
+      <PageHeader
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+      />
+      {body}
+    </div>
+  );
 }
