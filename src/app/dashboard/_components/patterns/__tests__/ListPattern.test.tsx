@@ -78,3 +78,52 @@ describe("ListPattern", () => {
     expect(row?.className).toContain("bg-washi-raised");
   });
 });
+
+describe("ListPattern 부수 UI (Epic 4 복원)", () => {
+  const fixture = {
+    rows: [
+      { id: "r1", name: "Row 1", status: "urgent" as const, owner: "A" },
+      { id: "r2", name: "Row 2", status: "active" as const, owner: "B" },
+      { id: "r3", name: "Row 3", status: "active" as const, owner: "C" },
+      { id: "r4", name: "Row 4", status: "approved" as const, owner: "D" },
+    ],
+  };
+
+  it("초기 카운트 — 전체 rows 표시 (title · {N}건)", () => {
+    render(<ListPattern title="서비스" data={fixture} />);
+    expect(screen.getByText(/서비스/)).toBeInTheDocument();
+    expect(screen.getByText(/4건/)).toBeInTheDocument();
+  });
+
+  it("필터 5개 버튼 노출 (전체/긴급/활성/점검중/정상)", () => {
+    render(<ListPattern title="서비스" data={fixture} />);
+    expect(screen.getByRole("button", { name: "전체" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "긴급" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "활성" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "점검중" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "정상" })).toBeInTheDocument();
+  });
+
+  it("필터 클릭 — 해당 status rows만 표시 + 카운트 갱신", () => {
+    render(<ListPattern title="서비스" data={fixture} />);
+    fireEvent.click(screen.getByRole("button", { name: "활성" }));
+    expect(screen.getByText("Row 2")).toBeInTheDocument();
+    expect(screen.getByText("Row 3")).toBeInTheDocument();
+    expect(screen.queryByText("Row 1")).toBeNull();
+    expect(screen.queryByText("Row 4")).toBeNull();
+    expect(screen.getByText(/2건/)).toBeInTheDocument();
+  });
+
+  it("'전체' 클릭 시 모든 rows 복귀", () => {
+    render(<ListPattern title="서비스" data={fixture} />);
+    fireEvent.click(screen.getByRole("button", { name: "긴급" }));
+    expect(screen.getByText(/1건/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "전체" }));
+    expect(screen.getByText(/4건/)).toBeInTheDocument();
+  });
+
+  it("Demo 안내문 노출", () => {
+    render(<ListPattern title="서비스" data={fixture} />);
+    expect(screen.getByText(/Demo.*실제 데이터 미연결/)).toBeInTheDocument();
+  });
+});
