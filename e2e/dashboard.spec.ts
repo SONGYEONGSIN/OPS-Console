@@ -175,3 +175,44 @@ test.describe("/dashboard — 모바일 드로어", () => {
     await expect(sidebar).not.toHaveAttribute("aria-modal", "true");
   });
 });
+
+/* ════════════════════════════════════════════════════════════
+   /dashboard/[slug] — PageHeader (Epic 2)
+   ════════════════════════════════════════════════════════════ */
+test.describe("/dashboard/[slug] — PageHeader (Epic 2)", () => {
+  test.skip(
+    ({ viewport }) => !!viewport && viewport.width < 1024,
+    "데스크탑 (≥1024) 한정"
+  );
+  test.skip(
+    !process.env.TEST_USER_EMAIL || !process.env.TEST_USER_PASSWORD,
+    "TEST_USER_EMAIL/TEST_USER_PASSWORD 미설정"
+  );
+
+  test.beforeEach(async ({ page }) => {
+    // 미들웨어가 미인증 사용자를 /login으로 보내므로 dashboard 진입 전 로그인 필요.
+    await signInAndGotoDashboard(page);
+  });
+
+  test("services에서 headline + breadcrumb + tabs 노출", async ({ page }) => {
+    await page.goto("/dashboard/services");
+    // headline accent + title (PAGE_META.services)
+    await expect(page.getByText("실시간", { exact: true })).toBeVisible();
+    await expect(page.getByText("서비스 운영", { exact: true })).toBeVisible();
+    // vermilion 대시 (PageHeadline accent separator)
+    await expect(page.getByText("—").first()).toBeVisible();
+    // breadcrumb 마지막 (현재 페이지)
+    const crumbs = page.getByRole("navigation", { name: "경로" });
+    await expect(crumbs).toContainText("서비스 그룹");
+    await expect(crumbs).toContainText("전체 서비스");
+    // tabs — 활성 tab "전체 서비스"
+    const activeTab = page.getByRole("tab", { name: "전체 서비스" });
+    await expect(activeTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("alerts에서 헤드라인 노출", async ({ page }) => {
+    await page.goto("/dashboard/alerts");
+    await expect(page.getByText("지금", { exact: true })).toBeVisible();
+    await expect(page.getByText("주의해야 할 알림", { exact: true })).toBeVisible();
+  });
+});
