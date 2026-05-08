@@ -216,3 +216,37 @@ test.describe("/dashboard/[slug] — PageHeader (Epic 2)", () => {
     await expect(page.getByText("주의해야 할 알림", { exact: true })).toBeVisible();
   });
 });
+
+/* ════════════════════════════════════════════════════════════
+   /dashboard — Inspector 슬라이드인 (Epic 3)
+   ════════════════════════════════════════════════════════════ */
+test.describe("/dashboard — Inspector 슬라이드인 (Epic 3)", () => {
+  test.skip(
+    !process.env.TEST_USER_EMAIL || !process.env.TEST_USER_PASSWORD,
+    "TEST_USER_EMAIL/TEST_USER_PASSWORD 미설정",
+  );
+
+  test.beforeEach(async ({ page }) => {
+    await signInAndGotoDashboard(page);
+  });
+
+  test("services 행 클릭 → 패널 열림 → ESC 닫힘", async ({ page }) => {
+    await page.goto("/dashboard/services");
+    const firstRow = page.locator("tbody tr").first();
+    await firstRow.click();
+    const panel = page.getByRole("complementary");
+    await expect(panel).toHaveAttribute("aria-hidden", "false");
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("alerts 위젯 클릭 → 패널 열림 → 닫기 버튼 닫힘", async ({ page }) => {
+    await page.goto("/dashboard/alerts");
+    const firstWidget = page.locator("button[aria-pressed]").first();
+    await firstWidget.click();
+    const panel = page.getByRole("complementary");
+    await expect(panel).toHaveAttribute("aria-hidden", "false");
+    await page.getByRole("button", { name: /닫기/ }).click();
+    await expect(panel).toHaveAttribute("aria-hidden", "true");
+  });
+});
