@@ -15,14 +15,17 @@ export async function listOperators(): Promise<OperatorRow[]> {
     .order("hired_at", { ascending: true });
 
   if (error) {
-    console.error("listOperators failed:", error.message);
+    console.error("[listOperators] supabase error:", error);
     return [];
   }
+
+  console.log("[listOperators] raw rows fetched:", data?.length ?? 0);
 
   const parsed: OperatorRow[] = [];
   for (const row of data ?? []) {
     const r = operatorRowSchema.safeParse(row);
     if (r.success) parsed.push(r.data);
+    else console.error("[listOperators] zod parse fail:", r.error.issues, "row:", row);
   }
   return parsed;
 }
