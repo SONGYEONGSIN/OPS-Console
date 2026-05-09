@@ -8,6 +8,27 @@ import { signInSchema, signUpSchema, forgotPasswordSchema, resetPasswordSchema }
 
 export type AuthState = { error?: string; info?: string } | undefined;
 
+/**
+ * Supabase 영문 에러 → 한국어 메시지.
+ * 매핑되지 않은 에러는 generic 메시지로 통합 (영문 노출 방지).
+ * enumeration 방지: '비밀번호 틀림' vs '미가입' 구분 안 함 — 통합 메시지.
+ */
+function translateAuthError(message: string): string {
+  const map: Record<string, string> = {
+    "Invalid login credentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+    "Email not confirmed":
+      "이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.",
+    "User already registered": "이미 가입된 이메일입니다.",
+    "Email rate limit exceeded":
+      "메일 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요.",
+  };
+  if (map[message]) return map[message];
+  if (/rate limit|too many requests/i.test(message)) {
+    return "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+  }
+  return "로그인에 실패했습니다. 잠시 후 다시 시도해주세요.";
+}
+
 export async function signIn(
   _prev: AuthState,
   formData: FormData
@@ -25,7 +46,7 @@ export async function signIn(
   const supabase = await createClient({ rememberMe: remember });
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
-  if (error) return { error: error.message };
+  if (error) return { error: translateAuthError(error.message) };
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
@@ -51,7 +72,7 @@ export async function signUp(
     password: parsed.data.password,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: translateAuthError(error.message) };
 
   return { info: "확인 메일을 발송했습니다. 메일함을 확인해주세요." };
 }

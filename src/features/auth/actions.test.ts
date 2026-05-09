@@ -57,7 +57,7 @@ describe("signIn", () => {
     expect(result).toEqual({ error: "비밀번호를 입력해주세요." });
   });
 
-  it("Supabase 에러 시 메시지 그대로 반환", async () => {
+  it("Supabase 'Invalid login credentials' → 한국어 매핑", async () => {
     mockCreate.mockResolvedValue({
       auth: {
         signInWithPassword: vi.fn().mockResolvedValue({
@@ -69,7 +69,26 @@ describe("signIn", () => {
     fd.set("email", "a@b.com");
     fd.set("password", "wrong");
     const result = await signIn(undefined, fd);
-    expect(result).toEqual({ error: "Invalid login credentials" });
+    expect(result).toEqual({
+      error: "이메일 또는 비밀번호가 올바르지 않습니다.",
+    });
+  });
+
+  it("Supabase 'Email not confirmed' → 한국어 매핑", async () => {
+    mockCreate.mockResolvedValue({
+      auth: {
+        signInWithPassword: vi.fn().mockResolvedValue({
+          error: { message: "Email not confirmed" },
+        }),
+      },
+    });
+    const fd = new FormData();
+    fd.set("email", "a@b.com");
+    fd.set("password", "x");
+    const result = await signIn(undefined, fd);
+    expect(result).toEqual({
+      error: "이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.",
+    });
   });
 
   it("성공 시 /dashboard로 redirect", async () => {
