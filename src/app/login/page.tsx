@@ -51,7 +51,7 @@ function LoginPageContent() {
   return (
     <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
       <TitleBar now={now} />
-      <main className="grid h-full min-h-0 grid-cols-1 grid-rows-1 overflow-y-auto lg:grid-cols-2">
+      <main className="grid h-full min-h-0 grid-cols-1 grid-rows-1 overflow-y-auto bg-cream lg:grid-cols-2">
         <BrandPanel now={now} />
         <AuthPanel
           mode={mode}
@@ -144,7 +144,7 @@ function BrandPanel({ now }: { now: Date | null }) {
   return (
     <aside
       className="
-        relative flex flex-col justify-between overflow-hidden border-line bg-washi
+        relative flex flex-col justify-between overflow-hidden border-line bg-cream
         py-5 px-4
         md:py-6 md:px-5
         lg:py-8 lg:px-7 lg:border-r lg:border-b-0
