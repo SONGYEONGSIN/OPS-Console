@@ -60,3 +60,21 @@ export function findSidebarSiblings(pathname: string): SiblingItem[] {
   }
   return [];
 }
+
+/**
+ * pathname의 부모 group label 반환 (group 안 item만).
+ * section 직속 item이거나 매칭 실패 시 null.
+ */
+export function findSidebarParentGroup(pathname: string): string | null {
+  for (const section of sidebarSections) {
+    for (const entry of section.entries) {
+      if (entry.kind === "group") {
+        const hit = entry.items.some(
+          (c) => c.slug && slugToHref(c.slug) === pathname,
+        );
+        if (hit) return entry.label;
+      }
+    }
+  }
+  return null;
+}
