@@ -71,6 +71,7 @@ const TEAM_FILTERS: { value: Filter; label: string }[] = [
   { value: "active", label: "활성" },
   { value: "inactive", label: "점검중" },
   { value: "suspended", label: "정지" },
+  { value: "deleted", label: "삭제" },
 ];
 
 type Props = {
@@ -91,13 +92,22 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
 
-  // team variant: 활성/점검중/정지만 기본 보기 (deleted는 별도 페이지)
-  const visibleRows =
-    variant === "team" ? rows.filter((r) => r.status !== "deleted") : rows;
-  const filteredRows =
-    filter === "all"
-      ? visibleRows
-      : visibleRows.filter((r) => r.status === filter);
+  // team variant: filter='all'은 활성 보기(=deleted 제외), filter='deleted'는 삭제만,
+  // 나머지는 그 status만. default variant는 단순 status 매칭.
+  const filteredRows = (() => {
+    if (variant !== "team") {
+      return filter === "all"
+        ? rows
+        : rows.filter((r) => r.status === filter);
+    }
+    if (filter === "deleted") {
+      return rows.filter((r) => r.status === "deleted");
+    }
+    if (filter === "all") {
+      return rows.filter((r) => r.status !== "deleted");
+    }
+    return rows.filter((r) => r.status === filter);
+  })();
   const FILTERS = variant === "team" ? TEAM_FILTERS : DEFAULT_FILTERS;
 
   return (
@@ -143,8 +153,10 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
               const active = filter === f.value;
               const count =
                 f.value === "all"
-                  ? visibleRows.length
-                  : visibleRows.filter((r) => r.status === f.value).length;
+                  ? variant === "team"
+                    ? rows.filter((r) => r.status !== "deleted").length
+                    : rows.length
+                  : rows.filter((r) => r.status === f.value).length;
               return (
                 <button
                   key={f.value}
