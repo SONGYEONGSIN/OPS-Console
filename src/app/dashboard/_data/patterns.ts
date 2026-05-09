@@ -33,6 +33,27 @@ const listMockRows: ListRow[] = [
   { id: "SVC-008", name: "헬스체크 봇",     status: "approved", owner: "이해영",   meta: "30일 무중단" },
 ];
 
+/**
+ * 개선 요청 mock — OPS Console 시스템 자체에 대한 개선 아이디어/버그.
+ * 운영부 전원이 작성 가능, 검토 후 처리 상태로 갱신.
+ */
+const feedbackMockRows: ListRow[] = [
+  { id: "FB-004", name: "인스펙터 패널 width 320px이 좁음 — 본문이 잘림",        status: "urgent",   owner: "송영신", meta: "2026-05-09" },
+  { id: "FB-003", name: "사용자 권한 변경이 즉시 반영되지 않음",                  status: "review",   owner: "김지영", meta: "2026-05-08" },
+  { id: "FB-002", name: "모바일 햄버거 트리거 누락 회귀 — chrome 리브랜드",        status: "approved", owner: "정윤나", meta: "2026-05-08" },
+  { id: "FB-001", name: "알림 모달에 외부 클릭으로 닫기 추가 요청",                status: "active",   owner: "김슬기", meta: "2026-05-07" },
+];
+
+/**
+ * 공지사항 mock — 운영부 전체 전달.
+ * admin(부장·팀장)만 작성, 모두 read.
+ */
+const noticesMockRows: ListRow[] = [
+  { id: "NT-003", name: "2026 Q3 운영 정책 변경 — 시프트 스케줄 조정 안내",        status: "urgent",   owner: "허승철 · 부장", meta: "2026-05-10" },
+  { id: "NT-002", name: "시스템 정기 점검 — 5/15(목) 23:00 ~ 익일 02:00",         status: "active",   owner: "송영신 · 팀장", meta: "2026-05-09" },
+  { id: "NT-001", name: "신규 운영자 합류 — 김지나 사원 (운영2팀)",                status: "approved", owner: "송영신 · 팀장", meta: "2026-05-07" },
+];
+
 const dashMockWidgets: DashWidget[] = [
   { id: "W1", tone: "urgent", label: "결제 지연",         value: "350ms",  time: "14:23" },
   { id: "W2", tone: "ok",     label: "정상 서비스",        value: "47건",  time: "24h" },
@@ -408,7 +429,11 @@ export function getPatternMockData(slug: string, pattern: SbPattern):
 
   if (pattern === "dash" && slug === "alerts") return { widgets: alertsWidgets };
 
-  if (pattern === "list") return { rows: listMockRows };
+  if (pattern === "list") {
+    if (slug === "feedback") return { rows: feedbackMockRows };
+    if (slug === "notices") return { rows: noticesMockRows };
+    return { rows: listMockRows };
+  }
   if (pattern === "dash") return { widgets: dashMockWidgets };
   if (pattern === "log") return { lines: logMockLines };
   return { sections: settingsMockSections };
