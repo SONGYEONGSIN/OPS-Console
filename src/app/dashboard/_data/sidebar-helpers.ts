@@ -35,17 +35,16 @@ export function findSidebarBreadcrumb(pathname: string): BreadcrumbCrumb[] {
 }
 
 /**
- * pathname의 부모 컨테이너(group 또는 section)의 형제 메뉴들 (slug 있는 항목만, current 포함).
- * 매칭 실패 시 빈 배열.
+ * pathname의 부모 group 안 children (slug 있는 항목, current 포함).
+ * section 직속 item이면 형제 탭 미노출 의도라 빈 배열 반환.
+ * 매칭 실패도 빈 배열.
  */
 export function findSidebarSiblings(pathname: string): SiblingItem[] {
   for (const section of sidebarSections) {
     for (const entry of section.entries) {
       if (entry.kind === "item" && entry.slug && slugToHref(entry.slug) === pathname) {
-        return section.entries
-          .filter((e): e is Extract<typeof e, { kind: "item" }> => e.kind === "item")
-          .filter((e) => e.slug)
-          .map((e) => ({ ...e, href: slugToHref(e.slug!) }));
+        // section 직속 item — 형제 탭 미노출
+        return [];
       }
       if (entry.kind === "group") {
         const hit = entry.items.some(

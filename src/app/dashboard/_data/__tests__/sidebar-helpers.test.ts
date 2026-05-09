@@ -40,12 +40,8 @@ describe("findSidebarSiblings", () => {
     ]);
   });
 
-  it("section 직속 item — 같은 section의 형제들 반환", () => {
-    const sibs = findSidebarSiblings("/dashboard/alerts");
-    const labels = sibs.map((s) => s.label);
-    expect(labels).toContain("새 알림");
-    expect(labels).toContain("오늘 할 일");
-    expect(labels).toContain("전체 일정");
+  it("section 직속 item — 빈 배열 (형제 탭 미노출)", () => {
+    expect(findSidebarSiblings("/dashboard/alerts")).toEqual([]);
   });
 
   it("매칭 안 되는 pathname — 빈 배열", () => {
