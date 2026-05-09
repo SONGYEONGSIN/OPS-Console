@@ -78,28 +78,27 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
             <span className="text-sm text-vermilion">
               {filteredRows.length}건
             </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
             {variant === "team" && (
               <button
                 type="button"
                 onClick={() => {
                   const blank: ListRow = {
-                    id: `new-${Date.now()}@example.com`,
+                    id: "",
                     name: "",
                     status: "active",
                     owner: "운영1팀",
                     meta: "매니저",
                   };
-                  setRows((prev) => [blank, ...prev]);
                   inspector.open(blank);
                   if (!inspector.editing) inspector.toggleEdit();
                 }}
-                className="ml-2 cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
+                className="mr-3 cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
               >
                 + 신규 계정
               </button>
             )}
-          </div>
-          <div className="flex flex-wrap gap-1">
             {FILTERS.map((f) => {
               const active = filter === f.value;
               const count =
@@ -282,7 +281,13 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
               editing={inspector.editing}
               variant={variant}
               onSave={(next) => {
-                setRows((prev) => prev.map((r) => (r.id === next.id ? next : r)));
+                setRows((prev) => {
+                  const exists = prev.some((r) => r.id === next.id) && next.id !== "";
+                  // 신규(원본 id가 없거나 rows에 없음) → prepend, 기존 → update
+                  return exists
+                    ? prev.map((r) => (r.id === next.id ? next : r))
+                    : [next, ...prev];
+                });
                 inspector.close();
               }}
               onCancel={inspector.toggleEdit}
