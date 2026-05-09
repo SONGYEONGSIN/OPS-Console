@@ -92,22 +92,10 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
 
-  // team variant: filter='all'은 활성 보기(=deleted 제외), filter='deleted'는 삭제만,
-  // 나머지는 그 status만. default variant는 단순 status 매칭.
-  const filteredRows = (() => {
-    if (variant !== "team") {
-      return filter === "all"
-        ? rows
-        : rows.filter((r) => r.status === filter);
-    }
-    if (filter === "deleted") {
-      return rows.filter((r) => r.status === "deleted");
-    }
-    if (filter === "all") {
-      return rows.filter((r) => r.status !== "deleted");
-    }
-    return rows.filter((r) => r.status === filter);
-  })();
+  // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
+  // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
+  const filteredRows =
+    filter === "all" ? rows : rows.filter((r) => r.status === filter);
   const FILTERS = variant === "team" ? TEAM_FILTERS : DEFAULT_FILTERS;
 
   return (
@@ -153,9 +141,7 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
               const active = filter === f.value;
               const count =
                 f.value === "all"
-                  ? variant === "team"
-                    ? rows.filter((r) => r.status !== "deleted").length
-                    : rows.length
+                  ? rows.length
                   : rows.filter((r) => r.status === f.value).length;
               return (
                 <button
@@ -209,7 +195,7 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
                       onClick={() => inspector.open(row)}
                       className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
                         inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      }`}
+                      } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
                     >
                       <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
                       <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
@@ -249,7 +235,7 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
                       onClick={() => inspector.open(row)}
                       className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
                         inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      }`}
+                      } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
                     >
                       <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
                       <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
