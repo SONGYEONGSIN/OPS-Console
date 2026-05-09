@@ -135,12 +135,41 @@ export function InspectorListBody({
           }
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
         >
-          <option value="active">활성</option>
-          <option value="approved">정상</option>
-          <option value="review">점검중 / 비활성</option>
-          <option value="urgent">장애 / 정지</option>
+          {isTeam ? (
+            <>
+              <option value="active">활성</option>
+              <option value="inactive">점검중</option>
+              <option value="suspended">정지</option>
+              <option value="deleted">삭제</option>
+            </>
+          ) : (
+            <>
+              <option value="active">활성</option>
+              <option value="approved">정상</option>
+              <option value="review">점검중</option>
+              <option value="urgent">긴급</option>
+            </>
+          )}
         </select>
       </label>
+      {isTeam && draft.status === "deleted" && (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">
+            삭제 사유 <span className="text-vermilion">*</span>
+          </span>
+          <textarea
+            aria-label="삭제 사유"
+            required
+            rows={3}
+            value={draft.deletedReason ?? ""}
+            onChange={(e) =>
+              setDraft({ ...draft, deletedReason: e.target.value })
+            }
+            placeholder="퇴사 / 권한 회수 / 부서 이동 등"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+        </label>
+      )}
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
@@ -395,6 +424,9 @@ const STATUS_LABEL: Record<ListRow["status"], string> = {
   active: "활성",
   review: "점검중",
   approved: "정상",
+  inactive: "점검중",
+  suspended: "정지",
+  deleted: "삭제",
 };
 
 const STATUS_BADGE: Record<ListRow["status"], string> = {
@@ -402,6 +434,9 @@ const STATUS_BADGE: Record<ListRow["status"], string> = {
   active: "bg-sage/20 text-sage",
   review: "bg-gold/20 text-gold",
   approved: "bg-line-soft text-muted",
+  inactive: "bg-gold/20 text-gold",
+  suspended: "bg-vermilion/20 text-vermilion",
+  deleted: "bg-ink/20 text-ink-soft",
 };
 
 function Section({

@@ -48,7 +48,7 @@ export default async function TeamPage() {
         hired_at: todayKR(),
         birth_date: "1990-01-01",
         gender: "여",
-        status: row.status,
+        status: (row.status as OperatorRow["status"]) ?? "active",
         leader: row.leader ?? null,
       });
       return result.ok
@@ -58,12 +58,18 @@ export default async function TeamPage() {
     const all = await listOperators();
     const target = all.find((o) => o.email === row.id);
     if (!target) return { ok: false, error: "사용자를 찾을 수 없습니다." };
+    const isNowDeleted = row.status === "deleted";
+    if (isNowDeleted && !row.deletedReason?.trim()) {
+      return { ok: false, error: "삭제 사유를 입력해주세요." };
+    }
     const result = await updateOperator(target.id, {
       name: row.name,
       team: row.owner as OperatorRow["team"],
       role: (row.meta as OperatorRow["role"]) ?? target.role,
-      status: row.status,
+      status: row.status as OperatorRow["status"],
       leader: row.leader ?? null,
+      deleted_reason: isNowDeleted ? (row.deletedReason ?? null) : null,
+      deleted_at: isNowDeleted ? new Date().toISOString() : null,
     });
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }

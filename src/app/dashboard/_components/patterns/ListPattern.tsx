@@ -8,42 +8,69 @@ import { useInspectorState } from "../inspector/useInspectorState";
 export type ListRow = {
   id: string;
   name: string;
-  status: "urgent" | "active" | "review" | "approved";
+  status:
+    | "urgent"
+    | "active"
+    | "review"
+    | "approved"
+    | "inactive"
+    | "suspended"
+    | "deleted";
   owner: string;
   meta?: string;
   /** 직속 상사 이름 — 미설정 시 leaderOf로 자동 derive (TeamView). */
   leader?: string;
+  /** 상태=deleted 일 때 사유 (operators 도메인) */
+  deletedReason?: string;
 };
 
 const STATUS_LABEL: Record<ListRow["status"], string> = {
+  // 기존 default variant
   urgent: "긴급",
-  active: "활성",
-  review: "점검중",
   approved: "정상",
+  review: "점검중",
+  // operators 도메인
+  active: "활성",
+  inactive: "점검중",
+  suspended: "정지",
+  deleted: "삭제",
 };
 
 const STATUS_COLOR: Record<ListRow["status"], string> = {
   urgent: "bg-vermilion text-cream",
-  active: "bg-sage/20 text-sage",
-  review: "bg-gold/20 text-gold",
   approved: "bg-line-soft text-muted",
+  review: "bg-gold/20 text-gold",
+  active: "bg-sage/20 text-sage",
+  inactive: "bg-gold/20 text-gold",
+  suspended: "bg-vermilion/20 text-vermilion",
+  deleted: "bg-ink/20 text-ink-soft",
 };
 
 const STATUS_RING: Record<ListRow["status"], string> = {
   urgent: "bg-vermilion",
-  active: "bg-sage",
-  review: "bg-gold",
   approved: "bg-muted",
+  review: "bg-gold",
+  active: "bg-sage",
+  inactive: "bg-gold",
+  suspended: "bg-vermilion",
+  deleted: "bg-muted",
 };
 
 type Filter = ListRow["status"] | "all";
 
-const FILTERS: { value: Filter; label: string }[] = [
+const DEFAULT_FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "urgent", label: "긴급" },
   { value: "active", label: "활성" },
   { value: "review", label: "점검중" },
   { value: "approved", label: "정상" },
+];
+
+const TEAM_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "active", label: "활성" },
+  { value: "inactive", label: "점검중" },
+  { value: "suspended", label: "정지" },
 ];
 
 type Props = {
@@ -64,8 +91,14 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
 
+  // team variant: 활성/점검중/정지만 기본 보기 (deleted는 별도 페이지)
+  const visibleRows =
+    variant === "team" ? rows.filter((r) => r.status !== "deleted") : rows;
   const filteredRows =
-    filter === "all" ? rows : rows.filter((r) => r.status === filter);
+    filter === "all"
+      ? visibleRows
+      : visibleRows.filter((r) => r.status === filter);
+  const FILTERS = variant === "team" ? TEAM_FILTERS : DEFAULT_FILTERS;
 
   return (
     <>        {header}
@@ -110,8 +143,8 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
               const active = filter === f.value;
               const count =
                 f.value === "all"
-                  ? rows.length
-                  : rows.filter((r) => r.status === f.value).length;
+                  ? visibleRows.length
+                  : visibleRows.filter((r) => r.status === f.value).length;
               return (
                 <button
                   key={f.value}

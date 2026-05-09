@@ -2,10 +2,19 @@ import { z } from "zod";
 
 export const operatorStatusSchema = z.enum([
   "active",
-  "approved",
-  "review",
-  "urgent",
+  "inactive",
+  "suspended",
+  "deleted",
 ]);
+
+export type OperatorStatus = z.infer<typeof operatorStatusSchema>;
+
+export const STATUS_LABEL: Record<OperatorStatus, string> = {
+  active: "활성",
+  inactive: "점검중",
+  suspended: "정지",
+  deleted: "삭제",
+};
 
 export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀"]);
 export const operatorRoleSchema = z.enum(["부장", "팀장", "TL", "매니저"]);
@@ -25,6 +34,8 @@ export const operatorRowSchema = z.object({
   department: z.string(),
   status: operatorStatusSchema,
   leader: z.string().nullable(),
+  deleted_reason: z.string().nullable().optional(),
+  deleted_at: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -42,6 +53,8 @@ export const operatorUpdateSchema = z.object({
   gender: operatorGenderSchema.optional(),
   status: operatorStatusSchema.optional(),
   leader: z.string().nullable().optional(),
+  deleted_reason: z.string().nullable().optional(),
+  deleted_at: z.string().nullable().optional(),
 });
 
 export type OperatorUpdate = z.infer<typeof operatorUpdateSchema>;
