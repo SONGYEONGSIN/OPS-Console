@@ -95,8 +95,9 @@ function Clock({
     })
       .replace(/\. /g, ".")
       .replace(/\.$/, "");
+    const weekday = fmt({ weekday: "short" });
     const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
-    return <>{`${date} · ${time} KST`}</>;
+    return <>{`${date} · ${weekday} · ${time} KST`}</>;
   }
   if (variant === "brand-foot-date") {
     const parts = new Intl.DateTimeFormat("ko-KR", {
@@ -118,19 +119,12 @@ function Clock({
    ════════════════════════════════════════════════════════════ */
 function TitleBar({ now }: { now: Date | null }) {
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-line bg-ink px-3.5 text-cream">
-      {/* mockup `.window-ctrls`: ≤479px(컴팩트 모바일)에서만 숨김 */}
-      <div className="mr-[18px] flex gap-[7px] max-[479px]:hidden">
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-vermilion" />
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-gold" />
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-sage" />
-      </div>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-ink px-3.5 text-cream">
+      <div />
       <div className="text-center text-md font-medium tracking-[0.02em]">
-        운영부 <em className="not-italic text-vermilion mx-[3px]">·</em> 로그인
-        {/* mockup `.titlebar-text .label-en`: ≤767px(모바일)에서 숨김 */}
-        <span className="ml-1.5 text-sm text-faint max-md:hidden">OPSROOM</span>
+        운영부 상황실
       </div>
-      <div className="ref text-xs text-faint tracking-[0.04em] max-[479px]:text-[10px]">
+      <div className="ref text-xs text-faint tracking-[0.04em] text-right max-[479px]:text-[10px]">
         <Clock now={now} variant="titlebar" />
       </div>
     </div>
@@ -686,14 +680,14 @@ function SSOButton() {
    ════════════════════════════════════════════════════════════ */
 function StatusBar() {
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 border-t border-line bg-washi-raised px-4 text-xs tracking-[0.02em] text-muted max-md:gap-3 max-md:px-3">
+    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 border-t border-line bg-ink px-4 text-xs tracking-[0.02em] text-cream/75 max-md:gap-3 max-md:px-3">
       <div className="flex items-center gap-5">
         <span className="flex items-center">
           <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-sage [box-shadow:var(--shadow-led-sage)]" />
           <span>연결됨</span>
         </span>
         <span>
-          <strong className="mr-1 font-medium text-ink-soft">서버</strong>
+          <strong className="mr-1 font-medium text-cream">서버</strong>
           auth.opsroom.local
         </span>
       </div>
@@ -703,7 +697,7 @@ function StatusBar() {
       </div>
       <div className="flex items-center justify-end gap-5">
         <span className="max-[479px]:hidden">
-          <strong className="mr-1 font-medium text-ink-soft">빌드</strong>v 4.2.1
+          <strong className="mr-1 font-medium text-cream">빌드</strong>v 4.2.1
         </span>
         <span className="code">sha 8c3f2a1</span>
       </div>
