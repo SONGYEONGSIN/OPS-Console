@@ -52,15 +52,25 @@ function Clock({ now }: { now: Date | null }) {
 }
 
 export function AuthStatusBar() {
-  const isClient = typeof window !== "undefined";
-  const [online, setOnline] = useState(() => (isClient ? navigator.onLine : true));
-  const host = isClient ? window.location.hostname || "localhost" : "";
-  const secure = isClient ? window.location.protocol === "https:" : true;
-  const lang = isClient ? navigator.language.toUpperCase() : "";
+  // 브라우저 전용 값(navigator/window)을 SSR과 동일하게 렌더하면 hydration mismatch.
+  // 마운트 후 useEffect에서 한 번에 실값으로 교체.
+  const [client, setClient] = useState<{
+    online: boolean;
+    host: string;
+    secure: boolean;
+    lang: string;
+  } | null>(null);
 
   useEffect(() => {
-    const onOnline = () => setOnline(true);
-    const onOffline = () => setOnline(false);
+    const read = () => ({
+      online: navigator.onLine,
+      host: window.location.hostname || "localhost",
+      secure: window.location.protocol === "https:",
+      lang: navigator.language.toUpperCase(),
+    });
+    setClient(read());
+    const onOnline = () => setClient((c) => (c ? { ...c, online: true } : c));
+    const onOffline = () => setClient((c) => (c ? { ...c, online: false } : c));
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     return () => {
@@ -68,6 +78,11 @@ export function AuthStatusBar() {
       window.removeEventListener("offline", onOffline);
     };
   }, []);
+
+  const online = client?.online ?? true;
+  const host = client?.host ?? "";
+  const secure = client?.secure ?? true;
+  const lang = client?.lang ?? "";
 
   const buildVersion = process.env.NEXT_PUBLIC_BUILD_VERSION ?? "?";
   const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "unknown";
