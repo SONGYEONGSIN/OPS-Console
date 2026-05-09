@@ -6,7 +6,11 @@ export function PageTabs({ pathname }: { pathname: string }) {
   if (siblings.length <= 1) return null;
 
   return (
-    <nav role="tablist" aria-label="형제 메뉴" className="flex items-center gap-1">
+    <nav
+      role="tablist"
+      aria-label="형제 메뉴"
+      className="flex items-center"
+    >
       {siblings.map((item) => {
         const active = item.href === pathname;
         return (
@@ -15,17 +19,13 @@ export function PageTabs({ pathname }: { pathname: string }) {
             href={item.href}
             role="tab"
             aria-selected={active}
-            className={`relative px-3 py-1.5 text-sm transition-colors ${
-              active ? "font-bold text-ink" : "text-muted hover:text-ink"
+            className={`relative px-5 py-2 text-sm transition-colors ${
+              active
+                ? "border-t-2 border-vermilion bg-cream font-bold text-ink"
+                : "border-t-2 border-transparent text-muted hover:text-ink"
             }`}
           >
             {item.label}
-            {active && (
-              <span
-                aria-hidden
-                className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-vermilion"
-              />
-            )}
           </Link>
         );
       })}
