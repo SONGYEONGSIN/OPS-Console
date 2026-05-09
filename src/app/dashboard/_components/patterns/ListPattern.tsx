@@ -27,6 +27,13 @@ const STATUS_COLOR: Record<ListRow["status"], string> = {
   approved: "bg-line-soft text-muted",
 };
 
+const STATUS_RING: Record<ListRow["status"], string> = {
+  urgent: "bg-vermilion",
+  active: "bg-sage",
+  review: "bg-gold",
+  approved: "bg-muted",
+};
+
 type Filter = ListRow["status"] | "all";
 
 const FILTERS: { value: Filter; label: string }[] = [
@@ -215,15 +222,35 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
       >
         {inspector.selected && (
           <>
-            <header className="mb-4 border-b border-line-soft pb-3">
-              <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
-                인스펙터 · 항목 상세
-              </p>
-              <h3 className="mt-1 text-lg font-bold text-ink">{inspector.selected.name}</h3>
+            <header className="mb-6 border-b-2 border-ink pb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+                    인스펙터 · 항목 상세
+                  </p>
+                  <h3 className="text-xl font-bold tracking-[-0.01em] text-ink">
+                    {inspector.selected.name}
+                  </h3>
+                  <p className="text-xs text-muted">
+                    <span className="font-mono">{inspector.selected.id.toUpperCase()}</span>
+                    {inspector.selected.meta && <> · {inspector.selected.meta}</>}
+                    <> · PROD</>
+                  </p>
+                </div>
+                <div
+                  aria-hidden
+                  className={`flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-full text-[10px] leading-tight text-cream ${
+                    STATUS_RING[inspector.selected.status]
+                  }`}
+                >
+                  <span className="text-base">★</span>
+                  <span>{STATUS_LABEL[inspector.selected.status]}</span>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={inspector.toggleEdit}
-                className="mt-2 cursor-pointer text-xs text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
+                className="mt-3 cursor-pointer text-xs text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
               >
                 {inspector.editing ? "읽기 모드" : "편집"}
               </button>
@@ -231,6 +258,7 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
             <InspectorListBody
               row={inspector.selected}
               editing={inspector.editing}
+              variant={variant}
               onSave={(next) => {
                 setRows((prev) => prev.map((r) => (r.id === next.id ? next : r)));
                 inspector.close();

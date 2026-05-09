@@ -8,6 +8,7 @@ type Props = {
   editing: boolean;
   onSave: (next: ListRow) => void;
   onCancel: () => void;
+  variant?: "default" | "team";
 };
 
 /**
@@ -19,11 +20,17 @@ type Props = {
  *   4) 담당 · 온콜 section
  * 데모 데이터는 row 정보 기반 + 고정 mock 혼합.
  */
-export function InspectorListBody({ row, editing, onSave, onCancel }: Props) {
+export function InspectorListBody({
+  row,
+  editing,
+  onSave,
+  onCancel,
+  variant = "default",
+}: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
   if (!editing) {
-    return <ViewMode row={row} />;
+    return <ViewMode row={row} variant={variant} />;
   }
 
   return (
@@ -74,13 +81,22 @@ export function InspectorListBody({ row, editing, onSave, onCancel }: Props) {
 /* ════════════════════════════════════════════════════════════
    ViewMode — mockup 3섹션 풍부 구조
    ════════════════════════════════════════════════════════════ */
-function ViewMode({ row }: { row: ListRow }) {
+function ViewMode({
+  row,
+  variant,
+}: {
+  row: ListRow;
+  variant: "default" | "team";
+}) {
+  return variant === "team" ? <TeamView row={row} /> : <ServiceView row={row} />;
+}
+
+function ServiceView({ row }: { row: ListRow }) {
   const statusLabel = STATUS_LABEL[row.status];
   const statusColor = STATUS_BADGE[row.status];
 
   return (
     <div className="space-y-6">
-      {/* Section 1 — 속성 */}
       <Section title="속성">
         <DefList
           items={[
@@ -104,7 +120,6 @@ function ViewMode({ row }: { row: ListRow }) {
 
       <Divider />
 
-      {/* Section 2 — 실시간 지표 */}
       <Section title="실시간 지표">
         <DefList
           items={[
@@ -143,7 +158,6 @@ function ViewMode({ row }: { row: ListRow }) {
 
       <Divider />
 
-      {/* Section 3 — 담당 · 온콜 */}
       <Section title="담당 · 온콜">
         <DefList
           items={[
@@ -151,6 +165,78 @@ function ViewMode({ row }: { row: ListRow }) {
             { term: "1차 온콜", desc: "박현주 · 다음 교대까지 7시간" },
             { term: "2차 온콜", desc: "김지현" },
             { term: "에스컬레이션", desc: "플랫폼 엔지니어링 (자동 · T+30m)" },
+          ]}
+        />
+      </Section>
+    </div>
+  );
+}
+
+function TeamView({ row }: { row: ListRow }) {
+  const statusLabel = STATUS_LABEL[row.status];
+  const statusColor = STATUS_BADGE[row.status];
+
+  return (
+    <div className="space-y-6">
+      <Section title="계정 정보">
+        <DefList
+          items={[
+            {
+              term: "사번",
+              desc: <span className="font-mono">EMP-{row.id.slice(0, 4).toUpperCase()}</span>,
+            },
+            { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
+            { term: "이메일", desc: <span className="font-mono text-xs">{row.id}</span> },
+            { term: "소속 팀", desc: row.owner },
+            { term: "직급", desc: row.meta ?? "-" },
+            { term: "권한 레벨", desc: "L3 운영자" },
+            { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
+            {
+              term: "상태",
+              desc: (
+                <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
+                  {statusLabel}
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="활동 지표">
+        <DefList
+          items={[
+            { term: "마지막 로그인", desc: "2시간 전 · 192.168.x.x" },
+            {
+              term: "이번 주 처리",
+              desc: (
+                <span>
+                  47건 <span className="text-sage">▲ 12% 지난주 대비</span>
+                </span>
+              ),
+            },
+            { term: "평균 응답", desc: "3.2분 · 임계 5분 이내" },
+            {
+              term: "미해결",
+              desc: <strong className="font-bold text-vermilion">2건 · 24시간 초과</strong>,
+            },
+            { term: "재인증", desc: <span className="text-gold">14일 후 만료</span> },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="조직 · 권한">
+        <DefList
+          items={[
+            { term: "소속 팀", desc: `${row.owner} · L3 엔지니어링` },
+            { term: "직속 상사", desc: "박현주 · 운영팀장" },
+            { term: "1차 백업", desc: "김지현" },
+            { term: "접근 권한", desc: "tickets · ops-dashboard · grafana-read" },
+            { term: "권한 만료", desc: "2026-12-31" },
           ]}
         />
       </Section>
@@ -210,5 +296,5 @@ function DefList({
 }
 
 function Divider() {
-  return <div className="border-t border-line-soft" />;
+  return <div className="border-t border-line" />;
 }
