@@ -19,8 +19,6 @@ export async function listOperators(): Promise<OperatorRow[]> {
     return [];
   }
 
-  console.log("[listOperators] raw rows fetched:", data?.length ?? 0);
-
   const parsed: OperatorRow[] = [];
   for (const row of data ?? []) {
     const r = operatorRowSchema.safeParse(row);
