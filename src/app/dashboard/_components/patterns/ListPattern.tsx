@@ -141,13 +141,12 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
                   <th className="px-3 py-2">직급</th>
                   <th className="px-3 py-2">이메일</th>
                   <th className="px-3 py-2">상태</th>
-                  <th className="px-3 py-2 text-right">액션</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
+                    <td colSpan={5} className="px-3 py-6 text-center text-muted">
                       데이터 없음
                     </td>
                   </tr>
@@ -168,19 +167,6 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
                         <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
                           {STATUS_LABEL[row.status]}
                         </span>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            inspector.open(row);
-                          }}
-                          className="inline-flex items-center gap-1 border-none bg-transparent text-xs text-muted hover:text-vermilion"
-                          aria-label={`${row.name} 계정 설정`}
-                        >
-                          ⚙ 설정
-                        </button>
                       </td>
                     </tr>
                   ))
