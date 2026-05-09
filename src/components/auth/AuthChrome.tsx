@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * AuthChrome — 로그인/비밀번호찾기/재설정 페이지 공통 chrome.
@@ -51,33 +51,54 @@ function Clock({ now }: { now: Date | null }) {
   return <>{`${date} · ${weekday} · ${time} KST`}</>;
 }
 
-export function AuthStatusBar() {
-  // 브라우저 전용 값(navigator/window)을 SSR과 동일하게 렌더하면 hydration mismatch.
-  // 마운트 후 useEffect에서 한 번에 실값으로 교체.
-  const [client, setClient] = useState<{
-    online: boolean;
-    host: string;
-    secure: boolean;
-    lang: string;
-  } | null>(null);
+type ClientChrome = {
+  online: boolean;
+  host: string;
+  secure: boolean;
+  lang: string;
+};
 
-  useEffect(() => {
-    const read = () => ({
-      online: navigator.onLine,
-      host: window.location.hostname || "localhost",
-      secure: window.location.protocol === "https:",
-      lang: navigator.language.toUpperCase(),
-    });
-    setClient(read());
-    const onOnline = () => setClient((c) => (c ? { ...c, online: true } : c));
-    const onOffline = () => setClient((c) => (c ? { ...c, online: false } : c));
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
+// useSyncExternalStore가 매 렌더마다 getSnapshot을 호출하므로 동일 결과는 같은 참조를 반환해야 한다.
+// 모듈 스코프 캐시로 안정 참조 유지.
+let cachedSnapshot: ClientChrome | null = null;
+function getClientSnapshot(): ClientChrome {
+  const next: ClientChrome = {
+    online: navigator.onLine,
+    host: window.location.hostname || "localhost",
+    secure: window.location.protocol === "https:",
+    lang: navigator.language.toUpperCase(),
+  };
+  if (
+    cachedSnapshot &&
+    cachedSnapshot.online === next.online &&
+    cachedSnapshot.host === next.host &&
+    cachedSnapshot.secure === next.secure &&
+    cachedSnapshot.lang === next.lang
+  ) {
+    return cachedSnapshot;
+  }
+  cachedSnapshot = next;
+  return cachedSnapshot;
+}
+function getServerSnapshot(): ClientChrome | null {
+  return null;
+}
+function subscribeOnlineStatus(callback: () => void): () => void {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+
+export function AuthStatusBar() {
+  // 브라우저 전용 값(navigator/window) SSR 안전 — useSyncExternalStore가 server snapshot=null로 hydration mismatch 방지.
+  const client = useSyncExternalStore(
+    subscribeOnlineStatus,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   const online = client?.online ?? true;
   const host = client?.host ?? "";
