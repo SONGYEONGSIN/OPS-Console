@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { AuthTitleBar } from "@/components/auth/AuthChrome";
 import { Chrome } from "./_components/chrome/Chrome";
 import { DashboardShell } from "./_components/DashboardShell";
 import { LiveClock } from "./_components/LiveClock";
@@ -26,6 +27,7 @@ export default async function DashboardLayout({
 
   return (
     <DashboardShell
+      topBar={<AuthTitleBar />}
       chrome={<Chrome operator={operator} alerts={alerts} />}
       appBar={<AppBar />}
       statusBar={<StatusBar />}

@@ -16,9 +16,10 @@ describe("DashboardShell", () => {
     document.body.style.overflow = "";
   });
 
-  it("appBar / chrome / statusBar / children 슬롯을 모두 렌더", () => {
+  it("topBar / appBar / chrome / statusBar / children 슬롯을 모두 렌더", () => {
     render(
       <DashboardShell
+        topBar={<div>TOP_BAR_SLOT</div>}
         appBar={<div>APP_BAR_SLOT</div>}
         chrome={<div>CHROME_SLOT</div>}
         statusBar={<div>STATUS_BAR_SLOT</div>}
@@ -26,6 +27,7 @@ describe("DashboardShell", () => {
         <div>CHILDREN_SLOT</div>
       </DashboardShell>
     );
+    expect(screen.getByText("TOP_BAR_SLOT")).toBeInTheDocument();
     expect(screen.getByText("APP_BAR_SLOT")).toBeInTheDocument();
     expect(screen.getByText("CHROME_SLOT")).toBeInTheDocument();
     expect(screen.getByText("STATUS_BAR_SLOT")).toBeInTheDocument();
