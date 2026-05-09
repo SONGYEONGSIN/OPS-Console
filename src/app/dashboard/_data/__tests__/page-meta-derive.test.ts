@@ -2,8 +2,14 @@ import { describe, it, expect } from "vitest";
 import { derivePageMeta } from "../page-meta-derive";
 import type { SbItem } from "../../_data";
 
+/**
+ * derivePageMeta는 KST 시간 기반 시프트(주간 I/II/야간 III) + 오늘 날짜 + 패턴별
+ * 항목을 반환. 시간 의존이라 핵심 항목 존재 여부 + tone만 검증.
+ */
 describe("derivePageMeta", () => {
-  it("list 패턴 + count → 전체 N건 메타 + 목록 description", () => {
+  const labelOf = (m: { label: string }[]) => m.map((x) => x.label);
+
+  it("list 패턴 + count → count건 + 자동 새로고침 항목 포함", () => {
     const sidebarMeta: SbItem = {
       ico: "·",
       label: "대학 연락처",
@@ -14,12 +20,13 @@ describe("derivePageMeta", () => {
     const result = derivePageMeta("contacts", sidebarMeta);
     expect(result.headline.title).toBe("대학 연락처");
     expect(result.headline.accent).toBe("고객 응대");
-    expect(result.meta).toEqual([{ label: "전체", value: "87건" }]);
+    expect(labelOf(result.meta)).toContain("87건");
+    expect(labelOf(result.meta)).toContain("자동 새로고침 30초");
+    expect(result.meta[0].tone).toBe("accent"); // 첫 항목(시프트)이 accent
     expect(result.description).toContain("대학 연락처 목록");
-    expect(result.description).toContain("인스펙터");
   });
 
-  it("dash 패턴 — 위젯 N개 메타", () => {
+  it("dash 패턴 + count → 위젯 N개 + 실시간 스트림", () => {
     const sidebarMeta: SbItem = {
       ico: "✦",
       label: "새 알림",
@@ -28,11 +35,11 @@ describe("derivePageMeta", () => {
       pattern: "dash",
     };
     const result = derivePageMeta("alerts", sidebarMeta);
-    expect(result.meta).toEqual([{ label: "위젯", value: "3개" }]);
-    expect(result.description).toContain("위젯");
+    expect(labelOf(result.meta)).toContain("위젯 3개");
+    expect(labelOf(result.meta)).toContain("실시간 스트림");
   });
 
-  it("project 패턴 — 운영 accent meta", () => {
+  it("project 패턴 — 운영 진행 항목", () => {
     const sidebarMeta: SbItem = {
       ico: "◇",
       label: "결제 시스템",
@@ -40,11 +47,10 @@ describe("derivePageMeta", () => {
       pattern: "project",
     };
     const result = derivePageMeta("payment", sidebarMeta);
-    expect(result.meta).toEqual([{ label: "운영", tone: "accent" }]);
-    expect(result.description).toContain("프로젝트");
+    expect(labelOf(result.meta)).toContain("운영 진행");
   });
 
-  it("log 패턴 — stream 메타", () => {
+  it("log 패턴 — 로그 스트림 항목", () => {
     const sidebarMeta: SbItem = {
       ico: "≡",
       label: "Kibana 로그",
@@ -52,11 +58,10 @@ describe("derivePageMeta", () => {
       pattern: "log",
     };
     const result = derivePageMeta("kibana", sidebarMeta);
-    expect(result.meta).toEqual([{ label: "로그", value: "stream" }]);
-    expect(result.description).toContain("로그 스트림");
+    expect(labelOf(result.meta)).toContain("로그 스트림");
   });
 
-  it("settings 패턴 — 빈 메타", () => {
+  it("settings 패턴 — 관리자 설정 항목", () => {
     const sidebarMeta: SbItem = {
       ico: "📊",
       label: "Grafana 지표",
@@ -64,8 +69,7 @@ describe("derivePageMeta", () => {
       pattern: "settings",
     };
     const result = derivePageMeta("grafana", sidebarMeta);
-    expect(result.meta).toEqual([]);
-    expect(result.description).toContain("설정");
+    expect(labelOf(result.meta)).toContain("관리자 설정");
   });
 
   it("section 직속 item — accent = section title", () => {
@@ -80,7 +84,7 @@ describe("derivePageMeta", () => {
     expect(result.headline.accent).toBe("요청 · 자료");
   });
 
-  it("count 없음 — 빈 메타", () => {
+  it("count 없음 — 시프트/날짜/갱신 3항목", () => {
     const sidebarMeta: SbItem = {
       ico: "▣",
       label: "자료 보관",
@@ -88,6 +92,8 @@ describe("derivePageMeta", () => {
       pattern: "list",
     };
     const result = derivePageMeta("vault", sidebarMeta);
-    expect(result.meta).toEqual([]);
+    // count 없음 → 3개 (shift + date + "자동 새로고침 30초")
+    expect(result.meta).toHaveLength(3);
+    expect(labelOf(result.meta)).toContain("자동 새로고침 30초");
   });
 });

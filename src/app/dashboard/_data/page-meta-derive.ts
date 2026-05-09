@@ -22,23 +22,60 @@ export function derivePageMeta(
   return { headline: { accent, title }, meta, description };
 }
 
+/**
+ * KST 기준 현재 시각으로부터 시프트와 오늘 날짜를 derive.
+ * - 06:00~14:00: '주간 I' / 14:00~22:00: '주간 II' / 그 외: '야간 III'
+ * - 날짜: 'YYYY-MM-DD'
+ */
+function nowKR(): { shift: string; date: string } {
+  const fmt = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const date = `${get("year")}-${get("month")}-${get("day")}`;
+  const hour = Number(get("hour"));
+  const shift =
+    hour >= 6 && hour < 14
+      ? "주간 I"
+      : hour >= 14 && hour < 22
+        ? "주간 II"
+        : "야간 III";
+  return { shift, date };
+}
+
 function derivePatternMeta(
   pattern: SbPattern | undefined,
   count: string | undefined,
 ): MetaItem[] {
+  const { shift, date } = nowKR();
+  const base: MetaItem[] = [{ label: shift, tone: "accent" }, { label: date }];
   switch (pattern) {
     case "list":
-      return count ? [{ label: "전체", value: `${count}건` }] : [];
+      return [
+        ...base,
+        ...(count ? [{ label: `${count}건` }] : []),
+        { label: "자동 새로고침 30초" },
+      ];
     case "dash":
-      return count ? [{ label: "위젯", value: `${count}개` }] : [];
+      return [
+        ...base,
+        ...(count ? [{ label: `위젯 ${count}개` }] : []),
+        { label: "실시간 스트림" },
+      ];
     case "project":
-      return [{ label: "운영", tone: "accent" }];
+      return [...base, { label: "운영 진행" }];
     case "log":
-      return [{ label: "로그", value: "stream" }];
+      return [...base, { label: "로그 스트림" }];
     case "settings":
-      return [];
+      return [...base, { label: "관리자 설정" }];
     default:
-      return [];
+      return base;
   }
 }
 
