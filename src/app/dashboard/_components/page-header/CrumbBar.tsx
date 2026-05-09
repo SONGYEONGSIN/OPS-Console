@@ -8,7 +8,7 @@ import { PageTabs } from "./PageTabs";
  */
 export function CrumbBar({ pathname }: { pathname: string }) {
   return (
-    <div className="flex min-h-11 items-stretch gap-20 border-b border-line-soft bg-washi-raised px-7">
+    <div className="flex min-h-11 items-stretch gap-32 border-b border-line-soft bg-washi-raised px-7">
       <Breadcrumb pathname={pathname} />
       <PageTabs pathname={pathname} />
     </div>
