@@ -21,6 +21,8 @@ function translateAuthError(message: string): string {
     "User already registered": "이미 가입된 이메일입니다.",
     "Email rate limit exceeded":
       "메일 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요.",
+    "New password should be different from the old password.":
+      "새 비밀번호는 이전 비밀번호와 달라야 합니다.",
   };
   if (map[message]) return map[message];
   if (/rate limit|too many requests/i.test(message)) {
@@ -127,7 +129,7 @@ export async function resetPassword(
     password: parsed.data.password,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: translateAuthError(error.message) };
 
   revalidatePath("/", "layout");
   redirect("/dashboard");

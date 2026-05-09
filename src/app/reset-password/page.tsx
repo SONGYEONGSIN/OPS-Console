@@ -73,9 +73,9 @@ export default function ResetPasswordPage() {
 
       <form action={formAction} noValidate className="flex flex-col gap-4">
         {state?.error && (
-          <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+          <p role="alert" className="text-xs text-vermilion">
             {state.error}
-          </div>
+          </p>
         )}
         <div>
           <Field
