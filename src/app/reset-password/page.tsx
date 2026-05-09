@@ -192,7 +192,7 @@ function PasswordMatchIndicator({ pw, confirm }: { pw: string; confirm: string }
   if (!confirm) return null;
   const ok = pw === confirm;
   return (
-    <div className={`mt-2 text-sm font-medium ${ok ? "text-sage" : "text-vermilion"}`}>
+    <div className={`mt-2 text-sm ${ok ? "font-bold text-sage" : "font-medium text-vermilion"}`}>
       <span className="mr-1.5">{ok ? "✓" : "✗"}</span>
       {ok ? "비밀번호와 일치" : "비밀번호와 다름"}
     </div>
