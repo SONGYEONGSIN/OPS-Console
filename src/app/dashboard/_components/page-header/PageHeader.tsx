@@ -1,5 +1,4 @@
-import { Breadcrumb } from "./Breadcrumb";
-import { PageTabs } from "./PageTabs";
+import { CrumbBar } from "./CrumbBar";
 import { PageMeta, type MetaItem } from "./PageMeta";
 import { PageHeadline } from "./PageHeadline";
 
@@ -11,8 +10,11 @@ type Props = {
 };
 
 /**
- * 콘텐츠 페이지 통합 헤더 (Epic 2).
- * 좌측 Breadcrumb + 우측 PageTabs (자동 derive) → PageMeta → PageHeadline 순.
+ * 콘텐츠 페이지 통합 헤더 (Epic 2 + mockup folio-dashboard.html 매칭).
+ *
+ * 두 영역으로 분리:
+ *   1) CrumbBar (washi-raised 띠) — breadcrumb + 동적 탭
+ *   2) ContentHead (cream bg) — meta over-line + h1 headline + 설명
  */
 export function PageHeader({
   pathname,
@@ -21,13 +23,12 @@ export function PageHeader({
   description,
 }: Props) {
   return (
-    <header className="border-b border-line-soft px-7 py-5">
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <Breadcrumb pathname={pathname} />
-        <PageTabs pathname={pathname} />
-      </div>
-      <PageMeta items={meta} />
-      <PageHeadline {...headline} description={description} />
-    </header>
+    <>
+      <CrumbBar pathname={pathname} />
+      <header className="bg-cream px-7 pb-5 pt-6">
+        <PageMeta items={meta} />
+        <PageHeadline {...headline} description={description} />
+      </header>
+    </>
   );
 }
