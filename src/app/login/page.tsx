@@ -255,16 +255,16 @@ function EmailValidationIndicator({ value }: { value: string }) {
    ════════════════════════════════════════════════════════════ */
 function PasswordStrengthIndicator({ value }: { value: string }) {
   const checks = [
-    { label: "영문 대문자 포함", ok: /[A-Z]/.test(value) },
-    { label: "숫자 포함", ok: /[0-9]/.test(value) },
-    { label: "특수문자 포함", ok: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(value) },
-    { label: "8자 이상", ok: value.length >= 8 },
+    { label: "대문자", ok: /[A-Z]/.test(value) },
+    { label: "숫자", ok: /[0-9]/.test(value) },
+    { label: "특수문자", ok: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(value) },
+    { label: "8자+", ok: value.length >= 8 },
   ];
   return (
-    <ul className="mt-2 flex flex-col gap-1 text-sm font-medium">
+    <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       {checks.map((c) => (
         <li key={c.label} className={c.ok ? "text-sage" : "text-muted"}>
-          <span className="mr-1.5">{c.ok ? "✓" : "✗"}</span>
+          <span className="mr-1">{c.ok ? "✓" : "✗"}</span>
           {c.label}
         </li>
       ))}
