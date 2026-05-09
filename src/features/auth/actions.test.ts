@@ -308,15 +308,19 @@ describe("resetPassword", () => {
     expect(result).toEqual({ error: "비밀번호 확인이 일치하지 않습니다." });
   });
 
-  it("성공 시 updateUser 호출 + /dashboard로 redirect", async () => {
+  it("성공 시 updateUser + signOut + /login?info=password_changed로 redirect", async () => {
     const updateSpy = vi.fn().mockResolvedValue({ error: null });
-    mockCreate.mockResolvedValue({ auth: { updateUser: updateSpy } });
+    const signOutSpy = vi.fn().mockResolvedValue({ error: null });
+    mockCreate.mockResolvedValue({
+      auth: { updateUser: updateSpy, signOut: signOutSpy },
+    });
     const fd = new FormData();
     fd.set("password", "Aa1!aaaa");
     fd.set("passwordConfirm", "Aa1!aaaa");
     await expect(resetPassword(undefined, fd)).rejects.toThrow(
-      "REDIRECT:/dashboard"
+      "REDIRECT:/login?info=password_changed",
     );
     expect(updateSpy).toHaveBeenCalledWith({ password: "Aa1!aaaa" });
+    expect(signOutSpy).toHaveBeenCalledOnce();
   });
 });

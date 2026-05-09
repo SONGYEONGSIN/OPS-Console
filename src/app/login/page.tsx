@@ -33,6 +33,7 @@ function LoginPageContent() {
   const [email, setEmail] = useState("");
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
+  const infoParam = searchParams.get("info");
   const errorMessage =
     errorParam === "oauth_failed"
       ? "Microsoft 인증에 실패했습니다."
@@ -41,6 +42,10 @@ function LoginPageContent() {
         : errorParam === "exchange_failed"
           ? "세션 발급에 실패했습니다."
           : undefined;
+  const infoMessage =
+    infoParam === "password_changed"
+      ? "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요."
+      : undefined;
 
   return (
     <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
@@ -54,6 +59,7 @@ function LoginPageContent() {
           showPassword={showPassword}
           onToggle={() => setShowPassword((s) => !s)}
           oauthError={errorMessage}
+          infoMessage={infoMessage}
         />
       </main>
       <AuthStatusBar />
@@ -110,18 +116,25 @@ function SignInForm({
   showPassword,
   onToggle,
   oauthError,
+  infoMessage,
 }: {
   email: string;
   setEmail: (v: string) => void;
   showPassword: boolean;
   onToggle: () => void;
   oauthError: string | undefined;
+  infoMessage: string | undefined;
 }) {
   // useActionState를 form 내부로: mode 토글 시 컴포넌트 unmount → state 자동 reset (stale error 방지).
   const [state, formAction] = useActionState<AuthState, FormData>(signIn, undefined);
   const [remember, setRemember] = useState(true);
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
+      {infoMessage && (
+        <p role="status" className="text-xs text-sage">
+          {infoMessage}
+        </p>
+      )}
       {oauthError && (
         <p role="alert" className="text-xs text-vermilion">
           {oauthError}
@@ -354,6 +367,7 @@ function AuthPanel({
   showPassword,
   onToggle,
   oauthError,
+  infoMessage,
 }: {
   mode: "signin" | "signup";
   setMode: (m: "signin" | "signup") => void;
@@ -362,6 +376,7 @@ function AuthPanel({
   showPassword: boolean;
   onToggle: () => void;
   oauthError: string | undefined;
+  infoMessage: string | undefined;
 }) {
   return (
     <section
@@ -397,7 +412,7 @@ function AuthPanel({
         <TabNav mode={mode} setMode={setMode} />
 
         {mode === "signin" ? (
-          <SignInForm email={email} setEmail={setEmail} showPassword={showPassword} onToggle={onToggle} oauthError={oauthError} />
+          <SignInForm email={email} setEmail={setEmail} showPassword={showPassword} onToggle={onToggle} oauthError={oauthError} infoMessage={infoMessage} />
         ) : (
           <SignUpForm email={email} setEmail={setEmail} />
         )}

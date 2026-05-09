@@ -131,8 +131,10 @@ export async function resetPassword(
 
   if (error) return { error: translateAuthError(error.message) };
 
+  // 비밀번호 변경 후엔 자동 로그인하지 않고 로그인 페이지로 보내 새 비밀번호로 다시 로그인하게 함.
+  await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/login?info=password_changed");
 }
 
 export async function signOut(): Promise<void> {
