@@ -1,16 +1,34 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { forgotPassword, type AuthState } from "@/features/auth/actions";
 import { AuthShell } from "@/components/auth/AuthShell";
 
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPasswordContent />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordContent() {
   const [state, formAction] = useActionState<AuthState, FormData>(
     forgotPassword,
-    undefined
+    undefined,
   );
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+  // /auth/callback에서 recovery 흐름 실패 시 redirect로 받은 에러.
+  const callbackError =
+    errorParam === "link_expired"
+      ? "재설정 링크가 만료되었습니다. 다시 요청해주세요."
+      : errorParam === "link_invalid"
+        ? "재설정 링크가 유효하지 않거나 이미 사용되었습니다. 다시 요청해주세요."
+        : undefined;
 
   return (
     <AuthShell>
@@ -30,15 +48,20 @@ export default function ForgotPasswordPage() {
       </p>
 
       <form action={formAction} noValidate className="flex flex-col gap-4">
+        {callbackError && (
+          <p role="alert" className="text-xs text-vermilion">
+            {callbackError}
+          </p>
+        )}
         {state?.error && (
-          <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+          <p role="alert" className="text-xs text-vermilion">
             {state.error}
-          </div>
+          </p>
         )}
         {state?.info && (
-          <div role="status" className="border border-sage bg-sage/10 px-3 py-2 text-xs text-sage">
+          <p role="status" className="text-xs text-sage">
             {state.info}
-          </div>
+          </p>
         )}
 
         <div className="flex flex-col gap-1">
