@@ -256,9 +256,12 @@ function PasswordStrengthIndicator({ value }: { value: string }) {
     { label: "8자+", ok: value.length >= 8 },
   ];
   return (
-    <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+    <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       {checks.map((c) => (
-        <li key={c.label} className={c.ok ? "text-sage" : "text-muted"}>
+        <li
+          key={c.label}
+          className={c.ok ? "font-bold text-sage" : "text-muted"}
+        >
           <span className="mr-1">{c.ok ? "✓" : "✗"}</span>
           {c.label}
         </li>
