@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useActionState, useEffect, useState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { signIn, signUp, type AuthState } from "@/features/auth/actions";
 import { ALLOWED_EMAILS } from "@/features/auth/operators";
+import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
 
 /**
  * 로그인 (입실) — design-ref/folio-login.html 포팅 + Supabase 인증 연결.
@@ -27,12 +28,12 @@ export default function LoginPage() {
 
 function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false);
-  const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   // 모드 전환 시 이메일 유지 (design-ref §결정 line 31). 비밀번호+확인은 form 자체에서 unmount로 reset.
   const [email, setEmail] = useState("");
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
+  const infoParam = searchParams.get("info");
   const errorMessage =
     errorParam === "oauth_failed"
       ? "Microsoft 인증에 실패했습니다."
@@ -41,18 +42,15 @@ function LoginPageContent() {
         : errorParam === "exchange_failed"
           ? "세션 발급에 실패했습니다."
           : undefined;
-  useEffect(() => {
-    const updateNow = () => setNow(new Date());
-    updateNow();
-    const id = setInterval(updateNow, 1000);
-    return () => clearInterval(id);
-  }, []);
+  const infoMessage =
+    infoParam === "password_changed"
+      ? "비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요."
+      : undefined;
 
   return (
     <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
-      <TitleBar now={now} />
-      <main className="grid h-full min-h-0 grid-cols-1 grid-rows-1 overflow-y-auto lg:grid-cols-2">
-        <BrandPanel now={now} />
+      <AuthTitleBar />
+      <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-cream">
         <AuthPanel
           mode={mode}
           setMode={setMode}
@@ -61,158 +59,10 @@ function LoginPageContent() {
           showPassword={showPassword}
           onToggle={() => setShowPassword((s) => !s)}
           oauthError={errorMessage}
+          infoMessage={infoMessage}
         />
       </main>
-      <StatusBar />
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════
-   Clock — 현재 시간 포매팅 (TitleBar + BrandPanel 실시간)
-   ════════════════════════════════════════════════════════════ */
-function Clock({
-  now,
-  variant,
-}: {
-  now: Date | null;
-  variant: "titlebar" | "brand-foot-date" | "brand-foot-time";
-}) {
-  if (!now) {
-    if (variant === "titlebar") return <>------ · --:-- KST</>;
-    if (variant === "brand-foot-date") return <>---- · -- · -- · -</>;
-    return <>--:-- KST</>;
-  }
-  const fmt = (opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("ko-KR", { ...opts, timeZone: "Asia/Seoul" }).format(
-      now
-    );
-  if (variant === "titlebar") {
-    const date = fmt({
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-      .replace(/\. /g, ".")
-      .replace(/\.$/, "");
-    const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
-    return <>{`${date} · ${time} KST`}</>;
-  }
-  if (variant === "brand-foot-date") {
-    const parts = new Intl.DateTimeFormat("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-      timeZone: "Asia/Seoul",
-    }).formatToParts(now);
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    return <>{`${get("year")} · ${get("month")} · ${get("day")} · ${get("weekday")}`}</>;
-  }
-  const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
-  return <>{`${time} KST`}</>;
-}
-
-/* ════════════════════════════════════════════════════════════
-   Title bar — macOS 윈도우 크롬 모티브 (입실 컨텍스트 인디케이터)
-   ════════════════════════════════════════════════════════════ */
-function TitleBar({ now }: { now: Date | null }) {
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center border-b border-line bg-ink px-3.5 text-cream">
-      {/* mockup `.window-ctrls`: ≤479px(컴팩트 모바일)에서만 숨김 */}
-      <div className="mr-[18px] flex gap-[7px] max-[479px]:hidden">
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-vermilion" />
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-gold" />
-        <span className="h-3 w-3 rounded-full border border-cream/20 bg-sage" />
-      </div>
-      <div className="text-center text-md font-medium tracking-[0.02em]">
-        운영부 <em className="not-italic text-vermilion mx-[3px]">·</em> 로그인
-        {/* mockup `.titlebar-text .label-en`: ≤767px(모바일)에서 숨김 */}
-        <span className="ml-1.5 text-sm text-faint max-md:hidden">OPSROOM</span>
-      </div>
-      <div className="ref text-xs text-faint tracking-[0.04em] max-[479px]:text-[10px]">
-        <Clock now={now} variant="titlebar" />
-      </div>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════
-   Brand panel — 낙관(seal) + 입실 카피 + 시프트 정보
-   ════════════════════════════════════════════════════════════ */
-function BrandPanel({ now }: { now: Date | null }) {
-  return (
-    <aside
-      className="
-        relative flex flex-col justify-between overflow-hidden border-line bg-washi
-        py-5 px-4
-        md:py-6 md:px-5
-        lg:py-8 lg:px-7 lg:border-r lg:border-b-0
-        max-lg:border-b
-      "
-    >
-      {/* 배경 큰 글자 워터마크 — 사용자 요청으로 제거 (2026-04-26) */}
-
-      <div className="flex items-center gap-4 max-md:gap-3">
-        <Seal />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm uppercase tracking-[0.08em] text-muted max-[479px]:text-[10px]">
-            OPSROOM <em className="not-italic text-vermilion mx-1">·</em> v4.2.1
-          </span>
-          <span className="text-md text-ink-soft">
-            <span className="kr">운영부 상황실</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="relative z-10 max-w-[440px] max-lg:max-w-none max-md:mt-4">
-        <h1 className="mb-5 text-3xl font-semibold tracking-[-0.03em] leading-[1.15] text-ink">
-          로그인 <em className="not-italic text-vermilion font-normal mx-[0.08em]">—</em>{" "}
-          운영부
-          <span className="mt-2 block text-lg font-light tracking-[0.04em] text-muted">
-            OBSERVE · RESPOND · RESOLVE
-          </span>
-        </h1>
-        <p className="max-w-[400px] text-md leading-[1.7] text-ink-soft max-lg:max-w-[560px]">
-          12개 서비스, 17개 인프라, 8명의 온콜이 한 화면에서 움직입니다. 사번
-          또는 운영실 이메일로 입실하면 지정된 시프트 컨텍스트로 바로
-          연결됩니다.
-        </p>
-      </div>
-
-      <div className="relative z-10 flex items-end justify-between gap-5 text-xs text-muted max-md:mt-5 max-md:flex-col max-md:items-start max-md:gap-3">
-        <div className="text-xl font-light tracking-[0.22em] text-vermilion opacity-85 max-md:text-lg">
-          기록 · 응대 · 해결
-        </div>
-        <div className="flex flex-col gap-0.5 text-right max-md:text-left">
-          <span className="ref date text-md font-medium text-ink">
-            <Clock now={now} variant="brand-foot-date" />
-          </span>
-          <span className="shift">
-            <Clock now={now} variant="brand-foot-time" />
-          </span>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-/* 낙관(印章) — vermilion 원형 배지 + 외곽 링 */
-function Seal() {
-  return (
-    <div
-      className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-vermilion text-2xl font-bold tracking-[0.02em] text-cream max-md:h-12 max-md:w-12 max-md:text-lg"
-      style={{
-        // ring inset(낙관 윤곽) + 외부 그림자: Tailwind 단일 유틸로 표현 곤란
-        boxShadow:
-          "0 0 0 1px var(--vermilion-deep) inset, 0 2px 4px rgba(21, 18, 12, 0.1)",
-      }}
-    >
-      <span className="-translate-y-px">운</span>
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -inset-[5px] rounded-full border border-vermilion opacity-35"
-      />
+      <AuthStatusBar />
     </div>
   );
 }
@@ -266,34 +116,41 @@ function SignInForm({
   showPassword,
   onToggle,
   oauthError,
+  infoMessage,
 }: {
   email: string;
   setEmail: (v: string) => void;
   showPassword: boolean;
   onToggle: () => void;
   oauthError: string | undefined;
+  infoMessage: string | undefined;
 }) {
   // useActionState를 form 내부로: mode 토글 시 컴포넌트 unmount → state 자동 reset (stale error 방지).
   const [state, formAction] = useActionState<AuthState, FormData>(signIn, undefined);
   const [remember, setRemember] = useState(true);
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
+      {infoMessage && (
+        <p role="status" className="text-xs text-sage">
+          {infoMessage}
+        </p>
+      )}
       {oauthError && (
-        <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+        <p role="alert" className="text-xs text-vermilion">
           {oauthError}
-        </div>
+        </p>
       )}
       {state?.error && (
-        <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+        <p role="alert" className="text-xs text-vermilion">
           {state.error}
-        </div>
+        </p>
       )}
       <Field
         id="email"
         label="이메일"
         type="text"
         autoComplete="username"
-        placeholder="jinhakID@jinhakapply.com"
+        placeholder="name@example.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
@@ -339,7 +196,8 @@ function SignInForm({
 }
 
 /* ════════════════════════════════════════════════════════════
-   EmailValidationIndicator — 이메일 형식 + 운영부 화이트리스트 실시간 표시
+   EmailValidationIndicator — 이메일 형식 + 가입 가능 여부 실시간 표시.
+   메시지는 화이트리스트 정책을 직접 노출하지 않도록 일반화 (도메인 enumeration 방지).
    ════════════════════════════════════════════════════════════ */
 function EmailValidationIndicator({ value }: { value: string }) {
   if (!value) return null;
@@ -355,9 +213,9 @@ function EmailValidationIndicator({ value }: { value: string }) {
   }
   const isAllowed = ALLOWED_EMAILS.has(value);
   return (
-    <div className={`mt-2 text-sm font-medium ${isAllowed ? "text-sage" : "text-vermilion"}`}>
+    <div className={`mt-2 text-sm ${isAllowed ? "font-bold text-sage" : "font-medium text-vermilion"}`}>
       <span className="mr-1.5">{isAllowed ? "✓" : "✗"}</span>
-      {isAllowed ? "등록된 운영부 이메일" : "허용된 이메일이 아닙니다."}
+      {isAllowed ? "가입 가능한 이메일" : "가입 불가능한 이메일입니다."}
     </div>
   );
 }
@@ -367,16 +225,19 @@ function EmailValidationIndicator({ value }: { value: string }) {
    ════════════════════════════════════════════════════════════ */
 function PasswordStrengthIndicator({ value }: { value: string }) {
   const checks = [
-    { label: "영문 대문자 포함", ok: /[A-Z]/.test(value) },
-    { label: "숫자 포함", ok: /[0-9]/.test(value) },
-    { label: "특수문자 포함", ok: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(value) },
-    { label: "8자 이상", ok: value.length >= 8 },
+    { label: "대문자", ok: /[A-Z]/.test(value) },
+    { label: "숫자", ok: /[0-9]/.test(value) },
+    { label: "특수문자", ok: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(value) },
+    { label: "8자+", ok: value.length >= 8 },
   ];
   return (
-    <ul className="mt-2 flex flex-col gap-1 text-sm font-medium">
+    <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       {checks.map((c) => (
-        <li key={c.label} className={c.ok ? "text-sage" : "text-muted"}>
-          <span className="mr-1.5">{c.ok ? "✓" : "✗"}</span>
+        <li
+          key={c.label}
+          className={c.ok ? "font-bold text-sage" : "text-muted"}
+        >
+          <span className="mr-1">{c.ok ? "✓" : "✗"}</span>
           {c.label}
         </li>
       ))}
@@ -397,7 +258,7 @@ function PasswordMatchIndicator({
   if (!confirm) return null;
   const ok = pw === confirm;
   return (
-    <div className={`mt-2 text-sm font-medium ${ok ? "text-sage" : "text-vermilion"}`}>
+    <div className={`mt-2 text-sm ${ok ? "font-bold text-sage" : "font-medium text-vermilion"}`}>
       <span className="mr-1.5">{ok ? "✓" : "✗"}</span>
       {ok ? "비밀번호와 일치" : "비밀번호와 다름"}
     </div>
@@ -423,14 +284,14 @@ function SignUpForm({
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
       {state?.error && (
-        <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+        <p role="alert" className="text-xs text-vermilion">
           {state.error}
-        </div>
+        </p>
       )}
       {state?.info && (
-        <div role="status" className="border border-sage bg-sage/10 px-3 py-2 text-xs text-sage">
+        <p role="status" className="text-xs text-sage">
           {state.info}
-        </div>
+        </p>
       )}
       <div>
         <Field
@@ -438,7 +299,7 @@ function SignUpForm({
           label="이메일"
           type="email"
           autoComplete="email"
-          placeholder="jinhakID@jinhakapply.com"
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -506,6 +367,7 @@ function AuthPanel({
   showPassword,
   onToggle,
   oauthError,
+  infoMessage,
 }: {
   mode: "signin" | "signup";
   setMode: (m: "signin" | "signup") => void;
@@ -514,6 +376,7 @@ function AuthPanel({
   showPassword: boolean;
   onToggle: () => void;
   oauthError: string | undefined;
+  infoMessage: string | undefined;
 }) {
   return (
     <section
@@ -549,7 +412,7 @@ function AuthPanel({
         <TabNav mode={mode} setMode={setMode} />
 
         {mode === "signin" ? (
-          <SignInForm email={email} setEmail={setEmail} showPassword={showPassword} onToggle={onToggle} oauthError={oauthError} />
+          <SignInForm email={email} setEmail={setEmail} showPassword={showPassword} onToggle={onToggle} oauthError={oauthError} infoMessage={infoMessage} />
         ) : (
           <SignUpForm email={email} setEmail={setEmail} />
         )}
@@ -681,32 +544,3 @@ function SSOButton() {
   );
 }
 
-/* ════════════════════════════════════════════════════════════
-   Status bar — 연결 상태 / TLS / 빌드
-   ════════════════════════════════════════════════════════════ */
-function StatusBar() {
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 border-t border-line bg-washi-raised px-4 text-xs tracking-[0.02em] text-muted max-md:gap-3 max-md:px-3">
-      <div className="flex items-center gap-5">
-        <span className="flex items-center">
-          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-sage [box-shadow:var(--shadow-led-sage)]" />
-          <span>연결됨</span>
-        </span>
-        <span>
-          <strong className="mr-1 font-medium text-ink-soft">서버</strong>
-          auth.opsroom.local
-        </span>
-      </div>
-      <div className="flex items-center justify-center gap-5 max-md:hidden">
-        <span>TLS 1.3 · HSTS</span>
-        <span>KR / EN · UTF-8</span>
-      </div>
-      <div className="flex items-center justify-end gap-5">
-        <span className="max-[479px]:hidden">
-          <strong className="mr-1 font-medium text-ink-soft">빌드</strong>v 4.2.1
-        </span>
-        <span className="code">sha 8c3f2a1</span>
-      </div>
-    </div>
-  );
-}

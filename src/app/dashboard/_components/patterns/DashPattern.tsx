@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { InspectorPanel } from "../inspector/InspectorPanel";
+import { InspectorDashBody } from "../inspector/InspectorDashBody";
+import { useInspectorState } from "../inspector/useInspectorState";
 
 export type DashWidget = {
   id: string;
@@ -25,35 +28,43 @@ const TONE_TEXT: Record<DashWidget["tone"], string> = {
 export function DashPattern({
   title,
   data,
+  header,
 }: {
   title: string;
   data: { widgets: DashWidget[] };
+  header?: React.ReactNode;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const selected = data.widgets.find((w) => w.id === selectedId) ?? null;
+  const [widgets, setWidgets] = useState<DashWidget[]>(data.widgets);
+  const inspector = useInspectorState<DashWidget>();
 
   return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-[1fr_320px]">
-      <section className="min-h-0 overflow-y-auto p-5 md:p-6 lg:p-7">
+    <>
+      {header}
+      <div
+        className={`flex min-h-0 flex-col overflow-y-auto transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          inspector.selected !== null ? "md:pr-[340px]" : ""
+        }`}
+      >
+        <section className="p-5 md:p-6 lg:p-7">
         <nav className="mb-4 flex items-center gap-2 text-xs tracking-[0.04em] text-muted">
           <span>운영부</span>
           <span className="text-faint">/</span>
           <strong className="font-semibold text-ink">{title}</strong>
         </nav>
         <h2 className="mb-2 text-2xl font-semibold tracking-[-0.02em]">
-          {title} · {data.widgets.length}건
+          {title} · {widgets.length}건
         </h2>
         <p className="mb-5 text-xs text-muted">Demo · 실제 데이터 미연결</p>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data.widgets.map((w) => (
+          {widgets.map((w) => (
             <button
               key={w.id}
               type="button"
-              onClick={() => setSelectedId(w.id)}
-              aria-pressed={w.id === selectedId}
+              onClick={() => inspector.open(w)}
+              aria-pressed={inspector.selected?.id === w.id}
               className={`group flex flex-col gap-2 border-2 p-4 text-left transition-colors ${TONE_BG[w.tone]} ${
-                w.id === selectedId ? "ring-2 ring-ink ring-offset-2" : ""
+                inspector.selected?.id === w.id ? "ring-2 ring-ink ring-offset-2" : ""
               }`}
             >
               <div className={`text-xs font-medium uppercase tracking-[0.08em] ${TONE_TEXT[w.tone]}`}>
@@ -65,56 +76,42 @@ export function DashPattern({
             </button>
           ))}
         </div>
-      </section>
+        </section>
+      </div>
 
-      <aside className="hidden border-l border-line bg-washi-raised lg:block">
-        <div className="p-5 lg:p-6">
-          <h3 className="mb-4 text-xs font-medium uppercase tracking-[0.06em] text-muted">
-            {selected ? "위젯 상세" : "전체 요약"}
-          </h3>
-          {selected ? (
-            <div className="flex flex-col gap-3">
-              <div>
-                <div className="text-xs text-muted">ID</div>
-                <div className="font-mono text-sm">{selected.id}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">분류</div>
-                <span className={`inline-block px-2 py-0.5 text-xs ${TONE_BG[selected.tone]} ${TONE_TEXT[selected.tone]}`}>
-                  {selected.tone === "urgent" ? "긴급" : selected.tone === "ok" ? "정상" : "점검"}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs text-muted">라벨</div>
-                <div className="text-md font-semibold">{selected.label}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">값</div>
-                <div className="text-2xl font-semibold">{selected.value}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">시간</div>
-                <div className="text-sm text-ink-soft">{selected.time}</div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 text-sm">
-              <p className="text-muted">위젯을 선택하면 상세 정보를 확인할 수 있습니다.</p>
-              <hr className="border-line-soft" />
-              <div>
-                <div className="text-xs text-muted">총 위젯</div>
-                <div className="text-2xl font-semibold">{data.widgets.length}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">긴급</div>
-                <div className="text-md font-semibold text-vermilion">
-                  {data.widgets.filter((w) => w.tone === "urgent").length}건
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
-    </div>
+      <InspectorPanel
+        open={inspector.selected !== null}
+        onClose={inspector.close}
+      >
+        {inspector.selected && (
+          <>
+            <header className="mb-4 border-b border-line-soft pb-3">
+              <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+                인스펙터 · 위젯 상세
+              </p>
+              <h3 className="mt-1 text-lg font-bold text-ink">
+                {inspector.selected.label}
+              </h3>
+              <button
+                type="button"
+                onClick={inspector.toggleEdit}
+                className="mt-2 cursor-pointer text-xs text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
+              >
+                {inspector.editing ? "읽기 모드" : "편집"}
+              </button>
+            </header>
+            <InspectorDashBody
+              widget={inspector.selected}
+              editing={inspector.editing}
+              onSave={(next) => {
+                setWidgets((prev) => prev.map((w) => (w.id === next.id ? next : w)));
+                inspector.close();
+              }}
+              onCancel={inspector.toggleEdit}
+            />
+          </>
+        )}
+      </InspectorPanel>
+    </>
   );
 }

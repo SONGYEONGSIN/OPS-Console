@@ -1,20 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DashWidget } from "./patterns/DashPattern";
 
 const MAX_ITEMS = 5;
+const HOVER_DELAY = 200;
 
 /**
- * AlertsBell — MenuBar 우측 ◎ 클릭 → 인라인 드롭다운으로 최근 알림 노출.
- * urgent + review 톤만 추려 표시. 항목 클릭 시 /dashboard/alerts로 이동.
+ * AlertsBell v2 — chrome 우측 zone에서 사용.
+ * - 종 SVG 20×20 + urgent 카운트 빨강 배지
+ * - 호버 200ms 후 드롭다운 미리보기 (최근 urgent/review 5건)
+ * - 클릭 시 /dashboard/alerts 페이지 이동
  * - ESC + 외부 클릭으로 닫힘
- * - urgent 카운트만 빨간 배지로 표시 (전체가 아닌 "지금 봐야 할 것")
  */
 export function AlertsBell({ items }: { items: DashWidget[] }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const hoverTimer = useRef<number | null>(null);
+  const router = useRouter();
 
   const urgent = useMemo(
     () => items.filter((i) => i.tone === "urgent"),
@@ -41,28 +46,62 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
     };
   }, [open]);
 
+  // hover timer cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    };
+  }, []);
+
+  const onMouseEnter = () => {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => setOpen(true), HOVER_DELAY);
+  };
+  const onMouseLeave = () => {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+  };
+
   return (
-    <div ref={wrapRef} className="relative">
+    <div
+      ref={wrapRef}
+      className="relative flex flex-col items-end leading-none"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <button
         type="button"
         aria-label={`알림 ${urgent.length}건`}
-        aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((v) => !v);
+          router.push("/dashboard/alerts");
         }}
-        className="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center border-none bg-transparent text-sm text-muted"
+        className="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center border-none bg-transparent p-0"
       >
-        ◎
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5 stroke-chrome-graphite"
+          fill="none"
+          strokeWidth="1.5"
+        >
+          <path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9z" />
+          <path d="M10 21a2 2 0 004 0" />
+        </svg>
         {urgent.length > 0 ? (
-          <span className="absolute -right-1 -top-0.5 rounded-full bg-vermilion px-1 py-px text-[8px] font-bold text-cream">
+          <span className="absolute -right-1 -top-1 bg-vermilion px-1 py-px text-2xs font-bold text-cream">
             {urgent.length}
           </span>
         ) : null}
       </button>
+      <span className="mt-0.5 text-2xs font-bold uppercase tracking-[0.24em] text-chrome-muted">
+        알림
+      </span>
 
       {open && (
-        <div className="absolute right-0 top-full z-[200] mt-1 w-[320px] border border-line bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-[200] mt-2 w-[320px] border border-chrome-graphite bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="border-b border-line-soft px-3 py-1.5 text-2xs uppercase tracking-[0.18em] text-vermilion">
             알림 · {urgent.length}건 긴급
           </div>
@@ -75,33 +114,14 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
                   <Link
                     href="/dashboard/alerts"
                     onClick={() => setOpen(false)}
-                    className="grid grid-cols-[10px_1fr_auto_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-vermilion hover:text-cream"
+                    className="block px-3 py-1.5 text-sm text-ink transition-colors hover:bg-vermilion hover:text-cream"
                   >
-                    <span
-                      aria-hidden
-                      className={`h-1.5 w-1.5 self-center ${
-                        alert.tone === "urgent" ? "bg-vermilion" : "bg-gold"
-                      }`}
-                    />
-                    <span className="truncate">{alert.label}</span>
-                    <span className="font-mono text-2xs font-semibold tracking-tight">
-                      {alert.value}
-                    </span>
-                    <span className="font-mono text-2xs uppercase tracking-[0.06em] text-muted">
-                      {alert.time}
-                    </span>
+                    {alert.label}
                   </Link>
                 </li>
               ))}
             </ul>
           )}
-          <Link
-            href="/dashboard/alerts"
-            onClick={() => setOpen(false)}
-            className="block border-t border-line-soft px-3 py-1.5 text-2xs uppercase tracking-[0.18em] text-muted hover:text-vermilion"
-          >
-            전체 알림 보기 →
-          </Link>
         </div>
       )}
     </div>

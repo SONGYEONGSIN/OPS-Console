@@ -1,0 +1,39 @@
+import type { MetaItem } from "../_components/page-header/PageMeta";
+
+export type PageMetaConfig = {
+  headline: { title: string; accent?: string };
+  meta?: MetaItem[];
+  description?: string;
+};
+
+/**
+ * slug별 명시 메타. 미정의 slug는 dashboard/[slug]/page.tsx에서 sidebar label로 fallback.
+ * 시작은 mockup 매칭 services + 자주 보는 페이지 한정. 나머지는 fallback.
+ */
+export const PAGE_META: Record<string, PageMetaConfig> = {
+  services: {
+    headline: { accent: "실시간", title: "서비스 운영" },
+    meta: [
+      { label: "근무 II", tone: "accent" },
+      { label: "서비스", value: "12개" },
+      { label: "자동 새로고침", value: "10초" },
+    ],
+    description:
+      "현재 운영 중인 서비스 목록입니다. 각 서비스의 상태·담당 팀·최근 이벤트를 확인하고, 선택 시 인스펙터에서 실시간 지표를 볼 수 있습니다. 주의 상태는 주홍색 낙관으로 표시됩니다.",
+  },
+  alerts: {
+    headline: { accent: "지금", title: "주의해야 할 알림" },
+    description:
+      "운영 중 발생한 긴급·검토·정상 알림을 시간순으로 확인합니다. 항목 선택 시 인스펙터에서 상세 컨텍스트와 대응 액션을 볼 수 있습니다.",
+  },
+  "my-todo": {
+    headline: { accent: "오늘", title: "내가 처리할 일" },
+    description: "마감 임박 순으로 정렬된 개인 작업 목록.",
+  },
+  schedule: {
+    headline: { accent: "이번 주", title: "전체 일정" },
+  },
+  handover: {
+    headline: { accent: "교대", title: "인수인계" },
+  },
+};

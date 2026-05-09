@@ -66,16 +66,16 @@ export default function ResetPasswordPage() {
         <strong className="font-semibold text-ink">비밀번호 재설정</strong>
       </nav>
 
-      <h2 className="mb-2 text-2xl font-semibold tracking-[-0.02em]">새 비밀번호 설정</h2>
+      <h2 className="mb-2 text-2xl font-semibold tracking-[-0.02em]">비밀번호 재설정</h2>
       <p className="mb-6 text-sm leading-[1.6] text-muted">
         안전한 새 비밀번호를 입력하세요. 변경 후 자동으로 로그인됩니다.
       </p>
 
       <form action={formAction} noValidate className="flex flex-col gap-4">
         {state?.error && (
-          <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+          <p role="alert" className="text-xs text-vermilion">
             {state.error}
-          </div>
+          </p>
         )}
         <div>
           <Field
@@ -165,19 +165,22 @@ function ToggleButton({
 
 function PasswordStrengthIndicator({ value }: { value: string }) {
   const checks = [
-    { label: "영문 대문자 포함", ok: /[A-Z]/.test(value) },
-    { label: "숫자 포함", ok: /[0-9]/.test(value) },
+    { label: "대문자", ok: /[A-Z]/.test(value) },
+    { label: "숫자", ok: /[0-9]/.test(value) },
     {
-      label: "특수문자 포함",
+      label: "특수문자",
       ok: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(value),
     },
-    { label: "8자 이상", ok: value.length >= 8 },
+    { label: "8자+", ok: value.length >= 8 },
   ];
   return (
-    <ul className="mt-2 flex flex-col gap-1 text-sm font-medium">
+    <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
       {checks.map((c) => (
-        <li key={c.label} className={c.ok ? "text-sage" : "text-muted"}>
-          <span className="mr-1.5">{c.ok ? "✓" : "✗"}</span>
+        <li
+          key={c.label}
+          className={c.ok ? "font-bold text-sage" : "text-muted"}
+        >
+          <span className="mr-1">{c.ok ? "✓" : "✗"}</span>
           {c.label}
         </li>
       ))}
@@ -189,7 +192,7 @@ function PasswordMatchIndicator({ pw, confirm }: { pw: string; confirm: string }
   if (!confirm) return null;
   const ok = pw === confirm;
   return (
-    <div className={`mt-2 text-sm font-medium ${ok ? "text-sage" : "text-vermilion"}`}>
+    <div className={`mt-2 text-sm ${ok ? "font-bold text-sage" : "font-medium text-vermilion"}`}>
       <span className="mr-1.5">{ok ? "✓" : "✗"}</span>
       {ok ? "비밀번호와 일치" : "비밀번호와 다름"}
     </div>

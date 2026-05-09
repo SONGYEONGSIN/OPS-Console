@@ -1,0 +1,100 @@
+<!--
+  OPS Console — Reset Password Email Template
+  Supabase Dashboard 적용 위치:
+    Authentication → Email Templates → "Reset Password"
+  변수: {{ .ConfirmationURL }}, {{ .Email }}
+  Subject: 운영부 상황실 시스템 비밀번호 초기화 안내
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>비밀번호 재설정</title>
+  <style>
+    :root { color-scheme: light only; supported-color-schemes: light only; }
+    /* Gmail Android dark mode override */
+    [data-ogsc] body, [data-ogsc] table, [data-ogsc] td { background:#ffffff !important; color:#1a1612 !important; }
+    [data-ogsc] .card-body { background:#ffffff !important; }
+    /* Apple Mail dark mode */
+    @media (prefers-color-scheme: dark) {
+      body, table, td { background:#ffffff !important; color:#1a1612 !important; }
+    }
+  </style>
+</head>
+<body bgcolor="#ffffff" style="margin:0;padding:0;background:#ffffff;font-family:'Noto Sans KR','Apple SD Gothic Neo',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1612;line-height:1.6;-webkit-font-smoothing:antialiased;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background:#ffffff;padding:40px 16px;">
+    <tr>
+      <td align="center" bgcolor="#ffffff" style="background:#ffffff;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" class="card-body" style="max-width:560px;background:#ffffff;border:1px solid #e3dccc;">
+
+          <!-- Header: OPS Console chrome -->
+          <tr>
+            <td align="center" style="background:#1a1612;padding:22px 24px;font-family:'JetBrains Mono','SFMono-Regular',Menlo,monospace;color:#f7f3ea;">
+              <div style="font-size:18px;font-weight:600;letter-spacing:0.04em;line-height:1.2;">
+                <span style="color:#c8442e;font-weight:700;">&gt;_</span>&nbsp;<span style="color:#fdfaf3;">운영부 상황실</span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:48px 36px 16px;">
+              <p style="margin:0 0 12px;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#9d978a;font-weight:500;">
+                SECURITY NOTICE
+              </p>
+              <h1 style="margin:0 0 24px;font-size:26px;font-weight:600;letter-spacing:-0.02em;color:#1a1612;line-height:1.3;">
+                비밀번호 재설정 요청
+              </h1>
+              <p style="margin:0 0 12px;font-size:15px;color:#39342b;">
+                계정의 비밀번호 재설정이 요청되었습니다.
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;color:#39342b;">
+                아래 버튼을 눌러 새 비밀번호를 설정하세요.
+              </p>
+              <p style="margin:0 0 32px;font-size:13px;color:#76705f;">
+                링크는 발송 시각으로부터 <strong style="color:#39342b;">24시간</strong> 동안 유효합니다.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding:0 36px 36px;" align="left">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#1a1612;color:#f7f3ea;text-decoration:none;padding:14px 28px;font-size:14px;font-weight:500;letter-spacing:0.04em;border:1px solid #1a1612;">
+                비밀번호 재설정 →
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footnote -->
+          <tr>
+            <td style="padding:24px 36px 28px;background:#f7f3ea;border-top:1px solid #e3dccc;margin-top:8px;">
+              <p style="margin:0 0 6px;font-size:12px;color:#76705f;">
+                본인이 요청하지 않았다면 이 메일을 무시하셔도 됩니다. 비밀번호는 변경되지 않습니다.
+              </p>
+              <p style="margin:0;font-size:12px;color:#76705f;">
+                계정 보안에 우려가 있다면 운영부 관리자에게 즉시 알려주세요.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Brand footer -->
+          <tr>
+            <td style="background:#1a1612;padding:16px 24px;text-align:center;font-family:'JetBrains Mono','SFMono-Regular',Menlo,monospace;font-size:11px;letter-spacing:0.06em;color:#9d978a;">
+              © 2026 OPS Console · 운영부 상황실
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

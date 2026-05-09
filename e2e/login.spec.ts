@@ -6,21 +6,22 @@ test.describe("/login", () => {
   });
 
   test("브랜드 + 인증 패널 + 상태바 모두 렌더", async ({ page, viewport }) => {
-    await expect(
-      page.getByRole("heading", { name: /로그인.*운영부/, level: 1 })
-    ).toBeVisible();
-    await expect(page.getByText("OBSERVE · RESPOND · RESOLVE")).toBeVisible();
+    // titlebar(검정 상단) — 브랜드 ('운영부 상황실 계정이 없으신가요?' footer와 구분 위해 exact)
+    await expect(page.getByText("운영부 상황실", { exact: true })).toBeVisible();
+    // 인증 패널
     await expect(
       page.getByRole("heading", { name: "계정 인증", level: 2 })
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Microsoft SSO로 계속/ })
     ).toBeVisible();
-    await expect(page.getByText("auth.opsroom.local")).toBeVisible();
+    // statusbar(검정 하단) — 좌측 "연결됨" 항상 노출
+    await expect(page.getByText("연결됨")).toBeVisible();
 
-    // statusbar s-mid("TLS 1.3 · HSTS")는 max-md:hidden — 데스크탑에서만 검증.
+    // statusbar 중앙은 max-md:hidden — 데스크탑만 검증.
+    // 보안 컨텍스트에 따라 "TLS · HSTS" / "HTTP" 둘 중 하나, 그리고 lang · UTF-8 노출.
     if (viewport && viewport.width >= 768) {
-      await expect(page.getByText("TLS 1.3 · HSTS")).toBeVisible();
+      await expect(page.getByText(/UTF-8/)).toBeVisible();
     }
   });
 
@@ -117,8 +118,10 @@ test.describe("/login", () => {
     await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL!);
     await page.fill('input[name="password"]', "wrong-password-deliberately");
     await page.locator('form button[type="submit"]').click();
-    // Supabase는 보안상 "Invalid login credentials" 일관 메시지 반환
-    await expect(page.getByText(/Invalid login credentials/i)).toBeVisible();
+    // app의 translateAuthError가 "Invalid login credentials" → 한국어로 변환
+    await expect(
+      page.getByText("이메일 또는 비밀번호가 올바르지 않습니다.")
+    ).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
   });
 
@@ -134,17 +137,18 @@ test.describe("/login", () => {
     await page.getByRole("button", { name: "계정 생성", exact: true }).click();
     const pw = page.locator('input[name="password"]');
     await pw.fill("Pa1!aaaa");
-    await expect(page.getByText("영문 대문자 포함")).toHaveClass(/text-sage/);
-    await expect(page.getByText("숫자 포함")).toHaveClass(/text-sage/);
-    await expect(page.getByText("특수문자 포함")).toHaveClass(/text-sage/);
-    await expect(page.getByText("8자 이상")).toHaveClass(/text-sage/);
+    // 각 항목은 <li>로, 충족 시 text-sage 클래스. li:has-text로 직접 매칭.
+    await expect(page.locator("li", { hasText: "대문자" })).toHaveClass(/text-sage/);
+    await expect(page.locator("li", { hasText: /^.\s*숫자$/ })).toHaveClass(/text-sage/);
+    await expect(page.locator("li", { hasText: "특수문자" })).toHaveClass(/text-sage/);
+    await expect(page.locator("li", { hasText: "8자+" })).toHaveClass(/text-sage/);
   });
 
   test("비밀번호 강도 인디케이터: 미충족 시 muted/✗", async ({ page }) => {
     await page.getByRole("button", { name: "계정 생성", exact: true }).click();
     await page.locator('input[name="password"]').fill("aa");
-    await expect(page.getByText("영문 대문자 포함")).toHaveClass(/text-muted/);
-    await expect(page.getByText("8자 이상")).toHaveClass(/text-muted/);
+    await expect(page.locator("li", { hasText: "대문자" })).toHaveClass(/text-muted/);
+    await expect(page.locator("li", { hasText: "8자+" })).toHaveClass(/text-muted/);
   });
 
   test("비밀번호 일치 인디케이터", async ({ page }) => {
@@ -156,7 +160,7 @@ test.describe("/login", () => {
     await expect(page.getByText("비밀번호와 다름")).toBeVisible();
   });
 
-  test("계정 생성 valid 제출 → info alert (TEST_USER 미설정 시 skip)", async ({
+  test("계정 생성 — 이미 가입된 TEST_USER 이메일 → 중복 에러 (TEST_USER 미설정 시 skip)", async ({
     page,
   }) => {
     test.skip(
@@ -164,14 +168,14 @@ test.describe("/login", () => {
       "TEST_USER 미설정 — 실제 Supabase 호출 필요"
     );
     await page.getByRole("button", { name: "계정 생성", exact: true }).click();
-    // TEST_USER_EMAIL 그대로 사용 — Supabase는 enumeration 방지 위해 이미 가입된 이메일에도 success 응답 + info 반환.
+    // TEST_USER_EMAIL은 이미 가입돼 있음 — app은 Supabase identities 빈 응답을 감지하여 명시적 에러 반환.
     await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL!);
     await page.fill('input[name="password"]', "Aa1!aaaa");
     await page.fill('input[name="passwordConfirm"]', "Aa1!aaaa");
     // 모바일 viewport에서 SignUpForm이 길어 제출 버튼이 StatusBar에 가려짐 → DOM 직접 submit.
     await page.locator("form").evaluate((f) => (f as HTMLFormElement).requestSubmit());
     await expect(
-      page.getByText("확인 메일을 발송했습니다. 메일함을 확인해주세요.")
+      page.getByText("이미 가입된 이메일입니다.")
     ).toBeVisible({ timeout: 10000 });
   });
 });
@@ -181,7 +185,7 @@ test("실시간 시계: titlebar 분 표시가 placeholder 후 실 시간으로 
 }) => {
   await page.goto("/login");
   // 클라이언트 hydration 대기 — placeholder가 잠깐 보이고 즉시 실 시간 채워짐
-  // 실 시간 형식 (`YYYY.MM.DD · HH:MM KST`) 매칭
-  const titlebarRight = page.locator("text=/\\d{4}\\.\\d{2}\\.\\d{2} · \\d{2}:\\d{2} KST/");
+  // 실 시간 형식 (`YYYY.MM.DD · 토 · HH:MM KST` — date · weekday · time) 매칭
+  const titlebarRight = page.locator("text=/\\d{4}\\.\\d{2}\\.\\d{2} · . · \\d{2}:\\d{2} KST/");
   await expect(titlebarRight).toBeVisible({ timeout: 5000 });
 });

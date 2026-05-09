@@ -19,9 +19,9 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("BrandPanel 카피 '기록 · 응대 · 해결' 노출", () => {
+  it("TitleBar에 '운영부 상황실' 노출", () => {
     render(<LoginPage />);
-    expect(screen.getByText(/기록 · 응대 · 해결/)).toBeInTheDocument();
+    expect(screen.getByText("운영부 상황실")).toBeInTheDocument();
   });
 
   it("기본 모드는 signin — '로그인' 탭 active", () => {

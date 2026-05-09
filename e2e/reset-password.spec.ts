@@ -21,9 +21,13 @@ test.describe("/reset-password", () => {
     await page.waitForURL(/\/dashboard$/);
 
     await page.goto("/reset-password");
-    await expect(page.getByText("새 비밀번호 설정")).toBeVisible({ timeout: 5000 });
+    // h2 한정 (breadcrumb의 '비밀번호 재설정' strong과 strict mode 충돌 회피)
+    await expect(
+      page.getByRole("heading", { name: "비밀번호 재설정", level: 2 })
+    ).toBeVisible({ timeout: 5000 });
     await page.locator('input[name="password"]').fill("Aa1!aaaa");
-    await expect(page.getByText("영문 대문자 포함")).toHaveClass(/text-sage/);
-    await expect(page.getByText("8자 이상")).toHaveClass(/text-sage/);
+    // 강도 항목 라벨 단축 ('영문 대문자 포함' → '대문자' / '8자 이상' → '8자+')
+    await expect(page.locator("li", { hasText: "대문자" })).toHaveClass(/text-sage/);
+    await expect(page.locator("li", { hasText: "8자+" })).toHaveClass(/text-sage/);
   });
 });

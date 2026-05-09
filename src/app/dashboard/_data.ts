@@ -133,7 +133,7 @@ export const sidebarSections: SbSection[] = [
   {
     title: "관리",
     entries: [
-      { kind: "item", ico: "◐", label: "팀 · 권한", count: "17", slug: "team", pattern: "list" },
+      { kind: "item", ico: "◐", label: "조직 · 권한", count: "17", slug: "team", pattern: "list" },
       { kind: "item", ico: "⚙", label: "시스템 설정", slug: "settings", pattern: "settings" },
       { kind: "item", ico: "✦", label: "신규 온보딩", slug: "onboarding", pattern: "settings" },
       { kind: "item", ico: "⚒", label: "개선 요청", count: "4", slug: "feedback", pattern: "list" },
@@ -142,18 +142,23 @@ export const sidebarSections: SbSection[] = [
   },
 ];
 
+/**
+ * slug → SbItem 전체 반환 (count 포함). pattern은 lookup 가드를 통과한
+ * 항목만 반환하므로 호출자 입장에서 항상 정의되어 있음을 타입으로 표현.
+ */
 export function findSidebarMeta(
-  slug: string
-): { label: string; pattern: SbPattern } | null {
+  slug: string,
+): (SbItem & { pattern: SbPattern }) | null {
   for (const section of sidebarSections) {
     for (const entry of section.entries) {
       if (entry.kind === "item" && entry.slug === slug && entry.pattern) {
-        return { label: entry.label, pattern: entry.pattern };
+        const { kind: _kind, ...item } = entry;
+        return { ...item, pattern: entry.pattern };
       }
       if (entry.kind === "group") {
         for (const item of entry.items) {
           if (item.slug === slug && item.pattern) {
-            return { label: item.label, pattern: item.pattern };
+            return { ...item, pattern: item.pattern };
           }
         }
       }

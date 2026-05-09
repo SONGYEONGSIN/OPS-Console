@@ -57,7 +57,7 @@ describe("signIn", () => {
     expect(result).toEqual({ error: "비밀번호를 입력해주세요." });
   });
 
-  it("Supabase 에러 시 메시지 그대로 반환", async () => {
+  it("Supabase 'Invalid login credentials' → 한국어 매핑", async () => {
     mockCreate.mockResolvedValue({
       auth: {
         signInWithPassword: vi.fn().mockResolvedValue({
@@ -69,7 +69,26 @@ describe("signIn", () => {
     fd.set("email", "a@b.com");
     fd.set("password", "wrong");
     const result = await signIn(undefined, fd);
-    expect(result).toEqual({ error: "Invalid login credentials" });
+    expect(result).toEqual({
+      error: "이메일 또는 비밀번호가 올바르지 않습니다.",
+    });
+  });
+
+  it("Supabase 'Email not confirmed' → 한국어 매핑", async () => {
+    mockCreate.mockResolvedValue({
+      auth: {
+        signInWithPassword: vi.fn().mockResolvedValue({
+          error: { message: "Email not confirmed" },
+        }),
+      },
+    });
+    const fd = new FormData();
+    fd.set("email", "a@b.com");
+    fd.set("password", "x");
+    const result = await signIn(undefined, fd);
+    expect(result).toEqual({
+      error: "이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.",
+    });
   });
 
   it("성공 시 /dashboard로 redirect", async () => {
@@ -186,7 +205,10 @@ describe("signUp", () => {
   });
 
   it("성공 시 Supabase signUp 호출 + info 반환", async () => {
-    const signUpSpy = vi.fn().mockResolvedValue({ error: null });
+    const signUpSpy = vi.fn().mockResolvedValue({
+      data: { user: { identities: [{ id: "i1" }] } },
+      error: null,
+    });
     mockCreate.mockResolvedValue({ auth: { signUp: signUpSpy } });
     const fd = new FormData();
     fd.set("email", "alcure23@jinhakapply.com");
@@ -200,6 +222,22 @@ describe("signUp", () => {
     expect(result).toEqual({
       info: "확인 메일을 발송했습니다. 메일함을 확인해주세요.",
     });
+  });
+
+  it("이미 가입된 이메일 (identities.length=0) → 에러 반환", async () => {
+    // Supabase enumeration 방지: 이미 가입된 이메일이어도 error 없이 응답.
+    // identities=[] 가 그 신호 — 메일 안 보냄.
+    const signUpSpy = vi.fn().mockResolvedValue({
+      data: { user: { id: "x", identities: [] } },
+      error: null,
+    });
+    mockCreate.mockResolvedValue({ auth: { signUp: signUpSpy } });
+    const fd = new FormData();
+    fd.set("email", "alcure23@jinhakapply.com");
+    fd.set("password", "Aa1!aaaa");
+    fd.set("passwordConfirm", "Aa1!aaaa");
+    const result = await signUp(undefined, fd);
+    expect(result).toEqual({ error: "이미 가입된 이메일입니다." });
   });
 });
 
@@ -270,15 +308,19 @@ describe("resetPassword", () => {
     expect(result).toEqual({ error: "비밀번호 확인이 일치하지 않습니다." });
   });
 
-  it("성공 시 updateUser 호출 + /dashboard로 redirect", async () => {
+  it("성공 시 updateUser + signOut + /login?info=password_changed로 redirect", async () => {
     const updateSpy = vi.fn().mockResolvedValue({ error: null });
-    mockCreate.mockResolvedValue({ auth: { updateUser: updateSpy } });
+    const signOutSpy = vi.fn().mockResolvedValue({ error: null });
+    mockCreate.mockResolvedValue({
+      auth: { updateUser: updateSpy, signOut: signOutSpy },
+    });
     const fd = new FormData();
     fd.set("password", "Aa1!aaaa");
     fd.set("passwordConfirm", "Aa1!aaaa");
     await expect(resetPassword(undefined, fd)).rejects.toThrow(
-      "REDIRECT:/dashboard"
+      "REDIRECT:/login?info=password_changed",
     );
     expect(updateSpy).toHaveBeenCalledWith({ password: "Aa1!aaaa" });
+    expect(signOutSpy).toHaveBeenCalledOnce();
   });
 });
