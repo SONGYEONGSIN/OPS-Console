@@ -51,3 +51,56 @@ describe("InspectorListBody", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 });
+
+describe("InspectorListBody team variant — 권한 select", () => {
+  const teamRow: ListRow = {
+    id: "annooy@jinhakapply.com",
+    name: "정윤나",
+    status: "active",
+    owner: "운영1팀",
+    meta: "매니저",
+    permission: "member",
+  };
+
+  it("admin이 편집 모드 + team variant → 권한 select 노출", () => {
+    render(
+      <InspectorListBody
+        row={teamRow}
+        editing={true}
+        variant="team"
+        currentUserPermission="admin"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("권한")).toBeInTheDocument();
+  });
+
+  it("member가 편집 모드 + team variant → 권한 select hide", () => {
+    render(
+      <InspectorListBody
+        row={teamRow}
+        editing={true}
+        variant="team"
+        currentUserPermission="member"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("권한")).not.toBeInTheDocument();
+  });
+
+  it("view mode + team variant + row.permission='admin' → '관리자' 노출", () => {
+    render(
+      <InspectorListBody
+        row={{ ...teamRow, permission: "admin" }}
+        editing={false}
+        variant="team"
+        currentUserPermission="admin"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("관리자")).toBeInTheDocument();
+  });
+});

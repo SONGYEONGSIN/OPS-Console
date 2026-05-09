@@ -10,6 +10,8 @@ import {
   updateOperator,
 } from "@/features/operators/actions";
 import type { OperatorRow } from "@/features/operators/schemas";
+import { getCurrentOperator } from "@/features/auth/queries";
+import { canEditOperators } from "@/features/auth/permission";
 
 /**
  * /dashboard/team — 운영부 조직구성 (DB 연동, server component).
@@ -23,6 +25,10 @@ export default async function TeamPage() {
 
   const operators = await listOperators();
   const rows: ListRow[] = operators.map(operatorToListRow);
+
+  const me = await getCurrentOperator();
+  const myPermission = me?.permission ?? null;
+  const isAdmin = canEditOperators(myPermission);
 
   const header = (
     <PageHeader
@@ -67,6 +73,7 @@ export default async function TeamPage() {
       team: row.owner as OperatorRow["team"],
       role: (row.meta as OperatorRow["role"]) ?? target.role,
       status: row.status as OperatorRow["status"],
+      permission: row.permission,
       leader: row.leader ?? null,
       deleted_reason: isNowDeleted ? (row.deletedReason ?? null) : null,
       deleted_at: isNowDeleted ? new Date().toISOString() : null,
@@ -81,6 +88,8 @@ export default async function TeamPage() {
       header={header}
       variant="team"
       onPersist={onPersist}
+      readOnly={!isAdmin}
+      currentUserPermission={myPermission}
     />
   );
 }
@@ -93,6 +102,7 @@ function operatorToListRow(op: OperatorRow): ListRow {
     owner: op.team,
     meta: op.role,
     leader: op.leader ?? undefined,
+    permission: op.permission,
   };
 }
 

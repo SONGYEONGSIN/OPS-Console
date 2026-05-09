@@ -20,6 +20,20 @@ export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀"]);
 export const operatorRoleSchema = z.enum(["부장", "팀장", "TL", "매니저"]);
 export const operatorGenderSchema = z.enum(["남", "여"]);
 
+export const operatorPermissionSchema = z.enum([
+  "admin",
+  "member",
+  "viewer",
+]);
+
+export type OperatorPermission = z.infer<typeof operatorPermissionSchema>;
+
+export const PERMISSION_LABEL: Record<OperatorPermission, string> = {
+  admin: "관리자",
+  member: "구성원",
+  viewer: "뷰어",
+};
+
 export const operatorRowSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -33,6 +47,7 @@ export const operatorRowSchema = z.object({
   division: z.string(),
   department: z.string(),
   status: operatorStatusSchema,
+  permission: operatorPermissionSchema,
   leader: z.string().nullable(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
@@ -52,6 +67,7 @@ export const operatorUpdateSchema = z.object({
   birth_date: z.string().optional(),
   gender: operatorGenderSchema.optional(),
   status: operatorStatusSchema.optional(),
+  permission: operatorPermissionSchema.optional(),
   leader: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
@@ -69,6 +85,7 @@ export const operatorCreateSchema = z.object({
   birth_date: z.string(),
   gender: operatorGenderSchema,
   status: operatorStatusSchema.default("active"),
+  permission: operatorPermissionSchema.default("member"),
   leader: z.string().nullable().optional(),
 });
 

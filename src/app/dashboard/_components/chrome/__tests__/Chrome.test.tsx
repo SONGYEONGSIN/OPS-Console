@@ -12,6 +12,7 @@ const operator = {
   displayName: "송영신",
   role: "팀장",
   team: "운영2팀" as const,
+  permission: "admin" as const,
 };
 
 describe("Chrome", () => {

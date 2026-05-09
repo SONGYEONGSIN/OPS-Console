@@ -34,6 +34,7 @@ const validRow = {
   division: "어플라이사업본부",
   department: "운영부",
   status: "active",
+  permission: "member",
   leader: null,
   created_at: "2026-05-09T00:00:00Z",
   updated_at: "2026-05-09T00:00:00Z",
@@ -49,6 +50,16 @@ describe("listOperators", () => {
     const ops = await listOperators();
     expect(ops.length).toBe(1);
     expect(ops[0].name).toBe("홍길동");
+    expect(ops[0].permission).toBe("member");
+  });
+
+  it("permission 잘못된 enum row는 skip", async () => {
+    mockOrder.mockResolvedValue({
+      data: [validRow, { ...validRow, permission: "BAD" }],
+      error: null,
+    });
+    const ops = await listOperators();
+    expect(ops.length).toBe(1);
   });
 
   it("error → 빈 배열", async () => {

@@ -8,6 +8,10 @@ import {
   tenureLabel,
   tenureYears,
 } from "@/features/auth/operators";
+import {
+  PERMISSION_LABEL,
+  type OperatorPermission,
+} from "@/features/operators/schemas";
 
 type Props = {
   row: ListRow;
@@ -15,6 +19,8 @@ type Props = {
   onSave: (next: ListRow) => void;
   onCancel: () => void;
   variant?: "default" | "team";
+  /** team variant — 권한 select admin만 노출하기 위한 컨텍스트 */
+  currentUserPermission?: OperatorPermission | null;
 };
 
 /**
@@ -32,6 +38,7 @@ export function InspectorListBody({
   onSave,
   onCancel,
   variant = "default",
+  currentUserPermission = null,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -40,6 +47,7 @@ export function InspectorListBody({
   }
 
   const isTeam = variant === "team";
+  const canEditPermission = isTeam && currentUserPermission === "admin";
 
   return (
     <form
@@ -152,6 +160,26 @@ export function InspectorListBody({
           )}
         </select>
       </label>
+      {canEditPermission && (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">권한</span>
+          <select
+            aria-label="권한"
+            value={draft.permission ?? "member"}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                permission: e.target.value as OperatorPermission,
+              })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="admin">관리자 (admin)</option>
+            <option value="member">구성원 (member)</option>
+            <option value="viewer">뷰어 (viewer)</option>
+          </select>
+        </label>
+      )}
       {isTeam && draft.status === "deleted" && (
         <label className="block text-xs">
           <span className="mb-1 block text-muted">
@@ -297,6 +325,10 @@ function TeamView({ row }: { row: ListRow }) {
             items={[
               { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
               { term: "이메일", desc: <span className="font-mono text-xs">{row.id}</span> },
+              {
+                term: "시스템 권한",
+                desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",
+              },
               { term: "소속 팀", desc: row.owner },
               { term: "직급", desc: row.meta ?? "-" },
               {
@@ -358,7 +390,11 @@ function TeamView({ row }: { row: ListRow }) {
               ),
             },
             { term: "이메일", desc: <span className="font-mono text-xs">{op.email}</span> },
-            { term: "권한 레벨", desc: roleToPermission(op.role) },
+            {
+              term: "시스템 권한",
+              desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",
+            },
+            { term: "직급 권한", desc: roleToPermission(op.role) },
             { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
           ]}
         />
