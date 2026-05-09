@@ -41,15 +41,7 @@ export function InspectorPanel({ open, onClose, children }: Props) {
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >
-      <button
-        type="button"
-        aria-label="닫기"
-        onClick={onClose}
-        className="absolute right-3 top-3 inline-flex h-8 w-8 cursor-pointer items-center justify-center border-none bg-transparent text-ink hover:text-vermilion"
-      >
-        ×
-      </button>
-      <div className="h-full overflow-y-auto p-5 pt-12">{children}</div>
+      <div className="h-full overflow-y-auto p-5">{children}</div>
     </aside>
   );
 }
