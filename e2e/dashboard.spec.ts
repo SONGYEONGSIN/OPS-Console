@@ -156,9 +156,7 @@ test.describe("/dashboard — 모바일 드로어", () => {
     await signInAndGotoDashboard(page);
   });
 
-  // TODO(mobile-drawer): 모바일 햄버거 트리거가 chrome 리브랜드(PIVOT→OPS Console) 시 제거됨.
-  // AppBar에 '메뉴 열기' 버튼 재도입 후 unskip 필요. 별도 작업으로 분리.
-  test.skip("앱바 햄버거: 사이드바 드로어 open ↔ scrim 클릭으로 close", async ({
+  test("앱바 햄버거: 사이드바 드로어 open ↔ scrim 클릭으로 close", async ({
     page,
   }) => {
     const hamburger = page.getByRole("button", { name: "메뉴 열기" });
@@ -173,7 +171,7 @@ test.describe("/dashboard — 모바일 드로어", () => {
     await expect(sidebar).not.toHaveAttribute("aria-modal", "true");
   });
 
-  test.skip("ESC 키로 사이드바 드로어 close", async ({ page }) => {
+  test("ESC 키로 사이드바 드로어 close", async ({ page }) => {
     const hamburger = page.getByRole("button", { name: "메뉴 열기" });
     const sidebar = page.locator("#sidebar");
 

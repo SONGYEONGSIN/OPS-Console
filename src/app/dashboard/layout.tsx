@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
+import { AppBar } from "./_components/AppBar";
 import { Chrome } from "./_components/chrome/Chrome";
 import { DashboardShell } from "./_components/DashboardShell";
-import { LiveClock } from "./_components/LiveClock";
 import { getPatternMockData } from "./_data/patterns";
 import type { DashWidget } from "./_components/patterns/DashPattern";
 
@@ -34,23 +34,6 @@ export default async function DashboardLayout({
     >
       {children}
     </DashboardShell>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════
-   App bar — 모바일 전용 (≤767px). Chrome bar는 별도 epic.
-   ════════════════════════════════════════════════════════════ */
-function AppBar() {
-  return (
-    <header
-      role="banner"
-      className="relative z-30 hidden h-12 items-center gap-2 border-b border-line bg-washi px-3 max-md:flex"
-    >
-      <div className="flex-1 text-center text-md font-semibold tracking-[0.02em]">
-        OPS Console
-      </div>
-      <LiveClock />
-    </header>
   );
 }
 
