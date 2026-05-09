@@ -19,16 +19,18 @@ export function PageTabs({ pathname }: { pathname: string }) {
             href={item.href}
             role="tab"
             aria-selected={active}
-            className={`relative px-5 py-2 text-sm transition-colors ${
+            className={`relative flex items-center gap-3 px-5 py-2 text-sm transition-colors ${
               active
                 ? "border-t-2 border-vermilion bg-cream font-bold text-ink"
                 : "border-t-2 border-transparent text-muted hover:text-ink"
             }`}
           >
-            {item.label}
+            <span>{item.label}</span>
+            <span aria-hidden className="text-xs text-faint">×</span>
           </Link>
         );
       })}
+      <span aria-hidden className="px-4 py-2 text-sm text-faint">+</span>
     </nav>
   );
 }
