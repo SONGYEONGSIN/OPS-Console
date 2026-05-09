@@ -26,9 +26,16 @@ Folio/
 │   └── messages/        # 에이전트 간 통신 (inbox, debates 등)
 ├── src/
 │   ├── app/            # Next.js App Router 페이지
-│   ├── components/     # React 컴포넌트 (도메인별 폴더)
-│   ├── features/       # 도메인 로직 (schemas, actions, types)
-│   └── lib/            # 유틸리티, Supabase 클라이언트
+│   │   ├── login/      # 인증 (signin/signup/SSO)
+│   │   ├── dashboard/  # OPS Console — chrome / sidebar / patterns / inspector
+│   │   └── auth/       # OAuth callback
+│   ├── components/     # React 컴포넌트 (auth/AuthChrome 등 도메인별 폴더)
+│   ├── features/       # 도메인 로직 (auth, operators — schemas/actions/queries)
+│   ├── lib/            # 유틸리티, Supabase 클라이언트
+│   └── middleware.ts   # 미인증 가드 + /login 리다이렉트
+├── e2e/                # Playwright spec (login/dashboard/smoke/reset/forgot)
+├── supabase/migrations/ # operators 테이블 + RLS + GRANT
+├── scripts/            # 일회성 운영 도구 (inspect-user, restore-operator)
 ├── CLAUDE.md
 └── package.json
 ```
@@ -43,13 +50,18 @@ Folio/
 ## Commands
 
 ```bash
-npm run dev          # 개발 서버
-npm run build        # 프로덕션 빌드
-npm run lint         # ESLint
-npm test             # 단위 테스트
-npm run e2e          # E2E 테스트
-npx tsc --noEmit     # 타입 체크
+npm run dev                          # 개발 서버 (포트 3000)
+npm run build                        # 프로덕션 빌드
+npm run lint                         # ESLint
+npm run typecheck                    # tsc --noEmit
+npm test                             # Vitest unit (TZ=Asia/Seoul)
+npm run test:e2e                     # Playwright E2E (기본 webServer 3010)
+npm run test:e2e -- --workers=1      # parallel race 회피 (dashboard 인증 테스트)
 ```
+
+E2E 운영 메모:
+- 로컬에서 `npm run dev` 띄운 상태로 e2e 실행 시 `E2E_BASE_URL=http://localhost:3000` 설정 + `--workers=1`
+- `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`가 Supabase 실 사용자와 동기되어야 인증 의존 테스트(~30건) 동작
 
 ## Rules
 
