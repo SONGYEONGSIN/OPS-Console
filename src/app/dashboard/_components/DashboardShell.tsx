@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { sidebarSections } from "../_data";
+import { OpenTabsProvider } from "./page-header/open-tabs-context";
 import { Sidebar } from "./Sidebar";
 
 /**
@@ -39,21 +40,23 @@ export function DashboardShell({
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
-    <div className="dashboard-shell relative z-10 grid h-screen grid-rows-[52px_1fr_26px] max-md:grid-rows-[48px_1fr] max-md:h-auto max-md:min-h-screen">
-      {appBar}
-      {chrome}
-      <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
-        <Sidebar sections={sidebarSections} open={sidebarOpen} onClose={closeSidebar} />
-        <div className="min-h-0 overflow-y-auto bg-cream">{children}</div>
+    <OpenTabsProvider>
+      <div className="dashboard-shell relative z-10 grid h-screen grid-rows-[52px_1fr_26px] max-md:grid-rows-[48px_1fr] max-md:h-auto max-md:min-h-screen">
+        {appBar}
+        {chrome}
+        <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
+          <Sidebar sections={sidebarSections} open={sidebarOpen} onClose={closeSidebar} />
+          <div className="min-h-0 overflow-y-auto bg-cream">{children}</div>
+        </div>
+        {statusBar}
+        <div
+          onClick={closeSidebar}
+          aria-hidden
+          className={`fixed inset-0 z-[35] bg-ink/35 transition-opacity duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+            sidebarOpen ? "block opacity-100" : "pointer-events-none hidden opacity-0"
+          }`}
+        />
       </div>
-      {statusBar}
-      <div
-        onClick={closeSidebar}
-        aria-hidden
-        className={`fixed inset-0 z-[35] bg-ink/35 transition-opacity duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          sidebarOpen ? "block opacity-100" : "pointer-events-none hidden opacity-0"
-        }`}
-      />
-    </div>
+    </OpenTabsProvider>
   );
 }

@@ -4,6 +4,11 @@ import { DashboardShell } from "../DashboardShell";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("../../_data/sidebar-helpers", () => ({
+  findSidebarParentGroup: () => null,
 }));
 
 describe("DashboardShell", () => {
