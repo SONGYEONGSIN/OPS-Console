@@ -15,7 +15,7 @@ export function PageTabs({ pathname }: { pathname: string }) {
     <nav
       role="tablist"
       aria-label="열린 메뉴"
-      className="flex items-center overflow-x-auto"
+      className="flex items-end self-end overflow-x-auto"
     >
       {tabs.map((tab) => {
         const active = tab.href === pathname;
