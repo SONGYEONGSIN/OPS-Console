@@ -25,7 +25,7 @@ export function PageHeader({
   return (
     <>
       <CrumbBar pathname={pathname} />
-      <header className="bg-cream px-7 pb-5 pt-6">
+      <header className="bg-cream px-9 pb-[18px] pt-6">
         <PageMeta items={meta} />
         <PageHeadline {...headline} description={description} />
       </header>
