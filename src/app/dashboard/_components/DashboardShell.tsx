@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { sidebarSections } from "../_data";
 import { OpenTabsProvider } from "./page-header/open-tabs-context";
 import { Sidebar } from "./Sidebar";
+import { SidebarToggleProvider } from "./sidebar-toggle-context";
 
 /**
  * DashboardShell — dashboard 클라이언트 wrapper.
@@ -40,26 +41,35 @@ export function DashboardShell({
   }, [sidebarOpen]);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  const openSidebar = useCallback(() => setSidebarOpen(true), []);
 
   return (
     <OpenTabsProvider>
-      <div className="dashboard-shell relative z-10 grid h-screen grid-rows-[34px_52px_1fr_26px] max-md:grid-rows-[34px_48px_1fr] max-md:h-auto max-md:min-h-screen">
-        {topBar}
-        {appBar}
-        {chrome}
-        <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
-          <Sidebar sections={sidebarSections} open={sidebarOpen} onClose={closeSidebar} />
-          <div className="min-h-0 overflow-y-auto bg-cream">{children}</div>
+      <SidebarToggleProvider open={openSidebar}>
+        <div className="dashboard-shell relative z-10 grid h-screen grid-rows-[34px_52px_1fr_26px] max-md:grid-rows-[34px_48px_1fr] max-md:h-auto max-md:min-h-screen">
+          {topBar}
+          {appBar}
+          {chrome}
+          <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
+            <Sidebar
+              sections={sidebarSections}
+              open={sidebarOpen}
+              onClose={closeSidebar}
+            />
+            <div className="min-h-0 overflow-y-auto bg-cream">{children}</div>
+          </div>
+          {statusBar}
+          <div
+            onClick={closeSidebar}
+            aria-hidden
+            className={`fixed inset-0 z-[35] bg-ink/35 transition-opacity duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+              sidebarOpen
+                ? "block opacity-100"
+                : "pointer-events-none hidden opacity-0"
+            }`}
+          />
         </div>
-        {statusBar}
-        <div
-          onClick={closeSidebar}
-          aria-hidden
-          className={`fixed inset-0 z-[35] bg-ink/35 transition-opacity duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-            sidebarOpen ? "block opacity-100" : "pointer-events-none hidden opacity-0"
-          }`}
-        />
-      </div>
+      </SidebarToggleProvider>
     </OpenTabsProvider>
   );
 }
