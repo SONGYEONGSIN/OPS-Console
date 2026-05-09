@@ -171,11 +171,6 @@ function SignInForm({
           {oauthError}
         </p>
       )}
-      {state?.error && (
-        <p role="alert" className="text-xs text-vermilion">
-          {state.error}
-        </p>
-      )}
       <Field
         id="email"
         label="이메일"
@@ -310,11 +305,6 @@ function SignUpForm({
 
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
-      {state?.error && (
-        <p role="alert" className="text-xs text-vermilion">
-          {state.error}
-        </p>
-      )}
       {state?.info && (
         <p role="status" className="text-xs text-sage">
           {state.info}
