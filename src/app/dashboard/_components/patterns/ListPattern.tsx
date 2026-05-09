@@ -49,7 +49,11 @@ export function ListPattern({ title, data }: Props) {
 
   return (
     <>
-      <section className="p-7">
+      <section
+        className={`p-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          inspector.selected !== null ? "md:pr-[400px]" : ""
+        }`}
+      >
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-baseline gap-2">
             <h2 className="text-xl font-bold text-ink">{title}</h2>

@@ -37,7 +37,11 @@ export function ProjectPattern({
 
   return (
     <>
-      <section className="flex h-full min-h-0 flex-col bg-paper">
+      <section
+        className={`flex h-full min-h-0 flex-col bg-paper transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          inspector.selected !== null ? "md:pr-[400px]" : ""
+        }`}
+      >
         <header className="flex items-center justify-between border-b border-line bg-washi-raised px-5 py-4 lg:px-7">
           <div className="flex items-baseline gap-4">
             <h2 className="text-lg font-semibold text-ink lg:text-xl">{title}</h2>
