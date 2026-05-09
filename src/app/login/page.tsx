@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useActionState, useEffect, useState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { signIn, signUp, type AuthState } from "@/features/auth/actions";
 import { ALLOWED_EMAILS } from "@/features/auth/operators";
+import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
 
 /**
  * 로그인 (입실) — design-ref/folio-login.html 포팅 + Supabase 인증 연결.
@@ -27,7 +28,6 @@ export default function LoginPage() {
 
 function LoginPageContent() {
   const [showPassword, setShowPassword] = useState(false);
-  const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   // 모드 전환 시 이메일 유지 (design-ref §결정 line 31). 비밀번호+확인은 form 자체에서 unmount로 reset.
   const [email, setEmail] = useState("");
@@ -41,16 +41,10 @@ function LoginPageContent() {
         : errorParam === "exchange_failed"
           ? "세션 발급에 실패했습니다."
           : undefined;
-  useEffect(() => {
-    const updateNow = () => setNow(new Date());
-    updateNow();
-    const id = setInterval(updateNow, 1000);
-    return () => clearInterval(id);
-  }, []);
 
   return (
     <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
-      <TitleBar now={now} />
+      <AuthTitleBar />
       <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-cream">
         <AuthPanel
           mode={mode}
@@ -62,45 +56,7 @@ function LoginPageContent() {
           oauthError={errorMessage}
         />
       </main>
-      <StatusBar />
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════
-   Clock — 현재 시간 포매팅 (TitleBar + BrandPanel 실시간)
-   ════════════════════════════════════════════════════════════ */
-function Clock({ now }: { now: Date | null }) {
-  if (!now) return <>------ · --:-- KST</>;
-  const fmt = (opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("ko-KR", { ...opts, timeZone: "Asia/Seoul" }).format(
-      now,
-    );
-  const date = fmt({
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  })
-    .replace(/\. /g, ".")
-    .replace(/\.$/, "");
-  const weekday = fmt({ weekday: "short" });
-  const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
-  return <>{`${date} · ${weekday} · ${time} KST`}</>;
-}
-
-/* ════════════════════════════════════════════════════════════
-   Title bar — macOS 윈도우 크롬 모티브 (입실 컨텍스트 인디케이터)
-   ════════════════════════════════════════════════════════════ */
-function TitleBar({ now }: { now: Date | null }) {
-  return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-ink px-3.5 text-cream">
-      <div />
-      <div className="text-center text-md font-medium tracking-[0.02em]">
-        운영부 상황실
-      </div>
-      <div className="ref text-xs text-faint tracking-[0.04em] text-right max-[479px]:text-[10px]">
-        <Clock now={now} />
-      </div>
+      <AuthStatusBar />
     </div>
   );
 }
@@ -169,6 +125,11 @@ function SignInForm({
       {oauthError && (
         <p role="alert" className="text-xs text-vermilion">
           {oauthError}
+        </p>
+      )}
+      {state?.error && (
+        <p role="alert" className="text-xs text-vermilion">
+          {state.error}
         </p>
       )}
       <Field
@@ -563,59 +524,3 @@ function SSOButton() {
   );
 }
 
-/* ════════════════════════════════════════════════════════════
-   Status bar — 연결 / 서버 / TLS / 언어 / 빌드 / SHA (실값)
-   ════════════════════════════════════════════════════════════ */
-function StatusBar() {
-  const isClient = typeof window !== "undefined";
-  const [online, setOnline] = useState(() => (isClient ? navigator.onLine : true));
-  const host = isClient ? window.location.hostname || "localhost" : "";
-  const secure = isClient ? window.location.protocol === "https:" : true;
-  const lang = isClient ? navigator.language.toUpperCase() : "";
-
-  useEffect(() => {
-    const onOnline = () => setOnline(true);
-    const onOffline = () => setOnline(false);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
-
-  const buildVersion = process.env.NEXT_PUBLIC_BUILD_VERSION ?? "?";
-  const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "unknown";
-
-  return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 border-t border-line bg-ink px-4 text-xs tracking-[0.02em] text-cream/75 max-md:gap-3 max-md:px-3">
-      <div className="flex items-center gap-5">
-        <span className="flex items-center">
-          <span
-            aria-hidden
-            className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-              online
-                ? "bg-sage [box-shadow:var(--shadow-led-sage)]"
-                : "bg-vermilion [box-shadow:var(--shadow-led-vermilion)]"
-            }`}
-          />
-          <span>{online ? "연결됨" : "오프라인"}</span>
-        </span>
-        <span>
-          <strong className="mr-1 font-medium text-cream">서버</strong>
-          {host}
-        </span>
-      </div>
-      <div className="flex items-center justify-center gap-5 max-md:hidden">
-        <span>{secure ? "TLS · HSTS" : "HTTP"}</span>
-        <span>{lang} · UTF-8</span>
-      </div>
-      <div className="flex items-center justify-end gap-5">
-        <span className="max-[479px]:hidden">
-          <strong className="mr-1 font-medium text-cream">빌드</strong>v {buildVersion}
-        </span>
-        <span className="code">sha {gitSha}</span>
-      </div>
-    </div>
-  );
-}
