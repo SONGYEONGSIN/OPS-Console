@@ -52,9 +52,14 @@ type Props = {
   header?: React.ReactNode;
   /** team 등 특정 슬러그에서 전용 컬럼 사용 */
   variant?: "default" | "team";
+  /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
+  onPersist?: (
+    row: ListRow,
+    isNew: boolean,
+  ) => Promise<{ ok: boolean; error?: string }>;
 };
 
-export function ListPattern({ title, data, header, variant = "default" }: Props) {
+export function ListPattern({ title, data, header, variant = "default", onPersist }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
@@ -268,15 +273,28 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
               row={inspector.selected}
               editing={inspector.editing}
               variant={variant}
-              onSave={(next) => {
+              onSave={async (next) => {
+                const wasNew = !rows.some((r) => r.id === next.id) || next.id === "";
+                // optimistic update
                 setRows((prev) => {
-                  const exists = prev.some((r) => r.id === next.id) && next.id !== "";
-                  // 신규(원본 id가 없거나 rows에 없음) → prepend, 기존 → update
-                  return exists
-                    ? prev.map((r) => (r.id === next.id ? next : r))
-                    : [next, ...prev];
+                  return wasNew
+                    ? [next, ...prev]
+                    : prev.map((r) => (r.id === next.id ? next : r));
                 });
                 inspector.close();
+                // server persist (있으면)
+                if (onPersist) {
+                  const result = await onPersist(next, wasNew);
+                  if (!result.ok) {
+                    // 실패 시 revert
+                    setRows((prev) => {
+                      return wasNew
+                        ? prev.filter((r) => r.id !== next.id)
+                        : prev.map((r) => (r.id === next.id ? r : r));
+                    });
+                    alert(`저장 실패: ${result.error ?? "알 수 없는 오류"}`);
+                  }
+                }
               }}
               onCancel={inspector.toggleEdit}
             />
