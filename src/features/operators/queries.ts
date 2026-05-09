@@ -30,6 +30,29 @@ export async function listOperators(): Promise<OperatorRow[]> {
   return parsed;
 }
 
+/**
+ * 삭제된 operators만 fetch — 별도 보기 페이지에 사용.
+ */
+export async function listDeletedOperators(): Promise<OperatorRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("operators")
+    .select("*")
+    .eq("status", "deleted")
+    .order("deleted_at", { ascending: false, nullsFirst: false });
+
+  if (error) {
+    console.error("[listDeletedOperators] supabase error:", error);
+    return [];
+  }
+  const parsed: OperatorRow[] = [];
+  for (const row of data ?? []) {
+    const r = operatorRowSchema.safeParse(row);
+    if (r.success) parsed.push(r.data);
+  }
+  return parsed;
+}
+
 export async function getOperatorById(
   id: string,
 ): Promise<OperatorRow | null> {
