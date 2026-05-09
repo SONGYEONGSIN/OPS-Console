@@ -42,7 +42,8 @@ export default function DynamicDashboardPage() {
 
   if (meta.pattern === "list") {
     const data = getPatternMockData(params.slug, "list") as { rows: ListRow[] };
-    return <ListPattern title={meta.label} data={data} header={header} />;
+    const variant = params.slug === "team" ? "team" : "default";
+    return <ListPattern title={meta.label} data={data} header={header} variant={variant} />;
   }
   if (meta.pattern === "dash") {
     const data = getPatternMockData(params.slug, "dash") as { widgets: DashWidget[] };

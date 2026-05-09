@@ -41,9 +41,11 @@ type Props = {
   title: string;
   data: { rows: ListRow[] };
   header?: React.ReactNode;
+  /** team 등 특정 슬러그에서 전용 컬럼 사용 */
+  variant?: "default" | "team";
 };
 
-export function ListPattern({ title, data, header }: Props) {
+export function ListPattern({ title, data, header, variant = "default" }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
@@ -104,44 +106,101 @@ export function ListPattern({ title, data, header }: Props) {
         </header>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                <th className="px-3 py-2">ID</th>
-                <th className="px-3 py-2">이름</th>
-                <th className="px-3 py-2">상태</th>
-                <th className="px-3 py-2">담당</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-muted">
-                    데이터 없음
-                  </td>
+          {variant === "team" ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="px-3 py-2">팀</th>
+                  <th className="px-3 py-2">이름</th>
+                  <th className="px-3 py-2">직급</th>
+                  <th className="px-3 py-2">이메일</th>
+                  <th className="px-3 py-2">상태</th>
+                  <th className="px-3 py-2 text-right">액션</th>
                 </tr>
-              ) : (
-                filteredRows.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => inspector.open(row)}
-                    className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                      inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                    }`}
-                  >
-                    <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
-                    <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
-                        {STATUS_LABEL[row.status]}
-                      </span>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
                     </td>
-                    <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
+                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">{row.meta}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
+                          {STATUS_LABEL[row.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            inspector.open(row);
+                          }}
+                          className="inline-flex items-center gap-1 border-none bg-transparent text-xs text-muted hover:text-vermilion"
+                          aria-label={`${row.name} 계정 설정`}
+                        >
+                          ⚙ 설정
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="px-3 py-2">ID</th>
+                  <th className="px-3 py-2">이름</th>
+                  <th className="px-3 py-2">상태</th>
+                  <th className="px-3 py-2">담당</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
+                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
+                          {STATUS_LABEL[row.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <p className="mt-3 text-xs text-muted">

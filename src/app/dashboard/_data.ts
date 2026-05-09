@@ -133,7 +133,7 @@ export const sidebarSections: SbSection[] = [
   {
     title: "관리",
     entries: [
-      { kind: "item", ico: "◐", label: "팀 · 권한", count: "17", slug: "team", pattern: "list" },
+      { kind: "item", ico: "◐", label: "조직 · 권한", count: "17", slug: "team", pattern: "list" },
       { kind: "item", ico: "⚙", label: "시스템 설정", slug: "settings", pattern: "settings" },
       { kind: "item", ico: "✦", label: "신규 온보딩", slug: "onboarding", pattern: "settings" },
       { kind: "item", ico: "⚒", label: "개선 요청", count: "4", slug: "feedback", pattern: "list" },
