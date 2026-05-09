@@ -51,8 +51,7 @@ function LoginPageContent() {
   return (
     <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
       <TitleBar now={now} />
-      <main className="grid h-full min-h-0 grid-cols-1 grid-rows-1 overflow-y-auto bg-cream lg:grid-cols-2">
-        <BrandPanel now={now} />
+      <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-cream">
         <AuthPanel
           mode={mode}
           setMode={setMode}
@@ -71,47 +70,22 @@ function LoginPageContent() {
 /* ════════════════════════════════════════════════════════════
    Clock — 현재 시간 포매팅 (TitleBar + BrandPanel 실시간)
    ════════════════════════════════════════════════════════════ */
-function Clock({
-  now,
-  variant,
-}: {
-  now: Date | null;
-  variant: "titlebar" | "brand-foot-date" | "brand-foot-time";
-}) {
-  if (!now) {
-    if (variant === "titlebar") return <>------ · --:-- KST</>;
-    if (variant === "brand-foot-date") return <>---- · -- · -- · -</>;
-    return <>--:-- KST</>;
-  }
+function Clock({ now }: { now: Date | null }) {
+  if (!now) return <>------ · --:-- KST</>;
   const fmt = (opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat("ko-KR", { ...opts, timeZone: "Asia/Seoul" }).format(
-      now
+      now,
     );
-  if (variant === "titlebar") {
-    const date = fmt({
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-      .replace(/\. /g, ".")
-      .replace(/\.$/, "");
-    const weekday = fmt({ weekday: "short" });
-    const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
-    return <>{`${date} · ${weekday} · ${time} KST`}</>;
-  }
-  if (variant === "brand-foot-date") {
-    const parts = new Intl.DateTimeFormat("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      weekday: "short",
-      timeZone: "Asia/Seoul",
-    }).formatToParts(now);
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    return <>{`${get("year")} · ${get("month")} · ${get("day")} · ${get("weekday")}`}</>;
-  }
+  const date = fmt({
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .replace(/\. /g, ".")
+    .replace(/\.$/, "");
+  const weekday = fmt({ weekday: "short" });
   const time = fmt({ hour: "2-digit", minute: "2-digit", hour12: false });
-  return <>{`${time} KST`}</>;
+  return <>{`${date} · ${weekday} · ${time} KST`}</>;
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -125,88 +99,8 @@ function TitleBar({ now }: { now: Date | null }) {
         운영부 상황실
       </div>
       <div className="ref text-xs text-faint tracking-[0.04em] text-right max-[479px]:text-[10px]">
-        <Clock now={now} variant="titlebar" />
+        <Clock now={now} />
       </div>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════
-   Brand panel — 낙관(seal) + 입실 카피 + 시프트 정보
-   ════════════════════════════════════════════════════════════ */
-function BrandPanel({ now }: { now: Date | null }) {
-  return (
-    <aside
-      className="
-        relative flex flex-col justify-between overflow-hidden border-line bg-cream
-        py-5 px-4
-        md:py-6 md:px-5
-        lg:py-8 lg:px-7 lg:border-r lg:border-b-0
-        max-lg:border-b
-      "
-    >
-      {/* 배경 큰 글자 워터마크 — 사용자 요청으로 제거 (2026-04-26) */}
-
-      <div className="flex items-center gap-4 max-md:gap-3">
-        <Seal />
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm uppercase tracking-[0.08em] text-muted max-[479px]:text-[10px]">
-            OPSROOM <em className="not-italic text-vermilion mx-1">·</em> v4.2.1
-          </span>
-          <span className="text-md text-ink-soft">
-            <span className="kr">운영부 상황실</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="relative z-10 max-w-[440px] max-lg:max-w-none max-md:mt-4">
-        <h1 className="mb-5 text-3xl font-semibold tracking-[-0.03em] leading-[1.15] text-ink">
-          로그인 <em className="not-italic text-vermilion font-normal mx-[0.08em]">—</em>{" "}
-          운영부
-          <span className="mt-2 block text-lg font-light tracking-[0.04em] text-muted">
-            OBSERVE · RESPOND · RESOLVE
-          </span>
-        </h1>
-        <p className="max-w-[400px] text-md leading-[1.7] text-ink-soft max-lg:max-w-[560px]">
-          12개 서비스, 17개 인프라, 8명의 온콜이 한 화면에서 움직입니다. 사번
-          또는 운영실 이메일로 입실하면 지정된 시프트 컨텍스트로 바로
-          연결됩니다.
-        </p>
-      </div>
-
-      <div className="relative z-10 flex items-end justify-between gap-5 text-xs text-muted max-md:mt-5 max-md:flex-col max-md:items-start max-md:gap-3">
-        <div className="text-xl font-light tracking-[0.22em] text-vermilion opacity-85 max-md:text-lg">
-          기록 · 응대 · 해결
-        </div>
-        <div className="flex flex-col gap-0.5 text-right max-md:text-left">
-          <span className="ref date text-md font-medium text-ink">
-            <Clock now={now} variant="brand-foot-date" />
-          </span>
-          <span className="shift">
-            <Clock now={now} variant="brand-foot-time" />
-          </span>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-/* 낙관(印章) — vermilion 원형 배지 + 외곽 링 */
-function Seal() {
-  return (
-    <div
-      className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-vermilion text-2xl font-bold tracking-[0.02em] text-cream max-md:h-12 max-md:w-12 max-md:text-lg"
-      style={{
-        // ring inset(낙관 윤곽) + 외부 그림자: Tailwind 단일 유틸로 표현 곤란
-        boxShadow:
-          "0 0 0 1px var(--vermilion-deep) inset, 0 2px 4px rgba(21, 18, 12, 0.1)",
-      }}
-    >
-      <span className="-translate-y-px">운</span>
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -inset-[5px] rounded-full border border-vermilion opacity-35"
-      />
     </div>
   );
 }
@@ -676,30 +570,57 @@ function SSOButton() {
 }
 
 /* ════════════════════════════════════════════════════════════
-   Status bar — 연결 상태 / TLS / 빌드
+   Status bar — 연결 / 서버 / TLS / 언어 / 빌드 / SHA (실값)
    ════════════════════════════════════════════════════════════ */
 function StatusBar() {
+  const isClient = typeof window !== "undefined";
+  const [online, setOnline] = useState(() => (isClient ? navigator.onLine : true));
+  const host = isClient ? window.location.hostname || "localhost" : "";
+  const secure = isClient ? window.location.protocol === "https:" : true;
+  const lang = isClient ? navigator.language.toUpperCase() : "";
+
+  useEffect(() => {
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
+
+  const buildVersion = process.env.NEXT_PUBLIC_BUILD_VERSION ?? "?";
+  const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "unknown";
+
   return (
     <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 border-t border-line bg-ink px-4 text-xs tracking-[0.02em] text-cream/75 max-md:gap-3 max-md:px-3">
       <div className="flex items-center gap-5">
         <span className="flex items-center">
-          <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-sage [box-shadow:var(--shadow-led-sage)]" />
-          <span>연결됨</span>
+          <span
+            aria-hidden
+            className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
+              online
+                ? "bg-sage [box-shadow:var(--shadow-led-sage)]"
+                : "bg-vermilion [box-shadow:var(--shadow-led-vermilion)]"
+            }`}
+          />
+          <span>{online ? "연결됨" : "오프라인"}</span>
         </span>
         <span>
           <strong className="mr-1 font-medium text-cream">서버</strong>
-          auth.opsroom.local
+          {host}
         </span>
       </div>
       <div className="flex items-center justify-center gap-5 max-md:hidden">
-        <span>TLS 1.3 · HSTS</span>
-        <span>KR / EN · UTF-8</span>
+        <span>{secure ? "TLS · HSTS" : "HTTP"}</span>
+        <span>{lang} · UTF-8</span>
       </div>
       <div className="flex items-center justify-end gap-5">
         <span className="max-[479px]:hidden">
-          <strong className="mr-1 font-medium text-cream">빌드</strong>v 4.2.1
+          <strong className="mr-1 font-medium text-cream">빌드</strong>v {buildVersion}
         </span>
-        <span className="code">sha 8c3f2a1</span>
+        <span className="code">sha {gitSha}</span>
       </div>
     </div>
   );
