@@ -222,7 +222,8 @@ function SignInForm({
 }
 
 /* ════════════════════════════════════════════════════════════
-   EmailValidationIndicator — 이메일 형식 + 운영부 화이트리스트 실시간 표시
+   EmailValidationIndicator — 이메일 형식 + 가입 가능 여부 실시간 표시.
+   메시지는 화이트리스트 정책을 직접 노출하지 않도록 일반화 (도메인 enumeration 방지).
    ════════════════════════════════════════════════════════════ */
 function EmailValidationIndicator({ value }: { value: string }) {
   if (!value) return null;
@@ -240,7 +241,7 @@ function EmailValidationIndicator({ value }: { value: string }) {
   return (
     <div className={`mt-2 text-sm font-medium ${isAllowed ? "text-sage" : "text-vermilion"}`}>
       <span className="mr-1.5">{isAllowed ? "✓" : "✗"}</span>
-      {isAllowed ? "등록된 운영부 이메일" : "허용된 이메일이 아닙니다."}
+      {isAllowed ? "가입 가능한 이메일" : "가입 불가능한 이메일입니다."}
     </div>
   );
 }
