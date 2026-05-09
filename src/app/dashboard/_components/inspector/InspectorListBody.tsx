@@ -89,20 +89,41 @@ export function InspectorListBody({
         )}
       </label>
       {isTeam && (
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">직급</span>
-          <select
-            aria-label="직급"
-            value={draft.meta ?? ""}
-            onChange={(e) => setDraft({ ...draft, meta: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          >
-            <option value="부장">부장</option>
-            <option value="팀장">팀장</option>
-            <option value="TL">TL</option>
-            <option value="매니저">매니저</option>
-          </select>
-        </label>
+        <>
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">직급</span>
+            <select
+              aria-label="직급"
+              value={draft.meta ?? ""}
+              onChange={(e) => setDraft({ ...draft, meta: e.target.value })}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            >
+              <option value="부장">부장</option>
+              <option value="팀장">팀장</option>
+              <option value="TL">TL</option>
+              <option value="매니저">매니저</option>
+            </select>
+          </label>
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">
+              직속 상사 <span className="text-faint">(미설정 시 자동)</span>
+            </span>
+            <select
+              aria-label="직속 상사"
+              value={draft.leader ?? ""}
+              onChange={(e) => setDraft({ ...draft, leader: e.target.value })}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            >
+              <option value="">자동 derive (팀장/부장)</option>
+              {OPERATORS.filter((x) => x.email !== draft.id).map((op) => (
+                <option key={op.email} value={op.name}>
+                  {op.name} · {op.role} · {op.team}
+                </option>
+              ))}
+              <option value="본부장 (외부)">본부장 (외부)</option>
+            </select>
+          </label>
+        </>
       )}
       <label className="block text-xs">
         <span className="mb-1 block text-muted">상태</span>
@@ -320,7 +341,10 @@ function TeamView({ row }: { row: ListRow }) {
         <DefList
           items={[
             { term: "소속 팀", desc: `${op.team} · ${op.department}` },
-            { term: "직속 상사", desc: leaderOf(op) },
+            {
+              term: "직속 상사",
+              desc: row.leader ? row.leader : leaderOf(op),
+            },
             { term: "팀 동료", desc: peersOf(op).join(" · ") || "-" },
           ]}
         />

@@ -11,6 +11,8 @@ export type ListRow = {
   status: "urgent" | "active" | "review" | "approved";
   owner: string;
   meta?: string;
+  /** 직속 상사 이름 — 미설정 시 leaderOf로 자동 derive (TeamView). */
+  leader?: string;
 };
 
 const STATUS_LABEL: Record<ListRow["status"], string> = {
