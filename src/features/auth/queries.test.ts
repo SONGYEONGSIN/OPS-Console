@@ -7,16 +7,31 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import { createClient } from "@/lib/supabase/server";
 
-const makeClient = (user: { email: string } | null) => ({
+const makeClient = (
+  user: { email: string } | null,
+  dbPermission: "admin" | "member" | "viewer" | null
+) => ({
   auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+  from: vi.fn(() => ({
+    select: vi.fn(() => ({
+      eq: vi.fn(() => ({
+        maybeSingle: vi
+          .fn()
+          .mockResolvedValue({
+            data: dbPermission ? { permission: dbPermission } : null,
+            error: null,
+          }),
+      })),
+    })),
+  })),
 });
 
 beforeEach(() => vi.clearAllMocks());
 
 describe("getCurrentOperator", () => {
-  it("매칭되는 OPERATORS 멤버는 풀 데이터 반환", async () => {
+  it("매칭되는 OPERATORS 멤버는 풀 데이터 + DB permission 반환", async () => {
     vi.mocked(createClient).mockResolvedValue(
-      makeClient({ email: "ys1114@jinhakapply.com" }) as never
+      makeClient({ email: "ys1114@jinhakapply.com" }, "admin") as never
     );
     const result = await getCurrentOperator();
     expect(result).not.toBeNull();
@@ -24,11 +39,20 @@ describe("getCurrentOperator", () => {
     expect(result!.role).toBe("팀장");
     expect(result!.team).toBe("운영2팀");
     expect(result!.operator).not.toBeNull();
+    expect(result!.permission).toBe("admin");
   });
 
-  it("매칭 안 되는 이메일은 fallback (email username + 관리자)", async () => {
+  it("DB에서 permission='member' 반환 → result.permission='member'", async () => {
     vi.mocked(createClient).mockResolvedValue(
-      makeClient({ email: "ysong2526@gmail.com" }) as never
+      makeClient({ email: "ys1114@jinhakapply.com" }, "member") as never
+    );
+    const result = await getCurrentOperator();
+    expect(result!.permission).toBe("member");
+  });
+
+  it("매칭 안 되는 이메일은 fallback (email username + 관리자) + permission=null", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient({ email: "ysong2526@gmail.com" }, null) as never
     );
     const result = await getCurrentOperator();
     expect(result).not.toBeNull();
@@ -36,10 +60,11 @@ describe("getCurrentOperator", () => {
     expect(result!.role).toBe("관리자");
     expect(result!.team).toBeNull();
     expect(result!.operator).toBeNull();
+    expect(result!.permission).toBeNull();
   });
 
   it("user 없음(null) → null 반환", async () => {
-    vi.mocked(createClient).mockResolvedValue(makeClient(null) as never);
+    vi.mocked(createClient).mockResolvedValue(makeClient(null, null) as never);
     const result = await getCurrentOperator();
     expect(result).toBeNull();
   });

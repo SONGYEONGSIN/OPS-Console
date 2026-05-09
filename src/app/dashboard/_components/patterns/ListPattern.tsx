@@ -4,6 +4,10 @@ import { useState } from "react";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
+import {
+  PERMISSION_LABEL,
+  type OperatorPermission,
+} from "@/features/operators/schemas";
 
 export type ListRow = {
   id: string;
@@ -22,6 +26,14 @@ export type ListRow = {
   leader?: string;
   /** 상태=deleted 일 때 사유 (operators 도메인) */
   deletedReason?: string;
+  /** team 도메인 — 시스템 권한 (admin/member/viewer) */
+  permission?: OperatorPermission;
+};
+
+const PERMISSION_COLOR: Record<OperatorPermission, string> = {
+  admin: "bg-vermilion/15 text-vermilion",
+  member: "bg-line-soft text-ink-soft",
+  viewer: "bg-ink/10 text-muted",
 };
 
 const STATUS_LABEL: Record<ListRow["status"], string> = {
@@ -85,9 +97,21 @@ type Props = {
     row: ListRow,
     isNew: boolean,
   ) => Promise<{ ok: boolean; error?: string }>;
+  /** true면 신규/편집 등 변경 액션 hide (admin 외 사용자) */
+  readOnly?: boolean;
+  /** team variant — InspectorListBody 권한 select 노출 분기용 */
+  currentUserPermission?: OperatorPermission | null;
 };
 
-export function ListPattern({ title, data, header, variant = "default", onPersist }: Props) {
+export function ListPattern({
+  title,
+  data,
+  header,
+  variant = "default",
+  onPersist,
+  readOnly = false,
+  currentUserPermission = null,
+}: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
@@ -118,7 +142,7 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-1">
-            {variant === "team" && (
+            {variant === "team" && !readOnly && (
               <button
                 type="button"
                 onClick={() => {
@@ -128,6 +152,7 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
                     status: "active",
                     owner: "운영1팀",
                     meta: "매니저",
+                    permission: "member",
                   };
                   inspector.open(blank);
                   if (!inspector.editing) inspector.toggleEdit();
@@ -178,13 +203,14 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
                   <th className="px-3 py-2">이름</th>
                   <th className="px-3 py-2">직급</th>
                   <th className="px-3 py-2">이메일</th>
+                  <th className="px-3 py-2">권한</th>
                   <th className="px-3 py-2">상태</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-6 text-center text-muted">
+                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
                       데이터 없음
                     </td>
                   </tr>
@@ -201,6 +227,17 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
                       <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
                       <td className="px-3 py-2 text-sm text-ink-soft">{row.meta}</td>
                       <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
+                      <td className="px-3 py-2">
+                        {row.permission ? (
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs ${PERMISSION_COLOR[row.permission]}`}
+                          >
+                            {PERMISSION_LABEL[row.permission]}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted">-</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
                           {STATUS_LABEL[row.status]}
@@ -290,20 +327,23 @@ export function ListPattern({ title, data, header, variant = "default", onPersis
                   <span>{STATUS_LABEL[inspector.selected.status]}</span>
                 </div>
               </div>
-              <div className="mt-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={inspector.toggleEdit}
-                  className="cursor-pointer text-xs font-medium text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
-                >
-                  {inspector.editing ? "읽기 모드" : "구성 편집"}
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={inspector.toggleEdit}
+                    className="cursor-pointer text-xs font-medium text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
+                  >
+                    {inspector.editing ? "읽기 모드" : "구성 편집"}
+                  </button>
+                </div>
+              )}
             </header>
             <InspectorListBody
               row={inspector.selected}
-              editing={inspector.editing}
+              editing={inspector.editing && !readOnly}
               variant={variant}
+              currentUserPermission={currentUserPermission}
               onSave={async (next) => {
                 const wasNew = !rows.some((r) => r.id === next.id) || next.id === "";
                 // optimistic update

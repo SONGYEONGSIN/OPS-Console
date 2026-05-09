@@ -21,6 +21,7 @@ const operator: CurrentOperator = {
   displayName: "송영신",
   role: "팀장",
   team: "운영2팀",
+  permission: "admin",
 };
 
 const alerts: DashWidget[] = [

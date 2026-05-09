@@ -79,6 +79,77 @@ describe("ListPattern", () => {
   });
 });
 
+describe("ListPattern team variant + permission", () => {
+  const teamRows: ListRow[] = [
+    {
+      id: "ys1114@jinhakapply.com",
+      name: "송영신",
+      status: "active",
+      owner: "운영2팀",
+      meta: "팀장",
+      permission: "admin",
+    },
+    {
+      id: "annooy@jinhakapply.com",
+      name: "정윤나",
+      status: "active",
+      owner: "운영1팀",
+      meta: "매니저",
+      permission: "member",
+    },
+  ];
+
+  it("team variant — 권한 컬럼에 '관리자' / '구성원' 라벨 노출", () => {
+    render(
+      <ListPattern title="조직" data={{ rows: teamRows }} variant="team" />,
+    );
+    expect(screen.getByText("관리자")).toBeInTheDocument();
+    expect(screen.getByText("구성원")).toBeInTheDocument();
+  });
+
+  it("readOnly=true — '+ 신규 계정' 버튼 hide", () => {
+    render(
+      <ListPattern
+        title="조직"
+        data={{ rows: teamRows }}
+        variant="team"
+        readOnly
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /\+ 신규 계정/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("readOnly=false — '+ 신규 계정' 버튼 보임", () => {
+    render(
+      <ListPattern
+        title="조직"
+        data={{ rows: teamRows }}
+        variant="team"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /\+ 신규 계정/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("readOnly=true + row click — '구성 편집' 버튼 hide", () => {
+    render(
+      <ListPattern
+        title="조직"
+        data={{ rows: teamRows }}
+        variant="team"
+        readOnly
+      />,
+    );
+    fireEvent.click(screen.getByText("송영신"));
+    expect(
+      screen.queryByRole("button", { name: /편집/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("ListPattern 부수 UI (Epic 4 복원)", () => {
   const fixture = {
     rows: [
