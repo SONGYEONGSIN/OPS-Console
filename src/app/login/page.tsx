@@ -167,14 +167,14 @@ function SignInForm({
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
       {oauthError && (
-        <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+        <p role="alert" className="text-xs text-vermilion">
           {oauthError}
-        </div>
+        </p>
       )}
       {state?.error && (
-        <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+        <p role="alert" className="text-xs text-vermilion">
           {state.error}
-        </div>
+        </p>
       )}
       <Field
         id="email"
@@ -311,14 +311,14 @@ function SignUpForm({
   return (
     <form action={formAction} noValidate className="flex flex-col gap-4">
       {state?.error && (
-        <div role="alert" className="border border-vermilion bg-vermilion/10 px-3 py-2 text-xs text-vermilion">
+        <p role="alert" className="text-xs text-vermilion">
           {state.error}
-        </div>
+        </p>
       )}
       {state?.info && (
-        <div role="status" className="border border-sage bg-sage/10 px-3 py-2 text-xs text-sage">
+        <p role="status" className="text-xs text-sage">
           {state.info}
-        </div>
+        </p>
       )}
       <div>
         <Field
