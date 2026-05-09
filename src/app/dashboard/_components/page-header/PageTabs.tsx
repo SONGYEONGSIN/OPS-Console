@@ -15,7 +15,7 @@ export function PageTabs({ pathname }: { pathname: string }) {
     <nav
       role="tablist"
       aria-label="열린 메뉴"
-      className="flex items-end self-end overflow-x-auto"
+      className="flex items-end self-end"
     >
       {tabs.map((tab) => {
         const active = tab.href === pathname;
@@ -24,7 +24,7 @@ export function PageTabs({ pathname }: { pathname: string }) {
             key={tab.slug}
             className={`relative flex items-center gap-2 px-5 py-2 text-sm transition-colors ${
               active
-                ? "-mb-px border-x border-t-2 border-x-line-soft border-t-vermilion bg-cream font-bold text-ink"
+                ? "-mb-px border border-t-2 border-x-line-soft border-b-cream border-t-vermilion bg-cream font-bold text-ink"
                 : "border-t-2 border-transparent text-muted hover:text-ink"
             }`}
           >
