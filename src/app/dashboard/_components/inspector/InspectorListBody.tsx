@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import type { ListRow } from "../patterns/ListPattern";
+import {
+  OPERATORS,
+  ageOf,
+  tenureLabel,
+  tenureYears,
+} from "@/features/auth/operators";
 
 type Props = {
   row: ListRow;
@@ -175,22 +181,51 @@ function ServiceView({ row }: { row: ListRow }) {
 function TeamView({ row }: { row: ListRow }) {
   const statusLabel = STATUS_LABEL[row.status];
   const statusColor = STATUS_BADGE[row.status];
+  const op = OPERATORS.find((x) => x.email === row.id);
+
+  // OPERATORS lookup 실패 시 (예: 테스트 더미 데이터) 기존 row 기반 단순 노출.
+  if (!op) {
+    return (
+      <div className="space-y-6">
+        <Section title="계정 정보">
+          <DefList
+            items={[
+              { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
+              { term: "이메일", desc: <span className="font-mono text-xs">{row.id}</span> },
+              { term: "소속 팀", desc: row.owner },
+              { term: "직급", desc: row.meta ?? "-" },
+              {
+                term: "상태",
+                desc: (
+                  <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
+                    {statusLabel}
+                  </span>
+                ),
+              },
+            ]}
+          />
+        </Section>
+      </div>
+    );
+  }
+
+  const tenure = tenureLabel(op.hiredAt);
+  const tenureY = tenureYears(op.hiredAt);
+  const age = ageOf(op.birthDate);
 
   return (
     <div className="space-y-6">
-      <Section title="계정 정보">
+      <Section title="인사 정보">
         <DefList
           items={[
-            {
-              term: "사번",
-              desc: <span className="font-mono">EMP-{row.id.slice(0, 4).toUpperCase()}</span>,
-            },
-            { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
-            { term: "이메일", desc: <span className="font-mono text-xs">{row.id}</span> },
-            { term: "소속 팀", desc: row.owner },
-            { term: "직급", desc: row.meta ?? "-" },
-            { term: "권한 레벨", desc: "L3 운영자" },
-            { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
+            { term: "사번", desc: <span className="font-mono">{op.empNo}</span> },
+            { term: "이름", desc: <strong className="font-semibold">{op.name}</strong> },
+            { term: "성별", desc: op.gender },
+            { term: "생년월일", desc: `${op.birthDate} (만 ${age}세)` },
+            { term: "본부", desc: op.division },
+            { term: "부서", desc: op.department },
+            { term: "팀", desc: op.team },
+            { term: "직급", desc: op.role },
             {
               term: "상태",
               desc: (
@@ -205,43 +240,72 @@ function TeamView({ row }: { row: ListRow }) {
 
       <Divider />
 
-      <Section title="활동 지표">
+      <Section title="근속 · 계정">
         <DefList
           items={[
-            { term: "마지막 로그인", desc: "2시간 전 · 192.168.x.x" },
+            { term: "입사일", desc: op.hiredAt },
             {
-              term: "이번 주 처리",
+              term: "근속",
               desc: (
                 <span>
-                  47건 <span className="text-sage">▲ 12% 지난주 대비</span>
+                  {tenure} <span className="text-muted">· {tenureY}년</span>
                 </span>
               ),
             },
-            { term: "평균 응답", desc: "3.2분 · 임계 5분 이내" },
-            {
-              term: "미해결",
-              desc: <strong className="font-bold text-vermilion">2건 · 24시간 초과</strong>,
-            },
-            { term: "재인증", desc: <span className="text-gold">14일 후 만료</span> },
+            { term: "이메일", desc: <span className="font-mono text-xs">{op.email}</span> },
+            { term: "권한 레벨", desc: roleToPermission(op.role) },
+            { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
           ]}
         />
       </Section>
 
       <Divider />
 
-      <Section title="조직 · 권한">
+      <Section title="조직 · 보고 라인">
         <DefList
           items={[
-            { term: "소속 팀", desc: `${row.owner} · L3 엔지니어링` },
-            { term: "직속 상사", desc: "박현주 · 운영팀장" },
-            { term: "1차 백업", desc: "김지현" },
-            { term: "접근 권한", desc: "tickets · ops-dashboard · grafana-read" },
-            { term: "권한 만료", desc: "2026-12-31" },
+            { term: "소속 팀", desc: `${op.team} · ${op.department}` },
+            { term: "직속 상사", desc: leaderOf(op) },
+            { term: "팀 동료", desc: peersOf(op).join(" · ") || "-" },
           ]}
         />
       </Section>
     </div>
   );
+}
+
+function roleToPermission(role: string): string {
+  switch (role) {
+    case "부장":
+      return "L4 관리자 · 전체 권한";
+    case "팀장":
+      return "L3 팀 관리자 · 팀 전체 권한";
+    case "TL":
+      return "L2 시니어 · 운영 + 검토";
+    case "매니저":
+      return "L1 운영자 · 운영 권한";
+    default:
+      return "L0 일반";
+  }
+}
+
+function leaderOf(op: { team: string; role: string }): string {
+  if (op.role === "부장") return "본부장 (외부)";
+  if (op.role === "팀장") {
+    const head = OPERATORS.find((x) => x.role === "부장");
+    return head ? `${head.name} · ${head.role}` : "-";
+  }
+  // 매니저/TL → 같은 팀 팀장 또는 부장
+  const tl = OPERATORS.find((x) => x.team === op.team && x.role === "팀장");
+  if (tl) return `${tl.name} · ${tl.role}`;
+  const buchang = OPERATORS.find((x) => x.role === "부장");
+  return buchang ? `${buchang.name} · ${buchang.role}` : "-";
+}
+
+function peersOf(op: { team: string; email: string }): string[] {
+  return OPERATORS.filter((x) => x.team === op.team && x.email !== op.email)
+    .slice(0, 3)
+    .map((x) => x.name);
 }
 
 /* ════════════════════════════════════════════════════════════
