@@ -8,7 +8,7 @@ export function Breadcrumb({ pathname }: { pathname: string }) {
     <nav aria-label="경로" className="flex items-center gap-1.5 pt-1 text-xs text-muted">
       {crumbs.map((crumb, i) => (
         <span key={i} className="flex items-center gap-1.5">
-          <span className={i === crumbs.length - 1 ? "font-medium text-ink" : ""}>
+          <span className={i === crumbs.length - 1 ? "font-bold text-ink" : ""}>
             {crumb.label}
           </span>
           {i < crumbs.length - 1 && (
