@@ -340,7 +340,7 @@ function TeamView({ row }: { row: ListRow }) {
       <Section title="조직 · 보고 라인">
         <DefList
           items={[
-            { term: "소속 팀", desc: `${op.team} · ${op.department}` },
+            { term: "소속 팀", desc: `${op.department} · ${op.team}` },
             {
               term: "직속 상사",
               desc: row.leader ? row.leader : leaderOf(op),
