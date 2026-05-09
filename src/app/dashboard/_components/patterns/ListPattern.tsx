@@ -32,7 +32,7 @@ export type ListRow = {
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
   admin: "bg-vermilion/15 text-vermilion",
-  member: "bg-line-soft text-ink-soft",
+  member: "bg-indigo/15 text-indigo",
   viewer: "bg-ink/10 text-muted",
 };
 
