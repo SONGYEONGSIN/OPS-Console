@@ -31,9 +31,9 @@ export type ListRow = {
 };
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
-  admin: "bg-vermilion/15 text-vermilion",
-  member: "bg-indigo/15 text-indigo",
-  viewer: "bg-ink/10 text-muted",
+  admin: "bg-vermilion/30 text-vermilion-deep font-medium",
+  member: "bg-ink/15 text-ink font-medium",
+  viewer: "bg-muted/30 text-ink-soft font-medium",
 };
 
 const STATUS_LABEL: Record<ListRow["status"], string> = {
@@ -290,9 +290,11 @@ export function ListPattern({
           )}
         </div>
 
-        <p className="mt-3 text-xs text-muted">
-          Demo · 실제 데이터 미연결
-        </p>
+        {!onPersist && (
+          <p className="mt-3 text-xs text-muted">
+            Demo · 실제 데이터 미연결
+          </p>
+        )}
         </section>
       </div>
 
