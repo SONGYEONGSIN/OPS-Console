@@ -41,7 +41,7 @@ export function ProjectPattern({
     <>
       <div
         className={`flex h-full min-h-0 flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          inspector.selected !== null ? "md:pr-[400px]" : ""
+          inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
         {header}

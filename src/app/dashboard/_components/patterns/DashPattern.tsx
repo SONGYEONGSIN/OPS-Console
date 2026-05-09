@@ -41,7 +41,7 @@ export function DashPattern({
     <>
       <div
         className={`flex min-h-0 flex-col overflow-y-auto transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          inspector.selected !== null ? "md:pr-[400px]" : ""
+          inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
         {header}

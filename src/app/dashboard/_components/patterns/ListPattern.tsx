@@ -55,7 +55,7 @@ export function ListPattern({ title, data, header }: Props) {
     <>
       <div
         className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          inspector.selected !== null ? "md:pr-[400px]" : ""
+          inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
         {header}
