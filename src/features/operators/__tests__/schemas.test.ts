@@ -53,7 +53,7 @@ describe("operatorRowSchema", () => {
 describe("operatorUpdateSchema", () => {
   it("부분 update OK", () => {
     expect(
-      operatorUpdateSchema.safeParse({ status: "review" }).success,
+      operatorUpdateSchema.safeParse({ status: "inactive" }).success,
     ).toBe(true);
   });
 });

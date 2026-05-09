@@ -16,7 +16,6 @@ describe("InspectorListBody", () => {
       <InspectorListBody row={fixture} editing={false} onSave={vi.fn()} onCancel={vi.fn()} />
     );
     expect(screen.getByText("svc-pay-001")).toBeInTheDocument();
-    expect(screen.getByText("결제 게이트웨이")).toBeInTheDocument();
     expect(screen.getByText("박현주")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
   });

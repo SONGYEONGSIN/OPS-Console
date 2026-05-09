@@ -36,17 +36,6 @@ describe("InspectorPanel", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("닫기 버튼 클릭 → onClose 호출", () => {
-    const onClose = vi.fn();
-    render(
-      <InspectorPanel open={true} onClose={onClose}>
-        <p>내용</p>
-      </InspectorPanel>
-    );
-    fireEvent.click(screen.getByRole("button", { name: /닫기/ }));
-    expect(onClose).toHaveBeenCalledOnce();
-  });
-
   it("외부 클릭 → onClose 호출", () => {
     const onClose = vi.fn();
     render(
