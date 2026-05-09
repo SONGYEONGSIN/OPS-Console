@@ -7,7 +7,8 @@ import type { SbItem } from "../../_data";
  * 항목을 반환. 시간 의존이라 핵심 항목 존재 여부 + tone만 검증.
  */
 describe("derivePageMeta", () => {
-  const labelOf = (m: { label: string }[]) => m.map((x) => x.label);
+  const labelOf = (m: { label: string }[] | undefined) =>
+    (m ?? []).map((x) => x.label);
 
   it("list 패턴 + count → count건 + 자동 새로고침 항목 포함", () => {
     const sidebarMeta: SbItem = {
@@ -22,7 +23,7 @@ describe("derivePageMeta", () => {
     expect(result.headline.accent).toBe("고객 응대");
     expect(labelOf(result.meta)).toContain("87건");
     expect(labelOf(result.meta)).toContain("자동 새로고침 30초");
-    expect(result.meta[0].tone).toBe("accent"); // 첫 항목(시프트)이 accent
+    expect(result.meta?.[0].tone).toBe("accent"); // 첫 항목(시프트)이 accent
     expect(result.description).toContain("대학 연락처 목록");
   });
 
