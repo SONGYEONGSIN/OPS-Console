@@ -67,12 +67,18 @@ export async function signUp(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
   });
 
   if (error) return { error: translateAuthError(error.message) };
+
+  // Supabase는 이미 가입된 이메일에 대해 enumeration 방지로 error 없이 응답하지만
+  // identities 배열이 비어있음 — 이 경우 실제 메일은 안 감. 명시적으로 알림.
+  if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    return { error: "이미 가입된 이메일입니다." };
+  }
 
   return { info: "확인 메일을 발송했습니다. 메일함을 확인해주세요." };
 }
