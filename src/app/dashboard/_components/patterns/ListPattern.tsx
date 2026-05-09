@@ -52,13 +52,13 @@ export function ListPattern({ title, data, header }: Props) {
     filter === "all" ? rows : rows.filter((r) => r.status === filter);
 
   return (
-    <>
+    <>        {header}
+
       <div
         className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
-        {header}
         <section className="p-7">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-baseline gap-2">

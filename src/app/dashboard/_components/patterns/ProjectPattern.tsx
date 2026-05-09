@@ -39,12 +39,12 @@ export function ProjectPattern({
 
   return (
     <>
+      {header}
       <div
         className={`flex h-full min-h-0 flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
-        {header}
         <section className="flex flex-1 min-h-0 flex-col bg-paper">
         <header className="flex items-center justify-between border-b border-line bg-washi-raised px-5 py-4 lg:px-7">
           <div className="flex items-baseline gap-4">
