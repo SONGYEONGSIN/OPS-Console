@@ -25,9 +25,11 @@ type Tab = "detail" | "improvements" | "activities";
 export function ProjectPattern({
   title,
   data,
+  header,
 }: {
   title: string;
   data: ProjectMockData;
+  header?: React.ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("detail");
   const [improvements, setImprovements] = useState(data.improvements);
@@ -37,11 +39,13 @@ export function ProjectPattern({
 
   return (
     <>
-      <section
-        className={`flex h-full min-h-0 flex-col bg-paper transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+      <div
+        className={`flex h-full min-h-0 flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[400px]" : ""
         }`}
       >
+        {header}
+        <section className="flex flex-1 min-h-0 flex-col bg-paper">
         <header className="flex items-center justify-between border-b border-line bg-washi-raised px-5 py-4 lg:px-7">
           <div className="flex items-baseline gap-4">
             <h2 className="text-lg font-semibold text-ink lg:text-xl">{title}</h2>
@@ -83,7 +87,8 @@ export function ProjectPattern({
           )}
           {tab === "activities" && <ActivitiesPanel data={data} />}
         </div>
-      </section>
+        </section>
+      </div>
 
       <InspectorPanel
         open={inspector.selected !== null}

@@ -37,7 +37,7 @@ export function InspectorPanel({ open, onClose, children }: Props) {
       ref={ref}
       role="complementary"
       aria-hidden={!open}
-      className={`fixed right-0 top-0 z-40 h-screen w-full bg-washi-raised border-l border-line transition-transform duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] [box-shadow:var(--shadow-drawer-right)] md:w-[380px] ${
+      className={`fixed right-0 top-12 bottom-6 z-40 w-full bg-washi-raised border-l border-line transition-transform duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] [box-shadow:var(--shadow-drawer-right)] md:top-[52px] md:bottom-[26px] md:w-[380px] ${
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >

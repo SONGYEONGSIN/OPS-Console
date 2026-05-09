@@ -37,9 +37,13 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "approved", label: "정상" },
 ];
 
-type Props = { title: string; data: { rows: ListRow[] } };
+type Props = {
+  title: string;
+  data: { rows: ListRow[] };
+  header?: React.ReactNode;
+};
 
-export function ListPattern({ title, data }: Props) {
+export function ListPattern({ title, data, header }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
@@ -49,11 +53,13 @@ export function ListPattern({ title, data }: Props) {
 
   return (
     <>
-      <section
-        className={`p-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+      <div
+        className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[400px]" : ""
         }`}
       >
+        {header}
+        <section className="p-7">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-baseline gap-2">
             <h2 className="text-xl font-bold text-ink">{title}</h2>
@@ -141,7 +147,8 @@ export function ListPattern({ title, data }: Props) {
         <p className="mt-3 text-xs text-muted">
           Demo · 실제 데이터 미연결
         </p>
-      </section>
+        </section>
+      </div>
 
       <InspectorPanel
         open={inspector.selected !== null}

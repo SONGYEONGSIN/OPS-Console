@@ -31,33 +31,41 @@ export default function DynamicDashboardPage() {
   const pathname = `/dashboard/${params.slug}`;
   const config = PAGE_META[params.slug] ?? derivePageMeta(params.slug, meta);
 
-  let body: React.ReactNode;
+  const header = (
+    <PageHeader
+      pathname={pathname}
+      meta={config.meta}
+      headline={config.headline}
+      description={config.description}
+    />
+  );
+
   if (meta.pattern === "list") {
     const data = getPatternMockData(params.slug, "list") as { rows: ListRow[] };
-    body = <ListPattern title={meta.label} data={data} />;
-  } else if (meta.pattern === "dash") {
-    const data = getPatternMockData(params.slug, "dash") as { widgets: DashWidget[] };
-    body = <DashPattern title={meta.label} data={data} />;
-  } else if (meta.pattern === "log") {
-    const data = getPatternMockData(params.slug, "log") as { lines: LogLine[] };
-    body = <LogPattern title={meta.label} data={data} />;
-  } else if (meta.pattern === "project") {
-    const data = getPatternMockData(params.slug, "project") as ProjectMockData;
-    body = <ProjectPattern title={meta.label} data={data} />;
-  } else {
-    const data = getPatternMockData(params.slug, "settings") as { sections: SettingsSection[] };
-    body = <SettingsPattern title={meta.label} data={data} />;
+    return <ListPattern title={meta.label} data={data} header={header} />;
   }
-
+  if (meta.pattern === "dash") {
+    const data = getPatternMockData(params.slug, "dash") as { widgets: DashWidget[] };
+    return <DashPattern title={meta.label} data={data} header={header} />;
+  }
+  if (meta.pattern === "log") {
+    const data = getPatternMockData(params.slug, "log") as { lines: LogLine[] };
+    return (
+      <div className="flex flex-col">
+        {header}
+        <LogPattern title={meta.label} data={data} />
+      </div>
+    );
+  }
+  if (meta.pattern === "project") {
+    const data = getPatternMockData(params.slug, "project") as ProjectMockData;
+    return <ProjectPattern title={meta.label} data={data} header={header} />;
+  }
+  const data = getPatternMockData(params.slug, "settings") as { sections: SettingsSection[] };
   return (
     <div className="flex flex-col">
-      <PageHeader
-        pathname={pathname}
-        meta={config.meta}
-        headline={config.headline}
-        description={config.description}
-      />
-      {body}
+      {header}
+      <SettingsPattern title={meta.label} data={data} />
     </div>
   );
 }

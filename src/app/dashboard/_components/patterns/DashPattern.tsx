@@ -28,20 +28,24 @@ const TONE_TEXT: Record<DashWidget["tone"], string> = {
 export function DashPattern({
   title,
   data,
+  header,
 }: {
   title: string;
   data: { widgets: DashWidget[] };
+  header?: React.ReactNode;
 }) {
   const [widgets, setWidgets] = useState<DashWidget[]>(data.widgets);
   const inspector = useInspectorState<DashWidget>();
 
   return (
     <>
-      <section
-        className={`min-h-0 overflow-y-auto p-5 md:p-6 lg:p-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+      <div
+        className={`flex min-h-0 flex-col overflow-y-auto transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[400px]" : ""
         }`}
       >
+        {header}
+        <section className="p-5 md:p-6 lg:p-7">
         <nav className="mb-4 flex items-center gap-2 text-xs tracking-[0.04em] text-muted">
           <span>운영부</span>
           <span className="text-faint">/</span>
@@ -72,7 +76,8 @@ export function DashPattern({
             </button>
           ))}
         </div>
-      </section>
+        </section>
+      </div>
 
       <InspectorPanel
         open={inspector.selected !== null}
