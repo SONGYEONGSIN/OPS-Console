@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
               name="email"
               type="email"
               autoComplete="email"
-              placeholder="jinhakID@jinhakapply.com"
+              placeholder="name@example.com"
               className="w-full border-none bg-transparent py-3 text-md tracking-[-0.005em] text-ink outline-none placeholder:text-faint [line-height:normal]"
             />
           </div>

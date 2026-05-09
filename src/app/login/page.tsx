@@ -176,7 +176,7 @@ function SignInForm({
         label="이메일"
         type="text"
         autoComplete="username"
-        placeholder="jinhakID@jinhakapply.com"
+        placeholder="name@example.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
@@ -320,7 +320,7 @@ function SignUpForm({
           label="이메일"
           type="email"
           autoComplete="email"
-          placeholder="jinhakID@jinhakapply.com"
+          placeholder="name@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
