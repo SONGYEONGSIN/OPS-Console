@@ -55,3 +55,10 @@ playwright/.cache/
 .claude/messages/archive/
 .claude/events.jsonl
 .claude/messages/.last-*
+
+# Claude / vibe-flow 런타임 상태 — 머신별 누적, 공유 X
+.claude/.vibe-flow.json
+.claude/budget.json
+
+# 자동 생성 백업 (타임스탬프 접미사)
+*.bak.[0-9]*
