@@ -39,6 +39,8 @@ export function InspectorListBody({
     return <ViewMode row={row} variant={variant} />;
   }
 
+  const isTeam = variant === "team";
+
   return (
     <form
       onSubmit={(e) => {
@@ -57,13 +59,66 @@ export function InspectorListBody({
         />
       </label>
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">담당</span>
+        <span className="mb-1 block text-muted">{isTeam ? "이메일" : "ID"}</span>
         <input
-          aria-label="담당"
-          value={draft.owner}
-          onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          aria-label={isTeam ? "이메일" : "ID"}
+          value={draft.id}
+          onChange={(e) => setDraft({ ...draft, id: e.target.value })}
+          className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink"
         />
+      </label>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">{isTeam ? "팀" : "담당"}</span>
+        {isTeam ? (
+          <select
+            aria-label="팀"
+            value={draft.owner}
+            onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="운영1팀">운영1팀</option>
+            <option value="운영2팀">운영2팀</option>
+          </select>
+        ) : (
+          <input
+            aria-label="담당"
+            value={draft.owner}
+            onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+        )}
+      </label>
+      {isTeam && (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">직급</span>
+          <select
+            aria-label="직급"
+            value={draft.meta ?? ""}
+            onChange={(e) => setDraft({ ...draft, meta: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="부장">부장</option>
+            <option value="팀장">팀장</option>
+            <option value="TL">TL</option>
+            <option value="매니저">매니저</option>
+          </select>
+        </label>
+      )}
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">상태</span>
+        <select
+          aria-label="상태"
+          value={draft.status}
+          onChange={(e) =>
+            setDraft({ ...draft, status: e.target.value as ListRow["status"] })
+          }
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+        >
+          <option value="active">활성</option>
+          <option value="approved">정상</option>
+          <option value="review">점검중 / 비활성</option>
+          <option value="urgent">장애 / 정지</option>
+        </select>
       </label>
       <div className="flex gap-2 pt-2">
         <button

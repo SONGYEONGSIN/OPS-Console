@@ -78,6 +78,26 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
             <span className="text-sm text-vermilion">
               {filteredRows.length}건
             </span>
+            {variant === "team" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const blank: ListRow = {
+                    id: `new-${Date.now()}@example.com`,
+                    name: "",
+                    status: "active",
+                    owner: "운영1팀",
+                    meta: "매니저",
+                  };
+                  setRows((prev) => [blank, ...prev]);
+                  inspector.open(blank);
+                  if (!inspector.editing) inspector.toggleEdit();
+                }}
+                className="ml-2 cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
+              >
+                + 신규 계정
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-1">
             {FILTERS.map((f) => {
@@ -247,13 +267,15 @@ export function ListPattern({ title, data, header, variant = "default" }: Props)
                   <span>{STATUS_LABEL[inspector.selected.status]}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={inspector.toggleEdit}
-                className="mt-3 cursor-pointer text-xs text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
-              >
-                {inspector.editing ? "읽기 모드" : "편집"}
-              </button>
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={inspector.toggleEdit}
+                  className="cursor-pointer text-xs font-medium text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
+                >
+                  {inspector.editing ? "읽기 모드" : "구성 편집"}
+                </button>
+              </div>
             </header>
             <InspectorListBody
               row={inspector.selected}
