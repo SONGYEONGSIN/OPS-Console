@@ -237,3 +237,90 @@ describe("InspectorListBody post-feedback variant — 등록자 dropdown", () =>
     );
   });
 });
+
+describe("InspectorListBody post variant — 삭제 버튼", () => {
+  const existingRow: ListRow = {
+    id: "fb-1",
+    slug: "FB-001",
+    name: "개선 요청 1",
+    status: "active",
+    owner: "",
+    author: "송영신",
+    body: "내용",
+  };
+  const newRow: ListRow = {
+    id: "",
+    name: "",
+    status: "urgent",
+    owner: "",
+    author: "",
+    body: "",
+  };
+
+  it("기존 글 편집 — '삭제' 버튼 노출", () => {
+    render(
+      <InspectorListBody
+        row={existingRow}
+        editing={true}
+        variant="post-feedback"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /삭제/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("신규 작성 — '삭제' 버튼 hide", () => {
+    render(
+      <InspectorListBody
+        row={newRow}
+        editing={true}
+        variant="post-feedback"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /삭제/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("삭제 클릭 + confirm 승인 → onSave(status='deleted') 호출", () => {
+    const onSave = vi.fn();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(
+      <InspectorListBody
+        row={existingRow}
+        editing={true}
+        variant="post-notice"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /삭제/ }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "fb-1", status: "deleted" }),
+    );
+    confirmSpy.mockRestore();
+  });
+
+  it("삭제 클릭 + confirm 거부 → onSave 미호출", () => {
+    const onSave = vi.fn();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <InspectorListBody
+        row={existingRow}
+        editing={true}
+        variant="post-feedback"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /삭제/ }));
+    expect(onSave).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+});
