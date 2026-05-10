@@ -37,6 +37,7 @@ export default async function DashboardLayout({
       appBar={<AppBar />}
       statusBar={<AuthStatusBar />}
       sections={sections}
+      me={operator}
     >
       {children}
     </DashboardShell>

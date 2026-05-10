@@ -24,6 +24,7 @@ describe("DashboardShell", () => {
         chrome={<div>CHROME_SLOT</div>}
         statusBar={<div>STATUS_BAR_SLOT</div>}
         sections={[]}
+        me={null}
       >
         <div>CHILDREN_SLOT</div>
       </DashboardShell>
@@ -42,6 +43,7 @@ describe("DashboardShell", () => {
         chrome={null}
         statusBar={null}
         sections={[]}
+        me={null}
       >
         <div />
       </DashboardShell>
@@ -56,6 +58,7 @@ describe("DashboardShell", () => {
         chrome={null}
         statusBar={null}
         sections={[]}
+        me={null}
       >
         <div />
       </DashboardShell>
