@@ -36,7 +36,21 @@ export type ListRow = {
   allowedMenus?: string[];
   /** post 도메인 — 사람 친화 글번호 (예: 'FB-001'). 없으면 id(uuid) 단축 표시. */
   slug?: string;
+  /** schedule 도메인 — 일정 분류 (shift/event/leave/training). */
+  scheduleType?: "shift" | "event" | "leave" | "training";
+  /** schedule 도메인 — ISO 8601 timestamptz */
+  start_at?: string;
+  /** schedule 도메인 — ISO 8601 timestamptz, 종료 미정 시 null/undefined */
+  end_at?: string | null;
+  /** schedule 도메인 — 종일 이벤트 여부 */
+  allDay?: boolean;
+  /** schedule 도메인 — 담당자 이메일 (팀 공통이면 null/undefined) */
+  assigneeEmail?: string | null;
+  /** schedule 도메인 — 등록자 이메일 */
+  createdByEmail?: string;
 };
+
+export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
   admin: "bg-vermilion/30 text-vermilion-deep font-medium",
@@ -129,7 +143,61 @@ const STATUS_RING: Record<ListRow["status"], string> = {
   deleted: "bg-muted",
 };
 
-type Filter = ListRow["status"] | "all";
+type Filter = ListRow["status"] | "all" | ScheduleType;
+
+const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
+  shift: "시프트",
+  event: "이벤트",
+  leave: "휴가",
+  training: "교육",
+};
+
+const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
+  shift: "bg-vermilion text-cream",
+  event: "bg-ink text-cream",
+  leave: "bg-line-soft text-muted",
+  training: "bg-washi-raised text-ink",
+};
+
+/**
+ * 일정 시각 범위를 KST 한국어로 포맷.
+ * - all_day: '5/15(목)' 또는 '5/15(목)~5/16(금)'
+ * - 같은 날짜: '5/15(목) 10:00~11:00'
+ * - 다른 날짜: '5/15 10:00 ~ 5/16 02:00'
+ */
+function formatScheduleRange(
+  start?: string,
+  end?: string | null,
+  allDay?: boolean,
+): string {
+  if (!start) return "-";
+  const tz = "Asia/Seoul";
+  const startD = new Date(start);
+  const endD = end ? new Date(end) : null;
+  const dayFmt = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: tz,
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  });
+  const timeFmt = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const isoDate = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
+  if (allDay) {
+    if (!endD || isoDate(startD) === isoDate(endD)) return dayFmt.format(startD);
+    return `${dayFmt.format(startD)} ~ ${dayFmt.format(endD)}`;
+  }
+  if (!endD) return `${dayFmt.format(startD)} ${timeFmt.format(startD)}`;
+  if (isoDate(startD) === isoDate(endD)) {
+    return `${dayFmt.format(startD)} ${timeFmt.format(startD)}~${timeFmt.format(endD)}`;
+  }
+  return `${dayFmt.format(startD)} ${timeFmt.format(startD)} ~ ${dayFmt.format(endD)} ${timeFmt.format(endD)}`;
+}
 
 const DEFAULT_FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "전체" },
@@ -162,12 +230,20 @@ const POST_NOTICE_FILTERS: { value: Filter; label: string }[] = [
   { value: "approved", label: "종료" },
 ];
 
+const SCHEDULE_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "shift", label: "시프트" },
+  { value: "event", label: "이벤트" },
+  { value: "leave", label: "휴가" },
+  { value: "training", label: "교육" },
+];
+
 type Props = {
   title: string;
   data: { rows: ListRow[] };
   header?: React.ReactNode;
   /** team 등 특정 슬러그에서 전용 컬럼 사용. post는 도메인별 라벨 분리 */
-  variant?: "default" | "team" | "post-feedback" | "post-notice";
+  variant?: "default" | "team" | "post-feedback" | "post-notice" | "schedule";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -201,7 +277,11 @@ export function ListPattern({
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
   const filteredRows =
-    filter === "all" ? rows : rows.filter((r) => r.status === filter);
+    filter === "all"
+      ? rows
+      : variant === "schedule"
+        ? rows.filter((r) => r.scheduleType === filter)
+        : rows.filter((r) => r.status === filter);
   const FILTERS =
     variant === "team"
       ? TEAM_FILTERS
@@ -209,7 +289,9 @@ export function ListPattern({
         ? POST_FEEDBACK_FILTERS
         : variant === "post-notice"
           ? POST_NOTICE_FILTERS
-          : DEFAULT_FILTERS;
+          : variant === "schedule"
+            ? SCHEDULE_FILTERS
+            : DEFAULT_FILTERS;
 
   return (
     <>        {header}
@@ -257,6 +339,20 @@ export function ListPattern({
                       owner: "",
                       body: "",
                       author: "",
+                    };
+                  } else if (variant === "schedule") {
+                    const now = new Date();
+                    const inOneHour = new Date(now.getTime() + 60 * 60 * 1000);
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "",
+                      scheduleType: "event",
+                      start_at: now.toISOString(),
+                      end_at: inOneHour.toISOString(),
+                      allDay: false,
+                      assigneeEmail: null,
                     };
                   } else {
                     blank = {
@@ -403,6 +499,53 @@ export function ListPattern({
                         <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
                       )}
                       <td className="px-3 py-2 text-xs text-muted">{row.meta ?? "-"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : variant === "schedule" ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="px-3 py-2">시각</th>
+                  <th className="px-3 py-2">타입</th>
+                  <th className="px-3 py-2">제목</th>
+                  <th className="px-3 py-2">담당</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-2 text-sm text-ink">
+                        {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.scheduleType && (
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs ${SCHEDULE_TYPE_COLOR[row.scheduleType]}`}
+                          >
+                            {SCHEDULE_TYPE_LABEL[row.scheduleType]}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">
+                        {row.owner || "팀 공통"}
+                      </td>
                     </tr>
                   ))
                 )}

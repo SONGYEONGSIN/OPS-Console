@@ -32,6 +32,8 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   },
   schedule: {
     headline: { accent: "이번 주", title: "전체 일정" },
+    description:
+      "운영부 공통 일정 — 시프트, 팀 이벤트, 휴가, 교육을 한곳에. 본인 일정은 직접 작성·수정·삭제할 수 있고, 팀 공통 일정은 admin이 관리합니다.",
   },
   handover: {
     headline: { accent: "교대", title: "인수인계" },

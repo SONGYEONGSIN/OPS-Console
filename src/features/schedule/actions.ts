@@ -2,15 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getCurrentOperator,
-  type CurrentOperator,
-} from "@/features/auth/queries";
+import { getCurrentOperator } from "@/features/auth/queries";
+import type { CurrentOperator } from "@/features/auth/queries";
 import {
   scheduleEventCreateSchema,
   scheduleEventUpdateSchema,
   type ScheduleEventRow,
 } from "./schemas";
+import { canEditScheduleEvent } from "./permission";
 
 export type ScheduleActionResult =
   | { ok: true; row: ScheduleEventRow }
@@ -26,24 +25,6 @@ function canCreate(me: CurrentOperator | null): boolean {
   if (!me) return false;
   if (me.permission === "viewer" || me.permission === null) return false;
   return true;
-}
-
-/**
- * 일정 편집 권한.
- * - admin: 모든 일정
- * - member: 본인이 created_by 또는 assignee인 일정만
- * - viewer / null: 차단
- */
-export function canEditScheduleEvent(
-  target: { created_by_email: string; assignee_email: string | null },
-  me: CurrentOperator | null,
-): boolean {
-  if (!me) return false;
-  if (me.permission === "viewer" || me.permission === null) return false;
-  if (me.permission === "admin") return true;
-  if (target.created_by_email === me.email) return true;
-  if (target.assignee_email && target.assignee_email === me.email) return true;
-  return false;
 }
 
 export async function createScheduleEvent(
