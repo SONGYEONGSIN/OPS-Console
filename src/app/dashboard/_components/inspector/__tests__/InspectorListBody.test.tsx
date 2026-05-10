@@ -175,3 +175,65 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     expect(onSave.mock.calls[0][0].allowedMenus).toContain("feedback");
   });
 });
+
+describe("InspectorListBody post-feedback variant — 등록자 dropdown", () => {
+  const feedbackRow: ListRow = {
+    id: "fb-1",
+    slug: "FB-001",
+    name: "개선 요청 1",
+    status: "active",
+    owner: "",
+    author: "송영신",
+    body: "내용",
+  };
+
+  it("post-feedback editing — 등록자가 select(combobox)로 노출", () => {
+    render(
+      <InspectorListBody
+        row={feedbackRow}
+        editing={true}
+        variant="post-feedback"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const author = screen.getByLabelText("등록자");
+    expect(author.tagName).toBe("SELECT");
+  });
+
+  it("post-feedback editing — 매니저 role 운영자도 옵션에 포함 (notice와 차별화)", () => {
+    render(
+      <InspectorListBody
+        row={feedbackRow}
+        editing={true}
+        variant="post-feedback"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    // 박시현 = 운영2팀 매니저 — feedback에서는 옵션에 있어야 함
+    expect(
+      screen.getByRole("option", { name: /박시현/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("post-feedback editing — 선택 변경 → onSave에 author 반영", () => {
+    const onSave = vi.fn();
+    render(
+      <InspectorListBody
+        row={feedbackRow}
+        editing={true}
+        variant="post-feedback"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("등록자"), {
+      target: { value: "박시현" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ author: "박시현" }),
+    );
+  });
+});

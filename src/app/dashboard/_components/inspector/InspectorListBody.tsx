@@ -87,31 +87,24 @@ export function InspectorListBody({
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">등록자</span>
-          {postVariant === "post-notice" ? (
-            <select
-              aria-label="등록자"
-              value={draft.author ?? ""}
-              onChange={(e) => setDraft({ ...draft, author: e.target.value })}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            >
-              <option value="">선택…</option>
-              {OPERATORS.filter(
-                (o) => o.role === "부장" || o.role === "팀장",
-              ).map((op) => (
-                <option key={op.email} value={op.name}>
-                  {op.name} · {op.role}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              aria-label="등록자"
-              value={draft.author ?? ""}
-              onChange={(e) => setDraft({ ...draft, author: e.target.value })}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-              placeholder="작성자 이름"
-            />
-          )}
+          <select
+            aria-label="등록자"
+            value={draft.author ?? ""}
+            onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="">선택…</option>
+            {(postVariant === "post-notice"
+              ? OPERATORS.filter(
+                  (o) => o.role === "부장" || o.role === "팀장",
+                )
+              : OPERATORS
+            ).map((op) => (
+              <option key={op.email} value={op.name}>
+                {op.name} · {op.role}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">상태</span>
