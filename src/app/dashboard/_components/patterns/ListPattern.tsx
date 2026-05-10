@@ -470,7 +470,11 @@ export function ListPattern({
         <section className="p-7">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-baseline gap-2">
-            <h2 className="text-xl font-bold text-ink">{title}</h2>
+            <h2
+              className={`${variant === "cohort" ? "text-sm font-medium" : "text-xl font-bold"} text-ink`}
+            >
+              {title}
+            </h2>
             <span className="text-muted" aria-hidden>
               ·
             </span>

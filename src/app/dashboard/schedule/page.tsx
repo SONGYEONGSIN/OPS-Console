@@ -1,6 +1,5 @@
 import { findSidebarMeta } from "../_data";
-import { PAGE_META } from "../_data/page-meta-config";
-import { derivePageMeta } from "../_data/page-meta-derive";
+import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
@@ -26,7 +25,7 @@ export default async function SchedulePage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = PAGE_META[slug] ?? derivePageMeta(slug, meta);
+  const config = resolvePageMeta(slug, meta);
 
   const events = await listScheduleEvents();
   const rows: ListRow[] = events.map(eventToListRow);
