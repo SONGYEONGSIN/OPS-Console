@@ -47,7 +47,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   onboarding: {
     headline: { accent: "관리", title: "온보딩" },
     description:
-      "신입 운영자 OJT 회차 관리. admin이 회차를 생성하고 신입·사수·기간·상태를 추적합니다. 주차별 세션 그리드는 후속에서.",
+      "탭으로 가이드·체크리스트·회차 관리·활동 로그를 한 곳에. 신입은 가이드로 학습하고, 사수·admin은 회차 탭에서 진행도를 관리합니다.",
   },
   notices: {
     headline: { accent: "운영부", title: "공지사항" },
