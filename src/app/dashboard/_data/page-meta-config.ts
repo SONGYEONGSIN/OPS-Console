@@ -40,7 +40,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "교대", title: "인수인계" },
   },
   feedback: {
-    headline: { accent: "운영부", title: "개선요청" },
+    headline: { accent: "관리", title: "개선요청" },
     description:
       "이 시스템(OPS Console)에 대한 개선 아이디어와 버그 리포트를 모읍니다. 운영 중 불편을 발견하면 자유롭게 작성해 주세요. 검토 후 처리 상태를 갱신합니다.",
   },
@@ -50,7 +50,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "탭으로 가이드·체크리스트·회차 관리·활동 로그를 한 곳에. 신입은 가이드로 학습하고, 사수·admin은 회차 탭에서 진행도를 관리합니다.",
   },
   notices: {
-    headline: { accent: "운영부", title: "공지사항" },
+    headline: { accent: "관리", title: "공지사항" },
     description:
       "운영부 전체에 전달하는 공지입니다. 시스템 정기 점검, 정책 변경, 신규 운영자 합류, 일정 조정 등 모든 공지가 한 곳에 누적됩니다. admin 권한 사용자만 작성할 수 있습니다.",
   },

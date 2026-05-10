@@ -1,6 +1,5 @@
 import { findSidebarMeta } from "../_data";
-import { PAGE_META } from "../_data/page-meta-config";
-import { derivePageMeta } from "../_data/page-meta-derive";
+import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { GuidePattern } from "../_components/patterns/GuidePattern";
 import type { GuideTab } from "../_components/patterns/GuidePattern";
@@ -34,7 +33,7 @@ export default async function OnboardingPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = PAGE_META[slug] ?? derivePageMeta(slug, meta);
+  const config = resolvePageMeta(slug, meta);
 
   const cohorts = await listCohorts();
   const cohortRows: ListRow[] = cohorts.map(cohortToListRow);

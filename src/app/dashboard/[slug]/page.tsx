@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { findSidebarMeta } from "../_data";
 import { getPatternMockData } from "../_data/patterns";
-import { PAGE_META } from "../_data/page-meta-config";
-import { derivePageMeta } from "../_data/page-meta-derive";
+import { resolvePageMeta } from "../_data/page-meta-derive";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
@@ -32,7 +31,7 @@ export default async function DynamicDashboardPage({
   await requireMenu(slug);
 
   const pathname = `/dashboard/${slug}`;
-  const config = PAGE_META[slug] ?? derivePageMeta(slug, meta);
+  const config = resolvePageMeta(slug, meta);
 
   const header = (
     <PageHeader

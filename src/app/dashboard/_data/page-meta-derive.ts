@@ -1,4 +1,5 @@
 import type { PageMetaConfig } from "./page-meta-config";
+import { PAGE_META } from "./page-meta-config";
 import type { MetaItem } from "../_components/page-header/PageMeta";
 import type { SbItem, SbPattern } from "../_data";
 import { findSidebarBreadcrumb } from "./sidebar-helpers";
@@ -20,6 +21,29 @@ export function derivePageMeta(
   const meta = derivePatternMeta(sidebarMeta.pattern, sidebarMeta.count);
   const description = derivePatternDescription(sidebarMeta.pattern, title);
   return { headline: { accent, title }, meta, description };
+}
+
+/**
+ * PAGE_META의 explicit 정의를 우선하되, meta가 비어 있으면 derivePatternMeta로
+ * 자동 채움. description도 동일 fallback.
+ *
+ * 모든 page.tsx에서 `PAGE_META[slug] ?? derivePageMeta(slug, meta)` 대신 사용 권장.
+ */
+export function resolvePageMeta(
+  slug: string,
+  sidebarMeta: SbItem & { pattern: SbPattern },
+): PageMetaConfig {
+  const explicit = PAGE_META[slug];
+  if (!explicit) return derivePageMeta(slug, sidebarMeta);
+  return {
+    headline: explicit.headline,
+    meta:
+      explicit.meta ??
+      derivePatternMeta(sidebarMeta.pattern, sidebarMeta.count),
+    description:
+      explicit.description ??
+      derivePatternDescription(sidebarMeta.pattern, sidebarMeta.label),
+  };
 }
 
 /**
@@ -49,7 +73,7 @@ function nowKR(): { shift: string; date: string } {
   return { shift, date };
 }
 
-function derivePatternMeta(
+export function derivePatternMeta(
   pattern: SbPattern | undefined,
   count: string | undefined,
 ): MetaItem[] {
