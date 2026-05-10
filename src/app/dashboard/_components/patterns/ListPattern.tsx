@@ -53,19 +53,57 @@ const STATUS_LABEL: Record<ListRow["status"], string> = {
 };
 
 /**
- * post variant 4단계 흐름 — 등록자가 글 등록(요청) → admin이 확인 → 처리중 → 처리완료.
+ * post-feedback 4단계 흐름 — 등록자가 글 등록(요청) → admin이 확인 → 처리중 → 처리완료.
  * STATUS_COLOR는 의미 일관(urgent=red 강조 / approved=muted 종료)이라 그대로 사용.
  */
-const POST_STATUS_LABEL: Record<ListRow["status"], string> = {
+const FEEDBACK_STATUS_LABEL: Record<ListRow["status"], string> = {
   urgent: "요청",
   review: "확인",
   active: "처리중",
   approved: "처리완료",
-  // post variant에서는 사용 안 함 (operators 전용)
   inactive: "보류",
   suspended: "중단",
   deleted: "삭제",
 };
+
+/**
+ * post-notice 3단계 흐름 — 긴급(우선 강조) / 활성(현재 게시 중) / 종료(지난 공지).
+ */
+const NOTICE_STATUS_LABEL: Record<ListRow["status"], string> = {
+  urgent: "긴급",
+  active: "활성",
+  approved: "종료",
+  review: "예약",
+  inactive: "보류",
+  suspended: "중단",
+  deleted: "삭제",
+};
+
+function postLabelFor(variant: "post-feedback" | "post-notice"): Record<ListRow["status"], string> {
+  return variant === "post-notice" ? NOTICE_STATUS_LABEL : FEEDBACK_STATUS_LABEL;
+}
+
+const FEEDBACK_STATUS_KEYS: ListRow["status"][] = [
+  "urgent",
+  "review",
+  "active",
+  "approved",
+];
+
+const NOTICE_STATUS_KEYS: ListRow["status"][] = ["urgent", "active", "approved"];
+
+export function postStatusKeys(
+  variant: "post-feedback" | "post-notice"
+): ListRow["status"][] {
+  return variant === "post-notice" ? NOTICE_STATUS_KEYS : FEEDBACK_STATUS_KEYS;
+}
+
+export function postStatusLabel(
+  variant: "post-feedback" | "post-notice",
+  status: ListRow["status"]
+): string {
+  return postLabelFor(variant)[status];
+}
 
 const STATUS_COLOR: Record<ListRow["status"], string> = {
   urgent: "bg-vermilion text-cream",
@@ -109,8 +147,8 @@ type Props = {
   title: string;
   data: { rows: ListRow[] };
   header?: React.ReactNode;
-  /** team 등 특정 슬러그에서 전용 컬럼 사용 */
-  variant?: "default" | "team" | "post";
+  /** team 등 특정 슬러그에서 전용 컬럼 사용. post는 도메인별 라벨 분리 */
+  variant?: "default" | "team" | "post-feedback" | "post-notice";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -181,11 +219,15 @@ export function ListPattern({
                       meta: "매니저",
                       permission: "member",
                     };
-                  } else if (variant === "post") {
+                  } else if (
+                    variant === "post-feedback" ||
+                    variant === "post-notice"
+                  ) {
                     blank = {
                       id: "",
                       name: "",
-                      status: "urgent", // 등록 시 "요청"
+                      // feedback: 등록 시 '요청', notice: '활성'으로 시작
+                      status: variant === "post-feedback" ? "urgent" : "active",
                       owner: "",
                       body: "",
                       author: "",
@@ -292,7 +334,7 @@ export function ListPattern({
                 )}
               </tbody>
             </table>
-          ) : variant === "post" ? (
+          ) : variant === "post-feedback" || variant === "post-notice" ? (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
@@ -324,7 +366,7 @@ export function ListPattern({
                       <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
-                          {POST_STATUS_LABEL[row.status]}
+                          {postStatusLabel(variant, row.status)}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-sm text-ink-soft">{row.author ?? "-"}</td>

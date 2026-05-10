@@ -37,7 +37,7 @@ export default async function NoticesPage() {
       title={meta.label}
       data={data}
       header={header}
-      variant="post"
+      variant="post-notice"
       canCreate={isAdmin}
       createLabel="+ 새 공지"
       readOnly={!isAdmin}

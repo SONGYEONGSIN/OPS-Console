@@ -12,8 +12,9 @@ import {
   PERMISSION_LABEL,
   type OperatorPermission,
 } from "@/features/operators/schemas";
+import { postStatusKeys, postStatusLabel } from "../patterns/ListPattern";
 
-type Variant = "default" | "team" | "post";
+type Variant = "default" | "team" | "post-feedback" | "post-notice";
 
 type Props = {
   row: ListRow;
@@ -49,10 +50,11 @@ export function InspectorListBody({
   }
 
   const isTeam = variant === "team";
-  const isPost = variant === "post";
+  const isPost = variant === "post-feedback" || variant === "post-notice";
+  const postVariant: "post-feedback" | "post-notice" | null = isPost ? variant : null;
   const canEditPermission = isTeam && currentUserPermission === "admin";
 
-  if (isPost) {
+  if (isPost && postVariant) {
     return (
       <form
         onSubmit={(e) => {
@@ -112,10 +114,11 @@ export function InspectorListBody({
             }
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           >
-            <option value="urgent">요청</option>
-            <option value="review">확인</option>
-            <option value="active">처리중</option>
-            <option value="approved">처리완료</option>
+            {postStatusKeys(postVariant).map((s) => (
+              <option key={s} value={s}>
+                {postStatusLabel(postVariant, s)}
+              </option>
+            ))}
           </select>
         </label>
         <div className="flex gap-2 pt-2">
@@ -316,12 +319,19 @@ function ViewMode({
   variant: Variant;
 }) {
   if (variant === "team") return <TeamView row={row} />;
-  if (variant === "post") return <PostView row={row} />;
+  if (variant === "post-feedback" || variant === "post-notice")
+    return <PostView row={row} variant={variant} />;
   return <ServiceView row={row} />;
 }
 
-function PostView({ row }: { row: ListRow }) {
-  const statusLabel = POST_STATUS_LABEL[row.status];
+function PostView({
+  row,
+  variant,
+}: {
+  row: ListRow;
+  variant: "post-feedback" | "post-notice";
+}) {
+  const statusLabel = postStatusLabel(variant, row.status);
   const statusColor = STATUS_BADGE[row.status];
 
   return (
@@ -360,15 +370,6 @@ function PostView({ row }: { row: ListRow }) {
   );
 }
 
-const POST_STATUS_LABEL: Record<ListRow["status"], string> = {
-  urgent: "요청",
-  review: "확인",
-  active: "처리중",
-  approved: "처리완료",
-  inactive: "보류",
-  suspended: "중단",
-  deleted: "삭제",
-};
 
 function ServiceView({ row }: { row: ListRow }) {
   const statusLabel = STATUS_LABEL[row.status];
