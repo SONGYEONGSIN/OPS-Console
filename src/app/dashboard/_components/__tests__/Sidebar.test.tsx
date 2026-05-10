@@ -18,7 +18,7 @@ const fixture = [
         count: "2",
         defaultOpen: true,
         items: [
-          { kind: "item" as const, ico: "·", label: "개선 요청", slug: "feedback" },
+          { kind: "item" as const, ico: "·", label: "개선요청", slug: "feedback" },
           { kind: "item" as const, ico: "·", label: "공지사항", slug: "notices" },
         ],
       },
@@ -29,7 +29,7 @@ const fixture = [
 describe("Sidebar — active sub-item bar", () => {
   it("active sub-item에 좌측 vermilion bar 노출 (mockup folio-dashboard 매칭)", () => {
     render(<Sidebar sections={fixture} open={true} onClose={() => {}} />);
-    const active = screen.getByRole("link", { name: /개선 요청/ });
+    const active = screen.getByRole("link", { name: /개선요청/ });
     const bar = active.querySelector("span[aria-hidden]");
     expect(bar).toBeTruthy();
     expect(bar?.className).toMatch(/bg-vermilion/);

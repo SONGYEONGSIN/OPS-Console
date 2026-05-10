@@ -114,7 +114,7 @@ test.describe("/dashboard/feedback — 게시판 작성/수정 흐름", () => {
     await signInAndGoto(page, "/dashboard/feedback");
 
     await expect(
-      page.getByRole("button", { name: /\+ 새 개선 요청/ }),
+      page.getByRole("button", { name: /\+ 새 개선요청/ }),
     ).toBeVisible();
 
     // 시드 글 표시 확인 (DB 연동 회귀 방어)

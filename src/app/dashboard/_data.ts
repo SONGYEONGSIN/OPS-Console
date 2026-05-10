@@ -136,7 +136,7 @@ export const sidebarSections: SbSection[] = [
       { kind: "item", ico: "◐", label: "조직 · 권한", count: "17", slug: "team", pattern: "list" },
       { kind: "item", ico: "⚙", label: "시스템 설정", slug: "settings", pattern: "settings" },
       { kind: "item", ico: "✦", label: "온보딩", slug: "onboarding", pattern: "settings" },
-      { kind: "item", ico: "⚒", label: "개선 요청", count: "4", slug: "feedback", pattern: "list" },
+      { kind: "item", ico: "⚒", label: "개선요청", count: "4", slug: "feedback", pattern: "list" },
       { kind: "item", ico: "✉", label: "공지사항", count: "3", slug: "notices", pattern: "list" },
     ],
   },
