@@ -28,7 +28,8 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   },
   "my-todo": {
     headline: { accent: "오늘", title: "내가 처리할 일" },
-    description: "마감 임박 순으로 정렬된 개인 작업 목록.",
+    description:
+      "본인 전용 todo. 우선순위와 마감을 정해 체크박스로 빠르게 완료 처리. 다른 사람은 볼 수 없으며, 본인 외 데이터는 RLS로 차단.",
   },
   schedule: {
     headline: { accent: "이번 주", title: "전체 일정" },

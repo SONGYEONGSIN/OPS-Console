@@ -203,7 +203,7 @@ function SubItemRow({
   const isActive = !!item.slug && pathname === `/dashboard/${item.slug}`;
   const href = item.slug ? `/dashboard/${item.slug}` : null;
 
-  const className = `grid w-full grid-cols-[10px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[18px] text-left text-xs transition-colors ${
+  const className = `relative grid w-full grid-cols-[10px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[18px] text-left text-xs transition-colors ${
     isActive
       ? "font-medium text-vermilion"
       : "text-muted hover:bg-sidebar-hover"
@@ -211,6 +211,12 @@ function SubItemRow({
 
   const inner = (
     <>
+      {isActive && (
+        <span
+          aria-hidden
+          className="absolute -left-px top-0 bottom-0 w-0.5 bg-vermilion"
+        />
+      )}
       <span
         className={`text-center text-2xs leading-none ${isActive ? "text-vermilion" : "text-faint"}`}
       >

@@ -307,3 +307,88 @@ describe("ListPattern schedule variant", () => {
     expect(screen.getByText("김지나 휴가")).toBeInTheDocument();
   });
 });
+
+describe("ListPattern my-todo variant", () => {
+  const todoRows: ListRow[] = [
+    {
+      id: "t-1",
+      name: "Q3 시프트 스케줄 초안",
+      status: "active",
+      owner: "",
+      priority: "high",
+      done: false,
+      dueAt: "2026-05-13T05:00:00Z",
+    },
+    {
+      id: "t-2",
+      name: "OJT 일정 작성",
+      status: "active",
+      owner: "",
+      priority: "medium",
+      done: true,
+      dueAt: null,
+    },
+  ];
+
+  it("my-todo variant — 우선순위/제목/마감/완료 헤더 노출", () => {
+    render(
+      <ListPattern
+        title="오늘 할 일"
+        data={{ rows: todoRows }}
+        variant="my-todo"
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "우선순위" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "제목" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "마감" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "완료" }),
+    ).toBeInTheDocument();
+  });
+
+  it("my-todo variant — done=true row는 line-through 적용", () => {
+    render(
+      <ListPattern
+        title="오늘 할 일"
+        data={{ rows: todoRows }}
+        variant="my-todo"
+      />,
+    );
+    const doneRow = screen.getByText("OJT 일정 작성").closest("tr");
+    expect(doneRow?.className).toMatch(/line-through/);
+  });
+
+  it("my-todo variant — '미완료' 필터 시 done=false만 노출", () => {
+    render(
+      <ListPattern
+        title="오늘 할 일"
+        data={{ rows: todoRows }}
+        variant="my-todo"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "미완료" }));
+    expect(screen.getByText("Q3 시프트 스케줄 초안")).toBeInTheDocument();
+    expect(screen.queryByText("OJT 일정 작성")).not.toBeInTheDocument();
+  });
+
+  it("my-todo variant — 체크박스 클릭은 인스펙터 안 열림 (stopPropagation)", () => {
+    render(
+      <ListPattern
+        title="오늘 할 일"
+        data={{ rows: todoRows }}
+        variant="my-todo"
+      />,
+    );
+    const checkbox = screen.getAllByRole("checkbox")[0];
+    fireEvent.click(checkbox);
+    // 인스펙터가 닫힌 상태 유지
+    const panel = screen.getByRole("complementary", { hidden: true });
+    expect(panel).toHaveAttribute("aria-hidden", "true");
+  });
+});
