@@ -32,7 +32,7 @@ export default function FeedbackPage() {
       title={meta.label}
       data={data}
       header={header}
-      variant="post"
+      variant="post-feedback"
       canCreate
       createLabel="+ 새 개선 요청"
     />
