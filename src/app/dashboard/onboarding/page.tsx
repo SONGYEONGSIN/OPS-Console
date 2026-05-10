@@ -109,7 +109,7 @@ export default async function OnboardingPage() {
       label: "회차 관리",
       children: (
         <ListPattern
-          title=""
+          title="회차 관리"
           data={{ rows: cohortRows }}
           variant="cohort"
           canCreate={isAdmin}
