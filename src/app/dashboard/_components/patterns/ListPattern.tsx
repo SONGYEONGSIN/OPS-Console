@@ -368,14 +368,17 @@ export function ListPattern({
                   <th className="px-3 py-2">제목</th>
                   <th className="px-3 py-2">상태</th>
                   <th className="px-3 py-2">등록자</th>
-                  <th className="px-3 py-2">담당</th>
+                  {variant === "post-feedback" && <th className="px-3 py-2">담당</th>}
                   <th className="px-3 py-2">작성일</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
+                    <td
+                      colSpan={variant === "post-notice" ? 5 : 6}
+                      className="px-3 py-6 text-center text-muted"
+                    >
                       데이터 없음
                     </td>
                   </tr>
@@ -396,7 +399,9 @@ export function ListPattern({
                         </span>
                       </td>
                       <td className="px-3 py-2 text-sm text-ink-soft">{row.author ?? "-"}</td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
+                      {variant === "post-feedback" && (
+                        <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
+                      )}
                       <td className="px-3 py-2 text-xs text-muted">{row.meta ?? "-"}</td>
                     </tr>
                   ))
