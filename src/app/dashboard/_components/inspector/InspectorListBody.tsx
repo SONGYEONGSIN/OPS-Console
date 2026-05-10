@@ -83,12 +83,23 @@ export function InspectorListBody({
           />
         </label>
         <label className="block text-xs">
-          <span className="mb-1 block text-muted">작성자</span>
+          <span className="mb-1 block text-muted">등록자</span>
           <input
-            aria-label="작성자"
+            aria-label="등록자"
+            value={draft.author ?? ""}
+            onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            placeholder="작성자 이름"
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">담당</span>
+          <input
+            aria-label="담당"
             value={draft.owner}
             onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            placeholder="처리 담당자"
           />
         </label>
         <label className="block text-xs">
@@ -101,10 +112,10 @@ export function InspectorListBody({
             }
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           >
-            <option value="active">진행중</option>
-            <option value="urgent">긴급</option>
-            <option value="review">검토중</option>
-            <option value="approved">완료</option>
+            <option value="urgent">요청</option>
+            <option value="review">확인</option>
+            <option value="active">처리중</option>
+            <option value="approved">처리완료</option>
           </select>
         </label>
         <div className="flex gap-2 pt-2">
@@ -310,7 +321,7 @@ function ViewMode({
 }
 
 function PostView({ row }: { row: ListRow }) {
-  const statusLabel = STATUS_LABEL[row.status];
+  const statusLabel = POST_STATUS_LABEL[row.status];
   const statusColor = STATUS_BADGE[row.status];
 
   return (
@@ -319,7 +330,8 @@ function PostView({ row }: { row: ListRow }) {
         <DefList
           items={[
             { term: "글번호", desc: <span className="font-mono">{row.id || "-"}</span> },
-            { term: "작성자", desc: row.owner || "-" },
+            { term: "등록자", desc: row.author || "-" },
+            { term: "담당", desc: row.owner || "-" },
             { term: "작성일", desc: row.meta ?? "-" },
             {
               term: "상태",
@@ -347,6 +359,16 @@ function PostView({ row }: { row: ListRow }) {
     </div>
   );
 }
+
+const POST_STATUS_LABEL: Record<ListRow["status"], string> = {
+  urgent: "요청",
+  review: "확인",
+  active: "처리중",
+  approved: "처리완료",
+  inactive: "보류",
+  suspended: "중단",
+  deleted: "삭제",
+};
 
 function ServiceView({ row }: { row: ListRow }) {
   const statusLabel = STATUS_LABEL[row.status];
