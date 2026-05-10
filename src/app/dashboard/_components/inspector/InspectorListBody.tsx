@@ -87,23 +87,31 @@ export function InspectorListBody({
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">등록자</span>
-          <input
-            aria-label="등록자"
-            value={draft.author ?? ""}
-            onChange={(e) => setDraft({ ...draft, author: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            placeholder="작성자 이름"
-          />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">담당</span>
-          <input
-            aria-label="담당"
-            value={draft.owner}
-            onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            placeholder="처리 담당자"
-          />
+          {postVariant === "post-notice" ? (
+            <select
+              aria-label="등록자"
+              value={draft.author ?? ""}
+              onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            >
+              <option value="">선택…</option>
+              {OPERATORS.filter(
+                (o) => o.role === "부장" || o.role === "팀장",
+              ).map((op) => (
+                <option key={op.email} value={op.name}>
+                  {op.name} · {op.role}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              aria-label="등록자"
+              value={draft.author ?? ""}
+              onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              placeholder="작성자 이름"
+            />
+          )}
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">상태</span>
@@ -389,9 +397,8 @@ function PostView({
       <Section title="게시글 정보">
         <DefList
           items={[
-            { term: "글번호", desc: <span className="font-mono">{row.id || "-"}</span> },
+            { term: "글번호", desc: <span className="font-mono">{row.slug ?? (row.id || "-")}</span> },
             { term: "등록자", desc: row.author || "-" },
-            { term: "담당", desc: row.owner || "-" },
             { term: "작성일", desc: row.meta ?? "-" },
             {
               term: "상태",

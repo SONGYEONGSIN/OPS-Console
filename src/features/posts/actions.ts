@@ -61,9 +61,21 @@ export async function createPost(input: unknown): Promise<PostActionResult> {
   }
 
   const supabase = await createClient();
+
+  // 자동 slug 생성 (FB-NNN / NT-NNN) — 동일 domain count + 1, 3자리 zero-pad
+  let slug = parsed.data.slug ?? null;
+  if (!slug) {
+    const { count } = await supabase
+      .from("posts")
+      .select("*", { count: "exact", head: true })
+      .eq("domain", parsed.data.domain);
+    const prefix = parsed.data.domain === "feedback" ? "FB" : "NT";
+    slug = `${prefix}-${String((count ?? 0) + 1).padStart(3, "0")}`;
+  }
+
   const { data, error } = await supabase
     .from("posts")
-    .insert(parsed.data)
+    .insert({ ...parsed.data, slug })
     .select()
     .single();
 
