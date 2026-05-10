@@ -70,8 +70,29 @@ export type ListRow = {
   invitedAt?: string | null;
   /** onboarding cohort — 신입이 초대 수락한 시각 (ISO) */
   acceptedAt?: string | null;
-  /** receivables — Excel row의 모든 columns (헤더 + display text). 인스펙터에서 풍부 표시. */
-  receivablesCells?: { headers: string[]; textValues: string[] };
+  /** receivables — Excel row의 모든 columns + 편집용 메타데이터. */
+  receivablesCells?: {
+    headers: string[];
+    textValues: string[];
+    /** 편집 가능 셀의 현재 텍스트 (편집 폼 초기값) — headers 인덱스 기준 */
+    editValues?: Record<number, string>;
+    /** Excel sheet 1-based row 번호 (PATCH cell address) */
+    sheetRowNumber?: number;
+    /** 적요(피드백) 컬럼의 원본 인덱스 (PATCH cell letter 계산) */
+    remarksColIdx?: number;
+    /** 적요 컬럼의 valid 인덱스 (UI 렌더링 분기) */
+    remarksHeaderIdx?: number;
+    /** 적요 현재 텍스트 */
+    remarks?: string;
+    /** 입금예정일 컬럼의 원본 인덱스 (PATCH cell letter 계산) */
+    dueDateColIdx?: number;
+    /** 입금예정일 컬럼의 valid 인덱스 */
+    dueDateHeaderIdx?: number;
+    /** 입금예정일 현재 텍스트 */
+    dueDate?: string;
+    /** 워크시트 이름 (PATCH URL) */
+    worksheetName?: string;
+  };
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

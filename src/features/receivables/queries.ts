@@ -10,6 +10,10 @@ export type ReceivablesSheet = {
   rows: unknown[][];
   /** Excel display text — 날짜/통화 등 표시 형식 그대로 (날짜 serial 회피) */
   rowsText: string[][];
+  /** valid index → 원본 Excel 컬럼 인덱스 매핑 (PATCH cell address 계산용) */
+  validColIdx: number[];
+  /** 헤더 행의 sheet 1-based row 번호 (PATCH cell address 계산용) */
+  headerRowNumber: number;
   rowCount: number;
   columnCount: number;
   fetchedAt: string;
@@ -106,6 +110,8 @@ export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> 
       headers: [],
       rows: [],
       rowsText: [],
+      validColIdx: [],
+      headerRowNumber: 1,
       rowCount: 0,
       columnCount: 0,
       fetchedAt: new Date().toISOString(),
@@ -139,8 +145,23 @@ export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> 
     headers,
     rows,
     rowsText,
+    validColIdx: validIdx,
+    headerRowNumber: headerIdx + 1, // 1-based row number for Excel address
     rowCount: rows.length,
     columnCount: headers.length,
     fetchedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * 컬럼 0-based 인덱스 → Excel 컬럼 letter (0→A, 25→Z, 26→AA).
+ */
+export function columnLetter(idx: number): string {
+  let n = idx;
+  let s = "";
+  while (n >= 0) {
+    s = String.fromCharCode((n % 26) + 65) + s;
+    n = Math.floor(n / 26) - 1;
+  }
+  return s;
 }

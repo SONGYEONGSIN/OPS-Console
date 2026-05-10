@@ -35,6 +35,11 @@ type Props = {
   currentUserPermission?: OperatorPermission | null;
   /** cohort variant — 초대 메일 발송/재초대 (admin only). server action wrapper. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** receivables variant — 적요 셀 PATCH server action. */
+  onUpdateRemarks?: (
+    row: ListRow,
+    newText: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
 };
 
 /**
@@ -54,6 +59,7 @@ export function InspectorListBody({
   variant = "default",
   currentUserPermission = null,
   onInvite,
+  onUpdateRemarks,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -84,6 +90,17 @@ export function InspectorListBody({
         onSave={onSave}
         onCancel={onCancel}
         onInvite={onInvite}
+      />
+    );
+  }
+
+  if (variant === "receivables") {
+    return (
+      <ReceivablesForm
+        row={draft}
+        setRow={setDraft}
+        onSave={onSave}
+        onCancel={onCancel}
       />
     );
   }
@@ -1593,6 +1610,119 @@ function CohortForm({
           </button>
         </div>
       )}
+    </form>
+  );
+}
+
+function ReceivablesForm({
+  row,
+  setRow,
+  onSave,
+  onCancel,
+}: {
+  row: ListRow;
+  setRow: (next: ListRow) => void;
+  onSave: (next: ListRow) => void;
+  onCancel: () => void;
+}) {
+  const cells = row.receivablesCells;
+  if (!cells) {
+    return (
+      <p className="text-sm text-muted">편집 가능한 셀 정보가 없습니다.</p>
+    );
+  }
+  const remarksIdx = cells.remarksHeaderIdx;
+  const dueDateIdx = cells.dueDateHeaderIdx;
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave(row);
+      }}
+      className="space-y-3"
+    >
+      <div className="border border-line-soft bg-washi-raised p-3 text-xs text-muted">
+        <p>
+          편집 가능: <strong className="text-ink">입금예정일 · 적요</strong>.
+          나머지 셀은 SharePoint 원본 그대로 표시됩니다.
+        </p>
+      </div>
+
+      <dl className="grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-xs">
+        {cells.headers.map((h, i) => {
+          const isEditable = i === remarksIdx || i === dueDateIdx;
+          const value =
+            i === remarksIdx
+              ? cells.remarks ?? ""
+              : i === dueDateIdx
+                ? cells.dueDate ?? ""
+                : cells.textValues[i] ?? "";
+
+          return (
+            <div key={i} className="contents">
+              <dt className="self-start pt-1 text-muted">{h}</dt>
+              <dd>
+                {!isEditable ? (
+                  <p className="whitespace-pre-wrap pt-1 text-sm text-ink-soft">
+                    {value || "—"}
+                  </p>
+                ) : i === remarksIdx ? (
+                  <textarea
+                    aria-label={h}
+                    value={value}
+                    onChange={(e) =>
+                      setRow({
+                        ...row,
+                        receivablesCells: {
+                          ...cells,
+                          remarks: e.target.value,
+                        },
+                      })
+                    }
+                    rows={3}
+                    className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
+                    placeholder="입금완료, 메일 발송 완료 등"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    aria-label={h}
+                    value={value}
+                    onChange={(e) =>
+                      setRow({
+                        ...row,
+                        receivablesCells: {
+                          ...cells,
+                          dueDate: e.target.value,
+                        },
+                      })
+                    }
+                    className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
+                    placeholder="2026-05-31"
+                  />
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          type="submit"
+          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+        >
+          저장
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+        >
+          취소
+        </button>
+      </div>
     </form>
   );
 }
