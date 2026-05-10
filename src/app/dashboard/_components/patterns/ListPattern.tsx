@@ -70,6 +70,8 @@ export type ListRow = {
   invitedAt?: string | null;
   /** onboarding cohort — 신입이 초대 수락한 시각 (ISO) */
   acceptedAt?: string | null;
+  /** receivables — Excel row의 모든 columns (헤더 + display text). 인스펙터에서 풍부 표시. */
+  receivablesCells?: { headers: string[]; textValues: string[] };
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -395,6 +397,12 @@ const COHORT_FILTERS: { value: Filter; label: string }[] = [
   { value: "completed", label: "완료" },
 ];
 
+const RECEIVABLES_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "active", label: "미수" },
+  { value: "approved", label: "수금" },
+];
+
 type Props = {
   title: string;
   data: { rows: ListRow[] };
@@ -407,7 +415,8 @@ type Props = {
     | "post-notice"
     | "schedule"
     | "my-todo"
-    | "cohort";
+    | "cohort"
+    | "receivables";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -457,7 +466,9 @@ export function ListPattern({
               ? MY_TODO_FILTERS
               : variant === "cohort"
                 ? COHORT_FILTERS
-                : DEFAULT_FILTERS;
+                : variant === "receivables"
+                  ? RECEIVABLES_FILTERS
+                  : DEFAULT_FILTERS;
 
   return (
     <>        {header}
@@ -749,6 +760,65 @@ export function ListPattern({
                             {inviteBadgeLabel(row.invitedAt, row.acceptedAt)}
                           </span>
                         </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : variant === "receivables" ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="whitespace-nowrap px-3 py-2">청구일자</th>
+                  <th className="whitespace-nowrap px-3 py-2">거래처</th>
+                  <th className="whitespace-nowrap px-3 py-2">거래내역</th>
+                  <th className="whitespace-nowrap px-3 py-2">운영자</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-right">청구금액</th>
+                  <th className="whitespace-nowrap px-3 py-2">입금여부</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      }`}
+                    >
+                      <td className="whitespace-nowrap px-3 py-2 text-sm text-ink-soft">
+                        {row.meta ?? "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 font-medium text-ink">
+                        {row.name || "-"}
+                      </td>
+                      <td className="max-w-xs truncate px-3 py-2 text-sm text-ink-soft">
+                        {row.body ?? "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-sm text-ink-soft">
+                        {row.owner || "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-sm text-ink">
+                        {row.author ?? "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        <span
+                          className={`inline-block px-2 py-0.5 text-xs ${
+                            row.status === "approved"
+                              ? "bg-washi-raised text-ink"
+                              : "bg-vermilion/20 text-vermilion-deep"
+                          }`}
+                        >
+                          {row.status === "approved" ? "수금" : "미수"}
+                        </span>
                       </td>
                     </tr>
                   ))

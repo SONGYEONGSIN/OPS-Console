@@ -1,0 +1,146 @@
+import "server-only";
+import { getGraphToken } from "@/lib/microsoft/auth";
+
+export type ReceivablesSheet = {
+  worksheetName: string;
+  /** 헤더 행보다 앞에 있는 메타 정보 행들 (예: [기준일], 매출채권 요약 등) */
+  metaRows: unknown[][];
+  headers: string[];
+  /** raw values — 정렬/필터/숫자 비교용 */
+  rows: unknown[][];
+  /** Excel display text — 날짜/통화 등 표시 형식 그대로 (날짜 serial 회피) */
+  rowsText: string[][];
+  rowCount: number;
+  columnCount: number;
+  fetchedAt: string;
+};
+
+/**
+ * usedRange 안에서 헤더 행을 자동 감지.
+ * 휴리스틱: 처음 10행 중 non-empty 셀 수가 가장 많은 행 (동률 시 첫 번째).
+ * 사용자 도메인 (Excel 미수채권)에는 헤더 위에 [기준일] / 매출채권 요약 같은
+ * 메타 행이 1~3개 들어있는 경우가 일반적.
+ */
+function detectHeaderIndex(values: unknown[][]): number {
+  const lookAhead = Math.min(10, values.length);
+  let bestIdx = 0;
+  let bestCount = -1;
+  for (let i = 0; i < lookAhead; i++) {
+    const count = values[i].filter(
+      (v) => v !== null && v !== undefined && String(v).trim() !== "",
+    ).length;
+    if (count > bestCount) {
+      bestCount = count;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+/**
+ * SharePoint Excel 미수채권 시트의 usedRange를 가져와 헤더/행으로 분해.
+ * - 환경변수: SHAREPOINT_RECEIVABLES_DRIVE_ID, SHAREPOINT_RECEIVABLES_ITEM_ID
+ * - 첫 번째 워크시트 자동 선택 (특정 시트 지정은 후속)
+ * - 첫 행은 헤더로 가정
+ * - 실패/없음 → null
+ */
+export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> {
+  const driveId = process.env.SHAREPOINT_RECEIVABLES_DRIVE_ID;
+  const itemId = process.env.SHAREPOINT_RECEIVABLES_ITEM_ID;
+  if (!driveId || !itemId) {
+    console.warn(
+      "[receivables] SHAREPOINT_RECEIVABLES_DRIVE_ID / SHAREPOINT_RECEIVABLES_ITEM_ID 환경 변수 누락",
+    );
+    return null;
+  }
+
+  let token: string;
+  try {
+    token = await getGraphToken();
+  } catch (e) {
+    console.error("[receivables] graph token error:", e);
+    return null;
+  }
+
+  const base = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook`;
+  const auth = { Authorization: `Bearer ${token}` };
+
+  // 1) 첫 워크시트 이름
+  const wsRes = await fetch(`${base}/worksheets?$top=1&$select=name`, {
+    headers: auth,
+  });
+  if (!wsRes.ok) {
+    console.error("[receivables] worksheets fail:", wsRes.status, await wsRes.text());
+    return null;
+  }
+  const wsJson = (await wsRes.json()) as { value?: { name: string }[] };
+  const worksheetName = wsJson.value?.[0]?.name;
+  if (!worksheetName) {
+    console.warn("[receivables] 워크시트가 비어 있습니다");
+    return null;
+  }
+
+  // 2) usedRange — 헤더 + 데이터 (text 동시 fetch: Excel display 형식 그대로)
+  const encoded = encodeURIComponent(worksheetName);
+  const rangeRes = await fetch(
+    `${base}/worksheets('${encoded}')/usedRange?$select=values,text,address,rowCount,columnCount`,
+    { headers: auth },
+  );
+  if (!rangeRes.ok) {
+    console.error("[receivables] usedRange fail:", rangeRes.status, await rangeRes.text());
+    return null;
+  }
+  const data = (await rangeRes.json()) as {
+    values?: unknown[][];
+    text?: string[][];
+    rowCount?: number;
+    columnCount?: number;
+    address?: string;
+  };
+  const values = data.values ?? [];
+  const textValues = data.text ?? [];
+  if (values.length === 0) {
+    return {
+      worksheetName,
+      metaRows: [],
+      headers: [],
+      rows: [],
+      rowsText: [],
+      rowCount: 0,
+      columnCount: 0,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  const headerIdx = detectHeaderIndex(values);
+  const metaRows = values.slice(0, headerIdx);
+  const headerRowRaw = values[headerIdx] ?? [];
+
+  // 헤더 텍스트 정리 + 빈 헤더 컬럼은 제외 (청구일자 앞·적요 뒤 무의미한 컬럼 제거)
+  const headersAll = headerRowRaw.map((h) =>
+    String(h ?? "").replace(/[\r\n]+/g, " ").trim(),
+  );
+  const validIdx: number[] = [];
+  for (let i = 0; i < headersAll.length; i++) {
+    if (headersAll[i] !== "") validIdx.push(i);
+  }
+  const headers = validIdx.map((i) => headersAll[i]);
+
+  const rawValueRows = values.slice(headerIdx + 1);
+  const rawTextRows = textValues.slice(headerIdx + 1);
+  const rows = rawValueRows.map((row) => validIdx.map((i) => row[i] ?? null));
+  const rowsText = rawTextRows.map((row) =>
+    validIdx.map((i) => String(row[i] ?? "")),
+  );
+
+  return {
+    worksheetName,
+    metaRows,
+    headers,
+    rows,
+    rowsText,
+    rowCount: rows.length,
+    columnCount: headers.length,
+    fetchedAt: new Date().toISOString(),
+  };
+}
