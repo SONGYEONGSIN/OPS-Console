@@ -87,6 +87,75 @@ describe("operatorRowSchema permission", () => {
   });
 });
 
+describe("operatorRowSchema allowed_menus", () => {
+  const baseRow = {
+    id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    email: "x@y.com",
+    name: "x",
+    team: "운영1팀",
+    role: "매니저",
+    emp_no: "1",
+    hired_at: "2024-01-01",
+    birth_date: "1990-01-01",
+    gender: "남",
+    division: "어플라이사업본부",
+    department: "운영부",
+    status: "active",
+    permission: "member",
+    leader: null,
+    created_at: "2026-05-09T00:00:00Z",
+    updated_at: "2026-05-09T00:00:00Z",
+  };
+
+  it("allowed_menus 배열 통과 + 노출", () => {
+    const r = operatorRowSchema.safeParse({
+      ...baseRow,
+      allowed_menus: ["alerts", "services", "feedback"],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.allowed_menus).toEqual([
+      "alerts",
+      "services",
+      "feedback",
+    ]);
+  });
+
+  it("allowed_menus 빈 배열 통과", () => {
+    const r = operatorRowSchema.safeParse({ ...baseRow, allowed_menus: [] });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.allowed_menus).toEqual([]);
+  });
+
+  it("allowed_menus 누락 시 default []", () => {
+    const r = operatorRowSchema.safeParse(baseRow);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.allowed_menus).toEqual([]);
+  });
+
+  it("allowed_menus 비-string 항목 거부", () => {
+    const r = operatorRowSchema.safeParse({
+      ...baseRow,
+      allowed_menus: ["alerts", 42],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("operatorUpdateSchema allowed_menus", () => {
+  it("allowed_menus만 update OK", () => {
+    expect(
+      operatorUpdateSchema.safeParse({ allowed_menus: ["team", "settings"] })
+        .success,
+    ).toBe(true);
+  });
+
+  it("allowed_menus 비-array 거부", () => {
+    expect(
+      operatorUpdateSchema.safeParse({ allowed_menus: "alerts" }).success,
+    ).toBe(false);
+  });
+});
+
 describe("operatorUpdateSchema", () => {
   it("부분 update OK", () => {
     expect(

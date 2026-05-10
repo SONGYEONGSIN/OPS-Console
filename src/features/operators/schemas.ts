@@ -48,6 +48,7 @@ export const operatorRowSchema = z.object({
   department: z.string(),
   status: operatorStatusSchema,
   permission: operatorPermissionSchema,
+  allowed_menus: z.array(z.string()).default([]),
   leader: z.string().nullable(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
@@ -68,6 +69,7 @@ export const operatorUpdateSchema = z.object({
   gender: operatorGenderSchema.optional(),
   status: operatorStatusSchema.optional(),
   permission: operatorPermissionSchema.optional(),
+  allowed_menus: z.array(z.string()).optional(),
   leader: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
@@ -86,6 +88,7 @@ export const operatorCreateSchema = z.object({
   gender: operatorGenderSchema,
   status: operatorStatusSchema.default("active"),
   permission: operatorPermissionSchema.default("member"),
+  allowed_menus: z.array(z.string()).default([]),
   leader: z.string().nullable().optional(),
 });
 

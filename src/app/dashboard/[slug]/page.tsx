@@ -1,10 +1,9 @@
-"use client";
-
-import { useParams, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { findSidebarMeta } from "../_data";
 import { getPatternMockData } from "../_data/patterns";
 import { PAGE_META } from "../_data/page-meta-config";
 import { derivePageMeta } from "../_data/page-meta-derive";
+import { requireMenu } from "@/features/auth/menu-guard";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
@@ -18,18 +17,22 @@ import { ProjectPattern } from "../_components/patterns/ProjectPattern";
 import type { ProjectMockData } from "../_data/patterns";
 
 /**
- * /dashboard/[slug] — slug → 사이드바 메타 lookup → 패턴 컴포넌트 렌더.
- *
- * 잘못된 slug는 notFound() → Next.js 404. 셸은 layout.tsx가 처리.
- * PageHeader는 PAGE_META 명시 정의 우선, 없으면 sidebar label로 fallback.
+ * /dashboard/[slug] — server component. requireMenu(slug) 가드 통과 후 패턴 렌더.
+ * 잘못된 slug → notFound(). 권한 없는 사용자 → /dashboard redirect.
  */
-export default function DynamicDashboardPage() {
-  const params = useParams<{ slug: string }>();
-  const meta = findSidebarMeta(params.slug);
+export default async function DynamicDashboardPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const meta = findSidebarMeta(slug);
   if (!meta) notFound();
 
-  const pathname = `/dashboard/${params.slug}`;
-  const config = PAGE_META[params.slug] ?? derivePageMeta(params.slug, meta);
+  await requireMenu(slug);
+
+  const pathname = `/dashboard/${slug}`;
+  const config = PAGE_META[slug] ?? derivePageMeta(slug, meta);
 
   const header = (
     <PageHeader
@@ -41,16 +44,18 @@ export default function DynamicDashboardPage() {
   );
 
   if (meta.pattern === "list") {
-    const data = getPatternMockData(params.slug, "list") as { rows: ListRow[] };
-    const variant = params.slug === "team" ? "team" : "default";
-    return <ListPattern title={meta.label} data={data} header={header} variant={variant} />;
+    const data = getPatternMockData(slug, "list") as { rows: ListRow[] };
+    const variant = slug === "team" ? "team" : "default";
+    return (
+      <ListPattern title={meta.label} data={data} header={header} variant={variant} />
+    );
   }
   if (meta.pattern === "dash") {
-    const data = getPatternMockData(params.slug, "dash") as { widgets: DashWidget[] };
+    const data = getPatternMockData(slug, "dash") as { widgets: DashWidget[] };
     return <DashPattern title={meta.label} data={data} header={header} />;
   }
   if (meta.pattern === "log") {
-    const data = getPatternMockData(params.slug, "log") as { lines: LogLine[] };
+    const data = getPatternMockData(slug, "log") as { lines: LogLine[] };
     return (
       <div className="flex flex-col">
         {header}
@@ -59,10 +64,12 @@ export default function DynamicDashboardPage() {
     );
   }
   if (meta.pattern === "project") {
-    const data = getPatternMockData(params.slug, "project") as ProjectMockData;
+    const data = getPatternMockData(slug, "project") as ProjectMockData;
     return <ProjectPattern title={meta.label} data={data} header={header} />;
   }
-  const data = getPatternMockData(params.slug, "settings") as { sections: SettingsSection[] };
+  const data = getPatternMockData(slug, "settings") as {
+    sections: SettingsSection[];
+  };
   return (
     <div className="flex flex-col">
       {header}

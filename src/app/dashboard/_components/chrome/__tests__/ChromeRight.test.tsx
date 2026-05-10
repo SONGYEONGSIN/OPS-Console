@@ -22,6 +22,7 @@ const operator: CurrentOperator = {
   role: "팀장",
   team: "운영2팀",
   permission: "admin",
+  allowedMenus: [],
 };
 
 const alerts: DashWidget[] = [

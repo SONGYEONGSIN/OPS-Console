@@ -12,12 +12,15 @@ import {
 import type { OperatorRow } from "@/features/operators/schemas";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
+import { requireMenu } from "@/features/auth/menu-guard";
 
 /**
  * /dashboard/team — 운영부 조직구성 (DB 연동, server component).
  */
 export default async function TeamPage() {
   const slug = "team";
+  await requireMenu(slug);
+
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
@@ -74,6 +77,7 @@ export default async function TeamPage() {
       role: (row.meta as OperatorRow["role"]) ?? target.role,
       status: row.status as OperatorRow["status"],
       permission: row.permission,
+      allowed_menus: row.allowedMenus,
       leader: row.leader ?? null,
       deleted_reason: isNowDeleted ? (row.deletedReason ?? null) : null,
       deleted_at: isNowDeleted ? new Date().toISOString() : null,
@@ -103,6 +107,7 @@ function operatorToListRow(op: OperatorRow): ListRow {
     meta: op.role,
     leader: op.leader ?? undefined,
     permission: op.permission,
+    allowedMenus: op.allowed_menus,
   };
 }
 

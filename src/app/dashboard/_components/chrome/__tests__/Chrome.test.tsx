@@ -13,6 +13,7 @@ const operator = {
   role: "팀장",
   team: "운영2팀" as const,
   permission: "admin" as const,
+  allowedMenus: [] as string[],
 };
 
 describe("Chrome", () => {

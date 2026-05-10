@@ -21,6 +21,8 @@ export type CurrentOperator = {
   role: string;
   team: Operator["team"] | null;
   permission: OperatorPermission | null;
+  /** 사이드바 메뉴 접근 권한 (slug 배열). admin은 빈 배열로 두고 bypass. */
+  allowedMenus: string[];
 };
 
 export async function getCurrentOperator(): Promise<CurrentOperator | null> {
@@ -32,17 +34,21 @@ export async function getCurrentOperator(): Promise<CurrentOperator | null> {
 
   const operator = OPERATORS.find((op) => op.email === user.email) ?? null;
 
-  // DB에서 permission 룩업 — JWT custom claim 미사용 정책(즉시 회수 반영).
-  // 매칭 안 되는 이메일(dev/admin)은 row 없음 → null.
+  // DB에서 permission + allowed_menus 룩업 — JWT custom claim 미사용(즉시 회수 반영).
+  // 매칭 안 되는 이메일(dev/admin)은 row 없음 → null/빈 배열.
   const { data: dbRow } = await supabase
     .from("operators")
-    .select("permission")
+    .select("permission, allowed_menus")
     .eq("email", user.email)
     .maybeSingle();
   const parsed = operatorPermissionSchema.safeParse(dbRow?.permission);
   const permission: OperatorPermission | null = parsed.success
     ? parsed.data
     : null;
+  const rawMenus = dbRow?.allowed_menus;
+  const allowedMenus: string[] = Array.isArray(rawMenus)
+    ? rawMenus.filter((s): s is string => typeof s === "string")
+    : [];
 
   return {
     email: user.email,
@@ -51,5 +57,6 @@ export async function getCurrentOperator(): Promise<CurrentOperator | null> {
     role: operator?.role ?? "관리자",
     team: operator?.team ?? null,
     permission,
+    allowedMenus,
   };
 }

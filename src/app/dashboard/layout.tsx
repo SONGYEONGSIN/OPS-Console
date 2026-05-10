@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { filterSidebarSections } from "@/features/auth/permission";
 import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
 import { AppBar } from "./_components/AppBar";
 import { Chrome } from "./_components/chrome/Chrome";
 import { DashboardShell } from "./_components/DashboardShell";
 import { getPatternMockData } from "./_data/patterns";
+import { sidebarSections } from "./_data";
 import type { DashWidget } from "./_components/patterns/DashPattern";
 
 /**
@@ -25,12 +27,16 @@ export default async function DashboardLayout({
     getPatternMockData("alerts", "dash") as { widgets: DashWidget[] }
   ).widgets;
 
+  // 사용자 권한 기반 사이드바 필터 — admin은 전체, member는 allowed_menus만
+  const sections = filterSidebarSections(sidebarSections, operator);
+
   return (
     <DashboardShell
       topBar={<AuthTitleBar />}
       chrome={<Chrome operator={operator} alerts={alerts} />}
       appBar={<AppBar />}
       statusBar={<AuthStatusBar />}
+      sections={sections}
     >
       {children}
     </DashboardShell>
