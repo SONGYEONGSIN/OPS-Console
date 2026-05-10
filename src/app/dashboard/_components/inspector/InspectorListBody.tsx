@@ -22,7 +22,8 @@ type Variant =
   | "post-notice"
   | "schedule"
   | "my-todo"
-  | "cohort";
+  | "cohort"
+  | "receivables";
 
 type Props = {
   row: ListRow;
@@ -424,7 +425,108 @@ function ViewMode({
   if (variant === "post-feedback" || variant === "post-notice")
     return <PostView row={row} variant={variant} />;
   if (variant === "cohort") return <CohortView row={row} />;
+  if (variant === "receivables") return <ReceivablesView row={row} />;
   return <ServiceView row={row} />;
+}
+
+/**
+ * 청구일자(text)로부터 오늘(KST)까지의 경과 일수.
+ * 파싱 실패 또는 미래 일자면 null.
+ */
+function elapsedDays(dateText?: string): number | null {
+  if (!dateText) return null;
+  const d = new Date(dateText.trim());
+  if (Number.isNaN(d.getTime())) return null;
+  const diff = Date.now() - d.getTime();
+  if (diff < 0) return null;
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function ReceivablesView({ row }: { row: ListRow }) {
+  const cells = row.receivablesCells;
+  const elapsed = elapsedDays(row.meta);
+  return (
+    <div className="space-y-6">
+      <Section title="기본 정보">
+        <DefList
+          items={[
+            { term: "거래처", desc: row.name || "-" },
+            { term: "청구일자", desc: row.meta ?? "-" },
+            {
+              term: "청구금액",
+              desc: (
+                <span className="font-mono text-ink">{row.author ?? "-"}</span>
+              ),
+            },
+            {
+              term: "경과일수",
+              desc:
+                elapsed === null ? (
+                  <span className="text-muted">-</span>
+                ) : (
+                  <span
+                    className={
+                      row.status === "approved"
+                        ? "text-muted"
+                        : elapsed >= 60
+                          ? "font-medium text-vermilion-deep"
+                          : elapsed >= 30
+                            ? "text-vermilion"
+                            : "text-ink"
+                    }
+                  >
+                    {elapsed}일 경과
+                  </span>
+                ),
+            },
+            {
+              term: "입금여부",
+              desc: (
+                <span
+                  className={`inline-block px-2 py-0.5 text-xs ${
+                    row.status === "approved"
+                      ? "bg-washi-raised text-ink"
+                      : "bg-vermilion/20 text-vermilion-deep"
+                  }`}
+                >
+                  {row.status === "approved" ? "수금" : "미수"}
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Section>
+
+      {row.body && (
+        <>
+          <Divider />
+          <Section title="거래내역">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+              {row.body}
+            </p>
+          </Section>
+        </>
+      )}
+
+      {cells && cells.headers.length > 0 && (
+        <>
+          <Divider />
+          <Section title="전체 컬럼 (Excel 원본)">
+            <DefList
+              items={cells.headers.map((h, i) => ({
+                term: h,
+                desc:
+                  cells.textValues[i] !== undefined &&
+                  cells.textValues[i] !== ""
+                    ? cells.textValues[i]
+                    : "—",
+              }))}
+            />
+          </Section>
+        </>
+      )}
+    </div>
+  );
 }
 
 const COHORT_STATUS_VIEW_LABEL: Record<
