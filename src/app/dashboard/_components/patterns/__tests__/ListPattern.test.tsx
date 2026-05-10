@@ -198,3 +198,41 @@ describe("ListPattern 부수 UI (Epic 4 복원)", () => {
     expect(screen.getByText(/Demo.*실제 데이터 미연결/)).toBeInTheDocument();
   });
 });
+
+describe("ListPattern post-notice variant — 담당 컬럼 제거", () => {
+  const postRow: ListRow = {
+    id: "n1",
+    slug: "NT-001",
+    name: "공지 1",
+    status: "active",
+    author: "송영신",
+    owner: "송영신 · 팀장",
+    meta: "2026.05.10",
+  };
+
+  it("post-notice — '담당' 헤더 미노출", () => {
+    render(
+      <ListPattern
+        title="공지사항"
+        data={{ rows: [postRow] }}
+        variant="post-notice"
+      />,
+    );
+    expect(
+      screen.queryByRole("columnheader", { name: "담당" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("post-feedback — '담당' 헤더 유지 (회귀 방지)", () => {
+    render(
+      <ListPattern
+        title="피드백"
+        data={{ rows: [postRow] }}
+        variant="post-feedback"
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "담당" }),
+    ).toBeInTheDocument();
+  });
+});
