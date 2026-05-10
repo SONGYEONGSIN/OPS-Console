@@ -236,3 +236,74 @@ describe("ListPattern post-notice variant — 담당 컬럼 제거", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("ListPattern schedule variant", () => {
+  const scheduleRows: ListRow[] = [
+    {
+      id: "evt-1",
+      name: "주간 운영 회의",
+      status: "active",
+      owner: "팀 공통",
+      scheduleType: "event",
+      start_at: "2026-05-15T01:00:00Z",
+      end_at: "2026-05-15T02:00:00Z",
+      meta: "2026.05.15",
+    },
+    {
+      id: "evt-2",
+      name: "김지나 휴가",
+      status: "active",
+      owner: "김지나",
+      scheduleType: "leave",
+      start_at: "2026-05-20T00:00:00Z",
+      end_at: "2026-05-20T23:59:59Z",
+    },
+  ];
+
+  it("schedule variant — 시각/타입/제목/담당 헤더 노출", () => {
+    render(
+      <ListPattern
+        title="일정"
+        data={{ rows: scheduleRows }}
+        variant="schedule"
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "시각" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "타입" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "제목" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "담당" }),
+    ).toBeInTheDocument();
+  });
+
+  it("schedule variant — 모든 행 노출 (전체 필터)", () => {
+    render(
+      <ListPattern
+        title="일정"
+        data={{ rows: scheduleRows }}
+        variant="schedule"
+      />,
+    );
+    expect(screen.getByText("주간 운영 회의")).toBeInTheDocument();
+    expect(screen.getByText("김지나 휴가")).toBeInTheDocument();
+  });
+
+  it("schedule variant — type 필터 'leave' 클릭 시 휴가만 노출", () => {
+    render(
+      <ListPattern
+        title="일정"
+        data={{ rows: scheduleRows }}
+        variant="schedule"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "휴가" }));
+    expect(screen.queryByText("주간 운영 회의")).not.toBeInTheDocument();
+    expect(screen.getByText("김지나 휴가")).toBeInTheDocument();
+  });
+});
