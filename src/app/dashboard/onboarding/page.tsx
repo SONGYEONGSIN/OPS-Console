@@ -13,6 +13,7 @@ import {
   createCohort,
   updateCohort,
   deleteCohort,
+  inviteCohortTrainee,
 } from "@/features/onboarding/actions";
 import { OPERATORS } from "@/features/auth/operators";
 import type { CohortRow } from "@/features/onboarding/schemas";
@@ -83,6 +84,14 @@ export default async function OnboardingPage() {
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
 
+  async function onInvite(
+    cohortId: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const result = await inviteCohortTrainee(cohortId);
+    return result.ok ? { ok: true } : { ok: false, error: result.error };
+  }
+
   const tabs: GuideTab[] = [
     {
       value: "guide",
@@ -100,13 +109,14 @@ export default async function OnboardingPage() {
       label: "회차 관리",
       children: (
         <ListPattern
-          title=""
+          title="회차 관리"
           data={{ rows: cohortRows }}
           variant="cohort"
           canCreate={isAdmin}
           createLabel="+ 새 회차"
           readOnly={!isAdmin}
           onPersist={onCohortPersist}
+          onInvite={isAdmin ? onInvite : undefined}
         />
       ),
     },
@@ -137,5 +147,7 @@ function cohortToListRow(c: CohortRow): ListRow {
     startDate: c.start_date,
     endDate: c.end_date ?? null,
     cohortStatus: c.status,
+    invitedAt: c.invited_at ?? null,
+    acceptedAt: c.accepted_at ?? null,
   };
 }

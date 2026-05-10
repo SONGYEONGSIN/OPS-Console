@@ -308,6 +308,72 @@ describe("ListPattern schedule variant", () => {
   });
 });
 
+describe("ListPattern cohort variant — invite 상태 뱃지", () => {
+  const baseCohort = (overrides: Partial<ListRow>): ListRow => ({
+    id: "c1",
+    name: "회차 1",
+    status: "active",
+    owner: "송영신",
+    author: "김지나",
+    cohortStatus: "in_progress",
+    startDate: "2026-05-14",
+    endDate: "2026-05-25",
+    traineeEmail: "kjn@jinhakapply.com",
+    invitedAt: null,
+    acceptedAt: null,
+    ...overrides,
+  });
+
+  it("invited_at 없음 → '미초대' 뱃지", () => {
+    render(
+      <ListPattern
+        title="회차"
+        data={{ rows: [baseCohort({ invitedAt: null, acceptedAt: null })] }}
+        variant="cohort"
+      />,
+    );
+    expect(screen.getByText("미초대")).toBeInTheDocument();
+  });
+
+  it("invited_at 있고 accepted_at 없음 → '수락 대기' 뱃지", () => {
+    render(
+      <ListPattern
+        title="회차"
+        data={{
+          rows: [
+            baseCohort({
+              invitedAt: "2026-05-10T00:00:00Z",
+              acceptedAt: null,
+            }),
+          ],
+        }}
+        variant="cohort"
+      />,
+    );
+    expect(screen.getByText("수락 대기")).toBeInTheDocument();
+  });
+
+  it("accepted_at 있음 → '수락됨' 뱃지 (또는 미표시)", () => {
+    render(
+      <ListPattern
+        title="회차"
+        data={{
+          rows: [
+            baseCohort({
+              invitedAt: "2026-05-10T00:00:00Z",
+              acceptedAt: "2026-05-12T00:00:00Z",
+            }),
+          ],
+        }}
+        variant="cohort"
+      />,
+    );
+    expect(screen.queryByText("미초대")).not.toBeInTheDocument();
+    expect(screen.queryByText("수락 대기")).not.toBeInTheDocument();
+    expect(screen.getByText("수락됨")).toBeInTheDocument();
+  });
+});
+
 describe("ListPattern my-todo variant", () => {
   const todoRows: ListRow[] = [
     {

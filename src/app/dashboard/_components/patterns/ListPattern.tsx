@@ -66,6 +66,10 @@ export type ListRow = {
   endDate?: string | null;
   /** onboarding cohort — 상태 enum */
   cohortStatus?: "planned" | "in_progress" | "completed";
+  /** onboarding cohort — 초대 메일 발송 시각 (ISO) */
+  invitedAt?: string | null;
+  /** onboarding cohort — 신입이 초대 수락한 시각 (ISO) */
+  acceptedAt?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -248,6 +252,24 @@ function kstDateKey(iso: string): string {
   );
 }
 
+function inviteBadgeLabel(
+  invitedAt?: string | null,
+  acceptedAt?: string | null,
+): string {
+  if (acceptedAt) return "수락됨";
+  if (invitedAt) return "수락 대기";
+  return "미초대";
+}
+
+function inviteBadgeClass(
+  invitedAt?: string | null,
+  acceptedAt?: string | null,
+): string {
+  if (acceptedAt) return "bg-washi-raised text-ink-soft";
+  if (invitedAt) return "bg-vermilion/20 text-vermilion-deep";
+  return "bg-line-soft text-muted";
+}
+
 /**
  * cohort 시작/종료일을 'M/D ~ M/D' 또는 'M/D ~' 로 포맷 (date-only).
  */
@@ -399,6 +421,8 @@ type Props = {
   canCreate?: boolean;
   /** 신규 버튼 라벨 (기본: team='+ 신규 계정' / 그 외='+ 새 글') */
   createLabel?: string;
+  /** cohort variant — 초대 메일 발송 (admin only). InspectorListBody로 전달. */
+  onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
 };
 
 export function ListPattern({
@@ -411,6 +435,7 @@ export function ListPattern({
   currentUserPermission = null,
   canCreate = false,
   createLabel,
+  onInvite,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -673,7 +698,7 @@ export function ListPattern({
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
                   <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">신입 / 사수</th>
+                  <th className="px-3 py-2">신입 / 교육</th>
                   <th className="px-3 py-2">기간</th>
                   <th className="px-3 py-2">상태</th>
                 </tr>
@@ -697,19 +722,29 @@ export function ListPattern({
                       <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
                       <td className="px-3 py-2 text-sm text-ink-soft">
                         {row.author || row.traineeEmail || "-"}
-                        {row.owner && <> · 사수 {row.owner}</>}
+                        {row.owner && <> · 교육 {row.owner}</>}
                       </td>
                       <td className="px-3 py-2 text-sm text-ink-soft">
                         {formatCohortRange(row.startDate, row.endDate)}
                       </td>
                       <td className="px-3 py-2">
-                        {row.cohortStatus && (
+                        <div className="flex flex-col items-start gap-1">
+                          {row.cohortStatus && (
+                            <span
+                              className={`inline-block px-2 py-0.5 text-xs ${COHORT_STATUS_COLOR[row.cohortStatus]}`}
+                            >
+                              {COHORT_STATUS_LABEL[row.cohortStatus]}
+                            </span>
+                          )}
                           <span
-                            className={`inline-block px-2 py-0.5 text-xs ${COHORT_STATUS_COLOR[row.cohortStatus]}`}
+                            className={`inline-block px-2 py-0.5 text-2xs ${inviteBadgeClass(
+                              row.invitedAt,
+                              row.acceptedAt,
+                            )}`}
                           >
-                            {COHORT_STATUS_LABEL[row.cohortStatus]}
+                            {inviteBadgeLabel(row.invitedAt, row.acceptedAt)}
                           </span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -934,6 +969,7 @@ export function ListPattern({
               editing={inspector.editing && !readOnly}
               variant={variant}
               currentUserPermission={currentUserPermission}
+              onInvite={onInvite}
               onSave={async (next) => {
                 const wasNew = !rows.some((r) => r.id === next.id) || next.id === "";
                 // optimistic update
