@@ -5,6 +5,7 @@ import type { SbSection } from "../_data";
 import { OpenTabsProvider } from "./page-header/open-tabs-context";
 import { Sidebar } from "./Sidebar";
 import { SidebarToggleProvider } from "./sidebar-toggle-context";
+import type { CurrentOperator } from "@/features/auth/queries";
 
 /**
  * DashboardShell — dashboard 클라이언트 wrapper.
@@ -17,6 +18,7 @@ export function DashboardShell({
   appBar,
   statusBar,
   sections,
+  me,
   children,
 }: {
   topBar?: React.ReactNode;
@@ -24,6 +26,7 @@ export function DashboardShell({
   appBar: React.ReactNode;
   statusBar: React.ReactNode;
   sections: SbSection[];
+  me: CurrentOperator | null;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,6 +60,7 @@ export function DashboardShell({
               sections={sections}
               open={sidebarOpen}
               onClose={closeSidebar}
+              me={me}
             />
             <div className="min-h-0 overflow-y-auto bg-cream">{children}</div>
           </div>

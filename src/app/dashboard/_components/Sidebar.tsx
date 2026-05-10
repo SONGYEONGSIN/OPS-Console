@@ -1,9 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SbSection, SbGroup, SbItem } from "../_data";
+
+const WORK_START_KST_HOUR = 9;
+const WORK_END_KST_HOUR = 18;
+
+function workProgress(now: Date): number | null {
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(now);
+  const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  const total = h * 60 + m;
+  const start = WORK_START_KST_HOUR * 60;
+  const end = WORK_END_KST_HOUR * 60;
+  if (total < start || total > end) return null;
+  return (total - start) / (end - start);
+}
 
 /**
  * 사이드바 — 데스크탑 고정 240px (1024–1279에서 200px), 1023↓에서 드로어.
@@ -15,10 +35,12 @@ export function Sidebar({
   sections,
   open,
   onClose,
+  me = null,
 }: {
   sections: SbSection[];
   open: boolean;
   onClose: () => void;
+  me?: import("@/features/auth/queries").CurrentOperator | null;
 }) {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
@@ -88,7 +110,7 @@ export function Sidebar({
         </div>
       ))}
 
-      <SidebarFooter />
+      <SidebarFooter me={me} />
     </aside>
   );
 }
@@ -173,7 +195,7 @@ function GroupBlock({
         className="-ml-4 grid w-[calc(100%+1rem)] cursor-pointer grid-cols-[18px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[22px] text-left text-md font-medium text-ink"
       >
         <span
-          className={`text-center text-2xs text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+          className={`text-center text-sm text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`}
         >
           ▸
         </span>
@@ -246,23 +268,55 @@ function SubItemRow({
   return <div className={`${className} cursor-default`}>{inner}</div>;
 }
 
-function SidebarFooter() {
+function SidebarFooter({
+  me,
+}: {
+  me: import("@/features/auth/queries").CurrentOperator | null;
+}) {
+  const [progress, setProgress] = useState<number | null>(() =>
+    workProgress(new Date()),
+  );
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setProgress(workProgress(new Date()));
+    }, 60_000); // 1분 갱신
+    return () => window.clearInterval(id);
+  }, []);
+
+  if (!me) return null;
+  const displayName = me.displayName || me.email;
+  const role = me.role;
+  const team = me.team;
+  const progressPct =
+    progress === null
+      ? 0
+      : Math.max(0, Math.min(100, Math.round(progress * 100)));
+  const workLabel =
+    progress === null ? "근무 외 시간" : `근무시간 · 09:00 ~ 18:00 KST`;
+
   return (
     <div className="mx-4 mt-5 border border-line-soft bg-washi-raised px-3.5 py-3">
       <div className="mb-1.5 flex justify-between text-3xs uppercase tracking-[0.12em] text-muted">
-        <span className="tracking-[0.04em] normal-case">현재 근무</span>
-        <strong className="font-medium text-ink">송영석 · 1차</strong>
+        <span className="tracking-[0.04em] normal-case">현재 사용자</span>
+        <strong className="font-medium text-ink">{displayName}</strong>
+      </div>
+      <div className="mb-2 text-2xs text-muted">
+        {role}
+        {team && <> · {team}</>}
       </div>
       <div className="relative h-[3px] border border-line-soft bg-sidebar">
-        {/* 일회성: 시프트 사용량 vermilion→gold 그라디언트 (토큰화 가치 낮음) */}
+        {/* 일회성: 근무시간 진행률 vermilion→gold 그라디언트 (토큰화 가치 낮음) */}
         <span
-          className="absolute inset-y-0 left-0 w-[62%]"
+          aria-hidden
+          className="absolute inset-y-0 left-0 transition-[width] duration-500"
           style={{
+            width: `${progressPct}%`,
             background: "linear-gradient(90deg, var(--vermilion), var(--gold))",
           }}
         />
       </div>
-      <div className="mt-2 text-2xs text-muted">2교대 · 14:00 ~ 22:00 KST</div>
+      <div className="mt-2 text-2xs text-muted">{workLabel}</div>
     </div>
   );
 }
