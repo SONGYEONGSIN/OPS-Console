@@ -195,7 +195,7 @@ function GroupBlock({
         className="-ml-4 grid w-[calc(100%+1rem)] cursor-pointer grid-cols-[18px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[22px] text-left text-md font-medium text-ink"
       >
         <span
-          className={`text-center text-2xs text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+          className={`text-center text-sm text-muted transition-transform duration-200 ${open ? "rotate-90" : ""}`}
         >
           ▸
         </span>
