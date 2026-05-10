@@ -147,6 +147,21 @@ const TEAM_FILTERS: { value: Filter; label: string }[] = [
   { value: "deleted", label: "삭제" },
 ];
 
+const POST_FEEDBACK_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "urgent", label: "요청" },
+  { value: "review", label: "확인" },
+  { value: "active", label: "처리중" },
+  { value: "approved", label: "처리완료" },
+];
+
+const POST_NOTICE_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "urgent", label: "긴급" },
+  { value: "active", label: "활성" },
+  { value: "approved", label: "종료" },
+];
+
 type Props = {
   title: string;
   data: { rows: ListRow[] };
@@ -187,7 +202,14 @@ export function ListPattern({
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
   const filteredRows =
     filter === "all" ? rows : rows.filter((r) => r.status === filter);
-  const FILTERS = variant === "team" ? TEAM_FILTERS : DEFAULT_FILTERS;
+  const FILTERS =
+    variant === "team"
+      ? TEAM_FILTERS
+      : variant === "post-feedback"
+        ? POST_FEEDBACK_FILTERS
+        : variant === "post-notice"
+          ? POST_NOTICE_FILTERS
+          : DEFAULT_FILTERS;
 
   return (
     <>        {header}
