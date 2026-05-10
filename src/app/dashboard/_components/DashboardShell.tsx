@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { sidebarSections } from "../_data";
+import type { SbSection } from "../_data";
 import { OpenTabsProvider } from "./page-header/open-tabs-context";
 import { Sidebar } from "./Sidebar";
 import { SidebarToggleProvider } from "./sidebar-toggle-context";
@@ -9,19 +9,21 @@ import { SidebarToggleProvider } from "./sidebar-toggle-context";
 /**
  * DashboardShell — dashboard 클라이언트 wrapper.
  * sidebar drawer state + ESC + body scroll lock + Scrim 만 담당.
- * topBar / chrome / appBar / statusBar / children 은 server에서 props로 주입.
+ * topBar / chrome / appBar / statusBar / children + sections 은 server에서 props로 주입.
  */
 export function DashboardShell({
   topBar,
   chrome,
   appBar,
   statusBar,
+  sections,
   children,
 }: {
   topBar?: React.ReactNode;
   chrome: React.ReactNode;
   appBar: React.ReactNode;
   statusBar: React.ReactNode;
+  sections: SbSection[];
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -52,7 +54,7 @@ export function DashboardShell({
           {chrome}
           <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
             <Sidebar
-              sections={sidebarSections}
+              sections={sections}
               open={sidebarOpen}
               onClose={closeSidebar}
             />

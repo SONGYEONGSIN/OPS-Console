@@ -7,6 +7,7 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import { getPatternMockData } from "../_data/patterns";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
+import { requireMenu } from "@/features/auth/menu-guard";
 
 /**
  * /dashboard/notices — 운영부 공지사항 게시판 (mock).
@@ -14,6 +15,8 @@ import { canEditOperators } from "@/features/auth/permission";
  */
 export default async function NoticesPage() {
   const slug = "notices";
+  await requireMenu(slug);
+
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;

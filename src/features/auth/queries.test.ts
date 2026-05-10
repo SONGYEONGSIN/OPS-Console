@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 
 const makeClient = (
   user: { email: string } | null,
-  dbPermission: "admin" | "member" | "viewer" | null
+  dbPermission: "admin" | "member" | "viewer" | null,
+  allowedMenus: string[] = []
 ) => ({
   auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
   from: vi.fn(() => ({
@@ -18,7 +19,9 @@ const makeClient = (
         maybeSingle: vi
           .fn()
           .mockResolvedValue({
-            data: dbPermission ? { permission: dbPermission } : null,
+            data: dbPermission
+              ? { permission: dbPermission, allowed_menus: allowedMenus }
+              : null,
             error: null,
           }),
       })),
@@ -67,5 +70,24 @@ describe("getCurrentOperator", () => {
     vi.mocked(createClient).mockResolvedValue(makeClient(null, null) as never);
     const result = await getCurrentOperator();
     expect(result).toBeNull();
+  });
+
+  it("DB allowed_menus 배열 반환 → result.allowedMenus 노출", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient({ email: "ys1114@jinhakapply.com" }, "member", [
+        "alerts",
+        "services",
+      ]) as never
+    );
+    const result = await getCurrentOperator();
+    expect(result!.allowedMenus).toEqual(["alerts", "services"]);
+  });
+
+  it("매칭 안 되는 이메일 — allowedMenus 빈 배열 fallback", async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient({ email: "dev@example.com" }, null) as never
+    );
+    const result = await getCurrentOperator();
+    expect(result!.allowedMenus).toEqual([]);
   });
 });

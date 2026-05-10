@@ -13,6 +13,7 @@ import {
   type OperatorPermission,
 } from "@/features/operators/schemas";
 import { postStatusKeys, postStatusLabel } from "../patterns/ListPattern";
+import { sidebarSections, type SbItem } from "../../_data";
 
 type Variant = "default" | "team" | "post-feedback" | "post-notice";
 
@@ -270,6 +271,55 @@ export function InspectorListBody({
             <option value="viewer">뷰어 (viewer)</option>
           </select>
         </label>
+      )}
+      {canEditPermission && (
+        <fieldset className="block text-xs">
+          <legend className="mb-1 block text-muted">메뉴 권한</legend>
+          <div className="space-y-3 border border-line bg-cream p-2">
+            {sidebarSections.map((section) => {
+              const items: SbItem[] = section.entries
+                .flatMap<SbItem>((e) =>
+                  e.kind === "item" ? [e] : e.items
+                )
+                .filter((it) => !!it.slug);
+              if (items.length === 0) return null;
+              return (
+                <div key={section.title}>
+                  <p className="mb-1 text-2xs uppercase tracking-[0.18em] text-muted">
+                    {section.title}
+                  </p>
+                  <div className="grid grid-cols-2 gap-1">
+                    {items.map((it) => {
+                      const slug = it.slug!;
+                      const checked = (draft.allowedMenus ?? []).includes(slug);
+                      return (
+                        <label
+                          key={slug}
+                          className="flex items-center gap-1.5 text-ink"
+                        >
+                          <input
+                            type="checkbox"
+                            aria-label={slug}
+                            checked={checked}
+                            onChange={(e) => {
+                              const current = draft.allowedMenus ?? [];
+                              const next = e.target.checked
+                                ? [...current, slug]
+                                : current.filter((s) => s !== slug);
+                              setDraft({ ...draft, allowedMenus: next });
+                            }}
+                            className="h-3.5 w-3.5"
+                          />
+                          <span className="truncate">{it.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </fieldset>
       )}
       {isTeam && draft.status === "deleted" && (
         <label className="block text-xs">

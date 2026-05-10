@@ -5,13 +5,15 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { getPatternMockData } from "../_data/patterns";
+import { requireMenu } from "@/features/auth/menu-guard";
 
 /**
  * /dashboard/feedback — 시스템 개선 요청 게시판 (mock).
  * 운영부 전원이 작성 가능. DB 영구 저장은 후속 epic.
  */
-export default function FeedbackPage() {
+export default async function FeedbackPage() {
   const slug = "feedback";
+  await requireMenu(slug);
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;

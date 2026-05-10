@@ -15,7 +15,32 @@ vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
-import { requireAdmin, canEditOperators } from "../permission";
+import {
+  requireAdmin,
+  canEditOperators,
+  canViewMenu,
+  filterSidebarSections,
+} from "../permission";
+import type { SbSection } from "@/app/dashboard/_data";
+
+const ME_ADMIN = {
+  email: "admin@x.com",
+  displayName: "admin",
+  role: "팀장",
+  team: "운영2팀" as const,
+  operator: null,
+  permission: "admin" as const,
+  allowedMenus: [] as string[],
+};
+const ME_MEMBER = {
+  email: "m@x.com",
+  displayName: "m",
+  role: "매니저",
+  team: "운영1팀" as const,
+  operator: null,
+  permission: "member" as const,
+  allowedMenus: ["alerts", "feedback"],
+};
 
 beforeEach(() => {
   mockGetCurrentOperator.mockReset();
@@ -80,6 +105,77 @@ describe("requireAdmin", () => {
     mockGetCurrentOperator.mockResolvedValue(null);
     await expect(requireAdmin()).rejects.toThrow("REDIRECT_CALLED");
     expect(mockRedirect).toHaveBeenCalledWith("/login");
+  });
+});
+
+describe("canViewMenu", () => {
+  it("admin은 모든 slug true", () => {
+    expect(canViewMenu("team", ME_ADMIN)).toBe(true);
+    expect(canViewMenu("settings", ME_ADMIN)).toBe(true);
+    expect(canViewMenu("anything", ME_ADMIN)).toBe(true);
+  });
+
+  it("member는 allowedMenus 안에 있으면 true", () => {
+    expect(canViewMenu("alerts", ME_MEMBER)).toBe(true);
+    expect(canViewMenu("feedback", ME_MEMBER)).toBe(true);
+  });
+
+  it("member는 allowedMenus 밖이면 false", () => {
+    expect(canViewMenu("team", ME_MEMBER)).toBe(false);
+    expect(canViewMenu("settings", ME_MEMBER)).toBe(false);
+  });
+
+  it("operator=null(비로그인) → false", () => {
+    expect(canViewMenu("alerts", null)).toBe(false);
+  });
+});
+
+describe("filterSidebarSections", () => {
+  const sections: SbSection[] = [
+    {
+      title: "개요",
+      entries: [
+        { kind: "item", ico: "◉", label: "실시간 현황" },
+        { kind: "item", ico: "✦", label: "알림", slug: "alerts" },
+        { kind: "item", ico: "✦", label: "팀", slug: "team" },
+      ],
+    },
+    {
+      title: "그룹",
+      entries: [
+        {
+          kind: "group",
+          label: "프로젝트",
+          items: [
+            { ico: "·", label: "PIMS", slug: "pims" },
+            { ico: "·", label: "K12", slug: "k12" },
+          ],
+        },
+      ],
+    },
+  ];
+
+  it("admin은 전체 보존", () => {
+    const result = filterSidebarSections(sections, ME_ADMIN);
+    expect(result).toEqual(sections);
+  });
+
+  it("member: allowedMenus만 통과 + slug 없는 item 보존", () => {
+    const result = filterSidebarSections(sections, ME_MEMBER);
+    expect(result[0].entries).toHaveLength(2);
+    expect(result[0].entries[1]).toMatchObject({ slug: "alerts" });
+  });
+
+  it("member: 빈 group은 group 자체 hide", () => {
+    const result = filterSidebarSections(sections, ME_MEMBER);
+    const projectSection = result.find((s) => s.title === "그룹");
+    expect(projectSection?.entries).toHaveLength(0);
+  });
+
+  it("비로그인(null) → slug 없는 entry만 통과", () => {
+    const result = filterSidebarSections(sections, null);
+    expect(result[0].entries).toHaveLength(1);
+    expect(result[1].entries).toHaveLength(0);
   });
 });
 

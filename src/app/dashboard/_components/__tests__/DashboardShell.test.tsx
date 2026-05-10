@@ -23,6 +23,7 @@ describe("DashboardShell", () => {
         appBar={<div>APP_BAR_SLOT</div>}
         chrome={<div>CHROME_SLOT</div>}
         statusBar={<div>STATUS_BAR_SLOT</div>}
+        sections={[]}
       >
         <div>CHILDREN_SLOT</div>
       </DashboardShell>
@@ -40,6 +41,7 @@ describe("DashboardShell", () => {
         appBar={null}
         chrome={null}
         statusBar={null}
+        sections={[]}
       >
         <div />
       </DashboardShell>
@@ -53,6 +55,7 @@ describe("DashboardShell", () => {
         appBar={null}
         chrome={null}
         statusBar={null}
+        sections={[]}
       >
         <div />
       </DashboardShell>

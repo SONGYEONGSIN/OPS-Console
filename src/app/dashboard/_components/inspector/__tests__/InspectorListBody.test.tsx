@@ -104,3 +104,74 @@ describe("InspectorListBody team variant — 권한 select", () => {
     expect(screen.getByText("관리자")).toBeInTheDocument();
   });
 });
+
+describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => {
+  const teamRow: ListRow = {
+    id: "annooy@jinhakapply.com",
+    name: "정윤나",
+    status: "active",
+    owner: "운영1팀",
+    meta: "매니저",
+    permission: "member",
+    allowedMenus: ["alerts", "feedback"],
+  };
+
+  it("admin이 편집 모드 → 메뉴 체크박스 그룹 노출 + 일부 체크 상태", () => {
+    render(
+      <InspectorListBody
+        row={teamRow}
+        editing={true}
+        variant="team"
+        currentUserPermission="admin"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const fieldset = screen.getByRole("group", { name: /메뉴 권한/ });
+    expect(fieldset).toBeInTheDocument();
+    // alerts 체크박스 — 체크 상태
+    const alertsBox = screen.getByRole("checkbox", { name: /alerts/i });
+    expect(alertsBox).toBeChecked();
+    // team 체크박스 — 미체크 (allowedMenus에 없음)
+    const teamBox = screen.getByRole("checkbox", { name: /team/i });
+    expect(teamBox).not.toBeChecked();
+  });
+
+  it("member가 편집 모드 → 체크박스 그룹 hide", () => {
+    render(
+      <InspectorListBody
+        row={teamRow}
+        editing={true}
+        variant="team"
+        currentUserPermission="member"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("group", { name: /메뉴 권한/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("admin이 alerts 체크 해제 후 저장 → onSave에 alerts 빠진 allowedMenus", () => {
+    const onSave = vi.fn();
+    render(
+      <InspectorListBody
+        row={teamRow}
+        editing={true}
+        variant="team"
+        currentUserPermission="admin"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: /alerts/i }));
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedMenus: expect.not.arrayContaining(["alerts"]),
+      }),
+    );
+    expect(onSave.mock.calls[0][0].allowedMenus).toContain("feedback");
+  });
+});
