@@ -2,6 +2,8 @@ import { findSidebarMeta } from "../_data";
 import { PAGE_META } from "../_data/page-meta-config";
 import { derivePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
+import { GuidePattern } from "../_components/patterns/GuidePattern";
+import type { GuideTab } from "../_components/patterns/GuidePattern";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
@@ -14,11 +16,15 @@ import {
 } from "@/features/onboarding/actions";
 import { OPERATORS } from "@/features/auth/operators";
 import type { CohortRow } from "@/features/onboarding/schemas";
+import { onboardingGuideSections } from "./_content";
 
 /**
- * /dashboard/onboarding — 신입 OJT 회차 관리 (DB 연동).
- * admin: 회차 CRUD / trainee·mentor: 본인 회차 read.
- * 세션(주차별 일정 그리드)은 후속 epic.
+ * /dashboard/onboarding — 종합 페이지 (탭 4개).
+ *
+ * 1. 온보딩 가이드 — 정적 카드 그룹 (Folio 컨텍스트)
+ * 2. 체크리스트 — 본인 진행도 (후속 PR-2)
+ * 3. 회차 관리 — 기존 ListPattern variant=cohort 임베드 (admin only)
+ * 4. 활동 로그 — placeholder (후속)
  */
 export default async function OnboardingPage() {
   const slug = "onboarding";
@@ -30,7 +36,7 @@ export default async function OnboardingPage() {
   const config = PAGE_META[slug] ?? derivePageMeta(slug, meta);
 
   const cohorts = await listCohorts();
-  const rows: ListRow[] = cohorts.map(cohortToListRow);
+  const cohortRows: ListRow[] = cohorts.map(cohortToListRow);
 
   const me = await getCurrentOperator();
   const isAdmin = me?.permission === "admin";
@@ -44,7 +50,7 @@ export default async function OnboardingPage() {
     />
   );
 
-  async function onPersist(
+  async function onCohortPersist(
     row: ListRow,
     isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
@@ -77,18 +83,41 @@ export default async function OnboardingPage() {
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
 
-  return (
-    <ListPattern
-      title={meta.label}
-      data={{ rows }}
-      header={header}
-      variant="cohort"
-      canCreate={isAdmin}
-      createLabel="+ 새 회차"
-      readOnly={!isAdmin}
-      onPersist={onPersist}
-    />
-  );
+  const tabs: GuideTab[] = [
+    {
+      value: "guide",
+      label: "온보딩 가이드",
+      sections: onboardingGuideSections,
+    },
+    {
+      value: "checklist",
+      label: "체크리스트",
+      placeholder:
+        "본인 회차의 진행도 체크리스트는 후속 PR에서 추가됩니다. 지금은 가이드 탭으로 학습 시작하세요.",
+    },
+    {
+      value: "cohort",
+      label: "회차 관리",
+      children: (
+        <ListPattern
+          title=""
+          data={{ rows: cohortRows }}
+          variant="cohort"
+          canCreate={isAdmin}
+          createLabel="+ 새 회차"
+          readOnly={!isAdmin}
+          onPersist={onCohortPersist}
+        />
+      ),
+    },
+    {
+      value: "log",
+      label: "활동 로그",
+      placeholder: "활동 로그 시스템은 후속 epic에서 추가됩니다.",
+    },
+  ];
+
+  return <GuidePattern title={meta.label} header={header} tabs={tabs} />;
 }
 
 function cohortToListRow(c: CohortRow): ListRow {
