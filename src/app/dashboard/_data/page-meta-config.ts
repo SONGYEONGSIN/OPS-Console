@@ -44,6 +44,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "이 시스템(OPS Console)에 대한 개선 아이디어와 버그 리포트를 모읍니다. 운영 중 불편을 발견하면 자유롭게 작성해 주세요. 검토 후 처리 상태를 갱신합니다.",
   },
+  onboarding: {
+    headline: { accent: "신규", title: "온보딩 회차" },
+    description:
+      "신입 운영자 OJT 회차 관리. admin이 회차를 생성하고 신입·사수·기간·상태를 추적합니다. 주차별 세션 그리드는 후속에서.",
+  },
   notices: {
     headline: { accent: "운영부", title: "공지사항" },
     description:
