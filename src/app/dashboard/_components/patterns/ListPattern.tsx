@@ -28,6 +28,8 @@ export type ListRow = {
   deletedReason?: string;
   /** team 도메인 — 시스템 권한 (admin/member/viewer) */
   permission?: OperatorPermission;
+  /** post 도메인 — 게시글 본문 */
+  body?: string;
 };
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
@@ -91,7 +93,7 @@ type Props = {
   data: { rows: ListRow[] };
   header?: React.ReactNode;
   /** team 등 특정 슬러그에서 전용 컬럼 사용 */
-  variant?: "default" | "team";
+  variant?: "default" | "team" | "post";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -101,6 +103,10 @@ type Props = {
   readOnly?: boolean;
   /** team variant — InspectorListBody 권한 select 노출 분기용 */
   currentUserPermission?: OperatorPermission | null;
+  /** team 외 default variant에서도 신규 버튼 노출 (예: 게시판) */
+  canCreate?: boolean;
+  /** 신규 버튼 라벨 (기본: team='+ 신규 계정' / 그 외='+ 새 글') */
+  createLabel?: string;
 };
 
 export function ListPattern({
@@ -111,6 +117,8 @@ export function ListPattern({
   onPersist,
   readOnly = false,
   currentUserPermission = null,
+  canCreate = false,
+  createLabel,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -142,24 +150,42 @@ export function ListPattern({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-1">
-            {variant === "team" && !readOnly && (
+            {(variant === "team" || canCreate) && !readOnly && (
               <button
                 type="button"
                 onClick={() => {
-                  const blank: ListRow = {
-                    id: "",
-                    name: "",
-                    status: "active",
-                    owner: "운영1팀",
-                    meta: "매니저",
-                    permission: "member",
-                  };
+                  let blank: ListRow;
+                  if (variant === "team") {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "운영1팀",
+                      meta: "매니저",
+                      permission: "member",
+                    };
+                  } else if (variant === "post") {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "",
+                      body: "",
+                    };
+                  } else {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "",
+                    };
+                  }
                   inspector.open(blank);
                   if (!inspector.editing) inspector.toggleEdit();
                 }}
                 className="mr-3 cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
               >
-                + 신규 계정
+                {createLabel ?? (variant === "team" ? "+ 신규 계정" : "+ 새 글")}
               </button>
             )}
             {FILTERS.map((f) => {
