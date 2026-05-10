@@ -1,6 +1,10 @@
 -- posts 테이블 RLS + GRANT
 -- 정책: 모두 read / notice = admin only insert·update·delete / feedback = admin or 본인 author
 -- 기존 is_admin() plpgsql helper 재사용 (operators 마이그레이션 20260510b).
+--
+-- 주의: 도메인 분기는 OR 조건으로 풀어쓴다 (CASE 문은 Supabase SQL Editor 파서와 충돌).
+--   조건: public.is_admin() OR (domain='feedback' AND author_email = JWT email)
+--   → notice는 admin만 통과 (feedback 분기는 false), feedback은 admin OR 본인 author.
 
 begin;
 
@@ -21,7 +25,7 @@ create policy "posts_select_all"
   using (true);
 
 ------------------------------------------------------------
--- 3) insert — notice는 admin only / feedback은 admin or 본인 author
+-- 3) insert — admin OR (feedback + 본인 author)
 ------------------------------------------------------------
 
 drop policy if exists "posts_insert" on public.posts;
@@ -29,17 +33,12 @@ create policy "posts_insert"
   on public.posts for insert
   to authenticated
   with check (
-    case domain
-      when 'notice' then public.is_admin()
-      else (
-        public.is_admin()
-        or author_email = (auth.jwt() ->> 'email')
-      )
-    end
+    public.is_admin()
+    or (domain = 'feedback' and author_email = (auth.jwt() ->> 'email'))
   );
 
 ------------------------------------------------------------
--- 4) update — 동일 분기
+-- 4) update — 동일 조건
 ------------------------------------------------------------
 
 drop policy if exists "posts_update" on public.posts;
@@ -47,26 +46,16 @@ create policy "posts_update"
   on public.posts for update
   to authenticated
   using (
-    case domain
-      when 'notice' then public.is_admin()
-      else (
-        public.is_admin()
-        or author_email = (auth.jwt() ->> 'email')
-      )
-    end
+    public.is_admin()
+    or (domain = 'feedback' and author_email = (auth.jwt() ->> 'email'))
   )
   with check (
-    case domain
-      when 'notice' then public.is_admin()
-      else (
-        public.is_admin()
-        or author_email = (auth.jwt() ->> 'email')
-      )
-    end
+    public.is_admin()
+    or (domain = 'feedback' and author_email = (auth.jwt() ->> 'email'))
   );
 
 ------------------------------------------------------------
--- 5) delete — 동일 분기
+-- 5) delete — 동일 조건
 ------------------------------------------------------------
 
 drop policy if exists "posts_delete" on public.posts;
@@ -74,13 +63,8 @@ create policy "posts_delete"
   on public.posts for delete
   to authenticated
   using (
-    case domain
-      when 'notice' then public.is_admin()
-      else (
-        public.is_admin()
-        or author_email = (auth.jwt() ->> 'email')
-      )
-    end
+    public.is_admin()
+    or (domain = 'feedback' and author_email = (auth.jwt() ->> 'email'))
   );
 
 ------------------------------------------------------------
