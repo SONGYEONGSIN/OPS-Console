@@ -132,3 +132,5 @@ DAG: `T1→T2`, `T3→T4`, `T2+T4→T5→T6`, `T2→T7`, `T6+T7→T8→T9→T10`
 | 2026-05-10T15:51:00Z | T1+T2+T5+T6 | done | 27/27 vitest GREEN, typecheck OK |
 | 2026-05-10T15:52:00Z | T3+T4 | done | 마이그레이션 SQL 작성 — Supabase SQL Editor 실행 대기 |
 | 2026-05-10T15:55:00Z | strategy | split | PR-A(백엔드) 분리 머지 → SQL 실행 → PR-B(UI) |
+| 2026-05-10T16:14:00Z | T7+T8 | done | PR-B 머지 (#25), dev 시각 검증 OK |
+| 2026-05-10T16:25:00Z | T9 | done | e2e 3 시나리오 (admin 작성 / member 노출 / viewer 차단) PASS |
