@@ -48,9 +48,19 @@ export type ListRow = {
   assigneeEmail?: string | null;
   /** schedule 도메인 — 등록자 이메일 */
   createdByEmail?: string;
+  /** my-todo 도메인 — 우선순위 */
+  priority?: "low" | "medium" | "high";
+  /** my-todo 도메인 — 완료 여부 */
+  done?: boolean;
+  /** my-todo 도메인 — 완료 시각 ISO */
+  doneAt?: string | null;
+  /** my-todo 도메인 — 마감 ISO (nullable) */
+  dueAt?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
+export type TodoPriority = NonNullable<ListRow["priority"]>;
+export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
   admin: "bg-vermilion/30 text-vermilion-deep font-medium",
@@ -143,7 +153,19 @@ const STATUS_RING: Record<ListRow["status"], string> = {
   deleted: "bg-muted",
 };
 
-type Filter = ListRow["status"] | "all" | ScheduleType;
+type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter;
+
+const PRIORITY_LABEL: Record<TodoPriority, string> = {
+  high: "높음",
+  medium: "보통",
+  low: "낮음",
+};
+
+const PRIORITY_COLOR: Record<TodoPriority, string> = {
+  high: "bg-vermilion text-cream",
+  medium: "bg-line-soft text-ink",
+  low: "bg-washi-raised text-muted",
+};
 
 const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
   shift: "시프트",
@@ -158,6 +180,63 @@ const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
   leave: "bg-line-soft text-muted",
   training: "bg-washi-raised text-ink",
 };
+
+/**
+ * variant별 필터 적용. 모든 분기를 한 곳에 모아 분기 폭증 방지.
+ */
+function filterRows(
+  rows: ListRow[],
+  filter: Filter,
+  variant: string,
+): ListRow[] {
+  if (filter === "all") return rows;
+  if (variant === "schedule") return rows.filter((r) => r.scheduleType === filter);
+  if (variant === "my-todo") {
+    if (filter === "done") return rows.filter((r) => r.done === true);
+    if (filter === "undone") return rows.filter((r) => !r.done);
+    if (filter === "today") {
+      const todayKey = todayKstKey();
+      return rows.filter((r) => r.dueAt && kstDateKey(r.dueAt) === todayKey);
+    }
+    if (filter === "due-soon") {
+      // 미완 + 마감일 3일 이내
+      const limit = Date.now() + 3 * 24 * 60 * 60 * 1000;
+      return rows.filter(
+        (r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() <= limit,
+      );
+    }
+    return rows;
+  }
+  return rows.filter((r) => r.status === filter);
+}
+
+function todayKstKey(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date(),
+  );
+}
+
+function kstDateKey(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date(iso),
+  );
+}
+
+/**
+ * 마감일을 짧은 KST 한국어로 포맷 ('M/D(요일)' 또는 '내일' 등).
+ */
+function formatDueAt(iso?: string | null): string {
+  if (!iso) return "-";
+  const today = todayKstKey();
+  const target = kstDateKey(iso);
+  if (target === today) return "오늘";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(new Date(iso));
+}
 
 /**
  * 일정 시각 범위를 KST 한국어로 포맷.
@@ -238,12 +317,26 @@ const SCHEDULE_FILTERS: { value: Filter; label: string }[] = [
   { value: "training", label: "교육" },
 ];
 
+const MY_TODO_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "undone", label: "미완료" },
+  { value: "done", label: "완료" },
+  { value: "today", label: "오늘" },
+  { value: "due-soon", label: "마감 임박" },
+];
+
 type Props = {
   title: string;
   data: { rows: ListRow[] };
   header?: React.ReactNode;
   /** team 등 특정 슬러그에서 전용 컬럼 사용. post는 도메인별 라벨 분리 */
-  variant?: "default" | "team" | "post-feedback" | "post-notice" | "schedule";
+  variant?:
+    | "default"
+    | "team"
+    | "post-feedback"
+    | "post-notice"
+    | "schedule"
+    | "my-todo";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -276,12 +369,7 @@ export function ListPattern({
 
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
-  const filteredRows =
-    filter === "all"
-      ? rows
-      : variant === "schedule"
-        ? rows.filter((r) => r.scheduleType === filter)
-        : rows.filter((r) => r.status === filter);
+  const filteredRows = filterRows(rows, filter, variant);
   const FILTERS =
     variant === "team"
       ? TEAM_FILTERS
@@ -291,7 +379,9 @@ export function ListPattern({
           ? POST_NOTICE_FILTERS
           : variant === "schedule"
             ? SCHEDULE_FILTERS
-            : DEFAULT_FILTERS;
+            : variant === "my-todo"
+              ? MY_TODO_FILTERS
+              : DEFAULT_FILTERS;
 
   return (
     <>        {header}
@@ -353,6 +443,16 @@ export function ListPattern({
                       end_at: inOneHour.toISOString(),
                       allDay: false,
                       assigneeEmail: null,
+                    };
+                  } else if (variant === "my-todo") {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "",
+                      priority: "medium",
+                      done: false,
+                      dueAt: null,
                     };
                   } else {
                     blank = {
@@ -499,6 +599,79 @@ export function ListPattern({
                         <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
                       )}
                       <td className="px-3 py-2 text-xs text-muted">{row.meta ?? "-"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : variant === "my-todo" ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="px-3 py-2">우선순위</th>
+                  <th className="px-3 py-2">제목</th>
+                  <th className="px-3 py-2">마감</th>
+                  <th className="px-3 py-2">완료</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      } ${row.done ? "opacity-60 [&_td]:line-through" : ""}`}
+                    >
+                      <td className="px-3 py-2">
+                        {row.priority && (
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs ${PRIORITY_COLOR[row.priority]}`}
+                          >
+                            {PRIORITY_LABEL[row.priority]}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">
+                        {formatDueAt(row.dueAt)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          aria-label={`${row.name} 완료 토글`}
+                          checked={row.done ?? false}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={async (e) => {
+                            const nextDone = e.target.checked;
+                            const nextRow: ListRow = {
+                              ...row,
+                              done: nextDone,
+                              doneAt: nextDone ? new Date().toISOString() : null,
+                            };
+                            setRows((prev) =>
+                              prev.map((r) => (r.id === row.id ? nextRow : r)),
+                            );
+                            if (onPersist) {
+                              const result = await onPersist(nextRow, false);
+                              if (!result.ok) {
+                                setRows((prev) =>
+                                  prev.map((r) => (r.id === row.id ? row : r)),
+                                );
+                                alert(`저장 실패: ${result.error ?? "알 수 없는 오류"}`);
+                              }
+                            }
+                          }}
+                          className="h-4 w-4 cursor-pointer accent-vermilion"
+                        />
+                      </td>
                     </tr>
                   ))
                 )}
