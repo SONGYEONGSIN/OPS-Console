@@ -18,6 +18,8 @@ export const cohortRowSchema = z.object({
   end_date: dateOnly.nullable().optional(),
   status: cohortStatusSchema,
   notes: z.string().nullable().optional(),
+  invited_at: z.string().nullable().optional(),
+  accepted_at: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
