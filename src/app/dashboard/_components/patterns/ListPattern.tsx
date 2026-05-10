@@ -34,6 +34,8 @@ export type ListRow = {
   author?: string;
   /** team 도메인 — 메뉴 접근 권한 (slug 배열). admin은 빈 배열로 두고 bypass. */
   allowedMenus?: string[];
+  /** post 도메인 — 사람 친화 글번호 (예: 'FB-001'). 없으면 id(uuid) 단축 표시. */
+  slug?: string;
 };
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
@@ -364,7 +366,7 @@ export function ListPattern({
                         inspector.selected?.id === row.id ? "bg-washi-raised" : ""
                       } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
                     >
-                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.slug ?? row.id.slice(0, 8)}</td>
                       <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
