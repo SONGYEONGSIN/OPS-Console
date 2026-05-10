@@ -80,7 +80,7 @@ test.describe("/dashboard — 메뉴 접근 권한 (allowed_menus)", () => {
 
     const nav = page.locator("#sidebar");
     await expect(nav.getByText("새 알림")).toBeVisible();
-    await expect(nav.getByText("개선 요청")).toBeVisible();
+    await expect(nav.getByText("개선요청")).toBeVisible();
     await expect(nav.getByText("조직 · 권한")).toHaveCount(0);
     await expect(nav.getByText("시스템 설정")).toHaveCount(0);
   });
