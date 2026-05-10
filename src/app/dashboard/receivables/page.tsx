@@ -5,6 +5,9 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
+import { updateReceivablesCells } from "@/features/receivables/actions";
+import type { CellUpdate } from "@/features/receivables/actions";
+import { getCurrentOperator } from "@/features/auth/queries";
 
 /**
  * /dashboard/receivables — SharePoint Excel 미수채권 (read-only 목록 + 인스펙터).
@@ -30,6 +33,40 @@ export default async function ReceivablesPage() {
         .map((_, i) => toListRow(sheet, i))
         .filter(isDataRow)
     : [];
+
+  const me = await getCurrentOperator();
+  const canEdit = me?.permission !== "viewer" && me?.permission !== null;
+
+  async function onPersist(
+    row: ListRow,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const cells = row.receivablesCells;
+    if (!cells?.worksheetName || cells.sheetRowNumber === undefined) {
+      return { ok: false, error: "워크시트 위치를 찾을 수 없습니다." };
+    }
+    const updates: CellUpdate[] = [];
+    if (cells.remarksColIdx !== undefined) {
+      updates.push({
+        colIdx: cells.remarksColIdx,
+        value: cells.remarks ?? "",
+      });
+    }
+    if (cells.dueDateColIdx !== undefined) {
+      updates.push({
+        colIdx: cells.dueDateColIdx,
+        value: cells.dueDate ?? "",
+      });
+    }
+    if (updates.length === 0) {
+      return { ok: false, error: "편집 가능한 셀이 없습니다." };
+    }
+    return await updateReceivablesCells(
+      cells.worksheetName,
+      cells.sheetRowNumber,
+      updates,
+    );
+  }
 
   const header = (
     <PageHeader
@@ -66,7 +103,8 @@ export default async function ReceivablesPage() {
         data={{ rows }}
         header={header}
         variant="receivables"
-        readOnly
+        readOnly={!canEdit}
+        onPersist={canEdit ? onPersist : undefined}
       />
     </>
   );
@@ -84,16 +122,18 @@ function pickColumns(headers: string[]): {
   status: number;
   owner: number;
   remarks: number;
+  dueDate: number;
 } {
   const find = (regex: RegExp) => headers.findIndex((h) => regex.test(h));
   return {
-    date: find(/일자|날짜/),
+    date: find(/^청구일자|^청구\s*일자/),
     name: find(/거래처|학교|이름/),
     detail: find(/내역|상세/),
-    amount: find(/금액/),
+    amount: find(/청구금액|금액/),
     status: find(/입금여부|여부|상태/),
     owner: find(/운영자|담당/),
     remarks: find(/적요|비고|메모|피드백/),
+    dueDate: find(/입금예정일|예정일/),
   };
 }
 
@@ -146,6 +186,16 @@ function toListRow(
           ? textRow[i]
           : String(valuesRow[i] ?? ""),
       ),
+      sheetRowNumber: sheet.headerRowNumber + idx + 1,
+      remarksColIdx:
+        cols.remarks >= 0 ? sheet.validColIdx[cols.remarks] : undefined,
+      remarksHeaderIdx: cols.remarks >= 0 ? cols.remarks : undefined,
+      remarks: cols.remarks >= 0 ? textRow[cols.remarks] ?? "" : "",
+      dueDateColIdx:
+        cols.dueDate >= 0 ? sheet.validColIdx[cols.dueDate] : undefined,
+      dueDateHeaderIdx: cols.dueDate >= 0 ? cols.dueDate : undefined,
+      dueDate: cols.dueDate >= 0 ? textRow[cols.dueDate] ?? "" : "",
+      worksheetName: sheet.worksheetName,
     },
   };
 }
