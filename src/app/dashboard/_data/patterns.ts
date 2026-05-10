@@ -33,83 +33,6 @@ const listMockRows: ListRow[] = [
   { id: "SVC-008", name: "헬스체크 봇",     status: "approved", owner: "이해영",   meta: "30일 무중단" },
 ];
 
-/**
- * 개선 요청 mock — OPS Console 시스템 자체에 대한 개선 아이디어/버그.
- * 운영부 전원이 작성 가능, 검토 후 처리 상태로 갱신.
- */
-const feedbackMockRows: ListRow[] = [
-  {
-    id: "FB-004",
-    name: "인스펙터 패널 width 320px이 좁음 — 본문이 잘림",
-    status: "urgent",
-    author: "송영신",
-    owner: "송영신",
-    meta: "2026-05-09",
-    body: "team 페이지에서 row 클릭 시 우측 패널이 320px 고정인데, 직급/팀/이메일이 한 줄에 안 들어와서 줄바꿈이 어색합니다. 최소 360px 이상 또는 사용자 조정 가능한 너비를 검토해주세요.",
-  },
-  {
-    id: "FB-003",
-    name: "사용자 권한 변경이 즉시 반영되지 않음",
-    status: "review",
-    author: "김지영",
-    owner: "송영신",
-    meta: "2026-05-08",
-    body: "admin이 다른 사용자의 권한을 member로 변경했을 때, 해당 사용자의 다른 탭/세션은 새로고침 전까지 admin으로 동작합니다. 즉시 회수가 안전한지 검토 필요.",
-  },
-  {
-    id: "FB-002",
-    name: "모바일 햄버거 트리거 누락 회귀 — chrome 리브랜드",
-    status: "approved",
-    author: "정윤나",
-    owner: "송영신",
-    meta: "2026-05-08",
-    body: "PIVOT→OPS Console 리브랜드 시 AppBar의 '메뉴 열기' 버튼이 누락되었던 회귀. PR #7로 SidebarToggleProvider 도입 후 복구 완료.",
-  },
-  {
-    id: "FB-001",
-    name: "알림 모달에 외부 클릭으로 닫기 추가 요청",
-    status: "active",
-    author: "김슬기",
-    owner: "송영신",
-    meta: "2026-05-07",
-    body: "현재는 ESC 또는 X 버튼만 닫기 가능합니다. 다른 모달처럼 모달 외부 영역(scrim) 클릭으로도 닫히게 해주세요.",
-  },
-];
-
-/**
- * 공지사항 mock — 운영부 전체 전달.
- * admin(부장·팀장)만 작성, 모두 read.
- */
-const noticesMockRows: ListRow[] = [
-  {
-    id: "NT-003",
-    name: "2026 Q3 운영 정책 변경 — 시프트 스케줄 조정 안내",
-    status: "urgent",
-    author: "허승철",
-    owner: "허승철",
-    meta: "2026-05-10",
-    body: "Q3부터 시프트 스케줄을 2교대 → 3교대 시범 운영합니다. 1차 06:00–14:00 / 2차 14:00–22:00 / 3차 22:00–06:00. 자세한 인원 배정은 5/20 주간 회의에서 공유합니다.",
-  },
-  {
-    id: "NT-002",
-    name: "시스템 정기 점검 — 5/15(목) 23:00 ~ 익일 02:00",
-    status: "active",
-    author: "송영신",
-    owner: "송영신",
-    meta: "2026-05-09",
-    body: "Supabase Postgres 마이너 버전 업그레이드와 인증 SMTP 교체 작업이 진행됩니다. 점검 시간 동안 OPS Console 접속이 일시 차단될 수 있으니 미리 대시보드를 닫아주세요.",
-  },
-  {
-    id: "NT-001",
-    name: "신규 운영자 합류 — 김지나 사원 (운영2팀)",
-    status: "approved",
-    author: "송영신",
-    owner: "송영신",
-    meta: "2026-05-07",
-    body: "운영2팀에 김지나 사원(매니저)이 합류했습니다. 첫 주는 OJT로 시프트에서 제외하고, 5/14(수)부터 정상 시프트 투입 예정입니다. 환영해 주세요.",
-  },
-];
-
 const dashMockWidgets: DashWidget[] = [
   { id: "W1", tone: "urgent", label: "결제 지연",         value: "350ms",  time: "14:23" },
   { id: "W2", tone: "ok",     label: "정상 서비스",        value: "47건",  time: "24h" },
@@ -486,8 +409,7 @@ export function getPatternMockData(slug: string, pattern: SbPattern):
   if (pattern === "dash" && slug === "alerts") return { widgets: alertsWidgets };
 
   if (pattern === "list") {
-    if (slug === "feedback") return { rows: feedbackMockRows };
-    if (slug === "notices") return { rows: noticesMockRows };
+    // feedback/notices는 server page에서 직접 listPosts 호출 (DB 연동) — 여기서 fallback 안 옴
     return { rows: listMockRows };
   }
   if (pattern === "dash") return { widgets: dashMockWidgets };
