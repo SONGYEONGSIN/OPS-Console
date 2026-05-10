@@ -56,11 +56,22 @@ export type ListRow = {
   doneAt?: string | null;
   /** my-todo 도메인 — 마감 ISO (nullable) */
   dueAt?: string | null;
+  /** onboarding cohort — 신입 이메일 */
+  traineeEmail?: string;
+  /** onboarding cohort — 사수 이메일 (nullable) */
+  mentorEmail?: string | null;
+  /** onboarding cohort — 시작일 (YYYY-MM-DD) */
+  startDate?: string;
+  /** onboarding cohort — 종료일 (YYYY-MM-DD, nullable) */
+  endDate?: string | null;
+  /** onboarding cohort — 상태 enum */
+  cohortStatus?: "planned" | "in_progress" | "completed";
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
 export type TodoPriority = NonNullable<ListRow["priority"]>;
 export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
+export type CohortStatus = NonNullable<ListRow["cohortStatus"]>;
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
   admin: "bg-vermilion/30 text-vermilion-deep font-medium",
@@ -153,7 +164,19 @@ const STATUS_RING: Record<ListRow["status"], string> = {
   deleted: "bg-muted",
 };
 
-type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter;
+type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter | CohortStatus;
+
+const COHORT_STATUS_LABEL: Record<CohortStatus, string> = {
+  planned: "계획",
+  in_progress: "진행중",
+  completed: "완료",
+};
+
+const COHORT_STATUS_COLOR: Record<CohortStatus, string> = {
+  planned: "bg-line-soft text-muted",
+  in_progress: "bg-vermilion text-cream",
+  completed: "bg-washi-raised text-ink",
+};
 
 const PRIORITY_LABEL: Record<TodoPriority, string> = {
   high: "높음",
@@ -207,6 +230,9 @@ function filterRows(
     }
     return rows;
   }
+  if (variant === "cohort") {
+    return rows.filter((r) => r.cohortStatus === filter);
+  }
   return rows.filter((r) => r.status === filter);
 }
 
@@ -220,6 +246,21 @@ function kstDateKey(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
     new Date(iso),
   );
+}
+
+/**
+ * cohort 시작/종료일을 'M/D ~ M/D' 또는 'M/D ~' 로 포맷 (date-only).
+ */
+function formatCohortRange(start?: string, end?: string | null): string {
+  if (!start) return "-";
+  const fmt = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+  });
+  const startStr = fmt.format(new Date(start));
+  if (!end) return `${startStr} ~`;
+  return `${startStr} ~ ${fmt.format(new Date(end))}`;
 }
 
 /**
@@ -325,6 +366,13 @@ const MY_TODO_FILTERS: { value: Filter; label: string }[] = [
   { value: "due-soon", label: "마감 임박" },
 ];
 
+const COHORT_FILTERS: { value: Filter; label: string }[] = [
+  { value: "all", label: "전체" },
+  { value: "planned", label: "계획" },
+  { value: "in_progress", label: "진행중" },
+  { value: "completed", label: "완료" },
+];
+
 type Props = {
   title: string;
   data: { rows: ListRow[] };
@@ -336,7 +384,8 @@ type Props = {
     | "post-feedback"
     | "post-notice"
     | "schedule"
-    | "my-todo";
+    | "my-todo"
+    | "cohort";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -381,7 +430,9 @@ export function ListPattern({
             ? SCHEDULE_FILTERS
             : variant === "my-todo"
               ? MY_TODO_FILTERS
-              : DEFAULT_FILTERS;
+              : variant === "cohort"
+                ? COHORT_FILTERS
+                : DEFAULT_FILTERS;
 
   return (
     <>        {header}
@@ -453,6 +504,19 @@ export function ListPattern({
                       priority: "medium",
                       done: false,
                       dueAt: null,
+                    };
+                  } else if (variant === "cohort") {
+                    const today = new Date().toISOString().slice(0, 10);
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "",
+                      traineeEmail: "",
+                      mentorEmail: null,
+                      startDate: today,
+                      endDate: null,
+                      cohortStatus: "planned",
                     };
                   } else {
                     blank = {
@@ -599,6 +663,54 @@ export function ListPattern({
                         <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
                       )}
                       <td className="px-3 py-2 text-xs text-muted">{row.meta ?? "-"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : variant === "cohort" ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="px-3 py-2">제목</th>
+                  <th className="px-3 py-2">신입 / 사수</th>
+                  <th className="px-3 py-2">기간</th>
+                  <th className="px-3 py-2">상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      }`}
+                    >
+                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">
+                        {row.author || row.traineeEmail || "-"}
+                        {row.owner && <> · 사수 {row.owner}</>}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">
+                        {formatCohortRange(row.startDate, row.endDate)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.cohortStatus && (
+                          <span
+                            className={`inline-block px-2 py-0.5 text-xs ${COHORT_STATUS_COLOR[row.cohortStatus]}`}
+                          >
+                            {COHORT_STATUS_LABEL[row.cohortStatus]}
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
