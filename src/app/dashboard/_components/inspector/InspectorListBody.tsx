@@ -13,12 +13,14 @@ import {
   type OperatorPermission,
 } from "@/features/operators/schemas";
 
+type Variant = "default" | "team" | "post";
+
 type Props = {
   row: ListRow;
   editing: boolean;
   onSave: (next: ListRow) => void;
   onCancel: () => void;
-  variant?: "default" | "team";
+  variant?: Variant;
   /** team variant — 권한 select admin만 노출하기 위한 컨텍스트 */
   currentUserPermission?: OperatorPermission | null;
 };
@@ -47,7 +49,93 @@ export function InspectorListBody({
   }
 
   const isTeam = variant === "team";
+  const isPost = variant === "post";
   const canEditPermission = isTeam && currentUserPermission === "admin";
+
+  if (isPost) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(draft);
+        }}
+        className="space-y-3"
+      >
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">제목</span>
+          <input
+            aria-label="제목"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            placeholder="제목을 입력해주세요"
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">내용</span>
+          <textarea
+            aria-label="내용"
+            value={draft.body ?? ""}
+            onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+            rows={8}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            placeholder="본문을 작성해주세요"
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">등록자</span>
+          <input
+            aria-label="등록자"
+            value={draft.author ?? ""}
+            onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            placeholder="작성자 이름"
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">담당</span>
+          <input
+            aria-label="담당"
+            value={draft.owner}
+            onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            placeholder="처리 담당자"
+          />
+        </label>
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">상태</span>
+          <select
+            aria-label="상태"
+            value={draft.status}
+            onChange={(e) =>
+              setDraft({ ...draft, status: e.target.value as ListRow["status"] })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="urgent">요청</option>
+            <option value="review">확인</option>
+            <option value="active">처리중</option>
+            <option value="approved">처리완료</option>
+          </select>
+        </label>
+        <div className="flex gap-2 pt-2">
+          <button
+            type="submit"
+            className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          >
+            저장
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          >
+            취소
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form
@@ -225,10 +313,62 @@ function ViewMode({
   variant,
 }: {
   row: ListRow;
-  variant: "default" | "team";
+  variant: Variant;
 }) {
-  return variant === "team" ? <TeamView row={row} /> : <ServiceView row={row} />;
+  if (variant === "team") return <TeamView row={row} />;
+  if (variant === "post") return <PostView row={row} />;
+  return <ServiceView row={row} />;
 }
+
+function PostView({ row }: { row: ListRow }) {
+  const statusLabel = POST_STATUS_LABEL[row.status];
+  const statusColor = STATUS_BADGE[row.status];
+
+  return (
+    <div className="space-y-6">
+      <Section title="게시글 정보">
+        <DefList
+          items={[
+            { term: "글번호", desc: <span className="font-mono">{row.id || "-"}</span> },
+            { term: "등록자", desc: row.author || "-" },
+            { term: "담당", desc: row.owner || "-" },
+            { term: "작성일", desc: row.meta ?? "-" },
+            {
+              term: "상태",
+              desc: (
+                <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
+                  {statusLabel}
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="본문">
+        {row.body ? (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+            {row.body}
+          </p>
+        ) : (
+          <p className="text-xs text-muted">(본문이 비어 있습니다)</p>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+const POST_STATUS_LABEL: Record<ListRow["status"], string> = {
+  urgent: "요청",
+  review: "확인",
+  active: "처리중",
+  approved: "처리완료",
+  inactive: "보류",
+  suspended: "중단",
+  deleted: "삭제",
+};
 
 function ServiceView({ row }: { row: ListRow }) {
   const statusLabel = STATUS_LABEL[row.status];

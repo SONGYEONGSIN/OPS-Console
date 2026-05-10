@@ -28,6 +28,10 @@ export type ListRow = {
   deletedReason?: string;
   /** team 도메인 — 시스템 권한 (admin/member/viewer) */
   permission?: OperatorPermission;
+  /** post 도메인 — 게시글 본문 */
+  body?: string;
+  /** post 도메인 — 등록자 (작성자). owner는 처리 담당자로 분리. */
+  author?: string;
 };
 
 const PERMISSION_COLOR: Record<OperatorPermission, string> = {
@@ -45,6 +49,21 @@ const STATUS_LABEL: Record<ListRow["status"], string> = {
   active: "활성",
   inactive: "점검중",
   suspended: "정지",
+  deleted: "삭제",
+};
+
+/**
+ * post variant 4단계 흐름 — 등록자가 글 등록(요청) → admin이 확인 → 처리중 → 처리완료.
+ * STATUS_COLOR는 의미 일관(urgent=red 강조 / approved=muted 종료)이라 그대로 사용.
+ */
+const POST_STATUS_LABEL: Record<ListRow["status"], string> = {
+  urgent: "요청",
+  review: "확인",
+  active: "처리중",
+  approved: "처리완료",
+  // post variant에서는 사용 안 함 (operators 전용)
+  inactive: "보류",
+  suspended: "중단",
   deleted: "삭제",
 };
 
@@ -91,7 +110,7 @@ type Props = {
   data: { rows: ListRow[] };
   header?: React.ReactNode;
   /** team 등 특정 슬러그에서 전용 컬럼 사용 */
-  variant?: "default" | "team";
+  variant?: "default" | "team" | "post";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -101,6 +120,10 @@ type Props = {
   readOnly?: boolean;
   /** team variant — InspectorListBody 권한 select 노출 분기용 */
   currentUserPermission?: OperatorPermission | null;
+  /** team 외 default variant에서도 신규 버튼 노출 (예: 게시판) */
+  canCreate?: boolean;
+  /** 신규 버튼 라벨 (기본: team='+ 신규 계정' / 그 외='+ 새 글') */
+  createLabel?: string;
 };
 
 export function ListPattern({
@@ -111,6 +134,8 @@ export function ListPattern({
   onPersist,
   readOnly = false,
   currentUserPermission = null,
+  canCreate = false,
+  createLabel,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -142,24 +167,43 @@ export function ListPattern({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-1">
-            {variant === "team" && !readOnly && (
+            {(variant === "team" || canCreate) && !readOnly && (
               <button
                 type="button"
                 onClick={() => {
-                  const blank: ListRow = {
-                    id: "",
-                    name: "",
-                    status: "active",
-                    owner: "운영1팀",
-                    meta: "매니저",
-                    permission: "member",
-                  };
+                  let blank: ListRow;
+                  if (variant === "team") {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "운영1팀",
+                      meta: "매니저",
+                      permission: "member",
+                    };
+                  } else if (variant === "post") {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "urgent", // 등록 시 "요청"
+                      owner: "",
+                      body: "",
+                      author: "",
+                    };
+                  } else {
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: "",
+                    };
+                  }
                   inspector.open(blank);
                   if (!inspector.editing) inspector.toggleEdit();
                 }}
                 className="mr-3 cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
               >
-                + 신규 계정
+                {createLabel ?? (variant === "team" ? "+ 신규 계정" : "+ 새 글")}
               </button>
             )}
             {FILTERS.map((f) => {
@@ -243,6 +287,49 @@ export function ListPattern({
                           {STATUS_LABEL[row.status]}
                         </span>
                       </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : variant === "post" ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  <th className="px-3 py-2">ID</th>
+                  <th className="px-3 py-2">제목</th>
+                  <th className="px-3 py-2">상태</th>
+                  <th className="px-3 py-2">등록자</th>
+                  <th className="px-3 py-2">담당</th>
+                  <th className="px-3 py-2">작성일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
+                    >
+                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
+                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
+                          {POST_STATUS_LABEL[row.status]}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">{row.author ?? "-"}</td>
+                      <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
+                      <td className="px-3 py-2 text-xs text-muted">{row.meta ?? "-"}</td>
                     </tr>
                   ))
                 )}
