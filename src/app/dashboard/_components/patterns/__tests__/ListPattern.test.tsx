@@ -537,4 +537,36 @@ describe("ListPattern ai-work variant", () => {
     const panel = screen.getByRole("complementary", { hidden: true });
     expect(panel).toHaveAttribute("aria-hidden", "false");
   });
+
+  it("'+ AI 활용 등록' 버튼 클릭 시 빈 row의 owner가 currentUserName으로 자동 채워짐", () => {
+    render(
+      <ListPattern
+        title="내 작업"
+        data={{ rows: [] }}
+        variant="ai-work"
+        canCreate
+        currentUserName="송영석"
+        createLabel="+ AI 활용 등록"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "+ AI 활용 등록" }));
+    // 폼에 본인 자동 입력 안내 + 이름 노출
+    expect(screen.getByText(/본인 자동 입력/)).toBeInTheDocument();
+    expect(screen.getAllByText(/송영석/).length).toBeGreaterThan(0);
+  });
+
+  it("currentUserName 미전달 시에도 신규 버튼은 동작 (owner 빈값)", () => {
+    render(
+      <ListPattern
+        title="내 작업"
+        data={{ rows: [] }}
+        variant="ai-work"
+        canCreate
+        createLabel="+ AI 활용 등록"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "+ AI 활용 등록" }));
+    const panel = screen.getByRole("complementary", { hidden: true });
+    expect(panel).toHaveAttribute("aria-hidden", "false");
+  });
 });

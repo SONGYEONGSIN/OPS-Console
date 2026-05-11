@@ -88,6 +88,7 @@ export default async function MyAiWorkPage() {
       canCreate={canWrite}
       createLabel="+ AI 활용 등록"
       readOnly={!canWrite}
+      currentUserName={me?.displayName ?? me?.email ?? ""}
       onPersist={onPersist}
     />
   );
