@@ -485,6 +485,8 @@ type Props = {
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
   receivablesMailDryRun?: boolean;
+  /** ai-work variant — 신규 행 생성 시 owner 자동 채움용 (현재 운영자 이름) */
+  currentUserName?: string;
 };
 
 export function ListPattern({
@@ -499,6 +501,7 @@ export function ListPattern({
   createLabel,
   onInvite,
   receivablesMailDryRun = true,
+  currentUserName,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -611,6 +614,19 @@ export function ListPattern({
                       startDate: today,
                       endDate: null,
                       cohortStatus: "planned",
+                    };
+                  } else if (variant === "ai-work") {
+                    const today = new Date().toISOString().slice(0, 10);
+                    blank = {
+                      id: "",
+                      name: "",
+                      status: "active",
+                      owner: currentUserName ?? "",
+                      workDate: today,
+                      aiTool: "",
+                      category: "",
+                      summary: "",
+                      tags: [],
                     };
                   } else {
                     blank = {

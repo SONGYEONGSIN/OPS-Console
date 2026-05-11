@@ -2010,6 +2010,15 @@ function AiWorkForm({
       }}
       className="space-y-3"
     >
+      {row.owner && (
+        <div className="block text-xs">
+          <span className="mb-1 block text-muted">등록자</span>
+          <p className="border border-line-soft bg-washi-raised px-2 py-1 text-ink">
+            {row.owner}
+            <span className="ml-1 text-2xs text-muted">(본인 자동 입력)</span>
+          </p>
+        </div>
+      )}
       <label className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
         <input

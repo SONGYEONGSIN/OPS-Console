@@ -376,6 +376,20 @@ describe("InspectorListBody ai-work variant", () => {
     expect(writeText).toHaveBeenCalledWith(aiWorkRow.reusePrompt);
   });
 
+  it("edit 모드 — 등록자(본인)가 read-only로 표시", () => {
+    render(
+      <InspectorListBody
+        row={{ ...aiWorkRow, owner: "송영석" }}
+        editing={true}
+        variant="ai-work"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/등록자/)).toBeInTheDocument();
+    expect(screen.getAllByText(/송영석/).length).toBeGreaterThan(0);
+  });
+
   it("edit 모드 — 9필드 입력 노출 + 저장 시 onSave 호출", () => {
     const onSave = vi.fn();
     render(
