@@ -3,7 +3,31 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { getGraphToken } from "@/lib/microsoft/auth";
+import {
+  getWorkbookSession,
+  refreshWorkbookSession,
+} from "@/lib/microsoft/workbook-session";
 import { columnLetter } from "./queries";
+
+/** PATCH 1회 호출 — 504/408 등 timeout 시 호출자가 retry 결정 */
+async function patchCellOnce(args: {
+  url: string;
+  token: string;
+  sessionId: string;
+  value: string;
+}): Promise<Response> {
+  return fetch(args.url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${args.token}`,
+      "content-type": "application/json",
+      "workbook-session-id": args.sessionId,
+    },
+    body: JSON.stringify({ values: [[args.value]] }),
+  });
+}
+
+const RETRY_STATUSES = new Set([408, 503, 504]);
 
 export type ReceivablesActionResult =
   | { ok: true }
@@ -55,19 +79,33 @@ export async function updateReceivablesCells(
   }
 
   const encoded = encodeURIComponent(worksheetName);
+  let sessionId: string;
+  try {
+    sessionId = await getWorkbookSession(driveId, itemId);
+  } catch (e) {
+    return {
+      ok: false,
+      error: `워크북 세션 발급 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
 
   for (const u of updates) {
     const col = columnLetter(u.colIdx);
     const address = `${col}${sheetRowNumber}:${col}${sheetRowNumber}`;
     const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets('${encoded}')/range(address='${address}')`;
-    const res = await fetch(url, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ values: [[u.value]] }),
-    });
+
+    let res = await patchCellOnce({ url, token, sessionId, value: u.value });
+
+    // 504/408/503 발생 시 세션 재발급 후 1회 retry — workbook 활성화 대기 회피
+    if (RETRY_STATUSES.has(res.status)) {
+      try {
+        sessionId = await refreshWorkbookSession(driveId, itemId);
+      } catch {
+        // 세션 재발급 실패는 무시 — 다음 patchCellOnce에서 동일 에러 캐치
+      }
+      res = await patchCellOnce({ url, token, sessionId, value: u.value });
+    }
+
     if (!res.ok) {
       const errText = await res.text();
       return {

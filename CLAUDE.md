@@ -63,6 +63,14 @@ E2E 운영 메모:
 - 로컬에서 `npm run dev` 띄운 상태로 e2e 실행 시 `E2E_BASE_URL=http://localhost:3000` 설정 + `--workers=1`
 - `TEST_USER_EMAIL`/`TEST_USER_PASSWORD`가 Supabase 실 사용자와 동기되어야 인증 의존 테스트(~30건) 동작
 
+## 미수채권 독려 메일 (Microsoft Graph sendMail)
+
+- 트리거: 미수채권 페이지에서 admin이 수동 클릭 → 미리보기 모달 → 일괄 발송
+- 그룹화: 경과일수 ≥ `MAIL_REMINDER_THRESHOLD_DAYS`(기본 10일)인 청구건을 `학교담당자` 컬럼 이메일로 묶음
+- 발신자: 로그인한 운영자 본인 메일박스 (Azure AD UPN = operators.email 가정). Azure AD App에 `Mail.Send` Application permission + admin consent 필요
+- 안전장치: `MAIL_DRY_RUN=true` 시 실제 발송 안 함, `receivables_mail_sends`에 `status='dry_run'`만 적재. 운영 검증 후 `false`로 토글
+- 이력: `supabase/migrations/20260511_receivables_mail_sends_*` — RLS: 조회 admin/member, 변경 admin
+
 ## Rules
 
 프로젝트 규칙은 `.claude/rules/`에 분리 관리:

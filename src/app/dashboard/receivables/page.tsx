@@ -36,6 +36,7 @@ export default async function ReceivablesPage() {
 
   const me = await getCurrentOperator();
   const canEdit = me?.permission !== "viewer" && me?.permission !== null;
+  const mailDryRun = process.env.MAIL_DRY_RUN !== "false";
 
   async function onPersist(
     row: ListRow,
@@ -56,6 +57,12 @@ export default async function ReceivablesPage() {
       updates.push({
         colIdx: cells.dueDateColIdx,
         value: cells.dueDate ?? "",
+      });
+    }
+    if (cells.schoolOwnerColIdx !== undefined) {
+      updates.push({
+        colIdx: cells.schoolOwnerColIdx,
+        value: cells.schoolOwner ?? "",
       });
     }
     if (updates.length === 0) {
@@ -105,6 +112,8 @@ export default async function ReceivablesPage() {
         variant="receivables"
         readOnly={!canEdit}
         onPersist={canEdit ? onPersist : undefined}
+        currentUserPermission={me?.permission ?? null}
+        receivablesMailDryRun={mailDryRun}
       />
     </>
   );
@@ -123,17 +132,23 @@ function pickColumns(headers: string[]): {
   owner: number;
   remarks: number;
   dueDate: number;
+  schoolOwner: number;
 } {
   const find = (regex: RegExp) => headers.findIndex((h) => regex.test(h));
+  const schoolOwner = find(/^학교\s*담당자?$|^학교\s*담당\s*이메일$/);
+  // owner는 '운영자/담당' 매칭이라 '학교담당자'도 잡힐 수 있음 — schoolOwner와 겹치면 제외
+  let owner = find(/운영자|담당/);
+  if (owner === schoolOwner) owner = find(/^운영자$/);
   return {
     date: find(/^청구일자|^청구\s*일자/),
     name: find(/거래처|학교|이름/),
     detail: find(/내역|상세/),
     amount: find(/청구금액|금액/),
     status: find(/입금여부|여부|상태/),
-    owner: find(/운영자|담당/),
+    owner,
     remarks: find(/적요|비고|메모|피드백/),
     dueDate: find(/입금예정일|예정일/),
+    schoolOwner,
   };
 }
 
@@ -195,6 +210,11 @@ function toListRow(
         cols.dueDate >= 0 ? sheet.validColIdx[cols.dueDate] : undefined,
       dueDateHeaderIdx: cols.dueDate >= 0 ? cols.dueDate : undefined,
       dueDate: cols.dueDate >= 0 ? textRow[cols.dueDate] ?? "" : "",
+      schoolOwnerColIdx:
+        cols.schoolOwner >= 0 ? sheet.validColIdx[cols.schoolOwner] : undefined,
+      schoolOwnerHeaderIdx: cols.schoolOwner >= 0 ? cols.schoolOwner : undefined,
+      schoolOwner:
+        cols.schoolOwner >= 0 ? textRow[cols.schoolOwner] ?? "" : "",
       worksheetName: sheet.worksheetName,
     },
   };

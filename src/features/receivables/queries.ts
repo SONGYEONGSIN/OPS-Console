@@ -1,5 +1,6 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
+import { getWorkbookSession } from "@/lib/microsoft/workbook-session";
 
 export type ReceivablesSheet = {
   worksheetName: string;
@@ -67,11 +68,25 @@ export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> 
   }
 
   const base = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook`;
-  const auth = { Authorization: `Bearer ${token}` };
 
-  // 1) 첫 워크시트 이름
+  // PATCH와 같은 워크북 세션 사용 — PATCH 결과가 같은 세션 GET 에 즉시 반영됨.
+  // 세션 발급 실패해도 (예: 처음 호출) 일반 GET 으로 fallback.
+  let sessionId: string | null = null;
+  try {
+    sessionId = await getWorkbookSession(driveId, itemId);
+  } catch {
+    sessionId = null;
+  }
+
+  const reqHeaders: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+  };
+  if (sessionId) reqHeaders["workbook-session-id"] = sessionId;
+
+  // 1) 첫 워크시트 이름 — cache: 'no-store' 로 Next.js fetch 캐시 회피
   const wsRes = await fetch(`${base}/worksheets?$top=1&$select=name`, {
-    headers: auth,
+    headers: reqHeaders,
+    cache: "no-store",
   });
   if (!wsRes.ok) {
     console.error("[receivables] worksheets fail:", wsRes.status, await wsRes.text());
@@ -88,7 +103,7 @@ export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> 
   const encoded = encodeURIComponent(worksheetName);
   const rangeRes = await fetch(
     `${base}/worksheets('${encoded}')/usedRange?$select=values,text,address,rowCount,columnCount`,
-    { headers: auth },
+    { headers: reqHeaders, cache: "no-store" },
   );
   if (!rangeRes.ok) {
     console.error("[receivables] usedRange fail:", rangeRes.status, await rangeRes.text());

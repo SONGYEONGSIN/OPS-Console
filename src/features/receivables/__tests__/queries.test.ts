@@ -5,6 +5,12 @@ vi.mock("@/lib/microsoft/auth", () => ({
   __resetTokenCache: vi.fn(),
 }));
 
+vi.mock("@/lib/microsoft/workbook-session", () => ({
+  getWorkbookSession: vi.fn(async () => "test-session-id"),
+  refreshWorkbookSession: vi.fn(async () => "test-session-id"),
+  __resetWorkbookSessionCache: vi.fn(),
+}));
+
 describe("fetchReceivablesSheet", () => {
   beforeEach(() => {
     vi.resetModules();

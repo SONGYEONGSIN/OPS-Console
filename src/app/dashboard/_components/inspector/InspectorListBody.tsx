@@ -14,6 +14,7 @@ import {
 } from "@/features/operators/schemas";
 import { postStatusKeys, postStatusLabel } from "../patterns/ListPattern";
 import { sidebarSections, type SbItem } from "../../_data";
+import { SendReceivablesMailButton } from "@/components/receivables/SendReceivablesMailButton";
 
 type Variant =
   | "default"
@@ -40,6 +41,8 @@ type Props = {
     row: ListRow,
     newText: string,
   ) => Promise<{ ok: boolean; error?: string }>;
+  /** receivables variant — 독려 메일 발송이 dry-run 모드인지 (env 기반). */
+  receivablesMailDryRun?: boolean;
 };
 
 /**
@@ -60,11 +63,19 @@ export function InspectorListBody({
   currentUserPermission = null,
   onInvite,
   onUpdateRemarks,
+  receivablesMailDryRun = true,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
   if (!editing) {
-    return <ViewMode row={row} variant={variant} />;
+    return (
+      <ViewMode
+        row={row}
+        variant={variant}
+        currentUserPermission={currentUserPermission}
+        receivablesMailDryRun={receivablesMailDryRun}
+      />
+    );
   }
 
   const isTeam = variant === "team";
@@ -434,15 +445,26 @@ export function InspectorListBody({
 function ViewMode({
   row,
   variant,
+  currentUserPermission = null,
+  receivablesMailDryRun = true,
 }: {
   row: ListRow;
   variant: Variant;
+  currentUserPermission?: OperatorPermission | null;
+  receivablesMailDryRun?: boolean;
 }) {
   if (variant === "team") return <TeamView row={row} />;
   if (variant === "post-feedback" || variant === "post-notice")
     return <PostView row={row} variant={variant} />;
   if (variant === "cohort") return <CohortView row={row} />;
-  if (variant === "receivables") return <ReceivablesView row={row} />;
+  if (variant === "receivables")
+    return (
+      <ReceivablesView
+        row={row}
+        canSendMail={currentUserPermission === "admin"}
+        mailDryRun={receivablesMailDryRun}
+      />
+    );
   return <ServiceView row={row} />;
 }
 
@@ -459,11 +481,87 @@ function elapsedDays(dateText?: string): number | null {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
-function ReceivablesView({ row }: { row: ListRow }) {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SCHOOL_OWNER_HEADER_RE = /^학교\s*담당자?$|^학교\s*담당\s*이메일$/;
+
+/**
+ * 다양한 한국식 날짜 표기를 input type="date" 가 받을 수 있는 ISO 8601 (YYYY-MM-DD) 으로 정규화.
+ * 변환 실패 시 빈 문자열 — 사용자가 달력으로 새로 선택 가능.
+ *
+ * 지원 형식: 2026-05-30 / 2026.05.30 / 2026/05/30 / 2026년 5월 30일 / Excel serial(45777)
+ */
+function toISODateInput(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  if (!s) return "";
+
+  // 이미 ISO
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return s;
+
+  // 2026.05.30 / 2026/05/30
+  const dotted = s.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})$/);
+  if (dotted) {
+    const [, y, m, d] = dotted;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // 2026년 5월 30일
+  const korean = s.match(/^(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일$/);
+  if (korean) {
+    const [, y, m, d] = korean;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // Excel serial number (1900-01-01 기준)
+  const serial = Number(s);
+  if (Number.isFinite(serial) && serial > 25569 && serial < 80000) {
+    const ms = (serial - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    if (!Number.isNaN(d.getTime())) {
+      const y = d.getUTCFullYear();
+      const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const da = String(d.getUTCDate()).padStart(2, "0");
+      return `${y}-${mo}-${da}`;
+    }
+  }
+
+  return "";
+}
+
+function pickSchoolOwnerEmail(cells: ListRow["receivablesCells"]): string | null {
+  if (!cells) return null;
+  const idx = cells.headers.findIndex((h) => SCHOOL_OWNER_HEADER_RE.test(h));
+  if (idx === -1) return null;
+  const raw = (cells.textValues[idx] ?? "").trim();
+  if (!raw || !EMAIL_RE.test(raw)) return null;
+  return raw;
+}
+
+function ReceivablesView({
+  row,
+  canSendMail = false,
+  mailDryRun = true,
+}: {
+  row: ListRow;
+  canSendMail?: boolean;
+  mailDryRun?: boolean;
+}) {
   const cells = row.receivablesCells;
   const elapsed = elapsedDays(row.meta);
+  const schoolOwnerEmail = pickSchoolOwnerEmail(cells);
+  const isPaidByRemarks = /입금\s*완료/.test(cells?.remarks ?? "");
   return (
     <div className="space-y-6">
+      {canSendMail && schoolOwnerEmail && !isPaidByRemarks ? (
+        <div className="flex justify-end">
+          <SendReceivablesMailButton
+            email={schoolOwnerEmail}
+            customerName={row.name}
+            dryRun={mailDryRun}
+          />
+        </div>
+      ) : null}
       <Section title="기본 정보">
         <DefList
           items={[
@@ -1633,6 +1731,7 @@ function ReceivablesForm({
   }
   const remarksIdx = cells.remarksHeaderIdx;
   const dueDateIdx = cells.dueDateHeaderIdx;
+  const schoolOwnerIdx = cells.schoolOwnerHeaderIdx;
 
   return (
     <form
@@ -1644,20 +1743,26 @@ function ReceivablesForm({
     >
       <div className="border border-line-soft bg-washi-raised p-3 text-xs text-muted">
         <p>
-          편집 가능: <strong className="text-ink">입금예정일 · 적요</strong>.
-          나머지 셀은 SharePoint 원본 그대로 표시됩니다.
+          편집 가능:{" "}
+          <strong className="text-ink">
+            입금예정일 · 적요 · 학교담당자
+          </strong>
+          . 나머지 셀은 SharePoint 원본 그대로 표시됩니다.
         </p>
       </div>
 
       <dl className="grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-xs">
         {cells.headers.map((h, i) => {
-          const isEditable = i === remarksIdx || i === dueDateIdx;
+          const isEditable =
+            i === remarksIdx || i === dueDateIdx || i === schoolOwnerIdx;
           const value =
             i === remarksIdx
               ? cells.remarks ?? ""
               : i === dueDateIdx
                 ? cells.dueDate ?? ""
-                : cells.textValues[i] ?? "";
+                : i === schoolOwnerIdx
+                  ? cells.schoolOwner ?? ""
+                  : cells.textValues[i] ?? "";
 
           return (
             <div key={i} className="contents">
@@ -1684,11 +1789,11 @@ function ReceivablesForm({
                     className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
                     placeholder="입금완료, 메일 발송 완료 등"
                   />
-                ) : (
+                ) : i === dueDateIdx ? (
                   <input
-                    type="text"
+                    type="date"
                     aria-label={h}
-                    value={value}
+                    value={toISODateInput(value)}
                     onChange={(e) =>
                       setRow({
                         ...row,
@@ -1699,8 +1804,32 @@ function ReceivablesForm({
                       })
                     }
                     className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
-                    placeholder="2026-05-31"
                   />
+                ) : (
+                  <div className="space-y-1">
+                    <input
+                      type="email"
+                      aria-label={h}
+                      value={value}
+                      onChange={(e) =>
+                        setRow({
+                          ...row,
+                          receivablesCells: {
+                            ...cells,
+                            schoolOwner: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
+                      placeholder="manager@school.ac.kr"
+                    />
+                    {value &&
+                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? (
+                      <p className="text-[11px] text-vermilion-deep">
+                        ※ 이메일 형식이 올바르지 않습니다 (저장은 가능)
+                      </p>
+                    ) : null}
+                  </div>
                 )}
               </dd>
             </div>
