@@ -8,6 +8,13 @@ import {
   PERMISSION_LABEL,
   type OperatorPermission,
 } from "@/features/operators/schemas";
+import {
+  AI_TOOL_LABEL,
+  AI_TOOL_TONE,
+  CATEGORY_LABEL,
+  CATEGORY_TONE,
+} from "@/lib/ai-work/constants";
+import type { AiTool, AiWorkCategory } from "@/features/ai-work/schemas";
 
 export type ListRow = {
   id: string;
@@ -115,13 +122,6 @@ export type ListRow = {
   savedHours?: number | null;
   /** ai-work 도메인 — 태그 배열 */
   tags?: string[];
-};
-
-export type ListPatternColumn = {
-  key: string;
-  header: string;
-  render: (row: ListRow) => React.ReactNode;
-  className?: string;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -485,8 +485,6 @@ type Props = {
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
   receivablesMailDryRun?: boolean;
-  /** default variant — 커스텀 컬럼 정의. variant 폭증 회피용. (예: ai-work) */
-  columns?: ListPatternColumn[];
 };
 
 export function ListPattern({
@@ -501,7 +499,6 @@ export function ListPattern({
   createLabel,
   onInvite,
   receivablesMailDryRun = true,
-  columns,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -1002,46 +999,62 @@ export function ListPattern({
                 )}
               </tbody>
             </table>
-          ) : columns ? (
+          ) : variant === "ai-work" ? (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  {columns.map((c) => (
-                    <th key={c.key} className={`px-3 py-2 ${c.className ?? ""}`}>
-                      {c.header}
-                    </th>
-                  ))}
+                  <th className="px-3 py-2">작업일</th>
+                  <th className="px-3 py-2">제목</th>
+                  <th className="px-3 py-2">AI 도구</th>
+                  <th className="px-3 py-2">카테고리</th>
+                  <th className="px-3 py-2">등록자</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={columns.length}
-                      className="px-3 py-6 text-center text-muted"
-                    >
+                    <td colSpan={5} className="px-3 py-6 text-center text-muted">
                       데이터 없음
                     </td>
                   </tr>
                 ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      }`}
-                    >
-                      {columns.map((c) => (
-                        <td
-                          key={c.key}
-                          className={`px-3 py-2 ${c.className ?? ""}`}
-                        >
-                          {c.render(row)}
+                  filteredRows.map((row) => {
+                    const tool = row.aiTool as AiTool | undefined;
+                    const cat = row.category as AiWorkCategory | undefined;
+                    return (
+                      <tr
+                        key={row.id}
+                        onClick={() => inspector.open(row)}
+                        className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                          inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                        }`}
+                      >
+                        <td className="px-3 py-2 font-mono text-xs text-ink">
+                          {row.workDate ?? "—"}
                         </td>
-                      ))}
-                    </tr>
-                  ))
+                        <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                        <td className="px-3 py-2">
+                          {tool && (
+                            <span
+                              className={`inline-block px-2 py-0.5 text-2xs ${AI_TOOL_TONE[tool] ?? ""}`}
+                            >
+                              {AI_TOOL_LABEL[tool] ?? tool}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {cat && (
+                            <span
+                              className={`inline-block px-2 py-0.5 text-2xs ${CATEGORY_TONE[cat] ?? ""}`}
+                            >
+                              {CATEGORY_LABEL[cat] ?? cat}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
