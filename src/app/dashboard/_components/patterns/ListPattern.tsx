@@ -90,6 +90,12 @@ export type ListRow = {
     dueDateHeaderIdx?: number;
     /** 입금예정일 현재 텍스트 */
     dueDate?: string;
+    /** 학교담당자(이메일) 컬럼의 원본 인덱스 (PATCH cell letter 계산) */
+    schoolOwnerColIdx?: number;
+    /** 학교담당자 컬럼의 valid 인덱스 (UI 렌더링 분기) */
+    schoolOwnerHeaderIdx?: number;
+    /** 학교담당자 이메일 현재 텍스트 */
+    schoolOwner?: string;
     /** 워크시트 이름 (PATCH URL) */
     worksheetName?: string;
   };
@@ -453,6 +459,8 @@ type Props = {
   createLabel?: string;
   /** cohort variant — 초대 메일 발송 (admin only). InspectorListBody로 전달. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
+  receivablesMailDryRun?: boolean;
 };
 
 export function ListPattern({
@@ -466,6 +474,7 @@ export function ListPattern({
   canCreate = false,
   createLabel,
   onInvite,
+  receivablesMailDryRun = true,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -1065,6 +1074,7 @@ export function ListPattern({
               variant={variant}
               currentUserPermission={currentUserPermission}
               onInvite={onInvite}
+              receivablesMailDryRun={receivablesMailDryRun}
               onSave={async (next) => {
                 const wasNew = !rows.some((r) => r.id === next.id) || next.id === "";
                 // optimistic update
