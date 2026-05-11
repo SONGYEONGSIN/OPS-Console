@@ -23,12 +23,12 @@ export function PageHeader({
   description,
 }: Props) {
   return (
-    <>
+    <div className="sticky top-0 z-30 bg-cream">
       <CrumbBar pathname={pathname} />
       <header className="bg-cream px-9 pb-[18px] pt-6">
         <PageMeta items={meta} />
         <PageHeadline {...headline} description={description} />
       </header>
-    </>
+    </div>
   );
 }
