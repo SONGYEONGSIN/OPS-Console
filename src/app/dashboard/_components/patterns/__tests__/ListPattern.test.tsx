@@ -459,7 +459,7 @@ describe("ListPattern my-todo variant", () => {
   });
 });
 
-describe("ListPattern default variant + columns prop", () => {
+describe("ListPattern ai-work variant", () => {
   const aiWorkRows: ListRow[] = [
     {
       id: "aw-001",
@@ -481,59 +481,56 @@ describe("ListPattern default variant + columns prop", () => {
     },
   ];
 
-  const aiWorkColumns = [
-    { key: "workDate", header: "작업일", render: (r: ListRow) => r.workDate },
-    { key: "name", header: "제목", render: (r: ListRow) => r.name },
-    { key: "aiTool", header: "AI 도구", render: (r: ListRow) => r.aiTool },
-    { key: "category", header: "카테고리", render: (r: ListRow) => r.category },
-    { key: "owner", header: "등록자", render: (r: ListRow) => r.owner },
-  ];
-
-  it("columns prop이 주어지면 헤더가 columns.header대로 렌더", () => {
+  it("5 컬럼 헤더 렌더 (작업일/제목/AI 도구/카테고리/등록자)", () => {
     render(
       <ListPattern
         title="내 작업"
         data={{ rows: aiWorkRows }}
-        columns={aiWorkColumns}
+        variant="ai-work"
       />,
     );
     expect(screen.getByText("작업일")).toBeInTheDocument();
+    expect(screen.getByText("제목")).toBeInTheDocument();
     expect(screen.getByText("AI 도구")).toBeInTheDocument();
     expect(screen.getByText("카테고리")).toBeInTheDocument();
-    // 기존 4컬럼 헤더(ID/상태/담당)은 미노출 — 커스텀 columns 우선
+    expect(screen.getByText("등록자")).toBeInTheDocument();
+    // 기본 4컬럼 ID는 미노출
     expect(screen.queryByText("ID")).not.toBeInTheDocument();
-    expect(screen.queryByText("담당")).not.toBeInTheDocument();
   });
 
-  it("columns prop이 주어지면 셀이 columns.render(row)로 렌더", () => {
+  it("AI 도구 / 카테고리 라벨 한국어 + chip 렌더", () => {
     render(
       <ListPattern
         title="내 작업"
         data={{ rows: aiWorkRows }}
-        columns={aiWorkColumns}
+        variant="ai-work"
+      />,
+    );
+    expect(screen.getByText("ChatGPT")).toBeInTheDocument();
+    expect(screen.getByText("Claude")).toBeInTheDocument();
+    expect(screen.getByText("회의")).toBeInTheDocument();
+    expect(screen.getByText("번역")).toBeInTheDocument();
+  });
+
+  it("작업일·제목·등록자 셀 노출", () => {
+    render(
+      <ListPattern
+        title="내 작업"
+        data={{ rows: aiWorkRows }}
+        variant="ai-work"
       />,
     );
     expect(screen.getByText("2026-05-10")).toBeInTheDocument();
     expect(screen.getByText("회의록 요약 자동화")).toBeInTheDocument();
-    expect(screen.getByText("chatgpt")).toBeInTheDocument();
+    expect(screen.getAllByText("송영석").length).toBeGreaterThan(0);
   });
 
-  it("columns prop 없으면 기존 4컬럼 fallback (ID/이름/상태/담당)", () => {
-    render(
-      <ListPattern title="민원 목록" data={{ rows: aiWorkRows }} />,
-    );
-    expect(screen.getByText("ID")).toBeInTheDocument();
-    expect(screen.getByText("이름")).toBeInTheDocument();
-    expect(screen.getByText("상태")).toBeInTheDocument();
-    expect(screen.getByText("담당")).toBeInTheDocument();
-  });
-
-  it("columns + 행 클릭 시 인스펙터 열림 (기존 동작 유지)", () => {
+  it("행 클릭 시 인스펙터 열림", () => {
     render(
       <ListPattern
         title="내 작업"
         data={{ rows: aiWorkRows }}
-        columns={aiWorkColumns}
+        variant="ai-work"
       />,
     );
     fireEvent.click(screen.getByText("회의록 요약 자동화"));

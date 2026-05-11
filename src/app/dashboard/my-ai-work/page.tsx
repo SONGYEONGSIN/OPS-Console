@@ -2,10 +2,7 @@ import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
-import type {
-  ListRow,
-  ListPatternColumn,
-} from "../_components/patterns/ListPattern";
+import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listAiWorks } from "@/features/ai-work/queries";
@@ -19,12 +16,6 @@ import type {
   AiWorkCategory,
   AiWorkRow,
 } from "@/features/ai-work/schemas";
-import {
-  AI_TOOL_LABEL,
-  AI_TOOL_TONE,
-  CATEGORY_LABEL,
-  CATEGORY_TONE,
-} from "@/lib/ai-work/constants";
 
 export default async function MyAiWorkPage() {
   const slug = "my-ai-work";
@@ -50,56 +41,6 @@ export default async function MyAiWorkPage() {
       description={config.description}
     />
   );
-
-  const columns: ListPatternColumn[] = [
-    {
-      key: "workDate",
-      header: "작업일",
-      render: (r) => (
-        <span className="font-mono text-xs text-ink">{r.workDate ?? "—"}</span>
-      ),
-    },
-    {
-      key: "name",
-      header: "제목",
-      render: (r) => <span className="font-medium text-ink">{r.name}</span>,
-    },
-    {
-      key: "aiTool",
-      header: "AI 도구",
-      render: (r) => {
-        const t = r.aiTool as AiTool | undefined;
-        if (!t) return null;
-        return (
-          <span
-            className={`inline-block px-2 py-0.5 text-2xs ${AI_TOOL_TONE[t] ?? ""}`}
-          >
-            {AI_TOOL_LABEL[t] ?? t}
-          </span>
-        );
-      },
-    },
-    {
-      key: "category",
-      header: "카테고리",
-      render: (r) => {
-        const c = r.category as AiWorkCategory | undefined;
-        if (!c) return null;
-        return (
-          <span
-            className={`inline-block px-2 py-0.5 text-2xs ${CATEGORY_TONE[c] ?? ""}`}
-          >
-            {CATEGORY_LABEL[c] ?? c}
-          </span>
-        );
-      },
-    },
-    {
-      key: "owner",
-      header: "등록자",
-      render: (r) => <span className="text-sm text-ink-soft">{r.owner}</span>,
-    },
-  ];
 
   async function onPersist(
     row: ListRow,
@@ -144,7 +85,6 @@ export default async function MyAiWorkPage() {
       data={{ rows }}
       header={header}
       variant="ai-work"
-      columns={columns}
       canCreate={canWrite}
       createLabel="+ AI 활용 등록"
       readOnly={!canWrite}
