@@ -21,12 +21,12 @@ export function AuthTitleBar() {
   }, []);
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-line bg-ink px-3.5 text-cream">
-      <div />
-      <div className="text-center text-md font-medium tracking-[0.02em]">
-        운영부 상황실
+    <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-5 bg-ink px-4 text-xs leading-[26px] tracking-[0.02em] text-cream shadow-[0_1px_0_0_var(--color-line)] max-md:gap-3 max-md:px-3">
+      <div className="flex items-center gap-5" />
+      <div className="flex items-center justify-center gap-5">
+        <span className="font-medium">운영부 상황실</span>
       </div>
-      <div className="ref text-xs text-faint tracking-[0.04em] text-right max-[479px]:text-[10px]">
+      <div className="ref flex items-center justify-end gap-5 text-faint tracking-[0.04em] max-[479px]:text-[10px]">
         <Clock now={now} />
       </div>
     </div>
@@ -109,7 +109,7 @@ export function AuthStatusBar() {
   const gitSha = process.env.NEXT_PUBLIC_GIT_SHA ?? "unknown";
 
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-5 border-t border-line bg-ink px-4 text-xs tracking-[0.02em] text-cream/75 max-md:gap-3 max-md:px-3">
+    <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-5 bg-ink px-4 text-xs leading-[26px] tracking-[0.02em] text-cream/75 shadow-[0_-1px_0_0_var(--color-line)] max-md:gap-3 max-md:px-3">
       <div className="flex items-center gap-5">
         <span className="flex items-center">
           <span
