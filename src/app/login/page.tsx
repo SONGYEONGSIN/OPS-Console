@@ -48,7 +48,7 @@ function LoginPageContent() {
       : undefined;
 
   return (
-    <div className="relative z-10 grid h-screen grid-rows-[34px_1fr_26px]">
+    <div className="relative z-10 grid h-screen grid-rows-[26px_1fr_26px]">
       <AuthTitleBar />
       <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-cream">
         <AuthPanel
