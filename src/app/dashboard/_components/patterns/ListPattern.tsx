@@ -99,6 +99,29 @@ export type ListRow = {
     /** 워크시트 이름 (PATCH URL) */
     worksheetName?: string;
   };
+  /** ai-work 도메인 — AI 도구 enum (claude/chatgpt/...) */
+  aiTool?: string;
+  /** ai-work 도메인 — 카테고리 enum (code/doc/...) */
+  category?: string;
+  /** ai-work 도메인 — 작업 일자 (YYYY-MM-DD) */
+  workDate?: string;
+  /** ai-work 도메인 — 요약 markdown */
+  summary?: string;
+  /** ai-work 도메인 — 결과물 외부 링크 */
+  outputUrl?: string | null;
+  /** ai-work 도메인 — 재사용 프롬프트 */
+  reusePrompt?: string | null;
+  /** ai-work 도메인 — 절감 시간(시간) */
+  savedHours?: number | null;
+  /** ai-work 도메인 — 태그 배열 */
+  tags?: string[];
+};
+
+export type ListPatternColumn = {
+  key: string;
+  header: string;
+  render: (row: ListRow) => React.ReactNode;
+  className?: string;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -443,7 +466,8 @@ type Props = {
     | "schedule"
     | "my-todo"
     | "cohort"
-    | "receivables";
+    | "receivables"
+    | "ai-work";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -461,6 +485,8 @@ type Props = {
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
   receivablesMailDryRun?: boolean;
+  /** default variant — 커스텀 컬럼 정의. variant 폭증 회피용. (예: ai-work) */
+  columns?: ListPatternColumn[];
 };
 
 export function ListPattern({
@@ -475,6 +501,7 @@ export function ListPattern({
   createLabel,
   onInvite,
   receivablesMailDryRun = true,
+  columns,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -970,6 +997,49 @@ export function ListPattern({
                       <td className="px-3 py-2 text-sm text-ink-soft">
                         {row.owner || "팀 공통"}
                       </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : columns ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+                  {columns.map((c) => (
+                    <th key={c.key} className={`px-3 py-2 ${c.className ?? ""}`}>
+                      {c.header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={columns.length}
+                      className="px-3 py-6 text-center text-muted"
+                    >
+                      데이터 없음
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => inspector.open(row)}
+                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
+                      }`}
+                    >
+                      {columns.map((c) => (
+                        <td
+                          key={c.key}
+                          className={`px-3 py-2 ${c.className ?? ""}`}
+                        >
+                          {c.render(row)}
+                        </td>
+                      ))}
                     </tr>
                   ))
                 )}
