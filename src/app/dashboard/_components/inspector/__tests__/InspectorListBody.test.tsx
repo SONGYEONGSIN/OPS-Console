@@ -324,3 +324,80 @@ describe("InspectorListBody post variant — 삭제 버튼", () => {
     confirmSpy.mockRestore();
   });
 });
+
+describe("InspectorListBody ai-work variant", () => {
+  const aiWorkRow: ListRow = {
+    id: "aw-001",
+    name: "회의록 요약 자동화",
+    status: "active",
+    owner: "송영석",
+    workDate: "2026-05-10",
+    aiTool: "chatgpt",
+    category: "meeting",
+    summary: "주간회의 30분 → 5분.",
+    outputUrl: "https://notion.so/xxx",
+    reusePrompt: "회의록을 5문장 이내로 요약해줘. 결정 사항과 액션 아이템은 별도 섹션으로...",
+    savedHours: 0.4,
+    tags: ["회의록", "주간"],
+  };
+
+  it("read 모드 — AI 도구·카테고리·요약·재사용 프롬프트·태그·절감 시간 노출", () => {
+    render(
+      <InspectorListBody
+        row={aiWorkRow}
+        editing={false}
+        variant="ai-work"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("ChatGPT")).toBeInTheDocument();
+    expect(screen.getByText("회의")).toBeInTheDocument();
+    expect(screen.getByText(/주간회의 30분 → 5분/)).toBeInTheDocument();
+    expect(screen.getByText(/회의록을 5문장 이내로/)).toBeInTheDocument();
+    expect(screen.getByText("회의록")).toBeInTheDocument();
+    expect(screen.getByText("주간")).toBeInTheDocument();
+    expect(screen.getByText(/0\.4\s*시간/)).toBeInTheDocument();
+  });
+
+  it("read 모드 — 프롬프트 복사 버튼 클릭 시 navigator.clipboard.writeText 호출", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(
+      <InspectorListBody
+        row={aiWorkRow}
+        editing={false}
+        variant="ai-work"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /프롬프트.*복사/ }));
+    expect(writeText).toHaveBeenCalledWith(aiWorkRow.reusePrompt);
+  });
+
+  it("edit 모드 — 9필드 입력 노출 + 저장 시 onSave 호출", () => {
+    const onSave = vi.fn();
+    render(
+      <InspectorListBody
+        row={aiWorkRow}
+        editing={true}
+        variant="ai-work"
+        onSave={onSave}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("제목")).toHaveValue("회의록 요약 자동화");
+    expect(screen.getByLabelText("작업 일자")).toHaveValue("2026-05-10");
+    expect(screen.getByLabelText("AI 도구")).toHaveValue("chatgpt");
+    expect(screen.getByLabelText("카테고리")).toHaveValue("meeting");
+
+    fireEvent.change(screen.getByLabelText("제목"), {
+      target: { value: "회의록 요약 v2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+    expect(onSave).toHaveBeenCalled();
+    const next = onSave.mock.calls[0][0];
+    expect(next.name).toBe("회의록 요약 v2");
+  });
+});
