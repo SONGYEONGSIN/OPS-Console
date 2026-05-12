@@ -39,6 +39,7 @@ export default async function MyAiWorkPage() {
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 

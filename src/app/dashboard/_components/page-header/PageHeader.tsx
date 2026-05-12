@@ -7,6 +7,8 @@ type Props = {
   meta?: MetaItem[];
   headline: { title: string; accent?: string };
   description?: string;
+  /** DB 연동 list 페이지에 자동 새로고침 카운트다운 노출 */
+  autoRefresh?: boolean;
 };
 
 /**
@@ -21,12 +23,13 @@ export function PageHeader({
   meta = [],
   headline,
   description,
+  autoRefresh = false,
 }: Props) {
   return (
     <>
       <CrumbBar pathname={pathname} />
       <header className="bg-cream px-9 pb-[18px] pt-6">
-        <PageMeta items={meta} />
+        <PageMeta items={meta} autoRefresh={autoRefresh} />
         <PageHeadline {...headline} description={description} />
       </header>
     </>

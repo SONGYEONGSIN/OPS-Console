@@ -38,6 +38,7 @@ export default async function TeamPage() {
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 
