@@ -4,7 +4,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 /** 인증 없이 접근 가능한 라우트. 정확 일치 또는 prefix 매치. */
 const PUBLIC_PATHS = ["/login", "/forgot-password", "/reset-password", "/auth/callback"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some(
