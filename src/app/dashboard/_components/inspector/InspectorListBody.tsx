@@ -208,7 +208,7 @@ export function InspectorListBody({
         <div className="flex gap-2 pt-2">
           <button
             type="submit"
-            className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+            className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
           >
             저장
           </button>
@@ -444,7 +444,7 @@ export function InspectorListBody({
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
@@ -1357,7 +1357,7 @@ function ScheduleForm({
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
@@ -1486,7 +1486,7 @@ function MyTodoForm({
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
@@ -1668,7 +1668,7 @@ function CohortForm({
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
@@ -1703,7 +1703,7 @@ function CohortForm({
                 alert(`발송 실패: ${result.error ?? "알 수 없는 오류"}`);
               }
             }}
-            className="w-full border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep disabled:opacity-50"
+            className="w-full border border-vermilion bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:opacity-50"
           >
             {inviting
               ? "발송 중…"
@@ -1862,7 +1862,7 @@ function ReceivablesForm({
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
@@ -2152,7 +2152,7 @@ function AiWorkForm({
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="flex-1 border border-line bg-vermilion px-3 py-1.5 text-sm font-medium text-cream hover:bg-vermilion-deep"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
