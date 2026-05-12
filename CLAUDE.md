@@ -34,7 +34,7 @@ Folio/
 │   ├── components/     # React 컴포넌트 (auth/AuthChrome 등 도메인별 폴더)
 │   ├── features/       # 도메인 로직 (auth, operators — schemas/actions/queries)
 │   ├── lib/            # 유틸리티, Supabase 클라이언트
-│   └── middleware.ts   # 미인증 가드 + /login 리다이렉트
+│   └── proxy.ts        # 미인증 가드 + /login 리다이렉트 (Next 16 middleware→proxy rename)
 ├── e2e/                # Playwright spec (login/dashboard/smoke/reset/forgot)
 ├── supabase/migrations/ # operators 테이블 + RLS + GRANT
 ├── scripts/            # 일회성 운영 도구 (inspect-user, restore-operator)
