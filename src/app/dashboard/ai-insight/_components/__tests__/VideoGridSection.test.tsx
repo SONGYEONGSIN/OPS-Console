@@ -31,4 +31,43 @@ describe("VideoGridSection", () => {
     const iframe = screen.getByTitle(video.title);
     expect(iframe.getAttribute("src")).toContain("youtube.com/embed/dQw4w9WgXcQ");
   });
+
+  it("13개 videos — 첫 페이지 12개 카드 노출 + 페이지 인디케이터 1/2", () => {
+    const videos: InsightVideoRow[] = Array.from({ length: 13 }, (_, i) => ({
+      ...video,
+      id: `id-${String(i + 1).padStart(3, "0")}-aaaa-aaaa-aaaa-aaaaaaaaaaaa`,
+      video_id: `vid${i + 1}`,
+      title: `영상 ${i + 1}`,
+    }));
+    render(<VideoGridSection videos={videos} />);
+    expect(screen.getByText("영상 1")).toBeInTheDocument();
+    expect(screen.getByText("영상 12")).toBeInTheDocument();
+    expect(screen.queryByText("영상 13")).not.toBeInTheDocument();
+    expect(screen.getByText(/1\s*\/\s*2/)).toBeInTheDocument();
+  });
+
+  it("'다음' 클릭 → 두 번째 페이지 카드 노출", () => {
+    const videos: InsightVideoRow[] = Array.from({ length: 13 }, (_, i) => ({
+      ...video,
+      id: `id-${String(i + 1).padStart(3, "0")}-aaaa-aaaa-aaaa-aaaaaaaaaaaa`,
+      video_id: `vid${i + 1}`,
+      title: `영상 ${i + 1}`,
+    }));
+    render(<VideoGridSection videos={videos} />);
+    fireEvent.click(screen.getByRole("button", { name: /다음/ }));
+    expect(screen.getByText("영상 13")).toBeInTheDocument();
+    expect(screen.queryByText("영상 1")).not.toBeInTheDocument();
+    expect(screen.getByText(/2\s*\/\s*2/)).toBeInTheDocument();
+  });
+
+  it("12개 이하면 페이지네이션 미노출", () => {
+    const videos: InsightVideoRow[] = Array.from({ length: 12 }, (_, i) => ({
+      ...video,
+      id: `id-${String(i + 1).padStart(3, "0")}-aaaa-aaaa-aaaa-aaaaaaaaaaaa`,
+      video_id: `vid${i + 1}`,
+      title: `영상 ${i + 1}`,
+    }));
+    render(<VideoGridSection videos={videos} />);
+    expect(screen.queryByRole("button", { name: /다음/ })).not.toBeInTheDocument();
+  });
 });
