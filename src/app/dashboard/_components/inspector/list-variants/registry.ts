@@ -21,10 +21,14 @@ import {
   blankPostRow,
 } from "./post/filters";
 import { ScheduleTable } from "./schedule/Table";
+import { ScheduleForm } from "./schedule/EditForm";
 import { SCHEDULE_FILTERS, blankScheduleRow } from "./schedule/filters";
 import { MyTodoTable } from "./my-todo/Table";
+import { MyTodoForm } from "./my-todo/EditForm";
 import { MY_TODO_FILTERS, blankMyTodoRow } from "./my-todo/filters";
 import { DefaultTable } from "./default/Table";
+import { ServiceView } from "./default/View";
+import { DefaultForm } from "./default/EditForm";
 import { DEFAULT_FILTERS, blankDefaultRow } from "./default/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
@@ -110,16 +114,20 @@ export const variantRegistry = {
     blank: () => blankPostRow("post-notice"),
   },
   schedule: {
+    EditForm: ScheduleForm,
     Table: ScheduleTable,
     Filters: SCHEDULE_FILTERS,
     blank: blankScheduleRow,
   },
   "my-todo": {
+    EditForm: MyTodoForm,
     Table: MyTodoTable,
     Filters: MY_TODO_FILTERS,
     blank: blankMyTodoRow,
   },
   default: {
+    View: ServiceView,
+    EditForm: DefaultForm,
     Table: DefaultTable,
     Filters: DEFAULT_FILTERS,
     blank: blankDefaultRow,
