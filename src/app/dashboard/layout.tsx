@@ -7,6 +7,8 @@ import { Chrome } from "./_components/chrome/Chrome";
 import { DashboardShell } from "./_components/DashboardShell";
 import { getPatternMockData } from "./_data/patterns";
 import { sidebarSections } from "./_data";
+import { applyDynamicSidebarCounts } from "./_data/sidebar-helpers";
+import { getMenuCounts } from "@/features/menu-counts/queries";
 import type { DashWidget } from "./_components/patterns/DashPattern";
 
 /**
@@ -27,8 +29,12 @@ export default async function DashboardLayout({
     getPatternMockData("alerts", "dash") as { widgets: DashWidget[] }
   ).widgets;
 
+  // 실 row count로 hardcode count 덮어쓰기 (DB 연동 도메인만)
+  const counts = await getMenuCounts(operator.email);
+  const dynamicSections = applyDynamicSidebarCounts(sidebarSections, counts);
+
   // 사용자 권한 기반 사이드바 필터 — admin은 전체, member는 allowed_menus만
-  const sections = filterSidebarSections(sidebarSections, operator);
+  const sections = filterSidebarSections(dynamicSections, operator);
 
   return (
     <DashboardShell
