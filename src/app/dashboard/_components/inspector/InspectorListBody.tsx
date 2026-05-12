@@ -393,16 +393,23 @@ export function InspectorListBody({
                   <div className="grid grid-cols-2 gap-1">
                     {items.map((it) => {
                       const slug = it.slug!;
-                      const checked = (draft.allowedMenus ?? []).includes(slug);
+                      const isAdmin = draft.permission === "admin";
+                      // admin은 canViewMenu에서 bypass라 실 권한 전체 — 시각적으로도 전체 체크
+                      const checked = isAdmin
+                        ? true
+                        : (draft.allowedMenus ?? []).includes(slug);
                       return (
                         <label
                           key={slug}
-                          className="flex items-center gap-1.5 text-ink"
+                          className={`flex items-center gap-1.5 text-ink ${
+                            isAdmin ? "opacity-60" : ""
+                          }`}
                         >
                           <input
                             type="checkbox"
                             aria-label={slug}
                             checked={checked}
+                            disabled={isAdmin}
                             onChange={(e) => {
                               const current = draft.allowedMenus ?? [];
                               const next = e.target.checked
