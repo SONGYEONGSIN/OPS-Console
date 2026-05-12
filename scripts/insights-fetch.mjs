@@ -50,7 +50,7 @@ async function searchVideos(keyword) {
     part: "snippet",
     type: "video",
     maxResults: "3",
-    order: "relevance",
+    order: "viewCount",
     publishedAfter: sevenDaysAgo,
     q: keyword,
     key: YOUTUBE_API_KEY,
@@ -71,7 +71,7 @@ async function searchVideos(keyword) {
       it.snippet?.thumbnails?.default?.url ??
       "",
     published_at: it.snippet?.publishedAt ?? new Date().toISOString(),
-    description: (it.snippet?.description ?? "").slice(0, 200) || null,
+    description: (it.snippet?.description ?? "").slice(0, 600) || null,
     keyword,
   }));
 }

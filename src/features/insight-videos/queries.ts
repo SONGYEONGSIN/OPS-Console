@@ -5,7 +5,7 @@ import { insightVideoRowSchema, type InsightVideoRow } from "./schemas";
 /**
  * 인사이트 영상 목록 fetch (RSC).
  * RLS: authenticated → 모든 row read 허용 (운영부 공개 정책).
- * 정렬: published_at desc. 최대 30건.
+ * 정렬: published_at desc. 최대 60건 (페이지네이션 12개 × 5페이지).
  */
 export async function listInsightVideos(): Promise<InsightVideoRow[]> {
   const supabase = await createClient();
@@ -13,7 +13,7 @@ export async function listInsightVideos(): Promise<InsightVideoRow[]> {
     .from("insight_videos")
     .select("*")
     .order("published_at", { ascending: false })
-    .limit(30);
+    .limit(60);
 
   if (error) {
     console.error("[listInsightVideos] supabase error:", error);
