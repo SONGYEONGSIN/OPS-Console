@@ -38,20 +38,19 @@ export function VideoGrid({ videos, onSelect }: Props) {
             <h3 className="line-clamp-2 text-sm font-semibold text-ink">{v.title}</h3>
             <div className="flex items-center gap-2 text-xs text-muted">
               <span className="truncate">{v.channel_title}</span>
-              {typeof v.view_count === "number" && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span className="font-mono whitespace-nowrap">
-                    {formatViewCount(v.view_count)}
-                  </span>
-                </>
-              )}
               <span aria-hidden>·</span>
               <span className="ml-auto whitespace-nowrap">{formatDate(v.published_at)}</span>
             </div>
-            <span className="mt-auto inline-flex w-fit items-center rounded-full border border-line bg-washi-raised px-2 py-0.5 text-xs text-ink">
-              {v.keyword}
-            </span>
+            <div className="mt-auto flex items-center justify-between gap-2">
+              <span className="inline-flex items-center rounded-full border border-line bg-washi-raised px-2 py-0.5 text-xs text-ink">
+                {v.keyword}
+              </span>
+              {typeof v.view_count === "number" && (
+                <span className="font-mono text-xs text-muted whitespace-nowrap">
+                  {formatViewCount(v.view_count)}
+                </span>
+              )}
+            </div>
           </div>
         </button>
       ))}
