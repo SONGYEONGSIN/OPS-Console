@@ -27,19 +27,24 @@ export function derivePageMeta(
  * PAGE_META의 explicit 정의를 우선하되, meta가 비어 있으면 derivePatternMeta로
  * 자동 채움. description도 동일 fallback.
  *
- * 모든 page.tsx에서 `PAGE_META[slug] ?? derivePageMeta(slug, meta)` 대신 사용 권장.
+ * dynamicCount: DB 연동 페이지에서 실제 row 수를 전달하면 사이드바 hardcode
+ * count를 덮어씀 (상단 메타와 본문 카운트 일치 보장).
  */
 export function resolvePageMeta(
   slug: string,
   sidebarMeta: SbItem & { pattern: SbPattern },
+  dynamicCount?: number,
 ): PageMetaConfig {
+  const count =
+    typeof dynamicCount === "number" ? String(dynamicCount) : sidebarMeta.count;
   const explicit = PAGE_META[slug];
-  if (!explicit) return derivePageMeta(slug, sidebarMeta);
+  if (!explicit)
+    return derivePageMeta(slug, { ...sidebarMeta, count });
   return {
     headline: explicit.headline,
     meta:
       explicit.meta ??
-      derivePatternMeta(sidebarMeta.pattern, sidebarMeta.count),
+      derivePatternMeta(sidebarMeta.pattern, count),
     description:
       explicit.description ??
       derivePatternDescription(sidebarMeta.pattern, sidebarMeta.label),

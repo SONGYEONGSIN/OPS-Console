@@ -40,6 +40,7 @@ export default async function NoticesPage() {
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 

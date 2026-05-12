@@ -47,6 +47,7 @@ export default async function OnboardingPage() {
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 
