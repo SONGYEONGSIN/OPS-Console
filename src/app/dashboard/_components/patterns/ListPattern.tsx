@@ -508,6 +508,8 @@ export function ListPattern({
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
   const router = useRouter();
+  const REFRESH_SEC = 30;
+  const [countdown, setCountdown] = useState(REFRESH_SEC);
 
   // server-persist 페이지에서만 30초 자동 refetch (RSC router.refresh).
   // 탭 비활성·인스펙터 편집 중일 때는 pause — 사용자 작업·트래픽 절약.
@@ -515,9 +517,18 @@ export function ListPattern({
     if (!onPersist) return;
     const id = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
-      if (inspector.editing) return;
-      router.refresh();
-    }, 30_000);
+      if (inspector.editing) {
+        setCountdown(REFRESH_SEC);
+        return;
+      }
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          router.refresh();
+          return REFRESH_SEC;
+        }
+        return prev - 1;
+      });
+    }, 1_000);
     return () => window.clearInterval(id);
   }, [router, onPersist, inspector.editing]);
 
@@ -602,7 +613,16 @@ export function ListPattern({
               })}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            {onPersist && (
+              <span
+                className="font-mono text-xs text-muted"
+                aria-live="polite"
+                aria-label={`다음 자동 새로고침 ${countdown}초`}
+              >
+                새로고침 {String(countdown).padStart(2, "0")}s
+              </span>
+            )}
             {(variant === "team" || canCreate) && !readOnly && (
               <button
                 type="button"
