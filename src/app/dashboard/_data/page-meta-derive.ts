@@ -64,8 +64,8 @@ function nowKR(): { shift: string; date: string } {
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
   const date = `${get("year")}-${get("month")}-${get("day")}`;
   const hour = Number(get("hour"));
-  // 06:00~22:00 주간 / 22:00~06:00 야간
-  const shift = hour >= 6 && hour < 22 ? "주간" : "야간";
+  // 00:00~12:00 오전 / 12:00~24:00 오후
+  const shift = hour < 12 ? "오전" : "오후";
   return { shift, date };
 }
 
