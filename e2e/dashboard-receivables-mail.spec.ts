@@ -12,9 +12,13 @@ import { execSync } from "node:child_process";
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL!;
 
-function togglePermission(permission: "admin" | "member" | "viewer") {
+function togglePermission(
+  permission: "admin" | "member" | "viewer",
+  allowedMenus?: string[],
+) {
+  const menus = allowedMenus !== undefined ? `ALLOWED_MENUS='${allowedMenus.join(",")}' ` : "";
   execSync(
-    `TARGET_EMAIL='${TEST_EMAIL}' PERMISSION=${permission} node scripts/toggle-permission.mjs`,
+    `${menus}TARGET_EMAIL='${TEST_EMAIL}' PERMISSION=${permission} node scripts/toggle-permission.mjs`,
     { stdio: "pipe" },
   );
 }
@@ -38,6 +42,26 @@ async function openFirstRowInspector(page: import("@playwright/test").Page) {
   await firstRow.click();
 }
 
+/**
+ * 메일 발송 가능한 행(학교담당자 이메일 존재 + 미수)을 찾아 인스펙터 오픈.
+ * 발견 못 하면 false 반환 — 호출자가 skip 처리.
+ */
+async function openMailEligibleRowInspector(
+  page: import("@playwright/test").Page,
+): Promise<boolean> {
+  const rows = page.locator("tbody tr");
+  const total = await rows.count();
+  for (let i = 0; i < total; i++) {
+    await rows.nth(i).click();
+    await page.waitForTimeout(200);
+    const buttonCount = await page
+      .getByTestId("inspector-send-mail")
+      .count();
+    if (buttonCount > 0) return true;
+  }
+  return false;
+}
+
 test.describe("/dashboard/receivables — 인스펙터 독려 메일 발송", () => {
   test.skip(
     !process.env.TEST_USER_EMAIL || !process.env.TEST_USER_PASSWORD,
@@ -52,19 +76,25 @@ test.describe("/dashboard/receivables — 인스펙터 독려 메일 발송", ()
     togglePermission("admin");
   });
 
-  test("admin: 행 클릭 → 인스펙터에서 '독려 메일 발송' 버튼 노출", async ({
+  test("admin: 메일 가능 행 인스펙터에 '독려 메일 발송' 버튼 노출", async ({
     page,
   }) => {
     togglePermission("admin");
     await signInAndGoto(page, "/dashboard/receivables");
-    await openFirstRowInspector(page);
-
-    const trigger = page.getByTestId("inspector-send-mail");
-    await expect(trigger).toBeVisible();
+    const found = await openMailEligibleRowInspector(page);
+    test.skip(
+      !found,
+      "현재 시트에 메일 발송 가능한 행(학교담당자 이메일 + 미수)이 없음 — 데이터 의존",
+    );
+    await expect(page.getByTestId("inspector-send-mail")).toBeVisible();
   });
 
-  test("viewer: 인스펙터에 발송 버튼 비가시", async ({ page }) => {
-    togglePermission("viewer");
+  test("member: 메일 발송 버튼 비가시 (admin only 권한 게이팅)", async ({
+    page,
+  }) => {
+    // viewer는 allowed_menus가 비어 receivables 자체 접근 불가 — admin only UI 게이팅 검증을
+    // 위해 member + receivables 메뉴 권한 부여 시나리오로 테스트.
+    togglePermission("member", ["receivables"]);
     await signInAndGoto(page, "/dashboard/receivables");
     await openFirstRowInspector(page);
 
@@ -76,13 +106,13 @@ test.describe("/dashboard/receivables — 인스펙터 독려 메일 발송", ()
   }) => {
     togglePermission("admin");
     await signInAndGoto(page, "/dashboard/receivables");
-    await openFirstRowInspector(page);
+    const found = await openMailEligibleRowInspector(page);
+    test.skip(
+      !found,
+      "현재 시트에 메일 발송 가능한 행이 없음 — 데이터 의존",
+    );
 
     const trigger = page.getByTestId("inspector-send-mail");
-    test.skip(
-      (await trigger.count()) === 0,
-      "행에 학교담당자 이메일이 없어 버튼 자체가 안 노출됨",
-    );
     await trigger.click();
 
     await expect(page.getByRole("dialog")).toBeVisible();

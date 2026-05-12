@@ -2,6 +2,8 @@
 // 사용:
 //   TARGET_EMAIL=ys1114@jinhakapply.com PERMISSION=admin node scripts/toggle-permission.mjs
 //   TARGET_NAME=송영신 PERMISSION=member node scripts/toggle-permission.mjs
+//   PERMISSION=member ALLOWED_MENUS=receivables,team node scripts/toggle-permission.mjs
+//     → permission + allowed_menus 함께 설정 (비-admin이 특정 메뉴 접근 필요 시)
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 
@@ -39,9 +41,16 @@ if (!["admin", "member", "viewer"].includes(permission)) {
   process.exit(1);
 }
 
+const updates = { permission };
+if (process.env.ALLOWED_MENUS !== undefined) {
+  updates.allowed_menus = process.env.ALLOWED_MENUS
+    ? process.env.ALLOWED_MENUS.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+}
+
 const { data, error } = await sb
   .from("operators")
-  .update({ permission })
+  .update(updates)
   .eq(filter.col, filter.val)
   .select();
 
