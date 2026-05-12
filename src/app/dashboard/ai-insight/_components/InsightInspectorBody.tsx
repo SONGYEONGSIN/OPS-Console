@@ -39,7 +39,7 @@ export function InsightInspectorBody({ video }: Props) {
       {video.description ? (
         <section className="rounded-lg border border-line bg-washi-raised p-3">
           <h3 className="mb-1 text-xs font-semibold text-muted">요약</h3>
-          <p className="max-h-72 overflow-y-auto pr-1 text-sm leading-relaxed text-ink whitespace-pre-wrap">
+          <p className="min-h-48 max-h-96 overflow-y-auto pr-1 text-sm leading-relaxed text-ink whitespace-pre-wrap">
             {video.description}
           </p>
         </section>

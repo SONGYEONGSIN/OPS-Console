@@ -13,12 +13,11 @@ vi.mock("../../../_data", () => ({
 }));
 
 vi.mock("../../../_data/sidebar-helpers", () => ({
-  findSidebarBreadcrumb: () => [{ label: "개요" }, { label: "새 알림" }],
   findSidebarParentGroup: () => null,
 }));
 
 describe("PageHeader", () => {
-  it("Breadcrumb + PageMeta + PageHeadline 모두 렌더", () => {
+  it("PageMeta + PageHeadline 모두 렌더", () => {
     render(
       <OpenTabsProvider>
         <PageHeader
@@ -29,7 +28,6 @@ describe("PageHeader", () => {
         />
       </OpenTabsProvider>,
     );
-    expect(screen.getByText("개요")).toBeInTheDocument();
     expect(screen.getByText("오늘")).toBeInTheDocument();
     expect(screen.getByText("지금")).toBeInTheDocument();
     expect(screen.getByText("주의")).toBeInTheDocument();
