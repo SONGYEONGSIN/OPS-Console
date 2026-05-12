@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ListRow } from "../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
 import type { OperatorPermission } from "@/features/operators/schemas";
-import { postStatusKeys, postStatusLabel } from "../patterns/ListPattern";
+import { postStatusKeys, postStatusLabel } from "./list-variants/post/Table";
 import { Section, DefList, Divider } from "./list-variants/shared";
 import { variantRegistry } from "./list-variants/registry";
 
@@ -86,7 +86,7 @@ export function InspectorListBody({
 
   {
     const entry = variantRegistry[variant as keyof typeof variantRegistry];
-    if (entry) {
+    if (entry && "EditForm" in entry && entry.EditForm) {
       const EditForm = entry.EditForm;
       return (
         <EditForm
@@ -296,7 +296,7 @@ function ViewMode({
     return <PostView row={row} variant={variant} />;
   {
     const entry = variantRegistry[variant as keyof typeof variantRegistry];
-    if (entry) {
+    if (entry && "View" in entry && entry.View) {
       const View = entry.View;
       return (
         <View
