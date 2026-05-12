@@ -33,10 +33,9 @@ export default async function OnboardingPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const cohorts = await listCohorts();
   const cohortRows: ListRow[] = cohorts.map(cohortToListRow);
+  const config = resolvePageMeta(slug, meta, cohortRows.length);
 
   const me = await getCurrentOperator();
   const isAdmin = me?.permission === "admin";

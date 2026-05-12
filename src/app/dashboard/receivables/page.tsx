@@ -25,14 +25,13 @@ export default async function ReceivablesPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const sheet = await fetchReceivablesSheet();
   const rows: ListRow[] = sheet
     ? sheet.rows
         .map((_, i) => toListRow(sheet, i))
         .filter(isDataRow)
     : [];
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
   const canEdit = me?.permission !== "viewer" && me?.permission !== null;

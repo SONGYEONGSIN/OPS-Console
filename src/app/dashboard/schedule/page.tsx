@@ -25,10 +25,9 @@ export default async function SchedulePage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const events = await listScheduleEvents();
   const rows: ListRow[] = events.map(eventToListRow);
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;

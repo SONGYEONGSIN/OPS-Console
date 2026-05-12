@@ -24,10 +24,9 @@ export default async function MyTodoPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const todos = await listMyTodos();
   const rows: ListRow[] = todos.map(todoToListRow);
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;

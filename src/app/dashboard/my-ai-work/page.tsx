@@ -24,11 +24,10 @@ export default async function MyAiWorkPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const works = await listAiWorks();
   const ownerByEmail = await buildOwnerMap(works);
   const rows: ListRow[] = works.map((w) => aiWorkToListRow(w, ownerByEmail));
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
