@@ -4,6 +4,7 @@ import { useState } from "react";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
+import { variantRegistry } from "../inspector/list-variants/registry";
 import {
   PERMISSION_LABEL,
   type OperatorPermission,
@@ -222,18 +223,6 @@ const STATUS_RING: Record<ListRow["status"], string> = {
 
 type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter | CohortStatus;
 
-const COHORT_STATUS_LABEL: Record<CohortStatus, string> = {
-  planned: "계획",
-  in_progress: "진행중",
-  completed: "완료",
-};
-
-const COHORT_STATUS_COLOR: Record<CohortStatus, string> = {
-  planned: "bg-line-soft text-muted",
-  in_progress: "bg-vermilion text-cream",
-  completed: "bg-washi-raised text-ink",
-};
-
 const PRIORITY_LABEL: Record<TodoPriority, string> = {
   high: "높음",
   medium: "보통",
@@ -302,39 +291,6 @@ function kstDateKey(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
     new Date(iso),
   );
-}
-
-function inviteBadgeLabel(
-  invitedAt?: string | null,
-  acceptedAt?: string | null,
-): string {
-  if (acceptedAt) return "수락됨";
-  if (invitedAt) return "수락 대기";
-  return "미초대";
-}
-
-function inviteBadgeClass(
-  invitedAt?: string | null,
-  acceptedAt?: string | null,
-): string {
-  if (acceptedAt) return "bg-washi-raised text-ink-soft";
-  if (invitedAt) return "bg-vermilion/20 text-vermilion-deep";
-  return "bg-line-soft text-muted";
-}
-
-/**
- * cohort 시작/종료일을 'M/D ~ M/D' 또는 'M/D ~' 로 포맷 (date-only).
- */
-function formatCohortRange(start?: string, end?: string | null): string {
-  if (!start) return "-";
-  const fmt = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "numeric",
-    day: "numeric",
-  });
-  const startStr = fmt.format(new Date(start));
-  if (!end) return `${startStr} ~`;
-  return `${startStr} ~ ${fmt.format(new Date(end))}`;
 }
 
 /**
@@ -440,13 +396,6 @@ const MY_TODO_FILTERS: { value: Filter; label: string }[] = [
   { value: "due-soon", label: "마감 임박" },
 ];
 
-const COHORT_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "planned", label: "계획" },
-  { value: "in_progress", label: "진행중" },
-  { value: "completed", label: "완료" },
-];
-
 const RECEIVABLES_FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "전체" },
   { value: "active", label: "미수" },
@@ -531,7 +480,7 @@ export function ListPattern({
             : variant === "my-todo"
               ? MY_TODO_FILTERS
               : variant === "cohort"
-                ? COHORT_FILTERS
+                ? variantRegistry.cohort.Filters
                 : variant === "receivables"
                   ? RECEIVABLES_FILTERS
                   : DEFAULT_FILTERS;
@@ -645,18 +594,7 @@ export function ListPattern({
                       dueAt: null,
                     };
                   } else if (variant === "cohort") {
-                    const today = new Date().toISOString().slice(0, 10);
-                    blank = {
-                      id: "",
-                      name: "",
-                      status: "active",
-                      owner: "",
-                      traineeEmail: "",
-                      mentorEmail: null,
-                      startDate: today,
-                      endDate: null,
-                      cohortStatus: "planned",
-                    };
+                    blank = variantRegistry.cohort.blank();
                   } else if (variant === "ai-work") {
                     const today = new Date().toISOString().slice(0, 10);
                     blank = {
@@ -792,63 +730,11 @@ export function ListPattern({
               </tbody>
             </table>
           ) : variant === "cohort" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">신입 / 교육</th>
-                  <th className="px-3 py-2">기간</th>
-                  <th className="px-3 py-2">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      }`}
-                    >
-                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">
-                        {row.author || row.traineeEmail || "-"}
-                        {row.owner && <> · 교육 {row.owner}</>}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">
-                        {formatCohortRange(row.startDate, row.endDate)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col items-start gap-1">
-                          {row.cohortStatus && (
-                            <span
-                              className={`inline-block px-2 py-0.5 text-xs ${COHORT_STATUS_COLOR[row.cohortStatus]}`}
-                            >
-                              {COHORT_STATUS_LABEL[row.cohortStatus]}
-                            </span>
-                          )}
-                          <span
-                            className={`inline-block px-2 py-0.5 text-2xs ${inviteBadgeClass(
-                              row.invitedAt,
-                              row.acceptedAt,
-                            )}`}
-                          >
-                            {inviteBadgeLabel(row.invitedAt, row.acceptedAt)}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <variantRegistry.cohort.Table
+              rows={filteredRows}
+              selectedId={inspector.selected?.id ?? null}
+              onSelect={inspector.open}
+            />
           ) : variant === "receivables" ? (
             <table className="w-full text-sm">
               <thead>
