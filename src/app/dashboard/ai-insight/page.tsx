@@ -26,9 +26,11 @@ export default async function AiInsightPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6 p-5 lg:p-7">
+    <>
       {header}
-      <VideoGridSection videos={videos} />
-    </div>
+      <div className="p-5 lg:p-7">
+        <VideoGridSection videos={videos} />
+      </div>
+    </>
   );
 }
