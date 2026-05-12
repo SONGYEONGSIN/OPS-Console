@@ -106,26 +106,31 @@ if (rows.length === 0) {
   process.exit(0);
 }
 
-// --- videos.list로 full description 보강 (search.list snippet은 ~150자만 줌) ---
-// videos.list 1 call = 1 unit, id 콤마 구분으로 최대 50개. 일 ~10건이면 1 call로 충분.
+// --- videos.list로 full description + 조회수 보강 ---
+// part=snippet,statistics — id 콤마 구분 최대 50개, 1 call = 1 unit.
 try {
   const ids = rows.map((r) => r.video_id).join(",");
-  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids}&key=${YOUTUBE_API_KEY}`;
+  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
   const res = await fetch(url);
   if (res.ok) {
     const json = await res.json();
     const descMap = new Map();
+    const viewMap = new Map();
     for (const item of json.items ?? []) {
       const full = (item.snippet?.description ?? "").slice(0, 600) || null;
       if (full) descMap.set(item.id, full);
+      const vc = Number(item.statistics?.viewCount);
+      if (Number.isFinite(vc) && vc >= 0) viewMap.set(item.id, vc);
     }
     for (const r of rows) {
       const full = descMap.get(r.video_id);
       if (full) r.description = full;
+      const vc = viewMap.get(r.video_id);
+      if (typeof vc === "number") r.view_count = vc;
     }
     quotaUsed += 1;
     console.log(
-      `videos.list → ${descMap.size} full descriptions (quota used: ~${quotaUsed} unit)`,
+      `videos.list → ${descMap.size} full descriptions, ${viewMap.size} view counts (quota used: ~${quotaUsed} unit)`,
     );
   } else {
     const body = await res.text();
