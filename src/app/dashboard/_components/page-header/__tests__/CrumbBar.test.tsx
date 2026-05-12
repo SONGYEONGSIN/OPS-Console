@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock("../../../_data/sidebar-helpers", () => ({
+  findSidebarBreadcrumb: () => [{ label: "운영" }, { label: "서비스" }],
   findSidebarSiblings: () => [],
   findSidebarParentGroup: () => null,
 }));
@@ -19,6 +20,12 @@ describe("CrumbBar", () => {
         <CrumbBar pathname="/dashboard/services" />
       </OpenTabsProvider>,
     );
+
+  it("breadcrumb 라벨을 노출", () => {
+    renderInProvider();
+    expect(screen.getByText("운영")).toBeInTheDocument();
+    expect(screen.getByText("서비스")).toBeInTheDocument();
+  });
 
   it("washi-raised 배경 + 하단 line-soft 보더 적용", () => {
     const { container } = renderInProvider();
