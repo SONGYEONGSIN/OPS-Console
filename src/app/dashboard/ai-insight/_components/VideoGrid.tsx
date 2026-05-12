@@ -36,9 +36,18 @@ export function VideoGrid({ videos, onSelect }: Props) {
           </div>
           <div className="flex flex-1 flex-col gap-2 p-4">
             <h3 className="line-clamp-2 text-sm font-semibold text-ink">{v.title}</h3>
-            <div className="flex items-center justify-between text-xs text-muted">
+            <div className="flex items-center gap-2 text-xs text-muted">
               <span className="truncate">{v.channel_title}</span>
-              <span>{formatDate(v.published_at)}</span>
+              {typeof v.view_count === "number" && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="font-mono whitespace-nowrap">
+                    {formatViewCount(v.view_count)}
+                  </span>
+                </>
+              )}
+              <span aria-hidden>·</span>
+              <span className="ml-auto whitespace-nowrap">{formatDate(v.published_at)}</span>
             </div>
             <span className="mt-auto inline-flex w-fit items-center rounded-full border border-line bg-washi-raised px-2 py-0.5 text-xs text-ink">
               {v.keyword}
@@ -60,4 +69,11 @@ function formatDate(iso: string): string {
   } catch {
     return "";
   }
+}
+
+function formatViewCount(n: number): string {
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1).replace(/\.0$/, "")}억회`;
+  if (n >= 10_000) return `${(n / 10_000).toFixed(1).replace(/\.0$/, "")}만회`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}천회`;
+  return `${n}회`;
 }
