@@ -24,7 +24,11 @@ export type EditFormProps = {
   setRow: Dispatch<SetStateAction<ListRow>>;
   onSave: (next: ListRow) => void;
   onCancel: () => void;
+  /** team variant — 권한 select admin only 분기 */
+  currentUserPermission?: OperatorPermission | null;
+  /** cohort variant — 초대 메일 발송 */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** receivables variant — 적요 PATCH */
   onUpdateRemarks?: (
     row: ListRow,
     newText: string,

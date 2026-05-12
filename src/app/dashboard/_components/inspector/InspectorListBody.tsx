@@ -2,18 +2,9 @@
 
 import { useState } from "react";
 import type { ListRow } from "../patterns/ListPattern";
-import {
-  OPERATORS,
-  ageOf,
-  tenureLabel,
-  tenureYears,
-} from "@/features/auth/operators";
-import {
-  PERMISSION_LABEL,
-  type OperatorPermission,
-} from "@/features/operators/schemas";
+import { OPERATORS } from "@/features/auth/operators";
+import type { OperatorPermission } from "@/features/operators/schemas";
 import { postStatusKeys, postStatusLabel } from "../patterns/ListPattern";
-import { sidebarSections, type SbItem } from "../../_data";
 import { Section, DefList, Divider } from "./list-variants/shared";
 import { variantRegistry } from "./list-variants/registry";
 
@@ -80,12 +71,10 @@ export function InspectorListBody({
     );
   }
 
-  const isTeam = variant === "team";
   const isPost = variant === "post-feedback" || variant === "post-notice";
   const postVariant: "post-feedback" | "post-notice" | null = isPost ? variant : null;
   const isSchedule = variant === "schedule";
   const isMyTodo = variant === "my-todo";
-  const canEditPermission = isTeam && currentUserPermission === "admin";
 
   if (isSchedule) {
     return <ScheduleForm row={draft} setRow={setDraft} onSave={onSave} onCancel={onCancel} />;
@@ -105,6 +94,7 @@ export function InspectorListBody({
           setRow={setDraft}
           onSave={onSave}
           onCancel={onCancel}
+          currentUserPermission={currentUserPermission}
           onInvite={onInvite}
           onUpdateRemarks={onUpdateRemarks}
         />
@@ -236,72 +226,23 @@ export function InspectorListBody({
         />
       </label>
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">{isTeam ? "이메일" : "ID"}</span>
+        <span className="mb-1 block text-muted">ID</span>
         <input
-          aria-label={isTeam ? "이메일" : "ID"}
+          aria-label="ID"
           value={draft.id}
           onChange={(e) => setDraft({ ...draft, id: e.target.value })}
           className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink"
         />
       </label>
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">{isTeam ? "팀" : "담당"}</span>
-        {isTeam ? (
-          <select
-            aria-label="팀"
-            value={draft.owner}
-            onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          >
-            <option value="운영1팀">운영1팀</option>
-            <option value="운영2팀">운영2팀</option>
-          </select>
-        ) : (
-          <input
-            aria-label="담당"
-            value={draft.owner}
-            onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        )}
+        <span className="mb-1 block text-muted">담당</span>
+        <input
+          aria-label="담당"
+          value={draft.owner}
+          onChange={(e) => setDraft({ ...draft, owner: e.target.value })}
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+        />
       </label>
-      {isTeam && (
-        <>
-          <label className="block text-xs">
-            <span className="mb-1 block text-muted">직급</span>
-            <select
-              aria-label="직급"
-              value={draft.meta ?? ""}
-              onChange={(e) => setDraft({ ...draft, meta: e.target.value })}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            >
-              <option value="부장">부장</option>
-              <option value="팀장">팀장</option>
-              <option value="TL">TL</option>
-              <option value="매니저">매니저</option>
-            </select>
-          </label>
-          <label className="block text-xs">
-            <span className="mb-1 block text-muted">
-              직속 상사 <span className="text-faint">(미설정 시 자동)</span>
-            </span>
-            <select
-              aria-label="직속 상사"
-              value={draft.leader ?? ""}
-              onChange={(e) => setDraft({ ...draft, leader: e.target.value })}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            >
-              <option value="">자동 derive (팀장/부장)</option>
-              {OPERATORS.filter((x) => x.email !== draft.id).map((op) => (
-                <option key={op.email} value={op.name}>
-                  {op.name} · {op.role} · {op.team}
-                </option>
-              ))}
-              <option value="본부장 (외부)">본부장 (외부)</option>
-            </select>
-          </label>
-        </>
-      )}
       <label className="block text-xs">
         <span className="mb-1 block text-muted">상태</span>
         <select
@@ -312,117 +253,12 @@ export function InspectorListBody({
           }
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
         >
-          {isTeam ? (
-            <>
-              <option value="active">활성</option>
-              <option value="inactive">점검중</option>
-              <option value="suspended">정지</option>
-              <option value="deleted">삭제</option>
-            </>
-          ) : (
-            <>
-              <option value="active">활성</option>
-              <option value="approved">정상</option>
-              <option value="review">점검중</option>
-              <option value="urgent">긴급</option>
-            </>
-          )}
+          <option value="active">활성</option>
+          <option value="approved">정상</option>
+          <option value="review">점검중</option>
+          <option value="urgent">긴급</option>
         </select>
       </label>
-      {canEditPermission && (
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">권한</span>
-          <select
-            aria-label="권한"
-            value={draft.permission ?? "member"}
-            onChange={(e) =>
-              setDraft({
-                ...draft,
-                permission: e.target.value as OperatorPermission,
-              })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          >
-            <option value="admin">관리자 (admin)</option>
-            <option value="member">구성원 (member)</option>
-            <option value="viewer">뷰어 (viewer)</option>
-          </select>
-        </label>
-      )}
-      {canEditPermission && (
-        <fieldset className="block text-xs">
-          <legend className="mb-1 block text-muted">메뉴 권한</legend>
-          <div className="space-y-3 border border-line bg-cream p-2">
-            {sidebarSections.map((section) => {
-              const items: SbItem[] = section.entries
-                .flatMap<SbItem>((e) =>
-                  e.kind === "item" ? [e] : e.items
-                )
-                .filter((it) => !!it.slug);
-              if (items.length === 0) return null;
-              return (
-                <div key={section.title}>
-                  <p className="mb-1 text-2xs uppercase tracking-[0.18em] text-muted">
-                    {section.title}
-                  </p>
-                  <div className="grid grid-cols-2 gap-1">
-                    {items.map((it) => {
-                      const slug = it.slug!;
-                      const isAdmin = draft.permission === "admin";
-                      // admin은 canViewMenu에서 bypass라 실 권한 전체 — 시각적으로도 전체 체크
-                      const checked = isAdmin
-                        ? true
-                        : (draft.allowedMenus ?? []).includes(slug);
-                      return (
-                        <label
-                          key={slug}
-                          className={`flex items-center gap-1.5 text-ink ${
-                            isAdmin ? "opacity-60" : ""
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            aria-label={slug}
-                            checked={checked}
-                            disabled={isAdmin}
-                            onChange={(e) => {
-                              const current = draft.allowedMenus ?? [];
-                              const next = e.target.checked
-                                ? [...current, slug]
-                                : current.filter((s) => s !== slug);
-                              setDraft({ ...draft, allowedMenus: next });
-                            }}
-                            className="h-3.5 w-3.5"
-                          />
-                          <span className="truncate">{it.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </fieldset>
-      )}
-      {isTeam && draft.status === "deleted" && (
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">
-            삭제 사유 <span className="text-vermilion">*</span>
-          </span>
-          <textarea
-            aria-label="삭제 사유"
-            required
-            rows={3}
-            value={draft.deletedReason ?? ""}
-            onChange={(e) =>
-              setDraft({ ...draft, deletedReason: e.target.value })
-            }
-            placeholder="퇴사 / 권한 회수 / 부서 이동 등"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      )}
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
@@ -456,7 +292,6 @@ function ViewMode({
   currentUserPermission?: OperatorPermission | null;
   receivablesMailDryRun?: boolean;
 }) {
-  if (variant === "team") return <TeamView row={row} />;
   if (variant === "post-feedback" || variant === "post-notice")
     return <PostView row={row} variant={variant} />;
   {
@@ -602,146 +437,6 @@ function ServiceView({ row }: { row: ListRow }) {
   );
 }
 
-function TeamView({ row }: { row: ListRow }) {
-  const statusLabel = STATUS_LABEL[row.status];
-  const statusColor = STATUS_BADGE[row.status];
-  const op = OPERATORS.find((x) => x.email === row.id);
-
-  // OPERATORS lookup 실패 시 (예: 테스트 더미 데이터) 기존 row 기반 단순 노출.
-  if (!op) {
-    return (
-      <div className="space-y-6">
-        <Section title="계정 정보">
-          <DefList
-            items={[
-              { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
-              { term: "이메일", desc: <span className="font-mono text-xs">{row.id}</span> },
-              {
-                term: "시스템 권한",
-                desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",
-              },
-              { term: "소속 팀", desc: row.owner },
-              { term: "직급", desc: row.meta ?? "-" },
-              {
-                term: "상태",
-                desc: (
-                  <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
-                    {statusLabel}
-                  </span>
-                ),
-              },
-            ]}
-          />
-        </Section>
-      </div>
-    );
-  }
-
-  const tenure = tenureLabel(op.hiredAt);
-  const tenureY = tenureYears(op.hiredAt);
-  const age = ageOf(op.birthDate);
-
-  return (
-    <div className="space-y-6">
-      <Section title="인사 정보">
-        <DefList
-          items={[
-            { term: "사번", desc: <span className="font-mono">{op.empNo}</span> },
-            { term: "이름", desc: <strong className="font-semibold">{op.name}</strong> },
-            { term: "성별", desc: op.gender },
-            { term: "생년월일", desc: `${op.birthDate} (만 ${age}세)` },
-            { term: "본부", desc: op.division },
-            { term: "부서", desc: op.department },
-            { term: "팀", desc: op.team },
-            { term: "직급", desc: op.role },
-            {
-              term: "상태",
-              desc: (
-                <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
-                  {statusLabel}
-                </span>
-              ),
-            },
-          ]}
-        />
-      </Section>
-
-      <Divider />
-
-      <Section title="근속 · 계정">
-        <DefList
-          items={[
-            { term: "입사일", desc: op.hiredAt },
-            {
-              term: "근속",
-              desc: (
-                <span>
-                  {tenure} <span className="text-muted">· {tenureY}년</span>
-                </span>
-              ),
-            },
-            { term: "이메일", desc: <span className="font-mono text-xs">{op.email}</span> },
-            {
-              term: "시스템 권한",
-              desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",
-            },
-            { term: "직급 권한", desc: roleToPermission(op.role) },
-            { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
-          ]}
-        />
-      </Section>
-
-      <Divider />
-
-      <Section title="조직 · 보고 라인">
-        <DefList
-          items={[
-            { term: "소속 팀", desc: `${op.department} · ${op.team}` },
-            {
-              term: "직속 상사",
-              desc: row.leader ? row.leader : leaderOf(op),
-            },
-            { term: "팀 동료", desc: peersOf(op).join(" · ") || "-" },
-          ]}
-        />
-      </Section>
-    </div>
-  );
-}
-
-function roleToPermission(role: string): string {
-  switch (role) {
-    case "부장":
-      return "L4 관리자 · 전체 권한";
-    case "팀장":
-      return "L3 팀 관리자 · 팀 전체 권한";
-    case "TL":
-      return "L2 시니어 · 운영 + 검토";
-    case "매니저":
-      return "L1 운영자 · 운영 권한";
-    default:
-      return "L0 일반";
-  }
-}
-
-function leaderOf(op: { team: string; role: string }): string {
-  if (op.role === "부장") return "본부장 (외부)";
-  if (op.role === "팀장") {
-    const head = OPERATORS.find((x) => x.role === "부장");
-    return head ? `${head.name} · ${head.role}` : "-";
-  }
-  // 매니저/TL → 같은 팀 팀장 또는 부장
-  const tl = OPERATORS.find((x) => x.team === op.team && x.role === "팀장");
-  if (tl) return `${tl.name} · ${tl.role}`;
-  const buchang = OPERATORS.find((x) => x.role === "부장");
-  return buchang ? `${buchang.name} · ${buchang.role}` : "-";
-}
-
-function peersOf(op: { team: string; email: string }): string[] {
-  return OPERATORS.filter((x) => x.team === op.team && x.email !== op.email)
-    .slice(0, 3)
-    .map((x) => x.name);
-}
 
 /* ════════════════════════════════════════════════════════════
    helpers
