@@ -6,12 +6,11 @@ import { z } from "zod";
  */
 export const SEARCH_QUERIES = [
   "바이브코딩",
-  "AI 코딩",
-  "Cursor 사용법",
   "Claude Code",
-  "Lovable v0",
-  "AI 디자인 도구",
+  "AI 환경구축",
+  "AI 디자인 활용",
   "AI 개발 환경",
+  "AI 활용 업무 적용",
 ] as const;
 
 export type SearchQuery = (typeof SEARCH_QUERIES)[number];
