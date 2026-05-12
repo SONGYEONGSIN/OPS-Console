@@ -6,16 +6,11 @@ import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
 import {
-  PERMISSION_LABEL,
-  type OperatorPermission,
-} from "@/features/operators/schemas";
-import {
-  AI_TOOL_LABEL,
-  AI_TOOL_TONE,
-  CATEGORY_LABEL,
-  CATEGORY_TONE,
-} from "@/lib/ai-work/constants";
-import type { AiTool, AiWorkCategory } from "@/features/ai-work/schemas";
+  STATUS_LABEL,
+  STATUS_RING,
+} from "../inspector/list-variants/status";
+import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
+import { type OperatorPermission } from "@/features/operators/schemas";
 
 export type ListRow = {
   id: string;
@@ -130,127 +125,11 @@ export type TodoPriority = NonNullable<ListRow["priority"]>;
 export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
 export type CohortStatus = NonNullable<ListRow["cohortStatus"]>;
 
-const PERMISSION_COLOR: Record<OperatorPermission, string> = {
-  admin: "bg-vermilion/30 text-vermilion-deep font-medium",
-  member: "bg-ink/15 text-ink font-medium",
-  viewer: "bg-muted/30 text-ink-soft font-medium",
-};
-
-const STATUS_LABEL: Record<ListRow["status"], string> = {
-  // 기존 default variant
-  urgent: "긴급",
-  approved: "정상",
-  review: "점검중",
-  // operators 도메인
-  active: "활성",
-  inactive: "점검중",
-  suspended: "정지",
-  deleted: "삭제",
-};
+export type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter | CohortStatus;
 
 /**
- * post-feedback 4단계 흐름 — 등록자가 글 등록(요청) → admin이 확인 → 처리중 → 처리완료.
- * STATUS_COLOR는 의미 일관(urgent=red 강조 / approved=muted 종료)이라 그대로 사용.
- */
-const FEEDBACK_STATUS_LABEL: Record<ListRow["status"], string> = {
-  urgent: "요청",
-  review: "확인",
-  active: "처리중",
-  approved: "처리완료",
-  inactive: "보류",
-  suspended: "중단",
-  deleted: "삭제",
-};
-
-/**
- * post-notice 3단계 흐름 — 긴급(우선 강조) / 활성(현재 게시 중) / 종료(지난 공지).
- */
-const NOTICE_STATUS_LABEL: Record<ListRow["status"], string> = {
-  urgent: "긴급",
-  active: "활성",
-  approved: "종료",
-  review: "예약",
-  inactive: "보류",
-  suspended: "중단",
-  deleted: "삭제",
-};
-
-function postLabelFor(variant: "post-feedback" | "post-notice"): Record<ListRow["status"], string> {
-  return variant === "post-notice" ? NOTICE_STATUS_LABEL : FEEDBACK_STATUS_LABEL;
-}
-
-const FEEDBACK_STATUS_KEYS: ListRow["status"][] = [
-  "urgent",
-  "review",
-  "active",
-  "approved",
-];
-
-const NOTICE_STATUS_KEYS: ListRow["status"][] = ["urgent", "active", "approved"];
-
-export function postStatusKeys(
-  variant: "post-feedback" | "post-notice"
-): ListRow["status"][] {
-  return variant === "post-notice" ? NOTICE_STATUS_KEYS : FEEDBACK_STATUS_KEYS;
-}
-
-export function postStatusLabel(
-  variant: "post-feedback" | "post-notice",
-  status: ListRow["status"]
-): string {
-  return postLabelFor(variant)[status];
-}
-
-const STATUS_COLOR: Record<ListRow["status"], string> = {
-  urgent: "bg-vermilion text-cream",
-  approved: "bg-line-soft text-muted",
-  review: "bg-gold/20 text-gold",
-  active: "bg-sage/20 text-sage",
-  inactive: "bg-gold/20 text-gold",
-  suspended: "bg-vermilion/20 text-vermilion",
-  deleted: "bg-ink/20 text-ink-soft",
-};
-
-const STATUS_RING: Record<ListRow["status"], string> = {
-  urgent: "bg-vermilion",
-  approved: "bg-muted",
-  review: "bg-gold",
-  active: "bg-sage",
-  inactive: "bg-gold",
-  suspended: "bg-vermilion",
-  deleted: "bg-muted",
-};
-
-type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter | CohortStatus;
-
-const PRIORITY_LABEL: Record<TodoPriority, string> = {
-  high: "높음",
-  medium: "보통",
-  low: "낮음",
-};
-
-const PRIORITY_COLOR: Record<TodoPriority, string> = {
-  high: "bg-vermilion text-cream",
-  medium: "bg-line-soft text-ink",
-  low: "bg-washi-raised text-muted",
-};
-
-const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
-  shift: "시프트",
-  event: "이벤트",
-  leave: "휴가",
-  training: "교육",
-};
-
-const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
-  shift: "bg-vermilion text-cream",
-  event: "bg-ink text-cream",
-  leave: "bg-line-soft text-muted",
-  training: "bg-washi-raised text-ink",
-};
-
-/**
- * variant별 필터 적용. 모든 분기를 한 곳에 모아 분기 폭증 방지.
+ * variant별 필터 적용. 단순 분기만 ListPattern에 유지 (my-todo는 복잡한 시간 비교
+ * 로직이라 my-todo/filters.ts의 applyMyTodoFilter로 위임).
  */
 function filterRows(
   rows: ListRow[],
@@ -259,148 +138,10 @@ function filterRows(
 ): ListRow[] {
   if (filter === "all") return rows;
   if (variant === "schedule") return rows.filter((r) => r.scheduleType === filter);
-  if (variant === "my-todo") {
-    if (filter === "done") return rows.filter((r) => r.done === true);
-    if (filter === "undone") return rows.filter((r) => !r.done);
-    if (filter === "today") {
-      const todayKey = todayKstKey();
-      return rows.filter((r) => r.dueAt && kstDateKey(r.dueAt) === todayKey);
-    }
-    if (filter === "due-soon") {
-      // 미완 + 마감일 3일 이내
-      const limit = Date.now() + 3 * 24 * 60 * 60 * 1000;
-      return rows.filter(
-        (r) => !r.done && r.dueAt && new Date(r.dueAt).getTime() <= limit,
-      );
-    }
-    return rows;
-  }
-  if (variant === "cohort") {
-    return rows.filter((r) => r.cohortStatus === filter);
-  }
+  if (variant === "my-todo") return applyMyTodoFilter(rows, filter);
+  if (variant === "cohort") return rows.filter((r) => r.cohortStatus === filter);
   return rows.filter((r) => r.status === filter);
 }
-
-function todayKstKey(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
-    new Date(),
-  );
-}
-
-function kstDateKey(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
-    new Date(iso),
-  );
-}
-
-/**
- * 마감일을 짧은 KST 한국어로 포맷 ('M/D(요일)' 또는 '내일' 등).
- */
-function formatDueAt(iso?: string | null): string {
-  if (!iso) return "-";
-  const today = todayKstKey();
-  const target = kstDateKey(iso);
-  if (target === today) return "오늘";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-  }).format(new Date(iso));
-}
-
-/**
- * 일정 시각 범위를 KST 한국어로 포맷.
- * - all_day: '5/15(목)' 또는 '5/15(목)~5/16(금)'
- * - 같은 날짜: '5/15(목) 10:00~11:00'
- * - 다른 날짜: '5/15 10:00 ~ 5/16 02:00'
- */
-function formatScheduleRange(
-  start?: string,
-  end?: string | null,
-  allDay?: boolean,
-): string {
-  if (!start) return "-";
-  const tz = "Asia/Seoul";
-  const startD = new Date(start);
-  const endD = end ? new Date(end) : null;
-  const dayFmt = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: tz,
-    month: "numeric",
-    day: "numeric",
-    weekday: "short",
-  });
-  const timeFmt = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  const isoDate = (d: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
-  if (allDay) {
-    if (!endD || isoDate(startD) === isoDate(endD)) return dayFmt.format(startD);
-    return `${dayFmt.format(startD)} ~ ${dayFmt.format(endD)}`;
-  }
-  if (!endD) return `${dayFmt.format(startD)} ${timeFmt.format(startD)}`;
-  if (isoDate(startD) === isoDate(endD)) {
-    return `${dayFmt.format(startD)} ${timeFmt.format(startD)}~${timeFmt.format(endD)}`;
-  }
-  return `${dayFmt.format(startD)} ${timeFmt.format(startD)} ~ ${dayFmt.format(endD)} ${timeFmt.format(endD)}`;
-}
-
-const DEFAULT_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "urgent", label: "긴급" },
-  { value: "active", label: "활성" },
-  { value: "review", label: "점검중" },
-  { value: "approved", label: "정상" },
-];
-
-const TEAM_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "active", label: "활성" },
-  { value: "inactive", label: "점검중" },
-  { value: "suspended", label: "정지" },
-  { value: "deleted", label: "삭제" },
-];
-
-const POST_FEEDBACK_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "urgent", label: "요청" },
-  { value: "review", label: "확인" },
-  { value: "active", label: "처리중" },
-  { value: "approved", label: "처리완료" },
-];
-
-const POST_NOTICE_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "urgent", label: "긴급" },
-  { value: "active", label: "활성" },
-  { value: "approved", label: "종료" },
-];
-
-const SCHEDULE_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "shift", label: "시프트" },
-  { value: "event", label: "이벤트" },
-  { value: "leave", label: "휴가" },
-  { value: "training", label: "교육" },
-];
-
-const MY_TODO_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "undone", label: "미완료" },
-  { value: "done", label: "완료" },
-  { value: "today", label: "오늘" },
-  { value: "due-soon", label: "마감 임박" },
-];
-
-const RECEIVABLES_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-  { value: "active", label: "미수" },
-  { value: "approved", label: "수금" },
-];
 
 type Props = {
   title: string;
@@ -468,22 +209,75 @@ export function ListPattern({
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
   const filteredRows = filterRows(rows, filter, variant);
-  const FILTERS =
-    variant === "team"
-      ? TEAM_FILTERS
-      : variant === "post-feedback"
-        ? POST_FEEDBACK_FILTERS
-        : variant === "post-notice"
-          ? POST_NOTICE_FILTERS
-          : variant === "schedule"
-            ? SCHEDULE_FILTERS
-            : variant === "my-todo"
-              ? MY_TODO_FILTERS
-              : variant === "cohort"
-                ? variantRegistry.cohort.Filters
-                : variant === "receivables"
-                  ? RECEIVABLES_FILTERS
-                  : DEFAULT_FILTERS;
+  const variantEntry =
+    variantRegistry[variant as keyof typeof variantRegistry];
+  const entryFilters =
+    variantEntry && "Filters" in variantEntry ? variantEntry.Filters : null;
+  const FILTERS = (entryFilters ?? variantRegistry.default.Filters) as {
+    value: Filter;
+    label: string;
+  }[];
+
+  /**
+   * variant별 Table 컴포넌트 렌더링.
+   * post/my-todo는 추가 prop 시그니처가 달라 별도 분기 — 나머지는 base TableProps cast.
+   */
+  function renderVariantTable() {
+    if (variant === "post-feedback" || variant === "post-notice") {
+      const PostTable = variantRegistry[variant].Table;
+      return (
+        <PostTable
+          variant={variant}
+          rows={filteredRows}
+          selectedId={inspector.selected?.id ?? null}
+          onSelect={inspector.open}
+        />
+      );
+    }
+    if (variant === "my-todo") {
+      const MyTodoTable = variantRegistry["my-todo"].Table;
+      return (
+        <MyTodoTable
+          rows={filteredRows}
+          selectedId={inspector.selected?.id ?? null}
+          onSelect={inspector.open}
+          onToggleDone={async (row, nextDone) => {
+            const nextRow: ListRow = {
+              ...row,
+              done: nextDone,
+              doneAt: nextDone ? new Date().toISOString() : null,
+            };
+            setRows((prev) =>
+              prev.map((r) => (r.id === row.id ? nextRow : r)),
+            );
+            if (onPersist) {
+              const result = await onPersist(nextRow, false);
+              if (!result.ok) {
+                setRows((prev) =>
+                  prev.map((r) => (r.id === row.id ? row : r)),
+                );
+                alert(`저장 실패: ${result.error ?? "알 수 없는 오류"}`);
+              }
+            }
+          }}
+        />
+      );
+    }
+    // 단순 TableProps만 받는 variant들 (cohort/receivables/ai-work/team/schedule/default)
+    const Table = variantEntry?.Table ?? variantRegistry.default.Table;
+    const Comp = Table as React.ComponentType<{
+      rows: ListRow[];
+      selectedId: string | null;
+      onSelect: (row: ListRow) => void;
+    }>;
+    return (
+      <Comp
+        rows={filteredRows}
+        selectedId={inspector.selected?.id ?? null}
+        onSelect={inspector.open}
+      />
+    );
+  }
 
   return (
     <>        {header}
@@ -546,76 +340,13 @@ export function ListPattern({
               <button
                 type="button"
                 onClick={() => {
-                  let blank: ListRow;
-                  if (variant === "team") {
-                    blank = {
-                      id: "",
-                      name: "",
-                      status: "active",
-                      owner: "운영1팀",
-                      meta: "매니저",
-                      permission: "member",
-                    };
-                  } else if (
-                    variant === "post-feedback" ||
-                    variant === "post-notice"
-                  ) {
-                    blank = {
-                      id: "",
-                      name: "",
-                      // feedback: 등록 시 '요청', notice: '활성'으로 시작
-                      status: variant === "post-feedback" ? "urgent" : "active",
-                      owner: "",
-                      body: "",
-                      author: "",
-                    };
-                  } else if (variant === "schedule") {
-                    const now = new Date();
-                    const inOneHour = new Date(now.getTime() + 60 * 60 * 1000);
-                    blank = {
-                      id: "",
-                      name: "",
-                      status: "active",
-                      owner: "",
-                      scheduleType: "event",
-                      start_at: now.toISOString(),
-                      end_at: inOneHour.toISOString(),
-                      allDay: false,
-                      assigneeEmail: null,
-                    };
-                  } else if (variant === "my-todo") {
-                    blank = {
-                      id: "",
-                      name: "",
-                      status: "active",
-                      owner: "",
-                      priority: "medium",
-                      done: false,
-                      dueAt: null,
-                    };
-                  } else if (variant === "cohort") {
-                    blank = variantRegistry.cohort.blank();
-                  } else if (variant === "ai-work") {
-                    const today = new Date().toISOString().slice(0, 10);
-                    blank = {
-                      id: "",
-                      name: "",
-                      status: "active",
-                      owner: currentUserName ?? "",
-                      workDate: today,
-                      aiTool: "",
-                      category: "",
-                      summary: "",
-                      tags: [],
-                    };
-                  } else {
-                    blank = {
-                      id: "",
-                      name: "",
-                      status: "active",
-                      owner: "",
-                    };
-                  }
+                  const entryBlank =
+                    variantEntry && "blank" in variantEntry
+                      ? variantEntry.blank
+                      : null;
+                  const blank: ListRow =
+                    entryBlank?.({ currentUserName }) ??
+                    variantRegistry.default.blank();
                   inspector.open(blank);
                   if (!inspector.editing) inspector.toggleEdit();
                 }}
@@ -627,393 +358,7 @@ export function ListPattern({
           </div>
         </header>
 
-        <div className="overflow-x-auto">
-          {variant === "team" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">팀</th>
-                  <th className="px-3 py-2">이름</th>
-                  <th className="px-3 py-2">직급</th>
-                  <th className="px-3 py-2">이메일</th>
-                  <th className="px-3 py-2">권한</th>
-                  <th className="px-3 py-2">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
-                    >
-                      <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
-                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">{row.meta}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
-                      <td className="px-3 py-2">
-                        {row.permission ? (
-                          <span
-                            className={`inline-block px-2 py-0.5 text-xs ${PERMISSION_COLOR[row.permission]}`}
-                          >
-                            {PERMISSION_LABEL[row.permission]}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted">-</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
-                          {STATUS_LABEL[row.status]}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : variant === "post-feedback" || variant === "post-notice" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">ID</th>
-                  <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">상태</th>
-                  <th className="px-3 py-2">등록자</th>
-                  {variant === "post-feedback" && <th className="px-3 py-2">담당</th>}
-                  <th className="px-3 py-2">작성일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={variant === "post-notice" ? 5 : 6}
-                      className="px-3 py-6 text-center text-muted"
-                    >
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
-                    >
-                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.slug ?? row.id.slice(0, 8)}</td>
-                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                      <td className="px-3 py-2">
-                        <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
-                          {postStatusLabel(variant, row.status)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">{row.author ?? "-"}</td>
-                      {variant === "post-feedback" && (
-                        <td className="px-3 py-2 text-sm text-ink-soft">{row.owner || "-"}</td>
-                      )}
-                      <td className="px-3 py-2 text-xs text-muted">{row.meta ?? "-"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : variant === "cohort" ? (
-            <variantRegistry.cohort.Table
-              rows={filteredRows}
-              selectedId={inspector.selected?.id ?? null}
-              onSelect={inspector.open}
-            />
-          ) : variant === "receivables" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="whitespace-nowrap px-3 py-2">청구일자</th>
-                  <th className="whitespace-nowrap px-3 py-2">거래처</th>
-                  <th className="whitespace-nowrap px-3 py-2">거래내역</th>
-                  <th className="whitespace-nowrap px-3 py-2">운영자</th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right">청구금액</th>
-                  <th className="whitespace-nowrap px-3 py-2">입금여부</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      }`}
-                    >
-                      <td className="whitespace-nowrap px-3 py-2 text-sm text-ink-soft">
-                        {row.meta ?? "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 font-medium text-ink">
-                        {row.name || "-"}
-                      </td>
-                      <td className="max-w-xs truncate px-3 py-2 text-sm text-ink-soft">
-                        {row.body ?? "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-sm text-ink-soft">
-                        {row.owner || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-sm text-ink">
-                        {row.author ?? "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2">
-                        <span
-                          className={`inline-block px-2 py-0.5 text-xs ${
-                            row.status === "approved"
-                              ? "bg-washi-raised text-ink"
-                              : "bg-vermilion/20 text-vermilion-deep"
-                          }`}
-                        >
-                          {row.status === "approved" ? "수금" : "미수"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : variant === "my-todo" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">우선순위</th>
-                  <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">마감</th>
-                  <th className="px-3 py-2">완료</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      } ${row.done ? "opacity-60 [&_td]:line-through" : ""}`}
-                    >
-                      <td className="px-3 py-2">
-                        {row.priority && (
-                          <span
-                            className={`inline-block px-2 py-0.5 text-xs ${PRIORITY_COLOR[row.priority]}`}
-                          >
-                            {PRIORITY_LABEL[row.priority]}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">
-                        {formatDueAt(row.dueAt)}
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="checkbox"
-                          aria-label={`${row.name} 완료 토글`}
-                          checked={row.done ?? false}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={async (e) => {
-                            const nextDone = e.target.checked;
-                            const nextRow: ListRow = {
-                              ...row,
-                              done: nextDone,
-                              doneAt: nextDone ? new Date().toISOString() : null,
-                            };
-                            setRows((prev) =>
-                              prev.map((r) => (r.id === row.id ? nextRow : r)),
-                            );
-                            if (onPersist) {
-                              const result = await onPersist(nextRow, false);
-                              if (!result.ok) {
-                                setRows((prev) =>
-                                  prev.map((r) => (r.id === row.id ? row : r)),
-                                );
-                                alert(`저장 실패: ${result.error ?? "알 수 없는 오류"}`);
-                              }
-                            }
-                          }}
-                          className="h-4 w-4 cursor-pointer accent-vermilion"
-                        />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : variant === "schedule" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">시각</th>
-                  <th className="px-3 py-2">타입</th>
-                  <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">담당</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      }`}
-                    >
-                      <td className="px-3 py-2 text-sm text-ink">
-                        {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
-                      </td>
-                      <td className="px-3 py-2">
-                        {row.scheduleType && (
-                          <span
-                            className={`inline-block px-2 py-0.5 text-xs ${SCHEDULE_TYPE_COLOR[row.scheduleType]}`}
-                          >
-                            {SCHEDULE_TYPE_LABEL[row.scheduleType]}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">
-                        {row.owner || "팀 공통"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : variant === "ai-work" ? (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">작업일</th>
-                  <th className="px-3 py-2">제목</th>
-                  <th className="px-3 py-2">AI 도구</th>
-                  <th className="px-3 py-2">카테고리</th>
-                  <th className="px-3 py-2">등록자</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => {
-                    const tool = row.aiTool as AiTool | undefined;
-                    const cat = row.category as AiWorkCategory | undefined;
-                    return (
-                      <tr
-                        key={row.id}
-                        onClick={() => inspector.open(row)}
-                        className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                          inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                        }`}
-                      >
-                        <td className="px-3 py-2 font-mono text-xs text-ink">
-                          {row.workDate ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                        <td className="px-3 py-2">
-                          {tool && (
-                            <span
-                              className={`inline-block px-2 py-0.5 text-2xs ${AI_TOOL_TONE[tool] ?? ""}`}
-                            >
-                              {AI_TOOL_LABEL[tool] ?? tool}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          {cat && (
-                            <span
-                              className={`inline-block px-2 py-0.5 text-2xs ${CATEGORY_TONE[cat] ?? ""}`}
-                            >
-                              {CATEGORY_LABEL[cat] ?? cat}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                  <th className="px-3 py-2">ID</th>
-                  <th className="px-3 py-2">이름</th>
-                  <th className="px-3 py-2">상태</th>
-                  <th className="px-3 py-2">담당</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-6 text-center text-muted">
-                      데이터 없음
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => inspector.open(row)}
-                      className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        inspector.selected?.id === row.id ? "bg-washi-raised" : ""
-                      } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
-                    >
-                      <td className="px-3 py-2 font-mono text-xs text-muted">{row.id}</td>
-                      <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
-                      <td className="px-3 py-2">
-                        <span className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}>
-                          {STATUS_LABEL[row.status]}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <div className="overflow-x-auto">{renderVariantTable()}</div>
 
         {!onPersist && (
           <p className="mt-3 text-xs text-muted">
