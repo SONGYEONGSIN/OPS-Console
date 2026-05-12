@@ -12,9 +12,8 @@ export default async function AiInsightPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const videos = await listInsightVideos();
+  const config = resolvePageMeta(slug, meta, videos.length);
 
   const header = (
     <PageHeader

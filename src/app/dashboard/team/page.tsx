@@ -23,10 +23,9 @@ export default async function TeamPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const operators = await listOperators();
   const rows: ListRow[] = operators.map(operatorToListRow);
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
   const myPermission = me?.permission ?? null;

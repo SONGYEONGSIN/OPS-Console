@@ -25,10 +25,9 @@ export default async function FeedbackPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const posts = await listPosts("feedback");
   const rows: ListRow[] = posts.map(postToListRow);
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
 

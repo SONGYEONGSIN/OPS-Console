@@ -26,10 +26,9 @@ export default async function NoticesPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const posts = await listPosts("notice");
   const rows: ListRow[] = posts.map(postToListRow);
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
   const isAdmin = canEditOperators(me?.permission ?? null);
