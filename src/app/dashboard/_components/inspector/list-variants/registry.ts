@@ -2,6 +2,8 @@ import { CohortView } from "./cohort/View";
 import { CohortForm } from "./cohort/EditForm";
 import { ReceivablesView } from "./receivables/View";
 import { ReceivablesForm } from "./receivables/EditForm";
+import { AiWorkView } from "./ai-work/View";
+import { AiWorkForm } from "./ai-work/EditForm";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
 
@@ -16,6 +18,7 @@ import type { ComponentType } from "react";
 export const variantRegistry = {
   cohort: { View: CohortView, EditForm: CohortForm },
   receivables: { View: ReceivablesView, EditForm: ReceivablesForm },
+  "ai-work": { View: AiWorkView, EditForm: AiWorkForm },
 } as const satisfies Partial<
   Record<
     Variant,
