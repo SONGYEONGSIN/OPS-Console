@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
@@ -507,11 +507,14 @@ export function ListPattern({
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
 
-  // 자동 새로고침은 PageHeader > PageMeta > AutoRefreshCountdown으로 이동.
-  // server에서 새 rows 도착하면 client state 동기화 (덮어쓰기)
-  useEffect(() => {
+  // server에서 새 rows 도착하면 client state 동기화 (덮어쓰기).
+  // React 공식 "Storing information from previous renders" 패턴 — useState 비교.
+  // useEffect+setState 또는 ref-in-render는 React Compiler 룰에 차단되어 채택 X.
+  const [prevDataRows, setPrevDataRows] = useState(data.rows);
+  if (prevDataRows !== data.rows) {
+    setPrevDataRows(data.rows);
     setRows(data.rows);
-  }, [data.rows]);
+  }
 
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
