@@ -1,6 +1,9 @@
 import { CohortView } from "./cohort/View";
 import { CohortForm } from "./cohort/EditForm";
-import type { Variant } from "./types";
+import { ReceivablesView } from "./receivables/View";
+import { ReceivablesForm } from "./receivables/EditForm";
+import type { Variant, ViewProps, EditFormProps } from "./types";
+import type { ComponentType } from "react";
 
 /**
  * variant → 컴포넌트 매핑. import-time static binding으로 RSC 직렬화
@@ -12,6 +15,13 @@ import type { Variant } from "./types";
  */
 export const variantRegistry = {
   cohort: { View: CohortView, EditForm: CohortForm },
+  receivables: { View: ReceivablesView, EditForm: ReceivablesForm },
 } as const satisfies Partial<
-  Record<Variant, { View: unknown; EditForm: unknown }>
+  Record<
+    Variant,
+    {
+      View: ComponentType<ViewProps>;
+      EditForm: ComponentType<EditFormProps>;
+    }
+  >
 >;

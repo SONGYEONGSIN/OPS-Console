@@ -11,19 +11,15 @@ const COHORT_STATUS_OPTIONS: {
   { value: "completed", label: "완료" },
 ];
 
+import type { EditFormProps } from "../types";
+
 export function CohortForm({
   row,
   setRow,
   onSave,
   onCancel,
   onInvite,
-}: {
-  row: ListRow;
-  setRow: (next: ListRow) => void;
-  onSave: (next: ListRow) => void;
-  onCancel: () => void;
-  onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
-}) {
+}: EditFormProps) {
   const [inviting, setInviting] = useState(false);
   return (
     <form

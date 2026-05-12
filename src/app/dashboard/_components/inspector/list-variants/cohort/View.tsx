@@ -5,6 +5,7 @@ import {
   tenureLabel,
 } from "@/features/auth/operators";
 import { Section, DefList, Divider } from "../shared";
+import type { ViewProps } from "../types";
 
 const COHORT_STATUS_VIEW_LABEL: Record<
   NonNullable<ListRow["cohortStatus"]>,
@@ -15,7 +16,7 @@ const COHORT_STATUS_VIEW_LABEL: Record<
   completed: { label: "완료", color: "bg-washi-raised text-ink" },
 };
 
-export function CohortView({ row }: { row: ListRow }) {
+export function CohortView({ row }: ViewProps) {
   const trainee = row.traineeEmail
     ? OPERATORS.find((o) => o.email === row.traineeEmail)
     : null;
