@@ -22,7 +22,7 @@ describe("derivePageMeta", () => {
     expect(result.headline.title).toBe("대학 연락처");
     expect(result.headline.accent).toBe("고객 응대");
     expect(labelOf(result.meta)).toContain("87건");
-    expect(labelOf(result.meta)).toContain("자동 새로고침 30초");
+    // '자동 새로고침 30초'는 ListPattern 헤더에서 카운트다운으로 직접 표시 (PageMeta에서 제외)
     expect(result.meta?.[0].tone).toBe("accent"); // 첫 항목(시프트)이 accent
     expect(result.description).toContain("대학 연락처 목록");
   });
@@ -85,7 +85,7 @@ describe("derivePageMeta", () => {
     expect(result.headline.accent).toBe("요청 · 자료");
   });
 
-  it("count 없음 — 시프트/날짜/갱신 3항목", () => {
+  it("count 없음 — 시프트/날짜 2항목", () => {
     const sidebarMeta: SbItem = {
       ico: "▣",
       label: "자료 보관",
@@ -93,8 +93,7 @@ describe("derivePageMeta", () => {
       pattern: "list",
     };
     const result = derivePageMeta("vault", sidebarMeta);
-    // count 없음 → 3개 (shift + date + "자동 새로고침 30초")
-    expect(result.meta).toHaveLength(3);
-    expect(labelOf(result.meta)).toContain("자동 새로고침 30초");
+    // count 없음 → 2개 (shift + date). 자동 새로고침 카운트다운은 ListPattern 헤더로 이동.
+    expect(result.meta).toHaveLength(2);
   });
 });

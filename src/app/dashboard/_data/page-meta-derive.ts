@@ -80,7 +80,6 @@ export function derivePatternMeta(
       return [
         ...base,
         ...(count ? [{ label: `${count}건` }] : []),
-        { label: "자동 새로고침 30초" },
       ];
     case "dash":
       return [
