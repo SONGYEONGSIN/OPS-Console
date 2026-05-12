@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { ListPattern } from "../ListPattern";
 import type { ListRow } from "../ListPattern";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
 
 const sampleRows: ListRow[] = [
   { id: "L-001", name: "민원 접수 #1", status: "urgent", owner: "박지연" },

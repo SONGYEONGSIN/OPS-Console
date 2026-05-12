@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
@@ -506,6 +507,24 @@ export function ListPattern({
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
+  const router = useRouter();
+
+  // server-persist 페이지에서만 30초 자동 refetch (RSC router.refresh).
+  // 탭 비활성·인스펙터 편집 중일 때는 pause — 사용자 작업·트래픽 절약.
+  useEffect(() => {
+    if (!onPersist) return;
+    const id = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      if (inspector.editing) return;
+      router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [router, onPersist, inspector.editing]);
+
+  // server에서 새 rows 도착하면 client state 동기화 (덮어쓰기)
+  useEffect(() => {
+    setRows(data.rows);
+  }, [data.rows]);
 
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
