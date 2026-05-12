@@ -127,21 +127,31 @@ source: .claude/memory/brainstorms/20260512-070000-insight-youtube-cards.md
 
 ### PR-2: UI (T9 ~ T12)
 
-### T9: VideoGrid 컴포넌트 (RED → GREEN)
+### T9: VideoGrid 컴포넌트 (RED → GREEN) — REVISED 2026-05-12
 - 상태: pending
 - 파일: `src/app/dashboard/ai-insight/_components/VideoGrid.tsx`, `src/app/dashboard/ai-insight/_components/__tests__/VideoGrid.test.tsx`
+- **변경 (revision)**: 사용자 요청 — 카드 클릭 시 새창 대신 인스펙터 패널에 임베드+요약. brainstorm 원취지(임베드 X / 새창 이동)에서 이탈.
 - 변경:
-  - 테스트: row 3개 → 3카드 / 빈 배열 → 안내 / anchor `target=_blank rel="noopener noreferrer"` / 키워드 chip
-  - 구현: `<a>` 카드 (Next/Image thumbnail 16:9, line-clamp-2, 채널·날짜·keyword chip) + `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` + hover `border-vermilion` (토큰)
+  - 테스트: row 3개 → 3카드 / 빈 배열 → 안내 / 카드 `<button>` 클릭 시 `onSelect(video)` 호출 / 키워드 chip
+  - 구현: `<button>` 카드 (Next/Image 16:9, line-clamp-2, 채널·날짜·keyword chip) + `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` + hover vermilion border (토큰)
 - DoD: `npm test -- VideoGrid` 4 tests passed
 - 의존: T3
 
-### T10: ai-insight 페이지 RSC + 정적 라우트 검증
+### T9b: InsightInspectorBody (NEW — revision)
 - 상태: pending
-- 파일: `src/app/dashboard/ai-insight/page.tsx`, `src/app/dashboard/ai-insight/_components/__tests__/page-route.test.ts`
-- 변경: RSC `async function AiInsightPage()` — `requireMenu("ai-insight")` + sidebar meta + `<PageHeader>` + `listInsightVideos()` 호출 후 `<VideoGrid>` 렌더
-- DoD: `npm test -- page-route` pass / `npm run build` 후 로그에 `○ /dashboard/ai-insight` 정적 표기
-- 의존: T4, T9
+- 파일: `src/app/dashboard/ai-insight/_components/InsightInspectorBody.tsx`, `_components/__tests__/InsightInspectorBody.test.tsx`
+- 변경: 인스펙터 body — YouTube iframe (16:9, `https://www.youtube.com/embed/{video_id}`) + 제목 / 채널 / 게시일 / description 200자 / keyword chip / "YouTube에서 열기" 새창 링크
+- DoD: `npm test -- InsightInspectorBody` 4 tests pass (iframe src 검증 / description fallback / 외부 링크 새창 속성 / null video 시 null 렌더)
+- 의존: T3
+
+### T10: ai-insight 페이지 RSC + VideoGridSection 클라이언트 래퍼 — REVISED
+- 상태: pending
+- 파일: `src/app/dashboard/ai-insight/page.tsx`, `_components/VideoGridSection.tsx`, `_components/__tests__/VideoGridSection.test.tsx`
+- 변경:
+  - VideoGridSection (Client): `useInspectorState<InsightVideoRow>()` + `<VideoGrid onSelect={state.open}>` + `<InspectorPanel open={selected!==null} onClose={state.close}><InsightInspectorBody video={selected}/></InspectorPanel>`
+  - page.tsx (RSC): `requireMenu("ai-insight")` + `<PageHeader>` + `listInsightVideos()` → `<VideoGridSection videos={data} />`
+- DoD: `npm test -- VideoGridSection` 카드 클릭 → 인스펙터 open 검증 pass / `npm run build` 후 `○ /dashboard/ai-insight` 표기
+- 의존: T4, T9, T9b
 
 ### T11: 디자인 lint + 토큰 검증
 - 상태: pending
@@ -170,3 +180,5 @@ source: .claude/memory/brainstorms/20260512-070000-insight-youtube-cards.md
 
 | 시각 | 단계 | 상태 변경 | 비고 |
 |------|------|----------|------|
+| 2026-05-12T01:30Z | T1~T8 | done | PR-1 #49 생성 (lint/typecheck/660 tests/build 통과) |
+| 2026-05-12T02:00Z | T9, T10 | revised | 사용자 요청 — 새창 이동 → 인스펙터 임베드+요약. T9b 신설 (InsightInspectorBody). 기존 brainstorm "임베드 X" 결정 이탈 명시 |
