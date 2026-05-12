@@ -537,18 +537,51 @@ export function ListPattern({
       >
         <section className="p-7">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div className="flex items-baseline gap-2">
-            <h2
-              className={`${variant === "cohort" ? "text-sm font-medium" : "text-xl font-bold"} text-ink`}
-            >
-              {title}
-            </h2>
-            <span className="text-muted" aria-hidden>
-              ·
-            </span>
-            <span className="text-sm text-vermilion">
-              {filteredRows.length}건
-            </span>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div className="flex items-baseline gap-2">
+              <h2
+                className={`${variant === "cohort" ? "text-sm font-medium" : "text-xl font-bold"} text-ink`}
+              >
+                {title}
+              </h2>
+              <span className="text-muted" aria-hidden>
+                ·
+              </span>
+              <span className="text-sm text-vermilion">
+                {filteredRows.length}건
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1">
+              {FILTERS.map((f) => {
+                const active = filter === f.value;
+                const count =
+                  f.value === "all"
+                    ? rows.length
+                    : rows.filter((r) => r.status === f.value).length;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    aria-label={f.label}
+                    aria-pressed={active}
+                    onClick={() => setFilter(f.value)}
+                    className={`relative cursor-pointer border-none bg-transparent px-3 py-1 text-sm transition-colors ${
+                      active
+                        ? "font-bold text-ink"
+                        : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    {f.label} ({count})
+                    {active && (
+                      <span
+                        aria-hidden
+                        className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-vermilion"
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-1">
             {(variant === "team" || canCreate) && !readOnly && (
@@ -639,40 +672,11 @@ export function ListPattern({
                   inspector.open(blank);
                   if (!inspector.editing) inspector.toggleEdit();
                 }}
-                className="mr-3 cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
+                className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
               >
                 {createLabel ?? (variant === "team" ? "+ 신규 계정" : "+ 새 글")}
               </button>
             )}
-            {FILTERS.map((f) => {
-              const active = filter === f.value;
-              const count =
-                f.value === "all"
-                  ? rows.length
-                  : rows.filter((r) => r.status === f.value).length;
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  aria-label={f.label}
-                  aria-pressed={active}
-                  onClick={() => setFilter(f.value)}
-                  className={`relative cursor-pointer border-none bg-transparent px-3 py-1 text-sm transition-colors ${
-                    active
-                      ? "font-bold text-ink"
-                      : "text-muted hover:text-ink"
-                  }`}
-                >
-                  {f.label} ({count})
-                  {active && (
-                    <span
-                      aria-hidden
-                      className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-vermilion"
-                    />
-                  )}
-                </button>
-              );
-            })}
           </div>
         </header>
 
