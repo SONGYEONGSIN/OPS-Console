@@ -1,4 +1,4 @@
-import { sidebarSections, type SbItem } from "../_data";
+import { sidebarSections, type SbItem, type SbSection } from "../_data";
 
 export type BreadcrumbCrumb = { label: string };
 
@@ -104,4 +104,27 @@ export function getAllMenuSlugs(): string[] {
 const MEMBER_DENY_SLUGS = new Set(["notices", "team", "settings"]);
 export function getDefaultMemberMenus(): string[] {
   return getAllMenuSlugs().filter((s) => !MEMBER_DENY_SLUGS.has(s));
+}
+
+/**
+ * 사이드바 sections의 hardcode count를 실 데이터 count로 교체.
+ * counts에 없는 slug는 기존 hardcode 유지 (mock 도메인 등).
+ */
+export function applyDynamicSidebarCounts(
+  sections: SbSection[],
+  counts: Map<string, number>,
+): SbSection[] {
+  const replaceItemCount = <T extends SbItem>(item: T): T => {
+    if (!item.slug) return item;
+    const c = counts.get(item.slug);
+    return c === undefined ? item : { ...item, count: String(c) };
+  };
+
+  return sections.map((section) => ({
+    ...section,
+    entries: section.entries.map((entry) => {
+      if (entry.kind === "item") return replaceItemCount(entry);
+      return { ...entry, items: entry.items.map(replaceItemCount) };
+    }),
+  }));
 }
