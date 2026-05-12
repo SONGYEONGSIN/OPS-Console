@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { CohortView } from "../../list-variants/cohort/View";
 import { CohortForm } from "../../list-variants/cohort/EditForm";
+import { CohortTable } from "../../list-variants/cohort/Table";
 
 const baseRow: ListRow = {
   id: "cohort-001",
@@ -146,5 +147,39 @@ describe("CohortForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
     expect(onSave).toHaveBeenCalledWith({ ...baseRow, status: "deleted" });
     confirmSpy.mockRestore();
+  });
+});
+
+describe("CohortTable", () => {
+  it("헤더 4개 — 제목 / 신입·교육 / 기간 / 상태", () => {
+    render(
+      <CohortTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
+    );
+    expect(screen.getByText("제목")).toBeInTheDocument();
+    expect(screen.getByText("신입 / 교육")).toBeInTheDocument();
+    expect(screen.getByText("기간")).toBeInTheDocument();
+    expect(screen.getByText("상태")).toBeInTheDocument();
+  });
+
+  it("빈 rows — 데이터 없음 안내", () => {
+    render(<CohortTable rows={[]} selectedId={null} onSelect={vi.fn()} />);
+    expect(screen.getByText("데이터 없음")).toBeInTheDocument();
+  });
+
+  it("상태 + invite 뱃지 표시", () => {
+    render(
+      <CohortTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
+    );
+    expect(screen.getByText("진행중")).toBeInTheDocument();
+    expect(screen.getByText("미초대")).toBeInTheDocument();
+  });
+
+  it("row 클릭 — onSelect(row) 호출", () => {
+    const onSelect = vi.fn();
+    render(
+      <CohortTable rows={[baseRow]} selectedId={null} onSelect={onSelect} />,
+    );
+    fireEvent.click(screen.getByText(baseRow.name));
+    expect(onSelect).toHaveBeenCalledWith(baseRow);
   });
 });
