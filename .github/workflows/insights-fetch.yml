@@ -1,0 +1,33 @@
+name: insights-fetch
+
+on:
+  schedule:
+    # 매일 23:00 UTC = 한국 08:00 — 출근 직전 적재
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+# 2026-06-02 Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 미리 동작하도록 강제.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  fetch:
+    name: YouTube search.list → Supabase upsert
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install minimal runtime deps
+        run: npm ci --omit=dev --no-audit --no-fund
+
+      - name: Run fetch script
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: node scripts/insights-fetch.mjs
