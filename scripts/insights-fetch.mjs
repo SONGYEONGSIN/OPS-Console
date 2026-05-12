@@ -35,14 +35,21 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !YOUTUBE_API_KEY) {
 const SEARCH_QUERIES = [
   "바이브코딩",
   "Claude Code",
+  "클로드 스킬",
   "AI 환경구축",
   "AI 디자인 활용",
   "AI 개발 환경",
   "AI 활용 업무 적용",
 ];
 
-// --- 7일 전 ISO (publishedAfter) ---
-const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+// --- 14일 전 ISO (publishedAfter) — 인기 영상 풀 확보 ---
+const PUBLISHED_AFTER_DAYS = 14;
+const publishedAfter = new Date(
+  Date.now() - PUBLISHED_AFTER_DAYS * 24 * 60 * 60 * 1000,
+).toISOString();
+
+// --- 조회수 임계값 — 광고·시도 영상 컷오프 ---
+const MIN_VIEW_COUNT = 10_000;
 
 // --- YouTube fetch ---
 async function searchVideos(keyword) {
@@ -51,7 +58,7 @@ async function searchVideos(keyword) {
     type: "video",
     maxResults: "3",
     order: "viewCount",
-    publishedAfter: sevenDaysAgo,
+    publishedAfter,
     q: keyword,
     key: YOUTUBE_API_KEY,
   });
@@ -142,13 +149,29 @@ try {
   console.error("videos.list fetch failed:", e.message, "— keep snippet description");
 }
 
+// --- 조회수 임계값 컷오프 (광고·시도 영상 제외) ---
+// view_count null인 row는 그대로 통과 (videos.list 실패 시 fallback)
+const popular = rows.filter(
+  (r) => r.view_count == null || r.view_count >= MIN_VIEW_COUNT,
+);
+const dropped = rows.length - popular.length;
+console.log(
+  `popularity filter (>= ${MIN_VIEW_COUNT.toLocaleString()} views): kept ${popular.length}, dropped ${dropped}`,
+);
+
+if (popular.length === 0) {
+  console.log("nothing to upsert after popularity filter.");
+  if (errors.length > 0) process.exit(1);
+  process.exit(0);
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
 const { data, error } = await supabase
   .from("insight_videos")
-  .upsert(rows, { onConflict: "video_id", ignoreDuplicates: false })
+  .upsert(popular, { onConflict: "video_id", ignoreDuplicates: false })
   .select("video_id");
 
 if (error) {

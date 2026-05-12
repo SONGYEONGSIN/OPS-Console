@@ -38,8 +38,8 @@ describe("insightVideoRowSchema", () => {
 });
 
 describe("SEARCH_QUERIES", () => {
-  it("길이는 6", () => {
-    expect(SEARCH_QUERIES.length).toBe(6);
+  it("길이는 7", () => {
+    expect(SEARCH_QUERIES.length).toBe(7);
   });
 
   it("바이브코딩 키워드 포함", () => {
