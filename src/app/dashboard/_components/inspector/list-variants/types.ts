@@ -15,7 +15,6 @@ export type Variant =
 
 export type ViewProps = {
   row: ListRow;
-  variant: Variant;
   currentUserPermission?: OperatorPermission | null;
   receivablesMailDryRun?: boolean;
 };

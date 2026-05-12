@@ -14,7 +14,6 @@ import {
 } from "@/features/operators/schemas";
 import { postStatusKeys, postStatusLabel } from "../patterns/ListPattern";
 import { sidebarSections, type SbItem } from "../../_data";
-import { SendReceivablesMailButton } from "@/components/receivables/SendReceivablesMailButton";
 import {
   AI_TOOL_LABEL,
   AI_TOOL_OPTIONS,
@@ -116,20 +115,10 @@ export function InspectorListBody({
           onSave={onSave}
           onCancel={onCancel}
           onInvite={onInvite}
+          onUpdateRemarks={onUpdateRemarks}
         />
       );
     }
-  }
-
-  if (variant === "receivables") {
-    return (
-      <ReceivablesForm
-        row={draft}
-        setRow={setDraft}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    );
   }
 
   if (variant === "ai-work") {
@@ -494,195 +483,17 @@ function ViewMode({
     const entry = variantRegistry[variant as keyof typeof variantRegistry];
     if (entry) {
       const View = entry.View;
-      return <View row={row} />;
+      return (
+        <View
+          row={row}
+          currentUserPermission={currentUserPermission}
+          receivablesMailDryRun={receivablesMailDryRun}
+        />
+      );
     }
   }
-  if (variant === "receivables")
-    return (
-      <ReceivablesView
-        row={row}
-        canSendMail={currentUserPermission === "admin"}
-        mailDryRun={receivablesMailDryRun}
-      />
-    );
   if (variant === "ai-work") return <AiWorkView row={row} />;
   return <ServiceView row={row} />;
-}
-
-/**
- * 청구일자(text)로부터 오늘(KST)까지의 경과 일수.
- * 파싱 실패 또는 미래 일자면 null.
- */
-function elapsedDays(dateText?: string): number | null {
-  if (!dateText) return null;
-  const d = new Date(dateText.trim());
-  if (Number.isNaN(d.getTime())) return null;
-  const diff = Date.now() - d.getTime();
-  if (diff < 0) return null;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const SCHOOL_OWNER_HEADER_RE = /^학교\s*담당자?$|^학교\s*담당\s*이메일$/;
-
-/**
- * 다양한 한국식 날짜 표기를 input type="date" 가 받을 수 있는 ISO 8601 (YYYY-MM-DD) 으로 정규화.
- * 변환 실패 시 빈 문자열 — 사용자가 달력으로 새로 선택 가능.
- *
- * 지원 형식: 2026-05-30 / 2026.05.30 / 2026/05/30 / 2026년 5월 30일 / Excel serial(45777)
- */
-function toISODateInput(raw: string | undefined | null): string {
-  if (!raw) return "";
-  const s = String(raw).trim();
-  if (!s) return "";
-
-  // 이미 ISO
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (iso) return s;
-
-  // 2026.05.30 / 2026/05/30
-  const dotted = s.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})$/);
-  if (dotted) {
-    const [, y, m, d] = dotted;
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-  }
-
-  // 2026년 5월 30일
-  const korean = s.match(/^(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일$/);
-  if (korean) {
-    const [, y, m, d] = korean;
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-  }
-
-  // Excel serial number (1900-01-01 기준)
-  const serial = Number(s);
-  if (Number.isFinite(serial) && serial > 25569 && serial < 80000) {
-    const ms = (serial - 25569) * 86400 * 1000;
-    const d = new Date(ms);
-    if (!Number.isNaN(d.getTime())) {
-      const y = d.getUTCFullYear();
-      const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
-      const da = String(d.getUTCDate()).padStart(2, "0");
-      return `${y}-${mo}-${da}`;
-    }
-  }
-
-  return "";
-}
-
-function pickSchoolOwnerEmail(cells: ListRow["receivablesCells"]): string | null {
-  if (!cells) return null;
-  const idx = cells.headers.findIndex((h) => SCHOOL_OWNER_HEADER_RE.test(h));
-  if (idx === -1) return null;
-  const raw = (cells.textValues[idx] ?? "").trim();
-  if (!raw || !EMAIL_RE.test(raw)) return null;
-  return raw;
-}
-
-function ReceivablesView({
-  row,
-  canSendMail = false,
-  mailDryRun = true,
-}: {
-  row: ListRow;
-  canSendMail?: boolean;
-  mailDryRun?: boolean;
-}) {
-  const cells = row.receivablesCells;
-  const elapsed = elapsedDays(row.meta);
-  const schoolOwnerEmail = pickSchoolOwnerEmail(cells);
-  const isPaidByRemarks = /입금\s*완료/.test(cells?.remarks ?? "");
-  return (
-    <div className="space-y-6">
-      {canSendMail && schoolOwnerEmail && !isPaidByRemarks ? (
-        <div className="flex justify-end">
-          <SendReceivablesMailButton
-            email={schoolOwnerEmail}
-            customerName={row.name}
-            dryRun={mailDryRun}
-          />
-        </div>
-      ) : null}
-      <Section title="기본 정보">
-        <DefList
-          items={[
-            { term: "거래처", desc: row.name || "-" },
-            { term: "청구일자", desc: row.meta ?? "-" },
-            {
-              term: "청구금액",
-              desc: (
-                <span className="font-mono text-ink">{row.author ?? "-"}</span>
-              ),
-            },
-            {
-              term: "경과일수",
-              desc:
-                elapsed === null ? (
-                  <span className="text-muted">-</span>
-                ) : (
-                  <span
-                    className={
-                      row.status === "approved"
-                        ? "text-muted"
-                        : elapsed >= 60
-                          ? "font-medium text-vermilion-deep"
-                          : elapsed >= 30
-                            ? "text-vermilion"
-                            : "text-ink"
-                    }
-                  >
-                    {elapsed}일 경과
-                  </span>
-                ),
-            },
-            {
-              term: "입금여부",
-              desc: (
-                <span
-                  className={`inline-block px-2 py-0.5 text-xs ${
-                    row.status === "approved"
-                      ? "bg-washi-raised text-ink"
-                      : "bg-vermilion/20 text-vermilion-deep"
-                  }`}
-                >
-                  {row.status === "approved" ? "수금" : "미수"}
-                </span>
-              ),
-            },
-          ]}
-        />
-      </Section>
-
-      {row.body && (
-        <>
-          <Divider />
-          <Section title="거래내역">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-              {row.body}
-            </p>
-          </Section>
-        </>
-      )}
-
-      {cells && cells.headers.length > 0 && (
-        <>
-          <Divider />
-          <Section title="전체 컬럼 (Excel 원본)">
-            <DefList
-              items={cells.headers.map((h, i) => ({
-                term: h,
-                desc:
-                  cells.textValues[i] !== undefined &&
-                  cells.textValues[i] !== ""
-                    ? cells.textValues[i]
-                    : "—",
-              }))}
-            />
-          </Section>
-        </>
-      )}
-    </div>
-  );
 }
 
 function PostView({
@@ -1296,150 +1107,6 @@ function MyTodoForm({
           </button>
         </div>
       )}
-    </form>
-  );
-}
-
-function ReceivablesForm({
-  row,
-  setRow,
-  onSave,
-  onCancel,
-}: {
-  row: ListRow;
-  setRow: (next: ListRow) => void;
-  onSave: (next: ListRow) => void;
-  onCancel: () => void;
-}) {
-  const cells = row.receivablesCells;
-  if (!cells) {
-    return (
-      <p className="text-sm text-muted">편집 가능한 셀 정보가 없습니다.</p>
-    );
-  }
-  const remarksIdx = cells.remarksHeaderIdx;
-  const dueDateIdx = cells.dueDateHeaderIdx;
-  const schoolOwnerIdx = cells.schoolOwnerHeaderIdx;
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(row);
-      }}
-      className="space-y-3"
-    >
-      <div className="border border-line-soft bg-washi-raised p-3 text-xs text-muted">
-        <p>
-          편집 가능:{" "}
-          <strong className="text-ink">
-            입금예정일 · 적요 · 학교담당자
-          </strong>
-          . 나머지 셀은 SharePoint 원본 그대로 표시됩니다.
-        </p>
-      </div>
-
-      <dl className="grid grid-cols-[100px_1fr] gap-x-3 gap-y-2 text-xs">
-        {cells.headers.map((h, i) => {
-          const isEditable =
-            i === remarksIdx || i === dueDateIdx || i === schoolOwnerIdx;
-          const value =
-            i === remarksIdx
-              ? cells.remarks ?? ""
-              : i === dueDateIdx
-                ? cells.dueDate ?? ""
-                : i === schoolOwnerIdx
-                  ? cells.schoolOwner ?? ""
-                  : cells.textValues[i] ?? "";
-
-          return (
-            <div key={i} className="contents">
-              <dt className="self-start pt-1 text-muted">{h}</dt>
-              <dd>
-                {!isEditable ? (
-                  <p className="whitespace-pre-wrap pt-1 text-sm text-ink-soft">
-                    {value || "—"}
-                  </p>
-                ) : i === remarksIdx ? (
-                  <textarea
-                    aria-label={h}
-                    value={value}
-                    onChange={(e) =>
-                      setRow({
-                        ...row,
-                        receivablesCells: {
-                          ...cells,
-                          remarks: e.target.value,
-                        },
-                      })
-                    }
-                    rows={3}
-                    className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
-                    placeholder="입금완료, 메일 발송 완료 등"
-                  />
-                ) : i === dueDateIdx ? (
-                  <input
-                    type="date"
-                    aria-label={h}
-                    value={toISODateInput(value)}
-                    onChange={(e) =>
-                      setRow({
-                        ...row,
-                        receivablesCells: {
-                          ...cells,
-                          dueDate: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
-                  />
-                ) : (
-                  <div className="space-y-1">
-                    <input
-                      type="email"
-                      aria-label={h}
-                      value={value}
-                      onChange={(e) =>
-                        setRow({
-                          ...row,
-                          receivablesCells: {
-                            ...cells,
-                            schoolOwner: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink"
-                      placeholder="manager@school.ac.kr"
-                    />
-                    {value &&
-                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? (
-                      <p className="text-[11px] text-vermilion-deep">
-                        ※ 이메일 형식이 올바르지 않습니다 (저장은 가능)
-                      </p>
-                    ) : null}
-                  </div>
-                )}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
-
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
-        >
-          저장
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
-        >
-          취소
-        </button>
-      </div>
     </form>
   );
 }
