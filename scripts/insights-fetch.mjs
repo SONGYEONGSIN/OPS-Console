@@ -106,6 +106,37 @@ if (rows.length === 0) {
   process.exit(0);
 }
 
+// --- videos.list로 full description 보강 (search.list snippet은 ~150자만 줌) ---
+// videos.list 1 call = 1 unit, id 콤마 구분으로 최대 50개. 일 ~10건이면 1 call로 충분.
+try {
+  const ids = rows.map((r) => r.video_id).join(",");
+  const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${ids}&key=${YOUTUBE_API_KEY}`;
+  const res = await fetch(url);
+  if (res.ok) {
+    const json = await res.json();
+    const descMap = new Map();
+    for (const item of json.items ?? []) {
+      const full = (item.snippet?.description ?? "").slice(0, 600) || null;
+      if (full) descMap.set(item.id, full);
+    }
+    for (const r of rows) {
+      const full = descMap.get(r.video_id);
+      if (full) r.description = full;
+    }
+    quotaUsed += 1;
+    console.log(
+      `videos.list → ${descMap.size} full descriptions (quota used: ~${quotaUsed} unit)`,
+    );
+  } else {
+    const body = await res.text();
+    console.error(
+      `videos.list HTTP ${res.status}: ${body.slice(0, 200)} — keep snippet description`,
+    );
+  }
+} catch (e) {
+  console.error("videos.list fetch failed:", e.message, "— keep snippet description");
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
