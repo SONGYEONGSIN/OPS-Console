@@ -24,6 +24,8 @@ import {
   CATEGORY_TONE,
 } from "@/lib/ai-work/constants";
 import type { AiTool, AiWorkCategory } from "@/features/ai-work/schemas";
+import { Section, DefList, Divider } from "./list-variants/shared";
+import { variantRegistry } from "./list-variants/registry";
 
 type Variant =
   | "default"
@@ -103,16 +105,20 @@ export function InspectorListBody({
     return <MyTodoForm row={draft} setRow={setDraft} onSave={onSave} onCancel={onCancel} />;
   }
 
-  if (variant === "cohort") {
-    return (
-      <CohortForm
-        row={draft}
-        setRow={setDraft}
-        onSave={onSave}
-        onCancel={onCancel}
-        onInvite={onInvite}
-      />
-    );
+  {
+    const entry = variantRegistry[variant as keyof typeof variantRegistry];
+    if (entry) {
+      const EditForm = entry.EditForm;
+      return (
+        <EditForm
+          row={draft}
+          setRow={setDraft}
+          onSave={onSave}
+          onCancel={onCancel}
+          onInvite={onInvite}
+        />
+      );
+    }
   }
 
   if (variant === "receivables") {
@@ -484,7 +490,13 @@ function ViewMode({
   if (variant === "team") return <TeamView row={row} />;
   if (variant === "post-feedback" || variant === "post-notice")
     return <PostView row={row} variant={variant} />;
-  if (variant === "cohort") return <CohortView row={row} />;
+  {
+    const entry = variantRegistry[variant as keyof typeof variantRegistry];
+    if (entry) {
+      const View = entry.View;
+      return <View row={row} />;
+    }
+  }
   if (variant === "receivables")
     return (
       <ReceivablesView
@@ -669,204 +681,6 @@ function ReceivablesView({
           </Section>
         </>
       )}
-    </div>
-  );
-}
-
-const COHORT_STATUS_VIEW_LABEL: Record<
-  NonNullable<ListRow["cohortStatus"]>,
-  { label: string; color: string }
-> = {
-  planned: { label: "계획", color: "bg-line-soft text-muted" },
-  in_progress: { label: "진행중", color: "bg-vermilion text-cream" },
-  completed: { label: "완료", color: "bg-washi-raised text-ink" },
-};
-
-function CohortView({ row }: { row: ListRow }) {
-  const trainee = row.traineeEmail
-    ? OPERATORS.find((o) => o.email === row.traineeEmail)
-    : null;
-  const mentor = row.mentorEmail
-    ? OPERATORS.find((o) => o.email === row.mentorEmail)
-    : null;
-  const status = row.cohortStatus
-    ? COHORT_STATUS_VIEW_LABEL[row.cohortStatus]
-    : null;
-  const inviteState = row.acceptedAt
-    ? "수락 완료"
-    : row.invitedAt
-      ? "초대 발송 — 수락 대기"
-      : "미초대";
-  const inviteColor = row.acceptedAt
-    ? "bg-washi-raised text-ink-soft"
-    : row.invitedAt
-      ? "bg-vermilion/20 text-vermilion-deep"
-      : "bg-line-soft text-muted";
-
-  return (
-    <div className="space-y-6">
-      <Section title="회차 정보">
-        <DefList
-          items={[
-            {
-              term: "회차",
-              desc: <span className="font-medium text-ink">{row.name}</span>,
-            },
-            {
-              term: "기간",
-              desc: row.endDate
-                ? `${row.startDate ?? "-"} ~ ${row.endDate}`
-                : `${row.startDate ?? "-"} ~ 진행 중`,
-            },
-            {
-              term: "상태",
-              desc: status ? (
-                <span
-                  className={`inline-block px-2 py-0.5 text-xs ${status.color}`}
-                >
-                  {status.label}
-                </span>
-              ) : (
-                "-"
-              ),
-            },
-            {
-              term: "초대",
-              desc: (
-                <span
-                  className={`inline-block px-2 py-0.5 text-xs ${inviteColor}`}
-                >
-                  {inviteState}
-                </span>
-              ),
-            },
-          ]}
-        />
-      </Section>
-
-      <Divider />
-
-      <Section title="신입 (Trainee)">
-        {trainee ? (
-          <DefList
-            items={[
-              { term: "이름", desc: trainee.name },
-              { term: "팀", desc: trainee.team },
-              { term: "직급", desc: trainee.role },
-              {
-                term: "이메일",
-                desc: <span className="font-mono text-xs">{trainee.email}</span>,
-              },
-              { term: "사번", desc: trainee.empNo },
-              {
-                term: "재직",
-                desc: tenureLabel(trainee.hiredAt),
-              },
-              { term: "나이", desc: `${ageOf(trainee.birthDate)}세` },
-            ]}
-          />
-        ) : (
-          <DefList
-            items={[
-              {
-                term: "이메일",
-                desc: (
-                  <span className="font-mono text-xs">
-                    {row.traineeEmail ?? "-"}
-                  </span>
-                ),
-              },
-              {
-                term: "안내",
-                desc: (
-                  <span className="text-xs text-muted">
-                    operators 시드에 없는 외부 이메일 — 초대 수락 시 자동 등록 후
-                    admin이 권한 승계
-                  </span>
-                ),
-              },
-            ]}
-          />
-        )}
-      </Section>
-
-      <Divider />
-
-      <Section title="교육 (Mentor)">
-        {mentor ? (
-          <DefList
-            items={[
-              { term: "이름", desc: mentor.name },
-              { term: "팀", desc: mentor.team },
-              { term: "직급", desc: mentor.role },
-              {
-                term: "이메일",
-                desc: <span className="font-mono text-xs">{mentor.email}</span>,
-              },
-              {
-                term: "재직",
-                desc: tenureLabel(mentor.hiredAt),
-              },
-            ]}
-          />
-        ) : (
-          <p className="text-xs text-muted">교육 미정 — 회차 편집에서 지정</p>
-        )}
-      </Section>
-
-      <Divider />
-
-      <Section title="초대 워크플로">
-        <DefList
-          items={[
-            {
-              term: "발송",
-              desc: row.invitedAt
-                ? new Intl.DateTimeFormat("ko-KR", {
-                    timeZone: "Asia/Seoul",
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  }).format(new Date(row.invitedAt))
-                : "—",
-            },
-            {
-              term: "수락",
-              desc: row.acceptedAt
-                ? new Intl.DateTimeFormat("ko-KR", {
-                    timeZone: "Asia/Seoul",
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  }).format(new Date(row.acceptedAt))
-                : "—",
-            },
-          ]}
-        />
-        {!row.invitedAt && (
-          <p className="mt-2 text-xs text-muted">
-            아직 초대 메일을 발송하지 않았습니다. 우측 상단 &ldquo;구성 편집&rdquo;
-            → 하단 &ldquo;초대 메일 발송&rdquo;에서 시작.
-          </p>
-        )}
-      </Section>
-
-      {row.body && (
-        <>
-          <Divider />
-          <Section title="비고">
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-              {row.body}
-            </p>
-          </Section>
-        </>
-      )}
-
-      <Divider />
-
-      <Section title="진행 (후속 epic)">
-        <p className="text-xs text-muted">
-          체크리스트 진행률 · 활동 로그 · Q&amp;A는 후속 PR에서 추가됩니다.
-        </p>
-      </Section>
     </div>
   );
 }
@@ -1161,44 +975,6 @@ const STATUS_BADGE: Record<ListRow["status"], string> = {
   suspended: "bg-vermilion/20 text-vermilion",
   deleted: "bg-ink/20 text-ink-soft",
 };
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="space-y-3">
-      <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-muted">
-        {title}
-      </h4>
-      {children}
-    </section>
-  );
-}
-
-function DefList({
-  items,
-}: {
-  items: { term: string; desc: React.ReactNode }[];
-}) {
-  return (
-    <dl className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 text-sm">
-      {items.map((item, i) => (
-        <div key={i} className="contents">
-          <dt className="text-xs text-muted">{item.term}</dt>
-          <dd className="text-ink">{item.desc}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function Divider() {
-  return <div className="border-t border-line" />;
-}
 
 const SCHEDULE_TYPE_OPTIONS: {
   value: "shift" | "event" | "leave" | "training";
@@ -1511,223 +1287,6 @@ function MyTodoForm({
             type="button"
             onClick={() => {
               if (window.confirm("이 todo를 삭제하시겠습니까? 되돌릴 수 없습니다.")) {
-                onSave({ ...row, status: "deleted" });
-              }
-            }}
-            className="w-full border border-vermilion-deep bg-transparent px-3 py-1.5 text-sm text-vermilion-deep hover:bg-vermilion-deep hover:text-cream"
-          >
-            삭제
-          </button>
-        </div>
-      )}
-    </form>
-  );
-}
-
-const COHORT_STATUS_OPTIONS: {
-  value: "planned" | "in_progress" | "completed";
-  label: string;
-}[] = [
-  { value: "planned", label: "계획" },
-  { value: "in_progress", label: "진행중" },
-  { value: "completed", label: "완료" },
-];
-
-function CohortForm({
-  row,
-  setRow,
-  onSave,
-  onCancel,
-  onInvite,
-}: {
-  row: ListRow;
-  setRow: (next: ListRow) => void;
-  onSave: (next: ListRow) => void;
-  onCancel: () => void;
-  onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
-}) {
-  const [inviting, setInviting] = useState(false);
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(row);
-      }}
-      className="space-y-3"
-    >
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">제목</span>
-        <input
-          aria-label="제목"
-          value={row.name}
-          onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="회차 제목 (예: 2026 Q2 신입 — 김지나)"
-        />
-      </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">신입</span>
-          <select
-            aria-label="신입"
-            value={row.traineeEmail ?? ""}
-            onChange={(e) => {
-              const email = e.target.value;
-              const op = OPERATORS.find((o) => o.email === email);
-              setRow({
-                ...row,
-                traineeEmail: email,
-                author: op?.name ?? email,
-              });
-            }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          >
-            <option value="">선택…</option>
-            {OPERATORS.map((op) => (
-              <option key={op.email} value={op.email}>
-                {op.name} · {op.role}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">교육 (선택)</span>
-          <select
-            aria-label="교육"
-            value={row.mentorEmail ?? ""}
-            onChange={(e) => {
-              const email = e.target.value || null;
-              const op = email
-                ? OPERATORS.find((o) => o.email === email)
-                : null;
-              setRow({
-                ...row,
-                mentorEmail: email,
-                owner: op?.name ?? "",
-              });
-            }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          >
-            <option value="">미정</option>
-            {OPERATORS.map((op) => (
-              <option key={op.email} value={op.email}>
-                {op.name} · {op.role}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">시작일</span>
-          <input
-            type="date"
-            aria-label="시작일"
-            value={row.startDate ?? ""}
-            onChange={(e) => setRow({ ...row, startDate: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">종료일 (선택)</span>
-          <input
-            type="date"
-            aria-label="종료일"
-            value={row.endDate ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, endDate: e.target.value || null })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      </div>
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">상태</span>
-        <select
-          aria-label="상태"
-          value={row.cohortStatus ?? "planned"}
-          onChange={(e) =>
-            setRow({
-              ...row,
-              cohortStatus: e.target.value as ListRow["cohortStatus"],
-            })
-          }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          {COHORT_STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">비고</span>
-        <textarea
-          aria-label="비고"
-          value={row.body ?? ""}
-          onChange={(e) => setRow({ ...row, body: e.target.value })}
-          rows={3}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="자유 메모"
-        />
-      </label>
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
-        >
-          저장
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
-        >
-          취소
-        </button>
-      </div>
-      {row.id !== "" && onInvite && (
-        <div className="border-t border-line-soft pt-3">
-          <button
-            type="button"
-            disabled={inviting}
-            onClick={async () => {
-              if (
-                !window.confirm(
-                  row.invitedAt
-                    ? "다시 초대 메일을 발송하시겠습니까?"
-                    : "초대 메일을 발송하시겠습니까?",
-                )
-              )
-                return;
-              setInviting(true);
-              const result = await onInvite(row.id);
-              setInviting(false);
-              if (result.ok) {
-                alert("초대 메일이 발송되었습니다.");
-              } else {
-                alert(`발송 실패: ${result.error ?? "알 수 없는 오류"}`);
-              }
-            }}
-            className="w-full border border-vermilion bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:opacity-50"
-          >
-            {inviting
-              ? "발송 중…"
-              : row.invitedAt
-                ? "재초대 메일 발송"
-                : "초대 메일 발송"}
-          </button>
-        </div>
-      )}
-      {row.id !== "" && (
-        <div className="border-t border-line-soft pt-3">
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                window.confirm("이 회차를 삭제하시겠습니까? 되돌릴 수 없습니다.")
-              ) {
                 onSave({ ...row, status: "deleted" });
               }
             }}
