@@ -34,12 +34,11 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !YOUTUBE_API_KEY) {
 // --- 키워드 (schemas.ts와 동일하게 유지 — node에서 ts import 회피) ---
 const SEARCH_QUERIES = [
   "바이브코딩",
-  "AI 코딩",
-  "Cursor 사용법",
   "Claude Code",
-  "Lovable v0",
-  "AI 디자인 도구",
+  "AI 환경구축",
+  "AI 디자인 활용",
   "AI 개발 환경",
+  "AI 활용 업무 적용",
 ];
 
 // --- 7일 전 ISO (publishedAfter) ---
