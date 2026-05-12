@@ -9,6 +9,7 @@ import {
   operatorUpdateSchema,
   type OperatorRow,
 } from "./schemas";
+import { getDefaultMemberMenus } from "@/app/dashboard/_data/sidebar-helpers";
 
 export type OperatorActionResult =
   | { ok: true; row: OperatorRow }
@@ -41,10 +42,19 @@ export async function createOperator(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
+
+  // member 신규 등록 시 allowed_menus 미제공이면 default 정책 적용
+  // (admin은 bypass / viewer는 명시적 비어 있음)
+  const payload =
+    parsed.data.permission === "member" &&
+    (!parsed.data.allowed_menus || parsed.data.allowed_menus.length === 0)
+      ? { ...parsed.data, allowed_menus: getDefaultMemberMenus() }
+      : parsed.data;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("operators")
-    .insert(parsed.data)
+    .insert(payload)
     .select()
     .single();
 

@@ -78,3 +78,30 @@ export function findSidebarParentGroup(pathname: string): string | null {
   }
   return null;
 }
+
+/**
+ * 사이드바에 등록된 모든 메뉴 slug 평탄화 반환. group 내부 items 포함.
+ */
+export function getAllMenuSlugs(): string[] {
+  const slugs: string[] = [];
+  for (const section of sidebarSections) {
+    for (const entry of section.entries) {
+      if (entry.kind === "item") {
+        if (entry.slug) slugs.push(entry.slug);
+      } else {
+        for (const item of entry.items) {
+          if (item.slug) slugs.push(item.slug);
+        }
+      }
+    }
+  }
+  return slugs;
+}
+
+/**
+ * member 권한 기본 허용 메뉴 — 공지사항·조직 권한·시스템 설정만 제외하고 전체.
+ */
+const MEMBER_DENY_SLUGS = new Set(["notices", "team", "settings"]);
+export function getDefaultMemberMenus(): string[] {
+  return getAllMenuSlugs().filter((s) => !MEMBER_DENY_SLUGS.has(s));
+}
