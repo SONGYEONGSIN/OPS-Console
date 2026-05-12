@@ -7,6 +7,7 @@ import { z } from "zod";
 export const SEARCH_QUERIES = [
   "바이브코딩",
   "Claude Code",
+  "클로드 스킬",
   "AI 환경구축",
   "AI 디자인 활용",
   "AI 개발 환경",
