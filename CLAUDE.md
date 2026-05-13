@@ -28,7 +28,7 @@ Folio/
 │   ├── app/            # Next.js App Router 페이지
 │   │   ├── login/      # 인증 (signin/signup/SSO)
 │   │   ├── dashboard/  # OPS Console — chrome / sidebar / patterns / inspector
-│   │   │   └── _components/inspector/list-variants/  # 9 variant registry (cohort/team/receivables/ai-work/post/schedule/my-todo/default) — View/EditForm/Table/Filters/blank 슬롯 완비. status.ts 공통 상수
+│   │   │   └── _components/inspector/list-variants/  # 10 variant registry (cohort/team/receivables/ai-work/post-feedback/post-notice/schedule/my-todo/default/backup) — View/EditForm/Table/Filters/blank 슬롯 완비. status.ts 공통 상수. Variant union은 types.ts 단일 정의 → InspectorListBody/ListPattern import 재사용
 │   │   ├── global-error.tsx  # 한글 에러 페이지 (root layout 대체)
 │   │   └── auth/       # OAuth callback
 │   ├── components/     # React 컴포넌트 (auth/AuthChrome 등 도메인별 폴더)
@@ -52,10 +52,11 @@ Folio/
 ## list-variants 아키텍처 (open/closed)
 
 - **위치**: `src/app/dashboard/_components/inspector/list-variants/`
-- **레지스트리**: `registry.ts`가 import-time static binding으로 9 variant → 컴포넌트 매핑 (RSC 직렬화 호환 — inline factory 금지)
+- **레지스트리**: `registry.ts`가 import-time static binding으로 10 variant → 컴포넌트 매핑 (RSC 직렬화 호환 — inline factory 금지)
 - **슬롯**: 각 variant 폴더에 `View.tsx`(인스펙터 읽기) / `EditForm.tsx`(인스펙터 편집) / `Table.tsx`(리스트 행) / `filters.ts`(filter 옵션 + blank 행 factory). 모두 optional
 - **신규 도메인 추가 비용**: 1 폴더 신설 + `registry.ts` 1줄. `ListPattern.tsx` / `InspectorListBody.tsx`는 dispatcher만이므로 무변경
-- **dispatcher 크기**: `ListPattern.tsx` 451줄, `InspectorListBody.tsx` 128줄 (둘 다 800 상한 안전 마진)
+- **dispatcher 크기**: `ListPattern.tsx` ~473줄 (backup 도메인 ListRow 필드 +22줄), `InspectorListBody.tsx` 128줄 (둘 다 800 상한 안전 마진)
+- **Variant union 단일 정의**: `list-variants/types.ts`에 한 곳만 정의. `InspectorListBody.tsx` / `ListPattern.tsx`는 `import type { Variant }`로 재사용 — 신규 variant 추가 시 1 곳 갱신
 - **공통 상수**: `status.ts` — STATUS_LABEL / STATUS_COLOR / STATUS_RING. variant별로 미묘하게 다른 라벨은 각 variant 모듈에서 자체 override
 - **post 예외**: `variant: "post-feedback" \| "post-notice"` prop이 필요해 InspectorListBody/ListPattern dispatcher에서 직접 분기 (registry 우회)
 - **my-todo Table 예외**: `onToggleDone` 콜백 prop 필요 — dispatcher closure로 전달
