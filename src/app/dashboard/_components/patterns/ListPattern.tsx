@@ -191,6 +191,8 @@ type Props = {
   receivablesMailDryRun?: boolean;
   /** ai-work variant — 신규 행 생성 시 owner 자동 채움용 (현재 운영자 이름) */
   currentUserName?: string;
+  /** backup variant — 백업자 후보 (active operators, 본인 제외) */
+  backupOperators?: { email: string; name: string }[];
 };
 
 export function ListPattern({
@@ -206,6 +208,7 @@ export function ListPattern({
   onInvite,
   receivablesMailDryRun = true,
   currentUserName,
+  backupOperators,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -430,6 +433,7 @@ export function ListPattern({
               currentUserPermission={currentUserPermission}
               onInvite={onInvite}
               receivablesMailDryRun={receivablesMailDryRun}
+              backupOperators={backupOperators}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

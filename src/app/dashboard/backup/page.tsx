@@ -5,6 +5,7 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { listOperators } from "@/features/operators/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
 import { createBackupRequest } from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
@@ -26,6 +27,11 @@ export default async function BackupPage() {
   );
 
   const me = await getCurrentOperator();
+
+  const allOperators = await listOperators();
+  const backupOperators = allOperators
+    .filter((op) => op.status === "active" && op.email !== me?.email)
+    .map((op) => ({ email: op.email, name: op.name }));
 
   const header = (
     <PageHeader
@@ -82,6 +88,7 @@ export default async function BackupPage() {
       createLabel="+ 백업 요청"
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      backupOperators={backupOperators}
       onPersist={onPersist}
     />
   );

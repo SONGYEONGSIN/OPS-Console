@@ -7,7 +7,13 @@ function parseChips(text: string): string[] {
     .filter((t) => t.length > 0);
 }
 
-export function BackupForm({ row, setRow, onSave, onCancel }: EditFormProps) {
+export function BackupForm({
+  row,
+  setRow,
+  onSave,
+  onCancel,
+  backupOperators = [],
+}: EditFormProps) {
   const servicesText = (row.backupServices ?? []).join(", ");
   const contactsText = (row.backupContacts ?? []).join(", ");
 
@@ -41,31 +47,30 @@ export function BackupForm({ row, setRow, onSave, onCancel }: EditFormProps) {
         />
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">백업자 이메일</span>
-          <input
-            aria-label="백업자 이메일"
-            type="email"
-            value={row.substituteEmail ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, substituteEmail: e.target.value })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            placeholder="alice@example.com"
-          />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">백업자 이름</span>
-          <input
-            aria-label="백업자 이름"
-            value={row.substituteName ?? ""}
-            onChange={(e) => setRow({ ...row, substituteName: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            placeholder="Alice"
-          />
-        </label>
-      </div>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">백업자</span>
+        <select
+          aria-label="백업자"
+          value={row.substituteEmail ?? ""}
+          onChange={(e) => {
+            const email = e.target.value;
+            const op = backupOperators.find((o) => o.email === email);
+            setRow({
+              ...row,
+              substituteEmail: email,
+              substituteName: op?.name ?? "",
+            });
+          }}
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+        >
+          <option value="">선택…</option>
+          {backupOperators.map((op) => (
+            <option key={op.email} value={op.email}>
+              {op.name} ({op.email})
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">
