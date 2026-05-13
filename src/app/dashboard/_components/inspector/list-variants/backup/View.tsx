@@ -1,4 +1,5 @@
 import type { ViewProps } from "../types";
+import { ResendMailButton } from "./ResendMailButton";
 
 const MAIL_STATUS_LABEL = {
   pending: "대기",
@@ -99,14 +100,26 @@ export function BackupView({ row }: ViewProps) {
         </p>
       </section>
 
-      {status === "mail_failed" && row.mailError && (
-        <section className="space-y-1.5">
+      {status === "mail_failed" && (
+        <section className="space-y-2">
           <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
             메일 발송 실패
           </p>
-          <p className="rounded-lg border border-vermilion/30 bg-vermilion/5 p-2 text-xs text-ink">
-            {row.mailError}
+          {row.mailError && (
+            <p className="rounded-lg border border-vermilion/30 bg-vermilion/5 p-2 text-xs text-ink">
+              {row.mailError}
+            </p>
+          )}
+          {row.id && <ResendMailButton backupRequestId={row.id} />}
+        </section>
+      )}
+
+      {status === "dry_run" && row.id && (
+        <section className="space-y-1.5">
+          <p className="text-2xs uppercase tracking-[0.18em] text-muted">
+            테스트 모드 (MAIL_DRY_RUN=true)
           </p>
+          <ResendMailButton backupRequestId={row.id} />
         </section>
       )}
     </div>

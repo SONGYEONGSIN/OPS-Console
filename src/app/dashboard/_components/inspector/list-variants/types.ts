@@ -34,4 +34,6 @@ export type EditFormProps = {
     row: ListRow,
     newText: string,
   ) => Promise<{ ok: boolean; error?: string }>;
+  /** backup variant — 백업자 후보 (active operators, 본인 제외) */
+  backupOperators?: { email: string; name: string }[];
 };

@@ -26,6 +26,8 @@ type Props = {
   ) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 독려 메일 발송이 dry-run 모드인지 (env 기반). */
   receivablesMailDryRun?: boolean;
+  /** backup variant — 백업자 후보 (active operators, 본인 제외) */
+  backupOperators?: { email: string; name: string }[];
 };
 
 /**
@@ -45,6 +47,7 @@ export function InspectorListBody({
   onInvite,
   onUpdateRemarks,
   receivablesMailDryRun = true,
+  backupOperators,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -83,6 +86,7 @@ export function InspectorListBody({
         currentUserPermission={currentUserPermission}
         onInvite={onInvite}
         onUpdateRemarks={onUpdateRemarks}
+        backupOperators={backupOperators}
       />
     );
   }
