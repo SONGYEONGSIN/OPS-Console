@@ -104,12 +104,91 @@ task description **4문항 필수** — orchestrator P1이 누락 시 즉시 abo
 - **Phase 2: vote가 ambiguity 결정 자동화** — 단, vote 카테고리 매핑조차 안 되는 본질 결정은 abort `vote_low_confidence`
 - **Phase 3 진입 전** — 다중 task 큐, cron 스케줄, dashboard 통합은 Phase 3 (CronCreate 통합)에서 다룸
 
+## Queue 관리 (Phase 3.0 PR-A)
+
+`/auto-build`는 큐 기반 다중 task 진행을 위해 영속 store(`.claude/memory/auto-build-queue.jsonl`)에 task entry를 적재한다. PR-A: CRUD(add/list/remove/clear). PR-B: `next`/`status-update` + `run-queue.sh` wrapper. schedule(cron) 통합은 PR-C (Phase 3.1).
+
+### 호출
+
+```bash
+# CRUD (PR-A)
+bash core/skills/auto-build/scripts/queue.sh add "<4문항 포맷 task>" [depends_on_id]
+bash core/skills/auto-build/scripts/queue.sh list [--all]
+bash core/skills/auto-build/scripts/queue.sh remove <id>
+bash core/skills/auto-build/scripts/queue.sh clear
+
+# run-queue (PR-B)
+bash core/skills/auto-build/scripts/queue.sh next                       # queued 첫 entry pop + running 마킹
+bash core/skills/auto-build/scripts/queue.sh status-update <id> <status># status_update 라인 append (run-queue 전용)
+bash core/skills/auto-build/scripts/run-queue.sh                        # max N cycle 연쇄 처리
+```
+
+### 동작
+
+- **append-only**: entry 추가/상태 변경 모두 jsonl 라인 append. in-place 수정 0.
+- **entry payload**: `{id, task, created_ts, status, depends_on?}`. `id`는 `<UTC ISO 8601 (no sep)>-<4hex>`. `status`는 `queued | running | done | aborted`.
+- **상태 변경**: `remove`/`clear`/`run-queue` 종료 시 별 라인 `{op:"status_update", id, new_status, ts}` append. `list`는 entry별 최신 status fold하여 표시.
+- **lock**: `mkdir lockdir` 원자성 활용 + lockdir/pid의 `kill -0` 검사로 stale 자동 회수 (SIGKILL/전원차단 후 lockdir 잔존 시 자동 해제).
+- **depends_on**: 짝 cycle 의존성 표현 (Phase 3.1 schedule에서 활성). PR-A/B는 schema 필드만 보장.
+
+### run-queue env (PR-B)
+
+| env | 기본 | 동작 |
+|-----|------|------|
+| `AUTO_BUILD_QUEUE_MAX_CYCLES` | 3 | 1 firing당 max cycle cap. 양의 정수 아니면 fallback 3 |
+| `AUTO_BUILD_QUEUE_DRYRUN` | 0 | 1 시 echo만 (실 `/auto-build` 호출 안 함, smoke 안전 격리) |
+| `AUTO_BUILD_QUEUE_DRYRUN_FAIL` | 0 | DRYRUN 중 의도적 abort (smoke test용) |
+| `QUEUE_STORE` | `.claude/memory/auto-build-queue.jsonl` | jsonl 경로 (테스트 fixture override) |
+| `QUEUE_LOCK_DIR` | `.claude/.queue.lock` | lockdir 경로 |
+
+### 정책
+
+- **cycle 간 abort 즉시 종료**: cycle N이 abort 시 cycle N+1 진입 X. maker review 신호 명확.
+- **실 trigger는 Phase 3.1**: PR-B의 `run-queue.sh`는 DRYRUN=1 모드 권장. DRYRUN=0 + 실 trigger는 PR-C schedule 통합 후 활성.
+- **running 잔존 회수**: cycle 도중 SIGKILL 시 entry가 running 고착. 수동 `queue.sh remove <id>` 또는 PR-C 자동 회수.
+
+### 예시
+
+```bash
+# 큐 적재
+bash core/skills/auto-build/scripts/queue.sh add "$(cat <<'EOF'
+무엇을: ...
+누가: ...
+왜 지금: ...
+성공: ...
+EOF
+)"
+# queued: 20260512T204900Z-a1b2
+
+# 큐 확인
+bash core/skills/auto-build/scripts/queue.sh list
+# 20260512T204900Z-a1b2  queued  2026-05-12T20:49:00Z  무엇을: ...
+
+# 큐 비우기
+bash core/skills/auto-build/scripts/queue.sh clear
+
+# run-queue DRYRUN (PR-B)
+AUTO_BUILD_QUEUE_DRYRUN=1 bash core/skills/auto-build/scripts/run-queue.sh
+# run-queue: cycle 1/3 — entry 20260512T204900Z-a1b2
+# run-queue: cycle 1 done (DRYRUN)
+```
+
+### 검증
+
+```bash
+bash scripts/tests/queue-tests.sh  # 9 케이스 (CRUD + stale lock + next + run-queue + cap + abort) ALL PASS
+```
+
 ## 관련 파일
 
 - `core/skills/auto-build/orchestrator.md` — Ralph wrapper + P0~P-end + P3 ambiguity 분기
 - `core/skills/auto-build/scripts/persona-vote.sh` — vote dispatch 명령 + moderator 중재 helper (Phase 2 신규)
 - `core/skills/auto-build/data/persona-mapping.json` — 카테고리(7) → persona 풀 매핑 (Phase 2 신규)
 - `core/skills/auto-build/scripts/run-log.sh` — `.claude/memory/auto-build-runs.jsonl` append helper
+- `core/skills/auto-build/scripts/queue.sh` — 다중 task 큐 CRUD + next/status-update (Phase 3.0 PR-A/B)
+- `core/skills/auto-build/scripts/run-queue.sh` — queue 첫 task pop + 사이클 trigger wrapper (Phase 3.0 PR-B)
+- `.claude/memory/auto-build-queue.jsonl` — 큐 store (append-only, 런타임 생성)
+- `scripts/tests/queue-tests.sh` — queue.sh + run-queue.sh smoke 9 케이스
 - `core/hooks/auto-build-safety.sh` — PreToolUse 안전 hook (token/file/iter cap)
 - `.claude/memory/auto-build-runs.jsonl` — 사이클 이력 (런타임 생성)
 - `.claude/memory/brainstorms/20260504-103257-vibe-flow-v2-overnight-autonomous-build.md` — Phase 1 설계 근거

@@ -43,23 +43,6 @@ paths:
 - 액션: `features/{domain}/actions.ts` (`"use server"`)
 - zod 에러 접근: `parsed.error.issues[0].message` (`.errors` 아님)
 
-## 폼 입력 컴포넌트
-
-날짜·시간 입력은 텍스트 input 금지. HTML5 native input type을 우선 사용한다.
-
-- **날짜만**: `<input type="date">` — 입금예정일, 시작일, 종료일, 청구일자 등
-- **날짜+시간**: `<input type="datetime-local">` — 일정/스케줄 시작 시각 등
-- **이메일**: `<input type="email">` — 학교담당자, 발신자 등
-- **숫자**: `<input type="number">` — 금액, 수량 등
-- **전화번호**: `<input type="tel">` — 연락처
-
-이유:
-- 모바일 키보드가 자동 매칭 (숫자 키패드, 캘린더, 이메일 키보드 등)
-- 브라우저 native 검증 → 사용자가 잘못된 형식 입력 시 즉시 피드백
-- 휴리스틱 정규식 검증의 사각지대 회피
-
-날짜 input은 ISO 8601 (YYYY-MM-DD) 형식만 받으므로, 외부 데이터(Excel 등)에서 가져온 다양한 형식은 정규화 헬퍼 (`toISODateInput`) 를 거쳐 표시.
-
 ## 스킬 $ARGUMENTS 검증
 
 스킬 실행 시 `$ARGUMENTS`는 사용자 입력이므로 반드시 검증한다:
