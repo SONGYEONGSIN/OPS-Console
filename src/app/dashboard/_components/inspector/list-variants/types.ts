@@ -12,7 +12,8 @@ export type Variant =
   | "cohort"
   | "receivables"
   | "ai-work"
-  | "backup";
+  | "backup"
+  | "services";
 
 export type ViewProps = {
   row: ListRow;

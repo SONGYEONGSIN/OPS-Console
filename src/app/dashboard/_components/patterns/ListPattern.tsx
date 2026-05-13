@@ -134,6 +134,40 @@ export type ListRow = {
   mailSentAt?: string | null;
   /** backup 도메인 — 메일 에러 메시지 (nullable) */
   mailError?: string | null;
+  /** services 도메인 — 외부 PIMS 자연키 (bigint) */
+  serviceIdNum?: number;
+  /** services 도메인 — 접수구분 (공통원서/반응형원서/일반접수/일반원서) */
+  applicationType?: string;
+  /** services 도메인 — 지역 (18 광역시도) */
+  region?: string;
+  /** services 도메인 — 대학명 */
+  universityName?: string;
+  /** services 도메인 — 서비스명 (자유 텍스트) */
+  serviceName?: string;
+  /** services 도메인 — 대학구분 (4년제/2년제/...) */
+  universityType?: string;
+  /** services 도메인 — 운영자 이메일 (operators FK, nullable) */
+  operatorEmail?: string | null;
+  /** services 도메인 — 운영자 이름 스냅샷 (매칭 실패 fallback) */
+  operatorName?: string | null;
+  /** services 도메인 — 개발자 이메일 (operators FK, nullable) */
+  developerEmail?: string | null;
+  /** services 도메인 — 개발자 이름 스냅샷 */
+  developerName?: string | null;
+  /** services 도메인 — 작성 시작 (ISO, nullable) */
+  writeStartAt?: string | null;
+  /** services 도메인 — 작성 마감 (ISO, nullable) */
+  writeEndAt?: string | null;
+  /** services 도메인 — 결제 시작 (ISO, nullable) */
+  payStartAt?: string | null;
+  /** services 도메인 — 결제 마감 (ISO, nullable) */
+  payEndAt?: string | null;
+  /** services 도메인 — 단독여부 */
+  solo?: boolean;
+  /** services 도메인 — 출처 ('google_sheet_import' | 'folio_create') */
+  source?: string;
+  /** services 도메인 — import 시각 (ISO, nullable) */
+  importedAt?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

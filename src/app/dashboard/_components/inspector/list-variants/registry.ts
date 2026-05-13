@@ -34,6 +34,10 @@ import { BackupView } from "./backup/View";
 import { BackupForm } from "./backup/EditForm";
 import { BackupTable } from "./backup/Table";
 import { BACKUP_FILTERS, blankBackupRow } from "./backup/filters";
+import { ServicesView } from "./services/View";
+import { ServicesForm } from "./services/EditForm";
+import { ServicesTable } from "./services/Table";
+import { SERVICES_FILTERS, blankServiceRow } from "./services/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -142,5 +146,12 @@ export const variantRegistry = {
     Table: BackupTable,
     Filters: BACKUP_FILTERS,
     blank: blankBackupRow,
+  },
+  services: {
+    View: ServicesView,
+    EditForm: ServicesForm,
+    Table: ServicesTable,
+    Filters: SERVICES_FILTERS,
+    blank: blankServiceRow,
   },
 } as const satisfies Record<Variant, RegistryEntry>;
