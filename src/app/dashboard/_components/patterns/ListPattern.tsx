@@ -7,6 +7,7 @@ import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
 import { STATUS_LABEL, STATUS_RING } from "../inspector/list-variants/status";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
+import type { Variant } from "../inspector/list-variants/types";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
 export type ListRow = {
@@ -170,17 +171,7 @@ type Props = {
   data: { rows: ListRow[] };
   header?: React.ReactNode;
   /** team 등 특정 슬러그에서 전용 컬럼 사용. post는 도메인별 라벨 분리 */
-  variant?:
-    | "default"
-    | "team"
-    | "post-feedback"
-    | "post-notice"
-    | "schedule"
-    | "my-todo"
-    | "cohort"
-    | "receivables"
-    | "ai-work"
-    | "backup";
+  variant?: Variant;
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,

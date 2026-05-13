@@ -7,17 +7,7 @@ import { variantRegistry } from "./list-variants/registry";
 import { PostView } from "./list-variants/post/View";
 import { PostForm } from "./list-variants/post/EditForm";
 
-type Variant =
-  | "default"
-  | "team"
-  | "post-feedback"
-  | "post-notice"
-  | "schedule"
-  | "my-todo"
-  | "cohort"
-  | "receivables"
-  | "ai-work"
-  | "backup";
+import type { Variant } from "./list-variants/types";
 
 type Props = {
   row: ListRow;
