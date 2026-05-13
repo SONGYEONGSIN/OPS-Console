@@ -5,14 +5,32 @@ export type SendMailResult =
   | { ok: true; messageId?: string }
   | { ok: false; error: string };
 
+export type GraphMailRecipient = {
+  email: string;
+  name?: string;
+};
+
+export type GraphMailAttachment = {
+  /** 파일명 (확장자 포함, 예: "backup.pdf") */
+  name: string;
+  /** base64 인코딩된 콘텐츠 */
+  contentBytes: string;
+  /** MIME 타입 (예: "application/pdf") */
+  contentType: string;
+};
+
 export type SendGraphMailArgs = {
   /** Graph /users/{id}/sendMail 의 user — UPN (이메일) 또는 objectId */
   senderUserId: string;
   toEmail: string;
   toName?: string;
+  /** CC 수신자 (선택) */
+  cc?: GraphMailRecipient[];
   subject: string;
   /** HTML body */
   html: string;
+  /** 파일 첨부 (선택). Graph sendMail 본 호출은 합산 4MB 한도 */
+  attachments?: GraphMailAttachment[];
 };
 
 /**
@@ -27,7 +45,8 @@ export type SendGraphMailArgs = {
 export async function sendGraphMail(
   args: SendGraphMailArgs,
 ): Promise<SendMailResult> {
-  const { senderUserId, toEmail, toName, subject, html } = args;
+  const { senderUserId, toEmail, toName, cc, subject, html, attachments } =
+    args;
 
   let token: string;
   try {
@@ -43,18 +62,41 @@ export async function sendGraphMail(
     senderUserId,
   )}/sendMail`;
 
+  const ccRecipients =
+    cc && cc.length > 0
+      ? cc.map((r) => ({
+          emailAddress: r.name
+            ? { address: r.email, name: r.name }
+            : { address: r.email },
+        }))
+      : undefined;
+
+  const mailAttachments =
+    attachments && attachments.length > 0
+      ? attachments.map((a) => ({
+          "@odata.type": "#microsoft.graph.fileAttachment",
+          name: a.name,
+          contentType: a.contentType,
+          contentBytes: a.contentBytes,
+        }))
+      : undefined;
+
+  const message: Record<string, unknown> = {
+    subject,
+    body: { contentType: "HTML", content: html },
+    toRecipients: [
+      {
+        emailAddress: toName
+          ? { address: toEmail, name: toName }
+          : { address: toEmail },
+      },
+    ],
+  };
+  if (ccRecipients) message.ccRecipients = ccRecipients;
+  if (mailAttachments) message.attachments = mailAttachments;
+
   const payload = {
-    message: {
-      subject,
-      body: { contentType: "HTML", content: html },
-      toRecipients: [
-        {
-          emailAddress: toName
-            ? { address: toEmail, name: toName }
-            : { address: toEmail },
-        },
-      ],
-    },
+    message,
     saveToSentItems: true,
   };
 

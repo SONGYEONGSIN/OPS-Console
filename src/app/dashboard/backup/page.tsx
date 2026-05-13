@@ -7,6 +7,7 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
 import { createBackupRequest } from "@/features/backup-requests/actions";
+import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 
 export default async function BackupPage() {
@@ -50,7 +51,20 @@ export default async function BackupPage() {
         leave_start_date: row.leaveStartDate ?? null,
         leave_end_date: row.leaveEndDate ?? null,
       });
-      return result.ok ? { ok: true } : { ok: false, error: result.error };
+      if (!result.ok) return { ok: false, error: result.error };
+
+      // 등록 성공 후 메일 발송 — atomic 아님. 실패해도 등록 자체는 보존.
+      // mail_failed 시 View 인스펙터에 재발송 버튼이 노출됨.
+      const mailRes = await sendBackupRequestMail({
+        backup_request_id: result.row.id,
+      });
+      if (!mailRes.ok) {
+        return {
+          ok: true,
+          error: `등록은 완료. 메일 발송 실패: ${mailRes.error}`,
+        };
+      }
+      return { ok: true };
     }
     return {
       ok: false,
