@@ -16,7 +16,8 @@ type Variant =
   | "my-todo"
   | "cohort"
   | "receivables"
-  | "ai-work";
+  | "ai-work"
+  | "backup";
 
 type Props = {
   row: ListRow;

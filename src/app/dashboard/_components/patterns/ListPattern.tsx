@@ -5,10 +5,7 @@ import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
-import {
-  STATUS_LABEL,
-  STATUS_RING,
-} from "../inspector/list-variants/status";
+import { STATUS_LABEL, STATUS_RING } from "../inspector/list-variants/status";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
@@ -118,6 +115,24 @@ export type ListRow = {
   savedHours?: number | null;
   /** ai-work 도메인 — 태그 배열 */
   tags?: string[];
+  /** backup 도메인 — 백업자 이메일 */
+  substituteEmail?: string;
+  /** backup 도메인 — 백업자 이름 스냅샷 */
+  substituteName?: string;
+  /** backup 도메인 — 담당 서비스 chips */
+  backupServices?: string[];
+  /** backup 도메인 — 대학 연락처 chips */
+  backupContacts?: string[];
+  /** backup 도메인 — 휴가/외근 시작일 (YYYY-MM-DD, nullable) */
+  leaveStartDate?: string | null;
+  /** backup 도메인 — 휴가/외근 종료일 (YYYY-MM-DD, nullable) */
+  leaveEndDate?: string | null;
+  /** backup 도메인 — 메일 발송 상태 */
+  mailStatus?: "pending" | "sent" | "mail_failed" | "dry_run";
+  /** backup 도메인 — 메일 발송 시각 (ISO, nullable) */
+  mailSentAt?: string | null;
+  /** backup 도메인 — 메일 에러 메시지 (nullable) */
+  mailError?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -125,7 +140,12 @@ export type TodoPriority = NonNullable<ListRow["priority"]>;
 export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
 export type CohortStatus = NonNullable<ListRow["cohortStatus"]>;
 
-export type Filter = ListRow["status"] | "all" | ScheduleType | MyTodoFilter | CohortStatus;
+export type Filter =
+  | ListRow["status"]
+  | "all"
+  | ScheduleType
+  | MyTodoFilter
+  | CohortStatus;
 
 /**
  * variant별 필터 적용. 단순 분기만 ListPattern에 유지 (my-todo는 복잡한 시간 비교
@@ -137,9 +157,11 @@ function filterRows(
   variant: string,
 ): ListRow[] {
   if (filter === "all") return rows;
-  if (variant === "schedule") return rows.filter((r) => r.scheduleType === filter);
+  if (variant === "schedule")
+    return rows.filter((r) => r.scheduleType === filter);
   if (variant === "my-todo") return applyMyTodoFilter(rows, filter);
-  if (variant === "cohort") return rows.filter((r) => r.cohortStatus === filter);
+  if (variant === "cohort")
+    return rows.filter((r) => r.cohortStatus === filter);
   return rows.filter((r) => r.status === filter);
 }
 
@@ -157,7 +179,8 @@ type Props = {
     | "my-todo"
     | "cohort"
     | "receivables"
-    | "ai-work";
+    | "ai-work"
+    | "backup";
   /** 저장 시 server persist (변경 후 revalidatePath 필요). undefined 면 client-only mock */
   onPersist?: (
     row: ListRow,
@@ -209,8 +232,7 @@ export function ListPattern({
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
   const filteredRows = filterRows(rows, filter, variant);
-  const variantEntry =
-    variantRegistry[variant as keyof typeof variantRegistry];
+  const variantEntry = variantRegistry[variant as keyof typeof variantRegistry];
   const entryFilters =
     variantEntry && "Filters" in variantEntry ? variantEntry.Filters : null;
   const FILTERS = (entryFilters ?? variantRegistry.default.Filters) as {
@@ -247,15 +269,11 @@ export function ListPattern({
               done: nextDone,
               doneAt: nextDone ? new Date().toISOString() : null,
             };
-            setRows((prev) =>
-              prev.map((r) => (r.id === row.id ? nextRow : r)),
-            );
+            setRows((prev) => prev.map((r) => (r.id === row.id ? nextRow : r)));
             if (onPersist) {
               const result = await onPersist(nextRow, false);
               if (!result.ok) {
-                setRows((prev) =>
-                  prev.map((r) => (r.id === row.id ? row : r)),
-                );
+                setRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
                 alert(`저장 실패: ${result.error ?? "알 수 없는 오류"}`);
               }
             }
@@ -280,94 +298,93 @@ export function ListPattern({
   }
 
   return (
-    <>        {header}
-
+    <>
+      {" "}
+      {header}
       <div
         className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
         <section className="p-7">
-        <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <div className="flex items-baseline gap-2">
-              <h2
-                className={`${variant === "cohort" ? "text-sm font-medium" : "text-xl font-bold"} text-ink`}
-              >
-                {title}
-              </h2>
-              <span className="text-muted" aria-hidden>
-                ·
-              </span>
-              <span className="text-sm text-vermilion">
-                {filteredRows.length}건
-              </span>
+          <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <div className="flex items-baseline gap-2">
+                <h2
+                  className={`${variant === "cohort" ? "text-sm font-medium" : "text-xl font-bold"} text-ink`}
+                >
+                  {title}
+                </h2>
+                <span className="text-muted" aria-hidden>
+                  ·
+                </span>
+                <span className="text-sm text-vermilion">
+                  {filteredRows.length}건
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {FILTERS.map((f) => {
+                  const active = filter === f.value;
+                  const count =
+                    f.value === "all"
+                      ? rows.length
+                      : rows.filter((r) => r.status === f.value).length;
+                  return (
+                    <button
+                      key={f.value}
+                      type="button"
+                      aria-label={f.label}
+                      aria-pressed={active}
+                      onClick={() => setFilter(f.value)}
+                      className={`relative cursor-pointer border-none bg-transparent px-3 py-1 text-sm transition-colors ${
+                        active
+                          ? "font-bold text-ink"
+                          : "text-muted hover:text-ink"
+                      }`}
+                    >
+                      {f.label} ({count})
+                      {active && (
+                        <span
+                          aria-hidden
+                          className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-vermilion"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              {FILTERS.map((f) => {
-                const active = filter === f.value;
-                const count =
-                  f.value === "all"
-                    ? rows.length
-                    : rows.filter((r) => r.status === f.value).length;
-                return (
-                  <button
-                    key={f.value}
-                    type="button"
-                    aria-label={f.label}
-                    aria-pressed={active}
-                    onClick={() => setFilter(f.value)}
-                    className={`relative cursor-pointer border-none bg-transparent px-3 py-1 text-sm transition-colors ${
-                      active
-                        ? "font-bold text-ink"
-                        : "text-muted hover:text-ink"
-                    }`}
-                  >
-                    {f.label} ({count})
-                    {active && (
-                      <span
-                        aria-hidden
-                        className="absolute bottom-[-1px] left-0 right-0 h-0.5 bg-vermilion"
-                      />
-                    )}
-                  </button>
-                );
-              })}
+              {(variant === "team" || canCreate) && !readOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const entryBlank =
+                      variantEntry && "blank" in variantEntry
+                        ? variantEntry.blank
+                        : null;
+                    const blank: ListRow =
+                      entryBlank?.({ currentUserName }) ??
+                      variantRegistry.default.blank();
+                    inspector.open(blank);
+                    if (!inspector.editing) inspector.toggleEdit();
+                  }}
+                  className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
+                >
+                  {createLabel ??
+                    (variant === "team" ? "+ 신규 계정" : "+ 새 글")}
+                </button>
+              )}
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-1">
-            {(variant === "team" || canCreate) && !readOnly && (
-              <button
-                type="button"
-                onClick={() => {
-                  const entryBlank =
-                    variantEntry && "blank" in variantEntry
-                      ? variantEntry.blank
-                      : null;
-                  const blank: ListRow =
-                    entryBlank?.({ currentUserName }) ??
-                    variantRegistry.default.blank();
-                  inspector.open(blank);
-                  if (!inspector.editing) inspector.toggleEdit();
-                }}
-                className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
-              >
-                {createLabel ?? (variant === "team" ? "+ 신규 계정" : "+ 새 글")}
-              </button>
-            )}
-          </div>
-        </header>
+          </header>
 
-        <div className="overflow-x-auto">{renderVariantTable()}</div>
+          <div className="overflow-x-auto">{renderVariantTable()}</div>
 
-        {!onPersist && (
-          <p className="mt-3 text-xs text-muted">
-            Demo · 실제 데이터 미연결
-          </p>
-        )}
+          {!onPersist && (
+            <p className="mt-3 text-xs text-muted">Demo · 실제 데이터 미연결</p>
+          )}
         </section>
       </div>
-
       <InspectorPanel
         open={inspector.selected !== null}
         onClose={inspector.close}
@@ -384,8 +401,12 @@ export function ListPattern({
                     {inspector.selected.name}
                   </h3>
                   <p className="text-xs text-muted">
-                    <span className="font-mono">{inspector.selected.id.toUpperCase()}</span>
-                    {inspector.selected.meta && <> · {inspector.selected.meta}</>}
+                    <span className="font-mono">
+                      {inspector.selected.id.toUpperCase()}
+                    </span>
+                    {inspector.selected.meta && (
+                      <> · {inspector.selected.meta}</>
+                    )}
                     <> · PROD</>
                   </p>
                 </div>
@@ -419,7 +440,8 @@ export function ListPattern({
               onInvite={onInvite}
               receivablesMailDryRun={receivablesMailDryRun}
               onSave={async (next) => {
-                const wasNew = !rows.some((r) => r.id === next.id) || next.id === "";
+                const wasNew =
+                  !rows.some((r) => r.id === next.id) || next.id === "";
                 // optimistic update
                 setRows((prev) => {
                   return wasNew
