@@ -4,8 +4,11 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ServicesControls } from "./ServicesControls";
+import { ServicesScopeChips } from "./ServicesScopeChips";
+import { ServicesPagination } from "./ServicesPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { listOperators } from "@/features/operators/queries";
 import { listServices, type ServicesFilter } from "@/features/services/queries";
 import {
   createService,
@@ -58,6 +61,37 @@ export default async function ServicesPage({
   const { rows: services, total } = await listServices(filter);
   const rows: ListRow[] = services.map(servicesRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
+
+  // EditForm: 운영자 select 후보 (active operators 전체)
+  const allOperators = await listOperators();
+  const servicesOperators = allOperators
+    .filter((op) => op.status === "active")
+    .map((op) => ({ email: op.email, name: op.name }));
+
+  // EditForm: 대학명 → 학교키·다음 시퀀스 매핑 (전체 services 대상)
+  // service_id = 학교키(4자리) × 1000 + 시퀀스(3자리).
+  // 신규 등록 시 dropdown 선택만으로 service_id 자동 부여.
+  const { rows: allServicesForKeys } = await listServices({
+    sort: "service_id_asc",
+    page: 1,
+    pageSize: 5000,
+  });
+  const universityKeyMap = new Map<string, { key: number; maxSeq: number }>();
+  for (const s of allServicesForKeys) {
+    const key = Math.floor(s.service_id / 1000);
+    const seq = s.service_id % 1000;
+    const existing = universityKeyMap.get(s.university_name);
+    if (!existing || seq > existing.maxSeq) {
+      universityKeyMap.set(s.university_name, { key, maxSeq: seq });
+    }
+  }
+  const servicesUniversityKeys = [...universityKeyMap.entries()].map(
+    ([universityName, { key, maxSeq }]) => ({
+      universityName,
+      key,
+      nextSeq: maxSeq + 1,
+    }),
+  );
 
   const header = (
     <>
@@ -133,6 +167,10 @@ export default async function ServicesPage({
       createLabel="+ 신규 서비스"
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      servicesOperators={servicesOperators}
+      servicesUniversityKeys={servicesUniversityKeys}
+      inlineFilters={<ServicesScopeChips total={total} />}
+      footer={<ServicesPagination total={total} pageSize={30} />}
       onPersist={onPersist}
     />
   );

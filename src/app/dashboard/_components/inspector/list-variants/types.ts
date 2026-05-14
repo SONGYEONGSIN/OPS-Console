@@ -44,4 +44,12 @@ export type EditFormProps = {
     service_name: string;
     university_name: string;
   }[];
+  /** services variant — 운영자·개발자 후보 (operators 마스터, active) */
+  servicesOperators?: { email: string; name: string }[];
+  /** services variant — 대학명 → 학교키·다음 시퀀스 매핑 (자동 service_id 부여용) */
+  servicesUniversityKeys?: {
+    universityName: string;
+    key: number;
+    nextSeq: number;
+  }[];
 };

@@ -1,8 +1,6 @@
 /**
- * services 페이지 컨트롤 — 검색 input + 본인 토글.
- * - 입력 300ms debounce → router.push("?q=한양")
- * - 본인 토글 → router.push("?mine=true")
- * - mine=true 상태에서 토글 → mine 제거
+ * services 페이지 — 검색 input + 대학구분/카테고리 select.
+ * 본인 칩과 페이지네이션은 별도 컴포넌트(ServicesMineChip / ServicesPagination)로 분리됨.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
@@ -43,19 +41,21 @@ describe("ServicesControls", () => {
     );
   });
 
-  it("내 담당 토글 클릭 → ?mine=true", () => {
+  it("카테고리 select 변경 → ?category=", () => {
     render(<ServicesControls />);
-    const toggle = screen.getByRole("button", { name: /내 담당/ });
-    fireEvent.click(toggle);
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("mine=true"));
+    const select = screen.getByLabelText("카테고리 필터") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "수시" } });
+    expect(push).toHaveBeenCalledWith(
+      expect.stringContaining("category=%EC%88%98%EC%8B%9C"),
+    );
   });
 
-  it("내 담당이 이미 true면 클릭 시 mine 제거", () => {
-    useSearchParamsMock.mockReturnValue(new URLSearchParams("mine=true"));
+  it("대학구분 select 변경 → ?universityType=", () => {
     render(<ServicesControls />);
-    const toggle = screen.getByRole("button", { name: /내 담당/ });
-    fireEvent.click(toggle);
-    const arg = (push.mock.calls[0]?.[0] as string) ?? "";
-    expect(arg).not.toContain("mine=true");
+    const select = screen.getByLabelText("대학구분 필터") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "4년제" } });
+    expect(push).toHaveBeenCalledWith(
+      expect.stringContaining("universityType="),
+    );
   });
 });

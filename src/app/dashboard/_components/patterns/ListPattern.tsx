@@ -241,6 +241,18 @@ type Props = {
     service_name: string;
     university_name: string;
   }[];
+  /** services variant — 운영자·개발자 후보 (operators 마스터, active). EditForm select. */
+  servicesOperators?: { email: string; name: string }[];
+  /** services variant — 대학명 → 학교키·다음 시퀀스 매핑 (EditForm 검색 combobox + 자동 service_id 부여) */
+  servicesUniversityKeys?: {
+    universityName: string;
+    key: number;
+    nextSeq: number;
+  }[];
+  /** filter chip 영역에 추가로 렌더할 인라인 요소 (예: services 변경 — '내 서비스' 칩) */
+  inlineFilters?: React.ReactNode;
+  /** 테이블 하단에 렌더할 요소 (예: 페이지네이션) */
+  footer?: React.ReactNode;
 };
 
 export function ListPattern({
@@ -258,6 +270,10 @@ export function ListPattern({
   currentUserName,
   backupOperators,
   backupServiceCandidates,
+  servicesOperators,
+  servicesUniversityKeys,
+  inlineFilters,
+  footer,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -395,6 +411,7 @@ export function ListPattern({
                     </button>
                   );
                 })}
+                {inlineFilters}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
@@ -422,6 +439,8 @@ export function ListPattern({
           </header>
 
           <div className="overflow-x-auto">{renderVariantTable()}</div>
+
+          {footer}
 
           {!onPersist && (
             <p className="mt-3 text-xs text-muted">Demo · 실제 데이터 미연결</p>
@@ -484,6 +503,8 @@ export function ListPattern({
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
               backupServiceCandidates={backupServiceCandidates}
+              servicesOperators={servicesOperators}
+              servicesUniversityKeys={servicesUniversityKeys}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../../../_data", () => ({
   findSidebarMeta: (slug: string) => {
-    if (slug === "services") return { label: "전체 서비스", pattern: "list" };
+    if (slug === "services") return { label: "서비스", pattern: "list" };
     if (slug === "contracts") return { label: "계약", pattern: "list" };
     return null;
   },
@@ -45,12 +45,12 @@ describe("PageTabs (Epic 6)", () => {
     localStorage.setItem(
       "folio.openTabs",
       JSON.stringify([
-        { slug: "services", href: "/dashboard/services", label: "전체 서비스" },
+        { slug: "services", href: "/dashboard/services", label: "서비스" },
         { slug: "contracts", href: "/dashboard/contracts", label: "계약" },
       ]),
     );
     renderWithProvider("/dashboard/services");
-    expect(screen.getByRole("tab", { name: "전체 서비스" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "서비스" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -71,7 +71,7 @@ describe("PageTabs (Epic 6)", () => {
     localStorage.setItem(
       "folio.openTabs",
       JSON.stringify([
-        { slug: "services", href: "/dashboard/services", label: "전체 서비스" },
+        { slug: "services", href: "/dashboard/services", label: "서비스" },
         { slug: "contracts", href: "/dashboard/contracts", label: "계약" },
       ]),
     );

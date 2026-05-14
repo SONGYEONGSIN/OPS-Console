@@ -11,7 +11,7 @@ describe("findSidebarBreadcrumb", () => {
     expect(crumbs).toHaveLength(3);
     expect(crumbs[0].label).toBe("서비스 그룹");
     expect(crumbs[1].label).toBe("서비스사이클");
-    expect(crumbs[2].label).toBe("전체 서비스");
+    expect(crumbs[2].label).toBe("서비스");
   });
 
   it("section 직속 item — section + item 2단", () => {
@@ -30,7 +30,7 @@ describe("findSidebarSiblings", () => {
   it("그룹 안 메뉴 — 같은 그룹의 형제들 반환", () => {
     const sibs = findSidebarSiblings("/dashboard/services");
     expect(sibs.map((s) => s.label)).toEqual([
-      "전체 서비스",
+      "서비스",
       "계약",
       "개발 · 테스트",
       "배포 · 운영",

@@ -6,7 +6,7 @@ vi.mock("../../../_data/sidebar-helpers", () => ({
   findSidebarBreadcrumb: () => [
     { label: "개요" },
     { label: "서비스 그룹" },
-    { label: "전체 서비스" },
+    { label: "서비스" },
   ],
 }));
 
@@ -15,7 +15,7 @@ describe("Breadcrumb", () => {
     render(<Breadcrumb pathname="/dashboard/services" />);
     expect(screen.getByText("개요")).toBeInTheDocument();
     expect(screen.getByText("서비스 그룹")).toBeInTheDocument();
-    expect(screen.getByText("전체 서비스")).toBeInTheDocument();
+    expect(screen.getByText("서비스")).toBeInTheDocument();
     expect(screen.getAllByText("/")).toHaveLength(2);
   });
 });

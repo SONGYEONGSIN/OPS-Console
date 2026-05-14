@@ -13,11 +13,8 @@ export type PageMetaConfig = {
 export const PAGE_META: Record<string, PageMetaConfig> = {
   services: {
     headline: { accent: "실시간", title: "서비스 운영" },
-    meta: [
-      { label: "근무 II", tone: "accent" },
-      { label: "서비스", value: "12개" },
-      { label: "자동 새로고침", value: "10초" },
-    ],
+    // meta 미정의 — derivePatternMeta(pattern, dynamicCount) 경로로 fallback해
+    // page.tsx의 listServices total을 그대로 표시 ("N건"). 다른 페이지 패턴 일관.
     description:
       "현재 운영 중인 서비스 목록입니다. 각 서비스의 상태·담당 팀·최근 이벤트를 확인하고, 선택 시 인스펙터에서 실시간 지표를 볼 수 있습니다. 주의 상태는 주홍색 낙관으로 표시됩니다.",
   },
