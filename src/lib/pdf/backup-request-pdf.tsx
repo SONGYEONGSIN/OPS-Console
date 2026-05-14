@@ -29,6 +29,17 @@ function ensureFontRegistered() {
   fontRegistered = true;
 }
 
+/**
+ * PR-2: services는 join 결과 — 대학명·서비스명 정규화 표기에 사용.
+ * (text[]에서 ServiceDetail[]로 진화)
+ */
+export type PdfServiceDetail = {
+  id: string;
+  service_id: number;
+  service_name: string;
+  university_name: string;
+};
+
 export type BackupRequestPdfInput = {
   requesterName: string;
   requesterEmail: string;
@@ -36,7 +47,7 @@ export type BackupRequestPdfInput = {
   substituteEmail: string;
   leaveStartDate: string | null;
   leaveEndDate: string | null;
-  services: string[];
+  services: PdfServiceDetail[];
   contacts: string[];
   summaryMd: string;
   createdAt: string;
@@ -181,9 +192,9 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>담당 서비스</Text>
             <View style={styles.chipRow}>
-              {input.services.map((s, i) => (
-                <Text key={`svc-${i}`} style={styles.chip}>
-                  {s}
+              {input.services.map((s) => (
+                <Text key={`svc-${s.id}`} style={styles.chip}>
+                  {`${s.university_name} — ${s.service_name}`}
                 </Text>
               ))}
             </View>

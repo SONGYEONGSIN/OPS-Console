@@ -1,5 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { renderBackupRequestPdf } from "../backup-request-pdf";
+import {
+  renderBackupRequestPdf,
+  type PdfServiceDetail,
+} from "../backup-request-pdf";
+
+const svcA: PdfServiceDetail = {
+  id: "11111111-1111-4111-8111-111111111111",
+  service_id: 5072006,
+  service_name: "서비스1",
+  university_name: "한양대학교",
+};
+
+const svcB: PdfServiceDetail = {
+  id: "22222222-2222-4222-8222-222222222222",
+  service_id: 1165060,
+  service_name: "서비스2",
+  university_name: "연세대학교",
+};
 
 describe("renderBackupRequestPdf", () => {
   it("Buffer 생성 + byteLength > 1KB", { timeout: 15000 }, async () => {
@@ -10,7 +27,7 @@ describe("renderBackupRequestPdf", () => {
       substituteEmail: "alice@example.com",
       leaveStartDate: "2026-05-20",
       leaveEndDate: "2026-05-25",
-      services: ["서비스1", "서비스2"],
+      services: [svcA, svcB],
       contacts: ["서울대"],
       summaryMd: "이번 휴가 기간 동안의 백업 내용입니다.",
       createdAt: "2026-05-13T00:00:00Z",
@@ -27,7 +44,14 @@ describe("renderBackupRequestPdf", () => {
       substituteEmail: "alice@example.com",
       leaveStartDate: null,
       leaveEndDate: null,
-      services: ["한글서비스"],
+      services: [
+        {
+          id: "33333333-3333-4333-8333-333333333333",
+          service_id: 999,
+          service_name: "한글서비스",
+          university_name: "한글대학교",
+        },
+      ],
       contacts: ["한글대학"],
       summaryMd: "한글 내용 테스트 — 진행 상태, 마감일, 주의사항.",
       createdAt: "2026-05-13T00:00:00Z",

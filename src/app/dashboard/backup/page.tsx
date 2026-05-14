@@ -10,6 +10,7 @@ import { listBackupRequests } from "@/features/backup-requests/queries";
 import { createBackupRequest } from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
+import { listServices } from "@/features/services/queries";
 
 export default async function BackupPage() {
   const slug = "backup";
@@ -32,6 +33,20 @@ export default async function BackupPage() {
   const backupOperators = allOperators
     .filter((op) => op.status === "active" && op.email !== me?.email)
     .map((op) => ({ email: op.email, name: op.name }));
+
+  // PR-2: services 카탈로그 light projection — EditForm multi-select 후보용.
+  // service_id_asc 정렬로 외부 PIMS 자연키 순서. 페이지 사이즈는 services 전체(2511 기준 ~250KB).
+  const { rows: serviceCandidatesRaw } = await listServices({
+    sort: "service_id_asc",
+    page: 1,
+    pageSize: 5000,
+  });
+  const backupServiceCandidates = serviceCandidatesRaw.map((s) => ({
+    id: s.id,
+    service_id: s.service_id,
+    service_name: s.service_name,
+    university_name: s.university_name,
+  }));
 
   const header = (
     <PageHeader
@@ -89,6 +104,7 @@ export default async function BackupPage() {
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       backupOperators={backupOperators}
+      backupServiceCandidates={backupServiceCandidates}
       onPersist={onPersist}
     />
   );
@@ -119,7 +135,9 @@ function backupRequestToListRow(
     owner: ownerByEmail.get(r.requester_email) ?? r.requester_email,
     substituteEmail: r.substitute_email,
     substituteName: r.substitute_name,
-    backupServices: r.services,
+    // PR-2: services는 join으로 채워지는 detail 배열. backupServices(uuid[])는 빈 배열로 시작.
+    backupServices: r.services_detail.map((s) => s.id),
+    backupServicesDetail: r.services_detail,
     backupContacts: r.contacts,
     summary: r.summary_md,
     leaveStartDate: r.leave_start_date ?? null,

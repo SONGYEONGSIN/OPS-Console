@@ -37,4 +37,11 @@ export type EditFormProps = {
   ) => Promise<{ ok: boolean; error?: string }>;
   /** backup variant — 백업자 후보 (active operators, 본인 제외) */
   backupOperators?: { email: string; name: string }[];
+  /** backup variant — 담당 서비스 후보 (services 카탈로그 light fields) */
+  backupServiceCandidates?: {
+    id: string;
+    service_id: number;
+    service_name: string;
+    university_name: string;
+  }[];
 };

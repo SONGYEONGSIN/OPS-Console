@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ViewProps } from "../types";
 import { ResendMailButton } from "./ResendMailButton";
 
@@ -17,7 +18,8 @@ const MAIL_STATUS_TONE = {
 
 export function BackupView({ row }: ViewProps) {
   const status = row.mailStatus ?? "pending";
-  const services = row.backupServices ?? [];
+  // PR-2: services chips는 join 상세(backupServicesDetail) — 대학명·서비스명 정규화 표기 + deep-link
+  const servicesDetail = row.backupServicesDetail ?? [];
   const contacts = row.backupContacts ?? [];
 
   return (
@@ -55,19 +57,21 @@ export function BackupView({ row }: ViewProps) {
         </p>
       </section>
 
-      {services.length > 0 && (
+      {servicesDetail.length > 0 && (
         <section className="space-y-1.5">
           <p className="text-2xs uppercase tracking-[0.18em] text-muted">
             담당 서비스
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {services.map((s) => (
-              <span
-                key={s}
-                className="inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
+            {servicesDetail.map((s) => (
+              <Link
+                key={s.id}
+                href={`/dashboard/services?q=${encodeURIComponent(s.service_name)}`}
+                className="inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft hover:bg-washi-raised hover:text-ink"
+                title={`${s.university_name} — ${s.service_name}`}
               >
-                {s}
-              </span>
+                {s.university_name} — {s.service_name}
+              </Link>
             ))}
           </div>
         </section>

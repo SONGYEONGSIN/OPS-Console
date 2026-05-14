@@ -22,6 +22,18 @@ const MAIL_STATUS_TONE = {
   dry_run: "bg-washi-raised text-ink-soft",
 } as const;
 
+/**
+ * PR-2: 담당 서비스 컬럼 표시 — backupServicesDetail의 첫 1~2개 service_name + 총 개수.
+ * 빈 배열은 "—".
+ */
+function servicesPreview(row: ListRow): string {
+  const details = row.backupServicesDetail ?? [];
+  if (details.length === 0) return "—";
+  const names = details.slice(0, 2).map((d) => d.service_name);
+  const more = details.length - names.length;
+  return more > 0 ? `${names.join(", ")} 외 ${more}건` : names.join(", ");
+}
+
 export function BackupTable({ rows, selectedId, onSelect }: Props) {
   return (
     <table className="w-full text-sm">
@@ -30,6 +42,7 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">요청자</th>
           <th className="px-3 py-2">백업자</th>
           <th className="px-3 py-2">시작일</th>
+          <th className="px-3 py-2">담당 서비스</th>
           <th className="px-3 py-2">메일 상태</th>
           <th className="px-3 py-2">제목</th>
         </tr>
@@ -37,7 +50,7 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={5} className="px-3 py-6 text-center text-muted">
+            <td colSpan={6} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
@@ -58,6 +71,9 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-ink-soft">
                   {row.leaveStartDate ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-xs text-ink-soft">
+                  {servicesPreview(row)}
                 </td>
                 <td className="px-3 py-2">
                   <span

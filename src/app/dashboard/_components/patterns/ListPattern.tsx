@@ -120,8 +120,15 @@ export type ListRow = {
   substituteEmail?: string;
   /** backup 도메인 — 백업자 이름 스냅샷 */
   substituteName?: string;
-  /** backup 도메인 — 담당 서비스 chips */
+  /** backup 도메인 — 담당 서비스 id 배열 (services.id uuid). EditForm 입력 + create action 페이로드 */
   backupServices?: string[];
+  /** backup 도메인 — 담당 서비스 join 상세 (대학명·서비스명 포함). View/Table 표시용 */
+  backupServicesDetail?: {
+    id: string;
+    service_id: number;
+    service_name: string;
+    university_name: string;
+  }[];
   /** backup 도메인 — 대학 연락처 chips */
   backupContacts?: string[];
   /** backup 도메인 — 휴가/외근 시작일 (YYYY-MM-DD, nullable) */
@@ -227,6 +234,13 @@ type Props = {
   currentUserName?: string;
   /** backup variant — 백업자 후보 (active operators, 본인 제외) */
   backupOperators?: { email: string; name: string }[];
+  /** backup variant — 담당 서비스 후보 (services 카탈로그 light fields). EditForm multi-select. */
+  backupServiceCandidates?: {
+    id: string;
+    service_id: number;
+    service_name: string;
+    university_name: string;
+  }[];
 };
 
 export function ListPattern({
@@ -243,6 +257,7 @@ export function ListPattern({
   receivablesMailDryRun = true,
   currentUserName,
   backupOperators,
+  backupServiceCandidates,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -468,6 +483,7 @@ export function ListPattern({
               onInvite={onInvite}
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
+              backupServiceCandidates={backupServiceCandidates}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

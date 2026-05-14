@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { EditFormProps } from "../types";
 
 function parseChips(text: string): string[] {
@@ -7,15 +10,58 @@ function parseChips(text: string): string[] {
     .filter((t) => t.length > 0);
 }
 
+type ServiceCandidate = {
+  id: string;
+  service_id: number;
+  service_name: string;
+  university_name: string;
+};
+
 export function BackupForm({
   row,
   setRow,
   onSave,
   onCancel,
   backupOperators = [],
+  backupServiceCandidates = [],
 }: EditFormProps) {
-  const servicesText = (row.backupServices ?? []).join(", ");
   const contactsText = (row.backupContacts ?? []).join(", ");
+
+  // PR-2: services multi-select 상태 — 후보 검색 + 선택 chips
+  const selectedIds = row.backupServices ?? [];
+  const selectedDetail = row.backupServicesDetail ?? [];
+  const [query, setQuery] = useState("");
+
+  const trimmedQuery = query.trim();
+  const matches: ServiceCandidate[] =
+    trimmedQuery.length === 0
+      ? []
+      : backupServiceCandidates
+          .filter(
+            (c) =>
+              !selectedIds.includes(c.id) &&
+              (c.university_name.includes(trimmedQuery) ||
+                c.service_name.includes(trimmedQuery)),
+          )
+          .slice(0, 10);
+
+  function addService(c: ServiceCandidate) {
+    if (selectedIds.length >= 20) return;
+    setRow({
+      ...row,
+      backupServices: [...selectedIds, c.id],
+      backupServicesDetail: [...selectedDetail, c],
+    });
+    setQuery("");
+  }
+
+  function removeService(id: string) {
+    setRow({
+      ...row,
+      backupServices: selectedIds.filter((x) => x !== id),
+      backupServicesDetail: selectedDetail.filter((x) => x.id !== id),
+    });
+  }
 
   return (
     <form
@@ -85,8 +131,9 @@ export function BackupForm({
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
         </label>
+
         <label className="block text-xs">
-          <span className="mb-1 block text-muted">종료일</span>
+          <span className="mb-1 block text-muted">휴가/외근 종료일</span>
           <input
             aria-label="휴가 종료일"
             type="date"
@@ -99,18 +146,62 @@ export function BackupForm({
         </label>
       </div>
 
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">담당 서비스 (쉼표 구분)</span>
+      {/* PR-2: 담당 서비스 multi-select — 검색 + click으로만 추가, max 20 */}
+      <div className="block text-xs">
+        <span className="mb-1 flex items-baseline justify-between text-muted">
+          <span>담당 서비스 ({selectedIds.length}/20)</span>
+        </span>
         <input
-          aria-label="담당 서비스"
-          value={servicesText}
-          onChange={(e) =>
-            setRow({ ...row, backupServices: parseChips(e.target.value) })
-          }
+          aria-label="담당 서비스 검색"
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="대학명·서비스명 검색"
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="예: 입학사정관, 정시 추천"
         />
-      </label>
+        {matches.length > 0 && (
+          <ul
+            aria-label="담당 서비스 검색 결과"
+            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-washi-raised"
+          >
+            {matches.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => addService(c)}
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                >
+                  <span className="text-ink-soft">{c.university_name}</span>
+                  <span className="mx-1 text-muted">—</span>
+                  <span>{c.service_name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedDetail.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {selectedDetail.map((s) => (
+              <span
+                key={s.id}
+                className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
+              >
+                <span>
+                  {s.university_name} — {s.service_name}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`${s.service_name} 제거`}
+                  onClick={() => removeService(s.id)}
+                  className="cursor-pointer border-none bg-transparent px-0.5 text-muted hover:text-vermilion"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">대학 연락처 (쉼표 구분)</span>

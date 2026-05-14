@@ -3,15 +3,48 @@ import { createClient } from "@/lib/supabase/server";
 import { backupRequestRowSchema, type BackupRequestRow } from "./schemas";
 
 /**
+ * supabase 중첩 select shape:
+ *   backup_request_services: [
+ *     { service_id, services: { id, service_id, service_name, university_name } },
+ *     ...
+ *   ]
+ * → services_detail 배열로 평탄화 (zod 파싱 전 transform).
+ */
+const SELECT_WITH_SERVICES =
+  "*, backup_request_services(service_id, services!inner(id, service_id, service_name, university_name))";
+
+type NestedServiceRow = {
+  service_id?: unknown;
+  services?: unknown;
+};
+
+function flattenServicesDetail(row: unknown): unknown {
+  if (!row || typeof row !== "object") return row;
+  const r = row as Record<string, unknown>;
+  const nested = r.backup_request_services;
+  const details: unknown[] = [];
+  if (Array.isArray(nested)) {
+    for (const item of nested as NestedServiceRow[]) {
+      if (item && typeof item.services === "object" && item.services) {
+        details.push(item.services);
+      }
+    }
+  }
+  const { backup_request_services: _drop, ...rest } = r;
+  void _drop;
+  return { ...rest, services_detail: details };
+}
+
+/**
  * 백업 요청 목록 fetch (RSC).
  * RLS: authenticated → 모든 row read 허용 (전원 가시 정책).
- * 정렬: created_at desc. 최대 100건.
+ * 정렬: created_at desc. 최대 100건. services_detail은 join 결과.
  */
 export async function listBackupRequests(): Promise<BackupRequestRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("backup_requests")
-    .select("*")
+    .select(SELECT_WITH_SERVICES)
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -22,21 +55,22 @@ export async function listBackupRequests(): Promise<BackupRequestRow[]> {
 
   const parsed: BackupRequestRow[] = [];
   for (const row of data ?? []) {
-    const r = backupRequestRowSchema.safeParse(row);
+    const flat = flattenServicesDetail(row);
+    const r = backupRequestRowSchema.safeParse(flat);
     if (r.success) parsed.push(r.data);
     else
       console.error(
         "[listBackupRequests] zod parse fail:",
         r.error.issues,
         "row:",
-        row,
+        flat,
       );
   }
   return parsed;
 }
 
 /**
- * 단건 fetch (인스펙터 진입용 등).
+ * 단건 fetch (인스펙터 진입용 등). services_detail join 포함.
  */
 export async function getBackupRequestById(
   id: string,
@@ -44,7 +78,7 @@ export async function getBackupRequestById(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("backup_requests")
-    .select("*")
+    .select(SELECT_WITH_SERVICES)
     .eq("id", id)
     .maybeSingle();
 
@@ -54,7 +88,8 @@ export async function getBackupRequestById(
   }
   if (!data) return null;
 
-  const r = backupRequestRowSchema.safeParse(data);
+  const flat = flattenServicesDetail(data);
+  const r = backupRequestRowSchema.safeParse(flat);
   if (!r.success) {
     console.error("[getBackupRequestById] zod parse fail:", r.error.issues);
     return null;
