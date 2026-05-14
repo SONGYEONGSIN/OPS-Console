@@ -12,7 +12,8 @@ export type PageMetaConfig = {
  */
 export const PAGE_META: Record<string, PageMetaConfig> = {
   services: {
-    headline: { accent: "실시간", title: "서비스 운영" },
+    // 사이드바: 그룹 '서비스사이클' > 메뉴 '서비스' — 다른 메뉴 derive 형식과 동일 (그룹 — 메뉴)
+    headline: { accent: "서비스사이클", title: "서비스" },
     // meta 미정의 — derivePatternMeta(pattern, dynamicCount) 경로로 fallback해
     // page.tsx의 listServices total을 그대로 표시 ("N건"). 다른 페이지 패턴 일관.
     description:
