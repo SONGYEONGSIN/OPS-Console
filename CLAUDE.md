@@ -28,7 +28,7 @@ Folio/
 │   ├── app/            # Next.js App Router 페이지
 │   │   ├── login/      # 인증 (signin/signup/SSO)
 │   │   ├── dashboard/  # OPS Console — chrome / sidebar / patterns / inspector
-│   │   │   └── _components/inspector/list-variants/  # 10 variant registry (cohort/team/receivables/ai-work/post-feedback/post-notice/schedule/my-todo/default/backup) — View/EditForm/Table/Filters/blank 슬롯 완비. status.ts 공통 상수. Variant union은 types.ts 단일 정의 → InspectorListBody/ListPattern import 재사용
+│   │   │   └── _components/inspector/list-variants/  # 11 variant registry (cohort/team/receivables/ai-work/post-feedback/post-notice/schedule/my-todo/default/backup/services) — View/EditForm/Table/Filters/blank 슬롯 완비. status.ts 공통 상수. Variant union은 types.ts 단일 정의 → InspectorListBody/ListPattern import 재사용
 │   │   ├── global-error.tsx  # 한글 에러 페이지 (root layout 대체)
 │   │   └── auth/       # OAuth callback
 │   ├── components/     # React 컴포넌트 (auth/AuthChrome 등 도메인별 폴더)
@@ -52,7 +52,7 @@ Folio/
 ## list-variants 아키텍처 (open/closed)
 
 - **위치**: `src/app/dashboard/_components/inspector/list-variants/`
-- **레지스트리**: `registry.ts`가 import-time static binding으로 10 variant → 컴포넌트 매핑 (RSC 직렬화 호환 — inline factory 금지)
+- **레지스트리**: `registry.ts`가 import-time static binding으로 11 variant → 컴포넌트 매핑 (RSC 직렬화 호환 — inline factory 금지)
 - **슬롯**: 각 variant 폴더에 `View.tsx`(인스펙터 읽기) / `EditForm.tsx`(인스펙터 편집) / `Table.tsx`(리스트 행) / `filters.ts`(filter 옵션 + blank 행 factory). 모두 optional
 - **신규 도메인 추가 비용**: 1 폴더 신설 + `registry.ts` 1줄. `ListPattern.tsx` / `InspectorListBody.tsx`는 dispatcher만이므로 무변경
 - **dispatcher 크기**: `ListPattern.tsx` ~473줄 (backup 도메인 ListRow 필드 +22줄), `InspectorListBody.tsx` 128줄 (둘 다 800 상한 안전 마진)
