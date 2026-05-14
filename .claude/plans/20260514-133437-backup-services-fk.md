@@ -1,9 +1,12 @@
 ---
 plan_id: 20260514-133437-backup-services-fk
-status: in_progress
+status: completed
 created: 2026-05-14T04:34:38Z
+completed: 2026-05-14T06:00:00Z
 hard_gate: brief
 source: .claude/memory/brainstorms/20260514-132106-backup-services-fk.md
+merged_pr: 96
+merge_commit: e7cc132
 ---
 
 # Plan: backup_requests.services chips → services FK N:M (PR-2)
@@ -156,3 +159,4 @@ prod backup_requests 0행 윈도우 활용 — `services text[]` 컬럼은 본 P
 |------|------|----------|------|
 | 2026-05-14T04:34Z | plan | created | brainstorm 20260514-132106 채택 + planner 분석 (11 단계) |
 | 2026-05-14T05:20Z | T1~T11 | done (코드) | 모든 코드 단계 완료. typecheck 0, lint 변동 없음. 마이그레이션 prod 적용 + 통합 smoke 남음 |
+| 2026-05-14T06:00Z | plan | completed | PR #96 머지 (e7cc132). prod 마이그레이션 7 파일 (백업 PR-1 4 + 본 PR-2 3) 모두 수동 적용 완료. brainstorm 단계의 "prod 0행" 가정은 잘못 — 실제는 "테이블 부재"였음 (학습 사항: count head=true 응답 0이 null로 떨어지면 부재로 의심해야) |
