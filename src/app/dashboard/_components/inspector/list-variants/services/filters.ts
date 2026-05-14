@@ -1,11 +1,9 @@
 import type { ListRow, Filter } from "../../../patterns/ListPattern";
 
-// services 1차 PR: 단순 filter set. ownerMe 본인 필터는 page.tsx searchParams에서
-// listServices() 호출에 ownerMe + ownerEmail로 전달 (filter button 분기와 별개).
-// 마감 임박 / 단독 등은 URL query로 page.tsx에서 처리.
-export const SERVICES_FILTERS: { value: Filter; label: string }[] = [
-  { value: "all", label: "전체" },
-];
+// services variant의 status 기반 filter chip은 사용 안 함.
+// "전체 / 내 서비스" mutual exclusive 토글은 ServicesScopeChips(URL 기반) 컴포넌트가
+// ListPattern의 `inlineFilters` prop으로 주입되어 filter chip 영역을 단독 책임.
+export const SERVICES_FILTERS: { value: Filter; label: string }[] = [];
 
 export function blankServiceRow(): ListRow {
   return {

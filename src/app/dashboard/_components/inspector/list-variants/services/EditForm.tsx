@@ -1,14 +1,13 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
-import type { ListRow } from "../../../patterns/ListPattern";
-
-type Props = {
-  row: ListRow;
-  setRow: Dispatch<SetStateAction<ListRow>>;
-  onSave: (next: ListRow) => void;
-  onCancel: () => void;
-};
+import { useState } from "react";
+import type { EditFormProps } from "../types";
+import {
+  APPLICATION_TYPE_OPTIONS,
+  REGION_OPTIONS,
+  UNIVERSITY_TYPE_OPTIONS,
+  CATEGORY_OPTIONS,
+} from "@/features/services/constants";
 
 function isoToDate(iso?: string | null): string {
   if (!iso) return "";
@@ -20,7 +19,33 @@ function dateToIso(date: string): string | null {
   return new Date(`${date}T00:00:00+09:00`).toISOString();
 }
 
-export function ServicesForm({ row, setRow, onSave, onCancel }: Props) {
+export function ServicesForm({
+  row,
+  setRow,
+  onSave,
+  onCancel,
+  servicesOperators = [],
+  servicesUniversityKeys = [],
+}: EditFormProps) {
+  // 대학명 검색 combobox 상태 — 입력값과 row.universityName이 일치하면 dropdown 숨김
+  const [universityQuery, setUniversityQuery] = useState("");
+  const trimmedQuery = universityQuery.trim();
+  const universityMatches =
+    trimmedQuery.length === 0
+      ? []
+      : servicesUniversityKeys
+          .filter(
+            (u) =>
+              u.universityName.includes(trimmedQuery) &&
+              u.universityName !== row.universityName,
+          )
+          .slice(0, 10);
+
+  // 현재 universityName이 키 목록에 있다면 학교키 힌트 표시
+  const selectedUniversity = servicesUniversityKeys.find(
+    (u) => u.universityName === row.universityName,
+  );
+
   return (
     <form
       onSubmit={(e) => {
@@ -29,36 +54,55 @@ export function ServicesForm({ row, setRow, onSave, onCancel }: Props) {
       }}
       className="space-y-3"
     >
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">service_id</span>
-        <input
-          type="number"
-          aria-label="service_id"
-          value={row.serviceIdNum ?? ""}
-          onChange={(e) =>
-            setRow({
-              ...row,
-              serviceIdNum: e.target.value ? Number(e.target.value) : undefined,
-            })
-          }
-          className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink"
-          placeholder="외부 PIMS 7자리 (자체 생성도 입력)"
-          required
-        />
-      </label>
       <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">대학명</span>
+        <div className="block text-xs">
+          <span className="mb-1 block text-muted">대학명 (검색)</span>
           <input
             aria-label="대학명"
-            value={row.universityName ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, universityName: e.target.value })
-            }
+            type="search"
+            value={universityQuery || (row.universityName ?? "")}
+            onChange={(e) => {
+              setUniversityQuery(e.target.value);
+              setRow({ ...row, universityName: e.target.value });
+            }}
+            placeholder="대학명을 검색하거나 직접 입력"
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
             required
           />
-        </label>
+          {universityMatches.length > 0 && (
+            <ul
+              aria-label="대학명 검색 결과"
+              className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+            >
+              {universityMatches.map((u) => (
+                <li key={u.universityName}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // 기존 대학 선택 시: universityName + service_id 자동 부여
+                      // (학교키 4자리 × 1000 + 다음 시퀀스 3자리).
+                      // 자유 입력 케이스(검색에 매칭 없음)에서는 dropdown 자체가 안 떠서
+                      // service_id 자동 채움이 발생하지 않음 → admin이 수동 입력.
+                      setRow({
+                        ...row,
+                        universityName: u.universityName,
+                        serviceIdNum: u.key * 1000 + u.nextSeq,
+                      });
+                      setUniversityQuery("");
+                    }}
+                    className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                  >
+                    <span>{u.universityName}</span>
+                    <span className="ml-2 font-mono text-muted">
+                      {u.key}
+                      {String(u.nextSeq).padStart(3, "0")} 자동 부여
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">서비스명</span>
           <input
@@ -70,87 +114,169 @@ export function ServicesForm({ row, setRow, onSave, onCancel }: Props) {
           />
         </label>
       </div>
+
+      <label className="block text-xs">
+        <span className="mb-1 flex items-baseline justify-between text-muted">
+          <span>service_id (수동)</span>
+          {selectedUniversity && (
+            <span className="text-2xs">
+              이 대학 학교키:{" "}
+              <span className="font-mono text-ink">
+                {selectedUniversity.key}
+              </span>
+              {" · "}
+              제안 시퀀스:{" "}
+              <span className="font-mono text-ink">
+                {String(selectedUniversity.nextSeq).padStart(3, "0")}
+              </span>
+            </span>
+          )}
+        </span>
+        <input
+          type="number"
+          aria-label="service_id"
+          value={row.serviceIdNum ?? ""}
+          onChange={(e) =>
+            setRow({
+              ...row,
+              serviceIdNum: e.target.value ? Number(e.target.value) : undefined,
+            })
+          }
+          className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink"
+          placeholder={
+            selectedUniversity
+              ? `${selectedUniversity.key}${String(selectedUniversity.nextSeq).padStart(3, "0")}`
+              : "학교키 4자리 + 시퀀스 3자리"
+          }
+          required
+        />
+      </label>
+
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">접수구분</span>
-          <input
+          <select
             aria-label="접수구분"
             value={row.applicationType ?? ""}
             onChange={(e) =>
               setRow({ ...row, applicationType: e.target.value })
             }
-            placeholder="공통원서 / 반응형원서 / ..."
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
+          >
+            <option value="">선택…</option>
+            {APPLICATION_TYPE_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">지역</span>
-          <input
+          <select
             aria-label="지역"
             value={row.region ?? ""}
             onChange={(e) => setRow({ ...row, region: e.target.value })}
-            placeholder="서울 / 경기 / ..."
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
+          >
+            <option value="">선택…</option>
+            {REGION_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
+
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">대학구분</span>
-          <input
+          <select
             aria-label="대학구분"
             value={row.universityType ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, universityType: e.target.value })
-            }
-            placeholder="4년제 / 2년제 / ..."
+            onChange={(e) => setRow({ ...row, universityType: e.target.value })}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
+          >
+            <option value="">선택…</option>
+            {UNIVERSITY_TYPE_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">카테고리</span>
-          <input
+          <select
             aria-label="카테고리"
             value={row.category ?? ""}
             onChange={(e) => setRow({ ...row, category: e.target.value })}
-            placeholder="수시 / 정시 / ..."
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
+          >
+            <option value="">선택…</option>
+            {CATEGORY_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
+
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
-          <span className="mb-1 block text-muted">운영자 이메일</span>
-          <input
-            type="email"
-            aria-label="운영자 이메일"
+          <span className="mb-1 block text-muted">운영자</span>
+          <select
+            aria-label="운영자"
             value={row.operatorEmail ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              const email = e.target.value;
+              const op = servicesOperators.find((o) => o.email === email);
               setRow({
                 ...row,
-                operatorEmail: e.target.value || null,
-              })
-            }
+                operatorEmail: email || null,
+                operatorName: op?.name ?? null,
+              });
+            }}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
+          >
+            <option value="">선택…</option>
+            {servicesOperators.map((op) => (
+              <option key={op.email} value={op.email}>
+                {op.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block text-xs">
-          <span className="mb-1 block text-muted">개발자 이메일</span>
-          <input
-            type="email"
-            aria-label="개발자 이메일"
+          <span className="mb-1 block text-muted">개발자</span>
+          <select
+            aria-label="개발자"
             value={row.developerEmail ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              const email = e.target.value;
+              const op = servicesOperators.find((o) => o.email === email);
               setRow({
                 ...row,
-                developerEmail: e.target.value || null,
-              })
-            }
+                developerEmail: email || null,
+                developerName: op?.name ?? null,
+              });
+            }}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
+          >
+            <option value="">선택…</option>
+            {servicesOperators.map((op) => (
+              <option key={op.email} value={op.email}>
+                {op.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+
+      {/* #8: 4 date를 2x2 grid (작성 줄 / 결제 줄)로 분리 */}
+      <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">작성시작</span>
           <input
@@ -175,6 +301,8 @@ export function ServicesForm({ row, setRow, onSave, onCancel }: Props) {
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
         </label>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">결제시작</span>
           <input
@@ -200,6 +328,7 @@ export function ServicesForm({ row, setRow, onSave, onCancel }: Props) {
           />
         </label>
       </div>
+
       <label className="flex items-center gap-2 text-xs text-ink">
         <input
           type="checkbox"

@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../../../_data", () => ({
   findSidebarMeta: (slug: string) => {
-    if (slug === "services") return { label: "전체 서비스", pattern: "list" };
+    if (slug === "services") return { label: "서비스", pattern: "list" };
     if (slug === "contracts") return { label: "계약", pattern: "list" };
     if (slug === "alerts") return { label: "새 알림", pattern: "dash" };
     return null;

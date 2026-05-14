@@ -11,6 +11,20 @@ function formatDate(iso?: string | null): string {
   }).format(new Date(iso));
 }
 
+/** 시즌 컬럼 표시용 — YYYY.MM.DD HH:mm (KST) */
+function formatDateTime(iso?: string | null): string {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
 export function ServicesView({ row }: ViewProps) {
   const operatorLabel = row.operatorName || row.operatorEmail || "-";
   const developerLabel = row.developerName || row.developerEmail || "-";
@@ -82,10 +96,10 @@ export function ServicesView({ row }: ViewProps) {
       <Section title="시즌">
         <DefList
           items={[
-            { term: "작성시작", desc: formatDate(row.writeStartAt) },
-            { term: "작성마감", desc: formatDate(row.writeEndAt) },
-            { term: "결제시작", desc: formatDate(row.payStartAt) },
-            { term: "결제마감", desc: formatDate(row.payEndAt) },
+            { term: "작성시작", desc: formatDateTime(row.writeStartAt) },
+            { term: "작성마감", desc: formatDateTime(row.writeEndAt) },
+            { term: "결제시작", desc: formatDateTime(row.payStartAt) },
+            { term: "결제마감", desc: formatDateTime(row.payEndAt) },
           ]}
         />
       </Section>
