@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
+import { ServicesControls } from "./ServicesControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listServices, type ServicesFilter } from "@/features/services/queries";
@@ -36,7 +37,6 @@ export default async function ServicesPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
 
   const sp = await searchParams;
   const me = await getCurrentOperator();
@@ -55,16 +55,20 @@ export default async function ServicesPage({
     pageSize: 30,
   };
 
-  const { rows: services } = await listServices(filter);
+  const { rows: services, total } = await listServices(filter);
   const rows: ListRow[] = services.map(servicesRowToListRow);
+  const config = resolvePageMeta(slug, meta, total);
 
   const header = (
-    <PageHeader
-      pathname={pathname}
-      meta={config.meta}
-      headline={config.headline}
-      description={config.description}
-    />
+    <>
+      <PageHeader
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+      />
+      <ServicesControls />
+    </>
   );
 
   async function onPersist(
