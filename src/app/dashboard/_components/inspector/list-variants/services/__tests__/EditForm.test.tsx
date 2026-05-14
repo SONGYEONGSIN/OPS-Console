@@ -104,6 +104,65 @@ describe("ServicesForm", () => {
     expect(onSave).toHaveBeenCalledWith({ ...baseRow, status: "deleted" });
   });
 
+  it("대학명 dropdown — 정확 일치 entry도 검색 결과에 노출 (자기 자신 제외 X)", () => {
+    const newRow: ListRow = { ...baseRow, id: "", universityName: "경찰대학" };
+    const keys = [
+      { universityName: "경찰대학", key: 1111, nextSeq: 5 },
+      { universityName: "경찰대학 대학원", key: 1112, nextSeq: 1 },
+      { universityName: "경찰공무원", key: 9999, nextSeq: 1 },
+    ];
+    render(
+      <ServicesForm
+        row={newRow}
+        setRow={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        servicesUniversityKeys={keys}
+      />,
+    );
+    // input value=row.universityName="경찰대학"이지만 dropdown은 selection 직후가 아니므로 노출
+    // 검색 결과에 "경찰대학" 정확 일치 entry도 포함되어야 함
+    expect(screen.getByText("경찰대학")).toBeInTheDocument();
+    expect(screen.getByText("경찰대학 대학원")).toBeInTheDocument();
+  });
+
+  it("대학명 dropdown — 항목 선택 시 자동 close (filter에서 자기 자신 제외 → 결과 0)", () => {
+    const setRow = vi.fn();
+    const newRow: ListRow = { ...baseRow, id: "", universityName: "" };
+    const keys = [
+      { universityName: "조선대학교", key: 1234, nextSeq: 1 },
+      { universityName: "가천대학교", key: 5678, nextSeq: 1 },
+    ];
+    const { rerender } = render(
+      <ServicesForm
+        row={newRow}
+        setRow={setRow}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        servicesUniversityKeys={keys}
+      />,
+    );
+    // focus 즉시 dropdown 노출 (빈 query)
+    expect(screen.getByLabelText("대학명 검색 결과")).toBeInTheDocument();
+    // 조선대학교 항목 클릭 → setRow 호출 후 row.universityName 갱신된 상태로 rerender
+    fireEvent.click(screen.getByText("조선대학교"));
+    expect(setRow).toHaveBeenCalledWith(
+      expect.objectContaining({ universityName: "조선대학교" }),
+    );
+    rerender(
+      <ServicesForm
+        row={{ ...newRow, universityName: "조선대학교" }}
+        setRow={setRow}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        servicesUniversityKeys={keys}
+      />,
+    );
+    // dropdown은 사라져야 함 — universityQuery는 선택한 이름으로 채워졌고 filter에서 자기 자신 제외 → 가천대학교 1건만 남는다? → "조선대학교" includes 매칭만 적용 → 가천 제외
+    // 정확 일치 검색 → 자기 자신 제외 → 결과 0 → dropdown close
+    expect(screen.queryByLabelText("대학명 검색 결과")).toBeNull();
+  });
+
   it("신규 row (id='') — 삭제 버튼 미노출", () => {
     render(
       <ServicesForm

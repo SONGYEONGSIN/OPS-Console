@@ -71,19 +71,32 @@ export default async function ServicesPage({
   // EditForm: 대학명 → 학교키·다음 시퀀스 매핑 (전체 services 대상)
   // service_id = 학교키(4자리) × 1000 + 시퀀스(3자리).
   // 신규 등록 시 dropdown 선택만으로 service_id 자동 부여.
-  const { rows: allServicesForKeys } = await listServices({
-    sort: "service_id_asc",
-    page: 1,
-    pageSize: 5000,
-  });
+  //
+  // Supabase JS client는 기본 1000건 limit. pageSize 지정해도 PostgREST `Max-Rows`로
+  // 1000건 cap. 전체 distinct university_name 수집을 위해 chunk fetch.
+  // PostgREST는 chunk fetch 시 *partial response*를 반환할 수 있어 (range 1000건 요청에도 996건 등)
+  // chunk.length < CHUNK 만으로는 종료 조건이 부정확. fetched 누적이 total에 도달할 때까지 fetch.
   const universityKeyMap = new Map<string, { key: number; maxSeq: number }>();
-  for (const s of allServicesForKeys) {
-    const key = Math.floor(s.service_id / 1000);
-    const seq = s.service_id % 1000;
-    const existing = universityKeyMap.get(s.university_name);
-    if (!existing || seq > existing.maxSeq) {
-      universityKeyMap.set(s.university_name, { key, maxSeq: seq });
+  const CHUNK = 1000;
+  const MAX_PAGES = 20; // 안전 한도: 최대 20000건
+  let totalFetched = 0;
+  for (let p = 1; p <= MAX_PAGES; p++) {
+    const { rows: chunk, total } = await listServices({
+      sort: "service_id_asc",
+      page: p,
+      pageSize: CHUNK,
+    });
+    if (chunk.length === 0) break;
+    totalFetched += chunk.length;
+    for (const s of chunk) {
+      const key = Math.floor(s.service_id / 1000);
+      const seq = s.service_id % 1000;
+      const existing = universityKeyMap.get(s.university_name);
+      if (!existing || seq > existing.maxSeq) {
+        universityKeyMap.set(s.university_name, { key, maxSeq: seq });
+      }
     }
+    if (totalFetched >= total) break;
   }
   const servicesUniversityKeys = [...universityKeyMap.entries()].map(
     ([universityName, { key, maxSeq }]) => ({

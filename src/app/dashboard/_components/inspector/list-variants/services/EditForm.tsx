@@ -27,19 +27,19 @@ export function ServicesForm({
   servicesOperators = [],
   servicesUniversityKeys = [],
 }: EditFormProps) {
-  // 대학명 검색 combobox 상태 — 입력값과 row.universityName이 일치하면 dropdown 숨김
+  // 대학명 검색 combobox 상태
+  // - 빈 query: 후보 상위 10건 표시 (focus 즉시 검색 UX)
+  // - 정확 일치 entry도 결과에 포함 (자기 자신 제외 X — "경찰대학" 검색 시 "경찰대학"이 안 보이는 버그 방지)
+  // - 선택 직후에만 dropdown 닫힘 — justSelected state로 제어
   const [universityQuery, setUniversityQuery] = useState("");
+  const [justSelected, setJustSelected] = useState(false);
   const trimmedQuery = universityQuery.trim();
-  const universityMatches =
-    trimmedQuery.length === 0
-      ? []
-      : servicesUniversityKeys
-          .filter(
-            (u) =>
-              u.universityName.includes(trimmedQuery) &&
-              u.universityName !== row.universityName,
-          )
-          .slice(0, 10);
+  const universityMatches = servicesUniversityKeys
+    .filter(
+      (u) =>
+        trimmedQuery.length === 0 || u.universityName.includes(trimmedQuery),
+    )
+    .slice(0, 10);
 
   // 현재 universityName이 키 목록에 있다면 학교키 힌트 표시
   const selectedUniversity = servicesUniversityKeys.find(
@@ -54,66 +54,66 @@ export function ServicesForm({
       }}
       className="space-y-3"
     >
-      <div className="grid grid-cols-2 gap-2">
-        <div className="block text-xs">
-          <span className="mb-1 block text-muted">대학명 (검색)</span>
-          <input
-            aria-label="대학명"
-            type="search"
-            value={universityQuery || (row.universityName ?? "")}
-            onChange={(e) => {
-              setUniversityQuery(e.target.value);
-              setRow({ ...row, universityName: e.target.value });
-            }}
-            placeholder="대학명을 검색하거나 직접 입력"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            required
-          />
-          {universityMatches.length > 0 && (
-            <ul
-              aria-label="대학명 검색 결과"
-              className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
-            >
-              {universityMatches.map((u) => (
-                <li key={u.universityName}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // 기존 대학 선택 시: universityName + service_id 자동 부여
-                      // (학교키 4자리 × 1000 + 다음 시퀀스 3자리).
-                      // 자유 입력 케이스(검색에 매칭 없음)에서는 dropdown 자체가 안 떠서
-                      // service_id 자동 채움이 발생하지 않음 → admin이 수동 입력.
-                      setRow({
-                        ...row,
-                        universityName: u.universityName,
-                        serviceIdNum: u.key * 1000 + u.nextSeq,
-                      });
-                      setUniversityQuery("");
-                    }}
-                    className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
-                  >
-                    <span>{u.universityName}</span>
-                    <span className="ml-2 font-mono text-muted">
-                      {u.key}
-                      {String(u.nextSeq).padStart(3, "0")} 자동 부여
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">서비스명</span>
-          <input
-            aria-label="서비스명"
-            value={row.serviceName ?? ""}
-            onChange={(e) => setRow({ ...row, serviceName: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            required
-          />
-        </label>
+      <div className="block text-xs">
+        <span className="mb-1 block text-muted">대학명 (검색)</span>
+        <input
+          aria-label="대학명"
+          type="search"
+          value={universityQuery || (row.universityName ?? "")}
+          onChange={(e) => {
+            setUniversityQuery(e.target.value);
+            setRow({ ...row, universityName: e.target.value });
+            setJustSelected(false);
+          }}
+          placeholder="대학명을 검색하거나 직접 입력"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          required
+        />
+        {!justSelected && universityMatches.length > 0 && (
+          <ul
+            aria-label="대학명 검색 결과"
+            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+          >
+            {universityMatches.map((u) => (
+              <li key={u.universityName}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 기존 대학 선택 시: universityName + service_id 자동 부여
+                    // (학교키 4자리 × 1000 + 다음 시퀀스 3자리).
+                    // 자유 입력 케이스(검색에 매칭 없음)에서는 dropdown 자체가 안 떠서
+                    // service_id 자동 채움이 발생하지 않음 → admin이 수동 입력.
+                    setRow({
+                      ...row,
+                      universityName: u.universityName,
+                      serviceIdNum: u.key * 1000 + u.nextSeq,
+                    });
+                    setUniversityQuery(u.universityName);
+                    setJustSelected(true);
+                  }}
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                >
+                  <span>{u.universityName}</span>
+                  <span className="ml-2 font-mono text-muted">
+                    {u.key}
+                    {String(u.nextSeq).padStart(3, "0")} 자동 부여
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">서비스명</span>
+        <input
+          aria-label="서비스명"
+          value={row.serviceName ?? ""}
+          onChange={(e) => setRow({ ...row, serviceName: e.target.value })}
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          required
+        />
+      </label>
 
       <label className="block text-xs">
         <span className="mb-1 flex items-baseline justify-between text-muted">
