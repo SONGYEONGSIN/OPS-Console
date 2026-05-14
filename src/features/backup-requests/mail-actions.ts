@@ -130,7 +130,7 @@ export async function sendBackupRequestMail(
       substituteEmail: backup.substitute_email,
       leaveStartDate: backup.leave_start_date ?? null,
       leaveEndDate: backup.leave_end_date ?? null,
-      services: backup.services,
+      services: backup.services_detail,
       contacts: backup.contacts,
       summaryMd: backup.summary_md,
       createdAt: backup.created_at,
@@ -148,7 +148,7 @@ export async function sendBackupRequestMail(
     substituteEmail: backup.substitute_email,
     leaveStartDate: backup.leave_start_date ?? null,
     leaveEndDate: backup.leave_end_date ?? null,
-    services: backup.services,
+    services: backup.services_detail,
     contacts: backup.contacts,
     summaryMd: backup.summary_md,
   };

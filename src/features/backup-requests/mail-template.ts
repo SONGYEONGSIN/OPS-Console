@@ -1,3 +1,5 @@
+import type { ServiceDetail } from "./schemas";
+
 export type BackupMailInput = {
   requesterName: string;
   requesterEmail: string;
@@ -5,7 +7,8 @@ export type BackupMailInput = {
   substituteEmail: string;
   leaveStartDate: string | null;
   leaveEndDate: string | null;
-  services: string[];
+  /** PR-2: services는 join 결과 — 대학명·서비스명 정규화 표기에 사용 */
+  services: ServiceDetail[];
   contacts: string[];
   summaryMd: string;
 };
@@ -37,13 +40,28 @@ export function buildBackupMailSubject(input: BackupMailInput): string {
   return `[Folio] ${input.requesterName} 백업 요청 — ${range}`;
 }
 
-function chipsHtml(items: string[]): string {
+function textChipsHtml(items: string[]): string {
   if (items.length === 0)
     return '<p style="color:#666;font-size:13px;">(없음)</p>';
   return `<div style="display:flex;flex-wrap:wrap;gap:6px;">${items
     .map(
       (s) =>
         `<span style="background:#f4eddd;padding:3px 8px;border-radius:4px;font-size:12px;color:#1a1a1a;">${escapeHtml(s)}</span>`,
+    )
+    .join("")}</div>`;
+}
+
+/**
+ * services chips — PR-2 정규화 표기 "대학명 — 서비스명".
+ * 빈 배열은 "(없음)" 플레이스홀더. escapeHtml 양쪽 적용.
+ */
+function serviceChipsHtml(items: ServiceDetail[]): string {
+  if (items.length === 0)
+    return '<p style="color:#666;font-size:13px;">(없음)</p>';
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;">${items
+    .map(
+      (s) =>
+        `<span style="background:#f4eddd;padding:3px 8px;border-radius:4px;font-size:12px;color:#1a1a1a;">${escapeHtml(s.university_name)} — ${escapeHtml(s.service_name)}</span>`,
     )
     .join("")}</div>`;
 }
@@ -84,12 +102,12 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
 
     <div style="margin-bottom:20px;">
       <p style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px 0;">담당 서비스</p>
-      ${chipsHtml(input.services)}
+      ${serviceChipsHtml(input.services)}
     </div>
 
     <div style="margin-bottom:20px;">
       <p style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px 0;">대학 연락처</p>
-      ${chipsHtml(input.contacts)}
+      ${textChipsHtml(input.contacts)}
     </div>
 
     <div style="margin-bottom:20px;">

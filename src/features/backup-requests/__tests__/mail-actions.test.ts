@@ -80,7 +80,14 @@ const backupRow = {
   requester_team: "ops",
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
-  services: ["서비스1"],
+  services_detail: [
+    {
+      id: "11111111-1111-4111-8111-111111111111",
+      service_id: 5072006,
+      service_name: "서비스1",
+      university_name: "한양대학교",
+    },
+  ],
   contacts: ["서울대"],
   summary_md: "내용",
   leave_start_date: "2026-05-20",

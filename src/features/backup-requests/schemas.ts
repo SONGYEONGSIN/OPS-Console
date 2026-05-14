@@ -11,7 +11,21 @@ export const mailStatusSchema = z.enum(MAIL_STATUS_VALUES);
 export type MailStatus = z.infer<typeof mailStatusSchema>;
 
 /**
+ * services join row 상세 — PR-2: backup_request_services join + services 본체에서 필요한 필드만.
+ * View/Table/메일 본문 렌더에 사용.
+ */
+export const serviceDetailSchema = z.object({
+  id: z.string().uuid(),
+  service_id: z.number().int().nonnegative(),
+  service_name: z.string().min(1),
+  university_name: z.string().min(1),
+});
+
+export type ServiceDetail = z.infer<typeof serviceDetailSchema>;
+
+/**
  * DB row 형상 (RLS authenticated 모두 read 가능).
+ * PR-2: services text[] 컬럼 제거 + services_detail (join 결과) 추가.
  */
 export const backupRequestRowSchema = z.object({
   id: z.string().uuid(),
@@ -19,7 +33,7 @@ export const backupRequestRowSchema = z.object({
   requester_team: z.string().nullable().optional(),
   substitute_email: z.string().email(),
   substitute_name: z.string().min(1),
-  services: z.array(z.string()),
+  services_detail: z.array(serviceDetailSchema).default([]),
   contacts: z.array(z.string()),
   summary_md: z.string().min(1),
   leave_start_date: z.string().nullable().optional(),
@@ -35,12 +49,13 @@ export type BackupRequestRow = z.infer<typeof backupRequestRowSchema>;
 
 /**
  * 신규 등록 입력. requester_email/_team은 server action에서 현재 operator로 채움.
+ * PR-2: services는 services.id (uuid) 배열. EditForm에서 검색 → click으로만 추가 가능.
  */
 export const backupRequestCreateSchema = z
   .object({
     substitute_email: z.string().email("백업자 이메일 형식 오류"),
     substitute_name: z.string().min(1, "백업자 이름 누락"),
-    services: z.array(z.string().min(1)).max(20).default([]),
+    services: z.array(z.string().uuid()).max(20).default([]),
     contacts: z.array(z.string().min(1)).max(20).default([]),
     summary_md: z
       .string()
@@ -81,7 +96,7 @@ export const backupRequestUpdateSchema = z
   .object({
     substitute_email: z.string().email().optional(),
     substitute_name: z.string().min(1).optional(),
-    services: z.array(z.string().min(1)).max(20).optional(),
+    services: z.array(z.string().uuid()).max(20).optional(),
     contacts: z.array(z.string().min(1)).max(20).optional(),
     summary_md: z.string().min(1).max(5000).optional(),
     leave_start_date: z.string().min(1).nullable().optional(),

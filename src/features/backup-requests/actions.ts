@@ -32,12 +32,12 @@ export async function createBackupRequest(
   }
 
   const supabase = await createClient();
+  // PR-2: services 컬럼 drop됨. join은 backup_request_services 테이블로 별도 insert.
   const payload = {
     requester_email: me.email,
     requester_team: me.team ?? null,
     substitute_email: parsed.data.substitute_email,
     substitute_name: parsed.data.substitute_name,
-    services: parsed.data.services,
     contacts: parsed.data.contacts,
     summary_md: parsed.data.summary_md,
     leave_start_date: parsed.data.leave_start_date ?? null,
@@ -51,6 +51,26 @@ export async function createBackupRequest(
     .single();
 
   if (error) return { ok: false, error: error.message };
+
+  const parent = data as BackupRequestRow;
+
+  if (parsed.data.services.length > 0) {
+    const joinRows = parsed.data.services.map((service_id) => ({
+      backup_request_id: parent.id,
+      service_id,
+    }));
+    const { error: joinErr } = await supabase
+      .from("backup_request_services")
+      .insert(joinRows);
+    if (joinErr) {
+      console.error("[createBackupRequest] join insert fail:", joinErr);
+      return {
+        ok: false,
+        error: `services FK 저장 실패: ${joinErr.message}`,
+      };
+    }
+  }
+
   revalidatePath(BACKUP_PATH);
-  return { ok: true, row: data as BackupRequestRow };
+  return { ok: true, row: parent };
 }
