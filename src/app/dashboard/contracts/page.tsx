@@ -71,10 +71,9 @@ export default async function ContractsPage({
   const rows: ListRow[] = pageRows.map(contractsRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
-  // Fragment 대신 div wrap — Fragment children이 RSC 직렬화 시 array로 노출되어
-  // React 19에서 "each child unique key" 경고. div는 단일 element라 안전 (layout 영향 0).
+  // RSC 경계로 element prop을 보낼 때 array로 직렬화되므로 각 element에 key 명시.
   const header = (
-    <div>
+    <div key="contracts-header">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -94,8 +93,16 @@ export default async function ContractsPage({
       canCreate={false}
       readOnly={true}
       currentUserName={me?.displayName ?? me?.email ?? ""}
-      inlineFilters={<ScopeChips total={total} mineLabel="내 계약" />}
-      footer={<ListPagination total={total} pageSize={PAGE_SIZE} />}
+      inlineFilters={
+        <ScopeChips key="contracts-scope" total={total} mineLabel="내 계약" />
+      }
+      footer={
+        <ListPagination
+          key="contracts-pagination"
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      }
     />
   );
 }

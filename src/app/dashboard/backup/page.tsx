@@ -88,6 +88,7 @@ export default async function BackupPage() {
 
   const header = (
     <PageHeader
+      key="backup-header"
       pathname={pathname}
       meta={config.meta}
       headline={config.headline}

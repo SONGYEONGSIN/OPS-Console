@@ -108,10 +108,10 @@ export default async function ServicesPage({
     }),
   );
 
-  // Fragment 대신 div wrap — Fragment children이 RSC 직렬화 시 array로 노출되어
-  // React 19에서 "each child unique key" 경고. div는 단일 element라 안전 (layout 영향 0).
+  // RSC 경계로 element prop을 보낼 때 array로 직렬화되므로 각 element에 key 명시.
+  // div wrap만으론 부족 — Server → Client boundary에서 React 19가 array key 검사.
   const header = (
-    <div>
+    <div key="services-header">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -186,8 +186,12 @@ export default async function ServicesPage({
       currentUserName={me?.displayName ?? me?.email ?? ""}
       servicesOperators={servicesOperators}
       servicesUniversityKeys={servicesUniversityKeys}
-      inlineFilters={<ScopeChips total={total} mineLabel="내 서비스" />}
-      footer={<ListPagination total={total} pageSize={30} />}
+      inlineFilters={
+        <ScopeChips key="services-scope" total={total} mineLabel="내 서비스" />
+      }
+      footer={
+        <ListPagination key="services-pagination" total={total} pageSize={30} />
+      }
       onPersist={onPersist}
     />
   );

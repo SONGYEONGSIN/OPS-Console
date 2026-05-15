@@ -84,10 +84,9 @@ export default async function ContactsPage({
   for (const c of contacts) universitySet.add(c.university_name);
   const universityNameSuggestions = [...universitySet].sort();
 
-  // Fragment 대신 div wrap — Fragment children이 RSC 직렬화 시 array로 노출되어
-  // React 19에서 "each child unique key" 경고. div는 단일 element라 안전 (layout 영향 0).
+  // RSC 경계로 element prop을 보낼 때 array로 직렬화되므로 각 element에 key 명시.
   const header = (
-    <div>
+    <div key="contacts-header">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -150,7 +149,13 @@ export default async function ContactsPage({
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       universityNameSuggestions={universityNameSuggestions}
-      footer={<ListPagination total={total} pageSize={PAGE_SIZE} />}
+      footer={
+        <ListPagination
+          key="contacts-pagination"
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      }
       onPersist={onPersist}
     />
   );
