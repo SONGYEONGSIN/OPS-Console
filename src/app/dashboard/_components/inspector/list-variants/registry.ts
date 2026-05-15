@@ -41,6 +41,10 @@ import { SERVICES_FILTERS, blankServiceRow } from "./services/filters";
 import { ContractsView } from "./contracts/View";
 import { ContractsTable } from "./contracts/Table";
 import { CONTRACTS_FILTERS } from "./contracts/filters";
+import { ContactsView } from "./contacts/View";
+import { ContactsForm } from "./contacts/EditForm";
+import { ContactsTable } from "./contacts/Table";
+import { CONTACTS_FILTERS, blankContactRow } from "./contacts/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -163,5 +167,12 @@ export const variantRegistry = {
     Filters: CONTRACTS_FILTERS,
     // EditForm 없음 — read-only 도메인 (SharePoint이 source-of-truth)
     // blank 없음 — 등록 흐름 X
+  },
+  contacts: {
+    View: ContactsView,
+    EditForm: ContactsForm,
+    Table: ContactsTable,
+    Filters: CONTACTS_FILTERS,
+    blank: blankContactRow,
   },
 } as const satisfies Record<Variant, RegistryEntry>;
