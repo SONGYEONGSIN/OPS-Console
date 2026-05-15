@@ -29,18 +29,18 @@ export function ServicesForm({
   servicesUniversityKeys = [],
 }: EditFormProps) {
   // 대학명 검색 combobox 상태
-  // - 빈 query: 후보 상위 10건 표시 (focus 즉시 검색 UX)
-  // - 정확 일치 entry도 결과에 포함 (자기 자신 제외 X — "경찰대학" 검색 시 "경찰대학"이 안 보이는 버그 방지)
-  // - 선택 직후에만 dropdown 닫힘 — justSelected state로 제어
+  // - 빈 query: dropdown 미노출 (backup 패턴 동일 — 입력 시에만 검색 결과)
+  // - 정확 일치 entry도 결과에 포함 (자기 자신 제외 X)
+  // - 선택 직후 dropdown 닫힘 — justSelected state로 제어
   const [universityQuery, setUniversityQuery] = useState("");
   const [justSelected, setJustSelected] = useState(false);
   const trimmedQuery = universityQuery.trim();
-  const universityMatches = servicesUniversityKeys
-    .filter(
-      (u) =>
-        trimmedQuery.length === 0 || u.universityName.includes(trimmedQuery),
-    )
-    .slice(0, 10);
+  const universityMatches =
+    trimmedQuery.length === 0
+      ? []
+      : servicesUniversityKeys
+          .filter((u) => u.universityName.includes(trimmedQuery))
+          .slice(0, 10);
 
   // 현재 universityName이 키 목록에 있다면 학교키 힌트 표시
   const selectedUniversity = servicesUniversityKeys.find(

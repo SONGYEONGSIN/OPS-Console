@@ -16,17 +16,16 @@ export function ContactsForm({
   onCancel,
   universityNameSuggestions = [],
 }: EditFormProps) {
-  // 대학명 검색 combobox — 선택 직후 dropdown close (justSelected)
+  // 대학명 검색 combobox — backup 패턴 동일 (입력 시에만 dropdown)
   const [universityQuery, setUniversityQuery] = useState("");
   const [justSelected, setJustSelected] = useState(false);
   const trimmedUniversity = universityQuery.trim();
-  const universityMatches = universityNameSuggestions
-    .filter(
-      (u) =>
-        trimmedUniversity.length === 0 ||
-        u.includes(trimmedUniversity),
-    )
-    .slice(0, 10);
+  const universityMatches =
+    trimmedUniversity.length === 0
+      ? []
+      : universityNameSuggestions
+          .filter((u) => u.includes(trimmedUniversity))
+          .slice(0, 10);
 
   return (
     <form
