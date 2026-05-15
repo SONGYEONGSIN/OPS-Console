@@ -49,6 +49,7 @@ const adminMe = {
 };
 
 const memberMe = { ...adminMe, email: "member@example.com", permission: "member" as const };
+const viewerMe = { ...adminMe, email: "viewer@example.com", permission: "viewer" as const };
 
 const validCreate = {
   email: "new@example.com",
@@ -88,6 +89,32 @@ describe("admin 가드", () => {
 
   it("restoreOperator — member 호출 시 차단", async () => {
     mockGetCurrentOperator.mockResolvedValue(memberMe);
+    const r = await restoreOperator("00000000-0000-0000-0000-000000000001");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/권한/);
+    expect(mockUpdateChain).not.toHaveBeenCalled();
+  });
+
+  it("createOperator — viewer 호출 시 차단", async () => {
+    mockGetCurrentOperator.mockResolvedValue(viewerMe);
+    const r = await createOperator(validCreate);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/권한/);
+    expect(mockInsertChain).not.toHaveBeenCalled();
+  });
+
+  it("updateOperator — viewer 호출 시 차단", async () => {
+    mockGetCurrentOperator.mockResolvedValue(viewerMe);
+    const r = await updateOperator("00000000-0000-0000-0000-000000000001", {
+      status: "inactive",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/권한/);
+    expect(mockUpdateChain).not.toHaveBeenCalled();
+  });
+
+  it("restoreOperator — viewer 호출 시 차단", async () => {
+    mockGetCurrentOperator.mockResolvedValue(viewerMe);
     const r = await restoreOperator("00000000-0000-0000-0000-000000000001");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/권한/);
