@@ -185,6 +185,37 @@ describe("ServiceCard", () => {
     expect(onNote).toHaveBeenCalledWith("5/20 마감");
   });
 
+  it("PR-5: showSubstituteSelect=false → 백업자 select 미렌더링", () => {
+    render(
+      <ServiceCard
+        detail={baseDetail}
+        backupOperators={operators}
+        contactCandidates={contactCandidates}
+        onSubstituteChange={vi.fn()}
+        onContactsChange={vi.fn()}
+        onNoteChange={vi.fn()}
+        onRemove={vi.fn()}
+        showSubstituteSelect={false}
+      />,
+    );
+    expect(screen.queryByLabelText("신입학 백업자")).toBeNull();
+  });
+
+  it("PR-5: showSubstituteSelect 미지정 (default true) → 백업자 select 노출", () => {
+    render(
+      <ServiceCard
+        detail={baseDetail}
+        backupOperators={operators}
+        contactCandidates={contactCandidates}
+        onSubstituteChange={vi.fn()}
+        onContactsChange={vi.fn()}
+        onNoteChange={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("신입학 백업자")).toBeInTheDocument();
+  });
+
   it("메모 비움 → onNoteChange(null)", () => {
     const onNote = vi.fn();
     render(

@@ -29,6 +29,8 @@ type Props = {
   onContactsChange: (contacts: string[]) => void;
   onNoteChange: (note: string | null) => void;
   onRemove: () => void;
+  /** PR-5: false면 헤더의 백업자 select 미렌더링 (single mode에서 사용) */
+  showSubstituteSelect?: boolean;
 };
 
 const MAX_CONTACTS = 20;
@@ -45,6 +47,7 @@ export function ServiceCard({
   onContactsChange,
   onNoteChange,
   onRemove,
+  showSubstituteSelect = true,
 }: Props) {
   const [contactQuery, setContactQuery] = useState("");
 
@@ -75,28 +78,30 @@ export function ServiceCard({
 
   return (
     <div className="border border-line-soft bg-washi-raised p-2.5">
-      {/* 헤더: 대학명 — 서비스명 / 백업자 select / × */}
+      {/* 헤더: 대학명 — 서비스명 / 백업자 select(옵션) / × */}
       <div className="flex items-center gap-2">
         <span className="flex-1 text-2xs text-ink-soft">
           {detail.university_name} — {detail.service_name}
         </span>
-        <select
-          aria-label={`${detail.service_name} 백업자`}
-          value={detail.substitute_email ?? ""}
-          onChange={(e) => {
-            const email = e.target.value;
-            const op = backupOperators.find((o) => o.email === email);
-            onSubstituteChange(email || null, op?.name ?? null);
-          }}
-          className="border border-line bg-cream px-1 py-0 text-2xs text-ink"
-        >
-          <option value="">기본 백업자</option>
-          {backupOperators.map((op) => (
-            <option key={op.email} value={op.email}>
-              {op.name}
-            </option>
-          ))}
-        </select>
+        {showSubstituteSelect && (
+          <select
+            aria-label={`${detail.service_name} 백업자`}
+            value={detail.substitute_email ?? ""}
+            onChange={(e) => {
+              const email = e.target.value;
+              const op = backupOperators.find((o) => o.email === email);
+              onSubstituteChange(email || null, op?.name ?? null);
+            }}
+            className="border border-line bg-cream px-1 py-0 text-2xs text-ink"
+          >
+            <option value="">선택…</option>
+            {backupOperators.map((op) => (
+              <option key={op.email} value={op.email}>
+                {op.name}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="button"
           aria-label={`${detail.service_name} 제거`}
