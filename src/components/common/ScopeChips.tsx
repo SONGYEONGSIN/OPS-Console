@@ -34,7 +34,7 @@ export function ScopeChips({ total, mineLabel }: Props) {
   }
 
   return (
-    <>
+    <div className="inline-flex">
       <button
         type="button"
         aria-label="전체"
@@ -69,6 +69,6 @@ export function ScopeChips({ total, mineLabel }: Props) {
           />
         )}
       </button>
-    </>
+    </div>
   );
 }

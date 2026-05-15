@@ -25,13 +25,16 @@ export function PageHeader({
   description,
   autoRefresh = false,
 }: Props) {
+  // Fragment 대신 div wrap — RSC 직렬화 시 Fragment children이 array로 노출되어
+  // React 19 "each child unique key" 경고. CrumbBar(washi)/ContentHead(cream) 둘 다
+  // block element라 div block parent는 layout 영향 0.
   return (
-    <>
+    <div>
       <CrumbBar pathname={pathname} />
       <header className="bg-cream px-9 pb-[18px] pt-6">
         <PageMeta items={meta} autoRefresh={autoRefresh} />
         <PageHeadline {...headline} description={description} />
       </header>
-    </>
+    </div>
   );
 }

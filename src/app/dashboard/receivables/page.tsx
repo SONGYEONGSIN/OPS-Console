@@ -76,6 +76,7 @@ export default async function ReceivablesPage() {
 
   const header = (
     <PageHeader
+      key="receivables-header"
       pathname={pathname}
       meta={config.meta}
       headline={config.headline}

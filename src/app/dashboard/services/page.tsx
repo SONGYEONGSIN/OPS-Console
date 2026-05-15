@@ -97,6 +97,8 @@ export default async function ServicesPage({
       }
     }
     if (totalFetched >= total) break;
+    // PGRST103 회피: 다음 page offset이 total 초과면 fetch 안 함 (partial response 안전망)
+    if (p * CHUNK >= total) break;
   }
   const servicesUniversityKeys = [...universityKeyMap.entries()].map(
     ([universityName, { key, maxSeq }]) => ({
@@ -106,8 +108,10 @@ export default async function ServicesPage({
     }),
   );
 
+  // RSC 경계로 element prop을 보낼 때 array로 직렬화되므로 각 element에 key 명시.
+  // div wrap만으론 부족 — Server → Client boundary에서 React 19가 array key 검사.
   const header = (
-    <>
+    <div key="services-header">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -115,7 +119,7 @@ export default async function ServicesPage({
         description={config.description}
       />
       <ServicesControls />
-    </>
+    </div>
   );
 
   async function onPersist(
@@ -182,8 +186,12 @@ export default async function ServicesPage({
       currentUserName={me?.displayName ?? me?.email ?? ""}
       servicesOperators={servicesOperators}
       servicesUniversityKeys={servicesUniversityKeys}
-      inlineFilters={<ScopeChips total={total} mineLabel="내 서비스" />}
-      footer={<ListPagination total={total} pageSize={30} />}
+      inlineFilters={
+        <ScopeChips key="services-scope" total={total} mineLabel="내 서비스" />
+      }
+      footer={
+        <ListPagination key="services-pagination" total={total} pageSize={30} />
+      }
       onPersist={onPersist}
     />
   );

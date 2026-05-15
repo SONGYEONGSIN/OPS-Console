@@ -77,14 +77,16 @@ export default async function ContactsPage({
     suggestFetched += rows.length;
     servicesForUni.push(...rows);
     if (suggestFetched >= total) break;
+    if (p * SUGGEST_CHUNK >= total) break; // PGRST103 회피
   }
   const universitySet = new Set<string>();
   for (const s of servicesForUni) universitySet.add(s.university_name);
   for (const c of contacts) universitySet.add(c.university_name);
   const universityNameSuggestions = [...universitySet].sort();
 
+  // RSC 경계로 element prop을 보낼 때 array로 직렬화되므로 각 element에 key 명시.
   const header = (
-    <>
+    <div key="contacts-header">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -92,7 +94,7 @@ export default async function ContactsPage({
         description={config.description}
       />
       <ContactsControls />
-    </>
+    </div>
   );
 
   async function onPersist(
@@ -147,7 +149,13 @@ export default async function ContactsPage({
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       universityNameSuggestions={universityNameSuggestions}
-      footer={<ListPagination total={total} pageSize={PAGE_SIZE} />}
+      footer={
+        <ListPagination
+          key="contacts-pagination"
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      }
       onPersist={onPersist}
     />
   );
