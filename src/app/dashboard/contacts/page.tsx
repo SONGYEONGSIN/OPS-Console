@@ -45,6 +45,9 @@ export default async function ContactsPage({
 
   const sp = await searchParams;
   const me = await getCurrentOperator();
+  // viewer는 actions.ts에서 server-side 차단되지만 UI 가드 일관성을 위해 동일 조건 적용.
+  const canEdit =
+    me?.permission === "admin" || me?.permission === "member";
 
   const filter: ContactsFilter = {
     search: sp.q,
@@ -144,9 +147,9 @@ export default async function ContactsPage({
       data={{ rows }}
       header={header}
       variant="contacts"
-      canCreate={!!me}
+      canCreate={canEdit}
       createLabel="+ 신규 연락처"
-      readOnly={!me}
+      readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       universityNameSuggestions={universityNameSuggestions}
       footer={

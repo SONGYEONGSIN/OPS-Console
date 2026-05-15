@@ -31,6 +31,9 @@ export default async function BackupPage() {
   );
 
   const me = await getCurrentOperator();
+  // viewer는 actions.ts에서 server-side 차단되지만 UI 가드 일관성을 위해 동일 조건 적용.
+  const canEdit =
+    me?.permission === "admin" || me?.permission === "member";
 
   const allOperators = await listOperators();
   const backupOperators = allOperators
@@ -144,9 +147,9 @@ export default async function BackupPage() {
       data={{ rows }}
       header={header}
       variant="backup"
-      canCreate={!!me}
+      canCreate={canEdit}
       createLabel="+ 백업 요청"
-      readOnly={!me}
+      readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       backupOperators={backupOperators}
       backupServiceCandidates={backupServiceCandidates}
