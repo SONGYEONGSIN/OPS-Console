@@ -5,6 +5,7 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ScopeChips } from "@/components/common/ScopeChips";
+import { ContractsControls } from "./ContractsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listContracts } from "@/features/contracts/queries";
@@ -18,7 +19,12 @@ const PAGE_SIZE = 30;
 export default async function ContractsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sheet?: string; page?: string; mine?: string }>;
+  searchParams: Promise<{
+    sheet?: string;
+    page?: string;
+    mine?: string;
+    q?: string;
+  }>;
 }) {
   const slug = "contracts";
   await requireMenu(slug);
@@ -38,13 +44,24 @@ export default async function ContractsPage({
     sheet: sheetFilter,
   });
 
+  // 검색 필터 — 대학명·넘버링 ilike (client-side, case-insensitive)
+  const qRaw = (sp.q ?? "").trim();
+  const qLower = qRaw.toLowerCase();
+  const qFiltered = qRaw
+    ? allContracts.filter(
+        (r) =>
+          r.name.toLowerCase().includes(qLower) ||
+          r.numbering.toLowerCase().includes(qLower),
+      )
+    : allContracts;
+
   // 내 계약 필터 — operator(Excel 운영자 컬럼)가 me.displayName과 일치하는 row만
   const mineFilter = sp.mine === "true";
   const meName = me?.displayName;
   const filteredRows =
     mineFilter && meName
-      ? allContracts.filter((r) => r.operator === meName)
-      : allContracts;
+      ? qFiltered.filter((r) => r.operator === meName)
+      : qFiltered;
   const total = filteredRows.length;
 
   // SharePoint은 전체 fetch가 비용 동일 — client-side slice 페이지네이션
@@ -55,12 +72,15 @@ export default async function ContractsPage({
   const config = resolvePageMeta(slug, meta, total);
 
   const header = (
-    <PageHeader
-      pathname={pathname}
-      meta={config.meta}
-      headline={config.headline}
-      description={config.description}
-    />
+    <>
+      <PageHeader
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+      />
+      <ContractsControls />
+    </>
   );
 
   return (
