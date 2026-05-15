@@ -90,7 +90,7 @@ export const sidebarSections: SbSection[] = [
           {
             ico: "·",
             label: "대학 연락처",
-            count: "87",
+            count: "",
             slug: "contacts",
             pattern: "list",
           },
@@ -100,7 +100,7 @@ export const sidebarSections: SbSection[] = [
         kind: "item",
         ico: "⌬",
         label: "백업 요청",
-        count: "1",
+        count: "",
         slug: "backup",
         pattern: "list",
       },
@@ -125,7 +125,7 @@ export const sidebarSections: SbSection[] = [
           {
             ico: "·",
             label: "서비스",
-            count: "179",
+            count: "",
             slug: "services",
             pattern: "list",
           },
