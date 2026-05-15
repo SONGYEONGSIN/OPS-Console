@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
+
+type Mode = "single" | "perService";
 
 type ServiceCandidate = {
   id: string;
@@ -26,6 +28,7 @@ export function BackupForm({
   const selectedIds = row.backupServices ?? [];
   const selectedDetail: ServiceCardDetail[] = row.backupServicesDetail ?? [];
   const [query, setQuery] = useState("");
+  const [mode, setMode] = useState<Mode>("single");
 
   const trimmedQuery = query.trim();
   const matches: ServiceCandidate[] =
@@ -75,12 +78,26 @@ export function BackupForm({
     setRow({ ...row, backupServicesDetail: next });
   }
 
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (mode === "perService") {
+      // DB의 backup_requests.substitute_email NOT NULL 충족용 — 첫 명시 카드의 백업자를 parent로
+      const firstAssigned = selectedDetail.find((s) => s.substitute_email);
+      if (firstAssigned && !row.substituteEmail) {
+        onSave({
+          ...row,
+          substituteEmail: firstAssigned.substitute_email ?? "",
+          substituteName: firstAssigned.substitute_name ?? "",
+        });
+        return;
+      }
+    }
+    onSave(row);
+  }
+
   return (
     <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSave(row);
-      }}
+      onSubmit={handleSubmit}
       className="space-y-3"
     >
       {row.owner && (
@@ -105,33 +122,63 @@ export function BackupForm({
         />
       </label>
 
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">기본 백업자</span>
-        <select
-          aria-label="기본 백업자"
-          value={row.substituteEmail ?? ""}
-          onChange={(e) => {
-            const email = e.target.value;
-            const op = backupOperators.find((o) => o.email === email);
-            setRow({
-              ...row,
-              substituteEmail: email,
-              substituteName: op?.name ?? "",
-            });
-          }}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          <option value="">선택…</option>
-          {backupOperators.map((op) => (
-            <option key={op.email} value={op.email}>
-              {op.name} ({op.email})
-            </option>
-          ))}
-        </select>
-        <span className="mt-0.5 block text-2xs text-muted">
-          서비스 카드에서 미지정 시 적용
-        </span>
-      </label>
+      {/* PR-5: 백업 방식 세그먼트 컨트롤 */}
+      <div className="block text-xs" role="radiogroup" aria-label="백업 방식">
+        <span className="mb-1 block text-muted">백업 방식</span>
+        <div className="inline-flex border border-line">
+          <button
+            type="button"
+            aria-pressed={mode === "single"}
+            onClick={() => setMode("single")}
+            className={`cursor-pointer border-none px-3 py-1 text-2xs ${
+              mode === "single"
+                ? "bg-ink text-cream"
+                : "bg-cream text-ink hover:bg-washi"
+            }`}
+          >
+            1명 일괄
+          </button>
+          <button
+            type="button"
+            aria-pressed={mode === "perService"}
+            onClick={() => setMode("perService")}
+            className={`cursor-pointer border-none border-l border-line px-3 py-1 text-2xs ${
+              mode === "perService"
+                ? "bg-ink text-cream"
+                : "bg-cream text-ink hover:bg-washi"
+            }`}
+          >
+            서비스별
+          </button>
+        </div>
+      </div>
+
+      {mode === "single" && (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">백업자</span>
+          <select
+            aria-label="백업자"
+            value={row.substituteEmail ?? ""}
+            onChange={(e) => {
+              const email = e.target.value;
+              const op = backupOperators.find((o) => o.email === email);
+              setRow({
+                ...row,
+                substituteEmail: email,
+                substituteName: op?.name ?? "",
+              });
+            }}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="">선택…</option>
+            {backupOperators.map((op) => (
+              <option key={op.email} value={op.email}>
+                {op.name} ({op.email})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">
@@ -201,6 +248,7 @@ export function BackupForm({
                 detail={s}
                 backupOperators={backupOperators}
                 contactCandidates={backupContactCandidates}
+                showSubstituteSelect={mode === "perService"}
                 onSubstituteChange={(email, name) =>
                   updateService(s.id, {
                     substitute_email: email,

@@ -63,7 +63,83 @@ describe("BackupForm", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it("기본 백업자 select 변경 시 substituteEmail + substituteName 둘 다 설정", () => {
+  it("PR-5: 기본 mode='single' — 상단 백업자 select 노출", () => {
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText("백업자")).toBeInTheDocument();
+  });
+
+  it("PR-5: '서비스별' 클릭 시 상단 백업자 select 부재", () => {
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "서비스별" }));
+    expect(screen.queryByLabelText("백업자")).toBeNull();
+  });
+
+  it("PR-5: '서비스별' 모드 + 카드 백업자 명시 + 저장 → onSave에 parent.substituteEmail 자동 채움", () => {
+    const onSave = vi.fn();
+    const rowWithService = {
+      ...baseRow,
+      backupServices: ["11111111-1111-4111-8111-111111111111"],
+      backupServicesDetail: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          service_id: 5072006,
+          service_name: "신입학",
+          university_name: "경찰대학",
+          substitute_email: "kim@example.com",
+          substitute_name: "Kim",
+          contacts: [],
+          note_md: null,
+        },
+      ],
+    };
+    render(
+      <BackupForm
+        row={rowWithService}
+        setRow={() => {}}
+        onSave={onSave}
+        onCancel={() => {}}
+        backupOperators={[{ email: "kim@example.com", name: "Kim" }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "서비스별" }));
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        substituteEmail: "kim@example.com",
+        substituteName: "Kim",
+      }),
+    );
+  });
+
+  it("PR-5: '1명 일괄'로 다시 전환 → 상단 백업자 select 라벨 '백업자'", () => {
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "서비스별" }));
+    fireEvent.click(screen.getByRole("button", { name: "1명 일괄" }));
+    expect(screen.getByLabelText("백업자")).toBeInTheDocument();
+  });
+
+  it("백업자 select 변경 시 substituteEmail + substituteName 둘 다 설정", () => {
     const setRow = vi.fn();
     const operators = [
       { email: "alice@example.com", name: "Alice" },
@@ -78,7 +154,7 @@ describe("BackupForm", () => {
         backupOperators={operators}
       />,
     );
-    fireEvent.change(screen.getByLabelText("기본 백업자"), {
+    fireEvent.change(screen.getByLabelText("백업자"), {
       target: { value: "alice@example.com" },
     });
     expect(setRow).toHaveBeenCalledWith(
@@ -99,7 +175,7 @@ describe("BackupForm", () => {
         backupOperators={[]}
       />,
     );
-    const select = screen.getByLabelText("기본 백업자") as HTMLSelectElement;
+    const select = screen.getByLabelText("백업자") as HTMLSelectElement;
     expect(select.options.length).toBe(1);
     expect(select.options[0].textContent).toContain("선택");
   });
