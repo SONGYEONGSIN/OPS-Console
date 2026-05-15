@@ -1,10 +1,12 @@
 ---
 plan_id: 20260515-181000-backup-services-restructure
-status: in_progress
+status: completed
 created: 2026-05-15T09:10:00Z
+completed: 2026-05-16T00:00:00Z
 hard_gate: full
 source: brainstorm:.claude/memory/brainstorms/20260515-180000-backup-services-restructure.md
 branch: feat/backup-services-restructure
+pr: 113
 ---
 
 # Plan: 백업 요청 서비스 단위 재구조화
@@ -214,3 +216,4 @@ T1 마이그레이션 ───┐
 | 시각 | 단계 | 상태 변경 | 비고 |
 |------|------|-----------|------|
 | 2026-05-15T09:10:00Z | — | plan 생성 | brainstorm 20260515-180000 입력. branch `feat/backup-services-restructure` |
+| 2026-05-16T00:00:00Z | T1~T12 | 일괄 완료 | PR #113 squash merge (commit 2080d6d). 마이그레이션 20260525 prod 적용 검증 완료 |
