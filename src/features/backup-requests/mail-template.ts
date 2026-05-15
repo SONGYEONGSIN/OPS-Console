@@ -66,6 +66,30 @@ function serviceChipsHtml(items: ServiceDetail[]): string {
     .join("")}</div>`;
 }
 
+/**
+ * PR-3: services를 substitute_email별로 그룹화.
+ * 미지정 행은 default substitute_email로 fallback.
+ * back-compat: 모든 서비스가 동일 substitute_email이면 단일 그룹 (1명 일괄 케이스 동일 동작).
+ */
+export function groupServicesBySubstitute(
+  services: ServiceDetail[],
+  defaultSubstituteEmail: string,
+  defaultSubstituteName: string,
+): Map<string, { name: string; services: ServiceDetail[] }> {
+  const groups = new Map<string, { name: string; services: ServiceDetail[] }>();
+  for (const s of services) {
+    const email = s.substitute_email ?? defaultSubstituteEmail;
+    const name = s.substitute_name ?? defaultSubstituteName;
+    const existing = groups.get(email);
+    if (existing) {
+      existing.services.push(s);
+    } else {
+      groups.set(email, { name, services: [s] });
+    }
+  }
+  return groups;
+}
+
 /** 메일 본문 HTML */
 export function buildBackupMailHtml(input: BackupMailInput): string {
   const range = leaveRangeLabel(input);

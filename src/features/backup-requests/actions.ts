@@ -55,9 +55,12 @@ export async function createBackupRequest(
   const parent = data as BackupRequestRow;
 
   if (parsed.data.services.length > 0) {
-    const joinRows = parsed.data.services.map((service_id) => ({
+    // PR-3: 서비스별 substitute_email/name. 미지정 시 default(backup_requests.substitute_*)로 fallback
+    const joinRows = parsed.data.services.map((s) => ({
       backup_request_id: parent.id,
-      service_id,
+      service_id: s.service_id,
+      substitute_email: s.substitute_email ?? parsed.data.substitute_email,
+      substitute_name: s.substitute_name ?? parsed.data.substitute_name,
     }));
     const { error: joinErr } = await supabase
       .from("backup_request_services")

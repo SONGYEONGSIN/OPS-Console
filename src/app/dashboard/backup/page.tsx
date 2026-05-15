@@ -99,10 +99,16 @@ export default async function BackupPage() {
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
     if (isNew) {
+      // PR-3: services는 {service_id, substitute_email?, substitute_name?}[] 튜플 배열
+      const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
+        service_id: d.id,
+        substitute_email: d.substitute_email ?? null,
+        substitute_name: d.substitute_name ?? null,
+      }));
       const result = await createBackupRequest({
         substitute_email: row.substituteEmail ?? "",
         substitute_name: row.substituteName ?? "",
-        services: row.backupServices ?? [],
+        services: servicesPayload,
         contacts: row.backupContacts ?? [],
         summary_md: row.summary ?? "",
         leave_start_date: row.leaveStartDate ?? null,

@@ -63,16 +63,27 @@ export function BackupView({ row }: ViewProps) {
             담당 서비스
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {servicesDetail.map((s) => (
-              <Link
-                key={s.id}
-                href={`/dashboard/services?q=${encodeURIComponent(s.service_name)}`}
-                className="inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft hover:bg-washi-raised hover:text-ink"
-                title={`${s.university_name} — ${s.service_name}`}
-              >
-                {s.university_name} — {s.service_name}
-              </Link>
-            ))}
+            {servicesDetail.map((s) => {
+              // PR-3: 서비스별 백업자가 default(row.substituteName)와 다를 때만 표시
+              const showSubstitute =
+                s.substitute_name &&
+                s.substitute_name !== row.substituteName;
+              return (
+                <Link
+                  key={s.id}
+                  href={`/dashboard/services?q=${encodeURIComponent(s.service_name)}`}
+                  className="inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft hover:bg-washi-raised hover:text-ink"
+                  title={`${s.university_name} — ${s.service_name}${showSubstitute ? ` / 백업자: ${s.substitute_name}` : ""}`}
+                >
+                  {s.university_name} — {s.service_name}
+                  {showSubstitute && (
+                    <span className="ml-1 text-muted">
+                      / 백업자: {s.substitute_name}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </section>
       )}

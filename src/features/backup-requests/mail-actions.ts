@@ -14,7 +14,11 @@ import {
   type MailStatus,
 } from "./schemas";
 import { getBackupRequestById } from "./queries";
-import { buildBackupMailSubject, buildBackupMailHtml } from "./mail-template";
+import {
+  buildBackupMailSubject,
+  buildBackupMailHtml,
+  groupServicesBySubstitute,
+} from "./mail-template";
 
 export type SendBackupMailResult =
   | { ok: true; status: MailStatus; messageId?: string }
@@ -89,24 +93,43 @@ export async function sendBackupRequestMail(
     senderOperatorId = null;
   }
 
-  // dry_run 분기 — Graph 호출 없이 이력만 적재
+  // PR-3: 서비스별 백업자 그룹화. 미지정 시 default(backup_requests.substitute_*)로 fallback.
+  // 그룹 0개(서비스 미지정)면 default 1명에게 빈 services로 발송.
+  const groups =
+    backup.services_detail.length > 0
+      ? groupServicesBySubstitute(
+          backup.services_detail,
+          backup.substitute_email,
+          backup.substitute_name,
+        )
+      : new Map([
+          [
+            backup.substitute_email,
+            { name: backup.substitute_name, services: [] },
+          ],
+        ]);
+
+  // dry_run 분기 — Graph 호출 없이 이력만 적재 (그룹별)
   if (dryRun) {
-    await admin.from("backup_request_mail_sends").insert({
-      sent_at: new Date().toISOString(),
-      sender_operator_id: senderOperatorId,
-      backup_request_id: backup.id,
-      recipient_email: backup.substitute_email,
-      recipient_name: backup.substitute_name,
-      cc_emails: [],
-      graph_message_id: null,
-      status: "dry_run",
-      error_message: null,
-    });
+    const sentAt = new Date().toISOString();
+    for (const [email, group] of groups) {
+      await admin.from("backup_request_mail_sends").insert({
+        sent_at: sentAt,
+        sender_operator_id: senderOperatorId,
+        backup_request_id: backup.id,
+        recipient_email: email,
+        recipient_name: group.name,
+        cc_emails: [],
+        graph_message_id: null,
+        status: "dry_run",
+        error_message: null,
+      });
+    }
     await admin
       .from("backup_requests")
       .update({
         mail_status: "dry_run",
-        mail_sent_at: new Date().toISOString(),
+        mail_sent_at: sentAt,
       })
       .eq("id", backup.id);
     revalidatePath(BACKUP_PATH);
@@ -140,69 +163,77 @@ export async function sendBackupRequestMail(
     return { ok: false, error: `pdf_error: ${msg}` };
   }
 
-  // 메일 본문
-  const mailInput = {
-    requesterName: me.displayName ?? me.email,
-    requesterEmail: backup.requester_email,
-    substituteName: backup.substitute_name,
-    substituteEmail: backup.substitute_email,
-    leaveStartDate: backup.leave_start_date ?? null,
-    leaveEndDate: backup.leave_end_date ?? null,
-    services: backup.services_detail,
-    contacts: backup.contacts,
-    summaryMd: backup.summary_md,
-  };
-  const subject = buildBackupMailSubject(mailInput);
-  const html = buildBackupMailHtml(mailInput);
+  // PR-3: 백업자별 메일 loop. 그룹마다 자기 담당 services만 본문에 포함.
+  // PDF는 *전체 services 포함* 1개 (모든 백업자에게 동일 첨부 — 시각적 통합 컨텍스트).
+  let anyFail = false;
+  let lastError: string | null = null;
+  const sentAt = new Date().toISOString();
+  for (const [recipientEmail, group] of groups) {
+    const mailInput = {
+      requesterName: me.displayName ?? me.email,
+      requesterEmail: backup.requester_email,
+      substituteName: group.name,
+      substituteEmail: recipientEmail,
+      leaveStartDate: backup.leave_start_date ?? null,
+      leaveEndDate: backup.leave_end_date ?? null,
+      services: group.services,
+      contacts: backup.contacts,
+      summaryMd: backup.summary_md,
+    };
+    const subject = buildBackupMailSubject(mailInput);
+    const html = buildBackupMailHtml(mailInput);
 
-  // Graph 발송
-  const sendRes = await sendGraphMail({
-    senderUserId: me.email,
-    toEmail: backup.substitute_email,
-    toName: backup.substitute_name,
-    cc,
-    subject,
-    html,
-    attachments: [
-      {
-        name: `backup-${backup.id.slice(0, 8)}.pdf`,
-        contentType: "application/pdf",
-        contentBytes: pdfBuffer.toString("base64"),
-      },
-    ],
-  });
+    const sendRes = await sendGraphMail({
+      senderUserId: me.email,
+      toEmail: recipientEmail,
+      toName: group.name,
+      cc,
+      subject,
+      html,
+      attachments: [
+        {
+          name: `backup-${backup.id.slice(0, 8)}.pdf`,
+          contentType: "application/pdf",
+          contentBytes: pdfBuffer.toString("base64"),
+        },
+      ],
+    });
 
-  const status: MailStatus = sendRes.ok ? "sent" : "mail_failed";
-  const errorMessage = sendRes.ok ? null : sendRes.error;
-  const graphMessageId = sendRes.ok ? (sendRes.messageId ?? null) : null;
+    const errorMessage = sendRes.ok ? null : sendRes.error;
+    const graphMessageId = sendRes.ok ? (sendRes.messageId ?? null) : null;
+    if (!sendRes.ok) {
+      anyFail = true;
+      lastError = errorMessage;
+    }
 
-  // 이력 적재 (service_role bypass)
-  await admin.from("backup_request_mail_sends").insert({
-    sent_at: new Date().toISOString(),
-    sender_operator_id: senderOperatorId,
-    backup_request_id: backup.id,
-    recipient_email: backup.substitute_email,
-    recipient_name: backup.substitute_name,
-    cc_emails: ccEmails,
-    graph_message_id: graphMessageId,
-    status: sendRes.ok ? "sent" : "failed",
-    error_message: errorMessage,
-  });
+    // 이력 적재 (service_role bypass) — 백업자당 1 row
+    await admin.from("backup_request_mail_sends").insert({
+      sent_at: sentAt,
+      sender_operator_id: senderOperatorId,
+      backup_request_id: backup.id,
+      recipient_email: recipientEmail,
+      recipient_name: group.name,
+      cc_emails: ccEmails,
+      graph_message_id: graphMessageId,
+      status: sendRes.ok ? "sent" : "failed",
+      error_message: errorMessage,
+    });
+  }
 
-  // mail_status update
+  const finalStatus: MailStatus = anyFail ? "mail_failed" : "sent";
   await admin
     .from("backup_requests")
     .update({
-      mail_status: status,
-      mail_sent_at: sendRes.ok ? new Date().toISOString() : null,
-      mail_error: errorMessage,
+      mail_status: finalStatus,
+      mail_sent_at: anyFail ? null : sentAt,
+      mail_error: lastError,
     })
     .eq("id", backup.id);
 
   revalidatePath(BACKUP_PATH);
 
-  if (sendRes.ok) {
-    return { ok: true, status: "sent", messageId: sendRes.messageId };
+  if (!anyFail) {
+    return { ok: true, status: "sent" };
   }
-  return { ok: false, error: errorMessage ?? "send_failed" };
+  return { ok: false, error: lastError ?? "send_failed" };
 }

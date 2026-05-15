@@ -13,12 +13,15 @@ export type MailStatus = z.infer<typeof mailStatusSchema>;
 /**
  * services join row 상세 — PR-2: backup_request_services join + services 본체에서 필요한 필드만.
  * View/Table/메일 본문 렌더에 사용.
+ * PR-3: 서비스별 백업자 (substitute_email/name) 추가. 미지정 시 backup_requests.substitute_*가 fallback.
  */
 export const serviceDetailSchema = z.object({
   id: z.string().uuid(),
   service_id: z.number().int().nonnegative(),
   service_name: z.string().min(1),
   university_name: z.string().min(1),
+  substitute_email: z.string().email().nullable().optional(),
+  substitute_name: z.string().min(1).nullable().optional(),
 });
 
 export type ServiceDetail = z.infer<typeof serviceDetailSchema>;
@@ -49,13 +52,24 @@ export type BackupRequestRow = z.infer<typeof backupRequestRowSchema>;
 
 /**
  * 신규 등록 입력. requester_email/_team은 server action에서 현재 operator로 채움.
- * PR-2: services는 services.id (uuid) 배열. EditForm에서 검색 → click으로만 추가 가능.
+ * PR-3: services 입력은 {service_id, substitute_email?, substitute_name?}[] 튜플 배열.
+ * substitute_* 미지정 시 default(backup_requests.substitute_email)가 server action에서 채움.
  */
+export const backupRequestServiceInputSchema = z.object({
+  service_id: z.string().uuid(),
+  substitute_email: z.string().email().nullable().optional(),
+  substitute_name: z.string().min(1).nullable().optional(),
+});
+
+export type BackupRequestServiceInput = z.infer<
+  typeof backupRequestServiceInputSchema
+>;
+
 export const backupRequestCreateSchema = z
   .object({
     substitute_email: z.string().email("백업자 이메일 형식 오류"),
     substitute_name: z.string().min(1, "백업자 이름 누락"),
-    services: z.array(z.string().uuid()).max(20).default([]),
+    services: z.array(backupRequestServiceInputSchema).max(20).default([]),
     contacts: z.array(z.string().min(1)).max(20).default([]),
     summary_md: z
       .string()
@@ -96,7 +110,7 @@ export const backupRequestUpdateSchema = z
   .object({
     substitute_email: z.string().email().optional(),
     substitute_name: z.string().min(1).optional(),
-    services: z.array(z.string().uuid()).max(20).optional(),
+    services: z.array(backupRequestServiceInputSchema).max(20).optional(),
     contacts: z.array(z.string().min(1)).max(20).optional(),
     summary_md: z.string().min(1).max(5000).optional(),
     leave_start_date: z.string().min(1).nullable().optional(),

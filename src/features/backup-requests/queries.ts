@@ -10,11 +10,14 @@ import { backupRequestRowSchema, type BackupRequestRow } from "./schemas";
  *   ]
  * → services_detail 배열로 평탄화 (zod 파싱 전 transform).
  */
+// PR-3: backup_request_services.substitute_email/name 추가 → join row에서 함께 select
 const SELECT_WITH_SERVICES =
-  "*, backup_request_services(service_id, services!inner(id, service_id, service_name, university_name))";
+  "*, backup_request_services(service_id, substitute_email, substitute_name, services!inner(id, service_id, service_name, university_name))";
 
 type NestedServiceRow = {
   service_id?: unknown;
+  substitute_email?: unknown;
+  substitute_name?: unknown;
   services?: unknown;
 };
 
@@ -26,7 +29,12 @@ function flattenServicesDetail(row: unknown): unknown {
   if (Array.isArray(nested)) {
     for (const item of nested as NestedServiceRow[]) {
       if (item && typeof item.services === "object" && item.services) {
-        details.push(item.services);
+        // services 객체에 join row의 substitute_email/name 합쳐서 평탄화
+        details.push({
+          ...(item.services as Record<string, unknown>),
+          substitute_email: item.substitute_email ?? null,
+          substitute_name: item.substitute_name ?? null,
+        });
       }
     }
   }
