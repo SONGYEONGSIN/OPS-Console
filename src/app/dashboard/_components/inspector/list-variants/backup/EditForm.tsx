@@ -191,6 +191,7 @@ export function BackupForm({
           onChange={setQuery}
           placeholder="대학명·서비스명 검색"
           ariaLabel="담당 서비스 검색"
+          size="sm"
         />
         {matches.length > 0 && (
           <ul
@@ -246,6 +247,7 @@ export function BackupForm({
           onChange={setContactQuery}
           placeholder="대학명·고객명 검색"
           ariaLabel="대학 연락처 검색"
+          size="sm"
         />
         {contactMatches.length > 0 && (
           <ul

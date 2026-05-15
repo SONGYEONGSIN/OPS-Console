@@ -66,6 +66,7 @@ export function ServicesForm({
           }}
           placeholder="대학명을 검색하거나 직접 입력"
           ariaLabel="대학명"
+          size="sm"
         />
         {!justSelected && universityMatches.length > 0 && (
           <ul
