@@ -4,8 +4,8 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ServicesControls } from "./ServicesControls";
-import { ServicesScopeChips } from "./ServicesScopeChips";
-import { ServicesPagination } from "./ServicesPagination";
+import { ScopeChips } from "@/components/common/ScopeChips";
+import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
@@ -182,8 +182,8 @@ export default async function ServicesPage({
       currentUserName={me?.displayName ?? me?.email ?? ""}
       servicesOperators={servicesOperators}
       servicesUniversityKeys={servicesUniversityKeys}
-      inlineFilters={<ServicesScopeChips total={total} />}
-      footer={<ServicesPagination total={total} pageSize={30} />}
+      inlineFilters={<ScopeChips total={total} mineLabel="내 서비스" />}
+      footer={<ListPagination total={total} pageSize={30} />}
       onPersist={onPersist}
     />
   );

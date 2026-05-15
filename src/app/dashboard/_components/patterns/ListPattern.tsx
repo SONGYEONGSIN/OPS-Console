@@ -175,6 +175,18 @@ export type ListRow = {
   source?: string;
   /** services 도메인 — import 시각 (ISO, nullable) */
   importedAt?: string | null;
+  /** contracts 도메인 — 시트 dim ("4년제" | "전문대" | "초중고" | "대학원" | "기타") */
+  contractSheet?: string;
+  /** contracts 도메인 — 넘버링 (D-1-01 등) */
+  numbering?: string;
+  /** contracts 도메인 — 계약진행현황 text (계약완료 / 공란) */
+  contractStatus?: string;
+  /** contracts 도메인 — 서비스여부 (Y / 공란) */
+  serviceActive?: string;
+  /** contracts 도메인 — 수수료(VAT포함) display text */
+  feeAmount?: string;
+  /** contracts 도메인 — 시트별 전체 컬럼 (헤더 → 값). 인스펙터 raw view */
+  contractRaw?: Record<string, string>;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

@@ -4,25 +4,21 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ListSelect } from "@/components/common/ListSelect";
-import {
-  UNIVERSITY_TYPE_OPTIONS,
-  CATEGORY_OPTIONS,
-} from "@/features/services/constants";
+import { CONTRACT_SHEETS } from "@/features/contracts/schemas";
 
 const DEBOUNCE_MS = 300;
 
 /**
- * services 페이지 — 검색 input + 대학구분·카테고리 필터 select.
- * 본인 필터 칩과 페이지네이션은 별도 컴포넌트(ServicesMineChip / ServicesPagination).
+ * contracts 페이지 — 검색 input(?q) + 시트 select(?sheet).
+ * 본인 필터 chip과 페이지네이션은 별도 (ScopeChips / ListPagination).
  */
-export function ServicesControls() {
+export function ContractsControls() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
   const [q, setQ] = useState(params.get("q") ?? "");
-  const universityType = params.get("universityType") ?? "";
-  const category = params.get("category") ?? "";
+  const sheet = params.get("sheet") ?? "";
 
   useEffect(() => {
     const current = params.get("q") ?? "";
@@ -52,21 +48,14 @@ export function ServicesControls() {
       <ListSearch
         value={q}
         onChange={setQ}
-        placeholder="대학명·서비스명 검색"
+        placeholder="대학명·넘버링 검색"
       />
       <ListSelect
-        value={universityType}
-        onChange={(v) => navigate({ universityType: v || null })}
-        options={UNIVERSITY_TYPE_OPTIONS}
-        placeholder="대학구분 전체"
-        ariaLabel="대학구분 필터"
-      />
-      <ListSelect
-        value={category}
-        onChange={(v) => navigate({ category: v || null })}
-        options={CATEGORY_OPTIONS}
-        placeholder="카테고리 전체"
-        ariaLabel="카테고리 필터"
+        value={sheet}
+        onChange={(v) => navigate({ sheet: v || null })}
+        options={CONTRACT_SHEETS}
+        placeholder="시트 전체"
+        ariaLabel="시트 필터"
       />
     </div>
   );
