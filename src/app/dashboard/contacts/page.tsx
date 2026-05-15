@@ -84,18 +84,18 @@ export default async function ContactsPage({
   for (const c of contacts) universitySet.add(c.university_name);
   const universityNameSuggestions = [...universitySet].sort();
 
-  // RSC 직렬화 시 Fragment children이 array로 변환 → React 19 key 경고. 명시 key 부여
+  // Fragment 대신 div wrap — Fragment children이 RSC 직렬화 시 array로 노출되어
+  // React 19에서 "each child unique key" 경고. div는 단일 element라 안전 (layout 영향 0).
   const header = (
-    <>
+    <div>
       <PageHeader
-        key="page-header"
         pathname={pathname}
         meta={config.meta}
         headline={config.headline}
         description={config.description}
       />
-      <ContactsControls key="controls" />
-    </>
+      <ContactsControls />
+    </div>
   );
 
   async function onPersist(
