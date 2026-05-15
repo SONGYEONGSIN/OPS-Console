@@ -27,7 +27,7 @@ export default async function BackupPage() {
   const requests = await listBackupRequests();
   const ownerByEmail = await buildOwnerMap(requests);
   const rows: ListRow[] = requests.map((r) =>
-    backupRequestToListRow(r, ownerByEmail, contactsById),
+    backupRequestToListRow(r, ownerByEmail),
   );
 
   const me = await getCurrentOperator();
@@ -84,10 +84,6 @@ export default async function BackupPage() {
     customer_name: c.customer_name,
     university_name: c.university_name,
   }));
-  // join용 id → detail map (backupRequestToListRow에서 활용)
-  const contactsById = new Map(
-    backupContactCandidates.map((c) => [c.id, c] as const),
-  );
 
   const header = (
     <PageHeader
@@ -105,17 +101,18 @@ export default async function BackupPage() {
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
     if (isNew) {
-      // PR-3: services는 {service_id, substitute_email?, substitute_name?}[] 튜플 배열
+      // PR-3/4: services는 {service_id, substitute_email?, substitute_name?, contacts, note_md?}[] 튜플
       const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
         service_id: d.id,
         substitute_email: d.substitute_email ?? null,
         substitute_name: d.substitute_name ?? null,
+        contacts: d.contacts,
+        note_md: d.note_md,
       }));
       const result = await createBackupRequest({
         substitute_email: row.substituteEmail ?? "",
         substitute_name: row.substituteName ?? "",
         services: servicesPayload,
-        contacts: row.backupContacts ?? [],
         summary_md: row.summary ?? "",
         leave_start_date: row.leaveStartDate ?? null,
         leave_end_date: row.leaveEndDate ?? null,
@@ -176,18 +173,7 @@ async function buildOwnerMap(
 function backupRequestToListRow(
   r: BackupRequestRow,
   ownerByEmail: Map<string, string>,
-  contactsById: Map<
-    string,
-    { id: string; customer_name: string; university_name: string }
-  >,
 ): ListRow {
-  // 기존 자유 텍스트 chips는 contactsById에 없음 → detail 비어있게 됨 (표시 X)
-  const backupContactsDetail = r.contacts
-    .map((id) => contactsById.get(id))
-    .filter(
-      (c): c is { id: string; customer_name: string; university_name: string } =>
-        c != null,
-    );
   return {
     id: r.id,
     name: deriveTitle(r),
@@ -197,8 +183,6 @@ function backupRequestToListRow(
     substituteName: r.substitute_name,
     backupServices: r.services_detail.map((s) => s.id),
     backupServicesDetail: r.services_detail,
-    backupContacts: r.contacts,
-    backupContactsDetail,
     summary: r.summary_md,
     leaveStartDate: r.leave_start_date ?? null,
     leaveEndDate: r.leave_end_date ?? null,

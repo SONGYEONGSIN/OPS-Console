@@ -6,7 +6,7 @@ import {
   MAIL_STATUS_VALUES,
 } from "../schemas";
 
-// PR-3 — services는 {service_id, substitute_email?, substitute_name?}[] 튜플 배열
+// PR-4: services 원소가 contacts/note_md를 담는다. top-level contacts는 제거됨.
 const baseInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
@@ -14,7 +14,6 @@ const baseInput = {
     { service_id: "11111111-1111-4111-8111-111111111111" },
     { service_id: "22222222-2222-4222-8222-222222222222" },
   ],
-  contacts: ["서울대", "연세대"],
   summary_md: "백업 요청 내용",
   leave_start_date: "2026-05-20",
   leave_end_date: "2026-05-25",
@@ -44,6 +43,50 @@ describe("backupRequestCreateSchema", () => {
       ],
     });
     expect(r.success).toBe(true);
+  });
+
+  it("PR-4: 서비스에 contacts/note_md 동반 → parse 후 보존", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      services: [
+        {
+          service_id: "11111111-1111-4111-8111-111111111111",
+          contacts: ["연세대 — 양라윤", "고려대 — 홍길동"],
+          note_md: "5/20 마감 임박. 양식 첨부",
+        },
+      ],
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.services[0]?.contacts).toEqual([
+        "연세대 — 양라윤",
+        "고려대 — 홍길동",
+      ]);
+      expect(r.data.services[0]?.note_md).toBe("5/20 마감 임박. 양식 첨부");
+    }
+  });
+
+  it("PR-4: 서비스에 contacts/note_md 미동반 → contacts 빈 배열 default, note_md undefined", () => {
+    const r = backupRequestCreateSchema.safeParse(baseInput);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.services[0]?.contacts).toEqual([]);
+      expect(r.data.services[0]?.note_md).toBeUndefined();
+    }
+  });
+
+  it("PR-4: 서비스의 contacts 20개 초과 거부", () => {
+    const tooManyContacts = Array.from({ length: 21 }, (_, i) => `c${i}`);
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      services: [
+        {
+          service_id: "11111111-1111-4111-8111-111111111111",
+          contacts: tooManyContacts,
+        },
+      ],
+    });
+    expect(r.success).toBe(false);
   });
 
   it("uuid 형식이 아닌 service_id 거부", () => {
@@ -82,11 +125,10 @@ describe("backupRequestCreateSchema", () => {
     expect(r.success).toBe(false);
   });
 
-  it("빈 services·contacts 허용", () => {
+  it("빈 services 허용", () => {
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
       services: [],
-      contacts: [],
     });
     expect(r.success).toBe(true);
   });
@@ -113,7 +155,7 @@ describe("backupRequestCreateSchema", () => {
 });
 
 describe("serviceDetailSchema", () => {
-  it("정상 join row 파싱", () => {
+  it("정상 join row 파싱 (contacts 빈 배열 default, note_md nullable)", () => {
     const r = serviceDetailSchema.safeParse({
       id: "11111111-1111-4111-8111-111111111111",
       service_id: 5072006,
@@ -121,6 +163,28 @@ describe("serviceDetailSchema", () => {
       university_name: "경찰대학 대학원",
     });
     expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.contacts).toEqual([]);
+      expect(r.data.note_md).toBeNull();
+    }
+  });
+
+  it("PR-4: contacts/note_md 포함 join row 보존", () => {
+    const r = serviceDetailSchema.safeParse({
+      id: "11111111-1111-4111-8111-111111111111",
+      service_id: 5072006,
+      service_name: "신입학",
+      university_name: "경찰대학",
+      substitute_email: "alice@example.com",
+      substitute_name: "Alice",
+      contacts: ["경찰대 — 강민호"],
+      note_md: "5/20 마감",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.contacts).toEqual(["경찰대 — 강민호"]);
+      expect(r.data.note_md).toBe("5/20 마감");
+    }
   });
 
   it("service_id 음수 거부", () => {
@@ -135,7 +199,7 @@ describe("serviceDetailSchema", () => {
 });
 
 describe("backupRequestRowSchema", () => {
-  it("정상 DB row 파싱 (services 없음 + services_detail 있음)", () => {
+  it("PR-4: DB row 파싱 (top-level contacts 컬럼 부재)", () => {
     const row = {
       id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
       requester_email: "bob@example.com",
@@ -148,9 +212,10 @@ describe("backupRequestRowSchema", () => {
           service_id: 5072006,
           service_name: "Graduate School of Police Studies",
           university_name: "경찰대학 대학원",
+          contacts: ["경찰대 — 강민호"],
+          note_md: "디테일",
         },
       ],
-      contacts: [],
       summary_md: "내용",
       leave_start_date: "2026-05-20",
       leave_end_date: "2026-05-25",
@@ -171,7 +236,6 @@ describe("backupRequestRowSchema", () => {
       requester_team: "ops",
       substitute_email: "alice@example.com",
       substitute_name: "Alice",
-      contacts: [],
       summary_md: "내용",
       leave_start_date: null,
       leave_end_date: null,

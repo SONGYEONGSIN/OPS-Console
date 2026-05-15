@@ -11,7 +11,6 @@ const sampleRow: ListRow = {
   substituteEmail: "alice@example.com",
   substituteName: "Alice",
   backupServices: ["서비스1"],
-  backupContacts: ["서울대"],
   leaveStartDate: "2026-05-20",
   leaveEndDate: "2026-05-25",
   mailStatus: "sent",

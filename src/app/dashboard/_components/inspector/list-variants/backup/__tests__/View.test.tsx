@@ -17,32 +17,69 @@ const row: ListRow = {
       service_id: 5072006,
       service_name: "서비스1",
       university_name: "한양대학교",
+      contacts: [],
+      note_md: null,
     },
   ],
-  backupContacts: ["서울대"],
   leaveStartDate: "2026-05-20",
   leaveEndDate: "2026-05-25",
   mailStatus: "sent",
-  summary: "백업 내용입니다",
+  summary: "공통 메모입니다",
   mailError: null,
 };
 
 describe("BackupView", () => {
-  it("백업자·기간·서비스·연락처·요약 노출 (services는 대학명·서비스명 정규화)", () => {
+  it("백업자·기간·서비스 카드·공통 메모 노출", () => {
     render(<BackupView row={row} />);
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText(/2026-05-20/)).toBeInTheDocument();
-    // PR-2: services chip은 "대학명 — 서비스명" 형태
     expect(screen.getByText(/한양대학교\s*—\s*서비스1/)).toBeInTheDocument();
-    expect(screen.getByText("서울대")).toBeInTheDocument();
-    expect(screen.getByText("백업 내용입니다")).toBeInTheDocument();
+    expect(screen.getByText("공통 메모입니다")).toBeInTheDocument();
   });
 
-  it("services chip은 /dashboard/services?q= deep-link로 렌더", () => {
+  it("services 카드는 /dashboard/services?q= deep-link로 렌더", () => {
     const { container } = render(<BackupView row={row} />);
     const link = container.querySelector('a[href*="/dashboard/services?q="]');
     expect(link).not.toBeNull();
     expect(link?.getAttribute("href")).toContain(encodeURIComponent("서비스1"));
+  });
+
+  it("PR-4: 일괄 대학 연락처 섹션 부재", () => {
+    render(<BackupView row={row} />);
+    // top-level 일괄 연락처 영역은 사라짐 (서비스 카드에 흡수)
+    expect(screen.queryByText(/^대학 연락처$/)).toBeNull();
+  });
+
+  it("PR-4: 서비스 카드 내 contacts chips 표시", () => {
+    render(
+      <BackupView
+        row={{
+          ...row,
+          backupServicesDetail: [
+            {
+              ...row.backupServicesDetail![0],
+              contacts: ["한양대 — 양라윤", "한양대 — 박지호"],
+            },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("한양대 — 양라윤")).toBeInTheDocument();
+    expect(screen.getByText("한양대 — 박지호")).toBeInTheDocument();
+  });
+
+  it("PR-4: 서비스 카드 내 note_md 메모 표시", () => {
+    render(
+      <BackupView
+        row={{
+          ...row,
+          backupServicesDetail: [
+            { ...row.backupServicesDetail![0], note_md: "5/20 마감 임박" },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("5/20 마감 임박")).toBeInTheDocument();
   });
 
   it("mail_failed 시 에러 메시지 노출", () => {

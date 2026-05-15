@@ -18,7 +18,7 @@ describe("blankBackupRow", () => {
     expect(row.status).toBe("active");
     expect(row.mailStatus).toBe("pending");
     expect(row.backupServices).toEqual([]);
-    expect(row.backupContacts).toEqual([]);
+    expect(row.backupServicesDetail).toEqual([]);
     expect(row.owner).toBe("Bob");
   });
 

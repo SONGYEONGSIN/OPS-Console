@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
+import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
 
 type ServiceCandidate = {
   id: string;
@@ -11,11 +12,7 @@ type ServiceCandidate = {
   university_name: string;
 };
 
-type ContactCandidate = {
-  id: string;
-  customer_name: string;
-  university_name: string;
-};
+const MAX_SERVICES = 20;
 
 export function BackupForm({
   row,
@@ -26,15 +23,9 @@ export function BackupForm({
   backupServiceCandidates = [],
   backupContactCandidates = [],
 }: EditFormProps) {
-  // PR-2: services multi-select 상태 — 후보 검색 + 선택 chips
   const selectedIds = row.backupServices ?? [];
-  const selectedDetail = row.backupServicesDetail ?? [];
+  const selectedDetail: ServiceCardDetail[] = row.backupServicesDetail ?? [];
   const [query, setQuery] = useState("");
-
-  // 대학 연락처 multi-select 상태 (담당 서비스와 동일 패턴)
-  const selectedContactIds = row.backupContacts ?? [];
-  const selectedContactsDetail = row.backupContactsDetail ?? [];
-  const [contactQuery, setContactQuery] = useState("");
 
   const trimmedQuery = query.trim();
   const matches: ServiceCandidate[] =
@@ -49,25 +40,22 @@ export function BackupForm({
           )
           .slice(0, 10);
 
-  const trimmedContactQuery = contactQuery.trim();
-  const contactMatches: ContactCandidate[] =
-    trimmedContactQuery.length === 0
-      ? []
-      : backupContactCandidates
-          .filter(
-            (c) =>
-              !selectedContactIds.includes(c.id) &&
-              (c.university_name.includes(trimmedContactQuery) ||
-                c.customer_name.includes(trimmedContactQuery)),
-          )
-          .slice(0, 10);
-
   function addService(c: ServiceCandidate) {
-    if (selectedIds.length >= 20) return;
+    if (selectedIds.length >= MAX_SERVICES) return;
+    const newDetail: ServiceCardDetail = {
+      id: c.id,
+      service_id: c.service_id,
+      service_name: c.service_name,
+      university_name: c.university_name,
+      substitute_email: null,
+      substitute_name: null,
+      contacts: [],
+      note_md: null,
+    };
     setRow({
       ...row,
       backupServices: [...selectedIds, c.id],
-      backupServicesDetail: [...selectedDetail, c],
+      backupServicesDetail: [...selectedDetail, newDetail],
     });
     setQuery("");
   }
@@ -80,22 +68,11 @@ export function BackupForm({
     });
   }
 
-  function addContact(c: ContactCandidate) {
-    if (selectedContactIds.length >= 20) return;
-    setRow({
-      ...row,
-      backupContacts: [...selectedContactIds, c.id],
-      backupContactsDetail: [...selectedContactsDetail, c],
-    });
-    setContactQuery("");
-  }
-
-  function removeContact(id: string) {
-    setRow({
-      ...row,
-      backupContacts: selectedContactIds.filter((x) => x !== id),
-      backupContactsDetail: selectedContactsDetail.filter((x) => x.id !== id),
-    });
+  function updateService(id: string, patch: Partial<ServiceCardDetail>) {
+    const next = selectedDetail.map((x) =>
+      x.id === id ? { ...x, ...patch } : x,
+    );
+    setRow({ ...row, backupServicesDetail: next });
   }
 
   return (
@@ -129,9 +106,9 @@ export function BackupForm({
       </label>
 
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">백업자</span>
+        <span className="mb-1 block text-muted">기본 백업자</span>
         <select
-          aria-label="백업자"
+          aria-label="기본 백업자"
           value={row.substituteEmail ?? ""}
           onChange={(e) => {
             const email = e.target.value;
@@ -151,6 +128,9 @@ export function BackupForm({
             </option>
           ))}
         </select>
+        <span className="mt-0.5 block text-2xs text-muted">
+          서비스 카드에서 미지정 시 적용
+        </span>
       </label>
 
       <div className="grid grid-cols-2 gap-3">
@@ -181,10 +161,10 @@ export function BackupForm({
         </label>
       </div>
 
-      {/* PR-2: 담당 서비스 multi-select — 검색 + click으로만 추가, max 20 */}
+      {/* 담당 서비스 — 검색 + 카드 컬렉션 */}
       <div className="block text-xs">
         <span className="mb-1 flex items-baseline justify-between text-muted">
-          <span>담당 서비스 ({selectedIds.length}/20)</span>
+          <span>담당 서비스 ({selectedIds.length}/{MAX_SERVICES})</span>
         </span>
         <ListSearch
           value={query}
@@ -214,122 +194,40 @@ export function BackupForm({
           </ul>
         )}
         {selectedDetail.length > 0 && (
-          <div className="mt-2 flex flex-col gap-1">
+          <div className="mt-2 flex flex-col gap-2">
             {selectedDetail.map((s) => (
-              <span
+              <ServiceCard
                 key={s.id}
-                className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
-              >
-                <span className="flex-1">
-                  {s.university_name} — {s.service_name}
-                </span>
-                {/* PR-3: 서비스별 백업자 select (default 빈값 = 기본 백업자 사용) */}
-                <select
-                  aria-label={`${s.service_name} 백업자`}
-                  value={s.substitute_email ?? ""}
-                  onChange={(e) => {
-                    const email = e.target.value;
-                    const op = backupOperators.find((o) => o.email === email);
-                    const next = selectedDetail.map((x) =>
-                      x.id === s.id
-                        ? {
-                            ...x,
-                            substitute_email: email || null,
-                            substitute_name: op?.name ?? null,
-                          }
-                        : x,
-                    );
-                    setRow({ ...row, backupServicesDetail: next });
-                  }}
-                  className="border border-line bg-cream px-1 py-0 text-2xs text-ink"
-                >
-                  <option value="">기본 백업자</option>
-                  {backupOperators.map((op) => (
-                    <option key={op.email} value={op.email}>
-                      {op.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  aria-label={`${s.service_name} 제거`}
-                  onClick={() => removeService(s.id)}
-                  className="cursor-pointer border-none bg-transparent px-0.5 text-muted hover:text-vermilion"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 대학 연락처 multi-select — contacts 도메인 검색 dropdown (담당 서비스와 동일 패턴) */}
-      <div className="block text-xs">
-        <span className="mb-1 flex items-baseline justify-between text-muted">
-          <span>대학 연락처 ({selectedContactIds.length}/20)</span>
-        </span>
-        <ListSearch
-          value={contactQuery}
-          onChange={setContactQuery}
-          placeholder="대학명·고객명 검색"
-          ariaLabel="대학 연락처 검색"
-          size="sm"
-        />
-        {contactMatches.length > 0 && (
-          <ul
-            aria-label="대학 연락처 검색 결과"
-            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-washi-raised"
-          >
-            {contactMatches.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => addContact(c)}
-                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
-                >
-                  <span className="text-ink-soft">{c.university_name}</span>
-                  <span className="mx-1 text-muted">—</span>
-                  <span>{c.customer_name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {selectedContactsDetail.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {selectedContactsDetail.map((c) => (
-              <span
-                key={c.id}
-                className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
-              >
-                <span>
-                  {c.university_name} — {c.customer_name}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`${c.customer_name} 제거`}
-                  onClick={() => removeContact(c.id)}
-                  className="cursor-pointer border-none bg-transparent px-0.5 text-muted hover:text-vermilion"
-                >
-                  ×
-                </button>
-              </span>
+                detail={s}
+                backupOperators={backupOperators}
+                contactCandidates={backupContactCandidates}
+                onSubstituteChange={(email, name) =>
+                  updateService(s.id, {
+                    substitute_email: email,
+                    substitute_name: name,
+                  })
+                }
+                onContactsChange={(contacts) =>
+                  updateService(s.id, { contacts })
+                }
+                onNoteChange={(note_md) => updateService(s.id, { note_md })}
+                onRemove={() => removeService(s.id)}
+              />
             ))}
           </div>
         )}
       </div>
 
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">백업 내용</span>
+        <span className="mb-1 block text-muted">공통 메모</span>
         <textarea
-          aria-label="백업 내용"
+          aria-label="공통 메모"
           value={row.summary ?? ""}
           onChange={(e) => setRow({ ...row, summary: e.target.value })}
           rows={6}
           maxLength={5000}
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="진행 상태, 마감, 주의사항 (Markdown 가능)"
+          placeholder="전체 휴가 컨텍스트 — 일정·인사말 (Markdown 가능)"
         />
       </label>
 

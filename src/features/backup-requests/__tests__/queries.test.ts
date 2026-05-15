@@ -39,6 +39,7 @@ const serviceB = {
 
 /**
  * supabase 응답은 중첩 join shape — backup_request_services 배열 안에 services 본체.
+ * PR-4: top-level contacts 컬럼 제거. backup_request_services 원소에 note_md/contacts 추가.
  */
 const validRow = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -46,7 +47,6 @@ const validRow = {
   requester_team: "ops",
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
-  contacts: [],
   summary_md: "내용",
   leave_start_date: "2026-05-20",
   leave_end_date: "2026-05-25",
@@ -56,8 +56,22 @@ const validRow = {
   created_at: "2026-05-13T00:00:00Z",
   updated_at: "2026-05-13T00:00:00Z",
   backup_request_services: [
-    { service_id: serviceA.id, services: serviceA },
-    { service_id: serviceB.id, services: serviceB },
+    {
+      service_id: serviceA.id,
+      substitute_email: null,
+      substitute_name: null,
+      note_md: null,
+      contacts: [],
+      services: serviceA,
+    },
+    {
+      service_id: serviceB.id,
+      substitute_email: null,
+      substitute_name: null,
+      note_md: null,
+      contacts: [],
+      services: serviceB,
+    },
   ],
 };
 
@@ -99,6 +113,29 @@ describe("listBackupRequests", () => {
     });
     const rows = await listBackupRequests();
     expect(rows.length).toBe(1);
+  });
+
+  it("PR-4: services join row의 contacts/note_md 평탄화 시 보존", async () => {
+    const richRow = {
+      ...validRow,
+      backup_request_services: [
+        {
+          service_id: serviceA.id,
+          substitute_email: null,
+          substitute_name: null,
+          note_md: "5/20 마감 임박",
+          contacts: ["경찰대 — 강민호", "고려대 — 홍길동"],
+          services: serviceA,
+        },
+      ],
+    };
+    mockResult.mockReturnValue({ data: [richRow], error: null });
+    const rows = await listBackupRequests();
+    expect(rows[0]?.services_detail[0]?.note_md).toBe("5/20 마감 임박");
+    expect(rows[0]?.services_detail[0]?.contacts).toEqual([
+      "경찰대 — 강민호",
+      "고려대 — 홍길동",
+    ]);
   });
 });
 

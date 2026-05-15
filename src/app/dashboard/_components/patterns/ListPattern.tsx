@@ -122,7 +122,7 @@ export type ListRow = {
   substituteName?: string;
   /** backup 도메인 — 담당 서비스 id 배열 (services.id uuid). EditForm 입력 + create action 페이로드 */
   backupServices?: string[];
-  /** backup 도메인 — 담당 서비스 join 상세 (대학명·서비스명 + PR-3 서비스별 백업자). View/Table 표시용 */
+  /** backup 도메인 — 담당 서비스 join 상세. PR-3 서비스별 백업자 + PR-4 연락처/메모. View/Table/EditForm */
   backupServicesDetail?: {
     id: string;
     service_id: number;
@@ -131,14 +131,10 @@ export type ListRow = {
     /** PR-3: 서비스별 백업자 — 미지정 시 backup_requests.substitute_*로 fallback */
     substitute_email?: string | null;
     substitute_name?: string | null;
-  }[];
-  /** backup 도메인 — 대학 연락처 chips (contacts.id 배열) */
-  backupContacts?: string[];
-  /** backup 도메인 — 대학 연락처 join 상세 (이름·대학명). View/Table 표시용 */
-  backupContactsDetail?: {
-    id: string;
-    customer_name: string;
-    university_name: string;
+    /** PR-4: 서비스별 연락처 chip 라벨 array */
+    contacts: string[];
+    /** PR-4: 서비스별 메모 (markdown) */
+    note_md: string | null;
   }[];
   /** backup 도메인 — 휴가/외근 시작일 (YYYY-MM-DD, nullable) */
   leaveStartDate?: string | null;

@@ -17,7 +17,6 @@ export function blankBackupRow(opts?: { currentUserName?: string }): ListRow {
     // PR-2: services는 uuid[] (EditForm input), services_detail은 join 결과 (view 전용)
     backupServices: [],
     backupServicesDetail: [],
-    backupContacts: [],
     leaveStartDate: null,
     leaveEndDate: null,
     mailStatus: "pending",

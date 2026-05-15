@@ -1,9 +1,11 @@
 ---
 plan_id: 20260515-170153-backup-substitute-per-service
-status: in_progress
+status: completed
 created: 2026-05-15T08:01:53Z
+completed: 2026-05-15T08:14:36Z
 hard_gate: brief
 source: brainstorm:.claude/memory/brainstorms/20260515-165751-backup-substitute-per-service.md
+pr: 102
 ---
 
 # Plan: 백업자 서비스별 분리 (PR-3)
@@ -134,3 +136,4 @@ brainstorm 대안 A — 기존 N:M 테이블 확장. 새 테이블/RLS 변경 �
 | 시각 | 단계 | 상태 변경 | 비고 |
 |------|------|-----------|------|
 | 2026-05-15T08:01:53Z | — | plan 생성 | brainstorm 20260515-165751 입력 |
+| 2026-05-15T08:14:36Z | T1~T11 | 일괄 완료 | PR #102 머지 (commit 578a4ba). T1 마이그레이션 ~ T11 회귀 테스트까지 단일 PR로 묶어 처리 |
