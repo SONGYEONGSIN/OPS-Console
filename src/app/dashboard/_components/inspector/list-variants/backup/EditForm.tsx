@@ -122,15 +122,15 @@ export function BackupForm({
         />
       </label>
 
-      {/* PR-5: 백업 방식 세그먼트 컨트롤 */}
-      <div className="block text-xs" role="radiogroup" aria-label="백업 방식">
-        <span className="mb-1 block text-muted">백업 방식</span>
-        <div className="inline-flex border border-line">
+      {/* PR-5: 백업자 설정 세그먼트 컨트롤 */}
+      <div className="block text-xs" role="radiogroup" aria-label="백업자 설정">
+        <span className="mb-1 block text-muted">백업자 설정</span>
+        <div className="flex w-full border border-line">
           <button
             type="button"
             aria-pressed={mode === "single"}
             onClick={() => setMode("single")}
-            className={`cursor-pointer border-none px-3 py-1 text-2xs ${
+            className={`flex-1 cursor-pointer border-none px-3 py-1.5 text-xs ${
               mode === "single"
                 ? "bg-ink text-cream"
                 : "bg-cream text-ink hover:bg-washi"
@@ -142,7 +142,7 @@ export function BackupForm({
             type="button"
             aria-pressed={mode === "perService"}
             onClick={() => setMode("perService")}
-            className={`cursor-pointer border-none border-l border-line px-3 py-1 text-2xs ${
+            className={`flex-1 cursor-pointer border-none border-l border-line px-3 py-1.5 text-xs ${
               mode === "perService"
                 ? "bg-ink text-cream"
                 : "bg-cream text-ink hover:bg-washi"
