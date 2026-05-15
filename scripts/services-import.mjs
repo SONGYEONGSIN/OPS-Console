@@ -1,5 +1,16 @@
 // scripts/services-import.mjs
 //
+// ⚠️ DEPRECATED — 재실행 금지.
+//
+// 정책 결정 (2026-05-15): services 도메인의 source-of-truth는 Folio DB.
+// 마이그레이션 `20260522_services_service_id_renumber.sql`로 학교키 + write_start_at 시퀀스
+// 재부여 완료. 본 스크립트는 CSV 원본의 service_id를 그대로 upsert 하므로 *재실행 시
+// 재부여된 service_id가 원본 값으로 덮어쓰여진다*. 운영부 Sheets는 더 이상 Folio와 동기 안 함.
+//
+// 신규 services row는 `/dashboard/services` "+ 신규 서비스" UI로 등록.
+//
+// 본 스크립트는 historical 기록(초기 import 절차 / dry-run 매칭률 도출 로직)으로만 보존.
+//
 // services 도메인 — Google Sheets CSV + 로컬 Excel 카테고리 dict 일회성 import.
 //
 // 두 소스를 service_id 기준 join:
