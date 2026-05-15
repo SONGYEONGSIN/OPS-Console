@@ -154,7 +154,6 @@ export async function sendBackupRequestMail(
       leaveStartDate: backup.leave_start_date ?? null,
       leaveEndDate: backup.leave_end_date ?? null,
       services: backup.services_detail,
-      contacts: backup.contacts,
       summaryMd: backup.summary_md,
       createdAt: backup.created_at,
     });
@@ -177,7 +176,6 @@ export async function sendBackupRequestMail(
       leaveStartDate: backup.leave_start_date ?? null,
       leaveEndDate: backup.leave_end_date ?? null,
       services: group.services,
-      contacts: backup.contacts,
       summaryMd: backup.summary_md,
     };
     const subject = buildBackupMailSubject(mailInput);

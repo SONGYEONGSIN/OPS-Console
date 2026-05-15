@@ -86,9 +86,12 @@ const backupRow = {
       service_id: 5072006,
       service_name: "서비스1",
       university_name: "한양대학교",
+      substitute_email: null,
+      substitute_name: null,
+      contacts: ["한양대 — 양라윤"],
+      note_md: "서비스1 메모",
     },
   ],
-  contacts: ["서울대"],
   summary_md: "내용",
   leave_start_date: "2026-05-20",
   leave_end_date: "2026-05-25",
@@ -199,5 +202,54 @@ describe("sendBackupRequestMail", () => {
 
     expect(r.ok).toBe(false);
     expect(mockSendGraphMail).not.toHaveBeenCalled();
+  });
+
+  it("PR-4: 백업자 2명 → sendGraphMail 2회, 각 본문에 자기 서비스의 contacts/note_md만", async () => {
+    process.env.MAIL_DRY_RUN = "false";
+    mockGetCurrentOperator.mockResolvedValue(requester);
+    mockGetById.mockResolvedValue({
+      ...backupRow,
+      services_detail: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          service_id: 5072006,
+          service_name: "신입학",
+          university_name: "경찰대학",
+          substitute_email: "kim@example.com",
+          substitute_name: "Kim",
+          contacts: ["경찰대 — 강민호"],
+          note_md: "5/20 마감",
+        },
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          service_id: 1165060,
+          service_name: "외국인전형",
+          university_name: "연세대학교",
+          substitute_email: "park@example.com",
+          substitute_name: "Park",
+          contacts: ["연세대 — 박지호"],
+          note_md: "양식 첨부",
+        },
+      ],
+    });
+    mockSendGraphMail.mockResolvedValue({ ok: true, messageId: "m" });
+
+    const r = await sendBackupRequestMail({ backup_request_id: backupRow.id });
+
+    expect(r.ok).toBe(true);
+    expect(mockSendGraphMail).toHaveBeenCalledTimes(2);
+    const call1 = mockSendGraphMail.mock.calls[0][0];
+    const call2 = mockSendGraphMail.mock.calls[1][0];
+    // 첫 그룹(Kim)의 본문에 자기 contact/note 만, Park 것은 없음
+    const kimCall = call1.toEmail === "kim@example.com" ? call1 : call2;
+    const parkCall = call1.toEmail === "park@example.com" ? call1 : call2;
+    expect(kimCall.html).toContain("경찰대 — 강민호");
+    expect(kimCall.html).toContain("5/20 마감");
+    expect(kimCall.html).not.toContain("연세대 — 박지호");
+    expect(kimCall.html).not.toContain("양식 첨부");
+    expect(parkCall.html).toContain("연세대 — 박지호");
+    expect(parkCall.html).toContain("양식 첨부");
+    expect(parkCall.html).not.toContain("경찰대 — 강민호");
+    delete process.env.MAIL_DRY_RUN;
   });
 });

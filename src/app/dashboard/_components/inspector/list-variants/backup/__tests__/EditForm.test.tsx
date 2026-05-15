@@ -11,7 +11,7 @@ const baseRow: ListRow = {
   substituteEmail: "",
   substituteName: "",
   backupServices: [],
-  backupContacts: [],
+  backupServicesDetail: [],
   leaveStartDate: null,
   leaveEndDate: null,
   mailStatus: "pending",
@@ -19,7 +19,7 @@ const baseRow: ListRow = {
 };
 
 describe("BackupForm", () => {
-  it("필드 입력 시 setRow 호출 (요약)", () => {
+  it("필드 입력 시 setRow 호출 (공통 메모)", () => {
     const setRow = vi.fn();
     render(
       <BackupForm
@@ -29,7 +29,7 @@ describe("BackupForm", () => {
         onCancel={() => {}}
       />,
     );
-    fireEvent.change(screen.getByLabelText("백업 내용"), {
+    fireEvent.change(screen.getByLabelText("공통 메모"), {
       target: { value: "내용" },
     });
     expect(setRow).toHaveBeenCalled();
@@ -63,7 +63,7 @@ describe("BackupForm", () => {
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it("백업자 select 변경 시 substituteEmail + substituteName 둘 다 설정", () => {
+  it("기본 백업자 select 변경 시 substituteEmail + substituteName 둘 다 설정", () => {
     const setRow = vi.fn();
     const operators = [
       { email: "alice@example.com", name: "Alice" },
@@ -78,7 +78,7 @@ describe("BackupForm", () => {
         backupOperators={operators}
       />,
     );
-    fireEvent.change(screen.getByLabelText("백업자"), {
+    fireEvent.change(screen.getByLabelText("기본 백업자"), {
       target: { value: "alice@example.com" },
     });
     expect(setRow).toHaveBeenCalledWith(
@@ -99,8 +99,80 @@ describe("BackupForm", () => {
         backupOperators={[]}
       />,
     );
-    const select = screen.getByLabelText("백업자") as HTMLSelectElement;
+    const select = screen.getByLabelText("기본 백업자") as HTMLSelectElement;
     expect(select.options.length).toBe(1);
     expect(select.options[0].textContent).toContain("선택");
+  });
+
+  it("PR-4: 일괄 대학 연락처 섹션 부재", () => {
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    // 기존 "대학 연락처 (0/20)" 일괄 input 사라짐. "대학 연락처"는 서비스 카드 내부에만 존재
+    expect(screen.queryByText(/^대학 연락처 \(0\/20\)$/)).toBeNull();
+  });
+
+  it("PR-4: 서비스 검색·추가 → backupServicesDetail에 contacts:[]+note_md:null로 초기화된 detail 추가", () => {
+    const setRow = vi.fn();
+    const candidates = [
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        service_id: 5072006,
+        service_name: "신입학",
+        university_name: "경찰대학",
+      },
+    ];
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={setRow}
+        onSave={() => {}}
+        onCancel={() => {}}
+        backupServiceCandidates={candidates}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("담당 서비스 검색"), {
+      target: { value: "경찰" },
+    });
+    fireEvent.click(screen.getByText("신입학"));
+    const [[next]] = setRow.mock.calls;
+    expect(next.backupServicesDetail).toHaveLength(1);
+    expect(next.backupServicesDetail[0]).toMatchObject({
+      id: candidates[0].id,
+      service_name: "신입학",
+      university_name: "경찰대학",
+      contacts: [],
+      note_md: null,
+    });
+  });
+
+  it("PR-4: 서비스 카드 헤더 노출 (선택된 서비스만큼)", () => {
+    render(
+      <BackupForm
+        row={{
+          ...baseRow,
+          backupServices: ["11111111-1111-4111-8111-111111111111"],
+          backupServicesDetail: [
+            {
+              id: "11111111-1111-4111-8111-111111111111",
+              service_id: 5072006,
+              service_name: "신입학",
+              university_name: "경찰대학",
+              contacts: [],
+              note_md: null,
+            },
+          ],
+        }}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByText("경찰대학 — 신입학")).toBeInTheDocument();
   });
 });

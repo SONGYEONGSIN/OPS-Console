@@ -14,6 +14,7 @@ export type MailStatus = z.infer<typeof mailStatusSchema>;
  * services join row 상세 — PR-2: backup_request_services join + services 본체에서 필요한 필드만.
  * View/Table/메일 본문 렌더에 사용.
  * PR-3: 서비스별 백업자 (substitute_email/name) 추가. 미지정 시 backup_requests.substitute_*가 fallback.
+ * PR-4: 서비스별 연락처/메모 추가. contacts는 chip 표시 라벨 array, note_md는 markdown 메모.
  */
 export const serviceDetailSchema = z.object({
   id: z.string().uuid(),
@@ -22,6 +23,8 @@ export const serviceDetailSchema = z.object({
   university_name: z.string().min(1),
   substitute_email: z.string().email().nullable().optional(),
   substitute_name: z.string().min(1).nullable().optional(),
+  contacts: z.array(z.string()).max(20).default([]),
+  note_md: z.string().nullable().default(null),
 });
 
 export type ServiceDetail = z.infer<typeof serviceDetailSchema>;
@@ -37,7 +40,6 @@ export const backupRequestRowSchema = z.object({
   substitute_email: z.string().email(),
   substitute_name: z.string().min(1),
   services_detail: z.array(serviceDetailSchema).default([]),
-  contacts: z.array(z.string()),
   summary_md: z.string().min(1),
   leave_start_date: z.string().nullable().optional(),
   leave_end_date: z.string().nullable().optional(),
@@ -54,11 +56,14 @@ export type BackupRequestRow = z.infer<typeof backupRequestRowSchema>;
  * 신규 등록 입력. requester_email/_team은 server action에서 현재 operator로 채움.
  * PR-3: services 입력은 {service_id, substitute_email?, substitute_name?}[] 튜플 배열.
  * substitute_* 미지정 시 default(backup_requests.substitute_email)가 server action에서 채움.
+ * PR-4: contacts/note_md를 서비스 단위로 입력. top-level contacts는 제거됨.
  */
 export const backupRequestServiceInputSchema = z.object({
   service_id: z.string().uuid(),
   substitute_email: z.string().email().nullable().optional(),
   substitute_name: z.string().min(1).nullable().optional(),
+  contacts: z.array(z.string().min(1)).max(20).default([]),
+  note_md: z.string().nullable().optional(),
 });
 
 export type BackupRequestServiceInput = z.infer<
@@ -70,7 +75,6 @@ export const backupRequestCreateSchema = z
     substitute_email: z.string().email("백업자 이메일 형식 오류"),
     substitute_name: z.string().min(1, "백업자 이름 누락"),
     services: z.array(backupRequestServiceInputSchema).max(20).default([]),
-    contacts: z.array(z.string().min(1)).max(20).default([]),
     summary_md: z
       .string()
       .min(1, "백업 내용은 비울 수 없습니다")
@@ -111,7 +115,6 @@ export const backupRequestUpdateSchema = z
     substitute_email: z.string().email().optional(),
     substitute_name: z.string().min(1).optional(),
     services: z.array(backupRequestServiceInputSchema).max(20).optional(),
-    contacts: z.array(z.string().min(1)).max(20).optional(),
     summary_md: z.string().min(1).max(5000).optional(),
     leave_start_date: z.string().min(1).nullable().optional(),
     leave_end_date: z.string().min(1).nullable().optional(),

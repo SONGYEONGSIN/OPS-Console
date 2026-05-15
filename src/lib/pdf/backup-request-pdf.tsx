@@ -31,13 +31,15 @@ function ensureFontRegistered() {
 
 /**
  * PR-2: services는 join 결과 — 대학명·서비스명 정규화 표기에 사용.
- * (text[]에서 ServiceDetail[]로 진화)
+ * PR-4: 서비스별 contacts(연락처 chips) + note_md(메모) 동반.
  */
 export type PdfServiceDetail = {
   id: string;
   service_id: number;
   service_name: string;
   university_name: string;
+  contacts: string[];
+  note_md: string | null;
 };
 
 export type BackupRequestPdfInput = {
@@ -48,7 +50,6 @@ export type BackupRequestPdfInput = {
   leaveStartDate: string | null;
   leaveEndDate: string | null;
   services: PdfServiceDetail[];
-  contacts: string[];
   summaryMd: string;
   createdAt: string;
 };
@@ -111,6 +112,35 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
     fontSize: 10,
+  },
+  serviceCard: {
+    borderWidth: 1,
+    borderColor: "#eeeeee",
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 8,
+  },
+  serviceHeader: {
+    fontSize: 11,
+    color: "#1a1a1a",
+    marginBottom: 6,
+  },
+  serviceMetaLabel: {
+    fontSize: 9,
+    color: "#666666",
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  noteBox: {
+    backgroundColor: "#fafafa",
+    padding: 8,
+    borderRadius: 3,
+    marginTop: 4,
+  },
+  noteText: {
+    fontSize: 10,
+    lineHeight: 1.5,
+    color: "#444444",
   },
   summaryBox: {
     backgroundColor: "#f4eddd",
@@ -188,38 +218,42 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
           <Text style={styles.metaValue}>{leaveRange}</Text>
         </View>
 
-        {input.services.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>담당 서비스</Text>
-            <View style={styles.chipRow}>
-              {input.services.map((s) => (
-                <Text key={`svc-${s.id}`} style={styles.chip}>
-                  {`${s.university_name} — ${s.service_name}`}
-                </Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {input.contacts.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>대학 연락처</Text>
-            <View style={styles.chipRow}>
-              {input.contacts.map((c, i) => (
-                <Text key={`ct-${i}`} style={styles.chip}>
-                  {c}
-                </Text>
-              ))}
-            </View>
-          </View>
-        )}
-
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>백업 내용</Text>
+          <Text style={styles.sectionLabel}>공통 메모</Text>
           <View style={styles.summaryBox}>
             <Text style={styles.summaryText}>{input.summaryMd}</Text>
           </View>
         </View>
+
+        {input.services.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>담당 서비스</Text>
+            {input.services.map((s) => (
+              <View key={`svc-${s.id}`} style={styles.serviceCard}>
+                <Text style={styles.serviceHeader}>
+                  {`${s.university_name} — ${s.service_name}`}
+                </Text>
+                {s.contacts.length > 0 && (
+                  <>
+                    <Text style={styles.serviceMetaLabel}>연락처</Text>
+                    <View style={styles.chipRow}>
+                      {s.contacts.map((c, i) => (
+                        <Text key={`ct-${s.id}-${i}`} style={styles.chip}>
+                          {c}
+                        </Text>
+                      ))}
+                    </View>
+                  </>
+                )}
+                {s.note_md && (
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteText}>{s.note_md}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.footer}>
           이 문서는 Folio에서 자동 생성되었습니다.

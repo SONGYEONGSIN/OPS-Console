@@ -4,17 +4,26 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * supabase 모킹 — backup_requests insert(.select.single) + backup_request_services insert.
  * from("table")에 따라 분기. join insert는 mockJoinInsertResult가 제어.
  */
-const { mockInsertResult, mockJoinInsertResult, mockGetCurrentOperator } =
-  vi.hoisted(() => {
-    const mockInsertResult = vi.fn();
-    const mockJoinInsertResult = vi.fn();
-    const mockGetCurrentOperator = vi.fn();
-    return {
-      mockInsertResult,
-      mockJoinInsertResult,
-      mockGetCurrentOperator,
-    };
-  });
+const {
+  mockInsertResult,
+  mockJoinInsertResult,
+  mockGetCurrentOperator,
+  joinInsertCalls,
+  parentInsertCalls,
+} = vi.hoisted(() => {
+  const mockInsertResult = vi.fn();
+  const mockJoinInsertResult = vi.fn();
+  const mockGetCurrentOperator = vi.fn();
+  const joinInsertCalls: unknown[] = [];
+  const parentInsertCalls: unknown[] = [];
+  return {
+    mockInsertResult,
+    mockJoinInsertResult,
+    mockGetCurrentOperator,
+    joinInsertCalls,
+    parentInsertCalls,
+  };
+});
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
@@ -25,15 +34,21 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) => {
       if (table === "backup_request_services") {
         return {
-          insert: () => Promise.resolve(mockJoinInsertResult()),
+          insert: (rows: unknown) => {
+            joinInsertCalls.push(rows);
+            return Promise.resolve(mockJoinInsertResult());
+          },
         };
       }
       return {
-        insert: () => ({
-          select: () => ({
-            single: () => Promise.resolve(mockInsertResult()),
-          }),
-        }),
+        insert: (payload: unknown) => {
+          parentInsertCalls.push(payload);
+          return {
+            select: () => ({
+              single: () => Promise.resolve(mockInsertResult()),
+            }),
+          };
+        },
       };
     },
   })),
@@ -45,7 +60,7 @@ vi.mock("@/features/auth/queries", () => ({
 
 import { createBackupRequest } from "../actions";
 
-// PR-3 — services는 {service_id, substitute_email?, substitute_name?}[] 튜플 배열
+// PR-3/4 — services는 {service_id, substitute_email?, substitute_name?, contacts?, note_md?}[] 튜플
 const validInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
@@ -53,7 +68,6 @@ const validInput = {
     { service_id: "11111111-1111-4111-8111-111111111111" },
     { service_id: "22222222-2222-4222-8222-222222222222" },
   ],
-  contacts: ["c1"],
   summary_md: "백업 내용",
   leave_start_date: "2026-05-20",
   leave_end_date: "2026-05-25",
@@ -73,7 +87,6 @@ const parentRow = {
   requester_team: "ops",
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
-  contacts: ["c1"],
   summary_md: "백업 내용",
   leave_start_date: "2026-05-20",
   leave_end_date: "2026-05-25",
@@ -89,6 +102,8 @@ describe("createBackupRequest", () => {
     mockInsertResult.mockReset();
     mockJoinInsertResult.mockReset();
     mockGetCurrentOperator.mockReset();
+    joinInsertCalls.length = 0;
+    parentInsertCalls.length = 0;
   });
 
   it("정상 입력 + 인증 → 부모 insert + join rows insert → ok", async () => {
@@ -158,5 +173,62 @@ describe("createBackupRequest", () => {
     const r = await createBackupRequest(validInput);
     expect(r.ok).toBe(false);
     expect(mockJoinInsertResult).not.toHaveBeenCalled();
+  });
+
+  it("PR-4: 부모 insert payload에 top-level contacts 키 부재", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockInsertResult.mockReturnValue({ data: parentRow, error: null });
+    mockJoinInsertResult.mockReturnValue({ data: null, error: null });
+
+    await createBackupRequest(validInput);
+    expect(parentInsertCalls).toHaveLength(1);
+    const payload = parentInsertCalls[0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("contacts");
+  });
+
+  it("PR-4: services에 contacts/note_md 명시 → join rows에 보존", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockInsertResult.mockReturnValue({ data: parentRow, error: null });
+    mockJoinInsertResult.mockReturnValue({ data: null, error: null });
+
+    await createBackupRequest({
+      ...validInput,
+      services: [
+        {
+          service_id: "11111111-1111-4111-8111-111111111111",
+          contacts: ["경찰대 — 강민호"],
+          note_md: "5/20 마감",
+        },
+        {
+          service_id: "22222222-2222-4222-8222-222222222222",
+          contacts: ["연세대 — 박지호", "고려대 — 홍길동"],
+          note_md: null,
+        },
+      ],
+    });
+
+    expect(joinInsertCalls).toHaveLength(1);
+    const rows = joinInsertCalls[0] as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      contacts: ["경찰대 — 강민호"],
+      note_md: "5/20 마감",
+    });
+    expect(rows[1]).toMatchObject({
+      contacts: ["연세대 — 박지호", "고려대 — 홍길동"],
+      note_md: null,
+    });
+  });
+
+  it("PR-4: services에 contacts/note_md 미동반 → contacts 빈 배열, note_md null로 채움", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockInsertResult.mockReturnValue({ data: parentRow, error: null });
+    mockJoinInsertResult.mockReturnValue({ data: null, error: null });
+
+    await createBackupRequest(validInput);
+
+    expect(joinInsertCalls).toHaveLength(1);
+    const rows = joinInsertCalls[0] as Array<Record<string, unknown>>;
+    expect(rows[0]).toMatchObject({ contacts: [], note_md: null });
   });
 });

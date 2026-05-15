@@ -19,8 +19,8 @@ const MAIL_STATUS_TONE = {
 export function BackupView({ row }: ViewProps) {
   const status = row.mailStatus ?? "pending";
   // PR-2: services chips는 join 상세(backupServicesDetail) — 대학명·서비스명 정규화 표기 + deep-link
+  // PR-4: 서비스마다 contacts/note_md를 카드로 표시
   const servicesDetail = row.backupServicesDetail ?? [];
-  const contacts = row.backupContacts ?? [];
 
   return (
     <div className="space-y-5 text-sm text-ink">
@@ -32,7 +32,7 @@ export function BackupView({ row }: ViewProps) {
             <span className="text-ink">{row.owner}</span>
           </span>
           <span className="text-xs">
-            <span className="text-muted">백업자</span>{" "}
+            <span className="text-muted">기본 백업자</span>{" "}
             <span className="text-ink">{row.substituteName ?? "—"}</span>
             {row.substituteEmail && (
               <span className="ml-1 text-2xs text-muted">
@@ -57,63 +57,67 @@ export function BackupView({ row }: ViewProps) {
         </p>
       </section>
 
+      <section className="space-y-1.5">
+        <p className="text-2xs uppercase tracking-[0.18em] text-muted">
+          공통 메모
+        </p>
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+          {row.summary ?? "내용 없음"}
+        </p>
+      </section>
+
       {servicesDetail.length > 0 && (
         <section className="space-y-1.5">
           <p className="text-2xs uppercase tracking-[0.18em] text-muted">
             담당 서비스
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-2">
             {servicesDetail.map((s) => {
               // PR-3: 서비스별 백업자가 default(row.substituteName)와 다를 때만 표시
               const showSubstitute =
                 s.substitute_name &&
                 s.substitute_name !== row.substituteName;
               return (
-                <Link
+                <div
                   key={s.id}
-                  href={`/dashboard/services?q=${encodeURIComponent(s.service_name)}`}
-                  className="inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft hover:bg-washi-raised hover:text-ink"
-                  title={`${s.university_name} — ${s.service_name}${showSubstitute ? ` / 백업자: ${s.substitute_name}` : ""}`}
+                  className="border border-line-soft bg-washi-raised p-2.5"
                 >
-                  {s.university_name} — {s.service_name}
-                  {showSubstitute && (
-                    <span className="ml-1 text-muted">
-                      / 백업자: {s.substitute_name}
+                  <Link
+                    href={`/dashboard/services?q=${encodeURIComponent(s.service_name)}`}
+                    className="block text-2xs text-ink-soft hover:text-ink"
+                  >
+                    <span>
+                      {s.university_name} — {s.service_name}
                     </span>
+                    {showSubstitute && (
+                      <span className="ml-1 text-muted">
+                        / 백업자: {s.substitute_name}
+                      </span>
+                    )}
+                  </Link>
+                  {s.contacts.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {s.contacts.map((c) => (
+                        <span
+                          key={c}
+                          className="inline-block bg-line-soft px-1.5 py-0.5 text-2xs text-ink-soft"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                </Link>
+                  {s.note_md && (
+                    <p className="mt-1.5 whitespace-pre-wrap rounded-sm bg-cream px-2 py-1 text-2xs text-ink">
+                      {s.note_md}
+                    </p>
+                  )}
+                </div>
               );
             })}
           </div>
         </section>
       )}
-
-      {contacts.length > 0 && (
-        <section className="space-y-1.5">
-          <p className="text-2xs uppercase tracking-[0.18em] text-muted">
-            대학 연락처
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {contacts.map((c) => (
-              <span
-                key={c}
-                className="inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="space-y-1.5">
-        <p className="text-2xs uppercase tracking-[0.18em] text-muted">
-          백업 내용
-        </p>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-          {row.summary ?? "내용 없음"}
-        </p>
-      </section>
 
       {status === "mail_failed" && (
         <section className="space-y-2">
