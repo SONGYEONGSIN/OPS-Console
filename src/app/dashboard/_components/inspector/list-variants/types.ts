@@ -14,7 +14,8 @@ export type Variant =
   | "ai-work"
   | "backup"
   | "services"
-  | "contracts";
+  | "contracts"
+  | "contacts";
 
 export type ViewProps = {
   row: ListRow;

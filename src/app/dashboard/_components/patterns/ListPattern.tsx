@@ -187,6 +187,24 @@ export type ListRow = {
   feeAmount?: string;
   /** contracts 도메인 — 시트별 전체 컬럼 (헤더 → 값). 인스펙터 raw view */
   contractRaw?: Record<string, string>;
+  /** contacts 도메인 — 활성화 ("재직" | "타부서 이동") */
+  customerActive?: string;
+  /** contacts 도메인 — 직함 (자유) */
+  jobTitle?: string | null;
+  /** contacts 도메인 — 소속부서 */
+  departmentName?: string | null;
+  /** contacts 도메인 — 직책 (실무자 / 관리자) */
+  jobRole?: string | null;
+  /** contacts 도메인 — 관리 등급 (A / B / C / D) */
+  managementGrade?: string | null;
+  /** contacts 도메인 — 관계 등급 (우호적 / ...) */
+  relationshipGrade?: string | null;
+  /** contacts 도메인 — 연락처 휴대폰 */
+  contactPhone?: string | null;
+  /** contacts 도메인 — 연락처 내선 */
+  contactExt?: string | null;
+  /** contacts 도메인 — 이메일 */
+  contactEmail?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
