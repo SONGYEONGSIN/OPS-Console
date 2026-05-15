@@ -35,6 +35,14 @@ type Props = {
     service_name: string;
     university_name: string;
   }[];
+  /** backup variant — 대학 연락처 후보 (contacts 마스터) */
+  backupContactCandidates?: {
+    id: string;
+    customer_name: string;
+    university_name: string;
+  }[];
+  /** contacts variant — 대학명 자동완성 후보 */
+  universityNameSuggestions?: readonly string[];
   /** services variant — 운영자·개발자 후보 (operators 마스터) */
   servicesOperators?: { email: string; name: string }[];
   /** services variant — 대학명 → 학교키·다음 시퀀스 매핑 */
@@ -64,6 +72,8 @@ export function InspectorListBody({
   receivablesMailDryRun = true,
   backupOperators,
   backupServiceCandidates,
+  backupContactCandidates,
+  universityNameSuggestions,
   servicesOperators,
   servicesUniversityKeys,
 }: Props) {
@@ -106,6 +116,8 @@ export function InspectorListBody({
         onUpdateRemarks={onUpdateRemarks}
         backupOperators={backupOperators}
         backupServiceCandidates={backupServiceCandidates}
+        backupContactCandidates={backupContactCandidates}
+        universityNameSuggestions={universityNameSuggestions}
         servicesOperators={servicesOperators}
         servicesUniversityKeys={servicesUniversityKeys}
       />

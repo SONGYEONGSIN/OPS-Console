@@ -129,8 +129,14 @@ export type ListRow = {
     service_name: string;
     university_name: string;
   }[];
-  /** backup 도메인 — 대학 연락처 chips */
+  /** backup 도메인 — 대학 연락처 chips (contacts.id 배열) */
   backupContacts?: string[];
+  /** backup 도메인 — 대학 연락처 join 상세 (이름·대학명). View/Table 표시용 */
+  backupContactsDetail?: {
+    id: string;
+    customer_name: string;
+    university_name: string;
+  }[];
   /** backup 도메인 — 휴가/외근 시작일 (YYYY-MM-DD, nullable) */
   leaveStartDate?: string | null;
   /** backup 도메인 — 휴가/외근 종료일 (YYYY-MM-DD, nullable) */
@@ -271,6 +277,14 @@ type Props = {
     service_name: string;
     university_name: string;
   }[];
+  /** backup variant — 대학 연락처 후보 */
+  backupContactCandidates?: {
+    id: string;
+    customer_name: string;
+    university_name: string;
+  }[];
+  /** contacts variant — 대학명 자동완성 후보 */
+  universityNameSuggestions?: readonly string[];
   /** services variant — 운영자·개발자 후보 (operators 마스터, active). EditForm select. */
   servicesOperators?: { email: string; name: string }[];
   /** services variant — 대학명 → 학교키·다음 시퀀스 매핑 (EditForm 검색 combobox + 자동 service_id 부여) */
@@ -300,6 +314,8 @@ export function ListPattern({
   currentUserName,
   backupOperators,
   backupServiceCandidates,
+  backupContactCandidates,
+  universityNameSuggestions,
   servicesOperators,
   servicesUniversityKeys,
   inlineFilters,
@@ -533,6 +549,8 @@ export function ListPattern({
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
               backupServiceCandidates={backupServiceCandidates}
+              backupContactCandidates={backupContactCandidates}
+              universityNameSuggestions={universityNameSuggestions}
               servicesOperators={servicesOperators}
               servicesUniversityKeys={servicesUniversityKeys}
               onSave={async (next) => {

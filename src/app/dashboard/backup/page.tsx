@@ -11,6 +11,7 @@ import { createBackupRequest } from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 import { listServices } from "@/features/services/queries";
+import { listContacts } from "@/features/contacts/queries";
 
 export default async function BackupPage() {
   const slug = "backup";
@@ -24,7 +25,7 @@ export default async function BackupPage() {
   const requests = await listBackupRequests();
   const ownerByEmail = await buildOwnerMap(requests);
   const rows: ListRow[] = requests.map((r) =>
-    backupRequestToListRow(r, ownerByEmail),
+    backupRequestToListRow(r, ownerByEmail, contactsById),
   );
 
   const me = await getCurrentOperator();
@@ -47,6 +48,21 @@ export default async function BackupPage() {
     service_name: s.service_name,
     university_name: s.university_name,
   }));
+
+  // contacts 카탈로그 light projection — EditForm 대학 연락처 multi-select 후보.
+  // 검색 대상이라 전체 fetch (pageSize 충분히 크게).
+  const { rows: contactCandidatesRaw } = await listContacts({
+    pageSize: 5000,
+  });
+  const backupContactCandidates = contactCandidatesRaw.map((c) => ({
+    id: c.id,
+    customer_name: c.customer_name,
+    university_name: c.university_name,
+  }));
+  // join용 id → detail map (backupRequestToListRow에서 활용)
+  const contactsById = new Map(
+    backupContactCandidates.map((c) => [c.id, c] as const),
+  );
 
   const header = (
     <PageHeader
@@ -105,6 +121,7 @@ export default async function BackupPage() {
       currentUserName={me?.displayName ?? me?.email ?? ""}
       backupOperators={backupOperators}
       backupServiceCandidates={backupServiceCandidates}
+      backupContactCandidates={backupContactCandidates}
       onPersist={onPersist}
     />
   );
@@ -127,7 +144,18 @@ async function buildOwnerMap(
 function backupRequestToListRow(
   r: BackupRequestRow,
   ownerByEmail: Map<string, string>,
+  contactsById: Map<
+    string,
+    { id: string; customer_name: string; university_name: string }
+  >,
 ): ListRow {
+  // 기존 자유 텍스트 chips는 contactsById에 없음 → detail 비어있게 됨 (표시 X)
+  const backupContactsDetail = r.contacts
+    .map((id) => contactsById.get(id))
+    .filter(
+      (c): c is { id: string; customer_name: string; university_name: string } =>
+        c != null,
+    );
   return {
     id: r.id,
     name: deriveTitle(r),
@@ -135,10 +163,10 @@ function backupRequestToListRow(
     owner: ownerByEmail.get(r.requester_email) ?? r.requester_email,
     substituteEmail: r.substitute_email,
     substituteName: r.substitute_name,
-    // PR-2: services는 join으로 채워지는 detail 배열. backupServices(uuid[])는 빈 배열로 시작.
     backupServices: r.services_detail.map((s) => s.id),
     backupServicesDetail: r.services_detail,
     backupContacts: r.contacts,
+    backupContactsDetail,
     summary: r.summary_md,
     leaveStartDate: r.leave_start_date ?? null,
     leaveEndDate: r.leave_end_date ?? null,

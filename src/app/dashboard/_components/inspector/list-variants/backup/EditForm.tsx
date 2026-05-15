@@ -3,17 +3,16 @@
 import { useState } from "react";
 import type { EditFormProps } from "../types";
 
-function parseChips(text: string): string[] {
-  return text
-    .split(",")
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0);
-}
-
 type ServiceCandidate = {
   id: string;
   service_id: number;
   service_name: string;
+  university_name: string;
+};
+
+type ContactCandidate = {
+  id: string;
+  customer_name: string;
   university_name: string;
 };
 
@@ -24,13 +23,17 @@ export function BackupForm({
   onCancel,
   backupOperators = [],
   backupServiceCandidates = [],
+  backupContactCandidates = [],
 }: EditFormProps) {
-  const contactsText = (row.backupContacts ?? []).join(", ");
-
   // PR-2: services multi-select 상태 — 후보 검색 + 선택 chips
   const selectedIds = row.backupServices ?? [];
   const selectedDetail = row.backupServicesDetail ?? [];
   const [query, setQuery] = useState("");
+
+  // 대학 연락처 multi-select 상태 (담당 서비스와 동일 패턴)
+  const selectedContactIds = row.backupContacts ?? [];
+  const selectedContactsDetail = row.backupContactsDetail ?? [];
+  const [contactQuery, setContactQuery] = useState("");
 
   const trimmedQuery = query.trim();
   const matches: ServiceCandidate[] =
@@ -42,6 +45,19 @@ export function BackupForm({
               !selectedIds.includes(c.id) &&
               (c.university_name.includes(trimmedQuery) ||
                 c.service_name.includes(trimmedQuery)),
+          )
+          .slice(0, 10);
+
+  const trimmedContactQuery = contactQuery.trim();
+  const contactMatches: ContactCandidate[] =
+    trimmedContactQuery.length === 0
+      ? []
+      : backupContactCandidates
+          .filter(
+            (c) =>
+              !selectedContactIds.includes(c.id) &&
+              (c.university_name.includes(trimmedContactQuery) ||
+                c.customer_name.includes(trimmedContactQuery)),
           )
           .slice(0, 10);
 
@@ -60,6 +76,24 @@ export function BackupForm({
       ...row,
       backupServices: selectedIds.filter((x) => x !== id),
       backupServicesDetail: selectedDetail.filter((x) => x.id !== id),
+    });
+  }
+
+  function addContact(c: ContactCandidate) {
+    if (selectedContactIds.length >= 20) return;
+    setRow({
+      ...row,
+      backupContacts: [...selectedContactIds, c.id],
+      backupContactsDetail: [...selectedContactsDetail, c],
+    });
+    setContactQuery("");
+  }
+
+  function removeContact(id: string) {
+    setRow({
+      ...row,
+      backupContacts: selectedContactIds.filter((x) => x !== id),
+      backupContactsDetail: selectedContactsDetail.filter((x) => x.id !== id),
     });
   }
 
@@ -203,18 +237,62 @@ export function BackupForm({
         )}
       </div>
 
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">대학 연락처 (쉼표 구분)</span>
+      {/* 대학 연락처 multi-select — contacts 도메인 검색 dropdown (담당 서비스와 동일 패턴) */}
+      <div className="block text-xs">
+        <span className="mb-1 flex items-baseline justify-between text-muted">
+          <span>대학 연락처 ({selectedContactIds.length}/20)</span>
+        </span>
         <input
-          aria-label="대학 연락처"
-          value={contactsText}
-          onChange={(e) =>
-            setRow({ ...row, backupContacts: parseChips(e.target.value) })
-          }
+          aria-label="대학 연락처 검색"
+          type="search"
+          value={contactQuery}
+          onChange={(e) => setContactQuery(e.target.value)}
+          placeholder="대학명·고객명 검색"
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="예: 서울대 김OO, 연세대 이OO"
         />
-      </label>
+        {contactMatches.length > 0 && (
+          <ul
+            aria-label="대학 연락처 검색 결과"
+            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-washi-raised"
+          >
+            {contactMatches.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onClick={() => addContact(c)}
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                >
+                  <span className="text-ink-soft">{c.university_name}</span>
+                  <span className="mx-1 text-muted">—</span>
+                  <span>{c.customer_name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedContactsDetail.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {selectedContactsDetail.map((c) => (
+              <span
+                key={c.id}
+                className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
+              >
+                <span>
+                  {c.university_name} — {c.customer_name}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`${c.customer_name} 제거`}
+                  onClick={() => removeContact(c.id)}
+                  className="cursor-pointer border-none bg-transparent px-0.5 text-muted hover:text-vermilion"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">백업 내용</span>

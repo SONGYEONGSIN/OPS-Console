@@ -11,6 +11,7 @@ import {
   listContacts,
   type ContactsFilter,
 } from "@/features/contacts/queries";
+import { listServices } from "@/features/services/queries";
 import {
   createContact,
   updateContact,
@@ -58,6 +59,18 @@ export default async function ContactsPage({
   const { rows: contacts, total } = await listContacts(filter);
   const rows: ListRow[] = contacts.map(contactRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
+
+  // 대학명 자동완성 후보 — services.university_name distinct + contacts.university_name distinct 합집합.
+  // services는 첫 1000건만 fetch (정확도 vs 비용 — 후속 RPC로 최적화 가능).
+  const { rows: servicesForUni } = await listServices({
+    page: 1,
+    pageSize: 1000,
+    sort: "service_id_asc",
+  });
+  const universitySet = new Set<string>();
+  for (const s of servicesForUni) universitySet.add(s.university_name);
+  for (const c of contacts) universitySet.add(c.university_name);
+  const universityNameSuggestions = [...universitySet].sort();
 
   const header = (
     <>
@@ -122,6 +135,7 @@ export default async function ContactsPage({
       createLabel="+ 신규 연락처"
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      universityNameSuggestions={universityNameSuggestions}
       footer={<ListPagination total={total} pageSize={PAGE_SIZE} />}
       onPersist={onPersist}
     />
