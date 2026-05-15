@@ -1,13 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import type { EditFormProps } from "../types";
+import { ListSearch } from "@/components/common/ListSearch";
 
 const ACTIVE_OPTIONS = ["재직", "타부서 이동"] as const;
 const JOB_ROLE_OPTIONS = ["실무자", "관리자"] as const;
 const MANAGEMENT_GRADE_OPTIONS = ["A", "B", "C", "D"] as const;
 const RELATIONSHIP_GRADE_OPTIONS = ["우호적", "보통", "주의"] as const;
 
-export function ContactsForm({ row, setRow, onSave, onCancel }: EditFormProps) {
+export function ContactsForm({
+  row,
+  setRow,
+  onSave,
+  onCancel,
+  universityNameSuggestions = [],
+}: EditFormProps) {
+  // 대학명 검색 combobox — backup 패턴 동일 (입력 시에만 dropdown)
+  const [universityQuery, setUniversityQuery] = useState("");
+  const [justSelected, setJustSelected] = useState(false);
+  const trimmedUniversity = universityQuery.trim();
+  const universityMatches =
+    trimmedUniversity.length === 0
+      ? []
+      : universityNameSuggestions
+          .filter((u) => u.includes(trimmedUniversity))
+          .slice(0, 10);
+
   return (
     <form
       onSubmit={(e) => {
@@ -57,16 +76,42 @@ export function ContactsForm({ row, setRow, onSave, onCancel }: EditFormProps) {
             placeholder="팀장 / 과장 / 주임 / ..."
           />
         </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">대학명</span>
-          <input
-            aria-label="대학명"
-            value={row.universityName ?? ""}
-            onChange={(e) => setRow({ ...row, universityName: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            required
+        <div className="block text-xs">
+          <span className="mb-1 block text-muted">대학명 (검색)</span>
+          <ListSearch
+            value={universityQuery || (row.universityName ?? "")}
+            onChange={(v) => {
+              setUniversityQuery(v);
+              setRow({ ...row, universityName: v });
+              setJustSelected(false);
+            }}
+            placeholder="대학명을 검색하거나 직접 입력"
+            ariaLabel="대학명"
+            size="sm"
           />
-        </label>
+          {!justSelected && universityMatches.length > 0 && (
+            <ul
+              aria-label="대학명 검색 결과"
+              className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+            >
+              {universityMatches.map((u) => (
+                <li key={u}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRow({ ...row, universityName: u });
+                      setUniversityQuery(u);
+                      setJustSelected(true);
+                    }}
+                    className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                  >
+                    {u}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">

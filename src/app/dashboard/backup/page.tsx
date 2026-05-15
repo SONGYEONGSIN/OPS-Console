@@ -11,6 +11,9 @@ import { createBackupRequest } from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 import { listServices } from "@/features/services/queries";
+import type { ServicesRow } from "@/features/services/schemas";
+import { listContacts } from "@/features/contacts/queries";
+import type { ContactRow } from "@/features/contacts/schemas";
 
 export default async function BackupPage() {
   const slug = "backup";
@@ -24,7 +27,7 @@ export default async function BackupPage() {
   const requests = await listBackupRequests();
   const ownerByEmail = await buildOwnerMap(requests);
   const rows: ListRow[] = requests.map((r) =>
-    backupRequestToListRow(r, ownerByEmail),
+    backupRequestToListRow(r, ownerByEmail, contactsById),
   );
 
   const me = await getCurrentOperator();
@@ -35,18 +38,51 @@ export default async function BackupPage() {
     .map((op) => ({ email: op.email, name: op.name }));
 
   // PR-2: services 카탈로그 light projection — EditForm multi-select 후보용.
-  // service_id_asc 정렬로 외부 PIMS 자연키 순서. 페이지 사이즈는 services 전체(2511 기준 ~250KB).
-  const { rows: serviceCandidatesRaw } = await listServices({
-    sort: "service_id_asc",
-    page: 1,
-    pageSize: 5000,
-  });
+  // Supabase JS는 PostgREST Max-Rows 1000 cap. chunk loop으로 전체 fetch.
+  const CHUNK = 1000;
+  const MAX_PAGES = 20;
+  const serviceCandidatesRaw: ServicesRow[] = [];
+  let totalFetched = 0;
+  for (let p = 1; p <= MAX_PAGES; p++) {
+    const { rows, total } = await listServices({
+      sort: "service_id_asc",
+      page: p,
+      pageSize: CHUNK,
+    });
+    if (rows.length === 0) break;
+    totalFetched += rows.length;
+    serviceCandidatesRaw.push(...rows);
+    if (totalFetched >= total) break;
+  }
   const backupServiceCandidates = serviceCandidatesRaw.map((s) => ({
     id: s.id,
     service_id: s.service_id,
     service_name: s.service_name,
     university_name: s.university_name,
   }));
+
+  // contacts 카탈로그 light projection — chunk fetch 동일 패턴
+  const contactCandidatesRaw: ContactRow[] = [];
+  let contactsFetched = 0;
+  for (let p = 1; p <= MAX_PAGES; p++) {
+    const { rows, total } = await listContacts({
+      page: p,
+      pageSize: CHUNK,
+    });
+    if (rows.length === 0) break;
+    contactsFetched += rows.length;
+    contactCandidatesRaw.push(...rows);
+    if (contactsFetched >= total) break;
+  }
+  const backupContactCandidates = contactCandidatesRaw.map((c) => ({
+    id: c.id,
+    customer_name: c.customer_name,
+    university_name: c.university_name,
+  }));
+  // join용 id → detail map (backupRequestToListRow에서 활용)
+  const contactsById = new Map(
+    backupContactCandidates.map((c) => [c.id, c] as const),
+  );
 
   const header = (
     <PageHeader
@@ -105,6 +141,7 @@ export default async function BackupPage() {
       currentUserName={me?.displayName ?? me?.email ?? ""}
       backupOperators={backupOperators}
       backupServiceCandidates={backupServiceCandidates}
+      backupContactCandidates={backupContactCandidates}
       onPersist={onPersist}
     />
   );
@@ -127,7 +164,18 @@ async function buildOwnerMap(
 function backupRequestToListRow(
   r: BackupRequestRow,
   ownerByEmail: Map<string, string>,
+  contactsById: Map<
+    string,
+    { id: string; customer_name: string; university_name: string }
+  >,
 ): ListRow {
+  // 기존 자유 텍스트 chips는 contactsById에 없음 → detail 비어있게 됨 (표시 X)
+  const backupContactsDetail = r.contacts
+    .map((id) => contactsById.get(id))
+    .filter(
+      (c): c is { id: string; customer_name: string; university_name: string } =>
+        c != null,
+    );
   return {
     id: r.id,
     name: deriveTitle(r),
@@ -135,10 +183,10 @@ function backupRequestToListRow(
     owner: ownerByEmail.get(r.requester_email) ?? r.requester_email,
     substituteEmail: r.substitute_email,
     substituteName: r.substitute_name,
-    // PR-2: services는 join으로 채워지는 detail 배열. backupServices(uuid[])는 빈 배열로 시작.
     backupServices: r.services_detail.map((s) => s.id),
     backupServicesDetail: r.services_detail,
     backupContacts: r.contacts,
+    backupContactsDetail,
     summary: r.summary_md,
     leaveStartDate: r.leave_start_date ?? null,
     leaveEndDate: r.leave_end_date ?? null,

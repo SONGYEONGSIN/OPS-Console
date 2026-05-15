@@ -11,6 +11,8 @@ import {
   listContacts,
   type ContactsFilter,
 } from "@/features/contacts/queries";
+import { listServices } from "@/features/services/queries";
+import type { ServicesRow } from "@/features/services/schemas";
 import {
   createContact,
   updateContact,
@@ -58,6 +60,28 @@ export default async function ContactsPage({
   const { rows: contacts, total } = await listContacts(filter);
   const rows: ListRow[] = contacts.map(contactRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
+
+  // 대학명 자동완성 후보 — services.university_name + contacts.university_name distinct 합집합.
+  // Supabase JS는 PostgREST 1000 cap이라 chunk loop으로 전체 fetch.
+  const SUGGEST_CHUNK = 1000;
+  const SUGGEST_MAX_PAGES = 20;
+  const servicesForUni: ServicesRow[] = [];
+  let suggestFetched = 0;
+  for (let p = 1; p <= SUGGEST_MAX_PAGES; p++) {
+    const { rows, total } = await listServices({
+      sort: "service_id_asc",
+      page: p,
+      pageSize: SUGGEST_CHUNK,
+    });
+    if (rows.length === 0) break;
+    suggestFetched += rows.length;
+    servicesForUni.push(...rows);
+    if (suggestFetched >= total) break;
+  }
+  const universitySet = new Set<string>();
+  for (const s of servicesForUni) universitySet.add(s.university_name);
+  for (const c of contacts) universitySet.add(c.university_name);
+  const universityNameSuggestions = [...universitySet].sort();
 
   const header = (
     <>
@@ -122,6 +146,7 @@ export default async function ContactsPage({
       createLabel="+ 신규 연락처"
       readOnly={!me}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      universityNameSuggestions={universityNameSuggestions}
       footer={<ListPagination total={total} pageSize={PAGE_SIZE} />}
       onPersist={onPersist}
     />

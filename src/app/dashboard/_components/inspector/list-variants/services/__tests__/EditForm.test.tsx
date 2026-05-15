@@ -104,12 +104,11 @@ describe("ServicesForm", () => {
     expect(onSave).toHaveBeenCalledWith({ ...baseRow, status: "deleted" });
   });
 
-  it("대학명 dropdown — 정확 일치 entry도 검색 결과에 노출 (자기 자신 제외 X)", () => {
-    const newRow: ListRow = { ...baseRow, id: "", universityName: "경찰대학" };
+  it("대학명 dropdown — 빈 query 시 미노출 (입력 시에만 검색)", () => {
+    const newRow: ListRow = { ...baseRow, id: "", universityName: "" };
     const keys = [
       { universityName: "경찰대학", key: 1111, nextSeq: 5 },
       { universityName: "경찰대학 대학원", key: 1112, nextSeq: 1 },
-      { universityName: "경찰공무원", key: 9999, nextSeq: 1 },
     ];
     render(
       <ServicesForm
@@ -120,13 +119,35 @@ describe("ServicesForm", () => {
         servicesUniversityKeys={keys}
       />,
     );
-    // input value=row.universityName="경찰대학"이지만 dropdown은 selection 직후가 아니므로 노출
-    // 검색 결과에 "경찰대학" 정확 일치 entry도 포함되어야 함
+    expect(screen.queryByLabelText("대학명 검색 결과")).toBeNull();
+  });
+
+  it("대학명 dropdown — 입력 시 정확 일치 entry도 노출 (자기 자신 제외 X)", () => {
+    const setRow = vi.fn();
+    const newRow: ListRow = { ...baseRow, id: "", universityName: "" };
+    const keys = [
+      { universityName: "경찰대학", key: 1111, nextSeq: 5 },
+      { universityName: "경찰대학 대학원", key: 1112, nextSeq: 1 },
+      { universityName: "경찰공무원", key: 9999, nextSeq: 1 },
+    ];
+    render(
+      <ServicesForm
+        row={newRow}
+        setRow={setRow}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        servicesUniversityKeys={keys}
+      />,
+    );
+    // "경찰대학" 입력 → dropdown 노출
+    fireEvent.change(screen.getByLabelText("대학명"), {
+      target: { value: "경찰대학" },
+    });
     expect(screen.getByText("경찰대학")).toBeInTheDocument();
     expect(screen.getByText("경찰대학 대학원")).toBeInTheDocument();
   });
 
-  it("대학명 dropdown — 항목 선택 시 자동 close (filter에서 자기 자신 제외 → 결과 0)", () => {
+  it("대학명 dropdown — 입력 → 항목 선택 시 자동 close (justSelected)", () => {
     const setRow = vi.fn();
     const newRow: ListRow = { ...baseRow, id: "", universityName: "" };
     const keys = [
@@ -142,7 +163,10 @@ describe("ServicesForm", () => {
         servicesUniversityKeys={keys}
       />,
     );
-    // focus 즉시 dropdown 노출 (빈 query)
+    // "조선" 입력 → dropdown 노출
+    fireEvent.change(screen.getByLabelText("대학명"), {
+      target: { value: "조선" },
+    });
     expect(screen.getByLabelText("대학명 검색 결과")).toBeInTheDocument();
     // 조선대학교 항목 클릭 → setRow 호출 후 row.universityName 갱신된 상태로 rerender
     fireEvent.click(screen.getByText("조선대학교"));
