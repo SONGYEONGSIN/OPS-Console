@@ -45,12 +45,13 @@ vi.mock("@/features/auth/queries", () => ({
 
 import { createBackupRequest } from "../actions";
 
+// PR-3 — services는 {service_id, substitute_email?, substitute_name?}[] 튜플 배열
 const validInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
   services: [
-    "11111111-1111-4111-8111-111111111111",
-    "22222222-2222-4222-8222-222222222222",
+    { service_id: "11111111-1111-4111-8111-111111111111" },
+    { service_id: "22222222-2222-4222-8222-222222222222" },
   ],
   contacts: ["c1"],
   summary_md: "백업 내용",
@@ -127,7 +128,7 @@ describe("createBackupRequest", () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     const r = await createBackupRequest({
       ...validInput,
-      services: ["not-a-uuid"],
+      services: [{ service_id: "not-a-uuid" }],
     });
     expect(r.ok).toBe(false);
   });

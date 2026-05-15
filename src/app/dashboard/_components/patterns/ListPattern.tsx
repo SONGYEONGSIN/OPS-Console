@@ -122,12 +122,15 @@ export type ListRow = {
   substituteName?: string;
   /** backup 도메인 — 담당 서비스 id 배열 (services.id uuid). EditForm 입력 + create action 페이로드 */
   backupServices?: string[];
-  /** backup 도메인 — 담당 서비스 join 상세 (대학명·서비스명 포함). View/Table 표시용 */
+  /** backup 도메인 — 담당 서비스 join 상세 (대학명·서비스명 + PR-3 서비스별 백업자). View/Table 표시용 */
   backupServicesDetail?: {
     id: string;
     service_id: number;
     service_name: string;
     university_name: string;
+    /** PR-3: 서비스별 백업자 — 미지정 시 backup_requests.substitute_*로 fallback */
+    substitute_email?: string | null;
+    substitute_name?: string | null;
   }[];
   /** backup 도메인 — 대학 연락처 chips (contacts.id 배열) */
   backupContacts?: string[];

@@ -214,15 +214,42 @@ export function BackupForm({
           </ul>
         )}
         {selectedDetail.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-col gap-1">
             {selectedDetail.map((s) => (
               <span
                 key={s.id}
                 className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
               >
-                <span>
+                <span className="flex-1">
                   {s.university_name} — {s.service_name}
                 </span>
+                {/* PR-3: 서비스별 백업자 select (default 빈값 = 기본 백업자 사용) */}
+                <select
+                  aria-label={`${s.service_name} 백업자`}
+                  value={s.substitute_email ?? ""}
+                  onChange={(e) => {
+                    const email = e.target.value;
+                    const op = backupOperators.find((o) => o.email === email);
+                    const next = selectedDetail.map((x) =>
+                      x.id === s.id
+                        ? {
+                            ...x,
+                            substitute_email: email || null,
+                            substitute_name: op?.name ?? null,
+                          }
+                        : x,
+                    );
+                    setRow({ ...row, backupServicesDetail: next });
+                  }}
+                  className="border border-line bg-cream px-1 py-0 text-2xs text-ink"
+                >
+                  <option value="">기본 백업자</option>
+                  {backupOperators.map((op) => (
+                    <option key={op.email} value={op.email}>
+                      {op.name}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   aria-label={`${s.service_name} 제거`}

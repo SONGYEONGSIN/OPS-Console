@@ -6,13 +6,13 @@ import {
   MAIL_STATUS_VALUES,
 } from "../schemas";
 
-// PR-2 — services는 services.id (uuid) 배열, services_detail은 join 결과 (이름/대학명 포함)
+// PR-3 — services는 {service_id, substitute_email?, substitute_name?}[] 튜플 배열
 const baseInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
   services: [
-    "11111111-1111-4111-8111-111111111111",
-    "22222222-2222-4222-8222-222222222222",
+    { service_id: "11111111-1111-4111-8111-111111111111" },
+    { service_id: "22222222-2222-4222-8222-222222222222" },
   ],
   contacts: ["서울대", "연세대"],
   summary_md: "백업 요청 내용",
@@ -22,15 +22,34 @@ const baseInput = {
 };
 
 describe("backupRequestCreateSchema", () => {
-  it("정상 입력 통과 (services uuid 배열)", () => {
+  it("정상 입력 통과 (services 튜플 배열, substitute 미지정 default fallback)", () => {
     const r = backupRequestCreateSchema.safeParse(baseInput);
     expect(r.success).toBe(true);
   });
 
-  it("uuid 형식이 아닌 services 거부", () => {
+  it("PR-3: 서비스별 substitute_email 명시 지정 통과", () => {
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
-      services: ["not-a-uuid"],
+      services: [
+        {
+          service_id: "11111111-1111-4111-8111-111111111111",
+          substitute_email: "x@example.com",
+          substitute_name: "X",
+        },
+        {
+          service_id: "22222222-2222-4222-8222-222222222222",
+          substitute_email: "y@example.com",
+          substitute_name: "Y",
+        },
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("uuid 형식이 아닌 service_id 거부", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      services: [{ service_id: "not-a-uuid" }],
     });
     expect(r.success).toBe(false);
   });
@@ -82,10 +101,9 @@ describe("backupRequestCreateSchema", () => {
   });
 
   it("services max 20 초과 거부", () => {
-    const tooMany = Array.from(
-      { length: 21 },
-      () => "11111111-1111-4111-8111-111111111111",
-    );
+    const tooMany = Array.from({ length: 21 }, () => ({
+      service_id: "11111111-1111-4111-8111-111111111111",
+    }));
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
       services: tooMany,
