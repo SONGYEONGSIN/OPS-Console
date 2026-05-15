@@ -74,12 +74,13 @@ export default async function ContractsPage({
   const header = (
     <>
       <PageHeader
+        key="page-header"
         pathname={pathname}
         meta={config.meta}
         headline={config.headline}
         description={config.description}
       />
-      <ContractsControls />
+      <ContractsControls key="controls" />
     </>
   );
 

@@ -84,15 +84,17 @@ export default async function ContactsPage({
   for (const c of contacts) universitySet.add(c.university_name);
   const universityNameSuggestions = [...universitySet].sort();
 
+  // RSC 직렬화 시 Fragment children이 array로 변환 → React 19 key 경고. 명시 key 부여
   const header = (
     <>
       <PageHeader
+        key="page-header"
         pathname={pathname}
         meta={config.meta}
         headline={config.headline}
         description={config.description}
       />
-      <ContactsControls />
+      <ContactsControls key="controls" />
     </>
   );
 
