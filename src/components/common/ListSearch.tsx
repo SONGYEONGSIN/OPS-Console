@@ -4,6 +4,8 @@ type Props = {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  /** input의 aria-label (default "검색"). EditForm 등 컨텍스트별 override */
+  ariaLabel?: string;
   /** container에 추가할 className (예: max-width 제한) */
   className?: string;
 };
@@ -21,6 +23,7 @@ export function ListSearch({
   value,
   onChange,
   placeholder = "쿼리 입력…",
+  ariaLabel = "검색",
   className,
 }: Props) {
   return (
@@ -37,7 +40,7 @@ export function ListSearch({
       </svg>
       <input
         type="search"
-        aria-label="검색"
+        aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

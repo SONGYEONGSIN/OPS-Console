@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { EditFormProps } from "../types";
+import { ListSearch } from "@/components/common/ListSearch";
 
 const ACTIVE_OPTIONS = ["재직", "타부서 이동"] as const;
 const JOB_ROLE_OPTIONS = ["실무자", "관리자"] as const;
@@ -78,18 +79,15 @@ export function ContactsForm({
         </label>
         <div className="block text-xs">
           <span className="mb-1 block text-muted">대학명 (검색)</span>
-          <input
-            aria-label="대학명"
-            type="search"
+          <ListSearch
             value={universityQuery || (row.universityName ?? "")}
-            onChange={(e) => {
-              setUniversityQuery(e.target.value);
-              setRow({ ...row, universityName: e.target.value });
+            onChange={(v) => {
+              setUniversityQuery(v);
+              setRow({ ...row, universityName: v });
               setJustSelected(false);
             }}
             placeholder="대학명을 검색하거나 직접 입력"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            required
+            ariaLabel="대학명"
           />
           {!justSelected && universityMatches.length > 0 && (
             <ul

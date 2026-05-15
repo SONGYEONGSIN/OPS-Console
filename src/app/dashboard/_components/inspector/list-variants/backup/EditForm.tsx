@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { EditFormProps } from "../types";
+import { ListSearch } from "@/components/common/ListSearch";
 
 type ServiceCandidate = {
   id: string;
@@ -185,13 +186,11 @@ export function BackupForm({
         <span className="mb-1 flex items-baseline justify-between text-muted">
           <span>담당 서비스 ({selectedIds.length}/20)</span>
         </span>
-        <input
-          aria-label="담당 서비스 검색"
-          type="search"
+        <ListSearch
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
           placeholder="대학명·서비스명 검색"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          ariaLabel="담당 서비스 검색"
         />
         {matches.length > 0 && (
           <ul
@@ -242,13 +241,11 @@ export function BackupForm({
         <span className="mb-1 flex items-baseline justify-between text-muted">
           <span>대학 연락처 ({selectedContactIds.length}/20)</span>
         </span>
-        <input
-          aria-label="대학 연락처 검색"
-          type="search"
+        <ListSearch
           value={contactQuery}
-          onChange={(e) => setContactQuery(e.target.value)}
+          onChange={setContactQuery}
           placeholder="대학명·고객명 검색"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          ariaLabel="대학 연락처 검색"
         />
         {contactMatches.length > 0 && (
           <ul
