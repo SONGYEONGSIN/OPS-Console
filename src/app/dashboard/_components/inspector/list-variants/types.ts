@@ -13,7 +13,8 @@ export type Variant =
   | "receivables"
   | "ai-work"
   | "backup"
-  | "services";
+  | "services"
+  | "contracts";
 
 export type ViewProps = {
   row: ListRow;

@@ -5,15 +5,21 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 type Props = {
   /** 현재 필터 적용된 row 총 수 (전체 칩 옆 표시) */
   total: number;
+  /** mine 칩 라벨 (도메인별 — "내 서비스" / "내 계약" / "내 백업 요청") */
+  mineLabel: string;
 };
 
 /**
- * services 페이지 — ListPattern filter chip 영역의 "전체 (N) | 내 서비스" 토글.
- * URL ?mine= 갱신으로 mutual exclusive 상태 유지.
- * SERVICES_FILTERS는 빈 배열로 두어 ListPattern 내부의 status 기반 칩 렌더링을
- * 비활성화하고 이 컴포넌트가 단독으로 chip 영역을 책임진다.
+ * 목록 페이지 — "전체 (N) | 내 X" 토글 chips. 모든 list 도메인 공통.
+ *
+ * URL `?mine=` 갱신으로 mutual exclusive. 도메인 page.tsx에서 mine=true 시
+ * 서버 또는 클라이언트 filter 처리 (operator === me 비교 등).
+ *
+ * 사용 예 (services / contracts / 향후 도메인 동일):
+ *   <ScopeChips total={total} mineLabel="내 서비스" />
+ *   <ScopeChips total={total} mineLabel="내 계약" />
  */
-export function ServicesScopeChips({ total }: Props) {
+export function ScopeChips({ total, mineLabel }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -48,14 +54,14 @@ export function ServicesScopeChips({ total }: Props) {
       </button>
       <button
         type="button"
-        aria-label="내 서비스"
+        aria-label={mineLabel}
         aria-pressed={mine}
         onClick={() => go(true)}
         className={`relative cursor-pointer border-none bg-transparent px-3 py-1 text-sm transition-colors ${
           mine ? "font-bold text-ink" : "text-muted hover:text-ink"
         }`}
       >
-        내 서비스
+        {mineLabel}
         {mine && (
           <span
             aria-hidden

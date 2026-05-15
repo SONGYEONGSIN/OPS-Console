@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { ListSearch } from "@/components/common/ListSearch";
+import { ListSelect } from "@/components/common/ListSelect";
 import {
   UNIVERSITY_TYPE_OPTIONS,
   CATEGORY_OPTIONS,
@@ -47,39 +49,25 @@ export function ServicesControls() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-7 pt-3">
-      <input
-        type="search"
+      <ListSearch
         value={q}
-        onChange={(e) => setQ(e.target.value)}
+        onChange={setQ}
         placeholder="대학명·서비스명 검색"
-        className="w-full max-w-md rounded-md border border-faint bg-cream px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
       />
-      <select
-        aria-label="대학구분 필터"
+      <ListSelect
         value={universityType}
-        onChange={(e) => navigate({ universityType: e.target.value || null })}
-        className="rounded-md border border-faint bg-cream px-2 py-1.5 text-sm text-ink"
-      >
-        <option value="">대학구분 전체</option>
-        {UNIVERSITY_TYPE_OPTIONS.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="카테고리 필터"
+        onChange={(v) => navigate({ universityType: v || null })}
+        options={UNIVERSITY_TYPE_OPTIONS}
+        placeholder="대학구분 전체"
+        ariaLabel="대학구분 필터"
+      />
+      <ListSelect
         value={category}
-        onChange={(e) => navigate({ category: e.target.value || null })}
-        className="rounded-md border border-faint bg-cream px-2 py-1.5 text-sm text-ink"
-      >
-        <option value="">카테고리 전체</option>
-        {CATEGORY_OPTIONS.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => navigate({ category: v || null })}
+        options={CATEGORY_OPTIONS}
+        placeholder="카테고리 전체"
+        ariaLabel="카테고리 필터"
+      />
     </div>
   );
 }

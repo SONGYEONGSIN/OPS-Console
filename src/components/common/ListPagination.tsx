@@ -8,10 +8,15 @@ type Props = {
 };
 
 /**
- * services 페이지 목록 하단 페이지네이션 — ai-insight VideoGridSection 패턴 일관.
- * prev/next 버튼 + 현재/총 페이지 표시. URL ?page= 갱신.
+ * 목록 페이지 하단 페이지네이션 — 모든 list 도메인 공통.
+ *
+ * URL `?page=` 갱신으로 SSR 호환. prev/next 버튼 + 현재/총 페이지 표시.
+ * total ≤ pageSize면 미노출 (페이지 1개라 의미 없음).
+ *
+ * 사용 예 (services / contracts / 향후 도메인 동일):
+ *   <ListPagination total={total} pageSize={30} />
  */
-export function ServicesPagination({ total, pageSize = 30 }: Props) {
+export function ListPagination({ total, pageSize = 30 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
