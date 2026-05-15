@@ -43,6 +43,9 @@ export default async function ServicesPage({
 
   const sp = await searchParams;
   const me = await getCurrentOperator();
+  // viewer는 actions.ts의 isOperator() 에서 server-side 차단되지만 UI 가드 일관성을 위해 동일 조건 적용.
+  const canEdit =
+    me?.permission === "admin" || me?.permission === "member";
 
   const filter: ServicesFilter = {
     search: sp.q,
@@ -180,9 +183,9 @@ export default async function ServicesPage({
       data={{ rows }}
       header={header}
       variant="services"
-      canCreate={!!me}
+      canCreate={canEdit}
       createLabel="+ 신규 서비스"
-      readOnly={!me}
+      readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       servicesOperators={servicesOperators}
       servicesUniversityKeys={servicesUniversityKeys}
