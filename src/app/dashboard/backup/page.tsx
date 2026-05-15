@@ -53,6 +53,7 @@ export default async function BackupPage() {
     totalFetched += rows.length;
     serviceCandidatesRaw.push(...rows);
     if (totalFetched >= total) break;
+    if (p * CHUNK >= total) break; // PGRST103 회피
   }
   const backupServiceCandidates = serviceCandidatesRaw.map((s) => ({
     id: s.id,
@@ -73,6 +74,7 @@ export default async function BackupPage() {
     contactsFetched += rows.length;
     contactCandidatesRaw.push(...rows);
     if (contactsFetched >= total) break;
+    if (p * CHUNK >= total) break; // PGRST103 회피
   }
   const backupContactCandidates = contactCandidatesRaw.map((c) => ({
     id: c.id,

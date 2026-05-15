@@ -97,6 +97,8 @@ export default async function ServicesPage({
       }
     }
     if (totalFetched >= total) break;
+    // PGRST103 회피: 다음 page offset이 total 초과면 fetch 안 함 (partial response 안전망)
+    if (p * CHUNK >= total) break;
   }
   const servicesUniversityKeys = [...universityKeyMap.entries()].map(
     ([universityName, { key, maxSeq }]) => ({

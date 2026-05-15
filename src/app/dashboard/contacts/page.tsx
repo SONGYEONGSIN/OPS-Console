@@ -77,6 +77,7 @@ export default async function ContactsPage({
     suggestFetched += rows.length;
     servicesForUni.push(...rows);
     if (suggestFetched >= total) break;
+    if (p * SUGGEST_CHUNK >= total) break; // PGRST103 회피
   }
   const universitySet = new Set<string>();
   for (const s of servicesForUni) universitySet.add(s.university_name);

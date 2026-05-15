@@ -7,15 +7,17 @@ import { z } from "zod";
  * category / source를 `z.string()` 자유 텍스트로 둔다. 실 데이터(2511행, gitignored)
  * 분석이 완료된 후 follow-up PR에서 zod enum + DB check 제약을 도입한다.
  */
+// rowSchema는 DB read 결과. import 데이터에 빈 문자열 컬럼이 있을 수 있어
+// min(1) 제거 (createSchema/updateSchema는 입력 검증용으로 min(1) 유지).
 export const servicesRowSchema = z.object({
   id: z.string().uuid(),
   service_id: z.number().int(),
-  application_type: z.string().min(1),
-  region: z.string().min(1),
+  application_type: z.string(),
+  region: z.string(),
   university_name: z.string().min(1),
   service_name: z.string().min(1),
-  university_type: z.string().min(1),
-  category: z.string().min(1),
+  university_type: z.string(),
+  category: z.string(),
   operator_email: z.string().email().nullable(),
   operator_name: z.string().nullable(),
   developer_email: z.string().email().nullable(),
