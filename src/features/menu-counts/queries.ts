@@ -54,6 +54,8 @@ export async function getMenuCounts(
       supabase.from("onboarding_cohorts").select("*", head),
     ),
     countOf("services", supabase.from("services").select("*", head)),
+    countOf("contacts", supabase.from("contacts").select("*", head)),
+    countOf("backup", supabase.from("backup_requests").select("*", head)),
   ]);
 
   const map = new Map<string, number>();
