@@ -1,10 +1,12 @@
 ---
 plan_id: 20260516-113000-incidents-domain
-status: in_progress
+status: completed
 created: 2026-05-16T11:30:00Z
+completed: 2026-05-16T14:00:00Z
 hard_gate: full
 source: brainstorm:.claude/memory/brainstorms/20260516-110000-incidents-domain.md
 branch: feat/incidents-domain
+pr: 116
 ---
 
 # Plan: 사고 보고 (incidents) 도메인 신설 (PR-6)
@@ -546,3 +548,4 @@ T12 _data.ts 사이드바 count placeholder ────────────
 | 시각 | 단계 | 상태 변경 | 비고 |
 |------|------|-----------|------|
 | 2026-05-16T11:30:00Z | — | plan 생성 | brainstorm 20260516-110000 입력. branch `feat/incidents-domain` |
+| 2026-05-16T14:00:00Z | T1~T13 | 일괄 완료 | PR #116 squash merge (commit 9e0afa4). 마이그 20260526/b prod 적용 검증 완료 (테이블 20 컬럼 / count 0 / CHECK 차단) |
