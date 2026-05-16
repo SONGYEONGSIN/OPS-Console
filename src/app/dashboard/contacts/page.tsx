@@ -95,6 +95,7 @@ export default async function ContactsPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
       <ContactsControls />
     </div>

@@ -79,6 +79,7 @@ export default async function ContractsPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
       <ContractsControls />
     </div>

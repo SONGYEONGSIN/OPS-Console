@@ -21,6 +21,7 @@ export default async function AiInsightPage() {
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 

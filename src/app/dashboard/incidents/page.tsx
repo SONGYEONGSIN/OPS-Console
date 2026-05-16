@@ -115,6 +115,7 @@ export default async function IncidentsPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
       <IncidentsControls yearOptions={yearOptions} defaultYear={defaultYear} />
     </div>

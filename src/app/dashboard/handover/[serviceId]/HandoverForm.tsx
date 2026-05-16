@@ -51,38 +51,38 @@ export function HandoverForm({ serviceId, initial }: Props) {
   }
 
   return (
-    <div className="p-10">
-      <h2 className="mb-8 text-2xl font-bold text-ink">{cat.label}</h2>
+    <div className="px-14 py-12">
+      <h2 className="mb-10 text-3xl font-bold text-ink">{cat.label} 설정</h2>
       {cat.fields.map((f) => (
         <label
           key={f.key}
-          className="mb-7 grid grid-cols-[120px_1fr] items-start gap-4"
+          className="mb-9 grid grid-cols-[140px_1fr] items-start gap-6"
         >
-          <span className="pt-2 text-sm text-ink-soft">{f.label}</span>
+          <span className="pt-3 text-sm text-ink-soft">{f.label}</span>
           <textarea
             aria-label={f.label}
             value={values[f.key]}
             onChange={(e) => setField(f.key, e.target.value)}
-            rows={5}
+            rows={4}
             maxLength={10000}
-            className="w-full border border-line bg-transparent px-3 py-2 text-sm text-ink"
+            className="w-full border border-line bg-transparent px-4 py-3 text-sm text-ink outline-none focus:border-ink"
           />
         </label>
       ))}
       {error && <p className="mb-3 text-sm text-vermilion">{error}</p>}
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-6">
         <button
           type="button"
           onClick={handleSave}
           disabled={!dirty || isPending}
-          className="border border-ink bg-ink px-8 py-2.5 text-sm text-cream disabled:cursor-not-allowed disabled:opacity-50"
+          className="bg-ink-soft px-12 py-3 text-sm font-medium text-cream disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? "저장 중..." : "저장"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/dashboard/handover")}
-          className="border border-line bg-transparent px-8 py-2.5 text-sm text-ink"
+          className="border border-line bg-transparent px-12 py-3 text-sm text-ink hover:bg-washi-raised"
         >
           취소
         </button>

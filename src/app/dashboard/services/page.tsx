@@ -120,6 +120,7 @@ export default async function ServicesPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
       <ServicesControls />
     </div>
