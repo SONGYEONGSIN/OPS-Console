@@ -45,6 +45,10 @@ import { ContactsView } from "./contacts/View";
 import { ContactsForm } from "./contacts/EditForm";
 import { ContactsTable } from "./contacts/Table";
 import { CONTACTS_FILTERS, blankContactRow } from "./contacts/filters";
+import { IncidentView } from "./incidents/View";
+import { IncidentEditForm } from "./incidents/EditForm";
+import { IncidentTable } from "./incidents/Table";
+import { INCIDENT_FILTERS, blankIncidentRow } from "./incidents/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -174,5 +178,12 @@ export const variantRegistry = {
     Table: ContactsTable,
     Filters: CONTACTS_FILTERS,
     blank: blankContactRow,
+  },
+  incidents: {
+    View: IncidentView,
+    EditForm: IncidentEditForm,
+    Table: IncidentTable,
+    Filters: INCIDENT_FILTERS,
+    blank: blankIncidentRow,
   },
 } as const satisfies Record<Variant, RegistryEntry>;

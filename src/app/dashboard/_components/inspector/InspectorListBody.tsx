@@ -51,6 +51,10 @@ type Props = {
     key: number;
     nextSeq: number;
   }[];
+  /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
+  incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 카테고리 자동완성 후보 (datalist) */
+  incidentCategorySuggestions?: readonly string[];
 };
 
 /**
@@ -76,6 +80,8 @@ export function InspectorListBody({
   universityNameSuggestions,
   servicesOperators,
   servicesUniversityKeys,
+  incidentUniversityNameSuggestions,
+  incidentCategorySuggestions,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -120,6 +126,8 @@ export function InspectorListBody({
         universityNameSuggestions={universityNameSuggestions}
         servicesOperators={servicesOperators}
         servicesUniversityKeys={servicesUniversityKeys}
+        incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
+        incidentCategorySuggestions={incidentCategorySuggestions}
       />
     );
   }
