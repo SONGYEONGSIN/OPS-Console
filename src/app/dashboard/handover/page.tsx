@@ -87,10 +87,10 @@ export default async function HandoverPage({
       <HandoverTabs />
       <HandoverControls />
       <section className="p-7">
-        <div className="overflow-x-auto border border-line-soft">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-line bg-washi-raised text-left text-xs uppercase tracking-[0.06em] text-muted">
+              <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
                 <th className="px-3 py-2">대학명 · 서비스</th>
                 <th className="px-3 py-2">운영자</th>
                 <th className="px-3 py-2">접수구분</th>
