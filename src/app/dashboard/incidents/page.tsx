@@ -163,7 +163,7 @@ export default async function IncidentsPage({
         <ScopeChips
           key="incidents-scope"
           total={total}
-          mineLabel="내가 담당"
+          mineLabel="내 사고"
         />
       }
       footer={
