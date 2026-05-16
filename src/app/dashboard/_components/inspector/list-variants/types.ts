@@ -15,7 +15,8 @@ export type Variant =
   | "backup"
   | "services"
   | "contracts"
-  | "contacts";
+  | "contacts"
+  | "incidents";
 
 export type ViewProps = {
   row: ListRow;
@@ -62,4 +63,8 @@ export type EditFormProps = {
     key: number;
     nextSeq: number;
   }[];
+  /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
+  incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 카테고리 자동완성 후보 (자주 쓰는 값 datalist) */
+  incidentCategorySuggestions?: readonly string[];
 };

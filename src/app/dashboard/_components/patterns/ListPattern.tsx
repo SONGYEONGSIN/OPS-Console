@@ -210,6 +210,35 @@ export type ListRow = {
   contactExt?: string | null;
   /** contacts 도메인 — 이메일 */
   contactEmail?: string | null;
+  /** incidents 도메인 — 학년도 (예: 2027 = 2026.03~2027.02) */
+  incidentYear?: number;
+  /** incidents — 대학명 (자유 텍스트) */
+  incidentUniversityName?: string;
+  /** incidents — 구분 */
+  incidentAppType?: "공통원서" | "일반원서" | "공공원서";
+  /** incidents — 카테고리 자유 텍스트 (결제 / 원서작성 / 사이트 / 경쟁률 / 기타) */
+  incidentCategory?: string;
+  /** incidents — 발생일자 (YYYY-MM-DD, nullable) */
+  incidentOccurredDate?: string | null;
+  /** incidents — 처리일자 (YYYY-MM-DD, nullable) */
+  incidentResolvedDate?: string | null;
+  /** incidents — 사고제목 */
+  incidentTitle?: string;
+  /** incidents — 본문 4섹션 (markdown) */
+  incidentCauseSummary?: string | null;
+  incidentRootCause?: string | null;
+  incidentResolution?: string | null;
+  incidentPrevention?: string | null;
+  /** incidents — 담당부서 */
+  incidentDepartment?: "운영부-운영1팀" | "운영부-운영2팀";
+  /** incidents — 담당자 (본인 자동) */
+  incidentAssigneeEmail?: string;
+  incidentAssigneeName?: string;
+  /** incidents — 보고자 (부서별 고정 매핑) */
+  incidentReporterEmail?: string;
+  incidentReporterName?: string;
+  /** incidents — 현재상황 */
+  incidentStatus?: "미처리" | "처리중" | "처리완료" | "보류";
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -292,6 +321,10 @@ type Props = {
     key: number;
     nextSeq: number;
   }[];
+  /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
+  incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 카테고리 자동완성 후보 (datalist) */
+  incidentCategorySuggestions?: readonly string[];
   /** filter chip 영역에 추가로 렌더할 인라인 요소 (예: services 변경 — '내 서비스' 칩) */
   inlineFilters?: React.ReactNode;
   /** 테이블 하단에 렌더할 요소 (예: 페이지네이션) */
@@ -317,6 +350,8 @@ export function ListPattern({
   universityNameSuggestions,
   servicesOperators,
   servicesUniversityKeys,
+  incidentUniversityNameSuggestions,
+  incidentCategorySuggestions,
   inlineFilters,
   footer,
 }: Props) {
@@ -552,6 +587,8 @@ export function ListPattern({
               universityNameSuggestions={universityNameSuggestions}
               servicesOperators={servicesOperators}
               servicesUniversityKeys={servicesUniversityKeys}
+              incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
+              incidentCategorySuggestions={incidentCategorySuggestions}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

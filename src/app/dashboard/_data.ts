@@ -83,7 +83,7 @@ export const sidebarSections: SbSection[] = [
           {
             ico: "·",
             label: "사고 보고",
-            count: "2",
+            count: "",
             slug: "incidents",
             pattern: "list",
           },
