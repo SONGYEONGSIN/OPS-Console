@@ -25,8 +25,13 @@ const baseCreate = {
 };
 
 describe("enum values", () => {
-  it("APP_TYPE 3값", () => {
-    expect(APP_TYPE_VALUES).toEqual(["공통원서", "일반원서", "공공원서"]);
+  it("APP_TYPE 4값 (PR-7로 PIMS 추가)", () => {
+    expect(APP_TYPE_VALUES).toEqual([
+      "공통원서",
+      "일반원서",
+      "공공원서",
+      "PIMS",
+    ]);
   });
   it("DEPARTMENT 2값", () => {
     expect(DEPARTMENT_VALUES).toEqual(["운영부-운영1팀", "운영부-운영2팀"]);

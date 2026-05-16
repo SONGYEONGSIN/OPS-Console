@@ -19,11 +19,21 @@ import { currentAcademicYear } from "@/lib/datetime";
 
 const PAGE_SIZE = 30;
 
+// 운영 어휘 분류. datalist이므로 자유 입력 추가 가능.
+// 원서접수 운영 흐름 순: 사이트 → 작성/유의/파일/추천 → 출력/전형료 → 결제 → 경쟁률 → 수험번호 → SMS·알림톡 → PIMS → 로그인 → 기타
 const CATEGORY_SUGGESTIONS = [
-  "결제",
-  "원서작성",
   "사이트",
+  "원서작성",
+  "유의사항",
+  "전산파일",
+  "추천서",
+  "출력물",
+  "전형료",
+  "결제",
   "경쟁률",
+  "수험번호",
+  "SMS/알림톡",
+  "로그인/회원가입",
   "기타",
 ] as const;
 
@@ -173,9 +183,9 @@ function incidentToListRow(r: IncidentRow): ListRow {
     id: r.id,
     name: r.title,
     status: "active",
-    owner: r.assignee_name,
+    owner: r.assignee_name ?? "—",
     incidentYear: r.year,
-    incidentUniversityName: r.university_name,
+    incidentUniversityName: r.university_name ?? undefined,
     incidentAppType: r.app_type,
     incidentCategory: r.category,
     incidentOccurredDate: r.occurred_date ?? null,
@@ -186,8 +196,8 @@ function incidentToListRow(r: IncidentRow): ListRow {
     incidentResolution: r.resolution ?? null,
     incidentPrevention: r.prevention ?? null,
     incidentDepartment: r.department,
-    incidentAssigneeEmail: r.assignee_email,
-    incidentAssigneeName: r.assignee_name,
+    incidentAssigneeEmail: r.assignee_email ?? undefined,
+    incidentAssigneeName: r.assignee_name ?? undefined,
     incidentReporterEmail: r.reporter_email,
     incidentReporterName: r.reporter_name,
     incidentStatus: r.status,

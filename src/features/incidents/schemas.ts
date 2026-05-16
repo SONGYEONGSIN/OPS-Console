@@ -1,7 +1,12 @@
 import { z } from "zod";
 
-/** PR-6: 구분 — services.application_type과 별개의 incidents 전용 분류 */
-export const APP_TYPE_VALUES = ["공통원서", "일반원서", "공공원서"] as const;
+/** PR-6: 구분 — services.application_type과 별개의 incidents 전용 분류. PR-7로 PIMS 추가 */
+export const APP_TYPE_VALUES = [
+  "공통원서",
+  "일반원서",
+  "공공원서",
+  "PIMS",
+] as const;
 
 /** PR-6: 담당부서 — operators.team(운영1팀/운영2팀)에 "운영부-" prefix 적용한 표시값 */
 export const DEPARTMENT_VALUES = [
@@ -31,7 +36,7 @@ export type IncidentStatus = z.infer<typeof statusSchema>;
 export const incidentRowSchema = z.object({
   id: z.string().uuid(),
   year: z.number().int().min(2000).max(3000),
-  university_name: z.string().min(1),
+  university_name: z.string().min(1).nullable(),
   app_type: appTypeSchema,
   category: z.string().min(1),
   occurred_date: z.string().nullable().optional(),
@@ -42,8 +47,8 @@ export const incidentRowSchema = z.object({
   resolution: z.string().nullable().optional(),
   prevention: z.string().nullable().optional(),
   department: departmentSchema,
-  assignee_email: z.string().email(),
-  assignee_name: z.string().min(1),
+  assignee_email: z.string().email().nullable(),
+  assignee_name: z.string().min(1).nullable(),
   reporter_email: z.string().email(),
   reporter_name: z.string().min(1),
   status: statusSchema.default("미처리"),

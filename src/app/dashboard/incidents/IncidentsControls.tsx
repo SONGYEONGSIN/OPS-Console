@@ -59,6 +59,12 @@ export function IncidentsControls({ yearOptions, defaultYear }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-7 pt-3">
+      <ListSearch
+        value={q}
+        onChange={setQ}
+        placeholder="제목·대학·경위 검색"
+        ariaLabel="사고 검색"
+      />
       <ListSelect
         value={year}
         onChange={(v) => navigate({ year: v || null })}
@@ -78,12 +84,6 @@ export function IncidentsControls({ yearOptions, defaultYear }: Props) {
         options={DEPARTMENT_OPTIONS}
         placeholder="담당부서 전체"
         ariaLabel="담당부서 필터"
-      />
-      <ListSearch
-        value={q}
-        onChange={setQ}
-        placeholder="제목·대학·경위 검색"
-        ariaLabel="사고 검색"
       />
     </div>
   );
