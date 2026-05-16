@@ -1,26 +1,39 @@
 #!/usr/bin/env node
-// incidents 시트 import — 2025학년도 운영부 row 주입. PR-7.
+// incidents 시트 import — Google Sheets API 직접 fetch. PR-7.
 // 실행:
 //   DRY_RUN=true node scripts/incidents-import.mjs   # 검증 (insert 없음)
 //   node scripts/incidents-import.mjs                # 실제 insert
 //
-// 시트 캐시: scripts/incidents-sheet-cache.txt (.gitignore — Drive MCP에서 추출)
+// .env.local 필수:
+//   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (Supabase)
+//   GOOGLE_SERVICE_ACCOUNT_JSON_PATH                    (예: .gcp/folio-sheets-sa.json)
+//   INCIDENTS_SHEET_ID                                  (시트 ID)
+//   INCIDENTS_SHEET_TAB_NAME                            (탭 이름, e.g. "2025학년도")
 
 import { config as dotenvConfig } from "dotenv";
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { google } from "googleapis";
 
 dotenvConfig({ path: ".env.local" });
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const GCP_KEY_PATH = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_PATH;
+const SHEET_ID = process.env.INCIDENTS_SHEET_ID;
+const SHEET_TAB = process.env.INCIDENTS_SHEET_TAB_NAME;
 const DRY_RUN = process.env.DRY_RUN === "true";
-const SHEET_CACHE = "scripts/incidents-sheet-cache.txt";
 const YEAR = 2025;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error(
     "[fatal] NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY 필요 — .env.local 확인",
+  );
+  process.exit(1);
+}
+if (!GCP_KEY_PATH || !SHEET_ID || !SHEET_TAB) {
+  console.error(
+    "[fatal] GOOGLE_SERVICE_ACCOUNT_JSON_PATH / INCIDENTS_SHEET_ID / INCIDENTS_SHEET_TAB_NAME 필요 — .env.local 확인",
   );
   process.exit(1);
 }
@@ -81,31 +94,35 @@ function parseDate(raw) {
 }
 
 /**
- * markdown table parser — | col1 | col2 | ... |
- * 첫 2줄은 header / separator. 그 이후가 데이터 row.
- * Cell 내부에 `\|`로 escape된 파이프가 있을 가능성을 무시하고 단순 split.
- * Cell 내부 multi-line은 시트 export 시 한 줄로 합쳐졌다고 가정.
- * Header 컬럼 수와 데이터 row의 cell 수가 다르면 skip (multi-line으로 깨진 row 자동 제외).
+ * Google Sheets API fetch — service account 인증.
+ * 응답: { range, majorDimension, values: [[col1, col2, ...], ...] }
+ * values[0] = header, values[1..] = data rows.
  */
-function parseSheet(text) {
-  const lines = text.split("\n").filter((l) => l.trim().startsWith("|"));
-  if (lines.length < 3) throw new Error("sheet table not found");
-
-  const headerLine = lines[0];
-  const header = headerLine
-    .split("|")
-    .slice(1, -1)
-    .map((s) => s.trim());
-
+async function fetchSheetRows() {
+  const credentials = JSON.parse(readFileSync(GCP_KEY_PATH, "utf8"));
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: `${SHEET_TAB}!A:Z`, // 전체 컬럼 — header에서 실제 사용 컬럼 자동 매핑
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
+  });
+  const values = res.data.values ?? [];
+  if (values.length < 2) {
+    throw new Error("sheet has no data rows");
+  }
+  const header = values[0].map((s) => String(s ?? "").trim());
   const rows = [];
-  for (let i = 2; i < lines.length; i++) {
-    const cells = lines[i]
-      .split("|")
-      .slice(1, -1)
-      .map((s) => s.trim());
-    if (cells.length !== header.length) continue;
+  for (let i = 1; i < values.length; i++) {
+    const cells = values[i] ?? [];
     const row = {};
-    header.forEach((h, idx) => (row[h] = cells[idx]));
+    header.forEach((h, idx) => {
+      row[h] = cells[idx] != null ? String(cells[idx]) : "";
+    });
     rows.push(row);
   }
   return rows;
@@ -183,10 +200,10 @@ function printDistribution(label, items, getKey) {
 
 async function main() {
   console.log(`[mode] ${DRY_RUN ? "DRY_RUN" : "REAL INSERT"}`);
+  console.log(`[sheet] fetching ${SHEET_TAB} via Google Sheets API...`);
 
-  const sheetText = readFileSync(SHEET_CACHE, "utf8");
-  const sheetRows = parseSheet(sheetText);
-  console.log(`[sheet] ${sheetRows.length} rows parsed`);
+  const sheetRows = await fetchSheetRows();
+  console.log(`[sheet] ${sheetRows.length} rows fetched`);
 
   const opsMap = await fetchOperatorsMap();
   console.log(`[operators] ${opsMap.size} active`);
