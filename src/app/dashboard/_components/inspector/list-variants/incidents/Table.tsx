@@ -53,7 +53,7 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
                 </td>
                 <td className="px-3 py-2">
                   <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
+                    className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
                   >
                     {status}
                   </span>
