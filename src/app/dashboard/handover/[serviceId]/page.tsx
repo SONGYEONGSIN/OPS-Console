@@ -65,10 +65,10 @@ export default async function HandoverDetailPage({ params }: Props) {
         </Link>
       </div>
       <HandoverTabs />
-      <div className="grid grid-cols-[280px_1fr] border-t border-line-soft">
+      <section className="grid grid-cols-1 gap-6 p-5 md:grid-cols-[240px_1fr] md:p-6 lg:p-7">
         <CategoryNav />
         <HandoverForm serviceId={serviceId} initial={initial} />
-      </div>
+      </section>
     </div>
   );
 }
