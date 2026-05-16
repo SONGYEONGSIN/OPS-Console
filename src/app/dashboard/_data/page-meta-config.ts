@@ -35,7 +35,9 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "운영부 공통 일정 — 시프트, 팀 이벤트, 휴가, 교육을 한곳에. 본인 일정은 직접 작성·수정·삭제할 수 있고, 팀 공통 일정은 admin이 관리합니다.",
   },
   handover: {
-    headline: { accent: "교대", title: "인수인계" },
+    headline: { accent: "요청 · 자료", title: "인수인계" },
+    description:
+      "서비스별 인수인계 내용을 작성·조회합니다. 좌측 카테고리(계약/작업/정산/연락처/서류제출/기타)로 14 sub-field를 정리하고 인계 진행 상태를 추적합니다.",
   },
   feedback: {
     headline: { accent: "관리", title: "개선요청" },

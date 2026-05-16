@@ -89,6 +89,7 @@ export default async function HandoverPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
       <HandoverTabs />
       <HandoverControls />
