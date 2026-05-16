@@ -63,7 +63,7 @@ export const sidebarSections: SbSection[] = [
         kind: "item",
         ico: "◈",
         label: "인수인계",
-        count: "2",
+        count: "",
         slug: "handover",
         pattern: "list",
       },
