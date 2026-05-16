@@ -74,15 +74,13 @@ export default async function HandoverPage({
     | undefined;
   const mine = params.mine === "true";
   const me = await getCurrentOperator();
-  const { rows: allRows, total } = await listServicesWithHandover({
+  const { rows, total } = await listServicesWithHandover({
     q: params.q,
     status: statusParam,
+    ownerEmail: mine ? me?.email : undefined,
     page,
     pageSize: PAGE_SIZE,
   });
-  const rows = mine
-    ? allRows.filter((r) => r.operator_name === (me?.displayName ?? me?.email))
-    : allRows;
 
   return (
     <div>

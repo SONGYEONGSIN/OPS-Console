@@ -10,6 +10,8 @@ export type ListInput = {
   q?: string;
   /** 'none' = handover_records 없음 (미작성). 그 외는 status enum */
   status?: HandoverStatus | "none";
+  /** 본인 운영/개발 서비스만 (services 패턴 mirror — operator_email OR developer_email) */
+  ownerEmail?: string;
   page?: number;
   pageSize?: number;
 };
@@ -55,6 +57,12 @@ export async function listServicesWithHandover(
   if (input.q) {
     const like = `%${input.q}%`;
     q = q.or(`university_name.ilike.${like},service_name.ilike.${like}`);
+  }
+
+  if (input.ownerEmail) {
+    q = q.or(
+      `operator_email.eq.${input.ownerEmail},developer_email.eq.${input.ownerEmail}`,
+    );
   }
 
   const page = Math.max(1, input.page ?? 1);
