@@ -19,11 +19,17 @@ import { currentAcademicYear } from "@/lib/datetime";
 
 const PAGE_SIZE = 30;
 
+// 2025학년도 시트 distinct 분류 (빈도 순). 운영 중 새 카테고리 발생 시 자유 입력 가능 (datalist).
 const CATEGORY_SUGGESTIONS = [
-  "결제",
-  "원서작성",
   "사이트",
+  "원서작성",
+  "결제",
   "경쟁률",
+  "수험번호",
+  "SMS",
+  "PIMS",
+  "알림톡",
+  "로그인/회원가입",
   "기타",
 ] as const;
 
