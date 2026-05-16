@@ -58,7 +58,6 @@ export default async function IncidentsPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
 
   const me = await getCurrentOperator();
   const canEdit =
@@ -71,7 +70,8 @@ export default async function IncidentsPage({
 
   const { rows: dbRows, total } = await listIncidents({
     year: selectedYear,
-    status: params.status && params.status !== "all" ? params.status : undefined,
+    status:
+      params.status && params.status !== "all" ? params.status : undefined,
     department: params.department || undefined,
     q: params.q || undefined,
     mine,
@@ -81,6 +81,7 @@ export default async function IncidentsPage({
   });
 
   const rows: ListRow[] = dbRows.map(incidentToListRow);
+  const config = resolvePageMeta(slug, meta, total);
 
   // 학년도 selector 후보 (현 학년도 +1 ~ -5)
   const yearOptions: string[] = [];

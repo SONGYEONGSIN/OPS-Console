@@ -46,18 +46,17 @@ export default async function HandoverPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
-
   const tab = params.tab ?? "content";
 
   if (tab !== "content") {
+    const fallback = resolvePageMeta(slug, meta);
     return (
       <div>
         <PageHeader
           pathname={pathname}
-          meta={config.meta}
-          headline={config.headline}
-          description={config.description}
+          meta={fallback.meta}
+          headline={fallback.headline}
+          description={fallback.description}
         />
         <HandoverTabs />
         <div className="p-7 text-sm text-muted">
@@ -81,6 +80,7 @@ export default async function HandoverPage({
     page,
     pageSize: PAGE_SIZE,
   });
+  const config = resolvePageMeta(slug, meta, total);
 
   return (
     <div>
