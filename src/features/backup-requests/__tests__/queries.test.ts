@@ -8,6 +8,7 @@ const { mockCreateClient, mockResult } = vi.hoisted(() => {
   builder.order = () => builder;
   builder.limit = () => builder;
   builder.neq = () => builder;
+  builder.range = () => builder;
   builder.maybeSingle = () => Promise.resolve(mockResult());
   builder.then = (onFulfilled: (v: unknown) => unknown) =>
     Promise.resolve(mockResult()).then(onFulfilled);
@@ -80,13 +81,14 @@ describe("listBackupRequests", () => {
     mockResult.mockReset();
   });
 
-  it("정상 row 반환 + services_detail 평탄화", async () => {
-    mockResult.mockReturnValue({ data: [validRow], error: null });
-    const rows = await listBackupRequests();
-    expect(rows.length).toBe(1);
-    expect(rows[0].requester_email).toBe("bob@example.com");
-    expect(rows[0].services_detail).toHaveLength(2);
-    expect(rows[0].services_detail[0]?.service_name).toBe(
+  it("정상 row 반환 + services_detail 평탄화 + total count", async () => {
+    mockResult.mockReturnValue({ data: [validRow], error: null, count: 7 });
+    const r = await listBackupRequests();
+    expect(r.rows.length).toBe(1);
+    expect(r.total).toBe(7);
+    expect(r.rows[0].requester_email).toBe("bob@example.com");
+    expect(r.rows[0].services_detail).toHaveLength(2);
+    expect(r.rows[0].services_detail[0]?.service_name).toBe(
       "Graduate School of Police Studies",
     );
   });
@@ -94,25 +96,31 @@ describe("listBackupRequests", () => {
   it("services join 없는 row → services_detail 빈 배열", async () => {
     const { backup_request_services: _drop, ...withoutJoin } = validRow;
     void _drop;
-    mockResult.mockReturnValue({ data: [withoutJoin], error: null });
-    const rows = await listBackupRequests();
-    expect(rows.length).toBe(1);
-    expect(rows[0].services_detail).toEqual([]);
+    mockResult.mockReturnValue({ data: [withoutJoin], error: null, count: 1 });
+    const r = await listBackupRequests();
+    expect(r.rows.length).toBe(1);
+    expect(r.rows[0].services_detail).toEqual([]);
   });
 
-  it("supabase error → 빈 배열", async () => {
-    mockResult.mockReturnValue({ data: null, error: { message: "boom" } });
-    const rows = await listBackupRequests();
-    expect(rows).toEqual([]);
+  it("supabase error → 빈 rows + total 0", async () => {
+    mockResult.mockReturnValue({
+      data: null,
+      error: { message: "boom" },
+      count: null,
+    });
+    const r = await listBackupRequests();
+    expect(r.rows).toEqual([]);
+    expect(r.total).toBe(0);
   });
 
   it("zod fail row는 skip", async () => {
     mockResult.mockReturnValue({
       data: [validRow, { ...validRow, mail_status: "unknown" }],
       error: null,
+      count: 2,
     });
-    const rows = await listBackupRequests();
-    expect(rows.length).toBe(1);
+    const r = await listBackupRequests();
+    expect(r.rows.length).toBe(1);
   });
 
   it("PR-4: services join row의 contacts/note_md 평탄화 시 보존", async () => {
@@ -129,10 +137,10 @@ describe("listBackupRequests", () => {
         },
       ],
     };
-    mockResult.mockReturnValue({ data: [richRow], error: null });
-    const rows = await listBackupRequests();
-    expect(rows[0]?.services_detail[0]?.note_md).toBe("5/20 마감 임박");
-    expect(rows[0]?.services_detail[0]?.contacts).toEqual([
+    mockResult.mockReturnValue({ data: [richRow], error: null, count: 1 });
+    const r = await listBackupRequests();
+    expect(r.rows[0]?.services_detail[0]?.note_md).toBe("5/20 마감 임박");
+    expect(r.rows[0]?.services_detail[0]?.contacts).toEqual([
       "경찰대 — 강민호",
       "고려대 — 홍길동",
     ]);

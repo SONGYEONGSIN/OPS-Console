@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
+import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
@@ -15,16 +16,29 @@ import type { ServicesRow } from "@/features/services/schemas";
 import { listContacts } from "@/features/contacts/queries";
 import type { ContactRow } from "@/features/contacts/schemas";
 
-export default async function BackupPage() {
+const PAGE_SIZE = 30;
+
+type SearchParams = { page?: string };
+
+export default async function BackupPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const slug = "backup";
   await requireMenu(slug);
 
+  const params = await searchParams;
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
   const config = resolvePageMeta(slug, meta);
 
-  const requests = await listBackupRequests();
+  const page = Math.max(1, Number(params.page) || 1);
+  const { rows: requests, total } = await listBackupRequests({
+    page,
+    pageSize: PAGE_SIZE,
+  });
   const ownerByEmail = await buildOwnerMap(requests);
   const rows: ListRow[] = requests.map((r) =>
     backupRequestToListRow(r, ownerByEmail),
@@ -152,6 +166,13 @@ export default async function BackupPage() {
       backupServiceCandidates={backupServiceCandidates}
       backupContactCandidates={backupContactCandidates}
       onPersist={onPersist}
+      footer={
+        <ListPagination
+          key="backup-pagination"
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      }
     />
   );
 }

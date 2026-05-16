@@ -48,22 +48,34 @@ function flattenServicesDetail(row: unknown): unknown {
   return { ...rest, services_detail: details };
 }
 
+export type ListBackupRequestsInput = {
+  page?: number;
+  pageSize?: number;
+};
+
+const DEFAULT_PAGE_SIZE = 30;
+
 /**
  * 백업 요청 목록 fetch (RSC).
  * RLS: authenticated → 모든 row read 허용 (전원 가시 정책).
- * 정렬: created_at desc. 최대 100건. services_detail은 join 결과.
+ * 정렬: created_at desc. pagination: ?page= URL 파라미터 기반.
  */
-export async function listBackupRequests(): Promise<BackupRequestRow[]> {
+export async function listBackupRequests(
+  input: ListBackupRequestsInput = {},
+): Promise<{ rows: BackupRequestRow[]; total: number }> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
+
+  const { data, error, count } = await supabase
     .from("backup_requests")
-    .select(SELECT_WITH_SERVICES)
+    .select(SELECT_WITH_SERVICES, { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range((page - 1) * pageSize, page * pageSize - 1);
 
   if (error) {
     console.error("[listBackupRequests] supabase error:", error);
-    return [];
+    return { rows: [], total: 0 };
   }
 
   const parsed: BackupRequestRow[] = [];
@@ -79,7 +91,7 @@ export async function listBackupRequests(): Promise<BackupRequestRow[]> {
         flat,
       );
   }
-  return parsed;
+  return { rows: parsed, total: count ?? 0 };
 }
 
 /**
