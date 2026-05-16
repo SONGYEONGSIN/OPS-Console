@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
 
-const APP_TYPE_OPTIONS = ["공통원서", "일반원서", "공공원서"] as const;
+const APP_TYPE_OPTIONS = ["공통원서", "일반원서", "공공원서", "PIMS"] as const;
 const STATUS_OPTIONS = ["미처리", "처리중", "처리완료", "보류"] as const;
 const DEPARTMENT_OPTIONS = ["운영부-운영1팀", "운영부-운영2팀"] as const;
 

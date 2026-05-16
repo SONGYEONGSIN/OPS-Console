@@ -33,7 +33,6 @@ const CATEGORY_SUGGESTIONS = [
   "경쟁률",
   "수험번호",
   "SMS/알림톡",
-  "PIMS",
   "로그인/회원가입",
   "기타",
 ] as const;
@@ -186,7 +185,7 @@ function incidentToListRow(r: IncidentRow): ListRow {
     status: "active",
     owner: r.assignee_name ?? "—",
     incidentYear: r.year,
-    incidentUniversityName: r.university_name,
+    incidentUniversityName: r.university_name ?? undefined,
     incidentAppType: r.app_type,
     incidentCategory: r.category,
     incidentOccurredDate: r.occurred_date ?? null,

@@ -215,7 +215,7 @@ export type ListRow = {
   /** incidents — 대학명 (자유 텍스트) */
   incidentUniversityName?: string;
   /** incidents — 구분 */
-  incidentAppType?: "공통원서" | "일반원서" | "공공원서";
+  incidentAppType?: "공통원서" | "일반원서" | "공공원서" | "PIMS";
   /** incidents — 카테고리 자유 텍스트 (결제 / 원서작성 / 사이트 / 경쟁률 / 기타) */
   incidentCategory?: string;
   /** incidents — 발생일자 (YYYY-MM-DD, nullable) */

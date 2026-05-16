@@ -33,10 +33,34 @@ const REPORTER_BY_DEPARTMENT = {
   "운영부-운영2팀": { email: "ys1114@jinhakapply.com", name: "송영신" },
 };
 
-const CATEGORY_CANON = new Set(["결제", "원서작성", "사이트", "경쟁률"]);
+// 14개 카테고리 — page.tsx CATEGORY_SUGGESTIONS와 동기. PIMS는 별도 처리(app_type).
+const CATEGORY_CANON = new Set([
+  "사이트",
+  "원서작성",
+  "유의사항",
+  "전산파일",
+  "추천서",
+  "출력물",
+  "전형료",
+  "결제",
+  "경쟁률",
+  "수험번호",
+  "로그인/회원가입",
+  "기타",
+]);
+
 function canonicalCategory(raw) {
   const c = (raw ?? "").trim();
-  return CATEGORY_CANON.has(c) ? c : "기타";
+  // SMS / 알림톡 → 단일화
+  if (c === "SMS" || c === "알림톡") return "SMS/알림톡";
+  // PIMS는 분류 컬럼에 있어도 카테고리 아님 (app_type으로 이동) — 호출 측에서 별도 분기
+  if (CATEGORY_CANON.has(c)) return c;
+  return "기타";
+}
+
+// 시트 분류='PIMS'면 app_type='PIMS' (구분으로 이동)
+function isPimsCategory(raw) {
+  return (raw ?? "").trim() === "PIMS";
 }
 
 function canonicalStatus(raw) {
@@ -101,32 +125,33 @@ async function fetchOperatorsMap() {
 }
 
 function mapRow(sheetRow, opsMap) {
-  const dept = (sheetRow["부서"] ?? "").trim();
-  if (dept !== "운영부") return { skip: "non-운영부" };
-
   const title = (sheetRow["요약"] ?? "").trim();
-  const category = (sheetRow["분류"] ?? "").trim();
-  const university_name = (sheetRow["대학교"] ?? "").trim();
+  const rawCategory = (sheetRow["분류"] ?? "").trim();
+  const universityRaw = (sheetRow["대학교"] ?? "").trim();
+  const university_name = universityRaw || null; // 빈 값은 null 허용
   if (!title) return { skip: "필수 누락: title" };
-  if (!category) return { skip: "필수 누락: category" };
-  if (!university_name) return { skip: "필수 누락: university_name" };
+  if (!rawCategory) return { skip: "필수 누락: category" };
 
   const assigneeName = (sheetRow["담당자"] ?? "").trim();
   if (!assigneeName) return { skip: "필수 누락: 담당자" };
   const assignee = opsMap.get(assigneeName);
-  // assignee 매칭 실패(퇴사자 등) — assignee_email/name은 null로 두고 import 진행 (PR-7 nullable 마이그)
-  // department는 매칭 실패 시 default 운영1팀 (보고자=허승철)
+  // assignee 매칭 실패(타 부서 / 퇴사자) — null + default 운영1팀
   const team = assignee?.team ?? "운영1팀";
   const department =
     team === "운영2팀" ? "운영부-운영2팀" : "운영부-운영1팀";
   const reporter = REPORTER_BY_DEPARTMENT[department];
 
+  // 분류=PIMS → app_type='PIMS' + category='기타'
+  const isPims = isPimsCategory(rawCategory);
+  const app_type = isPims ? "PIMS" : "공통원서";
+  const category = isPims ? "기타" : canonicalCategory(rawCategory);
+
   return {
     payload: {
       year: YEAR,
       university_name,
-      app_type: "공통원서",
-      category: canonicalCategory(category),
+      app_type,
+      category,
       occurred_date: parseDate(sheetRow["Start date"]),
       resolved_date: parseDate(sheetRow["기한"]),
       title: title.slice(0, 200),
