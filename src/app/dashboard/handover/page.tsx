@@ -3,8 +3,10 @@ import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPagination } from "@/components/common/ListPagination";
+import { ScopeChips } from "@/components/common/ScopeChips";
 import { HandoverTabs } from "./HandoverTabs";
 import { HandoverControls } from "./HandoverControls";
+import { getCurrentOperator } from "@/features/auth/queries";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listServicesWithHandover } from "@/features/handover/queries";
 import type { HandoverStatus } from "@/features/handover/schemas";
@@ -29,6 +31,7 @@ type SearchParams = {
   status?: string;
   page?: string;
   tab?: string;
+  mine?: string;
 };
 
 export default async function HandoverPage({
@@ -69,12 +72,17 @@ export default async function HandoverPage({
     | HandoverStatus
     | "none"
     | undefined;
-  const { rows, total } = await listServicesWithHandover({
+  const mine = params.mine === "true";
+  const me = await getCurrentOperator();
+  const { rows: allRows, total } = await listServicesWithHandover({
     q: params.q,
     status: statusParam,
     page,
     pageSize: PAGE_SIZE,
   });
+  const rows = mine
+    ? allRows.filter((r) => r.operator_name === (me?.displayName ?? me?.email))
+    : allRows;
 
   return (
     <div>
@@ -87,6 +95,14 @@ export default async function HandoverPage({
       <HandoverTabs />
       <HandoverControls />
       <section className="p-7">
+        <header className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-xl font-bold text-ink">서비스</h2>
+            <span className="text-muted" aria-hidden>·</span>
+            <span className="text-sm text-vermilion">{rows.length}건</span>
+          </div>
+          <ScopeChips total={total} mineLabel="내 서비스" />
+        </header>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
