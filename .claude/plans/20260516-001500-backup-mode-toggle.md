@@ -1,10 +1,12 @@
 ---
 plan_id: 20260516-001500-backup-mode-toggle
-status: in_progress
+status: completed
 created: 2026-05-16T00:15:00Z
+completed: 2026-05-16T08:30:00Z
 hard_gate: inline
 source: brainstorm:.claude/memory/brainstorms/20260516-001000-backup-mode-toggle.md
 branch: feat/backup-mode-toggle
+pr: 114
 ---
 
 # Plan: 백업 요청 mode toggle (PR-5)
@@ -105,3 +107,4 @@ frontend state 추가 + 분기 렌더링. ServiceCard에 `showSubstituteSelect` 
 | 시각 | 단계 | 상태 변경 | 비고 |
 |------|------|-----------|------|
 | 2026-05-16T00:15:00Z | — | plan 생성 | brainstorm 20260516-001000 입력. branch `feat/backup-mode-toggle` |
+| 2026-05-16T08:30:00Z | T1~T3 | 일괄 완료 | PR #114 squash merge (commit bb411fb). 사용자 로컬 확인 후 라벨/너비 보정 commit 1개 추가 후 머지 |
