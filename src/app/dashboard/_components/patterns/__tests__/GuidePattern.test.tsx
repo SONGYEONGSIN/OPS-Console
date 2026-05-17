@@ -61,4 +61,34 @@ describe("GuidePattern", () => {
     expect(screen.getByText("1")).toBeInTheDocument();
     expect(screen.getByText("2")).toBeInTheDocument();
   });
+
+  it("url 있는 item은 새 탭 링크로 렌더 — 자료실 탭 재사용", () => {
+    const tabsWithLink: GuideTab[] = [
+      {
+        value: "res",
+        label: "자료실",
+        sections: [
+          {
+            ico: "①",
+            title: "운영 문서",
+            items: [
+              {
+                title: "계약 시트",
+                detail: "SharePoint",
+                url: "https://example.com/sheet",
+              },
+              { title: "정책 문서", detail: "url 없음" },
+            ],
+          },
+        ],
+      },
+    ];
+    render(<GuidePattern title="자료실" tabs={tabsWithLink} />);
+    const link = screen.getByRole("link", { name: /계약 시트/ });
+    expect(link).toHaveAttribute("href", "https://example.com/sheet");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    // url 없는 항목은 링크가 아님
+    expect(screen.queryByRole("link", { name: /정책 문서/ })).toBeNull();
+  });
 });

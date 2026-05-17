@@ -41,7 +41,7 @@ export function BackupView({ row }: ViewProps) {
             )}
           </span>
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-2xs ${MAIL_STATUS_TONE[status]}`}
+            className={`inline-block px-2 py-0.5 text-2xs ${MAIL_STATUS_TONE[status]}`}
           >
             {MAIL_STATUS_LABEL[status]}
           </span>

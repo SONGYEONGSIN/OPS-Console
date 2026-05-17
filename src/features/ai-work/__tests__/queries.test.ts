@@ -23,7 +23,8 @@ import { listAiWorks } from "../queries";
 const validRow = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   title: "회의록 요약 자동화",
-  work_date: "2026-05-10",
+  work_start_date: "2026-05-10",
+  work_end_date: "2026-05-12",
   ai_tool: "chatgpt",
   category: "meeting",
   summary_md: "주간회의 30분 → 5분.",

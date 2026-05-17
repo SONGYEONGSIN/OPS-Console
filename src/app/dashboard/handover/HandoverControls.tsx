@@ -3,17 +3,19 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { ListSearch } from "@/components/common/ListSearch";
-import { ListSelect } from "@/components/common/ListSelect";
 
 const DEBOUNCE_MS = 300;
 
-/** 작성상태 필터 — value는 status enum 또는 'none'(미작성) */
-const STATUS_OPTIONS = ["none", "draft", "ready", "published"] as const;
-
+/**
+ * handover 인수인계 내용 탭 — 검색(대학명·서비스명) + 작성상태 필터.
+ * status는 DB enum(draft/ready/published) + none(레코드 없음)이라 native select
+ * 직접 사용 (ListSelect는 value==label만 지원).
+ */
 export function HandoverControls() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
+
   const [q, setQ] = useState(params.get("q") ?? "");
   const status = params.get("status") ?? "";
 
@@ -45,16 +47,21 @@ export function HandoverControls() {
       <ListSearch
         value={q}
         onChange={setQ}
-        placeholder="대학명·서비스명 검색"
+        placeholder="대학명·서비스 검색"
         ariaLabel="인수인계 검색"
       />
-      <ListSelect
+      <select
+        aria-label="작성상태 필터"
         value={status}
-        onChange={(v) => navigate({ status: v || null })}
-        options={STATUS_OPTIONS}
-        placeholder="작성상태 전체"
-        ariaLabel="작성상태 필터"
-      />
+        onChange={(e) => navigate({ status: e.target.value || null })}
+        className="border border-line bg-transparent px-3 py-2 text-sm text-ink outline-none focus:border-vermilion"
+      >
+        <option value="">작성상태 전체</option>
+        <option value="none">미작성</option>
+        <option value="draft">작성중</option>
+        <option value="ready">작성완료</option>
+        <option value="published">인계완료</option>
+      </select>
     </div>
   );
 }

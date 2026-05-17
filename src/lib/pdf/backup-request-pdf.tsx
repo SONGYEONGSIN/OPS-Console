@@ -10,13 +10,18 @@ import {
 } from "@react-pdf/renderer";
 import path from "node:path";
 
-// Pretendard 한글 폰트 등록 (SIL OFL 1.1)
-// 서버 사이드에서만 호출되므로 절대 경로로 로드
-const PRETENDARD_PATH = path.join(
+// Pretendard 한글 폰트 등록 (SIL OFL 1.1) — Regular + Bold 다중 weight
+const PRETENDARD_REGULAR = path.join(
   process.cwd(),
   "public",
   "fonts",
   "Pretendard-Regular.ttf",
+);
+const PRETENDARD_BOLD = path.join(
+  process.cwd(),
+  "public",
+  "fonts",
+  "Pretendard-Bold.otf",
 );
 
 let fontRegistered = false;
@@ -24,7 +29,10 @@ function ensureFontRegistered() {
   if (fontRegistered) return;
   Font.register({
     family: "Pretendard",
-    src: PRETENDARD_PATH,
+    fonts: [
+      { src: PRETENDARD_REGULAR, fontWeight: 400 },
+      { src: PRETENDARD_BOLD, fontWeight: 700 },
+    ],
   });
   fontRegistered = true;
 }
@@ -58,32 +66,77 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Pretendard",
     fontSize: 11,
-    padding: 40,
-    lineHeight: 1.5,
+    paddingTop: 56,
+    paddingBottom: 44,
+    paddingHorizontal: 42,
+    lineHeight: 1.6,
     color: "#1a1a1a",
   },
+  // 모든 페이지 상단/하단 fixed
+  runningHeader: {
+    position: "absolute",
+    top: 18,
+    left: 42,
+    right: 42,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 8,
+    color: "#999999",
+    paddingBottom: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#dddddd",
+  },
+  runningHeaderLeft: { color: "#b8331e" },
+  runningHeaderRight: { color: "#999999" },
+  runningFooter: {
+    position: "absolute",
+    bottom: 18,
+    left: 42,
+    right: 42,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 8,
+    color: "#999999",
+    paddingTop: 6,
+    borderTopWidth: 0.5,
+    borderTopColor: "#dddddd",
+  },
   header: {
-    marginBottom: 24,
+    marginBottom: 22,
     paddingBottom: 12,
     borderBottomWidth: 2,
     borderBottomColor: "#b8331e",
   },
   title: {
     fontSize: 20,
-    marginBottom: 4,
+    fontWeight: 700,
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 10,
     color: "#666666",
   },
   section: {
-    marginBottom: 18,
+    marginBottom: 20,
   },
   sectionLabel: {
-    fontSize: 9,
-    color: "#666666",
-    marginBottom: 4,
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: 700,
+    color: "#b8331e",
+    backgroundColor: "#b8331e",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    marginBottom: 10,
+  },
+  // 운영부 상황실 배지형 sectionLabel (위 sectionLabel 사용, 흰 글씨)
+  sectionLabelChip: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#ffffff",
+    backgroundColor: "#b8331e",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    marginBottom: 10,
   },
   metaRow: {
     flexDirection: "row",
@@ -107,58 +160,52 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   chip: {
-    backgroundColor: "#f4eddd",
+    borderWidth: 1,
+    borderColor: "#dddddd",
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 4,
     fontSize: 10,
   },
   serviceCard: {
     borderWidth: 1,
     borderColor: "#eeeeee",
-    borderRadius: 4,
-    padding: 10,
-    marginBottom: 8,
+    padding: 12,
+    marginBottom: 10,
   },
   serviceHeader: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: 700,
     color: "#1a1a1a",
     marginBottom: 6,
   },
   serviceMetaLabel: {
-    fontSize: 9,
-    color: "#666666",
-    marginTop: 4,
-    marginBottom: 2,
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#b8331e",
+    marginTop: 6,
+    marginBottom: 4,
   },
   noteBox: {
-    backgroundColor: "#fafafa",
-    padding: 8,
-    borderRadius: 3,
-    marginTop: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: "#b8331e",
+    paddingLeft: 10,
+    paddingVertical: 4,
+    marginTop: 6,
   },
   noteText: {
     fontSize: 10,
-    lineHeight: 1.5,
+    lineHeight: 1.7,
     color: "#444444",
   },
   summaryBox: {
-    backgroundColor: "#f4eddd",
-    padding: 12,
-    borderRadius: 4,
+    borderLeftWidth: 2,
+    borderLeftColor: "#b8331e",
+    paddingLeft: 12,
+    paddingVertical: 4,
   },
   summaryText: {
     fontSize: 11,
-    lineHeight: 1.6,
-  },
-  footer: {
-    position: "absolute",
-    bottom: 24,
-    left: 40,
-    right: 40,
-    fontSize: 8,
-    color: "#999999",
-    textAlign: "center",
+    lineHeight: 1.7,
   },
 });
 
@@ -186,15 +233,23 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* 모든 페이지 상단 fixed: 컨텍스트 유지 */}
+        <View fixed style={styles.runningHeader}>
+          <Text style={styles.runningHeaderLeft}>
+            백업 요청 · {input.requesterName}
+          </Text>
+          <Text style={styles.runningHeaderRight}>운영부 상황실 · 백업 요청</Text>
+        </View>
+
         <View style={styles.header}>
           <Text style={styles.title}>백업 요청</Text>
           <Text style={styles.subtitle}>
-            발송 {formatDate(input.createdAt)} · Folio
+            발송 {formatDate(input.createdAt)} · 운영부 상황실
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>요청자 / 백업자</Text>
+          <Text style={styles.sectionLabelChip}>요청자 / 백업자</Text>
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>요청자</Text>
@@ -214,12 +269,14 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>휴가 / 외근 기간</Text>
+          <Text style={styles.sectionLabelChip}>휴가 / 외근 기간</Text>
           <Text style={styles.metaValue}>{leaveRange}</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>공통 메모</Text>
+          <Text style={styles.sectionLabelChip} minPresenceAhead={40}>
+            공통 메모
+          </Text>
           <View style={styles.summaryBox}>
             <Text style={styles.summaryText}>{input.summaryMd}</Text>
           </View>
@@ -227,7 +284,9 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
 
         {input.services.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>담당 서비스</Text>
+            <Text style={styles.sectionLabelChip} minPresenceAhead={40}>
+              담당 서비스
+            </Text>
             {input.services.map((s) => (
               <View key={`svc-${s.id}`} style={styles.serviceCard}>
                 <Text style={styles.serviceHeader}>
@@ -255,9 +314,15 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
           </View>
         )}
 
-        <Text style={styles.footer}>
-          이 문서는 Folio에서 자동 생성되었습니다.
-        </Text>
+        {/* 모든 페이지 하단 fixed */}
+        <View fixed style={styles.runningFooter}>
+          <Text>운영부 상황실 자동발송</Text>
+          <Text
+            render={({ pageNumber, totalPages }) =>
+              `${pageNumber} / ${totalPages}`
+            }
+          />
+        </View>
       </Page>
     </Document>
   );

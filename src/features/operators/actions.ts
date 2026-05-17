@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator, type CurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
 import {
   operatorCreateSchema,
   operatorUpdateSchema,
+  ownProfileUpdateSchema,
   type OperatorRow,
 } from "./schemas";
 import { getDefaultMemberMenus } from "@/app/dashboard/_data/sidebar-helpers";
@@ -121,5 +123,38 @@ export async function updateOperator(
 
   if (error) return { ok: false, error: error.message };
   revalidatePath("/dashboard/team");
+  return { ok: true, row: data as OperatorRow };
+}
+
+/**
+ * 본인 프로필 update — name만 변경 가능. operators RLS는 admin only이므로
+ * admin client로 RLS 우회하되, server action에서 본인 email만 강제 + 화이트리스트(name)로 권한 컬럼 변경 차단.
+ */
+export async function updateOwnProfile(
+  input: unknown,
+): Promise<OperatorActionResult> {
+  const parsed = ownProfileUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
+  }
+
+  const me = await getCurrentOperator();
+  if (!me?.email) {
+    return { ok: false, error: "로그인이 필요합니다." };
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("operators")
+    .update({ name: parsed.data.name })
+    .eq("email", me.email)
+    .select()
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "프로필을 찾을 수 없습니다." };
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
   return { ok: true, row: data as OperatorRow };
 }

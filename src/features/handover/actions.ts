@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { logActivity } from "@/features/worklog/log";
 import {
   handoverRecordUpsertSchema,
   type HandoverRecordRow,
@@ -58,6 +59,18 @@ export async function upsertHandoverRecord(
     .single();
 
   if (error) return { ok: false, error: error.message };
+
+  await logActivity({
+    domain: "handover",
+    action: "upsert",
+    target_type: "handover_records",
+    target_id: parsed.data.service_id,
+    msg: `인수인계 내용 저장 (status=${status})`,
+    metadata: {
+      status,
+      filledCount: HANDOVER_FIELD_KEYS.filter((k) => parsed.data[k]).length,
+    },
+  });
 
   revalidatePath("/dashboard/handover");
   revalidatePath(`/dashboard/handover/${parsed.data.service_id}`);

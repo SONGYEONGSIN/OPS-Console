@@ -1,30 +1,30 @@
-import Link from "next/link";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
-import { ListPagination } from "@/components/common/ListPagination";
+import { ListPattern } from "../_components/patterns/ListPattern";
+import type { ListRow } from "../_components/patterns/ListPattern";
 import { ScopeChips } from "@/components/common/ScopeChips";
+import { ListPagination } from "@/components/common/ListPagination";
 import { HandoverTabs } from "./HandoverTabs";
 import { HandoverControls } from "./HandoverControls";
+import { HandoverWizard } from "./HandoverWizard";
+import { HandoverHistory } from "./HandoverHistory";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { listOperators } from "@/features/operators/queries";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { listServicesWithHandover } from "@/features/handover/queries";
+import {
+  listServicesWithHandover,
+  type HandoverListRow,
+} from "@/features/handover/queries";
+import {
+  listHandoverProgress,
+  listReadyServices,
+} from "@/features/handover/progress-queries";
+import { upsertHandoverRecord } from "@/features/handover/actions";
 import type { HandoverStatus } from "@/features/handover/schemas";
+import type { HandoverProgressStatus } from "@/features/handover/progress-schemas";
 
 const PAGE_SIZE = 30;
-
-const STATUS_TONE: Record<HandoverStatus | "none", string> = {
-  none: "bg-washi-raised text-muted",
-  draft: "bg-vermilion/15 text-vermilion",
-  ready: "bg-sage/15 text-sage",
-  published: "bg-ink/10 text-ink",
-};
-const STATUS_LABEL: Record<HandoverStatus | "none", string> = {
-  none: "미작성",
-  draft: "작성중",
-  ready: "작성완료",
-  published: "인계완료",
-};
 
 type SearchParams = {
   q?: string;
@@ -48,8 +48,15 @@ export default async function HandoverPage({
   const pathname = `/dashboard/${slug}`;
   const tab = params.tab ?? "content";
 
-  if (tab !== "content") {
+  const me = await getCurrentOperator();
+
+  if (tab === "progress") {
     const fallback = resolvePageMeta(slug, meta);
+    const ready = await listReadyServices();
+    const ops = await listOperators();
+    const operatorCandidates = ops
+      .filter((o) => o.status === "active" && o.email !== me?.email)
+      .map((o) => ({ email: o.email, name: o.name }));
     return (
       <div>
         <PageHeader
@@ -59,31 +66,57 @@ export default async function HandoverPage({
           description={fallback.description}
         />
         <HandoverTabs />
-        <div className="p-7 text-sm text-muted">
-          후속 PR-B에서 구현 예정 — 진행 워크플로우 / 이력 목록
+        <HandoverWizard
+          services={ready}
+          operators={operatorCandidates}
+        />
+      </div>
+    );
+  }
+
+  if (tab === "history") {
+    const fallback = resolvePageMeta(slug, meta);
+    const mineHist = params.mine === "true";
+    const statusHist = params.status as HandoverProgressStatus | undefined;
+    const pageHist = Math.max(1, Number(params.page) || 1);
+    const { rows: progressRows } = await listHandoverProgress({
+      q: params.q,
+      status: statusHist,
+      toEmail: mineHist ? me?.email : undefined,
+      page: pageHist,
+      pageSize: PAGE_SIZE,
+    });
+    return (
+      <div>
+        <PageHeader
+          pathname={pathname}
+          meta={fallback.meta}
+          headline={fallback.headline}
+          description={fallback.description}
+        />
+        <HandoverTabs />
+        <div className="p-7">
+          <HandoverHistory rows={progressRows} meEmail={me?.email ?? null} />
         </div>
       </div>
     );
   }
 
   const page = Math.max(1, Number(params.page) || 1);
-  const statusParam = params.status as
-    | HandoverStatus
-    | "none"
-    | undefined;
+  const statusParam = params.status as HandoverStatus | "none" | undefined;
   const mine = params.mine === "true";
-  const me = await getCurrentOperator();
-  const { rows, total } = await listServicesWithHandover({
+  const { rows: dbRows, total } = await listServicesWithHandover({
     q: params.q,
     status: statusParam,
     ownerEmail: mine ? me?.email : undefined,
     page,
     pageSize: PAGE_SIZE,
   });
+  const rows: ListRow[] = dbRows.map(handoverToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
-  return (
-    <div>
+  const header = (
+    <div key="handover-header">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -92,81 +125,86 @@ export default async function HandoverPage({
         autoRefresh
       />
       <HandoverTabs />
-      <HandoverControls />
-      <section className="p-7">
-        <header className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-xl font-bold text-ink">서비스</h2>
-            <span className="text-muted" aria-hidden>·</span>
-            <span className="text-sm text-vermilion">{rows.length}건</span>
-          </div>
-          <ScopeChips total={total} mineLabel="내 서비스" />
-        </header>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-                <th className="px-3 py-2">대학명 · 서비스</th>
-                <th className="px-3 py-2">운영자</th>
-                <th className="px-3 py-2">접수구분</th>
-                <th className="px-3 py-2">작성상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-3 py-6 text-center text-muted"
-                  >
-                    데이터 없음
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r) => {
-                  const key = (r.handover_status ?? "none") as
-                    | HandoverStatus
-                    | "none";
-                  return (
-                    <tr
-                      key={r.service_id}
-                      className="border-b border-line-soft hover:bg-washi-raised"
-                    >
-                      <td className="px-3 py-2">
-                        <Link
-                          href={`/dashboard/handover/${r.service_id}`}
-                          className="block"
-                        >
-                          <span className="font-medium text-ink">
-                            {r.university_name}
-                          </span>
-                          <span className="ml-1 text-xs text-muted">
-                            · {r.service_name}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-ink-soft">
-                        {r.operator_name ?? "—"}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-ink-soft">
-                        {r.application_type}
-                      </td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[key]}`}
-                        >
-                          {STATUS_LABEL[key]}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        <ListPagination total={total} pageSize={PAGE_SIZE} />
-      </section>
     </div>
   );
+  const controlsRow = <HandoverControls key="handover-controls" />;
+
+  async function onPersist(
+    row: ListRow,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const r = await upsertHandoverRecord({
+      service_id: row.id,
+      contract_info_md: row.handoverContractInfoMd ?? null,
+      contract_data_md: row.handoverContractDataMd ?? null,
+      work_basic_md: row.handoverWorkBasicMd ?? null,
+      work_generator_md: row.handoverWorkGeneratorMd ?? null,
+      work_site_md: row.handoverWorkSiteMd ?? null,
+      work_output_md: row.handoverWorkOutputMd ?? null,
+      work_rate_md: row.handoverWorkRateMd ?? null,
+      work_file_md: row.handoverWorkFileMd ?? null,
+      work_etc_md: row.handoverWorkEtcMd ?? null,
+      payment_fee_md: row.handoverPaymentFeeMd ?? null,
+      payment_invoice_md: row.handoverPaymentInvoiceMd ?? null,
+      school_contact_md: row.handoverSchoolContactMd ?? null,
+      docs_md: row.handoverDocsMd ?? null,
+      notes_md: row.handoverNotesMd ?? null,
+    });
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  return (
+    <ListPattern
+      title="서비스"
+      data={{ rows }}
+      header={header}
+      controlsRow={controlsRow}
+      variant="handover"
+      canCreate={false}
+      currentUserName={me?.displayName ?? me?.email ?? ""}
+      inlineFilters={
+        <ScopeChips
+          key="handover-scope"
+          total={total}
+          mineLabel="내 서비스"
+        />
+      }
+      footer={
+        <ListPagination
+          key="handover-pagination"
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      }
+      onPersist={onPersist}
+    />
+  );
+}
+
+function handoverToListRow(r: HandoverListRow): ListRow {
+  return {
+    id: r.service_id,
+    name: `${r.university_name} · ${r.service_name}`,
+    status: "active",
+    owner: r.operator_name ?? "—",
+    universityName: r.university_name,
+    serviceName: r.service_name,
+    applicationType: r.application_type,
+    handoverServiceNumber: r.service_number,
+    handoverStatus: r.handover_status ?? undefined,
+    handoverContractInfoMd: r.contract_info_md,
+    handoverContractDataMd: r.contract_data_md,
+    handoverWorkBasicMd: r.work_basic_md,
+    handoverWorkGeneratorMd: r.work_generator_md,
+    handoverWorkSiteMd: r.work_site_md,
+    handoverWorkOutputMd: r.work_output_md,
+    handoverWorkRateMd: r.work_rate_md,
+    handoverWorkFileMd: r.work_file_md,
+    handoverWorkEtcMd: r.work_etc_md,
+    handoverPaymentFeeMd: r.payment_fee_md,
+    handoverPaymentInvoiceMd: r.payment_invoice_md,
+    handoverSchoolContactMd: r.school_contact_md,
+    handoverDocsMd: r.docs_md,
+    handoverNotesMd: r.notes_md,
+  };
 }

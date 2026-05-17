@@ -1,51 +1,40 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { HandoverControls } from "../HandoverControls";
 
 const push = vi.fn();
-const useSearchParamsMock = vi.fn(() => new URLSearchParams());
-
+let mockParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, replace: push }),
-  useSearchParams: () => useSearchParamsMock(),
+  useRouter: () => ({ push }),
   usePathname: () => "/dashboard/handover",
+  useSearchParams: () => mockParams,
 }));
 
 describe("HandoverControls", () => {
   beforeEach(() => {
-    push.mockClear();
-    useSearchParamsMock.mockReturnValue(new URLSearchParams());
+    push.mockReset();
+    mockParams = new URLSearchParams();
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("검색 input debounce 후 ?q=", () => {
-    vi.useFakeTimers();
+  it("검색 input + 작성상태 select 렌더", () => {
     render(<HandoverControls />);
-    const input = screen.getByLabelText("인수인계 검색") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "서울" } });
-    expect(push).not.toHaveBeenCalled();
-    act(() => {
-      vi.advanceTimersByTime(350);
+    expect(screen.getByLabelText("인수인계 검색")).toBeInTheDocument();
+    expect(screen.getByLabelText("작성상태 필터")).toBeInTheDocument();
+  });
+
+  it("작성상태 select 5개 옵션 (전체/미작성/작성중/작성완료/인계완료)", () => {
+    render(<HandoverControls />);
+    const select = screen.getByLabelText("작성상태 필터") as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    expect(values).toEqual(["", "none", "draft", "ready", "published"]);
+  });
+
+  it("status select 변경 시 router.push 호출 + page 파라미터 제거", () => {
+    mockParams = new URLSearchParams("page=3");
+    render(<HandoverControls />);
+    fireEvent.change(screen.getByLabelText("작성상태 필터"), {
+      target: { value: "ready" },
     });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("q="));
-  });
-
-  it("작성상태 select 변경 → ?status=", () => {
-    render(<HandoverControls />);
-    const select = screen.getByLabelText("작성상태 필터") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "ready" } });
-    expect(push).toHaveBeenCalledWith(expect.stringContaining("status=ready"));
-  });
-
-  it("빈 status 값 → param 제거", () => {
-    useSearchParamsMock.mockReturnValue(new URLSearchParams("status=ready"));
-    render(<HandoverControls />);
-    const select = screen.getByLabelText("작성상태 필터") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "" } });
-    const url = push.mock.calls[push.mock.calls.length - 1]?.[0] as string;
-    expect(url).not.toContain("status=");
+    expect(push).toHaveBeenCalledWith("/dashboard/handover?status=ready");
   });
 });

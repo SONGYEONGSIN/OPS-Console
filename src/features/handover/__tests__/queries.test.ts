@@ -90,7 +90,7 @@ describe("listServicesWithHandover", () => {
 
   it("handover_records 있을 때 status 매핑", async () => {
     mockResult.mockReturnValue({
-      data: [{ ...sampleService, handover_records: [{ status: "ready" }] }],
+      data: [{ ...sampleService, handover_records: { status: "ready" } }],
       error: null,
       count: 1,
     });
@@ -116,7 +116,7 @@ describe("listServicesWithHandover", () => {
     mockResult.mockReturnValue({
       data: [
         sampleService, // null
-        { ...sampleService, id: "x", handover_records: [{ status: "ready" }] },
+        { ...sampleService, id: "x", handover_records: { status: "ready" } },
       ],
       error: null,
       count: 2,
@@ -130,8 +130,8 @@ describe("listServicesWithHandover", () => {
     mockResult.mockReturnValue({
       data: [
         sampleService, // null
-        { ...sampleService, id: "x", handover_records: [{ status: "ready" }] },
-        { ...sampleService, id: "y", handover_records: [{ status: "draft" }] },
+        { ...sampleService, id: "x", handover_records: { status: "ready" } },
+        { ...sampleService, id: "y", handover_records: { status: "draft" } },
       ],
       error: null,
       count: 3,

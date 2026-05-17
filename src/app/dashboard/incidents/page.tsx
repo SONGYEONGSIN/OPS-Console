@@ -117,8 +117,14 @@ export default async function IncidentsPage({
         description={config.description}
         autoRefresh
       />
-      <IncidentsControls yearOptions={yearOptions} defaultYear={defaultYear} />
     </div>
+  );
+  const controlsRow = (
+    <IncidentsControls
+      key="incidents-controls"
+      yearOptions={yearOptions}
+      defaultYear={defaultYear}
+    />
   );
 
   async function onPersist(
@@ -159,13 +165,14 @@ export default async function IncidentsPage({
       createLabel="+ 사고 보고"
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      controlsRow={controlsRow}
       incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
       incidentCategorySuggestions={CATEGORY_SUGGESTIONS}
       inlineFilters={
         <ScopeChips
           key="incidents-scope"
           total={total}
-          mineLabel="내가 담당"
+          mineLabel="내 사고"
         />
       }
       footer={

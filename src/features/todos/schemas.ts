@@ -13,6 +13,7 @@ export const todoRowSchema = z.object({
   priority: todoPrioritySchema,
   assignee_email: z.string().email(),
   created_by_email: z.string().email(),
+  source_service_id: z.string().uuid().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -26,6 +27,7 @@ export const todoCreateSchema = z.object({
   due_at: z.string().nullable().optional(),
   assignee_email: z.string().email(),
   created_by_email: z.string().email(),
+  source_service_id: z.string().uuid().nullable().optional(),
 });
 
 export type TodoCreate = z.infer<typeof todoCreateSchema>;

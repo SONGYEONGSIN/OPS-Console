@@ -6,6 +6,8 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 export type GuideItem = {
   title: string;
   detail?: string;
+  /** 외부 자료 링크 — 있으면 title이 새 탭 링크로 렌더 (자료실 탭에서 활용) */
+  url?: string;
 };
 
 export type GuideSection = {
@@ -146,9 +148,21 @@ export function GuidePattern({ title, header, tabs, defaultTab }: Props) {
                           {i + 1}
                         </span>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-ink">
-                            {item.title}
-                          </p>
+                          {item.url ? (
+                            <a
+                              href={item.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-ink underline-offset-2 hover:text-vermilion hover:underline"
+                            >
+                              {item.title}
+                              <span aria-hidden className="ml-1 text-muted">↗</span>
+                            </a>
+                          ) : (
+                            <p className="text-sm font-medium text-ink">
+                              {item.title}
+                            </p>
+                          )}
                           {item.detail && (
                             <p className="mt-0.5 text-xs text-muted">
                               {item.detail}

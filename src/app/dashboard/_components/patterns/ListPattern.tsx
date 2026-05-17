@@ -104,8 +104,10 @@ export type ListRow = {
   aiTool?: string;
   /** ai-work 도메인 — 카테고리 enum (code/doc/...) */
   category?: string;
-  /** ai-work 도메인 — 작업 일자 (YYYY-MM-DD) */
-  workDate?: string;
+  /** ai-work 도메인 — 작업 시작일 (YYYY-MM-DD) */
+  workStartDate?: string;
+  /** ai-work 도메인 — 작업 종료일 (YYYY-MM-DD). 단일 작업이면 start와 동일 */
+  workEndDate?: string;
   /** ai-work 도메인 — 요약 markdown */
   summary?: string;
   /** ai-work 도메인 — 결과물 외부 링크 */
@@ -239,6 +241,32 @@ export type ListRow = {
   incidentReporterName?: string;
   /** incidents — 현재상황 */
   incidentStatus?: "미처리" | "처리중" | "처리완료" | "보류";
+  /** handover — service 번호 (display) */
+  handoverServiceNumber?: number;
+  /** handover — 작성상태 (record 없으면 undefined) */
+  handoverStatus?: "draft" | "ready" | "published";
+  /** handover — 14 sub-field (인스펙터 EditForm 초기값) */
+  handoverContractInfoMd?: string | null;
+  handoverContractDataMd?: string | null;
+  handoverWorkBasicMd?: string | null;
+  handoverWorkGeneratorMd?: string | null;
+  handoverWorkSiteMd?: string | null;
+  handoverWorkOutputMd?: string | null;
+  handoverWorkRateMd?: string | null;
+  handoverWorkFileMd?: string | null;
+  handoverWorkEtcMd?: string | null;
+  handoverPaymentFeeMd?: string | null;
+  handoverPaymentInvoiceMd?: string | null;
+  handoverSchoolContactMd?: string | null;
+  handoverDocsMd?: string | null;
+  handoverNotesMd?: string | null;
+  /** contracts — 시트명 (PATCH 시 필요) */
+  contractsSheet?: string;
+  /** contracts — 4 필드 셀 주소 (PATCH 시 사용, null이면 헤더 미발견) */
+  contractsCellOperator?: string | null;
+  contractsCellStatus?: string | null;
+  contractsCellServiceActive?: string | null;
+  contractsCellFeeAmount?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -325,8 +353,16 @@ type Props = {
   incidentUniversityNameSuggestions?: readonly string[];
   /** incidents variant — 카테고리 자동완성 후보 (datalist) */
   incidentCategorySuggestions?: readonly string[];
+  /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
+  contractsStatusOptions?: readonly string[];
+  contractsServiceActiveOptions?: readonly string[];
   /** filter chip 영역에 추가로 렌더할 인라인 요소 (예: services 변경 — '내 서비스' 칩) */
   inlineFilters?: React.ReactNode;
+  /**
+   * header(PageHeader) 아래 + section(목록) 위에 렌더할 검색/필터 영역.
+   * inspector 열림 시 pr-340 패딩이 적용돼 가려지지 않음. header는 풀 너비 유지.
+   */
+  controlsRow?: React.ReactNode;
   /** 테이블 하단에 렌더할 요소 (예: 페이지네이션) */
   footer?: React.ReactNode;
 };
@@ -352,12 +388,34 @@ export function ListPattern({
   servicesUniversityKeys,
   incidentUniversityNameSuggestions,
   incidentCategorySuggestions,
+  contractsStatusOptions,
+  contractsServiceActiveOptions,
+  controlsRow,
   inlineFilters,
   footer,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
   const inspector = useInspectorState<ListRow>();
+
+  // row 클릭 시 worklog 기록 + 인스펙터 열기 (fire-and-forget)
+  function handleRowSelect(row: ListRow) {
+    fetch("/api/worklog/log", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        level: "DEBUG",
+        domain: variant,
+        action: "row_click",
+        target_type: "list_row",
+        target_id: row.id,
+        target_name: row.name,
+        msg: `row 선택 — ${row.name}`,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+    inspector.open(row);
+  }
 
   // server에서 새 rows 도착하면 client state 동기화 (덮어쓰기).
   // React 공식 "Storing information from previous renders" 패턴 — useState 비교.
@@ -391,7 +449,7 @@ export function ListPattern({
           variant={variant}
           rows={filteredRows}
           selectedId={inspector.selected?.id ?? null}
-          onSelect={inspector.open}
+          onSelect={handleRowSelect}
         />
       );
     }
@@ -401,7 +459,7 @@ export function ListPattern({
         <MyTodoTable
           rows={filteredRows}
           selectedId={inspector.selected?.id ?? null}
-          onSelect={inspector.open}
+          onSelect={handleRowSelect}
           onToggleDone={async (row, nextDone) => {
             const nextRow: ListRow = {
               ...row,
@@ -431,20 +489,20 @@ export function ListPattern({
       <Comp
         rows={filteredRows}
         selectedId={inspector.selected?.id ?? null}
-        onSelect={inspector.open}
+        onSelect={handleRowSelect}
       />
     );
   }
 
   return (
     <>
-      {" "}
       {header}
       <div
         className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
           inspector.selected !== null ? "md:pr-[340px]" : ""
         }`}
       >
+        {controlsRow}
         <section className="p-7">
           <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -589,6 +647,8 @@ export function ListPattern({
               servicesUniversityKeys={servicesUniversityKeys}
               incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
               incidentCategorySuggestions={incidentCategorySuggestions}
+              contractsStatusOptions={contractsStatusOptions}
+              contractsServiceActiveOptions={contractsServiceActiveOptions}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

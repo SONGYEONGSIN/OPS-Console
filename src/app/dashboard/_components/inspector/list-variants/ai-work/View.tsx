@@ -30,8 +30,13 @@ export function AiWorkView({ row }: ViewProps) {
         <p className="text-2xs uppercase tracking-[0.18em] text-muted">메타</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           <span className="text-xs">
-            <span className="text-muted">작업일</span>{" "}
-            <span className="font-mono text-ink">{row.workDate ?? "—"}</span>
+            <span className="text-muted">작업 기간</span>{" "}
+            <span className="font-mono text-ink">
+              {row.workStartDate ?? "—"}
+              {row.workEndDate && row.workEndDate !== row.workStartDate
+                ? ` ~ ${row.workEndDate}`
+                : ""}
+            </span>
           </span>
           {tool && (
             <span

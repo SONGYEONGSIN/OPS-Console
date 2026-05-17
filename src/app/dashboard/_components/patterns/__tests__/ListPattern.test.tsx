@@ -470,7 +470,8 @@ describe("ListPattern ai-work variant", () => {
       name: "회의록 요약 자동화",
       status: "active",
       owner: "송영석",
-      workDate: "2026-05-10",
+      workStartDate: "2026-05-10",
+      workEndDate: "2026-05-10",
       aiTool: "chatgpt",
       category: "meeting",
     },
@@ -479,13 +480,14 @@ describe("ListPattern ai-work variant", () => {
       name: "운영 매뉴얼 번역",
       status: "active",
       owner: "송영석",
-      workDate: "2026-05-09",
+      workStartDate: "2026-05-09",
+      workEndDate: "2026-05-11",
       aiTool: "claude",
       category: "translation",
     },
   ];
 
-  it("5 컬럼 헤더 렌더 (작업일/제목/AI 도구/카테고리/등록자)", () => {
+  it("5 컬럼 헤더 렌더 (작업 기간/제목/AI 도구/카테고리/등록자)", () => {
     render(
       <ListPattern
         title="내 작업"
@@ -493,7 +495,7 @@ describe("ListPattern ai-work variant", () => {
         variant="ai-work"
       />,
     );
-    expect(screen.getByText("작업일")).toBeInTheDocument();
+    expect(screen.getByText("작업 기간")).toBeInTheDocument();
     expect(screen.getByText("제목")).toBeInTheDocument();
     expect(screen.getByText("AI 도구")).toBeInTheDocument();
     expect(screen.getByText("카테고리")).toBeInTheDocument();
@@ -516,7 +518,7 @@ describe("ListPattern ai-work variant", () => {
     expect(screen.getByText("번역")).toBeInTheDocument();
   });
 
-  it("작업일·제목·등록자 셀 노출", () => {
+  it("작업 기간·제목·등록자 셀 노출", () => {
     render(
       <ListPattern
         title="내 작업"
@@ -524,7 +526,10 @@ describe("ListPattern ai-work variant", () => {
         variant="ai-work"
       />,
     );
+    // 동일 일자 (start=end): 1개만 표시
     expect(screen.getByText("2026-05-10")).toBeInTheDocument();
+    // 기간 (start ≠ end): "시작 ~ 종료" 표시
+    expect(screen.getByText(/2026-05-09\s*~\s*2026-05-11/)).toBeInTheDocument();
     expect(screen.getByText("회의록 요약 자동화")).toBeInTheDocument();
     expect(screen.getAllByText("송영석").length).toBeGreaterThan(0);
   });

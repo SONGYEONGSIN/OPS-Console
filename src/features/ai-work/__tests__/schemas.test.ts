@@ -54,7 +54,8 @@ describe("categorySchema", () => {
 const validRow = {
   id: "11111111-1111-4111-8111-111111111111",
   title: "운영 매뉴얼 챕터 5 AI 번역",
-  work_date: "2026-05-09",
+  work_start_date: "2026-05-09",
+  work_end_date: "2026-05-09",
   ai_tool: "claude",
   category: "translation",
   summary_md: "내부 매뉴얼 번역. 1시간 단축.",
@@ -85,10 +86,11 @@ describe("aiWorkRowSchema", () => {
     expect(aiWorkRowSchema.safeParse(minimal).success).toBe(true);
   });
 
-  it("필수 필드(title / work_date / ai_tool / category / summary_md / author_email) 누락 거부", () => {
+  it("필수 필드(title / work_start_date / work_end_date / ai_tool / category / summary_md / author_email) 누락 거부", () => {
     const required = [
       "title",
-      "work_date",
+      "work_start_date",
+      "work_end_date",
       "ai_tool",
       "category",
       "summary_md",
@@ -98,6 +100,15 @@ describe("aiWorkRowSchema", () => {
       const broken = { ...validRow, [key]: undefined };
       expect(aiWorkRowSchema.safeParse(broken).success).toBe(false);
     }
+  });
+
+  it("work_end_date < work_start_date 거부 (기간 역전)", () => {
+    const broken = {
+      ...validRow,
+      work_start_date: "2026-05-10",
+      work_end_date: "2026-05-09",
+    };
+    expect(aiWorkRowSchema.safeParse(broken).success).toBe(false);
   });
 
   it("ai_tool / category enum 미일치 거부", () => {
@@ -119,15 +130,26 @@ describe("aiWorkRowSchema", () => {
 describe("aiWorkCreateSchema", () => {
   const validCreate = {
     title: "회의록 요약 자동화",
-    work_date: "2026-05-10",
+    work_start_date: "2026-05-10",
+    work_end_date: "2026-05-12",
     ai_tool: "chatgpt",
     category: "meeting",
     summary_md: "주간회의 30분 → 5분으로 요약.",
     tags: ["회의록"],
   };
 
-  it("필수 6필드만 있으면 통과", () => {
+  it("필수 7필드만 있으면 통과 (기간 2개 포함)", () => {
     expect(aiWorkCreateSchema.safeParse(validCreate).success).toBe(true);
+  });
+
+  it("work_end_date < work_start_date 거부", () => {
+    expect(
+      aiWorkCreateSchema.safeParse({
+        ...validCreate,
+        work_start_date: "2026-05-10",
+        work_end_date: "2026-05-09",
+      }).success,
+    ).toBe(false);
   });
 
   it("title 비어있음 거부", () => {

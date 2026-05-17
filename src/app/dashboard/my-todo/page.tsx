@@ -1,21 +1,27 @@
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
-import { ListPattern } from "../_components/patterns/ListPattern";
-import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listMyTodos } from "@/features/todos/queries";
 import {
   createTodo,
-  updateTodo,
   deleteTodo,
+  toggleTodoDone,
 } from "@/features/todos/actions";
-import type { TodoRow } from "@/features/todos/schemas";
+import { listUpcomingForOperator } from "@/features/services/queries";
+import {
+  MyTodoLayout,
+  type UpcomingService,
+  type TodoItem,
+} from "./MyTodoLayout";
+
+const WINDOW_DAYS = 60;
 
 /**
- * /dashboard/my-todo — 본인 전용 todo (DB 연동).
- * RLS는 admin overview 허용하지만 UI는 본인 todo만 표시 (queries에서 명시 필터).
+ * /dashboard/my-todo — 본인 담당 서비스(D-60) 기반 todo planner.
+ * 왼쪽: services.write_start_at 임박 본인 분
+ * 오른쪽: todos 누적 (드래그 또는 '+ 담기'로 등록)
  */
 export default async function MyTodoPage() {
   const slug = "my-todo";
@@ -24,12 +30,14 @@ export default async function MyTodoPage() {
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const todos = await listMyTodos();
-  const rows: ListRow[] = todos.map(todoToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
 
   const me = await getCurrentOperator();
-  const canWrite = me?.permission !== "viewer" && me?.permission !== null;
+  const services = me?.email
+    ? await listUpcomingForOperator(me.email, WINDOW_DAYS)
+    : [];
+  const todos = await listMyTodos();
+
+  const config = resolvePageMeta(slug, meta, todos.length);
 
   const header = (
     <PageHeader
@@ -41,62 +49,72 @@ export default async function MyTodoPage() {
     />
   );
 
-  async function onPersist(
-    row: ListRow,
-    isNew: boolean,
+  const upcoming: UpcomingService[] = services
+    .filter((s) => s.write_start_at !== null)
+    .map((s) => ({
+      id: s.id,
+      service_id: s.service_id,
+      university_name: s.university_name,
+      service_name: s.service_name,
+      application_type: s.application_type,
+      write_start_at: s.write_start_at as string,
+    }));
+
+  const todoItems: TodoItem[] = todos.map((t) => ({
+    id: t.id,
+    title: t.title,
+    body: t.body ?? null,
+    done: t.done,
+    done_at: t.done_at ?? null,
+    priority: t.priority,
+    source_service_id: t.source_service_id ?? null,
+  }));
+
+  async function onAddFromService(
+    service: UpcomingService,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    const operator = await getCurrentOperator();
-    if (isNew) {
-      const result = await createTodo({
-        title: row.name,
-        body: row.body ?? null,
-        priority: row.priority ?? "medium",
-        due_at: row.dueAt ?? null,
-        assignee_email: operator?.email ?? "",
-        created_by_email: operator?.email ?? "",
-      });
-      return result.ok ? { ok: true } : { ok: false, error: result.error };
-    }
-    if (row.status === "deleted") {
-      const result = await deleteTodo(row.id);
-      return result.ok ? { ok: true } : { ok: false, error: result.error };
-    }
-    const result = await updateTodo(row.id, {
-      title: row.name,
-      body: row.body ?? null,
-      priority: row.priority,
-      due_at: row.dueAt ?? null,
-      done: row.done ?? false,
-      done_at: row.done ? (row.doneAt ?? new Date().toISOString()) : null,
+    const meNow = await getCurrentOperator();
+    if (!meNow?.email) return { ok: false, error: "로그인이 필요합니다." };
+    const r = await createTodo({
+      title: `${service.university_name} · ${service.service_name}`,
+      body: `${service.application_type} · 접수 시작 ${service.write_start_at}`,
+      priority: "medium",
+      due_at: service.write_start_at,
+      assignee_email: meNow.email,
+      created_by_email: meNow.email,
+      source_service_id: service.id,
     });
-    return result.ok ? { ok: true } : { ok: false, error: result.error };
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  async function onToggleDone(
+    id: string,
+    done: boolean,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const r = await toggleTodoDone(id, done);
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  async function onDeleteTodo(
+    id: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const r = await deleteTodo(id);
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
   return (
-    <ListPattern
-      title={meta.label}
-      data={{ rows }}
-      header={header}
-      variant="my-todo"
-      canCreate={canWrite}
-      createLabel="+ 새 todo"
-      readOnly={!canWrite}
-      onPersist={onPersist}
-    />
+    <div className="flex flex-col">
+      {header}
+      <MyTodoLayout
+        services={upcoming}
+        todos={todoItems}
+        onAddFromService={onAddFromService}
+        onToggleDone={onToggleDone}
+        onDeleteTodo={onDeleteTodo}
+      />
+    </div>
   );
-}
-
-function todoToListRow(t: TodoRow): ListRow {
-  return {
-    id: t.id,
-    name: t.title,
-    body: t.body ?? undefined,
-    status: "active",
-    owner: "",
-    priority: t.priority,
-    done: t.done,
-    doneAt: t.done_at ?? null,
-    dueAt: t.due_at ?? null,
-  };
 }

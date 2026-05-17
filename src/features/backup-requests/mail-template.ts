@@ -35,16 +35,16 @@ function leaveRangeLabel(input: BackupMailInput): string {
 export function buildBackupMailSubject(input: BackupMailInput): string {
   const range = leaveRangeLabel(input);
   if (range === "미지정") {
-    return `[Folio] ${input.requesterName} 백업 요청`;
+    return `[운영부 상황실] ${input.requesterName} 백업 요청`;
   }
-  return `[Folio] ${input.requesterName} 백업 요청 — ${range}`;
+  return `[운영부 상황실] ${input.requesterName} 백업 요청 — ${range}`;
 }
 
 function textChipsHtml(items: string[]): string {
   return `<div style="display:flex;flex-wrap:wrap;gap:4px;">${items
     .map(
       (s) =>
-        `<span style="background:#f4eddd;padding:2px 6px;border-radius:3px;font-size:11px;color:#1a1a1a;">${escapeHtml(s)}</span>`,
+        `<span style="border:1px solid #ddd;padding:2px 6px;font-size:11px;color:#1a1a1a;">${escapeHtml(s)}</span>`,
     )
     .join("")}</div>`;
 }
@@ -61,9 +61,9 @@ function serviceCardHtml(s: ServiceDetail): string {
       ? `<div style="margin-top:6px;"><span style="font-size:11px;color:#666;">연락처:</span> ${textChipsHtml(s.contacts)}</div>`
       : "";
   const noteBlock = s.note_md
-    ? `<div style="margin-top:6px;font-size:12px;color:#444;background:#fafafa;padding:6px 10px;border-radius:3px;white-space:pre-wrap;">${escapeHtml(s.note_md)}</div>`
+    ? `<div style="margin-top:6px;font-size:12px;color:#444;border-left:2px solid #b8331e;padding:2px 10px;white-space:pre-wrap;">${escapeHtml(s.note_md)}</div>`
     : "";
-  return `<div style="border:1px solid #eee;border-radius:4px;padding:10px 12px;margin-bottom:8px;">${header}${contactsBlock}${noteBlock}</div>`;
+  return `<div style="border:1px solid #eee;padding:10px 12px;margin-bottom:8px;">${header}${contactsBlock}${noteBlock}</div>`;
 }
 
 /**
@@ -108,10 +108,12 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
   <meta charset="UTF-8">
   <title>백업 요청</title>
 </head>
-<body style="font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;background:#f7f4ec;margin:0;padding:24px;color:#1a1a1a;">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;padding:32px;border-top:3px solid #b8331e;">
-    <h1 style="font-size:20px;margin:0 0 4px 0;">백업 요청</h1>
-    <p style="color:#666;font-size:13px;margin:0 0 24px 0;">Folio</p>
+<body style="font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:24px;color:#1a1a1a;">
+  <div style="max-width:640px;margin:0 auto;padding:32px 24px;">
+    <div style="padding-bottom:12px;border-bottom:2px solid #b8331e;margin-bottom:20px;">
+      <div style="font-size:11px;letter-spacing:1px;color:#b8331e;margin-bottom:4px;">운영부 상황실 · 백업 요청</div>
+      <h1 style="margin:0;font-size:20px;line-height:1.3;">백업 요청</h1>
+    </div>
 
     <p style="font-size:14px;line-height:1.6;margin:0 0 20px 0;">
       안녕하세요 <strong>${escapeHtml(input.substituteName)}</strong>님,<br>
@@ -134,17 +136,17 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
     </table>
 
     <div style="margin-bottom:20px;">
-      <p style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px 0;">공통 메모</p>
-      <div style="background:#f4eddd;padding:16px;border-radius:4px;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(input.summaryMd)}</div>
+      <p style="font-size:11px;color:#b8331e;letter-spacing:1px;margin:0 0 8px 0;font-weight:bold;">공통 메모</p>
+      <div style="border-left:3px solid #b8331e;padding:6px 12px;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(input.summaryMd)}</div>
     </div>
 
     <div style="margin-bottom:20px;">
-      <p style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin:0 0 8px 0;">담당 서비스</p>
+      <p style="font-size:11px;color:#b8331e;letter-spacing:1px;margin:0 0 8px 0;font-weight:bold;">담당 서비스</p>
       ${serviceCardsHtml(input.services)}
     </div>
 
     <p style="font-size:12px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-      이 메일은 Folio에서 자동 발송되었습니다. 동일 내용의 PDF 파일이 첨부되어 있습니다.
+      운영부 상황실 자동발송 — 동일 내용의 PDF 파일이 첨부되어 있습니다.
     </p>
   </div>
 </body>

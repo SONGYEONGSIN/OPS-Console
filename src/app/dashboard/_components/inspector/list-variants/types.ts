@@ -12,11 +12,13 @@ export type Variant =
   | "cohort"
   | "receivables"
   | "ai-work"
+  | "ai-tips"
   | "backup"
   | "services"
   | "contracts"
   | "contacts"
-  | "incidents";
+  | "incidents"
+  | "handover";
 
 export type ViewProps = {
   row: ListRow;
@@ -67,4 +69,7 @@ export type EditFormProps = {
   incidentUniversityNameSuggestions?: readonly string[];
   /** incidents variant — 카테고리 자동완성 후보 (자주 쓰는 값 datalist) */
   incidentCategorySuggestions?: readonly string[];
+  /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 (실 데이터 distinct) */
+  contractsStatusOptions?: readonly string[];
+  contractsServiceActiveOptions?: readonly string[];
 };

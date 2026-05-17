@@ -27,6 +27,8 @@ export const contractRowSchema = z.object({
   /** unique id: `${sheet}-${excelRowNumber}` */
   id: z.string(),
   sheet: contractSheetEnum,
+  /** Excel 1-base row 번호 (PATCH 시 셀 주소 생성용) */
+  excelRowNumber: z.number(),
   /** 넘버링 (예: D-1-01) — 시트별 prefix 포함 */
   numbering: z.string(),
   /** 대학명/학교명 — 시트별 컬럼명 다르나 동일 의미로 통합 */
@@ -39,8 +41,33 @@ export const contractRowSchema = z.object({
   serviceActive: z.string(),
   /** 수수료(VAT포함) — Excel display text 그대로 */
   feeAmount: z.string(),
+  /**
+   * 4 핵심 필드의 Excel 셀 주소(A1). 헤더 미발견 시 null (해당 필드 편집 불가).
+   * PATCH server action에서 사용.
+   */
+  cellAddress: z.object({
+    operator: z.string().nullable(),
+    status: z.string().nullable(),
+    serviceActive: z.string().nullable(),
+    feeAmount: z.string().nullable(),
+  }),
   /** 시트별 전체 컬럼 (헤더 → 값) — 인스펙터 raw view */
   raw: z.record(z.string(), z.string()),
 });
 
 export type ContractRow = z.infer<typeof contractRowSchema>;
+
+export const EDITABLE_FIELDS = [
+  "operator",
+  "status",
+  "serviceActive",
+  "feeAmount",
+] as const;
+export type ContractEditableField = (typeof EDITABLE_FIELDS)[number];
+
+export const contractUpdateSchema = z.object({
+  sheet: contractSheetEnum,
+  cellAddress: z.string().regex(/^[A-Z]+\d+$/, "invalid cell address"),
+  value: z.string().max(500),
+});
+export type ContractUpdateInput = z.infer<typeof contractUpdateSchema>;

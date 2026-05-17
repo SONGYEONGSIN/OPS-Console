@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { logActivity } from "@/features/worklog/log";
 import {
   incidentCreateSchema,
   incidentUpdateSchema,
@@ -58,6 +59,16 @@ export async function createIncident(
 
   if (error) return { ok: false, error: error.message };
 
+  await logActivity({
+    domain: "incidents",
+    action: "create",
+    target_type: "incidents",
+    target_id: data.id,
+    target_name: parsed.data.title,
+    msg: `사고 보고 생성 — ${parsed.data.category}`,
+    metadata: { university: parsed.data.university_name, year: parsed.data.year },
+  });
+
   revalidatePath(PATH);
   return { ok: true, row: data as IncidentRow };
 }
@@ -95,6 +106,16 @@ export async function updateIncident(
     .single();
 
   if (error) return { ok: false, error: error.message };
+
+  await logActivity({
+    domain: "incidents",
+    action: "update",
+    target_type: "incidents",
+    target_id: id,
+    target_name: data.title,
+    msg: `사고 보고 수정`,
+    metadata: parsed.data,
+  });
 
   revalidatePath(PATH);
   return { ok: true, row: data as IncidentRow };

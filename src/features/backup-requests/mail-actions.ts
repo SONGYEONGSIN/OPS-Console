@@ -143,27 +143,8 @@ export async function sendBackupRequestMail(
   ]);
   const ccEmails = cc.map((c) => c.email);
 
-  // PDF 생성
-  let pdfBuffer: Buffer;
-  try {
-    pdfBuffer = await renderBackupRequestPdf({
-      requesterName: me.displayName ?? me.email,
-      requesterEmail: backup.requester_email,
-      substituteName: backup.substitute_name,
-      substituteEmail: backup.substitute_email,
-      leaveStartDate: backup.leave_start_date ?? null,
-      leaveEndDate: backup.leave_end_date ?? null,
-      services: backup.services_detail,
-      summaryMd: backup.summary_md,
-      createdAt: backup.created_at,
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return { ok: false, error: `pdf_error: ${msg}` };
-  }
-
-  // PR-3: 백업자별 메일 loop. 그룹마다 자기 담당 services만 본문에 포함.
-  // PDF는 *전체 services 포함* 1개 (모든 백업자에게 동일 첨부 — 시각적 통합 컨텍스트).
+  // 백업자별 메일 loop. 메일 본문 ↔ PDF 일관 — 그룹마다 자기 담당 services만 포함.
+  // 1명 일괄 모드도 동일 경로 (그룹 1개 → loop 1회).
   let anyFail = false;
   let lastError: string | null = null;
   const sentAt = new Date().toISOString();
@@ -180,6 +161,25 @@ export async function sendBackupRequestMail(
     };
     const subject = buildBackupMailSubject(mailInput);
     const html = buildBackupMailHtml(mailInput);
+
+    // PDF 생성 — 그룹별로 본인 담당 services만 포함
+    let pdfBuffer: Buffer;
+    try {
+      pdfBuffer = await renderBackupRequestPdf({
+        requesterName: me.displayName ?? me.email,
+        requesterEmail: backup.requester_email,
+        substituteName: group.name,
+        substituteEmail: recipientEmail,
+        leaveStartDate: backup.leave_start_date ?? null,
+        leaveEndDate: backup.leave_end_date ?? null,
+        services: group.services,
+        summaryMd: backup.summary_md,
+        createdAt: backup.created_at,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { ok: false, error: `pdf_error: ${msg}` };
+    }
 
     const sendRes = await sendGraphMail({
       senderUserId: me.email,

@@ -107,8 +107,10 @@ export function getDefaultMemberMenus(): string[] {
 }
 
 /**
- * 사이드바 sections의 hardcode count를 실 데이터 count로 교체.
- * counts에 없는 slug는 기존 hardcode 유지 (mock 도메인 등).
+ * 사이드바 sections의 count를 실 데이터 count로 교체.
+ * - item.slug가 counts map에 있으면 동적 카운트 적용
+ * - group의 count는 자식 슬러그 sum으로 자동 계산 (counts map에 있는 것만 합산)
+ * - 미구현 도메인은 빈 칸 유지 (DB 테이블 만들고 menu-counts/queries.ts에 등록하면 자동 적용)
  */
 export function applyDynamicSidebarCounts(
   sections: SbSection[],
@@ -124,7 +126,15 @@ export function applyDynamicSidebarCounts(
     ...section,
     entries: section.entries.map((entry) => {
       if (entry.kind === "item") return replaceItemCount(entry);
-      return { ...entry, items: entry.items.map(replaceItemCount) };
+      const items = entry.items.map(replaceItemCount);
+      // group count = 자식 중 DB-연동된 slug count의 합 (counts map에 있는 것만)
+      const childSums = items
+        .map((it) => (it.slug ? counts.get(it.slug) : undefined))
+        .filter((v): v is number => v !== undefined);
+      const groupCount = childSums.length > 0
+        ? String(childSums.reduce((a, b) => a + b, 0))
+        : "";
+      return { ...entry, items, count: groupCount };
     }),
   }));
 }

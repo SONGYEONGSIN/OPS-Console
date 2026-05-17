@@ -14,7 +14,8 @@ export function HandoverTabs() {
   const active = params.get("tab") ?? "content";
 
   return (
-    <div className="flex gap-1 border-b border-line-soft px-7">
+    <div className="px-7">
+      <div className="flex gap-1 border-b border-line">
       {TABS.map((t) => {
         const isActive = active === t.key;
         const href =
@@ -36,6 +37,7 @@ export function HandoverTabs() {
           </Link>
         );
       })}
+      </div>
     </div>
   );
 }

@@ -93,3 +93,10 @@ export const operatorCreateSchema = z.object({
 });
 
 export type OperatorCreate = z.infer<typeof operatorCreateSchema>;
+
+/** 본인 프로필 update — name만 허용. 권한/팀/역할은 admin 영역. extra key는 strip. */
+export const ownProfileUpdateSchema = z.object({
+  name: z.string().min(1).max(40),
+});
+
+export type OwnProfileUpdate = z.infer<typeof ownProfileUpdateSchema>;
