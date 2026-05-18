@@ -31,6 +31,22 @@ import { SCHEDULE_FILTERS, blankScheduleRow } from "./schedule/filters";
 import { MyTodoTable } from "./my-todo/Table";
 import { MyTodoForm } from "./my-todo/EditForm";
 import { MY_TODO_FILTERS, blankMyTodoRow } from "./my-todo/filters";
+import { WeeklyTodoTable } from "./weekly-todo/Table";
+import { WeeklyTodoForm } from "./weekly-todo/EditForm";
+import {
+  WEEKLY_TODO_FILTERS,
+  blankWeeklyTodoRow,
+} from "./weekly-todo/filters";
+import { ProjectTable } from "./project/Table";
+import { ProjectForm } from "./project/EditForm";
+import { ProjectView } from "./project/View";
+import { PROJECT_FILTERS, blankProjectRow } from "./project/filters";
+import { ProjectTaskTable } from "./project-task/Table";
+import { ProjectTaskForm } from "./project-task/EditForm";
+import {
+  PROJECT_TASK_FILTERS,
+  blankProjectTaskRow,
+} from "./project-task/filters";
 import { DefaultTable } from "./default/Table";
 import { ServiceView } from "./default/View";
 import { DefaultForm } from "./default/EditForm";
@@ -163,6 +179,25 @@ export const variantRegistry = {
     Table: MyTodoTable,
     Filters: MY_TODO_FILTERS,
     blank: blankMyTodoRow,
+  },
+  "weekly-todo": {
+    EditForm: WeeklyTodoForm,
+    Table: WeeklyTodoTable,
+    Filters: WEEKLY_TODO_FILTERS,
+    blank: blankWeeklyTodoRow,
+  },
+  project: {
+    View: ProjectView,
+    EditForm: ProjectForm,
+    Table: ProjectTable,
+    Filters: PROJECT_FILTERS,
+    blank: blankProjectRow,
+  },
+  "project-task": {
+    EditForm: ProjectTaskForm,
+    Table: ProjectTaskTable,
+    Filters: PROJECT_TASK_FILTERS,
+    blank: () => blankProjectTaskRow(),
   },
   default: {
     View: ServiceView,

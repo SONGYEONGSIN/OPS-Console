@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   todoPrioritySchema,
+  todoStatusSchema,
   todoCreateSchema,
   todoRowSchema,
   todoUpdateSchema,
@@ -101,52 +102,94 @@ describe("todoUpdateSchema", () => {
   });
 });
 
-describe("source_service_id 필드 (서비스 link)", () => {
-  it("Row schema — source_service_id uuid 또는 null 허용", () => {
-    const row = {
-      id: "11111111-1111-4111-8111-111111111111",
-      title: "원서 마감 점검",
-      body: null,
-      done: false,
-      done_at: null,
-      due_at: null,
-      priority: "medium" as const,
-      assignee_email: "me@x.com",
-      created_by_email: "me@x.com",
-      source_service_id: "22222222-2222-4222-8222-222222222222",
-      created_at: "2026-05-18T00:00:00Z",
-      updated_at: "2026-05-18T00:00:00Z",
-    };
-    expect(todoRowSchema.safeParse(row).success).toBe(true);
+describe("todoStatusSchema", () => {
+  it.each(["todo", "in_progress", "done", "blocked"] as const)(
+    "%s — 유효",
+    (s) => {
+      expect(todoStatusSchema.parse(s)).toBe(s);
+    },
+  );
+
+  it("알 수 없는 status — reject", () => {
+    expect(() => todoStatusSchema.parse("hold")).toThrow();
+  });
+});
+
+describe("category / progress / status 필드 (Weekly Planner 재설계)", () => {
+  const validRow = {
+    id: "11111111-1111-4111-8111-111111111111",
+    title: "원서 마감 점검",
+    body: null,
+    done: false,
+    done_at: null,
+    due_at: null,
+    priority: "medium" as const,
+    assignee_email: "me@x.com",
+    created_by_email: "me@x.com",
+    created_at: "2026-05-18T00:00:00Z",
+    updated_at: "2026-05-18T00:00:00Z",
+  };
+
+  it("Row schema — category nullable string 허용", () => {
     expect(
-      todoRowSchema.safeParse({ ...row, source_service_id: null }).success,
+      todoRowSchema.safeParse({ ...validRow, category: "신제품 프로모션" })
+        .success,
     ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, category: null }).success,
+    ).toBe(true);
+    expect(todoRowSchema.safeParse(validRow).success).toBe(true);
   });
 
-  it("Create schema — source_service_id optional", () => {
+  it("Row schema — progress 0..100, null 허용, 101은 reject", () => {
+    expect(
+      todoRowSchema.safeParse({ ...validRow, progress: 50 }).success,
+    ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, progress: 0 }).success,
+    ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, progress: 100 }).success,
+    ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, progress: null }).success,
+    ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, progress: 101 }).success,
+    ).toBe(false);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, progress: -1 }).success,
+    ).toBe(false);
+  });
+
+  it("Row schema — status enum 또는 null 허용", () => {
+    expect(
+      todoRowSchema.safeParse({ ...validRow, status: "in_progress" }).success,
+    ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, status: null }).success,
+    ).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...validRow, status: "hold" }).success,
+    ).toBe(false);
+  });
+
+  it("Create schema — category/progress/status optional", () => {
     const ok = todoCreateSchema.safeParse({
       title: "x",
       assignee_email: "a@b.com",
       created_by_email: "a@b.com",
-      source_service_id: "22222222-2222-4222-8222-222222222222",
+      category: "프로젝트2",
+      progress: 30,
+      status: "in_progress" as const,
     });
     expect(ok.success).toBe(true);
-    const ok2 = todoCreateSchema.safeParse({
-      title: "y",
-      assignee_email: "a@b.com",
-      created_by_email: "a@b.com",
-    });
-    expect(ok2.success).toBe(true);
   });
 
-  it("Create schema — source_service_id uuid 아니면 reject", () => {
-    expect(
-      todoCreateSchema.safeParse({
-        title: "x",
-        assignee_email: "a@b.com",
-        created_by_email: "a@b.com",
-        source_service_id: "not-a-uuid",
-      }).success,
-    ).toBe(false);
+  it("Update schema — progress/status 부분 업데이트", () => {
+    expect(todoUpdateSchema.parse({ progress: 80 }).progress).toBe(80);
+    expect(todoUpdateSchema.parse({ status: "done" as const }).status).toBe(
+      "done",
+    );
   });
 });
