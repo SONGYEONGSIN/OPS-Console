@@ -493,6 +493,8 @@ export function ListPattern({
               ...row,
               done: nextDone,
               doneAt: nextDone ? new Date().toISOString() : null,
+              progress: nextDone ? 100 : (row.progress ?? 0),
+              todoStatus: nextDone ? "done" : (row.todoStatus ?? "todo"),
             };
             setRows((prev) => prev.map((r) => (r.id === row.id ? nextRow : r)));
             if (onPersist) {
@@ -557,7 +559,7 @@ export function ListPattern({
                   const count =
                     f.value === "all"
                       ? rows.length
-                      : rows.filter((r) => r.status === f.value).length;
+                      : filterRows(rows, f.value, variant).length;
                   return (
                     <button
                       key={f.value}
