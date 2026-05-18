@@ -31,7 +31,7 @@ export async function listIncidents(
   if (input.q) {
     const like = `%${input.q}%`;
     q = q.or(
-      `title.ilike.${like},university_name.ilike.${like},cause_summary.ilike.${like}`,
+      `title.ilike.${like},university_name.ilike.${like},cause_summary.ilike.${like},assignee_name.ilike.${like}`,
     );
   }
 
