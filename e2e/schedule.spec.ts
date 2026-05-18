@@ -64,7 +64,7 @@ test.describe("/dashboard/schedule — admin 흐름", () => {
     page,
   }) => {
     togglePermission("admin");
-    await signInAndGoto(page, "/dashboard/schedule");
+    await signInAndGoto(page, "/dashboard/schedule?view=list");
 
     // 시드 read (회귀 방어)
     await expect(page.getByText("운영2팀 주간 시프트")).toBeVisible();
@@ -106,7 +106,7 @@ test.describe("/dashboard/schedule — member 흐름", () => {
   test("member: 시드 read + 작성 버튼 노출 (본인 일정 가능)", async ({ page }) => {
     togglePermission("member");
     toggleMenus(["schedule"]);
-    await signInAndGoto(page, "/dashboard/schedule");
+    await signInAndGoto(page, "/dashboard/schedule?view=list");
 
     // 시드 read
     await expect(page.getByText("운영2팀 주간 시프트")).toBeVisible();
@@ -137,7 +137,7 @@ test.describe("/dashboard/schedule — viewer 차단", () => {
   test("viewer: 시드 read 가능 / 작성 버튼 hide", async ({ page }) => {
     togglePermission("viewer");
     toggleMenus(["schedule"]);
-    await signInAndGoto(page, "/dashboard/schedule");
+    await signInAndGoto(page, "/dashboard/schedule?view=list");
 
     // 시드 read OK
     await expect(page.getByText("운영2팀 주간 시프트")).toBeVisible();
