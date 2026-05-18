@@ -151,7 +151,7 @@ export function WeeklyView({
       </div>
 
       <ListPattern
-        title=""
+        title="원서접수"
         data={{ rows }}
         variant="weekly-todo"
         canCreate={canWrite}
