@@ -16,7 +16,7 @@ export const DB_TABLES: DbTableMeta[] = [
   { table: "ai_work", label: "내 작업" },
   { table: "ai_tips", label: "TIP 공유" },
   { table: "worklog", label: "업무 활동 로그" },
-  { table: "schedule_events", label: "전체 일정" },
+  { table: "schedule_events", label: "운영부 달력" },
   { table: "todos", label: "내 할 일" },
   { table: "posts", label: "공지/개선요청" },
   { table: "onboarding_cohorts", label: "온보딩 회차" },

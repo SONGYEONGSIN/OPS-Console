@@ -16,7 +16,7 @@ describe("PAGE_META", () => {
   it("alerts/my-todo/schedule/handover 헤드라인 정의", () => {
     expect(PAGE_META.alerts.headline.title).toBe("주의해야 할 알림");
     expect(PAGE_META["my-todo"].headline.accent).toBe("오늘");
-    expect(PAGE_META.schedule.headline.title).toBe("전체 일정");
+    expect(PAGE_META.schedule.headline.title).toBe("운영부 달력");
     expect(PAGE_META.handover.headline.accent).toBe("요청 · 자료");
   });
 

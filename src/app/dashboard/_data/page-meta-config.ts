@@ -24,7 +24,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description: "본인 담당 서비스 D-60을 끌어와 todo로 담고 체크해 가며 진행합니다.",
   },
   schedule: {
-    headline: { accent: "이번 주", title: "전체 일정" },
+    headline: { accent: "이번 주", title: "운영부 달력" },
     description: "운영부 시프트·이벤트·휴가·교육 일정을 한곳에 관리합니다.",
   },
   handover: {

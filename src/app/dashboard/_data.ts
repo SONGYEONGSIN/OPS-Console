@@ -49,7 +49,7 @@ export const sidebarSections: SbSection[] = [
       {
         kind: "item",
         ico: "◰",
-        label: "전체 일정",
+        label: "운영부 달력",
         count: "",
         slug: "schedule",
         pattern: "list",
