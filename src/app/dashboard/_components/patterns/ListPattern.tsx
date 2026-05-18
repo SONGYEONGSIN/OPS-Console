@@ -436,14 +436,17 @@ export function ListPattern({
     );
   }
 
+  const drawerPadding =
+    inspector.selected !== null ? "md:pr-[340px]" : "";
   return (
     <>
-      {" "}
-      {header}
       <div
-        className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          inspector.selected !== null ? "md:pr-[340px]" : ""
-        }`}
+        className={`transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${drawerPadding}`}
+      >
+        {header}
+      </div>
+      <div
+        className={`flex flex-col transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${drawerPadding}`}
       >
         <section className="p-7">
           <header className="mb-4 flex flex-wrap items-end justify-between gap-3">

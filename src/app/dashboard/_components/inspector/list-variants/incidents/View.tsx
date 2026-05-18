@@ -34,7 +34,7 @@ export function IncidentView({ row }: ViewProps) {
       <section className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span
-            className={`inline-block rounded-full px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
+            className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
           >
             {status}
           </span>

@@ -100,13 +100,14 @@ describe("listIncidents", () => {
     expect(eqCalls).toContainEqual(["assignee_email", "me@example.com"]);
   });
 
-  it("q 검색 시 title/university/cause_summary or-clause", async () => {
+  it("q 검색 시 title/university/cause_summary/assignee_name or-clause", async () => {
     mockResult.mockReturnValue({ data: [], error: null, count: 0 });
     await listIncidents({ q: "결제" });
     expect(orCalls).toHaveLength(1);
     expect(orCalls[0]).toContain("title.ilike.%결제%");
     expect(orCalls[0]).toContain("university_name.ilike.%결제%");
     expect(orCalls[0]).toContain("cause_summary.ilike.%결제%");
+    expect(orCalls[0]).toContain("assignee_name.ilike.%결제%");
   });
 
   it("page=2, pageSize=30 → range(30, 59)", async () => {

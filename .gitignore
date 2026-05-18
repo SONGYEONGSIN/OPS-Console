@@ -74,3 +74,5 @@ playwright/.cache/
 .claude/memory/auto-build-runs.jsonl
 .claude/memory/analysis/
 scripts/incidents-sheet-cache.txt
+scripts/incidents-sheet-cache.csv
+.gcp/

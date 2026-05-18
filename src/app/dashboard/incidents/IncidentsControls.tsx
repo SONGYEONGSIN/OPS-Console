@@ -62,7 +62,7 @@ export function IncidentsControls({ yearOptions, defaultYear }: Props) {
       <ListSearch
         value={q}
         onChange={setQ}
-        placeholder="제목·대학·경위 검색"
+        placeholder="제목·대학·경위·담당자 검색"
         ariaLabel="사고 검색"
       />
       <ListSelect
