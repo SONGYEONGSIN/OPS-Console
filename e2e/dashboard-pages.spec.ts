@@ -103,7 +103,7 @@ test.describe("/dashboard/[slug] — 인증 후 페이지 (TEST_USER 미설정 �
     // Log 패턴은 aside 미사용
     await expect(page.locator("section").first()).toBeVisible();
     // 검색 input 노출
-    await expect(page.locator('input[placeholder*="쿼리"]')).toBeVisible();
+    await expect(page.locator('input[placeholder*="활동 메시지"]')).toBeVisible();
   });
 
   test("ProjectPattern: 탭 [상세 / 개선사항 / 활동 로그] 전환", async ({ page }) => {
@@ -129,16 +129,16 @@ test.describe("/dashboard/[slug] — 인증 후 페이지 (TEST_USER 미설정 �
 
   test("SettingsPattern: 좌 nav 클릭 시 우 form 전환", async ({ page }) => {
     await page.goto("/dashboard/settings");
-    // 초기 active = 일반
-    await expect(page.locator("h3:has-text('일반 설정')")).toBeVisible();
-    // 알림 nav 클릭 — 모바일에선 버튼이 다를 수 있으므로 더 유연한 선택
-    const notificationNavButton = page.locator("button").filter({ hasText: /알림/ }).first();
-    if (await notificationNavButton.isVisible()) {
-      await notificationNavButton.click();
-      await expect(page.locator("h3:has-text('알림 설정')")).toBeVisible();
+    // 초기 active = mail
+    await expect(page.locator("h3:has-text('메일 설정')")).toBeVisible();
+    // '외부 연동' nav 클릭 — 모바일에선 버튼이 다를 수 있으므로 더 유연한 선택
+    const integrationsNavButton = page.locator("button").filter({ hasText: /외부 연동/ }).first();
+    if (await integrationsNavButton.isVisible()) {
+      await integrationsNavButton.click();
+      await expect(page.locator("h3:has-text('외부 연동 상태')")).toBeVisible();
     }
-    // URL은 변경 안 됨
-    await expect(page).toHaveURL(/\/dashboard\/settings$/);
+    // section query param 변경 (path는 settings 유지)
+    await expect(page).toHaveURL(/\/dashboard\/settings(\?|$)/);
   });
 
   test("팀 페이지: OPERATORS 17명 표시 + 송영신 한 행", async ({ page }) => {

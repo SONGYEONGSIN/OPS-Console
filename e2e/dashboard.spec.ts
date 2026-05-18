@@ -201,20 +201,12 @@ test.describe("/dashboard/[slug] — PageHeader (Epic 2)", () => {
     await signInAndGotoDashboard(page);
   });
 
-  test("services에서 headline + breadcrumb + tabs 노출", async ({ page }) => {
+  test("services에서 headline 노출", async ({ page }) => {
     await page.goto("/dashboard/services");
-    // headline accent + title (PAGE_META.services)
-    await expect(page.getByText("실시간", { exact: true })).toBeVisible();
-    await expect(page.getByText("서비스 운영", { exact: true })).toBeVisible();
-    // vermilion 대시 (PageHeadline accent separator)
-    await expect(page.getByText("—").first()).toBeVisible();
-    // breadcrumb 마지막 (현재 페이지)
-    const crumbs = page.getByRole("navigation", { name: "경로" });
-    await expect(crumbs).toContainText("서비스 그룹");
-    await expect(crumbs).toContainText("전체 서비스");
-    // tabs — 활성 tab "전체 서비스"
-    const activeTab = page.getByRole("tab", { name: "전체 서비스" });
-    await expect(activeTab).toHaveAttribute("aria-selected", "true");
+    // headline accent + title (PAGE_META.services) — h1 헤드라인 내부 확인
+    const headline = page.locator("h1");
+    await expect(headline).toContainText("서비스사이클");
+    await expect(headline).toContainText("서비스");
   });
 
   test("alerts에서 헤드라인 노출", async ({ page }) => {

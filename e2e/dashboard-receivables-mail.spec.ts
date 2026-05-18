@@ -58,6 +58,9 @@ async function openMailEligibleRowInspector(
       .getByTestId("inspector-send-mail")
       .count();
     if (buttonCount > 0) return true;
+    // 모바일 뷰포트에서 인스펙터 aside가 full-width로 다음 row 클릭을 가로채는 것 방지
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(100);
   }
   return false;
 }
