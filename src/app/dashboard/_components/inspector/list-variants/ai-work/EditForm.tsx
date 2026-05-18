@@ -39,16 +39,30 @@ export function AiWorkForm({
           placeholder="예: 회의록 요약 자동화"
         />
       </label>
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">작업 일자</span>
-        <input
-          aria-label="작업 일자"
-          type="date"
-          value={row.workDate ?? ""}
-          onChange={(e) => setRow({ ...row, workDate: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        />
-      </label>
+      <fieldset className="block text-xs">
+        <legend className="mb-1 block text-muted">작업 기간</legend>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            aria-label="작업 시작일"
+            type="date"
+            value={row.workStartDate ?? ""}
+            onChange={(e) =>
+              setRow({ ...row, workStartDate: e.target.value })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+          <input
+            aria-label="작업 종료일"
+            type="date"
+            value={row.workEndDate ?? ""}
+            min={row.workStartDate ?? undefined}
+            onChange={(e) =>
+              setRow({ ...row, workEndDate: e.target.value })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+        </div>
+      </fieldset>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">AI 도구</span>

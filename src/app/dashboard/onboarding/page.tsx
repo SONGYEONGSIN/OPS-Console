@@ -14,19 +14,29 @@ import {
   deleteCohort,
   inviteCohortTrainee,
 } from "@/features/onboarding/actions";
+import { listChecklistByCohort } from "@/features/onboarding/checklist-queries";
+import { toggleChecklistItem } from "@/features/onboarding/checklist-actions";
 import { OPERATORS } from "@/features/auth/operators";
 import type { CohortRow } from "@/features/onboarding/schemas";
 import { onboardingGuideSections } from "./_content";
+import { onboardingResources } from "./_resources";
+import { ChecklistTab } from "./ChecklistTab";
 
 /**
  * /dashboard/onboarding — 종합 페이지 (탭 4개).
  *
  * 1. 온보딩 가이드 — 정적 카드 그룹 (Folio 컨텍스트)
- * 2. 체크리스트 — 본인 진행도 (후속 PR-2)
+ * 2. 체크리스트 — 본인 진행도 (가이드 항목과 자동 매핑)
  * 3. 회차 관리 — 기존 ListPattern variant=cohort 임베드 (admin only)
- * 4. 활동 로그 — placeholder (후속)
+ * 4. 자료실 — 사내 시스템/문서/매뉴얼 링크 큐레이션
  */
-export default async function OnboardingPage() {
+type SearchParams = { tab?: string; cohort?: string };
+
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const slug = "onboarding";
   await requireMenu(slug);
 
@@ -39,6 +49,51 @@ export default async function OnboardingPage() {
 
   const me = await getCurrentOperator();
   const isAdmin = me?.permission === "admin";
+  const params = await searchParams;
+
+  // 권한별 체크리스트 cohort 후보:
+  //  - admin: 모든 cohort
+  //  - 본인이 trainee인 cohort (1개)
+  //  - 본인이 mentor인 cohort들 (read-only)
+  const visibleCohorts = isAdmin
+    ? cohorts
+    : cohorts.filter(
+        (c) =>
+          c.trainee_email === me?.email || c.mentor_email === me?.email,
+      );
+
+  // 초기 선택: URL ?cohort → 그 다음 본인 trainee cohort → 첫 visible cohort
+  const myTraineeCohort = me?.email
+    ? (visibleCohorts.find((c) => c.trainee_email === me.email) ?? null)
+    : null;
+  const selectedCohort =
+    (params.cohort &&
+      visibleCohorts.find((c) => c.id === params.cohort)) ||
+    myTraineeCohort ||
+    visibleCohorts[0] ||
+    null;
+
+  const checklistRows = selectedCohort
+    ? await listChecklistByCohort(selectedCohort.id)
+    : [];
+  const initialChecks: Record<string, boolean> = {};
+  for (const r of checklistRows) {
+    initialChecks[`${r.section_key}::${r.item_key}`] = r.checked;
+  }
+
+  // 토글 권한: 선택된 cohort 기준 trainee 본인 || admin
+  const canToggleChecklist = Boolean(
+    selectedCohort &&
+      (selectedCohort.trainee_email === me?.email || isAdmin),
+  );
+
+  const cohortOptions = visibleCohorts.map((c) => {
+    const trainee = OPERATORS.find((o) => o.email === c.trainee_email);
+    return {
+      id: c.id,
+      title: `${c.title} — ${trainee?.name ?? c.trainee_email}`,
+    };
+  });
 
   const header = (
     <PageHeader
@@ -91,6 +146,17 @@ export default async function OnboardingPage() {
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
 
+  async function onChecklistToggle(input: {
+    cohort_id: string;
+    section_key: string;
+    item_key: string;
+    checked: boolean;
+  }): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const r = await toggleChecklistItem(input);
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
   const tabs: GuideTab[] = [
     {
       value: "guide",
@@ -100,8 +166,16 @@ export default async function OnboardingPage() {
     {
       value: "checklist",
       label: "체크리스트",
-      placeholder:
-        "본인 회차의 진행도 체크리스트는 후속 PR에서 추가됩니다. 지금은 가이드 탭으로 학습 시작하세요.",
+      children: (
+        <ChecklistTab
+          sections={onboardingGuideSections}
+          cohorts={cohortOptions}
+          selectedCohortId={selectedCohort?.id ?? null}
+          initialChecks={initialChecks}
+          canToggle={canToggleChecklist}
+          onToggle={onChecklistToggle}
+        />
+      ),
     },
     {
       value: "cohort",
@@ -120,9 +194,9 @@ export default async function OnboardingPage() {
       ),
     },
     {
-      value: "log",
-      label: "활동 로그",
-      placeholder: "활동 로그 시스템은 후속 epic에서 추가됩니다.",
+      value: "resources",
+      label: "자료실",
+      sections: onboardingResources,
     },
   ];
 

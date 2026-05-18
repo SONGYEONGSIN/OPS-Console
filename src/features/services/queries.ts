@@ -101,3 +101,55 @@ export async function listServices(
   }
   return { rows, total: count ?? 0 };
 }
+
+/**
+ * 본인 담당 + 접수 시작일 D-{windowDays} 이내 서비스 목록.
+ * /dashboard/my-todo 왼쪽 패널의 services 기반 todo 후보.
+ * - operator_email = me 또는 developer_email = me 본인 분만
+ * - write_start_at IS NOT NULL
+ * - write_start_at >= today (이미 시작된 건 제외)
+ * - write_start_at <= today + windowDays
+ * - 정렬: write_start_at asc (임박순)
+ */
+export async function listUpcomingForOperator(
+  operatorEmail: string,
+  windowDays = 60,
+): Promise<ServicesRow[]> {
+  if (!operatorEmail) return [];
+
+  const supabase = await createClient();
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const limit = new Date(today.getTime() + windowDays * 24 * 60 * 60 * 1000);
+  const limitStr = limit.toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .or(
+      `operator_email.eq.${operatorEmail},developer_email.eq.${operatorEmail}`,
+    )
+    .not("write_start_at", "is", null)
+    .gte("write_start_at", todayStr)
+    .lte("write_start_at", limitStr)
+    .order("write_start_at", { ascending: true });
+
+  if (error) {
+    console.error("[listUpcomingForOperator] supabase error:", error);
+    return [];
+  }
+
+  const parsed: ServicesRow[] = [];
+  for (const row of data ?? []) {
+    const r = servicesRowSchema.safeParse(row);
+    if (r.success) parsed.push(r.data);
+    else
+      console.error(
+        "[listUpcomingForOperator] zod parse fail:",
+        r.error.issues,
+        "row:",
+        row,
+      );
+  }
+  return parsed;
+}

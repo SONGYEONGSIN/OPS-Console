@@ -331,7 +331,8 @@ describe("InspectorListBody ai-work variant", () => {
     name: "회의록 요약 자동화",
     status: "active",
     owner: "송영석",
-    workDate: "2026-05-10",
+    workStartDate: "2026-05-10",
+    workEndDate: "2026-05-10",
     aiTool: "chatgpt",
     category: "meeting",
     summary: "주간회의 30분 → 5분.",
@@ -402,7 +403,8 @@ describe("InspectorListBody ai-work variant", () => {
       />,
     );
     expect(screen.getByLabelText("제목")).toHaveValue("회의록 요약 자동화");
-    expect(screen.getByLabelText("작업 일자")).toHaveValue("2026-05-10");
+    expect(screen.getByLabelText("작업 시작일")).toHaveValue("2026-05-10");
+    expect(screen.getByLabelText("작업 종료일")).toHaveValue("2026-05-10");
     expect(screen.getByLabelText("AI 도구")).toHaveValue("chatgpt");
     expect(screen.getByLabelText("카테고리")).toHaveValue("meeting");
 

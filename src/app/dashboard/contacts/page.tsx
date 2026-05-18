@@ -95,10 +95,11 @@ export default async function ContactsPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
-      <ContactsControls />
     </div>
   );
+  const controlsRow = <ContactsControls key="contacts-controls" />;
 
   async function onPersist(
     row: ListRow,
@@ -146,6 +147,7 @@ export default async function ContactsPage({
       title={meta.label}
       data={{ rows }}
       header={header}
+      controlsRow={controlsRow}
       variant="contacts"
       canCreate={canEdit}
       createLabel="+ 신규 연락처"

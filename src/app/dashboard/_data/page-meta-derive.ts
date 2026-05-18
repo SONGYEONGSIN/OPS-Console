@@ -18,7 +18,11 @@ export function derivePageMeta(
       ? breadcrumb[breadcrumb.length - 2].label
       : undefined;
   const title = sidebarMeta.label;
-  const meta = derivePatternMeta(sidebarMeta.pattern, sidebarMeta.count);
+  const meta = derivePatternMeta(
+    sidebarMeta.pattern,
+    sidebarMeta.count,
+    sidebarMeta.label,
+  );
   const description = derivePatternDescription(sidebarMeta.pattern, title);
   return { headline: { accent, title }, meta, description };
 }
@@ -44,7 +48,7 @@ export function resolvePageMeta(
     headline: explicit.headline,
     meta:
       explicit.meta ??
-      derivePatternMeta(sidebarMeta.pattern, count),
+      derivePatternMeta(sidebarMeta.pattern, count, sidebarMeta.label),
     description:
       explicit.description ??
       derivePatternDescription(sidebarMeta.pattern, sidebarMeta.label),
@@ -77,6 +81,7 @@ function nowKR(): { shift: string; date: string } {
 export function derivePatternMeta(
   pattern: SbPattern | undefined,
   count: string | undefined,
+  sidebarLabel?: string,
 ): MetaItem[] {
   const { shift, date } = nowKR();
   const base: MetaItem[] = [{ label: shift, tone: "accent" }, { label: date }];
@@ -97,7 +102,7 @@ export function derivePatternMeta(
     case "log":
       return [...base, { label: "로그 스트림" }];
     case "settings":
-      return [...base, { label: "관리자 설정" }];
+      return [...base, { label: sidebarLabel ?? "설정" }];
     default:
       return base;
   }

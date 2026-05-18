@@ -100,3 +100,53 @@ describe("todoUpdateSchema", () => {
     expect(todoUpdateSchema.parse({ priority: "high" }).priority).toBe("high");
   });
 });
+
+describe("source_service_id 필드 (서비스 link)", () => {
+  it("Row schema — source_service_id uuid 또는 null 허용", () => {
+    const row = {
+      id: "11111111-1111-4111-8111-111111111111",
+      title: "원서 마감 점검",
+      body: null,
+      done: false,
+      done_at: null,
+      due_at: null,
+      priority: "medium" as const,
+      assignee_email: "me@x.com",
+      created_by_email: "me@x.com",
+      source_service_id: "22222222-2222-4222-8222-222222222222",
+      created_at: "2026-05-18T00:00:00Z",
+      updated_at: "2026-05-18T00:00:00Z",
+    };
+    expect(todoRowSchema.safeParse(row).success).toBe(true);
+    expect(
+      todoRowSchema.safeParse({ ...row, source_service_id: null }).success,
+    ).toBe(true);
+  });
+
+  it("Create schema — source_service_id optional", () => {
+    const ok = todoCreateSchema.safeParse({
+      title: "x",
+      assignee_email: "a@b.com",
+      created_by_email: "a@b.com",
+      source_service_id: "22222222-2222-4222-8222-222222222222",
+    });
+    expect(ok.success).toBe(true);
+    const ok2 = todoCreateSchema.safeParse({
+      title: "y",
+      assignee_email: "a@b.com",
+      created_by_email: "a@b.com",
+    });
+    expect(ok2.success).toBe(true);
+  });
+
+  it("Create schema — source_service_id uuid 아니면 reject", () => {
+    expect(
+      todoCreateSchema.safeParse({
+        title: "x",
+        assignee_email: "a@b.com",
+        created_by_email: "a@b.com",
+        source_service_id: "not-a-uuid",
+      }).success,
+    ).toBe(false);
+  });
+});

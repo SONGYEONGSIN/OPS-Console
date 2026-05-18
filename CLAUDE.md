@@ -15,29 +15,36 @@
 
 ```
 Folio/
-├── .claude/
-│   ├── settings.local.json
-│   ├── agents/
-│   ├── rules/
-│   ├── hooks/
-│   ├── skills/
-│   ├── memory/          # 학습 패턴/에러 해결법 축적
-│   ├── metrics/         # 자동 수집 메트릭
-│   └── messages/        # 에이전트 간 통신 (inbox, debates 등)
+├── .claude/             # rules/agents/hooks/skills/memory/metrics/messages
 ├── src/
-│   ├── app/            # Next.js App Router 페이지
-│   │   ├── login/      # 인증 (signin/signup/SSO)
-│   │   ├── dashboard/  # OPS Console — chrome / sidebar / patterns / inspector
-│   │   │   └── _components/inspector/list-variants/  # 11 variant registry (cohort/team/receivables/ai-work/post-feedback/post-notice/schedule/my-todo/default/backup/services) — View/EditForm/Table/Filters/blank 슬롯 완비. status.ts 공통 상수. Variant union은 types.ts 단일 정의 → InspectorListBody/ListPattern import 재사용
-│   │   ├── global-error.tsx  # 한글 에러 페이지 (root layout 대체)
-│   │   └── auth/       # OAuth callback
-│   ├── components/     # React 컴포넌트 (auth/AuthChrome 등 도메인별 폴더)
-│   ├── features/       # 도메인 로직 (auth, operators — schemas/actions/queries)
-│   ├── lib/            # 유틸리티, Supabase 클라이언트
-│   └── proxy.ts        # 미인증 가드 + /login 리다이렉트 (Next 16 middleware→proxy rename)
-├── e2e/                # Playwright spec (login/dashboard/smoke/reset/forgot)
-├── supabase/migrations/ # operators 테이블 + RLS + GRANT
-├── scripts/            # 일회성 운영 도구 (inspect-user, restore-operator)
+│   ├── app/
+│   │   ├── login/                       # 인증 (signin/signup/SSO/reset)
+│   │   ├── auth/                        # OAuth callback + onboarding callback
+│   │   ├── api/worklog/log/             # 클라이언트 활동 로그 ingest (POST)
+│   │   ├── global-error.tsx             # 한글 에러 페이지
+│   │   └── dashboard/                   # OPS Console
+│   │       ├── _components/             # chrome / sidebar / patterns / inspector / page-header
+│   │       │   ├── PageActivityLogger.tsx  # 페이지 enter/leave 자동 worklog 적재
+│   │       │   └── inspector/list-variants/  # 16 variant registry (open/closed)
+│   │       ├── _data/                   # sidebar / page-meta-config / page-meta-derive
+│   │       ├── services / contracts / contacts / incidents / backup / receivables  # 운영 list
+│   │       ├── handover / onboarding / my-todo / my-ai-work / ai-tips             # 작업 list
+│   │       ├── schedule / notices / feedback / team / worklog / ai-insight         # 일반 list
+│   │       └── settings/                # admin only — env/build/deploy/db snapshot
+│   ├── components/                      # auth/AuthChrome, common/(ScopeChips·ListPagination·ListSearch·ListSelect)
+│   ├── features/                        # 도메인별 schemas/queries/actions (+ __tests__)
+│   │   # auth · operators · services · contracts · contacts · incidents · backup-requests
+│   │   # handover (records/progress/mail/categories) · onboarding (cohorts/checklist)
+│   │   # ai-work · ai-tips · todos · worklog · schedule · posts · todos · menu-counts
+│   ├── lib/
+│   │   ├── pdf/                         # handover-pdf · backup-request-pdf (Pretendard Bold + fixed h/f)
+│   │   ├── microsoft/                   # Graph sendMail · workbook-session · auth
+│   │   └── supabase/                    # server / browser / admin
+│   └── proxy.ts                         # 미인증 가드 + /login 리다이렉트 (Next 16)
+├── e2e/                                 # Playwright spec
+├── supabase/migrations/                 # 30+ 마이그 (operators / 도메인별 + RLS + GRANT)
+├── public/fonts/                        # Pretendard-Regular.ttf + Pretendard-Bold.otf
+├── scripts/                             # 운영/검증/import 도구 + mail-test
 ├── CLAUDE.md
 └── package.json
 ```
@@ -52,14 +59,12 @@ Folio/
 ## list-variants 아키텍처 (open/closed)
 
 - **위치**: `src/app/dashboard/_components/inspector/list-variants/`
-- **레지스트리**: `registry.ts`가 import-time static binding으로 11 variant → 컴포넌트 매핑 (RSC 직렬화 호환 — inline factory 금지)
-- **슬롯**: 각 variant 폴더에 `View.tsx`(인스펙터 읽기) / `EditForm.tsx`(인스펙터 편집) / `Table.tsx`(리스트 행) / `filters.ts`(filter 옵션 + blank 행 factory). 모두 optional
-- **신규 도메인 추가 비용**: 1 폴더 신설 + `registry.ts` 1줄. `ListPattern.tsx` / `InspectorListBody.tsx`는 dispatcher만이므로 무변경
-- **dispatcher 크기**: `ListPattern.tsx` ~473줄 (backup 도메인 ListRow 필드 +22줄), `InspectorListBody.tsx` 128줄 (둘 다 800 상한 안전 마진)
-- **Variant union 단일 정의**: `list-variants/types.ts`에 한 곳만 정의. `InspectorListBody.tsx` / `ListPattern.tsx`는 `import type { Variant }`로 재사용 — 신규 variant 추가 시 1 곳 갱신
-- **공통 상수**: `status.ts` — STATUS_LABEL / STATUS_COLOR / STATUS_RING. variant별로 미묘하게 다른 라벨은 각 variant 모듈에서 자체 override
-- **post 예외**: `variant: "post-feedback" \| "post-notice"` prop이 필요해 InspectorListBody/ListPattern dispatcher에서 직접 분기 (registry 우회)
-- **my-todo Table 예외**: `onToggleDone` 콜백 prop 필요 — dispatcher closure로 전달
+- **레지스트리**: `registry.ts`가 import-time static binding으로 **16 variant** → 컴포넌트 매핑 (cohort/team/receivables/ai-work/ai-tips/post-feedback/post-notice/schedule/my-todo/default/backup/services/contracts/contacts/incidents/handover). RSC 직렬화 호환 — inline factory 금지
+- **슬롯**: 각 variant 폴더에 `View.tsx` / `EditForm.tsx` / `Table.tsx` / `filters.ts` (filter 옵션 + blank 행 factory). 모두 optional
+- **신규 도메인 추가 비용**: 1 폴더 신설 + `registry.ts` 1줄 + `types.ts` Variant union 1줄. dispatcher 무변경
+- **Variant union 단일 정의**: `list-variants/types.ts`에 한 곳만. InspectorListBody / ListPattern이 import type으로 재사용
+- **공통 상수**: `status.ts` — STATUS_LABEL / STATUS_COLOR / STATUS_RING. variant별 override 가능
+- **dispatcher 예외**: `post-feedback`/`post-notice` variant prop 분기, `my-todo` Table은 `onToggleDone` closure, `handover`는 chip 비활성 (`Filters: []`)
 
 ## Commands
 
@@ -81,13 +86,43 @@ E2E 운영 메모:
 빌드 운영 메모:
 - `NODE_ENV=development` shell leak 시 `next build`가 dev React로 prerender → `/_global-error` useContext 에러 발생. `unset NODE_ENV` 또는 `NODE_ENV=production` 강제. CI는 unset 정상 동작
 
-## 미수채권 독려 메일 (Microsoft Graph sendMail)
+## 운영 메일·PDF (Microsoft Graph sendMail)
 
-- 트리거: 미수채권 페이지에서 admin이 수동 클릭 → 미리보기 모달 → 일괄 발송
-- 그룹화: 경과일수 ≥ `MAIL_REMINDER_THRESHOLD_DAYS`(기본 10일)인 청구건을 `학교담당자` 컬럼 이메일로 묶음
-- 발신자: 로그인한 운영자 본인 메일박스 (Azure AD UPN = operators.email 가정). Azure AD App에 `Mail.Send` Application permission + admin consent 필요
-- 안전장치: `MAIL_DRY_RUN=true` 시 실제 발송 안 함, `receivables_mail_sends`에 `status='dry_run'`만 적재. 운영 검증 후 `false`로 토글
-- 이력: `supabase/migrations/20260511_receivables_mail_sends_*` — RLS: 조회 admin/member, 변경 admin
+- **브랜드 통일**: 메일 제목/본문/PDF 헤더 모두 `[운영부 상황실]` (Folio 노출 X)
+- **발신자**: 로그인한 운영자 본인 메일박스 (Azure AD UPN = operators.email). Azure AD App에 `Mail.Send` Application permission + admin consent 필요
+- **안전장치**: `MAIL_DRY_RUN=true` 시 실제 발송 안 함, 이력 테이블에 `status='dry_run'`만 적재
+- **PDF 시인성** (`src/lib/pdf/*-pdf.tsx`): Pretendard Regular + Bold 다중 weight, 모든 페이지 fixed header(서비스명·브랜드) + footer(자동발송·페이지 번호), 카테고리 배지(흰 글씨 + vermilion 배경), `minPresenceAhead`로 헤더 외로움 방지, 배경색 제거(메일 클라이언트 테마)
+
+도메인별 동작:
+- **미수채권 독려** (receivables): admin 수동 트리거 → 경과일수 ≥ `MAIL_REMINDER_THRESHOLD_DAYS`(기본 10일) 청구건을 `학교담당자` 컬럼 이메일로 그룹화 일괄 발송. 이력 `receivables_mail_sends`
+- **인수인계 요청** (handover): wizard step3에서 발송. 14 카테고리 → PDF 첨부. 이력 `handover_progress`
+- **백업 요청** (backup-requests): 그룹별 발송 — 1명 일괄 모드 (single group) / 서비스별 모드 (per-substitute group). **PDF도 그룹별 본인 담당 services만 렌더** (메일 본문↔PDF 일관). 이력 `backup_request_mail_sends`
+
+테스트 발송 스크립트 (DB 영향 없음, 단일 Graph 호출):
+- `scripts/handover-mail-test.mjs` — `TARGET_EMAIL=` 환경 변수
+- `scripts/backup-request-mail-test.mjs` — `MODE=bulk|per-service` + `TARGET_EMAIL` + `TARGET_EMAIL_2`
+
+## 운영 자동 기록 (worklog)
+
+- **PageActivityLogger** (client) — `DashboardShell`에 mount, 페이지 진입/이탈을 `/api/worklog/log`로 POST (DEBUG/nav/enter|leave)
+- **logActivity 서버 호출** — handover/contracts/contacts/services/incidents/onboarding-checklist actions에서 INFO 레벨 적재
+- 사이드바: '분석 · AI > 분석 & 보고 > 업무 활동 로그' (slug `worklog`)
+- 테이블 RLS: read all (운영부 공개) / insert는 service_role (server only)
+
+## /dashboard/my-todo — services 기반 planner
+
+- **좌측 (read-only)**: `services.write_start_at` D-60 이내, `operator_email = me OR developer_email = me`. 우선순위 자동(D-7=높음/D-30=중간/그 외=낮음)
+- **우측 인스펙터 (sticky)**: `todos` 누적. 체크박스 → `toggleTodoDone` server action
+- **link**: `todos.source_service_id` (FK services.id, on delete set null). 완료 시 좌측 row 음영 + 취소선
+- **인터랙션**: HTML5 native drag(왼쪽 row → 인스펙터) + `+ 담기` 버튼 + 더블클릭
+
+## /dashboard/settings — admin 시스템 운영
+
+- **권한**: admin only (`me.permission !== 'admin'` → `/dashboard` redirect)
+- **5 섹션**: 메일 설정 / 외부 연동 / 빌드 정보 / 배포 정보 / DB 정보
+- **env 스냅샷** (`_env.ts`): MAIL_* / SHAREPOINT_* / AZURE_AD_* / NEXT_PUBLIC_VERCEL_* / NODE_ENV. 시크릿(SERVICE_ROLE_KEY/CLIENT_SECRET)은 boolean만 노출, 일반 값은 head+tail preview
+- **DB 스냅샷** (`_db.ts` server-only + `_db-shared.ts` client-safe): 14 핵심 테이블 head count 병렬 fetch
+- **server-only 분리**: client component(`SettingsClient`)가 import하는 type/format은 `_db-shared.ts`에 분리 (Next "use client" 빌드 가드 회피)
 
 ## Rules
 

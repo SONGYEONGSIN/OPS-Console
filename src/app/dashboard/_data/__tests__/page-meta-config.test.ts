@@ -17,7 +17,7 @@ describe("PAGE_META", () => {
     expect(PAGE_META.alerts.headline.title).toBe("주의해야 할 알림");
     expect(PAGE_META["my-todo"].headline.accent).toBe("오늘");
     expect(PAGE_META.schedule.headline.title).toBe("전체 일정");
-    expect(PAGE_META.handover.headline.accent).toBe("교대");
+    expect(PAGE_META.handover.headline.accent).toBe("요청 · 자료");
   });
 
   it("미정의 slug는 undefined (fallback은 호출부에서 처리)", () => {

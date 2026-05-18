@@ -9,6 +9,7 @@ import { ContractsControls } from "./ContractsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listContracts } from "@/features/contracts/queries";
+import { updateContractField } from "@/features/contracts/actions";
 import {
   contractSheetEnum,
   type ContractRow,
@@ -79,10 +80,63 @@ export default async function ContractsPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
-      <ContractsControls />
     </div>
   );
+  const controlsRow = <ContractsControls key="contracts-controls" />;
+
+  const canEdit =
+    me?.permission === "admin" || me?.permission === "member";
+
+  // datalist 옵션 — 실 데이터 distinct (Excel data validation list 대용)
+  const statusOptions = [
+    ...new Set(allContracts.map((r) => r.status).filter((v) => v.trim())),
+  ].sort();
+  const serviceActiveOptions = [
+    ...new Set(
+      allContracts.map((r) => r.serviceActive).filter((v) => v.trim()),
+    ),
+  ].sort();
+
+  async function onPersist(
+    row: ListRow,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const sheet = row.contractsSheet;
+    if (!sheet) return { ok: false, error: "시트 정보 없음" };
+    const updates: { cell: string; value: string }[] = [];
+    if (row.contractsCellOperator) {
+      updates.push({ cell: row.contractsCellOperator, value: row.owner ?? "" });
+    }
+    if (row.contractsCellStatus) {
+      updates.push({
+        cell: row.contractsCellStatus,
+        value: row.contractStatus ?? "",
+      });
+    }
+    if (row.contractsCellServiceActive) {
+      updates.push({
+        cell: row.contractsCellServiceActive,
+        value: row.serviceActive ?? "",
+      });
+    }
+    if (row.contractsCellFeeAmount) {
+      updates.push({
+        cell: row.contractsCellFeeAmount,
+        value: row.feeAmount ?? "",
+      });
+    }
+    for (const u of updates) {
+      const r = await updateContractField({
+        sheet,
+        cellAddress: u.cell,
+        value: u.value,
+      });
+      if (!r.ok) return { ok: false, error: `${u.cell}: ${r.error}` };
+    }
+    return { ok: true };
+  }
 
   return (
     <ListPattern
@@ -91,8 +145,11 @@ export default async function ContractsPage({
       header={header}
       variant="contracts"
       canCreate={false}
-      readOnly={true}
+      readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      controlsRow={controlsRow}
+      contractsStatusOptions={statusOptions}
+      contractsServiceActiveOptions={serviceActiveOptions}
       inlineFilters={
         <ScopeChips key="contracts-scope" total={total} mineLabel="내 계약" />
       }
@@ -103,6 +160,7 @@ export default async function ContractsPage({
           pageSize={PAGE_SIZE}
         />
       }
+      onPersist={canEdit ? onPersist : undefined}
     />
   );
 }
@@ -119,5 +177,10 @@ function contractsRowToListRow(r: ContractRow): ListRow {
     serviceActive: r.serviceActive,
     feeAmount: r.feeAmount,
     contractRaw: r.raw,
+    contractsSheet: r.sheet,
+    contractsCellOperator: r.cellAddress.operator,
+    contractsCellStatus: r.cellAddress.status,
+    contractsCellServiceActive: r.cellAddress.serviceActive,
+    contractsCellFeeAmount: r.cellAddress.feeAmount,
   };
 }

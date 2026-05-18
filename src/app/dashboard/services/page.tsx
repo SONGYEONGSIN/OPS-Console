@@ -120,10 +120,11 @@ export default async function ServicesPage({
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
-      <ServicesControls />
     </div>
   );
+  const controlsRow = <ServicesControls key="services-controls" />;
 
   async function onPersist(
     row: ListRow,
@@ -187,6 +188,7 @@ export default async function ServicesPage({
       createLabel="+ 신규 서비스"
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      controlsRow={controlsRow}
       servicesOperators={servicesOperators}
       servicesUniversityKeys={servicesUniversityKeys}
       inlineFilters={

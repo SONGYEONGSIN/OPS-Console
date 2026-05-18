@@ -1,5 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { listContracts } from "@/features/contracts/queries";
+import { fetchReceivablesSheet } from "@/features/receivables/queries";
 
 type CountResult = { count: number | null; error: { message: string } | null };
 
@@ -15,10 +17,30 @@ async function countOf(
   return [slug, count ?? 0];
 }
 
+/** SharePoint Excel 도메인 count — fetch 실패 시 null로 fallback (사이드바 빈 칸) */
+async function countContracts(): Promise<readonly [string, number | null]> {
+  try {
+    const { total } = await listContracts();
+    return ["contracts", total];
+  } catch (e) {
+    console.error("[menu-counts] contracts fail:", e);
+    return ["contracts", null];
+  }
+}
+async function countReceivables(): Promise<readonly [string, number | null]> {
+  try {
+    const sheet = await fetchReceivablesSheet();
+    return ["receivables", sheet?.rows.length ?? null];
+  } catch (e) {
+    console.error("[menu-counts] receivables fail:", e);
+    return ["receivables", null];
+  }
+}
+
 /**
  * 사이드바 메뉴별 실 row count. dashboard/layout.tsx에서 1회 fetch 후
  * sidebar sections에 적용. Promise.all 병렬 + count(head=true).
- * receivables(Excel) / mock 도메인은 미포함 — sidebar hardcode 유지.
+ * SharePoint Excel(contracts/receivables)도 포함 — Graph API fetch 실패 시 null fallback (빈 칸).
  */
 export async function getMenuCounts(
   currentUserEmail: string | null,
@@ -35,6 +57,7 @@ export async function getMenuCounts(
         .eq("assignee_email", currentUserEmail ?? ""),
     ),
     countOf("my-ai-work", supabase.from("ai_work").select("*", head)),
+    countOf("ai-tips", supabase.from("ai_tips").select("*", head)),
     countOf("ai-insight", supabase.from("insight_videos").select("*", head)),
     countOf(
       "team",
@@ -57,6 +80,16 @@ export async function getMenuCounts(
     countOf("contacts", supabase.from("contacts").select("*", head)),
     countOf("backup", supabase.from("backup_requests").select("*", head)),
     countOf("incidents", supabase.from("incidents").select("*", head)),
+    countOf(
+      "handover",
+      supabase
+        .from("handover_records")
+        .select("*", head)
+        .neq("status", "draft"),
+    ),
+    countContracts(),
+    countReceivables(),
+    countOf("worklog", supabase.from("worklog").select("*", head)),
   ]);
 
   const map = new Map<string, number>();

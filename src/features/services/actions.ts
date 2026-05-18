@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/features/worklog/log";
 import {
   getCurrentOperator,
   type CurrentOperator,
@@ -51,6 +52,14 @@ export async function createService(
     .single();
 
   if (error) return { ok: false, error: mapSupabaseError(error) };
+  await logActivity({
+    domain: "services",
+    action: "create",
+    target_type: "services",
+    target_id: data.id,
+    target_name: `${data.university_name} · ${data.service_name}`,
+    msg: `서비스 등록`,
+  });
   revalidatePath(SERVICES_PATH);
   return { ok: true, row: data as ServicesRow };
 }
@@ -78,6 +87,15 @@ export async function updateService(
     .single();
 
   if (error) return { ok: false, error: mapSupabaseError(error) };
+  await logActivity({
+    domain: "services",
+    action: "update",
+    target_type: "services",
+    target_id: id,
+    target_name: `${data.university_name} · ${data.service_name}`,
+    msg: `서비스 수정`,
+    metadata: parsed.data,
+  });
   revalidatePath(SERVICES_PATH);
   return { ok: true, row: data as ServicesRow };
 }
@@ -99,6 +117,15 @@ export async function deleteService(
     .maybeSingle();
 
   if (error) return { ok: false, error: mapSupabaseError(error) };
+  await logActivity({
+    domain: "services",
+    action: "delete",
+    target_type: "services",
+    target_id: id,
+    target_name: data ? `${data.university_name} · ${data.service_name}` : id,
+    level: "WARN",
+    msg: `서비스 삭제`,
+  });
   revalidatePath(SERVICES_PATH);
   return { ok: true, row: data as ServicesRow };
 }

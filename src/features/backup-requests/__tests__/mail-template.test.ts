@@ -33,20 +33,24 @@ const baseInput = {
 };
 
 describe("buildBackupMailSubject", () => {
-  it("요청자 이름 + 기간 포함", () => {
+  it("'[운영부 상황실]' 브랜드 + 요청자 이름 + 기간 포함", () => {
     const subject = buildBackupMailSubject(baseInput);
+    expect(subject).toContain("[운영부 상황실]");
     expect(subject).toContain("Bob");
     expect(subject).toContain("2026-05-20");
     expect(subject).toContain("2026-05-25");
+    expect(subject).not.toContain("Folio");
   });
 
-  it("기간 미지정 시 요청자 이름만 포함", () => {
+  it("기간 미지정 시 '[운영부 상황실]' + 요청자 이름만 포함", () => {
     const subject = buildBackupMailSubject({
       ...baseInput,
       leaveStartDate: null,
       leaveEndDate: null,
     });
+    expect(subject).toContain("[운영부 상황실]");
     expect(subject).toContain("Bob");
+    expect(subject).not.toContain("Folio");
   });
 });
 
@@ -56,6 +60,20 @@ describe("buildBackupMailHtml", () => {
     expect(html).toContain("Alice");
     expect(html).toContain("Bob");
     expect(html).toContain("공통 메모입니다.");
+  });
+
+  it("브랜딩 통일: '운영부 상황실 · 백업 요청' 헤더 + '운영부 상황실 자동발송' 푸터, 'Folio' 부재", () => {
+    const html = buildBackupMailHtml(baseInput);
+    expect(html).toContain("운영부 상황실 · 백업 요청");
+    expect(html).toContain("운영부 상황실 자동발송");
+    expect(html).not.toContain("Folio");
+    expect(html).not.toMatch(/FOLIO/);
+  });
+
+  it("배경색(background:#xxx) 미포함 — 메일 클라이언트 기본 테마", () => {
+    const html = buildBackupMailHtml(baseInput);
+    expect(html).not.toMatch(/background\s*:\s*#[0-9a-fA-F]{3,8}/);
+    expect(html).not.toMatch(/background-color\s*:\s*#[0-9a-fA-F]{3,8}/);
   });
 
   it("XSS 방지 — script 태그 escape (공통 메모)", () => {

@@ -62,15 +62,16 @@ describe("derivePageMeta", () => {
     expect(labelOf(result.meta)).toContain("로그 스트림");
   });
 
-  it("settings 패턴 — 관리자 설정 항목", () => {
+  it("settings 패턴 — sidebar label을 meta에 표시", () => {
     const sidebarMeta: SbItem = {
-      ico: "📊",
-      label: "Grafana 지표",
-      slug: "grafana",
+      ico: "⚙",
+      label: "시스템 설정",
+      slug: "settings",
       pattern: "settings",
     };
-    const result = derivePageMeta("grafana", sidebarMeta);
-    expect(labelOf(result.meta)).toContain("관리자 설정");
+    const result = derivePageMeta("settings", sidebarMeta);
+    expect(labelOf(result.meta)).toContain("시스템 설정");
+    expect(labelOf(result.meta)).not.toContain("관리자 설정");
   });
 
   it("section 직속 item — accent = section title", () => {

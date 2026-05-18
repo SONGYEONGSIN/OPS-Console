@@ -32,13 +32,13 @@ export default async function BackupPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
 
   const page = Math.max(1, Number(params.page) || 1);
   const { rows: requests, total } = await listBackupRequests({
     page,
     pageSize: PAGE_SIZE,
   });
+  const config = resolvePageMeta(slug, meta, total);
   const ownerByEmail = await buildOwnerMap(requests);
   const rows: ListRow[] = requests.map((r) =>
     backupRequestToListRow(r, ownerByEmail),
@@ -106,6 +106,7 @@ export default async function BackupPage({
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 

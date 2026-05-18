@@ -20,7 +20,7 @@ export function AiWorkTable({ rows, selectedId, onSelect }: Props) {
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-          <th className="px-3 py-2">작업일</th>
+          <th className="px-3 py-2">작업 기간</th>
           <th className="px-3 py-2">제목</th>
           <th className="px-3 py-2">AI 도구</th>
           <th className="px-3 py-2">카테고리</th>
@@ -47,7 +47,10 @@ export function AiWorkTable({ rows, selectedId, onSelect }: Props) {
                 }`}
               >
                 <td className="px-3 py-2 font-mono text-xs text-ink">
-                  {row.workDate ?? "—"}
+                  {row.workStartDate ?? "—"}
+                  {row.workEndDate && row.workEndDate !== row.workStartDate
+                    ? ` ~ ${row.workEndDate}`
+                    : ""}
                 </td>
                 <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
                 <td className="px-3 py-2">

@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
+import { ScopeChips } from "@/components/common/ScopeChips";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listAiWorks } from "@/features/ai-work/queries";
@@ -17,19 +18,28 @@ import type {
   AiWorkRow,
 } from "@/features/ai-work/schemas";
 
-export default async function MyAiWorkPage() {
+export default async function MyAiWorkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mine?: string }>;
+}) {
   const slug = "my-ai-work";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const works = await listAiWorks();
+  const sp = await searchParams;
+  const me = await getCurrentOperator();
+  const allWorks = await listAiWorks();
+  const mine = sp.mine === "true";
+  const works = mine && me?.email
+    ? allWorks.filter((w) => w.author_email === me.email)
+    : allWorks;
   const ownerByEmail = await buildOwnerMap(works);
   const rows: ListRow[] = works.map((w) => aiWorkToListRow(w, ownerByEmail));
   const config = resolvePageMeta(slug, meta, rows.length);
 
-  const me = await getCurrentOperator();
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
 
   const header = (
@@ -50,7 +60,8 @@ export default async function MyAiWorkPage() {
     if (isNew) {
       const result = await createAiWork({
         title: row.name,
-        work_date: row.workDate ?? "",
+        work_start_date: row.workStartDate ?? "",
+        work_end_date: row.workEndDate ?? row.workStartDate ?? "",
         ai_tool: row.aiTool ?? "etc",
         category: row.category ?? "etc",
         summary_md: row.summary ?? "",
@@ -67,7 +78,8 @@ export default async function MyAiWorkPage() {
     }
     const result = await updateAiWork(row.id, {
       title: row.name,
-      work_date: row.workDate,
+      work_start_date: row.workStartDate,
+      work_end_date: row.workEndDate,
       ai_tool: row.aiTool as AiTool | undefined,
       category: row.category as AiWorkCategory | undefined,
       summary_md: row.summary,
@@ -89,6 +101,9 @@ export default async function MyAiWorkPage() {
       createLabel="+ AI 활용 등록"
       readOnly={!canWrite}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      inlineFilters={
+        <ScopeChips key="ai-work-scope" total={rows.length} mineLabel="내 작업" />
+      }
       onPersist={onPersist}
     />
   );
@@ -115,7 +130,8 @@ function aiWorkToListRow(
     name: w.title,
     status: "active",
     owner: ownerByEmail.get(w.author_email) ?? w.author_email,
-    workDate: w.work_date,
+    workStartDate: w.work_start_date,
+    workEndDate: w.work_end_date,
     aiTool: w.ai_tool,
     category: w.category,
     summary: w.summary_md,

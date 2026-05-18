@@ -62,7 +62,8 @@ const viewerMe = { ...adminMe, email: "viewer@x.com", permission: "viewer" as co
 
 const validInput = {
   title: "회의록 요약 자동화",
-  work_date: "2026-05-10",
+  work_start_date: "2026-05-10",
+  work_end_date: "2026-05-12",
   ai_tool: "chatgpt" as const,
   category: "meeting" as const,
   summary_md: "주간회의 30분 → 5분.",

@@ -55,6 +55,9 @@ type Props = {
   incidentUniversityNameSuggestions?: readonly string[];
   /** incidents variant — 카테고리 자동완성 후보 (datalist) */
   incidentCategorySuggestions?: readonly string[];
+  /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
+  contractsStatusOptions?: readonly string[];
+  contractsServiceActiveOptions?: readonly string[];
 };
 
 /**
@@ -82,6 +85,8 @@ export function InspectorListBody({
   servicesUniversityKeys,
   incidentUniversityNameSuggestions,
   incidentCategorySuggestions,
+  contractsStatusOptions,
+  contractsServiceActiveOptions,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -128,6 +133,8 @@ export function InspectorListBody({
         servicesUniversityKeys={servicesUniversityKeys}
         incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
         incidentCategorySuggestions={incidentCategorySuggestions}
+        contractsStatusOptions={contractsStatusOptions}
+        contractsServiceActiveOptions={contractsServiceActiveOptions}
       />
     );
   }

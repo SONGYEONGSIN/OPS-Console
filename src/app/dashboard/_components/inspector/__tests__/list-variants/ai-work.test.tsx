@@ -9,7 +9,8 @@ const baseRow: ListRow = {
   name: "회의록 요약 자동화",
   status: "active",
   owner: "송영석",
-  workDate: "2026-05-12",
+  workStartDate: "2026-05-12",
+  workEndDate: "2026-05-14",
   aiTool: "claude",
   category: "meeting",
   summary: "주간 회의록 30분 → 5분 자동 요약",
@@ -18,11 +19,19 @@ const baseRow: ListRow = {
 };
 
 describe("AiWorkView", () => {
-  it("메타 — 작업일/도구/카테고리/등록자/절감 시간 표시", () => {
+  it("메타 — 작업 기간/도구/카테고리/등록자/절감 시간 표시", () => {
     render(<AiWorkView row={baseRow} />);
-    expect(screen.getByText("2026-05-12")).toBeInTheDocument();
+    expect(screen.getByText(/2026-05-12\s*~\s*2026-05-14/)).toBeInTheDocument();
     expect(screen.getByText("송영석")).toBeInTheDocument();
     expect(screen.getByText("0.5 시간")).toBeInTheDocument();
+  });
+
+  it("단일 일자 작업 — start=end일 때 한 날짜만 표시", () => {
+    render(
+      <AiWorkView row={{ ...baseRow, workEndDate: "2026-05-12" }} />,
+    );
+    expect(screen.getByText("2026-05-12")).toBeInTheDocument();
+    expect(screen.queryByText(/~/)).toBeNull();
   });
 
   it("요약 — summary 표시", () => {
@@ -65,7 +74,7 @@ describe("AiWorkView", () => {
 });
 
 describe("AiWorkForm", () => {
-  it("필드 — 제목/작업일자/AI 도구/카테고리/요약/결과물/재사용 프롬프트/절감 시간/태그", () => {
+  it("필드 — 제목/작업 기간(시작·종료)/AI 도구/카테고리/요약/결과물/재사용 프롬프트/절감 시간/태그", () => {
     render(
       <AiWorkForm
         row={baseRow}
@@ -75,7 +84,8 @@ describe("AiWorkForm", () => {
       />,
     );
     expect(screen.getByLabelText("제목")).toHaveValue("회의록 요약 자동화");
-    expect(screen.getByLabelText("작업 일자")).toHaveValue("2026-05-12");
+    expect(screen.getByLabelText("작업 시작일")).toHaveValue("2026-05-12");
+    expect(screen.getByLabelText("작업 종료일")).toHaveValue("2026-05-14");
     expect(screen.getByLabelText("AI 도구")).toHaveValue("claude");
     expect(screen.getByLabelText("카테고리")).toHaveValue("meeting");
     expect(screen.getByLabelText("요약")).toHaveValue(

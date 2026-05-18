@@ -35,6 +35,22 @@ function normalizeHeader(s: string): string {
   return s.replace(/\s+/g, "").trim();
 }
 
+/** 0-base 컬럼 인덱스 → Excel 컬럼 letter (A, B, ..., AA, AB, ...) */
+function columnLetter(idx: number): string {
+  let s = "";
+  let n = idx;
+  while (n >= 0) {
+    s = String.fromCharCode((n % 26) + 65) + s;
+    n = Math.floor(n / 26) - 1;
+  }
+  return s;
+}
+
+function cellAddr(colIdx: number, rowNum: number): string | null {
+  if (colIdx < 0) return null;
+  return `${columnLetter(colIdx)}${rowNum}`;
+}
+
 /** 처음 5행 중 non-empty 셀 수가 가장 많은 행을 헤더로 본다 (receivables 패턴) */
 function detectHeaderIndex(text: string[][]): number {
   const lookAhead = Math.min(5, text.length);
@@ -118,6 +134,7 @@ async function fetchSheet(
     rows.push({
       id: `${sheetName}-${excelRowNumber}`,
       sheet: sheetName,
+      excelRowNumber,
       numbering,
       name,
       operator:
@@ -128,6 +145,12 @@ async function fetchSheet(
           ? String(row[serviceActiveIdx] ?? "").trim()
           : "",
       feeAmount: feeIdx >= 0 ? String(row[feeIdx] ?? "").trim() : "",
+      cellAddress: {
+        operator: cellAddr(operatorIdx, excelRowNumber),
+        status: cellAddr(statusIdx, excelRowNumber),
+        serviceActive: cellAddr(serviceActiveIdx, excelRowNumber),
+        feeAmount: cellAddr(feeIdx, excelRowNumber),
+      },
       raw,
     });
   }

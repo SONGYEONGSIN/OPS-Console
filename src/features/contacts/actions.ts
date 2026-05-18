@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logActivity } from "@/features/worklog/log";
 import {
   getCurrentOperator,
   type CurrentOperator,
@@ -46,6 +47,14 @@ export async function createContact(
     .single();
 
   if (error) return { ok: false, error: error.message };
+  await logActivity({
+    domain: "contacts",
+    action: "create",
+    target_type: "contacts",
+    target_id: data.id,
+    target_name: `${data.university_name} · ${data.customer_name}`,
+    msg: `대학 연락처 등록`,
+  });
   revalidatePath(CONTACTS_PATH);
   return { ok: true, row: data as ContactRow };
 }
@@ -73,6 +82,15 @@ export async function updateContact(
     .single();
 
   if (error) return { ok: false, error: error.message };
+  await logActivity({
+    domain: "contacts",
+    action: "update",
+    target_type: "contacts",
+    target_id: id,
+    target_name: `${data.university_name} · ${data.customer_name}`,
+    msg: `대학 연락처 수정`,
+    metadata: parsed.data,
+  });
   revalidatePath(CONTACTS_PATH);
   return { ok: true, row: data as ContactRow };
 }
@@ -94,6 +112,15 @@ export async function deleteContact(
     .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+  await logActivity({
+    domain: "contacts",
+    action: "delete",
+    target_type: "contacts",
+    target_id: id,
+    target_name: data ? `${data.university_name} · ${data.customer_name}` : id,
+    level: "WARN",
+    msg: `대학 연락처 삭제`,
+  });
   revalidatePath(CONTACTS_PATH);
   return { ok: true, row: data as ContactRow };
 }
