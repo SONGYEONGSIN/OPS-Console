@@ -21,23 +21,34 @@ const SCHEDULE_TYPE_OPTIONS: {
   { value: "training", label: "교육" },
 ];
 
-/**
- * ISO 8601 (Z) → datetime-local input 형식 ("YYYY-MM-DDTHH:mm") for KST.
- */
-function isoToLocalKst(iso?: string): string {
+const KST_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const KST_TIME_FMT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Seoul",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function isoToKstDate(iso?: string | null): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  // UTC + 9h shift, then strip 'Z' and seconds.
-  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 16);
+  return KST_DATE_FMT.format(new Date(iso));
 }
 
-/**
- * datetime-local input ("YYYY-MM-DDTHH:mm", KST 가정) → ISO 8601 Z.
- */
-function localKstToIso(local: string): string {
-  if (!local) return "";
-  return new Date(`${local}:00+09:00`).toISOString();
+function isoToKstTime(iso?: string | null): string {
+  if (!iso) return "";
+  return KST_TIME_FMT.format(new Date(iso));
+}
+
+/** date(YYYY-MM-DD KST) + time(HH:mm) → ISO 8601 Z. time 비어있으면 00:00. */
+function combineKstToIso(date: string, time: string): string {
+  if (!date) return "";
+  const t = time || "00:00";
+  return new Date(`${date}T${t}:00+09:00`).toISOString();
 }
 
 export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
@@ -90,35 +101,6 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
           ))}
         </select>
       </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">시작 (KST)</span>
-          <input
-            type="datetime-local"
-            aria-label="시작"
-            value={isoToLocalKst(row.start_at)}
-            onChange={(e) =>
-              setRow({ ...row, start_at: localKstToIso(e.target.value) })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">종료 (KST)</span>
-          <input
-            type="datetime-local"
-            aria-label="종료"
-            value={isoToLocalKst(row.end_at ?? undefined)}
-            onChange={(e) =>
-              setRow({
-                ...row,
-                end_at: e.target.value ? localKstToIso(e.target.value) : null,
-              })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      </div>
       <label className="flex items-center gap-2 text-xs text-ink">
         <input
           type="checkbox"
@@ -128,6 +110,78 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
         />
         종일 일정
       </label>
+      <div className="space-y-2">
+        <span className="block text-xs text-muted">시작 (KST)</span>
+        <div className={row.allDay ? "" : "grid grid-cols-[1fr_100px] gap-2"}>
+          <input
+            type="date"
+            aria-label="시작 날짜"
+            value={isoToKstDate(row.start_at)}
+            onChange={(e) =>
+              setRow({
+                ...row,
+                start_at: combineKstToIso(
+                  e.target.value,
+                  isoToKstTime(row.start_at),
+                ),
+              })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+          />
+          {row.allDay ? null : (
+            <input
+              type="time"
+              aria-label="시작 시각"
+              value={isoToKstTime(row.start_at)}
+              onChange={(e) =>
+                setRow({
+                  ...row,
+                  start_at: combineKstToIso(
+                    isoToKstDate(row.start_at),
+                    e.target.value,
+                  ),
+                })
+              }
+              className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+            />
+          )}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <span className="block text-xs text-muted">종료 (KST)</span>
+        <div className={row.allDay ? "" : "grid grid-cols-[1fr_100px] gap-2"}>
+          <input
+            type="date"
+            aria-label="종료 날짜"
+            value={isoToKstDate(row.end_at)}
+            onChange={(e) =>
+              setRow({
+                ...row,
+                end_at: e.target.value
+                  ? combineKstToIso(e.target.value, isoToKstTime(row.end_at))
+                  : null,
+              })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+          />
+          {row.allDay ? null : (
+            <input
+              type="time"
+              aria-label="종료 시각"
+              value={isoToKstTime(row.end_at)}
+              onChange={(e) =>
+                setRow({
+                  ...row,
+                  end_at: row.end_at
+                    ? combineKstToIso(isoToKstDate(row.end_at), e.target.value)
+                    : null,
+                })
+              }
+              className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+            />
+          )}
+        </div>
+      </div>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">담당자</span>
         <select

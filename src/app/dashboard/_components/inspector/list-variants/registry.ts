@@ -26,6 +26,7 @@ import {
 } from "./post/filters";
 import { ScheduleTable } from "./schedule/Table";
 import { ScheduleForm } from "./schedule/EditForm";
+import { ScheduleView } from "./schedule/View";
 import { SCHEDULE_FILTERS, blankScheduleRow } from "./schedule/filters";
 import { MyTodoTable } from "./my-todo/Table";
 import { MyTodoForm } from "./my-todo/EditForm";
@@ -151,6 +152,7 @@ export const variantRegistry = {
     blank: () => blankPostRow("post-notice"),
   },
   schedule: {
+    View: ScheduleView,
     EditForm: ScheduleForm,
     Table: ScheduleTable,
     Filters: SCHEDULE_FILTERS,

@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { InspectorPanel } from "../inspector/InspectorPanel";
+import { InspectorChrome } from "../inspector/InspectorChrome";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
-import { STATUS_LABEL, STATUS_RING } from "../inspector/list-variants/status";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
 import type { Variant } from "../inspector/list-variants/types";
 import { type OperatorPermission } from "@/features/operators/schemas";
@@ -318,6 +318,8 @@ type Props = {
   canCreate?: boolean;
   /** 신규 버튼 라벨 (기본: team='+ 신규 계정' / 그 외='+ 새 글') */
   createLabel?: string;
+  /** 신규 버튼 옆에 추가 액션 (예: schedule의 view 토글) */
+  extraActions?: React.ReactNode;
   /** cohort variant — 초대 메일 발송 (admin only). InspectorListBody로 전달. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
@@ -377,6 +379,7 @@ export function ListPattern({
   currentUserPermission = null,
   canCreate = false,
   createLabel,
+  extraActions,
   onInvite,
   receivablesMailDryRun = true,
   currentUserName,
@@ -577,6 +580,7 @@ export function ListPattern({
                     (variant === "team" ? "+ 신규 계정" : "+ 새 글")}
                 </button>
               )}
+              {extraActions}
             </div>
           </header>
 
@@ -594,48 +598,12 @@ export function ListPattern({
         onClose={inspector.close}
       >
         {inspector.selected && (
-          <>
-            <header className="mb-6 border-b-2 border-ink pb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
-                    인스펙터 · 항목 상세
-                  </p>
-                  <h3 className="text-xl font-bold tracking-[-0.01em] text-ink">
-                    {inspector.selected.name}
-                  </h3>
-                  <p className="text-xs text-muted">
-                    <span className="font-mono">
-                      {inspector.selected.id.toUpperCase()}
-                    </span>
-                    {inspector.selected.meta && (
-                      <> · {inspector.selected.meta}</>
-                    )}
-                    <> · PROD</>
-                  </p>
-                </div>
-                <div
-                  aria-hidden
-                  className={`flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-full text-[10px] leading-tight text-cream ${
-                    STATUS_RING[inspector.selected.status]
-                  }`}
-                >
-                  <span className="text-base">★</span>
-                  <span>{STATUS_LABEL[inspector.selected.status]}</span>
-                </div>
-              </div>
-              {!readOnly && (
-                <div className="mt-2 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={inspector.toggleEdit}
-                    className="cursor-pointer text-xs font-medium text-vermilion underline hover:text-vermilion-deep border-none bg-transparent p-0"
-                  >
-                    {inspector.editing ? "읽기 모드" : "구성 편집"}
-                  </button>
-                </div>
-              )}
-            </header>
+          <InspectorChrome
+            row={inspector.selected}
+            editing={inspector.editing}
+            onToggleEdit={inspector.toggleEdit}
+            editable={!readOnly}
+          >
             <InspectorListBody
               row={inspector.selected}
               editing={inspector.editing && !readOnly}
@@ -679,7 +647,7 @@ export function ListPattern({
               }}
               onCancel={inspector.toggleEdit}
             />
-          </>
+          </InspectorChrome>
         )}
       </InspectorPanel>
     </>
