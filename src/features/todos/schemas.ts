@@ -3,6 +3,14 @@ import { z } from "zod";
 export const todoPrioritySchema = z.enum(["low", "medium", "high"]);
 export type TodoPriority = z.infer<typeof todoPrioritySchema>;
 
+export const todoStatusSchema = z.enum([
+  "todo",
+  "in_progress",
+  "done",
+  "blocked",
+]);
+export type TodoStatus = z.infer<typeof todoStatusSchema>;
+
 export const todoRowSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1),
@@ -11,9 +19,11 @@ export const todoRowSchema = z.object({
   done_at: z.string().nullable().optional(),
   due_at: z.string().nullable().optional(),
   priority: todoPrioritySchema,
+  category: z.string().nullable().optional(),
+  progress: z.number().int().min(0).max(100).nullable().optional(),
+  status: todoStatusSchema.nullable().optional(),
   assignee_email: z.string().email(),
   created_by_email: z.string().email(),
-  source_service_id: z.string().uuid().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -25,9 +35,11 @@ export const todoCreateSchema = z.object({
   body: z.string().nullable().optional(),
   priority: todoPrioritySchema.default("medium"),
   due_at: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  progress: z.number().int().min(0).max(100).nullable().optional(),
+  status: todoStatusSchema.nullable().optional(),
   assignee_email: z.string().email(),
   created_by_email: z.string().email(),
-  source_service_id: z.string().uuid().nullable().optional(),
 });
 
 export type TodoCreate = z.infer<typeof todoCreateSchema>;
@@ -39,6 +51,9 @@ export const todoUpdateSchema = z.object({
   done_at: z.string().nullable().optional(),
   due_at: z.string().nullable().optional(),
   priority: todoPrioritySchema.optional(),
+  category: z.string().nullable().optional(),
+  progress: z.number().int().min(0).max(100).nullable().optional(),
+  status: todoStatusSchema.nullable().optional(),
 });
 
 export type TodoUpdate = z.infer<typeof todoUpdateSchema>;

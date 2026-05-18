@@ -20,8 +20,8 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description: "긴급·검토·정상 알림을 시간순으로 확인하고 인스펙터에서 상세를 봅니다.",
   },
   "my-todo": {
-    headline: { accent: "오늘", title: "내가 처리할 일" },
-    description: "본인 담당 서비스 D-60을 끌어와 todo로 담고 체크해 가며 진행합니다.",
+    headline: { accent: "내 계획", title: "원서접수 · 프로젝트" },
+    description: "원서접수 weekly 진행과 본인 프로젝트(Gantt)를 한곳에 관리합니다.",
   },
   schedule: {
     headline: { accent: "이번 주", title: "운영부 달력" },

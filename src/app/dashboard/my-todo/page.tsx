@@ -6,37 +6,60 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { listMyTodos } from "@/features/todos/queries";
 import {
   createTodo,
+  updateTodo,
   deleteTodo,
-  toggleTodoDone,
 } from "@/features/todos/actions";
-import { listUpcomingForOperator } from "@/features/services/queries";
+import { listMyProjectsWithTasks } from "@/features/projects/queries";
 import {
-  MyTodoLayout,
-  type UpcomingService,
-  type TodoItem,
-} from "./MyTodoLayout";
+  createProject,
+  updateProject,
+  deleteProject,
+  createProjectTask,
+  updateProjectTask,
+  deleteProjectTask,
+} from "@/features/projects/actions";
+import { MyTodoTabs } from "./MyTodoTabs";
+import { WeeklyView } from "./WeeklyView";
+import { ProjectView } from "./ProjectView";
+import { getKstWeekStart } from "./_helpers/week-grid";
+import type { ListRow } from "../_components/patterns/ListPattern";
 
-const WINDOW_DAYS = 60;
+type SearchParams = Promise<{ tab?: string; week?: string }>;
 
-/**
- * /dashboard/my-todo — 본인 담당 서비스(D-60) 기반 todo planner.
- * 왼쪽: services.write_start_at 임박 본인 분
- * 오른쪽: todos 누적 (드래그 또는 '+ 담기'로 등록)
- */
-export default async function MyTodoPage() {
+const KST_TODAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+});
+
+function getTodayKstYmd(): string {
+  return KST_TODAY.format(new Date());
+}
+
+export default async function MyTodoPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const slug = "my-todo";
   await requireMenu(slug);
-
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
-  const pathname = `/dashboard/${slug}`;
+
+  const sp = await searchParams;
+  const activeTab = sp.tab === "project" ? "project" : "weekly";
 
   const me = await getCurrentOperator();
-  const services = me?.email
-    ? await listUpcomingForOperator(me.email, WINDOW_DAYS)
-    : [];
-  const todos = await listMyTodos();
+  const canWrite = me?.permission !== "viewer" && me?.permission !== null;
 
+  // Tab1 — Weekly
+  const todos = activeTab === "weekly" ? await listMyTodos() : [];
+  const weekAnchor = sp.week ?? getTodayKstYmd();
+  const weekStartYmd = getKstWeekStart(weekAnchor);
+
+  // Tab2 — Projects
+  const projectsWithTasks =
+    activeTab === "project" ? await listMyProjectsWithTasks() : [];
+
+  const pathname = `/dashboard/${slug}`;
   const config = resolvePageMeta(slug, meta, todos.length);
 
   const header = (
@@ -49,72 +72,146 @@ export default async function MyTodoPage() {
     />
   );
 
-  const upcoming: UpcomingService[] = services
-    .filter((s) => s.write_start_at !== null)
-    .map((s) => ({
-      id: s.id,
-      service_id: s.service_id,
-      university_name: s.university_name,
-      service_name: s.service_name,
-      application_type: s.application_type,
-      write_start_at: s.write_start_at as string,
-    }));
+  // ─── Server Actions
 
-  const todoItems: TodoItem[] = todos.map((t) => ({
-    id: t.id,
-    title: t.title,
-    body: t.body ?? null,
-    done: t.done,
-    done_at: t.done_at ?? null,
-    priority: t.priority,
-    source_service_id: t.source_service_id ?? null,
-  }));
-
-  async function onAddFromService(
-    service: UpcomingService,
+  async function onPersistTodo(
+    row: ListRow,
+    isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    const meNow = await getCurrentOperator();
-    if (!meNow?.email) return { ok: false, error: "로그인이 필요합니다." };
-    const r = await createTodo({
-      title: `${service.university_name} · ${service.service_name}`,
-      body: `${service.application_type} · 접수 시작 ${service.write_start_at}`,
-      priority: "medium",
-      due_at: service.write_start_at,
-      assignee_email: meNow.email,
-      created_by_email: meNow.email,
-      source_service_id: service.id,
+    const operator = await getCurrentOperator();
+    if (!operator?.email) return { ok: false, error: "로그인이 필요합니다." };
+    if (isNew) {
+      const r = await createTodo({
+        title: row.name,
+        body: row.body ?? null,
+        priority: row.priority ?? "medium",
+        due_at: row.dueAt ?? null,
+        category: row.category ?? null,
+        progress: row.progress ?? null,
+        status: row.todoStatus ?? null,
+        assignee_email: operator.email,
+        created_by_email: operator.email,
+      });
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
+    if (row.status === "deleted") {
+      const r = await deleteTodo(row.id);
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
+    const r = await updateTodo(row.id, {
+      title: row.name,
+      body: row.body ?? null,
+      done: row.done,
+      done_at: row.doneAt ?? null,
+      due_at: row.dueAt ?? null,
+      priority: row.priority,
+      category: row.category ?? null,
+      progress: row.progress ?? null,
+      status: row.todoStatus ?? null,
     });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
-  async function onToggleDone(
-    id: string,
-    done: boolean,
+  async function onPersistProject(
+    row: ListRow,
+    isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    const r = await toggleTodoDone(id, done);
+    const operator = await getCurrentOperator();
+    if (!operator?.email) return { ok: false, error: "로그인이 필요합니다." };
+    if (isNew) {
+      const r = await createProject({
+        name: row.name,
+        description: row.description ?? null,
+        owner_email: row.projectOwnerEmail ?? operator.email,
+        start_at: row.startDateYmd ?? null,
+        end_at: row.endDateYmd ?? null,
+        priority: row.priority ?? "medium",
+        progress: row.progress ?? 0,
+        status: row.todoStatus ?? "todo",
+        created_by_email: operator.email,
+      });
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
+    if (row.status === "deleted") {
+      const r = await deleteProject(row.id);
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
+    const r = await updateProject(row.id, {
+      name: row.name,
+      description: row.description ?? null,
+      owner_email: row.projectOwnerEmail ?? operator.email,
+      start_at: row.startDateYmd ?? null,
+      end_at: row.endDateYmd ?? null,
+      priority: row.priority,
+      progress: row.progress ?? 0,
+      status: row.todoStatus ?? "todo",
+    });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
-  async function onDeleteTodo(
-    id: string,
+  async function onPersistTask(
+    row: ListRow,
+    isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    const r = await deleteTodo(id);
+    const operator = await getCurrentOperator();
+    if (!operator?.email) return { ok: false, error: "로그인이 필요합니다." };
+    if (isNew) {
+      if (!row.projectId)
+        return { ok: false, error: "프로젝트 선택이 필요합니다." };
+      const r = await createProjectTask({
+        project_id: row.projectId,
+        name: row.name,
+        assignee_email: row.taskAssigneeEmail ?? null,
+        start_at: row.startDateYmd ?? null,
+        end_at: row.endDateYmd ?? null,
+        priority: row.priority ?? "medium",
+        progress: row.progress ?? 0,
+        status: row.todoStatus ?? "todo",
+        created_by_email: operator.email,
+      });
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
+    if (row.status === "deleted") {
+      const r = await deleteProjectTask(row.id);
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
+    const r = await updateProjectTask(row.id, {
+      name: row.name,
+      assignee_email: row.taskAssigneeEmail ?? null,
+      start_at: row.startDateYmd ?? null,
+      end_at: row.endDateYmd ?? null,
+      priority: row.priority,
+      progress: row.progress ?? 0,
+      status: row.todoStatus ?? "todo",
+    });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
   return (
-    <div className="flex flex-col">
+    <>
       {header}
-      <MyTodoLayout
-        services={upcoming}
-        todos={todoItems}
-        onAddFromService={onAddFromService}
-        onToggleDone={onToggleDone}
-        onDeleteTodo={onDeleteTodo}
+      <MyTodoTabs
+        activeTab={activeTab}
+        weeklyContent={
+          <WeeklyView
+            todos={todos}
+            weekStartYmd={weekStartYmd}
+            canWrite={canWrite}
+            onPersist={onPersistTodo}
+          />
+        }
+        projectContent={
+          <ProjectView
+            projectsWithTasks={projectsWithTasks}
+            canWrite={canWrite}
+            onPersistProject={onPersistProject}
+            onPersistTask={onPersistTask}
+          />
+        }
       />
-    </div>
+    </>
   );
 }

@@ -7,6 +7,7 @@ import { InspectorListBody } from "../inspector/InspectorListBody";
 import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
+import { applyWeeklyTodoFilter } from "../inspector/list-variants/weekly-todo/filters";
 import type { Variant } from "../inspector/list-variants/types";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
@@ -49,14 +50,32 @@ export type ListRow = {
   assigneeEmail?: string | null;
   /** schedule 도메인 — 등록자 이메일 */
   createdByEmail?: string;
-  /** my-todo 도메인 — 우선순위 */
+  /** my-todo / weekly-todo / project — 우선순위 */
   priority?: "low" | "medium" | "high";
-  /** my-todo 도메인 — 완료 여부 */
+  /** my-todo / weekly-todo — 완료 여부 */
   done?: boolean;
-  /** my-todo 도메인 — 완료 시각 ISO */
+  /** my-todo / weekly-todo — 완료 시각 ISO */
   doneAt?: string | null;
-  /** my-todo 도메인 — 마감 ISO (nullable) */
+  /** my-todo / weekly-todo — 마감 ISO (nullable) */
   dueAt?: string | null;
+  /** weekly-todo / project / project-task — 진행률 0..100 */
+  progress?: number | null;
+  /** weekly-todo / project / project-task — 상태 enum */
+  todoStatus?: "todo" | "in_progress" | "done" | "blocked" | null;
+  /** project-task — parent project id */
+  projectId?: string;
+  /** project / project-task — 날짜 (YYYY-MM-DD KST) — schedule의 start_at/end_at은 timestamptz여서 별도 필드 */
+  startDateYmd?: string | null;
+  endDateYmd?: string | null;
+  /** project / project-task — 담당자 email */
+  taskAssigneeEmail?: string | null;
+  /** project — sub-task 개수 / 완료 개수 (View 표시용) */
+  totalTaskCount?: number;
+  doneTaskCount?: number;
+  /** project — 설명 */
+  description?: string | null;
+  /** project — 책임자 email */
+  projectOwnerEmail?: string;
   /** onboarding cohort — 신입 이메일 */
   traineeEmail?: string;
   /** onboarding cohort — 사수 이메일 (nullable) */
@@ -294,6 +313,7 @@ function filterRows(
   if (variant === "schedule")
     return rows.filter((r) => r.scheduleType === filter);
   if (variant === "my-todo") return applyMyTodoFilter(rows, filter);
+  if (variant === "weekly-todo") return applyWeeklyTodoFilter(rows, filter);
   if (variant === "cohort")
     return rows.filter((r) => r.cohortStatus === filter);
   return rows.filter((r) => r.status === filter);
@@ -456,10 +476,15 @@ export function ListPattern({
         />
       );
     }
-    if (variant === "my-todo") {
-      const MyTodoTable = variantRegistry["my-todo"].Table;
+    if (variant === "my-todo" || variant === "weekly-todo") {
+      const Table = variantRegistry[variant].Table as React.ComponentType<{
+        rows: ListRow[];
+        selectedId: string | null;
+        onSelect: (row: ListRow) => void;
+        onToggleDone: (row: ListRow, nextDone: boolean) => Promise<void>;
+      }>;
       return (
-        <MyTodoTable
+        <Table
           rows={filteredRows}
           selectedId={inspector.selected?.id ?? null}
           onSelect={handleRowSelect}
