@@ -11,26 +11,117 @@ import {
   updateScheduleEvent,
   deleteScheduleEvent,
 } from "@/features/schedule/actions";
+import { listServicesForCalendar } from "@/features/services/queries";
 import { OPERATORS } from "@/features/auth/operators";
 import type { ScheduleEventRow } from "@/features/schedule/schemas";
+import { CalendarView } from "./CalendarView";
+import { ScheduleViewToggle } from "./ScheduleViewToggle";
+import { buildMonthGrid } from "./_calendar-helpers";
+
+const MONTH_PARAM_RE = /^(\d{4})-(\d{2})$/;
 
 /**
- * /dashboard/schedule — 운영부 공통 일정 (DB 연동).
- * admin은 모든 일정 CRUD, member는 본인이 created_by 또는 assignee인 일정만 수정/삭제.
+ * services 데이터는 작년(2025) 기준으로 적재되어 있어 운영부 달력에선 +1년 보정.
+ * DB는 손대지 않고 fetch 후 표시 단계에서만 shift. 추후 2026년 데이터가 정상 적재되면 0으로 바꿔 비활성.
  */
-export default async function SchedulePage() {
+const SERVICES_YEAR_OFFSET = 1;
+
+function shiftYmdYear(ymd: string | null, delta: number): string | null {
+  if (!ymd) return null;
+  const m = /^(\d{4})(.*)$/.exec(ymd);
+  if (!m) return ymd;
+  return `${Number(m[1]) + delta}${m[2]}`;
+}
+
+const KST_TODAY_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function getKstTodayYmd(): string {
+  return KST_TODAY_FMT.format(new Date());
+}
+
+function parseMonthParam(raw: string | undefined): { year: number; month0: number } {
+  if (raw) {
+    const m = MONTH_PARAM_RE.exec(raw);
+    if (m) {
+      const year = Number(m[1]);
+      const month0 = Number(m[2]) - 1;
+      if (month0 >= 0 && month0 <= 11) return { year, month0 };
+    }
+  }
+  const todayYmd = getKstTodayYmd();
+  return {
+    year: Number(todayYmd.slice(0, 4)),
+    month0: Number(todayYmd.slice(5, 7)) - 1,
+  };
+}
+
+type SearchParams = Promise<{ view?: string; month?: string; mine?: string }>;
+
+/**
+ * /dashboard/schedule — 운영부 달력 (default = month grid).
+ * ?view=list 진입 시 기존 ListPattern (admin/member CRUD).
+ * ?month=YYYY-MM 으로 달 이동 (RSC refetch).
+ */
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const slug = "schedule";
   await requireMenu(slug);
-
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
-  const pathname = `/dashboard/${slug}`;
-  const events = await listScheduleEvents();
-  const rows: ListRow[] = events.map(eventToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
 
+  const sp = await searchParams;
+  const view = sp.view === "list" ? "list" : "calendar";
+  const mineActive = sp.mine === "true";
+  const currentMonth = parseMonthParam(sp.month);
+  const pathname = `/dashboard/${slug}`;
+
+  const allEvents = await listScheduleEvents();
   const me = await getCurrentOperator();
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
+  const myEmail = me?.email ?? null;
+
+  const events =
+    mineActive && myEmail
+      ? allEvents.filter(
+          (e) =>
+            e.assignee_email === myEmail || e.created_by_email === myEmail,
+        )
+      : allEvents;
+
+  // calendar view면 month grid 범위로 services range fetch.
+  // DB 데이터가 작년 기준이라 fetch range는 -OFFSET, 표시 시 +OFFSET shift.
+  const grid = buildMonthGrid(currentMonth.year, currentMonth.month0);
+  const fetchStart = shiftYmdYear(grid[0]?.ymd ?? null, -SERVICES_YEAR_OFFSET);
+  const fetchEnd = shiftYmdYear(
+    grid[grid.length - 1]?.ymd ?? null,
+    -SERVICES_YEAR_OFFSET,
+  );
+  const servicesRaw =
+    view === "calendar" && fetchStart && fetchEnd
+      ? await listServicesForCalendar(fetchStart, fetchEnd)
+      : [];
+  const servicesShifted = servicesRaw.map((s) => ({
+    ...s,
+    write_start_at: shiftYmdYear(s.write_start_at, SERVICES_YEAR_OFFSET),
+    write_end_at: shiftYmdYear(s.write_end_at, SERVICES_YEAR_OFFSET),
+  }));
+  const services =
+    mineActive && myEmail
+      ? servicesShifted.filter(
+          (s) => s.operator_email === myEmail || s.developer_email === myEmail,
+        )
+      : servicesShifted;
+
+  const rows: ListRow[] = events.map(eventToListRow);
+  const config = resolvePageMeta(slug, meta, rows.length);
 
   const header = (
     <PageHeader
@@ -77,6 +168,24 @@ export default async function SchedulePage() {
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
 
+  if (view === "calendar") {
+    return (
+      <>
+        {header}
+        <CalendarView
+          events={events}
+          services={services}
+          currentMonth={currentMonth}
+          view="calendar"
+          canWrite={canWrite}
+          todayYmd={getKstTodayYmd()}
+          mineActive={mineActive}
+          onPersist={onPersist}
+        />
+      </>
+    );
+  }
+
   return (
     <ListPattern
       title={meta.label}
@@ -85,6 +194,7 @@ export default async function SchedulePage() {
       variant="schedule"
       canCreate={canWrite}
       createLabel="+ 새 일정"
+      extraActions={<ScheduleViewToggle view="list" />}
       readOnly={!canWrite}
       onPersist={onPersist}
     />

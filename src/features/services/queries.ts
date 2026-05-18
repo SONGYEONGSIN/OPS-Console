@@ -153,3 +153,41 @@ export async function listUpcomingForOperator(
   }
   return parsed;
 }
+
+/**
+ * 캘린더 month grid 범위에 걸치는 services row를 반환.
+ * write_start_at 또는 write_end_at이 [rangeStartYmd, rangeEndYmd] 사이인 row.
+ * caller가 그리드 시작/끝 ymd 전달 (YYYY-MM-DD).
+ */
+export async function listServicesForCalendar(
+  rangeStartYmd: string,
+  rangeEndYmd: string,
+): Promise<ServicesRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .or(
+      `and(write_start_at.gte.${rangeStartYmd},write_start_at.lte.${rangeEndYmd}),and(write_end_at.gte.${rangeStartYmd},write_end_at.lte.${rangeEndYmd})`,
+    )
+    .order("write_start_at", { ascending: true, nullsFirst: false });
+
+  if (error) {
+    console.error("[listServicesForCalendar] supabase error:", error);
+    return [];
+  }
+
+  const parsed: ServicesRow[] = [];
+  for (const row of data ?? []) {
+    const r = servicesRowSchema.safeParse(row);
+    if (r.success) parsed.push(r.data);
+    else
+      console.error(
+        "[listServicesForCalendar] zod parse fail:",
+        r.error.issues,
+        "row:",
+        row,
+      );
+  }
+  return parsed;
+}

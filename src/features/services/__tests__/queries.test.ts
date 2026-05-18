@@ -16,6 +16,9 @@ const { mockCreateClient, mockResult, builderCalls } = vi.hoisted(() => {
   builder.ilike = trace("ilike");
   builder.range = trace("range");
   builder.order = trace("order");
+  builder.not = trace("not");
+  builder.gte = trace("gte");
+  builder.lte = trace("lte");
   builder.then = (onFulfilled: (v: unknown) => unknown) =>
     Promise.resolve(mockResult()).then(onFulfilled);
   const mockCreateClient = vi.fn(async () => ({
@@ -28,7 +31,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: mockCreateClient,
 }));
 
-import { listServices } from "../queries";
+import { listServices, listServicesForCalendar } from "../queries";
 
 const validRow = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -134,5 +137,45 @@ describe("listServices", () => {
     });
     const result = await listServices();
     expect(result.rows.length).toBe(1);
+  });
+});
+
+describe("listServicesForCalendar", () => {
+  beforeEach(() => {
+    mockResult.mockReset();
+    builderCalls.length = 0;
+  });
+
+  it("range start/end로 nested or 빌더 호출 (write_start 또는 write_end가 range 내)", async () => {
+    mockResult.mockReturnValue({ data: [validRow], count: 1, error: null });
+    await listServicesForCalendar("2026-05-01", "2026-06-08");
+
+    const orCall = builderCalls.find((c) => c.method === "or");
+    expect(orCall).toBeDefined();
+    const orBody = orCall?.args[0];
+    expect(orBody).toContain("write_start_at.gte.2026-05-01");
+    expect(orBody).toContain("write_start_at.lte.2026-06-08");
+    expect(orBody).toContain("write_end_at.gte.2026-05-01");
+    expect(orBody).toContain("write_end_at.lte.2026-06-08");
+  });
+
+  it("정상 row만 zod parse 통과해 반환", async () => {
+    mockResult.mockReturnValue({
+      data: [validRow, { ...validRow, service_id: "bad" }],
+      count: 2,
+      error: null,
+    });
+    const result = await listServicesForCalendar("2026-05-01", "2026-06-08");
+    expect(result.length).toBe(1);
+  });
+
+  it("supabase 에러 시 빈 배열 반환", async () => {
+    mockResult.mockReturnValue({
+      data: null,
+      count: null,
+      error: { message: "boom" },
+    });
+    const result = await listServicesForCalendar("2026-05-01", "2026-06-08");
+    expect(result).toEqual([]);
   });
 });
