@@ -59,7 +59,7 @@ async function searchVideos(keyword) {
   const params = new URLSearchParams({
     part: "snippet",
     type: "video",
-    maxResults: "3",
+    maxResults: "10",
     order: "viewCount",
     publishedAfter,
     q: keyword,
