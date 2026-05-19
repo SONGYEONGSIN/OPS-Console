@@ -23,12 +23,15 @@ export function getKstWeekStart(ymd: string): string {
   return KST_YMD.format(start);
 }
 
+/** 주간 그리드 표시 일수 (월~일 × 2주 = 14일). */
+export const WEEK_GRID_DAYS = 14;
+
 /**
- * 주 시작(월) ymd에서 7일치 ymd 배열 반환.
+ * 주 시작(월) ymd에서 14일치(2주) ymd 배열 반환.
  */
 export function getKstWeekDays(weekStartYmd: string): string[] {
   const result: string[] = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < WEEK_GRID_DAYS; i++) {
     const d = new Date(`${weekStartYmd}T12:00:00+09:00`);
     d.setUTCDate(d.getUTCDate() + i);
     result.push(KST_YMD.format(d));
