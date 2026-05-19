@@ -1,3 +1,4 @@
+import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 
 type Priority = "low" | "medium" | "high";
@@ -24,14 +25,29 @@ const STATUS_LABEL: Record<Status, string> = {
 
 const KST_DATE_FMT = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
-  month: "numeric",
-  day: "numeric",
-  weekday: "short",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
 });
 
-function formatDueAt(iso?: string | null): string {
-  if (!iso) return "—";
+const KST_DATETIME_FMT = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return "-";
   return KST_DATE_FMT.format(new Date(iso));
+}
+
+function formatDateTime(iso?: string | null): string {
+  if (!iso) return "-";
+  return KST_DATETIME_FMT.format(new Date(iso));
 }
 
 export function WeeklyTodoView({ row }: ViewProps) {
@@ -40,38 +56,77 @@ export function WeeklyTodoView({ row }: ViewProps) {
   const progress = row.progress ?? 0;
 
   return (
-    <div className="space-y-5 text-sm text-ink">
-      <section className="space-y-1.5">
-        <p className="text-2xs uppercase tracking-[0.18em] text-muted">메타</p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {priority ? (
-            <span
-              className={`inline-block px-2 py-0.5 text-2xs ${PRIORITY_COLOR[priority]}`}
-            >
-              {PRIORITY_LABEL[priority]}
-            </span>
-          ) : null}
-          <span className="inline-block border border-line bg-transparent px-2 py-0.5 text-2xs text-ink">
-            {STATUS_LABEL[status]}
-          </span>
-          {row.done ? (
-            <span className="inline-block bg-sage px-2 py-0.5 text-2xs text-cream">
-              완료됨
-            </span>
-          ) : null}
-          <span className="text-xs">
-            <span className="text-muted">카테고리</span>{" "}
-            <span className="text-ink">{row.category || "-"}</span>
-          </span>
-          <span className="text-xs">
-            <span className="text-muted">마감</span>{" "}
-            <span className="font-mono text-ink">{formatDueAt(row.dueAt)}</span>
-          </span>
-        </div>
-      </section>
+    <div className="space-y-6">
+      <Section title="할 일 기본">
+        <DefList
+          items={[
+            { term: "제목", desc: row.name || "-" },
+            {
+              term: "카테고리",
+              desc: row.category ? (
+                <span className="inline-block bg-washi-raised px-2 py-0.5 text-xs text-ink">
+                  {row.category}
+                </span>
+              ) : (
+                "-"
+              ),
+            },
+            {
+              term: "우선순위",
+              desc: priority ? (
+                <span
+                  className={`inline-block px-2 py-0.5 text-xs ${PRIORITY_COLOR[priority]}`}
+                >
+                  {PRIORITY_LABEL[priority]}
+                </span>
+              ) : (
+                "-"
+              ),
+            },
+            {
+              term: "상태",
+              desc: (
+                <span className="inline-block border border-line bg-transparent px-2 py-0.5 text-xs text-ink">
+                  {STATUS_LABEL[status]}
+                </span>
+              ),
+            },
+            {
+              term: "완료여부",
+              desc: row.done ? (
+                <span className="inline-block bg-sage px-2 py-0.5 text-xs text-cream">
+                  완료됨
+                </span>
+              ) : (
+                <span className="text-xs text-muted">진행 중</span>
+              ),
+            },
+          ]}
+        />
+      </Section>
 
-      <section className="space-y-1.5">
-        <p className="text-2xs uppercase tracking-[0.18em] text-muted">진행률</p>
+      <Divider />
+
+      <Section title="일정">
+        <DefList
+          items={[
+            {
+              term: "마감일",
+              desc: <span className="font-mono">{formatDate(row.dueAt)}</span>,
+            },
+            {
+              term: "완료일",
+              desc: (
+                <span className="font-mono">{formatDateTime(row.doneAt)}</span>
+              ),
+            },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="진행률">
         <div className="flex items-center gap-2">
           <div className="h-2.5 flex-1 border border-line bg-cream">
             <div
@@ -81,15 +136,17 @@ export function WeeklyTodoView({ row }: ViewProps) {
           </div>
           <span className="font-mono text-xs text-ink">{progress}%</span>
         </div>
-      </section>
+      </Section>
 
       {row.body ? (
-        <section className="space-y-1.5">
-          <p className="text-2xs uppercase tracking-[0.18em] text-muted">설명</p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-            {row.body}
-          </p>
-        </section>
+        <>
+          <Divider />
+          <Section title="설명">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+              {row.body}
+            </p>
+          </Section>
+        </>
       ) : null}
     </div>
   );
