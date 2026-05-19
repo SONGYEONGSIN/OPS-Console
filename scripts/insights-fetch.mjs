@@ -193,6 +193,25 @@ if (error) {
 }
 
 console.log(`upserted: ${data?.length ?? 0} rows, errors: ${errors.length}`);
+
+// --- 60일 지난 row cleanup (DB 용량 + UI 정합성) ---
+const CLEANUP_DAYS = 60;
+const cleanupCutoff = new Date(
+  Date.now() - CLEANUP_DAYS * 24 * 60 * 60 * 1000,
+).toISOString();
+const { data: deleted, error: delErr } = await supabase
+  .from("insight_videos")
+  .delete()
+  .lt("collected_at", cleanupCutoff)
+  .select("id");
+if (delErr) {
+  console.error(`cleanup (>${CLEANUP_DAYS}d) failed:`, delErr.message);
+} else {
+  console.log(
+    `cleanup: deleted ${deleted?.length ?? 0} rows older than ${CLEANUP_DAYS} days`,
+  );
+}
+
 if (errors.length > 0) {
   console.error("partial errors:", JSON.stringify(errors, null, 2));
   process.exit(1);
