@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { TodoRow } from "@/features/todos/schemas";
 import { ListPattern } from "../_components/patterns/ListPattern";
@@ -44,6 +44,7 @@ export function WeeklyView({
   canWrite,
   onPersist,
 }: Props) {
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -113,7 +114,13 @@ export function WeeklyView({
         </div>
       </header>
 
-      <div className="grid grid-cols-7 gap-px border border-line bg-line-soft">
+      <div
+        className={
+          "transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] " +
+          (inspectorOpen ? "md:pr-[340px]" : "")
+        }
+      >
+        <div className="grid grid-cols-7 gap-px border border-line bg-line-soft">
         {WEEKDAY_LABELS.map((wd) => (
           <div
             key={wd}
@@ -149,12 +156,14 @@ export function WeeklyView({
           );
         })}
       </div>
+      </div>
 
       <ListPattern
         title="원서접수"
         data={{ rows }}
         variant="weekly-todo"
         canCreate={canWrite}
+        onInspectorChange={setInspectorOpen}
         createLabel="+ 새 할 일"
         readOnly={!canWrite}
         onPersist={onPersist}

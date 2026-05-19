@@ -142,26 +142,23 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
           </select>
         </label>
       </div>
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">진행률</span>
+      <div className="space-y-1.5">
+        <span className="text-xs text-muted">진행률</span>
         <div className="flex items-center gap-2">
-          <input
-            type="range"
-            aria-label="진행률"
-            min={0}
-            max={100}
-            step={5}
-            value={row.progress ?? 0}
-            onChange={(e) =>
-              setRow({ ...row, progress: Number(e.target.value) })
-            }
-            className="flex-1 accent-sage"
-          />
+          <div className="h-2.5 flex-1 border border-line bg-cream">
+            <div
+              className="h-full bg-sage"
+              style={{ width: `${row.progress ?? 0}%` }}
+            />
+          </div>
           <span className="font-mono text-xs text-ink">
             {row.progress ?? 0}%
           </span>
         </div>
-      </label>
+        <p className="text-2xs text-muted">
+          하위 업무 진행률 평균으로 자동 산출됩니다.
+        </p>
+      </div>
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
