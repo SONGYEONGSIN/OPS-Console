@@ -22,6 +22,23 @@ const PRIORITY_LABEL: Record<Priority, string> = {
   low: "낮음",
 };
 
+function todayKstKey(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date(),
+  );
+}
+
+function fmtYmd(ymd?: string | null): string {
+  if (!ymd) return "-";
+  if (ymd === todayKstKey()) return "오늘";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(new Date(`${ymd}T00:00:00+09:00`));
+}
+
 export function ProjectTaskTable({ rows, selectedId, onSelect }: Props) {
   return (
     <table className="w-full text-sm">
@@ -64,11 +81,11 @@ export function ProjectTaskTable({ rows, selectedId, onSelect }: Props) {
                 </td>
                 <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
                 <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
-                <td className="px-3 py-2 text-xs font-mono text-ink-soft">
-                  {row.startDateYmd ?? "-"}
+                <td className="px-3 py-2 text-sm text-ink-soft">
+                  {fmtYmd(row.startDateYmd)}
                 </td>
-                <td className="px-3 py-2 text-xs font-mono text-ink-soft">
-                  {row.endDateYmd ?? "-"}
+                <td className="px-3 py-2 text-sm text-ink-soft">
+                  {fmtYmd(row.endDateYmd)}
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <div className="flex items-center gap-2">

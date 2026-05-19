@@ -27,4 +27,21 @@ describe("ProjectTable", () => {
     expect(screen.getByText("송영석")).toBeInTheDocument();
     expect(screen.getByText("30%")).toBeInTheDocument();
   });
+
+  it("시작/마감 일자 — 주요업무 탭과 동일한 'M. D. (요일)' 포맷", () => {
+    render(
+      <ProjectTable
+        rows={[
+          makeRow({
+            startDateYmd: "2027-01-15",
+            endDateYmd: "2027-02-20",
+          }),
+        ]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/1\. 15\./)).toBeInTheDocument();
+    expect(screen.getByText(/2\. 20\./)).toBeInTheDocument();
+  });
 });
