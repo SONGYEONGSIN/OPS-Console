@@ -4,6 +4,7 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
+import { ScopeChips } from "@/components/common/ScopeChips";
 import { ContactsControls } from "./ContactsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
@@ -32,6 +33,7 @@ export default async function ContactsPage({
     managementGrade?: string;
     relationshipGrade?: string;
     customerActive?: string;
+    mine?: string;
     sort?: string;
     page?: string;
   }>;
@@ -49,22 +51,9 @@ export default async function ContactsPage({
   const canEdit =
     me?.permission === "admin" || me?.permission === "member";
 
-  const filter: ContactsFilter = {
-    search: sp.q,
-    jobRole: sp.jobRole,
-    managementGrade: sp.managementGrade,
-    relationshipGrade: sp.relationshipGrade,
-    customerActive: sp.customerActive,
-    sort: (sp.sort as Sort | undefined) ?? "created_desc",
-    page: sp.page ? Number(sp.page) : 1,
-    pageSize: PAGE_SIZE,
-  };
+  const mine = sp.mine === "true";
 
-  const { rows: contacts, total } = await listContacts(filter);
-  const rows: ListRow[] = contacts.map(contactRowToListRow);
-  const config = resolvePageMeta(slug, meta, total);
-
-  // 대학명 자동완성 후보 — services.university_name + contacts.university_name distinct 합집합.
+  // 대학명 자동완성 + mine 필터용 services 전수 fetch.
   // Supabase JS는 PostgREST 1000 cap이라 chunk loop으로 전체 fetch.
   const SUGGEST_CHUNK = 1000;
   const SUGGEST_MAX_PAGES = 20;
@@ -82,6 +71,34 @@ export default async function ContactsPage({
     if (suggestFetched >= total) break;
     if (p * SUGGEST_CHUNK >= total) break; // PGRST103 회피
   }
+
+  // mine=true 시 본인 담당 services(operator_email === me)의 university_name 집합으로 필터.
+  const myUniversities = mine
+    ? [
+        ...new Set(
+          servicesForUni
+            .filter((s) => s.operator_email === me?.email)
+            .map((s) => s.university_name),
+        ),
+      ]
+    : undefined;
+
+  const filter: ContactsFilter = {
+    search: sp.q,
+    jobRole: sp.jobRole,
+    managementGrade: sp.managementGrade,
+    relationshipGrade: sp.relationshipGrade,
+    customerActive: sp.customerActive,
+    universityIn: myUniversities,
+    sort: (sp.sort as Sort | undefined) ?? "created_desc",
+    page: sp.page ? Number(sp.page) : 1,
+    pageSize: PAGE_SIZE,
+  };
+
+  const { rows: contacts, total } = await listContacts(filter);
+  const rows: ListRow[] = contacts.map(contactRowToListRow);
+  const config = resolvePageMeta(slug, meta, total);
+
   const universitySet = new Set<string>();
   for (const s of servicesForUni) universitySet.add(s.university_name);
   for (const c of contacts) universitySet.add(c.university_name);
@@ -154,6 +171,9 @@ export default async function ContactsPage({
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       universityNameSuggestions={universityNameSuggestions}
+      inlineFilters={
+        <ScopeChips key="contacts-scope" total={total} mineLabel="내 대학" />
+      }
       footer={
         <ListPagination
           key="contacts-pagination"
