@@ -1,4 +1,5 @@
 import type { TodoRow } from "@/features/todos/schemas";
+import type { ServicesRow } from "@/features/services/schemas";
 
 const KST_YMD = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Seoul",
@@ -54,6 +55,32 @@ export function bucketTodosByDay(
     if (!t.due_at) continue;
     const key = toKstYmd(t.due_at);
     if (buckets[key]) buckets[key].push(t);
+  }
+  return buckets;
+}
+
+export type DayService = { kind: "start" | "end"; service: ServicesRow };
+
+/**
+ * services의 write_start_at / write_end_at을 days 범위 안에서 ymd 키로 bucket.
+ * 한 service가 start/end 둘 다 가지면 2개 entry 생성 (각각 kind 다름).
+ */
+export function bucketServicesByDay(
+  services: ServicesRow[],
+  days: string[],
+): Record<string, DayService[]> {
+  const buckets: Record<string, DayService[]> = Object.fromEntries(
+    days.map((d) => [d, [] as DayService[]]),
+  );
+  for (const s of services) {
+    if (s.write_start_at) {
+      const key = toKstYmd(s.write_start_at);
+      if (buckets[key]) buckets[key].push({ kind: "start", service: s });
+    }
+    if (s.write_end_at) {
+      const key = toKstYmd(s.write_end_at);
+      if (buckets[key]) buckets[key].push({ kind: "end", service: s });
+    }
   }
   return buckets;
 }
