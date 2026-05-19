@@ -48,4 +48,23 @@ describe("WeeklyTodoView", () => {
     render(<WeeklyTodoView row={makeRow({ category: undefined })} />);
     expect(screen.getByText(/카테고리/)).toBeInTheDocument();
   });
+
+  it("services 인스펙터 형식 — 4 섹션 (할 일 기본 / 일정 / 진행률 / 설명)", () => {
+    render(<WeeklyTodoView row={makeRow()} />);
+    expect(screen.getByText("할 일 기본")).toBeInTheDocument();
+    expect(screen.getByText("일정")).toBeInTheDocument();
+    expect(screen.getByText("진행률")).toBeInTheDocument();
+    expect(screen.getByText("설명")).toBeInTheDocument();
+  });
+
+  it("doneAt이 있으면 '완료일' 항목 노출, 없으면 '-'", () => {
+    const { rerender } = render(
+      <WeeklyTodoView
+        row={makeRow({ done: true, doneAt: "2026-05-18T15:00:00Z", progress: 100 })}
+      />,
+    );
+    expect(screen.getByText("완료일")).toBeInTheDocument();
+    rerender(<WeeklyTodoView row={makeRow({ doneAt: null })} />);
+    expect(screen.getByText("완료일")).toBeInTheDocument();
+  });
 });
