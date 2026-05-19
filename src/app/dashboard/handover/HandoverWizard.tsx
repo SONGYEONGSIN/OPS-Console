@@ -328,10 +328,10 @@ function Step2({
         <table className="w-full table-fixed text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-              <th className="w-10 px-3 py-2"></th>
-              <th className="w-24 px-3 py-2">팀</th>
-              <th className="w-32 px-3 py-2">이름</th>
-              <th className="w-20 px-3 py-2">역할</th>
+              <th className="w-12 px-3 py-2"></th>
+              <th className="w-1/6 px-3 py-2">팀</th>
+              <th className="w-1/5 px-3 py-2">이름</th>
+              <th className="w-1/6 px-3 py-2">역할</th>
               <th className="px-3 py-2">이메일</th>
             </tr>
           </thead>
@@ -344,7 +344,7 @@ function Step2({
                   onClick={() => onSelect(o)}
                   className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-washi-raised" : ""}`}
                 >
-                  <td className="w-10 px-3 py-2">
+                  <td className="w-12 px-3 py-2">
                     <input
                       type="radio"
                       name="to"
@@ -354,13 +354,13 @@ function Step2({
                       aria-label={o.name}
                     />
                   </td>
-                  <td className="w-24 px-3 py-2 text-xs text-ink-soft">
+                  <td className="w-1/6 px-3 py-2 text-xs text-ink-soft">
                     {o.team ?? "-"}
                   </td>
-                  <td className="w-32 px-3 py-2 font-medium text-ink">
+                  <td className="w-1/5 px-3 py-2 font-medium text-ink">
                     {o.name}
                   </td>
-                  <td className="w-20 px-3 py-2 text-xs text-ink-soft">
+                  <td className="w-1/6 px-3 py-2 text-xs text-ink-soft">
                     {o.role ?? "-"}
                   </td>
                   <td className="px-3 py-2 text-xs text-ink-soft">{o.email}</td>
