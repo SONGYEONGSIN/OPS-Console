@@ -23,6 +23,24 @@ const STATUS_OPTIONS = [
   { value: "blocked" as const, label: "보류" },
 ];
 
+const CATEGORY_OPTIONS = [
+  "원서접수",
+  "문서작성",
+  "회의/일정",
+  "사고대응",
+  "계약/백업",
+  "온보딩/교육",
+  "AI 활용",
+  "기타",
+] as const;
+
+const CUSTOM_CATEGORY = "기타";
+
+function isPresetCategory(c: string | null | undefined): boolean {
+  if (!c) return false;
+  return (CATEGORY_OPTIONS as readonly string[]).includes(c);
+}
+
 function isoToKstDate(iso?: string | null): string {
   if (!iso) return "";
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
@@ -65,16 +83,52 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
           placeholder="설명 (선택)"
         />
       </label>
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">카테고리</span>
-        <input
-          aria-label="카테고리"
-          value={row.category ?? ""}
-          onChange={(e) => setRow({ ...row, category: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="예: 신제품 프로모션"
-        />
-      </label>
+      <div className="space-y-1.5">
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">카테고리</span>
+          <select
+            aria-label="카테고리"
+            value={
+              row.category && isPresetCategory(row.category)
+                ? row.category
+                : row.category
+                  ? CUSTOM_CATEGORY
+                  : ""
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "") setRow({ ...row, category: undefined });
+              else if (v === CUSTOM_CATEGORY)
+                // 기타 선택 시 — 기존 임의 값 유지하거나 빈 문자열로 시작
+                setRow({
+                  ...row,
+                  category:
+                    row.category && !isPresetCategory(row.category)
+                      ? row.category
+                      : "",
+                });
+              else setRow({ ...row, category: v });
+            }}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="">선택 안 함</option>
+            {CATEGORY_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </label>
+        {row.category != null && !isPresetCategory(row.category) ? (
+          <input
+            aria-label="카테고리 직접 입력"
+            value={row.category}
+            onChange={(e) => setRow({ ...row, category: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+            placeholder="기타 카테고리명 직접 입력"
+          />
+        ) : null}
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">우선순위</span>
