@@ -33,6 +33,7 @@ import { MyTodoForm } from "./my-todo/EditForm";
 import { MY_TODO_FILTERS, blankMyTodoRow } from "./my-todo/filters";
 import { WeeklyTodoTable } from "./weekly-todo/Table";
 import { WeeklyTodoForm } from "./weekly-todo/EditForm";
+import { WeeklyTodoView } from "./weekly-todo/View";
 import {
   WEEKLY_TODO_FILTERS,
   blankWeeklyTodoRow,
@@ -181,6 +182,7 @@ export const variantRegistry = {
     blank: blankMyTodoRow,
   },
   "weekly-todo": {
+    View: WeeklyTodoView,
     EditForm: WeeklyTodoForm,
     Table: WeeklyTodoTable,
     Filters: WEEKLY_TODO_FILTERS,
