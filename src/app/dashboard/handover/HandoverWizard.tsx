@@ -391,8 +391,11 @@ function Step3({
 }) {
   return (
     <section className="space-y-6">
-      <header>
+      <header className="flex items-baseline gap-3">
         <h3 className="text-xl font-bold text-ink">3 · 최종 확인</h3>
+        <span className="text-xs text-muted">
+          · 발송 전 서비스 · 인수자 · 메모를 점검하세요 (PDF 자동 첨부)
+        </span>
       </header>
 
       <dl className="grid grid-cols-[120px_1fr] gap-y-3 border border-line bg-cream p-4 text-sm">
