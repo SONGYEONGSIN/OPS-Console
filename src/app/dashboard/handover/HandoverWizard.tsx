@@ -325,7 +325,7 @@ function Step2({
         <span className="text-xs text-muted">· 본인 외 active 운영자</span>
       </header>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
               <th className="w-10 px-3 py-2"></th>
