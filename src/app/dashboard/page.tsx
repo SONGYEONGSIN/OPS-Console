@@ -2,7 +2,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { getMenuCounts } from "@/features/menu-counts/queries";
 import { listServices } from "@/features/services/queries";
 import { listWorklog } from "@/features/worklog/queries";
-import { LiveFullscreen } from "./_components/live/LiveFullscreen";
+import { LivePageHeader } from "./_components/live/LivePageHeader";
 import { HeroCard } from "./_components/live/HeroCard";
 import { StatTile } from "./_components/live/StatTile";
 import { ActivityFeed } from "./_components/live/ActivityFeed";
@@ -29,8 +29,9 @@ function formatHm(iso: string): string {
 }
 
 /**
- * /dashboard 실시간 현황 — 풀스크린 위젯 그리드.
- * Apple Stocks/Health 톤. chrome overlay 위 풀스크린, X로 탈출.
+ * /dashboard 실시간 현황 — Apple Stocks/Health 톤 위젯 그리드.
+ * 다른 메뉴(PageHeader breadcrumb/탭/메타) 패턴 미사용 — 실시간 현황 고유 디자인.
+ * chrome(사이드바·종·탭)은 layout이 유지 — 메인 컨텐츠 영역만 위젯 톤.
  */
 export default async function DashboardLivePage({
   searchParams,
@@ -105,35 +106,38 @@ export default async function DashboardLivePage({
   ];
 
   return (
-    <LiveFullscreen mine={mine} title="실시간 현황">
-      <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
-        {/* Hero — 큰 카드 2개 */}
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {heroCards.map((h, i) => (
-            <HeroCard key={i} {...h} />
-          ))}
-        </section>
+    <div className="flex h-full flex-col">
+      <LivePageHeader mine={mine} title="실시간 현황" />
+      <div className="flex-1 overflow-y-auto bg-washi-raised px-6 py-6">
+        <div className="mx-auto flex max-w-[1200px] flex-col gap-6">
+          {/* Hero — 큰 카드 2개 */}
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {heroCards.map((h, i) => (
+              <HeroCard key={i} {...h} />
+            ))}
+          </section>
 
-        {/* StatTile — 도메인 카운트 작은 타일 */}
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {tiles.map((t) => (
-            <StatTile key={t.label} {...t} />
-          ))}
-        </section>
+          {/* StatTile — 도메인 카운트 작은 타일 */}
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {tiles.map((t) => (
+              <StatTile key={t.label} {...t} />
+            ))}
+          </section>
 
-        {/* 최근 활동 */}
-        <section className="border border-line bg-cream p-5">
-          <div className="mb-3 flex items-baseline justify-between border-b border-line-soft pb-2">
-            <h2 className="text-sm font-semibold tracking-[-0.01em] text-ink">
-              최근 활동
-            </h2>
-            <span className="text-2xs uppercase tracking-[0.14em] text-muted">
-              worklog · 10건
-            </span>
-          </div>
-          <ActivityFeed items={activityItems} />
-        </section>
+          {/* 최근 활동 */}
+          <section className="border border-line bg-cream p-5">
+            <div className="mb-3 flex items-baseline justify-between border-b border-line-soft pb-2">
+              <h2 className="text-sm font-semibold tracking-[-0.01em] text-ink">
+                최근 활동
+              </h2>
+              <span className="text-2xs uppercase tracking-[0.14em] text-muted">
+                worklog · 10건
+              </span>
+            </div>
+            <ActivityFeed items={activityItems} />
+          </section>
+        </div>
       </div>
-    </LiveFullscreen>
+    </div>
   );
 }
