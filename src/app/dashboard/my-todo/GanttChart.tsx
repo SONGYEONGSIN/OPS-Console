@@ -30,6 +30,15 @@ const FILL_TASK = "bg-sage";
 const NAME_COL_PX = 200;
 const DAY_COL_MIN_PX = 28;
 
+function fmtYmd(ymd: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(new Date(`${ymd}T00:00:00+09:00`));
+}
+
 function weekdayLabel(ymd: string): { label: string; tone: string } {
   const d = new Date(`${ymd}T12:00:00Z`).getUTCDay();
   return {
@@ -93,8 +102,8 @@ export function GanttChart({ items }: Props) {
         <h4 className="text-xs font-bold uppercase tracking-[0.18em] text-vermilion">
           Gantt · 타임라인
         </h4>
-        <span className="font-mono text-xs text-muted">
-          {range.fromYmd} ~ {range.toYmd}
+        <span className="text-xs text-muted">
+          {fmtYmd(range.fromYmd)} ~ {fmtYmd(range.toYmd)}
         </span>
       </header>
 

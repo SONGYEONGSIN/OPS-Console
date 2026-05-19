@@ -51,4 +51,23 @@ describe("GanttChart", () => {
     const bars = screen.getAllByTestId("gantt-bar");
     expect(bars.length).toBeGreaterThan(0);
   });
+
+  it("헤더 범위 — 'M. D. (요일) ~ M. D. (요일)' 포맷 (주요업무 탭과 통일)", () => {
+    render(
+      <GanttChart
+        items={[
+          {
+            id: "p1",
+            name: "프로젝트A",
+            startYmd: "2027-01-15",
+            endYmd: "2027-02-20",
+            priority: "high",
+            progress: 30,
+            isParent: true,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/1\. 15\..*~.*2\. 20\./)).toBeInTheDocument();
+  });
 });
