@@ -4,6 +4,7 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ServicesControls } from "./ServicesControls";
+import { servicesRowToListRow } from "./_row-mapper";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
@@ -202,29 +203,3 @@ export default async function ServicesPage({
   );
 }
 
-function servicesRowToListRow(r: ServicesRow): ListRow {
-  return {
-    id: r.id,
-    name: r.service_name,
-    status: "active",
-    owner: r.operator_name ?? r.operator_email ?? "-",
-    serviceIdNum: r.service_id,
-    applicationType: r.application_type,
-    region: r.region,
-    universityName: r.university_name,
-    serviceName: r.service_name,
-    universityType: r.university_type,
-    category: r.category,
-    operatorEmail: r.operator_email,
-    operatorName: r.operator_name,
-    developerEmail: r.developer_email,
-    developerName: r.developer_name,
-    writeStartAt: r.write_start_at,
-    writeEndAt: r.write_end_at,
-    payStartAt: r.pay_start_at,
-    payEndAt: r.pay_end_at,
-    solo: r.solo,
-    source: r.source,
-    importedAt: r.imported_at,
-  };
-}
