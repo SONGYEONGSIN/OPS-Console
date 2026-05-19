@@ -10,6 +10,7 @@ import { InspectorListBody } from "../_components/inspector/InspectorListBody";
 import { InspectorChrome } from "../_components/inspector/InspectorChrome";
 import { useInspectorState } from "../_components/inspector/useInspectorState";
 import { OPERATORS } from "@/features/auth/operators";
+import { servicesRowToListRow } from "../services/_row-mapper";
 import { CalendarToolbar } from "./CalendarToolbar";
 import {
   buildMonthGrid,
@@ -169,13 +170,7 @@ export function CalendarView({
       const svc = item.rowRef as ServicesRow;
       inspector.open({
         item,
-        row: {
-          id: svc.id,
-          name: svc.service_name,
-          status: "active",
-          owner: svc.operator_email ?? "",
-          meta: svc.university_name ?? undefined,
-        },
+        row: servicesRowToListRow(svc),
         sourceVariant: "services",
       });
     }
@@ -325,58 +320,22 @@ export function CalendarView({
             onToggleEdit={inspector.toggleEdit}
             editable={selected.sourceVariant === "schedule" && canWrite}
           >
-            {selected.sourceVariant === "schedule" ? (
-              <InspectorListBody
-                row={selected.row}
-                editing={inspector.editing}
-                onSave={handleSave}
-                onCancel={() => {
-                  if (creating) {
-                    inspector.close();
-                    setCreating(false);
-                  } else {
-                    inspector.toggleEdit();
-                  }
-                }}
-                variant="schedule"
-              />
-            ) : (
-              <div className="space-y-5 text-sm text-ink">
-                <section className="space-y-1.5">
-                  <p className="text-2xs uppercase tracking-[0.18em] text-muted">
-                    원서접수
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-2xs ${
-                        selected.item?.category === "service-start"
-                          ? "bg-sage text-cream"
-                          : "bg-indigo text-cream"
-                      }`}
-                    >
-                      {selected.item?.category === "service-start"
-                        ? "접수 시작"
-                        : "접수 종료"}
-                    </span>
-                    <span className="text-xs">
-                      <span className="text-muted">날짜</span>{" "}
-                      <span className="font-mono text-ink">
-                        {selected.item?.ymd}
-                      </span>
-                    </span>
-                    <span className="text-xs">
-                      <span className="text-muted">담당</span>{" "}
-                      <span className="text-ink">
-                        {selected.row.owner || "-"}
-                      </span>
-                    </span>
-                  </div>
-                </section>
-                <p className="text-2xs text-muted">
-                  ※ 서비스 상세 편집은 서비스 메뉴에서 가능합니다.
-                </p>
-              </div>
-            )}
+            <InspectorListBody
+              row={selected.row}
+              editing={
+                selected.sourceVariant === "schedule" && inspector.editing
+              }
+              onSave={handleSave}
+              onCancel={() => {
+                if (creating) {
+                  inspector.close();
+                  setCreating(false);
+                } else {
+                  inspector.toggleEdit();
+                }
+              }}
+              variant={selected.sourceVariant}
+            />
           </InspectorChrome>
         ) : null}
       </InspectorPanel>
