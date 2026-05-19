@@ -267,7 +267,7 @@ export function WeeklyView({
         }`}
       >
         <ListPattern
-          title="원서접수"
+          title="주요업무"
           data={{ rows }}
           variant="weekly-todo"
           canCreate={canWrite}

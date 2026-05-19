@@ -34,7 +34,7 @@ describe("MyTodoTabs", () => {
         projectContent={<div />}
       />,
     );
-    const weeklyTab = screen.getByRole("tab", { name: "원서접수" });
+    const weeklyTab = screen.getByRole("tab", { name: "주요업무" });
     const projectTab = screen.getByRole("tab", { name: "프로젝트" });
     expect(weeklyTab).toHaveAttribute("href", "/dashboard/my-todo");
     expect(projectTab).toHaveAttribute(
@@ -55,7 +55,7 @@ describe("MyTodoTabs", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByRole("tab", { name: "원서접수" })).not.toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "주요업무" })).not.toHaveAttribute(
       "aria-current",
     );
   });
