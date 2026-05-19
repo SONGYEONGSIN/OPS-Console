@@ -68,6 +68,8 @@ describe("GanttChart", () => {
         ]}
       />,
     );
-    expect(screen.getByText(/1\. 15\..*~.*2\. 20\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(/2027\. 1\. 15\..*~.*2027\. 2\. 20\./),
+    ).toBeInTheDocument();
   });
 });

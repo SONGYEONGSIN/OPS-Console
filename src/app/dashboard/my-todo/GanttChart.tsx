@@ -33,6 +33,7 @@ const DAY_COL_MIN_PX = 28;
 function fmtYmd(ymd: string): string {
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "numeric",
     day: "numeric",
     weekday: "short",
