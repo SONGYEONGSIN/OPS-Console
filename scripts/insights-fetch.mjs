@@ -162,8 +162,18 @@ console.log(
   `popularity filter (>= ${MIN_VIEW_COUNT.toLocaleString()} views): kept ${popular.length}, dropped ${dropped}`,
 );
 
-if (popular.length === 0) {
-  console.log("nothing to upsert after popularity filter.");
+// --- 키워드 전체에서 최대 N개만 (view_count 기준 top, null은 후순위) ---
+const MAX_UPSERT_PER_RUN = 10;
+const ranked = [...popular].sort(
+  (a, b) => (b.view_count ?? -1) - (a.view_count ?? -1),
+);
+const topN = ranked.slice(0, MAX_UPSERT_PER_RUN);
+console.log(
+  `top-N cutoff: keeping ${topN.length} (max ${MAX_UPSERT_PER_RUN}) — dropped ${popular.length - topN.length} below cutoff`,
+);
+
+if (topN.length === 0) {
+  console.log("nothing to upsert after top-N cutoff.");
   if (errors.length > 0) process.exit(1);
   process.exit(0);
 }
@@ -174,7 +184,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 const { data, error } = await supabase
   .from("insight_videos")
-  .upsert(popular, { onConflict: "video_id", ignoreDuplicates: false })
+  .upsert(topN, { onConflict: "video_id", ignoreDuplicates: false })
   .select("video_id");
 
 if (error) {
