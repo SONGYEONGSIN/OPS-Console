@@ -42,6 +42,7 @@ function formatDueAt(iso?: string | null): string {
   if (target === today) return "오늘";
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "numeric",
     day: "numeric",
     weekday: "short",

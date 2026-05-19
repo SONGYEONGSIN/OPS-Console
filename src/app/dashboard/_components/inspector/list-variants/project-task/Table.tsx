@@ -33,6 +33,7 @@ function fmtYmd(ymd?: string | null): string {
   if (ymd === todayKstKey()) return "오늘";
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "numeric",
     day: "numeric",
     weekday: "short",

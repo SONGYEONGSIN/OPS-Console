@@ -41,7 +41,7 @@ describe("ProjectTable", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.getByText(/1\. 15\./)).toBeInTheDocument();
-    expect(screen.getByText(/2\. 20\./)).toBeInTheDocument();
+    expect(screen.getByText(/2027\. 1\. 15\./)).toBeInTheDocument();
+    expect(screen.getByText(/2027\. 2\. 20\./)).toBeInTheDocument();
   });
 });
