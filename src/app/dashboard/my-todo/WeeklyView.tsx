@@ -255,6 +255,9 @@ export function WeeklyView({
           );
         })}
       </div>
+      <p className="mt-2 text-2xs text-muted">
+        ※ 원서접수 목록을 드래그&드롭으로 새 할 일을 추가할 수 있습니다.
+      </p>
       </div>
 
       <div
