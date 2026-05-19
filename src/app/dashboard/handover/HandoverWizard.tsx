@@ -287,7 +287,7 @@ function Step1({
                     <td className="px-3 py-2 text-xs text-ink-soft">
                       {s.application_type}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                    <td className="px-3 py-2 text-xs text-ink-soft">
                       {formatDate(s.updated_at)}
                     </td>
                   </tr>
