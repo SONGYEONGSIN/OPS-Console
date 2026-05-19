@@ -44,6 +44,7 @@ import { ProjectView } from "./project/View";
 import { PROJECT_FILTERS, blankProjectRow } from "./project/filters";
 import { ProjectTaskTable } from "./project-task/Table";
 import { ProjectTaskForm } from "./project-task/EditForm";
+import { ProjectTaskView } from "./project-task/View";
 import {
   PROJECT_TASK_FILTERS,
   blankProjectTaskRow,
@@ -196,6 +197,7 @@ export const variantRegistry = {
     blank: blankProjectRow,
   },
   "project-task": {
+    View: ProjectTaskView,
     EditForm: ProjectTaskForm,
     Table: ProjectTaskTable,
     Filters: PROJECT_TASK_FILTERS,
