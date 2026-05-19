@@ -156,4 +156,36 @@ describe("CalendarView", () => {
     const otherCell = screen.getByTestId("calendar-cell-2026-05-19");
     expect(otherCell.getAttribute("data-today")).toBe("false");
   });
+
+  it("아이템 4개 초과 셀에 '+N 더보기' 버튼 노출", () => {
+    const events: ScheduleEventRow[] = Array.from({ length: 7 }).map((_, i) => ({
+      ...baseEvent,
+      id: `00000000-0000-0000-0000-00000000000${i + 1}`,
+      type: "event",
+      title: `이벤트 ${i + 1}`,
+      start_at: "2026-05-15T01:00:00Z",
+      all_day: false,
+    }));
+    renderView({ events });
+    // 기본 4개만 표시 + 더보기 버튼 (overflow 3)
+    expect(screen.getByRole("button", { name: /\+3 더보기/ })).toBeInTheDocument();
+    expect(screen.queryByText("이벤트 5")).toBeNull();
+  });
+
+  it("'+N 더보기' 클릭 → 해당 셀의 모든 아이템 표시 + '접기' 버튼", () => {
+    const events: ScheduleEventRow[] = Array.from({ length: 6 }).map((_, i) => ({
+      ...baseEvent,
+      id: `00000000-0000-0000-0000-00000000000${i + 1}`,
+      type: "event",
+      title: `이벤트 ${i + 1}`,
+      start_at: "2026-05-15T01:00:00Z",
+      all_day: false,
+    }));
+    renderView({ events });
+    fireEvent.click(screen.getByRole("button", { name: /\+2 더보기/ }));
+    // 6개 모두 노출 + 접기 버튼
+    expect(screen.getByText("이벤트 5")).toBeInTheDocument();
+    expect(screen.getByText("이벤트 6")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /접기/ })).toBeInTheDocument();
+  });
 });
