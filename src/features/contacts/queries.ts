@@ -8,6 +8,8 @@ export type ContactsFilter = {
   managementGrade?: string;
   relationshipGrade?: string;
   universityName?: string;
+  /** mine 필터용 — 본인 담당 services의 university_name 집합. 빈 배열이면 0건 강제 */
+  universityIn?: string[];
   customerActive?: string;
   sort?: "created_desc" | "customer_name_asc";
   page?: number;
@@ -49,6 +51,10 @@ export async function listContacts(
     query = query.eq("relationship_grade", filter.relationshipGrade);
   if (filter.universityName)
     query = query.eq("university_name", filter.universityName);
+  if (filter.universityIn) {
+    if (filter.universityIn.length === 0) return { rows: [], total: 0 };
+    query = query.in("university_name", filter.universityIn);
+  }
   if (filter.customerActive)
     query = query.eq("customer_active", filter.customerActive);
 
