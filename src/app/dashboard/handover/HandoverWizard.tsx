@@ -394,7 +394,7 @@ function Step3({
       <header className="flex items-baseline gap-3">
         <h3 className="text-xl font-bold text-ink">3 · 최종 확인</h3>
         <span className="text-xs text-muted">
-          · 발송 전 서비스 · 인수자 · 메모를 점검하세요 (PDF 자동 첨부)
+          · 이메일 발송 전 인계내용 및 메모를 점검하세요.
         </span>
       </header>
 
