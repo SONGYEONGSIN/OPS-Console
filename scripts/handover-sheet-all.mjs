@@ -62,7 +62,7 @@ async function main() {
     `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`,
   );
   const all = data.values ?? [];
-  const header = all[0];
+  const _header = all[0];
   const rows = all.slice(1).filter((r) => r[0] && r[0].trim());
   console.log(`[sheet] ${rows.length} data rows (헤더 제외)`);
   console.log(`\n[대학명+구분 distinct]`);
