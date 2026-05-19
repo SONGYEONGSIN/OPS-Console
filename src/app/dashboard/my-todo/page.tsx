@@ -200,6 +200,7 @@ export default async function MyTodoPage({
             todos={todos}
             weekStartYmd={weekStartYmd}
             canWrite={canWrite}
+            todayYmd={getTodayKstYmd()}
             onPersist={onPersistTodo}
           />
         }
