@@ -1,5 +1,5 @@
 import { getCurrentOperator } from "@/features/auth/queries";
-import { getMenuCounts } from "@/features/menu-counts/queries";
+import { getMenuCounts, getMineCounts } from "@/features/menu-counts/queries";
 import { listServices } from "@/features/services/queries";
 import { listWorklog } from "@/features/worklog/queries";
 import { LivePageHeader } from "./_components/live/LivePageHeader";
@@ -44,8 +44,8 @@ export default async function DashboardLivePage({
   const me = await getCurrentOperator();
   const myEmail = me?.email ?? null;
 
-  // 도메인별 전체 카운트 (이미 layout에서 호출되지만 본 페이지에서도 직접 fetch)
-  const counts = await getMenuCounts(myEmail);
+  // mine=true → me 소유 카운트만, mine=false → 전체 카운트
+  const counts = mine ? await getMineCounts(myEmail) : await getMenuCounts(myEmail);
 
   // 마감 임박 — services.write_end_at 가장 가까운 1건 (전체 또는 내 담당)
   const SERVICES_FETCH = 200;
@@ -75,6 +75,7 @@ export default async function DashboardLivePage({
     what: w.msg,
   }));
 
+  // hero — mine=false면 미수채권(sheet 기반, mine 불가), mine=true면 본인 인수인계
   const heroCards = [
     {
       kicker: "마감 임박",
@@ -84,26 +85,41 @@ export default async function DashboardLivePage({
       tone:
         nearestDn !== null && nearestDn <= 3 ? ("urgent" as const) : ("neutral" as const),
     },
-    {
-      kicker: "미수채권",
-      primary: counts.get("receivables") != null ? `${counts.get("receivables")}건` : "—",
-      title: "pending",
-      subtitle: "registered total",
-      tone: "neutral" as const,
-    },
+    mine
+      ? {
+          kicker: "내 인수인계",
+          primary:
+            counts.get("handover") != null ? `${counts.get("handover")}건` : "—",
+          title: "registered",
+          subtitle: "내가 작성자",
+          tone: "neutral" as const,
+        }
+      : {
+          kicker: "미수채권",
+          primary:
+            counts.get("receivables") != null ? `${counts.get("receivables")}건` : "—",
+          title: "pending",
+          subtitle: "registered total",
+          tone: "neutral" as const,
+        },
   ];
 
-  // 도메인 카운트 타일 (Apple Health 톤)
-  const tiles: Array<{ label: string; value: number | string; sub: string; href?: string }> = [
-    { label: "서비스", value: counts.get("services") ?? "—", sub: "active", href: "/dashboard/services" },
-    { label: "인수인계", value: counts.get("handover") ?? "—", sub: "records", href: "/dashboard/handover" },
-    { label: "사고", value: counts.get("incidents") ?? "—", sub: "registered", href: "/dashboard/incidents" },
-    { label: "계약", value: counts.get("contracts") ?? "—", sub: "registered", href: "/dashboard/contracts" },
-    { label: "백업 요청", value: counts.get("backup") ?? "—", sub: "registered", href: "/dashboard/backup" },
-    { label: "대학연락처", value: counts.get("contacts") ?? "—", sub: "registered", href: "/dashboard/contacts" },
+  // tiles — mine 가능 도메인(services/handover/incidents/backup/schedule/my-todo)은 항상 표시,
+  // mine 불가 도메인(contracts/receivables/contacts)은 mine=true 시 hide.
+  type Tile = { label: string; value: number | string; sub: string; href?: string };
+  const mineTiles: Tile[] = [
+    { label: "서비스", value: counts.get("services") ?? "—", sub: mine ? "내 담당" : "active", href: "/dashboard/services" },
+    { label: "인수인계", value: counts.get("handover") ?? "—", sub: mine ? "내가 작성자" : "records", href: "/dashboard/handover" },
+    { label: "사고", value: counts.get("incidents") ?? "—", sub: mine ? "내가 등록/담당" : "registered", href: "/dashboard/incidents" },
+    { label: "백업 요청", value: counts.get("backup") ?? "—", sub: mine ? "내가 요청/백업자" : "registered", href: "/dashboard/backup" },
     { label: "내 할 일", value: counts.get("my-todo") ?? "—", sub: "assigned to me", href: "/dashboard/my-todo" },
-    { label: "운영부 일정", value: counts.get("schedule") ?? "—", sub: "events", href: "/dashboard/schedule" },
+    { label: "운영부 일정", value: counts.get("schedule") ?? "—", sub: mine ? "내 일정" : "events", href: "/dashboard/schedule" },
   ];
+  const allOnlyTiles: Tile[] = [
+    { label: "계약", value: counts.get("contracts") ?? "—", sub: "registered", href: "/dashboard/contracts" },
+    { label: "대학연락처", value: counts.get("contacts") ?? "—", sub: "registered", href: "/dashboard/contacts" },
+  ];
+  const tiles: Tile[] = mine ? mineTiles : [...mineTiles, ...allOnlyTiles];
 
   return (
     <div className="flex h-full flex-col">
