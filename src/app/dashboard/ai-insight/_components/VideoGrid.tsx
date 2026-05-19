@@ -39,7 +39,10 @@ export function VideoGrid({ videos, onSelect }: Props) {
             <div className="flex items-center gap-2 text-xs text-muted">
               <span className="truncate">{v.channel_title}</span>
               <span aria-hidden>·</span>
-              <span className="ml-auto whitespace-nowrap">{formatDate(v.published_at)}</span>
+              <span className="ml-auto whitespace-nowrap">
+                {formatDate(v.published_at)}{" "}
+                <span className="text-2xs">(수집 {formatDate(v.collected_at)})</span>
+              </span>
             </div>
             <div className="mt-auto flex items-center justify-between gap-2">
               <span className="inline-flex items-center rounded-full border border-line bg-washi-raised px-2 py-0.5 text-xs text-ink">
