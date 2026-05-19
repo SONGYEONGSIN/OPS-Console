@@ -92,6 +92,6 @@ describe("OpenTabsProvider", () => {
   it("isGroupChild — group child true, section item false", () => {
     const { result } = renderHook(() => useOpenTabs(), { wrapper });
     expect(result.current.isGroupChild("/dashboard/services")).toBe(true);
-    expect(result.current.isGroupChild("/dashboard/alerts")).toBe(false);
+    expect(result.current.isGroupChild("/dashboard/my-todo")).toBe(false);
   });
 });

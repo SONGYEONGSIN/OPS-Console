@@ -75,11 +75,11 @@ test.describe("/dashboard — 메뉴 접근 권한 (allowed_menus)", () => {
     page,
   }) => {
     togglePermission("member");
-    toggleMenus(["alerts", "feedback"]);
+    toggleMenus(["my-todo", "feedback"]);
     await signInAndGotoDashboard(page);
 
     const nav = page.locator("#sidebar");
-    await expect(nav.getByText("새 알림")).toBeVisible();
+    await expect(nav.getByText("오늘 할 일")).toBeVisible();
     await expect(nav.getByText("개선요청")).toBeVisible();
     await expect(nav.getByText("조직 · 권한")).toHaveCount(0);
     await expect(nav.getByText("시스템 설정")).toHaveCount(0);
@@ -89,7 +89,7 @@ test.describe("/dashboard — 메뉴 접근 권한 (allowed_menus)", () => {
     page,
   }) => {
     togglePermission("member");
-    toggleMenus(["alerts"]);
+    toggleMenus(["my-todo"]);
     await signInAndGotoDashboard(page);
 
     await page.goto("/dashboard/team");

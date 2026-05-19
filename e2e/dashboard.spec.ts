@@ -90,9 +90,10 @@ test.describe("/dashboard — 데스크탑 (1면 신문 레이아웃)", () => {
     ).toBeVisible();
   });
 
-  test("AlertsBell 클릭 시 /dashboard/alerts 이동", async ({ page }) => {
+  test("AlertsBell 클릭 시 /dashboard 이동 (실시간 현황 1면)", async ({ page }) => {
+    await page.goto("/dashboard/services");
     await page.getByRole("button", { name: /알림/ }).click();
-    await expect(page).toHaveURL(/\/dashboard\/alerts$/);
+    await expect(page).toHaveURL(/\/dashboard$/);
   });
 
   test("사용자 dropdown: 풀네임 클릭으로 토글, 외부 클릭으로 닫힘", async ({
@@ -209,11 +210,6 @@ test.describe("/dashboard/[slug] — PageHeader (Epic 2)", () => {
     await expect(headline).toContainText("서비스");
   });
 
-  test("alerts에서 헤드라인 노출", async ({ page }) => {
-    await page.goto("/dashboard/alerts");
-    await expect(page.getByText("지금", { exact: true })).toBeVisible();
-    await expect(page.getByText("주의해야 할 알림", { exact: true })).toBeVisible();
-  });
 });
 
 /* ════════════════════════════════════════════════════════════
@@ -241,15 +237,4 @@ test.describe("/dashboard — Inspector 슬라이드인 (Epic 3)", () => {
     await expect(panel).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("alerts 위젯 클릭 → 패널 열림 → 외부 클릭으로 닫힘", async ({ page }) => {
-    await page.goto("/dashboard/alerts");
-    const firstWidget = page.locator("button[aria-pressed]").first();
-    await firstWidget.click();
-    const panel = page.locator("aside[role='complementary']");
-    await expect(panel).toHaveAttribute("aria-hidden", "false");
-    // InspectorPanel은 의도적으로 내부 닫기 버튼 없음 — ESC 또는 외부 mousedown으로 닫힘.
-    // 위젯 외부 영역을 mousedown하여 onClose 트리거.
-    await page.locator("body").click({ position: { x: 10, y: 10 } });
-    await expect(panel).toHaveAttribute("aria-hidden", "true");
-  });
 });

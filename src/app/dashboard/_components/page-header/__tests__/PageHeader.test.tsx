@@ -5,7 +5,7 @@ import { OpenTabsProvider } from "../open-tabs-context";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/dashboard/alerts",
+  usePathname: () => "/dashboard/my-todo",
 }));
 
 vi.mock("../../../_data", () => ({
@@ -13,7 +13,7 @@ vi.mock("../../../_data", () => ({
 }));
 
 vi.mock("../../../_data/sidebar-helpers", () => ({
-  findSidebarBreadcrumb: () => [{ label: "개요" }, { label: "새 알림" }],
+  findSidebarBreadcrumb: () => [{ label: "개요" }, { label: "오늘 할 일" }],
   findSidebarParentGroup: () => null,
 }));
 
@@ -22,7 +22,7 @@ describe("PageHeader", () => {
     render(
       <OpenTabsProvider>
         <PageHeader
-          pathname="/dashboard/alerts"
+          pathname="/dashboard/my-todo"
           meta={[{ label: "오늘", tone: "accent" }]}
           headline={{ accent: "지금", title: "주의" }}
           description="설명문"

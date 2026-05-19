@@ -32,14 +32,6 @@ export const sidebarSections: SbSection[] = [
       { kind: "item", ico: "◉", label: "실시간 현황" },
       {
         kind: "item",
-        ico: "✦",
-        label: "새 알림",
-        count: "",
-        slug: "alerts",
-        pattern: "dash",
-      },
-      {
-        kind: "item",
         ico: "✓",
         label: "오늘 할 일",
         count: "",

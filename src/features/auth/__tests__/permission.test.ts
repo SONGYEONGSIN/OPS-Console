@@ -39,7 +39,7 @@ const ME_MEMBER = {
   team: "운영1팀" as const,
   operator: null,
   permission: "member" as const,
-  allowedMenus: ["alerts", "feedback"],
+  allowedMenus: ["my-todo", "feedback"],
 };
 
 beforeEach(() => {
@@ -116,7 +116,7 @@ describe("canViewMenu", () => {
   });
 
   it("member는 allowedMenus 안에 있으면 true", () => {
-    expect(canViewMenu("alerts", ME_MEMBER)).toBe(true);
+    expect(canViewMenu("my-todo", ME_MEMBER)).toBe(true);
     expect(canViewMenu("feedback", ME_MEMBER)).toBe(true);
   });
 
@@ -126,7 +126,7 @@ describe("canViewMenu", () => {
   });
 
   it("operator=null(비로그인) → false", () => {
-    expect(canViewMenu("alerts", null)).toBe(false);
+    expect(canViewMenu("my-todo", null)).toBe(false);
   });
 });
 
@@ -136,7 +136,7 @@ describe("filterSidebarSections", () => {
       title: "개요",
       entries: [
         { kind: "item", ico: "◉", label: "실시간 현황" },
-        { kind: "item", ico: "✦", label: "알림", slug: "alerts" },
+        { kind: "item", ico: "✓", label: "할 일", slug: "my-todo" },
         { kind: "item", ico: "✦", label: "팀", slug: "team" },
       ],
     },
@@ -163,7 +163,7 @@ describe("filterSidebarSections", () => {
   it("member: allowedMenus만 통과 + slug 없는 item 보존", () => {
     const result = filterSidebarSections(sections, ME_MEMBER);
     expect(result[0].entries).toHaveLength(2);
-    expect(result[0].entries[1]).toMatchObject({ slug: "alerts" });
+    expect(result[0].entries[1]).toMatchObject({ slug: "my-todo" });
   });
 
   it("member: 빈 group은 group 자체 hide", () => {

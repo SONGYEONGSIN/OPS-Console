@@ -15,10 +15,6 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "서비스사이클", title: "서비스" },
     description: "현재 운영 중인 서비스 목록을 확인하고 인스펙터에서 상세 지표를 봅니다.",
   },
-  alerts: {
-    headline: { accent: "지금", title: "주의해야 할 알림" },
-    description: "긴급·검토·정상 알림을 시간순으로 확인하고 인스펙터에서 상세를 봅니다.",
-  },
   "my-todo": {
     headline: { accent: "내 계획", title: "주요업무 · 프로젝트" },
     description: "주요업무 weekly 진행과 본인 프로젝트(Gantt)를 한곳에 관리합니다.",

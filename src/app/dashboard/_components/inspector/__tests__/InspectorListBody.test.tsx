@@ -113,7 +113,7 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     owner: "운영1팀",
     meta: "매니저",
     permission: "member",
-    allowedMenus: ["alerts", "feedback"],
+    allowedMenus: ["my-todo", "feedback"],
   };
 
   it("admin이 편집 모드 → 메뉴 체크박스 그룹 노출 + 일부 체크 상태", () => {
@@ -129,9 +129,9 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     );
     const fieldset = screen.getByRole("group", { name: /메뉴 권한/ });
     expect(fieldset).toBeInTheDocument();
-    // alerts 체크박스 — 체크 상태
-    const alertsBox = screen.getByRole("checkbox", { name: /alerts/i });
-    expect(alertsBox).toBeChecked();
+    // my-todo 체크박스 — 체크 상태
+    const myTodoBox = screen.getByRole("checkbox", { name: /my-todo/i });
+    expect(myTodoBox).toBeChecked();
     // team 체크박스 — 미체크 (allowedMenus에 없음)
     const teamBox = screen.getByRole("checkbox", { name: /team/i });
     expect(teamBox).not.toBeChecked();
@@ -153,7 +153,7 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     ).not.toBeInTheDocument();
   });
 
-  it("admin이 alerts 체크 해제 후 저장 → onSave에 alerts 빠진 allowedMenus", () => {
+  it("admin이 my-todo 체크 해제 후 저장 → onSave에 my-todo 빠진 allowedMenus", () => {
     const onSave = vi.fn();
     render(
       <InspectorListBody
@@ -165,11 +165,11 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
         onCancel={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("checkbox", { name: /alerts/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /my-todo/i }));
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        allowedMenus: expect.not.arrayContaining(["alerts"]),
+        allowedMenus: expect.not.arrayContaining(["my-todo"]),
       }),
     );
     expect(onSave.mock.calls[0][0].allowedMenus).toContain("feedback");
