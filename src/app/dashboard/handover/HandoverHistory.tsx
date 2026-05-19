@@ -88,7 +88,7 @@ export function HandoverHistory({ rows, meEmail }: Props) {
                   key={r.id}
                   className="border-b border-line-soft hover:bg-washi-raised"
                 >
-                  <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                  <td className="px-3 py-2 text-xs text-ink-soft">
                     {formatTs(r.created_at)}
                   </td>
                   <td className="px-3 py-2">
