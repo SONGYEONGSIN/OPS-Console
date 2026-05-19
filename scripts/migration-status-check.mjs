@@ -29,7 +29,7 @@ for (const t of TABLES) {
 
 console.log("\n=== 2) anon: RLS 차단 여부 (auth 없이 select) ===");
 for (const t of TABLES) {
-  const { data, error, count } = await anon
+  const { data: _data, error, count } = await anon
     .from(t.name)
     .select("id", { count: "exact", head: true });
   if (error) {

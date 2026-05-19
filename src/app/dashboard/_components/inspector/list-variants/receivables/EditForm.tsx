@@ -1,4 +1,3 @@
-import type { ListRow } from "../../../patterns/ListPattern";
 import { EMAIL_RE, toISODateInput } from "./helpers";
 import type { EditFormProps } from "../types";
 

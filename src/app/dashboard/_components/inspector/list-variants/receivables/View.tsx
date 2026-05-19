@@ -1,4 +1,3 @@
-import type { ListRow } from "../../../patterns/ListPattern";
 import { SendReceivablesMailButton } from "@/components/receivables/SendReceivablesMailButton";
 import { Section, DefList, Divider } from "../shared";
 import { elapsedDays, pickSchoolOwnerEmail } from "./helpers";

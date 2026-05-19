@@ -16,7 +16,6 @@ import {
   updateService,
   deleteService,
 } from "@/features/services/actions";
-import type { ServicesRow } from "@/features/services/schemas";
 
 type Sort = "write_end_asc" | "service_id_asc" | "created_desc";
 

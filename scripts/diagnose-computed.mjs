@@ -119,8 +119,8 @@ async function main() {
   printPair("password input", refPw, ourPw);
 
   // input의 부모 .field input-wrap (mockup) / 부모 div (ours)
-  const wrapProps = ["height", "padding-top", "padding-bottom", "border-bottom-width", "display"];
-  const refWrap = await probe(refPage, "email input wrap", `input[name="email"]`, [], {});
+  const _wrapProps = ["height", "padding-top", "padding-bottom", "border-bottom-width", "display"];
+  const _refWrap = await probe(refPage, "email input wrap", `input[name="email"]`, [], {});
   // 별도 selector — wrap은 input의 parent
   const refWrapInfo = await refPage.evaluate(() => {
     const el = document.querySelector(`input[name="email"]`);
