@@ -3,17 +3,29 @@
 import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { TodoRow } from "@/features/todos/schemas";
+import type { ServicesRow } from "@/features/services/schemas";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import {
   getKstWeekDays,
   bucketTodosByDay,
+  bucketServicesByDay,
 } from "./_helpers/week-grid";
 
 type PersistResult = { ok: boolean; error?: string };
 
+const DRAG_MIME = "application/x-folio-service";
+
+type DragPayload = {
+  serviceName: string;
+  ymd: string;
+  kind: "start" | "end";
+};
+
 type Props = {
   todos: TodoRow[];
+  /** 2주 grid 범위에 걸치는 services (write_start/end). 운영부 달력과 동일 패턴 */
+  services: ServicesRow[];
   weekStartYmd: string;
   canWrite: boolean;
   /** KST 기준 오늘 YYYY-MM-DD — 해당 셀 시각 강조 (운영부 달력과 동일) */
@@ -42,6 +54,7 @@ function todoToListRow(t: TodoRow): ListRow {
 
 export function WeeklyView({
   todos,
+  services,
   weekStartYmd,
   canWrite,
   todayYmd,
@@ -54,7 +67,52 @@ export function WeeklyView({
 
   const days = useMemo(() => getKstWeekDays(weekStartYmd), [weekStartYmd]);
   const buckets = useMemo(() => bucketTodosByDay(todos, days), [todos, days]);
+  const svcBuckets = useMemo(
+    () => bucketServicesByDay(services, days),
+    [services, days],
+  );
   const weekEndYmd = days[days.length - 1] ?? weekStartYmd;
+  const [dragHover, setDragHover] = useState(false);
+
+  const handleDragStart =
+    (payload: DragPayload) => (e: React.DragEvent<HTMLElement>) => {
+      e.dataTransfer.effectAllowed = "copy";
+      e.dataTransfer.setData(DRAG_MIME, JSON.stringify(payload));
+    };
+
+  const handleDropZoneOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDragHover(true);
+  };
+  const handleDropZoneLeave = () => setDragHover(false);
+  const handleDropZoneDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragHover(false);
+    const raw = e.dataTransfer.getData(DRAG_MIME);
+    if (!raw) return;
+    try {
+      const payload = JSON.parse(raw) as DragPayload;
+      const due = new Date(`${payload.ymd}T00:00:00+09:00`).toISOString();
+      const label = payload.kind === "start" ? "접수 시작" : "접수 종료";
+      const newRow: ListRow = {
+        id: "",
+        name: `${payload.serviceName} · ${label}`,
+        status: "active",
+        owner: "",
+        priority: "medium",
+        done: false,
+        dueAt: due,
+        category: payload.serviceName,
+        progress: 0,
+        todoStatus: "todo",
+      };
+      await onPersist(newRow, true);
+    } catch {
+      // ignore malformed payload
+    }
+  };
 
   const handlePrev = () => {
     const d = new Date(`${weekStartYmd}T12:00:00+09:00`);
@@ -166,6 +224,32 @@ export function WeeklyView({
                     {t.title}
                   </li>
                 ))}
+                {(svcBuckets[d] ?? []).map((sb, idx) => (
+                  <li
+                    key={`${sb.service.id}-${sb.kind}-${idx}`}
+                    draggable
+                    onDragStart={handleDragStart({
+                      serviceName: sb.service.service_name,
+                      ymd: d,
+                      kind: sb.kind,
+                    })}
+                    data-testid={`weekly-service-${sb.kind}-${sb.service.id}`}
+                    className="flex cursor-grab items-center gap-1 truncate text-2xs text-ink-soft active:cursor-grabbing"
+                    title={`${sb.service.service_name} · ${sb.kind === "start" ? "접수 시작" : "접수 종료"} (드래그하여 할 일에 담기)`}
+                  >
+                    <span
+                      data-testid="weekly-service-dot"
+                      data-kind={sb.kind}
+                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                        sb.kind === "start" ? "bg-sage" : "bg-indigo"
+                      }`}
+                      aria-hidden
+                    />
+                    <span className="truncate">
+                      {sb.service.service_name}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </div>
           );
@@ -173,16 +257,26 @@ export function WeeklyView({
       </div>
       </div>
 
-      <ListPattern
-        title="원서접수"
-        data={{ rows }}
-        variant="weekly-todo"
-        canCreate={canWrite}
-        onInspectorChange={setInspectorOpen}
-        createLabel="+ 새 할 일"
-        readOnly={!canWrite}
-        onPersist={onPersist}
-      />
+      <div
+        data-testid="weekly-drop-zone"
+        onDragOver={handleDropZoneOver}
+        onDragLeave={handleDropZoneLeave}
+        onDrop={handleDropZoneDrop}
+        className={`transition-colors ${
+          dragHover ? "bg-vermilion/10 ring-2 ring-inset ring-vermilion" : ""
+        }`}
+      >
+        <ListPattern
+          title="원서접수"
+          data={{ rows }}
+          variant="weekly-todo"
+          canCreate={canWrite}
+          onInspectorChange={setInspectorOpen}
+          createLabel="+ 새 할 일"
+          readOnly={!canWrite}
+          onPersist={onPersist}
+        />
+      </div>
     </section>
   );
 }
