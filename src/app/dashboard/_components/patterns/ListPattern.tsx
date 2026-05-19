@@ -8,6 +8,8 @@ import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
 import { applyWeeklyTodoFilter } from "../inspector/list-variants/weekly-todo/filters";
+import { applyProjectFilter } from "../inspector/list-variants/project/filters";
+import { applyProjectTaskFilter } from "../inspector/list-variants/project-task/filters";
 import type { Variant } from "../inspector/list-variants/types";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
@@ -314,6 +316,8 @@ function filterRows(
     return rows.filter((r) => r.scheduleType === filter);
   if (variant === "my-todo") return applyMyTodoFilter(rows, filter);
   if (variant === "weekly-todo") return applyWeeklyTodoFilter(rows, filter);
+  if (variant === "project") return applyProjectFilter(rows, filter);
+  if (variant === "project-task") return applyProjectTaskFilter(rows, filter);
   if (variant === "cohort")
     return rows.filter((r) => r.cohortStatus === filter);
   return rows.filter((r) => r.status === filter);
@@ -340,6 +344,10 @@ type Props = {
   createLabel?: string;
   /** 신규 버튼 옆에 추가 액션 (예: schedule의 view 토글) */
   extraActions?: React.ReactNode;
+  /** 행 클릭 시 부모에 알림 (inspector.open과 별개, 추가 콜백). project ↔ sub-task 같이 화면이 동기화돼야 할 때 사용. */
+  onSelectRow?: (row: ListRow) => void;
+  /** 인스펙터 open/close 알림 — 부모가 좌측 콘텐츠를 drawer-padding 조정에 활용. */
+  onInspectorChange?: (open: boolean) => void;
   /** cohort variant — 초대 메일 발송 (admin only). InspectorListBody로 전달. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
@@ -400,6 +408,8 @@ export function ListPattern({
   canCreate = false,
   createLabel,
   extraActions,
+  onSelectRow,
+  onInspectorChange,
   onInvite,
   receivablesMailDryRun = true,
   currentUserName,
@@ -438,6 +448,8 @@ export function ListPattern({
       keepalive: true,
     }).catch(() => {});
     inspector.open(row);
+    onSelectRow?.(row);
+    onInspectorChange?.(true);
   }
 
   // server에서 새 rows 도착하면 client state 동기화 (덮어쓰기).
@@ -600,6 +612,7 @@ export function ListPattern({
                       variantRegistry.default.blank();
                     inspector.open(blank);
                     if (!inspector.editing) inspector.toggleEdit();
+                    onInspectorChange?.(true);
                   }}
                   className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
                 >
@@ -622,7 +635,10 @@ export function ListPattern({
       </div>
       <InspectorPanel
         open={inspector.selected !== null}
-        onClose={inspector.close}
+        onClose={() => {
+          inspector.close();
+          onInspectorChange?.(false);
+        }}
       >
         {inspector.selected && (
           <InspectorChrome
@@ -658,6 +674,7 @@ export function ListPattern({
                     : prev.map((r) => (r.id === next.id ? next : r));
                 });
                 inspector.close();
+                onInspectorChange?.(false);
                 // server persist (있으면)
                 if (onPersist) {
                   const result = await onPersist(next, wasNew);

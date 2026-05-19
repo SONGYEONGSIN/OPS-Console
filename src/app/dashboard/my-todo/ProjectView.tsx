@@ -23,6 +23,13 @@ type Props = {
   onPersistTask: (row: ListRow, isNew: boolean) => Promise<PersistResult>;
 };
 
+/** sub-task 평균 progress (소수점 절사). tasks 없으면 0. */
+function computeAggregatedProgress(tasks: ProjectTaskRow[]): number {
+  if (tasks.length === 0) return 0;
+  const sum = tasks.reduce((acc, t) => acc + t.progress, 0);
+  return Math.floor(sum / tasks.length);
+}
+
 function projectToListRow(p: ProjectRow, tasks: ProjectTaskRow[]): ListRow {
   return {
     id: p.id,
@@ -31,7 +38,7 @@ function projectToListRow(p: ProjectRow, tasks: ProjectTaskRow[]): ListRow {
     owner:
       p.owner_email === p.created_by_email ? "본인" : p.owner_email.split("@")[0]!,
     priority: p.priority,
-    progress: p.progress,
+    progress: computeAggregatedProgress(tasks),
     todoStatus: p.status,
     description: p.description ?? "",
     startDateYmd: p.start_at ?? null,
@@ -67,6 +74,7 @@ export function ProjectView({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     projectsWithTasks[0]?.project.id ?? null,
   );
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   const projectRows: ListRow[] = projectsWithTasks.map((pwt) =>
     projectToListRow(pwt.project, pwt.tasks),
@@ -88,7 +96,7 @@ export function ProjectView({
         startYmd: pwt.project.start_at ?? null,
         endYmd: pwt.project.end_at ?? null,
         priority: pwt.project.priority,
-        progress: pwt.project.progress,
+        progress: computeAggregatedProgress(pwt.tasks),
         isParent: true,
       });
       for (const t of pwt.tasks) {
@@ -116,7 +124,7 @@ export function ProjectView({
           </p>
           <div className="mt-4 inline-block">
             <ListPattern
-              title=""
+              title="프로젝트"
               data={{ rows: [] }}
               variant="project"
               canCreate={canWrite}
@@ -132,6 +140,14 @@ export function ProjectView({
 
   return (
     <section className="space-y-7 p-7">
+      <div
+        className={`border-b border-line pb-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          inspectorOpen ? "md:pr-[340px]" : ""
+        }`}
+      >
+        <GanttChart items={ganttItems} />
+      </div>
+
       <div>
         <header className="mb-3">
           <h3 className="text-base font-bold text-ink">프로젝트</h3>
@@ -140,12 +156,14 @@ export function ProjectView({
           </p>
         </header>
         <ListPattern
-          title=""
+          title="프로젝트"
           data={{ rows: projectRows }}
           variant="project"
           canCreate={canWrite}
           createLabel="+ 새 프로젝트"
           readOnly={!canWrite}
+          onSelectRow={(row) => setSelectedProjectId(row.id)}
+          onInspectorChange={setInspectorOpen}
           onPersist={async (row, isNew) => {
             const r = await onPersistProject(row, isNew);
             if (r.ok && !isNew) setSelectedProjectId(row.id);
@@ -163,12 +181,13 @@ export function ProjectView({
             </p>
           </header>
           <ListPattern
-            title=""
+            title="하위 업무"
             data={{ rows: selectedTasks }}
             variant="project-task"
             canCreate={canWrite}
             createLabel="+ 새 하위 업무"
             readOnly={!canWrite}
+            onInspectorChange={setInspectorOpen}
             onPersist={async (row, isNew) =>
               onPersistTask(
                 { ...row, projectId: row.projectId ?? selectedProjectId },
@@ -178,10 +197,6 @@ export function ProjectView({
           />
         </div>
       ) : null}
-
-      <div>
-        <GanttChart items={ganttItems} />
-      </div>
     </section>
   );
 }
