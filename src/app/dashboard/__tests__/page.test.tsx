@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import DashboardIndexPage from "../page";
 
-describe("DashboardIndexPage (실시간 현황)", () => {
+describe("DashboardIndexPage (실시간 현황 — HUD 콕핏)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-30T16:42:00+09:00"));
@@ -12,35 +12,46 @@ describe("DashboardIndexPage (실시간 현황)", () => {
     vi.useRealTimers();
   });
 
-  it("Masthead 'OPSROOM 일간' + vol 노출", () => {
+  it("HUD 헤더 — OPSROOM + 실시간 현황 + 온듀티", () => {
     render(<DashboardIndexPage />);
     expect(screen.getByText(/OPSROOM/)).toBeInTheDocument();
-    expect(screen.getByText(/일간/)).toBeInTheDocument();
-    expect(screen.getByText(/vol\.214/)).toBeInTheDocument();
+    expect(screen.getByText(/실시간 현황 HUD/)).toBeInTheDocument();
+    expect(screen.getByText(/온듀티/)).toBeInTheDocument();
   });
 
-  it("Lede headline 노출", () => {
+  it("3 zone (좌·중·우) 노출", () => {
     render(<DashboardIndexPage />);
-    expect(screen.getAllByText(/현재 긴급/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("hud-left")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-center")).toBeInTheDocument();
+    expect(screen.getByTestId("hud-right")).toBeInTheDocument();
   });
 
-  it("12개 프로젝트 진입점 노출", () => {
-    const { container } = render(<DashboardIndexPage />);
-    const projectLinks = container.querySelectorAll(
-      'a[href^="/dashboard/"]:not([href="/dashboard/"])',
-    );
-    expect(projectLinks.length).toBeGreaterThanOrEqual(12);
-  });
-
-  it("OnCall 1차/2차 운영자 노출", () => {
+  it("좌 zone — 나 KPI 라벨 노출 (할 일·담당·인수인계·미수)", () => {
     render(<DashboardIndexPage />);
-    expect(screen.getAllByText(/송영신/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/한효진/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/할 일/)).toBeInTheDocument();
+    expect(screen.getByText(/담당 서비스/)).toBeInTheDocument();
+    expect(screen.getByText(/인수인계 진행/)).toBeInTheDocument();
+    expect(screen.getByText(/미수 발송/)).toBeInTheDocument();
   });
 
-  it("ShiftTimeline 14:00 KST / 22:00 KST 범위 노출", () => {
+  it("중 zone — D-N 카운트다운 + 도메인 Heatmap", () => {
     render(<DashboardIndexPage />);
-    expect(screen.getAllByText(/14:00 KST/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/22:00 KST/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/D-N 카운트다운/)).toBeInTheDocument();
+    expect(screen.getByText(/상태 Heatmap/)).toBeInTheDocument();
+    expect(screen.getByText("D-3")).toBeInTheDocument();
+  });
+
+  it("우 zone — 시스템 신호 (시프트/온콜/SLA/알림)", () => {
+    render(<DashboardIndexPage />);
+    expect(screen.getAllByText(/시프트/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/한효진/)).toBeInTheDocument();
+    expect(screen.getByText("99.7%")).toBeInTheDocument();
+    expect(screen.getAllByText(/알림/).length).toBeGreaterThan(0);
+  });
+
+  it("하단 EventTicker — 이벤트 라벨 노출", () => {
+    render(<DashboardIndexPage />);
+    expect(screen.getByTestId("hud-ticker")).toBeInTheDocument();
+    expect(screen.getByText(/결제 350ms/)).toBeInTheDocument();
   });
 });
