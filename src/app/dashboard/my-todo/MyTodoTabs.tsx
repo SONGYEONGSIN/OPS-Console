@@ -11,7 +11,7 @@ type Props = {
 };
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "weekly", label: "원서접수" },
+  { key: "weekly", label: "주요업무" },
   { key: "project", label: "프로젝트" },
 ];
 
