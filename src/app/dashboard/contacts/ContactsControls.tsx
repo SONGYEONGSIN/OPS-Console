@@ -11,7 +11,6 @@ const DEBOUNCE_MS = 300;
 const JOB_ROLE_OPTIONS = ["실무자", "관리자"] as const;
 const MANAGEMENT_GRADE_OPTIONS = ["A", "B", "C", "D"] as const;
 const RELATIONSHIP_GRADE_OPTIONS = ["우호적", "보통", "주의"] as const;
-const CUSTOMER_ACTIVE_OPTIONS = ["재직", "타부서 이동"] as const;
 
 /**
  * contacts 페이지 — 검색 input(?q) + 3 필터 select (직책 / 관리등급 / 관계등급).
@@ -26,7 +25,6 @@ export function ContactsControls() {
   const jobRole = params.get("jobRole") ?? "";
   const managementGrade = params.get("managementGrade") ?? "";
   const relationshipGrade = params.get("relationshipGrade") ?? "";
-  const customerActive = params.get("customerActive") ?? "";
 
   useEffect(() => {
     const current = params.get("q") ?? "";
@@ -78,13 +76,6 @@ export function ContactsControls() {
         options={RELATIONSHIP_GRADE_OPTIONS}
         placeholder="관계등급 전체"
         ariaLabel="관계 등급 필터"
-      />
-      <ListSelect
-        value={customerActive}
-        onChange={(v) => navigate({ customerActive: v || null })}
-        options={CUSTOMER_ACTIVE_OPTIONS}
-        placeholder="재직 상태 전체"
-        ariaLabel="재직 상태 필터"
       />
     </div>
   );
