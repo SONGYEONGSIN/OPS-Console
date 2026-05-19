@@ -505,8 +505,8 @@ export function ListPattern({
               ...row,
               done: nextDone,
               doneAt: nextDone ? new Date().toISOString() : null,
-              progress: nextDone ? 100 : (row.progress ?? 0),
-              todoStatus: nextDone ? "done" : (row.todoStatus ?? "todo"),
+              progress: nextDone ? 100 : 0,
+              todoStatus: nextDone ? "done" : "todo",
             };
             setRows((prev) => prev.map((r) => (r.id === row.id ? nextRow : r)));
             if (onPersist) {
