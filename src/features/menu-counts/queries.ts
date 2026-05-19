@@ -98,3 +98,83 @@ export async function getMenuCounts(
   }
   return map;
 }
+
+/**
+ * 본인 기준 카운트 — mine=true 토글 시 사용.
+ * me 소유 구분 가능한 도메인만: services / handover / incidents / backup /
+ * schedule / my-todo / worklog.
+ * contracts / receivables / contacts 등 sheet/외부 source 또는 me 컬럼 부재
+ * 도메인은 제외 (호출자가 tile 자체를 hide).
+ */
+export async function getMineCounts(
+  currentUserEmail: string | null,
+): Promise<Map<string, number>> {
+  if (!currentUserEmail) return new Map();
+  const supabase = await createClient();
+  const head = { count: "exact" as const, head: true };
+
+  const results = await Promise.all([
+    countOf(
+      "my-todo",
+      supabase
+        .from("todos")
+        .select("*", head)
+        .eq("assignee_email", currentUserEmail),
+    ),
+    countOf(
+      "services",
+      supabase
+        .from("services")
+        .select("*", head)
+        .eq("operator_email", currentUserEmail),
+    ),
+    countOf(
+      "handover",
+      supabase
+        .from("handover_records")
+        .select("*", head)
+        .neq("status", "draft")
+        .eq("author_email", currentUserEmail),
+    ),
+    countOf(
+      "incidents",
+      supabase
+        .from("incidents")
+        .select("*", head)
+        .or(
+          `reporter_email.eq.${currentUserEmail},assignee_email.eq.${currentUserEmail}`,
+        ),
+    ),
+    countOf(
+      "backup",
+      supabase
+        .from("backup_requests")
+        .select("*", head)
+        .or(
+          `requester_email.eq.${currentUserEmail},substitute_email.eq.${currentUserEmail}`,
+        ),
+    ),
+    countOf(
+      "schedule",
+      supabase
+        .from("schedule_events")
+        .select("*", head)
+        .or(
+          `assignee_email.eq.${currentUserEmail},created_by_email.eq.${currentUserEmail}`,
+        ),
+    ),
+    countOf(
+      "worklog",
+      supabase
+        .from("worklog")
+        .select("*", head)
+        .eq("user_email", currentUserEmail),
+    ),
+  ]);
+
+  const map = new Map<string, number>();
+  for (const [slug, count] of results) {
+    if (count !== null) map.set(slug, count);
+  }
+  return map;
+}
