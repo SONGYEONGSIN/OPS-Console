@@ -51,11 +51,11 @@ export function WeeklyView({
 
   const days = useMemo(() => getKstWeekDays(weekStartYmd), [weekStartYmd]);
   const buckets = useMemo(() => bucketTodosByDay(todos, days), [todos, days]);
-  const weekEndYmd = days[6] ?? weekStartYmd;
+  const weekEndYmd = days[days.length - 1] ?? weekStartYmd;
 
   const handlePrev = () => {
     const d = new Date(`${weekStartYmd}T12:00:00+09:00`);
-    d.setUTCDate(d.getUTCDate() - 7);
+    d.setUTCDate(d.getUTCDate() - 14);
     const next = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Seoul",
     }).format(d);
@@ -65,7 +65,7 @@ export function WeeklyView({
   };
   const handleNext = () => {
     const d = new Date(`${weekStartYmd}T12:00:00+09:00`);
-    d.setUTCDate(d.getUTCDate() + 7);
+    d.setUTCDate(d.getUTCDate() + 14);
     const next = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Seoul",
     }).format(d);
