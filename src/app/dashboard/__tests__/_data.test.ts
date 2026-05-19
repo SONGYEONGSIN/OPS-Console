@@ -3,7 +3,7 @@ import { sidebarSections, findSidebarMeta } from "../_data";
 
 const ALL_SLUGS = [
   // 개요
-  "alerts", "my-todo", "schedule",
+  "my-todo", "schedule",
   // 요청 · 자료
   "handover", "data-requests", "incidents", "contacts", "backup", "vault",
   // 서비스사이클
@@ -37,7 +37,7 @@ describe("sidebarSections 신규 IA", () => {
   });
 });
 
-describe("findSidebarMeta 47 slug 검증", () => {
+describe("findSidebarMeta 46 slug 검증", () => {
   it.each(ALL_SLUGS)("%s slug에 대한 메타 lookup 성공", (slug) => {
     const meta = findSidebarMeta(slug);
     expect(meta).not.toBeNull();

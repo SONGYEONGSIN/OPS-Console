@@ -3,7 +3,7 @@ import { getPatternMockData, type ProjectMockData } from "./patterns";
 import { findSidebarMeta } from "../_data";
 
 const ALL_SLUGS = [
-  "alerts", "my-todo", "schedule",
+  "my-todo", "schedule",
   "handover", "data-requests", "incidents", "contacts", "backup", "vault",
   "services", "contracts", "dev-test", "deploy", "closing", "settlement", "invoice", "receivables",
   "pims", "reception-admin", "internal-admin", "competition", "generator",

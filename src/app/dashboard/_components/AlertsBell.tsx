@@ -12,7 +12,7 @@ const HOVER_DELAY = 200;
  * AlertsBell v2 — chrome 우측 zone에서 사용.
  * - 종 SVG 20×20 + urgent 카운트 빨강 배지
  * - 호버 200ms 후 드롭다운 미리보기 (최근 urgent/review 5건)
- * - 클릭 시 /dashboard/alerts 페이지 이동
+ * - 클릭 시 /dashboard (실시간 현황) 페이지 이동 — alerts는 1면 TriageList에 통합
  * - ESC + 외부 클릭으로 닫힘
  */
 export function AlertsBell({ items }: { items: DashWidget[] }) {
@@ -73,7 +73,7 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
         aria-label={`알림 ${urgent.length}건`}
         onClick={(e) => {
           e.stopPropagation();
-          router.push("/dashboard/alerts");
+          router.push("/dashboard");
         }}
         className="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center border-none bg-transparent p-0"
       >
@@ -112,7 +112,7 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
               {visible.map((alert) => (
                 <li key={alert.id}>
                   <Link
-                    href="/dashboard/alerts"
+                    href="/dashboard"
                     onClick={() => setOpen(false)}
                     className="block px-3 py-1.5 text-sm text-ink transition-colors hover:bg-vermilion hover:text-cream"
                   >

@@ -33,9 +33,9 @@ describe("AlertsBell v2", () => {
     expect(screen.getByText("긴급 1")).toBeInTheDocument();
   });
 
-  it("종 클릭 시 /dashboard/alerts 이동", () => {
+  it("종 클릭 시 /dashboard 이동 (실시간 현황 1면)", () => {
     render(<AlertsBell items={fixtures} />);
     fireEvent.click(screen.getByRole("button", { name: /알림/ }));
-    expect(pushMock).toHaveBeenCalledWith("/dashboard/alerts");
+    expect(pushMock).toHaveBeenCalledWith("/dashboard");
   });
 });

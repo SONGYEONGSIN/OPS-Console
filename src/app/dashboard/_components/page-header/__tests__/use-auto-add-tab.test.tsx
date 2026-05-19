@@ -49,7 +49,7 @@ describe("useAutoAddTab", () => {
   });
 
   it("section 직속 pathname — push 안 함", () => {
-    mockPathname = "/dashboard/alerts";
+    mockPathname = "/dashboard/my-todo";
     const { result } = renderHook(
       () => {
         useAutoAddTab();

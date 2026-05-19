@@ -15,10 +15,10 @@ describe("findSidebarBreadcrumb", () => {
   });
 
   it("section 직속 item — section + item 2단", () => {
-    const crumbs = findSidebarBreadcrumb("/dashboard/alerts");
+    const crumbs = findSidebarBreadcrumb("/dashboard/my-todo");
     expect(crumbs).toHaveLength(2);
     expect(crumbs[0].label).toBe("개요");
-    expect(crumbs[1].label).toBe("새 알림");
+    expect(crumbs[1].label).toBe("오늘 할 일");
   });
 
   it("매칭 안 되는 pathname — 빈 배열", () => {
@@ -42,7 +42,7 @@ describe("findSidebarSiblings", () => {
   });
 
   it("section 직속 item — 빈 배열 (형제 탭 미노출)", () => {
-    expect(findSidebarSiblings("/dashboard/alerts")).toEqual([]);
+    expect(findSidebarSiblings("/dashboard/my-todo")).toEqual([]);
   });
 
   it("매칭 안 되는 pathname — 빈 배열", () => {
@@ -57,7 +57,7 @@ describe("findSidebarParentGroup", () => {
   });
 
   it("section 직속 item — null 반환", () => {
-    expect(findSidebarParentGroup("/dashboard/alerts")).toBeNull();
+    expect(findSidebarParentGroup("/dashboard/my-todo")).toBeNull();
     expect(findSidebarParentGroup("/dashboard/handover")).toBeNull();
   });
 

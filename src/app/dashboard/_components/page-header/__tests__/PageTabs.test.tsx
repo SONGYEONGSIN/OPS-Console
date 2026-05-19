@@ -61,8 +61,8 @@ describe("PageTabs (Epic 6)", () => {
   });
 
   it("section 직속 페이지 — null 반환 (탭 영역 미노출)", () => {
-    mockPathname = "/dashboard/alerts";
-    const { container } = renderWithProvider("/dashboard/alerts");
+    mockPathname = "/dashboard/my-todo";
+    const { container } = renderWithProvider("/dashboard/my-todo");
     expect(container.querySelector('[role="tablist"]')).toBeNull();
   });
 

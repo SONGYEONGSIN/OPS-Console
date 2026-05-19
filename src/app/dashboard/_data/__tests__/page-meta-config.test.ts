@@ -13,8 +13,7 @@ describe("PAGE_META", () => {
     expect(services.description).toContain("현재 운영 중인 서비스");
   });
 
-  it("alerts/my-todo/schedule/handover 헤드라인 정의", () => {
-    expect(PAGE_META.alerts.headline.title).toBe("주의해야 할 알림");
+  it("my-todo/schedule/handover 헤드라인 정의", () => {
     expect(PAGE_META["my-todo"].headline.accent).toBe("내 계획");
     expect(PAGE_META.schedule.headline.title).toBe("운영부 달력");
     expect(PAGE_META.handover.headline.accent).toBe("요청 · 자료");
