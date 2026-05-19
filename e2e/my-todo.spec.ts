@@ -66,7 +66,7 @@ test.describe("/dashboard/my-todo — 2 탭 재설계", () => {
     await signInAndGoto(page, "/dashboard/my-todo");
 
     // 탭 두 개 노출 + weekly active
-    const weeklyTab = page.getByRole("tab", { name: "원서접수" });
+    const weeklyTab = page.getByRole("tab", { name: "주요업무" });
     const projectTab = page.getByRole("tab", { name: "프로젝트" });
     await expect(weeklyTab).toBeVisible();
     await expect(projectTab).toBeVisible();
