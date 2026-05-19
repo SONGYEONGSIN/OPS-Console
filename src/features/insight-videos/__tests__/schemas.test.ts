@@ -38,11 +38,17 @@ describe("insightVideoRowSchema", () => {
 });
 
 describe("SEARCH_QUERIES", () => {
-  it("길이는 7", () => {
-    expect(SEARCH_QUERIES.length).toBe(7);
+  it("길이는 10", () => {
+    expect(SEARCH_QUERIES.length).toBe(10);
   });
 
   it("바이브코딩 키워드 포함", () => {
     expect(SEARCH_QUERIES).toContain("바이브코딩");
+  });
+
+  it("신규 키워드 자동화/CODEX/하네스 포함", () => {
+    expect(SEARCH_QUERIES).toContain("자동화");
+    expect(SEARCH_QUERIES).toContain("CODEX");
+    expect(SEARCH_QUERIES).toContain("하네스");
   });
 });

@@ -40,6 +40,9 @@ const SEARCH_QUERIES = [
   "AI 디자인 활용",
   "AI 개발 환경",
   "AI 활용 업무 적용",
+  "자동화",
+  "CODEX",
+  "하네스",
 ];
 
 // --- 14일 전 ISO (publishedAfter) — 인기 영상 풀 확보 ---
