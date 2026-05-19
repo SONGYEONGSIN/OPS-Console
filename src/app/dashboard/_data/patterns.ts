@@ -47,7 +47,7 @@ const dashMockWidgets: DashWidget[] = [
  * 진학사 운영2팀(2교대 14:00~22:00 KST) 시점 가정의 실시간 운영 신호.
  * dashMockWidgets와 분리해 페이지 의도(알림 트리아지)에 맞춤.
  */
-const alertsWidgets: DashWidget[] = [
+export const alertsWidgets: DashWidget[] = [
   { id: "ALERT-01", tone: "urgent", label: "신규 긴급 알림",        value: "3건",     time: "지난 1h" },
   { id: "ALERT-02", tone: "urgent", label: "결제 게이트웨이 응답",  value: "350ms",   time: "14:23" },
   { id: "ALERT-03", tone: "urgent", label: "새 사고 보고",          value: "2건",     time: "오늘" },
