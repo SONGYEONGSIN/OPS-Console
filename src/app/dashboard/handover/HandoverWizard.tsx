@@ -10,7 +10,12 @@ import {
 } from "@/features/handover/categories";
 import type { ReadyService } from "@/features/handover/progress-queries";
 
-type Operator = { email: string; name: string };
+type Operator = {
+  email: string;
+  name: string;
+  team?: string | null;
+  role?: string | null;
+};
 type Props = {
   services: ReadyService[];
   operators: Operator[];
@@ -325,6 +330,8 @@ function Step2({
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
               <th className="w-10 px-3 py-2"></th>
               <th className="px-3 py-2">이름</th>
+              <th className="px-3 py-2">팀</th>
+              <th className="px-3 py-2">역할</th>
               <th className="px-3 py-2">이메일</th>
             </tr>
           </thead>
@@ -348,6 +355,12 @@ function Step2({
                     />
                   </td>
                   <td className="px-3 py-2 font-medium text-ink">{o.name}</td>
+                  <td className="px-3 py-2 text-xs text-ink-soft">
+                    {o.team ?? "-"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-ink-soft">
+                    {o.role ?? "-"}
+                  </td>
                   <td className="px-3 py-2 text-xs text-ink-soft">{o.email}</td>
                 </tr>
               );

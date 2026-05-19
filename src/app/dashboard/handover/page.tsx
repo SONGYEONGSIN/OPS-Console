@@ -56,7 +56,12 @@ export default async function HandoverPage({
     const ops = await listOperators();
     const operatorCandidates = ops
       .filter((o) => o.status === "active" && o.email !== me?.email)
-      .map((o) => ({ email: o.email, name: o.name }));
+      .map((o) => ({
+        email: o.email,
+        name: o.name,
+        team: o.team,
+        role: o.role,
+      }));
     return (
       <div>
         <PageHeader
