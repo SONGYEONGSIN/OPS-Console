@@ -97,6 +97,7 @@ export function CalendarView({
 
   const cells = useMemo(() => buildMonthGrid(year, month0), [year, month0]);
   const byDay = useMemo(() => groupItemsByDay(events, services), [events, services]);
+  const [expandedYmd, setExpandedYmd] = useState<string | null>(null);
 
   // 인스펙터 상태 — selected는 클릭된 CalendarItem 또는 신규 생성용 blank
   const inspector = useInspectorState<{
@@ -236,7 +237,10 @@ export function CalendarView({
         ))}
         {cells.map((cell) => {
           const items = byDay.get(cell.ymd) ?? [];
-          const visible = items.slice(0, MAX_VISIBLE_ITEMS);
+          const isExpanded = expandedYmd === cell.ymd;
+          const visible = isExpanded
+            ? items
+            : items.slice(0, MAX_VISIBLE_ITEMS);
           const overflow = items.length - visible.length;
           const dayNum = Number(cell.ymd.slice(8, 10));
           const isToday = cell.ymd === todayYmd;
@@ -280,7 +284,26 @@ export function CalendarView({
                   </li>
                 ))}
                 {overflow > 0 ? (
-                  <li className="text-2xs text-muted">+{overflow}</li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedYmd(cell.ymd)}
+                      className="cursor-pointer border-none bg-transparent p-0 text-2xs text-muted hover:text-vermilion"
+                    >
+                      +{overflow} 더보기
+                    </button>
+                  </li>
+                ) : null}
+                {isExpanded && items.length > MAX_VISIBLE_ITEMS ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedYmd(null)}
+                      className="cursor-pointer border-none bg-transparent p-0 text-2xs text-muted hover:text-vermilion"
+                    >
+                      접기
+                    </button>
+                  </li>
                 ) : null}
               </ul>
             </div>
