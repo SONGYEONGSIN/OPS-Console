@@ -16,6 +16,8 @@ type Props = {
   todos: TodoRow[];
   weekStartYmd: string;
   canWrite: boolean;
+  /** KST 기준 오늘 YYYY-MM-DD — 해당 셀 시각 강조 (운영부 달력과 동일) */
+  todayYmd: string;
   onPersist: (row: ListRow, isNew: boolean) => Promise<PersistResult>;
 };
 
@@ -42,6 +44,7 @@ export function WeeklyView({
   todos,
   weekStartYmd,
   canWrite,
+  todayYmd,
   onPersist,
 }: Props) {
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -132,13 +135,25 @@ export function WeeklyView({
         {days.map((d) => {
           const items = buckets[d] ?? [];
           const dayNum = Number(d.slice(8, 10));
+          const isToday = d === todayYmd;
           return (
             <div
               key={d}
               data-testid={`weekly-cell-${d}`}
-              className="min-h-[120px] bg-cream p-1.5 text-2xs text-ink"
+              data-today={isToday ? "true" : "false"}
+              className={`min-h-[120px] bg-cream p-1.5 text-2xs text-ink ${
+                isToday ? "ring-1 ring-inset ring-vermilion" : ""
+              }`}
             >
-              <div className="mb-1 text-xs font-medium">{dayNum}</div>
+              <div className="mb-1">
+                <span
+                  className={`inline-block min-w-[1.25rem] px-1 text-xs font-medium ${
+                    isToday ? "bg-vermilion text-cream" : ""
+                  }`}
+                >
+                  {dayNum}
+                </span>
+              </div>
               <ul className="space-y-0.5">
                 {items.map((t) => (
                   <li
