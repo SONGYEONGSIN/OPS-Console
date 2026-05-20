@@ -40,7 +40,7 @@ export async function listServices(
     const term = filter.search.trim();
     if (term.length > 0) {
       query = query.or(
-        `university_name.ilike.%${term}%,service_name.ilike.%${term}%`,
+        `university_name.ilike.%${term}%,service_name.ilike.%${term}%,operator_name.ilike.%${term}%`,
       );
     }
   }
