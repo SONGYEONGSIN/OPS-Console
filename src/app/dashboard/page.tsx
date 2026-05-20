@@ -264,15 +264,18 @@ export default async function DashboardLivePage({
     pageSize: 5,
     userEmail: mine && myEmail ? myEmail : undefined,
   });
-  // worklog는 list-variant 없음 — variant=default로 InspectorListBody fallback.
-  // 클릭 시 ServicesView fallback 표시되나 정보 빈약. 비활성 의도지만 1차 PR엔
-  // LiveCard 그대로 사용 (Card UI 통일). follow-up: ActivityRowCard로 분리.
   const worklogListRows: ListRow[] = worklog.map((w) => ({
     id: w.id,
     name: w.msg,
     status: "active",
     owner: w.user_name ?? w.user_email ?? "—",
     meta: w.level,
+    worklogLevel: w.level,
+    worklogDomain: w.domain,
+    worklogAction: w.action,
+    worklogTarget: w.target_name ?? null,
+    worklogTs: w.created_at,
+    worklogUser: w.user_name ?? w.user_email ?? "—",
   }));
   const worklogSimple = worklog.map((w) => ({
     id: w.id,
@@ -414,7 +417,7 @@ export default async function DashboardLivePage({
           worklog.length,
           "최근",
           "내 활동",
-          "default",
+          "worklog",
           worklogSimple,
           worklogListRows,
         ),
