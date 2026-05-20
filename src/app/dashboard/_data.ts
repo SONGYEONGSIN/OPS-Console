@@ -60,6 +60,14 @@ export const sidebarSections: SbSection[] = [
         pattern: "list",
       },
       {
+        kind: "item",
+        ico: "⌬",
+        label: "백업 요청",
+        count: "",
+        slug: "backup",
+        pattern: "list",
+      },
+      {
         kind: "group",
         label: "고객 응대",
         count: "",
@@ -87,14 +95,6 @@ export const sidebarSections: SbSection[] = [
             pattern: "list",
           },
         ],
-      },
-      {
-        kind: "item",
-        ico: "⌬",
-        label: "백업 요청",
-        count: "",
-        slug: "backup",
-        pattern: "list",
       },
       {
         kind: "group",
