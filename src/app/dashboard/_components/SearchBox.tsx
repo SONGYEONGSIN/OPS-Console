@@ -14,6 +14,7 @@ const EMPTY_RESULTS: SearchResults = {
   contacts: [],
   incidents: [],
   handover: [],
+  receivables: [],
 };
 
 const DOMAIN_LABELS: { key: keyof SearchResults; label: string }[] = [
@@ -21,11 +22,12 @@ const DOMAIN_LABELS: { key: keyof SearchResults; label: string }[] = [
   { key: "contacts", label: "대학연락처" },
   { key: "incidents", label: "사고" },
   { key: "handover", label: "인수인계" },
+  { key: "receivables", label: "미수채권" },
 ];
 
 /**
  * SearchBox — chrome 검색창. 메뉴(정적 47) + 도메인 데이터(services / contacts /
- * incidents / handover 동적) 통합 검색. 입력 시 debounce server action.
+ * incidents / handover / receivables 동적) 통합 검색. 입력 시 debounce server action.
  */
 export function SearchBox() {
   const [query, setQuery] = useState("");

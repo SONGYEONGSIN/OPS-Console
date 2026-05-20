@@ -11,6 +11,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import {
   receivablesToListRow,
   isReceivablesDataRow,
+  matchesReceivablesQuery,
 } from "./_row-mapper";
 
 /**
@@ -22,18 +23,25 @@ import {
  * - 행 클릭 → 인스펙터 ReceivablesView (전체 컬럼 표시)
  * - 수정은 후속 PR (read+write)
  */
-export default async function ReceivablesPage() {
+export default async function ReceivablesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const slug = "receivables";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
+  const { q } = await searchParams;
+  const term = (q ?? "").trim();
   const sheet = await fetchReceivablesSheet();
   const rows: ListRow[] = sheet
     ? sheet.rows
         .map((_, i) => receivablesToListRow(sheet, i))
         .filter(isReceivablesDataRow)
+        .filter((row) => matchesReceivablesQuery(row, term))
     : [];
   const config = resolvePageMeta(slug, meta, rows.length);
 
