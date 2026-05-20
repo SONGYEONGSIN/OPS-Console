@@ -1,13 +1,17 @@
 name: build-check
 
 on:
+  # feature 브랜치는 pull_request로만 검증 — push 트리거를 두면 PR 있는 브랜치는
+  # push + pull_request 이중 실행되어 Actions 분을 2배 소모. main은 머지 후 검증용.
   push:
     branches:
       - main
-      - fix/**
-      - feat/**
-      - chore/**
   pull_request:
+
+# 같은 ref의 이전 실행은 새 push 시 취소 — 연속 푸시 중 누적 방지.
+concurrency:
+  group: build-check-${{ github.ref }}
+  cancel-in-progress: true
 
 # 2026-06-02 Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 미리 동작하도록 강제.
 # 참고: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
