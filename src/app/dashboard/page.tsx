@@ -67,9 +67,15 @@ export default async function DashboardLivePage({
     if (allServices.length >= total) break;
     if (p * SVC_CHUNK >= total) break; // PGRST103 회피
   }
-  // 오픈 예정 — write_start_at >= today, 가까운 순. 1차 PR에서 client 측 정렬
-  // (listServices에는 아직 write_start_asc 옵션 없음).
-  const servicesUpcomingAll = allServices
+  // DB는 직전 시즌(2025) 데이터 — UI는 다음 시즌 기준이라 작성 일자에 연도 +1 shift.
+  // (schedule / my-todo 와 동일 SERVICES_YEAR_OFFSET 패턴. 원본 데이터 불변.)
+  const shiftedServices = allServices.map((s) => ({
+    ...s,
+    write_start_at: shiftYmdYear(s.write_start_at, 1),
+    write_end_at: shiftYmdYear(s.write_end_at, 1),
+  }));
+  // 오픈 예정 — write_start_at >= today, 가까운 순. client 측 정렬.
+  const servicesUpcomingAll = shiftedServices
     .filter(
       (s) => s.write_start_at && s.write_start_at.slice(0, 10) >= todayYmd,
     )
@@ -454,6 +460,14 @@ function formatHm(iso: string): string {
     minute: "2-digit",
     hour12: false,
   }).format(new Date(iso));
+}
+
+/** ISO/ymd 문자열의 연도만 delta 만큼 shift (나머지 보존). null 통과. */
+function shiftYmdYear(ymd: string | null, delta: number): string | null {
+  if (!ymd) return null;
+  const m = /^(\d{4})(.*)$/.exec(ymd);
+  if (!m) return ymd;
+  return `${Number(m[1]) + delta}${m[2]}`;
 }
 
 function idMap(rows: ListRow[]): Record<string, ListRow> {
