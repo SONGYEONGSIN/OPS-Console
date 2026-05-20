@@ -101,6 +101,8 @@ export function LiveDashboard({ mine, summary, groups }: Props) {
                         rows={card.simpleRows}
                         selectedId={selectedIdHere}
                         onRowClick={(id) => {
+                          // default variant(예: worklog)는 인스펙터 View 없음 — 클릭 무시
+                          if (card.variant === "default") return;
                           const row = card.listRowsById[id];
                           if (row) setSelected({ variant: card.variant, row });
                         }}

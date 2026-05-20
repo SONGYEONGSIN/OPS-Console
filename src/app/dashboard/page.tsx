@@ -395,7 +395,8 @@ export default async function DashboardLivePage({
           todosCount,
           "미완",
           "미완",
-          "my-todo",
+          // my-todo variant는 인스펙터 View 없음 — weekly-todo View 재사용 (동일 todos 데이터)
+          "weekly-todo",
           todosSimple,
           todosListRows,
         ),
