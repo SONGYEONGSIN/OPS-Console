@@ -98,7 +98,7 @@ export default async function DashboardLivePage({
   const incidentsListRows: ListRow[] = incidents.map(incidentToListRow);
   const incidentsSimple = incidents.map((i) => ({
     id: i.id,
-    date: formatDateShort(i.occurred_date ?? i.created_at),
+    date: formatDateYear(i.occurred_date ?? i.created_at),
     title: i.title,
   }));
 
@@ -428,6 +428,16 @@ function formatDateShort(iso?: string | null): string {
   if (!iso) return "—";
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
+    month: "numeric",
+    day: "numeric",
+  }).format(new Date(iso));
+}
+
+function formatDateYear(iso?: string | null): string {
+  if (!iso) return "—";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
     month: "numeric",
     day: "numeric",
   }).format(new Date(iso));
