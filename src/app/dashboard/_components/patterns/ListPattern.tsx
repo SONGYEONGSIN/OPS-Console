@@ -393,6 +393,18 @@ type Props = {
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
   contractsStatusOptions?: readonly string[];
   contractsServiceActiveOptions?: readonly string[];
+  /** handover variant — 복제 대상 서비스 후보 + 복제 콜백 */
+  handoverServiceCandidates?: {
+    id: string;
+    serviceId: number;
+    universityName: string;
+    serviceName: string;
+    hasRecord: boolean;
+  }[];
+  onCopyHandover?: (
+    fromServiceId: string,
+    toServiceIds: string[],
+  ) => Promise<{ ok: boolean; error?: string; copiedCount?: number }>;
   /** filter chip 영역에 추가로 렌더할 인라인 요소 (예: services 변경 — '내 서비스' 칩) */
   inlineFilters?: React.ReactNode;
   /**
@@ -430,6 +442,8 @@ export function ListPattern({
   incidentCategorySuggestions,
   contractsStatusOptions,
   contractsServiceActiveOptions,
+  handoverServiceCandidates,
+  onCopyHandover,
   controlsRow,
   inlineFilters,
   footer,
@@ -674,6 +688,8 @@ export function ListPattern({
               incidentCategorySuggestions={incidentCategorySuggestions}
               contractsStatusOptions={contractsStatusOptions}
               contractsServiceActiveOptions={contractsServiceActiveOptions}
+              handoverServiceCandidates={handoverServiceCandidates}
+              onCopyHandover={onCopyHandover}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

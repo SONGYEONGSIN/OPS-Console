@@ -58,6 +58,18 @@ type Props = {
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
   contractsStatusOptions?: readonly string[];
   contractsServiceActiveOptions?: readonly string[];
+  /** handover variant — 복제 대상 서비스 후보 + 복제 콜백 */
+  handoverServiceCandidates?: {
+    id: string;
+    serviceId: number;
+    universityName: string;
+    serviceName: string;
+    hasRecord: boolean;
+  }[];
+  onCopyHandover?: (
+    fromServiceId: string,
+    toServiceIds: string[],
+  ) => Promise<{ ok: boolean; error?: string; copiedCount?: number }>;
 };
 
 /**
@@ -87,6 +99,8 @@ export function InspectorListBody({
   incidentCategorySuggestions,
   contractsStatusOptions,
   contractsServiceActiveOptions,
+  handoverServiceCandidates,
+  onCopyHandover,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -135,6 +149,8 @@ export function InspectorListBody({
         incidentCategorySuggestions={incidentCategorySuggestions}
         contractsStatusOptions={contractsStatusOptions}
         contractsServiceActiveOptions={contractsServiceActiveOptions}
+        handoverServiceCandidates={handoverServiceCandidates}
+        onCopyHandover={onCopyHandover}
       />
     );
   }

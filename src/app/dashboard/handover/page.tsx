@@ -20,7 +20,10 @@ import {
   listHandoverProgress,
   listReadyServices,
 } from "@/features/handover/progress-queries";
-import { upsertHandoverRecord } from "@/features/handover/actions";
+import {
+  upsertHandoverRecord,
+  copyHandoverRecord,
+} from "@/features/handover/actions";
 import type { HandoverStatus } from "@/features/handover/schemas";
 import type { HandoverProgressStatus } from "@/features/handover/progress-schemas";
 
@@ -120,6 +123,26 @@ export default async function HandoverPage({
   const rows: ListRow[] = dbRows.map(handoverToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
+  // 복제 대상 서비스 후보 — 전체 services with handover status (검색용 light)
+  const { rows: allWithHandover } = await listServicesWithHandover({
+    pageSize: 3000,
+  });
+  const handoverServiceCandidates = allWithHandover.map((r) => ({
+    id: r.service_id,
+    serviceId: r.service_number,
+    universityName: r.university_name,
+    serviceName: r.service_name,
+    hasRecord: r.handover_status != null,
+  }));
+
+  async function onCopyHandover(
+    fromServiceId: string,
+    toServiceIds: string[],
+  ): Promise<{ ok: boolean; error?: string; copiedCount?: number }> {
+    "use server";
+    return await copyHandoverRecord(fromServiceId, toServiceIds);
+  }
+
   const header = (
     <div key="handover-header">
       <PageHeader
@@ -167,6 +190,8 @@ export default async function HandoverPage({
       variant="handover"
       canCreate={false}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      handoverServiceCandidates={handoverServiceCandidates}
+      onCopyHandover={onCopyHandover}
       inlineFilters={
         <ScopeChips
           key="handover-scope"
