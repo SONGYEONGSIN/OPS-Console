@@ -1,34 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DashWidget } from "./patterns/DashPattern";
+import type { OpsAlert } from "@/features/alerts/queries";
 
-const MAX_ITEMS = 5;
-const HOVER_DELAY = 200;
+const MAX_ITEMS = 8;
+
+const TONE_DOT: Record<OpsAlert["tone"], string> = {
+  urgent: "bg-vermilion",
+  review: "bg-ink",
+  ok: "bg-sage",
+};
 
 /**
- * AlertsBell v2 — chrome 우측 zone에서 사용.
- * - 종 SVG 20×20 + urgent 카운트 빨강 배지
- * - 호버 200ms 후 드롭다운 미리보기 (최근 urgent/review 5건)
- * - 클릭 시 /dashboard (실시간 현황) 페이지 이동 — alerts는 1면 TriageList에 통합
- * - ESC + 외부 클릭으로 닫힘
+ * AlertsBell — chrome 우측 종 아이콘.
+ * - urgent 카운트 빨강 배지
+ * - 클릭 시 드롭다운 토글 (실 데이터 알림 목록)
+ * - 각 알림 클릭 → 해당 도메인 페이지로 이동
+ * - ESC / 외부 클릭으로 닫힘
  */
-export function AlertsBell({ items }: { items: DashWidget[] }) {
+export function AlertsBell({ items }: { items: OpsAlert[] }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<number | null>(null);
-  const router = useRouter();
 
-  const urgent = useMemo(
-    () => items.filter((i) => i.tone === "urgent"),
+  // 배지 = 전체 신규 알림 수 (urgent만이 아니라 새 액션건 전체)
+  const badgeCount = items.length;
+  const urgentCount = useMemo(
+    () => items.filter((i) => i.tone === "urgent").length,
     [items],
   );
-  const visible = useMemo(
-    () => items.filter((i) => i.tone !== "ok").slice(0, MAX_ITEMS),
-    [items],
-  );
+  const visible = items.slice(0, MAX_ITEMS);
 
   useEffect(() => {
     if (!open) return;
@@ -46,34 +47,15 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
     };
   }, [open]);
 
-  // hover timer cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    };
-  }, []);
-
-  const onMouseEnter = () => {
-    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setOpen(true), HOVER_DELAY);
-  };
-  const onMouseLeave = () => {
-    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
-  };
-
   return (
-    <div
-      ref={wrapRef}
-      className="relative flex flex-col items-end leading-none"
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
+    <div ref={wrapRef} className="relative flex flex-col items-end leading-none">
       <button
         type="button"
-        aria-label={`알림 ${urgent.length}건`}
+        aria-label={`알림 ${badgeCount}건`}
+        aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
-          router.push("/dashboard");
+          setOpen((v) => !v);
         }}
         className="relative inline-flex h-5 w-5 cursor-pointer items-center justify-center border-none bg-transparent p-0"
       >
@@ -86,9 +68,9 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
           <path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9z" />
           <path d="M10 21a2 2 0 004 0" />
         </svg>
-        {urgent.length > 0 ? (
+        {badgeCount > 0 ? (
           <span className="absolute -right-1 -top-1 bg-vermilion px-1 py-px text-2xs font-bold text-cream">
-            {urgent.length}
+            {badgeCount}
           </span>
         ) : null}
       </button>
@@ -99,24 +81,38 @@ export function AlertsBell({ items }: { items: DashWidget[] }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[200] mt-2 w-[320px] border border-chrome-graphite bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
+          className="absolute right-0 top-full z-[200] mt-2 w-[340px] border border-chrome-graphite bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="border-b border-line-soft px-3 py-1.5 text-2xs uppercase tracking-[0.18em] text-vermilion">
-            알림 · {urgent.length}건 긴급
+            알림 {badgeCount}건 · 긴급 {urgentCount}건
           </div>
           {visible.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted">새 알림 없음</p>
+            <p className="px-3 py-3 text-xs text-muted">새 알림 없음</p>
           ) : (
-            <ul role="listbox" className="flex flex-col">
+            <ul role="listbox" className="flex max-h-[60vh] flex-col overflow-y-auto">
               {visible.map((alert) => (
                 <li key={alert.id}>
                   <Link
-                    href="/dashboard"
+                    href={alert.href}
                     onClick={() => setOpen(false)}
-                    className="block px-3 py-1.5 text-sm text-ink transition-colors hover:bg-vermilion hover:text-cream"
+                    className="grid grid-cols-[8px_1fr_auto] items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-washi-raised"
                   >
-                    {alert.label}
+                    <span
+                      aria-hidden
+                      className={`h-1.5 w-1.5 self-center ${TONE_DOT[alert.tone]}`}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-2xs text-muted">
+                        {alert.category}
+                      </span>
+                      <span className="block truncate text-ink">
+                        {alert.label}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-2xs text-muted">
+                      {alert.time}
+                    </span>
                   </Link>
                 </li>
               ))}

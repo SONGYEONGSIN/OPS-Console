@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { CurrentOperator } from "@/features/auth/queries";
-import type { DashWidget } from "../../patterns/DashPattern";
+import type { OpsAlert } from "@/features/alerts/queries";
 
 // signOut은 server action — SessionTimer 자식 의존
 vi.mock("@/features/auth/actions", () => ({
@@ -25,9 +25,23 @@ const operator: CurrentOperator = {
   allowedMenus: [],
 };
 
-const alerts: DashWidget[] = [
-  { id: "a1", label: "긴급 알림", tone: "urgent", value: "1건", time: "14:30" },
-  { id: "a2", label: "검토 알림", tone: "review", value: "2건", time: "13:15" },
+const alerts: OpsAlert[] = [
+  {
+    id: "a1",
+    tone: "urgent",
+    category: "사고",
+    label: "긴급 알림",
+    time: "14:30",
+    href: "/dashboard/incidents",
+  },
+  {
+    id: "a2",
+    tone: "review",
+    category: "활동",
+    label: "검토 알림",
+    time: "13:15",
+    href: "/dashboard/worklog",
+  },
 ];
 
 beforeEach(() => {
@@ -47,9 +61,9 @@ describe("ChromeRight", () => {
     expect(screen.getByText("운영2팀 · 팀장")).toBeInTheDocument();
   });
 
-  it("AlertsBell의 urgent 카운트가 props로 전달된 alerts에서 계산된다", () => {
+  it("AlertsBell 배지는 전체 알림 수 (alerts.length)", () => {
     render(<ChromeRight operator={operator} alerts={alerts} />);
-    expect(screen.getByLabelText("알림 1건")).toBeInTheDocument();
+    expect(screen.getByLabelText("알림 2건")).toBeInTheDocument();
   });
 
   it("divider span 2개가 aria-hidden 으로 렌더된다", () => {

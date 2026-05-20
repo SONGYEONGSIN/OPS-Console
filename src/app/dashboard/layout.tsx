@@ -5,11 +5,10 @@ import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
 import { AppBar } from "./_components/AppBar";
 import { Chrome } from "./_components/chrome/Chrome";
 import { DashboardShell } from "./_components/DashboardShell";
-import { getPatternMockData } from "./_data/patterns";
 import { sidebarSections } from "./_data";
 import { applyDynamicSidebarCounts } from "./_data/sidebar-helpers";
 import { getMenuCounts } from "@/features/menu-counts/queries";
-import type { DashWidget } from "./_components/patterns/DashPattern";
+import { getOpsAlerts } from "@/features/alerts/queries";
 
 /**
  * dashboard 셸 — 모든 /dashboard 하위 라우트 공통.
@@ -25,9 +24,7 @@ export default async function DashboardLayout({
   const operator = await getCurrentOperator();
   if (!operator) redirect("/login");
 
-  const alerts = (
-    getPatternMockData("alerts", "dash") as { widgets: DashWidget[] }
-  ).widgets;
+  const alerts = await getOpsAlerts(operator.email);
 
   // 실 row count로 hardcode count 덮어쓰기 (DB 연동 도메인만)
   const counts = await getMenuCounts(operator.email);
