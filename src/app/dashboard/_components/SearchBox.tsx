@@ -4,16 +4,22 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sidebarSections } from "../_data";
 import { buildSearchItems, filterItems, type SearchItem } from "./searchItems";
+import {
+  searchServices,
+  type ServiceSearchHit,
+} from "@/features/services/search-action";
+
+const SVC_DEBOUNCE_MS = 250;
 
 /**
- * SearchBox — MenuBar 우측의 검색창. 47 메뉴를 부분 매치로 검색하고
- * 결과를 인라인 드롭다운으로 노출. ↑↓ Enter ESC 키보드 내비.
- * 검색 backend는 정적 sidebar 데이터 (47 항목).
+ * SearchBox — chrome 검색창. 메뉴(정적 47) + 서비스(대학명·운영자·서비스명 동적)
+ * 검색. 입력 시 debounce server action으로 매칭 서비스 표시.
  */
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [svcHits, setSvcHits] = useState<ServiceSearchHit[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +38,29 @@ export function SearchBox() {
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
+
+  // 서비스 동적 검색 (debounce). 빈 쿼리 포함 모든 setState를 timer 안에서 처리.
+  useEffect(() => {
+    const q = query.trim();
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (q.length < 1) {
+        if (!cancelled) setSvcHits([]);
+        return;
+      }
+      searchServices(q)
+        .then((hits) => {
+          if (!cancelled) setSvcHits(hits);
+        })
+        .catch(() => {
+          if (!cancelled) setSvcHits([]);
+        });
+    }, SVC_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [query]);
 
   const showDropdown = open && query.trim().length > 0;
   const term = query.trim();
@@ -116,12 +145,44 @@ export function SearchBox() {
               ))}
             </ul>
           ) : null}
-          {/* 메뉴 외 — 대학명·운영자·서비스명으로 서비스 검색 */}
+          {/* 서비스 동적 검색 결과 (대학명·운영자·서비스명 매칭) */}
+          {svcHits.length > 0 ? (
+            <ul
+              role="listbox"
+              className={`flex flex-col ${
+                results.length > 0 ? "border-t border-line-soft" : ""
+              }`}
+            >
+              <li className="px-3 pb-0.5 pt-1.5 text-2xs uppercase tracking-[0.14em] text-muted">
+                서비스
+              </li>
+              {svcHits.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    href={`/dashboard/services?q=${encodeURIComponent(s.universityName)}`}
+                    onClick={() => setOpen(false)}
+                    className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+                  >
+                    <span className="truncate">
+                      {s.universityName}{" "}
+                      <span className="text-muted">· {s.serviceName}</span>
+                    </span>
+                    <span className="shrink-0 text-2xs text-muted">
+                      {s.operatorName ?? "-"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {/* 메뉴 외 — 대학명·운영자·서비스명으로 서비스 전체 검색 */}
           <Link
             href={servicesSearchHref}
             onClick={() => setOpen(false)}
             className={`block px-3 py-2 text-xs text-ink-soft hover:bg-washi-raised ${
-              results.length > 0 ? "border-t border-line-soft" : ""
+              results.length > 0 || svcHits.length > 0
+                ? "border-t border-line-soft"
+                : ""
             }`}
           >
             서비스에서 <span className="font-semibold text-ink">{term}</span>{" "}
