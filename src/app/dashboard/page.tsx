@@ -6,6 +6,7 @@ import { listContracts } from "@/features/contracts/queries";
 import { listContacts } from "@/features/contacts/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
 import { listScheduleEvents } from "@/features/schedule/queries";
+import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { listMyTodos } from "@/features/todos/queries";
 import { listWorklog } from "@/features/worklog/queries";
 import { servicesRowToListRow } from "./services/_row-mapper";
@@ -14,6 +15,10 @@ import { contractsRowToListRow } from "./contracts/_row-mapper";
 import { contactRowToListRow } from "./contacts/_row-mapper";
 import { eventToListRow } from "./schedule/_row-mapper";
 import { todoToListRow } from "./my-todo/_row-mapper";
+import {
+  receivablesToListRow,
+  isReceivablesDataRow,
+} from "./receivables/_row-mapper";
 import { LiveDashboard } from "./_components/live/LiveDashboard";
 import type {
   LiveCardConfig,
@@ -54,16 +59,21 @@ export default async function DashboardLivePage({
     sort: "write_end_asc",
     pageSize: 200,
   });
+  // 오픈 예정 — write_start_at >= today, 가까운 순. 1차 PR에서 client 측 정렬
+  // (listServices에는 아직 write_start_asc 옵션 없음).
   const servicesUpcoming = allServices
-    .filter((s) => s.write_end_at && s.write_end_at.slice(0, 10) >= todayYmd)
+    .filter(
+      (s) => s.write_start_at && s.write_start_at.slice(0, 10) >= todayYmd,
+    )
     .filter((s) => (mine && myEmail ? s.operator_email === myEmail : true))
+    .sort((a, b) => (a.write_start_at ?? "").localeCompare(b.write_start_at ?? ""))
     .slice(0, 5);
   const servicesListRows: ListRow[] = servicesUpcoming.map(
     servicesRowToListRow,
   );
   const servicesSimple = servicesUpcoming.map((s) => ({
     id: s.id,
-    date: formatDateShort(s.write_end_at),
+    date: formatDateShort(s.write_start_at),
     title: `${s.university_name} · ${s.service_name}`,
   }));
 
@@ -79,6 +89,38 @@ export default async function DashboardLivePage({
     date: formatDateShort(i.occurred_date ?? i.created_at),
     title: i.title,
   }));
+
+  // ─── 미수채권 (시트 fetch — 미입금 우선, 최근 5건) ─────────────
+  let receivablesListRows: ListRow[] = [];
+  let receivablesSimple: {
+    id: string;
+    date: string;
+    name: string;
+    amount: string;
+  }[] = [];
+  try {
+    const sheet = await fetchReceivablesSheet();
+    if (sheet) {
+      const all = sheet.rows
+        .map((_, i) => receivablesToListRow(sheet, i))
+        .filter(isReceivablesDataRow);
+      // mine 기준: 본인 운영자(name)와 일치. all은 client filter
+      const filtered = mine && me?.displayName
+        ? all.filter((r) => r.owner === me.displayName)
+        : all;
+      const pending = filtered.filter((r) => r.status === "active").slice(0, 5);
+      const top = pending.length > 0 ? pending : filtered.slice(0, 5);
+      receivablesListRows = top;
+      receivablesSimple = top.map((r) => ({
+        id: r.id,
+        date: (r.meta ?? "").trim() || "—",
+        name: r.name || "—",
+        amount: (r.author ?? "").trim() || "—",
+      }));
+    }
+  } catch {
+    /* sheet fetch fail */
+  }
 
   // ─── 계약 (시트 fetch) ──────────────────────────────────────
   // 계약은 일자 없음 — 도메인 컬럼: 구분(sheet) / 대학명(name) / 계약여부(status)
@@ -240,7 +282,7 @@ export default async function DashboardLivePage({
   const groups: LiveGroupConfig[] = [
     {
       label: "서비스 사이클",
-      description: "서비스·계약",
+      description: "서비스·계약·미수채권",
       cards: [
         card(
           "서비스",
@@ -264,6 +306,20 @@ export default async function DashboardLivePage({
           ],
           simpleRows: contractsSimple,
           listRowsById: idMap(contractsListRows),
+        },
+        {
+          label: "미수채권",
+          count: counts.get("receivables") ?? null,
+          countSub: mine ? "내 발송" : "pending",
+          variant: "receivables",
+          // 청구일자 / 거래처 / 청구금액 (도메인 컬럼)
+          columns: [
+            { key: "date", label: "청구일자", width: "w-24" },
+            { key: "name", label: "거래처" },
+            { key: "amount", label: "청구금액", width: "w-24", alignRight: true },
+          ],
+          simpleRows: receivablesSimple,
+          listRowsById: idMap(receivablesListRows),
         },
       ],
     },
