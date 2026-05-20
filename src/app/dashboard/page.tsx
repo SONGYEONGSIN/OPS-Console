@@ -1,5 +1,6 @@
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listServices } from "@/features/services/queries";
+import type { ServicesRow } from "@/features/services/schemas";
 import { listIncidents } from "@/features/incidents/queries";
 import { listContracts } from "@/features/contracts/queries";
 import { listContacts } from "@/features/contacts/queries";
@@ -50,10 +51,22 @@ export default async function DashboardLivePage({
   const todayYmd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
   }).format(new Date());
-  const { rows: allServices } = await listServices({
-    sort: "write_end_asc",
-    pageSize: 200,
-  });
+  // services는 2000+건 — chunk loop으로 전체 fetch (본인 담당이 앞 200건 밖일 수
+  // 있어 pageSize 제한 시 myUniversities/오픈예정 집합에서 누락됨).
+  const SVC_CHUNK = 1000;
+  const SVC_MAX_PAGES = 10;
+  const allServices: ServicesRow[] = [];
+  for (let p = 1; p <= SVC_MAX_PAGES; p++) {
+    const { rows, total } = await listServices({
+      sort: "service_id_asc",
+      page: p,
+      pageSize: SVC_CHUNK,
+    });
+    if (rows.length === 0) break;
+    allServices.push(...rows);
+    if (allServices.length >= total) break;
+    if (p * SVC_CHUNK >= total) break; // PGRST103 회피
+  }
   // 오픈 예정 — write_start_at >= today, 가까운 순. 1차 PR에서 client 측 정렬
   // (listServices에는 아직 write_start_asc 옵션 없음).
   const servicesUpcomingAll = allServices
