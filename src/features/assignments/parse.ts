@@ -14,14 +14,14 @@ function colMatch(headerRow: string[], re: RegExp): number {
   return headerRow.findIndex((c) => re.test(c.trim()));
 }
 
-const SUBTYPE_ORDER = ["재외", "수시", "정시", "편입", "외국인", "백업"] as const;
-const SUSI_OFFSET = 1; // 수시 = 블록 시작 + 1
+const BLOCK_WIDTH = 6; // 블록당 sub-type 컬럼 수
 
-/** 02. 배정리스트 → 원서접수 AssignmentRecord[] (수시 기준 그리드 대표) */
+/** 02. 배정리스트 → 원서접수 AssignmentRecord[] (r1 헤더의 '수시' 기준 그리드 대표) */
 export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const rows = sheet.rowsText;
   if (rows.length < 3) return [];
   const r0 = rows[0];
+  const r1 = rows[1];
   const uniCol = colExact(r0, "대학명");
   const op2027 = colMatch(r0, /2027.*운영자/);
   const dev2027 = colMatch(r0, /2027.*개발자/);
@@ -36,6 +36,24 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     { year: "2026", role: "개발", start: dev2026 },
   ].filter((b) => b.start >= 0);
 
+  // 각 블록의 sub-type 컬럼을 r1 라벨 기준으로 매핑. susiCol: '수시' 컬럼 (없으면 -1)
+  const blockCols = blocks.map((b) => {
+    const subtypes: { label: string; col: number }[] = [];
+    let susiCol = -1;
+    for (let off = 0; off < BLOCK_WIDTH; off++) {
+      const col = b.start + off;
+      const label = (r1[col] ?? "").trim();
+      if (label === "") continue;
+      subtypes.push({ label, col });
+      if (label === "수시") susiCol = col;
+    }
+    return { ...b, subtypes, susiCol };
+  });
+  const repColOf = (role: string) =>
+    blockCols.find((b) => b.year === "2027" && b.role === role)?.susiCol ?? -1;
+  const opSusiCol = repColOf("운영");
+  const devSusiCol = repColOf("개발");
+
   const out: AssignmentRecord[] = [];
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i];
@@ -43,14 +61,14 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     if (university === "") continue;
 
     const detail: AssignmentDetail[] = [];
-    for (const b of blocks) {
-      SUBTYPE_ORDER.forEach((st, off) => {
-        const v = (row[b.start + off] ?? "").trim();
-        if (v) detail.push({ label: `${b.year} ${st} ${b.role}`, value: v });
-      });
+    for (const b of blockCols) {
+      for (const st of b.subtypes) {
+        const v = (row[st.col] ?? "").trim();
+        if (v) detail.push({ label: `${b.year} ${st.label} ${b.role}`, value: v });
+      }
     }
-    const operator = (row[op2027 + SUSI_OFFSET] ?? "").trim();
-    const developer = dev2027 >= 0 ? (row[dev2027 + SUSI_OFFSET] ?? "").trim() : "";
+    const operator = opSusiCol >= 0 ? (row[opSusiCol] ?? "").trim() : "";
+    const developer = devSusiCol >= 0 ? (row[devSusiCol] ?? "").trim() : "";
     out.push({ university, service: "원서접수", operator, developer, detail });
   }
   return out;
@@ -99,8 +117,9 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
     if (university === "") continue;
     const operator = (row[fullCol] ?? "").trim();
     const detail: AssignmentDetail[] = [];
-    if (hwanCol >= 0 && (row[hwanCol] ?? "").trim()) {
-      detail.push({ label: "운영자 환/충", value: (row[hwanCol] ?? "").trim() });
+    const hwan = (row[hwanCol] ?? "").trim();
+    if (hwanCol >= 0 && hwan) {
+      detail.push({ label: "운영자 환/충", value: hwan });
     }
     out.push({ university, service: "PIMS", operator, developer: "", detail });
   }

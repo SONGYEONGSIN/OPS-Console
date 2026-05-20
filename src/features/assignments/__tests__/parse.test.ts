@@ -58,6 +58,28 @@ describe("parseBaejungList", () => {
     const empty: AssignmentSheet = { ...sheet, rowsText: [...sheet.rowsText, Array(36).fill("")] };
     expect(parseBaejungList(empty)).toHaveLength(1);
   });
+
+  it("sub-type 컬럼 순서가 바뀌어도 r1 헤더 기준 '수시'를 대표값으로", () => {
+    const shifted: AssignmentSheet = {
+      worksheetName: "02. 배정리스트",
+      rowsText: [
+        mergeRows(cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자")),
+        // 2027 운영 블록 r1: 수시를 offset 2 (col 14)에 배치 (재외/정시/수시/...)
+        mergeRows(
+          cell(12, "재외"), cell(13, "정시"), cell(14, "수시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
+          cell(18, "재외"), cell(19, "정시"), cell(20, "수시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
+        ),
+        // 데이터: 수시 운영=col14="박수시", 정시 운영=col13="이정시", 수시 개발=col20="김개발"
+        mergeRows(cell(3, "테스트대"), cell(13, "이정시"), cell(14, "박수시"), cell(20, "김개발")),
+      ],
+      rowCount: 3,
+      columnCount: 36,
+    };
+    const recs = parseBaejungList(shifted);
+    expect(recs[0].operator).toBe("박수시");   // col14, r1="수시"
+    expect(recs[0].developer).toBe("김개발");  // col20, r1="수시"
+    expect(recs[0].detail.find((d) => d.label === "2027 정시 운영")?.value).toBe("이정시");
+  });
 });
 
 function simpleSheet(headers: string[], dataRows: string[][]): AssignmentSheet {
