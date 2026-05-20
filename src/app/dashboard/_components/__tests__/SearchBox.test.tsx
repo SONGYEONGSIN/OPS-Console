@@ -46,10 +46,4 @@ describe("SearchBox", () => {
     expect(screen.getByText(/검색 결과 없음|결과 없음/)).toBeInTheDocument();
   });
 
-  it("단축키 라벨 노출 (Ctrl+K 또는 ⌘K)", () => {
-    render(<SearchBox />);
-    expect(
-      screen.getByText(/^(⌘K|Ctrl\+K)$/),
-    ).toBeInTheDocument();
-  });
 });

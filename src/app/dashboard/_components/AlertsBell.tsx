@@ -23,8 +23,12 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // 배지 = 전체 신규 알림 수 (urgent만이 아니라 새 액션건 전체)
-  const badgeCount = items.length;
+  // 배지 = 처리 필요 액션 수 (urgent + review). worklog(ok=단순 활동)는
+  // dropdown엔 표시하되 배지에서 제외.
+  const badgeCount = useMemo(
+    () => items.filter((i) => i.tone !== "ok").length,
+    [items],
+  );
   const urgentCount = useMemo(
     () => items.filter((i) => i.tone === "urgent").length,
     [items],

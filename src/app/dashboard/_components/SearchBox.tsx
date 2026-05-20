@@ -8,21 +8,12 @@ import { buildSearchItems, filterItems, type SearchItem } from "./searchItems";
 /**
  * SearchBox — MenuBar 우측의 검색창. 47 메뉴를 부분 매치로 검색하고
  * 결과를 인라인 드롭다운으로 노출. ↑↓ Enter ESC 키보드 내비.
- *
- * - ⌘K (mac) / Ctrl+K (win/linux) 단축키 라벨 OS 감지로 분기
- * - 검색 backend는 정적 sidebar 데이터 (47 항목) — 향후 운영자/활동까지 확장 가능
+ * 검색 backend는 정적 sidebar 데이터 (47 항목).
  */
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
-  // OS 감지는 lazy initializer로 한 번만 평가. SSR 시 "Ctrl+K"로 fallback,
-  // 클라이언트 hydration 시 "⌘K"로 교체될 수 있어 <kbd>에 suppressHydrationWarning 필요.
-  const [shortcutLabel] = useState<"⌘K" | "Ctrl+K">(() =>
-    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform)
-      ? "⌘K"
-      : "Ctrl+K",
-  );
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -41,20 +32,6 @@ export function SearchBox() {
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
-
-  // 글로벌 ⌘K / Ctrl+K → 검색창 포커스
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const isMod = e.metaKey || e.ctrlKey;
-      if (isMod && (e.key === "k" || e.key === "K")) {
-        e.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
 
   const showDropdown = open && query.trim().length > 0;
 
@@ -104,12 +81,6 @@ export function SearchBox() {
           onKeyDown={handleKeyDown}
           className="flex-1 border-none bg-transparent text-sm text-ink placeholder:text-faint focus:outline-none"
         />
-        <kbd
-          suppressHydrationWarning
-          className="ml-auto border border-line-soft bg-washi-raised px-1.5 py-px text-3xs text-muted"
-        >
-          {shortcutLabel}
-        </kbd>
       </div>
 
       {showDropdown && (
