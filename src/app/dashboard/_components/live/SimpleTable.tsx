@@ -71,7 +71,7 @@ export function SimpleTable({ columns, rows, selectedId, onRowClick }: Props) {
                     <td
                       key={col.key}
                       className={`px-3 py-2 truncate ${
-                        col.alignRight ? "text-right font-mono" : ""
+                        col.alignRight ? "text-right" : ""
                       } ${
                         isFirst
                           ? "font-medium text-ink"
