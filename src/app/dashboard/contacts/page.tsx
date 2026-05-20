@@ -6,6 +6,7 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { ContactsControls } from "./ContactsControls";
+import { contactRowToListRow } from "./_row-mapper";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
@@ -19,7 +20,6 @@ import {
   updateContact,
   deleteContact,
 } from "@/features/contacts/actions";
-import type { ContactRow } from "@/features/contacts/schemas";
 
 type Sort = "created_desc" | "customer_name_asc";
 const PAGE_SIZE = 30;
@@ -186,21 +186,3 @@ export default async function ContactsPage({
   );
 }
 
-function contactRowToListRow(r: ContactRow): ListRow {
-  return {
-    id: r.id,
-    name: r.customer_name,
-    status: "active",
-    owner: "",
-    customerActive: r.customer_active,
-    jobTitle: r.job_title,
-    universityName: r.university_name,
-    departmentName: r.department_name,
-    jobRole: r.job_role,
-    managementGrade: r.management_grade,
-    relationshipGrade: r.relationship_grade,
-    contactPhone: r.contact_phone,
-    contactExt: r.contact_ext,
-    contactEmail: r.contact_email,
-  };
-}

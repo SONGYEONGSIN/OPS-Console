@@ -24,55 +24,86 @@ export type LiveCardConfig = {
   listRowsById: Record<string, ListRow>;
 };
 
+export type LiveGroupConfig = {
+  /** 그룹 라벨 (예: "요청·자료" / "서비스 사이클" / "개인·활동") */
+  label: string;
+  /** 그룹 보조 설명 */
+  description?: string;
+  cards: LiveCardConfig[];
+  /** 그룹 내 한 row 슬롯 수 (기본 3) */
+  slotsPerRow?: number;
+};
+
 type Props = {
   mine: boolean;
-  cards: LiveCardConfig[];
-  /** placeholder 슬롯 채울 총 개수 (보통 9 = 3-column × 3-row) */
-  totalSlots?: number;
+  groups: LiveGroupConfig[];
 };
 
 /**
- * LiveDashboard — 3-column 고정 그리드 + 도메인 카드들 + 우측 인스펙터.
- * row 클릭 → variant + listRow를 selected state로 보관 → InspectorPanel slide-in.
+ * LiveDashboard — 영역(그룹)별 카드 그리드 + 우측 인스펙터.
+ * 각 그룹은 라벨 + 3-column 카드 row. row 클릭 → InspectorPanel slide-in.
  */
-export function LiveDashboard({ mine, cards, totalSlots = 9 }: Props) {
+export function LiveDashboard({ mine, groups }: Props) {
   const [selected, setSelected] = useState<{
     variant: Variant;
     row: ListRow;
   } | null>(null);
 
-  const padded = [...cards];
-  while (padded.length < totalSlots) padded.push(null as never);
-
   return (
     <div className="flex h-full flex-col">
       <LivePageHeader mine={mine} title="실시간 현황" />
       <div className="flex-1 overflow-y-auto bg-washi-raised px-6 py-6">
-        <div className="mx-auto max-w-[1400px]">
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {padded.map((card, i) => {
-              if (!card) {
-                return <LiveCard key={`placeholder-${i}`} placeholder />;
-              }
-              const selectedIdHere =
-                selected?.variant === card.variant ? selected.row.id : null;
-              return (
-                <LiveCard
-                  key={card.variant}
-                  label={card.label}
-                  count={card.count}
-                  countSub={card.countSub}
-                  columns={card.columns}
-                  rows={card.simpleRows}
-                  selectedId={selectedIdHere}
-                  onRowClick={(id) => {
-                    const row = card.listRowsById[id];
-                    if (row) setSelected({ variant: card.variant, row });
-                  }}
-                />
-              );
-            })}
-          </section>
+        <div className="mx-auto max-w-[1400px] space-y-8">
+          {groups.map((group) => {
+            const slots = group.slotsPerRow ?? 3;
+            const padded: (LiveCardConfig | null)[] = [...group.cards];
+            while (padded.length % slots !== 0) padded.push(null);
+            return (
+              <section key={group.label}>
+                <header className="mb-3 flex items-baseline gap-3 border-b border-line-soft pb-2">
+                  <span className="font-mono text-2xs uppercase tracking-[0.22em] text-vermilion">
+                    {group.label}
+                  </span>
+                  {group.description ? (
+                    <span className="text-xs text-muted">
+                      · {group.description}
+                    </span>
+                  ) : null}
+                </header>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {padded.map((card, i) => {
+                    if (!card) {
+                      return (
+                        <LiveCard
+                          key={`${group.label}-placeholder-${i}`}
+                          placeholder
+                        />
+                      );
+                    }
+                    const selectedIdHere =
+                      selected?.variant === card.variant
+                        ? selected.row.id
+                        : null;
+                    return (
+                      <LiveCard
+                        key={card.variant}
+                        label={card.label}
+                        count={card.count}
+                        countSub={card.countSub}
+                        columns={card.columns}
+                        rows={card.simpleRows}
+                        selectedId={selectedIdHere}
+                        onRowClick={(id) => {
+                          const row = card.listRowsById[id];
+                          if (row) setSelected({ variant: card.variant, row });
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </div>
 
