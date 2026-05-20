@@ -11,10 +11,11 @@ export function ScopeToggle({ mine }: { mine: boolean }) {
   const pathname = usePathname();
   const params = useSearchParams();
 
+  // 기본 mine=true. URL ?mine=false로만 전체 모드.
   function go(nextMine: boolean) {
     const next = new URLSearchParams(params.toString());
-    if (nextMine) next.set("mine", "true");
-    else next.delete("mine");
+    if (nextMine) next.delete("mine");
+    else next.set("mine", "false");
     router.push(`${pathname}?${next.toString()}`);
   }
 

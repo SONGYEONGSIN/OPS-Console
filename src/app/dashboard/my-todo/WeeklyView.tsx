@@ -11,6 +11,7 @@ import {
   bucketTodosByDay,
   bucketServicesByDay,
 } from "./_helpers/week-grid";
+import { todoToListRow } from "./_row-mapper";
 
 type PersistResult = { ok: boolean; error?: string };
 
@@ -34,23 +35,6 @@ type Props = {
 };
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
-
-function todoToListRow(t: TodoRow): ListRow {
-  return {
-    id: t.id,
-    name: t.title,
-    body: t.body ?? undefined,
-    status: "active",
-    owner: "",
-    priority: t.priority,
-    done: t.done,
-    doneAt: t.done_at ?? null,
-    dueAt: t.due_at ?? null,
-    category: t.category ?? undefined,
-    progress: t.progress ?? 0,
-    todoStatus: t.status ?? "todo",
-  };
-}
 
 export function WeeklyView({
   todos,

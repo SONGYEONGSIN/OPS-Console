@@ -18,25 +18,32 @@ const sampleRow: ListRow = {
 };
 
 describe("LiveDashboard", () => {
-  it("3-column 그리드 + 카드 1개 + placeholder 노출", () => {
+  it("그룹 라벨 + 카드 + placeholder 노출", () => {
     render(
       <LiveDashboard
         mine={false}
-        cards={[
+        groups={[
           {
-            label: "서비스",
-            count: 1,
-            variant: "services",
-            columns: [
-              { key: "date", label: "마감" },
-              { key: "title", label: "대학" },
+            label: "테스트 그룹",
+            description: "예시",
+            cards: [
+              {
+                label: "서비스",
+                count: 1,
+                variant: "services",
+                columns: [
+                  { key: "date", label: "마감" },
+                  { key: "title", label: "대학" },
+                ],
+                simpleRows: [{ id: "s1", date: "5.20", title: "건국대" }],
+                listRowsById: { s1: sampleRow },
+              },
             ],
-            simpleRows: [{ id: "s1", date: "5.20", title: "건국대" }],
-            listRowsById: { s1: sampleRow },
           },
         ]}
       />,
     );
+    expect(screen.getByText("테스트 그룹")).toBeInTheDocument();
     expect(screen.getByText("서비스")).toBeInTheDocument();
     expect(screen.getAllByText(/도메인 추가 자리/).length).toBeGreaterThan(0);
   });
@@ -45,24 +52,24 @@ describe("LiveDashboard", () => {
     render(
       <LiveDashboard
         mine={false}
-        cards={[
+        groups={[
           {
-            label: "서비스",
-            count: 1,
-            variant: "services",
-            columns: [
-              { key: "title", label: "대학" },
+            label: "테스트",
+            cards: [
+              {
+                label: "서비스",
+                count: 1,
+                variant: "services",
+                columns: [{ key: "title", label: "대학" }],
+                simpleRows: [{ id: "s1", title: "건국대" }],
+                listRowsById: { s1: sampleRow },
+              },
             ],
-            simpleRows: [{ id: "s1", title: "건국대" }],
-            listRowsById: { s1: sampleRow },
           },
         ]}
       />,
     );
     fireEvent.click(screen.getByText("건국대"));
-    // InspectorChrome가 row.name(건국대학교)를 h3로 표시
-    expect(
-      screen.getAllByText("건국대학교").length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("건국대학교").length).toBeGreaterThanOrEqual(1);
   });
 });

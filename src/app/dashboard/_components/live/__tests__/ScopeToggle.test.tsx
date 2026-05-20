@@ -32,10 +32,19 @@ describe("ScopeToggle", () => {
     );
   });
 
-  it("'내것' 클릭 → router.push에 ?mine=true 포함", () => {
+  it("'전체' 클릭 → router.push에 ?mine=false 포함 (기본은 mine)", () => {
+    pushMock.mockReset();
+    render(<ScopeToggle mine={true} />);
+    fireEvent.click(screen.getByRole("button", { name: "전체" }));
+    expect(pushMock).toHaveBeenCalledWith(
+      expect.stringContaining("mine=false"),
+    );
+  });
+
+  it("'내것' 클릭 → router.push에 mine 쿼리 제거 (기본값으로 복귀)", () => {
     pushMock.mockReset();
     render(<ScopeToggle mine={false} />);
     fireEvent.click(screen.getByRole("button", { name: "내것" }));
-    expect(pushMock).toHaveBeenCalledWith(expect.stringContaining("mine=true"));
+    expect(pushMock).toHaveBeenCalledWith(expect.not.stringContaining("mine="));
   });
 });

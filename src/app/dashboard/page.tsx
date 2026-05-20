@@ -3,20 +3,33 @@ import { getMenuCounts, getMineCounts } from "@/features/menu-counts/queries";
 import { listServices } from "@/features/services/queries";
 import { listIncidents } from "@/features/incidents/queries";
 import { listContracts } from "@/features/contracts/queries";
+import { listContacts } from "@/features/contacts/queries";
+import { listBackupRequests } from "@/features/backup-requests/queries";
+import { listScheduleEvents } from "@/features/schedule/queries";
+import { listMyTodos } from "@/features/todos/queries";
+import { listWorklog } from "@/features/worklog/queries";
 import { servicesRowToListRow } from "./services/_row-mapper";
 import { incidentToListRow } from "./incidents/_row-mapper";
 import { contractsRowToListRow } from "./contracts/_row-mapper";
+import { contactRowToListRow } from "./contacts/_row-mapper";
+import { eventToListRow } from "./schedule/_row-mapper";
+import { todoToListRow } from "./my-todo/_row-mapper";
 import { LiveDashboard } from "./_components/live/LiveDashboard";
-import type { LiveCardConfig } from "./_components/live/LiveDashboard";
+import type {
+  LiveCardConfig,
+  LiveGroupConfig,
+} from "./_components/live/LiveDashboard";
 import type { ListRow } from "./_components/patterns/ListPattern";
 
 /**
- * /dashboard 실시간 현황 — 3-column 위젯 그리드.
- * 도메인별 카드(라벨+카운트+최근 5건 mini-table) + row 클릭 시 우측 인스펙터.
- * 다른 메뉴 PageHeader 패턴 미사용. chrome은 layout이 유지.
+ * /dashboard 실시간 현황 — 영역(그룹)별 위젯 그리드.
  *
- * 1차 PR: services / incidents / contracts 3 도메인.
- * follow-up: handover / receivables / backup / contacts / schedule.
+ * 그룹 3개:
+ * - 요청·자료: 사고 / 백업 요청 / 대학연락처
+ * - 서비스 사이클: 서비스 / 계약 / (예비 placeholder)
+ * - 개인·활동: 내 할 일 / 운영부 일정 / 업무 활동 로그
+ *
+ * 기본 mine=true. URL `?mine=false` 시 전체 모드.
  */
 export default async function DashboardLivePage({
   searchParams,
@@ -24,7 +37,7 @@ export default async function DashboardLivePage({
   searchParams: Promise<{ mine?: string }>;
 }) {
   const sp = await searchParams;
-  const mine = sp.mine === "true";
+  const mine = sp.mine !== "false";
 
   const me = await getCurrentOperator();
   const myEmail = me?.email ?? null;
@@ -33,7 +46,7 @@ export default async function DashboardLivePage({
     ? await getMineCounts(myEmail)
     : await getMenuCounts(myEmail);
 
-  // services 최근 5건 (write_end_asc + 오늘 이후)
+  // ─── 서비스 (마감 임박 5건) ─────────────────────────────────
   const todayYmd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
   }).format(new Date());
@@ -45,14 +58,16 @@ export default async function DashboardLivePage({
     .filter((s) => s.write_end_at && s.write_end_at.slice(0, 10) >= todayYmd)
     .filter((s) => (mine && myEmail ? s.operator_email === myEmail : true))
     .slice(0, 5);
-  const servicesListRows: ListRow[] = servicesUpcoming.map(servicesRowToListRow);
+  const servicesListRows: ListRow[] = servicesUpcoming.map(
+    servicesRowToListRow,
+  );
   const servicesSimple = servicesUpcoming.map((s) => ({
     id: s.id,
     date: formatDateShort(s.write_end_at),
     title: `${s.university_name} · ${s.service_name}`,
   }));
 
-  // incidents 최근 5건
+  // ─── 사고 ─────────────────────────────────────────────
   const { rows: incidents } = await listIncidents({
     pageSize: 5,
     mine: mine && !!myEmail,
@@ -65,7 +80,7 @@ export default async function DashboardLivePage({
     title: i.title,
   }));
 
-  // contracts 최근 5건 (시트 fetch — 페이지네이션 없으므로 client slice)
+  // ─── 계약 (시트 fetch) ──────────────────────────────────────
   let contractsListRows: ListRow[] = [];
   let contractsSimple: { id: string; date: string; title: string }[] = [];
   try {
@@ -82,49 +97,233 @@ export default async function DashboardLivePage({
       title: r.name,
     }));
   } catch {
-    // 시트 fetch 실패 — 빈 상태로 표시
+    /* sheet fetch fail */
   }
 
-  const cards: LiveCardConfig[] = [
+  // ─── 대학연락처 ───────────────────────────────────────────
+  // mine=true 시 본인 services의 university_names 집합으로 필터
+  const myUniversities =
+    mine && myEmail
+      ? [
+          ...new Set(
+            allServices
+              .filter((s) => s.operator_email === myEmail)
+              .map((s) => s.university_name),
+          ),
+        ]
+      : undefined;
+  const { rows: contacts } = await listContacts({
+    pageSize: 5,
+    sort: "created_desc",
+    universityIn: myUniversities,
+  });
+  const contactsListRows: ListRow[] = contacts.map(contactRowToListRow);
+  const contactsSimple = contacts.map((c) => ({
+    id: c.id,
+    date: c.job_title ?? "—",
+    title: `${c.customer_name} · ${c.university_name}`,
+  }));
+
+  // ─── 백업 요청 ────────────────────────────────────────────
+  const { rows: backups } = await listBackupRequests({ pageSize: 5 });
+  const backupsFiltered = mine && myEmail
+    ? backups.filter(
+        (b) =>
+          b.requester_email === myEmail || b.substitute_email === myEmail,
+      )
+    : backups;
+  const backupListRows: ListRow[] = backupsFiltered.map((b) => ({
+    id: b.id,
+    name:
+      b.leave_start_date && b.leave_end_date
+        ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
+        : b.summary_md.slice(0, 30),
+    status: "active",
+    owner: b.requester_email,
+    substituteEmail: b.substitute_email,
+    substituteName: b.substitute_name,
+    backupServices: b.services_detail.map((s) => s.id),
+    backupServicesDetail: b.services_detail,
+    summary: b.summary_md,
+    leaveStartDate: b.leave_start_date ?? null,
+    leaveEndDate: b.leave_end_date ?? null,
+    mailStatus: b.mail_status,
+    mailSentAt: b.mail_sent_at ?? null,
+    mailError: b.mail_error ?? null,
+  }));
+  const backupsSimple = backupsFiltered.slice(0, 5).map((b) => ({
+    id: b.id,
+    date: formatDateShort(b.created_at),
+    title: b.summary_md.slice(0, 30),
+  }));
+
+  // ─── 운영부 일정 ──────────────────────────────────────────
+  const events = await listScheduleEvents();
+  const todayDate = new Date();
+  const upcomingEvents = events
+    .filter((e) => new Date(e.start_at) >= todayDate)
+    .filter((e) =>
+      mine && myEmail
+        ? e.assignee_email === myEmail || e.created_by_email === myEmail
+        : true,
+    )
+    .slice(0, 5);
+  const scheduleListRows: ListRow[] = upcomingEvents.map(eventToListRow);
+  const scheduleSimple = upcomingEvents.map((e) => ({
+    id: e.id,
+    date: formatDateShort(e.start_at),
+    title: e.title,
+  }));
+
+  // ─── 내 할 일 ─────────────────────────────────────────────
+  const todos = (await listMyTodos()).filter((t) => !t.done).slice(0, 5);
+  const todosListRows: ListRow[] = todos.map(todoToListRow);
+  const todosSimple = todos.map((t) => ({
+    id: t.id,
+    date: t.due_at ? formatDateShort(t.due_at) : "—",
+    title: t.title,
+  }));
+
+  // ─── 업무 활동 로그 ────────────────────────────────────────
+  const { rows: worklog } = await listWorklog({
+    pageSize: 5,
+    userEmail: mine && myEmail ? myEmail : undefined,
+  });
+  // worklog는 list-variant 없음 — variant=default로 InspectorListBody fallback.
+  // 클릭 시 ServicesView fallback 표시되나 정보 빈약. 비활성 의도지만 1차 PR엔
+  // LiveCard 그대로 사용 (Card UI 통일). follow-up: ActivityRowCard로 분리.
+  const worklogListRows: ListRow[] = worklog.map((w) => ({
+    id: w.id,
+    name: w.msg,
+    status: "active",
+    owner: w.user_name ?? w.user_email ?? "—",
+    meta: w.level,
+  }));
+  const worklogSimple = worklog.map((w) => ({
+    id: w.id,
+    date: formatHm(w.created_at),
+    title: `${w.user_name ?? w.user_email ?? "—"} · ${w.msg}`,
+  }));
+
+  // ─── 카드 빌더 ──────────────────────────────────────────
+  const dateTitleColumns = [
+    { key: "date", label: "일자", width: "w-20" },
+    { key: "title", label: "내용" },
+  ];
+
+  const card = (
+    label: string,
+    countKey: string,
+    countSubAll: string,
+    countSubMine: string,
+    variant: LiveCardConfig["variant"],
+    simpleRows: { id: string; date: string; title: string }[],
+    listRows: ListRow[],
+  ): LiveCardConfig => ({
+    label,
+    count: counts.get(countKey) ?? null,
+    countSub: mine ? countSubMine : countSubAll,
+    variant,
+    columns: dateTitleColumns,
+    simpleRows,
+    listRowsById: idMap(listRows),
+  });
+
+  // ─── 그룹 ─────────────────────────────────────────────
+  const groups: LiveGroupConfig[] = [
     {
-      label: "서비스",
-      count: counts.get("services") ?? null,
-      countSub: mine ? "내 담당" : "active",
-      variant: "services",
-      columns: [
-        { key: "date", label: "마감", width: "w-20" },
-        { key: "title", label: "대학·서비스" },
+      label: "요청 · 자료",
+      description: "사고·백업·연락처",
+      cards: [
+        card(
+          "사고",
+          "incidents",
+          "registered",
+          "내가 등록/담당",
+          "incidents",
+          incidentsSimple,
+          incidentsListRows,
+        ),
+        card(
+          "백업 요청",
+          "backup",
+          "registered",
+          "내가 요청/백업자",
+          "backup",
+          backupsSimple,
+          backupListRows,
+        ),
+        card(
+          "대학연락처",
+          "contacts",
+          "registered",
+          "내 대학 연락처",
+          "contacts",
+          contactsSimple,
+          contactsListRows,
+        ),
       ],
-      simpleRows: servicesSimple,
-      listRowsById: idMap(servicesListRows),
     },
     {
-      label: "사고",
-      count: counts.get("incidents") ?? null,
-      countSub: mine ? "내가 등록/담당" : "registered",
-      variant: "incidents",
-      columns: [
-        { key: "date", label: "발생", width: "w-20" },
-        { key: "title", label: "사고 제목" },
+      label: "서비스 사이클",
+      description: "서비스·계약",
+      cards: [
+        card(
+          "서비스",
+          "services",
+          "active",
+          "내 담당",
+          "services",
+          servicesSimple,
+          servicesListRows,
+        ),
+        card(
+          "계약",
+          "contracts",
+          "registered",
+          "내 계약",
+          "contracts",
+          contractsSimple,
+          contractsListRows,
+        ),
       ],
-      simpleRows: incidentsSimple,
-      listRowsById: idMap(incidentsListRows),
     },
     {
-      label: "계약",
-      count: counts.get("contracts") ?? null,
-      countSub: mine ? "내 계약" : "registered",
-      variant: "contracts",
-      columns: [
-        { key: "date", label: "시트", width: "w-20" },
-        { key: "title", label: "계약명" },
+      label: "개인 · 활동",
+      description: "할 일·일정·활동 로그",
+      cards: [
+        card(
+          "내 할 일",
+          "my-todo",
+          "assigned to me",
+          "오늘·미완",
+          "my-todo",
+          todosSimple,
+          todosListRows,
+        ),
+        card(
+          "운영부 일정",
+          "schedule",
+          "events",
+          "내 일정",
+          "schedule",
+          scheduleSimple,
+          scheduleListRows,
+        ),
+        card(
+          "업무 활동 로그",
+          "worklog",
+          "logged",
+          "내 활동",
+          "default",
+          worklogSimple,
+          worklogListRows,
+        ),
       ],
-      simpleRows: contractsSimple,
-      listRowsById: idMap(contractsListRows),
     },
   ];
 
-  return <LiveDashboard mine={mine} cards={cards} />;
+  return <LiveDashboard mine={mine} groups={groups} />;
 }
 
 function formatDateShort(iso?: string | null): string {
@@ -133,6 +332,15 @@ function formatDateShort(iso?: string | null): string {
     timeZone: "Asia/Seoul",
     month: "numeric",
     day: "numeric",
+  }).format(new Date(iso));
+}
+
+function formatHm(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   }).format(new Date(iso));
 }
 
