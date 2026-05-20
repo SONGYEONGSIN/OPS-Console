@@ -186,10 +186,12 @@ export default async function DashboardLivePage({
     universityIn: myUniversities,
   });
   const contactsListRows: ListRow[] = contacts.map(contactRowToListRow);
+  // 연락처는 일자 없음 — 도메인 컬럼: 대학명 / 고객명 / 직책
   const contactsSimple = contacts.map((c) => ({
     id: c.id,
-    date: c.job_title ?? "—",
-    title: `${c.customer_name} · ${c.university_name}`,
+    university: c.university_name,
+    name: c.customer_name,
+    jobTitle: c.job_title || "—",
   }));
 
   // ─── 백업 요청 ────────────────────────────────────────────
@@ -371,15 +373,20 @@ export default async function DashboardLivePage({
           backupsSimple,
           backupListRows,
         ),
-        card(
-          "대학연락처",
-          contactsTotal,
-          "registered",
-          "내 대학 연락처",
-          "contacts",
-          contactsSimple,
-          contactsListRows,
-        ),
+        {
+          label: "대학연락처",
+          count: contactsTotal,
+          countSub: mine ? "내 대학 연락처" : "registered",
+          variant: "contacts",
+          // 연락처는 일자 없음 — 도메인 컬럼
+          columns: [
+            { key: "university", label: "대학명" },
+            { key: "name", label: "고객명", width: "w-24" },
+            { key: "jobTitle", label: "직책", width: "w-20" },
+          ],
+          simpleRows: contactsSimple,
+          listRowsById: idMap(contactsListRows),
+        },
       ],
     },
     {
