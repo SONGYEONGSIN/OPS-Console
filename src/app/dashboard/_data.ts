@@ -137,6 +137,13 @@ export const sidebarSections: SbSection[] = [
         items: [
           {
             ico: "·",
+            label: "총괄장",
+            count: "",
+            slug: "assignments",
+            pattern: "list",
+          },
+          {
+            ico: "·",
             label: "서비스",
             count: "",
             slug: "services",
