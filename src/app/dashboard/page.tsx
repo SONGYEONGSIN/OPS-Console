@@ -308,7 +308,7 @@ export default async function DashboardLivePage({
   // ─── 그룹 ─────────────────────────────────────────────
   const groups: LiveGroupConfig[] = [
     {
-      label: "서비스 사이클",
+      label: "서비스 · 계약 · 미수채권",
       cards: [
         {
           label: "서비스",
@@ -351,7 +351,7 @@ export default async function DashboardLivePage({
       ],
     },
     {
-      label: "요청 · 자료",
+      label: "사고 · 백업 · 연락처",
       cards: [
         card(
           "사고",
@@ -388,7 +388,7 @@ export default async function DashboardLivePage({
       ],
     },
     {
-      label: "개인 · 활동",
+      label: "할 일 · 일정 · 활동 로그",
       cards: [
         card(
           "내 할 일",
