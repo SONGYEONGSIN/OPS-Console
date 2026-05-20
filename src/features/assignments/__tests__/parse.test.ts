@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseBaejungList, parseSimpleSheet, parsePims } from "../parse";
-import type { AssignmentSheet } from "../schemas";
+import {
+  parseBaejungList,
+  parseSimpleSheet,
+  parsePims,
+  joinByUniversity,
+} from "../parse";
+import type { AssignmentSheet, AssignmentRecord } from "../schemas";
 
 // r0=블록 라벨, r1=sub-type, r2~=데이터. 컬럼: A NO, B 대분류, C 지역, D 대학명,
 // E UnivID ... M~R 2027운영(재외/수시/정시/편입/외국인/백업), S~X 2027개발, Y~^ 2026운영, _~d 2026개발
@@ -124,5 +129,26 @@ describe("parsePims", () => {
       university: "서경대학교", service: "PIMS", operator: "기자의", developer: "",
     });
     expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe("기존충원");
+  });
+});
+
+describe("joinByUniversity", () => {
+  const recs: AssignmentRecord[] = [
+    { university: "고려대학교", service: "원서접수", operator: "김슬기", developer: "박형진", detail: [] },
+    { university: "고려대학교", service: "대학원", operator: "기자의", developer: "권용철", detail: [] },
+    { university: "연세대학교", service: "PIMS", operator: "한효진", developer: "", detail: [] },
+  ];
+  it("대학명 기준으로 서비스 묶음 생성", () => {
+    const rows = joinByUniversity(recs);
+    const korea = rows.find((r) => r.university === "고려대학교");
+    expect(korea?.byService["원서접수"]?.operator).toBe("김슬기");
+    expect(korea?.byService["대학원"]?.operator).toBe("기자의");
+    expect(korea?.byService["PIMS"]).toBeUndefined();
+    expect(rows).toHaveLength(2);
+  });
+  it("대학명 가나다 정렬", () => {
+    const rows = joinByUniversity(recs);
+    expect(rows[0].university).toBe("고려대학교");
+    expect(rows[1].university).toBe("연세대학교");
   });
 });

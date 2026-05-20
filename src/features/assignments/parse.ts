@@ -3,6 +3,7 @@ import type {
   AssignmentRecord,
   AssignmentDetail,
   ServiceKind,
+  UnivAssignmentRow,
 } from "./schemas";
 
 /** 행 배열에서 정확히 일치하는 헤더 셀의 컬럼 인덱스 (없으면 -1) */
@@ -124,4 +125,20 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
     out.push({ university, service: "PIMS", operator, developer: "", detail });
   }
   return out;
+}
+
+/** AssignmentRecord[] → 대학명 기준 union 행 (가나다 정렬) */
+export function joinByUniversity(recs: AssignmentRecord[]): UnivAssignmentRow[] {
+  const map = new Map<string, UnivAssignmentRow>();
+  for (const r of recs) {
+    let row = map.get(r.university);
+    if (!row) {
+      row = { university: r.university, byService: {} };
+      map.set(r.university, row);
+    }
+    row.byService[r.service] = r;
+  }
+  return [...map.values()].sort((a, b) =>
+    a.university.localeCompare(b.university, "ko"),
+  );
 }
