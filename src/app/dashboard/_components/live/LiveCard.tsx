@@ -37,8 +37,8 @@ export function LiveCard(props: Props) {
     props as ContentProps;
 
   return (
-    <article className="flex flex-col border border-line bg-cream">
-      <header className="flex items-baseline justify-between border-b border-line-soft px-4 py-3">
+    <article className="flex flex-col bg-cream">
+      <header className="flex items-baseline justify-between border-b-2 border-ink px-1 pb-2">
         <h3 className="text-sm font-semibold tracking-[-0.01em] text-ink">
           {label}
         </h3>
