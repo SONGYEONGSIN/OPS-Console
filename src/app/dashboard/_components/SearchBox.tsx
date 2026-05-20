@@ -4,22 +4,34 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sidebarSections } from "../_data";
 import { buildSearchItems, filterItems, type SearchItem } from "./searchItems";
-import {
-  searchServices,
-  type ServiceSearchHit,
-} from "@/features/services/search-action";
+import { searchAllAction } from "@/features/search/action";
+import type { SearchResults } from "@/features/search/queries";
 
 const SVC_DEBOUNCE_MS = 250;
 
+const EMPTY_RESULTS: SearchResults = {
+  services: [],
+  contacts: [],
+  incidents: [],
+  handover: [],
+};
+
+const DOMAIN_LABELS: { key: keyof SearchResults; label: string }[] = [
+  { key: "services", label: "서비스" },
+  { key: "contacts", label: "대학연락처" },
+  { key: "incidents", label: "사고" },
+  { key: "handover", label: "인수인계" },
+];
+
 /**
- * SearchBox — chrome 검색창. 메뉴(정적 47) + 서비스(대학명·운영자·서비스명 동적)
- * 검색. 입력 시 debounce server action으로 매칭 서비스 표시.
+ * SearchBox — chrome 검색창. 메뉴(정적 47) + 도메인 데이터(services / contacts /
+ * incidents / handover 동적) 통합 검색. 입력 시 debounce server action.
  */
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
-  const [svcHits, setSvcHits] = useState<ServiceSearchHit[]>([]);
+  const [domainHits, setDomainHits] = useState<SearchResults>(EMPTY_RESULTS);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -39,21 +51,21 @@ export function SearchBox() {
     return () => document.removeEventListener("click", onDocClick);
   }, [open]);
 
-  // 서비스 동적 검색 (debounce). 빈 쿼리 포함 모든 setState를 timer 안에서 처리.
+  // 도메인 통합 동적 검색 (debounce). 빈 쿼리 포함 setState를 timer 안에서.
   useEffect(() => {
     const q = query.trim();
     let cancelled = false;
     const id = setTimeout(() => {
       if (q.length < 1) {
-        if (!cancelled) setSvcHits([]);
+        if (!cancelled) setDomainHits(EMPTY_RESULTS);
         return;
       }
-      searchServices(q)
-        .then((hits) => {
-          if (!cancelled) setSvcHits(hits);
+      searchAllAction(q)
+        .then((r) => {
+          if (!cancelled) setDomainHits(r);
         })
         .catch(() => {
-          if (!cancelled) setSvcHits([]);
+          if (!cancelled) setDomainHits(EMPTY_RESULTS);
         });
     }, SVC_DEBOUNCE_MS);
     return () => {
@@ -61,6 +73,10 @@ export function SearchBox() {
       clearTimeout(id);
     };
   }, [query]);
+
+  const hasDomainHits = DOMAIN_LABELS.some(
+    (d) => domainHits[d.key].length > 0,
+  );
 
   const showDropdown = open && query.trim().length > 0;
   const term = query.trim();
@@ -145,49 +161,40 @@ export function SearchBox() {
               ))}
             </ul>
           ) : null}
-          {/* 서비스 동적 검색 결과 (대학명·운영자·서비스명 매칭) */}
-          {svcHits.length > 0 ? (
-            <ul
-              role="listbox"
-              className={`flex flex-col ${
-                results.length > 0 ? "border-t border-line-soft" : ""
-              }`}
-            >
-              <li className="px-3 pb-0.5 pt-1.5 text-2xs uppercase tracking-[0.14em] text-muted">
-                서비스
-              </li>
-              {svcHits.map((s) => (
-                <li key={s.id}>
-                  <Link
-                    href={`/dashboard/services?q=${encodeURIComponent(s.universityName)}`}
-                    onClick={() => setOpen(false)}
-                    className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
-                  >
-                    <span className="truncate">
-                      {s.universityName}{" "}
-                      <span className="text-muted">· {s.serviceName}</span>
-                    </span>
-                    <span className="shrink-0 text-2xs text-muted">
-                      {s.operatorName ?? "-"}
-                    </span>
-                  </Link>
+          {/* 도메인 통합 동적 검색 결과 (서비스/연락처/사고/인수인계) */}
+          {DOMAIN_LABELS.map((d) => {
+            const hits = domainHits[d.key];
+            if (hits.length === 0) return null;
+            return (
+              <ul
+                key={d.key}
+                role="listbox"
+                className="flex flex-col border-t border-line-soft"
+              >
+                <li className="px-3 pb-0.5 pt-1.5 text-2xs uppercase tracking-[0.14em] text-muted">
+                  {d.label}
                 </li>
-              ))}
-            </ul>
+                {hits.map((h) => (
+                  <li key={`${d.key}-${h.id}`}>
+                    <Link
+                      href={h.href}
+                      onClick={() => setOpen(false)}
+                      className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+                    >
+                      <span className="truncate">
+                        {h.primary}{" "}
+                        <span className="text-muted">· {h.secondary}</span>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            );
+          })}
+          {/* 매치 0건 안내 */}
+          {results.length === 0 && !hasDomainHits ? (
+            <p className="px-3 py-2 text-xs text-muted">검색 결과 없음</p>
           ) : null}
-          {/* 메뉴 외 — 대학명·운영자·서비스명으로 서비스 전체 검색 */}
-          <Link
-            href={servicesSearchHref}
-            onClick={() => setOpen(false)}
-            className={`block px-3 py-2 text-xs text-ink-soft hover:bg-washi-raised ${
-              results.length > 0 || svcHits.length > 0
-                ? "border-t border-line-soft"
-                : ""
-            }`}
-          >
-            서비스에서 <span className="font-semibold text-ink">{term}</span>{" "}
-            검색 <span className="text-muted">· 대학명·운영자·서비스명</span>
-          </Link>
         </div>
       )}
     </div>

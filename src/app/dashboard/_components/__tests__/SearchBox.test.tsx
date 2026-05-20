@@ -1,6 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { SearchBox } from "../SearchBox";
+
+// 도메인 동적 검색은 server action — 단위 테스트에선 빈 결과로 mock (메뉴 검색만 검증)
+vi.mock("@/features/search/action", () => ({
+  searchAllAction: vi.fn().mockResolvedValue({
+    services: [],
+    contacts: [],
+    incidents: [],
+    handover: [],
+  }),
+}));
 
 describe("SearchBox", () => {
   it("placeholder 텍스트 노출", () => {
@@ -39,14 +49,10 @@ describe("SearchBox", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("메뉴 매치 0건이어도 '서비스에서 검색' 행 노출 + services?q 링크", () => {
+  it("메뉴·도메인 매치 0건이면 '검색 결과 없음'", () => {
     render(<SearchBox />);
     const input = screen.getByPlaceholderText(/검색/) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "부산대학교" } });
-    const link = screen.getByText(/서비스에서/).closest("a");
-    expect(link).toHaveAttribute(
-      "href",
-      `/dashboard/services?q=${encodeURIComponent("부산대학교")}`,
-    );
+    fireEvent.change(input, { target: { value: "zzz존재안함" } });
+    expect(screen.getByText(/검색 결과 없음/)).toBeInTheDocument();
   });
 });
