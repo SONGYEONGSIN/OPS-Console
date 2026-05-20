@@ -36,6 +36,8 @@ export type LiveGroupConfig = {
 
 type Props = {
   mine: boolean;
+  /** 영역 그룹 위 최상단 요약 슬롯 (Hero + StatTile 등) */
+  summary?: React.ReactNode;
   groups: LiveGroupConfig[];
 };
 
@@ -43,7 +45,7 @@ type Props = {
  * LiveDashboard — 영역(그룹)별 카드 그리드 + 우측 인스펙터.
  * 각 그룹은 라벨 + 3-column 카드 row. row 클릭 → InspectorPanel slide-in.
  */
-export function LiveDashboard({ mine, groups }: Props) {
+export function LiveDashboard({ mine, summary, groups }: Props) {
   const [selected, setSelected] = useState<{
     variant: Variant;
     row: ListRow;
@@ -54,6 +56,7 @@ export function LiveDashboard({ mine, groups }: Props) {
       <LivePageHeader mine={mine} title="실시간 현황" />
       <div className="flex-1 overflow-y-auto bg-washi-raised px-6 py-6">
         <div className="mx-auto max-w-[1400px] space-y-8">
+          {summary ? <section>{summary}</section> : null}
           {groups.map((group) => {
             const slots = group.slotsPerRow ?? 3;
             const padded: (LiveCardConfig | null)[] = [...group.cards];
