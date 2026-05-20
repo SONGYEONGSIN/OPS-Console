@@ -21,8 +21,8 @@ type Props = (ContentProps & { placeholder?: false }) | PlaceholderProps;
 
 /**
  * LiveCard — 실시간 현황 한 도메인 카드.
- * 헤더(label + count + countSub) + SimpleTable(최근 5건).
- * placeholder=true 면 "도메인 추가 자리" 표시 (3-column 그리드 자리 고정용).
+ * 헤더(label + count + countSub) + SimpleTable(최근 5건, list-variant Table 톤 통일).
+ * placeholder=true 면 "도메인 추가 자리" 표시.
  */
 export function LiveCard(props: Props) {
   if ("placeholder" in props && props.placeholder) {
@@ -51,7 +51,7 @@ export function LiveCard(props: Props) {
           ) : null}
         </div>
       </header>
-      <div className="flex-1">
+      <div className="flex-1 overflow-x-auto">
         <SimpleTable
           columns={columns}
           rows={rows}
