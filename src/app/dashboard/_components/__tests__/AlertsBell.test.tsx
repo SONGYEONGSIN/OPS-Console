@@ -26,9 +26,20 @@ beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("AlertsBell", () => {
-  it("배지는 전체 신규 알림 수 (urgent만 아님)", () => {
-    render(<AlertsBell items={fixtures} />);
-    // fixtures 2건 (urgent 1 + review 1) → 배지 2
+  it("배지는 처리 필요 액션 수 (ok=worklog 제외)", () => {
+    const withOk: OpsAlert[] = [
+      ...fixtures,
+      {
+        id: "worklog-1",
+        tone: "ok",
+        category: "활동",
+        label: "페이지 진입",
+        time: "14:00",
+        href: "/dashboard/worklog",
+      },
+    ];
+    render(<AlertsBell items={withOk} />);
+    // urgent 1 + review 1 = 2 (ok 1건 제외)
     expect(screen.getByLabelText("알림 2건")).toBeInTheDocument();
   });
 
