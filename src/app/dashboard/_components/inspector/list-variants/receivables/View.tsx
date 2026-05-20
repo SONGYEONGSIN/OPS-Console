@@ -32,9 +32,7 @@ export function ReceivablesView({
             { term: "청구일자", desc: row.meta ?? "-" },
             {
               term: "청구금액",
-              desc: (
-                <span className="font-mono text-ink">{row.author ?? "-"}</span>
-              ),
+              desc: <span className="text-ink">{row.author ?? "-"}</span>,
             },
             {
               term: "경과일수",
