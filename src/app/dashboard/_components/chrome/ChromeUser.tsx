@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { signOut } from "@/features/auth/actions";
+import type { OperatorPermission } from "@/features/operators/schemas";
 
 type Props = {
   displayName: string;
   role: string;
   team: "운영1팀" | "운영2팀" | null;
+  /** admin이면 시스템 설정 메뉴 노출 (settings는 admin 전용) */
+  permission?: OperatorPermission | null;
 };
 
-export function ChromeUser({ displayName, role, team }: Props) {
+export function ChromeUser({ displayName, role, team, permission }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const subtitle = team ? `${team} · ${role}` : role;
+  const isAdmin = permission === "admin";
 
   useEffect(() => {
     if (!open) return;
@@ -45,6 +51,26 @@ export function ChromeUser({ displayName, role, team }: Props) {
           role="menu"
           className="absolute right-0 top-full z-[200] mt-2 min-w-[200px] border border-chrome-graphite bg-cream py-1 text-ink [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
         >
+          <div className="border-b border-line-soft px-3 py-2">
+            <p className="text-sm font-bold text-ink">{displayName}</p>
+            <p className="text-2xs text-muted">{subtitle}</p>
+          </div>
+          {isAdmin ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                router.push("/dashboard/settings");
+              }}
+              className="grid w-full grid-cols-[1fr_auto] items-center gap-2.5 border-none bg-transparent px-3 py-1.5 text-left text-xs hover:bg-vermilion hover:text-cream cursor-pointer"
+            >
+              <span>시스템 설정</span>
+              <span aria-hidden className="text-2xs text-muted">
+                ⚙
+              </span>
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"

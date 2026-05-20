@@ -20,6 +20,7 @@ export function ChromeRight({ operator, alerts }: Props) {
         displayName={operator.displayName}
         role={operator.role}
         team={operator.team}
+        permission={operator.permission}
       />
     </div>
   );
