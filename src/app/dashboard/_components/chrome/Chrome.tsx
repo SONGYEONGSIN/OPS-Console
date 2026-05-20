@@ -1,4 +1,4 @@
-import type { DashWidget } from "../patterns/DashPattern";
+import type { OpsAlert } from "@/features/alerts/queries";
 import type { CurrentOperator } from "@/features/auth/queries";
 import { SearchBox } from "../SearchBox";
 import { ChromeBrand } from "./ChromeBrand";
@@ -6,7 +6,7 @@ import { ChromeRight } from "./ChromeRight";
 
 type Props = {
   operator: CurrentOperator;
-  alerts: DashWidget[];
+  alerts: OpsAlert[];
 };
 
 /**
