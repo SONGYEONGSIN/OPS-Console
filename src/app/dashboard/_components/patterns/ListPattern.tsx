@@ -288,6 +288,13 @@ export type ListRow = {
   contractsCellStatus?: string | null;
   contractsCellServiceActive?: string | null;
   contractsCellFeeAmount?: string | null;
+  /** worklog — 레벨 / 도메인 / 액션 / 대상 / 시각 (인스펙터 View 표시용) */
+  worklogLevel?: "INFO" | "WARN" | "ERROR" | "DEBUG";
+  worklogDomain?: string;
+  worklogAction?: string;
+  worklogTarget?: string | null;
+  worklogTs?: string;
+  worklogUser?: string;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -521,7 +528,10 @@ export function ListPattern({
       );
     }
     // 단순 TableProps만 받는 variant들 (cohort/receivables/ai-work/team/schedule/default)
-    const Table = variantEntry?.Table ?? variantRegistry.default.Table;
+    const Table =
+      variantEntry && "Table" in variantEntry
+        ? variantEntry.Table
+        : variantRegistry.default.Table;
     const Comp = Table as React.ComponentType<{
       rows: ListRow[];
       selectedId: string | null;

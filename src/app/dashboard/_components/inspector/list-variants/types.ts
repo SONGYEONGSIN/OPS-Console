@@ -21,7 +21,8 @@ export type Variant =
   | "contracts"
   | "contacts"
   | "incidents"
-  | "handover";
+  | "handover"
+  | "worklog";
 
 export type ViewProps = {
   row: ListRow;
