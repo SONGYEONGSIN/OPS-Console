@@ -77,6 +77,9 @@ import { HandoverTable } from "./handover/Table";
 import { HandoverEditForm } from "./handover/EditForm";
 import { HandoverView } from "./handover/View";
 import { WorklogView } from "./worklog/View";
+import { AssignmentsTable } from "./assignments/Table";
+import { AssignmentsView } from "./assignments/View";
+import { ASSIGNMENTS_FILTERS } from "./assignments/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -256,6 +259,11 @@ export const variantRegistry = {
     // chip 카운트가 0/30 처럼 헷갈리는 표시를 피하기 위해 chips 자체 비표시).
     Filters: [],
     // blank 없음 — 신규 생성 흐름 없음 (services 행에 종속, 첫 저장 시 upsert)
+  },
+  assignments: {
+    View: AssignmentsView,
+    Table: AssignmentsTable,
+    Filters: ASSIGNMENTS_FILTERS,
   },
   worklog: {
     // 읽기 전용 — 활동 로그 인스펙터 View만 (편집/테이블/신규 없음)
