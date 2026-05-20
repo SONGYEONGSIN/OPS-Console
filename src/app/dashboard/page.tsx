@@ -61,13 +61,17 @@ export default async function DashboardLivePage({
   });
   // 오픈 예정 — write_start_at >= today, 가까운 순. 1차 PR에서 client 측 정렬
   // (listServices에는 아직 write_start_asc 옵션 없음).
-  const servicesUpcoming = allServices
+  const servicesUpcomingAll = allServices
     .filter(
       (s) => s.write_start_at && s.write_start_at.slice(0, 10) >= todayYmd,
     )
     .filter((s) => (mine && myEmail ? s.operator_email === myEmail : true))
-    .sort((a, b) => (a.write_start_at ?? "").localeCompare(b.write_start_at ?? ""))
-    .slice(0, 5);
+    .sort((a, b) =>
+      (a.write_start_at ?? "").localeCompare(b.write_start_at ?? ""),
+    );
+  // 헤더 카운트는 오픈 예정 전체 수 (리스트 기준과 일치)
+  const servicesUpcomingCount = servicesUpcomingAll.length;
+  const servicesUpcoming = servicesUpcomingAll.slice(0, 5);
   const servicesListRows: ListRow[] = servicesUpcoming.map(
     servicesRowToListRow,
   );
@@ -284,15 +288,16 @@ export default async function DashboardLivePage({
       label: "서비스 사이클",
       description: "서비스·계약·미수채권",
       cards: [
-        card(
-          "서비스",
-          "services",
-          "active",
-          "내 담당",
-          "services",
-          servicesSimple,
-          servicesListRows,
-        ),
+        {
+          label: "서비스",
+          // 헤더 카운트 = 오픈 예정 건수 (리스트 기준과 일치)
+          count: servicesUpcomingCount,
+          countSub: mine ? "내 담당 · 오픈 예정" : "오픈 예정",
+          variant: "services",
+          columns: dateTitleColumns,
+          simpleRows: servicesSimple,
+          listRowsById: idMap(servicesListRows),
+        },
         {
           label: "계약",
           count: counts.get("contracts") ?? null,
