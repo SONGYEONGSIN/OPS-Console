@@ -81,8 +81,14 @@ export default async function DashboardLivePage({
   }));
 
   // ─── 계약 (시트 fetch) ──────────────────────────────────────
+  // 계약은 일자 없음 — 도메인 컬럼: 구분(sheet) / 대학명(name) / 계약여부(status)
   let contractsListRows: ListRow[] = [];
-  let contractsSimple: { id: string; date: string; title: string }[] = [];
+  let contractsSimple: {
+    id: string;
+    sheet: string;
+    name: string;
+    status: string;
+  }[] = [];
   try {
     const { rows: contractRows } = await listContracts();
     const recent = contractRows
@@ -93,8 +99,9 @@ export default async function DashboardLivePage({
     contractsListRows = recent.map(contractsRowToListRow);
     contractsSimple = recent.map((r) => ({
       id: r.id,
-      date: r.sheet,
-      title: r.name,
+      sheet: r.sheet,
+      name: r.name,
+      status: r.status || "—",
     }));
   } catch {
     /* sheet fetch fail */
@@ -244,15 +251,20 @@ export default async function DashboardLivePage({
           servicesSimple,
           servicesListRows,
         ),
-        card(
-          "계약",
-          "contracts",
-          "registered",
-          "내 계약",
-          "contracts",
-          contractsSimple,
-          contractsListRows,
-        ),
+        {
+          label: "계약",
+          count: counts.get("contracts") ?? null,
+          countSub: mine ? "내 계약" : "registered",
+          variant: "contracts",
+          // 계약은 일자 없음 — 도메인 컬럼 사용
+          columns: [
+            { key: "sheet", label: "구분", width: "w-20" },
+            { key: "name", label: "대학명" },
+            { key: "status", label: "계약여부", width: "w-24" },
+          ],
+          simpleRows: contractsSimple,
+          listRowsById: idMap(contractsListRows),
+        },
       ],
     },
     {
