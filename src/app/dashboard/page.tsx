@@ -1,5 +1,4 @@
 import { getCurrentOperator } from "@/features/auth/queries";
-import { getMenuCounts, getMineCounts } from "@/features/menu-counts/queries";
 import { listServices } from "@/features/services/queries";
 import { listIncidents } from "@/features/incidents/queries";
 import { listContracts } from "@/features/contracts/queries";
@@ -47,11 +46,7 @@ export default async function DashboardLivePage({
   const me = await getCurrentOperator();
   const myEmail = me?.email ?? null;
 
-  const counts = mine
-    ? await getMineCounts(myEmail)
-    : await getMenuCounts(myEmail);
-
-  // ─── 서비스 (마감 임박 5건) ─────────────────────────────────
+  // ─── 서비스 (오픈 예정 5건) ─────────────────────────────────
   const todayYmd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
   }).format(new Date());
@@ -82,7 +77,7 @@ export default async function DashboardLivePage({
   }));
 
   // ─── 사고 ─────────────────────────────────────────────
-  const { rows: incidents } = await listIncidents({
+  const { rows: incidents, total: incidentsTotal } = await listIncidents({
     pageSize: 5,
     mine: mine && !!myEmail,
     meEmail: myEmail ?? undefined,
@@ -96,6 +91,7 @@ export default async function DashboardLivePage({
 
   // ─── 미수채권 (시트 fetch — 미입금 우선, 최근 5건) ─────────────
   let receivablesListRows: ListRow[] = [];
+  let receivablesCount: number | null = null;
   let receivablesSimple: {
     id: string;
     date: string;
@@ -109,11 +105,16 @@ export default async function DashboardLivePage({
         .map((_, i) => receivablesToListRow(sheet, i))
         .filter(isReceivablesDataRow);
       // mine 기준: 본인 운영자(name)와 일치. all은 client filter
-      const filtered = mine && me?.displayName
-        ? all.filter((r) => r.owner === me.displayName)
-        : all;
-      const pending = filtered.filter((r) => r.status === "active").slice(0, 5);
-      const top = pending.length > 0 ? pending : filtered.slice(0, 5);
+      const filtered =
+        mine && me?.displayName
+          ? all.filter((r) => r.owner === me.displayName)
+          : all;
+      // 카운트 = 미입금(pending) 모수 (없으면 전체 모수)
+      const pendingAll = filtered.filter((r) => r.status === "active");
+      receivablesCount =
+        pendingAll.length > 0 ? pendingAll.length : filtered.length;
+      const top =
+        pendingAll.length > 0 ? pendingAll.slice(0, 5) : filtered.slice(0, 5);
       receivablesListRows = top;
       receivablesSimple = top.map((r) => ({
         id: r.id,
@@ -129,6 +130,7 @@ export default async function DashboardLivePage({
   // ─── 계약 (시트 fetch) ──────────────────────────────────────
   // 계약은 일자 없음 — 도메인 컬럼: 구분(sheet) / 대학명(name) / 계약여부(status)
   let contractsListRows: ListRow[] = [];
+  let contractsCount: number | null = null;
   let contractsSimple: {
     id: string;
     sheet: string;
@@ -137,11 +139,11 @@ export default async function DashboardLivePage({
   }[] = [];
   try {
     const { rows: contractRows } = await listContracts();
-    const recent = contractRows
-      .filter((r) =>
-        mine && me?.displayName ? r.operator === me.displayName : true,
-      )
-      .slice(0, 5);
+    const filtered = contractRows.filter((r) =>
+      mine && me?.displayName ? r.operator === me.displayName : true,
+    );
+    contractsCount = filtered.length;
+    const recent = filtered.slice(0, 5);
     contractsListRows = recent.map(contractsRowToListRow);
     contractsSimple = recent.map((r) => ({
       id: r.id,
@@ -165,7 +167,7 @@ export default async function DashboardLivePage({
           ),
         ]
       : undefined;
-  const { rows: contacts } = await listContacts({
+  const { rows: contacts, total: contactsTotal } = await listContacts({
     pageSize: 5,
     sort: "created_desc",
     universityIn: myUniversities,
@@ -178,13 +180,15 @@ export default async function DashboardLivePage({
   }));
 
   // ─── 백업 요청 ────────────────────────────────────────────
-  const { rows: backups } = await listBackupRequests({ pageSize: 5 });
+  // 본인 필터가 client측이므로 모수 정확성을 위해 충분히 fetch (pageSize 100)
+  const { rows: backups } = await listBackupRequests({ pageSize: 100 });
   const backupsFiltered = mine && myEmail
     ? backups.filter(
         (b) =>
           b.requester_email === myEmail || b.substitute_email === myEmail,
       )
     : backups;
+  const backupCount = backupsFiltered.length;
   const backupListRows: ListRow[] = backupsFiltered.map((b) => ({
     id: b.id,
     name:
@@ -213,14 +217,15 @@ export default async function DashboardLivePage({
   // ─── 운영부 일정 ──────────────────────────────────────────
   const events = await listScheduleEvents();
   const todayDate = new Date();
-  const upcomingEvents = events
+  const upcomingEventsAll = events
     .filter((e) => new Date(e.start_at) >= todayDate)
     .filter((e) =>
       mine && myEmail
         ? e.assignee_email === myEmail || e.created_by_email === myEmail
         : true,
-    )
-    .slice(0, 5);
+    );
+  const scheduleCount = upcomingEventsAll.length;
+  const upcomingEvents = upcomingEventsAll.slice(0, 5);
   const scheduleListRows: ListRow[] = upcomingEvents.map(eventToListRow);
   const scheduleSimple = upcomingEvents.map((e) => ({
     id: e.id,
@@ -229,7 +234,9 @@ export default async function DashboardLivePage({
   }));
 
   // ─── 내 할 일 ─────────────────────────────────────────────
-  const todos = (await listMyTodos()).filter((t) => !t.done).slice(0, 5);
+  const undoneTodos = (await listMyTodos()).filter((t) => !t.done);
+  const todosCount = undoneTodos.length;
+  const todos = undoneTodos.slice(0, 5);
   const todosListRows: ListRow[] = todos.map(todoToListRow);
   const todosSimple = todos.map((t) => ({
     id: t.id,
@@ -264,9 +271,10 @@ export default async function DashboardLivePage({
     { key: "title", label: "내용" },
   ];
 
+  // count는 해당 카드 리스트의 실제 모수 (헤더 숫자 ↔ 리스트 기준 일치)
   const card = (
     label: string,
-    countKey: string,
+    count: number | null,
     countSubAll: string,
     countSubMine: string,
     variant: LiveCardConfig["variant"],
@@ -274,7 +282,7 @@ export default async function DashboardLivePage({
     listRows: ListRow[],
   ): LiveCardConfig => ({
     label,
-    count: counts.get(countKey) ?? null,
+    count,
     countSub: mine ? countSubMine : countSubAll,
     variant,
     columns: dateTitleColumns,
@@ -300,7 +308,7 @@ export default async function DashboardLivePage({
         },
         {
           label: "계약",
-          count: counts.get("contracts") ?? null,
+          count: contractsCount,
           countSub: mine ? "내 계약" : "registered",
           variant: "contracts",
           // 계약은 일자 없음 — 도메인 컬럼 사용
@@ -314,7 +322,7 @@ export default async function DashboardLivePage({
         },
         {
           label: "미수채권",
-          count: counts.get("receivables") ?? null,
+          count: receivablesCount,
           countSub: mine ? "내 발송" : "pending",
           variant: "receivables",
           // 청구일자 / 거래처 / 청구금액 (도메인 컬럼)
@@ -334,7 +342,7 @@ export default async function DashboardLivePage({
       cards: [
         card(
           "사고",
-          "incidents",
+          incidentsTotal,
           "registered",
           "내가 등록/담당",
           "incidents",
@@ -343,7 +351,7 @@ export default async function DashboardLivePage({
         ),
         card(
           "백업 요청",
-          "backup",
+          backupCount,
           "registered",
           "내가 요청/백업자",
           "backup",
@@ -352,7 +360,7 @@ export default async function DashboardLivePage({
         ),
         card(
           "대학연락처",
-          "contacts",
+          contactsTotal,
           "registered",
           "내 대학 연락처",
           "contacts",
@@ -367,26 +375,26 @@ export default async function DashboardLivePage({
       cards: [
         card(
           "내 할 일",
-          "my-todo",
-          "assigned to me",
-          "오늘·미완",
+          todosCount,
+          "미완",
+          "미완",
           "my-todo",
           todosSimple,
           todosListRows,
         ),
         card(
           "운영부 일정",
-          "schedule",
-          "events",
-          "내 일정",
+          scheduleCount,
+          "예정",
+          "내 일정 · 예정",
           "schedule",
           scheduleSimple,
           scheduleListRows,
         ),
         card(
           "업무 활동 로그",
-          "worklog",
-          "logged",
+          worklog.length,
+          "최근",
           "내 활동",
           "default",
           worklogSimple,
