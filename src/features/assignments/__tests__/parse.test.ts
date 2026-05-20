@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseBaejungList } from "../parse";
+import { parseBaejungList, parseSimpleSheet, parsePims } from "../parse";
 import type { AssignmentSheet } from "../schemas";
 
 // r0=블록 라벨, r1=sub-type, r2~=데이터. 컬럼: A NO, B 대분류, C 지역, D 대학명,
@@ -57,5 +57,50 @@ describe("parseBaejungList", () => {
   it("대학명 빈 행은 제외", () => {
     const empty: AssignmentSheet = { ...sheet, rowsText: [...sheet.rowsText, Array(36).fill("")] };
     expect(parseBaejungList(empty)).toHaveLength(1);
+  });
+});
+
+function simpleSheet(headers: string[], dataRows: string[][]): AssignmentSheet {
+  return {
+    worksheetName: "t",
+    rowsText: [headers, ...dataRows],
+    rowCount: dataRows.length + 1,
+    columnCount: headers.length,
+  };
+}
+
+describe("parseSimpleSheet", () => {
+  it("03.대학원 운영(H)/개발(I) 추출", () => {
+    const s = simpleSheet(
+      ["No", "대학명", "UnivId", "서비스 구분", "서비스여부", "서비스 개수", "담당자 변경", "운영자", "개발자"],
+      [["1", "한국체육대학교", "1153", "대학원", "Y", "3", "변경 X", "기자의", "권용철"]],
+    );
+    const recs = parseSimpleSheet(s, "대학원", { op: /^운영자$/, dev: /^개발자$/, uni: /대학명/ });
+    expect(recs[0]).toMatchObject({
+      university: "한국체육대학교", service: "대학원", operator: "기자의", developer: "권용철",
+    });
+  });
+
+  it("07.상담앱 학교명/운영(F)/개발(G)", () => {
+    const s = simpleSheet(
+      ["UnivID", "학교명", "ServiceID", "접수운영", "영업자", "운영자", "개발자"],
+      [["1187", "신한대학교", "x", "김지현", "김은호", "기자의", "박형진"]],
+    );
+    const recs = parseSimpleSheet(s, "상담앱", { op: /^운영자$/, dev: /^개발자$/, uni: /학교명|대학명/ });
+    expect(recs[0]).toMatchObject({ university: "신한대학교", operator: "기자의", developer: "박형진" });
+  });
+});
+
+describe("parsePims", () => {
+  it("운영자 FULL(G) 대표 + 개발자 없음 + 환/충 detail", () => {
+    const s = simpleSheet(
+      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
+      [["1", "4년제", "서울", "서경대학교", "Full", "변경 X", "기자의", "임종우", "기존충원"]],
+    );
+    const recs = parsePims(s);
+    expect(recs[0]).toMatchObject({
+      university: "서경대학교", service: "PIMS", operator: "기자의", developer: "",
+    });
+    expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe("기존충원");
   });
 });

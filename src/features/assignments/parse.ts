@@ -2,6 +2,7 @@ import type {
   AssignmentSheet,
   AssignmentRecord,
   AssignmentDetail,
+  ServiceKind,
 } from "./schemas";
 
 /** 행 배열에서 정확히 일치하는 헤더 셀의 컬럼 인덱스 (없으면 -1) */
@@ -51,6 +52,57 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     const operator = (row[op2027 + SUSI_OFFSET] ?? "").trim();
     const developer = dev2027 >= 0 ? (row[dev2027 + SUSI_OFFSET] ?? "").trim() : "";
     out.push({ university, service: "원서접수", operator, developer, detail });
+  }
+  return out;
+}
+
+/** 단일 헤더 시트 (03/06/07) → AssignmentRecord[]. 헤더 정규식으로 컬럼 검출. */
+export function parseSimpleSheet(
+  sheet: AssignmentSheet,
+  service: ServiceKind,
+  patterns: { uni: RegExp; op: RegExp; dev?: RegExp },
+): AssignmentRecord[] {
+  const rows = sheet.rowsText;
+  if (rows.length < 2) return [];
+  const h = rows[0];
+  const uniCol = colMatch(h, patterns.uni);
+  const opCol = colMatch(h, patterns.op);
+  const devCol = patterns.dev ? colMatch(h, patterns.dev) : -1;
+  if (uniCol < 0 || opCol < 0) return [];
+
+  const out: AssignmentRecord[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const university = (row[uniCol] ?? "").trim();
+    if (university === "") continue;
+    const operator = (row[opCol] ?? "").trim();
+    const developer = devCol >= 0 ? (row[devCol] ?? "").trim() : "";
+    out.push({ university, service, operator, developer, detail: [] });
+  }
+  return out;
+}
+
+/** 04. PIMS — 운영자 FULL(대표) + 운영자 환/충(detail). 개발자 없음. */
+export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
+  const rows = sheet.rowsText;
+  if (rows.length < 2) return [];
+  const h = rows[0];
+  const uniCol = colMatch(h, /대학명/);
+  const fullCol = colMatch(h, /운영자\s*FULL/);
+  const hwanCol = colMatch(h, /운영자\s*환|환\/?충/);
+  if (uniCol < 0 || fullCol < 0) return [];
+
+  const out: AssignmentRecord[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const university = (row[uniCol] ?? "").trim();
+    if (university === "") continue;
+    const operator = (row[fullCol] ?? "").trim();
+    const detail: AssignmentDetail[] = [];
+    if (hwanCol >= 0 && (row[hwanCol] ?? "").trim()) {
+      detail.push({ label: "운영자 환/충", value: (row[hwanCol] ?? "").trim() });
+    }
+    out.push({ university, service: "PIMS", operator, developer: "", detail });
   }
   return out;
 }
