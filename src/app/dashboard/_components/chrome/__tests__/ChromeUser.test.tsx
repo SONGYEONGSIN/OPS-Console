@@ -1,6 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ChromeUser } from "../ChromeUser";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 describe("ChromeUser", () => {
   it("OPERATORS 매칭 사용자 — 풀네임 + 팀·직급", () => {
