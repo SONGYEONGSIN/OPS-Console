@@ -34,6 +34,8 @@ export function SearchBox() {
   }, [open]);
 
   const showDropdown = open && query.trim().length > 0;
+  const term = query.trim();
+  const servicesSearchHref = `/dashboard/services?q=${encodeURIComponent(term)}`;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Escape") {
@@ -44,15 +46,17 @@ export function SearchBox() {
     if (!showDropdown || results.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIdx((i) => (i + 1) % results.length);
+      if (results.length > 0) setActiveIdx((i) => (i + 1) % results.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIdx((i) => (i - 1 + results.length) % results.length);
+      if (results.length > 0)
+        setActiveIdx((i) => (i - 1 + results.length) % results.length);
     } else if (e.key === "Enter") {
       const target = results[activeIdx];
-      if (target) {
-        window.location.href = `/dashboard/${target.slug}`;
-      }
+      // 메뉴 매치가 있으면 해당 메뉴, 없으면 서비스(대학명·운영자·서비스명) 검색
+      window.location.href = target
+        ? `/dashboard/${target.slug}`
+        : servicesSearchHref;
     }
   }
 
@@ -85,9 +89,7 @@ export function SearchBox() {
 
       {showDropdown && (
         <div className="absolute left-0 right-0 top-full z-[200] mt-1 border border-line bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted">검색 결과 없음</p>
-          ) : (
+          {results.length > 0 ? (
             <ul role="listbox" className="flex flex-col">
               {results.map((r, i) => (
                 <li key={r.slug}>
@@ -103,7 +105,7 @@ export function SearchBox() {
                   >
                     <span className="truncate">{r.label}</span>
                     <span
-                      className={`font-mono text-2xs tracking-[0.06em] ${
+                      className={`text-2xs tracking-[0.06em] ${
                         i === activeIdx ? "text-cream/80" : "text-muted"
                       }`}
                     >
@@ -113,7 +115,18 @@ export function SearchBox() {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
+          {/* 메뉴 외 — 대학명·운영자·서비스명으로 서비스 검색 */}
+          <Link
+            href={servicesSearchHref}
+            onClick={() => setOpen(false)}
+            className={`block px-3 py-2 text-xs text-ink-soft hover:bg-washi-raised ${
+              results.length > 0 ? "border-t border-line-soft" : ""
+            }`}
+          >
+            서비스에서 <span className="font-semibold text-ink">{term}</span>{" "}
+            검색 <span className="text-muted">· 대학명·운영자·서비스명</span>
+          </Link>
         </div>
       )}
     </div>

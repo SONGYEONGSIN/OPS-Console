@@ -39,11 +39,14 @@ describe("SearchBox", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
-  it("매치 0건이면 'no results' 안내", () => {
+  it("메뉴 매치 0건이어도 '서비스에서 검색' 행 노출 + services?q 링크", () => {
     render(<SearchBox />);
     const input = screen.getByPlaceholderText(/검색/) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "zzzzz존재안함" } });
-    expect(screen.getByText(/검색 결과 없음|결과 없음/)).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: "부산대학교" } });
+    const link = screen.getByText(/서비스에서/).closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      `/dashboard/services?q=${encodeURIComponent("부산대학교")}`,
+    );
   });
-
 });
