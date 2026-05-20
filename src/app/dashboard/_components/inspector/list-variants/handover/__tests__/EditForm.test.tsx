@@ -68,4 +68,45 @@ describe("HandoverEditForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(onCancel).toHaveBeenCalled();
   });
+
+  it("onCopyHandover 없으면 복제 섹션 미노출", () => {
+    setup();
+    expect(screen.queryByText("다른 서비스로 복제")).toBeNull();
+  });
+
+  it("onCopyHandover 있으면 복제 검색 input 노출", () => {
+    setup({ onCopyHandover: vi.fn().mockResolvedValue({ ok: true }) });
+    expect(screen.getByText("다른 서비스로 복제")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("복제 대상 서비스 검색"),
+    ).toBeInTheDocument();
+  });
+
+  it("검색 → 후보 선택 → 복제 버튼 클릭 시 onCopyHandover(from, [to]) 호출", async () => {
+    const onCopyHandover = vi.fn().mockResolvedValue({ ok: true, copiedCount: 1 });
+    render(
+      <HandoverEditForm
+        row={baseRow}
+        setRow={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        onCopyHandover={onCopyHandover}
+        handoverServiceCandidates={[
+          {
+            id: "service-2",
+            serviceId: 1002,
+            universityName: "서울대학교",
+            serviceName: "수시 2차",
+            hasRecord: false,
+          },
+        ]}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("복제 대상 서비스 검색"), {
+      target: { value: "서울대" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /복제/ }));
+    expect(onCopyHandover).toHaveBeenCalledWith("service-1", ["service-2"]);
+  });
 });

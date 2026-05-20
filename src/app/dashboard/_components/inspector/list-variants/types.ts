@@ -76,4 +76,18 @@ export type EditFormProps = {
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 (실 데이터 distinct) */
   contractsStatusOptions?: readonly string[];
   contractsServiceActiveOptions?: readonly string[];
+  /** handover variant — 복제 대상 서비스 후보 (전체 services light fields) */
+  handoverServiceCandidates?: {
+    id: string;
+    serviceId: number;
+    universityName: string;
+    serviceName: string;
+    /** 이미 인수인계 작성됨 (덮어쓰기 경고용) */
+    hasRecord: boolean;
+  }[];
+  /** handover variant — 복제 실행 (from = 현재 service, to = 선택 서비스들) */
+  onCopyHandover?: (
+    fromServiceId: string,
+    toServiceIds: string[],
+  ) => Promise<{ ok: boolean; error?: string; copiedCount?: number }>;
 };
