@@ -54,7 +54,7 @@ export function LiveDashboard({ mine, summary, groups }: Props) {
   return (
     <div className="flex h-full flex-col">
       <LivePageHeader mine={mine} title="실시간 현황" />
-      <div className="flex-1 overflow-y-auto bg-washi-raised px-6 py-6">
+      <div className="flex-1 overflow-y-auto bg-cream px-6 py-6">
         <div className="mx-auto max-w-[1400px] space-y-8">
           {summary ? <section>{summary}</section> : null}
           {groups.map((group) => {
