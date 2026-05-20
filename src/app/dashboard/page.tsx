@@ -15,6 +15,8 @@ import { contactRowToListRow } from "./contacts/_row-mapper";
 import { eventToListRow } from "./schedule/_row-mapper";
 import { todoToListRow } from "./my-todo/_row-mapper";
 import { LiveDashboard } from "./_components/live/LiveDashboard";
+import { HeroCard } from "./_components/live/HeroCard";
+import { StatTile } from "./_components/live/StatTile";
 import type {
   LiveCardConfig,
   LiveGroupConfig,
@@ -323,7 +325,99 @@ export default async function DashboardLivePage({
     },
   ];
 
-  return <LiveDashboard mine={mine} groups={groups} />;
+  // ─── 상단 요약 (Hero + StatTile) ───────────────────────────
+  const nearestService = servicesUpcoming[0];
+  const nearestDn = nearestService?.write_end_at
+    ? daysUntil(nearestService.write_end_at.slice(0, 10), todayYmd)
+    : null;
+
+  const summary = (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <HeroCard
+          kicker="마감 임박"
+          primary={
+            nearestDn !== null
+              ? `D${nearestDn >= 0 ? "-" : "+"}${Math.abs(nearestDn)}`
+              : "—"
+          }
+          title={nearestService?.university_name ?? "임박 일정 없음"}
+          subtitle={nearestService?.service_name ?? "currently 정상"}
+          tone={
+            nearestDn !== null && nearestDn <= 3 ? "urgent" : "neutral"
+          }
+        />
+        <HeroCard
+          kicker="미수채권"
+          primary={
+            counts.get("receivables") != null
+              ? `${counts.get("receivables")}건`
+              : "—"
+          }
+          title="pending"
+          subtitle="registered total"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <StatTile
+          label="서비스"
+          value={counts.get("services") ?? "—"}
+          sub={mine ? "내 담당" : "active"}
+          href="/dashboard/services"
+        />
+        <StatTile
+          label="인수인계"
+          value={counts.get("handover") ?? "—"}
+          sub={mine ? "내가 작성자" : "records"}
+          href="/dashboard/handover"
+        />
+        <StatTile
+          label="사고"
+          value={counts.get("incidents") ?? "—"}
+          sub={mine ? "내가 등록/담당" : "registered"}
+          href="/dashboard/incidents"
+        />
+        <StatTile
+          label="백업 요청"
+          value={counts.get("backup") ?? "—"}
+          sub={mine ? "내가 요청/백업자" : "registered"}
+          href="/dashboard/backup"
+        />
+        <StatTile
+          label="내 할 일"
+          value={counts.get("my-todo") ?? "—"}
+          sub="assigned to me"
+          href="/dashboard/my-todo"
+        />
+        <StatTile
+          label="운영부 일정"
+          value={counts.get("schedule") ?? "—"}
+          sub={mine ? "내 일정" : "events"}
+          href="/dashboard/schedule"
+        />
+        <StatTile
+          label="계약"
+          value={counts.get("contracts") ?? "—"}
+          sub={mine ? "내 계약" : "registered"}
+          href="/dashboard/contracts"
+        />
+        <StatTile
+          label="대학연락처"
+          value={counts.get("contacts") ?? "—"}
+          sub={mine ? "내 대학" : "registered"}
+          href="/dashboard/contacts"
+        />
+      </div>
+    </div>
+  );
+
+  return <LiveDashboard mine={mine} summary={summary} groups={groups} />;
+}
+
+function daysUntil(targetYmd: string, todayYmd: string): number {
+  const today = new Date(`${todayYmd}T12:00:00+09:00`).getTime();
+  const target = new Date(`${targetYmd}T12:00:00+09:00`).getTime();
+  return Math.round((target - today) / (24 * 60 * 60 * 1000));
 }
 
 function formatDateShort(iso?: string | null): string {
