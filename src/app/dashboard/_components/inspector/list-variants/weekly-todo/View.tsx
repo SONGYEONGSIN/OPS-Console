@@ -112,13 +112,11 @@ export function WeeklyTodoView({ row }: ViewProps) {
           items={[
             {
               term: "마감일",
-              desc: <span className="font-mono">{formatDate(row.dueAt)}</span>,
+              desc: <span>{formatDate(row.dueAt)}</span>,
             },
             {
               term: "완료일",
-              desc: (
-                <span className="font-mono">{formatDateTime(row.doneAt)}</span>
-              ),
+              desc: <span>{formatDateTime(row.doneAt)}</span>,
             },
           ]}
         />
