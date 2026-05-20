@@ -10,10 +10,8 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listContracts } from "@/features/contracts/queries";
 import { updateContractField } from "@/features/contracts/actions";
-import {
-  contractSheetEnum,
-  type ContractRow,
-} from "@/features/contracts/schemas";
+import { contractsRowToListRow } from "./_row-mapper";
+import { contractSheetEnum } from "@/features/contracts/schemas";
 
 const PAGE_SIZE = 30;
 
@@ -165,22 +163,3 @@ export default async function ContractsPage({
   );
 }
 
-function contractsRowToListRow(r: ContractRow): ListRow {
-  return {
-    id: r.id,
-    name: r.name,
-    status: "active",
-    owner: r.operator || "-",
-    contractSheet: r.sheet,
-    numbering: r.numbering,
-    contractStatus: r.status,
-    serviceActive: r.serviceActive,
-    feeAmount: r.feeAmount,
-    contractRaw: r.raw,
-    contractsSheet: r.sheet,
-    contractsCellOperator: r.cellAddress.operator,
-    contractsCellStatus: r.cellAddress.status,
-    contractsCellServiceActive: r.cellAddress.serviceActive,
-    contractsCellFeeAmount: r.cellAddress.feeAmount,
-  };
-}
