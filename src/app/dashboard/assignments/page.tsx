@@ -66,24 +66,29 @@ export default async function AssignmentsPage({
   const sp = await searchParams;
   const tab = sp.tab === "duties" || sp.tab === "pricing" ? sp.tab : "univ";
 
-  const config = resolvePageMeta(slug, meta, 0);
-  const header = (
-    <PageHeader
-      key="assignments-header"
-      pathname={pathname}
-      meta={config.meta}
-      headline={config.headline}
-      description={config.description}
-    />
-  );
+  // 헤더 건수는 탭/필터에 따라 달라지므로 호출 시점에 실제 값을 주입한다.
+  const makeHeader = (count: number) => {
+    const config = resolvePageMeta(slug, meta, count);
+    return (
+      <PageHeader
+        key="assignments-header"
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+        autoRefresh
+      />
+    );
+  };
 
   if (tab === "duties" || tab === "pricing") {
     const sheet = await fetchAssignmentSheet(
       tab === "duties" ? SHEET_NAMES.업무분장 : SHEET_NAMES.가격정책,
     );
+    const sheetRows = sheet ? Math.max(0, sheet.rowsText.length - 1) : 0;
     return (
       <>
-        {header}
+        {makeHeader(sheetRows)}
         <PageTabs active={tab} tabs={TABS} />
         {sheet ? <SheetGrid sheet={sheet} /> : <ErrorBox />}
       </>
@@ -102,7 +107,7 @@ export default async function AssignmentsPage({
   if (!baejung && !daehakwon && !pims && !sungjuk && !sangdam) {
     return (
       <>
-        {header}
+        {makeHeader(0)}
         <PageTabs active="univ" tabs={TABS} />
         <ErrorBox />
       </>
@@ -141,7 +146,7 @@ export default async function AssignmentsPage({
 
   return (
     <>
-      {header}
+      {makeHeader(total)}
       <PageTabs active="univ" tabs={TABS} />
       <ListPattern
         title="대학배정"
