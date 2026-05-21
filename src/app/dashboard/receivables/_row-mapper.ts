@@ -44,6 +44,18 @@ export function isReceivablesDataRow(row: ListRow): boolean {
   return true;
 }
 
+/**
+ * 검색어 매칭 — 표시 컬럼(거래처/내역/운영자/금액/일자)에 term 부분 포함 여부.
+ * searchAll(통합 검색)과 receivables 페이지 ?q 필터가 공유 (동작 일치 보장).
+ * 빈/공백 term → 필터 없음(true).
+ */
+export function matchesReceivablesQuery(row: ListRow, term: string): boolean {
+  const t = term.trim().toLowerCase();
+  if (t === "") return true;
+  const fields = [row.name, row.body, row.owner, row.author, row.meta];
+  return fields.some((f) => (f ?? "").toLowerCase().includes(t));
+}
+
 export function receivablesToListRow(
   sheet: ReceivablesSheet,
   idx: number,

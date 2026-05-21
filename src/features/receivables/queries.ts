@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import { getWorkbookSession } from "@/lib/microsoft/workbook-session";
 
@@ -48,8 +49,12 @@ function detectHeaderIndex(values: unknown[][]): number {
  * - 첫 번째 워크시트 자동 선택 (특정 시트 지정은 후속)
  * - 첫 행은 헤더로 가정
  * - 실패/없음 → null
+ *
+ * React cache로 래핑 — 같은 요청 내 중복 호출(페이지 fetch + 통합 검색 등)을
+ * 단일 Graph 호출로 dedupe.
  */
-export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> {
+export const fetchReceivablesSheet = cache(
+  async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> {
   const driveId = process.env.SHAREPOINT_RECEIVABLES_DRIVE_ID;
   const itemId = process.env.SHAREPOINT_RECEIVABLES_ITEM_ID;
   if (!driveId || !itemId) {
@@ -166,7 +171,7 @@ export async function fetchReceivablesSheet(): Promise<ReceivablesSheet | null> 
     columnCount: headers.length,
     fetchedAt: new Date().toISOString(),
   };
-}
+});
 
 /**
  * 컬럼 0-based 인덱스 → Excel 컬럼 letter (0→A, 25→Z, 26→AA).
