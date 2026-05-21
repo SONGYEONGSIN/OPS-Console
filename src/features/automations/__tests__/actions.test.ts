@@ -8,15 +8,24 @@ vi.mock("../registry", () => ({ getJob: vi.fn() }));
 vi.mock("../queries", () => ({
   getJobLastRunAt: vi.fn(async () => null),
   computeCooldownRemaining: vi.fn(() => 0),
+  getJobEnabled: vi.fn(async () => false),
 }));
 
-import { runAutomationAction } from "../actions";
+const upsertMock = vi.fn(async () => ({ error: null }));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(() => ({
+    from: () => ({ upsert: upsertMock }),
+  })),
+}));
+
+import { runAutomationAction, setAutomationEnabledAction } from "../actions";
 import { getJob } from "../registry";
-import { computeCooldownRemaining } from "../queries";
+import { computeCooldownRemaining, getJobEnabled } from "../queries";
 import { revalidatePath } from "next/cache";
 
 const mockGetJob = getJob as unknown as ReturnType<typeof vi.fn>;
 const mockCooldown = computeCooldownRemaining as unknown as ReturnType<typeof vi.fn>;
+const mockEnabled = getJobEnabled as unknown as ReturnType<typeof vi.fn>;
 
 function fd(jobId: string, force?: string) {
   const f = new FormData();
@@ -78,6 +87,36 @@ describe("runAutomationAction", () => {
     mockCooldown.mockReturnValue(0);
     const r = await runAutomationAction(undefined, fd("insights-collect"));
     expect(run).toHaveBeenCalledOnce();
+    expect(r?.ok).toBe(true);
+  });
+
+  it("자동 실행(enabled) 상태면 수동 실행 거부 + run 미호출", async () => {
+    const run = vi.fn();
+    mockGetJob.mockReturnValue(fakeJob(run));
+    mockEnabled.mockResolvedValue(true);
+    const r = await runAutomationAction(undefined, fd("insights-collect"));
+    expect(r?.ok).toBe(false);
+    expect(run).not.toHaveBeenCalled();
+  });
+});
+
+describe("setAutomationEnabledAction", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("enabled 누락이면 ok:false", async () => {
+    const f = new FormData();
+    f.set("jobId", "insights-collect");
+    const r = await setAutomationEnabledAction(undefined, f);
+    expect(r?.ok).toBe(false);
+  });
+  it("정상 토글이면 upsert 호출 + ok:true", async () => {
+    const f = new FormData();
+    f.set("jobId", "insights-collect");
+    f.set("enabled", "1");
+    mockGetJob.mockReturnValue(
+      fakeJob(async () => ({ ok: true, message: "ok" })),
+    );
+    const r = await setAutomationEnabledAction(undefined, f);
+    expect(upsertMock).toHaveBeenCalled();
     expect(r?.ok).toBe(true);
   });
 });
