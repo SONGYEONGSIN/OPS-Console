@@ -1,7 +1,12 @@
 # 운영 자동화 허브 (automations) — 설계
 
 작성일: 2026-05-21
-브랜치: feat/assignments (또는 신규 feat/automations-hub)
+브랜치: feat/automations-hub
+
+> **v2 개정 (2026-05-21, 같은 날 후속)**: 아래 "## v2 개정" 섹션이 최신 결정이다.
+> 카드 UI → 표준 테이블, "자동 실행" 토글(cron 제어) + automation_settings 테이블 추가,
+> 메뉴 라벨 "자동화" → "자동화 실행", 사이드바 admin-only 명시화.
+> v1 본문은 도메인 코어(types/registry/queries/action/job)의 기반 설명으로 유효하다.
 
 ## 배경 / 문제
 
@@ -105,3 +110,96 @@
 
 - 코드만으로 동작 (마이그레이션 없음). admin은 즉시 사용 가능.
 - 환경변수 `YOUTUBE_API_KEY` 가 서버(Vercel)에 존재해야 함 — cron secret과 동일 키 재사용.
+
+---
+
+## v2 개정 (2026-05-21) — 자동 실행 토글 + 표준 테이블
+
+v1(카드 + 수동 버튼)을 사용자 피드백으로 개정한다. **최신 결정.**
+
+### 변경 요약
+
+1. **메뉴/제목 라벨**: "자동화" → "자동화 실행" (사이드바 `_data.ts` + `page-meta-config.ts` title).
+2. **UI**: 카드 → **프로젝트 표준 목록 테이블** (`<table className="w-full text-sm">` + `thead`/`tbody`, `border-line`/`text-muted` 토큰, services Table.tsx 스타일). 컬럼: 자동화 / 스케줄 / 마지막 실행 / 자동 실행(토글) / 수동 실행(버튼).
+3. **"자동 실행" 토글** (per job, admin): ON이면 cron 자동 실행 + **수동 버튼 비활성**. OFF이면 cron skip + **수동 버튼 활성**(admin만).
+4. **토글이 cron을 실제 제어**: `scripts/insights-fetch.mjs`가 실행 전 `automation_settings`에서 해당 job의 enabled를 읽어 **OFF/없음이면 skip**(exit 0).
+5. **메뉴 admin-only 명시화**: `SbItem`에 `adminOnly?: boolean` 추가, `automations` 항목에 설정. `filterSidebarSections`가 비-admin에게서 숨김 (allowed_menus 무관).
+
+### 저장: automation_settings 테이블 (마이그레이션 신규)
+
+```sql
+-- supabase/migrations/2026MMDD_automation_settings_table.sql
+begin;
+create table if not exists public.automation_settings (
+  job_id text primary key,
+  enabled boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+alter table public.automation_settings enable row level security;
+
+drop policy if exists "automation_settings_select_admin" on public.automation_settings;
+create policy "automation_settings_select_admin"
+  on public.automation_settings for select to authenticated
+  using (public.is_admin());
+
+drop policy if exists "automation_settings_write_admin" on public.automation_settings;
+create policy "automation_settings_write_admin"
+  on public.automation_settings for all to authenticated
+  using (public.is_admin()) with check (public.is_admin());
+
+grant select, insert, update, delete on public.automation_settings to authenticated;
+grant all on public.automation_settings to service_role;
+commit;
+notify pgrst, 'reload schema';
+```
+
+- **기본값 OFF**: row 없으면 enabled=false. 즉 **배포 직후 cron 자동 실행 멈춤** — admin이 토글 ON 해야 재개. (의도된 동작: 수동 우선)
+- 토글 write는 server action이 `createAdminClient()`(service_role)로 upsert. RLS write 정책은 방어용(admin).
+
+### 도메인 변경
+
+- `types.ts`: `AutomationStatus`에 `enabled: boolean` 추가.
+- `schemas.ts`: `setAutomationEnabledInputSchema = { jobId: string.min(1), enabled: boolean }` 추가.
+- `queries.ts`: `getAutomationSettings()` (job_id→enabled Map, 기본 false) 추가. `getAutomationStatuses`가 각 status에 `enabled` 포함.
+- `actions.ts`:
+  - `setAutomationEnabledAction(prev, formData)` — requireAdmin → upsert automation_settings(via admin client) → revalidatePath. 신규.
+  - `runAutomationAction` — **enabled 가드 추가**: 해당 job이 enabled(자동 ON)면 수동 실행 거부 `{ ok:false, message:"자동 실행 중에는 수동 실행할 수 없습니다." }` (쿨다운 검사 이전). OFF일 때만 기존 쿨다운/force 흐름.
+
+### .mjs cron 게이트
+
+`scripts/insights-fetch.mjs`: supabase client 생성 직후
+```js
+const { data: setting } = await supabase
+  .from("automation_settings").select("enabled").eq("job_id", "insights-collect").maybeSingle();
+if (!setting?.enabled) { console.log("insights-collect 자동 실행 비활성 — skip"); process.exit(0); }
+```
+
+### UI 상세 (AutomationHub → 테이블)
+
+- `AutomationTable`(client) — `<table>` + 행마다 `AutomationRow`.
+- 토글 셀: `setAutomationEnabledAction` 폼(useActionState). switch 형태(토큰 색), ON=vermilion, OFF=muted. 클릭 시 반대값 제출.
+- 수동 실행 셀:
+  - `enabled === true` → 버튼 disabled, 라벨 "자동 실행 중".
+  - `enabled === false` & 쿨다운 0 → "지금 실행" (force=0).
+  - `enabled === false` & 쿨다운>0 → 2단계 확인(기존 derived-state 유지, "쿨다운 N분 — 강제 실행" → "quota 소모 — 확인" force=1).
+- 빈 행/결과 메시지 표시는 services Table 스타일 따름.
+
+### 사이드바 admin-only
+
+- `SbItem`에 `adminOnly?: boolean` 추가.
+- `permission.ts` `filterSidebarSections`: `item.adminOnly && operator?.permission !== "admin"` 이면 제외. admin은 통과.
+- `automations` 항목에 `adminOnly: true`.
+
+### v2 테스트 추가/수정
+
+- `schemas.test.ts` — setAutomationEnabledInputSchema 검증 추가.
+- `queries.test.ts` — getAutomationStatuses enabled 매핑(기본 false) — 단, DB 의존이라 순수 부분만. computeCooldownRemaining 기존 유지.
+- `actions.test.ts` — runAutomationAction enabled 가드(자동 ON이면 거부, run 미호출) + setAutomationEnabledAction(검증/admin/ upsert 호출/revalidate) 추가.
+- `AutomationHub.test.tsx` — 테이블 렌더 + enabled ON이면 실행 버튼 disabled + OFF면 활성 + 토글 존재.
+- `permission.test.ts` — filterSidebarSections adminOnly 항목 비-admin 숨김 / admin 노출.
+
+### v2 검증
+
+- lint / typecheck / test 통과.
+- **마이그레이션 수동 적용 필요**: `automation_settings` 테이블 (Supabase SQL editor). 적용 전엔 cron이 항상 skip + 토글/상태 read 실패 가능 → 적용이 롤아웃 전제.
+- dev: admin → /dashboard/automations 테이블 확인 → 토글 ON/OFF → 버튼 활성/비활성 전환 → OFF에서 "지금 실행" → 적재 확인.
