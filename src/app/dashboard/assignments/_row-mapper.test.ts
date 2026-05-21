@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { univRowToListRow, matchesAssignmentQuery } from "./_row-mapper";
+import {
+  univRowToListRow,
+  matchesAssignmentQuery,
+  isMyAssignment,
+} from "./_row-mapper";
 import type { UnivAssignmentRow } from "@/features/assignments/schemas";
 
 const univ: UnivAssignmentRow = {
@@ -28,4 +32,16 @@ describe("matchesAssignmentQuery", () => {
     expect(matchesAssignmentQuery(r, "박형진")).toBe(true);
     expect(matchesAssignmentQuery(r, "없는사람")).toBe(false);
   });
+});
+
+describe("isMyAssignment", () => {
+  const r = univRowToListRow(univ);
+  it("운영자 본인이면 true", () => expect(isMyAssignment(r, "김슬기")).toBe(true));
+  it("개발자 본인이면 true", () => expect(isMyAssignment(r, "박형진")).toBe(true));
+  it("타 서비스 운영자도 true (한효진=PIMS 운영)", () =>
+    expect(isMyAssignment(r, "한효진")).toBe(true));
+  it("미배정 이름이면 false", () => expect(isMyAssignment(r, "정윤나")).toBe(false));
+  it("빈 이름이면 false", () => expect(isMyAssignment(r, "")).toBe(false));
+  it("부분 일치는 false (정확 일치만)", () =>
+    expect(isMyAssignment(r, "김슬")).toBe(false));
 });

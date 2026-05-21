@@ -36,3 +36,13 @@ export function matchesAssignmentQuery(row: ListRow, term: string): boolean {
   }
   return false;
 }
+
+/** '내 배정' 필터 — 어느 서비스든 운영/개발이 본인(myName 정확 일치)인 행 (빈 이름 → false) */
+export function isMyAssignment(row: ListRow, myName: string): boolean {
+  const n = myName.trim();
+  if (n === "") return false;
+  const bs = row.assignment?.byService ?? {};
+  return Object.values(bs).some(
+    (rec) => rec.operator === n || rec.developer === n,
+  );
+}

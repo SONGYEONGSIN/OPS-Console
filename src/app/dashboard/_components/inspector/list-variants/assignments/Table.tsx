@@ -12,8 +12,8 @@ type Props = {
 function cellText(row: ListRow, service: string): string {
   const rec = row.assignment?.byService[service];
   if (!rec || (!rec.operator && !rec.developer)) return "—";
-  const dev = rec.developer ? ` / 개 ${rec.developer}` : "";
-  return `운 ${rec.operator || "—"}${dev}`;
+  if (!rec.developer) return rec.operator || "—";
+  return `${rec.operator || "—"} / ${rec.developer}`;
 }
 
 export function AssignmentsTable({ rows, selectedId, onSelect }: Props) {

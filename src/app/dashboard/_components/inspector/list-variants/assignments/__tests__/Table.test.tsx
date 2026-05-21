@@ -30,21 +30,23 @@ describe("AssignmentsTable", () => {
     expect(screen.getByText("상담앱")).toBeInTheDocument();
   });
 
-  it("operator+developer 있는 셀 — '운 {op} / 개 {dev}' 형식", () => {
+  it("operator+developer 있는 셀 — '{op} / {dev}' 형식 (접두어 없음)", () => {
     render(
       <AssignmentsTable rows={[makeRow()]} selectedId={null} onSelect={vi.fn()} />,
     );
     // 원서접수: operator=홍길동, developer=이순신
-    expect(screen.getByText("운 홍길동 / 개 이순신")).toBeInTheDocument();
+    expect(screen.getByText("홍길동 / 이순신")).toBeInTheDocument();
+    // '운'/'개' 접두어는 제거됨
+    expect(screen.queryByText(/운 홍길동/)).toBeNull();
   });
 
-  it("operator만 있는 셀(developer 빈 문자열) — '개 ...' 미노출", () => {
+  it("operator만 있는 셀(developer 빈 문자열) — 운영자 이름만 표시", () => {
     render(
       <AssignmentsTable rows={[makeRow()]} selectedId={null} onSelect={vi.fn()} />,
     );
-    // PIMS: operator=강감찬, developer=""
-    expect(screen.getByText("운 강감찬")).toBeInTheDocument();
-    expect(screen.queryByText(/개 강감찬/)).toBeNull();
+    // PIMS: operator=강감찬, developer="" → 이름만, '운' 접두어 없음
+    expect(screen.getByText("강감찬")).toBeInTheDocument();
+    expect(screen.queryByText(/운 강감찬/)).toBeNull();
   });
 
   it("배정 없는 서비스 셀 — '—' 표시", () => {
