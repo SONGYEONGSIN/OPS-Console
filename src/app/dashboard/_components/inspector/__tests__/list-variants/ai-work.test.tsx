@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { AiWorkView } from "../../list-variants/ai-work/View";
 import { AiWorkForm } from "../../list-variants/ai-work/EditForm";
+import { AiWorkTable } from "../../list-variants/ai-work/Table";
 
 const baseRow: ListRow = {
   id: "aiw-001",
@@ -133,5 +134,67 @@ describe("AiWorkForm", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+});
+
+describe("AiWorkTable", () => {
+  it("링크 컬럼 헤더 — '링크' 텍스트 존재", () => {
+    render(
+      <AiWorkTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
+    );
+    expect(screen.getByText("링크")).toBeInTheDocument();
+  });
+
+  it("outputUrl 있을 때 — '바로가기' 링크 렌더, href + target=_blank", () => {
+    render(
+      <AiWorkTable
+        rows={[{ ...baseRow, outputUrl: "https://notion.so/abc" }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "바로가기" });
+    expect(link).toBeInTheDocument();
+    expect(link.getAttribute("href")).toBe("https://notion.so/abc");
+    expect(link.getAttribute("target")).toBe("_blank");
+  });
+
+  it("outputUrl null — '바로가기' 링크 없음", () => {
+    render(
+      <AiWorkTable
+        rows={[{ ...baseRow, outputUrl: null }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "바로가기" }),
+    ).toBeNull();
+  });
+
+  it("outputUrl undefined — '바로가기' 링크 없음", () => {
+    render(
+      <AiWorkTable
+        rows={[{ ...baseRow, outputUrl: undefined }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "바로가기" }),
+    ).toBeNull();
+  });
+
+  it("outputUrl javascript: — '바로가기' 링크 없음 (http(s)만 허용)", () => {
+    render(
+      <AiWorkTable
+        rows={[{ ...baseRow, outputUrl: "javascript:alert(1)" }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "바로가기" }),
+    ).toBeNull();
   });
 });
