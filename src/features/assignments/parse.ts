@@ -132,12 +132,18 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
     const university = (row[uniCol] ?? "").trim();
     if (university === "") continue;
     const operator = (row[fullCol] ?? "").trim();
+    const hwan = hwanCol >= 0 ? (row[hwanCol] ?? "").trim() : "";
     const detail: AssignmentDetail[] = [];
-    const hwan = (row[hwanCol] ?? "").trim();
-    if (hwanCol >= 0 && hwan) {
+    if (hwan) {
       detail.push({ label: "운영자 환/충", value: hwan });
     }
-    out.push({ university, service: "PIMS", operator, developer: "", detail });
+    let subtypes: { label: string; operator: string; developer: string }[] | undefined;
+    if (hwan) {
+      subtypes = [];
+      if (operator) subtypes.push({ label: "FULL", operator, developer: "" });
+      subtypes.push({ label: "환/충", operator: hwan, developer: "" });
+    }
+    out.push({ university, service: "PIMS", operator, developer: "", detail, subtypes });
   }
   return out;
 }

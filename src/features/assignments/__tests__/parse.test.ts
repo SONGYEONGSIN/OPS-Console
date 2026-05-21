@@ -130,6 +130,42 @@ describe("parsePims", () => {
     });
     expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe("기존충원");
   });
+
+  it("환/충만 있고 FULL 없는 행 → subtypes=[{환/충}], operator='', detail에 환/충 포함", () => {
+    // 부산대학교 케이스: FULL(G) 비어있고 환/충(I)="박시현"
+    const s = simpleSheet(
+      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
+      [["1", "4년제", "부산", "부산대학교", "Full", "변경 X", "", "이수진", "박시현"]],
+    );
+    const recs = parsePims(s);
+    expect(recs[0].operator).toBe("");
+    expect(recs[0].subtypes).toEqual([
+      { label: "환/충", operator: "박시현", developer: "" },
+    ]);
+    expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe("박시현");
+  });
+
+  it("FULL + 환/충 모두 있는 행 → subtypes=[{FULL},{환/충}]", () => {
+    const s = simpleSheet(
+      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
+      [["1", "4년제", "서울", "서울대학교", "Full", "변경 X", "김운영", "박접수", "이환충"]],
+    );
+    const recs = parsePims(s);
+    expect(recs[0].subtypes).toEqual([
+      { label: "FULL", operator: "김운영", developer: "" },
+      { label: "환/충", operator: "이환충", developer: "" },
+    ]);
+  });
+
+  it("FULL만 있고 환/충 없는 행 → subtypes 미정의", () => {
+    const s = simpleSheet(
+      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
+      [["1", "4년제", "서울", "연세대학교", "Full", "변경 X", "기자의", "임종우", ""]],
+    );
+    const recs = parsePims(s);
+    expect(recs[0].subtypes).toBeUndefined();
+    expect(recs[0].operator).toBe("기자의");
+  });
 });
 
 describe("parseBaejungList subtypes", () => {
