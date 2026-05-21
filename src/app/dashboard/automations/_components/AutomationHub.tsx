@@ -133,7 +133,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex w-fit items-center border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex w-fit items-center border border-vermilion bg-vermilion cursor-pointer px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "실행 중…" : "지금 실행"}
           </button>
@@ -141,7 +141,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
           <button
             type="button"
             onClick={() => setArmedAgainst({ state })}
-            className="inline-flex w-fit items-center border border-vermilion bg-transparent px-3 py-1 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
+            className="inline-flex w-fit items-center border border-vermilion bg-transparent cursor-pointer px-3 py-1 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
           >
             쿨다운 {status.cooldownRemainingMinutes}분 — 강제 실행
           </button>
@@ -151,7 +151,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
             name="force"
             value="1"
             disabled={pending}
-            className="inline-flex w-fit items-center border border-vermilion-deep bg-vermilion-deep px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex w-fit items-center border border-vermilion-deep bg-vermilion-deep cursor-pointer px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "실행 중…" : "quota 소모 — 확인"}
           </button>
