@@ -72,16 +72,21 @@ function EnabledToggle({ status }: { status: AutomationStatus }) {
       <input type="hidden" name="enabled" value={status.enabled ? "0" : "1"} />
       <button
         type="submit"
+        role="switch"
+        aria-checked={status.enabled}
+        aria-label={`자동 실행 ${status.enabled ? "켜짐" : "꺼짐"}`}
         disabled={pending}
-        aria-pressed={status.enabled}
-        className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
-          status.enabled
-            ? "bg-vermilion text-cream"
-            : "border border-line text-muted"
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+          status.enabled ? "bg-vermilion" : "bg-faint"
         }`}
       >
-        자동 실행 {status.enabled ? "켜짐" : "꺼짐"}
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-cream shadow-sm transition-transform ${
+            status.enabled ? "translate-x-4" : "translate-x-0.5"
+          }`}
+        />
       </button>
+      <span className="text-xs text-muted">{status.enabled ? "켜짐" : "꺼짐"}</span>
       {state && !state.ok ? (
         <span className="text-xs text-vermilion">{state.message}</span>
       ) : null}
@@ -112,7 +117,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
           <button
             type="submit"
             disabled={pending}
-            className="rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-cream disabled:opacity-50"
+            className="inline-flex w-fit items-center rounded-md border border-vermilion bg-vermilion px-3 py-1.5 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "실행 중…" : "지금 실행"}
           </button>
@@ -120,7 +125,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
           <button
             type="button"
             onClick={() => setArmedAgainst({ state })}
-            className="rounded-md border border-vermilion px-3 py-1.5 text-xs font-medium text-vermilion"
+            className="inline-flex w-fit items-center rounded-md border border-vermilion bg-transparent px-3 py-1.5 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
           >
             쿨다운 {status.cooldownRemainingMinutes}분 — 강제 실행
           </button>
@@ -130,7 +135,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
             name="force"
             value="1"
             disabled={pending}
-            className="rounded-md bg-vermilion px-3 py-1.5 text-xs font-medium text-cream disabled:opacity-50"
+            className="inline-flex w-fit items-center rounded-md border border-vermilion-deep bg-vermilion-deep px-3 py-1.5 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "실행 중…" : "quota 소모 — 확인"}
           </button>

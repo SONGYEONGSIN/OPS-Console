@@ -31,9 +31,16 @@ describe("AutomationHub", () => {
     expect(screen.getByText(/자동 실행 중/)).toBeInTheDocument();
   });
 
-  it("자동 실행 토글 버튼이 있다", () => {
+  it("자동 실행 토글 스위치가 있다", () => {
     render(<AutomationHub statuses={[base]} />);
-    expect(screen.getByRole("button", { name: /자동 실행/ })).toBeInTheDocument();
+    const sw = screen.getByRole("switch", { name: /자동 실행/ });
+    expect(sw).toBeInTheDocument();
+    expect(sw).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("enabled=true면 스위치 aria-checked가 true", () => {
+    render(<AutomationHub statuses={[{ ...base, enabled: true }]} />);
+    expect(screen.getByRole("switch", { name: /자동 실행/ })).toHaveAttribute("aria-checked", "true");
   });
 
   it("쿨다운 중(enabled=false)이면 잔여 분을 표시한다", () => {
