@@ -23,7 +23,7 @@ describe("AssignmentsTable", () => {
       <AssignmentsTable rows={[makeRow()]} selectedId={null} onSelect={vi.fn()} />,
     );
     expect(screen.getByText("대학")).toBeInTheDocument();
-    expect(screen.getByText("원서접수 > 학부")).toBeInTheDocument();
+    expect(screen.getByText("학부")).toBeInTheDocument();
     expect(screen.getByText("대학원")).toBeInTheDocument();
     expect(screen.getByText("PIMS")).toBeInTheDocument();
     expect(screen.getByText("성적산출")).toBeInTheDocument();

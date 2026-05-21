@@ -10,7 +10,7 @@ type Props = {
 };
 
 /** 원서접수 컬럼 헤더 레이블 오버라이드 */
-const SERVICE_LABEL: Record<string, string> = { 원서접수: "원서접수 > 학부" };
+const SERVICE_LABEL: Record<string, string> = { 원서접수: "학부" };
 
 type Rec = {
   operator: string;
