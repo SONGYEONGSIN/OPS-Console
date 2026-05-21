@@ -22,7 +22,7 @@ export function SheetGrid({ sheet }: { sheet: AssignmentSheet }) {
                     isBanner
                       ? "bg-washi-raised"
                       : isSectionStart
-                        ? "border-t-2 border-ink/15"
+                        ? "border-t-2 border-ink/15 bg-washi-raised"
                         : ""
                   }`}
                 >
