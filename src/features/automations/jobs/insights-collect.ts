@@ -142,7 +142,8 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
       const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${batch.join(",")}&key=${apiKey}`;
       const res = await fetch(url);
       if (!res.ok) {
-        errors.push(`videos.list HTTP ${res.status}`);
+        const body = await res.text();
+        errors.push(`videos.list HTTP ${res.status}: ${body.slice(0, 200)}`);
         continue;
       }
       const json = (await res.json()) as YtVideosResponse;
@@ -185,11 +186,14 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
   const cleanupCutoff = new Date(
     Date.now() - CLEANUP_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString();
-  const { data: deleted } = await supabase
+  const { data: deleted, error: cleanupError } = await supabase
     .from("insight_videos")
     .delete()
     .lt("collected_at", cleanupCutoff)
     .select("id");
+  if (cleanupError) {
+    errors.push(`cleanup 실패: ${cleanupError.message}`);
+  }
 
   return {
     ok: true,
