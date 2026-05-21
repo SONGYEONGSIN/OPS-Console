@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { ListRow } from "../../../../patterns/ListPattern";
 import { AssignmentsTable } from "../Table";
 
@@ -56,16 +56,6 @@ describe("AssignmentsTable", () => {
     // 대학원, 성적산출, 상담앱은 byService에 없으므로 '—' 3개
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThanOrEqual(3);
-  });
-
-  it("row 클릭 → onSelect(row) 호출", () => {
-    const onSelect = vi.fn();
-    const row = makeRow();
-    render(
-      <AssignmentsTable rows={[row]} selectedId={null} onSelect={onSelect} />,
-    );
-    fireEvent.click(screen.getByText("가천대학교"));
-    expect(onSelect).toHaveBeenCalledWith(row);
   });
 
   it("대학명(name) 렌더", () => {

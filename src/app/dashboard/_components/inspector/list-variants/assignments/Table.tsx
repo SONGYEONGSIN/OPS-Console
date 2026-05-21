@@ -44,7 +44,8 @@ function AssignmentCell({ rec }: { rec?: Rec }) {
   return <>{pairText(rec.operator, rec.developer)}</>;
 }
 
-export function AssignmentsTable({ rows, selectedId, onSelect }: Props) {
+// 대학배정 그리드는 읽기 전용 — 행 클릭(인스펙터) 비활성. selectedId/onSelect 미사용.
+export function AssignmentsTable({ rows }: Props) {
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
@@ -57,13 +58,7 @@ export function AssignmentsTable({ rows, selectedId, onSelect }: Props) {
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr
-            key={row.id}
-            onClick={() => onSelect(row)}
-            className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-              selectedId === row.id ? "bg-washi-raised" : ""
-            }`}
-          >
+          <tr key={row.id} className="border-b border-line-soft">
             <td className="py-2 pr-3 font-medium text-ink">{row.name}</td>
             {SERVICE_KINDS.map((s) => (
               <td key={s} className="py-2 pr-3 text-ink">
