@@ -15,14 +15,15 @@ export function SheetGrid({ sheet }: { sheet: AssignmentSheet }) {
             {sheet.rowsText.map((row, ri) => {
               const isBanner = ri === 0;
               const isSectionStart = ri > 0 && (row[0] ?? "").trim() !== "";
+              const dark = isBanner || isSectionStart;
               return (
                 <tr
                   key={ri}
                   className={`border-b border-line-soft ${
                     isBanner
-                      ? "bg-washi-raised"
+                      ? "bg-ink"
                       : isSectionStart
-                        ? "border-t-2 border-ink/15 bg-washi-raised"
+                        ? "border-t-2 border-ink bg-ink"
                         : ""
                   }`}
                 >
@@ -33,8 +34,8 @@ export function SheetGrid({ sheet }: { sheet: AssignmentSheet }) {
                       <td
                         key={ci}
                         className={`border-r border-line-soft px-3 py-2 align-top whitespace-pre-wrap ${
-                          emphasize ? "font-semibold text-ink" : "text-ink"
-                        }`}
+                          dark ? "text-cream" : "text-ink"
+                        } ${emphasize ? "font-semibold" : ""}`}
                       >
                         {v}
                       </td>
