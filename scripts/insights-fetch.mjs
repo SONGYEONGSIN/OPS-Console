@@ -138,40 +138,49 @@ if (rows.length === 0) {
 }
 
 // --- videos.list로 full description + 조회수 보강 ---
-// part=snippet,statistics — id 콤마 구분 최대 50개, 1 call = 1 unit.
-try {
-  const ids = rows.map((r) => r.video_id).join(",");
+// part=snippet,statistics — id 필터는 호출당 최대 50개 → 50개씩 batch로 분할.
+// (50 초과를 한 번에 보내면 400 "invalid filter parameter")
+const descMap = new Map();
+const viewMap = new Map();
+const allIds = rows.map((r) => r.video_id);
+for (let i = 0; i < allIds.length; i += 50) {
+  const batchNo = i / 50 + 1;
+  const ids = allIds.slice(i, i + 50).join(",");
   const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids}&key=${YOUTUBE_API_KEY}`;
-  const res = await fetch(url);
-  if (res.ok) {
-    const json = await res.json();
-    const descMap = new Map();
-    const viewMap = new Map();
-    for (const item of json.items ?? []) {
-      const full = (item.snippet?.description ?? "").slice(0, 600) || null;
-      if (full) descMap.set(item.id, full);
-      const vc = Number(item.statistics?.viewCount);
-      if (Number.isFinite(vc) && vc >= 0) viewMap.set(item.id, vc);
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      for (const item of json.items ?? []) {
+        const full = (item.snippet?.description ?? "").slice(0, 600) || null;
+        if (full) descMap.set(item.id, full);
+        const vc = Number(item.statistics?.viewCount);
+        if (Number.isFinite(vc) && vc >= 0) viewMap.set(item.id, vc);
+      }
+      quotaUsed += 1;
+    } else {
+      const body = await res.text();
+      console.error(
+        `videos.list HTTP ${res.status} (batch ${batchNo}): ${body.slice(0, 200)} — keep snippet description`,
+      );
     }
-    for (const r of rows) {
-      const full = descMap.get(r.video_id);
-      if (full) r.description = full;
-      const vc = viewMap.get(r.video_id);
-      if (typeof vc === "number") r.view_count = vc;
-    }
-    quotaUsed += 1;
-    console.log(
-      `videos.list → ${descMap.size} full descriptions, ${viewMap.size} view counts (quota used: ~${quotaUsed} unit)`,
-    );
-  } else {
-    const body = await res.text();
+  } catch (e) {
     console.error(
-      `videos.list HTTP ${res.status}: ${body.slice(0, 200)} — keep snippet description`,
+      `videos.list fetch failed (batch ${batchNo}):`,
+      e.message,
+      "— keep snippet description",
     );
   }
-} catch (e) {
-  console.error("videos.list fetch failed:", e.message, "— keep snippet description");
 }
+for (const r of rows) {
+  const full = descMap.get(r.video_id);
+  if (full) r.description = full;
+  const vc = viewMap.get(r.video_id);
+  if (typeof vc === "number") r.view_count = vc;
+}
+console.log(
+  `videos.list → ${descMap.size} full descriptions, ${viewMap.size} view counts (quota used: ~${quotaUsed} unit)`,
+);
 
 // --- 조회수 임계값 컷오프 (광고·시도 영상 제외) ---
 // view_count null인 row는 그대로 통과 (videos.list 실패 시 fallback)
