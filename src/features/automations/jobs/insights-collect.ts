@@ -165,11 +165,15 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
     view_count: viewMap.get(r.video_id) ?? r.view_count,
   }));
 
+  const errorSuffix = () => (errors.length ? ` (${errors.length}건 오류)` : "");
+
   const topN = rankTopN(filterPopular(enriched, MIN_VIEW_COUNT), MAX_UPSERT_PER_RUN);
+  // 주의: 적재 0건이면 DB write가 없어 collected_at이 갱신되지 않는다.
+  // 쿨다운은 max(collected_at) 기반이므로 이 경로에서는 쿨다운이 리셋되지 않는다 (의도된 트레이드오프).
   if (topN.length === 0) {
     return {
       ok: true,
-      message: "임계값을 넘는 신규 영상이 없습니다.",
+      message: `임계값을 넘는 신규 영상이 없습니다.${errorSuffix()}`,
       details: { collected: rows.length, upserted: 0, errors: errors.length },
     };
   }
@@ -197,7 +201,7 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
 
   return {
     ok: true,
-    message: `${data?.length ?? 0}건 적재, ${deleted?.length ?? 0}건 정리`,
+    message: `${data?.length ?? 0}건 적재, ${deleted?.length ?? 0}건 정리${errorSuffix()}`,
     details: {
       upserted: data?.length ?? 0,
       cleaned: deleted?.length ?? 0,
