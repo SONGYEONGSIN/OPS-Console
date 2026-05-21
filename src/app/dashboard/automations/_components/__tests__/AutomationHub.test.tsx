@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { AutomationHub } from "../AutomationHub";
 import type { AutomationStatus } from "@/features/automations/types";
 
@@ -28,5 +28,13 @@ describe("AutomationHub", () => {
   it("쿨다운 진행 중이면 잔여 분을 표시한다", () => {
     render(<AutomationHub statuses={[{ ...base, cooldownRemainingMinutes: 31 }]} />);
     expect(screen.getByText(/31분/)).toBeInTheDocument();
+  });
+
+  it("쿨다운 중 '강제 실행'을 누르면 'quota 소모 — 확인' 버튼으로 전환된다", () => {
+    render(<AutomationHub statuses={[{ ...base, cooldownRemainingMinutes: 31 }]} />);
+    fireEvent.click(screen.getByRole("button", { name: /강제 실행/ }));
+    expect(
+      screen.getByRole("button", { name: /quota 소모 — 확인/ }),
+    ).toBeInTheDocument();
   });
 });

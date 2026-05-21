@@ -22,7 +22,10 @@ function AutomationRow({ status }: { status: AutomationStatus }) {
     runAutomationAction,
     undefined,
   );
-  const [confirming, setConfirming] = useState(false);
+  // '강제 실행'을 누른 시점의 action state를 기억한다. 액션이 끝나면 useActionState가
+  // 새 state 객체를 돌려주므로 armedAgainst.state !== state 가 되어 확인 단계가 자동 해제된다.
+  const [armedAgainst, setArmedAgainst] = useState<{ state: RunActionState } | null>(null);
+  const confirming = armedAgainst !== null && armedAgainst.state === state;
   const inCooldown = status.cooldownRemainingMinutes > 0;
 
   return (
@@ -52,7 +55,7 @@ function AutomationRow({ status }: { status: AutomationStatus }) {
           ) : !confirming ? (
             <button
               type="button"
-              onClick={() => setConfirming(true)}
+              onClick={() => setArmedAgainst({ state })}
               className="rounded-md border border-vermilion px-4 py-2 text-sm font-medium text-vermilion"
             >
               쿨다운 {status.cooldownRemainingMinutes}분 — 강제 실행
