@@ -9,8 +9,8 @@ export function SheetGrid({ sheet }: { sheet: AssignmentSheet }) {
   const cols = sheet.columnCount;
   return (
     <section className="p-7">
-      <div className="w-fit max-w-full overflow-x-auto border border-line bg-cream [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
-        <table className="border-collapse text-sm">
+      <div className="w-full overflow-x-auto border border-line bg-cream [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
+        <table className="w-full border-collapse text-sm">
           <tbody>
             {sheet.rowsText.map((row, ri) => {
               const isBanner = ri === 0;
