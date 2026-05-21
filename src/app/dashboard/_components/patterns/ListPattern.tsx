@@ -362,6 +362,8 @@ type Props = {
   onSelectRow?: (row: ListRow) => void;
   /** 인스펙터 open/close 알림 — 부모가 좌측 콘텐츠를 drawer-padding 조정에 활용. */
   onInspectorChange?: (open: boolean) => void;
+  /** 실데이터 연동 페이지 — "Demo · 실제 데이터 미연결" 안내문을 숨긴다. */
+  liveData?: boolean;
   /** cohort variant — 초대 메일 발송 (admin only). InspectorListBody로 전달. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
@@ -436,6 +438,7 @@ export function ListPattern({
   extraActions,
   onSelectRow,
   onInspectorChange,
+  liveData = false,
   onInvite,
   receivablesMailDryRun = true,
   currentUserName,
@@ -659,7 +662,7 @@ export function ListPattern({
 
           {footer}
 
-          {!onPersist && (
+          {!onPersist && !liveData && (
             <p className="mt-3 text-xs text-muted">Demo · 실제 데이터 미연결</p>
           )}
         </section>

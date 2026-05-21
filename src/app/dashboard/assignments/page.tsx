@@ -153,6 +153,7 @@ export default async function AssignmentsPage({
         data={{ rows: paged }}
         variant="assignments"
         readOnly
+        liveData
         controlsRow={<AssignmentControls key="assignments-controls" />}
         inlineFilters={
           <ScopeChips key="assignments-scope" total={total} mineLabel="내 배정" />
