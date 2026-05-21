@@ -31,6 +31,27 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !YOUTUBE_API_KEY) {
   process.exit(1);
 }
 
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
+// 자동 실행 토글 확인 — automation_settings.enabled OFF/없음이면 skip (기본 false). YouTube quota 보호.
+{
+  const { data: setting, error: settingError } = await supabase
+    .from("automation_settings")
+    .select("enabled")
+    .eq("job_id", "insights-collect")
+    .maybeSingle();
+  if (settingError) {
+    console.error("automation_settings 조회 실패:", settingError.message);
+    process.exit(1);
+  }
+  if (!setting?.enabled) {
+    console.log("insights-collect 자동 실행 비활성(automation_settings) — skip");
+    process.exit(0);
+  }
+}
+
 // --- 키워드 (schemas.ts와 동일하게 유지 — node에서 ts import 회피) ---
 const SEARCH_QUERIES = [
   "바이브코딩",
@@ -177,10 +198,6 @@ if (topN.length === 0) {
   if (errors.length > 0) process.exit(1);
   process.exit(0);
 }
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 const { data, error } = await supabase
   .from("insight_videos")
