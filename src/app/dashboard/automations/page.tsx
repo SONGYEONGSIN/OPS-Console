@@ -33,9 +33,16 @@ export default async function AutomationsPage() {
   return (
     <>
       {header}
-      <div className="p-5 lg:p-7">
+      <section className="p-7">
+        <header className="mb-4 flex items-baseline gap-2">
+          <h2 className="text-xl font-bold text-ink">자동화 실행</h2>
+          <span className="text-muted" aria-hidden>
+            ·
+          </span>
+          <span className="text-sm text-vermilion">{statuses.length}건</span>
+        </header>
         <AutomationHub statuses={statuses} />
-      </div>
+      </section>
     </>
   );
 }

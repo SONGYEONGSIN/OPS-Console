@@ -31,16 +31,21 @@ describe("AutomationHub", () => {
     expect(screen.getByText(/자동 실행 중/)).toBeInTheDocument();
   });
 
-  it("자동 실행 토글 스위치가 있다", () => {
+  it("자동 실행 ON/OFF 분절 토글이 있다", () => {
     render(<AutomationHub statuses={[base]} />);
-    const sw = screen.getByRole("switch", { name: /자동 실행/ });
-    expect(sw).toBeInTheDocument();
-    expect(sw).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("button", { name: "ON" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OFF" })).toBeInTheDocument();
   });
 
-  it("enabled=true면 스위치 aria-checked가 true", () => {
+  it("enabled=false면 OFF 세그먼트가 활성(aria-pressed)", () => {
+    render(<AutomationHub statuses={[base]} />);
+    expect(screen.getByRole("button", { name: "OFF" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "ON" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("enabled=true면 ON 세그먼트가 활성(aria-pressed)", () => {
     render(<AutomationHub statuses={[{ ...base, enabled: true }]} />);
-    expect(screen.getByRole("switch", { name: /자동 실행/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("button", { name: "ON" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("쿨다운 중(enabled=false)이면 잔여 분을 표시한다", () => {

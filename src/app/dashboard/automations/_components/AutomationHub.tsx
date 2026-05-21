@@ -69,24 +69,40 @@ function EnabledToggle({ status }: { status: AutomationStatus }) {
   return (
     <form action={formAction} className="flex items-center gap-2">
       <input type="hidden" name="jobId" value={status.id} />
-      <input type="hidden" name="enabled" value={status.enabled ? "0" : "1"} />
-      <button
-        type="submit"
-        role="switch"
-        aria-checked={status.enabled}
-        aria-label={`자동 실행 ${status.enabled ? "켜짐" : "꺼짐"}`}
-        disabled={pending}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
-          status.enabled ? "bg-vermilion" : "bg-faint"
-        }`}
+      <div
+        role="group"
+        aria-label="자동 실행 토글"
+        className="flex items-center border border-line"
       >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-cream shadow-sm transition-transform ${
-            status.enabled ? "translate-x-4" : "translate-x-0.5"
+        <button
+          type="submit"
+          name="enabled"
+          value="1"
+          aria-pressed={status.enabled}
+          disabled={pending || status.enabled}
+          className={`cursor-pointer px-3 py-1 text-xs transition-colors disabled:cursor-default ${
+            status.enabled
+              ? "bg-ink text-cream"
+              : "bg-transparent text-ink hover:text-vermilion"
           }`}
-        />
-      </button>
-      <span className="text-xs text-muted">{status.enabled ? "켜짐" : "꺼짐"}</span>
+        >
+          ON
+        </button>
+        <button
+          type="submit"
+          name="enabled"
+          value="0"
+          aria-pressed={!status.enabled}
+          disabled={pending || !status.enabled}
+          className={`cursor-pointer border-l border-line px-3 py-1 text-xs transition-colors disabled:cursor-default ${
+            !status.enabled
+              ? "bg-ink text-cream"
+              : "bg-transparent text-ink hover:text-vermilion"
+          }`}
+        >
+          OFF
+        </button>
+      </div>
       {state && !state.ok ? (
         <span className="text-xs text-vermilion">{state.message}</span>
       ) : null}
@@ -117,7 +133,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex w-fit items-center rounded-md border border-vermilion bg-vermilion px-3 py-1.5 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex w-fit items-center border border-vermilion bg-vermilion px-3 py-1.5 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "실행 중…" : "지금 실행"}
           </button>
@@ -125,7 +141,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
           <button
             type="button"
             onClick={() => setArmedAgainst({ state })}
-            className="inline-flex w-fit items-center rounded-md border border-vermilion bg-transparent px-3 py-1.5 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
+            className="inline-flex w-fit items-center border border-vermilion bg-transparent px-3 py-1.5 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
           >
             쿨다운 {status.cooldownRemainingMinutes}분 — 강제 실행
           </button>
@@ -135,7 +151,7 @@ function RunControl({ status }: { status: AutomationStatus }) {
             name="force"
             value="1"
             disabled={pending}
-            className="inline-flex w-fit items-center rounded-md border border-vermilion-deep bg-vermilion-deep px-3 py-1.5 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex w-fit items-center border border-vermilion-deep bg-vermilion-deep px-3 py-1.5 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "실행 중…" : "quota 소모 — 확인"}
           </button>
