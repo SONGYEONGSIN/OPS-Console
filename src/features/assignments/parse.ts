@@ -55,6 +55,12 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const opSusiCol = repColOf("운영");
   const devSusiCol = repColOf("개발");
 
+  const op2027Block = blockCols.find((b) => b.year === "2027" && b.role === "운영");
+  const dev2027Block = blockCols.find((b) => b.year === "2027" && b.role === "개발");
+  const dev2027ColByLabel = new Map(
+    (dev2027Block?.subtypes ?? []).map((st) => [st.label, st.col]),
+  );
+
   const out: AssignmentRecord[] = [];
   for (let i = 2; i < rows.length; i++) {
     const row = rows[i];
@@ -70,7 +76,16 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     }
     const operator = opSusiCol >= 0 ? (row[opSusiCol] ?? "").trim() : "";
     const developer = devSusiCol >= 0 ? (row[devSusiCol] ?? "").trim() : "";
-    out.push({ university, service: "원서접수", operator, developer, detail });
+
+    const subtypes: { label: string; operator: string; developer: string }[] = [];
+    for (const st of op2027Block?.subtypes ?? []) {
+      const op = (row[st.col] ?? "").trim();
+      const devCol = dev2027ColByLabel.get(st.label);
+      const dev = devCol != null ? (row[devCol] ?? "").trim() : "";
+      if (op || dev) subtypes.push({ label: st.label, operator: op, developer: dev });
+    }
+
+    out.push({ university, service: "원서접수", operator, developer, detail, subtypes });
   }
   return out;
 }

@@ -24,6 +24,8 @@ export type AssignmentRecord = {
   developer: string;
   /** 인스펙터용 상세 항목 (sub-type/연도/보조 컬럼) */
   detail: AssignmentDetail[];
+  /** 원서접수(학부) 2027 하위유형별 운영/개발 (데이터 있는 것만, 시트 컬럼 순서). 그리드 셀 표시용. */
+  subtypes?: { label: string; operator: string; developer: string }[];
 };
 
 /** 인스펙터에 한 줄로 표시할 상세 (예: "2027 수시 운영", "기자의") */

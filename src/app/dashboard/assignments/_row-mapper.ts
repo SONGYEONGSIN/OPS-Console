@@ -9,6 +9,7 @@ export function univRowToListRow(u: UnivAssignmentRow): ListRow {
       operator: rec.operator,
       developer: rec.developer,
       detail: rec.detail,
+      subtypes: rec.subtypes,
     };
   }
   return {
@@ -33,6 +34,11 @@ export function matchesAssignmentQuery(row: ListRow, term: string): boolean {
     ) {
       return true;
     }
+    if (rec.subtypes?.some(
+      (s) => s.operator.toLowerCase().includes(t) || s.developer.toLowerCase().includes(t),
+    )) {
+      return true;
+    }
   }
   return false;
 }
@@ -43,6 +49,9 @@ export function isMyAssignment(row: ListRow, myName: string): boolean {
   if (n === "") return false;
   const bs = row.assignment?.byService ?? {};
   return Object.values(bs).some(
-    (rec) => rec.operator === n || rec.developer === n,
+    (rec) =>
+      rec.operator === n ||
+      rec.developer === n ||
+      rec.subtypes?.some((s) => s.operator === n || s.developer === n),
   );
 }

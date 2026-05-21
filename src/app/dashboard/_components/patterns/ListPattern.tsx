@@ -299,7 +299,7 @@ export type ListRow = {
   assignment?: {
     byService: Record<
       string,
-      { operator: string; developer: string; detail: { label: string; value: string }[] }
+      { operator: string; developer: string; detail: { label: string; value: string }[]; subtypes?: { label: string; operator: string; developer: string }[] }
     >;
   };
 };

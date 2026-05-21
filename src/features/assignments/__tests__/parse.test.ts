@@ -132,6 +132,94 @@ describe("parsePims", () => {
   });
 });
 
+describe("parseBaejungList subtypes", () => {
+  // 시트 픽스처: 2027 운영(M=12) 수시+정시 / 2027 개발(S=18) 수시+정시 / 2026 운영(Y=24) 수시
+  const subtypeSheet: AssignmentSheet = {
+    worksheetName: "02. 배정리스트",
+    rowsText: [
+      // r0: 블록 헤더
+      mergeRows(
+        cell(3, "대학명"),
+        cell(12, "2027학년도 운영자"),
+        cell(18, "2027학년도 개발자"),
+        cell(24, "2026학년도 운영자"),
+      ),
+      // r1: sub-type 라벨 (재외/수시/정시/편입/외국인/백업 순)
+      mergeRows(
+        cell(12, "재외"), cell(13, "수시"), cell(14, "정시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
+        cell(18, "재외"), cell(19, "수시"), cell(20, "정시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
+        cell(24, "재외"), cell(25, "수시"), cell(26, "정시"), cell(27, "편입"), cell(28, "외국인"), cell(29, "백업"),
+      ),
+      // r2: 한국대학교 데이터 — 2027 수시 운영(13)="A운영", 2027 정시 운영(14)="B운영",
+      //   2027 수시 개발(19)="A개발", 2027 정시 개발(20)="B개발", 2026 수시 운영(25)="구운영"
+      //   재외(12)는 빈 문자열 → subtypes에 포함 안 됨
+      mergeRows(
+        cell(3, "한국대학교"),
+        cell(13, "A운영"), cell(14, "B운영"),
+        cell(19, "A개발"), cell(20, "B개발"),
+        cell(25, "구운영"),
+      ),
+    ],
+    rowCount: 3,
+    columnCount: 36,
+  };
+
+  it("2027 하위유형(수시/정시)이 데이터 있을 때만 subtypes에 포함 (재외 빈값 제외)", () => {
+    const recs = parseBaejungList(subtypeSheet);
+    expect(recs).toHaveLength(1);
+    const subtypes = recs[0].subtypes;
+    expect(subtypes).toBeDefined();
+    // 수시, 정시만 — 재외/편입/외국인/백업은 빈값이므로 제외
+    expect(subtypes).toHaveLength(2);
+    expect(subtypes![0].label).toBe("수시");
+    expect(subtypes![0].operator).toBe("A운영");
+    expect(subtypes![0].developer).toBe("A개발");
+    expect(subtypes![1].label).toBe("정시");
+    expect(subtypes![1].operator).toBe("B운영");
+    expect(subtypes![1].developer).toBe("B개발");
+  });
+
+  it("subtypes는 2027 데이터만 포함 (2026 구운영은 제외)", () => {
+    const recs = parseBaejungList(subtypeSheet);
+    const subtypes = recs[0].subtypes ?? [];
+    const labels = subtypes.map((s) => s.label);
+    // 2026 수시 "구운영"이 subtypes에 들어가면 안 됨
+    expect(labels).not.toContain("2026 수시");
+    // 값도 포함 안 돼야 함
+    expect(subtypes.every((s) => s.operator !== "구운영")).toBe(true);
+  });
+
+  it("2027 운영은 있고 개발 없는 sub-type도 subtypes에 포함", () => {
+    const onlyOpSheet: AssignmentSheet = {
+      worksheetName: "02. 배정리스트",
+      rowsText: [
+        mergeRows(cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자")),
+        mergeRows(
+          cell(12, "재외"), cell(13, "수시"), cell(14, "정시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
+          cell(18, "재외"), cell(19, "수시"), cell(20, "정시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
+        ),
+        // 운영 수시만 있고 개발 수시 없음
+        mergeRows(cell(3, "테스트대"), cell(13, "X운영")),
+      ],
+      rowCount: 3,
+      columnCount: 36,
+    };
+    const recs = parseBaejungList(onlyOpSheet);
+    const subtypes = recs[0].subtypes ?? [];
+    expect(subtypes).toHaveLength(1);
+    expect(subtypes[0].label).toBe("수시");
+    expect(subtypes[0].operator).toBe("X운영");
+    expect(subtypes[0].developer).toBe("");
+  });
+
+  it("subtypes 컬럼 순서 = 시트 컬럼 순서 (재외/수시/정시/...)", () => {
+    const recs = parseBaejungList(subtypeSheet);
+    const labels = (recs[0].subtypes ?? []).map((s) => s.label);
+    // 시트 순서: 재외(없음) → 수시 → 정시
+    expect(labels).toEqual(["수시", "정시"]);
+  });
+});
+
 describe("joinByUniversity", () => {
   const recs: AssignmentRecord[] = [
     { university: "고려대학교", service: "원서접수", operator: "김슬기", developer: "박형진", detail: [] },

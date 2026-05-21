@@ -9,11 +9,39 @@ type Props = {
   onSelect: (row: ListRow) => void;
 };
 
-function cellText(row: ListRow, service: string): string {
-  const rec = row.assignment?.byService[service];
-  if (!rec || (!rec.operator && !rec.developer)) return "—";
-  if (!rec.developer) return rec.operator || "—";
-  return `${rec.operator || "—"} / ${rec.developer}`;
+/** 원서접수 컬럼 헤더 레이블 오버라이드 */
+const SERVICE_LABEL: Record<string, string> = { 원서접수: "원서접수 > 학부" };
+
+type Rec = {
+  operator: string;
+  developer: string;
+  detail: { label: string; value: string }[];
+  subtypes?: { label: string; operator: string; developer: string }[];
+};
+
+function pairText(op: string, dev: string): string {
+  if (!op && !dev) return "—";
+  if (!dev) return op || "—";
+  return `${op || "—"} / ${dev}`;
+}
+
+function AssignmentCell({ rec }: { rec?: Rec }) {
+  if (!rec || (!rec.operator && !rec.developer && !(rec.subtypes && rec.subtypes.length > 0))) {
+    return <>—</>;
+  }
+  if (rec.subtypes && rec.subtypes.length > 0) {
+    return (
+      <div className="flex flex-col gap-0.5">
+        {rec.subtypes.map((s, i) => (
+          <div key={i}>
+            <span className="text-muted">{s.label} </span>
+            {pairText(s.operator, s.developer)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <>{pairText(rec.operator, rec.developer)}</>;
 }
 
 export function AssignmentsTable({ rows, selectedId, onSelect }: Props) {
@@ -23,7 +51,7 @@ export function AssignmentsTable({ rows, selectedId, onSelect }: Props) {
         <tr className="border-b-2 border-ink text-left text-xs text-muted">
           <th className="py-2 pr-3 font-medium">대학</th>
           {SERVICE_KINDS.map((s) => (
-            <th key={s} className="py-2 pr-3 font-medium">{s}</th>
+            <th key={s} className="py-2 pr-3 font-medium">{SERVICE_LABEL[s] ?? s}</th>
           ))}
         </tr>
       </thead>
@@ -38,7 +66,9 @@ export function AssignmentsTable({ rows, selectedId, onSelect }: Props) {
           >
             <td className="py-2 pr-3 font-medium text-ink">{row.name}</td>
             {SERVICE_KINDS.map((s) => (
-              <td key={s} className="py-2 pr-3 text-ink">{cellText(row, s)}</td>
+              <td key={s} className="py-2 pr-3 text-ink">
+                <AssignmentCell rec={row.assignment?.byService[s]} />
+              </td>
             ))}
           </tr>
         ))}

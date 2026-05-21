@@ -14,6 +14,24 @@ const univ: UnivAssignmentRow = {
   },
 };
 
+/** 원서접수에 subtypes가 있는 univ (representative op/dev ≠ subtype 담당자) */
+const univWithSubtypes: UnivAssignmentRow = {
+  university: "서울대학교",
+  byService: {
+    "원서접수": {
+      university: "서울대학교",
+      service: "원서접수",
+      operator: "수시운영자",
+      developer: "수시개발자",
+      detail: [],
+      subtypes: [
+        { label: "수시", operator: "수시운영자", developer: "수시개발자" },
+        { label: "정시", operator: "정시전담자", developer: "정시개발자" },
+      ],
+    },
+  },
+};
+
 describe("univRowToListRow", () => {
   it("대학명=name, byService 매핑", () => {
     const r = univRowToListRow(univ);
@@ -44,4 +62,28 @@ describe("isMyAssignment", () => {
   it("빈 이름이면 false", () => expect(isMyAssignment(r, "")).toBe(false));
   it("부분 일치는 false (정확 일치만)", () =>
     expect(isMyAssignment(r, "김슬")).toBe(false));
+
+  describe("subtypes 포함 내 배정 검색", () => {
+    const rWithSub = univRowToListRow(univWithSubtypes);
+    it("subtype 운영자(정시전담자)로 true", () =>
+      expect(isMyAssignment(rWithSub, "정시전담자")).toBe(true));
+    it("subtype 개발자(정시개발자)로 true", () =>
+      expect(isMyAssignment(rWithSub, "정시개발자")).toBe(true));
+    it("subtype에 없는 이름은 false", () =>
+      expect(isMyAssignment(rWithSub, "없는사람")).toBe(false));
+    it("subtype 부분 일치는 false", () =>
+      expect(isMyAssignment(rWithSub, "정시전담")).toBe(false));
+  });
+});
+
+describe("matchesAssignmentQuery subtypes", () => {
+  const rWithSub = univRowToListRow(univWithSubtypes);
+  it("subtype operator에만 있는 이름으로 검색 → true", () =>
+    expect(matchesAssignmentQuery(rWithSub, "정시전담자")).toBe(true));
+  it("subtype developer에만 있는 이름으로 검색 → true", () =>
+    expect(matchesAssignmentQuery(rWithSub, "정시개발자")).toBe(true));
+  it("subtype 부분 검색도 true (includes)", () =>
+    expect(matchesAssignmentQuery(rWithSub, "정시전담")).toBe(true));
+  it("아무 subtype에도 없는 이름 → false", () =>
+    expect(matchesAssignmentQuery(rWithSub, "없는이름")).toBe(false));
 });
