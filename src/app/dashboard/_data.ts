@@ -328,6 +328,12 @@ export const sidebarSections: SbSection[] = [
             slug: "ai-tips",
             pattern: "list",
           },
+          {
+            ico: "·",
+            label: "자동화",
+            slug: "automations",
+            pattern: "list",
+          },
         ],
       },
     ],
