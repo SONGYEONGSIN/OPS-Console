@@ -31,7 +31,7 @@ export function AiWorkView({ row }: ViewProps) {
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
           <span className="text-xs">
             <span className="text-muted">작업 기간</span>{" "}
-            <span className="font-mono text-ink">
+            <span className="text-ink">
               {row.workStartDate ?? "—"}
               {row.workEndDate && row.workEndDate !== row.workStartDate
                 ? ` ~ ${row.workEndDate}`

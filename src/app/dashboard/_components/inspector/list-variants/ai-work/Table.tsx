@@ -46,7 +46,7 @@ export function AiWorkTable({ rows, selectedId, onSelect }: Props) {
                   selectedId === row.id ? "bg-washi-raised" : ""
                 }`}
               >
-                <td className="px-3 py-2 font-mono text-xs text-ink">
+                <td className="px-3 py-2 text-xs text-ink">
                   {row.workStartDate ?? "—"}
                   {row.workEndDate && row.workEndDate !== row.workStartDate
                     ? ` ~ ${row.workEndDate}`
