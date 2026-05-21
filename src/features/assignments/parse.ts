@@ -131,19 +131,14 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
     const row = rows[i];
     const university = (row[uniCol] ?? "").trim();
     if (university === "") continue;
-    const operator = (row[fullCol] ?? "").trim();
+    const full = (row[fullCol] ?? "").trim();
     const hwan = hwanCol >= 0 ? (row[hwanCol] ?? "").trim() : "";
+    const operator = full || hwan; // 이름만 표시 — FULL 없으면 환/충 이름으로 대체
     const detail: AssignmentDetail[] = [];
     if (hwan) {
       detail.push({ label: "운영자 환/충", value: hwan });
     }
-    let subtypes: { label: string; operator: string; developer: string }[] | undefined;
-    if (hwan) {
-      subtypes = [];
-      if (operator) subtypes.push({ label: "FULL", operator, developer: "" });
-      subtypes.push({ label: "환/충", operator: hwan, developer: "" });
-    }
-    out.push({ university, service: "PIMS", operator, developer: "", detail, subtypes });
+    out.push({ university, service: "PIMS", operator, developer: "", detail });
   }
   return out;
 }
