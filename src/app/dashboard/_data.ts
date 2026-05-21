@@ -14,6 +14,7 @@ export type SbItem = {
   count?: string;
   slug?: string;
   pattern?: SbPattern;
+  adminOnly?: boolean;
 };
 export type SbGroup = {
   kind: "group";
@@ -330,9 +331,10 @@ export const sidebarSections: SbSection[] = [
           },
           {
             ico: "·",
-            label: "자동화",
+            label: "자동화 실행",
             slug: "automations",
             pattern: "list",
+            adminOnly: true,
           },
         ],
       },

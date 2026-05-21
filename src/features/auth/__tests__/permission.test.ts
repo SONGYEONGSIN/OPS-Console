@@ -177,6 +177,59 @@ describe("filterSidebarSections", () => {
     expect(result[0].entries).toHaveLength(1);
     expect(result[1].entries).toHaveLength(0);
   });
+
+  it("adminOnly item은 admin에게는 보임", () => {
+    const withAdminOnly: SbSection[] = [
+      {
+        title: "AI",
+        entries: [
+          {
+            kind: "group",
+            label: "AI & 자동화",
+            items: [
+              { ico: "·", label: "내 작업", slug: "my-ai-work" },
+              { ico: "·", label: "자동화 실행", slug: "automations", adminOnly: true },
+            ],
+          },
+        ],
+      },
+    ];
+    const result = filterSidebarSections(withAdminOnly, ME_ADMIN);
+    const group = result[0].entries[0];
+    expect(group.kind).toBe("group");
+    if (group.kind === "group") {
+      expect(group.items.map((i) => i.label)).toContain("자동화 실행");
+    }
+  });
+
+  it("adminOnly item은 member에게 숨겨지고, 비-adminOnly 형제 item은 보임", () => {
+    const memberWithSlug = {
+      ...ME_MEMBER,
+      allowedMenus: ["my-ai-work", "automations"],
+    };
+    const withAdminOnly: SbSection[] = [
+      {
+        title: "AI",
+        entries: [
+          {
+            kind: "group",
+            label: "AI & 자동화",
+            items: [
+              { ico: "·", label: "내 작업", slug: "my-ai-work" },
+              { ico: "·", label: "자동화 실행", slug: "automations", adminOnly: true },
+            ],
+          },
+        ],
+      },
+    ];
+    const result = filterSidebarSections(withAdminOnly, memberWithSlug);
+    const group = result[0].entries[0];
+    expect(group.kind).toBe("group");
+    if (group.kind === "group") {
+      expect(group.items.map((i) => i.label)).not.toContain("자동화 실행");
+      expect(group.items.map((i) => i.label)).toContain("내 작업");
+    }
+  });
 });
 
 describe("canEditOperators", () => {

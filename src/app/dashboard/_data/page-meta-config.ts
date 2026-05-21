@@ -44,7 +44,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description: "운영부 공통 AI 활용 팁과 재사용 가능한 프롬프트를 모읍니다.",
   },
   automations: {
-    headline: { accent: "AI & 자동화", title: "자동화" },
+    headline: { accent: "AI & 자동화", title: "자동화 실행" },
     description:
       "운영 자동화 작업을 수동으로 실행합니다. admin 전용 — quota를 소모하므로 신중히 사용합니다.",
   },
