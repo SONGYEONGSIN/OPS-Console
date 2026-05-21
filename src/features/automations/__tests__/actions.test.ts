@@ -96,6 +96,7 @@ describe("runAutomationAction", () => {
     mockEnabled.mockResolvedValue(true);
     const r = await runAutomationAction(undefined, fd("insights-collect"));
     expect(r?.ok).toBe(false);
+    expect(r?.message).toContain("자동 실행 중");
     expect(run).not.toHaveBeenCalled();
   });
 });
