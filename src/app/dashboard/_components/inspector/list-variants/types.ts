@@ -22,6 +22,7 @@ export type Variant =
   | "contacts"
   | "incidents"
   | "handover"
+  | "assignments"
   | "worklog";
 
 export type ViewProps = {

@@ -30,6 +30,7 @@ describe("findSidebarSiblings", () => {
   it("그룹 안 메뉴 — 같은 그룹의 형제들 반환", () => {
     const sibs = findSidebarSiblings("/dashboard/services");
     expect(sibs.map((s) => s.label)).toEqual([
+      "총괄장",
       "서비스",
       "계약",
       "개발 · 테스트",

@@ -295,6 +295,13 @@ export type ListRow = {
   worklogTarget?: string | null;
   worklogTs?: string;
   worklogUser?: string;
+  /** assignments 도메인 — 대학배정 행 (서비스별 운영/개발 + 인스펙터 detail) */
+  assignment?: {
+    byService: Record<
+      string,
+      { operator: string; developer: string; detail: { label: string; value: string }[] }
+    >;
+  };
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
