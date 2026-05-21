@@ -20,7 +20,13 @@ const baseRow: ListRow = {
 };
 
 describe("AiWorkView", () => {
-  it("메타 — 작업 기간/도구/카테고리/등록자/절감 시간 표시", () => {
+  it("섹션 타이틀 — '작업 정보' / '요약' 노출", () => {
+    render(<AiWorkView row={baseRow} />);
+    expect(screen.getByText("작업 정보")).toBeInTheDocument();
+    expect(screen.getByText("요약")).toBeInTheDocument();
+  });
+
+  it("작업 정보 — 작업 기간/도구/카테고리/등록자/절감 시간 표시", () => {
     render(<AiWorkView row={baseRow} />);
     expect(screen.getByText(/2026-05-12\s*~\s*2026-05-14/)).toBeInTheDocument();
     expect(screen.getByText("송영석")).toBeInTheDocument();
