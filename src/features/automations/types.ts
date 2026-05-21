@@ -21,4 +21,5 @@ export type AutomationStatus = {
   cooldownMinutes: number;
   lastRunAt: string | null;
   cooldownRemainingMinutes: number;
+  enabled: boolean;
 };

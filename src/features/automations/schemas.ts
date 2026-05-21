@@ -6,3 +6,10 @@ export const runAutomationInputSchema = z.object({
 });
 
 export type RunAutomationInput = z.infer<typeof runAutomationInputSchema>;
+
+export const setAutomationEnabledInputSchema = z.object({
+  jobId: z.string().min(1),
+  enabled: z.boolean(),
+});
+
+export type SetAutomationEnabledInput = z.infer<typeof setAutomationEnabledInputSchema>;

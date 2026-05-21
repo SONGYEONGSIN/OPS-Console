@@ -36,8 +36,26 @@ export async function getJobLastRunAt(jobId: string): Promise<string | null> {
   return resolver ? resolver() : null;
 }
 
+async function getAutomationSettings(): Promise<Map<string, boolean>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("automation_settings")
+    .select("job_id, enabled");
+  const map = new Map<string, boolean>();
+  for (const row of data ?? []) {
+    if (typeof row.job_id === "string") map.set(row.job_id, row.enabled === true);
+  }
+  return map;
+}
+
+export async function getJobEnabled(jobId: string): Promise<boolean> {
+  const settings = await getAutomationSettings();
+  return settings.get(jobId) ?? false;
+}
+
 export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
   const now = new Date();
+  const settings = await getAutomationSettings();
   const out: AutomationStatus[] = [];
   for (const job of AUTOMATION_JOBS) {
     const lastRunAt = await getJobLastRunAt(job.id);
@@ -48,11 +66,8 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
       scheduleInfo: job.scheduleInfo,
       cooldownMinutes: job.cooldownMinutes,
       lastRunAt,
-      cooldownRemainingMinutes: computeCooldownRemaining(
-        lastRunAt,
-        job.cooldownMinutes,
-        now,
-      ),
+      cooldownRemainingMinutes: computeCooldownRemaining(lastRunAt, job.cooldownMinutes, now),
+      enabled: settings.get(job.id) ?? false,
     });
   }
   return out;
