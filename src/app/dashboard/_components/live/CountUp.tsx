@@ -12,21 +12,20 @@ type Props = {
  *  초기 state=value로 SSR↔클라이언트 hydration mismatch 회피. */
 export function CountUp({ value, durationMs = 700 }: Props) {
   const [display, setDisplay] = useState(value);
-  const hasAnimated = useRef(false);
+  const firstRun = useRef(true);
 
   useEffect(() => {
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // Skip animation if already animated or if motion reduction is enabled
-    if (reduce || hasAnimated.current) {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      // For reduce-motion, skip animation and immediately display value
       return;
     }
-
-    hasAnimated.current = true;
     let rafId = 0;
     const start = performance.now();
+    if (!firstRun.current) {
+      setDisplay(0);
+    }
+    firstRun.current = false;
     const tick = (t: number) => {
       const elapsed = t - start;
       const p = Math.min(1, elapsed / durationMs);
