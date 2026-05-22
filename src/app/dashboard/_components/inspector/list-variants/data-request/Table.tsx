@@ -14,6 +14,22 @@ function formatMonthDay(iso?: string | null): string {
   return mm && dd ? `${mm}-${dd}` : "—";
 }
 
+/** write_start_at의 (월,일)이 now의 (월,일)보다 이전이면 true. 연도 무시. */
+export function isWriteStartPast(iso: string | null | undefined, now: Date): boolean {
+  if (!iso) return false;
+  const md = (d: Date) => {
+    const p = new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(d);
+    const m = Number(p.find((x) => x.type === "month")?.value);
+    const dd = Number(p.find((x) => x.type === "day")?.value);
+    return m * 100 + dd;
+  };
+  return md(new Date(iso)) < md(now);
+}
+
 type Props = {
   rows: ListRow[];
   selectedId: string | null;
@@ -21,6 +37,7 @@ type Props = {
 };
 
 export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
+  const now = new Date();
   return (
     <table className="w-full text-sm">
       <thead>
@@ -40,21 +57,29 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
             </td>
           </tr>
         ) : (
-          rows.map((row) => (
-            <tr
-              key={row.id}
-              onClick={() => onSelect(row)}
-              className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                selectedId === row.id ? "bg-washi-raised" : ""
-              }`}
-            >
-              <td className="px-3 py-2 font-medium text-ink">{row.universityName ?? "—"}</td>
-              <td className="px-3 py-2 text-ink">{row.serviceName ?? row.name}</td>
-              <td className="px-3 py-2 text-ink-soft">{formatMonthDay(row.writeStartAt)}</td>
-              <td className="px-3 py-2 text-ink-soft">{row.operatorName ?? "—"}</td>
-              <td className="px-3 py-2 text-ink-soft">{row.developerName ?? "—"}</td>
-            </tr>
-          ))
+          rows.map((row) => {
+            const past = isWriteStartPast(row.writeStartAt, now);
+            return (
+              <tr
+                key={row.id}
+                onClick={past ? undefined : () => onSelect(row)}
+                aria-disabled={past || undefined}
+                className={
+                  past
+                    ? "border-b border-line-soft bg-washi opacity-60 cursor-not-allowed"
+                    : `cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                        selectedId === row.id ? "bg-washi-raised" : ""
+                      }`
+                }
+              >
+                <td className="px-3 py-2 font-medium text-ink">{row.universityName ?? "—"}</td>
+                <td className="px-3 py-2 text-ink">{row.serviceName ?? row.name}</td>
+                <td className="px-3 py-2 text-ink-soft">{formatMonthDay(row.writeStartAt)}</td>
+                <td className="px-3 py-2 text-ink-soft">{row.operatorName ?? "—"}</td>
+                <td className="px-3 py-2 text-ink-soft">{row.developerName ?? "—"}</td>
+              </tr>
+            );
+          })
         )}
       </tbody>
     </table>
