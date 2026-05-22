@@ -14,20 +14,10 @@ function formatMonthDay(iso?: string | null): string {
   return mm && dd ? `${mm}-${dd}` : "—";
 }
 
-/** write_start_at의 (월,일)이 now의 (월,일)보다 이전이면 true. 연도 무시. */
+/** 작성시작(시즌 보정된 전체 날짜)이 now 이전이면 true. iso는 page에서 +1년 보정된 값. */
 export function isWriteStartPast(iso: string | null | undefined, now: Date): boolean {
   if (!iso) return false;
-  const md = (d: Date) => {
-    const p = new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(d);
-    const m = Number(p.find((x) => x.type === "month")?.value);
-    const dd = Number(p.find((x) => x.type === "day")?.value);
-    return m * 100 + dd;
-  };
-  return md(new Date(iso)) < md(now);
+  return new Date(iso).getTime() < now.getTime();
 }
 
 type Props = {

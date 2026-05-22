@@ -32,7 +32,7 @@ describe("DataRequestTable", () => {
   });
   it("작성시작이 안 지난 행은 클릭하면 onSelect 호출", () => {
     const onSelect = vi.fn();
-    // 40일 뒤면 같은 해 6월 이후 → 월일 비교 안전 (5월 22일 기준)
+    // 40일 뒤면 now 이후 → 전체 날짜 비교로 연도 경계와 무관하게 안전
     const future = new Date(Date.now() + 40 * 86400000).toISOString();
     render(<DataRequestTable rows={[row({ id: "f1", universityName: "미래대학교", writeStartAt: future })]} selectedId={null} onSelect={onSelect} />);
     fireEvent.click(screen.getByText("미래대학교"));
@@ -40,19 +40,18 @@ describe("DataRequestTable", () => {
   });
 });
 
-describe("isWriteStartPast", () => {
+describe("isWriteStartPast (전체 날짜 비교)", () => {
   const now = new Date("2026-05-22T12:00:00+09:00");
-  it("작성시작 월일이 오늘보다 이전이면 true", () => {
+  it("now 이전이면 true", () => {
     expect(isWriteStartPast("2026-05-11T00:00:00+09:00", now)).toBe(true);
   });
-  it("작성시작 월일이 오늘 이후면 false", () => {
+  it("now 이후면 false", () => {
     expect(isWriteStartPast("2026-09-01T00:00:00+09:00", now)).toBe(false);
   });
-  it("연도 무시 — 다른 연도라도 월일만 비교", () => {
-    expect(isWriteStartPast("2025-05-11T00:00:00+09:00", now)).toBe(true);
-    expect(isWriteStartPast("2099-09-01T00:00:00+09:00", now)).toBe(false);
+  it("다음 해(2027 시즌)는 future", () => {
+    expect(isWriteStartPast("2027-02-28T00:00:00+09:00", now)).toBe(false);
   });
-  it("null/없으면 false", () => {
+  it("null/undefined면 false", () => {
     expect(isWriteStartPast(null, now)).toBe(false);
     expect(isWriteStartPast(undefined, now)).toBe(false);
   });

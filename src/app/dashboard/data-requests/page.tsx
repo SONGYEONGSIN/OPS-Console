@@ -10,6 +10,14 @@ import {
   getRecipientsForUniversities,
 } from "@/features/data-requests/queries";
 
+/** ISO/ymd 문자열의 연도만 delta 만큼 shift (나머지 보존). null 통과. */
+function shiftYmdYear(ymd: string | null, delta: number): string | null {
+  if (!ymd) return null;
+  const m = /^(\d{4})(.*)$/.exec(ymd);
+  if (!m) return ymd;
+  return `${Number(m[1]) + delta}${m[2]}`;
+}
+
 export default async function DataRequestsPage() {
   const slug = "data-requests";
   await requireMenu(slug);
@@ -38,7 +46,7 @@ export default async function DataRequestsPage() {
     serviceName: s.service_name,
     operatorName: s.operator_name ?? s.operator_email ?? "",
     developerName: s.developer_name ?? s.developer_email ?? "",
-    writeStartAt: s.write_start_at,
+    writeStartAt: shiftYmdYear(s.write_start_at, 1),
     dataRequestRecipients: byUniv.get(s.university_name) ?? [],
     dataRequestSender: { email: me.email, name: me.displayName },
   }));
