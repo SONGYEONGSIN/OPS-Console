@@ -29,7 +29,7 @@ describe("DataRequestView", () => {
     render(<DataRequestView row={row()} />);
     expect(screen.getByRole("heading", { name: /조선대학교/ })).toBeInTheDocument();
     expect(screen.getByText(/송영신 · me@op.com/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /발송/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^발송$/ })).toBeInTheDocument();
   });
 
   it("제목 input + 본문 textarea가 기본값으로 채워져 편집 가능", () => {
@@ -42,7 +42,7 @@ describe("DataRequestView", () => {
 
   it("To 미선택이면 발송 버튼 비활성", () => {
     render(<DataRequestView row={row()} />);
-    expect(screen.getByRole("button", { name: /발송/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^발송$/ })).toBeDisabled();
   });
 
   it("연락처 검색 시 결과 목록에 후보가 나오고 클릭하면 선택된다", () => {
@@ -52,8 +52,18 @@ describe("DataRequestView", () => {
     const result = screen.getByRole("button", { name: /김담당/ });
     expect(result).toBeInTheDocument();
     fireEvent.click(result);
-    expect(screen.getByRole("button", { name: /발송/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /^발송$/ })).toBeEnabled();
     expect(screen.getByText(/받는 사람:/)).toBeInTheDocument();
+  });
+
+  it("예약 시각 입력 + '예약 발송' 버튼 렌더", () => {
+    render(<DataRequestView row={row()} />);
+    expect(screen.getByLabelText("예약 시각")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "예약 발송" })).toBeInTheDocument();
+  });
+  it("예약 시각 미입력 시 '예약 발송' 비활성", () => {
+    render(<DataRequestView row={row()} />);
+    expect(screen.getByRole("button", { name: "예약 발송" })).toBeDisabled();
   });
 
   it("이메일 후보가 없으면 안내", () => {

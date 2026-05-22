@@ -29,6 +29,7 @@ export function DataRequestView({ row }: ViewProps) {
   const [justSelected, setJustSelected] = useState(false);
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState<Recipient[]>([]);
+  const [scheduledAt, setScheduledAt] = useState("");
 
   const term = search.trim().toLowerCase();
   const matches =
@@ -192,16 +193,42 @@ export function DataRequestView({ row }: ViewProps) {
         />
       </label>
 
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">예약 시각</span>
+        <input
+          type="datetime-local"
+          name="scheduledAt"
+          aria-label="예약 시각"
+          value={scheduledAt}
+          onChange={(e) => setScheduledAt(e.target.value)}
+          className={inputClass}
+        />
+      </label>
+
       {state ? (
         <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>{state.message}</p>
       ) : null}
-      <button
-        type="submit"
-        disabled={pending || !toEmail}
-        className="w-full cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
-      >
-        {pending ? "발송 중…" : "발송"}
-      </button>
+
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          name="mode"
+          value="now"
+          disabled={pending || !toEmail}
+          className="flex-1 cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
+        >
+          {pending ? "발송 중…" : "발송"}
+        </button>
+        <button
+          type="submit"
+          name="mode"
+          value="schedule"
+          disabled={pending || !toEmail || !scheduledAt}
+          className="flex-1 cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm font-medium text-vermilion transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
+        >
+          예약 발송
+        </button>
+      </div>
     </form>
   );
 }
