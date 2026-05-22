@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 const getCurrentOperator: Mock = vi.fn(async () => ({ email: "me@op.com", displayName: "나" }));
 vi.mock("@/features/auth/queries", () => ({ getCurrentOperator: () => getCurrentOperator() }));
 
-import { sendDataRequestAction } from "../actions";
+import { sendDataRequestAction, parseScheduledAtKst } from "../actions";
 
 function fd(over: Record<string, string> = {}) {
   const f = new FormData();
@@ -24,6 +24,19 @@ function fd(over: Record<string, string> = {}) {
   for (const [k, v] of Object.entries(over)) f.set(k, v);
   return f;
 }
+
+describe("parseScheduledAtKst", () => {
+  it("KST datetime-local → UTC Date", () => {
+    expect(parseScheduledAtKst("2026-05-25T14:30")?.toISOString()).toBe("2026-05-25T05:30:00.000Z");
+  });
+  it("초 포함 입력도 처리", () => {
+    expect(parseScheduledAtKst("2026-05-25T14:30:00")?.toISOString()).toBe("2026-05-25T05:30:00.000Z");
+  });
+  it("빈 값/잘못된 값 → null", () => {
+    expect(parseScheduledAtKst("")).toBeNull();
+    expect(parseScheduledAtKst("nope")).toBeNull();
+  });
+});
 
 describe("sendDataRequestAction", () => {
   beforeEach(() => {
@@ -83,5 +96,24 @@ describe("sendDataRequestAction", () => {
     const r = await sendDataRequestAction(undefined, fd());
     expect(r?.ok).toBe(true);
     expect(r?.message).toContain("이력 저장 실패");
+  });
+
+  it("mode=schedule 미래 시각이면 예약 insert (발송 안 함)", async () => {
+    const r = await sendDataRequestAction(undefined, fd({ mode: "schedule", scheduledAt: "2099-01-01T09:00" }));
+    expect(sendGraphMail).not.toHaveBeenCalled();
+    expect((insertMock.mock.calls[0] as [Record<string, unknown>])[0]).toMatchObject({ status: "scheduled" });
+    expect((insertMock.mock.calls[0] as [Record<string, unknown>])[0].scheduled_at).toBeTruthy();
+    expect(r?.ok).toBe(true);
+  });
+
+  it("mode=schedule 과거 시각이면 ok:false (insert 안 함)", async () => {
+    const r = await sendDataRequestAction(undefined, fd({ mode: "schedule", scheduledAt: "2000-01-01T09:00" }));
+    expect(r?.ok).toBe(false);
+    expect(insertMock).not.toHaveBeenCalled();
+  });
+
+  it("mode=schedule scheduledAt 없으면 ok:false", async () => {
+    const r = await sendDataRequestAction(undefined, fd({ mode: "schedule" }));
+    expect(r?.ok).toBe(false);
   });
 });
