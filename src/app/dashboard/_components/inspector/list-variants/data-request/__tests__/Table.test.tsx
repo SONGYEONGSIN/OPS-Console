@@ -30,6 +30,19 @@ describe("DataRequestTable", () => {
     fireEvent.click(screen.getByText("과거대학교"));
     expect(onSelect).not.toHaveBeenCalled();
   });
+  it("발송일자 컬럼 헤더 표시", () => {
+    render(<DataRequestTable rows={[row()]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("발송일자")).toBeInTheDocument();
+  });
+  it("발송이력 있으면 일자+시간(KST) 표시", () => {
+    // 2026-05-23T05:30:00Z = KST 14:30
+    render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00", dataRequestLastSentAt: "2026-05-23T05:30:00Z" })]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("05-23 14:30")).toBeInTheDocument();
+  });
+  it("발송이력 없으면 발송일자 칸에 — 표시", () => {
+    render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00" })]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
   it("작성시작이 안 지난 행은 클릭하면 onSelect 호출", () => {
     const onSelect = vi.fn();
     // 40일 뒤면 now 이후 → 전체 날짜 비교로 연도 경계와 무관하게 안전

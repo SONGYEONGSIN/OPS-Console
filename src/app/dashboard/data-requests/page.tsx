@@ -8,6 +8,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import {
   getMyDataRequestServices,
   getRecipientsForUniversities,
+  getLastSentByServiceIds,
 } from "@/features/data-requests/queries";
 
 /** ISO/ymd 문자열의 연도만 delta 만큼 shift (나머지 보존). null 통과. */
@@ -44,6 +45,7 @@ export default async function DataRequestsPage() {
   const services = await getMyDataRequestServices(me.email);
   const universities = [...new Set(services.map((s) => s.university_name))];
   const recipients = await getRecipientsForUniversities(universities);
+  const lastSentByService = await getLastSentByServiceIds(services.map((s) => s.id));
 
   const byUniv = new Map<string, typeof recipients>();
   for (const r of recipients) {
@@ -68,6 +70,7 @@ export default async function DataRequestsPage() {
     },
     dataRequestRecipients: byUniv.get(s.university_name) ?? [],
     dataRequestSender: { email: me.email, name: me.displayName },
+    dataRequestLastSentAt: lastSentByService[s.id] ?? null,
   }));
 
   const config = resolvePageMeta(slug, meta, rows.length);

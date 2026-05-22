@@ -313,6 +313,8 @@ export type ListRow = {
   dataRequestSender?: { email: string; name: string };
   /** data-request variant — 작년(직전 시즌) 작성 일정 (본문 기본값용, YYYY.MM.DD) */
   dataRequestLastSchedule?: { start: string; end: string };
+  /** data-request variant — 최근 발송일시(ISO, sent 상태). 발송 이력 없으면 미첨부 */
+  dataRequestLastSentAt?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

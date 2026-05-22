@@ -14,6 +14,25 @@ function formatMonthDay(iso?: string | null): string {
   return mm && dd ? `${mm}-${dd}` : "—";
 }
 
+/** 발송일시(ISO)를 KST 'MM-DD HH:mm'으로 포맷. 없으면 '—'. */
+function formatSendDateTime(iso?: string | null): string {
+  if (!iso) return "—";
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value;
+  const mm = get("month");
+  const dd = get("day");
+  const hh = get("hour");
+  const mi = get("minute");
+  return mm && dd && hh && mi ? `${mm}-${dd} ${hh}:${mi}` : "—";
+}
+
 /** 작성시작(시즌 보정된 전체 날짜)이 now 이전이면 true. iso는 page에서 +1년 보정된 값. */
 export function isWriteStartPast(iso: string | null | undefined, now: Date): boolean {
   if (!iso) return false;
@@ -35,6 +54,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">대학명</th>
           <th className="px-3 py-2">서비스명</th>
           <th className="px-3 py-2">작성시작</th>
+          <th className="px-3 py-2">발송일자</th>
           <th className="px-3 py-2">운영자</th>
           <th className="px-3 py-2">개발자</th>
         </tr>
@@ -42,7 +62,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={5} className="px-3 py-6 text-center text-muted">
+            <td colSpan={6} className="px-3 py-6 text-center text-muted">
               담당 서비스가 없습니다.
             </td>
           </tr>
@@ -65,6 +85,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
                 <td className="px-3 py-2 font-medium text-ink">{row.universityName ?? "—"}</td>
                 <td className="px-3 py-2 text-ink">{row.serviceName ?? row.name}</td>
                 <td className="px-3 py-2 text-ink-soft">{formatMonthDay(row.writeStartAt)}</td>
+                <td className="px-3 py-2 text-ink-soft">{formatSendDateTime(row.dataRequestLastSentAt)}</td>
                 <td className="px-3 py-2 text-ink-soft">{row.operatorName ?? "—"}</td>
                 <td className="px-3 py-2 text-ink-soft">{row.developerName ?? "—"}</td>
               </tr>
