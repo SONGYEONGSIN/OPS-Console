@@ -13,6 +13,8 @@ export const sendDataRequestInputSchema = z.object({
   cc: z.array(dataRequestCcSchema).default([]),
   subject: z.string().min(1),
   body: z.string().min(1),
+  mode: z.enum(["now", "schedule"]).default("now"),
+  scheduledAt: z.string().optional(),
 });
 
 export type SendDataRequestInput = z.infer<typeof sendDataRequestInputSchema>;

@@ -32,3 +32,28 @@ describe("sendDataRequestInputSchema", () => {
     expect(sendDataRequestInputSchema.safeParse({ ...valid, body: "" }).success).toBe(false);
   });
 });
+
+describe("sendDataRequestInputSchema — mode/scheduledAt", () => {
+  const base = {
+    universityName: "조선대학교",
+    toEmail: "a@b.com",
+    subject: "제목",
+    body: "본문",
+  };
+  it("mode 기본값 now", () => {
+    const r = sendDataRequestInputSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.mode).toBe("now");
+  });
+  it("mode schedule + scheduledAt 허용", () => {
+    const r = sendDataRequestInputSchema.safeParse({
+      ...base,
+      mode: "schedule",
+      scheduledAt: "2026-12-01T10:00",
+    });
+    expect(r.success).toBe(true);
+  });
+  it("잘못된 mode 거부", () => {
+    expect(sendDataRequestInputSchema.safeParse({ ...base, mode: "later" }).success).toBe(false);
+  });
+});
