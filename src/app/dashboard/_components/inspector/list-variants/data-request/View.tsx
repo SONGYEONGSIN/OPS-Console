@@ -82,7 +82,11 @@ export function DataRequestView({ row }: ViewProps) {
         />
         <select
           value={toEmail}
-          onChange={(e) => setToEmail(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            setCc((prev) => prev.filter((c) => c.email !== next));
+            setToEmail(next);
+          }}
           className="mt-2 w-full border border-line bg-transparent px-3 py-1.5 text-sm focus:border-vermilion focus:outline-none"
         >
           <option value="">받는 사람 선택</option>
@@ -106,6 +110,7 @@ export function DataRequestView({ row }: ViewProps) {
               <button
                 type="button"
                 onClick={() => removeCc(c.email)}
+                aria-label={`${c.name} 참조 제거`}
                 className="cursor-pointer text-muted hover:text-vermilion"
               >
                 ×

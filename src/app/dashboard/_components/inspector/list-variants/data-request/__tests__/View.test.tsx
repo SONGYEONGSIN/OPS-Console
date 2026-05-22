@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { DataRequestView } from "../View";
 import type { ListRow } from "../../../../patterns/ListPattern";
 
@@ -37,5 +37,25 @@ describe("DataRequestView", () => {
     const r = { ...row(), dataRequestRecipients: [] } as ListRow;
     render(<DataRequestView row={r} />);
     expect(screen.getByText(/등록된 연락처 이메일이 없습니다/)).toBeInTheDocument();
+  });
+
+  it("To 미선택이면 발송 버튼 비활성", () => {
+    render(<DataRequestView row={row()} />);
+    expect(screen.getByRole("button", { name: /발송/ })).toBeDisabled();
+  });
+
+  it("CC에 추가한 사람을 To로 선택하면 CC에서 제거된다", () => {
+    render(<DataRequestView row={row()} />);
+    // To = 김담당 선택 → CC select 노출
+    const selects = screen.getAllByRole("combobox");
+    const toSelect = selects[0];
+    fireEvent.change(toSelect, { target: { value: "kim@u.ac.kr" } });
+    // CC에 이담당 추가
+    const ccSelect = screen.getAllByRole("combobox").find((s) => s !== toSelect)!;
+    fireEvent.change(ccSelect, { target: { value: "lee@u.ac.kr" } });
+    expect(screen.getByRole("button", { name: /이담당 참조 제거/ })).toBeInTheDocument();
+    // To를 이담당으로 변경 → CC에서 이담당 제거
+    fireEvent.change(toSelect, { target: { value: "lee@u.ac.kr" } });
+    expect(screen.queryByRole("button", { name: /이담당 참조 제거/ })).not.toBeInTheDocument();
   });
 });
