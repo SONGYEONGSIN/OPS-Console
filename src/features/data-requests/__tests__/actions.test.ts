@@ -72,4 +72,11 @@ describe("sendDataRequestAction", () => {
     expect(insertCall[0]).toMatchObject({ status: "failed" });
     expect(r?.ok).toBe(false);
   });
+
+  it("insert 에러 발생 시 ok:true + message에 이력 저장 실패 포함", async () => {
+    insertMock.mockResolvedValueOnce({ error: { message: "rls" } });
+    const r = await sendDataRequestAction(undefined, fd());
+    expect(r?.ok).toBe(true);
+    expect(r?.message).toContain("이력 저장 실패");
+  });
 });

@@ -75,7 +75,7 @@ export async function sendDataRequestAction(
   }
 
   const supabase = createAdminClient();
-  await supabase.from("data_request_sends").insert({
+  const { error: insertError } = await supabase.from("data_request_sends").insert({
     service_id: input.serviceId ?? null,
     university_name: input.universityName,
     sender_email: me.email,
@@ -95,8 +95,9 @@ export async function sendDataRequestAction(
   if (status === "failed") {
     return { ok: false, message: `발송 실패: ${error ?? "알 수 없는 오류"}` };
   }
+  const baseMsg = dryRun ? "테스트 모드 — 실제 발송하지 않았습니다." : "발송되었습니다.";
   return {
     ok: true,
-    message: dryRun ? "테스트 모드 — 실제 발송하지 않았습니다." : "발송되었습니다.",
+    message: insertError ? `${baseMsg} (이력 저장 실패: ${insertError.message})` : baseMsg,
   };
 }
