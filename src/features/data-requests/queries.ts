@@ -77,10 +77,9 @@ export async function getLastSentByServiceIds(
   return latestSentByService((data ?? []) as DataRequestSendRow[]);
 }
 
-/** 본인 담당 services (operator OR developer = me) */
-export async function getMyDataRequestServices(meEmail: string) {
-  const { rows } = await listServices({ ownerEmail: meEmail, ownerMe: true, pageSize: 1000 });
-  return rows;
+/** 본인 담당 services (operator OR developer = me). 페이지네이션(1-base) — { rows, total } */
+export async function getMyDataRequestServices(meEmail: string, page = 1, pageSize = 30) {
+  return listServices({ ownerEmail: meEmail, ownerMe: true, page, pageSize });
 }
 
 /** 본인 담당 대학들의 연락처 → 수신자 후보 */

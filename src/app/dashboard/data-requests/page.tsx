@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
+import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
@@ -34,7 +35,11 @@ function formatYmdDot(iso: string | null): string {
   return y && m && d ? `${y}.${m}.${d}` : "";
 }
 
-export default async function DataRequestsPage() {
+export default async function DataRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const slug = "data-requests";
   await requireMenu(slug);
   const me = await getCurrentOperator();
@@ -42,7 +47,9 @@ export default async function DataRequestsPage() {
   if (!meta || !me) return null;
   const pathname = `/dashboard/${slug}`;
 
-  const services = await getMyDataRequestServices(me.email);
+  const sp = await searchParams;
+  const page = sp.page ? Number(sp.page) : 1;
+  const { rows: services, total } = await getMyDataRequestServices(me.email, page, 30);
   const universities = [...new Set(services.map((s) => s.university_name))];
   const recipients = await getRecipientsForUniversities(universities);
   const lastSentByService = await getLastSentByServiceIds(services.map((s) => s.id));
@@ -73,7 +80,7 @@ export default async function DataRequestsPage() {
     dataRequestLastSentAt: lastSentByService[s.id] ?? null,
   }));
 
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const config = resolvePageMeta(slug, meta, total);
 
   return (
     <>
@@ -90,6 +97,9 @@ export default async function DataRequestsPage() {
         variant="data-request"
         readOnly
         liveData
+        footer={
+          <ListPagination key="data-requests-pagination" total={total} pageSize={30} />
+        }
       />
     </>
   );
