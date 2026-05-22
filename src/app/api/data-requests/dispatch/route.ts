@@ -27,6 +27,7 @@ export async function POST(req: Request): Promise<Response> {
 
   let sent = 0;
   let failed = 0;
+  let updateFailed = 0;
   for (const row of rows) {
     const result = await sendGraphMail({
       senderUserId: row.sender_email,
@@ -36,20 +37,17 @@ export async function POST(req: Request): Promise<Response> {
       subject: row.subject,
       text: row.body,
     });
-    if (result.ok) {
-      sent += 1;
-      await supabase
-        .from("data_request_sends")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
-        .eq("id", row.id);
-    } else {
-      failed += 1;
-      await supabase
-        .from("data_request_sends")
-        .update({ status: "failed", error: result.error })
-        .eq("id", row.id);
-    }
+    const patch = result.ok
+      ? { status: "sent", sent_at: new Date().toISOString() }
+      : { status: "failed", error: result.error };
+    if (result.ok) sent += 1;
+    else failed += 1;
+    const { error: updateError } = await supabase
+      .from("data_request_sends")
+      .update(patch)
+      .eq("id", row.id);
+    if (updateError) updateFailed += 1;
   }
 
-  return NextResponse.json({ ok: true, dispatched: rows.length, sent, failed });
+  return NextResponse.json({ ok: true, dispatched: rows.length, sent, failed, updateFailed });
 }

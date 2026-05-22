@@ -5,7 +5,7 @@ type MockedSendMail = (args: SendGraphMailArgs) => Promise<SendMailResult>;
 const sendGraphMail = vi.fn<MockedSendMail>(async () => ({ ok: true }));
 vi.mock("@/lib/microsoft/sendmail", () => ({ sendGraphMail: (a: SendGraphMailArgs) => sendGraphMail(a) }));
 const rpcMock = vi.fn();
-const updateEqMock = vi.fn(async () => ({ error: null }));
+const updateEqMock = vi.fn(async (): Promise<{ error: { message: string } | null }> => ({ error: null }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
     rpc: rpcMock,
@@ -56,14 +56,26 @@ describe("dispatch route", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(sendGraphMail).toHaveBeenCalledTimes(2);
+    expect(updateEqMock).toHaveBeenCalledTimes(2);
     expect(sendGraphMail.mock.calls[0][0]).toMatchObject({ senderUserId: "me@op.com", toEmail: "a@b.com", text: "b1" });
-    expect(json).toMatchObject({ ok: true, dispatched: 2, sent: 1, failed: 1 });
+    expect(json).toMatchObject({ ok: true, dispatched: 2, sent: 1, failed: 1, updateFailed: 0 });
   });
 
   it("due 행 없으면 dispatched:0", async () => {
     const res = await POST(req("s3cr3t"));
     const json = await res.json();
-    expect(json).toMatchObject({ ok: true, dispatched: 0, sent: 0, failed: 0 });
+    expect(json).toMatchObject({ ok: true, dispatched: 0, sent: 0, failed: 0, updateFailed: 0 });
     expect(sendGraphMail).not.toHaveBeenCalled();
+  });
+
+  it("상태 업데이트 실패가 updateFailed로 집계된다", async () => {
+    rpcMock.mockResolvedValue({
+      data: [{ id: "1", sender_email: "me@op.com", to_email: "a@b.com", to_name: null, cc: [], subject: "s", body: "b" }],
+      error: null,
+    });
+    updateEqMock.mockResolvedValueOnce({ error: { message: "rls" } });
+    const res = await POST(req("s3cr3t"));
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, dispatched: 1, sent: 1, updateFailed: 1 });
   });
 });
