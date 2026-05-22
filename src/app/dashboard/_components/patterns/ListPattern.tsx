@@ -302,6 +302,13 @@ export type ListRow = {
       { operator: string; developer: string; detail: { label: string; value: string }[]; subtypes?: { label: string; operator: string; developer: string }[] }
     >;
   };
+  /** data-request variant — 이 서비스 대학의 수신자 후보 (page가 첨부) */
+  dataRequestRecipients?: {
+    email: string;
+    name: string;
+    department: string | null;
+    universityName: string;
+  }[];
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
