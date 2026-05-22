@@ -484,3 +484,33 @@ npm test
 - **Placeholder**: `<PROD_DOMAIN>`/`<CRON_SECRET>`/`<local>`는 배포별 치환 값(의도). 코드 스텝엔 placeholder 없음.
 - **타입 일관성**: `parseScheduledAtKst`(Task3)↔action↔test / `mode`·`scheduledAt`(Task2 schema)↔action(Task3)↔View hidden/버튼(Task5) / DueRow(Task4) ↔ claim 함수 returning(Task1, data_request_sends 행) / sendGraphMail `text`(Phase1) 재사용. ✅
 - **리스크**: (1) `fd()` 헬퍼가 mode override를 안 받는 형태면 Task3에서 헬퍼 시그니처 보정. (2) dispatch 라우트 테스트의 admin client mock 체인(`from().update().eq()`)이 실제 호출 형태와 일치하는지 확인. (3) datetime-local 값에 초가 포함될 수 있어 parser가 둘 다 처리.
+
+---
+
+## 프로덕션 배포 체크리스트 (2026-05-23 기준)
+
+로컬 end-to-end 검증 완료. 프로덕션 자동(주기) 발송은 **Vercel 배포가 선행 조건**이다.
+배포 시점에 아래를 순서대로 적용하면 켜진다.
+
+**이미 완료된 것:**
+- [x] 미들웨어 수정 (`/api/data-requests/dispatch` → `PUBLIC_PATHS`) — origin/main 머지 (commit `f1d37f5`)
+- [x] DB 마이그레이션 적용 — `claim_due_data_requests()` 함수 + `data_request_sends_status_chk`
+- [x] Supabase 확장 활성화 — `pg_cron`, `pg_net`
+- [x] 로컬 검증 — `dispatched:1, sent:1` (즉시발송 + 예약발송 dispatch 둘 다)
+
+**배포 시 해야 할 것:**
+- [ ] **1. Vercel 배포** — repo 연결 + 환경변수 등록(MAIL_* / SUPABASE_* (SERVICE_ROLE_KEY 포함) / AZURE_AD_* / SHAREPOINT_*) + 첫 배포. 프로덕션 도메인 확보.
+- [ ] **2. Vercel 환경변수 `CRON_SECRET`** — 값은 `.env.local`의 CRON_SECRET과 동일(이미 생성됨, 로컬 `.env.local`에 보관). Production scope. 등록 후 **재배포**해야 빌드에 주입됨.
+- [ ] **3. cron.schedule 등록** — Supabase SQL Editor에서 (`<PROD_DOMAIN>`은 1번 도메인, `<CRON_SECRET>`은 2번 값으로 치환):
+  ```sql
+  select cron.schedule('data-requests-dispatch','*/15 * * * *', $$
+    select net.http_post(
+      url := 'https://<PROD_DOMAIN>/api/data-requests/dispatch',
+      headers := jsonb_build_object('content-type','application/json','x-cron-secret','<CRON_SECRET>')
+    );
+  $$);
+  ```
+  > 시크릿이 `cron.job` 테이블에 평문 저장된다. 더 엄격히 가려면 Supabase Vault 사용.
+- [ ] **4. 검증** — `select * from cron.job;`로 등록 확인 → 다음 실행 후 `select * from net._http_response order by created desc limit 5;`로 200/JSON 응답 확인 → 예약 1건 잡고 15분 내 status `sent` 전환 확인.
+
+**롤백/중지:** `select cron.unschedule('data-requests-dispatch');`
