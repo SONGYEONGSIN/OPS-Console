@@ -123,10 +123,10 @@ export function formatFeedDate(
   item: { tier: FeedTier; domain: FeedDomain; date: string | null },
   now: Date,
 ): string {
-  if (item.tier === "undated" || !item.date) return "—";
   if (item.tier === "urgent") {
     return item.domain === "incidents" ? "미해결" : "지남";
   }
+  if (item.tier === "undated" || !item.date) return "—";
   const today = todayKst(now);
   if (item.date === today) return "오늘";
   const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(item.date);

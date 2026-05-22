@@ -4,6 +4,9 @@ import { buildFeedItems, sortFeedItems, formatFeedDate, type FeedItem } from "..
 const now = new Date("2026-05-23T03:00:00Z"); // KST 12:00, today=2026-05-23
 
 describe("buildFeedItems", () => {
+  it("모든 소스가 빈 배열이면 [] 반환", () => {
+    expect(buildFeedItems({ incidents: [], todos: [], services: [], schedule: [], backup: [] }, now)).toEqual([]);
+  });
   it("incidents/todos/services/schedule/backup 소스를 FeedItem[]로 매핑", () => {
     const items = buildFeedItems({
       incidents: [
@@ -35,11 +38,11 @@ describe("buildFeedItems", () => {
 describe("sortFeedItems", () => {
   it("urgent → scheduled → undated, 각 그룹 내 일자 asc", () => {
     const items: FeedItem[] = [
-      { id: "a", domain: "services", domainLabel: "서비스", variant: "services" as never, date: "2026-05-25", dateDisplay: "5.25", title: "A", tier: "scheduled", listRow: {} as never },
-      { id: "b", domain: "incidents", domainLabel: "사고", variant: "incidents" as never, date: "2026-05-22", dateDisplay: "미해결", title: "B", tier: "urgent", listRow: {} as never },
-      { id: "c", domain: "todos", domainLabel: "내 할일", variant: "weekly-todo" as never, date: null, dateDisplay: "—", title: "C", tier: "undated", listRow: {} as never },
-      { id: "d", domain: "todos", domainLabel: "내 할일", variant: "weekly-todo" as never, date: "2026-05-20", dateDisplay: "지남", title: "D", tier: "urgent", listRow: {} as never },
-      { id: "e", domain: "schedule", domainLabel: "일정", variant: "schedule" as never, date: "2026-05-24", dateDisplay: "5.24", title: "E", tier: "scheduled", listRow: {} as never },
+      { id: "a", domain: "services", domainLabel: "서비스", variant: "services", date: "2026-05-25", dateDisplay: "5.25", title: "A", tier: "scheduled", listRow: {} as never },
+      { id: "b", domain: "incidents", domainLabel: "사고", variant: "incidents", date: "2026-05-22", dateDisplay: "미해결", title: "B", tier: "urgent", listRow: {} as never },
+      { id: "c", domain: "todos", domainLabel: "내 할일", variant: "weekly-todo", date: null, dateDisplay: "—", title: "C", tier: "undated", listRow: {} as never },
+      { id: "d", domain: "todos", domainLabel: "내 할일", variant: "weekly-todo", date: "2026-05-20", dateDisplay: "지남", title: "D", tier: "urgent", listRow: {} as never },
+      { id: "e", domain: "schedule", domainLabel: "일정", variant: "schedule", date: "2026-05-24", dateDisplay: "5.24", title: "E", tier: "scheduled", listRow: {} as never },
     ];
     expect(sortFeedItems(items).map((x) => x.id)).toEqual(["d", "b", "e", "a", "c"]);
   });
@@ -60,6 +63,12 @@ describe("formatFeedDate", () => {
   });
   it("undated → —", () => {
     expect(formatFeedDate({ tier: "undated", domain: "todos", date: null }, now)).toBe("—");
+  });
+  it("urgent + incidents + date null → 미해결 (null이어도 라벨 우선)", () => {
+    expect(formatFeedDate({ tier: "urgent", domain: "incidents", date: null }, now)).toBe("미해결");
+  });
+  it("urgent + todos + date null → 지남 (라벨 우선)", () => {
+    expect(formatFeedDate({ tier: "urgent", domain: "todos", date: null }, now)).toBe("지남");
   });
 });
 
