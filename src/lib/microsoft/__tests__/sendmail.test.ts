@@ -120,4 +120,23 @@ describe("sendGraphMail", () => {
     expect(body.message.toRecipients[0].emailAddress.name).toBe("김교사");
     expect(body.saveToSentItems).toBe(true);
   });
+
+  it("text 지정 시 message.body.contentType=Text + content=text", async () => {
+    const fetchMock = mockTokenAndSend({ sendStatus: 202, messageId: "m" });
+
+    await sendGraphMail({
+      senderUserId: "sender@org.com",
+      toEmail: "receiver@school.ac.kr",
+      subject: "제목",
+      text: "안녕하세요\n평문 본문",
+    });
+
+    const sendCall = fetchMock.mock.calls.find((c) =>
+      String(c[0]).includes("graph.microsoft.com"),
+    );
+    const init = sendCall![1] as RequestInit;
+    const body = JSON.parse(String(init.body));
+    expect(body.message.body.contentType).toBe("Text");
+    expect(body.message.body.content).toBe("안녕하세요\n평문 본문");
+  });
 });

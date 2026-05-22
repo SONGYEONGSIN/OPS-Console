@@ -27,8 +27,10 @@ export type SendGraphMailArgs = {
   /** CC 수신자 (선택) */
   cc?: GraphMailRecipient[];
   subject: string;
-  /** HTML body */
-  html: string;
+  /** HTML body (text 미지정 시 사용) */
+  html?: string;
+  /** 평문 body — 지정 시 contentType Text로 발송 (html보다 우선) */
+  text?: string;
   /** 파일 첨부 (선택). Graph sendMail 본 호출은 합산 4MB 한도 */
   attachments?: GraphMailAttachment[];
 };
@@ -45,7 +47,7 @@ export type SendGraphMailArgs = {
 export async function sendGraphMail(
   args: SendGraphMailArgs,
 ): Promise<SendMailResult> {
-  const { senderUserId, toEmail, toName, cc, subject, html, attachments } =
+  const { senderUserId, toEmail, toName, cc, subject, html, text, attachments } =
     args;
 
   let token: string;
@@ -81,9 +83,14 @@ export async function sendGraphMail(
         }))
       : undefined;
 
+  const body =
+    text != null
+      ? { contentType: "Text", content: text }
+      : { contentType: "HTML", content: html ?? "" };
+
   const message: Record<string, unknown> = {
     subject,
-    body: { contentType: "HTML", content: html },
+    body,
     toRecipients: [
       {
         emailAddress: toName

@@ -32,10 +32,12 @@ describe("DataRequestView", () => {
     expect(screen.getByRole("button", { name: /발송/ })).toBeInTheDocument();
   });
 
-  it("제목은 진학어플라이 템플릿으로 읽기 전용 표시 + 본문은 iframe 미리보기", () => {
+  it("제목 input + 본문 textarea가 기본값으로 채워져 편집 가능", () => {
     render(<DataRequestView row={row()} />);
-    expect(screen.getByText(/\[진학어플라이\]/)).toBeInTheDocument();
-    expect(screen.getByTitle("메일 미리보기")).toBeInTheDocument();
+    const subject = screen.getByPlaceholderText("제목을 입력하세요") as HTMLInputElement;
+    expect(subject.value).toContain("[진학어플라이]");
+    const body = screen.getByPlaceholderText("요청 내용을 입력하세요") as HTMLTextAreaElement;
+    expect(body.value).toContain("[요청 항목]");
   });
 
   it("To 미선택이면 발송 버튼 비활성", () => {

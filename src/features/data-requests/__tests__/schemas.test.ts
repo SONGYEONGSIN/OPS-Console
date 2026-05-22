@@ -4,12 +4,11 @@ import { sendDataRequestInputSchema } from "../schemas";
 const valid = {
   serviceId: "svc-1",
   universityName: "조선대학교",
-  serviceName: "수시모집",
-  writeStart: "2025.05.11",
-  writeEnd: "2025.06.02",
   toEmail: "a@b.com",
   toName: "김담당",
   cc: [{ email: "c@d.com", name: "이참조" }],
+  subject: "[진학어플라이] 조선대학교 수시모집 자료 요청 건",
+  body: "안녕하세요.\n진학어플라이 송영신입니다.",
 };
 
 describe("sendDataRequestInputSchema", () => {
@@ -26,7 +25,10 @@ describe("sendDataRequestInputSchema", () => {
   it("toEmail 형식 불량 거부", () => {
     expect(sendDataRequestInputSchema.safeParse({ ...valid, toEmail: "x" }).success).toBe(false);
   });
-  it("빈 서비스명 거부", () => {
-    expect(sendDataRequestInputSchema.safeParse({ ...valid, serviceName: "" }).success).toBe(false);
+  it("빈 제목 거부", () => {
+    expect(sendDataRequestInputSchema.safeParse({ ...valid, subject: "" }).success).toBe(false);
+  });
+  it("빈 본문 거부", () => {
+    expect(sendDataRequestInputSchema.safeParse({ ...valid, body: "" }).success).toBe(false);
   });
 });
