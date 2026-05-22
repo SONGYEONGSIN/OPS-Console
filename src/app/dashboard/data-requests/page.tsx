@@ -39,6 +39,7 @@ export default async function DataRequestsPage() {
     operatorName: s.operator_name ?? s.operator_email ?? "",
     developerName: s.developer_name ?? s.developer_email ?? "",
     dataRequestRecipients: byUniv.get(s.university_name) ?? [],
+    dataRequestSender: { email: me.email, name: me.displayName },
   }));
 
   const config = resolvePageMeta(slug, meta, rows.length);

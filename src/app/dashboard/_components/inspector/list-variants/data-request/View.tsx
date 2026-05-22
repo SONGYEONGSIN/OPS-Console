@@ -11,20 +11,31 @@ type Recipient = { email: string; name: string; department: string | null; unive
 
 export function DataRequestView({ row }: ViewProps) {
   const recipients = (row.dataRequestRecipients ?? []) as Recipient[];
+  const sender = row.dataRequestSender;
   const [state, formAction, pending] = useActionState<DataRequestActionState, FormData>(
     sendDataRequestAction,
     undefined,
   );
   const [search, setSearch] = useState("");
+  const [justSelected, setJustSelected] = useState(false);
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState<Recipient[]>([]);
 
   const term = search.trim().toLowerCase();
-  const filtered = recipients.filter(
-    (r) => term === "" || r.name.toLowerCase().includes(term) || r.email.toLowerCase().includes(term),
-  );
+  const matches =
+    term === ""
+      ? []
+      : recipients.filter(
+          (r) => r.name.toLowerCase().includes(term) || r.email.toLowerCase().includes(term),
+        );
   const toRecipient = recipients.find((r) => r.email === toEmail);
 
+  const selectTo = (r: Recipient) => {
+    setCc((prev) => prev.filter((c) => c.email !== r.email));
+    setToEmail(r.email);
+    setSearch(r.name);
+    setJustSelected(true);
+  };
   const addCc = (email: string) => {
     const r = recipients.find((x) => x.email === email);
     if (r && !cc.some((c) => c.email === email) && email !== toEmail) setCc([...cc, r]);
@@ -64,33 +75,50 @@ export function DataRequestView({ row }: ViewProps) {
         value={JSON.stringify(cc.map((c) => ({ email: c.email, name: c.name })))}
       />
 
-      <label className="block text-xs">
+      <div className="block text-xs">
+        <span className="mb-1 block text-muted">발신자</span>
+        <div className="w-full border border-line bg-washi-raised px-2 py-1 text-ink">
+          {sender ? `${sender.name} · ${sender.email}` : "본인 메일박스에서 발송"}
+        </div>
+      </div>
+
+      <div className="block text-xs">
         <span className="mb-1 block text-muted">수신자</span>
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setJustSelected(false);
+          }}
           placeholder="연락처 검색 (이름/이메일)"
           className={inputClass}
         />
-        <select
-          value={toEmail}
-          onChange={(e) => {
-            const next = e.target.value;
-            setCc((prev) => prev.filter((c) => c.email !== next));
-            setToEmail(next);
-          }}
-          className={`mt-1.5 ${inputClass}`}
-        >
-          <option value="">받는 사람 선택</option>
-          {filtered.map((r) => (
-            <option key={r.email} value={r.email}>
-              {r.name}
-              {r.department ? ` (${r.department})` : ""} · {r.email}
-            </option>
-          ))}
-        </select>
-      </label>
+        {!justSelected && matches.length > 0 && (
+          <ul
+            aria-label="수신자 검색 결과"
+            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+          >
+            {matches.map((r) => (
+              <li key={r.email}>
+                <button
+                  type="button"
+                  onClick={() => selectTo(r)}
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                >
+                  {r.name}
+                  {r.department ? ` (${r.department})` : ""} · {r.email}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {toRecipient && (
+          <p className="mt-1 text-2xs text-muted">
+            받는 사람: <span className="text-ink">{toRecipient.name} · {toRecipient.email}</span>
+          </p>
+        )}
+      </div>
 
       <div className="block text-xs">
         <span className="mb-1 block text-muted">참조 (CC)</span>
@@ -149,18 +177,16 @@ export function DataRequestView({ row }: ViewProps) {
         />
       </label>
 
-      <div className="flex items-center gap-3 pt-1">
-        <button
-          type="submit"
-          disabled={pending || !toEmail}
-          className="inline-flex w-fit cursor-pointer items-center border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
-        >
-          {pending ? "발송 중…" : "발송"}
-        </button>
-        {state ? (
-          <span className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>{state.message}</span>
-        ) : null}
-      </div>
+      {state ? (
+        <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>{state.message}</p>
+      ) : null}
+      <button
+        type="submit"
+        disabled={pending || !toEmail}
+        className="w-full cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
+      >
+        {pending ? "발송 중…" : "발송"}
+      </button>
     </form>
   );
 }
