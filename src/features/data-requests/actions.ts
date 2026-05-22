@@ -6,7 +6,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { sendDataRequestInputSchema, dataRequestCcSchema } from "./schemas";
-import { renderDataRequestHtml } from "./mail-template";
+import { buildDataRequestMail } from "./mail-template";
 
 export type DataRequestActionState = { ok: boolean; message: string } | undefined;
 
@@ -34,20 +34,24 @@ export async function sendDataRequestAction(
   const parsed = sendDataRequestInputSchema.safeParse({
     serviceId: (formData.get("serviceId") as string) || null,
     universityName: formData.get("universityName"),
+    serviceName: formData.get("serviceName"),
+    writeStart: (formData.get("writeStart") as string) || "",
+    writeEnd: (formData.get("writeEnd") as string) || "",
     toEmail: formData.get("toEmail"),
     toName: (formData.get("toName") as string) || undefined,
     cc,
-    subject: formData.get("subject"),
-    body: formData.get("body"),
   });
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0].message };
   }
   const input = parsed.data;
 
-  const html = renderDataRequestHtml({
-    subject: input.subject,
-    body: input.body,
+  const { subject, html } = buildDataRequestMail({
+    operatorName: me.displayName,
+    universityName: input.universityName,
+    serviceName: input.serviceName,
+    writeStart: input.writeStart,
+    writeEnd: input.writeEnd,
   });
 
   const dryRun = process.env.MAIL_DRY_RUN === "true";
@@ -62,7 +66,7 @@ export async function sendDataRequestAction(
       toEmail: input.toEmail,
       toName: input.toName,
       cc: input.cc,
-      subject: input.subject,
+      subject,
       html,
     });
     if (!result.ok) {
@@ -79,8 +83,8 @@ export async function sendDataRequestAction(
     to_email: input.toEmail,
     to_name: input.toName ?? null,
     cc: input.cc,
-    subject: input.subject,
-    body: input.body,
+    subject,
+    body: html,
     status,
     sent_at: status === "sent" ? new Date().toISOString() : null,
     error,

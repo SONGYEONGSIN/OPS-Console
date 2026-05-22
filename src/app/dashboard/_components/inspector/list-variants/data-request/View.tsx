@@ -6,7 +6,7 @@ import {
   sendDataRequestAction,
   type DataRequestActionState,
 } from "@/features/data-requests/actions";
-import { buildDefaultDataRequestText } from "@/features/data-requests/mail-template";
+import { buildDataRequestMail } from "@/features/data-requests/mail-template";
 
 type Recipient = { email: string; name: string; department: string | null; universityName: string };
 
@@ -14,7 +14,7 @@ export function DataRequestView({ row }: ViewProps) {
   const recipients = (row.dataRequestRecipients ?? []) as Recipient[];
   const sender = row.dataRequestSender;
   const sched = row.dataRequestLastSchedule;
-  const defaults = buildDefaultDataRequestText({
+  const mail = buildDataRequestMail({
     operatorName: sender?.name ?? "",
     universityName: row.universityName ?? "",
     serviceName: row.serviceName ?? row.name,
@@ -76,6 +76,8 @@ export function DataRequestView({ row }: ViewProps) {
       <input type="hidden" name="universityName" value={row.universityName ?? ""} />
       <input type="hidden" name="serviceId" value={row.id} />
       <input type="hidden" name="serviceName" value={row.serviceName ?? row.name} />
+      <input type="hidden" name="writeStart" value={sched?.start ?? ""} />
+      <input type="hidden" name="writeEnd" value={sched?.end ?? ""} />
       <input type="hidden" name="toEmail" value={toEmail} />
       <input type="hidden" name="toName" value={toRecipient?.name ?? ""} />
       <input
@@ -171,27 +173,22 @@ export function DataRequestView({ row }: ViewProps) {
         )}
       </div>
 
-      <label className="block text-xs">
+      <div className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
-        <input
-          type="text"
-          name="subject"
-          defaultValue={defaults.subject}
-          placeholder="제목을 입력하세요"
-          className={inputClass}
-        />
-      </label>
+        <div className="w-full border border-line bg-washi-raised px-2 py-1 text-ink">
+          {mail.subject}
+        </div>
+      </div>
 
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">본문</span>
-        <textarea
-          name="body"
-          rows={12}
-          defaultValue={defaults.body}
-          placeholder="요청 내용을 입력하세요"
-          className={`${inputClass} leading-relaxed`}
+      <div className="block text-xs">
+        <span className="mb-1 block text-muted">본문 미리보기</span>
+        <iframe
+          title="메일 미리보기"
+          srcDoc={mail.html}
+          sandbox=""
+          className="h-80 w-full border border-line bg-cream"
         />
-      </label>
+      </div>
 
       {state ? (
         <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>{state.message}</p>

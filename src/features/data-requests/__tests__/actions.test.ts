@@ -15,12 +15,13 @@ import { sendDataRequestAction } from "../actions";
 function fd(over: Record<string, string> = {}) {
   const f = new FormData();
   f.set("universityName", "조선대학교");
+  f.set("serviceName", "수시모집");
+  f.set("writeStart", "2025.05.11");
+  f.set("writeEnd", "2025.06.02");
   f.set("serviceId", "svc-1");
   f.set("toEmail", "a@b.com");
   f.set("toName", "김담당");
   f.set("cc", JSON.stringify([{ email: "c@d.com" }]));
-  f.set("subject", "자료 요청");
-  f.set("body", "안녕하세요");
   for (const [k, v] of Object.entries(over)) f.set(k, v);
   return f;
 }
@@ -45,11 +46,13 @@ describe("sendDataRequestAction", () => {
     expect(sendGraphMail).not.toHaveBeenCalled();
   });
 
-  it("정상 발송 — 발신자=본인 + sendGraphMail + insert(sent)", async () => {
+  it("정상 발송 — 발신자=본인 + sendGraphMail(시스템 생성 메일) + insert(sent)", async () => {
     const r = await sendDataRequestAction(undefined, fd());
     expect(sendGraphMail).toHaveBeenCalledTimes(1);
     const mailCall = sendGraphMail.mock.calls[0] as [Record<string, unknown>];
     expect(mailCall[0]).toMatchObject({ senderUserId: "me@op.com", toEmail: "a@b.com" });
+    expect(mailCall[0].subject).toContain("[진학어플라이]");
+    expect(mailCall[0].html).toContain("요청 항목");
     expect(insertMock).toHaveBeenCalled();
     const insertCall = insertMock.mock.calls[0] as [Record<string, unknown>];
     expect(insertCall[0]).toMatchObject({ status: "sent", sender_email: "me@op.com" });

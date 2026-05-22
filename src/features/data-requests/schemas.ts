@@ -8,11 +8,12 @@ export const dataRequestCcSchema = z.object({
 export const sendDataRequestInputSchema = z.object({
   serviceId: z.string().nullable().optional(),
   universityName: z.string().min(1),
+  serviceName: z.string().min(1),
+  writeStart: z.string().optional().default(""),
+  writeEnd: z.string().optional().default(""),
   toEmail: z.string().email(),
   toName: z.string().optional(),
   cc: z.array(dataRequestCcSchema).default([]),
-  subject: z.string().min(1),
-  body: z.string().min(1),
 });
 
 export type SendDataRequestInput = z.infer<typeof sendDataRequestInputSchema>;

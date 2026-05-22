@@ -25,21 +25,17 @@ function row(): ListRow {
 }
 
 describe("DataRequestView", () => {
-  it("발신자(본인) + 헤더 + 발송 버튼 + 제목 입력 렌더", () => {
+  it("발신자(본인) + 헤더 + 발송 버튼 렌더", () => {
     render(<DataRequestView row={row()} />);
     expect(screen.getByRole("heading", { name: /조선대학교/ })).toBeInTheDocument();
     expect(screen.getByText(/송영신 · me@op.com/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /발송/ })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/제목/)).toBeInTheDocument();
   });
 
-  it("제목/본문이 진학어플라이 템플릿으로 미리 채워진다", () => {
+  it("제목은 진학어플라이 템플릿으로 읽기 전용 표시 + 본문은 iframe 미리보기", () => {
     render(<DataRequestView row={row()} />);
-    const subj = screen.getByPlaceholderText("제목을 입력하세요");
-    expect((subj as HTMLInputElement).value).toContain("[진학어플라이]");
-    const body = screen.getByPlaceholderText("요청 내용을 입력하세요");
-    expect((body as HTMLTextAreaElement).value).toContain("요청 항목");
-    expect((body as HTMLTextAreaElement).value).toContain("송영신");
+    expect(screen.getByText(/\[진학어플라이\]/)).toBeInTheDocument();
+    expect(screen.getByTitle("메일 미리보기")).toBeInTheDocument();
   });
 
   it("To 미선택이면 발송 버튼 비활성", () => {
