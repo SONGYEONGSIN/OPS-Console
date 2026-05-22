@@ -80,6 +80,9 @@ import { WorklogView } from "./worklog/View";
 import { AssignmentsTable } from "./assignments/Table";
 import { AssignmentsView } from "./assignments/View";
 import { ASSIGNMENTS_FILTERS } from "./assignments/filters";
+import { DataRequestTable } from "./data-request/Table";
+import { DataRequestView } from "./data-request/View";
+import { DATA_REQUEST_FILTERS } from "./data-request/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -268,5 +271,10 @@ export const variantRegistry = {
   worklog: {
     // 읽기 전용 — 활동 로그 인스펙터 View만 (편집/테이블/신규 없음)
     View: WorklogView,
+  },
+  "data-request": {
+    View: DataRequestView,
+    Table: DataRequestTable,
+    Filters: DATA_REQUEST_FILTERS,
   },
 } as const satisfies Record<Variant, RegistryEntry>;

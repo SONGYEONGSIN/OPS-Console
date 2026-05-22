@@ -23,7 +23,8 @@ export type Variant =
   | "incidents"
   | "handover"
   | "assignments"
-  | "worklog";
+  | "worklog"
+  | "data-request";
 
 export type ViewProps = {
   row: ListRow;
