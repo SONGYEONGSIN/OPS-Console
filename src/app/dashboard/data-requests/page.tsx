@@ -18,6 +18,21 @@ function shiftYmdYear(ymd: string | null, delta: number): string | null {
   return `${Number(m[1]) + delta}${m[2]}`;
 }
 
+/** ISO 문자열을 KST 기준 YYYY.MM.DD 로 포맷. null/실패 시 빈 문자열. */
+function formatYmdDot(iso: string | null): string {
+  if (!iso) return "";
+  const p = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+  const y = p.find((x) => x.type === "year")?.value;
+  const m = p.find((x) => x.type === "month")?.value;
+  const d = p.find((x) => x.type === "day")?.value;
+  return y && m && d ? `${y}.${m}.${d}` : "";
+}
+
 export default async function DataRequestsPage() {
   const slug = "data-requests";
   await requireMenu(slug);
@@ -47,6 +62,10 @@ export default async function DataRequestsPage() {
     operatorName: s.operator_name ?? s.operator_email ?? "",
     developerName: s.developer_name ?? s.developer_email ?? "",
     writeStartAt: shiftYmdYear(s.write_start_at, 1),
+    dataRequestLastSchedule: {
+      start: formatYmdDot(s.write_start_at),
+      end: formatYmdDot(s.write_end_at),
+    },
     dataRequestRecipients: byUniv.get(s.university_name) ?? [],
     dataRequestSender: { email: me.email, name: me.displayName },
   }));

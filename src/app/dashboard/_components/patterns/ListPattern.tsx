@@ -311,6 +311,8 @@ export type ListRow = {
   }[];
   /** data-request variant — 발신자(로그인 운영자) 표시용 (page가 첨부) */
   dataRequestSender?: { email: string; name: string };
+  /** data-request variant — 작년(직전 시즌) 작성 일정 (본문 기본값용, YYYY.MM.DD) */
+  dataRequestLastSchedule?: { start: string; end: string };
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

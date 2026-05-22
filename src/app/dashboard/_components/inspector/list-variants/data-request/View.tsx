@@ -6,12 +6,21 @@ import {
   sendDataRequestAction,
   type DataRequestActionState,
 } from "@/features/data-requests/actions";
+import { buildDefaultDataRequestText } from "@/features/data-requests/mail-template";
 
 type Recipient = { email: string; name: string; department: string | null; universityName: string };
 
 export function DataRequestView({ row }: ViewProps) {
   const recipients = (row.dataRequestRecipients ?? []) as Recipient[];
   const sender = row.dataRequestSender;
+  const sched = row.dataRequestLastSchedule;
+  const defaults = buildDefaultDataRequestText({
+    operatorName: sender?.name ?? "",
+    universityName: row.universityName ?? "",
+    serviceName: row.serviceName ?? row.name,
+    writeStart: sched?.start ?? "",
+    writeEnd: sched?.end ?? "",
+  });
   const [state, formAction, pending] = useActionState<DataRequestActionState, FormData>(
     sendDataRequestAction,
     undefined,
@@ -164,14 +173,21 @@ export function DataRequestView({ row }: ViewProps) {
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
-        <input type="text" name="subject" placeholder="제목을 입력하세요" className={inputClass} />
+        <input
+          type="text"
+          name="subject"
+          defaultValue={defaults.subject}
+          placeholder="제목을 입력하세요"
+          className={inputClass}
+        />
       </label>
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">본문</span>
         <textarea
           name="body"
-          rows={8}
+          rows={12}
+          defaultValue={defaults.body}
           placeholder="요청 내용을 입력하세요"
           className={`${inputClass} leading-relaxed`}
         />

@@ -44,13 +44,10 @@ export async function sendDataRequestAction(
     return { ok: false, message: parsed.error.issues[0].message };
   }
   const input = parsed.data;
-  const serviceName = (formData.get("serviceName") as string) || null;
 
   const html = renderDataRequestHtml({
     subject: input.subject,
     body: input.body,
-    universityName: input.universityName,
-    serviceName,
   });
 
   const dryRun = process.env.MAIL_DRY_RUN === "true";

@@ -16,6 +16,7 @@ function row(): ListRow {
     universityName: "조선대학교",
     serviceName: "수시모집",
     dataRequestSender: { email: "me@op.com", name: "송영신" },
+    dataRequestLastSchedule: { start: "2025.05.11", end: "2025.06.02" },
     dataRequestRecipients: [
       { email: "kim@u.ac.kr", name: "김담당", department: "입학처", universityName: "조선대학교" },
       { email: "lee@u.ac.kr", name: "이담당", department: null, universityName: "조선대학교" },
@@ -26,11 +27,19 @@ function row(): ListRow {
 describe("DataRequestView", () => {
   it("발신자(본인) + 헤더 + 발송 버튼 + 제목 입력 렌더", () => {
     render(<DataRequestView row={row()} />);
-    expect(screen.getByText(/조선대학교/)).toBeInTheDocument();
-    expect(screen.getByText(/송영신/)).toBeInTheDocument();
-    expect(screen.getByText(/me@op.com/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /조선대학교/ })).toBeInTheDocument();
+    expect(screen.getByText(/송영신 · me@op.com/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /발송/ })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/제목/)).toBeInTheDocument();
+  });
+
+  it("제목/본문이 진학어플라이 템플릿으로 미리 채워진다", () => {
+    render(<DataRequestView row={row()} />);
+    const subj = screen.getByPlaceholderText("제목을 입력하세요");
+    expect((subj as HTMLInputElement).value).toContain("[진학어플라이]");
+    const body = screen.getByPlaceholderText("요청 내용을 입력하세요");
+    expect((body as HTMLTextAreaElement).value).toContain("요청 항목");
+    expect((body as HTMLTextAreaElement).value).toContain("송영신");
   });
 
   it("To 미선택이면 발송 버튼 비활성", () => {
