@@ -6,10 +6,14 @@ const sendGraphMail = vi.fn<MockedSendMail>(async () => ({ ok: true }));
 vi.mock("@/lib/microsoft/sendmail", () => ({ sendGraphMail: (a: SendGraphMailArgs) => sendGraphMail(a) }));
 const rpcMock = vi.fn();
 const updateEqMock = vi.fn(async (): Promise<{ error: { message: string } | null }> => ({ error: null }));
+const updateMock = vi.fn((patch: Record<string, unknown>) => {
+  void patch;
+  return { eq: updateEqMock };
+});
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
     rpc: rpcMock,
-    from: () => ({ update: () => ({ eq: updateEqMock }) }),
+    from: () => ({ update: updateMock }),
   })),
 }));
 
@@ -26,6 +30,7 @@ describe("dispatch route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "s3cr3t";
+    delete process.env.MAIL_DRY_RUN;
     sendGraphMail.mockResolvedValue({ ok: true });
     rpcMock.mockResolvedValue({ data: [], error: null });
   });
@@ -66,6 +71,21 @@ describe("dispatch route", () => {
     const json = await res.json();
     expect(json).toMatchObject({ ok: true, dispatched: 0, sent: 0, failed: 0, updateFailed: 0 });
     expect(sendGraphMail).not.toHaveBeenCalled();
+  });
+
+  it("MAIL_DRY_RUN=true 면 발송하지 않고 dry_run으로 기록", async () => {
+    process.env.MAIL_DRY_RUN = "true";
+    rpcMock.mockResolvedValue({
+      data: [{ id: "1", sender_email: "me@op.com", to_email: "a@b.com", to_name: "A", cc: [], subject: "s", body: "b" }],
+      error: null,
+    });
+    const res = await POST(req("s3cr3t"));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(sendGraphMail).not.toHaveBeenCalled();
+    expect(json).toMatchObject({ ok: true, dispatched: 1, dryRun: 1, sent: 0, failed: 0 });
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateMock.mock.calls[0][0]).toMatchObject({ status: "dry_run" });
   });
 
   it("상태 업데이트 실패가 updateFailed로 집계된다", async () => {

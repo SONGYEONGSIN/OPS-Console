@@ -226,7 +226,7 @@ export function DataRequestView({ row }: ViewProps) {
           disabled={pending || !toEmail || !scheduledAt}
           className="flex-1 cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm font-medium text-vermilion transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
         >
-          예약 발송
+          {pending ? "예약 중…" : "예약 발송"}
         </button>
       </div>
     </form>
