@@ -21,10 +21,10 @@ export function KpiTile({ label, count, countSub, href }: Props) {
       <div className="font-mono text-2xs uppercase tracking-[0.18em] text-muted">
         {label}
       </div>
+      {/* 숫자 크기는 라벨 폰트 사이즈(text-2xs)에 em-비례. fixed text-* 미사용. */}
       <div
         data-kpi-number
-        className="mt-1 text-ink"
-        style={{ fontSize: "3.2em", lineHeight: 1, fontWeight: 300 }}
+        className="mt-1 text-[3.2em] font-light leading-none text-ink"
       >
         {count === null ? "—" : <CountUp value={count} />}
       </div>
