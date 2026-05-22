@@ -683,6 +683,7 @@ export function ListPattern({
       >
         {inspector.selected && (
           <InspectorChrome
+            key={inspector.selected.id}
             row={inspector.selected}
             editing={inspector.editing}
             onToggleEdit={inspector.toggleEdit}
