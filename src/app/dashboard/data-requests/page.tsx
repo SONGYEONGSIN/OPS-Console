@@ -38,6 +38,7 @@ export default async function DataRequestsPage() {
     serviceName: s.service_name,
     operatorName: s.operator_name ?? s.operator_email ?? "",
     developerName: s.developer_name ?? s.developer_email ?? "",
+    writeStartAt: s.write_start_at,
     dataRequestRecipients: byUniv.get(s.university_name) ?? [],
     dataRequestSender: { email: me.email, name: me.displayName },
   }));

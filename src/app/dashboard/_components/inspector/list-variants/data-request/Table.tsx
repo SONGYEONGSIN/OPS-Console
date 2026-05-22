@@ -2,6 +2,18 @@
 
 import type { ListRow } from "../../../patterns/ListPattern";
 
+function formatMonthDay(iso?: string | null): string {
+  if (!iso) return "—";
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+  const mm = parts.find((p) => p.type === "month")?.value;
+  const dd = parts.find((p) => p.type === "day")?.value;
+  return mm && dd ? `${mm}-${dd}` : "—";
+}
+
 type Props = {
   rows: ListRow[];
   selectedId: string | null;
@@ -15,6 +27,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
           <th className="px-3 py-2">대학명</th>
           <th className="px-3 py-2">서비스명</th>
+          <th className="px-3 py-2">작성시작</th>
           <th className="px-3 py-2">운영자</th>
           <th className="px-3 py-2">개발자</th>
         </tr>
@@ -22,7 +35,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={4} className="px-3 py-6 text-center text-muted">
+            <td colSpan={5} className="px-3 py-6 text-center text-muted">
               담당 서비스가 없습니다.
             </td>
           </tr>
@@ -37,6 +50,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
             >
               <td className="px-3 py-2 font-medium text-ink">{row.universityName ?? "—"}</td>
               <td className="px-3 py-2 text-ink">{row.serviceName ?? row.name}</td>
+              <td className="px-3 py-2 text-ink-soft">{formatMonthDay(row.writeStartAt)}</td>
               <td className="px-3 py-2 text-ink-soft">{row.operatorName ?? "—"}</td>
               <td className="px-3 py-2 text-ink-soft">{row.developerName ?? "—"}</td>
             </tr>

@@ -18,4 +18,9 @@ describe("DataRequestTable", () => {
     render(<DataRequestTable rows={[]} selectedId={null} onSelect={() => {}} />);
     expect(screen.getByText(/담당 서비스가 없습니다/)).toBeInTheDocument();
   });
+  it("작성시작 컬럼(연도 제외) 표시", () => {
+    render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00" })]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("작성시작")).toBeInTheDocument();
+    expect(screen.getByText("05-11")).toBeInTheDocument();
+  });
 });
