@@ -166,21 +166,21 @@ function LiveOverviewInner({
                     active={metrics.bond.active}
                   />
                 </MetricGroupBox>
-                <MetricGroupBox title="백업 · 연락처 · 인수인계" columns={3}>
+                <MetricGroupBox title="백업 · 인수인계 · 연락처" columns={3}>
                   <MetricSubcard
                     label="백업내용"
                     value={metrics.backup.value}
                     desc={metrics.backup.desc}
                   />
                   <MetricSubcard
-                    label="대학연락처"
-                    value={metrics.contacts.value}
-                    desc={metrics.contacts.desc}
-                  />
-                  <MetricSubcard
                     label="인수인계"
                     value={metrics.handover.value}
                     desc={metrics.handover.desc}
+                  />
+                  <MetricSubcard
+                    label="대학연락처"
+                    value={metrics.contacts.value}
+                    desc={metrics.contacts.desc}
                   />
                 </MetricGroupBox>
               </section>

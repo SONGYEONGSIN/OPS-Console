@@ -66,7 +66,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
     // 그룹박스 title
     expect(screen.getByText("계약 · 미수채권")).toBeInTheDocument();
-    expect(screen.getByText("백업 · 연락처 · 인수인계")).toBeInTheDocument();
+    expect(screen.getByText("백업 · 인수인계 · 연락처")).toBeInTheDocument();
     // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
     expect(screen.getByRole("button", { name: /^전체 \d/ })).toBeInTheDocument();
     // 빈 테이블 empty 메시지
