@@ -33,6 +33,7 @@ const PAGE_SIZE = 30;
 type SearchParams = {
   q?: string;
   status?: string;
+  type?: string;
   page?: string;
   tab?: string;
   mine?: string;
@@ -64,14 +65,24 @@ export default async function HandoverPage({
     const allReady = await listReadyServices(
       mineProgress ? (me?.email ?? undefined) : undefined,
     );
+    const typeFilter = (params.type ?? "").trim();
 
-    const filtered = q
-      ? allReady.filter(
-          (s) =>
-            s.university_name.toLowerCase().includes(q) ||
-            s.service_name.toLowerCase().includes(q),
-        )
-      : allReady;
+    const filtered = allReady.filter((s) => {
+      if (
+        q &&
+        !s.university_name.toLowerCase().includes(q) &&
+        !s.service_name.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      if (typeFilter && s.application_type !== typeFilter) return false;
+      return true;
+    });
+
+    // 접수구분 select 옵션 — allReady(필터 전) 기준 distinct
+    const applicationTypes = Array.from(
+      new Set(allReady.map((s) => s.application_type).filter(Boolean)),
+    ).sort();
 
     const total = filtered.length;
     const paged = filtered.slice(
@@ -97,7 +108,7 @@ export default async function HandoverPage({
           description={fallback.description}
         />
         <HandoverTabs />
-        <HandoverProgressSearch />
+        <HandoverProgressSearch applicationTypes={applicationTypes} />
         <HandoverWizard
           services={paged}
           allServices={allReady}
