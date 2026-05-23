@@ -1,0 +1,75 @@
+import { describe, it, expect } from "vitest";
+import { buildLiveTableItems, type LiveTableSources } from "../live-table-builder";
+
+const now = new Date("2026-05-23T12:00:00+09:00");
+const tEarlier = (mins: number) => new Date(now.getTime() - mins * 60 * 1000).toISOString();
+
+describe("buildLiveTableItems", () => {
+  it("incidents/todos/services/backup/schedule 통합 + 시간 desc 정렬", () => {
+    const sources: LiveTableSources = {
+      incidents: [{ id: "i1", title: "결제 오류", status: "미처리", createdAt: tEarlier(5), listRow: {} as never }],
+      todos: [{ id: "t1", title: "PDF 검토", dueAt: "2026-05-22", createdAt: tEarlier(60), listRow: {} as never }],
+      services: [{ id: "s1", title: "A대 원서접수", writeStartAt: "2026-06-24", createdAt: tEarlier(180), listRow: {} as never }],
+      backup: [{ id: "b1", title: "휴가 백업", status: "대기", createdAt: tEarlier(30), listRow: {} as never }],
+      schedule: [{ id: "e1", title: "정기회의", startAt: "2026-05-24T05:00:00Z", createdAt: tEarlier(10), listRow: {} as never }],
+    };
+    const items = buildLiveTableItems(sources, now);
+    expect(items.map((i) => i.id)).toEqual(["i1", "e1", "b1", "t1", "s1"]); // 시간 가까운 순
+  });
+
+  it("각 도메인의 badgeDomain / variant / statusText 매핑", () => {
+    const sources: LiveTableSources = {
+      incidents: [{ id: "i", title: "x", status: "미처리", createdAt: tEarlier(1), listRow: {} as never }],
+      todos: [{ id: "t", title: "x", dueAt: "2026-05-21", createdAt: tEarlier(2), listRow: {} as never }],
+      services: [{ id: "s", title: "x", writeStartAt: "2026-06-24", createdAt: tEarlier(3), listRow: {} as never }],
+      backup: [{ id: "b", title: "x", status: "대기", createdAt: tEarlier(4), listRow: {} as never }],
+      schedule: [{ id: "e", title: "x", startAt: "2026-05-24T05:00:00Z", createdAt: tEarlier(5), listRow: {} as never }],
+    };
+    const items = buildLiveTableItems(sources, now);
+    expect(items.find((x) => x.id === "i")?.badgeDomain).toBe("사고");
+    expect(items.find((x) => x.id === "i")?.variant).toBe("incidents");
+    expect(items.find((x) => x.id === "i")?.statusText).toBe("미처리");
+
+    expect(items.find((x) => x.id === "t")?.badgeDomain).toBe("할일");
+    expect(items.find((x) => x.id === "t")?.variant).toBe("weekly-todo");
+    expect(items.find((x) => x.id === "t")?.statusText).toBe("지남"); // dueAt < today
+
+    expect(items.find((x) => x.id === "s")?.badgeDomain).toBe("서비스");
+    expect(items.find((x) => x.id === "s")?.variant).toBe("services");
+    expect(items.find((x) => x.id === "s")?.statusText).toBe("6.24 오픈");
+
+    expect(items.find((x) => x.id === "b")?.badgeDomain).toBe("백업");
+    expect(items.find((x) => x.id === "b")?.variant).toBe("backup");
+    expect(items.find((x) => x.id === "b")?.statusText).toBe("대기");
+
+    expect(items.find((x) => x.id === "e")?.badgeDomain).toBe("일정");
+    expect(items.find((x) => x.id === "e")?.variant).toBe("schedule");
+    expect(items.find((x) => x.id === "e")?.statusText).toMatch(/5\.24/);
+  });
+
+  it("todos 상태 4단계: 지남 / 오늘 / D-N / 대기", () => {
+    const sources: LiveTableSources = {
+      incidents: [], services: [], backup: [], schedule: [],
+      todos: [
+        { id: "t1", title: "x", dueAt: "2026-05-22", createdAt: tEarlier(1), listRow: {} as never }, // < today → 지남
+        { id: "t2", title: "x", dueAt: "2026-05-23", createdAt: tEarlier(2), listRow: {} as never }, // today
+        { id: "t3", title: "x", dueAt: "2026-05-26", createdAt: tEarlier(3), listRow: {} as never }, // +3
+        { id: "t4", title: "x", dueAt: null, createdAt: tEarlier(4), listRow: {} as never }, // 대기
+      ],
+    };
+    const items = buildLiveTableItems(sources, now);
+    expect(items.find((x) => x.id === "t1")?.statusText).toBe("지남");
+    expect(items.find((x) => x.id === "t2")?.statusText).toBe("오늘");
+    expect(items.find((x) => x.id === "t3")?.statusText).toBe("D-3");
+    expect(items.find((x) => x.id === "t4")?.statusText).toBe("대기");
+  });
+
+  it("timeText는 formatRelativeTime 결과 ('방금 전' 등)", () => {
+    const sources: LiveTableSources = {
+      incidents: [{ id: "x", title: "y", status: "미처리", createdAt: tEarlier(0), listRow: {} as never }],
+      todos: [], services: [], backup: [], schedule: [],
+    };
+    const items = buildLiveTableItems(sources, now);
+    expect(items[0].timeText).toBe("방금 전");
+  });
+});
