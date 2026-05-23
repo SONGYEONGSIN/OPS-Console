@@ -264,3 +264,11 @@ body::before {
 .dashboard-sidebar::-webkit-scrollbar-thumb:hover {
   background: var(--faint) !important;
 }
+
+/* ═════════════════════════════════════════════════════════
+   Animation — LiveIndicator LED pulse
+   ═════════════════════════════════════════════════════════ */
+@keyframes live-pulse {
+  0%, 100% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.2); opacity: 1; }
+}
