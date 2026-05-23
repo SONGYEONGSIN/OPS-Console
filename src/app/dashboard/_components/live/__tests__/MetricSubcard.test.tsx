@@ -32,4 +32,14 @@ describe("MetricSubcard", () => {
     render(<MetricSubcard label="x" value={42} desc="y" />);
     expect(screen.getByText("42")).toBeInTheDocument();
   });
+
+  it("number value 1000 이상 → 천단위 구분 (2,283)", () => {
+    render(<MetricSubcard label="x" value={2283} desc="y" />);
+    expect(screen.getByText("2,283")).toBeInTheDocument();
+  });
+
+  it("string value는 포맷 안 함 (그대로 표시)", () => {
+    render(<MetricSubcard label="x" value="0 / 5" desc="y" />);
+    expect(screen.getByText("0 / 5")).toBeInTheDocument();
+  });
 });

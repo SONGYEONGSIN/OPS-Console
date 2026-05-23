@@ -7,9 +7,12 @@ type Props = {
   durationMs?: number;
 };
 
+const NUM_FORMATTER = new Intl.NumberFormat("ko-KR");
+
 /** 마운트 시 0 → value 카운트업 (ease-out cubic, rAF).
  *  prefers-reduced-motion이면 즉시 value.
- *  초기 state=value로 SSR↔클라이언트 hydration mismatch 회피. */
+ *  초기 state=value로 SSR↔클라이언트 hydration mismatch 회피.
+ *  표시는 ko-KR 천단위 구분(2,283). */
 export function CountUp({ value, durationMs = 700 }: Props) {
   const [display, setDisplay] = useState(value);
   const firstRun = useRef(true);
@@ -37,5 +40,5 @@ export function CountUp({ value, durationMs = 700 }: Props) {
     return () => cancelAnimationFrame(rafId);
   }, [value, durationMs]);
 
-  return <>{display}</>;
+  return <>{NUM_FORMATTER.format(display)}</>;
 }

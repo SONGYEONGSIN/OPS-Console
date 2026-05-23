@@ -40,4 +40,9 @@ describe("CountUp", () => {
     render(<CountUp value={0} />);
     expect(screen.getByText("0")).toBeInTheDocument();
   });
+  it("1000 이상은 ko-KR 천단위 구분 (2,283)", () => {
+    mockReducedMotion(true);
+    render(<CountUp value={2283} />);
+    expect(screen.getByText("2,283")).toBeInTheDocument();
+  });
 });
