@@ -69,7 +69,6 @@ function LiveOverviewInner({
       todos: 0,
       services: 0,
       backup: 0,
-      schedule: 0,
       handover: 0,
     };
     for (const it of tableItems) {
@@ -77,7 +76,6 @@ function LiveOverviewInner({
       else if (it.domain === "todos") c.todos += 1;
       else if (it.domain === "services") c.services += 1;
       else if (it.domain === "backup") c.backup += 1;
-      else if (it.domain === "schedule") c.schedule += 1;
       else if (it.domain === "handover") c.handover += 1;
     }
     return c;

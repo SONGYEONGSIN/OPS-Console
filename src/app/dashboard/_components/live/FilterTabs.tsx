@@ -1,21 +1,20 @@
 "use client";
 
-export type LiveFilter = "all" | "incidents" | "todos" | "services" | "backup" | "schedule" | "handover";
+export type LiveFilter = "all" | "incidents" | "todos" | "services" | "backup" | "handover";
 type Counts = Record<LiveFilter, number>;
 
 const ORDER: { key: LiveFilter; label: string }[] = [
   { key: "all", label: "전체" },
-  { key: "incidents", label: "사고" },
-  { key: "todos", label: "내 할 일" },
   { key: "services", label: "서비스" },
+  { key: "todos", label: "내 할 일" },
+  { key: "incidents", label: "사고" },
   { key: "backup", label: "백업" },
-  { key: "schedule", label: "일정" },
   { key: "handover", label: "인수인계" },
 ];
 
 type Props = { active: LiveFilter; counts: Counts; onChange: (next: LiveFilter) => void };
 
-/** 실시간 테이블 필터 칩 — 5탭 + pill 건수. active=vermilion. */
+/** 실시간 테이블 필터 칩 — 6탭 + pill 건수. active=vermilion. 일정은 칩에서 제외. */
 export function FilterTabs({ active, counts, onChange }: Props) {
   return (
     <div className="flex flex-wrap gap-1.5">
