@@ -138,69 +138,72 @@ function LiveOverviewInner({
             <SystemHealthPanel cronActive={sim} />
           </div>
 
-          {/* Row 2: 그룹박스 2개 + 콘솔 스트림 (자연 높이 유지, stretch 안 함) */}
+          {/* Row 1 아래: 좌·우 독립 stack (좌측 = 그룹박스→테이블, 우측 = 콘솔→Admin).
+              행별 stretch 없이 각 컬럼이 자기 자식들로 채워짐. */}
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
-            <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
-              <MetricGroupBox title="계약 · 미수채권" columns={2}>
-                <MetricSubcard
-                  label="계약"
-                  value={metrics.contract.value}
-                  desc={metrics.contract.desc}
-                  active={metrics.contract.active}
+            {/* 좌측 컬럼: 그룹박스 → 필터+테이블 */}
+            <div className="flex flex-col gap-6">
+              <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
+                <MetricGroupBox title="계약 · 미수채권" columns={2}>
+                  <MetricSubcard
+                    label="계약"
+                    value={metrics.contract.value}
+                    desc={metrics.contract.desc}
+                    active={metrics.contract.active}
+                  />
+                  <MetricSubcard
+                    label="미수채권"
+                    value={metrics.bond.value}
+                    desc={metrics.bond.desc}
+                    active={metrics.bond.active}
+                  />
+                </MetricGroupBox>
+                <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
+                  <MetricSubcard
+                    label="백업"
+                    value={metrics.backup.value}
+                    desc={metrics.backup.desc}
+                  />
+                  <MetricSubcard
+                    label="대학연락처"
+                    value={metrics.contacts.value}
+                    desc={metrics.contacts.desc}
+                  />
+                  <MetricSubcard
+                    label="일정 / 활동"
+                    value={metrics.scheduleActivity.value}
+                    desc={metrics.scheduleActivity.desc}
+                  />
+                </MetricGroupBox>
+              </section>
+              <section className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <FilterTabs
+                    active={filter}
+                    counts={counts}
+                    onChange={setFilter}
+                  />
+                  <span className="text-xs text-ink-muted">
+                    {visible.length}건 표시
+                  </span>
+                </div>
+                <LiveTable
+                  items={visible}
+                  onSelect={(it) =>
+                    setSelected({ variant: it.variant, row: it.listRow })
+                  }
                 />
-                <MetricSubcard
-                  label="미수채권"
-                  value={metrics.bond.value}
-                  desc={metrics.bond.desc}
-                  active={metrics.bond.active}
-                />
-              </MetricGroupBox>
-              <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
-                <MetricSubcard
-                  label="백업"
-                  value={metrics.backup.value}
-                  desc={metrics.backup.desc}
-                />
-                <MetricSubcard
-                  label="대학연락처"
-                  value={metrics.contacts.value}
-                  desc={metrics.contacts.desc}
-                />
-                <MetricSubcard
-                  label="일정 / 활동"
-                  value={metrics.scheduleActivity.value}
-                  desc={metrics.scheduleActivity.desc}
-                />
-              </MetricGroupBox>
-            </section>
-            <ConsoleStream lines={lines} />
-          </div>
-
-          {/* Row 3: 필터 + 테이블 + 관리자 컨트롤 (자연 높이 유지, stretch 안 함) */}
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
-            <section className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <FilterTabs
-                  active={filter}
-                  counts={counts}
-                  onChange={setFilter}
-                />
-                <span className="text-xs text-ink-muted">
-                  {visible.length}건 표시
-                </span>
-              </div>
-              <LiveTable
-                items={visible}
-                onSelect={(it) =>
-                  setSelected({ variant: it.variant, row: it.listRow })
-                }
+              </section>
+            </div>
+            {/* 우측 컬럼: 콘솔 → Admin */}
+            <div className="flex flex-col gap-6">
+              <ConsoleStream lines={lines} />
+              <AdminControls
+                sim={sim}
+                onToggleSim={onToggleSim}
+                onTestEvent={onTestEvent}
               />
-            </section>
-            <AdminControls
-              sim={sim}
-              onToggleSim={onToggleSim}
-              onTestEvent={onTestEvent}
-            />
+            </div>
           </div>
         </div>
       </div>
