@@ -30,6 +30,13 @@
   --chrome-snow: #f5f5f4;
   --chrome-muted: #71717a;
 
+  /* Console 컬러 팔레트 — 사이드바·토스트 등 */
+  --console-bg: #1a160f;
+  --console-fg: #eae5d9;
+  --console-info: #8bb3e5;
+  --console-warn: #e9c46a;
+  --console-err: #e76f51;
+
   /* Typography scale */
   --text-3xs: 9px;
   --text-2xs: 10px;
@@ -115,6 +122,11 @@
   --color-chrome-graphite: var(--chrome-graphite);
   --color-chrome-snow: var(--chrome-snow);
   --color-chrome-muted: var(--chrome-muted);
+  --color-console-bg: var(--console-bg);
+  --color-console-fg: var(--console-fg);
+  --color-console-info: var(--console-info);
+  --color-console-warn: var(--console-warn);
+  --color-console-err: var(--console-err);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;
@@ -266,9 +278,23 @@ body::before {
 }
 
 /* ═════════════════════════════════════════════════════════
-   Animation — LiveIndicator LED pulse
+   Animation — LiveIndicator LED pulse + Toast + UI flourishes
    ═════════════════════════════════════════════════════════ */
 @keyframes live-pulse {
   0%, 100% { transform: scale(0.9); opacity: 0.6; }
   50% { transform: scale(1.2); opacity: 1; }
+}
+
+@keyframes led-flicker {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes toast-in {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toast-out {
+  to { transform: translateY(20px); opacity: 0; }
 }
