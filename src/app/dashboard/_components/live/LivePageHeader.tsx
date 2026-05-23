@@ -1,9 +1,10 @@
-import { ScopeToggle } from "./ScopeToggle";
+import { LiveIndicator } from "./LiveIndicator";
+import { SegmentToggle } from "./SegmentToggle";
 
 /**
- * LivePageHeader — 실시간 현황 페이지 전용 헤더.
- * 다른 메뉴 PageHeader 패턴 미사용 (breadcrumb·탭·메타 X).
- * title + ● LIVE 인디케이터 + 전체/내것 토글.
+ * LivePageHeader — 실시간 현황 페이지 헤더.
+ * 22px extrabold 타이틀 + LIVE MONITOR 박스 인디케이터 + 세그먼트 토글(전체/내업무).
+ * border-b-2 border-ink 강조 (예전 short accent 라인 제거).
  */
 export function LivePageHeader({
   mine,
@@ -13,16 +14,14 @@ export function LivePageHeader({
   title: string;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-line bg-cream px-6 py-3">
-      <div className="flex items-baseline gap-3">
-        <h1 className="text-md font-semibold tracking-[-0.01em] text-ink">
+    <header className="flex items-center justify-between border-b-2 border-ink bg-cream px-6 pb-3 pt-4">
+      <div className="flex items-center gap-3">
+        <h1 className="text-[22px] font-extrabold tracking-[-0.03em] text-ink">
           {title}
         </h1>
-        <span className="font-mono text-2xs uppercase tracking-[0.18em] text-vermilion">
-          ● LIVE
-        </span>
+        <LiveIndicator />
       </div>
-      <ScopeToggle mine={mine} />
+      <SegmentToggle mine={mine} />
     </header>
   );
 }
