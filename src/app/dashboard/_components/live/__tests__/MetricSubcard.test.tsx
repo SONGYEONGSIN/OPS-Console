@@ -1,8 +1,26 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MetricSubcard } from "../MetricSubcard";
 
+function mockReducedMotion() {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: () => ({
+      matches: true, // reduced-motion → CountUp 즉시 value 표시
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      media: "",
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 describe("MetricSubcard", () => {
+  beforeEach(() => mockReducedMotion());
+
   it("label / value / desc 렌더", () => {
     render(<MetricSubcard label="체결 계약" value="12" desc="체결 진행중" />);
     expect(screen.getByText("체결 계약")).toBeInTheDocument();
