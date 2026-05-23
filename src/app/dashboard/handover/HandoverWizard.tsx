@@ -19,6 +19,8 @@ type Operator = {
 type Props = {
   services: ReadyService[];
   operators: Operator[];
+  /** Step1 헤더 우측에 노출할 슬롯 (예: ScopeChips). */
+  step1HeaderRight?: React.ReactNode;
 };
 
 type Step = 1 | 2 | 3 | 4;
@@ -34,7 +36,7 @@ function formatDate(s: string): string {
   return `${y}-${m}-${dd}`;
 }
 
-export function HandoverWizard({ services, operators }: Props) {
+export function HandoverWizard({ services, operators, step1HeaderRight }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [serviceId, setServiceId] = useState<string>("");
@@ -80,6 +82,7 @@ export function HandoverWizard({ services, operators }: Props) {
             services={services}
             serviceId={serviceId}
             onSelect={setServiceId}
+            headerRight={step1HeaderRight}
           />
         )}
         {step === 2 && (
@@ -228,10 +231,12 @@ function Step1({
   services,
   serviceId,
   onSelect,
+  headerRight,
 }: {
   services: ReadyService[];
   serviceId: string;
   onSelect: (id: string) => void;
+  headerRight?: React.ReactNode;
 }) {
   return (
     <section className="space-y-4">
@@ -241,6 +246,7 @@ function Step1({
         <span className="text-xs text-muted">
           · 인수인계 내용 작성이 완료된(작성완료) 서비스만 표시
         </span>
+        {headerRight ? <div className="ml-auto">{headerRight}</div> : null}
       </header>
       {services.length === 0 ? (
         <p className="border border-line bg-cream p-6 text-center text-sm text-muted">

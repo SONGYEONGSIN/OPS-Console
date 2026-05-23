@@ -77,12 +77,12 @@ export default async function HandoverPage({
           description={fallback.description}
         />
         <HandoverTabs />
-        <div className="px-7 pt-5">
-          <ScopeChips total={ready.length} mineLabel="내 서비스" />
-        </div>
         <HandoverWizard
           services={ready}
           operators={operatorCandidates}
+          step1HeaderRight={
+            <ScopeChips total={ready.length} mineLabel="내 서비스" />
+          }
         />
       </div>
     );
