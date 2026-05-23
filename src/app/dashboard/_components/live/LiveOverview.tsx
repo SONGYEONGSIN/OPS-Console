@@ -92,13 +92,11 @@ function LiveOverviewInner({
       : 0;
 
   return (
-    <div
-      className={`h-full overflow-y-auto bg-cream transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-        selected ? "md:pr-[400px]" : ""
-      }`}
-    >
+    <div className="h-full overflow-y-auto bg-cream">
       {/* 헤더를 스크롤 컨테이너 안에 두고 sticky로 고정 → 스크롤바 우측 점유분이
-          헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치. */}
+          헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치.
+          인스펙터 열림 시 우측 사이드바(SystemHealth + ConsoleStream)를 그대로
+          덮도록 컨테이너 우측 padding 사용 안 함 — 좌측 3fr 컬럼 너비 유지. */}
       <div className="sticky top-0 z-10">
         <LivePageHeader mine={mine} title={title} />
       </div>
