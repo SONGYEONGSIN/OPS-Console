@@ -44,6 +44,13 @@ const VARIANT: Record<LiveTableDomain, Variant> = {
   handover: "handover",
 };
 
+/** handover_records.status DB enum → 화면 한글 라벨. HandoverControls와 동일 라벨. */
+const HANDOVER_STATUS_LABEL: Record<string, string> = {
+  draft: "작성중",
+  ready: "작성완료",
+  published: "인계완료",
+};
+
 function todayKst(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(now);
 }
@@ -152,7 +159,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       domain: "handover",
       badgeDomain: BADGE.handover,
       variant: VARIANT.handover,
-      statusText: h.status,
+      statusText: HANDOVER_STATUS_LABEL[h.status] ?? h.status,
       title: h.title,
       timeText: formatRelativeTime(h.createdAt, now),
       occurredAt: h.createdAt,

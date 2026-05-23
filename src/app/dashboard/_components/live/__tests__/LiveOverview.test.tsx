@@ -56,7 +56,7 @@ beforeEach(() => {
 });
 
 describe("LiveOverview (Phase 3 — Realtime)", () => {
-  it("헤더 + 3 KPI 카드 + 2 그룹박스 + 필터 + 테이블 렌더", () => {
+  it("헤더 + 3 KPI 카드 + 통합 그룹박스 + 필터 + 테이블 렌더", () => {
     render(<LiveOverview {...baseProps} />);
     // 헤더
     expect(screen.getByText("실시간 현황")).toBeInTheDocument();
@@ -64,9 +64,10 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText("사고 누적 데이터")).toBeInTheDocument();
     expect(screen.getByText("내 미완 할 일")).toBeInTheDocument();
     expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
-    // 그룹박스 title
-    expect(screen.getByText("계약 · 미수채권")).toBeInTheDocument();
-    expect(screen.getByText("백업 · 인수인계 · 연락처")).toBeInTheDocument();
+    // 그룹박스 title (2 박스 → 1 박스 통합)
+    expect(screen.getByText("서비스 현황")).toBeInTheDocument();
+    expect(screen.queryByText("계약 · 미수채권")).toBeNull();
+    expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
     // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
     expect(screen.getByRole("button", { name: /^전체 \d/ })).toBeInTheDocument();
     // 빈 테이블 empty 메시지

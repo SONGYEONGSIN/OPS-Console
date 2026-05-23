@@ -333,8 +333,8 @@ export default async function DashboardLivePage({
         backup: { value: backupCount, desc: "요청 및 내역" },
         contacts: { value: contactsTotal, desc: "등록한 연락처" },
         handover: {
-          value: `${handoverWrittenCount} / ${myServicesCount}`,
-          desc: `(${handoverPublishedCount}) 진행 완료`,
+          value: { num: handoverWrittenCount, den: myServicesCount },
+          desc: `(${handoverPublishedCount.toLocaleString("ko-KR")}) 진행 완료`,
         },
       }}
       tableItems={tableItems}

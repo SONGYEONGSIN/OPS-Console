@@ -47,4 +47,15 @@ describe("MetricGroupBox", () => {
       /grid-cols-4/,
     );
   });
+
+  it("columns=5 → grid-cols-5", () => {
+    const { container } = render(
+      <MetricGroupBox title="x" columns={5}>
+        <div />
+      </MetricGroupBox>,
+    );
+    expect(container.querySelector("[data-subgrid]")?.className).toMatch(
+      /grid-cols-5/,
+    );
+  });
 });

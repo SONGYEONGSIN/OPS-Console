@@ -35,7 +35,7 @@ export type LiveOverviewProps = {
     bond: { value: number | string; active?: boolean; desc: string };
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
-    handover: { value: number | string; desc: string };
+    handover: { value: number | string | { num: number; den: number }; desc: string };
   };
   tableItems: LiveTableItem[];
   initialConsoleLines?: ConsoleLogEntry[];
@@ -151,39 +151,36 @@ function LiveOverviewInner({
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
             {/* 좌측 컬럼: 그룹박스 → 필터+테이블 */}
             <div className="flex flex-col gap-6">
-              <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
-                <MetricGroupBox title="계약 · 미수채권" columns={2}>
-                  <MetricSubcard
-                    label="계약체결"
-                    value={metrics.contract.value}
-                    desc={metrics.contract.desc}
-                    active={metrics.contract.active}
-                  />
-                  <MetricSubcard
-                    label="미수채권"
-                    value={metrics.bond.value}
-                    desc={metrics.bond.desc}
-                    active={metrics.bond.active}
-                  />
-                </MetricGroupBox>
-                <MetricGroupBox title="백업 · 인수인계 · 연락처" columns={3}>
-                  <MetricSubcard
-                    label="백업내용"
-                    value={metrics.backup.value}
-                    desc={metrics.backup.desc}
-                  />
-                  <MetricSubcard
-                    label="인수인계"
-                    value={metrics.handover.value}
-                    desc={metrics.handover.desc}
-                  />
-                  <MetricSubcard
-                    label="대학연락처"
-                    value={metrics.contacts.value}
-                    desc={metrics.contacts.desc}
-                  />
-                </MetricGroupBox>
-              </section>
+              <MetricGroupBox title="서비스 현황" columns={5}>
+                <MetricSubcard
+                  label="계약체결"
+                  value={metrics.contract.value}
+                  desc={metrics.contract.desc}
+                  active={metrics.contract.active}
+                />
+                <MetricSubcard
+                  label="미수채권"
+                  value={metrics.bond.value}
+                  desc={metrics.bond.desc}
+                  active={metrics.bond.active}
+                />
+                <MetricSubcard
+                  label="백업내용"
+                  value={metrics.backup.value}
+                  desc={metrics.backup.desc}
+                />
+                <MetricSubcard
+                  label="인수인계"
+                  value={metrics.handover.value}
+                  desc={metrics.handover.desc}
+                  valueHint="본인 서비스 중 인수인계 내용 작성한 카운팅"
+                />
+                <MetricSubcard
+                  label="대학연락처"
+                  value={metrics.contacts.value}
+                  desc={metrics.contacts.desc}
+                />
+              </MetricGroupBox>
               <section className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <FilterTabs

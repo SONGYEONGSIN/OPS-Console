@@ -66,6 +66,21 @@ describe("buildLiveTableItems", () => {
     expect(items.find((x) => x.id === "t4")?.statusText).toBe("대기");
   });
 
+  it("handover status 영문 → 한글 매핑 (draft/ready/published)", () => {
+    const sources: LiveTableSources = {
+      incidents: [], todos: [], services: [], backup: [], schedule: [],
+      handover: [
+        { id: "h1", title: "x", status: "draft", createdAt: tEarlier(1), listRow: {} as never },
+        { id: "h2", title: "x", status: "ready", createdAt: tEarlier(2), listRow: {} as never },
+        { id: "h3", title: "x", status: "published", createdAt: tEarlier(3), listRow: {} as never },
+      ],
+    };
+    const items = buildLiveTableItems(sources, now);
+    expect(items.find((x) => x.id === "h1")?.statusText).toBe("작성중");
+    expect(items.find((x) => x.id === "h2")?.statusText).toBe("작성완료");
+    expect(items.find((x) => x.id === "h3")?.statusText).toBe("인계완료");
+  });
+
   it("timeText는 formatRelativeTime 결과 ('방금 전' 등)", () => {
     const sources: LiveTableSources = {
       incidents: [{ id: "x", title: "y", status: "미처리", createdAt: tEarlier(0), listRow: {} as never }],
@@ -75,7 +90,7 @@ describe("buildLiveTableItems", () => {
     expect(items[0].timeText).toBe("방금 전");
   });
 
-  it("handover 행 매핑: badgeDomain=인수인계, variant=handover, statusText=status 원본", () => {
+  it("handover 행 매핑: badgeDomain=인수인계, variant=handover, statusText 한글", () => {
     const sources: LiveTableSources = {
       incidents: [], todos: [], services: [], backup: [], schedule: [],
       handover: [
@@ -87,7 +102,7 @@ describe("buildLiveTableItems", () => {
     expect(items[0].id).toBe("h1");
     expect(items[0].badgeDomain).toBe("인수인계");
     expect(items[0].variant).toBe("handover");
-    expect(items[0].statusText).toBe("published");
+    expect(items[0].statusText).toBe("인계완료");
     expect(items[0].title).toBe("서울대 · 원서접수");
   });
 });
