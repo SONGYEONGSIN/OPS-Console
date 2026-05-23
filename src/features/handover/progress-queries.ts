@@ -135,13 +135,14 @@ export type ReadyService = {
   notes_md: string | null;
 };
 
-/** wizard step1 후보 — handover_records.status='ready' + 14 sub-field 포함 */
-export async function listReadyServices(): Promise<ReadyService[]> {
+/** wizard step1 후보 — handover_records.status='ready' + 14 sub-field 포함.
+ *  ownerEmail 지정 시 services.operator_email OR developer_email = ownerEmail 필터(클라이언트 측). */
+export async function listReadyServices(ownerEmail?: string): Promise<ReadyService[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("handover_records")
     .select(
-      "service_id, updated_at, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md, services(id, service_id, university_name, service_name, application_type, operator_name)",
+      "service_id, updated_at, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md, services(id, service_id, university_name, service_name, application_type, operator_name, operator_email, developer_email)",
     )
     .eq("status", "ready")
     .limit(1000);
@@ -173,10 +174,18 @@ export async function listReadyServices(): Promise<ReadyService[]> {
       service_name: string;
       application_type: string;
       operator_name: string | null;
+      operator_email: string | null;
+      developer_email: string | null;
     } | null;
   };
   return ((data ?? []) as unknown as RawReady[])
     .filter((r) => r.services !== null)
+    .filter((r) =>
+      ownerEmail
+        ? r.services!.operator_email === ownerEmail ||
+          r.services!.developer_email === ownerEmail
+        : true,
+    )
     .map((r) => ({
       id: r.services!.id,
       service_id: r.services!.service_id,

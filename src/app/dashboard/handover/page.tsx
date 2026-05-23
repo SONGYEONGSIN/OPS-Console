@@ -55,7 +55,10 @@ export default async function HandoverPage({
 
   if (tab === "progress") {
     const fallback = resolvePageMeta(slug, meta);
-    const ready = await listReadyServices();
+    const mineProgress = params.mine === "true";
+    const ready = await listReadyServices(
+      mineProgress ? (me?.email ?? undefined) : undefined,
+    );
     const ops = await listOperators();
     const operatorCandidates = ops
       .filter((o) => o.status === "active" && o.email !== me?.email)
@@ -74,6 +77,9 @@ export default async function HandoverPage({
           description={fallback.description}
         />
         <HandoverTabs />
+        <div className="px-7 pt-5">
+          <ScopeChips total={ready.length} mineLabel="내 서비스" />
+        </div>
         <HandoverWizard
           services={ready}
           operators={operatorCandidates}
