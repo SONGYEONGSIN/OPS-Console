@@ -61,7 +61,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     // 헤더
     expect(screen.getByText("실시간 현황")).toBeInTheDocument();
     // KPI 3 카드 label
-    expect(screen.getByText("사고 누적")).toBeInTheDocument();
+    expect(screen.getByText("사고 누적 데이터")).toBeInTheDocument();
     expect(screen.getByText("내 미완 할 일")).toBeInTheDocument();
     expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
     // 그룹박스 title
