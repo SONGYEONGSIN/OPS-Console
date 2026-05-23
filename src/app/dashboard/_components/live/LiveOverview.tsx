@@ -18,12 +18,12 @@ import { FilterTabs, type LiveFilter } from "./FilterTabs";
 import { LiveTable } from "./LiveTable";
 import { SystemHealthPanel } from "./SystemHealthPanel";
 import { ConsoleStream } from "./ConsoleStream";
-import { AdminControls } from "./AdminControls";
 import type { LiveTableItem } from "./live-table-builder";
 import type { ConsoleLogEntry } from "./mock-log-pool";
 
 export type LiveOverviewProps = {
   mine: boolean;
+  myEmail: string | null;
   title: string;
   kpi: {
     sago: { count: number; sparklineD: string };
@@ -44,6 +44,7 @@ export type LiveOverviewProps = {
 /** row-pair grid 내부 컴포넌트 — ToastProvider 하위에서 useLiveSidebar 사용 가능. */
 function LiveOverviewInner({
   mine,
+  myEmail,
   title,
   kpi,
   metrics,
@@ -55,8 +56,10 @@ function LiveOverviewInner({
     variant: Variant;
     row: ListRow;
   } | null>(null);
-  const { sim, lines, onToggleSim, onTestEvent } = useLiveSidebar({
+  const { lines } = useLiveSidebar({
     initialLines: initialConsoleLines,
+    mine,
+    myEmail,
   });
 
   const counts = useMemo(() => {
@@ -140,10 +143,10 @@ function LiveOverviewInner({
                 delayMs={100}
               />
             </section>
-            <SystemHealthPanel cronActive={sim} />
+            <SystemHealthPanel />
           </div>
 
-          {/* Row 1 아래: 좌·우 독립 stack (좌측 = 그룹박스→테이블, 우측 = 콘솔→Admin).
+          {/* Row 1 아래: 좌·우 독립 stack (좌측 = 그룹박스→테이블, 우측 = 콘솔).
               행별 stretch 없이 각 컬럼이 자기 자식들로 채워짐. */}
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
             {/* 좌측 컬럼: 그룹박스 → 필터+테이블 */}
@@ -200,14 +203,9 @@ function LiveOverviewInner({
                 />
               </section>
             </div>
-            {/* 우측 컬럼: 콘솔 → Admin */}
+            {/* 우측 컬럼: 콘솔 */}
             <div className="flex flex-col gap-6">
               <ConsoleStream lines={lines} />
-              <AdminControls
-                sim={sim}
-                onToggleSim={onToggleSim}
-                onTestEvent={onTestEvent}
-              />
             </div>
           </div>
         </div>

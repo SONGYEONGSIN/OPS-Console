@@ -261,6 +261,7 @@ export default async function DashboardLivePage({
   return (
     <LiveOverview
       mine={mine}
+      myEmail={myEmail}
       title="실시간 현황"
       kpi={{
         sago: { count: incidentsUnresolvedCount, sparklineD: SPARKLINE_SAGO },

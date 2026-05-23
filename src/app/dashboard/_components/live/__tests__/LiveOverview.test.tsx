@@ -8,6 +8,11 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
 }));
 
+// useDashboardRealtime mock — Realtime 구독 없이 렌더 테스트
+vi.mock("../use-dashboard-realtime", () => ({
+  useDashboardRealtime: () => {},
+}));
+
 import { LiveOverview, type LiveOverviewProps } from "../LiveOverview";
 
 function mockReducedMotion() {
@@ -28,6 +33,7 @@ function mockReducedMotion() {
 
 const baseProps: LiveOverviewProps = {
   mine: false,
+  myEmail: null,
   title: "실시간 현황",
   kpi: {
     sago: { count: 3, sparklineD: "M 0,30 L 100,2" },
@@ -49,7 +55,7 @@ beforeEach(() => {
   push.mockClear();
 });
 
-describe("LiveOverview (Phase 1)", () => {
+describe("LiveOverview (Phase 3 — Realtime)", () => {
   it("헤더 + 3 KPI 카드 + 2 그룹박스 + 필터 + 테이블 렌더", () => {
     render(<LiveOverview {...baseProps} />);
     // 헤더
@@ -61,7 +67,7 @@ describe("LiveOverview (Phase 1)", () => {
     // 그룹박스 title
     expect(screen.getByText("계약 · 미수채권")).toBeInTheDocument();
     expect(screen.getByText("백업 · 연락처 · 일정")).toBeInTheDocument();
-    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음. SegmentToggle '전체'와 구분)
+    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
     expect(screen.getByRole("button", { name: /^전체 \d/ })).toBeInTheDocument();
     // 빈 테이블 empty 메시지
     expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
@@ -93,13 +99,14 @@ describe("LiveOverview (Phase 1)", () => {
     expect(screen.getByText(/0건 표시/)).toBeInTheDocument();
   });
 
-  it("우측 사이드바 영역 렌더 (시스템 헬스 + 콘솔 + 관리자)", () => {
+  it("우측 사이드바 영역 렌더 (시스템 헬스 + 콘솔)", () => {
     render(<LiveOverview {...baseProps} />);
     expect(screen.getByText("시스템 게이트웨이 상태")).toBeInTheDocument();
     expect(screen.getByText("실시간 백그라운드 로그")).toBeInTheDocument();
+    // AdminControls 버튼 없음
     expect(
-      screen.getByRole("button", { name: /실시간 스트림 활성화/ }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: /실시간 스트림 활성화/ }),
+    ).toBeNull();
   });
 
   it("initialConsoleLines 전달 시 해당 텍스트가 콘솔에 표시됨", () => {
@@ -110,5 +117,17 @@ describe("LiveOverview (Phase 1)", () => {
     render(<LiveOverview {...baseProps} initialConsoleLines={seedLines} />);
     expect(screen.getByText("[HANDOVER] 인수인계 등록 완료")).toBeInTheDocument();
     expect(screen.getByText("[INCIDENTS] 장애 발생")).toBeInTheDocument();
+  });
+
+  it("mine=true + myEmail 전달 시 렌더 에러 없음", () => {
+    expect(() =>
+      render(
+        <LiveOverview
+          {...baseProps}
+          mine={true}
+          myEmail="user@example.com"
+        />,
+      ),
+    ).not.toThrow();
   });
 });
