@@ -79,13 +79,17 @@ export function LiveOverview({
       : 0;
 
   return (
-    <div className="flex h-full flex-col">
-      <LivePageHeader mine={mine} title={title} />
-      <div
-        className={`flex-1 overflow-y-auto bg-cream px-6 py-6 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          selected ? "md:pr-[400px]" : ""
-        }`}
-      >
+    <div
+      className={`h-full overflow-y-auto bg-cream transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+        selected ? "md:pr-[400px]" : ""
+      }`}
+    >
+      {/* 헤더를 스크롤 컨테이너 안에 두고 sticky로 고정 → 스크롤바 우측 점유분이
+          헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치. */}
+      <div className="sticky top-0 z-10">
+        <LivePageHeader mine={mine} title={title} />
+      </div>
+      <div className="px-6 py-6">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-6">
           {/* 3 KPI 대형 카드 */}
           <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
@@ -128,13 +132,13 @@ export function LiveOverview({
           <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
             <MetricGroupBox title="계약 · 미수채권" columns={2}>
               <MetricSubcard
-                label="체결 계약"
+                label="계약"
                 value={metrics.contract.value}
                 desc={metrics.contract.desc}
                 active={metrics.contract.active}
               />
               <MetricSubcard
-                label="미수 채권"
+                label="미수채권"
                 value={metrics.bond.value}
                 desc={metrics.bond.desc}
                 active={metrics.bond.active}
@@ -142,12 +146,12 @@ export function LiveOverview({
             </MetricGroupBox>
             <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
               <MetricSubcard
-                label="백업 요청"
+                label="백업"
                 value={metrics.backup.value}
                 desc={metrics.backup.desc}
               />
               <MetricSubcard
-                label="기관 연락처"
+                label="대학연락처"
                 value={metrics.contacts.value}
                 desc={metrics.contacts.desc}
               />
