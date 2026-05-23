@@ -14,7 +14,7 @@ export function SystemHealthPanel({ cronActive }: Props) {
       title="시스템 게이트웨이 상태"
       titleRight={<HealthLed variant="vermilion" />}
     >
-      <ul className="flex h-full flex-col justify-around gap-3">
+      <ul className="flex flex-1 flex-col justify-around gap-3">
           <li className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-xs font-semibold text-ink">
               <HealthLed variant="vermilion" />
