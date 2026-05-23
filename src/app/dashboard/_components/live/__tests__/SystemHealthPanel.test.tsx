@@ -44,9 +44,10 @@ describe("SystemHealthPanel", () => {
     });
   });
 
-  it("min-h-[320px] wrapper 적용", () => {
+  it("카드 자체에 min-h-[320px] 적용", () => {
     const { container } = render(<SystemHealthPanel cronActive={false} />);
-    const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.className).toMatch(/min-h-\[320px\]/);
+    // SideBox section이 firstChild (wrapper div 제거됨)
+    expect((container.firstChild as HTMLElement).className).toMatch(/min-h-\[320px\]/);
+    expect((container.firstChild as HTMLElement).className).toMatch(/border-ink/);
   });
 });

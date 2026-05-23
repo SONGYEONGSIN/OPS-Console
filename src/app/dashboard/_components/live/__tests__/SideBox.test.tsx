@@ -24,4 +24,13 @@ describe("SideBox", () => {
     const { container } = render(<SideBox title="x"><div /></SideBox>);
     expect(container.querySelector("[data-tr]")).toBeNull();
   });
+  it("className prop으로 외부 스타일 주입", () => {
+    const { container } = render(
+      <SideBox title="x" className="min-h-[320px] custom-test">
+        <div />
+      </SideBox>
+    );
+    expect((container.firstChild as HTMLElement).className).toMatch(/min-h-\[320px\]/);
+    expect((container.firstChild as HTMLElement).className).toMatch(/custom-test/);
+  });
 });

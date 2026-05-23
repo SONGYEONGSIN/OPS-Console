@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>운영 및 실시간 현황 대시보드 - Dashboard</title>
+  <!-- Pretendard Variable CDN 임포트 -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+  
+  <style>
+    /* 프로젝트 디자인 토큰 정의 */
+    :root {
+      --washi: #ede6d2;
+      --washi-raised: #f4eddd;
+      --cream: #faf4e6;
+      --ink: #15120c;
+      --ink-soft: #3d3529;
+      --ink-muted: #80776b;
+      --vermilion: #b8331e;
+      --vermilion-deep: #8e2412;
+      
+      --indigo: #2a4365;
+      --green: #2f855a;
+      --green-light: #48bb78;
+      
+      --line-color: #15120c;
+      --line-soft: #d3cbb5;
+      
+      --shadow-led-vermilion: 0 0 8px var(--vermilion), 0 0 2px var(--vermilion);
+      --shadow-led-green: 0 0 8px var(--green-light), 0 0 2px var(--green-light);
+      --shadow-led-yellow: 0 0 8px #d97706, 0 0 2px #d97706;
+      
+      --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--cream);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      padding: 24px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* 대시보드 컨테이너 */
+    .dashboard-container {
+      width: 100%;
+      max-width: 1680px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 1. 상단 공통 헤더 */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .live-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--vermilion);
+      letter-spacing: 0.08em;
+      border: 1px solid var(--vermilion);
+      padding: 2px 6px;
+      border-radius: 3px;
+      background-color: rgba(184, 51, 30, 0.05);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background-color: var(--vermilion);
+      border-radius: 50%;
+      box-shadow: var(--shadow-led-vermilion);
+      animation: pulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.9); opacity: 0.6; box-shadow: 0 0 2px var(--vermilion); }
+      50% { transform: scale(1.2); opacity: 1; box-shadow: var(--shadow-led-vermilion); }
+    }
+
+    .toggle-group {
+      display: flex;
+      border: 1px solid var(--ink);
+      padding: 2px;
+    }
+
+    .toggle-btn {
+      background: none;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 16px;
+      cursor: pointer;
+      color: var(--ink);
+      transition: all 0.15s ease;
+    }
+
+    .toggle-btn.active {
+      background-color: var(--ink);
+      color: var(--cream);
+    }
+
+    /* 2. 메인 2단 격자 레이아웃 */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 3fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 좌측 메인 패널 */
+    .main-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* 우측 사이드 패널 */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 24px;
+    }
+
+    /* 3. 메인 핵심 카드 그리드 (3열 재설계) */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .kpi-card {
+      background-color: var(--washi-raised);
+      border: 1px solid var(--line-color);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      min-height: 140px;
+      transition: all 0.2s ease;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(21, 18, 12, 0.04);
+    }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .kpi-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      letter-spacing: -0.01em;
+    }
+
+    .kpi-trend-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border: 1px solid var(--line-color);
+      background-color: var(--cream);
+    }
+
+    .kpi-trend-tag.danger {
+      color: var(--vermilion);
+      border-color: var(--vermilion);
+    }
+
+    .kpi-body {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .kpi-number {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--vermilion);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-number.neutral {
+      color: var(--ink);
+    }
+
+    /* 카드 내 실시간 미니 그래프(Sparkline) */
+    .kpi-sparkline {
+      width: 100px;
+      height: 40px;
+    }
+
+    .kpi-sparkline path {
+      fill: none;
+      stroke: var(--vermilion);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .kpi-sparkline.neutral path {
+      stroke: var(--ink);
+    }
+
+    /* 미니 게이지 바 */
+    .kpi-progress-wrapper {
+      width: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .kpi-progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background-color: var(--line-soft);
+      border: 1px solid var(--ink);
+      overflow: hidden;
+    }
+
+    .kpi-progress-bar {
+      height: 100%;
+      background-color: var(--ink);
+      width: 20%;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .kpi-footer {
+      font-size: 12px;
+      color: var(--ink-muted);
+      margin-top: 12px;
+      border-top: 1px dashed var(--line-soft);
+      padding-top: 8px;
+    }
+
+    /* 4. 중소형 카드 그리드 (재조직 및 그룹화) */
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background-color: var(--vermilion);
+    }
+
+    .metrics-group-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .metrics-group-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .metrics-group-box {
+      border: 1px solid var(--ink);
+      padding: 16px;
+      background-color: var(--cream);
+    }
+
+    .metrics-card-subgrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .metrics-card-subgrid.three-col {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .metric-subcard {
+      background-color: var(--washi-raised);
+      border: 1px solid var(--line-soft);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .metric-subcard:hover {
+      border-color: var(--ink);
+      background-color: var(--washi);
+    }
+
+    .subcard-label {
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-weight: 600;
+    }
+
+    .subcard-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .subcard-value.active {
+      color: var(--vermilion);
+    }
+
+    .subcard-desc {
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
+
+    /* 5. 실시간 상세 테이블 목록 영역 */
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tab {
+      background-color: transparent;
+      border: 1px solid var(--line-soft);
+      color: var(--ink-soft);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-tab:hover {
+      background-color: var(--washi-raised);
+      border-color: var(--ink);
+    }
+
+    .filter-tab.active {
+      background-color: var(--vermilion);
+      border-color: var(--vermilion);
+      color: var(--cream);
+    }
+
+    .table-count-info {
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    .table-card {
+      border: 1px solid var(--ink);
+      background-color: var(--washi-raised);
+      overflow: hidden;
+    }
+
+    .live-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .live-th {
+      background-color: var(--washi);
+      border-bottom: 1px solid var(--ink);
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      text-align: left;
+    }
+
+    .live-tr {
+      border-bottom: 1px solid var(--line-soft);
+      background-color: var(--washi-raised);
+      transition: all 0.2s ease;
+    }
+
+    .live-tr:last-child {
+      border-bottom: none;
+    }
+
+    .live-tr.new-flash {
+      animation: row-flash 2.5s ease-out;
+    }
+
+    @keyframes row-flash {
+      0% { background-color: rgba(184, 51, 30, 0.12); transform: scaleY(0.9); }
+      100% { background-color: var(--washi-raised); transform: scaleY(1); }
+    }
+
+    .live-tr:hover {
+      background-color: var(--washi);
+    }
+
+    .live-td {
+      padding: 12px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--vermilion);
+      color: var(--vermilion);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 1px;
+      text-align: center;
+      min-width: 54px;
+    }
+
+    .badge.todo { border-color: var(--ink); color: var(--ink); }
+    .badge.service { border-color: var(--ink-muted); color: var(--ink-muted); }
+    .badge.backup { border-color: var(--indigo); color: var(--indigo); }
+    .badge.schedule { border-color: #d97706; color: #d97706; }
+
+    .td-status {
+      font-weight: 600;
+      color: var(--ink-soft);
+    }
+
+    .td-title {
+      font-weight: 500;
+    }
+
+    .td-time {
+      text-align: right;
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 6. 우측 사이드 패널 구성요소 */
+    .side-box {
+      border: 1px solid var(--ink);
+      background-color: var(--washi-raised);
+      padding: 18px;
+    }
+
+    .side-box-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 시스템 실시간 헬스 상태 */
+    .health-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .health-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .health-label {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .health-led {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .health-led.green {
+      background-color: var(--green-light);
+      box-shadow: var(--shadow-led-green);
+    }
+
+    .health-led.vermilion {
+      background-color: var(--vermilion);
+      box-shadow: var(--shadow-led-vermilion);
+      animation: led-flicker 1s infinite alternate;
+    }
+
+    @keyframes led-flicker {
+      0% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+
+    .health-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 실시간 로그 스트림 콘솔 패널 (Console look) */
+    .console-box {
+      background-color: #1a160f;
+      border: 1px solid var(--ink);
+      color: #eae5d9;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 12px;
+      height: 320px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+
+    .console-line {
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .console-line.info { color: #8bb3e5; }
+    .console-line.warn { color: #e9c46a; }
+    .console-line.err { color: #e76f51; }
+
+    /* 시뮬레이터 미니 패널 */
+    .admin-widget {
+      background-color: var(--washi);
+      border: 1px solid var(--ink);
+      padding: 12px;
+    }
+
+    .admin-btn {
+      width: 100%;
+      background-color: var(--ink);
+      color: var(--cream);
+      border: 1px solid var(--ink);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 12px;
+      padding: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .admin-btn:hover {
+      background-color: var(--ink-soft);
+    }
+
+    .admin-btn.active {
+      background-color: var(--vermilion);
+      border-color: var(--vermilion);
+    }
+
+    .admin-btn-secondary {
+      width: 100%;
+      background-color: transparent;
+      color: var(--ink);
+      border: 1px solid var(--ink);
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 11px;
+      padding: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .admin-btn-secondary:hover {
+      background-color: var(--washi-raised);
+    }
+
+    /* 알림 토스트 */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background-color: var(--ink);
+      color: var(--cream);
+      padding: 10px 16px;
+      border: 1px solid var(--washi);
+      font-size: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transform: translateY(50px);
+      opacity: 0;
+      animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes toast-in {
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .toast.fade {
+      animation: toast-out 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes toast-out {
+      to { transform: translateY(20px); opacity: 0; }
+    }
+
+    .toast-led {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--vermilion);
+      box-shadow: var(--shadow-led-vermilion);
+    }
+
+    .flash-num {
+      animation: text-scale-flash 0.6s ease-out;
+    }
+
+    @keyframes text-scale-flash {
+      0% { transform: scale(1.1); color: var(--vermilion); }
+      50% { color: #f43f5e; }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-container">
+    
+    <!-- 헤더 -->
+    <header class="dashboard-header">
+      <div class="header-left">
+        <h1 class="header-title">실시간 운영 현황</h1>
+        <div class="live-indicator">
+          <span class="live-dot"></span>
+          LIVE MONITOR
+        </div>
+      </div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="toggle-all" onclick="setViewMode('all')">전체 관점</button>
+        <button class="toggle-btn" id="toggle-mine" onclick="setViewMode('mine')">내 업무만</button>
+      </div>
+    </header>
+
+    <!-- 대시보드 메인 격자 -->
+    <div class="dashboard-grid">
+      
+      <!-- 좌측 패널 (메인 대시보드 지표 및 테이블) -->
+      <main class="main-panel">
+        
+        <!-- 3열 재설계된 대형 핵심 KPI 카드 -->
+        <section class="kpi-grid">
+          <!-- 1. 사고 모니터 -->
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-label">미해결 사고 현황</span>
+              <span class="kpi-trend-tag danger" id="trend-sago">실시간 경보</span>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-number" id="kpi-sago-num">0</span>
+              <!-- 실시간 트렌드 스파크라인 그래프 (SVG) -->
+              <svg class="kpi-sparkline" viewBox="0 0 100 40">
+                <path d="M 0,30 L 15,28 L 30,35 L 45,15 L 60,25 L 75,5 L 90,12 L 100,2" id="sparkline-sago"></path>
+              </svg>
+            </div>
+            <div class="kpi-footer" id="kpi-sago-footer">
+              전체 관리 대상 중 즉각 조치 필요 건수
+            </div>
+          </div>
+
+          <!-- 2. 내 할일 모니터 -->
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-label">내 미완료 할 일</span>
+              <span class="kpi-trend-tag" id="trend-todo">진행률 20%</span>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-number neutral" id="kpi-todo-num">0</span>
+              <!-- 미니 진행 게이지 -->
+              <div class="kpi-progress-wrapper">
+                <div style="font-size: 10px; font-weight: 700; text-align: right;" id="kpi-todo-pct">2 / 10</div>
+                <div class="kpi-progress-bar-bg">
+                  <div class="kpi-progress-bar" id="kpi-todo-bar"></div>
+                </div>
+              </div>
+            </div>
+            <div class="kpi-footer" id="kpi-todo-footer">
+              본인에게 배정된 미완료 티켓 수
+            </div>
+          </div>
+
+          <!-- 3. 오픈 예정 서비스 -->
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-label">오픈 예정 서비스</span>
+              <span class="kpi-trend-tag" id="trend-service">안정적 빌드</span>
+            </div>
+            <div class="kpi-body">
+              <span class="kpi-number neutral" id="kpi-service-num">0</span>
+              <svg class="kpi-sparkline neutral" viewBox="0 0 100 40">
+                <path d="M 0,35 L 20,32 L 40,25 L 60,20 L 80,18 L 100,12"></path>
+              </svg>
+            </div>
+            <div class="kpi-footer" id="kpi-service-footer">
+              배포 및 모니터링 준비 단계 서비스
+            </div>
+          </div>
+        </section>
+
+        <!-- 중소형 보조 지표 (그룹화 및 레이아웃 배치 변경) -->
+        <section>
+          <div class="metrics-group-grid">
+            <!-- 재정 및 행정 지표 -->
+            <div class="metrics-group-box">
+              <h3 class="section-title">재정 및 영업 행정</h3>
+              <div class="metrics-card-subgrid">
+                <!-- 계약 -->
+                <div class="metric-subcard">
+                  <span class="subcard-label">체결 계약</span>
+                  <span class="subcard-value" id="card-contract">0</span>
+                  <span class="subcard-desc">체결 진행중</span>
+                </div>
+                <!-- 미수채권 -->
+                <div class="metric-subcard">
+                  <span class="subcard-label">미수 채권</span>
+                  <span class="subcard-value active" id="card-bond">0</span>
+                  <span class="subcard-desc">미지급 고지 발송</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 시스템 리소스 관리 지표 -->
+            <div class="metrics-group-box">
+              <h3 class="section-title">시스템 리소스 및 모니터링</h3>
+              <div class="metrics-card-subgrid three-col">
+                <!-- 백업 -->
+                <div class="metric-subcard">
+                  <span class="subcard-label">백업 대기</span>
+                  <span class="subcard-value" id="card-backup">0</span>
+                  <span class="subcard-desc">요청 처리건</span>
+                </div>
+                <!-- 대학 연락처 -->
+                <div class="metric-subcard">
+                  <span class="subcard-label">기관 연락처</span>
+                  <span class="subcard-value" id="card-contacts">0</span>
+                  <span class="subcard-desc">등록된 파트너</span>
+                </div>
+                <!-- 예정 일정 및 활동 -->
+                <div class="metric-subcard">
+                  <span class="subcard-label">일정 / 활동</span>
+                  <span class="subcard-value" id="card-schedule-logs">0 / 0</span>
+                  <span class="subcard-desc">금주 잔여 건</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 실시간 세부 테이블 목록 및 필터 바 -->
+        <section style="margin-top: 10px;">
+          <div class="filter-bar">
+            <div class="filter-tabs" id="filter-tabs-container">
+              <button class="filter-tab active" data-filter="all">전체 내역 <span id="pill-cnt-all">0</span></button>
+              <button class="filter-tab" data-filter="sago">사고 경보 <span id="pill-cnt-sago">0</span></button>
+              <button class="filter-tab" data-filter="todo">내 할일 <span id="pill-cnt-todo">0</span></button>
+              <button class="filter-tab" data-filter="service">오픈 서비스 <span id="pill-cnt-service">0</span></button>
+              <button class="filter-tab" data-filter="backup">백업/일정 <span id="pill-cnt-backup">0</span></button>
+            </div>
+            <div class="table-count-info" id="table-filter-info">
+              필터링된 결과: 12건 표시 중
+            </div>
+          </div>
+
+          <!-- 테이블 디자인 -->
+          <div class="table-card">
+            <table class="live-table">
+              <thead>
+                <tr>
+                  <th class="live-th" style="width: 80px;">구분</th>
+                  <th class="live-th" style="width: 100px;">상태/구분</th>
+                  <th class="live-th">운영 이벤트 내역 및 타이틀</th>
+                  <th class="live-th" style="width: 110px; text-align: right;">발생 시점</th>
+                </tr>
+              </thead>
+              <tbody id="live-table-body">
+                <!-- 동적으로 바인딩 -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- 우측 사이드바 패널 (실시간 헬스 상태 및 콘솔 스트림) -->
+      <aside class="side-panel">
+        
+        <!-- 시스템 실시간 헬스 상태 -->
+        <section class="side-box">
+          <h3 class="side-box-title">
+            <span>시스템 게이트웨이 상태</span>
+            <span class="health-led green"></span>
+          </h3>
+          <div class="health-list">
+            <div class="health-item">
+              <div class="health-label">
+                <span class="health-led green"></span>
+                YouTube API Quota
+              </div>
+              <div class="health-value" id="health-quota">67.2% 잔여</div>
+            </div>
+            <div class="health-item">
+              <div class="health-label">
+                <span class="health-led green"></span>
+                Supabase Connection
+              </div>
+              <div class="health-value">12ms (Good)</div>
+            </div>
+            <div class="health-item">
+              <div class="health-label" id="health-cron-container">
+                <span class="health-led green" id="health-cron-led"></span>
+                Cron 자동화 엔진
+              </div>
+              <div class="health-value" id="health-cron-txt">정상 가동</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 실시간 시스템 로그 스트림 콘솔 -->
+        <section class="side-box">
+          <h3 class="side-box-title">
+            <span>실시간 백그라운드 로그</span>
+            <span style="font-size: 10px; font-weight: normal; color: var(--ink-muted);">Auto Scroll</span>
+          </h3>
+          <div class="console-box" id="console-stream">
+            <div class="console-line info">[SYS] 11:29:01 모니터링 콘솔 접속 성공.</div>
+            <div class="console-line info">[SYS] 11:29:02 Supabase 실시간 소켓 연결 확인.</div>
+            <div class="console-line info">[CRON] 11:29:05 insights-collect 스케줄러 대기 중.</div>
+          </div>
+        </section>
+
+        <!-- 사이드바 통합 관리 컨트롤러 -->
+        <section class="admin-widget">
+          <button class="admin-btn" id="sim-toggle-btn" onclick="toggleSimulation()">실시간 스트림 활성화</button>
+          <button class="admin-btn-secondary" onclick="triggerManualEvent()">테스트 이벤트 인입 (+1)</button>
+        </section>
+
+      </aside>
+
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- 비즈니스 로직 및 애니메이션 -->
+  <script>
+    let viewMode = 'all'; // 'all' or 'mine'
+    let activeFilter = 'all'; // 'all', 'sago', 'todo', 'service', 'backup'
+    let simInterval = null;
+    let logCounter = 0;
+
+    // 초기 로딩 데이터
+    const rawData = [
+      { id: 1, type: 'sago', isMine: true, status: '미해결', title: '영재학교 중복지원 예외처리 관련 특이 오류', timeText: '방금 전' },
+      { id: 2, type: 'sago', isMine: false, status: '미해결', title: '서울시 사립초등학교 4회 초과 지원 관련 API 병목', timeText: '4분 전' },
+      { id: 3, type: 'sago', isMine: true, status: '3.12', title: '출력물-원서 내 학부 백분위 미표기 스크립트 수정 필요', timeText: '25분 전' },
+      { id: 4, type: 'sago', isMine: true, status: '5.23', title: '추천서 확인페이지 지원자 생년월일 정보 잘림 현상 수정 완료', timeText: '1시간 전' },
+      { id: 5, type: 'sago', isMine: false, status: '5.27', title: '접수관리자 서비스운영관리 추천서 작성일 데이터 바인딩 에러', timeText: '2시간 전' },
+      { id: 6, type: 'todo', isMine: true, status: 'D-1', title: '경위 공개경쟁채용시험 · 접수 시작 안내 메일 검수', timeText: '3시간 전' },
+      { id: 7, type: 'todo', isMine: true, status: '대기', title: '2단계 전형료결제(테스트) · 서비스 최종 인수인계 승인', timeText: '5시간 전' },
+      { id: 8, type: 'service', isMine: true, status: '6.24 오픈', title: '숙명여자대학교 · Fall Admission Graduate 플랫폼 구축 완료', timeText: '8시간 전' },
+      { id: 9, type: 'service', isMine: false, status: '8.25 오픈', title: '연세대학교(서울) · UNDERWOOD INTERNATIONAL COLLEGE 어플리케이션', timeText: '1일 전' },
+      { id: 10, type: 'service', isMine: true, status: '6.15 오픈', title: '고려대학교 · 국제학부 외국인 전형 원서 접수 모니터링', timeText: '1일 전' },
+      { id: 11, type: 'service', isMine: false, status: '9.01 오픈', title: '이화여자대학교 · 약학대학 편입학 시스템 인스턴스 가동', timeText: '2일 전' },
+      { id: 12, type: 'service', isMine: true, status: '10.12 오픈', title: '서강대학교 · 대학원 가을학기 특별전형 패치 검증', timeText: '3일 전' }
+    ];
+
+    let currentDataset = [...rawData];
+
+    // 시뮬레이터 이벤트 풀
+    const eventPool = [
+      { type: 'sago', isMine: true, status: '긴급', title: 'PIMS 로그인 서버 Redis 세션 만료 장애 복구 요청', toast: '🚨 [사고] Redis 세션 장애 복구 요청 수신' },
+      { type: 'sago', isMine: false, status: '경고', title: '인사이트 엔진 API 할당량 임계치 도달 경보 (80% 초과)', toast: '🚨 [사고] API 할당량 80% 초과 발생' },
+      { type: 'todo', isMine: true, status: 'D-3', title: '파트너 대학 연락망 주간 변경 내역 동기화 및 갱신', toast: '📋 [할일] 대학 연락망 동기화 건 배정' },
+      { type: 'service', isMine: true, status: '배포대기', title: '중앙대학교 · 국제공동학위 전형 원서 서브 도메인 배포', toast: '⚙️ [서비스] 중앙대 신규 서브 도메인 배포 대기' },
+      { type: 'backup', isMine: true, status: '대기', title: 'DB 마이그레이션 전 원본 테이블 풀 백업 스케줄러 실행', toast: '💾 [백업] 마이그레이션 전 백업 스케줄 등록' }
+    ];
+
+    // 실시간 로그 스트림 텍스트 풀
+    const logTextPool = [
+      { text: "[CRON] insights-collect 작업 실행 완료 (max: collected_at 확인)", type: "info" },
+      { text: "[WARN] youtube-api quota 소모 감지: 1회 누적 (650 unit 소모)", type: "warn" },
+      { text: "[DB] user_sessions 인덱스 풀 검사 완료 (정상)", type: "info" },
+      { text: "[CRON] automation_settings 읽기 성공. insights-collect 자동 실행 ON 확인", type: "info" },
+      { text: "[ERR] auth_gateway Azure AD SSO 검사 오류 - 토큰 만료 재시도 진행 중", type: "err" },
+      { text: "[SYS] backup-requests 데몬이 신규 요청 큐 검색 중...", type: "info" },
+      { text: "[DB] automation_settings 테이블 RLS select 정책 검증 완료", type: "info" }
+    ];
+
+    // 카운팅 애니메이션 함수
+    function countUp(elementId, target, duration = 600) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const start = parseInt(el.textContent, 10) || 0;
+      if (start === target) return;
+      
+      const startTime = performance.now();
+
+      function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+        const val = Math.floor(start + (target - start) * ease);
+        el.textContent = val;
+
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          el.textContent = target;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // 대시보드 상태값 전반 업데이트
+    function refreshCounters() {
+      const sagoList = currentDataset.filter(x => x.type === 'sago');
+      const todoList = currentDataset.filter(x => x.type === 'todo');
+      const serviceList = currentDataset.filter(x => x.type === 'service');
+      const backupList = currentDataset.filter(x => x.type === 'backup' || x.type === 'schedule');
+
+      // 1. 사고 현황 계산
+      const sagoBase = viewMode === 'all' ? 36 : 12;
+      const sagoExtra = sagoList.filter(x => x.id > 12).length;
+      const sagoTarget = sagoBase + sagoExtra;
+
+      // 2. 내 할일 계산 및 프로그레스바 연계
+      const todoBase = viewMode === 'all' ? 10 : 8; // 전체 총 할일 수
+      const todoDone = viewMode === 'all' ? 8 : 6;   // 완료된 수
+      const todoExtra = todoList.filter(x => x.id > 12).length;
+      const todoLeft = (todoBase + todoExtra) - todoDone; // 남은 미완료 수
+      
+      // 진행률 계산
+      const todoPct = Math.round((todoDone / (todoBase + todoExtra)) * 100);
+
+      // 3. 서비스 계산
+      const serviceBase = viewMode === 'all' ? 13 : 4;
+      const serviceExtra = serviceList.filter(x => x.id > 12).length;
+      const serviceTarget = serviceBase + serviceExtra;
+
+      // 4. 소형 서브 카드 수치 계산
+      const contractTarget = viewMode === 'all' ? 1 : 1;
+      const bondTarget = viewMode === 'all' ? 2 : 0;
+      
+      const backupCount = currentDataset.filter(x => x.type === 'backup').length;
+      const contactsTarget = viewMode === 'all' ? 5 : 2;
+
+      // 카운팅 애니메이션 실행
+      countUp('kpi-sago-num', sagoTarget);
+      countUp('kpi-todo-num', Math.max(0, todoLeft));
+      countUp('kpi-service-num', serviceTarget);
+      
+      countUp('card-contract', contractTarget);
+      countUp('card-bond', bondTarget);
+      countUp('card-backup', backupCount);
+      countUp('card-contacts', contactsTarget);
+
+      // 할일 분수 및 프로그레스바 적용
+      document.getElementById('kpi-todo-pct').textContent = `${Math.max(0, todoLeft)} / ${todoBase + todoExtra}`;
+      document.getElementById('kpi-todo-bar').style.width = `${todoPct}%`;
+      document.getElementById('trend-todo').textContent = `진행률 ${todoPct}%`;
+
+      // 일정 및 활동로그 누적 표기
+      const scheduleCount = currentDataset.filter(x => x.type === 'schedule').length;
+      document.getElementById('card-schedule-logs').textContent = `${scheduleCount} / 5`;
+
+      // 실시간 수치 변동에 따라 스파크라인 변동감 연출 (SVG 패스 동적 변경)
+      updateSparklines(sagoTarget);
+
+      // 필터 탭 내부 알약 숫자 업데이트
+      updatePillCounts();
+    }
+
+    // SVG 스파크라인을 실시간 데이터 인입에 맞춰 변경
+    function updateSparklines(sagoCount) {
+      const sagoPath = document.getElementById('sparkline-sago');
+      if (sagoCount > 36) {
+        // 데이터가 올라갔을 때 꺾은선 상승
+        sagoPath.setAttribute('d', 'M 0,30 L 15,28 L 30,35 L 45,10 L 60,15 L 75,2 L 90,5 L 100,0');
+      } else {
+        // 기본 꺾은선
+        sagoPath.setAttribute('d', 'M 0,30 L 15,28 L 30,35 L 45,15 L 60,25 L 75,5 L 90,12 L 100,2');
+      }
+    }
+
+    // 필터별 카운트 배치
+    function updatePillCounts() {
+      const targetSet = currentDataset.filter(item => viewMode === 'all' ? true : item.isMine);
+      
+      const allCount = targetSet.length;
+      const sagoCount = targetSet.filter(x => x.type === 'sago').length;
+      const todoCount = targetSet.filter(x => x.type === 'todo').length;
+      const serviceCount = targetSet.filter(x => x.type === 'service').length;
+      const backupCount = targetSet.filter(x => x.type === 'backup' || x.type === 'schedule').length;
+
+      document.getElementById('pill-cnt-all').textContent = allCount;
+      document.getElementById('pill-cnt-sago').textContent = sagoCount;
+      document.getElementById('pill-cnt-todo').textContent = todoCount;
+      document.getElementById('pill-cnt-service').textContent = serviceCount;
+      document.getElementById('pill-cnt-backup').textContent = backupCount;
+
+      // 필터 결과 텍스트 안내 업데이트
+      let currentFilteredCount = allCount;
+      if (activeFilter === 'sago') currentFilteredCount = sagoCount;
+      else if (activeFilter === 'todo') currentFilteredCount = todoCount;
+      else if (activeFilter === 'service') currentFilteredCount = serviceCount;
+      else if (activeFilter === 'backup') currentFilteredCount = backupCount;
+
+      document.getElementById('table-filter-info').textContent = `필터링된 결과: ${currentFilteredCount}건 표시 중`;
+    }
+
+    // 관점(전체/내 업무만) 변경
+    function setViewMode(mode) {
+      if (viewMode === mode) return;
+      viewMode = mode;
+      
+      document.getElementById('toggle-all').classList.toggle('active', mode === 'all');
+      document.getElementById('toggle-mine').classList.toggle('active', mode === 'mine');
+
+      refreshCounters();
+      renderTable();
+      writeConsole(`[USER] 관점 변경: ${mode === 'all' ? '전체 관점' : '내 업무 관점'}`, 'info');
+    }
+
+    // 필터링 적용 테이블 렌더링
+    function renderTable(highlightId = null) {
+      const body = document.getElementById('live-table-body');
+      body.innerHTML = '';
+
+      let filtered = currentDataset.filter(item => viewMode === 'all' ? true : item.isMine);
+
+      if (activeFilter !== 'all') {
+        if (activeFilter === 'backup') {
+          filtered = filtered.filter(item => item.type === 'backup' || item.type === 'schedule');
+        } else {
+          filtered = filtered.filter(item => item.type === activeFilter);
+        }
+      }
+
+      if (filtered.length === 0) {
+        body.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 48px; color: var(--ink-muted); font-size: 13px;">
+              선택한 필터 및 관점에 해당하는 운영 내역이 없습니다.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'live-tr';
+        if (highlightId && item.id === highlightId) {
+          tr.classList.add('new-flash');
+        }
+
+        // 구분 뱃지 클래스 분기
+        let badgeType = 'badge';
+        if (item.type === 'todo') badgeType += ' todo';
+        else if (item.type === 'service') badgeType += ' service';
+        else if (item.type === 'backup') badgeType += ' backup';
+        else if (item.type === 'schedule') badgeType += ' schedule';
+
+        // 타입 뱃지 텍스트
+        let typeLabel = '사고';
+        if (item.type === 'todo') typeLabel = '할일';
+        else if (item.type === 'service') typeLabel = '서비스';
+        else if (item.type === 'backup') typeLabel = '백업';
+        else if (item.type === 'schedule') typeLabel = '일정';
+
+        tr.innerHTML = `
+          <td class="live-td">
+            <span class="${badgeType}">${typeLabel}</span>
+          </td>
+          <td class="live-td td-status">${item.status}</td>
+          <td class="live-td td-title">${item.title}</td>
+          <td class="live-td td-time">${item.timeText}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    // 실시간 시스템 로그 추가 함수
+    function writeConsole(text, type = 'info') {
+      const consoleBox = document.getElementById('console-stream');
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      line.textContent = text;
+      consoleBox.appendChild(line);
+
+      // 자동 스크롤
+      consoleBox.scrollTop = consoleBox.scrollHeight;
+      
+      // 로그 개수가 너무 많아지면 메모리 정리
+      if (consoleBox.children.length > 50) {
+        consoleBox.removeChild(consoleBox.firstChild);
+      }
+    }
+
+    // 알림 토스트 출력
+    function showToast(msg) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<span class="toast-led"></span><span>${msg}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('fade');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // 임의의 실시간 이벤트 생성 및 인입 트리거
+    function triggerManualEvent() {
+      // 1. 이벤트 가져오기
+      const poolItem = eventPool[Math.floor(Math.random() * eventPool.length)];
+      const newId = Date.now();
+      
+      const newEvent = {
+        id: newId,
+        type: poolItem.type,
+        isMine: poolItem.isMine,
+        status: poolItem.status,
+        title: poolItem.title,
+        timeText: '방금 전'
+      };
+
+      // 2. 데이터셋 최상단 인입
+      currentDataset.unshift(newEvent);
+
+      // 3. UI 업데이트 및 애니메이션
+      refreshCounters();
+      renderTable(newId);
+
+      // 4. 알림 토스트 & 시스템 콘솔 로깅
+      showToast(poolItem.toast);
+      writeConsole(`[EVENT] ${poolItem.title} (${poolItem.type.toUpperCase()}) 인입 감지됨.`, 'warn');
+
+      // 5. 해당하는 주요 수치 카드에 플래시 효과 적용
+      let countElementId = 'kpi-sago-num';
+      if (poolItem.type === 'todo') countElementId = 'kpi-todo-num';
+      else if (poolItem.type === 'service') countElementId = 'kpi-service-num';
+      else if (poolItem.type === 'backup') countElementId = 'card-backup';
+
+      const numEl = document.getElementById(countElementId);
+      if (numEl) {
+        numEl.classList.remove('flash-num');
+        void numEl.offsetWidth; // Reflow
+        numEl.classList.add('flash-num');
+      }
+
+      // API 쿼타 소모 게이지 시뮬레이션
+      const currentQuotaVal = parseFloat(document.getElementById('health-quota').textContent);
+      const newQuota = Math.max(5, (currentQuotaVal - 0.8)).toFixed(1);
+      document.getElementById('health-quota').textContent = `${newQuota}% 잔여`;
+    }
+
+    // 시뮬레이터 활성화 토글
+    function toggleSimulation() {
+      const btn = document.getElementById('sim-toggle-btn');
+      const cronLed = document.getElementById('health-cron-led');
+      const cronTxt = document.getElementById('health-cron-txt');
+
+      if (simInterval) {
+        // 중지
+        clearInterval(simInterval);
+        simInterval = null;
+        btn.classList.remove('active');
+        btn.textContent = '실시간 스트림 활성화';
+        cronLed.className = 'health-led green';
+        cronTxt.textContent = '정상 가동';
+        showToast('ℹ️ 실시간 시뮬레이션 일시정지.');
+        writeConsole('[SYS] 실시간 시뮬레이션 스트리머가 정지되었습니다.', 'info');
+      } else {
+        // 가동
+        btn.classList.add('active');
+        btn.textContent = '실시간 스트림 정지';
+        
+        cronLed.className = 'health-led vermilion';
+        cronTxt.textContent = '스케줄 수집 작동 중';
+
+        showToast('🚀 실시간 시뮬레이션 가동 시작.');
+        writeConsole('[SYS] 실시간 수집 데몬 활성화됨. 동기화 대기.', 'info');
+        
+        triggerManualEvent();
+        
+        // 6초 간격으로 이벤트 인입 + 주기적 로그 출력
+        simInterval = setInterval(() => {
+          triggerManualEvent();
+          
+          // 동시 백그라운드 디버그 로그 출력
+          setTimeout(() => {
+            const randomLog = logTextPool[Math.floor(Math.random() * logTextPool.length)];
+            writeConsole(randomLog.text, randomLog.type);
+          }, 3000);
+
+        }, 6000);
+      }
+    }
+
+    // 필터 클릭 바인딩
+    document.getElementById('filter-tabs-container').addEventListener('click', (e) => {
+      const tab = e.target.closest('.filter-tab');
+      if (!tab) return;
+
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeFilter = tab.dataset.filter;
+
+      renderTable();
+      writeConsole(`[USER] 데이터 필터링 기준 변경: ${activeFilter.toUpperCase()}`, 'info');
+    });
+
+    // 온로드 초기화
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshCounters();
+      renderTable();
+    });
+  </script>
+</body>
+</html>
