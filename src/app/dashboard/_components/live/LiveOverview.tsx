@@ -138,7 +138,7 @@ function LiveOverviewInner({
                 trendDanger
                 count={kpi.sago.count}
                 numberDanger
-                footer="즉각 조치 필요"
+                footer="사고 재발 방지"
                 right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
                 delayMs={100}
               />
