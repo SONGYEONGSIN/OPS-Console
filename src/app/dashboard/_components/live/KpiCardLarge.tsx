@@ -60,7 +60,7 @@ export function KpiCardLarge({
         </span>
         {right ?? null}
       </div>
-      <div className="mt-3 border-t border-dashed border-line-soft pt-2 text-xs text-ink-soft">
+      <div className="mt-3 border-t border-dashed border-line-soft pt-2 text-xs text-faint">
         {footer}
       </div>
     </div>
