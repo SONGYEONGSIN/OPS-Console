@@ -138,8 +138,8 @@ function LiveOverviewInner({
             <SystemHealthPanel cronActive={sim} />
           </div>
 
-          {/* Row 2: 그룹박스 2개 + 콘솔 스트림 */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_1fr]">
+          {/* Row 2: 그룹박스 2개 + 콘솔 스트림 (자연 높이 유지, stretch 안 함) */}
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
             <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
               <MetricGroupBox title="계약 · 미수채권" columns={2}>
                 <MetricSubcard
@@ -176,8 +176,8 @@ function LiveOverviewInner({
             <ConsoleStream lines={lines} />
           </div>
 
-          {/* Row 3: 필터 + 테이블 + 관리자 컨트롤 */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_1fr]">
+          {/* Row 3: 필터 + 테이블 + 관리자 컨트롤 (자연 높이 유지, stretch 안 함) */}
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
             <section className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <FilterTabs
