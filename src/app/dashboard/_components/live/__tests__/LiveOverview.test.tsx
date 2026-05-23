@@ -98,7 +98,7 @@ describe("LiveOverview (Phase 1)", () => {
     expect(screen.getByText("시스템 게이트웨이 상태")).toBeInTheDocument();
     expect(screen.getByText("실시간 백그라운드 로그")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /시뮬레이션 활성화/ }),
+      screen.getByRole("button", { name: /실시간 스트림 활성화/ }),
     ).toBeInTheDocument();
   });
 

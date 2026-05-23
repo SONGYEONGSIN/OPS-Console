@@ -15,7 +15,7 @@ export function AdminControls({ sim, onToggleSim, onTestEvent }: Props) {
   return (
     <div className="border border-ink bg-washi p-3">
       <button type="button" onClick={onToggleSim} className={`${mainClass} mb-2`}>
-        {sim ? "시뮬레이션 정지" : "시뮬레이션 활성화"}
+        {sim ? "실시간 스트림 정지" : "실시간 스트림 활성화"}
       </button>
       <button
         type="button"

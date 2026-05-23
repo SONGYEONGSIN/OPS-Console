@@ -3,15 +3,15 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { AdminControls } from "../AdminControls";
 
 describe("AdminControls", () => {
-  it("sim=false → '시뮬레이션 활성화' + 테스트 이벤트 버튼", () => {
+  it("sim=false → '실시간 스트림 활성화' + 테스트 이벤트 버튼", () => {
     render(<AdminControls sim={false} onToggleSim={() => {}} onTestEvent={() => {}} />);
-    expect(screen.getByRole("button", { name: /시뮬레이션 활성화/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /실시간 스트림 활성화/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /테스트 이벤트 인입/ })).toBeInTheDocument();
   });
 
-  it("sim=true → '시뮬레이션 정지' + vermilion bg", () => {
+  it("sim=true → '실시간 스트림 정지' + vermilion bg", () => {
     render(<AdminControls sim={true} onToggleSim={() => {}} onTestEvent={() => {}} />);
-    const btn = screen.getByRole("button", { name: /시뮬레이션 정지/ });
+    const btn = screen.getByRole("button", { name: /실시간 스트림 정지/ });
     expect(btn).toBeInTheDocument();
     expect(btn.className).toMatch(/bg-vermilion/);
   });
@@ -19,7 +19,7 @@ describe("AdminControls", () => {
   it("주 버튼 클릭 → onToggleSim 호출", () => {
     const fn = vi.fn();
     render(<AdminControls sim={false} onToggleSim={fn} onTestEvent={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /시뮬레이션 활성화/ }));
+    fireEvent.click(screen.getByRole("button", { name: /실시간 스트림 활성화/ }));
     expect(fn).toHaveBeenCalled();
   });
 
