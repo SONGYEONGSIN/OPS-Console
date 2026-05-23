@@ -16,8 +16,8 @@ export function SegmentToggle({ mine }: Props) {
 
   function go(nextMine: boolean) {
     const sp = new URLSearchParams(params.toString());
-    if (nextMine) sp.set("mine", "true");
-    else sp.delete("mine");
+    if (nextMine) sp.delete("mine");          // default (mine=true) — 깔끔
+    else sp.set("mine", "false");             // explicit "전체 관점"
     const q = sp.toString();
     router.push(q ? `${pathname}?${q}` : pathname);
   }

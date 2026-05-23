@@ -49,19 +49,19 @@ describe("SegmentToggle", () => {
     expect(allButton.className).not.toMatch(/bg-ink/);
   });
 
-  it("'내 업무만' 클릭 시 router.push로 ?mine=true 추가", () => {
+  it("'내 업무만' 클릭 시 router.push로 ?mine 제거 (page default 복귀)", () => {
     render(<SegmentToggle mine={false} />);
     fireEvent.click(screen.getByRole("button", { name: "내 업무만" }));
     expect(pushMock).toHaveBeenCalled();
     const callArg = pushMock.mock.calls[0][0] as string;
-    expect(callArg).toMatch(/mine=true/);
+    expect(callArg).not.toMatch(/mine=/);
   });
 
-  it("'전체 관점' 클릭(mine=true 상태) 시 router.push로 ?mine 제거", () => {
+  it("'전체 관점' 클릭 시 router.push로 ?mine=false 명시", () => {
     render(<SegmentToggle mine={true} />);
     fireEvent.click(screen.getByRole("button", { name: "전체 관점" }));
     expect(pushMock).toHaveBeenCalled();
     const callArg = pushMock.mock.calls[0][0] as string;
-    expect(callArg).not.toMatch(/mine=true/);
+    expect(callArg).toMatch(/mine=false/);
   });
 });
