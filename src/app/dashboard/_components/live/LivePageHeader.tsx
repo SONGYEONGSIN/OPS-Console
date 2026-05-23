@@ -14,14 +14,17 @@ export function LivePageHeader({
   title: string;
 }) {
   return (
-    <header className="flex items-center justify-between border-b-2 border-ink bg-cream px-6 pb-3 pt-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-[22px] font-extrabold tracking-[-0.03em] text-ink">
-          {title}
-        </h1>
-        <LiveIndicator />
+    <header className="border-b-2 border-ink bg-cream px-6 pb-3 pt-4">
+      {/* 내부 wrapper: content max-w-[1680px]와 라인 일치 (와이드 뷰에서 우측 정렬 맞춤) */}
+      <div className="mx-auto flex max-w-[1680px] items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-[22px] font-extrabold tracking-[-0.03em] text-ink">
+            {title}
+          </h1>
+          <LiveIndicator />
+        </div>
+        <SegmentToggle mine={mine} />
       </div>
-      <SegmentToggle mine={mine} />
     </header>
   );
 }
