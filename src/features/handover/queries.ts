@@ -80,6 +80,10 @@ export async function listServicesWithHandover(
   input: ListInput = {},
 ): Promise<{ rows: HandoverListRow[]; total: number }> {
   const supabase = await createClient();
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
+  const usingStatusFilter = !!input.status;
+
   let q = supabase
     .from("services")
     .select(
@@ -99,9 +103,13 @@ export async function listServicesWithHandover(
     );
   }
 
-  const page = Math.max(1, input.page ?? 1);
-  const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
-  q = q.range((page - 1) * pageSize, page * pageSize - 1);
+  // status 필터 시 DB-side 페이지네이션이 부정확(현재 페이지의 30건만 client filter)
+  // → fetch all 후 client filter + slice. 그 외는 DB-side 페이지네이션 유지.
+  if (usingStatusFilter) {
+    q = q.range(0, 9999);
+  } else {
+    q = q.range((page - 1) * pageSize, page * pageSize - 1);
+  }
 
   const { data, error, count } = await q;
   if (error) {
@@ -140,15 +148,18 @@ export async function listServicesWithHandover(
     },
   );
 
-  const filtered = input.status
-    ? rows.filter((r) =>
-        input.status === "none"
-          ? r.handover_status === null
-          : r.handover_status === input.status,
-      )
-    : rows;
+  if (usingStatusFilter) {
+    const filtered = rows.filter((r) =>
+      input.status === "none"
+        ? r.handover_status === null
+        : r.handover_status === input.status,
+    );
+    const total = filtered.length;
+    const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+    return { rows: paged, total };
+  }
 
-  return { rows: filtered, total: count ?? 0 };
+  return { rows, total: count ?? 0 };
 }
 
 export type ServiceLite = {
