@@ -102,13 +102,13 @@ function LiveOverviewInner({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_1fr]">
             <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
               <KpiCardLarge
-                label="미해결 사고"
-                trend="긴급 대응"
-                trendDanger
-                count={kpi.sago.count}
-                numberDanger
-                footer="즉각 조치 필요"
-                right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
+                label="오픈 예정 서비스"
+                trend="오픈 준비"
+                count={kpi.service.count}
+                footer="배포 준비 완료"
+                right={
+                  <Sparkline d={kpi.service.sparklineD} variant="neutral" />
+                }
                 delayMs={0}
               />
               <KpiCardLarge
@@ -125,13 +125,13 @@ function LiveOverviewInner({
                 delayMs={50}
               />
               <KpiCardLarge
-                label="오픈 예정 서비스"
-                trend="오픈 준비"
-                count={kpi.service.count}
-                footer="배포 준비 완료"
-                right={
-                  <Sparkline d={kpi.service.sparklineD} variant="neutral" />
-                }
+                label="미해결 사고"
+                trend="긴급 대응"
+                trendDanger
+                count={kpi.sago.count}
+                numberDanger
+                footer="즉각 조치 필요"
+                right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
                 delayMs={100}
               />
             </section>
