@@ -6,6 +6,8 @@ import type { ListRow } from "../patterns/ListPattern";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorChrome } from "../inspector/InspectorChrome";
 import { InspectorListBody } from "../inspector/InspectorListBody";
+import { ToastProvider } from "./ToastContainer";
+import { LiveSidebar } from "./LiveSidebar";
 import { LivePageHeader } from "./LivePageHeader";
 import { KpiCardLarge } from "./KpiCardLarge";
 import { Sparkline } from "./Sparkline";
@@ -79,130 +81,140 @@ export function LiveOverview({
       : 0;
 
   return (
-    <div
-      className={`h-full overflow-y-auto bg-cream transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-        selected ? "md:pr-[400px]" : ""
-      }`}
-    >
-      {/* 헤더를 스크롤 컨테이너 안에 두고 sticky로 고정 → 스크롤바 우측 점유분이
-          헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치. */}
-      <div className="sticky top-0 z-10">
-        <LivePageHeader mine={mine} title={title} />
-      </div>
-      <div className="px-6 py-6">
-        <div className="mx-auto flex max-w-[1680px] flex-col gap-6">
-          {/* 3 KPI 대형 카드 */}
-          <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
-            <KpiCardLarge
-              label="미해결 사고"
-              trend="긴급 대응"
-              trendDanger
-              count={kpi.sago.count}
-              numberDanger
-              footer="즉각 조치 필요"
-              right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
-              delayMs={0}
-            />
-            <KpiCardLarge
-              label="내 미완 할 일"
-              trend={`진행률 ${todoPct}%`}
-              count={kpi.todo.count}
-              footer="본인 배정 미완료"
-              right={
-                <KpiProgressBar
-                  done={kpi.todo.done}
-                  total={kpi.todo.total}
-                />
-              }
-              delayMs={50}
-            />
-            <KpiCardLarge
-              label="오픈 예정 서비스"
-              trend="오픈 준비"
-              count={kpi.service.count}
-              footer="배포 준비 완료"
-              right={
-                <Sparkline d={kpi.service.sparklineD} variant="neutral" />
-              }
-              delayMs={100}
-            />
-          </section>
-
-          {/* 2 그룹박스 */}
-          <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
-            <MetricGroupBox title="계약 · 미수채권" columns={2}>
-              <MetricSubcard
-                label="계약"
-                value={metrics.contract.value}
-                desc={metrics.contract.desc}
-                active={metrics.contract.active}
-              />
-              <MetricSubcard
-                label="미수채권"
-                value={metrics.bond.value}
-                desc={metrics.bond.desc}
-                active={metrics.bond.active}
-              />
-            </MetricGroupBox>
-            <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
-              <MetricSubcard
-                label="백업"
-                value={metrics.backup.value}
-                desc={metrics.backup.desc}
-              />
-              <MetricSubcard
-                label="대학연락처"
-                value={metrics.contacts.value}
-                desc={metrics.contacts.desc}
-              />
-              <MetricSubcard
-                label="일정 / 활동"
-                value={metrics.scheduleActivity.value}
-                desc={metrics.scheduleActivity.desc}
-              />
-            </MetricGroupBox>
-          </section>
-
-          {/* 필터 + 테이블 */}
-          <section className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <FilterTabs
-                active={filter}
-                counts={counts}
-                onChange={setFilter}
-              />
-              <span className="text-xs text-ink-muted">
-                {visible.length}건 표시
-              </span>
-            </div>
-            <LiveTable
-              items={visible}
-              onSelect={(it) =>
-                setSelected({ variant: it.variant, row: it.listRow })
-              }
-            />
-          </section>
+    <ToastProvider>
+      <div
+        className={`h-full overflow-y-auto bg-cream transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          selected ? "md:pr-[400px]" : ""
+        }`}
+      >
+        {/* 헤더를 스크롤 컨테이너 안에 두고 sticky로 고정 → 스크롤바 우측 점유분이
+            헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치. */}
+        <div className="sticky top-0 z-10">
+          <LivePageHeader mine={mine} title={title} />
         </div>
-      </div>
+        <div className="px-6 py-6">
+          <div className="mx-auto grid max-w-[1680px] grid-cols-1 gap-6 lg:grid-cols-[3fr_1fr]">
+            {/* 좌측 main */}
+            <div className="flex flex-col gap-6">
+              {/* 3 KPI 대형 카드 */}
+              <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
+                <KpiCardLarge
+                  label="미해결 사고"
+                  trend="긴급 대응"
+                  trendDanger
+                  count={kpi.sago.count}
+                  numberDanger
+                  footer="즉각 조치 필요"
+                  right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
+                  delayMs={0}
+                />
+                <KpiCardLarge
+                  label="내 미완 할 일"
+                  trend={`진행률 ${todoPct}%`}
+                  count={kpi.todo.count}
+                  footer="본인 배정 미완료"
+                  right={
+                    <KpiProgressBar
+                      done={kpi.todo.done}
+                      total={kpi.todo.total}
+                    />
+                  }
+                  delayMs={50}
+                />
+                <KpiCardLarge
+                  label="오픈 예정 서비스"
+                  trend="오픈 준비"
+                  count={kpi.service.count}
+                  footer="배포 준비 완료"
+                  right={
+                    <Sparkline d={kpi.service.sparklineD} variant="neutral" />
+                  }
+                  delayMs={100}
+                />
+              </section>
 
-      <InspectorPanel open={!!selected} onClose={() => setSelected(null)}>
-        {selected ? (
-          <InspectorChrome
-            row={selected.row}
-            editing={false}
-            onToggleEdit={() => {}}
-            editable={false}
-          >
-            <InspectorListBody
+              {/* 2 그룹박스 */}
+              <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
+                <MetricGroupBox title="계약 · 미수채권" columns={2}>
+                  <MetricSubcard
+                    label="계약"
+                    value={metrics.contract.value}
+                    desc={metrics.contract.desc}
+                    active={metrics.contract.active}
+                  />
+                  <MetricSubcard
+                    label="미수채권"
+                    value={metrics.bond.value}
+                    desc={metrics.bond.desc}
+                    active={metrics.bond.active}
+                  />
+                </MetricGroupBox>
+                <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
+                  <MetricSubcard
+                    label="백업"
+                    value={metrics.backup.value}
+                    desc={metrics.backup.desc}
+                  />
+                  <MetricSubcard
+                    label="대학연락처"
+                    value={metrics.contacts.value}
+                    desc={metrics.contacts.desc}
+                  />
+                  <MetricSubcard
+                    label="일정 / 활동"
+                    value={metrics.scheduleActivity.value}
+                    desc={metrics.scheduleActivity.desc}
+                  />
+                </MetricGroupBox>
+              </section>
+
+              {/* 필터 + 테이블 */}
+              <section className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <FilterTabs
+                    active={filter}
+                    counts={counts}
+                    onChange={setFilter}
+                  />
+                  <span className="text-xs text-ink-muted">
+                    {visible.length}건 표시
+                  </span>
+                </div>
+                <LiveTable
+                  items={visible}
+                  onSelect={(it) =>
+                    setSelected({ variant: it.variant, row: it.listRow })
+                  }
+                />
+              </section>
+            </div>
+
+            {/* 우측 사이드바 — sticky */}
+            <div className="lg:sticky lg:top-6 lg:self-start">
+              <LiveSidebar />
+            </div>
+          </div>
+        </div>
+
+        <InspectorPanel open={!!selected} onClose={() => setSelected(null)}>
+          {selected ? (
+            <InspectorChrome
               row={selected.row}
               editing={false}
-              onSave={() => {}}
-              onCancel={() => {}}
-              variant={selected.variant}
-            />
-          </InspectorChrome>
-        ) : null}
-      </InspectorPanel>
-    </div>
+              onToggleEdit={() => {}}
+              editable={false}
+            >
+              <InspectorListBody
+                row={selected.row}
+                editing={false}
+                onSave={() => {}}
+                onCancel={() => {}}
+                variant={selected.variant}
+              />
+            </InspectorChrome>
+          ) : null}
+        </InspectorPanel>
+      </div>
+    </ToastProvider>
   );
 }

@@ -92,4 +92,13 @@ describe("LiveOverview (Phase 1)", () => {
     render(<LiveOverview {...baseProps} />);
     expect(screen.getByText(/0건 표시/)).toBeInTheDocument();
   });
+
+  it("우측 사이드바 영역 렌더 (시스템 헬스 + 콘솔 + 관리자)", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByText("시스템 게이트웨이 상태")).toBeInTheDocument();
+    expect(screen.getByText("실시간 백그라운드 로그")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /시뮬레이션 활성화/ }),
+    ).toBeInTheDocument();
+  });
 });
