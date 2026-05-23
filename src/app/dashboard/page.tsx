@@ -17,8 +17,8 @@ import {
   receivablesToListRow,
   isReceivablesDataRow,
 } from "./receivables/_row-mapper";
-import { LiveOverview, type KpiTileConfig } from "./_components/live/LiveOverview";
-import { buildFeedItems, sortFeedItems, type FeedSources } from "./_components/live/feed";
+import { LiveOverview } from "./_components/live/LiveOverview";
+import { buildLiveTableItems, type LiveTableSources } from "./_components/live/live-table-builder";
 import type { ListRow } from "./_components/patterns/ListPattern";
 
 /**
@@ -195,57 +195,83 @@ export default async function DashboardLivePage({
     userEmail: mine && myEmail ? myEmail : undefined,
   });
 
-  // ─── KPI 타일 ─────────────────────────────────────────────
-  const tiles: KpiTileConfig[] = [
-    { variant: "services",    label: "서비스",     count: servicesUpcomingCount, countSub: mine ? "내 담당 · 오픈 예정" : "오픈 예정",         href: "/dashboard/services" },
-    { variant: "contracts",   label: "계약",       count: contractsCount,        countSub: mine ? "내 계약" : "registered",                    href: "/dashboard/contracts" },
-    { variant: "receivables", label: "미수채권",   count: receivablesCount,      countSub: mine ? "내 발송" : "pending",                       href: "/dashboard/receivables" },
-    { variant: "incidents",   label: "사고",       count: incidentsTotal,        countSub: mine ? "내가 등록/담당" : "registered",             href: "/dashboard/incidents" },
-    { variant: "backup",      label: "백업",       count: backupCount,           countSub: mine ? "내가 요청/백업자" : "registered",           href: "/dashboard/backup" },
-    { variant: "contacts",    label: "대학연락처", count: contactsTotal,         countSub: mine ? "내 대학 연락처" : "registered",             href: "/dashboard/contacts" },
-    { variant: "weekly-todo", label: "내 할일",    count: todosCount,            countSub: "미완",                                             href: "/dashboard/my-todo" },
-    { variant: "schedule",    label: "일정",       count: scheduleCount,         countSub: mine ? "내 일정 · 예정" : "예정",                   href: "/dashboard/schedule" },
-    { variant: "worklog",     label: "활동로그",   count: worklog.length,        countSub: mine ? "내 활동" : "최근",                          href: "/dashboard/worklog" },
-  ];
-
-  // ─── 피드 소스 ────────────────────────────────────────────
-  const feedSources: FeedSources = {
+  // ─── 실시간 테이블 소스 ───────────────────────────────────
+  const liveTableSources: LiveTableSources = {
     incidents: incidents.map((i) => ({
       id: i.id,
       title: i.title,
-      occurred_date: i.occurred_date ?? i.created_at,
       status: i.status ?? "미처리",
+      createdAt: i.created_at,
       listRow: incidentsListRows.find((r) => r.id === i.id)!,
     })),
-    todos: undoneTodos.map((t) => ({
+    todos: undoneTodos.slice(0, 5).map((t) => ({
       id: t.id,
       title: t.title,
-      due_at: t.due_at ?? null,
+      dueAt: t.due_at ?? null,
+      createdAt: t.created_at,
       listRow: todosListRows.find((r) => r.id === t.id) ?? todoToListRow(t),
     })),
     services: servicesUpcoming.map((s) => ({
       id: s.id,
       title: `${s.university_name} · ${s.service_name}`,
-      write_start_at: s.write_start_at,
+      writeStartAt: s.write_start_at,
+      createdAt: s.created_at,
       listRow: servicesListRows.find((r) => r.id === s.id) ?? servicesRowToListRow(s),
+    })),
+    backup: backupsFiltered.slice(0, 10).map((b) => ({
+      id: b.id,
+      title:
+        b.leave_start_date && b.leave_end_date
+          ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
+          : b.summary_md.slice(0, 30),
+      status: b.mail_status ?? "pending",
+      createdAt: b.created_at,
+      listRow: backupListRows.find((r) => r.id === b.id)!,
     })),
     schedule: upcomingEvents.map((e) => ({
       id: e.id,
       title: e.title,
-      start_at: e.start_at,
+      startAt: e.start_at,
+      createdAt: e.created_at,
       listRow: scheduleListRows.find((r) => r.id === e.id) ?? eventToListRow(e),
     })),
-    backup: backupsFiltered.slice(0, 10).map((b) => ({
-      id: b.id,
-      title: b.summary_md.slice(0, 30),
-      leave_start_date: b.leave_start_date ?? null,
-      listRow: backupListRows.find((r) => r.id === b.id)!,
-    })),
   };
+  const tableItems = buildLiveTableItems(liveTableSources);
 
-  const feedItems = sortFeedItems(buildFeedItems(feedSources)).slice(0, 20);
+  // 스파크라인 경로는 Task 15에서 실데이터 기반으로 교체 예정
+  const SPARKLINE_SAGO =
+    "M 0,30 L 15,28 L 30,35 L 45,15 L 60,25 L 75,5 L 90,12 L 100,2";
+  const SPARKLINE_SERVICE =
+    "M 0,35 L 20,32 L 40,25 L 60,20 L 80,18 L 100,12";
 
-  return <LiveOverview mine={mine} tiles={tiles} feedItems={feedItems} />;
+  return (
+    <LiveOverview
+      mine={mine}
+      title="실시간 운영 현황"
+      kpi={{
+        // Task 15에서 unresolved 카운트 분리 예정
+        sago: { count: incidentsTotal, sparklineD: SPARKLINE_SAGO },
+        // Task 15에서 done/total 정확한 집계 예정
+        todo: { count: todosCount, done: 0, total: todosCount },
+        service: { count: servicesUpcomingCount, sparklineD: SPARKLINE_SERVICE },
+      }}
+      metrics={{
+        contract: { value: contractsCount ?? 0, desc: "체결 진행중" },
+        bond: {
+          value: receivablesCount ?? 0,
+          active: (receivablesCount ?? 0) > 0,
+          desc: "미지급 고지 발송",
+        },
+        backup: { value: backupCount, desc: "요청 처리건" },
+        contacts: { value: contactsTotal, desc: "등록된 파트너" },
+        scheduleActivity: {
+          value: `${scheduleCount} / ${worklog.length}`,
+          desc: "금주 잔여 건",
+        },
+      }}
+      tableItems={tableItems}
+    />
+  );
 }
 
 /** ISO/ymd 문자열의 연도만 delta 만큼 shift (나머지 보존). null 통과. */
