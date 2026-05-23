@@ -79,9 +79,12 @@ export default async function HandoverPage({
       return true;
     });
 
-    // 접수구분 select 옵션 — allReady(필터 전) 기준 distinct
+    // 접수구분 select 옵션 — allReady(필터 전) distinct + 항상 노출할 표준 옵션('공통원서')
     const applicationTypes = Array.from(
-      new Set(allReady.map((s) => s.application_type).filter(Boolean)),
+      new Set([
+        "공통원서",
+        ...allReady.map((s) => s.application_type).filter(Boolean),
+      ]),
     ).sort();
 
     const total = filtered.length;
