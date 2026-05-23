@@ -195,7 +195,6 @@ export default async function DashboardLivePage({
         ? e.assignee_email === myEmail || e.created_by_email === myEmail
         : true,
     );
-  const scheduleCount = upcomingEventsAll.length;
   const upcomingEvents = upcomingEventsAll.slice(0, 5);
   const scheduleListRows: ListRow[] = upcomingEvents.map(eventToListRow);
 
@@ -212,13 +211,36 @@ export default async function DashboardLivePage({
   const initialConsoleLines = worklogRowsToConsoleLines(consoleWorklogRows);
 
   // ─── 인수인계 ─────────────────────────────────────────────────
+  // 본인(또는 전체) 담당 서비스 범위 기준:
+  //   value = '{인수인계 작성 서비스}/{담당 서비스 전체}'
+  //   desc  = '({published 인수인계}건) 진행 완료'
   const supabase = await createClient();
+  const myOwnServices = mine && myEmail
+    ? allServices.filter((s) => s.operator_email === myEmail)
+    : allServices;
+  const myServiceIds = myOwnServices.map((s) => s.id);
+  const myServicesCount = myServiceIds.length;
+
+  // LiveTable용 인수인계 최근 20건 (기존)
   let hq = supabase
     .from("handover_records")
-    .select("id, author_email, author_name, service_id, status, created_at", { count: "exact" });
+    .select("id, author_email, author_name, service_id, status, created_at");
   if (mine && myEmail) hq = hq.eq("author_email", myEmail);
   hq = hq.order("created_at", { ascending: false }).limit(20);
-  const { data: handoverRows, count: handoverCount } = await hq;
+  const { data: handoverRows } = await hq;
+
+  // 서브카드 분수용 — 담당 서비스 범위의 handover_records status 모음
+  let handoverWrittenCount = 0;
+  let handoverPublishedCount = 0;
+  if (myServiceIds.length > 0) {
+    const { data: scopedHandover } = await supabase
+      .from("handover_records")
+      .select("status")
+      .in("service_id", myServiceIds);
+    const rows = scopedHandover ?? [];
+    handoverWrittenCount = rows.length;
+    handoverPublishedCount = rows.filter((r) => r.status === "published").length;
+  }
 
   const servicesByIdLookup = new Map(allServices.map((s) => [s.id, s] as const));
   const handoverSources = (handoverRows ?? []).map((h) => {
@@ -311,8 +333,8 @@ export default async function DashboardLivePage({
         backup: { value: backupCount, desc: "요청 및 내역" },
         contacts: { value: contactsTotal, desc: "등록한 연락처" },
         handover: {
-          value: handoverCount ?? 0,
-          desc: "등록된 인수인계",
+          value: `${handoverWrittenCount} / ${myServicesCount}`,
+          desc: `(${handoverPublishedCount}) 진행 완료`,
         },
       }}
       tableItems={tableItems}
