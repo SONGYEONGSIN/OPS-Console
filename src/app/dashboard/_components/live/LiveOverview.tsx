@@ -69,22 +69,20 @@ function LiveOverviewInner({
       todos: 0,
       services: 0,
       backup: 0,
+      schedule: 0,
     };
     for (const it of tableItems) {
       if (it.domain === "incidents") c.incidents += 1;
       else if (it.domain === "todos") c.todos += 1;
       else if (it.domain === "services") c.services += 1;
-      else if (it.domain === "backup" || it.domain === "schedule") c.backup += 1;
+      else if (it.domain === "backup") c.backup += 1;
+      else if (it.domain === "schedule") c.schedule += 1;
     }
     return c;
   }, [tableItems]);
 
   const visible = useMemo(() => {
     if (filter === "all") return tableItems;
-    if (filter === "backup")
-      return tableItems.filter(
-        (x) => x.domain === "backup" || x.domain === "schedule",
-      );
     return tableItems.filter((x) => x.domain === filter);
   }, [filter, tableItems]);
 
@@ -192,7 +190,7 @@ function LiveOverviewInner({
                     onChange={setFilter}
                   />
                   <span className="text-xs text-ink-muted">
-                    {visible.length}건 표시
+                    필터링된 결과: {visible.length}건 표시 중
                   </span>
                 </div>
                 <LiveTable

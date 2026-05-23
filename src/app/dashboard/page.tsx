@@ -97,8 +97,8 @@ export default async function DashboardLivePage({
       i.occurred_date >= "2024-01-01" &&
       i.occurred_date < "2027-01-01",
   ).length;
-  // LiveTable용: 최근 5건 슬라이스
-  const incidents = allIncidentsForKpi.slice(0, 5);
+  // LiveTable용: 최근 20건 슬라이스
+  const incidents = allIncidentsForKpi.slice(0, 20);
   const incidentsListRows: ListRow[] = incidents.map(incidentToListRow);
 
   // ─── 미수채권 (시트 fetch — 미입금 우선, 최근 5건) ─────────────
@@ -204,7 +204,7 @@ export default async function DashboardLivePage({
   const todosCount = undoneTodos.length;
   const todosDone = allTodos.length - undoneTodos.length;
   const todosTotal = allTodos.length;
-  const todosListRows: ListRow[] = undoneTodos.slice(0, 5).map(todoToListRow);
+  const todosListRows: ListRow[] = undoneTodos.slice(0, 20).map(todoToListRow);
 
   // ─── 콘솔 초기 시드용 30건 (전체 도메인, DESC → reverse로 오름차순 변환) ──
   const { rows: consoleWorklogRows } = await listWorklog({ pageSize: 30 });
@@ -219,7 +219,7 @@ export default async function DashboardLivePage({
       createdAt: i.created_at,
       listRow: incidentsListRows.find((r) => r.id === i.id)!,
     })),
-    todos: undoneTodos.slice(0, 5).map((t) => ({
+    todos: undoneTodos.slice(0, 20).map((t) => ({
       id: t.id,
       title: t.title,
       dueAt: t.due_at ?? null,
@@ -233,7 +233,7 @@ export default async function DashboardLivePage({
       createdAt: s.created_at,
       listRow: servicesListRows.find((r) => r.id === s.id) ?? servicesRowToListRow(s),
     })),
-    backup: backupsFiltered.slice(0, 10).map((b) => ({
+    backup: backupsFiltered.slice(0, 20).map((b) => ({
       id: b.id,
       title:
         b.leave_start_date && b.leave_end_date

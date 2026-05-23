@@ -96,7 +96,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
 
   it("필터링 결과 카운트 텍스트 표시", () => {
     render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText(/0건 표시/)).toBeInTheDocument();
+    expect(screen.getByText(/0건 표시 중/)).toBeInTheDocument();
   });
 
   it("우측 사이드바 영역 렌더 (시스템 헬스 + 콘솔)", () => {

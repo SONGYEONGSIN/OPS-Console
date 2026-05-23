@@ -1,6 +1,6 @@
 "use client";
 
-export type LiveFilter = "all" | "incidents" | "todos" | "services" | "backup";
+export type LiveFilter = "all" | "incidents" | "todos" | "services" | "backup" | "schedule";
 type Counts = Record<LiveFilter, number>;
 
 const ORDER: { key: LiveFilter; label: string }[] = [
@@ -8,7 +8,8 @@ const ORDER: { key: LiveFilter; label: string }[] = [
   { key: "incidents", label: "사고" },
   { key: "todos", label: "내 할 일" },
   { key: "services", label: "서비스" },
-  { key: "backup", label: "백업 · 일정" },
+  { key: "backup", label: "백업" },
+  { key: "schedule", label: "일정" },
 ];
 
 type Props = { active: LiveFilter; counts: Counts; onChange: (next: LiveFilter) => void };
