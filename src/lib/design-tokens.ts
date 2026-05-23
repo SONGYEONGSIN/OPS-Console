@@ -25,10 +25,11 @@ export const colors = {
   // Line / border
   line: '#15120c',
   lineSoft: 'rgba(21, 18, 12, 0.12)',
-  // Accent — vermilion(낙관) 주, 보조는 indigo/gold/sage
+  // Accent — vermilion(낙관) 주, 보조는 indigo/amber/gold/sage
   vermilion: '#b8331e',
   vermilionDeep: '#8e2412',
   indigo: '#1f3a5f',
+  amber: '#d97706',
   gold: '#9c7a2c',
   sage: '#556b2f',
   // OPS Console chrome 전용 (별도 레이어 — chrome bar만 적용)
