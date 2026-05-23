@@ -1,9 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SystemHealthPanel } from "./SystemHealthPanel";
-import { ConsoleStream } from "./ConsoleStream";
-import { AdminControls } from "./AdminControls";
 import { useToast } from "./ToastContainer";
 import {
   INITIAL_CONSOLE_LINES,
@@ -16,8 +13,8 @@ import {
 const CONSOLE_CAP = 50;
 const SIM_INTERVAL_MS = 6000;
 
-/** 우측 사이드바 — 헬스 패널 + 콘솔 + 관리자 컨트롤. sim state + interval + 토스트 트리거. */
-export function LiveSidebar() {
+/** 실시간 현황 사이드바 state hook — sim 토글 + 콘솔 lines + 토스트 트리거. */
+export function useLiveSidebar() {
   const { showToast } = useToast();
   const [sim, setSim] = useState(false);
   const [lines, setLines] = useState<ConsoleLogEntry[]>(INITIAL_CONSOLE_LINES);
@@ -27,10 +24,19 @@ export function LiveSidebar() {
     const log = pickRandom(LOG_POOL);
     setLines((prev) => {
       const next = [...prev, log];
-      return next.length > CONSOLE_CAP ? next.slice(next.length - CONSOLE_CAP) : next;
+      return next.length > CONSOLE_CAP
+        ? next.slice(next.length - CONSOLE_CAP)
+        : next;
     });
     showToast(pickRandom(TOAST_MESSAGE_POOL));
   }, [showToast]);
+
+  const onToggleSim = useCallback(() => {
+    setSim((prev) => {
+      if (!prev) triggerEvent();
+      return !prev;
+    });
+  }, [triggerEvent]);
 
   useEffect(() => {
     if (!sim) {
@@ -49,23 +55,10 @@ export function LiveSidebar() {
     };
   }, [sim, triggerEvent]);
 
-  /** sim 토글: ON 전환 시 즉시 1회 인입 후 interval 시작. */
-  const handleToggleSim = useCallback(() => {
-    setSim((prev) => {
-      if (!prev) triggerEvent();
-      return !prev;
-    });
-  }, [triggerEvent]);
-
-  return (
-    <aside className="flex flex-col gap-6">
-      <SystemHealthPanel cronActive={sim} />
-      <ConsoleStream lines={lines} />
-      <AdminControls
-        sim={sim}
-        onToggleSim={handleToggleSim}
-        onTestEvent={triggerEvent}
-      />
-    </aside>
-  );
+  return {
+    sim,
+    lines,
+    onToggleSim,
+    onTestEvent: triggerEvent,
+  };
 }

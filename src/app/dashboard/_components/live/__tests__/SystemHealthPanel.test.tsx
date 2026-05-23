@@ -44,10 +44,8 @@ describe("SystemHealthPanel", () => {
     });
   });
 
-  it("카드 자체에 min-h-[320px] 적용", () => {
+  it("SideBox border-ink 클래스 포함", () => {
     const { container } = render(<SystemHealthPanel cronActive={false} />);
-    // SideBox section이 firstChild (wrapper div 제거됨)
-    expect((container.firstChild as HTMLElement).className).toMatch(/min-h-\[320px\]/);
     expect((container.firstChild as HTMLElement).className).toMatch(/border-ink/);
   });
 });

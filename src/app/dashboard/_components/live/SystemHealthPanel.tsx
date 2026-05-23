@@ -7,13 +7,12 @@ type Props = { cronActive: boolean };
 
 /** 시스템 게이트웨이 상태 — 3 항목 (YouTube quota / Supabase / Cron), 모든 LED vermilion(빨강).
  *  cronActive=true 시 Cron LED flicker (강한 빨강 깜박) + 텍스트 '스케줄 수집 작동 중'.
- *  카드 자체 min-h-[320px] (KPI 카드 자연 render와 시각 정렬). */
+ *  row-pair grid에서 좌우 stretch로 자동 높이 정렬. */
 export function SystemHealthPanel({ cronActive }: Props) {
   return (
     <SideBox
       title="시스템 게이트웨이 상태"
       titleRight={<HealthLed variant="vermilion" />}
-      className="min-h-[320px]"
     >
       <ul className="flex h-full flex-col justify-around gap-3">
           <li className="flex items-center justify-between">
