@@ -81,11 +81,17 @@ export default async function DashboardLivePage({
   );
 
   // ─── 사고 ─────────────────────────────────────────────
-  const { rows: incidents, total: incidentsTotal } = await listIncidents({
-    pageSize: 5,
+  // KPI용: 전체 사고 fetch → 미해결(처리완료 제외) 카운트 분리
+  const { rows: allIncidentsForKpi } = await listIncidents({
+    pageSize: 1000,
     mine: mine && !!myEmail,
     meEmail: myEmail ?? undefined,
   });
+  const incidentsUnresolvedCount = allIncidentsForKpi.filter(
+    (i) => i.status !== "처리완료",
+  ).length;
+  // LiveTable용: 최근 5건 슬라이스
+  const incidents = allIncidentsForKpi.slice(0, 5);
   const incidentsListRows: ListRow[] = incidents.map(incidentToListRow);
 
   // ─── 미수채권 (시트 fetch — 미입금 우선, 최근 5건) ─────────────
@@ -185,8 +191,11 @@ export default async function DashboardLivePage({
   const scheduleListRows: ListRow[] = upcomingEvents.map(eventToListRow);
 
   // ─── 내 할 일 ─────────────────────────────────────────────
-  const undoneTodos = (await listMyTodos()).filter((t) => !t.done);
+  const allTodos = await listMyTodos();
+  const undoneTodos = allTodos.filter((t) => !t.done);
   const todosCount = undoneTodos.length;
+  const todosDone = allTodos.length - undoneTodos.length;
+  const todosTotal = allTodos.length;
   const todosListRows: ListRow[] = undoneTodos.slice(0, 5).map(todoToListRow);
 
   // ─── 업무 활동 로그 ────────────────────────────────────────
@@ -249,10 +258,8 @@ export default async function DashboardLivePage({
       mine={mine}
       title="실시간 운영 현황"
       kpi={{
-        // Task 15에서 unresolved 카운트 분리 예정
-        sago: { count: incidentsTotal, sparklineD: SPARKLINE_SAGO },
-        // Task 15에서 done/total 정확한 집계 예정
-        todo: { count: todosCount, done: 0, total: todosCount },
+        sago: { count: incidentsUnresolvedCount, sparklineD: SPARKLINE_SAGO },
+        todo: { count: todosCount, done: todosDone, total: todosTotal },
         service: { count: servicesUpcomingCount, sparklineD: SPARKLINE_SERVICE },
       }}
       metrics={{
