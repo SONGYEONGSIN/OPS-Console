@@ -8,8 +8,8 @@ describe("worklogRowToConsoleLine", () => {
       type: "info",
     });
   });
-  it("DEBUG도 type=info", () => {
-    expect(worklogRowToConsoleLine({ level: "DEBUG", domain: "nav", msg: "Y" }).type).toBe("info");
+  it("DEBUG → type=debug (muted cream)", () => {
+    expect(worklogRowToConsoleLine({ level: "DEBUG", domain: "nav", msg: "Y" }).type).toBe("debug");
   });
   it("WARN → type=warn", () => {
     expect(worklogRowToConsoleLine({ level: "WARN", domain: "ai", msg: "Z" }).type).toBe("warn");

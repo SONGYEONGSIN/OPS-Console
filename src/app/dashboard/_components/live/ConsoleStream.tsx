@@ -10,6 +10,7 @@ const COLOR: Record<ConsoleLogEntry["type"], string> = {
   info: "text-console-info",
   warn: "text-console-warn",
   err: "text-console-err",
+  debug: "text-console-debug",
 };
 
 /** 검은 배경 mono 콘솔 — 320px height + 자동 스크롤 (새 줄 추가 시 bottom). */

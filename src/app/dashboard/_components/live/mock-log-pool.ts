@@ -1,4 +1,4 @@
-export type ConsoleLogType = "info" | "warn" | "err";
+export type ConsoleLogType = "info" | "warn" | "err" | "debug";
 export type ConsoleLogEntry = { text: string; type: ConsoleLogType };
 
 /** 초기 부팅 시 콘솔에 표시될 3줄. */

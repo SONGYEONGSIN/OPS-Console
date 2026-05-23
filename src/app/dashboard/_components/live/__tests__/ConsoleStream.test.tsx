@@ -7,6 +7,7 @@ const lines: ConsoleLogEntry[] = [
   { text: "[SYS] hello", type: "info" },
   { text: "[WARN] quota", type: "warn" },
   { text: "[ERR] failure", type: "err" },
+  { text: "[NAV] page enter", type: "debug" },
 ];
 
 describe("ConsoleStream", () => {
@@ -18,12 +19,13 @@ describe("ConsoleStream", () => {
     expect(screen.getByText("[WARN] quota")).toBeInTheDocument();
     expect(screen.getByText("[ERR] failure")).toBeInTheDocument();
   });
-  it("줄별 type 색상 클래스 (info/warn/err)", () => {
+  it("줄별 type 색상 클래스 (info/warn/err/debug)", () => {
     const { container } = render(<ConsoleStream lines={lines} />);
     const items = container.querySelectorAll("[data-console-line]");
     expect((items[0] as HTMLElement).className).toMatch(/text-console-info/);
     expect((items[1] as HTMLElement).className).toMatch(/text-console-warn/);
     expect((items[2] as HTMLElement).className).toMatch(/text-console-err/);
+    expect((items[3] as HTMLElement).className).toMatch(/text-console-debug/);
   });
   it("빈 lines도 박스는 렌더", () => {
     const { container } = render(<ConsoleStream lines={[]} />);

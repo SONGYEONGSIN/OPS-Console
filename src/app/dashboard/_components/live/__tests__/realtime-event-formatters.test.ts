@@ -38,13 +38,13 @@ describe("formatWorklogConsoleLine", () => {
     expect(result.text).toBe("[AUTH] SSO 오류");
   });
 
-  it("DEBUG level → type=info (fallback)", () => {
+  it("DEBUG level → type=debug (muted cream)", () => {
     const result = formatWorklogConsoleLine({
       level: "DEBUG",
       domain: "sys",
       msg: "page enter",
     });
-    expect(result.type).toBe("info");
+    expect(result.type).toBe("debug");
     expect(result.text).toBe("[SYS] page enter");
   });
 });

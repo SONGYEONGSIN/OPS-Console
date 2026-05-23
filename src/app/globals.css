@@ -37,6 +37,7 @@
   --console-info: #8bb3e5;
   --console-warn: #e9c46a;
   --console-err: #e76f51;
+  --console-debug: #8a8275;
 
   /* Typography scale */
   --text-3xs: 9px;
@@ -129,6 +130,7 @@
   --color-console-info: var(--console-info);
   --color-console-warn: var(--console-warn);
   --color-console-err: var(--console-err);
+  --color-console-debug: var(--console-debug);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system,
     BlinkMacSystemFont, system-ui, sans-serif;

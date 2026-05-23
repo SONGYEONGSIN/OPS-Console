@@ -11,7 +11,7 @@ type WorklogRowLike = {
  *  type: INFO/DEBUG → 'info', WARN → 'warn', ERROR → 'err' */
 export function worklogRowToConsoleLine(row: WorklogRowLike): ConsoleLogEntry {
   const type: ConsoleLogEntry["type"] =
-    row.level === "ERROR" ? "err" : row.level === "WARN" ? "warn" : "info";
+    row.level === "ERROR" ? "err" : row.level === "WARN" ? "warn" : row.level === "DEBUG" ? "debug" : "info";
   return {
     text: `[${row.domain.toUpperCase()}] ${row.msg}`,
     type,

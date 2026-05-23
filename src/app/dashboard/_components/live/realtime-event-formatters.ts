@@ -15,7 +15,7 @@ type DataRequestSendRow = {
 /** worklog 행 → 콘솔 라인 변환. */
 export function formatWorklogConsoleLine(row: WorklogRow): ConsoleLogEntry {
   const type: ConsoleLogEntry["type"] =
-    row.level === "ERROR" ? "err" : row.level === "WARN" ? "warn" : "info";
+    row.level === "ERROR" ? "err" : row.level === "WARN" ? "warn" : row.level === "DEBUG" ? "debug" : "info";
   return { text: `[${row.domain.toUpperCase()}] ${row.msg}`, type };
 }
 
