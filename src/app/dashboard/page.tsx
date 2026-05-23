@@ -199,12 +199,6 @@ export default async function DashboardLivePage({
   const todosTotal = allTodos.length;
   const todosListRows: ListRow[] = undoneTodos.slice(0, 5).map(todoToListRow);
 
-  // ─── 업무 활동 로그 (KPI용 5건) ────────────────────────────
-  const { rows: worklog } = await listWorklog({
-    pageSize: 5,
-    userEmail: mine && myEmail ? myEmail : undefined,
-  });
-
   // ─── 콘솔 초기 시드용 30건 (전체 도메인, DESC → reverse로 오름차순 변환) ──
   const { rows: consoleWorklogRows } = await listWorklog({ pageSize: 30 });
   const initialConsoleLines = worklogRowsToConsoleLines(consoleWorklogRows);
@@ -278,8 +272,8 @@ export default async function DashboardLivePage({
         backup: { value: backupCount, desc: "요청 및 내역" },
         contacts: { value: contactsTotal, desc: "등록한 연락처" },
         scheduleActivity: {
-          value: `${scheduleCount} / ${worklog.length}`,
-          desc: "일정 / 활동",
+          value: scheduleCount,
+          desc: "예정 일정",
         },
       }}
       tableItems={tableItems}

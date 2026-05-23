@@ -35,7 +35,7 @@ export type LiveOverviewProps = {
     bond: { value: number | string; active?: boolean; desc: string };
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
-    scheduleActivity: { value: string; desc: string };
+    scheduleActivity: { value: number | string; desc: string };
   };
   tableItems: LiveTableItem[];
   initialConsoleLines?: ConsoleLogEntry[];
@@ -178,7 +178,7 @@ function LiveOverviewInner({
                     desc={metrics.contacts.desc}
                   />
                   <MetricSubcard
-                    label="일정 / 활동"
+                    label="일정"
                     value={metrics.scheduleActivity.value}
                     desc={metrics.scheduleActivity.desc}
                   />

@@ -45,7 +45,7 @@ const baseProps: LiveOverviewProps = {
     bond: { value: 2, active: true, desc: "미수금 내역" },
     backup: { value: 0, desc: "요청 및 내역" },
     contacts: { value: 5, desc: "등록한 연락처" },
-    scheduleActivity: { value: "0 / 5", desc: "일정 / 활동" },
+    scheduleActivity: { value: 0, desc: "예정 일정" },
   },
   tableItems: [],
 };
