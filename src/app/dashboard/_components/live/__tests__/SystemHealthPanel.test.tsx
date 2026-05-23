@@ -44,9 +44,9 @@ describe("SystemHealthPanel", () => {
     });
   });
 
-  it("min-h-[200px] wrapper 적용", () => {
+  it("min-h-[260px] wrapper 적용", () => {
     const { container } = render(<SystemHealthPanel cronActive={false} />);
     const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.className).toMatch(/min-h-\[200px\]/);
+    expect(wrapper.className).toMatch(/min-h-\[260px\]/);
   });
 });
