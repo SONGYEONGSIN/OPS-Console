@@ -310,10 +310,6 @@ export default async function DashboardLivePage({
         },
         backup: { value: backupCount, desc: "요청 및 내역" },
         contacts: { value: contactsTotal, desc: "등록한 연락처" },
-        scheduleActivity: {
-          value: scheduleCount,
-          desc: "예정 일정",
-        },
         handover: {
           value: handoverCount ?? 0,
           desc: "등록된 인수인계",

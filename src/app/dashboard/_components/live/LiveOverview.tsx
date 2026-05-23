@@ -35,7 +35,6 @@ export type LiveOverviewProps = {
     bond: { value: number | string; active?: boolean; desc: string };
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
-    scheduleActivity: { value: number | string; desc: string };
     handover: { value: number | string; desc: string };
   };
   tableItems: LiveTableItem[];
@@ -167,7 +166,7 @@ function LiveOverviewInner({
                     active={metrics.bond.active}
                   />
                 </MetricGroupBox>
-                <MetricGroupBox title="백업 · 연락처 · 일정 · 인수인계" columns={4}>
+                <MetricGroupBox title="백업 · 연락처 · 인수인계" columns={3}>
                   <MetricSubcard
                     label="백업내용"
                     value={metrics.backup.value}
@@ -177,11 +176,6 @@ function LiveOverviewInner({
                     label="대학연락처"
                     value={metrics.contacts.value}
                     desc={metrics.contacts.desc}
-                  />
-                  <MetricSubcard
-                    label="일정"
-                    value={metrics.scheduleActivity.value}
-                    desc={metrics.scheduleActivity.desc}
                   />
                   <MetricSubcard
                     label="인수인계"

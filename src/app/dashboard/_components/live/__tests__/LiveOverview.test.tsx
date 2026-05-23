@@ -45,7 +45,6 @@ const baseProps: LiveOverviewProps = {
     bond: { value: 2, active: true, desc: "미수금 내역" },
     backup: { value: 0, desc: "요청 및 내역" },
     contacts: { value: 5, desc: "등록한 연락처" },
-    scheduleActivity: { value: 0, desc: "예정 일정" },
     handover: { value: 0, desc: "등록된 인수인계" },
   },
   tableItems: [],
@@ -67,7 +66,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
     // 그룹박스 title
     expect(screen.getByText("계약 · 미수채권")).toBeInTheDocument();
-    expect(screen.getByText("백업 · 연락처 · 일정 · 인수인계")).toBeInTheDocument();
+    expect(screen.getByText("백업 · 연락처 · 인수인계")).toBeInTheDocument();
     // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
     expect(screen.getByRole("button", { name: /^전체 \d/ })).toBeInTheDocument();
     // 빈 테이블 empty 메시지
