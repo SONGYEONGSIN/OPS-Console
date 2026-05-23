@@ -21,8 +21,8 @@ describe("LiveTable", () => {
   it("4 컬럼 헤더 + 한 행 렌더", () => {
     render(<LiveTable items={items} onSelect={() => {}} />);
     expect(screen.getByText("구분")).toBeInTheDocument();
-    expect(screen.getByText("상태/구분")).toBeInTheDocument();
-    expect(screen.getByText("운영 이벤트 내역 및 타이틀")).toBeInTheDocument();
+    expect(screen.getByText("상태")).toBeInTheDocument();
+    expect(screen.getByText("내용")).toBeInTheDocument();
     expect(screen.getByText("발생 시점")).toBeInTheDocument();
     expect(screen.getByText("사고")).toBeInTheDocument();
     expect(screen.getByText("미해결")).toBeInTheDocument();
@@ -32,7 +32,7 @@ describe("LiveTable", () => {
 
   it("빈 items → empty 메시지", () => {
     render(<LiveTable items={[]} onSelect={() => {}} />);
-    expect(screen.getByText(/운영 내역이 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
   });
 
   it("행 클릭 시 onSelect(item) 호출", () => {

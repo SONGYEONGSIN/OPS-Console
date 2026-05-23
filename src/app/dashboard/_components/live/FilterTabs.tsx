@@ -4,11 +4,11 @@ export type LiveFilter = "all" | "incidents" | "todos" | "services" | "backup";
 type Counts = Record<LiveFilter, number>;
 
 const ORDER: { key: LiveFilter; label: string }[] = [
-  { key: "all", label: "전체 내역" },
-  { key: "incidents", label: "사고 경보" },
-  { key: "todos", label: "내 할일" },
-  { key: "services", label: "오픈 서비스" },
-  { key: "backup", label: "백업/일정" },
+  { key: "all", label: "전체" },
+  { key: "incidents", label: "사고" },
+  { key: "todos", label: "내 할 일" },
+  { key: "services", label: "서비스" },
+  { key: "backup", label: "백업 · 일정" },
 ];
 
 type Props = { active: LiveFilter; counts: Counts; onChange: (next: LiveFilter) => void };

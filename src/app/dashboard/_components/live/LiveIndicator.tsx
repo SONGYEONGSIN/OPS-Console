@@ -10,7 +10,7 @@ export function LiveIndicator() {
         data-live-dot
         className="h-1.5 w-1.5 rounded-full bg-vermilion animate-[live-pulse_1.8s_ease-in-out_infinite]"
       />
-      LIVE MONITOR
+      실시간 모니터
     </span>
   );
 }

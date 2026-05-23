@@ -34,14 +34,14 @@ export function SegmentToggle({ mine }: Props) {
         onClick={() => go(false)}
         className={`${baseBtn} ${!mine ? active : inactive}`}
       >
-        전체 관점
+        전체
       </button>
       <button
         type="button"
         onClick={() => go(true)}
         className={`${baseBtn} ${mine ? active : inactive}`}
       >
-        내 업무만
+        내 담당
       </button>
     </div>
   );

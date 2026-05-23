@@ -19,10 +19,10 @@ export function LiveTable({ items, onSelect }: Props) {
               구분
             </th>
             <th className="w-24 border-b border-ink bg-washi px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
-              상태/구분
+              상태
             </th>
             <th className="border-b border-ink bg-washi px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
-              운영 이벤트 내역 및 타이틀
+              내용
             </th>
             <th className="w-28 border-b border-ink bg-washi px-3 py-2.5 text-right text-xs font-bold text-ink-soft">
               발생 시점
@@ -33,7 +33,7 @@ export function LiveTable({ items, onSelect }: Props) {
           {items.length === 0 ? (
             <tr>
               <td colSpan={4} className="px-3 py-12 text-center text-sm text-ink-muted">
-                선택한 필터 및 관점에 해당하는 운영 내역이 없습니다.
+                표시할 항목이 없습니다.
               </td>
             </tr>
           ) : (

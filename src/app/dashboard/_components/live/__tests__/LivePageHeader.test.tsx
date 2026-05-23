@@ -24,12 +24,12 @@ describe("LivePageHeader", () => {
     expect(h1?.className).toMatch(/tracking-\[-0.03em\]/);
   });
 
-  it("LIVE MONITOR 텍스트 렌더 (LiveIndicator)", () => {
+  it("실시간 모니터 텍스트 렌더 (LiveIndicator)", () => {
     render(<LivePageHeader mine={false} title="x" />);
-    expect(screen.getByText(/LIVE MONITOR/)).toBeInTheDocument();
+    expect(screen.getByText(/실시간 모니터/)).toBeInTheDocument();
   });
 
-  it("LIVE MONITOR 박스는 border-vermilion + pulse dot", () => {
+  it("실시간 모니터 박스는 border-vermilion + pulse dot", () => {
     const { container } = render(
       <LivePageHeader mine={false} title="x" />
     );
@@ -41,26 +41,26 @@ describe("LivePageHeader", () => {
     expect(dot).toBeInTheDocument();
   });
 
-  it("세그먼트 토글: 전체 관점/내 업무만 버튼 렌더", () => {
+  it("세그먼트 토글: 전체/내 담당 버튼 렌더", () => {
     render(<LivePageHeader mine={false} title="x" />);
     expect(
-      screen.getByRole("button", { name: "전체 관점" })
+      screen.getByRole("button", { name: "전체" })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "내 업무만" })
+      screen.getByRole("button", { name: "내 담당" })
     ).toBeInTheDocument();
   });
 
-  it("mine=false일 때 SegmentToggle의 '전체 관점' 버튼이 active", () => {
+  it("mine=false일 때 SegmentToggle의 '전체' 버튼이 active", () => {
     render(<LivePageHeader mine={false} title="x" />);
-    const allButton = screen.getByRole("button", { name: "전체 관점" });
+    const allButton = screen.getByRole("button", { name: "전체" });
     expect(allButton.className).toMatch(/bg-ink/);
     expect(allButton.className).toMatch(/text-cream/);
   });
 
-  it("mine=true일 때 SegmentToggle의 '내 업무만' 버튼이 active", () => {
+  it("mine=true일 때 SegmentToggle의 '내 담당' 버튼이 active", () => {
     render(<LivePageHeader mine={true} title="x" />);
-    const mineButton = screen.getByRole("button", { name: "내 업무만" });
+    const mineButton = screen.getByRole("button", { name: "내 담당" });
     expect(mineButton.className).toMatch(/bg-ink/);
     expect(mineButton.className).toMatch(/text-cream/);
   });

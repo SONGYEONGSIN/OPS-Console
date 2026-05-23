@@ -90,20 +90,20 @@ export function LiveOverview({
           {/* 3 KPI 대형 카드 */}
           <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
             <KpiCardLarge
-              label="미해결 사고 현황"
-              trend="실시간 경보"
+              label="미해결 사고"
+              trend="긴급 대응"
               trendDanger
               count={kpi.sago.count}
               numberDanger
-              footer="전체 관리 대상 중 즉각 조치 필요 건수"
+              footer="즉각 조치 필요"
               right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
               delayMs={0}
             />
             <KpiCardLarge
-              label="내 미완료 할 일"
+              label="내 미완 할 일"
               trend={`진행률 ${todoPct}%`}
               count={kpi.todo.count}
-              footer="본인에게 배정된 미완료 티켓 수"
+              footer="본인 배정 미완료"
               right={
                 <KpiProgressBar
                   done={kpi.todo.done}
@@ -114,9 +114,9 @@ export function LiveOverview({
             />
             <KpiCardLarge
               label="오픈 예정 서비스"
-              trend="안정적 빌드"
+              trend="오픈 준비"
               count={kpi.service.count}
-              footer="배포 및 모니터링 준비 단계 서비스"
+              footer="배포 준비 완료"
               right={
                 <Sparkline d={kpi.service.sparklineD} variant="neutral" />
               }
@@ -126,7 +126,7 @@ export function LiveOverview({
 
           {/* 2 그룹박스 */}
           <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
-            <MetricGroupBox title="재정 및 영업 행정" columns={2}>
+            <MetricGroupBox title="계약 · 미수채권" columns={2}>
               <MetricSubcard
                 label="체결 계약"
                 value={metrics.contract.value}
@@ -140,9 +140,9 @@ export function LiveOverview({
                 active={metrics.bond.active}
               />
             </MetricGroupBox>
-            <MetricGroupBox title="시스템 리소스 및 모니터링" columns={3}>
+            <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
               <MetricSubcard
-                label="백업 대기"
+                label="백업 요청"
                 value={metrics.backup.value}
                 desc={metrics.backup.desc}
               />
@@ -168,7 +168,7 @@ export function LiveOverview({
                 onChange={setFilter}
               />
               <span className="text-xs text-ink-muted">
-                필터링된 결과: {visible.length}건 표시 중
+                {visible.length}건 표시
               </span>
             </div>
             <LiveTable

@@ -256,24 +256,24 @@ export default async function DashboardLivePage({
   return (
     <LiveOverview
       mine={mine}
-      title="실시간 운영 현황"
+      title="실시간 현황"
       kpi={{
         sago: { count: incidentsUnresolvedCount, sparklineD: SPARKLINE_SAGO },
         todo: { count: todosCount, done: todosDone, total: todosTotal },
         service: { count: servicesUpcomingCount, sparklineD: SPARKLINE_SERVICE },
       }}
       metrics={{
-        contract: { value: contractsCount ?? 0, desc: "체결 진행중" },
+        contract: { value: contractsCount ?? 0, desc: "계약 진행" },
         bond: {
           value: receivablesCount ?? 0,
           active: (receivablesCount ?? 0) > 0,
-          desc: "미지급 고지 발송",
+          desc: "미수채권 미입금",
         },
-        backup: { value: backupCount, desc: "요청 처리건" },
-        contacts: { value: contactsTotal, desc: "등록된 파트너" },
+        backup: { value: backupCount, desc: "백업 요청" },
+        contacts: { value: contactsTotal, desc: "기관 연락처" },
         scheduleActivity: {
           value: `${scheduleCount} / ${worklog.length}`,
-          desc: "금주 잔여 건",
+          desc: "일정 / 활동",
         },
       }}
       tableItems={tableItems}

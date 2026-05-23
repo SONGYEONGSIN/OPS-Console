@@ -28,18 +28,18 @@ function mockReducedMotion() {
 
 const baseProps: LiveOverviewProps = {
   mine: false,
-  title: "실시간 운영 현황",
+  title: "실시간 현황",
   kpi: {
     sago: { count: 3, sparklineD: "M 0,30 L 100,2" },
     todo: { count: 7, done: 2, total: 10 },
     service: { count: 5, sparklineD: "M 0,35 L 100,12" },
   },
   metrics: {
-    contract: { value: 1, desc: "체결 진행중" },
-    bond: { value: 2, active: true, desc: "미지급 고지 발송" },
-    backup: { value: 0, desc: "요청 처리건" },
-    contacts: { value: 5, desc: "등록된 파트너" },
-    scheduleActivity: { value: "0 / 5", desc: "금주 잔여 건" },
+    contract: { value: 1, desc: "계약 진행" },
+    bond: { value: 2, active: true, desc: "미수채권 미입금" },
+    backup: { value: 0, desc: "백업 요청" },
+    contacts: { value: 5, desc: "기관 연락처" },
+    scheduleActivity: { value: "0 / 5", desc: "일정 / 활동" },
   },
   tableItems: [],
 };
@@ -53,18 +53,18 @@ describe("LiveOverview (Phase 1)", () => {
   it("헤더 + 3 KPI 카드 + 2 그룹박스 + 필터 + 테이블 렌더", () => {
     render(<LiveOverview {...baseProps} />);
     // 헤더
-    expect(screen.getByText("실시간 운영 현황")).toBeInTheDocument();
+    expect(screen.getByText("실시간 현황")).toBeInTheDocument();
     // KPI 3 카드 label
-    expect(screen.getByText("미해결 사고 현황")).toBeInTheDocument();
-    expect(screen.getByText("내 미완료 할 일")).toBeInTheDocument();
+    expect(screen.getByText("미해결 사고")).toBeInTheDocument();
+    expect(screen.getByText("내 미완 할 일")).toBeInTheDocument();
     expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
     // 그룹박스 title
-    expect(screen.getByText("재정 및 영업 행정")).toBeInTheDocument();
-    expect(screen.getByText(/시스템 리소스/)).toBeInTheDocument();
-    // 필터
-    expect(screen.getByRole("button", { name: /전체 내역/ })).toBeInTheDocument();
+    expect(screen.getByText("계약 · 미수채권")).toBeInTheDocument();
+    expect(screen.getByText("백업 · 연락처 · 일정")).toBeInTheDocument();
+    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음. SegmentToggle '전체'와 구분)
+    expect(screen.getByRole("button", { name: /^전체 \d/ })).toBeInTheDocument();
     // 빈 테이블 empty 메시지
-    expect(screen.getByText(/운영 내역이 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
   });
 
   it("진행률 라벨 = (done/total)*100 %", () => {
@@ -82,14 +82,14 @@ describe("LiveOverview (Phase 1)", () => {
 
   it("필터 칩 클릭 시 칩 active 전환", () => {
     render(<LiveOverview {...baseProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /사고 경보/ }));
-    expect(screen.getByRole("button", { name: /사고 경보/ }).className).toMatch(
+    fireEvent.click(screen.getByRole("button", { name: /^사고/ }));
+    expect(screen.getByRole("button", { name: /^사고/ }).className).toMatch(
       /bg-vermilion/,
     );
   });
 
   it("필터링 결과 카운트 텍스트 표시", () => {
     render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText(/필터링된 결과: 0건/)).toBeInTheDocument();
+    expect(screen.getByText(/0건 표시/)).toBeInTheDocument();
   });
 });
