@@ -18,9 +18,13 @@ type Operator = {
 };
 type Props = {
   services: ReadyService[];
+  /** 전체 목록 (페이지네이션 전). selectedService 조회용. 미지정 시 services로 fallback. */
+  allServices?: ReadyService[];
   operators: Operator[];
-  /** Step1 헤더 우측에 노출할 슬롯 (예: ScopeChips). */
+  /** Step1 헤더 카운트 바로 옆에 인라인 노출 (예: ScopeChips). */
   step1HeaderRight?: React.ReactNode;
+  /** Step1 테이블 하단 슬롯 (예: ListPagination). */
+  step1Footer?: React.ReactNode;
 };
 
 type Step = 1 | 2 | 3 | 4;
@@ -36,7 +40,13 @@ function formatDate(s: string): string {
   return `${y}-${m}-${dd}`;
 }
 
-export function HandoverWizard({ services, operators, step1HeaderRight }: Props) {
+export function HandoverWizard({
+  services,
+  allServices,
+  operators,
+  step1HeaderRight,
+  step1Footer,
+}: Props) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [serviceId, setServiceId] = useState<string>("");
@@ -46,7 +56,8 @@ export function HandoverWizard({ services, operators, step1HeaderRight }: Props)
   const [mailWarning, setMailWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const selectedService = services.find((s) => s.id === serviceId);
+  // allServices가 있으면 전체 목록에서 조회 (페이지네이션 후 services에 없어도 찾음)
+  const selectedService = (allServices ?? services).find((s) => s.id === serviceId);
 
   function handleConfirm() {
     if (!serviceId || !to) return;
@@ -83,6 +94,7 @@ export function HandoverWizard({ services, operators, step1HeaderRight }: Props)
             serviceId={serviceId}
             onSelect={setServiceId}
             headerRight={step1HeaderRight}
+            footer={step1Footer}
           />
         )}
         {step === 2 && (
@@ -232,21 +244,23 @@ function Step1({
   serviceId,
   onSelect,
   headerRight,
+  footer,
 }: {
   services: ReadyService[];
   serviceId: string;
   onSelect: (id: string) => void;
   headerRight?: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <section className="space-y-4">
-      <header className="flex items-baseline gap-3">
+      <header className="flex flex-wrap items-baseline gap-3">
         <h3 className="text-xl font-bold text-ink">1 · 서비스 선택</h3>
         <span className="text-sm text-vermilion">{services.length}건</span>
+        {headerRight}
         <span className="text-xs text-muted">
           · 인수인계 내용 작성이 완료된(작성완료) 서비스만 표시
         </span>
-        {headerRight ? <div className="ml-auto">{headerRight}</div> : null}
       </header>
       {services.length === 0 ? (
         <p className="border border-line bg-cream p-6 text-center text-sm text-muted">
@@ -308,6 +322,7 @@ function Step1({
           </table>
         </div>
       )}
+      {footer ?? null}
     </section>
   );
 }

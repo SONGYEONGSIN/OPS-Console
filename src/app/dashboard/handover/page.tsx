@@ -7,6 +7,7 @@ import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
 import { HandoverTabs } from "./HandoverTabs";
 import { HandoverControls } from "./HandoverControls";
+import { HandoverProgressSearch } from "./HandoverProgressSearch";
 import { HandoverWizard } from "./HandoverWizard";
 import { HandoverHistory } from "./HandoverHistory";
 import { getCurrentOperator } from "@/features/auth/queries";
@@ -56,9 +57,28 @@ export default async function HandoverPage({
   if (tab === "progress") {
     const fallback = resolvePageMeta(slug, meta);
     const mineProgress = params.mine === "true";
-    const ready = await listReadyServices(
+    const q = (params.q ?? "").trim().toLowerCase();
+    const pageNum = Math.max(1, Number(params.page) || 1);
+    const PROGRESS_PAGE_SIZE = 30;
+
+    const allReady = await listReadyServices(
       mineProgress ? (me?.email ?? undefined) : undefined,
     );
+
+    const filtered = q
+      ? allReady.filter(
+          (s) =>
+            s.university_name.toLowerCase().includes(q) ||
+            s.service_name.toLowerCase().includes(q),
+        )
+      : allReady;
+
+    const total = filtered.length;
+    const paged = filtered.slice(
+      (pageNum - 1) * PROGRESS_PAGE_SIZE,
+      pageNum * PROGRESS_PAGE_SIZE,
+    );
+
     const ops = await listOperators();
     const operatorCandidates = ops
       .filter((o) => o.status === "active" && o.email !== me?.email)
@@ -77,11 +97,16 @@ export default async function HandoverPage({
           description={fallback.description}
         />
         <HandoverTabs />
+        <HandoverProgressSearch />
         <HandoverWizard
-          services={ready}
+          services={paged}
+          allServices={allReady}
           operators={operatorCandidates}
           step1HeaderRight={
-            <ScopeChips total={ready.length} mineLabel="내 서비스" />
+            <ScopeChips total={total} mineLabel="내 서비스" />
+          }
+          step1Footer={
+            <ListPagination total={total} pageSize={PROGRESS_PAGE_SIZE} />
           }
         />
       </div>
