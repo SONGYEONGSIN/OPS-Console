@@ -10,7 +10,7 @@ type Props = { cronActive: boolean };
  *  높이는 KPI 카드와 시각 정렬(min-h-[200px]) + ul flex justify-around로 콘텐츠 위아래 균등 분포. */
 export function SystemHealthPanel({ cronActive }: Props) {
   return (
-    <div className="min-h-[260px]">
+    <div className="min-h-[320px]">
       <SideBox
         title="시스템 게이트웨이 상태"
         titleRight={<HealthLed variant="vermilion" />}
