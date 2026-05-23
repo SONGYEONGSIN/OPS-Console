@@ -287,6 +287,11 @@ body::before {
   50% { transform: scale(1.2); opacity: 1; }
 }
 
+@keyframes led-pulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
 @keyframes led-flicker {
   0% { opacity: 0.5; }
   100% { opacity: 1; }
