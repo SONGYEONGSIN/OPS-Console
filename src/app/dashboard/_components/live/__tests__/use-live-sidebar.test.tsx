@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ToastProvider } from "../ToastContainer";
 import { useLiveSidebar } from "../use-live-sidebar";
+import type { ConsoleLogEntry } from "../mock-log-pool";
 
 function wrapper({ children }: { children: ReactNode }) {
   return <ToastProvider>{children}</ToastProvider>;
@@ -46,5 +47,20 @@ describe("useLiveSidebar", () => {
     const baseline = result.current.lines.length;
     act(() => { vi.advanceTimersByTime(12000); });
     expect(result.current.lines).toHaveLength(baseline);
+  });
+
+  it("opts.initialLines 전달 시 그 값으로 초기화", () => {
+    const customLines: ConsoleLogEntry[] = [{ text: "[CUSTOM] hi", type: "info" }];
+    const { result } = renderHook(() => useLiveSidebar({ initialLines: customLines }), {
+      wrapper,
+    });
+    expect(result.current.lines).toEqual(customLines);
+  });
+
+  it("opts.initialLines 빈 배열이면 INITIAL_CONSOLE_LINES로 fallback", () => {
+    const { result } = renderHook(() => useLiveSidebar({ initialLines: [] }), {
+      wrapper,
+    });
+    expect(result.current.lines.length).toBeGreaterThan(0);
   });
 });

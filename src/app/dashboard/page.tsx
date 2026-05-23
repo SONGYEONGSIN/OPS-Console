@@ -8,6 +8,7 @@ import { listScheduleEvents } from "@/features/schedule/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { listMyTodos } from "@/features/todos/queries";
 import { listWorklog } from "@/features/worklog/queries";
+import { worklogRowsToConsoleLines } from "@/features/worklog/to-console-line";
 import { listContacts } from "@/features/contacts/queries";
 import { servicesRowToListRow } from "./services/_row-mapper";
 import { incidentToListRow } from "./incidents/_row-mapper";
@@ -198,11 +199,15 @@ export default async function DashboardLivePage({
   const todosTotal = allTodos.length;
   const todosListRows: ListRow[] = undoneTodos.slice(0, 5).map(todoToListRow);
 
-  // ─── 업무 활동 로그 ────────────────────────────────────────
+  // ─── 업무 활동 로그 (KPI용 5건) ────────────────────────────
   const { rows: worklog } = await listWorklog({
     pageSize: 5,
     userEmail: mine && myEmail ? myEmail : undefined,
   });
+
+  // ─── 콘솔 초기 시드용 30건 (전체 도메인, DESC → reverse로 오름차순 변환) ──
+  const { rows: consoleWorklogRows } = await listWorklog({ pageSize: 30 });
+  const initialConsoleLines = worklogRowsToConsoleLines(consoleWorklogRows);
 
   // ─── 실시간 테이블 소스 ───────────────────────────────────
   const liveTableSources: LiveTableSources = {
@@ -277,6 +282,7 @@ export default async function DashboardLivePage({
         },
       }}
       tableItems={tableItems}
+      initialConsoleLines={initialConsoleLines}
     />
   );
 }

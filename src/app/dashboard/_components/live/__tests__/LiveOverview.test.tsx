@@ -101,4 +101,14 @@ describe("LiveOverview (Phase 1)", () => {
       screen.getByRole("button", { name: /시뮬레이션 활성화/ }),
     ).toBeInTheDocument();
   });
+
+  it("initialConsoleLines 전달 시 해당 텍스트가 콘솔에 표시됨", () => {
+    const seedLines = [
+      { text: "[HANDOVER] 인수인계 등록 완료", type: "info" as const },
+      { text: "[INCIDENTS] 장애 발생", type: "err" as const },
+    ];
+    render(<LiveOverview {...baseProps} initialConsoleLines={seedLines} />);
+    expect(screen.getByText("[HANDOVER] 인수인계 등록 완료")).toBeInTheDocument();
+    expect(screen.getByText("[INCIDENTS] 장애 발생")).toBeInTheDocument();
+  });
 });

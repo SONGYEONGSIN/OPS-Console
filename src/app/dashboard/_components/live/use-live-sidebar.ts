@@ -14,10 +14,14 @@ const CONSOLE_CAP = 50;
 const SIM_INTERVAL_MS = 6000;
 
 /** 실시간 현황 사이드바 state hook — sim 토글 + 콘솔 lines + 토스트 트리거. */
-export function useLiveSidebar() {
+export function useLiveSidebar(opts: { initialLines?: ConsoleLogEntry[] } = {}) {
   const { showToast } = useToast();
   const [sim, setSim] = useState(false);
-  const [lines, setLines] = useState<ConsoleLogEntry[]>(INITIAL_CONSOLE_LINES);
+  const [lines, setLines] = useState<ConsoleLogEntry[]>(
+    opts.initialLines && opts.initialLines.length > 0
+      ? opts.initialLines
+      : INITIAL_CONSOLE_LINES,
+  );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const triggerEvent = useCallback(() => {

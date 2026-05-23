@@ -20,6 +20,7 @@ import { SystemHealthPanel } from "./SystemHealthPanel";
 import { ConsoleStream } from "./ConsoleStream";
 import { AdminControls } from "./AdminControls";
 import type { LiveTableItem } from "./live-table-builder";
+import type { ConsoleLogEntry } from "./mock-log-pool";
 
 export type LiveOverviewProps = {
   mine: boolean;
@@ -37,6 +38,7 @@ export type LiveOverviewProps = {
     scheduleActivity: { value: string; desc: string };
   };
   tableItems: LiveTableItem[];
+  initialConsoleLines?: ConsoleLogEntry[];
 };
 
 /** row-pair grid 내부 컴포넌트 — ToastProvider 하위에서 useLiveSidebar 사용 가능. */
@@ -46,13 +48,16 @@ function LiveOverviewInner({
   kpi,
   metrics,
   tableItems,
+  initialConsoleLines,
 }: LiveOverviewProps) {
   const [filter, setFilter] = useState<LiveFilter>("all");
   const [selected, setSelected] = useState<{
     variant: Variant;
     row: ListRow;
   } | null>(null);
-  const { sim, lines, onToggleSim, onTestEvent } = useLiveSidebar();
+  const { sim, lines, onToggleSim, onTestEvent } = useLiveSidebar({
+    initialLines: initialConsoleLines,
+  });
 
   const counts = useMemo(() => {
     const c: Record<LiveFilter, number> = {
