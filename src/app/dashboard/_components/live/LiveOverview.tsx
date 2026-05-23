@@ -133,7 +133,7 @@ function LiveOverviewInner({
                 delayMs={50}
               />
               <KpiCardLarge
-                label="미해결 사고"
+                label="사고 누적"
                 trend="긴급 대응"
                 trendDanger
                 count={kpi.sago.count}
