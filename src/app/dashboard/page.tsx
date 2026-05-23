@@ -88,10 +88,15 @@ export default async function DashboardLivePage({
     mine: mine && !!myEmail,
     meEmail: myEmail ?? undefined,
   });
-  // 사고 누적 데이터 카운트 — 담당자(assignee)가 등록된 사고만, 처리완료 제외.
-  // (담당자 미등록 사고는 운영자 대응이 시작되기 전이라 누적 지표에서 제외)
+  // 사고 누적 데이터 카운트 — 담당자(assignee) 등록된 사고만, 처리완료 제외,
+  // occurred_date 2025-01-01 ≤ 발생일 < 2027-01-01 (즉 2025~2026 시즌).
   const incidentsUnresolvedCount = allIncidentsForKpi.filter(
-    (i) => i.status !== "처리완료" && !!i.assignee_email,
+    (i) =>
+      i.status !== "처리완료" &&
+      !!i.assignee_email &&
+      !!i.occurred_date &&
+      i.occurred_date >= "2025-01-01" &&
+      i.occurred_date < "2027-01-01",
   ).length;
   // LiveTable용: 최근 5건 슬라이스
   const incidents = allIncidentsForKpi.slice(0, 5);
