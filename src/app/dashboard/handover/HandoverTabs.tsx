@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 const TABS = [
-  { key: "content", label: "인수인계 내용" },
+  { key: "content", label: "인수인계 작성" },
   { key: "progress", label: "인수인계 진행" },
   { key: "history", label: "인수인계 확인" },
 ] as const;
