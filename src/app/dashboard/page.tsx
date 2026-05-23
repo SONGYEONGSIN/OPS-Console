@@ -150,8 +150,9 @@ export default async function DashboardLivePage({
   });
 
   // ─── 백업 요청 ────────────────────────────────────────────
-  // 본인 필터가 client측이므로 모수 정확성을 위해 충분히 fetch (pageSize 100)
-  const { rows: backups } = await listBackupRequests({ pageSize: 100 });
+  // 본인 필터(requester/substitute)가 client측이므로 모수 정확성을 위해 충분히 fetch.
+  // 100건은 운영 누적에서 쉽게 초과 → 1000으로 상향.
+  const { rows: backups } = await listBackupRequests({ pageSize: 1000 });
   const backupsFiltered = mine && myEmail
     ? backups.filter(
         (b) =>
