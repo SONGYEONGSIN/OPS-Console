@@ -27,11 +27,26 @@ describe("SystemHealthPanel", () => {
     expect(cronLed.className).toMatch(/bg-vermilion/);
   });
 
-  it("cronActive=false → Cron LED green, flicker 없음", () => {
+  it("cronActive=false → Cron LED vermilion (pulse, flicker 없음)", () => {
     const { container } = render(<SystemHealthPanel cronActive={false} />);
     const leds = container.querySelectorAll("[data-health-led]");
     const cronLed = leds[leds.length - 1] as HTMLElement;
-    expect(cronLed.className).toMatch(/bg-green-light/);
+    expect(cronLed.className).toMatch(/bg-vermilion/);
     expect(cronLed.className).not.toMatch(/animate-\[led-flicker_/);
+    expect(cronLed.className).toMatch(/animate-\[led-pulse_/);
+  });
+
+  it("모든 LED가 vermilion variant (Cron 포함)", () => {
+    const { container } = render(<SystemHealthPanel cronActive={false} />);
+    const leds = container.querySelectorAll("[data-health-led]");
+    leds.forEach((led) => {
+      expect((led as HTMLElement).className).toMatch(/bg-vermilion/);
+    });
+  });
+
+  it("min-h-[200px] wrapper 적용", () => {
+    const { container } = render(<SystemHealthPanel cronActive={false} />);
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper.className).toMatch(/min-h-\[200px\]/);
   });
 });
