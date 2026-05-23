@@ -21,6 +21,7 @@
   --vermilion: #b8331e;
   --vermilion-deep: #8e2412;
   --indigo: #1f3a5f;
+  --green-light: #48bb78;
   --amber: #d97706;
   --gold: #9c7a2c;
   --sage: #556b2f;
@@ -116,6 +117,7 @@
   --color-vermilion: var(--vermilion);
   --color-vermilion-deep: var(--vermilion-deep);
   --color-indigo: var(--indigo);
+  --color-green-light: var(--green-light);
   --color-amber: var(--amber);
   --color-gold: var(--gold);
   --color-sage: var(--sage);
