@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import { LiveIndicator } from "../LiveIndicator";
 
 describe("LiveIndicator", () => {
-  it("실시간 모니터 텍스트 + vermilion 보더 박스", () => {
+  it("LIVE MONITOR 텍스트 + vermilion 보더 박스", () => {
     const { container } = render(<LiveIndicator />);
-    expect(screen.getByText(/실시간 모니터/)).toBeInTheDocument();
+    expect(screen.getByText(/LIVE MONITOR/)).toBeInTheDocument();
     expect(container.firstChild).toHaveProperty("className");
     expect((container.firstChild as HTMLElement).className).toMatch(
       /border-vermilion/

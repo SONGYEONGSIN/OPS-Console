@@ -24,12 +24,12 @@ describe("LivePageHeader", () => {
     expect(h1?.className).toMatch(/tracking-\[-0.03em\]/);
   });
 
-  it("실시간 모니터 텍스트 렌더 (LiveIndicator)", () => {
+  it("LIVE MONITOR 텍스트 렌더 (LiveIndicator)", () => {
     render(<LivePageHeader mine={false} title="x" />);
-    expect(screen.getByText(/실시간 모니터/)).toBeInTheDocument();
+    expect(screen.getByText(/LIVE MONITOR/)).toBeInTheDocument();
   });
 
-  it("실시간 모니터 박스는 border-vermilion + pulse dot", () => {
+  it("LIVE MONITOR 박스는 border-vermilion + pulse dot", () => {
     const { container } = render(
       <LivePageHeader mine={false} title="x" />
     );
