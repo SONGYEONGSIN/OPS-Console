@@ -154,7 +154,7 @@ function LiveOverviewInner({
               <section className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
                 <MetricGroupBox title="계약 · 미수채권" columns={2}>
                   <MetricSubcard
-                    label="계약"
+                    label="계약체결"
                     value={metrics.contract.value}
                     desc={metrics.contract.desc}
                     active={metrics.contract.active}
@@ -168,7 +168,7 @@ function LiveOverviewInner({
                 </MetricGroupBox>
                 <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
                   <MetricSubcard
-                    label="백업"
+                    label="백업내용"
                     value={metrics.backup.value}
                     desc={metrics.backup.desc}
                   />

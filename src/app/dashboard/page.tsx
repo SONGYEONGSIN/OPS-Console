@@ -269,14 +269,14 @@ export default async function DashboardLivePage({
         service: { count: servicesUpcomingCount, sparklineD: SPARKLINE_SERVICE },
       }}
       metrics={{
-        contract: { value: contractsCount ?? 0, desc: "계약 진행" },
+        contract: { value: contractsCount ?? 0, desc: "미체결 계약" },
         bond: {
           value: receivablesCount ?? 0,
           active: (receivablesCount ?? 0) > 0,
-          desc: "미수채권 미입금",
+          desc: "미수금 내역",
         },
-        backup: { value: backupCount, desc: "백업 요청" },
-        contacts: { value: contactsTotal, desc: "기관 연락처" },
+        backup: { value: backupCount, desc: "요청 및 내역" },
+        contacts: { value: contactsTotal, desc: "등록한 연락처" },
         scheduleActivity: {
           value: `${scheduleCount} / ${worklog.length}`,
           desc: "일정 / 활동",
