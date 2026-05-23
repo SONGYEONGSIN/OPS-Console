@@ -5,6 +5,7 @@ import {
   formatTodoToast,
   formatBackupRequestToast,
   formatDataRequestSendToast,
+  formatHandoverToast,
 } from "../realtime-event-formatters";
 
 describe("formatWorklogConsoleLine", () => {
@@ -136,5 +137,27 @@ describe("formatDataRequestSendToast", () => {
       created_by_email: "user@example.com",
     });
     expect(result).toBeNull();
+  });
+});
+
+describe("formatHandoverToast", () => {
+  it("[인수인계] author_name 등록 + type=info", () => {
+    const result = formatHandoverToast({
+      author_name: "홍길동",
+      author_email: "hong@example.com",
+      service_id: "abc-123",
+    });
+    expect(result.text).toBe("[인수인계] 홍길동 등록");
+    expect(result.type).toBe("info");
+  });
+
+  it("author_name이 빈 문자열이어도 구조 유지", () => {
+    const result = formatHandoverToast({
+      author_name: "",
+      author_email: "hong@example.com",
+      service_id: "abc-123",
+    });
+    expect(result.text).toBe("[인수인계]  등록");
+    expect(result.type).toBe("info");
   });
 });

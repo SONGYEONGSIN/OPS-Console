@@ -213,4 +213,53 @@ describe("useDashboardRealtime", () => {
     });
     expect(onConsoleLine).not.toHaveBeenCalled();
   });
+
+  it("handover_records INSERT → toast 표시 (mine=false)", () => {
+    const onConsoleLine = vi.fn();
+    renderHook(
+      () =>
+        useDashboardRealtime({
+          mine: false,
+          myEmail: null,
+          onConsoleLine,
+        }),
+      { wrapper },
+    );
+
+    const hoCh = mockChannels.find((ch) => ch._handlers.has("handover_records"));
+    expect(hoCh).toBeDefined();
+    expect(() =>
+      act(() => {
+        hoCh!.trigger("handover_records", {
+          author_name: "홍길동",
+          author_email: "hong@example.com",
+          service_id: "abc-123",
+        });
+      }),
+    ).not.toThrow();
+  });
+
+  it("handover_records INSERT + mine=true + 불일치 author_email → toast 없음", () => {
+    const onConsoleLine = vi.fn();
+    renderHook(
+      () =>
+        useDashboardRealtime({
+          mine: true,
+          myEmail: "me@example.com",
+          onConsoleLine,
+        }),
+      { wrapper },
+    );
+
+    const hoCh = mockChannels.find((ch) => ch._handlers.has("handover_records"));
+    act(() => {
+      hoCh!.trigger("handover_records", {
+        author_name: "홍길동",
+        author_email: "other@example.com",
+        service_id: "abc-123",
+      });
+    });
+    // toast 호출 여부는 ToastProvider 내부라 직접 검증 어려움; 에러 없이 실행됨을 검증
+    expect(onConsoleLine).not.toHaveBeenCalled();
+  });
 });

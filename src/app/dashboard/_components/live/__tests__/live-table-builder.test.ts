@@ -12,6 +12,7 @@ describe("buildLiveTableItems", () => {
       services: [{ id: "s1", title: "A대 원서접수", writeStartAt: "2026-06-24", createdAt: tEarlier(180), listRow: {} as never }],
       backup: [{ id: "b1", title: "휴가 백업", status: "대기", createdAt: tEarlier(30), listRow: {} as never }],
       schedule: [{ id: "e1", title: "정기회의", startAt: "2026-05-24T05:00:00Z", createdAt: tEarlier(10), listRow: {} as never }],
+      handover: [],
     };
     const items = buildLiveTableItems(sources, now);
     expect(items.map((i) => i.id)).toEqual(["i1", "e1", "b1", "t1", "s1"]); // 시간 가까운 순
@@ -24,6 +25,7 @@ describe("buildLiveTableItems", () => {
       services: [{ id: "s", title: "x", writeStartAt: "2026-06-24", createdAt: tEarlier(3), listRow: {} as never }],
       backup: [{ id: "b", title: "x", status: "대기", createdAt: tEarlier(4), listRow: {} as never }],
       schedule: [{ id: "e", title: "x", startAt: "2026-05-24T05:00:00Z", createdAt: tEarlier(5), listRow: {} as never }],
+      handover: [],
     };
     const items = buildLiveTableItems(sources, now);
     expect(items.find((x) => x.id === "i")?.badgeDomain).toBe("사고");
@@ -49,7 +51,7 @@ describe("buildLiveTableItems", () => {
 
   it("todos 상태 4단계: 지남 / 오늘 / D-N / 대기", () => {
     const sources: LiveTableSources = {
-      incidents: [], services: [], backup: [], schedule: [],
+      incidents: [], services: [], backup: [], schedule: [], handover: [],
       todos: [
         { id: "t1", title: "x", dueAt: "2026-05-22", createdAt: tEarlier(1), listRow: {} as never }, // < today → 지남
         { id: "t2", title: "x", dueAt: "2026-05-23", createdAt: tEarlier(2), listRow: {} as never }, // today
@@ -67,9 +69,25 @@ describe("buildLiveTableItems", () => {
   it("timeText는 formatRelativeTime 결과 ('방금 전' 등)", () => {
     const sources: LiveTableSources = {
       incidents: [{ id: "x", title: "y", status: "미처리", createdAt: tEarlier(0), listRow: {} as never }],
-      todos: [], services: [], backup: [], schedule: [],
+      todos: [], services: [], backup: [], schedule: [], handover: [],
     };
     const items = buildLiveTableItems(sources, now);
     expect(items[0].timeText).toBe("방금 전");
+  });
+
+  it("handover 행 매핑: badgeDomain=인수인계, variant=handover, statusText=status 원본", () => {
+    const sources: LiveTableSources = {
+      incidents: [], todos: [], services: [], backup: [], schedule: [],
+      handover: [
+        { id: "h1", title: "서울대 · 원서접수", status: "published", createdAt: tEarlier(2), listRow: {} as never },
+      ],
+    };
+    const items = buildLiveTableItems(sources, now);
+    expect(items).toHaveLength(1);
+    expect(items[0].id).toBe("h1");
+    expect(items[0].badgeDomain).toBe("인수인계");
+    expect(items[0].variant).toBe("handover");
+    expect(items[0].statusText).toBe("published");
+    expect(items[0].title).toBe("서울대 · 원서접수");
   });
 });

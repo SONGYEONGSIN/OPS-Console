@@ -9,6 +9,7 @@ import {
   formatTodoToast,
   formatBackupRequestToast,
   formatDataRequestSendToast,
+  formatHandoverToast,
 } from "./realtime-event-formatters";
 import type { ConsoleLogEntry } from "./mock-log-pool";
 
@@ -128,6 +129,25 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
       )
       .subscribe();
     channels.push(drsCh);
+
+    // handover_records INSERT → toast
+    const hoCh = supabase
+      .channel("realtime:handover_records")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "handover_records" },
+        (payload) => {
+          const row = payload.new as {
+            author_name: string;
+            author_email: string;
+            service_id: string;
+          };
+          if (mine && myEmail && row.author_email !== myEmail) return;
+          showToast(formatHandoverToast(row).text);
+        },
+      )
+      .subscribe();
+    channels.push(hoCh);
 
     return () => {
       channels.forEach((ch) => supabase.removeChannel(ch));

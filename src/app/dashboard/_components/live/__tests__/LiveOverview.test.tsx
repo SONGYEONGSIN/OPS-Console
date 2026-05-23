@@ -46,6 +46,7 @@ const baseProps: LiveOverviewProps = {
     backup: { value: 0, desc: "요청 및 내역" },
     contacts: { value: 5, desc: "등록한 연락처" },
     scheduleActivity: { value: 0, desc: "예정 일정" },
+    handover: { value: 0, desc: "등록된 인수인계" },
   },
   tableItems: [],
 };
@@ -66,7 +67,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
     // 그룹박스 title
     expect(screen.getByText("계약 · 미수채권")).toBeInTheDocument();
-    expect(screen.getByText("백업 · 연락처 · 일정")).toBeInTheDocument();
+    expect(screen.getByText("백업 · 연락처 · 일정 · 인수인계")).toBeInTheDocument();
     // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
     expect(screen.getByRole("button", { name: /^전체 \d/ })).toBeInTheDocument();
     // 빈 테이블 empty 메시지
@@ -129,5 +130,33 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
         />,
       ),
     ).not.toThrow();
+  });
+
+  it("인수인계 서브카드가 그룹박스 안에 렌더됨", () => {
+    render(<LiveOverview {...baseProps} />);
+    // "인수인계"는 MetricSubcard 레이블 + FilterTabs 칩에 동시에 존재하므로 getAllByText
+    expect(screen.getAllByText("인수인계").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("등록된 인수인계")).toBeInTheDocument();
+  });
+
+  it("인수인계 필터 칩이 FilterTabs에 렌더됨", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByRole("button", { name: /^인수인계 \d/ })).toBeInTheDocument();
+  });
+
+  it("handover 도메인 tableItems 카운트가 인수인계 칩에 반영됨", () => {
+    const handoverItem = {
+      id: "h1",
+      domain: "handover" as const,
+      badgeDomain: "인수인계" as const,
+      variant: "handover" as const,
+      statusText: "published",
+      title: "서울대 · 원서접수",
+      timeText: "방금 전",
+      occurredAt: new Date().toISOString(),
+      listRow: { id: "h1", name: "서울대 · 원서접수", status: "active" as const, owner: "test@example.com" },
+    };
+    render(<LiveOverview {...baseProps} tableItems={[handoverItem]} />);
+    expect(screen.getByRole("button", { name: /^인수인계 1/ })).toBeInTheDocument();
   });
 });

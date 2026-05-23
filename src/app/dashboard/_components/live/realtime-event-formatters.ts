@@ -35,6 +35,13 @@ export function formatBackupRequestToast(row: BackupRequestRow): ToastEvent {
   return { text: `[백업] ${preview}`, type: "info" };
 }
 
+type HandoverRecordRow = { author_name: string; author_email: string; service_id: string };
+
+/** handover_records INSERT → 토스트 이벤트 (항상 info). */
+export function formatHandoverToast(row: HandoverRecordRow): ToastEvent {
+  return { text: `[인수인계] ${row.author_name} 등록`, type: "info" };
+}
+
 /** data_request_sends UPDATE → 토스트 이벤트 (sent/failed 만, 나머지는 null). */
 export function formatDataRequestSendToast(
   row: DataRequestSendRow,

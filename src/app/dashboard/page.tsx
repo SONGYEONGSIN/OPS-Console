@@ -10,6 +10,7 @@ import { listMyTodos } from "@/features/todos/queries";
 import { listWorklog } from "@/features/worklog/queries";
 import { worklogRowsToConsoleLines } from "@/features/worklog/to-console-line";
 import { listContacts } from "@/features/contacts/queries";
+import { createClient } from "@/lib/supabase/server";
 import { servicesRowToListRow } from "./services/_row-mapper";
 import { incidentToListRow } from "./incidents/_row-mapper";
 import { eventToListRow } from "./schedule/_row-mapper";
@@ -210,6 +211,36 @@ export default async function DashboardLivePage({
   const { rows: consoleWorklogRows } = await listWorklog({ pageSize: 30 });
   const initialConsoleLines = worklogRowsToConsoleLines(consoleWorklogRows);
 
+  // ─── 인수인계 ─────────────────────────────────────────────────
+  const supabase = await createClient();
+  let hq = supabase
+    .from("handover_records")
+    .select("id, author_email, author_name, service_id, status, created_at", { count: "exact" });
+  if (mine && myEmail) hq = hq.eq("author_email", myEmail);
+  hq = hq.order("created_at", { ascending: false }).limit(20);
+  const { data: handoverRows, count: handoverCount } = await hq;
+
+  const servicesByIdLookup = new Map(allServices.map((s) => [s.id, s] as const));
+  const handoverSources = (handoverRows ?? []).map((h) => {
+    const svc = servicesByIdLookup.get(h.service_id);
+    const title = svc
+      ? `${svc.university_name} · ${svc.service_name}`
+      : `(서비스 누락) ${String(h.service_id).slice(0, 8)}`;
+    const listRow: ListRow = {
+      id: h.id,
+      name: title,
+      status: "active",
+      owner: h.author_email,
+    };
+    return {
+      id: h.id,
+      title,
+      status: h.status as string,
+      createdAt: h.created_at as string,
+      listRow,
+    };
+  });
+
   // ─── 실시간 테이블 소스 ───────────────────────────────────
   const liveTableSources: LiveTableSources = {
     incidents: incidents.map((i) => ({
@@ -250,6 +281,7 @@ export default async function DashboardLivePage({
       createdAt: e.created_at,
       listRow: scheduleListRows.find((r) => r.id === e.id) ?? eventToListRow(e),
     })),
+    handover: handoverSources,
   };
   const tableItems = buildLiveTableItems(liveTableSources);
 
@@ -281,6 +313,10 @@ export default async function DashboardLivePage({
         scheduleActivity: {
           value: scheduleCount,
           desc: "예정 일정",
+        },
+        handover: {
+          value: handoverCount ?? 0,
+          desc: "등록된 인수인계",
         },
       }}
       tableItems={tableItems}

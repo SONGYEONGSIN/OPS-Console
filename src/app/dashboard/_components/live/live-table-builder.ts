@@ -2,8 +2,8 @@ import type { ListRow } from "../patterns/ListPattern";
 import type { Variant } from "../inspector/list-variants/types";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 
-export type LiveTableDomain = "incidents" | "todos" | "services" | "backup" | "schedule";
-export type LiveBadgeDomain = "사고" | "할일" | "서비스" | "백업" | "일정";
+export type LiveTableDomain = "incidents" | "todos" | "services" | "backup" | "schedule" | "handover";
+export type LiveBadgeDomain = "사고" | "할일" | "서비스" | "백업" | "일정" | "인수인계";
 
 export type LiveTableItem = {
   id: string;
@@ -23,6 +23,7 @@ export type LiveTableSources = {
   services: { id: string; title: string; writeStartAt: string | null; createdAt: string; listRow: ListRow }[];
   backup: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
   schedule: { id: string; title: string; startAt: string; createdAt: string; listRow: ListRow }[];
+  handover: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
 };
 
 const BADGE: Record<LiveTableDomain, LiveBadgeDomain> = {
@@ -31,6 +32,7 @@ const BADGE: Record<LiveTableDomain, LiveBadgeDomain> = {
   services: "서비스",
   backup: "백업",
   schedule: "일정",
+  handover: "인수인계",
 };
 
 const VARIANT: Record<LiveTableDomain, Variant> = {
@@ -39,6 +41,7 @@ const VARIANT: Record<LiveTableDomain, Variant> = {
   services: "services",
   backup: "backup",
   schedule: "schedule",
+  handover: "handover",
 };
 
 function todayKst(now: Date): string {
@@ -140,6 +143,20 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       timeText: formatRelativeTime(e.createdAt, now),
       occurredAt: e.createdAt,
       listRow: e.listRow,
+    });
+  }
+
+  for (const h of s.handover) {
+    out.push({
+      id: h.id,
+      domain: "handover",
+      badgeDomain: BADGE.handover,
+      variant: VARIANT.handover,
+      statusText: h.status,
+      title: h.title,
+      timeText: formatRelativeTime(h.createdAt, now),
+      occurredAt: h.createdAt,
+      listRow: h.listRow,
     });
   }
 

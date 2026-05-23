@@ -36,6 +36,7 @@ export type LiveOverviewProps = {
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
     scheduleActivity: { value: number | string; desc: string };
+    handover: { value: number | string; desc: string };
   };
   tableItems: LiveTableItem[];
   initialConsoleLines?: ConsoleLogEntry[];
@@ -70,6 +71,7 @@ function LiveOverviewInner({
       services: 0,
       backup: 0,
       schedule: 0,
+      handover: 0,
     };
     for (const it of tableItems) {
       if (it.domain === "incidents") c.incidents += 1;
@@ -77,6 +79,7 @@ function LiveOverviewInner({
       else if (it.domain === "services") c.services += 1;
       else if (it.domain === "backup") c.backup += 1;
       else if (it.domain === "schedule") c.schedule += 1;
+      else if (it.domain === "handover") c.handover += 1;
     }
     return c;
   }, [tableItems]);
@@ -164,7 +167,7 @@ function LiveOverviewInner({
                     active={metrics.bond.active}
                   />
                 </MetricGroupBox>
-                <MetricGroupBox title="백업 · 연락처 · 일정" columns={3}>
+                <MetricGroupBox title="백업 · 연락처 · 일정 · 인수인계" columns={4}>
                   <MetricSubcard
                     label="백업내용"
                     value={metrics.backup.value}
@@ -179,6 +182,11 @@ function LiveOverviewInner({
                     label="일정"
                     value={metrics.scheduleActivity.value}
                     desc={metrics.scheduleActivity.desc}
+                  />
+                  <MetricSubcard
+                    label="인수인계"
+                    value={metrics.handover.value}
+                    desc={metrics.handover.desc}
                   />
                 </MetricGroupBox>
               </section>

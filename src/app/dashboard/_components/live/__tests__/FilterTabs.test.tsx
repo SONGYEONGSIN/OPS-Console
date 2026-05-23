@@ -2,10 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { FilterTabs } from "../FilterTabs";
 
-const counts = { all: 12, incidents: 5, todos: 2, services: 3, backup: 2, schedule: 0 };
+const counts = { all: 12, incidents: 5, todos: 2, services: 3, backup: 2, schedule: 0, handover: 1 };
 
 describe("FilterTabs", () => {
-  it("6탭 + 각 건수 pill 렌더", () => {
+  it("7탭 + 각 건수 pill 렌더", () => {
     render(<FilterTabs active="all" counts={counts} onChange={() => {}} />);
     expect(screen.getByRole("button", { name: /전체.*12/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /사고.*5/ })).toBeInTheDocument();
@@ -13,12 +13,14 @@ describe("FilterTabs", () => {
     expect(screen.getByRole("button", { name: /서비스.*3/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^백업 \d/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^일정 \d/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^인수인계 \d/ })).toBeInTheDocument();
   });
 
-  it("백업·일정 칩이 각각 분리되어 렌더됨", () => {
+  it("백업·일정·인수인계 칩이 각각 분리되어 렌더됨", () => {
     render(<FilterTabs active="all" counts={counts} onChange={() => {}} />);
     expect(screen.getByRole("button", { name: /^백업 2/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^일정 0/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^인수인계 1/ })).toBeInTheDocument();
     // 기존 "백업 · 일정" 단일 칩 없음
     expect(screen.queryByRole("button", { name: /백업 · 일정/ })).toBeNull();
   });
@@ -49,5 +51,12 @@ describe("FilterTabs", () => {
     render(<FilterTabs active="all" counts={counts} onChange={fn} />);
     fireEvent.click(screen.getByRole("button", { name: /^일정/ }));
     expect(fn).toHaveBeenCalledWith("schedule");
+  });
+
+  it("인수인계 칩 클릭 시 onChange('handover') 호출", () => {
+    const fn = vi.fn();
+    render(<FilterTabs active="all" counts={counts} onChange={fn} />);
+    fireEvent.click(screen.getByRole("button", { name: /^인수인계/ }));
+    expect(fn).toHaveBeenCalledWith("handover");
   });
 });

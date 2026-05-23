@@ -1,4 +1,4 @@
-export type BadgeDomain = "사고" | "할일" | "서비스" | "백업" | "일정";
+export type BadgeDomain = "사고" | "할일" | "서비스" | "백업" | "일정" | "인수인계";
 
 const COLOR: Record<BadgeDomain, string> = {
   사고: "border-vermilion text-vermilion",
@@ -6,6 +6,7 @@ const COLOR: Record<BadgeDomain, string> = {
   서비스: "border-ink-muted text-ink-muted",
   백업: "border-indigo text-indigo",
   일정: "border-amber text-amber",
+  인수인계: "border-gold text-gold",
 };
 
 type Props = { domain: BadgeDomain };

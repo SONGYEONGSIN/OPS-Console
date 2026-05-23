@@ -8,6 +8,7 @@ const cases: [BadgeDomain, RegExp][] = [
   ["서비스", /text-ink-muted/],
   ["백업", /text-indigo/],
   ["일정", /text-amber/],
+  ["인수인계", /text-gold/],
 ];
 
 describe("DomainBadge", () => {
