@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * /dashboard (실시간 현황) — OPSROOM 1면 (신문 메타포)
+ * /dashboard (실시간 현황) — KPI 3 + 서비스 현황 그룹박스 + LiveTable + 콘솔
  *
- * Masthead → Lede → 좌(Triage / ProjectGrid / Activity) + 우 rail (Shift / OnCall).
+ * LivePageHeader → KPI 3 카드(좌) + SystemHealthPanel(우) → 서비스 현황 그룹박스(5 서브카드)
+ *   → FilterTabs + LiveTable(좌) + ConsoleStream(우).
  * 미들웨어가 미인증 사용자를 /login으로 보내므로 dashboard 시나리오는 실 로그인 필요.
  * `.env.local`의 `TEST_USER_EMAIL`/`TEST_USER_PASSWORD` 채워두면 자동 검증, 없으면 전체 skip.
  */
@@ -15,7 +16,7 @@ async function signInAndGotoDashboard(page: import("@playwright/test").Page) {
   await page.waitForURL(/\/dashboard$/);
 }
 
-test.describe("/dashboard — 데스크탑 (1면 신문 레이아웃)", () => {
+test.describe("/dashboard — 데스크탑 (실시간 현황 레이아웃)", () => {
   test.skip(
     ({ viewport }) => !!viewport && viewport.width < 1024,
     "데스크탑 (≥1024) 한정"
@@ -29,51 +30,57 @@ test.describe("/dashboard — 데스크탑 (1면 신문 레이아웃)", () => {
     await signInAndGotoDashboard(page);
   });
 
-  test("Masthead: 'OPSROOM 일간' + vol 노출", async ({ page }) => {
-    await expect(page.getByText("OPSROOM", { exact: false })).toBeVisible();
-    await expect(page.getByText(/일간/).first()).toBeVisible();
-    await expect(page.getByText(/vol\.\d{3}/)).toBeVisible();
+  test("LivePageHeader: '실시간 현황' h1 타이틀 노출", async ({ page }) => {
+    await expect(page.getByRole("heading", { level: 1, name: "실시간 현황" })).toBeVisible();
   });
 
-  test("Lede: '현재 긴급' kicker + 헤드라인 본문 노출", async ({ page }) => {
-    await expect(page.getByText(/현재 긴급/).first()).toBeVisible();
-  });
-
-  test("ProjectGrid: 12개 도메인 링크가 /dashboard/<slug>로 이동", async ({
+  test("KPI 3 카드: 오픈 예정 서비스 / 내 미완 할 일 / 사고 누적 데이터", async ({
     page,
   }) => {
-    const projectLinks = page.locator(
-      'a[href^="/dashboard/"]:not([href="/dashboard/"]):not([href="/dashboard"])',
-    );
-    // ProjectEntry는 라벨 + 슬러그 + 매니저/분기/카운트를 한 줄로 묶어 link 접근 이름이 길다.
-    // /PIMS/ substring으로 매칭 (사이드바와 본문 양쪽 hit, .first()로 첫 노출 확인).
-    await expect(page.getByRole("link", { name: /PIMS/ }).first()).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /접수관리자/ }).first(),
-    ).toBeVisible();
-    expect(await projectLinks.count()).toBeGreaterThanOrEqual(12);
+    await expect(page.getByText("오픈 예정 서비스", { exact: true })).toBeVisible();
+    await expect(page.getByText("내 미완 할 일", { exact: true })).toBeVisible();
+    await expect(page.getByText("사고 누적 데이터", { exact: true })).toBeVisible();
   });
 
-  test("ShiftTimeline: 14:00–22:00 KST 범위 + 이벤트 라벨 노출", async ({
-    page,
-  }) => {
-    await expect(page.getByText(/14:00 KST 개시/)).toBeVisible();
-    await expect(page.getByText(/22:00 KST 마감/)).toBeVisible();
-    await expect(page.getByText(/PIMS 점검 회의/).first()).toBeVisible();
+  test("서비스 현황 그룹박스: 5 서브카드 라벨 노출", async ({ page }) => {
+    // MetricGroupBox title + 5 MetricSubcard label.
+    // 라벨 일부("인수인계")는 LiveTable 도메인 배지와 동명 — [data-subgrid] scope로 한정.
+    await expect(page.getByText("서비스 현황", { exact: true })).toBeVisible();
+    const subgrid = page.locator("[data-subgrid]");
+    for (const label of ["계약체결", "미수채권", "백업내용", "인수인계", "대학연락처"]) {
+      await expect(subgrid.getByText(label, { exact: true })).toBeVisible();
+    }
   });
 
-  test("OnCallPanel: 1차/2차 운영자 + 팀 메타 노출", async ({ page }) => {
-    // '1차'/'2차'는 OnCallPanel 라벨(<p>1차</p>) 외에 다른 곳에도 substring 매칭되어 strict mode 충돌.
-    // exact:true로 OnCall zone의 단독 라벨만 매칭.
-    await expect(page.getByText("1차", { exact: true })).toBeVisible();
-    await expect(page.getByText("2차", { exact: true })).toBeVisible();
-    await expect(page.getByText(/송영신/).first()).toBeVisible();
-    await expect(page.getByText(/한효진/).first()).toBeVisible();
+  test("SystemHealthPanel: '시스템 게이트웨이 상태' 노출", async ({ page }) => {
+    await expect(page.getByText("시스템 게이트웨이 상태", { exact: true })).toBeVisible();
   });
 
-  test("ActivityColumn: 최근 운영 흐름 활동 항목 노출", async ({ page }) => {
-    await expect(page.getByText(/최근 운영 흐름/)).toBeVisible();
-    await expect(page.getByText(/박지연/).first()).toBeVisible();
+  test("FilterTabs: 6 탭 + LiveTable 노출", async ({ page }) => {
+    // ORDER: 전체 / 서비스 / 내 할 일 / 사고 / 백업 / 인수인계
+    // 각 탭 버튼의 accessible name은 `{label} {count}` — SegmentToggle '전체' 단독 버튼과 구분.
+    for (const tab of ["전체", "서비스", "내 할 일", "사고", "백업", "인수인계"]) {
+      await expect(
+        page.getByRole("button", { name: new RegExp(`^${tab} \\d+$`) }),
+      ).toBeVisible();
+    }
+    await expect(page.locator("table").first()).toBeVisible();
+  });
+
+  test("ConsoleStream: '실시간 백그라운드 로그' 우측 패널 노출", async ({ page }) => {
+    await expect(page.getByText("실시간 백그라운드 로그", { exact: true })).toBeVisible();
+  });
+
+  test("AlertsBell dropdown: 클릭 시 열림 → 외부 클릭 시 닫힘", async ({ page }) => {
+    const bell = page.getByRole("button", { name: /알림 \d+건/ });
+    await expect(bell).toHaveAttribute("aria-expanded", "false");
+
+    await bell.click();
+    await expect(bell).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("menu")).toBeVisible();
+
+    await page.locator("body").click({ position: { x: 5, y: 5 } });
+    await expect(bell).toHaveAttribute("aria-expanded", "false");
   });
 
   test("desktop chrome — OPS Console brand + 검색 + 우측 zone", async ({ page }) => {
@@ -88,12 +95,6 @@ test.describe("/dashboard — 데스크탑 (1면 신문 레이아웃)", () => {
     await expect(
       page.getByLabel("운영부 메뉴").getByText("서비스 그룹", { exact: true })
     ).toBeVisible();
-  });
-
-  test("AlertsBell 클릭 시 /dashboard 이동 (실시간 현황 1면)", async ({ page }) => {
-    await page.goto("/dashboard/services");
-    await page.getByRole("button", { name: /알림/ }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
   });
 
   test("사용자 dropdown: 풀네임 클릭으로 토글, 외부 클릭으로 닫힘", async ({
