@@ -35,14 +35,21 @@ export default async function OutcomesPage() {
   };
   for (const a of assignments) stepCounts[a.current_step] += 1;
 
+  // header 영역: PageHeader 다음에 admin 권한 시 AdminSummary 결합.
+  // 표준 페이지 흐름(breadcrumb → headline → 본문)을 유지하기 위해 header prop에 묶어 전달.
   const header = (
-    <PageHeader
-      pathname={pathname}
-      meta={config.meta}
-      headline={config.headline}
-      description={config.description}
-      autoRefresh
-    />
+    <>
+      <PageHeader
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+        autoRefresh
+      />
+      {isAdmin ? (
+        <AdminSummary stepCounts={stepCounts} total={assignments.length} />
+      ) : null}
+    </>
   );
 
   // 1차 PR — onPersist는 placeholder (각 단계 server action은 EditForm에서 직접 호출 예정)
@@ -52,22 +59,17 @@ export default async function OutcomesPage() {
   }
 
   return (
-    <>
-      {isAdmin ? (
-        <AdminSummary stepCounts={stepCounts} total={assignments.length} />
-      ) : null}
-      <ListPattern
-        title={meta.label}
-        data={{ rows }}
-        header={header}
-        variant="performance"
-        // admin만 + 새 사이클 가능 (실제 사이클/매핑 생성은 follow-up)
-        canCreate={isAdmin}
-        createLabel="+ 새 사이클"
-        currentUserName={me?.displayName}
-        onPersist={onPersist}
-      />
-    </>
+    <ListPattern
+      title={meta.label}
+      data={{ rows }}
+      header={header}
+      variant="performance"
+      // admin만 + 새 사이클 가능 (실제 사이클/매핑 생성은 follow-up)
+      canCreate={isAdmin}
+      createLabel="+ 새 사이클"
+      currentUserName={me?.displayName}
+      onPersist={onPersist}
+    />
   );
 }
 
