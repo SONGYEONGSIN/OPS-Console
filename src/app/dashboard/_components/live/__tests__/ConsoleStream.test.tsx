@@ -32,11 +32,11 @@ describe("ConsoleStream", () => {
     expect(screen.getByText("실시간 백그라운드 로그")).toBeInTheDocument();
     expect(container.querySelectorAll("[data-console-line]").length).toBe(0);
   });
-  it("콘솔 영역 bg-console-bg + text-console-fg + h-[320px]", () => {
+  it("콘솔 영역 bg-console-bg + text-console-fg + h-[400px]", () => {
     const { container } = render(<ConsoleStream lines={lines} />);
     const consoleBox = container.querySelector("[data-console-line]")?.parentElement;
     expect(consoleBox?.className).toMatch(/bg-console-bg/);
     expect(consoleBox?.className).toMatch(/text-console-fg/);
-    expect(consoleBox?.className).toMatch(/h-\[320px\]/);
+    expect(consoleBox?.className).toMatch(/h-\[400px\]/);
   });
 });

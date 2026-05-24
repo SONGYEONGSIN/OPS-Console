@@ -13,7 +13,7 @@ const COLOR: Record<ConsoleLogEntry["type"], string> = {
   debug: "text-console-debug",
 };
 
-/** 검은 배경 mono 콘솔 — 320px height + 자동 스크롤 (새 줄 추가 시 bottom). */
+/** 검은 배경 mono 콘솔 — 400px height + 자동 스크롤 (새 줄 추가 시 bottom). */
 export function ConsoleStream({ lines }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -29,7 +29,7 @@ export function ConsoleStream({ lines }: Props) {
     >
       <div
         ref={ref}
-        className="flex h-[320px] flex-col gap-1.5 overflow-y-auto border border-ink bg-console-bg p-3 font-mono text-xs text-console-fg"
+        className="flex h-[400px] flex-col gap-1.5 overflow-y-auto border border-ink bg-console-bg p-3 font-mono text-xs text-console-fg"
       >
         {lines.map((l, i) => (
           <div key={i} data-console-line className={`leading-[1.5] ${COLOR[l.type]}`}>
