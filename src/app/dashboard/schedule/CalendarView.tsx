@@ -200,7 +200,10 @@ export function CalendarView({
     if (result.ok) {
       inspector.close();
       setCreating(false);
+      return;
     }
+    // 저장 실패 시 사용자에게 사유 노출 — silent fail로 '반응 없음' 오인 방지.
+    window.alert(`저장 실패: ${result.error ?? "알 수 없는 오류"}`);
   };
 
   const selected = inspector.selected;
