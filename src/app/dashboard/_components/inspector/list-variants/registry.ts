@@ -83,6 +83,13 @@ import { ASSIGNMENTS_FILTERS } from "./assignments/filters";
 import { DataRequestTable } from "./data-request/Table";
 import { DataRequestView } from "./data-request/View";
 import { DATA_REQUEST_FILTERS } from "./data-request/filters";
+import { PerformanceTable } from "./performance/Table";
+import { PerformanceView } from "./performance/View";
+import { PerformanceEditForm } from "./performance/EditForm";
+import {
+  PERFORMANCE_FILTERS,
+  blankPerformanceRow,
+} from "./performance/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -276,5 +283,12 @@ export const variantRegistry = {
     View: DataRequestView,
     Table: DataRequestTable,
     Filters: DATA_REQUEST_FILTERS,
+  },
+  performance: {
+    View: PerformanceView,
+    EditForm: PerformanceEditForm,
+    Table: PerformanceTable,
+    Filters: PERFORMANCE_FILTERS,
+    blank: blankPerformanceRow,
   },
 } as const satisfies Record<Variant, RegistryEntry>;

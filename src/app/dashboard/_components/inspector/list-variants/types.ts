@@ -24,7 +24,8 @@ export type Variant =
   | "handover"
   | "assignments"
   | "worklog"
-  | "data-request";
+  | "data-request"
+  | "performance";
 
 export type ViewProps = {
   row: ListRow;
