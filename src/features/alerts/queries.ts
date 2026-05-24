@@ -71,20 +71,25 @@ function daysUntilKst(dateStr: string | null | undefined): number | null {
 
 /**
  * 운영 알림 종합 — chrome 종 아이콘.
- * 7 도메인 소스를 합쳐 단일 dropdown에 노출:
- * 1) 사고 (오늘=urgent, 그 외=review)
- * 2) 인수인계 수신 (본인 to_email, in_progress=review)
- * 3) 오픈 예정 서비스 (write_start_at D-7=urgent, D-14=review)
- * 4) 내 할 일 (due_at 오늘=urgent, D-3=review — 본인 todo)
- * 5) 백업 요청 (leave_start_date D-3=urgent, D-7=review)
- * 6) 계약 (status가 '체결완료'/'계약완료' 외 모두 review)
- * 7) 미수채권 (status=active 미입금 모두 review)
+ * 7 도메인 모두 본인 관련 항목만 (사용자 명시 — 일정 도메인은 dashboard에서
+ * 별도 전체 노출, 알림에는 미포함):
+ * 1) 사고: assignee_email = me (오늘=urgent, 그 외=review)
+ * 2) 인수인계 수신: 본인 to_email + in_progress (review)
+ * 3) 오픈 예정 서비스: operator/developer_email = me, D-7=urgent / D-14=review
+ * 4) 내 할 일: listMyTodos 자체가 본인 필터, due_at D-3 이내
+ * 5) 백업 요청: requester_email OR substitute_email = me, D-7 이내
+ * 6) 계약: operator = me.displayName, 미체결 review
+ * 7) 미수채권: owner = me.displayName, active review
  *
  * urgent → review → ok 순 정렬, 최대 30건.
  */
 export async function getOpsAlerts(
-  currentUserEmail: string | null,
+  me: { email: string; displayName: string } | null,
 ): Promise<OpsAlert[]> {
+  if (!me) return [];
+  const meEmail = me.email;
+  const meName = me.displayName;
+
   const [
     incidentsRes,
     progressRes,
@@ -94,10 +99,8 @@ export async function getOpsAlerts(
     contractsRes,
     receivablesSheet,
   ] = await Promise.all([
-    listIncidents({ pageSize: 5 }),
-    currentUserEmail
-      ? listHandoverProgress({ toEmail: currentUserEmail })
-      : Promise.resolve({ rows: [], total: 0 }),
+    listIncidents({ pageSize: 200 }),
+    listHandoverProgress({ toEmail: meEmail }),
     listServices({ pageSize: 2000, sort: "service_id_asc" }),
     listMyTodos(),
     listBackupRequests({ pageSize: 1000 }),
@@ -107,8 +110,9 @@ export async function getOpsAlerts(
 
   const alerts: OpsAlert[] = [];
 
-  // 1) 사고
+  // 1) 사고 — 본인 assignee 한정
   for (const i of incidentsRes.rows) {
+    if (i.assignee_email !== meEmail) continue;
     alerts.push({
       id: `incident-${i.id}`,
       tone: isToday(i.created_at) ? "urgent" : "review",
@@ -119,7 +123,7 @@ export async function getOpsAlerts(
     });
   }
 
-  // 2) 인수인계 수신 (본인 한정)
+  // 2) 인수인계 수신 — 본인 한정 (query 단에서 toEmail 필터)
   for (const p of progressRes.rows) {
     if (p.status !== "in_progress") continue;
     alerts.push({
@@ -132,8 +136,9 @@ export async function getOpsAlerts(
     });
   }
 
-  // 3) 오픈 예정 서비스 (전체, D-14 이내)
+  // 3) 오픈 예정 서비스 — 본인 담당 (운영자 또는 개발자) + D-14 이내
   for (const s of servicesRes.rows) {
+    if (s.operator_email !== meEmail && s.developer_email !== meEmail) continue;
     const d = daysUntilKst(s.write_start_at);
     if (d === null || d < 0 || d > 14) continue;
     alerts.push({
@@ -146,7 +151,7 @@ export async function getOpsAlerts(
     });
   }
 
-  // 4) 내 할 일 (마감 임박 D-3 이내, 본인 한정 — listMyTodos가 자체 필터)
+  // 4) 내 할 일 — listMyTodos가 본인 한정 (마감 D-3 이내)
   for (const t of todos) {
     if (t.done) continue;
     if (!t.due_at) continue;
@@ -162,8 +167,10 @@ export async function getOpsAlerts(
     });
   }
 
-  // 5) 백업 요청 (전체, leave_start_date D-7 이내)
+  // 5) 백업 요청 — 본인이 요청자 OR 백업자 + leave_start D-7 이내
   for (const b of backupsRes.rows) {
+    if (b.requester_email !== meEmail && b.substitute_email !== meEmail)
+      continue;
     const d = daysUntilKst(b.leave_start_date);
     if (d === null || d < 0 || d > 7) continue;
     const label =
@@ -180,8 +187,9 @@ export async function getOpsAlerts(
     });
   }
 
-  // 6) 계약 (status가 '체결완료'/'계약완료' 외 모두 review)
+  // 6) 계약 — 본인 운영자(displayName) + 미체결
   for (const c of contractsRes.rows) {
+    if (c.operator !== meName) continue;
     const status = (c.status ?? "").trim();
     if (status === "체결완료" || status === "계약완료") continue;
     alerts.push({
@@ -194,12 +202,13 @@ export async function getOpsAlerts(
     });
   }
 
-  // 7) 미수채권 (active=미입금 모두 review)
+  // 7) 미수채권 — 본인 owner(displayName) + active
   if (receivablesSheet) {
     const allRows = receivablesSheet.rows
       .map((_, i) => receivablesToListRow(receivablesSheet, i))
       .filter(isReceivablesDataRow);
     for (const r of allRows) {
+      if (r.owner !== meName) continue;
       if (r.status !== "active") continue;
       alerts.push({
         id: `receivables-${r.id}`,

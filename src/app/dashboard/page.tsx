@@ -186,15 +186,12 @@ export default async function DashboardLivePage({
   }));
 
   // ─── 운영부 일정 ──────────────────────────────────────────
+  // 일정(schedule_events)은 운영부 공유 캘린더 — mine 모드에서도 항상 전체 노출.
   const events = await listScheduleEvents();
   const todayDate = new Date();
-  const upcomingEventsAll = events
-    .filter((e) => new Date(e.start_at) >= todayDate)
-    .filter((e) =>
-      mine && myEmail
-        ? e.assignee_email === myEmail || e.created_by_email === myEmail
-        : true,
-    );
+  const upcomingEventsAll = events.filter(
+    (e) => new Date(e.start_at) >= todayDate,
+  );
   // LiveTable 다른 도메인(incidents/todos/backup/handover)과 동일하게 20건 슬라이스.
   const upcomingEvents = upcomingEventsAll.slice(0, 20);
   const scheduleListRows: ListRow[] = upcomingEvents.map(eventToListRow);

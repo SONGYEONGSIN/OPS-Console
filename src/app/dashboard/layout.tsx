@@ -24,7 +24,7 @@ export default async function DashboardLayout({
   const operator = await getCurrentOperator();
   if (!operator) redirect("/login");
 
-  const alerts = await getOpsAlerts(operator.email);
+  const alerts = await getOpsAlerts(operator);
 
   // 실 row count로 hardcode count 덮어쓰기 (DB 연동 도메인만)
   const counts = await getMenuCounts(operator.email);
