@@ -18,44 +18,63 @@ const STEP_LABEL: Record<Step, string> = {
 };
 
 /**
- * admin 권한 시 페이지 상단 핵심 카드 요약.
- * 8단계별 진행 중 assignment 수 + 완료 비율.
+ * admin 요약 — 수평 진행 바 + 8 세그먼트 카운트 (Stepper 톤 일관).
+ * - 가로 바: 단계×카운트로 채워진 비율 시각화 (완료 = ink, 진행 = vermilion, 빈 = washi)
+ * - 하단 grid: 각 step 라벨 + 카운트
  */
 export function AdminSummary({ stepCounts, total }: Props) {
   const completed = stepCounts[8] ?? 0;
   const completedPercent =
     total === 0 ? 0 : Math.round((completed / total) * 100);
+  const steps: Step[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
   return (
     <section
       data-testid="performance-admin-summary"
-      className="mb-6 border border-ink bg-cream p-4"
+      className="mb-6 border border-line bg-cream p-3"
     >
-      <header className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-bold text-ink-soft">관리자 요약</h3>
-        <span className="text-xs text-ink-muted">
+      <header className="mb-2 flex items-baseline justify-between">
+        <h3 className="text-xs uppercase tracking-[0.14em] text-muted">
+          관리자 요약
+        </h3>
+        <span className="text-xs text-ink-soft tabular-nums">
           전체 {total}건 · 완료 {completed}건 ({completedPercent}%)
         </span>
       </header>
-      <div className="grid grid-cols-8 gap-2">
-        {([1, 2, 3, 4, 5, 6, 7, 8] as Step[]).map((step) => {
+
+      {/* 8 세그먼트 가로 바 — 카운트 0=빈, >0=채움(완료=ink, 그 외=vermilion) */}
+      <div className="mb-2 flex h-1.5 gap-0.5">
+        {steps.map((step) => {
           const count = stepCounts[step] ?? 0;
-          const active = count > 0;
+          const tone =
+            count === 0
+              ? "bg-washi-raised"
+              : step === 8
+                ? "bg-ink"
+                : "bg-vermilion";
           return (
             <div
               key={step}
-              className={`flex flex-col items-center gap-1 border px-2 py-2 text-center ${
-                active
-                  ? "border-ink bg-washi-raised"
-                  : "border-line-soft bg-washi"
-              }`}
-            >
+              className={`flex-1 ${tone}`}
+              data-step={step}
+              data-count={count}
+            />
+          );
+        })}
+      </div>
+
+      {/* 8 세그먼트 라벨 + 카운트 */}
+      <div className="grid grid-cols-8 gap-0.5 text-center">
+        {steps.map((step) => {
+          const count = stepCounts[step] ?? 0;
+          return (
+            <div key={step} className="flex flex-col leading-tight">
               <span className="text-[10px] text-ink-muted">
                 {step}. {STEP_LABEL[step]}
               </span>
               <span
-                className={`text-lg font-bold tabular-nums ${
-                  active ? "text-ink" : "text-muted"
+                className={`text-sm tabular-nums ${
+                  count > 0 ? "font-bold text-ink" : "text-muted"
                 }`}
               >
                 {count}
