@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
 import { postStatusKeys, postStatusLabel } from "./Table";
@@ -10,9 +11,28 @@ type Props = {
   setRow: (next: ListRow) => void;
   onSave: (next: ListRow) => void;
   onCancel: () => void;
+  /** post-feedback/post-notice: 등록자를 본인 계정으로 고정 표시. */
+  currentUserName?: string;
 };
 
-export function PostForm({ row, variant, setRow, onSave, onCancel }: Props) {
+export function PostForm({
+  row,
+  variant,
+  setRow,
+  onSave,
+  onCancel,
+  currentUserName,
+}: Props) {
+  const lockAuthor = !!currentUserName;
+  // post 작성 시 등록자를 본인으로 자동 채움 (서버 단도 author_email은
+  // operator.email로 강제). select가 빈 값으로 노출되는 어색함 해소.
+  useEffect(() => {
+    if (lockAuthor && row.author !== currentUserName) {
+      setRow({ ...row, author: currentUserName });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lockAuthor, currentUserName]);
+
   return (
     <form
       onSubmit={(e) => {
@@ -44,22 +64,32 @@ export function PostForm({ row, variant, setRow, onSave, onCancel }: Props) {
       </label>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">등록자</span>
-        <select
-          aria-label="등록자"
-          value={row.author ?? ""}
-          onChange={(e) => setRow({ ...row, author: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          <option value="">선택…</option>
-          {(variant === "post-notice"
-            ? OPERATORS.filter((o) => o.role === "부장" || o.role === "팀장")
-            : OPERATORS
-          ).map((op) => (
-            <option key={op.email} value={op.name}>
-              {op.name} · {op.role}
-            </option>
-          ))}
-        </select>
+        {lockAuthor ? (
+          <span
+            aria-label="등록자"
+            data-locked-author="true"
+            className="block w-full border border-line bg-washi px-2 py-1 text-ink"
+          >
+            {currentUserName}
+          </span>
+        ) : (
+          <select
+            aria-label="등록자"
+            value={row.author ?? ""}
+            onChange={(e) => setRow({ ...row, author: e.target.value })}
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          >
+            <option value="">선택…</option>
+            {(variant === "post-notice"
+              ? OPERATORS.filter((o) => o.role === "부장" || o.role === "팀장")
+              : OPERATORS
+            ).map((op) => (
+              <option key={op.email} value={op.name}>
+                {op.name} · {op.role}
+              </option>
+            ))}
+          </select>
+        )}
       </label>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">상태</span>

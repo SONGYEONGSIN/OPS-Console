@@ -87,6 +87,7 @@ export default async function NoticesPage() {
       canCreate={isAdmin}
       createLabel="+ 새 공지"
       readOnly={!isAdmin}
+      currentUserName={me?.displayName}
       onPersist={onPersist}
     />
   );

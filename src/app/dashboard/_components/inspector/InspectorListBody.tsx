@@ -70,6 +70,8 @@ type Props = {
     fromServiceId: string,
     toServiceIds: string[],
   ) => Promise<{ ok: boolean; error?: string; copiedCount?: number }>;
+  /** post-feedback/post-notice — 등록자를 본인 계정으로 고정 (현재 로그인 displayName) */
+  currentUserName?: string;
 };
 
 /**
@@ -101,6 +103,7 @@ export function InspectorListBody({
   contractsServiceActiveOptions,
   handoverServiceCandidates,
   onCopyHandover,
+  currentUserName,
 }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
 
@@ -123,6 +126,7 @@ export function InspectorListBody({
         setRow={setDraft}
         onSave={onSave}
         onCancel={onCancel}
+        currentUserName={currentUserName}
       />
     );
   }

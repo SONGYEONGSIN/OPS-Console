@@ -80,6 +80,7 @@ export default async function FeedbackPage() {
       variant="post-feedback"
       canCreate={me?.permission !== "viewer" && me?.permission !== null}
       createLabel="+ 새 개선요청"
+      currentUserName={me?.displayName}
       onPersist={onPersist}
     />
   );

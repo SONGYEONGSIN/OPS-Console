@@ -706,6 +706,7 @@ export function ListPattern({
               editing={inspector.editing && !readOnly}
               variant={variant}
               currentUserPermission={currentUserPermission}
+              currentUserName={currentUserName}
               onInvite={onInvite}
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
