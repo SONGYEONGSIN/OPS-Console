@@ -6,16 +6,11 @@ import type { OpsAlert } from "@/features/alerts/queries";
 
 const MAX_ITEMS = 8;
 
-const TONE_DOT: Record<OpsAlert["tone"], string> = {
-  urgent: "bg-vermilion",
-  review: "bg-ink",
-  ok: "bg-sage",
-};
-
 /**
  * AlertsBell — chrome 우측 종 아이콘.
  * - urgent 카운트 빨강 배지
- * - 클릭 시 드롭다운 토글 (실 데이터 알림 목록)
+ * - 클릭 시 드롭다운 토글 (실 데이터 알림 목록 — SearchBox 도메인 결과 톤,
+ *   카테고리별 그룹 + 단순 라인 항목)
  * - 각 알림 클릭 → 해당 도메인 페이지로 이동
  * - ESC / 외부 클릭으로 닫힘
  */
@@ -34,6 +29,20 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
     [items],
   );
   const visible = items.slice(0, MAX_ITEMS);
+
+  // category 별 그룹 — Map insertion order 보존 (입력 순서대로 노출).
+  const grouped = useMemo(() => {
+    const map = new Map<string, OpsAlert[]>();
+    for (const a of visible) {
+      const list = map.get(a.category);
+      if (list) list.push(a);
+      else map.set(a.category, [a]);
+    }
+    return Array.from(map.entries()).map(([category, list]) => ({
+      category,
+      items: list,
+    }));
+  }, [visible]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,33 +103,33 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
           {visible.length === 0 ? (
             <p className="px-3 py-3 text-xs text-muted">새 알림 없음</p>
           ) : (
-            <ul role="listbox" className="flex max-h-[60vh] flex-col overflow-y-auto">
-              {visible.map((alert) => (
-                <li key={alert.id}>
-                  <Link
-                    href={alert.href}
-                    onClick={() => setOpen(false)}
-                    className="grid grid-cols-[8px_1fr_auto] items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-washi-raised"
-                  >
-                    <span
-                      aria-hidden
-                      className={`h-1.5 w-1.5 self-center ${TONE_DOT[alert.tone]}`}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-2xs text-muted">
-                        {alert.category}
-                      </span>
-                      <span className="block truncate text-ink">
-                        {alert.label}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-2xs text-muted">
-                      {alert.time}
-                    </span>
-                  </Link>
-                </li>
+            <div className="flex max-h-[60vh] flex-col overflow-y-auto">
+              {grouped.map((g, gi) => (
+                <ul
+                  key={g.category}
+                  role="listbox"
+                  className={`flex flex-col ${gi > 0 ? "border-t border-line-soft" : ""}`}
+                >
+                  <li className="px-3 pb-0.5 pt-1.5 text-2xs uppercase tracking-[0.14em] text-muted">
+                    {g.category}
+                  </li>
+                  {g.items.map((alert) => (
+                    <li key={alert.id}>
+                      <Link
+                        href={alert.href}
+                        onClick={() => setOpen(false)}
+                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+                      >
+                        <span className="truncate">{alert.label}</span>
+                        <span className="shrink-0 text-2xs text-muted">
+                          {alert.time}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       )}
