@@ -69,17 +69,28 @@ function daysUntilKst(dateStr: string | null | undefined): number | null {
   );
 }
 
+/** created_at 같은 과거 시점이 '최근 2주(14일)' 안에 있는지. */
+function isWithinRecentDays(
+  iso: string | null | undefined,
+  days = 14,
+): boolean {
+  if (!iso) return false;
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) return false;
+  const diffDays = (Date.now() - target.getTime()) / 86400000;
+  return diffDays >= 0 && diffDays <= days;
+}
+
 /**
  * 운영 알림 종합 — chrome 종 아이콘.
- * 7 도메인 모두 본인 관련 항목만 (사용자 명시 — 일정 도메인은 dashboard에서
- * 별도 전체 노출, 알림에는 미포함):
- * 1) 사고: assignee_email = me (오늘=urgent, 그 외=review)
- * 2) 인수인계 수신: 본인 to_email + in_progress (review)
+ * 7 도메인 모두 본인 관련 + 최근 2주 윈도우 (사용자 명시):
+ * 1) 사고: assignee_email = me, created_at 14일 이내 (오늘=urgent / 그 외=review)
+ * 2) 인수인계 수신: 본인 to_email + in_progress + created_at 14일 이내 (review)
  * 3) 오픈 예정 서비스: operator/developer_email = me, D-7=urgent / D-14=review
- * 4) 내 할 일: listMyTodos 자체가 본인 필터, due_at D-3 이내
- * 5) 백업 요청: requester_email OR substitute_email = me, D-7 이내
- * 6) 계약: operator = me.displayName, 미체결 review
- * 7) 미수채권: owner = me.displayName, active review
+ * 4) 내 할 일: listMyTodos가 본인, due_at D-14 이내 (오늘=urgent / 그 외=review)
+ * 5) 백업 요청: requester OR substitute = me, D-3=urgent / D-14=review
+ * 6) 계약: operator = me.displayName, 미체결 review (sheet — 시점 필드 없음)
+ * 7) 미수채권: owner = me.displayName, active review (sheet — 시점 필드 없음)
  *
  * urgent → review → ok 순 정렬, 최대 30건.
  */
@@ -110,9 +121,10 @@ export async function getOpsAlerts(
 
   const alerts: OpsAlert[] = [];
 
-  // 1) 사고 — 본인 assignee 한정
+  // 1) 사고 — 본인 assignee + 최근 14일 이내 등록
   for (const i of incidentsRes.rows) {
     if (i.assignee_email !== meEmail) continue;
+    if (!isWithinRecentDays(i.created_at)) continue;
     alerts.push({
       id: `incident-${i.id}`,
       tone: isToday(i.created_at) ? "urgent" : "review",
@@ -123,9 +135,10 @@ export async function getOpsAlerts(
     });
   }
 
-  // 2) 인수인계 수신 — 본인 한정 (query 단에서 toEmail 필터)
+  // 2) 인수인계 수신 — 본인 한정 + 최근 14일 이내 수신
   for (const p of progressRes.rows) {
     if (p.status !== "in_progress") continue;
+    if (!isWithinRecentDays(p.created_at)) continue;
     alerts.push({
       id: `handover-${p.id}`,
       tone: "review",
@@ -151,12 +164,12 @@ export async function getOpsAlerts(
     });
   }
 
-  // 4) 내 할 일 — listMyTodos가 본인 한정 (마감 D-3 이내)
+  // 4) 내 할 일 — listMyTodos가 본인 한정 (마감 D-14 이내)
   for (const t of todos) {
     if (t.done) continue;
     if (!t.due_at) continue;
     const d = daysUntilKst(t.due_at);
-    if (d === null || d < 0 || d > 3) continue;
+    if (d === null || d < 0 || d > 14) continue;
     alerts.push({
       id: `todo-${t.id}`,
       tone: d === 0 ? "urgent" : "review",
@@ -167,12 +180,12 @@ export async function getOpsAlerts(
     });
   }
 
-  // 5) 백업 요청 — 본인이 요청자 OR 백업자 + leave_start D-7 이내
+  // 5) 백업 요청 — 본인이 요청자 OR 백업자 + leave_start D-14 이내
   for (const b of backupsRes.rows) {
     if (b.requester_email !== meEmail && b.substitute_email !== meEmail)
       continue;
     const d = daysUntilKst(b.leave_start_date);
-    if (d === null || d < 0 || d > 7) continue;
+    if (d === null || d < 0 || d > 14) continue;
     const label =
       b.leave_start_date && b.leave_end_date
         ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
