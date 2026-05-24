@@ -24,7 +24,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description: "주요업무 weekly 진행과 본인 프로젝트(Gantt)를 한곳에 관리합니다.",
   },
   schedule: {
-    headline: { accent: "이번 주", title: "운영부 달력" },
+    headline: { accent: "이번 달", title: "운영부 달력" },
     description: "운영부 시프트·이벤트·휴가·교육 일정을 한곳에 관리합니다.",
   },
   handover: {
