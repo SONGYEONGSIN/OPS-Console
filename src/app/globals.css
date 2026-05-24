@@ -307,3 +307,19 @@ body::before {
 @keyframes toast-out {
   to { transform: translateY(20px); opacity: 0; }
 }
+
+/* 캘린더 팀공통 일정 ★ — 부드러운 발광 (운영 톤 절제, 2s ease-in-out infinite) */
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 4px var(--vermilion));
+  }
+}
+
+.animate-star-twinkle {
+  animation: star-twinkle 2s ease-in-out infinite;
+}

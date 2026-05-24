@@ -316,7 +316,10 @@ export function CalendarView({
                         aria-hidden
                       />
                       {item.isTeamCommon ? (
-                        <span aria-hidden className="shrink-0">
+                        <span
+                          aria-hidden
+                          className="shrink-0 animate-star-twinkle text-vermilion"
+                        >
                           ★
                         </span>
                       ) : null}
