@@ -120,11 +120,16 @@ export async function getOpsAlerts(
   ]);
 
   const alerts: OpsAlert[] = [];
+  // 한 카테고리가 dropdown을 점유해 다른 도메인이 묻히지 않게 도메인당 최대 5건.
+  const MAX_PER_CATEGORY = 5;
 
   // 1) 사고 — 본인 assignee + 최근 14일 이내 등록
+  let countIncident = 0;
   for (const i of incidentsRes.rows) {
+    if (countIncident >= MAX_PER_CATEGORY) break;
     if (i.assignee_email !== meEmail) continue;
     if (!isWithinRecentDays(i.created_at)) continue;
+    countIncident++;
     alerts.push({
       id: `incident-${i.id}`,
       tone: isToday(i.created_at) ? "urgent" : "review",
@@ -136,9 +141,12 @@ export async function getOpsAlerts(
   }
 
   // 2) 인수인계 수신 — 본인 한정 + 최근 14일 이내 수신
+  let countHandover = 0;
   for (const p of progressRes.rows) {
+    if (countHandover >= MAX_PER_CATEGORY) break;
     if (p.status !== "in_progress") continue;
     if (!isWithinRecentDays(p.created_at)) continue;
+    countHandover++;
     alerts.push({
       id: `handover-${p.id}`,
       tone: "review",
@@ -150,10 +158,13 @@ export async function getOpsAlerts(
   }
 
   // 3) 오픈 예정 서비스 — 본인 담당 (운영자 또는 개발자) + D-14 이내
+  let countService = 0;
   for (const s of servicesRes.rows) {
+    if (countService >= MAX_PER_CATEGORY) break;
     if (s.operator_email !== meEmail && s.developer_email !== meEmail) continue;
     const d = daysUntilKst(s.write_start_at);
     if (d === null || d < 0 || d > 14) continue;
+    countService++;
     alerts.push({
       id: `service-${s.id}`,
       tone: d <= 7 ? "urgent" : "review",
@@ -165,11 +176,14 @@ export async function getOpsAlerts(
   }
 
   // 4) 내 할 일 — listMyTodos가 본인 한정 (마감 D-14 이내)
+  let countTodo = 0;
   for (const t of todos) {
+    if (countTodo >= MAX_PER_CATEGORY) break;
     if (t.done) continue;
     if (!t.due_at) continue;
     const d = daysUntilKst(t.due_at);
     if (d === null || d < 0 || d > 14) continue;
+    countTodo++;
     alerts.push({
       id: `todo-${t.id}`,
       tone: d === 0 ? "urgent" : "review",
@@ -181,11 +195,14 @@ export async function getOpsAlerts(
   }
 
   // 5) 백업 요청 — 본인이 요청자 OR 백업자 + leave_start D-14 이내
+  let countBackup = 0;
   for (const b of backupsRes.rows) {
+    if (countBackup >= MAX_PER_CATEGORY) break;
     if (b.requester_email !== meEmail && b.substitute_email !== meEmail)
       continue;
     const d = daysUntilKst(b.leave_start_date);
     if (d === null || d < 0 || d > 14) continue;
+    countBackup++;
     const label =
       b.leave_start_date && b.leave_end_date
         ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
@@ -201,10 +218,13 @@ export async function getOpsAlerts(
   }
 
   // 6) 계약 — 본인 운영자(displayName) + 미체결
+  let countContract = 0;
   for (const c of contractsRes.rows) {
+    if (countContract >= MAX_PER_CATEGORY) break;
     if (c.operator !== meName) continue;
     const status = (c.status ?? "").trim();
     if (status === "체결완료" || status === "계약완료") continue;
+    countContract++;
     alerts.push({
       id: `contract-${c.sheet}-${c.numbering}`,
       tone: "review",
@@ -220,9 +240,12 @@ export async function getOpsAlerts(
     const allRows = receivablesSheet.rows
       .map((_, i) => receivablesToListRow(receivablesSheet, i))
       .filter(isReceivablesDataRow);
+    let countReceivables = 0;
     for (const r of allRows) {
+      if (countReceivables >= MAX_PER_CATEGORY) break;
       if (r.owner !== meName) continue;
       if (r.status !== "active") continue;
+      countReceivables++;
       alerts.push({
         id: `receivables-${r.id}`,
         tone: "review",
