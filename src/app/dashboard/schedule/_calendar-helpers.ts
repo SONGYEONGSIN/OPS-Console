@@ -92,9 +92,10 @@ export function groupItemsByDay(
   };
 
   for (const e of events) {
-    push(toKstYmd(e.start_at), {
+    const startYmd = toKstYmd(e.start_at);
+    push(startYmd, {
       id: e.id,
-      ymd: toKstYmd(e.start_at),
+      ymd: startYmd,
       category: e.type,
       label: e.title,
       sortKey: toKstSortKey(e.start_at, e.all_day),
@@ -102,6 +103,23 @@ export function groupItemsByDay(
       sourceVariant: "schedule",
       rowRef: e,
     });
+    // 멀티데이 일정: 종료일이 시작일과 다르면 종료 ymd에도 push (services 패턴 정합).
+    // rowRef는 동일 event라 두 셀에서 인스펙터 열어도 같은 row 표시.
+    if (e.end_at) {
+      const endYmd = toKstYmd(e.end_at);
+      if (endYmd !== startYmd) {
+        push(endYmd, {
+          id: `${e.id}::end`,
+          ymd: endYmd,
+          category: e.type,
+          label: e.title,
+          sortKey: toKstSortKey(e.end_at, e.all_day),
+          all_day: e.all_day,
+          sourceVariant: "schedule",
+          rowRef: e,
+        });
+      }
+    }
   }
 
   for (const s of services) {

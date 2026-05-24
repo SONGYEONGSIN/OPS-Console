@@ -136,6 +136,43 @@ describe("groupItemsByDay", () => {
     expect(allItems).toHaveLength(1);
   });
 
+  it("schedule event end_at이 시작과 다른 날이면 시작/종료 두 ymd에 push (멀티데이)", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "44444444-4444-4444-4444-444444444444",
+        type: "application",
+        title: "수시 재외국민",
+        start_at: "2026-09-06T15:00:00Z", // KST 9/7 00:00
+        end_at: "2026-09-11T14:59:00Z", // KST 9/11 23:59
+        all_day: false,
+      },
+    ];
+    const map = groupItemsByDay(events, []);
+    expect(map.get("2026-09-07")?.[0]?.label).toBe("수시 재외국민");
+    expect(map.get("2026-09-11")?.[0]?.label).toBe("수시 재외국민");
+    // 두 item의 rowRef는 같은 event (인스펙터가 동일하게 열리도록)
+    expect(map.get("2026-09-07")?.[0]?.rowRef).toBe(
+      map.get("2026-09-11")?.[0]?.rowRef,
+    );
+  });
+
+  it("schedule event end_at이 시작과 같은 날이면 종료 push 안 함 (중복 방지)", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "55555555-5555-5555-5555-555555555555",
+        type: "event",
+        title: "1시간 회의",
+        start_at: "2026-05-15T01:00:00Z", // KST 10:00
+        end_at: "2026-05-15T02:00:00Z", // KST 11:00
+        all_day: false,
+      },
+    ];
+    const map = groupItemsByDay(events, []);
+    expect(map.get("2026-05-15")).toHaveLength(1);
+  });
+
   it("같은 날짜에 다중 아이템이면 [all_day desc, sortKey asc] 순으로 정렬한다", () => {
     const events: ScheduleEventRow[] = [
       {
