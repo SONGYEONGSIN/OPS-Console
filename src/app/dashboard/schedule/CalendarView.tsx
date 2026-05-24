@@ -304,7 +304,10 @@ export function CalendarView({
                     <button
                       type="button"
                       onClick={() => handleItemClick(item)}
-                      className="flex w-full items-center gap-1 text-left text-2xs text-ink hover:text-vermilion"
+                      data-team-common={item.isTeamCommon ? "true" : "false"}
+                      className={`flex w-full items-center gap-1 text-left text-2xs text-ink hover:text-vermilion ${
+                        item.isTeamCommon ? "font-bold" : ""
+                      }`}
                     >
                       <span
                         data-testid="calendar-dot"
@@ -312,6 +315,11 @@ export function CalendarView({
                         className={`inline-block h-2 w-2 shrink-0 rounded-full ${DOT_COLOR[item.category]}`}
                         aria-hidden
                       />
+                      {item.isTeamCommon ? (
+                        <span aria-hidden className="shrink-0">
+                          ★
+                        </span>
+                      ) : null}
                       <span className="truncate">{item.label}</span>
                     </button>
                   </li>

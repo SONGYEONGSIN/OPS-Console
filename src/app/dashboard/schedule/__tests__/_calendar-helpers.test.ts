@@ -157,6 +157,37 @@ describe("groupItemsByDay", () => {
     );
   });
 
+  it("팀 공통(assignee_email=null) 일정은 isTeamCommon=true + 셀 최상단으로 정렬", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "66666666-6666-6666-6666-666666666666",
+        type: "shift",
+        title: "10시 본인 시프트",
+        start_at: "2026-05-15T01:00:00Z",
+        assignee_email: "kjn@example.com",
+        all_day: false,
+      },
+      {
+        ...baseEvent,
+        id: "77777777-7777-7777-7777-777777777777",
+        type: "application",
+        title: "원서접수 일정",
+        start_at: "2026-05-15T05:00:00Z", // KST 14:00 — 시각상 뒤
+        assignee_email: null, // 팀 공통
+        all_day: false,
+      },
+    ];
+    const items = groupItemsByDay(events, [])
+      .get("2026-05-15")
+      ?.map((i) => ({ label: i.label, isTeamCommon: !!i.isTeamCommon }));
+    // 팀 공통이 시각상 더 뒤(14:00)지만 정렬 1순위로 최상단
+    expect(items).toEqual([
+      { label: "원서접수 일정", isTeamCommon: true },
+      { label: "10시 본인 시프트", isTeamCommon: false },
+    ]);
+  });
+
   it("schedule event end_at이 시작과 같은 날이면 종료 push 안 함 (중복 방지)", () => {
     const events: ScheduleEventRow[] = [
       {

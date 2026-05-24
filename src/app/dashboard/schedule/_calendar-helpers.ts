@@ -17,6 +17,8 @@ export type CalendarItem = {
   sortKey: string;
   all_day: boolean;
   sourceVariant: CalendarSourceVariant;
+  /** schedule_event 중 assignee_email=null (팀 공통). 정렬·강조(★ + bold)용 */
+  isTeamCommon?: boolean;
   /** Inspector에 전달할 원본 row (variant에 따라 ScheduleEventRow 또는 ServicesRow) */
   rowRef: ScheduleEventRow | ServicesRow;
 };
@@ -93,6 +95,7 @@ export function groupItemsByDay(
 
   for (const e of events) {
     const startYmd = toKstYmd(e.start_at);
+    const isTeamCommon = !e.assignee_email;
     push(startYmd, {
       id: e.id,
       ymd: startYmd,
@@ -101,6 +104,7 @@ export function groupItemsByDay(
       sortKey: toKstSortKey(e.start_at, e.all_day),
       all_day: e.all_day,
       sourceVariant: "schedule",
+      isTeamCommon,
       rowRef: e,
     });
     // 멀티데이 일정: 종료일이 시작일과 다르면 종료 ymd에도 push (services 패턴 정합).
@@ -116,6 +120,7 @@ export function groupItemsByDay(
           sortKey: toKstSortKey(e.end_at, e.all_day),
           all_day: e.all_day,
           sourceVariant: "schedule",
+          isTeamCommon,
           rowRef: e,
         });
       }
@@ -151,9 +156,12 @@ export function groupItemsByDay(
     }
   }
 
-  // 셀별 정렬: all_day 먼저, 그 다음 sortKey 오름차순 (안정 정렬)
+  // 셀별 정렬: 팀공통 → all_day → sortKey asc (안정 정렬)
+  // 팀공통(전원 영향)을 최상단에 노출해 운영자가 즉시 인지하도록.
   for (const list of map.values()) {
     list.sort((a, b) => {
+      if (!!a.isTeamCommon !== !!b.isTeamCommon)
+        return a.isTeamCommon ? -1 : 1;
       if (a.all_day !== b.all_day) return a.all_day ? -1 : 1;
       return a.sortKey.localeCompare(b.sortKey);
     });
