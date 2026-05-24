@@ -8,6 +8,8 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
 import { listAssignmentsForUser } from "@/features/performance/queries";
 import { OPERATORS } from "@/features/auth/operators";
+import { AdminSummary } from "./_AdminSummary";
+import type { Step } from "@/features/performance/schemas";
 
 /**
  * /dashboard/outcomes — 성과리포트 (8단계 평가 워크플로우).
@@ -27,6 +29,12 @@ export default async function OutcomesPage() {
   const rows: ListRow[] = assignments.map(assignmentToListRow);
   const config = resolvePageMeta(slug, meta, rows.length);
 
+  // admin인 경우 페이지 상단에 8단계별 분포 요약 노출.
+  const stepCounts: Record<Step, number> = {
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0,
+  };
+  for (const a of assignments) stepCounts[a.current_step] += 1;
+
   const header = (
     <PageHeader
       pathname={pathname}
@@ -44,17 +52,22 @@ export default async function OutcomesPage() {
   }
 
   return (
-    <ListPattern
-      title={meta.label}
-      data={{ rows }}
-      header={header}
-      variant="performance"
-      // admin만 + 새 사이클 가능 (실제 사이클/매핑 생성은 follow-up)
-      canCreate={isAdmin}
-      createLabel="+ 새 사이클"
-      currentUserName={me?.displayName}
-      onPersist={onPersist}
-    />
+    <>
+      {isAdmin ? (
+        <AdminSummary stepCounts={stepCounts} total={assignments.length} />
+      ) : null}
+      <ListPattern
+        title={meta.label}
+        data={{ rows }}
+        header={header}
+        variant="performance"
+        // admin만 + 새 사이클 가능 (실제 사이클/매핑 생성은 follow-up)
+        canCreate={isAdmin}
+        createLabel="+ 새 사이클"
+        currentUserName={me?.displayName}
+        onPersist={onPersist}
+      />
+    </>
   );
 }
 
