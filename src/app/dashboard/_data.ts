@@ -294,7 +294,7 @@ export const sidebarSections: SbSection[] = [
             slug: "worklog",
             pattern: "log",
           },
-          { ico: "·", label: "성과 리포트", slug: "outcomes", pattern: "dash" },
+          { ico: "·", label: "성과 리포트", slug: "outcomes", pattern: "list" },
           {
             ico: "·",
             label: "분석 보고서",

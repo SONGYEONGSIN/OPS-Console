@@ -15,6 +15,10 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "서비스사이클", title: "총괄장" },
     description: "대학별 운영/개발 배정·업무분장·가격정책을 조회합니다.",
   },
+  outcomes: {
+    headline: { accent: "분석 · AI", title: "성과 리포트" },
+    description: "8단계 평가 워크플로우로 목표·계획·평가를 한곳에서 관리합니다.",
+  },
   services: {
     headline: { accent: "서비스사이클", title: "서비스" },
     description: "현재 운영 중인 서비스 목록을 확인하고 인스펙터에서 상세 지표를 봅니다.",
