@@ -1,4 +1,4 @@
-# Folio
+# OPS-Console
 
 에디토리얼 톤 사내 운영 관리 시스템.
 
@@ -14,7 +14,7 @@
 ## Project Structure
 
 ```
-Folio/
+OPS-Console/
 ├── .claude/             # rules/agents/hooks/skills/memory/metrics/messages
 ├── src/
 │   ├── app/
@@ -88,7 +88,7 @@ E2E 운영 메모:
 
 ## 운영 메일·PDF (Microsoft Graph sendMail)
 
-- **브랜드 통일**: 메일 제목/본문/PDF 헤더 모두 `[운영부 상황실]` (Folio 노출 X)
+- **브랜드 통일**: 메일 제목/본문/PDF 헤더 모두 `[운영부 상황실]` (OPS-Console 노출 X)
 - **발신자**: 로그인한 운영자 본인 메일박스 (Azure AD UPN = operators.email). Azure AD App에 `Mail.Send` Application permission + admin consent 필요
 - **안전장치**: `MAIL_DRY_RUN=true` 시 실제 발송 안 함, 이력 테이블에 `status='dry_run'`만 적재
 - **PDF 시인성** (`src/lib/pdf/*-pdf.tsx`): Pretendard Regular + Bold 다중 weight, 모든 페이지 fixed header(서비스명·브랜드) + footer(자동발송·페이지 번호), 카테고리 배지(흰 글씨 + vermilion 배경), `minPresenceAhead`로 헤더 외로움 방지, 배경색 제거(메일 클라이언트 테마)
