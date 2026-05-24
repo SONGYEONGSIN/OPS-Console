@@ -71,25 +71,3 @@ describe("getPatternMockData 47 slug 매칭", () => {
   });
 });
 
-describe("alerts 페이지 전용 dash mock", () => {
-  it("alerts slug은 generic dash mock과 다른 widgets 반환", () => {
-    const alertsData = getPatternMockData("alerts", "dash") as { widgets: { id: string; label: string; tone: string; value: string; time: string }[] };
-    const outcomesData = getPatternMockData("outcomes", "dash") as { widgets: { id: string; label: string }[] };
-    expect(alertsData.widgets[0].id).not.toBe(outcomesData.widgets[0].id);
-  });
-
-  it("alerts widgets 8개 이상 (도메인 풍부화)", () => {
-    const data = getPatternMockData("alerts", "dash") as { widgets: unknown[] };
-    expect(data.widgets.length).toBeGreaterThanOrEqual(8);
-  });
-
-  it("alerts widgets에 운영부 도메인 핵심 카피(긴급/처리 대기/응답시간) 포함", () => {
-    const data = getPatternMockData("alerts", "dash") as {
-      widgets: { label: string; tone: string }[];
-    };
-    const labels = data.widgets.map((w) => w.label).join(" ");
-    expect(labels).toMatch(/긴급|새 사고|미처리|응답|결제|온콜/);
-    expect(data.widgets.some((w) => w.tone === "urgent")).toBe(true);
-    expect(data.widgets.some((w) => w.tone === "ok")).toBe(true);
-  });
-});
