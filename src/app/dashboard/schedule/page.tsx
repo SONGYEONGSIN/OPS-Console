@@ -12,6 +12,7 @@ import {
   deleteScheduleEvent,
 } from "@/features/schedule/actions";
 import { listServicesForCalendar } from "@/features/services/queries";
+import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 import { eventToListRow } from "./_row-mapper";
 import { CalendarView } from "./CalendarView";
 import { ScheduleViewToggle } from "./ScheduleViewToggle";
@@ -83,6 +84,7 @@ export default async function SchedulePage({
   const pathname = `/dashboard/${slug}`;
 
   const allEvents = await listScheduleEvents();
+  const holidays = await fetchKoreanHolidays();
   const me = await getCurrentOperator();
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
   const myEmail = me?.email ?? null;
@@ -174,6 +176,7 @@ export default async function SchedulePage({
         <CalendarView
           events={events}
           services={services}
+          holidays={holidays}
           currentMonth={currentMonth}
           view="calendar"
           canWrite={canWrite}

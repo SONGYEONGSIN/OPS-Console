@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { ScheduleEventRow } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
+import type { Holiday } from "@/lib/holidays/google-ical";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { InspectorPanel } from "../_components/inspector/InspectorPanel";
 import { InspectorListBody } from "../_components/inspector/InspectorListBody";
@@ -24,6 +25,8 @@ type CurrentMonth = { year: number; month0: number };
 type Props = {
   events: ScheduleEventRow[];
   services: ServicesRow[];
+  /** Google '한국 공휴일' iCal feed에서 가져온 read-only 항목. 셀 배경 + dot. */
+  holidays?: Holiday[];
   currentMonth: CurrentMonth;
   view: "calendar" | "list";
   canWrite: boolean;
@@ -86,6 +89,7 @@ function blankScheduleListRow(defaultYmd: string): ListRow {
 export function CalendarView({
   events,
   services,
+  holidays,
   currentMonth,
   view,
   canWrite,
@@ -100,6 +104,16 @@ export function CalendarView({
 
   const cells = useMemo(() => buildMonthGrid(year, month0), [year, month0]);
   const byDay = useMemo(() => groupItemsByDay(events, services), [events, services]);
+  // ymd → 공휴일 제목들 (보통 1개, 대체공휴일 등으로 2개 이상도 가능)
+  const holidaysByDay = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const h of holidays ?? []) {
+      const list = m.get(h.date);
+      if (list) list.push(h.title);
+      else m.set(h.date, [h.title]);
+    }
+    return m;
+  }, [holidays]);
   const [expandedYmd, setExpandedYmd] = useState<string | null>(null);
 
   // 인스펙터 상태 — selected는 클릭된 CalendarItem 또는 신규 생성용 blank
@@ -244,15 +258,20 @@ export function CalendarView({
           const overflow = items.length - visible.length;
           const dayNum = Number(cell.ymd.slice(8, 10));
           const isToday = cell.ymd === todayYmd;
+          const holidayTitles = holidaysByDay.get(cell.ymd);
+          const isHoliday = !!holidayTitles && holidayTitles.length > 0;
           return (
             <div
               key={cell.ymd}
               data-testid={`calendar-cell-${cell.ymd}`}
               data-ymd={cell.ymd}
               data-today={isToday ? "true" : "false"}
-              className={`min-h-[100px] bg-cream p-1.5 text-2xs ${
-                cell.inMonth ? "text-ink" : "text-faint"
-              } ${isToday ? "ring-1 ring-inset ring-vermilion" : ""}`}
+              data-holiday={isHoliday ? "true" : "false"}
+              className={`min-h-[100px] p-1.5 text-2xs ${
+                isHoliday ? "bg-vermilion/10" : "bg-cream"
+              } ${cell.inMonth ? "text-ink" : "text-faint"} ${
+                isToday ? "ring-1 ring-inset ring-vermilion" : ""
+              }`}
             >
               <div className="mb-1">
                 <span
@@ -266,6 +285,20 @@ export function CalendarView({
                 </span>
               </div>
               <ul className="space-y-0.5">
+                {holidayTitles?.map((title) => (
+                  <li key={`holiday-${title}`}>
+                    <span
+                      data-testid="calendar-holiday"
+                      className="flex w-full items-center gap-1 text-left text-2xs text-vermilion"
+                    >
+                      <span
+                        className="inline-block h-2 w-2 shrink-0 rounded-full bg-vermilion"
+                        aria-hidden
+                      />
+                      <span className="truncate">{title}</span>
+                    </span>
+                  </li>
+                ))}
                 {visible.map((item) => (
                   <li key={item.id}>
                     <button
