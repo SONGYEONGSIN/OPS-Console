@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { OpsAlert } from "@/features/alerts/queries";
 
-const MAX_ITEMS = 8;
+// 7 도메인 통합 dropdown — 카테고리별 그룹 노출 위해 12까지 확대 (기존 8).
+const MAX_ITEMS = 12;
 
 /**
  * AlertsBell — chrome 우측 종 아이콘.
