@@ -47,7 +47,9 @@ export default async function OutcomesPage() {
         autoRefresh
       />
       {isAdmin ? (
-        <AdminSummary stepCounts={stepCounts} total={assignments.length} />
+        <div className="px-7 pt-4">
+          <AdminSummary stepCounts={stepCounts} total={assignments.length} />
+        </div>
       ) : null}
     </>
   );
