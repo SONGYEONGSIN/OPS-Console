@@ -25,38 +25,16 @@ const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
 
 const TZ = "Asia/Seoul";
 
-const DAY_FMT = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: TZ,
-  month: "numeric",
-  day: "numeric",
-  weekday: "short",
-});
-const TIME_FMT = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: TZ,
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-const ISO_DATE_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
-
-function formatScheduleRange(
-  start?: string,
-  end?: string | null,
-  allDay?: boolean,
-): string {
-  if (!start) return "-";
-  const startD = new Date(start);
-  const endD = end ? new Date(end) : null;
-  if (allDay) {
-    if (!endD || ISO_DATE_FMT.format(startD) === ISO_DATE_FMT.format(endD))
-      return DAY_FMT.format(startD);
-    return `${DAY_FMT.format(startD)} ~ ${DAY_FMT.format(endD)}`;
-  }
-  if (!endD) return `${DAY_FMT.format(startD)} ${TIME_FMT.format(startD)}`;
-  if (ISO_DATE_FMT.format(startD) === ISO_DATE_FMT.format(endD)) {
-    return `${DAY_FMT.format(startD)} ${TIME_FMT.format(startD)}~${TIME_FMT.format(endD)}`;
-  }
-  return `${DAY_FMT.format(startD)} ${TIME_FMT.format(startD)} ~ ${DAY_FMT.format(endD)} ${TIME_FMT.format(endD)}`;
+/** services 시즌과 동일 톤: 'YYYY. MM. DD. HH:MM' (allDay 시 시간 생략). */
+function formatDateTime(iso?: string | null, allDay?: boolean): string {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    ...(allDay ? {} : { hour: "2-digit", minute: "2-digit", hour12: false }),
+  }).format(new Date(iso));
 }
 
 export function ScheduleView({ row }: ViewProps) {
@@ -75,14 +53,6 @@ export function ScheduleView({ row }: ViewProps) {
       ),
     },
     {
-      term: "시각",
-      desc: (
-        <span className="font-mono text-sm">
-          {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
-        </span>
-      ),
-    },
-    {
       term: "종일여부",
       desc: row.allDay ? (
         <span className="inline-block bg-ink px-2 py-0.5 text-xs text-cream">
@@ -95,10 +65,21 @@ export function ScheduleView({ row }: ViewProps) {
     { term: "담당", desc: row.owner || "팀 공통" },
   ];
 
+  const timeItems: { term: string; desc: ReactNode }[] = [
+    { term: "시작", desc: formatDateTime(row.start_at, row.allDay) },
+    { term: "종료", desc: formatDateTime(row.end_at, row.allDay) },
+  ];
+
   return (
     <div className="space-y-6">
-      <Section title="일정 기본">
+      <Section title="기본">
         <DefList items={basicItems} />
+      </Section>
+
+      <Divider />
+
+      <Section title="시간">
+        <DefList items={timeItems} />
       </Section>
 
       {row.body ? (

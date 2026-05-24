@@ -32,11 +32,11 @@ describe("ScheduleView", () => {
     expect(screen.getByText("이벤트")).toBeInTheDocument();
   });
 
-  it("시각 범위 — same day는 'M.D HH:mm~HH:mm' 포맷", () => {
+  it("시작/종료 — services 시즌 톤(YYYY. MM. DD. HH:MM)으로 별도 row 표시", () => {
     render(<ScheduleView row={makeRow()} />);
-    // KST 10:00 ~ 11:00
-    const rangeNode = screen.getByText(/10:00.*11:00/);
-    expect(rangeNode).toBeInTheDocument();
+    // KST 10:00 시작, 11:00 종료 — 두 row로 분리
+    expect(screen.getByText(/2026\. 05\. 15\. 10:00/)).toBeInTheDocument();
+    expect(screen.getByText(/2026\. 05\. 15\. 11:00/)).toBeInTheDocument();
   });
 
   it("allDay=true면 '종일' 라벨 노출", () => {
