@@ -44,6 +44,8 @@ const DOT_COLOR: Record<CalendarCategory, string> = {
   event: "bg-ink",
   leave: "bg-line-soft",
   training: "bg-washi-raised border border-line",
+  application: "bg-vermilion-deep",
+  pims: "bg-gold",
 };
 
 function eventToListRow(ev: ScheduleEventRow): ListRow {

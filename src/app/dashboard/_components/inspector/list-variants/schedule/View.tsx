@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 import type { ListRow } from "../../../patterns/ListPattern";
 
@@ -59,43 +61,52 @@ function formatScheduleRange(
 
 export function ScheduleView({ row }: ViewProps) {
   const type = row.scheduleType as ScheduleType | undefined;
-  return (
-    <div className="space-y-5 text-sm text-ink">
-      <section className="space-y-1.5">
-        <p className="text-2xs uppercase tracking-[0.18em] text-muted">메타</p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {type ? (
-            <span
-              className={`inline-block px-2 py-0.5 text-2xs ${SCHEDULE_TYPE_COLOR[type]}`}
-            >
-              {SCHEDULE_TYPE_LABEL[type]}
-            </span>
-          ) : null}
+  const items: { term: string; desc: ReactNode }[] = [
+    {
+      term: "분류",
+      desc: type ? (
+        <span
+          className={`inline-block px-2 py-0.5 text-xs ${SCHEDULE_TYPE_COLOR[type]}`}
+        >
+          {SCHEDULE_TYPE_LABEL[type]}
+        </span>
+      ) : (
+        "-"
+      ),
+    },
+    {
+      term: "시각",
+      desc: (
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="font-mono">
+            {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
+          </span>
           {row.allDay ? (
             <span className="inline-block border border-line bg-transparent px-2 py-0.5 text-2xs text-ink">
               종일
             </span>
           ) : null}
-          <span className="text-xs">
-            <span className="text-muted">시각</span>{" "}
-            <span className="font-mono text-ink">
-              {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
-            </span>
-          </span>
-          <span className="text-xs">
-            <span className="text-muted">담당</span>{" "}
-            <span className="text-ink">{row.owner || "팀 공통"}</span>
-          </span>
-        </div>
-      </section>
+        </span>
+      ),
+    },
+    { term: "담당", desc: row.owner || "팀 공통" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Section title="일정">
+        <DefList items={items} />
+      </Section>
 
       {row.body ? (
-        <section className="space-y-1.5">
-          <p className="text-2xs uppercase tracking-[0.18em] text-muted">설명</p>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
-            {row.body}
-          </p>
-        </section>
+        <>
+          <Divider />
+          <Section title="설명">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+              {row.body}
+            </p>
+          </Section>
+        </>
       ) : null}
     </div>
   );
