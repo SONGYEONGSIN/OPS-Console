@@ -195,7 +195,8 @@ export default async function DashboardLivePage({
         ? e.assignee_email === myEmail || e.created_by_email === myEmail
         : true,
     );
-  const upcomingEvents = upcomingEventsAll.slice(0, 5);
+  // LiveTable 다른 도메인(incidents/todos/backup/handover)과 동일하게 20건 슬라이스.
+  const upcomingEvents = upcomingEventsAll.slice(0, 20);
   const scheduleListRows: ListRow[] = upcomingEvents.map(eventToListRow);
 
   // ─── 내 할 일 ─────────────────────────────────────────────
