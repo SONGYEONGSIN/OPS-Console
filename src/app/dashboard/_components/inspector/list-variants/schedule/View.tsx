@@ -61,7 +61,7 @@ function formatScheduleRange(
 
 export function ScheduleView({ row }: ViewProps) {
   const type = row.scheduleType as ScheduleType | undefined;
-  const items: { term: string; desc: ReactNode }[] = [
+  const basicItems: { term: string; desc: ReactNode }[] = [
     {
       term: "분류",
       desc: type ? (
@@ -77,16 +77,19 @@ export function ScheduleView({ row }: ViewProps) {
     {
       term: "시각",
       desc: (
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="font-mono">
-            {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
-          </span>
-          {row.allDay ? (
-            <span className="inline-block border border-line bg-transparent px-2 py-0.5 text-2xs text-ink">
-              종일
-            </span>
-          ) : null}
+        <span className="font-mono text-sm">
+          {formatScheduleRange(row.start_at, row.end_at, row.allDay)}
         </span>
+      ),
+    },
+    {
+      term: "종일여부",
+      desc: row.allDay ? (
+        <span className="inline-block bg-ink px-2 py-0.5 text-xs text-cream">
+          종일
+        </span>
+      ) : (
+        <span className="text-xs text-muted">시간 지정</span>
       ),
     },
     { term: "담당", desc: row.owner || "팀 공통" },
@@ -94,8 +97,8 @@ export function ScheduleView({ row }: ViewProps) {
 
   return (
     <div className="space-y-6">
-      <Section title="일정">
-        <DefList items={items} />
+      <Section title="일정 기본">
+        <DefList items={basicItems} />
       </Section>
 
       {row.body ? (
