@@ -12,13 +12,15 @@ type Props = {
 };
 
 const SCHEDULE_TYPE_OPTIONS: {
-  value: "shift" | "event" | "leave" | "training";
+  value: "shift" | "event" | "leave" | "training" | "application" | "pims";
   label: string;
 }[] = [
   { value: "shift", label: "시프트" },
   { value: "event", label: "이벤트" },
   { value: "leave", label: "휴가" },
   { value: "training", label: "교육" },
+  { value: "application", label: "원서접수" },
+  { value: "pims", label: "PIMS" },
 ];
 
 const KST_DATE_FMT = new Intl.DateTimeFormat("en-CA", {

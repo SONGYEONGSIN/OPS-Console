@@ -7,12 +7,16 @@ import {
 } from "../schemas";
 
 describe("schedule schemas — type enum", () => {
-  it.each(["shift", "event", "leave", "training"] as const)(
-    "%s — 유효 type",
-    (t) => {
-      expect(scheduleTypeSchema.parse(t)).toBe(t);
-    },
-  );
+  it.each([
+    "shift",
+    "event",
+    "leave",
+    "training",
+    "application",
+    "pims",
+  ] as const)("%s — 유효 type", (t) => {
+    expect(scheduleTypeSchema.parse(t)).toBe(t);
+  });
 
   it("알 수 없는 type — reject", () => {
     expect(() => scheduleTypeSchema.parse("unknown")).toThrow();

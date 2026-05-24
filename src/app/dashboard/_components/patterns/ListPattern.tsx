@@ -40,8 +40,14 @@ export type ListRow = {
   allowedMenus?: string[];
   /** post 도메인 — 사람 친화 글번호 (예: 'FB-001'). 없으면 id(uuid) 단축 표시. */
   slug?: string;
-  /** schedule 도메인 — 일정 분류 (shift/event/leave/training). */
-  scheduleType?: "shift" | "event" | "leave" | "training";
+  /** schedule 도메인 — 일정 분류 (shift/event/leave/training/application/pims). */
+  scheduleType?:
+    | "shift"
+    | "event"
+    | "leave"
+    | "training"
+    | "application"
+    | "pims";
   /** schedule 도메인 — ISO 8601 timestamptz */
   start_at?: string;
   /** schedule 도메인 — ISO 8601 timestamptz, 종료 미정 시 null/undefined */

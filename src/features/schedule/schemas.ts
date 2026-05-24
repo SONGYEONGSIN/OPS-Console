@@ -5,6 +5,8 @@ export const scheduleTypeSchema = z.enum([
   "event",
   "leave",
   "training",
+  "application",
+  "pims",
 ]);
 export type ScheduleType = z.infer<typeof scheduleTypeSchema>;
 

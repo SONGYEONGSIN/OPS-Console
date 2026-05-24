@@ -8,6 +8,8 @@ const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
   event: "이벤트",
   leave: "휴가",
   training: "교육",
+  application: "원서접수",
+  pims: "PIMS",
 };
 
 const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
@@ -15,6 +17,8 @@ const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
   event: "bg-ink text-cream",
   leave: "bg-line-soft text-muted",
   training: "bg-washi-raised text-ink",
+  application: "bg-vermilion-deep text-cream",
+  pims: "bg-gold text-cream",
 };
 
 const TZ = "Asia/Seoul";

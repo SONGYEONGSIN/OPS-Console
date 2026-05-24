@@ -6,6 +6,8 @@ export const SCHEDULE_FILTERS: { value: Filter; label: string }[] = [
   { value: "event", label: "이벤트" },
   { value: "leave", label: "휴가" },
   { value: "training", label: "교육" },
+  { value: "application", label: "원서접수" },
+  { value: "pims", label: "PIMS" },
 ];
 
 export function blankScheduleRow(): ListRow {
