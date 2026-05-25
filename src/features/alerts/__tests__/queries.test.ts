@@ -21,12 +21,18 @@ vi.mock("@/features/contracts/queries", () => ({
 vi.mock("@/features/receivables/queries", () => ({
   fetchReceivablesSheet: vi.fn(async () => null),
 }));
+vi.mock("@/app/dashboard/receivables/_row-mapper", () => ({
+  receivablesToListRow: vi.fn(),
+  isReceivablesDataRow: vi.fn(() => true),
+}));
 vi.mock("@/features/posts/queries", () => ({
   listPosts: vi.fn(),
 }));
 
 import { getOpsAlerts } from "../queries";
 import { listPosts } from "@/features/posts/queries";
+import { fetchReceivablesSheet } from "@/features/receivables/queries";
+import { receivablesToListRow } from "@/app/dashboard/receivables/_row-mapper";
 
 const me = { email: "any@x.com", displayName: "anyone" };
 
@@ -49,7 +55,32 @@ function noticeRow(over: Partial<Record<string, unknown>> = {}) {
 
 beforeEach(() => {
   vi.mocked(listPosts).mockReset();
+  vi.mocked(listPosts).mockResolvedValue([]);
+  vi.mocked(fetchReceivablesSheet).mockReset();
+  vi.mocked(receivablesToListRow).mockReset();
 });
+
+// ListRow 필드 매핑 (receivables): name=학교명, body=내역, author=금액, owner=운영자, meta=청구일
+function rcvRow(over: Partial<{
+  id: string;
+  name: string;
+  author: string;
+  owner: string;
+  status: "active" | "approved";
+  meta: string;
+}> = {}) {
+  return {
+    id: "r-0",
+    name: "부산대학교",
+    body: "",
+    author: "1,500,000",
+    owner: "송영신",
+    status: "active",
+    meta: "2026-04-30",
+    ...over,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any;
+}
 
 describe("getOpsAlerts — 공지사항", () => {
   it("active 공지를 '공지' 카테고리 알림으로 반환 (본인 필터 없음)", async () => {
@@ -118,5 +149,56 @@ describe("getOpsAlerts — 공지사항", () => {
     vi.mocked(listPosts).mockResolvedValue([]);
     await getOpsAlerts(me);
     expect(listPosts).toHaveBeenCalledWith("notice");
+  });
+});
+
+describe("getOpsAlerts — 미수채권 알림 포맷", () => {
+  const meRcv = { email: "ys1114@x.com", displayName: "송영신" };
+
+  function setupSheet(rows: ReturnType<typeof rcvRow>[]) {
+    // fetchReceivablesSheet가 truthy면 매핑 로직 진입. rows 자체는 receivablesToListRow가 처리.
+    vi.mocked(fetchReceivablesSheet).mockResolvedValue({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rows: rows.map(() => []) as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    vi.mocked(receivablesToListRow).mockImplementation((_sheet, idx) => rows[idx]);
+  }
+
+  it("학교명+금액 모두 있는 active row → label='학교명 · 금액', time='미수금'", async () => {
+    setupSheet([rcvRow({ name: "부산대학교", author: "1,500,000", owner: "송영신" })]);
+    const alerts = await getOpsAlerts(meRcv);
+    const r = alerts.find((a) => a.category === "미수채권");
+    expect(r).toBeDefined();
+    expect(r?.label).toBe("부산대학교 · 1,500,000");
+    expect(r?.time).toBe("미수금");
+  });
+
+  it("금액이 빈 row → 알림 제외", async () => {
+    setupSheet([rcvRow({ name: "부산대학교", author: "", owner: "송영신" })]);
+    const alerts = await getOpsAlerts(meRcv);
+    expect(alerts.filter((a) => a.category === "미수채권")).toHaveLength(0);
+  });
+
+  it("학교명이 빈 row → 알림 제외 (합계/소계 등)", async () => {
+    setupSheet([rcvRow({ name: "", author: "100,000", owner: "송영신" })]);
+    const alerts = await getOpsAlerts(meRcv);
+    expect(alerts.filter((a) => a.category === "미수채권")).toHaveLength(0);
+  });
+
+  it("approved(입금완료) row → 알림 제외 (기존 active 필터 유지)", async () => {
+    setupSheet([
+      rcvRow({ name: "A대학교", author: "100,000", owner: "송영신", status: "approved" }),
+      rcvRow({ name: "B대학교", author: "200,000", owner: "송영신", status: "active" }),
+    ]);
+    const alerts = await getOpsAlerts(meRcv);
+    const labels = alerts.filter((a) => a.category === "미수채권").map((a) => a.label);
+    expect(labels).toEqual(["B대학교 · 200,000"]);
+  });
+
+  it("owner != me.displayName → 제외 (기존 본인 필터 유지)", async () => {
+    setupSheet([rcvRow({ name: "A", author: "100,000", owner: "다른사람" })]);
+    const alerts = await getOpsAlerts(meRcv);
+    expect(alerts.filter((a) => a.category === "미수채권")).toHaveLength(0);
   });
 });
