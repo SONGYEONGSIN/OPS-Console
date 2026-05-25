@@ -2,12 +2,13 @@ import { describe, it, expect } from "vitest";
 import { OPERATING_GUIDE_TABS, findTabByValue } from "../tabs";
 
 describe("OPERATING_GUIDE_TABS", () => {
-  it("5개 탭 정의 (바이브코딩/운영노하우/트러블슈팅/협업/도구)", () => {
-    expect(OPERATING_GUIDE_TABS).toHaveLength(5);
+  it("6개 탭 정의 (바이브코딩/노하우/SOP/트러블슈팅/협업/도구)", () => {
+    expect(OPERATING_GUIDE_TABS).toHaveLength(6);
     const values = OPERATING_GUIDE_TABS.map((t) => t.value);
     expect(values).toEqual([
       "vibe-coding",
       "know-how",
+      "standard-procedure",
       "troubleshooting",
       "collaboration",
       "tools",

@@ -367,14 +367,6 @@ export const sidebarSections: SbSection[] = [
       },
       {
         kind: "item",
-        ico: "▥",
-        label: "표준 절차 (SOP)",
-        count: "",
-        slug: "sop",
-        pattern: "list",
-      },
-      {
-        kind: "item",
         ico: "¶",
         label: "FAQ · 사례집",
         slug: "faq",
