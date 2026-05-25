@@ -43,4 +43,25 @@ describe("getGraphToken", () => {
     const { getGraphToken } = await import("../auth");
     await expect(getGraphToken()).rejects.toThrow(/401/);
   });
+
+  it("forceRefresh=true → 캐시 무시하고 새 토큰 발급", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: "tok-A", expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: "tok-B", expires_in: 3600 }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { getGraphToken } = await import("../auth");
+    const t1 = await getGraphToken();
+    const t2 = await getGraphToken({ forceRefresh: true });
+    expect(t1).toBe("tok-A");
+    expect(t2).toBe("tok-B");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

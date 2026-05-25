@@ -42,22 +42,31 @@ export async function getWorkbookSession(
 
 /**
  * 세션 강제 재발급 — 504/만료 후 retry 시 사용.
+ * 401(InvalidAuthenticationToken) 응답 시 token 캐시 강제 갱신 후 1회 자동 재시도.
  */
 export async function refreshWorkbookSession(
   driveId: string,
   itemId: string,
 ): Promise<string> {
   const key = cacheKey(driveId, itemId);
-  const token = await getGraphToken();
   const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/createSession`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ persistChanges: true }),
-  });
+
+  const callOnce = async (forceRefresh: boolean): Promise<Response> => {
+    const token = await getGraphToken(forceRefresh ? { forceRefresh: true } : undefined);
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ persistChanges: true }),
+    });
+  };
+
+  let res = await callOnce(false);
+  if (res.status === 401) {
+    res = await callOnce(true);
+  }
   if (!res.ok) {
     const errText = await res.text();
     throw new Error(
