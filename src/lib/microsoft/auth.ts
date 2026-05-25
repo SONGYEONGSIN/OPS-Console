@@ -5,11 +5,14 @@ let cache: CachedToken | null = null;
 
 /**
  * Azure AD client_credentials grant — Microsoft Graph용 access_token.
- * 메모리 캐시 (Node process 단위) — exp 60s 전에 재발급.
+ * 메모리 캐시 (Node process 단위) — exp 300s(5분) 전에 재발급(시계 스큐 마진).
+ * 호출자가 401을 만나면 forceRefresh:true 로 캐시 무시하고 재발급 가능.
  *
  * 환경변수: AZURE_AD_TENANT_ID / AZURE_AD_CLIENT_ID / AZURE_AD_CLIENT_SECRET
  */
-export async function getGraphToken(): Promise<string> {
+export async function getGraphToken(opts?: {
+  forceRefresh?: boolean;
+}): Promise<string> {
   const tenant = process.env.AZURE_AD_TENANT_ID;
   const clientId = process.env.AZURE_AD_CLIENT_ID;
   const secret = process.env.AZURE_AD_CLIENT_SECRET;
@@ -19,8 +22,8 @@ export async function getGraphToken(): Promise<string> {
     );
   }
 
-  // 캐시 hit
-  if (cache && cache.expiresAt - 60_000 > Date.now()) {
+  // 캐시 hit (forceRefresh 시 우회)
+  if (!opts?.forceRefresh && cache && cache.expiresAt - 300_000 > Date.now()) {
     return cache.token;
   }
 
