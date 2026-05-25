@@ -74,7 +74,7 @@ export function TeamView({ row }: ViewProps) {
           <DefList
             items={[
               { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
-              { term: "이메일", desc: <span className="font-mono text-xs">{row.id}</span> },
+              { term: "이메일", desc: row.id },
               {
                 term: "시스템 권한",
                 desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",
@@ -105,7 +105,7 @@ export function TeamView({ row }: ViewProps) {
       <Section title="인사 정보">
         <DefList
           items={[
-            { term: "사번", desc: <span className="font-mono">{op.empNo}</span> },
+            { term: "사번", desc: <span className="tabular-nums">{op.empNo}</span> },
             { term: "이름", desc: <strong className="font-semibold">{op.name}</strong> },
             { term: "성별", desc: op.gender },
             { term: "생년월일", desc: `${op.birthDate} (만 ${age}세)` },
@@ -139,7 +139,7 @@ export function TeamView({ row }: ViewProps) {
                 </span>
               ),
             },
-            { term: "이메일", desc: <span className="font-mono text-xs">{op.email}</span> },
+            { term: "이메일", desc: op.email },
             {
               term: "시스템 권한",
               desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",

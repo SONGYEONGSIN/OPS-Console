@@ -17,6 +17,7 @@ export function univRowToListRow(u: UnivAssignmentRow): ListRow {
     name: u.university,
     status: "active",
     owner: "",
+    universityType: u.universityType,
     assignment: { byService },
   };
 }

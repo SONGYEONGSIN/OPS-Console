@@ -294,7 +294,7 @@ export const sidebarSections: SbSection[] = [
             slug: "worklog",
             pattern: "log",
           },
-          { ico: "·", label: "성과 리포트", slug: "outcomes", pattern: "list" },
+          { ico: "·", label: "성과 리포트", slug: "outcomes", pattern: "list", adminOnly: true },
           {
             ico: "·",
             label: "분석 보고서",
@@ -384,6 +384,7 @@ export const sidebarSections: SbSection[] = [
         count: "",
         slug: "team",
         pattern: "list",
+        adminOnly: true,
       },
       {
         kind: "item",
@@ -392,6 +393,7 @@ export const sidebarSections: SbSection[] = [
         count: "",
         slug: "settings",
         pattern: "settings",
+        adminOnly: true,
       },
       {
         kind: "item",
@@ -416,6 +418,7 @@ export const sidebarSections: SbSection[] = [
         count: "",
         slug: "notices",
         pattern: "list",
+        adminOnly: true,
       },
     ],
   },

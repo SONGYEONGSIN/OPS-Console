@@ -122,13 +122,18 @@ export function TeamForm({
       {canEditPermission && (
         <fieldset className="block text-xs">
           <legend className="mb-1 block text-muted">메뉴 권한</legend>
+          <p className="mb-2 text-2xs leading-relaxed text-muted">
+            현재 정책: admin은 전체 메뉴, member·viewer는 admin 전용 5개(조직권한·시스템설정·공지사항·성과리포트·자동화 실행)를 제외한 전체 메뉴를 자동 접근. 개별 토글은 사용하지 않습니다.
+          </p>
           <div className="space-y-3 border border-line bg-cream p-2">
             {sidebarSections.map((section) => {
+              const isAdmin = row.permission === "admin";
               const items: SbItem[] = section.entries
                 .flatMap<SbItem>((e) =>
                   e.kind === "item" ? [e] : e.items
                 )
-                .filter((it) => !!it.slug);
+                .filter((it) => !!it.slug)
+                .filter((it) => (isAdmin ? true : !it.adminOnly));
               if (items.length === 0) return null;
               return (
                 <div key={section.title}>
@@ -138,29 +143,17 @@ export function TeamForm({
                   <div className="grid grid-cols-2 gap-1">
                     {items.map((it) => {
                       const slug = it.slug!;
-                      const isAdmin = row.permission === "admin";
-                      const checked = isAdmin
-                        ? true
-                        : (row.allowedMenus ?? []).includes(slug);
                       return (
                         <label
                           key={slug}
-                          className={`flex items-center gap-1.5 text-ink ${
-                            isAdmin ? "opacity-60" : ""
-                          }`}
+                          className="flex items-center gap-1.5 text-ink opacity-70"
                         >
                           <input
                             type="checkbox"
                             aria-label={slug}
-                            checked={checked}
-                            disabled={isAdmin}
-                            onChange={(e) => {
-                              const current = row.allowedMenus ?? [];
-                              const next = e.target.checked
-                                ? [...current, slug]
-                                : current.filter((s) => s !== slug);
-                              setRow({ ...row, allowedMenus: next });
-                            }}
+                            checked
+                            disabled
+                            readOnly
                             className="h-3.5 w-3.5"
                           />
                           <span className="truncate">{it.label}</span>
