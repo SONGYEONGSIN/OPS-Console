@@ -74,7 +74,12 @@ export function ProjectView({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     projectsWithTasks[0]?.project.id ?? null,
   );
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  // 두 ListPattern을 분리 추적 — 각 ListPattern은 자체 drawerPadding이 있어서
+  // outer 통합 padding과 누적되면 컬럼이 wrap된다 (테이블이 너무 좁아짐).
+  // 선택된 ListPattern은 자체 drawerPadding만 / 다른 영역만 outer padding 적용.
+  const [projectInspectorOpen, setProjectInspectorOpen] = useState(false);
+  const [taskInspectorOpen, setTaskInspectorOpen] = useState(false);
+  const anyInspectorOpen = projectInspectorOpen || taskInspectorOpen;
 
   const projectRows: ListRow[] = projectsWithTasks.map((pwt) =>
     projectToListRow(pwt.project, pwt.tasks),
@@ -139,16 +144,22 @@ export function ProjectView({
   }
 
   return (
-    <section
-      className={`space-y-7 p-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-        inspectorOpen ? "md:pr-[340px]" : ""
-      }`}
-    >
-      <div className="border-b border-line pb-7">
+    <section className="space-y-7 p-7">
+      <div
+        className={`border-b border-line pb-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          anyInspectorOpen ? "md:pr-[340px]" : ""
+        }`}
+      >
         <GanttChart items={ganttItems} />
       </div>
 
-      <div>
+      {/* 프로젝트 영역 — 자체 drawerPadding은 ListPattern 내부가 처리.
+          하위 업무 인스펙터 열림 시에만 외부 padding으로 가려짐 방지. */}
+      <div
+        className={`transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+          taskInspectorOpen ? "md:pr-[340px]" : ""
+        }`}
+      >
         <header className="mb-3">
           <h3 className="text-base font-bold text-ink">프로젝트</h3>
           <p className="text-xs text-muted">
@@ -163,7 +174,7 @@ export function ProjectView({
           createLabel="+ 새 프로젝트"
           readOnly={!canWrite}
           onSelectRow={(row) => setSelectedProjectId(row.id)}
-          onInspectorChange={setInspectorOpen}
+          onInspectorChange={setProjectInspectorOpen}
           onPersist={async (row, isNew) => {
             const r = await onPersistProject(row, isNew);
             if (r.ok && !isNew) setSelectedProjectId(row.id);
@@ -173,7 +184,11 @@ export function ProjectView({
       </div>
 
       {selectedProjectId ? (
-        <div>
+        <div
+          className={`transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+            projectInspectorOpen ? "md:pr-[340px]" : ""
+          }`}
+        >
           <header className="mb-3">
             <h3 className="text-base font-bold text-ink">하위 업무</h3>
             <p className="text-xs text-muted">
@@ -187,7 +202,7 @@ export function ProjectView({
             canCreate={canWrite}
             createLabel="+ 새 하위 업무"
             readOnly={!canWrite}
-            onInspectorChange={setInspectorOpen}
+            onInspectorChange={setTaskInspectorOpen}
             onPersist={async (row, isNew) =>
               onPersistTask(
                 { ...row, projectId: row.projectId ?? selectedProjectId },
