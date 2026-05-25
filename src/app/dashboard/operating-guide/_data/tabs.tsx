@@ -24,6 +24,25 @@ export type OperatingGuideTab = {
 
 export const OPERATING_GUIDE_TABS: OperatingGuideTab[] = [
   {
+    value: "standard-procedure",
+    label: "표준 절차 (SOP)",
+    desc: "단계별 표준 작업 절차",
+    sections: [
+      {
+        heading: "사고 처리 표준 절차",
+        body: "(placeholder) 사고 발생 시 5분 내 표준 대응:\n1. 운영부 공통 채널에 사고 알림 (제목·영향 범위·발생 시각)\n2. assignee 지정 (1차 운영자 + 백업 운영자)\n3. 학교담당자 사전 안내 (정상화 ETA 명시)\n4. OPS-Console 사고 도메인에 case 등록\n5. 정상화 후 30분 내 회고 노트 작성",
+      },
+      {
+        heading: "신규 운영자 첫 주 체크리스트",
+        body: "(placeholder) 입사 5일 내 완료해야 할 항목:\n- Microsoft 365 / SharePoint 권한 발급 확인\n- OPS-Console 계정 + 메뉴 권한 부여\n- 사수와 인수인계 매뉴얼 1독\n- 첫 서비스 1건 옆에서 관찰 (shadowing)\n- 운영 가이드의 '바이브코딩' 탭 학습",
+      },
+      {
+        heading: "결제 이슈 대응 절차",
+        body: "(placeholder) 결제 게이트웨이 장애 또는 결제 실패 보고 시:\n1. 결제사 상태 페이지 확인 (전체 장애 vs 단발 이슈 구분)\n2. 영향 받는 서비스·학교 식별\n3. 학교담당자에 사전 안내 (대기 요청 + 정상화 ETA)\n4. 사고 도메인에 case 등록 (카테고리: 결제)\n5. 결제사와 직접 컨택 (Slack 또는 메일)\n6. 정상화 후 학교담당자 회신 + 회고",
+      },
+    ],
+  },
+  {
     value: "vibe-coding",
     label: "바이브코딩",
     desc: "Claude Code · AI 도구",
@@ -54,25 +73,6 @@ export const OPERATING_GUIDE_TABS: OperatingGuideTab[] = [
       {
         heading: "주간 마감 루틴",
         body: "(placeholder) 매주 금요일 16:00까지 마감 정리:\n- 미수채권 청구 발송 확인\n- 사고 처리 진행 상황 공유\n- 다음 주 오픈 서비스 사전 점검",
-      },
-    ],
-  },
-  {
-    value: "standard-procedure",
-    label: "표준 절차 (SOP)",
-    desc: "단계별 표준 작업 절차",
-    sections: [
-      {
-        heading: "사고 처리 표준 절차",
-        body: "(placeholder) 사고 발생 시 5분 내 표준 대응:\n1. 운영부 공통 채널에 사고 알림 (제목·영향 범위·발생 시각)\n2. assignee 지정 (1차 운영자 + 백업 운영자)\n3. 학교담당자 사전 안내 (정상화 ETA 명시)\n4. OPS-Console 사고 도메인에 case 등록\n5. 정상화 후 30분 내 회고 노트 작성",
-      },
-      {
-        heading: "신규 운영자 첫 주 체크리스트",
-        body: "(placeholder) 입사 5일 내 완료해야 할 항목:\n- Microsoft 365 / SharePoint 권한 발급 확인\n- OPS-Console 계정 + 메뉴 권한 부여\n- 사수와 인수인계 매뉴얼 1독\n- 첫 서비스 1건 옆에서 관찰 (shadowing)\n- 운영 가이드의 '바이브코딩' 탭 학습",
-      },
-      {
-        heading: "결제 이슈 대응 절차",
-        body: "(placeholder) 결제 게이트웨이 장애 또는 결제 실패 보고 시:\n1. 결제사 상태 페이지 확인 (전체 장애 vs 단발 이슈 구분)\n2. 영향 받는 서비스·학교 식별\n3. 학교담당자에 사전 안내 (대기 요청 + 정상화 ETA)\n4. 사고 도메인에 case 등록 (카테고리: 결제)\n5. 결제사와 직접 컨택 (Slack 또는 메일)\n6. 정상화 후 학교담당자 회신 + 회고",
       },
     ],
   },
