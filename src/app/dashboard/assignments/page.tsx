@@ -8,7 +8,11 @@ import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { fetchAssignmentSheet, SHEET_NAMES } from "@/features/assignments/queries";
+import {
+  fetchAssignmentSheet,
+  fetchAssignmentItemMeta,
+  SHEET_NAMES,
+} from "@/features/assignments/queries";
 import {
   parseBaejungList,
   parseSimpleSheet,
@@ -22,7 +26,7 @@ import {
   isMyAssignment,
 } from "./_row-mapper";
 import { AssignmentControls } from "./_components/AssignmentControls";
-import { SheetGrid } from "./_components/SheetGrid";
+import { SharePointPanel } from "./_components/SharePointPanel";
 
 const PAGE_SIZE = 30;
 
@@ -82,15 +86,18 @@ export default async function AssignmentsPage({
   };
 
   if (tab === "duties" || tab === "pricing") {
-    const sheet = await fetchAssignmentSheet(
-      tab === "duties" ? SHEET_NAMES.업무분장 : SHEET_NAMES.가격정책,
-    );
-    const sheetRows = sheet ? Math.max(0, sheet.rowsText.length - 1) : 0;
+    // 업무분장·가격정책 시트는 셀 병합·서식·이미지 복잡도 高 → SharePoint 웹으로 위임.
+    const meta = await fetchAssignmentItemMeta();
+    const tabLabel = tab === "duties" ? "업무분장" : "가격정책";
     return (
       <>
-        {makeHeader(sheetRows)}
+        {makeHeader(0)}
         <PageTabs active={tab} tabs={TABS} />
-        {sheet ? <SheetGrid sheet={sheet} /> : <ErrorBox />}
+        <SharePointPanel
+          tabLabel={tabLabel}
+          webUrl={meta?.webUrl ?? null}
+          lastModified={meta?.lastModifiedDateTime ?? null}
+        />
       </>
     );
   }
