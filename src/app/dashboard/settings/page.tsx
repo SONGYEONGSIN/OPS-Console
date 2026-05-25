@@ -51,6 +51,7 @@ export default async function SettingsPage({
       meta={config.meta}
       headline={config.headline}
       description={config.description}
+      autoRefresh
     />
   );
 
