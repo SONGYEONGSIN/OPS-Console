@@ -25,7 +25,7 @@ import { ProjectView } from "./ProjectView";
 import { getKstWeekStart, getKstWeekDays } from "./_helpers/week-grid";
 import type { ListRow } from "../_components/patterns/ListPattern";
 
-type SearchParams = Promise<{ tab?: string; week?: string }>;
+type SearchParams = Promise<{ tab?: string; week?: string; mine?: string }>;
 
 const KST_TODAY = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Seoul",
@@ -79,7 +79,15 @@ export default async function MyTodoPage({
     activeTab === "weekly" && fetchStart && fetchEnd
       ? await listServicesForCalendar(fetchStart, fetchEnd)
       : [];
-  const services = servicesRaw.map((s) => ({
+  const mineOnly = sp.mine === "true";
+  const myEmail = me?.email ?? "";
+  const servicesFiltered = mineOnly
+    ? servicesRaw.filter(
+        (s) =>
+          s.operator_email === myEmail || s.developer_email === myEmail,
+      )
+    : servicesRaw;
+  const services = servicesFiltered.map((s) => ({
     ...s,
     write_start_at: shiftYmdYear(s.write_start_at, SERVICES_YEAR_OFFSET),
     write_end_at: shiftYmdYear(s.write_end_at, SERVICES_YEAR_OFFSET),

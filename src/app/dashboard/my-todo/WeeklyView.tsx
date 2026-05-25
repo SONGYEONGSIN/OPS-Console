@@ -123,6 +123,13 @@ export function WeeklyView({
     sp.delete("week");
     router.push(`${pathname}?${sp.toString()}`, { scroll: false });
   };
+  const mineOn = searchParams.get("mine") === "true";
+  const handleToggleMine = () => {
+    const sp = new URLSearchParams(searchParams.toString());
+    if (mineOn) sp.delete("mine");
+    else sp.set("mine", "true");
+    router.push(`${pathname}?${sp.toString()}`, { scroll: false });
+  };
 
   const rows: ListRow[] = todos.map(todoToListRow);
 
@@ -155,6 +162,18 @@ export function WeeklyView({
             className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:border-vermilion hover:text-vermilion"
           >
             오늘 주
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleMine}
+            aria-pressed={mineOn}
+            className={`cursor-pointer border px-3 py-1 text-xs ${
+              mineOn
+                ? "border-vermilion bg-vermilion text-cream"
+                : "border-line bg-transparent text-ink hover:border-vermilion hover:text-vermilion"
+            }`}
+          >
+            내 업무
           </button>
         </div>
       </header>
