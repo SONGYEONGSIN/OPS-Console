@@ -16,13 +16,13 @@ const categories: CategoryItem[] = [
 ];
 
 describe("ManualSidebar", () => {
-  it("전체 + 모든 카테고리 라벨 노출", () => {
+  it("전체 + 모든 카테고리 라벨 노출 (desc 우선, 없으면 label fallback)", () => {
     render(<ManualSidebar totalCount={89} categories={categories} />);
     expect(screen.getByText("전체")).toBeInTheDocument();
-    expect(screen.getByText("폴더")).toBeInTheDocument();
-    expect(screen.getByText("A")).toBeInTheDocument();
-    expect(screen.getByText("I")).toBeInTheDocument();
-    expect(screen.getByText("기타")).toBeInTheDocument();
+    expect(screen.getByText("폴더")).toBeInTheDocument(); // desc null → label
+    expect(screen.getByText("원서접수")).toBeInTheDocument(); // desc 우선
+    expect(screen.getByText("영국문화원 · 홍대미활")).toBeInTheDocument();
+    expect(screen.getByText("기타")).toBeInTheDocument(); // desc null → label
   });
 
   it("각 카테고리 row에 개수 표시", () => {
@@ -32,10 +32,13 @@ describe("ManualSidebar", () => {
     expect(screen.getAllByText("4").length).toBeGreaterThanOrEqual(2); // 폴더 + I
   });
 
-  it("desc 있는 카테고리는 설명 노출 (A → 원서접수)", () => {
+  it("desc 있는 카테고리는 desc로 표시 (알파벳 prefix 제거)", () => {
     render(<ManualSidebar totalCount={89} categories={categories} />);
     expect(screen.getByText("원서접수")).toBeInTheDocument();
     expect(screen.getByText("보증보험")).toBeInTheDocument();
+    // 알파벳 단독 노출 안 됨
+    expect(screen.queryByText("A")).toBeNull();
+    expect(screen.queryByText("B")).toBeNull();
   });
 
   it("sortOrder 기준 정렬 — 폴더 먼저, 기타 끝", () => {
@@ -44,16 +47,16 @@ describe("ManualSidebar", () => {
     );
     const text = (container.textContent ?? "").replace(/\s+/g, "");
     const folderIdx = text.indexOf("폴더");
-    const aIdx = text.indexOf("A원서접수");
+    const aIdx = text.indexOf("원서접수");
     const etcIdx = text.indexOf("기타");
     expect(folderIdx).toBeGreaterThan(-1);
     expect(folderIdx).toBeLessThan(aIdx);
     expect(aIdx).toBeLessThan(etcIdx);
   });
 
-  it("category=A 링크는 /dashboard/manuals?category=A", () => {
+  it("desc로 표시되는 카테고리 클릭 시 /dashboard/manuals?category=A 링크", () => {
     render(<ManualSidebar totalCount={89} categories={categories} />);
-    const aLink = screen.getByText("A").closest("a");
+    const aLink = screen.getByText("원서접수").closest("a");
     expect(aLink).toHaveAttribute("href", "/dashboard/manuals?category=A");
   });
 

@@ -16,7 +16,14 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   G: "모의논술",
   H: "외부 사업",
   I: "영국문화원 · 홍대미활",
+  J: "고객지원팀",
+  K: "아르바이트 채용 · 관리",
+  Y: "패키지 · 관리자 운영",
+  Z: "출력 · 정산 · 인증 관리",
 };
+
+/** 폴더는 명시한 화이트리스트만 노출 (나머지 정렬 보조용 폴더 제외) */
+const FOLDER_WHITELIST = new Set(["내부회계관리제도"]);
 
 type GroupKey = string;
 
@@ -89,7 +96,11 @@ export default async function ManualsPage({
   const qRaw = (sp.q ?? "").trim();
   const qLower = qRaw.toLowerCase();
 
-  const allRows = await listManualChildren({ parentItemId: itemId ?? null });
+  const rawRows = await listManualChildren({ parentItemId: itemId ?? null });
+  // 폴더는 화이트리스트만 통과 (현재 '내부회계관리제도'만). 파일은 모두 통과.
+  const allRows = rawRows.filter(
+    (r) => r.kind === "file" || FOLDER_WHITELIST.has(r.name),
+  );
   const categories = categoryItemsFrom(allRows);
   const inSubfolder = Boolean(itemId);
 

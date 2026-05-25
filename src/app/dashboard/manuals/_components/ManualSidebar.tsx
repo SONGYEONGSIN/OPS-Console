@@ -89,10 +89,7 @@ function CategoryButton({
       }`}
     >
       <span className="text-xs">{active ? "◉" : "·"}</span>
-      <span className="flex-1 truncate">
-        <span>{label}</span>
-        {desc ? <span className="ml-1 text-xs text-muted">{desc}</span> : null}
-      </span>
+      <span className="flex-1 truncate">{desc ?? label}</span>
       <span className="shrink-0 text-xs text-muted">{count}</span>
     </Link>
   );
