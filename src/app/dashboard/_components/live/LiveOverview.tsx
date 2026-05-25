@@ -102,8 +102,8 @@ function LiveOverviewInner({
       </div>
       <div className="px-6 py-6">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-6">
-          {/* Row 1: KPI 3 카드 + 시스템 헬스 */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_1fr]">
+          {/* Row 1: KPI 3 카드 + 시스템 헬스 — items-start로 KPI 카드 stretch 방지 (SystemHealthPanel 키 영향 차단) */}
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
             <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
               <KpiCardLarge
                 label="오픈 예정 서비스"
