@@ -13,6 +13,7 @@ export type EnvSnapshot = {
     contractsItemId: { configured: boolean; preview: string };
     receivablesDriveId: { configured: boolean; preview: string };
     receivablesItemId: { configured: boolean; preview: string };
+    manualItemId: { configured: boolean; preview: string };
   };
   azure: {
     tenantId: { configured: boolean; preview: string };
@@ -69,6 +70,10 @@ export function getEnvSnapshot(): EnvSnapshot {
       receivablesItemId: {
         configured: Boolean(process.env.SHAREPOINT_RECEIVABLES_ITEM_ID),
         preview: preview(process.env.SHAREPOINT_RECEIVABLES_ITEM_ID),
+      },
+      manualItemId: {
+        configured: Boolean(process.env.SHAREPOINT_MANUAL_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_MANUAL_ITEM_ID),
       },
     },
     azure: {
