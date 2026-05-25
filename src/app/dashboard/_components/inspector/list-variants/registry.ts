@@ -90,9 +90,6 @@ import {
   PERFORMANCE_FILTERS,
   blankPerformanceRow,
 } from "./performance/filters";
-import { ManualTable } from "./manual/Table";
-import { ManualView } from "./manual/View";
-import { MANUAL_FILTERS } from "./manual/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -293,11 +290,5 @@ export const variantRegistry = {
     Table: PerformanceTable,
     Filters: PERFORMANCE_FILTERS,
     blank: blankPerformanceRow,
-  },
-  manual: {
-    // read-only — SharePoint UI 위임. EditForm/blank 없음
-    View: ManualView,
-    Table: ManualTable,
-    Filters: MANUAL_FILTERS,
   },
 } as const satisfies Record<Variant, RegistryEntry>;
