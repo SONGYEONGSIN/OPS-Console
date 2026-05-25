@@ -62,7 +62,8 @@ function headingFor(category: string, items: CategoryItem[]): string {
   if (category === "all") return "전체";
   const item = items.find((c) => c.value === category);
   if (!item) return category;
-  return item.desc ? `${item.label} — ${item.desc}` : item.label;
+  // 알파벳 prefix 제거 — desc 우선, 없으면 label fallback (폴더/기타)
+  return item.desc ?? item.label;
 }
 
 function hintFor(category: string, items: CategoryItem[], total: number): string {
