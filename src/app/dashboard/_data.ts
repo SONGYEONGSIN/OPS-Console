@@ -354,7 +354,7 @@ export const sidebarSections: SbSection[] = [
         kind: "item",
         ico: "§",
         label: "운영 매뉴얼",
-        slug: "manual",
+        slug: "manuals",
         pattern: "list",
       },
       {

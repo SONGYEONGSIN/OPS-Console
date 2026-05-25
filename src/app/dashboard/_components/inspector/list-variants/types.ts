@@ -25,7 +25,8 @@ export type Variant =
   | "assignments"
   | "worklog"
   | "data-request"
-  | "performance";
+  | "performance"
+  | "manual";
 
 export type ViewProps = {
   row: ListRow;

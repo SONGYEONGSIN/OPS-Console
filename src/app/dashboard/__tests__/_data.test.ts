@@ -15,7 +15,7 @@ const ALL_SLUGS = [
   "worklog", "outcomes", "reports",
   "ai-insight", "ai-assistant", "my-ai-work", "ai-tips",
   // 매뉴얼 · 가이드
-  "manual", "sop", "vibe-coding", "meetings", "statements", "faq",
+  "manuals", "sop", "vibe-coding", "meetings", "statements", "faq",
   // 관리
   "team", "settings", "onboarding", "feedback", "notices",
 ];
