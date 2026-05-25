@@ -127,6 +127,36 @@ async function countTable(
   return count ?? 0;
 }
 
+/** services는 raw 데이터가 -1년 (2025) 기준이라 표시 기간을 -1년 shift해서 query */
+function shiftYmdYear(ymd: string, delta: number): string {
+  const m = /^(\d{4})(.*)$/.exec(ymd);
+  if (!m) return ymd;
+  return `${Number(m[1]) + delta}${m[2]}`;
+}
+
+function shiftRangeYear(range: PeriodRange, delta: number): PeriodRange {
+  return {
+    startYmd: shiftYmdYear(range.startYmd, delta),
+    endYmd: shiftYmdYear(range.endYmd, delta),
+  };
+}
+
+/** Date 컬럼(timestamp 아님) 카운트 — incidents.occurred_date 등 */
+async function countTableByDate(
+  admin: AdminClient,
+  table: string,
+  field: string,
+  range: PeriodRange,
+): Promise<number> {
+  const { count, error } = await admin
+    .from(table)
+    .select("*", { count: "exact", head: true })
+    .gte(field, range.startYmd)
+    .lte(field, range.endYmd);
+  if (error) return 0;
+  return count ?? 0;
+}
+
 async function countMailSent(
   admin: AdminClient,
   range: PeriodRange,
@@ -228,6 +258,10 @@ export async function getReportKpis(
   const prevRange = getPrevPeriodRange(period);
   const admin = createAdminClient();
 
+  // services raw 데이터는 -1년 기준 (CLAUDE.md 명시) — query range 도 -1년 shift
+  const svcRange = shiftRangeYear(range, -1);
+  const svcPrevRange = shiftRangeYear(prevRange, -1);
+
   // Supabase 도메인 6 — 현재 + 전 기간 병렬
   const [
     svcNow,
@@ -245,10 +279,11 @@ export async function getReportKpis(
     contractNow,
     rcvNow,
   ] = await Promise.all([
-    countTable(admin, "services", "write_start_at", range),
-    countTable(admin, "services", "write_start_at", prevRange),
-    countTable(admin, "incidents", "created_at", range),
-    countTable(admin, "incidents", "created_at", prevRange),
+    countTable(admin, "services", "write_start_at", svcRange),
+    countTable(admin, "services", "write_start_at", svcPrevRange),
+    // incidents는 occurred_date (실제 사고 발생일, date 타입) — created_at은 import 시점
+    countTableByDate(admin, "incidents", "occurred_date", range),
+    countTableByDate(admin, "incidents", "occurred_date", prevRange),
     countTable(admin, "handover_progress", "created_at", range),
     countTable(admin, "handover_progress", "created_at", prevRange),
     countTable(admin, "backup_requests", "created_at", range),
