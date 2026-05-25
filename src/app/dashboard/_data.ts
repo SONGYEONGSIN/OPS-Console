@@ -362,7 +362,7 @@ export const sidebarSections: SbSection[] = [
         ico: "⌘",
         label: "운영 가이드",
         count: "",
-        slug: "vibe-coding",
+        slug: "operating-guide",
         pattern: "list",
       },
       {
