@@ -6,6 +6,7 @@ import { listMyTodos } from "@/features/todos/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
+import { listPosts } from "@/features/posts/queries";
 import {
   receivablesToListRow,
   isReceivablesDataRow,
@@ -91,6 +92,7 @@ function isWithinRecentDays(
  * 5) 백업 요청: requester OR substitute = me, D-3=urgent / D-14=review
  * 6) 계약: operator = me.displayName, 미체결 review (sheet — 시점 필드 없음)
  * 7) 미수채권: owner = me.displayName, active review (sheet — 시점 필드 없음)
+ * 8) 공지사항: 전체 공유 (본인 필터 없음), status !== approved (urgent → urgent, 그 외 review)
  *
  * urgent → review → ok 순 정렬, 최대 30건.
  */
@@ -109,6 +111,7 @@ export async function getOpsAlerts(
     backupsRes,
     contractsRes,
     receivablesSheet,
+    notices,
   ] = await Promise.all([
     listIncidents({ pageSize: 200 }),
     listHandoverProgress({ toEmail: meEmail }),
@@ -117,6 +120,7 @@ export async function getOpsAlerts(
     listBackupRequests({ pageSize: 1000 }),
     listContracts().catch(() => ({ rows: [], total: 0 })),
     fetchReceivablesSheet().catch(() => null),
+    listPosts("notice"),
   ]);
 
   const alerts: OpsAlert[] = [];
@@ -255,6 +259,22 @@ export async function getOpsAlerts(
         href: "/dashboard/receivables",
       });
     }
+  }
+
+  // 8) 공지사항 — 전체 공유 (본인 필터 없음), approved 종료 제외
+  let countNotice = 0;
+  for (const n of notices) {
+    if (countNotice >= MAX_PER_CATEGORY) break;
+    if (n.status === "approved") continue;
+    countNotice++;
+    alerts.push({
+      id: `notice-${n.id}`,
+      tone: n.status === "urgent" ? "urgent" : "review",
+      category: "공지",
+      label: n.title,
+      time: hm(n.created_at),
+      href: "/dashboard/notices",
+    });
   }
 
   // urgent → review → ok 순
