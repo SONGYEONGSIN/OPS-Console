@@ -139,12 +139,12 @@ export function ProjectView({
   }
 
   return (
-    <section className="space-y-7 p-7">
-      <div
-        className={`border-b border-line pb-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
-          inspectorOpen ? "md:pr-[340px]" : ""
-        }`}
-      >
+    <section
+      className={`space-y-7 p-7 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+        inspectorOpen ? "md:pr-[340px]" : ""
+      }`}
+    >
+      <div className="border-b border-line pb-7">
         <GanttChart items={ganttItems} />
       </div>
 
