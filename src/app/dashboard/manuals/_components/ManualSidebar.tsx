@@ -21,10 +21,9 @@ type Props = {
 };
 
 /**
- * 매뉴얼 좌측 카테고리 트리.
- * - "전체" + 폴더 그룹 + A~I 카테고리 + 기타
- * - URL ?category= 로 선택 상태 관리. 미지정 시 "전체"
- * - 현재 선택 row는 좌측 vermilion border + bg-washi-raised
+ * 매뉴얼 좌측 카테고리 nav.
+ * 디자인은 /dashboard/settings 의 SettingsClient nav와 동일 톤 — vermilion 강조.
+ * URL ?category= 로 선택 상태 관리. 미지정 시 "전체".
  */
 export function ManualSidebar({ totalCount, categories }: Props) {
   const pathname = usePathname();
@@ -43,18 +42,17 @@ export function ManualSidebar({ totalCount, categories }: Props) {
   return (
     <nav
       aria-label="매뉴얼 카테고리"
-      className="flex w-[220px] shrink-0 flex-col gap-1 border-r border-line-soft bg-washi p-3 text-sm"
+      className="flex flex-col gap-1 border-r border-line pr-4 max-md:flex-row max-md:overflow-x-auto max-md:border-r-0 max-md:border-b max-md:pb-3 max-md:pr-0"
     >
-      <CategoryRow
+      <CategoryButton
         href={hrefFor("all")}
         active={currentCategory === "all"}
         label="전체"
         desc={null}
         count={totalCount}
       />
-      <div className="my-2 h-px bg-line-soft" />
       {sorted.map((c) => (
-        <CategoryRow
+        <CategoryButton
           key={c.value}
           href={hrefFor(c.value)}
           active={currentCategory === c.value}
@@ -67,7 +65,7 @@ export function ManualSidebar({ totalCount, categories }: Props) {
   );
 }
 
-function CategoryRow({
+function CategoryButton({
   href,
   active,
   label,
@@ -83,17 +81,19 @@ function CategoryRow({
   return (
     <Link
       href={href}
-      className={`flex items-center justify-between rounded-sm px-2 py-1.5 transition-colors ${
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-2 border-l-2 px-3 py-2 text-left text-sm transition-colors max-md:border-l-0 max-md:border-b-2 max-md:px-4 ${
         active
-          ? "border-l-2 border-vermilion bg-washi-raised font-semibold text-ink"
-          : "border-l-2 border-transparent text-ink-soft hover:bg-washi-raised hover:text-ink"
+          ? "border-vermilion bg-vermilion/10 font-medium text-vermilion"
+          : "border-transparent text-ink hover:bg-line-soft"
       }`}
     >
-      <span className="truncate">
-        <span className="font-medium">{label}</span>
+      <span className="text-xs">{active ? "◉" : "·"}</span>
+      <span className="flex-1 truncate">
+        <span>{label}</span>
         {desc ? <span className="ml-1 text-xs text-muted">{desc}</span> : null}
       </span>
-      <span className="ml-2 shrink-0 text-xs text-muted">{count}</span>
+      <span className="shrink-0 text-xs text-muted">{count}</span>
     </Link>
   );
 }

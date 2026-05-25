@@ -34,15 +34,16 @@ function folder(over: Partial<ManualRow> = {}): ManualRow {
 }
 
 describe("ManualList", () => {
-  it("헤더 카테고리 이름 + 개수 표시", () => {
+  it("헤더 카테고리 이름 + hint 표시", () => {
     render(
       <ManualList
         heading="A — 원서접수"
+        hint="2개 매뉴얼"
         rows={[file({ id: "F1" }), file({ id: "F2", name: "ABC.docx" })]}
       />,
     );
     expect(screen.getByText("A — 원서접수")).toBeInTheDocument();
-    expect(screen.getByText("(2)")).toBeInTheDocument();
+    expect(screen.getByText("2개 매뉴얼")).toBeInTheDocument();
   });
 
   it("빈 rows → '이 카테고리에 매뉴얼 없음'", () => {

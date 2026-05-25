@@ -3,6 +3,8 @@ import type { ManualRow } from "@/features/manuals/schemas";
 type Props = {
   /** 헤더 텍스트 (예: "A — 원서접수" / "전체" / "폴더") */
   heading: string;
+  /** 헤더 보조 hint (예: "15개 매뉴얼") */
+  hint?: string;
   rows: ManualRow[];
 };
 
@@ -23,17 +25,15 @@ function formatSize(bytes?: number | null): string {
 }
 
 /**
- * 매뉴얼 우측 파일 리스트.
- * - 헤더에 카테고리 이름 + 개수
- * - 각 row는 SharePoint 웹 URL <a target="_blank"> 직접 링크
- * - 폴더 row는 ▦ 아이콘, 파일은 § 아이콘
+ * 매뉴얼 우측 패널 — /dashboard/settings 의 Panel 톤과 동일 (PanelHeader + 구분선 행).
+ * 각 행은 SharePoint 웹 URL <a target="_blank"> 직접 링크.
  */
-export function ManualList({ heading, rows }: Props) {
+export function ManualList({ heading, hint, rows }: Props) {
   return (
-    <section className="flex-1 px-7 py-4">
-      <header className="mb-3 flex items-baseline gap-2 border-b border-line pb-2">
-        <h2 className="text-base font-semibold text-ink">{heading}</h2>
-        <span className="text-sm text-muted">({rows.length})</span>
+    <div className="flex flex-col gap-4 overflow-y-auto">
+      <header className="mb-2">
+        <h3 className="text-xl font-semibold tracking-[-0.02em]">{heading}</h3>
+        {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
       </header>
 
       {rows.length === 0 ? (
@@ -53,16 +53,18 @@ export function ManualList({ heading, rows }: Props) {
                   href={row.webUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-washi-raised"
+                  className="grid grid-cols-[24px_1fr_80px_60px] items-center gap-3 px-1 py-2 text-sm hover:bg-line-soft"
                 >
-                  <span className="text-muted">{isFolder ? "▦" : "§"}</span>
-                  <span className="flex-1 truncate text-sm font-medium text-ink">
+                  <span className="text-xs text-muted">
+                    {isFolder ? "▦" : "§"}
+                  </span>
+                  <span className="truncate font-medium text-ink">
                     {row.name}
                   </span>
-                  <span className="w-20 shrink-0 text-right text-xs text-muted">
+                  <span className="text-right text-xs text-muted">
                     {formatSize(row.size)}
                   </span>
-                  <span className="w-16 shrink-0 text-right text-xs text-muted">
+                  <span className="text-right text-xs text-muted">
                     {formatShortDate(row.lastModifiedDateTime)}
                   </span>
                 </a>
@@ -71,6 +73,6 @@ export function ManualList({ heading, rows }: Props) {
           })}
         </ul>
       )}
-    </section>
+    </div>
   );
 }
