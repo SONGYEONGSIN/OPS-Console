@@ -1,6 +1,6 @@
 ---
 plan_id: 20260512-171323-listpattern-inspector-refactor
-status: in_progress
+status: completed
 created: 2026-05-12T08:13:23Z
 hard_gate: full
 source: brainstorm:20260512-170727-listpattern-inspector-refactor.md

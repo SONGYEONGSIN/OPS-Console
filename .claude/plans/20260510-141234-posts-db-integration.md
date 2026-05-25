@@ -1,6 +1,6 @@
 ---
 plan_id: 20260510-141234-posts-db-integration
-status: in_progress
+status: completed
 created: 2026-05-10T14:12:34Z
 hard_gate: full
 source: brainstorm:.claude/memory/brainstorms/20260510-140732-posts-db-integration.md

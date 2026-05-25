@@ -1,6 +1,6 @@
 ---
 plan_id: 20260512-011125-insight-youtube-cards
-status: in_progress
+status: completed
 created: 2026-05-12T01:11:25Z
 hard_gate: brief
 source: .claude/memory/brainstorms/20260512-070000-insight-youtube-cards.md

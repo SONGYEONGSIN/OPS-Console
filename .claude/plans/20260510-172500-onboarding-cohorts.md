@@ -1,6 +1,6 @@
 ---
 plan_id: 20260510-172500-onboarding-cohorts
-status: in_progress
+status: completed
 created: 2026-05-10T17:25:00Z
 hard_gate: brief
 source: brainstorm:.claude/memory/brainstorms/20260510-172000-onboarding-cohorts.md

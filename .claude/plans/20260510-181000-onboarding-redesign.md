@@ -1,6 +1,6 @@
 ---
 plan_id: 20260510-181000-onboarding-redesign
-status: in_progress
+status: completed
 created: 2026-05-10T18:10:00Z
 hard_gate: brief
 source: brainstorm:.claude/memory/brainstorms/20260510-180500-onboarding-redesign.md
