@@ -1,6 +1,7 @@
 import "server-only";
 import type { AutomationJob } from "./types";
 import { runInsightsCollect } from "./jobs/insights-collect";
+import { runReceivablesMailOperator } from "./jobs/receivables-mail-operator";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -11,6 +12,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "매일 08:00 자동 (GitHub Actions)",
     cooldownMinutes: 60,
     run: runInsightsCollect,
+  },
+  {
+    id: "receivables-mail-operator",
+    label: "운영자 미수채권 알림",
+    description:
+      "운영자별 미수채권(경과 10일 이상)을 운영자 본인 메일박스로 발송합니다. MAIL_DRY_RUN=true 시 발송 없이 이력만 적재.",
+    scheduleInfo: "평일 10:00 자동 (GitHub Actions)",
+    cooldownMinutes: 60,
+    run: runReceivablesMailOperator,
   },
 ];
 
