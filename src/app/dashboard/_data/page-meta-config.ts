@@ -19,6 +19,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "분석 · AI", title: "성과 리포트" },
     description: "8단계 평가 워크플로우로 목표·계획·평가를 한곳에서 관리합니다.",
   },
+  reports: {
+    headline: { accent: "분석 · 보고", title: "분석보고서" },
+    description:
+      "기간별 운영 KPI 8 카드(서비스·사고·계약·미수채권·인수인계·백업·메일·워크로그) + 저장된 리포트 목록.",
+  },
   manuals: {
     headline: { accent: "매뉴얼 · 가이드", title: "운영 매뉴얼" },
     description:
