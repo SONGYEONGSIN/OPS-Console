@@ -10,6 +10,8 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/auth/callback",
   "/api/data-requests/dispatch",
+  /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
+  "/r",
 ];
 
 export async function proxy(request: NextRequest) {

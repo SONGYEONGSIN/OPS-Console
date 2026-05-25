@@ -61,3 +61,27 @@ export const kpiSnapshotSchema = z.object({
   kpis: z.array(kpiItemSchema),
 });
 export type KpiSnapshot = z.infer<typeof kpiSnapshotSchema>;
+
+/**
+ * DB에 저장된 리포트 row.
+ * KPI 스냅샷을 JSON으로 보관 — 생성 시점 데이터 그대로 영속.
+ */
+export const reportRowSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().min(1),
+  period: reportPeriodSchema,
+  periodStart: z.string(), // YYYY-MM-DD
+  periodEnd: z.string(),
+  kpis: z.array(kpiItemSchema),
+  status: z.enum(["draft", "completed"]),
+  shareToken: z.string().nullable(),
+  createdBy: z.string(), // email
+  createdAt: z.string(),
+});
+export type ReportRow = z.infer<typeof reportRowSchema>;
+
+export const reportCreateSchema = z.object({
+  title: z.string().min(1).max(200),
+  period: reportPeriodSchema,
+});
+export type ReportCreateInput = z.infer<typeof reportCreateSchema>;

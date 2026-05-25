@@ -3,7 +3,13 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
-import type { ReportPeriod, KpiItem, KpiSnapshot } from "./schemas";
+import type {
+  ReportPeriod,
+  KpiItem,
+  KpiSnapshot,
+  ReportRow,
+} from "./schemas";
+import { reportRowSchema } from "./schemas";
 
 const KST_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Seoul",
@@ -314,4 +320,78 @@ export async function getReportKpis(
     periodRange: range,
     kpis,
   };
+}
+
+/* ──────────────────── Persisted reports ──────────────────── */
+
+type DbReportRow = {
+  id: string;
+  title: string;
+  period: string;
+  period_start: string;
+  period_end: string;
+  kpis: unknown;
+  status: string;
+  share_token: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+function dbRowToReportRow(row: DbReportRow): ReportRow | null {
+  const parsed = reportRowSchema.safeParse({
+    id: row.id,
+    title: row.title,
+    period: row.period,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    kpis: row.kpis,
+    status: row.status,
+    shareToken: row.share_token,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+export async function listReports(): Promise<ReportRow[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("reports")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("[reports] listReports fail:", error.message);
+    return [];
+  }
+  const rows: ReportRow[] = [];
+  for (const r of (data ?? []) as DbReportRow[]) {
+    const mapped = dbRowToReportRow(r);
+    if (mapped) rows.push(mapped);
+  }
+  return rows;
+}
+
+export async function getReportById(id: string): Promise<ReportRow | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("reports")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return dbRowToReportRow(data as DbReportRow);
+}
+
+export async function getReportByShareToken(
+  token: string,
+): Promise<ReportRow | null> {
+  if (!token) return null;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("reports")
+    .select("*")
+    .eq("share_token", token)
+    .maybeSingle();
+  if (error || !data) return null;
+  return dbRowToReportRow(data as DbReportRow);
 }

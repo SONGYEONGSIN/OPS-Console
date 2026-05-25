@@ -2,7 +2,7 @@ import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { getReportKpis } from "@/features/reports/queries";
+import { getReportKpis, listReports } from "@/features/reports/queries";
 import {
   reportPeriodSchema,
   type ReportPeriod,
@@ -28,7 +28,10 @@ export default async function ReportsPage({
 
   const sp = await searchParams;
   const period = pickPeriod(sp.period);
-  const snap = await getReportKpis(period);
+  const [snap, savedReports] = await Promise.all([
+    getReportKpis(period),
+    listReports(),
+  ]);
 
   const pathname = `/dashboard/${slug}`;
   const config = resolvePageMeta(slug, meta);
@@ -59,7 +62,7 @@ export default async function ReportsPage({
           ))}
         </section>
 
-        <ReportsList />
+        <ReportsList reports={savedReports} />
       </section>
     </div>
   );
