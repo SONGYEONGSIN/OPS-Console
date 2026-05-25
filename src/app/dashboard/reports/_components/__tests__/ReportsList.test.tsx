@@ -1,22 +1,48 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ReportsList } from "../ReportsList";
+import type { ReportRow } from "@/features/reports/schemas";
 
-describe("ReportsList — placeholder", () => {
-  it("헤더 '저장된 리포트' + '+ 새 리포트' 버튼 표시", () => {
-    render(<ReportsList />);
-    expect(screen.getByText(/저장된 리포트/)).toBeInTheDocument();
-    expect(screen.getByText(/새 리포트/)).toBeInTheDocument();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+vi.mock("@/features/reports/actions", () => ({
+  createReport: vi.fn(),
+}));
+
+const sample: ReportRow = {
+  id: "11111111-1111-1111-1111-111111111111",
+  title: "2026 5월 운영 리포트",
+  period: "this-month",
+  periodStart: "2026-05-01",
+  periodEnd: "2026-05-31",
+  kpis: [],
+  status: "completed",
+  shareToken: null,
+  createdBy: "ys1114@x.com",
+  createdAt: "2026-05-31T10:00:00Z",
+};
+
+describe("ReportsList", () => {
+  it("빈 reports → 안내문구 + '+ 새 리포트' 버튼", () => {
+    render(<ReportsList reports={[]} />);
+    expect(screen.getByText(/저장된 리포트가 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText("+ 새 리포트")).toBeInTheDocument();
   });
 
-  it("3 mock 리포트 항목 렌더", () => {
-    render(<ReportsList />);
-    expect(screen.getAllByRole("listitem").length).toBeGreaterThanOrEqual(3);
+  it("리포트 항목 렌더 (제목·기간·날짜·상태)", () => {
+    render(<ReportsList reports={[sample]} />);
+    expect(screen.getByText(/2026 5월 운영 리포트/)).toBeInTheDocument();
+    expect(screen.getByText("2026-05-01 ~ 2026-05-31")).toBeInTheDocument();
+    expect(screen.getByText(/완료/)).toBeInTheDocument();
   });
 
-  it("'+ 새 리포트' 버튼은 disabled (1차 placeholder)", () => {
-    render(<ReportsList />);
-    const btn = screen.getByText(/새 리포트/).closest("button");
-    expect(btn).toBeDisabled();
+  it("항목 클릭 → /dashboard/reports/[id] 링크", () => {
+    render(<ReportsList reports={[sample]} />);
+    const link = screen.getByText(/2026 5월/).closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      `/dashboard/reports/${sample.id}`,
+    );
   });
 });
