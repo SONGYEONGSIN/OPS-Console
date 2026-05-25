@@ -71,7 +71,7 @@ export function SystemHealthPanel() {
       title="시스템 게이트웨이 상태"
       titleRight={<HealthLed variant="vermilion" />}
     >
-      <ul className="scrollbar-hide flex max-h-[260px] flex-1 flex-col gap-3 overflow-y-auto pr-1">
+      <ul className="flex flex-1 flex-col justify-around gap-3">
         <li className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-xs font-semibold text-ink">
             <HealthLed variant={probeVariant(snap?.youtube)} />
