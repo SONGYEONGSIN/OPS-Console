@@ -25,13 +25,53 @@ function mockAdminClient(opts: {
   receivables?: { sent: number; failed: number };
   feedback?: { sent: number; failed: number };
   backup?: { sent: number; failed: number };
+  /** Supabase ping용 — operators select 결과 (null이면 에러) */
+  operatorsError?: string | null;
+  /** insight_videos 24h count + 최신 collected_at */
+  insightVideos?: { count24h: number; latestCollectedAt: string | null };
 }) {
   const counts: Record<string, { sent: number; failed: number }> = {
     receivables_mail_sends: opts.receivables ?? { sent: 0, failed: 0 },
     feedback_mail_sends: opts.feedback ?? { sent: 0, failed: 0 },
     backup_request_mail_sends: opts.backup ?? { sent: 0, failed: 0 },
   };
+  const insight = opts.insightVideos ?? { count24h: 0, latestCollectedAt: null };
   const from = vi.fn((table: string) => {
+    if (table === "operators") {
+      return {
+        select: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue({
+          data: opts.operatorsError ? null : [{ id: "x" }],
+          error: opts.operatorsError ? { message: opts.operatorsError } : null,
+        }),
+      };
+    }
+    if (table === "insight_videos") {
+      return {
+        select: vi.fn().mockImplementation((_cols: string, options?: { head?: boolean; count?: string }) => {
+          if (options?.head) {
+            // count 24h
+            return {
+              gte: vi.fn().mockResolvedValue({
+                count: insight.count24h,
+                error: null,
+              }),
+            };
+          }
+          // order/limit chain for latest collected_at
+          return {
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({
+              data: insight.latestCollectedAt
+                ? [{ collected_at: insight.latestCollectedAt }]
+                : [],
+              error: null,
+            }),
+          };
+        }),
+      };
+    }
+    // mail_sends 3 테이블
     const c = counts[table];
     return {
       select: vi.fn().mockReturnThis(),
@@ -175,6 +215,94 @@ describe("getSystemHealth — Microsoft SSO", () => {
     const r = await getSystemHealth();
     expect(r.sso.ok).toBe(false);
     expect(r.sso.detail).toMatch(/500|HTTP/);
+  });
+});
+
+describe("getSystemHealth — Supabase Connection (ping)", () => {
+  it("operators select 성공 → supabase.ok=true + ms 표시", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    mockAdminClient({});
+    const r = await getSystemHealth();
+    expect(r.supabase.ok).toBe(true);
+    expect(r.supabase.detail).toMatch(/ms$/);
+  });
+
+  it("operators select error → supabase.ok=false", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    mockAdminClient({ operatorsError: "connection refused" });
+    const r = await getSystemHealth();
+    expect(r.supabase.ok).toBe(false);
+    expect(r.supabase.detail).toContain("connection");
+  });
+});
+
+describe("getSystemHealth — Cron (insight_videos 최신)", () => {
+  it("24h 이내 수집 → cron.ok=true + N시간 전", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    const latest = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); // 3h 전
+    mockAdminClient({
+      insightVideos: { count24h: 5, latestCollectedAt: latest },
+    });
+    const r = await getSystemHealth();
+    expect(r.cron.ok).toBe(true);
+    expect(r.cron.detail).toMatch(/3.*시간/);
+  });
+
+  it("36h 초과 지연 → cron.ok=false", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    const stale = new Date(Date.now() - 50 * 60 * 60 * 1000).toISOString();
+    mockAdminClient({
+      insightVideos: { count24h: 0, latestCollectedAt: stale },
+    });
+    const r = await getSystemHealth();
+    expect(r.cron.ok).toBe(false);
+    expect(r.cron.detail).toMatch(/지연|시간/);
+  });
+
+  it("수집 이력 없음 → cron.ok=false", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    mockAdminClient({
+      insightVideos: { count24h: 0, latestCollectedAt: null },
+    });
+    const r = await getSystemHealth();
+    expect(r.cron.ok).toBe(false);
+  });
+});
+
+describe("getSystemHealth — YouTube quota (추정)", () => {
+  it("24h 수집 N건 → search.list 호출 추정값 표시", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
+    );
+    mockAdminClient({
+      insightVideos: { count24h: 12, latestCollectedAt: new Date().toISOString() },
+    });
+    const r = await getSystemHealth();
+    expect(r.youtube.ok).toBe(true);
+    // search.list 1회 = 100 units, 7 키워드 = 700/day
+    expect(r.youtube.detail).toMatch(/700|units|quota/i);
   });
 });
 

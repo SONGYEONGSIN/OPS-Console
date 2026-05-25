@@ -10,33 +10,17 @@ beforeEach(() => {
   );
 });
 
-describe("SystemHealthPanel — 정적 3 항목 (기존)", () => {
-  it("기존 3 항목 + 값 렌더", () => {
+describe("SystemHealthPanel — 7 항목 라벨", () => {
+  it("7 헬스 항목 모두 라벨 렌더", () => {
     render(<SystemHealthPanel />);
     expect(screen.getByText("시스템 게이트웨이 상태")).toBeInTheDocument();
     expect(screen.getByText("YouTube API Quota")).toBeInTheDocument();
     expect(screen.getByText("Supabase Connection")).toBeInTheDocument();
     expect(screen.getByText("Cron 자동화 엔진")).toBeInTheDocument();
-    expect(screen.getByText(/67\.2%/)).toBeInTheDocument();
-    expect(screen.getByText(/12ms/)).toBeInTheDocument();
-    expect(screen.getByText("정상 가동")).toBeInTheDocument();
-  });
-
-  it("Cron LED — vermilion pulse, flicker 없음 (항상)", () => {
-    const { container } = render(<SystemHealthPanel />);
-    const leds = container.querySelectorAll("[data-health-led]");
-    const cronLed = leds[leds.length - 1] as HTMLElement;
-    expect(cronLed.className).toMatch(/bg-vermilion/);
-    expect(cronLed.className).not.toMatch(/animate-\[led-flicker_/);
-    expect(cronLed.className).toMatch(/animate-\[led-pulse_/);
-  });
-
-  it("모든 LED가 vermilion variant", () => {
-    const { container } = render(<SystemHealthPanel />);
-    const leds = container.querySelectorAll("[data-health-led]");
-    leds.forEach((led) => {
-      expect((led as HTMLElement).className).toMatch(/bg-vermilion/);
-    });
+    expect(screen.getByText("Microsoft Graph API")).toBeInTheDocument();
+    expect(screen.getByText("SharePoint 드라이브")).toBeInTheDocument();
+    expect(screen.getByText("Microsoft SSO")).toBeInTheDocument();
+    expect(screen.getByText("메일 발송률 (24h)")).toBeInTheDocument();
   });
 
   it("SideBox border-ink 클래스 포함", () => {
@@ -56,20 +40,17 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
     );
   });
 
-  it("fetch 전: 신규 4 항목은 '측정 중…' 노출 (Graph / SharePoint / SSO / 메일)", () => {
+  it("fetch 전: 7 항목 모두 '측정 중…' 노출", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(() => new Promise(() => {})),
     );
     render(<SystemHealthPanel />);
-    expect(screen.getByText("Microsoft Graph API")).toBeInTheDocument();
-    expect(screen.getByText("SharePoint 드라이브")).toBeInTheDocument();
-    expect(screen.getByText("Microsoft SSO")).toBeInTheDocument();
-    expect(screen.getByText("메일 발송률 (24h)")).toBeInTheDocument();
-    expect(screen.getAllByText(/측정 중/).length).toBeGreaterThanOrEqual(4);
+    // 7 항목 = Youtube/Supabase/Cron/Graph/SharePoint/SSO/Mail
+    expect(screen.getAllByText(/측정 중/).length).toBeGreaterThanOrEqual(7);
   });
 
-  it("fetch 성공 후: 실측값 노출 (graph/sharepoint/sso detail + 메일 성공률)", async () => {
+  it("fetch 성공 후: 7 항목 실측값 노출", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -78,6 +59,9 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
           graph: { ok: true, detail: "토큰 정상" },
           sharepoint: { ok: true, detail: "드라이브 접근 정상" },
           sso: { ok: true, detail: "Azure OAuth 활성" },
+          supabase: { ok: true, detail: "48ms" },
+          cron: { ok: true, detail: "3시간 전" },
+          youtube: { ok: true, detail: "~700 units/day (추정)" },
           mail: { sent24h: 18, failed24h: 2, successRate: 0.9 },
         }),
       }),
@@ -88,6 +72,9 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
     });
     expect(screen.getByText("드라이브 접근 정상")).toBeInTheDocument();
     expect(screen.getByText("Azure OAuth 활성")).toBeInTheDocument();
+    expect(screen.getByText("48ms")).toBeInTheDocument();
+    expect(screen.getByText("3시간 전")).toBeInTheDocument();
+    expect(screen.getByText(/700.*units/)).toBeInTheDocument();
     expect(screen.getByText(/90\.0%/)).toBeInTheDocument();
   });
 
@@ -97,9 +84,12 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          graph: { ok: true, detail: "토큰 정상" },
+          graph: { ok: true, detail: "ok" },
           sharepoint: { ok: true, detail: "ok" },
-          sso: { ok: true, detail: "Azure OAuth 활성" },
+          sso: { ok: true, detail: "ok" },
+          supabase: { ok: true, detail: "10ms" },
+          cron: { ok: true, detail: "1시간 전" },
+          youtube: { ok: true, detail: "ok" },
           mail: { sent24h: 0, failed24h: 0, successRate: null },
         }),
       }),
