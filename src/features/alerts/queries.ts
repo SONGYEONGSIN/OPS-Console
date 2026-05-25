@@ -239,7 +239,8 @@ export async function getOpsAlerts(
     });
   }
 
-  // 7) 미수채권 — 본인 owner(displayName) + active
+  // 7) 미수채권 — 본인 owner(displayName) + active + 학교명/금액 둘 다 있는 row만
+  // label 포맷: "학교명 · 금액", time: "미수금" (사용자 명시 — 노이즈가 큰 내역/일자 대신 핵심 정보만)
   if (receivablesSheet) {
     const allRows = receivablesSheet.rows
       .map((_, i) => receivablesToListRow(receivablesSheet, i))
@@ -249,13 +250,16 @@ export async function getOpsAlerts(
       if (countReceivables >= MAX_PER_CATEGORY) break;
       if (r.owner !== meName) continue;
       if (r.status !== "active") continue;
+      const schoolName = (r.name ?? "").trim();
+      const amount = (r.author ?? "").trim();
+      if (!schoolName || !amount) continue;
       countReceivables++;
       alerts.push({
         id: `receivables-${r.id}`,
         tone: "review",
         category: "미수채권",
-        label: `${r.name} · ${r.body ?? "-"}`,
-        time: r.meta ?? "미입금",
+        label: `${schoolName} · ${amount}`,
+        time: "미수금",
         href: "/dashboard/receivables",
       });
     }
