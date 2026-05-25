@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { findSidebarMeta } from "../_data";
+import { resolvePageMeta } from "../_data/page-meta-derive";
+import { PageHeader } from "../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listManualChildren } from "@/features/manuals/queries";
 import type { ManualRow } from "@/features/manuals/schemas";
@@ -119,32 +121,40 @@ export default async function ManualsPage({
     ? `${allRows.length}개 항목`
     : hintFor(category, categories, allRows.length);
 
+  const config = resolvePageMeta(slug, meta, allRows.length);
+
   return (
-    <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
-      <header className="mb-4">
-        <h2 className="text-xl font-bold text-ink">{meta.label}</h2>
-        <p className="mt-1 text-xs text-muted">
-          SharePoint 운영부/05. 매뉴얼 폴더 — 행 클릭 시 SharePoint 웹으로 이동
-        </p>
-      </header>
+    <div className="flex flex-col">
+      <PageHeader
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+        autoRefresh
+      />
+      <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
+        <header className="mb-4">
+          <h2 className="text-xl font-bold text-ink">{meta.label}</h2>
+        </header>
 
-      {inSubfolder ? (
-        <div className="mb-4 flex items-center gap-3 border-b border-line-soft pb-2 text-sm">
-          <Link href={pathname} className="text-vermilion hover:underline">
-            ← 매뉴얼 루트로
-          </Link>
-          <span className="text-muted">하위 폴더 보기 중</span>
-        </div>
-      ) : null}
-
-      <div className="grid flex-1 min-h-0 grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
         {inSubfolder ? (
-          <div />
-        ) : (
-          <ManualSidebar totalCount={allRows.length} categories={categories} />
-        )}
-        <ManualList heading={heading} hint={hint} rows={filtered} />
-      </div>
-    </section>
+          <div className="mb-4 flex items-center gap-3 border-b border-line-soft pb-2 text-sm">
+            <Link href={pathname} className="text-vermilion hover:underline">
+              ← 매뉴얼 루트로
+            </Link>
+            <span className="text-muted">하위 폴더 보기 중</span>
+          </div>
+        ) : null}
+
+        <div className="grid flex-1 min-h-0 grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
+          {inSubfolder ? (
+            <div />
+          ) : (
+            <ManualSidebar totalCount={allRows.length} categories={categories} />
+          )}
+          <ManualList heading={heading} hint={hint} rows={filtered} />
+        </div>
+      </section>
+    </div>
   );
 }
