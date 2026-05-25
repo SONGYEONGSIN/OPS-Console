@@ -11,7 +11,12 @@ import {
   postUpdateSchema,
   type PostDomain,
   type PostRow,
+  type PostStatus,
 } from "./schemas";
+import {
+  sendFeedbackOwnerNotify,
+  sendFeedbackStatusNotify,
+} from "./mailer";
 
 export type PostActionResult =
   | { ok: true; row: PostRow }
@@ -41,6 +46,18 @@ function canEdit(
 
 function pathFor(domain: PostDomain): string {
   return domain === "notice" ? "/dashboard/notices" : "/dashboard/feedback";
+}
+
+function baseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.FOLIO_BASE_URL ??
+    "http://localhost:3000"
+  );
+}
+
+function isDryRun(): boolean {
+  return process.env.MAIL_DRY_RUN === "true";
 }
 
 export async function createPost(input: unknown): Promise<PostActionResult> {
@@ -80,8 +97,25 @@ export async function createPost(input: unknown): Promise<PostActionResult> {
     .single();
 
   if (error) return { ok: false, error: error.message };
+  const row = data as PostRow;
   revalidatePath(pathFor(parsed.data.domain));
-  return { ok: true, row: data as PostRow };
+
+  if (row.domain === "feedback" && me) {
+    try {
+      await sendFeedbackOwnerNotify({
+        post: row,
+        senderEmail: me.email,
+        senderOperatorId: null,
+        authorName: me.displayName,
+        appUrl: baseUrl(),
+        dryRun: isDryRun(),
+      });
+    } catch (e) {
+      console.error("feedback owner notify failed:", e);
+    }
+  }
+
+  return { ok: true, row };
 }
 
 export async function updatePost(
@@ -99,7 +133,7 @@ export async function updatePost(
   // 권한 분기 — target 글 lookup
   const { data: target } = await supabase
     .from("posts")
-    .select("domain, author_email")
+    .select("domain, author_email, status")
     .eq("id", id)
     .maybeSingle();
   if (!target) return { ok: false, error: "글을 찾을 수 없습니다." };
@@ -122,8 +156,33 @@ export async function updatePost(
     .single();
 
   if (error) return { ok: false, error: error.message };
+  const row = data as PostRow;
   revalidatePath(pathFor(target.domain as PostDomain));
-  return { ok: true, row: data as PostRow };
+
+  const prevStatus = target.status as PostStatus;
+  const nextStatus = parsed.data.status as PostStatus | undefined;
+  if (
+    row.domain === "feedback" &&
+    me &&
+    nextStatus !== undefined &&
+    nextStatus !== prevStatus
+  ) {
+    try {
+      await sendFeedbackStatusNotify({
+        post: row,
+        statusTo: nextStatus,
+        senderEmail: me.email,
+        senderOperatorId: null,
+        changerName: me.displayName,
+        appUrl: baseUrl(),
+        dryRun: isDryRun(),
+      });
+    } catch (e) {
+      console.error("feedback status notify failed:", e);
+    }
+  }
+
+  return { ok: true, row };
 }
 
 export async function deletePost(id: string): Promise<PostActionResult> {
