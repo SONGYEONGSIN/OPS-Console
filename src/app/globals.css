@@ -281,6 +281,17 @@ body::before {
   background: var(--faint) !important;
 }
 
+/* 스크롤바 숨김 — 스크롤 가능 영역인데 시각적으로 깔끔하게 (SystemHealthPanel 등) */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* ═════════════════════════════════════════════════════════
    Animation — LiveIndicator LED pulse + Toast + UI flourishes
    ═════════════════════════════════════════════════════════ */
