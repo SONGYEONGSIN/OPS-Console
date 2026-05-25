@@ -1,6 +1,6 @@
 ---
 plan_id: 20260525-200649-reports-full-features
-status: in_progress
+status: completed
 created: 2026-05-25T20:06:49+09:00
 hard_gate: full
 source: brainstorm:.claude/memory/brainstorms/20260525-193412-reports-menu.md (extended)
