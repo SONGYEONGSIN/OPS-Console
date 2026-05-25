@@ -101,9 +101,11 @@ function LiveOverviewInner({
         <LivePageHeader mine={mine} title={title} />
       </div>
       <div className="px-6 py-6">
-        <div className="mx-auto flex max-w-[1680px] flex-col gap-6">
-          {/* Row 1: KPI 3 카드 + 시스템 헬스 — items-start로 KPI 카드 stretch 방지 (SystemHealthPanel 키 영향 차단) */}
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
+        {/* 좌·우 column 통합 — 우측(SystemHealth + ConsoleStream)이 sticky로 viewport 고정.
+            좌측 컬럼만 페이지 스크롤로 위아래 움직임. */}
+        <div className="mx-auto grid max-w-[1680px] grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
+          {/* 좌측 column: KPI + 서비스 현황 + 필터+테이블 (페이지 스크롤로 움직임) */}
+          <div className="flex flex-col gap-6">
             <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
               <KpiCardLarge
                 label="오픈 예정 서비스"
@@ -139,67 +141,61 @@ function LiveOverviewInner({
                 delayMs={100}
               />
             </section>
-            <SystemHealthPanel />
+            <MetricGroupBox title="서비스 현황" columns={5}>
+              <MetricSubcard
+                label="계약체결"
+                value={metrics.contract.value}
+                desc={metrics.contract.desc}
+                active={metrics.contract.active}
+              />
+              <MetricSubcard
+                label="미수채권"
+                value={metrics.bond.value}
+                desc={metrics.bond.desc}
+                active={metrics.bond.active}
+              />
+              <MetricSubcard
+                label="백업내용"
+                value={metrics.backup.value}
+                desc={metrics.backup.desc}
+              />
+              <MetricSubcard
+                label="인수인계"
+                value={metrics.handover.value}
+                desc={metrics.handover.desc}
+                valueHint="본인 서비스 중 인수인계 내용 작성한 카운팅"
+              />
+              <MetricSubcard
+                label="대학연락처"
+                value={metrics.contacts.value}
+                desc={metrics.contacts.desc}
+              />
+            </MetricGroupBox>
+            <section className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <FilterTabs
+                  active={filter}
+                  counts={counts}
+                  onChange={setFilter}
+                />
+                <span className="text-xs text-ink-muted">
+                  필터링된 결과: {visible.length}건 표시 중
+                </span>
+              </div>
+              <LiveTable
+                items={visible}
+                onSelect={(it) =>
+                  setSelected({ variant: it.variant, row: it.listRow })
+                }
+              />
+            </section>
           </div>
 
-          {/* Row 1 아래: 좌·우 독립 stack (좌측 = 그룹박스→테이블, 우측 = 콘솔).
-              행별 stretch 없이 각 컬럼이 자기 자식들로 채워짐. */}
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
-            {/* 좌측 컬럼: 그룹박스 → 필터+테이블 */}
-            <div className="flex flex-col gap-6">
-              <MetricGroupBox title="서비스 현황" columns={5}>
-                <MetricSubcard
-                  label="계약체결"
-                  value={metrics.contract.value}
-                  desc={metrics.contract.desc}
-                  active={metrics.contract.active}
-                />
-                <MetricSubcard
-                  label="미수채권"
-                  value={metrics.bond.value}
-                  desc={metrics.bond.desc}
-                  active={metrics.bond.active}
-                />
-                <MetricSubcard
-                  label="백업내용"
-                  value={metrics.backup.value}
-                  desc={metrics.backup.desc}
-                />
-                <MetricSubcard
-                  label="인수인계"
-                  value={metrics.handover.value}
-                  desc={metrics.handover.desc}
-                  valueHint="본인 서비스 중 인수인계 내용 작성한 카운팅"
-                />
-                <MetricSubcard
-                  label="대학연락처"
-                  value={metrics.contacts.value}
-                  desc={metrics.contacts.desc}
-                />
-              </MetricGroupBox>
-              <section className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <FilterTabs
-                    active={filter}
-                    counts={counts}
-                    onChange={setFilter}
-                  />
-                  <span className="text-xs text-ink-muted">
-                    필터링된 결과: {visible.length}건 표시 중
-                  </span>
-                </div>
-                <LiveTable
-                  items={visible}
-                  onSelect={(it) =>
-                    setSelected({ variant: it.variant, row: it.listRow })
-                  }
-                />
-              </section>
-            </div>
-            {/* 우측 컬럼: 콘솔 */}
-            <div className="flex flex-col gap-6">
-              <ConsoleStream lines={lines} />
-            </div>
+          {/* 우측 column: SystemHealth + ConsoleStream — sticky로 viewport 고정.
+              합산 키가 viewport 넘으면 column 자체 스크롤(스크롤바 숨김). */}
+          <div className="scrollbar-hide flex flex-col gap-6 lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-104px)] lg:self-start lg:overflow-y-auto">
+            <SystemHealthPanel />
+            <ConsoleStream lines={lines} />
           </div>
         </div>
       </div>
