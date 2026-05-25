@@ -114,6 +114,70 @@ describe("getSystemHealth — sharepoint", () => {
   });
 });
 
+describe("getSystemHealth — Microsoft SSO", () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://sb.test";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon-key";
+  });
+
+  it("external.azure=true → sso.ok=true", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("/auth/v1/settings")) {
+          return {
+            ok: true,
+            json: async () => ({ external: { azure: true, email: true } }),
+          };
+        }
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+    mockAdminClient({});
+    const r = await getSystemHealth();
+    expect(r.sso.ok).toBe(true);
+    expect(r.sso.detail).toMatch(/Azure|활성/);
+  });
+
+  it("external.azure=false → sso.ok=false", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("/auth/v1/settings")) {
+          return {
+            ok: true,
+            json: async () => ({ external: { azure: false } }),
+          };
+        }
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+    mockAdminClient({});
+    const r = await getSystemHealth();
+    expect(r.sso.ok).toBe(false);
+    expect(r.sso.detail).toMatch(/비활성|disabled/i);
+  });
+
+  it("/auth/v1/settings 5xx → sso.ok=false", async () => {
+    vi.mocked(getGraphToken).mockResolvedValue("tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("/auth/v1/settings")) {
+          return { ok: false, status: 500, text: async () => "err" };
+        }
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+    mockAdminClient({});
+    const r = await getSystemHealth();
+    expect(r.sso.ok).toBe(false);
+    expect(r.sso.detail).toMatch(/500|HTTP/);
+  });
+});
+
 describe("getSystemHealth — mail stats", () => {
   it("3 테이블 sent/failed 합산 + 성공률 계산", async () => {
     vi.mocked(getGraphToken).mockResolvedValue("tok");

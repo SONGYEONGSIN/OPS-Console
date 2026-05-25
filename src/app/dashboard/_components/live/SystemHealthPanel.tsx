@@ -55,6 +55,11 @@ export function SystemHealthPanel() {
       ? snap.sharepoint.detail
       : "오류"
     : "측정 중…";
+  const ssoLabel = snap
+    ? snap.sso.ok
+      ? snap.sso.detail
+      : snap.sso.detail || "오류"
+    : "측정 중…";
 
   return (
     <SideBox
@@ -107,6 +112,15 @@ export function SystemHealthPanel() {
           </span>
           <span className="text-xs font-bold tabular-nums text-ink-soft">
             {sharePointLabel}
+          </span>
+        </li>
+        <li className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-xs font-semibold text-ink">
+            <HealthLed variant={snap?.sso.ok === false ? "amber" : "vermilion"} />
+            Microsoft SSO
+          </span>
+          <span className="text-xs font-bold tabular-nums text-ink-soft">
+            {ssoLabel}
           </span>
         </li>
         <li className="flex items-center justify-between">

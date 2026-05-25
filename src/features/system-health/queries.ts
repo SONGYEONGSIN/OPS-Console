@@ -21,6 +21,7 @@ export type MailStats = {
 export type SystemHealthSnapshot = {
   graph: ProbeResult;
   sharepoint: ProbeResult;
+  sso: ProbeResult;
   mail: MailStats;
 };
 
@@ -51,6 +52,31 @@ async function probeSharePointDrive(): Promise<ProbeResult> {
     );
     if (res.ok) return { ok: true, detail: "드라이브 접근 정상" };
     return { ok: false, detail: `HTTP ${res.status}` };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, detail: msg.slice(0, 80) };
+  }
+}
+
+/**
+ * Supabase Auth의 Microsoft(Azure AD) OAuth provider 활성 여부.
+ * `/auth/v1/settings` public endpoint의 `external.azure` 플래그 확인.
+ * 비활성 시 사용자의 'Microsoft SSO로 계속' 버튼이 작동 안 함.
+ */
+async function probeMicrosoftSSO(): Promise<ProbeResult> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl) return { ok: false, detail: "SUPABASE_URL 없음" };
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+      headers: anonKey ? { apikey: anonKey } : {},
+    });
+    if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` };
+    const json = (await res.json()) as { external?: { azure?: boolean } };
+    if (json?.external?.azure === true) {
+      return { ok: true, detail: "Azure OAuth 활성" };
+    }
+    return { ok: false, detail: "Azure provider 비활성" };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, detail: msg.slice(0, 80) };
@@ -93,10 +119,11 @@ async function probeMailStats(): Promise<MailStats> {
  * 결과는 호출자가 캐시(예: HTTP cache-control 60s).
  */
 export async function getSystemHealth(): Promise<SystemHealthSnapshot> {
-  const [graph, sharepoint, mail] = await Promise.all([
+  const [graph, sharepoint, sso, mail] = await Promise.all([
     probeGraph(),
     probeSharePointDrive(),
+    probeMicrosoftSSO(),
     probeMailStats(),
   ]);
-  return { graph, sharepoint, mail };
+  return { graph, sharepoint, sso, mail };
 }

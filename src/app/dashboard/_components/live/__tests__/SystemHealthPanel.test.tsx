@@ -56,7 +56,7 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
     );
   });
 
-  it("fetch 전: 신규 3 항목은 '측정 중…' 노출", () => {
+  it("fetch 전: 신규 4 항목은 '측정 중…' 노출 (Graph / SharePoint / SSO / 메일)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(() => new Promise(() => {})),
@@ -64,11 +64,12 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
     render(<SystemHealthPanel />);
     expect(screen.getByText("Microsoft Graph API")).toBeInTheDocument();
     expect(screen.getByText("SharePoint 드라이브")).toBeInTheDocument();
+    expect(screen.getByText("Microsoft SSO")).toBeInTheDocument();
     expect(screen.getByText("메일 발송률 (24h)")).toBeInTheDocument();
-    expect(screen.getAllByText(/측정 중/).length).toBeGreaterThanOrEqual(3);
+    expect(screen.getAllByText(/측정 중/).length).toBeGreaterThanOrEqual(4);
   });
 
-  it("fetch 성공 후: 실측값 노출 (graph/sharepoint detail + 메일 성공률)", async () => {
+  it("fetch 성공 후: 실측값 노출 (graph/sharepoint/sso detail + 메일 성공률)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -76,6 +77,7 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
         json: async () => ({
           graph: { ok: true, detail: "토큰 정상" },
           sharepoint: { ok: true, detail: "드라이브 접근 정상" },
+          sso: { ok: true, detail: "Azure OAuth 활성" },
           mail: { sent24h: 18, failed24h: 2, successRate: 0.9 },
         }),
       }),
@@ -85,6 +87,7 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
       expect(screen.getByText("토큰 정상")).toBeInTheDocument();
     });
     expect(screen.getByText("드라이브 접근 정상")).toBeInTheDocument();
+    expect(screen.getByText("Azure OAuth 활성")).toBeInTheDocument();
     expect(screen.getByText(/90\.0%/)).toBeInTheDocument();
   });
 
@@ -96,6 +99,7 @@ describe("SystemHealthPanel — 실측 3 항목 (신규)", () => {
         json: async () => ({
           graph: { ok: true, detail: "토큰 정상" },
           sharepoint: { ok: true, detail: "ok" },
+          sso: { ok: true, detail: "Azure OAuth 활성" },
           mail: { sent24h: 0, failed24h: 0, successRate: null },
         }),
       }),
