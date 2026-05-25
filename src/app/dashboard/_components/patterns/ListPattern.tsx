@@ -110,18 +110,6 @@ export type ListRow = {
   performanceEvaluatorEmail?: string;
   /** performance — 팀원 이메일 */
   performanceEvaluateeEmail?: string;
-  /** manuals — SharePoint 웹 URL (행 클릭 시 새 탭) */
-  manualWebUrl?: string;
-  /** manuals — 'folder' | 'file' */
-  manualKind?: "folder" | "file";
-  /** manuals — 접두사 카테고리 (A~I), null이면 '기타' */
-  manualCategory?: string | null;
-  /** manuals — 파일 크기(bytes), folder는 null */
-  manualSize?: number | null;
-  /** manuals — Graph lastModifiedDateTime ISO 8601 */
-  manualModified?: string | null;
-  /** manuals — 부모 driveItem id (드릴다운 시 현재 폴더 추적) */
-  manualParentItemId?: string | null;
   /** receivables — Excel row의 모든 columns + 편집용 메타데이터. */
   receivablesCells?: {
     headers: string[];

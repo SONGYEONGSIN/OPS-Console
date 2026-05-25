@@ -2,19 +2,73 @@ import Link from "next/link";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
-import { ListPattern } from "../_components/patterns/ListPattern";
-import type { ListRow } from "../_components/patterns/ListPattern";
-import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listManualChildren } from "@/features/manuals/queries";
-import { manualRowToListRow } from "./_row-mapper";
+import type { ManualRow } from "@/features/manuals/schemas";
+import { ManualSidebar, type CategoryItem } from "./_components/ManualSidebar";
+import { ManualList } from "./_components/ManualList";
 
-const PAGE_SIZE = 30;
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  A: "원서접수",
+  B: "보증보험",
+  C: "결제사",
+  D: "정산 · 세금",
+  E: "사이트 운영",
+  F: "합격자관리",
+  G: "모의논술",
+  H: "외부 사업",
+  I: "영국문화원 · 홍대미활",
+};
+
+type GroupKey = string;
+
+function groupKeyFor(row: ManualRow): GroupKey {
+  if (row.kind === "folder") return "_folder";
+  return row.category ?? "_etc";
+}
+
+function categoryItemsFrom(rows: ManualRow[]): CategoryItem[] {
+  const map = new Map<GroupKey, CategoryItem>();
+  for (const row of rows) {
+    const key = groupKeyFor(row);
+    const existing = map.get(key);
+    if (existing) {
+      existing.count++;
+      continue;
+    }
+    if (key === "_folder") {
+      map.set(key, { value: "_folder", label: "폴더", desc: null, sortOrder: 0, count: 1 });
+    } else if (key === "_etc") {
+      map.set(key, { value: "_etc", label: "기타", desc: null, sortOrder: 99, count: 1 });
+    } else {
+      map.set(key, {
+        value: key,
+        label: key,
+        desc: CATEGORY_DESCRIPTIONS[key] ?? null,
+        sortOrder: key.charCodeAt(0) - "A".charCodeAt(0) + 1,
+        count: 1,
+      });
+    }
+  }
+  return Array.from(map.values());
+}
+
+function headingFor(category: string, items: CategoryItem[]): string {
+  if (category === "all") return "전체";
+  const item = items.find((c) => c.value === category);
+  if (!item) return category;
+  return item.desc ? `${item.label} — ${item.desc}` : item.label;
+}
+
+function filterByCategory(rows: ManualRow[], category: string): ManualRow[] {
+  if (category === "all") return rows;
+  return rows.filter((r) => groupKeyFor(r) === category);
+}
 
 export default async function ManualsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ itemId?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ itemId?: string; q?: string; category?: string }>;
 }) {
   const slug = "manuals";
   await requireMenu(slug);
@@ -25,42 +79,29 @@ export default async function ManualsPage({
 
   const sp = await searchParams;
   const itemId = sp.itemId?.trim() || undefined;
-  const all = await listManualChildren({ parentItemId: itemId ?? null });
-
-  // 검색 — 이름 ilike (case-insensitive)
+  const category = (sp.category?.trim() || "all") as string;
   const qRaw = (sp.q ?? "").trim();
   const qLower = qRaw.toLowerCase();
-  const filtered = qRaw
-    ? all.filter((r) => r.name.toLowerCase().includes(qLower))
-    : all;
-  const total = filtered.length;
 
-  const page = Math.max(1, Number(sp.page) || 1);
-  const start = (page - 1) * PAGE_SIZE;
-  const pageRows = filtered.slice(start, start + PAGE_SIZE);
-  const rows: ListRow[] = pageRows.map(manualRowToListRow);
-  const config = resolvePageMeta(slug, meta, total);
-
-  // 하위 폴더 진입 시 상위로 돌아가는 링크 (breadcrumb 대용)
+  const allRows = await listManualChildren({ parentItemId: itemId ?? null });
+  const categories = categoryItemsFrom(allRows);
   const inSubfolder = Boolean(itemId);
-  const controlsRow = inSubfolder ? (
-    <div
-      key="manuals-controls"
-      className="flex items-center gap-3 border-b border-line-soft bg-washi px-7 py-2 text-sm"
-    >
-      <Link
-        href={pathname}
-        className="text-vermilion hover:underline"
-        aria-label="매뉴얼 루트로 이동"
-      >
-        ← 매뉴얼 루트로
-      </Link>
-      <span className="text-muted">하위 폴더 보기 중</span>
-    </div>
-  ) : null;
 
-  const header = (
-    <div key="manuals-header">
+  // 카테고리 필터링 (루트일 때만) + 검색
+  const afterCategory = inSubfolder
+    ? allRows
+    : filterByCategory(allRows, category);
+  const filtered = qRaw
+    ? afterCategory.filter((r) => r.name.toLowerCase().includes(qLower))
+    : afterCategory;
+
+  const heading = inSubfolder
+    ? "하위 폴더 내용"
+    : headingFor(category, categories);
+  const config = resolvePageMeta(slug, meta, allRows.length);
+
+  return (
+    <div className="flex flex-col">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -68,25 +109,20 @@ export default async function ManualsPage({
         description={config.description}
         autoRefresh
       />
+      {inSubfolder ? (
+        <div className="flex items-center gap-3 border-b border-line-soft bg-washi px-7 py-2 text-sm">
+          <Link href={pathname} className="text-vermilion hover:underline">
+            ← 매뉴얼 루트로
+          </Link>
+          <span className="text-muted">하위 폴더 보기 중</span>
+        </div>
+      ) : null}
+      <div className="flex flex-1">
+        {inSubfolder ? null : (
+          <ManualSidebar totalCount={allRows.length} categories={categories} />
+        )}
+        <ManualList heading={heading} rows={filtered} />
+      </div>
     </div>
-  );
-
-  return (
-    <ListPattern
-      title={meta.label}
-      data={{ rows }}
-      header={header}
-      variant="manual"
-      canCreate={false}
-      readOnly
-      controlsRow={controlsRow ?? undefined}
-      footer={
-        <ListPagination
-          key="manuals-pagination"
-          total={total}
-          pageSize={PAGE_SIZE}
-        />
-      }
-    />
   );
 }
