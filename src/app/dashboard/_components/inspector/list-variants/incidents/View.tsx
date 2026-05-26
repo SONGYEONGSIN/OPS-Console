@@ -23,28 +23,31 @@ export function IncidentView({ row }: ViewProps) {
 
   return (
     <div className="space-y-6">
-      <section className="space-y-2">
+      <section className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span
             className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
           >
             {status}
           </span>
-          {row.incidentYear && (
-            <span className="text-xs text-muted">{row.incidentYear}학년도</span>
-          )}
-          {row.incidentAppType && (
-            <span className="text-xs text-muted">· {row.incidentAppType}</span>
-          )}
-          {row.incidentCategory && (
-            <span className="text-xs text-muted">· {row.incidentCategory}</span>
+          {row.incidentUniversityName && (
+            <span className="text-sm font-medium text-ink">
+              {row.incidentUniversityName}
+            </span>
           )}
         </div>
-        <h2 className="text-lg font-medium text-ink">
-          {row.incidentTitle ?? row.name}
-        </h2>
-        {row.incidentUniversityName && (
-          <p className="text-xs text-ink-soft">{row.incidentUniversityName}</p>
+        {(row.incidentYear ||
+          row.incidentAppType ||
+          row.incidentCategory) && (
+          <p className="text-xs text-muted">
+            {[
+              row.incidentYear ? `${row.incidentYear}학년도` : null,
+              row.incidentAppType,
+              row.incidentCategory,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
         )}
       </section>
 
