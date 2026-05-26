@@ -102,36 +102,42 @@ export default async function DashboardLivePage({
   const incidents = allIncidentsForKpi.slice(0, 20);
   const incidentsListRows: ListRow[] = incidents.map(incidentToListRow);
 
-  // ─── 미수채권 (시트 fetch — 미입금 우선, 최근 5건) ─────────────
-  let receivablesCount: number | null = null;
+  // ─── 미수채권 (시트 fetch — 수금완료/전체 fraction + 미수 카운트) ─────────────
+  let receivablesPaid = 0;
+  let receivablesTotal = 0;
+  let receivablesUnpaid = 0;
   try {
     const sheet = await fetchReceivablesSheet();
     if (sheet) {
       const all = sheet.rows
         .map((_, i) => receivablesToListRow(sheet, i))
         .filter(isReceivablesDataRow);
-      // mine 기준: 본인 운영자(name)와 일치. all은 client filter
       const filtered =
         mine && me?.displayName
           ? all.filter((r) => r.owner === me.displayName)
           : all;
-      // 카운트 = 미입금(pending) 모수 (없으면 전체 모수)
-      const pendingAll = filtered.filter((r) => r.status === "active");
-      receivablesCount =
-        pendingAll.length > 0 ? pendingAll.length : filtered.length;
+      receivablesTotal = filtered.length;
+      receivablesPaid = filtered.filter((r) => r.status === "approved").length;
+      receivablesUnpaid = filtered.filter((r) => r.status === "active").length;
     }
   } catch {
     /* sheet fetch fail */
   }
 
-  // ─── 계약 (시트 fetch) ──────────────────────────────────────
-  let contractsCount: number | null = null;
+  // ─── 계약 (시트 fetch — 체결완료/전체 fraction + 미체결 카운트) ─────────
+  let contractsCompleted = 0;
+  let contractsTotal = 0;
+  let contractsUnconcluded = 0;
   try {
     const { rows: contractRows } = await listContracts();
     const filtered = contractRows.filter((r) =>
       mine && me?.displayName ? r.operator === me.displayName : true,
     );
-    contractsCount = filtered.length;
+    contractsTotal = filtered.length;
+    contractsCompleted = filtered.filter(
+      (r) => r.status === "계약완료",
+    ).length;
+    contractsUnconcluded = contractsTotal - contractsCompleted;
   } catch {
     /* sheet fetch fail */
   }
@@ -322,11 +328,14 @@ export default async function DashboardLivePage({
         service: { count: servicesUpcomingCount, sparklineD: SPARKLINE_SERVICE },
       }}
       metrics={{
-        contract: { value: contractsCount ?? 0, desc: "미체결 계약" },
+        contract: {
+          value: { num: contractsCompleted, den: contractsTotal },
+          desc: `(${contractsUnconcluded.toLocaleString("ko-KR")}) 미체결 계약`,
+        },
         bond: {
-          value: receivablesCount ?? 0,
-          active: (receivablesCount ?? 0) > 0,
-          desc: "미수금 내역",
+          value: { num: receivablesPaid, den: receivablesTotal },
+          active: receivablesUnpaid > 0,
+          desc: `(${receivablesUnpaid.toLocaleString("ko-KR")}) 미수금 내역`,
         },
         backup: { value: backupCount, desc: "요청 및 내역" },
         contacts: { value: contactsTotal, desc: "등록한 연락처" },

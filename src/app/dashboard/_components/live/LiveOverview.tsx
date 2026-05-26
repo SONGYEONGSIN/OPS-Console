@@ -31,8 +31,16 @@ export type LiveOverviewProps = {
     service: { count: number; sparklineD: string };
   };
   metrics: {
-    contract: { value: number | string; active?: boolean; desc: string };
-    bond: { value: number | string; active?: boolean; desc: string };
+    contract: {
+      value: number | string | { num: number; den: number };
+      active?: boolean;
+      desc: string;
+    };
+    bond: {
+      value: number | string | { num: number; den: number };
+      active?: boolean;
+      desc: string;
+    };
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
     handover: { value: number | string | { num: number; den: number }; desc: string };
@@ -147,12 +155,14 @@ function LiveOverviewInner({
                 value={metrics.contract.value}
                 desc={metrics.contract.desc}
                 active={metrics.contract.active}
+                valueHint="내 계약 중 '계약완료' 상태로 표기된 카운팅"
               />
               <MetricSubcard
                 label="미수채권"
                 value={metrics.bond.value}
                 desc={metrics.bond.desc}
                 active={metrics.bond.active}
+                valueHint="내 미수채권 중 수금 완료된 건수 카운팅"
               />
               <MetricSubcard
                 label="백업내용"
