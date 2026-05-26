@@ -293,7 +293,7 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
         {input.services.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabelChip} minPresenceAhead={40}>
-              담당 서비스
+              백업 서비스
             </Text>
             {input.services.map((s) => (
               <View key={`svc-${s.id}`} style={styles.serviceCard}>

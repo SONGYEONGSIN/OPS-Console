@@ -233,21 +233,21 @@ export function BackupForm({
         </label>
       </div>
 
-      {/* 담당 서비스 — 검색 + 카드 컬렉션 */}
+      {/* 백업 서비스 — 검색 + 카드 컬렉션 */}
       <div className="block text-xs">
         <span className="mb-1 flex items-baseline justify-between text-muted">
-          <span>담당 서비스 ({selectedIds.length}/{MAX_SERVICES})</span>
+          <span>백업 서비스 ({selectedIds.length}/{MAX_SERVICES})</span>
         </span>
         <ListSearch
           value={query}
           onChange={setQuery}
           placeholder="대학명·서비스명 검색"
-          ariaLabel="담당 서비스 검색"
+          ariaLabel="백업 서비스 검색"
           size="sm"
         />
         {matches.length > 0 && (
           <ul
-            aria-label="담당 서비스 검색 결과"
+            aria-label="백업 서비스 검색 결과"
             className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-washi-raised"
           >
             {matches.map((c) => (

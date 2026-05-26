@@ -152,7 +152,7 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
     </div>
 
     <div style="margin-bottom:20px;">
-      <p style="font-size:11px;color:#b8331e;letter-spacing:1px;margin:0 0 8px 0;font-weight:bold;">담당 서비스</p>
+      <p style="font-size:11px;color:#b8331e;letter-spacing:1px;margin:0 0 8px 0;font-weight:bold;">백업 서비스</p>
       ${serviceCardsHtml(input.services)}
     </div>
 

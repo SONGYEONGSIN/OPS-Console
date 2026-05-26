@@ -9,7 +9,7 @@ type Props = {
 };
 
 /**
- * 담당 서비스 컬럼 표시 — backupServicesDetail의 첫 1~2개 service_name + 총 개수.
+ * 백업 서비스 컬럼 표시 — backupServicesDetail의 첫 1~2개 service_name + 총 개수.
  * 빈 배열은 "—".
  */
 function servicesPreview(row: ListRow): string {
@@ -18,6 +18,20 @@ function servicesPreview(row: ListRow): string {
   const names = details.slice(0, 2).map((d) => d.service_name);
   const more = details.length - names.length;
   return more > 0 ? `${names.join(", ")} 외 ${more}건` : names.join(", ");
+}
+
+/**
+ * 백업자 컬럼 표시 — 서비스별 모드일 때 모든 distinct substitute_name을 join.
+ * 1명 일괄이면 한 명, 서비스별이면 N명. 비어있으면 parent substituteName 또는 "—".
+ */
+function substitutesPreview(row: ListRow): string {
+  const details = row.backupServicesDetail ?? [];
+  const names = new Set<string>();
+  for (const d of details) {
+    if (d.substitute_name) names.add(d.substitute_name);
+  }
+  if (names.size > 0) return Array.from(names).join(", ");
+  return row.substituteName ?? "—";
 }
 
 /** 휴가기간 표시 — 둘 다 있으면 'start ~ end', 시작만/끝만, 둘 다 없으면 '—' */
@@ -49,7 +63,7 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">백업자</th>
           <th className="px-3 py-2">휴가기간</th>
           <th className="px-3 py-2">제목</th>
-          <th className="px-3 py-2">담당 서비스</th>
+          <th className="px-3 py-2">백업 서비스</th>
           <th className="px-3 py-2">메일 발송일자</th>
         </tr>
       </thead>
@@ -71,7 +85,7 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
             >
               <td className="px-3 py-2 text-sm text-ink">{row.owner}</td>
               <td className="px-3 py-2 text-sm text-ink-soft">
-                {row.substituteName ?? "—"}
+                {substitutesPreview(row)}
               </td>
               <td className="px-3 py-2 text-xs text-ink-soft">
                 {leaveRangeLabel(row)}

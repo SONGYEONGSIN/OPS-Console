@@ -345,13 +345,16 @@ export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
 export type TodoPriority = NonNullable<ListRow["priority"]>;
 export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
 export type CohortStatus = NonNullable<ListRow["cohortStatus"]>;
+/** backup variant 전용 chip values */
+export type BackupFilter = "mine" | "mine_substitute" | "mail_failed";
 
 export type Filter =
   | ListRow["status"]
   | "all"
   | ScheduleType
   | MyTodoFilter
-  | CohortStatus;
+  | CohortStatus
+  | BackupFilter;
 
 /**
  * variant별 필터 적용. 단순 분기만 ListPattern에 유지 (my-todo는 복잡한 시간 비교
@@ -361,6 +364,7 @@ function filterRows(
   rows: ListRow[],
   filter: Filter,
   variant: string,
+  currentUserName?: string,
 ): ListRow[] {
   if (filter === "all") return rows;
   if (variant === "schedule")
@@ -371,6 +375,15 @@ function filterRows(
   if (variant === "project-task") return applyProjectTaskFilter(rows, filter);
   if (variant === "cohort")
     return rows.filter((r) => r.cohortStatus === filter);
+  if (variant === "backup") {
+    if (filter === "mine")
+      return rows.filter((r) => r.owner === currentUserName);
+    if (filter === "mine_substitute")
+      return rows.filter((r) => r.substituteName === currentUserName);
+    if (filter === "mail_failed")
+      return rows.filter((r) => r.mailStatus === "mail_failed");
+    return rows;
+  }
   return rows.filter((r) => r.status === filter);
 }
 
@@ -533,7 +546,7 @@ export function ListPattern({
 
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
-  const filteredRows = filterRows(rows, filter, variant);
+  const filteredRows = filterRows(rows, filter, variant, currentUserName);
   const variantEntry = variantRegistry[variant as keyof typeof variantRegistry];
   const entryFilters =
     variantEntry && "Filters" in variantEntry ? variantEntry.Filters : null;
@@ -644,7 +657,8 @@ export function ListPattern({
                   const count =
                     f.value === "all"
                       ? rows.length
-                      : filterRows(rows, f.value, variant).length;
+                      : filterRows(rows, f.value, variant, currentUserName)
+                          .length;
                   return (
                     <button
                       key={f.value}

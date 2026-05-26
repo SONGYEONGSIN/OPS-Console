@@ -257,7 +257,7 @@ describe("BackupForm", () => {
         backupServiceCandidates={candidates}
       />,
     );
-    fireEvent.change(screen.getByLabelText("담당 서비스 검색"), {
+    fireEvent.change(screen.getByLabelText("백업 서비스 검색"), {
       target: { value: "경찰" },
     });
     fireEvent.click(screen.getByText("신입학"));
