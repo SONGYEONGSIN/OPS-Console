@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 /* ═════════════════════════════════════════════════════════
-   Folio (OPSROOM) — design tokens
+   OPS-Console (OPSROOM) — design tokens
    src/lib/design-tokens.ts와 1:1 동기화. 변경 시 양쪽 함께 수정.
    ═════════════════════════════════════════════════════════ */
 :root {

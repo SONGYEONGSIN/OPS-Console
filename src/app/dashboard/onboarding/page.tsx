@@ -25,7 +25,7 @@ import { ChecklistTab } from "./ChecklistTab";
 /**
  * /dashboard/onboarding — 종합 페이지 (탭 4개).
  *
- * 1. 온보딩 가이드 — 정적 카드 그룹 (Folio 컨텍스트)
+ * 1. 온보딩 가이드 — 정적 카드 그룹 (OPS-Console 컨텍스트)
  * 2. 체크리스트 — 본인 진행도 (가이드 항목과 자동 매핑)
  * 3. 회차 관리 — 기존 ListPattern variant=cohort 임베드 (admin only)
  * 4. 자료실 — 사내 시스템/문서/매뉴얼 링크 큐레이션

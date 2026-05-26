@@ -18,7 +18,7 @@ export const onboardingResources: GuideSection[] = [
     description: "운영부 일상 업무에 사용하는 사내 도구",
     items: [
       {
-        title: "OPS Console (Folio)",
+        title: "OPS Console",
         detail: "본 대시보드 — 운영 통합 콘솔",
         url: "/dashboard",
       },

@@ -1,5 +1,5 @@
 /**
- * Folio (OPSROOM) Design Tokens
+ * OPS-Console (OPSROOM) Design Tokens
  *
  * 명세: design-ref/folio-login.html, design-ref/folio-dashboard.html
  *

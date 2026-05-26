@@ -43,7 +43,7 @@ type Props = {
  * - PageHeader 슬롯
  *
  * mockup 영감: 탭 + 단계별 카드 그룹 + 번호 매겨진 항목.
- * Folio 톤(washi/cream)과 vermilion accent 유지 — 다크 컬러는 무시.
+ * OPS-Console 톤(washi/cream)과 vermilion accent 유지 — 다크 컬러는 무시.
  */
 export function GuidePattern({ title, header, tabs, defaultTab }: Props) {
   const searchParams = useSearchParams();
