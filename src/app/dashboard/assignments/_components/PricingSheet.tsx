@@ -166,7 +166,7 @@ function SectionCard({ section }: { section: PricingSection }) {
 
       {section.rows.length > 0 ? (
         <div className="w-full overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full table-fixed border-collapse text-sm">
             {headerCells.length > 0 ? (
               <thead>
                 <tr className="border-b-2 border-ink/20 bg-washi">
@@ -174,7 +174,9 @@ function SectionCard({ section }: { section: PricingSection }) {
                     <th
                       key={i}
                       colSpan={c.colspan}
-                      className="border-r border-line-soft px-3 py-2 text-center align-top font-semibold text-ink last:border-r-0"
+                      className={`border-r border-line-soft px-3 py-2 text-center align-top font-semibold text-ink last:border-r-0 ${
+                        i === 0 ? "w-[20%]" : ""
+                      }`}
                     >
                       {c.value}
                     </th>
@@ -188,12 +190,15 @@ function SectionCard({ section }: { section: PricingSection }) {
                   <tr key={ri} className="border-b border-line-soft last:border-b-0">
                     {row.map((c, ci) => {
                       if (c.skip) return null;
+                      // 첫 컬럼 폭을 카드 전체에 통일 (table-fixed + w-[20%]).
+                      // thead 없는 카드도 tbody 첫 행이 컬럼 width를 결정.
+                      const firstColWidth = ci === 0 ? "w-[20%]" : "";
                       return (
                         <td
                           key={ci}
                           colSpan={c.colspan}
                           rowSpan={c.rowspan}
-                          className={`border-r border-line-soft px-3 py-2 whitespace-pre-wrap text-ink last:border-r-0 ${
+                          className={`border-r border-line-soft px-3 py-2 whitespace-pre-wrap text-ink last:border-r-0 ${firstColWidth} ${
                             c.centered
                               ? "text-center align-middle font-medium"
                               : `align-top ${ci === 0 ? "font-medium" : ""}`
