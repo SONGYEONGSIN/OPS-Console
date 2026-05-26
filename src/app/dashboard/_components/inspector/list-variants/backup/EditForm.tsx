@@ -54,6 +54,14 @@ export function BackupForm({
   const selectedDetail: ServiceCardDetail[] = row.backupServicesDetail ?? [];
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<Mode>(() => inferMode(row));
+  /** PR-6: 발송 모드 (now=즉시, schedule=예약). row.sendMode가 있으면 hydrate. */
+  const [sendMode, setSendMode] = useState<"now" | "schedule">(
+    row.sendMode ?? "now",
+  );
+  /** PR-6: 예약 시각 KST datetime-local string. 신규 등록 전용 — 기존 row 편집은 본 PR 범위 외. */
+  const [scheduledAtInput, setScheduledAtInput] = useState(
+    row.scheduledAtInput ?? "",
+  );
 
   const trimmedQuery = query.trim();
   const matches: ServiceCandidate[] =
@@ -105,19 +113,25 @@ export function BackupForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // PR-6: 발송 모드 + 예약 시각을 row에 운반 → page.tsx onPersist가 createBackupRequest에 전달
+    const withSendMode: typeof row = {
+      ...row,
+      sendMode,
+      scheduledAtInput: sendMode === "schedule" ? scheduledAtInput : "",
+    };
     if (mode === "perService") {
       // DB의 backup_requests.substitute_email NOT NULL 충족용 — 첫 명시 카드의 백업자를 parent로
       const firstAssigned = selectedDetail.find((s) => s.substitute_email);
-      if (firstAssigned && !row.substituteEmail) {
+      if (firstAssigned && !withSendMode.substituteEmail) {
         onSave({
-          ...row,
+          ...withSendMode,
           substituteEmail: firstAssigned.substitute_email ?? "",
           substituteName: firstAssigned.substitute_name ?? "",
         });
         return;
       }
     }
-    onSave(row);
+    onSave(withSendMode);
   }
 
   return (
@@ -303,6 +317,51 @@ export function BackupForm({
           placeholder="전체 휴가 컨텍스트 — 일정·인사말 (Markdown 가능)"
         />
       </label>
+
+      {/* PR-6: 발송 모드 — 즉시 / 예약 */}
+      <div className="block text-xs" role="radiogroup" aria-label="발송 모드">
+        <span className="mb-1 block text-muted">발송 모드</span>
+        <div className="flex w-full border border-line">
+          <button
+            type="button"
+            aria-pressed={sendMode === "now"}
+            onClick={() => setSendMode("now")}
+            className={`flex-1 cursor-pointer border-none px-3 py-1.5 text-xs ${
+              sendMode === "now"
+                ? "bg-ink text-cream"
+                : "bg-cream text-ink hover:bg-washi"
+            }`}
+          >
+            지금 발송
+          </button>
+          <button
+            type="button"
+            aria-pressed={sendMode === "schedule"}
+            onClick={() => setSendMode("schedule")}
+            className={`flex-1 cursor-pointer border-none border-l border-line px-3 py-1.5 text-xs ${
+              sendMode === "schedule"
+                ? "bg-ink text-cream"
+                : "bg-cream text-ink hover:bg-washi"
+            }`}
+          >
+            예약 발송
+          </button>
+        </div>
+      </div>
+
+      {sendMode === "schedule" && (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">예약 시각 (KST)</span>
+          <input
+            aria-label="예약 시각"
+            type="datetime-local"
+            value={scheduledAtInput}
+            onChange={(e) => setScheduledAtInput(e.target.value)}
+            required
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+        </label>
+      )}
 
       <div className="flex gap-2 pt-2">
         <button

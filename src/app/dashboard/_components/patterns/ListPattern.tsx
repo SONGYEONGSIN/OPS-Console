@@ -187,12 +187,24 @@ export type ListRow = {
   leaveStartDate?: string | null;
   /** backup 도메인 — 휴가/외근 종료일 (YYYY-MM-DD, nullable) */
   leaveEndDate?: string | null;
-  /** backup 도메인 — 메일 발송 상태 */
-  mailStatus?: "pending" | "sent" | "mail_failed" | "dry_run";
+  /** backup 도메인 — 메일 발송 상태. PR-6: scheduled/sending 추가 */
+  mailStatus?:
+    | "pending"
+    | "scheduled"
+    | "sending"
+    | "sent"
+    | "mail_failed"
+    | "dry_run";
   /** backup 도메인 — 메일 발송 시각 (ISO, nullable) */
   mailSentAt?: string | null;
   /** backup 도메인 — 메일 에러 메시지 (nullable) */
   mailError?: string | null;
+  /** PR-6 backup 도메인 — 예약 발송 시각 (ISO, scheduled 상태일 때만 의미) */
+  scheduledAt?: string | null;
+  /** PR-6 backup variant — EditForm 발송 모드 (now=즉시, schedule=예약). row state에 임시 운반. */
+  sendMode?: "now" | "schedule";
+  /** PR-6 backup variant — EditForm KST datetime-local 입력 string. onPersist에서 사용. */
+  scheduledAtInput?: string;
   /** services 도메인 — 외부 PIMS 자연키 (bigint) */
   serviceIdNum?: number;
   /** services 도메인 — 접수구분 (공통원서/반응형원서/일반접수/일반원서) */

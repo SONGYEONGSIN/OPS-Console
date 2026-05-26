@@ -127,6 +127,10 @@ export default async function BackupPage({
         contacts: d.contacts,
         note_md: d.note_md,
       }));
+      // PR-6: EditForm에서 운반한 발송 모드 + 예약 시각
+      const sendMode = row.sendMode ?? "now";
+      const scheduledAtInput = row.scheduledAtInput ?? "";
+
       const result = await createBackupRequest({
         substitute_email: row.substituteEmail ?? "",
         substitute_name: row.substituteName ?? "",
@@ -134,10 +138,17 @@ export default async function BackupPage({
         summary_md: row.summary ?? "",
         leave_start_date: row.leaveStartDate ?? null,
         leave_end_date: row.leaveEndDate ?? null,
+        mode: sendMode,
+        scheduledAt: scheduledAtInput || undefined,
       });
       if (!result.ok) return { ok: false, error: result.error };
 
-      // 등록 성공 후 메일 발송 — atomic 아님. 실패해도 등록 자체는 보존.
+      // PR-6: 예약 모드는 cron이 due 시각에 발송. createBackupRequest가 status='scheduled'로만 적재.
+      if (sendMode === "schedule") {
+        return { ok: true };
+      }
+
+      // 즉시 모드 — 등록 성공 후 메일 발송 (atomic 아님). 실패해도 등록 자체는 보존.
       // mail_failed 시 View 인스펙터에 재발송 버튼이 노출됨.
       const mailRes = await sendBackupRequestMail({
         backup_request_id: result.row.id,
@@ -214,6 +225,7 @@ function backupRequestToListRow(
     mailStatus: r.mail_status,
     mailSentAt: r.mail_sent_at ?? null,
     mailError: r.mail_error ?? null,
+    scheduledAt: r.scheduled_at ?? null,
   };
 }
 

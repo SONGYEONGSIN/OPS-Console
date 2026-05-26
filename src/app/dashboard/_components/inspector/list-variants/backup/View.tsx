@@ -5,6 +5,8 @@ import { ResendMailButton } from "./ResendMailButton";
 
 const MAIL_STATUS_LABEL = {
   pending: "대기",
+  scheduled: "예약됨",
+  sending: "발송 중",
   sent: "발송됨",
   mail_failed: "발송 실패",
   dry_run: "테스트",
@@ -12,6 +14,8 @@ const MAIL_STATUS_LABEL = {
 
 const MAIL_STATUS_TONE = {
   pending: "bg-washi-raised text-muted",
+  scheduled: "bg-washi-raised text-ink",
+  sending: "bg-washi-raised text-ink-soft",
   sent: "bg-sage/15 text-sage",
   mail_failed: "bg-vermilion/15 text-vermilion",
   dry_run: "bg-washi-raised text-ink-soft",
@@ -41,25 +45,41 @@ export function BackupView({ row }: ViewProps) {
       row.substituteName ?? "—"
     );
 
+  // PR-6: 예약 시각 표시 — scheduled 상태일 때만 메타에 노출 (KST yyyy-mm-dd HH:mm)
+  const scheduledLabel = row.scheduledAt
+    ? new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).format(new Date(row.scheduledAt))
+    : null;
+
+  const metaItems = [
+    { term: "요청자", desc: row.owner },
+    { term: "백업자", desc: substituteDesc },
+    {
+      term: "메일 상태",
+      desc: (
+        <span
+          className={`inline-block px-2 py-0.5 text-2xs ${MAIL_STATUS_TONE[status]}`}
+        >
+          {MAIL_STATUS_LABEL[status]}
+        </span>
+      ),
+    },
+  ];
+  if (status === "scheduled" && scheduledLabel) {
+    metaItems.push({ term: "예약 시각", desc: scheduledLabel });
+  }
+
   return (
     <div className="space-y-6">
       <Section title="메타">
-        <DefList
-          items={[
-            { term: "요청자", desc: row.owner },
-            { term: "백업자", desc: substituteDesc },
-            {
-              term: "메일 상태",
-              desc: (
-                <span
-                  className={`inline-block px-2 py-0.5 text-2xs ${MAIL_STATUS_TONE[status]}`}
-                >
-                  {MAIL_STATUS_LABEL[status]}
-                </span>
-              ),
-            },
-          ]}
-        />
+        <DefList items={metaItems} />
       </Section>
 
       <Divider />

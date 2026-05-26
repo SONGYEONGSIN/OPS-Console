@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { backupRequestCreateSchema, type BackupRequestRow } from "./schemas";
+import { parseScheduledAtKst } from "./schedule-time";
 
 export type BackupRequestActionResult =
   | { ok: true; row: BackupRequestRow }
@@ -31,6 +32,22 @@ export async function createBackupRequest(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
 
+  // PR-6: 예약 모드 분기 — scheduledAt 파싱 + mail_status='scheduled' 적재.
+  // 즉시 모드는 기존 흐름 (mail_status default 'pending', mail은 page.tsx onPersist에서 발송).
+  let scheduledAtIso: string | null = null;
+  let initialMailStatus: "pending" | "scheduled" = "pending";
+  if (parsed.data.mode === "schedule") {
+    const when = parseScheduledAtKst(parsed.data.scheduledAt ?? "");
+    if (!when) {
+      return { ok: false, error: "예약 시각 형식이 잘못되었습니다" };
+    }
+    if (when.getTime() <= Date.now()) {
+      return { ok: false, error: "예약 시각은 현재보다 미래여야 합니다" };
+    }
+    scheduledAtIso = when.toISOString();
+    initialMailStatus = "scheduled";
+  }
+
   const supabase = await createClient();
   // PR-2: services 컬럼 drop됨. join은 backup_request_services 테이블로 별도 insert.
   // PR-4: top-level contacts 제거 (서비스로 이전).
@@ -42,6 +59,8 @@ export async function createBackupRequest(
     summary_md: parsed.data.summary_md,
     leave_start_date: parsed.data.leave_start_date ?? null,
     leave_end_date: parsed.data.leave_end_date ?? null,
+    mail_status: initialMailStatus,
+    scheduled_at: scheduledAtIso,
   };
 
   const { data, error } = await supabase

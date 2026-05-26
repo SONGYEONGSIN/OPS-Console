@@ -35,7 +35,7 @@ describe("BackupForm", () => {
     expect(setRow).toHaveBeenCalled();
   });
 
-  it("저장 버튼 클릭 시 onSave(row) 호출", () => {
+  it("저장 버튼 클릭 시 onSave(row) 호출 — PR-6 sendMode 운반 포함", () => {
     const onSave = vi.fn();
     render(
       <BackupForm
@@ -46,7 +46,34 @@ describe("BackupForm", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
-    expect(onSave).toHaveBeenCalledWith(baseRow);
+    // 발송 모드 default 'now' + 예약 시각 빈 문자열이 row에 운반됨
+    expect(onSave).toHaveBeenCalledWith({
+      ...baseRow,
+      sendMode: "now",
+      scheduledAtInput: "",
+    });
+  });
+
+  it("PR-6: 예약 발송 모드 + 예약 시각 입력 → onSave에 sendMode=schedule + scheduledAtInput 운반", () => {
+    const onSave = vi.fn();
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "예약 발송" }));
+    fireEvent.change(screen.getByLabelText("예약 시각"), {
+      target: { value: "2099-01-01T10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledWith({
+      ...baseRow,
+      sendMode: "schedule",
+      scheduledAtInput: "2099-01-01T10:00",
+    });
   });
 
   it("취소 버튼 클릭 시 onCancel 호출", () => {

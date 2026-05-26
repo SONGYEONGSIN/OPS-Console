@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const MAIL_STATUS_VALUES = [
   "pending",
+  "scheduled",
+  "sending",
   "sent",
   "mail_failed",
   "dry_run",
@@ -61,6 +63,8 @@ export const backupRequestRowSchema = z.object({
   mail_status: mailStatusSchema,
   mail_sent_at: z.string().nullable().optional(),
   mail_error: z.string().nullable().optional(),
+  /** PR-6: 예약 발송 시각 (timestamptz). scheduled 상태일 때만 의미 있음. */
+  scheduled_at: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -98,6 +102,10 @@ export const backupRequestCreateSchema = z
     leave_end_date: z.string().min(1).nullable().optional(),
     // 요청자 self 차단을 위해 server action에 전달되는 컨텍스트 (선택적)
     requester_email: z.string().email().optional(),
+    /** PR-6: 발송 모드 — now=즉시, schedule=예약 (scheduledAt 필수) */
+    mode: z.enum(["now", "schedule"]).default("now"),
+    /** PR-6: datetime-local KST 문자열. mode=schedule일 때 필수. parseScheduledAtKst로 UTC Date 변환 */
+    scheduledAt: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (
@@ -119,6 +127,13 @@ export const backupRequestCreateSchema = z
         code: z.ZodIssueCode.custom,
         path: ["leave_end_date"],
         message: "종료일은 시작일 이후여야 합니다",
+      });
+    }
+    if (data.mode === "schedule" && !data.scheduledAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scheduledAt"],
+        message: "예약 시각은 비울 수 없습니다",
       });
     }
   });

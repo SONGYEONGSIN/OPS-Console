@@ -291,12 +291,42 @@ describe("backupRequestRowSchema", () => {
 });
 
 describe("MAIL_STATUS_VALUES", () => {
-  it("4가지 상태 포함", () => {
+  it("PR-6: 6가지 상태 (pending/scheduled/sending/sent/mail_failed/dry_run)", () => {
     expect(MAIL_STATUS_VALUES).toEqual([
       "pending",
+      "scheduled",
+      "sending",
       "sent",
       "mail_failed",
       "dry_run",
     ]);
+  });
+});
+
+describe("PR-6: backupRequestCreateSchema — mode/scheduledAt", () => {
+  it("mode 미지정 → default 'now'", () => {
+    const r = backupRequestCreateSchema.safeParse(baseInput);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.mode).toBe("now");
+  });
+
+  it("mode='schedule' + scheduledAt 허용", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      mode: "schedule",
+      scheduledAt: "2099-01-01T10:00",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("mode='schedule' + scheduledAt 누락 → 거부", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      mode: "schedule",
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues[0]?.message).toContain("예약 시각");
+    }
   });
 });
