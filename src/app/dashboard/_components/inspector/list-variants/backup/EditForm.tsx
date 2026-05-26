@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import type { EditFormProps } from "../types";
+import type { ListRow } from "../../../patterns/ListPattern";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
 
@@ -16,6 +17,30 @@ type ServiceCandidate = {
 
 const MAX_SERVICES = 20;
 
+/**
+ * PR-6: row hydrate 시 백업자 모드 추론 — DB에 assign_mode 컬럼 두지 않고 데이터 분포로 판정.
+ * - 서비스 없음 → single (default)
+ * - 서비스 substitute_email distinct ≥ 2 → perService
+ * - distinct 1개인데 parent substitute_email과 다름 → perService (parent fallback 케이스)
+ * - 그 외 → single
+ *
+ * perService에서 모든 서비스가 같은 백업자로 지정된 경우 single과 구분 불가하지만
+ * 의미적으로 동일한 발송 결과를 만들므로 single 표시로 충분 (데이터 손실 없음).
+ */
+function inferMode(row: ListRow): Mode {
+  const details = row.backupServicesDetail ?? [];
+  if (details.length === 0) return "single";
+  const distinctEmails = new Set(
+    details
+      .map((d) => d.substitute_email)
+      .filter((e): e is string => Boolean(e)),
+  );
+  if (distinctEmails.size >= 2) return "perService";
+  const [only] = distinctEmails;
+  if (only && only !== row.substituteEmail) return "perService";
+  return "single";
+}
+
 export function BackupForm({
   row,
   setRow,
@@ -28,7 +53,7 @@ export function BackupForm({
   const selectedIds = row.backupServices ?? [];
   const selectedDetail: ServiceCardDetail[] = row.backupServicesDetail ?? [];
   const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<Mode>("single");
+  const [mode, setMode] = useState<Mode>(() => inferMode(row));
 
   const trimmedQuery = query.trim();
   const matches: ServiceCandidate[] =
