@@ -378,6 +378,27 @@ export function BackupForm({
           취소
         </button>
       </div>
+
+      {/* PR-7: 기존 row 전용 삭제 버튼. row.status='deleted' 시그널 → page.onPersist에서 deleteBackupRequest 호출 */}
+      {row.id !== "" && (
+        <div className="border-t border-line-soft pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "이 백업 요청을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+                )
+              ) {
+                onSave({ ...row, status: "deleted" });
+              }
+            }}
+            className="w-full border border-vermilion-deep bg-transparent px-3 py-1.5 text-sm text-vermilion-deep hover:bg-vermilion-deep hover:text-cream"
+          >
+            삭제
+          </button>
+        </div>
+      )}
     </form>
   );
 }

@@ -8,7 +8,11 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
-import { createBackupRequest } from "@/features/backup-requests/actions";
+import {
+  createBackupRequest,
+  updateBackupRequest,
+  deleteBackupRequest,
+} from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 import { listServices } from "@/features/services/queries";
@@ -118,6 +122,11 @@ export default async function BackupPage({
     isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
+    // PR-7: 삭제 시그널 — row.status === "deleted" (services 패턴 동일)
+    if (row.status === "deleted") {
+      const result = await deleteBackupRequest(row.id);
+      return result.ok ? { ok: true } : { ok: false, error: result.error };
+    }
     if (isNew) {
       // PR-3/4: services는 {service_id, substitute_email?, substitute_name?, contacts, note_md?}[] 튜플
       const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
@@ -161,10 +170,24 @@ export default async function BackupPage({
       }
       return { ok: true };
     }
-    return {
-      ok: false,
-      error: "수정·삭제는 아직 지원되지 않습니다 (후속 PR).",
-    };
+
+    // PR-7: 기존 row 수정. services 교체 포함. 메일 자동 재발송 X (재발송은 명시 버튼).
+    const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
+      service_id: d.id,
+      substitute_email: d.substitute_email ?? null,
+      substitute_name: d.substitute_name ?? null,
+      contacts: d.contacts,
+      note_md: d.note_md,
+    }));
+    const updateRes = await updateBackupRequest(row.id, {
+      substitute_email: row.substituteEmail ?? undefined,
+      substitute_name: row.substituteName ?? undefined,
+      services: servicesPayload,
+      summary_md: row.summary ?? undefined,
+      leave_start_date: row.leaveStartDate ?? null,
+      leave_end_date: row.leaveEndDate ?? null,
+    });
+    return updateRes.ok ? { ok: true } : { ok: false, error: updateRes.error };
   }
 
   return (
