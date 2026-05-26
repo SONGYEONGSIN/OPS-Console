@@ -48,9 +48,13 @@ describe("buildOperatorReminderHtml", () => {
     expect(html).toContain("D+25");
   });
 
-  it("각 행에 '입금완료' 버튼 placeholder (PR-3에서 inline action URL로 교체 예정)", () => {
+  it("알림 전용 — 입금완료 액션 버튼/링크 미노출 (PR-2 자동 매칭이 K열 자동 처리)", () => {
     const html = buildOperatorReminderHtml({ group });
-    expect(html).toContain("입금완료");
+    // 표 본문에 액션 버튼 anchor 없음 (인용구나 안내문구의 '입금완료' 텍스트는 허용)
+    expect(html).not.toMatch(/<a\s[^>]*입금완료/);
+    expect(html).not.toContain("?date=");
+    // 안내 문구로 자동 처리 사실 노출
+    expect(html).toContain("자동");
   });
 
   it("FUN_QUOTES 인용구 1개 포함 (인용 wrapper 노출)", () => {

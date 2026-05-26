@@ -52,8 +52,6 @@ export function buildOperatorReminderSubject(): string {
 
 type BuildHtmlArgs = {
   group: OperatorReminderGroup;
-  /** 입금완료 버튼 base URL (PR-3에서 receivables inline action으로 교체). 미지정 시 placeholder. */
-  paidActionBase?: string;
   /** 테스트 결정성 위해 인용구 인덱스 고정 */
   quoteSeed?: number;
 };
@@ -61,34 +59,27 @@ type BuildHtmlArgs = {
 /**
  * 운영자 본인용 미수채권 알림 메일 HTML.
  * GAS `buildMailHtml_` 톤 유지 — Pretendard + vermilion 강조 + FUN_QUOTES 인용구.
- * 입금완료 버튼은 PR-1에서는 placeholder URL, PR-3에서 inline action으로 교체.
+ *
+ * **알림 전용 메일** — 메일 자체에는 인터랙션 없음. K열 "입금완료" 표기는
+ * PR-2 입금 매칭 자동화(`receivables-deposit-match`)가 매시간 자동 처리.
+ * 자동 매칭 실패(mismatch) 케이스만 admin 별도 알림으로 수동 처리.
  */
 export function buildOperatorReminderHtml(args: BuildHtmlArgs): string {
-  const { group, paidActionBase = "/dashboard/receivables", quoteSeed } = args;
+  const { group, quoteSeed } = args;
   const quote = pickQuote(quoteSeed);
   const operatorName = escapeHtml(group.operator.name);
 
   const rowsHtml = group.items
-    .map((it) => {
-      const paidHref =
-        `${paidActionBase}?date=${encodeURIComponent(it.invoiceDate)}` +
-        `&cust=${encodeURIComponent(it.customerName)}` +
-        `&desc=${encodeURIComponent(it.description)}` +
-        `&amt=${encodeURIComponent(String(it.amount))}`;
-      return `
+    .map(
+      (it) => `
       <tr>
         <td style="padding:10px;border-bottom:1px solid #eee;text-align:center;">${escapeHtml(it.invoiceDate)}</td>
         <td style="padding:10px;border-bottom:1px solid #eee;">${escapeHtml(it.customerName)}</td>
         <td style="padding:10px;border-bottom:1px solid #eee;">${escapeHtml(it.description)}</td>
         <td style="padding:10px;border-bottom:1px solid #eee;text-align:center;">D+${it.daysOverdue}</td>
         <td style="padding:10px;border-bottom:1px solid #eee;text-align:right;">${formatWon(it.amount)}</td>
-        <td style="padding:10px;border-bottom:1px solid #eee;text-align:center;">
-          <a href="${escapeHtml(paidHref)}" target="_blank" style="text-decoration:none;">
-            <span style="display:inline-block;padding:6px 10px;border:1px solid #E5E7EB;border-radius:3px;background:#E5E7EB;color:#111;font-size:12px;">입금완료</span>
-          </a>
-        </td>
-      </tr>`;
-    })
+      </tr>`,
+    )
     .join("");
 
   return `
@@ -115,11 +106,14 @@ export function buildOperatorReminderHtml(args: BuildHtmlArgs): string {
             <th style="padding:10px;text-align:left;">거래내역</th>
             <th style="padding:10px;text-align:center;">경과일수</th>
             <th style="padding:10px;text-align:right;">청구금액</th>
-            <th style="padding:10px;text-align:center;">입금여부</th>
           </tr>
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
+    </div>
+
+    <div style="margin-top:18px;font-size:13px;color:#6b7280;line-height:1.6;">
+      ※ 입금이 확인되면 OPS-Console 자동화(매시간)가 자동으로 적요를 '입금완료'로 표기합니다. 별도 조작 불필요.
     </div>
 
     <div style="margin-top:22px;text-align:center;font-size:12px;color:#111;background:#FEF9C3;padding:8px 0;border-radius:3px;">
