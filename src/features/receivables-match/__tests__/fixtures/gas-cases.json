@@ -1,0 +1,230 @@
+{
+  "_meta": {
+    "source": "Google Apps Script `autoMatchDeposits` + 7 매칭 함수 (사용자 제공 코드)",
+    "purpose": "GAS 알고리즘 1:1 포팅 회귀 보호 — fixture 변경 시 GAS 원본 함수와 동기 필요",
+    "categories": ["normalize", "isNameMatchStrong", "similarity", "collect", "algorithm"]
+  },
+  "normalize": [
+    { "name": "특수 dict — 미컴원 → 서강대", "input": "미컴원", "expected": "서강대" },
+    { "name": "특수 dict — 성대외국인유 → 성대 → 성균관대 → '성대' (chain 후 includes 룰)", "input": "성대외국인유", "expected": "성대" },
+    { "name": "특수 dict — 부산여자대학 → 부산여대", "input": "부산여자대학", "expected": "부산여대" },
+    { "name": "특수 dict — 건대대학원분교 → 건국대", "input": "건대대학원분교", "expected": "건국대" },
+    { "name": "특수 dict — 이대 → 이화여대", "input": "이대", "expected": "이화여대" },
+    { "name": "특수 dict — 시립대 → 서울시립대", "input": "시립대", "expected": "서울시립대" },
+    { "name": "특수 dict — 숙대 → 숙명여자 → 숙명여", "input": "숙대", "expected": "숙명여" },
+    { "name": "특수 dict — 연대 → 연세대", "input": "연대", "expected": "연세대" },
+    { "name": "특수 dict — 성대 → 성균관대 → '성대' (includes 룰)", "input": "성대", "expected": "성대" },
+    { "name": "특수 dict — 청강대 → 청강문화산업대", "input": "청강대", "expected": "청강문화산업대" },
+    { "name": "특수 dict — 모의논술7 → 한양대 (prefix 매칭)", "input": "모의논술7", "expected": "한양대" },
+    { "name": "특수 dict — 입학전형팀(입학처) → 조선대", "input": "입학전형팀(입학처)", "expected": "조선대" },
+    { "name": "일반 — 가천대학교 → 가천대 (대학교→대)", "input": "가천대학교", "expected": "가천대" },
+    { "name": "일반 — 고려대학교 → 고려대", "input": "고려대학교", "expected": "고려대" },
+    { "name": "일반 — 서울여자대학교 → 서울여대 (여자대학교→여대)", "input": "서울여자대학교", "expected": "서울여대" },
+    { "name": "일반 — 동국대학 → 동국대 (대학→대)", "input": "동국대학", "expected": "동국대" },
+    { "name": "일반 — 공백 제거 — '한 양 대' → '한양대'", "input": "한 양 대", "expected": "한양대" },
+    { "name": "일반 — 성균관대학교 → 성대 (성균관 includes 룰)", "input": "성균관대학교", "expected": "성대" },
+    { "name": "빈 문자열 → ''", "input": "", "expected": "" },
+    { "name": "공백만 → ''", "input": "   ", "expected": "" }
+  ],
+  "isNameMatchStrong": [
+    { "name": "완전 일치 — 가천대 vs 가천대", "a": "가천대", "b": "가천대", "expected": true },
+    { "name": "정규화 후 일치 — 가천대학교 vs 가천대", "a": "가천대학교", "b": "가천대", "expected": true },
+    { "name": "정규화 후 일치 — 미컴원 vs 서강대", "a": "미컴원", "b": "서강대", "expected": true },
+    { "name": "포함 (a in b, 양방향) — 가천대 vs 가천대일반", "a": "가천대", "b": "가천대일반", "expected": true },
+    { "name": "포함 (b in a) — 가천대일반 vs 가천대", "a": "가천대일반", "b": "가천대", "expected": true },
+    { "name": "포함 — 3자 미만은 매칭 X (a 길이 < 3)", "a": "가천", "b": "가천대일반", "expected": false },
+    { "name": "포함 — 3자 미만은 매칭 X (b 길이 < 3)", "a": "가천대일반", "b": "가천", "expected": false },
+    { "name": "완전 불일치 — 가천대 vs 동국대", "a": "가천대", "b": "동국대", "expected": false },
+    { "name": "빈 문자열 — '' vs 가천대", "a": "", "b": "가천대", "expected": false },
+    { "name": "빈 문자열 — 가천대 vs ''", "a": "가천대", "b": "", "expected": false }
+  ],
+  "similarity": [
+    { "name": "동일 — 가천대 vs 가천대 = 1", "a": "가천대", "b": "가천대", "expected": 1 },
+    { "name": "완전 다름 — abc vs xyz", "a": "abc", "b": "xyz", "expected": 0 },
+    { "name": "1글자 차이 — 가천대 vs 가천 — distance 1, length 3 → 1 - 1/3 ≈ 0.666", "a": "가천대", "b": "가천", "expectedRange": [0.6, 0.7] },
+    { "name": "빈 문자열 — '' vs '' = 0 (가드)", "a": "", "b": "", "expected": 0 }
+  ],
+  "collect": [
+    {
+      "name": "미수 — 거래처 정규화 매칭 (가천대학교 ↔ 가천대) + 적요 비어있는 행만",
+      "scenario": "collectUnpaidMisuByCustomer",
+      "rows": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대학교", "amount": 100000, "note": "" },
+        { "rowNumber": 6, "date": "2026-04-15", "customer": "가천대", "amount": 50000, "note": "" },
+        { "rowNumber": 7, "date": "2026-04-20", "customer": "가천대", "amount": 30000, "note": "입금완료" }
+      ],
+      "custName": "가천대",
+      "limitDate": "2026-04-25",
+      "expectedRowNumbers": [5, 6]
+    },
+    {
+      "name": "미수 — limitDate 이후 청구는 제외",
+      "scenario": "collectUnpaidMisuByCustomer",
+      "rows": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 100000, "note": "" },
+        { "rowNumber": 6, "date": "2026-05-01", "customer": "가천대", "amount": 50000, "note": "" }
+      ],
+      "custName": "가천대",
+      "limitDate": "2026-04-25",
+      "expectedRowNumbers": [5]
+    },
+    {
+      "name": "입금 — 매칭 안 된 행만 + 처리완료 제외 + 이름 강매칭",
+      "scenario": "collectUnpaidDepositsByCustomer",
+      "deposits": [
+        { "row": 2, "date": "2026-04-12", "amount": 100000, "content": "가천대", "matchedFlag": "" },
+        { "row": 3, "date": "2026-04-14", "amount": 50000, "content": "가천대학교", "matchedFlag": "" },
+        { "row": 4, "date": "2026-04-15", "amount": 80000, "content": "동국대", "matchedFlag": "" },
+        { "row": 5, "date": "2026-04-16", "amount": 30000, "content": "가천대", "matchedFlag": "처리완료" }
+      ],
+      "custName": "가천대",
+      "billDate": "2026-04-10",
+      "matchedDepRows": [],
+      "expectedRows": [2, 3]
+    },
+    {
+      "name": "입금 — matchedDepRows에 이미 있는 행 제외",
+      "scenario": "collectUnpaidDepositsByCustomer",
+      "deposits": [
+        { "row": 2, "date": "2026-04-12", "amount": 100000, "content": "가천대", "matchedFlag": "" },
+        { "row": 3, "date": "2026-04-14", "amount": 50000, "content": "가천대", "matchedFlag": "" }
+      ],
+      "custName": "가천대",
+      "billDate": "2026-04-10",
+      "matchedDepRows": [2],
+      "expectedRows": [3]
+    },
+    {
+      "name": "입금 — billDate +1일 이후만 (isDateMatch_)",
+      "scenario": "collectUnpaidDepositsByCustomer",
+      "deposits": [
+        { "row": 2, "date": "2026-04-10", "amount": 100000, "content": "가천대", "matchedFlag": "" },
+        { "row": 3, "date": "2026-04-11", "amount": 50000, "content": "가천대", "matchedFlag": "" }
+      ],
+      "custName": "가천대",
+      "billDate": "2026-04-10",
+      "matchedDepRows": [],
+      "expectedRows": [3]
+    },
+    {
+      "name": "입금 — 거래처명 강매칭 실패는 제외 (가천대 vs 동국대)",
+      "scenario": "collectUnpaidDepositsByCustomer",
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 100000, "content": "동국대", "matchedFlag": "" }
+      ],
+      "custName": "가천대",
+      "billDate": "2026-04-10",
+      "matchedDepRows": [],
+      "expectedRows": []
+    }
+  ],
+  "algorithm": [
+    {
+      "name": "단건 1:1 매칭 — 금액 동일 + 이름 강매칭 + 입금일 ≥ 청구일+1",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대학교", "amount": 100000, "note": "" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-12", "amount": 100000, "content": "가천대", "matchedFlag": "" }
+      ],
+      "expected": {
+        "matched": [{ "misuRows": [5], "depRows": [2], "kind": "oneToOne" }],
+        "mismatches": [],
+        "unmatchedMisu": [],
+        "unmatchedDep": []
+      }
+    },
+    {
+      "name": "N:1 합산 — 미수 2건 ↔ 입금 1건 합계 일치",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 60000, "note": "" },
+        { "rowNumber": 6, "date": "2026-04-12", "customer": "가천대", "amount": 40000, "note": "" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 100000, "content": "가천대", "matchedFlag": "" }
+      ],
+      "expected": {
+        "matched": [{ "misuRows": [5, 6], "depRows": [2], "kind": "nToOne" }],
+        "mismatches": []
+      }
+    },
+    {
+      "name": "N:M 합산 — 미수 2건 ↔ 입금 2건 합계 동일",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 60000, "note": "" },
+        { "rowNumber": 6, "date": "2026-04-12", "customer": "가천대", "amount": 40000, "note": "" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 70000, "content": "가천대", "matchedFlag": "" },
+        { "row": 3, "date": "2026-04-16", "amount": 30000, "content": "가천대", "matchedFlag": "" }
+      ],
+      "expected": {
+        "matched": [{ "misuRows": [5, 6], "depRows": [2, 3], "kind": "nToM" }],
+        "mismatches": []
+      }
+    },
+    {
+      "name": "Mismatch — 금액일치 + 이름불일치 → mismatches에 적재",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 100000, "note": "" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 100000, "content": "동국대", "matchedFlag": "" }
+      ],
+      "expected": {
+        "matched": [],
+        "mismatches": [
+          { "misuRow": 5, "depRow": 2, "amount": 100000 }
+        ]
+      }
+    },
+    {
+      "name": "이미 입금완료된 미수는 매칭 시도 안 함",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 100000, "note": "입금완료" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 100000, "content": "가천대", "matchedFlag": "" }
+      ],
+      "expected": {
+        "matched": [],
+        "mismatches": [],
+        "unmatchedMisu": [],
+        "unmatchedDep": [2]
+      }
+    },
+    {
+      "name": "처리완료된 입금은 매칭 시도 안 함",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 100000, "note": "" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 100000, "content": "가천대", "matchedFlag": "처리완료" }
+      ],
+      "expected": {
+        "matched": [],
+        "mismatches": [],
+        "unmatchedMisu": [5],
+        "unmatchedDep": []
+      }
+    },
+    {
+      "name": "복합 시나리오 — 1:1 + N:1 + 미매칭 혼합",
+      "misu": [
+        { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 100000, "note": "" },
+        { "rowNumber": 6, "date": "2026-04-11", "customer": "동국대", "amount": 30000, "note": "" },
+        { "rowNumber": 7, "date": "2026-04-11", "customer": "동국대", "amount": 20000, "note": "" },
+        { "rowNumber": 8, "date": "2026-04-12", "customer": "성균관대", "amount": 80000, "note": "" }
+      ],
+      "deposits": [
+        { "row": 2, "date": "2026-04-15", "amount": 100000, "content": "가천대", "matchedFlag": "" },
+        { "row": 3, "date": "2026-04-16", "amount": 50000, "content": "동국대", "matchedFlag": "" }
+      ],
+      "expected": {
+        "matchedCount": 2,
+        "unmatchedMisuCount": 1,
+        "unmatchedDepCount": 0
+      }
+    }
+  ]
+}

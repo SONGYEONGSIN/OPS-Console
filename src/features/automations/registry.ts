@@ -2,6 +2,7 @@ import "server-only";
 import type { AutomationJob } from "./types";
 import { runInsightsCollect } from "./jobs/insights-collect";
 import { runReceivablesMailOperator } from "./jobs/receivables-mail-operator";
+import { runReceivablesDepositMatch } from "./jobs/receivables-deposit-match";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -21,6 +22,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "평일 10:00 자동 (GitHub Actions)",
     cooldownMinutes: 60,
     run: runReceivablesMailOperator,
+  },
+  {
+    id: "receivables-deposit-match",
+    label: "입금 매칭 자동화",
+    description:
+      "SharePoint 미수채권 ↔ 입금내역 시트를 매칭(단건/N:1/N:M)하여 K/J열을 자동 업데이트. MAIL_MATCH_DRY_RUN=true(default) 시 PATCH skip + 이력만 적재.",
+    scheduleInfo: "매시간 자동 (GitHub Actions)",
+    cooldownMinutes: 30,
+    run: runReceivablesDepositMatch,
   },
 ];
 
