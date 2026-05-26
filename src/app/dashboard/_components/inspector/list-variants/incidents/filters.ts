@@ -1,13 +1,7 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 
-/** 사고 보고 상태 필터 — incidentStatus 4값 + 전체 */
-export const INCIDENT_FILTERS = [
-  { value: "all", label: "전체" },
-  { value: "미처리", label: "미처리" },
-  { value: "처리중", label: "처리중" },
-  { value: "처리완료", label: "처리완료" },
-  { value: "보류", label: "보류" },
-] as const;
+/** 사고 보고 상태 필터 — 우측 "현재상황 전체" select와 중복이라 chip 미노출. ScopeChips(전체/내 사고)만 유지. */
+export const INCIDENT_FILTERS = [] as const;
 
 /** 자주 쓰는 카테고리 suggestion (datalist) */
 export const INCIDENT_CATEGORY_SUGGESTIONS = [

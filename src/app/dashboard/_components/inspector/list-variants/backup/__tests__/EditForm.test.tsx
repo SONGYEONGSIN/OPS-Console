@@ -35,7 +35,7 @@ describe("BackupForm", () => {
     expect(setRow).toHaveBeenCalled();
   });
 
-  it("저장 버튼 클릭 시 onSave(row) 호출", () => {
+  it("저장 버튼 클릭 시 onSave(row) 호출 — PR-6 sendMode 운반 포함", () => {
     const onSave = vi.fn();
     render(
       <BackupForm
@@ -46,7 +46,34 @@ describe("BackupForm", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
-    expect(onSave).toHaveBeenCalledWith(baseRow);
+    // 발송 모드 default 'now' + 예약 시각 빈 문자열이 row에 운반됨
+    expect(onSave).toHaveBeenCalledWith({
+      ...baseRow,
+      sendMode: "now",
+      scheduledAtInput: "",
+    });
+  });
+
+  it("PR-6: 예약 발송 모드 + 예약 시각 입력 → onSave에 sendMode=schedule + scheduledAtInput 운반", () => {
+    const onSave = vi.fn();
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "예약 발송" }));
+    fireEvent.change(screen.getByLabelText("예약 시각"), {
+      target: { value: "2099-01-01T10:00" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledWith({
+      ...baseRow,
+      sendMode: "schedule",
+      scheduledAtInput: "2099-01-01T10:00",
+    });
   });
 
   it("취소 버튼 클릭 시 onCancel 호출", () => {
@@ -73,6 +100,51 @@ describe("BackupForm", () => {
       />,
     );
     expect(screen.getByLabelText("백업자")).toBeInTheDocument();
+  });
+
+  it("PR-6: row hydrate 시 서비스별로 다른 substitute_email → mode='perService' 자동 인식 (상단 백업자 select 부재)", () => {
+    const rowWithPerService: ListRow = {
+      ...baseRow,
+      substituteEmail: "alice@example.com",
+      substituteName: "Alice",
+      backupServicesDetail: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          service_id: 1,
+          service_name: "s1",
+          university_name: "u1",
+          substitute_email: "kim@example.com",
+          substitute_name: "Kim",
+          contacts: [],
+          note_md: null,
+        },
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          service_id: 2,
+          service_name: "s2",
+          university_name: "u2",
+          substitute_email: "park@example.com",
+          substitute_name: "Park",
+          contacts: [],
+          note_md: null,
+        },
+      ],
+    };
+    render(
+      <BackupForm
+        row={rowWithPerService}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    // perService 모드 → 상단 단일 백업자 select 부재
+    expect(screen.queryByLabelText("백업자")).toBeNull();
+    // '서비스별' 버튼이 활성 상태
+    expect(screen.getByRole("button", { name: "서비스별" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("PR-5: '서비스별' 클릭 시 상단 백업자 select 부재", () => {
@@ -212,7 +284,7 @@ describe("BackupForm", () => {
         backupServiceCandidates={candidates}
       />,
     );
-    fireEvent.change(screen.getByLabelText("담당 서비스 검색"), {
+    fireEvent.change(screen.getByLabelText("백업 서비스 검색"), {
       target: { value: "경찰" },
     });
     fireEvent.click(screen.getByText("신입학"));

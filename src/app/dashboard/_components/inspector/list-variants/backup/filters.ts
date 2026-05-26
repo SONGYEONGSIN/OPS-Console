@@ -2,7 +2,8 @@ import type { ListRow } from "../../../patterns/ListPattern";
 
 export const BACKUP_FILTERS = [
   { value: "all", label: "전체" },
-  { value: "mine", label: "내가 등록" },
+  { value: "mine", label: "내가 요청" },
+  { value: "mine_substitute", label: "내가 백업" },
   { value: "mail_failed", label: "메일 실패" },
 ] as const;
 

@@ -18,16 +18,21 @@ const operators = [
   { email: "park@example.com", name: "Park" },
 ];
 
+// PR-5: contactCandidates에 email/phone 필드 추가 — 메일 발송 시 객체 스냅샷 빌드
 const contactCandidates = [
   {
     id: "c1",
     customer_name: "양라윤",
     university_name: "한양대학교",
+    email: "yry@hanyang.ac.kr",
+    phone: "010-1111-2222",
   },
   {
     id: "c2",
     customer_name: "박지호",
     university_name: "연세대학교",
+    email: null,
+    phone: null,
   },
 ];
 
@@ -122,17 +127,37 @@ describe("ServiceCard", () => {
     ) as HTMLInputElement;
     fireEvent.change(search, { target: { value: "양라윤" } });
     fireEvent.click(screen.getByText("양라윤"));
-    expect(onContacts).toHaveBeenCalledWith(["한양대학교 — 양라윤"]);
+    // PR-5: 객체 스냅샷 형태로 추가
+    expect(onContacts).toHaveBeenCalledWith([
+      {
+        contact_id: "c1",
+        customer_name: "양라윤",
+        university_name: "한양대학교",
+        email: "yry@hanyang.ac.kr",
+        phone: "010-1111-2222",
+      },
+    ]);
   });
 
   it("기존 chip × 클릭 → onContactsChange 호출 (해당 항목 제거)", () => {
     const onContacts = vi.fn();
+    const c1 = {
+      contact_id: "c1",
+      customer_name: "양라윤",
+      university_name: "한양대학교",
+      email: null,
+      phone: null,
+    };
+    const c2 = {
+      contact_id: "c2",
+      customer_name: "박지호",
+      university_name: "연세대학교",
+      email: null,
+      phone: null,
+    };
     render(
       <ServiceCard
-        detail={{
-          ...baseDetail,
-          contacts: ["한양대 — 양라윤", "연세대 — 박지호"],
-        }}
+        detail={{ ...baseDetail, contacts: [c1, c2] }}
         backupOperators={operators}
         contactCandidates={contactCandidates}
         onSubstituteChange={vi.fn()}
@@ -141,14 +166,21 @@ describe("ServiceCard", () => {
         onRemove={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByLabelText("한양대 — 양라윤 제거"));
-    expect(onContacts).toHaveBeenCalledWith(["연세대 — 박지호"]);
+    fireEvent.click(screen.getByLabelText("한양대학교 — 양라윤 제거"));
+    expect(onContacts).toHaveBeenCalledWith([c2]);
   });
 
   it("이미 추가된 연락처는 검색 결과에서 제외", () => {
+    const c1 = {
+      contact_id: "c1",
+      customer_name: "양라윤",
+      university_name: "한양대학교",
+      email: null,
+      phone: null,
+    };
     render(
       <ServiceCard
-        detail={{ ...baseDetail, contacts: ["한양대학교 — 양라윤"] }}
+        detail={{ ...baseDetail, contacts: [c1] }}
         backupOperators={operators}
         contactCandidates={contactCandidates}
         onSubstituteChange={vi.fn()}

@@ -8,7 +8,11 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
-import { createBackupRequest } from "@/features/backup-requests/actions";
+import {
+  createBackupRequest,
+  updateBackupRequest,
+  deleteBackupRequest,
+} from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 import { listServices } from "@/features/services/queries";
@@ -93,10 +97,13 @@ export default async function BackupPage({
     if (contactsFetched >= total) break;
     if (p * CHUNK >= total) break; // PGRST103 회피
   }
+  // PR-5: email/phone projection 추가 — ServiceCard에서 contact 추가 시 객체 스냅샷 build
   const backupContactCandidates = contactCandidatesRaw.map((c) => ({
     id: c.id,
     customer_name: c.customer_name,
     university_name: c.university_name,
+    email: c.contact_email,
+    phone: c.contact_phone,
   }));
 
   const header = (
@@ -115,6 +122,11 @@ export default async function BackupPage({
     isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
+    // PR-7: 삭제 시그널 — row.status === "deleted" (services 패턴 동일)
+    if (row.status === "deleted") {
+      const result = await deleteBackupRequest(row.id);
+      return result.ok ? { ok: true } : { ok: false, error: result.error };
+    }
     if (isNew) {
       // PR-3/4: services는 {service_id, substitute_email?, substitute_name?, contacts, note_md?}[] 튜플
       const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
@@ -124,17 +136,29 @@ export default async function BackupPage({
         contacts: d.contacts,
         note_md: d.note_md,
       }));
+      // PR-6: EditForm에서 운반한 발송 모드 + 예약 시각
+      const sendMode = row.sendMode ?? "now";
+      const scheduledAtInput = row.scheduledAtInput ?? "";
+
       const result = await createBackupRequest({
         substitute_email: row.substituteEmail ?? "",
         substitute_name: row.substituteName ?? "",
+        title: row.name?.trim() || undefined,
         services: servicesPayload,
         summary_md: row.summary ?? "",
         leave_start_date: row.leaveStartDate ?? null,
         leave_end_date: row.leaveEndDate ?? null,
+        mode: sendMode,
+        scheduledAt: scheduledAtInput || undefined,
       });
       if (!result.ok) return { ok: false, error: result.error };
 
-      // 등록 성공 후 메일 발송 — atomic 아님. 실패해도 등록 자체는 보존.
+      // PR-6: 예약 모드는 cron이 due 시각에 발송. createBackupRequest가 status='scheduled'로만 적재.
+      if (sendMode === "schedule") {
+        return { ok: true };
+      }
+
+      // 즉시 모드 — 등록 성공 후 메일 발송 (atomic 아님). 실패해도 등록 자체는 보존.
       // mail_failed 시 View 인스펙터에 재발송 버튼이 노출됨.
       const mailRes = await sendBackupRequestMail({
         backup_request_id: result.row.id,
@@ -147,10 +171,25 @@ export default async function BackupPage({
       }
       return { ok: true };
     }
-    return {
-      ok: false,
-      error: "수정·삭제는 아직 지원되지 않습니다 (후속 PR).",
-    };
+
+    // PR-7: 기존 row 수정. services 교체 포함. 메일 자동 재발송 X (재발송은 명시 버튼).
+    const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
+      service_id: d.id,
+      substitute_email: d.substitute_email ?? null,
+      substitute_name: d.substitute_name ?? null,
+      contacts: d.contacts,
+      note_md: d.note_md,
+    }));
+    const updateRes = await updateBackupRequest(row.id, {
+      substitute_email: row.substituteEmail ?? undefined,
+      substitute_name: row.substituteName ?? undefined,
+      title: row.name?.trim() ? row.name.trim() : null,
+      services: servicesPayload,
+      summary_md: row.summary ?? undefined,
+      leave_start_date: row.leaveStartDate ?? null,
+      leave_end_date: row.leaveEndDate ?? null,
+    });
+    return updateRes.ok ? { ok: true } : { ok: false, error: updateRes.error };
   }
 
   return (
@@ -198,7 +237,8 @@ function backupRequestToListRow(
 ): ListRow {
   return {
     id: r.id,
-    name: deriveTitle(r),
+    // PR-7: 사용자 지정 title 우선, 없으면 deriveTitle fallback
+    name: r.title?.trim() || deriveTitle(r),
     status: "active",
     owner: ownerByEmail.get(r.requester_email) ?? r.requester_email,
     substituteEmail: r.substitute_email,
@@ -211,6 +251,7 @@ function backupRequestToListRow(
     mailStatus: r.mail_status,
     mailSentAt: r.mail_sent_at ?? null,
     mailError: r.mail_error ?? null,
+    scheduledAt: r.scheduled_at ?? null,
   };
 }
 
