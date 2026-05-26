@@ -56,6 +56,8 @@ export const backupRequestRowSchema = z.object({
   requester_team: z.string().nullable().optional(),
   substitute_email: z.string().email(),
   substitute_name: z.string().min(1),
+  /** PR-7: 사용자 지정 제목. NULL이면 deriveTitle() fallback */
+  title: z.string().nullable().optional(),
   services_detail: z.array(serviceDetailSchema).default([]),
   summary_md: z.string().min(1),
   leave_start_date: z.string().nullable().optional(),
@@ -93,6 +95,8 @@ export const backupRequestCreateSchema = z
   .object({
     substitute_email: z.string().email("백업자 이메일 형식 오류"),
     substitute_name: z.string().min(1, "백업자 이름 누락"),
+    /** PR-7: 사용자 지정 제목. 빈 문자열이면 deriveTitle fallback */
+    title: z.string().max(120).optional(),
     services: z.array(backupRequestServiceInputSchema).max(20).default([]),
     summary_md: z
       .string()
@@ -144,6 +148,8 @@ export const backupRequestUpdateSchema = z
   .object({
     substitute_email: z.string().email().optional(),
     substitute_name: z.string().min(1).optional(),
+    /** PR-7: 제목 갱신. null이면 deriveTitle fallback으로 되돌림 */
+    title: z.string().max(120).nullable().optional(),
     services: z.array(backupRequestServiceInputSchema).max(20).optional(),
     summary_md: z.string().min(1).max(5000).optional(),
     leave_start_date: z.string().min(1).nullable().optional(),

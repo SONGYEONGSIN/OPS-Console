@@ -60,6 +60,7 @@ export async function createBackupRequest(
     requester_team: me.team ?? null,
     substitute_email: parsed.data.substitute_email,
     substitute_name: parsed.data.substitute_name,
+    title: parsed.data.title?.trim() || null,
     summary_md: parsed.data.summary_md,
     leave_start_date: parsed.data.leave_start_date ?? null,
     leave_end_date: parsed.data.leave_end_date ?? null,
@@ -128,6 +129,8 @@ export async function updateBackupRequest(
     patch.substitute_email = parsed.data.substitute_email;
   if (parsed.data.substitute_name !== undefined)
     patch.substitute_name = parsed.data.substitute_name;
+  if (parsed.data.title !== undefined)
+    patch.title = parsed.data.title?.trim() || null;
   if (parsed.data.summary_md !== undefined)
     patch.summary_md = parsed.data.summary_md;
   if (parsed.data.leave_start_date !== undefined)

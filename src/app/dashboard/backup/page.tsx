@@ -143,6 +143,7 @@ export default async function BackupPage({
       const result = await createBackupRequest({
         substitute_email: row.substituteEmail ?? "",
         substitute_name: row.substituteName ?? "",
+        title: row.name?.trim() || undefined,
         services: servicesPayload,
         summary_md: row.summary ?? "",
         leave_start_date: row.leaveStartDate ?? null,
@@ -182,6 +183,7 @@ export default async function BackupPage({
     const updateRes = await updateBackupRequest(row.id, {
       substitute_email: row.substituteEmail ?? undefined,
       substitute_name: row.substituteName ?? undefined,
+      title: row.name?.trim() ? row.name.trim() : null,
       services: servicesPayload,
       summary_md: row.summary ?? undefined,
       leave_start_date: row.leaveStartDate ?? null,
@@ -235,7 +237,8 @@ function backupRequestToListRow(
 ): ListRow {
   return {
     id: r.id,
-    name: deriveTitle(r),
+    // PR-7: 사용자 지정 title 우선, 없으면 deriveTitle fallback
+    name: r.title?.trim() || deriveTitle(r),
     status: "active",
     owner: ownerByEmail.get(r.requester_email) ?? r.requester_email,
     substituteEmail: r.substitute_email,
