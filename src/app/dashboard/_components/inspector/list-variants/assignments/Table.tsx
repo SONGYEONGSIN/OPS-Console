@@ -49,19 +49,19 @@ export function AssignmentsTable({ rows }: Props) {
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="border-b-2 border-ink text-left text-xs text-muted">
-          <th className="py-2 pr-3 font-medium">대학</th>
+        <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+          <th className="px-3 py-2">대학</th>
           {SERVICE_KINDS.map((s) => (
-            <th key={s} className="py-2 pr-3 font-medium">{SERVICE_LABEL[s] ?? s}</th>
+            <th key={s} className="px-3 py-2">{SERVICE_LABEL[s] ?? s}</th>
           ))}
         </tr>
       </thead>
       <tbody>
         {rows.map((row) => (
           <tr key={row.id} className="border-b border-line-soft">
-            <td className="py-2 pr-3 font-medium text-ink">{row.name}</td>
+            <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
             {SERVICE_KINDS.map((s) => (
-              <td key={s} className="py-2 pr-3 text-ink">
+              <td key={s} className="px-3 py-2 text-ink">
                 <AssignmentCell rec={row.assignment?.byService[s]} />
               </td>
             ))}

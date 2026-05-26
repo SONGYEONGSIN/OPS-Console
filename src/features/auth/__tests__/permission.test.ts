@@ -120,9 +120,25 @@ describe("canViewMenu", () => {
     expect(canViewMenu("feedback", ME_MEMBER)).toBe(true);
   });
 
-  it("member는 allowedMenus 밖이면 false", () => {
+  it("member는 admin-only slug(team/settings/notices/outcomes/automations)는 false", () => {
     expect(canViewMenu("team", ME_MEMBER)).toBe(false);
     expect(canViewMenu("settings", ME_MEMBER)).toBe(false);
+    expect(canViewMenu("notices", ME_MEMBER)).toBe(false);
+    expect(canViewMenu("outcomes", ME_MEMBER)).toBe(false);
+    expect(canViewMenu("automations", ME_MEMBER)).toBe(false);
+  });
+
+  it("member는 비-adminOnly slug는 allowedMenus 밖이어도 true (정책: deny 외 전체 허용)", () => {
+    const empty = { ...ME_MEMBER, allowedMenus: [] };
+    expect(canViewMenu("services", empty)).toBe(true);
+    expect(canViewMenu("contracts", empty)).toBe(true);
+    expect(canViewMenu("schedule", empty)).toBe(true);
+  });
+
+  it("viewer도 동일하게 admin-only 차단, 그 외 통과", () => {
+    const viewer = { ...ME_MEMBER, permission: "viewer" as const };
+    expect(canViewMenu("settings", viewer)).toBe(false);
+    expect(canViewMenu("services", viewer)).toBe(true);
   });
 
   it("operator=null(비로그인) → false", () => {
@@ -131,13 +147,15 @@ describe("canViewMenu", () => {
 });
 
 describe("filterSidebarSections", () => {
+  // sections에 adminOnly 표시된 항목은 admin만 / 그 외(슬러그 있어도 비-adminOnly)는
+  // member도 통과. 빈 group hide 검증을 위해 그룹 내 모든 item을 adminOnly로 표시.
   const sections: SbSection[] = [
     {
       title: "개요",
       entries: [
         { kind: "item", ico: "◉", label: "실시간 현황" },
         { kind: "item", ico: "✓", label: "할 일", slug: "my-todo" },
-        { kind: "item", ico: "✦", label: "팀", slug: "team" },
+        { kind: "item", ico: "✦", label: "팀", slug: "team", adminOnly: true },
       ],
     },
     {
@@ -147,8 +165,8 @@ describe("filterSidebarSections", () => {
           kind: "group",
           label: "프로젝트",
           items: [
-            { ico: "·", label: "PIMS", slug: "pims" },
-            { ico: "·", label: "K12", slug: "k12" },
+            { ico: "·", label: "PIMS", slug: "pims", adminOnly: true },
+            { ico: "·", label: "K12", slug: "k12", adminOnly: true },
           ],
         },
       ],
@@ -160,13 +178,14 @@ describe("filterSidebarSections", () => {
     expect(result).toEqual(sections);
   });
 
-  it("member: allowedMenus만 통과 + slug 없는 item 보존", () => {
+  it("member: adminOnly item만 hide, slug 없는 item·비-adminOnly slug 보존", () => {
     const result = filterSidebarSections(sections, ME_MEMBER);
     expect(result[0].entries).toHaveLength(2);
+    expect(result[0].entries[0]).toMatchObject({ label: "실시간 현황" });
     expect(result[0].entries[1]).toMatchObject({ slug: "my-todo" });
   });
 
-  it("member: 빈 group은 group 자체 hide", () => {
+  it("member: 모든 자식이 adminOnly인 group은 group 자체 hide", () => {
     const result = filterSidebarSections(sections, ME_MEMBER);
     const projectSection = result.find((s) => s.title === "그룹");
     expect(projectSection?.entries).toHaveLength(0);
