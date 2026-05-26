@@ -40,17 +40,28 @@ export function buildBackupMailSubject(input: BackupMailInput): string {
   return `[운영부 상황실] ${input.requesterName} 백업 요청 — ${range}`;
 }
 
-function textChipsHtml(items: string[]): string {
+/**
+ * PR-5: 연락처 chip 한 줄 텍스트 렌더 — "{학교} — {이름}  {이메일} · {전화}"
+ * 이메일/전화는 nullable. 둘 다 null이면 라벨만 표시.
+ */
+function contactChipsHtml(items: ServiceDetail["contacts"]): string {
   return `<div style="display:flex;flex-wrap:wrap;gap:4px;">${items
-    .map(
-      (s) =>
-        `<span style="border:1px solid #ddd;padding:2px 6px;font-size:11px;color:#1a1a1a;">${escapeHtml(s)}</span>`,
-    )
+    .map((c) => {
+      const label = `${escapeHtml(c.university_name)} — ${escapeHtml(c.customer_name)}`;
+      const meta: string[] = [];
+      if (c.email) meta.push(escapeHtml(c.email));
+      if (c.phone) meta.push(escapeHtml(c.phone));
+      const metaText =
+        meta.length > 0
+          ? ` <span style="color:#666;">${meta.join(" · ")}</span>`
+          : "";
+      return `<span style="border:1px solid #ddd;padding:2px 6px;font-size:11px;color:#1a1a1a;">${label}${metaText}</span>`;
+    })
     .join("")}</div>`;
 }
 
 /**
- * PR-4: 서비스 카드 HTML.
+ * 서비스 카드 HTML.
  * 헤더 (대학명 — 서비스명) + 연락처 (있을 때만) + 메모 (있을 때만).
  * 빈 contacts/note_md는 섹션 자체를 출력하지 않음 (DOM 최소화).
  */
@@ -58,7 +69,7 @@ function serviceCardHtml(s: ServiceDetail): string {
   const header = `<div style="font-size:13px;color:#1a1a1a;font-weight:500;margin-bottom:6px;">${escapeHtml(s.university_name)} — ${escapeHtml(s.service_name)}</div>`;
   const contactsBlock =
     s.contacts.length > 0
-      ? `<div style="margin-top:6px;"><span style="font-size:11px;color:#666;">연락처:</span> ${textChipsHtml(s.contacts)}</div>`
+      ? `<div style="margin-top:6px;"><span style="font-size:11px;color:#666;">연락처:</span> ${contactChipsHtml(s.contacts)}</div>`
       : "";
   const noteBlock = s.note_md
     ? `<div style="margin-top:6px;font-size:12px;color:#444;border-left:2px solid #b8331e;padding:2px 10px;white-space:pre-wrap;">${escapeHtml(s.note_md)}</div>`
@@ -141,7 +152,7 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
     </div>
 
     <div style="margin-bottom:20px;">
-      <p style="font-size:11px;color:#b8331e;letter-spacing:1px;margin:0 0 8px 0;font-weight:bold;">담당 서비스</p>
+      <p style="font-size:11px;color:#b8331e;letter-spacing:1px;margin:0 0 8px 0;font-weight:bold;">백업 서비스</p>
       ${serviceCardsHtml(input.services)}
     </div>
 

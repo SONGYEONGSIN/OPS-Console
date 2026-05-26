@@ -3,6 +3,15 @@
 import { useState } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
 
+/** PR-5: 인스펙터 chip의 contact 스냅샷 형식 — schemas.ts contactDetailSchema와 동일 */
+export type ContactDetail = {
+  contact_id: string;
+  customer_name: string;
+  university_name: string;
+  email: string | null;
+  phone: string | null;
+};
+
 export type ServiceCardDetail = {
   id: string;
   service_id: number;
@@ -10,7 +19,7 @@ export type ServiceCardDetail = {
   university_name: string;
   substitute_email?: string | null;
   substitute_name?: string | null;
-  contacts: string[];
+  contacts: ContactDetail[];
   note_md: string | null;
 };
 
@@ -19,6 +28,8 @@ type ContactCandidate = {
   id: string;
   customer_name: string;
   university_name: string;
+  email: string | null;
+  phone: string | null;
 };
 
 type Props = {
@@ -26,7 +37,7 @@ type Props = {
   backupOperators: Operator[];
   contactCandidates: ContactCandidate[];
   onSubstituteChange: (email: string | null, name: string | null) => void;
-  onContactsChange: (contacts: string[]) => void;
+  onContactsChange: (contacts: ContactDetail[]) => void;
   onNoteChange: (note: string | null) => void;
   onRemove: () => void;
   /** PR-5: false면 헤더의 백업자 select 미렌더링 (single mode에서 사용) */
@@ -35,7 +46,8 @@ type Props = {
 
 const MAX_CONTACTS = 20;
 
-function formatContactLabel(c: ContactCandidate): string {
+/** 인스펙터 chip 라벨 — 이메일/전화 미노출 (사용자 요청: 메일 발송에만 노출) */
+function chipLabel(c: ContactDetail): string {
   return `${c.university_name} — ${c.customer_name}`;
 }
 
@@ -52,28 +64,34 @@ export function ServiceCard({
   const [contactQuery, setContactQuery] = useState("");
 
   const trimmed = contactQuery.trim();
+  const selectedIds = new Set(detail.contacts.map((c) => c.contact_id));
   const matches =
     trimmed.length === 0
       ? []
       : contactCandidates
-          .filter((c) => {
-            const label = formatContactLabel(c);
-            return (
-              !detail.contacts.includes(label) &&
+          .filter(
+            (c) =>
+              !selectedIds.has(c.id) &&
               (c.university_name.includes(trimmed) ||
-                c.customer_name.includes(trimmed))
-            );
-          })
+                c.customer_name.includes(trimmed)),
+          )
           .slice(0, 10);
 
   function addContact(c: ContactCandidate) {
     if (detail.contacts.length >= MAX_CONTACTS) return;
-    onContactsChange([...detail.contacts, formatContactLabel(c)]);
+    const snapshot: ContactDetail = {
+      contact_id: c.id,
+      customer_name: c.customer_name,
+      university_name: c.university_name,
+      email: c.email,
+      phone: c.phone,
+    };
+    onContactsChange([...detail.contacts, snapshot]);
     setContactQuery("");
   }
 
-  function removeContact(label: string) {
-    onContactsChange(detail.contacts.filter((x) => x !== label));
+  function removeContact(contactId: string) {
+    onContactsChange(detail.contacts.filter((x) => x.contact_id !== contactId));
   }
 
   return (
@@ -146,22 +164,25 @@ export function ServiceCard({
         )}
         {detail.contacts.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {detail.contacts.map((label) => (
-              <span
-                key={label}
-                className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
-              >
-                <span>{label}</span>
-                <button
-                  type="button"
-                  aria-label={`${label} 제거`}
-                  onClick={() => removeContact(label)}
-                  className="cursor-pointer border-none bg-transparent px-0.5 text-muted hover:text-vermilion"
+            {detail.contacts.map((c) => {
+              const label = chipLabel(c);
+              return (
+                <span
+                  key={c.contact_id}
+                  className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-2xs text-ink-soft"
                 >
-                  ×
-                </button>
-              </span>
-            ))}
+                  <span>{label}</span>
+                  <button
+                    type="button"
+                    aria-label={`${label} 제거`}
+                    onClick={() => removeContact(c.contact_id)}
+                    className="cursor-pointer border-none bg-transparent px-0.5 text-muted hover:text-vermilion"
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
           </div>
         )}
       </div>

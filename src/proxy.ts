@@ -3,6 +3,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 /** 인증 없이 접근 가능한 라우트. 정확 일치 또는 prefix 매치.
  *  /api/data-requests/dispatch — pg_cron이 쿠키 세션 없이 호출. 라우트 내부에서
+ *  /api/backup-requests/dispatch — 동일 (PR-6 예약 발송 cron 진입점)
  *  CRON_SECRET 헤더로 자체 인증하므로 미들웨어 인증 가드는 통과시킨다. */
 const PUBLIC_PATHS = [
   "/login",
@@ -10,6 +11,7 @@ const PUBLIC_PATHS = [
   "/reset-password",
   "/auth/callback",
   "/api/data-requests/dispatch",
+  "/api/backup-requests/dispatch",
   /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
   "/r",
 ];

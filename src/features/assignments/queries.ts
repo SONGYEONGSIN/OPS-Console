@@ -60,43 +60,6 @@ export const fetchAssignmentSheet = cache(
   },
 );
 
-/**
- * 배정 엑셀 파일 자체의 driveItem 메타 — webUrl·lastModifiedDateTime.
- * SharePoint 웹으로 위임하는 패널에서 사용.
- */
-export type AssignmentItemMeta = {
-  webUrl: string;
-  lastModifiedDateTime: string | null;
-};
-
-export const fetchAssignmentItemMeta = cache(
-  async function fetchAssignmentItemMeta(): Promise<AssignmentItemMeta | null> {
-    const driveId = process.env.SHAREPOINT_DRIVE_ID;
-    const itemId = process.env.SHAREPOINT_ASSIGNMENTS_ITEM_ID;
-    if (!driveId || !itemId) return null;
-    let token: string;
-    try {
-      token = await getGraphToken();
-    } catch {
-      return null;
-    }
-    const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}?$select=webUrl,lastModifiedDateTime`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      webUrl?: string;
-      lastModifiedDateTime?: string;
-    };
-    if (!data.webUrl) return null;
-    return {
-      webUrl: data.webUrl,
-      lastModifiedDateTime: data.lastModifiedDateTime ?? null,
-    };
-  },
-);
-
 /** 워크시트 이름 상수 (시트 탭 명과 정확히 일치) */
 export const SHEET_NAMES = {
   배정리스트: "02. 배정리스트",

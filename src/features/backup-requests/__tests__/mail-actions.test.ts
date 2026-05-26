@@ -88,7 +88,15 @@ const backupRow = {
       university_name: "한양대학교",
       substitute_email: null,
       substitute_name: null,
-      contacts: ["한양대 — 양라윤"],
+      contacts: [
+        {
+          contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          customer_name: "양라윤",
+          university_name: "한양대",
+          email: null,
+          phone: null,
+        },
+      ],
       note_md: "서비스1 메모",
     },
   ],
@@ -217,7 +225,15 @@ describe("sendBackupRequestMail", () => {
           university_name: "경찰대학",
           substitute_email: "kim@example.com",
           substitute_name: "Kim",
-          contacts: ["경찰대 — 강민호"],
+          contacts: [
+            {
+              contact_id: "11aaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              customer_name: "강민호",
+              university_name: "경찰대",
+              email: "kmh@police.ac.kr",
+              phone: "010-1111-2222",
+            },
+          ],
           note_md: "5/20 마감",
         },
         {
@@ -227,7 +243,15 @@ describe("sendBackupRequestMail", () => {
           university_name: "연세대학교",
           substitute_email: "park@example.com",
           substitute_name: "Park",
-          contacts: ["연세대 — 박지호"],
+          contacts: [
+            {
+              contact_id: "22bbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              customer_name: "박지호",
+              university_name: "연세대",
+              email: null,
+              phone: null,
+            },
+          ],
           note_md: "양식 첨부",
         },
       ],

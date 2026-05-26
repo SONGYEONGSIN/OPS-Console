@@ -9,7 +9,15 @@ const svcA: PdfServiceDetail = {
   service_id: 5072006,
   service_name: "서비스1",
   university_name: "한양대학교",
-  contacts: ["한양대 — 양라윤"],
+  contacts: [
+    {
+      contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      customer_name: "양라윤",
+      university_name: "한양대",
+      email: "yry@hanyang.ac.kr",
+      phone: "010-1111-2222",
+    },
+  ],
   note_md: null,
 };
 
@@ -53,7 +61,15 @@ describe("renderBackupRequestPdf", () => {
           service_id: 999,
           service_name: "한글서비스",
           university_name: "한글대학교",
-          contacts: ["한글연락처"],
+          contacts: [
+            {
+              contact_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+              customer_name: "한글연락처",
+              university_name: "한글대",
+              email: null,
+              phone: null,
+            },
+          ],
           note_md: "한글메모",
         },
       ],

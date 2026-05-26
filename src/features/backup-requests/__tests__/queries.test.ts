@@ -123,7 +123,23 @@ describe("listBackupRequests", () => {
     expect(r.rows.length).toBe(1);
   });
 
-  it("PR-4: services join row의 contacts/note_md 평탄화 시 보존", async () => {
+  it("PR-5: services join row의 contacts 객체 배열/note_md 평탄화 시 보존", async () => {
+    const contacts = [
+      {
+        contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        customer_name: "강민호",
+        university_name: "경찰대",
+        email: "kmh@police.ac.kr",
+        phone: "010-1111-2222",
+      },
+      {
+        contact_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        customer_name: "홍길동",
+        university_name: "고려대",
+        email: null,
+        phone: null,
+      },
+    ];
     const richRow = {
       ...validRow,
       backup_request_services: [
@@ -132,7 +148,7 @@ describe("listBackupRequests", () => {
           substitute_email: null,
           substitute_name: null,
           note_md: "5/20 마감 임박",
-          contacts: ["경찰대 — 강민호", "고려대 — 홍길동"],
+          contacts,
           services: serviceA,
         },
       ],
@@ -140,10 +156,7 @@ describe("listBackupRequests", () => {
     mockResult.mockReturnValue({ data: [richRow], error: null, count: 1 });
     const r = await listBackupRequests();
     expect(r.rows[0]?.services_detail[0]?.note_md).toBe("5/20 마감 임박");
-    expect(r.rows[0]?.services_detail[0]?.contacts).toEqual([
-      "경찰대 — 강민호",
-      "고려대 — 홍길동",
-    ]);
+    expect(r.rows[0]?.services_detail[0]?.contacts).toEqual(contacts);
   });
 });
 
