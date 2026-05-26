@@ -23,8 +23,8 @@ function mergeRows(...rows: string[][]): string[] {
 const sheet: AssignmentSheet = {
   worksheetName: "02. 배정리스트",
   rowsText: [
-    // r0 블록 라벨: M(12)=2027학년도 운영자, S(18)=2027학년도 개발자, Y(24)=2026학년도 운영자, _(30)=2026학년도 개발자, D(3)=대학명
-    mergeRows(cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자"), cell(24, "2026학년도 운영자"), cell(30, "2026학년도 개발자")),
+    // r0 블록 라벨: B(1)=대분류, D(3)=대학명, M(12)=2027학년도 운영자, S(18)=2027학년도 개발자, Y(24)=2026학년도 운영자, _(30)=2026학년도 개발자
+    mergeRows(cell(1, "대분류"), cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자"), cell(24, "2026학년도 운영자"), cell(30, "2026학년도 개발자")),
     // r1 sub-type (각 블록 재외/수시/정시/편입/외국인/백업)
     mergeRows(
       cell(12, "재외"), cell(13, "수시"), cell(14, "정시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
@@ -32,8 +32,8 @@ const sheet: AssignmentSheet = {
       cell(24, "재외"), cell(25, "수시"), cell(26, "정시"), cell(27, "편입"), cell(28, "외국인"), cell(29, "백업"),
       cell(30, "재외"), cell(31, "수시"), cell(32, "정시"), cell(33, "편입"), cell(34, "외국인"), cell(35, "백업"),
     ),
-    // r2 데이터: 신성대학교, 2027 수시운영=N(13)=기자의, 2027 수시개발=T(19)=권용철, 2027 정시운영=O(14)=김슬기
-    mergeRows(cell(3, "신성대학교"), cell(13, "기자의"), cell(14, "김슬기"), cell(19, "권용철"), cell(25, "기존운영")),
+    // r2 데이터: 전문대학 / 신성대학교, 2027 수시운영=N(13)=기자의, 2027 수시개발=T(19)=권용철, 2027 정시운영=O(14)=김슬기
+    mergeRows(cell(1, "전문대학"), cell(3, "신성대학교"), cell(13, "기자의"), cell(14, "김슬기"), cell(19, "권용철"), cell(25, "기존운영")),
   ],
   rowCount: 3,
   columnCount: 36,
@@ -49,6 +49,11 @@ describe("parseBaejungList", () => {
       operator: "기자의", // 2027 수시 운영 (N)
       developer: "권용철", // 2027 수시 개발 (T)
     });
+  });
+
+  it("r0 '대분류' 컬럼을 universityType으로 추출", () => {
+    const recs = parseBaejungList(sheet);
+    expect(recs[0].universityType).toBe("전문대학");
   });
 
   it("인스펙터 detail에 sub-type/연도 항목 포함", () => {

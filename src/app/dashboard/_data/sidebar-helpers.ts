@@ -99,11 +99,21 @@ export function getAllMenuSlugs(): string[] {
 }
 
 /**
- * member 권한 기본 허용 메뉴 — 공지사항·조직 권한·시스템 설정만 제외하고 전체.
+ * admin 전용 메뉴 slug 집합 — 비-admin(member/viewer)은 사이드바·페이지 진입 모두 차단.
+ * 사이드바 정의의 `adminOnly: true`와 동기 (single source of truth는 _data.ts지만,
+ * canViewMenu에서 fast lookup을 위해 별도 set으로 운영).
  */
-const MEMBER_DENY_SLUGS = new Set(["notices", "team", "settings"]);
+export const ADMIN_ONLY_MENU_SLUGS = new Set([
+  "notices",
+  "team",
+  "settings",
+  "outcomes",
+  "automations",
+]);
+
+/** 신규 member 생성 시 기본 allowed_menus — admin 전용 메뉴를 제외한 전체. */
 export function getDefaultMemberMenus(): string[] {
-  return getAllMenuSlugs().filter((s) => !MEMBER_DENY_SLUGS.has(s));
+  return getAllMenuSlugs().filter((s) => !ADMIN_ONLY_MENU_SLUGS.has(s));
 }
 
 /**

@@ -49,7 +49,7 @@ export function ListPagination({ total, pageSize = 30 }: Props) {
       >
         ← 이전
       </button>
-      <span className="font-mono text-xs text-muted">
+      <span className="tabular-nums text-sm text-muted">
         {page} / {totalPages}
       </span>
       <button

@@ -116,7 +116,7 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     allowedMenus: ["my-todo", "feedback"],
   };
 
-  it("admin이 편집 모드 → 메뉴 체크박스 그룹 노출 + 일부 체크 상태", () => {
+  it("admin이 편집 모드 → member row 편집 시 admin-only 5개는 hide, 비-adminOnly는 자동 체크 + disabled", () => {
     render(
       <InspectorListBody
         row={teamRow}
@@ -127,17 +127,39 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
         onCancel={vi.fn()}
       />,
     );
-    const fieldset = screen.getByRole("group", { name: /메뉴 권한/ });
-    expect(fieldset).toBeInTheDocument();
-    // my-todo 체크박스 — 체크 상태
-    const myTodoBox = screen.getByRole("checkbox", { name: /my-todo/i });
-    expect(myTodoBox).toBeChecked();
-    // team 체크박스 — 미체크 (allowedMenus에 없음)
-    const teamBox = screen.getByRole("checkbox", { name: /team/i });
-    expect(teamBox).not.toBeChecked();
+    expect(screen.getByRole("group", { name: /메뉴 권한/ })).toBeInTheDocument();
+    // member row → admin-only 5개 체크박스 미노출
+    expect(screen.queryByRole("checkbox", { name: /^team$/i })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /^settings$/i })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /^notices$/i })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /^outcomes$/i })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /^automations$/i })).toBeNull();
+    // 비-adminOnly는 자동 체크 + disabled (정책 반영)
+    const myTodo = screen.getByRole("checkbox", { name: /^my-todo$/i });
+    expect(myTodo).toBeChecked();
+    expect(myTodo).toBeDisabled();
   });
 
-  it("member가 편집 모드 → 체크박스 그룹 hide", () => {
+  it("admin row 편집 시 admin-only 메뉴도 노출 + 모두 자동 체크", () => {
+    const adminRow: ListRow = { ...teamRow, permission: "admin" };
+    render(
+      <InspectorListBody
+        row={adminRow}
+        editing={true}
+        variant="team"
+        currentUserPermission="admin"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const teamBox = screen.getByRole("checkbox", { name: /^team$/i });
+    const settingsBox = screen.getByRole("checkbox", { name: /^settings$/i });
+    expect(teamBox).toBeChecked();
+    expect(teamBox).toBeDisabled();
+    expect(settingsBox).toBeChecked();
+  });
+
+  it("member가 편집 모드 → 체크박스 그룹 hide (canEditPermission false)", () => {
     render(
       <InspectorListBody
         row={teamRow}
@@ -151,28 +173,6 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     expect(
       screen.queryByRole("group", { name: /메뉴 권한/ }),
     ).not.toBeInTheDocument();
-  });
-
-  it("admin이 my-todo 체크 해제 후 저장 → onSave에 my-todo 빠진 allowedMenus", () => {
-    const onSave = vi.fn();
-    render(
-      <InspectorListBody
-        row={teamRow}
-        editing={true}
-        variant="team"
-        currentUserPermission="admin"
-        onSave={onSave}
-        onCancel={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByRole("checkbox", { name: /my-todo/i }));
-    fireEvent.click(screen.getByRole("button", { name: "저장" }));
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({
-        allowedMenus: expect.not.arrayContaining(["my-todo"]),
-      }),
-    );
-    expect(onSave.mock.calls[0][0].allowedMenus).toContain("feedback");
   });
 });
 

@@ -24,6 +24,7 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const r0 = rows[0];
   const r1 = rows[1];
   const uniCol = colExact(r0, "대학명");
+  const typeCol = colExact(r0, "대분류");
   const op2027 = colMatch(r0, /2027.*운영자/);
   const dev2027 = colMatch(r0, /2027.*개발자/);
   const op2026 = colMatch(r0, /2026.*운영자/);
@@ -85,7 +86,17 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
       if (op || dev) subtypes.push({ label: st.label, operator: op, developer: dev });
     }
 
-    out.push({ university, service: "원서접수", operator, developer, detail, subtypes });
+    const universityType =
+      typeCol >= 0 ? (row[typeCol] ?? "").trim() || undefined : undefined;
+    out.push({
+      university,
+      service: "원서접수",
+      universityType,
+      operator,
+      developer,
+      detail,
+      subtypes,
+    });
   }
   return out;
 }
@@ -153,6 +164,10 @@ export function joinByUniversity(recs: AssignmentRecord[]): UnivAssignmentRow[] 
       map.set(r.university, row);
     }
     row.byService[r.service] = r;
+    // baejung 행만 universityType을 가짐 — 먼저 발견된 값으로 유지
+    if (!row.universityType && r.universityType) {
+      row.universityType = r.universityType;
+    }
   }
   return [...map.values()].sort((a, b) =>
     a.university.localeCompare(b.university, "ko"),
