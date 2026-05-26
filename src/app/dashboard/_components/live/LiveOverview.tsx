@@ -31,8 +31,16 @@ export type LiveOverviewProps = {
     service: { count: number; sparklineD: string };
   };
   metrics: {
-    contract: { value: number | string; active?: boolean; desc: string };
-    bond: { value: number | string; active?: boolean; desc: string };
+    contract: {
+      value: number | string | { num: number; den: number };
+      active?: boolean;
+      desc: string;
+    };
+    bond: {
+      value: number | string | { num: number; den: number };
+      active?: boolean;
+      desc: string;
+    };
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
     handover: { value: number | string | { num: number; den: number }; desc: string };
