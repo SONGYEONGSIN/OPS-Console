@@ -63,15 +63,30 @@ async function fetchCcOperators(
   }));
 }
 
+/**
+ * PR-6: cron context에서 호출 시 운영자 세션이 없으므로 sender 정보를 직접 전달.
+ * undefined면 기존 동작 (getCurrentOperator 사용).
+ */
+export type SendBackupMailOpts = {
+  cronSender?: { email: string; displayName: string };
+};
+
 export async function sendBackupRequestMail(
   rawInput: SendBackupMailInput,
+  opts: SendBackupMailOpts = {},
 ): Promise<SendBackupMailResult> {
   const parsed = sendBackupMailInputSchema.safeParse(rawInput);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
 
-  const me = await getCurrentOperator();
+  let me: { email: string; displayName: string } | null;
+  if (opts.cronSender) {
+    me = opts.cronSender;
+  } else {
+    const op = await getCurrentOperator();
+    me = op ? { email: op.email, displayName: op.displayName ?? op.email } : null;
+  }
   if (!me) return { ok: false, error: AUTH_ERROR };
 
   const backup = await getBackupRequestById(parsed.data.backup_request_id);

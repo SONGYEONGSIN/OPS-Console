@@ -102,6 +102,20 @@ E2E 운영 메모:
 - `scripts/handover-mail-test.mjs` — `TARGET_EMAIL=` 환경 변수
 - `scripts/backup-request-mail-test.mjs` — `MODE=bulk|per-service` + `TARGET_EMAIL` + `TARGET_EMAIL_2`
 
+## 자동화 잡 (automations registry)
+
+`/dashboard/automations` (admin only) + GitHub Actions cron. 등록: `src/features/automations/registry.ts` 1줄 + `jobs/{id}.ts` 1 모듈. cron 진입점은 `/api/automations/run` (Authorization: Bearer CRON_SECRET).
+
+| Job ID | 실행 | 기능 | 이력 테이블 |
+|---|---|---|---|
+| `insights-collect` | 매일 08:00 (KST) | YouTube 인기 영상 수집 → 인사이트 페이지 | `insight_videos.collected_at` |
+| `receivables-mail-operator` | 평일 10:00 (KST) | 운영자별 미수채권 본인 메일 알림 | `receivables_operator_mail_sends` |
+| `receivables-deposit-match` | 매시간 | 미수 ↔ 입금내역 자동 매칭 (단건/N:1/N:M) + K/J열 PATCH + mismatch admin 알림 | `receivables_match_runs` (jsonb payload) |
+
+`MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
+
+GAS 미수채권 자동화는 4-PR 시리즈로 OPS-Console로 이전 완료 — 폐기 가이드: `docs/gas-receivables-decommission.md`.
+
 ## 운영 자동 기록 (worklog)
 
 - **PageActivityLogger** (client) — `DashboardShell`에 mount, 페이지 진입/이탈을 `/api/worklog/log`로 POST (DEBUG/nav/enter|leave)

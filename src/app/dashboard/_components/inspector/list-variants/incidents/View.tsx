@@ -1,3 +1,4 @@
+import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 
 const STATUS_TONE = {
@@ -7,22 +8,13 @@ const STATUS_TONE = {
   보류: "bg-washi-raised text-ink-soft",
 } as const;
 
-/** 본문 4섹션 표시 — 비어있으면 섹션 자체 생략 */
-function Section({
-  label,
-  body,
-}: {
-  label: string;
-  body: string | null | undefined;
-}) {
-  if (!body) return null;
+/** 본문 텍스트 블록 — 비어있으면 "—" */
+function BodyText({ value }: { value: string | null | undefined }) {
+  if (!value) return <span className="text-xs text-muted">—</span>;
   return (
-    <section className="space-y-1.5">
-      <p className="text-2xs uppercase tracking-[0.18em] text-muted">{label}</p>
-      <p className="whitespace-pre-wrap rounded bg-washi-raised p-2.5 text-sm leading-relaxed text-ink">
-        {body}
-      </p>
-    </section>
+    <p className="whitespace-pre-wrap rounded bg-washi-raised p-2.5 text-sm leading-relaxed text-ink">
+      {value}
+    </p>
   );
 }
 
@@ -30,7 +22,7 @@ export function IncidentView({ row }: ViewProps) {
   const status = row.incidentStatus ?? "미처리";
 
   return (
-    <div className="space-y-5 text-sm text-ink">
+    <div className="space-y-6">
       <section className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <span
@@ -38,62 +30,67 @@ export function IncidentView({ row }: ViewProps) {
           >
             {status}
           </span>
-          {row.incidentYear && (
-            <span className="text-xs text-muted">{row.incidentYear}학년도</span>
-          )}
-          {row.incidentAppType && (
-            <span className="text-xs text-muted">· {row.incidentAppType}</span>
-          )}
-          {row.incidentCategory && (
-            <span className="text-xs text-muted">· {row.incidentCategory}</span>
+          {row.incidentUniversityName && (
+            <span className="text-sm font-medium text-ink">
+              {row.incidentUniversityName}
+            </span>
           )}
         </div>
-        <h2 className="text-lg font-medium text-ink">
-          {row.incidentTitle ?? row.name}
-        </h2>
-        {row.incidentUniversityName && (
-          <p className="text-xs text-ink-soft">{row.incidentUniversityName}</p>
+        {(row.incidentYear ||
+          row.incidentAppType ||
+          row.incidentCategory) && (
+          <p className="text-xs text-muted">
+            {[
+              row.incidentYear ? `${row.incidentYear}학년도` : null,
+              row.incidentAppType,
+              row.incidentCategory,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
         )}
       </section>
 
-      <section className="space-y-1.5">
-        <p className="text-2xs uppercase tracking-[0.18em] text-muted">일자</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
-          <span>
-            <span className="text-muted">발생</span>{" "}
-            <span>{row.incidentOccurredDate ?? "—"}</span>
-          </span>
-          <span>
-            <span className="text-muted">처리</span>{" "}
-            <span>{row.incidentResolvedDate ?? "—"}</span>
-          </span>
-        </div>
-      </section>
+      <Divider />
 
-      <Section label="사고경위" body={row.incidentCauseSummary} />
-      <Section label="사고원인" body={row.incidentRootCause} />
-      <Section label="사고처리" body={row.incidentResolution} />
-      <Section label="사고대책" body={row.incidentPrevention} />
+      <Section title="일자">
+        <DefList
+          items={[
+            { term: "발생", desc: row.incidentOccurredDate ?? "—" },
+            { term: "처리", desc: row.incidentResolvedDate ?? "—" },
+          ]}
+        />
+      </Section>
 
-      <section className="space-y-1.5">
-        <p className="text-2xs uppercase tracking-[0.18em] text-muted">담당</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-          <span>
-            <span className="text-muted">담당부서</span>{" "}
-            <span className="text-ink">
-              {row.incidentDepartment ?? "—"}
-            </span>
-          </span>
-          <span>
-            <span className="text-muted">담당자</span>{" "}
-            <span className="text-ink">{row.incidentAssigneeName ?? "—"}</span>
-          </span>
-          <span>
-            <span className="text-muted">보고자</span>{" "}
-            <span className="text-ink">{row.incidentReporterName ?? "—"}</span>
-          </span>
-        </div>
-      </section>
+      <Divider />
+
+      <Section title="담당">
+        <DefList
+          items={[
+            { term: "담당부서", desc: row.incidentDepartment ?? "—" },
+            { term: "담당자", desc: row.incidentAssigneeName ?? "—" },
+            { term: "보고자", desc: row.incidentReporterName ?? "—" },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="사고경위">
+        <BodyText value={row.incidentCauseSummary} />
+      </Section>
+
+      <Section title="사고원인">
+        <BodyText value={row.incidentRootCause} />
+      </Section>
+
+      <Section title="사고처리">
+        <BodyText value={row.incidentResolution} />
+      </Section>
+
+      <Section title="사고대책">
+        <BodyText value={row.incidentPrevention} />
+      </Section>
     </div>
   );
 }

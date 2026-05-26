@@ -48,7 +48,7 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
                   selectedId === row.id ? "bg-washi-raised" : ""
                 }`}
               >
-                <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                <td className="px-3 py-2 text-xs text-ink-soft">
                   {row.incidentYear ? `${row.incidentYear}학년도` : "—"}
                 </td>
                 <td className="px-3 py-2">
@@ -73,7 +73,7 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
                 <td className="px-3 py-2 text-sm text-ink-soft">
                   {row.incidentAssigneeName ?? "—"}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                <td className="px-3 py-2 text-xs text-ink-soft">
                   {row.incidentOccurredDate ?? "—"}
                 </td>
               </tr>

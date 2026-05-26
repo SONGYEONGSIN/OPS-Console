@@ -2,12 +2,19 @@ import { describe, it, expect } from "vitest";
 import { BACKUP_FILTERS, blankBackupRow } from "../filters";
 
 describe("BACKUP_FILTERS", () => {
-  it("전체 / 내가 등록 / 메일 실패 3개 옵션", () => {
-    expect(BACKUP_FILTERS.length).toBe(3);
+  it("전체 / 내가 요청 / 내가 백업 / 메일 실패 4개 옵션", () => {
+    expect(BACKUP_FILTERS.length).toBe(4);
     expect(BACKUP_FILTERS.map((f) => f.value)).toEqual([
       "all",
       "mine",
+      "mine_substitute",
       "mail_failed",
+    ]);
+    expect(BACKUP_FILTERS.map((f) => f.label)).toEqual([
+      "전체",
+      "내가 요청",
+      "내가 백업",
+      "메일 실패",
     ]);
   });
 });

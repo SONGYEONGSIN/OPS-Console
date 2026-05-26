@@ -91,18 +91,37 @@ describe("buildBackupMailHtml", () => {
     expect(html).toContain("연세대학교 — 2025학년도 외국인전형");
   });
 
-  it("PR-4: 서비스의 contacts chips 렌더", () => {
+  it("PR-5: 서비스의 contacts 객체 chips 렌더 — 이름 + 이메일 + 전화 한 줄 표시", () => {
     const html = buildBackupMailHtml({
       ...baseInput,
       services: [
         {
           ...serviceA,
-          contacts: ["한양대 — 양라윤", "한양대 — 박지호"],
+          contacts: [
+            {
+              contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+              customer_name: "양라윤",
+              university_name: "한양대",
+              email: "yry@hanyang.ac.kr",
+              phone: "010-1111-2222",
+            },
+            {
+              contact_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+              customer_name: "박지호",
+              university_name: "한양대",
+              email: null,
+              phone: null,
+            },
+          ],
         },
       ],
     });
+    // 라벨에 학교 — 이름
     expect(html).toContain("한양대 — 양라윤");
     expect(html).toContain("한양대 — 박지호");
+    // 이메일/전화 노출
+    expect(html).toContain("yry@hanyang.ac.kr");
+    expect(html).toContain("010-1111-2222");
   });
 
   it("PR-4: 서비스 note_md 본문에 포함", () => {
@@ -169,13 +188,27 @@ describe("buildBackupMailHtml", () => {
     expect(html).toContain("X&amp;Y");
   });
 
-  it("PR-4: 서비스의 contacts에 특수문자 있어도 escape", () => {
+  it("PR-5: 서비스의 contacts 객체 필드에 특수문자 있어도 escape", () => {
     const html = buildBackupMailHtml({
       ...baseInput,
-      services: [{ ...serviceA, contacts: ["<bad-contact>"] }],
+      services: [
+        {
+          ...serviceA,
+          contacts: [
+            {
+              contact_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+              customer_name: "<bad-contact>",
+              university_name: "X&Y",
+              email: null,
+              phone: null,
+            },
+          ],
+        },
+      ],
     });
     expect(html).not.toContain("<bad-contact>");
     expect(html).toContain("&lt;bad-contact&gt;");
+    expect(html).toContain("X&amp;Y");
   });
 
   it("PR-4: 서비스의 note_md에 특수문자 있어도 escape", () => {

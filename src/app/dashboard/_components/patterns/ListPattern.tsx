@@ -172,8 +172,14 @@ export type ListRow = {
     /** PR-3: 서비스별 백업자 — 미지정 시 backup_requests.substitute_*로 fallback */
     substitute_email?: string | null;
     substitute_name?: string | null;
-    /** PR-4: 서비스별 연락처 chip 라벨 array */
-    contacts: string[];
+    /** PR-5: 서비스별 연락처 — contactDetailSchema 객체 배열 (이전 string[] 라벨에서 변경) */
+    contacts: {
+      contact_id: string;
+      customer_name: string;
+      university_name: string;
+      email: string | null;
+      phone: string | null;
+    }[];
     /** PR-4: 서비스별 메모 (markdown) */
     note_md: string | null;
   }[];
@@ -181,12 +187,24 @@ export type ListRow = {
   leaveStartDate?: string | null;
   /** backup 도메인 — 휴가/외근 종료일 (YYYY-MM-DD, nullable) */
   leaveEndDate?: string | null;
-  /** backup 도메인 — 메일 발송 상태 */
-  mailStatus?: "pending" | "sent" | "mail_failed" | "dry_run";
+  /** backup 도메인 — 메일 발송 상태. PR-6: scheduled/sending 추가 */
+  mailStatus?:
+    | "pending"
+    | "scheduled"
+    | "sending"
+    | "sent"
+    | "mail_failed"
+    | "dry_run";
   /** backup 도메인 — 메일 발송 시각 (ISO, nullable) */
   mailSentAt?: string | null;
   /** backup 도메인 — 메일 에러 메시지 (nullable) */
   mailError?: string | null;
+  /** PR-6 backup 도메인 — 예약 발송 시각 (ISO, scheduled 상태일 때만 의미) */
+  scheduledAt?: string | null;
+  /** PR-6 backup variant — EditForm 발송 모드 (now=즉시, schedule=예약). row state에 임시 운반. */
+  sendMode?: "now" | "schedule";
+  /** PR-6 backup variant — EditForm KST datetime-local 입력 string. onPersist에서 사용. */
+  scheduledAtInput?: string;
   /** services 도메인 — 외부 PIMS 자연키 (bigint) */
   serviceIdNum?: number;
   /** services 도메인 — 접수구분 (공통원서/반응형원서/일반접수/일반원서) */
@@ -339,13 +357,16 @@ export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
 export type TodoPriority = NonNullable<ListRow["priority"]>;
 export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
 export type CohortStatus = NonNullable<ListRow["cohortStatus"]>;
+/** backup variant 전용 chip values */
+export type BackupFilter = "mine" | "mine_substitute" | "mail_failed";
 
 export type Filter =
   | ListRow["status"]
   | "all"
   | ScheduleType
   | MyTodoFilter
-  | CohortStatus;
+  | CohortStatus
+  | BackupFilter;
 
 /**
  * variant별 필터 적용. 단순 분기만 ListPattern에 유지 (my-todo는 복잡한 시간 비교
@@ -355,6 +376,7 @@ function filterRows(
   rows: ListRow[],
   filter: Filter,
   variant: string,
+  currentUserName?: string,
 ): ListRow[] {
   if (filter === "all") return rows;
   if (variant === "schedule")
@@ -365,6 +387,15 @@ function filterRows(
   if (variant === "project-task") return applyProjectTaskFilter(rows, filter);
   if (variant === "cohort")
     return rows.filter((r) => r.cohortStatus === filter);
+  if (variant === "backup") {
+    if (filter === "mine")
+      return rows.filter((r) => r.owner === currentUserName);
+    if (filter === "mine_substitute")
+      return rows.filter((r) => r.substituteName === currentUserName);
+    if (filter === "mail_failed")
+      return rows.filter((r) => r.mailStatus === "mail_failed");
+    return rows;
+  }
   return rows.filter((r) => r.status === filter);
 }
 
@@ -410,11 +441,13 @@ type Props = {
     service_name: string;
     university_name: string;
   }[];
-  /** backup variant — 대학 연락처 후보 */
+  /** backup variant — 대학 연락처 후보. PR-5: email/phone 추가 */
   backupContactCandidates?: {
     id: string;
     customer_name: string;
     university_name: string;
+    email: string | null;
+    phone: string | null;
   }[];
   /** contacts variant — 대학명 자동완성 후보 */
   universityNameSuggestions?: readonly string[];
@@ -525,7 +558,7 @@ export function ListPattern({
 
   // filter='all'은 모든 row, 다른 filter는 status 매칭. team variant도 deleted 포함
   // (단, deleted row는 테이블에서 시각적으로 비활성화 처리 — opacity 낮춤).
-  const filteredRows = filterRows(rows, filter, variant);
+  const filteredRows = filterRows(rows, filter, variant, currentUserName);
   const variantEntry = variantRegistry[variant as keyof typeof variantRegistry];
   const entryFilters =
     variantEntry && "Filters" in variantEntry ? variantEntry.Filters : null;
@@ -636,7 +669,8 @@ export function ListPattern({
                   const count =
                     f.value === "all"
                       ? rows.length
-                      : filterRows(rows, f.value, variant).length;
+                      : filterRows(rows, f.value, variant, currentUserName)
+                          .length;
                   return (
                     <button
                       key={f.value}
