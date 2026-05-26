@@ -172,8 +172,14 @@ export type ListRow = {
     /** PR-3: 서비스별 백업자 — 미지정 시 backup_requests.substitute_*로 fallback */
     substitute_email?: string | null;
     substitute_name?: string | null;
-    /** PR-4: 서비스별 연락처 chip 라벨 array */
-    contacts: string[];
+    /** PR-5: 서비스별 연락처 — contactDetailSchema 객체 배열 (이전 string[] 라벨에서 변경) */
+    contacts: {
+      contact_id: string;
+      customer_name: string;
+      university_name: string;
+      email: string | null;
+      phone: string | null;
+    }[];
     /** PR-4: 서비스별 메모 (markdown) */
     note_md: string | null;
   }[];
@@ -410,11 +416,13 @@ type Props = {
     service_name: string;
     university_name: string;
   }[];
-  /** backup variant — 대학 연락처 후보 */
+  /** backup variant — 대학 연락처 후보. PR-5: email/phone 추가 */
   backupContactCandidates?: {
     id: string;
     customer_name: string;
     university_name: string;
+    email: string | null;
+    phone: string | null;
   }[];
   /** contacts variant — 대학명 자동완성 후보 */
   universityNameSuggestions?: readonly string[];

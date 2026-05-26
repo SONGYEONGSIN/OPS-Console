@@ -50,7 +50,7 @@ describe("BackupView", () => {
     expect(screen.queryByText(/^대학 연락처$/)).toBeNull();
   });
 
-  it("PR-4: 서비스 카드 내 contacts chips 표시", () => {
+  it("PR-5: 서비스 카드 내 contacts 객체 chips 표시 (학교 — 이름)", () => {
     render(
       <BackupView
         row={{
@@ -58,7 +58,22 @@ describe("BackupView", () => {
           backupServicesDetail: [
             {
               ...row.backupServicesDetail![0],
-              contacts: ["한양대 — 양라윤", "한양대 — 박지호"],
+              contacts: [
+                {
+                  contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                  customer_name: "양라윤",
+                  university_name: "한양대",
+                  email: null,
+                  phone: null,
+                },
+                {
+                  contact_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+                  customer_name: "박지호",
+                  university_name: "한양대",
+                  email: null,
+                  phone: null,
+                },
+              ],
             },
           ],
         }}

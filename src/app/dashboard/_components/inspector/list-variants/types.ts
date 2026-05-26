@@ -56,11 +56,13 @@ export type EditFormProps = {
     service_name: string;
     university_name: string;
   }[];
-  /** backup variant — 대학 연락처 후보 (contacts 마스터 light fields) */
+  /** backup variant — 대학 연락처 후보 (contacts 마스터 light fields). PR-5: email/phone 추가 — 메일/PDF 본문 노출용 */
   backupContactCandidates?: {
     id: string;
     customer_name: string;
     university_name: string;
+    email: string | null;
+    phone: string | null;
   }[];
   /** contacts variant — 대학명 자동완성 후보 (services.universityName distinct) */
   universityNameSuggestions?: readonly string[];

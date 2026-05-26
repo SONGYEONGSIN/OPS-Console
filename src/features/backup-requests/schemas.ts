@@ -11,10 +11,25 @@ export const mailStatusSchema = z.enum(MAIL_STATUS_VALUES);
 export type MailStatus = z.infer<typeof mailStatusSchema>;
 
 /**
+ * PR-5: 서비스별 연락처 — contacts 테이블 row의 스냅샷.
+ * 객체 배열 jsonb로 저장. 메일/PDF 본문에 이메일·전화 표시 위해 객체화.
+ * contact row가 추후 갱신/삭제돼도 메일 이력은 시점 데이터 유지 (audit).
+ */
+export const contactDetailSchema = z.object({
+  contact_id: z.string().uuid(),
+  customer_name: z.string().min(1),
+  university_name: z.string().min(1),
+  email: z.string().email().nullable(),
+  phone: z.string().nullable(),
+});
+
+export type ContactDetail = z.infer<typeof contactDetailSchema>;
+
+/**
  * services join row 상세 — PR-2: backup_request_services join + services 본체에서 필요한 필드만.
  * View/Table/메일 본문 렌더에 사용.
  * PR-3: 서비스별 백업자 (substitute_email/name) 추가. 미지정 시 backup_requests.substitute_*가 fallback.
- * PR-4: 서비스별 연락처/메모 추가. contacts는 chip 표시 라벨 array, note_md는 markdown 메모.
+ * PR-5: contacts는 contactDetailSchema 객체 배열. 메일/PDF에 이메일·전화 노출.
  */
 export const serviceDetailSchema = z.object({
   id: z.string().uuid(),
@@ -23,7 +38,7 @@ export const serviceDetailSchema = z.object({
   university_name: z.string().min(1),
   substitute_email: z.string().email().nullable().optional(),
   substitute_name: z.string().min(1).nullable().optional(),
-  contacts: z.array(z.string()).max(20).default([]),
+  contacts: z.array(contactDetailSchema).max(20).default([]),
   note_md: z.string().nullable().default(null),
 });
 
@@ -56,13 +71,13 @@ export type BackupRequestRow = z.infer<typeof backupRequestRowSchema>;
  * 신규 등록 입력. requester_email/_team은 server action에서 현재 operator로 채움.
  * PR-3: services 입력은 {service_id, substitute_email?, substitute_name?}[] 튜플 배열.
  * substitute_* 미지정 시 default(backup_requests.substitute_email)가 server action에서 채움.
- * PR-4: contacts/note_md를 서비스 단위로 입력. top-level contacts는 제거됨.
+ * PR-5: contacts는 contactDetailSchema 객체 배열 (이전 string[] 라벨에서 변경).
  */
 export const backupRequestServiceInputSchema = z.object({
   service_id: z.string().uuid(),
   substitute_email: z.string().email().nullable().optional(),
   substitute_name: z.string().min(1).nullable().optional(),
-  contacts: z.array(z.string().min(1)).max(20).default([]),
+  contacts: z.array(contactDetailSchema).max(20).default([]),
   note_md: z.string().nullable().optional(),
 });
 

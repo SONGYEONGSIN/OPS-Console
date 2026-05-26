@@ -6,7 +6,8 @@ import {
   MAIL_STATUS_VALUES,
 } from "../schemas";
 
-// PR-4: services 원소가 contacts/note_md를 담는다. top-level contacts는 제거됨.
+// PR-5: contacts는 {contact_id, customer_name, university_name, email, phone}[] 객체 배열.
+// 이전 string[] 라벨 형식은 PR-4까지 사용. PR-5에서 메일/PDF에 이메일/전화 노출 위해 객체화.
 const baseInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
@@ -45,28 +46,41 @@ describe("backupRequestCreateSchema", () => {
     expect(r.success).toBe(true);
   });
 
-  it("PR-4: 서비스에 contacts/note_md 동반 → parse 후 보존", () => {
+  it("PR-5: 서비스에 contacts 객체 배열/note_md 동반 → parse 후 보존", () => {
+    const contacts = [
+      {
+        contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        customer_name: "양라윤",
+        university_name: "연세대",
+        email: "yry@yonsei.ac.kr",
+        phone: "010-1111-2222",
+      },
+      {
+        contact_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        customer_name: "홍길동",
+        university_name: "고려대",
+        email: null,
+        phone: null,
+      },
+    ];
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
       services: [
         {
           service_id: "11111111-1111-4111-8111-111111111111",
-          contacts: ["연세대 — 양라윤", "고려대 — 홍길동"],
+          contacts,
           note_md: "5/20 마감 임박. 양식 첨부",
         },
       ],
     });
     expect(r.success).toBe(true);
     if (r.success) {
-      expect(r.data.services[0]?.contacts).toEqual([
-        "연세대 — 양라윤",
-        "고려대 — 홍길동",
-      ]);
+      expect(r.data.services[0]?.contacts).toEqual(contacts);
       expect(r.data.services[0]?.note_md).toBe("5/20 마감 임박. 양식 첨부");
     }
   });
 
-  it("PR-4: 서비스에 contacts/note_md 미동반 → contacts 빈 배열 default, note_md undefined", () => {
+  it("PR-5: 서비스에 contacts/note_md 미동반 → contacts 빈 배열 default, note_md undefined", () => {
     const r = backupRequestCreateSchema.safeParse(baseInput);
     expect(r.success).toBe(true);
     if (r.success) {
@@ -75,8 +89,14 @@ describe("backupRequestCreateSchema", () => {
     }
   });
 
-  it("PR-4: 서비스의 contacts 20개 초과 거부", () => {
-    const tooManyContacts = Array.from({ length: 21 }, (_, i) => `c${i}`);
+  it("PR-5: 서비스의 contacts 20개 초과 거부", () => {
+    const tooManyContacts = Array.from({ length: 21 }, (_, i) => ({
+      contact_id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      customer_name: `c${i}`,
+      university_name: "X대",
+      email: null,
+      phone: null,
+    }));
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
       services: [
@@ -169,7 +189,16 @@ describe("serviceDetailSchema", () => {
     }
   });
 
-  it("PR-4: contacts/note_md 포함 join row 보존", () => {
+  it("PR-5: contacts 객체 배열/note_md 포함 join row 보존", () => {
+    const contacts = [
+      {
+        contact_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        customer_name: "강민호",
+        university_name: "경찰대",
+        email: "kmh@police.ac.kr",
+        phone: "010-3333-4444",
+      },
+    ];
     const r = serviceDetailSchema.safeParse({
       id: "11111111-1111-4111-8111-111111111111",
       service_id: 5072006,
@@ -177,12 +206,12 @@ describe("serviceDetailSchema", () => {
       university_name: "경찰대학",
       substitute_email: "alice@example.com",
       substitute_name: "Alice",
-      contacts: ["경찰대 — 강민호"],
+      contacts,
       note_md: "5/20 마감",
     });
     expect(r.success).toBe(true);
     if (r.success) {
-      expect(r.data.contacts).toEqual(["경찰대 — 강민호"]);
+      expect(r.data.contacts).toEqual(contacts);
       expect(r.data.note_md).toBe("5/20 마감");
     }
   });
@@ -199,7 +228,7 @@ describe("serviceDetailSchema", () => {
 });
 
 describe("backupRequestRowSchema", () => {
-  it("PR-4: DB row 파싱 (top-level contacts 컬럼 부재)", () => {
+  it("PR-5: DB row 파싱 (contacts 객체 배열)", () => {
     const row = {
       id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
       requester_email: "bob@example.com",
@@ -212,7 +241,15 @@ describe("backupRequestRowSchema", () => {
           service_id: 5072006,
           service_name: "Graduate School of Police Studies",
           university_name: "경찰대학 대학원",
-          contacts: ["경찰대 — 강민호"],
+          contacts: [
+            {
+              contact_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+              customer_name: "강민호",
+              university_name: "경찰대학",
+              email: "kmh@police.ac.kr",
+              phone: "010-3333-4444",
+            },
+          ],
           note_md: "디테일",
         },
       ],

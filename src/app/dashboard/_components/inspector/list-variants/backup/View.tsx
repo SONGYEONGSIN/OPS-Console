@@ -99,10 +99,10 @@ export function BackupView({ row }: ViewProps) {
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {s.contacts.map((c) => (
                         <span
-                          key={c}
+                          key={c.contact_id}
                           className="inline-block bg-line-soft px-1.5 py-0.5 text-2xs text-ink-soft"
                         >
-                          {c}
+                          {c.university_name} — {c.customer_name}
                         </span>
                       ))}
                     </div>

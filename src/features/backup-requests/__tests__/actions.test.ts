@@ -191,17 +191,38 @@ describe("createBackupRequest", () => {
     mockInsertResult.mockReturnValue({ data: parentRow, error: null });
     mockJoinInsertResult.mockReturnValue({ data: null, error: null });
 
+    const c1 = {
+      contact_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      customer_name: "강민호",
+      university_name: "경찰대",
+      email: "kmh@police.ac.kr",
+      phone: "010-1111-2222",
+    };
+    const c2 = {
+      contact_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      customer_name: "박지호",
+      university_name: "연세대",
+      email: null,
+      phone: null,
+    };
+    const c3 = {
+      contact_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      customer_name: "홍길동",
+      university_name: "고려대",
+      email: null,
+      phone: null,
+    };
     await createBackupRequest({
       ...validInput,
       services: [
         {
           service_id: "11111111-1111-4111-8111-111111111111",
-          contacts: ["경찰대 — 강민호"],
+          contacts: [c1],
           note_md: "5/20 마감",
         },
         {
           service_id: "22222222-2222-4222-8222-222222222222",
-          contacts: ["연세대 — 박지호", "고려대 — 홍길동"],
+          contacts: [c2, c3],
           note_md: null,
         },
       ],
@@ -211,11 +232,11 @@ describe("createBackupRequest", () => {
     const rows = joinInsertCalls[0] as Array<Record<string, unknown>>;
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
-      contacts: ["경찰대 — 강민호"],
+      contacts: [c1],
       note_md: "5/20 마감",
     });
     expect(rows[1]).toMatchObject({
-      contacts: ["연세대 — 박지호", "고려대 — 홍길동"],
+      contacts: [c2, c3],
       note_md: null,
     });
   });

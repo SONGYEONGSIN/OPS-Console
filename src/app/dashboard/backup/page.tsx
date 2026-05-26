@@ -93,10 +93,13 @@ export default async function BackupPage({
     if (contactsFetched >= total) break;
     if (p * CHUNK >= total) break; // PGRST103 회피
   }
+  // PR-5: email/phone projection 추가 — ServiceCard에서 contact 추가 시 객체 스냅샷 build
   const backupContactCandidates = contactCandidatesRaw.map((c) => ({
     id: c.id,
     customer_name: c.customer_name,
     university_name: c.university_name,
+    email: c.contact_email,
+    phone: c.contact_phone,
   }));
 
   const header = (

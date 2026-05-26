@@ -39,14 +39,22 @@ function ensureFontRegistered() {
 
 /**
  * PR-2: services는 join 결과 — 대학명·서비스명 정규화 표기에 사용.
- * PR-4: 서비스별 contacts(연락처 chips) + note_md(메모) 동반.
+ * PR-5: contacts는 contactDetailSchema 객체 배열. PDF chip에 이름 + 이메일·전화 한 줄 표시.
  */
+export type PdfContactDetail = {
+  contact_id: string;
+  customer_name: string;
+  university_name: string;
+  email: string | null;
+  phone: string | null;
+};
+
 export type PdfServiceDetail = {
   id: string;
   service_id: number;
   service_name: string;
   university_name: string;
-  contacts: string[];
+  contacts: PdfContactDetail[];
   note_md: string | null;
 };
 
@@ -296,11 +304,15 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
                   <>
                     <Text style={styles.serviceMetaLabel}>연락처</Text>
                     <View style={styles.chipRow}>
-                      {s.contacts.map((c, i) => (
-                        <Text key={`ct-${s.id}-${i}`} style={styles.chip}>
-                          {c}
-                        </Text>
-                      ))}
+                      {s.contacts.map((c) => {
+                        const meta = [c.email, c.phone].filter(Boolean).join(" · ");
+                        const label = `${c.university_name} — ${c.customer_name}${meta ? `  ${meta}` : ""}`;
+                        return (
+                          <Text key={`ct-${s.id}-${c.contact_id}`} style={styles.chip}>
+                            {label}
+                          </Text>
+                        );
+                      })}
                     </View>
                   </>
                 )}
