@@ -161,15 +161,15 @@ export function BackupForm({
         />
       </label>
 
-      {/* PR-5: 백업자 설정 세그먼트 컨트롤 */}
+      {/* 백업자 설정 — 1명 일괄 / 서비스별. 발송 모드와 동일 톤 (gap 분리 + 각 버튼 border) */}
       <div className="block text-xs" role="radiogroup" aria-label="백업자 설정">
         <span className="mb-1 block text-muted">백업자 설정</span>
-        <div className="flex w-full border border-line">
+        <div className="flex gap-2">
           <button
             type="button"
             aria-pressed={mode === "single"}
             onClick={() => setMode("single")}
-            className={`flex-1 cursor-pointer border-none px-3 py-1.5 text-xs ${
+            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               mode === "single"
                 ? "bg-ink text-cream"
                 : "bg-cream text-ink hover:bg-washi"
@@ -181,7 +181,7 @@ export function BackupForm({
             type="button"
             aria-pressed={mode === "perService"}
             onClick={() => setMode("perService")}
-            className={`flex-1 cursor-pointer border-none border-l border-line px-3 py-1.5 text-xs ${
+            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               mode === "perService"
                 ? "bg-ink text-cream"
                 : "bg-cream text-ink hover:bg-washi"
@@ -318,15 +318,15 @@ export function BackupForm({
         />
       </label>
 
-      {/* PR-6: 발송 모드 — 즉시 / 예약 */}
+      {/* PR-6: 발송 모드 — 즉시 / 예약. 저장/취소와 동일 톤 (gap 분리 + 각 버튼 border) */}
       <div className="block text-xs" role="radiogroup" aria-label="발송 모드">
         <span className="mb-1 block text-muted">발송 모드</span>
-        <div className="flex w-full border border-line">
+        <div className="flex gap-2">
           <button
             type="button"
             aria-pressed={sendMode === "now"}
             onClick={() => setSendMode("now")}
-            className={`flex-1 cursor-pointer border-none px-3 py-1.5 text-xs ${
+            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               sendMode === "now"
                 ? "bg-ink text-cream"
                 : "bg-cream text-ink hover:bg-washi"
@@ -338,7 +338,7 @@ export function BackupForm({
             type="button"
             aria-pressed={sendMode === "schedule"}
             onClick={() => setSendMode("schedule")}
-            className={`flex-1 cursor-pointer border-none border-l border-line px-3 py-1.5 text-xs ${
+            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               sendMode === "schedule"
                 ? "bg-ink text-cream"
                 : "bg-cream text-ink hover:bg-washi"
