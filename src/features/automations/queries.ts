@@ -26,9 +26,21 @@ async function getInsightsLastRunAt(): Promise<string | null> {
   return data?.collected_at ?? null;
 }
 
+async function getReceivablesMailOperatorLastRunAt(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("receivables_operator_mail_sends")
+    .select("sent_at")
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.sent_at ?? null;
+}
+
 // job별 "마지막 실행 시각" 도출기. 신규 잡 추가 시 여기에 매핑 1줄.
 const LAST_RUN_RESOLVERS: Record<string, () => Promise<string | null>> = {
   "insights-collect": getInsightsLastRunAt,
+  "receivables-mail-operator": getReceivablesMailOperatorLastRunAt,
 };
 
 export async function getJobLastRunAt(jobId: string): Promise<string | null> {
