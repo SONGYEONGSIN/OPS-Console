@@ -126,7 +126,15 @@ function renderMarkdown(text: string): React.ReactNode {
   return <>{blocks}</>;
 }
 
-export function AssistantClient() {
+const ASSISTANT_NAME = "OPS 도우미";
+const ASSISTANT_EMOJI = "🤖";
+
+type Props = {
+  /** 운영자 표시명 (사용자 메시지 캐릭터에 사용) */
+  userName?: string;
+};
+
+export function AssistantClient({ userName = "운영자" }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -224,13 +232,15 @@ export function AssistantClient() {
   };
 
   return (
-    <div className="mx-auto flex max-w-[760px] flex-col gap-5">
-      {/* 메시지 영역 — 중앙정렬 + 양쪽 여백 + 부드러운 톤 */}
-      <div className="min-h-[460px] space-y-6 border border-line-soft bg-washi px-7 py-7">
+    <div className="flex flex-col gap-4">
+      {/* 메시지 영역 — worklog 패턴: 화면 전체 폭 (parent p-7 padding 사용) */}
+      <div className="min-h-[520px] space-y-6 border border-line-soft bg-washi px-6 py-6">
         {messages.length === 0 ? (
           <EmptyState onPick={(ex) => send(ex)} />
         ) : (
-          messages.map((m, i) => <MessageCard key={i} message={m} />)
+          messages.map((m, i) => (
+            <MessageCard key={i} message={m} userName={userName} />
+          ))
         )}
         <div ref={endRef} />
       </div>
@@ -278,7 +288,13 @@ export function AssistantClient() {
   );
 }
 
-function MessageCard({ message }: { message: ChatMessage }) {
+function MessageCard({
+  message,
+  userName,
+}: {
+  message: ChatMessage;
+  userName: string;
+}) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
     try {
@@ -290,26 +306,28 @@ function MessageCard({ message }: { message: ChatMessage }) {
     }
   };
 
+  const userInitial = userName.slice(0, 1);
+
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
         <div className="flex max-w-[78%] flex-col items-end gap-1">
-          <div className="flex items-start gap-2">
-            <div className="border border-line bg-ink px-3.5 py-2 text-sm leading-relaxed text-cream">
+          <div className="mb-1 flex items-center gap-1.5 text-2xs text-muted">
+            <span>{userName}</span>
+            <span aria-hidden>·</span>
+            {message.ts && <span>{formatTimeKst(message.ts)}</span>}
+          </div>
+          <div className="flex items-start gap-2.5">
+            <div className="border border-line bg-ink px-4 py-2.5 text-sm leading-relaxed text-cream">
               <p className="whitespace-pre-wrap">{message.content}</p>
             </div>
             <div
               aria-hidden
-              className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center border border-line bg-cream text-2xs text-ink"
+              className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center border border-line bg-cream text-sm font-medium text-ink"
             >
-              나
+              {userInitial}
             </div>
           </div>
-          {message.ts && (
-            <span className="text-2xs text-muted">
-              {formatTimeKst(message.ts)}
-            </span>
-          )}
         </div>
       </div>
     );
@@ -317,14 +335,23 @@ function MessageCard({ message }: { message: ChatMessage }) {
 
   // assistant
   return (
-    <div className="flex items-start gap-2">
+    <div className="flex items-start gap-2.5">
       <div
         aria-hidden
-        className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center border border-line bg-vermilion text-2xs font-medium text-cream"
+        className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center border border-line bg-vermilion text-base text-cream"
       >
-        AI
+        {ASSISTANT_EMOJI}
       </div>
-      <div className="flex max-w-[82%] flex-col gap-2">
+      <div className="flex max-w-[82%] flex-col gap-1">
+        <div className="mb-1 flex items-center gap-1.5 text-2xs text-muted">
+          <span className="font-medium text-vermilion">{ASSISTANT_NAME}</span>
+          {message.ts && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{formatTimeKst(message.ts)}</span>
+            </>
+          )}
+        </div>
         {message.pending ? (
           <div className="border border-line-soft bg-washi-raised px-3.5 py-2 text-sm text-ink-soft">
             <span className="inline-flex items-center gap-2">
@@ -378,7 +405,6 @@ function MessageCard({ message }: { message: ChatMessage }) {
               </div>
             )}
             <div className="flex items-center gap-3 pt-1 text-2xs text-muted">
-              {message.ts && <span>{formatTimeKst(message.ts)}</span>}
               <button
                 type="button"
                 onClick={handleCopy}
@@ -396,17 +422,20 @@ function MessageCard({ message }: { message: ChatMessage }) {
 
 function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
-    <div className="space-y-5 py-8">
-      <div className="space-y-2 text-center">
+    <div className="space-y-6 py-10">
+      <div className="space-y-3 text-center">
         <div
           aria-hidden
-          className="mx-auto flex h-12 w-12 items-center justify-center border border-line bg-vermilion text-sm font-medium text-cream"
+          className="mx-auto flex h-14 w-14 items-center justify-center border border-line bg-vermilion text-2xl text-cream"
         >
-          AI
+          {ASSISTANT_EMOJI}
         </div>
-        <p className="text-sm text-ink">무엇을 도와드릴까요?</p>
+        <p className="text-base font-medium text-ink">
+          안녕하세요, <span className="text-vermilion">{ASSISTANT_NAME}</span>
+          입니다
+        </p>
         <p className="text-xs text-muted">
-          사내 데이터(사고·인수인계·TIP·백업·연락처·서비스)에 자연어로 질문하세요.
+          사고·인수인계·TIP·백업·연락처·서비스 데이터에 자연어로 질문해주세요.
         </p>
       </div>
       <div className="mx-auto grid max-w-[640px] grid-cols-1 gap-2 sm:grid-cols-2">
