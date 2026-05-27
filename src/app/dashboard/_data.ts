@@ -320,7 +320,7 @@ export const sidebarSections: SbSection[] = [
             ico: "·",
             label: "어시스턴트",
             slug: "ai-assistant",
-            pattern: "settings",
+            pattern: "dash",
           },
           {
             ico: "·",
