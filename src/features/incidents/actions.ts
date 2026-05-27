@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
+import { sendIncidentMail } from "./mail-actions";
 import {
   incidentCreateSchema,
   incidentUpdateSchema,
@@ -59,6 +60,13 @@ export async function createIncident(
 
   if (error) return { ok: false, error: error.message };
 
+  // 보고자 메일 알림 — 비차단 (실패해도 사고 저장 결과는 ok)
+  try {
+    await sendIncidentMail({ incidentId: data.id });
+  } catch (e) {
+    console.error("[createIncident] mail send failed:", e);
+  }
+
   await logActivity({
     domain: "incidents",
     action: "create",
@@ -66,7 +74,10 @@ export async function createIncident(
     target_id: data.id,
     target_name: parsed.data.title,
     msg: `사고 보고 생성 — ${parsed.data.category}`,
-    metadata: { university: parsed.data.university_name, year: parsed.data.year },
+    metadata: {
+      university: parsed.data.university_name,
+      year: parsed.data.year,
+    },
   });
 
   revalidatePath(PATH);
