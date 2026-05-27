@@ -51,12 +51,30 @@ function cellAddr(colIdx: number, rowNum: number): string | null {
   return `${columnLetter(colIdx)}${rowNum}`;
 }
 
-/** 처음 5행 중 non-empty 셀 수가 가장 많은 행을 헤더로 본다 (receivables 패턴) */
-function detectHeaderIndex(text: string[][]): number {
-  const lookAhead = Math.min(5, text.length);
+/**
+ * 헤더 행 인덱스 detect — 키워드 우선 + non-empty 셀 수 폴백.
+ *
+ * 4년제 시트처럼 row 0이 헤더이지만 일부 data row(예: 계약진행/다년계약/단독여부 등 옵션
+ * 셀이 가득 채워진 row)가 헤더보다 셀 수가 많은 경우, 단순 max-count 휴리스틱이 잘못된
+ * 행을 헤더로 판정하는 문제를 키워드 시그널로 회피.
+ *
+ * 1차: 첫 10행 중 정규화된 헤더 키워드("넘버링"/"대학명"/"학교명"/"기관명") 포함 행
+ * 2차 (fallback): 첫 5행 중 non-empty 셀 가장 많은 행 (이전 로직 보존)
+ */
+export function detectHeaderIndex(text: string[][]): number {
+  const HEADER_KEYWORDS = ["넘버링", "대학명", "학교명", "기관명"];
+  const keywordLookAhead = Math.min(10, text.length);
+  for (let i = 0; i < keywordLookAhead; i++) {
+    const normalized = text[i].map((c) => normalizeHeader(String(c ?? "")));
+    if (HEADER_KEYWORDS.some((kw) => normalized.includes(normalizeHeader(kw)))) {
+      return i;
+    }
+  }
+  // fallback: 기존 휴리스틱
+  const fallbackLookAhead = Math.min(5, text.length);
   let bestIdx = 0;
   let bestCount = -1;
-  for (let i = 0; i < lookAhead; i++) {
+  for (let i = 0; i < fallbackLookAhead; i++) {
     const count = text[i].filter((v) => String(v ?? "").trim() !== "").length;
     if (count > bestCount) {
       bestCount = count;
