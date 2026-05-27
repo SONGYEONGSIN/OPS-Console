@@ -19,6 +19,8 @@ type ChatMessage = {
   warning?: string;
   /** 진행 중 표시용 */
   pending?: boolean;
+  /** 메시지 발생 시각 (KST 표시) */
+  ts?: string;
 };
 
 const DOMAIN_LABEL: Record<Source["domain"], string> = {
@@ -46,6 +48,84 @@ const EXAMPLES = [
   "Claude 프롬프트 추천 — 사고 보고서 작성용",
 ];
 
+/** KST HH:mm 시간 포매팅 */
+function formatTimeKst(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+/**
+ * 단순 마크다운 → React nodes (Gemini가 자주 쓰는 형식만 가벼이 처리).
+ * 의존성 추가 없이 ** ** bold + `code` inline + - bullet 만.
+ */
+function renderInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  // 패턴: **bold** | `code` | 그 외 텍스트
+  const re = /(\*\*([^*]+)\*\*|`([^`]+)`)/g;
+  let m: RegExpExecArray | null;
+  let key = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > i) parts.push(text.slice(i, m.index));
+    if (m[2] !== undefined) {
+      parts.push(
+        <strong key={`b${key++}`} className="font-semibold text-ink">
+          {m[2]}
+        </strong>,
+      );
+    } else if (m[3] !== undefined) {
+      parts.push(
+        <code
+          key={`c${key++}`}
+          className="rounded bg-washi px-1 py-0.5 font-mono text-[11px] text-ink"
+        >
+          {m[3]}
+        </code>,
+      );
+    }
+    i = m.index + m[0].length;
+  }
+  if (i < text.length) parts.push(text.slice(i));
+  return parts;
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  // 줄 단위로 - bullet 처리 + 빈 줄은 spacing
+  const lines = text.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let bulletGroup: string[] = [];
+  const flushBullets = () => {
+    if (bulletGroup.length === 0) return;
+    blocks.push(
+      <ul key={`u${blocks.length}`} className="my-1 list-disc space-y-0.5 pl-5">
+        {bulletGroup.map((b, i) => (
+          <li key={i}>{renderInline(b)}</li>
+        ))}
+      </ul>,
+    );
+    bulletGroup = [];
+  };
+  lines.forEach((line, i) => {
+    const trimmed = line.trimStart();
+    if (/^[-•]\s+/.test(trimmed)) {
+      bulletGroup.push(trimmed.replace(/^[-•]\s+/, ""));
+    } else {
+      flushBullets();
+      if (line.trim() === "") {
+        blocks.push(<div key={`s${i}`} className="h-2" aria-hidden />);
+      } else {
+        blocks.push(<p key={i}>{renderInline(line)}</p>);
+      }
+    }
+  });
+  flushBullets();
+  return <>{blocks}</>;
+}
+
 export function AssistantClient() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -67,10 +147,11 @@ export function AssistantClient() {
       role: m.role,
       content: m.content,
     }));
+    const nowIso = new Date().toISOString();
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: question },
-      { role: "assistant", content: "", pending: true },
+      { role: "user", content: question, ts: nowIso },
+      { role: "assistant", content: "", pending: true, ts: nowIso },
     ]);
     setInput("");
     setPending(true);
@@ -90,17 +171,20 @@ export function AssistantClient() {
         const copy = [...prev];
         const last = copy[copy.length - 1];
         if (last && last.role === "assistant") {
+          const ts = last.ts ?? new Date().toISOString();
           if (json.ok) {
             copy[copy.length - 1] = {
               role: "assistant",
               content: json.answer,
               sources: json.sources,
               warning: json.warning,
+              ts,
             };
           } else {
             copy[copy.length - 1] = {
               role: "assistant",
               content: `❌ ${json.error}`,
+              ts,
             };
           }
         }
@@ -140,9 +224,9 @@ export function AssistantClient() {
   };
 
   return (
-    <div className="mx-auto flex max-w-[860px] flex-col gap-5">
+    <div className="mx-auto flex max-w-[760px] flex-col gap-5">
       {/* 메시지 영역 — 중앙정렬 + 양쪽 여백 + 부드러운 톤 */}
-      <div className="min-h-[420px] space-y-5 border border-line-soft bg-washi px-6 py-6">
+      <div className="min-h-[460px] space-y-6 border border-line-soft bg-washi px-7 py-7">
         {messages.length === 0 ? (
           <EmptyState onPick={(ex) => send(ex)} />
         ) : (
@@ -161,7 +245,7 @@ export function AssistantClient() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="질문을 입력하세요. Shift+Enter로 줄바꿈."
+          placeholder="어떤 정보를 찾으시나요? Shift+Enter로 줄바꿈, Enter로 전송."
           rows={2}
           disabled={pending}
           maxLength={500}
@@ -195,23 +279,42 @@ export function AssistantClient() {
 }
 
 function MessageCard({ message }: { message: ChatMessage }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   if (message.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="flex max-w-[78%] items-start gap-2">
-          <div className="border border-line bg-ink px-3.5 py-2 text-sm leading-relaxed text-cream">
-            <p className="whitespace-pre-wrap">{message.content}</p>
+        <div className="flex max-w-[78%] flex-col items-end gap-1">
+          <div className="flex items-start gap-2">
+            <div className="border border-line bg-ink px-3.5 py-2 text-sm leading-relaxed text-cream">
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            </div>
+            <div
+              aria-hidden
+              className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center border border-line bg-cream text-2xs text-ink"
+            >
+              나
+            </div>
           </div>
-          <div
-            aria-hidden
-            className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center border border-line bg-cream text-2xs text-ink"
-          >
-            나
-          </div>
+          {message.ts && (
+            <span className="text-2xs text-muted">
+              {formatTimeKst(message.ts)}
+            </span>
+          )}
         </div>
       </div>
     );
   }
+
   // assistant
   return (
     <div className="flex items-start gap-2">
@@ -224,15 +327,19 @@ function MessageCard({ message }: { message: ChatMessage }) {
       <div className="flex max-w-[82%] flex-col gap-2">
         {message.pending ? (
           <div className="border border-line-soft bg-washi-raised px-3.5 py-2 text-sm text-ink-soft">
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion" />
+            <span className="inline-flex items-center gap-2">
+              <span className="inline-flex h-1.5 items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:0ms]" />
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:150ms]" />
+                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:300ms]" />
+              </span>
               답변 중…
             </span>
           </div>
         ) : (
           <>
-            <div className="border border-line-soft bg-washi-raised px-3.5 py-2.5 text-sm leading-relaxed text-ink">
-              <p className="whitespace-pre-wrap">{message.content}</p>
+            <div className="space-y-1 border border-line-soft bg-washi-raised px-3.5 py-2.5 text-sm leading-relaxed text-ink">
+              {renderMarkdown(message.content)}
             </div>
             {message.warning && (
               <p className="text-2xs text-muted">⚠️ {message.warning}</p>
@@ -240,7 +347,7 @@ function MessageCard({ message }: { message: ChatMessage }) {
             {message.sources && message.sources.length > 0 && (
               <div className="space-y-1.5 pt-1">
                 <p className="text-2xs uppercase tracking-[0.18em] text-muted">
-                  근거
+                  근거 {message.sources.length}건
                 </p>
                 <div className="space-y-1">
                   {message.sources.map((s, i) => (
@@ -270,6 +377,16 @@ function MessageCard({ message }: { message: ChatMessage }) {
                 </div>
               </div>
             )}
+            <div className="flex items-center gap-3 pt-1 text-2xs text-muted">
+              {message.ts && <span>{formatTimeKst(message.ts)}</span>}
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="cursor-pointer border-none bg-transparent p-0 underline-offset-2 hover:text-ink hover:underline"
+              >
+                {copied ? "복사됨" : "답변 복사"}
+              </button>
+            </div>
           </>
         )}
       </div>
