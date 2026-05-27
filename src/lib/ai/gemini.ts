@@ -10,9 +10,16 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const MODEL = "gemini-2.0-flash";
 const MAX_OUTPUT_TOKENS = 1500;
 
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type AskGeminiInput = {
   systemInstruction: string;
-  userContent: string;
+  /** 단일 user content (single-shot) — 또는 messages history (multi-turn) 둘 중 하나 */
+  userContent?: string;
+  messages?: ChatMessage[];
 };
 
 export type AskGeminiResult =
@@ -24,6 +31,9 @@ export async function askGemini(input: AskGeminiInput): Promise<AskGeminiResult>
   if (!key) {
     return { ok: false, error: "GEMINI_API_KEY 환경변수 누락" };
   }
+  if (!input.userContent && !input.messages?.length) {
+    return { ok: false, error: "userContent 또는 messages 필요" };
+  }
   try {
     const client = new GoogleGenerativeAI(key);
     const model = client.getGenerativeModel({
@@ -34,9 +44,18 @@ export async function askGemini(input: AskGeminiInput): Promise<AskGeminiResult>
         temperature: 0.3,
       },
     });
-    const result = await model.generateContent(input.userContent);
-    const text = result.response.text();
-    return { ok: true, text };
+    // multi-turn: messages를 Gemini contents 형식으로 매핑 (assistant → model)
+    if (input.messages?.length) {
+      const contents = input.messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+      const result = await model.generateContent({ contents });
+      return { ok: true, text: result.response.text() };
+    }
+    // single-shot (legacy)
+    const result = await model.generateContent(input.userContent!);
+    return { ok: true, text: result.response.text() };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: `gemini_error: ${msg}` };

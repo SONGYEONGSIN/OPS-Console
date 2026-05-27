@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { searchAllDomains, type Source } from "@/features/assistant/search";
-import { askGemini } from "@/lib/ai/gemini";
+import { askGemini, type ChatMessage } from "@/lib/ai/gemini";
+
+const messageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(4000),
+});
 
 const inputSchema = z.object({
+  /** 신규 사용자 질문 (검색 + 컨텍스트 생성용). messages 마지막이 아니어도 우선 사용 */
   question: z.string().min(1).max(500),
+  /** 이전 대화 (multi-turn). 비어있으면 single-shot과 동일 동작 */
+  history: z.array(messageSchema).max(20).optional(),
 });
 
 const SYSTEM_INSTRUCTION = `당신은 OPS-Console(진학어플라이 운영부 시스템)의 어시스턴트입니다.
@@ -49,6 +57,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const question = parsed.data.question.trim();
+  const history = parsed.data.history ?? [];
   const sources: Source[] = await searchAllDomains({ question });
 
   const referenceText =
@@ -61,11 +70,17 @@ export async function POST(req: Request): Promise<Response> {
           )
           .join("\n\n");
 
+  // 마지막 user 메시지에 question + 참고 자료 컨텍스트를 합쳐 Gemini에 전달.
+  // 이전 history는 그대로 multi-turn context로 유지.
   const userContent = `## 사용자 질문\n${question}\n\n## 참고 자료\n${referenceText}`;
+  const messages: ChatMessage[] = [
+    ...history,
+    { role: "user", content: userContent },
+  ];
 
   const ai = await askGemini({
     systemInstruction: SYSTEM_INSTRUCTION,
-    userContent,
+    messages,
   });
   if (!ai.ok) {
     return NextResponse.json(
