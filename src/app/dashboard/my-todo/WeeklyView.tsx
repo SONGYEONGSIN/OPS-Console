@@ -36,6 +36,9 @@ type Props = {
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"] as const;
 
+/** 셀 1개당 기본 표시 최대 항목 수 (todos + services 합산). 운영부 달력과 동일 */
+const MAX_VISIBLE_ITEMS = 4;
+
 export function WeeklyView({
   todos,
   services,
@@ -57,6 +60,8 @@ export function WeeklyView({
   );
   const weekEndYmd = days[days.length - 1] ?? weekStartYmd;
   const [dragHover, setDragHover] = useState(false);
+  /** 셀별 더보기 펼친 상태 — 한 번에 1셀만 expand (운영부 달력 동일) */
+  const [expandedYmd, setExpandedYmd] = useState<string | null>(null);
 
   const handleDragStart =
     (payload: DragPayload) => (e: React.DragEvent<HTMLElement>) => {
@@ -185,82 +190,118 @@ export function WeeklyView({
         }
       >
         <div className="grid grid-cols-7 gap-px border border-line bg-line-soft">
-        {WEEKDAY_LABELS.map((wd) => (
-          <div
-            key={wd}
-            className="bg-cream py-2 text-center text-xs font-bold text-ink"
-          >
-            {wd}
-          </div>
-        ))}
-        {days.map((d) => {
-          const items = buckets[d] ?? [];
-          const dayNum = Number(d.slice(8, 10));
-          const isToday = d === todayYmd;
-          return (
+          {WEEKDAY_LABELS.map((wd) => (
             <div
-              key={d}
-              data-testid={`weekly-cell-${d}`}
-              data-today={isToday ? "true" : "false"}
-              className={`min-h-[120px] bg-cream p-1.5 text-2xs text-ink ${
-                isToday ? "ring-1 ring-inset ring-vermilion" : ""
-              }`}
+              key={wd}
+              className="bg-cream py-2 text-center text-xs font-bold text-ink"
             >
-              <div className="mb-1">
-                <span
-                  className={`inline-block min-w-[1.25rem] px-1 text-xs font-medium ${
-                    isToday ? "bg-vermilion text-cream" : ""
-                  }`}
-                >
-                  {dayNum}
-                </span>
-              </div>
-              <ul className="space-y-0.5">
-                {items.map((t) => (
-                  <li
-                    key={t.id}
-                    className={`truncate text-2xs ${
-                      t.done ? "text-muted line-through" : "text-ink"
-                    }`}
-                    title={t.title}
-                  >
-                    {t.title}
-                  </li>
-                ))}
-                {(svcBuckets[d] ?? []).map((sb, idx) => (
-                  <li
-                    key={`${sb.service.id}-${sb.kind}-${idx}`}
-                    draggable
-                    onDragStart={handleDragStart({
-                      serviceName: sb.service.service_name,
-                      ymd: d,
-                      kind: sb.kind,
-                    })}
-                    data-testid={`weekly-service-${sb.kind}-${sb.service.id}`}
-                    className="flex cursor-grab items-center gap-1 truncate text-2xs text-ink-soft active:cursor-grabbing"
-                    title={`${sb.service.service_name} · ${sb.kind === "start" ? "접수 시작" : "접수 종료"} (드래그하여 할 일에 담기)`}
-                  >
-                    <span
-                      data-testid="weekly-service-dot"
-                      data-kind={sb.kind}
-                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                        sb.kind === "start" ? "bg-sage" : "bg-indigo"
-                      }`}
-                      aria-hidden
-                    />
-                    <span className="truncate">
-                      {sb.service.service_name}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {wd}
             </div>
-          );
-        })}
-      </div>
-      <p className="mt-2 text-2xs text-muted">
-        ※ 원서접수 목록을 드래그&드롭으로 새 할 일을 추가할 수 있습니다.
-      </p>
+          ))}
+          {days.map((d) => {
+            const items = buckets[d] ?? [];
+            const svcs = svcBuckets[d] ?? [];
+            const dayNum = Number(d.slice(8, 10));
+            const isToday = d === todayYmd;
+            const totalCount = items.length + svcs.length;
+            const isExpanded = expandedYmd === d;
+            // 통합 budget — todos 우선, 남는 자리만 svcs.
+            const todoBudget = isExpanded
+              ? items.length
+              : Math.min(items.length, MAX_VISIBLE_ITEMS);
+            const svcBudget = isExpanded
+              ? svcs.length
+              : Math.max(0, MAX_VISIBLE_ITEMS - todoBudget);
+            const visibleItems = items.slice(0, todoBudget);
+            const visibleSvcs = svcs.slice(0, svcBudget);
+            const overflow =
+              totalCount - (visibleItems.length + visibleSvcs.length);
+            return (
+              <div
+                key={d}
+                data-testid={`weekly-cell-${d}`}
+                data-today={isToday ? "true" : "false"}
+                className={`min-h-[120px] bg-cream p-1.5 text-2xs text-ink ${
+                  isToday ? "ring-1 ring-inset ring-vermilion" : ""
+                }`}
+              >
+                <div className="mb-1">
+                  <span
+                    className={`inline-block min-w-[1.25rem] px-1 text-xs font-medium ${
+                      isToday ? "bg-vermilion text-cream" : ""
+                    }`}
+                  >
+                    {dayNum}
+                  </span>
+                </div>
+                <ul className="space-y-0.5">
+                  {visibleItems.map((t) => (
+                    <li
+                      key={t.id}
+                      className={`truncate text-2xs ${
+                        t.done ? "text-muted line-through" : "text-ink"
+                      }`}
+                      title={t.title}
+                    >
+                      {t.title}
+                    </li>
+                  ))}
+                  {visibleSvcs.map((sb, idx) => (
+                    <li
+                      key={`${sb.service.id}-${sb.kind}-${idx}`}
+                      draggable
+                      onDragStart={handleDragStart({
+                        serviceName: sb.service.service_name,
+                        ymd: d,
+                        kind: sb.kind,
+                      })}
+                      data-testid={`weekly-service-${sb.kind}-${sb.service.id}`}
+                      className="flex cursor-grab items-center gap-1 truncate text-2xs text-ink-soft active:cursor-grabbing"
+                      title={`${sb.service.service_name} · ${sb.kind === "start" ? "접수 시작" : "접수 종료"} (드래그하여 할 일에 담기)`}
+                    >
+                      <span
+                        data-testid="weekly-service-dot"
+                        data-kind={sb.kind}
+                        className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                          sb.kind === "start" ? "bg-sage" : "bg-indigo"
+                        }`}
+                        aria-hidden
+                      />
+                      <span className="truncate">
+                        {sb.service.service_name}
+                      </span>
+                    </li>
+                  ))}
+                  {overflow > 0 ? (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedYmd(d)}
+                        className="cursor-pointer border-none bg-transparent p-0 text-2xs text-muted hover:text-vermilion"
+                      >
+                        +{overflow} 더보기
+                      </button>
+                    </li>
+                  ) : null}
+                  {isExpanded && totalCount > MAX_VISIBLE_ITEMS ? (
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedYmd(null)}
+                        className="cursor-pointer border-none bg-transparent p-0 text-2xs text-muted hover:text-vermilion"
+                      >
+                        접기
+                      </button>
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-2 text-xs font-bold text-ink">
+          ※ 원서접수 목록을 드래그&드롭으로 새 할 일을 추가할 수 있습니다.
+        </p>
       </div>
 
       <div
