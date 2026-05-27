@@ -42,10 +42,19 @@ const DOMAIN_TONE: Record<Source["domain"], string> = {
 };
 
 const EXAMPLES = [
+  // 사고 이력
   "외국인 전형 입력 오류는 어떻게 처리하지?",
+  "추천서 확인페이지 지원자 생년월일 잘림 이슈 본 적 있어?",
+  "결제 실패 사례 — 최근 처리 방법 알려줘",
+  // 백업·인수인계
   "지난달 가천대 백업 시점에 어떤 이슈가 있었어?",
+  "온라인 추천서 운영 인수인계 메모 찾아줘",
+  // 연락처·서비스
   "한양대 연락처 알려줘",
+  "조선대 수시 운영자 누구야?",
+  // AI TIP
   "Claude 프롬프트 추천 — 사고 보고서 작성용",
+  "엑셀 데이터 정리 자동화 팁 알려줘",
 ];
 
 /** KST HH:mm 시간 포매팅 */
@@ -126,7 +135,7 @@ function renderMarkdown(text: string): React.ReactNode {
   return <>{blocks}</>;
 }
 
-const ASSISTANT_NAME = "OPS 도우미";
+const ASSISTANT_NAME = "운영부 상황실 어시스턴트";
 
 /** OPS Console 시스템 로고를 아바타로 사용 — ChromeBrand의 '>_' 모티프 차용. */
 function AssistantAvatar({
