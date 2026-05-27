@@ -323,7 +323,7 @@ function MessageCard({
             </div>
             <div
               aria-hidden
-              className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center border border-line bg-cream text-sm font-medium text-ink"
+              className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center border border-line bg-cream text-lg font-semibold text-ink"
             >
               {userInitial}
             </div>
@@ -338,7 +338,7 @@ function MessageCard({
     <div className="flex items-start gap-2.5">
       <div
         aria-hidden
-        className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center border border-line bg-vermilion text-base text-cream"
+        className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center border border-line bg-vermilion text-2xl text-cream"
       >
         {ASSISTANT_EMOJI}
       </div>
@@ -426,7 +426,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
       <div className="space-y-3 text-center">
         <div
           aria-hidden
-          className="mx-auto flex h-14 w-14 items-center justify-center border border-line bg-vermilion text-2xl text-cream"
+          className="mx-auto flex h-20 w-20 items-center justify-center border border-line bg-vermilion text-5xl text-cream"
         >
           {ASSISTANT_EMOJI}
         </div>
