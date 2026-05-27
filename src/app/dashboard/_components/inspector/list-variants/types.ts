@@ -40,6 +40,8 @@ export type EditFormProps = {
   onCancel: () => void;
   /** team variant — 권한 select admin only 분기 */
   currentUserPermission?: OperatorPermission | null;
+  /** incidents variant — 본인 작성건 삭제 권한 가드 (admin은 무관, member는 본인 건만) */
+  currentUserEmail?: string | null;
   /** cohort variant — 초대 메일 발송 */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 적요 PATCH */

@@ -131,3 +131,41 @@ export async function updateIncident(
   revalidatePath(PATH);
   return { ok: true, row: data as IncidentRow };
 }
+
+const PERMISSION_ERROR = "삭제 권한이 없습니다.";
+
+/**
+ * 사고보고 삭제 — admin 또는 본인(assignee_email = me.email) 작성건만.
+ * RLS 정책 incidents_delete_admin_or_assignee가 권한 가드. data=null이면 0 row 반환 → 권한 부족.
+ * incident_mail_sends는 FK on delete cascade로 함께 삭제됨.
+ */
+export async function deleteIncident(
+  id: string,
+): Promise<IncidentActionResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: AUTH_ERROR };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("incidents")
+    .delete()
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: PERMISSION_ERROR };
+
+  await logActivity({
+    domain: "incidents",
+    action: "delete",
+    target_type: "incidents",
+    target_id: id,
+    target_name: data.title,
+    level: "WARN",
+    msg: `사고 보고 삭제`,
+  });
+
+  revalidatePath(PATH);
+  return { ok: true, row: data as IncidentRow };
+}

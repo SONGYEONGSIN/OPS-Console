@@ -335,7 +335,12 @@ export type ListRow = {
   assignment?: {
     byService: Record<
       string,
-      { operator: string; developer: string; detail: { label: string; value: string }[]; subtypes?: { label: string; operator: string; developer: string }[] }
+      {
+        operator: string;
+        developer: string;
+        detail: { label: string; value: string }[];
+        subtypes?: { label: string; operator: string; developer: string }[];
+      }
     >;
   };
   /** data-request variant — 이 서비스 대학의 수신자 후보 (page가 첨부) */
@@ -414,6 +419,8 @@ type Props = {
   readOnly?: boolean;
   /** team variant — InspectorListBody 권한 select 노출 분기용 */
   currentUserPermission?: OperatorPermission | null;
+  /** incidents variant — 본인 작성건 삭제 권한 가드 */
+  currentUserEmail?: string | null;
   /** team 외 default variant에서도 신규 버튼 노출 (예: 게시판) */
   canCreate?: boolean;
   /** 신규 버튼 라벨 (기본: team='+ 신규 계정' / 그 외='+ 새 글') */
@@ -497,6 +504,7 @@ export function ListPattern({
   onPersist,
   readOnly = false,
   currentUserPermission = null,
+  currentUserEmail = null,
   canCreate = false,
   createLabel,
   extraActions,
@@ -634,8 +642,7 @@ export function ListPattern({
     );
   }
 
-  const drawerPadding =
-    inspector.selected !== null ? "md:pr-[340px]" : "";
+  const drawerPadding = inspector.selected !== null ? "md:pr-[340px]" : "";
   return (
     <>
       <div
@@ -752,6 +759,7 @@ export function ListPattern({
               editing={inspector.editing && !readOnly}
               variant={variant}
               currentUserPermission={currentUserPermission}
+              currentUserEmail={currentUserEmail}
               currentUserName={currentUserName}
               onInvite={onInvite}
               receivablesMailDryRun={receivablesMailDryRun}
@@ -761,7 +769,9 @@ export function ListPattern({
               universityNameSuggestions={universityNameSuggestions}
               servicesOperators={servicesOperators}
               servicesUniversityKeys={servicesUniversityKeys}
-              incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
+              incidentUniversityNameSuggestions={
+                incidentUniversityNameSuggestions
+              }
               incidentCategorySuggestions={incidentCategorySuggestions}
               contractsStatusOptions={contractsStatusOptions}
               contractsServiceActiveOptions={contractsServiceActiveOptions}

@@ -25,9 +25,17 @@ export function IncidentEditForm({
   setRow,
   onSave,
   onCancel,
+  currentUserPermission = null,
+  currentUserEmail = null,
   incidentUniversityNameSuggestions = [],
   incidentCategorySuggestions = [],
 }: EditFormProps) {
+  const isAdmin = currentUserPermission === "admin";
+  const isOwnAssignee =
+    !!currentUserEmail &&
+    !!row.incidentAssigneeEmail &&
+    row.incidentAssigneeEmail === currentUserEmail;
+  const canDelete = isAdmin || isOwnAssignee;
   const currentYear = row.incidentYear ?? new Date().getFullYear();
   const yearOptions = useMemo(
     () => buildYearOptions(currentYear),
@@ -119,7 +127,8 @@ export function IncidentEditForm({
             onChange={(e) =>
               setRow({
                 ...row,
-                incidentAppType: e.target.value as (typeof APP_TYPE_OPTIONS)[number],
+                incidentAppType: e.target
+                  .value as (typeof APP_TYPE_OPTIONS)[number],
               })
             }
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
@@ -192,9 +201,7 @@ export function IncidentEditForm({
         <input
           aria-label="사고제목"
           value={row.incidentTitle ?? ""}
-          onChange={(e) =>
-            setRow({ ...row, incidentTitle: e.target.value })
-          }
+          onChange={(e) => setRow({ ...row, incidentTitle: e.target.value })}
           maxLength={200}
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
           placeholder="예: 결제 오류 / 발표 페이지 문구 오안내"
@@ -272,8 +279,8 @@ export function IncidentEditForm({
           onChange={(e) =>
             setRow({
               ...row,
-              incidentDepartment:
-                e.target.value as (typeof DEPARTMENT_OPTIONS)[number],
+              incidentDepartment: e.target
+                .value as (typeof DEPARTMENT_OPTIONS)[number],
             })
           }
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
@@ -340,6 +347,25 @@ export function IncidentEditForm({
           취소
         </button>
       </div>
+      {row.id !== "" && canDelete && (
+        <div className="border-t border-line-soft pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "이 사고보고를 삭제하시겠습니까? 메일 발송 이력도 함께 삭제되며 되돌릴 수 없습니다.",
+                )
+              ) {
+                onSave({ ...row, status: "deleted" });
+              }
+            }}
+            className="w-full border border-vermilion-deep bg-transparent px-3 py-1.5 text-sm text-vermilion-deep hover:bg-vermilion-deep hover:text-cream"
+          >
+            삭제
+          </button>
+        </div>
+      )}
     </form>
   );
 }

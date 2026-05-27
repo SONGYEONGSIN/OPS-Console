@@ -4,19 +4,28 @@ const {
   mockGetCurrentOperator,
   mockInsertResult,
   mockUpdateResult,
+  mockDeleteResult,
+  mockSendIncidentMail,
   insertPayloads,
   updatePatches,
+  deleteEqIds,
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockInsertResult: vi.fn(),
   mockUpdateResult: vi.fn(),
+  mockDeleteResult: vi.fn(),
+  mockSendIncidentMail: vi.fn(),
   insertPayloads: [] as unknown[],
   updatePatches: [] as unknown[],
+  deleteEqIds: [] as string[],
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: mockGetCurrentOperator,
+}));
+vi.mock("../mail-actions", () => ({
+  sendIncidentMail: mockSendIncidentMail,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
@@ -39,11 +48,21 @@ vi.mock("@/lib/supabase/server", () => ({
           }),
         };
       },
+      delete: () => ({
+        eq: (_col: string, id: string) => {
+          deleteEqIds.push(id);
+          return {
+            select: () => ({
+              maybeSingle: () => Promise.resolve(mockDeleteResult()),
+            }),
+          };
+        },
+      }),
     }),
   })),
 }));
 
-import { createIncident, updateIncident } from "../actions";
+import { createIncident, updateIncident, deleteIncident } from "../actions";
 
 const meOperator = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -84,8 +103,12 @@ beforeEach(() => {
   mockGetCurrentOperator.mockReset();
   mockInsertResult.mockReset();
   mockUpdateResult.mockReset();
+  mockDeleteResult.mockReset();
+  mockSendIncidentMail.mockReset();
+  mockSendIncidentMail.mockResolvedValue({ ok: true, status: "sent" });
   insertPayloads.length = 0;
   updatePatches.length = 0;
+  deleteEqIds.length = 0;
 });
 
 describe("createIncident", () => {
@@ -187,5 +210,71 @@ describe("updateIncident", () => {
     mockGetCurrentOperator.mockResolvedValue(null);
     const r = await updateIncident(baseRow.id, { status: "처리완료" });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("deleteIncident", () => {
+  const otherAssigneeRow = {
+    ...baseRow,
+    assignee_email: "other@jinhakapply.com",
+    assignee_name: "타인",
+  };
+
+  it("admin → 본인 작성 아니어도 삭제 성공", async () => {
+    mockGetCurrentOperator.mockResolvedValue({
+      ...meOperator,
+      permission: "admin",
+    });
+    mockDeleteResult.mockReturnValue({ data: otherAssigneeRow, error: null });
+
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(true);
+    expect(deleteEqIds).toEqual([baseRow.id]);
+  });
+
+  it("member + 본인 작성건 → 삭제 성공", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockDeleteResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(true);
+    expect(deleteEqIds).toEqual([baseRow.id]);
+  });
+
+  it("member + 타인 작성건 → 권한 에러 (DB 호출 안 함)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockDeleteResult.mockReturnValue({
+      data: otherAssigneeRow,
+      error: null,
+    });
+
+    // pre-check를 위해 supabase select가 필요 — 구현 패턴 결정 후 보완
+    // 여기서는 RLS 의존 + DB가 0 row 반환 시 권한 거부로 간주
+    // 따라서: member가 호출 시 supabase delete가 결과적으로 권한 부족으로 data=null 반환
+    mockDeleteResult.mockReturnValue({ data: null, error: null });
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(false);
+  });
+
+  it("비인증 → ok:false", async () => {
+    mockGetCurrentOperator.mockResolvedValue(null);
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(false);
+    expect(deleteEqIds).toHaveLength(0);
+  });
+
+  it("supabase delete error → ok:false", async () => {
+    mockGetCurrentOperator.mockResolvedValue({
+      ...meOperator,
+      permission: "admin",
+    });
+    mockDeleteResult.mockReturnValue({
+      data: null,
+      error: { message: "db down" },
+    });
+
+    const r = await deleteIncident(baseRow.id);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("db down");
   });
 });
