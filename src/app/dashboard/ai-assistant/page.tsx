@@ -21,9 +21,9 @@ export default async function AiAssistantPage() {
         headline={config.headline}
         description={config.description}
       />
-      <div className="px-7 pb-12">
+      <section className="p-7">
         <AssistantClient />
-      </div>
+      </section>
     </div>
   );
 }
