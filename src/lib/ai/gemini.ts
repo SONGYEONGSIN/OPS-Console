@@ -7,7 +7,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
  * 모델: gemini-2.0-flash (저렴/빠름/1M context).
  */
 
-const MODEL = "gemini-2.0-flash";
+// gemini-2.0-flash는 2026-05 시점 신 사용자에게 지원 종료. gemini-2.5-flash로 전환.
+// 환경변수 GEMINI_MODEL로 override 가능 (테스트/롤백 시).
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 const MAX_OUTPUT_TOKENS = 1500;
 
 export type ChatMessage = {
