@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { colors } from "@/lib/design-tokens";
 
 /**
@@ -21,6 +23,11 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    // Sentry에 unhandled error 전송 (DSN 미설정 시 no-op)
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="ko">
       <body>
