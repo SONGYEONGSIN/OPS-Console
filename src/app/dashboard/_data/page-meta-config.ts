@@ -66,6 +66,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "AI & 자동화", title: "TIP 공유" },
     description: "운영부 공통 AI 활용 팁과 재사용 가능한 프롬프트를 모읍니다.",
   },
+  "ai-assistant": {
+    headline: { accent: "AI & 자동화", title: "어시스턴트" },
+    description:
+      "사내 데이터(사고·인수인계·TIP·백업·연락처·서비스)를 자연어로 검색합니다. Gemini가 근거와 함께 답변합니다.",
+  },
   automations: {
     headline: { accent: "AI & 자동화", title: "자동화 실행" },
     description:
