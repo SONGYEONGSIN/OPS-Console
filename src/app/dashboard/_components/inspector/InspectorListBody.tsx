@@ -17,6 +17,8 @@ type Props = {
   variant?: Variant;
   /** team variant — 권한 select admin만 노출하기 위한 컨텍스트 */
   currentUserPermission?: OperatorPermission | null;
+  /** incidents variant — 본인 작성건 삭제 권한 판정용 (member는 본인 건만) */
+  currentUserEmail?: string | null;
   /** cohort variant — 초대 메일 발송/재초대 (admin only). server action wrapper. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 적요 셀 PATCH server action. */
@@ -90,6 +92,7 @@ export function InspectorListBody({
   onCancel,
   variant = "default",
   currentUserPermission = null,
+  currentUserEmail = null,
   onInvite,
   onUpdateRemarks,
   receivablesMailDryRun = true,
@@ -143,6 +146,7 @@ export function InspectorListBody({
         onSave={onSave}
         onCancel={onCancel}
         currentUserPermission={currentUserPermission}
+        currentUserEmail={currentUserEmail}
         onInvite={onInvite}
         onUpdateRemarks={onUpdateRemarks}
         backupOperators={backupOperators}

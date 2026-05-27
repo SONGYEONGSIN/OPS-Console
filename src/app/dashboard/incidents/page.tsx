@@ -13,6 +13,7 @@ import { incidentToListRow } from "./_row-mapper";
 import {
   createIncident,
   updateIncident,
+  deleteIncident,
 } from "@/features/incidents/actions";
 import { listServices } from "@/features/services/queries";
 import { currentAcademicYear } from "@/lib/datetime";
@@ -60,8 +61,7 @@ export default async function IncidentsPage({
   const pathname = `/dashboard/${slug}`;
 
   const me = await getCurrentOperator();
-  const canEdit =
-    me?.permission === "admin" || me?.permission === "member";
+  const canEdit = me?.permission === "admin" || me?.permission === "member";
 
   const defaultYear = currentAcademicYear();
   const selectedYear = params.year ? Number(params.year) : defaultYear;
@@ -132,6 +132,10 @@ export default async function IncidentsPage({
     isNew: boolean,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
+    if (row.status === "deleted") {
+      const r = await deleteIncident(row.id);
+      return r.ok ? { ok: true } : { ok: false, error: r.error };
+    }
     const payload = {
       year: row.incidentYear ?? currentAcademicYear(),
       university_name: row.incidentUniversityName ?? "",
@@ -164,16 +168,14 @@ export default async function IncidentsPage({
       canCreate={canEdit}
       createLabel="+ 사고 보고"
       readOnly={!canEdit}
+      currentUserPermission={me?.permission ?? null}
+      currentUserEmail={me?.email ?? null}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       controlsRow={controlsRow}
       incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
       incidentCategorySuggestions={CATEGORY_SUGGESTIONS}
       inlineFilters={
-        <ScopeChips
-          key="incidents-scope"
-          total={total}
-          mineLabel="내 사고"
-        />
+        <ScopeChips key="incidents-scope" total={total} mineLabel="내 사고" />
       }
       footer={
         <ListPagination
@@ -186,4 +188,3 @@ export default async function IncidentsPage({
     />
   );
 }
-
