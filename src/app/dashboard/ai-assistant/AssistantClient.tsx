@@ -127,7 +127,25 @@ function renderMarkdown(text: string): React.ReactNode {
 }
 
 const ASSISTANT_NAME = "OPS 도우미";
-const ASSISTANT_EMOJI = "🤖";
+
+/** OPS Console 시스템 로고를 아바타로 사용 — ChromeBrand의 '>_' 모티프 차용. */
+function AssistantAvatar({
+  size,
+  fontSize,
+}: {
+  size: "sm" | "lg";
+  fontSize: string;
+}) {
+  const dim = size === "sm" ? "h-11 w-11" : "h-20 w-20";
+  return (
+    <span
+      aria-hidden
+      className={`flex flex-shrink-0 items-center justify-center border border-line bg-chrome-graphite font-mono font-bold leading-none tracking-[-0.05em] text-chrome-snow ${dim} ${fontSize}`}
+    >
+      &gt;_
+    </span>
+  );
+}
 
 type Props = {
   /** 운영자 표시명 (사용자 메시지 캐릭터에 사용) */
@@ -336,11 +354,8 @@ function MessageCard({
   // assistant
   return (
     <div className="flex items-start gap-2.5">
-      <div
-        aria-hidden
-        className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center border border-line bg-vermilion text-2xl text-cream"
-      >
-        {ASSISTANT_EMOJI}
+      <div className="mt-0.5">
+        <AssistantAvatar size="sm" fontSize="text-xl" />
       </div>
       <div className="flex max-w-[82%] flex-col gap-1">
         <div className="mb-1 flex items-center gap-1.5 text-2xs text-muted">
@@ -424,11 +439,8 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
     <div className="space-y-6 py-10">
       <div className="space-y-3 text-center">
-        <div
-          aria-hidden
-          className="mx-auto flex h-20 w-20 items-center justify-center border border-line bg-vermilion text-5xl text-cream"
-        >
-          {ASSISTANT_EMOJI}
+        <div className="mx-auto inline-block">
+          <AssistantAvatar size="lg" fontSize="text-4xl" />
         </div>
         <p className="text-base font-medium text-ink">
           안녕하세요, <span className="text-vermilion">{ASSISTANT_NAME}</span>
