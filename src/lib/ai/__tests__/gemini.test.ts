@@ -53,4 +53,34 @@ describe("askGemini", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain("gemini_error");
   });
+
+  it("messages 멀티턴 — assistant role → model role 변환", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    generateContentMock.mockResolvedValue({
+      response: { text: () => "answer" },
+    });
+    const { askGemini } = await import("../gemini");
+    const r = await askGemini({
+      systemInstruction: "x",
+      messages: [
+        { role: "user", content: "Q1" },
+        { role: "assistant", content: "A1" },
+        { role: "user", content: "Q2" },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    // generateContent가 contents 형식으로 호출됐는지
+    const callArg = generateContentMock.mock.calls[0][0];
+    expect(callArg.contents).toHaveLength(3);
+    expect(callArg.contents[1].role).toBe("model"); // assistant → model
+    expect(callArg.contents[0].parts[0].text).toBe("Q1");
+  });
+
+  it("userContent/messages 모두 없으면 ok:false", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const { askGemini } = await import("../gemini");
+    const r = await askGemini({ systemInstruction: "x" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("필요");
+  });
 });
