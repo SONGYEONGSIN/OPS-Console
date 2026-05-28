@@ -238,12 +238,20 @@ export function WeeklyView({
                   {visibleItems.map((t) => (
                     <li
                       key={t.id}
-                      className={`truncate text-2xs ${
+                      data-testid={`weekly-todo-${t.id}`}
+                      className={`flex items-center gap-1 truncate text-2xs ${
                         t.done ? "text-muted line-through" : "text-ink"
                       }`}
                       title={t.title}
                     >
-                      {t.title}
+                      <span
+                        aria-hidden
+                        data-testid="weekly-todo-star"
+                        className="shrink-0 animate-star-twinkle text-vermilion"
+                      >
+                        ★
+                      </span>
+                      <span className="truncate">{t.title}</span>
                     </li>
                   ))}
                   {visibleSvcs.map((sb, idx) => (
@@ -257,7 +265,7 @@ export function WeeklyView({
                       })}
                       data-testid={`weekly-service-${sb.kind}-${sb.service.id}`}
                       className="flex cursor-grab items-center gap-1 truncate text-2xs text-ink-soft active:cursor-grabbing"
-                      title={`${sb.service.service_name} · ${sb.kind === "start" ? "접수 시작" : "접수 종료"} (드래그하여 할 일에 담기)`}
+                      title={`${sb.service.university_name} — ${sb.service.service_name} · ${sb.kind === "start" ? "접수 시작" : "접수 종료"} (드래그하여 할 일에 담기)`}
                     >
                       <span
                         data-testid="weekly-service-dot"
@@ -268,7 +276,7 @@ export function WeeklyView({
                         aria-hidden
                       />
                       <span className="truncate">
-                        {sb.service.service_name}
+                        {sb.service.university_name} — {sb.service.service_name}
                       </span>
                     </li>
                   ))}

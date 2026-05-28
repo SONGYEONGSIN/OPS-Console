@@ -1,10 +1,10 @@
-import type { ScheduleEventRow, ScheduleType } from "@/features/schedule/schemas";
+import type {
+  ScheduleEventRow,
+  ScheduleType,
+} from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
 
-export type CalendarCategory =
-  | "service-start"
-  | "service-end"
-  | ScheduleType; // shift / event / leave / training
+export type CalendarCategory = "service-start" | "service-end" | ScheduleType; // shift / event / leave / training
 
 export type CalendarSourceVariant = "schedule" | "services";
 
@@ -128,13 +128,15 @@ export function groupItemsByDay(
   }
 
   for (const s of services) {
+    // 라벨에 대학명 prefix → 대학·서비스 식별 명확
+    const svcLabel = `${s.university_name} — ${s.service_name}`;
     if (s.write_start_at) {
       const ymd = toKstYmd(s.write_start_at);
       push(ymd, {
         id: `${s.id}::start`,
         ymd,
         category: "service-start",
-        label: s.service_name,
+        label: svcLabel,
         sortKey: "",
         all_day: true,
         sourceVariant: "services",
@@ -147,7 +149,7 @@ export function groupItemsByDay(
         id: `${s.id}::end`,
         ymd,
         category: "service-end",
-        label: s.service_name,
+        label: svcLabel,
         sortKey: "",
         all_day: true,
         sourceVariant: "services",
@@ -160,8 +162,7 @@ export function groupItemsByDay(
   // 팀공통(전원 영향)을 최상단에 노출해 운영자가 즉시 인지하도록.
   for (const list of map.values()) {
     list.sort((a, b) => {
-      if (!!a.isTeamCommon !== !!b.isTeamCommon)
-        return a.isTeamCommon ? -1 : 1;
+      if (!!a.isTeamCommon !== !!b.isTeamCommon) return a.isTeamCommon ? -1 : 1;
       if (a.all_day !== b.all_day) return a.all_day ? -1 : 1;
       return a.sortKey.localeCompare(b.sortKey);
     });
