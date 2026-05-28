@@ -1,0 +1,29 @@
+name: data-requests-dispatch
+
+on:
+  schedule:
+    # 10분 간격 — 자료 요청 예약 발송 (mail_status='scheduled' + scheduled_at <= now)
+    # 5분(*/5)은 GitHub Actions schedule이 high-load 시 무한 지연되는 사례가 잦아 10분으로 완화.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  trigger:
+    name: POST /api/data-requests/dispatch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Trigger dispatch
+        env:
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/data-requests-dispatch.mjs

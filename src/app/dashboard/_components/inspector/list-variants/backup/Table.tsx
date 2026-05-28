@@ -44,14 +44,22 @@ function leaveRangeLabel(row: ListRow): string {
   return "—";
 }
 
-/** ISO timestamp → KST yyyy-mm-dd. en-CA가 yyyy-mm-dd 형식 표준 */
-function formatYmdKst(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
+/** ISO timestamp → KST 'yyyy-mm-dd HH:mm' (24h). 발송 시각 식별성 ↑ */
+function formatYmdHmKst(iso: string): string {
+  const d = new Date(iso);
+  const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(iso));
+  }).format(d);
+  const hm = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(d);
+  return `${ymd} ${hm}`;
 }
 
 export function BackupTable({ rows, selectedId, onSelect }: Props) {
@@ -95,7 +103,7 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
                 {servicesPreview(row)}
               </td>
               <td className="px-3 py-2 text-xs text-ink-soft">
-                {row.mailSentAt ? formatYmdKst(row.mailSentAt) : "—"}
+                {row.mailSentAt ? formatYmdHmKst(row.mailSentAt) : "—"}
               </td>
             </tr>
           ))
