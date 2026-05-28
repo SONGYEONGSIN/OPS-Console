@@ -196,6 +196,13 @@ export default async function MyTodoPage({
     "use server";
     const operator = await getCurrentOperator();
     if (!operator?.email) return { ok: false, error: "로그인이 필요합니다." };
+
+    // 빈 text 체크리스트 항목은 저장 전 제거 (사용자가 '+ 항목 추가' 후 입력 없이 저장한 케이스).
+    // zod schema의 text.min(1) 검증 통과를 위해 server 호출 전 필터링.
+    const cleanedChecklist = (row.taskChecklist ?? [])
+      .map((c) => ({ ...c, text: c.text.trim() }))
+      .filter((c) => c.text.length > 0);
+
     if (isNew) {
       if (!row.projectId)
         return { ok: false, error: "프로젝트 선택이 필요합니다." };
@@ -208,7 +215,7 @@ export default async function MyTodoPage({
         priority: row.priority ?? "medium",
         progress: row.progress ?? 0,
         status: row.todoStatus ?? "todo",
-        checklist: row.taskChecklist ?? [],
+        checklist: cleanedChecklist,
         created_by_email: operator.email,
       });
       return r.ok ? { ok: true } : { ok: false, error: r.error };
@@ -225,7 +232,7 @@ export default async function MyTodoPage({
       priority: row.priority,
       progress: row.progress ?? 0,
       status: row.todoStatus ?? "todo",
-      checklist: row.taskChecklist ?? [],
+      checklist: cleanedChecklist,
     });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
