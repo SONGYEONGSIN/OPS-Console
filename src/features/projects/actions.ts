@@ -8,6 +8,7 @@ import {
   projectUpdateSchema,
   projectTaskCreateSchema,
   projectTaskUpdateSchema,
+  computeProgressFromChecklist,
   type ProjectRow,
   type ProjectTaskRow,
 } from "./schemas";
@@ -114,8 +115,14 @@ export async function createProjectTask(
     return { ok: false, error: PERMISSION_ERROR_VIEWER };
   }
 
+  // 체크리스트가 있으면 progress 자동 산출 (수동 입력값보다 우선)
+  const progressFromChecklist = computeProgressFromChecklist(
+    parsed.data.checklist,
+    parsed.data.progress,
+  );
   const payload = {
     ...parsed.data,
+    progress: progressFromChecklist,
     created_by_email: me.email,
   };
 
@@ -140,10 +147,23 @@ export async function updateProjectTask(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
 
+  // checklist가 update payload에 포함되어 있으면 progress 자동 산출 (기존 progress 입력값을 override).
+  // checklist가 없는 update면 기존 동작 유지 — 사용자가 progress 직접 입력 가능.
+  const payload =
+    parsed.data.checklist !== undefined
+      ? {
+          ...parsed.data,
+          progress: computeProgressFromChecklist(
+            parsed.data.checklist,
+            parsed.data.progress ?? 0,
+          ),
+        }
+      : parsed.data;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("project_tasks")
-    .update(parsed.data)
+    .update(payload)
     .eq("id", id)
     .select()
     .maybeSingle();

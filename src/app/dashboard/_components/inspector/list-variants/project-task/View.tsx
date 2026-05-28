@@ -101,6 +101,40 @@ export function ProjectTaskView({ row }: ViewProps) {
         </div>
       </Section>
 
+      {(row.taskChecklist?.length ?? 0) > 0 && (
+        <>
+          <Divider />
+          <Section title="체크리스트">
+            <ul className="space-y-1">
+              {(row.taskChecklist ?? []).map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-2 text-sm text-ink"
+                >
+                  <span
+                    aria-hidden
+                    className={`inline-flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center border ${
+                      item.done
+                        ? "border-vermilion bg-vermilion text-cream"
+                        : "border-line bg-cream"
+                    }`}
+                  >
+                    {item.done ? "✓" : ""}
+                  </span>
+                  <span className={item.done ? "text-muted line-through" : ""}>
+                    {item.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-2xs text-muted">
+              체크 토글은 우측 상단 &lsquo;구성 편집&rsquo; → 체크박스에서
+              가능합니다.
+            </p>
+          </Section>
+        </>
+      )}
+
       {row.body ? (
         <>
           <Divider />
