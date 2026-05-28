@@ -122,12 +122,14 @@ export function ProjectView({
   if (projectsWithTasks.length === 0) {
     return (
       <section className="p-7">
-        <div className="border border-line-soft bg-cream p-12 text-center">
-          <p className="text-base text-ink">프로젝트 없음</p>
-          <p className="mt-2 text-xs text-muted">
+        {/* text-center를 안내문에만 적용 — 이전: 부모 div에 적용해 ListPattern → InspectorChrome 안의
+            EditForm 라벨까지 inheritance로 가운데 정렬되는 버그. ListPattern wrap은 별도 flex로 가운데만. */}
+        <div className="border border-line-soft bg-cream p-12">
+          <p className="text-center text-base text-ink">프로젝트 없음</p>
+          <p className="mt-2 text-center text-xs text-muted">
             아래 &lsquo;+ 새 프로젝트&rsquo; 버튼으로 시작하세요.
           </p>
-          <div className="mt-4 inline-block">
+          <div className="mt-4 flex justify-center">
             <ListPattern
               title="프로젝트"
               data={{ rows: [] }}
