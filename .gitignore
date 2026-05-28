@@ -76,3 +76,4 @@ playwright/.cache/
 scripts/incidents-sheet-cache.txt
 scripts/incidents-sheet-cache.csv
 .gcp/
+.vercel
