@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getJob } from "@/features/automations/registry";
+import { getJobEnabled } from "@/features/automations/queries";
 
 /**
  * GitHub Actions cron 진입점 — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -7,6 +8,9 @@ import { getJob } from "@/features/automations/registry";
  *
  * UI에서 admin이 직접 호출하는 경로는 `runAutomationAction` (server action) 사용.
  * 본 route는 cron 전용 — secret 누설 시 임의 잡 실행 가능하므로 secret 보안 필수.
+ *
+ * enabled gate: DB automation_settings.enabled=false 이면 cron silent skip.
+ * (UI 토글이 자동 실행 권한 게이트 역할. enabled=true 시 cron 자동, 수동 UI 차단.)
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -19,7 +23,10 @@ export async function POST(request: NextRequest) {
 
   const auth = request.headers.get("authorization") ?? "";
   if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 },
+    );
   }
 
   const jobId =
@@ -38,6 +45,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { ok: false, error: `알 수 없는 자동화: ${jobId}` },
       { status: 404 },
+    );
+  }
+
+  // UI 토글 OFF면 cron silent skip — 사용자가 자동 실행을 의도적으로 끈 상태.
+  const enabled = await getJobEnabled(jobId);
+  if (!enabled) {
+    return NextResponse.json(
+      { ok: true, skipped: true, message: "자동 실행 OFF — cron skip" },
+      { status: 200 },
     );
   }
 
