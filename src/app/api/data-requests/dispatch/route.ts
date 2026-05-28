@@ -12,16 +12,26 @@ type DueRow = {
   body: string;
 };
 
-export async function POST(req: Request): Promise<Response> {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("x-cron-secret") !== secret) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  }
+/**
+ * 예약 발송 cron 진입점.
+ * - POST + x-cron-secret 헤더: GitHub Actions / 수동 trigger 호환
+ * - GET + Authorization: Bearer ${CRON_SECRET}: Vercel Cron 호환
+ */
 
+function isAuthorized(req: Request, secret: string): boolean {
+  if (req.headers.get("x-cron-secret") === secret) return true;
+  if (req.headers.get("authorization") === `Bearer ${secret}`) return true;
+  return false;
+}
+
+async function handle(): Promise<Response> {
   const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("claim_due_data_requests");
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: error.message },
+      { status: 500 },
+    );
   }
   const rows = (data ?? []) as DueRow[];
 
@@ -69,4 +79,26 @@ export async function POST(req: Request): Promise<Response> {
     dryRun: dispatchedDry,
     updateFailed,
   });
+}
+
+export async function POST(req: Request): Promise<Response> {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !isAuthorized(req, secret)) {
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 },
+    );
+  }
+  return handle();
+}
+
+export async function GET(req: Request): Promise<Response> {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !isAuthorized(req, secret)) {
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 },
+    );
+  }
+  return handle();
 }
