@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
+import { DateInput } from "@/components/common/DateInput";
 
 type Props = {
   row: ListRow;
@@ -115,8 +116,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
       <div className="space-y-2">
         <span className="block text-xs text-muted">시작 (KST)</span>
         <div className={row.allDay ? "" : "grid grid-cols-[1fr_100px] gap-2"}>
-          <input
-            type="date"
+          <DateInput
             aria-label="시작 날짜"
             value={isoToKstDate(row.start_at)}
             onChange={(e) =>
@@ -152,8 +152,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
       <div className="space-y-2">
         <span className="block text-xs text-muted">종료 (KST)</span>
         <div className={row.allDay ? "" : "grid grid-cols-[1fr_100px] gap-2"}>
-          <input
-            type="date"
+          <DateInput
             aria-label="종료 날짜"
             value={isoToKstDate(row.end_at)}
             onChange={(e) =>

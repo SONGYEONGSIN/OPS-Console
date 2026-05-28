@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
+import { DateInput } from "@/components/common/DateInput";
 import {
   APPLICATION_TYPE_OPTIONS,
   REGION_OPTIONS,
@@ -278,8 +279,7 @@ export function ServicesForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">작성시작</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="작성시작"
             value={isoToDate(row.writeStartAt)}
             onChange={(e) =>
@@ -290,8 +290,7 @@ export function ServicesForm({
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">작성마감</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="작성마감"
             value={isoToDate(row.writeEndAt)}
             onChange={(e) =>
@@ -304,8 +303,7 @@ export function ServicesForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">결제시작</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="결제시작"
             value={isoToDate(row.payStartAt)}
             onChange={(e) =>
@@ -316,8 +314,7 @@ export function ServicesForm({
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">결제마감</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="결제마감"
             value={isoToDate(row.payEndAt)}
             onChange={(e) =>

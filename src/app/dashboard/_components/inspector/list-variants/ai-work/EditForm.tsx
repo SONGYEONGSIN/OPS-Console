@@ -1,15 +1,8 @@
 import type { EditFormProps } from "../types";
-import {
-  AI_TOOL_OPTIONS,
-  CATEGORY_OPTIONS,
-} from "@/lib/ai-work/constants";
+import { AI_TOOL_OPTIONS, CATEGORY_OPTIONS } from "@/lib/ai-work/constants";
+import { DateInput } from "@/components/common/DateInput";
 
-export function AiWorkForm({
-  row,
-  setRow,
-  onSave,
-  onCancel,
-}: EditFormProps) {
+export function AiWorkForm({ row, setRow, onSave, onCancel }: EditFormProps) {
   const tagsText = (row.tags ?? []).join(", ");
   return (
     <form
@@ -42,23 +35,17 @@ export function AiWorkForm({
       <fieldset className="block text-xs">
         <legend className="mb-1 block text-muted">작업 기간</legend>
         <div className="grid grid-cols-2 gap-2">
-          <input
+          <DateInput
             aria-label="작업 시작일"
-            type="date"
             value={row.workStartDate ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, workStartDate: e.target.value })
-            }
+            onChange={(e) => setRow({ ...row, workStartDate: e.target.value })}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
-          <input
+          <DateInput
             aria-label="작업 종료일"
-            type="date"
             value={row.workEndDate ?? ""}
             min={row.workStartDate ?? undefined}
-            onChange={(e) =>
-              setRow({ ...row, workEndDate: e.target.value })
-            }
+            onChange={(e) => setRow({ ...row, workEndDate: e.target.value })}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
         </div>
@@ -146,7 +133,8 @@ export function AiWorkForm({
             onChange={(e) =>
               setRow({
                 ...row,
-                savedHours: e.target.value === "" ? null : Number(e.target.value),
+                savedHours:
+                  e.target.value === "" ? null : Number(e.target.value),
               })
             }
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
