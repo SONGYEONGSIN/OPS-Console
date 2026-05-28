@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { backupRequestRowSchema, type BackupRequestRow } from "./schemas";
 
@@ -96,11 +97,16 @@ export async function listBackupRequests(
 
 /**
  * 단건 fetch (인스펙터 진입용 등). services_detail join 포함.
+ *
+ * @param client 옵션 — cron/server action에서 admin client(service_role)를 주입할 때 사용.
+ *   미지정 시 RLS 적용 server client(createClient)로 fallback. cron 컨텍스트(세션 없음)에서
+ *   RLS denial을 우회하려면 반드시 admin client 전달.
  */
 export async function getBackupRequestById(
   id: string,
+  client?: SupabaseClient,
 ): Promise<BackupRequestRow | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("backup_requests")
     .select(SELECT_WITH_SERVICES)

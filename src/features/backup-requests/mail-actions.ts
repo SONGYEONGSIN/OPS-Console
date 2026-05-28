@@ -85,15 +85,22 @@ export async function sendBackupRequestMail(
     me = opts.cronSender;
   } else {
     const op = await getCurrentOperator();
-    me = op ? { email: op.email, displayName: op.displayName ?? op.email } : null;
+    me = op
+      ? { email: op.email, displayName: op.displayName ?? op.email }
+      : null;
   }
   if (!me) return { ok: false, error: AUTH_ERROR };
 
-  const backup = await getBackupRequestById(parsed.data.backup_request_id);
-  if (!backup) return { ok: false, error: NOT_FOUND_ERROR };
-
   const admin = createAdminClient();
   const dryRun = isDryRun();
+
+  // cron 컨텍스트는 세션이 없어 RLS denied → admin client로 fetch (service_role bypass).
+  // 인스펙터 호출은 user session 있으므로 기본 client 사용.
+  const backup = await getBackupRequestById(
+    parsed.data.backup_request_id,
+    opts.cronSender ? admin : undefined,
+  );
+  if (!backup) return { ok: false, error: NOT_FOUND_ERROR };
 
   // 발신 operator id 조회 (이력 적재용 — 없으면 null 허용)
   let senderOperatorId: string | null = null;
