@@ -12,7 +12,10 @@ import { CalendarView } from "../CalendarView";
 import type { ScheduleEventRow } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
 
-const baseEvent: Omit<ScheduleEventRow, "id" | "type" | "title" | "start_at" | "all_day"> = {
+const baseEvent: Omit<
+  ScheduleEventRow,
+  "id" | "type" | "title" | "start_at" | "all_day"
+> = {
   created_by_email: "x@x.com",
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-01T00:00:00Z",
@@ -40,7 +43,9 @@ const baseService: Omit<
   updated_at: "2026-05-01T00:00:00Z",
 };
 
-function renderView(overrides: Partial<Parameters<typeof CalendarView>[0]> = {}) {
+function renderView(
+  overrides: Partial<Parameters<typeof CalendarView>[0]> = {},
+) {
   const defaults = {
     events: [] as ScheduleEventRow[],
     services: [] as ServicesRow[],
@@ -81,7 +86,9 @@ describe("CalendarView", () => {
     renderView({ events });
     expect(screen.getByText("오전 시프트")).toBeInTheDocument();
     const dots = screen.getAllByTestId("calendar-dot");
-    expect(dots.some((d) => d.getAttribute("data-category") === "shift")).toBe(true);
+    expect(dots.some((d) => d.getAttribute("data-category") === "shift")).toBe(
+      true,
+    );
   });
 
   it("service write_start_at/end_at을 service-start/end 카테고리로 렌더", () => {
@@ -96,15 +103,16 @@ describe("CalendarView", () => {
       },
     ];
     renderView({ services });
-    const labels = screen.getAllByText("PIMS 원서");
+    // 라벨이 '대학명 — 서비스명' 형식으로 변경됨 (PR #26 식별성 강화)
+    const labels = screen.getAllByText("○○대학교 — PIMS 원서");
     expect(labels.length).toBe(2); // start + end
     const dots = screen.getAllByTestId("calendar-dot");
-    expect(dots.some((d) => d.getAttribute("data-category") === "service-start")).toBe(
-      true,
-    );
-    expect(dots.some((d) => d.getAttribute("data-category") === "service-end")).toBe(
-      true,
-    );
+    expect(
+      dots.some((d) => d.getAttribute("data-category") === "service-start"),
+    ).toBe(true);
+    expect(
+      dots.some((d) => d.getAttribute("data-category") === "service-end"),
+    ).toBe(true);
   });
 
   it("다음 달 버튼 클릭 → URL ?month=2026-06로 push", () => {
@@ -158,29 +166,35 @@ describe("CalendarView", () => {
   });
 
   it("아이템 4개 초과 셀에 '+N 더보기' 버튼 노출", () => {
-    const events: ScheduleEventRow[] = Array.from({ length: 7 }).map((_, i) => ({
-      ...baseEvent,
-      id: `00000000-0000-0000-0000-00000000000${i + 1}`,
-      type: "event",
-      title: `이벤트 ${i + 1}`,
-      start_at: "2026-05-15T01:00:00Z",
-      all_day: false,
-    }));
+    const events: ScheduleEventRow[] = Array.from({ length: 7 }).map(
+      (_, i) => ({
+        ...baseEvent,
+        id: `00000000-0000-0000-0000-00000000000${i + 1}`,
+        type: "event",
+        title: `이벤트 ${i + 1}`,
+        start_at: "2026-05-15T01:00:00Z",
+        all_day: false,
+      }),
+    );
     renderView({ events });
     // 기본 4개만 표시 + 더보기 버튼 (overflow 3)
-    expect(screen.getByRole("button", { name: /\+3 더보기/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /\+3 더보기/ }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("이벤트 5")).toBeNull();
   });
 
   it("'+N 더보기' 클릭 → 해당 셀의 모든 아이템 표시 + '접기' 버튼", () => {
-    const events: ScheduleEventRow[] = Array.from({ length: 6 }).map((_, i) => ({
-      ...baseEvent,
-      id: `00000000-0000-0000-0000-00000000000${i + 1}`,
-      type: "event",
-      title: `이벤트 ${i + 1}`,
-      start_at: "2026-05-15T01:00:00Z",
-      all_day: false,
-    }));
+    const events: ScheduleEventRow[] = Array.from({ length: 6 }).map(
+      (_, i) => ({
+        ...baseEvent,
+        id: `00000000-0000-0000-0000-00000000000${i + 1}`,
+        type: "event",
+        title: `이벤트 ${i + 1}`,
+        start_at: "2026-05-15T01:00:00Z",
+        all_day: false,
+      }),
+    );
     renderView({ events });
     fireEvent.click(screen.getByRole("button", { name: /\+2 더보기/ }));
     // 6개 모두 노출 + 접기 버튼
