@@ -41,8 +41,8 @@ export function buildBackupMailSubject(input: BackupMailInput): string {
 }
 
 /**
- * PR-5: 연락처 chip 한 줄 텍스트 렌더 — "{학교} — {이름}  {이메일} · {전화}"
- * 이메일/전화는 nullable. 둘 다 null이면 라벨만 표시.
+ * PR-5: 연락처 chip 한 줄 텍스트 렌더 — "{학교} — {이름}  {이메일} · {전화} · 내선 {ext}"
+ * 이메일/전화/내선은 모두 nullable. 값이 있는 항목만 합쳐 표시.
  */
 function contactChipsHtml(items: ServiceDetail["contacts"]): string {
   return `<div style="display:flex;flex-wrap:wrap;gap:4px;">${items
@@ -51,6 +51,7 @@ function contactChipsHtml(items: ServiceDetail["contacts"]): string {
       const meta: string[] = [];
       if (c.email) meta.push(escapeHtml(c.email));
       if (c.phone) meta.push(escapeHtml(c.phone));
+      if (c.ext) meta.push(`내선 ${escapeHtml(c.ext)}`);
       const metaText =
         meta.length > 0
           ? ` <span style="color:#666;">${meta.join(" · ")}</span>`

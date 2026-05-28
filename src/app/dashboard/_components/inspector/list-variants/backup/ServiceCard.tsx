@@ -10,6 +10,7 @@ export type ContactDetail = {
   university_name: string;
   email: string | null;
   phone: string | null;
+  ext?: string | null;
 };
 
 export type ServiceCardDetail = {
@@ -30,6 +31,7 @@ type ContactCandidate = {
   university_name: string;
   email: string | null;
   phone: string | null;
+  ext?: string | null;
 };
 
 type Props = {
@@ -85,6 +87,7 @@ export function ServiceCard({
       university_name: c.university_name,
       email: c.email,
       phone: c.phone,
+      ext: c.ext ?? null,
     };
     onContactsChange([...detail.contacts, snapshot]);
     setContactQuery("");

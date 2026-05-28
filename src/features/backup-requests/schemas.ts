@@ -14,8 +14,10 @@ export type MailStatus = z.infer<typeof mailStatusSchema>;
 
 /**
  * PR-5: 서비스별 연락처 — contacts 테이블 row의 스냅샷.
- * 객체 배열 jsonb로 저장. 메일/PDF 본문에 이메일·전화 표시 위해 객체화.
+ * 객체 배열 jsonb로 저장. 메일/PDF 본문에 이메일·전화·내선 표시 위해 객체화.
  * contact row가 추후 갱신/삭제돼도 메일 이력은 시점 데이터 유지 (audit).
+ *
+ * ext(내선번호)는 옵션. 기존 snapshot(2026-05 이전)엔 없을 수 있어 .optional().
  */
 export const contactDetailSchema = z.object({
   contact_id: z.string().uuid(),
@@ -23,6 +25,7 @@ export const contactDetailSchema = z.object({
   university_name: z.string().min(1),
   email: z.string().email().nullable(),
   phone: z.string().nullable(),
+  ext: z.string().nullable().optional(),
 });
 
 export type ContactDetail = z.infer<typeof contactDetailSchema>;

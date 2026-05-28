@@ -50,8 +50,7 @@ export default async function BackupPage({
 
   const me = await getCurrentOperator();
   // viewer는 actions.ts에서 server-side 차단되지만 UI 가드 일관성을 위해 동일 조건 적용.
-  const canEdit =
-    me?.permission === "admin" || me?.permission === "member";
+  const canEdit = me?.permission === "admin" || me?.permission === "member";
 
   const allOperators = await listOperators();
   const backupOperators = allOperators
@@ -97,13 +96,15 @@ export default async function BackupPage({
     if (contactsFetched >= total) break;
     if (p * CHUNK >= total) break; // PGRST103 회피
   }
-  // PR-5: email/phone projection 추가 — ServiceCard에서 contact 추가 시 객체 스냅샷 build
+  // PR-5: email/phone projection 추가 — ServiceCard에서 contact 추가 시 객체 스냅샷 build.
+  // ext(내선)도 함께 — 메일/PDF chip에 'email · phone · 내선 ext'로 노출.
   const backupContactCandidates = contactCandidatesRaw.map((c) => ({
     id: c.id,
     customer_name: c.customer_name,
     university_name: c.university_name,
     email: c.contact_email,
     phone: c.contact_phone,
+    ext: c.contact_ext,
   }));
 
   const header = (

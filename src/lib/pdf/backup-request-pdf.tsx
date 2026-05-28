@@ -39,7 +39,7 @@ function ensureFontRegistered() {
 
 /**
  * PR-2: services는 join 결과 — 대학명·서비스명 정규화 표기에 사용.
- * PR-5: contacts는 contactDetailSchema 객체 배열. PDF chip에 이름 + 이메일·전화 한 줄 표시.
+ * PR-5: contacts는 contactDetailSchema 객체 배열. PDF chip에 이름 + 이메일·전화·내선 한 줄 표시.
  */
 export type PdfContactDetail = {
   contact_id: string;
@@ -47,6 +47,7 @@ export type PdfContactDetail = {
   university_name: string;
   email: string | null;
   phone: string | null;
+  ext?: string | null;
 };
 
 export type PdfServiceDetail = {
@@ -246,7 +247,9 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
           <Text style={styles.runningHeaderLeft}>
             백업 요청 · {input.requesterName}
           </Text>
-          <Text style={styles.runningHeaderRight}>운영부 상황실 · 백업 요청</Text>
+          <Text style={styles.runningHeaderRight}>
+            운영부 상황실 · 백업 요청
+          </Text>
         </View>
 
         <View style={styles.header}>
@@ -305,10 +308,17 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
                     <Text style={styles.serviceMetaLabel}>연락처</Text>
                     <View style={styles.chipRow}>
                       {s.contacts.map((c) => {
-                        const meta = [c.email, c.phone].filter(Boolean).join(" · ");
+                        const metaParts: string[] = [];
+                        if (c.email) metaParts.push(c.email);
+                        if (c.phone) metaParts.push(c.phone);
+                        if (c.ext) metaParts.push(`내선 ${c.ext}`);
+                        const meta = metaParts.join(" · ");
                         const label = `${c.university_name} — ${c.customer_name}${meta ? `  ${meta}` : ""}`;
                         return (
-                          <Text key={`ct-${s.id}-${c.contact_id}`} style={styles.chip}>
+                          <Text
+                            key={`ct-${s.id}-${c.contact_id}`}
+                            style={styles.chip}
+                          >
                             {label}
                           </Text>
                         );
