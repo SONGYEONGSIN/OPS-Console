@@ -448,13 +448,14 @@ type Props = {
     service_name: string;
     university_name: string;
   }[];
-  /** backup variant — 대학 연락처 후보. PR-5: email/phone 추가 */
+  /** backup variant — 대학 연락처 후보. PR-5: email/phone 추가. ext(내선) 포함 */
   backupContactCandidates?: {
     id: string;
     customer_name: string;
     university_name: string;
     email: string | null;
     phone: string | null;
+    ext: string | null;
   }[];
   /** contacts variant — 대학명 자동완성 후보 */
   universityNameSuggestions?: readonly string[];

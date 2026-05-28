@@ -38,13 +38,14 @@ export async function POST(req: Request): Promise<Response> {
   let failed = 0;
   for (const row of rows) {
     // operator displayName lookup — 메일 본문 'requester' 라벨용
+    // operators 테이블 컬럼은 'name' (display_name 아님).
     const { data: opRow } = await supabase
       .from("operators")
-      .select("display_name")
+      .select("name")
       .eq("email", row.requester_email)
       .maybeSingle();
     const displayName =
-      (opRow as { display_name: string | null } | null)?.display_name ??
+      (opRow as { name: string | null } | null)?.name ??
       row.requester_email.split("@")[0] ??
       row.requester_email;
 

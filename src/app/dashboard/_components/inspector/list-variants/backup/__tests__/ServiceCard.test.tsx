@@ -18,7 +18,8 @@ const operators = [
   { email: "park@example.com", name: "Park" },
 ];
 
-// PR-5: contactCandidates에 email/phone 필드 추가 — 메일 발송 시 객체 스냅샷 빌드
+// PR-5: contactCandidates에 email/phone 필드 추가 — 메일 발송 시 객체 스냅샷 빌드.
+// ext(내선)도 함께 — chip에 'email · phone · 내선 ext'로 노출.
 const contactCandidates = [
   {
     id: "c1",
@@ -26,6 +27,7 @@ const contactCandidates = [
     university_name: "한양대학교",
     email: "yry@hanyang.ac.kr",
     phone: "010-1111-2222",
+    ext: "1234",
   },
   {
     id: "c2",
@@ -33,6 +35,7 @@ const contactCandidates = [
     university_name: "연세대학교",
     email: null,
     phone: null,
+    ext: null,
   },
 ];
 
@@ -127,7 +130,7 @@ describe("ServiceCard", () => {
     ) as HTMLInputElement;
     fireEvent.change(search, { target: { value: "양라윤" } });
     fireEvent.click(screen.getByText("양라윤"));
-    // PR-5: 객체 스냅샷 형태로 추가
+    // PR-5: 객체 스냅샷 형태로 추가 + ext 필드 포함
     expect(onContacts).toHaveBeenCalledWith([
       {
         contact_id: "c1",
@@ -135,6 +138,7 @@ describe("ServiceCard", () => {
         university_name: "한양대학교",
         email: "yry@hanyang.ac.kr",
         phone: "010-1111-2222",
+        ext: "1234",
       },
     ]);
   });
@@ -212,7 +216,9 @@ describe("ServiceCard", () => {
         onRemove={vi.fn()}
       />,
     );
-    const textarea = screen.getByLabelText("신입학 메모") as HTMLTextAreaElement;
+    const textarea = screen.getByLabelText(
+      "신입학 메모",
+    ) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "5/20 마감" } });
     expect(onNote).toHaveBeenCalledWith("5/20 마감");
   });
@@ -261,7 +267,9 @@ describe("ServiceCard", () => {
         onRemove={vi.fn()}
       />,
     );
-    const textarea = screen.getByLabelText("신입학 메모") as HTMLTextAreaElement;
+    const textarea = screen.getByLabelText(
+      "신입학 메모",
+    ) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: "" } });
     expect(onNote).toHaveBeenCalledWith(null);
   });

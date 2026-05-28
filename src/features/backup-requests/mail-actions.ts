@@ -34,7 +34,7 @@ function isDryRun(): boolean {
 
 type CcOperator = {
   email: string;
-  display_name: string | null;
+  name: string | null;
   team: string | null;
 };
 
@@ -44,9 +44,10 @@ async function fetchCcOperators(
   excludeEmails: string[],
 ): Promise<GraphMailRecipient[]> {
   if (!team) return [];
+  // operators 테이블 컬럼은 'name' (display_name 아님).
   let query = admin
     .from("operators")
-    .select("email,display_name,team")
+    .select("email,name,team")
     .eq("team", team)
     .eq("status", "active");
   for (const e of excludeEmails) {
@@ -59,7 +60,7 @@ async function fetchCcOperators(
   if (error || !data) return [];
   return data.map((op) => ({
     email: op.email,
-    name: op.display_name ?? undefined,
+    name: op.name ?? undefined,
   }));
 }
 
