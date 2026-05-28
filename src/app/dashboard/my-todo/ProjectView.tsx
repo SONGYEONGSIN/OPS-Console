@@ -61,6 +61,7 @@ function taskToListRow(t: ProjectTaskRow): ListRow {
     startDateYmd: t.start_at ?? null,
     endDateYmd: t.end_at ?? null,
     taskAssigneeEmail: t.assignee_email ?? null,
+    taskChecklist: t.checklist,
     projectId: t.project_id,
   };
 }

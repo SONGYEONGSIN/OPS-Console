@@ -5,6 +5,18 @@ import type { ListRow } from "../../../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
 import { DateInput } from "@/components/common/DateInput";
 
+const CHECKLIST_MAX = 10;
+
+/** 간단 uuid v4 (RFC 4122 compliant) — server에서 schemas 검증 통과용 */
+function uuidv4(): string {
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+    (
+      Number(c) ^
+      (crypto.getRandomValues(new Uint8Array(1))[0]! & (15 >> (Number(c) / 4)))
+    ).toString(16),
+  );
+}
+
 type Props = {
   row: ListRow;
   setRow: Dispatch<SetStateAction<ListRow>>;
@@ -44,6 +56,13 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
           placeholder="예: 블로그 포스팅"
         />
       </label>
+
+      {/* 체크리스트 — 최대 10개. 완료 비율로 진행률 자동 산출 (actions.ts) */}
+      <ChecklistEditor
+        items={row.taskChecklist ?? []}
+        onChange={(next) => setRow({ ...row, taskChecklist: next })}
+      />
+
       <label className="block text-xs">
         <span className="mb-1 block text-muted">담당자</span>
         <select
@@ -135,7 +154,14 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
         </label>
       </div>
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">진행률</span>
+        <span className="mb-1 block text-muted">
+          진행률
+          {(row.taskChecklist?.length ?? 0) > 0 && (
+            <span className="ml-1 text-2xs text-vermilion">
+              (체크리스트 비율 자동 산출)
+            </span>
+          )}
+        </span>
         <div className="flex items-center gap-2">
           <input
             type="range"
@@ -147,7 +173,8 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
             onChange={(e) =>
               setRow({ ...row, progress: Number(e.target.value) })
             }
-            className="flex-1 accent-indigo"
+            disabled={(row.taskChecklist?.length ?? 0) > 0}
+            className="flex-1 accent-indigo disabled:cursor-not-allowed disabled:opacity-50"
           />
           <span className="font-mono text-xs text-ink">
             {row.progress ?? 0}%
@@ -189,5 +216,93 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
         </div>
       )}
     </form>
+  );
+}
+
+type ChecklistItem = NonNullable<ListRow["taskChecklist"]>[number];
+
+function ChecklistEditor({
+  items,
+  onChange,
+}: {
+  items: ChecklistItem[];
+  onChange: (next: ChecklistItem[]) => void;
+}) {
+  const canAdd = items.length < CHECKLIST_MAX;
+  const doneCount = items.filter((i) => i.done).length;
+  return (
+    <div className="block text-xs">
+      <div className="mb-1 flex items-baseline justify-between text-muted">
+        <span>
+          체크리스트 ({items.length}/{CHECKLIST_MAX})
+          {items.length > 0 && (
+            <span className="ml-1 text-2xs text-ink-soft">
+              · 완료 {doneCount}/{items.length}
+            </span>
+          )}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            if (!canAdd) return;
+            onChange([...items, { id: uuidv4(), text: "", done: false }]);
+          }}
+          disabled={!canAdd}
+          className="cursor-pointer border-none bg-transparent p-0 text-2xs text-vermilion hover:text-vermilion-deep disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          + 항목 추가
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+          체크리스트가 비어있습니다. 항목을 추가하면 완료 비율로 진행률이 자동
+          산출됩니다.
+        </p>
+      ) : (
+        <ul className="space-y-1">
+          {items.map((item, idx) => (
+            <li key={item.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                aria-label={`항목 ${idx + 1} 완료`}
+                checked={item.done}
+                onChange={(e) =>
+                  onChange(
+                    items.map((it, i) =>
+                      i === idx ? { ...it, done: e.target.checked } : it,
+                    ),
+                  )
+                }
+                className="h-3.5 w-3.5 accent-vermilion"
+              />
+              <input
+                aria-label={`항목 ${idx + 1} 텍스트`}
+                value={item.text}
+                onChange={(e) =>
+                  onChange(
+                    items.map((it, i) =>
+                      i === idx ? { ...it, text: e.target.value } : it,
+                    ),
+                  )
+                }
+                maxLength={200}
+                placeholder="체크 항목"
+                className={`flex-1 border border-line bg-cream px-2 py-1 text-xs text-ink ${
+                  item.done ? "text-muted line-through" : ""
+                }`}
+              />
+              <button
+                type="button"
+                aria-label={`항목 ${idx + 1} 삭제`}
+                onClick={() => onChange(items.filter((_, i) => i !== idx))}
+                className="cursor-pointer border-none bg-transparent px-1 text-muted hover:text-vermilion"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

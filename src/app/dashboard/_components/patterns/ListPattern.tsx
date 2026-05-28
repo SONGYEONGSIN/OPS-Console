@@ -77,6 +77,8 @@ export type ListRow = {
   endDateYmd?: string | null;
   /** project / project-task — 담당자 email */
   taskAssigneeEmail?: string | null;
+  /** project-task — 체크리스트 (최대 10개). 완료 비율로 progress 자동 산출 */
+  taskChecklist?: { id: string; text: string; done: boolean }[];
   /** project — sub-task 개수 / 완료 개수 (View 표시용) */
   totalTaskCount?: number;
   doneTaskCount?: number;

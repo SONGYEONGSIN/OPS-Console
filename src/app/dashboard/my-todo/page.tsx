@@ -208,6 +208,7 @@ export default async function MyTodoPage({
         priority: row.priority ?? "medium",
         progress: row.progress ?? 0,
         status: row.todoStatus ?? "todo",
+        checklist: row.taskChecklist ?? [],
         created_by_email: operator.email,
       });
       return r.ok ? { ok: true } : { ok: false, error: r.error };
@@ -224,6 +225,7 @@ export default async function MyTodoPage({
       priority: row.priority,
       progress: row.progress ?? 0,
       status: row.todoStatus ?? "todo",
+      checklist: row.taskChecklist ?? [],
     });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
