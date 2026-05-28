@@ -421,6 +421,8 @@ type Props = {
   currentUserPermission?: OperatorPermission | null;
   /** incidents variant — 본인 작성건 삭제 권한 가드 */
   currentUserEmail?: string | null;
+  /** incidents variant — 담당부서 자동 고정용 (operators.team) */
+  currentUserTeam?: string | null;
   /** team 외 default variant에서도 신규 버튼 노출 (예: 게시판) */
   canCreate?: boolean;
   /** 신규 버튼 라벨 (기본: team='+ 신규 계정' / 그 외='+ 새 글') */
@@ -506,6 +508,7 @@ export function ListPattern({
   readOnly = false,
   currentUserPermission = null,
   currentUserEmail = null,
+  currentUserTeam = null,
   canCreate = false,
   createLabel,
   extraActions,
@@ -761,6 +764,7 @@ export function ListPattern({
               variant={variant}
               currentUserPermission={currentUserPermission}
               currentUserEmail={currentUserEmail}
+              currentUserTeam={currentUserTeam}
               currentUserName={currentUserName}
               onInvite={onInvite}
               receivablesMailDryRun={receivablesMailDryRun}

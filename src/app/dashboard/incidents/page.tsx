@@ -170,6 +170,7 @@ export default async function IncidentsPage({
       readOnly={!canEdit}
       currentUserPermission={me?.permission ?? null}
       currentUserEmail={me?.email ?? null}
+      currentUserTeam={me?.team ?? null}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       controlsRow={controlsRow}
       incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}

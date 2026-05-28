@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
@@ -28,6 +28,7 @@ export function IncidentEditForm({
   onCancel,
   currentUserPermission = null,
   currentUserEmail = null,
+  currentUserTeam = null,
   incidentUniversityNameSuggestions = [],
   incidentCategorySuggestions = [],
 }: EditFormProps) {
@@ -37,6 +38,23 @@ export function IncidentEditForm({
     !!row.incidentAssigneeEmail &&
     row.incidentAssigneeEmail === currentUserEmail;
   const canDelete = isAdmin || isOwnAssignee;
+
+  // 담당부서 자동 매핑 — operators.team('운영1팀' | '운영2팀') → '운영부-운영N팀'
+  const teamDepartment =
+    currentUserTeam === "운영1팀"
+      ? "운영부-운영1팀"
+      : currentUserTeam === "운영2팀"
+        ? "운영부-운영2팀"
+        : null;
+  const isNew = !row.id;
+  // 신규 작성 + 본인 team 식별 가능하면 자동 세팅 (첫 마운트 시 1회)
+  useEffect(() => {
+    if (isNew && teamDepartment && row.incidentDepartment !== teamDepartment) {
+      setRow((prev) => ({ ...prev, incidentDepartment: teamDepartment }));
+    }
+    // 신규 row + team 변경 시 트리거. setRow는 안정 ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, teamDepartment]);
   const currentYear = row.incidentYear ?? new Date().getFullYear();
   const yearOptions = useMemo(
     () => buildYearOptions(currentYear),
@@ -271,18 +289,18 @@ export function IncidentEditForm({
       </label>
 
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">담당부서</span>
+        <span className="mb-1 block text-muted">
+          담당부서{" "}
+          <span className="text-[10px] text-muted">
+            (조직권한 기준 자동 고정)
+          </span>
+        </span>
         <select
           aria-label="담당부서"
           value={department}
-          onChange={(e) =>
-            setRow({
-              ...row,
-              incidentDepartment: e.target
-                .value as (typeof DEPARTMENT_OPTIONS)[number],
-            })
-          }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          disabled
+          title="담당부서는 본인 조직(team) 기준으로 자동 설정됩니다."
+          className="w-full cursor-not-allowed border border-line-soft bg-washi px-2 py-1 text-ink-muted"
         >
           {DEPARTMENT_OPTIONS.map((v) => (
             <option key={v} value={v}>
