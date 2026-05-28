@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
+import { DateInput } from "@/components/common/DateInput";
 
 const APP_TYPE_OPTIONS = ["공통원서", "일반원서", "공공원서", "PIMS"] as const;
 const STATUS_OPTIONS = ["미처리", "처리중", "처리완료", "보류"] as const;
@@ -165,9 +166,8 @@ export function IncidentEditForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">발생일자</span>
-          <input
+          <DateInput
             aria-label="발생일자"
-            type="date"
             value={row.incidentOccurredDate ?? ""}
             onChange={(e) =>
               setRow({
@@ -181,9 +181,8 @@ export function IncidentEditForm({
 
         <label className="block text-xs">
           <span className="mb-1 block text-muted">처리일자</span>
-          <input
+          <DateInput
             aria-label="처리일자"
-            type="date"
             value={row.incidentResolvedDate ?? ""}
             onChange={(e) =>
               setRow({

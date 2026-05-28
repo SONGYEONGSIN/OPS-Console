@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import type { EditFormProps } from "../types";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { ListSearch } from "@/components/common/ListSearch";
+import { DateInput } from "@/components/common/DateInput";
 import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
 
 type Mode = "single" | "perService";
@@ -135,10 +136,7 @@ export function BackupForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3"
-    >
+    <form onSubmit={handleSubmit} className="space-y-3">
       {row.owner && (
         <div className="block text-xs">
           <span className="mb-1 block text-muted">요청자</span>
@@ -222,9 +220,8 @@ export function BackupForm({
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">휴가/외근 시작일</span>
-          <input
+          <DateInput
             aria-label="휴가 시작일"
-            type="date"
             value={row.leaveStartDate ?? ""}
             onChange={(e) =>
               setRow({ ...row, leaveStartDate: e.target.value || null })
@@ -235,9 +232,8 @@ export function BackupForm({
 
         <label className="block text-xs">
           <span className="mb-1 block text-muted">휴가/외근 종료일</span>
-          <input
+          <DateInput
             aria-label="휴가 종료일"
-            type="date"
             value={row.leaveEndDate ?? ""}
             onChange={(e) =>
               setRow({ ...row, leaveEndDate: e.target.value || null })
@@ -250,7 +246,9 @@ export function BackupForm({
       {/* 백업 서비스 — 검색 + 카드 컬렉션 */}
       <div className="block text-xs">
         <span className="mb-1 flex items-baseline justify-between text-muted">
-          <span>백업 서비스 ({selectedIds.length}/{MAX_SERVICES})</span>
+          <span>
+            백업 서비스 ({selectedIds.length}/{MAX_SERVICES})
+          </span>
         </span>
         <ListSearch
           value={query}

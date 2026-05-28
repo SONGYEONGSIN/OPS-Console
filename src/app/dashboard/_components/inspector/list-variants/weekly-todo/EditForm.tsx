@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
+import { DateInput } from "@/components/common/DateInput";
 
 type Props = {
   row: ListRow;
@@ -136,7 +137,10 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
             aria-label="우선순위"
             value={row.priority ?? "medium"}
             onChange={(e) =>
-              setRow({ ...row, priority: e.target.value as ListRow["priority"] })
+              setRow({
+                ...row,
+                priority: e.target.value as ListRow["priority"],
+              })
             }
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           >
@@ -170,8 +174,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
       </div>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">마감일 (KST)</span>
-        <input
-          type="date"
+        <DateInput
           aria-label="마감일"
           value={isoToKstDate(row.dueAt)}
           onChange={(e) =>

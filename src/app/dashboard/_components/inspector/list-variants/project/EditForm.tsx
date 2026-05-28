@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
+import { DateInput } from "@/components/common/DateInput";
 
 type Props = {
   row: ListRow;
@@ -80,8 +81,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">시작일</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="시작일"
             value={row.startDateYmd ?? ""}
             onChange={(e) =>
@@ -92,8 +92,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">마감일</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="마감일"
             value={row.endDateYmd ?? ""}
             onChange={(e) =>
@@ -110,7 +109,10 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
             aria-label="우선순위"
             value={row.priority ?? "medium"}
             onChange={(e) =>
-              setRow({ ...row, priority: e.target.value as ListRow["priority"] })
+              setRow({
+                ...row,
+                priority: e.target.value as ListRow["priority"],
+              })
             }
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           >

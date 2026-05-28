@@ -1,5 +1,6 @@
 import { EMAIL_RE, toISODateInput } from "./helpers";
 import type { EditFormProps } from "../types";
+import { DateInput } from "@/components/common/DateInput";
 
 export function ReceivablesForm({
   row,
@@ -28,10 +29,8 @@ export function ReceivablesForm({
       <div className="border border-line-soft bg-washi-raised p-3 text-xs text-muted">
         <p>
           편집 가능:{" "}
-          <strong className="text-ink">
-            입금예정일 · 적요 · 학교담당자
-          </strong>
-          . 나머지 셀은 SharePoint 원본 그대로 표시됩니다.
+          <strong className="text-ink">입금예정일 · 적요 · 학교담당자</strong>.
+          나머지 셀은 SharePoint 원본 그대로 표시됩니다.
         </p>
       </div>
 
@@ -41,12 +40,12 @@ export function ReceivablesForm({
             i === remarksIdx || i === dueDateIdx || i === schoolOwnerIdx;
           const value =
             i === remarksIdx
-              ? cells.remarks ?? ""
+              ? (cells.remarks ?? "")
               : i === dueDateIdx
-                ? cells.dueDate ?? ""
+                ? (cells.dueDate ?? "")
                 : i === schoolOwnerIdx
-                  ? cells.schoolOwner ?? ""
-                  : cells.textValues[i] ?? "";
+                  ? (cells.schoolOwner ?? "")
+                  : (cells.textValues[i] ?? "");
 
           return (
             <div key={i} className="contents">
@@ -74,8 +73,7 @@ export function ReceivablesForm({
                     placeholder="입금완료, 메일 발송 완료 등"
                   />
                 ) : i === dueDateIdx ? (
-                  <input
-                    type="date"
+                  <DateInput
                     aria-label={h}
                     value={toISODateInput(value)}
                     onChange={(e) =>

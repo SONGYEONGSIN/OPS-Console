@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
+import { DateInput } from "@/components/common/DateInput";
 
 const COHORT_STATUS_OPTIONS: {
   value: "planned" | "in_progress" | "completed";
@@ -94,8 +95,7 @@ export function CohortForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block text-xs">
           <span className="mb-1 block text-muted">시작일</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="시작일"
             value={row.startDate ?? ""}
             onChange={(e) => setRow({ ...row, startDate: e.target.value })}
@@ -104,8 +104,7 @@ export function CohortForm({
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">종료일 (선택)</span>
-          <input
-            type="date"
+          <DateInput
             aria-label="종료일"
             value={row.endDate ?? ""}
             onChange={(e) =>
@@ -200,7 +199,9 @@ export function CohortForm({
             type="button"
             onClick={() => {
               if (
-                window.confirm("이 회차를 삭제하시겠습니까? 되돌릴 수 없습니다.")
+                window.confirm(
+                  "이 회차를 삭제하시겠습니까? 되돌릴 수 없습니다.",
+                )
               ) {
                 onSave({ ...row, status: "deleted" });
               }
