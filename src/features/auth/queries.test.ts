@@ -55,11 +55,11 @@ describe("getCurrentOperator", () => {
 
   it("매칭 안 되는 이메일은 fallback (email username + 관리자) + permission=null", async () => {
     vi.mocked(createClient).mockResolvedValue(
-      makeClient({ email: "ysong2526@gmail.com" }, null) as never
+      makeClient({ email: "dev-admin@example.com" }, null) as never
     );
     const result = await getCurrentOperator();
     expect(result).not.toBeNull();
-    expect(result!.displayName).toBe("ysong2526");
+    expect(result!.displayName).toBe("dev-admin");
     expect(result!.role).toBe("관리자");
     expect(result!.team).toBeNull();
     expect(result!.operator).toBeNull();
