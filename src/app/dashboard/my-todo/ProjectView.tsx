@@ -1,10 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type {
-  ProjectRow,
-  ProjectTaskRow,
-} from "@/features/projects/schemas";
+import type { ProjectRow, ProjectTaskRow } from "@/features/projects/schemas";
+import { operatorNameByEmail } from "@/features/auth/operators";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { GanttChart } from "./GanttChart";
@@ -35,8 +33,7 @@ function projectToListRow(p: ProjectRow, tasks: ProjectTaskRow[]): ListRow {
     id: p.id,
     name: p.name,
     status: "active",
-    owner:
-      p.owner_email === p.created_by_email ? "본인" : p.owner_email.split("@")[0]!,
+    owner: operatorNameByEmail(p.owner_email),
     priority: p.priority,
     progress: computeAggregatedProgress(tasks),
     todoStatus: p.status,
@@ -54,7 +51,7 @@ function taskToListRow(t: ProjectTaskRow): ListRow {
     id: t.id,
     name: t.name,
     status: "active",
-    owner: t.assignee_email ? t.assignee_email.split("@")[0]! : "",
+    owner: operatorNameByEmail(t.assignee_email),
     priority: t.priority,
     progress: t.progress,
     todoStatus: t.status,

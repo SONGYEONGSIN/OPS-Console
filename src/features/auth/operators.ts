@@ -49,6 +49,16 @@ export const ALLOWED_EMAILS: ReadonlySet<string> = new Set(
   OPERATORS.map((op) => op.email),
 );
 
+/**
+ * 이메일 → 운영자 이름. 운영자 목록에 없으면 local-part(@앞)로 폴백,
+ * 빈/누락 값은 빈 문자열. (담당자 라벨을 id 대신 이름으로 표시할 때 사용)
+ */
+export function operatorNameByEmail(email: string | null | undefined): string {
+  if (!email) return "";
+  const op = OPERATORS.find((o) => o.email === email);
+  return op?.name ?? email.split("@")[0] ?? email;
+}
+
 export function tenureYears(hiredAt: string, baseDate?: Date): number {
   const base = baseDate ?? new Date();
   const hired = new Date(hiredAt + "T00:00:00+09:00");
