@@ -80,6 +80,24 @@ export function findSidebarParentGroup(pathname: string): string | null {
 }
 
 /**
+ * slug에 매칭되는 메뉴 label 반환. group 내부 items 포함.
+ * 매칭 실패 시 slug 그대로 반환. (브라우저 타이틀·nav 로깅에서 메뉴명 표시에 사용)
+ */
+export function findSidebarLabel(sections: SbSection[], slug: string): string {
+  for (const section of sections) {
+    for (const entry of section.entries) {
+      if (entry.kind === "item" && entry.slug === slug) return entry.label;
+      if (entry.kind === "group") {
+        for (const child of entry.items) {
+          if (child.slug === slug) return child.label;
+        }
+      }
+    }
+  }
+  return slug;
+}
+
+/**
  * 사이드바에 등록된 모든 메뉴 slug 평탄화 반환. group 내부 items 포함.
  */
 export function getAllMenuSlugs(): string[] {
