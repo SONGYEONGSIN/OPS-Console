@@ -28,6 +28,13 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("미인증 + automations/run(cron 진입점)은 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(
+      reqFor("/api/automations/run?jobId=receivables-deposit-match"),
+    );
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("로그인 상태 + /login → /dashboard 리다이렉트", async () => {
     updateSession.mockResolvedValue({ supabaseResponse: NextResponse.next(), user: { id: "u1" } });
     const res = await proxy(reqFor("/login"));
