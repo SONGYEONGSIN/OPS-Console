@@ -46,4 +46,30 @@ describe("ProjectTaskView", () => {
     render(<ProjectTaskView row={makeRow({ body: undefined })} />);
     expect(screen.queryByText("설명")).toBeNull();
   });
+
+  it("체크리스트가 진행률보다 위 + 진행률이 맨 아래", () => {
+    render(
+      <ProjectTaskView
+        row={makeRow({
+          taskChecklist: [
+            { id: "a", text: "항목1", done: true },
+            { id: "b", text: "항목2", done: false },
+          ],
+        })}
+      />,
+    );
+    const checklist = screen.getByText("체크리스트");
+    const description = screen.getByText("설명");
+    const progress = screen.getByText("진행률");
+    // 체크리스트가 진행률보다 앞에 위치
+    expect(
+      checklist.compareDocumentPosition(progress) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // 진행률이 설명보다도 뒤 — 맨 아래
+    expect(
+      description.compareDocumentPosition(progress) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });
