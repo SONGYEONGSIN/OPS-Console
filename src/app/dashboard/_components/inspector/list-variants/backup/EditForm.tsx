@@ -163,6 +163,25 @@ export function BackupForm({
       )}
 
       <label className="block text-xs">
+        <span className="mb-1 block text-muted">휴가유형</span>
+        <select
+          aria-label="휴가유형"
+          value={row.leaveType ?? ""}
+          onChange={(e) =>
+            setRow({ ...row, leaveType: e.target.value || null })
+          }
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+        >
+          <option value="">선택…</option>
+          {LEAVE_TYPE_VALUES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
         <input
           aria-label="제목"
@@ -231,25 +250,6 @@ export function BackupForm({
           </select>
         </label>
       )}
-
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">휴가유형</span>
-        <select
-          aria-label="휴가유형"
-          value={row.leaveType ?? ""}
-          onChange={(e) =>
-            setRow({ ...row, leaveType: e.target.value || null })
-          }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          <option value="">선택…</option>
-          {LEAVE_TYPE_VALUES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">
