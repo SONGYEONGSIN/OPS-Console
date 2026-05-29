@@ -8,10 +8,12 @@ import {
 } from "../operators";
 
 describe("OPERATORS", () => {
-  it("17명 정의 (운영1팀 8 + 운영2팀 9)", () => {
-    expect(OPERATORS.length).toBe(17);
-    const t1 = OPERATORS.filter((o) => o.team === "운영1팀");
-    const t2 = OPERATORS.filter((o) => o.team === "운영2팀");
+  it("실 인사 17명 정의 (운영1팀 8 + 운영2팀 9, 테스트 계정 제외)", () => {
+    // 임시 테스트 계정(@gmail 등)을 제외한 실 운영부 인사만 검증 — 정원 무결성.
+    const real = OPERATORS.filter((o) => o.email.endsWith("@jinhakapply.com"));
+    expect(real.length).toBe(17);
+    const t1 = real.filter((o) => o.team === "운영1팀");
+    const t2 = real.filter((o) => o.team === "운영2팀");
     expect(t1.length).toBe(8);
     expect(t2.length).toBe(9);
   });
