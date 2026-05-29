@@ -2,8 +2,21 @@ import type { EditFormProps } from "../types";
 import { AI_TOOL_OPTIONS, CATEGORY_OPTIONS } from "@/lib/ai-work/constants";
 import { DateInput } from "@/components/common/DateInput";
 
-export function AiWorkForm({ row, setRow, onSave, onCancel }: EditFormProps) {
+export function AiWorkForm({
+  row,
+  setRow,
+  onSave,
+  onCancel,
+  currentUserEmail = null,
+  currentUserPermission = null,
+}: EditFormProps) {
   const tagsText = (row.tags ?? []).join(", ");
+  const isAdmin = currentUserPermission === "admin";
+  const isOwnAuthor =
+    !!currentUserEmail &&
+    !!row.authorEmail &&
+    row.authorEmail === currentUserEmail;
+  const canDelete = isAdmin || isOwnAuthor;
   return (
     <form
       onSubmit={(e) => {
@@ -175,6 +188,25 @@ export function AiWorkForm({ row, setRow, onSave, onCancel }: EditFormProps) {
           취소
         </button>
       </div>
+      {row.id !== "" && canDelete && (
+        <div className="border-t border-line-soft pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "이 AI 활용 기록을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+                )
+              ) {
+                onSave({ ...row, status: "deleted" });
+              }
+            }}
+            className="w-full border border-vermilion-deep bg-transparent px-3 py-1.5 text-sm text-vermilion-deep hover:bg-vermilion-deep hover:text-cream"
+          >
+            삭제
+          </button>
+        </div>
+      )}
     </form>
   );
 }

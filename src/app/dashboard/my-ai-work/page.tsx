@@ -33,9 +33,10 @@ export default async function MyAiWorkPage({
   const me = await getCurrentOperator();
   const allWorks = await listAiWorks();
   const mine = sp.mine === "true";
-  const works = mine && me?.email
-    ? allWorks.filter((w) => w.author_email === me.email)
-    : allWorks;
+  const works =
+    mine && me?.email
+      ? allWorks.filter((w) => w.author_email === me.email)
+      : allWorks;
   const ownerByEmail = await buildOwnerMap(works);
   const rows: ListRow[] = works.map((w) => aiWorkToListRow(w, ownerByEmail));
   const config = resolvePageMeta(slug, meta, rows.length);
@@ -101,8 +102,14 @@ export default async function MyAiWorkPage({
       createLabel="+ AI 활용 등록"
       readOnly={!canWrite}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      currentUserEmail={me?.email ?? null}
+      currentUserPermission={me?.permission ?? null}
       inlineFilters={
-        <ScopeChips key="ai-work-scope" total={rows.length} mineLabel="내 작업" />
+        <ScopeChips
+          key="ai-work-scope"
+          total={rows.length}
+          mineLabel="내 작업"
+        />
       }
       onPersist={onPersist}
     />
@@ -130,6 +137,7 @@ function aiWorkToListRow(
     name: w.title,
     status: "active",
     owner: ownerByEmail.get(w.author_email) ?? w.author_email,
+    authorEmail: w.author_email,
     workStartDate: w.work_start_date,
     workEndDate: w.work_end_date,
     aiTool: w.ai_tool,

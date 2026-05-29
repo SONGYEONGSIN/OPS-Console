@@ -292,6 +292,8 @@ export type ListRow = {
   incidentPrevention?: string | null;
   /** incidents — 담당부서 */
   incidentDepartment?: "운영부-운영1팀" | "운영부-운영2팀";
+  /** ai-work / ai-tips — 작성자 이메일 (canDelete 권한 가드용) */
+  authorEmail?: string;
   /** incidents — 담당자 (본인 자동) */
   incidentAssigneeEmail?: string;
   incidentAssigneeName?: string;
