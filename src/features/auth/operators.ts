@@ -25,7 +25,7 @@ export type Operator = {
 const D = "어플라이사업본부" as const;
 const E = "운영부" as const;
 
-export const OPERATORS: readonly Operator[] = [
+const REAL_OPERATORS: readonly Operator[] = [
   { name: "허승철", email: "alcure23@jinhakapply.com",   team: "운영1팀", role: "부장",   empNo: "200806010", hiredAt: "2008-06-01", birthDate: "1982-10-06", gender: "남", division: D, department: E },
   { name: "한효진", email: "hhj@jinhakapply.com",         team: "운영1팀", role: "TL",     empNo: "20220701",  hiredAt: "2007-05-30", birthDate: "1981-06-14", gender: "남", division: D, department: E },
   { name: "김슬기", email: "bluewhich87@jinhakapply.com", team: "운영1팀", role: "매니저", empNo: "20150703",  hiredAt: "2011-02-07", birthDate: "1987-06-09", gender: "여", division: D, department: E },
@@ -44,6 +44,21 @@ export const OPERATORS: readonly Operator[] = [
   { name: "김지현", email: "kjh@jinhakapply.com",         team: "운영2팀", role: "매니저", empNo: "20240502",  hiredAt: "2024-05-02", birthDate: "1997-12-10", gender: "여", division: D, department: E },
   { name: "김지나", email: "kjn@jinhakapply.com",         team: "운영2팀", role: "매니저", empNo: "20240702",  hiredAt: "2024-07-08", birthDate: "2000-02-02", gender: "여", division: D, department: E },
 ] as const;
+
+/**
+ * 임시 테스트 계정 — 백업요청 등 기능 검증용. 운영부 실 인사 아님.
+ * signUp 허용 + 팀/이름 표시(달력 '팀-이름-휴가유형')를 위해 등재.
+ * 테스트 종료 후 제거: 이 배열을 비우고 `node scripts/delete-user.mjs`로 auth/operators row 정리.
+ */
+const TEST_OPERATORS: readonly Operator[] = [
+  { name: "테스트1", email: "ysong2526@gmail.com", team: "운영2팀", role: "매니저", empNo: "TEST001", hiredAt: "2026-05-29", birthDate: "1990-01-01", gender: "남", division: D, department: E },
+  { name: "테스트2", email: "yss040607@gmail.com", team: "운영2팀", role: "매니저", empNo: "TEST002", hiredAt: "2026-05-29", birthDate: "1990-01-01", gender: "남", division: D, department: E },
+] as const;
+
+export const OPERATORS: readonly Operator[] = [
+  ...REAL_OPERATORS,
+  ...TEST_OPERATORS,
+];
 
 export const ALLOWED_EMAILS: ReadonlySet<string> = new Set(
   OPERATORS.map((op) => op.email),
