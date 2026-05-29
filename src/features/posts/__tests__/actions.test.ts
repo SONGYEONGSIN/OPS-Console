@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockGetCurrentOperator,
   mockInsert,
+  mockInsertCall,
+  mockMaxSlug,
   mockUpdate,
   mockDelete,
   mockTargetSelect,
@@ -11,6 +13,8 @@ const {
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockInsert: vi.fn(),
+  mockInsertCall: vi.fn(),
+  mockMaxSlug: vi.fn(),
   mockUpdate: vi.fn(),
   mockDelete: vi.fn(),
   mockTargetSelect: vi.fn(),
@@ -32,9 +36,10 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from: () => ({
-      insert: () => ({
-        select: () => ({ single: mockInsert }),
-      }),
+      insert: (payload: unknown) => {
+        mockInsertCall(payload);
+        return { select: () => ({ single: mockInsert }) };
+      },
       update: () => ({
         eq: () => ({
           select: () => ({ single: mockUpdate }),
@@ -48,6 +53,11 @@ vi.mock("@/lib/supabase/server", () => ({
       select: () => ({
         eq: () => ({
           maybeSingle: mockTargetSelect,
+          like: () => ({
+            order: () => ({
+              limit: () => ({ maybeSingle: mockMaxSlug }),
+            }),
+          }),
         }),
       }),
     }),
@@ -95,6 +105,8 @@ const validNoticeInput = {
 beforeEach(() => {
   mockGetCurrentOperator.mockReset();
   mockInsert.mockReset();
+  mockInsertCall.mockReset();
+  mockMaxSlug.mockReset();
   mockUpdate.mockReset();
   mockDelete.mockReset();
   mockTargetSelect.mockReset();
@@ -102,6 +114,8 @@ beforeEach(() => {
   mockSendStatusNotify.mockReset();
   mockSendOwnerNotify.mockResolvedValue({ status: "skipped" });
   mockSendStatusNotify.mockResolvedValue({ status: "skipped" });
+  // 기본: 기존 slug 없음
+  mockMaxSlug.mockResolvedValue({ data: null, error: null });
 });
 
 describe("createPost", () => {
@@ -257,7 +271,13 @@ describe("createPost — 메일 hook", () => {
   it("메일 hook 실패해도 createPost는 ok 유지", async () => {
     mockGetCurrentOperator.mockResolvedValue(memberMe);
     mockInsert.mockResolvedValue({
-      data: { id: "x", domain: "feedback", title: "t", author_email: memberMe.email, status: "urgent" },
+      data: {
+        id: "x",
+        domain: "feedback",
+        title: "t",
+        author_email: memberMe.email,
+        status: "urgent",
+      },
       error: null,
     });
     mockSendOwnerNotify.mockRejectedValueOnce(new Error("graph down"));
@@ -316,7 +336,13 @@ describe("updatePost — 상태 변경 메일 hook", () => {
       error: null,
     });
     mockUpdate.mockResolvedValue({
-      data: { id: "x", domain: "feedback", status: "urgent", title: "수정", author_email: "member@x.com" },
+      data: {
+        id: "x",
+        domain: "feedback",
+        status: "urgent",
+        title: "수정",
+        author_email: "member@x.com",
+      },
       error: null,
     });
     await updatePost("post-uuid", { title: "수정" });
@@ -330,7 +356,13 @@ describe("updatePost — 상태 변경 메일 hook", () => {
       error: null,
     });
     mockUpdate.mockResolvedValue({
-      data: { id: "x", domain: "notice", status: "approved", title: "t", author_email: "admin@x.com" },
+      data: {
+        id: "x",
+        domain: "notice",
+        status: "approved",
+        title: "t",
+        author_email: "admin@x.com",
+      },
       error: null,
     });
     await updatePost("post-uuid", { status: "approved" });
@@ -340,15 +372,135 @@ describe("updatePost — 상태 변경 메일 hook", () => {
   it("status 변경 + 메일 hook 실패해도 updatePost는 ok 유지", async () => {
     mockGetCurrentOperator.mockResolvedValue(adminMe);
     mockTargetSelect.mockResolvedValue({
-      data: { domain: "feedback", author_email: "member@x.com", status: "urgent" },
+      data: {
+        domain: "feedback",
+        author_email: "member@x.com",
+        status: "urgent",
+      },
       error: null,
     });
     mockUpdate.mockResolvedValue({
-      data: { id: "x", domain: "feedback", status: "active", title: "t", author_email: "member@x.com" },
+      data: {
+        id: "x",
+        domain: "feedback",
+        status: "active",
+        title: "t",
+        author_email: "member@x.com",
+      },
       error: null,
     });
     mockSendStatusNotify.mockRejectedValueOnce(new Error("graph 500"));
     const r = await updatePost("post-uuid", { status: "active" });
     expect(r.ok).toBe(true);
+  });
+});
+
+describe("createPost — slug 자동 생성 race-safe", () => {
+  beforeEach(() => {
+    mockGetCurrentOperator.mockResolvedValue(memberMe);
+  });
+
+  it("기존 글 없음 → FB-001 시도", async () => {
+    mockMaxSlug.mockResolvedValue({ data: null, error: null });
+    mockInsert.mockResolvedValue({
+      data: { id: "x", domain: "feedback", slug: "FB-001" },
+      error: null,
+    });
+    const r = await createPost(validFeedbackInput);
+    expect(r.ok).toBe(true);
+    expect(mockInsertCall).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "FB-001" }),
+    );
+  });
+
+  it("기존 max slug FB-005 → 다음 시도는 FB-006 (count 무관)", async () => {
+    // 회귀: count=4여도 FB-005 슬러그가 있으면 다음은 FB-006
+    mockMaxSlug.mockResolvedValue({
+      data: { slug: "FB-005" },
+      error: null,
+    });
+    mockInsert.mockResolvedValue({
+      data: { id: "x", domain: "feedback", slug: "FB-006" },
+      error: null,
+    });
+    const r = await createPost(validFeedbackInput);
+    expect(r.ok).toBe(true);
+    expect(mockInsertCall).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "FB-006" }),
+    );
+  });
+
+  it("insert 23505 (unique violation) → 다음 번호로 재시도하여 성공", async () => {
+    mockMaxSlug.mockResolvedValue({
+      data: { slug: "FB-005" },
+      error: null,
+    });
+    mockInsert
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "23505", message: "duplicate key" },
+      })
+      .mockResolvedValueOnce({
+        data: { id: "x", domain: "feedback", slug: "FB-007" },
+        error: null,
+      });
+    const r = await createPost(validFeedbackInput);
+    expect(r.ok).toBe(true);
+    expect(mockInsert).toHaveBeenCalledTimes(2);
+    expect(mockInsertCall).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ slug: "FB-006" }),
+    );
+    expect(mockInsertCall).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ slug: "FB-007" }),
+    );
+  });
+
+  it("5회 연속 23505 → 실패 메시지 + 5번 시도", async () => {
+    mockMaxSlug.mockResolvedValue({
+      data: { slug: "FB-005" },
+      error: null,
+    });
+    mockInsert.mockResolvedValue({
+      data: null,
+      error: { code: "23505", message: "duplicate key" },
+    });
+    const r = await createPost(validFeedbackInput);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/slug|다시 시도/);
+    expect(mockInsert).toHaveBeenCalledTimes(5);
+  });
+
+  it("23505 이외 error → 즉시 실패 (재시도 X)", async () => {
+    mockMaxSlug.mockResolvedValue({
+      data: { slug: "FB-005" },
+      error: null,
+    });
+    mockInsert.mockResolvedValue({
+      data: null,
+      error: { code: "OTHER", message: "boom" },
+    });
+    const r = await createPost(validFeedbackInput);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe("boom");
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+  });
+
+  it("notice 도메인도 동일 — 기존 max NT-002 → NT-003 시도", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockMaxSlug.mockResolvedValue({
+      data: { slug: "NT-002" },
+      error: null,
+    });
+    mockInsert.mockResolvedValue({
+      data: { id: "x", domain: "notice", slug: "NT-003" },
+      error: null,
+    });
+    const r = await createPost(validNoticeInput);
+    expect(r.ok).toBe(true);
+    expect(mockInsertCall).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "NT-003" }),
+    );
   });
 });
