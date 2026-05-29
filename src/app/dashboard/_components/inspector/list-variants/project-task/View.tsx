@@ -87,20 +87,6 @@ export function ProjectTaskView({ row }: ViewProps) {
         />
       </Section>
 
-      <Divider />
-
-      <Section title="진행률">
-        <div className="flex items-center gap-2">
-          <div className="h-2.5 flex-1 border border-line bg-cream">
-            <div
-              className="h-full bg-indigo"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="font-mono text-xs text-ink">{progress}%</span>
-        </div>
-      </Section>
-
       {(row.taskChecklist?.length ?? 0) > 0 && (
         <>
           <Divider />
@@ -145,6 +131,20 @@ export function ProjectTaskView({ row }: ViewProps) {
           </Section>
         </>
       ) : null}
+
+      <Divider />
+
+      <Section title="진행률">
+        <div className="flex items-center gap-2">
+          <div className="h-2.5 flex-1 border border-line bg-cream">
+            <div
+              className="h-full bg-indigo"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="font-mono text-xs text-ink">{progress}%</span>
+        </div>
+      </Section>
     </div>
   );
 }
