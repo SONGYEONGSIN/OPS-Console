@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { ProjectView } from "../ProjectView";
+import { ProjectView, resolveEffectiveProjectId } from "../ProjectView";
 import type { ProjectRow, ProjectTaskRow } from "@/features/projects/schemas";
 
 const project: ProjectRow = {
@@ -71,5 +71,26 @@ describe("ProjectView", () => {
     expect(screen.getByText("송영신")).toBeInTheDocument();
     expect(screen.queryByText("alcure23")).not.toBeInTheDocument();
     expect(screen.queryByText("ys1114")).not.toBeInTheDocument();
+  });
+});
+
+describe("resolveEffectiveProjectId", () => {
+  const pwt = [{ project, tasks: [] }];
+
+  it("선택 id가 목록에 존재 → 그대로 반환", () => {
+    expect(resolveEffectiveProjectId(project.id, pwt)).toBe(project.id);
+  });
+
+  it("선택 id가 목록에 없음(삭제됨) → 첫 프로젝트로 폴백", () => {
+    const stale = "99999999-9999-9999-9999-999999999999";
+    expect(resolveEffectiveProjectId(stale, pwt)).toBe(project.id);
+  });
+
+  it("선택 id null → 첫 프로젝트로 폴백", () => {
+    expect(resolveEffectiveProjectId(null, pwt)).toBe(project.id);
+  });
+
+  it("프로젝트 목록이 비면 → null", () => {
+    expect(resolveEffectiveProjectId(project.id, [])).toBeNull();
   });
 });

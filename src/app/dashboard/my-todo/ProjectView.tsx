@@ -14,6 +14,24 @@ export type ProjectWithTasksView = {
   tasks: ProjectTaskRow[];
 };
 
+/**
+ * 선택된 프로젝트 id를 현재 목록과 대조해 유효한 값으로 보정.
+ * 선택 id가 목록에 없으면(삭제·revalidate로 사라짐) 첫 프로젝트로 폴백.
+ * 하위 업무 추가 시 존재하지 않는 project_id가 넘어가 FK 위반이 나는 것을 방지.
+ */
+export function resolveEffectiveProjectId(
+  selectedId: string | null,
+  projectsWithTasks: ProjectWithTasksView[],
+): string | null {
+  if (
+    selectedId &&
+    projectsWithTasks.some((pwt) => pwt.project.id === selectedId)
+  ) {
+    return selectedId;
+  }
+  return projectsWithTasks[0]?.project.id ?? null;
+}
+
 type Props = {
   projectsWithTasks: ProjectWithTasksView[];
   canWrite: boolean;
@@ -72,6 +90,12 @@ export function ProjectView({
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     projectsWithTasks[0]?.project.id ?? null,
   );
+  // 선택 id가 stale(삭제됨)이면 첫 프로젝트로 보정 — 존재하지 않는 project_id로
+  // 하위 업무를 추가해 FK 위반이 나는 것을 방지한다.
+  const effectiveSelectedId = resolveEffectiveProjectId(
+    selectedProjectId,
+    projectsWithTasks,
+  );
   // 두 ListPattern을 분리 추적 — 각 ListPattern은 자체 drawerPadding이 있어서
   // outer 통합 padding과 누적되면 컬럼이 wrap된다 (테이블이 너무 좁아짐).
   // 선택된 ListPattern은 자체 drawerPadding만 / 다른 영역만 outer padding 적용.
@@ -85,10 +109,10 @@ export function ProjectView({
 
   const selectedTasks = useMemo(() => {
     const found = projectsWithTasks.find(
-      (pwt) => pwt.project.id === selectedProjectId,
+      (pwt) => pwt.project.id === effectiveSelectedId,
     );
     return found?.tasks.map(taskToListRow) ?? [];
-  }, [projectsWithTasks, selectedProjectId]);
+  }, [projectsWithTasks, effectiveSelectedId]);
 
   const ganttItems = useMemo(() => {
     const result: Parameters<typeof GanttChart>[0]["items"] = [];
@@ -183,7 +207,7 @@ export function ProjectView({
         />
       </div>
 
-      {selectedProjectId ? (
+      {effectiveSelectedId ? (
         <div
           className={`transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
             projectInspectorOpen ? "md:pr-[340px]" : ""
@@ -205,7 +229,7 @@ export function ProjectView({
             onInspectorChange={setTaskInspectorOpen}
             onPersist={async (row, isNew) =>
               onPersistTask(
-                { ...row, projectId: row.projectId ?? selectedProjectId },
+                { ...row, projectId: row.projectId ?? effectiveSelectedId },
                 isNew,
               )
             }
