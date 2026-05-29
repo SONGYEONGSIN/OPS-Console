@@ -3,10 +3,15 @@ import type {
   ScheduleType,
 } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
+import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 
-export type CalendarCategory = "service-start" | "service-end" | ScheduleType; // shift / event / leave / training
+export type CalendarCategory =
+  | "service-start"
+  | "service-end"
+  | "backup-leave"
+  | ScheduleType; // shift / event / leave / training
 
-export type CalendarSourceVariant = "schedule" | "services";
+export type CalendarSourceVariant = "schedule" | "services" | "backup";
 
 export type CalendarItem = {
   id: string;
@@ -19,9 +24,39 @@ export type CalendarItem = {
   sourceVariant: CalendarSourceVariant;
   /** schedule_event 중 assignee_email=null (팀 공통). 정렬·강조(★ + bold)용 */
   isTeamCommon?: boolean;
-  /** Inspector에 전달할 원본 row (variant에 따라 ScheduleEventRow 또는 ServicesRow) */
-  rowRef: ScheduleEventRow | ServicesRow;
+  /** Inspector에 전달할 원본 row (variant에 따라 분기) */
+  rowRef: ScheduleEventRow | ServicesRow | BackupRequestRow;
 };
+
+/**
+ * 백업 요청 휴가유형의 달력 표기 입력 — page에서 requester_email을 운영자 이름으로,
+ * requester_team을 팀명으로 미리 해석해 전달한다.
+ */
+export type BackupLeaveInput = {
+  id: string;
+  team: string | null;
+  name: string;
+  leaveType: string;
+  /** YYYY-MM-DD */
+  startYmd: string;
+  /** YYYY-MM-DD, null이면 시작일 하루만 */
+  endYmd: string | null;
+  rowRef: BackupRequestRow;
+};
+
+/** 멀티데이 휴가 펼침 상한 — 비정상 범위로 인한 폭주 방지 */
+const MAX_LEAVE_SPAN_DAYS = 366;
+
+/** "YYYY-MM-DD"에 일수를 더한 새 "YYYY-MM-DD" (타임존 무관 — 달력상 자연일) */
+function ymdAddDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
 
 export type CalendarCell = {
   /** KST 기준 자정의 Date (정렬·비교 용) */
@@ -84,6 +119,7 @@ export function buildMonthGrid(year: number, month0: number): CalendarCell[] {
 export function groupItemsByDay(
   events: ScheduleEventRow[],
   services: ServicesRow[],
+  backupLeaves: BackupLeaveInput[] = [],
 ): Map<string, CalendarItem[]> {
   const map = new Map<string, CalendarItem[]>();
 
@@ -158,10 +194,37 @@ export function groupItemsByDay(
     }
   }
 
-  // 셀별 정렬: 팀공통 → all_day → sortKey asc (안정 정렬)
-  // 팀공통(전원 영향)을 최상단에 노출해 운영자가 즉시 인지하도록.
+  // 백업 요청 휴가유형 — 시작~종료 모든 날짜에 "팀-이름-휴가유형" 라벨로 펼친다.
+  for (const lv of backupLeaves) {
+    if (!lv.startYmd) continue;
+    const label = [lv.team, lv.name, lv.leaveType].filter(Boolean).join("-");
+    const endYmd =
+      lv.endYmd && lv.endYmd >= lv.startYmd ? lv.endYmd : lv.startYmd;
+    let cur = lv.startYmd;
+    let guard = 0;
+    while (cur <= endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
+      push(cur, {
+        id: `${lv.id}::${cur}`,
+        ymd: cur,
+        category: "backup-leave",
+        label,
+        sortKey: "",
+        all_day: true,
+        sourceVariant: "backup",
+        rowRef: lv.rowRef,
+      });
+      cur = ymdAddDays(cur, 1);
+      guard++;
+    }
+  }
+
+  // 셀별 정렬: 백업휴가 → 팀공통 → all_day → sortKey asc (안정 정렬)
+  // 백업휴가/팀공통(전원 영향)을 최상단에 노출해 운영자가 즉시 인지하도록.
   for (const list of map.values()) {
     list.sort((a, b) => {
+      const aBackup = a.sourceVariant === "backup";
+      const bBackup = b.sourceVariant === "backup";
+      if (aBackup !== bBackup) return aBackup ? -1 : 1;
       if (!!a.isTeamCommon !== !!b.isTeamCommon) return a.isTeamCommon ? -1 : 1;
       if (a.all_day !== b.all_day) return a.all_day ? -1 : 1;
       return a.sortKey.localeCompare(b.sortKey);
