@@ -13,6 +13,27 @@ export const mailStatusSchema = z.enum(MAIL_STATUS_VALUES);
 export type MailStatus = z.infer<typeof mailStatusSchema>;
 
 /**
+ * 휴가/외근 유형 — EditForm 셀렉트 옵션. 값 = 표시 라벨(한국어).
+ * DB는 plain text 저장, 입력 검증은 이 enum으로 수행.
+ */
+export const LEAVE_TYPE_VALUES = [
+  "경조휴가",
+  "오전반반차",
+  "오후반반차",
+  "오전반차",
+  "오후반차",
+  "장기휴가",
+  "교육",
+  "연차",
+  "출장",
+  "외근",
+  "기타",
+] as const;
+
+export const leaveTypeSchema = z.enum(LEAVE_TYPE_VALUES);
+export type LeaveType = z.infer<typeof leaveTypeSchema>;
+
+/**
  * PR-5: 서비스별 연락처 — contacts 테이블 row의 스냅샷.
  * 객체 배열 jsonb로 저장. 메일/PDF 본문에 이메일·전화·내선 표시 위해 객체화.
  * contact row가 추후 갱신/삭제돼도 메일 이력은 시점 데이터 유지 (audit).
@@ -63,6 +84,7 @@ export const backupRequestRowSchema = z.object({
   title: z.string().nullable().optional(),
   services_detail: z.array(serviceDetailSchema).default([]),
   summary_md: z.string().min(1),
+  leave_type: leaveTypeSchema.nullable().optional(),
   leave_start_date: z.string().nullable().optional(),
   leave_end_date: z.string().nullable().optional(),
   mail_status: mailStatusSchema,
@@ -105,6 +127,7 @@ export const backupRequestCreateSchema = z
       .string()
       .min(1, "백업 내용은 비울 수 없습니다")
       .max(5000, "백업 내용 5000자 초과"),
+    leave_type: leaveTypeSchema.nullable().optional(),
     leave_start_date: z.string().min(1).nullable().optional(),
     leave_end_date: z.string().min(1).nullable().optional(),
     // 요청자 self 차단을 위해 server action에 전달되는 컨텍스트 (선택적)
@@ -155,6 +178,7 @@ export const backupRequestUpdateSchema = z
     title: z.string().max(120).nullable().optional(),
     services: z.array(backupRequestServiceInputSchema).max(20).optional(),
     summary_md: z.string().min(1).max(5000).optional(),
+    leave_type: leaveTypeSchema.nullable().optional(),
     leave_start_date: z.string().min(1).nullable().optional(),
     leave_end_date: z.string().min(1).nullable().optional(),
   })

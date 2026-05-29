@@ -252,6 +252,53 @@ describe("BackupForm", () => {
     expect(select.options[0].textContent).toContain("선택");
   });
 
+  it("휴가유형 셀렉트 — 11개 옵션 + placeholder", () => {
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    const select = screen.getByLabelText("휴가유형") as HTMLSelectElement;
+    // placeholder(선택…) + 11개 옵션
+    expect(select.options.length).toBe(12);
+    expect(screen.getByRole("option", { name: "연차" })).toBeInTheDocument();
+  });
+
+  it("휴가유형 선택 시 leaveType 설정", () => {
+    const setRow = vi.fn();
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={setRow}
+        onSave={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("휴가유형"), {
+      target: { value: "출장" },
+    });
+    expect(setRow).toHaveBeenCalledWith(
+      expect.objectContaining({ leaveType: "출장" }),
+    );
+  });
+
+  it("팀 구분 — currentUserTeam을 읽기 전용 표시", () => {
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={() => {}}
+        onSave={() => {}}
+        onCancel={() => {}}
+        currentUserTeam="운영2팀"
+      />,
+    );
+    expect(screen.getByText("팀 구분")).toBeInTheDocument();
+    expect(screen.getByText(/운영2팀/)).toBeInTheDocument();
+  });
+
   it("PR-4: 일괄 대학 연락처 섹션 부재", () => {
     render(
       <BackupForm

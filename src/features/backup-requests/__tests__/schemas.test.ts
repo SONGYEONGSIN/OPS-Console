@@ -4,6 +4,7 @@ import {
   backupRequestRowSchema,
   serviceDetailSchema,
   MAIL_STATUS_VALUES,
+  LEAVE_TYPE_VALUES,
 } from "../schemas";
 
 // PR-5: contacts는 {contact_id, customer_name, university_name, email, phone}[] 객체 배열.
@@ -287,6 +288,70 @@ describe("backupRequestRowSchema", () => {
     if (r.success) {
       expect(r.data.services_detail).toEqual([]);
     }
+  });
+});
+
+describe("LEAVE_TYPE_VALUES / leave_type", () => {
+  it("11개 휴가유형 정의 (경조휴가 … 기타)", () => {
+    expect(LEAVE_TYPE_VALUES).toEqual([
+      "경조휴가",
+      "오전반반차",
+      "오후반반차",
+      "오전반차",
+      "오후반차",
+      "장기휴가",
+      "교육",
+      "연차",
+      "출장",
+      "외근",
+      "기타",
+    ]);
+  });
+
+  it("create — leave_type 정상값 통과", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      leave_type: "연차",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("create — leave_type 미지정 통과 (optional)", () => {
+    const r = backupRequestCreateSchema.safeParse(baseInput);
+    expect(r.success).toBe(true);
+  });
+
+  it("create — 잘못된 leave_type 거부", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      leave_type: "병가",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("row — leave_type 파싱 (없으면 통과)", () => {
+    const base = {
+      id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      requester_email: "bob@example.com",
+      requester_team: "운영2팀",
+      substitute_email: "alice@example.com",
+      substitute_name: "Alice",
+      summary_md: "내용",
+      leave_start_date: null,
+      leave_end_date: null,
+      mail_status: "pending",
+      mail_sent_at: null,
+      mail_error: null,
+      created_at: "2026-05-13T00:00:00Z",
+      updated_at: "2026-05-13T00:00:00Z",
+    };
+    expect(backupRequestRowSchema.safeParse(base).success).toBe(true);
+    const withType = backupRequestRowSchema.safeParse({
+      ...base,
+      leave_type: "출장",
+    });
+    expect(withType.success).toBe(true);
+    if (withType.success) expect(withType.data.leave_type).toBe("출장");
   });
 });
 

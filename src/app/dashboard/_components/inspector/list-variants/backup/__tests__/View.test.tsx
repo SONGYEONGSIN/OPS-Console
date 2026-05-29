@@ -97,6 +97,22 @@ describe("BackupView", () => {
     expect(screen.getByText("5/20 마감 임박")).toBeInTheDocument();
   });
 
+  it("팀 구분·휴가유형 노출 (있을 때)", () => {
+    render(
+      <BackupView
+        row={{ ...row, requesterTeam: "운영2팀", leaveType: "연차" }}
+      />,
+    );
+    expect(screen.getByText("운영2팀")).toBeInTheDocument();
+    expect(screen.getByText("연차")).toBeInTheDocument();
+  });
+
+  it("휴가유형 없으면 '—'로 표시", () => {
+    render(<BackupView row={{ ...row, leaveType: null }} />);
+    // 휴가유형 항목 라벨은 존재하되 값은 대시
+    expect(screen.getByText("휴가유형")).toBeInTheDocument();
+  });
+
   it("mail_failed 시 에러 메시지 노출", () => {
     render(
       <BackupView
