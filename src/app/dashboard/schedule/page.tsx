@@ -12,6 +12,7 @@ import {
   deleteScheduleEvent,
 } from "@/features/schedule/actions";
 import { listServicesForCalendar } from "@/features/services/queries";
+import { listBackupRequests } from "@/features/backup-requests/queries";
 import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 import { eventToListRow } from "./_row-mapper";
 import { CalendarView } from "./CalendarView";
@@ -121,6 +122,19 @@ export default async function SchedulePage({
         )
       : servicesShifted;
 
+  // leave_type가 저장된 백업 요청 → 달력 셀 최상단 "팀-이름-휴가유형" 표기.
+  // 캘린더 뷰에서만 fetch. mine=true면 본인이 요청한 휴가만.
+  const allBackupLeaves =
+    view === "calendar"
+      ? (await listBackupRequests({ pageSize: 200 })).rows.filter(
+          (r) => r.leave_type && r.leave_start_date,
+        )
+      : [];
+  const backupLeaves =
+    mineActive && myEmail
+      ? allBackupLeaves.filter((r) => r.requester_email === myEmail)
+      : allBackupLeaves;
+
   const rows: ListRow[] = events.map(eventToListRow);
   const config = resolvePageMeta(slug, meta, rows.length);
 
@@ -176,6 +190,7 @@ export default async function SchedulePage({
         <CalendarView
           events={events}
           services={services}
+          backupLeaves={backupLeaves}
           holidays={holidays}
           currentMonth={currentMonth}
           view="calendar"

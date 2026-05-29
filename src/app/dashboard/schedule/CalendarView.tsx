@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { ScheduleEventRow } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
+import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 import type { Holiday } from "@/lib/holidays/google-ical";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { InspectorPanel } from "../_components/inspector/InspectorPanel";
@@ -16,6 +17,7 @@ import { CalendarToolbar } from "./CalendarToolbar";
 import {
   buildMonthGrid,
   groupItemsByDay,
+  type BackupLeaveInput,
   type CalendarCategory,
   type CalendarItem,
 } from "./_calendar-helpers";
@@ -25,6 +27,8 @@ type CurrentMonth = { year: number; month0: number };
 type Props = {
   events: ScheduleEventRow[];
   services: ServicesRow[];
+  /** leave_type가 저장된 백업 요청 — 달력 셀 최상단에 "팀-이름-휴가유형"으로 표기. */
+  backupLeaves?: BackupRequestRow[];
   /** Google '한국 공휴일' iCal feed에서 가져온 read-only 항목. 셀 배경 + dot. */
   holidays?: Holiday[];
   currentMonth: CurrentMonth;
@@ -43,6 +47,7 @@ const MAX_VISIBLE_ITEMS = 4;
 const DOT_COLOR: Record<CalendarCategory, string> = {
   "service-start": "bg-sage",
   "service-end": "bg-indigo",
+  "backup-leave": "bg-amber",
   shift: "bg-vermilion",
   event: "bg-ink",
   leave: "bg-line-soft",
@@ -70,6 +75,33 @@ function eventToListRow(ev: ScheduleEventRow): ListRow {
   };
 }
 
+function backupRowToListRow(r: BackupRequestRow): ListRow {
+  const requester = OPERATORS.find((o) => o.email === r.requester_email);
+  const fallbackTitle =
+    r.leave_start_date && r.leave_end_date
+      ? `${r.leave_start_date} ~ ${r.leave_end_date} 백업`
+      : r.summary_md.slice(0, 30);
+  return {
+    id: r.id,
+    name: r.title?.trim() || fallbackTitle,
+    status: "active",
+    owner: requester?.name ?? r.requester_email,
+    requesterTeam: r.requester_team ?? null,
+    leaveType: r.leave_type ?? null,
+    substituteEmail: r.substitute_email,
+    substituteName: r.substitute_name,
+    backupServices: r.services_detail.map((s) => s.id),
+    backupServicesDetail: r.services_detail,
+    summary: r.summary_md,
+    leaveStartDate: r.leave_start_date ?? null,
+    leaveEndDate: r.leave_end_date ?? null,
+    mailStatus: r.mail_status,
+    mailSentAt: r.mail_sent_at ?? null,
+    mailError: r.mail_error ?? null,
+    scheduledAt: r.scheduled_at ?? null,
+  };
+}
+
 function blankScheduleListRow(defaultYmd: string): ListRow {
   return {
     id: "",
@@ -89,6 +121,7 @@ function blankScheduleListRow(defaultYmd: string): ListRow {
 export function CalendarView({
   events,
   services,
+  backupLeaves = [],
   holidays,
   currentMonth,
   view,
@@ -103,7 +136,27 @@ export function CalendarView({
   const { year, month0 } = currentMonth;
 
   const cells = useMemo(() => buildMonthGrid(year, month0), [year, month0]);
-  const byDay = useMemo(() => groupItemsByDay(events, services), [events, services]);
+  const backupLeaveInputs = useMemo<BackupLeaveInput[]>(
+    () =>
+      backupLeaves
+        .filter((r) => r.leave_type && r.leave_start_date)
+        .map((r) => ({
+          id: r.id,
+          team: r.requester_team ?? null,
+          name:
+            OPERATORS.find((o) => o.email === r.requester_email)?.name ??
+            r.requester_email,
+          leaveType: r.leave_type as string,
+          startYmd: r.leave_start_date as string,
+          endYmd: r.leave_end_date ?? null,
+          rowRef: r,
+        })),
+    [backupLeaves],
+  );
+  const byDay = useMemo(
+    () => groupItemsByDay(events, services, backupLeaveInputs),
+    [events, services, backupLeaveInputs],
+  );
   // ymd → 공휴일 제목들 (보통 1개, 대체공휴일 등으로 2개 이상도 가능)
   const holidaysByDay = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -120,7 +173,7 @@ export function CalendarView({
   const inspector = useInspectorState<{
     item: CalendarItem | null;
     row: ListRow;
-    sourceVariant: "schedule" | "services";
+    sourceVariant: "schedule" | "services" | "backup";
   }>();
 
   const [creating, setCreating] = useState(false);
@@ -181,6 +234,13 @@ export function CalendarView({
         item,
         row: eventToListRow(ev),
         sourceVariant: "schedule",
+      });
+    } else if (item.sourceVariant === "backup") {
+      const br = item.rowRef as BackupRequestRow;
+      inspector.open({
+        item,
+        row: backupRowToListRow(br),
+        sourceVariant: "backup",
       });
     } else {
       const svc = item.rowRef as ServicesRow;

@@ -3,10 +3,12 @@ import {
   buildMonthGrid,
   groupItemsByDay,
   toKstYmd,
+  type BackupLeaveInput,
   type CalendarItem,
 } from "../_calendar-helpers";
 import type { ScheduleEventRow } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
+import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 
 describe("toKstYmd", () => {
   it("UTC ISO를 KST 기준 YYYY-MM-DD로 변환한다", () => {
@@ -235,5 +237,120 @@ describe("groupItemsByDay", () => {
       .get("2026-05-15")
       ?.map((i) => i.label);
     expect(items).toEqual(["종일 휴가", "10시 시프트", "14시 회의"]);
+  });
+
+  // 백업 요청 휴가유형 — 운영부 달력 표기 (팀-이름-휴가유형)
+  const baseLeave: Omit<
+    BackupLeaveInput,
+    "id" | "team" | "name" | "leaveType" | "startYmd" | "endYmd"
+  > = {
+    rowRef: { id: "leave-row" } as unknown as BackupRequestRow,
+  };
+
+  it("백업 휴가를 시작~종료 모든 날짜에 펼치고 '팀-이름-휴가유형' 라벨로 표기한다", () => {
+    const leaves: BackupLeaveInput[] = [
+      {
+        ...baseLeave,
+        id: "aaaaaaaa-0000-0000-0000-000000000001",
+        team: "운영2팀",
+        name: "홍길동",
+        leaveType: "연차",
+        startYmd: "2026-05-20",
+        endYmd: "2026-05-22",
+      },
+    ];
+    const map = groupItemsByDay([], [], leaves);
+    for (const ymd of ["2026-05-20", "2026-05-21", "2026-05-22"]) {
+      const item = map.get(ymd)?.[0];
+      expect(item?.category).toBe("backup-leave");
+      expect(item?.sourceVariant).toBe("backup");
+      expect(item?.label).toBe("운영2팀-홍길동-연차");
+    }
+    // 범위 밖은 등록되지 않음
+    expect(map.get("2026-05-23")).toBeUndefined();
+    // 모든 item의 rowRef는 동일 원본 (인스펙터 동일 표시)
+    expect(map.get("2026-05-20")?.[0]?.rowRef).toBe(
+      map.get("2026-05-22")?.[0]?.rowRef,
+    );
+  });
+
+  it("백업 휴가는 팀공통 일정보다도 셀 최상단에 정렬된다", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "88888888-8888-8888-8888-888888888888",
+        type: "application",
+        title: "팀 공통 일정",
+        start_at: "2026-05-20T00:00:00Z",
+        assignee_email: null,
+        all_day: true,
+      },
+    ];
+    const leaves: BackupLeaveInput[] = [
+      {
+        ...baseLeave,
+        id: "aaaaaaaa-0000-0000-0000-000000000002",
+        team: "운영1팀",
+        name: "김운영",
+        leaveType: "출장",
+        startYmd: "2026-05-20",
+        endYmd: "2026-05-20",
+      },
+    ];
+    const labels = groupItemsByDay(events, [], leaves)
+      .get("2026-05-20")
+      ?.map((i) => i.label);
+    expect(labels).toEqual(["운영1팀-김운영-출장", "팀 공통 일정"]);
+  });
+
+  it("종료일이 없으면 시작일 하루만 표기한다", () => {
+    const leaves: BackupLeaveInput[] = [
+      {
+        ...baseLeave,
+        id: "aaaaaaaa-0000-0000-0000-000000000003",
+        team: "운영1팀",
+        name: "이외근",
+        leaveType: "외근",
+        startYmd: "2026-05-20",
+        endYmd: null,
+      },
+    ];
+    const map = groupItemsByDay([], [], leaves);
+    expect(map.get("2026-05-20")?.[0]?.label).toBe("운영1팀-이외근-외근");
+    expect(map.get("2026-05-21")).toBeUndefined();
+  });
+
+  it("팀이 없으면 '이름-휴가유형'으로 표기한다", () => {
+    const leaves: BackupLeaveInput[] = [
+      {
+        ...baseLeave,
+        id: "aaaaaaaa-0000-0000-0000-000000000004",
+        team: null,
+        name: "박휴가",
+        leaveType: "교육",
+        startYmd: "2026-05-20",
+        endYmd: "2026-05-20",
+      },
+    ];
+    const map = groupItemsByDay([], [], leaves);
+    expect(map.get("2026-05-20")?.[0]?.label).toBe("박휴가-교육");
+  });
+
+  it("시작일이 없으면 skip한다", () => {
+    const leaves: BackupLeaveInput[] = [
+      {
+        ...baseLeave,
+        id: "aaaaaaaa-0000-0000-0000-000000000005",
+        team: "운영1팀",
+        name: "최무효",
+        leaveType: "연차",
+        startYmd: "",
+        endYmd: "2026-05-22",
+      },
+    ];
+    const map = groupItemsByDay([], [], leaves);
+    const all: CalendarItem[] = [];
+    for (const list of map.values()) all.push(...list);
+    expect(all).toHaveLength(0);
   });
 });
