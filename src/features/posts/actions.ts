@@ -13,18 +13,41 @@ import {
   type PostRow,
   type PostStatus,
 } from "./schemas";
-import {
-  sendFeedbackOwnerNotify,
-  sendFeedbackStatusNotify,
-} from "./mailer";
+import { sendFeedbackOwnerNotify, sendFeedbackStatusNotify } from "./mailer";
 
 export type PostActionResult =
   | { ok: true; row: PostRow }
   | { ok: false; error: string };
 
 const PERMISSION_ERROR_VIEWER = "권한 없음 — 게시판 작성 권한이 없습니다.";
-const PERMISSION_ERROR_NOTICE = "권한 없음 — 공지사항은 admin만 작성할 수 있습니다.";
+const PERMISSION_ERROR_NOTICE =
+  "권한 없음 — 공지사항은 admin만 작성할 수 있습니다.";
 const PERMISSION_ERROR_AUTHOR = "권한 없음 — 본인이 작성한 글이 아닙니다.";
+const SLUG_RETRY_LIMIT = 5;
+const SLUG_EXHAUSTED_ERROR =
+  "slug 자동 부여 실패 — 잠시 후 다시 시도해 주세요.";
+const UNIQUE_VIOLATION_CODE = "23505";
+
+function slugPrefix(domain: PostDomain): string {
+  return domain === "feedback" ? "FB" : "NT";
+}
+
+async function getMaxSlugNum(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  domain: PostDomain,
+): Promise<number> {
+  const prefix = slugPrefix(domain);
+  const { data: maxRow } = await supabase
+    .from("posts")
+    .select("slug")
+    .eq("domain", domain)
+    .like("slug", `${prefix}-%`)
+    .order("slug", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const match = (maxRow?.slug as string | undefined)?.match(/-(\d+)$/);
+  return match ? parseInt(match[1] ?? "0", 10) : 0;
+}
 
 function canCreate(domain: PostDomain, me: CurrentOperator | null): boolean {
   if (!me || me.permission === "viewer" || me.permission === null) return false;
@@ -79,25 +102,39 @@ export async function createPost(input: unknown): Promise<PostActionResult> {
 
   const supabase = await createClient();
 
-  // 자동 slug 생성 (FB-NNN / NT-NNN) — 동일 domain count + 1, 3자리 zero-pad
-  let slug = parsed.data.slug ?? null;
-  if (!slug) {
-    const { count } = await supabase
+  // 자동 slug 생성 (FB-NNN / NT-NNN) — 현재 최대 번호 + 1.
+  // 23505 (unique violation) 시 다음 번호로 재시도 — 동시성/시드/삭제 후 재등록으로
+  // 발생하는 충돌 회복. 명시적 slug가 제공되면 재시도하지 않고 즉시 실패.
+  const explicitSlug = parsed.data.slug ?? null;
+  const prefix = slugPrefix(parsed.data.domain);
+  let nextNum = explicitSlug
+    ? 0
+    : (await getMaxSlugNum(supabase, parsed.data.domain)) + 1;
+
+  let row: PostRow | null = null;
+  for (let attempt = 0; attempt < SLUG_RETRY_LIMIT; attempt++) {
+    const slug =
+      explicitSlug ?? `${prefix}-${String(nextNum).padStart(3, "0")}`;
+    const { data, error } = await supabase
       .from("posts")
-      .select("*", { count: "exact", head: true })
-      .eq("domain", parsed.data.domain);
-    const prefix = parsed.data.domain === "feedback" ? "FB" : "NT";
-    slug = `${prefix}-${String((count ?? 0) + 1).padStart(3, "0")}`;
+      .insert({ ...parsed.data, slug })
+      .select()
+      .single();
+
+    if (!error) {
+      row = data as PostRow;
+      break;
+    }
+    if (error.code !== UNIQUE_VIOLATION_CODE || explicitSlug) {
+      return { ok: false, error: error.message };
+    }
+    nextNum++;
   }
 
-  const { data, error } = await supabase
-    .from("posts")
-    .insert({ ...parsed.data, slug })
-    .select()
-    .single();
+  if (!row) {
+    return { ok: false, error: SLUG_EXHAUSTED_ERROR };
+  }
 
-  if (error) return { ok: false, error: error.message };
-  const row = data as PostRow;
   revalidatePath(pathFor(parsed.data.domain));
 
   if (row.domain === "feedback" && me) {
