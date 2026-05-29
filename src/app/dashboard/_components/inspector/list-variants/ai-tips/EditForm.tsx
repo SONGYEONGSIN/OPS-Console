@@ -1,16 +1,21 @@
 import type { EditFormProps } from "../types";
-import {
-  AI_TOOL_OPTIONS,
-  CATEGORY_OPTIONS,
-} from "@/lib/ai-work/constants";
+import { AI_TOOL_OPTIONS, CATEGORY_OPTIONS } from "@/lib/ai-work/constants";
 
 export function AiTipsForm({
   row,
   setRow,
   onSave,
   onCancel,
+  currentUserEmail = null,
+  currentUserPermission = null,
 }: EditFormProps) {
   const tagsText = (row.tags ?? []).join(", ");
+  const isAdmin = currentUserPermission === "admin";
+  const isOwnAuthor =
+    !!currentUserEmail &&
+    !!row.authorEmail &&
+    row.authorEmail === currentUserEmail;
+  const canDelete = isAdmin || isOwnAuthor;
   return (
     <form
       onSubmit={(e) => {
@@ -92,9 +97,7 @@ export function AiTipsForm({
         <textarea
           aria-label="재사용 프롬프트"
           value={row.reusePrompt ?? ""}
-          onChange={(e) =>
-            setRow({ ...row, reusePrompt: e.target.value })
-          }
+          onChange={(e) => setRow({ ...row, reusePrompt: e.target.value })}
           rows={6}
           required
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
@@ -134,6 +137,25 @@ export function AiTipsForm({
           취소
         </button>
       </div>
+      {row.id !== "" && canDelete && (
+        <div className="border-t border-line-soft pt-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "이 AI 활용 TIP을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+                )
+              ) {
+                onSave({ ...row, status: "deleted" });
+              }
+            }}
+            className="w-full border border-vermilion-deep bg-transparent px-3 py-1.5 text-sm text-vermilion-deep hover:bg-vermilion-deep hover:text-cream"
+          >
+            삭제
+          </button>
+        </div>
+      )}
     </form>
   );
 }

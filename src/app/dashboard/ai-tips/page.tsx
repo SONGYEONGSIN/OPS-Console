@@ -91,8 +91,14 @@ export default async function AiTipsPage({
       createLabel="+ TIP 등록"
       readOnly={!canWrite}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      currentUserEmail={me?.email ?? null}
+      currentUserPermission={me?.permission ?? null}
       inlineFilters={
-        <ScopeChips key="ai-tips-scope" total={rows.length} mineLabel="내 TIP" />
+        <ScopeChips
+          key="ai-tips-scope"
+          total={rows.length}
+          mineLabel="내 TIP"
+        />
       }
       onPersist={onPersist}
     />
@@ -120,6 +126,7 @@ function aiTipToListRow(
     name: t.title,
     status: "active",
     owner: ownerByEmail.get(t.author_email) ?? t.author_email,
+    authorEmail: t.author_email,
     aiTool: t.ai_tool,
     category: t.category,
     summary: t.summary_md,
