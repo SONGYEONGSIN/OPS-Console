@@ -185,6 +185,10 @@ export type ListRow = {
     /** PR-4: 서비스별 메모 (markdown) */
     note_md: string | null;
   }[];
+  /** backup 도메인 — 요청자 팀 (운영1팀/운영2팀). 계정 기반 고정값, 읽기 전용 표시 */
+  requesterTeam?: string | null;
+  /** backup 도메인 — 휴가/외근 유형 (경조휴가/반차/연차/출장/외근/기타 등) */
+  leaveType?: string | null;
   /** backup 도메인 — 휴가/외근 시작일 (YYYY-MM-DD, nullable) */
   leaveStartDate?: string | null;
   /** backup 도메인 — 휴가/외근 종료일 (YYYY-MM-DD, nullable) */

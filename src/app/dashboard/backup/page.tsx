@@ -147,6 +147,7 @@ export default async function BackupPage({
         title: row.name?.trim() || undefined,
         services: servicesPayload,
         summary_md: row.summary ?? "",
+        leave_type: row.leaveType ?? null,
         leave_start_date: row.leaveStartDate ?? null,
         leave_end_date: row.leaveEndDate ?? null,
         mode: sendMode,
@@ -187,6 +188,7 @@ export default async function BackupPage({
       title: row.name?.trim() ? row.name.trim() : null,
       services: servicesPayload,
       summary_md: row.summary ?? undefined,
+      leave_type: row.leaveType ?? null,
       leave_start_date: row.leaveStartDate ?? null,
       leave_end_date: row.leaveEndDate ?? null,
     });
@@ -203,6 +205,7 @@ export default async function BackupPage({
       createLabel="+ 백업 요청"
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
+      currentUserTeam={me?.team ?? null}
       backupOperators={backupOperators}
       backupServiceCandidates={backupServiceCandidates}
       backupContactCandidates={backupContactCandidates}
@@ -242,6 +245,8 @@ function backupRequestToListRow(
     name: r.title?.trim() || deriveTitle(r),
     status: "active",
     owner: ownerByEmail.get(r.requester_email) ?? r.requester_email,
+    requesterTeam: r.requester_team ?? null,
+    leaveType: r.leave_type ?? null,
     substituteEmail: r.substitute_email,
     substituteName: r.substitute_name,
     backupServices: r.services_detail.map((s) => s.id),

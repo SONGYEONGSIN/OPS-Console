@@ -6,6 +6,7 @@ import type { ListRow } from "../../../patterns/ListPattern";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
 import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
+import { LEAVE_TYPE_VALUES } from "@/features/backup-requests/schemas";
 
 type Mode = "single" | "perService";
 
@@ -47,10 +48,14 @@ export function BackupForm({
   setRow,
   onSave,
   onCancel,
+  currentUserTeam = null,
   backupOperators = [],
   backupServiceCandidates = [],
   backupContactCandidates = [],
 }: EditFormProps) {
+  // 팀 구분 — 계정 기반 고정값(읽기 전용). 기존 row는 저장된 requester_team,
+  // 신규는 현재 로그인 운영자의 팀.
+  const requesterTeam = row.requesterTeam ?? currentUserTeam;
   const selectedIds = row.backupServices ?? [];
   const selectedDetail: ServiceCardDetail[] = row.backupServicesDetail ?? [];
   const [query, setQuery] = useState("");
@@ -147,6 +152,16 @@ export function BackupForm({
         </div>
       )}
 
+      {requesterTeam && (
+        <div className="block text-xs">
+          <span className="mb-1 block text-muted">팀 구분</span>
+          <p className="border border-line-soft bg-washi-raised px-2 py-1 text-ink">
+            {requesterTeam}
+            <span className="ml-1 text-2xs text-muted">(계정 기준 고정)</span>
+          </p>
+        </div>
+      )}
+
       <label className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
         <input
@@ -216,6 +231,25 @@ export function BackupForm({
           </select>
         </label>
       )}
+
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">휴가유형</span>
+        <select
+          aria-label="휴가유형"
+          value={row.leaveType ?? ""}
+          onChange={(e) =>
+            setRow({ ...row, leaveType: e.target.value || null })
+          }
+          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+        >
+          <option value="">선택…</option>
+          {LEAVE_TYPE_VALUES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-xs">

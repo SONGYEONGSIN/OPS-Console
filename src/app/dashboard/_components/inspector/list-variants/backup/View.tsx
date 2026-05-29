@@ -42,7 +42,7 @@ export function BackupView({ row }: ViewProps) {
         </span>
       </span>
     ) : (
-      row.substituteName ?? "—"
+      (row.substituteName ?? "—")
     );
 
   // PR-6: 예약 시각 표시 — scheduled 상태일 때만 메타에 노출 (KST yyyy-mm-dd HH:mm)
@@ -60,6 +60,9 @@ export function BackupView({ row }: ViewProps) {
 
   const metaItems = [
     { term: "요청자", desc: row.owner },
+    ...(row.requesterTeam
+      ? [{ term: "팀 구분", desc: row.requesterTeam }]
+      : []),
     { term: "백업자", desc: substituteDesc },
     {
       term: "메일 상태",
@@ -87,6 +90,7 @@ export function BackupView({ row }: ViewProps) {
       <Section title="휴가·외근 기간">
         <DefList
           items={[
+            { term: "휴가유형", desc: row.leaveType ?? "—" },
             { term: "시작", desc: row.leaveStartDate ?? "—" },
             { term: "종료", desc: row.leaveEndDate ?? "—" },
           ]}
