@@ -29,7 +29,7 @@ export type PostRow = z.infer<typeof postRowSchema>;
 
 export const postCreateSchema = z.object({
   domain: postDomainSchema,
-  title: z.string().min(1),
+  title: z.string().min(1, "제목을 입력해주세요"),
   body: z.string().optional(),
   author_email: z.string().email(),
   author_id: z.string().uuid().nullable().optional(),
@@ -41,7 +41,7 @@ export const postCreateSchema = z.object({
 export type PostCreate = z.infer<typeof postCreateSchema>;
 
 export const postUpdateSchema = z.object({
-  title: z.string().min(1).optional(),
+  title: z.string().min(1, "제목을 입력해주세요").optional(),
   body: z.string().nullable().optional(),
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema.optional(),

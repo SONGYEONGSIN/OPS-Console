@@ -53,7 +53,10 @@ describe("postRowSchema", () => {
     expect(r.success).toBe(false);
   });
   it("author_email 형식 거부", () => {
-    const r = postRowSchema.safeParse({ ...validRow, author_email: "not-email" });
+    const r = postRowSchema.safeParse({
+      ...validRow,
+      author_email: "not-email",
+    });
     expect(r.success).toBe(false);
   });
   it("domain 누락 거부", () => {
@@ -81,11 +84,24 @@ describe("postCreateSchema", () => {
     });
     expect(r.success).toBe(false);
   });
+  it("title 빈 문자열 → 한글 안내 메시지", () => {
+    const r = postCreateSchema.safeParse({
+      domain: "feedback",
+      title: "",
+      author_email: "x@y.com",
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues[0]?.message).toBe("제목을 입력해주세요");
+    }
+  });
 });
 
 describe("postUpdateSchema", () => {
   it("status만 update OK", () => {
-    expect(postUpdateSchema.safeParse({ status: "approved" }).success).toBe(true);
+    expect(postUpdateSchema.safeParse({ status: "approved" }).success).toBe(
+      true,
+    );
   });
   it("body만 update OK", () => {
     expect(postUpdateSchema.safeParse({ body: "수정" }).success).toBe(true);

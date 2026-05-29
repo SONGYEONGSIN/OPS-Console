@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { OPERATORS, tenureYears, tenureLabel, ageOf } from "../operators";
+import {
+  OPERATORS,
+  tenureYears,
+  tenureLabel,
+  ageOf,
+  operatorNameByEmail,
+} from "../operators";
 
 describe("OPERATORS", () => {
   it("17명 정의 (운영1팀 8 + 운영2팀 9)", () => {
@@ -53,5 +59,19 @@ describe("ageOf", () => {
   it("1982-10-06 출생, 2026-05-09 기준 → 만 43세", () => {
     const base = new Date("2026-05-09T00:00:00+09:00");
     expect(ageOf("1982-10-06", base)).toBe(43);
+  });
+});
+
+describe("operatorNameByEmail", () => {
+  it("등록된 이메일 → 운영자 이름", () => {
+    expect(operatorNameByEmail("ys1114@jinhakapply.com")).toBe("송영신");
+  });
+  it("미등록 이메일 → local-part fallback", () => {
+    expect(operatorNameByEmail("unknown@example.com")).toBe("unknown");
+  });
+  it("빈/누락 값 → 빈 문자열", () => {
+    expect(operatorNameByEmail("")).toBe("");
+    expect(operatorNameByEmail(null)).toBe("");
+    expect(operatorNameByEmail(undefined)).toBe("");
   });
 });
