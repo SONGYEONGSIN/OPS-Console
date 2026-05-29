@@ -6,6 +6,7 @@ import { OpenTabsProvider } from "./page-header/open-tabs-context";
 import { Sidebar } from "./Sidebar";
 import { SidebarToggleProvider } from "./sidebar-toggle-context";
 import { PageActivityLogger } from "./PageActivityLogger";
+import { DocumentTitle } from "./DocumentTitle";
 import type { CurrentOperator } from "@/features/auth/queries";
 
 /**
@@ -52,6 +53,7 @@ export function DashboardShell({
   return (
     <OpenTabsProvider>
       <PageActivityLogger sections={sections} />
+      <DocumentTitle sections={sections} />
       <SidebarToggleProvider open={openSidebar}>
         <div className="dashboard-shell relative z-10 grid h-screen grid-rows-[26px_52px_1fr_26px] max-md:grid-rows-[26px_48px_1fr] max-md:h-auto max-md:min-h-screen">
           {topBar}

@@ -3,7 +3,9 @@ import {
   findSidebarBreadcrumb,
   findSidebarSiblings,
   findSidebarParentGroup,
+  findSidebarLabel,
 } from "../sidebar-helpers";
+import { sidebarSections } from "../../_data";
 
 describe("findSidebarBreadcrumb", () => {
   it("그룹 안 메뉴 — section + group + item 3단", () => {
@@ -23,6 +25,18 @@ describe("findSidebarBreadcrumb", () => {
 
   it("매칭 안 되는 pathname — 빈 배열", () => {
     expect(findSidebarBreadcrumb("/dashboard/zzz-nonexistent")).toEqual([]);
+  });
+});
+
+describe("findSidebarLabel", () => {
+  it("그룹 안 메뉴 slug → 메뉴 label", () => {
+    expect(findSidebarLabel(sidebarSections, "services")).toBe("서비스");
+  });
+  it("section 직속 item slug → 메뉴 label", () => {
+    expect(findSidebarLabel(sidebarSections, "my-todo")).toBe("오늘 할 일");
+  });
+  it("매칭 안 되는 slug → slug 그대로 반환", () => {
+    expect(findSidebarLabel(sidebarSections, "zzz-nope")).toBe("zzz-nope");
   });
 });
 

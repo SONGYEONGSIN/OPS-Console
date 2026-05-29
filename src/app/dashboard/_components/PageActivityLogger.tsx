@@ -3,24 +3,11 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import type { SbSection } from "../_data";
+import { findSidebarLabel } from "../_data/sidebar-helpers";
 
 type Props = {
   sections: SbSection[];
 };
-
-function findLabel(sections: SbSection[], slug: string): string {
-  for (const sec of sections) {
-    for (const entry of sec.entries) {
-      if (entry.kind === "item" && entry.slug === slug) return entry.label;
-      if (entry.kind === "group") {
-        for (const c of entry.items) {
-          if (c.slug === slug) return c.label;
-        }
-      }
-    }
-  }
-  return slug;
-}
 
 /**
  * 페이지 진입/이탈 자동 로깅. dashboard layout에 한 번만 mount.
@@ -36,7 +23,7 @@ export function PageActivityLogger({ sections }: Props) {
     if (!pathname.startsWith("/dashboard/")) return;
     const slug = pathname.replace("/dashboard/", "").split("/")[0] ?? "";
     if (!slug) return;
-    const label = findLabel(sections, slug);
+    const label = findSidebarLabel(sections, slug);
 
     fetch("/api/worklog/log", {
       method: "POST",
