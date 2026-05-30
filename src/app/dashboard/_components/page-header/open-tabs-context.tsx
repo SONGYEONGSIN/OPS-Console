@@ -16,6 +16,8 @@ export type OpenTab = {
   slug: string;
   href: string;
   label: string;
+  /** 소속 사이드바 그룹 label. 그룹이 바뀌면 탭 strip을 초기화하는 기준. */
+  group?: string | null;
 };
 
 export type OpenTabsState = {
@@ -49,8 +51,16 @@ export function OpenTabsProvider({ children }: { children: React.ReactNode }) {
 
   const add = useCallback((tab: OpenTab) => {
     setTabs((prev) => {
+      // 현재 탭이 속한 사이드바 그룹. 이전 탭들과 그룹이 다르면 초기화한다
+      // (다른 메뉴 그룹으로 이동 시 이전 그룹 탭이 남지 않도록).
+      const group = findSidebarParentGroup(tab.href);
+      const withGroup: OpenTab = { ...tab, group };
+      const prevGroup = prev.length > 0 ? (prev[0].group ?? null) : null;
+      if (prev.length > 0 && prevGroup !== group) {
+        return [withGroup];
+      }
       if (prev.some((t) => t.slug === tab.slug)) return prev;
-      return [...prev, tab];
+      return [...prev, withGroup];
     });
   }, []);
 

@@ -45,8 +45,18 @@ describe("PageTabs (Epic 6)", () => {
     localStorage.setItem(
       "folio.openTabs",
       JSON.stringify([
-        { slug: "services", href: "/dashboard/services", label: "서비스" },
-        { slug: "contracts", href: "/dashboard/contracts", label: "계약" },
+        {
+          slug: "services",
+          href: "/dashboard/services",
+          label: "서비스",
+          group: "서비스사이클",
+        },
+        {
+          slug: "contracts",
+          href: "/dashboard/contracts",
+          label: "계약",
+          group: "서비스사이클",
+        },
       ]),
     );
     renderWithProvider("/dashboard/services");
@@ -71,8 +81,18 @@ describe("PageTabs (Epic 6)", () => {
     localStorage.setItem(
       "folio.openTabs",
       JSON.stringify([
-        { slug: "services", href: "/dashboard/services", label: "서비스" },
-        { slug: "contracts", href: "/dashboard/contracts", label: "계약" },
+        {
+          slug: "services",
+          href: "/dashboard/services",
+          label: "서비스",
+          group: "서비스사이클",
+        },
+        {
+          slug: "contracts",
+          href: "/dashboard/contracts",
+          label: "계약",
+          group: "서비스사이클",
+        },
       ]),
     );
     renderWithProvider("/dashboard/services");
