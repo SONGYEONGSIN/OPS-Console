@@ -10,6 +10,10 @@ import {
   findGroupForEmail,
 } from "../mail-queries";
 
+// 경과일수는 청구일자 기준으로 계산되므로 결정적 테스트를 위해 기준 시각 주입.
+// NOW(늦은 시각)에선 픽스처의 모든 청구일자가 충분히 경과(>=10일).
+const NOW = new Date("2026-06-01T12:00:00+09:00");
+
 const ORIG_ENV = { ...process.env };
 
 beforeEach(() => {
@@ -44,7 +48,7 @@ describe("previewReminderRecipients", () => {
       fetchedAt: "2026-05-11T00:00:00Z",
     });
 
-    const r = await previewReminderRecipients();
+    const r = await previewReminderRecipients(NOW);
     expect(r.thresholdDays).toBe(10);
     expect(r.groups).toHaveLength(1);
   });
@@ -70,7 +74,7 @@ describe("previewReminderRecipients", () => {
       fetchedAt: "2026-05-11T00:00:00Z",
     });
 
-    const r = await previewReminderRecipients();
+    const r = await previewReminderRecipients(new Date("2026-04-15T12:00:00+09:00"));
     expect(r.thresholdDays).toBe(20);
     expect(r.groups).toHaveLength(1);
     expect(r.groups[0].recipient.email).toBe("b@x.com");
@@ -107,7 +111,7 @@ describe("findGroupForEmail", () => {
       fetchedAt: "2026-05-11T00:00:00Z",
     });
 
-    const r = await findGroupForEmail("same@x.com");
+    const r = await findGroupForEmail("same@x.com", NOW);
     expect(r.group).not.toBeNull();
     expect(r.group!.items).toHaveLength(2);
     expect(r.group!.totalAmount).toBe(1_500_000);
@@ -127,7 +131,7 @@ describe("findGroupForEmail", () => {
       fetchedAt: "2026-05-11T00:00:00Z",
     });
 
-    const r = await findGroupForEmail("ok@x.com");
+    const r = await findGroupForEmail("ok@x.com", NOW);
     expect(r.group).not.toBeNull();
   });
 
@@ -145,7 +149,7 @@ describe("findGroupForEmail", () => {
       fetchedAt: "2026-05-11T00:00:00Z",
     });
 
-    const r = await findGroupForEmail("absent@x.com");
+    const r = await findGroupForEmail("absent@x.com", NOW);
     expect(r.group).toBeNull();
   });
 });
