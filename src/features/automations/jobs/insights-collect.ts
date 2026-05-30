@@ -87,20 +87,34 @@ type YtVideoItem = {
 };
 type YtVideosResponse = { items?: YtVideoItem[] };
 
+/**
+ * search.list 쿼리 파라미터. 국내 우선 — regionCode=KR + relevanceLanguage=ko로
+ * 한국 지역/한국어 관련성이 높은 영상을 우선 노출(하드 필터 아님).
+ */
+export function buildSearchParams(
+  keyword: string,
+  publishedAfter: string,
+  apiKey: string,
+): URLSearchParams {
+  return new URLSearchParams({
+    part: "snippet",
+    type: "video",
+    maxResults: "10",
+    order: "viewCount",
+    regionCode: "KR",
+    relevanceLanguage: "ko",
+    publishedAfter,
+    q: keyword,
+    key: apiKey,
+  });
+}
+
 async function searchVideos(
   keyword: string,
   apiKey: string,
   publishedAfter: string,
 ): Promise<CollectedVideo[]> {
-  const params = new URLSearchParams({
-    part: "snippet",
-    type: "video",
-    maxResults: "10",
-    order: "viewCount",
-    publishedAfter,
-    q: keyword,
-    key: apiKey,
-  });
+  const params = buildSearchParams(keyword, publishedAfter, apiKey);
   const url = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
   const res = await fetch(url);
   if (!res.ok) {
