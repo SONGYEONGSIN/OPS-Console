@@ -150,15 +150,26 @@ export default async function HandoverPage({
         />
         <HandoverTabs />
         <HandoverHistoryControls />
-        <div className="px-7 pt-3">
-          <ScopeChips total={totalHist} mineLabel="내 인계" />
-        </div>
-        <div className="px-7 pb-7 pt-4">
+        <section className="p-7">
+          <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-xl font-bold text-ink">인계 이력</h2>
+                <span className="text-muted" aria-hidden>
+                  ·
+                </span>
+                <span className="text-sm text-vermilion">{totalHist}건</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                <ScopeChips total={totalHist} mineLabel="내 인계" />
+              </div>
+            </div>
+          </header>
           <HandoverHistory rows={progressRows} meEmail={me?.email ?? null} />
           <div className="pt-4">
             <ListPagination total={totalHist} pageSize={PAGE_SIZE} />
           </div>
-        </div>
+        </section>
       </div>
     );
   }
