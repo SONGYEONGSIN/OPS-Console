@@ -76,7 +76,12 @@ describe("OpenTabsProvider", () => {
     const { result } = renderHook(() => useOpenTabs(), { wrapper });
     act(() => result.current.add({ slug: "services", href: "/dashboard/services", label: "서비스" }));
     expect(JSON.parse(localStorage.getItem("folio.openTabs") ?? "[]")).toEqual([
-      { slug: "services", href: "/dashboard/services", label: "서비스" },
+      {
+        slug: "services",
+        href: "/dashboard/services",
+        label: "서비스",
+        group: "서비스사이클",
+      },
     ]);
   });
 
