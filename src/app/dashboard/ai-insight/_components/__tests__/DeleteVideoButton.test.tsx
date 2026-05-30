@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 vi.mock("@/features/insight-videos/actions", () => ({
@@ -14,32 +14,31 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("DeleteVideoButton", () => {
-  it("처음엔 '삭제' 버튼만 표시 (확인 버튼 없음)", () => {
+  it("'삭제' 버튼을 렌더 (인라인 확인 단계 없음)", () => {
     render(<DeleteVideoButton id={ID} />);
     expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /삭제 확인/ }),
+      screen.queryByRole("button", { name: "취소" }),
     ).not.toBeInTheDocument();
   });
 
-  it("'삭제' 클릭 시 확인/취소 2단계로 전환", () => {
-    render(<DeleteVideoButton id={ID} />);
+  it("confirm 취소 시 액션 미호출 + onDeleted 미호출", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const onDeleted = vi.fn();
+    render(<DeleteVideoButton id={ID} onDeleted={onDeleted} />);
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    expect(
-      screen.getByRole("button", { name: /삭제 확인/ }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(deleteInsightVideo).not.toHaveBeenCalled();
+    expect(onDeleted).not.toHaveBeenCalled();
   });
 
-  it("'취소' 클릭 시 다시 '삭제' 버튼으로 복귀", () => {
-    render(<DeleteVideoButton id={ID} />);
-    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    fireEvent.click(screen.getByRole("button", { name: "취소" }));
-    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
-  });
-
-  it("'삭제 확인' 클릭 → 액션 호출 + 성공 시 onDeleted 콜백", async () => {
+  it("confirm 확인 시 즉시 삭제 + 성공하면 onDeleted 호출", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     (deleteInsightVideo as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       row: { id: ID, title: "t" },
@@ -47,7 +46,6 @@ describe("DeleteVideoButton", () => {
     const onDeleted = vi.fn();
     render(<DeleteVideoButton id={ID} onDeleted={onDeleted} />);
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    fireEvent.click(screen.getByRole("button", { name: /삭제 확인/ }));
 
     await waitFor(() => {
       expect(deleteInsightVideo).toHaveBeenCalledWith(ID);
@@ -57,7 +55,8 @@ describe("DeleteVideoButton", () => {
     });
   });
 
-  it("실패 시 에러 메시지 표시 + onDeleted 미호출", async () => {
+  it("confirm 확인 후 실패 시 에러 메시지 표시 + onDeleted 미호출", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     (deleteInsightVideo as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false,
       error: "권한 없음",
@@ -65,7 +64,6 @@ describe("DeleteVideoButton", () => {
     const onDeleted = vi.fn();
     render(<DeleteVideoButton id={ID} onDeleted={onDeleted} />);
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    fireEvent.click(screen.getByRole("button", { name: /삭제 확인/ }));
 
     expect(await screen.findByText("권한 없음")).toBeInTheDocument();
     expect(onDeleted).not.toHaveBeenCalled();
