@@ -17,7 +17,7 @@ function mkSheet(
     headerRowNumber: 1,
     rowCount: rowsText.length + 1,
     columnCount: headers.length,
-    fetchedAt: "2026-05-11T00:00:00Z",
+    fetchedAt: "2026-05-30T00:00:00Z",
   };
 }
 
@@ -26,33 +26,39 @@ const HEADERS = [
   "거래처명",
   "거래내역",
   "청구금액",
-  "경과일수",
   "운영자",
   "학교담당자",
 ];
 
-// 경과일수는 청구일자 기준으로 계산되므로 결정적 테스트를 위해 기준 시각 고정.
-const NOW = new Date("2026-05-08T12:00:00+09:00");
+// 경과일수는 청구일자 기준 계산. NOW=2026-05-30:
+// 2026-05-20→10일, 2026-05-15→15일 (둘 다 SCHOOL_TARGET_DAYS 마일스톤)
+const NOW = new Date("2026-05-30T12:00:00+09:00");
 
 describe("groupRecipientsByOwner", () => {
-  it("경과일수 >= thresholdDays 행만 포함", () => {
+  it("경과일수가 마일스톤(SCHOOL_TARGET_DAYS)에 정확히 일치하는 행만 포함", () => {
     const sheet = mkSheet(HEADERS, [
-      ["2026-04-01", "A학교", "원서 4월", 1_000_000, 12, "송영신", "a@x.com"],
-      ["2026-05-02", "B학교", "원서 5월", 500_000, 9, "송영신", "b@x.com"],
-      ["2026-04-15", "C학교", "원서 4월", 700_000, 10, "송영신", "c@x.com"],
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // 10일 ✓
+      ["2026-05-22", "B학교", "원서", 500_000, "송영신", "b@x.com"], //  8일 ✗(<10)
+      ["2026-05-15", "C학교", "원서", 700_000, "송영신", "c@x.com"], // 15일 ✓
     ]);
-
     const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
     const emails = groups.map((g) => g.recipient.email).sort();
     expect(emails).toEqual(["a@x.com", "c@x.com"]);
   });
 
+  it("마일스톤 사이(경과 12일)는 제외 — 원본 GAS 규칙", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-18", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // 12일 ✗
+    ]);
+    const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
+    expect(groups).toEqual([]);
+  });
+
   it("같은 학교담당자 이메일 → 1 그룹으로 묶음 + totalAmount 합산", () => {
     const sheet = mkSheet(HEADERS, [
-      ["2026-04-01", "A학교", "원서 4월", 1_000_000, 12, "송영신", "same@x.com"],
-      ["2026-04-15", "A학교 분교", "원서 4월", 500_000, 11, "송영신", "same@x.com"],
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "same@x.com"], // 10일
+      ["2026-05-15", "A학교 분교", "원서", 500_000, "송영신", "same@x.com"], // 15일
     ]);
-
     const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0].recipient.email).toBe("same@x.com");
@@ -62,23 +68,20 @@ describe("groupRecipientsByOwner", () => {
 
   it("잘못된 이메일 형식 셀 → excluded[]에 invalid_email", () => {
     const sheet = mkSheet(HEADERS, [
-      ["2026-04-01", "A학교", "원서 4월", 1_000_000, 12, "송영신", "not-an-email"],
-      ["2026-04-15", "B학교", "원서 4월", 500_000, 11, "송영신", "ok@x.com"],
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "not-an-email"], // 10일
+      ["2026-05-15", "B학교", "원서", 500_000, "송영신", "ok@x.com"], // 15일
     ]);
-
     const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0].recipient.email).toBe("ok@x.com");
-    const reasons = excluded.map((e) => e.reason);
-    expect(reasons).toContain("invalid_email");
+    expect(excluded.map((e) => e.reason)).toContain("invalid_email");
   });
 
   it("학교담당자 컬럼 누락 시 groups=[], excluded에 missing_owner_column", () => {
     const headersNoOwner = HEADERS.filter((h) => h !== "학교담당자");
     const sheet = mkSheet(headersNoOwner, [
-      ["2026-04-01", "A학교", "원서 4월", 1_000_000, 12, "송영신"],
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신"],
     ]);
-
     const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toEqual([]);
     expect(excluded.some((e) => e.reason === "missing_owner_column")).toBe(true);
@@ -87,9 +90,8 @@ describe("groupRecipientsByOwner", () => {
   it("청구일자 컬럼 누락 시 groups=[], excluded에 missing_billing_date_column", () => {
     const headersNoBilling = HEADERS.filter((h) => h !== "청구일자");
     const sheet = mkSheet(headersNoBilling, [
-      ["A학교", "원서 4월", 1_000_000, 12, "송영신", "a@x.com"],
+      ["A학교", "원서", 1_000_000, "송영신", "a@x.com"],
     ]);
-
     const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toEqual([]);
     expect(

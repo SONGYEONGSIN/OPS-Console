@@ -1,6 +1,7 @@
 import type { ReceivablesSheet } from "./queries";
 import type { ExcludedReason, ReminderGroup, ReminderItem } from "./mail-schemas";
 import { computeElapsedDays } from "./overdue";
+import { SCHOOL_TARGET_DAYS } from "./mail-schedule";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -88,6 +89,8 @@ export function groupRecipientsByOwner(
       excluded.push({ rowIndex: i, reason: "below_threshold" });
       continue;
     }
+    // 원본 GAS 규칙: 경과일수가 마일스톤(SCHOOL_TARGET_DAYS)에 정확히 일치할 때만 발송.
+    if (!SCHOOL_TARGET_DAYS.includes(daysOverdue)) continue;
 
     const amount = toNumber(values[amountCol] ?? text[amountCol]) ?? 0;
     const item: ReminderItem = {
