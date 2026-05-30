@@ -39,6 +39,22 @@ export function isWriteStartPast(iso: string | null | undefined, now: Date): boo
   return new Date(iso).getTime() < now.getTime();
 }
 
+function StatusBadge({ status }: { status?: "scheduled" | "sent" | null }) {
+  if (status === "scheduled")
+    return (
+      <span className="inline-block bg-washi-raised px-2 py-0.5 text-2xs text-ink">
+        예약됨
+      </span>
+    );
+  if (status === "sent")
+    return (
+      <span className="inline-block bg-sage/15 px-2 py-0.5 text-2xs text-sage">
+        발송됨
+      </span>
+    );
+  return <span className="text-ink-soft">—</span>;
+}
+
 type Props = {
   rows: ListRow[];
   selectedId: string | null;
@@ -54,6 +70,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">대학명</th>
           <th className="px-3 py-2">서비스명</th>
           <th className="px-3 py-2">작성시작</th>
+          <th className="px-3 py-2">상태</th>
           <th className="px-3 py-2">발송일자</th>
           <th className="px-3 py-2">운영자</th>
           <th className="px-3 py-2">개발자</th>
@@ -62,7 +79,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={6} className="px-3 py-6 text-center text-muted">
+            <td colSpan={7} className="px-3 py-6 text-center text-muted">
               담당 서비스가 없습니다.
             </td>
           </tr>
@@ -85,6 +102,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
                 <td className="px-3 py-2 font-medium text-ink">{row.universityName ?? "—"}</td>
                 <td className="px-3 py-2 text-ink">{row.serviceName ?? row.name}</td>
                 <td className="px-3 py-2 text-ink-soft">{formatMonthDay(row.writeStartAt)}</td>
+                <td className="px-3 py-2"><StatusBadge status={row.dataRequestStatus} /></td>
                 <td className="px-3 py-2 text-ink-soft">{formatSendDateTime(row.dataRequestLastSentAt)}</td>
                 <td className="px-3 py-2 text-ink-soft">{row.operatorName ?? "—"}</td>
                 <td className="px-3 py-2 text-ink-soft">{row.developerName ?? "—"}</td>

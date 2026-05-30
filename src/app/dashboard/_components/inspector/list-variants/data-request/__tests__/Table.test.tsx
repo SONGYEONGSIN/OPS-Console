@@ -39,9 +39,19 @@ describe("DataRequestTable", () => {
     render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00", dataRequestLastSentAt: "2026-05-23T05:30:00Z" })]} selectedId={null} onSelect={() => {}} />);
     expect(screen.getByText("05-23 14:30")).toBeInTheDocument();
   });
-  it("발송이력 없으면 발송일자 칸에 — 표시", () => {
+  it("발송이력 없으면 발송일자 칸에 — 표시 (상태 칸도 —)", () => {
     render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00" })]} selectedId={null} onSelect={() => {}} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    // 상태 칸(이력 없음) + 발송일자 칸 모두 — → 2개
+    expect(screen.getAllByText("—")).toHaveLength(2);
+  });
+  it("상태 컬럼 헤더 표시 + 예약됨 배지", () => {
+    render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00", dataRequestStatus: "scheduled" })]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("상태")).toBeInTheDocument();
+    expect(screen.getByText("예약됨")).toBeInTheDocument();
+  });
+  it("발송됨 상태면 발송됨 배지", () => {
+    render(<DataRequestTable rows={[row({ writeStartAt: "2026-05-11T00:00:00+09:00", dataRequestStatus: "sent" })]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("발송됨")).toBeInTheDocument();
   });
   it("작성시작이 안 지난 행은 클릭하면 onSelect 호출", () => {
     const onSelect = vi.fn();

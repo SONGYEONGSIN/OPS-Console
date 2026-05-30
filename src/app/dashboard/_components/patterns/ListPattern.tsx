@@ -364,6 +364,10 @@ export type ListRow = {
   dataRequestLastSchedule?: { start: string; end: string };
   /** data-request variant — 최근 발송일시(ISO, sent 상태). 발송 이력 없으면 미첨부 */
   dataRequestLastSentAt?: string | null;
+  /** data-request variant — 메일 상태 배지 (예약됨/발송됨). 이력 없으면 null */
+  dataRequestStatus?: "scheduled" | "sent" | null;
+  /** data-request variant — 가장 이른 예약 시각(ISO). status='scheduled'일 때 */
+  dataRequestScheduledAt?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
