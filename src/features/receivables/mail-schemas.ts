@@ -36,6 +36,7 @@ export const excludedReasonSchema = z.object({
     "missing_email",
     "missing_owner_column",
     "missing_overdue_column",
+    "missing_billing_date_column",
     "missing_operator_column",
     "operator_not_found",
     "operator_email_not_mapped",
