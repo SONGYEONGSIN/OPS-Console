@@ -24,7 +24,9 @@ function readThreshold(): number {
  * 학교담당자 독려 메일 미리보기 — Excel sheet fetch + 그룹화.
  * UI 모달에서 발송 전 표시 용도.
  */
-export async function previewReminderRecipients(): Promise<ReminderPreview> {
+export async function previewReminderRecipients(
+  now: Date = new Date(),
+): Promise<ReminderPreview> {
   const thresholdDays = readThreshold();
   const sheet = await fetchReceivablesSheet();
   if (!sheet) {
@@ -36,7 +38,7 @@ export async function previewReminderRecipients(): Promise<ReminderPreview> {
     };
   }
 
-  const { groups, excluded } = groupRecipientsByOwner(sheet, thresholdDays);
+  const { groups, excluded } = groupRecipientsByOwner(sheet, thresholdDays, now);
   return {
     thresholdDays,
     groups,
@@ -60,13 +62,14 @@ export type FindGroupForEmailResult = {
  */
 export async function findGroupForEmail(
   targetEmail: string,
+  now: Date = new Date(),
 ): Promise<FindGroupForEmailResult> {
   const thresholdDays = readThreshold();
   const sheet = await fetchReceivablesSheet();
   if (!sheet) {
     return { thresholdDays, sheetAvailable: false, group: null };
   }
-  const { groups } = groupRecipientsByOwner(sheet, thresholdDays);
+  const { groups } = groupRecipientsByOwner(sheet, thresholdDays, now);
   const normalized = targetEmail.trim().toLowerCase();
   const group =
     groups.find((g) => g.recipient.email.toLowerCase() === normalized) ?? null;

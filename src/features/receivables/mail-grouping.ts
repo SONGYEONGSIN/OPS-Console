@@ -1,5 +1,6 @@
 import type { ReceivablesSheet } from "./queries";
 import type { ExcludedReason, ReminderGroup, ReminderItem } from "./mail-schemas";
+import { computeElapsedDays } from "./overdue";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,31 +23,35 @@ function toNumber(raw: unknown): number | null {
 
 /**
  * 미수채권 시트에서 학교담당자별로 청구건을 묶는다.
- * - 경과일수 >= thresholdDays 만 포함
+ * - 경과일수 = 청구일자 기준 오늘까지 일수(인스펙터 elapsedDays와 동일 계산).
+ *   `경과일수 >= thresholdDays` 만 포함
  * - 잘못된 이메일은 excluded 로 회수 (silent drop 금지)
- * - 필수 컬럼(학교담당자 / 경과일수) 누락 시 빈 결과 + excluded 사유
+ * - 필수 컬럼(학교담당자 / 청구일자) 누락 시 빈 결과 + excluded 사유
+ *
+ * @param now 경과일수 계산 기준 시각 (테스트 결정성을 위해 주입, 기본 현재)
  */
 export function groupRecipientsByOwner(
   sheet: ReceivablesSheet,
   thresholdDays: number,
+  now: Date = new Date(),
 ): { groups: ReminderGroup[]; excluded: ExcludedReason[] } {
   const excluded: ExcludedReason[] = [];
 
   const ownerCol = findCol(sheet.headers, /^학교\s*담당자?$|^학교\s*담당\s*이메일$/);
-  const overdueCol = findCol(sheet.headers, /경과\s*일수?/);
+  // 경과일수 전용 컬럼은 시트에 없음 — 청구일자로 계산한다(인스펙터와 동일).
+  const billingDateCol = findCol(sheet.headers, /^청구\s*일자/);
 
   if (ownerCol === -1) {
     excluded.push({ rowIndex: -1, reason: "missing_owner_column" });
   }
-  if (overdueCol === -1) {
-    excluded.push({ rowIndex: -1, reason: "missing_overdue_column" });
+  if (billingDateCol === -1) {
+    excluded.push({ rowIndex: -1, reason: "missing_billing_date_column" });
   }
-  if (ownerCol === -1 || overdueCol === -1) {
+  if (ownerCol === -1 || billingDateCol === -1) {
     return { groups: [], excluded };
   }
 
   const nameCol = findCol(sheet.headers, /거래처명?|학교명?/);
-  const dateCol = findCol(sheet.headers, /^청구\s*일자/);
   const detailCol = findCol(sheet.headers, /내역|상세/);
   const amountCol = findCol(sheet.headers, /청구\s*금액|금액/);
   const operatorCol = findCol(sheet.headers, /^운영자$/);
@@ -75,7 +80,9 @@ export function groupRecipientsByOwner(
       continue;
     }
 
-    const daysOverdue = toNumber(values[overdueCol] ?? text[overdueCol]);
+    // 경과일수 = 청구일자 기준 오늘까지 일수 (인스펙터 표시값과 동일)
+    const billingText = String(text[billingDateCol] ?? values[billingDateCol] ?? "");
+    const daysOverdue = computeElapsedDays(billingText, now);
     if (daysOverdue === null) continue;
     if (daysOverdue < thresholdDays) {
       excluded.push({ rowIndex: i, reason: "below_threshold" });
@@ -85,7 +92,7 @@ export function groupRecipientsByOwner(
     const amount = toNumber(values[amountCol] ?? text[amountCol]) ?? 0;
     const item: ReminderItem = {
       customerName: nameCol >= 0 ? String(text[nameCol] ?? "") : "",
-      invoiceDate: dateCol >= 0 ? String(text[dateCol] ?? "") : "",
+      invoiceDate: String(text[billingDateCol] ?? ""),
       description: detailCol >= 0 ? String(text[detailCol] ?? "") : "",
       daysOverdue,
       amount: amount < 0 ? 0 : amount,

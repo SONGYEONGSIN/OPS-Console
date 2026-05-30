@@ -31,6 +31,9 @@ const HEADERS = [
   "학교담당자",
 ];
 
+// 경과일수는 청구일자 기준으로 계산되므로 결정적 테스트를 위해 기준 시각 고정.
+const NOW = new Date("2026-05-08T12:00:00+09:00");
+
 describe("groupRecipientsByOwner", () => {
   it("경과일수 >= thresholdDays 행만 포함", () => {
     const sheet = mkSheet(HEADERS, [
@@ -39,7 +42,7 @@ describe("groupRecipientsByOwner", () => {
       ["2026-04-15", "C학교", "원서 4월", 700_000, 10, "송영신", "c@x.com"],
     ]);
 
-    const { groups } = groupRecipientsByOwner(sheet, 10);
+    const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
     const emails = groups.map((g) => g.recipient.email).sort();
     expect(emails).toEqual(["a@x.com", "c@x.com"]);
   });
@@ -50,7 +53,7 @@ describe("groupRecipientsByOwner", () => {
       ["2026-04-15", "A학교 분교", "원서 4월", 500_000, 11, "송영신", "same@x.com"],
     ]);
 
-    const { groups } = groupRecipientsByOwner(sheet, 10);
+    const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0].recipient.email).toBe("same@x.com");
     expect(groups[0].items).toHaveLength(2);
@@ -63,7 +66,7 @@ describe("groupRecipientsByOwner", () => {
       ["2026-04-15", "B학교", "원서 4월", 500_000, 11, "송영신", "ok@x.com"],
     ]);
 
-    const { groups, excluded } = groupRecipientsByOwner(sheet, 10);
+    const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0].recipient.email).toBe("ok@x.com");
     const reasons = excluded.map((e) => e.reason);
@@ -76,21 +79,21 @@ describe("groupRecipientsByOwner", () => {
       ["2026-04-01", "A학교", "원서 4월", 1_000_000, 12, "송영신"],
     ]);
 
-    const { groups, excluded } = groupRecipientsByOwner(sheet, 10);
+    const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toEqual([]);
     expect(excluded.some((e) => e.reason === "missing_owner_column")).toBe(true);
   });
 
-  it("경과일수 컬럼 누락 시 groups=[], excluded에 missing_overdue_column", () => {
-    const headersNoOverdue = HEADERS.filter((h) => h !== "경과일수");
-    const sheet = mkSheet(headersNoOverdue, [
-      ["2026-04-01", "A학교", "원서 4월", 1_000_000, "송영신", "a@x.com"],
+  it("청구일자 컬럼 누락 시 groups=[], excluded에 missing_billing_date_column", () => {
+    const headersNoBilling = HEADERS.filter((h) => h !== "청구일자");
+    const sheet = mkSheet(headersNoBilling, [
+      ["A학교", "원서 4월", 1_000_000, 12, "송영신", "a@x.com"],
     ]);
 
-    const { groups, excluded } = groupRecipientsByOwner(sheet, 10);
+    const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toEqual([]);
-    expect(excluded.some((e) => e.reason === "missing_overdue_column")).toBe(
-      true,
-    );
+    expect(
+      excluded.some((e) => e.reason === "missing_billing_date_column"),
+    ).toBe(true);
   });
 });
