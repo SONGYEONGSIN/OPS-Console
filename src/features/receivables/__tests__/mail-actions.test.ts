@@ -16,13 +16,20 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 
+vi.mock("@/lib/holidays/google-ical", () => ({
+  fetchKoreanHolidays: vi.fn(),
+}));
+
 import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 import { sendReminderEmails } from "../mail-actions";
 import type { ReminderGroup } from "../mail-schemas";
 
 const ORIG_ENV = { ...process.env };
+// 실발송 게이트(주말/공휴일) 통과용 — 평일(수) 고정
+const WEEKDAY = new Date("2026-06-03T10:00:00+09:00");
 
 const sampleGroup: ReminderGroup = {
   recipient: { email: "a@school.ac.kr", name: "김교사" },
@@ -61,9 +68,13 @@ function mockAdminInsert(): {
 beforeEach(() => {
   vi.resetAllMocks();
   process.env.MAIL_COMPANY_NAME = "진학어플라이";
+  vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(WEEKDAY);
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   process.env = { ...ORIG_ENV };
 });
 
@@ -155,6 +166,24 @@ describe("sendReminderEmails — admin", () => {
     const inserted = Array.isArray(row) ? row[0] : row;
     expect(inserted.status).toBe("sent");
     expect(inserted.graph_message_id).toBe("msg-1");
+  });
+
+  it("주말 실발송 → 차단(ok:false) + sendGraphMail 0회", async () => {
+    mockAdmin();
+    mockAdminInsert();
+    vi.setSystemTime(new Date("2026-05-30T10:00:00+09:00")); // 토요일
+    const r = await sendReminderEmails({ ...validInput, dryRun: false });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/주말|공휴일/);
+    expect(vi.mocked(sendGraphMail).mock.calls.length).toBe(0);
+  });
+
+  it("주말이어도 dryRun=true는 허용", async () => {
+    mockAdmin();
+    mockAdminInsert();
+    vi.setSystemTime(new Date("2026-05-30T10:00:00+09:00")); // 토요일
+    const r = await sendReminderEmails({ ...validInput, dryRun: true });
+    expect(r.ok).toBe(true);
   });
 
   it("Graph 실패 → insert status=failed + error_message 기록", async () => {

@@ -13,6 +13,8 @@ import {
 } from "./mail-schemas";
 import { buildReminderHtml, buildReminderSubject } from "./mail-template";
 import { findGroupForEmail, type FindGroupForEmailResult } from "./mail-queries";
+import { canSendOn } from "./mail-schedule";
+import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 
 /**
  * 인스펙터에서 호출 — 특정 학교담당자 이메일로 묶이는 그룹 후보 조회.
@@ -96,6 +98,17 @@ export async function sendReminderEmails(
       ok: false,
       error: "권한 없음 — admin 운영자만 발송할 수 있습니다.",
     };
+  }
+
+  // 주말·공휴일 차단 (원본 GAS 규칙). 실발송만 — dryRun 테스트는 언제든 허용.
+  if (!input.dryRun) {
+    const holidays = await fetchKoreanHolidays();
+    if (!canSendOn(new Date(), holidays)) {
+      return {
+        ok: false,
+        error: "주말·공휴일에는 미수 독려 메일을 발송할 수 없습니다.",
+      };
+    }
   }
 
   const admin = createAdminClient();

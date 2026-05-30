@@ -1,6 +1,7 @@
 import type { ReceivablesSheet } from "./queries";
 import type { ExcludedReason, ReminderItem } from "./mail-schemas";
 import { computeElapsedDays } from "./overdue";
+import { OPERATOR_TARGET_DAYS } from "./mail-schedule";
 import { OPERATORS } from "@/features/auth/operators";
 
 /** 운영자별로 묶인 미수채권 그룹 — 운영자 본인 메일로 발송 단위. */
@@ -107,6 +108,9 @@ export function groupReceivablesByOperator(
       excluded.push({ rowIndex: i, reason: "below_threshold" });
       continue;
     }
+    // 원본 GAS 규칙: 경과일수가 마일스톤(TARGET_DAYS)에 정확히 일치할 때만 발송.
+    // 그 외(11~14일 등)는 오늘 발송 대상 아님 — silent skip.
+    if (!OPERATOR_TARGET_DAYS.includes(daysOverdue)) continue;
 
     const amount = amountCol >= 0
       ? toNumber(values[amountCol] ?? text[amountCol]) ?? 0

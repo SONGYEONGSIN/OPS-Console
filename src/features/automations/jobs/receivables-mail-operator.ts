@@ -2,6 +2,8 @@ import "server-only";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { groupReceivablesByOperator } from "@/features/receivables/operator-mail-grouping";
 import { sendOperatorReminders } from "@/features/receivables/operator-mail-actions";
+import { canSendOn } from "@/features/receivables/mail-schedule";
+import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 import type { AutomationRunResult } from "../types";
 
 const DEFAULT_THRESHOLD_DAYS = 10;
@@ -31,6 +33,13 @@ function readDryRun(): boolean {
  * cron(GitHub Actions schedule) + 자동화 메뉴 manual trigger 양쪽에서 동일 호출.
  */
 export async function runReceivablesMailOperator(): Promise<AutomationRunResult> {
+  // 주말·공휴일 차단 (원본 GAS canRunToday_). cron이 평일만 돌아도 평일 공휴일은 코드로 차단.
+  const now = new Date();
+  const holidays = await fetchKoreanHolidays();
+  if (!canSendOn(now, holidays)) {
+    return { ok: true, message: "주말·공휴일 — 발송 안 함." };
+  }
+
   const sheet = await fetchReceivablesSheet();
   if (!sheet) {
     return {
@@ -41,7 +50,7 @@ export async function runReceivablesMailOperator(): Promise<AutomationRunResult>
   }
 
   const thresholdDays = readThreshold();
-  const { groups, excluded } = groupReceivablesByOperator(sheet, thresholdDays);
+  const { groups, excluded } = groupReceivablesByOperator(sheet, thresholdDays, now);
 
   if (groups.length === 0) {
     return {

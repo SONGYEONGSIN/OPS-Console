@@ -77,3 +77,7 @@ scripts/incidents-sheet-cache.txt
 scripts/incidents-sheet-cache.csv
 .gcp/
 .vercel
+
+# legacy GAS 참고자료 — 하드코딩 시크릿 포함, README만 추적
+docs/legacy-gas/*
+!docs/legacy-gas/README.md
