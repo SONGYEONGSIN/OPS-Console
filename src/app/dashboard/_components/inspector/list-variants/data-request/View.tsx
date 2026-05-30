@@ -285,19 +285,37 @@ export function DataRequestView({ row }: ViewProps) {
         </label>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending || !toEmail || (sendMode === "schedule" && !scheduledAt)}
-        className="w-full cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
-      >
-        {sendMode === "now"
-          ? pending
-            ? "발송 중…"
-            : "발송"
-          : pending
-            ? "예약 중…"
-            : "예약 발송"}
-      </button>
+      {/* 저장/취소 — 백업요청과 동일 레이아웃 (primary=ink, 취소=outline). 자료요청은
+          즉시 발송 액션이라 primary 라벨만 모드별, 취소는 입력 초기화. */}
+      <div className="flex gap-2 pt-2">
+        <button
+          type="submit"
+          disabled={pending || !toEmail || (sendMode === "schedule" && !scheduledAt)}
+          className="flex-1 cursor-pointer border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:cursor-default disabled:opacity-50"
+        >
+          {sendMode === "now"
+            ? pending
+              ? "발송 중…"
+              : "발송"
+            : pending
+              ? "예약 중…"
+              : "예약 발송"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setToEmail("");
+            setCc([]);
+            setSearch("");
+            setJustSelected(false);
+            setScheduledAt("");
+            setSendMode("now");
+          }}
+          className="flex-1 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+        >
+          취소
+        </button>
+      </div>
     </form>
   );
 }

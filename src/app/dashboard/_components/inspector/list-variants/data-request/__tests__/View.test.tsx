@@ -78,6 +78,18 @@ describe("DataRequestView", () => {
     expect(submit).toBeDisabled();
   });
 
+  it("취소 버튼은 선택한 수신자/예약 입력을 초기화한다", () => {
+    render(<DataRequestView row={row()} />);
+    // To 선택
+    fireEvent.change(screen.getByPlaceholderText(/연락처 검색/), { target: { value: "김" } });
+    fireEvent.click(screen.getByRole("button", { name: /김담당/ }));
+    expect(screen.getByText(/받는 사람:/)).toBeInTheDocument();
+    // 취소 → 초기화
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(screen.queryByText(/받는 사람:/)).toBeNull();
+    expect(screen.getByRole("button", { name: /^발송$/ })).toBeDisabled();
+  });
+
   it("이메일 후보가 없으면 안내", () => {
     const r = { ...row(), dataRequestRecipients: [] } as ListRow;
     render(<DataRequestView row={r} />);
