@@ -2,46 +2,101 @@
 
 import { useActionState, useState } from "react";
 import {
+  getJobRunLogAction,
   runAutomationAction,
   setAutomationEnabledAction,
   type RunActionState,
 } from "@/features/automations/actions";
 import type { AutomationStatus } from "@/features/automations/types";
+import type { JobRunLog } from "@/features/automations/run-logs-normalize";
+import { InspectorPanel } from "@/app/dashboard/_components/inspector/InspectorPanel";
+import { AutomationLogPanel } from "./AutomationLogPanel";
 
 export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
+  const [selected, setSelected] = useState<{
+    jobId: string;
+    label: string;
+  } | null>(null);
+  const [log, setLog] = useState<JobRunLog | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function openLog(status: AutomationStatus) {
+    setSelected({ jobId: status.id, label: status.label });
+    setLog(null);
+    setError(null);
+    setLoading(true);
+    const res = await getJobRunLogAction(status.id);
+    setLoading(false);
+    if (res.ok) setLog(res.log);
+    else setError(res.message);
+  }
+
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-          <th className="px-3 py-2">자동화</th>
-          <th className="px-3 py-2">스케줄 · 마지막 실행</th>
-          <th className="px-3 py-2">자동 실행</th>
-          <th className="px-3 py-2">수동 실행</th>
-        </tr>
-      </thead>
-      <tbody>
-        {statuses.length === 0 ? (
-          <tr>
-            <td colSpan={4} className="px-3 py-6 text-center text-muted">
-              등록된 자동화가 없습니다.
-            </td>
+    <>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+            <th className="px-3 py-2">자동화</th>
+            <th className="px-3 py-2">스케줄 · 마지막 실행</th>
+            <th className="px-3 py-2">자동 실행</th>
+            <th className="px-3 py-2">수동 실행</th>
           </tr>
-        ) : (
-          statuses.map((s) => <AutomationRow key={s.id} status={s} />)
+        </thead>
+        <tbody>
+          {statuses.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="px-3 py-6 text-center text-muted">
+                등록된 자동화가 없습니다.
+              </td>
+            </tr>
+          ) : (
+            statuses.map((s) => (
+              <AutomationRow key={s.id} status={s} onOpenLog={openLog} />
+            ))
+          )}
+        </tbody>
+      </table>
+
+      <InspectorPanel open={selected !== null} onClose={() => setSelected(null)}>
+        {selected && (
+          <AutomationLogPanel
+            label={selected.label}
+            loading={loading}
+            error={error}
+            log={log}
+          />
         )}
-      </tbody>
-    </table>
+      </InspectorPanel>
+    </>
   );
 }
 
-function AutomationRow({ status }: { status: AutomationStatus }) {
+function AutomationRow({
+  status,
+  onOpenLog,
+}: {
+  status: AutomationStatus;
+  onOpenLog: (status: AutomationStatus) => void;
+}) {
   return (
     <tr className="border-b border-line align-top">
       <td className="px-3 py-3">
-        <div className="font-semibold text-ink">{status.label}</div>
-        <div className="mt-0.5 text-xs leading-[1.5] text-muted">
-          {status.description}
-        </div>
+        <button
+          type="button"
+          onClick={() => onOpenLog(status)}
+          className="group block w-full cursor-pointer text-left"
+        >
+          <div className="font-semibold text-ink transition-colors group-hover:text-vermilion">
+            {status.label}
+          </div>
+          <div className="mt-0.5 text-xs leading-[1.5] text-muted">
+            {status.description}
+          </div>
+          <div className="mt-1 text-[11px] text-muted opacity-0 transition-opacity group-hover:opacity-100">
+            클릭하여 실행 로그 보기 →
+          </div>
+        </button>
       </td>
       <td className="px-3 py-3 text-xs text-muted">
         <div>{status.scheduleInfo}</div>

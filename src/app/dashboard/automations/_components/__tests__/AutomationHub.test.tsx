@@ -1,6 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+vi.mock("@/features/automations/actions", () => ({
+  getJobRunLogAction: vi.fn(),
+  runAutomationAction: vi.fn(),
+  setAutomationEnabledAction: vi.fn(),
+}));
+
 import { AutomationHub } from "../AutomationHub";
+import { getJobRunLogAction } from "@/features/automations/actions";
 import type { AutomationStatus } from "@/features/automations/types";
 
 const base: AutomationStatus = {
@@ -59,5 +67,48 @@ describe("AutomationHub", () => {
     expect(
       screen.getByRole("button", { name: /quota 소모 — 확인/ }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("AutomationHub — 로그 인스펙터", () => {
+  const match: AutomationStatus = {
+    ...base,
+    id: "receivables-deposit-match",
+    label: "입금 매칭 자동화",
+    description: "SharePoint 미수채권 매칭",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("자동화 행 클릭 시 해당 jobId로 로그를 조회하고 패널을 연다", async () => {
+    (getJobRunLogAction as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      log: { jobId: match.id, kind: "deposit-match", entries: [] },
+    });
+
+    render(<AutomationHub statuses={[match]} />);
+    expect(screen.queryByText("실행 로그 · 최근 20건")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /입금 매칭 자동화/ }));
+
+    await waitFor(() => {
+      expect(getJobRunLogAction).toHaveBeenCalledWith(match.id);
+    });
+    expect(await screen.findByText("실행 로그 · 최근 20건")).toBeInTheDocument();
+    expect(screen.getByText("실행 기록이 없습니다.")).toBeInTheDocument();
+  });
+
+  it("조회 실패 시 에러 메시지를 패널에 표시", async () => {
+    (getJobRunLogAction as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      message: "알 수 없는 자동화",
+    });
+
+    render(<AutomationHub statuses={[match]} />);
+    fireEvent.click(screen.getByRole("button", { name: /입금 매칭 자동화/ }));
+
+    expect(await screen.findByText("알 수 없는 자동화")).toBeInTheDocument();
   });
 });
