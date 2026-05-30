@@ -46,8 +46,9 @@ describe("SEARCH_QUERIES", () => {
     expect(SEARCH_QUERIES).toContain("바이브코딩");
   });
 
-  it("신규 키워드 자동화/CODEX/하네스 포함", () => {
-    expect(SEARCH_QUERIES).toContain("자동화");
+  it("신규 키워드 AI자동화/CODEX/하네스 포함 (자동화→AI자동화)", () => {
+    expect(SEARCH_QUERIES).toContain("AI자동화");
+    expect(SEARCH_QUERIES).not.toContain("자동화");
     expect(SEARCH_QUERIES).toContain("CODEX");
     expect(SEARCH_QUERIES).toContain("하네스");
   });

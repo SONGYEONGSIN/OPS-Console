@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   batchIds,
+  buildSearchParams,
   dedupeByVideoId,
   excludeBlocked,
   filterPopular,
@@ -51,6 +52,22 @@ describe("rankTopN", () => {
   it("view_count 내림차순 상위 N (null은 후순위)", () => {
     const out = rankTopN([v("a", 100), v("b", 300), v("c", undefined), v("d", 200)], 2);
     expect(out.map((r) => r.video_id)).toEqual(["b", "d"]);
+  });
+});
+
+describe("buildSearchParams", () => {
+  it("국내 우선 — regionCode=KR + relevanceLanguage=ko 포함", () => {
+    const p = buildSearchParams("바이브코딩", "2026-05-01T00:00:00Z", "KEY");
+    expect(p.get("regionCode")).toBe("KR");
+    expect(p.get("relevanceLanguage")).toBe("ko");
+  });
+
+  it("q / order / publishedAfter / key 전달", () => {
+    const p = buildSearchParams("AI자동화", "2026-05-01T00:00:00Z", "KEY");
+    expect(p.get("q")).toBe("AI자동화");
+    expect(p.get("order")).toBe("viewCount");
+    expect(p.get("publishedAfter")).toBe("2026-05-01T00:00:00Z");
+    expect(p.get("key")).toBe("KEY");
   });
 });
 
