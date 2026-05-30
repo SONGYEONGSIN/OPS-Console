@@ -13,9 +13,14 @@ const ALL = "__ALL__";
 type Props = {
   videos: InsightVideoRow[];
   title?: string;
+  canDelete?: boolean;
 };
 
-export function VideoGridSection({ videos, title = "인사이트" }: Props) {
+export function VideoGridSection({
+  videos,
+  title = "인사이트",
+  canDelete = false,
+}: Props) {
   const inspector = useInspectorState<InsightVideoRow>();
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState<string>(ALL);
@@ -117,7 +122,11 @@ export function VideoGridSection({ videos, title = "인사이트" }: Props) {
         )}
       </div>
       <InspectorPanel open={open} onClose={inspector.close}>
-        <InsightInspectorBody video={inspector.selected} />
+        <InsightInspectorBody
+          video={inspector.selected}
+          canDelete={canDelete}
+          onDeleted={inspector.close}
+        />
       </InspectorPanel>
     </>
   );

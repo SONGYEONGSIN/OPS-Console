@@ -1,12 +1,15 @@
 "use client";
 
 import type { InsightVideoRow } from "@/features/insight-videos/schemas";
+import { DeleteVideoButton } from "./DeleteVideoButton";
 
 type Props = {
   video: InsightVideoRow | null;
+  canDelete?: boolean;
+  onDeleted?: () => void;
 };
 
-export function InsightInspectorBody({ video }: Props) {
+export function InsightInspectorBody({ video, canDelete, onDeleted }: Props) {
   if (!video) return null;
 
   return (
@@ -57,6 +60,12 @@ export function InsightInspectorBody({ video }: Props) {
       >
         YouTube에서 열기 →
       </a>
+
+      {canDelete && (
+        <div className="mt-1 border-t border-line pt-3">
+          <DeleteVideoButton id={video.id} onDeleted={onDeleted} />
+        </div>
+      )}
     </div>
   );
 }
