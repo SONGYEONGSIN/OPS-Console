@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockGetCurrentOperator, mockDelete, mockLogActivity } = vi.hoisted(
-  () => ({
+const { mockGetCurrentOperator, mockDelete, mockBlocklistUpsert, mockLogActivity } =
+  vi.hoisted(() => ({
     mockGetCurrentOperator: vi.fn(),
     mockDelete: vi.fn(),
+    mockBlocklistUpsert: vi.fn(),
     mockLogActivity: vi.fn(),
-  }),
-);
+  }));
 
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: mockGetCurrentOperator,
@@ -18,13 +18,18 @@ vi.mock("@/features/worklog/log", () => ({ logActivity: mockLogActivity }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
-    from: () => ({
-      delete: () => ({
-        eq: () => ({
-          select: () => ({ maybeSingle: mockDelete }),
+    from: (table: string) => {
+      if (table === "insight_video_blocklist") {
+        return { upsert: mockBlocklistUpsert };
+      }
+      return {
+        delete: () => ({
+          eq: () => ({
+            select: () => ({ maybeSingle: mockDelete }),
+          }),
         }),
-      }),
-    }),
+      };
+    },
   })),
 }));
 
@@ -38,7 +43,7 @@ const adminMe = {
 const memberMe = { ...adminMe, email: "m@x.com", permission: "member" as const };
 
 const VALID_ID = "11111111-1111-4111-8111-111111111111";
-const row = { id: VALID_ID, title: "테스트 영상" };
+const row = { id: VALID_ID, title: "테스트 영상", video_id: "abc123" };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -66,11 +71,17 @@ describe("deleteInsightVideo", () => {
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  it("admin + 유효 id → 삭제 성공 + logActivity 기록", async () => {
+  it("admin + 유효 id → 삭제 성공 + blocklist 등록 + logActivity 기록", async () => {
     mockGetCurrentOperator.mockResolvedValue(adminMe);
     mockDelete.mockResolvedValue({ data: row, error: null });
+    mockBlocklistUpsert.mockResolvedValue({ error: null });
     const res = await deleteInsightVideo(VALID_ID);
-    expect(res).toEqual({ ok: true, row });
+    expect(res).toEqual({ ok: true, row: { id: VALID_ID, title: "테스트 영상" } });
+    expect(mockBlocklistUpsert).toHaveBeenCalledTimes(1);
+    expect(mockBlocklistUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ video_id: "abc123" }),
+      expect.objectContaining({ onConflict: "video_id" }),
+    );
     expect(mockLogActivity).toHaveBeenCalledTimes(1);
     expect(mockLogActivity).toHaveBeenCalledWith(
       expect.objectContaining({

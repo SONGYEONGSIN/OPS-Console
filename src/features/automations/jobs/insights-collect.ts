@@ -47,6 +47,28 @@ export function rankTopN(rows: CollectedVideo[], n: number): CollectedVideo[] {
     .slice(0, n);
 }
 
+/** 차단 목록(insight_video_blocklist)에 등록된 video_id를 제외 — 삭제된 영상 재수집 방지. */
+export function excludeBlocked(
+  rows: CollectedVideo[],
+  blocked: Set<string>,
+): CollectedVideo[] {
+  if (blocked.size === 0) return rows;
+  return rows.filter((r) => !blocked.has(r.video_id));
+}
+
+/** insight_video_blocklist의 video_id 집합. 조회 실패 시 빈 집합(수집은 계속). */
+async function getBlockedVideoIds(): Promise<Set<string>> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("insight_video_blocklist")
+    .select("video_id");
+  if (error) {
+    console.error("[insights-collect] blocklist fetch fail:", error.message);
+    return new Set();
+  }
+  return new Set((data ?? []).map((r) => r.video_id as string));
+}
+
 type YtSearchItem = {
   id?: { videoId?: string };
   snippet?: {
@@ -124,7 +146,10 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
     }
   }
 
-  const rows = dedupeByVideoId(collected);
+  const deduped = dedupeByVideoId(collected);
+  // 삭제(blocklist 등록)된 영상은 재수집하지 않는다. videos.list 보강 전에 걸러 quota도 절약.
+  const blocked = await getBlockedVideoIds();
+  const rows = excludeBlocked(deduped, blocked);
   if (rows.length === 0) {
     return {
       ok: errors.length === 0,

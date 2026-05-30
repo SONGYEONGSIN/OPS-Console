@@ -23,7 +23,10 @@ const idSchema = z.string().uuid();
  *
  * insight_videos는 DELETE RLS 정책이 없어(자동 차단) authenticated client로는
  * 지울 수 없다. admin 컨텍스트에서만 호출되므로 service_role(admin client)로 삭제한다.
- * 동일 video_id는 다음 수집 cron(upsert)에서 다시 적재될 수 있다.
+ *
+ * 삭제한 video_id는 insight_video_blocklist에 영구 등록하여 다음 수집 cron이
+ * 다시 적재하지 않도록 한다(runInsightsCollect의 excludeBlocked). blocklist 등록
+ * 실패는 삭제 자체를 막지 않고 로그만 남긴다(이미 삭제는 성공).
  */
 export async function deleteInsightVideo(
   id: string,
@@ -43,11 +46,29 @@ export async function deleteInsightVideo(
     .from("insight_videos")
     .delete()
     .eq("id", parsed.data)
-    .select("id, title")
+    .select("id, title, video_id")
     .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: NOT_FOUND_ERROR };
+
+  const { error: blockError } = await supabase
+    .from("insight_video_blocklist")
+    .upsert(
+      {
+        video_id: data.video_id,
+        title: data.title,
+        blocked_by: me.email,
+        blocked_at: new Date().toISOString(),
+      },
+      { onConflict: "video_id" },
+    );
+  if (blockError) {
+    console.error(
+      "[deleteInsightVideo] blocklist upsert fail:",
+      blockError.message,
+    );
+  }
 
   await logActivity({
     domain: "ai-insight",
@@ -56,9 +77,9 @@ export async function deleteInsightVideo(
     target_id: parsed.data,
     target_name: data.title,
     level: "WARN",
-    msg: "인사이트 영상 삭제",
+    msg: "인사이트 영상 삭제 (재수집 차단)",
   });
 
   revalidatePath(AI_INSIGHT_PATH);
-  return { ok: true, row: data };
+  return { ok: true, row: { id: data.id, title: data.title } };
 }
