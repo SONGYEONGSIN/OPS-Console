@@ -56,14 +56,26 @@ describe("DataRequestView", () => {
     expect(screen.getByText(/받는 사람:/)).toBeInTheDocument();
   });
 
-  it("예약 시각 입력 + '예약 발송' 버튼 렌더", () => {
+  it("기본은 지금 발송 — 예약 시각 숨김, '예약 발송' 토글 클릭 시 노출", () => {
     render(<DataRequestView row={row()} />);
+    // 기본(지금 발송): 예약 시각 숨김
+    expect(screen.queryByLabelText("예약 시각")).toBeNull();
+    // '예약 발송' 토글(이 시점엔 토글만 존재) 클릭 → 예약 시각 노출
+    fireEvent.click(screen.getByRole("button", { name: "예약 발송" }));
     expect(screen.getByLabelText("예약 시각")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "예약 발송" })).toBeInTheDocument();
   });
-  it("예약 시각 미입력 시 '예약 발송' 비활성", () => {
+  it("예약 발송 모드 + 예약 시각 미입력이면 제출 버튼 비활성", () => {
     render(<DataRequestView row={row()} />);
-    expect(screen.getByRole("button", { name: "예약 발송" })).toBeDisabled();
+    // To 선택
+    fireEvent.change(screen.getByPlaceholderText(/연락처 검색/), { target: { value: "김" } });
+    fireEvent.click(screen.getByRole("button", { name: /김담당/ }));
+    // 예약 발송 토글로 전환
+    fireEvent.click(screen.getByRole("button", { name: "예약 발송" }));
+    // 제출 버튼(type=submit)은 라벨이 '예약 발송' — 예약 시각 미입력 → 비활성
+    const submit = screen
+      .getAllByRole("button", { name: "예약 발송" })
+      .find((b) => b.getAttribute("type") === "submit");
+    expect(submit).toBeDisabled();
   });
 
   it("이메일 후보가 없으면 안내", () => {

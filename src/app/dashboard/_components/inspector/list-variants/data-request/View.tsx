@@ -10,6 +10,23 @@ import { buildDefaultDataRequestText } from "@/features/data-requests/mail-templ
 
 type Recipient = { email: string; name: string; department: string | null; universityName: string };
 
+/** ISO → KST 'YYYY.MM.DD HH:mm'. null/실패 시 빈 문자열. */
+function formatKstDateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const p = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const g = (t: string) => p.find((x) => x.type === t)?.value;
+  const [y, m, d, hh, mi] = [g("year"), g("month"), g("day"), g("hour"), g("minute")];
+  return y && m && d && hh && mi ? `${y}.${m}.${d} ${hh}:${mi}` : "";
+}
+
 export function DataRequestView({ row }: ViewProps) {
   const recipients = (row.dataRequestRecipients ?? []) as Recipient[];
   const sender = row.dataRequestSender;
@@ -30,6 +47,10 @@ export function DataRequestView({ row }: ViewProps) {
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState<Recipient[]>([]);
   const [scheduledAt, setScheduledAt] = useState("");
+  /** 발송 모드 — now=지금 발송, schedule=예약 발송 (backup 패턴) */
+  const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
+
+  const mailStatus = row.dataRequestStatus ?? null;
 
   const term = search.trim().toLowerCase();
   const matches =
@@ -74,8 +95,33 @@ export function DataRequestView({ row }: ViewProps) {
         {row.universityName} · {row.serviceName ?? row.name}
       </h2>
 
+      {mailStatus === "scheduled" ? (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="inline-block bg-washi-raised px-2 py-0.5 text-2xs text-ink">
+            예약됨
+          </span>
+          {row.dataRequestScheduledAt ? (
+            <span className="text-muted">
+              {formatKstDateTime(row.dataRequestScheduledAt)} 발송 예정
+            </span>
+          ) : null}
+        </div>
+      ) : mailStatus === "sent" ? (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="inline-block bg-sage/15 px-2 py-0.5 text-2xs text-sage">
+            발송됨
+          </span>
+          {row.dataRequestLastSentAt ? (
+            <span className="text-muted">
+              {formatKstDateTime(row.dataRequestLastSentAt)} 발송
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <input type="hidden" name="universityName" value={row.universityName ?? ""} />
       <input type="hidden" name="serviceId" value={row.id} />
+      <input type="hidden" name="mode" value={sendMode} />
       <input type="hidden" name="toEmail" value={toEmail} />
       <input type="hidden" name="toName" value={toRecipient?.name ?? ""} />
       <input
@@ -193,42 +239,65 @@ export function DataRequestView({ row }: ViewProps) {
         />
       </label>
 
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">예약 시각</span>
-        <input
-          type="datetime-local"
-          name="scheduledAt"
-          aria-label="예약 시각"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-          className={inputClass}
-        />
-      </label>
-
       {state ? (
         <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>{state.message}</p>
       ) : null}
 
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          name="mode"
-          value="now"
-          disabled={pending || !toEmail}
-          className="flex-1 cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
-        >
-          {pending ? "발송 중…" : "발송"}
-        </button>
-        <button
-          type="submit"
-          name="mode"
-          value="schedule"
-          disabled={pending || !toEmail || !scheduledAt}
-          className="flex-1 cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm font-medium text-vermilion transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
-        >
-          {pending ? "예약 중…" : "예약 발송"}
-        </button>
+      {/* 발송 모드 — 지금 발송 / 예약 발송 (backup 패턴: gap 분리 + 각 버튼 border) */}
+      <div className="block text-xs" role="radiogroup" aria-label="발송 모드">
+        <span className="mb-1 block text-muted">발송 모드</span>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            aria-pressed={sendMode === "now"}
+            onClick={() => setSendMode("now")}
+            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
+              sendMode === "now" ? "bg-ink text-cream" : "bg-cream text-ink hover:bg-washi"
+            }`}
+          >
+            지금 발송
+          </button>
+          <button
+            type="button"
+            aria-pressed={sendMode === "schedule"}
+            onClick={() => setSendMode("schedule")}
+            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
+              sendMode === "schedule" ? "bg-ink text-cream" : "bg-cream text-ink hover:bg-washi"
+            }`}
+          >
+            예약 발송
+          </button>
+        </div>
       </div>
+
+      {sendMode === "schedule" ? (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">예약 시각 (KST)</span>
+          <input
+            type="datetime-local"
+            name="scheduledAt"
+            aria-label="예약 시각"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            required
+            className={inputClass}
+          />
+        </label>
+      ) : null}
+
+      <button
+        type="submit"
+        disabled={pending || !toEmail || (sendMode === "schedule" && !scheduledAt)}
+        className="w-full cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm font-medium text-cream transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-50"
+      >
+        {sendMode === "now"
+          ? pending
+            ? "발송 중…"
+            : "발송"
+          : pending
+            ? "예약 중…"
+            : "예약 발송"}
+      </button>
     </form>
   );
 }

@@ -3,7 +3,9 @@ import {
   toRecipients,
   filterRecipients,
   latestSentByService,
+  deriveStatusByService,
   type DataRequestRecipient,
+  type DataRequestStatusRow,
 } from "../queries";
 
 const contacts = [
@@ -51,5 +53,67 @@ describe("latestSentByService", () => {
       { service_id: "a", sent_at: null },
     ];
     expect(latestSentByService(rows)).toEqual({});
+  });
+});
+
+describe("deriveStatusByService", () => {
+  it("scheduled 발송 건은 '예약됨' + 예약 시각", () => {
+    const rows: DataRequestStatusRow[] = [
+      { service_id: "a", status: "scheduled", scheduled_at: "2026-06-01T01:00:00Z", sent_at: null },
+    ];
+    expect(deriveStatusByService(rows)).toEqual({
+      a: { status: "scheduled", scheduledAt: "2026-06-01T01:00:00Z", lastSentAt: null },
+    });
+  });
+
+  it("sent 발송 건은 '발송됨' + 최근 발송 시각", () => {
+    const rows: DataRequestStatusRow[] = [
+      { service_id: "a", status: "sent", scheduled_at: null, sent_at: "2026-05-20T01:00:00Z" },
+      { service_id: "a", status: "sent", scheduled_at: null, sent_at: "2026-05-22T03:00:00Z" },
+    ];
+    expect(deriveStatusByService(rows)).toEqual({
+      a: { status: "sent", scheduledAt: null, lastSentAt: "2026-05-22T03:00:00Z" },
+    });
+  });
+
+  it("예약 + 발송이 함께 있으면 예약됨 우선 (lastSentAt도 보존)", () => {
+    const rows: DataRequestStatusRow[] = [
+      { service_id: "a", status: "sent", scheduled_at: null, sent_at: "2026-05-20T01:00:00Z" },
+      { service_id: "a", status: "scheduled", scheduled_at: "2026-06-05T00:00:00Z", sent_at: null },
+    ];
+    expect(deriveStatusByService(rows)).toEqual({
+      a: { status: "scheduled", scheduledAt: "2026-06-05T00:00:00Z", lastSentAt: "2026-05-20T01:00:00Z" },
+    });
+  });
+
+  it("예약이 여러 건이면 가장 이른 예약 시각", () => {
+    const rows: DataRequestStatusRow[] = [
+      { service_id: "a", status: "scheduled", scheduled_at: "2026-06-10T00:00:00Z", sent_at: null },
+      { service_id: "a", status: "scheduled", scheduled_at: "2026-06-03T00:00:00Z", sent_at: null },
+    ];
+    expect(deriveStatusByService(rows).a).toEqual({
+      status: "scheduled",
+      scheduledAt: "2026-06-03T00:00:00Z",
+      lastSentAt: null,
+    });
+  });
+
+  it("failed/dry_run/pending만 있으면 상태 null", () => {
+    const rows: DataRequestStatusRow[] = [
+      { service_id: "a", status: "failed", scheduled_at: null, sent_at: null },
+      { service_id: "a", status: "dry_run", scheduled_at: null, sent_at: null },
+    ];
+    expect(deriveStatusByService(rows).a).toEqual({
+      status: null,
+      scheduledAt: null,
+      lastSentAt: null,
+    });
+  });
+
+  it("service_id null 행은 무시", () => {
+    const rows: DataRequestStatusRow[] = [
+      { service_id: null, status: "scheduled", scheduled_at: "2026-06-01T00:00:00Z", sent_at: null },
+    ];
+    expect(deriveStatusByService(rows)).toEqual({});
   });
 });
