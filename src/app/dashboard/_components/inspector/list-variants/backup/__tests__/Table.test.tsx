@@ -24,7 +24,7 @@ describe("BackupTable", () => {
     expect(screen.getByText("데이터 없음")).toBeInTheDocument();
   });
 
-  it("요청자 / 백업자 / 휴가기간 / 제목 / 메일 발송일자 컬럼 렌더", () => {
+  it("요청자 / 백업자 / 휴가기간 / 제목 / 상태 / 발송일자 컬럼 렌더", () => {
     render(
       <BackupTable rows={[sampleRow]} selectedId={null} onSelect={() => {}} />,
     );
@@ -34,8 +34,17 @@ describe("BackupTable", () => {
     expect(screen.getByText("2026-05-20 ~ 2026-05-25")).toBeInTheDocument();
     // 제목
     expect(screen.getByText("백업 요청 1")).toBeInTheDocument();
-    // 메일 발송일자 — KST 'yyyy-mm-dd HH:mm' (UTC 01:30 = KST 10:30 → 2026-05-26 10:30)
+    // 상태 헤더 + sent → 발송됨 배지
+    expect(screen.getByText("상태")).toBeInTheDocument();
+    expect(screen.getByText("발송됨")).toBeInTheDocument();
+    // 발송일자 — KST 'yyyy-mm-dd HH:mm' (UTC 01:30 = KST 10:30 → 2026-05-26 10:30)
     expect(screen.getByText("2026-05-26 10:30")).toBeInTheDocument();
+  });
+
+  it("mailStatus='scheduled'면 상태 칸에 '예약됨' 배지", () => {
+    const row: ListRow = { ...sampleRow, mailStatus: "scheduled" };
+    render(<BackupTable rows={[row]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByText("예약됨")).toBeInTheDocument();
   });
 
   it("mailSentAt 없으면 '—'", () => {

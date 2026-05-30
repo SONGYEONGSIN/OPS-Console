@@ -62,6 +62,26 @@ function formatYmdHmKst(iso: string): string {
   return `${ymd} ${hm}`;
 }
 
+/** 백업 mail_status → 목록 배지. backup/View.tsx 라벨·톤과 일치. */
+const MAIL_STATUS_BADGE: Record<string, { label: string; tone: string }> = {
+  pending: { label: "대기", tone: "bg-washi-raised text-muted" },
+  scheduled: { label: "예약됨", tone: "bg-washi-raised text-ink" },
+  sending: { label: "발송 중", tone: "bg-washi-raised text-ink-soft" },
+  sent: { label: "발송됨", tone: "bg-sage/15 text-sage" },
+  mail_failed: { label: "발송 실패", tone: "bg-vermilion/15 text-vermilion" },
+  dry_run: { label: "테스트", tone: "bg-washi-raised text-ink-soft" },
+};
+
+function StatusBadge({ status }: { status?: string }) {
+  const badge = status ? MAIL_STATUS_BADGE[status] : undefined;
+  if (!badge) return <span className="text-ink-soft">—</span>;
+  return (
+    <span className={`inline-block px-2 py-0.5 text-2xs ${badge.tone}`}>
+      {badge.label}
+    </span>
+  );
+}
+
 export function BackupTable({ rows, selectedId, onSelect }: Props) {
   return (
     <table className="w-full text-sm">
@@ -72,13 +92,14 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">휴가기간</th>
           <th className="px-3 py-2">제목</th>
           <th className="px-3 py-2">백업 서비스</th>
-          <th className="px-3 py-2">메일 발송일자</th>
+          <th className="px-3 py-2">상태</th>
+          <th className="px-3 py-2">발송일자</th>
         </tr>
       </thead>
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={6} className="px-3 py-6 text-center text-muted">
+            <td colSpan={7} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
@@ -101,6 +122,9 @@ export function BackupTable({ rows, selectedId, onSelect }: Props) {
               <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
               <td className="px-3 py-2 text-xs text-ink-soft">
                 {servicesPreview(row)}
+              </td>
+              <td className="px-3 py-2">
+                <StatusBadge status={row.mailStatus} />
               </td>
               <td className="px-3 py-2 text-xs text-ink-soft">
                 {row.mailSentAt ? formatYmdHmKst(row.mailSentAt) : "—"}
