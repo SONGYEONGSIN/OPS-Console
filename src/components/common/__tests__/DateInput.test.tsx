@@ -7,10 +7,16 @@ type ShowPickerProto = { showPicker?: () => void };
 const proto = HTMLInputElement.prototype as unknown as ShowPickerProto;
 
 describe("DateInput", () => {
-  it("type='date' 강제 렌더", () => {
+  it("type 미지정 시 'date'로 렌더", () => {
     render(<DateInput aria-label="마감일" />);
     const input = screen.getByLabelText("마감일") as HTMLInputElement;
     expect(input.type).toBe("date");
+  });
+
+  it("type='datetime-local' 전달 시 그대로 렌더", () => {
+    render(<DateInput aria-label="예약 시각" type="datetime-local" />);
+    const input = screen.getByLabelText("예약 시각") as HTMLInputElement;
+    expect(input.type).toBe("datetime-local");
   });
 
   it("input 클릭 시 showPicker 호출 (Chrome 칸 어디든 picker 열림)", () => {

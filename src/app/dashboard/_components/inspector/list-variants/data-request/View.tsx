@@ -7,6 +7,7 @@ import {
   type DataRequestActionState,
 } from "@/features/data-requests/actions";
 import { buildDefaultDataRequestText } from "@/features/data-requests/mail-template";
+import { DateInput } from "@/components/common/DateInput";
 
 type Recipient = { email: string; name: string; department: string | null; universityName: string };
 
@@ -273,7 +274,7 @@ export function DataRequestView({ row }: ViewProps) {
       {sendMode === "schedule" ? (
         <label className="block text-xs">
           <span className="mb-1 block text-muted">예약 시각 (KST)</span>
-          <input
+          <DateInput
             type="datetime-local"
             name="scheduledAt"
             aria-label="예약 시각"

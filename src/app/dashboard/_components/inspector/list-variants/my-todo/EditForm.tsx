@@ -2,6 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
+import { DateInput } from "@/components/common/DateInput";
 
 type Props = {
   row: ListRow;
@@ -84,7 +85,7 @@ export function MyTodoForm({ row, setRow, onSave, onCancel }: Props) {
         </label>
         <label className="block text-xs">
           <span className="mb-1 block text-muted">마감 (KST, 선택)</span>
-          <input
+          <DateInput
             type="datetime-local"
             aria-label="마감"
             value={isoToLocalKst(row.dueAt ?? undefined)}
