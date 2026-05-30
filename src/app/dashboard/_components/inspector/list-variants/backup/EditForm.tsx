@@ -384,7 +384,7 @@ export function BackupForm({
       {sendMode === "schedule" && (
         <label className="block text-xs">
           <span className="mb-1 block text-muted">예약 시각 (KST)</span>
-          <input
+          <DateInput
             aria-label="예약 시각"
             type="datetime-local"
             value={scheduledAtInput}
