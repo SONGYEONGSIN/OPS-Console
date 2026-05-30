@@ -113,11 +113,12 @@ export function buildOperatorReminderHtml(args: BuildHtmlArgs): string {
     </div>
 
     <div style="margin-top:18px;font-size:13px;color:#6b7280;line-height:1.6;">
-      ※ 입금이 확인되면 OPS-Console 자동화(매시간)가 자동으로 적요를 '입금완료'로 표기합니다. 별도 조작 불필요.
+      ※ 운영부 상황실에서 미수채권을 입금 내역을 체크하여 관리대장에 '입금완료' 표기합니다.<br/>
+      ※ 30일 경과하지 않도록 학교 담당자 항목에 이메일을 작성하여 인지할 수 있도록해 주세요.
     </div>
 
     <div style="margin-top:22px;text-align:center;font-size:12px;color:#111;background:#FEF9C3;padding:8px 0;border-radius:3px;">
-      ※ 본 알림 메일은 OPS-Console 자동화에서 자동 발송되었습니다.
+      ※ 본 알림 메일은 운영부 상황실에서 자동 발송되었습니다.
     </div>
   </div>`;
 }
