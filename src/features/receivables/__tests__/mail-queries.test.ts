@@ -47,7 +47,7 @@ describe("previewReminderRecipients", () => {
     expect(r.thresholdDays).toBe(10);
   });
 
-  it("마일스톤 도달 행 1건 → 1 그룹", async () => {
+  it("경과 >= 10 행 1건 → 1 그룹", async () => {
     delete process.env.MAIL_REMINDER_THRESHOLD_DAYS;
     vi.mocked(fetchReceivablesSheet).mockResolvedValueOnce(
       sheet([["2026-05-22", "A학교", 1_000_000, "ok@x.com"]]), // 10일
@@ -57,7 +57,7 @@ describe("previewReminderRecipients", () => {
     expect(r.groups).toHaveLength(1);
   });
 
-  it("threshold ENV 값을 적용 (마일스톤이어도 threshold 미만이면 제외)", async () => {
+  it("threshold ENV 값을 적용 (threshold 미만이면 제외)", async () => {
     process.env.MAIL_REMINDER_THRESHOLD_DAYS = "20";
     vi.mocked(fetchReceivablesSheet).mockResolvedValueOnce(
       sheet([
@@ -80,7 +80,7 @@ describe("findGroupForEmail", () => {
     expect(r.sheetAvailable).toBe(false);
   });
 
-  it("같은 이메일 여러 마일스톤 행 → 모두 묶인 그룹 반환", async () => {
+  it("같은 이메일 여러 행 → 모두 묶인 그룹 반환", async () => {
     vi.mocked(fetchReceivablesSheet).mockResolvedValueOnce(
       sheet([
         ["2026-05-22", "A학교", 1_000_000, "same@x.com"], // 10일
