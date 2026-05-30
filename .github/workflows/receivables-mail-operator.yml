@@ -1,9 +1,8 @@
 name: receivables-mail-operator
 
 on:
-  schedule:
-    # 평일(월~금) 01:00 UTC = 한국 10:00 — 운영자 본인 미수채권 알림
-    - cron: "0 1 * * 1-5"
+  # schedule 제거 — cron-job.org(평일 10:00 KST)가 호출. 중복 방지 위해 GitHub cron은 끄고
+  # 수동 트리거(workflow_dispatch)만 유지. 실행은 자동화 메뉴 토글(enabled)로 게이트.
   workflow_dispatch:
 
 env:
