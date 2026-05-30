@@ -63,6 +63,19 @@ describe("buildOperatorReminderHtml", () => {
     expect(html).toMatch(/💬|<em>/);
   });
 
+  it("안내 문구 — 운영부 상황실 표기 + 학교 담당자 30일 안내, OPS-Console 미노출", () => {
+    const html = buildOperatorReminderHtml({ group });
+    expect(html).toContain(
+      "운영부 상황실에서 미수채권을 입금 내역을 체크하여 관리대장에 '입금완료' 표기합니다.",
+    );
+    expect(html).toContain(
+      "30일 경과하지 않도록 학교 담당자 항목에 이메일을 작성하여 인지할 수 있도록해 주세요.",
+    );
+    expect(html).toContain("본 알림 메일은 운영부 상황실에서 자동 발송되었습니다.");
+    // 브랜드 규칙: 메일 본문에 OPS-Console 노출 금지
+    expect(html).not.toContain("OPS-Console");
+  });
+
   it("XSS 방지 — 거래처명에 HTML 태그 들어와도 escape", () => {
     const evil: OperatorReminderGroup = {
       ...group,
