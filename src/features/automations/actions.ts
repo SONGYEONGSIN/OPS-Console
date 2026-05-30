@@ -13,9 +13,26 @@ import {
   getJobLastRunAt,
   getJobEnabled,
 } from "./queries";
+import { getJobRunLog } from "./run-logs";
+import type { JobRunLog } from "./run-logs-normalize";
 import type { AutomationRunResult } from "./types";
 
 export type RunActionState = AutomationRunResult | undefined;
+
+export type JobRunLogResult =
+  | { ok: true; log: JobRunLog }
+  | { ok: false; message: string };
+
+export async function getJobRunLogAction(
+  jobId: string,
+): Promise<JobRunLogResult> {
+  await requireAdmin();
+  if (!getJob(jobId)) {
+    return { ok: false, message: `알 수 없는 자동화: ${jobId}` };
+  }
+  const log = await getJobRunLog(jobId);
+  return { ok: true, log };
+}
 
 export async function runAutomationAction(
   _prev: RunActionState,
