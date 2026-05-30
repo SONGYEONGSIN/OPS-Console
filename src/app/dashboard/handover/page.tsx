@@ -7,6 +7,7 @@ import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
 import { HandoverTabs } from "./HandoverTabs";
 import { HandoverControls } from "./HandoverControls";
+import { HandoverHistoryControls } from "./HandoverHistoryControls";
 import { HandoverProgressSearch } from "./HandoverProgressSearch";
 import { HandoverWizard } from "./HandoverWizard";
 import { HandoverHistory } from "./HandoverHistory";
@@ -132,7 +133,7 @@ export default async function HandoverPage({
     const mineHist = params.mine === "true";
     const statusHist = params.status as HandoverProgressStatus | undefined;
     const pageHist = Math.max(1, Number(params.page) || 1);
-    const { rows: progressRows } = await listHandoverProgress({
+    const { rows: progressRows, total: totalHist } = await listHandoverProgress({
       q: params.q,
       status: statusHist,
       toEmail: mineHist ? me?.email : undefined,
@@ -148,8 +149,15 @@ export default async function HandoverPage({
           description={fallback.description}
         />
         <HandoverTabs />
-        <div className="p-7">
+        <HandoverHistoryControls />
+        <div className="px-7 pt-3">
+          <ScopeChips total={totalHist} mineLabel="내 인계" />
+        </div>
+        <div className="px-7 pb-7 pt-4">
           <HandoverHistory rows={progressRows} meEmail={me?.email ?? null} />
+          <div className="pt-4">
+            <ListPagination total={totalHist} pageSize={PAGE_SIZE} />
+          </div>
         </div>
       </div>
     );
