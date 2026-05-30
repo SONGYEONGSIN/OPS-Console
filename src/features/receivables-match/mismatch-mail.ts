@@ -52,7 +52,7 @@ function buildHtml(rows: MismatchPair[]): string {
       <tbody>${tableRows}</tbody>
     </table>
     <p style="margin-top:18px;text-align:center;font-size:12px;color:#111;background:#FEF9C3;padding:8px;border-radius:3px;">
-      ※ 본 알림 메일은 OPS-Console 자동화에서 자동 발송되었습니다.
+      ※ 본 알림 메일은 운영부 상황실에서 자동 발송되었습니다.
     </p>
   </div>`;
 }

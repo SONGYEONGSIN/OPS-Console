@@ -52,6 +52,9 @@ describe("sendMismatchReport", () => {
     expect(args.html).toContain("가천대");
     expect(args.html).toContain("동국대");
     expect(args.html).toContain("100,000");
+    // 브랜드 통일: 푸터는 운영부 상황실, OPS-Console 미노출
+    expect(args.html).toContain("본 알림 메일은 운영부 상황실에서 자동 발송되었습니다.");
+    expect(args.html).not.toContain("OPS-Console");
     expect(result.ok).toBe(true);
   });
 });
