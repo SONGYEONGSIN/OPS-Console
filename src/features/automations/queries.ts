@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTOMATION_JOBS } from "./registry";
 import type { AutomationStatus } from "./types";
 
@@ -61,7 +62,10 @@ export async function getJobLastRunAt(jobId: string): Promise<string | null> {
 }
 
 async function getAutomationSettings(): Promise<Map<string, boolean>> {
-  const supabase = await createClient();
+  // admin client(service_role) — RLS 우회. cron 진입점(getJobEnabled)은 세션이 없어
+  // RLS server client로는 automation_settings(authenticated+is_admin 정책)를 못 읽는다.
+  // 자동화 페이지(getAutomationStatuses)도 admin 전용 컨텍스트라 service_role read 안전.
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("automation_settings")
     .select("job_id, enabled");
