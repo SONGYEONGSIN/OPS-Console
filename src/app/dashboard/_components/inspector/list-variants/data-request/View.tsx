@@ -293,13 +293,7 @@ export function DataRequestView({ row }: ViewProps) {
           disabled={pending || !toEmail || (sendMode === "schedule" && !scheduledAt)}
           className="flex-1 cursor-pointer border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:cursor-default disabled:opacity-50"
         >
-          {sendMode === "now"
-            ? pending
-              ? "발송 중…"
-              : "발송"
-            : pending
-              ? "예약 중…"
-              : "예약 발송"}
+          {pending ? "저장 중…" : "저장"}
         </button>
         <button
           type="button"
