@@ -11,6 +11,11 @@ export const OPERATOR_TARGET_DAYS: readonly number[] = [
   10, 15, 20, 25, 30, 40, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100,
 ];
 
+/**
+ * 학교담당자용 마일스톤 (원본 GAS). 현재 OPS-Console에선 학교담당자 메일이
+ * admin 수동 트리거라 마일스톤을 적용하지 않는다(경과 >= threshold면 발송 가능).
+ * 향후 학교담당자 메일을 자동화하면 이 배열로 마일스톤 게이트를 건다. (규칙 보존용)
+ */
 export const SCHOOL_TARGET_DAYS: readonly number[] = [
   10, 15, 20, 25, 30, 35, 40, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100,
 ];

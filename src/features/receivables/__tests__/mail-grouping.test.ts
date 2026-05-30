@@ -35,7 +35,7 @@ const HEADERS = [
 const NOW = new Date("2026-05-30T12:00:00+09:00");
 
 describe("groupRecipientsByOwner", () => {
-  it("경과일수가 마일스톤(SCHOOL_TARGET_DAYS)에 정확히 일치하는 행만 포함", () => {
+  it("경과 >= threshold 행만 포함 (학교 수동 — 마일스톤 미적용)", () => {
     const sheet = mkSheet(HEADERS, [
       ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // 10일 ✓
       ["2026-05-22", "B학교", "원서", 500_000, "송영신", "b@x.com"], //  8일 ✗(<10)
@@ -46,12 +46,12 @@ describe("groupRecipientsByOwner", () => {
     expect(emails).toEqual(["a@x.com", "c@x.com"]);
   });
 
-  it("마일스톤 사이(경과 12일)는 제외 — 원본 GAS 규칙", () => {
+  it("마일스톤 아닌 경과 12일도 포함 (수동은 마일스톤 무시)", () => {
     const sheet = mkSheet(HEADERS, [
-      ["2026-05-18", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // 12일 ✗
+      ["2026-05-18", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // 12일
     ]);
     const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
-    expect(groups).toEqual([]);
+    expect(groups.map((g) => g.recipient.email)).toEqual(["a@x.com"]);
   });
 
   it("같은 학교담당자 이메일 → 1 그룹으로 묶음 + totalAmount 합산", () => {

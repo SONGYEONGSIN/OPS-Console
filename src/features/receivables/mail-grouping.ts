@@ -1,7 +1,6 @@
 import type { ReceivablesSheet } from "./queries";
 import type { ExcludedReason, ReminderGroup, ReminderItem } from "./mail-schemas";
 import { computeElapsedDays } from "./overdue";
-import { SCHOOL_TARGET_DAYS } from "./mail-schedule";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -89,8 +88,8 @@ export function groupRecipientsByOwner(
       excluded.push({ rowIndex: i, reason: "below_threshold" });
       continue;
     }
-    // 원본 GAS 규칙: 경과일수가 마일스톤(SCHOOL_TARGET_DAYS)에 정확히 일치할 때만 발송.
-    if (!SCHOOL_TARGET_DAYS.includes(daysOverdue)) continue;
+    // 학교담당자 메일은 admin 수동 트리거 — 마일스톤 미적용(경과 >= threshold면 발송 가능).
+    // (자동 잡인 운영자 메일만 마일스톤 적용. 향후 학교 메일 자동화 시 SCHOOL_TARGET_DAYS 사용.)
 
     const amount = toNumber(values[amountCol] ?? text[amountCol]) ?? 0;
     const item: ReminderItem = {
