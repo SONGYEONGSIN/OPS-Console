@@ -7,7 +7,7 @@ import { VideoGridSection } from "./_components/VideoGridSection";
 
 export default async function AiInsightPage() {
   const slug = "ai-insight";
-  await requireMenu(slug);
+  const me = await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
@@ -29,7 +29,7 @@ export default async function AiInsightPage() {
     <>
       {header}
       <div className="p-5 lg:p-7">
-        <VideoGridSection videos={videos} />
+        <VideoGridSection videos={videos} canDelete={me.permission === "admin"} />
       </div>
     </>
   );

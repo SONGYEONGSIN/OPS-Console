@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+vi.mock("@/features/insight-videos/actions", () => ({
+  deleteInsightVideo: vi.fn(),
+}));
+
 import { InsightInspectorBody } from "../InsightInspectorBody";
 import type { InsightVideoRow } from "@/features/insight-videos/schemas";
 
@@ -42,5 +47,15 @@ describe("InsightInspectorBody", () => {
     expect(link.getAttribute("rel")).toContain("noopener");
     expect(link.getAttribute("rel")).toContain("noreferrer");
     expect(link.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+  });
+
+  it("canDelete 미지정 시 삭제 버튼 미노출", () => {
+    render(<InsightInspectorBody video={baseVideo} />);
+    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeInTheDocument();
+  });
+
+  it("canDelete=true 시 삭제 버튼 노출", () => {
+    render(<InsightInspectorBody video={baseVideo} canDelete />);
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
   });
 });

@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+vi.mock("@/features/insight-videos/actions", () => ({
+  deleteInsightVideo: vi.fn(),
+}));
+
 import { VideoGridSection } from "../VideoGridSection";
 import type { InsightVideoRow } from "@/features/insight-videos/schemas";
 
@@ -58,6 +63,18 @@ describe("VideoGridSection", () => {
     expect(screen.getByText("영상 13")).toBeInTheDocument();
     expect(screen.queryByText("영상 1")).not.toBeInTheDocument();
     expect(screen.getByText(/2\s*\/\s*2/)).toBeInTheDocument();
+  });
+
+  it("canDelete=false(기본)면 인스펙터에 삭제 버튼 미노출", () => {
+    render(<VideoGridSection videos={[video]} />);
+    fireEvent.click(screen.getByRole("button", { name: /바이브코딩 입문/ }));
+    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeInTheDocument();
+  });
+
+  it("canDelete=true면 인스펙터에 삭제 버튼 노출", () => {
+    render(<VideoGridSection videos={[video]} canDelete />);
+    fireEvent.click(screen.getByRole("button", { name: /바이브코딩 입문/ }));
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
   });
 
   it("12개 이하면 페이지네이션 미노출", () => {

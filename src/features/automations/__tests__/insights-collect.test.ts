@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   batchIds,
   dedupeByVideoId,
+  excludeBlocked,
   filterPopular,
   rankTopN,
   type CollectedVideo,
@@ -50,5 +51,20 @@ describe("rankTopN", () => {
   it("view_count 내림차순 상위 N (null은 후순위)", () => {
     const out = rankTopN([v("a", 100), v("b", 300), v("c", undefined), v("d", 200)], 2);
     expect(out.map((r) => r.video_id)).toEqual(["b", "d"]);
+  });
+});
+
+describe("excludeBlocked", () => {
+  it("blocklist에 있는 video_id를 제외", () => {
+    const out = excludeBlocked(
+      [v("a"), v("b"), v("c")],
+      new Set(["b"]),
+    );
+    expect(out.map((r) => r.video_id)).toEqual(["a", "c"]);
+  });
+
+  it("빈 blocklist면 그대로 통과", () => {
+    const out = excludeBlocked([v("a"), v("b")], new Set());
+    expect(out.map((r) => r.video_id)).toEqual(["a", "b"]);
   });
 });
