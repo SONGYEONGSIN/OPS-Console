@@ -33,7 +33,7 @@ describe("runReceivablesMailOperator", () => {
     fetchSheetMock.mockResolvedValue({
       worksheetName: "test",
       metaRows: [],
-      headers: ["거래처명", "운영자", "청구금액", "경과일수", "적요"],
+      headers: ["거래처명", "운영자", "청구금액", "청구일자", "적요"],
       rows: [],
       rowsText: [],
       validColIdx: [0, 1, 2, 3, 4],
@@ -52,14 +52,14 @@ describe("runReceivablesMailOperator", () => {
     fetchSheetMock.mockResolvedValue({
       worksheetName: "test",
       metaRows: [],
-      headers: ["거래처명", "운영자", "청구금액", "경과일수", "적요"],
+      headers: ["거래처명", "운영자", "청구금액", "청구일자", "적요"],
       rows: [
-        ["가천대", "김슬기", 100000, 30, ""],
-        ["고려대", "정윤나", 50000, 20, ""],
+        ["가천대", "김슬기", 100000, "2020-01-01", ""],
+        ["고려대", "정윤나", 50000, "2020-01-01", ""],
       ],
       rowsText: [
-        ["가천대", "김슬기", "100000", "30", ""],
-        ["고려대", "정윤나", "50000", "20", ""],
+        ["가천대", "김슬기", "100000", "2020-01-01", ""],
+        ["고려대", "정윤나", "50000", "2020-01-01", ""],
       ],
       validColIdx: [0, 1, 2, 3, 4],
       headerRowNumber: 1,
