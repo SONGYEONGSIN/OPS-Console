@@ -1,0 +1,29 @@
+name: service-notice-mail
+
+on:
+  schedule:
+    # 매일 00:00 UTC = 한국 09:00 — 잡 내부에서 주말·공휴일 차단 + 월 단위
+    # idempotency로 "이번 달 첫 영업일 1회"만 발송됨.
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  trigger:
+    name: POST /api/automations/run?jobId=service-notice-mail
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Trigger automation
+        env:
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/service-notice-mail.mjs
