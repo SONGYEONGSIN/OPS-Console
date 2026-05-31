@@ -1,10 +1,9 @@
 name: service-notice-mail
 
 on:
-  schedule:
-    # 매일 00:00 UTC = 한국 09:00 — 잡 내부에서 주말·공휴일 차단 + 월 단위
-    # idempotency로 "이번 달 첫 영업일 1회"만 발송됨.
-    - cron: "0 0 * * *"
+  # schedule 제거 — cron-job.org(매일 09:00 KST)가 호출. GitHub cron은 지연·누락이
+  # 잦아 receivables와 동일하게 cron-job.org로 일원화. 수동 트리거만 유지.
+  # 잡 내부에서 주말·공휴일 차단 + 월 단위 idempotency로 "이번 달 첫 영업일 1회"만 발송.
   workflow_dispatch:
 
 env:
