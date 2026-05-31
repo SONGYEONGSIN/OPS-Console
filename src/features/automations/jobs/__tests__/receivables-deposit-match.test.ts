@@ -19,6 +19,7 @@ vi.mock("@/features/receivables/queries", () => ({
 }));
 vi.mock("@/features/receivables-match/deposit-queries", () => ({
   fetchDepositSheet: fetchDepositSheetMock,
+  depositFetchFailMessage: () => "SharePoint 입금내역 시트 fetch 실패",
 }));
 vi.mock("@/features/receivables-match/patch", () => ({
   patchMatchResult: patchMatchResultMock,
