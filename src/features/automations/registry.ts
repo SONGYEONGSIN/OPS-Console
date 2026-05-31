@@ -38,7 +38,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "월별 서비스 알림",
     description:
       "다음 달 작성시작 서비스를 운영자 본인 메일박스로 요약 발송합니다 (매월 첫 영업일 1회, 월 단위 중복 방지). MAIL_DRY_RUN=true 시 발송 없이 이력만 적재.",
-    scheduleInfo: "매월 첫 영업일 09:00 (cron-job.org)",
+    scheduleInfo: "매월 첫 영업일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runServiceNoticeMail,
   },
