@@ -1,3 +1,5 @@
+import { brandLogoImg } from "@/lib/mail/brand-logo";
+
 export type HandoverMailInput = {
   universityName: string;
   serviceName: string;
@@ -50,6 +52,7 @@ export function buildHandoverMailHtml(input: HandoverMailInput): string {
 <body style="margin:0;padding:0;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1a1a;">
   <div style="max-width:640px;margin:0 auto;padding:32px 24px;">
     <div style="padding-bottom:12px;border-bottom:2px solid #b8331e;margin-bottom:20px;">
+      <div style="margin-bottom:8px;">${brandLogoImg(38)}</div>
       <div style="font-size:11px;letter-spacing:1px;color:#b8331e;margin-bottom:4px;">운영부 상황실 · 인수인계</div>
       <h1 style="margin:0;font-size:20px;line-height:1.3;">${uni} · ${svc}</h1>
       <div style="margin-top:4px;font-size:12px;color:#666;">${appType}</div>

@@ -121,6 +121,45 @@ describe("sendGraphMail", () => {
     expect(body.saveToSentItems).toBe(true);
   });
 
+  it("본문이 cid:opslogo 참조 시 inline 로고 첨부 자동 주입", async () => {
+    const fetchMock = mockTokenAndSend({ sendStatus: 202, messageId: "m" });
+
+    await sendGraphMail({
+      senderUserId: "sender@org.com",
+      toEmail: "receiver@school.ac.kr",
+      subject: "제목",
+      html: '<img src="cid:opslogo" /><p>본문</p>',
+    });
+
+    const sendCall = fetchMock.mock.calls.find((c) =>
+      String(c[0]).includes("graph.microsoft.com"),
+    );
+    const body = JSON.parse(String((sendCall![1] as RequestInit).body));
+    const atts = body.message.attachments;
+    expect(Array.isArray(atts)).toBe(true);
+    expect(atts).toHaveLength(1);
+    expect(atts[0].isInline).toBe(true);
+    expect(atts[0].contentId).toBe("opslogo");
+    expect(atts[0].contentType).toBe("image/png");
+  });
+
+  it("본문이 로고 cid를 참조하지 않으면 첨부 없음", async () => {
+    const fetchMock = mockTokenAndSend({ sendStatus: 202, messageId: "m" });
+
+    await sendGraphMail({
+      senderUserId: "sender@org.com",
+      toEmail: "receiver@school.ac.kr",
+      subject: "제목",
+      html: "<p>로고 없는 본문</p>",
+    });
+
+    const sendCall = fetchMock.mock.calls.find((c) =>
+      String(c[0]).includes("graph.microsoft.com"),
+    );
+    const body = JSON.parse(String((sendCall![1] as RequestInit).body));
+    expect(body.message.attachments).toBeUndefined();
+  });
+
   it("text 지정 시 message.body.contentType=Text + content=text", async () => {
     const fetchMock = mockTokenAndSend({ sendStatus: 202, messageId: "m" });
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
+import { brandLogoImg } from "@/lib/mail/brand-logo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PostRow, PostStatus } from "./schemas";
 
@@ -62,6 +63,7 @@ export function buildOwnerNotifyBody(args: {
     : "";
 
   return `<div style="font-family:-apple-system,'Pretendard',sans-serif;color:#111827;font-size:14px;line-height:1.7;max-width:560px;">
+  <div style="margin:0 0 10px;">${brandLogoImg(36)}</div>
   <p style="margin:0 0 12px;color:#6b7280;font-size:12px;letter-spacing:0.04em;">[운영부 상황실]</p>
   <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;">새 개선요청이 등록되었습니다</h2>
 
@@ -100,6 +102,7 @@ export function buildStatusNotifyBody(args: {
   const slug = post.slug ?? "";
 
   return `<div style="font-family:-apple-system,'Pretendard',sans-serif;color:#111827;font-size:14px;line-height:1.7;max-width:560px;">
+  <div style="margin:0 0 10px;">${brandLogoImg(36)}</div>
   <p style="margin:0 0 12px;color:#6b7280;font-size:12px;letter-spacing:0.04em;">[운영부 상황실]</p>
   <h2 style="margin:0 0 16px;font-size:18px;font-weight:700;">개선요청 상태가 <span style="color:#dc2626;">${escapeHtml(label)}</span>(으)로 변경되었습니다</h2>
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { escapeHtml, formatWon } from "@/features/receivables/mail-template";
+import { brandLogoImg } from "@/lib/mail/brand-logo";
 import type { MismatchPair } from "./types";
 
 const ADMIN_EMAIL = "ys1114@jinhakapply.com";
@@ -31,6 +32,7 @@ function buildHtml(rows: MismatchPair[]): string {
 
   return `
   <div style="font-family:Pretendard,Apple SD Gothic Neo,Noto Sans KR,Malgun Gothic,Arial,sans-serif;color:#222;padding:24px;">
+    <div style="text-align:center;margin-bottom:12px;">${brandLogoImg(46)}</div>
     <h3 style="background:#111827;color:#fff;padding:14px;border-radius:3px;text-align:center;">
       ⚠️ 입금 매칭 — 금액 일치 / 거래처명 불일치 확인 요청
     </h3>
