@@ -19,9 +19,10 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("로그인 화면은 상단 '운영부 상황실' 브랜드를 노출하지 않는다", () => {
+  it("로그인 화면은 상단 바(브랜드·시계)를 노출하지 않는다", () => {
     render(<LoginPage />);
     expect(screen.queryByText("운영부 상황실")).not.toBeInTheDocument();
+    expect(screen.queryByText(/KST/)).not.toBeInTheDocument();
   });
 
   it("로그인 화면은 하단 연결정보(연결됨/서버)를 노출하지 않는다", () => {

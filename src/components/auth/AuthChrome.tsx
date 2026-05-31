@@ -11,7 +11,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
  * StatusBar: 6개 실값 (online / host / TLS / lang / build / sha).
  */
 
-export function AuthTitleBar({ showBrand = true }: { showBrand?: boolean }) {
+export function AuthTitleBar() {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -24,7 +24,7 @@ export function AuthTitleBar({ showBrand = true }: { showBrand?: boolean }) {
     <div className="grid h-full grid-cols-[auto_1fr_auto] items-center gap-5 bg-ink px-4 text-xs leading-[26px] tracking-[0.02em] text-cream shadow-[0_1px_0_0_var(--color-line)] max-md:gap-3 max-md:px-3">
       <div className="flex items-center gap-5" />
       <div className="flex items-center justify-center gap-5">
-        {showBrand && <span className="font-medium">운영부 상황실</span>}
+        <span className="font-medium">운영부 상황실</span>
       </div>
       <div className="ref flex items-center justify-end gap-5 text-faint tracking-[0.04em] max-[479px]:text-[10px]">
         <Clock now={now} />
