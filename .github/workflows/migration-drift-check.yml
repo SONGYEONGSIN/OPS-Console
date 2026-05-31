@@ -1,0 +1,35 @@
+name: migration-drift-check
+
+# 운영 DB가 supabase/migrations/*.sql와 drift(테이블 미적용)났는지 매일 감시.
+# 마이그레이션이 수동 적용이라 누락이 생길 수 있어(예: receivables 이력 3테이블),
+# 누락 시 워크플로 실패로 알림. PR이 아니라 스케줄로 도는 이유: 신규 마이그 PR은
+# 아직 운영 미적용이 정상이므로 PR 차단은 false-positive가 된다.
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # 매일 10:00 KST
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  check:
+    name: 운영 DB 마이그레이션 적용 여부 점검
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install minimal runtime deps
+        run: npm ci --omit=dev --no-audit --no-fund
+
+      - name: Check migration drift
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/migration-drift-check.mjs
