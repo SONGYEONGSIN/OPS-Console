@@ -1,5 +1,6 @@
 import "server-only";
 import { getGraphToken } from "./auth";
+import { BRAND_LOGO_CID, brandLogoAttachment } from "@/lib/mail/brand-logo";
 
 export type SendMailResult =
   | { ok: true; messageId?: string }
@@ -17,6 +18,10 @@ export type GraphMailAttachment = {
   contentBytes: string;
   /** MIME 타입 (예: "application/pdf") */
   contentType: string;
+  /** 본문 인라인 이미지 여부 (cid 참조). true면 contentId 필요 */
+  isInline?: boolean;
+  /** 인라인 이미지 cid — HTML `<img src="cid:...">`의 ... 값 */
+  contentId?: string;
 };
 
 export type SendGraphMailArgs = {
@@ -73,13 +78,26 @@ export async function sendGraphMail(
         }))
       : undefined;
 
+  // 본문이 브랜드 로고(cid)를 참조하면 인라인 로고 첨부를 자동 주입.
+  // 발송 지점은 별도 변경 없이 brandLogoImg()를 헤더에 넣기만 하면 된다.
+  const allAttachments = [...(attachments ?? [])];
+  if (
+    html &&
+    html.includes(`cid:${BRAND_LOGO_CID}`) &&
+    !allAttachments.some((a) => a.contentId === BRAND_LOGO_CID)
+  ) {
+    allAttachments.push(brandLogoAttachment());
+  }
+
   const mailAttachments =
-    attachments && attachments.length > 0
-      ? attachments.map((a) => ({
+    allAttachments.length > 0
+      ? allAttachments.map((a) => ({
           "@odata.type": "#microsoft.graph.fileAttachment",
           name: a.name,
           contentType: a.contentType,
           contentBytes: a.contentBytes,
+          ...(a.isInline ? { isInline: true } : {}),
+          ...(a.contentId ? { contentId: a.contentId } : {}),
         }))
       : undefined;
 

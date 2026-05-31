@@ -1,4 +1,5 @@
 import type { ServiceDetail } from "./schemas";
+import { brandLogoImg } from "@/lib/mail/brand-logo";
 
 export type BackupMailInput = {
   requesterName: string;
@@ -123,6 +124,7 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
 <body style="font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;margin:0;padding:24px;color:#1a1a1a;">
   <div style="max-width:640px;margin:0 auto;padding:32px 24px;">
     <div style="padding-bottom:12px;border-bottom:2px solid #b8331e;margin-bottom:20px;">
+      <div style="margin-bottom:8px;">${brandLogoImg(38)}</div>
       <div style="font-size:11px;letter-spacing:1px;color:#b8331e;margin-bottom:4px;">운영부 상황실 · 백업 요청</div>
       <h1 style="margin:0;font-size:20px;line-height:1.3;">백업 요청</h1>
     </div>

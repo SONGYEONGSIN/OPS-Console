@@ -57,6 +57,12 @@ describe("buildOperatorReminderHtml", () => {
     expect(html).toContain("자동");
   });
 
+  it("브랜드 로고 cid 이미지 포함", () => {
+    const html = buildOperatorReminderHtml({ group });
+    expect(html).toContain('src="cid:opslogo"');
+    expect(html).toContain('alt="운영부 상황실"');
+  });
+
   it("FUN_QUOTES 인용구 1개 포함 (인용 wrapper 노출)", () => {
     const html = buildOperatorReminderHtml({ group });
     // 인용구 wrapper class 또는 quote prefix 검증

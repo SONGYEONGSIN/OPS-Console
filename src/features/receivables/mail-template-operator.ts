@@ -1,5 +1,6 @@
 import type { OperatorReminderGroup } from "./operator-mail-grouping";
 import { escapeHtml, formatWon } from "./mail-template";
+import { brandLogoImg } from "@/lib/mail/brand-logo";
 
 /**
  * 운영자용 메일에 한국 사이트 톤의 미수 회수 격려 인용구를 랜덤 1개 삽입.
@@ -84,6 +85,7 @@ export function buildOperatorReminderHtml(args: BuildHtmlArgs): string {
 
   return `
   <div style="font-family:Pretendard,Apple SD Gothic Neo,Noto Sans KR,Malgun Gothic,Arial,sans-serif;color:#222;background:#fff;padding:24px;">
+    <div style="text-align:center;margin-bottom:12px;">${brandLogoImg(46)}</div>
     <div style="font-size:22px;font-weight:700;text-align:center;margin-bottom:22px;background:#111827;color:#fff;padding:16px 0;border-radius:3px;">
       [운영부 상황실] 미수채권 확인 알림
     </div>

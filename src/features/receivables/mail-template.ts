@@ -1,4 +1,5 @@
 import type { ReminderGroup } from "./mail-schemas";
+import { brandLogoImg } from "@/lib/mail/brand-logo";
 
 /** HTML 특수문자 escape (XSS 방지) */
 export function escapeHtml(s: string): string {
@@ -59,6 +60,7 @@ export function buildReminderHtml(args: {
   return `
   <div style="font-family:Pretendard,Apple SD Gothic Neo,Noto Sans KR,Malgun Gothic,Arial,sans-serif;color:#222;background:#fff;padding:24px;">
 
+    <div style="text-align:center;margin-bottom:12px;">${brandLogoImg(46)}</div>
     <div style="font-size:22px;font-weight:700;text-align:center;margin-bottom:22px;background:#111827;color:#fff;padding:16px 0;border-radius:3px;">
       😊 세금계산서 확인 요청
     </div>
