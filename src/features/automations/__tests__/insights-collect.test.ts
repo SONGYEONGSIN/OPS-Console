@@ -4,7 +4,9 @@ import {
   buildSearchParams,
   dedupeByVideoId,
   excludeBlocked,
+  filterKoreanTitles,
   filterPopular,
+  hasKorean,
   rankTopN,
   type CollectedVideo,
 } from "../jobs/insights-collect";
@@ -68,6 +70,38 @@ describe("buildSearchParams", () => {
     expect(p.get("order")).toBe("viewCount");
     expect(p.get("publishedAfter")).toBe("2026-05-01T00:00:00Z");
     expect(p.get("key")).toBe("KEY");
+  });
+});
+
+describe("hasKorean", () => {
+  it("한글이 있으면 true", () => {
+    expect(hasKorean("바이브코딩 입문")).toBe(true);
+    expect(hasKorean("AI 자동화 가이드")).toBe(true);
+  });
+  it("한글이 없으면 false", () => {
+    expect(hasKorean("Next Level 3D Print Automation")).toBe(false);
+    expect(hasKorean("CODEX vs Claude Code")).toBe(false);
+    expect(hasKorean("")).toBe(false);
+  });
+});
+
+describe("filterKoreanTitles", () => {
+  it("제목에 한글이 없는 영상을 제외", () => {
+    const vt = (id: string, title: string): CollectedVideo => ({
+      video_id: id,
+      title,
+      channel_title: "c",
+      thumbnail_url: "u",
+      published_at: "2026-05-10T00:00:00Z",
+      description: null,
+      keyword: "k",
+    });
+    const out = filterKoreanTitles([
+      vt("a", "바이브코딩 완전정복"),
+      vt("b", "Next Level 3D Print"),
+      vt("c", "클로드 스킬 활용법"),
+    ]);
+    expect(out.map((r) => r.video_id)).toEqual(["a", "c"]);
   });
 });
 

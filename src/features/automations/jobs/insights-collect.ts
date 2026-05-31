@@ -47,6 +47,20 @@ export function rankTopN(rows: CollectedVideo[], n: number): CollectedVideo[] {
     .slice(0, n);
 }
 
+/** 제목에 한글(완성형 음절)이 포함되어 있는지. 국내 영상 판별 휴리스틱. */
+export function hasKorean(text: string): boolean {
+  return /[가-힣]/.test(text);
+}
+
+/**
+ * 국내 영상만 유지 — 제목에 한글이 없는 영상 제외.
+ * regionCode/relevanceLanguage는 우선순위 힌트일 뿐 외국 영상을 제외하지 않으므로,
+ * 제목 한글 여부로 실제 필터링한다.
+ */
+export function filterKoreanTitles(rows: CollectedVideo[]): CollectedVideo[] {
+  return rows.filter((r) => hasKorean(r.title));
+}
+
 /** 차단 목록(insight_video_blocklist)에 등록된 video_id를 제외 — 삭제된 영상 재수집 방지. */
 export function excludeBlocked(
   rows: CollectedVideo[],
@@ -161,9 +175,11 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
   }
 
   const deduped = dedupeByVideoId(collected);
+  // 국내 영상만 — 제목에 한글 없는 외국 영상 제외(regionCode는 우선순위 힌트일 뿐 필터 아님).
+  const korean = filterKoreanTitles(deduped);
   // 삭제(blocklist 등록)된 영상은 재수집하지 않는다. videos.list 보강 전에 걸러 quota도 절약.
   const blocked = await getBlockedVideoIds();
-  const rows = excludeBlocked(deduped, blocked);
+  const rows = excludeBlocked(korean, blocked);
   if (rows.length === 0) {
     return {
       ok: errors.length === 0,
