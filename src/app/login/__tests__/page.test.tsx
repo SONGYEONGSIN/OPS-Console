@@ -19,9 +19,16 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("TitleBar에 '운영부 상황실' 노출", () => {
+  it("로그인 화면은 상단 바(브랜드·시계)를 노출하지 않는다", () => {
     render(<LoginPage />);
-    expect(screen.getByText("운영부 상황실")).toBeInTheDocument();
+    expect(screen.queryByText("운영부 상황실")).not.toBeInTheDocument();
+    expect(screen.queryByText(/KST/)).not.toBeInTheDocument();
+  });
+
+  it("로그인 화면은 하단 연결정보(연결됨/서버)를 노출하지 않는다", () => {
+    render(<LoginPage />);
+    expect(screen.queryByText("연결됨")).not.toBeInTheDocument();
+    expect(screen.queryByText("오프라인")).not.toBeInTheDocument();
   });
 
   it("기본 모드는 signin — '로그인' 탭 active", () => {
