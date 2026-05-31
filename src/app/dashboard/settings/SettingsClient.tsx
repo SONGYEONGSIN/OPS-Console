@@ -202,6 +202,17 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint 입금내역 시트"
+        value={
+          <>
+            <Dot ok={env.sharepoint.depositItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.depositItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="Azure AD 테넌트"
         value={
           <>

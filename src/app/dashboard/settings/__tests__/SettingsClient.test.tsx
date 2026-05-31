@@ -23,6 +23,7 @@ const env: EnvSnapshot = {
     contractsItemId: { configured: true, preview: "" },
     receivablesDriveId: { configured: false, preview: "" },
     receivablesItemId: { configured: false, preview: "" },
+    depositItemId: { configured: false, preview: "" },
     manualItemId: { configured: false, preview: "" },
   },
   azure: {
