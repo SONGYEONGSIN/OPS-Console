@@ -1,6 +1,9 @@
 import "server-only";
 import { fetchReceivablesSheet, type ReceivablesSheet } from "@/features/receivables/queries";
-import { fetchDepositSheet } from "@/features/receivables-match/deposit-queries";
+import {
+  fetchDepositSheet,
+  depositFetchFailMessage,
+} from "@/features/receivables-match/deposit-queries";
 import { patchMatchResult } from "@/features/receivables-match/patch";
 import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
@@ -85,7 +88,9 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   if (deposits === null) {
     return {
       ok: false,
-      message: "SharePoint 입금내역 시트 fetch 실패 — SHAREPOINT_DEPOSIT_ITEM_ID 환경변수 확인",
+      message: depositFetchFailMessage(
+        Boolean(process.env.SHAREPOINT_DEPOSIT_ITEM_ID),
+      ),
     };
   }
 

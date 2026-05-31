@@ -1,5 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { parseDepositSheet } from "../deposit-queries";
+import {
+  parseDepositSheet,
+  depositFetchFailMessage,
+} from "../deposit-queries";
+
+describe("depositFetchFailMessage", () => {
+  it("item ID 미설정 → 'env 미설정' 안내", () => {
+    expect(depositFetchFailMessage(false)).toContain("미설정");
+  });
+  it("item ID 설정됨 → 'fetch 실패(파일/권한/Graph)' 안내", () => {
+    const msg = depositFetchFailMessage(true);
+    expect(msg).toContain("설정됨");
+    expect(msg).not.toContain("미설정");
+  });
+});
 
 describe("parseDepositSheet — Graph usedRange 응답 → DepositRow[]", () => {
   it("정상 케이스 — 헤더 1행 + 데이터 2행 → DepositRow 2개", () => {
