@@ -86,7 +86,7 @@ export function buildOwnerNotifyBody(args: {
 
   <p style="margin:20px 0 0;"><a href="${link}" style="color:#dc2626;text-decoration:none;font-weight:600;">개선요청 게시판 열기 →</a></p>
 
-  <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">본 메일은 OPS Console에서 자동 발송되었습니다.</p>
+  <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">본 메일은 운영부 상황실에서 자동 발송되었습니다.</p>
 </div>`;
 }
 
@@ -127,7 +127,7 @@ export function buildStatusNotifyBody(args: {
 
   <p style="margin:20px 0 0;"><a href="${link}" style="color:#dc2626;text-decoration:none;font-weight:600;">개선요청 게시판 열기 →</a></p>
 
-  <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">본 메일은 OPS Console에서 자동 발송되었습니다.</p>
+  <p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">본 메일은 운영부 상황실에서 자동 발송되었습니다.</p>
 </div>`;
 }
 

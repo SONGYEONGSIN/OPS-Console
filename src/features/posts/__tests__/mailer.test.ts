@@ -80,6 +80,9 @@ describe("buildOwnerNotifyBody", () => {
     expect(html).toContain("부분 매칭 추가 필요");
     expect(html).toContain("https://ops.example.com/dashboard/feedback");
     expect(html).toContain("FB-007");
+    // 브랜드 통일: 푸터는 운영부 상황실, OPS Console 미노출
+    expect(html).toContain("운영부 상황실");
+    expect(html).not.toContain("OPS Console");
   });
 
   it("본문(body)이 null이어도 안전", () => {
