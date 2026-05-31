@@ -6,7 +6,7 @@ import { Suspense, useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { signIn, signUp, type AuthState } from "@/features/auth/actions";
 import { ALLOWED_EMAILS } from "@/features/auth/operators";
-import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
+import { AuthTitleBar } from "@/components/auth/AuthChrome";
 
 /**
  * 로그인 (입실) — design-ref/folio-login.html 포팅 + Supabase 인증 연결.
@@ -48,8 +48,8 @@ function LoginPageContent() {
       : undefined;
 
   return (
-    <div className="relative z-10 grid h-screen grid-rows-[26px_1fr_26px]">
-      <AuthTitleBar />
+    <div className="relative z-10 grid h-screen grid-rows-[26px_1fr]">
+      <AuthTitleBar showBrand={false} />
       <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-cream">
         <AuthPanel
           mode={mode}
@@ -62,7 +62,6 @@ function LoginPageContent() {
           infoMessage={infoMessage}
         />
       </main>
-      <AuthStatusBar />
     </div>
   );
 }
