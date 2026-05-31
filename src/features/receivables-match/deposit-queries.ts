@@ -63,6 +63,16 @@ export function parseDepositSheet(data: {
 }
 
 /**
+ * 입금 시트 fetch 실패 시 잡 메시지 — env 미설정과 "설정됐으나 fetch 실패"를 구분.
+ * 후자는 파일 이동/이름변경/권한/Graph 응답 문제이므로 Vercel 로그를 봐야 한다.
+ */
+export function depositFetchFailMessage(itemIdConfigured: boolean): string {
+  return itemIdConfigured
+    ? "SharePoint 입금내역 시트 fetch 실패 — SHAREPOINT_DEPOSIT_ITEM_ID는 설정됨. 파일 이동/이름변경/권한 또는 Graph 응답 확인 (Vercel 로그)."
+    : "SharePoint 입금내역 시트 fetch 실패 — SHAREPOINT_DEPOSIT_ITEM_ID 환경변수 미설정.";
+}
+
+/**
  * SharePoint deposit Excel usedRange fetch + parseDepositSheet.
  * - drive_id 재사용: `SHAREPOINT_RECEIVABLES_DRIVE_ID`
  * - item_id 신규: `SHAREPOINT_DEPOSIT_ITEM_ID` (필수)
