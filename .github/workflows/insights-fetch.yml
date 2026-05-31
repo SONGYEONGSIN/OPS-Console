@@ -11,8 +11,8 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  fetch:
-    name: YouTube search.list → Supabase upsert
+  trigger:
+    name: POST /api/automations/run?jobId=insights-collect
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -22,12 +22,10 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install minimal runtime deps
-        run: npm ci --omit=dev --no-audit --no-fund
-
-      - name: Run fetch script
+      # feature 모듈 runInsightsCollect를 단일 실행 — 국내 한글 필터/blocklist/키워드가
+      # UI '지금 실행'과 동일하게 적용된다. (구 insights-fetch.mjs 자체 구현은 제거됨)
+      - name: Trigger automation
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-        run: node scripts/insights-fetch.mjs
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/insights-collect.mjs
