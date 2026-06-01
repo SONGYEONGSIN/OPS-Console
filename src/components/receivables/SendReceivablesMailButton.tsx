@@ -204,11 +204,11 @@ export function SendReceivablesMailButton({
                       </span>
                     </div>
                     {dryRun ? (
-                      <span className="shrink-0 rounded bg-yellow-100 px-1.5 py-0.5 text-2xs font-semibold text-yellow-900">
+                      <span className="shrink-0 bg-gold px-1.5 py-0.5 text-2xs font-semibold text-cream">
                         DRY-RUN
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded bg-vermilion-deep px-1.5 py-0.5 text-2xs font-semibold text-white">
+                      <span className="shrink-0 bg-vermilion-deep px-1.5 py-0.5 text-2xs font-semibold text-cream">
                         실발송
                       </span>
                     )}
