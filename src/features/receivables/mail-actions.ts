@@ -11,8 +11,15 @@ import {
   type SendReminderResult,
   type ReminderGroup,
 } from "./mail-schemas";
-import { buildReminderHtml, buildReminderSubject } from "./mail-template";
-import { findGroupForEmail, type FindGroupForEmailResult } from "./mail-queries";
+import {
+  buildReminderHtml,
+  buildReminderSubject,
+  resolveSenderName,
+} from "./mail-template";
+import {
+  findGroupForEmail,
+  type FindGroupForEmailResult,
+} from "./mail-queries";
 import { canSendOn } from "./mail-schedule";
 import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 
@@ -127,7 +134,8 @@ export async function sendReminderEmails(
   }
 
   const companyName = readCompanyName();
-  const senderName = me.displayName || "관리자";
+  // 발송 트리거 운영자명 — 그룹에 담당 운영자가 모호할 때만 fallback으로 사용.
+  const senderFallback = me.displayName || "관리자";
 
   const itemResults: SendReminderItemResult[] = [];
   const insertRows: InsertRow[] = [];
@@ -146,6 +154,8 @@ export async function sendReminderEmails(
     }
 
     const subject = buildReminderSubject({ group, companyName });
+    // 본문 인사말은 채권 담당 운영자명 — admin이 대신 발송해도 운영자 이름으로 나간다.
+    const senderName = resolveSenderName(group, senderFallback);
     const html = buildReminderHtml({ group, senderName, companyName });
 
     const sendRes = await sendGraphMail({
