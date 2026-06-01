@@ -10,6 +10,7 @@ import {
 import { patchMatchResult } from "@/features/receivables-match/patch";
 import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
+import { fetchMatchAliases } from "@/features/receivables-match/alias-queries";
 import { enrichMatchedForLog } from "@/features/automations/run-logs-normalize";
 import type {
   MisuRow,
@@ -104,7 +105,9 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   }
 
   const misuRows = toMisuRows(misuSheet);
-  const result = runMatch(misuRows, deposits);
+  // admin이 불일치 승인으로 학습한 alias 로드 → 매칭에 반영 (서강국제대학원 → 서강대 등).
+  const aliases = await fetchMatchAliases();
+  const result = runMatch(misuRows, deposits, aliases);
   const dryRun = readDryRun();
   const mode = dryRun ? "dry_run" : "live";
 
