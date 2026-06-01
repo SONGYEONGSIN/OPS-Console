@@ -134,6 +134,16 @@ describe("toDepositMatchEntry", () => {
       "세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)",
     ]);
     expect(entry.errorLines).toEqual([]);
+    // 적용 버튼용 구조화 항목 (행번호/거래처/거래내용)
+    expect(entry.mismatchItems).toEqual([
+      {
+        line: "세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)",
+        misuRow: 12,
+        depRow: 45,
+        misuCustomer: "세종고",
+        depContent: "세종",
+      },
+    ]);
   });
 
   it("payload.matched에서 매칭 성공 줄을 추출 (단건/N:1/N:M)", () => {
@@ -204,6 +214,7 @@ describe("toDepositMatchEntry", () => {
     expect(entry.mismatchLines).toEqual([]);
     expect(entry.errorLines).toEqual([]);
     expect(entry.skipLines).toEqual([]);
+    expect(entry.mismatchItems).toEqual([]);
   });
 });
 

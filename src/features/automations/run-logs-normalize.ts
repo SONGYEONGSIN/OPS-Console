@@ -10,6 +10,15 @@ import type {
   MismatchPair,
 } from "@/features/receivables-match/types";
 
+/** 불일치 1건 — 표시 줄 + 적용(승인) 액션에 필요한 행번호/거래처/거래내용. */
+export type DepositMismatchItem = {
+  line: string;
+  misuRow: number;
+  depRow: number;
+  misuCustomer: string;
+  depContent: string;
+};
+
 export type DepositMatchEntry = {
   startedAt: string;
   finishedAt: string | null;
@@ -19,6 +28,7 @@ export type DepositMatchEntry = {
   errorCount: number;
   matchedLines: string[];
   mismatchLines: string[];
+  mismatchItems: DepositMismatchItem[];
   errorLines: string[];
   skipLines: string[];
 };
@@ -133,6 +143,13 @@ export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
     errorCount: row.error_count ?? 0,
     matchedLines: matched.map(summarizeMatch),
     mismatchLines: mismatches.map(summarizeMismatch),
+    mismatchItems: mismatches.map((m) => ({
+      line: summarizeMismatch(m),
+      misuRow: m.misuRow,
+      depRow: m.depRow,
+      misuCustomer: m.misuCustomer,
+      depContent: m.depContent,
+    })),
     errorLines: errors,
     skipLines: skips,
   };
