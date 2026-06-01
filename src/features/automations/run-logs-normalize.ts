@@ -61,8 +61,42 @@ const MATCH_KIND_LABEL: Record<MatchPair["kind"], string> = {
   nToM: "N:M",
 };
 
-export function summarizeMatch(m: MatchPair): string {
-  return `${formatKrw(m.amount)} ${MATCH_KIND_LABEL[m.kind]} 매칭 (미수행 ${m.misuRows.join(",")} ↔ 입금행 ${m.depRows.join(",")})`;
+/**
+ * 로그 표시용 매칭 쌍 — MatchPair(행번호만)에 거래처/거래내용 이름을 덧붙인 형태.
+ * 잡이 payload에 저장할 때 enrichMatchedForLog로 채운다. 이름이 없는 구 이력은
+ * summarizeMatch가 행번호로 폴백.
+ */
+export type LoggedMatchPair = MatchPair & {
+  misuCustomers?: string[];
+  depContents?: string[];
+};
+
+/** 매칭 쌍의 행번호를 실제 거래처/거래내용 이름으로 매핑해 로그 표시용으로 보강. */
+export function enrichMatchedForLog(
+  matched: MatchPair[],
+  misuRows: { rowNumber: number; customer: string }[],
+  deposits: { row: number; content: string }[],
+): LoggedMatchPair[] {
+  const misuByRow = new Map(misuRows.map((m) => [m.rowNumber, m.customer]));
+  const depByRow = new Map(deposits.map((d) => [d.row, d.content]));
+  return matched.map((p) => ({
+    ...p,
+    misuCustomers: p.misuRows.map((r) => misuByRow.get(r) || `행${r}`),
+    depContents: p.depRows.map((r) => depByRow.get(r) || `행${r}`),
+  }));
+}
+
+export function summarizeMatch(m: LoggedMatchPair): string {
+  const kind = MATCH_KIND_LABEL[m.kind];
+  const misuNames = m.misuCustomers ?? [];
+  const depNames = m.depContents ?? [];
+  if (misuNames.length > 0 || depNames.length > 0) {
+    const misu = misuNames.join(", ") || "?";
+    const dep = depNames.join(", ") || "?";
+    return `${formatKrw(m.amount)} ${kind} 매칭 (${misu} ↔ ${dep})`;
+  }
+  // 이름이 없는 구 이력 — 행번호 폴백
+  return `${formatKrw(m.amount)} ${kind} 매칭 (미수행 ${m.misuRows.join(",")} ↔ 입금행 ${m.depRows.join(",")})`;
 }
 
 type DepositMatchRow = {
@@ -73,7 +107,7 @@ type DepositMatchRow = {
   mismatch_count: number;
   error_count: number;
   payload: {
-    matched?: MatchPair[];
+    matched?: LoggedMatchPair[];
     mismatches?: MismatchPair[];
     errors?: string[];
   } | null;

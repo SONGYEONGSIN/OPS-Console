@@ -3,6 +3,8 @@ import type { MismatchPair } from "@/features/receivables-match/types";
 import {
   formatKrw,
   summarizeMismatch,
+  summarizeMatch,
+  enrichMatchedForLog,
   toDepositMatchEntry,
   toMailOperatorEntry,
   groupInsightsBatches,
@@ -42,6 +44,62 @@ describe("summarizeMismatch", () => {
       depDate: "",
     };
     expect(summarizeMismatch(m)).toBe("? ₩0 — 입금 '?' (미수행 1 ↔ 입금행 2)");
+  });
+});
+
+describe("enrichMatchedForLog + summarizeMatch (값 표시)", () => {
+  it("매칭 쌍에 거래처/거래내용 이름을 붙이고, 줄에 값으로 표시", () => {
+    const matched = [
+      {
+        misuRows: [8],
+        depRows: [1761],
+        kind: "oneToOne" as const,
+        depositDate: "2026-05-27",
+        amount: 335000,
+      },
+    ];
+    const misuRows = [{ rowNumber: 8, customer: "한양대학교" }];
+    const deposits = [{ row: 1761, content: "한양MBA" }];
+    const enriched = enrichMatchedForLog(matched, misuRows, deposits);
+    expect(enriched[0].misuCustomers).toEqual(["한양대학교"]);
+    expect(enriched[0].depContents).toEqual(["한양MBA"]);
+    expect(summarizeMatch(enriched[0])).toBe(
+      "₩335,000 1:1 매칭 (한양대학교 ↔ 한양MBA)",
+    );
+  });
+
+  it("이름이 없는 구(舊) 이력은 행번호로 폴백", () => {
+    expect(
+      summarizeMatch({
+        misuRows: [8],
+        depRows: [1761],
+        kind: "oneToOne",
+        depositDate: "2026-05-27",
+        amount: 335000,
+      }),
+    ).toBe("₩335,000 1:1 매칭 (미수행 8 ↔ 입금행 1761)");
+  });
+
+  it("N:1 — 여러 미수 거래처를 join", () => {
+    const enriched = enrichMatchedForLog(
+      [
+        {
+          misuRows: [3, 4],
+          depRows: [900],
+          kind: "nToOne" as const,
+          depositDate: "2026-05-20",
+          amount: 500000,
+        },
+      ],
+      [
+        { rowNumber: 3, customer: "서강대" },
+        { rowNumber: 4, customer: "연세대" },
+      ],
+      [{ row: 900, content: "서강대외국인" }],
+    );
+    expect(summarizeMatch(enriched[0])).toBe(
+      "₩500,000 N:1 매칭 (서강대, 연세대 ↔ 서강대외국인)",
+    );
   });
 });
 
