@@ -15,6 +15,8 @@ export type EnvSnapshot = {
     receivablesItemId: { configured: boolean; preview: string };
     depositItemId: { configured: boolean; preview: string };
     manualItemId: { configured: boolean; preview: string };
+    gongmunItemId: { configured: boolean; preview: string };
+    incidentReportFolderId: { configured: boolean; preview: string };
   };
   azure: {
     tenantId: { configured: boolean; preview: string };
@@ -79,6 +81,16 @@ export function getEnvSnapshot(): EnvSnapshot {
       manualItemId: {
         configured: Boolean(process.env.SHAREPOINT_MANUAL_ITEM_ID),
         preview: preview(process.env.SHAREPOINT_MANUAL_ITEM_ID),
+      },
+      gongmunItemId: {
+        configured: Boolean(process.env.SHAREPOINT_GONGMUN_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_GONGMUN_ITEM_ID),
+      },
+      incidentReportFolderId: {
+        configured: Boolean(
+          process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID,
+        ),
+        preview: preview(process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID),
       },
     },
     azure: {

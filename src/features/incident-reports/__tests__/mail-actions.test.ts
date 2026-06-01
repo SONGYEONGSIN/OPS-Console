@@ -8,11 +8,18 @@ vi.mock("@/lib/pdf/incident-report-pdf", () => ({
 }));
 vi.mock("@/features/worklog/log", () => ({ logActivity: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("../sharepoint-register", () => ({
+  registerIncidentReportToSharePoint: vi.fn(async () => null),
+}));
+vi.mock("@/lib/microsoft/delegated-token", () => ({
+  getDelegatedGraphToken: vi.fn(async () => null),
+}));
 
 import { sendIncidentReport } from "../mail-actions";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
+import { registerIncidentReportToSharePoint } from "../sharepoint-register";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -151,5 +158,35 @@ describe("sendIncidentReport", () => {
     expect(inserts.every((row) => row.status === "dry_run")).toBe(true);
     expect(updates[0]?.status).toBe("sent");
     expect(updates[0]?.recipient_emails).toEqual(["a@b.com", "c@d.com"]);
+  });
+
+  it("비-DRY_RUN → SharePoint 등록 결과를 report에 반영", async () => {
+    (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue({
+      email: "me@x.com",
+      displayName: "나",
+      permission: "member",
+    });
+    (sendGraphMail as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      messageId: "msg-1",
+    });
+    (
+      registerIncidentReportToSharePoint as ReturnType<typeof vi.fn>
+    ).mockResolvedValue({
+      docNumber: "운영2606-0201",
+      sharepointUrl: "https://sp/x",
+    });
+    const { client, updates } = buildAdminMock(APPROVED_REPORT);
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const r = await sendIncidentReport({
+      id: APPROVED_REPORT.id,
+      recipient_emails: ["a@b.com"],
+    });
+
+    expect(r.ok).toBe(true);
+    expect(registerIncidentReportToSharePoint).toHaveBeenCalledTimes(1);
+    expect(updates[0]?.doc_number).toBe("운영2606-0201");
+    expect(updates[0]?.sharepoint_url).toBe("https://sp/x");
   });
 });

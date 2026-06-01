@@ -7,6 +7,8 @@ import { logActivity } from "@/features/worklog/log";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
 import { incidentReportMailHtml, incidentReportMailSubject } from "./mail-template";
+import { registerIncidentReportToSharePoint } from "./sharepoint-register";
+import { getDelegatedGraphToken } from "@/lib/microsoft/delegated-token";
 import { incidentReportSendSchema, type IncidentReportRow } from "./schemas";
 
 export type SendIncidentReportResult =
@@ -47,6 +49,29 @@ export async function sendIncidentReport(
     return { ok: false, error: "발송 권한이 없습니다." };
   }
 
+  let docNumber: string | null = rep.doc_number;
+  let sharepointUrl: string | null = null;
+  if (!dryRun) {
+    try {
+      // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
+      const delegatedToken = await getDelegatedGraphToken(me.email).catch(
+        () => null,
+      );
+      const r = await registerIncidentReportToSharePoint(rep, new Date(), {
+        token: delegatedToken ?? undefined,
+      });
+      if (r) {
+        docNumber = r.docNumber;
+        sharepointUrl = r.sharepointUrl;
+      }
+    } catch (e) {
+      console.error(
+        "[sendIncidentReport] SharePoint 등록 실패 (메일은 계속):",
+        e,
+      );
+    }
+  }
+
   const pdf = await renderIncidentReportPdf({
     recipientUniversity: rep.recipient_university,
     title: rep.title,
@@ -55,7 +80,7 @@ export async function sendIncidentReport(
     approverName: rep.approver_name,
     directorName: rep.director_name,
     ceoName: rep.ceo_name,
-    docNumber: rep.doc_number,
+    docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,
@@ -114,6 +139,8 @@ export async function sendIncidentReport(
     .update({
       status: "sent",
       recipient_emails: parsed.data.recipient_emails,
+      doc_number: docNumber,
+      sharepoint_url: sharepointUrl,
       updated_at: new Date().toISOString(),
     })
     .eq("id", rep.id)
@@ -126,7 +153,7 @@ export async function sendIncidentReport(
     target_type: "incident_reports",
     target_id: rep.id,
     target_name: rep.title,
-    msg: `경위서 발송 (${parsed.data.recipient_emails.length}명)${dryRun ? " [dry_run]" : ""}`,
+    msg: `경위서 발송 (${parsed.data.recipient_emails.length}명)${docNumber ? ` 시행 ${docNumber}` : ""}${dryRun ? " [dry_run]" : ""}`,
   });
 
   revalidatePath(PATH);

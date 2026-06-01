@@ -25,6 +25,8 @@ const env: EnvSnapshot = {
     receivablesItemId: { configured: false, preview: "" },
     depositItemId: { configured: false, preview: "" },
     manualItemId: { configured: false, preview: "" },
+    gongmunItemId: { configured: false, preview: "" },
+    incidentReportFolderId: { configured: false, preview: "" },
   },
   azure: {
     tenantId: { configured: true, preview: "" },
