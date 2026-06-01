@@ -37,13 +37,17 @@ function MismatchApplyButton({ item }: { item: DepositMismatchItem }) {
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          const r = await applyMismatchAsMatch({
-            misuRow: item.misuRow,
-            depRow: item.depRow,
-            misuCustomer: item.misuCustomer,
-            depContent: item.depContent,
-          });
-          setDone(r.ok ? (r.patched ? "✓ 적용됨" : "✓ 학습됨") : "실패");
+          try {
+            const r = await applyMismatchAsMatch({
+              misuRow: item.misuRow,
+              depRow: item.depRow,
+              misuCustomer: item.misuCustomer,
+              depContent: item.depContent,
+            });
+            setDone(r.ok ? (r.patched ? "✓ 적용됨" : "✓ 학습됨") : "실패");
+          } catch {
+            setDone("실패");
+          }
         })
       }
       className="shrink-0 border border-ink px-2 py-0.5 text-[11px] text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
