@@ -213,6 +213,28 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint 공문관리대장"
+        value={
+          <>
+            <Dot ok={env.sharepoint.gongmunItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.gongmunItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint 경위서 폴더"
+        value={
+          <>
+            <Dot ok={env.sharepoint.incidentReportFolderId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.incidentReportFolderId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="Azure AD 테넌트"
         value={
           <>
