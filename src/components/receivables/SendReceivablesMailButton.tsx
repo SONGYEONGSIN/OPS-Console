@@ -26,6 +26,42 @@ function formatWon(n: number): string {
   return `${Math.round(n).toLocaleString("ko-KR")}원`;
 }
 
+/** 청구건 1행 — 거래처(좌) · 경과일 chip · 금액(우 정렬). 미리보기/스코프 선택 공용. */
+function ReminderItemRow({
+  customerName,
+  daysOverdue,
+  amount,
+  current = false,
+}: {
+  customerName: string;
+  daysOverdue: number;
+  amount: number;
+  current?: boolean;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 border-b border-line-soft py-1.5 last:border-0">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={`truncate ${current ? "font-semibold text-ink" : "text-ink"}`}
+        >
+          {customerName}
+        </span>
+        {current ? (
+          <span className="shrink-0 text-2xs text-muted">(현재 행)</span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <span className="rounded-full bg-washi-raised px-1.5 py-0.5 text-2xs text-muted">
+          D+{daysOverdue}
+        </span>
+        <span className="w-20 text-right font-mono text-xs text-ink">
+          {formatWon(amount)}
+        </span>
+      </span>
+    </li>
+  );
+}
+
 /**
  * 인스펙터의 미수채권 행에서 학교담당자에게 독려 메일을 발송하는 트리거.
  *
@@ -158,18 +194,25 @@ export function SendReceivablesMailButton({
                 </header>
 
                 <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
-                  <p className="mb-3 text-xs text-muted">
-                    수신자: <strong className="text-ink">{email}</strong>
+                  <div className="mb-4 flex items-center justify-between gap-3 border-b border-line-soft pb-3">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="shrink-0 text-2xs uppercase tracking-wide text-muted">
+                        수신자
+                      </span>
+                      <span className="truncate text-sm font-medium text-ink">
+                        {email}
+                      </span>
+                    </div>
                     {dryRun ? (
-                      <span className="ml-2 rounded bg-yellow-100 px-1.5 py-0.5 font-semibold text-yellow-900">
+                      <span className="shrink-0 rounded bg-yellow-100 px-1.5 py-0.5 text-2xs font-semibold text-yellow-900">
                         DRY-RUN
                       </span>
                     ) : (
-                      <span className="ml-2 rounded bg-vermilion-deep px-1.5 py-0.5 font-semibold text-white">
+                      <span className="shrink-0 rounded bg-vermilion-deep px-1.5 py-0.5 text-2xs font-semibold text-white">
                         실발송
                       </span>
                     )}
-                  </p>
+                  </div>
 
                   {phase === "loading" ? (
                     <div className="py-8 text-center text-xs text-muted">
@@ -184,22 +227,15 @@ export function SendReceivablesMailButton({
                         </strong>
                         이 있습니다. 함께 묶어서 1통으로 보낼까요?
                       </p>
-                      <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs">
+                      <ul className="border border-line-soft bg-white px-3 text-xs">
                         {group.items.map((it, idx) => (
-                          <li
+                          <ReminderItemRow
                             key={idx}
-                            className={
-                              it.customerName === customerName
-                                ? "font-semibold text-ink"
-                                : "text-muted"
-                            }
-                          >
-                            · {it.customerName} — D+{it.daysOverdue}{" "}
-                            {formatWon(it.amount)}
-                            {it.customerName === customerName
-                              ? "  (현재 행)"
-                              : ""}
-                          </li>
+                            customerName={it.customerName}
+                            daysOverdue={it.daysOverdue}
+                            amount={it.amount}
+                            current={it.customerName === customerName}
+                          />
                         ))}
                       </ul>
                       <div className="flex justify-end gap-2 pt-2">
@@ -229,18 +265,28 @@ export function SendReceivablesMailButton({
                     </div>
                   ) : phase === "preview" && effectiveGroup() ? (
                     <div className="space-y-2" data-testid="preview">
-                      <p className="text-xs text-muted">
-                        포함 청구건 {effectiveGroup()!.items.length}건 · 합계{" "}
-                        <strong className="text-ink">
-                          {formatWon(effectiveGroup()!.totalAmount)}
-                        </strong>
-                      </p>
-                      <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs text-ink">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted">
+                          청구건{" "}
+                          <strong className="text-ink">
+                            {effectiveGroup()!.items.length}건
+                          </strong>
+                        </span>
+                        <span className="text-muted">
+                          합계{" "}
+                          <strong className="text-sm text-ink">
+                            {formatWon(effectiveGroup()!.totalAmount)}
+                          </strong>
+                        </span>
+                      </div>
+                      <ul className="border border-line-soft bg-white px-3 text-xs text-ink">
                         {effectiveGroup()!.items.map((it, idx) => (
-                          <li key={idx}>
-                            · {it.customerName} — D+{it.daysOverdue}{" "}
-                            {formatWon(it.amount)}
-                          </li>
+                          <ReminderItemRow
+                            key={idx}
+                            customerName={it.customerName}
+                            daysOverdue={it.daysOverdue}
+                            amount={it.amount}
+                          />
                         ))}
                       </ul>
                     </div>
