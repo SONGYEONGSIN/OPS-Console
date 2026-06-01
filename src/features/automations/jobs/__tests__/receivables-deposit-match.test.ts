@@ -6,12 +6,14 @@ const {
   patchMatchResultMock,
   sendMismatchReportMock,
   adminInsertMock,
+  fetchMatchAliasesMock,
 } = vi.hoisted(() => ({
   fetchReceivablesSheetMock: vi.fn(),
   fetchDepositSheetMock: vi.fn(),
   patchMatchResultMock: vi.fn().mockResolvedValue({ ok: true, dryRun: false }),
   sendMismatchReportMock: vi.fn().mockResolvedValue({ ok: true, count: 0 }),
   adminInsertMock: vi.fn().mockResolvedValue({ error: null }),
+  fetchMatchAliasesMock: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("@/features/receivables/queries", () => ({
@@ -32,6 +34,9 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: () => ({ insert: adminInsertMock }),
   }),
 }));
+vi.mock("@/features/receivables-match/alias-queries", () => ({
+  fetchMatchAliases: fetchMatchAliasesMock,
+}));
 
 import { runReceivablesDepositMatch } from "../receivables-deposit-match";
 
@@ -41,6 +46,8 @@ beforeEach(() => {
   patchMatchResultMock.mockClear();
   sendMismatchReportMock.mockClear();
   adminInsertMock.mockClear();
+  fetchMatchAliasesMock.mockReset();
+  fetchMatchAliasesMock.mockResolvedValue({});
 });
 
 describe("runReceivablesDepositMatch", () => {
@@ -98,6 +105,33 @@ describe("runReceivablesDepositMatch", () => {
         expect.objectContaining({ mode: "dry_run", matched_count: 1 }),
       ]),
     );
+  });
+
+  it("학습된 alias를 로드해 mismatch를 자동 매칭한다", async () => {
+    process.env.MAIL_MATCH_DRY_RUN = "true";
+    fetchReceivablesSheetMock.mockResolvedValue({
+      worksheetName: "미수",
+      metaRows: [],
+      headers: ["청구일자", "거래처명", "운영자", "청구금액", "경과일수", "적요"],
+      rows: [["2026-05-01", "서강대학교", "김슬기", 84000, 30, ""]],
+      rowsText: [["2026-05-01", "서강대학교", "김슬기", "84000", "30", ""]],
+      validColIdx: [0, 1, 2, 3, 4, 5],
+      headerRowNumber: 1,
+      rowCount: 1,
+      columnCount: 6,
+      fetchedAt: new Date().toISOString(),
+    });
+    fetchDepositSheetMock.mockResolvedValue([
+      { row: 1769, date: "2026-05-03", amount: 84000, content: "서강국제대학원", matchedFlag: "" },
+    ]);
+    // alias 미적용이면 mismatch — alias 로드 시 매칭
+    fetchMatchAliasesMock.mockResolvedValue({ 서강국제대학원: "서강대" });
+
+    const result = await runReceivablesDepositMatch();
+    expect(result.ok).toBe(true);
+    expect(result.details?.matched).toBe(1);
+    expect(result.details?.mismatches).toBe(0);
+    expect(fetchMatchAliasesMock).toHaveBeenCalled();
   });
 
   it("매칭 쌍이 이미 입금완료(race skip) → 에러 아님(ok:true), skips로 분류", async () => {

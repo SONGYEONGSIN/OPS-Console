@@ -1,8 +1,5 @@
 import "server-only";
-import {
-  fetchReceivablesSheet,
-  type ReceivablesSheet,
-} from "@/features/receivables/queries";
+import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import {
   fetchDepositSheet,
   depositFetchFailMessage,
@@ -10,9 +7,10 @@ import {
 import { patchMatchResult } from "@/features/receivables-match/patch";
 import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
+import { fetchMatchAliases } from "@/features/receivables-match/alias-queries";
+import { toMisuRows } from "@/features/receivables-match/misu-rows";
 import { enrichMatchedForLog } from "@/features/automations/run-logs-normalize";
 import type {
-  MisuRow,
   MatchPair,
   MismatchPair,
 } from "@/features/receivables-match/types";
@@ -21,46 +19,6 @@ import type { AutomationRunResult } from "../types";
 
 function readDryRun(): boolean {
   return (process.env.MAIL_MATCH_DRY_RUN ?? "true").toLowerCase() === "true";
-}
-
-function findCol(headers: string[], re: RegExp): number {
-  return headers.findIndex((h) => re.test(h));
-}
-
-function toNumber(raw: unknown): number {
-  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-  if (typeof raw === "string") {
-    const n = Number(raw.replace(/,/g, "").trim());
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
-}
-
-/**
- * 미수채권 ReceivablesSheet → MisuRow[] 변환.
- * 시트 헤더 row 다음(headerRowNumber+1)부터 데이터 — Excel 1-based row 계산.
- */
-function toMisuRows(sheet: ReceivablesSheet): MisuRow[] {
-  const dateCol = findCol(sheet.headers, /^청구\s*일자/);
-  const custCol = findCol(sheet.headers, /거래처명?|학교명?/);
-  const amountCol = findCol(sheet.headers, /청구\s*금액|금액/);
-  const noteCol = findCol(sheet.headers, /^적요$|비고/);
-  if (dateCol < 0 || custCol < 0 || amountCol < 0) return [];
-
-  const out: MisuRow[] = [];
-  for (let i = 0; i < sheet.rowsText.length; i++) {
-    const text = sheet.rowsText[i] ?? [];
-    const values = sheet.rows[i] ?? [];
-    const rowNumber = sheet.headerRowNumber + 1 + i;
-    out.push({
-      rowNumber,
-      date: String(text[dateCol] ?? "").trim(),
-      customer: String(text[custCol] ?? "").trim(),
-      amount: toNumber(values[amountCol] ?? text[amountCol]),
-      note: noteCol >= 0 ? String(text[noteCol] ?? "").trim() : "",
-    });
-  }
-  return out;
 }
 
 const MISU_SHEET_NAME_FALLBACK = "미수채권";
@@ -104,7 +62,9 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   }
 
   const misuRows = toMisuRows(misuSheet);
-  const result = runMatch(misuRows, deposits);
+  // admin이 불일치 승인으로 학습한 alias 로드 → 매칭에 반영 (서강국제대학원 → 서강대 등).
+  const aliases = await fetchMatchAliases();
+  const result = runMatch(misuRows, deposits, aliases);
   const dryRun = readDryRun();
   const mode = dryRun ? "dry_run" : "live";
 

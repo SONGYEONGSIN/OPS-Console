@@ -40,10 +40,14 @@ export function similarity(a: string, b: string): number {
  * 강매칭 — 완전 일치 또는 양방향 부분포함 (최소 3자 이상).
  * GAS `isNameMatchStrong_`: 정규화 → 완전일치 → 길이 ≥ 3 시 양방향 includes.
  */
-export function isNameMatchStrong(cust: string, content: string): boolean {
+export function isNameMatchStrong(
+  cust: string,
+  content: string,
+  extraAliases: Record<string, string> = {},
+): boolean {
   if (!cust || !content) return false;
-  const a = normalizeName(cust);
-  const b = normalizeName(content);
+  const a = normalizeName(cust, extraAliases);
+  const b = normalizeName(content, extraAliases);
 
   if (a === "" || b === "") return false;
   if (a === b) return true;

@@ -41,17 +41,29 @@ const SPECIAL_MAP: Record<string, string> = {
   숙명국제학부: "숙명여자",
 };
 
-/** GAS와 동일한 dict 적용 + 한글 정규화 규칙 */
-export function normalizeName(name: string): string {
+/**
+ * GAS와 동일한 dict 적용 + 한글 정규화 규칙.
+ *
+ * `extraAliases`: admin이 불일치 승인 시 학습한 런타임 alias (DB). SPECIAL_MAP 위에
+ * 병합되며 동일 규칙(완전일치/prefix)으로 적용. 미지정 시 기존 동작과 완전 동일.
+ */
+export function normalizeName(
+  name: string,
+  extraAliases: Record<string, string> = {},
+): string {
   if (!name) return "";
   let n = String(name).replace(/\s+/g, "");
 
   // 특수 매핑 — 완전 일치 또는 prefix 매칭. GAS는 forEach (break 없음)이므로
   // 모든 key 적용. 결과적으로 "성대외국인유" → "성대" → "성균관대" 같은 chain 발생.
   // 후속 includes("성균관") 룰이 다시 "성대"로 변환하므로 최종 안정화.
-  for (const key of Object.keys(SPECIAL_MAP)) {
+  const map =
+    Object.keys(extraAliases).length > 0
+      ? { ...SPECIAL_MAP, ...extraAliases }
+      : SPECIAL_MAP;
+  for (const key of Object.keys(map)) {
     if (n === key || n.startsWith(key)) {
-      n = SPECIAL_MAP[key];
+      n = map[key];
     }
   }
 

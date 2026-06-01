@@ -1,5 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+vi.mock("@/features/receivables-match/apply-mismatch-action", () => ({
+  applyMismatchAsMatch: vi.fn().mockResolvedValue({ ok: true, patched: true }),
+}));
+
 import { AutomationLogPanel } from "../AutomationLogPanel";
 import type { JobRunLog } from "@/features/automations/run-logs-normalize";
 
@@ -56,6 +61,15 @@ describe("AutomationLogPanel", () => {
           mismatchLines: [
             "세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)",
           ],
+          mismatchItems: [
+            {
+              line: "세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)",
+              misuRow: 12,
+              depRow: 45,
+              misuCustomer: "세종고",
+              depContent: "세종",
+            },
+          ],
           errorLines: [],
           skipLines: [],
         },
@@ -78,6 +92,8 @@ describe("AutomationLogPanel", () => {
       screen.getByText(/₩335,000 1:1 매칭 \(미수행 8 ↔ 입금행 1761\)/),
     ).toBeInTheDocument();
     expect(screen.getByText("LIVE")).toBeInTheDocument();
+    // 불일치 줄에 admin '적용'(승인) 버튼 노출 (automations는 admin 전용 페이지)
+    expect(screen.getByRole("button", { name: "적용" })).toBeInTheDocument();
   });
 
   it("deposit-match 로그 — 스킵(이미 입금완료)은 에러 아닌 스킵으로 렌더", () => {
@@ -94,6 +110,7 @@ describe("AutomationLogPanel", () => {
           errorCount: 0,
           matchedLines: [],
           mismatchLines: [],
+          mismatchItems: [],
           errorLines: [],
           skipLines: ["row 8 이미 입금완료 — skip"],
         },
