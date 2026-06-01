@@ -5,7 +5,10 @@
  * 인사이트=수집 영상 행) 인스펙터 패널이 소비할 공통 entry 형태로 변환한다.
  * I/O는 run-logs.ts(server-only)가 담당하고, 본 모듈은 매핑/요약만 한다.
  */
-import type { MismatchPair } from "@/features/receivables-match/types";
+import type {
+  MatchPair,
+  MismatchPair,
+} from "@/features/receivables-match/types";
 
 export type DepositMatchEntry = {
   startedAt: string;
@@ -14,6 +17,7 @@ export type DepositMatchEntry = {
   matchedCount: number;
   mismatchCount: number;
   errorCount: number;
+  matchedLines: string[];
   mismatchLines: string[];
   errorLines: string[];
 };
@@ -51,6 +55,16 @@ export function summarizeMismatch(m: MismatchPair): string {
   return `${customer} ${formatKrw(m.amount)} — 입금 '${content}' (미수행 ${m.misuRow} ↔ 입금행 ${m.depRow})`;
 }
 
+const MATCH_KIND_LABEL: Record<MatchPair["kind"], string> = {
+  oneToOne: "1:1",
+  nToOne: "N:1",
+  nToM: "N:M",
+};
+
+export function summarizeMatch(m: MatchPair): string {
+  return `${formatKrw(m.amount)} ${MATCH_KIND_LABEL[m.kind]} 매칭 (미수행 ${m.misuRows.join(",")} ↔ 입금행 ${m.depRows.join(",")})`;
+}
+
 type DepositMatchRow = {
   started_at: string;
   finished_at: string | null;
@@ -59,13 +73,16 @@ type DepositMatchRow = {
   mismatch_count: number;
   error_count: number;
   payload: {
-    matched?: unknown[];
+    matched?: MatchPair[];
     mismatches?: MismatchPair[];
     errors?: string[];
   } | null;
 };
 
 export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
+  const matched = Array.isArray(row.payload?.matched)
+    ? row.payload.matched
+    : [];
   const mismatches = Array.isArray(row.payload?.mismatches)
     ? row.payload.mismatches
     : [];
@@ -77,6 +94,7 @@ export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
     matchedCount: row.matched_count ?? 0,
     mismatchCount: row.mismatch_count ?? 0,
     errorCount: row.error_count ?? 0,
+    matchedLines: matched.map(summarizeMatch),
     mismatchLines: mismatches.map(summarizeMismatch),
     errorLines: errors,
   };

@@ -78,6 +78,41 @@ describe("toDepositMatchEntry", () => {
     expect(entry.errorLines).toEqual([]);
   });
 
+  it("payload.matched에서 매칭 성공 줄을 추출 (단건/N:1/N:M)", () => {
+    const entry = toDepositMatchEntry({
+      started_at: "2026-06-01T05:00:00Z",
+      finished_at: "2026-06-01T05:00:30Z",
+      mode: "live",
+      matched_count: 2,
+      mismatch_count: 0,
+      error_count: 0,
+      payload: {
+        matched: [
+          {
+            misuRows: [8],
+            depRows: [1761],
+            kind: "oneToOne",
+            depositDate: "2026-05-27",
+            amount: 335000,
+          },
+          {
+            misuRows: [3, 4],
+            depRows: [900],
+            kind: "nToOne",
+            depositDate: "2026-05-20",
+            amount: 500000,
+          },
+        ],
+        mismatches: [],
+        errors: [],
+      },
+    });
+    expect(entry.matchedLines).toEqual([
+      "₩335,000 1:1 매칭 (미수행 8 ↔ 입금행 1761)",
+      "₩500,000 N:1 매칭 (미수행 3,4 ↔ 입금행 900)",
+    ]);
+  });
+
   it("payload가 null이어도 빈 배열로 안전 처리", () => {
     const entry = toDepositMatchEntry({
       started_at: "2026-05-31T05:00:00Z",

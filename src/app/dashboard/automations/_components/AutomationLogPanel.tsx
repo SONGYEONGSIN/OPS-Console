@@ -1,6 +1,10 @@
 "use client";
 
-import { Section, DefList, Divider } from "@/app/dashboard/_components/inspector/list-variants/shared";
+import {
+  Section,
+  DefList,
+  Divider,
+} from "@/app/dashboard/_components/inspector/list-variants/shared";
 import {
   formatKrw,
   type JobRunLog,
@@ -17,7 +21,9 @@ function ModeBadge({ mode }: { mode: "dry_run" | "live" }) {
   return (
     <span
       className={`inline-block px-2 py-0.5 text-[11px] ${
-        mode === "live" ? "bg-vermilion/20 text-vermilion-deep" : "bg-washi-raised text-muted"
+        mode === "live"
+          ? "bg-vermilion/20 text-vermilion-deep"
+          : "bg-washi-raised text-muted"
       }`}
     >
       {mode === "live" ? "LIVE" : "DRY-RUN"}
@@ -26,7 +32,8 @@ function ModeBadge({ mode }: { mode: "dry_run" | "live" }) {
 }
 
 function StatusBadge({ status }: { status: "sent" | "failed" | "dry_run" }) {
-  const label = status === "sent" ? "발송" : status === "failed" ? "실패" : "DRY-RUN";
+  const label =
+    status === "sent" ? "발송" : status === "failed" ? "실패" : "DRY-RUN";
   return (
     <span
       className={`inline-block px-2 py-0.5 text-[11px] ${
@@ -52,8 +59,16 @@ function DepositMatchList({ entries }: { entries: DepositMatchEntry[] }) {
             <ModeBadge mode={e.mode} />
           </div>
           <p className="text-xs text-muted">
-            매칭 {e.matchedCount} · 불일치 {e.mismatchCount} · 에러 {e.errorCount}
+            매칭 {e.matchedCount} · 불일치 {e.mismatchCount} · 에러{" "}
+            {e.errorCount}
           </p>
+          {e.matchedLines.length > 0 && (
+            <ul className="space-y-1 text-xs text-sage">
+              {e.matchedLines.map((line, j) => (
+                <li key={j}>✓ {line}</li>
+              ))}
+            </ul>
+          )}
           {e.mismatchLines.length > 0 && (
             <ul className="space-y-1 text-xs text-vermilion-deep">
               {e.mismatchLines.map((line, j) => (
@@ -98,7 +113,8 @@ function MailOperatorList({ entries }: { entries: MailOperatorEntry[] }) {
               },
               {
                 term: "거래처",
-                desc: e.customerNames.length > 0 ? e.customerNames.join(", ") : "—",
+                desc:
+                  e.customerNames.length > 0 ? e.customerNames.join(", ") : "—",
               },
             ]}
           />
@@ -119,12 +135,16 @@ function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
         <div key={i} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-ink">{fmtTime(e.collectedAt)}</span>
-            <span className="text-[11px] text-muted">{e.videoCount}건 수집</span>
+            <span className="text-[11px] text-muted">
+              {e.videoCount}건 수집
+            </span>
           </div>
           {e.sampleTitles.length > 0 && (
             <ul className="space-y-1 text-xs text-muted">
               {e.sampleTitles.map((title, j) => (
-                <li key={j} className="truncate">▸ {title}</li>
+                <li key={j} className="truncate">
+                  ▸ {title}
+                </li>
               ))}
             </ul>
           )}
@@ -158,8 +178,12 @@ export function AutomationLogPanel({ label, loading, error, log }: Props) {
         <p className="text-xs text-muted">실행 기록이 없습니다.</p>
       ) : (
         <Section title="실행 이력">
-          {log.kind === "deposit-match" && <DepositMatchList entries={log.entries} />}
-          {log.kind === "mail-operator" && <MailOperatorList entries={log.entries} />}
+          {log.kind === "deposit-match" && (
+            <DepositMatchList entries={log.entries} />
+          )}
+          {log.kind === "mail-operator" && (
+            <MailOperatorList entries={log.entries} />
+          )}
           {log.kind === "insights" && <InsightsList entries={log.entries} />}
         </Section>
       )}
