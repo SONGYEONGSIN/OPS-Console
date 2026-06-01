@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
   fetchReminderGroup,
@@ -83,7 +83,9 @@ export function SendReceivablesMailButton({
   const [scope, setScope] = useState<"single" | "bundle">("bundle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SendReminderResult | null>(null);
-  const [isPending, startTransition] = useTransition();
+  // useTransition 대신 일반 로딩 플래그 — 서버 액션의 revalidate refresh와
+  // 결과 setState가 엮여 'done' 전환이 누락(모달이 사라지는 듯 보임)되는 것 방지.
+  const [busy, setBusy] = useState(false);
 
   function reset() {
     setOpen(false);
@@ -103,7 +105,7 @@ export function SendReceivablesMailButton({
     }
     setOpen(true);
     setPhase("loading");
-    startTransition(async () => {
+    void (async () => {
       const r = await fetchReminderGroup(email);
       if (!r.sheetAvailable) {
         setError("SharePoint Excel을 불러올 수 없습니다.");
@@ -120,7 +122,7 @@ export function SendReceivablesMailButton({
       setGroup(r.group);
       // 2건 이상이면 단건/묶음 선택, 1건이면 바로 preview
       setPhase(r.group.items.length > 1 ? "select-scope" : "preview");
-    });
+    })();
   }
 
   function effectiveGroup(): ReminderGroup | null {
@@ -137,10 +139,11 @@ export function SendReceivablesMailButton({
     };
   }
 
-  function onSend() {
+  async function onSend() {
     const eg = effectiveGroup();
     if (!eg) return;
-    startTransition(async () => {
+    setBusy(true);
+    try {
       const r = await sendReminderEmails({
         // action 자체는 threshold 사용 안 함. zod positive 통과용 1 전달.
         thresholdDays: 1,
@@ -149,7 +152,9 @@ export function SendReceivablesMailButton({
       });
       setResult(r);
       setPhase("done");
-    });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -157,7 +162,7 @@ export function SendReceivablesMailButton({
       <button
         type="button"
         onClick={trigger}
-        disabled={!email || isPending}
+        disabled={!email || busy}
         className="inline-flex items-center gap-2 border border-ink/20 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-washi-raised disabled:cursor-not-allowed disabled:opacity-40"
         data-testid="inspector-send-mail"
       >
@@ -331,15 +336,11 @@ export function SendReceivablesMailButton({
                     <button
                       type="button"
                       onClick={onSend}
-                      disabled={isPending}
+                      disabled={busy}
                       className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
                       data-testid="confirm-send"
                     >
-                      {isPending
-                        ? "발송 중..."
-                        : dryRun
-                          ? "Dry-run 발송"
-                          : "발송"}
+                      {busy ? "발송 중..." : dryRun ? "Dry-run 발송" : "발송"}
                     </button>
                   ) : null}
                 </footer>
