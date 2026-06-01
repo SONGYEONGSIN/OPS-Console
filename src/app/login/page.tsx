@@ -512,9 +512,12 @@ function SSOButton() {
       provider: "azure",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        // email scope 명시 — Azure AD가 user email을 ID token에 포함하도록.
-        // openid + profile + email = OIDC 표준 user info 스코프.
-        scopes: "openid profile email",
+        // openid + profile + email = OIDC 표준 user info. offline_access = refresh token.
+        // Files/Sites.ReadWrite.All = 경위서 .docx를 운영자 자격으로 SharePoint 업로드
+        // (만든 사람=운영자) — 위임 토큰 발급용. Azure가 단축명을 거부하면
+        // https://graph.microsoft.com/Files.ReadWrite.All 형태 전체 URI로 교체.
+        scopes:
+          "openid profile email offline_access Files.ReadWrite.All Sites.ReadWrite.All",
       },
     });
   };

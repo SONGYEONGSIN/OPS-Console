@@ -8,6 +8,7 @@ import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
 import { incidentReportMailHtml, incidentReportMailSubject } from "./mail-template";
 import { registerIncidentReportToSharePoint } from "./sharepoint-register";
+import { getDelegatedGraphToken } from "@/lib/microsoft/delegated-token";
 import { incidentReportSendSchema, type IncidentReportRow } from "./schemas";
 
 export type SendIncidentReportResult =
@@ -52,7 +53,13 @@ export async function sendIncidentReport(
   let sharepointUrl: string | null = null;
   if (!dryRun) {
     try {
-      const r = await registerIncidentReportToSharePoint(rep, new Date());
+      // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
+      const delegatedToken = await getDelegatedGraphToken(me.email).catch(
+        () => null,
+      );
+      const r = await registerIncidentReportToSharePoint(rep, new Date(), {
+        token: delegatedToken ?? undefined,
+      });
       if (r) {
         docNumber = r.docNumber;
         sharepointUrl = r.sharepointUrl;

@@ -11,6 +11,9 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../sharepoint-register", () => ({
   registerIncidentReportToSharePoint: vi.fn(async () => null),
 }));
+vi.mock("@/lib/microsoft/delegated-token", () => ({
+  getDelegatedGraphToken: vi.fn(async () => null),
+}));
 
 import { sendIncidentReport } from "../mail-actions";
 import { getCurrentOperator } from "@/features/auth/queries";
