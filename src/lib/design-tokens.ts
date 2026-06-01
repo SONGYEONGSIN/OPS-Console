@@ -12,30 +12,30 @@
 
 export const colors = {
   // Paper / surface
-  washi: '#ede6d2',
-  washiRaised: '#f4eddd',
-  cream: '#faf4e6',
-  sidebar: '#e5dec8',
-  sidebarHover: '#dcd4bc',
+  washi: "#ede6d2",
+  washiRaised: "#f4eddd",
+  cream: "#faf4e6",
+  sidebar: "#e5dec8",
+  sidebarHover: "#dcd4bc",
   // Ink (text)
-  ink: '#15120c',
-  inkSoft: '#3d3529',
-  muted: '#716855',
-  faint: '#a8a08a',
+  ink: "#15120c",
+  inkSoft: "#3d3529",
+  muted: "#716855",
+  faint: "#a8a08a",
   // Line / border
-  line: '#15120c',
-  lineSoft: 'rgba(21, 18, 12, 0.12)',
+  line: "#15120c",
+  lineSoft: "rgba(21, 18, 12, 0.12)",
   // Accent — vermilion(낙관) 주, 보조는 indigo/amber/gold/sage
-  vermilion: '#b8331e',
-  vermilionDeep: '#8e2412',
-  indigo: '#1f3a5f',
-  amber: '#d97706',
-  gold: '#9c7a2c',
-  sage: '#556b2f',
+  vermilion: "#b8331e",
+  vermilionDeep: "#8e2412",
+  indigo: "#1f3a5f",
+  amber: "#d97706",
+  gold: "#9c7a2c",
+  sage: "#556b2f",
   // OPS Console chrome 전용 (별도 레이어 — chrome bar만 적용)
-  chromeGraphite: '#18181b',
-  chromeSnow: '#f5f5f4',
-  chromeMuted: '#71717a',
+  chromeGraphite: "#18181b",
+  chromeSnow: "#f5f5f4",
+  chromeMuted: "#71717a",
 } as const;
 
 /** 본문/숫자 모두 Pretendard. 데이터 표 등 정렬이 필요한 셀에는 tabular-nums 클래스. */
@@ -48,48 +48,59 @@ export const fontFamily = {
  * 3xs/2xs는 statusbar / 타임라인 / 메타 라벨 등 미세 UI 라벨용 — 토큰 스케일 시작점(xs=11)보다 작은 의도적 보조 크기.
  */
 export const fontSize = {
-  '3xs': '9px',
-  '2xs': '10px',
-  xs: '11px',
-  sm: '12px',
-  md: '13px',
-  lg: '15px',
-  xl: '20px',
-  '2xl': '26px',
-  '3xl': '40px',
+  "3xs": "9px",
+  "2xs": "10px",
+  xs: "11px",
+  sm: "12px",
+  md: "13px",
+  lg: "15px",
+  xl: "20px",
+  "2xl": "26px",
+  "3xl": "40px",
 } as const;
 
 export const fontSizeMobile = {
-  md: '14px',
-  xl: '18px',
-  '2xl': '22px',
-  '3xl': '32px',
+  md: "14px",
+  xl: "18px",
+  "2xl": "22px",
+  "3xl": "32px",
 } as const;
 
 /** 4px base. Tailwind spacing 키와 동일 인덱스. */
 export const spacing = {
-  1: '4px',
-  2: '8px',
-  3: '12px',
-  4: '16px',
-  5: '20px',
-  6: '28px',
-  7: '40px',
-  8: '56px',
+  1: "4px",
+  2: "8px",
+  3: "12px",
+  4: "16px",
+  5: "20px",
+  6: "28px",
+  7: "40px",
+  8: "56px",
+} as const;
+
+/**
+ * Border radius — 에디토리얼(washi/낙관) 톤은 sharp(각짐)가 기본.
+ * - none: chip/badge·상태 태그·인스펙터 행 등 대부분의 표면 (의도적 0)
+ * - subtle: 모달·드롭다운 등 큰 표면에만 선택적 미세 곡률
+ * 컴포넌트에서 radius가 필요하면 이 스케일을 따른다(임의 rounded-full/lg 지양).
+ */
+export const radii = {
+  none: "0px",
+  subtle: "2px",
 } as const;
 
 /** WCAG 모바일 타깃 44px, 데스크탑 36px. */
 export const tap = {
-  desktop: '36px',
-  mobile: '44px',
+  desktop: "36px",
+  mobile: "44px",
 } as const;
 
 /** 드로어/모달 모션. reduced-motion 시 120ms. */
 export const motion = {
-  drawerEase: 'cubic-bezier(0.2, 0.0, 0.2, 1)',
-  drawerMs: '250ms',
-  drawerMsMobile: '220ms',
-  drawerMsReduced: '120ms',
+  drawerEase: "cubic-bezier(0.2, 0.0, 0.2, 1)",
+  drawerMs: "250ms",
+  drawerMsMobile: "220ms",
+  drawerMsReduced: "120ms",
 } as const;
 
 /**
@@ -98,12 +109,12 @@ export const motion = {
  * - drawer-*: 모바일 드로어 펼침 시 측면 음영
  */
 export const shadows = {
-  ledSage: '0 0 4px var(--sage)',
-  ledSageStrong: '0 0 6px var(--sage)',
-  ledVermilion: '0 0 4px var(--vermilion)',
-  drawerLeft: '8px 0 24px rgba(21, 18, 12, 0.08)',
-  drawerRight: '-8px 0 24px rgba(21, 18, 12, 0.08)',
+  ledSage: "0 0 4px var(--sage)",
+  ledSageStrong: "0 0 6px var(--sage)",
+  ledVermilion: "0 0 4px var(--vermilion)",
+  drawerLeft: "8px 0 24px rgba(21, 18, 12, 0.08)",
+  drawerRight: "-8px 0 24px rgba(21, 18, 12, 0.08)",
 } as const;
 
 /** 데이터 표 / 식별자 / 타임스탬프 정렬용. globals.css에서 .tabular 클래스로도 노출. */
-export const numericClass = 'tabular-nums';
+export const numericClass = "tabular-nums";

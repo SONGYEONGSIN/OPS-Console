@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
   fetchReminderGroup,
@@ -26,6 +26,42 @@ function formatWon(n: number): string {
   return `${Math.round(n).toLocaleString("ko-KR")}원`;
 }
 
+/** 청구건 1행 — 거래처(좌) · 경과일 chip · 금액(우 정렬). 미리보기/스코프 선택 공용. */
+function ReminderItemRow({
+  customerName,
+  daysOverdue,
+  amount,
+  current = false,
+}: {
+  customerName: string;
+  daysOverdue: number;
+  amount: number;
+  current?: boolean;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 border-b border-line-soft py-1.5 last:border-0">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span
+          className={`truncate ${current ? "font-semibold text-ink" : "text-ink"}`}
+        >
+          {customerName}
+        </span>
+        {current ? (
+          <span className="shrink-0 text-2xs text-muted">(현재 행)</span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <span className="bg-washi-raised px-1.5 py-0.5 text-2xs text-muted">
+          D+{daysOverdue}
+        </span>
+        <span className="w-20 text-right text-xs tabular-nums text-ink">
+          {formatWon(amount)}
+        </span>
+      </span>
+    </li>
+  );
+}
+
 /**
  * 인스펙터의 미수채권 행에서 학교담당자에게 독려 메일을 발송하는 트리거.
  *
@@ -47,7 +83,17 @@ export function SendReceivablesMailButton({
   const [scope, setScope] = useState<"single" | "bundle">("bundle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SendReminderResult | null>(null);
-  const [isPending, startTransition] = useTransition();
+  // useTransition 대신 일반 로딩 플래그 — 서버 액션의 revalidate refresh와
+  // 결과 setState가 엮여 'done' 전환이 누락(모달이 사라지는 듯 보임)되는 것 방지.
+  const [busy, setBusy] = useState(false);
+  // 모달 portal 대상 — document.body 직속 portal은 Next App Router 이벤트 위임
+  // 범위 밖이라 클릭이 안 먹는다. layout(DashboardShell)이 렌더한 #ops-modal-root
+  // (transform 없는 최상위)로 portal해 이벤트와 전체화면 위치를 모두 확보.
+  // open=true는 항상 하이드레이션 이후(클릭 시)라 렌더 시점 조회로 안전.
+  const modalRoot =
+    typeof document !== "undefined"
+      ? document.getElementById("ops-modal-root")
+      : null;
 
   function reset() {
     setOpen(false);
@@ -67,7 +113,7 @@ export function SendReceivablesMailButton({
     }
     setOpen(true);
     setPhase("loading");
-    startTransition(async () => {
+    void (async () => {
       const r = await fetchReminderGroup(email);
       if (!r.sheetAvailable) {
         setError("SharePoint Excel을 불러올 수 없습니다.");
@@ -84,7 +130,7 @@ export function SendReceivablesMailButton({
       setGroup(r.group);
       // 2건 이상이면 단건/묶음 선택, 1건이면 바로 preview
       setPhase(r.group.items.length > 1 ? "select-scope" : "preview");
-    });
+    })();
   }
 
   function effectiveGroup(): ReminderGroup | null {
@@ -101,10 +147,11 @@ export function SendReceivablesMailButton({
     };
   }
 
-  function onSend() {
+  async function onSend() {
     const eg = effectiveGroup();
     if (!eg) return;
-    startTransition(async () => {
+    setBusy(true);
+    try {
       const r = await sendReminderEmails({
         // action 자체는 threshold 사용 안 함. zod positive 통과용 1 전달.
         thresholdDays: 1,
@@ -113,7 +160,9 @@ export function SendReceivablesMailButton({
       });
       setResult(r);
       setPhase("done");
-    });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -121,14 +170,14 @@ export function SendReceivablesMailButton({
       <button
         type="button"
         onClick={trigger}
-        disabled={!email || isPending}
+        disabled={!email || busy}
         className="inline-flex items-center gap-2 border border-ink/20 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-washi-raised disabled:cursor-not-allowed disabled:opacity-40"
         data-testid="inspector-send-mail"
       >
         독려 메일 발송
       </button>
 
-      {open
+      {open && modalRoot
         ? createPortal(
             <div
               role="dialog"
@@ -139,7 +188,7 @@ export function SendReceivablesMailButton({
                 if (e.target === e.currentTarget) reset();
               }}
             >
-              <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-washi-base shadow-xl">
+              <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-cream shadow-xl">
                 <header className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
                   <h2
                     id="send-receivables-mail-title"
@@ -158,18 +207,25 @@ export function SendReceivablesMailButton({
                 </header>
 
                 <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
-                  <p className="mb-3 text-xs text-muted">
-                    수신자: <strong className="text-ink">{email}</strong>
+                  <div className="mb-4 flex items-center justify-between gap-3 border-b border-line-soft pb-3">
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      <span className="shrink-0 text-2xs uppercase tracking-wide text-muted">
+                        수신자
+                      </span>
+                      <span className="truncate text-sm font-medium text-ink">
+                        {email}
+                      </span>
+                    </div>
                     {dryRun ? (
-                      <span className="ml-2 rounded bg-yellow-100 px-1.5 py-0.5 font-semibold text-yellow-900">
+                      <span className="shrink-0 bg-gold px-1.5 py-0.5 text-2xs font-semibold text-cream">
                         DRY-RUN
                       </span>
                     ) : (
-                      <span className="ml-2 rounded bg-vermilion-deep px-1.5 py-0.5 font-semibold text-white">
+                      <span className="shrink-0 bg-vermilion-deep px-1.5 py-0.5 text-2xs font-semibold text-cream">
                         실발송
                       </span>
                     )}
-                  </p>
+                  </div>
 
                   {phase === "loading" ? (
                     <div className="py-8 text-center text-xs text-muted">
@@ -184,22 +240,15 @@ export function SendReceivablesMailButton({
                         </strong>
                         이 있습니다. 함께 묶어서 1통으로 보낼까요?
                       </p>
-                      <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs">
+                      <ul className="border border-line-soft bg-white px-3 text-xs">
                         {group.items.map((it, idx) => (
-                          <li
+                          <ReminderItemRow
                             key={idx}
-                            className={
-                              it.customerName === customerName
-                                ? "font-semibold text-ink"
-                                : "text-muted"
-                            }
-                          >
-                            · {it.customerName} — D+{it.daysOverdue}{" "}
-                            {formatWon(it.amount)}
-                            {it.customerName === customerName
-                              ? "  (현재 행)"
-                              : ""}
-                          </li>
+                            customerName={it.customerName}
+                            daysOverdue={it.daysOverdue}
+                            amount={it.amount}
+                            current={it.customerName === customerName}
+                          />
                         ))}
                       </ul>
                       <div className="flex justify-end gap-2 pt-2">
@@ -229,18 +278,28 @@ export function SendReceivablesMailButton({
                     </div>
                   ) : phase === "preview" && effectiveGroup() ? (
                     <div className="space-y-2" data-testid="preview">
-                      <p className="text-xs text-muted">
-                        포함 청구건 {effectiveGroup()!.items.length}건 · 합계{" "}
-                        <strong className="text-ink">
-                          {formatWon(effectiveGroup()!.totalAmount)}
-                        </strong>
-                      </p>
-                      <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs text-ink">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted">
+                          청구건{" "}
+                          <strong className="text-ink">
+                            {effectiveGroup()!.items.length}건
+                          </strong>
+                        </span>
+                        <span className="text-muted">
+                          합계{" "}
+                          <strong className="text-sm tabular-nums text-ink">
+                            {formatWon(effectiveGroup()!.totalAmount)}
+                          </strong>
+                        </span>
+                      </div>
+                      <ul className="border border-line-soft bg-white px-3 text-xs text-ink">
                         {effectiveGroup()!.items.map((it, idx) => (
-                          <li key={idx}>
-                            · {it.customerName} — D+{it.daysOverdue}{" "}
-                            {formatWon(it.amount)}
-                          </li>
+                          <ReminderItemRow
+                            key={idx}
+                            customerName={it.customerName}
+                            daysOverdue={it.daysOverdue}
+                            amount={it.amount}
+                          />
                         ))}
                       </ul>
                     </div>
@@ -285,21 +344,17 @@ export function SendReceivablesMailButton({
                     <button
                       type="button"
                       onClick={onSend}
-                      disabled={isPending}
+                      disabled={busy}
                       className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
                       data-testid="confirm-send"
                     >
-                      {isPending
-                        ? "발송 중..."
-                        : dryRun
-                          ? "Dry-run 발송"
-                          : "발송"}
+                      {busy ? "발송 중..." : dryRun ? "Dry-run 발송" : "발송"}
                     </button>
                   ) : null}
                 </footer>
               </div>
             </div>,
-            document.body,
+            modalRoot,
           )
         : null}
     </>

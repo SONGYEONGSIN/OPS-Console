@@ -22,7 +22,13 @@ export function InspectorPanel({ open, onClose, children }: Props) {
       if (e.key === "Escape") onClose();
     };
     const onDown = (e: MouseEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      // 모달 등 앱 레벨 오버레이(#ops-modal-root) 내부 클릭은 외부 클릭으로 보지
+      // 않는다 — 모달은 인스펙터 DOM 밖(portal)이라 contains로는 안 잡히기 때문.
+      const modalRoot = document.getElementById("ops-modal-root");
+      if (modalRoot?.contains(target)) return;
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onDown);
