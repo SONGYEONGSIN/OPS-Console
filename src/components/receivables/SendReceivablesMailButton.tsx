@@ -86,6 +86,14 @@ export function SendReceivablesMailButton({
   // useTransition 대신 일반 로딩 플래그 — 서버 액션의 revalidate refresh와
   // 결과 setState가 엮여 'done' 전환이 누락(모달이 사라지는 듯 보임)되는 것 방지.
   const [busy, setBusy] = useState(false);
+  // 모달 portal 대상 — document.body 직속 portal은 Next App Router 이벤트 위임
+  // 범위 밖이라 클릭이 안 먹는다. layout(DashboardShell)이 렌더한 #ops-modal-root
+  // (transform 없는 최상위)로 portal해 이벤트와 전체화면 위치를 모두 확보.
+  // open=true는 항상 하이드레이션 이후(클릭 시)라 렌더 시점 조회로 안전.
+  const modalRoot =
+    typeof document !== "undefined"
+      ? document.getElementById("ops-modal-root")
+      : null;
 
   function reset() {
     setOpen(false);
@@ -169,7 +177,7 @@ export function SendReceivablesMailButton({
         독려 메일 발송
       </button>
 
-      {open
+      {open && modalRoot
         ? createPortal(
             <div
               role="dialog"
@@ -346,7 +354,7 @@ export function SendReceivablesMailButton({
                 </footer>
               </div>
             </div>,
-            document.body,
+            modalRoot,
           )
         : null}
     </>

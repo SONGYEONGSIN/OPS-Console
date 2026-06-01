@@ -33,6 +33,12 @@ const GROUP_1 = {
 describe("SendReceivablesMailButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 모달 portal 대상 — 실제 앱에서는 DashboardShell이 렌더한다.
+    if (!document.getElementById("ops-modal-root")) {
+      const root = document.createElement("div");
+      root.id = "ops-modal-root";
+      document.body.appendChild(root);
+    }
     fetchReminderGroupMock.mockResolvedValue({
       thresholdDays: 10,
       sheetAvailable: true,
@@ -66,7 +72,7 @@ describe("SendReceivablesMailButton", () => {
     expect(screen.queryByRole("dialog")).not.toBeNull();
   });
 
-  it("모달이 document.body로 portal되어 렌더 (transform 조상에 갇히지 않음)", () => {
+  it("모달이 #ops-modal-root로 portal되어 렌더 (transform 조상에 갇히지 않음)", () => {
     render(
       <SendReceivablesMailButton
         email="manager@school.ac.kr"
@@ -76,9 +82,8 @@ describe("SendReceivablesMailButton", () => {
     );
     fireEvent.click(screen.getByTestId("inspector-send-mail"));
     const dialog = screen.getByRole("dialog");
-    // portal 대상이 document.body이면 dialog의 부모가 body다.
-    // (portal이 아니면 RTL 컨테이너 div 안에 중첩되어 parentElement !== body)
-    expect(dialog.parentElement).toBe(document.body);
+    // body 직속 portal은 이벤트 위임 밖이라 클릭이 죽는다 → 앱 렌더 컨테이너로 portal.
+    expect(dialog.parentElement?.id).toBe("ops-modal-root");
   });
 
   it("모달 패널은 불투명 배경(bg-cream) — 미정의 토큰으로 투명해지지 않음", () => {

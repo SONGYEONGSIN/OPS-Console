@@ -79,6 +79,10 @@ export function DashboardShell({
             }`}
           />
         </div>
+        {/* 모달 portal 마운트 지점 — transform 조상 없는 최상위.
+            인스펙터(transform 드로어) 안의 모달이 fixed로 갇히는 것을 피하면서
+            document.body 직속 portal의 이벤트 위임 문제도 회피한다. */}
+        <div id="ops-modal-root" />
       </SidebarToggleProvider>
     </OpenTabsProvider>
   );
