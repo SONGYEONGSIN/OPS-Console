@@ -21,6 +21,7 @@ export type Variant =
   | "contracts"
   | "contacts"
   | "incidents"
+  | "incident-reports"
   | "handover"
   | "assignments"
   | "worklog"
