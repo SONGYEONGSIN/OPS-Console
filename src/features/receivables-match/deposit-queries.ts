@@ -20,7 +20,12 @@ export function parseDepositSheet(data: {
   const header = values[0].map((h) => String(h ?? "").trim());
   const findCol = (re: RegExp) => header.findIndex((h) => re.test(h));
   const dateCol = findCol(/거래\s*일시|입금\s*일자|거래일자/);
-  const amountCol = findCol(/입금\s*금액|금액$/);
+  // 입금금액 우선 — "금액$"만 쓰면 앞에 있는 "출금금액"에 먼저 매칭되어 0이 잡힘.
+  // 입금금액 미존재 시에만 "...금액"으로 폴백하되 출금 컬럼은 제외.
+  let amountCol = findCol(/입금\s*금액/);
+  if (amountCol < 0) {
+    amountCol = header.findIndex((h) => /금액$/.test(h) && !/출금/.test(h));
+  }
   const contentCol = findCol(/거래\s*내용|입금자|입금처/);
   const flagCol = findCol(/미결제|처리|결제\s*표시/);
 
