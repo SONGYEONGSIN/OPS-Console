@@ -79,6 +79,17 @@ describe("applyMismatchAsMatch", () => {
     expect(r).toMatchObject({ ok: true, patched: true });
   });
 
+  it("즉시 매칭 단계(시트 fetch)가 throw해도 학습은 유지 (ok, patched:false)", async () => {
+    fetchReceivablesSheetMock.mockRejectedValue(new Error("graph 500"));
+    fetchDepositSheetMock.mockResolvedValue([]);
+
+    const r = await applyMismatchAsMatch({
+      misuRow: 2, depRow: 1769, misuCustomer: "서강대학교", depContent: "서강국제대학원",
+    });
+    expect(insertMatchAliasMock).toHaveBeenCalled();
+    expect(r).toMatchObject({ ok: true, patched: false });
+  });
+
   it("이미 입금완료 등으로 현재 매칭 안 되면 → 학습만(patched:false)", async () => {
     fetchReceivablesSheetMock.mockResolvedValue({
       ...sheet,
