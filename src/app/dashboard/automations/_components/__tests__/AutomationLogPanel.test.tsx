@@ -57,6 +57,7 @@ describe("AutomationLogPanel", () => {
             "세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)",
           ],
           errorLines: [],
+          skipLines: [],
         },
       ],
     };
@@ -77,6 +78,42 @@ describe("AutomationLogPanel", () => {
       screen.getByText(/₩335,000 1:1 매칭 \(미수행 8 ↔ 입금행 1761\)/),
     ).toBeInTheDocument();
     expect(screen.getByText("LIVE")).toBeInTheDocument();
+  });
+
+  it("deposit-match 로그 — 스킵(이미 입금완료)은 에러 아닌 스킵으로 렌더", () => {
+    const log: JobRunLog = {
+      jobId: "receivables-deposit-match",
+      kind: "deposit-match",
+      entries: [
+        {
+          startedAt: "2026-06-01T10:00:00Z",
+          finishedAt: "2026-06-01T10:00:30Z",
+          mode: "live",
+          matchedCount: 0,
+          mismatchCount: 0,
+          errorCount: 0,
+          matchedLines: [],
+          mismatchLines: [],
+          errorLines: [],
+          skipLines: ["row 8 이미 입금완료 — skip"],
+        },
+      ],
+    };
+    render(
+      <AutomationLogPanel
+        label="입금 매칭"
+        loading={false}
+        error={null}
+        log={log}
+      />,
+    );
+    // 에러 0인데 스킵 1로 표시 (500 아님)
+    expect(
+      screen.getByText("매칭 0 · 불일치 0 · 에러 0 · 스킵 1"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/row 8 이미 입금완료 — skip/),
+    ).toBeInTheDocument();
   });
 
   it("mail-operator 로그 — 수신자/상태 렌더", () => {

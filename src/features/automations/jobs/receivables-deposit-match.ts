@@ -109,6 +109,9 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   const mode = dryRun ? "dry_run" : "live";
 
   const errors: string[] = [];
+  // 이미 입금완료라 PATCH를 건너뛴 양성 스킵 — 에러가 아니므로 ok/error_count에서 제외.
+  // 이력 가시성을 위해 payload.skips로 별도 보관한다.
+  const skips: string[] = [];
   const successfulPatches: MatchPair[] = [];
   for (let i = 0; i < result.matched.length; i++) {
     const pair = result.matched[i];
@@ -121,7 +124,7 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
     if (patchRes.ok) {
       successfulPatches.push(pair);
     } else if (patchRes.skipped) {
-      errors.push(`row ${pair.misuRows[0]} race skip — 이미 입금완료`);
+      skips.push(`row ${pair.misuRows[0]} 이미 입금완료 — skip`);
     } else if (patchRes.errorMessage) {
       errors.push(patchRes.errorMessage);
     }
@@ -153,16 +156,18 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
         matched: enrichMatchedForLog(result.matched, misuRows, deposits),
         mismatches: result.mismatches,
         errors,
+        skips,
       },
       notes: dryRun ? "DRY RUN — PATCH 호출 없음" : null,
     },
   ]);
 
   const tag = dryRun ? "[DRY-RUN]" : "";
+  const skipTag = skips.length > 0 ? ` / skips ${skips.length}` : "";
   return {
     ok: errors.length === 0,
     message:
-      `${tag} matched ${result.matched.length} / mismatch ${result.mismatches.length} / errors ${errors.length}`.trim(),
+      `${tag} matched ${result.matched.length} / mismatch ${result.mismatches.length} / errors ${errors.length}${skipTag}`.trim(),
     details: {
       matched: result.matched.length,
       mismatches: result.mismatches.length,

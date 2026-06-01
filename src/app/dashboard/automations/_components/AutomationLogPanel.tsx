@@ -61,6 +61,7 @@ function DepositMatchList({ entries }: { entries: DepositMatchEntry[] }) {
           <p className="text-xs text-muted">
             매칭 {e.matchedCount} · 불일치 {e.mismatchCount} · 에러{" "}
             {e.errorCount}
+            {e.skipLines.length > 0 && ` · 스킵 ${e.skipLines.length}`}
           </p>
           {e.matchedLines.length > 0 && (
             <ul className="space-y-1 text-xs text-sage">
@@ -80,6 +81,13 @@ function DepositMatchList({ entries }: { entries: DepositMatchEntry[] }) {
             <ul className="space-y-1 text-xs text-vermilion">
               {e.errorLines.map((line, j) => (
                 <li key={j}>! {line}</li>
+              ))}
+            </ul>
+          )}
+          {e.skipLines.length > 0 && (
+            <ul className="space-y-1 text-xs text-muted">
+              {e.skipLines.map((line, j) => (
+                <li key={j}>↷ {line}</li>
               ))}
             </ul>
           )}
