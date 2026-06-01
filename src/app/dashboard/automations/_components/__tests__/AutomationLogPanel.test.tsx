@@ -52,7 +52,10 @@ describe("AutomationLogPanel", () => {
           matchedCount: 12,
           mismatchCount: 1,
           errorCount: 0,
-          mismatchLines: ["세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)"],
+          matchedLines: ["₩335,000 1:1 매칭 (미수행 8 ↔ 입금행 1761)"],
+          mismatchLines: [
+            "세종고 ₩330,000 — 입금 '세종' (미수행 12 ↔ 입금행 45)",
+          ],
           errorLines: [],
         },
       ],
@@ -68,6 +71,10 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("매칭 12 · 불일치 1 · 에러 0")).toBeInTheDocument();
     expect(
       screen.getByText(/세종고 ₩330,000 — 입금 '세종'/),
+    ).toBeInTheDocument();
+    // 매칭 성공 줄도 표시되어야 한다
+    expect(
+      screen.getByText(/₩335,000 1:1 매칭 \(미수행 8 ↔ 입금행 1761\)/),
     ).toBeInTheDocument();
     expect(screen.getByText("LIVE")).toBeInTheDocument();
   });

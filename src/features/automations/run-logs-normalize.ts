@@ -5,7 +5,10 @@
  * 인사이트=수집 영상 행) 인스펙터 패널이 소비할 공통 entry 형태로 변환한다.
  * I/O는 run-logs.ts(server-only)가 담당하고, 본 모듈은 매핑/요약만 한다.
  */
-import type { MismatchPair } from "@/features/receivables-match/types";
+import type {
+  MatchPair,
+  MismatchPair,
+} from "@/features/receivables-match/types";
 
 export type DepositMatchEntry = {
   startedAt: string;
@@ -14,6 +17,7 @@ export type DepositMatchEntry = {
   matchedCount: number;
   mismatchCount: number;
   errorCount: number;
+  matchedLines: string[];
   mismatchLines: string[];
   errorLines: string[];
 };
@@ -51,6 +55,50 @@ export function summarizeMismatch(m: MismatchPair): string {
   return `${customer} ${formatKrw(m.amount)} — 입금 '${content}' (미수행 ${m.misuRow} ↔ 입금행 ${m.depRow})`;
 }
 
+const MATCH_KIND_LABEL: Record<MatchPair["kind"], string> = {
+  oneToOne: "1:1",
+  nToOne: "N:1",
+  nToM: "N:M",
+};
+
+/**
+ * 로그 표시용 매칭 쌍 — MatchPair(행번호만)에 거래처/거래내용 이름을 덧붙인 형태.
+ * 잡이 payload에 저장할 때 enrichMatchedForLog로 채운다. 이름이 없는 구 이력은
+ * summarizeMatch가 행번호로 폴백.
+ */
+export type LoggedMatchPair = MatchPair & {
+  misuCustomers?: string[];
+  depContents?: string[];
+};
+
+/** 매칭 쌍의 행번호를 실제 거래처/거래내용 이름으로 매핑해 로그 표시용으로 보강. */
+export function enrichMatchedForLog(
+  matched: MatchPair[],
+  misuRows: { rowNumber: number; customer: string }[],
+  deposits: { row: number; content: string }[],
+): LoggedMatchPair[] {
+  const misuByRow = new Map(misuRows.map((m) => [m.rowNumber, m.customer]));
+  const depByRow = new Map(deposits.map((d) => [d.row, d.content]));
+  return matched.map((p) => ({
+    ...p,
+    misuCustomers: p.misuRows.map((r) => misuByRow.get(r) || `행${r}`),
+    depContents: p.depRows.map((r) => depByRow.get(r) || `행${r}`),
+  }));
+}
+
+export function summarizeMatch(m: LoggedMatchPair): string {
+  const kind = MATCH_KIND_LABEL[m.kind];
+  const misuNames = m.misuCustomers ?? [];
+  const depNames = m.depContents ?? [];
+  if (misuNames.length > 0 || depNames.length > 0) {
+    const misu = misuNames.join(", ") || "?";
+    const dep = depNames.join(", ") || "?";
+    return `${formatKrw(m.amount)} ${kind} 매칭 (${misu} ↔ ${dep})`;
+  }
+  // 이름이 없는 구 이력 — 행번호 폴백
+  return `${formatKrw(m.amount)} ${kind} 매칭 (미수행 ${m.misuRows.join(",")} ↔ 입금행 ${m.depRows.join(",")})`;
+}
+
 type DepositMatchRow = {
   started_at: string;
   finished_at: string | null;
@@ -59,13 +107,16 @@ type DepositMatchRow = {
   mismatch_count: number;
   error_count: number;
   payload: {
-    matched?: unknown[];
+    matched?: LoggedMatchPair[];
     mismatches?: MismatchPair[];
     errors?: string[];
   } | null;
 };
 
 export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
+  const matched = Array.isArray(row.payload?.matched)
+    ? row.payload.matched
+    : [];
   const mismatches = Array.isArray(row.payload?.mismatches)
     ? row.payload.mismatches
     : [];
@@ -77,6 +128,7 @@ export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
     matchedCount: row.matched_count ?? 0,
     mismatchCount: row.mismatch_count ?? 0,
     errorCount: row.error_count ?? 0,
+    matchedLines: matched.map(summarizeMatch),
     mismatchLines: mismatches.map(summarizeMismatch),
     errorLines: errors,
   };

@@ -1,5 +1,8 @@
 import "server-only";
-import { fetchReceivablesSheet, type ReceivablesSheet } from "@/features/receivables/queries";
+import {
+  fetchReceivablesSheet,
+  type ReceivablesSheet,
+} from "@/features/receivables/queries";
 import {
   fetchDepositSheet,
   depositFetchFailMessage,
@@ -7,7 +10,12 @@ import {
 import { patchMatchResult } from "@/features/receivables-match/patch";
 import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
-import type { MisuRow, MatchPair, MismatchPair } from "@/features/receivables-match/types";
+import { enrichMatchedForLog } from "@/features/automations/run-logs-normalize";
+import type {
+  MisuRow,
+  MatchPair,
+  MismatchPair,
+} from "@/features/receivables-match/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AutomationRunResult } from "../types";
 
@@ -81,7 +89,8 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   if (!misuSheet) {
     return {
       ok: false,
-      message: "SharePoint 미수채권 시트 fetch 실패 — SHAREPOINT_RECEIVABLES_* 환경변수 확인",
+      message:
+        "SharePoint 미수채권 시트 fetch 실패 — SHAREPOINT_RECEIVABLES_* 환경변수 확인",
     };
   }
   const deposits = await fetchDepositSheet();
@@ -140,7 +149,8 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
       mismatch_count: result.mismatches.length,
       error_count: errors.length,
       payload: {
-        matched: result.matched,
+        // 로그에 행번호 대신 거래처/거래내용 값을 표시하기 위해 이름 보강.
+        matched: enrichMatchedForLog(result.matched, misuRows, deposits),
         mismatches: result.mismatches,
         errors,
       },
