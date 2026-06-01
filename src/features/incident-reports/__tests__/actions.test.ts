@@ -61,7 +61,6 @@ import {
   submitForApproval,
   approveIncidentReport,
   rejectIncidentReport,
-  defaultApology,
 } from "../actions";
 
 const meOperator = {
@@ -249,11 +248,5 @@ describe("rejectIncidentReport", () => {
     });
     const r = await rejectIncidentReport(baseRow.id, "x");
     expect(r).toEqual({ ok: false, error: "반려 권한이 없습니다." });
-  });
-});
-
-describe("defaultApology", () => {
-  it("대학명 포함", async () => {
-    expect(await defaultApology("건국대학교")).toContain("건국대학교");
   });
 });

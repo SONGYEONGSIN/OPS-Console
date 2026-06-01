@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
 import { resolveApprovalChain } from "./queries";
+import { defaultApology } from "./apology";
 import {
   incidentReportCreateSchema,
   incidentReportUpdateSchema,
@@ -17,10 +18,6 @@ export type ReportActionResult =
 
 const AUTH_ERROR = "로그인이 필요합니다.";
 const PATH = "/dashboard/incident-reports";
-
-export async function defaultApology(university: string): Promise<string> {
-  return `${university}의 무궁한 발전을 기원합니다.\n\n서비스 제공 중 업무에 불편을 드린 점 진심으로 사과드립니다. 향후 유사한 문제가 재발하지 않도록 서비스 프로세스를 개선하고 더 나은 서비스 제공을 위하여 최선의 노력을 다하겠습니다.`;
-}
 
 export async function createIncidentReport(
   input: unknown,
@@ -70,7 +67,7 @@ export async function createIncidentReport(
       handling: prefill.handling ?? null,
       prevention: prefill.prevention ?? null,
       apology:
-        prefill.apology ?? (await defaultApology(prefill.recipient_university)),
+        prefill.apology ?? defaultApology(prefill.recipient_university),
       author_name: me.displayName ?? me.email,
       author_email: me.email,
       approver_name: chain?.approver?.name ?? null,
