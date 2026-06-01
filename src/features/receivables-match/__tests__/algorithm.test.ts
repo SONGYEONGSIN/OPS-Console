@@ -79,3 +79,40 @@ describe("runMatch — 3단계 디스패처 (단건 → N:1 → N:M) + mismatch 
     });
   }
 });
+
+describe("runMatch — extraAliases (학습된 alias로 mismatch → match)", () => {
+  const misu: MisuRow[] = [
+    {
+      rowNumber: 27,
+      date: "2026-05-01",
+      customer: "서강대학교",
+      amount: 84000,
+      note: "",
+    },
+  ];
+  const deposits: DepositRow[] = [
+    {
+      row: 1769,
+      date: "2026-05-03",
+      amount: 84000,
+      content: "서강국제대학원",
+      matchedFlag: "",
+    },
+  ];
+
+  it("alias 없으면 mismatch (금액 동일·이름 불일치)", () => {
+    const r = runMatch(misu, deposits);
+    expect(r.matched.length).toBe(0);
+    expect(r.mismatches.length).toBe(1);
+    expect(r.mismatches[0].misuRow).toBe(27);
+    expect(r.mismatches[0].depRow).toBe(1769);
+  });
+
+  it("학습된 alias로 자동 매칭 (mismatch 0)", () => {
+    const r = runMatch(misu, deposits, { 서강국제대학원: "서강대" });
+    expect(r.matched.length).toBe(1);
+    expect(r.matched[0].misuRows).toEqual([27]);
+    expect(r.matched[0].depRows).toEqual([1769]);
+    expect(r.mismatches.length).toBe(0);
+  });
+});

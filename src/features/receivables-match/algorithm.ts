@@ -54,7 +54,11 @@ function isUnpaidDeposit(d: DepositRow): boolean {
  *
  * matchedMisuRows / matchedDepRows Set으로 중복 매칭 방지.
  */
-export function runMatch(misu: MisuRow[], deposits: DepositRow[]): MatchResult {
+export function runMatch(
+  misu: MisuRow[],
+  deposits: DepositRow[],
+  extraAliases: Record<string, string> = {},
+): MatchResult {
   const matched: MatchPair[] = [];
   const mismatches: MismatchPair[] = [];
   const matchedMisuRows = new Set<number>();
@@ -71,7 +75,7 @@ export function runMatch(misu: MisuRow[], deposits: DepositRow[]): MatchResult {
       if (!isUnpaidDeposit(d)) continue;
       if (!d.amount) continue;
       if (!isDateMatch(m.date, d.date)) continue;
-      if (!isNameMatchStrong(m.customer, d.content)) continue;
+      if (!isNameMatchStrong(m.customer, d.content, extraAliases)) continue;
 
       // 단건 1:1
       if (m.amount === d.amount) {
@@ -119,7 +123,7 @@ export function runMatch(misu: MisuRow[], deposits: DepositRow[]): MatchResult {
   );
   const customerMap = new Map<string, MisuRow[]>();
   for (const m of remainingMisu) {
-    const key = normalizeName(m.customer);
+    const key = normalizeName(m.customer, extraAliases);
     const list = customerMap.get(key) ?? [];
     list.push(m);
     customerMap.set(key, list);
@@ -163,7 +167,7 @@ export function runMatch(misu: MisuRow[], deposits: DepositRow[]): MatchResult {
       if (!isUnpaidDeposit(d)) continue;
       if (!d.amount) continue;
       if (!isDateMatch(m.date, d.date)) continue;
-      if (m.amount === d.amount && !isNameMatchStrong(m.customer, d.content)) {
+      if (m.amount === d.amount && !isNameMatchStrong(m.customer, d.content, extraAliases)) {
         mismatches.push({
           misuRow: m.rowNumber,
           depRow: d.row,

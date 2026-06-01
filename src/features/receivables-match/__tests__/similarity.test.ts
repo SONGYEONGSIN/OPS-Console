@@ -25,6 +25,19 @@ describe("isNameMatchStrong — OPS-Console alias 확장 (GAS 원본 외)", () =
   });
 });
 
+describe("isNameMatchStrong — extraAliases (런타임 학습)", () => {
+  it("alias 없으면 서강대학교 ↔ 서강국제대학원 불일치", () => {
+    expect(isNameMatchStrong("서강대학교", "서강국제대학원")).toBe(false);
+  });
+  it("학습된 alias로 서강국제대학원 입금이 서강대 미수와 강매칭", () => {
+    expect(
+      isNameMatchStrong("서강대학교", "서강국제대학원", {
+        서강국제대학원: "서강대",
+      }),
+    ).toBe(true);
+  });
+});
+
 describe("similarity — GAS similarity_ (Levenshtein 기반)", () => {
   for (const c of fixture.similarity as SimilarityCase[]) {
     it(c.name, () => {
