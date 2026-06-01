@@ -20,6 +20,7 @@ export type DepositMatchEntry = {
   matchedLines: string[];
   mismatchLines: string[];
   errorLines: string[];
+  skipLines: string[];
 };
 
 export type MailOperatorEntry = {
@@ -110,6 +111,7 @@ type DepositMatchRow = {
     matched?: LoggedMatchPair[];
     mismatches?: MismatchPair[];
     errors?: string[];
+    skips?: string[];
   } | null;
 };
 
@@ -121,6 +123,7 @@ export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
     ? row.payload.mismatches
     : [];
   const errors = Array.isArray(row.payload?.errors) ? row.payload.errors : [];
+  const skips = Array.isArray(row.payload?.skips) ? row.payload.skips : [];
   return {
     startedAt: row.started_at,
     finishedAt: row.finished_at ?? null,
@@ -131,6 +134,7 @@ export function toDepositMatchEntry(row: DepositMatchRow): DepositMatchEntry {
     matchedLines: matched.map(summarizeMatch),
     mismatchLines: mismatches.map(summarizeMismatch),
     errorLines: errors,
+    skipLines: skips,
   };
 }
 

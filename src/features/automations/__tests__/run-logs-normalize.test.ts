@@ -171,6 +171,25 @@ describe("toDepositMatchEntry", () => {
     ]);
   });
 
+  it("payload.skips에서 스킵(이미 입금완료) 줄을 추출", () => {
+    const entry = toDepositMatchEntry({
+      started_at: "2026-06-01T10:00:00Z",
+      finished_at: "2026-06-01T10:00:30Z",
+      mode: "live",
+      matched_count: 0,
+      mismatch_count: 0,
+      error_count: 0,
+      payload: {
+        matched: [],
+        mismatches: [],
+        errors: [],
+        skips: ["row 8 이미 입금완료 — skip"],
+      },
+    });
+    expect(entry.skipLines).toEqual(["row 8 이미 입금완료 — skip"]);
+    expect(entry.errorLines).toEqual([]);
+  });
+
   it("payload가 null이어도 빈 배열로 안전 처리", () => {
     const entry = toDepositMatchEntry({
       started_at: "2026-05-31T05:00:00Z",
@@ -184,6 +203,7 @@ describe("toDepositMatchEntry", () => {
     expect(entry.finishedAt).toBeNull();
     expect(entry.mismatchLines).toEqual([]);
     expect(entry.errorLines).toEqual([]);
+    expect(entry.skipLines).toEqual([]);
   });
 });
 

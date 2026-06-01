@@ -99,4 +99,38 @@ describe("runReceivablesDepositMatch", () => {
       ]),
     );
   });
+
+  it("매칭 쌍이 이미 입금완료(race skip) → 에러 아님(ok:true), skips로 분류", async () => {
+    process.env.MAIL_MATCH_DRY_RUN = "false";
+    fetchReceivablesSheetMock.mockResolvedValue({
+      worksheetName: "미수",
+      metaRows: [],
+      headers: ["청구일자", "거래처명", "운영자", "청구금액", "경과일수", "적요"],
+      rows: [["2026-04-10", "가천대", "김슬기", 100000, 30, ""]],
+      rowsText: [["2026-04-10", "가천대", "김슬기", "100000", "30", ""]],
+      validColIdx: [0, 1, 2, 3, 4, 5],
+      headerRowNumber: 1,
+      rowCount: 1,
+      columnCount: 6,
+      fetchedAt: new Date().toISOString(),
+    });
+    fetchDepositSheetMock.mockResolvedValue([
+      { row: 2, date: "2026-04-15", amount: 100000, content: "가천대", matchedFlag: "" },
+    ]);
+    // 이미 입금완료 → patch가 skip 반환 (race guard)
+    patchMatchResultMock.mockResolvedValue({ ok: false, skipped: true });
+
+    const result = await runReceivablesDepositMatch();
+
+    // race skip은 양성 — 에러로 세지 않으므로 ok:true, errors 0
+    expect(result.ok).toBe(true);
+    expect(result.details?.errors).toBe(0);
+
+    // 이력: error_count 0, payload.skips 1건, matched_count(=successfulPatches) 0
+    const insertArg = adminInsertMock.mock.calls[0][0][0];
+    expect(insertArg.error_count).toBe(0);
+    expect(insertArg.matched_count).toBe(0);
+    expect(insertArg.payload.skips).toHaveLength(1);
+    expect(insertArg.payload.errors).toHaveLength(0);
+  });
 });
