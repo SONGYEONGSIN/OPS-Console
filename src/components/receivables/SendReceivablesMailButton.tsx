@@ -51,10 +51,10 @@ function ReminderItemRow({
         ) : null}
       </span>
       <span className="flex shrink-0 items-center gap-2">
-        <span className="rounded-full bg-washi-raised px-1.5 py-0.5 text-2xs text-muted">
+        <span className="bg-washi-raised px-1.5 py-0.5 text-2xs text-muted">
           D+{daysOverdue}
         </span>
-        <span className="w-20 text-right font-mono text-xs text-ink">
+        <span className="w-20 text-right text-xs tabular-nums text-ink">
           {formatWon(amount)}
         </span>
       </span>
@@ -274,7 +274,7 @@ export function SendReceivablesMailButton({
                         </span>
                         <span className="text-muted">
                           합계{" "}
-                          <strong className="text-sm text-ink">
+                          <strong className="text-sm tabular-nums text-ink">
                             {formatWon(effectiveGroup()!.totalAmount)}
                           </strong>
                         </span>
