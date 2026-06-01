@@ -306,6 +306,47 @@ export type ListRow = {
   incidentReporterName?: string;
   /** incidents — 현재상황 */
   incidentStatus?: "미처리" | "처리중" | "처리완료" | "보류";
+  /** incident-reports (경위서) — 결재 상태 */
+  incidentReportStatus?:
+    | "draft"
+    | "pending_approval"
+    | "approved"
+    | "rejected"
+    | "sent";
+  /** incident-reports — 수신대학 */
+  incidentReportUniversity?: string;
+  /** incident-reports — 제목 */
+  incidentReportTitle?: string;
+  /** incident-reports — 작성일자 (YYYY-MM-DD) */
+  incidentReportDraftDate?: string;
+  /** incident-reports — 4섹션 본문 (nullable) */
+  incidentReportGyeongwi?: string | null;
+  incidentReportCause?: string | null;
+  incidentReportHandling?: string | null;
+  incidentReportPrevention?: string | null;
+  /** incident-reports — 사과 본문 (nullable) */
+  incidentReportApology?: string | null;
+  /** incident-reports — 결재라인 */
+  incidentReportAuthorName?: string;
+  incidentReportAuthorEmail?: string;
+  incidentReportApproverName?: string | null;
+  incidentReportApproverEmail?: string | null;
+  incidentReportDirectorName?: string | null;
+  incidentReportCeoName?: string | null;
+  /** incident-reports — 반려 사유 (status=rejected일 때) */
+  incidentReportRejectReason?: string | null;
+  /** incident-reports — 연결된 사고 id (nullable) */
+  incidentReportIncidentId?: string | null;
+  /** incident-reports — 발송 수신자 후보 (page가 university로 조회해 첨부) */
+  incidentReportRecipients?: {
+    email: string;
+    name: string;
+    jobTitle: string | null;
+  }[];
+  /** incident-reports — 현재 로그인 사용자가 승인권자인지 (action 버튼 가드) */
+  incidentReportIsApprover?: boolean;
+  /** incident-reports — 현재 사용자가 발송 가능한지 (작성자 또는 admin) */
+  incidentReportCanSend?: boolean;
   /** handover — service 번호 (display) */
   handoverServiceNumber?: number;
   /** handover — 작성상태 (record 없으면 undefined) */

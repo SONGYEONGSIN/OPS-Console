@@ -3,6 +3,7 @@ import {
   operatorRowSchema,
   operatorUpdateSchema,
   operatorCreateSchema,
+  operatorRoleSchema,
 } from "../schemas";
 
 describe("operatorRowSchema", () => {
@@ -204,5 +205,19 @@ describe("operatorCreateSchema", () => {
         gender: "남",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("operatorRoleSchema 확장", () => {
+  it("본부장/사장 role을 허용한다", () => {
+    expect(operatorRoleSchema.safeParse("본부장").success).toBe(true);
+    expect(operatorRoleSchema.safeParse("사장").success).toBe(true);
+  });
+
+  it("기존 role도 유효", () => {
+    expect(operatorRoleSchema.safeParse("부장").success).toBe(true);
+    expect(operatorRoleSchema.safeParse("팀장").success).toBe(true);
+    expect(operatorRoleSchema.safeParse("TL").success).toBe(true);
+    expect(operatorRoleSchema.safeParse("매니저").success).toBe(true);
   });
 });
