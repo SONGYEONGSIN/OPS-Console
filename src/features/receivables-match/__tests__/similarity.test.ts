@@ -19,6 +19,12 @@ describe("isNameMatchStrong — GAS isNameMatchStrong_ 1:1", () => {
   }
 });
 
+describe("isNameMatchStrong — OPS-Console alias 확장 (GAS 원본 외)", () => {
+  it("한양MBA 입금 ↔ 한양대학교 미수 매칭 (숙명MBA와 동일 패턴)", () => {
+    expect(isNameMatchStrong("한양대학교", "한양MBA")).toBe(true);
+  });
+});
+
 describe("similarity — GAS similarity_ (Levenshtein 기반)", () => {
   for (const c of fixture.similarity as SimilarityCase[]) {
     it(c.name, () => {
