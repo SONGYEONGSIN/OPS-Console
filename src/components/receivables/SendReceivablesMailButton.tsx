@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchReminderGroup,
   sendReminderEmails,
@@ -127,168 +128,180 @@ export function SendReceivablesMailButton({
         독려 메일 발송
       </button>
 
-      {open ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="send-receivables-mail-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) reset();
-          }}
-        >
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-washi-base shadow-xl">
-            <header className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
-              <h2
-                id="send-receivables-mail-title"
-                className="text-base font-semibold text-ink"
-              >
-                미수채권 독려 메일 발송
-              </h2>
-              <button
-                type="button"
-                onClick={reset}
-                className="text-xs text-muted hover:text-ink"
-                aria-label="닫기"
-              >
-                ✕
-              </button>
-            </header>
+      {open
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="send-receivables-mail-title"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) reset();
+              }}
+            >
+              <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-washi-base shadow-xl">
+                <header className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
+                  <h2
+                    id="send-receivables-mail-title"
+                    className="text-base font-semibold text-ink"
+                  >
+                    미수채권 독려 메일 발송
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="text-xs text-muted hover:text-ink"
+                    aria-label="닫기"
+                  >
+                    ✕
+                  </button>
+                </header>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
-              <p className="mb-3 text-xs text-muted">
-                수신자: <strong className="text-ink">{email}</strong>
-                {dryRun ? (
-                  <span className="ml-2 rounded bg-yellow-100 px-1.5 py-0.5 font-semibold text-yellow-900">
-                    DRY-RUN
-                  </span>
-                ) : (
-                  <span className="ml-2 rounded bg-vermilion-deep px-1.5 py-0.5 font-semibold text-white">
-                    실발송
-                  </span>
-                )}
-              </p>
-
-              {phase === "loading" ? (
-                <div className="py-8 text-center text-xs text-muted">
-                  대상 조회 중...
-                </div>
-              ) : phase === "select-scope" && group ? (
-                <div className="space-y-3" data-testid="select-scope">
-                  <p className="text-sm text-ink">
-                    이 학교담당자에게{" "}
-                    <strong>다른 미수 청구건 {group.items.length - 1}건</strong>
-                    이 있습니다. 함께 묶어서 1통으로 보낼까요?
+                <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
+                  <p className="mb-3 text-xs text-muted">
+                    수신자: <strong className="text-ink">{email}</strong>
+                    {dryRun ? (
+                      <span className="ml-2 rounded bg-yellow-100 px-1.5 py-0.5 font-semibold text-yellow-900">
+                        DRY-RUN
+                      </span>
+                    ) : (
+                      <span className="ml-2 rounded bg-vermilion-deep px-1.5 py-0.5 font-semibold text-white">
+                        실발송
+                      </span>
+                    )}
                   </p>
-                  <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs">
-                    {group.items.map((it, idx) => (
-                      <li
-                        key={idx}
-                        className={
-                          it.customerName === customerName
-                            ? "font-semibold text-ink"
-                            : "text-muted"
-                        }
-                      >
-                        · {it.customerName} — D+{it.daysOverdue} {formatWon(it.amount)}
-                        {it.customerName === customerName ? "  (현재 행)" : ""}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex justify-end gap-2 pt-2">
+
+                  {phase === "loading" ? (
+                    <div className="py-8 text-center text-xs text-muted">
+                      대상 조회 중...
+                    </div>
+                  ) : phase === "select-scope" && group ? (
+                    <div className="space-y-3" data-testid="select-scope">
+                      <p className="text-sm text-ink">
+                        이 학교담당자에게{" "}
+                        <strong>
+                          다른 미수 청구건 {group.items.length - 1}건
+                        </strong>
+                        이 있습니다. 함께 묶어서 1통으로 보낼까요?
+                      </p>
+                      <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs">
+                        {group.items.map((it, idx) => (
+                          <li
+                            key={idx}
+                            className={
+                              it.customerName === customerName
+                                ? "font-semibold text-ink"
+                                : "text-muted"
+                            }
+                          >
+                            · {it.customerName} — D+{it.daysOverdue}{" "}
+                            {formatWon(it.amount)}
+                            {it.customerName === customerName
+                              ? "  (현재 행)"
+                              : ""}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScope("single");
+                            setPhase("preview");
+                          }}
+                          className="border border-ink/20 bg-white px-3 py-1.5 text-xs text-ink hover:bg-washi-raised"
+                          data-testid="scope-single"
+                        >
+                          현재 행 1건만
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScope("bundle");
+                            setPhase("preview");
+                          }}
+                          className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+                          data-testid="scope-bundle"
+                        >
+                          {group.items.length}건 묶음 발송
+                        </button>
+                      </div>
+                    </div>
+                  ) : phase === "preview" && effectiveGroup() ? (
+                    <div className="space-y-2" data-testid="preview">
+                      <p className="text-xs text-muted">
+                        포함 청구건 {effectiveGroup()!.items.length}건 · 합계{" "}
+                        <strong className="text-ink">
+                          {formatWon(effectiveGroup()!.totalAmount)}
+                        </strong>
+                      </p>
+                      <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs text-ink">
+                        {effectiveGroup()!.items.map((it, idx) => (
+                          <li key={idx}>
+                            · {it.customerName} — D+{it.daysOverdue}{" "}
+                            {formatWon(it.amount)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : phase === "done" && result ? (
+                    <div
+                      role="status"
+                      className="border border-ink/10 bg-washi-raised px-3 py-2 text-xs"
+                      data-testid="send-result"
+                    >
+                      {result.ok ? (
+                        <>
+                          <strong className="text-green-700">발송 완료</strong>{" "}
+                          — 성공 {result.sentCount} · 실패 {result.failedCount}{" "}
+                          · Dry-run {result.dryRunCount}
+                        </>
+                      ) : (
+                        <strong className="text-vermilion-deep">
+                          실패: {result.error}
+                        </strong>
+                      )}
+                    </div>
+                  ) : phase === "done" && error ? (
+                    <div
+                      role="status"
+                      className="border border-vermilion-deep bg-washi-raised px-3 py-2 text-xs text-vermilion-deep"
+                      data-testid="send-error"
+                    >
+                      {error}
+                    </div>
+                  ) : null}
+                </div>
+
+                <footer className="flex items-center justify-end gap-2 border-t border-ink/10 px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={reset}
+                    className="border border-ink/15 bg-white px-3 py-1.5 text-xs text-ink hover:bg-washi-raised"
+                  >
+                    닫기
+                  </button>
+                  {phase === "preview" ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setScope("single");
-                        setPhase("preview");
-                      }}
-                      className="border border-ink/20 bg-white px-3 py-1.5 text-xs text-ink hover:bg-washi-raised"
-                      data-testid="scope-single"
+                      onClick={onSend}
+                      disabled={isPending}
+                      className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                      data-testid="confirm-send"
                     >
-                      현재 행 1건만
+                      {isPending
+                        ? "발송 중..."
+                        : dryRun
+                          ? "Dry-run 발송"
+                          : "발송"}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScope("bundle");
-                        setPhase("preview");
-                      }}
-                      className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-                      data-testid="scope-bundle"
-                    >
-                      {group.items.length}건 묶음 발송
-                    </button>
-                  </div>
-                </div>
-              ) : phase === "preview" && effectiveGroup() ? (
-                <div className="space-y-2" data-testid="preview">
-                  <p className="text-xs text-muted">
-                    포함 청구건 {effectiveGroup()!.items.length}건 · 합계{" "}
-                    <strong className="text-ink">
-                      {formatWon(effectiveGroup()!.totalAmount)}
-                    </strong>
-                  </p>
-                  <ul className="space-y-1 border border-ink/10 bg-white p-3 text-xs text-ink">
-                    {effectiveGroup()!.items.map((it, idx) => (
-                      <li key={idx}>
-                        · {it.customerName} — D+{it.daysOverdue}{" "}
-                        {formatWon(it.amount)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : phase === "done" && result ? (
-                <div
-                  role="status"
-                  className="border border-ink/10 bg-washi-raised px-3 py-2 text-xs"
-                  data-testid="send-result"
-                >
-                  {result.ok ? (
-                    <>
-                      <strong className="text-green-700">발송 완료</strong> —
-                      성공 {result.sentCount} · 실패 {result.failedCount} ·
-                      Dry-run {result.dryRunCount}
-                    </>
-                  ) : (
-                    <strong className="text-vermilion-deep">
-                      실패: {result.error}
-                    </strong>
-                  )}
-                </div>
-              ) : phase === "done" && error ? (
-                <div
-                  role="status"
-                  className="border border-vermilion-deep bg-washi-raised px-3 py-2 text-xs text-vermilion-deep"
-                  data-testid="send-error"
-                >
-                  {error}
-                </div>
-              ) : null}
-            </div>
-
-            <footer className="flex items-center justify-end gap-2 border-t border-ink/10 px-5 py-3">
-              <button
-                type="button"
-                onClick={reset}
-                className="border border-ink/15 bg-white px-3 py-1.5 text-xs text-ink hover:bg-washi-raised"
-              >
-                닫기
-              </button>
-              {phase === "preview" ? (
-                <button
-                  type="button"
-                  onClick={onSend}
-                  disabled={isPending}
-                  className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
-                  data-testid="confirm-send"
-                >
-                  {isPending ? "발송 중..." : dryRun ? "Dry-run 발송" : "발송"}
-                </button>
-              ) : null}
-            </footer>
-          </div>
-        </div>
-      ) : null}
+                  ) : null}
+                </footer>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

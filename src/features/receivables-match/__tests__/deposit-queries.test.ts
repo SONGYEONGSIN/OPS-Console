@@ -47,6 +47,28 @@ describe("parseDepositSheet — Graph usedRange 응답 → DepositRow[]", () => 
     });
   });
 
+  it("출금금액·입금금액 둘 다 있을 때 입금금액을 사용 (출금금액 오매칭 방지)", () => {
+    // 실제 입금 시트 컬럼 순서: …출금금액 → 입금금액… (출금금액이 먼저).
+    const header = [
+      "No", "거래일시", "출금금액", "입금금액", "잔액", "거래내용",
+      "상대계좌번호", "상대은행", "CMS코드", "거래구분", "미결제(수표/어음)",
+    ];
+    const usedRange = {
+      values: [
+        header,
+        [1783, "2026-05-21", 0, 180000, 12669509, "숭실대학교", "", "우리은행", "", "타행이체", ""],
+      ],
+      text: [
+        header,
+        ["1783", "2026-05-21", "0", "180,000", "12,669,509", "숭실대학교", "", "우리은행", "", "타행이체", ""],
+      ],
+    };
+    const got = parseDepositSheet(usedRange);
+    expect(got).toHaveLength(1);
+    expect(got[0].amount).toBe(180000);
+    expect(got[0].content).toBe("숭실대학교");
+  });
+
   it("빈 시트 → 빈 배열", () => {
     expect(parseDepositSheet({ values: [], text: [] })).toEqual([]);
   });
