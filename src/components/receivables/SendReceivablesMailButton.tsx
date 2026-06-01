@@ -139,7 +139,7 @@ export function SendReceivablesMailButton({
                 if (e.target === e.currentTarget) reset();
               }}
             >
-              <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-washi-base shadow-xl">
+              <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-cream shadow-xl">
                 <header className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
                   <h2
                     id="send-receivables-mail-title"

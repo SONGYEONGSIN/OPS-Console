@@ -32,4 +32,19 @@ describe("SendReceivablesMailButton", () => {
     // (portal이 아니면 RTL 컨테이너 div 안에 중첩되어 parentElement !== body)
     expect(dialog.parentElement).toBe(document.body);
   });
+
+  it("모달 패널은 불투명 배경(bg-cream) — 미정의 토큰으로 투명해지지 않음", () => {
+    render(
+      <SendReceivablesMailButton
+        email="manager@school.ac.kr"
+        customerName="○○대학교"
+        dryRun
+      />,
+    );
+    fireEvent.click(screen.getByTestId("inspector-send-mail"));
+    const panel = screen.getByRole("dialog").firstElementChild;
+    expect(panel?.className).toContain("bg-cream");
+    // 미정의 토큰 회귀 가드
+    expect(panel?.className).not.toContain("bg-washi-base");
+  });
 });
