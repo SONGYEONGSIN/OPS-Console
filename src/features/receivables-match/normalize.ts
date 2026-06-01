@@ -1,6 +1,9 @@
 /**
- * GAS `normalizeName_` 1:1 포팅 — 변경 시 `__tests__/fixtures/gas-cases.json`의
+ * GAS `normalizeName_` 포팅 — 변경 시 `__tests__/fixtures/gas-cases.json`의
  * normalize 섹션과 동기 필요. 특수 매핑 dict + 한글 정규화.
+ *
+ * SPECIAL_MAP = GAS 원본 + OPS-Console 운영 중 발견된 alias(예: 한양MBA) 누적.
+ * 입금 거래내용 ↔ 미수 거래처 표기 차이로 자동매칭이 보류된 건은 여기에 추가한다.
  */
 
 const SPECIAL_MAP: Record<string, string> = {
@@ -26,6 +29,7 @@ const SPECIAL_MAP: Record<string, string> = {
   계원예대: "계원예술대",
   두원공대: "두원공과대",
   숙명MBA: "숙명여자",
+  한양MBA: "한양대",
   충대: "충남대",
   청강대: "청강문화산업대",
   모의논술7: "한양대",
