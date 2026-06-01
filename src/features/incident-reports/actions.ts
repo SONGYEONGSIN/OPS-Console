@@ -152,6 +152,17 @@ export async function submitForApproval(
   const me = await getCurrentOperator();
   if (!me) return { ok: false, error: AUTH_ERROR };
 
+  const supabase = await createClient();
+  const { data: rep } = await supabase
+    .from("incident_reports")
+    .select("author_email")
+    .eq("id", id)
+    .maybeSingle();
+  if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
+  if (rep.author_email !== me.email && me.permission !== "admin") {
+    return { ok: false, error: "제출 권한이 없습니다." };
+  }
+
   const r = await transition(
     id,
     ["draft", "rejected"],

@@ -10,14 +10,7 @@ import {
   rejectIncidentReport,
 } from "@/features/incident-reports/actions";
 import { sendIncidentReport } from "@/features/incident-reports/mail-actions";
-
-const STATUS_TONE = {
-  draft: "bg-washi-raised text-muted",
-  pending_approval: "bg-gold/15 text-gold",
-  approved: "bg-sage/15 text-sage",
-  rejected: "bg-vermilion/15 text-vermilion",
-  sent: "bg-ink/10 text-ink-soft",
-} as const;
+import { STATUS_TONE } from "./status";
 
 type Recipient = { email: string; name: string; jobTitle: string | null };
 

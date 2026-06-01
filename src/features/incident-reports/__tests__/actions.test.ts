@@ -143,10 +143,15 @@ describe("submitForApproval", () => {
 
   it("draft → pending_approval 전이", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
-    mockSelectMaybeSingle.mockReturnValue({
-      data: { status: "draft" },
-      error: null,
-    });
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({
+        data: { author_email: meOperator.email },
+        error: null,
+      })
+      .mockReturnValueOnce({
+        data: { status: "draft" },
+        error: null,
+      });
     mockUpdateResult.mockReturnValue({
       data: { ...baseRow, status: "pending_approval" },
       error: null,
@@ -158,12 +163,27 @@ describe("submitForApproval", () => {
     expect(patch.reject_reason).toBeNull();
   });
 
-  it("approved 상태에서 제출 시도 → 에러", async () => {
+  it("작성자/admin 아님 → 제출 권한 없음", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockSelectMaybeSingle.mockReturnValue({
-      data: { status: "approved" },
+      data: { author_email: "other@jinhakapply.com", status: "draft" },
       error: null,
     });
+    const r = await submitForApproval(baseRow.id);
+    expect(r).toEqual({ ok: false, error: "제출 권한이 없습니다." });
+  });
+
+  it("approved 상태에서 제출 시도 → 에러", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({
+        data: { author_email: meOperator.email },
+        error: null,
+      })
+      .mockReturnValueOnce({
+        data: { status: "approved" },
+        error: null,
+      });
     const r = await submitForApproval(baseRow.id);
     expect(r.ok).toBe(false);
   });

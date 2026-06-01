@@ -2,20 +2,13 @@
 
 import type { ListRow } from "../../../patterns/ListPattern";
 import { REPORT_STATUS_LABEL } from "@/features/incident-reports/schemas";
+import { STATUS_TONE } from "./status";
 
 type Props = {
   rows: ListRow[];
   selectedId: string | null;
   onSelect: (row: ListRow) => void;
 };
-
-const STATUS_TONE = {
-  draft: "bg-washi-raised text-muted",
-  pending_approval: "bg-gold/15 text-gold",
-  approved: "bg-sage/15 text-sage",
-  rejected: "bg-vermilion/15 text-vermilion",
-  sent: "bg-ink/10 text-ink-soft",
-} as const;
 
 export function IncidentReportTable({ rows, selectedId, onSelect }: Props) {
   return (
