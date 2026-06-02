@@ -151,6 +151,8 @@ export type ListRow = {
   workEndDate?: string;
   /** ai-work 도메인 — 요약 markdown */
   summary?: string;
+  /** ai-work 도메인 — 기능설명 (선택, 요약 아래) */
+  featureDesc?: string | null;
   /** ai-work 도메인 — 결과물 외부 링크 */
   outputUrl?: string | null;
   /** ai-work 도메인 — 재사용 프롬프트 */

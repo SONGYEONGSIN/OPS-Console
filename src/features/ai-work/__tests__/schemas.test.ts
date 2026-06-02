@@ -74,16 +74,30 @@ describe("aiWorkRowSchema", () => {
     expect(aiWorkRowSchema.safeParse(validRow).success).toBe(true);
   });
 
-  it("선택 필드(output_url / reuse_prompt / saved_hours / author_id)는 null/undefined 허용", () => {
+  it("선택 필드(output_url / reuse_prompt / saved_hours / author_id / feature_desc)는 null/undefined 허용", () => {
     const minimal = {
       ...validRow,
       output_url: null,
       reuse_prompt: null,
       saved_hours: null,
       author_id: null,
+      feature_desc: null,
       tags: [],
     };
     expect(aiWorkRowSchema.safeParse(minimal).success).toBe(true);
+  });
+
+  it("feature_desc(기능설명) 텍스트를 보존한다 (strip 금지)", () => {
+    const parsed = aiWorkRowSchema.safeParse({
+      ...validRow,
+      feature_desc: "Claude로 회의록을 자동 분류하고 요약하는 기능",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.feature_desc).toBe(
+        "Claude로 회의록을 자동 분류하고 요약하는 기능",
+      );
+    }
   });
 
   it("필수 필드(title / work_start_date / work_end_date / ai_tool / category / summary_md / author_email) 누락 거부", () => {
@@ -202,9 +216,22 @@ describe("aiWorkUpdateSchema", () => {
     ).toBe(true);
   });
 
+  it("feature_desc 부분 업데이트 — 값/ null 보존 (strip 금지)", () => {
+    const updated = aiWorkUpdateSchema.safeParse({
+      feature_desc: "기능설명 수정",
+    });
+    expect(updated.success).toBe(true);
+    if (updated.success)
+      expect(updated.data.feature_desc).toBe("기능설명 수정");
+
+    const nulled = aiWorkUpdateSchema.safeParse({ feature_desc: null });
+    expect(nulled.success).toBe(true);
+    if (nulled.success) expect(nulled.data.feature_desc).toBeNull();
+  });
+
   it("enum 미일치는 거부", () => {
-    expect(
-      aiWorkUpdateSchema.safeParse({ ai_tool: "bard" }).success,
-    ).toBe(false);
+    expect(aiWorkUpdateSchema.safeParse({ ai_tool: "bard" }).success).toBe(
+      false,
+    );
   });
 });
