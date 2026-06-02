@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 import { REPORT_STATUS_LABEL } from "@/features/incident-reports/schemas";
@@ -11,7 +12,6 @@ import {
 } from "@/features/incident-reports/actions";
 import { sendIncidentReport } from "@/features/incident-reports/mail-actions";
 import { STATUS_TONE } from "./status";
-import { FormModal } from "./FormModal";
 
 type Recipient = { email: string; name: string; jobTitle: string | null };
 
@@ -31,13 +31,13 @@ type IncidentReportViewProps = ViewProps & {
 };
 
 export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) {
+  const router = useRouter();
   const status = row.incidentReportStatus ?? "draft";
   const recipients = (row.incidentReportRecipients ?? []) as Recipient[];
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
@@ -82,19 +82,11 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
 
       <button
         type="button"
-        onClick={() => setFormOpen(true)}
+        onClick={() => router.push(`/dashboard/incident-reports/${row.id}`)}
         className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
       >
         양식으로 보기
       </button>
-
-      <FormModal
-        key={row.id}
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        row={row}
-        onSaved={onChanged}
-      />
 
       {status === "rejected" && row.incidentReportRejectReason && (
         <div className="rounded border border-vermilion/40 bg-vermilion/10 p-2.5 text-xs text-vermilion">
