@@ -32,6 +32,15 @@ export const CLOSING =
 
 const SECTION_LABELS = ["경위", "원인", "처리", "향후 대책"] as const;
 
+/** 공문 본문 2번 항목용 — 사과 텍스트에서 선두 인사말과 말미 "감사합니다"를 제거. */
+function apologyBodyOnly(text: string): string {
+  return text
+    .trim()
+    .replace(/^[^\n]*무궁한 발전을 기원합니다\.?\s*/, "")
+    .replace(/\s*감사합니다\.?\s*$/, "")
+    .trim();
+}
+
 /** draftDate("2026-06-02" | "2025. 02. 13") → "MM/DD". 숫자 그룹이 3개 미만이면 "". */
 export function jeonkyeolDate(draftDate: string): string {
   const nums = draftDate.match(/\d+/g);
@@ -45,6 +54,8 @@ export type FormModel = {
   recipientUniversity: string;
   title: string;
   apology: string;
+  /** 공문 번호 본문 — [인사말, 사과 본문, "감사합니다."] (실제 양식 1./2./3.) */
+  coverBody: readonly string[];
   attachment: string;
   companyLine: string;
   jeonkyeolDate: string;
@@ -64,14 +75,17 @@ export type FormModel = {
 };
 
 export function deriveFormModel(s: FormSource): FormModel {
+  const apologyResolved =
+    s.apology && s.apology.trim()
+      ? s.apology
+      : defaultApology(s.recipientUniversity);
+  const greetingLine = `${s.recipientUniversity}의 무궁한 발전을 기원합니다.`;
   return {
     brandHeader: BRAND_HEADER,
     recipientUniversity: s.recipientUniversity,
     title: s.title,
-    apology:
-      s.apology && s.apology.trim()
-        ? s.apology
-        : defaultApology(s.recipientUniversity),
+    apology: apologyResolved,
+    coverBody: [greetingLine, apologyBodyOnly(apologyResolved), "감사합니다."],
     attachment: `붙임 : 1. ${s.title} 경위서 1부.  끝.`,
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(s.draftDate),

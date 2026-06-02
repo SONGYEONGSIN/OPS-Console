@@ -30,10 +30,10 @@ describe("FormPage page 1 (공문)", () => {
     render(<FormPage model={model} page={1} />);
     expect(screen.getByText(/수신자/)).toBeInTheDocument();
     expect(screen.getAllByText(/전산파일 오류 건/).length).toBeGreaterThan(0);
-    expect(screen.getByText("담당자")).toBeInTheDocument();
-    expect(screen.getByText("팀장")).toBeInTheDocument();
-    expect(screen.getByText("본부장")).toBeInTheDocument();
-    expect(screen.getByText("사장")).toBeInTheDocument();
+    expect(screen.getByText(/담당자/)).toBeInTheDocument();
+    expect(screen.getByText(/팀장/)).toBeInTheDocument();
+    expect(screen.getByText(/본부장/)).toBeInTheDocument();
+    expect(screen.getByText(/사장/)).toBeInTheDocument();
   });
   it("회사명과 직인 이미지를 렌더한다", () => {
     render(<FormPage model={model} page={1} />);
@@ -47,6 +47,11 @@ describe("FormPage page 1 (공문)", () => {
   it("인사말이 한 번만 나온다 (중복 없음)", () => {
     render(<FormPage model={model} page={1} />);
     expect(screen.getAllByText(/무궁한 발전을 기원합니다/).length).toBe(1);
+  });
+  it("본문을 번호 목록(감사합니다 포함)으로 렌더한다", () => {
+    render(<FormPage model={model} page={1} />);
+    expect(screen.getByText("감사합니다.")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").length).toBe(3);
   });
 });
 
@@ -72,7 +77,7 @@ describe("FormPage page 2 (경위서)", () => {
     });
     render(<FormPage model={m} page={2} />);
     const table = screen.getByRole("table");
-    expect(within(table).getByText("시간")).toBeInTheDocument();
+    expect(within(table).getByText("일시")).toBeInTheDocument();
     expect(within(table).getByText("내용")).toBeInTheDocument();
     expect(within(table).getByText("09.27 14:27")).toBeInTheDocument();
     expect(within(table).getByText("오류 확인 요청")).toBeInTheDocument();

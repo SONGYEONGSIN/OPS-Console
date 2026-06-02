@@ -74,6 +74,17 @@ describe("deriveFormModel", () => {
       "붙임 : 1. 전산파일 오류 건 경위서 1부.  끝.",
     );
   });
+  it("공문 본문(coverBody)을 [인사말, 사과본문, 감사합니다] 3항목으로 만든다", () => {
+    const m = deriveFormModel({
+      ...base,
+      apology:
+        "건국대학교의 무궁한 발전을 기원합니다.\n\n당사는 오류로 사과드립니다. 감사합니다.",
+    });
+    expect(m.coverBody).toHaveLength(3);
+    expect(m.coverBody[0]).toBe("건국대학교의 무궁한 발전을 기원합니다.");
+    expect(m.coverBody[1]).toBe("당사는 오류로 사과드립니다.");
+    expect(m.coverBody[2]).toBe("감사합니다.");
+  });
   it("연락처 줄에 작성자 이메일을 넣는다", () => {
     const lines = deriveFormModel(base).contactLines;
     expect(lines.some((l) => l.includes("haelee@jinhakapply.com"))).toBe(true);

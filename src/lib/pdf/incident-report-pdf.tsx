@@ -90,9 +90,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#6b6253",
   },
+  logoRule: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#15120c",
+    marginTop: 2,
+  },
   row: { marginBottom: 3 },
   bold: { fontWeight: 700 },
   hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
+  coverItem: { flexDirection: "row", marginBottom: 6 },
+  coverNum: { width: 16 },
+  coverText: { flex: 1 },
   apology: { marginTop: 4 },
   companyWrap: {
     marginTop: 28,
@@ -165,7 +173,7 @@ function HandlingTable({ rows }: { rows: readonly HandlingRow[] }) {
   return (
     <View style={styles.hTable}>
       <View style={[styles.hTr, styles.hHead]}>
-        <Text style={[styles.hTimeCell, styles.hCellCenter]}>시간</Text>
+        <Text style={[styles.hTimeCell, styles.hCellCenter]}>일시</Text>
         <Text style={[styles.hContentCell, styles.hCellCenter]}>내용</Text>
       </View>
       {rows.map((r, i) => (
@@ -187,41 +195,53 @@ export async function renderIncidentReportPdf(
     <Document>
       {/* ① 공문 */}
       <Page size="A4" style={styles.page}>
-        <View style={styles.frame}>
-          <Text style={styles.wordmark}>JINHAKapply ▸</Text>
-          <Text style={styles.brand}>{m.brandHeader}</Text>
-          <Text style={styles.row}>수신자  {m.recipientUniversity}</Text>
-          <Text style={styles.row}>참  조</Text>
-          <Text style={styles.row}>제  목  {m.title}</Text>
-          <View style={styles.hr} />
-          <Text style={styles.apology}>{m.apology}</Text>
-          <Text style={[styles.row, { marginTop: 10 }]}>{m.attachment}</Text>
-
-          <View style={styles.companyWrap}>
-            <Text style={styles.companyLine}>{m.companyLine}</Text>
-            {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
-            <Image style={styles.seal} src={SEAL_PATH} />
+        <Text style={styles.wordmark}>
+          <Text style={{ color: "#15306b" }}>JINHAK</Text>
+          <Text style={{ color: "#2e6fc4" }}>apply</Text>
+          <Text style={{ color: "#f5a623" }}> ›</Text>
+        </Text>
+        <View style={styles.logoRule} />
+        <Text style={[styles.row, { marginTop: 14 }]}>
+          수신자  {m.recipientUniversity}
+        </Text>
+        <Text style={styles.row}>참  조</Text>
+        <Text style={[styles.row, styles.bold]}>제  목  {m.title}</Text>
+        <View style={styles.hr} />
+        {m.coverBody.map((line, i) => (
+          <View key={i} style={styles.coverItem}>
+            <Text style={styles.coverNum}>{i + 1}.</Text>
+            <Text style={styles.coverText}>{line}</Text>
           </View>
+        ))}
+        <Text style={[styles.row, { marginTop: 12 }]}>
+          붙임 : 1. {m.title} 경위서 1부
+        </Text>
+        <Text style={styles.row}>끝.</Text>
 
-          <View style={styles.grayBar} />
-          <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
-          <View style={styles.approvalRow}>
-            {m.approvalLine
-              .filter((a) => a.name)
-              .map((a) => (
-                <Text key={a.role} style={styles.approvalItem}>
-                  <Text style={styles.approvalRole}>{a.role}</Text>  {a.name}
-                </Text>
-              ))}
-          </View>
-          <Text style={styles.docRow}>
-            시 행  {m.docNumber ?? ""}        접 수 (        )
-          </Text>
-          <View style={styles.contact}>
-            {m.contactLines.map((line) => (
-              <Text key={line}>{line}</Text>
+        <View style={styles.companyWrap}>
+          <Text style={styles.companyLine}>{m.companyLine}</Text>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
+          <Image style={styles.seal} src={SEAL_PATH} />
+        </View>
+
+        <View style={styles.grayBar} />
+        <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
+        <View style={styles.approvalRow}>
+          {m.approvalLine
+            .filter((a) => a.name)
+            .map((a) => (
+              <Text key={a.role} style={styles.approvalItem}>
+                {a.role}  {a.name}
+              </Text>
             ))}
-          </View>
+        </View>
+        <Text style={styles.docRow}>
+          시 행  {m.docNumber ?? ""}        접 수 (        )
+        </Text>
+        <View style={styles.contact}>
+          {m.contactLines.map((line) => (
+            <Text key={line}>{line}</Text>
+          ))}
         </View>
         <Text style={styles.footer} fixed>
           운영부 상황실 · 자동 발송 문서
