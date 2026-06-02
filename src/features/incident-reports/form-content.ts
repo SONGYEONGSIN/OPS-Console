@@ -53,12 +53,12 @@ export type FormModel = {
   attachment: string;
   companyLine: string;
   jeonkyeolDate: string;
-  approvalLine: { role: string; name: string }[];
+  approvalLine: readonly { role: string; name: string }[];
   docNumber: string | null;
   contactLines: readonly string[];
   draftDate: string;
   authorName: string;
-  sections: { no: number; label: string; body: string }[];
+  sections: readonly { no: number; label: string; body: string }[];
   closing: string;
 };
 

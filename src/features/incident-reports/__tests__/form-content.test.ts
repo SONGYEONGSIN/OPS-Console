@@ -36,6 +36,9 @@ describe("jeonkyeolDate", () => {
   it("'YYYY. MM. DD' 형식도 변환한다", () => {
     expect(jeonkyeolDate("2025. 02. 13")).toBe("02/13");
   });
+  it("숫자 그룹이 3개 미만이면 빈 문자열을 반환한다", () => {
+    expect(jeonkyeolDate("2026")).toBe("");
+  });
 });
 
 describe("deriveFormModel", () => {
@@ -45,6 +48,11 @@ describe("deriveFormModel", () => {
   it("apology 입력이 있으면 그 값을 우선한다", () => {
     expect(deriveFormModel({ ...base, apology: "직접 사과문" }).apology).toBe(
       "직접 사과문",
+    );
+  });
+  it("apology가 공백만 있으면 기본 문구로 대체한다", () => {
+    expect(deriveFormModel({ ...base, apology: "   " }).apology).toBe(
+      DEFAULT_APOLOGY,
     );
   });
   it("4섹션을 번호·라벨·본문으로 만든다", () => {
