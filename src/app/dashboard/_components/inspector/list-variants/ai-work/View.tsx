@@ -80,6 +80,17 @@ export function AiWorkView({ row }: ViewProps) {
         </p>
       </Section>
 
+      {row.featureDesc && (
+        <>
+          <Divider />
+          <Section title="기능설명">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink">
+              {row.featureDesc}
+            </p>
+          </Section>
+        </>
+      )}
+
       {row.outputUrl && (
         <>
           <Divider />

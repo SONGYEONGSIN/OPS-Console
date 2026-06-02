@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { AiWorkView } from "../../list-variants/ai-work/View";
@@ -34,9 +35,7 @@ describe("AiWorkView", () => {
   });
 
   it("단일 일자 작업 — start=end일 때 한 날짜만 표시", () => {
-    render(
-      <AiWorkView row={{ ...baseRow, workEndDate: "2026-05-12" }} />,
-    );
+    render(<AiWorkView row={{ ...baseRow, workEndDate: "2026-05-12" }} />);
     expect(screen.getByText("2026-05-12")).toBeInTheDocument();
     expect(screen.queryByText(/~/)).toBeNull();
   });
@@ -50,18 +49,14 @@ describe("AiWorkView", () => {
 
   it("결과물 링크 — outputUrl 있을 때만 노출", () => {
     render(
-      <AiWorkView
-        row={{ ...baseRow, outputUrl: "https://notion.so/abc" }}
-      />,
+      <AiWorkView row={{ ...baseRow, outputUrl: "https://notion.so/abc" }} />,
     );
     expect(screen.getByText("https://notion.so/abc")).toBeInTheDocument();
   });
 
   it("재사용 프롬프트 — 복사 버튼 노출", () => {
     render(
-      <AiWorkView
-        row={{ ...baseRow, reusePrompt: "회의록을 요약해주세요" }}
-      />,
+      <AiWorkView row={{ ...baseRow, reusePrompt: "회의록을 요약해주세요" }} />,
     );
     expect(
       screen.getByRole("button", { name: "프롬프트 복사" }),
@@ -77,6 +72,23 @@ describe("AiWorkView", () => {
   it("summary 미존재 — 안내 표시", () => {
     render(<AiWorkView row={{ ...baseRow, summary: undefined }} />);
     expect(screen.getByText("요약 없음")).toBeInTheDocument();
+  });
+
+  it("기능설명 — featureDesc 있을 때 섹션/내용 노출", () => {
+    render(
+      <AiWorkView
+        row={{ ...baseRow, featureDesc: "Claude로 회의록 자동 분류·요약" }}
+      />,
+    );
+    expect(screen.getByText("기능설명")).toBeInTheDocument();
+    expect(
+      screen.getByText("Claude로 회의록 자동 분류·요약"),
+    ).toBeInTheDocument();
+  });
+
+  it("기능설명 — featureDesc 없으면 섹션 미노출", () => {
+    render(<AiWorkView row={baseRow} />);
+    expect(screen.queryByText("기능설명")).toBeNull();
   });
 });
 
@@ -100,6 +112,18 @@ describe("AiWorkForm", () => {
     );
     expect(screen.getByLabelText("절감 시간")).toHaveValue(0.5);
     expect(screen.getByLabelText("태그")).toHaveValue("회의록, 주간");
+  });
+
+  it("기능설명 — featureDesc textarea 렌더 + 값 표시", () => {
+    render(
+      <AiWorkForm
+        row={{ ...baseRow, featureDesc: "기능 설명 텍스트" }}
+        setRow={vi.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("기능설명")).toHaveValue("기능 설명 텍스트");
   });
 
   it("등록자 — owner 있을 때 본인 자동 입력 라벨", () => {
@@ -141,6 +165,52 @@ describe("AiWorkForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(onCancel).toHaveBeenCalledOnce();
   });
+
+  // 실제 row state를 끼고 렌더 — onChange→setRow→재렌더 사이클 재현
+  function StatefulForm({ initial }: { initial: ListRow }) {
+    const [row, setRow] = useState<ListRow>(initial);
+    return (
+      <AiWorkForm
+        row={row}
+        setRow={setRow}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+  }
+
+  it("태그 — 쉼표 입력이 입력 중 사라지지 않는다", () => {
+    render(<StatefulForm initial={{ ...baseRow, tags: [] }} />);
+    const input = screen.getByLabelText("태그");
+    fireEvent.change(input, { target: { value: "회의록," } });
+    expect(input).toHaveValue("회의록,");
+    fireEvent.change(input, { target: { value: "회의록, " } });
+    expect(input).toHaveValue("회의록, ");
+    fireEvent.change(input, { target: { value: "회의록, 주간" } });
+    expect(input).toHaveValue("회의록, 주간");
+  });
+
+  it("태그 — 저장 시 빈 항목/공백이 제거된 배열로 정규화", () => {
+    const onSave = vi.fn();
+    function Harness() {
+      const [row, setRow] = useState<ListRow>({ ...baseRow, tags: [] });
+      return (
+        <AiWorkForm
+          row={row}
+          setRow={setRow}
+          onSave={onSave}
+          onCancel={vi.fn()}
+        />
+      );
+    }
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText("태그"), {
+      target: { value: "회의록, , 주간 ," },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0].tags).toEqual(["회의록", "주간"]);
+  });
 });
 
 describe("AiWorkTable", () => {
@@ -173,9 +243,7 @@ describe("AiWorkTable", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(
-      screen.queryByRole("link", { name: "바로가기" }),
-    ).toBeNull();
+    expect(screen.queryByRole("link", { name: "바로가기" })).toBeNull();
   });
 
   it("outputUrl undefined — '바로가기' 링크 없음", () => {
@@ -186,9 +254,7 @@ describe("AiWorkTable", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(
-      screen.queryByRole("link", { name: "바로가기" }),
-    ).toBeNull();
+    expect(screen.queryByRole("link", { name: "바로가기" })).toBeNull();
   });
 
   it("outputUrl javascript: — '바로가기' 링크 없음 (http(s)만 허용)", () => {
@@ -199,8 +265,6 @@ describe("AiWorkTable", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(
-      screen.queryByRole("link", { name: "바로가기" }),
-    ).toBeNull();
+    expect(screen.queryByRole("link", { name: "바로가기" })).toBeNull();
   });
 });
