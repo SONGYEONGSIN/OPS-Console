@@ -8,8 +8,8 @@ import { usePathname, useSearchParams } from "next/navigation";
  *
  * `?report=pending` 으로 본인이 승인자인 pending_approval 경위서가 달린 사고만 필터.
  * 활성 시 ScopeChips 와 동일한 active/inactive 스타일(font-bold text-ink / text-muted).
- * 비활성 시(ScopeChips 전체/내사고 클릭)에는 ScopeChips href 가 report 를 보존하지
- * 않으므로 자연히 칩이 풀린다.
+ * 토글 — 활성 시 클릭하면 report 해제(전체로 복귀). ScopeChips 는 report 를 보존하므로
+ * 이 칩이 유일한 해제 경로다.
  */
 export function PendingApprovalChip() {
   const pathname = usePathname();
@@ -17,9 +17,11 @@ export function PendingApprovalChip() {
   const active = params.get("report") === "pending";
 
   const next = new URLSearchParams(params.toString());
-  next.set("report", "pending");
+  if (active) next.delete("report");
+  else next.set("report", "pending");
   next.delete("page");
-  const href = `${pathname}?${next.toString()}`;
+  const query = next.toString();
+  const href = query ? `${pathname}?${query}` : pathname;
 
   return (
     <Link

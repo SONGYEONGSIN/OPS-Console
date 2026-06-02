@@ -60,4 +60,15 @@ describe("PendingApprovalChip", () => {
       "false",
     );
   });
+
+  it("토글 — active 시 href는 report 를 제거(해제 경로)", () => {
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams("year=2027&report=pending"),
+    );
+    render(<PendingApprovalChip />);
+    const href =
+      screen.getByLabelText("경위서 승인 대기").getAttribute("href") ?? "";
+    expect(href).not.toContain("report=pending");
+    expect(href).toContain("year=2027");
+  });
 });
