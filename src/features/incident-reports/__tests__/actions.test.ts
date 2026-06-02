@@ -92,9 +92,12 @@ beforeEach(() => {
 });
 
 describe("createIncidentReport", () => {
+  const SAMPLE_INCIDENT_ID = crypto.randomUUID();
+
   it("비로그인 → 에러", async () => {
     mockGetCurrentOperator.mockResolvedValue(null);
     const r = await createIncidentReport({
+      incident_id: SAMPLE_INCIDENT_ID,
       recipient_university: "건국대",
       title: "t",
     });
@@ -104,9 +107,12 @@ describe("createIncidentReport", () => {
   it("정상 입력 → author=me + approval chain snapshot + apology 기본", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockResolveApprovalChain.mockResolvedValue(approverChain);
+    // incident_id prefill 조회 (incidents maybeSingle) — 연결 사고 미발견으로 입력값 그대로 사용
+    mockSelectMaybeSingle.mockReturnValue({ data: null, error: null });
     mockInsertResult.mockReturnValue({ data: baseRow, error: null });
 
     const r = await createIncidentReport({
+      incident_id: SAMPLE_INCIDENT_ID,
       recipient_university: "건국대학교(서울)",
       title: "결제 오류 경위서",
     });

@@ -9,6 +9,7 @@ import { IncidentsControls } from "./IncidentsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listIncidents } from "@/features/incidents/queries";
+import { reportStatusByIncidentIds } from "@/features/incident-reports/queries";
 import { incidentToListRow } from "./_row-mapper";
 import {
   createIncident,
@@ -80,7 +81,13 @@ export default async function IncidentsPage({
     pageSize: PAGE_SIZE,
   });
 
-  const rows: ListRow[] = dbRows.map(incidentToListRow);
+  // 경위서 상태 배지 — N+1 회피용 batch 조회 후 행에 주입
+  const reportStatusMap = await reportStatusByIncidentIds(
+    dbRows.map((r) => r.id),
+  );
+  const rows: ListRow[] = dbRows.map((r) =>
+    incidentToListRow(r, reportStatusMap[r.id]),
+  );
   const config = resolvePageMeta(slug, meta, total);
 
   // 학년도 selector 후보 (현 학년도 +1 ~ -5)
