@@ -54,6 +54,12 @@ export async function createIncidentReport(
     }
   }
 
+  // 수신대학·제목은 입력 또는 사고에서 채워져야 함. 사고 미발견 등으로 비면 차단
+  // (DB NOT NULL 위반 방지).
+  if (!prefill.recipient_university || !prefill.title) {
+    return { ok: false, error: "연결된 사고 정보를 불러올 수 없습니다." };
+  }
+
   const chain = await resolveApprovalChain(me.email);
 
   const { data, error } = await supabase

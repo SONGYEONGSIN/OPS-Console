@@ -8,7 +8,11 @@ import {
 const SAMPLE_UUID = crypto.randomUUID();
 
 describe("incidentReportCreateSchema", () => {
-  it("최소 필드(incident_id/제목/수신대학)로 통과", () => {
+  it("incident_id 만으로 통과 (수신대학·제목은 사고에서 파생)", () => {
+    const r = incidentReportCreateSchema.safeParse({ incident_id: SAMPLE_UUID });
+    expect(r.success).toBe(true);
+  });
+  it("수신대학·제목 직접 지정도 통과", () => {
     const r = incidentReportCreateSchema.safeParse({
       incident_id: SAMPLE_UUID,
       recipient_university: "건국대학교",
@@ -20,13 +24,6 @@ describe("incidentReportCreateSchema", () => {
     const r = incidentReportCreateSchema.safeParse({
       recipient_university: "건국대학교",
       title: "전산파일 오류 건",
-    });
-    expect(r.success).toBe(false);
-  });
-  it("제목 누락 시 실패", () => {
-    const r = incidentReportCreateSchema.safeParse({
-      incident_id: SAMPLE_UUID,
-      recipient_university: "x",
     });
     expect(r.success).toBe(false);
   });

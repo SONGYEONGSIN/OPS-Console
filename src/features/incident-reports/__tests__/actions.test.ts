@@ -130,12 +130,41 @@ describe("createIncidentReport", () => {
     expect(payload.apology).toContain("건국대학교(서울)");
   });
 
-  it("zod fail (title 누락) → ok:false", async () => {
+  it("incident_id 만 입력 + 사고 발견 → 수신대학·제목·4섹션 사고에서 파생", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
-    const r = await createIncidentReport({
-      recipient_university: "건국대",
-      title: "",
+    mockResolveApprovalChain.mockResolvedValue(approverChain);
+    mockSelectMaybeSingle.mockReturnValue({
+      data: {
+        university_name: "조선대학교",
+        title: "원서 작성페이지 오류",
+        cause_summary: "경위 내용",
+        root_cause: "원인 내용",
+        resolution: "처리 내용",
+        prevention: "대책 내용",
+      },
+      error: null,
     });
+    mockInsertResult.mockReturnValue({ data: baseRow, error: null });
+
+    const r = await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
+    expect(r.ok).toBe(true);
+    const payload = insertPayloads[0] as Record<string, unknown>;
+    expect(payload.recipient_university).toBe("조선대학교");
+    expect(payload.title).toBe("원서 작성페이지 오류");
+    expect(payload.gyeongwi).toBe("경위 내용");
+    expect(payload.prevention).toBe("대책 내용");
+  });
+
+  it("사고 미발견 + 수신대학·제목 입력 없음 → ok:false (사고 정보 없음 가드)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle.mockReturnValue({ data: null, error: null });
+    const r = await createIncidentReport({ incident_id: SAMPLE_INCIDENT_ID });
+    expect(r.ok).toBe(false);
+  });
+
+  it("incident_id 누락 → zod 실패 (ok:false)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    const r = await createIncidentReport({ recipient_university: "건국대", title: "t" });
     expect(r.ok).toBe(false);
   });
 });
