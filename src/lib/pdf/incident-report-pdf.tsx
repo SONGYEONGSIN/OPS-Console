@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
   apology: {
     marginVertical: 14,
   },
-  greeting: { marginBottom: 6 },
   companyLine: { marginTop: 18, fontWeight: 700 },
   jeonkyeol: { fontSize: 8.5, color: "#6b6253", marginBottom: 4 },
   contact: { marginTop: 10, fontSize: 8, color: "#6b6253", lineHeight: 1.5 },
@@ -150,7 +149,6 @@ export async function renderIncidentReportPdf(
         <Text style={styles.row}>수신자  {m.recipientUniversity}</Text>
         <Text style={styles.row}>참  조</Text>
         <Text style={styles.row}>제  목  {m.title}</Text>
-        <Text style={styles.greeting}>{m.greeting}</Text>
         <Text style={styles.apology}>{m.apology}</Text>
         <Text style={styles.row}>{m.attachment}</Text>
         <Text style={styles.companyLine}>{m.companyLine}</Text>
