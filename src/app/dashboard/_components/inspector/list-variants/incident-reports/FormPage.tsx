@@ -12,22 +12,18 @@ function Sheet({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** JINHAKapply 브랜드 로고 근사 — 실제 로고 PNG(public/brand/jinhakapply-logo.png) 수령 시 교체. */
-function BrandMark() {
-  return (
-    <p className="mb-1 text-center text-3xl font-extrabold tracking-tight">
-      {/* 일회성: JINHAKapply 브랜드 컬러 직접 매칭 (로고 PNG 미수령, 토큰화 대상 아님) */}
-      <span className="text-[#15306b]">JINHAK</span>
-      <span className="text-[#2e6fc4]">apply</span>
-      <span className="ml-0.5 text-[#f5a623]">›</span>
-    </p>
-  );
-}
-
 function CoverPage({ m }: { m: FormModel }) {
   return (
     <Sheet>
-      <BrandMark />
+      <Image
+        src="/brand/jinhakapply-logo.png"
+        alt="JINHAKapply"
+        width={200}
+        height={39}
+        className="mx-auto"
+        priority
+      />
+      <p className="mt-2 text-center text-2xs text-muted">{m.brandHeader}</p>
       <hr className="mt-1 border-ink" />
 
       <div className="mt-5 space-y-0.5">
@@ -38,9 +34,9 @@ function CoverPage({ m }: { m: FormModel }) {
 
       <hr className="my-3 border-ink/50" />
 
-      <ol className="space-y-2 pl-2">
+      <ol className="space-y-2 pl-7">
         {m.coverBody.map((line, i) => (
-          <li key={i} className="flex gap-2">
+          <li key={i} className="flex gap-3">
             <span className="shrink-0">{i + 1}.</span>
             <span className="whitespace-pre-wrap">{line}</span>
           </li>
@@ -50,25 +46,26 @@ function CoverPage({ m }: { m: FormModel }) {
       <p className="mt-5">붙임 : 1. {m.title} 경위서 1부</p>
       <p>끝.</p>
 
-      {/* 회사명 + 직인(겹침) */}
-      <div className="relative mt-12 flex items-center justify-center">
-        <p className="text-2xl font-bold tracking-wide">{m.companyLine}</p>
-        <Image
-          src="/brand/incident-report-seal.png"
-          alt="직인"
-          width={64}
-          height={64}
-          className="absolute right-24 -top-3 opacity-90"
-        />
+      {/* 회사명 + 직인(문구와 겹침) */}
+      <div className="mt-12 flex justify-center">
+        <div className="relative inline-block">
+          <p className="text-2xl font-bold tracking-wide">{m.companyLine}</p>
+          <Image
+            src="/brand/incident-report-seal.png"
+            alt="직인"
+            width={58}
+            height={58}
+            className="absolute -right-3 -top-5"
+          />
+        </div>
       </div>
 
-      {/* 회색 바 */}
+      {/* 회색 바 + 압축 푸터 (전결/결재/시행/연락처) */}
       <div className="mt-12 h-2 w-full bg-line" aria-hidden />
-
       <p className="mt-1 text-right text-2xs font-bold">
         전결 {m.jeonkyeolDate}
       </p>
-      <div className="flex flex-wrap items-baseline gap-x-8 gap-y-1 text-sm">
+      <div className="flex flex-wrap items-baseline gap-x-10 gap-y-0.5 text-xs">
         {m.approvalLine
           .filter((a) => a.name)
           .map((a) => (
@@ -77,13 +74,11 @@ function CoverPage({ m }: { m: FormModel }) {
             </span>
           ))}
       </div>
-
-      <p className="mt-1">
-        시 행&nbsp;&nbsp;{m.docNumber ?? ""}
-        <span className="ml-10">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;)</span>
-      </p>
-
-      <div className="mt-1 space-y-0.5 text-2xs">
+      <div className="mt-0.5 space-y-0.5 text-2xs">
+        <p>
+          시 행&nbsp;&nbsp;{m.docNumber ?? ""}
+          <span className="ml-10">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;)</span>
+        </p>
         {m.contactLines.map((line) => (
           <p key={line}>{line}</p>
         ))}
@@ -132,7 +127,7 @@ function ReportPage({ m }: { m: FormModel }) {
       <p className="mb-4 text-center text-3xl font-bold tracking-[0.5em]">
         경 위 서
       </p>
-      <p className="mb-3 text-center text-sm font-bold">
+      <p className="mb-3 text-right text-sm font-bold">
         작 성 일 자 : {m.draftDate}
         <span className="ml-12">작 성 자 : {m.authorName}</span>
       </p>

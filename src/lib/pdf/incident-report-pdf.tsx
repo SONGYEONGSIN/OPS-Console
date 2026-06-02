@@ -31,6 +31,12 @@ const SEAL_PATH = path.join(
   "brand",
   "incident-report-seal.png",
 );
+const LOGO_PATH = path.join(
+  process.cwd(),
+  "public",
+  "brand",
+  "jinhakapply-logo.png",
+);
 
 let fontRegistered = false;
 function ensureFontRegistered() {
@@ -90,6 +96,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#6b6253",
   },
+  logo: { width: 190, height: 37, alignSelf: "center", marginBottom: 3 },
+  slogan: {
+    fontSize: 7.5,
+    textAlign: "center",
+    color: "#6b6253",
+    marginBottom: 2,
+  },
   logoRule: {
     borderBottomWidth: 1,
     borderBottomColor: "#15120c",
@@ -98,8 +111,9 @@ const styles = StyleSheet.create({
   row: { marginBottom: 3 },
   bold: { fontWeight: 700 },
   hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
+  coverList: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 6 },
-  coverNum: { width: 16 },
+  coverNum: { width: 18 },
   coverText: { flex: 1 },
   apology: { marginTop: 4 },
   companyWrap: {
@@ -109,20 +123,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "relative",
   },
-  companyLine: { fontSize: 14, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 70, top: -8, width: 46, height: 46 },
+  companyLine: { fontSize: 15, fontWeight: 700, letterSpacing: 1 },
+  seal: { position: "absolute", right: 160, top: -10, width: 44, height: 44 },
   grayBar: { height: 6, backgroundColor: "#d8d2c4", marginTop: 18 },
   jeonkyeol: {
-    fontSize: 8.5,
-    color: "#6b6253",
+    fontSize: 7.5,
+    fontWeight: 700,
     textAlign: "right",
-    marginTop: 6,
+    marginTop: 4,
   },
-  approvalRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
-  approvalItem: { fontSize: 9.5, marginRight: 20 },
-  approvalRole: { color: "#6b6253" },
-  docRow: { marginTop: 8, fontSize: 9 },
-  contact: { marginTop: 8, fontSize: 8, color: "#6b6253", lineHeight: 1.5 },
+  approvalRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 1 },
+  approvalItem: { fontSize: 9, marginRight: 24 },
+  docRow: { marginTop: 2, fontSize: 7.5 },
+  contact: { marginTop: 2, fontSize: 7.5, color: "#3a3528", lineHeight: 1.5 },
   reportTitle: {
     fontSize: 20,
     fontWeight: 700,
@@ -130,7 +143,7 @@ const styles = StyleSheet.create({
     letterSpacing: 10,
     marginBottom: 12,
   },
-  authorRow: { textAlign: "center", fontSize: 9.5, marginBottom: 12 },
+  authorRow: { textAlign: "right", fontSize: 9.5, fontWeight: 700, marginBottom: 12 },
   titleCell: {
     borderWidth: 1,
     borderColor: "#15120c",
@@ -195,11 +208,9 @@ export async function renderIncidentReportPdf(
     <Document>
       {/* ① 공문 */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.wordmark}>
-          <Text style={{ color: "#15306b" }}>JINHAK</Text>
-          <Text style={{ color: "#2e6fc4" }}>apply</Text>
-          <Text style={{ color: "#f5a623" }}> ›</Text>
-        </Text>
+        {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
+        <Image style={styles.logo} src={LOGO_PATH} />
+        <Text style={styles.slogan}>{m.brandHeader}</Text>
         <View style={styles.logoRule} />
         <Text style={[styles.row, { marginTop: 14 }]}>
           수신자  {m.recipientUniversity}
@@ -207,12 +218,14 @@ export async function renderIncidentReportPdf(
         <Text style={styles.row}>참  조</Text>
         <Text style={[styles.row, styles.bold]}>제  목  {m.title}</Text>
         <View style={styles.hr} />
-        {m.coverBody.map((line, i) => (
-          <View key={i} style={styles.coverItem}>
-            <Text style={styles.coverNum}>{i + 1}.</Text>
-            <Text style={styles.coverText}>{line}</Text>
-          </View>
-        ))}
+        <View style={styles.coverList}>
+          {m.coverBody.map((line, i) => (
+            <View key={i} style={styles.coverItem}>
+              <Text style={styles.coverNum}>{i + 1}.</Text>
+              <Text style={styles.coverText}>{line}</Text>
+            </View>
+          ))}
+        </View>
         <Text style={[styles.row, { marginTop: 12 }]}>
           붙임 : 1. {m.title} 경위서 1부
         </Text>
