@@ -37,10 +37,9 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
       "이 영역의 목록에서 항목을 선택하면 오른쪽 인스펙터에서 상세를 확인하고 바로 편집할 수 있습니다.",
   },
   {
-    element: "[data-tutorial='help']",
-    title: "도움말은 언제든 다시",
+    title: "이제 시작해볼까요",
     description:
-      "이 안내는 이 ‘도움말’ 버튼으로 언제든 다시 볼 수 있습니다. 그럼 시작해볼까요?",
+      "주요 영역은 여기까지입니다. 직접 둘러보며 사용해 보세요.",
   },
 ];
 
