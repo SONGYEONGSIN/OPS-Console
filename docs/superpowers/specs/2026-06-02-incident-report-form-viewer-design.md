@@ -108,3 +108,19 @@ PDF/메일 (server) → 같은 deriveFormModel → incident-report-pdf → Buffe
 1. 본 스펙 사용자 검토
 2. writing-plans로 구현 계획 분해(TDD)
 3. 구현: form-content → FormPreview → PDF 동기화 → FormModal → wiring → 검증
+
+---
+
+## 개정 (2026-06-02, 사용자 승인) — 모달 → 전용 편집 워크스페이스
+
+1차 구현(모달)이 화면이 좁아 실제 문서처럼 안 보인다는 피드백. 결정 변경:
+
+| 항목 | 변경 |
+|------|------|
+| 배치 | **인스펙터 모달 폐기** → 신규 라우트 `/dashboard/incident-reports/[id]` **전용 편집 워크스페이스** (메인 = 큰 Word 뷰어 + 페이지 넘기기 / 우측 = 편집 인스펙터, 라이브 반영) |
+| Word 표현 | **Word처럼 보이는 HTML 화면**(A4 면) — 실제 `.docx` 다운로드는 범위 밖 |
+| 페이지 넘기기 | 공문(1) / 경위서(2) 2면을 한 면씩 표시 + ◀ prev/next ▶ |
+| 진입 | `IncidentReportView` "양식으로 보기" → `router.push('/dashboard/incident-reports/${reportId}')` |
+| 인사말 중복 버그 | 1차 Task 2가 `m.greeting` 별도 줄을 추가했으나 기존 `defaultApology(university)`가 인사말을 apology에 이미 내장 → **중복**. 수정: 별도 greeting 줄 제거, apology 기본값을 `defaultApology`로 통일(단일 소스). 발송 PDF 중복도 함께 해결 |
+| 컴포넌트 | **제거** `FormModal.tsx`(+test). **신규** route `page.tsx` + `ReportEditorWorkspace.tsx` + `FormPage`(FormPreview 페이지 분할). **수정** form-content / FormPreview / incident-report-pdf / View |
+| 재사용 | `form-content` · PDF 템플릿 · PDF 라우트 · ListRow docNumber 그대로 |
