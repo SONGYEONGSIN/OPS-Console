@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { EditFormProps } from "../types";
 import { AI_TOOL_OPTIONS, CATEGORY_OPTIONS } from "@/lib/ai-work/constants";
 
@@ -9,7 +10,14 @@ export function AiTipsForm({
   currentUserEmail = null,
   currentUserPermission = null,
 }: EditFormProps) {
-  const tagsText = (row.tags ?? []).join(", ");
+  // 태그 입력은 raw 텍스트를 로컬 보관 — 쉼표를 입력하는 즉시 split/filter로
+  // 사라지는 것을 막는다. 다른 항목 선택(row.id 변경) 시에만 재동기화.
+  const [tagsText, setTagsText] = useState((row.tags ?? []).join(", "));
+  const [prevRowId, setPrevRowId] = useState(row.id);
+  if (row.id !== prevRowId) {
+    setPrevRowId(row.id);
+    setTagsText((row.tags ?? []).join(", "));
+  }
   const isAdmin = currentUserPermission === "admin";
   const isOwnAuthor =
     !!currentUserEmail &&
@@ -109,15 +117,16 @@ export function AiTipsForm({
         <input
           aria-label="태그"
           value={tagsText}
-          onChange={(e) =>
+          onChange={(e) => {
+            setTagsText(e.target.value);
             setRow({
               ...row,
               tags: e.target.value
                 .split(",")
                 .map((t) => t.trim())
                 .filter((t) => t.length > 0),
-            })
-          }
+            });
+          }}
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
           placeholder="회의록, 주간"
         />

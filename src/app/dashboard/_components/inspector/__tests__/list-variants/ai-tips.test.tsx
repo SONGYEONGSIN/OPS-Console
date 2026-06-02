@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { AiTipsView } from "../../list-variants/ai-tips/View";
@@ -107,5 +108,49 @@ describe("AiTipsForm", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it("태그 — 쉼표 입력이 입력 중 사라지지 않는다", () => {
+    function StatefulForm() {
+      const [row, setRow] = useState<ListRow>({ ...baseRow, tags: [] });
+      return (
+        <AiTipsForm
+          row={row}
+          setRow={setRow}
+          onSave={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      );
+    }
+    render(<StatefulForm />);
+    const input = screen.getByLabelText("태그");
+    fireEvent.change(input, { target: { value: "회의록," } });
+    expect(input).toHaveValue("회의록,");
+    fireEvent.change(input, { target: { value: "회의록, " } });
+    expect(input).toHaveValue("회의록, ");
+    fireEvent.change(input, { target: { value: "회의록, 주간" } });
+    expect(input).toHaveValue("회의록, 주간");
+  });
+
+  it("태그 — 저장 시 빈 항목/공백이 제거된 배열로 정규화", () => {
+    const onSave = vi.fn();
+    function Harness() {
+      const [row, setRow] = useState<ListRow>({ ...baseRow, tags: [] });
+      return (
+        <AiTipsForm
+          row={row}
+          setRow={setRow}
+          onSave={onSave}
+          onCancel={vi.fn()}
+        />
+      );
+    }
+    render(<Harness />);
+    fireEvent.change(screen.getByLabelText("태그"), {
+      target: { value: "회의록, , 주간 ," },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0].tags).toEqual(["회의록", "주간"]);
   });
 });
