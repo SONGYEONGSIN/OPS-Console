@@ -1,6 +1,8 @@
 "use client";
 
 import type { ListRow } from "../../../patterns/ListPattern";
+import { REPORT_STATUS_LABEL } from "@/features/incident-reports/schemas";
+import { STATUS_TONE as REPORT_STATUS_TONE } from "../incident-reports/status";
 
 type Props = {
   rows: ListRow[];
@@ -22,6 +24,7 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
           <th className="px-3 py-2">학년도</th>
           <th className="px-3 py-2">상태</th>
+          <th className="px-3 py-2">경위서</th>
           <th className="px-3 py-2">구분</th>
           <th className="px-3 py-2">카테고리</th>
           <th className="px-3 py-2">사고제목</th>
@@ -33,13 +36,14 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={8} className="px-3 py-6 text-center text-muted">
+            <td colSpan={9} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
         ) : (
           rows.map((row) => {
             const status = row.incidentStatus ?? "미처리";
+            const reportStatus = row.incidentReportStatus;
             return (
               <tr
                 key={row.id}
@@ -57,6 +61,17 @@ export function IncidentTable({ rows, selectedId, onSelect }: Props) {
                   >
                     {status}
                   </span>
+                </td>
+                <td className="px-3 py-2">
+                  {reportStatus ? (
+                    <span
+                      className={`inline-block px-2 py-0.5 text-2xs ${REPORT_STATUS_TONE[reportStatus]}`}
+                    >
+                      {REPORT_STATUS_LABEL[reportStatus]}
+                    </span>
+                  ) : (
+                    <span className="text-2xs text-muted">없음</span>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-xs text-ink-soft">
                   {row.incidentAppType ?? "—"}

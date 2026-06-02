@@ -13,12 +13,18 @@ export type IncidentReportBundle = {
   report: IncidentReportRow | null;
   recipients: Awaited<ReturnType<typeof listRecipientCandidates>>;
   approvalChain: ApprovalChain | null;
+  /** 현재 로그인 사용자가 이 경위서의 결재자인지 (승인/반려 가드) */
+  isApprover: boolean;
+  /** 현재 사용자가 발송 가능한지 (작성자 또는 admin) */
+  canSend: boolean;
 };
 
 const EMPTY_BUNDLE: IncidentReportBundle = {
   report: null,
   recipients: [],
   approvalChain: null,
+  isApprover: false,
+  canSend: false,
 };
 
 /**
@@ -39,5 +45,9 @@ export async function getIncidentReportBundle(
     resolveApprovalChain(report.author_email),
   ]);
 
-  return { report, recipients, approvalChain };
+  const isApprover = report.approver_email === me.email;
+  const canSend =
+    report.author_email === me.email || me.permission === "admin";
+
+  return { report, recipients, approvalChain, isApprover, canSend };
 }

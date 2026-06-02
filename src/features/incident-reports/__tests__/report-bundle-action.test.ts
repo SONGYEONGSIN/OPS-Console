@@ -30,24 +30,37 @@ const sampleReport = {
   incident_id: INCIDENT_ID,
   recipient_university: "건국대학교",
   author_email: "me@x.com",
+  approver_email: "l@x.com",
   status: "draft",
 };
 
 beforeEach(() => vi.clearAllMocks());
 
 describe("getIncidentReportBundle", () => {
-  it("비로그인 → 빈 번들", async () => {
+  it("비로그인 → 빈 번들 (isApprover/canSend false)", async () => {
     mockGetCurrentOperator.mockResolvedValue(null);
     const r = await getIncidentReportBundle(INCIDENT_ID);
-    expect(r).toEqual({ report: null, recipients: [], approvalChain: null });
+    expect(r).toEqual({
+      report: null,
+      recipients: [],
+      approvalChain: null,
+      isApprover: false,
+      canSend: false,
+    });
     expect(mockGetByIncidentId).not.toHaveBeenCalled();
   });
 
-  it("경위서 없음 → report null, 빈 recipients/chain", async () => {
+  it("경위서 없음 → report null, 빈 recipients/chain (isApprover/canSend false)", async () => {
     mockGetCurrentOperator.mockResolvedValue({ email: "me@x.com" });
     mockGetByIncidentId.mockResolvedValue(null);
     const r = await getIncidentReportBundle(INCIDENT_ID);
-    expect(r).toEqual({ report: null, recipients: [], approvalChain: null });
+    expect(r).toEqual({
+      report: null,
+      recipients: [],
+      approvalChain: null,
+      isApprover: false,
+      canSend: false,
+    });
     expect(mockListRecipientCandidates).not.toHaveBeenCalled();
     expect(mockResolveApprovalChain).not.toHaveBeenCalled();
   });
@@ -73,5 +86,37 @@ describe("getIncidentReportBundle", () => {
     expect(r.approvalChain).toEqual(chain);
     expect(mockListRecipientCandidates).toHaveBeenCalledWith("건국대학교");
     expect(mockResolveApprovalChain).toHaveBeenCalledWith("me@x.com");
+  });
+
+  it("isApprover: approver_email === me.email 일 때 true", async () => {
+    mockGetCurrentOperator.mockResolvedValue({ email: "l@x.com" });
+    mockGetByIncidentId.mockResolvedValue(sampleReport);
+    mockListRecipientCandidates.mockResolvedValue([]);
+    mockResolveApprovalChain.mockResolvedValue(null);
+    const r = await getIncidentReportBundle(INCIDENT_ID);
+    expect(r.isApprover).toBe(true);
+    expect(r.canSend).toBe(false);
+  });
+
+  it("canSend: 작성자(author_email === me.email) 일 때 true", async () => {
+    mockGetCurrentOperator.mockResolvedValue({ email: "me@x.com" });
+    mockGetByIncidentId.mockResolvedValue(sampleReport);
+    mockListRecipientCandidates.mockResolvedValue([]);
+    mockResolveApprovalChain.mockResolvedValue(null);
+    const r = await getIncidentReportBundle(INCIDENT_ID);
+    expect(r.canSend).toBe(true);
+    expect(r.isApprover).toBe(false);
+  });
+
+  it("canSend: admin 권한일 때 true (작성자 아님)", async () => {
+    mockGetCurrentOperator.mockResolvedValue({
+      email: "other@x.com",
+      permission: "admin",
+    });
+    mockGetByIncidentId.mockResolvedValue(sampleReport);
+    mockListRecipientCandidates.mockResolvedValue([]);
+    mockResolveApprovalChain.mockResolvedValue(null);
+    const r = await getIncidentReportBundle(INCIDENT_ID);
+    expect(r.canSend).toBe(true);
   });
 });

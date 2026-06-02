@@ -24,7 +24,12 @@ function BodyText({ value }: { value: string | null | undefined }) {
   );
 }
 
-export function IncidentReportView({ row }: ViewProps) {
+type IncidentReportViewProps = ViewProps & {
+  /** 액션 성공 후 호출 — 사고 탭에서 번들 refetch 트리거 (revalidatePath 미적용 컨텍스트) */
+  onChanged?: () => void;
+};
+
+export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) {
   const status = row.incidentReportStatus ?? "draft";
   const recipients = (row.incidentReportRecipients ?? []) as Recipient[];
   const [pending, startTransition] = useTransition();
@@ -36,7 +41,11 @@ export function IncidentReportView({ row }: ViewProps) {
     setError(null);
     startTransition(async () => {
       const r = await action();
-      if (!r.ok) setError(r.error ?? "처리에 실패했습니다.");
+      if (!r.ok) {
+        setError(r.error ?? "처리에 실패했습니다.");
+        return;
+      }
+      onChanged?.();
     });
   }
 
