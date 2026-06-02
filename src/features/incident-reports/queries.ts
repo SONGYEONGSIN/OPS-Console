@@ -94,6 +94,26 @@ export function buildReportStatusMap(
   return map;
 }
 
+/**
+ * 팀장 결재 큐 — 본인이 승인자인 `pending_approval` 경위서의 incident_id 목록.
+ * 경위서 메뉴 제거 후 사고보고 목록의 `승인 대기` 칩 필터 소스. 빈 email → [].
+ */
+export async function incidentIdsWithPendingApprovalFor(
+  approverEmail: string,
+): Promise<string[]> {
+  if (!approverEmail) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("incident_reports")
+    .select("incident_id")
+    .eq("status", "pending_approval")
+    .eq("approver_email", approverEmail);
+  const rows = (data ?? []) as { incident_id: string | null }[];
+  return rows
+    .map((r) => r.incident_id)
+    .filter((id): id is string => id != null);
+}
+
 /** 목록 배지용 batch 조회 — N+1 회피. 빈 입력 → {}. */
 export async function reportStatusByIncidentIds(
   incidentIds: string[],

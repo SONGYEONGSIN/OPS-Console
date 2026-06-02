@@ -60,6 +60,41 @@ export async function listIncidents(
   return { rows, total: count ?? 0 };
 }
 
+/**
+ * id 집합으로 사고 행 조회 (created_at desc). 빈 ids → [].
+ * 승인 대기 칩 필터용 — pending 집합은 작아 페이지네이션 없이 일괄 조회.
+ */
+export async function listIncidentsByIds(
+  ids: string[],
+): Promise<IncidentRow[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("incidents")
+    .select("*")
+    .in("id", ids)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[listIncidentsByIds] supabase error:", error);
+    return [];
+  }
+
+  const rows: IncidentRow[] = [];
+  for (const r of data ?? []) {
+    const parsed = incidentRowSchema.safeParse(r);
+    if (parsed.success) rows.push(parsed.data);
+    else
+      console.error(
+        "[listIncidentsByIds] zod parse fail:",
+        parsed.error.issues,
+        "row:",
+        r,
+      );
+  }
+  return rows;
+}
+
 export async function getIncidentById(
   id: string,
 ): Promise<IncidentRow | null> {

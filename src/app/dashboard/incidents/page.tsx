@@ -8,9 +8,13 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { IncidentsControls } from "./IncidentsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { listIncidents } from "@/features/incidents/queries";
-import { reportStatusByIncidentIds } from "@/features/incident-reports/queries";
+import { listIncidents, listIncidentsByIds } from "@/features/incidents/queries";
+import {
+  reportStatusByIncidentIds,
+  incidentIdsWithPendingApprovalFor,
+} from "@/features/incident-reports/queries";
 import { incidentToListRow } from "./_row-mapper";
+import { PendingApprovalChip } from "./PendingApprovalChip";
 import {
   createIncident,
   updateIncident,
@@ -45,6 +49,7 @@ type SearchParams = {
   department?: string;
   q?: string;
   mine?: string;
+  report?: string;
   page?: string;
 };
 
@@ -68,18 +73,31 @@ export default async function IncidentsPage({
   const selectedYear = params.year ? Number(params.year) : defaultYear;
   const page = Math.max(1, Number(params.page) || 1);
   const mine = params.mine === "true";
+  const reportPending = params.report === "pending";
 
-  const { rows: dbRows, total } = await listIncidents({
-    year: selectedYear,
-    status:
-      params.status && params.status !== "all" ? params.status : undefined,
-    department: params.department || undefined,
-    q: params.q || undefined,
-    mine,
-    meEmail: me?.email ?? undefined,
-    page,
-    pageSize: PAGE_SIZE,
-  });
+  // 승인 대기 칩: 본인이 승인자인 pending_approval 경위서가 달린 사고만.
+  // pending 집합은 작으므로 페이지네이션 없이 일괄 조회 (정규 listIncidents 대체).
+  let dbRows;
+  let total;
+  if (reportPending && me?.email) {
+    const ids = await incidentIdsWithPendingApprovalFor(me.email);
+    dbRows = ids.length ? await listIncidentsByIds(ids) : [];
+    total = dbRows.length;
+  } else {
+    const result = await listIncidents({
+      year: selectedYear,
+      status:
+        params.status && params.status !== "all" ? params.status : undefined,
+      department: params.department || undefined,
+      q: params.q || undefined,
+      mine,
+      meEmail: me?.email ?? undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    });
+    dbRows = result.rows;
+    total = result.total;
+  }
 
   // 경위서 상태 배지 — N+1 회피용 batch 조회 후 행에 주입
   const reportStatusMap = await reportStatusByIncidentIds(
@@ -183,7 +201,10 @@ export default async function IncidentsPage({
       incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
       incidentCategorySuggestions={CATEGORY_SUGGESTIONS}
       inlineFilters={
-        <ScopeChips key="incidents-scope" total={total} mineLabel="내 사고" />
+        <div key="incidents-scope" className="inline-flex items-center">
+          <ScopeChips total={total} mineLabel="내 사고" />
+          <PendingApprovalChip />
+        </div>
       }
       footer={
         <ListPagination
