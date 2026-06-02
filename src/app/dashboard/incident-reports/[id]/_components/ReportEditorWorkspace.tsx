@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   REPORT_STATUS_LABEL,
   type IncidentReportRow,
+  type HandlingRow,
 } from "@/features/incident-reports/schemas";
 import {
   deriveFormModel,
@@ -13,23 +14,24 @@ import {
 import { updateIncidentReport } from "@/features/incident-reports/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 
-type EditableKey =
+type TextKey =
   | "recipient_university"
   | "title"
   | "gyeongwi"
   | "cause"
-  | "handling"
   | "prevention"
   | "apology";
 
-type Editable = Record<EditableKey, string>;
+type TextDraft = Record<TextKey, string>;
 
-const FIELD_DEFS: { key: EditableKey; label: string; textarea: boolean }[] = [
+/** 처리(rows) 앞/뒤로 나눠 렌더 — 문서 순서(경위→원인→처리→대책) 유지 */
+const PRE_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
   { key: "title", label: "제목", textarea: false },
   { key: "recipient_university", label: "수신대학", textarea: false },
   { key: "gyeongwi", label: "경위", textarea: true },
   { key: "cause", label: "원인", textarea: true },
-  { key: "handling", label: "처리", textarea: true },
+];
+const POST_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
   { key: "prevention", label: "대책", textarea: true },
   { key: "apology", label: "사과 본문", textarea: true },
 ];
@@ -43,15 +45,15 @@ export function ReportEditorWorkspace({
   report: IncidentReportRow;
 }) {
   const router = useRouter();
-  const [draft, setDraft] = useState<Editable>({
+  const [draft, setDraft] = useState<TextDraft>({
     recipient_university: report.recipient_university,
     title: report.title,
     gyeongwi: report.gyeongwi ?? "",
     cause: report.cause ?? "",
-    handling: report.handling ?? "",
     prevention: report.prevention ?? "",
     apology: report.apology ?? "",
   });
+  const [rows, setRows] = useState<HandlingRow[]>(report.handling_rows ?? []);
   const [page, setPage] = useState(1);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export function ReportEditorWorkspace({
     title: draft.title,
     draftDate: report.draft_date,
     authorName: report.author_name,
+    authorEmail: report.author_email,
     approverName: report.approver_name,
     directorName: report.director_name,
     ceoName: report.ceo_name,
@@ -71,10 +74,24 @@ export function ReportEditorWorkspace({
     apology: draft.apology || null,
     gyeongwi: draft.gyeongwi || null,
     cause: draft.cause || null,
-    handling: draft.handling || null,
+    handling: report.handling, // 레거시 text 폴백 (rows 비었을 때만 표시)
+    handlingRows: rows.filter((r) => r.time.trim() || r.content.trim()),
     prevention: draft.prevention || null,
   };
   const model = deriveFormModel(source);
+
+  function setField(key: TextKey, value: string) {
+    setDraft((d) => ({ ...d, [key]: value }));
+  }
+  function updateRow(i: number, patch: Partial<HandlingRow>) {
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function addRow() {
+    setRows((rs) => [...rs, { time: "", content: "" }]);
+  }
+  function removeRow(i: number) {
+    setRows((rs) => rs.filter((_, idx) => idx !== i));
+  }
 
   function onSave() {
     setError(null);
@@ -85,9 +102,9 @@ export function ReportEditorWorkspace({
         title: draft.title || undefined,
         gyeongwi: draft.gyeongwi || null,
         cause: draft.cause || null,
-        handling: draft.handling || null,
         prevention: draft.prevention || null,
         apology: draft.apology || null,
+        handling_rows: rows.filter((r) => r.time.trim() || r.content.trim()),
       });
       if (!r.ok) {
         setError(r.error ?? "저장에 실패했습니다.");
@@ -96,6 +113,40 @@ export function ReportEditorWorkspace({
       setSaved(true);
       router.refresh();
     });
+  }
+
+  function renderField({
+    key,
+    label,
+    textarea,
+  }: {
+    key: TextKey;
+    label: string;
+    textarea: boolean;
+  }) {
+    return (
+      <label key={key} className="block text-xs">
+        <span className="mb-1 block text-muted">{label}</span>
+        {textarea ? (
+          <textarea
+            aria-label={label}
+            value={draft[key]}
+            rows={4}
+            maxLength={5000}
+            onChange={(e) => setField(key, e.target.value)}
+            className={inputClass}
+          />
+        ) : (
+          <input
+            aria-label={label}
+            value={draft[key]}
+            maxLength={200}
+            onChange={(e) => setField(key, e.target.value)}
+            className={inputClass}
+          />
+        )}
+      </label>
+    );
   }
 
   return (
@@ -145,33 +196,53 @@ export function ReportEditorWorkspace({
         {editable ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-              {FIELD_DEFS.map(({ key, label, textarea }) => (
-                <label key={key} className="block text-xs">
-                  <span className="mb-1 block text-muted">{label}</span>
-                  {textarea ? (
-                    <textarea
-                      aria-label={label}
-                      value={draft[key]}
-                      rows={4}
-                      maxLength={5000}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, [key]: e.target.value }))
-                      }
-                      className={inputClass}
-                    />
-                  ) : (
-                    <input
-                      aria-label={label}
-                      value={draft[key]}
-                      maxLength={200}
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, [key]: e.target.value }))
-                      }
-                      className={inputClass}
-                    />
-                  )}
-                </label>
-              ))}
+              {PRE_FIELDS.map(renderField)}
+
+              {/* 처리 — 시간/내용 행 편집기 */}
+              <div className="text-xs">
+                <span className="mb-1 block text-muted">처리 (시간 / 내용)</span>
+                <div className="space-y-1.5">
+                  {rows.map((r, i) => (
+                    <div key={i} className="flex gap-1">
+                      <input
+                        aria-label={`처리 시간 ${i + 1}`}
+                        value={r.time}
+                        maxLength={100}
+                        placeholder="시간"
+                        onChange={(e) => updateRow(i, { time: e.target.value })}
+                        className={`${inputClass} w-28 shrink-0`}
+                      />
+                      <input
+                        aria-label={`처리 내용 ${i + 1}`}
+                        value={r.content}
+                        maxLength={2000}
+                        placeholder="내용"
+                        onChange={(e) =>
+                          updateRow(i, { content: e.target.value })
+                        }
+                        className={inputClass}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`처리 행 삭제 ${i + 1}`}
+                        onClick={() => removeRow(i)}
+                        className="shrink-0 cursor-pointer border border-line bg-transparent px-2 text-muted hover:text-vermilion"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addRow}
+                  className="mt-1.5 cursor-pointer border border-line bg-transparent px-2 py-1 text-2xs text-ink hover:bg-washi-raised"
+                >
+                  + 처리 행 추가
+                </button>
+              </div>
+
+              {POST_FIELDS.map(renderField)}
             </div>
             <div className="mt-3 space-y-2">
               {error && <p className="text-xs text-vermilion">{error}</p>}

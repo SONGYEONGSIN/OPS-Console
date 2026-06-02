@@ -7,6 +7,7 @@ import {
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
 import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
+import type { HandlingRow } from "./schemas";
 
 /**
  * 경위서 발송 시 SharePoint 연동 오케스트레이터 (2차 Phase C).
@@ -38,6 +39,7 @@ export type RegisterInput = {
   title: string;
   draft_date: string;
   author_name: string;
+  author_email: string;
   approver_name: string | null;
   director_name: string | null;
   ceo_name: string | null;
@@ -45,6 +47,7 @@ export type RegisterInput = {
   gyeongwi: string | null;
   cause: string | null;
   handling: string | null;
+  handling_rows: HandlingRow[];
   prevention: string | null;
 };
 
@@ -78,6 +81,7 @@ export async function registerIncidentReportToSharePoint(
     title: rep.title,
     draftDate: rep.draft_date,
     authorName: rep.author_name,
+    authorEmail: rep.author_email,
     approverName: rep.approver_name,
     directorName: rep.director_name,
     ceoName: rep.ceo_name,
@@ -86,6 +90,7 @@ export async function registerIncidentReportToSharePoint(
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,
     handling: rep.handling,
+    handlingRows: rep.handling_rows,
     prevention: rep.prevention,
   });
 
