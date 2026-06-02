@@ -9,10 +9,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
-import {
-  deriveFormModel,
-  type FormSource,
-} from "@/features/incident-reports/form-content";
+import { deriveFormModel } from "@/features/incident-reports/form-content";
 
 const PRETENDARD_REGULAR = path.join(
   process.cwd(),
@@ -143,7 +140,7 @@ export async function renderIncidentReportPdf(
   input: IncidentReportPdfInput,
 ): Promise<Buffer> {
   ensureFontRegistered();
-  const m = deriveFormModel(input as FormSource);
+  const m = deriveFormModel(input);
   const doc = (
     <Document>
       <Page size="A4" style={styles.page}>
