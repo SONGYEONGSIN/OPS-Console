@@ -13,18 +13,15 @@ describe("TUTORIAL_STEPS", () => {
     }
   });
 
-  it("영역 스포트라이트 스텝은 element 선택자를 가진다 (사이드바/상단/콘텐츠/도움말)", () => {
+  it("영역 스포트라이트 스텝은 element 선택자를 가진다 (사이드바/상단/콘텐츠)", () => {
     const anchored = TUTORIAL_STEPS.filter((s) => s.element);
-    expect(anchored.length).toBeGreaterThanOrEqual(4);
+    expect(anchored.length).toBeGreaterThanOrEqual(3);
     expect(TUTORIAL_STEPS.some((s) => s.element === "#sidebar")).toBe(true);
     expect(
       TUTORIAL_STEPS.some((s) => s.element === "[data-tutorial='topbar']"),
     ).toBe(true);
     expect(
       TUTORIAL_STEPS.some((s) => s.element === "[data-tutorial='content']"),
-    ).toBe(true);
-    expect(
-      TUTORIAL_STEPS.some((s) => s.element === "[data-tutorial='help']"),
     ).toBe(true);
   });
 });

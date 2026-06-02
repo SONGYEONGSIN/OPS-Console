@@ -13,7 +13,7 @@ import {
  * 첫 방문 가이드 투어 (driver.js).
  * - 미열람 시 마운트 후 자동 1회 실행 (영역별 스포트라이트)
  * - 종료(완료/건너뛰기/닫기) 시 열람 처리
- * - 우하단 '도움말' 버튼으로 언제든 재실행
+ * - UI 렌더 없음(effect 전용) — 플로팅 버튼 미사용
  */
 export function TutorialTour() {
   const startedRef = useRef(false);
@@ -43,14 +43,5 @@ export function TutorialTour() {
     }
   }, [start]);
 
-  return (
-    <button
-      type="button"
-      data-tutorial="help"
-      onClick={start}
-      className="fixed bottom-4 right-4 z-40 border border-line bg-washi-raised px-3 py-1.5 text-xs text-ink shadow-sm hover:bg-washi"
-    >
-      도움말
-    </button>
-  );
+  return null;
 }

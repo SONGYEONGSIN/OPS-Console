@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react";
 
 // driver.js 모킹 — 본 컴포넌트의 "언제 투어를 시작하는가" 로직만 검증
 // (하이라이트/위치 계산 등 driver.js 내부 동작은 라이브러리 책임).
@@ -32,12 +32,9 @@ describe("TutorialTour", () => {
     expect(driveMock).not.toHaveBeenCalled();
   });
 
-  it("도움말 버튼으로 이미 열람했어도 다시 시작할 수 있다", () => {
-    localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
-    render(<TutorialTour />);
-    expect(driveMock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "도움말" }));
-    expect(driveMock).toHaveBeenCalledTimes(1);
+  it("UI를 렌더하지 않는다 (플로팅 버튼 없음)", () => {
+    const { container } = render(<TutorialTour />);
+    expect(container.querySelector("button")).toBeNull();
   });
 
   it("driver에 전체 스텝과 한글 버튼 라벨을 전달한다", () => {
