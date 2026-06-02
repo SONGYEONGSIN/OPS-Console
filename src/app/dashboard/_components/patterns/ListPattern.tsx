@@ -339,6 +339,8 @@ export type ListRow = {
   incidentReportRejectReason?: string | null;
   /** incident-reports — 연결된 사고 id (nullable) */
   incidentReportIncidentId?: string | null;
+  /** incident-reports — 시행번호 (발송 시 확정, 그 전엔 null) */
+  incidentReportDocNumber?: string | null;
   /** incident-reports — 발송 수신자 후보 (page가 university로 조회해 첨부) */
   incidentReportRecipients?: {
     email: string;

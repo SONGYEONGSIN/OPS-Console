@@ -24,5 +24,6 @@ export function incidentReportToListRow(r: IncidentReportRow): ListRow {
     incidentReportCeoName: r.ceo_name,
     incidentReportRejectReason: r.reject_reason,
     incidentReportIncidentId: r.incident_id,
+    incidentReportDocNumber: r.doc_number,
   };
 }
