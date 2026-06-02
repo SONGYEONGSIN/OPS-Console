@@ -1,8 +1,13 @@
 import type { ListRow } from "../_components/patterns/ListPattern";
 import type { IncidentRow } from "@/features/incidents/schemas";
+import type { ReportStatus } from "@/features/incident-reports/schemas";
 
-export function incidentToListRow(r: IncidentRow): ListRow {
+export function incidentToListRow(
+  r: IncidentRow,
+  reportStatus?: ReportStatus,
+): ListRow {
   return {
+    incidentReportStatus: reportStatus,
     id: r.id,
     name: r.title,
     status: "active",

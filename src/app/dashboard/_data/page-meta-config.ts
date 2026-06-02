@@ -50,11 +50,6 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "요청 · 자료", title: "인수인계" },
     description: "서비스별 인수인계 내용을 카테고리별로 작성·조회합니다.",
   },
-  "incident-reports": {
-    headline: { accent: "자료 보관", title: "경위서" },
-    description:
-      "사고 경위서를 작성·결재(승인 요청/승인/반려)하고 승인 후 대학에 발송합니다.",
-  },
   feedback: {
     headline: { accent: "관리", title: "개선요청" },
     description: "OPS Console에 대한 개선 아이디어와 버그 리포트를 모읍니다.",

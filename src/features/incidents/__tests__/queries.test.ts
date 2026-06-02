@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockCreateClient, mockResult, eqCalls, orCalls, rangeCalls } =
+const { mockCreateClient, mockResult, eqCalls, orCalls, rangeCalls, inCalls } =
   vi.hoisted(() => {
     const mockResult = vi.fn();
     const eqCalls: Array<[string, unknown]> = [];
     const orCalls: string[] = [];
     const rangeCalls: Array<[number, number]> = [];
+    const inCalls: Array<[string, unknown[]]> = [];
 
     const builder: Record<string, unknown> = {};
     builder.select = () => builder;
@@ -16,6 +17,10 @@ const { mockCreateClient, mockResult, eqCalls, orCalls, rangeCalls } =
     };
     builder.or = (clause: string) => {
       orCalls.push(clause);
+      return builder;
+    };
+    builder.in = (col: string, vals: unknown[]) => {
+      inCalls.push([col, vals]);
       return builder;
     };
     builder.range = (from: number, to: number) => {
@@ -29,14 +34,25 @@ const { mockCreateClient, mockResult, eqCalls, orCalls, rangeCalls } =
     const mockCreateClient = vi.fn(async () => ({
       from: () => builder,
     }));
-    return { mockCreateClient, mockResult, eqCalls, orCalls, rangeCalls };
+    return {
+      mockCreateClient,
+      mockResult,
+      eqCalls,
+      orCalls,
+      rangeCalls,
+      inCalls,
+    };
   });
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: mockCreateClient,
 }));
 
-import { listIncidents, getIncidentById } from "../queries";
+import {
+  listIncidents,
+  getIncidentById,
+  listIncidentsByIds,
+} from "../queries";
 
 const validRow = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -135,6 +151,42 @@ describe("listIncidents", () => {
     });
     const r = await listIncidents();
     expect(r.rows.length).toBe(1);
+  });
+});
+
+describe("listIncidentsByIds", () => {
+  beforeEach(() => {
+    mockResult.mockReset();
+    inCalls.length = 0;
+  });
+
+  it("빈 ids → 빈 배열 (DB 미조회)", async () => {
+    const r = await listIncidentsByIds([]);
+    expect(r).toEqual([]);
+    expect(inCalls).toHaveLength(0);
+  });
+
+  it("in('id', ids) 필터로 정상 row 반환", async () => {
+    mockResult.mockReturnValue({ data: [validRow], error: null });
+    const r = await listIncidentsByIds([validRow.id]);
+    expect(r.length).toBe(1);
+    expect(r[0]?.title).toBe("결제 오류");
+    expect(inCalls).toContainEqual(["id", [validRow.id]]);
+  });
+
+  it("supabase error → 빈 배열", async () => {
+    mockResult.mockReturnValue({ data: null, error: { message: "boom" } });
+    const r = await listIncidentsByIds([validRow.id]);
+    expect(r).toEqual([]);
+  });
+
+  it("zod fail row는 skip", async () => {
+    mockResult.mockReturnValue({
+      data: [validRow, { ...validRow, status: "엉뚱한값" }],
+      error: null,
+    });
+    const r = await listIncidentsByIds([validRow.id]);
+    expect(r.length).toBe(1);
   });
 });
 

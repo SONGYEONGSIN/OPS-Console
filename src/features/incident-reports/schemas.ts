@@ -46,7 +46,7 @@ export const incidentReportRowSchema = z.object({
 export type IncidentReportRow = z.infer<typeof incidentReportRowSchema>;
 
 export const incidentReportCreateSchema = z.object({
-  incident_id: z.string().uuid().nullable().optional(),
+  incident_id: z.string().uuid("사고 연결 누락"),
   recipient_university: z.string().min(1, "수신대학 누락"),
   title: z.string().min(1, "제목 누락").max(200),
   gyeongwi: z.string().max(5000).nullable().optional(),

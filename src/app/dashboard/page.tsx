@@ -100,7 +100,9 @@ export default async function DashboardLivePage({
   ).length;
   // LiveTable용: 최근 20건 슬라이스
   const incidents = allIncidentsForKpi.slice(0, 20);
-  const incidentsListRows: ListRow[] = incidents.map(incidentToListRow);
+  const incidentsListRows: ListRow[] = incidents.map((i) =>
+    incidentToListRow(i),
+  );
 
   // ─── 미수채권 (시트 fetch — 수금완료/전체 fraction + 미수 카운트) ─────────────
   let receivablesPaid = 0;

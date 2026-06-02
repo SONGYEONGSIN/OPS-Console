@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { IncidentReportRow, ReportStatus } from "./schemas";
 
 export type OperatorLite = {
   email: string;
@@ -68,4 +69,62 @@ export async function getIncidentReport(id: string) {
     .eq("id", id)
     .maybeSingle();
   return data;
+}
+
+export async function getIncidentReportByIncidentId(
+  incidentId: string,
+): Promise<IncidentReportRow | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("incident_reports")
+    .select("*")
+    .eq("incident_id", incidentId)
+    .maybeSingle();
+  return (data as IncidentReportRow | null) ?? null;
+}
+
+/** 순수 헬퍼: incident_id → status 맵 빌드 (null incident_id 제외). */
+export function buildReportStatusMap(
+  rows: { incident_id: string | null; status: ReportStatus }[],
+): Record<string, ReportStatus> {
+  const map: Record<string, ReportStatus> = {};
+  for (const r of rows) {
+    if (r.incident_id) map[r.incident_id] = r.status;
+  }
+  return map;
+}
+
+/**
+ * 팀장 결재 큐 — 본인이 승인자인 `pending_approval` 경위서의 incident_id 목록.
+ * 경위서 메뉴 제거 후 사고보고 목록의 `승인 대기` 칩 필터 소스. 빈 email → [].
+ */
+export async function incidentIdsWithPendingApprovalFor(
+  approverEmail: string,
+): Promise<string[]> {
+  if (!approverEmail) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("incident_reports")
+    .select("incident_id")
+    .eq("status", "pending_approval")
+    .eq("approver_email", approverEmail);
+  const rows = (data ?? []) as { incident_id: string | null }[];
+  return rows
+    .map((r) => r.incident_id)
+    .filter((id): id is string => id != null);
+}
+
+/** 목록 배지용 batch 조회 — N+1 회피. 빈 입력 → {}. */
+export async function reportStatusByIncidentIds(
+  incidentIds: string[],
+): Promise<Record<string, ReportStatus>> {
+  if (incidentIds.length === 0) return {};
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("incident_reports")
+    .select("incident_id,status")
+    .in("incident_id", incidentIds);
+  return buildReportStatusMap(
+    (data ?? []) as { incident_id: string | null; status: ReportStatus }[],
+  );
 }
