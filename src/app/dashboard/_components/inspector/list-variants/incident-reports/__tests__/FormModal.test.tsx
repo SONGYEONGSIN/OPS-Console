@@ -72,4 +72,11 @@ describe("FormModal", () => {
     );
     expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
   });
+
+  it("Escape 키를 누르면 onClose를 호출한다", () => {
+    const onClose = vi.fn();
+    render(<FormModal open onClose={onClose} row={row} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

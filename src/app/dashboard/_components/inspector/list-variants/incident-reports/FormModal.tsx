@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { FormPreview } from "./FormPreview";
 import { updateIncidentReport } from "@/features/incident-reports/actions";
@@ -19,6 +19,15 @@ export function FormModal({ open, onClose, row, onSaved }: Props) {
   const [draft, setDraft] = useState<ListRow>(row);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -53,6 +62,7 @@ export function FormModal({ open, onClose, row, onSaved }: Props) {
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="경위서 양식"
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
       onClick={onClose}
