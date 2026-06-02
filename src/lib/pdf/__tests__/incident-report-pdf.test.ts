@@ -40,4 +40,24 @@ describe("renderIncidentReportPdf", () => {
     });
     expect(buf.subarray(0, 4).toString()).toBe("%PDF");
   });
+
+  it("실제 양식 요소(인사말/회사명/연락처)가 포함되어도 정상 렌더된다", { timeout: 20000 }, async () => {
+    const buf = await renderIncidentReportPdf({
+      recipientUniversity: "건국대학교",
+      title: "전산파일 오류 건",
+      draftDate: "2026-06-02",
+      authorName: "이해영",
+      approverName: "송영신",
+      directorName: "이이화",
+      ceoName: "주정현",
+      docNumber: "서비스사업2606-0201(2026. 06. 02)",
+      apology: "",
+      gyeongwi: "경위",
+      cause: "원인",
+      handling: "처리",
+      prevention: "대책",
+    });
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.byteLength).toBeGreaterThan(1000);
+  });
 });

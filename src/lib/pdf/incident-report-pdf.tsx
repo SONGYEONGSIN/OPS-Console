@@ -9,6 +9,10 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
+import {
+  deriveFormModel,
+  type FormSource,
+} from "@/features/incident-reports/form-content";
 
 const PRETENDARD_REGULAR = path.join(
   process.cwd(),
@@ -77,6 +81,10 @@ const styles = StyleSheet.create({
   apology: {
     marginVertical: 14,
   },
+  greeting: { marginBottom: 6 },
+  companyLine: { marginTop: 18, fontWeight: 700 },
+  jeonkyeol: { fontSize: 8.5, color: "#6b6253", marginBottom: 4 },
+  contact: { marginTop: 10, fontSize: 8, color: "#6b6253", lineHeight: 1.5 },
   approvalTable: {
     flexDirection: "row",
     borderTopWidth: 1,
@@ -131,63 +139,49 @@ const styles = StyleSheet.create({
   },
 });
 
-function Section({
-  no,
-  label,
-  body,
-}: {
-  no: number;
-  label: string;
-  body: string | null;
-}) {
-  return (
-    <View wrap={false}>
-      <Text style={styles.sectionH}>
-        {no}. {label}
-      </Text>
-      <Text style={styles.sectionBody}>{body ?? ""}</Text>
-    </View>
-  );
-}
-
 export async function renderIncidentReportPdf(
   input: IncidentReportPdfInput,
 ): Promise<Buffer> {
   ensureFontRegistered();
+  const m = deriveFormModel(input as FormSource);
   const doc = (
     <Document>
       <Page size="A4" style={styles.page}>
         <Text style={styles.brand} fixed>
-          대한민국 대표 원서접수 사이트 진학어플라이 · 대한민국 최대 입시전문
-          포탈사이트 진학닷컴
+          {m.brandHeader}
         </Text>
-        <Text style={styles.row}>수신자  {input.recipientUniversity}</Text>
-        <Text style={styles.row}>제  목  {input.title}</Text>
-        <Text style={styles.apology}>{input.apology}</Text>
-        <Text style={styles.row}>
-          붙임 : 1. {input.title} 경위서 1부.  끝.
-        </Text>
+        <Text style={styles.row}>수신자  {m.recipientUniversity}</Text>
+        <Text style={styles.row}>참  조</Text>
+        <Text style={styles.row}>제  목  {m.title}</Text>
+        <Text style={styles.greeting}>{m.greeting}</Text>
+        <Text style={styles.apology}>{m.apology}</Text>
+        <Text style={styles.row}>{m.attachment}</Text>
+        <Text style={styles.companyLine}>{m.companyLine}</Text>
+        <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
         <View style={styles.approvalTable}>
-          <Text style={styles.approvalCell}>
-            담당자{"\n"}
-            {input.authorName}
-          </Text>
-          <Text style={styles.approvalCell}>
-            팀장{"\n"}
-            {input.approverName ?? ""}
-          </Text>
-          <Text style={styles.approvalCell}>
-            본부장{"\n"}
-            {input.directorName ?? ""}
-          </Text>
-          <Text style={styles.approvalCellLast}>
-            사장{"\n"}
-            {input.ceoName ?? ""}
-          </Text>
+          {m.approvalLine.map((a, i) => (
+            <Text
+              key={a.role}
+              style={
+                i === m.approvalLine.length - 1
+                  ? styles.approvalCellLast
+                  : styles.approvalCell
+              }
+            >
+              {a.role}
+              {"\n"}
+              {a.name}
+            </Text>
+          ))}
         </View>
-        {input.docNumber ? (
-          <Text style={styles.docNumber}>시행  {input.docNumber}</Text>
+        {m.docNumber ? (
+          <Text style={styles.docNumber}>시행  {m.docNumber}</Text>
         ) : null}
+        <View style={styles.contact}>
+          {m.contactLines.map((line) => (
+            <Text key={line}>{line}</Text>
+          ))}
+        </View>
         <Text style={styles.footer} fixed>
           운영부 상황실 · 자동 발송 문서
         </Text>
@@ -195,17 +189,18 @@ export async function renderIncidentReportPdf(
       <Page size="A4" style={styles.page}>
         <Text style={styles.reportTitle}>경 위 서</Text>
         <Text style={styles.row}>
-          작 성 일 자 : {input.draftDate}      작 성 자 : {input.authorName}
+          작 성 일 자 : {m.draftDate}      작 성 자 : {m.authorName}
         </Text>
-        <Text style={[styles.row, styles.bold]}>제    목 : {input.title}</Text>
-        <Section no={1} label="경위" body={input.gyeongwi} />
-        <Section no={2} label="원인" body={input.cause} />
-        <Section no={3} label="처리" body={input.handling} />
-        <Section no={4} label="향후 대책" body={input.prevention} />
-        <Text style={styles.apology}>
-          이번 오류로 업무에 불편을 드린 점 거듭 사과드립니다. 향후 이러한
-          문제가 다시 발생하지 않도록 하겠습니다.
-        </Text>
+        <Text style={[styles.row, styles.bold]}>제    목 : {m.title}</Text>
+        {m.sections.map((sec) => (
+          <View key={sec.no} wrap={false}>
+            <Text style={styles.sectionH}>
+              {sec.no}. {sec.label}
+            </Text>
+            <Text style={styles.sectionBody}>{sec.body}</Text>
+          </View>
+        ))}
+        <Text style={styles.apology}>{m.closing}</Text>
         <Text style={styles.footer} fixed>
           운영부 상황실 · 자동 발송 문서
         </Text>
