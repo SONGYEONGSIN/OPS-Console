@@ -60,17 +60,17 @@ function IncidentInfo({ row }: { row: ListRow }) {
   return (
     <div className="space-y-6">
       <section className="space-y-1.5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span
-            className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
-          >
-            {status}
-          </span>
+        <div className="flex items-center gap-3">
           {row.incidentUniversityName && (
             <span className="text-sm font-medium text-ink">
               {row.incidentUniversityName}
             </span>
           )}
+          <span
+            className={`ml-auto inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
+          >
+            {status}
+          </span>
         </div>
         {(row.incidentYear ||
           row.incidentAppType ||

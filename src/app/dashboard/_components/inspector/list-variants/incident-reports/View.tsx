@@ -58,15 +58,17 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
   return (
     <div className="space-y-6">
       <section className="space-y-1.5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}>
-            {REPORT_STATUS_LABEL[status]}
-          </span>
+        <div className="flex items-center gap-3">
           {row.incidentReportUniversity && (
             <span className="text-sm font-medium text-ink">
               {row.incidentReportUniversity}
             </span>
           )}
+          <span
+            className={`ml-auto inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
+          >
+            {REPORT_STATUS_LABEL[status]}
+          </span>
         </div>
         {row.incidentReportTitle && (
           <p className="text-sm font-medium text-ink">{row.incidentReportTitle}</p>
