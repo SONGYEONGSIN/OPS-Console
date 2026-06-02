@@ -11,6 +11,7 @@ const base: FormSource = {
   title: "전산파일 오류 건",
   draftDate: "2026-06-02",
   authorName: "이해영",
+  authorEmail: "haelee@jinhakapply.com",
   approverName: "송영신",
   directorName: null,
   ceoName: null,
@@ -19,6 +20,7 @@ const base: FormSource = {
   gyeongwi: "경위 내용",
   cause: "원인 내용",
   handling: "처리 내용",
+  handlingRows: [],
   prevention: "대책 내용",
 };
 
@@ -71,5 +73,20 @@ describe("deriveFormModel", () => {
     expect(deriveFormModel(base).attachment).toBe(
       "붙임 : 1. 전산파일 오류 건 경위서 1부.  끝.",
     );
+  });
+  it("연락처 줄에 작성자 이메일을 넣는다", () => {
+    const lines = deriveFormModel(base).contactLines;
+    expect(lines.some((l) => l.includes("haelee@jinhakapply.com"))).toBe(true);
+  });
+  it("처리 섹션(3)에 handlingRows를 표 데이터로 싣는다", () => {
+    const rows = [{ time: "10:00", content: "조치1" }];
+    const m = deriveFormModel({ ...base, handlingRows: rows });
+    const handling = m.sections.find((s) => s.no === 3);
+    expect(handling?.rows).toEqual(rows);
+  });
+  it("handlingRows가 비면 처리 섹션 rows는 빈 배열(폴백 text)", () => {
+    const handling = deriveFormModel(base).sections.find((s) => s.no === 3);
+    expect(handling?.rows).toEqual([]);
+    expect(handling?.body).toBe("처리 내용");
   });
 });
