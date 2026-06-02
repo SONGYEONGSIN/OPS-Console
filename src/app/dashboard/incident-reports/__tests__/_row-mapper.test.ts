@@ -11,6 +11,7 @@ const sample: IncidentReportRow = {
   gyeongwi: "결제 과정에서 오류 발생",
   cause: "DB 커넥션 풀 소진",
   handling: "풀 재시작 및 모니터링",
+  handling_rows: [],
   prevention: "임계치 알림 추가",
   apology: "불편을 끼쳐 죄송합니다.",
   author_name: "송영신",

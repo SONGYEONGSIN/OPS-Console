@@ -24,6 +24,7 @@ const report: IncidentReportRow = {
   gyeongwi: "초기 경위",
   cause: null,
   handling: null,
+  handling_rows: [],
   prevention: null,
   apology: null,
   author_name: "이해영",
