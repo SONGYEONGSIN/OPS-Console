@@ -20,6 +20,7 @@ export function Chrome({ operator, alerts }: Props) {
   return (
     <div
       role="banner"
+      data-tutorial="topbar"
       className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1fr_1fr] items-center border-y-2 border-chrome-graphite bg-chrome-snow px-[18px] md:grid"
     >
       <div className="justify-self-start">
