@@ -11,6 +11,7 @@ import {
 } from "@/features/incident-reports/actions";
 import { sendIncidentReport } from "@/features/incident-reports/mail-actions";
 import { STATUS_TONE } from "./status";
+import { FormModal } from "./FormModal";
 
 type Recipient = { email: string; name: string; jobTitle: string | null };
 
@@ -36,6 +37,7 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
+  const [formOpen, setFormOpen] = useState(false);
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
@@ -77,6 +79,22 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
           <p className="text-xs text-muted">작성일 {row.incidentReportDraftDate}</p>
         )}
       </section>
+
+      <button
+        type="button"
+        onClick={() => setFormOpen(true)}
+        className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+      >
+        양식으로 보기
+      </button>
+
+      <FormModal
+        key={row.id}
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        row={row}
+        onSaved={onChanged}
+      />
 
       {status === "rejected" && row.incidentReportRejectReason && (
         <div className="rounded border border-vermilion/40 bg-vermilion/10 p-2.5 text-xs text-vermilion">

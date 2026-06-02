@@ -17,6 +17,10 @@ vi.mock("@/features/incident-reports/actions", () => ({
 vi.mock("@/features/incident-reports/mail-actions", () => ({
   sendIncidentReport: mockSend,
 }));
+vi.mock("../FormModal", () => ({
+  FormModal: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="form-modal" /> : null,
+}));
 
 import { IncidentReportView } from "../View";
 
@@ -62,5 +66,12 @@ describe("IncidentReportView onChanged", () => {
     fireEvent.click(screen.getByRole("button", { name: /승인 요청/ }));
 
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledWith(baseRow.id));
+  });
+
+  it("'양식으로 보기' 클릭 시 모달이 열린다", () => {
+    render(<IncidentReportView row={baseRow} />);
+    expect(screen.queryByTestId("form-modal")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /양식으로 보기/ }));
+    expect(screen.getByTestId("form-modal")).toBeInTheDocument();
   });
 });
