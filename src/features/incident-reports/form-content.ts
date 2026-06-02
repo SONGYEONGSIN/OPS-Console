@@ -1,5 +1,6 @@
 // 경위서 양식 콘텐츠 단일 소스 — HTML 미리보기(client)와 PDF 렌더러(server)가 공유한다.
 // server-only 금지: 양쪽에서 import.
+import { defaultApology } from "./apology";
 
 export type FormSource = {
   recipientUniversity: string;
@@ -25,16 +26,10 @@ export const CONTACT_LINES = [
   "홈페이지 www.jinhakapply.com",
   "전 화 (02)2013-0669 ㅣ 전 송 (02)722-5453 ㅣ 공 개",
 ] as const;
-export const DEFAULT_APOLOGY =
-  "귀교의 서비스 제공 중 발생한 오류로 업무에 불편을 드린 점 진심으로 사과드립니다. 향후 유사한 문제가 재발하지 않도록 서비스 프로세스를 개선하고 더 나은 서비스 제공을 위하여 최선의 노력을 다하겠습니다.";
 export const CLOSING =
   "이번 오류로 업무에 불편을 드린 점 거듭 사과드립니다. 향후 이러한 문제가 다시 발생하지 않도록 하겠습니다.";
 
 const SECTION_LABELS = ["경위", "원인", "처리", "향후 대책"] as const;
-
-export function greeting(university: string): string {
-  return `${university}의 무궁한 발전을 기원합니다.`;
-}
 
 /** draftDate("2026-06-02" | "2025. 02. 13") → "MM/DD". 숫자 그룹이 3개 미만이면 "". */
 export function jeonkyeolDate(draftDate: string): string {
@@ -48,7 +43,6 @@ export type FormModel = {
   brandHeader: string;
   recipientUniversity: string;
   title: string;
-  greeting: string;
   apology: string;
   attachment: string;
   companyLine: string;
@@ -67,8 +61,10 @@ export function deriveFormModel(s: FormSource): FormModel {
     brandHeader: BRAND_HEADER,
     recipientUniversity: s.recipientUniversity,
     title: s.title,
-    greeting: greeting(s.recipientUniversity),
-    apology: s.apology && s.apology.trim() ? s.apology : DEFAULT_APOLOGY,
+    apology:
+      s.apology && s.apology.trim()
+        ? s.apology
+        : defaultApology(s.recipientUniversity),
     attachment: `붙임 : 1. ${s.title} 경위서 1부.  끝.`,
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(s.draftDate),
