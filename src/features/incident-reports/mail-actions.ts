@@ -77,6 +77,7 @@ export async function sendIncidentReport(
     title: rep.title,
     draftDate: rep.draft_date,
     authorName: rep.author_name,
+    authorEmail: rep.author_email,
     approverName: rep.approver_name,
     directorName: rep.director_name,
     ceoName: rep.ceo_name,
@@ -85,6 +86,7 @@ export async function sendIncidentReport(
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,
     handling: rep.handling,
+    handlingRows: rep.handling_rows ?? [],
     prevention: rep.prevention,
   });
   const attachment = {

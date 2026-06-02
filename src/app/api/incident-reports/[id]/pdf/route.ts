@@ -17,6 +17,7 @@ export async function GET(
     title: rep.title,
     draftDate: rep.draft_date,
     authorName: rep.author_name,
+    authorEmail: rep.author_email,
     approverName: rep.approver_name,
     directorName: rep.director_name,
     ceoName: rep.ceo_name,
@@ -25,6 +26,7 @@ export async function GET(
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,
     handling: rep.handling,
+    handlingRows: rep.handling_rows,
     prevention: rep.prevention,
   });
   // 파일명 — 제목에서 안전 문자만 추출

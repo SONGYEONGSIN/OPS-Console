@@ -4,12 +4,14 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   Font,
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
 import { deriveFormModel } from "@/features/incident-reports/form-content";
+import type { HandlingRow } from "@/features/incident-reports/schemas";
 
 const PRETENDARD_REGULAR = path.join(
   process.cwd(),
@@ -22,6 +24,12 @@ const PRETENDARD_BOLD = path.join(
   "public",
   "fonts",
   "Pretendard-Bold.otf",
+);
+const SEAL_PATH = path.join(
+  process.cwd(),
+  "public",
+  "brand",
+  "incident-report-seal.png",
 );
 
 let fontRegistered = false;
@@ -42,6 +50,7 @@ export type IncidentReportPdfInput = {
   title: string;
   draftDate: string;
   authorName: string;
+  authorEmail: string;
   approverName: string | null;
   directorName: string | null;
   ceoName: string | null;
@@ -50,6 +59,7 @@ export type IncidentReportPdfInput = {
   gyeongwi: string | null;
   cause: string | null;
   handling: string | null;
+  handlingRows: readonly HandlingRow[];
   prevention: string | null;
 };
 
@@ -57,83 +67,116 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Pretendard",
     fontSize: 10.5,
-    paddingTop: 56,
+    paddingTop: 48,
     paddingBottom: 56,
-    paddingHorizontal: 48,
+    paddingHorizontal: 44,
     lineHeight: 1.6,
     color: "#15120c",
+  },
+  frame: { borderWidth: 1, borderColor: "#15120c", padding: 22 },
+  wordmark: {
+    fontSize: 18,
+    fontWeight: 700,
+    textAlign: "center",
+    marginBottom: 4,
   },
   brand: {
     fontSize: 8.5,
     textAlign: "center",
-    marginBottom: 18,
+    paddingVertical: 4,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#15120c",
+    marginBottom: 12,
     color: "#6b6253",
   },
-  row: {
-    marginBottom: 4,
-  },
-  bold: {
-    fontWeight: 700,
-  },
-  apology: {
-    marginVertical: 14,
-  },
-  companyLine: { marginTop: 18, fontWeight: 700 },
-  jeonkyeol: { fontSize: 8.5, color: "#6b6253", marginBottom: 4 },
-  contact: { marginTop: 10, fontSize: 8, color: "#6b6253", lineHeight: 1.5 },
-  approvalTable: {
-    flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#15120c",
-    borderBottomWidth: 1,
-    borderBottomColor: "#15120c",
+  row: { marginBottom: 3 },
+  bold: { fontWeight: 700 },
+  hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
+  apology: { marginTop: 4 },
+  companyWrap: {
     marginTop: 28,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
-  approvalCell: {
-    flex: 1,
-    borderRightWidth: 1,
-    borderRightColor: "#d8d2c4",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+  companyLine: { fontSize: 14, fontWeight: 700, letterSpacing: 1 },
+  seal: { position: "absolute", right: 70, top: -8, width: 46, height: 46 },
+  grayBar: { height: 6, backgroundColor: "#d8d2c4", marginTop: 18 },
+  jeonkyeol: {
     fontSize: 8.5,
-    textAlign: "center",
+    color: "#6b6253",
+    textAlign: "right",
+    marginTop: 6,
   },
-  approvalCellLast: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    fontSize: 8.5,
-    textAlign: "center",
-  },
-  docNumber: {
-    marginTop: 14,
-    fontSize: 9,
-  },
+  approvalRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
+  approvalItem: { fontSize: 9.5, marginRight: 20 },
+  approvalRole: { color: "#6b6253" },
+  docRow: { marginTop: 8, fontSize: 9 },
+  contact: { marginTop: 8, fontSize: 8, color: "#6b6253", lineHeight: 1.5 },
   reportTitle: {
     fontSize: 20,
     fontWeight: 700,
     textAlign: "center",
     letterSpacing: 10,
-    marginBottom: 20,
+    marginBottom: 12,
   },
-  sectionH: {
+  authorRow: { textAlign: "center", fontSize: 9.5, marginBottom: 12 },
+  titleCell: {
+    borderWidth: 1,
+    borderColor: "#15120c",
+    borderBottomWidth: 0,
+    padding: 8,
     fontWeight: 700,
-    marginTop: 14,
+  },
+  bodyFrame: { borderWidth: 1, borderColor: "#15120c", padding: 12 },
+  sectionH: { fontWeight: 700, marginTop: 10, marginBottom: 3 },
+  sectionBody: { marginBottom: 4 },
+  hTable: {
+    marginTop: 4,
     marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "#15120c",
   },
-  sectionBody: {
-    marginBottom: 6,
+  hTr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#999" },
+  hHead: { backgroundColor: "#efece3" },
+  hTimeCell: {
+    width: 110,
+    padding: 4,
+    borderRightWidth: 1,
+    borderRightColor: "#999",
+    fontSize: 9,
   },
+  hContentCell: { flex: 1, padding: 4, fontSize: 9 },
+  hCellCenter: { textAlign: "center", fontWeight: 700 },
   footer: {
     position: "absolute",
     bottom: 24,
-    left: 48,
-    right: 48,
+    left: 44,
+    right: 44,
     textAlign: "center",
     fontSize: 8,
     color: "#9a917f",
   },
 });
+
+function HandlingTable({ rows }: { rows: readonly HandlingRow[] }) {
+  return (
+    <View style={styles.hTable}>
+      <View style={[styles.hTr, styles.hHead]}>
+        <Text style={[styles.hTimeCell, styles.hCellCenter]}>시간</Text>
+        <Text style={[styles.hContentCell, styles.hCellCenter]}>내용</Text>
+      </View>
+      {rows.map((r, i) => (
+        <View key={`${r.time}-${i}`} style={styles.hTr}>
+          <Text style={styles.hTimeCell}>{r.time}</Text>
+          <Text style={styles.hContentCell}>{r.content}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export async function renderIncidentReportPdf(
   input: IncidentReportPdfInput,
@@ -142,60 +185,71 @@ export async function renderIncidentReportPdf(
   const m = deriveFormModel(input);
   const doc = (
     <Document>
+      {/* ① 공문 */}
       <Page size="A4" style={styles.page}>
-        <Text style={styles.brand} fixed>
-          {m.brandHeader}
-        </Text>
-        <Text style={styles.row}>수신자  {m.recipientUniversity}</Text>
-        <Text style={styles.row}>참  조</Text>
-        <Text style={styles.row}>제  목  {m.title}</Text>
-        <Text style={styles.apology}>{m.apology}</Text>
-        <Text style={styles.row}>{m.attachment}</Text>
-        <Text style={styles.companyLine}>{m.companyLine}</Text>
-        <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
-        <View style={styles.approvalTable}>
-          {m.approvalLine.map((a, i) => (
-            <Text
-              key={a.role}
-              style={
-                i === m.approvalLine.length - 1
-                  ? styles.approvalCellLast
-                  : styles.approvalCell
-              }
-            >
-              {a.role}
-              {"\n"}
-              {a.name}
-            </Text>
-          ))}
-        </View>
-        {m.docNumber ? (
-          <Text style={styles.docNumber}>시행  {m.docNumber}</Text>
-        ) : null}
-        <View style={styles.contact}>
-          {m.contactLines.map((line) => (
-            <Text key={line}>{line}</Text>
-          ))}
+        <View style={styles.frame}>
+          <Text style={styles.wordmark}>JINHAKapply ▸</Text>
+          <Text style={styles.brand}>{m.brandHeader}</Text>
+          <Text style={styles.row}>수신자  {m.recipientUniversity}</Text>
+          <Text style={styles.row}>참  조</Text>
+          <Text style={styles.row}>제  목  {m.title}</Text>
+          <View style={styles.hr} />
+          <Text style={styles.apology}>{m.apology}</Text>
+          <Text style={[styles.row, { marginTop: 10 }]}>{m.attachment}</Text>
+
+          <View style={styles.companyWrap}>
+            <Text style={styles.companyLine}>{m.companyLine}</Text>
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
+            <Image style={styles.seal} src={SEAL_PATH} />
+          </View>
+
+          <View style={styles.grayBar} />
+          <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
+          <View style={styles.approvalRow}>
+            {m.approvalLine
+              .filter((a) => a.name)
+              .map((a) => (
+                <Text key={a.role} style={styles.approvalItem}>
+                  <Text style={styles.approvalRole}>{a.role}</Text>  {a.name}
+                </Text>
+              ))}
+          </View>
+          <Text style={styles.docRow}>
+            시 행  {m.docNumber ?? ""}        접 수 (        )
+          </Text>
+          <View style={styles.contact}>
+            {m.contactLines.map((line) => (
+              <Text key={line}>{line}</Text>
+            ))}
+          </View>
         </View>
         <Text style={styles.footer} fixed>
           운영부 상황실 · 자동 발송 문서
         </Text>
       </Page>
+
+      {/* ② 경위서 본문 */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.reportTitle}>경 위 서</Text>
-        <Text style={styles.row}>
-          작 성 일 자 : {m.draftDate}      작 성 자 : {m.authorName}
+        <Text style={styles.authorRow}>
+          작 성 일 자 : {m.draftDate}        작 성 자 : {m.authorName}
         </Text>
-        <Text style={[styles.row, styles.bold]}>제    목 : {m.title}</Text>
-        {m.sections.map((sec) => (
-          <View key={sec.no} wrap={false}>
-            <Text style={styles.sectionH}>
-              {sec.no}. {sec.label}
-            </Text>
-            <Text style={styles.sectionBody}>{sec.body}</Text>
-          </View>
-        ))}
-        <Text style={styles.apology}>{m.closing}</Text>
+        <Text style={styles.titleCell}>제    목 : {m.title}</Text>
+        <View style={styles.bodyFrame}>
+          {m.sections.map((sec) => (
+            <View key={sec.no} wrap={false}>
+              <Text style={styles.sectionH}>
+                {sec.no}. {sec.label}
+              </Text>
+              {sec.rows && sec.rows.length > 0 ? (
+                <HandlingTable rows={sec.rows} />
+              ) : (
+                <Text style={styles.sectionBody}>{sec.body}</Text>
+              )}
+            </View>
+          ))}
+          <Text style={[styles.apology, { marginTop: 10 }]}>{m.closing}</Text>
+        </View>
         <Text style={styles.footer} fixed>
           운영부 상황실 · 자동 발송 문서
         </Text>
