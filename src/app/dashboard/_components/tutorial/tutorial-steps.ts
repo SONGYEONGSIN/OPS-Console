@@ -14,7 +14,7 @@ export const TUTORIAL_SEEN_KEY = "ops-console:tutorial-seen:v1";
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
-    title: "OPS Console에 오신 것을 환영합니다",
+    title: "운영부 상황실에 오신 것을 환영합니다",
     description:
       "사내 운영 업무를 한곳에서 관리하는 콘솔입니다. 주요 영역을 차례로 짚어드릴게요.",
   },
