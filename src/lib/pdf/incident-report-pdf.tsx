@@ -154,6 +154,11 @@ const styles = StyleSheet.create({
     color: "#3a3528",
     lineHeight: 1.9,
   },
+  contactRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+  },
   reportTitle: {
     fontSize: 20,
     fontWeight: 700,
@@ -281,9 +286,19 @@ export async function renderIncidentReportPdf(
           시 행  {m.docNumber ?? "(자동 채번)"}        접 수 ( {m.receiptDate} )
         </Text>
         <View style={styles.contact}>
-          {m.contactLines.map((line) => (
-            <Text key={line}>{line}</Text>
-          ))}
+          {m.contactLines.map((line) => {
+            const segs = line.split("ㅣ").map((s) => s.trim());
+            return (
+              <View key={line} style={styles.contactRow}>
+                {segs.map((seg, i) => (
+                  <Text key={i}>
+                    {seg}
+                    {i < segs.length - 1 ? " ㅣ" : ""}
+                  </Text>
+                ))}
+              </View>
+            );
+          })}
         </View>
       </Page>
 

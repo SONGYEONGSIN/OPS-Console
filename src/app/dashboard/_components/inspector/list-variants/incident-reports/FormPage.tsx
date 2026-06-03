@@ -100,9 +100,20 @@ function CoverPage({ m }: { m: FormModel }) {
           {m.docNumber ?? <span className="text-muted">(자동 채번)</span>}
           <span className="ml-16">접 수 ({m.receiptDate})</span>
         </p>
-        {m.contactLines.map((line) => (
-          <p key={line}>{line}</p>
-        ))}
+        {m.contactLines.map((line) => {
+          // ㅣ 구분 구간을 양끝으로 분산(단어는 단일 공백 유지) — 한 줄 꽉 차게
+          const segs = line.split("ㅣ").map((s) => s.trim());
+          return (
+            <div key={line} className="flex w-full justify-between">
+              {segs.map((seg, i) => (
+                <span key={i} className="whitespace-nowrap">
+                  {seg}
+                  {i < segs.length - 1 ? " ㅣ" : ""}
+                </span>
+              ))}
+            </div>
+          );
+        })}
       </div>
     </Sheet>
   );
