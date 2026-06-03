@@ -32,13 +32,18 @@ const REP: RegisterInput = {
   title: "전산파일 오류 건",
   draft_date: "2026-06-02",
   author_name: "나",
+  author_email: "me@jinhakapply.com",
   approver_name: null,
+  approver_role: null,
   director_name: null,
+  director_role: null,
   ceo_name: null,
+  ceo_role: null,
   apology: null,
   gyeongwi: null,
   cause: null,
   handling: null,
+  handling_rows: [],
   prevention: null,
 };
 

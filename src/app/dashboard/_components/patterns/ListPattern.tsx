@@ -28,6 +28,8 @@ export type ListRow = {
   meta?: string;
   /** 직속 상사 이름 — 미설정 시 leaderOf로 자동 derive (TeamView). */
   leader?: string;
+  /** operators 전화번호 (team variant) */
+  operatorPhone?: string;
   /** 상태=deleted 일 때 사유 (operators 도메인) */
   deletedReason?: string;
   /** team 도메인 — 시스템 권한 (admin/member/viewer) */
@@ -281,6 +283,8 @@ export type ListRow = {
   incidentYear?: number;
   /** incidents — 대학명 (자유 텍스트) */
   incidentUniversityName?: string;
+  /** incidents — 서비스명 (선택, 대학 서비스에서 검색) */
+  incidentServiceName?: string;
   /** incidents — 구분 */
   incidentAppType?: "공통원서" | "일반원서" | "공공원서" | "PIMS";
   /** incidents — 카테고리 자유 텍스트 (결제 / 원서작성 / 사이트 / 경쟁률 / 기타) */
@@ -339,6 +343,8 @@ export type ListRow = {
   incidentReportRejectReason?: string | null;
   /** incident-reports — 연결된 사고 id (nullable) */
   incidentReportIncidentId?: string | null;
+  /** incident-reports — 시행번호 (발송 시 확정, 그 전엔 null) */
+  incidentReportDocNumber?: string | null;
   /** incident-reports — 발송 수신자 후보 (page가 university로 조회해 첨부) */
   incidentReportRecipients?: {
     email: string;
@@ -526,6 +532,8 @@ type Props = {
   }[];
   /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
   incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 서비스 후보 (대학명 + 서비스명) */
+  incidentServiceOptions?: readonly { university: string; name: string }[];
   /** incidents variant — 카테고리 자동완성 후보 (datalist) */
   incidentCategorySuggestions?: readonly string[];
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
@@ -580,6 +588,7 @@ export function ListPattern({
   servicesOperators,
   servicesUniversityKeys,
   incidentUniversityNameSuggestions,
+  incidentServiceOptions,
   incidentCategorySuggestions,
   contractsStatusOptions,
   contractsServiceActiveOptions,
@@ -832,6 +841,7 @@ export function ListPattern({
               incidentUniversityNameSuggestions={
                 incidentUniversityNameSuggestions
               }
+              incidentServiceOptions={incidentServiceOptions}
               incidentCategorySuggestions={incidentCategorySuggestions}
               contractsStatusOptions={contractsStatusOptions}
               contractsServiceActiveOptions={contractsServiceActiveOptions}

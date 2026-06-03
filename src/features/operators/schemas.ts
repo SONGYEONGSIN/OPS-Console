@@ -17,7 +17,15 @@ export const STATUS_LABEL: Record<OperatorStatus, string> = {
 };
 
 export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀"]);
-export const operatorRoleSchema = z.enum(["부장", "팀장", "TL", "매니저", "본부장", "사장"]);
+export const operatorRoleSchema = z.enum([
+  "부장",
+  "팀장",
+  "TL",
+  "매니저",
+  "본부장",
+  "사장",
+  "이사",
+]);
 export const operatorGenderSchema = z.enum(["남", "여"]);
 
 export const operatorPermissionSchema = z.enum([
@@ -50,6 +58,7 @@ export const operatorRowSchema = z.object({
   permission: operatorPermissionSchema,
   allowed_menus: z.array(z.string()).default([]),
   leader: z.string().nullable(),
+  phone: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
   created_at: z.string(),
@@ -71,6 +80,7 @@ export const operatorUpdateSchema = z.object({
   permission: operatorPermissionSchema.optional(),
   allowed_menus: z.array(z.string()).optional(),
   leader: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
 });
@@ -90,6 +100,7 @@ export const operatorCreateSchema = z.object({
   permission: operatorPermissionSchema.default("member"),
   allowed_menus: z.array(z.string()).default([]),
   leader: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
 });
 
 export type OperatorCreate = z.infer<typeof operatorCreateSchema>;

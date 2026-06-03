@@ -43,7 +43,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer border-b-2 px-3 py-1.5 text-sm font-medium ${
+      className={`flex-1 cursor-pointer border-b-2 px-3 py-2.5 text-center text-sm font-medium ${
         active
           ? "border-ink text-ink"
           : "border-transparent text-muted hover:text-ink-soft"
@@ -64,6 +64,11 @@ function IncidentInfo({ row }: { row: ListRow }) {
           {row.incidentUniversityName && (
             <span className="text-sm font-medium text-ink">
               {row.incidentUniversityName}
+              {row.incidentServiceName && (
+                <span className="ml-1.5 text-xs font-normal text-muted">
+                  · {row.incidentServiceName}
+                </span>
+              )}
             </span>
           )}
           <span
@@ -131,13 +136,16 @@ function IncidentInfo({ row }: { row: ListRow }) {
   );
 }
 
-/** 번들 report + 서버 계산 플래그 → IncidentReportView가 읽는 ListRow로 변환 */
+/** 번들 report + 서버 계산 플래그 → IncidentReportView가 읽는 ListRow로 변환.
+ *  대학명(수신처)은 연결된 사고의 현재 값으로 동기화(스냅샷 staleness 방지). */
 function bundleToReportRow(
   report: IncidentReportRow,
   bundle: IncidentReportBundle,
+  current: { university?: string },
 ): ListRow {
   return {
     ...incidentReportToListRow(report),
+    incidentReportUniversity: current.university ?? report.recipient_university,
     incidentReportRecipients: bundle.recipients.map((r) => ({
       email: r.contact_email ?? "",
       name: r.customer_name,
@@ -148,7 +156,13 @@ function bundleToReportRow(
   };
 }
 
-function ReportTab({ incidentId }: { incidentId: string }) {
+function ReportTab({
+  incidentId,
+  incidentUniversity,
+}: {
+  incidentId: string;
+  incidentUniversity?: string;
+}) {
   const [bundle, setBundle] = useState<IncidentReportBundle | null>(null);
   const [loading, startLoad] = useTransition();
   const [creating, startCreate] = useTransition();
@@ -204,7 +218,9 @@ function ReportTab({ incidentId }: { incidentId: string }) {
     <div className="space-y-3">
       {loading && <p className="text-xs text-muted">갱신 중…</p>}
       <IncidentReportView
-        row={bundleToReportRow(bundle.report, bundle)}
+        row={bundleToReportRow(bundle.report, bundle, {
+          university: incidentUniversity,
+        })}
         onChanged={refetch}
       />
     </div>
@@ -216,7 +232,7 @@ export function IncidentView({ row }: ViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 border-b border-line">
+      <div className="flex border-b border-line">
         <TabButton active={tab === "info"} onClick={() => setTab("info")}>
           사고정보
         </TabButton>
@@ -228,7 +244,10 @@ export function IncidentView({ row }: ViewProps) {
       {tab === "info" ? (
         <IncidentInfo row={row} />
       ) : (
-        <ReportTab incidentId={row.id} />
+        <ReportTab
+          incidentId={row.id}
+          incidentUniversity={row.incidentUniversityName}
+        />
       )}
     </div>
   );

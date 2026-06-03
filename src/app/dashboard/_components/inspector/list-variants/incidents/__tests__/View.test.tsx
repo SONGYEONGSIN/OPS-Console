@@ -20,6 +20,9 @@ vi.mock("@/features/incident-reports/actions", () => ({
 vi.mock("@/features/incident-reports/mail-actions", () => ({
   sendIncidentReport: vi.fn(),
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
+}));
 
 import { IncidentView } from "../View";
 

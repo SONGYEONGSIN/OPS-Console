@@ -7,6 +7,7 @@ import {
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
 import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
+import type { HandlingRow } from "./schemas";
 
 /**
  * 경위서 발송 시 SharePoint 연동 오케스트레이터 (2차 Phase C).
@@ -38,19 +39,56 @@ export type RegisterInput = {
   title: string;
   draft_date: string;
   author_name: string;
+  author_email: string;
   approver_name: string | null;
+  approver_role: string | null;
   director_name: string | null;
+  director_role: string | null;
   ceo_name: string | null;
+  ceo_role: string | null;
   apology: string | null;
   gyeongwi: string | null;
   cause: string | null;
   handling: string | null;
+  handling_rows: HandlingRow[];
   prevention: string | null;
 };
 
 /** 파일시스템/SharePoint 금지문자 제거 + trim. 한글은 유지. */
 function sanitizeFileName(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "").trim();
+}
+
+/**
+ * 발송 전 미리보기용 시행번호 — 공문관리대장(발신 시트)에서 다음 번호를 "계산만" 한다.
+ * 대장에 행을 추가하지 않으므로 확정 아님(다른 발송이 먼저 되면 바뀔 수 있음).
+ * config 없거나 조회 실패 시 null.
+ */
+export async function previewNextDocNumber(today: Date): Promise<string | null> {
+  // 미리보기는 읽기 전용 — 업로드 폴더(SHAREPOINT_INCIDENT_REPORT_FOLDER_ID) 불필요.
+  // 공문관리대장(드라이브+item)만 있으면 채번 미리보기 가능.
+  const driveId = process.env.SHAREPOINT_DRIVE_ID;
+  const gongmunItemId = process.env.SHAREPOINT_GONGMUN_ITEM_ID;
+  if (!driveId || !gongmunItemId) {
+    console.warn(
+      "[previewDocNumber] SharePoint 설정 없음 — SHAREPOINT_DRIVE_ID / SHAREPOINT_GONGMUN_ITEM_ID 확인(dev 서버 재시작 필요)",
+    );
+    return null;
+  }
+  try {
+    const existing = await fetchSenderDocNumbers(
+      driveId,
+      gongmunItemId,
+      today.getFullYear(),
+    );
+    return nextDocNumber(existing, today);
+  } catch (e) {
+    console.error(
+      "[previewDocNumber] 공문관리대장 조회 실패 — 발신 시트명/권한 확인:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
 }
 
 /**
@@ -78,14 +116,20 @@ export async function registerIncidentReportToSharePoint(
     title: rep.title,
     draftDate: rep.draft_date,
     authorName: rep.author_name,
+    authorEmail: rep.author_email,
+    authorPhone: null, // docx는 연락처 줄을 렌더하지 않음
     approverName: rep.approver_name,
+    approverRole: rep.approver_role,
     directorName: rep.director_name,
+    directorRole: rep.director_role,
     ceoName: rep.ceo_name,
+    ceoRole: rep.ceo_role,
     docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,
     handling: rep.handling,
+    handlingRows: rep.handling_rows,
     prevention: rep.prevention,
   });
 

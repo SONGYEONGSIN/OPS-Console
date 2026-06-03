@@ -30,6 +30,7 @@ export function IncidentEditForm({
   currentUserEmail = null,
   currentUserTeam = null,
   incidentUniversityNameSuggestions = [],
+  incidentServiceOptions = [],
   incidentCategorySuggestions = [],
 }: EditFormProps) {
   const isAdmin = currentUserPermission === "admin";
@@ -74,6 +75,28 @@ export function IncidentEditForm({
   function pickUniversity(name: string) {
     setUniQuery(name);
     setRow({ ...row, incidentUniversityName: name });
+  }
+
+  // 서비스명 검색 — 선택한 대학의 서비스만 후보
+  const [svcQuery, setSvcQuery] = useState(row.incidentServiceName ?? "");
+  const trimmedSvc = svcQuery.trim();
+  const svcMatches = useMemo(() => {
+    const uni = row.incidentUniversityName?.trim();
+    if (!uni) return [];
+    return incidentServiceOptions
+      .filter((s) => s.university === uni)
+      .map((s) => s.name)
+      .filter(
+        (name) =>
+          (trimmedSvc.length === 0 || name.includes(trimmedSvc)) &&
+          name !== trimmedSvc,
+      )
+      .slice(0, 12);
+  }, [incidentServiceOptions, row.incidentUniversityName, trimmedSvc]);
+
+  function pickService(name: string) {
+    setSvcQuery(name);
+    setRow({ ...row, incidentServiceName: name });
   }
 
   const department = row.incidentDepartment ?? "운영부-운영1팀";
@@ -127,6 +150,45 @@ export function IncidentEditForm({
                 <button
                   type="button"
                   onClick={() => pickUniversity(name)}
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                >
+                  {name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="block text-xs">
+        <span className="mb-1 block text-muted">
+          서비스명{" "}
+          <span className="text-faint">(선택 대학의 서비스에서 검색)</span>
+        </span>
+        <ListSearch
+          value={svcQuery}
+          onChange={(v) => {
+            setSvcQuery(v);
+            setRow({ ...row, incidentServiceName: v || undefined });
+          }}
+          placeholder={
+            row.incidentUniversityName
+              ? "서비스명 검색"
+              : "먼저 대학명을 선택하세요"
+          }
+          ariaLabel="서비스명 검색"
+          size="sm"
+        />
+        {svcMatches.length > 0 && (
+          <ul
+            aria-label="서비스명 검색 결과"
+            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+          >
+            {svcMatches.map((name) => (
+              <li key={name}>
+                <button
+                  type="button"
+                  onClick={() => pickService(name)}
                   className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
                 >
                   {name}

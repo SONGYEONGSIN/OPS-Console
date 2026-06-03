@@ -8,25 +8,32 @@ export type OperatorLite = {
   team: string | null;
   role: string;
   leader: string | null;
+  phone?: string | null;
 };
 export type ApprovalChain = {
-  author: { name: string; email: string };
-  approver: { name: string; email: string } | null;
-  director: { name: string } | null;
-  ceo: { name: string } | null;
+  author: { name: string; email: string; phone: string | null };
+  approver: { name: string; email: string; role: string } | null;
+  director: { name: string; role: string } | null;
+  ceo: { name: string; role: string } | null;
 };
 
 export function pickApprovalChain(author: OperatorLite, all: OperatorLite[]): ApprovalChain {
   const byLeaderName = author.leader ? (all.find((o) => o.name === author.leader) ?? null) : null;
   const teamLead =
     byLeaderName ?? all.find((o) => o.team === author.team && o.role === "팀장") ?? null;
-  const director = all.find((o) => o.role === "본부장") ?? null;
-  const ceo = all.find((o) => o.role === "사장") ?? null;
+  // 본부장 우선, 없으면 부장 (조직별 상위 직책 차이 흡수)
+  const director =
+    all.find((o) => o.role === "본부장") ?? all.find((o) => o.role === "부장") ?? null;
+  // 사장 우선, 없으면 이사 (최상위 임원)
+  const ceo =
+    all.find((o) => o.role === "사장") ?? all.find((o) => o.role === "이사") ?? null;
   return {
-    author: { name: author.name, email: author.email },
-    approver: teamLead ? { name: teamLead.name, email: teamLead.email } : null,
-    director: director ? { name: director.name } : null,
-    ceo: ceo ? { name: ceo.name } : null,
+    author: { name: author.name, email: author.email, phone: author.phone ?? null },
+    approver: teamLead
+      ? { name: teamLead.name, email: teamLead.email, role: teamLead.role }
+      : null,
+    director: director ? { name: director.name, role: director.role } : null,
+    ceo: ceo ? { name: ceo.name, role: ceo.role } : null,
   };
 }
 
@@ -34,7 +41,7 @@ export async function resolveApprovalChain(authorEmail: string): Promise<Approva
   const supabase = await createClient();
   const { data } = await supabase
     .from("operators")
-    .select("email,name,team,role,leader")
+    .select("email,name,team,role,leader,phone")
     .in("status", ["active", "inactive"]);
   if (!data) return null;
   const author = data.find((o) => o.email === authorEmail);
@@ -108,6 +115,19 @@ export async function incidentIdsWithPendingApprovalFor(
     .select("incident_id")
     .eq("status", "pending_approval")
     .eq("approver_email", approverEmail);
+  const rows = (data ?? []) as { incident_id: string | null }[];
+  return rows
+    .map((r) => r.incident_id)
+    .filter((id): id is string => id != null);
+}
+
+/** 승인완료(approved) 경위서가 달린 사고 id 목록. */
+export async function incidentIdsWithApprovedReports(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("incident_reports")
+    .select("incident_id")
+    .eq("status", "approved");
   const rows = (data ?? []) as { incident_id: string | null }[];
   return rows
     .map((r) => r.incident_id)

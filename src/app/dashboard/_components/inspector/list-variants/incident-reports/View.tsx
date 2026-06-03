@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 import { REPORT_STATUS_LABEL } from "@/features/incident-reports/schemas";
@@ -30,6 +31,7 @@ type IncidentReportViewProps = ViewProps & {
 };
 
 export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) {
+  const router = useRouter();
   const status = row.incidentReportStatus ?? "draft";
   const recipients = (row.incidentReportRecipients ?? []) as Recipient[];
   const [pending, startTransition] = useTransition();
@@ -77,6 +79,14 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
           <p className="text-xs text-muted">작성일 {row.incidentReportDraftDate}</p>
         )}
       </section>
+
+      <button
+        type="button"
+        onClick={() => router.push(`/dashboard/incident-reports/${row.id}`)}
+        className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+      >
+        경위서 내용 보기
+      </button>
 
       {status === "rejected" && row.incidentReportRejectReason && (
         <div className="rounded border border-vermilion/40 bg-vermilion/10 p-2.5 text-xs text-vermilion">

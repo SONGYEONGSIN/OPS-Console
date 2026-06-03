@@ -82,6 +82,8 @@ export type EditFormProps = {
   }[];
   /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
   incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 서비스 후보 (대학명 + 서비스명) — 선택 대학으로 필터 검색 */
+  incidentServiceOptions?: readonly { university: string; name: string }[];
   /** incidents variant — 카테고리 자동완성 후보 (자주 쓰는 값 datalist) */
   incidentCategorySuggestions?: readonly string[];
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 (실 데이터 distinct) */

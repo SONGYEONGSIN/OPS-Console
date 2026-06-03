@@ -14,6 +14,7 @@ export function incidentToListRow(
     owner: r.assignee_name ?? "—",
     incidentYear: r.year,
     incidentUniversityName: r.university_name ?? undefined,
+    incidentServiceName: r.service_name ?? undefined,
     incidentAppType: r.app_type,
     incidentCategory: r.category,
     incidentOccurredDate: r.occurred_date ?? null,

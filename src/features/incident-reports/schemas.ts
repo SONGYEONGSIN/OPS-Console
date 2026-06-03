@@ -18,6 +18,13 @@ export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
   sent: "발송완료",
 };
 
+/** 경위서 본문 "3. 처리" 시간/내용 2열 표의 한 행. */
+export const handlingRowSchema = z.object({
+  time: z.string().max(100),
+  content: z.string().max(2000),
+});
+export type HandlingRow = z.infer<typeof handlingRowSchema>;
+
 export const incidentReportRowSchema = z.object({
   id: z.string().uuid(),
   incident_id: z.string().uuid().nullable(),
@@ -27,14 +34,18 @@ export const incidentReportRowSchema = z.object({
   gyeongwi: z.string().nullable(),
   cause: z.string().nullable(),
   handling: z.string().nullable(),
+  handling_rows: z.array(handlingRowSchema).default([]),
   prevention: z.string().nullable(),
   apology: z.string().nullable(),
   author_name: z.string(),
   author_email: z.string().email(),
   approver_name: z.string().nullable(),
   approver_email: z.string().email().nullable(),
+  approver_role: z.string().nullable().default(null),
   director_name: z.string().nullable(),
+  director_role: z.string().nullable().default(null),
   ceo_name: z.string().nullable(),
+  ceo_role: z.string().nullable().default(null),
   status: reportStatusSchema,
   reject_reason: z.string().nullable(),
   approved_at: z.string().nullable(),
@@ -53,6 +64,7 @@ export const incidentReportCreateSchema = z.object({
   gyeongwi: z.string().max(5000).nullable().optional(),
   cause: z.string().max(5000).nullable().optional(),
   handling: z.string().max(5000).nullable().optional(),
+  handling_rows: z.array(handlingRowSchema).max(50).optional(),
   prevention: z.string().max(5000).nullable().optional(),
   apology: z.string().max(5000).nullable().optional(),
 });

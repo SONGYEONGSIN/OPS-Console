@@ -72,19 +72,32 @@ export async function sendIncidentReport(
     }
   }
 
+  // 공문 하단 연락처 전화 — 작성자(담당자) 운영자의 전화번호.
+  const { data: authorOp } = await admin
+    .from("operators")
+    .select("phone")
+    .eq("email", rep.author_email)
+    .maybeSingle();
+
   const pdf = await renderIncidentReportPdf({
     recipientUniversity: rep.recipient_university,
     title: rep.title,
     draftDate: rep.draft_date,
     authorName: rep.author_name,
+    authorEmail: rep.author_email,
+    authorPhone: authorOp?.phone ?? null,
     approverName: rep.approver_name,
+    approverRole: rep.approver_role,
     directorName: rep.director_name,
+    directorRole: rep.director_role,
     ceoName: rep.ceo_name,
+    ceoRole: rep.ceo_role,
     docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,
     handling: rep.handling,
+    handlingRows: rep.handling_rows ?? [],
     prevention: rep.prevention,
   });
   const attachment = {
