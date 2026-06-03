@@ -9,6 +9,7 @@ export type FormSource = {
   draftDate: string;
   authorName: string;
   authorEmail: string;
+  authorPhone: string | null;
   approverName: string | null;
   approverRole: string | null;
   directorName: string | null;
@@ -116,7 +117,7 @@ export function deriveFormModel(s: FormSource): FormModel {
     docNumber: s.docNumber,
     contactLines: [
       ADDRESS_LINE,
-      `전 화 (02)2013-0669 ㅣ 전 송 (02)722-5453 ㅣ 이메일 ${s.authorEmail} ㅣ 공 개`,
+      `전 화 ${s.authorPhone?.trim() || "(02)2013-0669"} ㅣ 전 송 (02)722-5453 ㅣ 이메일 ${s.authorEmail} ㅣ 공 개`,
     ],
     draftDate: formatYmd(s.draftDate),
     authorName: s.authorName,

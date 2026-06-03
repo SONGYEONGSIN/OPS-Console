@@ -84,6 +84,7 @@ export default async function IncidentReportEditorPage({
           approval={approval}
           dutyName={dutyName}
           dutyEmail={chainEmail}
+          dutyPhone={liveChain?.author?.phone ?? null}
         />
       </section>
     </div>

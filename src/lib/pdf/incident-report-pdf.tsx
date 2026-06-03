@@ -57,6 +57,7 @@ export type IncidentReportPdfInput = {
   draftDate: string;
   authorName: string;
   authorEmail: string;
+  authorPhone: string | null;
   approverName: string | null;
   approverRole: string | null;
   directorName: string | null;

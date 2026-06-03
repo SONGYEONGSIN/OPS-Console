@@ -12,6 +12,7 @@ const source: FormSource = {
   draftDate: "2026-06-02",
   authorName: "이해영",
   authorEmail: "haelee@jinhakapply.com",
+  authorPhone: null,
   approverName: "송영신",
   approverRole: "팀장",
   directorName: "이이화",

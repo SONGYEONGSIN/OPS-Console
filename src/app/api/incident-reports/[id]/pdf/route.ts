@@ -35,6 +35,7 @@ export async function GET(
     draftDate: rep.draft_date,
     authorName: incident?.assignee_name ?? rep.author_name,
     authorEmail: incident?.assignee_email ?? rep.author_email,
+    authorPhone: chain?.author?.phone ?? null,
     approverName: rep.approver_name ?? chain?.approver?.name ?? null,
     approverRole: rep.approver_role ?? chain?.approver?.role ?? null,
     directorName: rep.director_name ?? chain?.director?.name ?? null,

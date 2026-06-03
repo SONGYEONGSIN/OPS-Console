@@ -28,6 +28,8 @@ export type ListRow = {
   meta?: string;
   /** 직속 상사 이름 — 미설정 시 leaderOf로 자동 derive (TeamView). */
   leader?: string;
+  /** operators 전화번호 (team variant) */
+  operatorPhone?: string;
   /** 상태=deleted 일 때 사유 (operators 도메인) */
   deletedReason?: string;
   /** team 도메인 — 시스템 권한 (admin/member/viewer) */

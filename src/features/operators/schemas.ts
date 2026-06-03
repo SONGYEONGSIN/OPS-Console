@@ -58,6 +58,7 @@ export const operatorRowSchema = z.object({
   permission: operatorPermissionSchema,
   allowed_menus: z.array(z.string()).default([]),
   leader: z.string().nullable(),
+  phone: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
   created_at: z.string(),
@@ -79,6 +80,7 @@ export const operatorUpdateSchema = z.object({
   permission: operatorPermissionSchema.optional(),
   allowed_menus: z.array(z.string()).optional(),
   leader: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
   deleted_at: z.string().nullable().optional(),
 });
@@ -98,6 +100,7 @@ export const operatorCreateSchema = z.object({
   permission: operatorPermissionSchema.default("member"),
   allowed_menus: z.array(z.string()).default([]),
   leader: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
 });
 
 export type OperatorCreate = z.infer<typeof operatorCreateSchema>;

@@ -117,6 +117,7 @@ export async function registerIncidentReportToSharePoint(
     draftDate: rep.draft_date,
     authorName: rep.author_name,
     authorEmail: rep.author_email,
+    authorPhone: null, // docx는 연락처 줄을 렌더하지 않음
     approverName: rep.approver_name,
     approverRole: rep.approver_role,
     directorName: rep.director_name,

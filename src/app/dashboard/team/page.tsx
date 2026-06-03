@@ -58,6 +58,7 @@ export default async function TeamPage() {
         gender: "여",
         status: (row.status as OperatorRow["status"]) ?? "active",
         leader: row.leader ?? null,
+        phone: row.operatorPhone ?? null,
       });
       return result.ok
         ? { ok: true }
@@ -78,6 +79,7 @@ export default async function TeamPage() {
       permission: row.permission,
       allowed_menus: row.allowedMenus,
       leader: row.leader ?? null,
+      phone: row.operatorPhone ?? null,
       deleted_reason: isNowDeleted ? (row.deletedReason ?? null) : null,
       deleted_at: isNowDeleted ? new Date().toISOString() : null,
     });
@@ -105,6 +107,7 @@ function operatorToListRow(op: OperatorRow): ListRow {
     owner: op.team,
     meta: op.role,
     leader: op.leader ?? undefined,
+    operatorPhone: op.phone ?? undefined,
     permission: op.permission,
     allowedMenus: op.allowed_menus,
   };

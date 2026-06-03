@@ -8,9 +8,10 @@ export type OperatorLite = {
   team: string | null;
   role: string;
   leader: string | null;
+  phone?: string | null;
 };
 export type ApprovalChain = {
-  author: { name: string; email: string };
+  author: { name: string; email: string; phone: string | null };
   approver: { name: string; email: string; role: string } | null;
   director: { name: string; role: string } | null;
   ceo: { name: string; role: string } | null;
@@ -27,7 +28,7 @@ export function pickApprovalChain(author: OperatorLite, all: OperatorLite[]): Ap
   const ceo =
     all.find((o) => o.role === "사장") ?? all.find((o) => o.role === "이사") ?? null;
   return {
-    author: { name: author.name, email: author.email },
+    author: { name: author.name, email: author.email, phone: author.phone ?? null },
     approver: teamLead
       ? { name: teamLead.name, email: teamLead.email, role: teamLead.role }
       : null,
@@ -40,7 +41,7 @@ export async function resolveApprovalChain(authorEmail: string): Promise<Approva
   const supabase = await createClient();
   const { data } = await supabase
     .from("operators")
-    .select("email,name,team,role,leader")
+    .select("email,name,team,role,leader,phone")
     .in("status", ["active", "inactive"]);
   if (!data) return null;
   const author = data.find((o) => o.email === authorEmail);

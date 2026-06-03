@@ -12,6 +12,7 @@ const base: FormSource = {
   draftDate: "2026-06-02",
   authorName: "이해영",
   authorEmail: "haelee@jinhakapply.com",
+  authorPhone: null,
   approverName: "송영신",
   approverRole: "팀장",
   directorName: null,
@@ -122,6 +123,18 @@ describe("deriveFormModel", () => {
   it("연락처 줄에 작성자 이메일을 넣는다", () => {
     const lines = deriveFormModel(base).contactLines;
     expect(lines.some((l) => l.includes("haelee@jinhakapply.com"))).toBe(true);
+  });
+  it("authorPhone이 있으면 연락처 전화에 담당자 번호를 넣는다", () => {
+    const lines = deriveFormModel({
+      ...base,
+      authorPhone: "(02)2013-1234",
+    }).contactLines;
+    expect(lines.some((l) => l.includes("(02)2013-1234"))).toBe(true);
+    expect(lines.some((l) => l.includes("(02)2013-0669"))).toBe(false);
+  });
+  it("authorPhone이 없으면 대표번호로 폴백한다", () => {
+    const lines = deriveFormModel(base).contactLines;
+    expect(lines.some((l) => l.includes("(02)2013-0669"))).toBe(true);
   });
   it("처리 섹션(3)에 handlingRows를 표 데이터로 싣는다", () => {
     const rows = [{ time: "10:00", content: "조치1" }];
