@@ -136,10 +136,20 @@ const styles = StyleSheet.create({
     textAlign: "right",
     marginTop: 5,
   },
-  approvalRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
-  approvalItem: { fontSize: 10, marginRight: 34 },
-  docRow: { marginTop: 4, fontSize: 9 },
-  contact: { marginTop: 3, fontSize: 9, color: "#3a3528", lineHeight: 1.6 },
+  approvalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  approvalItem: { fontSize: 10 },
+  docRow: { marginTop: 8, fontSize: 9 },
+  contact: {
+    marginTop: 6,
+    fontSize: 9,
+    color: "#3a3528",
+    lineHeight: 1.9,
+    textAlign: "justify",
+  },
   reportTitle: {
     fontSize: 20,
     fontWeight: 700,
@@ -155,7 +165,7 @@ const styles = StyleSheet.create({
     padding: 8,
     fontWeight: 700,
   },
-  bodyFrame: { borderWidth: 1, borderColor: "#15120c", padding: 12 },
+  bodyFrame: { borderWidth: 1, borderColor: "#15120c", padding: 12, flexGrow: 1 },
   sectionH: { fontWeight: 700, marginTop: 10, marginBottom: 3 },
   sectionBody: { marginBottom: 4, textAlign: "justify" },
   hTable: {

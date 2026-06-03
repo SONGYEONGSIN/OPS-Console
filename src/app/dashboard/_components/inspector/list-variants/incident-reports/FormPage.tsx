@@ -84,19 +84,17 @@ function CoverPage({ m }: { m: FormModel }) {
       {/* 회색 바 + 푸터 (전결/결재/시행·접수/연락처) */}
       {/* 일회성: 실제 공문 회색 구분 바 색 (토큰 line은 거의 검정이라 부적합) */}
       <div className="h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
-      <p className="mt-1.5 text-right text-sm font-bold">
-        전결 {m.jeonkyeolDate}
-      </p>
-      <div className="flex flex-wrap items-baseline gap-x-16 gap-y-1 text-sm">
+      <p className="mt-2 text-right text-sm font-bold">전결 {m.jeonkyeolDate}</p>
+      <div className="flex w-full items-baseline justify-between text-sm">
         {m.approvalLine
           .filter((a) => a.name)
           .map((a) => (
-            <span key={a.role}>
+            <span key={a.role} className="whitespace-nowrap">
               {a.role}&nbsp;&nbsp;{a.name}
             </span>
           ))}
       </div>
-      <div className="mt-1 space-y-1 text-sm">
+      <div className="mt-2 space-y-2 text-sm">
         <p>
           시 행&nbsp;&nbsp;
           {m.docNumber ?? (
@@ -105,7 +103,10 @@ function CoverPage({ m }: { m: FormModel }) {
           <span className="ml-16">접 수 ({m.receiptDate})</span>
         </p>
         {m.contactLines.map((line) => (
-          <p key={line}>{line}</p>
+          // 한 줄 꽉 차게 양쪽 정렬 (단일 줄도 분산)
+          <p key={line} className="text-justify [text-align-last:justify]">
+            {line}
+          </p>
         ))}
       </div>
     </Sheet>
@@ -148,7 +149,7 @@ function HandlingTable({
 
 function ReportPage({ m }: { m: FormModel }) {
   return (
-    <Sheet>
+    <Sheet fill>
       <p className="mb-4 text-center text-3xl font-bold tracking-[0.5em]">
         경 위 서
       </p>
@@ -157,7 +158,7 @@ function ReportPage({ m }: { m: FormModel }) {
         <span className="ml-12">작 성 자 : {m.authorName}</span>
       </p>
 
-      <div className="border border-ink">
+      <div className="flex grow flex-col border border-ink">
         <p className="border-b border-dashed border-ink/60 px-4 py-2 font-bold">
           제&nbsp;&nbsp;&nbsp;&nbsp;목 : {m.title}
         </p>
