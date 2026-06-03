@@ -64,6 +64,11 @@ function IncidentInfo({ row }: { row: ListRow }) {
           {row.incidentUniversityName && (
             <span className="text-sm font-medium text-ink">
               {row.incidentUniversityName}
+              {row.incidentServiceName && (
+                <span className="ml-1.5 text-xs font-normal text-muted">
+                  · {row.incidentServiceName}
+                </span>
+              )}
             </span>
           )}
           <span

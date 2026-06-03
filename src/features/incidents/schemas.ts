@@ -37,6 +37,7 @@ export const incidentRowSchema = z.object({
   id: z.string().uuid(),
   year: z.number().int().min(2000).max(3000),
   university_name: z.string().min(1).nullable(),
+  service_name: z.string().nullable().optional(),
   app_type: appTypeSchema,
   category: z.string().min(1),
   occurred_date: z.string().nullable().optional(),
@@ -64,6 +65,7 @@ export type IncidentRow = z.infer<typeof incidentRowSchema>;
 export const incidentCreateSchema = z.object({
   year: z.number().int().min(2000).max(3000),
   university_name: z.string().min(1, "대학명 누락"),
+  service_name: z.string().max(200).nullable().optional(),
   app_type: appTypeSchema,
   category: z.string().min(1, "카테고리 누락").max(50),
   occurred_date: z.string().min(1).nullable().optional(),

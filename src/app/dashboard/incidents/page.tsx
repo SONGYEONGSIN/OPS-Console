@@ -121,10 +121,11 @@ export default async function IncidentsPage({
     yearOptions.push(String(y));
   }
 
-  // 대학명 자동완성 (services.university_name distinct) — backup 도메인 동일 패턴
+  // 대학명 자동완성 + 서비스 후보(대학명+서비스명) — backup 도메인 동일 패턴
   const CHUNK = 1000;
   const MAX_PAGES = 20;
   const uniNames = new Set<string>();
+  const serviceOptions: { university: string; name: string }[] = [];
   let totalFetched = 0;
   for (let p = 1; p <= MAX_PAGES; p++) {
     const { rows: svc, total: svcTotal } = await listServices({
@@ -134,11 +135,19 @@ export default async function IncidentsPage({
     });
     if (svc.length === 0) break;
     totalFetched += svc.length;
-    for (const s of svc) uniNames.add(s.university_name);
+    for (const s of svc) {
+      uniNames.add(s.university_name);
+      if (s.service_name)
+        serviceOptions.push({
+          university: s.university_name,
+          name: s.service_name,
+        });
+    }
     if (totalFetched >= svcTotal) break;
     if (p * CHUNK >= svcTotal) break;
   }
   const incidentUniversityNameSuggestions = Array.from(uniNames).sort();
+  const incidentServiceOptions = serviceOptions;
 
   const header = (
     <div key="incidents-header">
@@ -206,6 +215,7 @@ export default async function IncidentsPage({
       currentUserName={me?.displayName ?? me?.email ?? ""}
       controlsRow={controlsRow}
       incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
+      incidentServiceOptions={incidentServiceOptions}
       incidentCategorySuggestions={CATEGORY_SUGGESTIONS}
       inlineFilters={
         <div key="incidents-scope" className="inline-flex items-center">

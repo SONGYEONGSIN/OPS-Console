@@ -281,6 +281,8 @@ export type ListRow = {
   incidentYear?: number;
   /** incidents — 대학명 (자유 텍스트) */
   incidentUniversityName?: string;
+  /** incidents — 서비스명 (선택, 대학 서비스에서 검색) */
+  incidentServiceName?: string;
   /** incidents — 구분 */
   incidentAppType?: "공통원서" | "일반원서" | "공공원서" | "PIMS";
   /** incidents — 카테고리 자유 텍스트 (결제 / 원서작성 / 사이트 / 경쟁률 / 기타) */
@@ -528,6 +530,8 @@ type Props = {
   }[];
   /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
   incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 서비스 후보 (대학명 + 서비스명) */
+  incidentServiceOptions?: readonly { university: string; name: string }[];
   /** incidents variant — 카테고리 자동완성 후보 (datalist) */
   incidentCategorySuggestions?: readonly string[];
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
@@ -582,6 +586,7 @@ export function ListPattern({
   servicesOperators,
   servicesUniversityKeys,
   incidentUniversityNameSuggestions,
+  incidentServiceOptions,
   incidentCategorySuggestions,
   contractsStatusOptions,
   contractsServiceActiveOptions,
@@ -834,6 +839,7 @@ export function ListPattern({
               incidentUniversityNameSuggestions={
                 incidentUniversityNameSuggestions
               }
+              incidentServiceOptions={incidentServiceOptions}
               incidentCategorySuggestions={incidentCategorySuggestions}
               contractsStatusOptions={contractsStatusOptions}
               contractsServiceActiveOptions={contractsServiceActiveOptions}

@@ -60,6 +60,8 @@ type Props = {
   }[];
   /** incidents variant — 대학명 자동완성 후보 (services.university_name distinct) */
   incidentUniversityNameSuggestions?: readonly string[];
+  /** incidents variant — 서비스 후보 (대학명 + 서비스명) */
+  incidentServiceOptions?: readonly { university: string; name: string }[];
   /** incidents variant — 카테고리 자동완성 후보 (datalist) */
   incidentCategorySuggestions?: readonly string[];
   /** contracts variant — 계약진행현황 / 서비스여부 datalist 옵션 */
@@ -107,6 +109,7 @@ export function InspectorListBody({
   servicesOperators,
   servicesUniversityKeys,
   incidentUniversityNameSuggestions,
+  incidentServiceOptions,
   incidentCategorySuggestions,
   contractsStatusOptions,
   contractsServiceActiveOptions,
@@ -161,6 +164,7 @@ export function InspectorListBody({
         servicesOperators={servicesOperators}
         servicesUniversityKeys={servicesUniversityKeys}
         incidentUniversityNameSuggestions={incidentUniversityNameSuggestions}
+        incidentServiceOptions={incidentServiceOptions}
         incidentCategorySuggestions={incidentCategorySuggestions}
         contractsStatusOptions={contractsStatusOptions}
         contractsServiceActiveOptions={contractsServiceActiveOptions}
