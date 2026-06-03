@@ -3,23 +3,35 @@
 import Image from "next/image";
 import type { FormModel } from "@/features/incident-reports/form-content";
 
-/** A4 한 장 — 흰 종이 면 (공문은 무테두리, 경위서 본문만 내부 프레임) */
-function Sheet({ children }: { children: React.ReactNode }) {
+/** A4 종이 면 — 실제 공문 여백(위1·아래1·왼1.8·오른2 cm) 적용 */
+function Sheet({
+  children,
+  fill = false,
+}: {
+  children: React.ReactNode;
+  fill?: boolean;
+}) {
   return (
-    <div className="mx-auto w-full max-w-[210mm] bg-cream px-12 py-12 text-sm leading-relaxed text-ink shadow-sm">
-      {children}
+    <div className="mx-auto w-full max-w-[210mm] bg-cream shadow-sm">
+      <div
+        className={`flex flex-col pt-[10mm] pr-[20mm] pb-[10mm] pl-[18mm] text-sm leading-relaxed text-ink ${
+          fill ? "min-h-[297mm]" : ""
+        }`}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
 function CoverPage({ m }: { m: FormModel }) {
   return (
-    <Sheet>
+    <Sheet fill>
       <Image
         src="/brand/jinhakapply-logo.png"
         alt="JINHAKapply"
-        width={200}
-        height={39}
+        width={210}
+        height={41}
         className="mx-auto"
         priority
       />
@@ -38,7 +50,9 @@ function CoverPage({ m }: { m: FormModel }) {
         {m.coverBody.map((line, i) => (
           <li key={i} className="flex gap-3">
             <span className="shrink-0">{i + 1}.</span>
-            <span className="whitespace-pre-wrap leading-relaxed">{line}</span>
+            <span className="grow whitespace-pre-wrap text-justify leading-relaxed">
+              {line}
+            </span>
           </li>
         ))}
       </ol>
@@ -46,15 +60,18 @@ function CoverPage({ m }: { m: FormModel }) {
       <p className="mt-8">붙임 : 1. {m.title} 경위서 1부</p>
       <p>끝.</p>
 
-      {/* 회사명 + 직인(글자가 직인 위로 — 직인 뒤, 겹침) */}
-      <div className="mt-16 flex justify-center">
+      {/* 세로 분산 — 공문이 A4 한 면을 꽉 채우도록 */}
+      <div className="grow" aria-hidden />
+
+      {/* 회사명 + 직인(글자가 직인 위로 — 겹침) */}
+      <div className="flex justify-center">
         <div className="relative inline-block">
           <Image
             src="/brand/incident-report-seal.png"
             alt="직인"
-            width={64}
-            height={64}
-            className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-90"
+            width={84}
+            height={84}
+            className="absolute -right-9 top-1/2 -translate-y-1/2 opacity-90"
           />
           <p className="relative z-10 text-2xl font-bold tracking-wide">
             {m.companyLine}
@@ -62,9 +79,11 @@ function CoverPage({ m }: { m: FormModel }) {
         </div>
       </div>
 
-      {/* 회색 바 + 푸터 (전결/결재/시행/연락처) */}
+      <div className="grow" aria-hidden />
+
+      {/* 회색 바 + 푸터 (전결/결재/시행·접수/연락처) */}
       {/* 일회성: 실제 공문 회색 구분 바 색 (토큰 line은 거의 검정이라 부적합) */}
-      <div className="mt-20 h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
+      <div className="h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
       <p className="mt-1.5 text-right text-sm font-bold">
         전결 {m.jeonkyeolDate}
       </p>
@@ -79,8 +98,11 @@ function CoverPage({ m }: { m: FormModel }) {
       </div>
       <div className="mt-1 space-y-1 text-sm">
         <p>
-          시 행&nbsp;&nbsp;{m.docNumber ?? ""}
-          <span className="ml-16">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;)</span>
+          시 행&nbsp;&nbsp;
+          {m.docNumber ?? (
+            <span className="text-muted">(발송 시 자동 채번)</span>
+          )}
+          <span className="ml-16">접 수 ({m.receiptDate})</span>
         </p>
         {m.contactLines.map((line) => (
           <p key={line}>{line}</p>
@@ -148,11 +170,13 @@ function ReportPage({ m }: { m: FormModel }) {
               {sec.rows && sec.rows.length > 0 ? (
                 <HandlingTable rows={sec.rows} />
               ) : (
-                <p className="mt-1 whitespace-pre-wrap pl-3">{sec.body}</p>
+                <p className="mt-1 whitespace-pre-wrap pl-3 text-justify">
+                  {sec.body}
+                </p>
               )}
             </div>
           ))}
-          <p className="whitespace-pre-wrap pt-2">{m.closing}</p>
+          <p className="whitespace-pre-wrap pt-2 text-justify">{m.closing}</p>
         </div>
       </div>
     </Sheet>

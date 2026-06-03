@@ -85,6 +85,11 @@ describe("deriveFormModel", () => {
     expect(m.coverBody[1]).toBe("당사는 오류로 사과드립니다.");
     expect(m.coverBody[2]).toBe("감사합니다.");
   });
+  it("작성일자/접수일자를 'YYYY. MM. DD'로 포맷한다", () => {
+    const m = deriveFormModel(base);
+    expect(m.draftDate).toBe("2026. 06. 02");
+    expect(m.receiptDate).toBe("2026. 06. 02");
+  });
   it("연락처 줄에 작성자 이메일을 넣는다", () => {
     const lines = deriveFormModel(base).contactLines;
     expect(lines.some((l) => l.includes("haelee@jinhakapply.com"))).toBe(true);

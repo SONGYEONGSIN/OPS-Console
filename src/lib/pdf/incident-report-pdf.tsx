@@ -73,12 +73,15 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Pretendard",
     fontSize: 10.5,
-    paddingTop: 48,
-    paddingBottom: 56,
-    paddingHorizontal: 44,
+    // 실제 공문 여백: 위 1cm / 아래 1cm / 왼 1.8cm / 오른 2cm (1cm≈28.3pt)
+    paddingTop: 28,
+    paddingBottom: 28,
+    paddingLeft: 51,
+    paddingRight: 57,
     lineHeight: 1.6,
     color: "#15120c",
   },
+  spacer: { flexGrow: 1 },
   frame: { borderWidth: 1, borderColor: "#15120c", padding: 22 },
   wordmark: {
     fontSize: 18,
@@ -114,7 +117,7 @@ const styles = StyleSheet.create({
   coverList: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 14 },
   coverNum: { width: 18 },
-  coverText: { flex: 1, lineHeight: 1.7 },
+  coverText: { flex: 1, lineHeight: 1.7, textAlign: "justify" },
   apology: { marginTop: 4 },
   companyWrap: {
     marginTop: 36,
@@ -125,7 +128,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   companyLine: { fontSize: 16, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 150, top: -10, width: 48, height: 48 },
+  seal: { position: "absolute", right: 140, top: -18, width: 62, height: 62 },
   grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 44 },
   jeonkyeol: {
     fontSize: 9,
@@ -154,7 +157,7 @@ const styles = StyleSheet.create({
   },
   bodyFrame: { borderWidth: 1, borderColor: "#15120c", padding: 12 },
   sectionH: { fontWeight: 700, marginTop: 10, marginBottom: 3 },
-  sectionBody: { marginBottom: 4 },
+  sectionBody: { marginBottom: 4, textAlign: "justify" },
   hTable: {
     marginTop: 4,
     marginBottom: 4,
@@ -232,12 +235,17 @@ export async function renderIncidentReportPdf(
         </Text>
         <Text style={styles.row}>끝.</Text>
 
+        {/* 세로 분산 — 공문이 A4 한 면을 꽉 채우도록 */}
+        <View style={styles.spacer} />
+
         <View style={styles.companyWrap}>
           {/* 직인 먼저(뒤), 회사명 나중(앞) → 글자가 직인 위로 */}
           {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
           <Image style={styles.seal} src={SEAL_PATH} />
           <Text style={styles.companyLine}>{m.companyLine}</Text>
         </View>
+
+        <View style={styles.spacer} />
 
         <View style={styles.grayBar} />
         <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
@@ -251,16 +259,14 @@ export async function renderIncidentReportPdf(
             ))}
         </View>
         <Text style={styles.docRow}>
-          시 행  {m.docNumber ?? ""}        접 수 (        )
+          시 행  {m.docNumber ?? "(발송 시 자동 채번)"}        접 수 ({" "}
+          {m.receiptDate} )
         </Text>
         <View style={styles.contact}>
           {m.contactLines.map((line) => (
             <Text key={line}>{line}</Text>
           ))}
         </View>
-        <Text style={styles.footer} fixed>
-          운영부 상황실 · 자동 발송 문서
-        </Text>
       </Page>
 
       {/* ② 경위서 본문 */}
@@ -285,9 +291,6 @@ export async function renderIncidentReportPdf(
           ))}
           <Text style={[styles.apology, { marginTop: 10 }]}>{m.closing}</Text>
         </View>
-        <Text style={styles.footer} fixed>
-          운영부 상황실 · 자동 발송 문서
-        </Text>
       </Page>
     </Document>
   );

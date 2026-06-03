@@ -49,6 +49,14 @@ export function jeonkyeolDate(draftDate: string): string {
   return `${mm.padStart(2, "0")}/${dd.padStart(2, "0")}`;
 }
 
+/** draftDate → "YYYY. MM. DD" (접수일자 표기). 파싱 실패 시 원본 반환. */
+export function formatYmd(draftDate: string): string {
+  const nums = draftDate.match(/\d+/g);
+  if (!nums || nums.length < 3) return draftDate;
+  const [y, mm, dd] = nums;
+  return `${y}. ${mm.padStart(2, "0")}. ${dd.padStart(2, "0")}`;
+}
+
 export type FormModel = {
   brandHeader: string;
   recipientUniversity: string;
@@ -59,6 +67,8 @@ export type FormModel = {
   attachment: string;
   companyLine: string;
   jeonkyeolDate: string;
+  /** 접수일자 "YYYY. MM. DD" (작성일 기준) */
+  receiptDate: string;
   approvalLine: readonly { role: string; name: string }[];
   docNumber: string | null;
   contactLines: readonly string[];
@@ -89,6 +99,7 @@ export function deriveFormModel(s: FormSource): FormModel {
     attachment: `붙임 : 1. ${s.title} 경위서 1부.  끝.`,
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(s.draftDate),
+    receiptDate: formatYmd(s.draftDate),
     approvalLine: [
       { role: "담당자", name: s.authorName },
       { role: "팀장", name: s.approverName ?? "" },
@@ -100,7 +111,7 @@ export function deriveFormModel(s: FormSource): FormModel {
       ADDRESS_LINE,
       `전 화 (02)2013-0669 ㅣ 전 송 (02)722-5453 ㅣ 이메일 ${s.authorEmail} ㅣ 공 개`,
     ],
-    draftDate: s.draftDate,
+    draftDate: formatYmd(s.draftDate),
     authorName: s.authorName,
     sections: [
       { no: 1, label: SECTION_LABELS[0], body: s.gyeongwi ?? "" },
