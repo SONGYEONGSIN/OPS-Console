@@ -131,13 +131,16 @@ function IncidentInfo({ row }: { row: ListRow }) {
   );
 }
 
-/** 번들 report + 서버 계산 플래그 → IncidentReportView가 읽는 ListRow로 변환 */
+/** 번들 report + 서버 계산 플래그 → IncidentReportView가 읽는 ListRow로 변환.
+ *  대학명(수신처)은 연결된 사고의 현재 값으로 동기화(스냅샷 staleness 방지). */
 function bundleToReportRow(
   report: IncidentReportRow,
   bundle: IncidentReportBundle,
+  current: { university?: string },
 ): ListRow {
   return {
     ...incidentReportToListRow(report),
+    incidentReportUniversity: current.university ?? report.recipient_university,
     incidentReportRecipients: bundle.recipients.map((r) => ({
       email: r.contact_email ?? "",
       name: r.customer_name,
@@ -148,7 +151,13 @@ function bundleToReportRow(
   };
 }
 
-function ReportTab({ incidentId }: { incidentId: string }) {
+function ReportTab({
+  incidentId,
+  incidentUniversity,
+}: {
+  incidentId: string;
+  incidentUniversity?: string;
+}) {
   const [bundle, setBundle] = useState<IncidentReportBundle | null>(null);
   const [loading, startLoad] = useTransition();
   const [creating, startCreate] = useTransition();
@@ -204,7 +213,9 @@ function ReportTab({ incidentId }: { incidentId: string }) {
     <div className="space-y-3">
       {loading && <p className="text-xs text-muted">갱신 중…</p>}
       <IncidentReportView
-        row={bundleToReportRow(bundle.report, bundle)}
+        row={bundleToReportRow(bundle.report, bundle, {
+          university: incidentUniversity,
+        })}
         onChanged={refetch}
       />
     </div>
@@ -228,7 +239,10 @@ export function IncidentView({ row }: ViewProps) {
       {tab === "info" ? (
         <IncidentInfo row={row} />
       ) : (
-        <ReportTab incidentId={row.id} />
+        <ReportTab
+          incidentId={row.id}
+          incidentUniversity={row.incidentUniversityName}
+        />
       )}
     </div>
   );

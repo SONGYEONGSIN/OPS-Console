@@ -73,7 +73,12 @@ export default async function IncidentReportEditorPage({
           </Link>
         </header>
         <ReportEditorWorkspace
-          report={report}
+          report={{
+            ...report,
+            // 연결된 사고의 현재 대학명(수신처)으로 동기화(스냅샷 staleness 방지)
+            recipient_university:
+              incident?.university_name ?? report.recipient_university,
+          }}
           canManageApproval={canManageApproval}
           previewDocNumber={previewDocNumber}
           approval={approval}
