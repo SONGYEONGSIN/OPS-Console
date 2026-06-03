@@ -66,13 +66,26 @@ function sanitizeFileName(name: string): string {
  */
 export async function previewNextDocNumber(today: Date): Promise<string | null> {
   const cfg = sharePointConfig();
-  if (!cfg) return null;
-  const existing = await fetchSenderDocNumbers(
-    cfg.driveId,
-    cfg.gongmunItemId,
-    today.getFullYear(),
-  );
-  return nextDocNumber(existing, today);
+  if (!cfg) {
+    console.warn(
+      "[previewDocNumber] SharePoint 설정 없음 — SHAREPOINT_DRIVE_ID / SHAREPOINT_GONGMUN_ITEM_ID 확인(dev 서버 재시작 필요)",
+    );
+    return null;
+  }
+  try {
+    const existing = await fetchSenderDocNumbers(
+      cfg.driveId,
+      cfg.gongmunItemId,
+      today.getFullYear(),
+    );
+    return nextDocNumber(existing, today);
+  } catch (e) {
+    console.error(
+      "[previewDocNumber] 공문관리대장 조회 실패 — 발신 시트명/권한 확인:",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
 }
 
 /**

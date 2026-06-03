@@ -5,7 +5,10 @@ import { resolvePageMeta } from "../../_data/page-meta-derive";
 import { PageHeader } from "../../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { getIncidentReport } from "@/features/incident-reports/queries";
+import {
+  getIncidentReport,
+  resolveApprovalChain,
+} from "@/features/incident-reports/queries";
 import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 import { ReportEditorWorkspace } from "./_components/ReportEditorWorkspace";
@@ -31,6 +34,19 @@ export default async function IncidentReportEditorPage({
     report.doc_number ??
     (await previewNextDocNumber(new Date()).catch(() => null));
 
+  // 결재라인 — 저장 스냅샷에 빠진 칸은 현재 조직 기준으로 라이브 보강(비파괴).
+  const liveChain = await resolveApprovalChain(report.author_email).catch(
+    () => null,
+  );
+  const approval = {
+    approverName: report.approver_name ?? liveChain?.approver?.name ?? null,
+    approverRole: report.approver_role ?? liveChain?.approver?.role ?? null,
+    directorName: report.director_name ?? liveChain?.director?.name ?? null,
+    directorRole: report.director_role ?? liveChain?.director?.role ?? null,
+    ceoName: report.ceo_name ?? liveChain?.ceo?.name ?? null,
+    ceoRole: report.ceo_role ?? liveChain?.ceo?.role ?? null,
+  };
+
   const config = resolvePageMeta("incidents", meta);
 
   return (
@@ -54,6 +70,7 @@ export default async function IncidentReportEditorPage({
           report={report}
           canManageApproval={canManageApproval}
           previewDocNumber={previewDocNumber}
+          approval={approval}
         />
       </section>
     </div>

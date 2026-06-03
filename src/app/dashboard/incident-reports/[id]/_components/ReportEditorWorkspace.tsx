@@ -41,17 +41,32 @@ const POST_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
 
 const inputClass =
   "w-full border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none";
+/** 처리 행용 — w-full 없이(flex 안에서 폭 충돌 방지) */
+const cellClass =
+  "border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none";
+
+type ApprovalOverride = {
+  approverName: string | null;
+  approverRole: string | null;
+  directorName: string | null;
+  directorRole: string | null;
+  ceoName: string | null;
+  ceoRole: string | null;
+};
 
 export function ReportEditorWorkspace({
   report,
   canManageApproval = false,
   previewDocNumber = null,
+  approval,
 }: {
   report: IncidentReportRow;
   /** 승인자 본인 또는 admin — 승인 취소 가능 */
   canManageApproval?: boolean;
   /** 발송 전 예상 시행번호(공문관리대장 조회, 확정 아님) */
   previewDocNumber?: string | null;
+  /** 결재라인 — 저장 스냅샷 + 라이브 보강(라우트에서 계산). 없으면 report 값 사용. */
+  approval?: ApprovalOverride;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -76,12 +91,12 @@ export function ReportEditorWorkspace({
     draftDate: report.draft_date,
     authorName: report.author_name,
     authorEmail: report.author_email,
-    approverName: report.approver_name,
-    approverRole: report.approver_role,
-    directorName: report.director_name,
-    directorRole: report.director_role,
-    ceoName: report.ceo_name,
-    ceoRole: report.ceo_role,
+    approverName: approval?.approverName ?? report.approver_name,
+    approverRole: approval?.approverRole ?? report.approver_role,
+    directorName: approval?.directorName ?? report.director_name,
+    directorRole: approval?.directorRole ?? report.director_role,
+    ceoName: approval?.ceoName ?? report.ceo_name,
+    ceoRole: approval?.ceoRole ?? report.ceo_role,
     docNumber: report.doc_number ?? previewDocNumber,
     apology: draft.apology || null,
     gyeongwi: draft.gyeongwi || null,
@@ -222,19 +237,26 @@ export function ReportEditorWorkspace({
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {PRE_FIELDS.map(renderField)}
 
-              {/* 처리 — 시간/내용 행 편집기 */}
+              {/* 처리 — 시간/내용 행 편집기 (왼=일시, 오른=내용, ✕=행 삭제) */}
               <div className="text-xs">
-                <span className="mb-1 block text-muted">처리 (시간 / 내용)</span>
+                <span className="mb-1 block text-muted">
+                  처리 — 왼쪽 칸=일시, 오른쪽 칸=내용
+                </span>
                 <div className="space-y-1.5">
+                  {rows.length === 0 && (
+                    <p className="text-2xs text-muted">
+                      아래 ‘+ 처리 행 추가’로 시간/내용 행을 추가하세요.
+                    </p>
+                  )}
                   {rows.map((r, i) => (
-                    <div key={i} className="flex gap-1">
+                    <div key={i} className="flex items-center gap-1">
                       <input
                         aria-label={`처리 시간 ${i + 1}`}
                         value={r.time}
                         maxLength={100}
-                        placeholder="시간"
+                        placeholder="일시 (예: 06.02 14:27)"
                         onChange={(e) => updateRow(i, { time: e.target.value })}
-                        className={`${inputClass} w-28 shrink-0`}
+                        className={`${cellClass} w-32 flex-none`}
                       />
                       <input
                         aria-label={`처리 내용 ${i + 1}`}
@@ -244,13 +266,14 @@ export function ReportEditorWorkspace({
                         onChange={(e) =>
                           updateRow(i, { content: e.target.value })
                         }
-                        className={inputClass}
+                        className={`${cellClass} min-w-0 flex-1`}
                       />
                       <button
                         type="button"
                         aria-label={`처리 행 삭제 ${i + 1}`}
+                        title="행 삭제"
                         onClick={() => removeRow(i)}
-                        className="shrink-0 cursor-pointer border border-line bg-transparent px-2 text-muted hover:text-vermilion"
+                        className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
                       >
                         ✕
                       </button>
