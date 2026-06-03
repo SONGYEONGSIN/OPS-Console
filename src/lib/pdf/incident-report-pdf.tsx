@@ -35,7 +35,7 @@ const LOGO_PATH = path.join(
   process.cwd(),
   "public",
   "brand",
-  "jinhakapply-logo.jpg",
+  "jinhakapply-logo-v2.jpg",
 );
 
 let fontRegistered = false;
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   approvalItem: { fontSize: 10 },
-  docRow: { marginTop: 12, fontSize: 9 },
+  docRow: { marginTop: 12, fontSize: 9, textAlign: "right" },
   contact: {
     marginTop: 8,
     fontSize: 9,
@@ -159,6 +159,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 3,
   },
+  contactSep: { color: "#9a917f" },
   reportTitle: {
     fontSize: 20,
     fontWeight: 700,
@@ -283,17 +284,22 @@ export async function renderIncidentReportPdf(
             ))}
         </View>
         <Text style={styles.docRow}>
-          시 행  {m.docNumber ?? "(자동 채번)"}        접 수 ( {m.receiptDate} )
+          시 행  {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
+          {"        "}접 수 (        )
         </Text>
         <View style={styles.contact}>
           {m.contactLines.map((line) => {
             const segs = line.split("ㅣ").map((s) => s.trim());
+            const items: { text: string; sep: boolean }[] = [];
+            segs.forEach((seg, i) => {
+              items.push({ text: seg, sep: false });
+              if (i < segs.length - 1) items.push({ text: "ㅣ", sep: true });
+            });
             return (
               <View key={line} style={styles.contactRow}>
-                {segs.map((seg, i) => (
-                  <Text key={i}>
-                    {seg}
-                    {i < segs.length - 1 ? " ㅣ" : ""}
+                {items.map((it, i) => (
+                  <Text key={i} style={it.sep ? styles.contactSep : undefined}>
+                    {it.text}
                   </Text>
                 ))}
               </View>

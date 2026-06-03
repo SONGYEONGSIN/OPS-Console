@@ -28,7 +28,7 @@ function CoverPage({ m }: { m: FormModel }) {
   return (
     <Sheet fill>
       <Image
-        src="/brand/jinhakapply-logo.png"
+        src="/brand/jinhakapply-logo-v2.png"
         alt="JINHAKapply"
         width={210}
         height={40}
@@ -95,20 +95,34 @@ function CoverPage({ m }: { m: FormModel }) {
           ))}
       </div>
       <div className="mt-4 space-y-2 text-sm">
-        <p>
+        <p className="text-right">
           시 행&nbsp;&nbsp;
-          {m.docNumber ?? <span className="text-muted">(자동 채번)</span>}
-          <span className="ml-16">접 수 ({m.receiptDate})</span>
+          {m.docNumber ? (
+            `${m.docNumber} (${m.receiptDate})`
+          ) : (
+            <span className="text-muted">(자동 채번)</span>
+          )}
+          <span className="ml-16">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</span>
         </p>
         {m.contactLines.map((line) => {
           // ㅣ 구분 구간을 양끝으로 분산(단어는 단일 공백 유지) — 한 줄 꽉 차게
           const segs = line.split("ㅣ").map((s) => s.trim());
+          const items: { text: string; sep: boolean }[] = [];
+          segs.forEach((seg, i) => {
+            items.push({ text: seg, sep: false });
+            if (i < segs.length - 1) items.push({ text: "ㅣ", sep: true });
+          });
           return (
-            <div key={line} className="flex w-full justify-between">
-              {segs.map((seg, i) => (
-                <span key={i} className="whitespace-nowrap">
-                  {seg}
-                  {i < segs.length - 1 ? " ㅣ" : ""}
+            <div
+              key={line}
+              className="flex w-full items-baseline justify-between tracking-wide"
+            >
+              {items.map((it, i) => (
+                <span
+                  key={i}
+                  className={`whitespace-nowrap ${it.sep ? "text-muted" : ""}`}
+                >
+                  {it.text}
                 </span>
               ))}
             </div>
