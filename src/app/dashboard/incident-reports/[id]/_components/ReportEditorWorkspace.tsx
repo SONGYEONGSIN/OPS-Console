@@ -59,6 +59,7 @@ export function ReportEditorWorkspace({
   canManageApproval = false,
   previewDocNumber = null,
   approval,
+  dutyName,
 }: {
   report: IncidentReportRow;
   /** 승인자 본인 또는 admin — 승인 취소 가능 */
@@ -67,6 +68,8 @@ export function ReportEditorWorkspace({
   previewDocNumber?: string | null;
   /** 결재라인 — 저장 스냅샷 + 라이브 보강(라우트에서 계산). 없으면 report 값 사용. */
   approval?: ApprovalOverride;
+  /** 결재 담당자 표시명 — 연결된 사고의 작성 담당자(없으면 작성자). */
+  dutyName?: string;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -89,7 +92,7 @@ export function ReportEditorWorkspace({
     recipientUniversity: draft.recipient_university,
     title: draft.title,
     draftDate: report.draft_date,
-    authorName: report.author_name,
+    authorName: dutyName ?? report.author_name,
     authorEmail: report.author_email,
     approverName: approval?.approverName ?? report.approver_name,
     approverRole: approval?.approverRole ?? report.approver_role,

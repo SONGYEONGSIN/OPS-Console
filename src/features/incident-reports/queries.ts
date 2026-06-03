@@ -23,7 +23,9 @@ export function pickApprovalChain(author: OperatorLite, all: OperatorLite[]): Ap
   // 본부장 우선, 없으면 부장 (조직별 상위 직책 차이 흡수)
   const director =
     all.find((o) => o.role === "본부장") ?? all.find((o) => o.role === "부장") ?? null;
-  const ceo = all.find((o) => o.role === "사장") ?? null;
+  // 사장 우선, 없으면 이사 (최상위 임원)
+  const ceo =
+    all.find((o) => o.role === "사장") ?? all.find((o) => o.role === "이사") ?? null;
   return {
     author: { name: author.name, email: author.email },
     approver: teamLead

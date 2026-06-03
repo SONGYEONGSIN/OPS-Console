@@ -58,6 +58,9 @@ export function TeamForm({
           onChange={(e) => setRow({ ...row, meta: e.target.value })}
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
         >
+          <option value="사장">사장</option>
+          <option value="이사">이사</option>
+          <option value="본부장">본부장</option>
           <option value="부장">부장</option>
           <option value="팀장">팀장</option>
           <option value="TL">TL</option>
@@ -80,7 +83,7 @@ export function TeamForm({
               {op.name} · {op.role} · {op.team}
             </option>
           ))}
-          <option value="본부장 (외부)">본부장 (외부)</option>
+          <option value="이사">이사</option>
         </select>
       </label>
       <label className="block text-xs">

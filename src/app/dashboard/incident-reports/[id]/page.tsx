@@ -9,6 +9,7 @@ import {
   getIncidentReport,
   resolveApprovalChain,
 } from "@/features/incident-reports/queries";
+import { getIncidentById } from "@/features/incidents/queries";
 import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 import { ReportEditorWorkspace } from "./_components/ReportEditorWorkspace";
@@ -34,10 +35,15 @@ export default async function IncidentReportEditorPage({
     report.doc_number ??
     (await previewNextDocNumber(new Date()).catch(() => null));
 
+  // 담당자 = 연결된 사고(사고보고)의 작성 담당자. 결재 체인도 그 담당자 기준으로 해석.
+  const incident = report.incident_id
+    ? await getIncidentById(report.incident_id).catch(() => null)
+    : null;
+  const dutyName = incident?.assignee_name ?? report.author_name;
+  const chainEmail = incident?.assignee_email ?? report.author_email;
+
   // 결재라인 — 저장 스냅샷에 빠진 칸은 현재 조직 기준으로 라이브 보강(비파괴).
-  const liveChain = await resolveApprovalChain(report.author_email).catch(
-    () => null,
-  );
+  const liveChain = await resolveApprovalChain(chainEmail).catch(() => null);
   const approval = {
     approverName: report.approver_name ?? liveChain?.approver?.name ?? null,
     approverRole: report.approver_role ?? liveChain?.approver?.role ?? null,
@@ -71,6 +77,7 @@ export default async function IncidentReportEditorPage({
           canManageApproval={canManageApproval}
           previewDocNumber={previewDocNumber}
           approval={approval}
+          dutyName={dutyName}
         />
       </section>
     </div>

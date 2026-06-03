@@ -17,7 +17,15 @@ export const STATUS_LABEL: Record<OperatorStatus, string> = {
 };
 
 export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀"]);
-export const operatorRoleSchema = z.enum(["부장", "팀장", "TL", "매니저", "본부장", "사장"]);
+export const operatorRoleSchema = z.enum([
+  "부장",
+  "팀장",
+  "TL",
+  "매니저",
+  "본부장",
+  "사장",
+  "이사",
+]);
 export const operatorGenderSchema = z.enum(["남", "여"]);
 
 export const operatorPermissionSchema = z.enum([
