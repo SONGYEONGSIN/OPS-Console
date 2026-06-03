@@ -11,7 +11,10 @@ import {
   deriveFormModel,
   type FormSource,
 } from "@/features/incident-reports/form-content";
-import { updateIncidentReport } from "@/features/incident-reports/actions";
+import {
+  updateIncidentReport,
+  revokeApproval,
+} from "@/features/incident-reports/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 
 type TextKey =
@@ -41,8 +44,11 @@ const inputClass =
 
 export function ReportEditorWorkspace({
   report,
+  canManageApproval = false,
 }: {
   report: IncidentReportRow;
+  /** 승인자 본인 또는 admin — 승인 취소 가능 */
+  canManageApproval?: boolean;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -111,6 +117,18 @@ export function ReportEditorWorkspace({
         return;
       }
       setSaved(true);
+      router.refresh();
+    });
+  }
+
+  function onRevoke() {
+    setError(null);
+    startTransition(async () => {
+      const r = await revokeApproval(report.id);
+      if (!r.ok) {
+        setError(r.error ?? "승인 취소에 실패했습니다.");
+        return;
+      }
       router.refresh();
     });
   }
@@ -258,9 +276,24 @@ export function ReportEditorWorkspace({
             </div>
           </div>
         ) : (
-          <p className="text-xs text-muted">
-            편집할 수 없는 상태입니다. (미리보기·PDF만)
-          </p>
+          <div className="space-y-3">
+            <p className="text-xs text-muted">
+              편집할 수 없는 상태입니다. (미리보기·PDF만)
+            </p>
+            {report.status === "approved" && canManageApproval && (
+              <div className="space-y-2">
+                {error && <p className="text-xs text-vermilion">{error}</p>}
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={onRevoke}
+                  className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
+                >
+                  {pending ? "처리 중…" : "승인 취소 (작성중으로 되돌리기)"}
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </aside>
     </div>

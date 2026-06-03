@@ -114,6 +114,19 @@ export async function incidentIdsWithPendingApprovalFor(
     .filter((id): id is string => id != null);
 }
 
+/** 승인완료(approved) 경위서가 달린 사고 id 목록. */
+export async function incidentIdsWithApprovedReports(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("incident_reports")
+    .select("incident_id")
+    .eq("status", "approved");
+  const rows = (data ?? []) as { incident_id: string | null }[];
+  return rows
+    .map((r) => r.incident_id)
+    .filter((id): id is string => id != null);
+}
+
 /** 목록 배지용 batch 조회 — N+1 회피. 빈 입력 → {}. */
 export async function reportStatusByIncidentIds(
   incidentIds: string[],

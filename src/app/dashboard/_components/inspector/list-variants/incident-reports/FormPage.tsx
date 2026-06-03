@@ -52,9 +52,9 @@ function CoverPage({ m }: { m: FormModel }) {
           <Image
             src="/brand/incident-report-seal.png"
             alt="직인"
-            width={170}
-            height={170}
-            className="absolute -right-16 top-1/2 -translate-y-1/2 opacity-90"
+            width={64}
+            height={64}
+            className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-90"
           />
           <p className="relative z-10 text-2xl font-bold tracking-wide">
             {m.companyLine}

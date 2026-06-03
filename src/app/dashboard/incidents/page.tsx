@@ -12,9 +12,11 @@ import { listIncidents, listIncidentsByIds } from "@/features/incidents/queries"
 import {
   reportStatusByIncidentIds,
   incidentIdsWithPendingApprovalFor,
+  incidentIdsWithApprovedReports,
 } from "@/features/incident-reports/queries";
 import { incidentToListRow } from "./_row-mapper";
 import { PendingApprovalChip } from "./PendingApprovalChip";
+import { ApprovedReportChip } from "./ApprovedReportChip";
 import {
   createIncident,
   updateIncident,
@@ -74,13 +76,18 @@ export default async function IncidentsPage({
   const page = Math.max(1, Number(params.page) || 1);
   const mine = params.mine === "true";
   const reportPending = params.report === "pending";
+  const reportApproved = params.report === "approved";
 
-  // 승인 대기 칩: 본인이 승인자인 pending_approval 경위서가 달린 사고만.
-  // pending 집합은 작으므로 페이지네이션 없이 일괄 조회 (정규 listIncidents 대체).
+  // 결재 칩: 승인 대기(본인이 승인자인 pending_approval) / 승인 완료(approved 전체).
+  // 집합이 작으므로 페이지네이션 없이 일괄 조회 (정규 listIncidents 대체).
   let dbRows;
   let total;
   if (reportPending && me?.email) {
     const ids = await incidentIdsWithPendingApprovalFor(me.email);
+    dbRows = ids.length ? await listIncidentsByIds(ids) : [];
+    total = dbRows.length;
+  } else if (reportApproved) {
+    const ids = await incidentIdsWithApprovedReports();
     dbRows = ids.length ? await listIncidentsByIds(ids) : [];
     total = dbRows.length;
   } else {
@@ -204,6 +211,7 @@ export default async function IncidentsPage({
         <div key="incidents-scope" className="inline-flex items-center">
           <ScopeChips total={total} mineLabel="내 사고" />
           <PendingApprovalChip />
+          <ApprovedReportChip />
         </div>
       }
       footer={

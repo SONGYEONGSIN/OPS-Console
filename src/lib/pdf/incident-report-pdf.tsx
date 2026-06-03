@@ -117,15 +117,15 @@ const styles = StyleSheet.create({
   coverText: { flex: 1, lineHeight: 1.7 },
   apology: { marginTop: 4 },
   companyWrap: {
-    marginTop: 44,
-    height: 60,
+    marginTop: 36,
+    height: 30,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
   },
   companyLine: { fontSize: 16, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 128, top: -34, width: 118, height: 118 },
+  seal: { position: "absolute", right: 150, top: -10, width: 48, height: 48 },
   grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 44 },
   jeonkyeol: {
     fontSize: 9,

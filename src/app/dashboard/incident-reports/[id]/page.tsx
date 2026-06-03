@@ -4,6 +4,7 @@ import { findSidebarMeta } from "../../_data";
 import { resolvePageMeta } from "../../_data/page-meta-derive";
 import { PageHeader } from "../../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
+import { getCurrentOperator } from "@/features/auth/queries";
 import { getIncidentReport } from "@/features/incident-reports/queries";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 import { ReportEditorWorkspace } from "./_components/ReportEditorWorkspace";
@@ -19,6 +20,10 @@ export default async function IncidentReportEditorPage({
   const { id } = await params;
   const report = (await getIncidentReport(id)) as IncidentReportRow | null;
   if (!report) notFound();
+
+  const me = await getCurrentOperator();
+  const canManageApproval =
+    me?.permission === "admin" || me?.email === report.approver_email;
 
   const config = resolvePageMeta("incidents", meta);
 
@@ -39,7 +44,10 @@ export default async function IncidentReportEditorPage({
             ← 사고 보고 목록
           </Link>
         </header>
-        <ReportEditorWorkspace report={report} />
+        <ReportEditorWorkspace
+          report={report}
+          canManageApproval={canManageApproval}
+        />
       </section>
     </div>
   );

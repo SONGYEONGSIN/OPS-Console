@@ -61,6 +61,7 @@ import {
   submitForApproval,
   approveIncidentReport,
   rejectIncidentReport,
+  revokeApproval,
 } from "../actions";
 
 const meOperator = {
@@ -303,5 +304,36 @@ describe("rejectIncidentReport", () => {
     });
     const r = await rejectIncidentReport(baseRow.id, "x");
     expect(r).toEqual({ ok: false, error: "반려 권한이 없습니다." });
+  });
+});
+
+describe("revokeApproval", () => {
+  it("승인자/admin 아님 → 승인 취소 권한 없음", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle.mockReturnValue({
+      data: { approver_email: "other@jinhakapply.com", title: "t" },
+      error: null,
+    });
+    const r = await revokeApproval(baseRow.id);
+    expect(r).toEqual({ ok: false, error: "승인 취소 권한이 없습니다." });
+  });
+
+  it("승인자 일치 + approved → draft (approved_at 초기화)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({
+        data: { approver_email: meOperator.email, title: "t" },
+        error: null,
+      })
+      .mockReturnValueOnce({ data: { status: "approved" }, error: null });
+    mockUpdateResult.mockReturnValue({
+      data: { ...baseRow, status: "draft" },
+      error: null,
+    });
+    const r = await revokeApproval(baseRow.id);
+    expect(r.ok).toBe(true);
+    const patch = updatePatches[0] as Record<string, unknown>;
+    expect(patch.status).toBe("draft");
+    expect(patch.approved_at).toBeNull();
   });
 });

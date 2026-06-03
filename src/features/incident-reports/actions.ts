@@ -264,3 +264,45 @@ export async function rejectIncidentReport(
   }
   return r;
 }
+
+/**
+ * 승인 취소 — 승인완료(approved) 경위서를 작성중(draft)으로 되돌린다.
+ * 승인자 본인 또는 admin만. 발송완료(sent)는 취소 불가(approved에서만 전이).
+ */
+export async function revokeApproval(
+  id: string,
+): Promise<ReportActionResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: AUTH_ERROR };
+
+  const supabase = await createClient();
+  const { data: rep } = await supabase
+    .from("incident_reports")
+    .select("approver_email,title")
+    .eq("id", id)
+    .maybeSingle();
+  if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
+  if (rep.approver_email !== me.email && me.permission !== "admin") {
+    return { ok: false, error: "승인 취소 권한이 없습니다." };
+  }
+
+  const r = await transition(
+    id,
+    ["approved"],
+    { status: "draft", approved_at: null },
+    "승인 취소할 수 없는 상태입니다.",
+  );
+  if (r.ok) {
+    await logActivity({
+      domain: "incident-reports",
+      action: "revoke",
+      target_type: "incident_reports",
+      target_id: id,
+      target_name: rep.title,
+      level: "WARN",
+      msg: "승인 취소",
+    });
+    revalidatePath(PATH);
+  }
+  return r;
+}
