@@ -132,26 +132,25 @@ const styles = StyleSheet.create({
   },
   companyLine: { fontSize: 16, fontWeight: 700, letterSpacing: 1 },
   seal: { position: "absolute", right: 140, top: -18, width: 62, height: 62 },
-  grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 44 },
+  grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 40 },
   jeonkyeol: {
     fontSize: 9,
     fontWeight: 700,
     textAlign: "right",
-    marginTop: 5,
+    marginTop: 8,
   },
   approvalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
+    marginTop: 8,
   },
   approvalItem: { fontSize: 10 },
-  docRow: { marginTop: 8, fontSize: 9 },
+  docRow: { marginTop: 12, fontSize: 9 },
   contact: {
-    marginTop: 6,
+    marginTop: 8,
     fontSize: 9,
     color: "#3a3528",
     lineHeight: 1.9,
-    textAlign: "justify",
   },
   reportTitle: {
     fontSize: 20,
@@ -258,8 +257,6 @@ export async function renderIncidentReportPdf(
           <Text style={styles.companyLine}>{m.companyLine}</Text>
         </View>
 
-        <View style={styles.spacer} />
-
         <View style={styles.grayBar} />
         <Text style={styles.jeonkyeol}>전결 {m.jeonkyeolDate}</Text>
         <View style={styles.approvalRow}>
@@ -272,8 +269,7 @@ export async function renderIncidentReportPdf(
             ))}
         </View>
         <Text style={styles.docRow}>
-          시 행  {m.docNumber ?? "(발송 시 자동 채번)"}        접 수 ({" "}
-          {m.receiptDate} )
+          시 행  {m.docNumber ?? "(자동 채번)"}        접 수 ( {m.receiptDate} )
         </Text>
         <View style={styles.contact}>
           {m.contactLines.map((line) => (

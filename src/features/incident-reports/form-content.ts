@@ -103,9 +103,12 @@ export function deriveFormModel(s: FormSource): FormModel {
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(s.draftDate),
     receiptDate: formatYmd(s.draftDate),
-    // 담당자(기안자)는 고정 라벨, 나머지는 실제 직책(없으면 기본 라벨 폴백)
+    // 담당자(기안자)는 고정 라벨, 나머지는 실제 직책(없으면 기본 라벨 폴백).
+    // 작성자가 곧 팀장이면(기안자=결재 팀장) 담당자 칸은 생략한다.
     approvalLine: [
-      { role: "담당자", name: s.authorName },
+      ...(s.approverName && s.authorName === s.approverName
+        ? []
+        : [{ role: "담당자", name: s.authorName }]),
       { role: s.approverRole || "팀장", name: s.approverName ?? "" },
       { role: s.directorRole || "본부장", name: s.directorName ?? "" },
       { role: s.ceoRole || "사장", name: s.ceoName ?? "" },

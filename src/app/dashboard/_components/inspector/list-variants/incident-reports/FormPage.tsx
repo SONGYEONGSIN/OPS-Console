@@ -60,7 +60,7 @@ function CoverPage({ m }: { m: FormModel }) {
       <p className="mt-8">붙임 : 1. {m.title} 경위서 1부</p>
       <p>끝.</p>
 
-      {/* 세로 분산 — 공문이 A4 한 면을 꽉 채우도록 */}
+      {/* 세로 분산 — 공문이 A4 한 면을 꽉 채우도록 (직인 라인을 하단부로) */}
       <div className="grow" aria-hidden />
 
       {/* 회사명 + 직인(글자가 직인 위로 — 겹침) */}
@@ -79,13 +79,11 @@ function CoverPage({ m }: { m: FormModel }) {
         </div>
       </div>
 
-      <div className="grow" aria-hidden />
-
-      {/* 회색 바 + 푸터 (전결/결재/시행·접수/연락처) */}
+      {/* 회색 바 + 푸터 (전결/결재/시행·접수/연락처) — 직인 라인과 가깝게 */}
       {/* 일회성: 실제 공문 회색 구분 바 색 (토큰 line은 거의 검정이라 부적합) */}
-      <div className="h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
-      <p className="mt-2 text-right text-sm font-bold">전결 {m.jeonkyeolDate}</p>
-      <div className="flex w-full items-baseline justify-between text-sm">
+      <div className="mt-12 h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
+      <p className="mt-3 text-right text-sm font-bold">전결 {m.jeonkyeolDate}</p>
+      <div className="mt-3 flex w-full items-baseline justify-between text-sm">
         {m.approvalLine
           .filter((a) => a.name)
           .map((a) => (
@@ -94,19 +92,14 @@ function CoverPage({ m }: { m: FormModel }) {
             </span>
           ))}
       </div>
-      <div className="mt-2 space-y-2 text-sm">
+      <div className="mt-4 space-y-2 text-sm">
         <p>
           시 행&nbsp;&nbsp;
-          {m.docNumber ?? (
-            <span className="text-muted">(발송 시 자동 채번)</span>
-          )}
+          {m.docNumber ?? <span className="text-muted">(자동 채번)</span>}
           <span className="ml-16">접 수 ({m.receiptDate})</span>
         </p>
         {m.contactLines.map((line) => (
-          // 한 줄 꽉 차게 양쪽 정렬 (단일 줄도 분산)
-          <p key={line} className="text-justify [text-align-last:justify]">
-            {line}
-          </p>
+          <p key={line}>{line}</p>
         ))}
       </div>
     </Sheet>

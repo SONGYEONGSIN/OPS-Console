@@ -72,6 +72,16 @@ describe("deriveFormModel", () => {
       { role: "사장", name: "" },
     ]);
   });
+  it("작성자가 팀장(기안자=결재팀장)이면 담당자 칸을 생략한다", () => {
+    const m = deriveFormModel({
+      ...base,
+      authorName: "송영신",
+      approverName: "송영신",
+      approverRole: "팀장",
+    });
+    expect(m.approvalLine.map((a) => a.role)).toEqual(["팀장", "본부장", "사장"]);
+    expect(m.approvalLine.some((a) => a.role === "담당자")).toBe(false);
+  });
   it("저장된 실제 직책이 있으면 그 직책으로 결재라인 라벨을 표시한다", () => {
     const m = deriveFormModel({
       ...base,
