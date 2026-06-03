@@ -280,13 +280,15 @@ export function ReportEditorWorkspace({
                     </div>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={addRow}
-                  className="mt-1.5 cursor-pointer border border-line bg-transparent px-2 py-1 text-2xs text-ink hover:bg-washi-raised"
-                >
-                  + 처리 행 추가
-                </button>
+                <div className="mt-1.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={addRow}
+                    className="cursor-pointer border border-vermilion bg-transparent px-2.5 py-1 text-2xs font-medium text-vermilion hover:bg-vermilion hover:text-cream"
+                  >
+                    + 처리 행 추가
+                  </button>
+                </div>
               </div>
 
               {POST_FIELDS.map(renderField)}

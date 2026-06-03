@@ -85,7 +85,7 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
         onClick={() => router.push(`/dashboard/incident-reports/${row.id}`)}
         className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
       >
-        양식으로 보기
+        경위서 내용 보기
       </button>
 
       {status === "rejected" && row.incidentReportRejectReason && (

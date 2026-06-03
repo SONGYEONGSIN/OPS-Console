@@ -70,9 +70,9 @@ describe("IncidentReportView onChanged", () => {
     await waitFor(() => expect(mockSubmit).toHaveBeenCalledWith(baseRow.id));
   });
 
-  it("'양식으로 보기' 클릭 시 편집 워크스페이스로 이동한다", () => {
+  it("'경위서 내용 보기' 클릭 시 편집 워크스페이스로 이동한다", () => {
     render(<IncidentReportView row={baseRow} />);
-    fireEvent.click(screen.getByRole("button", { name: /양식으로 보기/ }));
+    fireEvent.click(screen.getByRole("button", { name: /경위서 내용 보기/ }));
     expect(mockPush).toHaveBeenCalledWith(
       `/dashboard/incident-reports/${baseRow.id}`,
     );

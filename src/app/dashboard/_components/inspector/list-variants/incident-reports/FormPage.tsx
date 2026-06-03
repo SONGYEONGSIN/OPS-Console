@@ -40,10 +40,15 @@ function CoverPage({ m }: { m: FormModel }) {
       </p>
       <hr className="mt-1 border-ink" />
 
-      <div className="mt-5 space-y-0.5">
-        <p>수신자&nbsp;&nbsp;{m.recipientUniversity}</p>
-        <p>참&nbsp;&nbsp;조</p>
-        <p className="font-bold">제&nbsp;&nbsp;목&nbsp;&nbsp;{m.title}</p>
+      {/* 라벨을 3글자 폭으로 통일(참→참　조, 제→제　목) → 값 시작 위치 정렬 */}
+      <div className="mt-5 space-y-1">
+        <p>
+          수신자<span className="ml-5">{m.recipientUniversity}</span>
+        </p>
+        <p>참　조</p>
+        <p className="font-bold">
+          제　목<span className="ml-5">{m.title}</span>
+        </p>
       </div>
 
       <hr className="mt-3 border-ink/50" />
@@ -118,7 +123,7 @@ function CoverPage({ m }: { m: FormModel }) {
           return (
             <div
               key={line}
-              className="flex w-full items-baseline justify-between tracking-wider"
+              className="flex w-full items-baseline justify-between tracking-[0.1em]"
             >
               {items.map((it, i) => (
                 <span

@@ -43,7 +43,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer border-b-2 px-3 py-1.5 text-sm font-medium ${
+      className={`flex-1 cursor-pointer border-b-2 px-3 py-2.5 text-center text-sm font-medium ${
         active
           ? "border-ink text-ink"
           : "border-transparent text-muted hover:text-ink-soft"
@@ -216,7 +216,7 @@ export function IncidentView({ row }: ViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 border-b border-line">
+      <div className="flex border-b border-line">
         <TabButton active={tab === "info"} onClick={() => setTab("info")}>
           사고정보
         </TabButton>

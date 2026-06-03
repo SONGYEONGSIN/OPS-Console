@@ -65,8 +65,11 @@ function sanitizeFileName(name: string): string {
  * config 없거나 조회 실패 시 null.
  */
 export async function previewNextDocNumber(today: Date): Promise<string | null> {
-  const cfg = sharePointConfig();
-  if (!cfg) {
+  // 미리보기는 읽기 전용 — 업로드 폴더(SHAREPOINT_INCIDENT_REPORT_FOLDER_ID) 불필요.
+  // 공문관리대장(드라이브+item)만 있으면 채번 미리보기 가능.
+  const driveId = process.env.SHAREPOINT_DRIVE_ID;
+  const gongmunItemId = process.env.SHAREPOINT_GONGMUN_ITEM_ID;
+  if (!driveId || !gongmunItemId) {
     console.warn(
       "[previewDocNumber] SharePoint 설정 없음 — SHAREPOINT_DRIVE_ID / SHAREPOINT_GONGMUN_ITEM_ID 확인(dev 서버 재시작 필요)",
     );
@@ -74,8 +77,8 @@ export async function previewNextDocNumber(today: Date): Promise<string | null> 
   }
   try {
     const existing = await fetchSenderDocNumbers(
-      cfg.driveId,
-      cfg.gongmunItemId,
+      driveId,
+      gongmunItemId,
       today.getFullYear(),
     );
     return nextDocNumber(existing, today);

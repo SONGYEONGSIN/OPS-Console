@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#3a3528",
     lineHeight: 1.9,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   contactRow: {
     flexDirection: "row",
@@ -250,10 +250,10 @@ export async function renderIncidentReportPdf(
         <Text style={styles.slogan}>{m.brandHeader}</Text>
         <View style={styles.logoRule} />
         <Text style={[styles.row, { marginTop: 14 }]}>
-          수신자  {m.recipientUniversity}
+          수신자　　{m.recipientUniversity}
         </Text>
-        <Text style={styles.row}>참  조</Text>
-        <Text style={[styles.row, styles.bold]}>제  목  {m.title}</Text>
+        <Text style={styles.row}>참　조</Text>
+        <Text style={[styles.row, styles.bold]}>제　목　　{m.title}</Text>
         <View style={styles.hr} />
         <View style={styles.coverList}>
           {m.coverBody.map((line, i) => (
