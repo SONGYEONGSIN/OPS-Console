@@ -112,30 +112,31 @@ const styles = StyleSheet.create({
   bold: { fontWeight: 700 },
   hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
   coverList: { marginLeft: 16 },
-  coverItem: { flexDirection: "row", marginBottom: 6 },
+  coverItem: { flexDirection: "row", marginBottom: 14 },
   coverNum: { width: 18 },
-  coverText: { flex: 1 },
+  coverText: { flex: 1, lineHeight: 1.7 },
   apology: { marginTop: 4 },
   companyWrap: {
-    marginTop: 28,
+    marginTop: 44,
+    height: 60,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
   },
-  companyLine: { fontSize: 15, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 160, top: -10, width: 44, height: 44 },
-  grayBar: { height: 6, backgroundColor: "#d8d2c4", marginTop: 18 },
+  companyLine: { fontSize: 16, fontWeight: 700, letterSpacing: 1 },
+  seal: { position: "absolute", right: 128, top: -34, width: 118, height: 118 },
+  grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 44 },
   jeonkyeol: {
-    fontSize: 7.5,
+    fontSize: 9,
     fontWeight: 700,
     textAlign: "right",
-    marginTop: 4,
+    marginTop: 5,
   },
-  approvalRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 1 },
-  approvalItem: { fontSize: 9, marginRight: 24 },
-  docRow: { marginTop: 2, fontSize: 7.5 },
-  contact: { marginTop: 2, fontSize: 7.5, color: "#3a3528", lineHeight: 1.5 },
+  approvalRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
+  approvalItem: { fontSize: 10, marginRight: 34 },
+  docRow: { marginTop: 4, fontSize: 9 },
+  contact: { marginTop: 3, fontSize: 9, color: "#3a3528", lineHeight: 1.6 },
   reportTitle: {
     fontSize: 20,
     fontWeight: 700,
@@ -232,9 +233,10 @@ export async function renderIncidentReportPdf(
         <Text style={styles.row}>끝.</Text>
 
         <View style={styles.companyWrap}>
-          <Text style={styles.companyLine}>{m.companyLine}</Text>
+          {/* 직인 먼저(뒤), 회사명 나중(앞) → 글자가 직인 위로 */}
           {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
           <Image style={styles.seal} src={SEAL_PATH} />
+          <Text style={styles.companyLine}>{m.companyLine}</Text>
         </View>
 
         <View style={styles.grayBar} />

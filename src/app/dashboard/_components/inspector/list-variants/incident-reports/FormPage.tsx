@@ -34,38 +34,41 @@ function CoverPage({ m }: { m: FormModel }) {
 
       <hr className="my-3 border-ink/50" />
 
-      <ol className="space-y-2 pl-7">
+      <ol className="space-y-6 pl-7">
         {m.coverBody.map((line, i) => (
           <li key={i} className="flex gap-3">
             <span className="shrink-0">{i + 1}.</span>
-            <span className="whitespace-pre-wrap">{line}</span>
+            <span className="whitespace-pre-wrap leading-relaxed">{line}</span>
           </li>
         ))}
       </ol>
 
-      <p className="mt-5">붙임 : 1. {m.title} 경위서 1부</p>
+      <p className="mt-8">붙임 : 1. {m.title} 경위서 1부</p>
       <p>끝.</p>
 
-      {/* 회사명 + 직인(문구와 겹침) */}
-      <div className="mt-12 flex justify-center">
+      {/* 회사명 + 직인(글자가 직인 위로 — 직인 뒤, 겹침) */}
+      <div className="mt-16 flex justify-center">
         <div className="relative inline-block">
-          <p className="text-2xl font-bold tracking-wide">{m.companyLine}</p>
           <Image
             src="/brand/incident-report-seal.png"
             alt="직인"
-            width={58}
-            height={58}
-            className="absolute -right-3 -top-5"
+            width={170}
+            height={170}
+            className="absolute -right-16 top-1/2 -translate-y-1/2 opacity-90"
           />
+          <p className="relative z-10 text-2xl font-bold tracking-wide">
+            {m.companyLine}
+          </p>
         </div>
       </div>
 
-      {/* 회색 바 + 압축 푸터 (전결/결재/시행/연락처) */}
-      <div className="mt-12 h-2 w-full bg-line" aria-hidden />
-      <p className="mt-1 text-right text-2xs font-bold">
+      {/* 회색 바 + 푸터 (전결/결재/시행/연락처) */}
+      {/* 일회성: 실제 공문 회색 구분 바 색 (토큰 line은 거의 검정이라 부적합) */}
+      <div className="mt-20 h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
+      <p className="mt-1.5 text-right text-sm font-bold">
         전결 {m.jeonkyeolDate}
       </p>
-      <div className="flex flex-wrap items-baseline gap-x-10 gap-y-0.5 text-xs">
+      <div className="flex flex-wrap items-baseline gap-x-16 gap-y-1 text-sm">
         {m.approvalLine
           .filter((a) => a.name)
           .map((a) => (
@@ -74,10 +77,10 @@ function CoverPage({ m }: { m: FormModel }) {
             </span>
           ))}
       </div>
-      <div className="mt-0.5 space-y-0.5 text-2xs">
+      <div className="mt-1 space-y-1 text-sm">
         <p>
           시 행&nbsp;&nbsp;{m.docNumber ?? ""}
-          <span className="ml-10">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;)</span>
+          <span className="ml-16">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;)</span>
         </p>
         {m.contactLines.map((line) => (
           <p key={line}>{line}</p>
