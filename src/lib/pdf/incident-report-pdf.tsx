@@ -35,7 +35,7 @@ const LOGO_PATH = path.join(
   process.cwd(),
   "public",
   "brand",
-  "jinhakapply-logo.png",
+  "jinhakapply-logo.jpg",
 );
 
 let fontRegistered = false;
@@ -102,11 +102,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#6b6253",
   },
-  logo: { width: 190, height: 37, alignSelf: "center", marginBottom: 3 },
+  logo: { width: 190, height: 36, alignSelf: "center", marginBottom: 3 },
   slogan: {
     fontSize: 7.5,
     textAlign: "center",
     color: "#6b6253",
+    letterSpacing: 0.8,
     marginBottom: 2,
   },
   logoRule: {
@@ -117,7 +118,8 @@ const styles = StyleSheet.create({
   row: { marginBottom: 3 },
   bold: { fontWeight: 700 },
   hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
-  coverList: { marginLeft: 16 },
+  coverList: { marginLeft: 16, marginTop: 22 },
+  attachLine: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 14 },
   coverNum: { width: 18 },
   coverText: { flex: 1, lineHeight: 1.7, textAlign: "justify" },
@@ -167,7 +169,14 @@ const styles = StyleSheet.create({
     padding: 8,
     fontWeight: 700,
   },
-  bodyFrame: { borderWidth: 1, borderColor: "#15120c", padding: 12, flexGrow: 1 },
+  bodyFrame: {
+    borderWidth: 1,
+    borderColor: "#15120c",
+    paddingTop: 20,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    flexGrow: 1,
+  },
   sectionH: { fontWeight: 700, marginTop: 10, marginBottom: 3 },
   sectionBody: { marginBottom: 4, textAlign: "justify" },
   hTable: {
@@ -242,10 +251,10 @@ export async function renderIncidentReportPdf(
             </View>
           ))}
         </View>
-        <Text style={[styles.row, { marginTop: 12 }]}>
+        <Text style={[styles.row, styles.attachLine, { marginTop: 16 }]}>
           붙임 : 1. {m.title} 경위서 1부
         </Text>
-        <Text style={styles.row}>끝.</Text>
+        <Text style={[styles.row, styles.attachLine]}>끝.</Text>
 
         {/* 세로 분산 — 공문이 A4 한 면을 꽉 채우도록 */}
         <View style={styles.spacer} />

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getIncidentReport } from "@/features/incident-reports/queries";
+import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 
@@ -12,6 +13,10 @@ export async function GET(
   if (!rep) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  // 발송 전이면 예상 시행번호를 미리보기로 표시(확정은 발송 시).
+  const docNumber =
+    rep.doc_number ??
+    (await previewNextDocNumber(new Date()).catch(() => null));
   const pdf = await renderIncidentReportPdf({
     recipientUniversity: rep.recipient_university,
     title: rep.title,
@@ -24,7 +29,7 @@ export async function GET(
     directorRole: rep.director_role,
     ceoName: rep.ceo_name,
     ceoRole: rep.ceo_role,
-    docNumber: rep.doc_number,
+    docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,
     cause: rep.cause,

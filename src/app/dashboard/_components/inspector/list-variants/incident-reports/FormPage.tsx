@@ -31,11 +31,13 @@ function CoverPage({ m }: { m: FormModel }) {
         src="/brand/jinhakapply-logo.png"
         alt="JINHAKapply"
         width={210}
-        height={41}
+        height={40}
         className="mx-auto"
         priority
       />
-      <p className="mt-2 text-center text-2xs text-muted">{m.brandHeader}</p>
+      <p className="mt-2 text-center text-2xs tracking-[0.12em] text-muted">
+        {m.brandHeader}
+      </p>
       <hr className="mt-1 border-ink" />
 
       <div className="mt-5 space-y-0.5">
@@ -44,9 +46,9 @@ function CoverPage({ m }: { m: FormModel }) {
         <p className="font-bold">제&nbsp;&nbsp;목&nbsp;&nbsp;{m.title}</p>
       </div>
 
-      <hr className="my-3 border-ink/50" />
+      <hr className="mt-3 border-ink/50" />
 
-      <ol className="space-y-6 pl-7">
+      <ol className="mt-10 space-y-6 pl-7">
         {m.coverBody.map((line, i) => (
           <li key={i} className="flex gap-3">
             <span className="shrink-0">{i + 1}.</span>
@@ -57,8 +59,8 @@ function CoverPage({ m }: { m: FormModel }) {
         ))}
       </ol>
 
-      <p className="mt-8">붙임 : 1. {m.title} 경위서 1부</p>
-      <p>끝.</p>
+      <p className="mt-8 pl-7">붙임 : 1. {m.title} 경위서 1부</p>
+      <p className="pl-7">끝.</p>
 
       {/* 세로 분산 — 공문이 A4 한 면을 꽉 채우도록 (직인 라인을 하단부로) */}
       <div className="grow" aria-hidden />
@@ -155,7 +157,7 @@ function ReportPage({ m }: { m: FormModel }) {
         <p className="border-b border-dashed border-ink/60 px-4 py-2 font-bold">
           제&nbsp;&nbsp;&nbsp;&nbsp;목 : {m.title}
         </p>
-        <div className="space-y-4 px-5 py-4">
+        <div className="space-y-4 px-5 pt-8 pb-4">
           {m.sections.map((sec) => (
             <div key={sec.no}>
               <p className="font-bold">

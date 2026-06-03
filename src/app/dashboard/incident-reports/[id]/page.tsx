@@ -6,6 +6,7 @@ import { PageHeader } from "../../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { getIncidentReport } from "@/features/incident-reports/queries";
+import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 import { ReportEditorWorkspace } from "./_components/ReportEditorWorkspace";
 
@@ -24,6 +25,11 @@ export default async function IncidentReportEditorPage({
   const me = await getCurrentOperator();
   const canManageApproval =
     me?.permission === "admin" || me?.email === report.approver_email;
+
+  // 발송 전이면 공문관리대장에서 예상 시행번호를 미리보기로 조회(확정 아님, 발송 시 채번).
+  const previewDocNumber =
+    report.doc_number ??
+    (await previewNextDocNumber(new Date()).catch(() => null));
 
   const config = resolvePageMeta("incidents", meta);
 
@@ -47,6 +53,7 @@ export default async function IncidentReportEditorPage({
         <ReportEditorWorkspace
           report={report}
           canManageApproval={canManageApproval}
+          previewDocNumber={previewDocNumber}
         />
       </section>
     </div>

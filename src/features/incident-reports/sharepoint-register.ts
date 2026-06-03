@@ -60,6 +60,22 @@ function sanitizeFileName(name: string): string {
 }
 
 /**
+ * 발송 전 미리보기용 시행번호 — 공문관리대장(발신 시트)에서 다음 번호를 "계산만" 한다.
+ * 대장에 행을 추가하지 않으므로 확정 아님(다른 발송이 먼저 되면 바뀔 수 있음).
+ * config 없거나 조회 실패 시 null.
+ */
+export async function previewNextDocNumber(today: Date): Promise<string | null> {
+  const cfg = sharePointConfig();
+  if (!cfg) return null;
+  const existing = await fetchSenderDocNumbers(
+    cfg.driveId,
+    cfg.gongmunItemId,
+    today.getFullYear(),
+  );
+  return nextDocNumber(existing, today);
+}
+
+/**
  * 채번 → docx(번호 포함) → 06.경위서 업로드 → 발신대장 행추가.
  * config 없으면 null. opts.token으로 위임 토큰 주입(Phase D).
  */

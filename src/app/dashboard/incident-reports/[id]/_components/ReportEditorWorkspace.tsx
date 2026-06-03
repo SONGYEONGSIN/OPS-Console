@@ -45,10 +45,13 @@ const inputClass =
 export function ReportEditorWorkspace({
   report,
   canManageApproval = false,
+  previewDocNumber = null,
 }: {
   report: IncidentReportRow;
   /** 승인자 본인 또는 admin — 승인 취소 가능 */
   canManageApproval?: boolean;
+  /** 발송 전 예상 시행번호(공문관리대장 조회, 확정 아님) */
+  previewDocNumber?: string | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -79,7 +82,7 @@ export function ReportEditorWorkspace({
     directorRole: report.director_role,
     ceoName: report.ceo_name,
     ceoRole: report.ceo_role,
-    docNumber: report.doc_number,
+    docNumber: report.doc_number ?? previewDocNumber,
     apology: draft.apology || null,
     gyeongwi: draft.gyeongwi || null,
     cause: draft.cause || null,
