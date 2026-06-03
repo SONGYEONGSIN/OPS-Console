@@ -10,8 +10,11 @@ export type FormSource = {
   authorName: string;
   authorEmail: string;
   approverName: string | null;
+  approverRole: string | null;
   directorName: string | null;
+  directorRole: string | null;
   ceoName: string | null;
+  ceoRole: string | null;
   docNumber: string | null;
   apology: string | null;
   gyeongwi: string | null;
@@ -100,11 +103,12 @@ export function deriveFormModel(s: FormSource): FormModel {
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(s.draftDate),
     receiptDate: formatYmd(s.draftDate),
+    // 담당자(기안자)는 고정 라벨, 나머지는 실제 직책(없으면 기본 라벨 폴백)
     approvalLine: [
       { role: "담당자", name: s.authorName },
-      { role: "팀장", name: s.approverName ?? "" },
-      { role: "본부장", name: s.directorName ?? "" },
-      { role: "사장", name: s.ceoName ?? "" },
+      { role: s.approverRole || "팀장", name: s.approverName ?? "" },
+      { role: s.directorRole || "본부장", name: s.directorName ?? "" },
+      { role: s.ceoRole || "사장", name: s.ceoName ?? "" },
     ],
     docNumber: s.docNumber,
     contactLines: [

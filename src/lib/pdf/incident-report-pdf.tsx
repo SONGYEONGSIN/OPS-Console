@@ -58,8 +58,11 @@ export type IncidentReportPdfInput = {
   authorName: string;
   authorEmail: string;
   approverName: string | null;
+  approverRole: string | null;
   directorName: string | null;
+  directorRole: string | null;
   ceoName: string | null;
+  ceoRole: string | null;
   docNumber: string | null;
   apology: string;
   gyeongwi: string | null;

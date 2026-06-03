@@ -13,8 +13,11 @@ const base: FormSource = {
   authorName: "이해영",
   authorEmail: "haelee@jinhakapply.com",
   approverName: "송영신",
+  approverRole: "팀장",
   directorName: null,
+  directorRole: null,
   ceoName: null,
+  ceoRole: null,
   docNumber: null,
   apology: null,
   gyeongwi: "경위 내용",
@@ -61,12 +64,28 @@ describe("deriveFormModel", () => {
     expect(m.sections[0]).toEqual({ no: 1, label: "경위", body: "경위 내용" });
     expect(m.sections[3].label).toBe("향후 대책");
   });
-  it("결재라인 4칸을 채운다(빈 값은 빈 문자열)", () => {
+  it("결재라인 4칸을 채운다(빈 값은 빈 문자열, 직책 폴백)", () => {
     expect(deriveFormModel(base).approvalLine).toEqual([
       { role: "담당자", name: "이해영" },
       { role: "팀장", name: "송영신" },
       { role: "본부장", name: "" },
       { role: "사장", name: "" },
+    ]);
+  });
+  it("저장된 실제 직책이 있으면 그 직책으로 결재라인 라벨을 표시한다", () => {
+    const m = deriveFormModel({
+      ...base,
+      approverRole: "팀장",
+      directorName: "이정일",
+      directorRole: "부장",
+      ceoName: "주정현",
+      ceoRole: "부사장",
+    });
+    expect(m.approvalLine).toEqual([
+      { role: "담당자", name: "이해영" },
+      { role: "팀장", name: "송영신" },
+      { role: "부장", name: "이정일" },
+      { role: "부사장", name: "주정현" },
     ]);
   });
   it("붙임 라인에 제목을 넣는다", () => {

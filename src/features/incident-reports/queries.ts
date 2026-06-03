@@ -11,22 +11,26 @@ export type OperatorLite = {
 };
 export type ApprovalChain = {
   author: { name: string; email: string };
-  approver: { name: string; email: string } | null;
-  director: { name: string } | null;
-  ceo: { name: string } | null;
+  approver: { name: string; email: string; role: string } | null;
+  director: { name: string; role: string } | null;
+  ceo: { name: string; role: string } | null;
 };
 
 export function pickApprovalChain(author: OperatorLite, all: OperatorLite[]): ApprovalChain {
   const byLeaderName = author.leader ? (all.find((o) => o.name === author.leader) ?? null) : null;
   const teamLead =
     byLeaderName ?? all.find((o) => o.team === author.team && o.role === "팀장") ?? null;
-  const director = all.find((o) => o.role === "본부장") ?? null;
+  // 본부장 우선, 없으면 부장 (조직별 상위 직책 차이 흡수)
+  const director =
+    all.find((o) => o.role === "본부장") ?? all.find((o) => o.role === "부장") ?? null;
   const ceo = all.find((o) => o.role === "사장") ?? null;
   return {
     author: { name: author.name, email: author.email },
-    approver: teamLead ? { name: teamLead.name, email: teamLead.email } : null,
-    director: director ? { name: director.name } : null,
-    ceo: ceo ? { name: ceo.name } : null,
+    approver: teamLead
+      ? { name: teamLead.name, email: teamLead.email, role: teamLead.role }
+      : null,
+    director: director ? { name: director.name, role: director.role } : null,
+    ceo: ceo ? { name: ceo.name, role: ceo.role } : null,
   };
 }
 

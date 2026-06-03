@@ -41,8 +41,11 @@ export type RegisterInput = {
   author_name: string;
   author_email: string;
   approver_name: string | null;
+  approver_role: string | null;
   director_name: string | null;
+  director_role: string | null;
   ceo_name: string | null;
+  ceo_role: string | null;
   apology: string | null;
   gyeongwi: string | null;
   cause: string | null;
@@ -83,8 +86,11 @@ export async function registerIncidentReportToSharePoint(
     authorName: rep.author_name,
     authorEmail: rep.author_email,
     approverName: rep.approver_name,
+    approverRole: rep.approver_role,
     directorName: rep.director_name,
+    directorRole: rep.director_role,
     ceoName: rep.ceo_name,
+    ceoRole: rep.ceo_role,
     docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,

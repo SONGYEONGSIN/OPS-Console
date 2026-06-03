@@ -78,8 +78,11 @@ export async function createIncidentReport(
       author_email: me.email,
       approver_name: chain?.approver?.name ?? null,
       approver_email: chain?.approver?.email ?? null,
+      approver_role: chain?.approver?.role ?? null,
       director_name: chain?.director?.name ?? null,
+      director_role: chain?.director?.role ?? null,
       ceo_name: chain?.ceo?.name ?? null,
+      ceo_role: chain?.ceo?.role ?? null,
       status: "draft",
     })
     .select()
