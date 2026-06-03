@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     fontSize: 7.5,
     textAlign: "center",
     color: "#6b6253",
-    letterSpacing: 0.8,
+    letterSpacing: 1.6,
     marginBottom: 2,
   },
   logoRule: {
@@ -147,12 +147,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   approvalItem: { fontSize: 10 },
-  docRow: { marginTop: 12, fontSize: 9, textAlign: "right" },
+  docRowWrap: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+  docRow: { fontSize: 9 },
   contact: {
     marginTop: 8,
     fontSize: 9,
     color: "#3a3528",
     lineHeight: 1.9,
+    letterSpacing: 0.5,
   },
   contactRow: {
     flexDirection: "row",
@@ -283,10 +289,12 @@ export async function renderIncidentReportPdf(
               </Text>
             ))}
         </View>
-        <Text style={styles.docRow}>
-          시 행  {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
-          {"        "}접 수 (        )
-        </Text>
+        <View style={styles.docRowWrap}>
+          <Text style={styles.docRow}>
+            시 행  {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
+          </Text>
+          <Text style={styles.docRow}>접 수 (        )</Text>
+        </View>
         <View style={styles.contact}>
           {m.contactLines.map((line) => {
             const segs = line.split("ㅣ").map((s) => s.trim());

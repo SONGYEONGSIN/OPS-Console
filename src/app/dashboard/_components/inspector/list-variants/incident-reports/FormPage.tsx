@@ -35,7 +35,7 @@ function CoverPage({ m }: { m: FormModel }) {
         className="mx-auto"
         priority
       />
-      <p className="mt-2 text-center text-2xs tracking-[0.12em] text-muted">
+      <p className="mt-2 text-center text-2xs tracking-[0.22em] text-muted">
         {m.brandHeader}
       </p>
       <hr className="mt-1 border-ink" />
@@ -95,15 +95,18 @@ function CoverPage({ m }: { m: FormModel }) {
           ))}
       </div>
       <div className="mt-4 space-y-2 text-sm">
-        <p className="text-right">
-          시 행&nbsp;&nbsp;
-          {m.docNumber ? (
-            `${m.docNumber} (${m.receiptDate})`
-          ) : (
-            <span className="text-muted">(자동 채번)</span>
-          )}
-          <span className="ml-16">접 수 (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</span>
-        </p>
+        {/* 시행은 왼쪽, 접수는 오른쪽 */}
+        <div className="flex justify-between">
+          <span>
+            시 행&nbsp;&nbsp;
+            {m.docNumber ? (
+              `${m.docNumber} (${m.receiptDate})`
+            ) : (
+              <span className="text-muted">(자동 채번)</span>
+            )}
+          </span>
+          <span>접 수 (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)</span>
+        </div>
         {m.contactLines.map((line) => {
           // ㅣ 구분 구간을 양끝으로 분산(단어는 단일 공백 유지) — 한 줄 꽉 차게
           const segs = line.split("ㅣ").map((s) => s.trim());
@@ -115,7 +118,7 @@ function CoverPage({ m }: { m: FormModel }) {
           return (
             <div
               key={line}
-              className="flex w-full items-baseline justify-between tracking-wide"
+              className="flex w-full items-baseline justify-between tracking-wider"
             >
               {items.map((it, i) => (
                 <span
