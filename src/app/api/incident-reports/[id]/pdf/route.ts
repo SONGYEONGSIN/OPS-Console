@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getIncidentReport } from "@/features/incident-reports/queries";
+import {
+  getIncidentReport,
+  resolveApprovalChain,
+} from "@/features/incident-reports/queries";
+import { getIncidentById } from "@/features/incidents/queries";
 import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
@@ -17,18 +21,26 @@ export async function GET(
   const docNumber =
     rep.doc_number ??
     (await previewNextDocNumber(new Date()).catch(() => null));
+  // 편집 화면과 동일하게 — 담당자/대학명/결재체인을 연결된 사고 기준으로 보강.
+  const incident = rep.incident_id
+    ? await getIncidentById(rep.incident_id).catch(() => null)
+    : null;
+  const chain = await resolveApprovalChain(
+    incident?.assignee_email ?? rep.author_email,
+  ).catch(() => null);
   const pdf = await renderIncidentReportPdf({
-    recipientUniversity: rep.recipient_university,
+    recipientUniversity:
+      incident?.university_name ?? rep.recipient_university,
     title: rep.title,
     draftDate: rep.draft_date,
-    authorName: rep.author_name,
-    authorEmail: rep.author_email,
-    approverName: rep.approver_name,
-    approverRole: rep.approver_role,
-    directorName: rep.director_name,
-    directorRole: rep.director_role,
-    ceoName: rep.ceo_name,
-    ceoRole: rep.ceo_role,
+    authorName: incident?.assignee_name ?? rep.author_name,
+    authorEmail: incident?.assignee_email ?? rep.author_email,
+    approverName: rep.approver_name ?? chain?.approver?.name ?? null,
+    approverRole: rep.approver_role ?? chain?.approver?.role ?? null,
+    directorName: rep.director_name ?? chain?.director?.name ?? null,
+    directorRole: rep.director_role ?? chain?.director?.role ?? null,
+    ceoName: rep.ceo_name ?? chain?.ceo?.name ?? null,
+    ceoRole: rep.ceo_role ?? chain?.ceo?.role ?? null,
     docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,

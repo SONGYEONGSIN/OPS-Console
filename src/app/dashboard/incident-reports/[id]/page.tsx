@@ -83,6 +83,7 @@ export default async function IncidentReportEditorPage({
           previewDocNumber={previewDocNumber}
           approval={approval}
           dutyName={dutyName}
+          dutyEmail={chainEmail}
         />
       </section>
     </div>
