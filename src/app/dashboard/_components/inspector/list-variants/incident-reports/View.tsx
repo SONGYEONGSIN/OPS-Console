@@ -64,6 +64,11 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
           {row.incidentReportUniversity && (
             <span className="text-sm font-medium text-ink">
               {row.incidentReportUniversity}
+              {row.incidentReportServiceName && (
+                <span className="ml-1.5 text-xs font-normal text-muted">
+                  · {row.incidentReportServiceName}
+                </span>
+              )}
             </span>
           )}
           <span

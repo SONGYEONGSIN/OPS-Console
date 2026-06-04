@@ -92,6 +92,14 @@ export default async function IncidentReportEditorPage({
           >
             ← 사고 보고 목록
           </Link>
+          <a
+            href={`/api/incident-reports/${report.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto cursor-pointer border border-line bg-cream px-3 py-1 text-sm text-ink hover:bg-washi-raised"
+          >
+            PDF
+          </a>
         </header>
         <ReportEditorWorkspace
           report={{ ...report, ...live }}

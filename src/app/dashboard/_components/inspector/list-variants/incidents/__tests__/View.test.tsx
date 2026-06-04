@@ -170,13 +170,15 @@ describe("IncidentView 탭", () => {
       isApprover: false,
       canSend: false,
     });
-    render(<IncidentView row={baseRow} />);
+    render(<IncidentView row={{ ...baseRow, incidentServiceName: "수시모집" }} />);
 
     fireEvent.click(screen.getByRole("button", { name: "경위서" }));
 
-    await waitFor(() =>
-      expect(screen.getByText("연결된 경위서")).toBeInTheDocument(),
-    );
+    // 작성중(draft)이면 제목·서비스명을 연결 사고의 현재값으로 라이브 미러
+    // (report.title "연결된 경위서"가 아니라 사고 제목 "사고 A"가 보인다)
+    await waitFor(() => expect(screen.getByText("사고 A")).toBeInTheDocument());
+    expect(screen.queryByText("연결된 경위서")).not.toBeInTheDocument();
+    expect(screen.getByText(/수시모집/)).toBeInTheDocument();
     expect(screen.getByText("작성중")).toBeInTheDocument();
   });
 });

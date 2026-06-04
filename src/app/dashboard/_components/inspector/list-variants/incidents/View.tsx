@@ -77,6 +77,9 @@ function IncidentInfo({ row }: { row: ListRow }) {
             {status}
           </span>
         </div>
+        {row.incidentTitle && (
+          <p className="text-sm font-medium text-ink">{row.incidentTitle}</p>
+        )}
         {(row.incidentYear || row.incidentAppType || row.incidentCategory) && (
           <p className="text-xs text-muted">
             {[
@@ -144,6 +147,8 @@ function bundleToReportRow(
   bundle: IncidentReportBundle,
   current: {
     university?: string;
+    serviceName?: string;
+    title?: string;
     causeSummary?: string | null;
     rootCause?: string | null;
     handlingRows?: { time: string; content: string }[];
@@ -155,6 +160,13 @@ function bundleToReportRow(
   return {
     ...incidentReportToListRow(report),
     incidentReportUniversity: current.university ?? report.recipient_university,
+    incidentReportServiceName:
+      (isDraft ? current.serviceName : undefined) ??
+      report.service_name ??
+      undefined,
+    incidentReportTitle: isDraft
+      ? (current.title ?? report.title)
+      : report.title,
     incidentReportGyeongwi: isDraft
       ? (current.causeSummary ?? report.gyeongwi)
       : report.gyeongwi,
@@ -186,6 +198,8 @@ function ReportTab({
   incidentId: string;
   incidentUniversity?: string;
   incidentContent?: {
+    serviceName?: string;
+    title?: string;
     causeSummary?: string | null;
     rootCause?: string | null;
     handlingRows?: { time: string; content: string }[];
@@ -278,6 +292,8 @@ export function IncidentView({ row }: ViewProps) {
           incidentId={row.id}
           incidentUniversity={row.incidentUniversityName}
           incidentContent={{
+            serviceName: row.incidentServiceName,
+            title: row.incidentTitle,
             causeSummary: row.incidentCauseSummary,
             rootCause: row.incidentRootCause,
             handlingRows: row.incidentHandlingRows,

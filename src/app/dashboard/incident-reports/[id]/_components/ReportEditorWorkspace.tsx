@@ -218,15 +218,7 @@ export function ReportEditorWorkspace({
   return (
     <div className="flex min-h-0 flex-1 gap-4">
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="relative flex-1 overflow-y-auto bg-washi-raised p-6">
-          <a
-            href={`/api/incident-reports/${report.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute right-4 top-4 z-10 cursor-pointer border border-line bg-cream px-3 py-1 text-sm text-ink hover:bg-washi-raised"
-          >
-            PDF
-          </a>
+        <div className="flex-1 overflow-y-auto bg-washi-raised p-6">
           <FormPage model={model} page={page} />
         </div>
         <div className="mt-3 flex items-center justify-center gap-4">

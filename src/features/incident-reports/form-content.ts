@@ -61,6 +61,18 @@ export function formatYmd(draftDate: string): string {
   return `${y}. ${mm.padStart(2, "0")}. ${dd.padStart(2, "0")}`;
 }
 
+/**
+ * 본문 텍스트를 줄 단위로 분해. '-'로 시작하는 줄(세부 항목)은 indent=true로 표시해
+ * 1)·2) 상위 항목 아래로 들여쓰기 렌더하도록 한다. 처리 표(rows)에는 적용하지 않는다.
+ * HTML 미리보기(FormPage)와 PDF가 공유.
+ */
+export function bodyLines(body: string): { text: string; indent: boolean }[] {
+  return body.split("\n").map((line) => ({
+    text: line,
+    indent: line.trimStart().startsWith("-"),
+  }));
+}
+
 export type FormModel = {
   brandHeader: string;
   recipientUniversity: string;
