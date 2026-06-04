@@ -86,6 +86,28 @@ describe("buildMenuTutorialSteps", () => {
     expect(steps[0]!.title).toContain("사고 보고");
   });
 
+  it("그룹 안 메뉴의 개요 스텝은 앵커 없이 중앙 안내한다(접힘 시 DOM 부재 대비)", () => {
+    const sections = sectionWith({
+      kind: "group",
+      label: "요청·자료",
+      items: [{ ico: "▤", label: "사고 보고", slug: "incidents" }],
+    });
+    const steps = buildMenuTutorialSteps(sections, copy);
+    // 개요 스텝(0)은 element 없음 — 그룹이 접혀 있어도 안전
+    expect(steps[0]!.element).toBeUndefined();
+  });
+
+  it("최상위(그룹 밖) 메뉴의 개요 스텝은 사이드바 항목을 스포트라이트한다", () => {
+    const sections = sectionWith({
+      kind: "item",
+      ico: "✓",
+      label: "내 작업",
+      slug: "my-todo",
+    });
+    const steps = buildMenuTutorialSteps(sections, copy);
+    expect(steps[0]!.element).toBe("[data-tutorial-slug='my-todo']");
+  });
+
   it("사이드바 순서대로 스텝을 생성한다", () => {
     const sections = sectionWith(
       { kind: "item", ico: "✓", label: "내 작업", slug: "my-todo" },

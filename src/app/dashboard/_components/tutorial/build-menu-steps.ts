@@ -5,16 +5,19 @@ import type { SbSection, SbItem } from "../../_data";
 import type { TutorialStep } from "./tutorial-steps";
 import type { MenuCopy } from "./tutorial-menu-copy";
 
+/** 평탄화된 메뉴 항목 — 그룹 안에 있었는지(inGroup) 함께 보관. */
+type FlatMenuItem = { item: SbItem; inGroup: boolean };
+
 /** sections(권한 필터됨)를 평탄화해 slug 있는 메뉴 항목만 사이드바 순서대로 추출. */
-function flattenMenuItems(sections: SbSection[]): SbItem[] {
-  const items: SbItem[] = [];
+function flattenMenuItems(sections: SbSection[]): FlatMenuItem[] {
+  const items: FlatMenuItem[] = [];
   for (const section of sections) {
     for (const entry of section.entries) {
       if (entry.kind === "item") {
-        if (entry.slug) items.push(entry);
+        if (entry.slug) items.push({ item: entry, inGroup: false });
       } else {
         for (const sub of entry.items) {
-          if (sub.slug) items.push(sub);
+          if (sub.slug) items.push({ item: sub, inGroup: true });
         }
       }
     }
@@ -22,12 +25,19 @@ function flattenMenuItems(sections: SbSection[]): SbItem[] {
   return items;
 }
 
-/** 한 메뉴의 스텝(개요·인터랙션·버튼) 생성. 버튼 콘텐츠가 없으면 버튼 스텝 생략. */
-function menuSteps(item: SbItem, copy: MenuCopy): TutorialStep[] {
+/**
+ * 한 메뉴의 스텝(개요·인터랙션·버튼) 생성. 버튼 콘텐츠가 없으면 버튼 스텝 생략.
+ * 그룹 안 메뉴는 접혀 있으면 DOM에 항목이 없으므로 개요 스텝을 앵커 없이(중앙) 안내한다.
+ */
+function menuSteps(
+  item: SbItem,
+  copy: MenuCopy,
+  inGroup: boolean,
+): TutorialStep[] {
   const label = item.label;
   const steps: TutorialStep[] = [
     {
-      element: `[data-tutorial-slug='${item.slug}']`,
+      element: inGroup ? undefined : `[data-tutorial-slug='${item.slug}']`,
       title: label,
       description: copy.overview,
     },
@@ -58,8 +68,8 @@ export function buildMenuTutorialSteps(
   sections: SbSection[],
   copy: Record<string, MenuCopy>,
 ): TutorialStep[] {
-  return flattenMenuItems(sections).flatMap((item) => {
+  return flattenMenuItems(sections).flatMap(({ item, inGroup }) => {
     const c = copy[item.slug!];
-    return c ? menuSteps(item, c) : [];
+    return c ? menuSteps(item, c, inGroup) : [];
   });
 }
