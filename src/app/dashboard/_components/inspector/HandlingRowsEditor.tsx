@@ -33,14 +33,14 @@ export function HandlingRowsEditor({
           </p>
         )}
         {rows.map((r, i) => (
-          <div key={i} className="flex items-start gap-1">
+          <div key={i} className="flex items-stretch gap-1">
             <input
               aria-label={`처리 시간 ${i + 1}`}
               value={r.time}
               maxLength={100}
-              placeholder="일시 (예: 06.02 14:27)"
+              placeholder="일시"
               onChange={(e) => updateRow(i, { time: e.target.value })}
-              className={`${cellClass} w-32 flex-none`}
+              className={`${cellClass} w-24 flex-none`}
             />
             <textarea
               aria-label={`처리 내용 ${i + 1}`}
@@ -56,7 +56,7 @@ export function HandlingRowsEditor({
               aria-label={`처리 행 삭제 ${i + 1}`}
               title="행 삭제"
               onClick={() => removeRow(i)}
-              className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
+              className="flex-none cursor-pointer self-start border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
             >
               ✕
             </button>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Section, DefList, Divider } from "../shared";
+import { Section, DefList, Divider, HandlingRowsBody } from "../shared";
 import type { ViewProps } from "../types";
 import { REPORT_STATUS_LABEL } from "@/features/incident-reports/schemas";
 import {
@@ -103,7 +103,10 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
         <BodyText value={row.incidentReportCause} />
       </Section>
       <Section title="처리">
-        <BodyText value={row.incidentReportHandling} />
+        <HandlingRowsBody
+          rows={row.incidentReportHandlingRows}
+          fallback={row.incidentReportHandling}
+        />
       </Section>
       <Section title="대책">
         <BodyText value={row.incidentReportPrevention} />

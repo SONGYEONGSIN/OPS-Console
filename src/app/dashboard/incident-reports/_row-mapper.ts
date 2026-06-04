@@ -14,6 +14,7 @@ export function incidentReportToListRow(r: IncidentReportRow): ListRow {
     incidentReportGyeongwi: r.gyeongwi,
     incidentReportCause: r.cause,
     incidentReportHandling: r.handling,
+    incidentReportHandlingRows: r.handling_rows,
     incidentReportPrevention: r.prevention,
     incidentReportApology: r.apology,
     incidentReportAuthorName: r.author_name,
