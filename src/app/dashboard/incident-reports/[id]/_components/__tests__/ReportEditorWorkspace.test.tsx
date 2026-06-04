@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 
 const { mockUpdate, mockRefresh, mockRevoke } = vi.hoisted(() => ({
@@ -138,8 +144,10 @@ describe("ReportEditorWorkspace", () => {
     });
     // 2페이지(경위서)에 표로 반영
     fireEvent.click(screen.getByLabelText("다음 페이지"));
-    expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByText("오류 확인 요청")).toBeInTheDocument();
+    const table = screen.getByRole("table");
+    expect(table).toBeInTheDocument();
+    // 표 셀에 반영 (편집 textarea 값과 구분해 표 범위로 한정)
+    expect(within(table).getByText("오류 확인 요청")).toBeInTheDocument();
     // 저장 시 handling_rows 포함
     fireEvent.click(screen.getByRole("button", { name: /저장/ }));
     await waitFor(() =>
