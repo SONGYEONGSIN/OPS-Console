@@ -64,21 +64,13 @@ export default async function IncidentReportEditorPage({
         description={config.description}
       />
       <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
-        <header className="mb-4 flex items-center justify-between gap-3">
+        <header className="mb-4 flex items-center gap-3">
           <Link
             href="/dashboard/incidents"
             className="text-vermilion hover:underline"
           >
             ← 사고 보고 목록
           </Link>
-          <a
-            href={`/api/incident-reports/${report.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cursor-pointer border border-line bg-transparent px-3 py-1 text-sm text-ink hover:bg-washi-raised"
-          >
-            PDF
-          </a>
         </header>
         <ReportEditorWorkspace
           report={{
