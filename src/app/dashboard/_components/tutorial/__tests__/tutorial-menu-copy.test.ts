@@ -21,6 +21,18 @@ describe("MENU_COPY 무결성", () => {
   it("시드 메뉴 my-todo가 존재한다", () => {
     expect(MENU_COPY["my-todo"]).toBeDefined();
   });
+
+  it("운영 핵심 batch(handover·backup·receivables·services·contracts)를 모두 포함한다", () => {
+    for (const slug of [
+      "handover",
+      "backup",
+      "receivables",
+      "services",
+      "contracts",
+    ]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
 });
 
 describe("isMenuCopyComplete", () => {
