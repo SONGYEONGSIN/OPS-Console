@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#6b6253",
   },
-  logo: { width: 190, height: 36, alignSelf: "center", marginBottom: 3 },
+  logo: { width: 158, height: 30, alignSelf: "center", marginBottom: 3 },
   slogan: {
     fontSize: 7.5,
     textAlign: "center",
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   companyLine: { fontSize: 18, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 132, top: -23, width: 76, height: 76 },
+  seal: { position: "absolute", right: 128, top: -16, width: 63, height: 63 },
   grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 40 },
   jeonkyeol: {
     fontSize: 9,
@@ -283,7 +283,7 @@ export async function renderIncidentReportPdf(
             </View>
           ))}
         </View>
-        <Text style={[styles.row, styles.attachLine, { marginTop: 16 }]}>
+        <Text style={[styles.row, styles.attachLine, { marginTop: 24 }]}>
           붙임 : 1. {m.title} 경위서 1부
         </Text>
         <Text style={[styles.row, styles.attachLine]}>끝.</Text>
