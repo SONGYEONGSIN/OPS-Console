@@ -31,7 +31,6 @@ type TextDraft = Record<TextKey, string>;
 /** 처리(rows) 앞/뒤로 나눠 렌더 — 문서 순서(경위→원인→처리→대책) 유지 */
 const PRE_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
   { key: "title", label: "제목", textarea: false },
-  { key: "recipient_university", label: "수신대학", textarea: false },
   { key: "gyeongwi", label: "경위", textarea: true },
   { key: "cause", label: "원인", textarea: true },
 ];
@@ -60,6 +59,7 @@ export function ReportEditorWorkspace({
   dutyName,
   dutyEmail,
   dutyPhone,
+  serviceName,
 }: {
   report: IncidentReportRow;
   /** 승인자 본인 또는 admin — 승인 취소 가능 */
@@ -74,6 +74,8 @@ export function ReportEditorWorkspace({
   dutyEmail?: string;
   /** 담당자 전화 — 공문 하단 연락처 전화에 사용(없으면 기본 대표번호). */
   dutyPhone?: string | null;
+  /** 서비스명 — 연결 사고에서 동기화(읽기전용 표시). */
+  serviceName?: string | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -234,6 +236,22 @@ export function ReportEditorWorkspace({
         {editable ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+              {/* 수신대학·서비스명 — 연결 사고에서 동기화(읽기전용) */}
+              <div className="space-y-1 border-b border-line pb-2 text-xs">
+                <p className="text-muted">
+                  수신대학{" "}
+                  <span className="ml-1 text-ink">
+                    {draft.recipient_university || "—"}
+                  </span>
+                </p>
+                <p className="text-muted">
+                  서비스명{" "}
+                  <span className="ml-1 text-ink">{serviceName || "—"}</span>
+                  <span className="ml-1.5 text-2xs text-faint">
+                    (사고에서 동기화 · 수정 불가)
+                  </span>
+                </p>
+              </div>
               {PRE_FIELDS.map(renderField)}
 
               {/* 처리 — 시간/내용 행 편집기 (경위서·사고보고 공용) */}

@@ -68,6 +68,15 @@ describe("ReportEditorWorkspace", () => {
     expect(reflected.length).toBeGreaterThan(0);
   });
 
+  it("수신대학은 편집 불가(읽기전용), 서비스명은 props로 표시", () => {
+    render(<ReportEditorWorkspace report={report} serviceName="수시모집" />);
+    // 수신대학 편집 input 없음
+    expect(screen.queryByLabelText("수신대학")).not.toBeInTheDocument();
+    // 서비스명 읽기전용 표시
+    expect(screen.getByText("수시모집")).toBeInTheDocument();
+    expect(screen.getByText(/사고에서 동기화/)).toBeInTheDocument();
+  });
+
   it("공문 뷰어 영역에 PDF 링크가 있다", () => {
     render(<ReportEditorWorkspace report={report} />);
     const pdf = screen.getByRole("link", { name: "PDF" });

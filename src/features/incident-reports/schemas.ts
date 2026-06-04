@@ -29,6 +29,8 @@ export const incidentReportRowSchema = z.object({
   id: z.string().uuid(),
   incident_id: z.string().uuid().nullable(),
   recipient_university: z.string().min(1),
+  /** 서비스명 — 승인 시 동결 스냅샷. draft에서는 연결 사고에서 라이브 표시. */
+  service_name: z.string().nullable().optional(),
   title: z.string().min(1),
   draft_date: z.string(),
   gyeongwi: z.string().nullable(),
@@ -75,6 +77,8 @@ export type IncidentReportUpdate = z.infer<typeof incidentReportUpdateSchema>;
 
 export const incidentReportSendSchema = z.object({
   id: z.string().uuid(),
-  recipient_emails: z.array(z.string().email()).min(1, "수신 이메일을 1개 이상 선택하세요."),
+  recipient_emails: z
+    .array(z.string().email())
+    .min(1, "수신 이메일을 1개 이상 선택하세요."),
 });
 export type IncidentReportSend = z.infer<typeof incidentReportSendSchema>;
