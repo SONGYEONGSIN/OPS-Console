@@ -30,4 +30,16 @@ describe("toIncidentPayload", () => {
   it("대학명을 university_name으로 매핑한다", () => {
     expect(toIncidentPayload(base, 2026).university_name).toBe("건국대학교");
   });
+
+  it("처리 행(incidentHandlingRows)을 handling_rows로 매핑한다", () => {
+    const rows = [{ time: "06.02", content: "확인" }];
+    expect(
+      toIncidentPayload({ ...base, incidentHandlingRows: rows }, 2026)
+        .handling_rows,
+    ).toEqual(rows);
+  });
+
+  it("처리 행이 없으면 빈 배열", () => {
+    expect(toIncidentPayload(base, 2026).handling_rows).toEqual([]);
+  });
 });

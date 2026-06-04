@@ -9,22 +9,21 @@ export const APP_TYPE_VALUES = [
 ] as const;
 
 /** PR-6: 담당부서 — operators.team(운영1팀/운영2팀)에 "운영부-" prefix 적용한 표시값 */
-export const DEPARTMENT_VALUES = [
-  "운영부-운영1팀",
-  "운영부-운영2팀",
-] as const;
+export const DEPARTMENT_VALUES = ["운영부-운영1팀", "운영부-운영2팀"] as const;
 
 /** PR-6: 현재상황 — 4단계 */
-export const STATUS_VALUES = [
-  "미처리",
-  "처리중",
-  "처리완료",
-  "보류",
-] as const;
+export const STATUS_VALUES = ["미처리", "처리중", "처리완료", "보류"] as const;
 
 export const appTypeSchema = z.enum(APP_TYPE_VALUES);
 export const departmentSchema = z.enum(DEPARTMENT_VALUES);
 export const statusSchema = z.enum(STATUS_VALUES);
+
+/** 처리 행 — 시간/내용 2열. 경위서(incident_reports.handling_rows)와 동일 형상. */
+export const incidentHandlingRowSchema = z.object({
+  time: z.string().max(100),
+  content: z.string().max(2000),
+});
+export type IncidentHandlingRow = z.infer<typeof incidentHandlingRowSchema>;
 
 export type IncidentAppType = z.infer<typeof appTypeSchema>;
 export type IncidentDepartment = z.infer<typeof departmentSchema>;
@@ -46,6 +45,7 @@ export const incidentRowSchema = z.object({
   cause_summary: z.string().nullable().optional(),
   root_cause: z.string().nullable().optional(),
   resolution: z.string().nullable().optional(),
+  handling_rows: z.array(incidentHandlingRowSchema).default([]),
   prevention: z.string().nullable().optional(),
   department: departmentSchema,
   assignee_email: z.string().email().nullable(),
@@ -74,6 +74,7 @@ export const incidentCreateSchema = z.object({
   cause_summary: z.string().max(5000).nullable().optional(),
   root_cause: z.string().max(5000).nullable().optional(),
   resolution: z.string().max(5000).nullable().optional(),
+  handling_rows: z.array(incidentHandlingRowSchema).optional(),
   prevention: z.string().max(5000).nullable().optional(),
   department: departmentSchema,
   status: statusSchema.default("미처리"),

@@ -77,9 +77,7 @@ function IncidentInfo({ row }: { row: ListRow }) {
             {status}
           </span>
         </div>
-        {(row.incidentYear ||
-          row.incidentAppType ||
-          row.incidentCategory) && (
+        {(row.incidentYear || row.incidentAppType || row.incidentCategory) && (
           <p className="text-xs text-muted">
             {[
               row.incidentYear ? `${row.incidentYear}학년도` : null,
@@ -126,12 +124,39 @@ function IncidentInfo({ row }: { row: ListRow }) {
       </Section>
 
       <Section title="사고처리">
-        <BodyText value={row.incidentResolution} />
+        <HandlingRowsView
+          rows={row.incidentHandlingRows}
+          fallback={row.incidentResolution}
+        />
       </Section>
 
       <Section title="사고대책">
         <BodyText value={row.incidentPrevention} />
       </Section>
+    </div>
+  );
+}
+
+/** 처리 행(시간/내용) 렌더 — 행이 없으면 레거시 resolution(text)으로 폴백. */
+function HandlingRowsView({
+  rows,
+  fallback,
+}: {
+  rows?: { time: string; content: string }[];
+  fallback?: string | null;
+}) {
+  const filled = (rows ?? []).filter((r) => r.time.trim() || r.content.trim());
+  if (filled.length === 0) return <BodyText value={fallback} />;
+  return (
+    <div className="space-y-1">
+      {filled.map((r, i) => (
+        <div key={i} className="flex gap-2 text-sm">
+          <span className="w-28 flex-none text-muted">{r.time || "—"}</span>
+          <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">
+            {r.content}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

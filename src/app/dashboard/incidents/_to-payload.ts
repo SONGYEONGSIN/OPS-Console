@@ -17,6 +17,7 @@ export function toIncidentPayload(row: ListRow, fallbackYear: number) {
     cause_summary: row.incidentCauseSummary ?? null,
     root_cause: row.incidentRootCause ?? null,
     resolution: row.incidentResolution ?? null,
+    handling_rows: row.incidentHandlingRows ?? [],
     prevention: row.incidentPrevention ?? null,
     department: row.incidentDepartment ?? "운영부-운영1팀",
     status: row.incidentStatus ?? "미처리",

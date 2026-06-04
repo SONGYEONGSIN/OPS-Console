@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EditFormProps } from "../types";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
+import { HandlingRowsEditor } from "../../HandlingRowsEditor";
 
 const APP_TYPE_OPTIONS = ["공통원서", "일반원서", "공공원서", "PIMS"] as const;
 const STATUS_OPTIONS = ["미처리", "처리중", "처리완료", "보류"] as const;
@@ -320,20 +321,13 @@ export function IncidentEditForm({
         />
       </label>
 
-      <label className="block text-xs">
+      <div className="block text-xs">
         <span className="mb-1 block text-muted">사고처리</span>
-        <textarea
-          aria-label="사고처리"
-          value={row.incidentResolution ?? ""}
-          onChange={(e) =>
-            setRow({ ...row, incidentResolution: e.target.value || null })
-          }
-          rows={3}
-          maxLength={5000}
-          placeholder="조치 내역"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+        <HandlingRowsEditor
+          rows={row.incidentHandlingRows ?? []}
+          onChange={(rows) => setRow({ ...row, incidentHandlingRows: rows })}
         />
-      </label>
+      </div>
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">사고대책</span>

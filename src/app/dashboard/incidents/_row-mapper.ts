@@ -23,6 +23,7 @@ export function incidentToListRow(
     incidentCauseSummary: r.cause_summary ?? null,
     incidentRootCause: r.root_cause ?? null,
     incidentResolution: r.resolution ?? null,
+    incidentHandlingRows: r.handling_rows ?? [],
     incidentPrevention: r.prevention ?? null,
     incidentDepartment: r.department,
     incidentAssigneeEmail: r.assignee_email ?? undefined,

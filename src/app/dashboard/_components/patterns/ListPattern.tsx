@@ -299,6 +299,8 @@ export type ListRow = {
   incidentCauseSummary?: string | null;
   incidentRootCause?: string | null;
   incidentResolution?: string | null;
+  /** incidents — 처리 행(시간/내용). resolution(text)의 구조화 후속. */
+  incidentHandlingRows?: { time: string; content: string }[];
   incidentPrevention?: string | null;
   /** incidents — 담당부서 */
   incidentDepartment?: "운영부-운영1팀" | "운영부-운영2팀";

@@ -16,6 +16,7 @@ import {
   revokeApproval,
 } from "@/features/incident-reports/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
+import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
 
 type TextKey =
   | "recipient_university"
@@ -30,7 +31,6 @@ type TextDraft = Record<TextKey, string>;
 /** 처리(rows) 앞/뒤로 나눠 렌더 — 문서 순서(경위→원인→처리→대책) 유지 */
 const PRE_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
   { key: "title", label: "제목", textarea: false },
-  { key: "recipient_university", label: "수신대학", textarea: false },
   { key: "gyeongwi", label: "경위", textarea: true },
   { key: "cause", label: "원인", textarea: true },
 ];
@@ -41,9 +41,6 @@ const POST_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
 
 const inputClass =
   "w-full border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none";
-/** 처리 행용 — w-full 없이(flex 안에서 폭 충돌 방지) */
-const cellClass =
-  "border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none";
 
 type ApprovalOverride = {
   approverName: string | null;
@@ -62,6 +59,7 @@ export function ReportEditorWorkspace({
   dutyName,
   dutyEmail,
   dutyPhone,
+  serviceName,
 }: {
   report: IncidentReportRow;
   /** 승인자 본인 또는 admin — 승인 취소 가능 */
@@ -76,6 +74,8 @@ export function ReportEditorWorkspace({
   dutyEmail?: string;
   /** 담당자 전화 — 공문 하단 연락처 전화에 사용(없으면 기본 대표번호). */
   dutyPhone?: string | null;
+  /** 서비스명 — 연결 사고에서 동기화(읽기전용 표시). */
+  serviceName?: string | null;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<TextDraft>({
@@ -119,15 +119,6 @@ export function ReportEditorWorkspace({
 
   function setField(key: TextKey, value: string) {
     setDraft((d) => ({ ...d, [key]: value }));
-  }
-  function updateRow(i: number, patch: Partial<HandlingRow>) {
-    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
-  }
-  function addRow() {
-    setRows((rs) => [...rs, { time: "", content: "" }]);
-  }
-  function removeRow(i: number) {
-    setRows((rs) => rs.filter((_, idx) => idx !== i));
   }
 
   function onSave() {
@@ -245,61 +236,26 @@ export function ReportEditorWorkspace({
         {editable ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+              {/* 수신대학·서비스명 — 연결 사고에서 동기화(읽기전용) */}
+              <div className="space-y-1 border-b border-line pb-2 text-xs">
+                <p className="text-muted">
+                  수신대학{" "}
+                  <span className="ml-1 text-ink">
+                    {draft.recipient_university || "—"}
+                  </span>
+                </p>
+                <p className="text-muted">
+                  서비스명{" "}
+                  <span className="ml-1 text-ink">{serviceName || "—"}</span>
+                  <span className="ml-1.5 text-2xs text-faint">
+                    (사고에서 동기화 · 수정 불가)
+                  </span>
+                </p>
+              </div>
               {PRE_FIELDS.map(renderField)}
 
-              {/* 처리 — 시간/내용 행 편집기 (왼=일시, 오른=내용, ✕=행 삭제) */}
-              <div className="text-xs">
-                <span className="mb-1 block text-muted">
-                  처리 — 왼쪽 칸=일시, 오른쪽 칸=내용
-                </span>
-                <div className="space-y-1.5">
-                  {rows.length === 0 && (
-                    <p className="text-2xs text-muted">
-                      아래 ‘+ 처리 행 추가’로 시간/내용 행을 추가하세요.
-                    </p>
-                  )}
-                  {rows.map((r, i) => (
-                    <div key={i} className="flex items-center gap-1">
-                      <input
-                        aria-label={`처리 시간 ${i + 1}`}
-                        value={r.time}
-                        maxLength={100}
-                        placeholder="일시 (예: 06.02 14:27)"
-                        onChange={(e) => updateRow(i, { time: e.target.value })}
-                        className={`${cellClass} w-32 flex-none`}
-                      />
-                      <input
-                        aria-label={`처리 내용 ${i + 1}`}
-                        value={r.content}
-                        maxLength={2000}
-                        placeholder="내용"
-                        onChange={(e) =>
-                          updateRow(i, { content: e.target.value })
-                        }
-                        className={`${cellClass} min-w-0 flex-1`}
-                      />
-                      <button
-                        type="button"
-                        aria-label={`처리 행 삭제 ${i + 1}`}
-                        title="행 삭제"
-                        onClick={() => removeRow(i)}
-                        className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-1.5 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={addRow}
-                    className="cursor-pointer border border-vermilion bg-transparent px-2.5 py-1 text-2xs font-medium text-vermilion hover:bg-vermilion hover:text-cream"
-                  >
-                    + 처리 행 추가
-                  </button>
-                </div>
-              </div>
+              {/* 처리 — 시간/내용 행 편집기 (경위서·사고보고 공용) */}
+              <HandlingRowsEditor rows={rows} onChange={setRows} />
 
               {POST_FIELDS.map(renderField)}
             </div>

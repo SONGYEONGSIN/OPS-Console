@@ -85,6 +85,7 @@ export default async function IncidentReportEditorPage({
           dutyName={dutyName}
           dutyEmail={chainEmail}
           dutyPhone={liveChain?.author?.phone ?? null}
+          serviceName={incident?.service_name ?? report.service_name ?? null}
         />
       </section>
     </div>
