@@ -46,6 +46,26 @@ describe("MENU_COPY 무결성", () => {
       expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
     }
   });
+
+  it("나머지 구현 메뉴 batch4를 모두 포함한다", () => {
+    for (const slug of [
+      "ai-assistant",
+      "assignments",
+      "automations",
+      "feedback",
+      "manuals",
+      "notices",
+      "onboarding",
+      "operating-guide",
+      "outcomes",
+      "reports",
+      "settings",
+      "team",
+      "worklog",
+    ]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
 });
 
 describe("isMenuCopyComplete", () => {
