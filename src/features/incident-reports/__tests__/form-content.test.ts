@@ -2,9 +2,26 @@ import { describe, it, expect } from "vitest";
 import {
   deriveFormModel,
   jeonkyeolDate,
+  bodyLines,
   type FormSource,
 } from "../form-content";
 import { defaultApology } from "../apology";
+
+describe("bodyLines", () => {
+  it("'-'로 시작하는 줄은 들여쓰기(indent=true)로 표시한다", () => {
+    expect(bodyLines("1) 항목\n- 세부\n2) 항목2")).toEqual([
+      { text: "1) 항목", indent: false },
+      { text: "- 세부", indent: true },
+      { text: "2) 항목2", indent: false },
+    ]);
+  });
+  it("앞에 공백이 있어도 '-'로 시작하면 들여쓴다", () => {
+    expect(bodyLines("  - 들여쓴 대시")[0].indent).toBe(true);
+  });
+  it("빈 문자열은 빈 줄 1개를 반환한다", () => {
+    expect(bodyLines("")).toEqual([{ text: "", indent: false }]);
+  });
+});
 
 const base: FormSource = {
   recipientUniversity: "건국대학교",

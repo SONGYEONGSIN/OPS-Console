@@ -1,7 +1,23 @@
 "use client";
 
 import Image from "next/image";
-import type { FormModel } from "@/features/incident-reports/form-content";
+import {
+  bodyLines,
+  type FormModel,
+} from "@/features/incident-reports/form-content";
+
+/** 섹션 본문 — 줄 단위 렌더. '-' 세부 항목은 들여쓰기, 양쪽정렬 없이 자연 줄바꿈. */
+function SectionBody({ body }: { body: string }) {
+  return (
+    <div className="mt-1 pl-3 leading-relaxed">
+      {bodyLines(body).map((ln, i) => (
+        <p key={i} className={`whitespace-pre-wrap ${ln.indent ? "pl-5" : ""}`}>
+          {ln.text}
+        </p>
+      ))}
+    </div>
+  );
+}
 
 /** A4 종이 면 — 실제 공문 여백(위1·아래1·왼1.8·오른2 cm) 적용 */
 function Sheet({
@@ -190,7 +206,8 @@ function ReportPage({ m }: { m: FormModel }) {
         <p className="border-b border-dashed border-ink/60 px-4 py-2 font-bold">
           제&nbsp;&nbsp;&nbsp;&nbsp;목 : {m.title}
         </p>
-        <div className="space-y-4 px-5 pt-8 pb-4">
+        {/* 세로 밸런스 — 내용이 적든 많든 면을 고르게 채우도록 분산(justify-between) */}
+        <div className="flex grow flex-col justify-between gap-4 px-5 pt-8 pb-4">
           {m.sections.map((sec) => (
             <div key={sec.no}>
               <p className="font-bold">
@@ -199,13 +216,13 @@ function ReportPage({ m }: { m: FormModel }) {
               {sec.rows && sec.rows.length > 0 ? (
                 <HandlingTable rows={sec.rows} />
               ) : (
-                <p className="mt-1 whitespace-pre-wrap pl-3 text-justify">
-                  {sec.body}
-                </p>
+                <SectionBody body={sec.body} />
               )}
             </div>
           ))}
-          <p className="whitespace-pre-wrap pt-2 text-justify">{m.closing}</p>
+          <p className="whitespace-pre-wrap pt-2 leading-relaxed">
+            {m.closing}
+          </p>
         </div>
       </div>
     </Sheet>

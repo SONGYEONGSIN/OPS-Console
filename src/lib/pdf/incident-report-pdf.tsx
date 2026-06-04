@@ -10,7 +10,10 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
-import { deriveFormModel } from "@/features/incident-reports/form-content";
+import {
+  deriveFormModel,
+  bodyLines,
+} from "@/features/incident-reports/form-content";
 import type { HandlingRow } from "@/features/incident-reports/schemas";
 
 const PRETENDARD_REGULAR = path.join(
@@ -189,9 +192,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
     flexGrow: 1,
+    // 세로 밸런스 — 내용 분량과 무관하게 면을 고르게 채움
+    justifyContent: "space-between",
   },
   sectionH: { fontWeight: 700, marginTop: 10, marginBottom: 3 },
-  sectionBody: { marginBottom: 4, textAlign: "justify" },
+  sectionBodyWrap: { marginTop: 2, marginLeft: 8 },
+  sectionBodyIndent: { marginLeft: 14 },
   hTable: {
     marginTop: 4,
     marginBottom: 4,
@@ -219,6 +225,19 @@ const styles = StyleSheet.create({
     color: "#9a917f",
   },
 });
+
+/** 섹션 본문 — 줄 단위. '-' 세부 항목 들여쓰기, 양쪽정렬 없이 자연 줄바꿈. */
+function SectionBody({ body }: { body: string }) {
+  return (
+    <View style={styles.sectionBodyWrap}>
+      {bodyLines(body).map((ln, i) => (
+        <Text key={i} style={ln.indent ? styles.sectionBodyIndent : undefined}>
+          {ln.text || " "}
+        </Text>
+      ))}
+    </View>
+  );
+}
 
 function HandlingTable({ rows }: { rows: readonly HandlingRow[] }) {
   return (
@@ -333,7 +352,7 @@ export async function renderIncidentReportPdf(
               {sec.rows && sec.rows.length > 0 ? (
                 <HandlingTable rows={sec.rows} />
               ) : (
-                <Text style={styles.sectionBody}>{sec.body}</Text>
+                <SectionBody body={sec.body} />
               )}
             </View>
           ))}

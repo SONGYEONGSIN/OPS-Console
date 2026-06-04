@@ -323,6 +323,7 @@ export type ListRow = {
     | "sent";
   /** incident-reports — 수신대학 */
   incidentReportUniversity?: string;
+  incidentReportServiceName?: string;
   /** incident-reports — 제목 */
   incidentReportTitle?: string;
   /** incident-reports — 작성일자 (YYYY-MM-DD) */
