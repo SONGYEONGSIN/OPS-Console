@@ -40,6 +40,12 @@ describe("MENU_COPY 무결성", () => {
       expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
     }
   });
+
+  it("작업·AI batch(my-ai-work·ai-tips·ai-insight·schedule)를 모두 포함한다", () => {
+    for (const slug of ["my-ai-work", "ai-tips", "ai-insight", "schedule"]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
 });
 
 describe("isMenuCopyComplete", () => {
