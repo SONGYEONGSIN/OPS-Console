@@ -61,15 +61,39 @@ export function formatYmd(draftDate: string): string {
   return `${y}. ${mm.padStart(2, "0")}. ${dd.padStart(2, "0")}`;
 }
 
+/** 목록 항목 시작 — "1)" "2." "- " "• " 등. 이런 줄은 항상 새 줄로 유지. */
+const LIST_MARKER = /^\s*(\d+[).]|[-–—•▪·])/;
+/** 문장 종료 — 마침표/물음표/느낌표/콜론(닫는 따옴표·괄호 허용). */
+const SENTENCE_END = /[.!?:]["')\]]?\s*$/;
+
 /**
  * 본문 텍스트를 줄 단위로 분해. '-'로 시작하는 줄(세부 항목)은 indent=true로 표시해
- * 1)·2) 상위 항목 아래로 들여쓰기 렌더하도록 한다. 처리 표(rows)에는 적용하지 않는다.
+ * 1)·2) 상위 항목 아래로 들여쓰기 렌더한다. 처리 표(rows)에는 적용하지 않는다.
+ *
+ * 또한 **문장 중간에 끊긴 하드 개행을 복원**한다: 직전 줄이 문장 부호로 끝나지 않고
+ * 현재 줄이 목록 항목/빈 줄이 아니면, 사용자가 의도하지 않은 소프트 줄바꿈으로 보고
+ * 한 줄로 이어붙인다(공문에서 폭이 남는데 줄이 끊기는 현상 방지). 목록·문단 구분 개행은 유지.
  * HTML 미리보기(FormPage)와 PDF가 공유.
  */
 export function bodyLines(body: string): { text: string; indent: boolean }[] {
-  return body.split("\n").map((line) => ({
-    text: line,
-    indent: line.trimStart().startsWith("-"),
+  const merged: string[] = [];
+  for (const line of body.split("\n")) {
+    const prev = merged[merged.length - 1];
+    const joinable =
+      prev !== undefined &&
+      prev.trim() !== "" &&
+      line.trim() !== "" &&
+      !LIST_MARKER.test(line) &&
+      !SENTENCE_END.test(prev);
+    if (joinable) {
+      merged[merged.length - 1] = `${prev.replace(/\s+$/, "")} ${line.trim()}`;
+    } else {
+      merged.push(line);
+    }
+  }
+  return merged.map((text) => ({
+    text,
+    indent: text.trimStart().startsWith("-"),
   }));
 }
 

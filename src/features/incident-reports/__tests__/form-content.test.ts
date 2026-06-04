@@ -21,6 +21,24 @@ describe("bodyLines", () => {
   it("빈 문자열은 빈 줄 1개를 반환한다", () => {
     expect(bodyLines("")).toEqual([{ text: "", indent: false }]);
   });
+  it("문장 미완(마침표 없는) 줄 뒤의 비목록 줄은 이어붙여 소프트 줄바꿈을 복원한다", () => {
+    const r = bodyLines(
+      "대학에서 전산 자료를 내려받기\n전에 전산파일을 검수하겠습니다.",
+    );
+    expect(r).toHaveLength(1);
+    expect(r[0].text).toBe(
+      "대학에서 전산 자료를 내려받기 전에 전산파일을 검수하겠습니다.",
+    );
+  });
+  it("마침표로 끝난 줄 다음은 합치지 않는다(문단 유지)", () => {
+    expect(bodyLines("검수하겠습니다.\n또한, 추가로 보겠습니다.")).toHaveLength(
+      2,
+    );
+  });
+  it("목록 항목(- / 숫자))은 앞 줄과 합치지 않고 새 줄로 유지한다", () => {
+    expect(bodyLines("1) 종목 코드\n- 세부 항목")).toHaveLength(2);
+    expect(bodyLines("종목 코드\n2) 다음 항목")).toHaveLength(2);
+  });
 });
 
 const base: FormSource = {
