@@ -9,6 +9,8 @@ import {
   senderForWeek,
   subWeekText,
   subDateRange,
+  extractMonthWeek,
+  buildWeeklyReportMessage,
   WEEKLY_SENDERS,
 } from "../rollover-logic";
 
@@ -105,5 +107,35 @@ describe("셀 값 치환", () => {
   });
   it("패턴 없으면 원본 유지", () => {
     expect(subDateRange("날짜 없음", "1/1~1/5")).toBe("날짜 없음");
+  });
+});
+
+describe("extractMonthWeek (파일명에서 N월N주차)", () => {
+  it("차주 파일명에서 월/주차 추출", () => {
+    expect(
+      extractMonthWeek("주간업무보고서_진학어플라이본부_2026_2월1주차.xlsx"),
+    ).toEqual({ month: 2, week: 1 });
+  });
+  it("불일치 시 null", () => {
+    expect(extractMonthWeek("xxx.xlsx")).toBeNull();
+  });
+});
+
+describe("buildWeeklyReportMessage (Teams HTML)", () => {
+  it("정확한 문구·발송자·링크 포함", () => {
+    const html = buildWeeklyReportMessage({
+      month: 2,
+      week: 1,
+      sender: "임형섭 부장님",
+      shareLink: "https://share/x",
+      fileName: "주간업무보고서_진학어플라이본부_2026_2월1주차.xlsx",
+    });
+    expect(html).toContain("2월 1주차 주간보고 공유드립니다");
+    expect(html).toContain("발송자 : 임형섭 부장님");
+    expect(html).toContain('<a href="https://share/x">');
+    expect(html).toContain(
+      "주간업무보고서_진학어플라이본부_2026_2월1주차.xlsx</a>",
+    );
+    expect(html).toContain("좋아요 눌러주세요");
   });
 });

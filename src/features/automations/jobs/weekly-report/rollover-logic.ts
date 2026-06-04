@@ -134,3 +134,31 @@ export function subWeekText(cellValue: string, newSheetname: string): string {
 export function subDateRange(cellValue: string, newRange: string): string {
   return cellValue.replace(/\d+\/\d+~\d+\/\d+/, newRange);
 }
+
+/** 파일명에서 "N월N주차" 추출 (Teams 메시지 문구용). */
+export function extractMonthWeek(
+  filename: string,
+): { month: number; week: number } | null {
+  const m = /(\d+)월(\d+)주차/.exec(filename);
+  if (!m) return null;
+  return { month: Number(m[1]), week: Number(m[2]) };
+}
+
+/** Teams 그룹채팅 HTML 메시지 (docs/buseobogo.py create_teams_message 이식). */
+export function buildWeeklyReportMessage(args: {
+  month: number;
+  week: number;
+  sender: string;
+  shareLink: string;
+  fileName: string;
+}): string {
+  return [
+    "안녕하세요.<br>",
+    `${args.month}월 ${args.week}주차 주간보고 공유드립니다.<br>`,
+    "작성 후 좋아요 눌러주세요.<br>",
+    "<br>",
+    `발송자 : ${args.sender}<br>`,
+    "<br>",
+    `<a href="${args.shareLink}">${args.fileName}</a>`,
+  ].join("\n");
+}

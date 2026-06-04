@@ -15,7 +15,11 @@ const DELEGATED_SCOPE = "offline_access Files.ReadWrite.All Sites.ReadWrite.All"
 
 export async function getDelegatedGraphToken(
   operatorEmail: string,
+  opts?: { scope?: string },
 ): Promise<string | null> {
+  // 기능별 스코프 분리 — Teams(Chat.ReadWrite) 등은 전용 스코프를 넘긴다.
+  // 저장된 refresh token은 동의된 모든 스코프에 토큰 발급 가능(스코프 잠금 아님).
+  const scope = opts?.scope ?? DELEGATED_SCOPE;
   const tenant = process.env.AZURE_AD_TENANT_ID;
   const clientId = process.env.AZURE_AD_CLIENT_ID;
   const secret = process.env.AZURE_AD_CLIENT_SECRET;
@@ -40,7 +44,7 @@ export async function getDelegatedGraphToken(
         client_id: clientId,
         client_secret: secret,
         refresh_token: refreshToken,
-        scope: DELEGATED_SCOPE,
+        scope,
       }),
     },
   );
