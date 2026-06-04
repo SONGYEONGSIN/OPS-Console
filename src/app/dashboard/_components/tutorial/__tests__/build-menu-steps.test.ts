@@ -108,6 +108,40 @@ describe("buildMenuTutorialSteps", () => {
     expect(steps[0]!.element).toBe("[data-tutorial-slug='my-todo']");
   });
 
+  it("개요 스텝에만 navigateTo(slug)가 설정된다(이동용)", () => {
+    const sections = sectionWith({
+      kind: "item",
+      ico: "✓",
+      label: "내 작업",
+      slug: "my-todo",
+    });
+    const steps = buildMenuTutorialSteps(sections, copy);
+    expect(steps[0]!.navigateTo).toBe("my-todo"); // 개요
+    expect(steps[1]!.navigateTo).toBeUndefined(); // 인터랙션
+    expect(steps[2]!.navigateTo).toBeUndefined(); // 버튼
+  });
+
+  it("버튼이 여러 개면 줄바꿈(<br>)으로 구분한다", () => {
+    const twoBtn: Record<string, MenuCopy> = {
+      "my-todo": {
+        overview: "o",
+        interaction: "i",
+        buttons: [
+          { label: "A", desc: "a" },
+          { label: "B", desc: "b" },
+        ],
+      },
+    };
+    const sections = sectionWith({
+      kind: "item",
+      ico: "✓",
+      label: "내 작업",
+      slug: "my-todo",
+    });
+    const steps = buildMenuTutorialSteps(sections, twoBtn);
+    expect(steps[2]!.description).toContain("<br>");
+  });
+
   it("사이드바 순서대로 스텝을 생성한다", () => {
     const sections = sectionWith(
       { kind: "item", ico: "✓", label: "내 작업", slug: "my-todo" },

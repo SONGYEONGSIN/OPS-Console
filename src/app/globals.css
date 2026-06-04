@@ -334,3 +334,15 @@ body::before {
 .animate-star-twinkle {
   animation: star-twinkle 2s ease-in-out infinite;
 }
+
+/* 가이드 투어(driver.js) 팝업 — 기본(300px)보다 넓게 + 버튼 목록(<br>) 줄간격 확보 */
+.driver-popover.ops-tour-popover {
+  max-width: 420px;
+}
+.driver-popover.ops-tour-popover .driver-popover-title {
+  font-size: 1.05rem;
+}
+.driver-popover.ops-tour-popover .driver-popover-description {
+  font-size: 0.9rem;
+  line-height: 1.65;
+}

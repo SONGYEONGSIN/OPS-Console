@@ -40,6 +40,8 @@ function menuSteps(
       element: inGroup ? undefined : `[data-tutorial-slug='${item.slug}']`,
       title: label,
       description: copy.overview,
+      // 개요 스텝 진입 시 실제 그 메뉴로 이동
+      navigateTo: item.slug,
     },
     {
       element: "[data-tutorial='content']",
@@ -50,9 +52,10 @@ function menuSteps(
   if (copy.buttons.length > 0) {
     steps.push({
       title: `${label} — 주요 버튼`,
+      // driver.js는 description을 innerHTML로 렌더 → <br>로 버튼별 줄바꿈
       description: copy.buttons
         .map((b) => `• ${b.label} — ${b.desc}`)
-        .join("\n"),
+        .join("<br>"),
     });
   }
   return steps;
