@@ -110,4 +110,6 @@ source: user-direct (라이브 피드백 5건 + 양방향 동기화 결정)
 | 2026-06-04 | T4 | 작성 | 마이그 2건 — **Supabase 적용 대기** |
 | 2026-06-04 | T5 | done | HandlingRowsEditor 공유 추출 + textarea(항목2a) |
 | 2026-06-04 | T6 | done | 사고 행기반 처리(항목2b) + handling_rows |
-| 2026-06-04 | T7·T8 | 대기 | 양방향 배선 + 승인 동결 (다음) |
+| 2026-06-04 | 마이그 | 적용됨 | service_role 2/2 검증 (incidents.handling_rows, incident_reports.service_name) |
+| 2026-06-04 | T7a | done | 수신대학 읽기전용(3a) + 서비스명 표시(3b) |
+| 2026-06-04 | T7b·T8 | 대기 | item1 양방향 저장 + 승인 동결 (체크포인트 — 다음) |
