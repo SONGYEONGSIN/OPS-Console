@@ -113,3 +113,9 @@ source: user-direct (라이브 피드백 5건 + 양방향 동기화 결정)
 | 2026-06-04 | 마이그 | 적용됨 | service_role 2/2 검증 (incidents.handling_rows, incident_reports.service_name) |
 | 2026-06-04 | T7a | done | 수신대학 읽기전용(3a) + 서비스명 표시(3b) |
 | 2026-06-04 | T7b·T8 | 대기 | item1 양방향 저장 + 승인 동결 (체크포인트 — 다음) |
+| 2026-06-04 | PR-B | 머지 | #327 머지 (2a·2b·3a·3b + 마이그). **item1·동결은 follow-up으로 보류** |
+
+## 남은 follow-up (item 1 + 동결) — 재개 가이드
+- **item 1 (양방향 저장)**: ReportEditorWorkspace.onSave를 분리 — 공유 필드(경위→cause_summary/원인→root_cause/처리→handling_rows/대책→prevention)는 `updateIncident(report.incident_id, ...)`로, 고유 필드(제목/사과문)는 `updateIncidentReport`로. page.tsx는 draft/rejected일 때 incident에서 gyeongwi/cause/handling_rows/prevention 라이브 override(현재 university_name·service_name만). updateIncident import 추가.
+- **T8 동결**: approveIncidentReport에서 사고 공유 필드를 경위서 컬럼(recipient_university/service_name/gyeongwi/cause/handling_rows/prevention)에 스냅샷 복사. page.tsx는 approved일 때 report 스냅샷 사용(라이브 override 끔).
+- 테스트 재작업: workspace 저장 테스트(현재 updateIncidentReport 단일 호출 가정) → updateIncident+updateIncidentReport 분리 가정으로. fixture incident_id를 non-null로.
