@@ -90,7 +90,7 @@ function AutomationRow({
           <div className="font-semibold text-ink transition-colors group-hover:text-vermilion">
             {status.label}
           </div>
-          <div className="mt-0.5 text-xs leading-[1.5] text-muted">
+          <div className="mt-0.5 whitespace-pre-line text-xs leading-[1.5] text-muted">
             {status.description}
           </div>
           <div className="mt-1 text-[11px] text-muted opacity-0 transition-opacity group-hover:opacity-100">

@@ -1,0 +1,29 @@
+name: weekly-report-rollover
+
+on:
+  # schedule 제거 — cron-job.org(매주 수요일 10:00 KST)가 /api/automations/run 호출.
+  # GitHub cron은 지연·누락이 잦아 receivables/service-notice와 동일하게 cron-job.org로
+  # 일원화. 여기서는 수동 트리거(workflow_dispatch)만 유지.
+  workflow_dispatch:
+
+# Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 동작하도록 강제.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  trigger:
+    name: POST /api/automations/run?jobId=weekly-report-rollover
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Trigger automation
+        env:
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/weekly-report-rollover.mjs

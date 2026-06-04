@@ -4,6 +4,7 @@ import { runInsightsCollect } from "./jobs/insights-collect";
 import { runReceivablesMailOperator } from "./jobs/receivables-mail-operator";
 import { runReceivablesDepositMatch } from "./jobs/receivables-deposit-match";
 import { runServiceNoticeMail } from "./jobs/service-notice-mail";
+import { runWeeklyReportRollover } from "./jobs/weekly-report";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -41,6 +42,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "매월 첫 영업일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runServiceNoticeMail,
+  },
+  {
+    id: "weekly-report-rollover",
+    label: "본부차주보고 알림",
+    description:
+      "직전 주차 주간업무보고서를 차주로 롤오버(파일 복제 + 시트/셀 갱신)하고 공유 링크를 Teams 그룹채팅에 발송합니다.\nWEEKLY_REPORT_DRY_RUN=true(기본) 시 발송 없이 차주명·발송자만 보고. 발송자는 임형섭→전성대→허승철 부장 순환.",
+    scheduleInfo: "매주 수요일 10:00 (cron-job.org)",
+    cooldownMinutes: 60,
+    run: runWeeklyReportRollover,
   },
 ];
 
