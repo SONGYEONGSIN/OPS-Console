@@ -100,7 +100,7 @@ export default async function IncidentReportEditorPage({
               href={`/api/incident-reports/${report.id}/pdf`}
               target="_blank"
               rel="noopener noreferrer"
-              className="cursor-pointer border border-line bg-cream px-3 py-1 text-sm text-ink hover:bg-washi-raised"
+              className="cursor-pointer border border-line bg-cream px-3 py-1 text-sm text-ink transition-colors hover:bg-washi"
             >
               PDF
             </a>
