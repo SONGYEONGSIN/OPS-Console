@@ -1,0 +1,29 @@
+name: weekly-report-rollover
+
+on:
+  schedule:
+    # 매주 월요일 00:00 UTC = 한국 월요일 09:00 — 차주 보고 생성·공유
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+# Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 동작하도록 강제.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  trigger:
+    name: POST /api/automations/run?jobId=weekly-report-rollover
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Trigger automation
+        env:
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/weekly-report-rollover.mjs
