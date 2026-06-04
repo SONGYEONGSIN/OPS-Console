@@ -33,6 +33,13 @@ describe("MENU_COPY 무결성", () => {
       expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
     }
   });
+
+  it("요청·자료 batch(incidents·contacts·data-requests)를 모두 포함한다", () => {
+    // vault·meetings는 페이지 미구현이라 제외 — 빌더가 skip한다.
+    for (const slug of ["incidents", "contacts", "data-requests"]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
 });
 
 describe("isMenuCopyComplete", () => {
