@@ -48,7 +48,7 @@ export function Sidebar({
     sections.forEach((s, si) =>
       s.entries.forEach((e, ei) => {
         if (e.kind === "group" && e.defaultOpen) init.add(`${si}:${ei}`);
-      })
+      }),
     );
     return init;
   });
@@ -166,6 +166,7 @@ function ItemRow({
         href={href}
         prefetch={false}
         aria-current={isActive ? "page" : undefined}
+        data-tutorial-slug={slug}
         className={`${className} cursor-pointer`}
       >
         {inner}
@@ -215,13 +216,7 @@ function GroupBlock({
   );
 }
 
-function SubItemRow({
-  item,
-  pathname,
-}: {
-  item: SbItem;
-  pathname: string;
-}) {
+function SubItemRow({ item, pathname }: { item: SbItem; pathname: string }) {
   const isActive = !!item.slug && pathname === `/dashboard/${item.slug}`;
   const href = item.slug ? `/dashboard/${item.slug}` : null;
 
@@ -259,6 +254,7 @@ function SubItemRow({
         href={href}
         prefetch={false}
         aria-current={isActive ? "page" : undefined}
+        data-tutorial-slug={item.slug}
         className={`${className} cursor-pointer`}
       >
         {inner}

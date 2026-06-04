@@ -36,7 +36,9 @@ export default async function DashboardLayout({
   return (
     <DashboardShell
       topBar={<AuthTitleBar />}
-      chrome={<Chrome operator={operator} alerts={alerts} />}
+      chrome={
+        <Chrome operator={operator} alerts={alerts} sections={sections} />
+      }
       appBar={<AppBar />}
       statusBar={<AuthStatusBar />}
       sections={sections}
@@ -46,4 +48,3 @@ export default async function DashboardLayout({
     </DashboardShell>
   );
 }
-

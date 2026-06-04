@@ -13,6 +13,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+// TutorialGuideButton은 driver.js 의존 — chrome 렌더 격리
+vi.mock("../../tutorial/TutorialGuideButton", () => ({
+  TutorialGuideButton: () => <div>가이드</div>,
+}));
+
 import { ChromeRight } from "../ChromeRight";
 
 const operator: CurrentOperator = {
@@ -51,7 +56,7 @@ afterEach(() => vi.useRealTimers());
 
 describe("ChromeRight", () => {
   it("SessionTimer + AlertsBell + ChromeUser 3개 자식이 모두 렌더된다", () => {
-    render(<ChromeRight operator={operator} alerts={alerts} />);
+    render(<ChromeRight operator={operator} alerts={alerts} sections={[]} />);
     // SessionTimer 라벨
     expect(screen.getByText("세션")).toBeInTheDocument();
     // AlertsBell 라벨 (전용 텍스트)
@@ -62,15 +67,15 @@ describe("ChromeRight", () => {
   });
 
   it("AlertsBell 배지는 전체 알림 수 (alerts.length)", () => {
-    render(<ChromeRight operator={operator} alerts={alerts} />);
+    render(<ChromeRight operator={operator} alerts={alerts} sections={[]} />);
     expect(screen.getByLabelText("알림 2건")).toBeInTheDocument();
   });
 
-  it("divider span 2개가 aria-hidden 으로 렌더된다", () => {
+  it("divider span 3개가 aria-hidden 으로 렌더된다 (가이드·세션·알림 구분)", () => {
     const { container } = render(
-      <ChromeRight operator={operator} alerts={alerts} />,
+      <ChromeRight operator={operator} alerts={alerts} sections={[]} />,
     );
     const dividers = container.querySelectorAll('span[aria-hidden="true"]');
-    expect(dividers.length).toBe(2);
+    expect(dividers.length).toBe(3);
   });
 });
