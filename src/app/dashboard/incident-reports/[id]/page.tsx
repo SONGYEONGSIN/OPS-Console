@@ -50,6 +50,7 @@ export default async function IncidentReportEditorPage({
       ? {
           recipient_university:
             incident.university_name ?? report.recipient_university,
+          title: incident.title ?? report.title,
           gyeongwi: incident.cause_summary ?? report.gyeongwi,
           cause: incident.root_cause ?? report.cause,
           handling: incident.resolution ?? report.handling,
@@ -85,21 +86,26 @@ export default async function IncidentReportEditorPage({
         description={config.description}
       />
       <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
-        <header className="mb-4 flex items-center gap-3">
-          <Link
-            href="/dashboard/incidents"
-            className="text-vermilion hover:underline"
-          >
-            ← 사고 보고 목록
-          </Link>
-          <a
-            href={`/api/incident-reports/${report.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto cursor-pointer border border-line bg-cream px-3 py-1 text-sm text-ink hover:bg-washi-raised"
-          >
-            PDF
-          </a>
+        {/* 워크스페이스 컬럼 폭에 맞춰 — 좌측 뒤로가기 + 공문 뷰어 우측 끝에 PDF.
+            오른쪽 w-[360px] 스페이서가 편집 패널 폭과 같아 PDF가 뷰어 영역 우측 끝에 정렬됨. */}
+        <header className="mb-4 flex gap-4">
+          <div className="flex min-w-0 flex-1 items-center justify-between">
+            <Link
+              href="/dashboard/incidents"
+              className="text-vermilion hover:underline"
+            >
+              ← 사고 보고 목록
+            </Link>
+            <a
+              href={`/api/incident-reports/${report.id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer border border-line bg-cream px-3 py-1 text-sm text-ink hover:bg-washi-raised"
+            >
+              PDF
+            </a>
+          </div>
+          <div className="w-[360px] shrink-0" aria-hidden />
         </header>
         <ReportEditorWorkspace
           report={{ ...report, ...live }}

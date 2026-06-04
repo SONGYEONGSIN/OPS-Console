@@ -119,8 +119,8 @@ describe("ReportEditorWorkspace", () => {
     fireEvent.change(screen.getByLabelText("원인"), {
       target: { value: "새 원인" },
     });
-    fireEvent.change(screen.getByLabelText("제목"), {
-      target: { value: "새 제목" },
+    fireEvent.change(screen.getByLabelText("사과 본문"), {
+      target: { value: "새 사과문" },
     });
     fireEvent.click(screen.getByRole("button", { name: /저장/ }));
     // 공유 필드(원인→root_cause)는 사고로
@@ -130,16 +130,25 @@ describe("ReportEditorWorkspace", () => {
         expect.objectContaining({ root_cause: "새 원인" }),
       ),
     );
-    // 고유 필드(제목)는 경위서로 — 공유 필드(cause)는 경위서 패치에 미포함
+    // 고유 필드(사과문)는 경위서로 — 공유 필드(cause)는 경위서 패치에 미포함
     await waitFor(() =>
       expect(mockUpdate).toHaveBeenCalledWith(
         linked.id,
-        expect.objectContaining({ title: "새 제목" }),
+        expect.objectContaining({ apology: "새 사과문" }),
       ),
     );
     const reportPatch = mockUpdate.mock.calls[0][1] as Record<string, unknown>;
     expect(reportPatch).not.toHaveProperty("cause");
     expect(reportPatch).not.toHaveProperty("handling_rows");
+    expect(reportPatch).not.toHaveProperty("title");
+  });
+
+  it("제목은 편집 불가(읽기전용) — 사고에서 동기화", () => {
+    render(<ReportEditorWorkspace report={report} />);
+    expect(screen.queryByLabelText("제목")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("(사고에서 동기화 · 수정 불가)"),
+    ).toBeInTheDocument();
   });
 
   it("approved 상태면 편집 패널을 숨긴다", () => {

@@ -36,6 +36,7 @@ export async function GET(
       ? {
           recipientUniversity:
             incident.university_name ?? rep.recipient_university,
+          title: incident.title ?? rep.title,
           gyeongwi: incident.cause_summary ?? rep.gyeongwi,
           cause: incident.root_cause ?? rep.cause,
           handling: incident.resolution ?? rep.handling,
@@ -47,7 +48,7 @@ export async function GET(
       : null;
   const pdf = await renderIncidentReportPdf({
     recipientUniversity: live?.recipientUniversity ?? rep.recipient_university,
-    title: rep.title,
+    title: live?.title ?? rep.title,
     draftDate: rep.draft_date,
     authorName: incident?.assignee_name ?? rep.author_name,
     authorEmail: incident?.assignee_email ?? rep.author_email,
