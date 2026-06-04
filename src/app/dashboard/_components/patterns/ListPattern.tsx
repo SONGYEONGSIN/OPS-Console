@@ -331,6 +331,7 @@ export type ListRow = {
   incidentReportGyeongwi?: string | null;
   incidentReportCause?: string | null;
   incidentReportHandling?: string | null;
+  incidentReportHandlingRows?: { time: string; content: string }[];
   incidentReportPrevention?: string | null;
   /** incident-reports — 사과 본문 (nullable) */
   incidentReportApology?: string | null;

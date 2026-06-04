@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Section, DefList, Divider } from "../shared";
+import { Section, DefList, Divider, HandlingRowsBody } from "../shared";
 import type { ViewProps } from "../types";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { IncidentReportView } from "../incident-reports/View";
@@ -124,7 +124,7 @@ function IncidentInfo({ row }: { row: ListRow }) {
       </Section>
 
       <Section title="사고처리">
-        <HandlingRowsView
+        <HandlingRowsBody
           rows={row.incidentHandlingRows}
           fallback={row.incidentResolution}
         />
@@ -137,40 +137,37 @@ function IncidentInfo({ row }: { row: ListRow }) {
   );
 }
 
-/** 처리 행(시간/내용) 렌더 — 행이 없으면 레거시 resolution(text)으로 폴백. */
-function HandlingRowsView({
-  rows,
-  fallback,
-}: {
-  rows?: { time: string; content: string }[];
-  fallback?: string | null;
-}) {
-  const filled = (rows ?? []).filter((r) => r.time.trim() || r.content.trim());
-  if (filled.length === 0) return <BodyText value={fallback} />;
-  return (
-    <div className="space-y-1">
-      {filled.map((r, i) => (
-        <div key={i} className="flex gap-2 text-sm">
-          <span className="w-28 flex-none text-muted">{r.time || "—"}</span>
-          <span className="min-w-0 flex-1 whitespace-pre-wrap text-ink">
-            {r.content}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /** 번들 report + 서버 계산 플래그 → IncidentReportView가 읽는 ListRow로 변환.
  *  대학명(수신처)은 연결된 사고의 현재 값으로 동기화(스냅샷 staleness 방지). */
 function bundleToReportRow(
   report: IncidentReportRow,
   bundle: IncidentReportBundle,
-  current: { university?: string },
+  current: {
+    university?: string;
+    causeSummary?: string | null;
+    rootCause?: string | null;
+    handlingRows?: { time: string; content: string }[];
+    prevention?: string | null;
+  },
 ): ListRow {
+  // 작성중(draft/rejected)이면 연결 사고의 현재값으로 라이브 미러, 승인 이후는 스냅샷.
+  const isDraft = report.status === "draft" || report.status === "rejected";
   return {
     ...incidentReportToListRow(report),
     incidentReportUniversity: current.university ?? report.recipient_university,
+    incidentReportGyeongwi: isDraft
+      ? (current.causeSummary ?? report.gyeongwi)
+      : report.gyeongwi,
+    incidentReportCause: isDraft
+      ? (current.rootCause ?? report.cause)
+      : report.cause,
+    incidentReportPrevention: isDraft
+      ? (current.prevention ?? report.prevention)
+      : report.prevention,
+    incidentReportHandlingRows:
+      isDraft && current.handlingRows?.length
+        ? current.handlingRows
+        : report.handling_rows,
     incidentReportRecipients: bundle.recipients.map((r) => ({
       email: r.contact_email ?? "",
       name: r.customer_name,
@@ -184,9 +181,16 @@ function bundleToReportRow(
 function ReportTab({
   incidentId,
   incidentUniversity,
+  incidentContent,
 }: {
   incidentId: string;
   incidentUniversity?: string;
+  incidentContent?: {
+    causeSummary?: string | null;
+    rootCause?: string | null;
+    handlingRows?: { time: string; content: string }[];
+    prevention?: string | null;
+  };
 }) {
   const [bundle, setBundle] = useState<IncidentReportBundle | null>(null);
   const [loading, startLoad] = useTransition();
@@ -245,6 +249,7 @@ function ReportTab({
       <IncidentReportView
         row={bundleToReportRow(bundle.report, bundle, {
           university: incidentUniversity,
+          ...incidentContent,
         })}
         onChanged={refetch}
       />
@@ -272,6 +277,12 @@ export function IncidentView({ row }: ViewProps) {
         <ReportTab
           incidentId={row.id}
           incidentUniversity={row.incidentUniversityName}
+          incidentContent={{
+            causeSummary: row.incidentCauseSummary,
+            rootCause: row.incidentRootCause,
+            handlingRows: row.incidentHandlingRows,
+            prevention: row.incidentPrevention,
+          }}
         />
       )}
     </div>
