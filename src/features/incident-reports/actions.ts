@@ -201,7 +201,7 @@ export async function approveIncidentReport(
   const supabase = await createClient();
   const { data: rep } = await supabase
     .from("incident_reports")
-    .select("status,approver_email,title")
+    .select("status,approver_email,title,incident_id")
     .eq("id", id)
     .maybeSingle();
   if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
@@ -209,10 +209,34 @@ export async function approveIncidentReport(
     return { ok: false, error: "승인 권한이 없습니다." };
   }
 
+  // 승인 시 동결 — 연결 사고의 공유 필드를 경위서 스냅샷 컬럼으로 복사한다.
+  // 이후 사고를 수정해도 승인된 경위서는 불변(스냅샷 표시).
+  let snapshot: Record<string, unknown> = {};
+  if (rep.incident_id) {
+    const { data: inc } = await supabase
+      .from("incidents")
+      .select(
+        "university_name,service_name,cause_summary,root_cause,handling_rows,resolution,prevention",
+      )
+      .eq("id", rep.incident_id)
+      .maybeSingle();
+    if (inc) {
+      snapshot = {
+        recipient_university: inc.university_name,
+        service_name: inc.service_name,
+        gyeongwi: inc.cause_summary,
+        cause: inc.root_cause,
+        handling: inc.resolution,
+        handling_rows: inc.handling_rows ?? [],
+        prevention: inc.prevention,
+      };
+    }
+  }
+
   const r = await transition(
     id,
     ["pending_approval"],
-    { status: "approved", approved_at: new Date().toISOString() },
+    { status: "approved", approved_at: new Date().toISOString(), ...snapshot },
     "승인할 수 없는 상태입니다.",
   );
   if (r.ok) {

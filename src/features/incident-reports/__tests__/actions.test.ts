@@ -271,6 +271,53 @@ describe("approveIncidentReport", () => {
     expect(patch.status).toBe("approved");
     expect(patch.approved_at).toBeDefined();
   });
+
+  it("승인 시 연결 사고의 공유 필드를 경위서 스냅샷으로 동결 복사한다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockSelectMaybeSingle
+      // rep 조회 (incident_id 포함)
+      .mockReturnValueOnce({
+        data: {
+          status: "pending_approval",
+          approver_email: meOperator.email,
+          title: "t",
+          incident_id: "inc-1",
+        },
+        error: null,
+      })
+      // 연결 사고 조회 (공유 필드)
+      .mockReturnValueOnce({
+        data: {
+          university_name: "조선대학교",
+          service_name: "수시모집",
+          cause_summary: "경위X",
+          root_cause: "원인X",
+          handling_rows: [{ time: "09.27", content: "처리X" }],
+          resolution: "처리텍스트",
+          prevention: "대책X",
+        },
+        error: null,
+      })
+      // transition 상태 확인
+      .mockReturnValueOnce({
+        data: { status: "pending_approval" },
+        error: null,
+      });
+    mockUpdateResult.mockReturnValue({
+      data: { ...baseRow, status: "approved" },
+      error: null,
+    });
+    const r = await approveIncidentReport(baseRow.id);
+    expect(r.ok).toBe(true);
+    const patch = updatePatches[0] as Record<string, unknown>;
+    expect(patch.status).toBe("approved");
+    expect(patch.recipient_university).toBe("조선대학교");
+    expect(patch.service_name).toBe("수시모집");
+    expect(patch.gyeongwi).toBe("경위X");
+    expect(patch.cause).toBe("원인X");
+    expect(patch.prevention).toBe("대책X");
+    expect(patch.handling_rows).toEqual([{ time: "09.27", content: "처리X" }]);
+  });
 });
 
 describe("rejectIncidentReport", () => {

@@ -114,6 +114,7 @@ source: user-direct (라이브 피드백 5건 + 양방향 동기화 결정)
 | 2026-06-04 | T7a | done | 수신대학 읽기전용(3a) + 서비스명 표시(3b) |
 | 2026-06-04 | T7b·T8 | 대기 | item1 양방향 저장 + 승인 동결 (체크포인트 — 다음) |
 | 2026-06-04 | PR-B | 머지 | #327 머지 (2a·2b·3a·3b + 마이그). **item1·동결은 follow-up으로 보류** |
+| 2026-06-04 | T7b(item1)·T8 | done | 양방향 저장(공유→updateIncident/고유→updateIncidentReport) + 승인 동결 스냅샷 + page·PDF route draft 라이브 미러. 테스트 RED→GREEN, 전체 2353 통과·build OK |
 
 ## 남은 follow-up (item 1 + 동결) — 재개 가이드
 - **item 1 (양방향 저장)**: ReportEditorWorkspace.onSave를 분리 — 공유 필드(경위→cause_summary/원인→root_cause/처리→handling_rows/대책→prevention)는 `updateIncident(report.incident_id, ...)`로, 고유 필드(제목/사과문)는 `updateIncidentReport`로. page.tsx는 draft/rejected일 때 incident에서 gyeongwi/cause/handling_rows/prevention 라이브 override(현재 university_name·service_name만). updateIncident import 추가.

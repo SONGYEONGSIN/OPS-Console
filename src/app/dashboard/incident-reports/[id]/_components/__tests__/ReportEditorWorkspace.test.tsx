@@ -8,14 +8,20 @@ import {
 } from "@testing-library/react";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 
-const { mockUpdate, mockRefresh, mockRevoke } = vi.hoisted(() => ({
-  mockUpdate: vi.fn(),
-  mockRefresh: vi.fn(),
-  mockRevoke: vi.fn(),
-}));
+const { mockUpdate, mockRefresh, mockRevoke, mockUpdateIncident } = vi.hoisted(
+  () => ({
+    mockUpdate: vi.fn(),
+    mockRefresh: vi.fn(),
+    mockRevoke: vi.fn(),
+    mockUpdateIncident: vi.fn(),
+  }),
+);
 vi.mock("@/features/incident-reports/actions", () => ({
   updateIncidentReport: mockUpdate,
   revokeApproval: mockRevoke,
+}));
+vi.mock("@/features/incidents/actions", () => ({
+  updateIncident: mockUpdateIncident,
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mockRefresh, push: vi.fn(), back: vi.fn() }),
@@ -95,7 +101,7 @@ describe("ReportEditorWorkspace", () => {
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
 
-  it("저장 시 편집값으로 updateIncidentReport를 호출한다", async () => {
+  it("사고 미연결 저장 시 공유 필드를 updateIncidentReport로 저장한다", async () => {
     mockUpdate.mockResolvedValue({ ok: true });
     render(<ReportEditorWorkspace report={report} />);
     fireEvent.change(screen.getByLabelText("원인"), {
@@ -109,6 +115,40 @@ describe("ReportEditorWorkspace", () => {
       ),
     );
     await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
+  });
+
+  it("사고 연결 시 공유 필드는 updateIncident(사고), 고유 필드는 updateIncidentReport(경위서)로 분리 저장한다", async () => {
+    mockUpdate.mockResolvedValue({ ok: true });
+    mockUpdateIncident.mockResolvedValue({ ok: true });
+    const linked: IncidentReportRow = {
+      ...report,
+      incident_id: "22222222-2222-4222-8222-222222222222",
+    };
+    render(<ReportEditorWorkspace report={linked} />);
+    fireEvent.change(screen.getByLabelText("원인"), {
+      target: { value: "새 원인" },
+    });
+    fireEvent.change(screen.getByLabelText("제목"), {
+      target: { value: "새 제목" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+    // 공유 필드(원인→root_cause)는 사고로
+    await waitFor(() =>
+      expect(mockUpdateIncident).toHaveBeenCalledWith(
+        linked.incident_id,
+        expect.objectContaining({ root_cause: "새 원인" }),
+      ),
+    );
+    // 고유 필드(제목)는 경위서로 — 공유 필드(cause)는 경위서 패치에 미포함
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith(
+        linked.id,
+        expect.objectContaining({ title: "새 제목" }),
+      ),
+    );
+    const reportPatch = mockUpdate.mock.calls[0][1] as Record<string, unknown>;
+    expect(reportPatch).not.toHaveProperty("cause");
+    expect(reportPatch).not.toHaveProperty("handling_rows");
   });
 
   it("approved 상태면 편집 패널을 숨긴다", () => {

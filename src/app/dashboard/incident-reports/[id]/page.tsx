@@ -42,6 +42,27 @@ export default async function IncidentReportEditorPage({
   const dutyName = incident?.assignee_name ?? report.author_name;
   const chainEmail = incident?.assignee_email ?? report.author_email;
 
+  // 작성중(draft/rejected)이면 공유 필드를 연결 사고의 현재값으로 라이브 미러.
+  // 승인(approved) 이후는 동결 스냅샷(report 자체 값)을 사용한다.
+  const isDraft = report.status === "draft" || report.status === "rejected";
+  const live =
+    isDraft && incident
+      ? {
+          recipient_university:
+            incident.university_name ?? report.recipient_university,
+          gyeongwi: incident.cause_summary ?? report.gyeongwi,
+          cause: incident.root_cause ?? report.cause,
+          handling: incident.resolution ?? report.handling,
+          handling_rows: incident.handling_rows?.length
+            ? incident.handling_rows
+            : (report.handling_rows ?? []),
+          prevention: incident.prevention ?? report.prevention,
+        }
+      : {};
+  const serviceName = isDraft
+    ? (incident?.service_name ?? report.service_name ?? null)
+    : (report.service_name ?? null);
+
   // 결재라인 — 저장 스냅샷에 빠진 칸은 현재 조직 기준으로 라이브 보강(비파괴).
   const liveChain = await resolveApprovalChain(chainEmail).catch(() => null);
   const approval = {
@@ -73,19 +94,14 @@ export default async function IncidentReportEditorPage({
           </Link>
         </header>
         <ReportEditorWorkspace
-          report={{
-            ...report,
-            // 연결된 사고의 현재 대학명(수신처)으로 동기화(스냅샷 staleness 방지)
-            recipient_university:
-              incident?.university_name ?? report.recipient_university,
-          }}
+          report={{ ...report, ...live }}
           canManageApproval={canManageApproval}
           previewDocNumber={previewDocNumber}
           approval={approval}
           dutyName={dutyName}
           dutyEmail={chainEmail}
           dutyPhone={liveChain?.author?.phone ?? null}
-          serviceName={incident?.service_name ?? report.service_name ?? null}
+          serviceName={serviceName}
         />
       </section>
     </div>
