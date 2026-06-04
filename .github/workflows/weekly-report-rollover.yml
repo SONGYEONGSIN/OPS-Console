@@ -1,9 +1,9 @@
 name: weekly-report-rollover
 
 on:
-  schedule:
-    # 매주 월요일 00:00 UTC = 한국 월요일 09:00 — 차주 보고 생성·공유
-    - cron: "0 0 * * 1"
+  # schedule 제거 — cron-job.org(매주 수요일 10:00 KST)가 /api/automations/run 호출.
+  # GitHub cron은 지연·누락이 잦아 receivables/service-notice와 동일하게 cron-job.org로
+  # 일원화. 여기서는 수동 트리거(workflow_dispatch)만 유지.
   workflow_dispatch:
 
 # Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 동작하도록 강제.
