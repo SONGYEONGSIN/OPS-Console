@@ -3,13 +3,17 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import type { SbSection } from "../../../_data";
 
 // driver.js 모킹 — "클릭 시 어떤 스텝으로 투어를 여는가"만 검증.
-const { driveMock, driverMock } = vi.hoisted(() => {
+const { driveMock, driverMock, pushMock } = vi.hoisted(() => {
   const driveMock = vi.fn();
   const driverMock = vi.fn((_config?: unknown) => ({ drive: driveMock }));
-  return { driveMock, driverMock };
+  const pushMock = vi.fn();
+  return { driveMock, driverMock, pushMock };
 });
 vi.mock("driver.js", () => ({ driver: driverMock }));
 vi.mock("driver.js/dist/driver.css", () => ({}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
 
 import { TutorialGuideButton } from "../TutorialGuideButton";
 
@@ -24,6 +28,7 @@ describe("TutorialGuideButton", () => {
   beforeEach(() => {
     driveMock.mockClear();
     driverMock.mockClear();
+    pushMock.mockClear();
   });
 
   it("'가이드' 버튼을 렌더한다", () => {
@@ -50,5 +55,16 @@ describe("TutorialGuideButton", () => {
     render(<TutorialGuideButton sections={emptySections} />);
     fireEvent.click(screen.getByRole("button", { name: /가이드/ }));
     expect(driveMock).not.toHaveBeenCalled();
+  });
+
+  it("개요 스텝 진입 시 해당 메뉴로 이동한다", () => {
+    render(<TutorialGuideButton sections={sections} />);
+    fireEvent.click(screen.getByRole("button", { name: /가이드/ }));
+    const config = driverMock.mock.calls[0]![0] as {
+      steps: { onHighlightStarted?: () => void }[];
+    };
+    // 개요 스텝(0)의 하이라이트 시작 → router.push('/dashboard/my-todo')
+    config.steps[0]!.onHighlightStarted!();
+    expect(pushMock).toHaveBeenCalledWith("/dashboard/my-todo");
   });
 });

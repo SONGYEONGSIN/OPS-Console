@@ -7,18 +7,29 @@ import type { TutorialStep } from "./tutorial-steps";
 
 export function runTour(
   steps: TutorialStep[],
-  opts?: { doneBtnText?: string; onDestroyed?: () => void },
+  opts?: {
+    doneBtnText?: string;
+    onDestroyed?: () => void;
+    /** navigateTo가 있는 스텝 진입 시 호출 — 해당 메뉴로 이동. */
+    onNavigate?: (slug: string) => void;
+  },
 ): void {
   if (steps.length === 0) return;
+  const onNavigate = opts?.onNavigate;
   const tour = driver({
     showProgress: true,
     progressText: "{{current}} / {{total}}",
     nextBtnText: "다음",
     prevBtnText: "이전",
     doneBtnText: opts?.doneBtnText ?? "완료",
+    popoverClass: "ops-tour-popover",
     steps: steps.map((s) => ({
       element: s.element,
       popover: { title: s.title, description: s.description },
+      onHighlightStarted:
+        s.navigateTo && onNavigate
+          ? () => onNavigate(s.navigateTo!)
+          : undefined,
     })),
     onDestroyed: opts?.onDestroyed,
   });

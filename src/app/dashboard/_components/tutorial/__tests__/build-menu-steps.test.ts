@@ -86,6 +86,62 @@ describe("buildMenuTutorialSteps", () => {
     expect(steps[0]!.title).toContain("사고 보고");
   });
 
+  it("그룹 안 메뉴의 개요 스텝은 앵커 없이 중앙 안내한다(접힘 시 DOM 부재 대비)", () => {
+    const sections = sectionWith({
+      kind: "group",
+      label: "요청·자료",
+      items: [{ ico: "▤", label: "사고 보고", slug: "incidents" }],
+    });
+    const steps = buildMenuTutorialSteps(sections, copy);
+    // 개요 스텝(0)은 element 없음 — 그룹이 접혀 있어도 안전
+    expect(steps[0]!.element).toBeUndefined();
+  });
+
+  it("최상위(그룹 밖) 메뉴의 개요 스텝은 사이드바 항목을 스포트라이트한다", () => {
+    const sections = sectionWith({
+      kind: "item",
+      ico: "✓",
+      label: "내 작업",
+      slug: "my-todo",
+    });
+    const steps = buildMenuTutorialSteps(sections, copy);
+    expect(steps[0]!.element).toBe("[data-tutorial-slug='my-todo']");
+  });
+
+  it("개요 스텝에만 navigateTo(slug)가 설정된다(이동용)", () => {
+    const sections = sectionWith({
+      kind: "item",
+      ico: "✓",
+      label: "내 작업",
+      slug: "my-todo",
+    });
+    const steps = buildMenuTutorialSteps(sections, copy);
+    expect(steps[0]!.navigateTo).toBe("my-todo"); // 개요
+    expect(steps[1]!.navigateTo).toBeUndefined(); // 인터랙션
+    expect(steps[2]!.navigateTo).toBeUndefined(); // 버튼
+  });
+
+  it("버튼이 여러 개면 줄바꿈(<br>)으로 구분한다", () => {
+    const twoBtn: Record<string, MenuCopy> = {
+      "my-todo": {
+        overview: "o",
+        interaction: "i",
+        buttons: [
+          { label: "A", desc: "a" },
+          { label: "B", desc: "b" },
+        ],
+      },
+    };
+    const sections = sectionWith({
+      kind: "item",
+      ico: "✓",
+      label: "내 작업",
+      slug: "my-todo",
+    });
+    const steps = buildMenuTutorialSteps(sections, twoBtn);
+    expect(steps[2]!.description).toContain("<br>");
+  });
+
   it("사이드바 순서대로 스텝을 생성한다", () => {
     const sections = sectionWith(
       { kind: "item", ico: "✓", label: "내 작업", slug: "my-todo" },

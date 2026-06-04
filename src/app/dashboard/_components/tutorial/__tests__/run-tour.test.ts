@@ -59,4 +59,35 @@ describe("runTour", () => {
     expect(cfg.doneBtnText).toBe("시작하기");
     expect(cfg.onDestroyed).toBe(onDestroyed);
   });
+
+  it("팝업 크기 조정용 popoverClass를 지정한다", () => {
+    runTour(steps);
+    const cfg = driverMock.mock.calls[0]![0] as { popoverClass: string };
+    expect(cfg.popoverClass).toBe("ops-tour-popover");
+  });
+
+  it("navigateTo가 있는 스텝은 onHighlightStarted에서 onNavigate(slug)를 호출한다", () => {
+    const onNavigate = vi.fn();
+    const navStep: TutorialStep = {
+      title: "내 작업",
+      description: "개요",
+      navigateTo: "my-todo",
+    };
+    runTour([navStep], { onNavigate });
+    const cfg = driverMock.mock.calls[0]![0] as {
+      steps: { onHighlightStarted?: () => void }[];
+    };
+    expect(typeof cfg.steps[0]!.onHighlightStarted).toBe("function");
+    cfg.steps[0]!.onHighlightStarted!();
+    expect(onNavigate).toHaveBeenCalledWith("my-todo");
+  });
+
+  it("navigateTo가 없는 스텝은 onHighlightStarted를 달지 않는다", () => {
+    const onNavigate = vi.fn();
+    runTour(steps, { onNavigate }); // steps[0]은 navigateTo 없음
+    const cfg = driverMock.mock.calls[0]![0] as {
+      steps: { onHighlightStarted?: () => void }[];
+    };
+    expect(cfg.steps[0]!.onHighlightStarted).toBeUndefined();
+  });
 });

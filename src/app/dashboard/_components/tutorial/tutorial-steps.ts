@@ -7,6 +7,8 @@ export type TutorialStep = {
   element?: string;
   title: string;
   description: string;
+  /** 이 스텝 진입 시 이동할 메뉴 slug. 메뉴 개요 스텝에만 설정. */
+  navigateTo?: string;
 };
 
 /** localStorage 열람 플래그 키. 스텝 개편 시 버전 증가로 재노출. */

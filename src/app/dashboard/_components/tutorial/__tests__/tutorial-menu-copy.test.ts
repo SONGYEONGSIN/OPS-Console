@@ -21,6 +21,51 @@ describe("MENU_COPY 무결성", () => {
   it("시드 메뉴 my-todo가 존재한다", () => {
     expect(MENU_COPY["my-todo"]).toBeDefined();
   });
+
+  it("운영 핵심 batch(handover·backup·receivables·services·contracts)를 모두 포함한다", () => {
+    for (const slug of [
+      "handover",
+      "backup",
+      "receivables",
+      "services",
+      "contracts",
+    ]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
+
+  it("요청·자료 batch(incidents·contacts·data-requests)를 모두 포함한다", () => {
+    // vault·meetings는 페이지 미구현이라 제외 — 빌더가 skip한다.
+    for (const slug of ["incidents", "contacts", "data-requests"]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
+
+  it("작업·AI batch(my-ai-work·ai-tips·ai-insight·schedule)를 모두 포함한다", () => {
+    for (const slug of ["my-ai-work", "ai-tips", "ai-insight", "schedule"]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
+
+  it("나머지 구현 메뉴 batch4를 모두 포함한다", () => {
+    for (const slug of [
+      "ai-assistant",
+      "assignments",
+      "automations",
+      "feedback",
+      "manuals",
+      "notices",
+      "onboarding",
+      "operating-guide",
+      "outcomes",
+      "reports",
+      "settings",
+      "team",
+      "worklog",
+    ]) {
+      expect(MENU_COPY[slug], `${slug} 콘텐츠 누락`).toBeDefined();
+    }
+  });
 });
 
 describe("isMenuCopyComplete", () => {
