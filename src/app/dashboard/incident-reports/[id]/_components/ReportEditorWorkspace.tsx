@@ -15,6 +15,7 @@ import {
   updateIncidentReport,
   revokeApproval,
 } from "@/features/incident-reports/actions";
+import { updateIncident } from "@/features/incidents/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
 
@@ -125,18 +126,43 @@ export function ReportEditorWorkspace({
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const r = await updateIncidentReport(report.id, {
-        recipient_university: draft.recipient_university || undefined,
+      const cleanRows = rows.filter((r) => r.time.trim() || r.content.trim());
+      // 고유 필드(제목/사과문) → 경위서 소유.
+      const ownPatch = {
         title: draft.title || undefined,
-        gyeongwi: draft.gyeongwi || null,
-        cause: draft.cause || null,
-        prevention: draft.prevention || null,
         apology: draft.apology || null,
-        handling_rows: rows.filter((r) => r.time.trim() || r.content.trim()),
-      });
-      if (!r.ok) {
-        setError(r.error ?? "저장에 실패했습니다.");
-        return;
+      };
+      // 공유 필드(경위/원인/처리/대책) → 연결 사고가 단일 소스.
+      // 사고에 기록하면 사고 폼·다른 경위서와 자동 동기화(divergence 없음).
+      if (report.incident_id) {
+        const ri = await updateIncident(report.incident_id, {
+          cause_summary: draft.gyeongwi || null,
+          root_cause: draft.cause || null,
+          handling_rows: cleanRows,
+          prevention: draft.prevention || null,
+        });
+        if (!ri.ok) {
+          setError(ri.error ?? "사고 저장에 실패했습니다.");
+          return;
+        }
+        const rr = await updateIncidentReport(report.id, ownPatch);
+        if (!rr.ok) {
+          setError(rr.error ?? "저장에 실패했습니다.");
+          return;
+        }
+      } else {
+        // 미연결 경위서 — 공유 필드도 경위서에 직접 저장.
+        const rr = await updateIncidentReport(report.id, {
+          ...ownPatch,
+          gyeongwi: draft.gyeongwi || null,
+          cause: draft.cause || null,
+          prevention: draft.prevention || null,
+          handling_rows: cleanRows,
+        });
+        if (!rr.ok) {
+          setError(rr.error ?? "저장에 실패했습니다.");
+          return;
+        }
       }
       setSaved(true);
       router.refresh();
