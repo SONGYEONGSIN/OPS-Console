@@ -31,7 +31,6 @@ type TextDraft = Record<TextKey, string>;
 
 /** 처리(rows) 앞/뒤로 나눠 렌더 — 문서 순서(경위→원인→처리→대책) 유지 */
 const PRE_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
-  { key: "title", label: "제목", textarea: false },
   { key: "gyeongwi", label: "경위", textarea: true },
   { key: "cause", label: "원인", textarea: true },
 ];
@@ -127,9 +126,8 @@ export function ReportEditorWorkspace({
     setSaved(false);
     startTransition(async () => {
       const cleanRows = rows.filter((r) => r.time.trim() || r.content.trim());
-      // 고유 필드(제목/사과문) → 경위서 소유.
+      // 고유 필드(사과문) → 경위서 소유. 제목·수신대학·서비스명은 사고에서 동기화(읽기전용).
       const ownPatch = {
-        title: draft.title || undefined,
         apology: draft.apology || null,
       };
       // 공유 필드(경위/원인/처리/대책) → 연결 사고가 단일 소스.
@@ -254,7 +252,7 @@ export function ReportEditorWorkspace({
         {editable ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-              {/* 수신대학·서비스명 — 연결 사고에서 동기화(읽기전용) */}
+              {/* 수신대학·서비스명·제목 — 연결 사고에서 동기화(읽기전용) */}
               <div className="space-y-1 border-b border-line pb-2 text-xs">
                 <p className="text-muted">
                   수신대학{" "}
@@ -265,6 +263,9 @@ export function ReportEditorWorkspace({
                 <p className="text-muted">
                   서비스명{" "}
                   <span className="ml-1 text-ink">{serviceName || "—"}</span>
+                </p>
+                <p className="text-muted">
+                  제목 <span className="ml-1 text-ink">{draft.title || "—"}</span>
                   <span className="ml-1.5 text-2xs text-faint">
                     (사고에서 동기화 · 수정 불가)
                   </span>
