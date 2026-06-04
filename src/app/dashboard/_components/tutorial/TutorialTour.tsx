@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import {
-  TUTORIAL_STEPS,
+  INTRO_STEPS,
   hasTutorialSeen,
   markTutorialSeen,
 } from "./tutorial-steps";
@@ -25,7 +25,7 @@ export function TutorialTour() {
       nextBtnText: "다음",
       prevBtnText: "이전",
       doneBtnText: "시작하기",
-      steps: TUTORIAL_STEPS.map((s) => ({
+      steps: INTRO_STEPS.map((s) => ({
         element: s.element,
         popover: { title: s.title, description: s.description },
       })),

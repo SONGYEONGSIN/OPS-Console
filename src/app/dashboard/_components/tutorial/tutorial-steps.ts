@@ -10,9 +10,10 @@ export type TutorialStep = {
 };
 
 /** localStorage 열람 플래그 키. 스텝 개편 시 버전 증가로 재노출. */
-export const TUTORIAL_SEEN_KEY = "ops-console:tutorial-seen:v1";
+export const TUTORIAL_SEEN_KEY = "ops-console:tutorial-seen:v2";
 
-export const TUTORIAL_STEPS: TutorialStep[] = [
+/** 전역 인트로 스텝 — 첫 방문 시 앱 전체 영역 오리엔테이션. 메뉴별 상세 스텝과 구분. */
+export const INTRO_STEPS: TutorialStep[] = [
   {
     title: "운영부 상황실에 오신 것을 환영합니다",
     description:
@@ -38,8 +39,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     title: "이제 시작해볼까요",
-    description:
-      "주요 영역은 여기까지입니다. 직접 둘러보며 사용해 보세요.",
+    description: "주요 영역은 여기까지입니다. 직접 둘러보며 사용해 보세요.",
   },
 ];
 

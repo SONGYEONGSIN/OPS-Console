@@ -12,7 +12,7 @@ vi.mock("driver.js", () => ({ driver: driverMock }));
 vi.mock("driver.js/dist/driver.css", () => ({}));
 
 import { TutorialTour } from "../TutorialTour";
-import { TUTORIAL_SEEN_KEY, TUTORIAL_STEPS } from "../tutorial-steps";
+import { TUTORIAL_SEEN_KEY, INTRO_STEPS } from "../tutorial-steps";
 
 describe("TutorialTour", () => {
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe("TutorialTour", () => {
       prevBtnText: string;
       doneBtnText: string;
     };
-    expect(config.steps).toHaveLength(TUTORIAL_STEPS.length);
+    expect(config.steps).toHaveLength(INTRO_STEPS.length);
     expect(config.nextBtnText).toBe("다음");
     expect(config.prevBtnText).toBe("이전");
     expect(config.doneBtnText).toBe("시작하기");
