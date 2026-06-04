@@ -1,5 +1,6 @@
 import type { OpsAlert } from "@/features/alerts/queries";
 import type { CurrentOperator } from "@/features/auth/queries";
+import type { SbSection } from "../../_data";
 import { SearchBox } from "../SearchBox";
 import { ChromeBrand } from "./ChromeBrand";
 import { ChromeRight } from "./ChromeRight";
@@ -7,6 +8,7 @@ import { ChromeRight } from "./ChromeRight";
 type Props = {
   operator: CurrentOperator;
   alerts: OpsAlert[];
+  sections: SbSection[];
 };
 
 /**
@@ -16,7 +18,7 @@ type Props = {
  * 높이 52px, 상하 2px chrome-graphite 보더, snow 배경.
  * Server component (children에 client SearchBox 포함되어도 wrapper는 server).
  */
-export function Chrome({ operator, alerts }: Props) {
+export function Chrome({ operator, alerts, sections }: Props) {
   return (
     <div
       role="banner"
@@ -29,7 +31,7 @@ export function Chrome({ operator, alerts }: Props) {
       <div className="w-full max-w-[420px] justify-self-center">
         <SearchBox />
       </div>
-      <ChromeRight operator={operator} alerts={alerts} />
+      <ChromeRight operator={operator} alerts={alerts} sections={sections} />
     </div>
   );
 }
