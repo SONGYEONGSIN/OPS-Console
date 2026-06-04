@@ -224,14 +224,6 @@ export function ReportEditorWorkspace({
           >
             ▶
           </button>
-          <a
-            href={`/api/incident-reports/${report.id}/pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-4 cursor-pointer border border-line bg-transparent px-3 py-1 text-sm text-ink hover:bg-washi-raised"
-          >
-            PDF
-          </a>
         </div>
       </div>
 
