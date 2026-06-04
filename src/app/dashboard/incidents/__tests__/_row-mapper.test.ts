@@ -14,6 +14,7 @@ const base: IncidentRow = {
   cause_summary: "PG 장애",
   root_cause: null,
   resolution: null,
+  handling_rows: [],
   prevention: null,
   department: "운영부-운영1팀",
   assignee_email: "me@x.com",
@@ -35,9 +36,9 @@ describe("incidentToListRow", () => {
   });
 
   it("reportStatus 전달 시 incidentReportStatus 세팅", () => {
-    expect(incidentToListRow(base, "pending_approval").incidentReportStatus).toBe(
-      "pending_approval",
-    );
+    expect(
+      incidentToListRow(base, "pending_approval").incidentReportStatus,
+    ).toBe("pending_approval");
     expect(incidentToListRow(base, "sent").incidentReportStatus).toBe("sent");
   });
 });

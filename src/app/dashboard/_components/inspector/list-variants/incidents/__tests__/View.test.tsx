@@ -53,8 +53,36 @@ describe("IncidentView 탭", () => {
   it("기본은 사고정보 탭 — 사고경위 노출", () => {
     render(<IncidentView row={baseRow} />);
     expect(screen.getByText("경위 요약")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "사고정보" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "사고정보" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "경위서" })).toBeInTheDocument();
+  });
+
+  it("사고처리: handling_rows가 있으면 행으로 렌더한다", () => {
+    render(
+      <IncidentView
+        row={{
+          ...baseRow,
+          incidentHandlingRows: [{ time: "06.02 14:27", content: "오류 확인" }],
+        }}
+      />,
+    );
+    expect(screen.getByText("06.02 14:27")).toBeInTheDocument();
+    expect(screen.getByText("오류 확인")).toBeInTheDocument();
+  });
+
+  it("사고처리: 행이 없으면 레거시 resolution(text)으로 폴백한다", () => {
+    render(
+      <IncidentView
+        row={{
+          ...baseRow,
+          incidentHandlingRows: [],
+          incidentResolution: "레거시 처리 내용",
+        }}
+      />,
+    );
+    expect(screen.getByText("레거시 처리 내용")).toBeInTheDocument();
   });
 
   it("경위서 탭 진입 → 경위서 없음 안내 + 작성 버튼", async () => {
