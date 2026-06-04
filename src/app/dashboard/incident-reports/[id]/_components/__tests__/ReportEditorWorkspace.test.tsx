@@ -62,6 +62,15 @@ describe("ReportEditorWorkspace", () => {
     expect(reflected.length).toBeGreaterThan(0);
   });
 
+  it("공문 뷰어 영역에 PDF 링크가 있다", () => {
+    render(<ReportEditorWorkspace report={report} />);
+    const pdf = screen.getByRole("link", { name: "PDF" });
+    expect(pdf).toHaveAttribute(
+      "href",
+      `/api/incident-reports/${report.id}/pdf`,
+    );
+  });
+
   it("페이지 넘기기: 기본 1페이지(공문), 다음 누르면 2페이지(경위서)", () => {
     render(<ReportEditorWorkspace report={report} />);
     expect(screen.getByText(/수신자/)).toBeInTheDocument();
@@ -88,7 +97,9 @@ describe("ReportEditorWorkspace", () => {
   });
 
   it("approved 상태면 편집 패널을 숨긴다", () => {
-    render(<ReportEditorWorkspace report={{ ...report, status: "approved" }} />);
+    render(
+      <ReportEditorWorkspace report={{ ...report, status: "approved" }} />,
+    );
     expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
   });
 
