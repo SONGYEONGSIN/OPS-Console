@@ -8,13 +8,17 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { IncidentsControls } from "./IncidentsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { listIncidents, listIncidentsByIds } from "@/features/incidents/queries";
+import {
+  listIncidents,
+  listIncidentsByIds,
+} from "@/features/incidents/queries";
 import {
   reportStatusByIncidentIds,
   incidentIdsWithPendingApprovalFor,
   incidentIdsWithApprovedReports,
 } from "@/features/incident-reports/queries";
 import { incidentToListRow } from "./_row-mapper";
+import { toIncidentPayload } from "./_to-payload";
 import { PendingApprovalChip } from "./PendingApprovalChip";
 import { ApprovedReportChip } from "./ApprovedReportChip";
 import {
@@ -177,21 +181,7 @@ export default async function IncidentsPage({
       const r = await deleteIncident(row.id);
       return r.ok ? { ok: true } : { ok: false, error: r.error };
     }
-    const payload = {
-      year: row.incidentYear ?? currentAcademicYear(),
-      university_name: row.incidentUniversityName ?? "",
-      app_type: row.incidentAppType ?? "공통원서",
-      category: row.incidentCategory ?? "",
-      occurred_date: row.incidentOccurredDate ?? null,
-      resolved_date: row.incidentResolvedDate ?? null,
-      title: row.incidentTitle ?? row.name ?? "",
-      cause_summary: row.incidentCauseSummary ?? null,
-      root_cause: row.incidentRootCause ?? null,
-      resolution: row.incidentResolution ?? null,
-      prevention: row.incidentPrevention ?? null,
-      department: row.incidentDepartment ?? "운영부-운영1팀",
-      status: row.incidentStatus ?? "미처리",
-    };
+    const payload = toIncidentPayload(row, currentAcademicYear());
     if (isNew) {
       const r = await createIncident(payload);
       return r.ok ? { ok: true } : { ok: false, error: r.error };
