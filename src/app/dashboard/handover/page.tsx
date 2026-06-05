@@ -249,6 +249,13 @@ export default async function HandoverPage({
     const r = await upsertHandoverRecord({
       service_id: row.id,
       contract_info_md: row.handoverContractInfoMd ?? null,
+      contract_info: row.handoverContractInfo ?? {
+        title: "",
+        type: "",
+        progress: "",
+        status: "",
+        memo: "",
+      },
       contract_data_md: row.handoverContractDataMd ?? null,
       contract_data_checklist: (row.handoverContractChecklist ?? []).filter(
         (c) => c.text.trim(),
@@ -316,6 +323,7 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     handoverServiceNumber: r.service_number,
     handoverStatus: r.handover_status ?? undefined,
     handoverContractInfoMd: r.contract_info_md,
+    handoverContractInfo: r.contract_info,
     handoverContractDataMd: r.contract_data_md,
     handoverContractChecklist: r.contract_data_checklist,
     handoverWorkBasicMd: r.work_basic_md,

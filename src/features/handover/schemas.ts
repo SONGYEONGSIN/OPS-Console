@@ -19,6 +19,23 @@ const checklistField = z
   .max(HANDOVER_CHECKLIST_MAX)
   .default([]);
 
+/** 계약정보 — 구조화 폼 (제목/형태/진행/상태/메모). */
+export const contractInfoSchema = z.object({
+  title: z.string().max(200).default(""),
+  type: z.string().max(100).default(""),
+  progress: z.string().max(100).default(""),
+  status: z.string().max(100).default(""),
+  memo: z.string().max(2000).default(""),
+});
+export type ContractInfo = z.infer<typeof contractInfoSchema>;
+const contractInfoField = contractInfoSchema.default({
+  title: "",
+  type: "",
+  progress: "",
+  status: "",
+  memo: "",
+});
+
 /** 컨텍(학교담당자) — 구조화 연락처 항목. */
 export const HANDOVER_SCHOOL_CONTACTS_MAX = 30;
 export const schoolContactSchema = z.object({
@@ -41,6 +58,7 @@ export const handoverRecordRowSchema = z.object({
   id: z.string().uuid(),
   service_id: z.string().uuid(),
   contract_info_md: mdField,
+  contract_info: contractInfoField,
   contract_data_md: mdField,
   contract_data_checklist: checklistField,
   work_basic_md: mdField,
@@ -74,6 +92,7 @@ export type HandoverRecordRow = z.infer<typeof handoverRecordRowSchema>;
 export const handoverRecordUpsertSchema = z.object({
   service_id: z.string().uuid(),
   contract_info_md: mdField,
+  contract_info: contractInfoField,
   contract_data_md: mdField,
   contract_data_checklist: checklistField,
   work_basic_md: mdField,

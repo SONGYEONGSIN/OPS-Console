@@ -78,7 +78,7 @@ export async function sendHandoverMail(
   const { data: rec, error: recErr } = await admin
     .from("handover_records")
     .select(
-      "contract_info_md, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md",
+      "contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md",
     )
     .eq("service_id", p.service_id)
     .maybeSingle();
@@ -93,6 +93,14 @@ export async function sendHandoverMail(
     },
     {} as Record<HandoverFieldKey, string | null>,
   );
+  const ci = (recRow.contract_info ?? {}) as Record<string, unknown>;
+  const contractInfo = {
+    title: typeof ci.title === "string" ? ci.title : "",
+    type: typeof ci.type === "string" ? ci.type : "",
+    progress: typeof ci.progress === "string" ? ci.progress : "",
+    status: typeof ci.status === "string" ? ci.status : "",
+    memo: typeof ci.memo === "string" ? ci.memo : "",
+  };
   const contractChecklist = Array.isArray(recRow.contract_data_checklist)
     ? (recRow.contract_data_checklist as { text: string; done: boolean }[])
     : [];
@@ -118,6 +126,7 @@ export async function sendHandoverMail(
     toName: p.to_name,
     toEmail: p.to_email,
     notes: p.notes,
+    contractInfo,
     contractChecklist,
     docsChecklist,
     schoolContacts,

@@ -6,7 +6,16 @@ import {
   type HandoverStatus,
   type ContractChecklistItem,
   type SchoolContact,
+  type ContractInfo,
 } from "./schemas";
+
+const EMPTY_CONTRACT_INFO: ContractInfo = {
+  title: "",
+  type: "",
+  progress: "",
+  status: "",
+  memo: "",
+};
 
 export type ListInput = {
   q?: string;
@@ -31,6 +40,7 @@ export type HandoverListRow = {
   handover_status: HandoverStatus | null;
   /** 14 sub-field — 인스펙터 EditForm 초기값 (record 없으면 모두 null) */
   contract_info_md: string | null;
+  contract_info: ContractInfo;
   contract_data_md: string | null;
   contract_data_checklist: ContractChecklistItem[];
   work_basic_md: string | null;
@@ -52,6 +62,7 @@ export type HandoverListRow = {
 type HandoverEmbed = {
   status: HandoverStatus;
   contract_info_md: string | null;
+  contract_info: ContractInfo | null;
   contract_data_md: string | null;
   contract_data_checklist: ContractChecklistItem[] | null;
   work_basic_md: string | null;
@@ -97,7 +108,7 @@ export async function listServicesWithHandover(
   let q = supabase
     .from("services")
     .select(
-      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md)",
+      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md)",
       { count: "exact" },
     )
     .order("service_id", { ascending: true });
@@ -142,6 +153,7 @@ export async function listServicesWithHandover(
       operator_name: r.operator_name,
         handover_status: rec?.status ?? null,
         contract_info_md: rec?.contract_info_md ?? null,
+        contract_info: rec?.contract_info ?? EMPTY_CONTRACT_INFO,
         contract_data_md: rec?.contract_data_md ?? null,
         contract_data_checklist: rec?.contract_data_checklist ?? [],
         work_basic_md: rec?.work_basic_md ?? null,

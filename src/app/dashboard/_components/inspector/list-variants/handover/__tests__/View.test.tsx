@@ -13,6 +13,13 @@ const row: ListRow = {
   universityType: "4년제",
   applicationType: "수시모집",
   handoverContractInfoMd: "계약정보 내용",
+  handoverContractInfo: {
+    title: "원서접수",
+    type: "수의",
+    progress: "운영자",
+    status: "완료",
+    memo: "※ 학부 계약시 포함",
+  },
   handoverWorkBasicMd: "기초작업 내용",
 };
 
@@ -24,11 +31,13 @@ describe("HandoverView", () => {
     expect(screen.getByText("4년제")).toBeInTheDocument();
   });
 
-  it("기본 계약 카테고리 → 계약정보 textarea readonly + 값", () => {
+  it("기본 계약 카테고리 → 계약정보 구조화 폼 readonly + 값", () => {
     render(<HandoverView row={row} />);
-    const ta = screen.getByLabelText("계약정보") as HTMLTextAreaElement;
-    expect(ta).toHaveAttribute("readonly");
-    expect(ta.value).toBe("계약정보 내용");
+    expect(screen.getByText("원서접수")).toBeInTheDocument();
+    expect(screen.getByText("수의")).toBeInTheDocument();
+    expect(screen.getByText("운영자")).toBeInTheDocument();
+    expect(screen.getByText("완료")).toBeInTheDocument();
+    expect(screen.queryByLabelText("형태")).toBeNull();
   });
 
   it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
@@ -38,11 +47,12 @@ describe("HandoverView", () => {
     expect(ta.value).toBe("기초작업 내용");
   });
 
-  it("값 없으면 예시(부산대 일반편입학)를 placeholder로 표시", () => {
-    render(<HandoverView row={{ ...row, handoverContractInfoMd: undefined }} />);
-    const ta = screen.getByLabelText("계약정보") as HTMLTextAreaElement;
-    expect(ta.value).toBe("");
-    expect(ta.placeholder).toContain("원서접수");
+  it("계약정보 값 없으면 — 로 표시", () => {
+    render(
+      <HandoverView row={{ ...row, handoverContractInfo: undefined }} />,
+    );
+    // 빈 폼은 각 필드를 '—'로 표시
+    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
   it("계약자료 — 계약서류 체크리스트 렌더", () => {
