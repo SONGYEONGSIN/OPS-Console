@@ -77,11 +77,11 @@ export function HandoverView({ row }: { row: ListRow }) {
       <div className="space-y-3">
         {cat.fields.map((f) =>
           f.key === "contract_data_md" ? (
-            <div key={f.key} className="space-y-2">
-              <ContractChecklist
-                items={row.handoverContractChecklist ?? []}
-                readOnly
-              />
+            <ContractChecklist
+              key={f.key}
+              items={row.handoverContractChecklist ?? []}
+              readOnly
+            >
               {pickValue(row, f.key) && (
                 <label className="block text-xs">
                   <span className="mb-1 block text-muted">메모</span>
@@ -94,7 +94,7 @@ export function HandoverView({ row }: { row: ListRow }) {
                   />
                 </label>
               )}
-            </div>
+            </ContractChecklist>
           ) : (
             <label key={f.key} className="block text-xs">
               <span className="mb-1 block text-muted">{f.label}</span>
