@@ -72,14 +72,14 @@ export function HandoverEditForm({
             }
           />
         ) : f.key === "contract_data_md" ? (
-          // 계약자료 — 계약서류 체크리스트 + 메모 박스
-          <div key={f.key} className="space-y-2">
-            <ContractChecklist
-              items={row.handoverContractChecklist ?? []}
-              onChange={(items) =>
-                setRow((prev) => ({ ...prev, handoverContractChecklist: items }))
-              }
-            />
+          // 계약자료 — 계약서류 체크리스트(헤더 밖) + 항목·메모(선 안)
+          <ContractChecklist
+            key={f.key}
+            items={row.handoverContractChecklist ?? []}
+            onChange={(items) =>
+              setRow((prev) => ({ ...prev, handoverContractChecklist: items }))
+            }
+          >
             <label className="block text-xs">
               <span className="mb-1 block text-muted">메모</span>
               <textarea
@@ -97,7 +97,7 @@ export function HandoverEditForm({
                 className="w-full border border-line bg-cream px-2 py-1 text-ink"
               />
             </label>
-          </div>
+          </ContractChecklist>
         ) : (
           <label key={f.key} className="block text-xs">
             <span className="mb-1 block text-muted">{f.label}</span>
