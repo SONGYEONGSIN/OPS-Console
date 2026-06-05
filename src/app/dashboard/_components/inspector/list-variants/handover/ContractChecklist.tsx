@@ -109,9 +109,9 @@ export function ContractChecklist({
                     type="button"
                     aria-label={`항목 ${idx + 1} 삭제`}
                     onClick={() => onChange?.(items.filter((_, i) => i !== idx))}
-                    className="flex aspect-square flex-none cursor-pointer items-center justify-center border border-line bg-cream text-muted hover:border-vermilion hover:text-vermilion"
+                    className="flex aspect-square flex-none cursor-pointer items-center justify-center border border-line bg-transparent text-muted hover:border-vermilion hover:text-vermilion"
                   >
-                    ×
+                    ✕
                   </button>
                 )}
               </li>
