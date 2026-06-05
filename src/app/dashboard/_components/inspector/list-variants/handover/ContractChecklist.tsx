@@ -27,7 +27,7 @@ export function ContractChecklist({
   const canAdd = items.length < HANDOVER_CHECKLIST_MAX;
 
   return (
-    <div className="space-y-1.5 text-xs">
+    <div className="space-y-1.5 border-y border-line py-3 text-xs">
       <div className="flex items-center justify-between">
         <span className="text-muted">
           계약서류 ({items.length}/{HANDOVER_CHECKLIST_MAX})
