@@ -9,6 +9,7 @@ import {
   type HandoverCategoryKey,
   type HandoverFieldKey,
 } from "@/features/handover/categories";
+import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 
 const ROW_TO_FIELD: Record<HandoverFieldKey, keyof ListRow> = {
   contract_info_md: "handoverContractInfoMd",
@@ -81,7 +82,7 @@ export function HandoverView({ row }: { row: ListRow }) {
               value={pickValue(row, f.key)}
               readOnly
               rows={6}
-              placeholder="미작성"
+              placeholder={FIELD_EXAMPLE[f.key]}
               className="w-full border border-line bg-cream px-2 py-1 text-ink"
             />
           </label>

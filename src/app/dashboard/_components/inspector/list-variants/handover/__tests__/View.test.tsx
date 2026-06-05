@@ -38,10 +38,10 @@ describe("HandoverView", () => {
     expect(ta.value).toBe("기초작업 내용");
   });
 
-  it("값 없으면 '미작성' placeholder 표시", () => {
+  it("값 없으면 예시(부산대 일반편입학)를 placeholder로 표시", () => {
     render(<HandoverView row={{ ...row, handoverContractDataMd: null }} />);
     const ta = screen.getByLabelText("계약자료") as HTMLTextAreaElement;
     expect(ta.value).toBe("");
-    expect(ta.placeholder).toBe("미작성");
+    expect(ta.placeholder).toContain("수시, 정시만");
   });
 });

@@ -8,6 +8,7 @@ import {
   type HandoverFieldKey,
 } from "@/features/handover/categories";
 import { CategoryTabs } from "./CategoryTabs";
+import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 import type { EditFormProps } from "../types";
 
 const ROW_TO_FIELD: Record<HandoverFieldKey, keyof ListRow> = {
@@ -71,7 +72,7 @@ export function HandoverEditForm({
             }
             rows={6}
             maxLength={10000}
-            placeholder="내용을 입력해주세요"
+            placeholder={FIELD_EXAMPLE[f.key]}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
         </label>
