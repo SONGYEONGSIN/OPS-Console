@@ -39,9 +39,24 @@ describe("HandoverView", () => {
   });
 
   it("값 없으면 예시(부산대 일반편입학)를 placeholder로 표시", () => {
-    render(<HandoverView row={{ ...row, handoverContractDataMd: null }} />);
-    const ta = screen.getByLabelText("계약자료") as HTMLTextAreaElement;
+    render(<HandoverView row={{ ...row, handoverContractInfoMd: undefined }} />);
+    const ta = screen.getByLabelText("계약정보") as HTMLTextAreaElement;
     expect(ta.value).toBe("");
-    expect(ta.placeholder).toContain("수시, 정시만");
+    expect(ta.placeholder).toContain("원서접수");
+  });
+
+  it("계약자료 — 계약서류 체크리스트 렌더", () => {
+    render(
+      <HandoverView
+        row={{
+          ...row,
+          handoverContractChecklist: [
+            { id: "x", text: "계약서", done: true },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText(/계약서류 \(/)).toBeInTheDocument();
+    expect(screen.getByText("계약서")).toBeInTheDocument();
   });
 });

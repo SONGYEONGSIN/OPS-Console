@@ -229,6 +229,9 @@ export default async function HandoverPage({
       service_id: row.id,
       contract_info_md: row.handoverContractInfoMd ?? null,
       contract_data_md: row.handoverContractDataMd ?? null,
+      contract_data_checklist: (row.handoverContractChecklist ?? []).filter(
+        (c) => c.text.trim(),
+      ),
       work_basic_md: row.handoverWorkBasicMd ?? null,
       work_generator_md: row.handoverWorkGeneratorMd ?? null,
       work_site_md: row.handoverWorkSiteMd ?? null,
@@ -289,6 +292,7 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     handoverStatus: r.handover_status ?? undefined,
     handoverContractInfoMd: r.contract_info_md,
     handoverContractDataMd: r.contract_data_md,
+    handoverContractChecklist: r.contract_data_checklist,
     handoverWorkBasicMd: r.work_basic_md,
     handoverWorkGeneratorMd: r.work_generator_md,
     handoverWorkSiteMd: r.work_site_md,

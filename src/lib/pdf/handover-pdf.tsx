@@ -50,6 +50,8 @@ export type HandoverPdfInput = {
   notes: string | null;
   createdAt: string;
   fields: HandoverPdfFields;
+  /** 계약자료 체크리스트 (계약서류) */
+  contractChecklist?: { text: string; done: boolean }[];
 };
 
 const styles = StyleSheet.create({
@@ -242,6 +244,30 @@ function HandoverDocument(input: HandoverPdfInput) {
           >
             <Text style={styles.categoryTitle}>{cat.label}</Text>
             {cat.fields.map((f) => {
+              // 계약자료 — 체크리스트(☑/☐) + 메모
+              if (f.key === "contract_data_md") {
+                const list = input.contractChecklist ?? [];
+                const memo = (input.fields[f.key] ?? "").trim();
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>계약자료</Text>
+                    {list.length === 0 && !memo ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      <>
+                        {list.map((it, i) => (
+                          <Text key={i} style={styles.fieldValue}>
+                            {it.done ? "☑" : "☐"} {it.text}
+                          </Text>
+                        ))}
+                        {memo ? (
+                          <Text style={styles.fieldValue}>메모: {memo}</Text>
+                        ) : null}
+                      </>
+                    )}
+                  </View>
+                );
+              }
               const v = input.fields[f.key];
               const text = (v ?? "").trim();
               return (
