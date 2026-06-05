@@ -47,7 +47,11 @@ export function InspectorPanel({ open, onClose, children }: Props) {
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >
-      <div className="h-full overflow-y-auto p-5">{children}</div>
+      {/* scrollbar-gutter:stable — 내용 길이에 따라 스크롤바가 생겼다 사라지며
+          본문 폭이 출렁이는 현상 방지(스크롤바 공간을 항상 예약) */}
+      <div className="h-full overflow-y-auto p-5 [scrollbar-gutter:stable]">
+        {children}
+      </div>
     </aside>
   );
 }
