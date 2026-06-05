@@ -12,6 +12,7 @@ import {
 } from "@/features/incident-reports/report-bundle-action";
 import { createIncidentReport } from "@/features/incident-reports/actions";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
+import { isReportLiveMirrored } from "@/features/incident-reports/schemas";
 
 const STATUS_TONE = {
   미처리: "bg-washi-raised text-muted",
@@ -155,29 +156,29 @@ function bundleToReportRow(
     prevention?: string | null;
   },
 ): ListRow {
-  // 작성중(draft/rejected)이면 연결 사고의 현재값으로 라이브 미러, 승인 이후는 스냅샷.
-  const isDraft = report.status === "draft" || report.status === "rejected";
+  // 승인·발송 전은 연결 사고의 현재값으로 라이브 미러, approved/sent만 스냅샷.
+  const isLive = isReportLiveMirrored(report.status);
   return {
     ...incidentReportToListRow(report),
     incidentReportUniversity: current.university ?? report.recipient_university,
     incidentReportServiceName:
-      (isDraft ? current.serviceName : undefined) ??
+      (isLive ? current.serviceName : undefined) ??
       report.service_name ??
       undefined,
-    incidentReportTitle: isDraft
+    incidentReportTitle: isLive
       ? (current.title ?? report.title)
       : report.title,
-    incidentReportGyeongwi: isDraft
+    incidentReportGyeongwi: isLive
       ? (current.causeSummary ?? report.gyeongwi)
       : report.gyeongwi,
-    incidentReportCause: isDraft
+    incidentReportCause: isLive
       ? (current.rootCause ?? report.cause)
       : report.cause,
-    incidentReportPrevention: isDraft
+    incidentReportPrevention: isLive
       ? (current.prevention ?? report.prevention)
       : report.prevention,
     incidentReportHandlingRows:
-      isDraft && current.handlingRows?.length
+      isLive && current.handlingRows?.length
         ? current.handlingRows
         : report.handling_rows,
     incidentReportRecipients: bundle.recipients.map((r) => ({

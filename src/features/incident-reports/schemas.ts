@@ -18,6 +18,13 @@ export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
   sent: "발송완료",
 };
 
+/** 경위서가 연결 사고의 현재값을 라이브 미러하는지 여부.
+ *  승인·발송 전(draft/rejected/pending_approval)은 사고가 단일 진실원 → 라이브 미러.
+ *  승인 시 동결 스냅샷이 report 컬럼에 박히므로 approved/sent만 report 값(스냅샷)을 사용한다. */
+export function isReportLiveMirrored(status: ReportStatus): boolean {
+  return status !== "approved" && status !== "sent";
+}
+
 /** 경위서 본문 "3. 처리" 시간/내용 2열 표의 한 행. */
 export const handlingRowSchema = z.object({
   time: z.string().max(100),
