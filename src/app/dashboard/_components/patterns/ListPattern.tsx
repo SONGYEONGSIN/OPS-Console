@@ -370,6 +370,14 @@ export type ListRow = {
   handoverContractChecklist?: { id: string; text: string; done: boolean }[];
   /** 제출서류 체크리스트 (서류) */
   handoverDocsChecklist?: { id: string; text: string; done: boolean }[];
+  /** 컨텍 — 학교담당자 구조화 연락처 리스트 */
+  handoverSchoolContacts?: {
+    id: string;
+    name: string;
+    jobTitle: string | null;
+    phone: string | null;
+    email: string | null;
+  }[];
   /** 컨텍 — 해당 대학 연락처 후보 (학교담당자 검색·등록용) */
   handoverSchoolContactCandidates?: {
     name: string;

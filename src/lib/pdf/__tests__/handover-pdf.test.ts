@@ -17,6 +17,14 @@ describe("renderHandoverPdf", () => {
         { text: "사업자등록증", done: true },
         { text: "통장사본", done: false },
       ],
+      schoolContacts: [
+        {
+          name: "송영신",
+          jobTitle: "팀장",
+          phone: "010-5737-1114",
+          email: "ysong2526@gmail.com",
+        },
+      ],
       fields: {
         contract_info_md: "원서접수",
         contract_data_md: null,

@@ -5,6 +5,7 @@ import {
   type HandoverRecordRow,
   type HandoverStatus,
   type ContractChecklistItem,
+  type SchoolContact,
 } from "./schemas";
 
 export type ListInput = {
@@ -42,6 +43,7 @@ export type HandoverListRow = {
   payment_fee_md: string | null;
   payment_invoice_md: string | null;
   school_contact_md: string | null;
+  school_contacts: SchoolContact[];
   docs_md: string | null;
   docs_checklist: ContractChecklistItem[];
   notes_md: string | null;
@@ -62,6 +64,7 @@ type HandoverEmbed = {
   payment_fee_md: string | null;
   payment_invoice_md: string | null;
   school_contact_md: string | null;
+  school_contacts: SchoolContact[] | null;
   docs_md: string | null;
   docs_checklist: ContractChecklistItem[] | null;
   notes_md: string | null;
@@ -94,7 +97,7 @@ export async function listServicesWithHandover(
   let q = supabase
     .from("services")
     .select(
-      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, docs_checklist, notes_md)",
+      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md)",
       { count: "exact" },
     )
     .order("service_id", { ascending: true });
@@ -151,6 +154,7 @@ export async function listServicesWithHandover(
         payment_fee_md: rec?.payment_fee_md ?? null,
         payment_invoice_md: rec?.payment_invoice_md ?? null,
         school_contact_md: rec?.school_contact_md ?? null,
+        school_contacts: rec?.school_contacts ?? [],
         docs_md: rec?.docs_md ?? null,
         docs_checklist: rec?.docs_checklist ?? [],
         notes_md: rec?.notes_md ?? null,

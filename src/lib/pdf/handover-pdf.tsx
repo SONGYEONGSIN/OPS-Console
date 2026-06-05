@@ -54,6 +54,13 @@ export type HandoverPdfInput = {
   contractChecklist?: { text: string; done: boolean }[];
   /** 서류 체크리스트 (제출서류) */
   docsChecklist?: { text: string; done: boolean }[];
+  /** 학교담당자 구조화 연락처 (컨텍) */
+  schoolContacts?: {
+    name: string;
+    jobTitle: string | null;
+    phone: string | null;
+    email: string | null;
+  }[];
 };
 
 const styles = StyleSheet.create({
@@ -269,6 +276,27 @@ function HandoverDocument(input: HandoverPdfInput) {
                           <Text style={styles.fieldValue}>메모: {memo}</Text>
                         ) : null}
                       </>
+                    )}
+                  </View>
+                );
+              }
+              // 컨텍 — 학교담당자 구조화 리스트 (이름(직함)/전화/이메일)
+              if (f.key === "school_contact_md") {
+                const list = input.schoolContacts ?? [];
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    {list.length === 0 ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      list.map((c, i) => (
+                        <Text key={i} style={styles.fieldValue}>
+                          {c.name}
+                          {c.jobTitle ? ` (${c.jobTitle})` : ""}
+                          {c.phone ? ` · ${c.phone}` : ""}
+                          {c.email ? ` · ${c.email}` : ""}
+                        </Text>
+                      ))
                     )}
                   </View>
                 );

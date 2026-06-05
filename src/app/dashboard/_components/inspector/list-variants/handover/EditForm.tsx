@@ -62,13 +62,13 @@ export function HandoverEditForm({
 
       {cat.fields.map((f) =>
         f.key === "school_contact_md" ? (
-          // 컨텍 — 대학 연락처 검색·등록 + 자유 편집
+          // 컨텍 — 대학 연락처 검색 → 구조화 리스트로 추가
           <SchoolContactPicker
             key={f.key}
             candidates={row.handoverSchoolContactCandidates ?? []}
-            value={pickValue(row, f.key)}
+            items={row.handoverSchoolContacts ?? []}
             onChange={(next) =>
-              setRow((prev) => ({ ...prev, handoverSchoolContactMd: next }))
+              setRow((prev) => ({ ...prev, handoverSchoolContacts: next }))
             }
           />
         ) : f.key === "contract_data_md" ? (
