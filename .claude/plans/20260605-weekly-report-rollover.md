@@ -1,6 +1,6 @@
 ---
 plan_id: 20260605-weekly-report-rollover
-status: in_progress
+status: completed
 created: 2026-06-05
 hard_gate: full
 source: docs/buseobogo.py 분석 + 사용자 결정(주간보고 우선, Teams 포함)

@@ -1,6 +1,6 @@
 ---
 plan_id: 20260604-160658-incident-report-sync
-status: in_progress
+status: completed
 created: 2026-06-04T07:06:58Z
 hard_gate: full
 source: user-direct (라이브 피드백 5건 + 양방향 동기화 결정)
