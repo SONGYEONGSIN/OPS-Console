@@ -47,7 +47,6 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
   const [picking, setPicking] = useState(false);
 
   // 발송 compose 상태 (자료요청 패턴)
-  const university = row.incidentReportUniversity ?? "";
   const title = row.incidentReportTitle ?? "";
   const authorName = row.incidentReportAuthorName ?? "";
   const approverEmail = row.incidentReportApproverEmail ?? "";
@@ -63,7 +62,7 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
     incidentReportMailSubject(title),
   );
   const [body, setBody] = useState(() =>
-    incidentReportMailBody({ university, title, authorName }),
+    incidentReportMailBody({ title, authorName }),
   );
 
   const term = search.trim().toLowerCase();

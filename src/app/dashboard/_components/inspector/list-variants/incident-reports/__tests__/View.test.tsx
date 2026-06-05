@@ -113,6 +113,6 @@ describe("IncidentReportView onChanged", () => {
     );
     const arg = mockSend.mock.calls[0][0];
     expect(arg.subject).toContain("테스트 경위서");
-    expect(arg.body).toContain("건국대학교");
+    expect(arg.body).toContain("이해영");
   });
 });
