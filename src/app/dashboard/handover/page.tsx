@@ -263,6 +263,9 @@ export default async function HandoverPage({
       payment_fee_md: row.handoverPaymentFeeMd ?? null,
       payment_invoice_md: row.handoverPaymentInvoiceMd ?? null,
       school_contact_md: row.handoverSchoolContactMd ?? null,
+      school_contacts: (row.handoverSchoolContacts ?? []).filter((c) =>
+        c.name.trim(),
+      ),
       docs_md: row.handoverDocsMd ?? null,
       docs_checklist: (row.handoverDocsChecklist ?? []).filter((c) => c.text.trim()),
       notes_md: row.handoverNotesMd ?? null,
@@ -325,6 +328,7 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     handoverPaymentFeeMd: r.payment_fee_md,
     handoverPaymentInvoiceMd: r.payment_invoice_md,
     handoverSchoolContactMd: r.school_contact_md,
+    handoverSchoolContacts: r.school_contacts,
     handoverDocsMd: r.docs_md,
     handoverDocsChecklist: r.docs_checklist,
     handoverNotesMd: r.notes_md,

@@ -95,6 +95,35 @@ export function HandoverView({ row }: { row: ListRow }) {
                 </label>
               )}
             </ContractChecklist>
+          ) : f.key === "school_contact_md" ? (
+            <div key={f.key} className="space-y-2 text-xs">
+              <span className="block text-muted">학교담당자</span>
+              {(row.handoverSchoolContacts ?? []).length === 0 ? (
+                <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+                  등록된 학교담당자가 없습니다.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {(row.handoverSchoolContacts ?? []).map((c) => (
+                    <li
+                      key={c.id}
+                      className="border border-line bg-cream px-2 py-1.5"
+                    >
+                      <p className="text-ink">
+                        {c.name}
+                        {c.jobTitle ? ` (${c.jobTitle})` : ""}
+                      </p>
+                      {c.phone ? (
+                        <p className="text-2xs text-muted">{c.phone}</p>
+                      ) : null}
+                      {c.email ? (
+                        <p className="text-2xs text-muted">{c.email}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           ) : f.key === "docs_md" ? (
             <ContractChecklist
               key={f.key}

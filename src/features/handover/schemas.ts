@@ -19,6 +19,21 @@ const checklistField = z
   .max(HANDOVER_CHECKLIST_MAX)
   .default([]);
 
+/** 컨텍(학교담당자) — 구조화 연락처 항목. */
+export const HANDOVER_SCHOOL_CONTACTS_MAX = 30;
+export const schoolContactSchema = z.object({
+  id: z.string(),
+  name: z.string().max(100),
+  jobTitle: z.string().max(100).nullable().default(null),
+  phone: z.string().max(50).nullable().default(null),
+  email: z.string().max(200).nullable().default(null),
+});
+export type SchoolContact = z.infer<typeof schoolContactSchema>;
+const schoolContactsField = z
+  .array(schoolContactSchema)
+  .max(HANDOVER_SCHOOL_CONTACTS_MAX)
+  .default([]);
+
 /**
  * DB row 형상. RLS authenticated 모두 read.
  */
@@ -38,6 +53,7 @@ export const handoverRecordRowSchema = z.object({
   payment_fee_md: mdField,
   payment_invoice_md: mdField,
   school_contact_md: mdField,
+  school_contacts: schoolContactsField,
   docs_md: mdField,
   docs_checklist: checklistField,
   notes_md: mdField,
@@ -70,6 +86,7 @@ export const handoverRecordUpsertSchema = z.object({
   payment_fee_md: mdField,
   payment_invoice_md: mdField,
   school_contact_md: mdField,
+  school_contacts: schoolContactsField,
   docs_md: mdField,
   docs_checklist: checklistField,
   notes_md: mdField,
