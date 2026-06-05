@@ -115,7 +115,11 @@ describe("deriveFormModel", () => {
       approverName: "송영신",
       approverRole: "팀장",
     });
-    expect(m.approvalLine.map((a) => a.role)).toEqual(["팀장", "본부장", "사장"]);
+    expect(m.approvalLine.map((a) => a.role)).toEqual([
+      "팀장",
+      "본부장",
+      "사장",
+    ]);
     expect(m.approvalLine.some((a) => a.role === "담당자")).toBe(false);
   });
   it("저장된 실제 직책이 있으면 그 직책으로 결재라인 라벨을 표시한다", () => {
@@ -149,6 +153,30 @@ describe("deriveFormModel", () => {
     expect(m.coverBody[0]).toBe("건국대학교의 무궁한 발전을 기원합니다.");
     expect(m.coverBody[1]).toBe("당사는 오류로 사과드립니다.");
     expect(m.coverBody[2]).toBe("감사합니다.");
+  });
+  it("greeting 입력이 있으면 1번(coverBody[0])에 그 값을 쓴다", () => {
+    const m = deriveFormModel({
+      ...base,
+      greeting: "안녕하십니까. 맞춤 인사말.",
+    });
+    expect(m.coverBody[0]).toBe("안녕하십니까. 맞춤 인사말.");
+  });
+  it("greeting이 없으면 수신대학 기반 자동 인사말을 쓴다", () => {
+    expect(deriveFormModel(base).coverBody[0]).toBe(
+      "건국대학교의 무궁한 발전을 기원합니다.",
+    );
+  });
+  it("greeting이 공백만이면 자동 인사말로 폴백한다", () => {
+    expect(deriveFormModel({ ...base, greeting: "   " }).coverBody[0]).toBe(
+      "건국대학교의 무궁한 발전을 기원합니다.",
+    );
+  });
+  it("closing 입력이 있으면 3번(coverBody[2])에 그 값을 쓴다", () => {
+    const m = deriveFormModel({ ...base, closing: "끝까지 감사드립니다." });
+    expect(m.coverBody[2]).toBe("끝까지 감사드립니다.");
+  });
+  it("closing이 없으면 '감사합니다.'로 폴백한다", () => {
+    expect(deriveFormModel(base).coverBody[2]).toBe("감사합니다.");
   });
   it("작성일자/접수일자를 'YYYY. MM. DD'로 포맷한다", () => {
     const m = deriveFormModel(base);

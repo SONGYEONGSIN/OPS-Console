@@ -18,6 +18,10 @@ export type FormSource = {
   ceoRole: string | null;
   docNumber: string | null;
   apology: string | null;
+  /** 공문 1번 인사말 — 미설정 시 수신대학 기반 자동 문구. */
+  greeting?: string | null;
+  /** 공문 3번 맺음말 — 미설정 시 "감사합니다.". */
+  closing?: string | null;
   gyeongwi: string | null;
   cause: string | null;
   handling: string | null;
@@ -129,13 +133,18 @@ export function deriveFormModel(s: FormSource): FormModel {
     s.apology && s.apology.trim()
       ? s.apology
       : defaultApology(s.recipientUniversity);
-  const greetingLine = `${s.recipientUniversity}의 무궁한 발전을 기원합니다.`;
+  // 1번 인사말·3번 맺음말 — 입력값 우선, 없으면 자동/기본 문구로 폴백.
+  const greetingLine =
+    s.greeting && s.greeting.trim()
+      ? s.greeting
+      : `${s.recipientUniversity}의 무궁한 발전을 기원합니다.`;
+  const closingLine = s.closing && s.closing.trim() ? s.closing : "감사합니다.";
   return {
     brandHeader: BRAND_HEADER,
     recipientUniversity: s.recipientUniversity,
     title: s.title,
     apology: apologyResolved,
-    coverBody: [greetingLine, apologyBodyOnly(apologyResolved), "감사합니다."],
+    coverBody: [greetingLine, apologyBodyOnly(apologyResolved), closingLine],
     attachment: `붙임 : 1. ${s.title} 경위서 1부.  끝.`,
     companyLine: COMPANY_LINE,
     jeonkyeolDate: jeonkyeolDate(s.draftDate),
