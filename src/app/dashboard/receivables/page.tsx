@@ -125,6 +125,7 @@ export default async function ReceivablesPage({
         variant="receivables"
         readOnly={!canEdit}
         onPersist={canEdit ? onPersist : undefined}
+        currentUserName={me?.displayName ?? me?.email ?? ""}
         currentUserPermission={me?.permission ?? null}
         receivablesMailDryRun={mailDryRun}
       />

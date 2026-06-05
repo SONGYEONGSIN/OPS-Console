@@ -457,6 +457,11 @@ function filterRows(
   if (variant === "project-task") return applyProjectTaskFilter(rows, filter);
   if (variant === "cohort")
     return rows.filter((r) => r.cohortStatus === filter);
+  if (variant === "receivables") {
+    if (filter === "mine")
+      return rows.filter((r) => r.owner === currentUserName);
+    return rows.filter((r) => r.status === filter);
+  }
   if (variant === "backup") {
     if (filter === "mine")
       return rows.filter((r) => r.owner === currentUserName);
