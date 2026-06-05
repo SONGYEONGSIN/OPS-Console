@@ -9,6 +9,8 @@ import {
   contractUpdateSchema,
   type ContractSheet,
 } from "./schemas";
+import { listContracts } from "./queries";
+import { matchContractsByName, type ContractMatch } from "./match";
 
 const DRIVE_ID = process.env.SHAREPOINT_DRIVE_ID;
 const ITEM_ID = process.env.SHAREPOINT_CONTRACTS_ITEM_ID;
@@ -98,4 +100,27 @@ export async function updateContractField(
 
   revalidatePath("/dashboard/contracts");
   return { ok: true, value };
+}
+
+export type ContractSearchResult =
+  | { ok: true; matches: ContractMatch[] }
+  | { ok: false; error: string };
+
+/**
+ * 계약정보 자동 채움용 — 학교명으로 계약 행을 검색한다.
+ * Microsoft Graph 워크북 호출이라 비용이 크므로 인스펙터에서 명시적 검색 시에만 호출.
+ */
+export async function searchContractsByUniversity(
+  name: string,
+): Promise<ContractSearchResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: "인증이 필요합니다." };
+  const term = name.trim();
+  if (!term) return { ok: true, matches: [] };
+  try {
+    const { rows } = await listContracts();
+    return { ok: true, matches: matchContractsByName(rows, term) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "검색 실패" };
+  }
 }
