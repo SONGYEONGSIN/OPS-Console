@@ -47,7 +47,7 @@ describe("HandoverEditForm", () => {
     expect(screen.getByLabelText("형태")).toHaveValue("수의");
     expect(screen.getByLabelText("상태")).toHaveValue("완료");
     // 계약자료 = 계약서류 체크리스트 + 메모
-    expect(screen.getByText(/계약서류 \(/)).toBeInTheDocument();
+    expect(screen.getByText("계약서류")).toBeInTheDocument();
     expect(screen.getByLabelText("계약자료 메모")).toBeInTheDocument();
   });
 

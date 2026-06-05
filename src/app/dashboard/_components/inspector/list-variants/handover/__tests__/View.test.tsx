@@ -66,7 +66,7 @@ describe("HandoverView", () => {
         }}
       />,
     );
-    expect(screen.getByText(/계약서류 \(/)).toBeInTheDocument();
+    expect(screen.getByText("계약서류")).toBeInTheDocument();
     expect(screen.getByText("계약서")).toBeInTheDocument();
   });
 });

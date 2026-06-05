@@ -38,7 +38,8 @@ export function ContractChecklist({
       {/* 헤더 — 구분선 밖(위) */}
       <div className="flex items-center justify-between">
         <span className="text-muted">
-          {label} ({items.length}/{HANDOVER_CHECKLIST_MAX})
+          <span className="font-bold text-ink-soft">{label}</span> (
+          {items.length}/{HANDOVER_CHECKLIST_MAX})
           {items.length > 0 && (
             <span className="ml-1 text-faint">· 완료 {received}/{items.length}</span>
           )}
@@ -59,7 +60,7 @@ export function ContractChecklist({
       </div>
 
       {/* 구분선 안 — 항목 + 메모(children) */}
-      <div className="space-y-2 border-y border-line py-3">
+      <div className="space-y-2 border-y border-line-soft py-3">
         {items.length === 0 ? (
           <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
             {readOnly
