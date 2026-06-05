@@ -71,7 +71,7 @@ export function HandoverView({ row }: { row: ListRow }) {
 
       <Divider />
 
-      <div className="mb-2">
+      <div className="mb-6">
         <CategoryTabs active={active} onChange={setActive} />
       </div>
 
