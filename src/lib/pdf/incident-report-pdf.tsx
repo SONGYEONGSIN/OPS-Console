@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   attachLine: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 18 },
   coverNum: { width: 18 },
-  coverText: { flex: 1, lineHeight: 1.4, textAlign: "justify" },
+  coverText: { flex: 1, lineHeight: 1.625, textAlign: "justify" },
   apology: { marginTop: 4 },
   companyWrap: {
     marginTop: 36,
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   companyLine: { fontSize: 18, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 124, top: -19, width: 70, height: 70 },
+  seal: { position: "absolute", right: 128, top: -16, width: 63, height: 63 },
   grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 40 },
   jeonkyeol: {
     fontSize: 9,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 9,
     color: "#3a3528",
-    lineHeight: 1.5,
+    lineHeight: 1.9,
     letterSpacing: 1,
   },
   contactRow: {
