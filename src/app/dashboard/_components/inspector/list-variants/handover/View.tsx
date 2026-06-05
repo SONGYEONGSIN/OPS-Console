@@ -71,9 +71,7 @@ export function HandoverView({ row }: { row: ListRow }) {
 
       <Divider />
 
-      <Section title="카테고리">
-        <CategoryTabs active={active} onChange={setActive} />
-      </Section>
+      <CategoryTabs active={active} onChange={setActive} />
 
       <div className="space-y-3">
         {cat.fields.map((f) =>
