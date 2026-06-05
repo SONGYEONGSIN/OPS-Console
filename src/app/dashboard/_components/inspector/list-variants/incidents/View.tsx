@@ -164,9 +164,9 @@ function bundleToReportRow(
       (isDraft ? current.serviceName : undefined) ??
       report.service_name ??
       undefined,
-    incidentReportTitle: isDraft
-      ? (current.title ?? report.title)
-      : report.title,
+    // 제목은 인스펙터 표시상 항상 연결 사고의 현재 제목을 미러(승인/발송 후에도).
+    // 발송된 공문 PDF/본문은 별도로 스냅샷 유지.
+    incidentReportTitle: current.title ?? report.title,
     incidentReportGyeongwi: isDraft
       ? (current.causeSummary ?? report.gyeongwi)
       : report.gyeongwi,
