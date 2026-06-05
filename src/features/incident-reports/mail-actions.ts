@@ -6,7 +6,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
-import { incidentReportMailHtml, incidentReportMailSubject } from "./mail-template";
+import { incidentReportBodyToHtml } from "./mail-template";
 import { registerIncidentReportToSharePoint } from "./sharepoint-register";
 import { getDelegatedGraphToken } from "@/lib/microsoft/delegated-token";
 import { incidentReportSendSchema, type IncidentReportRow } from "./schemas";
@@ -112,46 +112,44 @@ export async function sendIncidentReport(
     .eq("email", me.email)
     .maybeSingle();
 
-  const subject = incidentReportMailSubject(rep.title);
-  const html = incidentReportMailHtml({
-    university: rep.recipient_university,
-    title: rep.title,
-    authorName: rep.author_name,
-  });
+  // 제목·본문은 발송 폼에서 편집한 값을 사용. 본문 텍스트 → HTML.
+  const subject = parsed.data.subject;
+  const html = incidentReportBodyToHtml(parsed.data.body);
+  const ccList = parsed.data.cc_emails.map((email) => ({ email }));
 
-  for (const to of parsed.data.recipient_emails) {
-    let status: "sent" | "failed" | "dry_run" = "dry_run";
-    let messageId: string | null = null;
-    let errMsg: string | null = null;
+  let status: "sent" | "failed" | "dry_run" = "dry_run";
+  let messageId: string | null = null;
+  let errMsg: string | null = null;
 
-    if (!dryRun) {
-      const res = await sendGraphMail({
-        senderUserId: me.email,
-        toEmail: to,
-        subject,
-        html,
-        attachments: [attachment],
-      });
-      status = res.ok ? "sent" : "failed";
-      messageId = res.ok ? (res.messageId ?? null) : null;
-      errMsg = res.ok ? null : res.error;
-    }
-
-    await admin.from("incident_report_mail_sends").insert({
-      sender_operator_id: opRow?.id ?? null,
-      report_id: rep.id,
-      recipient_email: to,
-      status,
-      graph_message_id: messageId,
-      error_message: errMsg,
+  if (!dryRun) {
+    const res = await sendGraphMail({
+      senderUserId: me.email,
+      toEmail: parsed.data.to_email,
+      cc: ccList.length > 0 ? ccList : undefined,
+      subject,
+      html,
+      attachments: [attachment],
     });
+    status = res.ok ? "sent" : "failed";
+    messageId = res.ok ? (res.messageId ?? null) : null;
+    errMsg = res.ok ? null : res.error;
   }
 
+  await admin.from("incident_report_mail_sends").insert({
+    sender_operator_id: opRow?.id ?? null,
+    report_id: rep.id,
+    recipient_email: parsed.data.to_email,
+    status,
+    graph_message_id: messageId,
+    error_message: errMsg,
+  });
+
+  const allRecipients = [parsed.data.to_email, ...parsed.data.cc_emails];
   const { data: updated } = await admin
     .from("incident_reports")
     .update({
       status: "sent",
-      recipient_emails: parsed.data.recipient_emails,
+      recipient_emails: allRecipients,
       doc_number: docNumber,
       sharepoint_url: sharepointUrl,
       updated_at: new Date().toISOString(),
@@ -166,7 +164,7 @@ export async function sendIncidentReport(
     target_type: "incident_reports",
     target_id: rep.id,
     target_name: rep.title,
-    msg: `경위서 발송 (${parsed.data.recipient_emails.length}명)${docNumber ? ` 시행 ${docNumber}` : ""}${dryRun ? " [dry_run]" : ""}`,
+    msg: `경위서 발송 (수신 ${parsed.data.to_email}${parsed.data.cc_emails.length ? `, CC ${parsed.data.cc_emails.length}` : ""})${docNumber ? ` 시행 ${docNumber}` : ""}${dryRun ? " [dry_run]" : ""}`,
   });
 
   revalidatePath(PATH);

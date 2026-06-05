@@ -104,12 +104,14 @@ describe("sendIncidentReport", () => {
     (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     const r = await sendIncidentReport({
       id: "22222222-2222-2222-2222-222222222222",
-      recipient_emails: ["a@b.com"],
+      to_email: "a@b.com",
+      subject: "제목",
+      body: "본문",
     });
     expect(r).toEqual({ ok: false, error: "로그인이 필요합니다." });
   });
 
-  it("수신 이메일 없음 → 검증 에러", async () => {
+  it("필수값 누락(수신/제목/본문) → 검증 에러", async () => {
     (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue({
       email: "me@x.com",
       displayName: "나",
@@ -117,7 +119,7 @@ describe("sendIncidentReport", () => {
     });
     const r = await sendIncidentReport({
       id: "22222222-2222-2222-2222-222222222222",
-      recipient_emails: [],
+      to_email: "",
     });
     expect(r.ok).toBe(false);
   });
@@ -132,7 +134,9 @@ describe("sendIncidentReport", () => {
     (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
     const r = await sendIncidentReport({
       id: APPROVED_REPORT.id,
-      recipient_emails: ["a@b.com"],
+      to_email: "a@b.com",
+      subject: "제목",
+      body: "본문",
     });
     expect(r).toEqual({ ok: false, error: "승인 완료된 경위서만 발송할 수 있습니다." });
   });
@@ -149,12 +153,16 @@ describe("sendIncidentReport", () => {
 
     const r = await sendIncidentReport({
       id: APPROVED_REPORT.id,
-      recipient_emails: ["a@b.com", "c@d.com"],
+      to_email: "a@b.com",
+      cc_emails: ["c@d.com"],
+      subject: "제목",
+      body: "본문",
     });
 
     expect(r.ok).toBe(true);
     expect(sendGraphMail).not.toHaveBeenCalled();
-    expect(inserts).toHaveLength(2);
+    // 수신자 1행만 이력 적재(CC는 메일헤더), report.recipient_emails = [to, ...cc]
+    expect(inserts).toHaveLength(1);
     expect(inserts.every((row) => row.status === "dry_run")).toBe(true);
     expect(updates[0]?.status).toBe("sent");
     expect(updates[0]?.recipient_emails).toEqual(["a@b.com", "c@d.com"]);
@@ -181,7 +189,9 @@ describe("sendIncidentReport", () => {
 
     const r = await sendIncidentReport({
       id: APPROVED_REPORT.id,
-      recipient_emails: ["a@b.com"],
+      to_email: "a@b.com",
+      subject: "제목",
+      body: "본문",
     });
 
     expect(r.ok).toBe(true);

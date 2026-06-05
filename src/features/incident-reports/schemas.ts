@@ -82,8 +82,9 @@ export type IncidentReportUpdate = z.infer<typeof incidentReportUpdateSchema>;
 
 export const incidentReportSendSchema = z.object({
   id: z.string().uuid(),
-  recipient_emails: z
-    .array(z.string().email())
-    .min(1, "수신 이메일을 1개 이상 선택하세요."),
+  to_email: z.string().email("수신자 이메일이 올바르지 않습니다."),
+  cc_emails: z.array(z.string().email()).default([]),
+  subject: z.string().min(1, "제목을 입력하세요."),
+  body: z.string().min(1, "본문을 입력하세요."),
 });
 export type IncidentReportSend = z.infer<typeof incidentReportSendSchema>;

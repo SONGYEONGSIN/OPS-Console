@@ -36,13 +36,27 @@ describe("incidentReportCreateSchema", () => {
 });
 
 describe("incidentReportSendSchema", () => {
-  it("수신 이메일 1개 이상 필요", () => {
+  it("수신자·제목·본문 필수, CC 선택", () => {
     expect(
-      incidentReportSendSchema.safeParse({ id: SAMPLE_UUID, recipient_emails: [] }).success,
+      incidentReportSendSchema.safeParse({ id: SAMPLE_UUID, to_email: "" })
+        .success,
     ).toBe(false);
     expect(
-      incidentReportSendSchema.safeParse({ id: SAMPLE_UUID, recipient_emails: ["a@b.com"] })
-        .success,
+      incidentReportSendSchema.safeParse({
+        id: SAMPLE_UUID,
+        to_email: "a@b.com",
+        subject: "제목",
+        body: "본문",
+      }).success,
     ).toBe(true);
+    // CC 포함
+    const parsed = incidentReportSendSchema.safeParse({
+      id: SAMPLE_UUID,
+      to_email: "a@b.com",
+      cc_emails: ["c@d.com"],
+      subject: "제목",
+      body: "본문",
+    });
+    expect(parsed.success).toBe(true);
   });
 });
