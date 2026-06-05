@@ -19,11 +19,14 @@ export function ContractChecklist({
   items,
   onChange,
   readOnly = false,
+  label = "계약서류",
   children,
 }: {
   items: ChecklistItem[];
   onChange?: (items: ChecklistItem[]) => void;
   readOnly?: boolean;
+  /** 헤더 라벨 (계약서류 / 제출서류 등) */
+  label?: string;
   /** 구분선 안에 함께 묶을 내용(메모 등) */
   children?: React.ReactNode;
 }) {
@@ -35,7 +38,7 @@ export function ContractChecklist({
       {/* 헤더 — 구분선 밖(위) */}
       <div className="flex items-center justify-between">
         <span className="text-muted">
-          계약서류 ({items.length}/{HANDOVER_CHECKLIST_MAX})
+          {label} ({items.length}/{HANDOVER_CHECKLIST_MAX})
           {items.length > 0 && (
             <span className="ml-1 text-faint">· 완료 {received}/{items.length}</span>
           )}
@@ -60,8 +63,8 @@ export function ContractChecklist({
         {items.length === 0 ? (
           <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
             {readOnly
-              ? "등록된 계약서류 항목이 없습니다."
-              : "필요한 계약서류를 추가하세요. (예: 계약서, 사업자등록증)"}
+              ? `등록된 ${label} 항목이 없습니다.`
+              : `필요한 ${label} 항목을 추가하세요.`}
           </p>
         ) : (
           <ul className="space-y-1">
@@ -104,7 +107,7 @@ export function ContractChecklist({
                     type="button"
                     aria-label={`항목 ${idx + 1} 삭제`}
                     onClick={() => onChange?.(items.filter((_, i) => i !== idx))}
-                    className="flex-none cursor-pointer border border-line bg-cream px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
+                    className="flex h-7 w-7 flex-none cursor-pointer items-center justify-center border border-line bg-cream text-muted hover:border-vermilion hover:text-vermilion"
                   >
                     ×
                   </button>

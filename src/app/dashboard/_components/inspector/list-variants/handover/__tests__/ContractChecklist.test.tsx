@@ -14,6 +14,14 @@ describe("ContractChecklist", () => {
     expect(screen.getByText(/완료 1\/2/)).toBeInTheDocument();
   });
 
+  it("label 지정 시 헤더 라벨 변경", () => {
+    render(<ContractChecklist items={[]} label="제출서류" readOnly />);
+    expect(screen.getByText(/제출서류 \(/)).toBeInTheDocument();
+    expect(
+      screen.getByText("등록된 제출서류 항목이 없습니다."),
+    ).toBeInTheDocument();
+  });
+
   it("readOnly — 체크/항목 텍스트 표시, 입력 없음", () => {
     render(<ContractChecklist items={items} readOnly />);
     expect(screen.getByText("계약서")).toBeInTheDocument();

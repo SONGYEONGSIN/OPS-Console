@@ -95,6 +95,26 @@ export function HandoverView({ row }: { row: ListRow }) {
                 </label>
               )}
             </ContractChecklist>
+          ) : f.key === "docs_md" ? (
+            <ContractChecklist
+              key={f.key}
+              label="제출서류"
+              items={row.handoverDocsChecklist ?? []}
+              readOnly
+            >
+              {pickValue(row, f.key) && (
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">메모</span>
+                  <textarea
+                    aria-label="서류 메모"
+                    value={pickValue(row, f.key)}
+                    readOnly
+                    rows={3}
+                    className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                  />
+                </label>
+              )}
+            </ContractChecklist>
           ) : (
             <label key={f.key} className="block text-xs">
               <span className="mb-1 block text-muted">{f.label}</span>

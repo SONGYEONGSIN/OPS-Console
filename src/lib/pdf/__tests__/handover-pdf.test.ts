@@ -13,6 +13,10 @@ describe("renderHandoverPdf", () => {
       toEmail: "to@x.com",
       notes: "참고 메모",
       createdAt: "2026-05-17T00:00:00Z",
+      docsChecklist: [
+        { text: "사업자등록증", done: true },
+        { text: "통장사본", done: false },
+      ],
       fields: {
         contract_info_md: "원서접수",
         contract_data_md: null,
