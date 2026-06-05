@@ -579,3 +579,42 @@ describe("ListPattern ai-work variant", () => {
     expect(panel).toHaveAttribute("aria-hidden", "false");
   });
 });
+
+describe("ListPattern — receivables 내 채권 필터", () => {
+  const recv = {
+    rows: [
+      { id: "1", name: "한양대학교", status: "active" as const, owner: "박시현" },
+      { id: "2", name: "서강대학교", status: "approved" as const, owner: "박시현" },
+      { id: "3", name: "이화여대", status: "active" as const, owner: "한효진" },
+    ],
+  };
+
+  it("'내 채권' 칩 노출", () => {
+    render(
+      <ListPattern
+        title="미수 채권"
+        data={recv}
+        variant="receivables"
+        currentUserName="박시현"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "내 채권" }),
+    ).toBeInTheDocument();
+  });
+
+  it("'내 채권' 클릭 시 현재 운영자(박시현) 행만 표시", () => {
+    render(
+      <ListPattern
+        title="미수 채권"
+        data={recv}
+        variant="receivables"
+        currentUserName="박시현"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "내 채권" }));
+    expect(screen.getByText("한양대학교")).toBeInTheDocument();
+    expect(screen.getByText("서강대학교")).toBeInTheDocument();
+    expect(screen.queryByText("이화여대")).toBeNull();
+  });
+});
