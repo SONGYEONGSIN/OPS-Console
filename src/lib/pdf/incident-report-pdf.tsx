@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   attachLine: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 18 },
   coverNum: { width: 18 },
-  coverText: { flex: 1, lineHeight: 1.625, textAlign: "justify" },
+  coverText: { flex: 1, lineHeight: 1.35, textAlign: "justify" },
   apology: { marginTop: 4 },
   companyWrap: {
     marginTop: 36,
