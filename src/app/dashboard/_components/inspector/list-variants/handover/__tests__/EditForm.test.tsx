@@ -33,18 +33,16 @@ function setup(over: Partial<Parameters<typeof HandoverEditForm>[0]> = {}) {
 }
 
 describe("HandoverEditForm", () => {
-  it("카테고리 select + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
+  it("카테고리 탭 + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
     setup();
-    expect(screen.getByLabelText("카테고리")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "계약" })).toBeInTheDocument();
     expect(screen.getByLabelText("계약정보")).toHaveValue("기존 계약정보");
     expect(screen.getByLabelText("계약자료")).toBeInTheDocument();
   });
 
-  it("카테고리 select 변경 시 다른 필드 표시", () => {
+  it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
     setup();
-    fireEvent.change(screen.getByLabelText("카테고리"), {
-      target: { value: "work" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "작업" }));
     expect(screen.getByLabelText("기초작업")).toBeInTheDocument();
     expect(screen.queryByLabelText("계약정보")).not.toBeInTheDocument();
   });
