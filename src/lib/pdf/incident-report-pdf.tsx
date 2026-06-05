@@ -177,7 +177,12 @@ const styles = StyleSheet.create({
     letterSpacing: 11,
     marginBottom: 14,
   },
-  authorRow: { textAlign: "right", fontSize: 9.5, fontWeight: 700, marginBottom: 12 },
+  authorRow: {
+    textAlign: "right",
+    fontSize: 9.5,
+    fontWeight: 700,
+    marginBottom: 12,
+  },
   titleCell: {
     borderWidth: 1,
     borderColor: "#15120c",
@@ -204,7 +209,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#15120c",
   },
-  hTr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#999" },
+  hTr: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#999",
+    alignItems: "flex-start",
+  },
   hHead: { backgroundColor: "#efece3" },
   hTimeCell: {
     width: 110,
@@ -212,6 +222,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: "#999",
     fontSize: 9,
+    textAlign: "center",
   },
   hContentCell: { flex: 1, padding: 4, fontSize: 9 },
   hCellCenter: { textAlign: "center", fontWeight: 700 },
@@ -305,15 +316,16 @@ export async function renderIncidentReportPdf(
             .filter((a) => a.name)
             .map((a) => (
               <Text key={a.role} style={styles.approvalItem}>
-                {a.role}  {a.name}
+                {a.role} {a.name}
               </Text>
             ))}
         </View>
         <View style={styles.docRowWrap}>
           <Text style={styles.docRow}>
-            시 행  {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
+            시 행{" "}
+            {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
           </Text>
-          <Text style={styles.docRow}>접 수 (        )</Text>
+          <Text style={styles.docRow}>접 수 ( )</Text>
         </View>
         <View style={styles.contact}>
           {m.contactLines.map((line) => {
@@ -340,9 +352,9 @@ export async function renderIncidentReportPdf(
       <Page size="A4" style={styles.page}>
         <Text style={styles.reportTitle}>경 위 서</Text>
         <Text style={styles.authorRow}>
-          작 성 일 자 : {m.draftDate}        작 성 자 : {m.authorName}
+          작 성 일 자 : {m.draftDate} 작 성 자 : {m.authorName}
         </Text>
-        <Text style={styles.titleCell}>제    목 : {m.title}</Text>
+        <Text style={styles.titleCell}>제 목 : {m.title}</Text>
         <View style={styles.bodyFrame}>
           {m.sections.map((sec) => (
             <View key={sec.no} wrap={false}>
