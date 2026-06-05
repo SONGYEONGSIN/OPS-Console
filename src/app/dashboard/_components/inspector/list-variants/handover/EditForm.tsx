@@ -75,6 +75,7 @@ export function HandoverEditForm({
             onChange={(next) =>
               setRow((prev) => ({ ...prev, handoverContractInfo: next }))
             }
+            universityName={row.universityName ?? undefined}
           />
         ) : f.key === "school_contact_md" ? (
           // 컨텍 — 대학 연락처 검색 → 구조화 리스트로 추가
