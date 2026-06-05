@@ -284,6 +284,7 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     universityName: r.university_name,
     serviceName: r.service_name,
     applicationType: r.application_type,
+    universityType: r.university_type,
     handoverServiceNumber: r.service_number,
     handoverStatus: r.handover_status ?? undefined,
     handoverContractInfoMd: r.contract_info_md,

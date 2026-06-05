@@ -7,6 +7,7 @@ import {
   type HandoverCategoryKey,
   type HandoverFieldKey,
 } from "@/features/handover/categories";
+import { CategoryTabs } from "./CategoryTabs";
 import type { EditFormProps } from "../types";
 
 const ROW_TO_FIELD: Record<HandoverFieldKey, keyof ListRow> = {
@@ -51,21 +52,10 @@ export function HandoverEditForm({
       }}
       className="space-y-3"
     >
-      <label className="block text-xs">
+      <div className="text-xs">
         <span className="mb-1 block text-muted">카테고리</span>
-        <select
-          aria-label="카테고리"
-          value={active}
-          onChange={(e) => setActive(e.target.value as HandoverCategoryKey)}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          {HANDOVER_CATEGORIES.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </label>
+        <CategoryTabs active={active} onChange={setActive} />
+      </div>
 
       {cat.fields.map((f) => (
         <label key={f.key} className="block text-xs">

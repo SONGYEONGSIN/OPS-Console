@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
+import { Section, DefList, Divider } from "../shared";
+import { CategoryTabs } from "./CategoryTabs";
 import {
   HANDOVER_CATEGORIES,
   type HandoverCategoryKey,
@@ -30,42 +32,61 @@ function pickValue(row: ListRow, key: HandoverFieldKey): string {
   return typeof v === "string" ? v : "";
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  draft: "작성중",
+  ready: "작성완료",
+  published: "발행됨",
+};
+
 export function HandoverView({ row }: { row: ListRow }) {
   const [active, setActive] = useState<HandoverCategoryKey>("contract");
   const cat = HANDOVER_CATEGORIES.find((c) => c.key === active);
   if (!cat) return null;
 
-  return (
-    <div className="space-y-3">
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">카테고리</span>
-        <select
-          aria-label="카테고리"
-          value={active}
-          onChange={(e) => setActive(e.target.value as HandoverCategoryKey)}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          {HANDOVER_CATEGORIES.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </label>
+  const basicItems = [
+    { term: "학교명", desc: row.universityName ?? "—" },
+    { term: "서비스", desc: row.serviceName ?? "—" },
+    { term: "접수구분", desc: row.universityType ?? "—" },
+    { term: "담당자", desc: row.owner ?? "—" },
+    {
+      term: "서비스번호",
+      desc: row.handoverServiceNumber
+        ? String(row.handoverServiceNumber)
+        : "—",
+    },
+    {
+      term: "작성상태",
+      desc: row.handoverStatus ? STATUS_LABEL[row.handoverStatus] : "미작성",
+    },
+  ];
 
-      {cat.fields.map((f) => (
-        <label key={f.key} className="block text-xs">
-          <span className="mb-1 block text-muted">{f.label}</span>
-          <textarea
-            aria-label={f.label}
-            value={pickValue(row, f.key)}
-            readOnly
-            rows={6}
-            placeholder="미작성"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      ))}
+  return (
+    <div className="space-y-4">
+      <Section title="기본정보">
+        <DefList items={basicItems} />
+      </Section>
+
+      <Divider />
+
+      <Section title="카테고리">
+        <CategoryTabs active={active} onChange={setActive} />
+      </Section>
+
+      <div className="space-y-3">
+        {cat.fields.map((f) => (
+          <label key={f.key} className="block text-xs">
+            <span className="mb-1 block text-muted">{f.label}</span>
+            <textarea
+              aria-label={f.label}
+              value={pickValue(row, f.key)}
+              readOnly
+              rows={6}
+              placeholder="미작성"
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            />
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
