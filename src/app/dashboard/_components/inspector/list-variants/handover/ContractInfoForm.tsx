@@ -67,7 +67,7 @@ export function ContractInfoForm({
   return (
     <div className="space-y-1.5 text-xs">
       <div className="flex items-center justify-between">
-        <span className="text-muted">계약정보</span>
+        <span className="font-bold text-ink-soft">계약정보</span>
         {canSearch && (
           <button
             type="button"
@@ -104,7 +104,7 @@ export function ContractInfoForm({
       )}
       {!readOnly && error && <p className="text-2xs text-muted">{error}</p>}
 
-      <div className="space-y-2 border-y border-line py-3">
+      <div className="space-y-2 border-y border-line-soft py-3">
         {FIELDS.map((f) => (
           <label key={f.key} className="flex items-center gap-2">
             <span className="w-10 flex-none text-muted">{f.label}</span>

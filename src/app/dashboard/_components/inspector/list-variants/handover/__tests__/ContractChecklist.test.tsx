@@ -16,7 +16,7 @@ describe("ContractChecklist", () => {
 
   it("label 지정 시 헤더 라벨 변경", () => {
     render(<ContractChecklist items={[]} label="제출서류" readOnly />);
-    expect(screen.getByText(/제출서류 \(/)).toBeInTheDocument();
+    expect(screen.getByText("제출서류")).toBeInTheDocument();
     expect(
       screen.getByText("등록된 제출서류 항목이 없습니다."),
     ).toBeInTheDocument();
