@@ -11,7 +11,10 @@ import {
 } from "@/features/incident-reports/queries";
 import { getIncidentById } from "@/features/incidents/queries";
 import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
-import type { IncidentReportRow } from "@/features/incident-reports/schemas";
+import {
+  isReportLiveMirrored,
+  type IncidentReportRow,
+} from "@/features/incident-reports/schemas";
 import { ReportEditorWorkspace } from "./_components/ReportEditorWorkspace";
 
 export default async function IncidentReportEditorPage({
@@ -44,9 +47,9 @@ export default async function IncidentReportEditorPage({
 
   // 작성중(draft/rejected)이면 공유 필드를 연결 사고의 현재값으로 라이브 미러.
   // 승인(approved) 이후는 동결 스냅샷(report 자체 값)을 사용한다.
-  const isDraft = report.status === "draft" || report.status === "rejected";
+  const liveMirror = isReportLiveMirrored(report.status);
   const live =
-    isDraft && incident
+    liveMirror && incident
       ? {
           recipient_university:
             incident.university_name ?? report.recipient_university,
@@ -60,7 +63,7 @@ export default async function IncidentReportEditorPage({
           prevention: incident.prevention ?? report.prevention,
         }
       : {};
-  const serviceName = isDraft
+  const serviceName = liveMirror
     ? (incident?.service_name ?? report.service_name ?? null)
     : (report.service_name ?? null);
 

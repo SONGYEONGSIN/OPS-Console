@@ -10,6 +10,20 @@ export const REPORT_STATUS_VALUES = [
 export const reportStatusSchema = z.enum(REPORT_STATUS_VALUES);
 export type ReportStatus = z.infer<typeof reportStatusSchema>;
 
+/**
+ * 경위서가 연결 사고를 라이브 미러하는 상태인지.
+ * 승인·발송 전(draft/rejected/pending_approval)은 사고 현재값을 미러,
+ * 승인·발송 후(approved/sent)는 동결 스냅샷(report 값)을 사용한다.
+ * (회귀 방지: 승인대기가 빠지면 승인 대기 중 사고 수정이 반영 안 돼 stale.)
+ */
+export function isReportLiveMirrored(status: ReportStatus): boolean {
+  return (
+    status === "draft" ||
+    status === "rejected" ||
+    status === "pending_approval"
+  );
+}
+
 export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
   draft: "작성중",
   pending_approval: "승인대기",
