@@ -119,7 +119,7 @@ describe("ReportEditorWorkspace", () => {
     fireEvent.change(screen.getByLabelText("원인"), {
       target: { value: "새 원인" },
     });
-    fireEvent.change(screen.getByLabelText("사과 본문"), {
+    fireEvent.change(screen.getByLabelText("사과 본문 (공문 2번)"), {
       target: { value: "새 사과문" },
     });
     fireEvent.click(screen.getByRole("button", { name: /저장/ }));
@@ -141,6 +141,29 @@ describe("ReportEditorWorkspace", () => {
     expect(reportPatch).not.toHaveProperty("cause");
     expect(reportPatch).not.toHaveProperty("handling_rows");
     expect(reportPatch).not.toHaveProperty("title");
+  });
+
+  it("인사말을 바꾸면 greeting으로 저장, 안 바꾼 맺음말은 null(자동 유지)", async () => {
+    mockUpdate.mockResolvedValue({ ok: true });
+    mockUpdateIncident.mockResolvedValue({ ok: true });
+    const linked: IncidentReportRow = {
+      ...report,
+      incident_id: "22222222-2222-4222-8222-222222222222",
+    };
+    render(<ReportEditorWorkspace report={linked} />);
+    fireEvent.change(screen.getByLabelText("인사말"), {
+      target: { value: "맞춤 인사말입니다." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith(
+        linked.id,
+        expect.objectContaining({
+          greeting: "맞춤 인사말입니다.",
+          closing: null,
+        }),
+      ),
+    );
   });
 
   it("제목은 편집 불가(읽기전용) — 사고에서 동기화", () => {

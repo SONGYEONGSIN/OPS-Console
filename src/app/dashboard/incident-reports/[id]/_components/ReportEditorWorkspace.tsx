@@ -36,7 +36,6 @@ const PRE_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
 ];
 const POST_FIELDS: { key: TextKey; label: string; textarea: boolean }[] = [
   { key: "prevention", label: "대책", textarea: true },
-  { key: "apology", label: "사과 본문", textarea: true },
 ];
 
 const inputClass =
@@ -87,6 +86,11 @@ export function ReportEditorWorkspace({
     apology: report.apology ?? "",
   });
   const [rows, setRows] = useState<HandlingRow[]>(report.handling_rows ?? []);
+  // 공문 1번 인사말·3번 맺음말 — 기본값(자동 문구)으로 채워두되 수정 가능.
+  const autoGreeting = `${report.recipient_university}의 무궁한 발전을 기원합니다.`;
+  const DEFAULT_CLOSING = "감사합니다.";
+  const [greeting, setGreeting] = useState(report.greeting ?? autoGreeting);
+  const [closing, setClosing] = useState(report.closing ?? DEFAULT_CLOSING);
   const [page, setPage] = useState(1);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +113,8 @@ export function ReportEditorWorkspace({
     ceoRole: approval?.ceoRole ?? report.ceo_role,
     docNumber: report.doc_number ?? previewDocNumber,
     apology: draft.apology || null,
+    greeting: greeting || null,
+    closing: closing || null,
     gyeongwi: draft.gyeongwi || null,
     cause: draft.cause || null,
     handling: report.handling, // 레거시 text 폴백 (rows 비었을 때만 표시)
@@ -126,9 +132,13 @@ export function ReportEditorWorkspace({
     setSaved(false);
     startTransition(async () => {
       const cleanRows = rows.filter((r) => r.time.trim() || r.content.trim());
-      // 고유 필드(사과문) → 경위서 소유. 제목·수신대학·서비스명은 사고에서 동기화(읽기전용).
+      // 고유 필드(사과문/인사말/맺음말) → 경위서 소유. 제목·수신대학·서비스명은 사고에서 동기화(읽기전용).
+      // 인사말·맺음말은 기본값 그대로면 null로 저장(자동 문구 유지), 바꿨으면 그 값 저장.
       const ownPatch = {
         apology: draft.apology || null,
+        greeting:
+          greeting.trim() && greeting !== autoGreeting ? greeting : null,
+        closing: closing.trim() && closing !== DEFAULT_CLOSING ? closing : null,
       };
       // 공유 필드(경위/원인/처리/대책) → 연결 사고가 단일 소스.
       // 사고에 기록하면 사고 폼·다른 경위서와 자동 동기화(divergence 없음).
@@ -265,12 +275,70 @@ export function ReportEditorWorkspace({
                   <span className="ml-1 text-ink">{serviceName || "—"}</span>
                 </p>
                 <p className="text-muted">
-                  제목 <span className="ml-1 text-ink">{draft.title || "—"}</span>
+                  제목{" "}
+                  <span className="ml-1 text-ink">{draft.title || "—"}</span>
                   <span className="ml-1.5 text-2xs text-faint">
                     (사고에서 동기화 · 수정 불가)
                   </span>
                 </p>
               </div>
+
+              {/* 공문 cover — 1.인사말 / 2.사과 본문 / 3.맺음말 (경위 위에 배치).
+                  인사말·맺음말은 기본 자동문구로 채워두되 수정 가능(바꾸면 그 값 저장). */}
+              <div className="space-y-3 border-b border-line pb-2">
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">
+                    인사말 (공문 1번){" "}
+                    {greeting !== autoGreeting && (
+                      <button
+                        type="button"
+                        onClick={() => setGreeting(autoGreeting)}
+                        className="ml-1 cursor-pointer border-none bg-transparent text-2xs text-vermilion hover:underline"
+                      >
+                        기본값 복원
+                      </button>
+                    )}
+                  </span>
+                  <textarea
+                    aria-label="인사말"
+                    value={greeting}
+                    rows={2}
+                    maxLength={1000}
+                    onChange={(e) => setGreeting(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+
+                {renderField({
+                  key: "apology",
+                  label: "사과 본문 (공문 2번)",
+                  textarea: true,
+                })}
+
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">
+                    맺음말 (공문 3번){" "}
+                    {closing !== DEFAULT_CLOSING && (
+                      <button
+                        type="button"
+                        onClick={() => setClosing(DEFAULT_CLOSING)}
+                        className="ml-1 cursor-pointer border-none bg-transparent text-2xs text-vermilion hover:underline"
+                      >
+                        기본값 복원
+                      </button>
+                    )}
+                  </span>
+                  <textarea
+                    aria-label="맺음말"
+                    value={closing}
+                    rows={2}
+                    maxLength={1000}
+                    onChange={(e) => setClosing(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+
               {PRE_FIELDS.map(renderField)}
 
               {/* 처리 — 시간/내용 행 편집기 (경위서·사고보고 공용) */}

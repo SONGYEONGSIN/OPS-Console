@@ -39,6 +39,9 @@ export const incidentReportRowSchema = z.object({
   handling_rows: z.array(handlingRowSchema).default([]),
   prevention: z.string().nullable(),
   apology: z.string().nullable(),
+  /** 공문 1번 인사말·3번 맺음말 — null이면 자동 문구. */
+  greeting: z.string().nullable().optional(),
+  closing: z.string().nullable().optional(),
   author_name: z.string(),
   author_email: z.string().email(),
   approver_name: z.string().nullable(),
@@ -69,6 +72,8 @@ export const incidentReportCreateSchema = z.object({
   handling_rows: z.array(handlingRowSchema).max(50).optional(),
   prevention: z.string().max(5000).nullable().optional(),
   apology: z.string().max(5000).nullable().optional(),
+  greeting: z.string().max(1000).nullable().optional(),
+  closing: z.string().max(1000).nullable().optional(),
 });
 export type IncidentReportCreate = z.infer<typeof incidentReportCreateSchema>;
 
