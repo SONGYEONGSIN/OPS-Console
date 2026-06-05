@@ -200,7 +200,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#15120c",
     borderBottomWidth: 0,
-    paddingVertical: 9,
+    paddingTop: 11,
+    paddingBottom: 5,
     paddingHorizontal: 8,
     lineHeight: 1.0,
     fontWeight: 700,
@@ -341,7 +342,7 @@ export async function renderIncidentReportPdf(
             시 행{" "}
             {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
           </Text>
-          <Text style={styles.docRow}>접 수 ( )</Text>
+          <Text style={styles.docRow}>접 수 ({" ".repeat(10)})</Text>
         </View>
         <View style={styles.contact}>
           {m.contactLines.map((line) => {
