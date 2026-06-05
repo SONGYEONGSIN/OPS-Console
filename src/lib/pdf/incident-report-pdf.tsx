@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   attachLine: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 18 },
   coverNum: { width: 18 },
-  coverText: { flex: 1, lineHeight: 1.5, textAlign: "justify" },
+  coverText: { flex: 1, lineHeight: 1.4, textAlign: "justify" },
   apology: { marginTop: 4 },
   companyWrap: {
     marginTop: 36,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 9,
     color: "#3a3528",
-    lineHeight: 1.6,
+    lineHeight: 1.5,
     letterSpacing: 1,
   },
   contactRow: {
@@ -179,11 +179,13 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   authorRow: {
-    textAlign: "right",
+    flexDirection: "row",
+    justifyContent: "flex-end",
     fontSize: 9.5,
     fontWeight: 700,
     marginBottom: 6,
   },
+  authorName: { marginLeft: 30 },
   titleCell: {
     borderWidth: 1,
     borderColor: "#15120c",
@@ -352,9 +354,10 @@ export async function renderIncidentReportPdf(
       {/* ② 경위서 본문 */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.reportTitle}>경 위 서</Text>
-        <Text style={styles.authorRow}>
-          작 성 일 자 : {m.draftDate} 작 성 자 : {m.authorName}
-        </Text>
+        <View style={styles.authorRow}>
+          <Text>작 성 일 자 : {m.draftDate}</Text>
+          <Text style={styles.authorName}>작 성 자 : {m.authorName}</Text>
+        </View>
         <Text style={styles.titleCell}>제 목 : {m.title}</Text>
         <View style={styles.bodyFrame}>
           {m.sections.map((sec) => (
