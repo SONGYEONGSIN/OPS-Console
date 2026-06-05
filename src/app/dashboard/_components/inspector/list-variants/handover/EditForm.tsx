@@ -56,7 +56,9 @@ export function HandoverEditForm({
       }}
       className="space-y-3"
     >
-      <CategoryTabs active={active} onChange={setActive} />
+      <div className="mb-2">
+        <CategoryTabs active={active} onChange={setActive} />
+      </div>
 
       {cat.fields.map((f) =>
         f.key === "contract_info_md" ? (
