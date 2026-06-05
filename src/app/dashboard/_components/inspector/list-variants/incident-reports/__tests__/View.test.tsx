@@ -77,4 +77,42 @@ describe("IncidentReportView onChanged", () => {
       `/dashboard/incident-reports/${baseRow.id}`,
     );
   });
+
+  it("승인+발송가능 → compose에서 수신자 선택 후 발송(to_email + 팀장 자동 CC + 제목/본문)", async () => {
+    mockSend.mockResolvedValue({ ok: true });
+    const row: ListRow = {
+      ...baseRow,
+      incidentReportStatus: "approved",
+      incidentReportCanSend: true,
+      incidentReportAuthorName: "이해영",
+      incidentReportAuthorEmail: "lee@x.com",
+      incidentReportApproverName: "송영신",
+      incidentReportApproverEmail: "song@x.com",
+      incidentReportRecipients: [
+        { email: "contact@univ.ac.kr", name: "김담당", jobTitle: "실무" },
+      ],
+    };
+    render(<IncidentReportView row={row} />);
+    // 초기 '발송' → compose 열기
+    fireEvent.click(screen.getByRole("button", { name: "발송" }));
+    // 수신자 검색 → 선택
+    fireEvent.change(screen.getByLabelText("수신자 검색"), {
+      target: { value: "김담당" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /김담당/ }));
+    // 발송
+    fireEvent.click(screen.getByRole("button", { name: "발송" }));
+    await waitFor(() =>
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: row.id,
+          to_email: "contact@univ.ac.kr",
+          cc_emails: ["song@x.com"],
+        }),
+      ),
+    );
+    const arg = mockSend.mock.calls[0][0];
+    expect(arg.subject).toContain("테스트 경위서");
+    expect(arg.body).toContain("건국대학교");
+  });
 });

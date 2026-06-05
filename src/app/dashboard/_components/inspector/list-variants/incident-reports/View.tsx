@@ -11,9 +11,17 @@ import {
   rejectIncidentReport,
 } from "@/features/incident-reports/actions";
 import { sendIncidentReport } from "@/features/incident-reports/mail-actions";
+import {
+  incidentReportMailSubject,
+  incidentReportMailBody,
+} from "@/features/incident-reports/mail-template";
 import { STATUS_TONE } from "./status";
 
 type Recipient = { email: string; name: string; jobTitle: string | null };
+type CcRecipient = { email: string; name: string };
+
+const inputClass =
+  "w-full border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none";
 
 /** 본문 텍스트 블록 — 비어있으면 "—" */
 function BodyText({ value }: { value: string | null | undefined }) {
@@ -37,7 +45,37 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
+
+  // 발송 compose 상태 (자료요청 패턴)
+  const university = row.incidentReportUniversity ?? "";
+  const title = row.incidentReportTitle ?? "";
+  const authorName = row.incidentReportAuthorName ?? "";
+  const approverEmail = row.incidentReportApproverEmail ?? "";
+  const approverName = row.incidentReportApproverName ?? "팀장";
+  const [search, setSearch] = useState("");
+  const [justSelected, setJustSelected] = useState(false);
+  const [toEmail, setToEmail] = useState("");
+  // 팀장(승인자)을 기본 CC로 자동 추가
+  const [cc, setCc] = useState<CcRecipient[]>(() =>
+    approverEmail ? [{ email: approverEmail, name: approverName }] : [],
+  );
+  const [subject, setSubject] = useState(() =>
+    incidentReportMailSubject(title),
+  );
+  const [body, setBody] = useState(() =>
+    incidentReportMailBody({ university, title, authorName }),
+  );
+
+  const term = search.trim().toLowerCase();
+  const matches =
+    term === ""
+      ? []
+      : recipients.filter(
+          (r) =>
+            r.name.toLowerCase().includes(term) ||
+            r.email.toLowerCase().includes(term),
+        );
+  const toRecipient = recipients.find((r) => r.email === toEmail);
 
   function run(action: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
@@ -51,10 +89,19 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
     });
   }
 
-  function toggleRecipient(email: string) {
-    setSelected((prev) =>
-      prev.includes(email) ? prev.filter((e) => e !== email) : [...prev, email],
-    );
+  function selectTo(r: Recipient) {
+    setCc((prev) => prev.filter((c) => c.email !== r.email));
+    setToEmail(r.email);
+    setSearch(r.name);
+    setJustSelected(true);
+  }
+  function addCc(email: string) {
+    const r = recipients.find((x) => x.email === email);
+    if (r && !cc.some((c) => c.email === email) && email !== toEmail)
+      setCc([...cc, { email: r.email, name: r.name }]);
+  }
+  function removeCc(email: string) {
+    setCc(cc.filter((c) => c.email !== email));
   }
 
   return (
@@ -187,47 +234,153 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
                 이 대학({row.incidentReportUniversity})에 등록된 연락처 이메일이 없습니다.
               </p>
             ) : (
-              <div className="space-y-2">
-                <span className="block text-xs text-muted">수신자 선택</span>
-                <ul className="max-h-48 space-y-1 overflow-y-auto border border-line-soft bg-washi-raised p-1.5">
-                  {recipients.map((r) => (
-                    <li key={r.email}>
-                      <label className="flex cursor-pointer items-center gap-2 px-1.5 py-1 text-2xs text-ink hover:bg-line-soft">
-                        <input
-                          type="checkbox"
-                          checked={selected.includes(r.email)}
-                          onChange={() => toggleRecipient(r.email)}
-                        />
-                        <span>
-                          {r.name}
-                          {r.jobTitle ? ` (${r.jobTitle})` : ""} · {r.email}
+              <div className="space-y-3">
+                {/* 발신자 */}
+                <div className="block text-xs">
+                  <span className="mb-1 block text-muted">발신자</span>
+                  <div className="w-full border border-line bg-washi-raised px-2 py-1 text-ink">
+                    {authorName} · {row.incidentReportAuthorEmail}
+                  </div>
+                </div>
+
+                {/* 수신자 — 연락처 검색 → 단일 선택 */}
+                <div className="block text-xs">
+                  <span className="mb-1 block text-muted">수신자</span>
+                  <input
+                    type="text"
+                    aria-label="수신자 검색"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setJustSelected(false);
+                    }}
+                    placeholder="연락처 검색 (이름/이메일)"
+                    className={inputClass}
+                  />
+                  {!justSelected && matches.length > 0 && (
+                    <ul
+                      aria-label="수신자 검색 결과"
+                      className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+                    >
+                      {matches.map((r) => (
+                        <li key={r.email}>
+                          <button
+                            type="button"
+                            onClick={() => selectTo(r)}
+                            className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                          >
+                            {r.name}
+                            {r.jobTitle ? ` (${r.jobTitle})` : ""} · {r.email}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {toRecipient && (
+                    <p className="mt-1 text-2xs text-muted">
+                      받는 사람:{" "}
+                      <span className="text-ink">
+                        {toRecipient.name} · {toRecipient.email}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* 참조 (CC) — 팀장 자동 + 추가 */}
+                <div className="block text-xs">
+                  <span className="mb-1 block text-muted">참조 (CC)</span>
+                  {cc.length > 0 && (
+                    <div className="mb-1.5 flex flex-wrap gap-1.5">
+                      {cc.map((c) => (
+                        <span
+                          key={c.email}
+                          className="inline-flex items-center gap-1 border border-line px-2 py-0.5 text-ink"
+                        >
+                          {c.name}
+                          <button
+                            type="button"
+                            onClick={() => removeCc(c.email)}
+                            aria-label={`${c.name} 참조 제거`}
+                            className="cursor-pointer text-muted hover:text-vermilion"
+                          >
+                            ×
+                          </button>
                         </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
+                      ))}
+                    </div>
+                  )}
+                  <select
+                    aria-label="참조 추가"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) addCc(e.target.value);
+                    }}
+                    className={inputClass}
+                  >
+                    <option value="">+ 참조 추가</option>
+                    {recipients
+                      .filter(
+                        (r) =>
+                          r.email !== toEmail &&
+                          !cc.some((c) => c.email === r.email),
+                      )
+                      .map((r) => (
+                        <option key={r.email} value={r.email}>
+                          {r.name} · {r.email}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* 제목 */}
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">제목</span>
+                  <input
+                    aria-label="제목"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+
+                {/* 본문 */}
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">본문</span>
+                  <textarea
+                    aria-label="본문"
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    rows={8}
+                    className={inputClass}
+                  />
+                </label>
+
+                <p className="text-2xs text-muted">
+                  · 경위서 PDF가 자동 첨부됩니다.
+                </p>
+
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={pending || selected.length === 0}
+                    disabled={pending || !toEmail || !subject.trim() || !body.trim()}
                     onClick={() =>
                       run(() =>
                         sendIncidentReport({
                           id: row.id,
-                          recipient_emails: selected,
+                          to_email: toEmail,
+                          cc_emails: cc.map((c) => c.email),
+                          subject,
+                          body,
                         }),
                       )
                     }
                     className="flex-1 cursor-pointer border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:opacity-50"
                   >
-                    {pending ? "발송 중…" : `발송 (${selected.length}명)`}
+                    {pending ? "발송 중…" : "발송"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setPicking(false);
-                      setSelected([]);
-                    }}
+                    onClick={() => setPicking(false)}
                     className="flex-1 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
                   >
                     취소
