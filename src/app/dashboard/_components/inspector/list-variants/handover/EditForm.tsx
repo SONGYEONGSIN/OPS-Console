@@ -98,6 +98,34 @@ export function HandoverEditForm({
               />
             </label>
           </ContractChecklist>
+        ) : f.key === "docs_md" ? (
+          // 서류 — 제출서류 체크리스트(헤더 밖) + 항목·메모(선 안)
+          <ContractChecklist
+            key={f.key}
+            label="제출서류"
+            items={row.handoverDocsChecklist ?? []}
+            onChange={(items) =>
+              setRow((prev) => ({ ...prev, handoverDocsChecklist: items }))
+            }
+          >
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">메모</span>
+              <textarea
+                aria-label="서류 메모"
+                value={pickValue(row, f.key)}
+                onChange={(e) =>
+                  setRow((prev) => ({
+                    ...prev,
+                    [ROW_TO_FIELD[f.key]]: e.target.value,
+                  }))
+                }
+                rows={3}
+                maxLength={10000}
+                placeholder="추가 메모(선택)"
+                className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              />
+            </label>
+          </ContractChecklist>
         ) : (
           <label key={f.key} className="block text-xs">
             <span className="mb-1 block text-muted">{f.label}</span>

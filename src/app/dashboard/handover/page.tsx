@@ -264,6 +264,7 @@ export default async function HandoverPage({
       payment_invoice_md: row.handoverPaymentInvoiceMd ?? null,
       school_contact_md: row.handoverSchoolContactMd ?? null,
       docs_md: row.handoverDocsMd ?? null,
+      docs_checklist: (row.handoverDocsChecklist ?? []).filter((c) => c.text.trim()),
       notes_md: row.handoverNotesMd ?? null,
     });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
@@ -325,6 +326,7 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     handoverPaymentInvoiceMd: r.payment_invoice_md,
     handoverSchoolContactMd: r.school_contact_md,
     handoverDocsMd: r.docs_md,
+    handoverDocsChecklist: r.docs_checklist,
     handoverNotesMd: r.notes_md,
   };
 }

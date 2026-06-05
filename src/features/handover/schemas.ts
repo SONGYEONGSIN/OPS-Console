@@ -39,6 +39,7 @@ export const handoverRecordRowSchema = z.object({
   payment_invoice_md: mdField,
   school_contact_md: mdField,
   docs_md: mdField,
+  docs_checklist: checklistField,
   notes_md: mdField,
   author_email: z.string().email(),
   author_name: z.string().min(1),
@@ -70,6 +71,7 @@ export const handoverRecordUpsertSchema = z.object({
   payment_invoice_md: mdField,
   school_contact_md: mdField,
   docs_md: mdField,
+  docs_checklist: checklistField,
   notes_md: mdField,
 });
 
