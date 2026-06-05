@@ -50,6 +50,14 @@ export type HandoverPdfInput = {
   notes: string | null;
   createdAt: string;
   fields: HandoverPdfFields;
+  /** 계약정보 구조화 폼 (제목/형태/진행/상태/메모) */
+  contractInfo?: {
+    title: string;
+    type: string;
+    progress: string;
+    status: string;
+    memo: string;
+  };
   /** 계약자료 체크리스트 (계약서류) */
   contractChecklist?: { text: string; done: boolean }[];
   /** 서류 체크리스트 (제출서류) */
@@ -253,6 +261,33 @@ function HandoverDocument(input: HandoverPdfInput) {
           >
             <Text style={styles.categoryTitle}>{cat.label}</Text>
             {cat.fields.map((f) => {
+              // 계약정보 — 구조화 폼(제목/형태/진행/상태 + 메모)
+              if (f.key === "contract_info_md") {
+                const ci = input.contractInfo;
+                const lines = ci
+                  ? [
+                      ci.title && `제목 : ${ci.title}`,
+                      ci.type && `형태 : ${ci.type}`,
+                      ci.progress && `진행 : ${ci.progress}`,
+                      ci.status && `상태 : ${ci.status}`,
+                      ci.memo && `메모 : ${ci.memo}`,
+                    ].filter(Boolean)
+                  : [];
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    {lines.length === 0 ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      lines.map((line, i) => (
+                        <Text key={i} style={styles.fieldValue}>
+                          {line}
+                        </Text>
+                      ))
+                    )}
+                  </View>
+                );
+              }
               // 계약자료/서류 — 체크리스트(☑/☐) + 메모
               if (f.key === "contract_data_md" || f.key === "docs_md") {
                 const list =

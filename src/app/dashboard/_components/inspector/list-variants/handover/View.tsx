@@ -5,6 +5,7 @@ import type { ListRow } from "../../../patterns/ListPattern";
 import { Section, DefList, Divider } from "../shared";
 import { CategoryTabs } from "./CategoryTabs";
 import { ContractChecklist } from "./ContractChecklist";
+import { ContractInfoForm } from "./ContractInfoForm";
 import {
   HANDOVER_CATEGORIES,
   type HandoverCategoryKey,
@@ -76,7 +77,21 @@ export function HandoverView({ row }: { row: ListRow }) {
 
       <div className="space-y-3">
         {cat.fields.map((f) =>
-          f.key === "contract_data_md" ? (
+          f.key === "contract_info_md" ? (
+            <ContractInfoForm
+              key={f.key}
+              value={
+                row.handoverContractInfo ?? {
+                  title: "",
+                  type: "",
+                  progress: "",
+                  status: "",
+                  memo: "",
+                }
+              }
+              readOnly
+            />
+          ) : f.key === "contract_data_md" ? (
             <ContractChecklist
               key={f.key}
               items={row.handoverContractChecklist ?? []}

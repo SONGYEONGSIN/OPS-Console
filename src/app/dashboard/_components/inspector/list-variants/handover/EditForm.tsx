@@ -9,6 +9,7 @@ import {
 } from "@/features/handover/categories";
 import { CategoryTabs } from "./CategoryTabs";
 import { ContractChecklist } from "./ContractChecklist";
+import { ContractInfoForm } from "./ContractInfoForm";
 import { SchoolContactPicker } from "./SchoolContactPicker";
 import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 import type { EditFormProps } from "../types";
@@ -61,7 +62,24 @@ export function HandoverEditForm({
       </div>
 
       {cat.fields.map((f) =>
-        f.key === "school_contact_md" ? (
+        f.key === "contract_info_md" ? (
+          // 계약정보 — 고정 필드 폼(제목/형태/진행/상태 + 메모)
+          <ContractInfoForm
+            key={f.key}
+            value={
+              row.handoverContractInfo ?? {
+                title: "",
+                type: "",
+                progress: "",
+                status: "",
+                memo: "",
+              }
+            }
+            onChange={(next) =>
+              setRow((prev) => ({ ...prev, handoverContractInfo: next }))
+            }
+          />
+        ) : f.key === "school_contact_md" ? (
           // 컨텍 — 대학 연락처 검색 → 구조화 리스트로 추가
           <SchoolContactPicker
             key={f.key}

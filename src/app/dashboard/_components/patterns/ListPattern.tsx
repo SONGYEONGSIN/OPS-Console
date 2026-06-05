@@ -365,6 +365,14 @@ export type ListRow = {
   handoverStatus?: "draft" | "ready" | "published";
   /** handover — 14 sub-field (인스펙터 EditForm 초기값) */
   handoverContractInfoMd?: string | null;
+  /** 계약정보 구조화 폼 (제목/형태/진행/상태/메모) */
+  handoverContractInfo?: {
+    title: string;
+    type: string;
+    progress: string;
+    status: string;
+    memo: string;
+  };
   handoverContractDataMd?: string | null;
   /** 계약서류 체크리스트 (계약자료) */
   handoverContractChecklist?: { id: string; text: string; done: boolean }[];
