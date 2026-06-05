@@ -6,7 +6,10 @@ import {
 import { getIncidentById } from "@/features/incidents/queries";
 import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
-import type { IncidentReportRow } from "@/features/incident-reports/schemas";
+import {
+  isReportLiveMirrored,
+  type IncidentReportRow,
+} from "@/features/incident-reports/schemas";
 
 export async function GET(
   _req: Request,
@@ -30,9 +33,9 @@ export async function GET(
   ).catch(() => null);
   // 편집 화면과 동일 — 작성중(draft/rejected)이면 공유 필드를 연결 사고의 현재값으로
   // 라이브 미러, 승인 이후는 동결 스냅샷(rep 값)을 사용한다.
-  const isDraft = rep.status === "draft" || rep.status === "rejected";
+  const liveMirror = isReportLiveMirrored(rep.status);
   const live =
-    isDraft && incident
+    liveMirror && incident
       ? {
           recipientUniversity:
             incident.university_name ?? rep.recipient_university,
