@@ -10,6 +10,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
+import fs from "node:fs";
 import {
   deriveFormModel,
   bodyLines,
@@ -52,6 +53,15 @@ function ensureFontRegistered() {
     ],
   });
   fontRegistered = true;
+}
+
+// @react-pdf가 이 환경에서 파일 "경로 문자열"로는 이미지를 임베드하지 못한다(로고·직인 누락).
+// 파일을 Buffer로 읽어 { data, format }으로 넘기면 정상 임베드된다. (1회 로드 캐시)
+let logoSrc: { data: Buffer; format: "jpg" } | null = null;
+let sealSrc: { data: Buffer; format: "png" } | null = null;
+function loadImages() {
+  if (!logoSrc) logoSrc = { data: fs.readFileSync(LOGO_PATH), format: "jpg" };
+  if (!sealSrc) sealSrc = { data: fs.readFileSync(SEAL_PATH), format: "png" };
 }
 
 export type IncidentReportPdfInput = {
@@ -274,13 +284,14 @@ export async function renderIncidentReportPdf(
   input: IncidentReportPdfInput,
 ): Promise<Buffer> {
   ensureFontRegistered();
+  loadImages();
   const m = deriveFormModel(input);
   const doc = (
     <Document>
       {/* ① 공문 */}
       <Page size="A4" style={styles.page}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
-        <Image style={styles.logo} src={LOGO_PATH} />
+        <Image style={styles.logo} src={logoSrc!} />
         <Text style={styles.slogan}>{m.brandHeader}</Text>
         <View style={styles.logoRule} />
         <Text style={[styles.row, { marginTop: 14 }]}>
@@ -308,7 +319,7 @@ export async function renderIncidentReportPdf(
         <View style={styles.companyWrap}>
           {/* 직인 먼저(뒤), 회사명 나중(앞) → 글자가 직인 위로 */}
           {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
-          <Image style={styles.seal} src={SEAL_PATH} />
+          <Image style={styles.seal} src={sealSrc!} />
           <Text style={styles.companyLine}>{m.companyLine}</Text>
         </View>
 
