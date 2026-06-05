@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   row: { marginBottom: 3 },
   bold: { fontWeight: 700 },
-  hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
+  hr: { borderBottomWidth: 1, borderBottomColor: "#15120c", marginVertical: 8 },
   coverList: { marginLeft: 16, marginTop: 28 },
   attachLine: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 18 },
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   companyLine: { fontSize: 18, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 108, top: -16, width: 63, height: 63 },
+  seal: { position: "absolute", right: 122, top: -16, width: 63, height: 63 },
   grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 40 },
   jeonkyeol: {
     fontSize: 9,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   docRow: { fontSize: 9 },
   contact: {
-    marginTop: 8,
+    marginTop: 4,
     fontSize: 9,
     color: "#3a3528",
     lineHeight: 1.9,
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: 12,
     marginTop: 8,
-    marginBottom: 32,
+    marginBottom: 42,
   },
   authorRow: {
     flexDirection: "row",
@@ -200,9 +200,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#15120c",
     borderBottomWidth: 0,
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 8,
-    lineHeight: 1.2,
+    lineHeight: 1.0,
     fontWeight: 700,
   },
   bodyFrame: {
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#8a8174",
-    alignItems: "flex-start",
+    alignItems: "stretch",
   },
   hHead: { backgroundColor: "#efece3" },
   hTimeCell: {
