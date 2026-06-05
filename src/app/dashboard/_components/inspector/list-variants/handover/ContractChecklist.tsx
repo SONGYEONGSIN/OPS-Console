@@ -69,7 +69,7 @@ export function ContractChecklist({
         ) : (
           <ul className="space-y-1">
             {items.map((item, idx) => (
-              <li key={item.id} className="flex items-center gap-2">
+              <li key={item.id} className="flex items-stretch gap-2">
                 <input
                   type="checkbox"
                   aria-label={`항목 ${idx + 1} 완료`}
@@ -82,10 +82,12 @@ export function ContractChecklist({
                       ),
                     )
                   }
-                  className="h-3.5 w-3.5 accent-vermilion"
+                  className="h-3.5 w-3.5 self-center accent-vermilion"
                 />
                 {readOnly ? (
-                  <span className="flex-1 text-ink">{item.text || "—"}</span>
+                  <span className="flex-1 self-center text-ink">
+                    {item.text || "—"}
+                  </span>
                 ) : (
                   <input
                     aria-label={`항목 ${idx + 1} 텍스트`}
@@ -107,7 +109,7 @@ export function ContractChecklist({
                     type="button"
                     aria-label={`항목 ${idx + 1} 삭제`}
                     onClick={() => onChange?.(items.filter((_, i) => i !== idx))}
-                    className="flex h-7 w-7 flex-none cursor-pointer items-center justify-center border border-line bg-cream text-muted hover:border-vermilion hover:text-vermilion"
+                    className="flex aspect-square flex-none cursor-pointer items-center justify-center border border-line bg-cream text-muted hover:border-vermilion hover:text-vermilion"
                   >
                     ×
                   </button>
