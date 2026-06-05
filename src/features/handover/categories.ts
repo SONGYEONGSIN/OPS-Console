@@ -68,12 +68,12 @@ export const HANDOVER_CATEGORIES: ReadonlyArray<HandoverCategory> = [
   },
   {
     key: "contact",
-    label: "연락처",
+    label: "컨텍",
     fields: [{ key: "school_contact_md", label: "학교담당자" }],
   },
   {
     key: "docs",
-    label: "서류제출",
+    label: "서류",
     fields: [{ key: "docs_md", label: "서류제출" }],
   },
   {

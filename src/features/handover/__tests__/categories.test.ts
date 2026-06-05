@@ -5,7 +5,7 @@ import {
 } from "../categories";
 
 describe("HANDOVER_CATEGORIES", () => {
-  it("6개 카테고리: 계약/작업/정산/연락처/서류제출/기타", () => {
+  it("6개 카테고리: 계약/작업/정산/컨텍/서류/기타", () => {
     expect(HANDOVER_CATEGORIES.map((c) => c.key)).toEqual([
       "contract",
       "work",
@@ -18,8 +18,8 @@ describe("HANDOVER_CATEGORIES", () => {
       "계약",
       "작업",
       "정산",
-      "연락처",
-      "서류제출",
+      "컨텍",
+      "서류",
       "기타",
     ]);
   });
