@@ -9,6 +9,7 @@ import {
   submitForApproval,
   approveIncidentReport,
   rejectIncidentReport,
+  revokeApproval,
 } from "@/features/incident-reports/actions";
 import { sendIncidentReport } from "@/features/incident-reports/mail-actions";
 import { STATUS_TONE } from "./status";
@@ -30,7 +31,10 @@ type IncidentReportViewProps = ViewProps & {
   onChanged?: () => void;
 };
 
-export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) {
+export function IncidentReportView({
+  row,
+  onChanged,
+}: IncidentReportViewProps) {
   const router = useRouter();
   const status = row.incidentReportStatus ?? "draft";
   const recipients = (row.incidentReportRecipients ?? []) as Recipient[];
@@ -72,16 +76,24 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
             </span>
           )}
           <span
-            className={`ml-auto inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
+            className={`ml-auto inline-block px-2 py-0.5 text-2xs ${
+              status === "draft"
+                ? "bg-vermilion/10 font-bold text-vermilion"
+                : STATUS_TONE[status]
+            }`}
           >
             {REPORT_STATUS_LABEL[status]}
           </span>
         </div>
         {row.incidentReportTitle && (
-          <p className="text-sm font-medium text-ink">{row.incidentReportTitle}</p>
+          <p className="text-sm font-medium text-ink">
+            {row.incidentReportTitle}
+          </p>
         )}
         {row.incidentReportDraftDate && (
-          <p className="text-xs text-muted">작성일 {row.incidentReportDraftDate}</p>
+          <p className="text-xs text-muted">
+            작성일 {row.incidentReportDraftDate}
+          </p>
         )}
       </section>
 
@@ -92,6 +104,18 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
       >
         경위서 내용 보기
       </button>
+
+      {status === "approved" &&
+        (row.incidentReportIsApprover || row.incidentReportCanSend) && (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => run(() => revokeApproval(row.id))}
+            className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
+          >
+            {pending ? "처리 중…" : "승인 취소 (작성중으로 되돌리기)"}
+          </button>
+        )}
 
       {status === "rejected" && row.incidentReportRejectReason && (
         <div className="rounded border border-vermilion/40 bg-vermilion/10 p-2.5 text-xs text-vermilion">
@@ -184,7 +208,8 @@ export function IncidentReportView({ row, onChanged }: IncidentReportViewProps) 
               </button>
             ) : recipients.length === 0 ? (
               <p className="text-xs text-muted">
-                이 대학({row.incidentReportUniversity})에 등록된 연락처 이메일이 없습니다.
+                이 대학({row.incidentReportUniversity})에 등록된 연락처 이메일이
+                없습니다.
               </p>
             ) : (
               <div className="space-y-2">
