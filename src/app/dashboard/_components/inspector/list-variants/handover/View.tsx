@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { Section, DefList, Divider } from "../shared";
 import { CategoryTabs } from "./CategoryTabs";
+import { ContractChecklist } from "./ContractChecklist";
 import {
   HANDOVER_CATEGORIES,
   type HandoverCategoryKey,
@@ -74,19 +75,40 @@ export function HandoverView({ row }: { row: ListRow }) {
       </Section>
 
       <div className="space-y-3">
-        {cat.fields.map((f) => (
-          <label key={f.key} className="block text-xs">
-            <span className="mb-1 block text-muted">{f.label}</span>
-            <textarea
-              aria-label={f.label}
-              value={pickValue(row, f.key)}
-              readOnly
-              rows={6}
-              placeholder={FIELD_EXAMPLE[f.key]}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            />
-          </label>
-        ))}
+        {cat.fields.map((f) =>
+          f.key === "contract_data_md" ? (
+            <div key={f.key} className="space-y-2">
+              <ContractChecklist
+                items={row.handoverContractChecklist ?? []}
+                readOnly
+              />
+              {pickValue(row, f.key) && (
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">메모</span>
+                  <textarea
+                    aria-label="계약자료 메모"
+                    value={pickValue(row, f.key)}
+                    readOnly
+                    rows={3}
+                    className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                  />
+                </label>
+              )}
+            </div>
+          ) : (
+            <label key={f.key} className="block text-xs">
+              <span className="mb-1 block text-muted">{f.label}</span>
+              <textarea
+                aria-label={f.label}
+                value={pickValue(row, f.key)}
+                readOnly
+                rows={6}
+                placeholder={FIELD_EXAMPLE[f.key]}
+                className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              />
+            </label>
+          ),
+        )}
       </div>
     </div>
   );

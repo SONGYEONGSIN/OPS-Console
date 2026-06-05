@@ -6,6 +6,19 @@ export type HandoverStatus = z.infer<typeof statusSchema>;
 
 const mdField = z.string().max(10000).nullable().optional();
 
+/** 계약서류 체크리스트 항목. */
+export const HANDOVER_CHECKLIST_MAX = 10;
+export const contractChecklistItemSchema = z.object({
+  id: z.string(),
+  text: z.string().max(200),
+  done: z.boolean().default(false),
+});
+export type ContractChecklistItem = z.infer<typeof contractChecklistItemSchema>;
+const checklistField = z
+  .array(contractChecklistItemSchema)
+  .max(HANDOVER_CHECKLIST_MAX)
+  .default([]);
+
 /**
  * DB row 형상. RLS authenticated 모두 read.
  */
@@ -14,6 +27,7 @@ export const handoverRecordRowSchema = z.object({
   service_id: z.string().uuid(),
   contract_info_md: mdField,
   contract_data_md: mdField,
+  contract_data_checklist: checklistField,
   work_basic_md: mdField,
   work_generator_md: mdField,
   work_site_md: mdField,
@@ -44,6 +58,7 @@ export const handoverRecordUpsertSchema = z.object({
   service_id: z.string().uuid(),
   contract_info_md: mdField,
   contract_data_md: mdField,
+  contract_data_checklist: checklistField,
   work_basic_md: mdField,
   work_generator_md: mdField,
   work_site_md: mdField,

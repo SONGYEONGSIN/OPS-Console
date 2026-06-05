@@ -37,7 +37,9 @@ describe("HandoverEditForm", () => {
     setup();
     expect(screen.getByRole("button", { name: "계약" })).toBeInTheDocument();
     expect(screen.getByLabelText("계약정보")).toHaveValue("기존 계약정보");
-    expect(screen.getByLabelText("계약자료")).toBeInTheDocument();
+    // 계약자료 = 계약서류 체크리스트 + 메모
+    expect(screen.getByText(/계약서류 \(/)).toBeInTheDocument();
+    expect(screen.getByLabelText("계약자료 메모")).toBeInTheDocument();
   });
 
   it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
@@ -49,7 +51,7 @@ describe("HandoverEditForm", () => {
 
   it("textarea 입력 시 setRow 호출", () => {
     const { setRow } = setup();
-    fireEvent.change(screen.getByLabelText("계약자료"), {
+    fireEvent.change(screen.getByLabelText("계약자료 메모"), {
       target: { value: "신규자료" },
     });
     expect(setRow).toHaveBeenCalled();

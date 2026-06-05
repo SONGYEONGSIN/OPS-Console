@@ -78,21 +78,24 @@ export async function sendHandoverMail(
   const { data: rec, error: recErr } = await admin
     .from("handover_records")
     .select(
-      "contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md",
+      "contract_info_md, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md",
     )
     .eq("service_id", p.service_id)
     .maybeSingle();
   if (recErr) {
     return { ok: false, error: recErr.message };
   }
-  const recRow = (rec ?? {}) as Record<string, string | null>;
+  const recRow = (rec ?? {}) as Record<string, unknown>;
   const fields = HANDOVER_FIELD_KEYS.reduce(
     (acc, k) => {
-      acc[k] = recRow[k] ?? null;
+      acc[k] = (recRow[k] as string | null) ?? null;
       return acc;
     },
     {} as Record<HandoverFieldKey, string | null>,
   );
+  const contractChecklist = Array.isArray(recRow.contract_data_checklist)
+    ? (recRow.contract_data_checklist as { text: string; done: boolean }[])
+    : [];
 
   // 2) PDF 생성
   const pdfBuf = await renderHandoverPdf({
@@ -104,6 +107,7 @@ export async function sendHandoverMail(
     toName: p.to_name,
     toEmail: p.to_email,
     notes: p.notes,
+    contractChecklist,
     createdAt: new Date().toISOString(),
     fields,
   });

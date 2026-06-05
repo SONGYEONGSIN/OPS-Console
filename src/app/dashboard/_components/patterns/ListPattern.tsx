@@ -366,6 +366,8 @@ export type ListRow = {
   /** handover — 14 sub-field (인스펙터 EditForm 초기값) */
   handoverContractInfoMd?: string | null;
   handoverContractDataMd?: string | null;
+  /** 계약서류 체크리스트 (계약자료) */
+  handoverContractChecklist?: { id: string; text: string; done: boolean }[];
   handoverWorkBasicMd?: string | null;
   handoverWorkGeneratorMd?: string | null;
   handoverWorkSiteMd?: string | null;

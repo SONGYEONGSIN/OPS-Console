@@ -8,6 +8,7 @@ import {
   type HandoverFieldKey,
 } from "@/features/handover/categories";
 import { CategoryTabs } from "./CategoryTabs";
+import { ContractChecklist } from "./ContractChecklist";
 import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 import type { EditFormProps } from "../types";
 
@@ -58,25 +59,54 @@ export function HandoverEditForm({
         <CategoryTabs active={active} onChange={setActive} />
       </div>
 
-      {cat.fields.map((f) => (
-        <label key={f.key} className="block text-xs">
-          <span className="mb-1 block text-muted">{f.label}</span>
-          <textarea
-            aria-label={f.label}
-            value={pickValue(row, f.key)}
-            onChange={(e) =>
-              setRow((prev) => ({
-                ...prev,
-                [ROW_TO_FIELD[f.key]]: e.target.value,
-              }))
-            }
-            rows={6}
-            maxLength={10000}
-            placeholder={FIELD_EXAMPLE[f.key]}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      ))}
+      {cat.fields.map((f) =>
+        f.key === "contract_data_md" ? (
+          // 계약자료 — 계약서류 체크리스트 + 메모 박스
+          <div key={f.key} className="space-y-2">
+            <ContractChecklist
+              items={row.handoverContractChecklist ?? []}
+              onChange={(items) =>
+                setRow((prev) => ({ ...prev, handoverContractChecklist: items }))
+              }
+            />
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">메모</span>
+              <textarea
+                aria-label="계약자료 메모"
+                value={pickValue(row, f.key)}
+                onChange={(e) =>
+                  setRow((prev) => ({
+                    ...prev,
+                    [ROW_TO_FIELD[f.key]]: e.target.value,
+                  }))
+                }
+                rows={3}
+                maxLength={10000}
+                placeholder="추가 메모(선택)"
+                className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              />
+            </label>
+          </div>
+        ) : (
+          <label key={f.key} className="block text-xs">
+            <span className="mb-1 block text-muted">{f.label}</span>
+            <textarea
+              aria-label={f.label}
+              value={pickValue(row, f.key)}
+              onChange={(e) =>
+                setRow((prev) => ({
+                  ...prev,
+                  [ROW_TO_FIELD[f.key]]: e.target.value,
+                }))
+              }
+              rows={6}
+              maxLength={10000}
+              placeholder={FIELD_EXAMPLE[f.key]}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            />
+          </label>
+        ),
+      )}
 
       <div className="flex gap-2 pt-2">
         <button
