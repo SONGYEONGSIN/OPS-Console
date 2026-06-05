@@ -106,7 +106,7 @@ export function HandoverEditForm({
                     [ROW_TO_FIELD[f.key]]: e.target.value,
                   }))
                 }
-                rows={3}
+                rows={2}
                 maxLength={10000}
                 placeholder="추가 메모(선택)"
                 className="w-full border border-line bg-cream px-2 py-1 text-ink"
@@ -134,7 +134,7 @@ export function HandoverEditForm({
                     [ROW_TO_FIELD[f.key]]: e.target.value,
                   }))
                 }
-                rows={3}
+                rows={2}
                 maxLength={10000}
                 placeholder="추가 메모(선택)"
                 className="w-full border border-line bg-cream px-2 py-1 text-ink"
