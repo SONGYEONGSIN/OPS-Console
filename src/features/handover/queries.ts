@@ -217,3 +217,41 @@ export async function getHandoverByServiceId(
   }
   return r.data;
 }
+
+export type HandoverContactCandidate = {
+  universityName: string;
+  name: string;
+  jobTitle: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+/**
+ * 대학별 연락처 후보 — 컨텍(학교담당자) 검색·등록용. contacts 마스터에서 조회.
+ * 빈 입력이면 빈 배열.
+ */
+export async function getHandoverContactCandidates(
+  universityNames: string[],
+): Promise<HandoverContactCandidate[]> {
+  const unique = [...new Set(universityNames.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .select(
+      "university_name, customer_name, job_title, contact_phone, contact_email",
+    )
+    .in("university_name", unique)
+    .order("customer_name", { ascending: true });
+  if (error) {
+    console.error("[getHandoverContactCandidates]", error);
+    return [];
+  }
+  return (data ?? []).map((c) => ({
+    universityName: c.university_name as string,
+    name: c.customer_name as string,
+    jobTitle: (c.job_title as string | null) ?? null,
+    phone: (c.contact_phone as string | null) ?? null,
+    email: (c.contact_email as string | null) ?? null,
+  }));
+}

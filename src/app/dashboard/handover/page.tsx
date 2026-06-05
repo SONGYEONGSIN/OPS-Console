@@ -16,6 +16,7 @@ import { listOperators } from "@/features/operators/queries";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
   listServicesWithHandover,
+  getHandoverContactCandidates,
   type HandoverListRow,
 } from "@/features/handover/queries";
 import {
@@ -185,6 +186,26 @@ export default async function HandoverPage({
     pageSize: PAGE_SIZE,
   });
   const rows: ListRow[] = dbRows.map(handoverToListRow);
+  // 컨텍 — 각 행 대학의 연락처 후보를 부착(학교담당자 검색·등록용)
+  const contactCandidates = await getHandoverContactCandidates(
+    rows.map((r) => r.universityName ?? "").filter(Boolean),
+  );
+  const contactsByUniv = new Map<string, typeof contactCandidates>();
+  for (const c of contactCandidates) {
+    const arr = contactsByUniv.get(c.universityName) ?? [];
+    arr.push(c);
+    contactsByUniv.set(c.universityName, arr);
+  }
+  for (const r of rows) {
+    r.handoverSchoolContactCandidates = (
+      contactsByUniv.get(r.universityName ?? "") ?? []
+    ).map((c) => ({
+      name: c.name,
+      jobTitle: c.jobTitle,
+      phone: c.phone,
+      email: c.email,
+    }));
+  }
   const config = resolvePageMeta(slug, meta, total);
 
   // 복제 대상 서비스 후보 — 전체 services with handover status (검색용 light)

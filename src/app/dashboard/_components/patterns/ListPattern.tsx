@@ -368,6 +368,13 @@ export type ListRow = {
   handoverContractDataMd?: string | null;
   /** 계약서류 체크리스트 (계약자료) */
   handoverContractChecklist?: { id: string; text: string; done: boolean }[];
+  /** 컨텍 — 해당 대학 연락처 후보 (학교담당자 검색·등록용) */
+  handoverSchoolContactCandidates?: {
+    name: string;
+    jobTitle: string | null;
+    phone: string | null;
+    email: string | null;
+  }[];
   handoverWorkBasicMd?: string | null;
   handoverWorkGeneratorMd?: string | null;
   handoverWorkSiteMd?: string | null;
