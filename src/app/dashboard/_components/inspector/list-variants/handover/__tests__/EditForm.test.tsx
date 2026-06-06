@@ -43,7 +43,8 @@ describe("HandoverEditForm", () => {
   it("카테고리 탭 + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
     setup();
     expect(screen.getByRole("button", { name: "계약" })).toBeInTheDocument();
-    // 계약정보 = 구조화 폼 (작성된 상태라 아코디언 펼침 → 제목/형태/진행/상태)
+    // 기본 접힘 — 계약정보 아코디언 펼친 뒤 제목/형태/진행/상태 확인
+    fireEvent.click(screen.getByRole("button", { name: /계약정보/ }));
     expect(screen.getByLabelText("형태")).toHaveValue("수의");
     expect(screen.getByLabelText("상태")).toHaveValue("완료");
     // 계약자료는 별도 접이식 헤더로 표시

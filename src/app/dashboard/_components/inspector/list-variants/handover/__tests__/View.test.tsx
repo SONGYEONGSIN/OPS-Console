@@ -61,6 +61,8 @@ describe("HandoverView", () => {
 
   it("기본 계약 카테고리 → 계약정보 구조화 폼 readonly + 값", () => {
     render(<HandoverView row={row} />);
+    // 기본 접힘 — 계약정보 펼치기
+    fireEvent.click(screen.getByRole("button", { name: /계약정보/ }));
     expect(screen.getByText("원서접수")).toBeInTheDocument();
     expect(screen.getByText("수의")).toBeInTheDocument();
     expect(screen.getByText("운영자")).toBeInTheDocument();
@@ -71,6 +73,8 @@ describe("HandoverView", () => {
   it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
     render(<HandoverView row={row} />);
     fireEvent.click(screen.getByRole("button", { name: "작업" }));
+    // 기본 접힘 — 기초작업 헤더 펼치기
+    fireEvent.click(screen.getByRole("button", { name: /기초작업/ }));
     const ta = screen.getByLabelText("기초작업") as HTMLTextAreaElement;
     expect(ta.value).toBe("기초작업 내용");
   });
@@ -94,8 +98,9 @@ describe("HandoverView", () => {
         }}
       />,
     );
-    // 아코디언 헤더는 필드 라벨('계약자료'), 항목은 펼친 상태로 표시
+    // 아코디언 헤더는 필드 라벨('계약자료'), 펼치면 항목 표시
     expect(screen.getByText("계약자료")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /계약자료/ }));
     expect(screen.getByText("계약서")).toBeInTheDocument();
   });
 });
