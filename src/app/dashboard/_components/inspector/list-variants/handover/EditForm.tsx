@@ -45,6 +45,7 @@ export function HandoverEditForm({
   onCancel,
   handoverServiceCandidates,
   onCopyHandover,
+  contractsStatusOptions,
 }: EditFormProps) {
   const [active, setActive] = useState<HandoverCategoryKey>("contract");
   const cat = HANDOVER_CATEGORIES.find((c) => c.key === active);
@@ -83,6 +84,7 @@ export function HandoverEditForm({
                 setRow((prev) => ({ ...prev, handoverContractInfo: next }))
               }
               universityName={row.universityName ?? undefined}
+              statusOptions={contractsStatusOptions ?? []}
             />
           );
         } else if (f.key === "school_contact_md") {

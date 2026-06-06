@@ -17,10 +17,10 @@ describe("applyContractMatch", () => {
     expect(r.memo).toBe("기존 메모");
   });
 
-  it("상태 영업팀진행 → 진행 영업 / 형태 수의", () => {
+  it("상태 영업팀진행 → 진행 영업 / 형태 입찰 (영업이면 입찰)", () => {
     const r = applyContractMatch(base, "영업팀진행");
     expect(r.progress).toBe("영업");
-    expect(r.type).toBe("수의");
+    expect(r.type).toBe("입찰");
     expect(r.status).toBe("영업팀진행");
   });
 
