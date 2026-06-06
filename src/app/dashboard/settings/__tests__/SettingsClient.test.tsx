@@ -14,6 +14,8 @@ vi.mock("next/navigation", () => ({
 const env: EnvSnapshot = {
   mail: {
     dryRun: "false",
+    matchDryRun: "false",
+    weeklyReportDryRun: "true",
     thresholdDays: "10",
     companyName: "Folio",
     baseUrl: "https://folio.local",

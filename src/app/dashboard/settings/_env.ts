@@ -4,6 +4,8 @@ import "server-only";
 export type EnvSnapshot = {
   mail: {
     dryRun: string;
+    matchDryRun: string;
+    weeklyReportDryRun: string;
     thresholdDays: string;
     companyName: string;
     baseUrl: string;
@@ -53,6 +55,8 @@ export function getEnvSnapshot(): EnvSnapshot {
   return {
     mail: {
       dryRun: process.env.MAIL_DRY_RUN ?? "(미설정)",
+      matchDryRun: process.env.MAIL_MATCH_DRY_RUN ?? "(미설정)",
+      weeklyReportDryRun: process.env.WEEKLY_REPORT_DRY_RUN ?? "(미설정)",
       thresholdDays: process.env.MAIL_REMINDER_THRESHOLD_DAYS ?? "(미설정)",
       companyName: process.env.MAIL_COMPANY_NAME ?? "(미설정)",
       baseUrl: process.env.FOLIO_BASE_URL ?? "(미설정)",
