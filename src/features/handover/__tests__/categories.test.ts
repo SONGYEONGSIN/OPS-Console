@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { HANDOVER_CATEGORIES, HANDOVER_FIELD_KEYS } from "../categories";
+import {
+  HANDOVER_CATEGORIES,
+  HANDOVER_FIELD_KEYS,
+} from "../categories";
 
 describe("HANDOVER_CATEGORIES", () => {
   it("6개 카테고리: 계약/작업/정산/컨텍/서류/기타", () => {
@@ -44,7 +47,9 @@ describe("HANDOVER_CATEGORIES", () => {
   });
 
   it("HANDOVER_FIELD_KEYS 와 카테고리 필드 합산 일치", () => {
-    const flat = HANDOVER_CATEGORIES.flatMap((c) => c.fields.map((f) => f.key));
+    const flat = HANDOVER_CATEGORIES.flatMap((c) =>
+      c.fields.map((f) => f.key),
+    );
     expect(flat).toEqual([...HANDOVER_FIELD_KEYS]);
   });
 
