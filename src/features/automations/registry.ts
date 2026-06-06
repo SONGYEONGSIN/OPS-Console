@@ -38,7 +38,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "service-notice-mail",
     label: "월별 서비스 알림",
     description:
-      "다음 달 작성 시작 서비스를 담당 운영자 본인 메일로 요약 발송합니다. (매월 첫 영업일 1회)",
+      "다음 달 작성 시작 서비스를 담당 운영자 본인 메일로 요약 발송합니다.",
     scheduleInfo: "매월 첫 영업일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runServiceNoticeMail,
@@ -47,7 +47,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "weekly-report-rollover",
     label: "본부차주보고 알림",
     description:
-      "직전 주 주간업무보고서를 다음 주 파일로 복제·갱신하고 공유 링크를 Teams 그룹채팅에 발송합니다. 발송 담당은 임형섭→전성대→허승철 부장 순으로 순환합니다.",
+      "직전 주 주간업무보고서를 다음 주 파일로 복제·갱신하고 공유 링크를 Teams 그룹채팅에 발송합니다.\n발송 담당은 임형섭→전성대→허승철 부장 순으로 순환합니다.",
     scheduleInfo: "매주 수요일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runWeeklyReportRollover,
