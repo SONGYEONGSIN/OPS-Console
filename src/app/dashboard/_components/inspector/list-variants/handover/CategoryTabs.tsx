@@ -14,7 +14,7 @@ export function CategoryTabs({
   onChange: (key: HandoverCategoryKey) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1 border-b border-line">
       {HANDOVER_CATEGORIES.map((c) => {
         const on = c.key === active;
         return (
@@ -23,7 +23,7 @@ export function CategoryTabs({
             type="button"
             aria-current={on ? "true" : undefined}
             onClick={() => onChange(c.key)}
-            className={`cursor-pointer border-b-2 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`-mb-px cursor-pointer border-b-2 px-2.5 py-1.5 text-xs font-medium transition-colors ${
               on
                 ? "border-vermilion text-ink"
                 : "border-transparent text-muted hover:text-ink-soft"
