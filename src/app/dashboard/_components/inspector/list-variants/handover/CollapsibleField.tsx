@@ -33,8 +33,8 @@ export function CollapsibleField({
         <span
           className={`ml-auto border px-1.5 py-0.5 text-2xs ${
             filled
-              ? "border-sage/40 bg-sage/10 text-sage"
-              : "border-line-soft bg-washi text-muted"
+              ? "border-sage/50 bg-sage/20 text-sage"
+              : "border-line bg-line-soft text-muted"
           }`}
         >
           {filled ? "작성완료" : "미작성"}
