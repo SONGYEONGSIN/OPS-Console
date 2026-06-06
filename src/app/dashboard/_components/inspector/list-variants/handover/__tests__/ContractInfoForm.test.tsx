@@ -26,13 +26,27 @@ describe("ContractInfoForm", () => {
     expect(screen.getByText("※ 학부 계약시 포함")).toBeInTheDocument();
   });
 
-  it("편집 — 형태 입력 시 onChange로 갱신", () => {
+  it("편집 — 형태 셀렉트 선택 시 onChange로 갱신", () => {
     const onChange = vi.fn();
     render(<ContractInfoForm value={value} onChange={onChange} />);
-    fireEvent.change(screen.getByLabelText("형태"), {
-      target: { value: "공개" },
-    });
-    expect(onChange.mock.calls[0][0]).toMatchObject({ type: "공개" });
+    const select = screen.getByLabelText("형태") as HTMLSelectElement;
+    expect(select.tagName).toBe("SELECT");
+    fireEvent.change(select, { target: { value: "입찰" } });
+    expect(onChange.mock.calls[0][0]).toMatchObject({ type: "입찰" });
+  });
+
+  it("상태 셀렉트 — statusOptions(계약현황) 옵션 렌더", () => {
+    render(
+      <ContractInfoForm
+        value={value}
+        onChange={vi.fn()}
+        statusOptions={["영업팀진행", "입찰", "계약완료"]}
+      />,
+    );
+    const select = screen.getByLabelText("상태") as HTMLSelectElement;
+    const opts = Array.from(select.options).map((o) => o.value);
+    expect(opts).toContain("영업팀진행");
+    expect(opts).toContain("계약완료");
   });
 
   it("편집 — 메모 입력 시 onChange로 갱신", () => {
