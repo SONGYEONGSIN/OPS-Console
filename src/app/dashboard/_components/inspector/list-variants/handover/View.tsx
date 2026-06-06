@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { DefList, Divider } from "../shared";
 import { CategoryTabs } from "./CategoryTabs";
@@ -92,44 +92,56 @@ export function HandoverView({ row }: { row: ListRow }) {
       </div>
 
       <div className="space-y-3">
-        {cat.fields.map((f) =>
-          f.key === "contract_info_md" ? (
-            <ContractInfoForm
-              key={f.key}
-              value={
-                row.handoverContractInfo ?? {
-                  title: "",
-                  type: "",
-                  progress: "",
-                  status: "",
-                  memo: "",
+        {cat.fields.map((f) => {
+          // 모든 필드를 접이식(아코디언)으로 — 작성된 필드는 펼친 채 시작.
+          const filled = isFieldFilled(row, f.key);
+          let body: ReactNode;
+          if (f.key === "contract_info_md") {
+            body = (
+              <ContractInfoForm
+                embedded
+                value={
+                  row.handoverContractInfo ?? {
+                    title: "",
+                    type: "",
+                    progress: "",
+                    status: "",
+                    memo: "",
+                  }
                 }
-              }
-              readOnly
-            />
-          ) : f.key === "contract_data_md" ? (
-            <ContractChecklist
-              key={f.key}
-              items={row.handoverContractChecklist ?? []}
-              readOnly
-            >
-              {pickValue(row, f.key) && (
-                <label className="block text-xs">
-                  <span className="mb-1 block text-muted">메모</span>
-                  <textarea
-                    aria-label="계약자료 메모"
-                    value={pickValue(row, f.key)}
-                    readOnly
-                    rows={3}
-                    className="w-full border border-line bg-cream px-2 py-1 text-ink"
-                  />
-                </label>
-              )}
-            </ContractChecklist>
-          ) : f.key === "school_contact_md" ? (
-            <div key={f.key} className="space-y-2 text-xs">
-              <span className="block font-bold text-ink-soft">학교담당자</span>
-              {(row.handoverSchoolContacts ?? []).length === 0 ? (
+                readOnly
+              />
+            );
+          } else if (f.key === "contract_data_md" || f.key === "docs_md") {
+            const isDocs = f.key === "docs_md";
+            body = (
+              <ContractChecklist
+                embedded
+                label={isDocs ? "제출서류" : "계약서류"}
+                items={
+                  (isDocs
+                    ? row.handoverDocsChecklist
+                    : row.handoverContractChecklist) ?? []
+                }
+                readOnly
+              >
+                {pickValue(row, f.key) && (
+                  <label className="block text-xs">
+                    <span className="mb-1 block text-muted">메모</span>
+                    <textarea
+                      aria-label={isDocs ? "서류 메모" : "계약자료 메모"}
+                      value={pickValue(row, f.key)}
+                      readOnly
+                      rows={3}
+                      className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                    />
+                  </label>
+                )}
+              </ContractChecklist>
+            );
+          } else if (f.key === "school_contact_md") {
+            body =
+              (row.handoverSchoolContacts ?? []).length === 0 ? (
                 <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
                   등록된 학교담당자가 없습니다.
                 </p>
@@ -164,51 +176,9 @@ export function HandoverView({ row }: { row: ListRow }) {
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-          ) : f.key === "docs_md" ? (
-            <ContractChecklist
-              key={f.key}
-              label="제출서류"
-              items={row.handoverDocsChecklist ?? []}
-              readOnly
-            >
-              {pickValue(row, f.key) && (
-                <label className="block text-xs">
-                  <span className="mb-1 block text-muted">메모</span>
-                  <textarea
-                    aria-label="서류 메모"
-                    value={pickValue(row, f.key)}
-                    readOnly
-                    rows={3}
-                    className="w-full border border-line bg-cream px-2 py-1 text-ink"
-                  />
-                </label>
-              )}
-            </ContractChecklist>
-          ) : cat.key === "work" ? (
-            // 작업 — 접이식(아코디언). 작성된 필드는 펼친 채 시작.
-            <CollapsibleField
-              key={f.key}
-              label={f.label}
-              filled={isFieldFilled(row, f.key)}
-              defaultOpen={isFieldFilled(row, f.key)}
-            >
-              {pickValue(row, f.key).trim() ? (
-                <textarea
-                  aria-label={f.label}
-                  value={pickValue(row, f.key)}
-                  readOnly
-                  rows={6}
-                  className="w-full border border-line bg-cream px-2 py-1 text-ink"
-                />
-              ) : (
-                <p className="text-2xs text-faint">작성된 내용이 없습니다.</p>
-              )}
-            </CollapsibleField>
-          ) : pickValue(row, f.key).trim() ? (
-            <label key={f.key} className="block text-xs">
-              <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>
+              );
+          } else {
+            body = pickValue(row, f.key).trim() ? (
               <textarea
                 aria-label={f.label}
                 value={pickValue(row, f.key)}
@@ -216,16 +186,21 @@ export function HandoverView({ row }: { row: ListRow }) {
                 rows={6}
                 className="w-full border border-line bg-cream px-2 py-1 text-ink"
               />
-            </label>
-          ) : (
-            <div key={f.key} className="flex items-center gap-2 text-xs">
-              <span className="font-bold text-ink-soft">{f.label}</span>
-              <span className="border border-line-soft bg-washi px-1.5 py-0.5 text-2xs text-muted">
-                미작성
-              </span>
-            </div>
-          ),
-        )}
+            ) : (
+              <p className="text-2xs text-faint">작성된 내용이 없습니다.</p>
+            );
+          }
+          return (
+            <CollapsibleField
+              key={f.key}
+              label={f.label}
+              filled={filled}
+              defaultOpen={filled}
+            >
+              {body}
+            </CollapsibleField>
+          );
+        })}
       </div>
     </div>
   );

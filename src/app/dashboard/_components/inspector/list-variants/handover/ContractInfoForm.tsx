@@ -31,11 +31,14 @@ export function ContractInfoForm({
   onChange,
   readOnly = false,
   universityName,
+  embedded = false,
 }: {
   value: ContractInfo;
   onChange?: (next: ContractInfo) => void;
   readOnly?: boolean;
   universityName?: string;
+  /** 아코디언 내부에 들어갈 때 — 자체 제목('계약정보')을 숨긴다. */
+  embedded?: boolean;
 }) {
   const [searching, setSearching] = useState(false);
   const [matches, setMatches] = useState<ContractMatch[]>([]);
@@ -66,19 +69,25 @@ export function ContractInfoForm({
 
   return (
     <div className="space-y-1.5 text-xs">
-      <div className="flex items-center justify-between">
-        <span className="font-bold text-ink-soft">계약정보</span>
-        {canSearch && (
-          <button
-            type="button"
-            onClick={runSearch}
-            disabled={searching}
-            className="cursor-pointer border-none bg-transparent p-0 text-2xs text-vermilion hover:text-vermilion-deep disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {searching ? "검색 중…" : "계약에서 가져오기"}
-          </button>
-        )}
-      </div>
+      {(!embedded || canSearch) && (
+        <div
+          className={`flex items-center ${embedded ? "justify-end" : "justify-between"}`}
+        >
+          {!embedded && (
+            <span className="font-bold text-ink-soft">계약정보</span>
+          )}
+          {canSearch && (
+            <button
+              type="button"
+              onClick={runSearch}
+              disabled={searching}
+              className="cursor-pointer border-none bg-transparent p-0 text-2xs text-vermilion hover:text-vermilion-deep disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {searching ? "검색 중…" : "계약에서 가져오기"}
+            </button>
+          )}
+        </div>
+      )}
 
       {!readOnly && matches.length > 0 && (
         <ul
@@ -104,7 +113,13 @@ export function ContractInfoForm({
       )}
       {!readOnly && error && <p className="text-2xs text-muted">{error}</p>}
 
-      <div className="space-y-2 border-y border-line-soft py-3">
+      <div
+        className={
+          embedded
+            ? "space-y-2"
+            : "space-y-2 border-y border-line-soft py-3"
+        }
+      >
         {FIELDS.map((f) => (
           <label key={f.key} className="flex items-center gap-2">
             <span className="w-10 flex-none text-muted">{f.label}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import {
   HANDOVER_CATEGORIES,
@@ -62,133 +62,108 @@ export function HandoverEditForm({
         <CategoryTabs active={active} onChange={setActive} row={row} />
       </div>
 
-      {cat.fields.map((f) =>
-        f.key === "contract_info_md" ? (
-          // 계약정보 — 고정 필드 폼(제목/형태/진행/상태 + 메모)
-          <ContractInfoForm
-            key={f.key}
-            value={
-              row.handoverContractInfo ?? {
-                title: "",
-                type: "",
-                progress: "",
-                status: "",
-                memo: "",
+      {cat.fields.map((f) => {
+        // 모든 필드를 접이식(아코디언)으로 — 작성된 필드는 펼친 채 시작.
+        const filled = isFieldFilled(row, f.key);
+        let body: ReactNode;
+        if (f.key === "contract_info_md") {
+          body = (
+            <ContractInfoForm
+              embedded
+              value={
+                row.handoverContractInfo ?? {
+                  title: "",
+                  type: "",
+                  progress: "",
+                  status: "",
+                  memo: "",
+                }
               }
-            }
-            onChange={(next) =>
-              setRow((prev) => ({ ...prev, handoverContractInfo: next }))
-            }
-            universityName={row.universityName ?? undefined}
-          />
-        ) : f.key === "school_contact_md" ? (
-          // 컨텍 — 대학 연락처 검색 → 구조화 리스트로 추가
-          <SchoolContactPicker
-            key={f.key}
-            candidates={row.handoverSchoolContactCandidates ?? []}
-            items={row.handoverSchoolContacts ?? []}
-            onChange={(next) =>
-              setRow((prev) => ({ ...prev, handoverSchoolContacts: next }))
-            }
-          />
-        ) : f.key === "contract_data_md" ? (
-          // 계약자료 — 계약서류 체크리스트(헤더 밖) + 항목·메모(선 안)
-          <ContractChecklist
-            key={f.key}
-            items={row.handoverContractChecklist ?? []}
-            onChange={(items) =>
-              setRow((prev) => ({ ...prev, handoverContractChecklist: items }))
-            }
-          >
-            <label className="block text-xs">
-              <span className="mb-1 block text-muted">메모</span>
-              <textarea
-                aria-label="계약자료 메모"
-                value={pickValue(row, f.key)}
-                onChange={(e) =>
-                  setRow((prev) => ({
-                    ...prev,
-                    [ROW_TO_FIELD[f.key]]: e.target.value,
-                  }))
-                }
-                rows={2}
-                maxLength={10000}
-                placeholder="추가 메모(선택)"
-                className="w-full border border-line bg-cream px-2 py-1 text-ink"
-              />
-            </label>
-          </ContractChecklist>
-        ) : f.key === "docs_md" ? (
-          // 서류 — 제출서류 체크리스트(헤더 밖) + 항목·메모(선 안)
-          <ContractChecklist
-            key={f.key}
-            label="제출서류"
-            items={row.handoverDocsChecklist ?? []}
-            onChange={(items) =>
-              setRow((prev) => ({ ...prev, handoverDocsChecklist: items }))
-            }
-          >
-            <label className="block text-xs">
-              <span className="mb-1 block text-muted">메모</span>
-              <textarea
-                aria-label="서류 메모"
-                value={pickValue(row, f.key)}
-                onChange={(e) =>
-                  setRow((prev) => ({
-                    ...prev,
-                    [ROW_TO_FIELD[f.key]]: e.target.value,
-                  }))
-                }
-                rows={2}
-                maxLength={10000}
-                placeholder="추가 메모(선택)"
-                className="w-full border border-line bg-cream px-2 py-1 text-ink"
-              />
-            </label>
-          </ContractChecklist>
-        ) : cat.key === "work" ? (
-          // 작업 — 필드가 많아 접이식(아코디언). 작성된 필드는 펼친 채 시작.
+              onChange={(next) =>
+                setRow((prev) => ({ ...prev, handoverContractInfo: next }))
+              }
+              universityName={row.universityName ?? undefined}
+            />
+          );
+        } else if (f.key === "school_contact_md") {
+          body = (
+            <SchoolContactPicker
+              embedded
+              candidates={row.handoverSchoolContactCandidates ?? []}
+              items={row.handoverSchoolContacts ?? []}
+              onChange={(next) =>
+                setRow((prev) => ({ ...prev, handoverSchoolContacts: next }))
+              }
+            />
+          );
+        } else if (f.key === "contract_data_md" || f.key === "docs_md") {
+          const isDocs = f.key === "docs_md";
+          body = (
+            <ContractChecklist
+              embedded
+              label={isDocs ? "제출서류" : "계약서류"}
+              items={
+                (isDocs
+                  ? row.handoverDocsChecklist
+                  : row.handoverContractChecklist) ?? []
+              }
+              onChange={(items) =>
+                setRow((prev) => ({
+                  ...prev,
+                  ...(isDocs
+                    ? { handoverDocsChecklist: items }
+                    : { handoverContractChecklist: items }),
+                }))
+              }
+            >
+              <label className="block text-xs">
+                <span className="mb-1 block text-muted">메모</span>
+                <textarea
+                  aria-label={isDocs ? "서류 메모" : "계약자료 메모"}
+                  value={pickValue(row, f.key)}
+                  onChange={(e) =>
+                    setRow((prev) => ({
+                      ...prev,
+                      [ROW_TO_FIELD[f.key]]: e.target.value,
+                    }))
+                  }
+                  rows={2}
+                  maxLength={10000}
+                  placeholder="추가 메모(선택)"
+                  className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                />
+              </label>
+            </ContractChecklist>
+          );
+        } else {
+          body = (
+            <textarea
+              aria-label={f.label}
+              value={pickValue(row, f.key)}
+              onChange={(e) =>
+                setRow((prev) => ({
+                  ...prev,
+                  [ROW_TO_FIELD[f.key]]: e.target.value,
+                }))
+              }
+              rows={6}
+              maxLength={10000}
+              placeholder={FIELD_EXAMPLE[f.key]}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            />
+          );
+        }
+        return (
           <CollapsibleField
             key={f.key}
             label={f.label}
-            filled={isFieldFilled(row, f.key)}
-            defaultOpen={isFieldFilled(row, f.key)}
+            filled={filled}
+            defaultOpen={filled}
           >
-            <textarea
-              aria-label={f.label}
-              value={pickValue(row, f.key)}
-              onChange={(e) =>
-                setRow((prev) => ({
-                  ...prev,
-                  [ROW_TO_FIELD[f.key]]: e.target.value,
-                }))
-              }
-              rows={6}
-              maxLength={10000}
-              placeholder={FIELD_EXAMPLE[f.key]}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            />
+            {body}
           </CollapsibleField>
-        ) : (
-          <label key={f.key} className="block text-xs">
-            <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>
-            <textarea
-              aria-label={f.label}
-              value={pickValue(row, f.key)}
-              onChange={(e) =>
-                setRow((prev) => ({
-                  ...prev,
-                  [ROW_TO_FIELD[f.key]]: e.target.value,
-                }))
-              }
-              rows={6}
-              maxLength={10000}
-              placeholder={FIELD_EXAMPLE[f.key]}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
-            />
-          </label>
-        ),
-      )}
+        );
+      })}
 
       <div className="flex gap-2 pt-2">
         <button
