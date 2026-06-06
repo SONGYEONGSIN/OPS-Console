@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { ReceivablesSheet } from "../queries";
-import { groupRecipientsByOwner } from "../mail-grouping";
+import {
+  groupRecipientsByOwner,
+  findMailSentDateCol,
+} from "../mail-grouping";
 
 /** 표준 sheet 생성 헬퍼 — 미수채권 시트 모양을 모사 */
 function mkSheet(
@@ -97,5 +100,21 @@ describe("groupRecipientsByOwner", () => {
     expect(
       excluded.some((e) => e.reason === "missing_billing_date_column"),
     ).toBe(true);
+  });
+});
+
+describe("excelRow / findMailSentDateCol", () => {
+  it("items에 1-based Excel 행번호(excelRow)를 채운다", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // index 0
+    ]);
+    const { groups } = groupRecipientsByOwner(sheet, 10, NOW);
+    // headerRowNumber(1) + 1 + index(0) = 2
+    expect(groups[0].items[0].excelRow).toBe(2);
+  });
+
+  it("findMailSentDateCol — '메일발송일자' 헤더 인덱스, 없으면 -1", () => {
+    expect(findMailSentDateCol([...HEADERS, "메일발송일자"])).toBe(HEADERS.length);
+    expect(findMailSentDateCol(HEADERS)).toBe(-1);
   });
 });

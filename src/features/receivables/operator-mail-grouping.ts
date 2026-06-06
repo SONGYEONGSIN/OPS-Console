@@ -122,6 +122,8 @@ export function groupReceivablesByOperator(
       daysOverdue,
       amount: amount < 0 ? 0 : amount,
       operatorLabel: operatorName,
+      // 운영자 메일은 Excel 발송일자 기록 대상 아님 (학교담당자 독려만 기록)
+      excelRow: -1,
     };
 
     const entry = byOperator.get(operatorEmail);

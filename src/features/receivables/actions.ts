@@ -118,3 +118,71 @@ export async function updateReceivablesCells(
   revalidatePath("/dashboard/receivables");
   return { ok: true };
 }
+
+/**
+ * 미수 독려 메일 발송 성공 행에 '메일발송일자'(발송일자, 단일 컬럼)를 일괄 기록.
+ * 토큰·세션 1회 발급 후 행별 PATCH. admin 전용 (독려 발송과 동일 권한).
+ *
+ * @param colIdx 원본 Excel 컬럼 인덱스 (validColIdx 적용 후)
+ * @param rowNumbers 1-based 행 번호 목록
+ * @param value 기록할 값 (예: 2026-06-07)
+ */
+export async function markReceivablesMailSent(
+  worksheetName: string,
+  colIdx: number,
+  rowNumbers: number[],
+  value: string,
+): Promise<ReceivablesActionResult> {
+  const me = await getCurrentOperator();
+  if (!me || me.permission !== "admin") {
+    return { ok: false, error: "권한 없음 — admin 운영자만 기록할 수 있습니다." };
+  }
+  const driveId = process.env.SHAREPOINT_RECEIVABLES_DRIVE_ID;
+  const itemId = process.env.SHAREPOINT_RECEIVABLES_ITEM_ID;
+  if (!driveId || !itemId) return { ok: false, error: ENV_ERROR };
+  if (rowNumbers.length === 0) return { ok: true };
+
+  let token: string;
+  try {
+    token = await getGraphToken();
+  } catch (e) {
+    return {
+      ok: false,
+      error: `토큰 발급 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  let sessionId: string;
+  try {
+    sessionId = await getWorkbookSession(driveId, itemId);
+  } catch (e) {
+    return {
+      ok: false,
+      error: `워크북 세션 발급 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
+  const encoded = encodeURIComponent(worksheetName);
+  const col = columnLetter(colIdx);
+  for (const rn of rowNumbers) {
+    const address = `${col}${rn}:${col}${rn}`;
+    const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets('${encoded}')/range(address='${address}')`;
+    let res = await patchCellOnce({ url, token, sessionId, value });
+    if (RETRY_STATUSES.has(res.status)) {
+      try {
+        sessionId = await refreshWorkbookSession(driveId, itemId);
+      } catch {
+        // 세션 재발급 실패는 무시 — 다음 호출에서 동일 에러 처리
+      }
+      res = await patchCellOnce({ url, token, sessionId, value });
+    }
+    if (!res.ok) {
+      const errText = await res.text();
+      return {
+        ok: false,
+        error: `Graph PATCH ${address} ${res.status}: ${errText.slice(0, 200)}`,
+      };
+    }
+  }
+  revalidatePath("/dashboard/receivables");
+  return { ok: true };
+}
