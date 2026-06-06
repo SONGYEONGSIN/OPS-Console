@@ -56,6 +56,22 @@ describe("isFieldFilled", () => {
     expect(isFieldFilled(base, "docs_md")).toBe(false);
   });
 
+  it("정산 — 전형료/계산서 구조화 폼에 값이 있으면 작성", () => {
+    expect(isFieldFilled(base, "payment_fee_md")).toBe(false);
+    expect(
+      isFieldFilled(
+        { ...base, handoverPaymentFee: { deadline: "5영업일", manager: "", memo: "" } },
+        "payment_fee_md",
+      ),
+    ).toBe(true);
+    expect(
+      isFieldFilled(
+        { ...base, handoverPaymentInvoice: { issueType: "청구발행", memo: "" } },
+        "payment_invoice_md",
+      ),
+    ).toBe(true);
+  });
+
   it("컨텍 — 연락처 리스트가 있으면 작성", () => {
     expect(
       isFieldFilled(

@@ -78,7 +78,7 @@ export async function sendHandoverMail(
   const { data: rec, error: recErr } = await admin
     .from("handover_records")
     .select(
-      "contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md",
+      "contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, payment_fee, payment_invoice, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md",
     )
     .eq("service_id", p.service_id)
     .maybeSingle();
@@ -115,6 +115,17 @@ export async function sendHandoverMail(
         email: string | null;
       }[])
     : [];
+  const pf = (recRow.payment_fee ?? {}) as Record<string, unknown>;
+  const paymentFee = {
+    deadline: typeof pf.deadline === "string" ? pf.deadline : "",
+    manager: typeof pf.manager === "string" ? pf.manager : "",
+    memo: typeof pf.memo === "string" ? pf.memo : "",
+  };
+  const pi = (recRow.payment_invoice ?? {}) as Record<string, unknown>;
+  const paymentInvoice = {
+    issueType: typeof pi.issueType === "string" ? pi.issueType : "",
+    memo: typeof pi.memo === "string" ? pi.memo : "",
+  };
 
   // 2) PDF 생성
   const pdfBuf = await renderHandoverPdf({
@@ -130,6 +141,8 @@ export async function sendHandoverMail(
     contractChecklist,
     docsChecklist,
     schoolContacts,
+    paymentFee,
+    paymentInvoice,
     createdAt: new Date().toISOString(),
     fields,
   });

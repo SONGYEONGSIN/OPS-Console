@@ -69,6 +69,10 @@ export type HandoverPdfInput = {
     phone: string | null;
     email: string | null;
   }[];
+  /** 정산 — 전형료 구조화 폼 */
+  paymentFee?: { deadline: string; manager: string; memo: string };
+  /** 정산 — 계산서 구조화 폼 */
+  paymentInvoice?: { issueType: string; memo: string };
 };
 
 const styles = StyleSheet.create({
@@ -330,6 +334,39 @@ function HandoverDocument(input: HandoverPdfInput) {
                           {c.jobTitle ? ` (${c.jobTitle})` : ""}
                           {c.phone ? ` · ${c.phone}` : ""}
                           {c.email ? ` · ${c.email}` : ""}
+                        </Text>
+                      ))
+                    )}
+                  </View>
+                );
+              }
+              // 정산 — 전형료/계산서 구조화 폼
+              if (f.key === "payment_fee_md" || f.key === "payment_invoice_md") {
+                const isFee = f.key === "payment_fee_md";
+                const p = isFee ? input.paymentFee : input.paymentInvoice;
+                const lines = p
+                  ? [
+                      isFee && input.paymentFee?.deadline
+                        ? `정산기한 : ${input.paymentFee.deadline}`
+                        : "",
+                      isFee && input.paymentFee?.manager
+                        ? `담당자 : ${input.paymentFee.manager}`
+                        : "",
+                      !isFee && input.paymentInvoice?.issueType
+                        ? `발행유형 : ${input.paymentInvoice.issueType}`
+                        : "",
+                      p.memo ? `메모 : ${p.memo}` : "",
+                    ].filter(Boolean)
+                  : [];
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    {lines.length === 0 ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      lines.map((line, i) => (
+                        <Text key={i} style={styles.fieldValue}>
+                          {line}
                         </Text>
                       ))
                     )}

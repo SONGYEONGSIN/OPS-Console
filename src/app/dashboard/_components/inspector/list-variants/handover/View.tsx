@@ -8,6 +8,13 @@ import { ContractChecklist } from "./ContractChecklist";
 import { ContractInfoForm } from "./ContractInfoForm";
 import { CollapsibleField } from "./CollapsibleField";
 import { CopyButton } from "./CopyButton";
+import { StructuredInfoForm } from "./StructuredInfoForm";
+import {
+  PAYMENT_FEE_FIELDS,
+  PAYMENT_INVOICE_FIELDS,
+  EMPTY_PAYMENT_FEE,
+  EMPTY_PAYMENT_INVOICE,
+} from "./payment-fields";
 import { isFieldFilled } from "./progress";
 import {
   HANDOVER_CATEGORIES,
@@ -177,6 +184,22 @@ export function HandoverView({ row }: { row: ListRow }) {
                   ))}
                 </ul>
               );
+          } else if (f.key === "payment_fee_md") {
+            body = (
+              <StructuredInfoForm
+                fields={PAYMENT_FEE_FIELDS}
+                value={row.handoverPaymentFee ?? EMPTY_PAYMENT_FEE}
+                readOnly
+              />
+            );
+          } else if (f.key === "payment_invoice_md") {
+            body = (
+              <StructuredInfoForm
+                fields={PAYMENT_INVOICE_FIELDS}
+                value={row.handoverPaymentInvoice ?? EMPTY_PAYMENT_INVOICE}
+                readOnly
+              />
+            );
           } else {
             body = pickValue(row, f.key).trim() ? (
               <textarea

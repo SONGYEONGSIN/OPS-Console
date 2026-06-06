@@ -12,6 +12,13 @@ import { ContractChecklist } from "./ContractChecklist";
 import { ContractInfoForm } from "./ContractInfoForm";
 import { SchoolContactPicker } from "./SchoolContactPicker";
 import { CollapsibleField } from "./CollapsibleField";
+import { StructuredInfoForm } from "./StructuredInfoForm";
+import {
+  PAYMENT_FEE_FIELDS,
+  PAYMENT_INVOICE_FIELDS,
+  EMPTY_PAYMENT_FEE,
+  EMPTY_PAYMENT_INVOICE,
+} from "./payment-fields";
 import { isFieldFilled } from "./progress";
 import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 import type { EditFormProps } from "../types";
@@ -136,6 +143,33 @@ export function HandoverEditForm({
                 />
               </label>
             </ContractChecklist>
+          );
+        } else if (f.key === "payment_fee_md") {
+          body = (
+            <StructuredInfoForm
+              fields={PAYMENT_FEE_FIELDS}
+              value={row.handoverPaymentFee ?? EMPTY_PAYMENT_FEE}
+              onChange={(next) =>
+                setRow((prev) => ({
+                  ...prev,
+                  handoverPaymentFee: next as ListRow["handoverPaymentFee"],
+                }))
+              }
+            />
+          );
+        } else if (f.key === "payment_invoice_md") {
+          body = (
+            <StructuredInfoForm
+              fields={PAYMENT_INVOICE_FIELDS}
+              value={row.handoverPaymentInvoice ?? EMPTY_PAYMENT_INVOICE}
+              onChange={(next) =>
+                setRow((prev) => ({
+                  ...prev,
+                  handoverPaymentInvoice:
+                    next as ListRow["handoverPaymentInvoice"],
+                }))
+              }
+            />
           );
         } else {
           body = (

@@ -46,6 +46,14 @@ export function isFieldFilled(row: ListRow, key: HandoverFieldKey): boolean {
       !!row.handoverDocsMd?.trim()
     );
   }
+  if (key === "payment_fee_md") {
+    const p = row.handoverPaymentFee;
+    return !!p && [p.deadline, p.manager, p.memo].some((v) => v?.trim());
+  }
+  if (key === "payment_invoice_md") {
+    const p = row.handoverPaymentInvoice;
+    return !!p && [p.issueType, p.memo].some((v) => v?.trim());
+  }
   if (key === "school_contact_md") {
     return (row.handoverSchoolContacts ?? []).length > 0;
   }
