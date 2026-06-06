@@ -55,7 +55,7 @@ export const HANDOVER_CATEGORIES: ReadonlyArray<HandoverCategory> = [
       { key: "work_output_md", label: "출력물" },
       { key: "work_rate_md", label: "경쟁률" },
       { key: "work_file_md", label: "전산파일" },
-      { key: "work_etc_md", label: "기타" },
+      { key: "work_etc_md", label: "예외처리" },
     ],
   },
   {
