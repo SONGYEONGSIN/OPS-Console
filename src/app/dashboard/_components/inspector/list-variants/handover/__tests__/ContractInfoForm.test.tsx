@@ -81,8 +81,14 @@ describe("ContractInfoForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "계약에서 가져오기" }));
     const pick = await screen.findByRole("button", { name: /건국대학교/ });
     fireEvent.click(pick);
+    // 계약완료(영업팀진행/입찰 아님) → 진행 운영 / 형태 수의 / 제목 원서접수
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ progress: "송영신", status: "계약완료" }),
+      expect.objectContaining({
+        title: "원서접수",
+        type: "수의",
+        progress: "운영",
+        status: "계약완료",
+      }),
     );
   });
 
