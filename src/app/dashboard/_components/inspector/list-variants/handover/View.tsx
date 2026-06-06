@@ -41,6 +41,22 @@ const STATUS_LABEL: Record<string, string> = {
   published: "발행됨",
 };
 
+/** 작성상태 색상 — 작성중=빨강, 완료=세이지, 발행=먹색, 미작성=회색 */
+const STATUS_TEXT_CLASS: Record<string, string> = {
+  draft: "font-bold text-vermilion",
+  ready: "font-bold text-sage",
+  published: "font-bold text-ink",
+};
+
+function StatusValue({ status }: { status?: string }) {
+  if (!status) return <span className="text-muted">미작성</span>;
+  return (
+    <span className={STATUS_TEXT_CLASS[status] ?? "text-ink"}>
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
 export function HandoverView({ row }: { row: ListRow }) {
   const [active, setActive] = useState<HandoverCategoryKey>("contract");
   const cat = HANDOVER_CATEGORIES.find((c) => c.key === active);
@@ -59,7 +75,7 @@ export function HandoverView({ row }: { row: ListRow }) {
     },
     {
       term: "작성상태",
-      desc: row.handoverStatus ? STATUS_LABEL[row.handoverStatus] : "미작성",
+      desc: <StatusValue status={row.handoverStatus} />,
     },
   ];
 
