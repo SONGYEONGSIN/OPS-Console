@@ -12,7 +12,7 @@ export const SEARCH_QUERIES = [
   "AI 디자인 활용",
   "AI 개발 환경",
   "AI 활용 업무 적용",
-  "AI자동화",
+  "AI 업무 자동화",
   "OpenAI Codex",
   "AI 코딩 에이전트",
 ] as const;

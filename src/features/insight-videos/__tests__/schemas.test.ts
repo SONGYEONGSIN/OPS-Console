@@ -47,8 +47,9 @@ describe("SEARCH_QUERIES", () => {
   });
 
   it("AI 맥락 키워드 — 모호어 제거(하네스/CODEX) 후 명확화", () => {
-    expect(SEARCH_QUERIES).toContain("AI자동화");
+    expect(SEARCH_QUERIES).toContain("AI 업무 자동화");
     expect(SEARCH_QUERIES).not.toContain("자동화");
+    expect(SEARCH_QUERIES).not.toContain("AI자동화");
     // 모호한 단독 검색어 제거 → AI 맥락 키워드로 대체
     expect(SEARCH_QUERIES).not.toContain("하네스");
     expect(SEARCH_QUERIES).not.toContain("CODEX");
