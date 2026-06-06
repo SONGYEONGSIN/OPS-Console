@@ -95,6 +95,44 @@ describe("fetchReceivablesSheet", () => {
     expect(data?.rows).toHaveLength(2);
   });
 
+  it("데이터행이 헤더보다 셀이 많아도 헤더 라벨로 정확 감지", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ value: [{ name: "Sheet1" }] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            // 헤더(행3) 5칸, 데이터행(행4)은 6칸 — non-empty 최다 휴리스틱이면 데이터행 오검출
+            values: [
+              ["[기준일]", "", "", "", "", ""],
+              ["요약", "", "", "", "", ""],
+              ["청구일자", "거래처명", "운영자", "학교담당자", "메일발송일자", ""],
+              ["2026-05-06", "서울대", "송영신", "a@x.com", "2026-06-07", "적요참고"],
+            ],
+            rowCount: 4,
+            columnCount: 6,
+            address: "A1:F4",
+          }),
+        }),
+    );
+    const { fetchReceivablesSheet } = await import("../queries");
+    const data = await fetchReceivablesSheet();
+    expect(data?.headers).toEqual([
+      "청구일자",
+      "거래처명",
+      "운영자",
+      "학교담당자",
+      "메일발송일자",
+    ]);
+    expect(data?.headerRowNumber).toBe(3);
+    expect(data?.rows).toHaveLength(1);
+  });
+
   it("worksheets API 실패 → null", async () => {
     vi.stubGlobal(
       "fetch",
