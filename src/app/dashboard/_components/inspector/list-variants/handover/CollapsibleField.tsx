@@ -31,10 +31,8 @@ export function CollapsibleField({
         </span>
         <span className="font-bold text-ink-soft">{label}</span>
         <span
-          className={`ml-auto border px-1.5 py-0.5 text-2xs ${
-            filled
-              ? "border-sage/50 bg-sage/20 text-sage"
-              : "border-line bg-line-soft text-muted"
+          className={`ml-auto inline-block px-2 py-0.5 text-2xs ${
+            filled ? "bg-sage/15 text-sage" : "bg-washi-raised text-muted"
           }`}
         >
           {filled ? "작성완료" : "미작성"}
