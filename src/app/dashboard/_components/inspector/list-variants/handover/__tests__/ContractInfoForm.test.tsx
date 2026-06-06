@@ -78,7 +78,7 @@ describe("ContractInfoForm", () => {
         universityName="건국대학교"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "계약에서 가져오기" }));
+    fireEvent.click(screen.getByRole("button", { name: /불러오기/ }));
     const pick = await screen.findByRole("button", { name: /건국대학교/ });
     fireEvent.click(pick);
     // 계약완료(영업팀진행/입찰 아님) → 진행 운영 / 형태 수의 / 제목 원서접수
@@ -95,7 +95,7 @@ describe("ContractInfoForm", () => {
   it("universityName 없으면 검색 버튼 미표시", () => {
     render(<ContractInfoForm value={value} onChange={vi.fn()} />);
     expect(
-      screen.queryByRole("button", { name: "계약에서 가져오기" }),
+      screen.queryByRole("button", { name: /불러오기/ }),
     ).toBeNull();
   });
 });

@@ -84,7 +84,7 @@ export function ContractInfoForm({
               disabled={searching}
               className="cursor-pointer border-none bg-transparent p-0 text-2xs text-vermilion hover:text-vermilion-deep disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {searching ? "검색 중…" : "계약에서 가져오기"}
+              {searching ? "불러오는 중…" : "📥 불러오기"}
             </button>
           )}
         </div>
