@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SchoolContact } from "@/features/handover/schemas";
+import { CopyButton } from "./CopyButton";
 
 export type SchoolContactCandidate = {
   name: string;
@@ -24,10 +25,13 @@ export function SchoolContactPicker({
   candidates,
   items,
   onChange,
+  embedded = false,
 }: {
   candidates: SchoolContactCandidate[];
   items: SchoolContact[];
   onChange: (next: SchoolContact[]) => void;
+  /** 아코디언 내부 — 자체 제목('학교담당자')을 숨긴다. */
+  embedded?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const term = search.trim().toLowerCase();
@@ -61,7 +65,9 @@ export function SchoolContactPicker({
 
   return (
     <div className="space-y-2 text-xs">
-      <span className="block text-muted">학교담당자</span>
+      {!embedded && (
+        <span className="block font-bold text-ink-soft">학교담당자</span>
+      )}
       {candidates.length === 0 ? (
         <p className="text-2xs text-muted">
           등록된 대학 연락처가 없습니다. (대학연락처 메뉴에서 먼저 등록)
@@ -117,10 +123,16 @@ export function SchoolContactPicker({
                   {c.jobTitle ? ` (${c.jobTitle})` : ""}
                 </p>
                 {c.phone ? (
-                  <p className="truncate text-2xs text-muted">{c.phone}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-2xs text-muted">{c.phone}</p>
+                    <CopyButton value={c.phone} label={`${c.name} 전화`} />
+                  </div>
                 ) : null}
                 {c.email ? (
-                  <p className="truncate text-2xs text-muted">{c.email}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-2xs text-muted">{c.email}</p>
+                    <CopyButton value={c.email} label={`${c.name} 이메일`} />
+                  </div>
                 ) : null}
               </div>
               <button

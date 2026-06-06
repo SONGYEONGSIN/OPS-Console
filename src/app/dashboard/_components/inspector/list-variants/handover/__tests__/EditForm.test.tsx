@@ -43,23 +43,31 @@ describe("HandoverEditForm", () => {
   it("카테고리 탭 + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
     setup();
     expect(screen.getByRole("button", { name: "계약" })).toBeInTheDocument();
-    // 계약정보 = 구조화 폼 (제목/형태/진행/상태)
+    // 계약정보는 작성됨 → 기본 펼침 → 제목/형태/진행/상태 바로 노출
     expect(screen.getByLabelText("형태")).toHaveValue("수의");
     expect(screen.getByLabelText("상태")).toHaveValue("완료");
-    // 계약자료 = 계약서류 체크리스트 + 메모
-    expect(screen.getByText("계약서류")).toBeInTheDocument();
-    expect(screen.getByLabelText("계약자료 메모")).toBeInTheDocument();
+    // 계약자료는 별도 접이식 헤더로 표시
+    expect(
+      screen.getByRole("button", { name: /계약자료/ }),
+    ).toBeInTheDocument();
   });
 
-  it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
+  it("카테고리 탭(작업) 클릭 시 작업 필드(아코디언) 표시 + 펼치면 입력", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "작업" }));
-    expect(screen.getByLabelText("기초작업")).toBeInTheDocument();
+    // 작업 필드는 접이식 헤더로 표시 (미작성이라 접힌 상태)
+    const header = screen.getByRole("button", { name: /기초작업/ });
+    expect(header).toBeInTheDocument();
     expect(screen.queryByLabelText("형태")).not.toBeInTheDocument();
+    // 헤더 클릭 시 textarea 펼침
+    fireEvent.click(header);
+    expect(screen.getByLabelText("기초작업")).toBeInTheDocument();
   });
 
   it("textarea 입력 시 setRow 호출", () => {
     const { setRow } = setup();
+    // 계약자료 아코디언 펼친 뒤 메모 입력
+    fireEvent.click(screen.getByRole("button", { name: /계약자료/ }));
     fireEvent.change(screen.getByLabelText("계약자료 메모"), {
       target: { value: "신규자료" },
     });

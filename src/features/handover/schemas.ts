@@ -36,6 +36,30 @@ const contractInfoField = contractInfoSchema.default({
   memo: "",
 });
 
+/** 정산 — 전형료(정산기한/담당자/메모). */
+export const paymentFeeSchema = z.object({
+  deadline: z.string().max(200).default(""),
+  manager: z.string().max(200).default(""),
+  memo: z.string().max(2000).default(""),
+});
+export type PaymentFee = z.infer<typeof paymentFeeSchema>;
+const paymentFeeField = paymentFeeSchema.default({
+  deadline: "",
+  manager: "",
+  memo: "",
+});
+
+/** 정산 — 계산서(발행유형/메모). */
+export const paymentInvoiceSchema = z.object({
+  issueType: z.string().max(200).default(""),
+  memo: z.string().max(2000).default(""),
+});
+export type PaymentInvoice = z.infer<typeof paymentInvoiceSchema>;
+const paymentInvoiceField = paymentInvoiceSchema.default({
+  issueType: "",
+  memo: "",
+});
+
 /** 컨텍(학교담당자) — 구조화 연락처 항목. */
 export const HANDOVER_SCHOOL_CONTACTS_MAX = 30;
 export const schoolContactSchema = z.object({
@@ -70,6 +94,8 @@ export const handoverRecordRowSchema = z.object({
   work_etc_md: mdField,
   payment_fee_md: mdField,
   payment_invoice_md: mdField,
+  payment_fee: paymentFeeField,
+  payment_invoice: paymentInvoiceField,
   school_contact_md: mdField,
   school_contacts: schoolContactsField,
   docs_md: mdField,
@@ -104,6 +130,8 @@ export const handoverRecordUpsertSchema = z.object({
   work_etc_md: mdField,
   payment_fee_md: mdField,
   payment_invoice_md: mdField,
+  payment_fee: paymentFeeField,
+  payment_invoice: paymentInvoiceField,
   school_contact_md: mdField,
   school_contacts: schoolContactsField,
   docs_md: mdField,

@@ -32,6 +32,8 @@ describe("renderHandoverPdf", () => {
           email: "ysong2526@gmail.com",
         },
       ],
+      paymentFee: { deadline: "5영업일 이내", manager: "송영신", memo: "" },
+      paymentInvoice: { issueType: "청구발행", memo: "" },
       fields: {
         contract_info_md: "원서접수",
         contract_data_md: null,

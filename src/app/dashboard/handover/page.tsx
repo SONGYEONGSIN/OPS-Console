@@ -13,6 +13,7 @@ import { HandoverWizard } from "./HandoverWizard";
 import { HandoverHistory } from "./HandoverHistory";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
+import { listContracts } from "@/features/contracts/queries";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
   listServicesWithHandover,
@@ -220,6 +221,17 @@ export default async function HandoverPage({
     hasRecord: r.handover_status != null,
   }));
 
+  // 계약정보 상태 셀렉트 옵션 — 계약 메뉴 계약현황 distinct (best-effort, 실패 시 빈 목록)
+  let contractStatusOptions: string[] = [];
+  try {
+    const { rows: allContracts } = await listContracts();
+    contractStatusOptions = [
+      ...new Set(allContracts.map((c) => c.status).filter((v) => v.trim())),
+    ];
+  } catch {
+    contractStatusOptions = [];
+  }
+
   async function onCopyHandover(
     fromServiceId: string,
     toServiceIds: string[],
@@ -269,6 +281,15 @@ export default async function HandoverPage({
       work_etc_md: row.handoverWorkEtcMd ?? null,
       payment_fee_md: row.handoverPaymentFeeMd ?? null,
       payment_invoice_md: row.handoverPaymentInvoiceMd ?? null,
+      payment_fee: row.handoverPaymentFee ?? {
+        deadline: "",
+        manager: "",
+        memo: "",
+      },
+      payment_invoice: row.handoverPaymentInvoice ?? {
+        issueType: "",
+        memo: "",
+      },
       school_contact_md: row.handoverSchoolContactMd ?? null,
       school_contacts: (row.handoverSchoolContacts ?? []).filter((c) =>
         c.name.trim(),
@@ -290,6 +311,7 @@ export default async function HandoverPage({
       canCreate={false}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       handoverServiceCandidates={handoverServiceCandidates}
+      contractsStatusOptions={contractStatusOptions}
       onCopyHandover={onCopyHandover}
       inlineFilters={
         <ScopeChips
@@ -335,6 +357,8 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     handoverWorkEtcMd: r.work_etc_md,
     handoverPaymentFeeMd: r.payment_fee_md,
     handoverPaymentInvoiceMd: r.payment_invoice_md,
+    handoverPaymentFee: r.payment_fee,
+    handoverPaymentInvoice: r.payment_invoice,
     handoverSchoolContactMd: r.school_contact_md,
     handoverSchoolContacts: r.school_contacts,
     handoverDocsMd: r.docs_md,

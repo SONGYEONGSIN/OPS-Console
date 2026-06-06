@@ -7,7 +7,12 @@ import {
   type ContractChecklistItem,
   type SchoolContact,
   type ContractInfo,
+  type PaymentFee,
+  type PaymentInvoice,
 } from "./schemas";
+
+const EMPTY_PAYMENT_FEE: PaymentFee = { deadline: "", manager: "", memo: "" };
+const EMPTY_PAYMENT_INVOICE: PaymentInvoice = { issueType: "", memo: "" };
 
 const EMPTY_CONTRACT_INFO: ContractInfo = {
   title: "",
@@ -52,6 +57,8 @@ export type HandoverListRow = {
   work_etc_md: string | null;
   payment_fee_md: string | null;
   payment_invoice_md: string | null;
+  payment_fee: PaymentFee;
+  payment_invoice: PaymentInvoice;
   school_contact_md: string | null;
   school_contacts: SchoolContact[];
   docs_md: string | null;
@@ -74,6 +81,8 @@ type HandoverEmbed = {
   work_etc_md: string | null;
   payment_fee_md: string | null;
   payment_invoice_md: string | null;
+  payment_fee: PaymentFee | null;
+  payment_invoice: PaymentInvoice | null;
   school_contact_md: string | null;
   school_contacts: SchoolContact[] | null;
   docs_md: string | null;
@@ -108,7 +117,7 @@ export async function listServicesWithHandover(
   let q = supabase
     .from("services")
     .select(
-      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md)",
+      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, payment_fee, payment_invoice, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md)",
       { count: "exact" },
     )
     .order("service_id", { ascending: true });
@@ -165,6 +174,8 @@ export async function listServicesWithHandover(
         work_etc_md: rec?.work_etc_md ?? null,
         payment_fee_md: rec?.payment_fee_md ?? null,
         payment_invoice_md: rec?.payment_invoice_md ?? null,
+        payment_fee: rec?.payment_fee ?? EMPTY_PAYMENT_FEE,
+        payment_invoice: rec?.payment_invoice ?? EMPTY_PAYMENT_INVOICE,
         school_contact_md: rec?.school_contact_md ?? null,
         school_contacts: rec?.school_contacts ?? [],
         docs_md: rec?.docs_md ?? null,

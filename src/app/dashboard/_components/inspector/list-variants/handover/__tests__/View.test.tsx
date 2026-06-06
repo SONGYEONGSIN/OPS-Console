@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { HandoverView } from "../View";
 import type { ListRow } from "../../../../patterns/ListPattern";
 
@@ -24,6 +24,34 @@ const row: ListRow = {
 };
 
 describe("HandoverView", () => {
+  // 작성상태 값은 기본정보 DefList 안에서 조회 (아코디언 배지 '작성완료/미작성'과 겹침 방지)
+  function statusRow() {
+    return within(screen.getByText("작성상태").closest("div") as HTMLElement);
+  }
+
+  it("작성상태 칩 — 작성중=빨강 / 작성완료=세이지 (목록과 동일 음영)", () => {
+    const { rerender } = render(
+      <HandoverView row={{ ...row, handoverStatus: "draft" }} />,
+    );
+    expect(statusRow().getByText("작성중")).toHaveClass(
+      "bg-vermilion/15",
+      "text-vermilion",
+    );
+    rerender(<HandoverView row={{ ...row, handoverStatus: "ready" }} />);
+    expect(statusRow().getByText("작성완료")).toHaveClass(
+      "bg-sage/15",
+      "text-sage",
+    );
+  });
+
+  it("작성상태 미작성 — 회색 칩", () => {
+    render(<HandoverView row={{ ...row, handoverStatus: undefined }} />);
+    expect(statusRow().getByText("미작성")).toHaveClass(
+      "bg-washi-raised",
+      "text-muted",
+    );
+  });
+
   it("기본정보 — 학교명·서비스·접수구분 표시", () => {
     render(<HandoverView row={row} />);
     expect(screen.getByText("가야대학교")).toBeInTheDocument();
@@ -33,6 +61,7 @@ describe("HandoverView", () => {
 
   it("기본 계약 카테고리 → 계약정보 구조화 폼 readonly + 값", () => {
     render(<HandoverView row={row} />);
+    // 계약정보는 작성됨 → 기본 펼침
     expect(screen.getByText("원서접수")).toBeInTheDocument();
     expect(screen.getByText("수의")).toBeInTheDocument();
     expect(screen.getByText("운영자")).toBeInTheDocument();
@@ -43,8 +72,8 @@ describe("HandoverView", () => {
   it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
     render(<HandoverView row={row} />);
     fireEvent.click(screen.getByRole("button", { name: "작업" }));
-    const ta = screen.getByLabelText("기초작업") as HTMLTextAreaElement;
-    expect(ta.value).toBe("기초작업 내용");
+    // 기초작업은 작성됨 → 기본 펼침 (readOnly 내용은 LinkifiedText로 표시)
+    expect(screen.getByText("기초작업 내용")).toBeInTheDocument();
   });
 
   it("계약정보 값 없으면 — 로 표시", () => {
@@ -66,7 +95,8 @@ describe("HandoverView", () => {
         }}
       />,
     );
-    expect(screen.getByText("계약서류")).toBeInTheDocument();
+    // 계약자료는 작성됨 → 기본 펼침 (헤더 라벨 + 항목)
+    expect(screen.getByText("계약자료")).toBeInTheDocument();
     expect(screen.getByText("계약서")).toBeInTheDocument();
   });
 });

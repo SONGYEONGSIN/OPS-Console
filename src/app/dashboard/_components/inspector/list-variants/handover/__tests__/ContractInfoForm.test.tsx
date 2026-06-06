@@ -26,13 +26,27 @@ describe("ContractInfoForm", () => {
     expect(screen.getByText("※ 학부 계약시 포함")).toBeInTheDocument();
   });
 
-  it("편집 — 형태 입력 시 onChange로 갱신", () => {
+  it("편집 — 형태 셀렉트 선택 시 onChange로 갱신", () => {
     const onChange = vi.fn();
     render(<ContractInfoForm value={value} onChange={onChange} />);
-    fireEvent.change(screen.getByLabelText("형태"), {
-      target: { value: "공개" },
-    });
-    expect(onChange.mock.calls[0][0]).toMatchObject({ type: "공개" });
+    const select = screen.getByLabelText("형태") as HTMLSelectElement;
+    expect(select.tagName).toBe("SELECT");
+    fireEvent.change(select, { target: { value: "입찰" } });
+    expect(onChange.mock.calls[0][0]).toMatchObject({ type: "입찰" });
+  });
+
+  it("상태 셀렉트 — statusOptions(계약현황) 옵션 렌더", () => {
+    render(
+      <ContractInfoForm
+        value={value}
+        onChange={vi.fn()}
+        statusOptions={["영업팀진행", "입찰", "계약완료"]}
+      />,
+    );
+    const select = screen.getByLabelText("상태") as HTMLSelectElement;
+    const opts = Array.from(select.options).map((o) => o.value);
+    expect(opts).toContain("영업팀진행");
+    expect(opts).toContain("계약완료");
   });
 
   it("편집 — 메모 입력 시 onChange로 갱신", () => {
@@ -78,18 +92,24 @@ describe("ContractInfoForm", () => {
         universityName="건국대학교"
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "계약에서 가져오기" }));
+    fireEvent.click(screen.getByRole("button", { name: /불러오기/ }));
     const pick = await screen.findByRole("button", { name: /건국대학교/ });
     fireEvent.click(pick);
+    // 계약완료(영업팀진행/입찰 아님) → 진행 운영 / 형태 수의 / 제목 원서접수
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ progress: "송영신", status: "계약완료" }),
+      expect.objectContaining({
+        title: "원서접수",
+        type: "수의",
+        progress: "운영",
+        status: "계약완료",
+      }),
     );
   });
 
   it("universityName 없으면 검색 버튼 미표시", () => {
     render(<ContractInfoForm value={value} onChange={vi.fn()} />);
     expect(
-      screen.queryByRole("button", { name: "계약에서 가져오기" }),
+      screen.queryByRole("button", { name: /불러오기/ }),
     ).toBeNull();
   });
 });
