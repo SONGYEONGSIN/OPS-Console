@@ -19,6 +19,8 @@ export type EnvSnapshot = {
     manualItemId: { configured: boolean; preview: string };
     gongmunItemId: { configured: boolean; preview: string };
     incidentReportFolderId: { configured: boolean; preview: string };
+    smileediDriveId: { configured: boolean; preview: string };
+    smileediItemId: { configured: boolean; preview: string };
   };
   azure: {
     tenantId: { configured: boolean; preview: string };
@@ -95,6 +97,14 @@ export function getEnvSnapshot(): EnvSnapshot {
           process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID,
         ),
         preview: preview(process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID),
+      },
+      smileediDriveId: {
+        configured: Boolean(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
+        preview: preview(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
+      },
+      smileediItemId: {
+        configured: Boolean(process.env.SHAREPOINT_SMILEEDI_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_SMILEEDI_ITEM_ID),
       },
     },
     azure: {

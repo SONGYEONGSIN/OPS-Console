@@ -6,6 +6,7 @@ import { runReceivablesMailSchool } from "./jobs/receivables-mail-school";
 import { runReceivablesDepositMatch } from "./jobs/receivables-deposit-match";
 import { runServiceNoticeMail } from "./jobs/service-notice-mail";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
+import { runSmileEdiMail } from "./jobs/smileedi-mail";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -61,6 +62,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "매주 수요일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runWeeklyReportRollover,
+  },
+  {
+    id: "smileedi-mail",
+    label: "SmileEDI 세금계산서 알림",
+    description:
+      "SharePoint 역발행 세금계산서 시트에서 이메일오류≠Y + 품목키워드 건을 담당자별로 묶어 발신 운영자 본인 메일박스에서 담당자에게 발송하고, 발송 행의 이메일오류를 'Y'로 갱신합니다.\n스크래핑(GitHub Actions)이 시트를 적재한 뒤 체이닝 호출됩니다.",
+    scheduleInfo: "스크래핑 워크플로 말미 체이닝 (cron-job.org → GitHub Actions)",
+    cooldownMinutes: 60,
+    run: runSmileEdiMail,
   },
 ];
 

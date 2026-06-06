@@ -245,6 +245,28 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint SmileEDI 드라이브"
+        value={
+          <>
+            <Dot ok={env.sharepoint.smileediDriveId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.smileediDriveId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint SmileEDI 시트"
+        value={
+          <>
+            <Dot ok={env.sharepoint.smileediItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.smileediItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="Azure AD 테넌트"
         value={
           <>
