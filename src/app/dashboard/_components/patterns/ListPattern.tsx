@@ -402,6 +402,10 @@ export type ListRow = {
   handoverWorkEtcMd?: string | null;
   handoverPaymentFeeMd?: string | null;
   handoverPaymentInvoiceMd?: string | null;
+  /** 정산 — 전형료 구조화 폼 (정산기한/담당자/메모) */
+  handoverPaymentFee?: { deadline: string; manager: string; memo: string };
+  /** 정산 — 계산서 구조화 폼 (발행유형/메모) */
+  handoverPaymentInvoice?: { issueType: string; memo: string };
   handoverSchoolContactMd?: string | null;
   handoverDocsMd?: string | null;
   handoverNotesMd?: string | null;
