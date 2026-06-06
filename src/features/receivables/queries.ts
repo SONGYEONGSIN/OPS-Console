@@ -29,6 +29,15 @@ export type ReceivablesSheet = {
  */
 function detectHeaderIndex(values: unknown[][]): number {
   const lookAhead = Math.min(10, values.length);
+  // 1순위: 알려진 헤더 라벨('청구일자')을 포함하는 첫 행.
+  // 데이터행이 헤더보다 채워진 셀이 많을 수 있어(예: 학교담당자·메일발송일자·적요 동시 기입)
+  // non-empty 최다 휴리스틱만으로는 데이터행을 헤더로 오검출한다 → 라벨 우선으로 방지.
+  for (let i = 0; i < lookAhead; i++) {
+    if (values[i].some((v) => /^청구\s*일자/.test(String(v ?? "").trim()))) {
+      return i;
+    }
+  }
+  // 2순위: non-empty 셀이 가장 많은 행 (라벨 미발견 시 폴백, 동률은 첫 행)
   let bestIdx = 0;
   let bestCount = -1;
   for (let i = 0; i < lookAhead; i++) {
