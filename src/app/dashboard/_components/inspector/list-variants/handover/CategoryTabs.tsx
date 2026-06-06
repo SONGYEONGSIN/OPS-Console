@@ -14,7 +14,7 @@ export function CategoryTabs({
   onChange: (key: HandoverCategoryKey) => void;
 }) {
   return (
-    <div className="flex w-full flex-wrap gap-1 border-b border-line">
+    <div className="flex w-full flex-wrap justify-between gap-1 border-b border-line">
       {HANDOVER_CATEGORIES.map((c) => {
         const on = c.key === active;
         return (
