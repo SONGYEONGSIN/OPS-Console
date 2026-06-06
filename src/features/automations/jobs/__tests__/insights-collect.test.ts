@@ -38,6 +38,19 @@ describe("isAiRelevant", () => {
     ).toBe(false);
   });
 
+  it("'AI'만 언급한 뉴스/정치는 false (맥락어 없음)", () => {
+    expect(
+      isAiRelevant(vid({ title: "AI 탓하던 법제처장… 알고 보니 질문이 문제였다" })),
+    ).toBe(false);
+    expect(isAiRelevant(vid({ title: "AI가 바꾼 우리 동네 풍경" }))).toBe(false);
+  });
+
+  it("'AI' + 맥락어(툴/업무/자동화 등)는 true", () => {
+    expect(isAiRelevant(vid({ title: "AI 툴 5개 정리" }))).toBe(true);
+    expect(isAiRelevant(vid({ title: "AI 업무 자동화 따라하기" }))).toBe(true);
+    expect(isAiRelevant(vid({ title: "AI 디자인 활용법" }))).toBe(true);
+  });
+
   it("filterAiRelevant — 무관 영상 제외", () => {
     const rows = [
       vid({ video_id: "a", title: "AI 자동화 워크플로우" }),
