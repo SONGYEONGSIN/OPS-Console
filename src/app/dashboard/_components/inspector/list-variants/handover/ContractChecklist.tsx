@@ -80,20 +80,46 @@ export function ContractChecklist({
           <ul className="space-y-1">
             {items.map((item, idx) => (
               <li key={item.id} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  aria-label={`항목 ${idx + 1} 완료`}
-                  checked={item.done}
-                  disabled={readOnly}
-                  onChange={(e) =>
-                    onChange?.(
-                      items.map((it, i) =>
-                        i === idx ? { ...it, done: e.target.checked } : it,
-                      ),
-                    )
-                  }
-                  className="h-3.5 w-3.5 accent-vermilion"
-                />
+                {readOnly ? (
+                  <span
+                    role="img"
+                    aria-label={`항목 ${idx + 1} ${item.done ? "완료" : "미완료"}`}
+                    className={`flex h-4 w-4 flex-none items-center justify-center border ${
+                      item.done
+                        ? "border-vermilion bg-vermilion text-cream"
+                        : "border-line bg-cream text-transparent"
+                    }`}
+                  >
+                    <svg
+                      viewBox="0 0 12 12"
+                      className="h-3 w-3"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M2.5 6.2 5 8.5 9.5 3.5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                ) : (
+                  <input
+                    type="checkbox"
+                    aria-label={`항목 ${idx + 1} 완료`}
+                    checked={item.done}
+                    onChange={(e) =>
+                      onChange?.(
+                        items.map((it, i) =>
+                          i === idx ? { ...it, done: e.target.checked } : it,
+                        ),
+                      )
+                    }
+                    className="h-3.5 w-3.5 accent-vermilion"
+                  />
+                )}
                 {readOnly ? (
                   <span className="flex-1 text-ink">{item.text || "—"}</span>
                 ) : (
