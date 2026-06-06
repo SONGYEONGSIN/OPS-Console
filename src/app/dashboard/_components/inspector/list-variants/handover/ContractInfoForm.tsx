@@ -8,6 +8,7 @@ import {
 } from "@/features/contracts/actions";
 import type { ContractMatch } from "@/features/contracts/match";
 import { applyContractMatch } from "./contract-info-map";
+import { LinkifiedText } from "./LinkifiedText";
 
 type FieldKey = keyof Omit<ContractInfo, "memo">;
 
@@ -162,8 +163,12 @@ export function ContractInfoForm({
         <label className="block">
           <span className="mb-1 block text-muted">메모</span>
           {readOnly ? (
-            <div className="min-h-[3.5rem] w-full whitespace-pre-wrap border border-line bg-cream px-2 py-1 text-ink">
-              {value.memo || <span className="text-faint">—</span>}
+            <div className="min-h-[3.5rem] w-full border border-line bg-cream px-2 py-1">
+              {value.memo ? (
+                <LinkifiedText text={value.memo} />
+              ) : (
+                <span className="text-faint">—</span>
+              )}
             </div>
           ) : (
             <textarea

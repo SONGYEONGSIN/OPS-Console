@@ -53,7 +53,7 @@ export function ListSearch({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 border-none bg-transparent text-sm text-ink outline-none placeholder:text-faint"
+        className="flex-1 border-none bg-transparent text-sm text-ink outline-none placeholder:text-faint [&::-webkit-search-cancel-button]:appearance-none"
       />
     </div>
   );
