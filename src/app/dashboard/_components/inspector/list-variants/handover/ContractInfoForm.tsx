@@ -7,6 +7,7 @@ import {
   type ContractSearchResult,
 } from "@/features/contracts/actions";
 import type { ContractMatch } from "@/features/contracts/match";
+import { applyContractMatch } from "./contract-info-map";
 
 const FIELDS: { key: keyof Omit<ContractInfo, "memo">; label: string }[] = [
   { key: "title", label: "제목" },
@@ -62,7 +63,7 @@ export function ContractInfoForm({
   }
 
   function applyMatch(m: ContractMatch) {
-    onChange?.({ ...value, progress: m.operator, status: m.status });
+    onChange?.(applyContractMatch(value, m.status));
     setMatches([]);
     setError(null);
   }
