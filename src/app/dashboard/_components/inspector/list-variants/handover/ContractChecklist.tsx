@@ -44,7 +44,7 @@ export function ContractChecklist({
           {!embedded && (
             <span className="font-bold text-ink-soft">{label} </span>
           )}
-          ({items.length}/{HANDOVER_CHECKLIST_MAX})
+          현재 ({items.length}/{HANDOVER_CHECKLIST_MAX})
           {items.length > 0 && (
             <span className="ml-1 text-faint">· 완료 {received}/{items.length}</span>
           )}
@@ -64,8 +64,12 @@ export function ContractChecklist({
         )}
       </div>
 
-      {/* 구분선 안 — 항목 + 메모(children) */}
-      <div className="space-y-2 border-y border-line-soft py-3">
+      {/* 항목 + 메모(children) — 임베드(아코디언) 시 외곽선 없이 */}
+      <div
+        className={
+          embedded ? "space-y-2 pt-1" : "space-y-2 border-y border-line-soft py-3"
+        }
+      >
         {items.length === 0 ? (
           <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
             {readOnly
