@@ -38,7 +38,7 @@ export function DeleteVideoButton({ id, onDeleted }: Props) {
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="inline-flex cursor-pointer items-center justify-center rounded-md border border-vermilion bg-transparent px-3 py-2 text-sm font-medium text-vermilion transition-opacity hover:opacity-90 disabled:opacity-50"
+        className="inline-flex cursor-pointer items-center justify-center border border-vermilion bg-transparent px-3 py-2 text-sm font-medium text-vermilion transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         {pending ? "삭제 중…" : "삭제"}
       </button>

@@ -39,7 +39,8 @@ export function VideoGridSection({
   );
 
   const filtered = useMemo(
-    () => (keyword === ALL ? videos : videos.filter((v) => v.keyword === keyword)),
+    () =>
+      keyword === ALL ? videos : videos.filter((v) => v.keyword === keyword),
     [videos, keyword],
   );
 
@@ -103,7 +104,7 @@ export function VideoGridSection({
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage === 1}
-              className="rounded-md border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
+              className="border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
             >
               ← 이전
             </button>
@@ -114,7 +115,7 @@ export function VideoGridSection({
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
-              className="rounded-md border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
+              className="border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
             >
               다음 →
             </button>
@@ -145,7 +146,7 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-3 py-1 text-xs transition-colors ${
+      className={`border px-3 py-1 text-xs transition-colors ${
         active
           ? "border-vermilion bg-vermilion text-cream"
           : "border-line bg-cream text-ink hover:bg-washi-raised"
