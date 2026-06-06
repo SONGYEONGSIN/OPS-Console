@@ -62,49 +62,81 @@ export function filterKoreanTitles(rows: CollectedVideo[]): CollectedVideo[] {
 }
 
 /**
- * AI/개발 관련성 판별용 키워드 (소문자). 제목·설명에 하나라도 포함되어야 수집.
- * 모호한 검색어(예: '하네스')가 끌어오는 무관 콘텐츠(성인용품·반려동물·등산 하네스 등)를 배제.
+ * 강한 신호어 — 하나만 있어도 AI/개발 콘텐츠로 인정 (도구·모델·개발 용어).
  */
-export const AI_RELEVANCE_TERMS = [
-  "ai",
-  "인공지능",
-  "에이전트",
-  "agent",
-  "llm",
+export const AI_STRONG_TERMS = [
+  "claude",
+  "클로드",
   "gpt",
   "chatgpt",
   "챗gpt",
-  "claude",
-  "클로드",
-  "코딩",
-  "coding",
-  "개발자",
-  "프로그래밍",
-  "자동화",
+  "llm",
   "codex",
   "코덱스",
-  "바이브코딩",
-  "바이브 코딩",
-  "프롬프트",
-  "prompt",
   "cursor",
-  "커서",
+  "copilot",
+  "코파일럿",
   "gemini",
   "제미나이",
   "openai",
   "오픈ai",
   "anthropic",
-  "copilot",
-  "코파일럿",
+  "바이브코딩",
+  "바이브 코딩",
+  "코딩",
+  "coding",
+  "프로그래밍",
+  "개발자",
+  "프롬프트",
+  "prompt",
+  "에이전트",
+  "agent",
   "mcp",
   "claude code",
   "클로드코드",
 ] as const;
 
-/** 제목 또는 설명에 AI/개발 관련어가 하나라도 있으면 true. */
+/** 약한 신호어 — 'AI' 단독은 뉴스/일상도 매치하므로, 맥락어와 함께일 때만 인정. */
+export const AI_MENTION_TERMS = ["ai", "인공지능", "a.i"] as const;
+
+/** 맥락어 — 'AI'가 도구/업무/개발 맥락임을 보여주는 단어. */
+export const AI_CONTEXT_TERMS = [
+  "툴",
+  "도구",
+  "활용",
+  "업무",
+  "자동화",
+  "디자인",
+  "개발",
+  "코딩",
+  "워크플로",
+  "워크플로우",
+  "생산성",
+  "환경",
+  "구축",
+  "적용",
+  "스킬",
+  "빌드",
+  "코드",
+  "앱 ",
+  "서비스 ",
+] as const;
+
+/**
+ * 제목·설명이 AI/개발 콘텐츠인지 2단계로 판정.
+ * 1) 강한 신호어가 있으면 인정
+ * 2) 'AI/인공지능' 언급은 맥락어(툴·업무·자동화·개발 등)와 함께일 때만 인정
+ * → 'AI'만 언급한 뉴스/정치/일상 클립과 모호 검색어 노이즈를 배제.
+ */
 export function isAiRelevant(v: Pick<CollectedVideo, "title" | "description">): boolean {
-  const hay = `${v.title} ${v.description ?? ""}`.toLowerCase();
-  return AI_RELEVANCE_TERMS.some((t) => hay.includes(t));
+  // 강한 신호어는 설명까지 인정(claude/gpt 등은 명확). 단, 약한 'AI'+맥락어는
+  // 제목 기준으로만 본다 — 설명의 해시태그(#자동화 #업무 등)가 뉴스/일상을 통과시키는 노이즈 차단.
+  const full = `${v.title} ${v.description ?? ""}`.toLowerCase();
+  if (AI_STRONG_TERMS.some((t) => full.includes(t))) return true;
+  const title = v.title.toLowerCase();
+  const mentionsAi = AI_MENTION_TERMS.some((t) => title.includes(t));
+  const hasContext = AI_CONTEXT_TERMS.some((t) => title.includes(t));
+  return mentionsAi && hasContext;
 }
 
 /** AI/개발 무관 영상 제외. */

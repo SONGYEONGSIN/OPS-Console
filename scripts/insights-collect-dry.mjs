@@ -28,20 +28,30 @@ const SEARCH_QUERIES = [
   "AI 코딩 에이전트",
 ];
 
-const AI_RELEVANCE_TERMS = [
-  "ai", "인공지능", "에이전트", "agent", "llm", "gpt", "chatgpt", "챗gpt",
-  "claude", "클로드", "코딩", "coding", "개발자", "프로그래밍", "자동화",
-  "codex", "코덱스", "바이브코딩", "바이브 코딩", "프롬프트", "prompt",
-  "cursor", "커서", "gemini", "제미나이", "openai", "오픈ai", "anthropic",
-  "copilot", "코파일럿", "mcp", "claude code", "클로드코드",
+// 2단계 관련성 (insights-collect.ts 미러)
+const AI_STRONG_TERMS = [
+  "claude", "클로드", "gpt", "chatgpt", "챗gpt", "llm", "codex", "코덱스",
+  "cursor", "copilot", "코파일럿", "gemini", "제미나이", "openai", "오픈ai",
+  "anthropic", "바이브코딩", "바이브 코딩", "코딩", "coding", "프로그래밍",
+  "개발자", "프롬프트", "prompt", "에이전트", "agent", "mcp", "claude code", "클로드코드",
+];
+const AI_MENTION_TERMS = ["ai", "인공지능", "a.i"];
+const AI_CONTEXT_TERMS = [
+  "툴", "도구", "활용", "업무", "자동화", "디자인", "개발", "코딩", "워크플로",
+  "워크플로우", "생산성", "환경", "구축", "적용", "스킬", "빌드", "코드", "앱 ", "서비스 ",
 ];
 
 const MIN_VIEW_COUNT = 10_000;
 const PUBLISHED_AFTER_DAYS = 14;
 const hasKorean = (t) => /[가-힣]/.test(t);
 const isAiRelevant = (v) => {
-  const hay = `${v.title} ${v.description ?? ""}`.toLowerCase();
-  return AI_RELEVANCE_TERMS.some((t) => hay.includes(t));
+  const full = `${v.title} ${v.description ?? ""}`.toLowerCase();
+  if (AI_STRONG_TERMS.some((t) => full.includes(t))) return true;
+  const title = v.title.toLowerCase();
+  return (
+    AI_MENTION_TERMS.some((t) => title.includes(t)) &&
+    AI_CONTEXT_TERMS.some((t) => title.includes(t))
+  );
 };
 
 const publishedAfter = new Date(
