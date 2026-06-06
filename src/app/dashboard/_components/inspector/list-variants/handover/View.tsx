@@ -6,6 +6,8 @@ import { DefList, Divider } from "../shared";
 import { CategoryTabs } from "./CategoryTabs";
 import { ContractChecklist } from "./ContractChecklist";
 import { ContractInfoForm } from "./ContractInfoForm";
+import { CollapsibleField } from "./CollapsibleField";
+import { isFieldFilled } from "./progress";
 import {
   HANDOVER_CATEGORIES,
   type HandoverCategoryKey,
@@ -172,6 +174,26 @@ export function HandoverView({ row }: { row: ListRow }) {
                 </label>
               )}
             </ContractChecklist>
+          ) : cat.key === "work" ? (
+            // 작업 — 접이식(아코디언). 작성된 필드는 펼친 채 시작.
+            <CollapsibleField
+              key={f.key}
+              label={f.label}
+              filled={isFieldFilled(row, f.key)}
+              defaultOpen={isFieldFilled(row, f.key)}
+            >
+              {pickValue(row, f.key).trim() ? (
+                <textarea
+                  aria-label={f.label}
+                  value={pickValue(row, f.key)}
+                  readOnly
+                  rows={6}
+                  className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                />
+              ) : (
+                <p className="text-2xs text-faint">작성된 내용이 없습니다.</p>
+              )}
+            </CollapsibleField>
           ) : pickValue(row, f.key).trim() ? (
             <label key={f.key} className="block text-xs">
               <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>

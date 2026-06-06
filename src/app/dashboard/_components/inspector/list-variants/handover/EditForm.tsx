@@ -11,6 +11,8 @@ import { CategoryTabs } from "./CategoryTabs";
 import { ContractChecklist } from "./ContractChecklist";
 import { ContractInfoForm } from "./ContractInfoForm";
 import { SchoolContactPicker } from "./SchoolContactPicker";
+import { CollapsibleField } from "./CollapsibleField";
+import { isFieldFilled } from "./progress";
 import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 import type { EditFormProps } from "../types";
 
@@ -144,6 +146,29 @@ export function HandoverEditForm({
               />
             </label>
           </ContractChecklist>
+        ) : cat.key === "work" ? (
+          // 작업 — 필드가 많아 접이식(아코디언). 작성된 필드는 펼친 채 시작.
+          <CollapsibleField
+            key={f.key}
+            label={f.label}
+            filled={isFieldFilled(row, f.key)}
+            defaultOpen={isFieldFilled(row, f.key)}
+          >
+            <textarea
+              aria-label={f.label}
+              value={pickValue(row, f.key)}
+              onChange={(e) =>
+                setRow((prev) => ({
+                  ...prev,
+                  [ROW_TO_FIELD[f.key]]: e.target.value,
+                }))
+              }
+              rows={6}
+              maxLength={10000}
+              placeholder={FIELD_EXAMPLE[f.key]}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            />
+          </CollapsibleField>
         ) : (
           <label key={f.key} className="block text-xs">
             <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>
