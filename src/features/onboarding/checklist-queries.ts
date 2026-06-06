@@ -40,3 +40,33 @@ export async function listChecklistByCohort(
   }
   return parsed;
 }
+
+/**
+ * 모든 회차의 체크리스트 row를 한 번에 fetch (RLS가 사용자별 가시 범위로 스코프).
+ * 회차 관리 탭 인스펙터에서 회차별 체크 상태를 그룹화해 표시하기 위함.
+ */
+export async function listAllChecklists(): Promise<ChecklistItemRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("onboarding_checklist_items")
+    .select("*");
+
+  if (error) {
+    console.error("[listAllChecklists] supabase error:", error);
+    return [];
+  }
+
+  const parsed: ChecklistItemRow[] = [];
+  for (const row of data ?? []) {
+    const r = checklistItemRowSchema.safeParse(row);
+    if (r.success) parsed.push(r.data);
+    else
+      console.error(
+        "[listAllChecklists] zod parse fail:",
+        r.error.issues,
+        "row:",
+        row,
+      );
+  }
+  return parsed;
+}
