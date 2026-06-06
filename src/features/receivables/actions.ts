@@ -8,6 +8,7 @@ import {
   refreshWorkbookSession,
 } from "@/lib/microsoft/workbook-session";
 import { columnLetter } from "./queries";
+import { patchSingleColumn } from "./sheet-write";
 
 /** PATCH 1회 호출 — 504/408 등 timeout 시 호출자가 retry 결정 */
 async function patchCellOnce(args: {
@@ -137,52 +138,13 @@ export async function markReceivablesMailSent(
   if (!me || me.permission !== "admin") {
     return { ok: false, error: "권한 없음 — admin 운영자만 기록할 수 있습니다." };
   }
-  const driveId = process.env.SHAREPOINT_RECEIVABLES_DRIVE_ID;
-  const itemId = process.env.SHAREPOINT_RECEIVABLES_ITEM_ID;
-  if (!driveId || !itemId) return { ok: false, error: ENV_ERROR };
-  if (rowNumbers.length === 0) return { ok: true };
-
-  let token: string;
-  try {
-    token = await getGraphToken();
-  } catch (e) {
-    return {
-      ok: false,
-      error: `토큰 발급 실패: ${e instanceof Error ? e.message : String(e)}`,
-    };
-  }
-  let sessionId: string;
-  try {
-    sessionId = await getWorkbookSession(driveId, itemId);
-  } catch (e) {
-    return {
-      ok: false,
-      error: `워크북 세션 발급 실패: ${e instanceof Error ? e.message : String(e)}`,
-    };
-  }
-
-  const encoded = encodeURIComponent(worksheetName);
-  const col = columnLetter(colIdx);
-  for (const rn of rowNumbers) {
-    const address = `${col}${rn}:${col}${rn}`;
-    const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets('${encoded}')/range(address='${address}')`;
-    let res = await patchCellOnce({ url, token, sessionId, value });
-    if (RETRY_STATUSES.has(res.status)) {
-      try {
-        sessionId = await refreshWorkbookSession(driveId, itemId);
-      } catch {
-        // 세션 재발급 실패는 무시 — 다음 호출에서 동일 에러 처리
-      }
-      res = await patchCellOnce({ url, token, sessionId, value });
-    }
-    if (!res.ok) {
-      const errText = await res.text();
-      return {
-        ok: false,
-        error: `Graph PATCH ${address} ${res.status}: ${errText.slice(0, 200)}`,
-      };
-    }
-  }
+  const res = await patchSingleColumn({
+    worksheetName,
+    colIdx,
+    rowNumbers,
+    value,
+  });
+  if (!res.ok) return res;
   revalidatePath("/dashboard/receivables");
   return { ok: true };
 }
