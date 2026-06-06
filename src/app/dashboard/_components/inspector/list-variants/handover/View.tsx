@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
-import { Section, DefList, Divider } from "../shared";
+import { DefList, Divider } from "../shared";
 import { CategoryTabs } from "./CategoryTabs";
 import { ContractChecklist } from "./ContractChecklist";
 import { ContractInfoForm } from "./ContractInfoForm";
@@ -65,9 +65,7 @@ export function HandoverView({ row }: { row: ListRow }) {
 
   return (
     <div className="space-y-4">
-      <Section title="기본정보">
-        <DefList items={basicItems} />
-      </Section>
+      <DefList items={basicItems} />
 
       <Divider />
 
