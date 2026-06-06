@@ -37,4 +37,4 @@ notify pgrst, 'reload schema';
 
 -- 검증 (수동):
 -- \d public.smileedi_mail_sends
--- 기대: 14 컬럼 + sent_at desc 인덱스 + updated_at 트리거
+-- 기대: 15 컬럼 + sent_at desc 인덱스 + updated_at 트리거

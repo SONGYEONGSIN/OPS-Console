@@ -8,7 +8,9 @@ import { sendSmileEdiMails } from "@/features/smileedi/mail-actions";
 import type { AutomationRunResult } from "../types";
 
 function readDryRun(): boolean {
-  return (process.env.MAIL_DRY_RUN ?? "").toLowerCase() === "true";
+  // 전용 플래그 — 전역 MAIL_DRY_RUN과 분리해 SmileEDI만 독립 dry-run 가능
+  // (receivables-deposit-match=MAIL_MATCH_DRY_RUN, weekly=WEEKLY_REPORT_DRY_RUN 패턴).
+  return (process.env.SMILEEDI_DRY_RUN ?? "").toLowerCase() === "true";
 }
 
 /**
@@ -19,7 +21,7 @@ function readDryRun(): boolean {
  * 3. 필터(이메일오류≠Y + 품목키워드) → 담당자별 그룹핑
  * 4. 발신 운영자 본인 mailbox에서 담당자에게 발송 + 이력 + 이메일오류='Y' PATCH
  *
- * 환경 변수: MAIL_DRY_RUN=true → 발송/PATCH 없이 이력만(dry_run).
+ * 환경 변수: SMILEEDI_DRY_RUN=true → 발송/PATCH 없이 이력만(dry_run).
  */
 export async function runSmileEdiMail(): Promise<AutomationRunResult> {
   const cfg = loadSmileEdiConfig();
