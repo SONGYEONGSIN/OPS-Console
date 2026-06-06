@@ -214,7 +214,12 @@ export function HandoverView({ row }: { row: ListRow }) {
             );
           }
           return (
-            <CollapsibleField key={f.key} label={f.label} filled={filled}>
+            <CollapsibleField
+              key={f.key}
+              label={f.label}
+              filled={filled}
+              defaultOpen={filled}
+            >
               {body}
             </CollapsibleField>
           );
