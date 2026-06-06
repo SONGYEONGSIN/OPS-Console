@@ -61,6 +61,57 @@ export function filterKoreanTitles(rows: CollectedVideo[]): CollectedVideo[] {
   return rows.filter((r) => hasKorean(r.title));
 }
 
+/**
+ * AI/개발 관련성 판별용 키워드 (소문자). 제목·설명에 하나라도 포함되어야 수집.
+ * 모호한 검색어(예: '하네스')가 끌어오는 무관 콘텐츠(성인용품·반려동물·등산 하네스 등)를 배제.
+ */
+export const AI_RELEVANCE_TERMS = [
+  "ai",
+  "인공지능",
+  "에이전트",
+  "agent",
+  "llm",
+  "gpt",
+  "chatgpt",
+  "챗gpt",
+  "claude",
+  "클로드",
+  "코딩",
+  "coding",
+  "개발자",
+  "프로그래밍",
+  "자동화",
+  "codex",
+  "코덱스",
+  "바이브코딩",
+  "바이브 코딩",
+  "프롬프트",
+  "prompt",
+  "cursor",
+  "커서",
+  "gemini",
+  "제미나이",
+  "openai",
+  "오픈ai",
+  "anthropic",
+  "copilot",
+  "코파일럿",
+  "mcp",
+  "claude code",
+  "클로드코드",
+] as const;
+
+/** 제목 또는 설명에 AI/개발 관련어가 하나라도 있으면 true. */
+export function isAiRelevant(v: Pick<CollectedVideo, "title" | "description">): boolean {
+  const hay = `${v.title} ${v.description ?? ""}`.toLowerCase();
+  return AI_RELEVANCE_TERMS.some((t) => hay.includes(t));
+}
+
+/** AI/개발 무관 영상 제외. */
+export function filterAiRelevant(rows: CollectedVideo[]): CollectedVideo[] {
+  return rows.filter(isAiRelevant);
+}
+
 /** 차단 목록(insight_video_blocklist)에 등록된 video_id를 제외 — 삭제된 영상 재수집 방지. */
 export function excludeBlocked(
   rows: CollectedVideo[],
@@ -222,7 +273,9 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
 
   const errorSuffix = () => (errors.length ? ` (${errors.length}건 오류)` : "");
 
-  const topN = rankTopN(filterPopular(enriched, MIN_VIEW_COUNT), MAX_UPSERT_PER_RUN);
+  // AI/개발 관련성 필터 — full description 확보 후 무관 콘텐츠 제외(모호 검색어 노이즈 차단)
+  const relevant = filterAiRelevant(enriched);
+  const topN = rankTopN(filterPopular(relevant, MIN_VIEW_COUNT), MAX_UPSERT_PER_RUN);
   // 주의: 적재 0건이면 DB write가 없어 collected_at이 갱신되지 않는다.
   // 쿨다운은 max(collected_at) 기반이므로 이 경로에서는 쿨다운이 리셋되지 않는다 (의도된 트레이드오프).
   if (topN.length === 0) {
