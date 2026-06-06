@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { SchoolContact } from "@/features/handover/schemas";
+import { CopyButton } from "./CopyButton";
 
 export type SchoolContactCandidate = {
   name: string;
@@ -117,10 +118,16 @@ export function SchoolContactPicker({
                   {c.jobTitle ? ` (${c.jobTitle})` : ""}
                 </p>
                 {c.phone ? (
-                  <p className="truncate text-2xs text-muted">{c.phone}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-2xs text-muted">{c.phone}</p>
+                    <CopyButton value={c.phone} label={`${c.name} 전화`} />
+                  </div>
                 ) : null}
                 {c.email ? (
-                  <p className="truncate text-2xs text-muted">{c.email}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-2xs text-muted">{c.email}</p>
+                    <CopyButton value={c.email} label={`${c.name} 이메일`} />
+                  </div>
                 ) : null}
               </div>
               <button

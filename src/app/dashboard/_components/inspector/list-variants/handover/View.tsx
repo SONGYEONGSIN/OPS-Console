@@ -7,6 +7,7 @@ import { CategoryTabs } from "./CategoryTabs";
 import { ContractChecklist } from "./ContractChecklist";
 import { ContractInfoForm } from "./ContractInfoForm";
 import { CollapsibleField } from "./CollapsibleField";
+import { CopyButton } from "./CopyButton";
 import { isFieldFilled } from "./progress";
 import {
   HANDOVER_CATEGORIES,
@@ -144,10 +145,21 @@ export function HandoverView({ row }: { row: ListRow }) {
                         {c.jobTitle ? ` (${c.jobTitle})` : ""}
                       </p>
                       {c.phone ? (
-                        <p className="text-2xs text-muted">{c.phone}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-2xs text-muted">{c.phone}</p>
+                          <CopyButton value={c.phone} label={`${c.name} 전화`} />
+                        </div>
                       ) : null}
                       {c.email ? (
-                        <p className="text-2xs text-muted">{c.email}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-2xs text-muted">
+                            {c.email}
+                          </p>
+                          <CopyButton
+                            value={c.email}
+                            label={`${c.name} 이메일`}
+                          />
+                        </div>
                       ) : null}
                     </li>
                   ))}
