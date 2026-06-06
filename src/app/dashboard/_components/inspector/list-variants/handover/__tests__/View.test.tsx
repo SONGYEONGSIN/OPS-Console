@@ -24,6 +24,21 @@ const row: ListRow = {
 };
 
 describe("HandoverView", () => {
+  it("작성상태 색상 — 작성중=빨강 볼드 / 작성완료=세이지 볼드", () => {
+    const { rerender } = render(
+      <HandoverView row={{ ...row, handoverStatus: "draft" }} />,
+    );
+    const draft = screen.getByText("작성중");
+    expect(draft).toHaveClass("font-bold", "text-vermilion");
+    rerender(<HandoverView row={{ ...row, handoverStatus: "ready" }} />);
+    expect(screen.getByText("작성완료")).toHaveClass("font-bold", "text-sage");
+  });
+
+  it("작성상태 미작성 — 회색", () => {
+    render(<HandoverView row={{ ...row, handoverStatus: undefined }} />);
+    expect(screen.getByText("미작성")).toHaveClass("text-muted");
+  });
+
   it("기본정보 — 학교명·서비스·접수구분 표시", () => {
     render(<HandoverView row={row} />);
     expect(screen.getByText("가야대학교")).toBeInTheDocument();
