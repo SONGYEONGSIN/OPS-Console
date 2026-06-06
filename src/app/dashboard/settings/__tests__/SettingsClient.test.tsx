@@ -155,7 +155,9 @@ describe("MAIL_DRY_RUN 톤", () => {
         db={db}
       />,
     );
-    const node = screen.getByText("true");
-    expect(node.className).toContain("text-gold");
+    // mail 섹션엔 dry-run 플래그가 여러 개(MAIL/MATCH/WEEKLY)라 "true"가 복수 →
+    // MAIL_DRY_RUN 행으로 스코프해 값 노드의 톤을 검증
+    const valueNode = screen.getByText("MAIL_DRY_RUN").nextElementSibling;
+    expect(valueNode?.className).toContain("text-gold");
   });
 });
