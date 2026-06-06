@@ -28,7 +28,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
   },
   {
     id: "receivables-mail-school",
-    label: "학교담당자 미수 독려",
+    label: "학교담당자 미수채권 알림",
     description:
       "미수채권을 경과일수 마일스톤에 따라 담당 운영자 메일박스에서 학교담당자에게 자동 독려합니다.\n학교담당자 메일주소가 등록된 건만 발송하며, 발송 시 엑셀 '메일발송일자'를 기록합니다.",
     scheduleInfo: "평일 10:00 자동 (cron-job.org)",
