@@ -126,7 +126,7 @@ export function HandoverView({ row }: { row: ListRow }) {
             </ContractChecklist>
           ) : f.key === "school_contact_md" ? (
             <div key={f.key} className="space-y-2 text-xs">
-              <span className="block text-muted">학교담당자</span>
+              <span className="block font-bold text-ink-soft">학교담당자</span>
               {(row.handoverSchoolContacts ?? []).length === 0 ? (
                 <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
                   등록된 학교담당자가 없습니다.
@@ -175,7 +175,7 @@ export function HandoverView({ row }: { row: ListRow }) {
             </ContractChecklist>
           ) : (
             <label key={f.key} className="block text-xs">
-              <span className="mb-1 block text-muted">{f.label}</span>
+              <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>
               <textarea
                 aria-label={f.label}
                 value={pickValue(row, f.key)}

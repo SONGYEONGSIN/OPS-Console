@@ -61,7 +61,7 @@ export function SchoolContactPicker({
 
   return (
     <div className="space-y-2 text-xs">
-      <span className="block text-muted">학교담당자</span>
+      <span className="block font-bold text-ink-soft">학교담당자</span>
       {candidates.length === 0 ? (
         <p className="text-2xs text-muted">
           등록된 대학 연락처가 없습니다. (대학연락처 메뉴에서 먼저 등록)
