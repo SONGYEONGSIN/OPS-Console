@@ -72,9 +72,8 @@ describe("HandoverView", () => {
   it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
     render(<HandoverView row={row} />);
     fireEvent.click(screen.getByRole("button", { name: "작업" }));
-    // 기초작업은 작성됨 → 기본 펼침
-    const ta = screen.getByLabelText("기초작업") as HTMLTextAreaElement;
-    expect(ta.value).toBe("기초작업 내용");
+    // 기초작업은 작성됨 → 기본 펼침 (readOnly 내용은 LinkifiedText로 표시)
+    expect(screen.getByText("기초작업 내용")).toBeInTheDocument();
   });
 
   it("계약정보 값 없으면 — 로 표시", () => {

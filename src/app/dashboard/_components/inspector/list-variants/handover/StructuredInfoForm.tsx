@@ -1,5 +1,7 @@
 "use client";
 
+import { LinkifiedText } from "./LinkifiedText";
+
 export type StructuredFieldDef = {
   key: string;
   label: string;
@@ -72,7 +74,7 @@ export function StructuredInfoForm({
         <span className="mb-1 block text-muted">메모</span>
         {readOnly ? (
           value.memo ? (
-            <p className="whitespace-pre-wrap text-ink">{value.memo}</p>
+            <LinkifiedText text={value.memo} />
           ) : (
             <p className="text-faint">—</p>
           )
