@@ -17,7 +17,7 @@ function ProgressDot({ filled, total }: { filled: number; total: number }) {
         ? "text-sage"
         : "text-gold";
   return (
-    <span aria-hidden className={`ml-1 text-[0.6rem] ${color}`}>
+    <span aria-hidden className={`ml-0.5 text-[0.5rem] ${color}`}>
       {glyph}
     </span>
   );
@@ -34,7 +34,7 @@ export function CategoryTabs({
   row: ListRow;
 }) {
   return (
-    <div className="flex w-full flex-wrap justify-between gap-1 border-b border-line">
+    <div className="flex w-full justify-between border-b border-line">
       {HANDOVER_CATEGORIES.map((c) => {
         const on = c.key === active;
         const prog = categoryProgress(row, c.key);
@@ -44,7 +44,7 @@ export function CategoryTabs({
             type="button"
             aria-current={on ? "true" : undefined}
             onClick={() => onChange(c.key)}
-            className={`-mb-px inline-flex cursor-pointer items-center border-b-2 px-2.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`-mb-px inline-flex shrink-0 cursor-pointer items-center whitespace-nowrap border-b-2 px-1.5 py-1.5 text-xs font-medium transition-colors ${
               on
                 ? "border-vermilion text-ink"
                 : "border-transparent text-muted hover:text-ink-soft"
