@@ -40,7 +40,7 @@ export function CollapsibleField({
           </span>
         )}
       </button>
-      {open && <div className="pb-3">{children}</div>}
+      {open && <div className="pb-3 text-xs">{children}</div>}
     </div>
   );
 }
