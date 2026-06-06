@@ -102,6 +102,10 @@ export type ListRow = {
   invitedAt?: string | null;
   /** onboarding cohort — 신입이 초대 수락한 시각 (ISO) */
   acceptedAt?: string | null;
+  /** onboarding cohort — 체크리스트 체크 상태 (key: `${section}::${item}`) */
+  checklistChecks?: Record<string, boolean>;
+  /** onboarding cohort — 인스펙터 체크리스트 토글 권한 (trainee 본인 || admin) */
+  canToggleChecklist?: boolean;
   /** performance — 평가 사이클 이름 (예: '2026 상반기') */
   performanceCycleName?: string;
   /** performance — 8단계 현재 진행 단계 */
@@ -538,6 +542,13 @@ type Props = {
   liveData?: boolean;
   /** cohort variant — 초대 메일 발송 (admin only). InspectorListBody로 전달. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** cohort variant — 인스펙터 체크리스트 토글 (trainee 본인 || admin). InspectorListBody로 전달. */
+  onChecklistToggle?: (input: {
+    cohort_id: string;
+    section_key: string;
+    item_key: string;
+    checked: boolean;
+  }) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
   receivablesMailDryRun?: boolean;
   /** ai-work variant — 신규 행 생성 시 owner 자동 채움용 (현재 운영자 이름) */
@@ -619,6 +630,7 @@ export function ListPattern({
   onInspectorChange,
   liveData = false,
   onInvite,
+  onChecklistToggle,
   receivablesMailDryRun = true,
   currentUserName,
   backupOperators,
@@ -871,6 +883,7 @@ export function ListPattern({
               currentUserTeam={currentUserTeam}
               currentUserName={currentUserName}
               onInvite={onInvite}
+              onChecklistToggle={onChecklistToggle}
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
               backupServiceCandidates={backupServiceCandidates}

@@ -6,6 +6,7 @@ import {
 } from "@/features/auth/operators";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
+import { CohortChecklistPanel } from "./ChecklistPanel";
 
 const COHORT_STATUS_VIEW_LABEL: Record<
   NonNullable<ListRow["cohortStatus"]>,
@@ -16,7 +17,7 @@ const COHORT_STATUS_VIEW_LABEL: Record<
   completed: { label: "완료", color: "bg-washi-raised text-ink" },
 };
 
-export function CohortView({ row }: ViewProps) {
+export function CohortView({ row, onChecklistToggle }: ViewProps) {
   const trainee = row.traineeEmail
     ? OPERATORS.find((o) => o.email === row.traineeEmail)
     : null;
@@ -196,10 +197,13 @@ export function CohortView({ row }: ViewProps) {
 
       <Divider />
 
-      <Section title="진행 (후속 epic)">
-        <p className="text-xs text-muted">
-          체크리스트 진행률 · 활동 로그 · Q&amp;A는 후속 PR에서 추가됩니다.
-        </p>
+      <Section title="온보딩 체크리스트">
+        <CohortChecklistPanel
+          cohortId={row.id}
+          initialChecks={row.checklistChecks ?? {}}
+          canToggle={row.canToggleChecklist ?? false}
+          onToggle={onChecklistToggle}
+        />
       </Section>
     </div>
   );

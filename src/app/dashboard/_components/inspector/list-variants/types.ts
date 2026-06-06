@@ -28,10 +28,22 @@ export type Variant =
   | "data-request"
   | "performance";
 
+/** cohort variant — 온보딩 체크리스트 토글 server action 입력. */
+export type ChecklistToggleInput = {
+  cohort_id: string;
+  section_key: string;
+  item_key: string;
+  checked: boolean;
+};
+
 export type ViewProps = {
   row: ListRow;
   currentUserPermission?: OperatorPermission | null;
   receivablesMailDryRun?: boolean;
+  /** cohort variant — 인스펙터 내 체크리스트 토글 (없으면 읽기 전용). */
+  onChecklistToggle?: (
+    input: ChecklistToggleInput,
+  ) => Promise<{ ok: boolean; error?: string }>;
 };
 
 export type EditFormProps = {
