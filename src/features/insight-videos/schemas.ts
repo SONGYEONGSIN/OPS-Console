@@ -13,8 +13,8 @@ export const SEARCH_QUERIES = [
   "AI 개발 환경",
   "AI 활용 업무 적용",
   "AI자동화",
-  "CODEX",
-  "하네스",
+  "OpenAI Codex",
+  "AI 코딩 에이전트",
 ] as const;
 
 export type SearchQuery = (typeof SEARCH_QUERIES)[number];
