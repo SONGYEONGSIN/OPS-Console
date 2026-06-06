@@ -1,9 +1,8 @@
 name: insights-fetch
 
 on:
-  schedule:
-    # 매일 23:00 UTC = 한국 08:00 — 출근 직전 적재
-    - cron: "0 23 * * *"
+  # 스케줄은 cron-job.org로 이전 (다른 자동화와 동일). 여기서는 수동 트리거만 유지.
+  #   cron-job.org → POST /api/automations/run?jobId=insights-collect (Bearer CRON_SECRET)
   workflow_dispatch:
 
 # 2026-06-02 Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 미리 동작하도록 강제.
