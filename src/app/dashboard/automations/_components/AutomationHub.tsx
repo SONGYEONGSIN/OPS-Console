@@ -34,7 +34,13 @@ export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
 
   return (
     <>
-      <table className="w-full text-sm">
+      {/* 인스펙터(우측 고정 오버레이) 열릴 때 본문에 우측 패딩 — 가림 방지 (ListPattern 동일) */}
+      <div
+        className={`transition-[padding] duration-[var(--drawer-ms)] ${
+          selected !== null ? "md:pr-[340px]" : ""
+        }`}
+      >
+        <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
             <th className="px-3 py-2">자동화</th>
@@ -56,7 +62,8 @@ export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
             ))
           )}
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <InspectorPanel open={selected !== null} onClose={() => setSelected(null)}>
         {selected && (
