@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { CohortView } from "../../list-variants/cohort/View";
 import { CohortForm } from "../../list-variants/cohort/EditForm";
@@ -48,6 +48,26 @@ describe("CohortView", () => {
   it("외부 이메일 신입 — operators 시드에 없음 안내", () => {
     render(<CohortView row={baseRow} />);
     expect(screen.getByText(/외부 이메일/)).toBeInTheDocument();
+  });
+
+  it("온보딩 체크리스트 섹션 — 진행도 패널 표시", () => {
+    render(<CohortView row={baseRow} />);
+    expect(screen.getByText("온보딩 체크리스트")).toBeInTheDocument();
+    expect(screen.getByText("진행도")).toBeInTheDocument();
+  });
+
+  it("체크리스트 토글 — canToggleChecklist=true면 onChecklistToggle 호출", async () => {
+    const onChecklistToggle = vi.fn().mockResolvedValue({ ok: true });
+    render(
+      <CohortView
+        row={{ ...baseRow, canToggleChecklist: true, checklistChecks: {} }}
+        onChecklistToggle={onChecklistToggle}
+      />,
+    );
+    const boxes = screen.getAllByRole("checkbox");
+    expect(boxes[0]).not.toBeDisabled();
+    fireEvent.click(boxes[0]);
+    await waitFor(() => expect(onChecklistToggle).toHaveBeenCalledTimes(1));
   });
 });
 

@@ -23,6 +23,13 @@ type Props = {
   currentUserTeam?: string | null;
   /** cohort variant — 초대 메일 발송/재초대 (admin only). server action wrapper. */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** cohort variant — 인스펙터 체크리스트 토글 (trainee 본인 || admin). server action wrapper. */
+  onChecklistToggle?: (input: {
+    cohort_id: string;
+    section_key: string;
+    item_key: string;
+    checked: boolean;
+  }) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 적요 셀 PATCH server action. */
   onUpdateRemarks?: (
     row: ListRow,
@@ -100,6 +107,7 @@ export function InspectorListBody({
   currentUserEmail = null,
   currentUserTeam = null,
   onInvite,
+  onChecklistToggle,
   onUpdateRemarks,
   receivablesMailDryRun = true,
   backupOperators,
@@ -126,6 +134,7 @@ export function InspectorListBody({
         variant={variant}
         currentUserPermission={currentUserPermission}
         receivablesMailDryRun={receivablesMailDryRun}
+        onChecklistToggle={onChecklistToggle}
       />
     );
   }
@@ -182,11 +191,18 @@ function ViewMode({
   variant,
   currentUserPermission = null,
   receivablesMailDryRun = true,
+  onChecklistToggle,
 }: {
   row: ListRow;
   variant: Variant;
   currentUserPermission?: OperatorPermission | null;
   receivablesMailDryRun?: boolean;
+  onChecklistToggle?: (input: {
+    cohort_id: string;
+    section_key: string;
+    item_key: string;
+    checked: boolean;
+  }) => Promise<{ ok: boolean; error?: string }>;
 }) {
   if (variant === "post-feedback" || variant === "post-notice") {
     return <PostView row={row} variant={variant} />;
@@ -199,6 +215,7 @@ function ViewMode({
         row={row}
         currentUserPermission={currentUserPermission}
         receivablesMailDryRun={receivablesMailDryRun}
+        onChecklistToggle={onChecklistToggle}
       />
     );
   }

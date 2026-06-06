@@ -2,9 +2,11 @@ import "server-only";
 import type { AutomationJob } from "./types";
 import { runInsightsCollect } from "./jobs/insights-collect";
 import { runReceivablesMailOperator } from "./jobs/receivables-mail-operator";
+import { runReceivablesMailSchool } from "./jobs/receivables-mail-school";
 import { runReceivablesDepositMatch } from "./jobs/receivables-deposit-match";
 import { runServiceNoticeMail } from "./jobs/service-notice-mail";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
+import { runSmileEdiMail } from "./jobs/smileedi-mail";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -12,7 +14,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "인사이트 영상 수집",
     description:
       "YouTube에서 키워드별 인기 영상을 수집해 인사이트 페이지에 적재합니다.",
-    scheduleInfo: "매일 08:00 자동 (GitHub Actions)",
+    scheduleInfo: "매주 월요일 10:00 자동 (cron-job.org)",
     cooldownMinutes: 60,
     run: runInsightsCollect,
   },
@@ -20,16 +22,25 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "receivables-mail-operator",
     label: "운영자 미수채권 알림",
     description:
-      "운영자별 미수채권(경과 10일 이상)을 운영자 본인 메일박스로 발송합니다. MAIL_DRY_RUN=true 시 발송 없이 이력만 적재.",
+      "경과 10일 이상 미수채권을 담당 운영자 본인 메일로 발송합니다.",
     scheduleInfo: "평일 10:00 자동 (cron-job.org)",
     cooldownMinutes: 60,
     run: runReceivablesMailOperator,
   },
   {
+    id: "receivables-mail-school",
+    label: "학교담당자 미수채권 알림",
+    description:
+      "미수채권을 경과일수 마일스톤에 따라 담당 운영자 메일박스에서 학교담당자에게 자동 독려합니다.\n학교담당자 메일주소가 등록된 건만 발송하며, 발송 시 엑셀 '메일발송일자'를 기록합니다.",
+    scheduleInfo: "평일 10:00 자동 (cron-job.org)",
+    cooldownMinutes: 60,
+    run: runReceivablesMailSchool,
+  },
+  {
     id: "receivables-deposit-match",
     label: "입금 매칭 자동화",
     description:
-      "SharePoint 미수채권 ↔ 입금내역 시트를 매칭(단건/N:1/N:M)하여 K/J열을 자동 업데이트. MAIL_MATCH_DRY_RUN=true(default) 시 PATCH skip + 이력만 적재.",
+      "미수채권과 입금내역을 자동 매칭해 정산 시트를 갱신하고, 매칭되지 않은 건은 관리자에게 알립니다.",
     scheduleInfo: "매시간 자동 (cron-job.org)",
     cooldownMinutes: 30,
     run: runReceivablesDepositMatch,
@@ -38,7 +49,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "service-notice-mail",
     label: "월별 서비스 알림",
     description:
-      "다음 달 작성시작 서비스를 운영자 본인 메일박스로 요약 발송합니다 (매월 첫 영업일 1회, 월 단위 중복 방지). MAIL_DRY_RUN=true 시 발송 없이 이력만 적재.",
+      "다음 달 작성 시작 서비스를 담당 운영자 본인 메일로 요약 발송합니다.",
     scheduleInfo: "매월 첫 영업일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runServiceNoticeMail,
@@ -47,10 +58,19 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "weekly-report-rollover",
     label: "본부차주보고 알림",
     description:
-      "직전 주차 주간업무보고서를 차주로 롤오버(파일 복제 + 시트/셀 갱신)하고 공유 링크를 Teams 그룹채팅에 발송합니다.\nWEEKLY_REPORT_DRY_RUN=true(기본) 시 발송 없이 차주명·발송자만 보고. 발송자는 임형섭→전성대→허승철 부장 순환.",
+      "직전 주 주간업무보고서를 다음 주 파일로 복제·갱신하고 공유 링크를 Teams 그룹채팅에 발송합니다.\n발송 담당은 임형섭→전성대→허승철 부장 순으로 순환합니다.",
     scheduleInfo: "매주 수요일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runWeeklyReportRollover,
+  },
+  {
+    id: "smileedi-mail",
+    label: "SmileEDI 세금계산서 알림",
+    description:
+      "SharePoint 역발행 세금계산서 시트에서 이메일오류≠Y + 품목키워드 건을 담당자별로 묶어 발신 운영자 본인 메일박스에서 담당자에게 발송하고, 발송 행의 이메일오류를 'Y'로 갱신합니다.\n스크래핑(GitHub Actions)이 시트를 적재한 뒤 체이닝 호출됩니다.",
+    scheduleInfo: "스크래핑 워크플로 말미 체이닝 (cron-job.org → GitHub Actions)",
+    cooldownMinutes: 60,
+    run: runSmileEdiMail,
   },
 ];
 

@@ -8,6 +8,7 @@ import {
   refreshWorkbookSession,
 } from "@/lib/microsoft/workbook-session";
 import { columnLetter } from "./queries";
+import { patchSingleColumn } from "./sheet-write";
 
 /** PATCH 1회 호출 — 504/408 등 timeout 시 호출자가 retry 결정 */
 async function patchCellOnce(args: {
@@ -115,6 +116,35 @@ export async function updateReceivablesCells(
     }
   }
 
+  revalidatePath("/dashboard/receivables");
+  return { ok: true };
+}
+
+/**
+ * 미수 독려 메일 발송 성공 행에 '메일발송일자'(발송일자, 단일 컬럼)를 일괄 기록.
+ * 토큰·세션 1회 발급 후 행별 PATCH. admin 전용 (독려 발송과 동일 권한).
+ *
+ * @param colIdx 원본 Excel 컬럼 인덱스 (validColIdx 적용 후)
+ * @param rowNumbers 1-based 행 번호 목록
+ * @param value 기록할 값 (예: 2026-06-07)
+ */
+export async function markReceivablesMailSent(
+  worksheetName: string,
+  colIdx: number,
+  rowNumbers: number[],
+  value: string,
+): Promise<ReceivablesActionResult> {
+  const me = await getCurrentOperator();
+  if (!me || me.permission !== "admin") {
+    return { ok: false, error: "권한 없음 — admin 운영자만 기록할 수 있습니다." };
+  }
+  const res = await patchSingleColumn({
+    worksheetName,
+    colIdx,
+    rowNumbers,
+    value,
+  });
+  if (!res.ok) return res;
   revalidatePath("/dashboard/receivables");
   return { ok: true };
 }

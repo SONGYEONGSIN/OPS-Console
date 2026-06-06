@@ -9,6 +9,11 @@ function findCol(headers: string[], regex: RegExp): number {
   return headers.findIndex((h) => regex.test(h));
 }
 
+/** '메일발송일자' 컬럼의 헤더 인덱스 (없으면 -1). 발송 후 발송일자 기록용. */
+export function findMailSentDateCol(headers: string[]): number {
+  return findCol(headers, /^메일\s*발송\s*일자$/);
+}
+
 /** 숫자 파싱 — Excel rows / rowsText 양쪽에서 모두 시도 */
 function toNumber(raw: unknown): number | null {
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;
@@ -99,6 +104,8 @@ export function groupRecipientsByOwner(
       daysOverdue,
       amount: amount < 0 ? 0 : amount,
       operatorLabel: operatorIdx >= 0 ? String(text[operatorIdx] ?? "") : "",
+      // Excel 1-based 행 번호 (헤더 다음이 첫 데이터 행) — 발송일자 기록 PATCH 대상
+      excelRow: sheet.headerRowNumber + 1 + i,
     };
 
     const entry = byEmail.get(emailRaw);

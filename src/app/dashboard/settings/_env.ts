@@ -4,6 +4,8 @@ import "server-only";
 export type EnvSnapshot = {
   mail: {
     dryRun: string;
+    matchDryRun: string;
+    weeklyReportDryRun: string;
     thresholdDays: string;
     companyName: string;
     baseUrl: string;
@@ -17,6 +19,8 @@ export type EnvSnapshot = {
     manualItemId: { configured: boolean; preview: string };
     gongmunItemId: { configured: boolean; preview: string };
     incidentReportFolderId: { configured: boolean; preview: string };
+    smileediDriveId: { configured: boolean; preview: string };
+    smileediItemId: { configured: boolean; preview: string };
   };
   azure: {
     tenantId: { configured: boolean; preview: string };
@@ -53,6 +57,8 @@ export function getEnvSnapshot(): EnvSnapshot {
   return {
     mail: {
       dryRun: process.env.MAIL_DRY_RUN ?? "(미설정)",
+      matchDryRun: process.env.MAIL_MATCH_DRY_RUN ?? "(미설정)",
+      weeklyReportDryRun: process.env.WEEKLY_REPORT_DRY_RUN ?? "(미설정)",
       thresholdDays: process.env.MAIL_REMINDER_THRESHOLD_DAYS ?? "(미설정)",
       companyName: process.env.MAIL_COMPANY_NAME ?? "(미설정)",
       baseUrl: process.env.FOLIO_BASE_URL ?? "(미설정)",
@@ -91,6 +97,14 @@ export function getEnvSnapshot(): EnvSnapshot {
           process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID,
         ),
         preview: preview(process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID),
+      },
+      smileediDriveId: {
+        configured: Boolean(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
+        preview: preview(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
+      },
+      smileediItemId: {
+        configured: Boolean(process.env.SHAREPOINT_SMILEEDI_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_SMILEEDI_ITEM_ID),
       },
     },
     azure: {

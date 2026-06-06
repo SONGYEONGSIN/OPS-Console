@@ -9,6 +9,7 @@ import { ContractInfoForm } from "./ContractInfoForm";
 import { CollapsibleField } from "./CollapsibleField";
 import { CopyButton } from "./CopyButton";
 import { LinkifiedText } from "./LinkifiedText";
+import { FormattedNotes } from "./FormattedNotes";
 import { StructuredInfoForm } from "./StructuredInfoForm";
 import {
   PAYMENT_FEE_FIELDS,
@@ -199,8 +200,8 @@ export function HandoverView({ row }: { row: ListRow }) {
             );
           } else {
             body = pickValue(row, f.key).trim() ? (
-              <div className="w-full border border-line bg-cream px-2 py-1">
-                <LinkifiedText text={pickValue(row, f.key)} />
+              <div className="w-full border border-line bg-cream px-2 py-1 text-xs">
+                <FormattedNotes text={pickValue(row, f.key)} />
               </div>
             ) : (
               <p className="text-2xs text-faint">작성된 내용이 없습니다.</p>
