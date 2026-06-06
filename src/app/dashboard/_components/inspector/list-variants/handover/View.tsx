@@ -11,7 +11,6 @@ import {
   type HandoverCategoryKey,
   type HandoverFieldKey,
 } from "@/features/handover/categories";
-import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 
 const ROW_TO_FIELD: Record<HandoverFieldKey, keyof ListRow> = {
   contract_info_md: "handoverContractInfoMd",
@@ -86,7 +85,7 @@ export function HandoverView({ row }: { row: ListRow }) {
       <Divider />
 
       <div className="mb-6">
-        <CategoryTabs active={active} onChange={setActive} />
+        <CategoryTabs active={active} onChange={setActive} row={row} />
       </div>
 
       <div className="space-y-3">
@@ -173,7 +172,7 @@ export function HandoverView({ row }: { row: ListRow }) {
                 </label>
               )}
             </ContractChecklist>
-          ) : (
+          ) : pickValue(row, f.key).trim() ? (
             <label key={f.key} className="block text-xs">
               <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>
               <textarea
@@ -181,10 +180,16 @@ export function HandoverView({ row }: { row: ListRow }) {
                 value={pickValue(row, f.key)}
                 readOnly
                 rows={6}
-                placeholder={FIELD_EXAMPLE[f.key]}
                 className="w-full border border-line bg-cream px-2 py-1 text-ink"
               />
             </label>
+          ) : (
+            <div key={f.key} className="flex items-center gap-2 text-xs">
+              <span className="font-bold text-ink-soft">{f.label}</span>
+              <span className="border border-line-soft bg-washi px-1.5 py-0.5 text-2xs text-muted">
+                미작성
+              </span>
+            </div>
           ),
         )}
       </div>
