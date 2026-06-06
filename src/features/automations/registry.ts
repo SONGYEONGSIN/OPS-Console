@@ -12,7 +12,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "인사이트 영상 수집",
     description:
       "YouTube에서 키워드별 인기 영상을 수집해 인사이트 페이지에 적재합니다.",
-    scheduleInfo: "매일 10:00 자동 (cron-job.org)",
+    scheduleInfo: "매주 월요일 10:00 자동 (cron-job.org)",
     cooldownMinutes: 60,
     run: runInsightsCollect,
   },
