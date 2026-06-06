@@ -21,6 +21,12 @@ import {
   type FindGroupForEmailResult,
 } from "./mail-queries";
 import { canSendOn } from "./mail-schedule";
+import { fetchReceivablesSheet } from "./queries";
+import {
+  groupRecipientsByOwner,
+  findMailSentDateCol,
+} from "./mail-grouping";
+import { markReceivablesMailSent } from "./actions";
 import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 
 /**
@@ -189,6 +195,50 @@ export async function sendReminderEmails(
   // 이력 일괄 insert — RLS 우회 (service_role)
   if (insertRows.length > 0) {
     await admin.from("receivables_mail_sends").insert(insertRows);
+  }
+
+  // 발송 성공한 학교담당자 행에 '메일발송일자' 기록 (실발송만).
+  // 시트를 재조회·재그룹화해 발송된 수신자의 행만 PATCH — 클라이언트 행번호 미신뢰.
+  // PATCH 실패는 발송 결과에 영향 주지 않음(메일은 이미 나감) — 로그만.
+  const sentEmails = new Set(
+    itemResults.filter((r) => r.status === "sent").map((r) => r.recipientEmail),
+  );
+  if (sentEmails.size > 0) {
+    try {
+      const sheet = await fetchReceivablesSheet();
+      const headerColIdx = sheet ? findMailSentDateCol(sheet.headers) : -1;
+      if (sheet && headerColIdx >= 0) {
+        const today = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+        const { groups } = groupRecipientsByOwner(sheet, input.thresholdDays);
+        const rows = new Set<number>();
+        for (const g of groups) {
+          if (!sentEmails.has(g.recipient.email)) continue;
+          for (const it of g.items)
+            if (it.excelRow && it.excelRow > 0) rows.add(it.excelRow);
+        }
+        if (rows.size > 0) {
+          const res = await markReceivablesMailSent(
+            sheet.worksheetName,
+            sheet.validColIdx[headerColIdx],
+            [...rows],
+            today,
+          );
+          if (!res.ok) {
+            console.error("[receivables] 메일발송일자 기록 실패:", res.error);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(
+        "[receivables] 메일발송일자 기록 예외:",
+        e instanceof Error ? e.message : e,
+      );
+    }
   }
 
   revalidatePath("/dashboard/receivables");

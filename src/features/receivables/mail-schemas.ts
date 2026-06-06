@@ -15,6 +15,8 @@ export const reminderItemSchema = z.object({
   daysOverdue: z.number().int().min(0),
   amount: z.number().min(0),
   operatorLabel: z.string().default(""),
+  /** Excel 1-based 행 번호 — 발송 후 '메일발송일자' 기록 PATCH 대상 (그룹화에서 채움) */
+  excelRow: z.number().int().optional(),
 });
 export type ReminderItem = z.infer<typeof reminderItemSchema>;
 
