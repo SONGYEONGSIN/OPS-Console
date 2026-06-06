@@ -29,7 +29,7 @@ describe("HANDOVER_CATEGORIES", () => {
     expect(fieldCounts).toEqual([2, 7, 2, 1, 1, 1]);
   });
 
-  it("작업 카테고리 7 필드 — 기초·생성툴·사이트·출력물·경쟁률·전산파일·기타", () => {
+  it("작업 카테고리 7 필드 — 기초·생성툴·사이트·출력물·경쟁률·전산파일·예외처리", () => {
     const work = HANDOVER_CATEGORIES.find((c) => c.key === "work");
     expect(work?.fields.map((f) => f.label)).toEqual([
       "기초작업",
@@ -38,7 +38,7 @@ describe("HANDOVER_CATEGORIES", () => {
       "출력물",
       "경쟁률",
       "전산파일",
-      "기타",
+      "예외처리",
     ]);
   });
 
