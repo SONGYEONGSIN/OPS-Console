@@ -51,6 +51,28 @@ describe("StructuredInfoForm", () => {
     expect(onChange.mock.calls[0][0]).toMatchObject({ memo: "변경" });
   });
 
+  it("options 지정 필드는 셀렉트로 렌더 + 선택 시 onChange", () => {
+    const onChange = vi.fn();
+    render(
+      <StructuredInfoForm
+        fields={[
+          { key: "deadline", label: "정산기한", options: ["5일 이내", "10일 이내"] },
+        ]}
+        value={{ deadline: "", memo: "" }}
+        onChange={onChange}
+      />,
+    );
+    const sel = screen.getByLabelText("정산기한") as HTMLSelectElement;
+    expect(sel.tagName).toBe("SELECT");
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual([
+      "",
+      "5일 이내",
+      "10일 이내",
+    ]);
+    fireEvent.change(sel, { target: { value: "10일 이내" } });
+    expect(onChange.mock.calls[0][0]).toMatchObject({ deadline: "10일 이내" });
+  });
+
   it("readOnly — 입력 필드 없음", () => {
     render(
       <StructuredInfoForm

@@ -48,7 +48,7 @@ export function isFieldFilled(row: ListRow, key: HandoverFieldKey): boolean {
   }
   if (key === "payment_fee_md") {
     const p = row.handoverPaymentFee;
-    return !!p && [p.deadline, p.manager, p.memo].some((v) => v?.trim());
+    return !!p && [p.deadline, p.memo].some((v) => v?.trim());
   }
   if (key === "payment_invoice_md") {
     const p = row.handoverPaymentInvoice;

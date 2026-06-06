@@ -349,9 +349,6 @@ function HandoverDocument(input: HandoverPdfInput) {
                       isFee && input.paymentFee?.deadline
                         ? `정산기한 : ${input.paymentFee.deadline}`
                         : "",
-                      isFee && input.paymentFee?.manager
-                        ? `담당자 : ${input.paymentFee.manager}`
-                        : "",
                       !isFee && input.paymentInvoice?.issueType
                         ? `발행유형 : ${input.paymentInvoice.issueType}`
                         : "",
