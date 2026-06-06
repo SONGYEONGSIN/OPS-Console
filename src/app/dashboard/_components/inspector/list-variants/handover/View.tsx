@@ -37,24 +37,24 @@ function pickValue(row: ListRow, key: HandoverFieldKey): string {
   return typeof v === "string" ? v : "";
 }
 
+// 작성상태 칩 — 목록(HandoverTable)과 동일한 라벨/음영
 const STATUS_LABEL: Record<string, string> = {
   draft: "작성중",
   ready: "작성완료",
-  published: "발행됨",
+  published: "인계완료",
 };
-
-/** 작성상태 색상 — 작성중=빨강, 완료=세이지, 발행=먹색, 미작성=회색 */
-const STATUS_TEXT_CLASS: Record<string, string> = {
-  draft: "font-bold text-vermilion",
-  ready: "font-bold text-sage",
-  published: "font-bold text-ink",
+const STATUS_TONE: Record<string, string> = {
+  draft: "bg-vermilion/15 text-vermilion",
+  ready: "bg-sage/15 text-sage",
+  published: "bg-ink/10 text-ink",
 };
 
 function StatusValue({ status }: { status?: string }) {
-  if (!status) return <span className="text-muted">미작성</span>;
+  const label = (status && STATUS_LABEL[status]) || "미작성";
+  const tone = (status && STATUS_TONE[status]) || "bg-washi-raised text-muted";
   return (
-    <span className={STATUS_TEXT_CLASS[status] ?? "text-ink"}>
-      {STATUS_LABEL[status] ?? status}
+    <span className={`inline-block px-2 py-0.5 text-2xs ${tone}`}>
+      {label}
     </span>
   );
 }

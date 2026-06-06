@@ -29,24 +29,27 @@ describe("HandoverView", () => {
     return within(screen.getByText("작성상태").closest("div") as HTMLElement);
   }
 
-  it("작성상태 색상 — 작성중=빨강 볼드 / 작성완료=세이지 볼드", () => {
+  it("작성상태 칩 — 작성중=빨강 / 작성완료=세이지 (목록과 동일 음영)", () => {
     const { rerender } = render(
       <HandoverView row={{ ...row, handoverStatus: "draft" }} />,
     );
     expect(statusRow().getByText("작성중")).toHaveClass(
-      "font-bold",
+      "bg-vermilion/15",
       "text-vermilion",
     );
     rerender(<HandoverView row={{ ...row, handoverStatus: "ready" }} />);
     expect(statusRow().getByText("작성완료")).toHaveClass(
-      "font-bold",
+      "bg-sage/15",
       "text-sage",
     );
   });
 
-  it("작성상태 미작성 — 회색", () => {
+  it("작성상태 미작성 — 회색 칩", () => {
     render(<HandoverView row={{ ...row, handoverStatus: undefined }} />);
-    expect(statusRow().getByText("미작성")).toHaveClass("text-muted");
+    expect(statusRow().getByText("미작성")).toHaveClass(
+      "bg-washi-raised",
+      "text-muted",
+    );
   });
 
   it("기본정보 — 학교명·서비스·접수구분 표시", () => {

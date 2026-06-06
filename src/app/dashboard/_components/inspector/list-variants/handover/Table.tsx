@@ -17,12 +17,11 @@ const STATUS_LABEL: Record<StatusKey, string> = {
   published: "인계완료",
 };
 
-// 인스펙터 아코디언 배지와 동일한 음영 — 미작성=회색 / 작성완료=세이지
 const STATUS_TONE: Record<StatusKey, string> = {
-  none: "border-line bg-line-soft text-muted",
-  draft: "border-vermilion/40 bg-vermilion/15 text-vermilion",
-  ready: "border-sage/50 bg-sage/20 text-sage",
-  published: "border-ink/30 bg-ink/10 text-ink",
+  none: "bg-washi-raised text-muted",
+  draft: "bg-vermilion/15 text-vermilion",
+  ready: "bg-sage/15 text-sage",
+  published: "bg-ink/10 text-ink",
 };
 
 export function HandoverTable({ rows, selectedId, onSelect }: Props) {
@@ -70,7 +69,7 @@ export function HandoverTable({ rows, selectedId, onSelect }: Props) {
                 </td>
                 <td className="px-3 py-2">
                   <span
-                    className={`inline-block border px-1.5 py-0.5 text-2xs ${STATUS_TONE[key]}`}
+                    className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[key]}`}
                   >
                     {STATUS_LABEL[key]}
                   </span>
