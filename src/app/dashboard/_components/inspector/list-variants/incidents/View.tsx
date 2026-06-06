@@ -11,8 +11,10 @@ import {
   type IncidentReportBundle,
 } from "@/features/incident-reports/report-bundle-action";
 import { createIncidentReport } from "@/features/incident-reports/actions";
-import type { IncidentReportRow } from "@/features/incident-reports/schemas";
-import { isReportLiveMirrored } from "@/features/incident-reports/schemas";
+import {
+  isReportLiveMirrored,
+  type IncidentReportRow,
+} from "@/features/incident-reports/schemas";
 
 const STATUS_TONE = {
   미처리: "bg-washi-raised text-muted",
@@ -156,29 +158,29 @@ function bundleToReportRow(
     prevention?: string | null;
   },
 ): ListRow {
-  // 승인·발송 전은 연결 사고의 현재값으로 라이브 미러, approved/sent만 스냅샷.
-  const isLive = isReportLiveMirrored(report.status);
+  // 작성중(draft/rejected)이면 연결 사고의 현재값으로 라이브 미러, 승인 이후는 스냅샷.
+  const liveMirror = isReportLiveMirrored(report.status);
   return {
     ...incidentReportToListRow(report),
     incidentReportUniversity: current.university ?? report.recipient_university,
     incidentReportServiceName:
-      (isLive ? current.serviceName : undefined) ??
+      (liveMirror ? current.serviceName : undefined) ??
       report.service_name ??
       undefined,
-    incidentReportTitle: isLive
-      ? (current.title ?? report.title)
-      : report.title,
-    incidentReportGyeongwi: isLive
+    // 제목은 인스펙터 표시상 항상 연결 사고의 현재 제목을 미러(승인/발송 후에도).
+    // 발송된 공문 PDF/본문은 별도로 스냅샷 유지.
+    incidentReportTitle: current.title ?? report.title,
+    incidentReportGyeongwi: liveMirror
       ? (current.causeSummary ?? report.gyeongwi)
       : report.gyeongwi,
-    incidentReportCause: isLive
+    incidentReportCause: liveMirror
       ? (current.rootCause ?? report.cause)
       : report.cause,
-    incidentReportPrevention: isLive
+    incidentReportPrevention: liveMirror
       ? (current.prevention ?? report.prevention)
       : report.prevention,
     incidentReportHandlingRows:
-      isLive && current.handlingRows?.length
+      liveMirror && current.handlingRows?.length
         ? current.handlingRows
         : report.handling_rows,
     incidentReportRecipients: bundle.recipients.map((r) => ({

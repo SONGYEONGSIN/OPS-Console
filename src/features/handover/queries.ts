@@ -4,7 +4,18 @@ import {
   handoverRecordRowSchema,
   type HandoverRecordRow,
   type HandoverStatus,
+  type ContractChecklistItem,
+  type SchoolContact,
+  type ContractInfo,
 } from "./schemas";
+
+const EMPTY_CONTRACT_INFO: ContractInfo = {
+  title: "",
+  type: "",
+  progress: "",
+  status: "",
+  memo: "",
+};
 
 export type ListInput = {
   q?: string;
@@ -24,11 +35,14 @@ export type HandoverListRow = {
   university_name: string;
   service_name: string;
   application_type: string;
+  university_type: string;
   operator_name: string | null;
   handover_status: HandoverStatus | null;
   /** 14 sub-field — 인스펙터 EditForm 초기값 (record 없으면 모두 null) */
   contract_info_md: string | null;
+  contract_info: ContractInfo;
   contract_data_md: string | null;
+  contract_data_checklist: ContractChecklistItem[];
   work_basic_md: string | null;
   work_generator_md: string | null;
   work_site_md: string | null;
@@ -39,14 +53,18 @@ export type HandoverListRow = {
   payment_fee_md: string | null;
   payment_invoice_md: string | null;
   school_contact_md: string | null;
+  school_contacts: SchoolContact[];
   docs_md: string | null;
+  docs_checklist: ContractChecklistItem[];
   notes_md: string | null;
 };
 
 type HandoverEmbed = {
   status: HandoverStatus;
   contract_info_md: string | null;
+  contract_info: ContractInfo | null;
   contract_data_md: string | null;
+  contract_data_checklist: ContractChecklistItem[] | null;
   work_basic_md: string | null;
   work_generator_md: string | null;
   work_site_md: string | null;
@@ -57,7 +75,9 @@ type HandoverEmbed = {
   payment_fee_md: string | null;
   payment_invoice_md: string | null;
   school_contact_md: string | null;
+  school_contacts: SchoolContact[] | null;
   docs_md: string | null;
+  docs_checklist: ContractChecklistItem[] | null;
   notes_md: string | null;
 };
 
@@ -67,6 +87,7 @@ type RawJoinRow = {
   university_name: string;
   service_name: string;
   application_type: string;
+  university_type: string;
   operator_name: string | null;
   /** PostgREST는 service_id unique 제약 때문에 단일 객체 반환 (배열 아님) */
   handover_records: HandoverEmbed | null;
@@ -87,7 +108,7 @@ export async function listServicesWithHandover(
   let q = supabase
     .from("services")
     .select(
-      "id, service_id, university_name, service_name, application_type, operator_name, handover_records(status, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md)",
+      "id, service_id, university_name, service_name, application_type, university_type, operator_name, handover_records(status, contract_info_md, contract_info, contract_data_md, contract_data_checklist, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, school_contacts, docs_md, docs_checklist, notes_md)",
       { count: "exact" },
     )
     .order("service_id", { ascending: true });
@@ -128,10 +149,13 @@ export async function listServicesWithHandover(
       university_name: r.university_name,
       service_name: r.service_name,
       application_type: r.application_type,
+      university_type: r.university_type,
       operator_name: r.operator_name,
         handover_status: rec?.status ?? null,
         contract_info_md: rec?.contract_info_md ?? null,
+        contract_info: rec?.contract_info ?? EMPTY_CONTRACT_INFO,
         contract_data_md: rec?.contract_data_md ?? null,
+        contract_data_checklist: rec?.contract_data_checklist ?? [],
         work_basic_md: rec?.work_basic_md ?? null,
         work_generator_md: rec?.work_generator_md ?? null,
         work_site_md: rec?.work_site_md ?? null,
@@ -142,7 +166,9 @@ export async function listServicesWithHandover(
         payment_fee_md: rec?.payment_fee_md ?? null,
         payment_invoice_md: rec?.payment_invoice_md ?? null,
         school_contact_md: rec?.school_contact_md ?? null,
+        school_contacts: rec?.school_contacts ?? [],
         docs_md: rec?.docs_md ?? null,
+        docs_checklist: rec?.docs_checklist ?? [],
         notes_md: rec?.notes_md ?? null,
       };
     },
@@ -209,4 +235,42 @@ export async function getHandoverByServiceId(
     return null;
   }
   return r.data;
+}
+
+export type HandoverContactCandidate = {
+  universityName: string;
+  name: string;
+  jobTitle: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+/**
+ * 대학별 연락처 후보 — 컨텍(학교담당자) 검색·등록용. contacts 마스터에서 조회.
+ * 빈 입력이면 빈 배열.
+ */
+export async function getHandoverContactCandidates(
+  universityNames: string[],
+): Promise<HandoverContactCandidate[]> {
+  const unique = [...new Set(universityNames.filter(Boolean))];
+  if (unique.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .select(
+      "university_name, customer_name, job_title, contact_phone, contact_email",
+    )
+    .in("university_name", unique)
+    .order("customer_name", { ascending: true });
+  if (error) {
+    console.error("[getHandoverContactCandidates]", error);
+    return [];
+  }
+  return (data ?? []).map((c) => ({
+    universityName: c.university_name as string,
+    name: c.customer_name as string,
+    jobTitle: (c.job_title as string | null) ?? null,
+    phone: (c.contact_phone as string | null) ?? null,
+    email: (c.contact_email as string | null) ?? null,
+  }));
 }

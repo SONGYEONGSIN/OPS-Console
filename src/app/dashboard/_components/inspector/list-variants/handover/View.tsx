@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
+import { Section, DefList, Divider } from "../shared";
+import { CategoryTabs } from "./CategoryTabs";
+import { ContractChecklist } from "./ContractChecklist";
+import { ContractInfoForm } from "./ContractInfoForm";
 import {
   HANDOVER_CATEGORIES,
   type HandoverCategoryKey,
   type HandoverFieldKey,
 } from "@/features/handover/categories";
+import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 
 const ROW_TO_FIELD: Record<HandoverFieldKey, keyof ListRow> = {
   contract_info_md: "handoverContractInfoMd",
@@ -30,42 +35,145 @@ function pickValue(row: ListRow, key: HandoverFieldKey): string {
   return typeof v === "string" ? v : "";
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  draft: "작성중",
+  ready: "작성완료",
+  published: "발행됨",
+};
+
 export function HandoverView({ row }: { row: ListRow }) {
   const [active, setActive] = useState<HandoverCategoryKey>("contract");
   const cat = HANDOVER_CATEGORIES.find((c) => c.key === active);
   if (!cat) return null;
 
-  return (
-    <div className="space-y-3">
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">카테고리</span>
-        <select
-          aria-label="카테고리"
-          value={active}
-          onChange={(e) => setActive(e.target.value as HandoverCategoryKey)}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          {HANDOVER_CATEGORIES.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </label>
+  const basicItems = [
+    { term: "학교명", desc: row.universityName ?? "—" },
+    { term: "서비스", desc: row.serviceName ?? "—" },
+    { term: "접수구분", desc: row.universityType ?? "—" },
+    { term: "담당자", desc: row.owner ?? "—" },
+    {
+      term: "서비스번호",
+      desc: row.handoverServiceNumber
+        ? String(row.handoverServiceNumber)
+        : "—",
+    },
+    {
+      term: "작성상태",
+      desc: row.handoverStatus ? STATUS_LABEL[row.handoverStatus] : "미작성",
+    },
+  ];
 
-      {cat.fields.map((f) => (
-        <label key={f.key} className="block text-xs">
-          <span className="mb-1 block text-muted">{f.label}</span>
-          <textarea
-            aria-label={f.label}
-            value={pickValue(row, f.key)}
-            readOnly
-            rows={6}
-            placeholder="미작성"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      ))}
+  return (
+    <div className="space-y-4">
+      <Section title="기본정보">
+        <DefList items={basicItems} />
+      </Section>
+
+      <Divider />
+
+      <div className="mb-6">
+        <CategoryTabs active={active} onChange={setActive} />
+      </div>
+
+      <div className="space-y-3">
+        {cat.fields.map((f) =>
+          f.key === "contract_info_md" ? (
+            <ContractInfoForm
+              key={f.key}
+              value={
+                row.handoverContractInfo ?? {
+                  title: "",
+                  type: "",
+                  progress: "",
+                  status: "",
+                  memo: "",
+                }
+              }
+              readOnly
+            />
+          ) : f.key === "contract_data_md" ? (
+            <ContractChecklist
+              key={f.key}
+              items={row.handoverContractChecklist ?? []}
+              readOnly
+            >
+              {pickValue(row, f.key) && (
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">메모</span>
+                  <textarea
+                    aria-label="계약자료 메모"
+                    value={pickValue(row, f.key)}
+                    readOnly
+                    rows={3}
+                    className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                  />
+                </label>
+              )}
+            </ContractChecklist>
+          ) : f.key === "school_contact_md" ? (
+            <div key={f.key} className="space-y-2 text-xs">
+              <span className="block text-muted">학교담당자</span>
+              {(row.handoverSchoolContacts ?? []).length === 0 ? (
+                <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+                  등록된 학교담당자가 없습니다.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {(row.handoverSchoolContacts ?? []).map((c) => (
+                    <li
+                      key={c.id}
+                      className="border border-line bg-cream px-2 py-1.5"
+                    >
+                      <p className="text-ink">
+                        {c.name}
+                        {c.jobTitle ? ` (${c.jobTitle})` : ""}
+                      </p>
+                      {c.phone ? (
+                        <p className="text-2xs text-muted">{c.phone}</p>
+                      ) : null}
+                      {c.email ? (
+                        <p className="text-2xs text-muted">{c.email}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : f.key === "docs_md" ? (
+            <ContractChecklist
+              key={f.key}
+              label="제출서류"
+              items={row.handoverDocsChecklist ?? []}
+              readOnly
+            >
+              {pickValue(row, f.key) && (
+                <label className="block text-xs">
+                  <span className="mb-1 block text-muted">메모</span>
+                  <textarea
+                    aria-label="서류 메모"
+                    value={pickValue(row, f.key)}
+                    readOnly
+                    rows={3}
+                    className="w-full border border-line bg-cream px-2 py-1 text-ink"
+                  />
+                </label>
+              )}
+            </ContractChecklist>
+          ) : (
+            <label key={f.key} className="block text-xs">
+              <span className="mb-1 block text-muted">{f.label}</span>
+              <textarea
+                aria-label={f.label}
+                value={pickValue(row, f.key)}
+                readOnly
+                rows={6}
+                placeholder={FIELD_EXAMPLE[f.key]}
+                className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              />
+            </label>
+          ),
+        )}
+      </div>
     </div>
   );
 }

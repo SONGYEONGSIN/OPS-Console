@@ -6,8 +6,10 @@ import {
 import { getIncidentById } from "@/features/incidents/queries";
 import { previewNextDocNumber } from "@/features/incident-reports/sharepoint-register";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
-import type { IncidentReportRow } from "@/features/incident-reports/schemas";
-import { isReportLiveMirrored } from "@/features/incident-reports/schemas";
+import {
+  isReportLiveMirrored,
+  type IncidentReportRow,
+} from "@/features/incident-reports/schemas";
 
 export async function GET(
   _req: Request,
@@ -29,11 +31,11 @@ export async function GET(
   const chain = await resolveApprovalChain(
     incident?.assignee_email ?? rep.author_email,
   ).catch(() => null);
-  // 편집 화면과 동일 — 승인·발송 전은 공유 필드를 연결 사고의 현재값으로 라이브 미러,
-  // 승인·발송 후는 동결 스냅샷(rep 값)을 사용한다.
-  const isLive = isReportLiveMirrored(rep.status);
+  // 편집 화면과 동일 — 작성중(draft/rejected)이면 공유 필드를 연결 사고의 현재값으로
+  // 라이브 미러, 승인 이후는 동결 스냅샷(rep 값)을 사용한다.
+  const liveMirror = isReportLiveMirrored(rep.status);
   const live =
-    isLive && incident
+    liveMirror && incident
       ? {
           recipientUniversity:
             incident.university_name ?? rep.recipient_university,
@@ -69,9 +71,7 @@ export async function GET(
     prevention: live?.prevention ?? rep.prevention,
   });
   // 파일명 — 제목에서 안전 문자만 추출
-  const safeTitle = rep.title
-    .replace(/[^\w가-힣ㄱ-ㅎㅏ-ㅣ-]/g, "_")
-    .slice(0, 60);
+  const safeTitle = rep.title.replace(/[^\w가-힣ㄱ-ㅎㅏ-ㅣ-]/g, "_").slice(0, 60);
   return new NextResponse(pdf as unknown as BodyInit, {
     status: 200,
     headers: {

@@ -50,6 +50,25 @@ export type HandoverPdfInput = {
   notes: string | null;
   createdAt: string;
   fields: HandoverPdfFields;
+  /** 계약정보 구조화 폼 (제목/형태/진행/상태/메모) */
+  contractInfo?: {
+    title: string;
+    type: string;
+    progress: string;
+    status: string;
+    memo: string;
+  };
+  /** 계약자료 체크리스트 (계약서류) */
+  contractChecklist?: { text: string; done: boolean }[];
+  /** 서류 체크리스트 (제출서류) */
+  docsChecklist?: { text: string; done: boolean }[];
+  /** 학교담당자 구조화 연락처 (컨텍) */
+  schoolContacts?: {
+    name: string;
+    jobTitle: string | null;
+    phone: string | null;
+    email: string | null;
+  }[];
 };
 
 const styles = StyleSheet.create({
@@ -242,6 +261,81 @@ function HandoverDocument(input: HandoverPdfInput) {
           >
             <Text style={styles.categoryTitle}>{cat.label}</Text>
             {cat.fields.map((f) => {
+              // 계약정보 — 구조화 폼(제목/형태/진행/상태 + 메모)
+              if (f.key === "contract_info_md") {
+                const ci = input.contractInfo;
+                const lines = ci
+                  ? [
+                      ci.title && `제목 : ${ci.title}`,
+                      ci.type && `형태 : ${ci.type}`,
+                      ci.progress && `진행 : ${ci.progress}`,
+                      ci.status && `상태 : ${ci.status}`,
+                      ci.memo && `메모 : ${ci.memo}`,
+                    ].filter(Boolean)
+                  : [];
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    {lines.length === 0 ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      lines.map((line, i) => (
+                        <Text key={i} style={styles.fieldValue}>
+                          {line}
+                        </Text>
+                      ))
+                    )}
+                  </View>
+                );
+              }
+              // 계약자료/서류 — 체크리스트(☑/☐) + 메모
+              if (f.key === "contract_data_md" || f.key === "docs_md") {
+                const list =
+                  (f.key === "contract_data_md"
+                    ? input.contractChecklist
+                    : input.docsChecklist) ?? [];
+                const memo = (input.fields[f.key] ?? "").trim();
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    {list.length === 0 && !memo ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      <>
+                        {list.map((it, i) => (
+                          <Text key={i} style={styles.fieldValue}>
+                            {it.done ? "☑" : "☐"} {it.text}
+                          </Text>
+                        ))}
+                        {memo ? (
+                          <Text style={styles.fieldValue}>메모: {memo}</Text>
+                        ) : null}
+                      </>
+                    )}
+                  </View>
+                );
+              }
+              // 컨텍 — 학교담당자 구조화 리스트 (이름(직함)/전화/이메일)
+              if (f.key === "school_contact_md") {
+                const list = input.schoolContacts ?? [];
+                return (
+                  <View key={f.key} style={styles.field}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    {list.length === 0 ? (
+                      <Text style={styles.fieldEmpty}>(미작성)</Text>
+                    ) : (
+                      list.map((c, i) => (
+                        <Text key={i} style={styles.fieldValue}>
+                          {c.name}
+                          {c.jobTitle ? ` (${c.jobTitle})` : ""}
+                          {c.phone ? ` · ${c.phone}` : ""}
+                          {c.email ? ` · ${c.email}` : ""}
+                        </Text>
+                      ))
+                    )}
+                  </View>
+                );
+              }
               const v = input.fields[f.key];
               const text = (v ?? "").trim();
               return (

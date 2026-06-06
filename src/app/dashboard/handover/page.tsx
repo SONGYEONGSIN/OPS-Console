@@ -16,6 +16,7 @@ import { listOperators } from "@/features/operators/queries";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
   listServicesWithHandover,
+  getHandoverContactCandidates,
   type HandoverListRow,
 } from "@/features/handover/queries";
 import {
@@ -185,6 +186,26 @@ export default async function HandoverPage({
     pageSize: PAGE_SIZE,
   });
   const rows: ListRow[] = dbRows.map(handoverToListRow);
+  // 컨텍 — 각 행 대학의 연락처 후보를 부착(학교담당자 검색·등록용)
+  const contactCandidates = await getHandoverContactCandidates(
+    rows.map((r) => r.universityName ?? "").filter(Boolean),
+  );
+  const contactsByUniv = new Map<string, typeof contactCandidates>();
+  for (const c of contactCandidates) {
+    const arr = contactsByUniv.get(c.universityName) ?? [];
+    arr.push(c);
+    contactsByUniv.set(c.universityName, arr);
+  }
+  for (const r of rows) {
+    r.handoverSchoolContactCandidates = (
+      contactsByUniv.get(r.universityName ?? "") ?? []
+    ).map((c) => ({
+      name: c.name,
+      jobTitle: c.jobTitle,
+      phone: c.phone,
+      email: c.email,
+    }));
+  }
   const config = resolvePageMeta(slug, meta, total);
 
   // 복제 대상 서비스 후보 — 전체 services with handover status (검색용 light)
@@ -228,7 +249,17 @@ export default async function HandoverPage({
     const r = await upsertHandoverRecord({
       service_id: row.id,
       contract_info_md: row.handoverContractInfoMd ?? null,
+      contract_info: row.handoverContractInfo ?? {
+        title: "",
+        type: "",
+        progress: "",
+        status: "",
+        memo: "",
+      },
       contract_data_md: row.handoverContractDataMd ?? null,
+      contract_data_checklist: (row.handoverContractChecklist ?? []).filter(
+        (c) => c.text.trim(),
+      ),
       work_basic_md: row.handoverWorkBasicMd ?? null,
       work_generator_md: row.handoverWorkGeneratorMd ?? null,
       work_site_md: row.handoverWorkSiteMd ?? null,
@@ -239,7 +270,11 @@ export default async function HandoverPage({
       payment_fee_md: row.handoverPaymentFeeMd ?? null,
       payment_invoice_md: row.handoverPaymentInvoiceMd ?? null,
       school_contact_md: row.handoverSchoolContactMd ?? null,
+      school_contacts: (row.handoverSchoolContacts ?? []).filter((c) =>
+        c.name.trim(),
+      ),
       docs_md: row.handoverDocsMd ?? null,
+      docs_checklist: (row.handoverDocsChecklist ?? []).filter((c) => c.text.trim()),
       notes_md: row.handoverNotesMd ?? null,
     });
     return r.ok ? { ok: true } : { ok: false, error: r.error };
@@ -284,10 +319,13 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     universityName: r.university_name,
     serviceName: r.service_name,
     applicationType: r.application_type,
+    universityType: r.university_type,
     handoverServiceNumber: r.service_number,
     handoverStatus: r.handover_status ?? undefined,
     handoverContractInfoMd: r.contract_info_md,
+    handoverContractInfo: r.contract_info,
     handoverContractDataMd: r.contract_data_md,
+    handoverContractChecklist: r.contract_data_checklist,
     handoverWorkBasicMd: r.work_basic_md,
     handoverWorkGeneratorMd: r.work_generator_md,
     handoverWorkSiteMd: r.work_site_md,
@@ -298,7 +336,9 @@ function handoverToListRow(r: HandoverListRow): ListRow {
     handoverPaymentFeeMd: r.payment_fee_md,
     handoverPaymentInvoiceMd: r.payment_invoice_md,
     handoverSchoolContactMd: r.school_contact_md,
+    handoverSchoolContacts: r.school_contacts,
     handoverDocsMd: r.docs_md,
+    handoverDocsChecklist: r.docs_checklist,
     handoverNotesMd: r.notes_md,
   };
 }

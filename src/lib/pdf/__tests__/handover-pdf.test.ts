@@ -13,6 +13,25 @@ describe("renderHandoverPdf", () => {
       toEmail: "to@x.com",
       notes: "참고 메모",
       createdAt: "2026-05-17T00:00:00Z",
+      contractInfo: {
+        title: "원서접수",
+        type: "수의",
+        progress: "운영자",
+        status: "완료",
+        memo: "※ 학부 계약시 포함",
+      },
+      docsChecklist: [
+        { text: "사업자등록증", done: true },
+        { text: "통장사본", done: false },
+      ],
+      schoolContacts: [
+        {
+          name: "송영신",
+          jobTitle: "팀장",
+          phone: "010-5737-1114",
+          email: "ysong2526@gmail.com",
+        },
+      ],
       fields: {
         contract_info_md: "원서접수",
         contract_data_md: null,

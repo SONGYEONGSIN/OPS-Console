@@ -7,6 +7,11 @@ import {
   type HandoverCategoryKey,
   type HandoverFieldKey,
 } from "@/features/handover/categories";
+import { CategoryTabs } from "./CategoryTabs";
+import { ContractChecklist } from "./ContractChecklist";
+import { ContractInfoForm } from "./ContractInfoForm";
+import { SchoolContactPicker } from "./SchoolContactPicker";
+import { FIELD_EXAMPLE } from "@/features/handover/field-examples";
 import type { EditFormProps } from "../types";
 
 const ROW_TO_FIELD: Record<HandoverFieldKey, keyof ListRow> = {
@@ -51,41 +56,114 @@ export function HandoverEditForm({
       }}
       className="space-y-3"
     >
-      <label className="block text-xs">
-        <span className="mb-1 block text-muted">카테고리</span>
-        <select
-          aria-label="카테고리"
-          value={active}
-          onChange={(e) => setActive(e.target.value as HandoverCategoryKey)}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-        >
-          {HANDOVER_CATEGORIES.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="mb-6">
+        <CategoryTabs active={active} onChange={setActive} />
+      </div>
 
-      {cat.fields.map((f) => (
-        <label key={f.key} className="block text-xs">
-          <span className="mb-1 block text-muted">{f.label}</span>
-          <textarea
-            aria-label={f.label}
-            value={pickValue(row, f.key)}
-            onChange={(e) =>
-              setRow((prev) => ({
-                ...prev,
-                [ROW_TO_FIELD[f.key]]: e.target.value,
-              }))
+      {cat.fields.map((f) =>
+        f.key === "contract_info_md" ? (
+          // 계약정보 — 고정 필드 폼(제목/형태/진행/상태 + 메모)
+          <ContractInfoForm
+            key={f.key}
+            value={
+              row.handoverContractInfo ?? {
+                title: "",
+                type: "",
+                progress: "",
+                status: "",
+                memo: "",
+              }
             }
-            rows={6}
-            maxLength={10000}
-            placeholder="내용을 입력해주세요"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            onChange={(next) =>
+              setRow((prev) => ({ ...prev, handoverContractInfo: next }))
+            }
+            universityName={row.universityName ?? undefined}
           />
-        </label>
-      ))}
+        ) : f.key === "school_contact_md" ? (
+          // 컨텍 — 대학 연락처 검색 → 구조화 리스트로 추가
+          <SchoolContactPicker
+            key={f.key}
+            candidates={row.handoverSchoolContactCandidates ?? []}
+            items={row.handoverSchoolContacts ?? []}
+            onChange={(next) =>
+              setRow((prev) => ({ ...prev, handoverSchoolContacts: next }))
+            }
+          />
+        ) : f.key === "contract_data_md" ? (
+          // 계약자료 — 계약서류 체크리스트(헤더 밖) + 항목·메모(선 안)
+          <ContractChecklist
+            key={f.key}
+            items={row.handoverContractChecklist ?? []}
+            onChange={(items) =>
+              setRow((prev) => ({ ...prev, handoverContractChecklist: items }))
+            }
+          >
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">메모</span>
+              <textarea
+                aria-label="계약자료 메모"
+                value={pickValue(row, f.key)}
+                onChange={(e) =>
+                  setRow((prev) => ({
+                    ...prev,
+                    [ROW_TO_FIELD[f.key]]: e.target.value,
+                  }))
+                }
+                rows={2}
+                maxLength={10000}
+                placeholder="추가 메모(선택)"
+                className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              />
+            </label>
+          </ContractChecklist>
+        ) : f.key === "docs_md" ? (
+          // 서류 — 제출서류 체크리스트(헤더 밖) + 항목·메모(선 안)
+          <ContractChecklist
+            key={f.key}
+            label="제출서류"
+            items={row.handoverDocsChecklist ?? []}
+            onChange={(items) =>
+              setRow((prev) => ({ ...prev, handoverDocsChecklist: items }))
+            }
+          >
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">메모</span>
+              <textarea
+                aria-label="서류 메모"
+                value={pickValue(row, f.key)}
+                onChange={(e) =>
+                  setRow((prev) => ({
+                    ...prev,
+                    [ROW_TO_FIELD[f.key]]: e.target.value,
+                  }))
+                }
+                rows={2}
+                maxLength={10000}
+                placeholder="추가 메모(선택)"
+                className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              />
+            </label>
+          </ContractChecklist>
+        ) : (
+          <label key={f.key} className="block text-xs">
+            <span className="mb-1 block text-muted">{f.label}</span>
+            <textarea
+              aria-label={f.label}
+              value={pickValue(row, f.key)}
+              onChange={(e) =>
+                setRow((prev) => ({
+                  ...prev,
+                  [ROW_TO_FIELD[f.key]]: e.target.value,
+                }))
+              }
+              rows={6}
+              maxLength={10000}
+              placeholder={FIELD_EXAMPLE[f.key]}
+              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            />
+          </label>
+        ),
+      )}
 
       <div className="flex gap-2 pt-2">
         <button

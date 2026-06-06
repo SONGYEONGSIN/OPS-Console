@@ -13,6 +13,13 @@ const baseRow: ListRow = {
   applicationType: "공통원서",
   handoverStatus: "draft",
   handoverContractInfoMd: "기존 계약정보",
+  handoverContractInfo: {
+    title: "원서접수",
+    type: "수의",
+    progress: "운영자",
+    status: "완료",
+    memo: "",
+  },
   handoverWorkBasicMd: null,
 };
 
@@ -33,25 +40,27 @@ function setup(over: Partial<Parameters<typeof HandoverEditForm>[0]> = {}) {
 }
 
 describe("HandoverEditForm", () => {
-  it("카테고리 select + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
+  it("카테고리 탭 + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
     setup();
-    expect(screen.getByLabelText("카테고리")).toBeInTheDocument();
-    expect(screen.getByLabelText("계약정보")).toHaveValue("기존 계약정보");
-    expect(screen.getByLabelText("계약자료")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "계약" })).toBeInTheDocument();
+    // 계약정보 = 구조화 폼 (제목/형태/진행/상태)
+    expect(screen.getByLabelText("형태")).toHaveValue("수의");
+    expect(screen.getByLabelText("상태")).toHaveValue("완료");
+    // 계약자료 = 계약서류 체크리스트 + 메모
+    expect(screen.getByText("계약서류")).toBeInTheDocument();
+    expect(screen.getByLabelText("계약자료 메모")).toBeInTheDocument();
   });
 
-  it("카테고리 select 변경 시 다른 필드 표시", () => {
+  it("카테고리 탭(작업) 클릭 시 다른 필드 표시", () => {
     setup();
-    fireEvent.change(screen.getByLabelText("카테고리"), {
-      target: { value: "work" },
-    });
+    fireEvent.click(screen.getByRole("button", { name: "작업" }));
     expect(screen.getByLabelText("기초작업")).toBeInTheDocument();
-    expect(screen.queryByLabelText("계약정보")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("형태")).not.toBeInTheDocument();
   });
 
   it("textarea 입력 시 setRow 호출", () => {
     const { setRow } = setup();
-    fireEvent.change(screen.getByLabelText("계약자료"), {
+    fireEvent.change(screen.getByLabelText("계약자료 메모"), {
       target: { value: "신규자료" },
     });
     expect(setRow).toHaveBeenCalled();

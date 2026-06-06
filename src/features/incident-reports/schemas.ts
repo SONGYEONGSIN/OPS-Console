@@ -10,6 +10,20 @@ export const REPORT_STATUS_VALUES = [
 export const reportStatusSchema = z.enum(REPORT_STATUS_VALUES);
 export type ReportStatus = z.infer<typeof reportStatusSchema>;
 
+/**
+ * 경위서가 연결 사고를 라이브 미러하는 상태인지.
+ * 승인·발송 전(draft/rejected/pending_approval)은 사고 현재값을 미러,
+ * 승인·발송 후(approved/sent)는 동결 스냅샷(report 값)을 사용한다.
+ * (회귀 방지: 승인대기가 빠지면 승인 대기 중 사고 수정이 반영 안 돼 stale.)
+ */
+export function isReportLiveMirrored(status: ReportStatus): boolean {
+  return (
+    status === "draft" ||
+    status === "rejected" ||
+    status === "pending_approval"
+  );
+}
+
 export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
   draft: "작성중",
   pending_approval: "승인대기",
@@ -17,13 +31,6 @@ export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
   rejected: "반려",
   sent: "발송완료",
 };
-
-/** 경위서가 연결 사고의 현재값을 라이브 미러하는지 여부.
- *  승인·발송 전(draft/rejected/pending_approval)은 사고가 단일 진실원 → 라이브 미러.
- *  승인 시 동결 스냅샷이 report 컬럼에 박히므로 approved/sent만 report 값(스냅샷)을 사용한다. */
-export function isReportLiveMirrored(status: ReportStatus): boolean {
-  return status !== "approved" && status !== "sent";
-}
 
 /** 경위서 본문 "3. 처리" 시간/내용 2열 표의 한 행. */
 export const handlingRowSchema = z.object({
@@ -89,8 +96,9 @@ export type IncidentReportUpdate = z.infer<typeof incidentReportUpdateSchema>;
 
 export const incidentReportSendSchema = z.object({
   id: z.string().uuid(),
-  recipient_emails: z
-    .array(z.string().email())
-    .min(1, "수신 이메일을 1개 이상 선택하세요."),
+  to_email: z.string().email("수신자 이메일이 올바르지 않습니다."),
+  cc_emails: z.array(z.string().email()).default([]),
+  subject: z.string().min(1, "제목을 입력하세요."),
+  body: z.string().min(1, "본문을 입력하세요."),
 });
 export type IncidentReportSend = z.infer<typeof incidentReportSendSchema>;
