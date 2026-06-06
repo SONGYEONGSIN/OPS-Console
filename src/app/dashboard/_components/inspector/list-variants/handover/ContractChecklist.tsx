@@ -20,6 +20,7 @@ export function ContractChecklist({
   onChange,
   readOnly = false,
   label = "계약서류",
+  embedded = false,
   children,
 }: {
   items: ChecklistItem[];
@@ -27,6 +28,8 @@ export function ContractChecklist({
   readOnly?: boolean;
   /** 헤더 라벨 (계약서류 / 제출서류 등) */
   label?: string;
+  /** 아코디언 내부 — 자체 제목 라벨을 숨기고 카운트만 표시. */
+  embedded?: boolean;
   /** 구분선 안에 함께 묶을 내용(메모 등) */
   children?: React.ReactNode;
 }) {
@@ -38,8 +41,10 @@ export function ContractChecklist({
       {/* 헤더 — 구분선 밖(위) */}
       <div className="flex items-center justify-between">
         <span className="text-muted">
-          <span className="font-bold text-ink-soft">{label}</span> (
-          {items.length}/{HANDOVER_CHECKLIST_MAX})
+          {!embedded && (
+            <span className="font-bold text-ink-soft">{label} </span>
+          )}
+          ({items.length}/{HANDOVER_CHECKLIST_MAX})
           {items.length > 0 && (
             <span className="ml-1 text-faint">· 완료 {received}/{items.length}</span>
           )}

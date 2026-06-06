@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { HandoverView } from "../View";
 import type { ListRow } from "../../../../patterns/ListPattern";
 
@@ -24,19 +24,29 @@ const row: ListRow = {
 };
 
 describe("HandoverView", () => {
+  // 작성상태 값은 기본정보 DefList 안에서 조회 (아코디언 배지 '작성완료/미작성'과 겹침 방지)
+  function statusRow() {
+    return within(screen.getByText("작성상태").closest("div") as HTMLElement);
+  }
+
   it("작성상태 색상 — 작성중=빨강 볼드 / 작성완료=세이지 볼드", () => {
     const { rerender } = render(
       <HandoverView row={{ ...row, handoverStatus: "draft" }} />,
     );
-    const draft = screen.getByText("작성중");
-    expect(draft).toHaveClass("font-bold", "text-vermilion");
+    expect(statusRow().getByText("작성중")).toHaveClass(
+      "font-bold",
+      "text-vermilion",
+    );
     rerender(<HandoverView row={{ ...row, handoverStatus: "ready" }} />);
-    expect(screen.getByText("작성완료")).toHaveClass("font-bold", "text-sage");
+    expect(statusRow().getByText("작성완료")).toHaveClass(
+      "font-bold",
+      "text-sage",
+    );
   });
 
   it("작성상태 미작성 — 회색", () => {
     render(<HandoverView row={{ ...row, handoverStatus: undefined }} />);
-    expect(screen.getByText("미작성")).toHaveClass("text-muted");
+    expect(statusRow().getByText("미작성")).toHaveClass("text-muted");
   });
 
   it("기본정보 — 학교명·서비스·접수구분 표시", () => {
@@ -81,7 +91,8 @@ describe("HandoverView", () => {
         }}
       />,
     );
-    expect(screen.getByText("계약서류")).toBeInTheDocument();
+    // 아코디언 헤더는 필드 라벨('계약자료'), 항목은 펼친 상태로 표시
+    expect(screen.getByText("계약자료")).toBeInTheDocument();
     expect(screen.getByText("계약서")).toBeInTheDocument();
   });
 });

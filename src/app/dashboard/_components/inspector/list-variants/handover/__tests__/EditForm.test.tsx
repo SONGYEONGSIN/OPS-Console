@@ -43,12 +43,13 @@ describe("HandoverEditForm", () => {
   it("카테고리 탭 + 첫 카테고리(계약) 필드 표시 + 기존 값 prefill", () => {
     setup();
     expect(screen.getByRole("button", { name: "계약" })).toBeInTheDocument();
-    // 계약정보 = 구조화 폼 (제목/형태/진행/상태)
+    // 계약정보 = 구조화 폼 (작성된 상태라 아코디언 펼침 → 제목/형태/진행/상태)
     expect(screen.getByLabelText("형태")).toHaveValue("수의");
     expect(screen.getByLabelText("상태")).toHaveValue("완료");
-    // 계약자료 = 계약서류 체크리스트 + 메모
-    expect(screen.getByText("계약서류")).toBeInTheDocument();
-    expect(screen.getByLabelText("계약자료 메모")).toBeInTheDocument();
+    // 계약자료는 별도 접이식 헤더로 표시
+    expect(
+      screen.getByRole("button", { name: /계약자료/ }),
+    ).toBeInTheDocument();
   });
 
   it("카테고리 탭(작업) 클릭 시 작업 필드(아코디언) 표시 + 펼치면 입력", () => {
@@ -65,6 +66,8 @@ describe("HandoverEditForm", () => {
 
   it("textarea 입력 시 setRow 호출", () => {
     const { setRow } = setup();
+    // 계약자료 아코디언 펼친 뒤 메모 입력
+    fireEvent.click(screen.getByRole("button", { name: /계약자료/ }));
     fireEvent.change(screen.getByLabelText("계약자료 메모"), {
       target: { value: "신규자료" },
     });
