@@ -10,6 +10,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
+import fs from "node:fs";
 import {
   deriveFormModel,
   bodyLines,
@@ -52,6 +53,15 @@ function ensureFontRegistered() {
     ],
   });
   fontRegistered = true;
+}
+
+// @react-pdf가 이 환경에서 파일 "경로 문자열"로는 이미지를 임베드하지 못한다(로고·직인 누락).
+// 파일을 Buffer로 읽어 { data, format }으로 넘기면 정상 임베드된다. (1회 로드 캐시)
+let logoSrc: { data: Buffer; format: "jpg" } | null = null;
+let sealSrc: { data: Buffer; format: "png" } | null = null;
+function loadImages() {
+  if (!logoSrc) logoSrc = { data: fs.readFileSync(LOGO_PATH), format: "jpg" };
+  if (!sealSrc) sealSrc = { data: fs.readFileSync(SEAL_PATH), format: "png" };
 }
 
 export type IncidentReportPdfInput = {
@@ -121,12 +131,12 @@ const styles = StyleSheet.create({
   },
   row: { marginBottom: 3 },
   bold: { fontWeight: 700 },
-  hr: { borderBottomWidth: 1, borderBottomColor: "#9a917f", marginVertical: 8 },
+  hr: { borderBottomWidth: 1, borderBottomColor: "#15120c", marginVertical: 8 },
   coverList: { marginLeft: 16, marginTop: 28 },
   attachLine: { marginLeft: 16 },
   coverItem: { flexDirection: "row", marginBottom: 18 },
   coverNum: { width: 18 },
-  coverText: { flex: 1, lineHeight: 1.625, textAlign: "justify" },
+  coverText: { flex: 1 },
   apology: { marginTop: 4 },
   companyWrap: {
     marginTop: 36,
@@ -137,7 +147,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   companyLine: { fontSize: 18, fontWeight: 700, letterSpacing: 1 },
-  seal: { position: "absolute", right: 128, top: -16, width: 63, height: 63 },
+  seal: { position: "absolute", right: 122, top: -16, width: 63, height: 63 },
   grayBar: { height: 7, backgroundColor: "#cfc9bb", marginTop: 40 },
   jeonkyeol: {
     fontSize: 9,
@@ -158,7 +168,7 @@ const styles = StyleSheet.create({
   },
   docRow: { fontSize: 9 },
   contact: {
-    marginTop: 8,
+    marginTop: 4,
     fontSize: 9,
     color: "#3a3528",
     lineHeight: 1.9,
@@ -171,18 +181,29 @@ const styles = StyleSheet.create({
   },
   contactSep: { color: "#9a917f" },
   reportTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 700,
     textAlign: "center",
-    letterSpacing: 11,
-    marginBottom: 14,
+    letterSpacing: 12,
+    marginTop: 8,
+    marginBottom: 42,
   },
-  authorRow: { textAlign: "right", fontSize: 9.5, fontWeight: 700, marginBottom: 12 },
+  authorRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    fontSize: 9.5,
+    fontWeight: 700,
+    marginBottom: 6,
+  },
+  authorName: { marginLeft: 30 },
   titleCell: {
     borderWidth: 1,
     borderColor: "#15120c",
     borderBottomWidth: 0,
-    padding: 8,
+    paddingTop: 11,
+    paddingBottom: 5,
+    paddingHorizontal: 8,
+    lineHeight: 1.0,
     fontWeight: 700,
   },
   bodyFrame: {
@@ -202,16 +223,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: "#15120c",
+    borderColor: "#8a8174",
   },
-  hTr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#999" },
+  hTr: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#8a8174",
+    alignItems: "stretch",
+  },
   hHead: { backgroundColor: "#efece3" },
   hTimeCell: {
     width: 110,
     padding: 4,
     borderRightWidth: 1,
-    borderRightColor: "#999",
+    borderRightColor: "#8a8174",
     fontSize: 9,
+    textAlign: "center",
   },
   hContentCell: { flex: 1, padding: 4, fontSize: 9 },
   hCellCenter: { textAlign: "center", fontWeight: 700 },
@@ -260,13 +287,14 @@ export async function renderIncidentReportPdf(
   input: IncidentReportPdfInput,
 ): Promise<Buffer> {
   ensureFontRegistered();
+  loadImages();
   const m = deriveFormModel(input);
   const doc = (
     <Document>
       {/* ① 공문 */}
       <Page size="A4" style={styles.page}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
-        <Image style={styles.logo} src={LOGO_PATH} />
+        <Image style={styles.logo} src={logoSrc!} />
         <Text style={styles.slogan}>{m.brandHeader}</Text>
         <View style={styles.logoRule} />
         <Text style={[styles.row, { marginTop: 14 }]}>
@@ -294,7 +322,7 @@ export async function renderIncidentReportPdf(
         <View style={styles.companyWrap}>
           {/* 직인 먼저(뒤), 회사명 나중(앞) → 글자가 직인 위로 */}
           {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원 */}
-          <Image style={styles.seal} src={SEAL_PATH} />
+          <Image style={styles.seal} src={sealSrc!} />
           <Text style={styles.companyLine}>{m.companyLine}</Text>
         </View>
 
@@ -305,15 +333,16 @@ export async function renderIncidentReportPdf(
             .filter((a) => a.name)
             .map((a) => (
               <Text key={a.role} style={styles.approvalItem}>
-                {a.role}  {a.name}
+                {a.role} {a.name}
               </Text>
             ))}
         </View>
         <View style={styles.docRowWrap}>
           <Text style={styles.docRow}>
-            시 행  {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
+            시 행{" "}
+            {m.docNumber ? `${m.docNumber} (${m.receiptDate})` : "(자동 채번)"}
           </Text>
-          <Text style={styles.docRow}>접 수 (        )</Text>
+          <Text style={styles.docRow}>접 수 ({" ".repeat(10)})</Text>
         </View>
         <View style={styles.contact}>
           {m.contactLines.map((line) => {
@@ -339,10 +368,11 @@ export async function renderIncidentReportPdf(
       {/* ② 경위서 본문 */}
       <Page size="A4" style={styles.page}>
         <Text style={styles.reportTitle}>경 위 서</Text>
-        <Text style={styles.authorRow}>
-          작 성 일 자 : {m.draftDate}        작 성 자 : {m.authorName}
-        </Text>
-        <Text style={styles.titleCell}>제    목 : {m.title}</Text>
+        <View style={styles.authorRow}>
+          <Text>작 성 일 자 : {m.draftDate}</Text>
+          <Text style={styles.authorName}>작 성 자 : {m.authorName}</Text>
+        </View>
+        <Text style={styles.titleCell}>제 목 : {m.title}</Text>
         <View style={styles.bodyFrame}>
           {m.sections.map((sec) => (
             <View key={sec.no} wrap={false}>
