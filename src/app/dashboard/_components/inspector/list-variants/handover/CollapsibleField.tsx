@@ -26,19 +26,19 @@ export function CollapsibleField({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full cursor-pointer items-center gap-2 py-2 text-xs"
       >
-        <span className="text-faint">{open ? "▾" : "▸"}</span>
-        <span
-          aria-hidden
-          className={`text-[0.6rem] ${filled ? "text-sage" : "text-faint"}`}
-        >
-          {filled ? "●" : "○"}
+        <span className="text-base leading-none text-muted">
+          {open ? "▾" : "▸"}
         </span>
         <span className="font-bold text-ink-soft">{label}</span>
-        {!filled && (
-          <span className="ml-auto border border-line-soft bg-washi px-1.5 py-0.5 text-2xs text-muted">
-            미작성
-          </span>
-        )}
+        <span
+          className={`ml-auto border px-1.5 py-0.5 text-2xs ${
+            filled
+              ? "border-sage/40 bg-sage/10 text-sage"
+              : "border-line-soft bg-washi text-muted"
+          }`}
+        >
+          {filled ? "작성완료" : "미작성"}
+        </span>
       </button>
       {open && <div className="pb-3 text-xs">{children}</div>}
     </div>

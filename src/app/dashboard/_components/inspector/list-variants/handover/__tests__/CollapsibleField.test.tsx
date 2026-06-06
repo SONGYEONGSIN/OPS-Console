@@ -23,21 +23,23 @@ describe("CollapsibleField", () => {
     expect(screen.getByText("본문내용")).toBeInTheDocument();
   });
 
-  it("미작성(filled=false)이면 헤더에 '미작성' 표시", () => {
+  it("미작성(filled=false)이면 헤더에 '미작성' 배지", () => {
     render(
       <CollapsibleField label="경쟁률" filled={false}>
         <p>x</p>
       </CollapsibleField>,
     );
     expect(screen.getByText("미작성")).toBeInTheDocument();
+    expect(screen.queryByText("작성완료")).toBeNull();
   });
 
-  it("작성됨(filled=true)이면 '미작성' 미표시", () => {
+  it("작성됨(filled=true)이면 헤더에 '작성완료' 배지", () => {
     render(
       <CollapsibleField label="기초작업" filled>
         <p>x</p>
       </CollapsibleField>,
     );
+    expect(screen.getByText("작성완료")).toBeInTheDocument();
     expect(screen.queryByText("미작성")).toBeNull();
   });
 });
