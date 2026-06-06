@@ -146,7 +146,7 @@ export function HandoverEditForm({
           </ContractChecklist>
         ) : (
           <label key={f.key} className="block text-xs">
-            <span className="mb-1 block text-muted">{f.label}</span>
+            <span className="mb-1 block font-bold text-ink-soft">{f.label}</span>
             <textarea
               aria-label={f.label}
               value={pickValue(row, f.key)}
