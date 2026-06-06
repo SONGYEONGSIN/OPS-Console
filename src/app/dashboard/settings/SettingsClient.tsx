@@ -143,6 +143,16 @@ function MailPanel({ env }: { env: EnvSnapshot }) {
         value={env.mail.dryRun}
         tone={env.mail.dryRun === "true" ? "warn" : "muted"}
       />
+      <Row
+        label="MAIL_MATCH_DRY_RUN"
+        value={env.mail.matchDryRun}
+        tone={env.mail.matchDryRun === "true" ? "warn" : "muted"}
+      />
+      <Row
+        label="WEEKLY_REPORT_DRY_RUN"
+        value={env.mail.weeklyReportDryRun}
+        tone={env.mail.weeklyReportDryRun === "true" ? "warn" : "muted"}
+      />
       <Row label="발송 임계 일수" value={env.mail.thresholdDays} tone="muted" />
       <Row label="회사명" value={env.mail.companyName} tone="muted" />
       <Row label="기본 URL" value={env.mail.baseUrl} tone="muted" />
