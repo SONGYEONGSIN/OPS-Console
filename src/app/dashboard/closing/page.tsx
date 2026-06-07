@@ -52,6 +52,7 @@ export default async function ClosingPage({
       variant="services"
       canCreate={false}
       readOnly
+      liveData
       footer={
         <ListPagination key="closing-pagination" total={total} pageSize={30} />
       }
