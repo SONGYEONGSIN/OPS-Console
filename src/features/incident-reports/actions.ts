@@ -216,7 +216,7 @@ export async function approveIncidentReport(
     const { data: inc } = await supabase
       .from("incidents")
       .select(
-        "university_name,service_name,cause_summary,root_cause,handling_rows,resolution,prevention",
+        "university_name,service_name,title,cause_summary,root_cause,handling_rows,resolution,prevention",
       )
       .eq("id", rep.incident_id)
       .maybeSingle();
@@ -224,6 +224,7 @@ export async function approveIncidentReport(
       snapshot = {
         recipient_university: inc.university_name,
         service_name: inc.service_name,
+        title: inc.title,
         gyeongwi: inc.cause_summary,
         cause: inc.root_cause,
         handling: inc.resolution,

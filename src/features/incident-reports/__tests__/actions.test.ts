@@ -290,6 +290,7 @@ describe("approveIncidentReport", () => {
         data: {
           university_name: "조선대학교",
           service_name: "수시모집",
+          title: "사고 제목X",
           cause_summary: "경위X",
           root_cause: "원인X",
           handling_rows: [{ time: "09.27", content: "처리X" }],
@@ -313,6 +314,7 @@ describe("approveIncidentReport", () => {
     expect(patch.status).toBe("approved");
     expect(patch.recipient_university).toBe("조선대학교");
     expect(patch.service_name).toBe("수시모집");
+    expect(patch.title).toBe("사고 제목X");
     expect(patch.gyeongwi).toBe("경위X");
     expect(patch.cause).toBe("원인X");
     expect(patch.prevention).toBe("대책X");
