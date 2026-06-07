@@ -81,3 +81,10 @@ scripts/incidents-sheet-cache.csv
 # legacy GAS 참고자료 — 하드코딩 시크릿 포함, README만 추적
 docs/legacy-gas/*
 !docs/legacy-gas/README.md
+
+# SmileEDI 원본 — 하드코딩 시크릿/토큰 포함. 정리본은 scripts/smileedi/ (시크릿 제거됨)
+docs/SmileEdi/*
+!docs/SmileEdi/README.md
+# 로컬 자격증명 (CI는 GitHub Actions Secrets 사용)
+scripts/smileedi/*.env
+scripts/smileedi/*token*

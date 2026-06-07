@@ -1,0 +1,60 @@
+name: smileedi-scrape
+
+on:
+  # 스케줄은 cron-job.org가 GitHub workflow_dispatch API로 호출 (다른 자동화와 일원화).
+  #   cron-job.org → POST /repos/<owner>/<repo>/actions/workflows/smileedi-scrape.yml/dispatches
+  #                  (Authorization: Bearer <GitHub PAT, Actions:write>, body {"ref":"main"})
+  # 스크래퍼는 SharePoint에 '역발행 세금계산서.xlsx'를 적재만 하고(SKIP_MAIL=true),
+  # 메일/이메일오류 갱신은 마지막 스텝에서 OPS-Console smileedi-mail 잡으로 체이닝.
+  workflow_dispatch:
+
+# Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 동작하도록 강제.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  scrape:
+    name: 스크래핑 → SharePoint 업로드 → smileedi-mail 체이닝
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install Python deps
+        run: pip install -r scripts/smileedi/requirements.txt
+
+      - name: Scrape + upload (메일 발송은 OPS-Console 담당 → SKIP_MAIL)
+        env:
+          # SmileEDI 로그인/엑셀 복호 — GitHub Actions Secrets (코드 하드코딩 제거됨)
+          SMILEEDI_USERNAME: ${{ secrets.SMILEEDI_USERNAME }}
+          SMILEEDI_PASSWORD: ${{ secrets.SMILEEDI_PASSWORD }}
+          EXCEL_DOWNLOAD_PASSWORD: ${{ secrets.SMILEEDI_EXCEL_PASSWORD }}
+          # SharePoint 업로드 (앱 권한 또는 사전 발급 토큰 — Q2 운영 검증 필요)
+          SHAREPOINT_TENANT_ID: ${{ secrets.SHAREPOINT_TENANT_ID }}
+          SHAREPOINT_CLIENT_ID: ${{ secrets.SHAREPOINT_CLIENT_ID }}
+          SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_DRIVE_ID: ${{ secrets.SHAREPOINT_SMILEEDI_DRIVE_ID }}
+          UPLOAD_FOLDER_PATH: "정산"
+          HEADLESS_MODE: "true"
+          # 검색기간은 미지정 시 회계연도 4/01~익년3/31 자동 산출(매년 +1)
+          SKIP_MAIL: "true"
+        run: python scripts/smileedi/tax_invoice.py
+
+      - name: Chain → OPS-Console smileedi-mail (조건부 메일 + 이메일오류 갱신)
+        env:
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${OPS_CONSOLE_BASE_URL%/}/api/automations/run?jobId=smileedi-mail"
