@@ -172,6 +172,14 @@ describe("sendBackupRequestMail", () => {
         expect.objectContaining({ email: "dave@example.com" }),
       ]),
     );
+    // 숨은 참조(BCC) = 운영 감사용 고정 수신자 3명
+    expect(call.bcc).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ email: "jiwu@jinhakapply.com" }),
+        expect.objectContaining({ email: "wndms0815@jinhakapply.com" }),
+        expect.objectContaining({ email: "kangsooji486@jinhakapply.com" }),
+      ]),
+    );
     expect(call.attachments).toBeDefined();
     expect(call.attachments[0].name).toMatch(/\.pdf$/);
     delete process.env.MAIL_DRY_RUN;
