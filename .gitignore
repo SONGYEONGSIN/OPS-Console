@@ -88,3 +88,7 @@ docs/SmileEdi/*
 # 로컬 자격증명 (CI는 GitHub Actions Secrets 사용)
 scripts/smileedi/*.env
 scripts/smileedi/*token*
+
+# Python
+__pycache__/
+*.pyc

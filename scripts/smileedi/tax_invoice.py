@@ -1018,70 +1018,42 @@ class SmileEDIScraper:
             return False
     
     def get_sharepoint_access_token(self):
-        """SharePoint 위임된 권한으로 액세스 토큰 획득"""
+        """SharePoint 액세스 토큰 — client_credentials(앱 권한). CI 무인 실행 호환.
+
+        기존 delegated(refresh_token + 인터랙티브 OAuth)에서 전환 — OPS-Console과 동일한
+        앱 권한 토큰을 사용한다. SHAREPOINT_TENANT_ID/CLIENT_ID/CLIENT_SECRET 필요.
+        """
         try:
-            print("[INFO] SharePoint 위임된 권한 토큰 획득 중...")
-            
-            # 1. 먼저 저장된 리프레시 토큰으로 토큰 갱신 시도
-            refresh_token = self.load_refresh_token()
-            if refresh_token:
-                print("[INFO] 저장된 리프레시 토큰으로 토큰 갱신 시도...")
-                new_token = self.refresh_access_token(refresh_token)
-                if new_token:
-                    print("[OK] 리프레시 토큰으로 토큰 갱신 성공")
-                    return new_token["access_token"]
-                else:
-                    print("[WARN] 리프레시 토큰 갱신 실패, 새로 인증 진행")
-            
-            # 2. 리프레시 토큰이 없거나 갱신 실패 시 새로 인증
-            print("[INFO] 새로 인증 진행...")
-            
-            # OAuth2 인증 URL 생성
-            auth_url = self.generate_auth_url()
-            
-            print(f"[INFO] 인증 URL 생성 완료")
-            print(f"[INFO] 브라우저를 자동으로 열어드립니다...")
-            
-            # 브라우저 자동 열기
-            try:
-                webbrowser.open(auth_url)
-                print(f"[OK] 브라우저가 열렸습니다.")
-            except Exception as e:
-                print(f"[WARN] 브라우저 자동 열기 실패: {str(e)}")
-                print(f"[INFO] 수동으로 다음 URL로 이동하세요:")
-                print(f"[URL] {auth_url}")
-            
-            print()
-            print("[INFO] 로그인 후 리다이렉트 URL에서 'code=' 뒤의 값을 복사하세요.")
-            print("[INFO] 예: http://localhost:8080/?code=0.AAAA... -> 0.AAAA... 부분을 복사")
-            print()
-            
-            # 사용자에게 인증 코드 입력 요청
-            auth_code = input("인증 후 받은 코드를 입력하세요: ").strip()
-            
-            if not auth_code:
-                print("[FAIL] 인증 코드가 입력되지 않았습니다.")
+            print("[INFO] SharePoint client_credentials 토큰 획득 중...")
+            tenant_id = self.sharepoint_tenant_id
+            client_id = self.sharepoint_client_id
+            client_secret = self.sharepoint_client_secret
+            if not (tenant_id and client_id and client_secret):
+                print("[FAIL] SHAREPOINT_TENANT_ID/CLIENT_ID/CLIENT_SECRET 환경변수 누락")
                 return None
-            
-            # 인증 코드로 토큰 교환
-            token = self.exchange_code_for_token(auth_code)
-            
-            if token:
-                print("[OK] 위임된 권한 토큰 획득 완료")
-                print(f"[INFO] 토큰 만료 시간: {token.get('expires_in', 'Unknown')}초")
-                
-                # 리프레시 토큰 저장
-                if 'refresh_token' in token:
-                    self.save_refresh_token(token['refresh_token'])
-                    print("[OK] 리프레시 토큰 저장 완료")
-                
-                return token["access_token"]
-            else:
-                print("[FAIL] 토큰 교환 실패")
+
+            token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+            data = {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "scope": "https://graph.microsoft.com/.default",
+            }
+            res = requests.post(token_url, data=data, timeout=30)
+            if res.status_code != 200:
+                print(f"[FAIL] 토큰 요청 실패: {res.status_code} {res.text[:300]}")
                 return None
-                
+
+            access_token = res.json().get("access_token")
+            if not access_token:
+                print("[FAIL] 응답에 access_token 없음")
+                return None
+
+            print("[OK] client_credentials 토큰 획득 완료")
+            return access_token
+
         except Exception as e:
-            print(f"[FAIL] SharePoint 위임된 권한 인증 실패: {str(e)}")
+            print(f"[FAIL] SharePoint 토큰 획득 실패: {str(e)}")
             return None
     
     def generate_auth_url(self):
