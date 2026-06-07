@@ -68,7 +68,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "세금계산서 역발행 알림",
     description:
       "역발행 세금계산서를 담당자별로 묶어 담당 운영자 본인 메일박스에서 발송하고, 발송 건의 이메일오류를 'Y'로 갱신합니다.\n스크래핑(GitHub Actions)이 시트를 적재한 뒤 자동 호출됩니다.",
-    scheduleInfo: "스크래핑 워크플로 말미 체이닝 (cron-job.org → GitHub Actions)",
+    scheduleInfo: "평일 10:00 (cron-job.org → 스크래핑 후 체이닝)",
     cooldownMinutes: 60,
     run: runSmileEdiMail,
   },
