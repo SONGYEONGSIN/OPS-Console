@@ -253,6 +253,8 @@ export type ListRow = {
   source?: string;
   /** services 도메인 — import 시각 (ISO, nullable) */
   importedAt?: string | null;
+  /** closing 도메인 — 스크래핑 시각 (ISO). 마감 판정 기준시각 + 배치 식별. */
+  scrapedAt?: string;
   /** contracts 도메인 — 시트 dim ("4년제" | "전문대" | "초중고" | "대학원" | "기타") */
   contractSheet?: string;
   /** contracts 도메인 — 넘버링 (D-1-01 등) */
