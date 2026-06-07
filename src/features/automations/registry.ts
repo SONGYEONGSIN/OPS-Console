@@ -7,6 +7,7 @@ import { runReceivablesDepositMatch } from "./jobs/receivables-deposit-match";
 import { runServiceNoticeMail } from "./jobs/service-notice-mail";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
+import { runClosingScrape } from "./jobs/closing-scrape";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -71,6 +72,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "평일 10:00 (cron-job.org → 스크래핑 → 자동 메일 발송)",
     cooldownMinutes: 60,
     run: runSmileEdiMail,
+  },
+  {
+    id: "closing-scrape",
+    label: "서비스 마감 스크래핑",
+    description:
+      "Moa 서비스조회를 스크래핑해 작성마감이 지난 서비스를 '서비스 마감' 페이지에 적재하는 GitHub Actions 워크플로를 트리거합니다.\n격주(월) 실행 여부는 워크플로가 판정하며, OFF주에는 즉시 종료됩니다.",
+    scheduleInfo: "매주 월요일 10:00 (cron-job.org → OPS → GitHub Actions, 격주 실행)",
+    cooldownMinutes: 60,
+    run: runClosingScrape,
   },
 ];
 

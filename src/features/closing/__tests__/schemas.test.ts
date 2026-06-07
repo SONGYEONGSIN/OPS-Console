@@ -51,6 +51,30 @@ describe("closingRowSchema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("접수구분/결제기간(14컬럼) 파싱 + 값 보존", () => {
+    const r = closingRowSchema.safeParse({
+      ...validRow,
+      admission_type: "수시",
+      pay_start_at: "2026-03-01T00:01:00+09:00",
+      pay_end_at: "2026-09-15T18:00:00+09:00",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.admission_type).toBe("수시");
+      expect(r.data.pay_end_at).toBe("2026-09-15T18:00:00+09:00");
+    }
+  });
+
+  it("접수구분/결제기간 null 허용", () => {
+    const r = closingRowSchema.safeParse({
+      ...validRow,
+      admission_type: null,
+      pay_start_at: null,
+      pay_end_at: null,
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("closingIngestSchema", () => {

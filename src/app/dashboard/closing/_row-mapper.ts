@@ -3,7 +3,9 @@ import type { ClosingRow } from "@/features/closing/schemas";
 
 /**
  * closing_services(DB) → ListRow. services variant를 재사용하므로 services 필드명에 매핑.
- * 읽기 전용(편집/생성 없음)이라 operatorEmail/payStartAt 등 편집 전용 필드는 생략.
+ * 읽기 전용(편집/생성 없음)이라 operatorEmail 등 FK 편집 필드는 생략.
+ * 결제기간(payStartAt/payEndAt)은 14컬럼 적재분 매핑. 접수구분(admission_type)은
+ * ListRow에 대응 필드가 없어 DB에만 저장(services Table/View 미표시).
  */
 export function closingRowToListRow(r: ClosingRow): ListRow {
   return {
@@ -21,6 +23,8 @@ export function closingRowToListRow(r: ClosingRow): ListRow {
     developerName: r.developer_name ?? null,
     writeStartAt: r.write_start_at ?? null,
     writeEndAt: r.write_end_at,
+    payStartAt: r.pay_start_at ?? null,
+    payEndAt: r.pay_end_at ?? null,
     solo: r.solo,
     scrapedAt: r.scraped_at,
   };

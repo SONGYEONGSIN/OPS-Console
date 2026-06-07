@@ -54,10 +54,13 @@ export async function POST(request: Request) {
     service_name: r.service_name,
     university_type: r.university_type ?? null,
     category: r.category ?? null,
+    admission_type: r.admission_type ?? null,
     operator_name: r.operator_name ?? null,
     developer_name: r.developer_name ?? null,
     write_start_at: r.write_start_at ?? null,
     write_end_at: r.write_end_at,
+    pay_start_at: r.pay_start_at ?? null,
+    pay_end_at: r.pay_end_at ?? null,
     solo: r.solo,
     scraped_at,
   }));

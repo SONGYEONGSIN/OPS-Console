@@ -17,10 +17,13 @@ export const closingRowSchema = z.object({
   service_name: z.string().min(1),
   university_type: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
+  admission_type: z.string().nullable().optional(), // 접수구분(수시/정시/추가 등)
   operator_name: z.string().nullable().optional(),
   developer_name: z.string().nullable().optional(),
   write_start_at: z.string().datetime({ offset: true }).nullable().optional(),
   write_end_at: z.string().datetime({ offset: true }),
+  pay_start_at: z.string().datetime({ offset: true }).nullable().optional(), // 결제시작
+  pay_end_at: z.string().datetime({ offset: true }).nullable().optional(), // 결제마감
   solo: z.boolean(),
 });
 
@@ -45,10 +48,13 @@ export const closingServicesRowSchema = z.object({
   service_name: z.string(),
   university_type: z.string().nullable(),
   category: z.string().nullable(),
+  admission_type: z.string().nullable(),
   operator_name: z.string().nullable(),
   developer_name: z.string().nullable(),
   write_start_at: z.string().nullable(),
   write_end_at: z.string(),
+  pay_start_at: z.string().nullable(),
+  pay_end_at: z.string().nullable(),
   solo: z.boolean(),
   scraped_at: z.string(),
   created_at: z.string(),

@@ -1,0 +1,51 @@
+name: moa-closing-scrape
+
+on:
+  # 스케줄은 OPS-Console closing-scrape 자동화 잡이 GitHub workflow_dispatch API로 호출.
+  #   cron-job.org → POST /api/automations/run?jobId=closing-scrape (Bearer CRON_SECRET)
+  #                → closing-scrape.run() → GitHub workflow_dispatch (GITHUB_DISPATCH_TOKEN)
+  # 격주(월) 실행 여부는 본 워크플로의 스크래퍼가 판정한다(off주 exit 0).
+  # GitHub UI에서 직접 실행하면 격주 게이트를 우회하지 않고 그대로 스크래퍼가 판정한다.
+  workflow_dispatch:
+
+# Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 동작하도록 강제.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  scrape:
+    name: Moa 서비스조회 스크래핑 → closing 인제스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install Python deps
+        run: pip install -r scripts/moa-closing/requirements.txt
+
+      - name: Scrape Moa → POST /api/closing/ingest (격주 게이트는 스크래퍼가 판정)
+        env:
+          # Moa 로그인 — GitHub Actions Secrets
+          MOA_USERNAME: ${{ secrets.MOA_USERNAME }}
+          MOA_PASSWORD: ${{ secrets.MOA_PASSWORD }}
+          # SMS 2FA 코드 회수 (make 웹훅 GET — 응답=SMS 본문)
+          MAKE_SMS_CODE_URL: ${{ secrets.MAKE_SMS_CODE_URL }}
+          # OPS-Console 인제스트
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # 동작 파라미터 (비밀 아님 — 기본값은 scrape.py에 내장, 필요 시 override)
+          HEADLESS_MODE: "true"
+          CLOSING_BIWEEKLY_ANCHOR: "2026-06-08"
+          MOA_SMS_POLL_TIMEOUT_SEC: "90"
+          MOA_SMS_POLL_INTERVAL_SEC: "3"
+          # CLOSING_DRY_RUN: "true"  # 추출만 하고 인제스트 미전송 (검증용)
+        run: python scripts/moa-closing/scrape.py
