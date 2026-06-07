@@ -25,6 +25,9 @@ const group: SmileEdiGroup = {
       taxAmount: "100000",
       companyName: "서강대학교",
       receiverDept: "입학처",
+      contactName: "민현희",
+      contactPhone: "02-901-8000",
+      contactEmail: "ipak@duksung.ac.kr",
       supplierManager: "",
       approvalNumber: "A-1",
       emailError: "",
@@ -54,6 +57,12 @@ describe("smileedi mail-template", () => {
     expect(html).toContain("박시현");
     expect(html).toContain("서강대학교");
     expect(html).toContain("1,000,000");
+    // 담당자 컬럼(공급받는자) 추가 — 헤더 + 값
+    expect(html).toContain("담당자명");
+    expect(html).toContain("담당자연락처");
+    expect(html).toContain("담당자이메일");
+    expect(html).toContain("민현희");
+    expect(html).toContain("ipak@duksung.ac.kr");
   });
 
   it("HTML — 안내 문구 (K시스템 전표 + 김승현 매니저 작성완료 회신)", () => {
