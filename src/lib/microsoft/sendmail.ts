@@ -31,6 +31,8 @@ export type SendGraphMailArgs = {
   toName?: string;
   /** CC 수신자 (선택) */
   cc?: GraphMailRecipient[];
+  /** BCC 숨은 참조 수신자 (선택) */
+  bcc?: GraphMailRecipient[];
   subject: string;
   /** HTML body (text 미지정 시 사용) */
   html?: string;
@@ -52,8 +54,17 @@ export type SendGraphMailArgs = {
 export async function sendGraphMail(
   args: SendGraphMailArgs,
 ): Promise<SendMailResult> {
-  const { senderUserId, toEmail, toName, cc, subject, html, text, attachments } =
-    args;
+  const {
+    senderUserId,
+    toEmail,
+    toName,
+    cc,
+    bcc,
+    subject,
+    html,
+    text,
+    attachments,
+  } = args;
 
   let token: string;
   try {
@@ -69,14 +80,17 @@ export async function sendGraphMail(
     senderUserId,
   )}/sendMail`;
 
-  const ccRecipients =
-    cc && cc.length > 0
-      ? cc.map((r) => ({
+  const toGraphRecipients = (list?: GraphMailRecipient[]) =>
+    list && list.length > 0
+      ? list.map((r) => ({
           emailAddress: r.name
             ? { address: r.email, name: r.name }
             : { address: r.email },
         }))
       : undefined;
+
+  const ccRecipients = toGraphRecipients(cc);
+  const bccRecipients = toGraphRecipients(bcc);
 
   // 본문이 브랜드 로고(cid)를 참조하면 인라인 로고 첨부를 자동 주입.
   // 발송 지점은 별도 변경 없이 brandLogoImg()를 헤더에 넣기만 하면 된다.
@@ -118,6 +132,7 @@ export async function sendGraphMail(
     ],
   };
   if (ccRecipients) message.ccRecipients = ccRecipients;
+  if (bccRecipients) message.bccRecipients = bccRecipients;
   if (mailAttachments) message.attachments = mailAttachments;
 
   const payload = {

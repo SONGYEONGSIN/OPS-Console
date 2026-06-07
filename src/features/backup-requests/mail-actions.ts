@@ -28,6 +28,13 @@ const AUTH_ERROR = "로그인이 필요합니다.";
 const NOT_FOUND_ERROR = "백업 요청을 찾을 수 없습니다.";
 const BACKUP_PATH = "/dashboard/backup";
 
+// 백업요청 메일 숨은 참조(BCC) — 운영 감사용 고정 수신자. 수신자(To)/CC에 노출되지 않는다.
+const BACKUP_REQUEST_BCC: GraphMailRecipient[] = [
+  { name: "박지우", email: "jiwu@jinhakapply.com" },
+  { name: "김주은", email: "wndms0815@jinhakapply.com" },
+  { name: "강수지", email: "kangsooji486@jinhakapply.com" },
+];
+
 function isDryRun(): boolean {
   return process.env.MAIL_DRY_RUN === "true";
 }
@@ -209,6 +216,7 @@ export async function sendBackupRequestMail(
       toEmail: recipientEmail,
       toName: group.name,
       cc,
+      bcc: BACKUP_REQUEST_BCC,
       subject,
       html,
       attachments: [
