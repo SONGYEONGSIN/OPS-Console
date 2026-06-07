@@ -39,6 +39,10 @@ export function loadSmileEdiConfig(
   const companyManager = parseKeyValMap(env.SMILEEDI_COMPANY_MANAGER_MAP);
   const defaultManager = (env.SMILEEDI_DEFAULT_MANAGER ?? "").trim();
   const senderEmail = (env.SMILEEDI_SENDER_EMAIL ?? "").trim();
+  // 공통 CC — "이름:이메일,이름:이메일" (선택). 미설정 시 CC 없음.
+  const cc = Object.entries(parseKeyValMap(env.SMILEEDI_CC)).map(
+    ([name, email]) => ({ name, email }),
+  );
 
   const missing: string[] = [];
   if (itemKeywords.length === 0) missing.push("SMILEEDI_ITEM_KEYWORDS");
@@ -51,7 +55,7 @@ export function loadSmileEdiConfig(
 
   return {
     ok: true,
-    config: { itemKeywords, companyManager, managerEmail, defaultManager },
+    config: { itemKeywords, companyManager, managerEmail, defaultManager, cc },
     senderEmail,
   };
 }

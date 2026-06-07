@@ -31,6 +31,8 @@ export type SmileEdiMappingConfig = {
   managerEmail: Record<string, string>;
   /** 규칙·매핑 미매치 시 기본 담당자명 (원본 폴백 '송영신') */
   defaultManager: string;
+  /** 모든 메일 공통 CC (받는사람과 중복 시 제외). 미설정 시 빈 배열. */
+  cc?: { email: string; name: string }[];
 };
 
 /** 담당자별로 묶인 발송 그룹. */
