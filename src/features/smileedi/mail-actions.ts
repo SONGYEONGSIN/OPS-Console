@@ -3,6 +3,7 @@ import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildSmileEdiSubject, buildSmileEdiHtml, sumSupplyAmount } from "./mail-template";
 import { markEmailErrorY } from "./sheet-write";
+import { ccForRecipient, type CcRecipient } from "./cc";
 import type { SmileEdiGroup } from "./types";
 
 const HISTORY_TABLE = "smileedi_mail_sends";
@@ -42,7 +43,12 @@ function sleep(ms: number): Promise<void> {
 export async function sendSmileEdiMails(
   groups: SmileEdiGroup[],
   sheetMeta: { worksheetName: string; emailErrorColIdx: number },
-  options: { dryRun: boolean; senderEmail: string; fiscalYearStart: string },
+  options: {
+    dryRun: boolean;
+    senderEmail: string;
+    fiscalYearStart: string;
+    cc?: CcRecipient[];
+  },
 ): Promise<SendSmileEdiResult> {
   if (groups.length === 0) return { sent: 0, failed: 0, dryRun: 0 };
 
@@ -73,10 +79,13 @@ export async function sendSmileEdiMails(
       continue;
     }
 
+    // 공통 CC에서 받는사람과 중복되는 항목 제외
+    const cc = ccForRecipient(options.cc ?? [], group.recipientEmail);
     const sendRes = await sendGraphMail({
       senderUserId: options.senderEmail,
       toEmail: group.recipientEmail,
       toName: group.managerName,
+      cc: cc.length > 0 ? cc : undefined,
       subject: buildSmileEdiSubject(group.managerName),
       html: buildSmileEdiHtml(group),
     });

@@ -55,7 +55,12 @@ export async function runSmileEdiMail(): Promise<AutomationRunResult> {
   const result = await sendSmileEdiMails(
     groups,
     { worksheetName: sheet.worksheetName, emailErrorColIdx: sheet.emailErrorColIdx },
-    { dryRun, senderEmail: cfg.senderEmail, fiscalYearStart: range.startYmd },
+    {
+      dryRun,
+      senderEmail: cfg.senderEmail,
+      fiscalYearStart: range.startYmd,
+      cc: cfg.config.cc,
+    },
   );
 
   const defaultRouted = groups.filter((g) => g.routedByDefault).length;

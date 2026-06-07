@@ -24,6 +24,7 @@ describe("loadSmileEdiConfig", () => {
     SMILEEDI_DEFAULT_MANAGER: "송영신",
     SMILEEDI_SENDER_EMAIL: "ops@x.com",
     SMILEEDI_COMPANY_MANAGER_MAP: "고려대학교:박시현",
+    SMILEEDI_CC: "박시현:pkm0313@x.com,김승현:ksh@x.com",
   } as unknown as NodeJS.ProcessEnv;
 
   it("정상 — config + senderEmail", () => {
@@ -34,7 +35,19 @@ describe("loadSmileEdiConfig", () => {
       expect(r.config.itemKeywords).toContain("수수료");
       expect(r.config.managerEmail["박시현"]).toBe("park@x.com");
       expect(r.config.defaultManager).toBe("송영신");
+      expect(r.config.cc).toEqual([
+        { name: "박시현", email: "pkm0313@x.com" },
+        { name: "김승현", email: "ksh@x.com" },
+      ]);
     }
+  });
+
+  it("SMILEEDI_CC 미설정 시 빈 배열", () => {
+    const { SMILEEDI_CC: _omit, ...noCc } = full;
+    void _omit;
+    const r = loadSmileEdiConfig(noCc as NodeJS.ProcessEnv);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.config.cc).toEqual([]);
   });
 
   it("필수 누락 시 즉시 실패 (폴백 금지)", () => {
