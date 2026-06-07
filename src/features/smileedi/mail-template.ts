@@ -43,6 +43,9 @@ export function buildSmileEdiHtml(group: SmileEdiGroup): string {
         <td style="padding:10px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">${escapeHtml(formatAmount(r.taxAmount))}</td>
         <td style="padding:10px;border-bottom:1px solid #eee;">${escapeHtml(r.companyName)}</td>
         <td style="padding:10px;border-bottom:1px solid #eee;">${escapeHtml(r.receiverDept)}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee;">${escapeHtml(r.contactName)}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee;white-space:nowrap;">${escapeHtml(r.contactPhone)}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee;">${escapeHtml(r.contactEmail)}</td>
       </tr>`,
     )
     .join("");
@@ -71,6 +74,9 @@ export function buildSmileEdiHtml(group: SmileEdiGroup): string {
             <th style="padding:10px;text-align:right;">세액</th>
             <th style="padding:10px;text-align:left;">거래처명</th>
             <th style="padding:10px;text-align:left;">담당부서</th>
+            <th style="padding:10px;text-align:left;">담당자명</th>
+            <th style="padding:10px;text-align:left;">담당자연락처</th>
+            <th style="padding:10px;text-align:left;">담당자이메일</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>

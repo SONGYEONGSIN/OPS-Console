@@ -13,6 +13,9 @@ export type SmileEdiRow = {
   taxAmount: string; // 세액
   companyName: string; // 거래처명
   receiverDept: string; // 담당부서-공급받는자
+  contactName: string; // 담당자명-공급받는자
+  contactPhone: string; // 담당자연락처-공급받는자
+  contactEmail: string; // 공급받는자이메일
   supplierManager: string; // 담당자명-공급자
   approvalNumber: string; // 승인번호
   emailError: string; // 이메일오류 ('Y'면 발송 제외)
