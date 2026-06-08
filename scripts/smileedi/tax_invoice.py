@@ -16,7 +16,9 @@ import json
 import pandas as pd
 import smtplib
 import io
+import re
 import shutil
+from openpyxl.utils import get_column_letter
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -1497,9 +1499,10 @@ class SmileEDIScraper:
             elif comparison_result['has_new_data']:
                 print(f"[INFO] 새로운 데이터 {len(comparison_result['new_data'])}건 발견.")
                 print("[INFO] 기존 파일에 새로운 내용만 추가합니다 (새 파일 업로드 없음).")
-                
-                # 3. 기존 파일에 새로운 데이터만 추가 (이메일오류='Y' 데이터 보호)
-                return self.update_existing_file_content_only(access_token, existing_file_id, existing_df, comparison_result['new_data'], filename)
+
+                # 3. 신규 행만 Excel workbook range API로 시트 끝에 append.
+                #    (파일이 Excel로 열려 있어도 동작, 기존 행은 절대 안 지움 — 드롭 버그 원천 차단)
+                return self.append_new_rows_via_workbook(access_token, existing_file_id, list(existing_df.columns), comparison_result['new_data'], filename)
             else:
                 print("[INFO] 새로운 데이터가 없습니다. 기존 파일을 그대로 유지합니다.")
                 return True
@@ -1581,6 +1584,124 @@ class SmileEDIScraper:
             import traceback
             print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
             return None
+
+    def append_new_rows_via_workbook(self, access_token, existing_file_id, columns, new_rows, filename):
+        """신규 행만 Excel workbook range API로 시트 끝에 append (파일 열려 있어도 동작, 기존 행 불변).
+
+        - columns: 시트 컬럼명 순서 리스트(= existing_df.columns, 43개)
+        - new_rows: 신규 행(pandas Series) 리스트
+        전체 파일 PUT 대신 Graph Excel workbook REST API로 신규 행만 시트 끝에 추가한다.
+        파일이 Excel로 열려 있어 잠겨도(423) 동작하고, 기존 행을 절대 건드리지 않는다.
+        """
+        base = (
+            f"https://graph.microsoft.com/v1.0/sites/{self.sharepoint_site_id}"
+            f"/drives/{self.sharepoint_drive_id}/items/{existing_file_id}/workbook"
+        )
+        auth_headers = {"Authorization": f"Bearer {access_token}"}
+        session_id = None
+        ws = None
+        try:
+            print(f"[INFO] workbook range API로 신규 {len(new_rows)}건 append 중: {filename}")
+
+            # 1. 워크시트명 조회
+            ws_resp = requests.get(
+                f"{base}/worksheets?$top=1&$select=name", headers=auth_headers
+            )
+            if not ws_resp.ok:
+                print(f"[FAIL] 워크시트 조회 실패: {ws_resp.status_code} {ws_resp.text[:200]}")
+                return False
+            ws_values = ws_resp.json().get('value', [])
+            if not ws_values:
+                print("[FAIL] 워크시트가 없습니다.")
+                return False
+            ws = ws_values[0]['name']
+            print(f"[INFO] 대상 워크시트: {ws}")
+
+            # 2. 세션 생성 (변경 영속화)
+            sess_resp = requests.post(
+                f"{base}/createSession",
+                headers={**auth_headers, "Content-Type": "application/json"},
+                json={"persistChanges": True},
+            )
+            if not sess_resp.ok:
+                print(f"[FAIL] 세션 생성 실패: {sess_resp.status_code} {sess_resp.text[:200]}")
+                return False
+            session_id = sess_resp.json().get('id')
+            session_headers = {**auth_headers, "workbook-session-id": session_id}
+
+            # 3. usedRange로 마지막 데이터 행 파악
+            used_resp = requests.get(
+                f"{base}/worksheets('{ws}')/usedRange(valuesOnly=true)?$select=address,rowCount",
+                headers=session_headers,
+            )
+            if not used_resp.ok:
+                print(f"[FAIL] usedRange 조회 실패: {used_resp.status_code} {used_resp.text[:200]}")
+                return False
+            used_json = used_resp.json()
+            address = used_json.get('address', '')  # 예: 'Sheet!A1:AQ113' 또는 'A1:AQ113'
+            last_row = None
+            m = re.search(r'(\d+)\s*$', address)
+            if m:
+                last_row = int(m.group(1))
+            else:
+                # 폴백: rowCount + usedRange 시작 행(없으면 1)으로 계산
+                row_count = int(used_json.get('rowCount', 0))
+                sm = re.search(r'[A-Z]+(\d+)', address.split(':')[0].split('!')[-1])
+                start_row = int(sm.group(1)) if sm else 1
+                last_row = start_row + row_count - 1 if row_count > 0 else 0
+            print(f"[INFO] usedRange={address!r} → 마지막 데이터 행={last_row}")
+
+            # 4. 값 매트릭스 생성 (NaN/None/누락 → "", 그 외 str(v), 길이는 len(columns) 고정)
+            n_cols = len(columns)
+            values = []
+            for r in new_rows:
+                row_vals = []
+                for col in columns:
+                    if col in r:
+                        v = r[col]
+                        if pd.isna(v):
+                            row_vals.append("")
+                        else:
+                            row_vals.append(str(v))
+                    else:
+                        row_vals.append("")
+                row_vals = row_vals[:n_cols] + [""] * (n_cols - len(row_vals))
+                values.append(row_vals)
+
+            # 5. 대상 범위 계산
+            last_col = get_column_letter(n_cols)  # 43 → 'AQ'
+            start = last_row + 1
+            end = last_row + len(new_rows)
+            address_range = f"A{start}:{last_col}{end}"
+
+            # 6. range PATCH (값 기록)
+            patch_resp = requests.patch(
+                f"{base}/worksheets('{ws}')/range(address='{address_range}')",
+                headers={**session_headers, "Content-Type": "application/json"},
+                json={"values": values},
+            )
+            if not patch_resp.ok:
+                print(f"[FAIL] append 실패: {patch_resp.status_code} {patch_resp.text[:200]}")
+                return False
+
+            print(f"[OK] 신규 {len(new_rows)}건 append 완료 (range {address_range})")
+            return True
+
+        except Exception as e:
+            print(f"[FAIL] append 실패: {str(e)}")
+            import traceback
+            print(f"[DEBUG] 상세 오류: {traceback.format_exc()}")
+            return False
+        finally:
+            # 7. 세션 종료 (실패해도 무시)
+            if session_id is not None:
+                try:
+                    requests.post(
+                        f"{base}/closeSession",
+                        headers={**auth_headers, "workbook-session-id": session_id},
+                    )
+                except Exception as e:
+                    print(f"[WARN] 세션 종료 실패(무시): {str(e)}")
 
     def update_existing_file_content_only(self, access_token, existing_file_id, existing_df, new_data, filename):
         """기존 파일에 새로운 데이터만 추가 (새 파일 업로드 없이 기존 파일 직접 업데이트) - 원본 구조 보존"""
@@ -1840,21 +1961,13 @@ class SmileEDIScraper:
             # 데이터 비교 (작성일자, 품목, 거래처명을 기준으로 고유성 확인)
             print("[INFO] 데이터 중복 확인 중...")
             
-            # 기존 데이터의 고유 키 생성 — '이미 있음' 기준은 '이메일오류=Y'(발송완료) 행만.
-            # (버그 수정) 미발송(non-Y) 기존 행을 기준에 넣으면, 같은 건이 다음 스크랩에서
-            # '중복'으로 빠지고 동시에 보호(protected=Y)에도 안 들어가 머지 결과에서 삭제된다.
-            # → 발송완료(Y)만 기준으로 삼아, 미발송 대기 건은 매 스크랩에 다시 포함·보존한다.
-            # 이메일오류 컬럼명은 substring으로 탐지(protected_rows와 동일). 못 찾으면 기존 동작으로 폴백.
-            email_error_col = next(
-                (c for c in existing_df.columns if '이메일오류' in str(c)), None
-            )
+            # 기존 데이터의 고유 키 생성 — append 방식: 기존 전체 행을 중복 기준으로 사용한다.
+            # (이전엔 전체교체 머지가 비-Y 행을 드롭하던 것을 보정하려 '이메일오류=Y'(발송완료)
+            #  행만 기준으로 삼았다. 이제 append 방식은 기존 행을 절대 안 지우므로, 비-Y 대기 행이
+            #  매 스크랩마다 또 append되어 중복되는 것을 막기 위해 모든 기존 행을 기준에 넣는다.
+            #  → Y-only 특례 불요.)
             existing_keys = set()
             for _, row in existing_df.iterrows():
-                if email_error_col is not None:
-                    v = row[email_error_col]
-                    sent = (not pd.isna(v)) and str(v).strip().upper() == 'Y'
-                    if not sent:
-                        continue  # 미발송 대기 건 — 신규 판정 대상에서 제외하지 않음(보존)
                 작성일자 = self._get_column_value(row, ['작성일자'])
                 품목 = self._get_column_value(row, ['품목'])
                 거래처명 = self._get_column_value(row, ['거래처명'])
