@@ -22,7 +22,9 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          # 3.11 고정 — undetected-chromedriver가 distutils를 import하는데
+          # Python 3.12는 distutils를 제거(PEP 632)해 ModuleNotFoundError 발생.
+          python-version: "3.11"
 
       - name: Install Chrome
         uses: browser-actions/setup-chrome@v1
