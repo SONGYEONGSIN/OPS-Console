@@ -9,7 +9,10 @@ import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
 import { fetchMatchAliases } from "@/features/receivables-match/alias-queries";
 import { toMisuRows } from "@/features/receivables-match/misu-rows";
-import { enrichMatchedForLog } from "@/features/automations/run-logs-normalize";
+import {
+  enrichMatchedForLog,
+  formatKrw,
+} from "@/features/automations/run-logs-normalize";
 import type {
   MatchPair,
   MismatchPair,
@@ -72,6 +75,8 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   // 이미 입금완료라 PATCH를 건너뛴 양성 스킵 — 에러가 아니므로 ok/error_count에서 제외.
   // 이력 가시성을 위해 payload.skips로 별도 보관한다.
   const skips: string[] = [];
+  // 미수행 번호 → 거래처명 (skip 로그에 행번호 대신 거래처/금액 표시).
+  const misuByRow = new Map(misuRows.map((m) => [m.rowNumber, m.customer]));
   const successfulPatches: MatchPair[] = [];
   for (let i = 0; i < result.matched.length; i++) {
     const pair = result.matched[i];
@@ -84,7 +89,9 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
     if (patchRes.ok) {
       successfulPatches.push(pair);
     } else if (patchRes.skipped) {
-      skips.push(`row ${pair.misuRows[0]} 이미 입금완료 — skip`);
+      const misuRowNum = pair.misuRows[0];
+      const customer = misuByRow.get(misuRowNum) ?? `행${misuRowNum}`;
+      skips.push(`${formatKrw(pair.amount)} ${customer} 이미 입금완료 — skip`);
     } else if (patchRes.errorMessage) {
       errors.push(patchRes.errorMessage);
     }

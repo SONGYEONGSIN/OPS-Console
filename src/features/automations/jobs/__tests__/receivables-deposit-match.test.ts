@@ -166,5 +166,8 @@ describe("runReceivablesDepositMatch", () => {
     expect(insertArg.matched_count).toBe(0);
     expect(insertArg.payload.skips).toHaveLength(1);
     expect(insertArg.payload.errors).toHaveLength(0);
+    // skip 메시지에 거래처명 + 금액 표시 (행번호 대신 가독성)
+    expect(insertArg.payload.skips[0]).toContain("가천대");
+    expect(insertArg.payload.skips[0]).toContain("100,000");
   });
 });
