@@ -6,8 +6,8 @@ import {
   toSmileEdiEntry,
   toServiceNoticeEntry,
   toWeeklyReportEntry,
+  toClosingRunEntry,
   groupInsightsBatches,
-  groupClosingBatches,
   type JobRunLog,
 } from "./run-logs-normalize";
 
@@ -16,9 +16,6 @@ const LOG_LIMIT = 20;
 // insights는 run 테이블이 없어 collected_at로 배치를 복원한다. run당 최대 10건
 // 적재되므로 넉넉히 fetch해 20 배치를 확보한다.
 const INSIGHTS_FETCH_ROWS = 400;
-// closing_services는 delete-all + insert라 최신 배치만 남지만, 마감 서비스가 많을 수
-// 있어 넉넉히 fetch한다.
-const CLOSING_FETCH_ROWS = 500;
 
 // admin 전용 페이지 컨텍스트 — getAutomationStatuses와 동일하게 service_role read.
 // match_runs/operator_mail_sends RLS 분기를 피하고 일관된 조회 경로를 쓴다.
@@ -122,18 +119,18 @@ async function weeklyReportLog(jobId: string): Promise<JobRunLog> {
   };
 }
 
-// 서비스 마감 스크래핑 — closing_services를 scraped_at 배치로 묶어 복원.
+// 서비스 마감 스크래핑 — closing_scrape_runs 실행 기록 조회(스크래퍼가 결과 보고).
 async function closingScrapeLog(jobId: string): Promise<JobRunLog> {
   const admin = createAdminClient();
   const { data } = await admin
-    .from("closing_services")
-    .select("scraped_at, university_name, service_name")
-    .order("scraped_at", { ascending: false })
-    .limit(CLOSING_FETCH_ROWS);
+    .from("closing_scrape_runs")
+    .select("ran_at, status, service_count, message")
+    .order("ran_at", { ascending: false })
+    .limit(LOG_LIMIT);
   return {
     jobId,
     kind: "closing-scrape",
-    entries: groupClosingBatches(data ?? [], LOG_LIMIT),
+    entries: (data ?? []).map(toClosingRunEntry),
   };
 }
 

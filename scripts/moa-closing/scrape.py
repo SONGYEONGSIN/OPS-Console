@@ -53,6 +53,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 
 KST = timezone(timedelta(hours=9))
 
@@ -175,6 +176,36 @@ def post_ingest(base_url: str, secret: str, scraped_at: str, rows: list[dict]) -
     print(f"[OK] 인제스트 완료: {res.json()}")
 
 
+def post_run_log(
+    base_url: str, secret: str, status: str, service_count: int, message: str
+) -> None:
+    """POST /api/closing/run-log — 실행 결과 보고(best-effort).
+
+    OPS 인스펙터에 실행 흔적(success/skipped/failed)을 남기기 위함. 보고 실패가
+    스크랩 성패에 영향 주지 않도록 예외를 삼킨다. base_url/secret 없으면 skip.
+    """
+    if not base_url or not secret:
+        return
+    try:
+        url = f"{base_url.rstrip('/')}/api/closing/run-log"
+        requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {secret}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "status": status,
+                "service_count": service_count,
+                "message": message[:1000],
+            },
+            timeout=15,
+        )
+        print(f"[OK] 실행기록 보고: {status} ({service_count})")
+    except Exception as exc:  # noqa: BLE001 — best-effort 보고
+        print(f"[WARN] 실행기록 보고 실패(무시): {exc}")
+
+
 def _decrypt_if_needed(path: str):
     """Moa 엑셀은 서버 생성 시 표준 기본 키로 암호화(CDFV2/OLE). 복호 → BytesIO. 평문이면 path.
 
@@ -289,6 +320,31 @@ def setup_driver(download_dir: str, headless: bool) -> webdriver.Chrome:
     return webdriver.Chrome(options=opts)
 
 
+def _open_login_page(driver, wait, attempts: int = 3) -> None:
+    """로그인 페이지 진입 + 로그인 폼(login_id) 등장 대기.
+
+    자격증명 제출 '전' 단계라 일시적 페이지 로딩 지연(Moa 느림/러너 네트워크)에는
+    안전하게 재시도한다. attempts회 모두 실패하면 마지막 TimeoutException을 올린다.
+    (SMS 미발송 단계이므로 재시도가 2FA 흐름을 깨지 않음.)
+    """
+    last_exc: TimeoutException | None = None
+    for i in range(attempts):
+        try:
+            driver.get(MOA_LOGIN_URL)
+            wait.until(
+                EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, SELECTORS["login_id"])
+                )
+            )
+            return
+        except TimeoutException as exc:
+            last_exc = exc
+            print(f"[WARN] 로그인 폼 미등장 (시도 {i + 1}/{attempts}) — 재시도")
+            time.sleep(3)
+    assert last_exc is not None
+    raise last_exc
+
+
 def login_and_2fa(driver, wait, env) -> None:
     """Moa 로그인 + SMS 2FA. #btnLogin 이중용도(1차 SMS발송 → 2차 인증확인).
 
@@ -296,8 +352,7 @@ def login_and_2fa(driver, wait, env) -> None:
     baseline과 달라지면 새 SMS로 간주(plan §결정1).
     캡차(#secCaptcha)가 보이면 자동 해결 불가 → 즉시 abort(첫 시도 성공 필수).
     """
-    driver.get(MOA_LOGIN_URL)
-    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, SELECTORS["login_id"])))
+    _open_login_page(driver, wait)
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_id"]).send_keys(env["username"])
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_pw"]).send_keys(env["password"])
 
@@ -372,27 +427,35 @@ def _wait_download(download_dir: str, before: set, timeout: int) -> str:
 
 
 def main() -> int:
+    dry_run = os.getenv("CLOSING_DRY_RUN", "").lower() == "true"
+    base_url = os.getenv("OPS_CONSOLE_BASE_URL", "")
+    secret = os.getenv("CRON_SECRET", "")
+
     anchor = os.getenv("CLOSING_BIWEEKLY_ANCHOR", "2026-06-08")
     now = datetime.now(timezone.utc)
     if not should_run_this_week(now, anchor):
         print(f"[SKIP] 격주 비실행 주 (anchor={anchor}). 종료.")
+        if not dry_run:
+            post_run_log(base_url, secret, "skipped", 0, f"격주 off주 (anchor={anchor})")
         return 0
 
-    dry_run = os.getenv("CLOSING_DRY_RUN", "").lower() == "true"
     env = {
         "username": os.getenv("MOA_USERNAME", ""),
         "password": os.getenv("MOA_PASSWORD", ""),
         "sms_url": os.getenv("MAKE_SMS_CODE_URL", ""),
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "90")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
-        "base_url": os.getenv("OPS_CONSOLE_BASE_URL", ""),
-        "secret": os.getenv("CRON_SECRET", ""),
+        "wait_sec": int(os.getenv("MOA_WAIT_SEC", "40")),
+        "base_url": base_url,
+        "secret": secret,
     }
     missing = [k for k in ("username", "password", "sms_url") if not env[k]]
     if not dry_run:
         missing += [k for k in ("base_url", "secret") if not env[k]]
     if missing:
         print(f"[FAIL] 환경변수 누락: {missing}")
+        if not dry_run:
+            post_run_log(base_url, secret, "failed", 0, f"환경변수 누락: {missing}")
         return 1
 
     headless = os.getenv("HEADLESS_MODE", "true").lower() == "true"
@@ -401,25 +464,38 @@ def main() -> int:
     ay = academic_year_range(scraped_at_dt)
     print(f"[INFO] 학년도 검색 범위: {ay['start']['date']} ~ {ay['end']['date']}")
 
-    driver = setup_driver(download_dir, headless)
     try:
-        login_and_2fa(driver, WebDriverWait(driver, 20), env)
-        path = search_and_download(driver, WebDriverWait(driver, 20), download_dir, ay)
-    finally:
-        driver.quit()
+        driver = setup_driver(download_dir, headless)
+        try:
+            login_and_2fa(driver, WebDriverWait(driver, env["wait_sec"]), env)
+            path = search_and_download(
+                driver, WebDriverWait(driver, env["wait_sec"]), download_dir, ay
+            )
+        finally:
+            driver.quit()
 
-    rows = parse_excel(path, scraped_at_dt)
-    print(f"[INFO] 마감 서비스 {len(rows)}건 추출 (scraped_at={scraped_at_dt.isoformat()})")
+        rows = parse_excel(path, scraped_at_dt)
+        print(
+            f"[INFO] 마감 서비스 {len(rows)}건 추출 (scraped_at={scraped_at_dt.isoformat()})"
+        )
 
-    if dry_run:
-        print("[DRY-RUN] 인제스트 미전송. 추출만 완료.")
+        if dry_run:
+            print("[DRY-RUN] 인제스트 미전송. 추출만 완료.")
+            return 0
+        if not rows:
+            print("[INFO] 마감 0건 — 인제스트 미전송(빈 배열 거부 정책).")
+            post_run_log(base_url, secret, "success", 0, "마감 0건 — 적재 없음")
+            return 0
+
+        post_ingest(env["base_url"], env["secret"], scraped_at_dt.isoformat(), rows)
+        post_run_log(base_url, secret, "success", len(rows), f"적재 {len(rows)}건")
         return 0
-    if not rows:
-        print("[INFO] 마감 0건 — 인제스트 미전송(빈 배열 거부 정책).")
-        return 0
-
-    post_ingest(env["base_url"], env["secret"], scraped_at_dt.isoformat(), rows)
-    return 0
+    except Exception as exc:  # noqa: BLE001 — 실패도 실행기록에 보고 후 재전파
+        if not dry_run:
+            post_run_log(
+                base_url, secret, "failed", 0, f"{type(exc).__name__}: {exc}"
+            )
+        raise
 
 
 if __name__ == "__main__":

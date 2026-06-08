@@ -147,24 +147,20 @@ describe("getJobRunLog", () => {
     }
   });
 
-  it("closing-scrape → closing_services 조회 + scraped_at 배치 그룹핑", async () => {
-    mockAdmin("closing_services", [
+  it("closing-scrape → closing_scrape_runs 실행 기록 조회 + 매핑", async () => {
+    mockAdmin("closing_scrape_runs", [
       {
-        scraped_at: "2026-06-07T01:00:00Z",
-        university_name: "A대학교",
-        service_name: "수시",
-      },
-      {
-        scraped_at: "2026-06-07T01:00:00Z",
-        university_name: "B대학교",
-        service_name: "정시",
+        ran_at: "2026-06-08T01:00:00Z",
+        status: "failed",
+        service_count: 0,
+        message: "TimeoutException: 로그인 폼 미등장",
       },
     ]);
     const log = await getJobRunLog("closing-scrape");
     expect(log.kind).toBe("closing-scrape");
     if (log.kind === "closing-scrape") {
-      expect(log.entries).toHaveLength(1);
-      expect(log.entries[0].serviceCount).toBe(2);
+      expect(log.entries[0].status).toBe("failed");
+      expect(log.entries[0].message).toContain("Timeout");
     }
   });
 

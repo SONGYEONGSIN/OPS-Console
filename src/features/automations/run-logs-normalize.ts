@@ -71,10 +71,11 @@ export type ServiceNoticeEntry = {
   errorMessage: string | null;
 };
 
-export type ClosingScrapeEntry = {
-  scrapedAt: string;
+export type ClosingRunEntry = {
+  ranAt: string;
+  status: "success" | "skipped" | "failed";
   serviceCount: number;
-  sampleNames: string[];
+  message: string | null;
 };
 
 export type WeeklyReportEntry = {
@@ -96,7 +97,7 @@ export type JobRunLog =
   | { jobId: string; kind: "insights"; entries: InsightsBatchEntry[] }
   | { jobId: string; kind: "smileedi"; entries: SmileEdiEntry[] }
   | { jobId: string; kind: "service-notice"; entries: ServiceNoticeEntry[] }
-  | { jobId: string; kind: "closing-scrape"; entries: ClosingScrapeEntry[] }
+  | { jobId: string; kind: "closing-scrape"; entries: ClosingRunEntry[] }
   | { jobId: string; kind: "weekly-report"; entries: WeeklyReportEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
 
@@ -337,38 +338,18 @@ export function toWeeklyReportEntry(
   };
 }
 
-type ClosingServiceRow = {
-  scraped_at: string;
-  university_name: string;
-  service_name: string;
+type ClosingRunRow = {
+  ran_at: string;
+  status: "success" | "skipped" | "failed";
+  service_count: number | null;
+  message: string | null;
 };
 
-/**
- * closing_services 행을 scraped_at(= 스크래핑 배치 시각) 단위로 묶어 "스크랩 배치"를
- * 복원한다. ingest가 delete-all + insert(전체 대체)라 보통 최신 1배치만 존재하지만,
- * insights와 동일한 배치 복원 방식으로 일반화해 둔다. 최신 배치부터 maxBatches개까지.
- */
-export function groupClosingBatches(
-  rows: ClosingServiceRow[],
-  maxBatches: number,
-  sampleSize = 3,
-): ClosingScrapeEntry[] {
-  const groups = new Map<string, string[]>();
-  for (const r of rows) {
-    const key = r.scraped_at;
-    const list = groups.get(key) ?? [];
-    list.push(`${r.university_name} ${r.service_name}`);
-    groups.set(key, list);
-  }
-  return Array.from(groups.keys())
-    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
-    .slice(0, maxBatches)
-    .map((key) => {
-      const names = groups.get(key) ?? [];
-      return {
-        scrapedAt: key,
-        serviceCount: names.length,
-        sampleNames: names.slice(0, sampleSize),
-      };
-    });
+export function toClosingRunEntry(row: ClosingRunRow): ClosingRunEntry {
+  return {
+    ranAt: row.ran_at,
+    status: row.status,
+    serviceCount: row.service_count ?? 0,
+    message: row.message ?? null,
+  };
 }
