@@ -13,6 +13,8 @@ import {
   type DepositMismatchItem,
   type MailOperatorEntry,
   type InsightsBatchEntry,
+  type SmileEdiEntry,
+  type ServiceNoticeEntry,
 } from "@/features/automations/run-logs-normalize";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
 
@@ -179,6 +181,75 @@ function MailOperatorList({ entries }: { entries: MailOperatorEntry[] }) {
   );
 }
 
+function SmileEdiList({ entries }: { entries: SmileEdiEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.sentAt)}</span>
+            <StatusBadge status={e.status} />
+          </div>
+          <DefList
+            items={[
+              {
+                term: "수신자",
+                desc: e.recipientName
+                  ? `${e.recipientName} (${e.recipientEmail})`
+                  : e.recipientEmail,
+              },
+              {
+                term: "역발행",
+                desc: `${e.invoiceCount}건 · ${formatKrw(e.totalSupplyAmount)}`,
+              },
+              {
+                term: "거래처",
+                desc:
+                  e.companyNames.length > 0 ? e.companyNames.join(", ") : "—",
+              },
+            ]}
+          />
+          {e.errorMessage && (
+            <p className="text-xs text-vermilion">! {e.errorMessage}</p>
+          )}
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ServiceNoticeList({ entries }: { entries: ServiceNoticeEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.sentAt)}</span>
+            <StatusBadge status={e.status} />
+          </div>
+          <DefList
+            items={[
+              {
+                term: "수신자",
+                desc: e.recipientName
+                  ? `${e.recipientName} (${e.recipientEmail})`
+                  : e.recipientEmail,
+              },
+              { term: "대상월", desc: e.targetMonth },
+              { term: "서비스", desc: `${e.serviceCount}건` },
+            ]}
+          />
+          {e.errorMessage && (
+            <p className="text-xs text-vermilion">! {e.errorMessage}</p>
+          )}
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
   return (
     <div className="space-y-5">
@@ -234,6 +305,10 @@ export function AutomationLogPanel({ label, loading, error, log }: Props) {
           )}
           {log.kind === "mail-operator" && (
             <MailOperatorList entries={log.entries} />
+          )}
+          {log.kind === "smileedi" && <SmileEdiList entries={log.entries} />}
+          {log.kind === "service-notice" && (
+            <ServiceNoticeList entries={log.entries} />
           )}
           {log.kind === "insights" && <InsightsList entries={log.entries} />}
         </Section>
