@@ -168,6 +168,29 @@ describe("getJobRunLog", () => {
     }
   });
 
+  it("weekly-report-rollover → weekly_report_runs 조회 + weekly-report 매핑", async () => {
+    mockAdmin("weekly_report_runs", [
+      {
+        ran_at: "2026-06-10T01:00:00Z",
+        status: "created",
+        year: 2026,
+        month: 6,
+        week: 2,
+        file_name: "주간보고_2026_6월2주차.xlsx",
+        sender: "전성대",
+        share_link: "https://share",
+        teams_sent: true,
+        message: "차주 보고 생성",
+      },
+    ]);
+    const log = await getJobRunLog("weekly-report-rollover");
+    expect(log.kind).toBe("weekly-report");
+    if (log.kind === "weekly-report") {
+      expect(log.entries[0].status).toBe("created");
+      expect(log.entries[0].sender).toBe("전성대");
+    }
+  });
+
   it("data가 null이어도 빈 entries", async () => {
     mockAdmin("receivables_match_runs", []);
     const log = await getJobRunLog("receivables-deposit-match");

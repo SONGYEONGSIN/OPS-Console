@@ -9,6 +9,7 @@ const g = vi.hoisted(() => ({
   setCellText: vi.fn(),
   createOrgShareLink: vi.fn(),
   sendTeamsChatMessage: vi.fn(),
+  recordWeeklyRun: vi.fn(),
 }));
 
 vi.mock("../graph-ops", () => ({
@@ -22,6 +23,9 @@ vi.mock("../graph-ops", () => ({
 }));
 vi.mock("@/lib/microsoft/teams", () => ({
   sendTeamsChatMessage: g.sendTeamsChatMessage,
+}));
+vi.mock("../record", () => ({
+  recordWeeklyRun: g.recordWeeklyRun,
 }));
 
 import { runWeeklyReportRollover } from "../index";
@@ -42,7 +46,11 @@ afterEach(() => {
 function folder(latestName: string, siblingNames: string[] = []) {
   return {
     folderPath: P,
-    latest: { id: "src", name: latestName, lastModifiedDateTime: "2026-01-15T00:00:00Z" },
+    latest: {
+      id: "src",
+      name: latestName,
+      lastModifiedDateTime: "2026-01-15T00:00:00Z",
+    },
     siblings: [latestName, ...siblingNames].map((name, i) => ({
       id: `s${i}`,
       name,
@@ -73,6 +81,12 @@ describe("runWeeklyReportRollover", () => {
     expect(r.message).toContain(`${P}_2026_1월4주차.xlsx`);
     expect(g.copyItemAndWait).not.toHaveBeenCalled();
     expect(g.sendTeamsChatMessage).not.toHaveBeenCalled();
+    expect(g.recordWeeklyRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "dry_run",
+        sender: expect.any(String),
+      }),
+    );
   });
 
   it("차주 파일이 이미 있으면 skip", async () => {
@@ -83,18 +97,31 @@ describe("runWeeklyReportRollover", () => {
     expect(r.ok).toBe(true);
     expect(r.details?.skipped).toBe(1);
     expect(g.copyItemAndWait).not.toHaveBeenCalled();
+    expect(g.recordWeeklyRun).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "skipped" }),
+    );
   });
 
   it("정상 — 복제·시트 rename·셀 패치·공유링크·Teams 발송", async () => {
     g.findReportFolder.mockResolvedValue(folder(`${P}_2026_1월3주차.xlsx`));
     g.copyItemAndWait.mockResolvedValue("newid");
-    g.listWorksheetNames.mockResolvedValue(["2026년 1월 3주차", "2026년 1월 2주차"]);
+    g.listWorksheetNames.mockResolvedValue([
+      "2026년 1월 3주차",
+      "2026년 1월 2주차",
+    ]);
     g.getCellText.mockResolvedValue("기간 1/12~1/16");
     g.createOrgShareLink.mockResolvedValue("https://share/x");
 
     const r = await runWeeklyReportRollover();
     expect(r.ok).toBe(true);
     expect(r.details?.created).toBe(1);
+    expect(g.recordWeeklyRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "created",
+        fileName: `${P}_2026_1월4주차.xlsx`,
+        teamsSent: true,
+      }),
+    );
     expect(g.copyItemAndWait).toHaveBeenCalledWith(
       "drv",
       "src",

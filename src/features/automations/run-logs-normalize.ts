@@ -77,6 +77,19 @@ export type ClosingScrapeEntry = {
   sampleNames: string[];
 };
 
+export type WeeklyReportEntry = {
+  ranAt: string;
+  status: "created" | "skipped" | "dry_run" | "failed";
+  year: number | null;
+  month: number | null;
+  week: number | null;
+  fileName: string | null;
+  sender: string | null;
+  shareLink: string | null;
+  teamsSent: boolean;
+  message: string;
+};
+
 export type JobRunLog =
   | { jobId: string; kind: "deposit-match"; entries: DepositMatchEntry[] }
   | { jobId: string; kind: "mail-operator"; entries: MailOperatorEntry[] }
@@ -84,6 +97,7 @@ export type JobRunLog =
   | { jobId: string; kind: "smileedi"; entries: SmileEdiEntry[] }
   | { jobId: string; kind: "service-notice"; entries: ServiceNoticeEntry[] }
   | { jobId: string; kind: "closing-scrape"; entries: ClosingScrapeEntry[] }
+  | { jobId: string; kind: "weekly-report"; entries: WeeklyReportEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
 
 export function formatKrw(amount: number): string {
@@ -291,6 +305,36 @@ export function groupInsightsBatches(
         .map((t) => t.title);
       return { collectedAt: key, videoCount: titles.length, sampleTitles };
     });
+}
+
+type WeeklyReportRunRow = {
+  ran_at: string;
+  status: "created" | "skipped" | "dry_run" | "failed";
+  year: number | null;
+  month: number | null;
+  week: number | null;
+  file_name: string | null;
+  sender: string | null;
+  share_link: string | null;
+  teams_sent: boolean | null;
+  message: string;
+};
+
+export function toWeeklyReportEntry(
+  row: WeeklyReportRunRow,
+): WeeklyReportEntry {
+  return {
+    ranAt: row.ran_at,
+    status: row.status,
+    year: row.year ?? null,
+    month: row.month ?? null,
+    week: row.week ?? null,
+    fileName: row.file_name ?? null,
+    sender: row.sender ?? null,
+    shareLink: row.share_link ?? null,
+    teamsSent: row.teams_sent ?? false,
+    message: row.message,
+  };
 }
 
 type ClosingServiceRow = {
