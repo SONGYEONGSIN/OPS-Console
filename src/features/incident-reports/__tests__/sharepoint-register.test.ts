@@ -4,6 +4,7 @@ vi.mock("@/lib/microsoft/gongmun-ledger", () => ({
   fetchSenderDocNumbers: vi.fn(async () => ["운영2606-0201"]),
   nextDocNumber: vi.fn(() => "운영2606-0202"),
   appendSenderRow: vi.fn(async () => {}),
+  updateSenderRowLink: vi.fn(async () => true),
 }));
 vi.mock("@/lib/microsoft/drive-upload", () => ({
   uploadFileToFolder: vi.fn(async () => ({
@@ -16,7 +17,8 @@ vi.mock("@/lib/docx/incident-report-docx", () => ({
 }));
 
 import {
-  registerIncidentReportToSharePoint,
+  assignDocNumber,
+  uploadAndLinkReportFile,
   sharePointConfig,
   DOCX_CONTENT_TYPE,
   type RegisterInput,
@@ -24,8 +26,10 @@ import {
 import {
   fetchSenderDocNumbers,
   appendSenderRow,
+  updateSenderRowLink,
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
+import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
 
 const REP: RegisterInput = {
   recipient_university: "건국대학교",
@@ -83,20 +87,56 @@ describe("sharePointConfig", () => {
   });
 });
 
-describe("registerIncidentReportToSharePoint", () => {
-  it("Test A: env 설정 → 채번/업로드/행추가 후 결과 반환", async () => {
-    const r = await registerIncidentReportToSharePoint(REP, new Date());
+describe("assignDocNumber", () => {
+  it("채번 후 발신대장에 link 빈칸으로 행추가 + docNumber 반환", async () => {
+    const r = await assignDocNumber(REP, new Date());
 
-    expect(r).toEqual({
-      docNumber: "운영2606-0202",
-      sharepointUrl: "https://sp/x.docx",
-    });
+    expect(r).toEqual({ docNumber: "운영2606-0202" });
 
     expect(fetchSenderDocNumbers).toHaveBeenCalledWith(
       "drive-1",
       "gongmun-1",
       expect.any(Number),
     );
+
+    // 행추가: link="" 빈칸, recipient/title/author 전달, 업로드는 없음
+    expect(appendSenderRow).toHaveBeenCalledTimes(1);
+    const rowArgs = (appendSenderRow as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(rowArgs[0]).toBe("drive-1");
+    expect(rowArgs[1]).toBe("gongmun-1");
+    expect(rowArgs[3]).toMatchObject({
+      docNumber: "운영2606-0202",
+      recipient: "건국대학교",
+      title: "전산파일 오류 건",
+      link: "",
+      author: "나",
+    });
+
+    // 발번 단계는 docx 렌더/업로드를 하지 않는다
+    expect(renderIncidentReportDocx).not.toHaveBeenCalled();
+    expect(uploadFileToFolder).not.toHaveBeenCalled();
+  });
+
+  it("env 누락(gongmun) → null, 채번/행추가 호출 안 함", async () => {
+    delete process.env.SHAREPOINT_GONGMUN_ITEM_ID;
+    const r = await assignDocNumber(REP, new Date());
+    expect(r).toBeNull();
+    expect(fetchSenderDocNumbers).not.toHaveBeenCalled();
+    expect(appendSenderRow).not.toHaveBeenCalled();
+  });
+});
+
+describe("uploadAndLinkReportFile", () => {
+  it("docx 렌더 → 업로드 → 발신대장 F링크 갱신 후 sharepointUrl 반환", async () => {
+    const r = await uploadAndLinkReportFile(REP, "운영2606-0202", new Date());
+
+    expect(r).toEqual({ sharepointUrl: "https://sp/x.docx" });
+
+    // docx는 docNumber 포함해 렌더
+    expect(renderIncidentReportDocx).toHaveBeenCalledTimes(1);
+    const docxArg = (renderIncidentReportDocx as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, unknown>;
+    expect(docxArg.docNumber).toBe("운영2606-0202");
 
     // 업로드: docNumber 포함한 .docx 파일명, DOCX content-type
     expect(uploadFileToFolder).toHaveBeenCalledTimes(1);
@@ -109,31 +149,38 @@ describe("registerIncidentReportToSharePoint", () => {
     expect(fileName.endsWith(".docx")).toBe(true);
     expect(upArgs[4]).toBe(DOCX_CONTENT_TYPE);
 
-    // 행추가: recipient/title/link/author 전달
-    expect(appendSenderRow).toHaveBeenCalledTimes(1);
-    const rowArgs = (appendSenderRow as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(rowArgs[3]).toMatchObject({
-      docNumber: "운영2606-0202",
-      recipient: "건국대학교",
-      title: "전산파일 오류 건",
-      link: "https://sp/x.docx",
-      author: "나",
-    });
+    // 발신대장: 같은 docNumber 행의 F열을 업로드 webUrl로 갱신
+    expect(updateSenderRowLink).toHaveBeenCalledTimes(1);
+    const linkArgs = (updateSenderRowLink as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(linkArgs[0]).toBe("drive-1");
+    expect(linkArgs[1]).toBe("gongmun-1");
+    expect(linkArgs[3]).toBe("운영2606-0202");
+    expect(linkArgs[4]).toBe("https://sp/x.docx");
   });
 
-  it("Test B: env 누락 → null, 업로드 호출 안 함", async () => {
+  it("env 누락 → null, 업로드 호출 안 함", async () => {
     delete process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID;
-    const r = await registerIncidentReportToSharePoint(REP, new Date());
+    const r = await uploadAndLinkReportFile(REP, "운영2606-0202", new Date());
     expect(r).toBeNull();
     expect(uploadFileToFolder).not.toHaveBeenCalled();
   });
 
+  it("opts.token을 업로드에 전달", async () => {
+    await uploadAndLinkReportFile(REP, "운영2606-0202", new Date(), {
+      token: "delegated-tok",
+    });
+    const upArgs = (uploadFileToFolder as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(upArgs[5]).toMatchObject({ token: "delegated-tok" });
+  });
+
   it("파일명의 SharePoint 금지문자를 제거", async () => {
-    const r = await registerIncidentReportToSharePoint(
+    await uploadAndLinkReportFile(
       { ...REP, title: 'a/b:c*?"<>|d' },
+      "운영2606-0202",
       new Date(),
     );
-    expect(r).not.toBeNull();
     const fileName = (uploadFileToFolder as ReturnType<typeof vi.fn>).mock
       .calls[0][2] as string;
     expect(fileName).not.toMatch(/[\\/:*?"<>|]/);

@@ -4,16 +4,20 @@ import {
   fetchSenderDocNumbers,
   nextDocNumber,
   appendSenderRow,
+  updateSenderRowLink,
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
 import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
 import type { HandlingRow } from "./schemas";
 
 /**
- * 경위서 발송 시 SharePoint 연동 오케스트레이터 (2차 Phase C).
+ * 경위서 SharePoint 연동 — 2단계로 분리.
  *
- * 흐름: 공문관리대장에서 채번 → docx(시행번호 포함) 렌더 → 06.경위서 폴더 업로드
- *       → 발신 시트에 행추가. env 3개가 모두 설정돼야 동작하며, 하나라도 없으면 null.
+ * 1) assignDocNumber (PDF 버튼 = 발번 시점): 공문관리대장 채번 + 발신 시트 행추가
+ *    (F=파일링크는 빈칸). docx 렌더/업로드 없음.
+ * 2) uploadAndLinkReportFile (발송 시점): docx(시행번호 포함) 렌더 → 06.경위서 업로드
+ *    → 발신 시트 그 행의 F열을 파일 링크로 갱신.
+ * env 3개가 모두 설정돼야 동작하며, 하나라도 없으면 null.
  */
 
 export const DOCX_CONTENT_TYPE =
@@ -91,15 +95,22 @@ export async function previewNextDocNumber(today: Date): Promise<string | null> 
   }
 }
 
+/** YYYY-MM-DD 포맷 (로컬 날짜). */
+function ymd(today: Date): string {
+  const y = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  return `${y}-${mm}-${dd}`;
+}
+
 /**
- * 채번 → docx(번호 포함) → 06.경위서 업로드 → 발신대장 행추가.
- * config 없으면 null. opts.token으로 위임 토큰 주입(Phase D).
+ * 발번 — 채번 후 발신대장에 행추가(F=파일링크는 빈칸). docx 렌더/업로드 없음.
+ * config 없으면 null.
  */
-export async function registerIncidentReportToSharePoint(
+export async function assignDocNumber(
   rep: RegisterInput,
   today: Date,
-  opts?: { token?: string },
-): Promise<{ docNumber: string; sharepointUrl: string } | null> {
+): Promise<{ docNumber: string } | null> {
   const cfg = sharePointConfig();
   if (!cfg) return null;
 
@@ -110,6 +121,31 @@ export async function registerIncidentReportToSharePoint(
     year,
   );
   const docNumber = nextDocNumber(existing, today);
+
+  await appendSenderRow(cfg.driveId, cfg.gongmunItemId, year, {
+    docNumber,
+    date: ymd(today),
+    recipient: rep.recipient_university,
+    title: rep.title,
+    link: "",
+    author: rep.author_name,
+  });
+
+  return { docNumber };
+}
+
+/**
+ * 파일 업로드 — docx(번호 포함) 렌더 → 06.경위서 업로드 → 발신대장 그 행의 F링크 갱신.
+ * config 없으면 null. opts.token으로 위임 토큰 주입.
+ */
+export async function uploadAndLinkReportFile(
+  rep: RegisterInput,
+  docNumber: string,
+  today: Date,
+  opts?: { token?: string },
+): Promise<{ sharepointUrl: string } | null> {
+  const cfg = sharePointConfig();
+  if (!cfg) return null;
 
   const docx = await renderIncidentReportDocx({
     recipientUniversity: rep.recipient_university,
@@ -143,19 +179,13 @@ export async function registerIncidentReportToSharePoint(
     { token: opts?.token },
   );
 
-  const y = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  const dateStr = `${y}-${mm}-${dd}`;
-
-  await appendSenderRow(cfg.driveId, cfg.gongmunItemId, year, {
+  await updateSenderRowLink(
+    cfg.driveId,
+    cfg.gongmunItemId,
+    today.getFullYear(),
     docNumber,
-    date: dateStr,
-    recipient: rep.recipient_university,
-    title: rep.title,
-    link: up.webUrl,
-    author: rep.author_name,
-  });
+    up.webUrl,
+  );
 
-  return { docNumber, sharepointUrl: up.webUrl };
+  return { sharepointUrl: up.webUrl };
 }

@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
 import { resolveApprovalChain } from "./queries";
 import { defaultApology } from "./apology";
+import { assignDocNumber, type RegisterInput } from "./sharepoint-register";
 import {
   incidentReportCreateSchema,
   incidentReportUpdateSchema,
@@ -333,4 +335,44 @@ export async function revokeApproval(
     revalidatePath(PATH);
   }
   return r;
+}
+
+export type IssueDocNumberResult =
+  | { ok: true; docNumber: string | null }
+  | { ok: false; error: string };
+
+/**
+ * 발번 — PDF 버튼 클릭 시점에 1회 호출. 승인완료(approved) + 미발번일 때만 채번한다.
+ * 이미 doc_number 있으면 재사용(멱등), approved 아니면 no-op(docNumber:null).
+ * 채번 = 시행번호 + 공문관리대장 행기록(F=파일링크 빈칸). 파일 업로드는 발송 시점.
+ */
+export async function issueIncidentReportDocNumber(
+  id: string,
+): Promise<IssueDocNumberResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: AUTH_ERROR };
+
+  const admin = createAdminClient();
+  const { data: rep } = await admin
+    .from("incident_reports")
+    .select(
+      "id,status,doc_number,recipient_university,title,author_name,author_email,draft_date,approver_name,approver_role,director_name,director_role,ceo_name,ceo_role,apology,gyeongwi,cause,handling,handling_rows,prevention,incident_id",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
+
+  if (rep.doc_number) return { ok: true, docNumber: rep.doc_number };
+  if (rep.status !== "approved") return { ok: true, docNumber: null };
+
+  const assigned = await assignDocNumber(rep as RegisterInput, new Date());
+  if (!assigned) return { ok: true, docNumber: null };
+
+  await admin
+    .from("incident_reports")
+    .update({ doc_number: assigned.docNumber })
+    .eq("id", id);
+
+  revalidatePath(PATH);
+  return { ok: true, docNumber: assigned.docNumber };
 }
