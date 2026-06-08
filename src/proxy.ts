@@ -5,6 +5,8 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  /api/data-requests/dispatch — pg_cron이 쿠키 세션 없이 호출. 라우트 내부에서
  *  /api/backup-requests/dispatch — 동일 (PR-6 예약 발송 cron 진입점)
  *  /api/automations/run — GitHub Actions / 외부 cron 진입점 (receivables 등 jobId 자동화).
+ *  /api/closing/ingest — Moa 스크래퍼(GitHub Actions)가 마감 스냅샷을 적재.
+ *  /api/closing/run-log — 스크래퍼가 실행 결과(success/skipped/failed)를 보고.
  *  CRON_SECRET 헤더로 자체 인증하므로 미들웨어 인증 가드는 통과시킨다. */
 const PUBLIC_PATHS = [
   "/login",
@@ -14,6 +16,8 @@ const PUBLIC_PATHS = [
   "/api/data-requests/dispatch",
   "/api/backup-requests/dispatch",
   "/api/automations/run",
+  "/api/closing/ingest",
+  "/api/closing/run-log",
   /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
   "/r",
 ];
@@ -22,7 +26,7 @@ export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 
   // 미인증 + 비공개 → /login으로 보냄
