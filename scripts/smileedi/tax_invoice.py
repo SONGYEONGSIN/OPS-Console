@@ -1674,7 +1674,20 @@ class SmileEDIScraper:
             end = last_row + len(new_rows)
             address_range = f"A{start}:{last_col}{end}"
 
-            # 6. range PATCH (값 기록)
+            # 6. 셀 서식을 텍스트("@")로 먼저 지정 — 긴 숫자형 ID(일련번호·사업자번호·작성일자 등)가
+            #    숫자(Double)로 강제변환돼 지수표기(2.2E+19)/정밀도 손실 나는 것 방지. 기존 데이터는
+            #    전부 String이므로 동일하게 텍스트로 들어가게 한다. (값 기록 전에 서식부터 적용)
+            text_fmt = [["@"] * n_cols for _ in new_rows]
+            fmt_resp = requests.patch(
+                f"{base}/worksheets('{ws}')/range(address='{address_range}')",
+                headers={**session_headers, "Content-Type": "application/json"},
+                json={"numberFormat": text_fmt},
+            )
+            if not fmt_resp.ok:
+                print(f"[FAIL] 셀 서식(@) 지정 실패: {fmt_resp.status_code} {fmt_resp.text[:200]}")
+                return False
+
+            # 7. range PATCH (값 기록 — 텍스트 서식이라 문자열 그대로 보존)
             patch_resp = requests.patch(
                 f"{base}/worksheets('{ws}')/range(address='{address_range}')",
                 headers={**session_headers, "Content-Type": "application/json"},
