@@ -319,7 +319,19 @@ def setup_driver(download_dir: str, headless: bool):
             "download.prompt_for_download": False,
         },
     )
-    driver = uc.Chrome(options=opts, headless=headless, use_subprocess=True)
+    # setup-chrome이 알려준 바이너리/버전을 명시 — 미지정 시 uc가 최신 드라이버를
+    # 받아 설치된 Chrome과 버전 불일치(SessionNotCreated)가 난다.
+    chrome_bin = os.getenv("CHROME_BIN") or None
+    cv = os.getenv("CHROME_VERSION", "")
+    major = cv.split(".")[0] if cv else ""
+    version_main = int(major) if major.isdigit() else None
+    driver = uc.Chrome(
+        options=opts,
+        headless=headless,
+        use_subprocess=True,
+        browser_executable_path=chrome_bin,
+        version_main=version_main,
+    )
     # uc는 prefs의 download dir를 무시할 수 있어 CDP로 한 번 더 지정.
     try:
         driver.execute_cdp_cmd(

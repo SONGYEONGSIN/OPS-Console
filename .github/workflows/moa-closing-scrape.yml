@@ -27,6 +27,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Chrome
+        id: setup-chrome
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
@@ -48,6 +49,10 @@ jobs:
           # OPS-Console 인제스트
           OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          # uc가 올바른 Chrome 바이너리/드라이버 버전을 쓰도록 setup-chrome 출력 전달
+          # (미지정 시 uc가 최신 드라이버를 받아 Chrome 버전과 불일치).
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+          CHROME_VERSION: ${{ steps.setup-chrome.outputs.chrome-version }}
           # 동작 파라미터 (비밀 아님 — 기본값은 scrape.py에 내장, 필요 시 override)
           # Cloudflare 회피: uc + xvfb 가상 디스플레이에서 non-headless로 실행.
           HEADLESS_MODE: "false"
