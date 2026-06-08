@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { findSidebarMeta } from "../../_data";
 import { resolvePageMeta } from "../../_data/page-meta-derive";
 import { PageHeader } from "../../_components/page-header/PageHeader";
+import { PdfButton } from "./_components/PdfButton";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
@@ -99,14 +100,7 @@ export default async function IncidentReportEditorPage({
             >
               ← 사고 보고 목록
             </Link>
-            <a
-              href={`/api/incident-reports/${report.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer border border-vermilion bg-transparent px-3 py-1 text-sm font-medium text-vermilion transition-colors hover:bg-vermilion hover:text-cream"
-            >
-              PDF
-            </a>
+            <PdfButton reportId={report.id} />
           </div>
           <div className="w-[360px] shrink-0" aria-hidden />
         </header>

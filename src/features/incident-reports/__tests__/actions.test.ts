@@ -6,6 +6,9 @@ const {
   mockInsertResult,
   mockUpdateResult,
   mockSelectMaybeSingle,
+  mockAssignDocNumber,
+  mockAdminMaybeSingle,
+  adminUpdatePatches,
   insertPayloads,
   updatePatches,
 } = vi.hoisted(() => ({
@@ -14,6 +17,9 @@ const {
   mockInsertResult: vi.fn(),
   mockUpdateResult: vi.fn(),
   mockSelectMaybeSingle: vi.fn(),
+  mockAssignDocNumber: vi.fn(),
+  mockAdminMaybeSingle: vi.fn(),
+  adminUpdatePatches: [] as unknown[],
   insertPayloads: [] as unknown[],
   updatePatches: [] as unknown[],
 }));
@@ -55,6 +61,24 @@ vi.mock("@/lib/supabase/server", () => ({
     }),
   })),
 }));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(() => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: () => Promise.resolve(mockAdminMaybeSingle()),
+        }),
+      }),
+      update: (patch: unknown) => {
+        adminUpdatePatches.push(patch);
+        return { eq: () => Promise.resolve({ data: null, error: null }) };
+      },
+    }),
+  })),
+}));
+vi.mock("../sharepoint-register", () => ({
+  assignDocNumber: mockAssignDocNumber,
+}));
 
 import {
   createIncidentReport,
@@ -62,6 +86,7 @@ import {
   approveIncidentReport,
   rejectIncidentReport,
   revokeApproval,
+  issueIncidentReportDocNumber,
 } from "../actions";
 
 const meOperator = {
@@ -90,6 +115,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   insertPayloads.length = 0;
   updatePatches.length = 0;
+  adminUpdatePatches.length = 0;
 });
 
 describe("createIncidentReport", () => {
@@ -384,5 +410,73 @@ describe("revokeApproval", () => {
     const patch = updatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("draft");
     expect(patch.approved_at).toBeNull();
+  });
+});
+
+describe("issueIncidentReportDocNumber", () => {
+  const approvedRep = {
+    id: baseRow.id,
+    status: "approved",
+    doc_number: null,
+    recipient_university: "건국대학교",
+    title: "전산파일 오류 건",
+    author_name: "나",
+    author_email: meOperator.email,
+    draft_date: "2026-06-02",
+    handling_rows: [],
+  };
+
+  it("비로그인 → 에러", async () => {
+    mockGetCurrentOperator.mockResolvedValue(null);
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r).toEqual({ ok: false, error: "로그인이 필요합니다." });
+  });
+
+  it("이미 doc_number 있으면 그 번호 반환 + 채번 안 함 (멱등)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockAdminMaybeSingle.mockResolvedValue({
+      data: { ...approvedRep, doc_number: "운영2606-0205" },
+    });
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r).toEqual({ ok: true, docNumber: "운영2606-0205" });
+    expect(mockAssignDocNumber).not.toHaveBeenCalled();
+    expect(adminUpdatePatches).toHaveLength(0);
+  });
+
+  it("status≠approved → docNumber:null + 채번 안 함 (no-op)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockAdminMaybeSingle.mockResolvedValue({
+      data: { ...approvedRep, status: "draft" },
+    });
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r).toEqual({ ok: true, docNumber: null });
+    expect(mockAssignDocNumber).not.toHaveBeenCalled();
+  });
+
+  it("approved + 미발번 → assignDocNumber 호출 + doc_number update + 반환", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockAdminMaybeSingle.mockResolvedValue({ data: approvedRep });
+    mockAssignDocNumber.mockResolvedValue({ docNumber: "운영2606-0202" });
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r).toEqual({ ok: true, docNumber: "운영2606-0202" });
+    expect(mockAssignDocNumber).toHaveBeenCalledTimes(1);
+    const patch = adminUpdatePatches[0] as Record<string, unknown>;
+    expect(patch.doc_number).toBe("운영2606-0202");
+  });
+
+  it("경위서 미발견 → 에러", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockAdminMaybeSingle.mockResolvedValue({ data: null });
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r.ok).toBe(false);
+  });
+
+  it("approved + cfg 없음(assignDocNumber null) → docNumber:null", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockAdminMaybeSingle.mockResolvedValue({ data: approvedRep });
+    mockAssignDocNumber.mockResolvedValue(null);
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r).toEqual({ ok: true, docNumber: null });
+    expect(adminUpdatePatches).toHaveLength(0);
   });
 });

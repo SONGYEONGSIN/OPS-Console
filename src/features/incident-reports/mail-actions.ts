@@ -7,7 +7,11 @@ import { logActivity } from "@/features/worklog/log";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
 import { incidentReportBodyToHtml } from "./mail-template";
-import { registerIncidentReportToSharePoint } from "./sharepoint-register";
+import {
+  assignDocNumber,
+  uploadAndLinkReportFile,
+  type RegisterInput,
+} from "./sharepoint-register";
 import { getDelegatedGraphToken } from "@/lib/microsoft/delegated-token";
 import { incidentReportSendSchema, type IncidentReportRow } from "./schemas";
 
@@ -49,27 +53,33 @@ export async function sendIncidentReport(
     return { ok: false, error: "발송 권한이 없습니다." };
   }
 
-  let docNumber: string | null = rep.doc_number;
+  // 발번 보장 — 보통 PDF 클릭 시점에 채번되지만, 안 거친 edge 대비 발송 시 보강.
+  let docNumber: string | null = rep.doc_number ?? null;
+  if (!docNumber) {
+    const assigned = await assignDocNumber(rep as RegisterInput, new Date());
+    docNumber = assigned?.docNumber ?? null;
+  }
+
+  // 파일 업로드 + 발신대장 F링크 — 발송 시점에만.
   let sharepointUrl: string | null = null;
-  if (!dryRun) {
-    try {
-      // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
-      const delegatedToken = await getDelegatedGraphToken(me.email).catch(
-        () => null,
-      );
-      const r = await registerIncidentReportToSharePoint(rep, new Date(), {
-        token: delegatedToken ?? undefined,
-      });
-      if (r) {
-        docNumber = r.docNumber;
-        sharepointUrl = r.sharepointUrl;
-      }
-    } catch (e) {
+  if (!dryRun && docNumber) {
+    // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
+    const delegatedToken = await getDelegatedGraphToken(me.email).catch(
+      () => null,
+    );
+    const up = await uploadAndLinkReportFile(
+      rep as RegisterInput,
+      docNumber,
+      new Date(),
+      { token: delegatedToken ?? undefined },
+    ).catch((e) => {
       console.error(
-        "[sendIncidentReport] SharePoint 등록 실패 (메일은 계속):",
+        "[sendIncidentReport] SharePoint 업로드 실패 (메일은 계속):",
         e,
       );
-    }
+      return null;
+    });
+    sharepointUrl = up?.sharepointUrl ?? null;
   }
 
   // 공문 하단 연락처 전화 — 작성자(담당자) 운영자의 전화번호.

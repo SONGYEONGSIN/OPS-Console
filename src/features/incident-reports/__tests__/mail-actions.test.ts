@@ -9,7 +9,10 @@ vi.mock("@/lib/pdf/incident-report-pdf", () => ({
 vi.mock("@/features/worklog/log", () => ({ logActivity: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../sharepoint-register", () => ({
-  registerIncidentReportToSharePoint: vi.fn(async () => null),
+  assignDocNumber: vi.fn(async () => ({ docNumber: "운영2606-0202" })),
+  uploadAndLinkReportFile: vi.fn(async () => ({
+    sharepointUrl: "https://sp/x.docx",
+  })),
 }));
 vi.mock("@/lib/microsoft/delegated-token", () => ({
   getDelegatedGraphToken: vi.fn(async () => null),
@@ -19,7 +22,10 @@ import { sendIncidentReport } from "../mail-actions";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
-import { registerIncidentReportToSharePoint } from "../sharepoint-register";
+import {
+  assignDocNumber,
+  uploadAndLinkReportFile,
+} from "../sharepoint-register";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -168,7 +174,7 @@ describe("sendIncidentReport", () => {
     expect(updates[0]?.recipient_emails).toEqual(["a@b.com", "c@d.com"]);
   });
 
-  it("비-DRY_RUN → SharePoint 등록 결과를 report에 반영", async () => {
+  it("비-DRY_RUN + 미발번 → assignDocNumber로 채번 후 업로드+F링크 반영", async () => {
     (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue({
       email: "me@x.com",
       displayName: "나",
@@ -178,12 +184,7 @@ describe("sendIncidentReport", () => {
       ok: true,
       messageId: "msg-1",
     });
-    (
-      registerIncidentReportToSharePoint as ReturnType<typeof vi.fn>
-    ).mockResolvedValue({
-      docNumber: "운영2606-0201",
-      sharepointUrl: "https://sp/x",
-    });
+    // rep.doc_number === null
     const { client, updates } = buildAdminMock(APPROVED_REPORT);
     (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
 
@@ -195,8 +196,46 @@ describe("sendIncidentReport", () => {
     });
 
     expect(r.ok).toBe(true);
-    expect(registerIncidentReportToSharePoint).toHaveBeenCalledTimes(1);
-    expect(updates[0]?.doc_number).toBe("운영2606-0201");
-    expect(updates[0]?.sharepoint_url).toBe("https://sp/x");
+    expect(assignDocNumber).toHaveBeenCalledTimes(1);
+    expect(uploadAndLinkReportFile).toHaveBeenCalledTimes(1);
+    // uploadAndLinkReportFile는 채번된 docNumber로 호출
+    const upArgs = (uploadAndLinkReportFile as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(upArgs[1]).toBe("운영2606-0202");
+    expect(updates[0]?.doc_number).toBe("운영2606-0202");
+    expect(updates[0]?.sharepoint_url).toBe("https://sp/x.docx");
+  });
+
+  it("비-DRY_RUN + 이미 발번 → assignDocNumber 미호출, 그 번호로 업로드", async () => {
+    (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue({
+      email: "me@x.com",
+      displayName: "나",
+      permission: "member",
+    });
+    (sendGraphMail as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      messageId: "msg-1",
+    });
+    const { client, updates } = buildAdminMock({
+      ...APPROVED_REPORT,
+      doc_number: "운영2606-0101",
+    });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const r = await sendIncidentReport({
+      id: APPROVED_REPORT.id,
+      to_email: "a@b.com",
+      subject: "제목",
+      body: "본문",
+    });
+
+    expect(r.ok).toBe(true);
+    expect(assignDocNumber).not.toHaveBeenCalled();
+    expect(uploadAndLinkReportFile).toHaveBeenCalledTimes(1);
+    const upArgs = (uploadAndLinkReportFile as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(upArgs[1]).toBe("운영2606-0101");
+    expect(updates[0]?.doc_number).toBe("운영2606-0101");
+    expect(updates[0]?.sharepoint_url).toBe("https://sp/x.docx");
   });
 });

@@ -158,3 +158,50 @@ export async function appendSenderRow(
     );
   }
 }
+
+/**
+ * 발신 시트에서 B열(시행번호)===docNumber 인 행을 찾아 그 행의 F열(링크)만 PATCH.
+ * 발번 시 append로 빈칸 들어간 F를 발송 시점에 파일 링크로 채우는 용도.
+ * 행을 찾아 PATCH하면 true, 못 찾으면 false.
+ */
+export async function updateSenderRowLink(
+  driveId: string,
+  itemId: string,
+  year: number,
+  docNumber: string,
+  link: string,
+): Promise<boolean> {
+  const sheet = senderSheetName(year);
+  const sessionId = await getWorkbookSession(driveId, itemId);
+  const used = await fetchUsedRange(driveId, itemId, sheet, sessionId);
+  const text = used.text ?? [];
+  const startRow = startRowFromAddress(used.address);
+
+  const target = String(docNumber).trim();
+  const idx = text.findIndex(
+    (row) => String(row?.[1] ?? "").trim() === target,
+  );
+  if (idx < 0) return false;
+
+  const excelRow = startRow + idx;
+  const address = `F${excelRow}:F${excelRow}`;
+  const token = await getGraphToken();
+  const url = `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets('${encodeURIComponent(
+    sheet,
+  )}')/range(address='${encodeURIComponent(address)}')`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      "workbook-session-id": sessionId,
+    },
+    body: JSON.stringify({ values: [[link]] }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `[gongmun] updateLink ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+  return true;
+}
