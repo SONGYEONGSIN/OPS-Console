@@ -49,3 +49,16 @@ jobs:
           MOA_SMS_POLL_INTERVAL_SEC: "3"
           # CLOSING_DRY_RUN: "true"  # 추출만 하고 인제스트 미전송 (검증용)
         run: python scripts/moa-closing/scrape.py
+
+      # 로그인 폼 미등장 등 실패 시 진단용 — scrape.py가 저장한 fail-*.png/html 업로드.
+      # (셀렉터 변경인지 차단/점검 페이지인지 artifact로 확인)
+      - name: Upload failure dump
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: closing-fail-dump
+          path: |
+            fail-*.png
+            fail-*.html
+          if-no-files-found: ignore
+          retention-days: 7
