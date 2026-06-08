@@ -48,12 +48,11 @@ import tempfile
 from datetime import datetime, timedelta, timezone, date
 
 import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+import undetected_chromedriver as uc
 
 KST = timezone(timedelta(hours=9))
 
@@ -303,10 +302,13 @@ def to_kst_iso(v) -> str | None:
 # ── 브라우저 / Moa DOM (LIVE DISCOVERY) ────────────────────────────────
 
 
-def setup_driver(download_dir: str, headless: bool) -> webdriver.Chrome:
-    opts = Options()
-    if headless:
-        opts.add_argument("--headless=new")
+def setup_driver(download_dir: str, headless: bool):
+    """undetected-chromedriver로 Cloudflare 봇 탐지 회피.
+
+    Cloudflare 'Just a moment' 챌린지는 헤드리스/자동화 시그니처를 잡으므로 uc를 쓴다.
+    CI에서는 xvfb 가상 디스플레이 + non-headless(HEADLESS_MODE=false)가 통과율이 높다.
+    """
+    opts = uc.ChromeOptions()
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--window-size=1400,1000")
@@ -317,7 +319,16 @@ def setup_driver(download_dir: str, headless: bool) -> webdriver.Chrome:
             "download.prompt_for_download": False,
         },
     )
-    return webdriver.Chrome(options=opts)
+    driver = uc.Chrome(options=opts, headless=headless, use_subprocess=True)
+    # uc는 prefs의 download dir를 무시할 수 있어 CDP로 한 번 더 지정.
+    try:
+        driver.execute_cdp_cmd(
+            "Page.setDownloadBehavior",
+            {"behavior": "allow", "downloadPath": download_dir},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    return driver
 
 
 def _dump_page(driver, label: str) -> None:
@@ -355,16 +366,33 @@ def _dump_page(driver, label: str) -> None:
         print(f"[DUMP:{label}] 덤프 실패(무시): {exc}")
 
 
-def _open_login_page(driver, wait, attempts: int = 3) -> None:
-    """로그인 페이지 진입 + 로그인 폼(login_id) 등장 대기.
+def _wait_cloudflare_clear(driver, timeout_sec: int = 45, poll_sec: int = 3) -> None:
+    """Cloudflare 'Just a moment' JS 챌린지가 자동 통과되길 대기.
 
-    자격증명 제출 '전' 단계라 일시적 페이지 로딩 지연(Moa 느림/러너 네트워크)에는
-    안전하게 재시도한다. attempts회 모두 실패하면 실패 페이지를 덤프하고 명확한
-    RuntimeError를 올린다. (SMS 미발송 단계이므로 재시도가 2FA 흐름을 깨지 않음.)
+    uc(undetected-chromedriver)가 챌린지를 자동 처리하므로, JS 실행 시간을 주면
+    타이틀이 'Just a moment...'에서 실제 로그인 페이지로 바뀐다. timeout 내 안 바뀌면
+    그대로 진행(이후 login_id 대기가 최종 판정).
+    """
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        title = (driver.title or "").lower()
+        if "just a moment" not in title and "moment" not in title:
+            return
+        print("[INFO] Cloudflare 챌린지 통과 대기 중...")
+        time.sleep(poll_sec)
+
+
+def _open_login_page(driver, wait, attempts: int = 3) -> None:
+    """로그인 페이지 진입 + (Cloudflare 챌린지 통과 대기) + 로그인 폼 등장 대기.
+
+    자격증명 제출 '전' 단계라 일시적 지연/챌린지에는 안전하게 재시도한다. attempts회
+    모두 실패하면 실패 페이지를 덤프하고 명확한 RuntimeError를 올린다.
+    (SMS 미발송 단계이므로 재시도가 2FA 흐름을 깨지 않음.)
     """
     for i in range(attempts):
         try:
             driver.get(MOA_LOGIN_URL)
+            _wait_cloudflare_clear(driver)
             wait.until(
                 EC.presence_of_element_located(
                     (By.CSS_SELECTOR, SELECTORS["login_id"])
@@ -377,7 +405,7 @@ def _open_login_page(driver, wait, attempts: int = 3) -> None:
     _dump_page(driver, "login")
     raise RuntimeError(
         f"로그인 폼(login_id={SELECTORS['login_id']}) {attempts}회 미등장 — "
-        "Moa 페이지 변경/차단 의심 (artifact의 fail-login.html/png 확인)"
+        "Cloudflare 차단/페이지 변경 의심 (artifact의 fail-login.html/png 확인)"
     )
 
 

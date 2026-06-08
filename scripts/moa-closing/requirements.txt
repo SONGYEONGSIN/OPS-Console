@@ -1,5 +1,6 @@
 # Moa 서비스마감 스크래퍼 필수 패키지
 selenium>=4.15.0
+undetected-chromedriver>=3.5.5   # Cloudflare 봇 챌린지("Just a moment") 회피 — xvfb non-headless 권장
 python-dotenv>=1.0.0
 requests>=2.31.0
 openpyxl>=3.1.0
