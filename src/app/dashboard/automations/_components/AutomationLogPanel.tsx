@@ -16,6 +16,7 @@ import {
   type SmileEdiEntry,
   type ServiceNoticeEntry,
   type ClosingScrapeEntry,
+  type WeeklyReportEntry,
 } from "@/features/automations/run-logs-normalize";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
 
@@ -251,6 +252,72 @@ function ServiceNoticeList({ entries }: { entries: ServiceNoticeEntry[] }) {
   );
 }
 
+const WEEKLY_STATUS_LABEL: Record<WeeklyReportEntry["status"], string> = {
+  created: "생성",
+  skipped: "스킵",
+  dry_run: "DRY-RUN",
+  failed: "실패",
+};
+
+function WeeklyStatusBadge({
+  status,
+}: {
+  status: WeeklyReportEntry["status"];
+}) {
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 text-[11px] ${
+        status === "failed"
+          ? "bg-vermilion/20 text-vermilion-deep"
+          : status === "created"
+            ? "bg-washi-raised text-ink"
+            : "bg-washi-raised text-muted"
+      }`}
+    >
+      {WEEKLY_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function WeeklyReportList({ entries }: { entries: WeeklyReportEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.ranAt)}</span>
+            <WeeklyStatusBadge status={e.status} />
+          </div>
+          <DefList
+            items={[
+              {
+                term: "회차",
+                desc:
+                  e.year && e.month && e.week
+                    ? `${e.year}년 ${e.month}월 ${e.week}주차`
+                    : "—",
+              },
+              { term: "발송자", desc: e.sender ?? "—" },
+              { term: "파일", desc: e.fileName ?? "—" },
+              {
+                term: "Teams",
+                desc:
+                  e.status === "created"
+                    ? e.teamsSent
+                      ? "발송"
+                      : "미발송"
+                    : "—",
+              },
+            ]}
+          />
+          <p className="text-xs text-muted">{e.message}</p>
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ClosingScrapeList({ entries }: { entries: ClosingScrapeEntry[] }) {
   return (
     <div className="space-y-5">
@@ -340,6 +407,9 @@ export function AutomationLogPanel({ label, loading, error, log }: Props) {
           )}
           {log.kind === "closing-scrape" && (
             <ClosingScrapeList entries={log.entries} />
+          )}
+          {log.kind === "weekly-report" && (
+            <WeeklyReportList entries={log.entries} />
           )}
           {log.kind === "insights" && <InsightsList entries={log.entries} />}
         </Section>

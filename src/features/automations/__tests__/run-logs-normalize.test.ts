@@ -9,6 +9,7 @@ import {
   toMailOperatorEntry,
   toSmileEdiEntry,
   toServiceNoticeEntry,
+  toWeeklyReportEntry,
   groupInsightsBatches,
   groupClosingBatches,
 } from "../run-logs-normalize";
@@ -407,5 +408,53 @@ describe("groupClosingBatches", () => {
     const batches = groupClosingBatches(rows, 1, 3);
     expect(batches).toHaveLength(1);
     expect(batches[0].scrapedAt).toBe("2026-06-07T01:00:00Z");
+  });
+});
+
+describe("toWeeklyReportEntry", () => {
+  it("실행 기록 row를 정규화", () => {
+    const entry = toWeeklyReportEntry({
+      ran_at: "2026-06-10T01:00:00Z",
+      status: "created",
+      year: 2026,
+      month: 6,
+      week: 2,
+      file_name: "주간보고_2026_6월2주차.xlsx",
+      sender: "전성대",
+      share_link: "https://share",
+      teams_sent: true,
+      message: "차주 보고 생성",
+    });
+    expect(entry).toEqual({
+      ranAt: "2026-06-10T01:00:00Z",
+      status: "created",
+      year: 2026,
+      month: 6,
+      week: 2,
+      fileName: "주간보고_2026_6월2주차.xlsx",
+      sender: "전성대",
+      shareLink: "https://share",
+      teamsSent: true,
+      message: "차주 보고 생성",
+    });
+  });
+
+  it("nullable 필드 안전 처리 + teams_sent 기본 false", () => {
+    const entry = toWeeklyReportEntry({
+      ran_at: "2026-06-10T01:00:00Z",
+      status: "failed",
+      year: null,
+      month: null,
+      week: null,
+      file_name: null,
+      sender: null,
+      share_link: null,
+      teams_sent: null,
+      message: "SHAREPOINT_DRIVE_ID 미설정",
+    });
+    expect(entry.year).toBeNull();
+    expect(entry.fileName).toBeNull();
+    expect(entry.teamsSent).toBe(false);
+    expect(entry.status).toBe("failed");
   });
 });

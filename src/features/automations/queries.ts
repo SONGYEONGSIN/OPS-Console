@@ -73,6 +73,18 @@ async function getClosingScrapeLastRunAt(): Promise<string | null> {
   return data?.scraped_at ?? null;
 }
 
+// weekly_report_runs는 ran_at(실행 시각)을 마지막 실행으로 본다.
+async function getWeeklyReportLastRunAt(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("weekly_report_runs")
+    .select("ran_at")
+    .order("ran_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.ran_at ?? null;
+}
+
 // job별 "마지막 실행 시각" 도출기. 신규 잡 추가 시 여기에 매핑 1줄.
 const LAST_RUN_RESOLVERS: Record<string, () => Promise<string | null>> = {
   "insights-collect": getInsightsLastRunAt,
@@ -82,6 +94,7 @@ const LAST_RUN_RESOLVERS: Record<string, () => Promise<string | null>> = {
   "smileedi-mail": () => getLatestSentAt("smileedi_mail_sends"),
   "service-notice-mail": () => getLatestSentAt("service_notice_mail_sends"),
   "closing-scrape": getClosingScrapeLastRunAt,
+  "weekly-report-rollover": getWeeklyReportLastRunAt,
 };
 
 export async function getJobLastRunAt(jobId: string): Promise<string | null> {

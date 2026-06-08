@@ -5,6 +5,7 @@ import {
   toMailOperatorEntry,
   toSmileEdiEntry,
   toServiceNoticeEntry,
+  toWeeklyReportEntry,
   groupInsightsBatches,
   groupClosingBatches,
   type JobRunLog,
@@ -104,6 +105,23 @@ async function serviceNoticeLog(jobId: string): Promise<JobRunLog> {
   };
 }
 
+// 본부차주보고 알림 — weekly_report_runs 실행 기록 조회.
+async function weeklyReportLog(jobId: string): Promise<JobRunLog> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("weekly_report_runs")
+    .select(
+      "ran_at, status, year, month, week, file_name, sender, share_link, teams_sent, message",
+    )
+    .order("ran_at", { ascending: false })
+    .limit(LOG_LIMIT);
+  return {
+    jobId,
+    kind: "weekly-report",
+    entries: (data ?? []).map(toWeeklyReportEntry),
+  };
+}
+
 // 서비스 마감 스크래핑 — closing_services를 scraped_at 배치로 묶어 복원.
 async function closingScrapeLog(jobId: string): Promise<JobRunLog> {
   const admin = createAdminClient();
@@ -141,6 +159,7 @@ const LOG_RESOLVERS: Record<string, (jobId: string) => Promise<JobRunLog>> = {
   "smileedi-mail": smileEdiLog,
   "service-notice-mail": serviceNoticeLog,
   "closing-scrape": closingScrapeLog,
+  "weekly-report-rollover": weeklyReportLog,
 };
 
 export async function getJobRunLog(jobId: string): Promise<JobRunLog> {
