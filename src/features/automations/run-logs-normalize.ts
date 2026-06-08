@@ -71,12 +71,19 @@ export type ServiceNoticeEntry = {
   errorMessage: string | null;
 };
 
+export type ClosingScrapeEntry = {
+  scrapedAt: string;
+  serviceCount: number;
+  sampleNames: string[];
+};
+
 export type JobRunLog =
   | { jobId: string; kind: "deposit-match"; entries: DepositMatchEntry[] }
   | { jobId: string; kind: "mail-operator"; entries: MailOperatorEntry[] }
   | { jobId: string; kind: "insights"; entries: InsightsBatchEntry[] }
   | { jobId: string; kind: "smileedi"; entries: SmileEdiEntry[] }
   | { jobId: string; kind: "service-notice"; entries: ServiceNoticeEntry[] }
+  | { jobId: string; kind: "closing-scrape"; entries: ClosingScrapeEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
 
 export function formatKrw(amount: number): string {
@@ -283,5 +290,41 @@ export function groupInsightsBatches(
         .slice(0, sampleSize)
         .map((t) => t.title);
       return { collectedAt: key, videoCount: titles.length, sampleTitles };
+    });
+}
+
+type ClosingServiceRow = {
+  scraped_at: string;
+  university_name: string;
+  service_name: string;
+};
+
+/**
+ * closing_services 행을 scraped_at(= 스크래핑 배치 시각) 단위로 묶어 "스크랩 배치"를
+ * 복원한다. ingest가 delete-all + insert(전체 대체)라 보통 최신 1배치만 존재하지만,
+ * insights와 동일한 배치 복원 방식으로 일반화해 둔다. 최신 배치부터 maxBatches개까지.
+ */
+export function groupClosingBatches(
+  rows: ClosingServiceRow[],
+  maxBatches: number,
+  sampleSize = 3,
+): ClosingScrapeEntry[] {
+  const groups = new Map<string, string[]>();
+  for (const r of rows) {
+    const key = r.scraped_at;
+    const list = groups.get(key) ?? [];
+    list.push(`${r.university_name} ${r.service_name}`);
+    groups.set(key, list);
+  }
+  return Array.from(groups.keys())
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
+    .slice(0, maxBatches)
+    .map((key) => {
+      const names = groups.get(key) ?? [];
+      return {
+        scrapedAt: key,
+        serviceCount: names.length,
+        sampleNames: names.slice(0, sampleSize),
+      };
     });
 }

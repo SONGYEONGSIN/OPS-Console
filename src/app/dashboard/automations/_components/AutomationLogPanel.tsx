@@ -15,6 +15,7 @@ import {
   type InsightsBatchEntry,
   type SmileEdiEntry,
   type ServiceNoticeEntry,
+  type ClosingScrapeEntry,
 } from "@/features/automations/run-logs-normalize";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
 
@@ -250,6 +251,33 @@ function ServiceNoticeList({ entries }: { entries: ServiceNoticeEntry[] }) {
   );
 }
 
+function ClosingScrapeList({ entries }: { entries: ClosingScrapeEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.scrapedAt)}</span>
+            <span className="text-[11px] text-muted">
+              {e.serviceCount}건 마감 적재
+            </span>
+          </div>
+          {e.sampleNames.length > 0 && (
+            <ul className="space-y-1 text-xs text-muted">
+              {e.sampleNames.map((name, j) => (
+                <li key={j} className="truncate">
+                  ▸ {name}
+                </li>
+              ))}
+            </ul>
+          )}
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
   return (
     <div className="space-y-5">
@@ -309,6 +337,9 @@ export function AutomationLogPanel({ label, loading, error, log }: Props) {
           {log.kind === "smileedi" && <SmileEdiList entries={log.entries} />}
           {log.kind === "service-notice" && (
             <ServiceNoticeList entries={log.entries} />
+          )}
+          {log.kind === "closing-scrape" && (
+            <ClosingScrapeList entries={log.entries} />
           )}
           {log.kind === "insights" && <InsightsList entries={log.entries} />}
         </Section>

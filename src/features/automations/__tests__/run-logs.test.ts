@@ -147,6 +147,27 @@ describe("getJobRunLog", () => {
     }
   });
 
+  it("closing-scrape → closing_services 조회 + scraped_at 배치 그룹핑", async () => {
+    mockAdmin("closing_services", [
+      {
+        scraped_at: "2026-06-07T01:00:00Z",
+        university_name: "A대학교",
+        service_name: "수시",
+      },
+      {
+        scraped_at: "2026-06-07T01:00:00Z",
+        university_name: "B대학교",
+        service_name: "정시",
+      },
+    ]);
+    const log = await getJobRunLog("closing-scrape");
+    expect(log.kind).toBe("closing-scrape");
+    if (log.kind === "closing-scrape") {
+      expect(log.entries).toHaveLength(1);
+      expect(log.entries[0].serviceCount).toBe(2);
+    }
+  });
+
   it("data가 null이어도 빈 entries", async () => {
     mockAdmin("receivables_match_runs", []);
     const log = await getJobRunLog("receivables-deposit-match");
