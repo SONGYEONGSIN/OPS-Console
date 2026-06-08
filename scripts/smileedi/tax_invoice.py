@@ -1840,9 +1840,21 @@ class SmileEDIScraper:
             # 데이터 비교 (작성일자, 품목, 거래처명을 기준으로 고유성 확인)
             print("[INFO] 데이터 중복 확인 중...")
             
-            # 기존 데이터의 고유 키 생성
+            # 기존 데이터의 고유 키 생성 — '이미 있음' 기준은 '이메일오류=Y'(발송완료) 행만.
+            # (버그 수정) 미발송(non-Y) 기존 행을 기준에 넣으면, 같은 건이 다음 스크랩에서
+            # '중복'으로 빠지고 동시에 보호(protected=Y)에도 안 들어가 머지 결과에서 삭제된다.
+            # → 발송완료(Y)만 기준으로 삼아, 미발송 대기 건은 매 스크랩에 다시 포함·보존한다.
+            # 이메일오류 컬럼명은 substring으로 탐지(protected_rows와 동일). 못 찾으면 기존 동작으로 폴백.
+            email_error_col = next(
+                (c for c in existing_df.columns if '이메일오류' in str(c)), None
+            )
             existing_keys = set()
             for _, row in existing_df.iterrows():
+                if email_error_col is not None:
+                    v = row[email_error_col]
+                    sent = (not pd.isna(v)) and str(v).strip().upper() == 'Y'
+                    if not sent:
+                        continue  # 미발송 대기 건 — 신규 판정 대상에서 제외하지 않음(보존)
                 작성일자 = self._get_column_value(row, ['작성일자'])
                 품목 = self._get_column_value(row, ['품목'])
                 거래처명 = self._get_column_value(row, ['거래처명'])
