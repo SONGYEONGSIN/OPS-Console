@@ -37,6 +37,18 @@ export const closingIngestSchema = z.object({
 export type ClosingIngestPayload = z.infer<typeof closingIngestSchema>;
 
 /**
+ * 스크래퍼 실행 결과 보고(`POST /api/closing/run-log`) 입력 검증.
+ * success=적재 완료(service_count), skipped=격주 off주, failed=스크랩/로그인 등 실패(message).
+ */
+export const closingRunLogSchema = z.object({
+  status: z.enum(["success", "skipped", "failed"]),
+  service_count: z.number().int().min(0).default(0),
+  message: z.string().max(1000).optional(),
+});
+
+export type ClosingRunLogPayload = z.infer<typeof closingRunLogSchema>;
+
+/**
  * DB read row (closing_services 테이블).
  * import 데이터 일관성을 위해 nullable 컬럼은 read 시 그대로 null 허용.
  */

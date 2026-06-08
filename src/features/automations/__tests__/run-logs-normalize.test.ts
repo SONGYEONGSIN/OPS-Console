@@ -10,8 +10,8 @@ import {
   toSmileEdiEntry,
   toServiceNoticeEntry,
   toWeeklyReportEntry,
+  toClosingRunEntry,
   groupInsightsBatches,
-  groupClosingBatches,
 } from "../run-logs-normalize";
 
 describe("formatKrw", () => {
@@ -370,44 +370,32 @@ describe("groupInsightsBatches", () => {
   });
 });
 
-describe("groupClosingBatches", () => {
-  const rows = [
-    {
-      scraped_at: "2026-06-07T01:00:00Z",
-      university_name: "A대학교",
-      service_name: "수시",
-    },
-    {
-      scraped_at: "2026-06-07T01:00:00Z",
-      university_name: "B대학교",
-      service_name: "정시",
-    },
-    {
-      scraped_at: "2026-05-24T01:00:00Z",
-      university_name: "C대학교",
-      service_name: "편입",
-    },
-  ];
-
-  it("scraped_at 단위로 그룹핑하고 최신순 정렬 + 대학·서비스명 샘플", () => {
-    const batches = groupClosingBatches(rows, 10, 2);
-    expect(batches).toHaveLength(2);
-    expect(batches[0].scrapedAt).toBe("2026-06-07T01:00:00Z");
-    expect(batches[0].serviceCount).toBe(2);
-    expect(batches[0].sampleNames).toEqual(["A대학교 수시", "B대학교 정시"]);
-    expect(batches[1].scrapedAt).toBe("2026-05-24T01:00:00Z");
-    expect(batches[1].serviceCount).toBe(1);
+describe("toClosingRunEntry", () => {
+  it("실행 기록 row를 정규화 (success)", () => {
+    const entry = toClosingRunEntry({
+      ran_at: "2026-06-08T01:00:00Z",
+      status: "success",
+      service_count: 12,
+      message: "적재 12건",
+    });
+    expect(entry).toEqual({
+      ranAt: "2026-06-08T01:00:00Z",
+      status: "success",
+      serviceCount: 12,
+      message: "적재 12건",
+    });
   });
 
-  it("sampleSize로 샘플 수 제한", () => {
-    const batches = groupClosingBatches(rows, 10, 1);
-    expect(batches[0].sampleNames).toEqual(["A대학교 수시"]);
-  });
-
-  it("maxBatches로 배치 수 제한", () => {
-    const batches = groupClosingBatches(rows, 1, 3);
-    expect(batches).toHaveLength(1);
-    expect(batches[0].scrapedAt).toBe("2026-06-07T01:00:00Z");
+  it("service_count null이면 0, message null 허용 (failed)", () => {
+    const entry = toClosingRunEntry({
+      ran_at: "2026-06-08T01:00:00Z",
+      status: "failed",
+      service_count: null,
+      message: "TimeoutException: 로그인 폼 미등장",
+    });
+    expect(entry.serviceCount).toBe(0);
+    expect(entry.status).toBe("failed");
+    expect(entry.message).toBe("TimeoutException: 로그인 폼 미등장");
   });
 });
 

@@ -15,7 +15,7 @@ import {
   type InsightsBatchEntry,
   type SmileEdiEntry,
   type ServiceNoticeEntry,
-  type ClosingScrapeEntry,
+  type ClosingRunEntry,
   type WeeklyReportEntry,
 } from "@/features/automations/run-logs-normalize";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
@@ -318,25 +318,52 @@ function WeeklyReportList({ entries }: { entries: WeeklyReportEntry[] }) {
   );
 }
 
-function ClosingScrapeList({ entries }: { entries: ClosingScrapeEntry[] }) {
+const CLOSING_STATUS_LABEL: Record<ClosingRunEntry["status"], string> = {
+  success: "성공",
+  skipped: "off주",
+  failed: "실패",
+};
+
+function ClosingStatusBadge({ status }: { status: ClosingRunEntry["status"] }) {
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 text-[11px] ${
+        status === "failed"
+          ? "bg-vermilion/20 text-vermilion-deep"
+          : status === "success"
+            ? "bg-washi-raised text-ink"
+            : "bg-washi-raised text-muted"
+      }`}
+    >
+      {CLOSING_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function ClosingScrapeList({ entries }: { entries: ClosingRunEntry[] }) {
   return (
     <div className="space-y-5">
       {entries.map((e, i) => (
         <div key={i} className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-ink">{fmtTime(e.scrapedAt)}</span>
-            <span className="text-[11px] text-muted">
-              {e.serviceCount}건 마감 적재
-            </span>
+            <span className="text-xs text-ink">{fmtTime(e.ranAt)}</span>
+            <ClosingStatusBadge status={e.status} />
           </div>
-          {e.sampleNames.length > 0 && (
-            <ul className="space-y-1 text-xs text-muted">
-              {e.sampleNames.map((name, j) => (
-                <li key={j} className="truncate">
-                  ▸ {name}
-                </li>
-              ))}
-            </ul>
+          <DefList
+            items={[
+              {
+                term: "적재",
+                desc: e.status === "success" ? `${e.serviceCount}건 마감` : "—",
+              },
+            ]}
+          />
+          {e.message && (
+            <p
+              className={`text-xs ${e.status === "failed" ? "text-vermilion" : "text-muted"}`}
+            >
+              {e.status === "failed" ? "! " : ""}
+              {e.message}
+            </p>
           )}
           {i < entries.length - 1 && <Divider />}
         </div>

@@ -61,16 +61,16 @@ async function getLatestSentAt(table: string): Promise<string | null> {
   return data?.sent_at ?? null;
 }
 
-// closing_services는 sent_at 대신 scraped_at(스크래핑 배치 시각)을 마지막 실행으로 본다.
+// closing-scrape는 closing_scrape_runs.ran_at(실행 보고 시각)을 마지막 실행으로 본다.
 async function getClosingScrapeLastRunAt(): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("closing_services")
-    .select("scraped_at")
-    .order("scraped_at", { ascending: false })
+    .from("closing_scrape_runs")
+    .select("ran_at")
+    .order("ran_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data?.scraped_at ?? null;
+  return data?.ran_at ?? null;
 }
 
 // weekly_report_runs는 ran_at(실행 시각)을 마지막 실행으로 본다.
