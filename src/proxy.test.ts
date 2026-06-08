@@ -15,7 +15,10 @@ function reqFor(path: string) {
 describe("proxy 미들웨어", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    updateSession.mockResolvedValue({ supabaseResponse: NextResponse.next(), user: null });
+    updateSession.mockResolvedValue({
+      supabaseResponse: NextResponse.next(),
+      user: null,
+    });
   });
 
   it("미인증 + 비공개 경로(/dashboard) → /login 리다이렉트", async () => {
@@ -35,8 +38,21 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("미인증 + closing/ingest(스크래퍼 적재)은 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(reqFor("/api/closing/ingest"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("미인증 + closing/run-log(스크래퍼 결과 보고)은 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(reqFor("/api/closing/run-log"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("로그인 상태 + /login → /dashboard 리다이렉트", async () => {
-    updateSession.mockResolvedValue({ supabaseResponse: NextResponse.next(), user: { id: "u1" } });
+    updateSession.mockResolvedValue({
+      supabaseResponse: NextResponse.next(),
+      user: { id: "u1" },
+    });
     const res = await proxy(reqFor("/login"));
     expect(res.headers.get("location")).toContain("/dashboard");
   });
