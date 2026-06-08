@@ -7,6 +7,8 @@ import {
   enrichMatchedForLog,
   toDepositMatchEntry,
   toMailOperatorEntry,
+  toSmileEdiEntry,
+  toServiceNoticeEntry,
   groupInsightsBatches,
 } from "../run-logs-normalize";
 
@@ -255,6 +257,85 @@ describe("toMailOperatorEntry", () => {
     });
     expect(entry.customerNames).toEqual([]);
     expect(entry.errorMessage).toBe("Graph 401");
+  });
+});
+
+describe("toSmileEdiEntry", () => {
+  it("역발행 발송 row를 정규화", () => {
+    const entry = toSmileEdiEntry({
+      sent_at: "2026-06-08T01:01:57Z",
+      recipient_name: "박담당",
+      recipient_email: "park@example.com",
+      company_names: ["A상사", "B물산"],
+      invoice_count: 4,
+      total_supply_amount: 3200000,
+      status: "sent",
+      error_message: null,
+    });
+    expect(entry).toEqual({
+      sentAt: "2026-06-08T01:01:57Z",
+      recipientName: "박담당",
+      recipientEmail: "park@example.com",
+      companyNames: ["A상사", "B물산"],
+      invoiceCount: 4,
+      totalSupplyAmount: 3200000,
+      status: "sent",
+      errorMessage: null,
+    });
+  });
+
+  it("company_names가 null이면 빈 배열, 금액/건수 null이면 0", () => {
+    const entry = toSmileEdiEntry({
+      sent_at: "2026-06-08T01:01:57Z",
+      recipient_name: null,
+      recipient_email: "x@example.com",
+      company_names: null,
+      invoice_count: null,
+      total_supply_amount: null,
+      status: "failed",
+      error_message: "Graph 500",
+    });
+    expect(entry.companyNames).toEqual([]);
+    expect(entry.invoiceCount).toBe(0);
+    expect(entry.totalSupplyAmount).toBe(0);
+    expect(entry.errorMessage).toBe("Graph 500");
+  });
+});
+
+describe("toServiceNoticeEntry", () => {
+  it("월별 서비스 알림 발송 row를 정규화", () => {
+    const entry = toServiceNoticeEntry({
+      sent_at: "2026-06-01T01:00:00Z",
+      target_month: "2026-07",
+      recipient_name: "이운영",
+      recipient_email: "lee@example.com",
+      service_count: 5,
+      status: "sent",
+      error_message: null,
+    });
+    expect(entry).toEqual({
+      sentAt: "2026-06-01T01:00:00Z",
+      targetMonth: "2026-07",
+      recipientName: "이운영",
+      recipientEmail: "lee@example.com",
+      serviceCount: 5,
+      status: "sent",
+      errorMessage: null,
+    });
+  });
+
+  it("service_count null이면 0", () => {
+    const entry = toServiceNoticeEntry({
+      sent_at: "2026-06-01T01:00:00Z",
+      target_month: "2026-07",
+      recipient_name: null,
+      recipient_email: "x@example.com",
+      service_count: null,
+      status: "dry_run",
+      error_message: null,
+    });
+    expect(entry.serviceCount).toBe(0);
+    expect(entry.recipientName).toBeNull();
   });
 });
 

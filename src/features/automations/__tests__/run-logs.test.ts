@@ -88,6 +88,65 @@ describe("getJobRunLog", () => {
     }
   });
 
+  it("receivables-mail-school → receivables_mail_sends 조회 + mail-operator 재사용", async () => {
+    mockAdmin("receivables_mail_sends", [
+      {
+        sent_at: "2026-06-08T01:00:18Z",
+        recipient_name: "학교담당",
+        recipient_email: "school@example.com",
+        customer_names: ["A대학교"],
+        receivable_count: 2,
+        total_amount: 500000,
+        status: "sent",
+        error_message: null,
+      },
+    ]);
+    const log = await getJobRunLog("receivables-mail-school");
+    expect(log.kind).toBe("mail-operator");
+    if (log.kind === "mail-operator") {
+      expect(log.entries[0].recipientName).toBe("학교담당");
+    }
+  });
+
+  it("smileedi-mail → smileedi_mail_sends 조회 + smileedi 매핑", async () => {
+    mockAdmin("smileedi_mail_sends", [
+      {
+        sent_at: "2026-06-08T01:01:57Z",
+        recipient_name: "박담당",
+        recipient_email: "park@example.com",
+        company_names: ["A상사"],
+        invoice_count: 3,
+        total_supply_amount: 2000000,
+        status: "sent",
+        error_message: null,
+      },
+    ]);
+    const log = await getJobRunLog("smileedi-mail");
+    expect(log.kind).toBe("smileedi");
+    if (log.kind === "smileedi") {
+      expect(log.entries[0].invoiceCount).toBe(3);
+    }
+  });
+
+  it("service-notice-mail → service_notice_mail_sends 조회 + service-notice 매핑", async () => {
+    mockAdmin("service_notice_mail_sends", [
+      {
+        sent_at: "2026-06-01T01:00:00Z",
+        target_month: "2026-07",
+        recipient_name: "이운영",
+        recipient_email: "lee@example.com",
+        service_count: 5,
+        status: "sent",
+        error_message: null,
+      },
+    ]);
+    const log = await getJobRunLog("service-notice-mail");
+    expect(log.kind).toBe("service-notice");
+    if (log.kind === "service-notice") {
+      expect(log.entries[0].serviceCount).toBe(5);
+    }
+  });
+
   it("data가 null이어도 빈 entries", async () => {
     mockAdmin("receivables_match_runs", []);
     const log = await getJobRunLog("receivables-deposit-match");

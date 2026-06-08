@@ -49,11 +49,26 @@ async function getReceivablesDepositMatchLastRunAt(): Promise<string | null> {
   return data?.started_at ?? null;
 }
 
+// 발송 이력 테이블의 최신 sent_at 1건을 마지막 실행 시각으로 본다.
+async function getLatestSentAt(table: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from(table)
+    .select("sent_at")
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.sent_at ?? null;
+}
+
 // job별 "마지막 실행 시각" 도출기. 신규 잡 추가 시 여기에 매핑 1줄.
 const LAST_RUN_RESOLVERS: Record<string, () => Promise<string | null>> = {
   "insights-collect": getInsightsLastRunAt,
   "receivables-mail-operator": getReceivablesMailOperatorLastRunAt,
+  "receivables-mail-school": () => getLatestSentAt("receivables_mail_sends"),
   "receivables-deposit-match": getReceivablesDepositMatchLastRunAt,
+  "smileedi-mail": () => getLatestSentAt("smileedi_mail_sends"),
+  "service-notice-mail": () => getLatestSentAt("service_notice_mail_sends"),
 };
 
 export async function getJobLastRunAt(jobId: string): Promise<string | null> {
@@ -71,7 +86,8 @@ async function getAutomationSettings(): Promise<Map<string, boolean>> {
     .select("job_id, enabled");
   const map = new Map<string, boolean>();
   for (const row of data ?? []) {
-    if (typeof row.job_id === "string") map.set(row.job_id, row.enabled === true);
+    if (typeof row.job_id === "string")
+      map.set(row.job_id, row.enabled === true);
   }
   return map;
 }
@@ -94,7 +110,11 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
       scheduleInfo: job.scheduleInfo,
       cooldownMinutes: job.cooldownMinutes,
       lastRunAt,
-      cooldownRemainingMinutes: computeCooldownRemaining(lastRunAt, job.cooldownMinutes, now),
+      cooldownRemainingMinutes: computeCooldownRemaining(
+        lastRunAt,
+        job.cooldownMinutes,
+        now,
+      ),
       enabled: settings.get(job.id) ?? false,
     });
   }

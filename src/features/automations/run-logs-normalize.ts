@@ -50,10 +50,33 @@ export type InsightsBatchEntry = {
   sampleTitles: string[];
 };
 
+export type SmileEdiEntry = {
+  sentAt: string;
+  recipientName: string | null;
+  recipientEmail: string;
+  companyNames: string[];
+  invoiceCount: number;
+  totalSupplyAmount: number;
+  status: "sent" | "failed" | "dry_run";
+  errorMessage: string | null;
+};
+
+export type ServiceNoticeEntry = {
+  sentAt: string;
+  targetMonth: string;
+  recipientName: string | null;
+  recipientEmail: string;
+  serviceCount: number;
+  status: "sent" | "failed" | "dry_run";
+  errorMessage: string | null;
+};
+
 export type JobRunLog =
   | { jobId: string; kind: "deposit-match"; entries: DepositMatchEntry[] }
   | { jobId: string; kind: "mail-operator"; entries: MailOperatorEntry[] }
   | { jobId: string; kind: "insights"; entries: InsightsBatchEntry[] }
+  | { jobId: string; kind: "smileedi"; entries: SmileEdiEntry[] }
+  | { jobId: string; kind: "service-notice"; entries: ServiceNoticeEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
 
 export function formatKrw(amount: number): string {
@@ -174,6 +197,54 @@ export function toMailOperatorEntry(row: MailOperatorRow): MailOperatorEntry {
     customerNames: Array.isArray(row.customer_names) ? row.customer_names : [],
     receivableCount: row.receivable_count ?? 0,
     totalAmount: row.total_amount ?? 0,
+    status: row.status,
+    errorMessage: row.error_message ?? null,
+  };
+}
+
+type SmileEdiRow = {
+  sent_at: string;
+  recipient_name: string | null;
+  recipient_email: string;
+  company_names: string[] | null;
+  invoice_count: number | null;
+  total_supply_amount: number | null;
+  status: "sent" | "failed" | "dry_run";
+  error_message: string | null;
+};
+
+export function toSmileEdiEntry(row: SmileEdiRow): SmileEdiEntry {
+  return {
+    sentAt: row.sent_at,
+    recipientName: row.recipient_name ?? null,
+    recipientEmail: row.recipient_email,
+    companyNames: Array.isArray(row.company_names) ? row.company_names : [],
+    invoiceCount: row.invoice_count ?? 0,
+    totalSupplyAmount: row.total_supply_amount ?? 0,
+    status: row.status,
+    errorMessage: row.error_message ?? null,
+  };
+}
+
+type ServiceNoticeRow = {
+  sent_at: string;
+  target_month: string;
+  recipient_name: string | null;
+  recipient_email: string;
+  service_count: number | null;
+  status: "sent" | "failed" | "dry_run";
+  error_message: string | null;
+};
+
+export function toServiceNoticeEntry(
+  row: ServiceNoticeRow,
+): ServiceNoticeEntry {
+  return {
+    sentAt: row.sent_at,
+    targetMonth: row.target_month,
+    recipientName: row.recipient_name ?? null,
+    recipientEmail: row.recipient_email,
+    serviceCount: row.service_count ?? 0,
     status: row.status,
     errorMessage: row.error_message ?? null,
   };
