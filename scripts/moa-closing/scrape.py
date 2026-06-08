@@ -320,14 +320,48 @@ def setup_driver(download_dir: str, headless: bool) -> webdriver.Chrome:
     return webdriver.Chrome(options=opts)
 
 
+def _dump_page(driver, label: str) -> None:
+    """실패 진단용 — 현재 URL/타이틀 + 페이지 소스 힌트를 로그에 남기고,
+    스크린샷·전체 HTML을 파일로 저장(워크플로가 artifact로 업로드).
+
+    로그인 폼 미등장이 (1)셀렉터 변경인지 (2)차단/점검/캡차 페이지인지 즉시 판별한다.
+    """
+    try:
+        out = os.getenv("CLOSING_DUMP_DIR", ".")
+        print(f"[DUMP:{label}] url={driver.current_url} title={driver.title!r}")
+        src = driver.page_source or ""
+        print(f"[DUMP:{label}] page_source 길이={len(src)}")
+        hints = [
+            "txtUserID",
+            "txtUserPwd",
+            "secCaptcha",
+            "점검",
+            "차단",
+            "Access Denied",
+            "blocked",
+            "Just a moment",
+            "Cloudflare",
+        ]
+        found = [kw for kw in hints if kw.lower() in src.lower()]
+        print(f"[DUMP:{label}] 힌트 포함: {found if found else '없음'}")
+        try:
+            driver.save_screenshot(os.path.join(out, f"fail-{label}.png"))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[DUMP:{label}] 스크린샷 실패: {exc}")
+        with open(os.path.join(out, f"fail-{label}.html"), "w", encoding="utf-8") as f:
+            f.write(src[:300000])
+        print(f"[DUMP:{label}] 저장: fail-{label}.png / fail-{label}.html")
+    except Exception as exc:  # noqa: BLE001 — 덤프 실패는 무시
+        print(f"[DUMP:{label}] 덤프 실패(무시): {exc}")
+
+
 def _open_login_page(driver, wait, attempts: int = 3) -> None:
     """로그인 페이지 진입 + 로그인 폼(login_id) 등장 대기.
 
     자격증명 제출 '전' 단계라 일시적 페이지 로딩 지연(Moa 느림/러너 네트워크)에는
-    안전하게 재시도한다. attempts회 모두 실패하면 마지막 TimeoutException을 올린다.
-    (SMS 미발송 단계이므로 재시도가 2FA 흐름을 깨지 않음.)
+    안전하게 재시도한다. attempts회 모두 실패하면 실패 페이지를 덤프하고 명확한
+    RuntimeError를 올린다. (SMS 미발송 단계이므로 재시도가 2FA 흐름을 깨지 않음.)
     """
-    last_exc: TimeoutException | None = None
     for i in range(attempts):
         try:
             driver.get(MOA_LOGIN_URL)
@@ -337,12 +371,14 @@ def _open_login_page(driver, wait, attempts: int = 3) -> None:
                 )
             )
             return
-        except TimeoutException as exc:
-            last_exc = exc
+        except TimeoutException:
             print(f"[WARN] 로그인 폼 미등장 (시도 {i + 1}/{attempts}) — 재시도")
             time.sleep(3)
-    assert last_exc is not None
-    raise last_exc
+    _dump_page(driver, "login")
+    raise RuntimeError(
+        f"로그인 폼(login_id={SELECTORS['login_id']}) {attempts}회 미등장 — "
+        "Moa 페이지 변경/차단 의심 (artifact의 fail-login.html/png 확인)"
+    )
 
 
 def login_and_2fa(driver, wait, env) -> None:
@@ -492,9 +528,10 @@ def main() -> int:
         return 0
     except Exception as exc:  # noqa: BLE001 — 실패도 실행기록에 보고 후 재전파
         if not dry_run:
-            post_run_log(
-                base_url, secret, "failed", 0, f"{type(exc).__name__}: {exc}"
-            )
+            first = str(exc).strip().splitlines()
+            detail = first[0] if first else ""
+            msg = f"{type(exc).__name__}: {detail}".strip().rstrip(":").strip()
+            post_run_log(base_url, secret, "failed", 0, msg[:300])
         raise
 
 
