@@ -13,6 +13,7 @@ import {
   isReceivablesDataRow,
   matchesReceivablesQuery,
 } from "./_row-mapper";
+import { ReceivablesControls } from "./ReceivablesControls";
 
 /**
  * /dashboard/receivables — SharePoint Excel 미수채권 (read-only 목록 + 인스펙터).
@@ -107,8 +108,8 @@ export default async function ReceivablesPage({
               SharePoint 데이터를 불러올 수 없습니다
             </p>
             <p className="mt-2 text-xs text-muted">
-              환경변수 (AZURE_AD_* / SHAREPOINT_RECEIVABLES_*) 또는 Azure AD
-              앱 권한을 확인하세요. 자세한 로그는 서버 콘솔.
+              환경변수 (AZURE_AD_* / SHAREPOINT_RECEIVABLES_*) 또는 Azure AD 앱
+              권한을 확인하세요. 자세한 로그는 서버 콘솔.
             </p>
           </div>
         </section>
@@ -123,6 +124,7 @@ export default async function ReceivablesPage({
         data={{ rows }}
         header={header}
         variant="receivables"
+        controlsRow={<ReceivablesControls key="receivables-controls" />}
         readOnly={!canEdit}
         onPersist={canEdit ? onPersist : undefined}
         currentUserName={me?.displayName ?? me?.email ?? ""}
@@ -132,4 +134,3 @@ export default async function ReceivablesPage({
     </>
   );
 }
-
