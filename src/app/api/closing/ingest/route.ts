@@ -5,15 +5,14 @@ import { closingIngestSchema } from "@/features/closing/schemas";
 /**
  * 서비스 마감 스크래퍼 인제스트 endpoint — `Authorization: Bearer ${CRON_SECRET}` 인증.
  *
- * GitHub Actions cron(스크래퍼)이 격주 "현재 마감된 전체 스냅샷"을 보낸다.
- * 멱등 전략: 전체 대체(delete-all + insert) — 지난 배치에서 사라진 stale row 제거.
- * 빈 배열은 zod에서 거부(전체 삭제 사고 방지). 부분 전송은 스크래퍼가 하지 않는다.
+ * 스크래퍼가 "현재 마감된 전체 스냅샷"을 보낸다.
+ * 적재 전략: 신규만 누적 — service_id(멱등 키) 충돌은 무시하고 기존에 없던 건만 insert.
+ * 한 번 적재된 마감 건은 이후 검색 결과에서 빠져도 유지(이력 누적). 빈 배열은 zod에서 거부.
+ * 응답 inserted = 이번에 실제로 새로 추가된 건수, received = 보낸 전체 건수.
  *
  * service_role(RLS bypass) admin client로만 쓰기. secret 누설 시 임의 주입 가능하나
  * 데이터는 read-only 표시라 영향은 위변조 한정.
  */
-const NIL_UUID = "00000000-0000-0000-0000-000000000000";
-
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -25,14 +24,20 @@ export async function POST(request: Request) {
 
   const auth = request.headers.get("authorization") ?? "";
   if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 },
+    );
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid json" },
+      { status: 400 },
+    );
   }
 
   const parsed = closingIngestSchema.safeParse(body);
@@ -46,7 +51,8 @@ export async function POST(request: Request) {
   const { scraped_at, rows } = parsed.data;
   const supabase = createAdminClient();
 
-  // 전체 대체 — 같은 scraped_at 부여로 배치 일관성.
+  // 신규만 누적 — 기존 적재분은 유지하고 새 service_id만 추가(중복은 무시). scraped_at은
+  // 이번 배치에서 처음 들어오는 행에 부여(이미 있던 행은 ignoreDuplicates로 갱신 안 됨).
   const insertRows = rows.map((r) => ({
     service_id: r.service_id,
     university_name: r.university_name,
@@ -65,27 +71,21 @@ export async function POST(request: Request) {
     scraped_at,
   }));
 
-  // PostgREST delete는 필터를 요구 → 항상 참인 neq(NIL_UUID)로 전체 삭제.
-  const { error: deleteError } = await supabase
+  // service_id 충돌(이미 적재된 건)은 무시하고 신규만 insert. select로 실제 신규 건수 회수.
+  const { data, error: upsertError } = await supabase
     .from("closing_services")
-    .delete()
-    .neq("id", NIL_UUID);
-  if (deleteError) {
+    .upsert(insertRows, { onConflict: "service_id", ignoreDuplicates: true })
+    .select("service_id");
+  if (upsertError) {
     return NextResponse.json(
-      { ok: false, error: deleteError.message },
+      { ok: false, error: upsertError.message },
       { status: 500 },
     );
   }
 
-  const { error: insertError } = await supabase
-    .from("closing_services")
-    .insert(insertRows);
-  if (insertError) {
-    return NextResponse.json(
-      { ok: false, error: insertError.message },
-      { status: 500 },
-    );
-  }
-
-  return NextResponse.json({ ok: true, inserted: insertRows.length });
+  return NextResponse.json({
+    ok: true,
+    received: insertRows.length,
+    inserted: data?.length ?? 0,
+  });
 }
