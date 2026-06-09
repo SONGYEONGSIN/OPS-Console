@@ -50,13 +50,14 @@ export function ServicesTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">카테고리</th>
           <th className="px-3 py-2">운영자</th>
           <th className="px-3 py-2">작성마감</th>
+          <th className="px-3 py-2">남은일수</th>
           <th className="px-3 py-2">단독</th>
         </tr>
       </thead>
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={6} className="px-3 py-6 text-center text-muted">
+            <td colSpan={7} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
@@ -89,23 +90,21 @@ export function ServicesTable({ rows, selectedId, onSelect }: Props) {
                 <td className="px-3 py-2 text-sm text-ink-soft">
                   {row.operatorName || row.operatorEmail || "-"}
                 </td>
+                <td className="px-3 py-2 text-sm text-ink-soft">
+                  {formatShortDate(row.writeEndAt)}
+                </td>
                 <td className="px-3 py-2 text-sm">
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="text-ink-soft">
-                      {formatShortDate(row.writeEndAt)}
+                  {badge.closed ? (
+                    <span
+                      className={`inline-block px-1.5 py-0.5 text-xs ${badge.tone}`}
+                    >
+                      {badge.label}
                     </span>
-                    {badge.closed ? (
-                      <span
-                        className={`inline-block px-1.5 py-0.5 text-xs ${badge.tone}`}
-                      >
-                        {badge.label}
-                      </span>
-                    ) : (
-                      <span className={`text-xs ${badge.tone}`}>
-                        {badge.label}
-                      </span>
-                    )}
-                  </span>
+                  ) : (
+                    <span className={`text-xs ${badge.tone}`}>
+                      {badge.label}
+                    </span>
+                  )}
                 </td>
                 <td className="px-3 py-2">
                   {row.solo ? (
