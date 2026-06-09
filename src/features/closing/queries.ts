@@ -7,6 +7,8 @@ export type ClosingFilter = {
   region?: string;
   category?: string;
   universityType?: string;
+  /** 마감여부 — closed: 작성마감 지남 / open: 마감 전 / all: 전체. 미지정 시 전체. */
+  closedStatus?: "closed" | "open" | "all";
   page?: number;
   pageSize?: number;
 };
@@ -26,9 +28,7 @@ export async function listClosing(
   filter: ClosingFilter = {},
 ): Promise<ClosingListResult> {
   const supabase = await createClient();
-  let query = supabase
-    .from("closing_services")
-    .select("*", { count: "exact" });
+  let query = supabase.from("closing_services").select("*", { count: "exact" });
 
   if (filter.search) {
     const term = filter.search.trim();
@@ -43,6 +43,12 @@ export async function listClosing(
   if (filter.category) query = query.eq("category", filter.category);
   if (filter.universityType)
     query = query.eq("university_type", filter.universityType);
+
+  // 마감여부 — 작성마감(write_end_at) 기준 현재 시각 비교
+  if (filter.closedStatus === "closed")
+    query = query.lt("write_end_at", new Date().toISOString());
+  else if (filter.closedStatus === "open")
+    query = query.gte("write_end_at", new Date().toISOString());
 
   query = query.order("write_end_at", { ascending: false });
 
