@@ -78,7 +78,7 @@ export default async function IncidentsPage({
   const defaultYear = currentAcademicYear();
   const selectedYear = params.year ? Number(params.year) : defaultYear;
   const page = Math.max(1, Number(params.page) || 1);
-  const mine = params.mine === "true";
+  const mine = params.mine !== "false";
   const reportPending = params.report === "pending";
   const reportApproved = params.report === "approved";
 

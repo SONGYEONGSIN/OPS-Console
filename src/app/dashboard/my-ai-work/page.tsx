@@ -34,7 +34,7 @@ export default async function MyAiWorkPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
   const allWorks = await listAiWorks();
-  const mine = sp.mine === "true";
+  const mine = sp.mine !== "false";
   const works =
     mine && me?.email
       ? allWorks.filter((w) => w.author_email === me.email)

@@ -51,7 +51,7 @@ export default async function ContactsPage({
   const canEdit =
     me?.permission === "admin" || me?.permission === "member";
 
-  const mine = sp.mine === "true";
+  const mine = sp.mine !== "false";
 
   // 대학명 자동완성 + mine 필터용 services 전수 fetch.
   // Supabase JS는 PostgREST 1000 cap이라 chunk loop으로 전체 fetch.

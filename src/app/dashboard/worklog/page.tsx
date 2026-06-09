@@ -42,7 +42,7 @@ export default async function WorklogPage({
   const pathname = `/dashboard/${slug}`;
   const sp = await searchParams;
   const me = await getCurrentOperator();
-  const mine = sp.mine === "true";
+  const mine = sp.mine !== "false";
   const page = Math.max(1, Number(sp.page) || 1);
 
   const { rows, total } = await listWorklog({
