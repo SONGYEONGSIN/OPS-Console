@@ -24,6 +24,7 @@ export function ReceivablesControls() {
       const next = new URLSearchParams(params.toString());
       if (q.trim()) next.set("q", q.trim());
       else next.delete("q");
+      next.delete("page");
       router.push(`${pathname}?${next.toString()}`);
     }, DEBOUNCE_MS);
     return () => clearTimeout(id);
