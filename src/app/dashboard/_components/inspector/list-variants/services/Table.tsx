@@ -18,17 +18,26 @@ function formatShortDate(iso?: string | null): string {
 }
 
 /**
- * 작성마감까지 남은 일수 표기 (D-N). 지난 일정은 '마감'.
+ * 작성마감까지 남은 일수 표기 (D-N). 지난 일정은 '마감'(closed=true).
  */
-function deadlineBadge(iso?: string | null): { label: string; tone: string } {
-  if (!iso) return { label: "-", tone: "text-muted" };
+function deadlineBadge(iso?: string | null): {
+  label: string;
+  tone: string;
+  closed: boolean;
+} {
+  if (!iso) return { label: "-", tone: "text-muted", closed: false };
   const now = Date.now();
   const target = new Date(iso).getTime();
   const diffDays = Math.ceil((target - now) / (24 * 60 * 60 * 1000));
-  if (diffDays < 0) return { label: "마감", tone: "text-muted" };
+  if (diffDays < 0)
+    return { label: "마감", tone: "bg-washi-raised text-muted", closed: true };
   if (diffDays <= 7)
-    return { label: `D-${diffDays}`, tone: "text-vermilion font-semibold" };
-  return { label: `D-${diffDays}`, tone: "text-ink-soft" };
+    return {
+      label: `D-${diffDays}`,
+      tone: "text-vermilion font-semibold",
+      closed: false,
+    };
+  return { label: `D-${diffDays}`, tone: "text-ink-soft", closed: false };
 }
 
 export function ServicesTable({ rows, selectedId, onSelect }: Props) {
@@ -81,8 +90,21 @@ export function ServicesTable({ rows, selectedId, onSelect }: Props) {
                   {row.operatorName || row.operatorEmail || "-"}
                 </td>
                 <td className="px-3 py-2 text-sm">
-                  <span className={badge.tone}>
-                    {formatShortDate(row.writeEndAt)} · {badge.label}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="text-ink-soft">
+                      {formatShortDate(row.writeEndAt)}
+                    </span>
+                    {badge.closed ? (
+                      <span
+                        className={`inline-block px-1.5 py-0.5 text-xs ${badge.tone}`}
+                      >
+                        {badge.label}
+                      </span>
+                    ) : (
+                      <span className={`text-xs ${badge.tone}`}>
+                        {badge.label}
+                      </span>
+                    )}
                   </span>
                 </td>
                 <td className="px-3 py-2">

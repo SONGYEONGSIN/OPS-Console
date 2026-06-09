@@ -22,11 +22,7 @@ const baseRow: ListRow = {
 describe("ServicesTable", () => {
   it("헤더 6컬럼 — 대학명/서비스명/카테고리/운영자/작성마감/단독", () => {
     render(
-      <ServicesTable
-        rows={[baseRow]}
-        selectedId={null}
-        onSelect={vi.fn()}
-      />,
+      <ServicesTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
     );
     expect(screen.getByText("대학명")).toBeInTheDocument();
     expect(screen.getByText("서비스명")).toBeInTheDocument();
@@ -37,19 +33,13 @@ describe("ServicesTable", () => {
   });
 
   it("빈 rows — 데이터 없음 안내", () => {
-    render(
-      <ServicesTable rows={[]} selectedId={null} onSelect={vi.fn()} />,
-    );
+    render(<ServicesTable rows={[]} selectedId={null} onSelect={vi.fn()} />);
     expect(screen.getByText("데이터 없음")).toBeInTheDocument();
   });
 
   it("기본 행 렌더 — 대학·서비스·카테고리·운영자", () => {
     render(
-      <ServicesTable
-        rows={[baseRow]}
-        selectedId={null}
-        onSelect={vi.fn()}
-      />,
+      <ServicesTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
     );
     expect(screen.getByText("○○대학교")).toBeInTheDocument();
     expect(screen.getByText("2026 수시 원서접수")).toBeInTheDocument();
@@ -69,14 +59,33 @@ describe("ServicesTable", () => {
     expect(screen.getAllByText("단독").length).toBe(2);
   });
 
+  it("마감여부 — 작성마감 지난 행은 '마감' 배지, 진행 중인 행은 'D-N'", () => {
+    render(
+      <ServicesTable
+        rows={[
+          {
+            ...baseRow,
+            id: "22222222-2222-2222-2222-222222222222",
+            writeEndAt: "2020-01-01T00:00:00Z",
+          }, // 지난 것 → 마감
+          {
+            ...baseRow,
+            id: "33333333-3333-3333-3333-333333333333",
+            writeEndAt: "2030-01-01T00:00:00Z",
+          }, // 미래 → 진행중(D-N)
+        ]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("마감")).toBeInTheDocument();
+    expect(screen.getByText(/^D-\d+$/)).toBeInTheDocument();
+  });
+
   it("row 클릭 — onSelect(row) 호출", () => {
     const onSelect = vi.fn();
     render(
-      <ServicesTable
-        rows={[baseRow]}
-        selectedId={null}
-        onSelect={onSelect}
-      />,
+      <ServicesTable rows={[baseRow]} selectedId={null} onSelect={onSelect} />,
     );
     fireEvent.click(screen.getByText("○○대학교"));
     expect(onSelect).toHaveBeenCalledWith(baseRow);
