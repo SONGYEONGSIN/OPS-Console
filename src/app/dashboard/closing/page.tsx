@@ -36,13 +36,10 @@ export default async function ClosingPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
 
-  // 칩(status) → 마감여부(closedStatus) + 내 마감(operatorName) 매핑. 기본 '마감'.
+  // 칩(status) → 마감여부(closedStatus) + 내 마감(operatorName) 매핑. 기본 '전체'.
   const status =
-    sp.status === "open" || sp.status === "all" || sp.status === "mine"
-      ? sp.status
-      : "closed";
-  const closedStatus =
-    status === "all" ? "all" : status === "open" ? "open" : "closed";
+    sp.status === "open" || sp.status === "mine" ? sp.status : "all";
+  const closedStatus = status === "open" ? "open" : "all";
   const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
 
   const [{ rows: closing, total }, categories] = await Promise.all([
