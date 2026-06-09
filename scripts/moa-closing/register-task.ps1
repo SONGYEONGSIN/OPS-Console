@@ -4,15 +4,15 @@
 # 스스로 [SKIP] 종료하므로 트리거는 매주로 둔다. 로그인한 사용자 컨텍스트로 실행되어야
 # .env.local / Chrome 접근이 가능하므로 관리자 권한은 불필요(현재 사용자로 등록).
 #
-# 사용:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts\moa-closing\register-task.ps1
-# 해제:  Unregister-ScheduledTask -TaskName "OPS-Console-서비스마감-스크랩" -Confirm:$false
+# 사용:  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/moa-closing/register-task.ps1
+# 해제:  Unregister-ScheduledTask -TaskName "OPS-Console-Closing-Scrape" -Confirm:$false
 
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $runner = Join-Path $repo "scripts\moa-closing\run-local.ps1"
 if (-not (Test-Path $runner)) { throw "runner 없음: $runner" }
 
-$taskName = "OPS-Console-서비스마감-스크랩"
+$taskName = "OPS-Console-Closing-Scrape"
 
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$runner`""
