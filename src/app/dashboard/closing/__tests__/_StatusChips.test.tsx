@@ -26,6 +26,7 @@ describe("ClosingStatusChips", () => {
       "false",
     );
     expect(screen.getByRole("button", { name: "전체" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "내 마감" })).toBeInTheDocument();
   });
 
   it("진행중 클릭 → ?status=open (+ page 제거)", () => {
@@ -33,6 +34,12 @@ describe("ClosingStatusChips", () => {
     render(<ClosingStatusChips />);
     fireEvent.click(screen.getByRole("button", { name: "진행중" }));
     expect(push).toHaveBeenCalledWith("/dashboard/closing?status=open");
+  });
+
+  it("내 마감 클릭 → ?status=mine", () => {
+    render(<ClosingStatusChips />);
+    fireEvent.click(screen.getByRole("button", { name: "내 마감" }));
+    expect(push).toHaveBeenCalledWith("/dashboard/closing?status=mine");
   });
 
   it("마감 클릭 → status 파라미터 제거(기본값)", () => {
