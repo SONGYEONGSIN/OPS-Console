@@ -45,18 +45,18 @@ export function ListPagination({ total, pageSize = 30 }: Props) {
         type="button"
         onClick={() => go(page - 1)}
         disabled={page === 1}
-        className="rounded-md border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
+        className="border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
       >
         ← 이전
       </button>
-      <span className="tabular-nums text-sm text-muted">
+      <span className="font-mono text-xs text-muted">
         {page} / {totalPages}
       </span>
       <button
         type="button"
         onClick={() => go(page + 1)}
         disabled={page === totalPages}
-        className="rounded-md border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
+        className="border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
       >
         다음 →
       </button>
