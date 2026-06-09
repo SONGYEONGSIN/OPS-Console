@@ -250,8 +250,12 @@ def _decrypt_if_needed(path: str):
     return buf
 
 
-def parse_excel(path: str, scraped_at_dt: datetime) -> list[dict]:
-    """엑셀(암호화 복호 후) → 14컬럼 매핑 → 작성마감 < scraped_at 필터 → 인제스트 row."""
+def parse_excel(path: str) -> list[dict]:
+    """엑셀(암호화 복호 후) → 14컬럼 매핑 → 인제스트 row.
+
+    검색 결과 '전체'를 적재한다(마감 전/후 구분 없음). write_end_at은 DB 필수(not-null)라
+    작성마감일자가 아예 없는 행만 스킵한다.
+    """
     from openpyxl import load_workbook
 
     wb = load_workbook(_decrypt_if_needed(path), read_only=True, data_only=True)
@@ -271,9 +275,7 @@ def parse_excel(path: str, scraped_at_dt: datetime) -> list[dict]:
         get = lambda key: raw[idx[key]] if idx.get(key) is not None else None
         write_end = to_kst_iso(get("write_end_at"))
         if write_end is None:
-            continue
-        if datetime.fromisoformat(write_end) >= scraped_at_dt:
-            continue  # 아직 마감 전
+            continue  # write_end_at은 DB 필수(not-null) — 마감일자 없는 행은 적재 불가
         out.append(
             {
                 "service_id": int(get("service_id")),
@@ -598,7 +600,7 @@ def main() -> int:
         finally:
             driver.quit()
 
-        rows = parse_excel(path, scraped_at_dt)
+        rows = parse_excel(path)
         print(
             f"[INFO] 마감 서비스 {len(rows)}건 추출 (scraped_at={scraped_at_dt.isoformat()})"
         )
