@@ -20,7 +20,7 @@ const baseRow: ListRow = {
 };
 
 describe("ServicesTable", () => {
-  it("헤더 6컬럼 — 대학명/서비스명/카테고리/운영자/작성마감/단독", () => {
+  it("헤더 7컬럼 — 대학명/서비스명/카테고리/운영자/작성마감/남은일수/단독", () => {
     render(
       <ServicesTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
     );
@@ -29,6 +29,7 @@ describe("ServicesTable", () => {
     expect(screen.getByText("카테고리")).toBeInTheDocument();
     expect(screen.getByText("운영자")).toBeInTheDocument();
     expect(screen.getByText("작성마감")).toBeInTheDocument();
+    expect(screen.getByText("남은일수")).toBeInTheDocument();
     expect(screen.getByText("단독")).toBeInTheDocument();
   });
 
