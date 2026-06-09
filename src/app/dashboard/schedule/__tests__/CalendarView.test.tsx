@@ -53,7 +53,6 @@ function renderView(
     view: "calendar" as const,
     canWrite: true,
     todayYmd: "2026-05-18",
-    mineActive: false,
     onPersist: vi.fn(async () => ({ ok: true })),
   };
   const props = { ...defaults, ...overrides };

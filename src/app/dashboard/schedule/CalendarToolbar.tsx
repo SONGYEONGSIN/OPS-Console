@@ -1,18 +1,18 @@
 "use client";
 
+import { MineScopeToggle } from "@/components/common/MineScopeToggle";
+
 type Props = {
   year: number;
   /** 0-indexed month (0=1월) */
   month0: number;
   view: "calendar" | "list";
   canWrite: boolean;
-  mineActive: boolean;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
   onViewChange: (next: "calendar" | "list") => void;
   onNewEvent: () => void;
-  onToggleMine: () => void;
 };
 
 export function CalendarToolbar({
@@ -20,13 +20,11 @@ export function CalendarToolbar({
   month0,
   view,
   canWrite,
-  mineActive,
   onPrev,
   onNext,
   onToday,
   onViewChange,
   onNewEvent,
-  onToggleMine,
 }: Props) {
   const monthLabel = `${year}.${String(month0 + 1).padStart(2, "0")}`;
   return (
@@ -58,18 +56,7 @@ export function CalendarToolbar({
         >
           오늘
         </button>
-        <button
-          type="button"
-          onClick={onToggleMine}
-          aria-pressed={mineActive}
-          className={`cursor-pointer border px-3 py-1 text-xs ${
-            mineActive
-              ? "border-vermilion bg-vermilion text-cream hover:bg-vermilion-deep"
-              : "border-line bg-transparent text-ink hover:border-vermilion hover:text-vermilion"
-          }`}
-        >
-          내 일정
-        </button>
+        <MineScopeToggle mineLabel="내 일정" allLabel="전체 일정" />
       </div>
       <div className="flex items-center gap-2">
         {canWrite ? (
