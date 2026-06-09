@@ -29,7 +29,8 @@ describe("ReceivablesControls", () => {
     expect(box.value).toBe("서울대");
   });
 
-  it("입력 → debounce 후 ?q= 로 이동", () => {
+  it("입력 → debounce 후 ?q= 로 이동(page 초기화)", () => {
+    search = "page=3";
     render(<ReceivablesControls />);
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "한양" },
@@ -40,5 +41,6 @@ describe("ReceivablesControls", () => {
     expect(push).toHaveBeenCalledTimes(1);
     const url = push.mock.calls[0][0] as string;
     expect(decodeURIComponent(url)).toContain("q=한양");
+    expect(url).not.toContain("page=");
   });
 });
