@@ -23,12 +23,12 @@ export function ScopeChips({ total, mineLabel }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const mine = params.get("mine") === "true";
+  const mine = params.get("mine") !== "false";
 
   function go(nextMine: boolean) {
     const next = new URLSearchParams(params.toString());
-    if (nextMine) next.set("mine", "true");
-    else next.delete("mine");
+    if (nextMine) next.delete("mine");
+    else next.set("mine", "false");
     next.delete("page");
     router.push(`${pathname}?${next.toString()}`);
   }

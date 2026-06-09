@@ -55,7 +55,7 @@ export default async function ContractsPage({
     : allContracts;
 
   // 내 계약 필터 — operator(Excel 운영자 컬럼)가 me.displayName과 일치하는 row만
-  const mineFilter = sp.mine === "true";
+  const mineFilter = sp.mine !== "false";
   const meName = me?.displayName;
   const filteredRows =
     mineFilter && meName

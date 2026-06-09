@@ -60,7 +60,7 @@ export default async function HandoverPage({
 
   if (tab === "progress") {
     const fallback = resolvePageMeta(slug, meta);
-    const mineProgress = params.mine === "true";
+    const mineProgress = params.mine !== "false";
     const q = (params.q ?? "").trim().toLowerCase();
     const pageNum = Math.max(1, Number(params.page) || 1);
     const PROGRESS_PAGE_SIZE = 30;
@@ -132,7 +132,7 @@ export default async function HandoverPage({
 
   if (tab === "history") {
     const fallback = resolvePageMeta(slug, meta);
-    const mineHist = params.mine === "true";
+    const mineHist = params.mine !== "false";
     const statusHist = params.status as HandoverProgressStatus | undefined;
     const pageHist = Math.max(1, Number(params.page) || 1);
     const { rows: progressRows, total: totalHist } = await listHandoverProgress({
@@ -178,7 +178,7 @@ export default async function HandoverPage({
 
   const page = Math.max(1, Number(params.page) || 1);
   const statusParam = params.status as HandoverStatus | "none" | undefined;
-  const mine = params.mine === "true";
+  const mine = params.mine !== "false";
   const { rows: dbRows, total } = await listServicesWithHandover({
     q: params.q,
     status: statusParam,

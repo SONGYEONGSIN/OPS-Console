@@ -31,7 +31,7 @@ export default async function AiTipsPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
   const allTips = await listAiTips();
-  const mine = sp.mine === "true";
+  const mine = sp.mine !== "false";
   const tips =
     mine && me?.email
       ? allTips.filter((t) => t.author_email === me.email)

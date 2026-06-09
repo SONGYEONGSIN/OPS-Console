@@ -149,7 +149,7 @@ export default async function AssignmentsPage({
   // 서버 필터: 검색(?q, 대학명·담당자 양방향) + 내 배정(?mine) + 대분류(?universityType)
   const me = await getCurrentOperator();
   const term = (sp.q ?? "").trim();
-  const mine = sp.mine === "true";
+  const mine = sp.mine !== "false";
   const univType = (sp.universityType ?? "").trim();
   const filtered = allRows.filter((r) => {
     if (term && !matchesAssignmentQuery(r, term)) return false;
