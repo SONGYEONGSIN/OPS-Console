@@ -5,18 +5,26 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { listClosing } from "@/features/closing/queries";
+import { getCurrentOperator } from "@/features/auth/queries";
+import { listClosing, listClosingCategories } from "@/features/closing/queries";
 import { closingRowToListRow } from "./_row-mapper";
 import { ClosingStatusChips } from "./_StatusChips";
+import { ClosingControls } from "./ClosingControls";
 
 /**
  * /dashboard/closing — 서비스 마감 (Moa 스크래핑 적재, 읽기 전용).
- * services variant를 재사용해 동일한 표/인스펙터 구성. 편집/생성 없음(readOnly).
+ * services variant 재사용. 표준 toolbar: 검색·카테고리 셀렉트(controlsRow) + 마감여부 칩(inlineFilters).
+ * 필터는 서버(listClosing)에서 적용 — search(q)·category·마감여부(status)·내 마감(operator_name).
  */
 export default async function ClosingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    status?: string;
+    q?: string;
+    category?: string;
+  }>;
 }) {
   const slug = "closing";
   await requireMenu(slug);
@@ -26,13 +34,28 @@ export default async function ClosingPage({
   const pathname = `/dashboard/${slug}`;
 
   const sp = await searchParams;
+  const me = await getCurrentOperator();
+
+  // 칩(status) → 마감여부(closedStatus) + 내 마감(operatorName) 매핑. 기본 '마감'.
+  const status =
+    sp.status === "open" || sp.status === "all" || sp.status === "mine"
+      ? sp.status
+      : "closed";
   const closedStatus =
-    sp.status === "open" || sp.status === "all" ? sp.status : "closed"; // 기본 마감
-  const { rows: closing, total } = await listClosing({
-    page: sp.page ? Number(sp.page) : 1,
-    pageSize: 30,
-    closedStatus,
-  });
+    status === "all" ? "all" : status === "open" ? "open" : "closed";
+  const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
+
+  const [{ rows: closing, total }, categories] = await Promise.all([
+    listClosing({
+      page: sp.page ? Number(sp.page) : 1,
+      pageSize: 30,
+      search: sp.q,
+      category: sp.category,
+      closedStatus,
+      operatorName,
+    }),
+    listClosingCategories(),
+  ]);
   const rows: ListRow[] = closing.map(closingRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
@@ -45,9 +68,6 @@ export default async function ClosingPage({
         description={config.description}
         autoRefresh
       />
-      <div className="mt-2 border-b border-line-soft pb-1">
-        <ClosingStatusChips />
-      </div>
     </div>
   );
 
@@ -60,6 +80,10 @@ export default async function ClosingPage({
       canCreate={false}
       readOnly
       liveData
+      controlsRow={
+        <ClosingControls key="closing-controls" categories={categories} />
+      }
+      inlineFilters={<ClosingStatusChips key="closing-scope" />}
       footer={
         <ListPagination key="closing-pagination" total={total} pageSize={30} />
       }

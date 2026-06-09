@@ -9,6 +9,8 @@ export type ClosingFilter = {
   universityType?: string;
   /** 마감여부 — closed: 작성마감 지남 / open: 마감 전 / all: 전체. 미지정 시 전체. */
   closedStatus?: "closed" | "open" | "all";
+  /** '내 마감' 칩 — operator_name 일치(현재 운영자 이름)로 본인 담당만. */
+  operatorName?: string;
   page?: number;
   pageSize?: number;
 };
@@ -43,6 +45,8 @@ export async function listClosing(
   if (filter.category) query = query.eq("category", filter.category);
   if (filter.universityType)
     query = query.eq("university_type", filter.universityType);
+  if (filter.operatorName)
+    query = query.eq("operator_name", filter.operatorName);
 
   // 마감여부 — 작성마감(write_end_at) 기준 현재 시각 비교
   if (filter.closedStatus === "closed")
@@ -82,4 +86,22 @@ export async function listClosing(
       );
   }
   return { rows, total: count ?? 0 };
+}
+
+/** 카테고리 셀렉트 옵션 — closing_services의 distinct category(빈값 제외) 가나다순. */
+export async function listClosingCategories(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("closing_services")
+    .select("category");
+  if (error) {
+    console.error("[listClosingCategories] supabase error:", error);
+    return [];
+  }
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const c = (row as { category?: string | null }).category?.trim();
+    if (c) set.add(c);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
 }

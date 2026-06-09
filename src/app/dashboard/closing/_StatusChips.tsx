@@ -3,14 +3,16 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 const OPTIONS = [
-  { key: "closed", label: "마감" },
-  { key: "open", label: "진행중" },
   { key: "all", label: "전체" },
+  { key: "mine", label: "내 마감" },
+  { key: "open", label: "진행중" },
+  { key: "closed", label: "마감" },
 ] as const;
 
 /**
- * 서비스 마감 — 마감여부 필터 칩 (마감 / 진행중 / 전체). 기본 '마감'.
+ * 서비스 마감 — 마감여부 필터 칩 (전체 / 내 마감 / 진행중 / 마감). 기본 '마감'.
  * URL `?status=` 갱신(SSR 호환). 기본값 closed는 URL에서 생략. page 파라미터는 초기화.
+ * '내 마감'(mine) = 본인 담당(operator_name 일치) + 마감.
  */
 export function ClosingStatusChips() {
   const router = useRouter();
