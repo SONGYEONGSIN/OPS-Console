@@ -17,11 +17,13 @@ import type {
   AiWorkCategory,
   AiWorkRow,
 } from "@/features/ai-work/schemas";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 export default async function MyAiWorkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mine?: string }>;
+  searchParams: Promise<{ mine?: string; page?: string }>;
 }) {
   const slug = "my-ai-work";
   await requireMenu(slug);
@@ -38,8 +40,11 @@ export default async function MyAiWorkPage({
       ? allWorks.filter((w) => w.author_email === me.email)
       : allWorks;
   const ownerByEmail = await buildOwnerMap(works);
-  const rows: ListRow[] = works.map((w) => aiWorkToListRow(w, ownerByEmail));
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(
+    works.map((w) => aiWorkToListRow(w, ownerByEmail)),
+    sp.page,
+  );
+  const config = resolvePageMeta(slug, meta, total);
 
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
 
@@ -107,13 +112,12 @@ export default async function MyAiWorkPage({
       currentUserEmail={me?.email ?? null}
       currentUserPermission={me?.permission ?? null}
       inlineFilters={
-        <ScopeChips
-          key="ai-work-scope"
-          total={rows.length}
-          mineLabel="내 작업"
-        />
+        <ScopeChips key="ai-work-scope" total={total} mineLabel="내 작업" />
       }
       onPersist={onPersist}
+      footer={
+        <ListPagination key="ai-work-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }

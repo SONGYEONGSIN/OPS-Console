@@ -18,6 +18,8 @@ import { eventToListRow } from "./_row-mapper";
 import { CalendarView } from "./CalendarView";
 import { ScheduleViewToggle } from "./ScheduleViewToggle";
 import { buildMonthGrid } from "./_calendar-helpers";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 const MONTH_PARAM_RE = /^(\d{4})-(\d{2})$/;
 
@@ -45,7 +47,10 @@ function getKstTodayYmd(): string {
   return KST_TODAY_FMT.format(new Date());
 }
 
-function parseMonthParam(raw: string | undefined): { year: number; month0: number } {
+function parseMonthParam(raw: string | undefined): {
+  year: number;
+  month0: number;
+} {
   if (raw) {
     const m = MONTH_PARAM_RE.exec(raw);
     if (m) {
@@ -61,7 +66,12 @@ function parseMonthParam(raw: string | undefined): { year: number; month0: numbe
   };
 }
 
-type SearchParams = Promise<{ view?: string; month?: string; mine?: string }>;
+type SearchParams = Promise<{
+  view?: string;
+  month?: string;
+  mine?: string;
+  page?: string;
+}>;
 
 /**
  * /dashboard/schedule — 운영부 달력 (default = month grid).
@@ -93,8 +103,7 @@ export default async function SchedulePage({
   const events =
     mineActive && myEmail
       ? allEvents.filter(
-          (e) =>
-            e.assignee_email === myEmail || e.created_by_email === myEmail,
+          (e) => e.assignee_email === myEmail || e.created_by_email === myEmail,
         )
       : allEvents;
 
@@ -135,8 +144,8 @@ export default async function SchedulePage({
       ? allBackupLeaves.filter((r) => r.requester_email === myEmail)
       : allBackupLeaves;
 
-  const rows: ListRow[] = events.map(eventToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(events.map(eventToListRow), sp.page);
+  const config = resolvePageMeta(slug, meta, total);
 
   const header = (
     <PageHeader
@@ -214,7 +223,9 @@ export default async function SchedulePage({
       extraActions={<ScheduleViewToggle view="list" />}
       readOnly={!canWrite}
       onPersist={onPersist}
+      footer={
+        <ListPagination key="schedule-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }
-

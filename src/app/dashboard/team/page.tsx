@@ -4,28 +4,32 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { listOperators } from "@/features/operators/queries";
-import {
-  createOperator,
-  updateOperator,
-} from "@/features/operators/actions";
+import { createOperator, updateOperator } from "@/features/operators/actions";
 import type { OperatorRow } from "@/features/operators/schemas";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
 import { requireMenu } from "@/features/auth/menu-guard";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 /**
  * /dashboard/team — 운영부 조직구성 (DB 연동, server component).
  */
-export default async function TeamPage() {
+export default async function TeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const slug = "team";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
+  const { page } = await searchParams;
   const operators = await listOperators();
-  const rows: ListRow[] = operators.map(operatorToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(operators.map(operatorToListRow), page);
+  const config = resolvePageMeta(slug, meta, total);
 
   const me = await getCurrentOperator();
   const myPermission = me?.permission ?? null;
@@ -60,9 +64,7 @@ export default async function TeamPage() {
         leader: row.leader ?? null,
         phone: row.operatorPhone ?? null,
       });
-      return result.ok
-        ? { ok: true }
-        : { ok: false, error: result.error };
+      return result.ok ? { ok: true } : { ok: false, error: result.error };
     }
     const all = await listOperators();
     const target = all.find((o) => o.email === row.id);
@@ -95,6 +97,9 @@ export default async function TeamPage() {
       onPersist={onPersist}
       readOnly={!isAdmin}
       currentUserPermission={myPermission}
+      footer={
+        <ListPagination key="team-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }

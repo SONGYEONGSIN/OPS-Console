@@ -14,11 +14,13 @@ import {
 } from "@/features/ai-tips/actions";
 import type { AiTipRow } from "@/features/ai-tips/schemas";
 import type { AiTool, AiWorkCategory } from "@/features/ai-work/schemas";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 export default async function AiTipsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mine?: string }>;
+  searchParams: Promise<{ mine?: string; page?: string }>;
 }) {
   const slug = "ai-tips";
   await requireMenu(slug);
@@ -35,8 +37,11 @@ export default async function AiTipsPage({
       ? allTips.filter((t) => t.author_email === me.email)
       : allTips;
   const ownerByEmail = await buildOwnerMap(tips);
-  const rows: ListRow[] = tips.map((t) => aiTipToListRow(t, ownerByEmail));
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(
+    tips.map((t) => aiTipToListRow(t, ownerByEmail)),
+    sp.page,
+  );
+  const config = resolvePageMeta(slug, meta, total);
 
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
 
@@ -94,13 +99,12 @@ export default async function AiTipsPage({
       currentUserEmail={me?.email ?? null}
       currentUserPermission={me?.permission ?? null}
       inlineFilters={
-        <ScopeChips
-          key="ai-tips-scope"
-          total={rows.length}
-          mineLabel="내 TIP"
-        />
+        <ScopeChips key="ai-tips-scope" total={total} mineLabel="내 TIP" />
       }
       onPersist={onPersist}
+      footer={
+        <ListPagination key="ai-tips-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }
