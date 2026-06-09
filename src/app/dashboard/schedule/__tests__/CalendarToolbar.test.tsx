@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/dashboard/schedule",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import { CalendarToolbar } from "../CalendarToolbar";
 
 function renderToolbar(overrides: Partial<Parameters<typeof CalendarToolbar>[0]> = {}) {
@@ -8,13 +15,11 @@ function renderToolbar(overrides: Partial<Parameters<typeof CalendarToolbar>[0]>
     month0: 4,
     view: "calendar" as const,
     canWrite: true,
-    mineActive: false,
     onPrev: vi.fn(),
     onNext: vi.fn(),
     onToday: vi.fn(),
     onViewChange: vi.fn(),
     onNewEvent: vi.fn(),
-    onToggleMine: vi.fn(),
   };
   const props = { ...defaults, ...overrides };
   render(<CalendarToolbar {...props} />);
@@ -54,17 +59,15 @@ describe("CalendarToolbar", () => {
     expect(onNewEvent).toHaveBeenCalledOnce();
   });
 
-  it("내 일정 버튼 클릭 → onToggleMine 호출", () => {
-    const { onToggleMine } = renderToolbar({ mineActive: false });
-    fireEvent.click(screen.getByRole("button", { name: "내 일정" }));
-    expect(onToggleMine).toHaveBeenCalledOnce();
-  });
-
-  it("mineActive=true이면 aria-pressed='true'", () => {
-    renderToolbar({ mineActive: true });
-    expect(screen.getByRole("button", { name: "내 일정" })).toHaveAttribute(
-      "aria-pressed",
+  it("내것|전체 세그먼트 토글 렌더 (기본 '내 일정' 선택)", () => {
+    renderToolbar();
+    expect(screen.getByRole("tab", { name: "내 일정" })).toHaveAttribute(
+      "aria-selected",
       "true",
+    );
+    expect(screen.getByRole("tab", { name: "전체 일정" })).toHaveAttribute(
+      "aria-selected",
+      "false",
     );
   });
 });

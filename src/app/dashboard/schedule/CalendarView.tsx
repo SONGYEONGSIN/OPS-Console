@@ -36,8 +36,6 @@ type Props = {
   canWrite: boolean;
   /** KST 기준 오늘 YYYY-MM-DD — 해당 셀 시각 강조 */
   todayYmd: string;
-  /** ?mine=true 활성 시 본인 일정만 표시 (서버에서 이미 필터 적용된 데이터) */
-  mineActive: boolean;
   onPersist: (row: ListRow, isNew: boolean) => Promise<{ ok: boolean; error?: string }>;
 };
 
@@ -127,7 +125,6 @@ export function CalendarView({
   view,
   canWrite,
   todayYmd,
-  mineActive,
   onPersist,
 }: Props) {
   const router = useRouter();
@@ -220,13 +217,6 @@ export function CalendarView({
     router.push(`${pathname}?${sp.toString()}`, { scroll: false });
   };
 
-  const handleToggleMine = () => {
-    const sp = new URLSearchParams(searchParams.toString());
-    if (mineActive) sp.delete("mine");
-    else sp.set("mine", "true");
-    router.push(`${pathname}?${sp.toString()}`, { scroll: false });
-  };
-
   const handleItemClick = (item: CalendarItem) => {
     if (item.sourceVariant === "schedule") {
       const ev = item.rowRef as ScheduleEventRow;
@@ -289,13 +279,11 @@ export function CalendarView({
         month0={month0}
         view={view}
         canWrite={canWrite}
-        mineActive={mineActive}
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
         onViewChange={handleViewChange}
         onNewEvent={handleNewEvent}
-        onToggleMine={handleToggleMine}
       />
 
       <div className="grid grid-cols-7 gap-px border border-line bg-line-soft">

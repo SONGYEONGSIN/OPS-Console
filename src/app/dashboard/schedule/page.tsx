@@ -90,7 +90,7 @@ export default async function SchedulePage({
 
   const sp = await searchParams;
   const view = sp.view === "list" ? "list" : "calendar";
-  const mineActive = sp.mine === "true";
+  const mineActive = sp.mine !== "false";
   const currentMonth = parseMonthParam(sp.month);
   const pathname = `/dashboard/${slug}`;
 
@@ -205,7 +205,6 @@ export default async function SchedulePage({
           view="calendar"
           canWrite={canWrite}
           todayYmd={getKstTodayYmd()}
-          mineActive={mineActive}
           onPersist={onPersist}
         />
       </>

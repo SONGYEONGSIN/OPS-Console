@@ -79,7 +79,7 @@ export default async function MyTodoPage({
     activeTab === "weekly" && fetchStart && fetchEnd
       ? await listServicesForCalendar(fetchStart, fetchEnd)
       : [];
-  const mineOnly = sp.mine === "true";
+  const mineOnly = sp.mine !== "false";
   const myEmail = me?.email ?? "";
   const servicesFiltered = mineOnly
     ? servicesRaw.filter(
