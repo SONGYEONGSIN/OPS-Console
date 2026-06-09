@@ -7,6 +7,7 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listClosing } from "@/features/closing/queries";
 import { closingRowToListRow } from "./_row-mapper";
+import { ClosingStatusChips } from "./_StatusChips";
 
 /**
  * /dashboard/closing — 서비스 마감 (Moa 스크래핑 적재, 읽기 전용).
@@ -15,7 +16,7 @@ import { closingRowToListRow } from "./_row-mapper";
 export default async function ClosingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; status?: string }>;
 }) {
   const slug = "closing";
   await requireMenu(slug);
@@ -25,9 +26,12 @@ export default async function ClosingPage({
   const pathname = `/dashboard/${slug}`;
 
   const sp = await searchParams;
+  const closedStatus =
+    sp.status === "open" || sp.status === "all" ? sp.status : "closed"; // 기본 마감
   const { rows: closing, total } = await listClosing({
     page: sp.page ? Number(sp.page) : 1,
     pageSize: 30,
+    closedStatus,
   });
   const rows: ListRow[] = closing.map(closingRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
@@ -41,6 +45,9 @@ export default async function ClosingPage({
         description={config.description}
         autoRefresh
       />
+      <div className="mt-2 border-b border-line-soft pb-1">
+        <ClosingStatusChips />
+      </div>
     </div>
   );
 
