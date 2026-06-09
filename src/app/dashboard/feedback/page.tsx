@@ -5,29 +5,32 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listPosts } from "@/features/posts/queries";
-import {
-  createPost,
-  updatePost,
-  deletePost,
-} from "@/features/posts/actions";
+import { createPost, updatePost, deletePost } from "@/features/posts/actions";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { OPERATORS } from "@/features/auth/operators";
 import type { PostRow } from "@/features/posts/schemas";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 /**
  * /dashboard/feedback — 시스템 개선 요청 게시판 (DB 연동).
  * 운영부 전원이 작성 가능. 본인 글만 수정·삭제 (admin은 모두).
  */
-export default async function FeedbackPage() {
+export default async function FeedbackPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const slug = "feedback";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
+  const { page } = await searchParams;
   const posts = await listPosts("feedback");
-  const rows: ListRow[] = posts.map(postToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(posts.map(postToListRow), page);
+  const config = resolvePageMeta(slug, meta, total);
 
   const me = await getCurrentOperator();
 
@@ -82,6 +85,9 @@ export default async function FeedbackPage() {
       createLabel="+ 새 개선요청"
       currentUserName={me?.displayName}
       onPersist={onPersist}
+      footer={
+        <ListPagination key="feedback-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }

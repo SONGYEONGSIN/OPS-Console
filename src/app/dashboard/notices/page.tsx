@@ -7,28 +7,31 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listPosts } from "@/features/posts/queries";
-import {
-  createPost,
-  updatePost,
-  deletePost,
-} from "@/features/posts/actions";
+import { createPost, updatePost, deletePost } from "@/features/posts/actions";
 import { OPERATORS } from "@/features/auth/operators";
 import type { PostRow } from "@/features/posts/schemas";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 /**
  * /dashboard/notices — 운영부 공지사항 게시판 (DB 연동).
  * admin(부장·팀장)만 작성·수정·삭제, 모두 read.
  */
-export default async function NoticesPage() {
+export default async function NoticesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const slug = "notices";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
+  const { page } = await searchParams;
   const posts = await listPosts("notice");
-  const rows: ListRow[] = posts.map(postToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(posts.map(postToListRow), page);
+  const config = resolvePageMeta(slug, meta, total);
 
   const me = await getCurrentOperator();
   const isAdmin = canEditOperators(me?.permission ?? null);
@@ -53,7 +56,7 @@ export default async function NoticesPage() {
       const ownerLabel =
         operator?.role && operator?.displayName
           ? `${operator.displayName} · ${operator.role}`
-          : (row.owner || operator?.email || "");
+          : row.owner || operator?.email || "";
       const result = await createPost({
         domain: "notice",
         title: row.name,
@@ -89,6 +92,9 @@ export default async function NoticesPage() {
       readOnly={!isAdmin}
       currentUserName={me?.displayName}
       onPersist={onPersist}
+      footer={
+        <ListPagination key="notices-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }

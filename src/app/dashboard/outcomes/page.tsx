@@ -10,28 +10,45 @@ import { listAssignmentsForUser } from "@/features/performance/queries";
 import { OPERATORS } from "@/features/auth/operators";
 import { AdminSummary } from "./_AdminSummary";
 import type { Step } from "@/features/performance/schemas";
+import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 /**
  * /dashboard/outcomes — 성과리포트 (8단계 평가 워크플로우).
  * RLS가 본인 관련(evaluator/evaluatee) 또는 admin 자동 분기.
  */
-export default async function OutcomesPage() {
+export default async function OutcomesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const slug = "outcomes";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
+  const { page } = await searchParams;
 
   const me = await getCurrentOperator();
   const isAdmin = canEditOperators(me?.permission ?? null);
   const assignments = await listAssignmentsForUser();
-  const rows: ListRow[] = assignments.map(assignmentToListRow);
-  const config = resolvePageMeta(slug, meta, rows.length);
+  const { rows, total } = paginateRows(
+    assignments.map(assignmentToListRow),
+    page,
+  );
+  const config = resolvePageMeta(slug, meta, total);
 
   // admin인 경우 페이지 상단에 8단계별 분포 요약 노출.
   const stepCounts: Record<Step, number> = {
-    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0,
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+    6: 0,
+    7: 0,
+    8: 0,
   };
   for (const a of assignments) stepCounts[a.current_step] += 1;
 
@@ -71,6 +88,9 @@ export default async function OutcomesPage() {
       createLabel="+ 새 사이클"
       currentUserName={me?.displayName}
       onPersist={onPersist}
+      footer={
+        <ListPagination key="outcomes-pagination" total={total} pageSize={30} />
+      }
     />
   );
 }
