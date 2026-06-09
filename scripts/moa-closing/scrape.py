@@ -47,12 +47,33 @@ import glob
 import tempfile
 from datetime import datetime, timedelta, timezone, date
 
+# 로컬 실행(작업 스케줄러) 편의 — 레포 루트의 .env.local 자동 로드. CI는 파일이 없어 무시되고
+# 이미 설정된 환경변수(GH Secrets)는 덮어쓰지 않는다(load_dotenv 기본 override=False).
+try:
+    from dotenv import load_dotenv
+
+    _repo_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    load_dotenv(os.path.join(_repo_root, ".env.local"))
+except Exception:  # noqa: BLE001 — dotenv 미설치/파일 없음은 무시
+    pass
+
 import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-import undetected_chromedriver as uc
+
+# undetected-chromedriver는 데이터센터(GH Actions)에서 Cloudflare 우회 시도용. residential
+# (회사/가정) IP는 plain selenium으로도 통과하므로 기본은 plain. Python 3.12+는 distutils
+# 제거로 uc import가 실패 → 그 경우 None으로 두고 자동 plain 폴백.
+try:
+    import undetected_chromedriver as uc
+except Exception:  # noqa: BLE001
+    uc = None
 
 KST = timezone(timedelta(hours=9))
 
@@ -302,37 +323,64 @@ def to_kst_iso(v) -> str | None:
 # ── 브라우저 / Moa DOM (LIVE DISCOVERY) ────────────────────────────────
 
 
-def setup_driver(download_dir: str, headless: bool):
-    """undetected-chromedriver로 Cloudflare 봇 탐지 회피.
+def _find_chrome_binary() -> str | None:
+    """CHROME_BIN env 우선, 없으면 Windows 표준 설치 경로 자동 탐지."""
+    env_bin = os.getenv("CHROME_BIN")
+    if env_bin and os.path.exists(env_bin):
+        return env_bin
+    for cand in (
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ):
+        if os.path.exists(cand):
+            return cand
+    return env_bin or None
 
-    Cloudflare 'Just a moment' 챌린지는 헤드리스/자동화 시그니처를 잡으므로 uc를 쓴다.
-    CI에서는 xvfb 가상 디스플레이 + non-headless(HEADLESS_MODE=false)가 통과율이 높다.
+
+def setup_driver(download_dir: str, headless: bool):
+    """Chrome 드라이버 — 기본은 plain selenium. CLOSING_USE_UC=true면 undetected-chromedriver.
+
+    residential(회사/가정) IP는 plain selenium으로도 Cloudflare를 통과한다(검증됨). uc는
+    데이터센터(GH Actions) 봇 탐지 회피용으로만 의미가 있었고 Python 3.12+는 import 불가 →
+    미가용/미지정 시 자동 plain. 드라이버는 Selenium Manager(selenium 4.x)가 자동 관리.
     """
-    opts = uc.ChromeOptions()
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.add_argument("--window-size=1400,1000")
-    opts.add_experimental_option(
-        "prefs",
-        {
-            "download.default_directory": download_dir,
-            "download.prompt_for_download": False,
-        },
-    )
-    # setup-chrome이 알려준 바이너리/버전을 명시 — 미지정 시 uc가 최신 드라이버를
-    # 받아 설치된 Chrome과 버전 불일치(SessionNotCreated)가 난다.
-    chrome_bin = os.getenv("CHROME_BIN") or None
-    cv = os.getenv("CHROME_VERSION", "")
-    major = cv.split(".")[0] if cv else ""
-    version_main = int(major) if major.isdigit() else None
-    driver = uc.Chrome(
-        options=opts,
-        headless=headless,
-        use_subprocess=True,
-        browser_executable_path=chrome_bin,
-        version_main=version_main,
-    )
-    # uc는 prefs의 download dir를 무시할 수 있어 CDP로 한 번 더 지정.
+    chrome_bin = _find_chrome_binary()
+    use_uc = os.getenv("CLOSING_USE_UC", "").lower() == "true" and uc is not None
+    prefs = {
+        "download.default_directory": download_dir,
+        "download.prompt_for_download": False,
+    }
+
+    if use_uc:
+        opts = uc.ChromeOptions()
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--window-size=1400,1000")
+        opts.add_experimental_option("prefs", prefs)
+        cv = os.getenv("CHROME_VERSION", "")
+        major = cv.split(".")[0] if cv else ""
+        version_main = int(major) if major.isdigit() else None
+        driver = uc.Chrome(
+            options=opts,
+            headless=headless,
+            use_subprocess=True,
+            browser_executable_path=chrome_bin,
+            version_main=version_main,
+        )
+    else:
+        opts = Options()
+        if headless:
+            opts.add_argument("--headless=new")
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--disable-gpu")
+        opts.add_argument("--window-size=1400,1000")
+        opts.add_experimental_option("prefs", prefs)
+        if chrome_bin:
+            opts.binary_location = chrome_bin
+        driver = webdriver.Chrome(options=opts)
+
+    # 다운로드 경로 CDP 재지정(일부 환경에서 prefs 무시).
     try:
         driver.execute_cdp_cmd(
             "Page.setDownloadBehavior",
