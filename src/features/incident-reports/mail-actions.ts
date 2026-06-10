@@ -13,6 +13,7 @@ import {
   type RegisterInput,
 } from "./sharepoint-register";
 import { getDelegatedGraphToken } from "@/lib/microsoft/delegated-token";
+import { getIncidentById } from "@/features/incidents/queries";
 import { incidentReportSendSchema, type IncidentReportRow } from "./schemas";
 
 export type SendIncidentReportResult =
@@ -56,7 +57,13 @@ export async function sendIncidentReport(
   // 발번 보장 — 보통 PDF 클릭 시점에 채번되지만, 안 거친 edge 대비 발송 시 보강.
   let docNumber: string | null = rep.doc_number ?? null;
   if (!docNumber) {
-    const assigned = await assignDocNumber(rep as RegisterInput, new Date());
+    // 대장 작성자 = 사고보고 담당자(사고 assignee). 없으면 리포트 작성자 폴백.
+    const incident = rep.incident_id
+      ? await getIncidentById(rep.incident_id).catch(() => null)
+      : null;
+    const assigned = await assignDocNumber(rep as RegisterInput, new Date(), {
+      ledgerAuthor: incident?.assignee_name ?? rep.author_name,
+    });
     docNumber = assigned?.docNumber ?? null;
   }
 

@@ -8,6 +8,7 @@ import { logActivity } from "@/features/worklog/log";
 import { resolveApprovalChain } from "./queries";
 import { defaultApology } from "./apology";
 import { assignDocNumber, type RegisterInput } from "./sharepoint-register";
+import { getIncidentById } from "@/features/incidents/queries";
 import {
   incidentReportCreateSchema,
   incidentReportUpdateSchema,
@@ -365,7 +366,13 @@ export async function issueIncidentReportDocNumber(
   if (rep.status !== "approved" && rep.status !== "sent")
     return { ok: true, docNumber: null };
 
-  const assigned = await assignDocNumber(rep as RegisterInput, new Date());
+  // 대장 작성자 = 사고보고 담당자(사고 assignee). 없으면 리포트 작성자 폴백.
+  const incident = rep.incident_id
+    ? await getIncidentById(rep.incident_id).catch(() => null)
+    : null;
+  const assigned = await assignDocNumber(rep as RegisterInput, new Date(), {
+    ledgerAuthor: incident?.assignee_name ?? rep.author_name,
+  });
   if (!assigned) return { ok: true, docNumber: null };
 
   await admin
