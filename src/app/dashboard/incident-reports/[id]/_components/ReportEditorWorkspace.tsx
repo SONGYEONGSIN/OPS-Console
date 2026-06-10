@@ -11,11 +11,7 @@ import {
   deriveFormModel,
   type FormSource,
 } from "@/features/incident-reports/form-content";
-import {
-  updateIncidentReport,
-  revokeApproval,
-  revokeSend,
-} from "@/features/incident-reports/actions";
+import { updateIncidentReport } from "@/features/incident-reports/actions";
 import { updateIncident } from "@/features/incidents/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
@@ -53,8 +49,6 @@ type ApprovalOverride = {
 
 export function ReportEditorWorkspace({
   report,
-  canManageApproval = false,
-  isAdmin = false,
   previewDocNumber = null,
   approval,
   dutyName,
@@ -63,10 +57,6 @@ export function ReportEditorWorkspace({
   serviceName,
 }: {
   report: IncidentReportRow;
-  /** 승인자 본인 또는 admin — 승인 취소 가능 */
-  canManageApproval?: boolean;
-  /** admin — 발송 취소(sent → approved) 가능 */
-  isAdmin?: boolean;
   /** 발송 전 예상 시행번호(공문관리대장 조회, 확정 아님) */
   previewDocNumber?: string | null;
   /** 결재라인 — 저장 스냅샷 + 라이브 보강(라우트에서 계산). 없으면 report 값 사용. */
@@ -177,30 +167,6 @@ export function ReportEditorWorkspace({
         }
       }
       setSaved(true);
-      router.refresh();
-    });
-  }
-
-  function onRevoke() {
-    setError(null);
-    startTransition(async () => {
-      const r = await revokeApproval(report.id);
-      if (!r.ok) {
-        setError(r.error ?? "승인 취소에 실패했습니다.");
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  function onRevokeSend() {
-    setError(null);
-    startTransition(async () => {
-      const r = await revokeSend(report.id);
-      if (!r.ok) {
-        setError(r.error ?? "발송 취소에 실패했습니다.");
-        return;
-      }
       router.refresh();
     });
   }
@@ -380,36 +346,6 @@ export function ReportEditorWorkspace({
             <p className="text-xs text-muted">
               편집할 수 없는 상태입니다. (미리보기·PDF만)
             </p>
-            {report.status === "approved" && canManageApproval && (
-              <div className="space-y-2">
-                {error && <p className="text-xs text-vermilion">{error}</p>}
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={onRevoke}
-                  className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
-                >
-                  {pending ? "처리 중…" : "승인 취소 (작성중으로 되돌리기)"}
-                </button>
-              </div>
-            )}
-            {report.status === "sent" && isAdmin && (
-              <div className="space-y-2">
-                {error && <p className="text-xs text-vermilion">{error}</p>}
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={onRevokeSend}
-                  className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
-                >
-                  {pending ? "처리 중…" : "발송 취소 (승인완료로 되돌리기)"}
-                </button>
-                <p className="text-2xs text-muted">
-                  이미 발송된 메일은 회수되지 않습니다. 시행번호·공문관리대장은
-                  유지됩니다.
-                </p>
-              </div>
-            )}
           </div>
         )}
       </aside>

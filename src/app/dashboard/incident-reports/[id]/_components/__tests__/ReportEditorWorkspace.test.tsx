@@ -8,17 +8,13 @@ import {
 } from "@testing-library/react";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
 
-const { mockUpdate, mockRefresh, mockRevoke, mockUpdateIncident } = vi.hoisted(
-  () => ({
-    mockUpdate: vi.fn(),
-    mockRefresh: vi.fn(),
-    mockRevoke: vi.fn(),
-    mockUpdateIncident: vi.fn(),
-  }),
-);
+const { mockUpdate, mockRefresh, mockUpdateIncident } = vi.hoisted(() => ({
+  mockUpdate: vi.fn(),
+  mockRefresh: vi.fn(),
+  mockUpdateIncident: vi.fn(),
+}));
 vi.mock("@/features/incident-reports/actions", () => ({
   updateIncidentReport: mockUpdate,
-  revokeApproval: mockRevoke,
 }));
 vi.mock("@/features/incidents/actions", () => ({
   updateIncident: mockUpdateIncident,
@@ -181,27 +177,14 @@ describe("ReportEditorWorkspace", () => {
     expect(screen.queryByLabelText("경위")).not.toBeInTheDocument();
   });
 
-  it("approved + 권한 있으면 '승인 취소' 버튼이 보이고 클릭 시 revokeApproval 호출", async () => {
-    mockRevoke.mockResolvedValue({ ok: true });
-    render(
-      <ReportEditorWorkspace
-        report={{ ...report, status: "approved" }}
-        canManageApproval
-      />,
-    );
-    const btn = screen.getByRole("button", { name: /승인 취소/ });
-    fireEvent.click(btn);
-    await waitFor(() => expect(mockRevoke).toHaveBeenCalledWith(report.id));
-    await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
-  });
-
-  it("approved 라도 권한 없으면 '승인 취소' 버튼이 없다", () => {
+  it("편집 불가 상태(approved)에서는 액션 버튼 없이 안내만 (승인/발송 취소는 인스펙터로 이동)", () => {
     render(
       <ReportEditorWorkspace report={{ ...report, status: "approved" }} />,
     );
     expect(
-      screen.queryByRole("button", { name: /승인 취소/ }),
+      screen.queryByRole("button", { name: /승인 취소|발송 취소/ }),
     ).not.toBeInTheDocument();
+    expect(screen.getByText(/편집할 수 없는 상태/)).toBeInTheDocument();
   });
 
   it("처리 행을 추가·입력하면 2페이지 표에 반영되고 저장에 포함된다", async () => {
