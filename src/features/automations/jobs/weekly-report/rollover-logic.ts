@@ -11,7 +11,7 @@ export function pyWeekday(d: Date): number {
 
 /** Python `%` (음수도 floor 방향). JS `%`는 부호가 피제수를 따라 다름. */
 export function floorMod(a: number, b: number): number {
-  return ((a % b) % b + b) % b;
+  return (((a % b) % b) + b) % b;
 }
 
 /** UTC 기준 날짜 생성(타임존 영향 제거). */
@@ -33,7 +33,7 @@ export function isoMonthWeeksCount(year: number, month: number): number {
 }
 
 /** 주차+1, 해당 월 주차 수 초과 시 월/년 캐리. */
-function rollWeek(
+export function rollWeek(
   year: number,
   month: number,
   week: number,
