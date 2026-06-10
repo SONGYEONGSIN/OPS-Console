@@ -7,7 +7,7 @@ vi.mock("@/lib/microsoft/workbook-session", () => ({
   getWorkbookSession: vi.fn(async () => "sess-1"),
 }));
 
-import { listFolderFiles, findReportFolder } from "../graph-ops";
+import { listFolderFiles, findReportFolder, copyWorksheet } from "../graph-ops";
 
 function jsonRes(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -22,7 +22,11 @@ describe("listFolderFiles", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       jsonRes({
         value: [
-          { id: "1", name: "a.xlsx", lastModifiedDateTime: "2026-01-01T00:00:00Z" },
+          {
+            id: "1",
+            name: "a.xlsx",
+            lastModifiedDateTime: "2026-01-01T00:00:00Z",
+          },
           { id: "2", name: "하위폴더", folder: {}, lastModifiedDateTime: "x" },
         ],
       }),
@@ -34,7 +38,9 @@ describe("listFolderFiles", () => {
   });
 
   it("404면 빈 배열", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 404 }));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("", { status: 404 }),
+    );
     expect(await listFolderFiles("drv", "없는경로")).toEqual([]);
   });
 });
@@ -50,9 +56,21 @@ describe("findReportFolder", () => {
       // 두 번째 후보에 파일 2개(다른 수정시각)
       return jsonRes({
         value: [
-          { id: "old", name: `${P}_2026_1월2주차.xlsx`, lastModifiedDateTime: "2026-01-08T00:00:00Z" },
-          { id: "new", name: `${P}_2026_1월3주차.xlsx`, lastModifiedDateTime: "2026-01-15T00:00:00Z" },
-          { id: "noise", name: "기타.xlsx", lastModifiedDateTime: "2026-09-01T00:00:00Z" },
+          {
+            id: "old",
+            name: `${P}_2026_1월2주차.xlsx`,
+            lastModifiedDateTime: "2026-01-08T00:00:00Z",
+          },
+          {
+            id: "new",
+            name: `${P}_2026_1월3주차.xlsx`,
+            lastModifiedDateTime: "2026-01-15T00:00:00Z",
+          },
+          {
+            id: "noise",
+            name: "기타.xlsx",
+            lastModifiedDateTime: "2026-09-01T00:00:00Z",
+          },
         ],
       });
     });
@@ -68,5 +86,26 @@ describe("findReportFolder", () => {
       jsonRes({ value: [] }),
     );
     expect(await findReportFolder("drv", ["a", "b"], "prefix")).toBeNull();
+  });
+});
+
+describe("copyWorksheet", () => {
+  it("시트 복제 POST(copy) + 생성된 시트명 반환", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(jsonRes({ name: "2026년 1월 3주차 (2)" }));
+    const name = await copyWorksheet("drv", "item", "2026년 1월 3주차");
+    expect(name).toBe("2026년 1월 3주차 (2)");
+    const [url, init] = spy.mock.calls[0];
+    expect(String(url)).toContain("/worksheets/");
+    expect(String(url)).toContain("/copy");
+    expect(init?.method).toBe("POST");
+  });
+
+  it("복제 실패(4xx) 시 throw", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("err", { status: 400 }),
+    );
+    await expect(copyWorksheet("drv", "item", "S")).rejects.toThrow();
   });
 });

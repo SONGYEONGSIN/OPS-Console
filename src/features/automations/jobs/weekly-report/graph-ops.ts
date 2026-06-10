@@ -164,6 +164,39 @@ export async function renameWorksheet(
   }
 }
 
+/**
+ * 워크북 시트 복제 — 원본 시트는 그대로 두고 사본을 맨 앞(Before)에 추가.
+ * Graph가 자동 부여한 사본 시트명을 반환(호출자가 renameWorksheet로 차주명 지정).
+ */
+export async function copyWorksheet(
+  driveId: string,
+  itemId: string,
+  sourceName: string,
+): Promise<string> {
+  const session = await getWorkbookSession(driveId, itemId);
+  const res = await authedFetch(
+    `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(sourceName)}/copy`,
+    {
+      method: "POST",
+      headers: {
+        "workbook-session-id": session,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ type: "Before" }),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[weekly-report] copy sheet ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+  const json = (await res.json()) as { name?: string };
+  if (!json.name) {
+    throw new Error("[weekly-report] copy sheet: 응답에 name 없음");
+  }
+  return json.name;
+}
+
 /** 단일 셀 값(텍스트) 읽기. 비어있으면 "". */
 export async function getCellText(
   driveId: string,
@@ -181,7 +214,10 @@ export async function getCellText(
       `[weekly-report] getCell ${address} ${res.status}: ${(await res.text()).slice(0, 200)}`,
     );
   }
-  const json = (await res.json()) as { text?: string[][]; values?: unknown[][] };
+  const json = (await res.json()) as {
+    text?: string[][];
+    values?: unknown[][];
+  };
   const t = json.text?.[0]?.[0];
   return typeof t === "string" ? t : String(json.values?.[0]?.[0] ?? "");
 }

@@ -4,6 +4,7 @@ const g = vi.hoisted(() => ({
   findReportFolder: vi.fn(),
   copyItemAndWait: vi.fn(),
   listWorksheetNames: vi.fn(),
+  copyWorksheet: vi.fn(),
   renameWorksheet: vi.fn(),
   getCellText: vi.fn(),
   setCellText: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("../graph-ops", () => ({
   findReportFolder: g.findReportFolder,
   copyItemAndWait: g.copyItemAndWait,
   listWorksheetNames: g.listWorksheetNames,
+  copyWorksheet: g.copyWorksheet,
   renameWorksheet: g.renameWorksheet,
   getCellText: g.getCellText,
   setCellText: g.setCellText,
@@ -102,14 +104,15 @@ describe("runWeeklyReportRollover", () => {
     );
   });
 
-  it("정상 — 복제·시트 rename·셀 패치·공유링크·Teams 발송", async () => {
+  it("정상 — 파일복제·시트복제(원본 보존)·B2/B3/C3 패치·공유링크·Teams 발송", async () => {
     g.findReportFolder.mockResolvedValue(folder(`${P}_2026_1월3주차.xlsx`));
     g.copyItemAndWait.mockResolvedValue("newid");
     g.listWorksheetNames.mockResolvedValue([
       "2026년 1월 3주차",
       "2026년 1월 2주차",
     ]);
-    g.getCellText.mockResolvedValue("기간 1/12~1/16");
+    g.copyWorksheet.mockResolvedValue("2026년 1월 3주차 (2)");
+    g.getCellText.mockResolvedValue("주간 업무(1/12~1/16)");
     g.createOrgShareLink.mockResolvedValue("https://share/x");
 
     const r = await runWeeklyReportRollover();
@@ -127,15 +130,22 @@ describe("runWeeklyReportRollover", () => {
       "src",
       `${P}_2026_1월4주차.xlsx`,
     );
-    // 최신 시트 → 차주 시트 rename
-    expect(g.renameWorksheet).toHaveBeenCalledWith(
+    // 최신 시트를 "복제"(원본 보존) 후 사본을 차주명으로 rename
+    expect(g.copyWorksheet).toHaveBeenCalledWith(
       "drv",
       "newid",
       "2026년 1월 3주차",
+    );
+    expect(g.renameWorksheet).toHaveBeenCalledWith(
+      "drv",
+      "newid",
+      "2026년 1월 3주차 (2)",
       "2026년 1월 4주차",
     );
-    // B2/H3 최소 2회 + (prevRange 있으면 B3) → setCell 3회
+    // B2(주차) + B3(이번 주차) + C3(다음 주차) → setCell 3회
     expect(g.setCellText).toHaveBeenCalledTimes(3);
+    const addrs = g.setCellText.mock.calls.map((c) => c[3]);
+    expect(addrs).toEqual(["B2", "B3", "C3"]);
     // Teams 발송 — html에 발송자/링크 포함
     expect(g.sendTeamsChatMessage).toHaveBeenCalledTimes(1);
     const arg = g.sendTeamsChatMessage.mock.calls[0][0];

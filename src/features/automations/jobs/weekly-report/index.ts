@@ -5,6 +5,7 @@ import {
   findReportFolder,
   copyItemAndWait,
   listWorksheetNames,
+  copyWorksheet,
   renameWorksheet,
   getCellText,
   setCellText,
@@ -19,6 +20,7 @@ import {
   subWeekText,
   subDateRange,
   extractMonthWeek,
+  rollWeek,
   buildWeeklyReportMessage,
 } from "./rollover-logic";
 import { recordWeeklyRun } from "./record";
@@ -34,7 +36,6 @@ const CANDIDATE_PATHS = [
   "업무보고서",
 ] as const;
 const SHEET_RE = /\d{4}년\s*\d+월\s*\d+주차/;
-const DATE_RANGE_RE = /\d+\/\d+~\d+\/\d+/;
 
 /** 본부차주보고 알림 — 주간보고서 차주 롤오버 + Teams 공유. */
 export async function runWeeklyReportRollover(): Promise<AutomationRunResult> {
@@ -108,16 +109,21 @@ export async function runWeeklyReportRollover(): Promise<AutomationRunResult> {
   // 4. 파일 복제(서식 보존)
   const newItemId = await copyItemAndWait(driveId, latest.id, nextName);
 
-  // 5. 워크북 — 최신 시트를 차주 시트로 rename + B2/B3/H3 갱신
+  // 5. 워크북 — 최신 시트를 차주 시트로 "복제"(원본 시트 보존) + B2/B3/C3 갱신
   const sheets = await listWorksheetNames(driveId, newItemId);
   const sourceSheet = sheets.find((s) => SHEET_RE.test(s)) ?? sheets[0];
   const newSheet = nextWeekSheetname(sourceSheet);
-  // 차주 시트의 B3 = 전주(원본) 시트의 H3 날짜 — rename 전에 읽는다
-  const prevH3 = await getCellText(driveId, newItemId, sourceSheet, "H3");
-  const prevRange = DATE_RANGE_RE.exec(prevH3)?.[0] ?? "";
   if (newSheet !== sourceSheet) {
-    await renameWorksheet(driveId, newItemId, sourceSheet, newSheet);
+    // 사본을 맨 앞에 추가 후 차주명으로 rename — 이전 주차 시트는 그대로 남는다
+    const copiedName = await copyWorksheet(driveId, newItemId, sourceSheet);
+    await renameWorksheet(driveId, newItemId, copiedName, newSheet);
   }
+  // 날짜 — 이번 주차(B3) / 다음 주차(C3). "M/D~M/D" 패턴만 치환.
+  const thisWk = weekDateRange(yr, mw.month, mw.week);
+  const thisRange = formatDateRange(thisWk.monday, thisWk.friday);
+  const nx = rollWeek(yr, mw.month, mw.week);
+  const nextWk = weekDateRange(nx.year, nx.month, nx.week);
+  const nextRange = formatDateRange(nextWk.monday, nextWk.friday);
   // B2: 주차 텍스트 → 차주 시트명
   const b2 = await getCellText(driveId, newItemId, newSheet, "B2");
   await setCellText(
@@ -127,27 +133,23 @@ export async function runWeeklyReportRollover(): Promise<AutomationRunResult> {
     "B2",
     subWeekText(b2, newSheet),
   );
-  // B3: 전주 날짜 범위(원본 H3)
-  if (prevRange) {
-    const b3 = await getCellText(driveId, newItemId, newSheet, "B3");
-    await setCellText(
-      driveId,
-      newItemId,
-      newSheet,
-      "B3",
-      subDateRange(b3, prevRange),
-    );
-  }
-  // H3: 차주 날짜 범위(월~금)
-  const { monday, friday } = weekDateRange(yr, mw.month, mw.week);
-  const nextRange = formatDateRange(monday, friday);
-  const h3 = await getCellText(driveId, newItemId, newSheet, "H3");
+  // B3: 이번 주차 날짜 범위(월~금)
+  const b3 = await getCellText(driveId, newItemId, newSheet, "B3");
   await setCellText(
     driveId,
     newItemId,
     newSheet,
-    "H3",
-    subDateRange(h3, nextRange),
+    "B3",
+    subDateRange(b3, thisRange),
+  );
+  // C3: 다음 주차 날짜 범위(월~금)
+  const c3 = await getCellText(driveId, newItemId, newSheet, "C3");
+  await setCellText(
+    driveId,
+    newItemId,
+    newSheet,
+    "C3",
+    subDateRange(c3, nextRange),
   );
 
   // 6. 공유 링크
