@@ -613,6 +613,8 @@ type Props = {
   controlsRow?: React.ReactNode;
   /** 테이블 하단에 렌더할 요소 (예: 페이지네이션) */
   footer?: React.ReactNode;
+  /** variant 내장 filter 칩 숨김 (receivables처럼 서버 필터 + 커스텀 inlineFilters 사용 시) */
+  hideVariantFilters?: boolean;
 };
 
 export function ListPattern({
@@ -651,6 +653,7 @@ export function ListPattern({
   controlsRow,
   inlineFilters,
   footer,
+  hideVariantFilters = false,
 }: Props) {
   const [rows, setRows] = useState<ListRow[]>(data.rows);
   const [filter, setFilter] = useState<Filter>("all");
@@ -692,7 +695,9 @@ export function ListPattern({
   const variantEntry = variantRegistry[variant as keyof typeof variantRegistry];
   const entryFilters =
     variantEntry && "Filters" in variantEntry ? variantEntry.Filters : null;
-  const FILTERS = (entryFilters ?? variantRegistry.default.Filters) as {
+  const FILTERS = (
+    hideVariantFilters ? [] : (entryFilters ?? variantRegistry.default.Filters)
+  ) as {
     value: Filter;
     label: string;
   }[];

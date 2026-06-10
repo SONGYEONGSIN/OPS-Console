@@ -14,7 +14,9 @@ import {
   matchesReceivablesQuery,
 } from "./_row-mapper";
 import { ReceivablesControls } from "./ReceivablesControls";
+import { ReceivablesScopeChips } from "./ReceivablesScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
+import { paginateRows } from "@/lib/list/paginate";
 
 /**
  * /dashboard/receivables — SharePoint Excel 미수채권 (read-only 목록 + 인스펙터).
@@ -28,7 +30,7 @@ import { ListPagination } from "@/components/common/ListPagination";
 export default async function ReceivablesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; scope?: string }>;
 }) {
   const slug = "receivables";
   await requireMenu(slug);
@@ -36,8 +38,10 @@ export default async function ReceivablesPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const { q, page: pageParam } = await searchParams;
+  const { q, page: pageParam, scope: scopeParam } = await searchParams;
   const term = (q ?? "").trim();
+  const me = await getCurrentOperator();
+  const myName = me?.displayName ?? me?.email ?? "";
   const sheet = await fetchReceivablesSheet();
   const allRows: ListRow[] = sheet
     ? sheet.rows
@@ -47,14 +51,25 @@ export default async function ReceivablesPage({
     : [];
   const config = resolvePageMeta(slug, meta, allRows.length);
 
-  // 클라이언트 페이지네이션 — Excel 전체를 메모리에 보유, 30개씩 slice
-  const PAGE_SIZE = 30;
-  const total = allRows.length;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const page = Math.max(1, Math.min(totalPages, Number(pageParam ?? 1) || 1));
-  const rows = allRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // 범위 칩 — 서버 측 필터 + 전체(검색 적용) 기준 카운트(페이지 한정 아님). 기본 '내 채권'.
+  const counts = {
+    all: allRows.length,
+    mine: allRows.filter((r) => r.owner === myName).length,
+    active: allRows.filter((r) => r.status === "active").length,
+    approved: allRows.filter((r) => r.status === "approved").length,
+  };
+  const scope =
+    scopeParam === "all" || scopeParam === "active" || scopeParam === "approved"
+      ? scopeParam
+      : "mine";
+  const scopedRows =
+    scope === "all"
+      ? allRows
+      : scope === "mine"
+        ? allRows.filter((r) => r.owner === myName)
+        : allRows.filter((r) => r.status === scope);
+  const { rows, total } = paginateRows(scopedRows, pageParam);
 
-  const me = await getCurrentOperator();
   const canEdit = me?.permission !== "viewer" && me?.permission !== null;
   const mailDryRun = process.env.MAIL_DRY_RUN !== "false";
 
@@ -133,16 +148,20 @@ export default async function ReceivablesPage({
         header={header}
         variant="receivables"
         controlsRow={<ReceivablesControls key="receivables-controls" />}
+        hideVariantFilters
+        inlineFilters={
+          <ReceivablesScopeChips key="receivables-scope" counts={counts} />
+        }
         readOnly={!canEdit}
         onPersist={canEdit ? onPersist : undefined}
-        currentUserName={me?.displayName ?? me?.email ?? ""}
+        currentUserName={myName}
         currentUserPermission={me?.permission ?? null}
         receivablesMailDryRun={mailDryRun}
         footer={
           <ListPagination
             key="receivables-pagination"
             total={total}
-            pageSize={PAGE_SIZE}
+            pageSize={30}
           />
         }
       />

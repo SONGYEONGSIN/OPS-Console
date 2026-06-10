@@ -2,27 +2,39 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
+export type ReceivablesCounts = {
+  all: number;
+  mine: number;
+  active: number;
+  approved: number;
+};
+
 const OPTIONS = [
-  { key: "all", label: "전체" },
-  { key: "mine", label: "내 마감" },
-  { key: "open", label: "진행중" },
+  { key: "all", label: "전체", countKey: "all" },
+  { key: "mine", label: "내 채권", countKey: "mine" },
+  { key: "active", label: "미수", countKey: "active" },
+  { key: "approved", label: "수금", countKey: "approved" },
 ] as const;
 
 /**
- * 서비스 마감 — 마감여부 필터 칩 (전체 / 내 마감 / 진행중). 기본 '내 마감'.
- * URL `?status=` 갱신(SSR 호환). 기본값 mine은 URL에서 생략. page 파라미터는 초기화.
- * '내 마감'(mine) = 본인 담당(operator_name 일치).
+ * 미수채권 — 범위 칩 (전체 / 내 채권 / 미수 / 수금). 기본 '내 채권'.
+ * URL `?scope=` 갱신(SSR 호환, 서버 필터). 기본값 mine은 URL에서 생략. page 초기화.
+ * 카운트는 서버에서 전체(검색 적용) 데이터 기준으로 산출해 prop으로 전달 — 페이지 한정 아님.
  */
-export function ClosingStatusChips() {
+export function ReceivablesScopeChips({
+  counts,
+}: {
+  counts: ReceivablesCounts;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const current = params.get("status") ?? "mine";
+  const current = params.get("scope") ?? "mine";
 
   function go(next: string) {
     const p = new URLSearchParams(params.toString());
-    if (next === "mine") p.delete("status");
-    else p.set("status", next);
+    if (next === "mine") p.delete("scope");
+    else p.set("scope", next);
     p.delete("page");
     router.push(`${pathname}?${p.toString()}`);
   }
@@ -42,7 +54,7 @@ export function ClosingStatusChips() {
               active ? "font-bold text-ink" : "text-muted hover:text-ink"
             }`}
           >
-            {o.label}
+            {o.label} ({counts[o.countKey]})
             {active && (
               <span
                 aria-hidden

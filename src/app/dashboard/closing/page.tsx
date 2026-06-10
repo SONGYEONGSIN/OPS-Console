@@ -36,9 +36,9 @@ export default async function ClosingPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
 
-  // 칩(status) → 마감여부(closedStatus) + 내 마감(operatorName) 매핑. 기본 '전체'.
+  // 칩(status) → 마감여부(closedStatus) + 내 마감(operatorName) 매핑. 기본 '내 마감'.
   const status =
-    sp.status === "open" || sp.status === "mine" ? sp.status : "all";
+    sp.status === "open" || sp.status === "all" ? sp.status : "mine";
   const closedStatus = status === "open" ? "open" : "all";
   const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
 
