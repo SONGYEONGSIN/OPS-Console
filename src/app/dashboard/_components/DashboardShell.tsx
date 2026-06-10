@@ -70,7 +70,7 @@ export function DashboardShell({
             />
             <div
               data-tutorial="content"
-              className="min-h-0 overflow-y-auto bg-cream"
+              className="min-h-0 overflow-y-auto bg-paper"
             >
               {children}
             </div>

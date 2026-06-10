@@ -31,7 +31,7 @@ export function PageHeader({
   return (
     <div>
       <CrumbBar pathname={pathname} />
-      <header className="bg-cream px-9 pb-[18px] pt-6">
+      <header className="bg-paper px-9 pb-[18px] pt-6">
         <PageMeta items={meta} autoRefresh={autoRefresh} />
         <PageHeadline {...headline} description={description} />
       </header>
