@@ -68,7 +68,9 @@ function sanitizeFileName(name: string): string {
  * 대장에 행을 추가하지 않으므로 확정 아님(다른 발송이 먼저 되면 바뀔 수 있음).
  * config 없거나 조회 실패 시 null.
  */
-export async function previewNextDocNumber(today: Date): Promise<string | null> {
+export async function previewNextDocNumber(
+  today: Date,
+): Promise<string | null> {
   // 미리보기는 읽기 전용 — 업로드 폴더(SHAREPOINT_INCIDENT_REPORT_FOLDER_ID) 불필요.
   // 공문관리대장(드라이브+item)만 있으면 채번 미리보기 가능.
   const driveId = process.env.SHAREPOINT_DRIVE_ID;
@@ -111,18 +113,17 @@ export async function assignDocNumber(
   rep: RegisterInput,
   today: Date,
 ): Promise<{ docNumber: string } | null> {
-  const cfg = sharePointConfig();
-  if (!cfg) return null;
+  // 채번/대장기록은 공문관리대장(드라이브+item)만 있으면 가능 — 업로드 폴더는 발송 시점에만 필요.
+  // sharePointConfig(폴더 포함)에 묶으면 폴더 미설정 시 채번이 통째로 무력화되므로 분리한다.
+  const driveId = process.env.SHAREPOINT_DRIVE_ID;
+  const gongmunItemId = process.env.SHAREPOINT_GONGMUN_ITEM_ID;
+  if (!driveId || !gongmunItemId) return null;
 
   const year = today.getFullYear();
-  const existing = await fetchSenderDocNumbers(
-    cfg.driveId,
-    cfg.gongmunItemId,
-    year,
-  );
+  const existing = await fetchSenderDocNumbers(driveId, gongmunItemId, year);
   const docNumber = nextDocNumber(existing, today);
 
-  await appendSenderRow(cfg.driveId, cfg.gongmunItemId, year, {
+  await appendSenderRow(driveId, gongmunItemId, year, {
     docNumber,
     date: ymd(today),
     recipient: rep.recipient_university,

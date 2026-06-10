@@ -57,6 +57,17 @@ export function jeonkyeolDate(draftDate: string): string {
   return `${mm.padStart(2, "0")}/${dd.padStart(2, "0")}`;
 }
 
+/**
+ * 시행번호(운영YYMM-DDnn)에서 발번일자 "YYYY-MM-DD" 추출. 형식 불일치/없음 시 null.
+ * 시행(접수)·전결 일자를 발번일(=시행번호 인코딩 날짜)에 맞추는 데 사용.
+ */
+export function docNumberDate(docNumber: string | null): string | null {
+  if (!docNumber) return null;
+  const m = /^운영(\d{2})(\d{2})-(\d{2})\d{2}$/.exec(docNumber.trim());
+  if (!m) return null;
+  return `20${m[1]}-${m[2]}-${m[3]}`;
+}
+
 /** draftDate → "YYYY. MM. DD" (접수일자 표기). 파싱 실패 시 원본 반환. */
 export function formatYmd(draftDate: string): string {
   const nums = draftDate.match(/\d+/g);
@@ -139,6 +150,8 @@ export function deriveFormModel(s: FormSource): FormModel {
       ? s.greeting
       : `${s.recipientUniversity}의 무궁한 발전을 기원합니다.`;
   const closingLine = s.closing && s.closing.trim() ? s.closing : "감사합니다.";
+  // 시행(접수)·전결 일자 = 발번일(시행번호 인코딩 날짜). 미발번이면 작성일로 폴백.
+  const issuanceSource = docNumberDate(s.docNumber) ?? s.draftDate;
   return {
     brandHeader: BRAND_HEADER,
     recipientUniversity: s.recipientUniversity,
@@ -147,8 +160,8 @@ export function deriveFormModel(s: FormSource): FormModel {
     coverBody: [greetingLine, apologyBodyOnly(apologyResolved), closingLine],
     attachment: `붙임 : 1. ${s.title} 경위서 1부.  끝.`,
     companyLine: COMPANY_LINE,
-    jeonkyeolDate: jeonkyeolDate(s.draftDate),
-    receiptDate: formatYmd(s.draftDate),
+    jeonkyeolDate: jeonkyeolDate(issuanceSource),
+    receiptDate: formatYmd(issuanceSource),
     // 담당자(기안자)는 고정 라벨, 나머지는 실제 직책(없으면 기본 라벨 폴백).
     // 작성자가 곧 팀장이면(기안자=결재 팀장) 담당자 칸은 생략한다.
     approvalLine: [
