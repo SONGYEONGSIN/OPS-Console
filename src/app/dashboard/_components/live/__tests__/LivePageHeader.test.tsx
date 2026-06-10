@@ -74,12 +74,12 @@ describe("LivePageHeader", () => {
     expect(header?.className).toMatch(/border-ink/);
   });
 
-  it("헤더 배경색 bg-cream 적용", () => {
+  it("헤더 배경색 bg-paper 적용 (로그인 페이지와 통일)", () => {
     const { container } = render(
       <LivePageHeader mine={false} title="x" />
     );
     const header = container.querySelector("header");
-    expect(header?.className).toMatch(/bg-cream/);
+    expect(header?.className).toMatch(/bg-paper/);
   });
 
   it("data-page-accent 요소는 제거 (예전 accent 라인)", () => {

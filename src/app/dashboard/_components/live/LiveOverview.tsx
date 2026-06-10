@@ -100,7 +100,7 @@ function LiveOverviewInner({
       : 0;
 
   return (
-    <div className="h-full overflow-y-auto bg-cream">
+    <div className="h-full overflow-y-auto bg-paper">
       {/* 헤더를 스크롤 컨테이너 안에 두고 sticky로 고정 → 스크롤바 우측 점유분이
           헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치.
           인스펙터 열림 시 우측 사이드바(SystemHealth + ConsoleStream)를 그대로

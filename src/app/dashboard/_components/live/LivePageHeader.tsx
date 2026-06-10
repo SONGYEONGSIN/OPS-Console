@@ -14,7 +14,7 @@ export function LivePageHeader({
   title: string;
 }) {
   return (
-    <header className="border-b-2 border-ink bg-cream px-6 pb-3 pt-4">
+    <header className="border-b-2 border-ink bg-paper px-6 pb-3 pt-4">
       {/* 내부 wrapper: content max-w-[1680px]와 라인 일치 (와이드 뷰에서 우측 정렬 맞춤) */}
       <div className="mx-auto flex max-w-[1680px] items-center justify-between">
         <div className="flex items-center gap-3">
