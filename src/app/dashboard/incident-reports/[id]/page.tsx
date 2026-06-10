@@ -5,7 +5,6 @@ import { resolvePageMeta } from "../../_data/page-meta-derive";
 import { PageHeader } from "../../_components/page-header/PageHeader";
 import { PdfButton } from "./_components/PdfButton";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { getCurrentOperator } from "@/features/auth/queries";
 import {
   getIncidentReport,
   resolveApprovalChain,
@@ -29,10 +28,6 @@ export default async function IncidentReportEditorPage({
   const { id } = await params;
   const report = (await getIncidentReport(id)) as IncidentReportRow | null;
   if (!report) notFound();
-
-  const me = await getCurrentOperator();
-  const canManageApproval =
-    me?.permission === "admin" || me?.email === report.approver_email;
 
   // 발송 전이면 공문관리대장에서 예상 시행번호를 미리보기로 조회(확정 아님, 발송 시 채번).
   const previewDocNumber =
@@ -106,8 +101,6 @@ export default async function IncidentReportEditorPage({
         </header>
         <ReportEditorWorkspace
           report={{ ...report, ...live }}
-          canManageApproval={canManageApproval}
-          isAdmin={me?.permission === "admin"}
           previewDocNumber={previewDocNumber}
           approval={approval}
           dutyName={dutyName}
