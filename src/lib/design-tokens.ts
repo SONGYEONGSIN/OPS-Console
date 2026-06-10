@@ -15,6 +15,7 @@ export const colors = {
   washi: "#ede6d2",
   washiRaised: "#f4eddd",
   cream: "#faf4e6",
+  paper: "#fbf7f0",
   sidebar: "#e5dec8",
   sidebarHover: "#dcd4bc",
   // Ink (text)

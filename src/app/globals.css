@@ -10,6 +10,7 @@
   --washi: #ede6d2;
   --washi-raised: #f4eddd;
   --cream: #faf4e6;
+  --paper: #fbf7f0;
   --sidebar: #e5dec8;
   --sidebar-hover: #dcd4bc;
   --ink: #15120c;
@@ -107,6 +108,7 @@
   --color-washi: var(--washi);
   --color-washi-raised: var(--washi-raised);
   --color-cream: var(--cream);
+  --color-paper: var(--paper);
   --color-sidebar: var(--sidebar);
   --color-sidebar-hover: var(--sidebar-hover);
   --color-ink: var(--ink);
