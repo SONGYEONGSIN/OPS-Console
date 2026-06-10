@@ -365,6 +365,8 @@ export type ListRow = {
   incidentReportIsApprover?: boolean;
   /** incident-reports — 현재 사용자가 발송 가능한지 (작성자 또는 admin) */
   incidentReportCanSend?: boolean;
+  /** incident-reports — 현재 사용자가 admin인지 (발송 취소 가드) */
+  incidentReportIsAdmin?: boolean;
   /** handover — service 번호 (display) */
   handoverServiceNumber?: number;
   /** handover — 작성상태 (record 없으면 undefined) */

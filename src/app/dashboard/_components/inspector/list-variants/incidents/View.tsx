@@ -190,6 +190,7 @@ function bundleToReportRow(
     })),
     incidentReportIsApprover: bundle.isApprover,
     incidentReportCanSend: bundle.canSend,
+    incidentReportIsAdmin: bundle.isAdmin,
   };
 }
 

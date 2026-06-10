@@ -10,6 +10,7 @@ import {
   approveIncidentReport,
   rejectIncidentReport,
   revokeApproval,
+  revokeSend,
 } from "@/features/incident-reports/actions";
 import { sendIncidentReport } from "@/features/incident-reports/mail-actions";
 import {
@@ -162,6 +163,23 @@ export function IncidentReportView({
             {pending ? "처리 중…" : "승인 취소 (작성중으로 되돌리기)"}
           </button>
         )}
+
+      {status === "sent" && row.incidentReportIsAdmin && (
+        <div className="space-y-1">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => run(() => revokeSend(row.id))}
+            className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
+          >
+            {pending ? "처리 중…" : "발송 취소 (승인완료로 되돌리기)"}
+          </button>
+          <p className="text-2xs text-muted">
+            이미 발송된 메일은 회수되지 않습니다. 시행번호·공문관리대장은
+            유지됩니다.
+          </p>
+        </div>
+      )}
 
       {status === "rejected" && row.incidentReportRejectReason && (
         <div className="rounded border border-vermilion/40 bg-vermilion/10 p-2.5 text-xs text-vermilion">
@@ -386,7 +404,9 @@ export function IncidentReportView({
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    disabled={pending || !toEmail || !subject.trim() || !body.trim()}
+                    disabled={
+                      pending || !toEmail || !subject.trim() || !body.trim()
+                    }
                     onClick={() =>
                       run(() =>
                         sendIncidentReport({
