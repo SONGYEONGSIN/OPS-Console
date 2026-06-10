@@ -77,6 +77,7 @@ export async function getMenuCounts(
       supabase.from("onboarding_cohorts").select("*", head),
     ),
     countOf("services", supabase.from("services").select("*", head)),
+    countOf("closing", supabase.from("closing_services").select("*", head)),
     countOf("contacts", supabase.from("contacts").select("*", head)),
     countOf("backup", supabase.from("backup_requests").select("*", head)),
     countOf("incidents", supabase.from("incidents").select("*", head)),
@@ -98,4 +99,3 @@ export async function getMenuCounts(
   }
   return map;
 }
-

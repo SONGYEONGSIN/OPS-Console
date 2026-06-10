@@ -33,10 +33,13 @@ export function ListSearch({
   size = "default",
   className,
 }: Props) {
+  // 포커스 시 흰 배경 + vermilion 보더로 "활성" 인터랙션 (focus-within — input은 내부)
+  const focusClass =
+    "transition-colors focus-within:border-vermilion focus-within:bg-white";
   const containerClass =
     size === "sm"
-      ? "flex w-full items-center gap-1.5 border border-line bg-cream px-2 py-1"
-      : "flex flex-1 min-w-[240px] items-center gap-1.5 border border-line-soft bg-washi-raised px-3 py-2";
+      ? `flex w-full items-center gap-1.5 border border-line bg-cream px-2 py-1 ${focusClass}`
+      : `flex flex-1 min-w-[240px] items-center gap-1.5 border border-line-soft bg-washi-raised px-3 py-2 ${focusClass}`;
   return (
     <div className={`${containerClass} ${className ?? ""}`}>
       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-muted">
