@@ -13,7 +13,7 @@ describe("findSidebarBreadcrumb", () => {
     expect(crumbs).toHaveLength(3);
     expect(crumbs[0].label).toBe("서비스 그룹");
     expect(crumbs[1].label).toBe("서비스사이클");
-    expect(crumbs[2].label).toBe("서비스");
+    expect(crumbs[2].label).toBe("서비스 목록");
   });
 
   it("section 직속 item — section + item 2단", () => {
@@ -30,7 +30,7 @@ describe("findSidebarBreadcrumb", () => {
 
 describe("findSidebarLabel", () => {
   it("그룹 안 메뉴 slug → 메뉴 label", () => {
-    expect(findSidebarLabel(sidebarSections, "services")).toBe("서비스");
+    expect(findSidebarLabel(sidebarSections, "services")).toBe("서비스 목록");
   });
   it("section 직속 item slug → 메뉴 label", () => {
     expect(findSidebarLabel(sidebarSections, "my-todo")).toBe("오늘 할 일");
@@ -45,8 +45,8 @@ describe("findSidebarSiblings", () => {
     const sibs = findSidebarSiblings("/dashboard/services");
     expect(sibs.map((s) => s.label)).toEqual([
       "총괄장",
-      "서비스",
       "계약",
+      "서비스 목록",
       "개발 · 테스트",
       "배포 · 운영",
       "서비스 마감",

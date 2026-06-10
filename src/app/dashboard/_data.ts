@@ -138,16 +138,16 @@ export const sidebarSections: SbSection[] = [
           },
           {
             ico: "·",
-            label: "서비스",
+            label: "계약",
             count: "",
-            slug: "services",
+            slug: "contracts",
             pattern: "list",
           },
           {
             ico: "·",
-            label: "계약",
+            label: "서비스 목록",
             count: "",
-            slug: "contracts",
+            slug: "services",
             pattern: "list",
           },
           {
@@ -287,7 +287,13 @@ export const sidebarSections: SbSection[] = [
             slug: "worklog",
             pattern: "log",
           },
-          { ico: "·", label: "성과 리포트", slug: "outcomes", pattern: "list", adminOnly: true },
+          {
+            ico: "·",
+            label: "성과 리포트",
+            slug: "outcomes",
+            pattern: "list",
+            adminOnly: true,
+          },
           {
             ico: "·",
             label: "분석 보고서",
