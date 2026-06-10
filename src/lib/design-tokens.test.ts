@@ -17,6 +17,7 @@ describe("design-tokens / colors", () => {
     expect(colors.washi).toBe("#ede6d2");
     expect(colors.cream).toBe("#faf4e6");
     expect(colors.paper).toBe("#fbf7f0");
+    expect(colors.sidebar).toBe("#efe7d7");
     expect(colors.ink).toBe("#15120c");
     expect(colors.vermilion).toBe("#b8331e");
   });
