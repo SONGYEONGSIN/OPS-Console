@@ -46,6 +46,7 @@ describe("getIncidentReportBundle", () => {
       approvalChain: null,
       isApprover: false,
       canSend: false,
+      isAdmin: false,
     });
     expect(mockGetByIncidentId).not.toHaveBeenCalled();
   });
@@ -60,6 +61,7 @@ describe("getIncidentReportBundle", () => {
       approvalChain: null,
       isApprover: false,
       canSend: false,
+      isAdmin: false,
     });
     expect(mockListRecipientCandidates).not.toHaveBeenCalled();
     expect(mockResolveApprovalChain).not.toHaveBeenCalled();

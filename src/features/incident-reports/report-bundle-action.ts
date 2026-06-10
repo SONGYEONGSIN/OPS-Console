@@ -17,6 +17,8 @@ export type IncidentReportBundle = {
   isApprover: boolean;
   /** 현재 사용자가 발송 가능한지 (작성자 또는 admin) */
   canSend: boolean;
+  /** 현재 사용자가 admin인지 (발송 취소 가드) */
+  isAdmin: boolean;
 };
 
 const EMPTY_BUNDLE: IncidentReportBundle = {
@@ -25,6 +27,7 @@ const EMPTY_BUNDLE: IncidentReportBundle = {
   approvalChain: null,
   isApprover: false,
   canSend: false,
+  isAdmin: false,
 };
 
 /**
@@ -46,8 +49,8 @@ export async function getIncidentReportBundle(
   ]);
 
   const isApprover = report.approver_email === me.email;
-  const canSend =
-    report.author_email === me.email || me.permission === "admin";
+  const isAdmin = me.permission === "admin";
+  const canSend = report.author_email === me.email || isAdmin;
 
-  return { report, recipients, approvalChain, isApprover, canSend };
+  return { report, recipients, approvalChain, isApprover, canSend, isAdmin };
 }
