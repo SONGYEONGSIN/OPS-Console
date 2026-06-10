@@ -86,6 +86,7 @@ import {
   approveIncidentReport,
   rejectIncidentReport,
   revokeApproval,
+  revokeSend,
   issueIncidentReportDocNumber,
 } from "../actions";
 
@@ -413,6 +414,43 @@ describe("revokeApproval", () => {
     const patch = updatePatches[0] as Record<string, unknown>;
     expect(patch.status).toBe("draft");
     expect(patch.approved_at).toBeNull();
+  });
+});
+
+describe("revokeSend", () => {
+  const adminOperator = { ...meOperator, permission: "admin" };
+
+  it("admin 아님 → 발송 취소 권한 없음 (select 안 함)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator); // member
+    const r = await revokeSend(baseRow.id);
+    expect(r).toEqual({ ok: false, error: "발송 취소는 관리자만 가능합니다." });
+  });
+
+  it("admin + sent → approved", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({ data: { title: "t" }, error: null })
+      .mockReturnValueOnce({ data: { status: "sent" }, error: null });
+    mockUpdateResult.mockReturnValue({
+      data: { ...baseRow, status: "approved" },
+      error: null,
+    });
+    const r = await revokeSend(baseRow.id);
+    expect(r.ok).toBe(true);
+    const patch = updatePatches[0] as Record<string, unknown>;
+    expect(patch.status).toBe("approved");
+  });
+
+  it("admin + sent 아님(approved) → 취소 불가", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminOperator);
+    mockSelectMaybeSingle
+      .mockReturnValueOnce({ data: { title: "t" }, error: null })
+      .mockReturnValueOnce({ data: { status: "approved" }, error: null });
+    const r = await revokeSend(baseRow.id);
+    expect(r).toEqual({
+      ok: false,
+      error: "발송 취소할 수 없는 상태입니다.",
+    });
   });
 });
 

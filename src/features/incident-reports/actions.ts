@@ -336,6 +336,48 @@ export async function revokeApproval(id: string): Promise<ReportActionResult> {
   return r;
 }
 
+/**
+ * 발송 취소 — 발송완료(sent) 경위서를 승인완료(approved)로 되돌린다(재발송 가능).
+ * admin만. 시행번호(doc_number)·공문관리대장 행은 그대로 유지(이미 발번된 공식 번호).
+ * 주의: 이미 발송된 이메일은 회수 불가 — 내부 상태만 되돌린다.
+ */
+export async function revokeSend(id: string): Promise<ReportActionResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: AUTH_ERROR };
+  if (me.permission !== "admin") {
+    return { ok: false, error: "발송 취소는 관리자만 가능합니다." };
+  }
+
+  const supabase = await createClient();
+  const { data: rep } = await supabase
+    .from("incident_reports")
+    .select("title")
+    .eq("id", id)
+    .maybeSingle();
+  if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
+
+  // doc_number / sharepoint_url / 대장 행은 건드리지 않는다 — 상태만 sent → approved.
+  const r = await transition(
+    id,
+    ["sent"],
+    { status: "approved" },
+    "발송 취소할 수 없는 상태입니다.",
+  );
+  if (r.ok) {
+    await logActivity({
+      domain: "incident-reports",
+      action: "revoke-send",
+      target_type: "incident_reports",
+      target_id: id,
+      target_name: rep.title,
+      level: "WARN",
+      msg: "발송 취소",
+    });
+    revalidatePath(PATH);
+  }
+  return r;
+}
+
 export type IssueDocNumberResult =
   | { ok: true; docNumber: string | null }
   | { ok: false; error: string };
