@@ -46,7 +46,8 @@ export async function createIncidentReport(
     if (inc) {
       prefill = {
         ...prefill,
-        recipient_university: prefill.recipient_university || inc.university_name,
+        recipient_university:
+          prefill.recipient_university || inc.university_name,
         title: prefill.title || inc.title,
         gyeongwi: prefill.gyeongwi ?? inc.cause_summary,
         cause: prefill.cause ?? inc.root_cause,
@@ -74,8 +75,7 @@ export async function createIncidentReport(
       cause: prefill.cause ?? null,
       handling: prefill.handling ?? null,
       prevention: prefill.prevention ?? null,
-      apology:
-        prefill.apology ?? defaultApology(prefill.recipient_university),
+      apology: prefill.apology ?? defaultApology(prefill.recipient_university),
       author_name: me.displayName ?? me.email,
       author_email: me.email,
       approver_name: chain?.approver?.name ?? null,
@@ -299,9 +299,7 @@ export async function rejectIncidentReport(
  * 승인 취소 — 승인완료(approved) 경위서를 작성중(draft)으로 되돌린다.
  * 승인자 본인 또는 admin만. 발송완료(sent)는 취소 불가(approved에서만 전이).
  */
-export async function revokeApproval(
-  id: string,
-): Promise<ReportActionResult> {
+export async function revokeApproval(id: string): Promise<ReportActionResult> {
   const me = await getCurrentOperator();
   if (!me) return { ok: false, error: AUTH_ERROR };
 
@@ -363,7 +361,9 @@ export async function issueIncidentReportDocNumber(
   if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
 
   if (rep.doc_number) return { ok: true, docNumber: rep.doc_number };
-  if (rep.status !== "approved") return { ok: true, docNumber: null };
+  // approved 또는 sent(번호 없이 발송된 과거 건 복구)일 때만 채번. draft/pending/rejected는 no-op.
+  if (rep.status !== "approved" && rep.status !== "sent")
+    return { ok: true, docNumber: null };
 
   const assigned = await assignDocNumber(rep as RegisterInput, new Date());
   if (!assigned) return { ok: true, docNumber: null };
