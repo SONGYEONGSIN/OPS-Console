@@ -107,6 +107,7 @@ export default async function IncidentReportEditorPage({
         <ReportEditorWorkspace
           report={{ ...report, ...live }}
           canManageApproval={canManageApproval}
+          isAdmin={me?.permission === "admin"}
           previewDocNumber={previewDocNumber}
           approval={approval}
           dutyName={dutyName}
