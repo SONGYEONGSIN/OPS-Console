@@ -112,6 +112,7 @@ function ymd(today: Date): string {
 export async function assignDocNumber(
   rep: RegisterInput,
   today: Date,
+  opts?: { ledgerAuthor?: string },
 ): Promise<{ docNumber: string } | null> {
   // 채번/대장기록은 공문관리대장(드라이브+item)만 있으면 가능 — 업로드 폴더는 발송 시점에만 필요.
   // sharePointConfig(폴더 포함)에 묶으면 폴더 미설정 시 채번이 통째로 무력화되므로 분리한다.
@@ -129,7 +130,8 @@ export async function assignDocNumber(
     recipient: rep.recipient_university,
     title: rep.title,
     link: "",
-    author: rep.author_name,
+    // 대장 작성자 = 사고보고 담당자(ledgerAuthor) 우선, 없으면 리포트 작성자.
+    author: opts?.ledgerAuthor?.trim() || rep.author_name,
   });
 
   return { docNumber };

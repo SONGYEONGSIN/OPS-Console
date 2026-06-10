@@ -131,6 +131,18 @@ describe("assignDocNumber", () => {
     expect(r).toEqual({ docNumber: "운영2606-0202" });
     expect(appendSenderRow).toHaveBeenCalledTimes(1);
   });
+
+  it("opts.ledgerAuthor가 있으면 대장 작성자로 사용(사고 담당자)", async () => {
+    await assignDocNumber(REP, new Date(), { ledgerAuthor: "김지현" });
+    const rowArgs = (appendSenderRow as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(rowArgs[3]).toMatchObject({ author: "김지현" });
+  });
+
+  it("ledgerAuthor가 비면 rep.author_name으로 폴백", async () => {
+    await assignDocNumber(REP, new Date(), { ledgerAuthor: "  " });
+    const rowArgs = (appendSenderRow as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(rowArgs[3]).toMatchObject({ author: "나" });
+  });
 });
 
 describe("uploadAndLinkReportFile", () => {
