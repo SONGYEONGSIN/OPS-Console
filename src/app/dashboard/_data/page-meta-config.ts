@@ -17,7 +17,8 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   },
   outcomes: {
     headline: { accent: "분석 · AI", title: "성과 리포트" },
-    description: "8단계 평가 워크플로우로 목표·계획·평가를 한곳에서 관리합니다.",
+    description:
+      "8단계 평가 워크플로우로 목표·계획·평가를 한곳에서 관리합니다.",
   },
   reports: {
     headline: { accent: "분석 · 보고", title: "분석보고서" },
@@ -35,12 +36,14 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "바이브코딩·운영 노하우·트러블슈팅·협업·도구 사용법을 탭별로 정리한 운영부 공통 가이드입니다.",
   },
   services: {
-    headline: { accent: "서비스사이클", title: "서비스" },
-    description: "현재 운영 중인 서비스 목록을 확인하고 인스펙터에서 상세 지표를 봅니다.",
+    headline: { accent: "서비스사이클", title: "서비스 목록" },
+    description:
+      "현재 운영 중인 서비스 목록을 확인하고 인스펙터에서 상세 지표를 봅니다.",
   },
   "my-todo": {
     headline: { accent: "내 계획", title: "주요업무 · 프로젝트" },
-    description: "주요업무 weekly 진행과 본인 프로젝트(Gantt)를 한곳에 관리합니다.",
+    description:
+      "주요업무 weekly 진행과 본인 프로젝트(Gantt)를 한곳에 관리합니다.",
   },
   schedule: {
     headline: { accent: "이번 달", title: "운영부 달력" },
@@ -56,7 +59,8 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   },
   onboarding: {
     headline: { accent: "관리", title: "온보딩" },
-    description: "가이드·체크리스트로 학습하고, 자료실에서 사내 도구·문서를 찾습니다.",
+    description:
+      "가이드·체크리스트로 학습하고, 자료실에서 사내 도구·문서를 찾습니다.",
   },
   notices: {
     headline: { accent: "관리", title: "공지사항" },
@@ -78,7 +82,8 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   },
   settings: {
     headline: { accent: "관리", title: "시스템 설정" },
-    description: "본인 프로필·권한·메일·외부 연동·시스템 정보를 한곳에서 확인합니다.",
+    description:
+      "본인 프로필·권한·메일·외부 연동·시스템 정보를 한곳에서 확인합니다.",
   },
   "data-requests": {
     headline: { accent: "고객 응대", title: "자료 요청" },
