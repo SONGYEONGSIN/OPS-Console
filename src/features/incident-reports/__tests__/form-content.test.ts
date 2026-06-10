@@ -178,10 +178,18 @@ describe("deriveFormModel", () => {
   it("closing이 없으면 '감사합니다.'로 폴백한다", () => {
     expect(deriveFormModel(base).coverBody[2]).toBe("감사합니다.");
   });
-  it("작성일자/접수일자를 'YYYY. MM. DD'로 포맷한다", () => {
+  it("발번 전(docNumber 없음): 시행·전결 일자는 작성일 폴백", () => {
     const m = deriveFormModel(base);
     expect(m.draftDate).toBe("2026. 06. 02");
     expect(m.receiptDate).toBe("2026. 06. 02");
+    expect(m.jeonkyeolDate).toBe("06/02");
+  });
+  it("발번 후(docNumber 있음): 시행(접수)·전결은 발번일, 작성일자는 작성일 유지", () => {
+    // 운영2606-1001 = 2026-06-10 발번
+    const m = deriveFormModel({ ...base, docNumber: "운영2606-1001" });
+    expect(m.draftDate).toBe("2026. 06. 02"); // 작성일자는 그대로
+    expect(m.receiptDate).toBe("2026. 06. 10"); // 시행번호 괄호 = 발번일
+    expect(m.jeonkyeolDate).toBe("06/10"); // 전결 = 발번일
   });
   it("연락처 줄에 작성자 이메일을 넣는다", () => {
     const lines = deriveFormModel(base).contactLines;

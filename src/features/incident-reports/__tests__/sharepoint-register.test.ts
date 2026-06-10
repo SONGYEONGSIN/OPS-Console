@@ -124,6 +124,13 @@ describe("assignDocNumber", () => {
     expect(fetchSenderDocNumbers).not.toHaveBeenCalled();
     expect(appendSenderRow).not.toHaveBeenCalled();
   });
+
+  it("업로드 폴더(FOLDER_ID) 없어도 채번/대장기록은 동작 — 채번은 폴더 불필요", async () => {
+    delete process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID;
+    const r = await assignDocNumber(REP, new Date());
+    expect(r).toEqual({ docNumber: "운영2606-0202" });
+    expect(appendSenderRow).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("uploadAndLinkReportFile", () => {
