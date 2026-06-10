@@ -191,7 +191,10 @@ describe("createIncidentReport", () => {
 
   it("incident_id 누락 → zod 실패 (ok:false)", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
-    const r = await createIncidentReport({ recipient_university: "건국대", title: "t" });
+    const r = await createIncidentReport({
+      recipient_university: "건국대",
+      title: "t",
+    });
     expect(r.ok).toBe(false);
   });
 });
@@ -462,6 +465,17 @@ describe("issueIncidentReportDocNumber", () => {
     expect(mockAssignDocNumber).toHaveBeenCalledTimes(1);
     const patch = adminUpdatePatches[0] as Record<string, unknown>;
     expect(patch.doc_number).toBe("운영2606-0202");
+  });
+
+  it("sent + 미발번(과거 누락) → 복구 채번(assignDocNumber 호출)", async () => {
+    mockGetCurrentOperator.mockResolvedValue(meOperator);
+    mockAdminMaybeSingle.mockResolvedValue({
+      data: { ...approvedRep, status: "sent" },
+    });
+    mockAssignDocNumber.mockResolvedValue({ docNumber: "운영2606-1001" });
+    const r = await issueIncidentReportDocNumber(baseRow.id);
+    expect(r).toEqual({ ok: true, docNumber: "운영2606-1001" });
+    expect(mockAssignDocNumber).toHaveBeenCalledTimes(1);
   });
 
   it("경위서 미발견 → 에러", async () => {
