@@ -189,7 +189,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
       </div>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">마감일시 (KST)</span>
-        <div className="grid grid-cols-[1fr_100px] gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <DateInput
             aria-label="마감일"
             value={isoToKstDate(row.dueAt)}
