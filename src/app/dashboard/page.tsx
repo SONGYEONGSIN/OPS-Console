@@ -11,6 +11,11 @@ import { listClosing } from "@/features/closing/queries";
 import { listWorklog } from "@/features/worklog/queries";
 import { worklogRowsToConsoleLines } from "@/features/worklog/to-console-line";
 import { listContacts } from "@/features/contacts/queries";
+import { listPosts } from "@/features/posts/queries";
+import type { PostRow } from "@/features/posts/schemas";
+import { OPERATORS } from "@/features/auth/operators";
+import { contractsRowToListRow } from "./contracts/_row-mapper";
+import type { ContractRow } from "@/features/contracts/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { servicesRowToListRow } from "./services/_row-mapper";
 import { incidentToListRow } from "./incidents/_row-mapper";
@@ -118,6 +123,8 @@ export default async function DashboardLivePage({
   let receivablesPaid = 0;
   let receivablesTotal = 0;
   let receivablesUnpaid = 0;
+  // 피드 소스용 — 본인(또는 전체) 미수채권 ListRow 최근 20건
+  const receivablesFeedRows: ListRow[] = [];
   try {
     const sheet = await fetchReceivablesSheet();
     if (sheet) {
@@ -131,6 +138,7 @@ export default async function DashboardLivePage({
       receivablesTotal = filtered.length;
       receivablesPaid = filtered.filter((r) => r.status === "approved").length;
       receivablesUnpaid = filtered.filter((r) => r.status === "active").length;
+      receivablesFeedRows.push(...filtered.slice(0, 20));
     }
   } catch {
     /* sheet fetch fail */
@@ -140,6 +148,8 @@ export default async function DashboardLivePage({
   let contractsCompleted = 0;
   let contractsTotal = 0;
   let contractsUnconcluded = 0;
+  // 피드 소스용 — 본인(또는 전체) 계약 행 최근 20건
+  const contractsFeedRows: ContractRow[] = [];
   try {
     const { rows: contractRows } = await listContracts();
     const filtered = contractRows.filter((r) =>
@@ -148,6 +158,7 @@ export default async function DashboardLivePage({
     contractsTotal = filtered.length;
     contractsCompleted = filtered.filter((r) => r.status === "계약완료").length;
     contractsUnconcluded = contractsTotal - contractsCompleted;
+    contractsFeedRows.push(...filtered.slice(0, 20));
   } catch {
     /* sheet fetch fail */
   }
@@ -283,6 +294,15 @@ export default async function DashboardLivePage({
     };
   });
 
+  // ─── 공지 (게시판 notice 도메인 — 최근 20건) ───────────────
+  // 공지는 운영부 공유 — mine 모드와 무관하게 전체 노출.
+  let noticeRows: PostRow[] = [];
+  try {
+    noticeRows = (await listPosts("notice")).slice(0, 20);
+  } catch {
+    /* notice fetch fail */
+  }
+
   // ─── 실시간 테이블 소스 ───────────────────────────────────
   const liveTableSources: LiveTableSources = {
     incidents: incidents.map((i) => ({
@@ -325,6 +345,33 @@ export default async function DashboardLivePage({
       listRow: scheduleListRows.find((r) => r.id === e.id) ?? eventToListRow(e),
     })),
     handover: handoverSources,
+    contracts: contractsFeedRows.map((r) => ({
+      id: r.id,
+      title: r.name,
+      status: r.status,
+      listRow: contractsRowToListRow(r),
+    })),
+    notice: noticeRows.map((p) => {
+      const author = OPERATORS.find((o) => o.email === p.author_email);
+      const listRow: ListRow = {
+        id: p.id,
+        slug: p.slug ?? undefined,
+        name: p.title,
+        body: p.body ?? undefined,
+        author: author?.name ?? p.author_email,
+        owner: p.owner_label ?? "",
+        status: p.status as ListRow["status"],
+        meta: p.created_at,
+      };
+      return { id: p.id, title: p.title, createdAt: p.created_at, listRow };
+    }),
+    receivables: receivablesFeedRows.map((r) => ({
+      id: r.id,
+      title: r.name ?? "",
+      status: String(r.status ?? "active"),
+      billedAt: r.meta ?? "",
+      listRow: r,
+    })),
   };
   const tableItems = buildLiveTableItems(liveTableSources);
 

@@ -18,6 +18,44 @@ describe("buildLiveTableItems", () => {
     expect(items.map((i) => i.id)).toEqual(["i1", "e1", "b1", "t1", "s1"]); // 시간 가까운 순
   });
 
+  it("신규 도메인(공지/미수채권/계약) 매핑 + 계약은 시점 없어 최하단", () => {
+    const sources: LiveTableSources = {
+      incidents: [],
+      todos: [],
+      services: [],
+      backup: [],
+      schedule: [],
+      handover: [],
+      notice: [{ id: "n1", title: "정기 점검 공지", createdAt: tEarlier(5), listRow: {} as never }],
+      receivables: [
+        { id: "r1", title: "A대 전형료", status: "active", billedAt: "2026-05-01", listRow: {} as never },
+        { id: "r2", title: "B대 전형료", status: "approved", billedAt: "2026-05-10", listRow: {} as never },
+      ],
+      contracts: [{ id: "c1", title: "C대 · 수시", status: "계약완료", listRow: {} as never }],
+    };
+    const items = buildLiveTableItems(sources, now);
+    // 공지: ISO 시점이라 최상단, 계약: 시점 없어 최하단
+    expect(items[0]?.id).toBe("n1");
+    expect(items[items.length - 1]?.id).toBe("c1");
+
+    const notice = items.find((x) => x.id === "n1");
+    expect(notice?.badgeDomain).toBe("공지");
+    expect(notice?.variant).toBe("post-notice");
+    expect(notice?.statusText).toBe("공지");
+
+    const recvUnpaid = items.find((x) => x.id === "r1");
+    expect(recvUnpaid?.badgeDomain).toBe("미수채권");
+    expect(recvUnpaid?.variant).toBe("receivables");
+    expect(recvUnpaid?.statusText).toBe("미수");
+    expect(items.find((x) => x.id === "r2")?.statusText).toBe("수금완료");
+
+    const contract = items.find((x) => x.id === "c1");
+    expect(contract?.badgeDomain).toBe("계약");
+    expect(contract?.variant).toBe("contracts");
+    expect(contract?.statusText).toBe("계약완료");
+    expect(contract?.timeText).toBe("—");
+  });
+
   it("각 도메인의 badgeDomain / variant / statusText 매핑", () => {
     const sources: LiveTableSources = {
       incidents: [{ id: "i", title: "x", status: "미처리", createdAt: tEarlier(1), listRow: {} as never }],

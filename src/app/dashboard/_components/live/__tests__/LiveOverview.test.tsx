@@ -116,9 +116,9 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText("서비스 현황")).toBeInTheDocument();
     expect(screen.queryByText("계약 · 미수채권")).toBeNull();
     expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
-    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
+    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 (건수)가 붙음)
     expect(
-      screen.getByRole("button", { name: /^전체 \d/ }),
+      screen.getByRole("button", { name: /^전체 \(\d/ }),
     ).toBeInTheDocument();
     // 빈 테이블 empty 메시지
     expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
@@ -143,10 +143,12 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(bondValue?.className).toMatch(/text-vermilion/);
   });
 
-  it("필터 칩 클릭 시 칩 active 전환", () => {
+  it("필터 칩 클릭 시 칩 active 전환 (굵게 + 밑줄)", () => {
     render(<LiveOverview {...baseProps} />);
     fireEvent.click(screen.getByRole("button", { name: /^사고/ }));
-    expect(screen.getByRole("button", { name: /^사고/ }).className).toMatch(
+    const tab = screen.getByRole("button", { name: /^사고/ });
+    expect(tab.className).toMatch(/font-bold/);
+    expect(tab.querySelector("span[aria-hidden]")?.className).toMatch(
       /bg-vermilion/,
     );
   });
@@ -197,7 +199,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
   it("인수인계 필터 칩이 FilterTabs에 렌더됨", () => {
     render(<LiveOverview {...baseProps} />);
     expect(
-      screen.getByRole("button", { name: /^인수인계 \d/ }),
+      screen.getByRole("button", { name: /^인수인계 \(\d/ }),
     ).toBeInTheDocument();
   });
 
@@ -220,7 +222,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     };
     render(<LiveOverview {...baseProps} tableItems={[handoverItem]} />);
     expect(
-      screen.getByRole("button", { name: /^인수인계 1/ }),
+      screen.getByRole("button", { name: /^인수인계 \(1\)/ }),
     ).toBeInTheDocument();
   });
 });

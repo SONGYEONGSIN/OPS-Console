@@ -2,8 +2,26 @@ import type { ListRow } from "../patterns/ListPattern";
 import type { Variant } from "../inspector/list-variants/types";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 
-export type LiveTableDomain = "incidents" | "todos" | "services" | "backup" | "schedule" | "handover";
-export type LiveBadgeDomain = "사고" | "할일" | "서비스" | "백업" | "일정" | "인수인계";
+export type LiveTableDomain =
+  | "incidents"
+  | "todos"
+  | "services"
+  | "backup"
+  | "schedule"
+  | "handover"
+  | "contracts"
+  | "notice"
+  | "receivables";
+export type LiveBadgeDomain =
+  | "사고"
+  | "할일"
+  | "서비스"
+  | "백업"
+  | "일정"
+  | "인수인계"
+  | "계약"
+  | "공지"
+  | "미수채권";
 
 export type LiveTableItem = {
   id: string;
@@ -24,6 +42,10 @@ export type LiveTableSources = {
   backup: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
   schedule: { id: string; title: string; startAt: string; createdAt: string; listRow: ListRow }[];
   handover: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
+  // 시트 기반(타임스탬프 없음)·신규 도메인은 optional — 기존 호출/테스트 fixture 호환.
+  contracts?: { id: string; title: string; status: string; listRow: ListRow }[];
+  notice?: { id: string; title: string; createdAt: string; listRow: ListRow }[];
+  receivables?: { id: string; title: string; status: string; billedAt: string; listRow: ListRow }[];
 };
 
 const BADGE: Record<LiveTableDomain, LiveBadgeDomain> = {
@@ -33,6 +55,9 @@ const BADGE: Record<LiveTableDomain, LiveBadgeDomain> = {
   backup: "백업",
   schedule: "일정",
   handover: "인수인계",
+  contracts: "계약",
+  notice: "공지",
+  receivables: "미수채권",
 };
 
 const VARIANT: Record<LiveTableDomain, Variant> = {
@@ -42,6 +67,15 @@ const VARIANT: Record<LiveTableDomain, Variant> = {
   backup: "backup",
   schedule: "schedule",
   handover: "handover",
+  contracts: "contracts",
+  notice: "post-notice",
+  receivables: "receivables",
+};
+
+/** receivables 입금여부 → 화면 라벨. ListRow.status('approved'|'active')와 동일 규칙. */
+const RECEIVABLES_STATUS_LABEL: Record<string, string> = {
+  approved: "수금완료",
+  active: "미수",
 };
 
 /** handover_records.status DB enum → 화면 한글 라벨. HandoverControls와 동일 라벨. */
@@ -164,6 +198,51 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       timeText: formatRelativeTime(h.createdAt, now),
       occurredAt: h.createdAt,
       listRow: h.listRow,
+    });
+  }
+
+  for (const n of s.notice ?? []) {
+    out.push({
+      id: n.id,
+      domain: "notice",
+      badgeDomain: BADGE.notice,
+      variant: VARIANT.notice,
+      statusText: "공지",
+      title: n.title,
+      timeText: formatRelativeTime(n.createdAt, now),
+      occurredAt: n.createdAt,
+      listRow: n.listRow,
+    });
+  }
+
+  for (const r of s.receivables ?? []) {
+    out.push({
+      id: r.id,
+      domain: "receivables",
+      badgeDomain: BADGE.receivables,
+      variant: VARIANT.receivables,
+      statusText: RECEIVABLES_STATUS_LABEL[r.status] ?? r.status,
+      title: r.title,
+      // 청구일자(billedAt)는 ISO가 아닌 시트 텍스트일 수 있어 원문 그대로 표기.
+      timeText: r.billedAt || "—",
+      occurredAt: r.billedAt || "",
+      listRow: r.listRow,
+    });
+  }
+
+  // 계약(contracts)은 시트 기반이라 행 단위 타임스탬프가 없음 →
+  // occurredAt 빈 문자열로 최하단 정렬, 시점은 "—" 표기. 칩 필터로는 정상 노출.
+  for (const c of s.contracts ?? []) {
+    out.push({
+      id: c.id,
+      domain: "contracts",
+      badgeDomain: BADGE.contracts,
+      variant: VARIANT.contracts,
+      statusText: c.status,
+      title: c.title,
+      timeText: "—",
+      occurredAt: "",
+      listRow: c.listRow,
     });
   }
 

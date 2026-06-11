@@ -11,20 +11,20 @@ type Props = {
 /** 정식 운영 테이블 — 구분 / 상태 / 타이틀 / 발생 시점. 행 클릭 → onSelect. */
 export function LiveTable({ items, onSelect }: Props) {
   return (
-    <div className="overflow-hidden border border-ink bg-washi-raised">
+    <div className="overflow-x-auto">
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="w-20 border-b border-ink bg-washi px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
+            <th className="w-20 border-b border-ink px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
               구분
             </th>
-            <th className="w-24 border-b border-ink bg-washi px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
+            <th className="w-24 border-b border-ink px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
               상태
             </th>
-            <th className="border-b border-ink bg-washi px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
+            <th className="border-b border-ink px-3 py-2.5 text-left text-xs font-bold text-ink-soft">
               내용
             </th>
-            <th className="w-28 border-b border-ink bg-washi px-3 py-2.5 text-right text-xs font-bold text-ink-soft">
+            <th className="w-28 border-b border-ink px-3 py-2.5 text-right text-xs font-bold text-ink-soft">
               발생 시점
             </th>
           </tr>
@@ -41,7 +41,7 @@ export function LiveTable({ items, onSelect }: Props) {
               <tr
                 key={it.id}
                 onClick={() => onSelect(it)}
-                className="cursor-pointer border-b border-line-soft bg-washi-raised transition-colors last:border-b-0 hover:bg-washi"
+                className="cursor-pointer border-b border-line-soft bg-transparent transition-colors last:border-b-0 hover:bg-washi-raised"
               >
                 <td className="px-3 py-3 align-middle">
                   <DomainBadge domain={it.badgeDomain} />

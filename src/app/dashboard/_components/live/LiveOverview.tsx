@@ -91,6 +91,10 @@ function LiveOverviewInner({
       services: 0,
       backup: 0,
       handover: 0,
+      schedule: 0,
+      contracts: 0,
+      notice: 0,
+      receivables: 0,
     };
     for (const it of tableItems) {
       if (it.domain === "incidents") c.incidents += 1;
@@ -98,6 +102,10 @@ function LiveOverviewInner({
       else if (it.domain === "services") c.services += 1;
       else if (it.domain === "backup") c.backup += 1;
       else if (it.domain === "handover") c.handover += 1;
+      else if (it.domain === "schedule") c.schedule += 1;
+      else if (it.domain === "contracts") c.contracts += 1;
+      else if (it.domain === "notice") c.notice += 1;
+      else if (it.domain === "receivables") c.receivables += 1;
     }
     return c;
   }, [tableItems]);
