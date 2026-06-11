@@ -1,7 +1,7 @@
 "use client";
 
-import { DomainBadge } from "./DomainBadge";
 import type { LiveTableItem, TriageBucket } from "./live-table-builder";
+import { SOLID_BADGE } from "./domain-tag";
 
 type Props = {
   items: LiveTableItem[];
@@ -37,7 +37,7 @@ export function TriageBoard({ items, onSelect }: Props) {
             className={`flex min-w-0 flex-col bg-cream ${ci > 0 ? "border-line xl:border-l" : ""}`}
           >
             <header
-              className={`flex shrink-0 items-baseline gap-2 border-b border-line px-3.5 py-2 ${
+              className={`flex shrink-0 items-baseline gap-2 border-b border-line px-3 py-1.5 ${
                 col.accent ? "bg-vermilion" : "bg-washi-raised"
               }`}
             >
@@ -63,21 +63,27 @@ export function TriageBoard({ items, onSelect }: Props) {
                 {colItems.length}
               </span>
             </header>
-            <div className="max-h-[280px] min-h-[120px] overflow-y-auto">
+            <div className="max-h-[200px] min-h-[72px] overflow-y-auto">
               {colItems.length === 0 ? (
-                <p className="px-3.5 py-8 text-center text-xs text-faint">—</p>
+                <p className="px-3 py-6 text-center text-xs text-faint">—</p>
               ) : (
                 colItems.map((it) => (
                   <button
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(it)}
-                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
-                      col.accent ? "border-l-[3px] border-l-vermilion" : ""
+                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 ${
+                      col.accent
+                        ? "border-l-[3px] border-l-vermilion bg-vermilion/[0.05] hover:bg-vermilion/10"
+                        : "hover:bg-washi-raised"
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
-                      <DomainBadge domain={it.badgeDomain} />
+                      <span
+                        className={`inline-flex shrink-0 items-center px-1 py-px text-[9px] font-bold leading-none ${SOLID_BADGE[it.badgeDomain]}`}
+                      >
+                        {it.badgeDomain}
+                      </span>
                       <span className="text-[10px] font-semibold text-ink-soft tabular-nums">
                         {it.statusText}
                       </span>

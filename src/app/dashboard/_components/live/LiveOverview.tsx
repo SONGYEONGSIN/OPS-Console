@@ -229,7 +229,7 @@ function LiveOverviewInner({
                 <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
                   시급도 분류
                   <span className="ml-2 text-xs font-normal text-muted">
-                    지금 당장 → 추적중
+                    긴급도 기준 자동 분류
                   </span>
                 </h2>
                 <span className="text-xs text-muted">행 클릭 → 상세</span>
