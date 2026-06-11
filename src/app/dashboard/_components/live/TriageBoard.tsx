@@ -8,15 +8,15 @@ type Props = {
   onSelect: (item: LiveTableItem) => void;
 };
 
-const COLUMNS: { bucket: TriageBucket; label: string; accent: boolean }[] = [
-  { bucket: "now", label: "지금 당장", accent: true },
-  { bucket: "today", label: "오늘", accent: false },
-  { bucket: "week", label: "이번 주", accent: false },
-  { bucket: "track", label: "추적중", accent: false },
+const COLUMNS: { bucket: TriageBucket; label: string; en: string; accent: boolean }[] = [
+  { bucket: "now", label: "지금 당장", en: "NOW", accent: true },
+  { bucket: "today", label: "오늘", en: "TODAY", accent: false },
+  { bucket: "week", label: "이번 주", en: "THIS WEEK", accent: false },
+  { bucket: "track", label: "추적중", en: "TRACKING", accent: false },
 ];
 
-/** 트리아지 보드 — 시급도 4열(지금 당장/오늘/이번 주/추적중)을 굵은 세로 괘선으로 구획.
-    같은 피드 데이터를 시급도 관점으로 한눈에 분류. 행 클릭 → onSelect. */
+/** 트리아지 보드 (OPS-6) — 시급도 4열을 괘선으로 구획, 한눈에 분류.
+    오늘·이번 주 컬럼을 넓게(1.5fr). '지금 당장' vermilion 강조. 행 클릭 → onSelect. */
 export function TriageBoard({ items, onSelect }: Props) {
   const grouped: Record<TriageBucket, LiveTableItem[]> = {
     now: [],
@@ -27,47 +27,62 @@ export function TriageBoard({ items, onSelect }: Props) {
   for (const it of items) grouped[it.triage].push(it);
 
   return (
-    <div className="grid grid-cols-1 border border-ink md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 border-2 border-ink md:grid-cols-2 xl:grid-cols-[1fr_1.5fr_1.5fr_1fr]">
       {COLUMNS.map((col, ci) => {
         const colItems = grouped[col.bucket];
         return (
           <section
             key={col.bucket}
             aria-label={`${col.label} ${colItems.length}건`}
-            className={`flex min-w-0 flex-col ${ci > 0 ? "border-line xl:border-l" : ""}`}
+            className={`flex min-w-0 flex-col bg-cream ${ci > 0 ? "border-line xl:border-l" : ""}`}
           >
             <header
-              className={`flex items-baseline justify-between border-b border-ink px-3 py-2 ${
-                col.accent ? "bg-vermilion text-cream" : "bg-washi text-ink"
+              className={`flex shrink-0 items-baseline gap-2 border-b border-line px-3.5 py-2 ${
+                col.accent ? "bg-vermilion" : "bg-washi-raised"
               }`}
             >
-              <span className="text-xs font-bold tracking-[0.02em]">
+              <span
+                className={`text-[10px] font-bold uppercase tracking-[0.2em] ${
+                  col.accent ? "text-cream" : "text-ink"
+                }`}
+              >
                 {col.label}
               </span>
-              <span className="text-xs font-semibold tabular-nums">
+              <span
+                className={`text-[8px] uppercase tracking-[0.18em] ${
+                  col.accent ? "text-cream/80" : "text-muted"
+                }`}
+              >
+                {col.en}
+              </span>
+              <span
+                className={`ml-auto text-[11px] font-bold tabular-nums ${
+                  col.accent ? "text-cream/85" : "text-muted"
+                }`}
+              >
                 {colItems.length}
               </span>
             </header>
-            <div className="flex flex-col">
+            <div className="max-h-[280px] min-h-[120px] overflow-y-auto">
               {colItems.length === 0 ? (
-                <p className="px-3 py-6 text-center text-xs text-faint">—</p>
+                <p className="px-3.5 py-8 text-center text-xs text-faint">—</p>
               ) : (
                 colItems.map((it) => (
                   <button
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(it)}
-                    className={`flex cursor-pointer flex-col gap-1 border-b border-line-soft px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
-                      col.accent ? "border-l-2 border-l-vermilion" : ""
+                    className={`flex w-full cursor-pointer flex-col gap-1 border-b border-line-soft px-3.5 py-2 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
+                      col.accent ? "border-l-[3px] border-l-vermilion" : ""
                     }`}
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5">
                       <DomainBadge domain={it.badgeDomain} />
-                      <span className="text-xs font-semibold text-ink-soft tabular-nums">
+                      <span className="text-[11px] font-semibold text-ink-soft tabular-nums">
                         {it.statusText}
                       </span>
                     </span>
-                    <span className="truncate text-sm font-medium text-ink">
+                    <span className="truncate text-[13px] font-medium leading-snug text-ink">
                       {it.title}
                     </span>
                   </button>

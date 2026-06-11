@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { Variant } from "../inspector/list-variants/types";
 import type { ListRow } from "../patterns/ListPattern";
 import { InspectorPanel } from "../inspector/InspectorPanel";
@@ -12,15 +12,23 @@ import { CommandBar } from "./command/CommandBar";
 import { AutoHeadline } from "./command/AutoHeadline";
 import type { HealthGatewayItem } from "./command/HealthGateway";
 import type { HeadlineInput } from "./command/headline-selector";
-import { LifecyclePipe } from "./lifecycle/LifecyclePipe";
 import type { LifecycleStage } from "./lifecycle/LifecyclePipe";
-import { MetricGroupBox } from "./MetricGroupBox";
-import { MetricSubcard } from "./MetricSubcard";
 import { FilterTabs, type LiveFilter } from "./FilterTabs";
 import { LiveTable } from "./LiveTable";
 import { TriageBoard } from "./TriageBoard";
 import type { LiveTableItem } from "./live-table-builder";
 import type { ConsoleLogEntry } from "./mock-log-pool";
+
+/** OPS-6 stats-band — 라이프사이클 4단계 하단 색 룰 (indigo→amber→sage→gold) */
+const LIFECYCLE_BAR = ["bg-indigo", "bg-amber", "bg-sage", "bg-gold"] as const;
+
+/** 메트릭 값 표기 — {num,den} → "num / den", 그 외 그대로 */
+function metricVal(
+  v: number | string | { num: number; den: number },
+): string {
+  if (typeof v === "object" && v !== null) return `${v.num} / ${v.den}`;
+  return String(v);
+}
 
 export type LiveOverviewProps = {
   mine: boolean;
@@ -131,44 +139,76 @@ function LiveOverviewInner({
         {/* 본문 전폭 — KPI / 서브카드 / 테이블 섹션 (이후 PR에서 교체 예정). */}
         <div className="mx-auto max-w-[1680px]">
           <div className="flex flex-col gap-6">
-            <section
-              aria-label="서비스 라이프사이클"
-              className="flex flex-col gap-3"
-            >
-              <LifecyclePipe stages={lifecycle} />
-            </section>
-            <MetricGroupBox title="서비스 현황" columns={5}>
-              <MetricSubcard
-                label="계약체결"
-                value={metrics.contract.value}
-                desc={metrics.contract.desc}
-                active={metrics.contract.active}
-                valueHint="내 계약 중 '계약완료' 상태로 표기된 카운팅"
-              />
-              <MetricSubcard
-                label="미수채권"
-                value={metrics.bond.value}
-                desc={metrics.bond.desc}
-                active={metrics.bond.active}
-                valueHint="내 미수채권 중 수금 완료된 건수 카운팅"
-              />
-              <MetricSubcard
-                label="백업내용"
-                value={metrics.backup.value}
-                desc={metrics.backup.desc}
-              />
-              <MetricSubcard
-                label="인수인계"
-                value={metrics.handover.value}
-                desc={metrics.handover.desc}
-                valueHint="본인 서비스 중 인수인계 내용 작성한 카운팅"
-              />
-              <MetricSubcard
-                label="대학연락처"
-                value={metrics.contacts.value}
-                desc={metrics.contacts.desc}
-              />
-            </MetricGroupBox>
+            {/* OPS-6 stats-band — 라이프사이클 + 메트릭 5종을 한 줄 괘선 밴드로 압축.
+                좌: 라이프사이클 파이프 | heavy divider | 우: 메트릭 5종. */}
+            <div className="grid grid-cols-1 border-2 border-ink bg-washi-raised xl:grid-cols-[auto_2px_1fr]">
+              <section
+                aria-label="서비스 라이프사이클"
+                className="flex items-stretch overflow-x-auto"
+              >
+                {lifecycle.map((s, i) => (
+                  <Fragment key={s.label}>
+                    <div className="relative flex min-w-[96px] flex-col justify-center px-4 py-2.5">
+                      <span className="mb-1 text-[8px] font-medium uppercase tracking-[0.16em] text-muted">
+                        {s.label}
+                      </span>
+                      <span className="text-2xl font-bold leading-none tracking-[-0.04em] text-ink tabular-nums">
+                        {s.count ?? "—"}
+                      </span>
+                      <span className="mt-1 text-[9px] text-faint">{s.meta}</span>
+                      <span
+                        aria-hidden
+                        className={`absolute inset-x-0 bottom-0 h-[3px] ${LIFECYCLE_BAR[i] ?? "bg-line-soft"}`}
+                      />
+                    </div>
+                    {i < lifecycle.length - 1 && (
+                      <span
+                        data-pipe-arrow
+                        aria-hidden
+                        className="flex items-center px-1 text-sm text-faint"
+                      >
+                        ›
+                      </span>
+                    )}
+                  </Fragment>
+                ))}
+              </section>
+              <div className="hidden bg-ink xl:block" aria-hidden />
+              <section
+                aria-label="서비스 현황"
+                className="grid grid-cols-2 border-t-2 border-ink sm:grid-cols-3 xl:grid-cols-5 xl:border-t-0"
+              >
+                {[
+                  { key: "contract", label: "계약체결", value: metricVal(metrics.contract.value), desc: metrics.contract.desc, bar: "bg-indigo", active: !!metrics.contract.active },
+                  { key: "bond", label: "미수채권", value: metricVal(metrics.bond.value), desc: metrics.bond.desc, bar: "bg-vermilion", active: !!metrics.bond.active },
+                  { key: "backup", label: "백업내용", value: metricVal(metrics.backup.value), desc: metrics.backup.desc, bar: "bg-amber", active: false },
+                  { key: "handover", label: "인수인계", value: metricVal(metrics.handover.value), desc: metrics.handover.desc, bar: "bg-sage", active: false },
+                  { key: "contacts", label: "대학연락처", value: metricVal(metrics.contacts.value), desc: metrics.contacts.desc, bar: "bg-gold", active: false },
+                ].map((m, i) => (
+                  <div
+                    key={m.key}
+                    className={`relative px-3.5 py-2.5 ${i > 0 ? "border-l border-line-soft" : ""}`}
+                  >
+                    <span
+                      aria-hidden
+                      className={`absolute inset-x-0 top-0 h-[3px] ${m.bar}`}
+                    />
+                    <span className="mb-1 block whitespace-nowrap text-[8px] font-medium uppercase tracking-[0.12em] text-muted">
+                      {m.label}
+                    </span>
+                    <span
+                      data-metric={m.key}
+                      className={`text-xl font-bold leading-none tracking-[-0.04em] tabular-nums ${m.active ? "text-vermilion" : "text-ink"}`}
+                    >
+                      {m.value}
+                    </span>
+                    <span className="mt-1 block text-[9px] text-faint">
+                      {m.desc}
+                    </span>
+                  </div>
+                ))}
+              </section>
+            </div>
             <section aria-label="시급도 분류" className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
                 <h2 className="text-sm font-bold tracking-[0.02em] text-ink">

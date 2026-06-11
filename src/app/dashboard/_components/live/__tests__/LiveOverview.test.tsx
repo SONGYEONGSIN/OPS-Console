@@ -112,8 +112,11 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     // 옛 KPI 대형 카드 label은 더 이상 렌더되지 않음
     expect(screen.queryByText("사고 누적 데이터")).toBeNull();
     expect(screen.queryByText("내 미완 할 일")).toBeNull();
-    // 그룹박스 title (PR②에서 유지)
-    expect(screen.getByText("서비스 현황")).toBeInTheDocument();
+    // 메트릭 밴드(서비스 현황) — 압축 괘선 밴드의 메트릭 라벨
+    expect(
+      screen.getByRole("region", { name: "서비스 현황" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("계약체결")).toBeInTheDocument();
     expect(screen.queryByText("계약 · 미수채권")).toBeNull();
     expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
     // 필터 (FilterTabs의 '전체' 칩 — 뒤에 (건수)가 붙음)
@@ -139,11 +142,11 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(within(lifecycle).getByText("—")).toBeInTheDocument();
   });
 
-  it("미수 채권 active=true → vermilion (subcard-value)", () => {
+  it("미수 채권 active=true → vermilion (메트릭 밴드 값)", () => {
     const { container } = render(<LiveOverview {...baseProps} />);
-    const bondValue = Array.from(
-      container.querySelectorAll("[data-subcard-value]"),
-    ).find((el) => el.textContent === "2") as HTMLElement | undefined;
+    const bondValue = container.querySelector(
+      '[data-metric="bond"]',
+    ) as HTMLElement | null;
     expect(bondValue?.className).toMatch(/text-vermilion/);
   });
 
