@@ -43,16 +43,17 @@ function isPresetCategory(c: string | null | undefined): boolean {
   return (CATEGORY_OPTIONS as readonly string[]).includes(c);
 }
 
-function isoToKstDate(iso?: string | null): string {
+/** ISO → KST 'YYYY-MM-DDTHH:mm' (datetime-local input 값). */
+function isoToKstDateTime(iso?: string | null): string {
   if (!iso) return "";
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
-    new Date(iso),
-  );
+  const kst = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 16);
 }
 
-function kstDateToIso(date: string): string {
-  if (!date) return "";
-  return new Date(`${date}T00:00:00+09:00`).toISOString();
+/** KST 'YYYY-MM-DDTHH:mm' → ISO 8601 Z. */
+function kstDateTimeToIso(local: string): string {
+  if (!local) return "";
+  return new Date(`${local}:00+09:00`).toISOString();
 }
 
 export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
@@ -174,14 +175,15 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
         </label>
       </div>
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">마감일 (KST)</span>
+        <span className="mb-1 block text-muted">마감일시 (KST)</span>
         <DateInput
-          aria-label="마감일"
-          value={isoToKstDate(row.dueAt)}
+          type="datetime-local"
+          aria-label="마감일시"
+          value={isoToKstDateTime(row.dueAt)}
           onChange={(e) =>
             setRow({
               ...row,
-              dueAt: e.target.value ? kstDateToIso(e.target.value) : null,
+              dueAt: e.target.value ? kstDateTimeToIso(e.target.value) : null,
             })
           }
           className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
