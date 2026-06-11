@@ -249,7 +249,7 @@ export function WeeklyView({
                         kind: sb.kind,
                       })}
                       data-testid={`weekly-service-${sb.kind}-${sb.service.id}`}
-                      className="flex cursor-grab items-center gap-1 truncate text-2xs font-medium text-ink active:cursor-grabbing"
+                      className="flex cursor-grab items-center gap-1 truncate text-2xs text-ink active:cursor-grabbing"
                       title={`${sb.service.university_name} — ${sb.service.service_name} · ${sb.kind === "start" ? "접수 시작" : "접수 종료"} (드래그하여 할 일에 담기)`}
                     >
                       <span

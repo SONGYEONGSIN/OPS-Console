@@ -360,7 +360,7 @@ export function CalendarView({
                       onClick={() => handleItemClick(item)}
                       data-team-common={item.isTeamCommon ? "true" : "false"}
                       className={`flex w-full items-center gap-1 text-left text-2xs text-ink hover:text-vermilion ${
-                        item.isTeamCommon ? "font-bold" : "font-medium"
+                        item.isTeamCommon ? "font-bold" : ""
                       }`}
                     >
                       <span
