@@ -10,7 +10,7 @@ import {
   collectUnpaidDepositsByCustomer,
 } from "./collect";
 import { isNameMatchStrong, similarity } from "./similarity";
-import { normalizeName } from "./normalize";
+import { normalizeName, baseName } from "./normalize";
 
 /** isDateMatch: depDate >= billDate + 1일 */
 function addOneDay(iso: string): string {
@@ -33,7 +33,10 @@ function sumAmounts<T extends { amount: number }>(list: T[]): number {
 }
 
 function latestDate(rows: { date: string }[]): string {
-  return rows.reduce((latest, r) => (r.date > latest ? r.date : latest), rows[0]?.date ?? "");
+  return rows.reduce(
+    (latest, r) => (r.date > latest ? r.date : latest),
+    rows[0]?.date ?? "",
+  );
 }
 
 function isUnpaidMisu(m: MisuRow): boolean {
@@ -157,6 +160,54 @@ export function runMatch(
     depList.forEach((d) => matchedDepRows.add(d.row));
   }
 
+  // 3.5: 캠퍼스 통합 N:M — 캠퍼스 접미사로 분리된 미수를 base 대학명으로 묶어 합산 일치 시도.
+  //   "을지대(성남)" + "을지대(의정부)" 처럼 캠퍼스가 다른 미수가 base 대학명 입금 1건과
+  //   매칭되는 케이스. 기존 캠퍼스 구분 매칭(1·2·3단계) 이후의 잔여 미수에만 적용하므로
+  //   단일 캠퍼스 N:1(예: 성남만 합산 입금)은 보존된다. 합계가 정확히 일치할 때만 매칭.
+  const remainingForBase = misu.filter(
+    (m) =>
+      !matchedMisuRows.has(m.rowNumber) &&
+      isUnpaidMisu(m) &&
+      m.date &&
+      m.customer &&
+      m.amount,
+  );
+  const baseGroupMap = new Map<string, MisuRow[]>();
+  for (const m of remainingForBase) {
+    const key = baseName(m.customer, extraAliases);
+    if (!key) continue;
+    const list = baseGroupMap.get(key) ?? [];
+    list.push(m);
+    baseGroupMap.set(key, list);
+  }
+  for (const [gbase, misuList] of baseGroupMap) {
+    if (misuList.length < 2) continue; // 단건은 1:1/N:1 책임
+    const earliest = misuList.reduce(
+      (e, m) => (m.date < e ? m.date : e),
+      misuList[0].date,
+    );
+    const depList = collectUnpaidDepositsByCustomer(
+      deposits,
+      gbase,
+      earliest,
+      matchedDepRows,
+    );
+    if (depList.length < 1) continue;
+    const misuTotal = sumAmounts(misuList);
+    const depTotal = sumAmounts(depList);
+    if (misuTotal !== depTotal) continue;
+
+    matched.push({
+      misuRows: misuList.map((m) => m.rowNumber),
+      depRows: depList.map((d) => d.row),
+      kind: "nToM",
+      depositDate: latestDate(depList),
+      amount: misuTotal,
+    });
+    misuList.forEach((m) => matchedMisuRows.add(m.rowNumber));
+    depList.forEach((d) => matchedDepRows.add(d.row));
+  }
+
   // 4: mismatch detect — 금액 동일 but 이름 불일치 (admin 알림)
   for (const m of misu) {
     if (matchedMisuRows.has(m.rowNumber)) continue;
@@ -167,7 +218,10 @@ export function runMatch(
       if (!isUnpaidDeposit(d)) continue;
       if (!d.amount) continue;
       if (!isDateMatch(m.date, d.date)) continue;
-      if (m.amount === d.amount && !isNameMatchStrong(m.customer, d.content, extraAliases)) {
+      if (
+        m.amount === d.amount &&
+        !isNameMatchStrong(m.customer, d.content, extraAliases)
+      ) {
         mismatches.push({
           misuRow: m.rowNumber,
           depRow: d.row,
@@ -185,7 +239,9 @@ export function runMatch(
     .filter((m) => !matchedMisuRows.has(m.rowNumber) && isUnpaidMisu(m))
     .map((m) => m.rowNumber);
   const unmatchedDep = deposits
-    .filter((d) => !matchedDepRows.has(d.row) && isUnpaidDeposit(d) && d.amount > 0)
+    .filter(
+      (d) => !matchedDepRows.has(d.row) && isUnpaidDeposit(d) && d.amount > 0,
+    )
     .map((d) => d.row);
 
   // similarity는 후속 확장(threshold 자동 매핑) 위해 export — 현재 알고리즘은 미사용

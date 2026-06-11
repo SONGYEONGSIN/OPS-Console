@@ -22,7 +22,10 @@ export function toMisuRows(sheet: ReceivablesSheet): MisuRow[] {
   const dateCol = findCol(sheet.headers, /^청구\s*일자/);
   const custCol = findCol(sheet.headers, /거래처명?|학교명?/);
   const amountCol = findCol(sheet.headers, /청구\s*금액|금액/);
-  const noteCol = findCol(sheet.headers, /^적요$|비고/);
+  // 실제 운영 헤더가 "적 요(피드백 내용)" 처럼 적·요 사이 공백 + 부가문구를 가짐.
+  // /^적요$/ 로는 못 잡아 noteCol=-1 → note="" → 입금완료 행을 미처리로 오인하므로
+  // 공백 허용 + 부분일치로 매칭한다.
+  const noteCol = findCol(sheet.headers, /적\s*요|비고/);
   if (dateCol < 0 || custCol < 0 || amountCol < 0) return [];
 
   const out: MisuRow[] = [];
