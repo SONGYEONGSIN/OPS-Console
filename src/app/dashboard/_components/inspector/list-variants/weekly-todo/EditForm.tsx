@@ -43,17 +43,30 @@ function isPresetCategory(c: string | null | undefined): boolean {
   return (CATEGORY_OPTIONS as readonly string[]).includes(c);
 }
 
-/** ISO → KST 'YYYY-MM-DDTHH:mm' (datetime-local input 값). */
-function isoToKstDateTime(iso?: string | null): string {
+/** ISO → KST 'YYYY-MM-DD' (date input 값). */
+function isoToKstDate(iso?: string | null): string {
   if (!iso) return "";
-  const kst = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().slice(0, 16);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date(iso),
+  );
 }
 
-/** KST 'YYYY-MM-DDTHH:mm' → ISO 8601 Z. */
-function kstDateTimeToIso(local: string): string {
-  if (!local) return "";
-  return new Date(`${local}:00+09:00`).toISOString();
+/** ISO → KST 'HH:mm' 24h (time input 값). */
+function isoToKstTime(iso?: string | null): string {
+  if (!iso) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+/** date(YYYY-MM-DD KST) + time(HH:mm) → ISO 8601 Z. time 비어있으면 00:00. */
+function combineKstToIso(date: string, time: string): string {
+  if (!date) return "";
+  const t = time || "00:00";
+  return new Date(`${date}T${t}:00+09:00`).toISOString();
 }
 
 export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
@@ -176,18 +189,35 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
       </div>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">마감일시 (KST)</span>
-        <DateInput
-          type="datetime-local"
-          aria-label="마감일시"
-          value={isoToKstDateTime(row.dueAt)}
-          onChange={(e) =>
-            setRow({
-              ...row,
-              dueAt: e.target.value ? kstDateTimeToIso(e.target.value) : null,
-            })
-          }
-          className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
-        />
+        <div className="grid grid-cols-[1fr_100px] gap-2">
+          <DateInput
+            aria-label="마감일"
+            value={isoToKstDate(row.dueAt)}
+            onChange={(e) =>
+              setRow({
+                ...row,
+                dueAt: e.target.value
+                  ? combineKstToIso(e.target.value, isoToKstTime(row.dueAt))
+                  : null,
+              })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+          />
+          <input
+            type="time"
+            aria-label="마감 시각"
+            value={isoToKstTime(row.dueAt)}
+            onChange={(e) =>
+              setRow({
+                ...row,
+                dueAt:
+                  combineKstToIso(isoToKstDate(row.dueAt), e.target.value) ||
+                  null,
+              })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+          />
+        </div>
       </label>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">진행률</span>
