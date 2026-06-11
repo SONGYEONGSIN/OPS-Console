@@ -139,14 +139,28 @@ function LiveOverviewInner({
         {/* 본문 전폭 — KPI / 서브카드 / 테이블 섹션 (이후 PR에서 교체 예정). */}
         <div className="mx-auto max-w-[1680px]">
           <div className="flex flex-col gap-6">
-            {/* OPS-6 stats-band — 라이프사이클 + 메트릭 5종을 한 줄 괘선 밴드로 압축.
-                좌: 라이프사이클 파이프 | heavy divider | 우: 메트릭 5종. */}
-            <div className="grid grid-cols-1 border-2 border-ink bg-washi-raised xl:grid-cols-[auto_2px_1fr]">
-              <section
-                aria-label="서비스 라이프사이클"
-                className="flex items-stretch overflow-x-auto"
-              >
-                {lifecycle.map((s, i) => (
+            {/* OPS-6 stats-band — '현황 요약': 라이프사이클 + 메트릭 5종 압축 괘선 밴드. */}
+            <section aria-label="현황 요약" className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
+                <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
+                  현황 요약
+                  <span className="ml-2 text-xs font-normal text-muted">
+                    라이프사이클 · 핵심 지표
+                  </span>
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 border-2 border-ink bg-washi-raised xl:grid-cols-[auto_2px_1fr]">
+                <section
+                  aria-label="서비스 라이프사이클"
+                  className="flex items-stretch overflow-x-auto"
+                >
+                  <span
+                    aria-hidden
+                    className="flex w-3.5 shrink-0 items-center justify-center border-r border-line-soft bg-washi text-[7px] uppercase tracking-[0.3em] text-faint [transform:rotate(180deg)] [writing-mode:vertical-rl]"
+                  >
+                    lifecycle
+                  </span>
+                  {lifecycle.map((s, i) => (
                   <Fragment key={s.label}>
                     <div className="relative flex min-w-[96px] flex-col justify-center px-4 py-2.5">
                       <span className="mb-1 text-[8px] font-medium uppercase tracking-[0.16em] text-muted">
@@ -208,7 +222,8 @@ function LiveOverviewInner({
                   </div>
                 ))}
               </section>
-            </div>
+              </div>
+            </section>
             <section aria-label="시급도 분류" className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
                 <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
@@ -230,18 +245,16 @@ function LiveOverviewInner({
               aria-label="전체 우선순위 피드"
               className="flex flex-col gap-3"
             >
-              <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
-                <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b-2 border-ink pb-1.5">
+                <h2 className="shrink-0 text-sm font-bold tracking-[0.02em] text-ink">
                   전체 우선순위 피드
                 </h2>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-3">
                 <FilterTabs
                   active={filter}
                   counts={counts}
                   onChange={setFilter}
                 />
-                <span className="text-xs text-ink-muted">
+                <span className="ml-auto shrink-0 text-xs text-ink-muted">
                   필터링된 결과: {visible.length}건 표시 중
                 </span>
               </div>

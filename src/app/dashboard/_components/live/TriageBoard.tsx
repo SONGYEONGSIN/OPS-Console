@@ -72,17 +72,17 @@ export function TriageBoard({ items, onSelect }: Props) {
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(it)}
-                    className={`flex w-full cursor-pointer flex-col gap-1 border-b border-line-soft px-3.5 py-2 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
+                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
                       col.accent ? "border-l-[3px] border-l-vermilion" : ""
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
                       <DomainBadge domain={it.badgeDomain} />
-                      <span className="text-[11px] font-semibold text-ink-soft tabular-nums">
+                      <span className="text-[10px] font-semibold text-ink-soft tabular-nums">
                         {it.statusText}
                       </span>
                     </span>
-                    <span className="truncate text-[13px] font-medium leading-snug text-ink">
+                    <span className="truncate text-[11px] font-medium leading-tight text-ink">
                       {it.title}
                     </span>
                   </button>
