@@ -13,7 +13,7 @@ function splitTag(text: string): { tag: string | null; rest: string } {
 
 /**
  * 가로 흐름 콘솔 로그 티커.
- * - 트랙을 translateX로 좌측 크롤(26s linear infinite)
+ * - 트랙을 translateX로 좌측 크롤(60s linear infinite — 천천히)
  * - @keyframes는 공유 globals.css 대신 컴포넌트 내부 <style>로 스코프
  */
 export default function LogTicker({ lines }: LogTickerProps) {
@@ -27,7 +27,7 @@ export default function LogTicker({ lines }: LogTickerProps) {
           display: inline-block;
           padding-left: 100%;
           white-space: nowrap;
-          animation: log-ticker-crawl 26s linear infinite;
+          animation: log-ticker-crawl 60s linear infinite;
         }
       `}</style>
       {lines.length > 0 ? (

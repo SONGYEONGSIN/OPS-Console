@@ -47,6 +47,37 @@ const baseProps: LiveOverviewProps = {
     contacts: { value: 5, desc: "등록한 연락처" },
     handover: { value: 0, desc: "등록된 인수인계" },
   },
+  lifecycle: [
+    {
+      label: "오픈 예정",
+      tag: "오픈 준비",
+      count: 13,
+      meta: "배포 준비 완료",
+      variant: "soon",
+      sparklineD: "M 0,35 L 100,12",
+    },
+    {
+      label: "진행 중",
+      tag: "작성 중",
+      count: 28,
+      meta: "서비스 마감 연동",
+      variant: "prog",
+    },
+    {
+      label: "마감 완료",
+      tag: "마감",
+      count: 41,
+      meta: "이번 주 마감 6",
+      variant: "done",
+    },
+    {
+      label: "전형료 정산",
+      tag: "예정",
+      count: null,
+      meta: "백엔드 후속",
+      variant: "settle",
+    },
+  ],
   tableItems: [],
   healthItems: [
     { label: "Supabase Connection", tone: "ok", detail: "120ms" },
@@ -69,15 +100,19 @@ beforeEach(() => {
 });
 
 describe("LiveOverview (Phase 3 — Realtime)", () => {
-  it("헤더 + 3 KPI 카드 + 통합 그룹박스 + 필터 + 테이블 렌더", () => {
+  it("헤더 + 라이프사이클 파이프 + 통합 그룹박스 + 필터 + 테이블 렌더", () => {
     render(<LiveOverview {...baseProps} />);
     // 헤더 — 커맨드 바 마스트헤드
     expect(screen.getByText("운영부 상황실")).toBeInTheDocument();
-    // KPI 3 카드 label
-    expect(screen.getByText("사고 누적 데이터")).toBeInTheDocument();
-    expect(screen.getByText("내 미완 할 일")).toBeInTheDocument();
-    expect(screen.getByText("오픈 예정 서비스")).toBeInTheDocument();
-    // 그룹박스 title (2 박스 → 1 박스 통합)
+    // 라이프사이클 4 스테이지 label (KpiCardLarge → LifecyclePipe 교체)
+    expect(screen.getByText("오픈 예정")).toBeInTheDocument();
+    expect(screen.getByText("진행 중")).toBeInTheDocument();
+    expect(screen.getByText("마감 완료")).toBeInTheDocument();
+    expect(screen.getByText("전형료 정산")).toBeInTheDocument();
+    // 옛 KPI 대형 카드 label은 더 이상 렌더되지 않음
+    expect(screen.queryByText("사고 누적 데이터")).toBeNull();
+    expect(screen.queryByText("내 미완 할 일")).toBeNull();
+    // 그룹박스 title (PR②에서 유지)
     expect(screen.getByText("서비스 현황")).toBeInTheDocument();
     expect(screen.queryByText("계약 · 미수채권")).toBeNull();
     expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
@@ -89,9 +124,15 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
   });
 
-  it("진행률 라벨 = (done/total)*100 %", () => {
+  it("라이프사이클 스테이지 사이에 화살표가 렌더됨", () => {
+    const { container } = render(<LiveOverview {...baseProps} />);
+    // 4 스테이지 → 화살표 3개
+    expect(container.querySelectorAll("[data-pipe-arrow]").length).toBe(3);
+  });
+
+  it("settle 스테이지 count=null → '—' 셸 표시", () => {
     render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText("진행률 20%")).toBeInTheDocument();
+    expect(screen.getByText("—")).toBeInTheDocument();
   });
 
   it("미수 채권 active=true → vermilion (subcard-value)", () => {

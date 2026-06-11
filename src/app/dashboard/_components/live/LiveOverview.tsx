@@ -12,9 +12,8 @@ import { CommandBar } from "./command/CommandBar";
 import { AutoHeadline } from "./command/AutoHeadline";
 import type { HealthGatewayItem } from "./command/HealthGateway";
 import type { HeadlineInput } from "./command/headline-selector";
-import { KpiCardLarge } from "./KpiCardLarge";
-import { Sparkline } from "./Sparkline";
-import { KpiProgressBar } from "./KpiProgressBar";
+import { LifecyclePipe } from "./lifecycle/LifecyclePipe";
+import type { LifecycleStage } from "./lifecycle/LifecyclePipe";
 import { MetricGroupBox } from "./MetricGroupBox";
 import { MetricSubcard } from "./MetricSubcard";
 import { FilterTabs, type LiveFilter } from "./FilterTabs";
@@ -49,6 +48,8 @@ export type LiveOverviewProps = {
       desc: string;
     };
   };
+  /** ② 서비스 라이프사이클 4 스테이지 (soon → prog → done → settle). page.tsx 조립. */
+  lifecycle: LifecycleStage[];
   tableItems: LiveTableItem[];
   initialConsoleLines?: ConsoleLogEntry[];
   /** CommandBar 시스템 날씨 게이트웨이 항목 (page.tsx에서 snapshot 매핑). */
@@ -63,8 +64,8 @@ export type LiveOverviewProps = {
 function LiveOverviewInner({
   mine,
   myEmail,
-  kpi,
   metrics,
+  lifecycle,
   tableItems,
   healthItems,
   logLines,
@@ -106,9 +107,6 @@ function LiveOverviewInner({
     return tableItems.filter((x) => x.domain === filter);
   }, [filter, tableItems]);
 
-  const todoPct =
-    kpi.todo.total > 0 ? Math.round((kpi.todo.done / kpi.todo.total) * 100) : 0;
-
   return (
     <div className="h-full overflow-y-auto bg-paper">
       {/* PR① 상단 — 커맨드 바(.cmd) + 자동 헤드라인(.headline).
@@ -125,39 +123,10 @@ function LiveOverviewInner({
         <div className="mx-auto max-w-[1680px]">
           <div className="flex flex-col gap-6">
             <section
-              aria-label="KPI 대형"
-              className="grid gap-4 md:grid-cols-3"
+              aria-label="서비스 라이프사이클"
+              className="flex flex-col gap-3"
             >
-              <KpiCardLarge
-                label="오픈 예정 서비스"
-                trend="오픈 준비"
-                count={kpi.service.count}
-                footer="배포 준비 완료"
-                right={
-                  <Sparkline d={kpi.service.sparklineD} variant="neutral" />
-                }
-                delayMs={0}
-              />
-              <KpiCardLarge
-                label="내 미완 할 일"
-                trend={`진행률 ${todoPct}%`}
-                count={kpi.todo.count}
-                footer="본인 배정 미완료"
-                right={
-                  <KpiProgressBar done={kpi.todo.done} total={kpi.todo.total} />
-                }
-                delayMs={50}
-              />
-              <KpiCardLarge
-                label="사고 누적 데이터"
-                trend="긴급 대응"
-                trendDanger
-                count={kpi.sago.count}
-                numberDanger
-                footer="사고 재발 방지"
-                right={<Sparkline d={kpi.sago.sparklineD} variant="danger" />}
-                delayMs={100}
-              />
+              <LifecyclePipe stages={lifecycle} />
             </section>
             <MetricGroupBox title="서비스 현황" columns={5}>
               <MetricSubcard
