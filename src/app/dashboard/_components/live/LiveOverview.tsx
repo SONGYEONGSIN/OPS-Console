@@ -9,6 +9,7 @@ import { InspectorListBody } from "../inspector/InspectorListBody";
 import { ToastProvider } from "./ToastContainer";
 import { useLiveSidebar } from "./use-live-sidebar";
 import { CommandBar } from "./command/CommandBar";
+import { LiveStatusBar } from "./command/LiveStatusBar";
 import { AutoHeadline } from "./command/AutoHeadline";
 import type { HealthGatewayItem } from "./command/HealthGateway";
 import type { HeadlineInput } from "./command/headline-selector";
@@ -131,7 +132,7 @@ function LiveOverviewInner({
           데이터(시스템 날씨/로그/헤드라인)는 모두 page.tsx → props로 주입. */}
       <div className="px-6 pb-6 pt-6">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-3.5">
-          <CommandBar mine={mine} healthItems={healthItems} logLines={lines} />
+          <CommandBar mine={mine} />
           <AutoHeadline input={headline} />
         </div>
       </div>
@@ -268,6 +269,9 @@ function LiveOverviewInner({
           </div>
         </div>
       </div>
+
+      {/* 하단 고정 status bar — 시스템 헬스 + 로그 티커 + LIVE (sticky) */}
+      <LiveStatusBar healthItems={healthItems} logLines={lines} />
 
       <InspectorPanel open={!!selected} onClose={() => setSelected(null)}>
         {selected ? (
