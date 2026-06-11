@@ -13,7 +13,14 @@ type Props = {
 };
 
 const SCHEDULE_TYPE_OPTIONS: {
-  value: "shift" | "event" | "leave" | "training" | "application" | "pims";
+  value:
+    | "shift"
+    | "event"
+    | "leave"
+    | "training"
+    | "application"
+    | "pims"
+    | "external_meeting";
   label: string;
 }[] = [
   { value: "shift", label: "시프트" },
@@ -22,6 +29,7 @@ const SCHEDULE_TYPE_OPTIONS: {
   { value: "training", label: "교육" },
   { value: "application", label: "원서접수" },
   { value: "pims", label: "PIMS" },
+  { value: "external_meeting", label: "외부미팅" },
 ];
 
 const KST_DATE_FMT = new Intl.DateTimeFormat("en-CA", {

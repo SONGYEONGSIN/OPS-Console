@@ -12,6 +12,7 @@ const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
   training: "교육",
   application: "원서접수",
   pims: "PIMS",
+  external_meeting: "외부미팅",
 };
 
 const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
@@ -21,6 +22,7 @@ const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
   training: "bg-washi-raised text-ink",
   application: "bg-vermilion-deep text-cream",
   pims: "bg-gold text-cream",
+  external_meeting: "bg-indigo text-cream",
 };
 
 const TZ = "Asia/Seoul";

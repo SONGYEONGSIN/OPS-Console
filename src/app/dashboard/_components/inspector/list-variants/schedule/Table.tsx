@@ -17,6 +17,7 @@ const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
   training: "교육",
   application: "원서접수",
   pims: "PIMS",
+  external_meeting: "외부미팅",
 };
 
 const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
@@ -26,6 +27,7 @@ const SCHEDULE_TYPE_COLOR: Record<ScheduleType, string> = {
   training: "bg-washi-raised text-ink",
   application: "bg-vermilion-deep text-cream",
   pims: "bg-gold text-cream",
+  external_meeting: "bg-indigo text-cream",
 };
 
 function formatScheduleRange(
@@ -52,7 +54,8 @@ function formatScheduleRange(
   const isoDate = (d: Date) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);
   if (allDay) {
-    if (!endD || isoDate(startD) === isoDate(endD)) return dayFmt.format(startD);
+    if (!endD || isoDate(startD) === isoDate(endD))
+      return dayFmt.format(startD);
     return `${dayFmt.format(startD)} ~ ${dayFmt.format(endD)}`;
   }
   if (!endD) return `${dayFmt.format(startD)} ${timeFmt.format(startD)}`;
