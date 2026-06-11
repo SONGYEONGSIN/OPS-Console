@@ -7,6 +7,7 @@ import { listBackupRequests } from "@/features/backup-requests/queries";
 import { listScheduleEvents } from "@/features/schedule/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { listMyTodos } from "@/features/todos/queries";
+import { listClosing } from "@/features/closing/queries";
 import { listWorklog } from "@/features/worklog/queries";
 import { worklogRowsToConsoleLines } from "@/features/worklog/to-console-line";
 import { listContacts } from "@/features/contacts/queries";
@@ -31,6 +32,8 @@ import {
   type SystemHealthSnapshot,
 } from "@/features/system-health/queries";
 import type { ListRow } from "./_components/patterns/ListPattern";
+import type { LifecycleStage } from "./_components/live/lifecycle/LifecyclePipe";
+import type { TimelineEvent } from "./_components/live/lifecycle/timeline-points";
 
 /**
  * /dashboard 실시간 현황 — KPI 타일(9개) + 우선순위 피드.
@@ -366,6 +369,76 @@ export default async function DashboardLivePage({
     "M 0,30 L 15,28 L 30,35 L 45,15 L 60,25 L 75,5 L 90,12 L 100,2";
   const SPARKLINE_SERVICE = "M 0,35 L 20,32 L 40,25 L 60,20 L 80,18 L 100,12";
 
+  // ─── ② 서비스 라이프사이클 파이프 (soon → prog → done → settle) ─────────
+  // 진행중/마감은 closing_services 테이블 기준. mine 시 operator_name 으로 본인만.
+  // listClosing 실패 시 count=null("—") 폴백.
+  const closingOperatorName =
+    mine && me?.displayName ? me.displayName : undefined;
+  let progCount: number | null = null;
+  let doneCount: number | null = null;
+  try {
+    const [openRes, closedRes] = await Promise.all([
+      listClosing({
+        closedStatus: "open",
+        operatorName: closingOperatorName,
+        pageSize: 1,
+      }),
+      listClosing({
+        closedStatus: "closed",
+        operatorName: closingOperatorName,
+        pageSize: 1,
+      }),
+    ]);
+    progCount = openRes.total;
+    doneCount = closedRes.total;
+  } catch {
+    /* closing fetch fail → '—' 셸 폴백 유지 */
+  }
+
+  const lifecycle: LifecycleStage[] = [
+    {
+      label: "오픈 예정",
+      tag: "오픈 준비",
+      count: servicesUpcomingCount,
+      meta: "배포 준비 완료",
+      variant: "soon",
+      sparklineD: SPARKLINE_SERVICE,
+    },
+    {
+      label: "진행 중",
+      tag: "작성 중",
+      count: progCount,
+      meta: "서비스 마감 연동",
+      variant: "prog",
+    },
+    {
+      label: "마감 완료",
+      tag: "마감",
+      count: doneCount,
+      meta: doneCount === null ? "마감 집계" : `누적 마감 ${doneCount}`,
+      variant: "done",
+    },
+    {
+      label: "전형료 정산",
+      tag: "예정",
+      count: null,
+      meta: "백엔드 후속",
+      variant: "settle",
+    },
+  ];
+
+  // ─── ② 오늘의 흐름 타임라인 — 기존 fetch 결과에서 파생 (신규 쿼리 X) ─────
+  // 오늘(KST) 마감 서비스: write_start_at 가 오늘인 오픈예정 건 → kind "due".
+  const timelineEvents: TimelineEvent[] = deadlinesTodayServices
+    .filter((s) => !!s.write_start_at)
+    .map((s) => ({
+      id: s.id,
+      label: `${s.university_name} 마감`,
+      kind: "due" as const,
+      at: s.write_start_at as string,
+    }));
+  const nowIso = new Date().toISOString();
+
   return (
     <LiveOverview
       mine={mine}
@@ -396,6 +469,9 @@ export default async function DashboardLivePage({
           desc: `(${handoverPublishedCount.toLocaleString("ko-KR")}) 진행 완료`,
         },
       }}
+      lifecycle={lifecycle}
+      timelineEvents={timelineEvents}
+      nowIso={nowIso}
       tableItems={tableItems}
       initialConsoleLines={initialConsoleLines}
       healthItems={healthItems}
