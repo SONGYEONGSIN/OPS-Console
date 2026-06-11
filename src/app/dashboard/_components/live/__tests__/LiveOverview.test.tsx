@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -132,7 +132,11 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
 
   it("settle 스테이지 count=null → '—' 셸 표시", () => {
     render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    // 라이프사이클 영역으로 스코프 (트리아지 보드 빈 컬럼 placeholder '—'와 구분)
+    const lifecycle = screen.getByRole("region", {
+      name: /서비스 라이프사이클/,
+    });
+    expect(within(lifecycle).getByText("—")).toBeInTheDocument();
   });
 
   it("미수 채권 active=true → vermilion (subcard-value)", () => {

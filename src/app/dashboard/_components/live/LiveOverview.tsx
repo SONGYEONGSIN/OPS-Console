@@ -18,6 +18,7 @@ import { MetricGroupBox } from "./MetricGroupBox";
 import { MetricSubcard } from "./MetricSubcard";
 import { FilterTabs, type LiveFilter } from "./FilterTabs";
 import { LiveTable } from "./LiveTable";
+import { TriageBoard } from "./TriageBoard";
 import type { LiveTableItem } from "./live-table-builder";
 import type { ConsoleLogEntry } from "./mock-log-pool";
 
@@ -168,7 +169,32 @@ function LiveOverviewInner({
                 desc={metrics.contacts.desc}
               />
             </MetricGroupBox>
-            <section className="flex flex-col gap-3">
+            <section aria-label="시급도 분류" className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
+                <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
+                  시급도 분류
+                  <span className="ml-2 text-xs font-normal text-muted">
+                    지금 당장 → 추적중
+                  </span>
+                </h2>
+                <span className="text-xs text-muted">행 클릭 → 상세</span>
+              </div>
+              <TriageBoard
+                items={tableItems}
+                onSelect={(it) =>
+                  setSelected({ variant: it.variant, row: it.listRow })
+                }
+              />
+            </section>
+            <section
+              aria-label="전체 우선순위 피드"
+              className="flex flex-col gap-3"
+            >
+              <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
+                <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
+                  전체 우선순위 피드
+                </h2>
+              </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <FilterTabs
                   active={filter}
