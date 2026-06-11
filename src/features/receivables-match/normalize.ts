@@ -16,6 +16,9 @@ const SPECIAL_MAP: Record<string, string> = {
   융합산업대학원: "한양대",
   언론정보대학원: "한양대",
   공학대학원: "한양대",
+  국제관광대학원: "한양대",
+  한양인공지능융: "한양대",
+  부동산융합대학: "한양대",
   "대학원교학팀(대학원": "조선대",
   "보건대학원(특수대학": "조선대",
   이대: "이화여대",
@@ -76,4 +79,21 @@ export function normalizeName(
   if (n.includes("성균관")) n = "성대";
 
   return n;
+}
+
+/**
+ * 캠퍼스 접미사 제거된 base 대학명 — `normalizeName` 결과 끝의 `(…)` 를 1개 제거.
+ *
+ * "을지대학교(성남)" → "을지대(성남)" → "을지대",
+ * "을지대학교(의정부)" → "을지대(의정부)" → "을지대" (캠퍼스 무시 동일 키).
+ *
+ * 끝(`$`)의 괄호만 제거하므로 SPECIAL_MAP의 선두 괄호("(학)단국대")는 보존된다.
+ * 한 대학이 캠퍼스별로 분리 기재됐으나 입금은 합산 1건으로 들어오는 경우의
+ * 그룹핑 키로 사용한다.
+ */
+export function baseName(
+  name: string,
+  extraAliases: Record<string, string> = {},
+): string {
+  return normalizeName(name, extraAliases).replace(/\([^)]*\)$/, "");
 }
