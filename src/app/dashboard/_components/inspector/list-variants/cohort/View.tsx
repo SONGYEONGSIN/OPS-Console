@@ -1,9 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
-import {
-  OPERATORS,
-  ageOf,
-  tenureLabel,
-} from "@/features/auth/operators";
+import { OPERATORS, ageOf, tenureLabel } from "@/features/auth/operators";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 import { CohortChecklistPanel } from "./ChecklistPanel";
@@ -17,7 +16,32 @@ const COHORT_STATUS_VIEW_LABEL: Record<
   completed: { label: "완료", color: "bg-washi-raised text-ink" },
 };
 
-export function CohortView({ row, onChecklistToggle }: ViewProps) {
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 cursor-pointer border-b-2 px-3 py-2.5 text-center text-sm font-medium ${
+        active
+          ? "border-ink text-ink"
+          : "border-transparent text-muted hover:text-ink-soft"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** 회차정보 탭 — 회차/신입/교육/초대 워크플로/비고 섹션 */
+function CohortInfo({ row }: { row: ListRow }) {
   const trainee = row.traineeEmail
     ? OPERATORS.find((o) => o.email === row.traineeEmail)
     : null;
@@ -90,7 +114,9 @@ export function CohortView({ row, onChecklistToggle }: ViewProps) {
               { term: "직급", desc: trainee.role },
               {
                 term: "이메일",
-                desc: <span className="font-mono text-xs">{trainee.email}</span>,
+                desc: (
+                  <span className="font-mono text-xs">{trainee.email}</span>
+                ),
               },
               { term: "사번", desc: trainee.empNo },
               {
@@ -115,8 +141,8 @@ export function CohortView({ row, onChecklistToggle }: ViewProps) {
                 term: "안내",
                 desc: (
                   <span className="text-xs text-muted">
-                    operators 시드에 없는 외부 이메일 — 초대 수락 시 자동 등록 후
-                    admin이 권한 승계
+                    operators 시드에 없는 외부 이메일 — 초대 수락 시 자동 등록
+                    후 admin이 권한 승계
                   </span>
                 ),
               },
@@ -178,8 +204,8 @@ export function CohortView({ row, onChecklistToggle }: ViewProps) {
         />
         {!row.invitedAt && (
           <p className="mt-2 text-xs text-muted">
-            아직 초대 메일을 발송하지 않았습니다. 우측 상단 &ldquo;구성 편집&rdquo;
-            → 하단 &ldquo;초대 메일 발송&rdquo;에서 시작.
+            아직 초대 메일을 발송하지 않았습니다. 우측 상단 &ldquo;구성
+            편집&rdquo; → 하단 &ldquo;초대 메일 발송&rdquo;에서 시작.
           </p>
         )}
       </Section>
@@ -194,17 +220,37 @@ export function CohortView({ row, onChecklistToggle }: ViewProps) {
           </Section>
         </>
       )}
+    </div>
+  );
+}
 
-      <Divider />
+export function CohortView({ row, onChecklistToggle }: ViewProps) {
+  const [tab, setTab] = useState<"info" | "checklist">("info");
 
-      <Section title="온보딩 체크리스트">
+  return (
+    <div className="space-y-4">
+      <div className="flex border-b border-line">
+        <TabButton active={tab === "info"} onClick={() => setTab("info")}>
+          회차정보
+        </TabButton>
+        <TabButton
+          active={tab === "checklist"}
+          onClick={() => setTab("checklist")}
+        >
+          체크리스트
+        </TabButton>
+      </div>
+
+      {tab === "info" ? (
+        <CohortInfo row={row} />
+      ) : (
         <CohortChecklistPanel
           cohortId={row.id}
           initialChecks={row.checklistChecks ?? {}}
           canToggle={row.canToggleChecklist ?? false}
           onToggle={onChecklistToggle}
         />
-      </Section>
+      )}
     </div>
   );
 }
