@@ -23,6 +23,9 @@ export type LiveBadgeDomain =
   | "공지"
   | "미수채권";
 
+/** 트리아지 시급도 버킷 — 지금 당장 / 오늘 / 이번 주 / 추적중 */
+export type TriageBucket = "now" | "today" | "week" | "track";
+
 export type LiveTableItem = {
   id: string;
   domain: LiveTableDomain;
@@ -32,6 +35,7 @@ export type LiveTableItem = {
   title: string;
   timeText: string;
   occurredAt: string;
+  triage: TriageBucket;
   listRow: ListRow;
 };
 
@@ -107,9 +111,29 @@ function todoStatus(dueAt: string | null, today: string): string {
   return `D-${diffDays}`;
 }
 
+function ymdFromIso(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(iso));
+}
+
 function startAtToMd(iso: string): string {
-  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date(iso));
-  return mdFromYmd(ymd);
+  return mdFromYmd(ymdFromIso(iso));
+}
+
+function dayDiff(ymd: string, today: string): number {
+  return Math.round(
+    (new Date(ymd + "T00:00:00+09:00").getTime() -
+      new Date(today + "T00:00:00+09:00").getTime()) /
+      86400000,
+  );
+}
+
+/** 마감/이벤트 날짜 기준 트리아지: 지남→now, 오늘→today, 1~7일→week, 그 외/없음→track */
+function bucketByDeadline(ymd: string | null | undefined, today: string): TriageBucket {
+  if (!ymd) return "track";
+  const d = ymd.slice(0, 10);
+  if (d < today) return "now";
+  if (d === today) return "today";
+  return dayDiff(d, today) <= 7 ? "week" : "track";
 }
 
 /** 5도메인 소스를 LiveTableItem[]으로 통합하고 occurredAt 내림차순 정렬한다. */
@@ -127,6 +151,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: i.title,
       timeText: formatRelativeTime(i.createdAt, now),
       occurredAt: i.createdAt,
+      // 미처리 사고는 즉시 대응
+      triage: i.status !== "처리완료" ? "now" : "track",
       listRow: i.listRow,
     });
   }
@@ -141,6 +167,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: t.title,
       timeText: formatRelativeTime(t.createdAt, now),
       occurredAt: t.createdAt,
+      triage: bucketByDeadline(t.dueAt, today),
       listRow: t.listRow,
     });
   }
@@ -155,6 +182,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: sv.title,
       timeText: formatRelativeTime(sv.createdAt, now),
       occurredAt: sv.createdAt,
+      triage: bucketByDeadline(sv.writeStartAt, today),
       listRow: sv.listRow,
     });
   }
@@ -169,6 +197,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: b.title,
       timeText: formatRelativeTime(b.createdAt, now),
       occurredAt: b.createdAt,
+      // 메일 발송 실패는 즉시 대응, 그 외 백업 요청은 추적
+      triage: b.status === "mail_failed" ? "now" : "track",
       listRow: b.listRow,
     });
   }
@@ -183,6 +213,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: e.title,
       timeText: formatRelativeTime(e.createdAt, now),
       occurredAt: e.createdAt,
+      triage: bucketByDeadline(ymdFromIso(e.startAt), today),
       listRow: e.listRow,
     });
   }
@@ -197,6 +228,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: h.title,
       timeText: formatRelativeTime(h.createdAt, now),
       occurredAt: h.createdAt,
+      // 작성중 인수인계는 이번 주 마무리 권장, 그 외 추적
+      triage: h.status === "draft" ? "week" : "track",
       listRow: h.listRow,
     });
   }
@@ -211,6 +244,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: n.title,
       timeText: formatRelativeTime(n.createdAt, now),
       occurredAt: n.createdAt,
+      // 공지는 정보성 — 추적 컬럼
+      triage: "track",
       listRow: n.listRow,
     });
   }
@@ -226,6 +261,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       // 청구일자(billedAt)는 ISO가 아닌 시트 텍스트일 수 있어 원문 그대로 표기.
       timeText: r.billedAt || "—",
       occurredAt: r.billedAt || "",
+      // 미수채권은 장기 추적
+      triage: "track",
       listRow: r.listRow,
     });
   }
@@ -242,6 +279,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: c.title,
       timeText: "—",
       occurredAt: "",
+      // 계약은 시점 없음 — 추적
+      triage: "track",
       listRow: c.listRow,
     });
   }

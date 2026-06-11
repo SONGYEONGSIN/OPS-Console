@@ -56,6 +56,49 @@ describe("buildLiveTableItems", () => {
     expect(contract?.timeText).toBe("—");
   });
 
+  it("트리아지 분류: 사고/지남=now, 오늘=today, D-7내=week, 그외=track", () => {
+    const sources: LiveTableSources = {
+      incidents: [{ id: "inc", title: "결제 오류", status: "미처리", createdAt: tEarlier(5), listRow: {} as never }],
+      todos: [
+        { id: "t-past", title: "지난 할일", dueAt: "2026-05-22", createdAt: tEarlier(60), listRow: {} as never },
+        { id: "t-today", title: "오늘 할일", dueAt: "2026-05-23", createdAt: tEarlier(60), listRow: {} as never },
+        { id: "t-week", title: "이번주 할일", dueAt: "2026-05-28", createdAt: tEarlier(60), listRow: {} as never },
+        { id: "t-far", title: "먼 할일", dueAt: "2026-07-01", createdAt: tEarlier(60), listRow: {} as never },
+        { id: "t-none", title: "대기 할일", dueAt: null, createdAt: tEarlier(60), listRow: {} as never },
+      ],
+      services: [
+        { id: "sv-today", title: "오늘 오픈", writeStartAt: "2026-05-23", createdAt: tEarlier(180), listRow: {} as never },
+        { id: "sv-week", title: "주중 오픈", writeStartAt: "2026-05-27", createdAt: tEarlier(180), listRow: {} as never },
+      ],
+      backup: [
+        { id: "b-fail", title: "발송 실패 백업", status: "mail_failed", createdAt: tEarlier(30), listRow: {} as never },
+        { id: "b-ok", title: "정상 백업", status: "pending", createdAt: tEarlier(30), listRow: {} as never },
+      ],
+      schedule: [{ id: "e-today", title: "오늘 회의", startAt: "2026-05-23T05:00:00Z", createdAt: tEarlier(10), listRow: {} as never }],
+      handover: [{ id: "h-draft", title: "작성중 인계", status: "draft", createdAt: tEarlier(10), listRow: {} as never }],
+      contracts: [{ id: "c1", title: "계약", status: "계약완료", listRow: {} as never }],
+      notice: [{ id: "n1", title: "공지", createdAt: tEarlier(5), listRow: {} as never }],
+      receivables: [{ id: "r1", title: "미수", status: "active", billedAt: "2026-05-01", listRow: {} as never }],
+    };
+    const items = buildLiveTableItems(sources, now);
+    const tr = (id: string) => items.find((x) => x.id === id)?.triage;
+    expect(tr("inc")).toBe("now");
+    expect(tr("t-past")).toBe("now");
+    expect(tr("b-fail")).toBe("now");
+    expect(tr("t-today")).toBe("today");
+    expect(tr("sv-today")).toBe("today");
+    expect(tr("e-today")).toBe("today");
+    expect(tr("t-week")).toBe("week");
+    expect(tr("sv-week")).toBe("week");
+    expect(tr("h-draft")).toBe("week");
+    expect(tr("t-far")).toBe("track");
+    expect(tr("t-none")).toBe("track");
+    expect(tr("b-ok")).toBe("track");
+    expect(tr("c1")).toBe("track");
+    expect(tr("n1")).toBe("track");
+    expect(tr("r1")).toBe("track");
+  });
+
   it("각 도메인의 badgeDomain / variant / statusText 매핑", () => {
     const sources: LiveTableSources = {
       incidents: [{ id: "i", title: "x", status: "미처리", createdAt: tEarlier(1), listRow: {} as never }],

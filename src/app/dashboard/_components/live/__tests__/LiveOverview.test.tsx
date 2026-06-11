@@ -213,6 +213,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
       title: "서울대 · 원서접수",
       timeText: "방금 전",
       occurredAt: new Date().toISOString(),
+      triage: "track" as const,
       listRow: {
         id: "h1",
         name: "서울대 · 원서접수",
