@@ -14,8 +14,6 @@ import type { HealthGatewayItem } from "./command/HealthGateway";
 import type { HeadlineInput } from "./command/headline-selector";
 import { LifecyclePipe } from "./lifecycle/LifecyclePipe";
 import type { LifecycleStage } from "./lifecycle/LifecyclePipe";
-import { TodayTimeline } from "./lifecycle/TodayTimeline";
-import type { TimelineEvent } from "./lifecycle/timeline-points";
 import { MetricGroupBox } from "./MetricGroupBox";
 import { MetricSubcard } from "./MetricSubcard";
 import { FilterTabs, type LiveFilter } from "./FilterTabs";
@@ -52,10 +50,6 @@ export type LiveOverviewProps = {
   };
   /** ② 서비스 라이프사이클 4 스테이지 (soon → prog → done → settle). page.tsx 조립. */
   lifecycle: LifecycleStage[];
-  /** ② 오늘의 흐름 타임라인 이벤트. 빈 배열이면 NOW 마커만 표시. */
-  timelineEvents: TimelineEvent[];
-  /** ② 타임라인 NOW 마커 기준 현재 시각 (ISO). */
-  nowIso: string;
   tableItems: LiveTableItem[];
   initialConsoleLines?: ConsoleLogEntry[];
   /** CommandBar 시스템 날씨 게이트웨이 항목 (page.tsx에서 snapshot 매핑). */
@@ -72,8 +66,6 @@ function LiveOverviewInner({
   myEmail,
   metrics,
   lifecycle,
-  timelineEvents,
-  nowIso,
   tableItems,
   healthItems,
   logLines,
@@ -135,7 +127,6 @@ function LiveOverviewInner({
               className="flex flex-col gap-3"
             >
               <LifecyclePipe stages={lifecycle} />
-              <TodayTimeline events={timelineEvents} nowIso={nowIso} />
             </section>
             <MetricGroupBox title="서비스 현황" columns={5}>
               <MetricSubcard

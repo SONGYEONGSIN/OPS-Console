@@ -78,10 +78,6 @@ const baseProps: LiveOverviewProps = {
       variant: "settle",
     },
   ],
-  timelineEvents: [
-    { id: "d1", label: "건국대 마감", kind: "due", at: "14:00" },
-  ],
-  nowIso: "2026-06-11T05:00:00.000Z",
   tableItems: [],
   healthItems: [
     { label: "Supabase Connection", tone: "ok", detail: "120ms" },
@@ -137,12 +133,6 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
   it("settle 스테이지 count=null → '—' 셸 표시", () => {
     render(<LiveOverview {...baseProps} />);
     expect(screen.getByText("—")).toBeInTheDocument();
-  });
-
-  it("오늘의 흐름 타임라인 + NOW 마커 렌더", () => {
-    const { container } = render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText("▌ 오늘의 흐름")).toBeInTheDocument();
-    expect(container.querySelector("[data-timeline-now]")).toBeInTheDocument();
   });
 
   it("미수 채권 active=true → vermilion (subcard-value)", () => {

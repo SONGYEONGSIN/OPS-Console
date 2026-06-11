@@ -33,7 +33,6 @@ import {
 } from "@/features/system-health/queries";
 import type { ListRow } from "./_components/patterns/ListPattern";
 import type { LifecycleStage } from "./_components/live/lifecycle/LifecyclePipe";
-import type { TimelineEvent } from "./_components/live/lifecycle/timeline-points";
 
 /**
  * /dashboard 실시간 현황 — KPI 타일(9개) + 우선순위 피드.
@@ -427,18 +426,6 @@ export default async function DashboardLivePage({
     },
   ];
 
-  // ─── ② 오늘의 흐름 타임라인 — 기존 fetch 결과에서 파생 (신규 쿼리 X) ─────
-  // 오늘(KST) 마감 서비스: write_start_at 가 오늘인 오픈예정 건 → kind "due".
-  const timelineEvents: TimelineEvent[] = deadlinesTodayServices
-    .filter((s) => !!s.write_start_at)
-    .map((s) => ({
-      id: s.id,
-      label: `${s.university_name} 마감`,
-      kind: "due" as const,
-      at: s.write_start_at as string,
-    }));
-  const nowIso = new Date().toISOString();
-
   return (
     <LiveOverview
       mine={mine}
@@ -470,8 +457,6 @@ export default async function DashboardLivePage({
         },
       }}
       lifecycle={lifecycle}
-      timelineEvents={timelineEvents}
-      nowIso={nowIso}
       tableItems={tableItems}
       initialConsoleLines={initialConsoleLines}
       healthItems={healthItems}
