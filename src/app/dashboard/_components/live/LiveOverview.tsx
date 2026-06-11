@@ -8,7 +8,10 @@ import { InspectorChrome } from "../inspector/InspectorChrome";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import { ToastProvider } from "./ToastContainer";
 import { useLiveSidebar } from "./use-live-sidebar";
-import { LivePageHeader } from "./LivePageHeader";
+import { CommandBar } from "./command/CommandBar";
+import { AutoHeadline } from "./command/AutoHeadline";
+import type { HealthGatewayItem } from "./command/HealthGateway";
+import type { HeadlineInput } from "./command/headline-selector";
 import { KpiCardLarge } from "./KpiCardLarge";
 import { Sparkline } from "./Sparkline";
 import { KpiProgressBar } from "./KpiProgressBar";
@@ -16,8 +19,6 @@ import { MetricGroupBox } from "./MetricGroupBox";
 import { MetricSubcard } from "./MetricSubcard";
 import { FilterTabs, type LiveFilter } from "./FilterTabs";
 import { LiveTable } from "./LiveTable";
-import { SystemHealthPanel } from "./SystemHealthPanel";
-import { ConsoleStream } from "./ConsoleStream";
 import type { LiveTableItem } from "./live-table-builder";
 import type { ConsoleLogEntry } from "./mock-log-pool";
 
@@ -43,29 +44,40 @@ export type LiveOverviewProps = {
     };
     backup: { value: number | string; desc: string };
     contacts: { value: number | string; desc: string };
-    handover: { value: number | string | { num: number; den: number }; desc: string };
+    handover: {
+      value: number | string | { num: number; den: number };
+      desc: string;
+    };
   };
   tableItems: LiveTableItem[];
   initialConsoleLines?: ConsoleLogEntry[];
+  /** CommandBar 시스템 날씨 게이트웨이 항목 (page.tsx에서 snapshot 매핑). */
+  healthItems: HealthGatewayItem[];
+  /** CommandBar 하단 로그 티커 라인 (기존 initialConsoleLines 재사용 가능). */
+  logLines: ConsoleLogEntry[];
+  /** AutoHeadline 자동 우선순위 헤드라인 입력. */
+  headline: HeadlineInput;
 };
 
 /** row-pair grid 내부 컴포넌트 — ToastProvider 하위에서 useLiveSidebar 사용 가능. */
 function LiveOverviewInner({
   mine,
   myEmail,
-  title,
   kpi,
   metrics,
   tableItems,
-  initialConsoleLines,
+  healthItems,
+  logLines,
+  headline,
 }: LiveOverviewProps) {
   const [filter, setFilter] = useState<LiveFilter>("all");
   const [selected, setSelected] = useState<{
     variant: Variant;
     row: ListRow;
   } | null>(null);
+  // CommandBar 하단 티커 — 서버 시드(logLines)로 시작해 Realtime 라인을 누적.
   const { lines } = useLiveSidebar({
-    initialLines: initialConsoleLines,
+    initialLines: logLines,
     mine,
     myEmail,
   });
@@ -95,26 +107,27 @@ function LiveOverviewInner({
   }, [filter, tableItems]);
 
   const todoPct =
-    kpi.todo.total > 0
-      ? Math.round((kpi.todo.done / kpi.todo.total) * 100)
-      : 0;
+    kpi.todo.total > 0 ? Math.round((kpi.todo.done / kpi.todo.total) * 100) : 0;
 
   return (
     <div className="h-full overflow-y-auto bg-paper">
-      {/* 헤더를 스크롤 컨테이너 안에 두고 sticky로 고정 → 스크롤바 우측 점유분이
-          헤더에도 똑같이 적용돼 토글 우측 라인이 컨텐츠와 정확히 일치.
-          인스펙터 열림 시 우측 사이드바(SystemHealth + ConsoleStream)를 그대로
-          덮도록 컨테이너 우측 padding 사용 안 함 — 좌측 3fr 컬럼 너비 유지. */}
-      <div className="sticky top-0 z-10">
-        <LivePageHeader mine={mine} title={title} />
+      {/* PR① 상단 — 커맨드 바(.cmd) + 자동 헤드라인(.headline).
+          기존 LivePageHeader + 우측 사이드바(SystemHealth/ConsoleStream)를 대체.
+          데이터(시스템 날씨/로그/헤드라인)는 모두 page.tsx → props로 주입. */}
+      <div className="px-6 pb-6 pt-6">
+        <div className="mx-auto flex max-w-[1680px] flex-col gap-3.5">
+          <CommandBar mine={mine} healthItems={healthItems} logLines={lines} />
+          <AutoHeadline input={headline} />
+        </div>
       </div>
-      <div className="px-6 py-6">
-        {/* 좌·우 column 통합 — 우측(SystemHealth + ConsoleStream)이 sticky로 viewport 고정.
-            좌측 컬럼만 페이지 스크롤로 위아래 움직임. */}
-        <div className="mx-auto grid max-w-[1680px] grid-cols-1 items-start gap-6 lg:grid-cols-[3fr_1fr]">
-          {/* 좌측 column: KPI + 서비스 현황 + 필터+테이블 (페이지 스크롤로 움직임) */}
+      <div className="px-6 pb-6">
+        {/* 본문 전폭 — KPI / 서브카드 / 테이블 섹션 (이후 PR에서 교체 예정). */}
+        <div className="mx-auto max-w-[1680px]">
           <div className="flex flex-col gap-6">
-            <section aria-label="KPI 대형" className="grid gap-4 md:grid-cols-3">
+            <section
+              aria-label="KPI 대형"
+              className="grid gap-4 md:grid-cols-3"
+            >
               <KpiCardLarge
                 label="오픈 예정 서비스"
                 trend="오픈 준비"
@@ -131,10 +144,7 @@ function LiveOverviewInner({
                 count={kpi.todo.count}
                 footer="본인 배정 미완료"
                 right={
-                  <KpiProgressBar
-                    done={kpi.todo.done}
-                    total={kpi.todo.total}
-                  />
+                  <KpiProgressBar done={kpi.todo.done} total={kpi.todo.total} />
                 }
                 delayMs={50}
               />
@@ -199,13 +209,6 @@ function LiveOverviewInner({
                 }
               />
             </section>
-          </div>
-
-          {/* 우측 column: SystemHealth + ConsoleStream — sticky로 viewport 고정.
-              합산 키가 viewport 넘으면 column 자체 스크롤(스크롤바 숨김). */}
-          <div className="scrollbar-hide flex flex-col gap-6 lg:sticky lg:top-[88px] lg:max-h-[calc(100vh-104px)] lg:self-start lg:overflow-y-auto">
-            <SystemHealthPanel />
-            <ConsoleStream lines={lines} />
           </div>
         </div>
       </div>

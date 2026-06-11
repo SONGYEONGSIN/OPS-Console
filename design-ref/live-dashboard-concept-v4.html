@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>실시간 현황 — 상황실 v4 (V1 골격 + 다듬기)</title>
+    <style>
+      :root {
+        --washi: #ede6d2;
+        --washiRaised: #f4eddd;
+        --cream: #faf4e6;
+        --paper: #fbf7f0;
+        --ink: #15120c;
+        --inkSoft: #3d3529;
+        --muted: #716855;
+        --faint: #a8a08a;
+        --line: #15120c;
+        --lineSoft: rgba(21, 18, 12, 0.12);
+        --vermilion: #b8331e;
+        --vermilionDeep: #8e2412;
+        --indigo: #1f3a5f;
+        --amber: #d97706;
+        --gold: #9c7a2c;
+        --sage: #556b2f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Pretendard Variable",
+          Pretendard,
+          -apple-system,
+          BlinkMacSystemFont,
+          system-ui,
+          "Malgun Gothic",
+          sans-serif;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .wrap {
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 14px 18px 40px;
+      }
+      .sec-label {
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin: 18px 0 7px;
+        font-weight: 700;
+      }
+
+      /* ① COMMAND BAR */
+      .cmd {
+        border: 1px solid var(--line);
+        background: var(--cream);
+      }
+      .cmd-top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 11px 16px;
+        border-bottom: 1px solid var(--lineSoft);
+      }
+      .masthead {
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+      .live {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        border: 1px solid var(--vermilion);
+        color: var(--vermilion);
+        padding: 2px 7px;
+      }
+      .live .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--vermilion);
+        animation: blink 1.4s infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.25;
+        }
+      }
+      .clock {
+        margin-left: 2px;
+        font-variant-numeric: tabular-nums;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--inkSoft);
+      }
+      .clock .d {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 500;
+        margin-right: 7px;
+      }
+      .seg {
+        margin-left: auto;
+        display: flex;
+        border: 1px solid var(--line);
+      }
+      .seg button {
+        border: none;
+        background: transparent;
+        padding: 5px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        color: var(--muted);
+      }
+      .seg button.on {
+        background: var(--ink);
+        color: var(--cream);
+        font-weight: 600;
+      }
+      /* 요약 게이트웨이 */
+      .weather {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 16px;
+        border-bottom: 1px solid var(--lineSoft);
+      }
+      .weather .title {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .weather .sum {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gold);
+      }
+      .weather .leds {
+        display: flex;
+        gap: 5px;
+        margin-left: 6px;
+      }
+      .l {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        cursor: default;
+      }
+      .g {
+        background: var(--sage);
+        box-shadow: 0 0 4px var(--sage);
+      }
+      .y {
+        background: var(--amber);
+        box-shadow: 0 0 5px var(--amber);
+      }
+      .r {
+        background: var(--vermilion);
+        box-shadow: 0 0 5px var(--vermilion);
+      }
+      .weather .more {
+        margin-left: auto;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      /* 티커 */
+      .ticker {
+        overflow: hidden;
+        background: var(--ink);
+        color: var(--cream);
+        font-size: 11px;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        white-space: nowrap;
+        padding: 5px 0;
+      }
+      .ticker .run {
+        display: inline-block;
+        padding-left: 100%;
+        animation: crawl 26s linear infinite;
+      }
+      .ticker .it {
+        margin: 0 24px;
+        color: #d9cfb6;
+      }
+      .ticker .it b {
+        color: var(--gold);
+      }
+      @keyframes crawl {
+        to {
+          transform: translateX(-100%);
+        }
+      }
+
+      /* 헤드라인(자동 톱) */
+      .headline {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        background: var(--washiRaised);
+        border-left: 5px solid var(--vermilion);
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 16px;
+        align-items: center;
+        padding: 15px 18px;
+      }
+      .headline .auto {
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        border: 1px solid var(--lineSoft);
+        padding: 3px 6px;
+        align-self: start;
+      }
+      .headline .kicker {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--vermilion);
+        text-transform: uppercase;
+      }
+      .headline h1 {
+        margin: 3px 0 0;
+        font-size: 25px;
+        font-weight: 800;
+        line-height: 1.13;
+      }
+      .headline h1 em {
+        font-style: normal;
+        color: var(--vermilion);
+      }
+      .headline .sub {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .headline .cta {
+        border: 1px solid var(--line);
+        background: var(--ink);
+        color: var(--cream);
+        padding: 9px 15px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      /* ② 라이프사이클 + 스파크라인 */
+      .pipe {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+        align-items: stretch;
+      }
+      .stage {
+        border: 1px solid var(--line);
+        background: var(--cream);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+      }
+      .stage .st {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .stage .row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        margin: 5px 0 2px;
+      }
+      .stage .big {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .stage .meta {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .stage .tag {
+        align-self: flex-end;
+        font-size: 9px;
+        border: 1px solid var(--line);
+        padding: 1px 5px;
+        color: var(--inkSoft);
+        margin-bottom: 2px;
+      }
+      .spark {
+        width: 62px;
+        height: 22px;
+      }
+      .arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        color: var(--faint);
+        font-size: 16px;
+      }
+      .stage.soon {
+        border-top: 3px solid var(--sage);
+      }
+      .stage.prog {
+        border-top: 3px solid var(--vermilion);
+      }
+      .stage.done {
+        border-top: 3px solid var(--muted);
+      }
+      .stage.settle {
+        border-top: 3px solid var(--gold);
+        background: repeating-linear-gradient(
+          135deg,
+          var(--cream),
+          var(--cream) 8px,
+          var(--washiRaised) 8px,
+          var(--washiRaised) 10px
+        );
+      }
+      .stage.settle .big {
+        color: var(--faint);
+      }
+      .stage .due {
+        color: var(--vermilion);
+        font-weight: 700;
+      }
+
+      /* 오늘의 타임라인(얇게) */
+      .timeline {
+        margin-top: 10px;
+        border: 1px solid var(--lineSoft);
+        background: var(--cream);
+        padding: 9px 16px 14px;
+        position: relative;
+      }
+      .timeline .tl-h {
+        font-size: 10px;
+        color: var(--muted);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        margin-bottom: 10px;
+      }
+      .axis {
+        position: relative;
+        height: 2px;
+        background: var(--lineSoft);
+        margin: 0 4px;
+      }
+      .tick {
+        position: absolute;
+        top: -4px;
+        width: 1px;
+        height: 10px;
+        background: var(--faint);
+      }
+      .tlab {
+        position: absolute;
+        top: 8px;
+        font-size: 9px;
+        color: var(--muted);
+        transform: translateX(-50%);
+      }
+      .now {
+        position: absolute;
+        top: -9px;
+        width: 2px;
+        height: 20px;
+        background: var(--vermilion);
+      }
+      .nlab {
+        position: absolute;
+        top: -22px;
+        font-size: 9px;
+        color: var(--vermilion);
+        font-weight: 700;
+        transform: translateX(-50%);
+      }
+      .pt {
+        position: absolute;
+        top: -5px;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        transform: translateX(-50%);
+        border: 1.5px solid var(--cream);
+        cursor: pointer;
+      }
+      .pt.due {
+        background: var(--vermilion);
+      }
+      .pt.mail {
+        background: var(--sage);
+      }
+      .pt.sch {
+        background: var(--indigo);
+      }
+      .ptlab {
+        position: absolute;
+        top: -22px;
+        font-size: 9px;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        color: var(--inkSoft);
+      }
+
+      /* ③ Attention + ④ 테이블 */
+      .bottom {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: 330px 1fr;
+        gap: 16px;
+        align-items: start;
+      }
+      .attn {
+        border: 1px solid var(--line);
+        background: var(--washiRaised);
+      }
+      .attn .hd {
+        padding: 9px 13px;
+        border-bottom: 1px solid var(--lineSoft);
+        font-weight: 700;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .attn .hd .n {
+        color: var(--vermilion);
+      }
+      .arow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 13px;
+        border-bottom: 1px solid var(--lineSoft);
+        cursor: pointer;
+      }
+      .arow:hover {
+        background: var(--cream);
+      }
+      .arow .sev {
+        width: 4px;
+        align-self: stretch;
+      }
+      .arow.crit .sev {
+        background: var(--vermilion);
+      }
+      .arow.warn .sev {
+        background: var(--amber);
+      }
+      .arow.ok .sev {
+        background: var(--sage);
+      }
+      .arow .t {
+        flex: 1;
+      }
+      .arow .t .k {
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .arow .t .k .mine {
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--cream);
+        background: var(--vermilionDeep);
+        padding: 0 4px;
+        margin-left: 5px;
+        vertical-align: 1px;
+      }
+      .arow .t .d {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .arow .v {
+        font-size: 18px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+      .arow.crit .v {
+        color: var(--vermilion);
+      }
+      .arow.warn .v {
+        color: var(--amber);
+      }
+      .arow.pulse {
+        animation: pulseRow 2s infinite;
+      }
+      @keyframes pulseRow {
+        0%,
+        100% {
+          background: var(--washiRaised);
+        }
+        50% {
+          background: #f7e3dd;
+        }
+      }
+      .jump {
+        font-size: 13px;
+        color: var(--faint);
+      }
+
+      .tbl {
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--lineSoft);
+        align-items: center;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: transparent;
+        padding: 4px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        color: var(--inkSoft);
+      }
+      .chip.on {
+        background: var(--vermilion);
+        color: var(--cream);
+        border-color: var(--vermilion);
+        font-weight: 600;
+      }
+      .chip .c {
+        opacity: 0.7;
+        margin-left: 4px;
+      }
+      .rt {
+        font-size: 11px;
+        color: var(--muted);
+        margin-left: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      thead th {
+        text-align: left;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--line);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      tbody td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--lineSoft);
+        color: var(--ink);
+      }
+      tbody tr:hover {
+        background: var(--washi);
+      }
+      .badge {
+        display: inline-block;
+        border: 1px solid var(--line);
+        padding: 2px 7px;
+        font-size: 10px;
+      }
+      .b-sago {
+        background: var(--vermilion);
+        color: var(--cream);
+        border-color: var(--vermilion);
+      }
+      .b-todo {
+        background: var(--washiRaised);
+      }
+      .b-svc {
+        background: var(--sage);
+        color: var(--cream);
+        border-color: var(--sage);
+      }
+      .b-hand {
+        background: var(--indigo);
+        color: var(--cream);
+        border-color: var(--indigo);
+      }
+      .b-mae {
+        background: var(--gold);
+        color: var(--cream);
+        border-color: var(--gold);
+      }
+      .b-sch {
+        background: var(--ink);
+        color: var(--cream);
+      }
+      .right {
+        text-align: right;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .note {
+        margin-top: 22px;
+        padding: 12px 14px;
+        border: 1px dashed var(--lineSoft);
+        color: var(--muted);
+        font-size: 11px;
+        background: var(--cream);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <!-- ① COMMAND BAR -->
+      <div class="cmd">
+        <div class="cmd-top">
+          <span class="masthead">운영부 상황실</span>
+          <span class="live"><span class="dot"></span>LIVE</span>
+          <span class="clock"
+            ><span class="d">2026-06-11 (목)</span
+            ><span id="clk">15:24:07</span> KST</span
+          >
+          <div class="seg">
+            <button>전체</button><button class="on">내 담당</button>
+          </div>
+        </div>
+        <div class="weather">
+          <span class="title">시스템 날씨</span
+          ><span class="sum">☀ 맑음 · 1 지연</span>
+          <span class="leds">
+            <span class="l g" title="YouTube"></span
+            ><span class="l g" title="Supabase 310ms"></span>
+            <span class="l y" title="Cron 77시간 전 (지연)"></span
+            ><span class="l g" title="Graph"></span>
+            <span class="l g" title="SharePoint"></span
+            ><span class="l g" title="SSO"></span
+            ><span class="l g" title="메일"></span>
+          </span>
+          <span class="more">▾ 상세 (hover)</span>
+        </div>
+        <div class="ticker">
+          <div class="run">
+            <span class="it"><b>[NAV]</b> 김지나 — 사고 보고 진입</span>
+            <span class="it"><b>[MAIL]</b> 미수채권 독려 발송 — 3건</span>
+            <span class="it"><b>[MATCH]</b> 입금매칭 — 을지대 275,000</span>
+            <span class="it"><b>[COHORT]</b> 2026 Q2 신입 OJT 선택</span>
+            <span class="it"><b>[NAV]</b> 운영부 달력 진입</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 헤드라인(자동 톱) -->
+      <div class="headline">
+        <span class="auto">AUTO ▸ 우선순위 자동</span>
+        <div>
+          <div class="kicker">▲ 오늘의 톱 · 즉시</div>
+          <h1>마감 임박 <em>3건</em> · 미처리 사고 <em>1건</em></h1>
+          <div class="sub">
+            건국대(글로벌) 후기 2차 <b>D-0</b> · 부산대 외국인 신입학 D-1 · 사고
+            "원서 작성페이지 오류" 미처리
+          </div>
+        </div>
+        <button class="cta">바로 처리 →</button>
+      </div>
+
+      <!-- ② 라이프사이클 + 스파크라인 -->
+      <p class="sec-label">▌ 서비스 라이프사이클</p>
+      <div class="pipe">
+        <div class="stage soon">
+          <span class="tag">오픈 준비</span>
+          <div class="st">오픈 예정</div>
+          <div class="row">
+            <span class="big">13</span
+            ><svg class="spark" viewBox="0 0 62 22">
+              <polyline
+                fill="none"
+                stroke="#556b2f"
+                stroke-width="1.5"
+                points="0,16 12,15 24,13 36,12 48,9 62,7"
+              />
+            </svg>
+          </div>
+          <div class="meta">배포 준비 완료 · ↑</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage prog">
+          <span class="tag">작성 중</span>
+          <div class="st">진행 중</div>
+          <div class="row">
+            <span class="big">28</span
+            ><svg class="spark" viewBox="0 0 62 22">
+              <polyline
+                fill="none"
+                stroke="#b8331e"
+                stroke-width="1.5"
+                points="0,10 12,8 24,12 36,7 48,11 62,6"
+              />
+            </svg>
+          </div>
+          <div class="meta">서비스 마감 연동</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage done">
+          <span class="tag">마감</span>
+          <div class="st">마감 완료</div>
+          <div class="row">
+            <span class="big">41</span
+            ><svg class="spark" viewBox="0 0 62 22">
+              <polyline
+                fill="none"
+                stroke="#716855"
+                stroke-width="1.5"
+                points="0,18 12,16 24,14 36,11 48,8 62,5"
+              />
+            </svg>
+          </div>
+          <div class="meta"><span class="due">이번 주 마감 6</span></div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="stage settle">
+          <span class="tag">예정</span>
+          <div class="st">전형료 정산</div>
+          <div class="row"><span class="big">—</span></div>
+          <div class="meta">백엔드 후속 (셸)</div>
+        </div>
+      </div>
+
+      <!-- 오늘의 타임라인 -->
+      <div class="timeline">
+        <div class="tl-h">▌ 오늘의 흐름</div>
+        <div class="axis">
+          <span class="tick" style="left: 0%"></span
+          ><span class="tlab" style="left: 0%">09:00</span>
+          <span class="tick" style="left: 33%"></span
+          ><span class="tlab" style="left: 33%">12:00</span>
+          <span class="tick" style="left: 66%"></span
+          ><span class="tlab" style="left: 66%">15:00</span>
+          <span class="tick" style="left: 100%"></span
+          ><span class="tlab" style="left: 100%">18:00</span>
+          <span class="now" style="left: 70%"></span
+          ><span class="nlab" style="left: 70%">NOW</span>
+          <span class="pt mail" style="left: 18%" title="미수 독려 발송"></span
+          ><span class="ptlab" style="left: 18%">독려발송</span>
+          <span class="pt sch" style="left: 45%" title="당직 교대"></span>
+          <span class="pt due" style="left: 100%" title="건국대 D-0 마감"></span
+          ><span class="ptlab" style="left: 100%; color: #b8331e"
+            >D-0 마감</span
+          >
+        </div>
+      </div>
+
+      <!-- ③ Attention + ④ 테이블 -->
+      <div class="bottom">
+        <div class="attn">
+          <div class="hd">
+            <span>처리 필요</span><span class="n">5건 긴급</span>
+          </div>
+          <div class="arow crit pulse">
+            <span class="sev"></span>
+            <div class="t">
+              <div class="k">미처리 사고<span class="mine">내것</span></div>
+              <div class="d">사고 재발 방지 · 즉시</div>
+            </div>
+            <div class="v">1</div>
+            <span class="jump">→</span>
+          </div>
+          <div class="arow crit">
+            <span class="sev"></span>
+            <div class="t">
+              <div class="k">미수채권 10일+<span class="mine">내것</span></div>
+              <div class="d">독려 메일 대상</div>
+            </div>
+            <div class="v">4</div>
+            <span class="jump">→</span>
+          </div>
+          <div class="arow warn">
+            <span class="sev"></span>
+            <div class="t">
+              <div class="k">미완 인수인계</div>
+              <div class="d">진행 7 / 15</div>
+            </div>
+            <div class="v">8</div>
+            <span class="jump">→</span>
+          </div>
+          <div class="arow warn">
+            <span class="sev"></span>
+            <div class="t">
+              <div class="k">미체결 계약</div>
+              <div class="d">계약 메뉴</div>
+            </div>
+            <div class="v">1</div>
+            <span class="jump">→</span>
+          </div>
+          <div class="arow ok">
+            <span class="sev"></span>
+            <div class="t">
+              <div class="k">미발송 백업</div>
+              <div class="d">대기 없음</div>
+            </div>
+            <div class="v">0</div>
+            <span class="jump">→</span>
+          </div>
+        </div>
+
+        <div class="tbl">
+          <div class="chips">
+            <button class="chip on">전체 <span class="c">61</span></button>
+            <button class="chip">사고 <span class="c">20</span></button>
+            <button class="chip">할일 <span class="c">1</span></button>
+            <button class="chip">서비스 <span class="c">13</span></button>
+            <button class="chip">인수인계 <span class="c">20</span></button>
+            <button class="chip">계약 <span class="c">3</span></button>
+            <button class="chip">미수채권 <span class="c">4</span></button>
+            <button class="chip">일정 <span class="c">6</span></button>
+            <button class="chip">대학연락처 <span class="c">10</span></button>
+            <span class="rt">전 메뉴 · 긴급도순 · 61건</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>상태</th>
+                <th>내용</th>
+                <th class="right">발생 시점</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge b-sago">사고</span></td>
+                <td>미처리</td>
+                <td>원서 작성페이지 오류 — 조선대</td>
+                <td class="right">1시간 전</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-svc">서비스</span></td>
+                <td>D-0</td>
+                <td>건국대(글로벌) — 후기 2차 Graduate</td>
+                <td class="right">오늘</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-mae">미수채권</span></td>
+                <td>경과 12일</td>
+                <td>을지대학교(성남) — 140,000</td>
+                <td class="right">2일 전</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-hand">인수인계</span></td>
+                <td>작성중</td>
+                <td>부산대학교 · 외국인 신입학</td>
+                <td class="right">4일 전</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-sch">일정</span></td>
+                <td>1.6</td>
+                <td>정시 당직 — 운영1팀</td>
+                <td class="right">17일 전</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-todo">할일</span></td>
+                <td>D-5</td>
+                <td>독학사 미팅</td>
+                <td class="right">1시간 전</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="note">
+        ※ v4 — V1 골격 유지 + 다듬기: 요약 게이트웨이(hover 상세) · 자동
+        헤드라인 · 라이프사이클 스파크라인 · 오늘의 타임라인(얇게) · Attention
+        심각도 부유+내것 배지+점프(→) · 전 메뉴 테이블(긴급도순)+기본 칩. 컨셉
+        목업(실데이터 아님).
+      </div>
+    </div>
+    <script>
+      function tick() {
+        var n = new Date();
+        var p = function (x) {
+          return String(x).padStart(2, "0");
+        };
+        document.getElementById("clk").textContent =
+          p(n.getHours()) + ":" + p(n.getMinutes()) + ":" + p(n.getSeconds());
+      }
+      setInterval(tick, 1000);
+      tick();
+    </script>
+  </body>
+</html>
