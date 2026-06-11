@@ -14,6 +14,7 @@ describe("schedule schemas — type enum", () => {
     "training",
     "application",
     "pims",
+    "external_meeting",
   ] as const)("%s — 유효 type", (t) => {
     expect(scheduleTypeSchema.parse(t)).toBe(t);
   });

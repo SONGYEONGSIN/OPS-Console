@@ -36,7 +36,10 @@ type Props = {
   canWrite: boolean;
   /** KST 기준 오늘 YYYY-MM-DD — 해당 셀 시각 강조 */
   todayYmd: string;
-  onPersist: (row: ListRow, isNew: boolean) => Promise<{ ok: boolean; error?: string }>;
+  onPersist: (
+    row: ListRow,
+    isNew: boolean,
+  ) => Promise<{ ok: boolean; error?: string }>;
 };
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"] as const;
@@ -52,6 +55,7 @@ const DOT_COLOR: Record<CalendarCategory, string> = {
   training: "bg-washi-raised border border-line",
   application: "bg-vermilion-deep",
   pims: "bg-gold",
+  external_meeting: "bg-indigo",
 };
 
 function eventToListRow(ev: ScheduleEventRow): ListRow {
@@ -184,12 +188,16 @@ export function CalendarView({
 
   const handlePrev = () => {
     pushMonth(
-      month0 === 0 ? { year: year - 1, month0: 11 } : { year, month0: month0 - 1 },
+      month0 === 0
+        ? { year: year - 1, month0: 11 }
+        : { year, month0: month0 - 1 },
     );
   };
   const handleNext = () => {
     pushMonth(
-      month0 === 11 ? { year: year + 1, month0: 0 } : { year, month0: month0 + 1 },
+      month0 === 11
+        ? { year: year + 1, month0: 0 }
+        : { year, month0: month0 + 1 },
     );
   };
   const handleToday = () => {
@@ -324,9 +332,7 @@ export function CalendarView({
               <div className="mb-1">
                 <span
                   className={`inline-block min-w-[1.25rem] px-1 text-xs font-medium ${
-                    isToday
-                      ? "bg-vermilion text-cream"
-                      : ""
+                    isToday ? "bg-vermilion text-cream" : ""
                   }`}
                 >
                   {dayNum}

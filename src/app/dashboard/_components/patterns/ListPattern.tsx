@@ -49,7 +49,8 @@ export type ListRow = {
     | "leave"
     | "training"
     | "application"
-    | "pims";
+    | "pims"
+    | "external_meeting";
   /** schedule 도메인 — ISO 8601 timestamptz */
   start_at?: string;
   /** schedule 도메인 — ISO 8601 timestamptz, 종료 미정 시 null/undefined */
