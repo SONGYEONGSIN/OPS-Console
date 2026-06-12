@@ -2,7 +2,12 @@ import type { ConsoleLogEntry } from "./mock-log-pool";
 
 export type ToastEvent = { text: string; type: "info" | "warn" | "err" };
 
-type WorklogRow = { level: string; domain: string; msg: string };
+type WorklogRow = {
+  level: string;
+  domain: string;
+  msg: string;
+  user_name?: string | null;
+};
 type IncidentRow = { title: string; owner_email?: string | null };
 type TodoRow = { title: string; owner_email?: string | null };
 type BackupRequestRow = { summary_md: string; requester_email: string };
@@ -15,8 +20,15 @@ type DataRequestSendRow = {
 /** worklog 행 → 콘솔 라인 변환. */
 export function formatWorklogConsoleLine(row: WorklogRow): ConsoleLogEntry {
   const type: ConsoleLogEntry["type"] =
-    row.level === "ERROR" ? "err" : row.level === "WARN" ? "warn" : row.level === "DEBUG" ? "debug" : "info";
-  return { text: `[${row.domain.toUpperCase()}] ${row.msg}`, type };
+    row.level === "ERROR"
+      ? "err"
+      : row.level === "WARN"
+        ? "warn"
+        : row.level === "DEBUG"
+          ? "debug"
+          : "info";
+  const who = row.user_name ? `${row.user_name} · ` : "";
+  return { text: `[${row.domain.toUpperCase()}] ${who}${row.msg}`, type };
 }
 
 /** incidents INSERT → 토스트 이벤트 (항상 warn). */
@@ -35,7 +47,11 @@ export function formatBackupRequestToast(row: BackupRequestRow): ToastEvent {
   return { text: `[백업] ${preview}`, type: "info" };
 }
 
-type HandoverRecordRow = { author_name: string; author_email: string; service_id: string };
+type HandoverRecordRow = {
+  author_name: string;
+  author_email: string;
+  service_id: string;
+};
 
 /** handover_records INSERT → 토스트 이벤트 (항상 info). */
 export function formatHandoverToast(row: HandoverRecordRow): ToastEvent {

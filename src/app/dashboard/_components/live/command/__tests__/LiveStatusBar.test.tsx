@@ -13,7 +13,7 @@ const logLines: ConsoleLogEntry[] = [
   { text: "[NAV] 김지나 — 사고 보고 진입", type: "info" },
 ];
 
-describe("LiveStatusBar (하단 고정)", () => {
+describe("LiveStatusBar (상단 고정)", () => {
   it("시스템 헬스 + 로그 티커 + LIVE 렌더", () => {
     render(<LiveStatusBar healthItems={healthItems} logLines={logLines} />);
     expect(screen.getByText("시스템 날씨")).toBeInTheDocument();
@@ -21,12 +21,12 @@ describe("LiveStatusBar (하단 고정)", () => {
     expect(screen.getByText(/LIVE/)).toBeInTheDocument();
   });
 
-  it("하단 sticky 컨테이너", () => {
+  it("상단 sticky 컨테이너", () => {
     const { container } = render(
       <LiveStatusBar healthItems={[]} logLines={[]} />,
     );
     const box = container.firstElementChild as HTMLElement;
     expect(box.className).toMatch(/sticky/);
-    expect(box.className).toMatch(/bottom-0/);
+    expect(box.className).toMatch(/top-0/);
   });
 });

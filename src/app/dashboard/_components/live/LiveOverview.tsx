@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import type { Variant } from "../inspector/list-variants/types";
 import type { ListRow } from "../patterns/ListPattern";
 import { InspectorPanel } from "../inspector/InspectorPanel";
@@ -10,7 +10,7 @@ import { ToastProvider } from "./ToastContainer";
 import { useLiveSidebar } from "./use-live-sidebar";
 import { CommandBar } from "./command/CommandBar";
 import { LiveStatusBar } from "./command/LiveStatusBar";
-import { AutoHeadline } from "./command/AutoHeadline";
+import { KpiHeroStrip } from "./KpiHeroStrip";
 import type { HealthGatewayItem } from "./command/HealthGateway";
 import type { HeadlineInput } from "./command/headline-selector";
 import type { LifecycleStage } from "./lifecycle/LifecyclePipe";
@@ -20,15 +20,52 @@ import { TriageBoard } from "./TriageBoard";
 import type { LiveTableItem } from "./live-table-builder";
 import type { ConsoleLogEntry } from "./mock-log-pool";
 
-/** OPS-6 stats-band — 라이프사이클 4단계 하단 색 룰 (indigo→amber→sage→gold) */
-const LIFECYCLE_BAR = ["bg-indigo", "bg-amber", "bg-sage", "bg-gold"] as const;
-
 /** 메트릭 값 표기 — {num,den} → "num / den", 그 외 그대로 */
-function metricVal(
-  v: number | string | { num: number; den: number },
-): string {
+function metricVal(v: number | string | { num: number; den: number }): string {
   if (typeof v === "object" && v !== null) return `${v.num} / ${v.den}`;
   return String(v);
+}
+
+/** 현황 요약 카드 1개 데이터. */
+type SummaryCard = {
+  key: string;
+  label: string;
+  value: string | number;
+  sub?: ReactNode;
+  active?: boolean;
+  dataMetric?: string;
+};
+
+/** 현황 요약 통계 셀 — 작은 라벨 + 큰 메인 숫자 + 작은 서브 (색 띠 없음). */
+function StatCell({
+  label,
+  value,
+  sub,
+  active = false,
+  dataMetric,
+}: {
+  label: string;
+  value: string | number;
+  sub?: ReactNode;
+  active?: boolean;
+  dataMetric?: string;
+}) {
+  return (
+    <div className="flex min-w-[128px] flex-1 flex-col justify-center px-4 py-6">
+      <span className="mb-2 block whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.1em] text-muted">
+        {label}
+      </span>
+      <span
+        data-metric={dataMetric}
+        className={`text-3xl font-bold leading-none tracking-[-0.04em] tabular-nums ${active ? "text-vermilion" : "text-ink"}`}
+      >
+        {value}
+      </span>
+      {sub ? (
+        <span className="mt-2 block text-[10px] text-faint">{sub}</span>
+      ) : null}
+    </div>
+  );
 }
 
 export type LiveOverviewProps = {
@@ -74,12 +111,12 @@ export type LiveOverviewProps = {
 function LiveOverviewInner({
   mine,
   myEmail,
+  kpi,
   metrics,
   lifecycle,
   tableItems,
   healthItems,
   logLines,
-  headline,
 }: LiveOverviewProps) {
   const [filter, setFilter] = useState<LiveFilter>("all");
   const [selected, setSelected] = useState<{
@@ -127,13 +164,15 @@ function LiveOverviewInner({
 
   return (
     <div className="h-full overflow-y-auto bg-paper">
-      {/* PR① 상단 — 커맨드 바(.cmd) + 자동 헤드라인(.headline).
+      {/* 상단 고정 status 띠 — 시스템 헬스 + 로그 티커 + LIVE (sticky top) */}
+      <LiveStatusBar healthItems={healthItems} logLines={lines} />
+      {/* 상단 — 커맨드 바(.cmd) + 자동 헤드라인(.headline).
           기존 LivePageHeader + 우측 사이드바(SystemHealth/ConsoleStream)를 대체.
-          데이터(시스템 날씨/로그/헤드라인)는 모두 page.tsx → props로 주입. */}
+          데이터(헤드라인)는 page.tsx → props로 주입. */}
       <div className="px-6 pb-6 pt-6">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-3.5">
           <CommandBar mine={mine} />
-          <AutoHeadline input={headline} />
+          <KpiHeroStrip kpi={kpi} />
         </div>
       </div>
       <div className="px-6 pb-6">
@@ -143,86 +182,85 @@ function LiveOverviewInner({
             {/* OPS-6 stats-band — '현황 요약': 라이프사이클 + 메트릭 5종 압축 괘선 밴드. */}
             <section aria-label="현황 요약" className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
-                <h2 className="text-sm font-bold tracking-[0.02em] text-ink">
+                <h2 className="text-xl font-bold tracking-[0.01em] text-ink">
                   현황 요약
                   <span className="ml-2 text-xs font-normal text-muted">
                     라이프사이클 · 핵심 지표
                   </span>
                 </h2>
               </div>
-              <div className="grid grid-cols-1 border-2 border-ink bg-washi-raised xl:grid-cols-[auto_2px_1fr]">
-                <section
-                  aria-label="서비스 라이프사이클"
-                  className="flex items-stretch overflow-x-auto"
+              <div className="flex items-stretch overflow-x-auto border-y border-line-soft bg-washi-raised">
+                {/* ServiceCycle 라벨 (선두, 검정 배경 + 흰 글씨) */}
+                <span
+                  aria-hidden
+                  className="flex w-5 shrink-0 items-center justify-center bg-ink text-[11px] font-bold tracking-[0.12em] text-cream [transform:rotate(180deg)] [writing-mode:vertical-rl]"
                 >
-                  <span
-                    aria-hidden
-                    className="flex w-3.5 shrink-0 items-center justify-center border-r border-line-soft bg-washi text-[7px] uppercase tracking-[0.3em] text-faint [transform:rotate(180deg)] [writing-mode:vertical-rl]"
-                  >
-                    lifecycle
-                  </span>
-                  {lifecycle.map((s, i) => (
-                  <Fragment key={s.label}>
-                    <div className="relative flex min-w-[96px] flex-col justify-center px-4 py-2.5">
-                      <span className="mb-1 text-[8px] font-medium uppercase tracking-[0.16em] text-muted">
-                        {s.label}
-                      </span>
-                      <span className="text-2xl font-bold leading-none tracking-[-0.04em] text-ink tabular-nums">
-                        {s.count ?? "—"}
-                      </span>
-                      <span className="mt-1 text-[9px] text-faint">{s.meta}</span>
-                      <span
-                        aria-hidden
-                        className={`absolute inset-x-0 bottom-0 h-[3px] ${LIFECYCLE_BAR[i] ?? "bg-line-soft"}`}
-                      />
-                    </div>
-                    {i < lifecycle.length - 1 && (
+                  ServiceCycle
+                </span>
+                {/* 9카드 통합 — 계약체결 → 라이프사이클 4 → 미수채권 → 백업 → 인수인계 → 대학연락처.
+                    모든 카드 사이에 › 화살표(흐름 표시). */}
+                {(
+                  [
+                    {
+                      key: "contract",
+                      label: "계약체결",
+                      value: metricVal(metrics.contract.value),
+                      sub: metrics.contract.desc,
+                      active: !!metrics.contract.active,
+                    },
+                    ...lifecycle.map((s) => ({
+                      key: s.variant,
+                      label: s.label,
+                      value: s.count ?? "—",
+                      sub: s.meta,
+                    })),
+                    {
+                      key: "bond",
+                      label: "미수채권",
+                      value: metricVal(metrics.bond.value),
+                      sub: metrics.bond.desc,
+                      active: !!metrics.bond.active,
+                      dataMetric: "bond",
+                    },
+                    {
+                      key: "backup",
+                      label: "백업내용",
+                      value: metricVal(metrics.backup.value),
+                      sub: metrics.backup.desc,
+                    },
+                    {
+                      key: "handover",
+                      label: "인수인계",
+                      value: metricVal(metrics.handover.value),
+                      sub: metrics.handover.desc,
+                    },
+                    {
+                      key: "contacts",
+                      label: "대학연락처",
+                      value: metricVal(metrics.contacts.value),
+                      sub: metrics.contacts.desc,
+                    },
+                  ] as SummaryCard[]
+                ).map((c, i) => (
+                  <Fragment key={c.key}>
+                    {i > 0 && (
                       <span
                         data-pipe-arrow
                         aria-hidden
-                        className="flex items-center px-1 text-sm text-faint"
+                        className="flex items-center px-1 text-base font-bold text-muted"
                       >
                         ›
                       </span>
                     )}
+                    <StatCell
+                      label={c.label}
+                      value={c.value}
+                      sub={c.sub}
+                      active={c.active}
+                      dataMetric={c.dataMetric}
+                    />
                   </Fragment>
                 ))}
-              </section>
-              <div className="hidden bg-ink xl:block" aria-hidden />
-              <section
-                aria-label="서비스 현황"
-                className="grid grid-cols-2 border-t-2 border-ink sm:grid-cols-3 xl:grid-cols-5 xl:border-t-0"
-              >
-                {[
-                  { key: "contract", label: "계약체결", value: metricVal(metrics.contract.value), desc: metrics.contract.desc, bar: "bg-indigo", active: !!metrics.contract.active },
-                  { key: "bond", label: "미수채권", value: metricVal(metrics.bond.value), desc: metrics.bond.desc, bar: "bg-vermilion", active: !!metrics.bond.active },
-                  { key: "backup", label: "백업내용", value: metricVal(metrics.backup.value), desc: metrics.backup.desc, bar: "bg-amber", active: false },
-                  { key: "handover", label: "인수인계", value: metricVal(metrics.handover.value), desc: metrics.handover.desc, bar: "bg-sage", active: false },
-                  { key: "contacts", label: "대학연락처", value: metricVal(metrics.contacts.value), desc: metrics.contacts.desc, bar: "bg-gold", active: false },
-                ].map((m, i) => (
-                  <div
-                    key={m.key}
-                    className={`relative px-3.5 py-2.5 ${i > 0 ? "border-l border-line-soft" : ""}`}
-                  >
-                    <span
-                      aria-hidden
-                      className={`absolute inset-x-0 top-0 h-[3px] ${m.bar}`}
-                    />
-                    <span className="mb-1 block whitespace-nowrap text-[8px] font-medium uppercase tracking-[0.12em] text-muted">
-                      {m.label}
-                    </span>
-                    <span
-                      data-metric={m.key}
-                      className={`text-xl font-bold leading-none tracking-[-0.04em] tabular-nums ${m.active ? "text-vermilion" : "text-ink"}`}
-                    >
-                      {m.value}
-                    </span>
-                    <span className="mt-1 block text-[9px] text-faint">
-                      {m.desc}
-                    </span>
-                  </div>
-                ))}
-              </section>
               </div>
             </section>
             <section aria-label="시급도 분류" className="flex flex-col gap-3">
@@ -269,9 +307,6 @@ function LiveOverviewInner({
           </div>
         </div>
       </div>
-
-      {/* 하단 고정 status bar — 시스템 헬스 + 로그 티커 + LIVE (sticky) */}
-      <LiveStatusBar healthItems={healthItems} logLines={lines} />
 
       <InspectorPanel open={!!selected} onClose={() => setSelected(null)}>
         {selected ? (

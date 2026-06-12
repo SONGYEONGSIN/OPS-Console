@@ -19,15 +19,16 @@ describe("CommandBar (타이틀바)", () => {
     expect(masthead).toBeInTheDocument();
     expect(masthead.className).toMatch(/text-xl/);
     expect(masthead.className).toMatch(/font-bold/);
-    // 컨테이너 border + bg-cream
+    // 배경/상·좌·우 보더 제거 → 하단 괘선(border-b)만 남긴 flush 헤더
     const box = container.firstElementChild as HTMLElement;
+    expect(box.className).toMatch(/border-b-2/);
     expect(box.className).toMatch(/border-line/);
-    expect(box.className).toMatch(/bg-cream/);
+    expect(box.className).not.toMatch(/bg-cream/);
   });
 
-  it("LIVE 인디케이터 렌더", () => {
+  it("LIVE 인디케이터는 타이틀바에서 제거(상단 status 띠로 이동)", () => {
     render(<CommandBar mine />);
-    expect(screen.getByText(/LIVE MONITOR/)).toBeInTheDocument();
+    expect(screen.queryByText(/LIVE MONITOR/)).not.toBeInTheDocument();
   });
 
   it("전체/내 담당 세그먼트 토글 렌더", () => {

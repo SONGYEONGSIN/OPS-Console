@@ -16,19 +16,20 @@ export function SegmentToggle({ mine }: Props) {
 
   function go(nextMine: boolean) {
     const sp = new URLSearchParams(params.toString());
-    if (nextMine) sp.delete("mine");          // default (mine=true) — 깔끔
-    else sp.set("mine", "false");             // explicit "전체 관점"
+    if (nextMine)
+      sp.delete("mine"); // default (mine=true) — 깔끔
+    else sp.set("mine", "false"); // explicit "전체 관점"
     const q = sp.toString();
     router.push(q ? `${pathname}?${q}` : pathname);
   }
 
-  const baseBtn =
-    "text-sm font-semibold px-4 py-1.5 transition-colors cursor-pointer";
+  // 자동화 메뉴(AutomationHub EnabledToggle)와 동일한 기본 토글 디자인.
+  const baseBtn = "px-3 py-1 text-xs transition-colors cursor-pointer";
   const active = "bg-ink text-cream";
-  const inactive = "bg-transparent text-ink hover:bg-washi-raised";
+  const inactive = "bg-transparent text-ink hover:text-vermilion";
 
   return (
-    <div className="inline-flex border border-ink p-0.5">
+    <div className="inline-flex border border-line">
       <button
         type="button"
         onClick={() => go(false)}
@@ -39,7 +40,7 @@ export function SegmentToggle({ mine }: Props) {
       <button
         type="button"
         onClick={() => go(true)}
-        className={`${baseBtn} ${mine ? active : inactive}`}
+        className={`${baseBtn} border-l border-line ${mine ? active : inactive}`}
       >
         내 담당
       </button>

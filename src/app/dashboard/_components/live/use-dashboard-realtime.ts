@@ -47,6 +47,7 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
             domain: string;
             msg: string;
             user_email?: string;
+            user_name?: string;
           };
           if (mine && myEmail && row.user_email !== myEmail) return;
           onConsoleLineRef.current(formatWorklogConsoleLine(row));

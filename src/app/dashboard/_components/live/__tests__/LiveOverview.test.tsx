@@ -112,10 +112,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     // 옛 KPI 대형 카드 label은 더 이상 렌더되지 않음
     expect(screen.queryByText("사고 누적 데이터")).toBeNull();
     expect(screen.queryByText("내 미완 할 일")).toBeNull();
-    // 메트릭 밴드(서비스 현황) — 압축 괘선 밴드의 메트릭 라벨
-    expect(
-      screen.getByRole("region", { name: "서비스 현황" }),
-    ).toBeInTheDocument();
+    // 현황 요약 밴드 — 메트릭 라벨(계약체결 선두)
     expect(screen.getByText("계약체결")).toBeInTheDocument();
     expect(screen.queryByText("계약 · 미수채권")).toBeNull();
     expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
@@ -127,19 +124,17 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
   });
 
-  it("라이프사이클 스테이지 사이에 화살표가 렌더됨", () => {
+  it("모든 카드 사이에 화살표가 렌더됨", () => {
     const { container } = render(<LiveOverview {...baseProps} />);
-    // 4 스테이지 → 화살표 3개
-    expect(container.querySelectorAll("[data-pipe-arrow]").length).toBe(3);
+    // 9카드(계약체결 + 라이프사이클 4 + 미수/백업/인수인계/연락처) → 화살표 8개
+    expect(container.querySelectorAll("[data-pipe-arrow]").length).toBe(8);
   });
 
   it("settle 스테이지 count=null → '—' 셸 표시", () => {
     render(<LiveOverview {...baseProps} />);
-    // 라이프사이클 영역으로 스코프 (트리아지 보드 빈 컬럼 placeholder '—'와 구분)
-    const lifecycle = screen.getByRole("region", {
-      name: /서비스 라이프사이클/,
-    });
-    expect(within(lifecycle).getByText("—")).toBeInTheDocument();
+    // 현황 요약 영역으로 스코프 (트리아지 보드 빈 컬럼 placeholder '—'와 구분)
+    const summary = screen.getByRole("region", { name: "현황 요약" });
+    expect(within(summary).getByText("—")).toBeInTheDocument();
   });
 
   it("미수 채권 active=true → vermilion (메트릭 밴드 값)", () => {

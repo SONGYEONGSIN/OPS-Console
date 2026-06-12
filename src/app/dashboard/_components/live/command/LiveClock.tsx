@@ -53,10 +53,10 @@ export function LiveClock() {
   }, []);
 
   return (
-    <span className="inline-flex items-baseline gap-2 text-sm font-semibold text-ink-soft">
-      <span className="text-xs font-medium text-muted">{snapshot.date}</span>
+    <span className="inline-flex items-baseline gap-2 text-xs text-muted">
+      <span>{snapshot.date}</span>
       <span className="tabular-nums">{snapshot.time}</span>
-      <span className="text-xs font-medium text-muted">KST</span>
+      <span>KST</span>
     </span>
   );
 }
