@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -112,13 +112,16 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     // 옛 KPI 대형 카드 label은 더 이상 렌더되지 않음
     expect(screen.queryByText("사고 누적 데이터")).toBeNull();
     expect(screen.queryByText("내 미완 할 일")).toBeNull();
-    // 그룹박스 title (PR②에서 유지)
-    expect(screen.getByText("서비스 현황")).toBeInTheDocument();
+    // 메트릭 밴드(서비스 현황) — 압축 괘선 밴드의 메트릭 라벨
+    expect(
+      screen.getByRole("region", { name: "서비스 현황" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("계약체결")).toBeInTheDocument();
     expect(screen.queryByText("계약 · 미수채권")).toBeNull();
     expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
-    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 건수 숫자가 붙음)
+    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 (건수)가 붙음)
     expect(
-      screen.getByRole("button", { name: /^전체 \d/ }),
+      screen.getByRole("button", { name: /^전체 \(\d/ }),
     ).toBeInTheDocument();
     // 빈 테이블 empty 메시지
     expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
@@ -132,21 +135,27 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
 
   it("settle 스테이지 count=null → '—' 셸 표시", () => {
     render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    // 라이프사이클 영역으로 스코프 (트리아지 보드 빈 컬럼 placeholder '—'와 구분)
+    const lifecycle = screen.getByRole("region", {
+      name: /서비스 라이프사이클/,
+    });
+    expect(within(lifecycle).getByText("—")).toBeInTheDocument();
   });
 
-  it("미수 채권 active=true → vermilion (subcard-value)", () => {
+  it("미수 채권 active=true → vermilion (메트릭 밴드 값)", () => {
     const { container } = render(<LiveOverview {...baseProps} />);
-    const bondValue = Array.from(
-      container.querySelectorAll("[data-subcard-value]"),
-    ).find((el) => el.textContent === "2") as HTMLElement | undefined;
+    const bondValue = container.querySelector(
+      '[data-metric="bond"]',
+    ) as HTMLElement | null;
     expect(bondValue?.className).toMatch(/text-vermilion/);
   });
 
-  it("필터 칩 클릭 시 칩 active 전환", () => {
+  it("필터 칩 클릭 시 칩 active 전환 (굵게 + 밑줄)", () => {
     render(<LiveOverview {...baseProps} />);
     fireEvent.click(screen.getByRole("button", { name: /^사고/ }));
-    expect(screen.getByRole("button", { name: /^사고/ }).className).toMatch(
+    const tab = screen.getByRole("button", { name: /^사고/ });
+    expect(tab.className).toMatch(/font-bold/);
+    expect(tab.querySelector("span[aria-hidden]")?.className).toMatch(
       /bg-vermilion/,
     );
   });
@@ -197,7 +206,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
   it("인수인계 필터 칩이 FilterTabs에 렌더됨", () => {
     render(<LiveOverview {...baseProps} />);
     expect(
-      screen.getByRole("button", { name: /^인수인계 \d/ }),
+      screen.getByRole("button", { name: /^인수인계 \(\d/ }),
     ).toBeInTheDocument();
   });
 
@@ -211,6 +220,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
       title: "서울대 · 원서접수",
       timeText: "방금 전",
       occurredAt: new Date().toISOString(),
+      triage: "track" as const,
       listRow: {
         id: "h1",
         name: "서울대 · 원서접수",
@@ -220,7 +230,7 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
     };
     render(<LiveOverview {...baseProps} tableItems={[handoverItem]} />);
     expect(
-      screen.getByRole("button", { name: /^인수인계 1/ }),
+      screen.getByRole("button", { name: /^인수인계 \(1\)/ }),
     ).toBeInTheDocument();
   });
 });

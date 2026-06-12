@@ -50,9 +50,10 @@ describe("CohortView", () => {
     expect(screen.getByText(/외부 이메일/)).toBeInTheDocument();
   });
 
-  it("온보딩 체크리스트 섹션 — 진행도 패널 표시", () => {
+  it("온보딩 체크리스트 탭 — 진행도 패널 표시", () => {
     render(<CohortView row={baseRow} />);
-    expect(screen.getByText("온보딩 체크리스트")).toBeInTheDocument();
+    // #481: 회차정보/체크리스트 2탭 분리 — 체크리스트 탭으로 전환 후 진행도 패널 노출
+    fireEvent.click(screen.getByRole("button", { name: "체크리스트" }));
     expect(screen.getByText("진행도")).toBeInTheDocument();
   });
 
@@ -64,6 +65,7 @@ describe("CohortView", () => {
         onChecklistToggle={onChecklistToggle}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "체크리스트" }));
     const boxes = screen.getAllByRole("checkbox");
     expect(boxes[0]).not.toBeDisabled();
     fireEvent.click(boxes[0]);
