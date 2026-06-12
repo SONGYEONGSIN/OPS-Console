@@ -57,7 +57,7 @@ function StatCell({
       </span>
       <span
         data-metric={dataMetric}
-        className={`text-3xl font-bold leading-none tracking-[-0.04em] tabular-nums ${active ? "text-vermilion" : "text-ink"}`}
+        className={`whitespace-nowrap text-2xl font-bold leading-none tracking-[-0.04em] tabular-nums ${active ? "text-vermilion" : "text-ink"}`}
       >
         {value}
       </span>
@@ -195,7 +195,7 @@ function LiveOverviewInner({
                   aria-hidden
                   className="flex w-5 shrink-0 items-center justify-center bg-ink text-[11px] font-bold tracking-[0.12em] text-cream [transform:rotate(180deg)] [writing-mode:vertical-rl]"
                 >
-                  ServiceCycle
+                  servicecycle
                 </span>
                 {/* 9카드 통합 — 계약체결 → 라이프사이클 4 → 미수채권 → 백업 → 인수인계 → 대학연락처.
                     모든 카드 사이에 › 화살표(흐름 표시). */}
