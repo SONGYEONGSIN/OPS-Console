@@ -248,7 +248,8 @@ export const sidebarSections: SbSection[] = [
             slug: "jh-cash",
             pattern: "project",
           },
-          { ico: "·", label: "초중고 사업", slug: "k12", pattern: "project" },
+          { ico: "·", label: "초중고", slug: "k12", pattern: "project" },
+          { ico: "·", label: "인증", slug: "certification", pattern: "project" },
           { ico: "·", label: "대교협 연계", slug: "kcue", pattern: "project" },
           {
             ico: "·",
