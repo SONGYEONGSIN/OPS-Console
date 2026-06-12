@@ -57,7 +57,7 @@ function StatCell({
       </span>
       <span
         data-metric={dataMetric}
-        className={`text-3xl font-bold leading-none tracking-[-0.04em] tabular-nums ${active ? "text-vermilion" : "text-ink"}`}
+        className={`whitespace-nowrap text-2xl font-bold leading-none tracking-[-0.04em] tabular-nums ${active ? "text-vermilion" : "text-ink"}`}
       >
         {value}
       </span>
