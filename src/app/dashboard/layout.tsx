@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { filterSidebarSections } from "@/features/auth/permission";
-import { AuthTitleBar, AuthStatusBar } from "@/components/auth/AuthChrome";
+import { AuthStatusBar } from "@/components/auth/AuthChrome";
 import { AppBar } from "./_components/AppBar";
 import { Chrome } from "./_components/chrome/Chrome";
 import { DashboardShell } from "./_components/DashboardShell";
@@ -35,7 +35,6 @@ export default async function DashboardLayout({
 
   return (
     <DashboardShell
-      topBar={<AuthTitleBar />}
       chrome={
         <Chrome operator={operator} alerts={alerts} sections={sections} />
       }

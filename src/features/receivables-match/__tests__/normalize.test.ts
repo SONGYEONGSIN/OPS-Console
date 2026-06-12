@@ -65,4 +65,13 @@ describe("SPECIAL_MAP — 운영 발견 alias", () => {
   it("부동산융합대학 입금이 한양대학교 미수와 강매칭된다", () => {
     expect(isNameMatchStrong("한양대학교", "부동산융합대학")).toBe(true);
   });
+
+  // 입금 거래내용 '이화경전원'(이화여대 경영전문대학원)도 이화여대로 매핑.
+  it("이화경전원 → 이화여대", () => {
+    expect(normalizeName("이화경전원")).toBe("이화여대");
+  });
+
+  it("이화경전원 입금이 이화여자대학교 미수와 강매칭된다", () => {
+    expect(isNameMatchStrong("이화여자대학교", "이화경전원")).toBe(true);
+  });
 });

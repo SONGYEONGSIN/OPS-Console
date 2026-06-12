@@ -38,22 +38,43 @@ function summarize(items: HealthGatewayItem[]): string {
   return "☀ 맑음";
 }
 
+/** 좌측 요약 클러스터 — 시스템 날씨 + 요약 + LED 점등 (status line 왼쪽 고정). */
 export function HealthGateway({ items }: Props) {
   return (
-    <div className="flex items-center gap-2.5 border-b border-line-soft px-4 py-[7px]">
-      <span className="text-xs font-bold text-muted">시스템 날씨</span>
+    <div className="flex shrink-0 items-center gap-2.5">
+      <span className="text-sm font-bold text-ink-soft">시스템 날씨</span>
       <span className="text-sm font-bold text-gold">{summarize(items)}</span>
-      <span className="ml-1.5 flex gap-[5px]">
+      <span className="flex gap-1.5">
         {items.map((item) => (
           <span
             key={item.label}
             data-gateway-led
             title={`${item.label} — ${item.detail}`}
-            className={`inline-block h-2 w-2 cursor-default rounded-full ${LED_COLOR[item.tone]}`}
+            className={`inline-block h-2.5 w-2.5 cursor-default rounded-full ${LED_COLOR[item.tone]}`}
           />
         ))}
       </span>
-      <span className="ml-auto text-2xs text-muted">▾ 상세</span>
     </div>
+  );
+}
+
+/** ▾상세 펼침 패널 — 7개 항목 LED + 라벨 + detail. 토글 상태는 호출처가 관리. */
+export function HealthDetailList({ items }: Props) {
+  return (
+    <ul className="mt-2 flex flex-col gap-1.5 border-t border-line-soft pt-2 pb-1">
+      {items.map((item) => (
+        <li
+          key={item.label}
+          className="flex items-center gap-2 text-xs text-ink-soft"
+        >
+          <span
+            aria-hidden
+            className={`inline-block h-2 w-2 shrink-0 rounded-full ${LED_COLOR[item.tone]}`}
+          />
+          <span className="font-semibold text-ink">{item.label}</span>
+          <span className="text-muted">— {item.detail}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -48,6 +48,25 @@ describe("formatWorklogConsoleLine", () => {
     expect(result.type).toBe("debug");
     expect(result.text).toBe("[SYS] page enter");
   });
+
+  it("user_name 있으면 [DOMAIN] {이름} · {msg}", () => {
+    const result = formatWorklogConsoleLine({
+      level: "INFO",
+      domain: "nav",
+      msg: "페이지 진입 — 운영부 달력",
+      user_name: "김지나",
+    });
+    expect(result.text).toBe("[NAV] 김지나 · 페이지 진입 — 운영부 달력");
+  });
+
+  it("user_name 없으면 이름 없이 [DOMAIN] {msg}", () => {
+    const result = formatWorklogConsoleLine({
+      level: "INFO",
+      domain: "cron",
+      msg: "스케줄러 대기",
+    });
+    expect(result.text).toBe("[CRON] 스케줄러 대기");
+  });
 });
 
 describe("formatIncidentToast", () => {
@@ -58,7 +77,10 @@ describe("formatIncidentToast", () => {
   });
 
   it("owner_email 없어도 동작", () => {
-    const result = formatIncidentToast({ title: "서버 다운", owner_email: null });
+    const result = formatIncidentToast({
+      title: "서버 다운",
+      owner_email: null,
+    });
     expect(result.text).toBe("[사고] 서버 다운");
     expect(result.type).toBe("warn");
   });
