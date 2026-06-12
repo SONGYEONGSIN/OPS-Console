@@ -27,7 +27,7 @@ export function TriageBoard({ items, onSelect }: Props) {
   for (const it of items) grouped[it.triage].push(it);
 
   return (
-    <div className="grid grid-cols-1 border-2 border-ink md:grid-cols-2 xl:grid-cols-[1fr_1.5fr_1.5fr_1fr]">
+    <div className="grid grid-cols-1 border-y-2 border-ink md:grid-cols-2 xl:grid-cols-[1fr_1.5fr_1.5fr_1fr]">
       {COLUMNS.map((col, ci) => {
         const colItems = grouped[col.bucket];
         return (
@@ -72,10 +72,8 @@ export function TriageBoard({ items, onSelect }: Props) {
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(it)}
-                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 ${
-                      col.accent
-                        ? "border-l-[3px] border-l-vermilion bg-vermilion/[0.05] hover:bg-vermilion/10"
-                        : "hover:bg-washi-raised"
+                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
+                      col.accent ? "border-l-[3px] border-l-vermilion" : ""
                     }`}
                   >
                     <span className="flex items-center gap-1.5">
