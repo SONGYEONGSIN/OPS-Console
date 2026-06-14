@@ -23,6 +23,8 @@ export type HeadlineResult = {
   segments: HeadlineSegment[];
   sub: string;
   href: string;
+  /** 긴급 원형 표시값 — 활성 urgent 항목 합계(미처리사고+오늘마감+미수채권). 헤드라인과 동일 기준. */
+  urgentTotal: number;
 };
 
 const URGENT_KICKER = "▲ 오늘의 톱 · 즉시";
@@ -91,6 +93,7 @@ export function selectHeadline(input: HeadlineInput): HeadlineResult {
       segments: buildSegments(active),
       sub: buildSub(active, input),
       href: active[0].href,
+      urgentTotal: active.reduce((sum, item) => sum + item.count, 0),
     };
   }
 
@@ -104,5 +107,6 @@ export function selectHeadline(input: HeadlineInput): HeadlineResult {
     ],
     sub: "오늘 즉시 처리할 긴급 건이 없습니다.",
     href: "/dashboard",
+    urgentTotal: 0,
   };
 }
