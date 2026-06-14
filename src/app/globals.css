@@ -10,8 +10,8 @@
   --washi: #ede6d2;
   --washi-raised: #f4eddd;
   --cream: #faf4e6;
-  /* 운영부 상황실 카드 배경 — paper보다 조금 진하고 washi-raised보다 연한 톤 */
-  --situation-bg: #f6efe1;
+  /* 운영부 상황실 카드 배경 — paper보다 확실히 진하게(눈에 띄게), washi보다는 연한 톤 */
+  --situation-bg: #f0e8d3;
   --paper: #fbf7f0;
   --sidebar: #efe7d7;
   --sidebar-hover: #dcd4bc;
