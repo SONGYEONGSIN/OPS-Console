@@ -7,6 +7,7 @@ import {
   logDomainClass,
   timelineDotClass,
   selectTimelineEvents,
+  groupTimelineEvents,
   kstSecondsOfDay,
   leaveCountdown,
   kstDateYmd,
@@ -128,6 +129,69 @@ describe("selectTimelineEvents", () => {
     const out = selectTimelineEvents(entries, 3);
     expect(out).toHaveLength(3);
     expect(out.map((e) => e.id)).toEqual(["e0", "e1", "e2"]);
+  });
+});
+
+describe("groupTimelineEvents", () => {
+  const mk = (id: string, min: number): ActivityLogEntry => ({
+    id,
+    atIso: "x",
+    hms: "00:00:00",
+    minutesOfDay: min,
+    domain: "NAV",
+    text: "t",
+    tone: "info",
+  });
+
+  it("clusters events within gap into one group (lead = earliest, members = all)", () => {
+    // 12:23, 12:23, 12:30 군집 (모두 45분 이내) → 1 그룹
+    const out = groupTimelineEvents(
+      [
+        mk("m3", 12 * 60 + 30),
+        mk("m1", 12 * 60 + 23),
+        mk("m2", 12 * 60 + 23),
+      ],
+      6,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].lead.id).toBe("m1"); // 가장 이른 건
+    expect(out[0].members.map((m) => m.id)).toEqual(["m1", "m2", "m3"]);
+    expect(out[0].minutesOfDay).toBe(12 * 60 + 23);
+  });
+
+  it("splits sufficiently spaced events into separate groups", () => {
+    const out = groupTimelineEvents(
+      [mk("a", 9 * 60), mk("b", 11 * 60), mk("c", 14 * 60)],
+      6,
+    );
+    expect(out).toHaveLength(3);
+    expect(out.map((g) => g.lead.id)).toEqual(["a", "b", "c"]);
+    expect(out.every((g) => g.members.length === 1)).toBe(true);
+  });
+
+  it("filters out-of-window entries (09:00–18:00) before grouping", () => {
+    const out = groupTimelineEvents(
+      [mk("early", 7 * 60), mk("a", 9 * 60), mk("late", 19 * 60)],
+      6,
+    );
+    expect(out.map((g) => g.lead.id)).toEqual(["a"]);
+  });
+
+  it("caps group count to maxGroups", () => {
+    const entries = [9, 11, 13, 15, 17].map((h, i) => mk(`e${i}`, h * 60));
+    const out = groupTimelineEvents(entries, 3);
+    expect(out).toHaveLength(3);
+    expect(out.map((g) => g.lead.id)).toEqual(["e0", "e1", "e2"]);
+  });
+
+  it("keeps clustering members even after group cap is reached", () => {
+    // maxGroups=1: 첫 그룹만 만들되, 군집 멤버는 계속 흡수
+    const out = groupTimelineEvents(
+      [mk("m1", 12 * 60), mk("m2", 12 * 60 + 10), mk("far", 16 * 60)],
+      1,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].members.map((m) => m.id)).toEqual(["m1", "m2"]);
   });
 });
 
