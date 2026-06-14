@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { ActivityTimeline } from "../ActivityTimeline";
 import type { ActivityLogEntry } from "../activity-log";
 
@@ -54,5 +54,49 @@ describe("ActivityTimeline", () => {
     render(<ActivityTimeline entries={[]} />);
     // 09:00–18:00 라벨은 항상 표시 (퇴근 카운트다운은 영업일에만)
     expect(screen.getByText(/09:00–18:00/)).toBeInTheDocument();
+  });
+
+  it("groups nearby events into lead + (+N) and reveals all on click", () => {
+    const clustered: ActivityLogEntry[] = [
+      {
+        id: "g1",
+        atIso: "x",
+        hms: "10:00:00",
+        minutesOfDay: 10 * 60,
+        domain: "NAV",
+        text: "대표 이벤트",
+        tone: "info",
+      },
+      {
+        id: "g2",
+        atIso: "x",
+        hms: "10:10:00",
+        minutesOfDay: 10 * 60 + 10,
+        domain: "NAV",
+        text: "멤버 이벤트 둘",
+        tone: "info",
+      },
+      {
+        id: "g3",
+        atIso: "x",
+        hms: "10:20:00",
+        minutesOfDay: 10 * 60 + 20,
+        domain: "NAV",
+        text: "멤버 이벤트 셋",
+        tone: "info",
+      },
+    ];
+    render(<ActivityTimeline entries={clustered} />);
+    // 대표 라벨 끝에 (+2). 멤버는 펼치기 전엔 미표시.
+    const trigger = screen.getByText(/대표 이벤트 \(\+2\)/);
+    expect(trigger).toBeInTheDocument();
+    expect(screen.queryByText("멤버 이벤트 둘")).not.toBeInTheDocument();
+    // 클릭 → 팝오버에 멤버 전체 노출.
+    fireEvent.click(trigger);
+    expect(screen.getByText("멤버 이벤트 둘")).toBeInTheDocument();
+    expect(screen.getByText("멤버 이벤트 셋")).toBeInTheDocument();
+    // 재클릭 → 닫힘.
+    fireEvent.click(trigger);
+    expect(screen.queryByText("멤버 이벤트 둘")).not.toBeInTheDocument();
   });
 });

@@ -145,6 +145,42 @@ export function selectTimelineEvents(
   return picked;
 }
 
+/** 근접 이벤트 그룹 — 대표(lead) + 멤버 전체. 라벨 "(+N)" 표시·팝오버용. */
+export type TimelineGroup = {
+  /** 대표(그룹 첫 이벤트, 가장 이른 건). */
+  lead: ActivityLogEntry;
+  /** 대표 포함 그룹 전체. */
+  members: ActivityLogEntry[];
+  /** 대표 기준 타임라인 위치(분). */
+  minutesOfDay: number;
+};
+
+/**
+ * 타임라인 이벤트 그룹화 — 업무시간 내 + 시각 오름차순.
+ * 직전 그룹 대표와 gapMin 미만이면 같은 그룹으로 흡수(버리지 않음),
+ * 충분히 떨어지면 새 그룹. 그룹 수는 maxGroups로 제한.
+ */
+export function groupTimelineEvents(
+  entries: ActivityLogEntry[],
+  maxGroups = 6,
+  gapMin = TIMELINE_MIN_GAP_MIN,
+): TimelineGroup[] {
+  const sorted = entries
+    .filter((e) => isInWindow(e.minutesOfDay))
+    .sort((a, b) => a.minutesOfDay - b.minutesOfDay);
+  const groups: TimelineGroup[] = [];
+  for (const e of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && e.minutesOfDay - last.minutesOfDay < gapMin) {
+      last.members.push(e);
+    } else {
+      if (groups.length >= maxGroups) break;
+      groups.push({ lead: e, members: [e], minutesOfDay: e.minutesOfDay });
+    }
+  }
+  return groups;
+}
+
 const KST_HMS = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Seoul",
   hour: "2-digit",

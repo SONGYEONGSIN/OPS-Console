@@ -26,9 +26,11 @@ describe("BroadsheetHeadline", () => {
     render(<BroadsheetHeadline input={urgentInput} />);
     expect(screen.getByText("AUTO ▸ 우선순위 자동")).toBeTruthy();
     expect(screen.getByText("미처리 사고")).toBeTruthy();
-    // 긴급 원
+    // 긴급 원 — 총 긴급 건수(urgentTotal = 미처리사고 3 + 오늘마감 2 = 5)
     expect(screen.getByText("긴급")).toBeTruthy();
-    expect(screen.getByText("3")).toBeTruthy();
+    expect(
+      screen.getByText(String(selectHeadline(urgentInput).urgentTotal)),
+    ).toBeTruthy();
   });
 
   it("urgent 입력 시 kicker가 selectHeadline 결과와 일치한다", () => {
