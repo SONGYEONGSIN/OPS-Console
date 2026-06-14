@@ -245,6 +245,17 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint 회의록 폴더"
+        value={
+          <>
+            <Dot ok={env.sharepoint.meetingsFolderId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.meetingsFolderId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="SharePoint SmileEDI 드라이브"
         value={
           <>

@@ -29,6 +29,7 @@ const env: EnvSnapshot = {
     manualItemId: { configured: false, preview: "" },
     gongmunItemId: { configured: false, preview: "" },
     incidentReportFolderId: { configured: false, preview: "" },
+    meetingsFolderId: { configured: false, preview: "" },
     smileediDriveId: { configured: false, preview: "" },
     smileediItemId: { configured: false, preview: "" },
   },
