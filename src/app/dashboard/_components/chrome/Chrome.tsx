@@ -23,12 +23,12 @@ export function Chrome({ operator, alerts, sections }: Props) {
     <div
       role="banner"
       data-tutorial="topbar"
-      className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1fr_1fr] items-center border-y-2 border-chrome-graphite bg-chrome-snow px-[18px] md:grid"
+      className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1.6fr_1fr] items-center border-y-2 border-chrome-graphite bg-chrome-snow px-[18px] md:grid"
     >
       <div className="justify-self-start">
         <ChromeBrand />
       </div>
-      <div className="w-full max-w-[420px] justify-self-center">
+      <div className="w-full max-w-[620px] justify-self-center">
         <SearchBox />
       </div>
       <ChromeRight operator={operator} alerts={alerts} sections={sections} />
