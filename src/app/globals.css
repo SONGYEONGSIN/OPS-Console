@@ -562,42 +562,7 @@ button.bs-tl-ev .cal.cal-group,
   text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
-/* 그룹 전체 내역 팝오버 — 마커 근처에 표시. */
-.bs-tl-pop {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: 240px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  box-shadow: 3px 3px 0 var(--line-soft);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.25;
-}
-/* .cal.up(라벨 위) 그룹 → 팝오버는 아래쪽, .cal.dn → 위쪽. */
-.bs-tl-pop.pop-dn {
-  top: 18px;
-}
-.bs-tl-pop.pop-up {
-  bottom: 18px;
-}
-.bs-tl-pop .t {
-  font-size: 10px;
-  color: var(--muted);
-}
-/* 가장자리 그룹 — 팝오버가 컨테이너 밖으로 넘치지 않게 안쪽 정렬. */
-.bs-tl-pop.cal-end {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-.bs-tl-pop.cal-start {
-  left: 0;
-  right: auto;
-  transform: none;
-}
+/* 그룹 전체 내역 팝오버는 ActivityTimeline에서 fixed 드롭다운으로 인라인 렌더 (좁은 카드 제약 회피). */
 .bs-tl-now {
   position: absolute;
   top: 44px;
