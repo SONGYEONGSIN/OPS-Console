@@ -31,7 +31,7 @@ export function BroadsheetHeadline({ input }: { input: HeadlineInput }) {
       {r.mode === "urgent" && (
         <div className="shrink-0 flex flex-col items-center justify-center w-16 h-16 rounded-full border-2 border-vermilion text-vermilion">
           <span className="text-2xl font-bold leading-none tabular-nums">
-            {input.incidentsUnresolved}
+            {r.urgentTotal}
           </span>
           <span className="text-[9px] font-bold uppercase tracking-widest mt-1">
             긴급
