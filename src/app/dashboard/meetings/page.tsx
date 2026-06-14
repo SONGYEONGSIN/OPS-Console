@@ -9,13 +9,23 @@ import { paginateRows } from "@/lib/list/paginate";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listMeetings } from "@/features/meetings/queries";
+import { listOperators } from "@/features/operators/queries";
+import { MEETING_TYPES, type MeetingType } from "@/features/meetings/schemas";
 import { meetingToListRow } from "./_row-mapper";
+import { MeetingsControls } from "./MeetingsControls";
 import { NewMeetingButton } from "./_components/NewMeetingButton";
+
+const TYPE_VALUES = new Set<string>(MEETING_TYPES);
 
 export default async function MeetingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mine?: string; page?: string }>;
+  searchParams: Promise<{
+    mine?: string;
+    page?: string;
+    type?: string;
+    q?: string;
+  }>;
 }) {
   const slug = "meetings";
   await requireMenu(slug);
@@ -26,15 +36,42 @@ export default async function MeetingsPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
 
-  const allMeetings = await listMeetings();
+  const [allMeetings, operators] = await Promise.all([
+    listMeetings(),
+    listOperators(),
+  ]);
+  // 작성자 이메일 → 등록 이름 매핑 (목록 표시 + 검색 대상)
+  const nameMap = new Map(operators.map((o) => [o.email, o.name]));
+
+  // 유형 필터 — 유효한 MeetingType일 때만 적용
+  const typeFilter: MeetingType | undefined = TYPE_VALUES.has(sp.type ?? "")
+    ? (sp.type as MeetingType)
+    : undefined;
+  const byType = typeFilter
+    ? allMeetings.filter((m) => m.type === typeFilter)
+    : allMeetings;
+
+  // 검색 필터 — 제목 또는 작성자(이름/이메일) ilike (case-insensitive)
+  const qLower = (sp.q ?? "").trim().toLowerCase();
+  const bySearch = qLower
+    ? byType.filter((m) => {
+        const authorName = nameMap.get(m.author_email) ?? "";
+        return (
+          m.title.toLowerCase().includes(qLower) ||
+          authorName.toLowerCase().includes(qLower) ||
+          m.author_email.toLowerCase().includes(qLower)
+        );
+      })
+    : byType;
+
   const mine = sp.mine !== "false";
   const visible =
     mine && me?.email
-      ? allMeetings.filter((m) => m.author_email === me.email)
-      : allMeetings;
+      ? bySearch.filter((m) => m.author_email === me.email)
+      : bySearch;
 
   const { rows, total } = paginateRows<ListRow>(
-    visible.map(meetingToListRow),
+    visible.map((m) => meetingToListRow(m, nameMap.get(m.author_email))),
     sp.page,
   );
   const config = resolvePageMeta(slug, meta, total);
@@ -56,9 +93,12 @@ export default async function MeetingsPage({
       header={header}
       variant="meetings"
       readOnly
+      liveData
       currentUserName={me?.displayName ?? me?.email ?? ""}
       currentUserEmail={me?.email ?? null}
       currentUserPermission={me?.permission ?? null}
+      controlsRow={<MeetingsControls key="meetings-controls" />}
+      hideVariantFilters
       inlineFilters={
         <ScopeChips key="meetings-scope" total={total} mineLabel="내 회의록" />
       }
