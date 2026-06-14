@@ -548,6 +548,56 @@ body::before {
   transform: none;
   text-align: left;
 }
+/* 그룹 라벨(멤버 2건+) — 클릭 가능. button 기본 스타일 리셋 후 .cal 상속 유지. */
+button.bs-tl-ev .cal.cal-group,
+.bs-tl-ev button.cal.cal-group {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+.bs-tl-ev .cal.cal-group:hover .m {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+/* 그룹 전체 내역 팝오버 — 마커 근처에 표시. */
+.bs-tl-pop {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 240px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 3px 3px 0 var(--line-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+/* .cal.up(라벨 위) 그룹 → 팝오버는 아래쪽, .cal.dn → 위쪽. */
+.bs-tl-pop.pop-dn {
+  top: 18px;
+}
+.bs-tl-pop.pop-up {
+  bottom: 18px;
+}
+.bs-tl-pop .t {
+  font-size: 10px;
+  color: var(--muted);
+}
+/* 가장자리 그룹 — 팝오버가 컨테이너 밖으로 넘치지 않게 안쪽 정렬. */
+.bs-tl-pop.cal-end {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.bs-tl-pop.cal-start {
+  left: 0;
+  right: auto;
+  transform: none;
+}
 .bs-tl-now {
   position: absolute;
   top: 44px;

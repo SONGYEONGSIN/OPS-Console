@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type ActivityLogEntry,
-  selectTimelineEvents,
+  groupTimelineEvents,
   timelinePercent,
   timelineDotClass,
   leaveCountdown,
@@ -31,7 +31,27 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
     return () => clearInterval(id);
   }, []);
 
-  const events = selectTimelineEvents(entries, 6);
+  const groups = groupTimelineEvents(entries, 6);
+  // 클릭으로 펼친 그룹(lead.id 기준). 멤버 2건 이상 그룹만 토글 가능.
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const tlRef = useRef<HTMLDivElement>(null);
+  // 외부 클릭 / Escape 시 팝오버 닫기. 마커·팝오버 내부 클릭은 무시.
+  useEffect(() => {
+    if (!openGroupId) return;
+    const onDown = (e: MouseEvent) => {
+      if (!tlRef.current?.contains(e.target as Node)) setOpenGroupId(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenGroupId(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [openGroupId]);
+
   // 주말·공휴일엔 퇴근 카운트다운 미표시 (영업일만).
   const businessDay = isKstBusinessDay(now);
   const countdown = leaveCountdown(now);
@@ -63,7 +83,7 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
             )}
           </span>
         </div>
-        <div className="bs-tl">
+        <div className="bs-tl" ref={tlRef}>
           <div className="bs-tl-line" />
           {HOURS.map((h, i) => (
             <div
@@ -75,25 +95,74 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
               <div className="lab">{String(h).padStart(2, "0")}</div>
             </div>
           ))}
-          {events.map((ev, i) => {
-            const pct = timelinePercent(ev.minutesOfDay);
+          {groups.map((g, i) => {
+            const pct = timelinePercent(g.minutesOfDay);
             // 가장자리 이벤트는 라벨이 컨테이너 밖으로 넘치지 않도록 안쪽 정렬
             // (오른쪽 끝 → 라벨 우측을 점에 맞춰 왼쪽으로, 왼쪽 끝 → 그 반대)
             const edge = pct >= 80 ? "cal-end" : pct <= 14 ? "cal-start" : "";
-            return (
-            <div
-              key={ev.id}
-              className="bs-tl-ev"
-              style={{ left: `${pct}%` }}
-            >
-              <div className={`dot ${timelineDotClass(ev.tone)}`} />
-              <div className={`cal ${i % 2 === 0 ? "up" : "dn"} ${edge}`}>
-                <span className="t">{ev.hms.slice(0, 5)}</span>
-                <div className={`m ${ev.tone === "err" ? "text-vermilion" : ""}`}>
-                  {ev.text}
+            const extra = g.members.length - 1;
+            const expandable = extra > 0;
+            const up = i % 2 === 0;
+            const open = openGroupId === g.lead.id;
+            const calClass = `cal ${up ? "up" : "dn"} ${edge}${
+              expandable ? " cal-group" : ""
+            }`;
+            const label = (
+              <>
+                <span className="t">{g.lead.hms.slice(0, 5)}</span>
+                <div
+                  className={`m ${g.lead.tone === "err" ? "text-vermilion" : ""}`}
+                >
+                  {g.lead.text}
+                  {extra > 0 ? ` (+${extra})` : ""}
                 </div>
+              </>
+            );
+            return (
+              <div key={g.lead.id} className="bs-tl-ev" style={{ left: `${pct}%` }}>
+                <div className={`dot ${timelineDotClass(g.lead.tone)}`} />
+                {expandable ? (
+                  <button
+                    type="button"
+                    className={calClass}
+                    aria-expanded={open}
+                    onClick={() =>
+                      setOpenGroupId((cur) =>
+                        cur === g.lead.id ? null : g.lead.id,
+                      )
+                    }
+                  >
+                    {label}
+                  </button>
+                ) : (
+                  <div className={calClass}>{label}</div>
+                )}
+                {open && (
+                  <div
+                    className={`bs-tl-pop z-[60] ${up ? "pop-dn" : "pop-up"} ${edge}`}
+                  >
+                    <ul className="divide-y divide-line-soft">
+                      {g.members.map((m) => (
+                        <li
+                          key={m.id}
+                          className="flex gap-2 px-2 py-1 hover:bg-washi-raised"
+                        >
+                          <span className="t shrink-0 tabular-nums">
+                            {m.hms.slice(0, 5)}
+                          </span>
+                          <span
+                            className={`min-w-0 ${
+                              m.tone === "err" ? "text-vermilion" : ""
+                            }`}
+                          >
+                            {m.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-            </div>
             );
           })}
           <div
