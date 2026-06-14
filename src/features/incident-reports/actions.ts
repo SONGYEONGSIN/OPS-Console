@@ -7,7 +7,11 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { logActivity } from "@/features/worklog/log";
 import { resolveApprovalChain } from "./queries";
 import { defaultApology } from "./apology";
-import { assignDocNumber, type RegisterInput } from "./sharepoint-register";
+import {
+  assignDocNumber,
+  releaseDocNumber,
+  type RegisterInput,
+} from "./sharepoint-register";
 import { getIncidentById } from "@/features/incidents/queries";
 import {
   incidentReportCreateSchema,
@@ -307,7 +311,7 @@ export async function revokeApproval(id: string): Promise<ReportActionResult> {
   const supabase = await createClient();
   const { data: rep } = await supabase
     .from("incident_reports")
-    .select("approver_email,title")
+    .select("approver_email,title,doc_number,draft_date")
     .eq("id", id)
     .maybeSingle();
   if (!rep) return { ok: false, error: "경위서를 찾을 수 없습니다." };
@@ -315,10 +319,28 @@ export async function revokeApproval(id: string): Promise<ReportActionResult> {
     return { ok: false, error: "승인 취소 권한이 없습니다." };
   }
 
+  // 시행번호 회수 — 공문관리대장 행 삭제는 best-effort. 실패해도 상태는 draft로 되돌린다
+  // (사용자가 재승인/재발급 가능해야 하므로). doc_number는 아래 update에서 null로 비운다.
+  if (rep.doc_number) {
+    try {
+      await releaseDocNumber(rep.doc_number, rep.draft_date);
+    } catch (e) {
+      console.warn(
+        "[revokeApproval] 공문관리대장 행 삭제 실패 — 상태는 draft로 되돌림:",
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
   const r = await transition(
     id,
     ["approved"],
-    { status: "draft", approved_at: null },
+    {
+      status: "draft",
+      approved_at: null,
+      doc_number: null,
+      sharepoint_url: null,
+    },
     "승인 취소할 수 없는 상태입니다.",
   );
   if (r.ok) {

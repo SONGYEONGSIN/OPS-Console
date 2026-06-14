@@ -5,6 +5,7 @@ import {
   nextDocNumber,
   appendSenderRow,
   updateSenderRowLink,
+  deleteSenderRow,
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
 import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
@@ -135,6 +136,27 @@ export async function assignDocNumber(
   });
 
   return { docNumber };
+}
+
+/**
+ * 시행번호 회수 — 승인취소 시 공문관리대장(발신 시트)에서 해당 시행번호 행을 삭제한다.
+ * 행이 어느 연도 시트에 있는지는 docNumber prefix(운영{YY}{MM}-...)가 기준 —
+ * 채번 시 시트가 `(발신){issueYear}년`이고 prefix YY가 곧 issueYear이므로 일치한다.
+ * prefix 파싱 실패 시에만 draftDate 연도로 폴백.
+ * config(드라이브+공문대장 item) 없으면 false(graceful, throw 금지). 행 없으면 false.
+ */
+export async function releaseDocNumber(
+  docNumber: string,
+  draftDate: string,
+): Promise<boolean> {
+  const driveId = process.env.SHAREPOINT_DRIVE_ID;
+  const gongmunItemId = process.env.SHAREPOINT_GONGMUN_ITEM_ID;
+  if (!driveId || !gongmunItemId) return false;
+
+  const m = /^운영(\d{2})\d{2}-/.exec(docNumber.trim());
+  const year = m ? 2000 + parseInt(m[1], 10) : new Date(draftDate).getFullYear();
+
+  return deleteSenderRow(driveId, gongmunItemId, year, docNumber);
 }
 
 /**

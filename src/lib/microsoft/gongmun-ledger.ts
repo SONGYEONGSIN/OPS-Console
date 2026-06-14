@@ -91,6 +91,20 @@ function startRowFromAddress(address: string | undefined): number {
   return m ? parseInt(m[1], 10) : 1;
 }
 
+/**
+ * usedRange B열(시행번호) 값 배열에서 docNumber와 **정확히 일치**하는 행의 인덱스.
+ * 인덱스는 usedRange text 배열 기준(헤더 포함). 못 찾으면 -1. 부분 일치는 매칭 안 함.
+ */
+export function findSenderRowIndex(
+  bColumnValues: (string | null)[],
+  docNumber: string,
+): number {
+  const target = String(docNumber).trim();
+  return bColumnValues.findIndex(
+    (v) => String(v ?? "").trim() === target,
+  );
+}
+
 export type LedgerRow = {
   docNumber: string;
   date: string; // YYYY-MM-DD
@@ -177,9 +191,9 @@ export async function updateSenderRowLink(
   const text = used.text ?? [];
   const startRow = startRowFromAddress(used.address);
 
-  const target = String(docNumber).trim();
-  const idx = text.findIndex(
-    (row) => String(row?.[1] ?? "").trim() === target,
+  const idx = findSenderRowIndex(
+    text.map((row) => (row?.[1] ?? null) as string | null),
+    docNumber,
   );
   if (idx < 0) return false;
 
@@ -201,6 +215,52 @@ export async function updateSenderRowLink(
   if (!res.ok) {
     throw new Error(
       `[gongmun] updateLink ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+  return true;
+}
+
+/**
+ * 발신 시트에서 B열(시행번호)===docNumber 인 행을 찾아 그 행 전체를 삭제(아래 행 위로 당김).
+ * 승인취소로 시행번호를 회수할 때 사용 — updateSenderRowLink와 동일한 행찾기/주소 패턴.
+ * 행을 찾아 삭제하면 true, 정확 일치 행이 없으면 아무것도 안 하고 false.
+ */
+export async function deleteSenderRow(
+  driveId: string,
+  itemId: string,
+  year: number,
+  docNumber: string,
+): Promise<boolean> {
+  const sheet = senderSheetName(year);
+  const sessionId = await getWorkbookSession(driveId, itemId);
+  const used = await fetchUsedRange(driveId, itemId, sheet, sessionId);
+  const text = used.text ?? [];
+  const startRow = startRowFromAddress(used.address);
+
+  const idx = findSenderRowIndex(
+    text.map((row) => (row?.[1] ?? null) as string | null),
+    docNumber,
+  );
+  if (idx < 0) return false;
+
+  const excelRow = startRow + idx;
+  const address = `A${excelRow}:G${excelRow}`;
+  const token = await getGraphToken();
+  const url = `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets('${encodeURIComponent(
+    sheet,
+  )}')/range(address='${encodeURIComponent(address)}')/delete`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      "workbook-session-id": sessionId,
+    },
+    body: JSON.stringify({ shift: "Up" }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `[gongmun] deleteRow ${res.status}: ${(await res.text()).slice(0, 200)}`,
     );
   }
   return true;
