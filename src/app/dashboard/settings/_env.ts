@@ -19,6 +19,7 @@ export type EnvSnapshot = {
     manualItemId: { configured: boolean; preview: string };
     gongmunItemId: { configured: boolean; preview: string };
     incidentReportFolderId: { configured: boolean; preview: string };
+    meetingsFolderId: { configured: boolean; preview: string };
     smileediDriveId: { configured: boolean; preview: string };
     smileediItemId: { configured: boolean; preview: string };
   };
