@@ -33,15 +33,19 @@ export type LiveTableItem = {
   variant: Variant;
   statusText: string;
   title: string;
+  /** 제목 아래 보조 설명(있을 때만). todos.body 등. */
+  subtitle?: string;
   timeText: string;
   occurredAt: string;
+  /** 학년도 스코프 기준일 "YYYY-MM-DD". 의미 날짜 우선, 없으면 등록일. ""=상시(필터 제외). */
+  refDate: string;
   triage: TriageBucket;
   listRow: ListRow;
 };
 
 export type LiveTableSources = {
-  incidents: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
-  todos: { id: string; title: string; dueAt: string | null; createdAt: string; listRow: ListRow }[];
+  incidents: { id: string; title: string; status: string; createdAt: string; occurredDate?: string | null; listRow: ListRow }[];
+  todos: { id: string; title: string; body?: string | null; dueAt: string | null; createdAt: string; listRow: ListRow }[];
   services: { id: string; title: string; writeStartAt: string | null; createdAt: string; listRow: ListRow }[];
   backup: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
   schedule: { id: string; title: string; startAt: string; createdAt: string; listRow: ListRow }[];
@@ -140,6 +144,8 @@ function bucketByDeadline(ymd: string | null | undefined, today: string): Triage
 export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date()): LiveTableItem[] {
   const today = todayKst(now);
   const out: LiveTableItem[] = [];
+  // 학년도 스코프 기준일 — 의미 날짜 우선, 없으면 등록일. ""은 상시(필터 제외).
+  const ymd10 = (v?: string | null) => (v ? v.slice(0, 10) : "");
 
   for (const i of s.incidents) {
     out.push({
@@ -151,6 +157,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: i.title,
       timeText: formatRelativeTime(i.createdAt, now),
       occurredAt: i.createdAt,
+      refDate: ymd10(i.occurredDate) || ymd10(i.createdAt),
       // 미처리 사고는 즉시 대응
       triage: i.status !== "처리완료" ? "now" : "track",
       listRow: i.listRow,
@@ -165,8 +172,10 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       variant: VARIANT.todos,
       statusText: todoStatus(t.dueAt, today),
       title: t.title,
+      subtitle: t.body ?? undefined,
       timeText: formatRelativeTime(t.createdAt, now),
       occurredAt: t.createdAt,
+      refDate: ymd10(t.dueAt) || ymd10(t.createdAt),
       triage: bucketByDeadline(t.dueAt, today),
       listRow: t.listRow,
     });
@@ -182,6 +191,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: sv.title,
       timeText: formatRelativeTime(sv.createdAt, now),
       occurredAt: sv.createdAt,
+      refDate: ymd10(sv.writeStartAt) || ymd10(sv.createdAt),
       triage: bucketByDeadline(sv.writeStartAt, today),
       listRow: sv.listRow,
     });
@@ -197,6 +207,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: b.title,
       timeText: formatRelativeTime(b.createdAt, now),
       occurredAt: b.createdAt,
+      refDate: ymd10(b.createdAt),
       // 메일 발송 실패는 즉시 대응, 그 외 백업 요청은 추적
       triage: b.status === "mail_failed" ? "now" : "track",
       listRow: b.listRow,
@@ -213,6 +224,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: e.title,
       timeText: formatRelativeTime(e.createdAt, now),
       occurredAt: e.createdAt,
+      refDate: ymdFromIso(e.startAt) || ymd10(e.createdAt),
       triage: bucketByDeadline(ymdFromIso(e.startAt), today),
       listRow: e.listRow,
     });
@@ -228,6 +240,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: h.title,
       timeText: formatRelativeTime(h.createdAt, now),
       occurredAt: h.createdAt,
+      refDate: ymd10(h.createdAt),
       // 작성중 인수인계는 이번 주 마무리 권장, 그 외 추적
       triage: h.status === "draft" ? "week" : "track",
       listRow: h.listRow,
@@ -244,6 +257,7 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: n.title,
       timeText: formatRelativeTime(n.createdAt, now),
       occurredAt: n.createdAt,
+      refDate: ymd10(n.createdAt),
       // 공지는 정보성 — 추적 컬럼
       triage: "track",
       listRow: n.listRow,
@@ -261,6 +275,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       // 청구일자(billedAt)는 ISO가 아닌 시트 텍스트일 수 있어 원문 그대로 표기.
       timeText: r.billedAt || "—",
       occurredAt: r.billedAt || "",
+      // 청구일자 형식이 불확실(시트 텍스트) → 학년도 필터 제외(상시)
+      refDate: "",
       // 미수채권은 장기 추적
       triage: "track",
       listRow: r.listRow,
@@ -279,6 +295,8 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
       title: c.title,
       timeText: "—",
       occurredAt: "",
+      // 계약은 시트 기반 — 행 타임스탬프 없음 → 학년도 필터 제외(상시)
+      refDate: "",
       // 계약은 시점 없음 — 추적
       triage: "track",
       listRow: c.listRow,
@@ -286,4 +304,18 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
   }
 
   return out.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+}
+
+/**
+ * 학년도 스코프 필터 — refDate가 [startYmd, endYmd) 범위인 항목만 남긴다.
+ * refDate가 ""(상시: 신뢰 날짜 없는 계약·미수채권 등)인 항목은 항상 유지.
+ */
+export function filterByAcademicYear(
+  items: LiveTableItem[],
+  startYmd: string,
+  endYmd: string,
+): LiveTableItem[] {
+  return items.filter(
+    (it) => it.refDate === "" || (it.refDate >= startYmd && it.refDate < endYmd),
+  );
 }

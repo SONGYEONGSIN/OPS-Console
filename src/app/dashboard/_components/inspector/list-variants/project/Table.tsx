@@ -96,7 +96,7 @@ export function ProjectTable({ rows, selectedId, onSelect }: Props) {
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="font-mono text-ink-soft">{progress}%</span>
+                    <span className="text-ink-soft tabular-nums">{progress}%</span>
                   </div>
                 </td>
               </tr>

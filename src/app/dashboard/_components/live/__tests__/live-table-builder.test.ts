@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildLiveTableItems, type LiveTableSources } from "../live-table-builder";
+import {
+  buildLiveTableItems,
+  filterByAcademicYear,
+  type LiveTableSources,
+  type LiveTableItem,
+} from "../live-table-builder";
 
 const now = new Date("2026-05-23T12:00:00+09:00");
 const tEarlier = (mins: number) => new Date(now.getTime() - mins * 60 * 1000).toISOString();
@@ -185,5 +190,77 @@ describe("buildLiveTableItems", () => {
     expect(items[0].variant).toBe("handover");
     expect(items[0].statusText).toBe("인계완료");
     expect(items[0].title).toBe("서울대 · 원서접수");
+  });
+
+  it("todos body → subtitle 매핑", () => {
+    const sources: LiveTableSources = {
+      incidents: [], todos: [
+        { id: "t1", title: "독학사 미팅", body: "회의실 예약 + 자료 준비", dueAt: "2026-06-20", createdAt: tEarlier(5), listRow: {} as never },
+      ], services: [], backup: [], schedule: [], handover: [],
+    };
+    const item = buildLiveTableItems(sources, now)[0];
+    expect(item.subtitle).toBe("회의실 예약 + 자료 준비");
+  });
+
+  it("refDate: 의미 날짜 우선(서비스=오픈일/일정=일정일/사고=발생일/할일=마감일)", () => {
+    const sources: LiveTableSources = {
+      incidents: [
+        {
+          id: "i1",
+          title: "사고",
+          status: "미처리",
+          createdAt: "2026-05-01T00:00:00Z",
+          occurredDate: "2026-09-10",
+          listRow: {} as never,
+        },
+      ],
+      todos: [
+        { id: "t1", title: "할일", dueAt: "2026-10-20", createdAt: "2026-05-01T00:00:00Z", listRow: {} as never },
+      ],
+      services: [
+        { id: "s1", title: "서비스", writeStartAt: "2026-11-01", createdAt: "2026-05-01T00:00:00Z", listRow: {} as never },
+      ],
+      backup: [
+        { id: "b1", title: "백업", status: "대기", createdAt: "2026-07-07T00:00:00Z", listRow: {} as never },
+      ],
+      schedule: [
+        { id: "e1", title: "일정", startAt: "2027-02-19T05:00:00Z", createdAt: "2026-05-01T00:00:00Z", listRow: {} as never },
+      ],
+      handover: [],
+    };
+    const byId = Object.fromEntries(
+      buildLiveTableItems(sources, now).map((i) => [i.id, i.refDate]),
+    );
+    expect(byId.i1).toBe("2026-09-10"); // 발생일
+    expect(byId.t1).toBe("2026-10-20"); // 마감일
+    expect(byId.s1).toBe("2026-11-01"); // 오픈일
+    expect(byId.e1).toBe("2027-02-19"); // 일정일
+    expect(byId.b1).toBe("2026-07-07"); // 날짜 없음 → 등록일
+  });
+
+  it("filterByAcademicYear: 범위 밖 제외, refDate=''(계약·미수채권)은 항상 유지", () => {
+    const mk = (id: string, refDate: string): LiveTableItem => ({
+      id,
+      domain: "schedule",
+      badgeDomain: "일정",
+      variant: "schedule",
+      statusText: "",
+      title: id,
+      timeText: "",
+      occurredAt: "",
+      refDate,
+      triage: "track",
+      listRow: {} as never,
+    });
+    const items = [
+      mk("inYear", "2026-09-10"),
+      mk("beforeYear", "2026-02-10"), // 직전 학년도
+      mk("afterYear", "2027-03-05"), // 다음 학년도
+      mk("always", ""), // 상시
+    ];
+    const kept = filterByAcademicYear(items, "2026-03-01", "2027-03-01").map(
+      (i) => i.id,
+    );
+    expect(kept).toEqual(["inYear", "always"]);
   });
 });

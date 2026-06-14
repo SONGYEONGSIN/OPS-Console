@@ -7,6 +7,8 @@ import { listBackupRequests } from "@/features/backup-requests/queries";
 import { listScheduleEvents } from "@/features/schedule/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { listMyTodos } from "@/features/todos/queries";
+import { listMyProjectsWithTasks } from "@/features/projects/queries";
+import { listAiWorks } from "@/features/ai-work/queries";
 import { listClosing } from "@/features/closing/queries";
 import { listWorklog } from "@/features/worklog/queries";
 import { worklogRowsToConsoleLines } from "@/features/worklog/to-console-line";
@@ -28,10 +30,18 @@ import {
 import { LiveOverview } from "./_components/live/LiveOverview";
 import {
   buildLiveTableItems,
+  filterByAcademicYear,
   type LiveTableSources,
 } from "./_components/live/live-table-builder";
 import type { HealthGatewayItem } from "./_components/live/command/HealthGateway";
 import type { HeadlineInput } from "./_components/live/command/headline-selector";
+import { buildActivityLog } from "./_components/live/broadsheet/activity-log";
+import {
+  buildTimelineEvents,
+  type TimelineSource,
+} from "./_components/live/broadsheet/timeline-events";
+import { listTodayAutomationRuns } from "@/features/automations/today-runs";
+import { academicYearRange } from "@/lib/academic-year";
 import {
   getSystemHealth,
   type SystemHealthSnapshot,
@@ -50,10 +60,11 @@ export default async function DashboardLivePage({
   searchParams: Promise<{ mine?: string }>;
 }) {
   const sp = await searchParams;
-  const mine = sp.mine !== "false";
-
   const me = await getCurrentOperator();
   const myEmail = me?.email ?? null;
+  // admin 계정은 기본 '전체' 관점, 그 외는 기본 '내 담당'. URL ?mine 명시 시 우선.
+  const mine =
+    sp.mine === undefined ? me?.permission !== "admin" : sp.mine !== "false";
 
   // ─── 서비스 (오픈 예정 5건) ─────────────────────────────────
   const todayYmd = new Intl.DateTimeFormat("en-CA", {
@@ -104,14 +115,15 @@ export default async function DashboardLivePage({
     mine: mine && !!myEmail,
     meEmail: myEmail ?? undefined,
   });
-  // 사고 누적 데이터 카운트 — 담당자(assignee) 등록된 모든 사고(처리완료 포함),
-  // occurred_date 2024-01-01 ≤ 발생일 < 2027-01-01 (3년 시즌 누적).
+  // 사고처리 카운트 — 담당자(assignee) 등록된 사고 중, 발생일(occurred_date)이
+  // 현재 학년도(3/1~익년 2월말) 범위인 건만. 학년도는 매년 자동 롤오버.
+  const acadYear = academicYearRange(todayYmd);
   const incidentsUnresolvedCount = allIncidentsForKpi.filter(
     (i) =>
       !!i.assignee_email &&
       !!i.occurred_date &&
-      i.occurred_date >= "2024-01-01" &&
-      i.occurred_date < "2027-01-01",
+      i.occurred_date >= acadYear.start &&
+      i.occurred_date < acadYear.end,
   ).length;
   // LiveTable용: 최근 20건 슬라이스
   const incidents = allIncidentsForKpi.slice(0, 20);
@@ -232,6 +244,22 @@ export default async function DashboardLivePage({
   const todosTotal = allTodos.length;
   const todosListRows: ListRow[] = undoneTodos.slice(0, 20).map(todoToListRow);
 
+  // ─── 프로젝트 (project_tasks 진행률 — 핵심 지표 '내 할 일 · 프로젝트') ──────
+  // 주요업무(todos)와 짝을 이루는 카테고리. project_tasks done/total 집계.
+  const myProjects = await listMyProjectsWithTasks();
+  const allProjectTasks = myProjects.flatMap((p) => p.tasks);
+  const projectTasksTotal = allProjectTasks.length;
+  const projectTasksDone = allProjectTasks.filter(
+    (t) => t.status === "done",
+  ).length;
+
+  // ─── AI 산출물 (ai_work 수 — 핵심 지표) ───────────────────────
+  // mine 모드면 본인(author_email) 산출물만, 전체 모드면 운영부 전체.
+  const aiWorks = await listAiWorks(
+    mine && myEmail ? { authorEmail: myEmail } : undefined,
+  );
+  const aiOutputsCount = aiWorks.length;
+
   // ─── 콘솔 초기 시드용 30건 (전체 도메인, DESC → reverse로 오름차순 변환) ──
   const { rows: consoleWorklogRows } = await listWorklog({ pageSize: 30 });
   const initialConsoleLines = worklogRowsToConsoleLines(consoleWorklogRows);
@@ -310,11 +338,13 @@ export default async function DashboardLivePage({
       title: i.title,
       status: i.status ?? "미처리",
       createdAt: i.created_at,
+      occurredDate: i.occurred_date ?? null,
       listRow: incidentsListRows.find((r) => r.id === i.id)!,
     })),
     todos: undoneTodos.slice(0, 20).map((t) => ({
       id: t.id,
       title: t.title,
+      body: t.body ?? null,
       dueAt: t.due_at ?? null,
       createdAt: t.created_at,
       listRow: todosListRows.find((r) => r.id === t.id) ?? todoToListRow(t),
@@ -373,12 +403,23 @@ export default async function DashboardLivePage({
       listRow: r,
     })),
   };
-  const tableItems = buildLiveTableItems(liveTableSources);
+  // 긴급도 분류·우선순위 피드 모두 현재 학년도(3/1~익년 2월말)로 스코프.
+  // refDate(의미 날짜 우선, 없으면 등록일) 기준. 매년 자동 롤오버.
+  const tableItems = filterByAcademicYear(
+    buildLiveTableItems(liveTableSources),
+    acadYear.start,
+    acadYear.end,
+  );
 
   // ─── 자동 헤드라인(AutoHeadline) 입력 구성 ───────────────────
-  // incidentsUnresolved: 실제 미처리(상태 != '처리완료') 사고 — KPI의 누적 카운트와 별개.
+  // incidentsUnresolved: 미처리(상태 != '처리완료') + 현재 학년도 발생 건.
+  // 핵심 지표 사고처리·긴급도 분류와 동일하게 학년도(occurred_date) 기준으로 통일.
   const unresolvedIncidents = allIncidentsForKpi.filter(
-    (i) => (i.status ?? "미처리") !== "처리완료",
+    (i) =>
+      (i.status ?? "미처리") !== "처리완료" &&
+      !!i.occurred_date &&
+      i.occurred_date >= acadYear.start &&
+      i.occurred_date < acadYear.end,
   );
   // deadlinesToday: 오픈 예정(servicesUpcomingAll) 중 write_start_at 가 오늘(D-0)인 건.
   const deadlinesTodayServices = servicesUpcomingAll.filter(
@@ -473,6 +514,102 @@ export default async function DashboardLivePage({
     },
   ];
 
+  // ─── 실시간 운영 로그 타임라인 — 9 도메인(오늘 KST, 09:00–18:00 배치) ──────
+  // 혼합 시각: 서비스 오픈=write_start_at, 서비스 마감=pay_end_at, 그 외=created_at.
+  const [closingTimelineRes, feedbackTimelinePosts, automationRuns] =
+    await Promise.all([
+      listClosing({
+        closedStatus: "all",
+        operatorName: closingOperatorName,
+        pageSize: 500,
+      }).catch(() => ({ rows: [], total: 0 })),
+      listPosts("feedback").catch(() => [] as PostRow[]),
+      listTodayAutomationRuns(todayYmd).catch(() => []),
+    ]);
+
+  const backupTitle = (b: (typeof backupsFiltered)[number]) =>
+    b.leave_start_date && b.leave_end_date
+      ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
+      : b.summary_md.slice(0, 30);
+
+  const timelineSources: TimelineSource[] = [
+    ...shiftedServices
+      .filter((s) => (mine && myEmail ? s.operator_email === myEmail : true))
+      .map((s) => ({
+        id: `svc-${s.id}`,
+        atIso: s.write_start_at ?? "",
+        domain: "서비스",
+        text: `${s.university_name} · ${s.service_name}`,
+        tone: "info" as const,
+      })),
+    ...closingTimelineRes.rows.map((c) => ({
+      id: `cls-${c.id}`,
+      atIso: c.pay_end_at ?? "",
+      domain: "마감",
+      text: `${c.university_name} · ${c.service_name}`,
+      tone: "info" as const,
+    })),
+    ...allTodos.map((t) => ({
+      id: `todo-${t.id}`,
+      atIso: t.created_at,
+      domain: "할일",
+      text: t.title,
+      tone: "info" as const,
+    })),
+    ...myProjects
+      .flatMap((p) => p.tasks)
+      .map((t) => ({
+        id: `ptask-${t.id}`,
+        atIso: t.created_at,
+        domain: "할일",
+        text: t.name,
+        tone: "info" as const,
+      })),
+    ...automationRuns.map((r) => ({
+      id: r.id,
+      atIso: r.atIso,
+      domain: "자동화",
+      text: r.label,
+      tone: "info" as const,
+    })),
+    ...backupsFiltered.map((b) => ({
+      id: `bak-${b.id}`,
+      atIso: b.created_at,
+      domain: "백업",
+      text: backupTitle(b),
+      tone: "info" as const,
+    })),
+    ...handoverSources.map((h) => ({
+      id: `ho-${h.id}`,
+      atIso: h.createdAt,
+      domain: "인수인계",
+      text: h.title,
+      tone: "info" as const,
+    })),
+    ...allIncidentsForKpi.map((i) => ({
+      id: `inc-${i.id}`,
+      atIso: i.created_at,
+      domain: "사고",
+      text: i.title,
+      tone: "err" as const,
+    })),
+    ...noticeRows.map((p) => ({
+      id: `ntc-${p.id}`,
+      atIso: p.created_at,
+      domain: "공지",
+      text: p.title,
+      tone: "info" as const,
+    })),
+    ...feedbackTimelinePosts.map((p) => ({
+      id: `fb-${p.id}`,
+      atIso: p.created_at,
+      domain: "개선",
+      text: p.title,
+      tone: "info" as const,
+    })),
+  ];
+  const timelineEvents = buildTimelineEvents(timelineSources, todayYmd);
+
   return (
     <LiveOverview
       mine={mine}
@@ -503,12 +640,21 @@ export default async function DashboardLivePage({
           desc: `(${handoverPublishedCount.toLocaleString("ko-KR")}) 진행 완료`,
         },
       }}
+      keyMetrics={{
+        todoWeekly: { done: todosDone, total: todosTotal },
+        todoProject: { done: projectTasksDone, total: projectTasksTotal },
+        aiOutputs: aiOutputsCount,
+        incidents: incidentsUnresolvedCount,
+        serviceClosed: doneCount,
+      }}
       lifecycle={lifecycle}
       tableItems={tableItems}
       initialConsoleLines={initialConsoleLines}
       healthItems={healthItems}
       logLines={initialConsoleLines}
       headline={headline}
+      activityLog={buildActivityLog(consoleWorklogRows)}
+      timelineEvents={timelineEvents}
     />
   );
 }
