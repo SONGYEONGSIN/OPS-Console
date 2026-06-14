@@ -19,6 +19,7 @@ type PersistResult = { ok: boolean; error?: string };
 const DRAG_MIME = "application/x-folio-service";
 
 type DragPayload = {
+  universityName: string;
   serviceName: string;
   ymd: string;
   kind: "start" | "end";
@@ -85,16 +86,15 @@ export function WeeklyView({
     try {
       const payload = JSON.parse(raw) as DragPayload;
       const due = new Date(`${payload.ymd}T00:00:00+09:00`).toISOString();
-      const label = payload.kind === "start" ? "접수 시작" : "접수 종료";
       const newRow: ListRow = {
         id: "",
-        name: `${payload.serviceName} · ${label}`,
+        name: `${payload.universityName} - ${payload.serviceName}`,
         status: "active",
         owner: "",
         priority: "medium",
         done: false,
         dueAt: due,
-        category: payload.serviceName,
+        category: "원서접수",
         progress: 0,
         todoStatus: "todo",
       };
@@ -244,6 +244,7 @@ export function WeeklyView({
                       key={`${sb.service.id}-${sb.kind}-${idx}`}
                       draggable
                       onDragStart={handleDragStart({
+                        universityName: sb.service.university_name,
                         serviceName: sb.service.service_name,
                         ymd: d,
                         kind: sb.kind,
