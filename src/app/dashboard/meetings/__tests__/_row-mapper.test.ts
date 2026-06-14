@@ -45,4 +45,15 @@ describe("meetingToListRow", () => {
     const row = meetingToListRow({ ...sample, meeting_date: null });
     expect(row.meetingDate).toBeNull();
   });
+
+  it("authorName이 주어지면 meetingAuthor는 등록 이름, owner는 이메일 유지", () => {
+    const row = meetingToListRow(sample, "송영신");
+    expect(row.meetingAuthor).toBe("송영신");
+    expect(row.owner).toBe("ys@example.com");
+  });
+
+  it("authorName이 없으면 meetingAuthor는 이메일로 폴백", () => {
+    const row = meetingToListRow(sample);
+    expect(row.meetingAuthor).toBe("ys@example.com");
+  });
 });
