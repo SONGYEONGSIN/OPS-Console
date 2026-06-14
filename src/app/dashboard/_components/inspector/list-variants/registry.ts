@@ -80,6 +80,10 @@ import {
   INCIDENT_REPORT_FILTERS,
   blankIncidentReportRow,
 } from "./incident-reports/filters";
+import { MeetingView } from "./meetings/View";
+import { MeetingEditForm } from "./meetings/EditForm";
+import { MeetingTable } from "./meetings/Table";
+import { MEETING_FILTERS, blankMeetingRow } from "./meetings/filters";
 import { HandoverTable } from "./handover/Table";
 import { HandoverEditForm } from "./handover/EditForm";
 import { HandoverView } from "./handover/View";
@@ -274,6 +278,13 @@ export const variantRegistry = {
     Table: IncidentReportTable,
     Filters: INCIDENT_REPORT_FILTERS,
     blank: blankIncidentReportRow,
+  },
+  meetings: {
+    View: MeetingView,
+    EditForm: MeetingEditForm,
+    Table: MeetingTable,
+    Filters: MEETING_FILTERS,
+    blank: blankMeetingRow,
   },
   handover: {
     View: HandoverView,

@@ -10,6 +10,7 @@ import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
 import { applyWeeklyTodoFilter } from "../inspector/list-variants/weekly-todo/filters";
 import { applyProjectFilter } from "../inspector/list-variants/project/filters";
 import { applyProjectTaskFilter } from "../inspector/list-variants/project-task/filters";
+import { applyMeetingFilter } from "../inspector/list-variants/meetings/filters";
 import type { Variant } from "../inspector/list-variants/types";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
@@ -461,6 +462,16 @@ export type ListRow = {
   dataRequestStatus?: "scheduled" | "sent" | null;
   /** data-request variant — 가장 이른 예약 시각(ISO). status='scheduled'일 때 */
   dataRequestScheduledAt?: string | null;
+  /** meetings variant — 회의 유형 (MEETING_TYPES). page가 meeting.type 매핑 */
+  meetingType?: "regular" | "field" | "project" | "memo" | "urgent";
+  /** meetings variant — 회의 제목 */
+  meetingTitle?: string;
+  /** meetings variant — 회의 일시 (표시용 문자열, nullable) */
+  meetingDate?: string | null;
+  /** meetings variant — 작성자 (표시용 이름/이메일) */
+  meetingAuthor?: string;
+  /** meetings variant — 작성 상태 (draft/sent) */
+  meetingStatus?: "draft" | "sent";
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -469,6 +480,11 @@ export type MyTodoFilter = "done" | "undone" | "today" | "due-soon";
 export type CohortStatus = NonNullable<ListRow["cohortStatus"]>;
 /** backup variant 전용 chip values */
 export type BackupFilter = "mine" | "mine_substitute" | "mail_failed";
+/** meetings variant chip values — 전체 + 유형(MeetingType) + 상태(MeetingStatus) */
+export type MeetingFilter =
+  | "all"
+  | NonNullable<ListRow["meetingType"]>
+  | NonNullable<ListRow["meetingStatus"]>;
 
 export type Filter =
   | ListRow["status"]
@@ -476,7 +492,8 @@ export type Filter =
   | ScheduleType
   | MyTodoFilter
   | CohortStatus
-  | BackupFilter;
+  | BackupFilter
+  | MeetingFilter;
 
 /**
  * variant별 필터 적용. 단순 분기만 ListPattern에 유지 (my-todo는 복잡한 시간 비교
@@ -495,6 +512,7 @@ function filterRows(
   if (variant === "weekly-todo") return applyWeeklyTodoFilter(rows, filter);
   if (variant === "project") return applyProjectFilter(rows, filter);
   if (variant === "project-task") return applyProjectTaskFilter(rows, filter);
+  if (variant === "meetings") return applyMeetingFilter(rows, filter);
   if (variant === "cohort")
     return rows.filter((r) => r.cohortStatus === filter);
   if (variant === "receivables") {
