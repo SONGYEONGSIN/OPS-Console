@@ -19,6 +19,8 @@
   --faint: #a8a08a;
   --line: #15120c;
   --line-soft: rgba(21, 18, 12, 0.12);
+  /* 검색창 기본 배경 — 세이지 틴트(5%). 색 변경은 이 한 줄만 수정. */
+  --search-field-bg: rgba(85, 107, 47, 0.05);
   --vermilion: #b8331e;
   --vermilion-deep: #8e2412;
   --indigo: #1f3a5f;
@@ -129,6 +131,7 @@
   --color-faint: var(--faint);
   --color-line: var(--line);
   --color-line-soft: var(--line-soft);
+  --color-search-field-bg: var(--search-field-bg);
   --color-vermilion: var(--vermilion);
   --color-vermilion-deep: var(--vermilion-deep);
   --color-indigo: var(--indigo);
