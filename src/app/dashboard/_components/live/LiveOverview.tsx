@@ -142,7 +142,7 @@ function LiveOverviewInner({
   return (
     <div className="h-full overflow-y-auto bg-paper">
       <div className="px-4 py-8 md:px-8 md:py-10">
-        <div className="mx-auto max-w-[1480px] border border-line bg-washi-raised p-6 shadow-offset md:p-9">
+        <div className="mx-auto max-w-[1480px] border border-line bg-situation-bg p-6 shadow-offset md:p-9">
           <Masthead mine={mine} activityLog={activityLog} />
           <ActivityTimeline entries={timelineEvents} />
           <BroadsheetHeadline input={headline} />
