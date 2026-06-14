@@ -532,6 +532,19 @@ body::before {
 .bs-tl-ev .cal.dn {
   top: 18px;
 }
+/* 가장자리 이벤트 라벨 — 컨테이너 밖으로 넘침 방지 (오른쪽 끝/왼쪽 끝 안쪽 정렬) */
+.bs-tl-ev .cal.cal-end {
+  left: auto;
+  right: 0;
+  transform: none;
+  text-align: right;
+}
+.bs-tl-ev .cal.cal-start {
+  left: 0;
+  right: auto;
+  transform: none;
+  text-align: left;
+}
 .bs-tl-now {
   position: absolute;
   top: 44px;

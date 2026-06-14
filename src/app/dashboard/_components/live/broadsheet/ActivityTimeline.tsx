@@ -58,7 +58,7 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
             {businessDay && (
               <span className="text-ink-soft" suppressHydrationWarning>
                 {" "}
-                {countdown ? `(퇴근까지 ${countdown})` : "(업무 종료)"}
+                {countdown ? `(퇴근까지 ${countdown} 남음)` : "(업무 종료)"}
               </span>
             )}
           </span>
@@ -75,21 +75,27 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
               <div className="lab">{String(h).padStart(2, "0")}</div>
             </div>
           ))}
-          {events.map((ev, i) => (
+          {events.map((ev, i) => {
+            const pct = timelinePercent(ev.minutesOfDay);
+            // 가장자리 이벤트는 라벨이 컨테이너 밖으로 넘치지 않도록 안쪽 정렬
+            // (오른쪽 끝 → 라벨 우측을 점에 맞춰 왼쪽으로, 왼쪽 끝 → 그 반대)
+            const edge = pct >= 80 ? "cal-end" : pct <= 14 ? "cal-start" : "";
+            return (
             <div
               key={ev.id}
               className="bs-tl-ev"
-              style={{ left: `${timelinePercent(ev.minutesOfDay)}%` }}
+              style={{ left: `${pct}%` }}
             >
               <div className={`dot ${timelineDotClass(ev.tone)}`} />
-              <div className={`cal ${i % 2 === 0 ? "up" : "dn"}`}>
+              <div className={`cal ${i % 2 === 0 ? "up" : "dn"} ${edge}`}>
                 <span className="t">{ev.hms.slice(0, 5)}</span>
                 <div className={`m ${ev.tone === "err" ? "text-vermilion" : ""}`}>
                   {ev.text}
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
           <div
             className="bs-tl-now"
             style={{ left: `${nowPct}%` }}
