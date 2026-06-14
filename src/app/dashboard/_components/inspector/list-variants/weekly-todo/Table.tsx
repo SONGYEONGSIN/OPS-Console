@@ -109,7 +109,7 @@ export function WeeklyTodoTable({
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="font-mono text-ink-soft">{progress}%</span>
+                    <span className="text-ink-soft tabular-nums">{progress}%</span>
                   </div>
                 </td>
                 <td className="px-3 py-2">
