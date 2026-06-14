@@ -1,12 +1,14 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SEARCH_QUERIES } from "@/features/insight-videos/schemas";
+import { INSIGHT_CHANNELS } from "@/features/insight-videos/schemas";
 import type { AutomationRunResult } from "../types";
 
-export const MIN_VIEW_COUNT = 10_000;
 export const MAX_UPSERT_PER_RUN = 10;
-export const PUBLISHED_AFTER_DAYS = 14;
+export const PUBLISHED_AFTER_DAYS = 30;
 export const VIDEOS_LIST_BATCH = 50;
+export const CHANNELS_LIST_BATCH = 50;
+/** 채널별 최근 업로드 조회 건수 (playlistItems.list 1콜 = 1 unit). */
+export const PLAYLIST_FETCH = 20;
 export const CLEANUP_DAYS = 60;
 
 export type CollectedVideo = {
@@ -16,6 +18,7 @@ export type CollectedVideo = {
   thumbnail_url: string;
   published_at: string;
   description: string | null;
+  /** 수집 출처 채널명 (insight_videos.keyword 컬럼에 저장). */
   keyword: string;
   view_count?: number;
 };
@@ -37,111 +40,19 @@ export function dedupeByVideoId(items: CollectedVideo[]): CollectedVideo[] {
   return Array.from(map.values());
 }
 
-export function filterPopular(rows: CollectedVideo[], minViews: number): CollectedVideo[] {
-  return rows.filter((r) => r.view_count == null || r.view_count >= minViews);
+/** published_at이 cutoff(ISO) 이후(>=)인 영상만 유지. */
+export function filterByPublishedAfter(
+  rows: CollectedVideo[],
+  cutoffIso: string,
+): CollectedVideo[] {
+  return rows.filter((r) => r.published_at >= cutoffIso);
 }
 
+/** 조회수 내림차순 정렬 후 상위 N개. */
 export function rankTopN(rows: CollectedVideo[], n: number): CollectedVideo[] {
   return [...rows]
     .sort((a, b) => (b.view_count ?? -1) - (a.view_count ?? -1))
     .slice(0, n);
-}
-
-/** 제목에 한글(완성형 음절)이 포함되어 있는지. 국내 영상 판별 휴리스틱. */
-export function hasKorean(text: string): boolean {
-  return /[가-힣]/.test(text);
-}
-
-/**
- * 국내 영상만 유지 — 제목에 한글이 없는 영상 제외.
- * regionCode/relevanceLanguage는 우선순위 힌트일 뿐 외국 영상을 제외하지 않으므로,
- * 제목 한글 여부로 실제 필터링한다.
- */
-export function filterKoreanTitles(rows: CollectedVideo[]): CollectedVideo[] {
-  return rows.filter((r) => hasKorean(r.title));
-}
-
-/**
- * 강한 신호어 — 하나만 있어도 AI/개발 콘텐츠로 인정 (도구·모델·개발 용어).
- */
-export const AI_STRONG_TERMS = [
-  "claude",
-  "클로드",
-  "gpt",
-  "chatgpt",
-  "챗gpt",
-  "llm",
-  "codex",
-  "코덱스",
-  "cursor",
-  "copilot",
-  "코파일럿",
-  "gemini",
-  "제미나이",
-  "openai",
-  "오픈ai",
-  "anthropic",
-  "바이브코딩",
-  "바이브 코딩",
-  "코딩",
-  "coding",
-  "프로그래밍",
-  "개발자",
-  "프롬프트",
-  "prompt",
-  "에이전트",
-  "agent",
-  "mcp",
-  "claude code",
-  "클로드코드",
-] as const;
-
-/** 약한 신호어 — 'AI' 단독은 뉴스/일상도 매치하므로, 맥락어와 함께일 때만 인정. */
-export const AI_MENTION_TERMS = ["ai", "인공지능", "a.i"] as const;
-
-/** 맥락어 — 'AI'가 도구/업무/개발 맥락임을 보여주는 단어. */
-export const AI_CONTEXT_TERMS = [
-  "툴",
-  "도구",
-  "활용",
-  "업무",
-  "자동화",
-  "디자인",
-  "개발",
-  "코딩",
-  "워크플로",
-  "워크플로우",
-  "생산성",
-  "환경",
-  "구축",
-  "적용",
-  "스킬",
-  "빌드",
-  "코드",
-  "앱 ",
-  "서비스 ",
-] as const;
-
-/**
- * 제목·설명이 AI/개발 콘텐츠인지 2단계로 판정.
- * 1) 강한 신호어가 있으면 인정
- * 2) 'AI/인공지능' 언급은 맥락어(툴·업무·자동화·개발 등)와 함께일 때만 인정
- * → 'AI'만 언급한 뉴스/정치/일상 클립과 모호 검색어 노이즈를 배제.
- */
-export function isAiRelevant(v: Pick<CollectedVideo, "title" | "description">): boolean {
-  // 강한 신호어는 설명까지 인정(claude/gpt 등은 명확). 단, 약한 'AI'+맥락어는
-  // 제목 기준으로만 본다 — 설명의 해시태그(#자동화 #업무 등)가 뉴스/일상을 통과시키는 노이즈 차단.
-  const full = `${v.title} ${v.description ?? ""}`.toLowerCase();
-  if (AI_STRONG_TERMS.some((t) => full.includes(t))) return true;
-  const title = v.title.toLowerCase();
-  const mentionsAi = AI_MENTION_TERMS.some((t) => title.includes(t));
-  const hasContext = AI_CONTEXT_TERMS.some((t) => title.includes(t));
-  return mentionsAi && hasContext;
-}
-
-/** AI/개발 무관 영상 제외. */
-export function filterAiRelevant(rows: CollectedVideo[]): CollectedVideo[] {
-  return rows.filter(isAiRelevant);
 }
 
 /** 차단 목록(insight_video_blocklist)에 등록된 video_id를 제외 — 삭제된 영상 재수집 방지. */
@@ -166,17 +77,26 @@ async function getBlockedVideoIds(): Promise<Set<string>> {
   return new Set((data ?? []).map((r) => r.video_id as string));
 }
 
-type YtSearchItem = {
-  id?: { videoId?: string };
+// ─── YouTube Data API 응답 타입 ────────────────────────────────
+type YtChannelItem = {
+  id?: string;
+  contentDetails?: { relatedPlaylists?: { uploads?: string } };
+};
+type YtChannelsResponse = { items?: YtChannelItem[] };
+
+type YtPlaylistItem = {
   snippet?: {
     title?: string;
-    channelTitle?: string;
-    thumbnails?: { medium?: { url?: string }; default?: { url?: string } };
     publishedAt?: string;
     description?: string;
+    thumbnails?: { medium?: { url?: string }; default?: { url?: string } };
+    resourceId?: { videoId?: string };
+    videoOwnerChannelTitle?: string;
+    channelTitle?: string;
   };
 };
-type YtSearchResponse = { items?: YtSearchItem[] };
+type YtPlaylistItemsResponse = { items?: YtPlaylistItem[] };
+
 type YtVideoItem = {
   id?: string;
   snippet?: { description?: string };
@@ -184,53 +104,93 @@ type YtVideoItem = {
 };
 type YtVideosResponse = { items?: YtVideoItem[] };
 
+/** channels.list(contentDetails) 응답 → channelId → uploads 플레이리스트 ID 매핑. */
+export function extractUploadsPlaylists(
+  json: YtChannelsResponse,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const it of json.items ?? []) {
+    const id = it.id;
+    const uploads = it.contentDetails?.relatedPlaylists?.uploads;
+    if (id && uploads) map.set(id, uploads);
+  }
+  return map;
+}
+
 /**
- * search.list 쿼리 파라미터. 국내 우선 — regionCode=KR + relevanceLanguage=ko로
- * 한국 지역/한국어 관련성이 높은 영상을 우선 노출(하드 필터 아님).
+ * playlistItems.list(snippet) 응답 → CollectedVideo[].
+ * 비공개("Private video")·삭제("Deleted video")·videoId/썸네일 없는 항목은 제외.
+ * keyword 컬럼에는 출처 채널명을 저장한다.
  */
-export function buildSearchParams(
-  keyword: string,
-  publishedAfter: string,
-  apiKey: string,
-): URLSearchParams {
-  return new URLSearchParams({
-    part: "snippet",
-    type: "video",
-    maxResults: "10",
-    order: "viewCount",
-    regionCode: "KR",
-    relevanceLanguage: "ko",
-    publishedAfter,
-    q: keyword,
-    key: apiKey,
+export function mapPlaylistItemsToVideos(
+  json: YtPlaylistItemsResponse,
+  channelName: string,
+): CollectedVideo[] {
+  return (json.items ?? []).flatMap((it) => {
+    const s = it.snippet;
+    const video_id = s?.resourceId?.videoId ?? "";
+    const title = s?.title ?? "";
+    if (!video_id || !title || title === "Private video" || title === "Deleted video") {
+      return [];
+    }
+    const thumbnail_url =
+      s?.thumbnails?.medium?.url ?? s?.thumbnails?.default?.url ?? "";
+    if (!thumbnail_url) return [];
+    return [
+      {
+        video_id,
+        title,
+        channel_title: s?.videoOwnerChannelTitle ?? s?.channelTitle ?? channelName,
+        thumbnail_url,
+        published_at: s?.publishedAt ?? new Date().toISOString(),
+        description: (s?.description ?? "").slice(0, 600) || null,
+        keyword: channelName,
+      },
+    ];
   });
 }
 
-async function searchVideos(
-  keyword: string,
+/** 채널 ID 목록 → uploads 플레이리스트 매핑 (channels.list 50개씩 batch). */
+async function fetchUploadsPlaylists(
+  channelIds: string[],
   apiKey: string,
-  publishedAfter: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  for (const batch of batchIds(channelIds, CHANNELS_LIST_BATCH)) {
+    const url = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${batch.join(",")}&key=${apiKey}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`channels.list HTTP ${res.status}: ${body.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as YtChannelsResponse;
+    for (const [k, v] of extractUploadsPlaylists(json)) map.set(k, v);
+  }
+  return map;
+}
+
+/** uploads 플레이리스트의 최근 업로드 영상 조회. */
+async function fetchPlaylistVideos(
+  playlistId: string,
+  channelName: string,
+  apiKey: string,
 ): Promise<CollectedVideo[]> {
-  const params = buildSearchParams(keyword, publishedAfter, apiKey);
-  const url = `https://www.googleapis.com/youtube/v3/search?${params.toString()}`;
+  const params = new URLSearchParams({
+    part: "snippet",
+    playlistId,
+    maxResults: String(PLAYLIST_FETCH),
+    key: apiKey,
+  });
+  const url = `https://www.googleapis.com/youtube/v3/playlistItems?${params.toString()}`;
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`search.list ${keyword} HTTP ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(
+      `playlistItems ${channelName} HTTP ${res.status}: ${body.slice(0, 200)}`,
+    );
   }
-  const json = (await res.json()) as YtSearchResponse;
-  return (json.items ?? []).map((it) => ({
-    video_id: it.id?.videoId ?? "",
-    title: it.snippet?.title ?? "",
-    channel_title: it.snippet?.channelTitle ?? "",
-    thumbnail_url:
-      it.snippet?.thumbnails?.medium?.url ??
-      it.snippet?.thumbnails?.default?.url ??
-      "",
-    published_at: it.snippet?.publishedAt ?? new Date().toISOString(),
-    description: (it.snippet?.description ?? "").slice(0, 600) || null,
-    keyword,
-  }));
+  const json = (await res.json()) as YtPlaylistItemsResponse;
+  return mapPlaylistItemsToVideos(json, channelName);
 }
 
 export async function runInsightsCollect(): Promise<AutomationRunResult> {
@@ -243,35 +203,54 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
     Date.now() - PUBLISHED_AFTER_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const collected: CollectedVideo[] = [];
   const errors: string[] = [];
-  for (const q of SEARCH_QUERIES) {
+
+  // 1) 채널 ID → uploads 플레이리스트
+  let uploadsMap: Map<string, string>;
+  try {
+    uploadsMap = await fetchUploadsPlaylists(
+      INSIGHT_CHANNELS.map((c) => c.id),
+      apiKey,
+    );
+  } catch (e) {
+    return {
+      ok: false,
+      message: `채널 조회 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
+  // 2) 채널별 최근 업로드 수집
+  const collected: CollectedVideo[] = [];
+  for (const ch of INSIGHT_CHANNELS) {
+    const playlistId = uploadsMap.get(ch.id);
+    if (!playlistId) {
+      errors.push(`${ch.name}: uploads 플레이리스트 없음`);
+      continue;
+    }
     try {
-      const items = await searchVideos(q, apiKey, publishedAfter);
-      for (const it of items) {
-        if (!it.video_id || !it.title || !it.channel_title || !it.thumbnail_url) continue;
-        collected.push(it);
-      }
+      const items = await fetchPlaylistVideos(playlistId, ch.name, apiKey);
+      collected.push(...items);
     } catch (e) {
       errors.push(e instanceof Error ? e.message : String(e));
     }
   }
 
-  const deduped = dedupeByVideoId(collected);
-  // 국내 영상만 — 제목에 한글 없는 외국 영상 제외(regionCode는 우선순위 힌트일 뿐 필터 아님).
-  const korean = filterKoreanTitles(deduped);
-  // 삭제(blocklist 등록)된 영상은 재수집하지 않는다. videos.list 보강 전에 걸러 quota도 절약.
+  // 3) 최근 30일 + 중복 제거 + 차단 제외
+  const recent = filterByPublishedAfter(collected, publishedAfter);
+  const deduped = dedupeByVideoId(recent);
   const blocked = await getBlockedVideoIds();
-  const rows = excludeBlocked(korean, blocked);
+  const rows = excludeBlocked(deduped, blocked);
   if (rows.length === 0) {
     return {
       ok: errors.length === 0,
-      message: errors.length ? `수집 실패: ${errors.length}건` : "수집된 영상이 없습니다.",
+      message: errors.length
+        ? `수집 실패: ${errors.length}건`
+        : "최근 30일 신규 영상이 없습니다.",
       details: { collected: 0, errors: errors.length },
     };
   }
 
-  // videos.list 50개씩 batch — full description + view_count 보강
+  // 4) videos.list 50개씩 batch — full description + view_count 보강
   const idBatches = batchIds(rows.map((r) => r.video_id), VIDEOS_LIST_BATCH);
   const descMap = new Map<string, string>();
   const viewMap = new Map<string, number>();
@@ -305,18 +284,8 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
 
   const errorSuffix = () => (errors.length ? ` (${errors.length}건 오류)` : "");
 
-  // AI/개발 관련성 필터 — full description 확보 후 무관 콘텐츠 제외(모호 검색어 노이즈 차단)
-  const relevant = filterAiRelevant(enriched);
-  const topN = rankTopN(filterPopular(relevant, MIN_VIEW_COUNT), MAX_UPSERT_PER_RUN);
-  // 주의: 적재 0건이면 DB write가 없어 collected_at이 갱신되지 않는다.
-  // 쿨다운은 max(collected_at) 기반이므로 이 경로에서는 쿨다운이 리셋되지 않는다 (의도된 트레이드오프).
-  if (topN.length === 0) {
-    return {
-      ok: true,
-      message: `임계값을 넘는 신규 영상이 없습니다.${errorSuffix()}`,
-      details: { collected: rows.length, upserted: 0, errors: errors.length },
-    };
-  }
+  // 5) 조회수 높은 순 상위 N (관련성/조회수 임계 필터 없음 — curated 채널)
+  const topN = rankTopN(enriched, MAX_UPSERT_PER_RUN);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase

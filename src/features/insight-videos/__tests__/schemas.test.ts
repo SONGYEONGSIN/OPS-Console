@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { insightVideoRowSchema, SEARCH_QUERIES } from "../schemas";
+import { insightVideoRowSchema, INSIGHT_CHANNELS } from "../schemas";
 
 const validRow = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -37,23 +37,29 @@ describe("insightVideoRowSchema", () => {
   });
 });
 
-describe("SEARCH_QUERIES", () => {
-  it("길이는 10", () => {
-    expect(SEARCH_QUERIES.length).toBe(10);
+describe("INSIGHT_CHANNELS", () => {
+  it("채널 20개", () => {
+    expect(INSIGHT_CHANNELS.length).toBe(20);
   });
 
-  it("바이브코딩 키워드 포함", () => {
-    expect(SEARCH_QUERIES).toContain("바이브코딩");
+  it("모든 채널 id는 UC로 시작하고 중복 없음", () => {
+    for (const c of INSIGHT_CHANNELS) {
+      expect(c.id).toMatch(/^UC/);
+      expect(c.name.length).toBeGreaterThan(0);
+    }
+    const ids = INSIGHT_CHANNELS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("AI 맥락 키워드 — 모호어 제거(하네스/CODEX) 후 명확화", () => {
-    expect(SEARCH_QUERIES).toContain("AI 업무 자동화");
-    expect(SEARCH_QUERIES).not.toContain("자동화");
-    expect(SEARCH_QUERIES).not.toContain("AI자동화");
-    // 모호한 단독 검색어 제거 → AI 맥락 키워드로 대체
-    expect(SEARCH_QUERIES).not.toContain("하네스");
-    expect(SEARCH_QUERIES).not.toContain("CODEX");
-    expect(SEARCH_QUERIES).toContain("OpenAI Codex");
-    expect(SEARCH_QUERIES).toContain("AI 코딩 에이전트");
+  it("Eric Tech는 르완다 채널이 아닌 확정 ID 사용", () => {
+    const eric = INSIGHT_CHANNELS.find((c) => c.name === "Eric Tech");
+    expect(eric?.id).toBe("UCOXRjenlq9PmlTqd_JhAbMQ");
+  });
+
+  it("주요 채널 포함", () => {
+    const names = INSIGHT_CHANNELS.map((c) => c.name);
+    expect(names).toContain("바이브랩스");
+    expect(names).toContain("AgentOS");
+    expect(names).toContain("디자인하는AI");
   });
 });

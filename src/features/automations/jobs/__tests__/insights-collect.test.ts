@@ -1,61 +1,90 @@
 import { describe, it, expect } from "vitest";
 import {
-  isAiRelevant,
-  filterAiRelevant,
+  filterByPublishedAfter,
+  mapPlaylistItemsToVideos,
+  extractUploadsPlaylists,
   type CollectedVideo,
 } from "../insights-collect";
 
 function vid(over: Partial<CollectedVideo>): CollectedVideo {
   return {
     video_id: "x",
-    title: "",
+    title: "t",
     channel_title: "c",
-    thumbnail_url: "t",
-    published_at: "2026-01-01",
+    thumbnail_url: "th",
+    published_at: "2026-06-01T00:00:00Z",
     description: null,
-    keyword: "하네스",
+    keyword: "바이브랩스",
     ...over,
   };
 }
 
-describe("isAiRelevant", () => {
-  it("제목에 AI 관련어가 있으면 true", () => {
-    expect(isAiRelevant(vid({ title: "AI 에이전트 하네스 구축법" }))).toBe(true);
-    expect(isAiRelevant(vid({ title: "클로드 코드로 바이브코딩" }))).toBe(true);
-    expect(isAiRelevant(vid({ title: "ChatGPT 자동화 꿀팁" }))).toBe(true);
-  });
-
-  it("설명에만 AI 관련어가 있어도 true", () => {
-    expect(
-      isAiRelevant(vid({ title: "개발 일상", description: "Claude로 코딩" })),
-    ).toBe(true);
-  });
-
-  it("AI 무관 콘텐츠(성인용품/반려동물 하네스 등)는 false", () => {
-    expect(isAiRelevant(vid({ title: "강아지 하네스 추천 5종" }))).toBe(false);
-    expect(
-      isAiRelevant(vid({ title: "성인용품 하네스 리뷰", description: "착용감" })),
-    ).toBe(false);
-  });
-
-  it("'AI'만 언급한 뉴스/정치는 false (맥락어 없음)", () => {
-    expect(
-      isAiRelevant(vid({ title: "AI 탓하던 법제처장… 알고 보니 질문이 문제였다" })),
-    ).toBe(false);
-    expect(isAiRelevant(vid({ title: "AI가 바꾼 우리 동네 풍경" }))).toBe(false);
-  });
-
-  it("'AI' + 맥락어(툴/업무/자동화 등)는 true", () => {
-    expect(isAiRelevant(vid({ title: "AI 툴 5개 정리" }))).toBe(true);
-    expect(isAiRelevant(vid({ title: "AI 업무 자동화 따라하기" }))).toBe(true);
-    expect(isAiRelevant(vid({ title: "AI 디자인 활용법" }))).toBe(true);
-  });
-
-  it("filterAiRelevant — 무관 영상 제외", () => {
+describe("filterByPublishedAfter", () => {
+  it("cutoff 이후(>=) 영상만 유지", () => {
     const rows = [
-      vid({ video_id: "a", title: "AI 자동화 워크플로우" }),
-      vid({ video_id: "b", title: "강아지 하네스 추천" }),
+      vid({ video_id: "a", published_at: "2026-06-10T00:00:00Z" }),
+      vid({ video_id: "b", published_at: "2026-05-01T00:00:00Z" }),
+      vid({ video_id: "c", published_at: "2026-05-15T00:00:00Z" }),
     ];
-    expect(filterAiRelevant(rows).map((r) => r.video_id)).toEqual(["a"]);
+    const out = filterByPublishedAfter(rows, "2026-05-15T00:00:00Z");
+    expect(out.map((r) => r.video_id)).toEqual(["a", "c"]);
   });
 });
+
+describe("mapPlaylistItemsToVideos", () => {
+  it("playlistItems 응답을 CollectedVideo로 변환 + keyword=채널명", () => {
+    const json = {
+      items: [
+        {
+          snippet: {
+            title: "클로드 코드 입문",
+            publishedAt: "2026-06-05T00:00:00Z",
+            description: "본문",
+            thumbnails: { medium: { url: "https://i/medium.jpg" } },
+            resourceId: { videoId: "vid1" },
+            videoOwnerChannelTitle: "바이브랩스",
+          },
+        },
+      ],
+    };
+    const out = mapPlaylistItemsToVideos(json, "바이브랩스");
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      video_id: "vid1",
+      title: "클로드 코드 입문",
+      channel_title: "바이브랩스",
+      thumbnail_url: "https://i/medium.jpg",
+      published_at: "2026-06-05T00:00:00Z",
+      keyword: "바이브랩스",
+    });
+  });
+
+  it("비공개/삭제/썸네일 없는 영상은 제외", () => {
+    const json = {
+      items: [
+        { snippet: { title: "Private video", resourceId: { videoId: "p1" }, thumbnails: { medium: { url: "x" } } } },
+        { snippet: { title: "Deleted video", resourceId: { videoId: "d1" }, thumbnails: { medium: { url: "x" } } } },
+        { snippet: { title: "정상", resourceId: { videoId: "ok" } } }, // 썸네일 없음
+        { snippet: { title: "노아이디", resourceId: {}, thumbnails: { medium: { url: "x" } } } },
+      ],
+    };
+    expect(mapPlaylistItemsToVideos(json, "데키랩")).toHaveLength(0);
+  });
+});
+
+describe("extractUploadsPlaylists", () => {
+  it("channelId → uploads 플레이리스트 매핑", () => {
+    const json = {
+      items: [
+        { id: "C1", contentDetails: { relatedPlaylists: { uploads: "UU1" } } },
+        { id: "C2", contentDetails: { relatedPlaylists: { uploads: "UU2" } } },
+        { id: "C3", contentDetails: {} }, // uploads 없음 → 제외
+      ],
+    };
+    const m = extractUploadsPlaylists(json);
+    expect(m.get("C1")).toBe("UU1");
+    expect(m.get("C2")).toBe("UU2");
+    expect(m.has("C3")).toBe(false);
+  });
+});
+
