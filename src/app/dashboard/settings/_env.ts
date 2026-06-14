@@ -98,6 +98,10 @@ export function getEnvSnapshot(): EnvSnapshot {
         ),
         preview: preview(process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID),
       },
+      meetingsFolderId: {
+        configured: Boolean(process.env.SHAREPOINT_MEETINGS_FOLDER_ID),
+        preview: preview(process.env.SHAREPOINT_MEETINGS_FOLDER_ID),
+      },
       smileediDriveId: {
         configured: Boolean(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
         preview: preview(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
