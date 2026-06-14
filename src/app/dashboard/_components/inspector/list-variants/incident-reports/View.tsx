@@ -154,14 +154,20 @@ export function IncidentReportView({
 
       {status === "approved" &&
         (row.incidentReportIsApprover || row.incidentReportCanSend) && (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => run(() => revokeApproval(row.id))}
-            className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
-          >
-            {pending ? "처리 중…" : "승인 취소 (작성중으로 되돌리기)"}
-          </button>
+          <div className="space-y-1">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(() => revokeApproval(row.id))}
+              className="w-full cursor-pointer border border-vermilion bg-transparent px-3 py-1.5 text-sm text-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
+            >
+              {pending ? "처리 중…" : "승인 취소 (작성중으로 되돌리기)"}
+            </button>
+            <p className="text-2xs text-muted">
+              승인을 취소하면 시행번호가 회수되어 공문관리대장에서 제거됩니다.
+              재승인 후 PDF 발급 시 새 시행번호가 발급됩니다.
+            </p>
+          </div>
         )}
 
       {status === "sent" && row.incidentReportIsAdmin && (
