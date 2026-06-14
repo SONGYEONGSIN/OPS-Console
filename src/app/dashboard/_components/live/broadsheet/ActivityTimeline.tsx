@@ -32,25 +32,34 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
   }, []);
 
   const groups = groupTimelineEvents(entries, 6);
-  // 클릭으로 펼친 그룹(lead.id 기준). 멤버 2건 이상 그룹만 토글 가능.
-  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  // 클릭으로 펼친 그룹 팝오버 — 클릭한 (+N) 버튼 화면 좌표 기준 fixed 드롭다운.
+  // 카드가 세로로 좁아 inline 절대배치는 라벨과 겹치므로 fixed로 띄운다.
+  const [popover, setPopover] = useState<{
+    id: string;
+    members: ActivityLogEntry[];
+    x: number;
+    y: number;
+  } | null>(null);
   const tlRef = useRef<HTMLDivElement>(null);
-  // 외부 클릭 / Escape 시 팝오버 닫기. 마커·팝오버 내부 클릭은 무시.
+  // 외부 클릭 / Escape / 스크롤 시 팝오버 닫기. 마커·팝오버 내부 클릭은 무시.
   useEffect(() => {
-    if (!openGroupId) return;
+    if (!popover) return;
     const onDown = (e: MouseEvent) => {
-      if (!tlRef.current?.contains(e.target as Node)) setOpenGroupId(null);
+      if (!tlRef.current?.contains(e.target as Node)) setPopover(null);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenGroupId(null);
+      if (e.key === "Escape") setPopover(null);
     };
+    const onScroll = () => setPopover(null);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
     };
-  }, [openGroupId]);
+  }, [popover]);
 
   // 주말·공휴일엔 퇴근 카운트다운 미표시 (영업일만).
   const businessDay = isKstBusinessDay(now);
@@ -103,7 +112,7 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
             const extra = g.members.length - 1;
             const expandable = extra > 0;
             const up = i % 2 === 0;
-            const open = openGroupId === g.lead.id;
+            const open = popover?.id === g.lead.id;
             const calClass = `cal ${up ? "up" : "dn"} ${edge}${
               expandable ? " cal-group" : ""
             }`;
@@ -126,45 +135,55 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
                     type="button"
                     className={calClass}
                     aria-expanded={open}
-                    onClick={() =>
-                      setOpenGroupId((cur) =>
-                        cur === g.lead.id ? null : g.lead.id,
-                      )
-                    }
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setPopover((cur) =>
+                        cur?.id === g.lead.id
+                          ? null
+                          : {
+                              id: g.lead.id,
+                              members: g.members,
+                              x: r.left,
+                              y: r.bottom + 6,
+                            },
+                      );
+                    }}
                   >
                     {label}
                   </button>
                 ) : (
                   <div className={calClass}>{label}</div>
                 )}
-                {open && (
-                  <div
-                    className={`bs-tl-pop z-[60] ${up ? "pop-dn" : "pop-up"} ${edge}`}
-                  >
-                    <ul className="divide-y divide-line-soft">
-                      {g.members.map((m) => (
-                        <li
-                          key={m.id}
-                          className="flex gap-2 px-2 py-1 hover:bg-washi-raised"
-                        >
-                          <span className="t shrink-0 tabular-nums">
-                            {m.hms.slice(0, 5)}
-                          </span>
-                          <span
-                            className={`min-w-0 ${
-                              m.tone === "err" ? "text-vermilion" : ""
-                            }`}
-                          >
-                            {m.text}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             );
           })}
+          {popover && (
+            <div
+              className="fixed z-[200] w-[280px] max-h-[260px] overflow-y-auto border border-line bg-paper text-[11px] font-bold leading-snug [box-shadow:3px_3px_0_var(--line-soft)]"
+              style={{
+                left: `${Math.max(8, Math.min(popover.x, (typeof window !== "undefined" ? window.innerWidth : 1400) - 288))}px`,
+                top: `${popover.y}px`,
+              }}
+            >
+              <ul className="divide-y divide-line-soft">
+                {popover.members.map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex gap-2 px-2.5 py-1.5 hover:bg-washi-raised"
+                  >
+                    <span className="shrink-0 tabular-nums text-[10px] text-muted">
+                      {m.hms.slice(0, 5)}
+                    </span>
+                    <span
+                      className={`min-w-0 ${m.tone === "err" ? "text-vermilion" : ""}`}
+                    >
+                      {m.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div
             className="bs-tl-now"
             style={{ left: `${nowPct}%` }}
