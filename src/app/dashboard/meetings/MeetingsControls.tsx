@@ -24,7 +24,7 @@ const LABEL_TO_TYPE = new Map<string, MeetingType>(
 /**
  * meetings 페이지 — 유형 select(?type) + 검색 input(?q).
  * 본인 필터 chip과 페이지네이션은 별도 (ScopeChips / ListPagination).
- * contracts 패턴과 동일하나 select를 검색창 앞(왼쪽)에 배치한다.
+ * contracts 패턴과 동일 — 검색창(넓게) 먼저, 유형 select를 오른쪽에 배치(기본 화면 구성).
  */
 export function MeetingsControls() {
   const router = useRouter();
@@ -63,6 +63,7 @@ export function MeetingsControls() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-7 pt-3">
+      <ListSearch value={q} onChange={setQ} placeholder="제목·작성자 검색" />
       <ListSelect
         value={typeLabel}
         onChange={(label) =>
@@ -72,7 +73,6 @@ export function MeetingsControls() {
         placeholder="유형 전체"
         ariaLabel="유형 필터"
       />
-      <ListSearch value={q} onChange={setQ} placeholder="제목·작성자 검색" />
     </div>
   );
 }
