@@ -37,7 +37,7 @@ export function TriageColumns({ items, onSelect }: Props) {
       {COLUMNS.map((col) => {
         const colItems = grouped[col.bucket];
         return (
-          <div key={col.bucket} className="border border-line bg-cream">
+          <div key={col.bucket} className="border border-line bg-situation-bg">
             <div
               className={`flex justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest ${
                 col.accent
