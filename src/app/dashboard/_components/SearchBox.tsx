@@ -107,7 +107,7 @@ export function SearchBox() {
 
   return (
     <div ref={wrapRef} className="relative w-full">
-      <div className="flex w-full min-w-[240px] items-center gap-1.5 border border-line-soft bg-washi px-2.5 py-1 transition-colors focus-within:border-vermilion focus-within:bg-white">
+      <div className="flex w-full min-w-[240px] items-center gap-1.5 border border-line-soft bg-field-gray px-2.5 py-1 transition-colors focus-within:border-ink focus-within:bg-white">
         <svg viewBox="0 0 16 16" className="h-[11px] w-[11px] text-muted">
           <path
             d="M11 6.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM10.5 10l3 3"
