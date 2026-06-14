@@ -12,6 +12,7 @@ import {
   type PdfNode,
   type PdfRun,
 } from "@/features/meetings/pdf-model";
+import { numberedSequence } from "@/features/meetings/pdf-numbering";
 import {
   MEETING_TYPE_LABELS,
   type MeetingRow,
@@ -109,6 +110,7 @@ export function renderMeetingPdf(meeting: MeetingRow) {
   const model = blocksToPdfModel(
     meeting.content as Parameters<typeof blocksToPdfModel>[0],
   );
+  const seq = numberedSequence(model);
   const dateStr = meeting.meeting_date
     ? new Date(meeting.meeting_date).toLocaleString("ko-KR", {
         timeZone: "Asia/Seoul",
@@ -137,7 +139,7 @@ export function renderMeetingPdf(meeting: MeetingRow) {
         </View>
         <View style={{ marginTop: 10 }}>
           {model.map((n, i) => (
-            <Node key={i} node={n} idx={i + 1} />
+            <Node key={i} node={n} idx={seq[i]} />
           ))}
         </View>
       </Page>

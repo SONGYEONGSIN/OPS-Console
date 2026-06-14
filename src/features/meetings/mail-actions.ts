@@ -40,6 +40,7 @@ export async function sendMeetingMinutes(
     });
     await supabase.from("meetings").update({ status: "sent" }).eq("id", id);
     revalidatePath(`${PATH_PREFIX}/${id}`);
+    revalidatePath(PATH_PREFIX);
     return { ok: true };
   }
 
@@ -105,5 +106,6 @@ export async function sendMeetingMinutes(
     status: "sent",
   });
   revalidatePath(`${PATH_PREFIX}/${id}`);
+  revalidatePath(PATH_PREFIX);
   return { ok: true };
 }

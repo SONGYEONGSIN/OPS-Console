@@ -28,6 +28,8 @@ export async function updateMeetingMeta(
   id: string,
   raw: unknown,
 ): Promise<{ ok: boolean; error?: string }> {
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "인증이 필요합니다." };
   const parsed = meetingMetaSchema.safeParse(raw);
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0].message };
@@ -46,6 +48,8 @@ export async function saveMeetingContent(
   id: string,
   content: unknown[],
 ): Promise<{ ok: boolean; error?: string }> {
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "인증이 필요합니다." };
   const supabase = createAdminClient();
   const { error } = await supabase
     .from("meetings")
@@ -58,7 +62,18 @@ export async function saveMeetingContent(
 export async function deleteMeeting(
   id: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "인증이 필요합니다." };
   const supabase = createAdminClient();
+  const { data: row } = await supabase
+    .from("meetings")
+    .select("author_email")
+    .eq("id", id)
+    .maybeSingle();
+  if (!row) return { ok: false, error: "회의록을 찾을 수 없습니다." };
+  const isOwner = row.author_email === me.email;
+  if (!isOwner && me.permission !== "admin")
+    return { ok: false, error: "권한이 없습니다." };
   const { error } = await supabase.from("meetings").delete().eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath(PATH);
@@ -68,6 +83,8 @@ export async function deleteMeeting(
 export async function revokeSendMeeting(
   id: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "인증이 필요합니다." };
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("meetings")

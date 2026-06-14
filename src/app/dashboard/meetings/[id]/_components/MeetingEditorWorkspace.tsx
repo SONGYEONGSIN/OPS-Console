@@ -22,9 +22,28 @@ function parseAttendees(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** ISO 문자열 → `datetime-local` input 값(로컬 시간, "YYYY-MM-DDTHH:mm"). */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** `datetime-local` 값(로컬) → ISO 문자열. 빈 값이면 null. */
+function fromLocalInput(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
   const [title, setTitle] = useState(meeting.title);
   const [location, setLocation] = useState(meeting.location ?? "");
+  const [meetingDate, setMeetingDate] = useState(
+    meeting.meeting_date ? toLocalInput(meeting.meeting_date) : "",
+  );
   const [attendees, setAttendees] = useState(meeting.attendees.join(", "));
   const [busy, setBusy] = useState(false);
 
@@ -32,7 +51,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
     await updateMeetingMeta(meeting.id, {
       title,
       location: location || null,
-      meeting_date: meeting.meeting_date ?? null,
+      meeting_date: fromLocalInput(meetingDate),
       attendees: parseAttendees(attendees),
     });
   }
@@ -79,6 +98,16 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
         className="mb-3 w-full border-none text-2xl font-black outline-none"
         placeholder="제목 없음"
       />
+      <div className="mb-1 flex gap-2 text-sm">
+        <span className="w-14 text-muted">일시</span>
+        <input
+          type="datetime-local"
+          value={meetingDate}
+          onChange={(e) => setMeetingDate(e.target.value)}
+          onBlur={saveMeta}
+          className="flex-1 bg-line-soft px-2 py-1"
+        />
+      </div>
       <div className="mb-1 flex gap-2 text-sm">
         <span className="w-14 text-muted">장소</span>
         <input

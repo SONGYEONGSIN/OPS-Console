@@ -67,6 +67,32 @@ describe("MeetingEditorWorkspace", () => {
     );
   });
 
+  it("일시 input을 변경하면 ISO 문자열로 meeting_date를 저장한다", async () => {
+    mockUpdateMeta.mockResolvedValue({ ok: true });
+    render(<MeetingEditorWorkspace meeting={meeting} />);
+    const dateInput = document.querySelector(
+      'input[type="datetime-local"]',
+    ) as HTMLInputElement;
+    expect(dateInput).not.toBeNull();
+    fireEvent.change(dateInput, { target: { value: "2026-07-01T10:30" } });
+    fireEvent.blur(dateInput);
+    await waitFor(() => expect(mockUpdateMeta).toHaveBeenCalled());
+    const arg = mockUpdateMeta.mock.calls[0][1] as { meeting_date: string };
+    expect(arg.meeting_date).toBe(new Date("2026-07-01T10:30").toISOString());
+  });
+
+  it("일시를 비우면 meeting_date를 null로 저장한다", async () => {
+    mockUpdateMeta.mockResolvedValue({ ok: true });
+    render(<MeetingEditorWorkspace meeting={{ ...meeting, meeting_date: null }} />);
+    const dateInput = document.querySelector(
+      'input[type="datetime-local"]',
+    ) as HTMLInputElement;
+    fireEvent.blur(dateInput);
+    await waitFor(() => expect(mockUpdateMeta).toHaveBeenCalled());
+    const arg = mockUpdateMeta.mock.calls[0][1] as { meeting_date: string | null };
+    expect(arg.meeting_date).toBeNull();
+  });
+
   it("메일 발송 시 참석자 목록으로 sendMeetingMinutes를 호출한다", async () => {
     mockSend.mockResolvedValue({ ok: true });
     render(<MeetingEditorWorkspace meeting={meeting} />);

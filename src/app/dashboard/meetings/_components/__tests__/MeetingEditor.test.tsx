@@ -55,6 +55,17 @@ describe("MeetingEditor", () => {
     expect(mockSave).toHaveBeenCalledWith("m1", mockEditor.document);
   });
 
+  it("저장 실패 시 '저장 실패 — 재시도'를 표시한다", async () => {
+    mockSave.mockResolvedValue({ ok: false, error: "boom" });
+    render(<MeetingEditor id="m1" initialContent={[]} />);
+
+    fireEvent.click(screen.getByTestId("bn-fire"));
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(screen.getByText(/저장 실패/)).toBeInTheDocument();
+  });
+
   it("연속 편집은 디바운스로 마지막 1회만 저장한다", async () => {
     mockSave.mockResolvedValue({ ok: true });
     render(<MeetingEditor id="m1" initialContent={[]} />);
