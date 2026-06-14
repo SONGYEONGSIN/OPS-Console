@@ -33,9 +33,9 @@ export function ListSearch({
   size = "default",
   className,
 }: Props) {
-  // 기본 배경 토큰(bg-search-field-bg) → 포커스 시 흰 배경 + 진한 보더(border-ink) (focus-within)
+  // 기본 배경 토큰(bg-search-field-bg) → 포커스 시 흰 배경 + 두꺼운 진한 보더(border-2 border-ink)
   const focusClass =
-    "transition-colors focus-within:border-ink focus-within:bg-white";
+    "transition-colors focus-within:border-2 focus-within:border-ink focus-within:bg-white";
   const containerClass =
     size === "sm"
       ? `flex w-full items-center gap-1.5 border border-line bg-cream px-2 py-1 ${focusClass}`
