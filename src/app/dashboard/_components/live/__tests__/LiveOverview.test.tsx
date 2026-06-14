@@ -40,6 +40,13 @@ const baseProps: LiveOverviewProps = {
     todo: { count: 7, done: 2, total: 10 },
     service: { count: 5, sparklineD: "M 0,35 L 100,12" },
   },
+  keyMetrics: {
+    todoWeekly: { done: 2, total: 10 },
+    todoProject: { done: 1, total: 3 },
+    aiOutputs: 8,
+    incidents: 3,
+    serviceClosed: 41,
+  },
   metrics: {
     contract: { value: 1, desc: "미체결 계약" },
     bond: { value: 2, active: true, desc: "미수금 내역" },
@@ -92,6 +99,8 @@ const baseProps: LiveOverviewProps = {
     topDeadlineLabel: "건국대 · 후기 2차",
     topIncidentLabel: "원서 작성페이지 오류",
   },
+  activityLog: [],
+  timelineEvents: [],
 };
 
 beforeEach(() => {
@@ -99,88 +108,102 @@ beforeEach(() => {
   push.mockClear();
 });
 
-describe("LiveOverview (Phase 3 — Realtime)", () => {
-  it("헤더 + 라이프사이클 파이프 + 통합 그룹박스 + 필터 + 테이블 렌더", () => {
+const handoverItem = {
+  id: "h1",
+  domain: "handover" as const,
+  badgeDomain: "인수인계" as const,
+  variant: "handover" as const,
+  statusText: "작성중",
+  title: "서울대 · 원서접수",
+  timeText: "방금 전",
+  occurredAt: new Date().toISOString(),
+  refDate: "",
+  triage: "track" as const,
+  listRow: {
+    id: "h1",
+    name: "서울대 · 원서접수",
+    status: "active" as const,
+    owner: "test@example.com",
+  },
+};
+
+describe("LiveOverview (Broadsheet)", () => {
+  it("마스트헤드 + 4개 섹션 제목 렌더", () => {
     render(<LiveOverview {...baseProps} />);
-    // 헤더 — 커맨드 바 마스트헤드
     expect(screen.getByText("운영부 상황실")).toBeInTheDocument();
-    // 라이프사이클 4 스테이지 label (KpiCardLarge → LifecyclePipe 교체)
-    expect(screen.getByText("오픈 예정")).toBeInTheDocument();
-    expect(screen.getByText("진행 중")).toBeInTheDocument();
-    expect(screen.getByText("마감 완료")).toBeInTheDocument();
-    expect(screen.getByText("전형료 정산")).toBeInTheDocument();
-    // 옛 KPI 대형 카드 label은 더 이상 렌더되지 않음
-    expect(screen.queryByText("사고 누적 데이터")).toBeNull();
-    expect(screen.queryByText("내 미완 할 일")).toBeNull();
-    // 현황 요약 밴드 — 메트릭 라벨(계약체결 선두)
-    expect(screen.getByText("계약체결")).toBeInTheDocument();
-    expect(screen.queryByText("계약 · 미수채권")).toBeNull();
-    expect(screen.queryByText("백업 · 인수인계 · 연락처")).toBeNull();
-    // 필터 (FilterTabs의 '전체' 칩 — 뒤에 (건수)가 붙음)
-    expect(
-      screen.getByRole("button", { name: /^전체 \(\d/ }),
-    ).toBeInTheDocument();
-    // 빈 테이블 empty 메시지
+    expect(screen.getByText("실시간 운영 로그")).toBeInTheDocument();
+    expect(screen.getByText("현황 요약")).toBeInTheDocument();
+    expect(screen.getByText("핵심 지표")).toBeInTheDocument();
+    expect(screen.getByText("긴급도 분류")).toBeInTheDocument();
+    expect(screen.getByText("우선순위 피드")).toBeInTheDocument();
+  });
+
+  it("현황 요약 — 라이프사이클/메트릭 라벨이 목록에 표시", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByText("계약")).toBeInTheDocument();
+    expect(screen.getByText("오픈예정")).toBeInTheDocument();
+    expect(screen.getByText("미수채권")).toBeInTheDocument();
+    expect(screen.getByText("대학연락처")).toBeInTheDocument();
+  });
+
+  it("핵심 지표 — 주요업무/프로젝트/AI산출물/사고처리/서비스마감", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByText("내 할 일 · 주요업무")).toBeInTheDocument();
+    expect(screen.getByText("내 할 일 · 프로젝트")).toBeInTheDocument();
+    expect(screen.getByText("AI 산출물")).toBeInTheDocument();
+    expect(screen.getByText("사고처리")).toBeInTheDocument();
+    expect(screen.getByText("서비스 마감")).toBeInTheDocument();
+  });
+
+  it("서비스 마감 serviceClosed=null → '—'", () => {
+    render(
+      <LiveOverview
+        {...baseProps}
+        keyMetrics={{ ...baseProps.keyMetrics, serviceClosed: null }}
+      />,
+    );
+    const row = screen.getByText("서비스 마감").closest("div") as HTMLElement;
+    expect(within(row).getByText("—")).toBeInTheDocument();
+  });
+
+  it("미수채권/사고처리 라벨은 vermilion 강조", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByText("미수채권").className).toMatch(/text-vermilion/);
+    expect(screen.getByText("사고처리").className).toMatch(/text-vermilion/);
+  });
+
+  it("AUTO 헤드라인 (urgent 모드) 렌더", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByText("AUTO ▸ 우선순위 자동")).toBeInTheDocument();
+  });
+
+  it("긴급도 분류 4버킷 헤더 + 빈 피드 메시지", () => {
+    render(<LiveOverview {...baseProps} />);
+    expect(screen.getByText("지금 당장")).toBeInTheDocument();
+    expect(screen.getByText("추적중")).toBeInTheDocument();
     expect(screen.getByText(/표시할 항목이 없습니다/)).toBeInTheDocument();
   });
 
-  it("모든 카드 사이에 화살표가 렌더됨", () => {
-    const { container } = render(<LiveOverview {...baseProps} />);
-    // 9카드(계약체결 + 라이프사이클 4 + 미수/백업/인수인계/연락처) → 화살표 8개
-    expect(container.querySelectorAll("[data-pipe-arrow]").length).toBe(8);
-  });
-
-  it("settle 스테이지 count=null → '—' 셸 표시", () => {
-    render(<LiveOverview {...baseProps} />);
-    // 현황 요약 영역으로 스코프 (트리아지 보드 빈 컬럼 placeholder '—'와 구분)
-    const summary = screen.getByRole("region", { name: "현황 요약" });
-    expect(within(summary).getByText("—")).toBeInTheDocument();
-  });
-
-  it("미수 채권 active=true → vermilion (메트릭 밴드 값)", () => {
-    const { container } = render(<LiveOverview {...baseProps} />);
-    const bondValue = container.querySelector(
-      '[data-metric="bond"]',
-    ) as HTMLElement | null;
-    expect(bondValue?.className).toMatch(/text-vermilion/);
-  });
-
-  it("필터 칩 클릭 시 칩 active 전환 (굵게 + 밑줄)", () => {
-    render(<LiveOverview {...baseProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /^사고/ }));
-    const tab = screen.getByRole("button", { name: /^사고/ });
-    expect(tab.className).toMatch(/font-bold/);
-    expect(tab.querySelector("span[aria-hidden]")?.className).toMatch(
-      /bg-vermilion/,
-    );
-  });
-
-  it("필터링 결과 카운트 텍스트 표시", () => {
-    render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText(/0건 표시 중/)).toBeInTheDocument();
-  });
-
-  it("커맨드 바 렌더 (마스트헤드 + 시스템 날씨 게이트웨이)", () => {
-    render(<LiveOverview {...baseProps} />);
-    expect(screen.getByText("운영부 상황실")).toBeInTheDocument();
-    expect(screen.getByText("시스템 날씨")).toBeInTheDocument();
-    // healthItems에 warn(Cron 지연) 1건 → 요약에 "1 지연"
-    expect(screen.getByText(/맑음 · 1 지연/)).toBeInTheDocument();
-    // AdminControls 버튼 없음
+  it("handover tableItem → 피드 칩과 제목 표시", () => {
+    render(<LiveOverview {...baseProps} tableItems={[handoverItem]} />);
     expect(
-      screen.queryByRole("button", { name: /실시간 스트림 활성화/ }),
-    ).toBeNull();
+      screen.getByRole("button", { name: /인수인계 1/ }),
+    ).toBeInTheDocument();
+    // 트리아지(track) + 피드 양쪽에 제목 노출
+    expect(screen.getAllByText("서울대 · 원서접수").length).toBeGreaterThan(0);
   });
 
-  it("logLines 전달 시 티커에 로그 본문이 표시됨", () => {
-    const seedLines = [
-      { text: "[HANDOVER] 인수인계 등록 완료", type: "info" as const },
-      { text: "[INCIDENTS] 장애 발생", type: "err" as const },
-    ];
-    render(<LiveOverview {...baseProps} logLines={seedLines} />);
-    // LogTicker는 "[TAG] 본문"에서 선행 태그를 분리 — 본문 텍스트로 확인
-    expect(screen.getAllByText("인수인계 등록 완료").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("장애 발생").length).toBeGreaterThan(0);
+  it("피드 카드 클릭 시 인스펙터 열림", () => {
+    const { container } = render(
+      <LiveOverview {...baseProps} tableItems={[handoverItem]} />,
+    );
+    const panel = container.querySelector(
+      '[role="complementary"]',
+    ) as HTMLElement;
+    expect(panel.getAttribute("aria-hidden")).toBe("true");
+    const titles = screen.getAllByText("서울대 · 원서접수");
+    fireEvent.click(titles[titles.length - 1]);
+    expect(panel.getAttribute("aria-hidden")).toBe("false");
   });
 
   it("mine=true + myEmail 전달 시 렌더 에러 없음", () => {
@@ -189,43 +212,5 @@ describe("LiveOverview (Phase 3 — Realtime)", () => {
         <LiveOverview {...baseProps} mine={true} myEmail="user@example.com" />,
       ),
     ).not.toThrow();
-  });
-
-  it("인수인계 서브카드가 그룹박스 안에 렌더됨", () => {
-    render(<LiveOverview {...baseProps} />);
-    // "인수인계"는 MetricSubcard 레이블 + FilterTabs 칩에 동시에 존재하므로 getAllByText
-    expect(screen.getAllByText("인수인계").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("등록된 인수인계")).toBeInTheDocument();
-  });
-
-  it("인수인계 필터 칩이 FilterTabs에 렌더됨", () => {
-    render(<LiveOverview {...baseProps} />);
-    expect(
-      screen.getByRole("button", { name: /^인수인계 \(\d/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("handover 도메인 tableItems 카운트가 인수인계 칩에 반영됨", () => {
-    const handoverItem = {
-      id: "h1",
-      domain: "handover" as const,
-      badgeDomain: "인수인계" as const,
-      variant: "handover" as const,
-      statusText: "published",
-      title: "서울대 · 원서접수",
-      timeText: "방금 전",
-      occurredAt: new Date().toISOString(),
-      triage: "track" as const,
-      listRow: {
-        id: "h1",
-        name: "서울대 · 원서접수",
-        status: "active" as const,
-        owner: "test@example.com",
-      },
-    };
-    render(<LiveOverview {...baseProps} tableItems={[handoverItem]} />);
-    expect(
-      screen.getByRole("button", { name: /^인수인계 \(1\)/ }),
-    ).toBeInTheDocument();
   });
 });

@@ -27,6 +27,18 @@
   --gold: #9c7a2c;
   --sage: #556b2f;
 
+  /* KBO 팀 컬러 (NOW 마커 야구모자 캐릭터 전용) */
+  --team-hanwha: #fc4e00;
+  --team-lg: #c30452;
+  --team-doosan: #131230;
+  --team-samsung: #074ca1;
+  --team-kia: #ea0029;
+  --team-lotte: #00275c;
+  --team-ssg: #ce0e2d;
+  --team-nc: #315288;
+  --team-kiwoom: #57021f;
+  --team-kt: #2a2a2a;
+
   /* OPS Console chrome 전용 (chrome bar만 적용) */
   --chrome-graphite: #18181b;
   --chrome-snow: #f5f5f4;
@@ -369,6 +381,258 @@ body::before {
 
 .animate-star-twinkle {
   animation: star-twinkle 2s ease-in-out infinite;
+}
+
+/* ═════════════════════════════════════════════════════════
+   Broadsheet 실시간 현황 — LIVE 점멸 / 타임라인 NOW 마커
+   ═════════════════════════════════════════════════════════ */
+@keyframes bs-live-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes bs-now-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+@keyframes bs-now-ping {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0.85;
+  }
+  70%,
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
+}
+.bs-live-blink {
+  animation: bs-live-blink 1.2s ease-in-out infinite;
+}
+.bs-now-blink {
+  animation: bs-now-blink 1.4s ease-in-out infinite;
+}
+.bs-now-ping {
+  animation: bs-now-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes bs-now-run {
+  0%,
+  100% {
+    transform: translate(-50%, -100%);
+  }
+  50% {
+    transform: translate(-50%, calc(-100% - 2.5px));
+  }
+}
+.bs-now-run {
+  animation: bs-now-run 0.5s steps(2, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bs-live-blink,
+  .bs-now-blink,
+  .bs-now-ping,
+  .bs-now-run {
+    animation: none;
+  }
+  .bs-now-ping {
+    opacity: 0.25;
+  }
+}
+
+/* Broadsheet 하드 오프셋 그림자 (신문 톤) */
+.shadow-offset {
+  box-shadow: 8px 8px 0 var(--line-soft);
+}
+.shadow-offset-sm {
+  box-shadow: 4px 4px 0 var(--line-soft);
+}
+
+/* Broadsheet 가로 타임라인 (09:00–18:00) — 절대배치 구조 */
+.bs-tl {
+  position: relative;
+  height: 124px;
+  margin: 8px 12px;
+}
+.bs-tl-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 62px;
+  height: 2px;
+  background: var(--ink);
+}
+.bs-tl-hour {
+  position: absolute;
+  top: 62px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+.bs-tl-hour .tick {
+  width: 1px;
+  height: 7px;
+  background: var(--faint);
+  margin: 0 auto;
+}
+.bs-tl-hour .lab {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
+}
+.bs-tl-ev {
+  position: absolute;
+  top: 62px;
+  transform: translateX(-50%);
+}
+.bs-tl-ev .dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 3px solid var(--cream);
+  transform: translate(-50%, -50%);
+  position: absolute;
+  top: 1px;
+  left: 0;
+}
+.bs-tl-ev .cal {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  width: max-content;
+  max-width: 190px;
+}
+.bs-tl-ev .cal .t {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.bs-tl-ev .cal .m {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: normal;
+}
+.bs-tl-ev .cal.up {
+  bottom: 16px;
+}
+.bs-tl-ev .cal.dn {
+  top: 18px;
+}
+.bs-tl-now {
+  position: absolute;
+  top: 44px;
+  bottom: 42px;
+  width: 2px;
+  background: var(--vermilion);
+}
+.bs-tl-now .lb {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--vermilion);
+  background: var(--paper);
+  padding: 0 3px;
+}
+.bs-tl-now .dot {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  border: 2px solid var(--paper);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+.bs-tl-now .ping {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+/* 러너 — NOW 점 위에 서서 오른쪽(18시)으로 달리는 인터랙션 */
+.bs-tl-now .run {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  width: 20px;
+  height: 20px;
+  color: var(--vermilion);
+  transform: translate(-50%, -100%);
+  z-index: 3;
+}
+.bs-tl-now .run svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.bs-tl-now .run svg .eye {
+  fill: var(--paper);
+}
+.bs-tl-now .run svg .seam {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-dasharray: 0.5 1.6;
+}
+/* KBO 야구모자 캐릭터 — 팀 컬러 캡 + 크림 이니셜 */
+.bs-tl-now .run svg .cap-letter {
+  fill: var(--cream);
+  font-size: 7.5px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+.bs-tl-now .run svg .cap-hanwha {
+  fill: var(--team-hanwha);
+}
+.bs-tl-now .run svg .cap-lg {
+  fill: var(--team-lg);
+}
+.bs-tl-now .run svg .cap-doosan {
+  fill: var(--team-doosan);
+}
+.bs-tl-now .run svg .cap-samsung {
+  fill: var(--team-samsung);
+}
+.bs-tl-now .run svg .cap-kia {
+  fill: var(--team-kia);
+}
+.bs-tl-now .run svg .cap-lotte {
+  fill: var(--team-lotte);
+}
+.bs-tl-now .run svg .cap-ssg {
+  fill: var(--team-ssg);
+}
+.bs-tl-now .run svg .cap-nc {
+  fill: var(--team-nc);
+}
+.bs-tl-now .run svg .cap-kiwoom {
+  fill: var(--team-kiwoom);
+}
+.bs-tl-now .run svg .cap-kt {
+  fill: var(--team-kt);
 }
 
 /* 가이드 투어(driver.js) 팝업 — 기본(300px)보다 넓게 + 버튼 목록(<br>) 줄간격 확보 */

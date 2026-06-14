@@ -14,6 +14,7 @@ function item(id: string, triage: TriageBucket, over: Partial<LiveTableItem> = {
     title: `항목 ${id}`,
     timeText: "방금 전",
     occurredAt: "2026-05-23T11:55:00+09:00",
+    refDate: "2026-05-23",
     triage,
     listRow: {} as never,
     ...over,
