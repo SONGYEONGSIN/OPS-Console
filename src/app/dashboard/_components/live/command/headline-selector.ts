@@ -25,6 +25,8 @@ export type HeadlineResult = {
   href: string;
   /** 긴급 원형 표시값 — 활성 urgent 항목 합계(미처리사고+오늘마감+미수채권). 헤드라인과 동일 기준. */
   urgentTotal: number;
+  /** 활성 urgent 항목 — 항목별 개별 링크용(라벨/건수/href). calm이면 빈 배열. */
+  items: { label: string; count: number; href: string }[];
 };
 
 const URGENT_KICKER = "▲ 오늘의 톱 · 즉시";
@@ -94,6 +96,11 @@ export function selectHeadline(input: HeadlineInput): HeadlineResult {
       sub: buildSub(active, input),
       href: active[0].href,
       urgentTotal: active.reduce((sum, item) => sum + item.count, 0),
+      items: active.map((i) => ({
+        label: i.label,
+        count: i.count,
+        href: i.href,
+      })),
     };
   }
 
@@ -108,5 +115,6 @@ export function selectHeadline(input: HeadlineInput): HeadlineResult {
     sub: "오늘 즉시 처리할 긴급 건이 없습니다.",
     href: "/dashboard",
     urgentTotal: 0,
+    items: [],
   };
 }
