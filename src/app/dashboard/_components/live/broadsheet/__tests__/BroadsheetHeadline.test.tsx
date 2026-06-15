@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import { BroadsheetHeadline } from "../BroadsheetHeadline";
 import {
@@ -50,10 +50,15 @@ describe("BroadsheetHeadline", () => {
     expect(screen.getByText(expected.sub)).toBeTruthy();
   });
 
-  it("최상위 Link의 href가 selectHeadline 결과 href와 일치한다", () => {
+  it("긴급 항목 클릭 시 모달이 열리고 '페이지 이동하기'가 해당 href를 가리킨다", () => {
     const expected = selectHeadline(urgentInput);
-    const { container } = render(<BroadsheetHeadline input={urgentInput} />);
-    const link = container.querySelector("a");
-    expect(link?.getAttribute("href")).toBe(expected.href);
+    render(<BroadsheetHeadline input={urgentInput} />);
+    // 클릭 전엔 모달 없음
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // 첫 긴급 항목 클릭 → 모달 오픈
+    fireEvent.click(screen.getByRole("button", { name: /미처리 사고/ }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    const link = screen.getByRole("link", { name: /페이지 이동하기/ });
+    expect(link).toHaveAttribute("href", expected.items[0].href);
   });
 });

@@ -19,7 +19,9 @@ import { OPERATORS } from "@/features/auth/operators";
 import { contractsRowToListRow } from "./contracts/_row-mapper";
 import type { ContractRow } from "@/features/contracts/schemas";
 import { createClient } from "@/lib/supabase/server";
-import { servicesRowToListRow } from "./services/_row-mapper";
+import { closingRowToListRow } from "./closing/_row-mapper";
+import { upcomingOpens, imminentClosings } from "@/features/closing/derive";
+import type { ClosingRow } from "@/features/closing/schemas";
 import { incidentToListRow } from "./incidents/_row-mapper";
 import { eventToListRow } from "./schedule/_row-mapper";
 import { todoToListRow } from "./my-todo/_row-mapper";
@@ -93,20 +95,20 @@ export default async function DashboardLivePage({
     write_start_at: shiftYmdYear(s.write_start_at, 1),
     write_end_at: shiftYmdYear(s.write_end_at, 1),
   }));
-  // 오픈 예정 — write_start_at >= today, 가까운 순. client 측 정렬.
-  const servicesUpcomingAll = shiftedServices
-    .filter(
-      (s) => s.write_start_at && s.write_start_at.slice(0, 10) >= todayYmd,
-    )
-    .filter((s) => (mine && myEmail ? s.operator_email === myEmail : true))
-    .sort((a, b) =>
-      (a.write_start_at ?? "").localeCompare(b.write_start_at ?? ""),
-    );
-  // 헤더 카운트는 오픈 예정 전체 수 (리스트 기준과 일치)
-  const servicesUpcomingCount = servicesUpcomingAll.length;
-  const servicesUpcoming = servicesUpcomingAll.slice(0, 5);
-  const servicesListRows: ListRow[] =
-    servicesUpcoming.map(servicesRowToListRow);
+  // 오픈/마감 지표는 '서비스 마감'(closing_services) 도메인으로 통일.
+  // mine 시 operator_name(Moa 표기 문자열) 기준 — services의 email 기준과 다르다.
+  const closingOperatorName =
+    mine && me?.displayName ? me.displayName : undefined;
+  const closingAllRes = await listClosing({
+    closedStatus: "all",
+    operatorName: closingOperatorName,
+    pageSize: 1000,
+  }).catch(() => ({ rows: [] as ClosingRow[], total: 0 }));
+  const closingRows = closingAllRes.rows;
+  // 오픈 예정(write_start_at ≥ 오늘) / 마감 임박(write_end_at D-3 이내). derive.ts.
+  const closingOpensUpcoming = upcomingOpens(closingRows, todayYmd);
+  const closingImminent = imminentClosings(closingRows, todayYmd);
+  const openCount = closingOpensUpcoming.length;
 
   // ─── 사고 ─────────────────────────────────────────────
   // KPI용: 전체 사고 fetch → 미해결(처리완료 제외) 카운트 분리
@@ -349,13 +351,12 @@ export default async function DashboardLivePage({
       createdAt: t.created_at,
       listRow: todosListRows.find((r) => r.id === t.id) ?? todoToListRow(t),
     })),
-    services: servicesUpcoming.map((s) => ({
-      id: s.id,
-      title: `${s.university_name} · ${s.service_name}`,
-      writeStartAt: s.write_start_at,
-      createdAt: s.created_at,
-      listRow:
-        servicesListRows.find((r) => r.id === s.id) ?? servicesRowToListRow(s),
+    services: closingOpensUpcoming.slice(0, 5).map((c) => ({
+      id: c.id,
+      title: `${c.university_name} · ${c.service_name}`,
+      writeStartAt: c.write_start_at,
+      createdAt: c.created_at,
+      listRow: closingRowToListRow(c),
     })),
     backup: backupsFiltered.slice(0, 20).map((b) => ({
       id: b.id,
@@ -421,10 +422,6 @@ export default async function DashboardLivePage({
       i.occurred_date >= acadYear.start &&
       i.occurred_date < acadYear.end,
   );
-  // deadlinesToday: 오픈 예정(servicesUpcomingAll) 중 write_start_at 가 오늘(D-0)인 건.
-  const deadlinesTodayServices = servicesUpcomingAll.filter(
-    (s) => s.write_start_at?.slice(0, 10) === todayYmd,
-  );
   // inProgressServices: 작성 기간 진행 중 — write_start ≤ 오늘 ≤ write_end (mine 필터 동일).
   const inProgressServicesCount = shiftedServices.filter((s) => {
     const start = s.write_start_at?.slice(0, 10);
@@ -433,16 +430,24 @@ export default async function DashboardLivePage({
     if (end && end < todayYmd) return false;
     return mine && myEmail ? s.operator_email === myEmail : true;
   }).length;
-  const topDeadline = deadlinesTodayServices[0];
+  // 마감 임박: closing write_end_at D-3 이내(derive.ts) 중 가장 임박한 건.
+  const topClosing = closingImminent[0];
   const topIncident = unresolvedIncidents[0];
   const headline: HeadlineInput = {
     incidentsUnresolved: unresolvedIncidents.length,
-    deadlinesToday: deadlinesTodayServices.length,
+    deadlinesToday: closingImminent.length,
     // 미수 10일+ 일수 임계값은 page.tsx 시트 모수에 없어 미수(active) 전체 건수로 대체.
     overdueReceivables: receivablesUnpaid,
     inProgressServices: inProgressServicesCount,
-    topDeadlineLabel: topDeadline
-      ? `${topDeadline.university_name} · ${topDeadline.service_name}`
+    topDeadlineLabel: topClosing
+      ? `${topClosing.university_name} · ${topClosing.service_name}`
+      : undefined,
+    topDeadlineDays: topClosing
+      ? Math.round(
+          (Date.parse(topClosing.write_end_at.slice(0, 10)) -
+            Date.parse(todayYmd)) /
+            86_400_000,
+        )
       : undefined,
     topIncidentLabel: topIncident?.title ?? undefined,
   };
@@ -458,9 +463,7 @@ export default async function DashboardLivePage({
 
   // ─── ② 서비스 라이프사이클 파이프 (soon → prog → done → settle) ─────────
   // 진행중/마감은 closing_services 테이블 기준. mine 시 operator_name 으로 본인만.
-  // listClosing 실패 시 count=null("—") 폴백.
-  const closingOperatorName =
-    mine && me?.displayName ? me.displayName : undefined;
+  // listClosing 실패 시 count=null("—") 폴백. (closingOperatorName은 상단 정의 재사용)
   let progCount: number | null = null;
   let doneCount: number | null = null;
   try {
@@ -486,7 +489,7 @@ export default async function DashboardLivePage({
     {
       label: "오픈 예정",
       tag: "오픈 준비",
-      count: servicesUpcomingCount,
+      count: openCount,
       meta: "배포 준비 완료",
       variant: "soon",
       sparklineD: SPARKLINE_SERVICE,
@@ -612,7 +615,7 @@ export default async function DashboardLivePage({
         sago: { count: incidentsUnresolvedCount, sparklineD: SPARKLINE_SAGO },
         todo: { count: todosCount, done: todosDone, total: todosTotal },
         service: {
-          count: servicesUpcomingCount,
+          count: openCount,
           sparklineD: SPARKLINE_SERVICE,
         },
       }}

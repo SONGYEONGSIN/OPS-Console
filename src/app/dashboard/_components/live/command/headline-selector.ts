@@ -12,6 +12,8 @@ export type HeadlineInput = {
   overdueReceivables: number;
   inProgressServices: number;
   topDeadlineLabel?: string;
+  /** 가장 임박한 마감까지 남은 일수 (0=오늘). sub의 "D-n" 표기용. */
+  topDeadlineDays?: number;
   topIncidentLabel?: string;
 };
 
@@ -52,9 +54,11 @@ function urgentItems(input: HeadlineInput): UrgentItem[] {
     {
       label: "마감 임박",
       count: input.deadlinesToday,
-      href: "/dashboard/services",
+      href: "/dashboard/closing",
       subFrom: (i) =>
-        i.topDeadlineLabel ? `${i.topDeadlineLabel} D-0` : undefined,
+        i.topDeadlineLabel
+          ? `${i.topDeadlineLabel} D-${i.topDeadlineDays ?? 0}`
+          : undefined,
     },
     {
       label: "미수채권 10일+",
