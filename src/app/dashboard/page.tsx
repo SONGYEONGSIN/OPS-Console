@@ -433,6 +433,20 @@ export default async function DashboardLivePage({
   // 마감 임박: closing write_end_at D-3 이내(derive.ts) 중 가장 임박한 건.
   const topClosing = closingImminent[0];
   const topIncident = unresolvedIncidents[0];
+  // 팝업 리스트용 미리보기 행 (각 최대 8건). "MM.DD" 시각 + 제목.
+  const mmdd = (iso: string) => iso.slice(5, 10).replace("-", ".");
+  const deadlineRows = closingImminent.slice(0, 8).map((c) => ({
+    time: mmdd(c.write_end_at),
+    title: `${c.university_name} · ${c.service_name}`,
+  }));
+  const incidentRows = unresolvedIncidents.slice(0, 8).map((i) => ({
+    time: i.occurred_date ? mmdd(i.occurred_date) : undefined,
+    title: i.title,
+  }));
+  const receivableRows = receivablesFeedRows
+    .filter((r) => r.status === "active")
+    .slice(0, 8)
+    .map((r) => ({ title: r.name ?? "" }));
   const headline: HeadlineInput = {
     incidentsUnresolved: unresolvedIncidents.length,
     deadlinesToday: closingImminent.length,
@@ -450,6 +464,9 @@ export default async function DashboardLivePage({
         )
       : undefined,
     topIncidentLabel: topIncident?.title ?? undefined,
+    deadlineRows,
+    incidentRows,
+    receivableRows,
   };
 
   // ─── 시스템 게이트웨이(CommandBar HealthGateway) — 서버 측 1회 측정 ─────────

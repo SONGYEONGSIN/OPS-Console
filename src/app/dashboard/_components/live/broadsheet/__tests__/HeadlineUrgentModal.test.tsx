@@ -2,13 +2,28 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { HeadlineUrgentModal } from "../HeadlineUrgentModal";
 
-const ITEM = { label: "마감 임박", count: 18, href: "/dashboard/closing" };
+const ITEM = {
+  label: "마감 임박",
+  count: 18,
+  href: "/dashboard/closing",
+  rows: [
+    { time: "06.16", title: "단국대 · 외국인-Freshman" },
+    { time: "06.18", title: "단국대 · 외국인-Transfer" },
+  ],
+};
 
 describe("HeadlineUrgentModal", () => {
   it("항목 라벨과 건수를 표시한다", () => {
     render(<HeadlineUrgentModal item={ITEM} onClose={() => {}} />);
     expect(screen.getByText("마감 임박")).toBeInTheDocument();
     expect(screen.getByText("18")).toBeInTheDocument();
+  });
+
+  it("rows 목록(시각·제목)을 표시한다", () => {
+    render(<HeadlineUrgentModal item={ITEM} onClose={() => {}} />);
+    expect(screen.getByText("단국대 · 외국인-Freshman")).toBeInTheDocument();
+    expect(screen.getByText("단국대 · 외국인-Transfer")).toBeInTheDocument();
+    expect(screen.getAllByText("06.16")).toHaveLength(1);
   });
 
   it("'페이지 이동하기' 링크가 item.href를 가리킨다", () => {

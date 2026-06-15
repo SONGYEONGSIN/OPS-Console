@@ -13,6 +13,30 @@ function plainText(segments: { text: string }[]): string {
   return segments.map((s) => s.text).join("");
 }
 
+describe("selectHeadline — 항목 preview rows", () => {
+  it("각 urgent 항목에 대응하는 preview rows를 attach한다", () => {
+    const r = selectHeadline({
+      ...ZERO,
+      deadlinesToday: 2,
+      deadlineRows: [
+        { time: "06.16", title: "단국대 · 외국인-Freshman" },
+        { time: "06.18", title: "단국대 · 외국인-Transfer" },
+      ],
+    });
+    const deadlineItem = r.items.find((i) => i.label === "마감 임박");
+    expect(deadlineItem?.rows).toHaveLength(2);
+    expect(deadlineItem?.rows[0]).toEqual({
+      time: "06.16",
+      title: "단국대 · 외국인-Freshman",
+    });
+  });
+
+  it("rows 미제공 시 빈 배열", () => {
+    const r = selectHeadline({ ...ZERO, overdueReceivables: 3 });
+    expect(r.items[0].rows).toEqual([]);
+  });
+});
+
 describe("selectHeadline — urgent 우선순위", () => {
   it("미처리 사고가 가장 시급 — href는 사고 메뉴", () => {
     const r = selectHeadline({
