@@ -48,29 +48,29 @@ export function SystemLogToggle({ entries }: Props) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 z-50 w-[440px] border border-line bg-paper shadow-offset-sm p-3 text-left normal-case tracking-normal">
-          <div className="flex items-center justify-between border-b border-line-soft pb-1 mb-2">
-            <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-muted">
+        <div className="absolute left-0 top-full mt-2 z-50 w-[460px] border border-line bg-paper shadow-offset-sm p-3.5 text-left normal-case tracking-normal">
+          <div className="flex items-center justify-between border-b border-line pb-1.5 mb-2.5">
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-soft">
               최근 시스템 로그
             </span>
-            <span className="text-[9px] text-faint tabular-nums">
+            <span className="text-[10px] text-muted tabular-nums">
               최근 {Math.min(entries.length, 6)}건
             </span>
           </div>
           {recent.length > 0 ? (
-            <ul className="flex flex-col gap-1.5 text-[11px] font-medium text-ink-soft">
+            <ul className="flex flex-col divide-y divide-line-soft text-xs leading-relaxed text-ink">
               {recent.map((e) => (
-                <li key={e.id}>
-                  <span className="text-faint tabular-nums mr-1.5">{e.hms}</span>
-                  <span className={`font-bold ${logDomainClass(e.domain)}`}>
+                <li key={e.id} className="flex items-baseline gap-2 py-1.5">
+                  <span className="text-muted tabular-nums shrink-0">{e.hms}</span>
+                  <span className={`font-bold shrink-0 ${logDomainClass(e.domain)}`}>
                     [{e.domain}]
-                  </span>{" "}
-                  {e.text}
+                  </span>
+                  <span className="text-ink-soft">{e.text}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] font-medium text-faint">활동 없음</p>
+            <p className="text-xs font-medium text-muted py-1">활동 없음</p>
           )}
         </div>
       )}
