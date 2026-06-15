@@ -6,7 +6,7 @@ export function BroadsheetHeadline({ input }: { input: HeadlineInput }) {
   const r = selectHeadline(input);
 
   return (
-    <div className="mb-9 border-2 border-ink shadow-offset-sm bg-paper flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
+    <div className="mb-9 border-2 border-ink shadow-offset-sm bg-situation-bg flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-2">
           <span className="bg-ink text-cream px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]">
