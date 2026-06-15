@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { AutomationRunEntry } from "./types";
 import {
   toDepositMatchEntry,
   toMailOperatorEntry,
@@ -163,4 +164,26 @@ export async function getJobRunLog(jobId: string): Promise<JobRunLog> {
   const resolver = LOG_RESOLVERS[jobId];
   if (!resolver) return { jobId, kind: "none", entries: [] };
   return resolver(jobId);
+}
+
+/**
+ * 공통 실행 이력 — automation_runs에서 잡별 최신 N건(실행·스킵·실패 모두).
+ * 발송 0건이어도 실행 자체가 기록되므로, 잡별 결과 테이블 역산 로그를 보완한다.
+ */
+export async function getAutomationRunLog(
+  jobId: string,
+): Promise<AutomationRunEntry[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("automation_runs")
+    .select("ran_at, ok, skipped, message")
+    .eq("job_id", jobId)
+    .order("ran_at", { ascending: false })
+    .limit(LOG_LIMIT);
+  return (data ?? []).map((r) => ({
+    ranAt: (r.ran_at as string) ?? "",
+    ok: r.ok === true,
+    skipped: r.skipped === true,
+    message: (r.message as string) ?? "",
+  }));
 }
