@@ -8,6 +8,7 @@ import {
   timelineDotClass,
   selectTimelineEvents,
   groupTimelineEvents,
+  timelineGroupLabel,
   kstSecondsOfDay,
   leaveCountdown,
   kstDateYmd,
@@ -104,7 +105,13 @@ describe("selectTimelineEvents", () => {
   });
   it("keeps only in-window entries, sorted ascending", () => {
     const out = selectTimelineEvents(
-      [mk("late", 19 * 60), mk("c", 14 * 60), mk("a", 9 * 60), mk("early", 7 * 60), mk("b", 11 * 60)],
+      [
+        mk("late", 19 * 60),
+        mk("c", 14 * 60),
+        mk("a", 9 * 60),
+        mk("early", 7 * 60),
+        mk("b", 11 * 60),
+      ],
       6,
     );
     expect(out.map((e) => e.id)).toEqual(["a", "b", "c"]);
@@ -146,11 +153,7 @@ describe("groupTimelineEvents", () => {
   it("clusters events within gap into one group (lead = earliest, members = all)", () => {
     // 12:23, 12:23, 12:30 군집 (모두 45분 이내) → 1 그룹
     const out = groupTimelineEvents(
-      [
-        mk("m3", 12 * 60 + 30),
-        mk("m1", 12 * 60 + 23),
-        mk("m2", 12 * 60 + 23),
-      ],
+      [mk("m3", 12 * 60 + 30), mk("m1", 12 * 60 + 23), mk("m2", 12 * 60 + 23)],
       6,
     );
     expect(out).toHaveLength(1);
@@ -197,7 +200,9 @@ describe("groupTimelineEvents", () => {
 
 describe("kstSecondsOfDay / leaveCountdown", () => {
   it("computes KST seconds-of-day", () => {
-    expect(kstSecondsOfDay(new Date("2026-06-13T06:30:00Z"))).toBe(15 * 3600 + 30 * 60); // 15:30 KST
+    expect(kstSecondsOfDay(new Date("2026-06-13T06:30:00Z"))).toBe(
+      15 * 3600 + 30 * 60,
+    ); // 15:30 KST
   });
   it("counts down to 18:00, empty after", () => {
     expect(leaveCountdown(new Date("2026-06-13T06:30:00Z"))).toBe("2:30:00");
@@ -228,5 +233,58 @@ describe("ActivityLogEntry type", () => {
       tone: "info",
     };
     expect(e.id).toBe("x");
+  });
+});
+
+describe("timelineGroupLabel", () => {
+  const ev = (over: Partial<ActivityLogEntry>): ActivityLogEntry => ({
+    id: "e",
+    atIso: "x",
+    hms: "10:00:00",
+    minutesOfDay: 600,
+    domain: "자동화",
+    text: "텍스트",
+    tone: "info",
+    ...over,
+  });
+
+  it("멤버가 모두 '자동화'이고 2건 이상이면 '자동화 실행 N건'", () => {
+    const group = {
+      lead: ev({ id: "a", text: "인사이트 영상 수집 9건" }),
+      members: [
+        ev({ id: "a", text: "인사이트 영상 수집 9건" }),
+        ev({ id: "b", text: "운영자 미수채권 알림" }),
+        ev({ id: "c", text: "입금 매칭 자동화" }),
+      ],
+      minutesOfDay: 600,
+    };
+    expect(timelineGroupLabel(group)).toBe("자동화 실행 3건");
+  });
+
+  it("자동화 단건이면 그 텍스트 그대로 (집계 건수는 이미 텍스트에 포함)", () => {
+    const lead = ev({ id: "a", text: "인사이트 영상 수집 9건" });
+    expect(
+      timelineGroupLabel({ lead, members: [lead], minutesOfDay: 600 }),
+    ).toBe("인사이트 영상 수집 9건");
+  });
+
+  it("혼합 도메인 군집은 기존대로 lead 텍스트 + (+N)", () => {
+    const lead = ev({ id: "a", domain: "서비스", text: "이화여대 · 정시" });
+    const group = {
+      lead,
+      members: [lead, ev({ id: "b", text: "운영자 미수채권 알림" })],
+      minutesOfDay: 600,
+    };
+    expect(timelineGroupLabel(group)).toBe("이화여대 · 정시 (+1)");
+  });
+
+  it("자동화 아닌 동일 도메인 군집도 기존대로 lead + (+N)", () => {
+    const lead = ev({ id: "a", domain: "할일", text: "할 일 하나" });
+    const group = {
+      lead,
+      members: [lead, ev({ id: "b", domain: "할일", text: "할 일 둘" })],
+      minutesOfDay: 600,
+    };
+    expect(timelineGroupLabel(group)).toBe("할 일 하나 (+1)");
   });
 });

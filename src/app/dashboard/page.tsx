@@ -533,19 +533,12 @@ export default async function DashboardLivePage({
       : b.summary_md.slice(0, 30);
 
   const timelineSources: TimelineSource[] = [
-    ...shiftedServices
-      .filter((s) => (mine && myEmail ? s.operator_email === myEmail : true))
-      .map((s) => ({
-        id: `svc-${s.id}`,
-        atIso: s.write_start_at ?? "",
-        domain: "서비스",
-        text: `${s.university_name} · ${s.service_name}`,
-        tone: "info" as const,
-      })),
+    // 서비스 항목은 '서비스 마감' 도메인(closing, 결제 마감 시각)에서만 가져온다.
+    // (서비스 오픈/작성시작 출처는 타임라인에서 제외 — 출처 통일)
     ...closingTimelineRes.rows.map((c) => ({
       id: `cls-${c.id}`,
       atIso: c.pay_end_at ?? "",
-      domain: "마감",
+      domain: "서비스 마감",
       text: `${c.university_name} · ${c.service_name}`,
       tone: "info" as const,
     })),
@@ -569,7 +562,7 @@ export default async function DashboardLivePage({
       id: r.id,
       atIso: r.atIso,
       domain: "자동화",
-      text: r.label,
+      text: r.count > 1 ? `${r.label} ${r.count}건` : r.label,
       tone: "info" as const,
     })),
     ...backupsFiltered.map((b) => ({

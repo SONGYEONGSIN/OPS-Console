@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   type ActivityLogEntry,
   groupTimelineEvents,
+  timelineGroupLabel,
   timelinePercent,
   timelineDotClass,
   leaveCountdown,
@@ -122,13 +123,16 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
                 <div
                   className={`m ${g.lead.tone === "err" ? "text-vermilion" : ""}`}
                 >
-                  {g.lead.text}
-                  {extra > 0 ? ` (+${extra})` : ""}
+                  {timelineGroupLabel(g)}
                 </div>
               </>
             );
             return (
-              <div key={g.lead.id} className="bs-tl-ev" style={{ left: `${pct}%` }}>
+              <div
+                key={g.lead.id}
+                className="bs-tl-ev"
+                style={{ left: `${pct}%` }}
+              >
                 <div className={`dot ${timelineDotClass(g.lead.tone)}`} />
                 {expandable ? (
                   <button

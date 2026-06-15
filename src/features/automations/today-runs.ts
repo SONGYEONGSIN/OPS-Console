@@ -22,9 +22,20 @@ export function kstDayRangeIso(todayYmd: string): {
   return { startIso, endIso };
 }
 
-export type AutomationRun = { id: string; atIso: string; label: string };
+export type AutomationRun = {
+  id: string;
+  atIso: string;
+  label: string;
+  /** 오늘 해당 잡의 실행(행) 수. 동시각 군집의 라벨 "N건" 표기용. */
+  count: number;
+};
 
-type RunSource = { jobId: string; table: string; col: string; label: string };
+export type RunSource = {
+  jobId: string;
+  table: string;
+  col: string;
+  label: string;
+};
 
 const RUN_SOURCES: RunSource[] = [
   {
@@ -77,11 +88,34 @@ const RUN_SOURCES: RunSource[] = [
   },
 ];
 
+/**
+ * 한 소스의 오늘 행들을 잡 1엔트리로 집계한다.
+ * 같은 잡(특히 인사이트 영상 수집)이 한 시각에 수십 건씩 쏟아져 타임라인을 도배하고
+ * 다른 자동화를 군집 뒤로 묻는 문제를 막기 위해, 잡당 1건으로 줄이고 건수를 센다.
+ * 위치(atIso)는 가장 늦은 실행 시각. 유효 시각이 없으면 null.
+ */
+export function aggregateSourceRuns(
+  source: RunSource,
+  rows: Array<Record<string, unknown>>,
+): AutomationRun | null {
+  const times = rows
+    .map((row) => row[source.col])
+    .filter((v): v is string => typeof v === "string" && v.length > 0);
+  if (times.length === 0) return null;
+  const latest = times.reduce((a, b) => (a.localeCompare(b) >= 0 ? a : b));
+  return {
+    id: source.jobId,
+    atIso: latest,
+    label: source.label,
+    count: times.length,
+  };
+}
+
 async function fetchSourceRuns(
   source: RunSource,
   startIso: string,
   endIso: string,
-): Promise<AutomationRun[]> {
+): Promise<AutomationRun | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from(source.table)
@@ -91,11 +125,7 @@ async function fetchSourceRuns(
     .order(source.col, { ascending: false })
     .limit(TABLE_FETCH_LIMIT);
   const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
-  return rows.flatMap((row, idx) => {
-    const at = row[source.col];
-    if (typeof at !== "string" || at.length === 0) return [];
-    return [{ id: `${source.jobId}-${idx}`, atIso: at, label: source.label }];
-  });
+  return aggregateSourceRuns(source, rows);
 }
 
 export async function listTodayAutomationRuns(
@@ -105,5 +135,7 @@ export async function listTodayAutomationRuns(
   const perTable = await Promise.all(
     RUN_SOURCES.map((source) => fetchSourceRuns(source, startIso, endIso)),
   );
-  return perTable.flat().sort((a, b) => b.atIso.localeCompare(a.atIso));
+  return perTable
+    .filter((run): run is AutomationRun => run !== null)
+    .sort((a, b) => b.atIso.localeCompare(a.atIso));
 }
