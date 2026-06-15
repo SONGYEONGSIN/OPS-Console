@@ -6,7 +6,7 @@ export type StatRow = {
 
 export function StatList({ rows }: { rows: StatRow[] }) {
   return (
-    <div className="flex flex-col border-y border-line divide-y divide-line-soft bg-situation-bg">
+    <div className="flex flex-col border-y border-line divide-y divide-line-soft bg-paper">
       {rows.map((r) => (
         <div
           key={r.label}
