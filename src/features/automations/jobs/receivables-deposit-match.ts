@@ -130,11 +130,11 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   ]);
 
   const tag = dryRun ? "[DRY-RUN]" : "";
-  const skipTag = skips.length > 0 ? ` / skips ${skips.length}` : "";
+  const skipTag = skips.length > 0 ? ` · 건너뜀 ${skips.length}` : "";
   return {
     ok: errors.length === 0,
     message:
-      `${tag} matched ${result.matched.length} / mismatch ${result.mismatches.length} / errors ${errors.length}${skipTag}`.trim(),
+      `${tag} 매칭 ${result.matched.length} · 불일치 ${result.mismatches.length} · 에러 ${errors.length}${skipTag}`.trim(),
     details: {
       matched: result.matched.length,
       mismatches: result.mismatches.length,
