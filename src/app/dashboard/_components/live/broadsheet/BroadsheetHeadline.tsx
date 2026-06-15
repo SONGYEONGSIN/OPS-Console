@@ -1,9 +1,16 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
 
 import { selectHeadline, type HeadlineInput } from "../command/headline-selector";
+import {
+  HeadlineUrgentModal,
+  type HeadlineUrgentItem,
+} from "./HeadlineUrgentModal";
 
 export function BroadsheetHeadline({ input }: { input: HeadlineInput }) {
   const r = selectHeadline(input);
+  const [selected, setSelected] = useState<HeadlineUrgentItem | null>(null);
 
   return (
     <div className="mb-9 border-2 border-ink shadow-offset-sm bg-situation-bg flex flex-col md:flex-row md:items-center justify-between p-5 gap-4">
@@ -18,16 +25,20 @@ export function BroadsheetHeadline({ input }: { input: HeadlineInput }) {
         </div>
         <h2 className="text-3xl font-black leading-tight tracking-tight">
           {r.mode === "urgent" ? (
-            // 긴급도 문구별 개별 링크 — 각 항목 클릭 시 해당 메뉴로 이동
+            // 긴급도 문구별 개별 버튼 — 클릭 시 요약 모달, 모달에서 페이지 이동
             r.items.map((it, i) => (
               <span key={it.href}>
                 {i > 0 && <span className="text-muted"> · </span>}
-                <Link href={it.href} className="hover:underline">
+                <button
+                  type="button"
+                  onClick={() => setSelected(it)}
+                  className="cursor-pointer hover:underline"
+                >
                   {it.label}{" "}
                   <span className="text-vermilion tabular-nums">
                     {it.count}건
                   </span>
-                </Link>
+                </button>
               </span>
             ))
           ) : (
@@ -52,6 +63,14 @@ export function BroadsheetHeadline({ input }: { input: HeadlineInput }) {
             긴급
           </span>
         </div>
+      )}
+
+      {selected && (
+        <HeadlineUrgentModal
+          item={selected}
+          sub={r.sub}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

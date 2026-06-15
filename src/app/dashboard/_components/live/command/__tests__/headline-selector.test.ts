@@ -26,14 +26,14 @@ describe("selectHeadline — urgent 우선순위", () => {
     expect(r.kicker).toBe("▲ 오늘의 톱 · 즉시");
   });
 
-  it("사고 없고 오늘 마감 있으면 — href는 서비스 메뉴", () => {
+  it("사고 없고 마감 임박 있으면 — href는 서비스 마감 메뉴", () => {
     const r = selectHeadline({
       ...ZERO,
       deadlinesToday: 3,
       overdueReceivables: 4,
     });
     expect(r.mode).toBe("urgent");
-    expect(r.href).toBe("/dashboard/services");
+    expect(r.href).toBe("/dashboard/closing");
   });
 
   it("사고·마감 없고 미수만 있으면 — href는 미수채권 메뉴", () => {
