@@ -97,6 +97,8 @@ describe("runReceivablesDepositMatch", () => {
 
     const result = await runReceivablesDepositMatch();
     expect(result.ok).toBe(true);
+    // 실행 이력 메시지는 한글 포맷(매칭 · 불일치 · 에러)
+    expect(result.message).toContain("매칭 1 · 불일치 0 · 에러 0");
     expect(patchMatchResultMock).toHaveBeenCalled();
     expect(patchMatchResultMock.mock.calls[0][3]).toEqual({ dryRun: true });
     expect(adminInsertMock).toHaveBeenCalledOnce();
