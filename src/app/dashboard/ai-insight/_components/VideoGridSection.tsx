@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { InsightVideoRow } from "@/features/insight-videos/schemas";
+import {
+  INSIGHT_CATEGORIES,
+  categoryOf,
+} from "@/features/insight-videos/categories";
 import { InspectorPanel } from "@/app/dashboard/_components/inspector/InspectorPanel";
 import { useInspectorState } from "@/app/dashboard/_components/inspector/useInspectorState";
 import { VideoGrid } from "./VideoGrid";
@@ -23,25 +27,29 @@ export function VideoGridSection({
 }: Props) {
   const inspector = useInspectorState<InsightVideoRow>();
   const [page, setPage] = useState(1);
-  const [keyword, setKeyword] = useState<string>(ALL);
+  const [category, setCategory] = useState<string>(ALL);
 
-  const keywordCounts = useMemo(() => {
+  const categoryCounts = useMemo(() => {
     const m = new Map<string, number>();
     for (const v of videos) {
-      m.set(v.keyword, (m.get(v.keyword) ?? 0) + 1);
+      const c = categoryOf(v.keyword);
+      m.set(c, (m.get(c) ?? 0) + 1);
     }
     return m;
   }, [videos]);
 
-  const keywordOptions = useMemo(
-    () => Array.from(keywordCounts.keys()).sort(),
-    [keywordCounts],
+  // 표시 순서는 INSIGHT_CATEGORIES 고정, 영상이 있는 카테고리만 칩으로 노출.
+  const categoryOptions = useMemo(
+    () => INSIGHT_CATEGORIES.filter((c) => categoryCounts.has(c)),
+    [categoryCounts],
   );
 
   const filtered = useMemo(
     () =>
-      keyword === ALL ? videos : videos.filter((v) => v.keyword === keyword),
-    [videos, keyword],
+      category === ALL
+        ? videos
+        : videos.filter((v) => categoryOf(v.keyword) === category),
+    [videos, category],
   );
 
   const open = inspector.selected !== null;
@@ -51,8 +59,8 @@ export function VideoGridSection({
   const visible = filtered.slice(start, start + PER_PAGE);
   const showPagination = totalPages > 1;
 
-  const handleKeywordChange = (next: string) => {
-    setKeyword(next);
+  const handleCategoryChange = (next: string) => {
+    setCategory(next);
     setPage(1);
   };
 
@@ -71,22 +79,22 @@ export function VideoGridSection({
             </span>
             <span className="text-sm text-vermilion">{filtered.length}건</span>
           </div>
-          {keywordOptions.length > 0 && (
+          {categoryOptions.length > 0 && (
             <nav
-              aria-label="키워드 필터"
+              aria-label="카테고리 필터"
               className="flex flex-wrap items-center gap-1"
             >
               <FilterButton
-                active={keyword === ALL}
+                active={category === ALL}
                 label={`전체 (${videos.length})`}
-                onClick={() => handleKeywordChange(ALL)}
+                onClick={() => handleCategoryChange(ALL)}
               />
-              {keywordOptions.map((kw) => (
+              {categoryOptions.map((c) => (
                 <FilterButton
-                  key={kw}
-                  active={keyword === kw}
-                  label={`${kw} (${keywordCounts.get(kw) ?? 0})`}
-                  onClick={() => handleKeywordChange(kw)}
+                  key={c}
+                  active={category === c}
+                  label={`${c} (${categoryCounts.get(c) ?? 0})`}
+                  onClick={() => handleCategoryChange(c)}
                 />
               ))}
             </nav>
