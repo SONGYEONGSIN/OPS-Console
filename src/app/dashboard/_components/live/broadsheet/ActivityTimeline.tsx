@@ -77,7 +77,7 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
 
   return (
     <div className="mb-7">
-      <div className="border border-line bg-paper shadow-offset-sm p-5">
+      <div className="border border-line bg-situation-bg shadow-offset-sm p-5">
         <h3 className="mb-1 text-2xl font-black leading-tight tracking-tight">
           실시간 운영 로그
         </h3>
