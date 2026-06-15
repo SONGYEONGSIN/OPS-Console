@@ -107,7 +107,7 @@ export function PriorityFeed({ items, onSelect }: Props) {
             key={it.id}
             type="button"
             onClick={() => onSelect(it)}
-            className="cursor-pointer border border-line bg-paper p-3 text-left transition-colors hover:bg-washi-raised"
+            className="cursor-pointer border border-line p-3 text-left transition-colors hover:bg-washi-raised"
           >
             <div className="mb-1 flex items-center justify-between">
               <span className={`${BADGE_BASE} ${SOLID_BADGE[it.badgeDomain]}`}>

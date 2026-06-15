@@ -623,6 +623,37 @@ export default async function DashboardLivePage({
   ];
   const timelineEvents = buildTimelineEvents(timelineSources, todayYmd);
 
+  // 현황요약·핵심지표 행 클릭 팝업용 상세 리스트 (라벨 → 행, 각 최대 8건).
+  const nowIso = new Date().toISOString();
+  const closePreview = (c: ClosingRow) => ({
+    time: mmdd(c.write_end_at),
+    title: `${c.university_name} · ${c.service_name}`,
+  });
+  const statDetails: Record<string, { time?: string; title: string }[]> = {
+    오픈예정: closingOpensUpcoming.slice(0, 8).map((c) => ({
+      time: c.write_start_at ? mmdd(c.write_start_at) : undefined,
+      title: `${c.university_name} · ${c.service_name}`,
+    })),
+    진행중: closingRows
+      .filter((c) => c.write_end_at >= nowIso)
+      .slice(0, 8)
+      .map(closePreview),
+    마감완료: closingRows
+      .filter((c) => c.write_end_at < nowIso)
+      .sort((a, b) => b.write_end_at.localeCompare(a.write_end_at))
+      .slice(0, 8)
+      .map(closePreview),
+    서비스마감: closingImminent.slice(0, 8).map(closePreview),
+    미수채권: receivablesFeedRows
+      .filter((r) => r.status === "active")
+      .slice(0, 8)
+      .map((r) => ({ title: r.name ?? "" })),
+    사고처리: unresolvedIncidents.slice(0, 8).map((i) => ({
+      time: i.occurred_date ? mmdd(i.occurred_date) : undefined,
+      title: i.title,
+    })),
+  };
+
   return (
     <LiveOverview
       mine={mine}
@@ -668,6 +699,7 @@ export default async function DashboardLivePage({
       headline={headline}
       activityLog={buildActivityLog(consoleWorklogRows)}
       timelineEvents={timelineEvents}
+      statDetails={statDetails}
     />
   );
 }
