@@ -3,7 +3,13 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 
-export type HeadlineUrgentItem = { label: string; count: number; href: string };
+export type HeadlineUrgentRow = { time?: string; title: string };
+export type HeadlineUrgentItem = {
+  label: string;
+  count: number;
+  href: string;
+  rows?: HeadlineUrgentRow[];
+};
 
 type Props = {
   item: HeadlineUrgentItem;
@@ -65,6 +71,24 @@ export function HeadlineUrgentModal({ item, sub, onClose }: Props) {
             <span className="text-sm font-bold text-ink">건</span>
           </div>
           {sub && <p className="mt-2 text-sm text-muted">{sub}</p>}
+
+          {item.rows && item.rows.length > 0 && (
+            <ul className="mt-4 max-h-[280px] divide-y divide-line-soft overflow-y-auto border-y border-line">
+              {item.rows.map((row, i) => (
+                <li
+                  key={`${row.title}-${i}`}
+                  className="flex items-baseline gap-2.5 py-2 text-sm"
+                >
+                  {row.time && (
+                    <span className="shrink-0 tabular-nums font-bold text-muted">
+                      {row.time}
+                    </span>
+                  )}
+                  <span className="text-ink-soft">{row.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div className="mt-5 flex items-center justify-end gap-2">
             <button

@@ -6,6 +6,9 @@
  * 모든 지표가 0이면 calm 모드 — 진행 중 서비스 건수로 "순항" 카피를 보여준다.
  */
 
+/** 팝업 항목 리스트 1행 — 시각(선택) + 제목. */
+export type HeadlinePreviewRow = { time?: string; title: string };
+
 export type HeadlineInput = {
   incidentsUnresolved: number;
   deadlinesToday: number;
@@ -15,6 +18,10 @@ export type HeadlineInput = {
   /** 가장 임박한 마감까지 남은 일수 (0=오늘). sub의 "D-n" 표기용. */
   topDeadlineDays?: number;
   topIncidentLabel?: string;
+  /** 팝업 리스트용 — 항목별 미리보기 행 (없으면 빈 배열로 처리). */
+  incidentRows?: HeadlinePreviewRow[];
+  deadlineRows?: HeadlinePreviewRow[];
+  receivableRows?: HeadlinePreviewRow[];
 };
 
 export type HeadlineSegment = { text: string; em?: boolean };
@@ -27,8 +34,13 @@ export type HeadlineResult = {
   href: string;
   /** 긴급 원형 표시값 — 활성 urgent 항목 합계(미처리사고+오늘마감+미수채권). 헤드라인과 동일 기준. */
   urgentTotal: number;
-  /** 활성 urgent 항목 — 항목별 개별 링크용(라벨/건수/href). calm이면 빈 배열. */
-  items: { label: string; count: number; href: string }[];
+  /** 활성 urgent 항목 — 항목별 개별 링크용(라벨/건수/href/리스트). calm이면 빈 배열. */
+  items: {
+    label: string;
+    count: number;
+    href: string;
+    rows: HeadlinePreviewRow[];
+  }[];
 };
 
 const URGENT_KICKER = "▲ 오늘의 톱 · 즉시";
@@ -39,6 +51,7 @@ type UrgentItem = {
   count: number;
   href: string;
   subFrom: (input: HeadlineInput) => string | undefined;
+  rowsFrom: (input: HeadlineInput) => HeadlinePreviewRow[];
 };
 
 /** 우선순위 순서대로 정의 — 앞쪽이 더 시급. */
@@ -50,6 +63,7 @@ function urgentItems(input: HeadlineInput): UrgentItem[] {
       href: "/dashboard/incidents",
       subFrom: (i) =>
         i.topIncidentLabel ? `사고 "${i.topIncidentLabel}" 미처리` : undefined,
+      rowsFrom: (i) => i.incidentRows ?? [],
     },
     {
       label: "마감 임박",
@@ -59,12 +73,14 @@ function urgentItems(input: HeadlineInput): UrgentItem[] {
         i.topDeadlineLabel
           ? `${i.topDeadlineLabel} D-${i.topDeadlineDays ?? 0}`
           : undefined,
+      rowsFrom: (i) => i.deadlineRows ?? [],
     },
     {
       label: "미수채권 10일+",
       count: input.overdueReceivables,
       href: "/dashboard/receivables",
       subFrom: () => undefined,
+      rowsFrom: (i) => i.receivableRows ?? [],
     },
   ];
 }
@@ -104,6 +120,7 @@ export function selectHeadline(input: HeadlineInput): HeadlineResult {
         label: i.label,
         count: i.count,
         href: i.href,
+        rows: i.rowsFrom(input),
       })),
     };
   }
