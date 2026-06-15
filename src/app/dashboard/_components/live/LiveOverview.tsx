@@ -81,6 +81,8 @@ export type LiveOverviewProps = {
   activityLog: ActivityLogEntry[];
   /** 가로 타임라인 이벤트 — 9 도메인(오늘 KST, 09–18) 파생. */
   timelineEvents: ActivityLogEntry[];
+  /** 현황요약·핵심지표 행 클릭 팝업용 상세 리스트 (라벨 → 행 미리보기). page.tsx 조립. */
+  statDetails?: Record<string, { time?: string; title: string }[]>;
 };
 
 const SECTION_LABEL =
@@ -98,6 +100,7 @@ function LiveOverviewInner({
   headline,
   activityLog,
   timelineEvents,
+  statDetails = {},
 }: LiveOverviewProps) {
   const [selected, setSelected] = useState<{
     variant: Variant;
@@ -110,32 +113,91 @@ function LiveOverviewInner({
   const select = (it: LiveTableItem) =>
     setSelected({ variant: it.variant, row: it.listRow });
 
+  const d = (key: string) => statDetails[key] ?? [];
   const summaryRows: StatRow[] = [
-    { label: "계약", value: fmtVal(metrics.contract.value) },
-    { label: "오픈예정", value: fmtVal(lifecycle[0]?.count) },
-    { label: "진행 중", value: fmtVal(lifecycle[1]?.count) },
-    { label: "마감완료", value: fmtVal(lifecycle[2]?.count) },
-    { label: "미수채권", value: fmtVal(metrics.bond.value), tone: "vermilion" },
-    { label: "백업요청", value: fmtVal(metrics.backup.value) },
-    { label: "인수인계", value: fmtVal(metrics.handover.value) },
-    { label: "대학연락처", value: fmtVal(metrics.contacts.value) },
+    {
+      label: "계약",
+      value: fmtVal(metrics.contract.value),
+      href: "/dashboard/contracts",
+      detailRows: d("계약"),
+    },
+    {
+      label: "오픈예정",
+      value: fmtVal(lifecycle[0]?.count),
+      href: "/dashboard/closing",
+      detailRows: d("오픈예정"),
+    },
+    {
+      label: "진행 중",
+      value: fmtVal(lifecycle[1]?.count),
+      href: "/dashboard/closing",
+      detailRows: d("진행중"),
+    },
+    {
+      label: "마감완료",
+      value: fmtVal(lifecycle[2]?.count),
+      href: "/dashboard/closing",
+      detailRows: d("마감완료"),
+    },
+    {
+      label: "미수채권",
+      value: fmtVal(metrics.bond.value),
+      tone: "vermilion",
+      href: "/dashboard/receivables",
+      detailRows: d("미수채권"),
+    },
+    {
+      label: "백업요청",
+      value: fmtVal(metrics.backup.value),
+      href: "/dashboard/backup",
+      detailRows: d("백업요청"),
+    },
+    {
+      label: "인수인계",
+      value: fmtVal(metrics.handover.value),
+      href: "/dashboard/handover",
+      detailRows: d("인수인계"),
+    },
+    {
+      label: "대학연락처",
+      value: fmtVal(metrics.contacts.value),
+      href: "/dashboard/contacts",
+      detailRows: d("대학연락처"),
+    },
   ];
 
   const keyMetricRows: StatRow[] = [
     {
       label: "내 할 일 · 주요업무",
       value: `${keyMetrics.todoWeekly.done} / ${keyMetrics.todoWeekly.total}`,
+      href: "/dashboard/my-todo",
+      detailRows: d("주요업무"),
     },
     {
       label: "내 할 일 · 프로젝트",
       value: `${keyMetrics.todoProject.done} / ${keyMetrics.todoProject.total}`,
+      href: "/dashboard/my-todo",
+      detailRows: d("프로젝트"),
     },
-    { label: "AI 산출물", value: fmtVal(keyMetrics.aiOutputs) },
-    { label: "사고처리", value: fmtVal(keyMetrics.incidents), tone: "vermilion" },
+    {
+      label: "AI 산출물",
+      value: fmtVal(keyMetrics.aiOutputs),
+      href: "/dashboard/my-ai-work",
+      detailRows: d("AI산출물"),
+    },
+    {
+      label: "사고처리",
+      value: fmtVal(keyMetrics.incidents),
+      tone: "vermilion",
+      href: "/dashboard/incidents",
+      detailRows: d("사고처리"),
+    },
     {
       label: "서비스 마감",
       value: fmtVal(keyMetrics.serviceClosed),
       tone: "sage",
+      href: "/dashboard/closing",
+      detailRows: d("서비스마감"),
     },
   ];
 

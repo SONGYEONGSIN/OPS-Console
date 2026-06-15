@@ -6,7 +6,10 @@ import Link from "next/link";
 export type HeadlineUrgentRow = { time?: string; title: string };
 export type HeadlineUrgentItem = {
   label: string;
-  count: number;
+  /** 큰 숫자 표시값(건수). valueText가 있으면 그쪽 우선. */
+  count?: number;
+  /** count 대신 표시할 문자열(예: "24 / 418"). */
+  valueText?: string;
   href: string;
   rows?: HeadlineUrgentRow[];
 };
@@ -64,12 +67,18 @@ export function HeadlineUrgentModal({ item, sub, onClose }: Props) {
         </div>
 
         <div className="px-5 py-5">
-          <div className="flex items-baseline gap-2">
-            <span className="text-4xl font-black tabular-nums text-vermilion">
-              {item.count}
+          {item.valueText ? (
+            <span className="text-3xl font-black tabular-nums text-vermilion">
+              {item.valueText}
             </span>
-            <span className="text-sm font-bold text-ink">건</span>
-          </div>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-black tabular-nums text-vermilion">
+                {item.count ?? 0}
+              </span>
+              <span className="text-sm font-bold text-ink">건</span>
+            </div>
+          )}
           {sub && <p className="mt-2 text-sm text-muted">{sub}</p>}
 
           {item.rows && item.rows.length > 0 && (
