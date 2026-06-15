@@ -31,18 +31,6 @@
   --gold: #9c7a2c;
   --sage: #556b2f;
 
-  /* KBO 팀 컬러 (NOW 마커 야구모자 캐릭터 전용) */
-  --team-hanwha: #fc4e00;
-  --team-lg: #c30452;
-  --team-doosan: #131230;
-  --team-samsung: #074ca1;
-  --team-kia: #ea0029;
-  --team-lotte: #00275c;
-  --team-ssg: #ce0e2d;
-  --team-nc: #315288;
-  --team-kiwoom: #57021f;
-  --team-kt: #2a2a2a;
-
   /* OPS Console chrome 전용 (chrome bar만 적용) */
   --chrome-graphite: #18181b;
   --chrome-snow: #f5f5f4;
@@ -623,50 +611,6 @@ button.bs-tl-ev .cal.cal-group,
 }
 .bs-tl-now .run svg .eye {
   fill: var(--paper);
-}
-.bs-tl-now .run svg .seam {
-  fill: none;
-  stroke: var(--paper);
-  stroke-width: 0.9;
-  stroke-linecap: round;
-  stroke-dasharray: 0.5 1.6;
-}
-/* KBO 야구모자 캐릭터 — 팀 컬러 캡 + 크림 이니셜 */
-.bs-tl-now .run svg .cap-letter {
-  fill: var(--cream);
-  font-size: 7.5px;
-  font-weight: 800;
-  text-anchor: middle;
-}
-.bs-tl-now .run svg .cap-hanwha {
-  fill: var(--team-hanwha);
-}
-.bs-tl-now .run svg .cap-lg {
-  fill: var(--team-lg);
-}
-.bs-tl-now .run svg .cap-doosan {
-  fill: var(--team-doosan);
-}
-.bs-tl-now .run svg .cap-samsung {
-  fill: var(--team-samsung);
-}
-.bs-tl-now .run svg .cap-kia {
-  fill: var(--team-kia);
-}
-.bs-tl-now .run svg .cap-lotte {
-  fill: var(--team-lotte);
-}
-.bs-tl-now .run svg .cap-ssg {
-  fill: var(--team-ssg);
-}
-.bs-tl-now .run svg .cap-nc {
-  fill: var(--team-nc);
-}
-.bs-tl-now .run svg .cap-kiwoom {
-  fill: var(--team-kiwoom);
-}
-.bs-tl-now .run svg .cap-kt {
-  fill: var(--team-kt);
 }
 
 /* 가이드 투어(driver.js) 팝업 — 기본(300px)보다 넓게 + 버튼 목록(<br>) 줄간격 확보 */

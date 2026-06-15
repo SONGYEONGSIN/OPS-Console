@@ -8,22 +8,6 @@ import type { ReactNode } from "react";
  */
 export type NowCharacter = { id: string; label: string; node: ReactNode };
 
-/** KBO 야구모자 캐릭터 — 팀 컬러 캡(크라운+챙+단추) + 크림 이니셜. */
-function cap(teamClass: string, letter: string): ReactNode {
-  return (
-    <>
-      <g className={teamClass}>
-        <path d="M4.5 14.5C4.5 8 8 4.5 12 4.5C16 4.5 19.5 8 19.5 14.5Z" />
-        <path d="M11.5 13.6H21C22.3 13.6 22.3 16.2 21 16.2H11.5Z" />
-        <circle cx="12" cy="4.8" r="0.9" />
-      </g>
-      <text className="cap-letter" x="11.5" y="12.4">
-        {letter}
-      </text>
-    </>
-  );
-}
-
 export const NOW_CHARACTERS: NowCharacter[] = [
   {
     id: "spark4",
@@ -114,30 +98,61 @@ export const NOW_CHARACTERS: NowCharacter[] = [
     ),
   },
   {
-    id: "baseball",
-    label: "야구공",
+    id: "heart",
+    label: "하트",
     node: (
       <>
-        <circle fill="currentColor" cx="12" cy="12" r="8" />
-        <g className="seam">
-          <path d="M6.8 6Q10 12 6.8 18" />
-          <path d="M17.2 6Q14 12 17.2 18" />
-        </g>
-        <circle className="eye" cx="10.4" cy="11" r="1" />
-        <circle className="eye" cx="13.6" cy="11" r="1" />
+        <path
+          fill="currentColor"
+          d="M12 20.6C5.6 16.2 3.5 12.1 3.5 8.8 3.5 6 5.6 4.3 8 4.3c1.7 0 3.1.9 4 2.3.9-1.4 2.3-2.3 4-2.3 2.4 0 4.5 1.7 4.5 4.5 0 3.3-2.1 7.4-8.5 11.8z"
+        />
+        <circle className="eye" cx="10.2" cy="10.4" r="0.95" />
+        <circle className="eye" cx="13.8" cy="10.4" r="0.95" />
       </>
     ),
   },
-  { id: "hanwha", label: "한화 이글스", node: cap("cap-hanwha", "한") },
-  { id: "lg", label: "LG 트윈스", node: cap("cap-lg", "엘") },
-  { id: "doosan", label: "두산 베어스", node: cap("cap-doosan", "두") },
-  { id: "samsung", label: "삼성 라이온즈", node: cap("cap-samsung", "삼") },
-  { id: "kia", label: "기아 타이거즈", node: cap("cap-kia", "기") },
-  { id: "lotte", label: "롯데 자이언츠", node: cap("cap-lotte", "롯") },
-  { id: "ssg", label: "SSG 랜더스", node: cap("cap-ssg", "쓱") },
-  { id: "nc", label: "NC 다이노스", node: cap("cap-nc", "엔") },
-  { id: "kiwoom", label: "키움 히어로즈", node: cap("cap-kiwoom", "키") },
-  { id: "kt", label: "KT 위즈", node: cap("cap-kt", "위") },
+  {
+    id: "star5",
+    label: "별",
+    node: (
+      <>
+        <path
+          fill="currentColor"
+          d="M12 2l2.7 6.1 6.6.6-5 4.4 1.5 6.5L12 16.8 6.2 19.6l1.5-6.5-5-4.4 6.6-.6z"
+        />
+        <circle className="eye" cx="10.5" cy="11.6" r="0.85" />
+        <circle className="eye" cx="13.5" cy="11.6" r="0.85" />
+      </>
+    ),
+  },
+  {
+    id: "moon",
+    label: "초승달",
+    node: (
+      <>
+        <path
+          fill="currentColor"
+          d="M14 3a9 9 0 1 0 4.4 16.9A7.3 7.3 0 0 1 14 3z"
+        />
+        <circle className="eye" cx="9.4" cy="12" r="1" />
+        <circle className="eye" cx="12.4" cy="12" r="1" />
+      </>
+    ),
+  },
+  {
+    id: "ghost",
+    label: "유령",
+    node: (
+      <>
+        <path
+          fill="currentColor"
+          d="M5.5 12a6.5 6.5 0 0 1 13 0v8l-2.2-1.6-2.1 1.6L12 18.4l-2.2 1.6L7.7 18.4 5.5 20z"
+        />
+        <circle className="eye" cx="9.9" cy="11.2" r="1" />
+        <circle className="eye" cx="14.1" cy="11.2" r="1" />
+      </>
+    ),
+  },
 ];
 
 /** "YYYY-MM-DD" → 정수 시드(예: 20260614). 데일리 로테이션 기준. */
