@@ -42,12 +42,12 @@ export function TriageColumns({ items, onSelect }: Props) {
               className={`flex justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest ${
                 col.accent
                   ? "bg-vermilion text-cream"
-                  : "border-b border-line bg-situation-bg text-ink"
+                  : "bg-ink text-cream"
               }`}
             >
               <span>{col.label}</span>
               <span
-                className={`tabular-nums ${col.accent ? "" : "text-muted"}`}
+                className={`tabular-nums ${col.accent ? "" : "text-cream/70"}`}
               >
                 {colItems.length}
               </span>
