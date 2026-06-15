@@ -21,15 +21,15 @@ afterEach(() => {
 });
 
 describe("MeetingsControls", () => {
-  it("유형 select와 검색 input을 렌더한다 (select가 먼저)", () => {
+  it("유형 select와 검색 input을 렌더한다 (검색창이 먼저)", () => {
     render(<MeetingsControls />);
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     const box = screen.getByRole("searchbox") as HTMLInputElement;
     expect(select).toBeInTheDocument();
     expect(box).toBeInTheDocument();
-    // select가 DOM 순서상 검색창보다 앞
+    // 검색창(넓게)이 DOM 순서상 유형 select보다 앞 (contracts 패턴 동일)
     expect(
-      select.compareDocumentPosition(box) &
+      box.compareDocumentPosition(select) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
