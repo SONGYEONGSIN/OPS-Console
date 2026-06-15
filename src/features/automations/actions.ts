@@ -13,14 +13,15 @@ import {
   getJobLastRunAt,
   getJobEnabled,
 } from "./queries";
-import { getJobRunLog } from "./run-logs";
+import { getJobRunLog, getAutomationRunLog } from "./run-logs";
+import { recordAutomationRun } from "./run-recorder";
 import type { JobRunLog } from "./run-logs-normalize";
-import type { AutomationRunResult } from "./types";
+import type { AutomationRunResult, AutomationRunEntry } from "./types";
 
 export type RunActionState = AutomationRunResult | undefined;
 
 export type JobRunLogResult =
-  | { ok: true; log: JobRunLog }
+  | { ok: true; runs: AutomationRunEntry[]; log: JobRunLog }
   | { ok: false; message: string };
 
 export async function getJobRunLogAction(
@@ -30,8 +31,11 @@ export async function getJobRunLogAction(
   if (!getJob(jobId)) {
     return { ok: false, message: `알 수 없는 자동화: ${jobId}` };
   }
-  const log = await getJobRunLog(jobId);
-  return { ok: true, log };
+  const [runs, log] = await Promise.all([
+    getAutomationRunLog(jobId),
+    getJobRunLog(jobId),
+  ]);
+  return { ok: true, runs, log };
 }
 
 export async function runAutomationAction(
@@ -57,7 +61,8 @@ export async function runAutomationAction(
   if (await getJobEnabled(jobId)) {
     return {
       ok: false,
-      message: "자동 실행 중에는 수동 실행할 수 없습니다. 자동 실행을 끄고 다시 시도하세요.",
+      message:
+        "자동 실행 중에는 수동 실행할 수 없습니다. 자동 실행을 끄고 다시 시도하세요.",
     };
   }
 
@@ -77,7 +82,13 @@ export async function runAutomationAction(
     }
   }
 
+  const startedMs = Date.now();
   const result = await job.run();
+  await recordAutomationRun(jobId, {
+    ok: result.ok,
+    message: result.message,
+    durationMs: Date.now() - startedMs,
+  });
   revalidatePath("/dashboard/automations");
   revalidatePath("/dashboard/ai-insight");
   return result;

@@ -18,6 +18,7 @@ import {
   type ClosingRunEntry,
   type WeeklyReportEntry,
 } from "@/features/automations/run-logs-normalize";
+import type { AutomationRunEntry } from "@/features/automations/types";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
 
 function fmtTime(iso: string): string {
@@ -399,14 +400,62 @@ function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
   );
 }
 
+function RunStatusBadge({ entry }: { entry: AutomationRunEntry }) {
+  const label = entry.skipped ? "스킵" : entry.ok ? "성공" : "실패";
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 text-[11px] ${
+        !entry.ok
+          ? "bg-vermilion/20 text-vermilion-deep"
+          : entry.skipped
+            ? "bg-washi-raised text-muted"
+            : "bg-washi-raised text-ink"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** 공통 실행 이력 — automation_runs 기반. 발송 0건·스킵·실패도 실행 사실을 보여준다. */
+function RunHistoryList({ runs }: { runs: AutomationRunEntry[] }) {
+  return (
+    <div className="space-y-3">
+      {runs.map((e, i) => (
+        <div key={i} className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.ranAt)}</span>
+            <RunStatusBadge entry={e} />
+          </div>
+          {e.message && (
+            <p className={`text-xs ${e.ok ? "text-muted" : "text-vermilion"}`}>
+              {e.message}
+            </p>
+          )}
+          {i < runs.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type Props = {
   label: string;
   loading: boolean;
   error: string | null;
+  runs?: AutomationRunEntry[];
   log: JobRunLog | null;
 };
 
-export function AutomationLogPanel({ label, loading, error, log }: Props) {
+export function AutomationLogPanel({
+  label,
+  loading,
+  error,
+  runs = [],
+  log,
+}: Props) {
+  const hasDetail = !!log && log.entries.length > 0;
+  const hasRuns = runs.length > 0;
   return (
     <div className="space-y-5">
       <header className="space-y-1">
@@ -418,28 +467,41 @@ export function AutomationLogPanel({ label, loading, error, log }: Props) {
         <p className="text-xs text-muted">불러오는 중…</p>
       ) : error ? (
         <p className="text-xs text-vermilion">{error}</p>
-      ) : !log || log.entries.length === 0 ? (
+      ) : !hasRuns && !hasDetail ? (
         <p className="text-xs text-muted">실행 기록이 없습니다.</p>
       ) : (
-        <Section title="실행 이력">
-          {log.kind === "deposit-match" && (
-            <DepositMatchList entries={log.entries} />
+        <div className="space-y-5">
+          {hasRuns && (
+            <Section title="실행 이력">
+              <RunHistoryList runs={runs} />
+            </Section>
           )}
-          {log.kind === "mail-operator" && (
-            <MailOperatorList entries={log.entries} />
+          {log && log.entries.length > 0 && (
+            <Section title="발송 상세">
+              {log.kind === "deposit-match" && (
+                <DepositMatchList entries={log.entries} />
+              )}
+              {log.kind === "mail-operator" && (
+                <MailOperatorList entries={log.entries} />
+              )}
+              {log.kind === "smileedi" && (
+                <SmileEdiList entries={log.entries} />
+              )}
+              {log.kind === "service-notice" && (
+                <ServiceNoticeList entries={log.entries} />
+              )}
+              {log.kind === "closing-scrape" && (
+                <ClosingScrapeList entries={log.entries} />
+              )}
+              {log.kind === "weekly-report" && (
+                <WeeklyReportList entries={log.entries} />
+              )}
+              {log.kind === "insights" && (
+                <InsightsList entries={log.entries} />
+              )}
+            </Section>
           )}
-          {log.kind === "smileedi" && <SmileEdiList entries={log.entries} />}
-          {log.kind === "service-notice" && (
-            <ServiceNoticeList entries={log.entries} />
-          )}
-          {log.kind === "closing-scrape" && (
-            <ClosingScrapeList entries={log.entries} />
-          )}
-          {log.kind === "weekly-report" && (
-            <WeeklyReportList entries={log.entries} />
-          )}
-          {log.kind === "insights" && <InsightsList entries={log.entries} />}
-        </Section>
+        </div>
       )}
     </div>
   );

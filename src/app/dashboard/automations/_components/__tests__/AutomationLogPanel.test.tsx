@@ -45,6 +45,43 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("실행 기록이 없습니다.")).toBeInTheDocument();
   });
 
+  it("실행 이력(runs) — 발송 상세가 없어도 실행/스킵/실패를 표시", () => {
+    render(
+      <AutomationLogPanel
+        label="세금계산서 역발행 알림"
+        loading={false}
+        error={null}
+        runs={[
+          {
+            ranAt: "2026-06-15T01:00:00Z",
+            ok: true,
+            skipped: false,
+            message: "발송 대상 없음",
+          },
+          {
+            ranAt: "2026-06-14T01:00:00Z",
+            ok: true,
+            skipped: true,
+            message: "자동 실행 OFF — cron skip",
+          },
+          {
+            ranAt: "2026-06-13T01:00:00Z",
+            ok: false,
+            skipped: false,
+            message: "시트 미연결",
+          },
+        ]}
+        log={null}
+      />,
+    );
+    expect(screen.getByText("실행 이력")).toBeInTheDocument();
+    expect(screen.getByText("발송 대상 없음")).toBeInTheDocument();
+    expect(screen.getByText("성공")).toBeInTheDocument();
+    expect(screen.getByText("스킵")).toBeInTheDocument();
+    expect(screen.getByText("실패")).toBeInTheDocument();
+    expect(screen.getByText("시트 미연결")).toBeInTheDocument();
+  });
+
   it("deposit-match 로그 — 카운트와 불일치 줄 렌더", () => {
     const log: JobRunLog = {
       jobId: "receivables-deposit-match",
@@ -128,9 +165,7 @@ describe("AutomationLogPanel", () => {
     expect(
       screen.getByText("매칭 0 · 불일치 0 · 에러 0 · 스킵 1"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/row 8 이미 입금완료 — skip/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/row 8 이미 입금완료 — skip/)).toBeInTheDocument();
   });
 
   it("mail-operator 로그 — 수신자/상태 렌더", () => {

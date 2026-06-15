@@ -97,7 +97,25 @@ const LAST_RUN_RESOLVERS: Record<string, () => Promise<string | null>> = {
   "weekly-report-rollover": getWeeklyReportLastRunAt,
 };
 
+// automation_runs의 실제 실행(스킵 제외) 최신 1건을 "마지막 실행"으로 본다.
+// 발송 0건이어도 실행이 기록되므로 역산보다 정확하다.
+async function getLatestActualRunAt(jobId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("automation_runs")
+    .select("ran_at")
+    .eq("job_id", jobId)
+    .eq("skipped", false)
+    .order("ran_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.ran_at ?? null;
+}
+
 export async function getJobLastRunAt(jobId: string): Promise<string | null> {
+  // automation_runs 우선. 아직 적재 전(전환기)이면 기존 결과 테이블 역산으로 폴백.
+  const fromRuns = await getLatestActualRunAt(jobId);
+  if (fromRuns) return fromRuns;
   const resolver = LAST_RUN_RESOLVERS[jobId];
   return resolver ? resolver() : null;
 }

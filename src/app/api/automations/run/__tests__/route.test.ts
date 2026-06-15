@@ -1,17 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockGetJob, mockGetJobEnabled, mockRun } = vi.hoisted(() => ({
-  mockGetJob: vi.fn(),
-  mockGetJobEnabled: vi.fn(),
-  mockRun: vi.fn(),
-}));
+const { mockGetJob, mockGetJobEnabled, mockRun, mockRecord } = vi.hoisted(
+  () => ({
+    mockGetJob: vi.fn(),
+    mockGetJobEnabled: vi.fn(),
+    mockRun: vi.fn(),
+    mockRecord: vi.fn(async () => {}),
+  }),
+);
 
 vi.mock("@/features/automations/registry", () => ({
   getJob: mockGetJob,
 }));
 vi.mock("@/features/automations/queries", () => ({
   getJobEnabled: mockGetJobEnabled,
+}));
+vi.mock("@/features/automations/run-recorder", () => ({
+  recordAutomationRun: mockRecord,
 }));
 
 import { POST } from "../route";
@@ -50,7 +56,7 @@ describe("/api/automations/run — enabled gate", () => {
     expect(mockRun).not.toHaveBeenCalled();
   });
 
-  it("enabled=true → job.run() 호출 + 결과 그대로 반환", async () => {
+  it("enabled=true → job.run() 호출 + 결과 그대로 반환 + 실행 기록", async () => {
     mockGetJobEnabled.mockResolvedValue(true);
     const res = await POST(
       req({ secret: "s3cr3t", jobId: "receivables-mail-operator" }),
@@ -60,6 +66,32 @@ describe("/api/automations/run — enabled gate", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.message).toBe("done");
+    expect(mockRecord).toHaveBeenCalledWith(
+      "receivables-mail-operator",
+      expect.objectContaining({ ok: true, message: "done" }),
+    );
+  });
+
+  it("enabled=false → 스킵도 실행 이력에 기록(skipped:true)", async () => {
+    mockGetJobEnabled.mockResolvedValue(false);
+    await POST(req({ secret: "s3cr3t", jobId: "receivables-mail-operator" }));
+    expect(mockRecord).toHaveBeenCalledWith(
+      "receivables-mail-operator",
+      expect.objectContaining({ skipped: true }),
+    );
+  });
+
+  it("job.run() 예외 → 500 + 실패(ok:false) 기록", async () => {
+    mockGetJobEnabled.mockResolvedValue(true);
+    mockRun.mockRejectedValueOnce(new Error("시트 미연결"));
+    const res = await POST(
+      req({ secret: "s3cr3t", jobId: "receivables-mail-operator" }),
+    );
+    expect(res.status).toBe(500);
+    expect(mockRecord).toHaveBeenCalledWith(
+      "receivables-mail-operator",
+      expect.objectContaining({ ok: false, message: "시트 미연결" }),
+    );
   });
 
   it("시크릿 불일치 → 401 + enabled 조회조차 안 함", async () => {

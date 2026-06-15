@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getJob } from "@/features/automations/registry";
 import { getJobEnabled } from "@/features/automations/queries";
+import { recordAutomationRun } from "@/features/automations/run-recorder";
 
 /**
  * GitHub Actions cron 진입점 — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -48,15 +49,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // UI 토글 OFF면 cron silent skip — 사용자가 자동 실행을 의도적으로 끈 상태.
+  // UI 토글 OFF면 cron skip — 사용자가 자동 실행을 의도적으로 끈 상태.
+  // 호출됐으나 OFF로 스킵된 사실도 실행 이력에 남겨, "왜 안 도는지"를 추적 가능하게 한다.
   const enabled = await getJobEnabled(jobId);
   if (!enabled) {
+    await recordAutomationRun(jobId, {
+      ok: true,
+      skipped: true,
+      message: "자동 실행 OFF — cron skip",
+    });
     return NextResponse.json(
       { ok: true, skipped: true, message: "자동 실행 OFF — cron skip" },
       { status: 200 },
     );
   }
 
-  const result = await job.run();
-  return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  const startedMs = Date.now();
+  try {
+    const result = await job.run();
+    await recordAutomationRun(jobId, {
+      ok: result.ok,
+      message: result.message,
+      durationMs: Date.now() - startedMs,
+    });
+    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await recordAutomationRun(jobId, {
+      ok: false,
+      message,
+      durationMs: Date.now() - startedMs,
+    });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 }
