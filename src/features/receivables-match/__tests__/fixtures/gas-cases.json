@@ -164,7 +164,7 @@
       }
     },
     {
-      "name": "Mismatch — 금액일치 + 이름불일치 → mismatches에 적재",
+      "name": "Mismatch — 금액일치지만 거래처 명백히 다름(가천대↔동국대 유사도<임계) → 제외",
       "misu": [
         { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대", "amount": 100000, "note": "" }
       ],
@@ -173,9 +173,7 @@
       ],
       "expected": {
         "matched": [],
-        "mismatches": [
-          { "misuRow": 5, "depRow": 2, "amount": 100000 }
-        ]
+        "mismatches": []
       }
     },
     {

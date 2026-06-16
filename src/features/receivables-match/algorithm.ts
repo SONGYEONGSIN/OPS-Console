@@ -39,6 +39,12 @@ function latestDate(rows: { date: string }[]): string {
   );
 }
 
+// mismatch(금액 일치·이름 불일치) 확인 요청 최소 유사도.
+// 금액만 우연히 같고 거래처가 명백히 다른 건(예: 명지대↔충북대국제교류 0.29, 가천대↔동국대 0.33)을
+// 제외하고, 별칭 후보일 만큼 유사한 건(예: 서강대↔서강국제대학원 0.57, 한국외대 0.50)만
+// admin 확인 요청한다. (보정: 명백히 다름 ≤ 0.33 / 실제 별칭 ≥ 0.50 — 그 사이 0.4로 컷)
+const MISMATCH_MIN_SIMILARITY = 0.4;
+
 function isUnpaidMisu(m: MisuRow): boolean {
   return !m.note || m.note.trim() === "";
 }
@@ -220,7 +226,8 @@ export function runMatch(
       if (!isDateMatch(m.date, d.date)) continue;
       if (
         m.amount === d.amount &&
-        !isNameMatchStrong(m.customer, d.content, extraAliases)
+        !isNameMatchStrong(m.customer, d.content, extraAliases) &&
+        similarity(m.customer, d.content) >= MISMATCH_MIN_SIMILARITY
       ) {
         mismatches.push({
           misuRow: m.rowNumber,
@@ -243,9 +250,6 @@ export function runMatch(
       (d) => !matchedDepRows.has(d.row) && isUnpaidDeposit(d) && d.amount > 0,
     )
     .map((d) => d.row);
-
-  // similarity는 후속 확장(threshold 자동 매핑) 위해 export — 현재 알고리즘은 미사용
-  void similarity;
 
   return { matched, mismatches, unmatchedMisu, unmatchedDep };
 }
