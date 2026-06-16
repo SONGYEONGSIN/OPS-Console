@@ -39,12 +39,14 @@ export function PriorityFeed({ items, onSelect }: Props) {
 
   const counts = useMemo(() => {
     const m = new Map<LiveBadgeDomain, number>();
-    for (const it of items) m.set(it.badgeDomain, (m.get(it.badgeDomain) ?? 0) + 1);
+    for (const it of items)
+      m.set(it.badgeDomain, (m.get(it.badgeDomain) ?? 0) + 1);
     return m;
   }, [items]);
 
   const filtered = useMemo(
-    () => (filter === "all" ? items : items.filter((i) => i.badgeDomain === filter)),
+    () =>
+      filter === "all" ? items : items.filter((i) => i.badgeDomain === filter),
     [filter, items],
   );
 
@@ -101,13 +103,13 @@ export function PriorityFeed({ items, onSelect }: Props) {
       </div>
 
       {/* 카드 목록 — 컬럼 남은 높이를 flex-1로 채우고 내부 스크롤 (페이저와의 빈 공간 방지) */}
-      <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1.5 [scrollbar-gutter:stable]">
+      <div className="flex min-h-0 flex-1 flex-col divide-y divide-line-soft border-y border-line overflow-y-auto pr-1.5 [scrollbar-gutter:stable]">
         {visible.map((it) => (
           <button
             key={it.id}
             type="button"
             onClick={() => onSelect(it)}
-            className="cursor-pointer border border-line p-3 text-left transition-colors hover:bg-washi-raised"
+            className="cursor-pointer px-3 py-2.5 text-left transition-colors hover:bg-washi-raised"
           >
             <div className="mb-1 flex items-center justify-between">
               <span className={`${BADGE_BASE} ${SOLID_BADGE[it.badgeDomain]}`}>

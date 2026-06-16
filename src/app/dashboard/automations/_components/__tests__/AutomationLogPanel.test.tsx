@@ -82,6 +82,47 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("시트 미연결")).toBeInTheDocument();
   });
 
+  it("run 기반 잡(deposit-match)은 발송 상세가 있으면 '실행 이력' 숨김(중복 제거)", () => {
+    const log: JobRunLog = {
+      jobId: "receivables-deposit-match",
+      kind: "deposit-match",
+      entries: [
+        {
+          startedAt: "2026-06-16T02:00:18Z",
+          finishedAt: "2026-06-16T02:00:30Z",
+          mode: "live",
+          matchedCount: 0,
+          mismatchCount: 0,
+          errorCount: 0,
+          matchedLines: [],
+          mismatchLines: [],
+          mismatchItems: [],
+          errorLines: [],
+          skipLines: [],
+        },
+      ],
+    };
+    render(
+      <AutomationLogPanel
+        label="입금 매칭 자동화"
+        loading={false}
+        error={null}
+        runs={[
+          {
+            ranAt: "2026-06-16T02:00:27Z",
+            ok: true,
+            skipped: false,
+            message: "매칭 0 · 불일치 0 · 에러 0",
+          },
+        ]}
+        log={log}
+      />,
+    );
+    // 발송 상세(run별 시각 포함)가 있으므로 상단 '실행 이력' 섹션은 숨긴다.
+    expect(screen.queryByText("실행 이력")).not.toBeInTheDocument();
+    expect(screen.getByText("발송 상세")).toBeInTheDocument();
+  });
+
   it("deposit-match 로그 — 카운트와 불일치 줄 렌더", () => {
     const log: JobRunLog = {
       jobId: "receivables-deposit-match",

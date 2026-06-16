@@ -456,6 +456,11 @@ export function AutomationLogPanel({
 }: Props) {
   const hasDetail = !!log && log.entries.length > 0;
   const hasRuns = runs.length > 0;
+  // 발송 상세가 '각 실행'을 시각과 함께 보여주는 run 기반 잡은 상단 '실행 이력'(automation_runs)이
+  // 중복 → 상세가 있으면 숨긴다. (발송 단위 잡 — 0건 시 상세가 비는 — 은 실행 이력으로 보완 유지.)
+  const RUN_BASED_KINDS = ["deposit-match", "closing-scrape", "weekly-report"];
+  const isRunBased = !!log && RUN_BASED_KINDS.includes(log.kind);
+  const showRuns = hasRuns && !(isRunBased && hasDetail);
   return (
     <div className="space-y-5">
       <header className="space-y-1">
@@ -467,11 +472,11 @@ export function AutomationLogPanel({
         <p className="text-xs text-muted">불러오는 중…</p>
       ) : error ? (
         <p className="text-xs text-vermilion">{error}</p>
-      ) : !hasRuns && !hasDetail ? (
+      ) : !showRuns && !hasDetail ? (
         <p className="text-xs text-muted">실행 기록이 없습니다.</p>
       ) : (
         <div className="space-y-5">
-          {hasRuns && (
+          {showRuns && (
             <Section title="실행 이력">
               <RunHistoryList runs={runs} />
             </Section>
