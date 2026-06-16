@@ -116,3 +116,23 @@ describe("runMatch — extraAliases (학습된 alias로 mismatch → match)", ()
     expect(r.mismatches.length).toBe(0);
   });
 });
+
+describe("runMatch — mismatch 유사도 게이트 (명백히 다른 거래처 제외)", () => {
+  // 금액은 같지만 거래처명이 명백히 다른 건(유사도 < 0.4)은 확인 요청에서 제외.
+  it("명지대학교 ↔ 충북대국제교류(유사도 0.29) — mismatch 제외", () => {
+    const r = runMatch(
+      [{ rowNumber: 30, date: "2026-05-29", customer: "명지대학교", amount: 260000, note: "" }],
+      [{ row: 1800, date: "2026-06-11", amount: 260000, content: "충북대국제교류", matchedFlag: "" }],
+    );
+    expect(r.matched.length).toBe(0);
+    expect(r.mismatches.length).toBe(0);
+  });
+
+  it("서강대학교 ↔ 서강국제대학원(유사도 0.57) — mismatch 유지(확인 요청)", () => {
+    const r = runMatch(
+      [{ rowNumber: 31, date: "2026-05-01", customer: "서강대학교", amount: 84000, note: "" }],
+      [{ row: 1801, date: "2026-05-03", amount: 84000, content: "서강국제대학원", matchedFlag: "" }],
+    );
+    expect(r.mismatches.length).toBe(1);
+  });
+});
