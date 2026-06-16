@@ -105,7 +105,7 @@ export default async function DashboardLivePage({
     pageSize: 1000,
   }).catch(() => ({ rows: [] as ClosingRow[], total: 0 }));
   const closingRows = closingAllRes.rows;
-  // 오픈 예정(write_start_at ≥ 오늘) / 마감 임박(write_end_at D-3 이내). derive.ts.
+  // 오픈 예정(write_start_at ≥ 오늘) / 마감 임박(pay_end_at D-3 이내). derive.ts.
   const closingOpensUpcoming = upcomingOpens(closingRows, todayYmd);
   const closingImminent = imminentClosings(closingRows, todayYmd);
   const openCount = closingOpensUpcoming.length;
@@ -444,22 +444,24 @@ export default async function DashboardLivePage({
     if (end && end < todayYmd) return false;
     return mine && myEmail ? s.operator_email === myEmail : true;
   }).length;
-  // 마감 임박: closing write_end_at D-3 이내(derive.ts) 중 가장 임박한 건.
+  // 마감 임박: closing pay_end_at(결제마감) D-3 이내(derive.ts) 중 가장 임박한 건.
   const topClosing = closingImminent[0];
   const topIncident = unresolvedIncidents[0];
-  // 팝업 리스트용 미리보기 행 (각 최대 8건). "MM.DD" 시각 + 제목.
+  // 팝업 리스트용 미리보기 행 (각 최대 30건, 모달 내부 스크롤). "MM.DD" 시각 + 제목.
+  const POPUP_ROW_CAP = 30;
   const mmdd = (iso: string) => iso.slice(5, 10).replace("-", ".");
-  const deadlineRows = closingImminent.slice(0, 8).map((c) => ({
-    time: mmdd(c.write_end_at),
+  // 마감 시각은 마감임박 기준과 동일하게 pay_end_at(결제마감)으로 통일.
+  const deadlineRows = closingImminent.slice(0, POPUP_ROW_CAP).map((c) => ({
+    time: c.pay_end_at ? mmdd(c.pay_end_at) : undefined,
     title: `${c.university_name} · ${c.service_name}`,
   }));
-  const incidentRows = unresolvedIncidents.slice(0, 8).map((i) => ({
+  const incidentRows = unresolvedIncidents.slice(0, POPUP_ROW_CAP).map((i) => ({
     time: i.occurred_date ? mmdd(i.occurred_date) : undefined,
     title: i.title,
   }));
   const receivableRows = receivablesFeedRows
     .filter((r) => r.status === "active")
-    .slice(0, 8)
+    .slice(0, POPUP_ROW_CAP)
     .map((r) => ({ title: r.name ?? "" }));
   const headline: HeadlineInput = {
     incidentsUnresolved: unresolvedIncidents.length,
