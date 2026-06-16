@@ -189,8 +189,8 @@ export default async function DashboardLivePage({
           ),
         ]
       : undefined;
-  const { total: contactsTotal } = await listContacts({
-    pageSize: 5,
+  const { rows: contactRows, total: contactsTotal } = await listContacts({
+    pageSize: 8,
     sort: "created_desc",
     universityIn: myUniversities,
   });
@@ -552,9 +552,27 @@ export default async function DashboardLivePage({
       ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
       : b.summary_md.slice(0, 30);
 
+  // 오늘 오픈(write_start_at=오늘) 서비스 — 오픈일은 날짜뿐(시각 없음)이라
+  // 업무 시작(09:00)에 배치. 여러 건이면 "서비스 오픈 N건"으로 묶는다.
+  const opensToday = closingTimelineRes.rows.filter(
+    (c) => c.write_start_at && c.write_start_at.slice(0, 10) === todayYmd,
+  );
   const timelineSources: TimelineSource[] = [
-    // 서비스 항목은 '서비스 마감' 도메인(closing, 결제 마감 시각)에서만 가져온다.
-    // (서비스 오픈/작성시작 출처는 타임라인에서 제외 — 출처 통일)
+    ...(opensToday.length > 0
+      ? [
+          {
+            id: "svcopen-today",
+            atIso: `${todayYmd}T09:00:00+09:00`,
+            domain: "서비스 오픈",
+            text:
+              opensToday.length === 1
+                ? `${opensToday[0].university_name} · ${opensToday[0].service_name}`
+                : `서비스 오픈 ${opensToday.length}건`,
+            tone: "info" as const,
+          },
+        ]
+      : []),
+    // 서비스 마감 — closing pay_end_at(결제 마감 시각) 기준.
     ...closingTimelineRes.rows.map((c) => ({
       id: `cls-${c.id}`,
       atIso: c.pay_end_at ?? "",
@@ -630,6 +648,9 @@ export default async function DashboardLivePage({
     title: `${c.university_name} · ${c.service_name}`,
   });
   const statDetails: Record<string, { time?: string; title: string }[]> = {
+    계약: contractsFeedRows.slice(0, 8).map((c) => ({
+      title: c.status ? `${c.name} · ${c.status}` : c.name,
+    })),
     오픈예정: closingOpensUpcoming.slice(0, 8).map((c) => ({
       time: c.write_start_at ? mmdd(c.write_start_at) : undefined,
       title: `${c.university_name} · ${c.service_name}`,
@@ -648,9 +669,26 @@ export default async function DashboardLivePage({
       .filter((r) => r.status === "active")
       .slice(0, 8)
       .map((r) => ({ title: r.name ?? "" })),
+    백업요청: backupsFiltered.slice(0, 8).map((b) => ({
+      time: b.created_at ? mmdd(b.created_at) : undefined,
+      title: backupTitle(b),
+    })),
+    인수인계: handoverSources.slice(0, 8).map((h) => ({
+      time: h.createdAt ? mmdd(h.createdAt) : undefined,
+      title: h.title,
+    })),
+    대학연락처: contactRows.slice(0, 8).map((c) => ({
+      title: `${c.customer_name} · ${c.university_name}`,
+    })),
     사고처리: unresolvedIncidents.slice(0, 8).map((i) => ({
       time: i.occurred_date ? mmdd(i.occurred_date) : undefined,
       title: i.title,
+    })),
+    주요업무: undoneTodos.slice(0, 8).map((t) => ({ title: t.title })),
+    프로젝트: allProjectTasks.slice(0, 8).map((t) => ({ title: t.name })),
+    AI산출물: aiWorks.slice(0, 8).map((w) => ({
+      time: w.created_at ? mmdd(w.created_at) : undefined,
+      title: w.title,
     })),
   };
 
