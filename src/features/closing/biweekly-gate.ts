@@ -1,12 +1,16 @@
 /**
- * 격주 게이트 — anchor(기준 월요일)로부터 경과 주 수의 패리티로 실행 여부 판정.
+ * 실행 주기 게이트 — anchor(기준 월요일)로부터 경과 주 수를 RUN_INTERVAL_WEEKS로 나눠 판정.
  *
- * cron이 매주 월 호출하더라도 anchor와 같은 패리티(14일 간격) 주만 실행한다.
- * ISO week %2 방식은 53주 해 경계에서 패리티가 어긋날 수 있어, anchor 경과 주 방식이 강건하다.
+ * cron이 매주 월 호출할 때, anchor와 같은 주기의 주만 실행한다.
+ * RUN_INTERVAL_WEEKS=1 이면 매주(주간), 2 이면 격주. 현재 운영 기준은 주간(1).
+ * anchor 경과 주 방식은 53주 해 경계에서도 어긋나지 않아 강건하다.
  *
  * Python 스크래퍼(Phase 2 §7)는 동일 규칙을 재구현하며 본 util 테스트로 동치를 보장한다.
  * anchor 기본값(2026-06-08)은 설계 §결정 Q1. 운영 값은 env(CLOSING_BIWEEKLY_ANCHOR)로 주입.
  */
+
+/** 실행 주기(주). 1=매주(주간), 2=격주. Python scrape.py와 동치 유지. */
+const RUN_INTERVAL_WEEKS = 1;
 
 const KST_YMD = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Seoul",
@@ -44,5 +48,5 @@ export function shouldRunThisWeek(now: Date, anchorMonday: string): boolean {
     (kstDateToUtcMidnight(thisMonday) - kstDateToUtcMidnight(anchor)) /
       (7 * DAY_MS),
   );
-  return diffWeeks % 2 === 0;
+  return diffWeeks % RUN_INTERVAL_WEEKS === 0;
 }
