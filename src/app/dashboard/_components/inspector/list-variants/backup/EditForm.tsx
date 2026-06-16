@@ -6,6 +6,7 @@ import type { ListRow } from "../../../patterns/ListPattern";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
 import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
+import { buildBackupTitle, isAutoBackupTitle } from "./filters";
 import { LEAVE_TYPE_VALUES } from "@/features/backup-requests/schemas";
 
 type Mode = "single" | "perService";
@@ -49,10 +50,13 @@ export function BackupForm({
   onSave,
   onCancel,
   currentUserTeam = null,
+  currentUserName = null,
   backupOperators = [],
   backupServiceCandidates = [],
   backupContactCandidates = [],
 }: EditFormProps) {
+  // 제목 자동입력용 요청자 이름 — prop 우선, 없으면 신규행 owner(=요청자 이름) 폴백.
+  const requesterName = currentUserName || row.owner || "";
   // 팀 구분 — 계정 기반 고정값(읽기 전용). 기존 row는 저장된 requester_team,
   // 신규는 현재 로그인 운영자의 팀.
   const requesterTeam = row.requesterTeam ?? currentUserTeam;
@@ -187,9 +191,16 @@ export function BackupForm({
           <DateInput
             aria-label="휴가 시작일"
             value={row.leaveStartDate ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, leaveStartDate: e.target.value || null })
-            }
+            onChange={(e) => {
+              const v = e.target.value || null;
+              setRow((r) => ({
+                ...r,
+                leaveStartDate: v,
+                name: isAutoBackupTitle(r.name)
+                  ? buildBackupTitle(requesterName, v, r.leaveEndDate ?? null)
+                  : r.name,
+              }));
+            }}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
         </label>
@@ -199,9 +210,16 @@ export function BackupForm({
           <DateInput
             aria-label="휴가 종료일"
             value={row.leaveEndDate ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, leaveEndDate: e.target.value || null })
-            }
+            onChange={(e) => {
+              const v = e.target.value || null;
+              setRow((r) => ({
+                ...r,
+                leaveEndDate: v,
+                name: isAutoBackupTitle(r.name)
+                  ? buildBackupTitle(requesterName, r.leaveStartDate ?? null, v)
+                  : r.name,
+              }));
+            }}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
           />
         </label>

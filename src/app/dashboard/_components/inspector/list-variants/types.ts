@@ -58,6 +58,8 @@ export type EditFormProps = {
   currentUserEmail?: string | null;
   /** incidents variant — 담당부서 자동 고정용 (operators.team: '운영1팀' | '운영2팀') */
   currentUserTeam?: string | null;
+  /** backup variant — 제목 자동입력용 요청자(운영자) 이름 */
+  currentUserName?: string | null;
   /** cohort variant — 초대 메일 발송 */
   onInvite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 적요 PATCH */

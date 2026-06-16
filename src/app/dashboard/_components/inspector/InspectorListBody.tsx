@@ -164,6 +164,7 @@ export function InspectorListBody({
         currentUserPermission={currentUserPermission}
         currentUserEmail={currentUserEmail}
         currentUserTeam={currentUserTeam}
+        currentUserName={currentUserName}
         onInvite={onInvite}
         onUpdateRemarks={onUpdateRemarks}
         backupOperators={backupOperators}
