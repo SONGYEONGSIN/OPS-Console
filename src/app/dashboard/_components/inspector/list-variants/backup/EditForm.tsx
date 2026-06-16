@@ -181,6 +181,32 @@ export function BackupForm({
         </select>
       </label>
 
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">휴가/외근 시작일</span>
+          <DateInput
+            aria-label="휴가 시작일"
+            value={row.leaveStartDate ?? ""}
+            onChange={(e) =>
+              setRow({ ...row, leaveStartDate: e.target.value || null })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+        </label>
+
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">휴가/외근 종료일</span>
+          <DateInput
+            aria-label="휴가 종료일"
+            value={row.leaveEndDate ?? ""}
+            onChange={(e) =>
+              setRow({ ...row, leaveEndDate: e.target.value || null })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          />
+        </label>
+      </div>
+
       <label className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
         <input
@@ -250,32 +276,6 @@ export function BackupForm({
           </select>
         </label>
       )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">휴가/외근 시작일</span>
-          <DateInput
-            aria-label="휴가 시작일"
-            value={row.leaveStartDate ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, leaveStartDate: e.target.value || null })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">휴가/외근 종료일</span>
-          <DateInput
-            aria-label="휴가 종료일"
-            value={row.leaveEndDate ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, leaveEndDate: e.target.value || null })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          />
-        </label>
-      </div>
 
       {/* 백업 서비스 — 검색 + 카드 컬렉션 */}
       <div className="block text-xs">
