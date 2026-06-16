@@ -117,7 +117,7 @@ export function GuidePattern({ title, header, tabs, defaultTab }: Props) {
               {activeTab.sections.map((section) => (
                 <article
                   key={section.title}
-                  className="border border-line-soft bg-washi-raised p-5"
+                  className="border border-line-soft bg-paper p-5"
                 >
                   <header className="mb-3 flex items-baseline gap-2">
                     <span
