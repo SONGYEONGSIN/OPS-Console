@@ -67,7 +67,7 @@ export function HandoverEditForm({
       className="space-y-3"
     >
       <div className="mb-6">
-        <CategoryTabs active={active} onChange={setActive} row={row} />
+        <CategoryTabs active={active} onChange={setActive} />
       </div>
 
       {cat.fields.map((f) => {
