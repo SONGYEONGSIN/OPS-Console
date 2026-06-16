@@ -26,3 +26,26 @@ export function blankBackupRow(opts?: { currentUserName?: string }): ListRow {
     summary: "",
   };
 }
+
+/** "2026-06-16" → "06.16" (월.일). 없으면 빈 문자열. */
+function mdLabel(d: string | null | undefined): string {
+  return d ? d.slice(5, 10).replace("-", ".") : "";
+}
+
+/**
+ * 백업 요청 제목 자동 생성 — "{운영자이름} 백업요청(MM.DD~MM.DD)".
+ * 예: 홍길동 백업요청(06.16~06.17). 이름이 없으면 빈 문자열.
+ */
+export function buildBackupTitle(
+  name: string,
+  start: string | null,
+  end: string | null,
+): string {
+  if (!name) return "";
+  return `${name} 백업요청(${mdLabel(start)}~${mdLabel(end)})`;
+}
+
+/** 제목이 비었거나 자동생성 패턴이면 true — 수동 편집한 제목은 덮어쓰지 않기 위함. */
+export function isAutoBackupTitle(title: string): boolean {
+  return title.trim() === "" || /백업요청\(.*\)\s*$/.test(title);
+}
