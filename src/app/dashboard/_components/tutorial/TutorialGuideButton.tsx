@@ -24,7 +24,7 @@ export function TutorialGuideButton({ sections }: { sections: SbSection[] }) {
     <button
       type="button"
       onClick={onClick}
-      className="cursor-pointer border border-chrome-graphite/30 bg-transparent px-2.5 py-1 text-xs text-chrome-graphite transition-colors hover:border-vermilion hover:text-vermilion"
+      className="cursor-pointer border border-chrome-graphite bg-chrome-graphite px-2.5 py-1 text-xs text-chrome-snow transition-colors hover:border-vermilion hover:text-vermilion"
     >
       가이드
     </button>

@@ -56,12 +56,12 @@ export function ChromeUser({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[200] mt-2 min-w-[200px] border border-chrome-graphite bg-cream py-1 text-ink [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
+          className="absolute right-0 top-full z-[200] mt-2 min-w-[200px] border border-chrome-graphite bg-paper py-1 text-ink [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
         >
           <div className="border-b border-line-soft px-3 py-2">
             <p className="text-sm font-bold text-ink">{displayName}</p>
-            <p className="text-2xs text-muted">{subtitle}</p>
-            <p className="mt-0.5 text-2xs text-muted">{email}</p>
+            <p className="text-xs text-ink-soft">{subtitle}</p>
+            <p className="mt-0.5 text-xs text-muted">{email}</p>
           </div>
           {isAdmin ? (
             <button
@@ -71,7 +71,7 @@ export function ChromeUser({
                 setOpen(false);
                 router.push("/dashboard/settings");
               }}
-              className="w-full border-none bg-transparent px-3 py-1.5 text-left text-xs hover:bg-vermilion hover:text-cream cursor-pointer"
+              className="w-full border-none bg-transparent px-3 py-2 text-left text-sm hover:bg-vermilion hover:text-cream cursor-pointer"
             >
               시스템 설정
             </button>
@@ -80,7 +80,7 @@ export function ChromeUser({
             type="button"
             role="menuitem"
             onClick={() => void signOut()}
-            className="w-full border-none bg-transparent px-3 py-1.5 text-left text-xs hover:bg-vermilion hover:text-cream cursor-pointer"
+            className="w-full border-none bg-transparent px-3 py-2 text-left text-sm hover:bg-vermilion hover:text-cream cursor-pointer"
           >
             로그아웃
           </button>

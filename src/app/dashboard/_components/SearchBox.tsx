@@ -133,7 +133,7 @@ export function SearchBox() {
       </div>
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 top-full z-[200] mt-1 border border-line bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
+        <div className="absolute left-0 right-0 top-full z-[200] mt-1 border border-line bg-paper py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
           {results.length > 0 ? (
             <ul role="listbox" className="flex flex-col">
               {results.map((r, i) => (
@@ -144,13 +144,13 @@ export function SearchBox() {
                     aria-selected={i === activeIdx}
                     onMouseEnter={() => setActiveIdx(i)}
                     onClick={() => setOpen(false)}
-                    className={`grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm transition-colors ${
+                    className={`grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm font-medium transition-colors ${
                       i === activeIdx ? "bg-vermilion text-cream" : "text-ink"
                     }`}
                   >
                     <span className="truncate">{r.label}</span>
                     <span
-                      className={`text-2xs tracking-[0.06em] ${
+                      className={`text-xs tracking-[0.06em] ${
                         i === activeIdx ? "text-cream/80" : "text-muted"
                       }`}
                     >
@@ -171,7 +171,7 @@ export function SearchBox() {
                 role="listbox"
                 className="flex flex-col border-t border-line-soft"
               >
-                <li className="px-3 pb-0.5 pt-1.5 text-2xs uppercase tracking-[0.14em] text-muted">
+                <li className="px-3 pb-0.5 pt-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
                   {d.label}
                 </li>
                 {hits.map((h) => (
@@ -179,7 +179,7 @@ export function SearchBox() {
                     <Link
                       href={h.href}
                       onClick={() => setOpen(false)}
-                      className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+                      className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm font-medium text-ink hover:bg-washi-raised"
                     >
                       <span className="truncate">
                         {h.primary}{" "}
