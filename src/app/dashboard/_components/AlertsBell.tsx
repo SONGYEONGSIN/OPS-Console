@@ -95,10 +95,10 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[200] mt-2 w-[340px] border border-chrome-graphite bg-cream py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
+          className="absolute right-0 top-full z-[200] mt-2 w-[340px] border border-chrome-graphite bg-paper py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="border-b border-line-soft px-3 py-1.5 text-2xs uppercase tracking-[0.18em] text-vermilion">
+          <div className="border-b border-line-soft px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-vermilion">
             알림 {badgeCount}건 · 긴급 {urgentCount}건
           </div>
           {visible.length === 0 ? (
@@ -111,7 +111,7 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
                   role="listbox"
                   className={`flex flex-col ${gi > 0 ? "border-t border-line-soft" : ""}`}
                 >
-                  <li className="px-3 pb-0.5 pt-1.5 text-2xs uppercase tracking-[0.14em] text-muted">
+                  <li className="px-3 pb-0.5 pt-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
                     {g.category}
                   </li>
                   {g.items.map((alert) => (
@@ -119,10 +119,10 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
                       <Link
                         href={alert.href}
                         onClick={() => setOpen(false)}
-                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm font-medium text-ink hover:bg-washi-raised"
                       >
                         <span className="truncate">{alert.label}</span>
-                        <span className="shrink-0 text-2xs text-muted">
+                        <span className="shrink-0 text-xs text-muted">
                           {alert.time}
                         </span>
                       </Link>

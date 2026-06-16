@@ -292,7 +292,7 @@ function SidebarFooter({
     progress === null ? "근무 외 시간" : `근무시간 · 09:00 ~ 18:00 KST`;
 
   return (
-    <div className="mx-4 mt-5 border border-line-soft bg-washi-raised px-3.5 py-3">
+    <div className="mx-4 mt-5 border border-line-soft bg-paper px-3.5 py-3">
       <div className="mb-1.5 flex justify-between text-3xs uppercase tracking-[0.12em] text-muted">
         <span className="tracking-[0.04em] normal-case">현재 사용자</span>
         <strong className="font-medium text-ink">{displayName}</strong>

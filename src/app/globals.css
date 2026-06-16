@@ -556,7 +556,8 @@ button.bs-tl-ev .cal.cal-group,
   top: 44px;
   bottom: 42px;
   width: 2px;
-  background: var(--vermilion);
+  /* NOW 세로 막대 제거 — 라벨·점·캐릭터만 표시(컨테이너는 자식 위치용 유지) */
+  background: transparent;
 }
 .bs-tl-now .lb {
   position: absolute;
