@@ -98,10 +98,10 @@ export function ServiceCard({
   }
 
   return (
-    <div className="border border-line-soft bg-washi-raised p-2.5">
+    <div className="border border-line-soft bg-paper p-2.5">
       {/* 헤더: 대학명 — 서비스명 / 백업자 select(옵션) / × */}
       <div className="flex items-center gap-2">
-        <span className="flex-1 text-2xs text-ink-soft">
+        <span className="flex-1 text-xs font-semibold text-ink">
           {detail.university_name} — {detail.service_name}
         </span>
         {showSubstituteSelect && (
@@ -135,7 +135,7 @@ export function ServiceCard({
 
       {/* 연락처: 검색 + chips */}
       <div className="mt-2">
-        <span className="mb-1 block text-2xs text-muted">
+        <span className="mb-1 block text-xs text-ink-soft">
           대학 연락처 ({detail.contacts.length}/{MAX_CONTACTS})
         </span>
         <ListSearch
@@ -155,7 +155,7 @@ export function ServiceCard({
                 <button
                   type="button"
                   onClick={() => addContact(c)}
-                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-line-soft"
                 >
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>
@@ -192,7 +192,7 @@ export function ServiceCard({
 
       {/* 메모 */}
       <div className="mt-2">
-        <span className="mb-1 block text-2xs text-muted">서비스 메모</span>
+        <span className="mb-1 block text-xs text-ink-soft">서비스 메모</span>
         <textarea
           aria-label={`${detail.service_name} 메모`}
           value={detail.note_md ?? ""}
@@ -200,7 +200,7 @@ export function ServiceCard({
           rows={2}
           maxLength={2000}
           placeholder="이 서비스만의 디테일 (Markdown)"
-          className="w-full border border-line bg-cream px-2 py-1 text-2xs text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
         />
       </div>
     </div>

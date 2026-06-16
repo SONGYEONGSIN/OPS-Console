@@ -80,7 +80,7 @@ export function BackupForm({
               (c.university_name.includes(trimmedQuery) ||
                 c.service_name.includes(trimmedQuery)),
           )
-          .slice(0, 10);
+          .slice(0, 50);
 
   function addService(c: ServiceCandidate) {
     if (selectedIds.length >= MAX_SERVICES) return;
