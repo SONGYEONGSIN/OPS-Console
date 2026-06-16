@@ -261,6 +261,37 @@ describe("timelineGroupLabel", () => {
     expect(timelineGroupLabel(group)).toBe("자동화 실행 3건");
   });
 
+  it("멤버가 모두 '서비스 오픈'이고 2건 이상이면 '서비스 오픈 N건'", () => {
+    const group = {
+      lead: ev({ id: "a", domain: "서비스 오픈", text: "이화여대 · A" }),
+      members: [
+        ev({ id: "a", domain: "서비스 오픈", text: "이화여대 · A" }),
+        ev({ id: "b", domain: "서비스 오픈", text: "단국대 · B" }),
+      ],
+      minutesOfDay: 540,
+    };
+    expect(timelineGroupLabel(group)).toBe("서비스 오픈 2건");
+  });
+
+  it("멤버가 모두 '서비스 마감'이고 2건 이상이면 '서비스 마감 N건'", () => {
+    const group = {
+      lead: ev({ id: "a", domain: "서비스 마감", text: "단국대 · A · 김운영" }),
+      members: [
+        ev({ id: "a", domain: "서비스 마감", text: "단국대 · A · 김운영" }),
+        ev({ id: "b", domain: "서비스 마감", text: "이화여대 · B · 이운영" }),
+      ],
+      minutesOfDay: 1020,
+    };
+    expect(timelineGroupLabel(group)).toBe("서비스 마감 2건");
+  });
+
+  it("서비스 오픈 단건이면 그 텍스트 그대로", () => {
+    const lead = ev({ id: "a", domain: "서비스 오픈", text: "이화여대 · A" });
+    expect(
+      timelineGroupLabel({ lead, members: [lead], minutesOfDay: 540 }),
+    ).toBe("이화여대 · A");
+  });
+
   it("자동화 단건이면 그 텍스트 그대로 (집계 건수는 이미 텍스트에 포함)", () => {
     const lead = ev({ id: "a", text: "인사이트 영상 수집 9건" });
     expect(

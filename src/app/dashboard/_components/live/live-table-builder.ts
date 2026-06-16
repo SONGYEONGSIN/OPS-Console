@@ -46,7 +46,7 @@ export type LiveTableItem = {
 export type LiveTableSources = {
   incidents: { id: string; title: string; status: string; createdAt: string; occurredDate?: string | null; listRow: ListRow }[];
   todos: { id: string; title: string; body?: string | null; dueAt: string | null; createdAt: string; listRow: ListRow }[];
-  services: { id: string; title: string; writeStartAt: string | null; createdAt: string; listRow: ListRow }[];
+  services: { id: string; title: string; writeStartAt: string | null; closeAt?: string | null; createdAt: string; listRow: ListRow }[];
   backup: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
   schedule: { id: string; title: string; startAt: string; createdAt: string; listRow: ListRow }[];
   handover: { id: string; title: string; status: string; createdAt: string; listRow: ListRow }[];
@@ -182,17 +182,20 @@ export function buildLiveTableItems(s: LiveTableSources, now: Date = new Date())
   }
 
   for (const sv of s.services) {
+    // closeAt 있으면 '마감' 항목(write_end_at 기준), 없으면 '오픈' 항목(write_start_at).
+    const isClose = !!sv.closeAt;
+    const refAt = isClose ? sv.closeAt : sv.writeStartAt;
     out.push({
       id: sv.id,
       domain: "services",
       badgeDomain: BADGE.services,
       variant: VARIANT.services,
-      statusText: sv.writeStartAt ? `${mdFromYmd(sv.writeStartAt)} 오픈` : "—",
+      statusText: refAt ? `${mdFromYmd(refAt)} ${isClose ? "마감" : "오픈"}` : "—",
       title: sv.title,
       timeText: formatRelativeTime(sv.createdAt, now),
       occurredAt: sv.createdAt,
-      refDate: ymd10(sv.writeStartAt) || ymd10(sv.createdAt),
-      triage: bucketByDeadline(sv.writeStartAt, today),
+      refDate: ymd10(refAt) || ymd10(sv.createdAt),
+      triage: bucketByDeadline(refAt, today),
       listRow: sv.listRow,
     });
   }

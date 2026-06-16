@@ -351,13 +351,25 @@ export default async function DashboardLivePage({
       createdAt: t.created_at,
       listRow: todosListRows.find((r) => r.id === t.id) ?? todoToListRow(t),
     })),
-    services: closingOpensUpcoming.slice(0, 5).map((c) => ({
-      id: c.id,
-      title: `${c.university_name} · ${c.service_name}`,
-      writeStartAt: c.write_start_at,
-      createdAt: c.created_at,
-      listRow: closingRowToListRow(c),
-    })),
+    services: [
+      // 오픈 예정 — write_start_at 기준
+      ...closingOpensUpcoming.slice(0, 5).map((c) => ({
+        id: c.id,
+        title: `${c.university_name} · ${c.service_name}`,
+        writeStartAt: c.write_start_at,
+        createdAt: c.created_at,
+        listRow: closingRowToListRow(c),
+      })),
+      // 마감 임박/오늘 — write_end_at 기준(마감 항목). id 충돌 방지로 -close 접미.
+      ...closingImminent.slice(0, 5).map((c) => ({
+        id: `${c.id}-close`,
+        title: `${c.university_name} · ${c.service_name}`,
+        writeStartAt: null,
+        closeAt: c.write_end_at,
+        createdAt: c.created_at,
+        listRow: closingRowToListRow(c),
+      })),
+    ],
     backup: backupsFiltered.slice(0, 20).map((b) => ({
       id: b.id,
       title:
@@ -552,32 +564,33 @@ export default async function DashboardLivePage({
       ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
       : b.summary_md.slice(0, 30);
 
+  // 타임라인 서비스(오픈/마감) 팝오버 텍스트 — 대학·서비스에 운영자까지 표기.
+  const svcTimelineText = (c: ClosingRow) =>
+    c.operator_name
+      ? `${c.university_name} · ${c.service_name} · ${c.operator_name}`
+      : `${c.university_name} · ${c.service_name}`;
   // 오늘 오픈(write_start_at=오늘) 서비스 — 오픈일은 날짜뿐(시각 없음)이라
   // 업무 시작(09:00)에 배치. 여러 건이면 "서비스 오픈 N건"으로 묶는다.
   const opensToday = closingTimelineRes.rows.filter(
     (c) => c.write_start_at && c.write_start_at.slice(0, 10) === todayYmd,
   );
   const timelineSources: TimelineSource[] = [
-    ...(opensToday.length > 0
-      ? [
-          {
-            id: "svcopen-today",
-            atIso: `${todayYmd}T09:00:00+09:00`,
-            domain: "서비스 오픈",
-            text:
-              opensToday.length === 1
-                ? `${opensToday[0].university_name} · ${opensToday[0].service_name}`
-                : `서비스 오픈 ${opensToday.length}건`,
-            tone: "info" as const,
-          },
-        ]
-      : []),
-    // 서비스 마감 — closing pay_end_at(결제 마감 시각) 기준.
+    // 각 오픈 서비스를 개별 엔트리로 둔다 → 동시각(09:00) 군집이 "서비스 오픈 N건"
+    // 라벨 + 클릭 시 팝오버로 개별 항목 노출 (자동화 군집과 동일 동작).
+    ...opensToday.map((c) => ({
+      id: `svcopen-${c.id}`,
+      atIso: `${todayYmd}T09:00:00+09:00`,
+      domain: "서비스 오픈",
+      text: svcTimelineText(c),
+      tone: "info" as const,
+    })),
+    // 서비스 마감 — closing pay_end_at(결제 마감 시각) 기준. 오픈과 동일 형식
+    // (운영자 표기 + 동시각 군집 시 "서비스 마감 N건").
     ...closingTimelineRes.rows.map((c) => ({
       id: `cls-${c.id}`,
       atIso: c.pay_end_at ?? "",
       domain: "서비스 마감",
-      text: `${c.university_name} · ${c.service_name}`,
+      text: svcTimelineText(c),
       tone: "info" as const,
     })),
     ...allTodos.map((t) => ({
