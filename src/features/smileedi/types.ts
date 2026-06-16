@@ -19,6 +19,7 @@ export type SmileEdiRow = {
   supplierManager: string; // 담당자명-공급자
   approvalNumber: string; // 승인번호
   emailError: string; // 이메일오류 ('Y'면 발송 제외)
+  status: string; // 상태 ('승인'이면 발송 제외, '미승인'만 발송)
 };
 
 /** env에서 파싱해 주입하는 매핑/필터 설정 (파일 시스템 접근 금지 — 순수 입력). */

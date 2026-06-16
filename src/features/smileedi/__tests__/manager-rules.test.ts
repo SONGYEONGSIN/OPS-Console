@@ -24,6 +24,7 @@ function row(over: Partial<SmileEdiRow>): SmileEdiRow {
     supplierManager: "",
     approvalNumber: "",
     emailError: "",
+    status: "미승인",
     ...over,
   };
 }
