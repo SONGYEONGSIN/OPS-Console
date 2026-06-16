@@ -48,13 +48,13 @@ export async function listClosing(
   if (filter.operatorName)
     query = query.eq("operator_name", filter.operatorName);
 
-  // 마감여부 — 작성마감(write_end_at) 기준 현재 시각 비교
+  // 마감여부 — 결제마감(pay_end_at) 기준 현재 시각 비교
   if (filter.closedStatus === "closed")
-    query = query.lt("write_end_at", new Date().toISOString());
+    query = query.lt("pay_end_at", new Date().toISOString());
   else if (filter.closedStatus === "open")
-    query = query.gte("write_end_at", new Date().toISOString());
+    query = query.gte("pay_end_at", new Date().toISOString());
 
-  query = query.order("write_end_at", { ascending: false });
+  query = query.order("pay_end_at", { ascending: false });
 
   const page = Math.max(1, filter.page ?? 1);
   const pageSize = filter.pageSize ?? DEFAULT_PAGE_SIZE;

@@ -15,7 +15,7 @@ function addDaysYmd(base: string, days: number): string {
   return new Date(t).toISOString().slice(0, 10);
 }
 
-/** 작성마감(write_end_at)이 오늘 ~ 오늘+withinDays(기본 3) 인 건. write_end_at 오름차순. */
+/** 결제마감(pay_end_at)이 오늘 ~ 오늘+withinDays(기본 3) 인 건. pay_end_at 오름차순. */
 export function imminentClosings(
   rows: ClosingRow[],
   todayYmd: string,
@@ -24,10 +24,10 @@ export function imminentClosings(
   const upper = addDaysYmd(todayYmd, withinDays);
   return rows
     .filter((r) => {
-      const end = ymd(r.write_end_at);
-      return end >= todayYmd && end <= upper;
+      const end = r.pay_end_at ? ymd(r.pay_end_at) : "";
+      return !!end && end >= todayYmd && end <= upper;
     })
-    .sort((a, b) => a.write_end_at.localeCompare(b.write_end_at));
+    .sort((a, b) => (a.pay_end_at ?? "").localeCompare(b.pay_end_at ?? ""));
 }
 
 /** 작성시작(write_start_at)이 오늘 이상인 오픈 예정 건. write_start_at 오름차순. */
