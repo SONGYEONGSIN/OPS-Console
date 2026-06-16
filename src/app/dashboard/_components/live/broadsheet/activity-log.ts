@@ -181,17 +181,28 @@ export function groupTimelineEvents(
   return groups;
 }
 
+// 동시각 군집을 "N건"으로 묶을 도메인 → 라벨 프리픽스.
+// 한 시각에 여러 건이 몰리는 도메인(자동화 실행, 당일 서비스 오픈)이 대표 1건 뒤로
+// 묻히지 않게, 같은 도메인끼리 묶였을 때 건수 라벨로 표시한다.
+const AGG_LABEL: Record<string, string> = {
+  자동화: "자동화 실행",
+  "서비스 오픈": "서비스 오픈",
+  "서비스 마감": "서비스 마감",
+};
+
 /**
- * 군집 대표 라벨. 멤버가 모두 '자동화' 도메인이고 2건 이상이면 "자동화 N건"으로 묶어,
- * 동시각(예: 매일 10:00)에 실행된 여러 자동화가 한 대표 라벨 뒤로 묻히지 않게 한다.
- * 그 외(단건 / 혼합·비자동화 도메인)는 기존대로 lead 텍스트 + (+N).
+ * 군집 대표 라벨. 멤버가 모두 같은 'N건 묶음' 도메인(자동화/서비스 오픈)이고 2건
+ * 이상이면 "<라벨> N건"으로 묶는다. 그 외(단건 / 혼합 도메인)는 lead 텍스트 + (+N).
  */
 export function timelineGroupLabel(group: TimelineGroup): string {
+  const dom = group.lead.domain;
+  const aggLabel = AGG_LABEL[dom];
   if (
+    aggLabel &&
     group.members.length >= 2 &&
-    group.members.every((m) => m.domain === "자동화")
+    group.members.every((m) => m.domain === dom)
   ) {
-    return `자동화 실행 ${group.members.length}건`;
+    return `${aggLabel} ${group.members.length}건`;
   }
   const extra = group.members.length - 1;
   return extra > 0 ? `${group.lead.text} (+${extra})` : group.lead.text;

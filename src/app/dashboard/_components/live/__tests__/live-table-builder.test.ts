@@ -74,6 +74,7 @@ describe("buildLiveTableItems", () => {
       services: [
         { id: "sv-today", title: "오늘 오픈", writeStartAt: "2026-05-23", createdAt: tEarlier(180), listRow: {} as never },
         { id: "sv-week", title: "주중 오픈", writeStartAt: "2026-05-27", createdAt: tEarlier(180), listRow: {} as never },
+        { id: "sv-close-today", title: "오늘 마감", writeStartAt: null, closeAt: "2026-05-23", createdAt: tEarlier(180), listRow: {} as never },
       ],
       backup: [
         { id: "b-fail", title: "발송 실패 백업", status: "mail_failed", createdAt: tEarlier(30), listRow: {} as never },
@@ -92,6 +93,8 @@ describe("buildLiveTableItems", () => {
     expect(tr("b-fail")).toBe("now");
     expect(tr("t-today")).toBe("today");
     expect(tr("sv-today")).toBe("today");
+    expect(tr("sv-close-today")).toBe("today");
+    expect(items.find((x) => x.id === "sv-close-today")?.statusText).toContain("마감");
     expect(tr("e-today")).toBe("today");
     expect(tr("t-week")).toBe("week");
     expect(tr("sv-week")).toBe("week");
