@@ -120,13 +120,15 @@ export default async function DashboardLivePage({
   // 사고처리 카운트 — 담당자(assignee) 등록된 사고 중, 발생일(occurred_date)이
   // 현재 학년도(3/1~익년 2월말) 범위인 건만. 학년도는 매년 자동 롤오버.
   const acadYear = academicYearRange(todayYmd);
-  const incidentsUnresolvedCount = allIncidentsForKpi.filter(
+  // 핵심지표 '사고처리' 모수 — 카운트와 팝업 상세가 동일 리스트를 쓰도록 변수로 보존.
+  const incidentsForMetric = allIncidentsForKpi.filter(
     (i) =>
       !!i.assignee_email &&
       !!i.occurred_date &&
       i.occurred_date >= acadYear.start &&
       i.occurred_date < acadYear.end,
-  ).length;
+  );
+  const incidentsUnresolvedCount = incidentsForMetric.length;
   // LiveTable용: 최근 20건 슬라이스
   const incidents = allIncidentsForKpi.slice(0, 20);
   const incidentsListRows: ListRow[] = incidents.map((i) =>
@@ -712,7 +714,7 @@ export default async function DashboardLivePage({
     대학연락처: contactRows.slice(0, 8).map((c) => ({
       title: `${c.customer_name} · ${c.university_name}`,
     })),
-    사고처리: unresolvedIncidents.slice(0, 8).map((i) => ({
+    사고처리: incidentsForMetric.slice(0, 8).map((i) => ({
       time: i.occurred_date ? mmdd(i.occurred_date) : undefined,
       title: i.title,
     })),
