@@ -4,8 +4,8 @@ on:
   # 스케줄은 OPS-Console closing-scrape 자동화 잡이 GitHub workflow_dispatch API로 호출.
   #   cron-job.org → POST /api/automations/run?jobId=closing-scrape (Bearer CRON_SECRET)
   #                → closing-scrape.run() → GitHub workflow_dispatch (GITHUB_DISPATCH_TOKEN)
-  # 격주(월) 실행 여부는 본 워크플로의 스크래퍼가 판정한다(off주 exit 0).
-  # GitHub UI에서 직접 실행하면 격주 게이트를 우회하지 않고 그대로 스크래퍼가 판정한다.
+  # 실행 주기(주간/격주)는 본 워크플로의 스크래퍼가 판정한다(off주 exit 0). 현재 주간(매주).
+  # GitHub UI에서 직접 실행해도 주기 게이트를 우회하지 않고 그대로 스크래퍼가 판정한다.
   workflow_dispatch:
 
 # Node.js 20 deprecation 대비 — actions(@v4)이 Node 24로 동작하도록 강제.

@@ -10,7 +10,7 @@ import type { AutomationRunResult } from "../types";
  * 마감 필터·인제스트 POST는 모두 워크플로(Python 스크래퍼)가 담당한다.
  *
  * 트리거 경로: cron-job.org 매주 월 → /api/automations/run?jobId=closing-scrape → run().
- * 격주는 스크래퍼가 판정(off주 exit 0)하므로 본 잡은 매번 dispatch한다.
+ * 실행 주기(주간/격주)는 스크래퍼가 판정(off주 exit 0)하므로 본 잡은 매번 dispatch한다. 현재 주간.
  *
  * 환경변수: dispatchWorkflow가 GITHUB_DISPATCH_TOKEN/REPO/WORKFLOW 검증(누락 시 ok:false).
  */

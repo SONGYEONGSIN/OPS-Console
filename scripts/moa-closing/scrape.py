@@ -4,11 +4,13 @@
 설계: .claude/plans/20260607-moa-closing-scrape.md (Phase 2).
 
 흐름:
-  격주 게이트(off주 exit 0) → Chrome 기동 → Moa 로그인 → SMS 2FA(baseline-diff 폴링)
+  실행 주기 게이트(off주 exit 0) → Chrome 기동 → Moa 로그인 → SMS 2FA(baseline-diff 폴링)
   → ServiceSearch 학년도 오픈일 범위 검색 → '엑셀저장' 다운로드 → 11컬럼 파싱
   → 작성마감 < 스크래핑시각 필터 → ISO8601(+09:00) 직렬화 → POST 인제스트.
 
-결정된 로직(격주 게이트/학년도/SMS 폴링/인제스트/필터)은 TS 단일 소스
+  주기는 RUN_INTERVAL_WEEKS로 결정(1=매주/주간, 2=격주). 현재 운영 기준은 주간(1).
+
+결정된 로직(주기 게이트/학년도/SMS 폴링/인제스트/필터)은 TS 단일 소스
 (features/closing/{biweekly-gate,academic-year}.ts)와 동치로 구현했다.
 
 ╔══════════════════════════════════════════════════════════════════════╗
@@ -132,8 +134,12 @@ SMS_CODE_PATTERN = re.compile(os.getenv("MOA_SMS_CODE_REGEX", r"\[(\d+)\]"))
 # ── 결정된 로직 (TS 단일 소스와 동치) ──────────────────────────────────
 
 
+# 실행 주기(주). 1=매주(주간), 2=격주. biweekly-gate.ts RUN_INTERVAL_WEEKS와 동치.
+RUN_INTERVAL_WEEKS = 1
+
+
 def should_run_this_week(now: datetime, anchor_monday: str) -> bool:
-    """biweekly-gate.ts shouldRunThisWeek 동치. anchor 경과 주 패리티."""
+    """biweekly-gate.ts shouldRunThisWeek 동치. anchor 경과 주 / RUN_INTERVAL_WEEKS."""
 
     def monday_of(d: date) -> date:
         return d - timedelta(days=d.weekday())  # Mon=0
@@ -142,7 +148,7 @@ def should_run_this_week(now: datetime, anchor_monday: str) -> bool:
     this_monday = monday_of(now_kst)
     anchor = monday_of(date.fromisoformat(anchor_monday))
     diff_weeks = round((this_monday - anchor).days / 7)
-    return diff_weeks % 2 == 0
+    return diff_weeks % RUN_INTERVAL_WEEKS == 0
 
 
 def academic_year_range(now: datetime):
@@ -560,9 +566,9 @@ def main() -> int:
     anchor = os.getenv("CLOSING_BIWEEKLY_ANCHOR", "2026-06-08")
     now = datetime.now(timezone.utc)
     if not should_run_this_week(now, anchor):
-        print(f"[SKIP] 격주 비실행 주 (anchor={anchor}). 종료.")
+        print(f"[SKIP] 주기 비실행 주 (anchor={anchor}). 종료.")
         if not dry_run:
-            post_run_log(base_url, secret, "skipped", 0, f"격주 off주 (anchor={anchor})")
+            post_run_log(base_url, secret, "skipped", 0, f"주기 off주 (anchor={anchor})")
         return 0
 
     env = {
