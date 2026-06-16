@@ -31,6 +31,7 @@ const group: SmileEdiGroup = {
       supplierManager: "",
       approvalNumber: "A-1",
       emailError: "",
+      status: "미승인",
     },
   ],
 };

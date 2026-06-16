@@ -25,6 +25,7 @@ const COLUMN_MAP: Record<keyof Omit<SmileEdiRow, "excelRow">, string> = {
   supplierManager: "담당자명-공급자",
   approvalNumber: "승인번호",
   emailError: "이메일오류",
+  status: "상태",
 };
 
 function findCol(headers: string[], name: string): number {
@@ -62,6 +63,7 @@ export function parseSmileEdiRows(
     supplierManager: cell(row, idx.supplierManager),
     approvalNumber: cell(row, idx.approvalNumber),
     emailError: cell(row, idx.emailError),
+    status: cell(row, idx.status),
   }));
 
   return { rows, emailErrorColIdx: idx.emailError };

@@ -11,13 +11,14 @@ const headers = [
   "담당자명-공급자",
   "승인번호",
   "이메일오류",
+  "상태",
 ];
 
 describe("parseSmileEdiRows", () => {
   it("헤더명으로 컬럼 매핑 + excelRow는 dataStartRowNumber부터", () => {
     const rows = [
-      ["2026.04.01", "수수료", "100000", "10000", "서강대학교", "입학처", "", "A-1", ""],
-      ["2026.04.02", "접수", "200000", "20000", "덕성여자대학교", "", "조가현", "A-2", "Y"],
+      ["2026.04.01", "수수료", "100000", "10000", "서강대학교", "입학처", "", "A-1", "", "미승인"],
+      ["2026.04.02", "접수", "200000", "20000", "덕성여자대학교", "", "조가현", "A-2", "Y", "승인"],
     ];
     const { rows: parsed, emailErrorColIdx } = parseSmileEdiRows(headers, rows, 4);
     expect(emailErrorColIdx).toBe(8);
@@ -26,11 +27,13 @@ describe("parseSmileEdiRows", () => {
       item: "수수료",
       companyName: "서강대학교",
       emailError: "",
+      status: "미승인",
     });
     expect(parsed[1]).toMatchObject({
       excelRow: 5,
       supplierManager: "조가현",
       emailError: "Y",
+      status: "승인",
     });
   });
 
