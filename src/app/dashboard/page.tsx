@@ -569,6 +569,25 @@ export default async function DashboardLivePage({
     c.operator_name
       ? `${c.university_name} · ${c.service_name} · ${c.operator_name}`
       : `${c.university_name} · ${c.service_name}`;
+  // 오늘 마감인데 시각이 업무시간(09:00–18:00) 밖(예: 23:59 end-of-day 마감)이면
+  // 윈도우 밖이라 타임라인에서 누락된다 → 가장자리(09:00/18:00)로 clamp해 항상 노출.
+  const TL_YMD = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" });
+  const TL_HM = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const closeTimelineIso = (iso: string | null | undefined): string => {
+    if (!iso) return "";
+    const ymd = TL_YMD.format(new Date(iso));
+    if (ymd !== todayYmd) return iso; // 다른 날은 그대로(날짜 필터에서 제외됨)
+    const [h, m] = TL_HM.format(new Date(iso)).split(":").map(Number);
+    const mins = h * 60 + m;
+    if (mins < 9 * 60) return `${todayYmd}T09:00:00+09:00`;
+    if (mins > 18 * 60) return `${todayYmd}T18:00:00+09:00`;
+    return iso;
+  };
   // 오늘 오픈(write_start_at=오늘) 서비스 — 오픈일은 날짜뿐(시각 없음)이라
   // 업무 시작(09:00)에 배치. 여러 건이면 "서비스 오픈 N건"으로 묶는다.
   const opensToday = closingTimelineRes.rows.filter(
@@ -588,7 +607,7 @@ export default async function DashboardLivePage({
     // (운영자 표기 + 동시각 군집 시 "서비스 마감 N건").
     ...closingTimelineRes.rows.map((c) => ({
       id: `cls-${c.id}`,
-      atIso: c.pay_end_at ?? "",
+      atIso: closeTimelineIso(c.pay_end_at),
       domain: "서비스 마감",
       text: svcTimelineText(c),
       tone: "info" as const,
