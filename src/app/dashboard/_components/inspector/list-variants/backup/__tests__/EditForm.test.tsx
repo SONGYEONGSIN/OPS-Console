@@ -267,7 +267,7 @@ describe("BackupForm", () => {
     expect(screen.getByRole("option", { name: "연차" })).toBeInTheDocument();
   });
 
-  it("휴가유형 선택 시 leaveType 설정", () => {
+  it("휴가유형 선택 시 leaveType 설정 + 제목 자동 생성", () => {
     const setRow = vi.fn();
     render(
       <BackupForm
@@ -275,14 +275,17 @@ describe("BackupForm", () => {
         setRow={setRow}
         onSave={() => {}}
         onCancel={() => {}}
+        currentUserName="송영신"
       />,
     );
     fireEvent.change(screen.getByLabelText("휴가유형"), {
       target: { value: "출장" },
     });
-    expect(setRow).toHaveBeenCalledWith(
-      expect.objectContaining({ leaveType: "출장" }),
-    );
+    // setRow는 함수형 업데이트 — 결과 검증
+    const updater = setRow.mock.calls[0][0];
+    const next = typeof updater === "function" ? updater(baseRow) : updater;
+    expect(next.leaveType).toBe("출장");
+    expect(next.name).toContain("송영신 출장 백업요청");
   });
 
   it("팀 구분 — currentUserTeam을 읽기 전용 표시", () => {

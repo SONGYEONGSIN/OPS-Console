@@ -33,19 +33,16 @@ function mdLabel(d: string | null | undefined): string {
 }
 
 /**
- * 백업 요청 제목 자동 생성 — "{운영자이름} 백업요청(MM.DD~MM.DD)".
- * 예: 홍길동 백업요청(06.16~06.17). 이름이 없으면 빈 문자열.
+ * 백업 요청 제목 자동 생성 — "{운영자이름} {휴가유형} 백업요청(MM.DD~MM.DD)".
+ * 예: 송영신 휴가 백업요청(06.16~06.17). 휴가유형 없으면 생략, 이름 없으면 빈 문자열.
  */
 export function buildBackupTitle(
   name: string,
+  leaveType: string | null | undefined,
   start: string | null,
   end: string | null,
 ): string {
   if (!name) return "";
-  return `${name} 백업요청(${mdLabel(start)}~${mdLabel(end)})`;
-}
-
-/** 제목이 비었거나 자동생성 패턴이면 true — 수동 편집한 제목은 덮어쓰지 않기 위함. */
-export function isAutoBackupTitle(title: string): boolean {
-  return title.trim() === "" || /백업요청\(.*\)\s*$/.test(title);
+  const type = leaveType ? `${leaveType} ` : "";
+  return `${name} ${type}백업요청(${mdLabel(start)}~${mdLabel(end)})`;
 }
