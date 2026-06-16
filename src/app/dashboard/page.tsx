@@ -362,12 +362,12 @@ export default async function DashboardLivePage({
         createdAt: c.created_at,
         listRow: closingRowToListRow(c),
       })),
-      // 마감 임박/오늘 — write_end_at 기준(마감 항목). id 충돌 방지로 -close 접미.
+      // 마감 임박/오늘 — pay_end_at(결제 마감) 기준. id 충돌 방지로 -close 접미.
       ...closingImminent.slice(0, 5).map((c) => ({
         id: `${c.id}-close`,
         title: `${c.university_name} · ${c.service_name}`,
         writeStartAt: null,
-        closeAt: c.write_end_at,
+        closeAt: c.pay_end_at,
         createdAt: c.created_at,
         listRow: closingRowToListRow(c),
       })),
@@ -470,9 +470,9 @@ export default async function DashboardLivePage({
     topDeadlineLabel: topClosing
       ? `${topClosing.university_name} · ${topClosing.service_name}`
       : undefined,
-    topDeadlineDays: topClosing
+    topDeadlineDays: topClosing?.pay_end_at
       ? Math.round(
-          (Date.parse(topClosing.write_end_at.slice(0, 10)) -
+          (Date.parse(topClosing.pay_end_at.slice(0, 10)) -
             Date.parse(todayYmd)) /
             86_400_000,
         )
@@ -678,7 +678,7 @@ export default async function DashboardLivePage({
   // 현황요약·핵심지표 행 클릭 팝업용 상세 리스트 (라벨 → 행, 각 최대 8건).
   const nowIso = new Date().toISOString();
   const closePreview = (c: ClosingRow) => ({
-    time: mmdd(c.write_end_at),
+    time: c.pay_end_at ? mmdd(c.pay_end_at) : undefined,
     title: `${c.university_name} · ${c.service_name}`,
   });
   const statDetails: Record<string, { time?: string; title: string }[]> = {
@@ -690,12 +690,12 @@ export default async function DashboardLivePage({
       title: `${c.university_name} · ${c.service_name}`,
     })),
     진행중: closingRows
-      .filter((c) => c.write_end_at >= nowIso)
+      .filter((c) => (c.pay_end_at ?? "") >= nowIso)
       .slice(0, 8)
       .map(closePreview),
     마감완료: closingRows
-      .filter((c) => c.write_end_at < nowIso)
-      .sort((a, b) => b.write_end_at.localeCompare(a.write_end_at))
+      .filter((c) => (c.pay_end_at ?? "") < nowIso)
+      .sort((a, b) => (b.pay_end_at ?? "").localeCompare(a.pay_end_at ?? ""))
       .slice(0, 8)
       .map(closePreview),
     서비스마감: closingImminent.slice(0, 8).map(closePreview),
