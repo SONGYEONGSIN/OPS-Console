@@ -6,7 +6,7 @@ import type { ListRow } from "../../../patterns/ListPattern";
 import { ListSearch } from "@/components/common/ListSearch";
 import { DateInput } from "@/components/common/DateInput";
 import { ServiceCard, type ServiceCardDetail } from "./ServiceCard";
-import { buildBackupTitle, isAutoBackupTitle } from "./filters";
+import { buildBackupTitle } from "./filters";
 import { LEAVE_TYPE_VALUES } from "@/features/backup-requests/schemas";
 
 type Mode = "single" | "perService";
@@ -171,9 +171,19 @@ export function BackupForm({
         <select
           aria-label="휴가유형"
           value={row.leaveType ?? ""}
-          onChange={(e) =>
-            setRow({ ...row, leaveType: e.target.value || null })
-          }
+          onChange={(e) => {
+            const lt = e.target.value || null;
+            setRow((r) => ({
+              ...r,
+              leaveType: lt,
+              name: buildBackupTitle(
+                requesterName,
+                lt,
+                r.leaveStartDate ?? null,
+                r.leaveEndDate ?? null,
+              ),
+            }));
+          }}
           className="w-full border border-line bg-cream px-2 py-1 text-ink"
         >
           <option value="">선택…</option>
@@ -196,9 +206,12 @@ export function BackupForm({
               setRow((r) => ({
                 ...r,
                 leaveStartDate: v,
-                name: isAutoBackupTitle(r.name)
-                  ? buildBackupTitle(requesterName, v, r.leaveEndDate ?? null)
-                  : r.name,
+                name: buildBackupTitle(
+                  requesterName,
+                  r.leaveType ?? null,
+                  v,
+                  r.leaveEndDate ?? null,
+                ),
               }));
             }}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
@@ -215,9 +228,12 @@ export function BackupForm({
               setRow((r) => ({
                 ...r,
                 leaveEndDate: v,
-                name: isAutoBackupTitle(r.name)
-                  ? buildBackupTitle(requesterName, r.leaveStartDate ?? null, v)
-                  : r.name,
+                name: buildBackupTitle(
+                  requesterName,
+                  r.leaveType ?? null,
+                  r.leaveStartDate ?? null,
+                  v,
+                ),
               }));
             }}
             className="w-full border border-line bg-cream px-2 py-1 text-ink"
@@ -226,14 +242,14 @@ export function BackupForm({
       </div>
 
       <label className="block text-xs">
-        <span className="mb-1 block text-muted">제목</span>
+        <span className="mb-1 block text-muted">제목 (자동 생성)</span>
         <input
           aria-label="제목"
           value={row.name}
-          onChange={(e) => setRow({ ...row, name: e.target.value })}
+          readOnly
           maxLength={120}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
-          placeholder="예: 5/20~25 휴가 백업"
+          className="w-full cursor-default border border-line bg-washi-raised px-2 py-1 text-ink-soft"
+          placeholder="휴가유형·일정 입력 시 자동 생성"
         />
       </label>
 
