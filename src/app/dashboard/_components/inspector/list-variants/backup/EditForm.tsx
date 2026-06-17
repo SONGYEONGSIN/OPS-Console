@@ -340,7 +340,7 @@ export function BackupForm({
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>
                   <span>{c.service_name}</span>
-                  <span className="ml-1 text-2xs tabular-nums text-faint">
+                  <span className="ml-1 text-xs tabular-nums text-ink-soft">
                     #{c.service_id}
                   </span>
                 </button>

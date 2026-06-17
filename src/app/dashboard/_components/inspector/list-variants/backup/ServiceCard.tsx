@@ -113,7 +113,7 @@ export function ServiceCard({
               const op = backupOperators.find((o) => o.email === email);
               onSubstituteChange(email || null, op?.name ?? null);
             }}
-            className="border border-line bg-cream px-1 py-0 text-2xs text-ink"
+            className="border border-line bg-cream px-2 py-1 text-xs text-ink"
           >
             <option value="">선택…</option>
             {backupOperators.map((op) => (
