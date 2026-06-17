@@ -40,7 +40,7 @@ const contactCandidates = [
 ];
 
 describe("ServiceCard", () => {
-  it("헤더에 대학명 — 서비스명 표시", () => {
+  it("헤더에 대학명 — 서비스명(서비스ID) 표시", () => {
     render(
       <ServiceCard
         detail={baseDetail}
@@ -52,7 +52,9 @@ describe("ServiceCard", () => {
         onRemove={vi.fn()}
       />,
     );
-    expect(screen.getByText("경찰대학 — 신입학")).toBeInTheDocument();
+    expect(
+      screen.getByText(/경찰대학 — 신입학\(5072006\)/),
+    ).toBeInTheDocument();
   });
 
   it("백업자 select 변경 → onSubstituteChange 호출 (email + name)", () => {

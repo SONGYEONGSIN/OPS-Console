@@ -371,6 +371,8 @@ describe("BackupForm", () => {
         onCancel={() => {}}
       />,
     );
-    expect(screen.getByText("경찰대학 — 신입학")).toBeInTheDocument();
+    expect(
+      screen.getByText(/경찰대학 — 신입학\(5072006\)/),
+    ).toBeInTheDocument();
   });
 });
