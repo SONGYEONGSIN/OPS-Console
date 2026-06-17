@@ -557,6 +557,8 @@ type Props = {
   createLabel?: string;
   /** 신규 버튼 옆에 추가 액션 (예: schedule의 view 토글) */
   extraActions?: React.ReactNode;
+  /** 생성 버튼 왼쪽에 렌더할 액션 (예: 연락처 일괄등록 버튼). */
+  extraActionsLeft?: React.ReactNode;
   /** 행 클릭 시 부모에 알림 (inspector.open과 별개, 추가 콜백). project ↔ sub-task 같이 화면이 동기화돼야 할 때 사용. */
   onSelectRow?: (row: ListRow) => void;
   /** 인스펙터 open/close 알림 — 부모가 좌측 콘텐츠를 drawer-padding 조정에 활용. */
@@ -651,6 +653,7 @@ export function ListPattern({
   canCreate = false,
   createLabel,
   extraActions,
+  extraActionsLeft,
   onSelectRow,
   onInspectorChange,
   liveData = false,
@@ -853,6 +856,7 @@ export function ListPattern({
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
+              {extraActionsLeft}
               {(variant === "team" || canCreate) && !readOnly && (
                 <button
                   type="button"
