@@ -85,10 +85,10 @@ describe("buildBackupMailHtml", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 
-  it("services 카드 — 대학명·서비스명 정규화 표기", () => {
+  it("services 카드 — 대학명·서비스명(서비스ID) 표기", () => {
     const html = buildBackupMailHtml(baseInput);
-    expect(html).toContain("한양대학교(ERICA) — Graduate School");
-    expect(html).toContain("연세대학교 — 2025학년도 외국인전형");
+    expect(html).toContain("한양대학교(ERICA) — Graduate School(5072006)");
+    expect(html).toContain("연세대학교 — 2025학년도 외국인전형(1165060)");
   });
 
   it("PR-5: 서비스의 contacts 객체 chips 렌더 — 이름 + 이메일 + 전화 한 줄 표시", () => {

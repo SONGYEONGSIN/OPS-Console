@@ -113,7 +113,7 @@ export function ServiceCard({
               const op = backupOperators.find((o) => o.email === email);
               onSubstituteChange(email || null, op?.name ?? null);
             }}
-            className="border border-line bg-cream px-2 py-1 text-xs text-ink"
+            className="border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-xs text-ink"
           >
             <option value="">선택…</option>
             {backupOperators.map((op) => (
@@ -200,7 +200,7 @@ export function ServiceCard({
           rows={2}
           maxLength={2000}
           placeholder="이 서비스만의 디테일 (Markdown)"
-          className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+          className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-xs text-ink"
         />
       </div>
     </div>

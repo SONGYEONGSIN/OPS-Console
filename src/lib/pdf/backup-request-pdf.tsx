@@ -301,7 +301,7 @@ function BackupRequestDocument(input: BackupRequestPdfInput) {
             {input.services.map((s) => (
               <View key={`svc-${s.id}`} style={styles.serviceCard}>
                 <Text style={styles.serviceHeader}>
-                  {`${s.university_name} — ${s.service_name}`}
+                  {`${s.university_name} — ${s.service_name}(${s.service_id})`}
                 </Text>
                 {s.contacts.length > 0 && (
                   <>
