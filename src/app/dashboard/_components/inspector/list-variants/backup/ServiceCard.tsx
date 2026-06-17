@@ -148,14 +148,14 @@ export function ServiceCard({
         {matches.length > 0 && (
           <ul
             aria-label={`${detail.service_name} 대학 연락처 검색 결과`}
-            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-cream"
+            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-white"
           >
             {matches.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
                   onClick={() => addContact(c)}
-                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-line-soft"
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-washi-raised"
                 >
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>
