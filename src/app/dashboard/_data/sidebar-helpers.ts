@@ -126,7 +126,6 @@ export const ADMIN_ONLY_MENU_SLUGS = new Set([
   "team",
   "settings",
   "outcomes",
-  "automations",
 ]);
 
 /** 신규 member 생성 시 기본 allowed_menus — admin 전용 메뉴를 제외한 전체. */

@@ -341,7 +341,6 @@ export const sidebarSections: SbSection[] = [
             label: "자동화 실행",
             slug: "automations",
             pattern: "list",
-            adminOnly: true,
           },
         ],
       },
