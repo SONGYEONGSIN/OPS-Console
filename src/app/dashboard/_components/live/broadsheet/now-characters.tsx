@@ -8,7 +8,118 @@ import type { ReactNode } from "react";
  */
 export type NowCharacter = { id: string; label: string; node: ReactNode };
 
+/**
+ * 사람 모양(스틱맨) 캐릭터 헬퍼 — 머리(currentColor 원) + 눈 2개(.eye) +
+ * currentColor 스트로크 사지(limbs). limbs는 단일 path의 다중 M 서브패스로 포즈 표현.
+ */
+function person(limbsPath: string): ReactNode {
+  return (
+    <>
+      <circle fill="currentColor" cx="12" cy="5" r="3.3" />
+      <circle className="eye" cx="10.9" cy="4.7" r="0.7" />
+      <circle className="eye" cx="13.1" cy="4.7" r="0.7" />
+      <path
+        d={limbsPath}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>
+  );
+}
+
+/** 사람 모양 웃긴 캐릭터 12종 — 배열 앞쪽 배치(사람부터 적용). */
+const HUMAN_CHARACTERS: NowCharacter[] = [
+  {
+    id: "p-wave",
+    label: "인사",
+    node: person(
+      "M12 8.3 L12 14.5 M12 10.5 L15.5 6.5 M12 11 L8.5 13 M12 14.5 L9 20 M12 14.5 L15 20",
+    ),
+  },
+  {
+    id: "p-run",
+    label: "달리기",
+    node: person(
+      "M12 8.3 L12 14 M12 10.8 L8 9.5 M12 10.8 L15.5 12.5 M12 14 L8 19 M12 14 L16 16.5",
+    ),
+  },
+  {
+    id: "p-jump",
+    label: "점프",
+    node: person(
+      "M12 9 L12 14 M12 11 L8 7 M12 11 L16 7 M12 14 L8.5 18 M12 14 L15.5 18",
+    ),
+  },
+  {
+    id: "p-cheer",
+    label: "만세",
+    node: person(
+      "M12 8.3 L12 15 M12 10.5 L8.5 6.5 M12 10.5 L15.5 6.5 M12 15 L10 20 M12 15 L14 20",
+    ),
+  },
+  {
+    id: "p-dance",
+    label: "춤",
+    node: person(
+      "M12 8.3 L12 14.5 M12 10.5 L15.5 7 M12 11 L8.5 13 M12 14.5 L9 19 M12 14.5 L16.5 18.5",
+    ),
+  },
+  {
+    id: "p-walk",
+    label: "걷기",
+    node: person(
+      "M12 8.3 L12 14.5 M12 11 L9 13 M12 11 L15 12 M12 14.5 L9.5 20 M12 14.5 L14.5 19",
+    ),
+  },
+  {
+    id: "p-shrug",
+    label: "어쩌라고",
+    node: person(
+      "M12 8.3 L12 15 M12 11 L8 9.5 M12 11 L16 9.5 M12 15 L10 20 M12 15 L14 20",
+    ),
+  },
+  {
+    id: "p-stretch",
+    label: "기지개",
+    node: person(
+      "M12 8.3 L12 15 M12 10.5 L10.5 5.5 M12 10.5 L13.5 5.5 M12 15 L10.5 20 M12 15 L13.5 20",
+    ),
+  },
+  {
+    id: "p-kick",
+    label: "발차기",
+    node: person(
+      "M12 8.3 L12 14.5 M12 11 L8.5 12.5 M12 11 L15.5 12 M12 14.5 L9.5 20 M12 14 L17.5 13.5",
+    ),
+  },
+  {
+    id: "p-balance",
+    label: "한발서기",
+    node: person(
+      "M12 8.3 L12 14.5 M12 11 L8.5 9.5 M12 11 L15.5 9.5 M12 14.5 L12 20 M12 14.5 L15.5 17",
+    ),
+  },
+  {
+    id: "p-point",
+    label: "가리키기",
+    node: person(
+      "M12 8.3 L12 15 M12 10.8 L16.5 8 M12 11 L8.5 11.5 M12 15 L10 20 M12 15 L14 20",
+    ),
+  },
+  {
+    id: "p-sit",
+    label: "앉기",
+    node: person(
+      "M12 8.3 L12 13 M12 10.5 L9 12 M12 10.5 L15 12 M12 13 L9.5 15 L9.5 19 M12 13 L14.5 15 L14.5 19",
+    ),
+  },
+];
+
 export const NOW_CHARACTERS: NowCharacter[] = [
+  ...HUMAN_CHARACTERS,
   {
     id: "spark4",
     label: "스파클",
@@ -74,10 +185,7 @@ export const NOW_CHARACTERS: NowCharacter[] = [
     label: "젬",
     node: (
       <>
-        <path
-          fill="currentColor"
-          d="M12 2.5 20.5 12 12 21.5 3.5 12Z"
-        />
+        <path fill="currentColor" d="M12 2.5 20.5 12 12 21.5 3.5 12Z" />
         <circle className="eye" cx="10.6" cy="11.6" r="0.95" />
         <circle className="eye" cx="13.4" cy="11.6" r="0.95" />
       </>
