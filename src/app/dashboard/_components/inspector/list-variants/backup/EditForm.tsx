@@ -328,7 +328,7 @@ export function BackupForm({
         {matches.length > 0 && (
           <ul
             aria-label="백업 서비스 검색 결과"
-            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-paper"
+            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-white"
           >
             {matches.map((c) => (
               <li key={c.id}>
