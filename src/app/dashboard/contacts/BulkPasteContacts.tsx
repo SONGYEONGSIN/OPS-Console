@@ -54,7 +54,7 @@ export function BulkPasteContacts() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="cursor-pointer border border-ink bg-ink px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion"
+        className="cursor-pointer border border-ink bg-ink px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-ink-soft"
       >
         + 연락처 일괄등록
       </button>

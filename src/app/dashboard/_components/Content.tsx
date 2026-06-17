@@ -31,7 +31,7 @@ export function Content({
   return (
     <main className="flex flex-col overflow-y-auto bg-cream max-md:overflow-visible max-md:pb-[28px]">
       {/* ── Crumb + Tabs ── */}
-      <div className="flex items-center justify-between border-b border-line-soft bg-washi-raised px-7 pt-2.5 text-[12px] text-muted max-md:flex-col max-md:items-stretch max-md:p-0">
+      <div className="flex items-center justify-between border-b border-line-soft bg-sidebar px-7 pt-2.5 text-[12px] text-muted max-md:flex-col max-md:items-stretch max-md:p-0">
         <div className="flex items-center gap-1.5 py-1.5 max-md:px-3 max-md:text-xs">
           <a className="cursor-pointer text-muted hover:text-ink">개요</a>
           <span className="text-faint">/</span>
