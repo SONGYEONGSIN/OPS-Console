@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   parsePastedContacts,
   toContactCreate,
+  DUPLICATE_ERROR,
 } from "@/features/contacts/paste-parse";
 import { createContactsBulk } from "@/features/contacts/actions";
 import { ModalShell } from "@/components/common/ModalShell";
@@ -22,7 +23,11 @@ export function BulkPasteContacts() {
 
   const parsed = useMemo(() => parsePastedContacts(text), [text]);
   const validRows = parsed.rows.filter((r) => r.errors.length === 0);
-  const errorRows = parsed.rows.filter((r) => r.errors.length > 0);
+  // 중복(붙여넣기 내)은 건수만 요약, 형식 오류만 행별 표시.
+  const dupRows = parsed.rows.filter((r) => r.errors.includes(DUPLICATE_ERROR));
+  const errorRows = parsed.rows.filter((r) =>
+    r.errors.some((e) => e !== DUPLICATE_ERROR),
+  );
 
   function close() {
     setOpen(false);
@@ -91,9 +96,8 @@ export function BulkPasteContacts() {
                 서강대 · 김담당 · kim@sg.ac.kr · 02-705-1234
                 <br />
                 <span className="text-muted">
-                  구분자: 탭(엑셀 복사){" "}
-                  <span className="text-vermilion">·</span> 가운뎃점(·){" "}
-                  <span className="text-vermilion">·</span> 쉼표(,) 모두 인식
+                  <span className="text-vermilion">※</span> 구분자: 탭(엑셀 복사)
+                  · 가운뎃점(·) · 쉼표(,) 모두 인식
                 </span>
               </p>
               <textarea
@@ -112,6 +116,11 @@ export function BulkPasteContacts() {
               ) : text.trim() !== "" ? (
                 <div className="mt-2 text-xs text-ink-soft">
                   <span className="text-ink">유효 {validRows.length}건</span>
+                  {dupRows.length > 0 && (
+                    <span className="ml-2 text-muted">
+                      중복 {dupRows.length}건 제외
+                    </span>
+                  )}
                   {errorRows.length > 0 && (
                     <span className="ml-2 text-vermilion">
                       오류 {errorRows.length}건
