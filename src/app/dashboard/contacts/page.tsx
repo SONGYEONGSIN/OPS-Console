@@ -6,13 +6,11 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { ContactsControls } from "./ContactsControls";
+import { BulkPasteContacts } from "./BulkPasteContacts";
 import { contactRowToListRow } from "./_row-mapper";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import {
-  listContacts,
-  type ContactsFilter,
-} from "@/features/contacts/queries";
+import { listContacts, type ContactsFilter } from "@/features/contacts/queries";
 import { listServices } from "@/features/services/queries";
 import type { ServicesRow } from "@/features/services/schemas";
 import {
@@ -48,8 +46,7 @@ export default async function ContactsPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
   // viewer는 actions.ts에서 server-side 차단되지만 UI 가드 일관성을 위해 동일 조건 적용.
-  const canEdit =
-    me?.permission === "admin" || me?.permission === "member";
+  const canEdit = me?.permission === "admin" || me?.permission === "member";
 
   const mine = sp.mine !== "false";
 
@@ -168,6 +165,7 @@ export default async function ContactsPage({
       variant="contacts"
       canCreate={canEdit}
       createLabel="+ 신규 연락처"
+      extraActionsLeft={canEdit ? <BulkPasteContacts /> : undefined}
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       universityNameSuggestions={universityNameSuggestions}
@@ -185,4 +183,3 @@ export default async function ContactsPage({
     />
   );
 }
-
