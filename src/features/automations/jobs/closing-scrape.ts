@@ -22,6 +22,6 @@ export async function runClosingScrape(): Promise<AutomationRunResult> {
   return {
     ok: true,
     message:
-      "Moa 서비스마감 스크래핑 워크플로를 트리거했습니다. (격주 실행 여부는 워크플로가 판정)",
+      "Moa 서비스마감 스크래핑 워크플로를 트리거했습니다. (실행 주기는 워크플로가 판정)",
   };
 }
