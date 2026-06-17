@@ -3,12 +3,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const g = vi.hoisted(() => ({
   findReportFolder: vi.fn(),
   copyItemAndWait: vi.fn(),
-  listWorksheetNames: vi.fn(),
-  copyWorksheet: vi.fn(),
-  renameWorksheet: vi.fn(),
-  getCellText: vi.fn(),
-  setCellText: vi.fn(),
+  downloadItemContent: vi.fn(),
+  uploadItemContent: vi.fn(),
   createOrgShareLink: vi.fn(),
+  rolloverWorkbookBuffer: vi.fn(),
   sendTeamsChatMessage: vi.fn(),
   recordWeeklyRun: vi.fn(),
 }));
@@ -16,12 +14,12 @@ const g = vi.hoisted(() => ({
 vi.mock("../graph-ops", () => ({
   findReportFolder: g.findReportFolder,
   copyItemAndWait: g.copyItemAndWait,
-  listWorksheetNames: g.listWorksheetNames,
-  copyWorksheet: g.copyWorksheet,
-  renameWorksheet: g.renameWorksheet,
-  getCellText: g.getCellText,
-  setCellText: g.setCellText,
+  downloadItemContent: g.downloadItemContent,
+  uploadItemContent: g.uploadItemContent,
   createOrgShareLink: g.createOrgShareLink,
+}));
+vi.mock("../sheet-rollover", () => ({
+  rolloverWorkbookBuffer: g.rolloverWorkbookBuffer,
 }));
 vi.mock("@/lib/microsoft/teams", () => ({
   sendTeamsChatMessage: g.sendTeamsChatMessage,
@@ -104,15 +102,15 @@ describe("runWeeklyReportRollover", () => {
     );
   });
 
-  it("정상 — 파일복제·시트복제(원본 보존)·B2/B3/C3 패치·공유링크·Teams 발송", async () => {
+  it("정상 — 파일복제·다운로드·exceljs 롤오버·재업로드·공유링크·Teams 발송", async () => {
     g.findReportFolder.mockResolvedValue(folder(`${P}_2026_1월3주차.xlsx`));
     g.copyItemAndWait.mockResolvedValue("newid");
-    g.listWorksheetNames.mockResolvedValue([
-      "2026년 1월 3주차",
-      "2026년 1월 2주차",
-    ]);
-    g.copyWorksheet.mockResolvedValue("2026년 1월 3주차 (2)");
-    g.getCellText.mockResolvedValue("주간 업무(1/12~1/16)");
+    g.downloadItemContent.mockResolvedValue(new ArrayBuffer(8));
+    g.rolloverWorkbookBuffer.mockResolvedValue({
+      buffer: new ArrayBuffer(16),
+      newSheet: "2026년 1월 4주차",
+      sourceSheet: "2026년 1월 3주차",
+    });
     g.createOrgShareLink.mockResolvedValue("https://share/x");
 
     const r = await runWeeklyReportRollover();
@@ -130,22 +128,16 @@ describe("runWeeklyReportRollover", () => {
       "src",
       `${P}_2026_1월4주차.xlsx`,
     );
-    // 최신 시트를 "복제"(원본 보존) 후 사본을 차주명으로 rename
-    expect(g.copyWorksheet).toHaveBeenCalledWith(
+    // 파일 다운로드 → exceljs 차주 시트 복제 → 재업로드
+    expect(g.downloadItemContent).toHaveBeenCalledWith("drv", "newid");
+    expect(g.rolloverWorkbookBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ year: 2026, month: 1, week: 4 }),
+    );
+    expect(g.uploadItemContent).toHaveBeenCalledWith(
       "drv",
       "newid",
-      "2026년 1월 3주차",
+      expect.any(ArrayBuffer),
     );
-    expect(g.renameWorksheet).toHaveBeenCalledWith(
-      "drv",
-      "newid",
-      "2026년 1월 3주차 (2)",
-      "2026년 1월 4주차",
-    );
-    // B2(주차) + B3(이번 주차) + C3(다음 주차) → setCell 3회
-    expect(g.setCellText).toHaveBeenCalledTimes(3);
-    const addrs = g.setCellText.mock.calls.map((c) => c[3]);
-    expect(addrs).toEqual(["B2", "B3", "C3"]);
     // Teams 발송 — html에 발송자/링크 포함
     expect(g.sendTeamsChatMessage).toHaveBeenCalledTimes(1);
     const arg = g.sendTeamsChatMessage.mock.calls[0][0];

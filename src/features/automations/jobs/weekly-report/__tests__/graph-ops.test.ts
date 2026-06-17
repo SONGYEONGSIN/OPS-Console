@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/microsoft/auth", () => ({
   getGraphToken: vi.fn(async () => "tok"),
 }));
-vi.mock("@/lib/microsoft/workbook-session", () => ({
-  getWorkbookSession: vi.fn(async () => "sess-1"),
-}));
-
-import { listFolderFiles, findReportFolder, copyWorksheet } from "../graph-ops";
+import {
+  listFolderFiles,
+  findReportFolder,
+  downloadItemContent,
+  uploadItemContent,
+} from "../graph-ops";
 
 function jsonRes(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -89,23 +90,42 @@ describe("findReportFolder", () => {
   });
 });
 
-describe("copyWorksheet", () => {
-  it("시트 복제 POST(copy) + 생성된 시트명 반환", async () => {
+describe("downloadItemContent", () => {
+  it("item content GET → ArrayBuffer 반환", async () => {
+    const bytes = new Uint8Array([1, 2, 3]).buffer;
     const spy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(jsonRes({ name: "2026년 1월 3주차 (2)" }));
-    const name = await copyWorksheet("drv", "item", "2026년 1월 3주차");
-    expect(name).toBe("2026년 1월 3주차 (2)");
-    const [url, init] = spy.mock.calls[0];
-    expect(String(url)).toContain("/worksheets/");
-    expect(String(url)).toContain("/copy");
-    expect(init?.method).toBe("POST");
+      .mockResolvedValue(new Response(bytes, { status: 200 }));
+    const out = await downloadItemContent("drv", "item");
+    expect(out.byteLength).toBe(3);
+    expect(String(spy.mock.calls[0][0])).toContain("/items/item/content");
   });
 
-  it("복제 실패(4xx) 시 throw", async () => {
+  it("실패(4xx) 시 throw", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("err", { status: 400 }),
+      new Response("err", { status: 404 }),
     );
-    await expect(copyWorksheet("drv", "item", "S")).rejects.toThrow();
+    await expect(downloadItemContent("drv", "item")).rejects.toThrow();
+  });
+});
+
+describe("uploadItemContent", () => {
+  it("item content PUT(xlsx) 호출", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("", { status: 200 }));
+    await uploadItemContent("drv", "item", new ArrayBuffer(4));
+    const [url, init] = spy.mock.calls[0];
+    expect(String(url)).toContain("/items/item/content");
+    expect(init?.method).toBe("PUT");
+  });
+
+  it("실패(4xx) 시 throw", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("err", { status: 403 }),
+    );
+    await expect(
+      uploadItemContent("drv", "item", new ArrayBuffer(4)),
+    ).rejects.toThrow();
   });
 });

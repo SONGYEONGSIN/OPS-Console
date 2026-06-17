@@ -4,25 +4,17 @@ import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import {
   findReportFolder,
   copyItemAndWait,
-  listWorksheetNames,
-  copyWorksheet,
-  renameWorksheet,
-  getCellText,
-  setCellText,
+  downloadItemContent,
+  uploadItemContent,
   createOrgShareLink,
 } from "./graph-ops";
 import {
   nextWeekFilename,
-  nextWeekSheetname,
-  weekDateRange,
-  formatDateRange,
   senderForWeek,
-  subWeekText,
-  subDateRange,
   extractMonthWeek,
-  rollWeek,
   buildWeeklyReportMessage,
 } from "./rollover-logic";
+import { rolloverWorkbookBuffer } from "./sheet-rollover";
 import { recordWeeklyRun } from "./record";
 
 const REPORT_PREFIX = "주간업무보고서_진학어플라이본부";
@@ -109,48 +101,17 @@ export async function runWeeklyReportRollover(): Promise<AutomationRunResult> {
   // 4. 파일 복제(서식 보존)
   const newItemId = await copyItemAndWait(driveId, latest.id, nextName);
 
-  // 5. 워크북 — 최신 시트를 차주 시트로 "복제"(원본 시트 보존) + B2/B3/C3 갱신
-  const sheets = await listWorksheetNames(driveId, newItemId);
-  const sourceSheet = sheets.find((s) => SHEET_RE.test(s)) ?? sheets[0];
-  const newSheet = nextWeekSheetname(sourceSheet);
-  if (newSheet !== sourceSheet) {
-    // 사본을 맨 앞에 추가 후 차주명으로 rename — 이전 주차 시트는 그대로 남는다
-    const copiedName = await copyWorksheet(driveId, newItemId, sourceSheet);
-    await renameWorksheet(driveId, newItemId, copiedName, newSheet);
-  }
-  // 날짜 — 이번 주차(B3) / 다음 주차(C3). "M/D~M/D" 패턴만 치환.
-  const thisWk = weekDateRange(yr, mw.month, mw.week);
-  const thisRange = formatDateRange(thisWk.monday, thisWk.friday);
-  const nx = rollWeek(yr, mw.month, mw.week);
-  const nextWk = weekDateRange(nx.year, nx.month, nx.week);
-  const nextRange = formatDateRange(nextWk.monday, nextWk.friday);
-  // B2: 주차 텍스트 → 차주 시트명
-  const b2 = await getCellText(driveId, newItemId, newSheet, "B2");
-  await setCellText(
-    driveId,
-    newItemId,
-    newSheet,
-    "B2",
-    subWeekText(b2, newSheet),
-  );
-  // B3: 이번 주차 날짜 범위(월~금)
-  const b3 = await getCellText(driveId, newItemId, newSheet, "B3");
-  await setCellText(
-    driveId,
-    newItemId,
-    newSheet,
-    "B3",
-    subDateRange(b3, thisRange),
-  );
-  // C3: 다음 주차 날짜 범위(월~금)
-  const c3 = await getCellText(driveId, newItemId, newSheet, "C3");
-  await setCellText(
-    driveId,
-    newItemId,
-    newSheet,
-    "C3",
-    subDateRange(c3, nextRange),
-  );
+  // 5. 워크북 — Graph Excel API에 worksheet copy 액션이 없어, 파일을 내려받아 exceljs로
+  //    차주 시트 복제(서식 포함) + B2/B3/C3 날짜 갱신 후 재업로드한다 (sheet-rollover.ts).
+  const content = await downloadItemContent(driveId, newItemId);
+  const { buffer: rolledBuffer } = await rolloverWorkbookBuffer({
+    buffer: content,
+    sheetRe: SHEET_RE,
+    year: yr,
+    month: mw.month,
+    week: mw.week,
+  });
+  await uploadItemContent(driveId, newItemId, rolledBuffer);
 
   // 6. 공유 링크
   const shareLink = await createOrgShareLink(driveId, newItemId);
