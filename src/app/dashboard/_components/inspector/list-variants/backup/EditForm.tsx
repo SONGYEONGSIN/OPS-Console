@@ -328,18 +328,21 @@ export function BackupForm({
         {matches.length > 0 && (
           <ul
             aria-label="백업 서비스 검색 결과"
-            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-washi-raised"
+            className="mt-1 max-h-48 overflow-y-auto border border-line-soft bg-paper"
           >
             {matches.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"
                   onClick={() => addService(c)}
-                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-washi-raised"
                 >
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>
                   <span>{c.service_name}</span>
+                  <span className="ml-1 text-2xs tabular-nums text-faint">
+                    #{c.service_id}
+                  </span>
                 </button>
               </li>
             ))}
