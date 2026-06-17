@@ -35,8 +35,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * 담당자 그룹 → 발신 운영자 본인 mailbox에서 담당자에게 발송 + 이력 + 이메일오류 PATCH.
- * - 발신자: options.senderEmail (운영자 본인 UPN, 단일). 수신자: group.recipientEmail (담당자).
+ * 담당자 그룹 → 담당자 본인 mailbox에서 발송 + 이력 + 이메일오류 PATCH.
+ * - 발신자 = 수신자 = group.recipientEmail (담당자 본인 UPN). 미수채권 운영자 알림과 동일 패턴.
  * - dryRun=true → Graph/PATCH 호출 없이 status='dry_run' 이력만.
  * - 실발송 성공 행의 '이메일오류'='Y' PATCH (재발송 1차 idempotency).
  */
@@ -45,7 +45,6 @@ export async function sendSmileEdiMails(
   sheetMeta: { worksheetName: string; emailErrorColIdx: number },
   options: {
     dryRun: boolean;
-    senderEmail: string;
     fiscalYearStart: string;
     cc?: CcRecipient[];
   },
@@ -65,7 +64,7 @@ export async function sendSmileEdiMails(
     const base = {
       sent_at: new Date().toISOString(),
       fiscal_year_start: options.fiscalYearStart,
-      sender_email: options.senderEmail,
+      sender_email: group.recipientEmail,
       recipient_email: group.recipientEmail,
       recipient_name: group.managerName,
       company_names: companyNames,
@@ -82,7 +81,7 @@ export async function sendSmileEdiMails(
     // 공통 CC에서 받는사람과 중복되는 항목 제외
     const cc = ccForRecipient(options.cc ?? [], group.recipientEmail);
     const sendRes = await sendGraphMail({
-      senderUserId: options.senderEmail,
+      senderUserId: group.recipientEmail,
       toEmail: group.recipientEmail,
       toName: group.managerName,
       cc: cc.length > 0 ? cc : undefined,

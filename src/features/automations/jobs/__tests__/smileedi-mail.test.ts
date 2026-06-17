@@ -15,7 +15,6 @@ const ENV_KEYS = [
   "SMILEEDI_ITEM_KEYWORDS",
   "SMILEEDI_MANAGER_EMAIL_MAP",
   "SMILEEDI_DEFAULT_MANAGER",
-  "SMILEEDI_SENDER_EMAIL",
 ];
 
 describe("runSmileEdiMail — 분기", () => {
@@ -34,7 +33,6 @@ describe("runSmileEdiMail — 분기", () => {
     process.env.SMILEEDI_ITEM_KEYWORDS = "수수료";
     process.env.SMILEEDI_MANAGER_EMAIL_MAP = "송영신:song@x.com";
     process.env.SMILEEDI_DEFAULT_MANAGER = "송영신";
-    process.env.SMILEEDI_SENDER_EMAIL = "ops@x.com";
     vi.mocked(fetchSmileEdiSheet).mockResolvedValue(null);
 
     const r = await runSmileEdiMail();

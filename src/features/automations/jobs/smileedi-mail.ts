@@ -47,17 +47,23 @@ export async function runSmileEdiMail(): Promise<AutomationRunResult> {
     return {
       ok: true,
       message: `${range.startYmd}~${range.endYmd} 발송 대상 없음 (전체 ${sheet.rows.length} / 필터통과 ${sendable.length}).`,
-      details: { rows: sheet.rows.length, sendable: sendable.length, groups: 0 },
+      details: {
+        rows: sheet.rows.length,
+        sendable: sendable.length,
+        groups: 0,
+      },
     };
   }
 
   const dryRun = readDryRun();
   const result = await sendSmileEdiMails(
     groups,
-    { worksheetName: sheet.worksheetName, emailErrorColIdx: sheet.emailErrorColIdx },
+    {
+      worksheetName: sheet.worksheetName,
+      emailErrorColIdx: sheet.emailErrorColIdx,
+    },
     {
       dryRun,
-      senderEmail: cfg.senderEmail,
       fiscalYearStart: range.startYmd,
       cc: cfg.config.cc,
     },
@@ -71,7 +77,9 @@ export async function runSmileEdiMail(): Promise<AutomationRunResult> {
           .map((u) => u.managerName)
           .join(",")})`
       : "";
-  const patchWarn = result.patchError ? ` / 이메일오류 PATCH 실패: ${result.patchError}` : "";
+  const patchWarn = result.patchError
+    ? ` / 이메일오류 PATCH 실패: ${result.patchError}`
+    : "";
 
   return {
     ok: result.failed === 0 && !result.patchError,

@@ -22,16 +22,14 @@ describe("loadSmileEdiConfig", () => {
     SMILEEDI_ITEM_KEYWORDS: "수수료,접수,강사,대입,인터넷",
     SMILEEDI_MANAGER_EMAIL_MAP: "송영신:song@x.com,박시현:park@x.com",
     SMILEEDI_DEFAULT_MANAGER: "송영신",
-    SMILEEDI_SENDER_EMAIL: "ops@x.com",
     SMILEEDI_COMPANY_MANAGER_MAP: "고려대학교:박시현",
     SMILEEDI_CC: "박시현:pkm0313@x.com,김승현:ksh@x.com",
   } as unknown as NodeJS.ProcessEnv;
 
-  it("정상 — config + senderEmail", () => {
+  it("정상 — config 로드", () => {
     const r = loadSmileEdiConfig(full);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.senderEmail).toBe("ops@x.com");
       expect(r.config.itemKeywords).toContain("수수료");
       expect(r.config.managerEmail["박시현"]).toBe("park@x.com");
       expect(r.config.defaultManager).toBe("송영신");
@@ -55,7 +53,7 @@ describe("loadSmileEdiConfig", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.error).toContain("SMILEEDI_ITEM_KEYWORDS");
-      expect(r.error).toContain("SMILEEDI_SENDER_EMAIL");
+      expect(r.error).toContain("SMILEEDI_DEFAULT_MANAGER");
     }
   });
 });
