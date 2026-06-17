@@ -85,6 +85,8 @@ export async function createBackupRequest(
     const joinRows = parsed.data.services.map((s) => ({
       backup_request_id: parent.id,
       service_id: s.service_id,
+      university_name: s.university_name,
+      service_name: s.service_name,
       substitute_email: s.substitute_email ?? parsed.data.substitute_email,
       substitute_name: s.substitute_name ?? parsed.data.substitute_name,
       contacts: s.contacts,
@@ -165,6 +167,8 @@ export async function updateBackupRequest(
       const joinRows = parsed.data.services.map((s) => ({
         backup_request_id: id,
         service_id: s.service_id,
+        university_name: s.university_name,
+        service_name: s.service_name,
         substitute_email:
           s.substitute_email ?? parsed.data.substitute_email ?? null,
         substitute_name:

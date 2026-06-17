@@ -24,23 +24,11 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import { listBackupRequests, getBackupRequestById } from "../queries";
 
-const serviceA = {
-  id: "11111111-1111-4111-8111-111111111111",
-  service_id: 5072006,
-  service_name: "Graduate School of Police Studies",
-  university_name: "경찰대학 대학원",
-};
-
-const serviceB = {
-  id: "22222222-2222-4222-8222-222222222222",
-  service_id: 1165060,
-  service_name: "2025학년도 2학기 외국인전형",
-  university_name: "한양대학교(ERICA)",
-};
-
 /**
- * supabase 응답은 중첩 join shape — backup_request_services 배열 안에 services 본체.
- * PR-4: top-level contacts 컬럼 제거. backup_request_services 원소에 note_md/contacts 추가.
+ * closing 전환: backup_request_services는 더 이상 services!inner 조인을 하지 않는다.
+ * 각 join row가 service_id(모아 int) + university_name/service_name 스냅샷을 직접 보유.
+ * flattenServicesDetail은 이 스냅샷 컬럼으로 services_detail을 만든다 (서비스 본체 조인 없음).
+ * PR-4: backup_request_services 원소에 note_md/contacts 동반.
  */
 const validRow = {
   id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
@@ -58,20 +46,22 @@ const validRow = {
   updated_at: "2026-05-13T00:00:00Z",
   backup_request_services: [
     {
-      service_id: serviceA.id,
+      service_id: 5072006,
+      university_name: "경찰대학 대학원",
+      service_name: "Graduate School of Police Studies",
       substitute_email: null,
       substitute_name: null,
       note_md: null,
       contacts: [],
-      services: serviceA,
     },
     {
-      service_id: serviceB.id,
+      service_id: 1165060,
+      university_name: "한양대학교(ERICA)",
+      service_name: "2025학년도 2학기 외국인전형",
       substitute_email: null,
       substitute_name: null,
       note_md: null,
       contacts: [],
-      services: serviceB,
     },
   ],
 };
@@ -90,6 +80,12 @@ describe("listBackupRequests", () => {
     expect(r.rows[0].services_detail).toHaveLength(2);
     expect(r.rows[0].services_detail[0]?.service_name).toBe(
       "Graduate School of Police Studies",
+    );
+    // closing 전환: id는 String(service_id), university_name 스냅샷 보존
+    expect(r.rows[0].services_detail[0]?.id).toBe("5072006");
+    expect(r.rows[0].services_detail[0]?.service_id).toBe(5072006);
+    expect(r.rows[0].services_detail[0]?.university_name).toBe(
+      "경찰대학 대학원",
     );
   });
 
@@ -144,12 +140,13 @@ describe("listBackupRequests", () => {
       ...validRow,
       backup_request_services: [
         {
-          service_id: serviceA.id,
+          service_id: 5072006,
+          university_name: "경찰대학 대학원",
+          service_name: "Graduate School of Police Studies",
           substitute_email: null,
           substitute_name: null,
           note_md: "5/20 마감 임박",
           contacts,
-          services: serviceA,
         },
       ],
     };

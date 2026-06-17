@@ -60,13 +60,22 @@ vi.mock("@/features/auth/queries", () => ({
 
 import { createBackupRequest } from "../actions";
 
-// PR-3/4 — services는 {service_id, substitute_email?, substitute_name?, contacts?, note_md?}[] 튜플
+// PR-3/4 — services는 {service_id, university_name, service_name, substitute_email?, substitute_name?, contacts?, note_md?}[] 튜플
+// closing 전환: service_id는 모아 service_id(int) + university_name/service_name 스냅샷.
 const validInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
   services: [
-    { service_id: "11111111-1111-4111-8111-111111111111" },
-    { service_id: "22222222-2222-4222-8222-222222222222" },
+    {
+      service_id: 5072006,
+      university_name: "경찰대학 대학원",
+      service_name: "Graduate School of Police Studies",
+    },
+    {
+      service_id: 1165060,
+      university_name: "한양대학교(ERICA)",
+      service_name: "2025학년도 2학기 외국인전형",
+    },
   ],
   summary_md: "백업 내용",
   leave_start_date: "2026-05-20",
@@ -114,6 +123,18 @@ describe("createBackupRequest", () => {
     const r = await createBackupRequest(validInput);
     expect(r.ok).toBe(true);
     expect(mockJoinInsertResult).toHaveBeenCalledOnce();
+    // closing 전환: join row는 service_id(int) + university_name/service_name 스냅샷 포함
+    const rows = joinInsertCalls[0] as Array<Record<string, unknown>>;
+    expect(rows[0]).toMatchObject({
+      service_id: 5072006,
+      university_name: "경찰대학 대학원",
+      service_name: "Graduate School of Police Studies",
+    });
+    expect(rows[1]).toMatchObject({
+      service_id: 1165060,
+      university_name: "한양대학교(ERICA)",
+      service_name: "2025학년도 2학기 외국인전형",
+    });
   });
 
   it("services 빈 배열 → join insert 호출 안 함", async () => {
@@ -139,11 +160,13 @@ describe("createBackupRequest", () => {
     if (!r.ok) expect(r.error).toContain("services FK");
   });
 
-  it("zod 실패 (uuid 형식 아님) → ok=false", async () => {
+  it("zod 실패 (service_id가 int 아님) → ok=false", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     const r = await createBackupRequest({
       ...validInput,
-      services: [{ service_id: "not-a-uuid" }],
+      services: [
+        { service_id: "not-a-number", university_name: "u", service_name: "s" },
+      ],
     });
     expect(r.ok).toBe(false);
   });
@@ -216,12 +239,16 @@ describe("createBackupRequest", () => {
       ...validInput,
       services: [
         {
-          service_id: "11111111-1111-4111-8111-111111111111",
+          service_id: 5072006,
+          university_name: "경찰대학 대학원",
+          service_name: "Graduate School of Police Studies",
           contacts: [c1],
           note_md: "5/20 마감",
         },
         {
-          service_id: "22222222-2222-4222-8222-222222222222",
+          service_id: 1165060,
+          university_name: "한양대학교(ERICA)",
+          service_name: "2025학년도 2학기 외국인전형",
           contacts: [c2, c3],
           note_md: null,
         },

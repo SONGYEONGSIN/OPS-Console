@@ -4,25 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 import { backupRequestRowSchema, type BackupRequestRow } from "./schemas";
 
 /**
- * supabase 중첩 select shape:
+ * supabase select shape (closing 전환):
  *   backup_request_services: [
- *     { service_id, services: { id, service_id, service_name, university_name } },
+ *     { service_id, university_name, service_name, substitute_*, note_md, contacts },
  *     ...
  *   ]
  * → services_detail 배열로 평탄화 (zod 파싱 전 transform).
+ * services 테이블 조인 제거 — join row의 service_id(모아 int) + 스냅샷 컬럼을 직접 사용.
  */
 // PR-3: backup_request_services.substitute_email/name 추가 → join row에서 함께 select
 // PR-4: note_md/contacts 추가 (서비스별 메모/연락처).
 const SELECT_WITH_SERVICES =
-  "*, backup_request_services(service_id, substitute_email, substitute_name, note_md, contacts, services!inner(id, service_id, service_name, university_name))";
+  "*, backup_request_services(service_id, university_name, service_name, substitute_email, substitute_name, note_md, contacts)";
 
 type NestedServiceRow = {
   service_id?: unknown;
+  university_name?: unknown;
+  service_name?: unknown;
   substitute_email?: unknown;
   substitute_name?: unknown;
   note_md?: unknown;
   contacts?: unknown;
-  services?: unknown;
 };
 
 function flattenServicesDetail(row: unknown): unknown {
@@ -32,10 +34,14 @@ function flattenServicesDetail(row: unknown): unknown {
   const details: unknown[] = [];
   if (Array.isArray(nested)) {
     for (const item of nested as NestedServiceRow[]) {
-      if (item && typeof item.services === "object" && item.services) {
-        // services 객체에 join row의 substitute_email/name/note_md/contacts 합쳐서 평탄화
+      if (item && typeof item.service_id === "number") {
+        // join row의 스냅샷(service_id/university_name/service_name) + substitute/note/contacts 평탄화.
+        // id는 String(service_id) — serviceDetailSchema.id 호환.
         details.push({
-          ...(item.services as Record<string, unknown>),
+          id: String(item.service_id),
+          service_id: item.service_id,
+          university_name: item.university_name,
+          service_name: item.service_name,
           substitute_email: item.substitute_email ?? null,
           substitute_name: item.substitute_name ?? null,
           note_md: item.note_md ?? null,
