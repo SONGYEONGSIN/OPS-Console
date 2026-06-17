@@ -82,11 +82,11 @@ describe("SendReceivablesMailButton", () => {
     );
     fireEvent.click(screen.getByTestId("inspector-send-mail"));
     const dialog = screen.getByRole("dialog");
-    // body 직속 portal은 이벤트 위임 밖이라 클릭이 죽는다 → 앱 렌더 컨테이너로 portal.
-    expect(dialog.parentElement?.id).toBe("ops-modal-root");
+    // 표준 ModalShell이 #ops-modal-root로 portal — transform 조상에 갇히지 않는다.
+    expect(dialog.closest("#ops-modal-root")).not.toBeNull();
   });
 
-  it("모달 패널은 불투명 배경(bg-cream) — 미정의 토큰으로 투명해지지 않음", () => {
+  it("모달 패널은 불투명 배경(bg-paper) — 미정의 토큰으로 투명해지지 않음", () => {
     render(
       <SendReceivablesMailButton
         email="manager@school.ac.kr"
@@ -95,9 +95,9 @@ describe("SendReceivablesMailButton", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("inspector-send-mail"));
-    const panel = screen.getByRole("dialog").firstElementChild;
-    expect(panel?.className).toContain("bg-cream");
-    // 미정의 토큰 회귀 가드
-    expect(panel?.className).not.toContain("bg-washi-base");
+    // 표준 ModalShell 카드(dialog) 자체가 불투명 bg-paper.
+    const panel = screen.getByRole("dialog");
+    expect(panel.className).toContain("bg-paper");
+    expect(panel.className).not.toContain("bg-washi-base");
   });
 });

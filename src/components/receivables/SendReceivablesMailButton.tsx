@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
+import { ModalShell } from "@/components/common/ModalShell";
 import {
   fetchReminderGroup,
   sendReminderEmails,
@@ -86,14 +86,6 @@ export function SendReceivablesMailButton({
   // useTransition 대신 일반 로딩 플래그 — 서버 액션의 revalidate refresh와
   // 결과 setState가 엮여 'done' 전환이 누락(모달이 사라지는 듯 보임)되는 것 방지.
   const [busy, setBusy] = useState(false);
-  // 모달 portal 대상 — document.body 직속 portal은 Next App Router 이벤트 위임
-  // 범위 밖이라 클릭이 안 먹는다. layout(DashboardShell)이 렌더한 #ops-modal-root
-  // (transform 없는 최상위)로 portal해 이벤트와 전체화면 위치를 모두 확보.
-  // open=true는 항상 하이드레이션 이후(클릭 시)라 렌더 시점 조회로 안전.
-  const modalRoot =
-    typeof document !== "undefined"
-      ? document.getElementById("ops-modal-root")
-      : null;
 
   function reset() {
     setOpen(false);
@@ -177,36 +169,36 @@ export function SendReceivablesMailButton({
         독려 메일 발송
       </button>
 
-      {open && modalRoot
-        ? createPortal(
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="send-receivables-mail-title"
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) reset();
-              }}
-            >
-              <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink/15 bg-cream shadow-xl">
-                <header className="flex items-center justify-between border-b border-ink/10 px-5 py-3">
-                  <h2
-                    id="send-receivables-mail-title"
-                    className="text-base font-semibold text-ink"
-                  >
-                    미수채권 독려 메일 발송
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={reset}
-                    className="text-xs text-muted hover:text-ink"
-                    aria-label="닫기"
-                  >
-                    ✕
-                  </button>
-                </header>
-
-                <div className="flex-1 overflow-y-auto px-5 py-4 text-sm">
+      {open && (
+        <ModalShell
+          title="미수채권 독려 메일 발송"
+          ariaLabel="미수채권 독려 메일 발송"
+          onClose={reset}
+          size="lg"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={reset}
+                className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-xs text-ink hover:bg-washi"
+              >
+                닫기
+              </button>
+              {phase === "preview" ? (
+                <button
+                  type="button"
+                  onClick={onSend}
+                  disabled={busy}
+                  data-testid="confirm-send"
+                  className="cursor-pointer border border-ink bg-ink px-4 py-1.5 text-xs font-semibold text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/70"
+                >
+                  {busy ? "발송 중..." : dryRun ? "Dry-run 발송" : "발송"}
+                </button>
+              ) : null}
+            </>
+          }
+        >
+          <div className="text-sm">
                   <div className="mb-4 flex items-center justify-between gap-3 border-b border-line-soft pb-3">
                     <div className="flex min-w-0 items-baseline gap-2">
                       <span className="shrink-0 text-2xs uppercase tracking-wide text-muted">
@@ -331,32 +323,8 @@ export function SendReceivablesMailButton({
                     </div>
                   ) : null}
                 </div>
-
-                <footer className="flex items-center justify-end gap-2 border-t border-ink/10 px-5 py-3">
-                  <button
-                    type="button"
-                    onClick={reset}
-                    className="border border-ink/15 bg-white px-3 py-1.5 text-xs text-ink hover:bg-washi-raised"
-                  >
-                    닫기
-                  </button>
-                  {phase === "preview" ? (
-                    <button
-                      type="button"
-                      onClick={onSend}
-                      disabled={busy}
-                      className="border border-ink bg-ink px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-40"
-                      data-testid="confirm-send"
-                    >
-                      {busy ? "발송 중..." : dryRun ? "Dry-run 발송" : "발송"}
-                    </button>
-                  ) : null}
-                </footer>
-              </div>
-            </div>,
-            modalRoot,
-          )
-        : null}
+        </ModalShell>
+      )}
     </>
   );
 }

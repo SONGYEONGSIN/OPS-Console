@@ -329,7 +329,7 @@ export function DrawerCloseButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="absolute right-3 top-3 z-[2] hidden h-8 w-8 items-center justify-center rounded-full border border-line-soft bg-transparent text-[18px] leading-none text-ink hover:bg-washi-raised max-lg:inline-flex"
+      className="absolute right-3 top-3 z-[2] hidden h-8 w-8 cursor-pointer items-center justify-center border border-line bg-paper text-2xl leading-none text-ink-soft transition-colors hover:border-vermilion hover:text-vermilion max-lg:inline-flex"
     >
       ×
     </button>

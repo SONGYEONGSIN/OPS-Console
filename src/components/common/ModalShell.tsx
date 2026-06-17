@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 const SIZE_CLASS = {
   sm: "max-w-[360px]",
@@ -41,7 +42,7 @@ export function ModalShell({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  const overlay = (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/40 p-4"
       onClick={(e) => {
@@ -82,4 +83,12 @@ export function ModalShell({
       </div>
     </div>
   );
+
+  // 앱 레벨 오버레이 컨테이너(#ops-modal-root, transform 없는 최상위)로 portal —
+  // transform 조상에 갇히지 않고 이벤트 위임도 확보. 없으면(테스트 등) inline 렌더.
+  const root =
+    typeof document !== "undefined"
+      ? document.getElementById("ops-modal-root")
+      : null;
+  return root ? createPortal(overlay, root) : overlay;
 }
