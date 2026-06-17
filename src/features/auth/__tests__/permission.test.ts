@@ -120,12 +120,15 @@ describe("canViewMenu", () => {
     expect(canViewMenu("feedback", ME_MEMBER)).toBe(true);
   });
 
-  it("member는 admin-only slug(team/settings/notices/outcomes/automations)는 false", () => {
+  it("member는 admin-only slug(team/settings/notices/outcomes)는 false", () => {
     expect(canViewMenu("team", ME_MEMBER)).toBe(false);
     expect(canViewMenu("settings", ME_MEMBER)).toBe(false);
     expect(canViewMenu("notices", ME_MEMBER)).toBe(false);
     expect(canViewMenu("outcomes", ME_MEMBER)).toBe(false);
-    expect(canViewMenu("automations", ME_MEMBER)).toBe(false);
+  });
+
+  it("member는 automations(전원 노출)는 true — 실행/토글은 페이지·액션에서 별도 차단", () => {
+    expect(canViewMenu("automations", ME_MEMBER)).toBe(true);
   });
 
   it("member는 비-adminOnly slug는 allowedMenus 밖이어도 true (정책: deny 외 전체 허용)", () => {
@@ -207,7 +210,12 @@ describe("filterSidebarSections", () => {
             label: "AI & 자동화",
             items: [
               { ico: "·", label: "내 작업", slug: "my-ai-work" },
-              { ico: "·", label: "자동화 실행", slug: "automations", adminOnly: true },
+              {
+                ico: "·",
+                label: "자동화 실행",
+                slug: "automations",
+                adminOnly: true,
+              },
             ],
           },
         ],
@@ -235,7 +243,12 @@ describe("filterSidebarSections", () => {
             label: "AI & 자동화",
             items: [
               { ico: "·", label: "내 작업", slug: "my-ai-work" },
-              { ico: "·", label: "자동화 실행", slug: "automations", adminOnly: true },
+              {
+                ico: "·",
+                label: "자동화 실행",
+                slug: "automations",
+                adminOnly: true,
+              },
             ],
           },
         ],

@@ -15,7 +15,15 @@ import type { JobRunLog } from "@/features/automations/run-logs-normalize";
 import { InspectorPanel } from "@/app/dashboard/_components/inspector/InspectorPanel";
 import { AutomationLogPanel } from "./AutomationLogPanel";
 
-export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
+const ADMIN_ONLY_MSG = "관리자만 실행 가능합니다.";
+
+export function AutomationHub({
+  statuses,
+  isAdmin = true,
+}: {
+  statuses: AutomationStatus[];
+  isAdmin?: boolean;
+}) {
   const [selected, setSelected] = useState<{
     jobId: string;
     label: string;
@@ -26,6 +34,10 @@ export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
   const [error, setError] = useState<string | null>(null);
 
   async function openLog(status: AutomationStatus) {
+    if (!isAdmin) {
+      alert(ADMIN_ONLY_MSG);
+      return;
+    }
     setSelected({ jobId: status.id, label: status.label });
     setLog(null);
     setRuns([]);
@@ -65,7 +77,12 @@ export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
               </tr>
             ) : (
               statuses.map((s) => (
-                <AutomationRow key={s.id} status={s} onOpenLog={openLog} />
+                <AutomationRow
+                  key={s.id}
+                  status={s}
+                  onOpenLog={openLog}
+                  isAdmin={isAdmin}
+                />
               ))
             )}
           </tbody>
@@ -93,9 +110,11 @@ export function AutomationHub({ statuses }: { statuses: AutomationStatus[] }) {
 function AutomationRow({
   status,
   onOpenLog,
+  isAdmin,
 }: {
   status: AutomationStatus;
   onOpenLog: (status: AutomationStatus) => void;
+  isAdmin: boolean;
 }) {
   return (
     <tr className="border-b border-line align-top">
@@ -125,22 +144,37 @@ function AutomationRow({
         </div>
       </td>
       <td className="px-3 py-3">
-        <EnabledToggle status={status} />
+        <EnabledToggle status={status} isAdmin={isAdmin} />
       </td>
       <td className="px-3 py-3">
-        <RunControl status={status} />
+        <RunControl status={status} isAdmin={isAdmin} />
       </td>
     </tr>
   );
 }
 
-function EnabledToggle({ status }: { status: AutomationStatus }) {
+function EnabledToggle({
+  status,
+  isAdmin,
+}: {
+  status: AutomationStatus;
+  isAdmin: boolean;
+}) {
   const [state, formAction, pending] = useActionState<RunActionState, FormData>(
     setAutomationEnabledAction,
     undefined,
   );
   return (
-    <form action={formAction} className="flex items-center gap-2">
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        if (!isAdmin) {
+          e.preventDefault();
+          alert(ADMIN_ONLY_MSG);
+        }
+      }}
+      className="flex items-center gap-2"
+    >
       <input type="hidden" name="jobId" value={status.id} />
       <div
         role="group"
@@ -183,7 +217,13 @@ function EnabledToggle({ status }: { status: AutomationStatus }) {
   );
 }
 
-function RunControl({ status }: { status: AutomationStatus }) {
+function RunControl({
+  status,
+  isAdmin,
+}: {
+  status: AutomationStatus;
+  isAdmin: boolean;
+}) {
   const [state, formAction, pending] = useActionState<RunActionState, FormData>(
     runAutomationAction,
     undefined,
@@ -202,7 +242,15 @@ function RunControl({ status }: { status: AutomationStatus }) {
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <form action={formAction}>
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          if (!isAdmin) {
+            e.preventDefault();
+            alert(ADMIN_ONLY_MSG);
+          }
+        }}
+      >
         <input type="hidden" name="jobId" value={status.id} />
         {!inCooldown ? (
           <button
@@ -215,7 +263,13 @@ function RunControl({ status }: { status: AutomationStatus }) {
         ) : !confirming ? (
           <button
             type="button"
-            onClick={() => setArmedAgainst({ state })}
+            onClick={() => {
+              if (!isAdmin) {
+                alert(ADMIN_ONLY_MSG);
+                return;
+              }
+              setArmedAgainst({ state });
+            }}
             className="inline-flex w-fit items-center border border-vermilion bg-transparent cursor-pointer px-3 py-1 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
           >
             쿨다운 {status.cooldownRemainingMinutes}분 — 강제 실행

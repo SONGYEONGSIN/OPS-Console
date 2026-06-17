@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
@@ -9,11 +8,9 @@ import { AutomationHub } from "./_components/AutomationHub";
 export default async function AutomationsPage() {
   const slug = "automations";
   const me = await requireMenu(slug);
-
-  // 자동화 실행은 admin 전용 — admin 외는 /dashboard로 fallback
-  if (me.permission !== "admin") {
-    redirect("/dashboard");
-  }
+  // 페이지는 전원 열람 가능. 실제 실행/토글/로그조회는 admin만 — 비-admin은
+  // 클라이언트에서 알럿(서버 액션도 requireAdmin으로 이중 차단).
+  const isAdmin = me.permission === "admin";
 
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
@@ -41,7 +38,7 @@ export default async function AutomationsPage() {
           </span>
           <span className="text-sm text-vermilion">{statuses.length}건</span>
         </header>
-        <AutomationHub statuses={statuses} />
+        <AutomationHub statuses={statuses} isAdmin={isAdmin} />
       </section>
     </>
   );
