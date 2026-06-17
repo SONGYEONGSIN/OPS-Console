@@ -91,7 +91,9 @@ export function BulkPasteContacts() {
                 서강대 · 김담당 · kim@sg.ac.kr · 02-705-1234
                 <br />
                 <span className="text-muted">
-                  구분자: 탭(엑셀 복사) · 가운뎃점(·) · 쉼표 모두 인식
+                  구분자: 탭(엑셀 복사){" "}
+                  <span className="text-vermilion">·</span> 가운뎃점(·){" "}
+                  <span className="text-vermilion">·</span> 쉼표(,) 모두 인식
                 </span>
               </p>
               <textarea
