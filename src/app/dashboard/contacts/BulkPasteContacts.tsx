@@ -80,19 +80,16 @@ export function BulkPasteContacts() {
           }
         >
           <div>
-              <p className="mb-2 text-xs leading-[1.6] text-muted">
+              <p className="mb-1 text-xs leading-[1.6] text-muted">
                 엑셀에서 표(첫 행=열 이름)를 복사해 붙여넣으세요.
                 대학명·고객명은 필수입니다. (이메일/전화/내선/직위/부서 등 열
                 이름 자동 인식)
               </p>
-              <div className="mb-2 border border-line-soft bg-cream p-2">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
-                  예시 (첫 행 = 열 이름, 탭 구분)
-                </div>
-                <pre className="overflow-x-auto text-[11px] leading-[1.7] text-ink-soft">
-                  {"대학명\t고객명\t이메일\t전화\n서강대\t김담당\tkim@sg.ac.kr\t02-705-1234\n연세대\t박과장\tpark@yu.ac.kr\t02-2123-5678"}
-                </pre>
-              </div>
+              <p className="mb-2 text-xs leading-[1.7] text-ink-soft">
+                예시) 대학명 · 고객명 · 이메일 · 전화 (첫 행은 열 이름)
+                <br />
+                서강대 · 김담당 · kim@sg.ac.kr · 02-705-1234
+              </p>
               <textarea
                 aria-label="연락처 붙여넣기"
                 value={text}
