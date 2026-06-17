@@ -7,6 +7,7 @@ import {
   REPORT_PERIOD_LABELS,
   type ReportPeriod,
 } from "@/features/reports/schemas";
+import { ModalShell } from "@/components/common/ModalShell";
 
 const PERIOD_ORDER: ReportPeriod[] = [
   "this-week",
@@ -47,20 +48,37 @@ export function NewReportModal({ open, onClose }: Props) {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-label="새 리포트"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-      onClick={onClose}
+    <ModalShell
+      title="새 리포트 생성"
+      ariaLabel="새 리포트"
+      onClose={onClose}
+      size="md"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          >
+            취소
+          </button>
+          <button
+            type="submit"
+            form="new-report-form"
+            disabled={pending || !title.trim()}
+            className="cursor-pointer border border-ink bg-ink px-4 py-1.5 text-sm font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/70"
+          >
+            {pending ? "생성 중…" : "생성"}
+          </button>
+        </>
+      }
     >
       <form
+        id="new-report-form"
         onSubmit={handleSubmit}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md border border-line bg-cream p-6"
+        className="flex flex-col gap-3"
       >
-        <h3 className="mb-4 text-base font-bold text-ink">새 리포트 생성</h3>
-
-        <label className="mb-3 flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs text-muted">제목</span>
           <input
             type="text"
@@ -73,7 +91,7 @@ export function NewReportModal({ open, onClose }: Props) {
           />
         </label>
 
-        <label className="mb-4 flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs text-muted">기간</span>
           <select
             value={period}
@@ -88,27 +106,8 @@ export function NewReportModal({ open, onClose }: Props) {
           </select>
         </label>
 
-        {error ? (
-          <p className="mb-3 text-xs text-vermilion">{error}</p>
-        ) : null}
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft"
-          >
-            취소
-          </button>
-          <button
-            type="submit"
-            disabled={pending || !title.trim()}
-            className="border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream disabled:opacity-50"
-          >
-            {pending ? "생성 중…" : "생성"}
-          </button>
-        </div>
+        {error ? <p className="text-xs text-vermilion">{error}</p> : null}
       </form>
-    </div>
+    </ModalShell>
   );
 }

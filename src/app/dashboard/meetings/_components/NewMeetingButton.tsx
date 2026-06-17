@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createMeeting } from "@/features/meetings/actions";
 import { MEETING_TYPES, MEETING_TYPE_LABELS } from "@/features/meetings/schemas";
+import { ModalShell } from "@/components/common/ModalShell";
 
 export function NewMeetingButton() {
   const [open, setOpen] = useState(false);
@@ -31,30 +32,25 @@ export function NewMeetingButton() {
         + 새 회의록
       </button>
       {open && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-ink/30"
-          onClick={() => !busy && setOpen(false)}
+        <ModalShell
+          title="회의 유형 선택"
+          onClose={() => !busy && setOpen(false)}
+          size="sm"
         >
-          <div
-            className="w-[320px] border border-ink bg-cream p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-3 text-sm font-bold">회의 유형 선택</p>
-            <div className="flex flex-col gap-2">
-              {MEETING_TYPES.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => pick(t)}
-                  className="border border-line-soft px-3 py-2 text-left text-sm hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-50"
-                >
-                  {MEETING_TYPE_LABELS[t]}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2">
+            {MEETING_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                disabled={busy}
+                onClick={() => pick(t)}
+                className="cursor-pointer border border-line-soft px-3 py-2 text-left text-sm hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-50"
+              >
+                {MEETING_TYPE_LABELS[t]}
+              </button>
+            ))}
           </div>
-        </div>
+        </ModalShell>
       )}
     </>
   );
