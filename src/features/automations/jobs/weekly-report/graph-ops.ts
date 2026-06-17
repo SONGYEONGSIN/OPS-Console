@@ -1,11 +1,15 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
-import { getWorkbookSession } from "@/lib/microsoft/workbook-session";
 
 /**
- * 주간보고 롤오버 전용 Graph I/O — SharePoint 폴더/파일 + 워크북 셀 + 공유링크.
+ * 주간보고 롤오버 전용 Graph I/O — SharePoint 폴더/파일 + 파일 콘텐츠 + 공유링크.
  * SharePoint 읽기/쓰기는 app-only 토큰(getGraphToken). docs/buseobogo.py 이식.
+ * 시트 복제는 Graph Excel API에 copy 액션이 없어 파일을 내려받아 exceljs로 로컬 편집한다
+ * (sheet-rollover.ts).
  */
+
+const XLSX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 
@@ -117,134 +121,39 @@ export async function copyItemAndWait(
   throw new Error("[weekly-report] copy 폴링 타임아웃");
 }
 
-/** 워크북 시트명 목록 (위치 순). */
-export async function listWorksheetNames(
+/** drive item 파일 콘텐츠(.xlsx 바이트) 다운로드. */
+export async function downloadItemContent(
   driveId: string,
   itemId: string,
-): Promise<string[]> {
-  const session = await getWorkbookSession(driveId, itemId);
+): Promise<ArrayBuffer> {
   const res = await authedFetch(
-    `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets?$select=name,position`,
-    { headers: { "workbook-session-id": session } },
+    `${GRAPH}/drives/${driveId}/items/${itemId}/content`,
   );
   if (!res.ok) {
     throw new Error(
-      `[weekly-report] worksheets ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      `[weekly-report] download ${res.status}: ${(await res.text()).slice(0, 200)}`,
     );
   }
-  const json = (await res.json()) as {
-    value: Array<{ name: string; position: number }>;
-  };
-  return json.value.sort((a, b) => a.position - b.position).map((w) => w.name);
+  return res.arrayBuffer();
 }
 
-/** 워크북 시트 이름 변경. */
-export async function renameWorksheet(
+/** drive item 파일 콘텐츠(.xlsx 바이트) 업로드(덮어쓰기). */
+export async function uploadItemContent(
   driveId: string,
   itemId: string,
-  oldName: string,
-  newName: string,
+  data: ArrayBuffer,
 ): Promise<void> {
-  const session = await getWorkbookSession(driveId, itemId);
   const res = await authedFetch(
-    `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(oldName)}`,
+    `${GRAPH}/drives/${driveId}/items/${itemId}/content`,
     {
-      method: "PATCH",
-      headers: {
-        "workbook-session-id": session,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ name: newName }),
+      method: "PUT",
+      headers: { "content-type": XLSX_CONTENT_TYPE },
+      body: data,
     },
   );
   if (!res.ok) {
     throw new Error(
-      `[weekly-report] rename sheet ${res.status}: ${(await res.text()).slice(0, 200)}`,
-    );
-  }
-}
-
-/**
- * 워크북 시트 복제 — 원본 시트는 그대로 두고 사본을 맨 앞(Before)에 추가.
- * Graph가 자동 부여한 사본 시트명을 반환(호출자가 renameWorksheet로 차주명 지정).
- */
-export async function copyWorksheet(
-  driveId: string,
-  itemId: string,
-  sourceName: string,
-): Promise<string> {
-  const session = await getWorkbookSession(driveId, itemId);
-  const res = await authedFetch(
-    `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(sourceName)}/copy`,
-    {
-      method: "POST",
-      headers: {
-        "workbook-session-id": session,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ type: "Before" }),
-    },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[weekly-report] copy sheet ${res.status}: ${(await res.text()).slice(0, 200)}`,
-    );
-  }
-  const json = (await res.json()) as { name?: string };
-  if (!json.name) {
-    throw new Error("[weekly-report] copy sheet: 응답에 name 없음");
-  }
-  return json.name;
-}
-
-/** 단일 셀 값(텍스트) 읽기. 비어있으면 "". */
-export async function getCellText(
-  driveId: string,
-  itemId: string,
-  sheetName: string,
-  address: string,
-): Promise<string> {
-  const session = await getWorkbookSession(driveId, itemId);
-  const res = await authedFetch(
-    `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(sheetName)}/range(address='${address}')?$select=text,values`,
-    { headers: { "workbook-session-id": session } },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[weekly-report] getCell ${address} ${res.status}: ${(await res.text()).slice(0, 200)}`,
-    );
-  }
-  const json = (await res.json()) as {
-    text?: string[][];
-    values?: unknown[][];
-  };
-  const t = json.text?.[0]?.[0];
-  return typeof t === "string" ? t : String(json.values?.[0]?.[0] ?? "");
-}
-
-/** 단일 셀 값(텍스트) 쓰기. */
-export async function setCellText(
-  driveId: string,
-  itemId: string,
-  sheetName: string,
-  address: string,
-  value: string,
-): Promise<void> {
-  const session = await getWorkbookSession(driveId, itemId);
-  const res = await authedFetch(
-    `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(sheetName)}/range(address='${address}')`,
-    {
-      method: "PATCH",
-      headers: {
-        "workbook-session-id": session,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ values: [[value]] }),
-    },
-  );
-  if (!res.ok) {
-    throw new Error(
-      `[weekly-report] setCell ${address} ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      `[weekly-report] upload ${res.status}: ${(await res.text()).slice(0, 200)}`,
     );
   }
 }
