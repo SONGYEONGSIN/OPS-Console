@@ -39,7 +39,7 @@ describe("BulkPasteContacts", () => {
     fireEvent.change(screen.getByLabelText("연락처 붙여넣기"), {
       target: { value: "대학명\t고객명\n서강대\t김담당" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /건 등록/ }));
+    fireEvent.click(screen.getByRole("button", { name: "등록" }));
     await waitFor(() => expect(createContactsBulk).toHaveBeenCalledTimes(1));
     const arg = mockBulk.mock.calls[0][0];
     expect(arg).toHaveLength(1);
@@ -59,7 +59,7 @@ describe("BulkPasteContacts", () => {
     fireEvent.change(screen.getByLabelText("연락처 붙여넣기"), {
       target: { value: "대학명\t고객명\n서강대\t김담당" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /건 등록/ }));
+    fireEvent.click(screen.getByRole("button", { name: "등록" }));
     expect(await screen.findByText(/1건 등록 완료/)).toBeInTheDocument();
     expect(screen.getByText(/중복 1건/)).toBeInTheDocument();
   });
