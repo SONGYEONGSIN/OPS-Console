@@ -15,8 +15,8 @@ import {
 } from "@/features/backup-requests/actions";
 import { sendBackupRequestMail } from "@/features/backup-requests/mail-actions";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
-import { listServices } from "@/features/services/queries";
-import type { ServicesRow } from "@/features/services/schemas";
+import { listClosing } from "@/features/closing/queries";
+import type { ClosingRow } from "@/features/closing/schemas";
 import { listContacts } from "@/features/contacts/queries";
 import type { ContactRow } from "@/features/contacts/schemas";
 
@@ -57,15 +57,14 @@ export default async function BackupPage({
     .filter((op) => op.status === "active" && op.email !== me?.email)
     .map((op) => ({ email: op.email, name: op.name }));
 
-  // PR-2: services 카탈로그 light projection — EditForm multi-select 후보용.
+  // closing(서비스 마감) 카탈로그 light projection — EditForm multi-select 후보용.
   // Supabase JS는 PostgREST Max-Rows 1000 cap. chunk loop으로 전체 fetch.
   const CHUNK = 1000;
   const MAX_PAGES = 20;
-  const serviceCandidatesRaw: ServicesRow[] = [];
+  const serviceCandidatesRaw: ClosingRow[] = [];
   let totalFetched = 0;
   for (let p = 1; p <= MAX_PAGES; p++) {
-    const { rows, total } = await listServices({
-      sort: "service_id_asc",
+    const { rows, total } = await listClosing({
       page: p,
       pageSize: CHUNK,
     });
@@ -75,12 +74,20 @@ export default async function BackupPage({
     if (totalFetched >= total) break;
     if (p * CHUNK >= total) break; // PGRST103 회피
   }
-  const backupServiceCandidates = serviceCandidatesRaw.map((s) => ({
-    id: s.id,
-    service_id: s.service_id,
-    service_name: s.service_name,
-    university_name: s.university_name,
-  }));
+  // closing 전환: 후보 식별자는 String(모아 service_id). service_id 기준 중복 제거.
+  const seenServiceIds = new Set<number>();
+  const backupServiceCandidates = serviceCandidatesRaw
+    .filter((s) => {
+      if (seenServiceIds.has(s.service_id)) return false;
+      seenServiceIds.add(s.service_id);
+      return true;
+    })
+    .map((s) => ({
+      id: String(s.service_id),
+      service_id: s.service_id,
+      service_name: s.service_name,
+      university_name: s.university_name,
+    }));
 
   // contacts 카탈로그 light projection — chunk fetch 동일 패턴
   const contactCandidatesRaw: ContactRow[] = [];
@@ -131,7 +138,9 @@ export default async function BackupPage({
     if (isNew) {
       // PR-3/4: services는 {service_id, substitute_email?, substitute_name?, contacts, note_md?}[] 튜플
       const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
-        service_id: d.id,
+        service_id: d.service_id,
+        university_name: d.university_name,
+        service_name: d.service_name,
         substitute_email: d.substitute_email ?? null,
         substitute_name: d.substitute_name ?? null,
         contacts: d.contacts,
@@ -176,7 +185,9 @@ export default async function BackupPage({
 
     // PR-7: 기존 row 수정. services 교체 포함. 메일 자동 재발송 X (재발송은 명시 버튼).
     const servicesPayload = (row.backupServicesDetail ?? []).map((d) => ({
-      service_id: d.id,
+      service_id: d.service_id,
+      university_name: d.university_name,
+      service_name: d.service_name,
       substitute_email: d.substitute_email ?? null,
       substitute_name: d.substitute_name ?? null,
       contacts: d.contacts,

@@ -9,12 +9,21 @@ import {
 
 // PR-5: contacts는 {contact_id, customer_name, university_name, email, phone}[] 객체 배열.
 // 이전 string[] 라벨 형식은 PR-4까지 사용. PR-5에서 메일/PDF에 이메일/전화 노출 위해 객체화.
+// closing 전환: service_id는 모아 service_id(int) + university_name/service_name 스냅샷 동반.
 const baseInput = {
   substitute_email: "alice@example.com",
   substitute_name: "Alice",
   services: [
-    { service_id: "11111111-1111-4111-8111-111111111111" },
-    { service_id: "22222222-2222-4222-8222-222222222222" },
+    {
+      service_id: 5072006,
+      university_name: "경찰대학 대학원",
+      service_name: "Graduate School of Police Studies",
+    },
+    {
+      service_id: 1165060,
+      university_name: "한양대학교(ERICA)",
+      service_name: "2025학년도 2학기 외국인전형",
+    },
   ],
   summary_md: "백업 요청 내용",
   leave_start_date: "2026-05-20",
@@ -33,12 +42,16 @@ describe("backupRequestCreateSchema", () => {
       ...baseInput,
       services: [
         {
-          service_id: "11111111-1111-4111-8111-111111111111",
+          service_id: 5072006,
+          university_name: "경찰대학 대학원",
+          service_name: "Graduate School of Police Studies",
           substitute_email: "x@example.com",
           substitute_name: "X",
         },
         {
-          service_id: "22222222-2222-4222-8222-222222222222",
+          service_id: 1165060,
+          university_name: "한양대학교(ERICA)",
+          service_name: "2025학년도 2학기 외국인전형",
           substitute_email: "y@example.com",
           substitute_name: "Y",
         },
@@ -68,7 +81,9 @@ describe("backupRequestCreateSchema", () => {
       ...baseInput,
       services: [
         {
-          service_id: "11111111-1111-4111-8111-111111111111",
+          service_id: 5072006,
+          university_name: "경찰대학 대학원",
+          service_name: "Graduate School of Police Studies",
           contacts,
           note_md: "5/20 마감 임박. 양식 첨부",
         },
@@ -102,7 +117,9 @@ describe("backupRequestCreateSchema", () => {
       ...baseInput,
       services: [
         {
-          service_id: "11111111-1111-4111-8111-111111111111",
+          service_id: 5072006,
+          university_name: "경찰대학 대학원",
+          service_name: "Graduate School of Police Studies",
           contacts: tooManyContacts,
         },
       ],
@@ -110,10 +127,32 @@ describe("backupRequestCreateSchema", () => {
     expect(r.success).toBe(false);
   });
 
-  it("uuid 형식이 아닌 service_id 거부", () => {
+  it("service_id가 int가 아니면 거부 (uuid 문자열 등)", () => {
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
-      services: [{ service_id: "not-a-uuid" }],
+      services: [
+        {
+          service_id: "11111111-1111-4111-8111-111111111111",
+          university_name: "u",
+          service_name: "s",
+        },
+      ],
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("university_name 누락 시 거부", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      services: [{ service_id: 5072006, service_name: "s" }],
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("service_name 누락 시 거부", () => {
+    const r = backupRequestCreateSchema.safeParse({
+      ...baseInput,
+      services: [{ service_id: 5072006, university_name: "u" }],
     });
     expect(r.success).toBe(false);
   });
@@ -165,7 +204,9 @@ describe("backupRequestCreateSchema", () => {
 
   it("services max 20 초과 거부", () => {
     const tooMany = Array.from({ length: 21 }, () => ({
-      service_id: "11111111-1111-4111-8111-111111111111",
+      service_id: 5072006,
+      university_name: "u",
+      service_name: "s",
     }));
     const r = backupRequestCreateSchema.safeParse({
       ...baseInput,
@@ -178,7 +219,7 @@ describe("backupRequestCreateSchema", () => {
 describe("serviceDetailSchema", () => {
   it("정상 join row 파싱 (contacts 빈 배열 default, note_md nullable)", () => {
     const r = serviceDetailSchema.safeParse({
-      id: "11111111-1111-4111-8111-111111111111",
+      id: "5072006",
       service_id: 5072006,
       service_name: "Graduate School of Police Studies",
       university_name: "경찰대학 대학원",
@@ -188,6 +229,17 @@ describe("serviceDetailSchema", () => {
       expect(r.data.contacts).toEqual([]);
       expect(r.data.note_md).toBeNull();
     }
+  });
+
+  it("closing 전환: id는 uuid가 아닌 임의 문자열(String(service_id)) 허용", () => {
+    const r = serviceDetailSchema.safeParse({
+      id: "5072006",
+      service_id: 5072006,
+      service_name: "s",
+      university_name: "u",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.id).toBe("5072006");
   });
 
   it("PR-5: contacts 객체 배열/note_md 포함 join row 보존", () => {
@@ -201,7 +253,7 @@ describe("serviceDetailSchema", () => {
       },
     ];
     const r = serviceDetailSchema.safeParse({
-      id: "11111111-1111-4111-8111-111111111111",
+      id: "5072006",
       service_id: 5072006,
       service_name: "신입학",
       university_name: "경찰대학",
@@ -219,7 +271,7 @@ describe("serviceDetailSchema", () => {
 
   it("service_id 음수 거부", () => {
     const r = serviceDetailSchema.safeParse({
-      id: "11111111-1111-4111-8111-111111111111",
+      id: "-1",
       service_id: -1,
       service_name: "x",
       university_name: "y",
@@ -238,7 +290,7 @@ describe("backupRequestRowSchema", () => {
       substitute_name: "Alice",
       services_detail: [
         {
-          id: "11111111-1111-4111-8111-111111111111",
+          id: "5072006",
           service_id: 5072006,
           service_name: "Graduate School of Police Studies",
           university_name: "경찰대학 대학원",

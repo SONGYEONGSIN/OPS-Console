@@ -58,7 +58,8 @@ export type ContactDetail = z.infer<typeof contactDetailSchema>;
  * PR-5: contacts는 contactDetailSchema 객체 배열. 메일/PDF에 이메일·전화 노출.
  */
 export const serviceDetailSchema = z.object({
-  id: z.string().uuid(),
+  // closing 전환: id는 더 이상 services.id(uuid)가 아니라 String(모아 service_id).
+  id: z.string(),
   service_id: z.number().int().nonnegative(),
   service_name: z.string().min(1),
   university_name: z.string().min(1),
@@ -100,12 +101,16 @@ export type BackupRequestRow = z.infer<typeof backupRequestRowSchema>;
 
 /**
  * 신규 등록 입력. requester_email/_team은 server action에서 현재 operator로 채움.
- * PR-3: services 입력은 {service_id, substitute_email?, substitute_name?}[] 튜플 배열.
+ * PR-3: services 입력은 {service_id, university_name, service_name, substitute_email?, substitute_name?}[] 튜플 배열.
+ * closing 전환: service_id는 모아 service_id(int), university_name/service_name 스냅샷 동반.
  * substitute_* 미지정 시 default(backup_requests.substitute_email)가 server action에서 채움.
  * PR-5: contacts는 contactDetailSchema 객체 배열 (이전 string[] 라벨에서 변경).
  */
 export const backupRequestServiceInputSchema = z.object({
-  service_id: z.string().uuid(),
+  // closing 전환: 모아 service_id(int) + university_name/service_name 스냅샷.
+  service_id: z.number().int().nonnegative(),
+  university_name: z.string().min(1),
+  service_name: z.string().min(1),
   substitute_email: z.string().email().nullable().optional(),
   substitute_name: z.string().min(1).nullable().optional(),
   contacts: z.array(contactDetailSchema).max(20).default([]),
