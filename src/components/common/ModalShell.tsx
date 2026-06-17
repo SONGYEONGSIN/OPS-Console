@@ -59,7 +59,7 @@ export function ModalShell({
       >
         {/* 검정 헤더 — 타이틀 + boxed × */}
         <div className="flex items-center justify-between bg-ink px-4 py-2.5">
-          <h2 className="text-sm font-bold tracking-tight text-cream">
+          <h2 className="text-lg font-bold tracking-tight text-cream">
             {title}
           </h2>
           <button
