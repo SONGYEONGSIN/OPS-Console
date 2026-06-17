@@ -72,7 +72,7 @@ export function BulkPasteContacts() {
                 type="button"
                 onClick={submit}
                 disabled={pending || validRows.length === 0}
-                className="cursor-pointer border border-ink bg-ink px-4 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:opacity-50"
+                className="cursor-pointer border border-ink bg-ink px-4 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/40"
               >
                 {pending ? "등록 중…" : "등록"}
               </button>
