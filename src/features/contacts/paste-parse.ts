@@ -38,6 +38,17 @@ export type ParseResult = {
   headerError?: string;
 };
 
+/**
+ * 헤더 행 기준으로 열 구분자 감지 — 엑셀 복사(탭)가 기본,
+ * 탭이 없으면 가운뎃점(·)·쉼표를 폴백으로 허용(안내 예시와 일치).
+ */
+function detectDelimiter(headerLine: string): RegExp {
+  if (headerLine.includes("\t")) return /\t/;
+  if (headerLine.includes("·")) return /\s*·\s*/;
+  if (headerLine.includes(",")) return /\s*,\s*/;
+  return /\t/;
+}
+
 /** 엑셀 복사(TSV) 텍스트 → 헤더 유연 매핑 + 행 검증. 중복(DB) 판정은 액션에서. */
 export function parsePastedContacts(text: string): ParseResult {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
@@ -48,7 +59,8 @@ export function parsePastedContacts(text: string): ParseResult {
       headerError: "붙여넣은 내용이 없습니다.",
     };
   }
-  const headerCells = lines[0].split("\t").map((c) => c.trim());
+  const delim = detectDelimiter(lines[0]);
+  const headerCells = lines[0].split(delim).map((c) => c.trim());
   const fieldByCol = headerCells.map(
     (h): Field | null => HEADER_ALIASES[h.toLowerCase()] ?? null,
   );
@@ -65,7 +77,7 @@ export function parsePastedContacts(text: string): ParseResult {
 
   const rows: ParsedContactRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const cells = lines[i].split("\t");
+    const cells = lines[i].split(delim);
     const values: ParsedValues = {};
     fieldByCol.forEach((field, col) => {
       if (!field) return;

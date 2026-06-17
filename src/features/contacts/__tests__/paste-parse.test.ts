@@ -15,6 +15,31 @@ describe("parsePastedContacts", () => {
     expect(r.rows[0].errors).toEqual([]);
   });
 
+  it("탭 없이 ' · '(가운뎃점) 구분자도 인식한다", () => {
+    const text =
+      "대학명 · 고객명 · 이메일 · 전화\n서강대 · 김담당 · kim@sg.ac.kr · 02-705-1234";
+    const r = parsePastedContacts(text);
+    expect(r.headerError).toBeUndefined();
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].values).toMatchObject({
+      university_name: "서강대",
+      customer_name: "김담당",
+      contact_email: "kim@sg.ac.kr",
+      contact_phone: "02-705-1234",
+    });
+    expect(r.rows[0].errors).toEqual([]);
+  });
+
+  it("쉼표 구분자도 인식한다", () => {
+    const text = "대학명,고객명\n연세대,박과장";
+    const r = parsePastedContacts(text);
+    expect(r.headerError).toBeUndefined();
+    expect(r.rows[0].values).toMatchObject({
+      university_name: "연세대",
+      customer_name: "박과장",
+    });
+  });
+
   it("필수 헤더(대학명/고객명) 없으면 headerError", () => {
     const r = parsePastedContacts("이메일\ta@x.com");
     expect(r.headerError).toBeTruthy();
