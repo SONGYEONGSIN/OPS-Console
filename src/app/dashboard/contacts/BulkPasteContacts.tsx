@@ -6,6 +6,7 @@ import {
   toContactCreate,
 } from "@/features/contacts/paste-parse";
 import { createContactsBulk } from "@/features/contacts/actions";
+import { ModalShell } from "@/components/common/ModalShell";
 
 type RunResult = {
   inserted: number;
@@ -54,25 +55,31 @@ export function BulkPasteContacts() {
       </button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4"
-          role="dialog"
-          aria-label="연락처 일괄등록"
-        >
-          <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden border border-line bg-paper">
-            <div className="flex items-center justify-between border-b border-line px-4 py-2">
-              <h2 className="text-sm font-bold text-ink">연락처 일괄등록</h2>
+        <ModalShell
+          title="연락처 일괄등록"
+          onClose={close}
+          size="lg"
+          footer={
+            <>
               <button
                 type="button"
-                aria-label="닫기"
                 onClick={close}
-                className="cursor-pointer border-none bg-transparent px-1 text-muted hover:text-vermilion"
+                className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-washi"
               >
-                ×
+                닫기
               </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
+              <button
+                type="button"
+                onClick={submit}
+                disabled={pending || validRows.length === 0}
+                className="cursor-pointer border border-ink bg-ink px-4 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:opacity-50"
+              >
+                {pending ? "등록 중…" : "등록"}
+              </button>
+            </>
+          }
+        >
+          <div>
               <p className="mb-2 text-xs leading-[1.6] text-muted">
                 엑셀에서 표(첫 행=열 이름)를 복사해 붙여넣으세요.
                 대학명·고객명은 필수입니다. (이메일/전화/내선/직위/부서 등 열
@@ -130,27 +137,8 @@ export function BulkPasteContacts() {
                 </div>
               )}
               {error && <p className="mt-2 text-xs text-vermilion">{error}</p>}
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-line px-4 py-2">
-              <button
-                type="button"
-                onClick={close}
-                className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-washi"
-              >
-                닫기
-              </button>
-              <button
-                type="button"
-                onClick={submit}
-                disabled={pending || validRows.length === 0}
-                className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep disabled:opacity-50"
-              >
-                {pending ? "등록 중…" : `${validRows.length}건 등록`}
-              </button>
-            </div>
           </div>
-        </div>
+        </ModalShell>
       )}
     </>
   );

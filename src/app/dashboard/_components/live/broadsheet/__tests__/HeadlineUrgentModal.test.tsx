@@ -42,7 +42,8 @@ describe("HeadlineUrgentModal", () => {
   it("닫기 버튼 클릭 시 onClose를 호출한다", () => {
     const onClose = vi.fn();
     render(<HeadlineUrgentModal item={ITEM} onClose={onClose} />);
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    // boxed × 헤더 + 푸터 '닫기' 둘 다 닫기 역할 — 첫 번째(×) 클릭으로 검증
+    fireEvent.click(screen.getAllByRole("button", { name: "닫기" })[0]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
