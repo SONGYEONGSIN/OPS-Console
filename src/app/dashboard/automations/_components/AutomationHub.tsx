@@ -14,15 +14,19 @@ import type {
 import type { JobRunLog } from "@/features/automations/run-logs-normalize";
 import { InspectorPanel } from "@/app/dashboard/_components/inspector/InspectorPanel";
 import { AutomationLogPanel } from "./AutomationLogPanel";
+import { LocalScrapeRequest } from "./LocalScrapeRequest";
+import type { ScrapeRequest } from "@/features/closing/scrape-requests/schemas";
 
 const ADMIN_ONLY_MSG = "관리자만 실행 가능합니다.";
 
 export function AutomationHub({
   statuses,
   isAdmin = true,
+  localScrapeRequest = null,
 }: {
   statuses: AutomationStatus[];
   isAdmin?: boolean;
+  localScrapeRequest?: ScrapeRequest | null;
 }) {
   const [selected, setSelected] = useState<{
     jobId: string;
@@ -85,6 +89,7 @@ export function AutomationHub({
                 />
               ))
             )}
+            <LocalScrapeRequest latest={localScrapeRequest} isAdmin={isAdmin} />
           </tbody>
         </table>
       </div>
