@@ -68,7 +68,7 @@ function contactChipsHtml(items: ServiceDetail["contacts"]): string {
  * 빈 contacts/note_md는 섹션 자체를 출력하지 않음 (DOM 최소화).
  */
 function serviceCardHtml(s: ServiceDetail): string {
-  const header = `<div style="font-size:13px;color:#1a1a1a;font-weight:500;margin-bottom:6px;">${escapeHtml(s.university_name)} — ${escapeHtml(s.service_name)}</div>`;
+  const header = `<div style="font-size:13px;color:#1a1a1a;font-weight:500;margin-bottom:6px;">${escapeHtml(s.university_name)} — ${escapeHtml(s.service_name)}(${s.service_id})</div>`;
   const contactsBlock =
     s.contacts.length > 0
       ? `<div style="margin-top:6px;"><span style="font-size:11px;color:#666;">연락처:</span> ${contactChipsHtml(s.contacts)}</div>`
