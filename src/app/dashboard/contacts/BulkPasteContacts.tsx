@@ -72,7 +72,7 @@ export function BulkPasteContacts() {
                 type="button"
                 onClick={submit}
                 disabled={pending || validRows.length === 0}
-                className="cursor-pointer border border-ink bg-ink px-4 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/40"
+                className="cursor-pointer border border-ink bg-ink px-4 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/70"
               >
                 {pending ? "등록 중…" : "등록"}
               </button>
@@ -85,6 +85,14 @@ export function BulkPasteContacts() {
                 대학명·고객명은 필수입니다. (이메일/전화/내선/직위/부서 등 열
                 이름 자동 인식)
               </p>
+              <div className="mb-2 border border-line-soft bg-cream p-2">
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted">
+                  예시 (첫 행 = 열 이름, 탭 구분)
+                </div>
+                <pre className="overflow-x-auto text-[11px] leading-[1.7] text-ink-soft">
+                  {"대학명\t고객명\t이메일\t전화\n서강대\t김담당\tkim@sg.ac.kr\t02-705-1234\n연세대\t박과장\tpark@yu.ac.kr\t02-2123-5678"}
+                </pre>
+              </div>
               <textarea
                 aria-label="연락처 붙여넣기"
                 value={text}
