@@ -99,30 +99,11 @@ export function ServiceCard({
 
   return (
     <div className="border border-line-soft bg-paper p-2.5">
-      {/* 헤더: 대학명 — 서비스명 / 백업자 select(옵션) / × */}
+      {/* 헤더: 대학명 — 서비스명(서비스ID) / × */}
       <div className="flex items-center gap-2">
         <span className="flex-1 text-xs font-semibold text-ink">
-          {detail.university_name} — {detail.service_name}
+          {detail.university_name} — {detail.service_name}({detail.service_id})
         </span>
-        {showSubstituteSelect && (
-          <select
-            aria-label={`${detail.service_name} 백업자`}
-            value={detail.substitute_email ?? ""}
-            onChange={(e) => {
-              const email = e.target.value;
-              const op = backupOperators.find((o) => o.email === email);
-              onSubstituteChange(email || null, op?.name ?? null);
-            }}
-            className="border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-xs text-ink"
-          >
-            <option value="">선택…</option>
-            {backupOperators.map((op) => (
-              <option key={op.email} value={op.email}>
-                {op.name}
-              </option>
-            ))}
-          </select>
-        )}
         <button
           type="button"
           aria-label={`${detail.service_name} 제거`}
@@ -132,6 +113,30 @@ export function ServiceCard({
           ×
         </button>
       </div>
+
+      {/* 백업자 (서비스별 모드에서만) — 대학 연락처 위 별도 항목 */}
+      {showSubstituteSelect && (
+        <div className="mt-2">
+          <span className="mb-1 block text-xs text-ink-soft">백업자</span>
+          <select
+            aria-label={`${detail.service_name} 백업자`}
+            value={detail.substitute_email ?? ""}
+            onChange={(e) => {
+              const email = e.target.value;
+              const op = backupOperators.find((o) => o.email === email);
+              onSubstituteChange(email || null, op?.name ?? null);
+            }}
+            className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-xs text-ink"
+          >
+            <option value="">선택…</option>
+            {backupOperators.map((op) => (
+              <option key={op.email} value={op.email}>
+                {op.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* 연락처: 검색 + chips */}
       <div className="mt-2">
