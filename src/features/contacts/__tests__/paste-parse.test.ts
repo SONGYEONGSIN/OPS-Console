@@ -46,6 +46,14 @@ describe("parsePastedContacts", () => {
     expect(r.rows).toEqual([]);
   });
 
+  it("붙여넣기 내 중복 행(대학명+고객명 동일)은 2번째부터 중복 error", () => {
+    const text = "대학명\t고객명\n서강대\t김담당\n서강대\t김담당\n연세대\t박과장";
+    const r = parsePastedContacts(text);
+    expect(r.rows[0].errors).toEqual([]); // 첫 등장은 유효
+    expect(r.rows[1].errors.some((e) => e.includes("중복"))).toBe(true);
+    expect(r.rows[2].errors).toEqual([]); // 다른 건은 유효
+  });
+
   it("필수값 누락 행은 errors", () => {
     const text = "대학명\t고객명\n서강대\t\n\t박담당";
     const r = parsePastedContacts(text);
