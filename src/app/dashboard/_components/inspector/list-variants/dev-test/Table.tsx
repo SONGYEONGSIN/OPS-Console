@@ -37,8 +37,8 @@ export function DevTestTable({ rows, selectedId, onSelect }: Props) {
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-          <th className="px-3 py-2">대학명</th>
           <th className="px-3 py-2">접수구분</th>
+          <th className="px-3 py-2">대학명</th>
           <th className="px-3 py-2">서비스명</th>
           <th className="px-3 py-2">카테고리</th>
           <th className="px-3 py-2">운영자</th>
@@ -63,9 +63,6 @@ export function DevTestTable({ rows, selectedId, onSelect }: Props) {
                   selectedId === row.id ? "bg-washi-raised" : ""
                 }`}
               >
-                <td className="px-3 py-2 font-medium text-ink">
-                  {row.universityName ?? "-"}
-                </td>
                 <td className="px-3 py-2">
                   {row.applicationType ? (
                     <span className="inline-block bg-line-soft px-2 py-0.5 text-xs text-muted">
@@ -74,6 +71,9 @@ export function DevTestTable({ rows, selectedId, onSelect }: Props) {
                   ) : (
                     <span className="text-xs text-muted">-</span>
                   )}
+                </td>
+                <td className="px-3 py-2 font-medium text-ink">
+                  {row.universityName ?? "-"}
                 </td>
                 <td className="px-3 py-2 text-sm text-ink-soft">
                   {row.serviceName ?? "-"}
