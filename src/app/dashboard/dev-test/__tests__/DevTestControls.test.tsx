@@ -8,9 +8,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/dev-test",
   useSearchParams: () => new URLSearchParams(search),
 }));
-vi.mock("@/features/entertest/actions", () => ({
-  setMyEntertestAccount: vi.fn(),
-}));
 
 import { DevTestControls } from "../DevTestControls";
 
@@ -22,21 +19,15 @@ const opts = {
 };
 
 describe("DevTestControls", () => {
-  it("계정 미등록 시 안내 + 등록 버튼, 검색/필터 노출", () => {
-    render(<DevTestControls myAccount={null} {...opts} />);
-    expect(screen.getByText(/등록되지 않았습니다/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "등록" })).toBeInTheDocument();
+  it("검색 + 필터 셀렉트를 노출한다", () => {
+    render(<DevTestControls {...opts} />);
     expect(screen.getByPlaceholderText(/검색/)).toBeInTheDocument();
-  });
-
-  it("계정 등록 시 등록 계정 표시 + 수정 버튼", () => {
-    render(<DevTestControls myAccount="jt29001" {...opts} />);
-    expect(screen.getByText(/jt29001/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "수정" })).toBeInTheDocument();
+    expect(screen.getByLabelText("카테고리 필터")).toBeInTheDocument();
+    expect(screen.getByLabelText("지역 필터")).toBeInTheDocument();
   });
 
   it("카테고리 선택 시 searchParam으로 이동", () => {
-    render(<DevTestControls myAccount={null} {...opts} />);
+    render(<DevTestControls {...opts} />);
     fireEvent.change(screen.getByLabelText("카테고리 필터"), {
       target: { value: "수시" },
     });
