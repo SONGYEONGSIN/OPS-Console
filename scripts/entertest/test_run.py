@@ -110,15 +110,35 @@ def run_checks(driver):
     return results
 
 
+def _snapshot(driver, out: str, name: str) -> None:
+    with open(os.path.join(out, f"{name}.html"), "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+    driver.save_screenshot(os.path.join(out, f"{name}.png"))
+    print(f"[discover] {name} — url={driver.current_url}")
+
+
 def discover(driver) -> None:
-    """단계별 page_source/스크린샷 저장 (셀렉터 확정용)."""
+    """단계별 page_source/스크린샷 저장 (셀렉터 확정용).
+
+    로그인 구현 전(login() NotImplementedError)에도 동작한다: 먼저 로그인 전 페이지를
+    캡처하고, login()이 구현된 뒤 재실행하면 로그인 후 단계까지 이어서 캡처한다.
+    """
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "discovery")
     os.makedirs(out, exist_ok=True)
     driver.get(TARGET_URL)
     time.sleep(3)
-    with open(os.path.join(out, "01_notice.html"), "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
-    driver.save_screenshot(os.path.join(out, "01_notice.png"))
+    _snapshot(driver, out, "01_notice")
+
+    # 로그인 구현 후 재실행 시 로그인 후 단계도 캡처 (1차 실행에선 NotImplementedError로 skip)
+    try:
+        login(driver, ACCOUNT)
+        time.sleep(2)
+        _snapshot(driver, out, "02_after_login")
+    except NotImplementedError:
+        print("[discover] login() 미구현 — 로그인 전 페이지만 캡처. "
+              "01_notice.html에서 로그인 폼 셀렉터를 확인 후 login()을 구현하세요.")
+    except Exception as e:  # noqa: BLE001
+        print(f"[discover] login 시도 실패(셀렉터 재확인 필요): {e}")
     print(f"[discover] saved to {out}")
 
 
@@ -136,13 +156,17 @@ def ingest(status: str, checks, error=None) -> None:
 
 
 def main() -> int:
-    if not (RUN_ID and TARGET_URL and ACCOUNT and BASE and SECRET):
+    # 디스커버리 1차 실행은 OPS/시크릿 불필요 — TARGET_URL만 있으면 된다.
+    if DISCOVER:
+        if not TARGET_URL:
+            print("[error] ENTERTEST_TARGET_URL 누락")
+            return 1
+    elif not (RUN_ID and TARGET_URL and ACCOUNT and BASE and SECRET):
         print("[error] 필수 환경변수 누락 (RUN_ID/TARGET_URL/ACCOUNT/BASE/SECRET)")
         return 1
     driver = make_driver()
     try:
         if DISCOVER:
-            login(driver, ACCOUNT)
             discover(driver)
             return 0
         checks = run_checks(driver)
