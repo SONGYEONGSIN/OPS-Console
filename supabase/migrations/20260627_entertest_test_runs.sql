@@ -23,8 +23,9 @@ create policy entertest_test_runs_read
   to authenticated
   using (true);
 
--- test_account(ID=PW 동일, 재사용 계정)은 본인 외 노출 금지: 컬럼 레벨 grant에서 제외.
--- 러너는 service_role(admin client)로 claim 시 test_account를 읽으므로 영향 없음.
+-- 러너/서버 액션은 service_role(admin client)로 전체 컬럼을 읽고 쓴다 (RLS bypass).
+grant all on public.entertest_test_runs to service_role;
+-- test_account(ID=PW 동일, 재사용 계정)은 본인 외 노출 금지: authenticated 컬럼 레벨 grant에서 제외.
 grant select (id, requested_by, requested_at, target_url, status, claimed_at, finished_at, result, error_message) on public.entertest_test_runs to authenticated;
 
 create index if not exists entertest_test_runs_status_idx
