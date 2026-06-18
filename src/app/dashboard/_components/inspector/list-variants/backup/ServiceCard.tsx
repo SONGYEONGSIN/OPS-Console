@@ -108,7 +108,7 @@ export function ServiceCard({
           type="button"
           aria-label={`${detail.service_name} 제거`}
           onClick={onRemove}
-          className="inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center border border-line bg-paper text-2xl leading-none text-ink-soft transition-colors hover:border-vermilion hover:text-vermilion"
+          className="inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center border border-line bg-paper text-base leading-none text-ink-soft transition-colors hover:border-vermilion hover:text-vermilion"
         >
           ×
         </button>
