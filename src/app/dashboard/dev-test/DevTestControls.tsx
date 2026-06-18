@@ -48,7 +48,7 @@ export function DevTestControls({
   }, [q]);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-line-soft bg-paper px-4 py-3">
+    <div className="flex flex-wrap items-center gap-2 px-7 pt-3">
       <ListSearch value={q} onChange={setQ} placeholder="대학명·서비스명 검색" />
       <ListSelect
         value={params.get("category") ?? ""}
