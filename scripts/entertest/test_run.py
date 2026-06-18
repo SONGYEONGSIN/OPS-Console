@@ -67,10 +67,32 @@ def make_driver():
     return webdriver.Chrome(options=opts)
 
 
+# 로그인 폼 셀렉터 (DOM 디스커버리 10-A 확정 — ASP.NET WebForms, entertest.jinhakapply.com/Login)
+LOGIN_ID_SEL = "ContentPlaceHolderPage_txtUserName"
+LOGIN_PW_SEL = "ContentPlaceHolderPage_txtPassword"
+LOGIN_BTN_SEL = "ContentPlaceHolderPage_btn_Send"
+
+
 def login(driver, account: str) -> None:
-    """ID/PW 로그인 (2FA·CAPTCHA 없음, ID=PW 동일). 셀렉터는 10-A에서 확정."""
-    # placeholder: 10-A 디스커버리로 #txtId/#txtPw/#btnLogin 등 실제 셀렉터 확정 후 구현
-    raise NotImplementedError("login 셀렉터는 DOM 디스커버리(10-A) 후 구현")
+    """ID/PW 로그인 (2FA·CAPTCHA 없음, ID=PW 동일). entertest /Login WebForms 폼."""
+    driver.get(f"{origin_of(TARGET_URL)}/Login")
+    WebDriverWait(driver, 15).until(
+        EC.presence_of_element_located((By.ID, LOGIN_ID_SEL))
+    )
+    driver.find_element(By.ID, LOGIN_ID_SEL).send_keys(account)
+    driver.find_element(By.ID, LOGIN_PW_SEL).send_keys(account)  # ID=PW 동일
+    driver.find_element(By.ID, LOGIN_BTN_SEL).click()
+    # 로그인 성공 시 /Login 을 벗어난다(실패 시 alert/잔류). 최대 15초 대기.
+    WebDriverWait(driver, 15).until(lambda d: "/Login" not in d.current_url)
+
+
+def service_id_of(url: str) -> str:
+    """TARGET_URL(.../Notice/{id}/A)에서 서비스 id 추출."""
+    parts = [p for p in urlsplit(url).path.split("/") if p]
+    for i, p in enumerate(parts):
+        if p.isdigit():
+            return p
+    return parts[1] if len(parts) > 1 else ""
 
 
 def upload_screenshot(driver, key: str):
@@ -151,14 +173,29 @@ def discover(driver) -> None:
     except Exception as e:  # noqa: BLE001
         print(f"[discover] 로그인 페이지 캡처 실패: {e}")
 
-    # 로그인 구현 후 재실행 시 로그인 후 단계도 캡처 (1차 실행에선 NotImplementedError로 skip)
+    # 로그인 후 흐름 페이지 캡처 — CHECKS 셀렉터 확정용 (ApplyFirst/작성목록/접수결과)
+    if not ACCOUNT:
+        print("[discover] ENTERTEST_ACCOUNT 미설정 — 로그인 후 단계 캡처 skip")
+        print(f"[discover] saved to {out}")
+        return
     try:
         login(driver, ACCOUNT)
         time.sleep(2)
         _snapshot(driver, out, "02_after_login")
-    except NotImplementedError:
-        print("[discover] login() 미구현 — 로그인 전 페이지만 캡처. "
-              "01_notice.html에서 로그인 폼 셀렉터를 확인 후 login()을 구현하세요.")
+        base = origin_of(TARGET_URL)
+        sid = service_id_of(TARGET_URL)
+        flow = [
+            ("03_applyfirst", f"/ApplyFirst/{sid}/A"),
+            ("04_writinglist", f"/Payment/UnivWritingList/{sid}"),
+            ("05_payresult", f"/Payment/UnivPayResult/{sid}"),
+        ]
+        for name, path in flow:
+            try:
+                driver.get(base + path)
+                time.sleep(2)
+                _snapshot(driver, out, name)
+            except Exception as e:  # noqa: BLE001
+                print(f"[discover] {name} 캡처 실패: {e}")
     except Exception as e:  # noqa: BLE001
         print(f"[discover] login 시도 실패(셀렉터 재확인 필요): {e}")
     print(f"[discover] saved to {out}")
