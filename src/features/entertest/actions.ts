@@ -72,7 +72,10 @@ const accountSchema = z
   .trim()
   .regex(/^jt\d{5}$/, "jt + 5자리 숫자 형식이어야 합니다 (예: jt29001).");
 
-/** 본인 entertest 테스트 계정(ID=PW 동일) 등록/수정. */
+/**
+ * 테스트 대역 계정 등록/수정 — 시작~끝 범위. 끝이 비거나 같으면 단일 계정.
+ * "jt29001~jt29005"(범위) 또는 "jt29001"(단일)로 entertest_account에 저장.
+ */
 export async function setMyEntertestAccount(
   _prev: EntertestActionState,
   formData: FormData,
@@ -80,18 +83,28 @@ export async function setMyEntertestAccount(
   const me = await getCurrentOperator();
   if (!me) return { ok: false, message: "로그인이 필요합니다." };
 
-  const parsed = accountSchema.safeParse(formData.get("account"));
-  if (!parsed.success) {
-    return { ok: false, message: parsed.error.issues[0].message };
+  const start = accountSchema.safeParse(formData.get("account_start"));
+  if (!start.success) {
+    return { ok: false, message: `시작 계정: ${start.error.issues[0].message}` };
+  }
+  let account = start.data;
+  const endRaw = formData.get("account_end");
+  const endStr = typeof endRaw === "string" ? endRaw.trim() : "";
+  if (endStr) {
+    const end = accountSchema.safeParse(endStr);
+    if (!end.success) {
+      return { ok: false, message: `끝 계정: ${end.error.issues[0].message}` };
+    }
+    if (end.data !== start.data) account = `${start.data}~${end.data}`;
   }
 
   const admin = createAdminClient();
   const { error } = await admin
     .from("operators")
-    .update({ entertest_account: parsed.data })
+    .update({ entertest_account: account })
     .eq("email", me.email);
   if (error) return { ok: false, message: error.message };
 
   revalidatePath("/dashboard/dev-test");
-  return { ok: true, message: "테스트 계정을 등록했습니다." };
+  return { ok: true, message: "테스트 대역 계정을 등록했습니다." };
 }

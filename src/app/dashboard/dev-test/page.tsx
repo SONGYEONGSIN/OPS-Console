@@ -103,6 +103,7 @@ export default async function DevTestPage({
     category: s.category ?? "",
     region: s.region ?? "",
     universityType: s.university_type ?? "",
+    applicationType: s.admission_type ?? "",
     operatorName: s.operator_name ?? "",
     entertestRuns: runsByService.get(s.service_id) ?? [],
     entertestAccount: myAccount,
@@ -120,7 +121,7 @@ export default async function DevTestPage({
         autoRefresh
       />
       <ListPattern
-        title="개발 테스트"
+        title="개발 · 테스트"
         data={{ rows }}
         variant="dev-test"
         readOnly

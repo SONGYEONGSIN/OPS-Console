@@ -42,7 +42,8 @@ from selenium.webdriver.support import expected_conditions as EC
 
 RUN_ID = os.getenv("ENTERTEST_RUN_ID", "")
 TARGET_URL = os.getenv("ENTERTEST_TARGET_URL", "")
-ACCOUNT = os.getenv("ENTERTEST_ACCOUNT", "")  # ID=PW 동일
+# 대역(범위) "jt29001~jt29005"로 등록 가능 — 로그인은 범위 시작 계정 사용. ID=PW 동일.
+ACCOUNT = os.getenv("ENTERTEST_ACCOUNT", "").split("~")[0].strip()
 BASE = os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/")
 SECRET = os.getenv("CRON_SECRET", "")
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").rstrip("/")
