@@ -1,0 +1,5 @@
+# entertest 원서접수 테스트 자동화 러너
+selenium>=4.15.0
+undetected-chromedriver>=3.5.5
+python-dotenv>=1.0.0
+requests>=2.31.0

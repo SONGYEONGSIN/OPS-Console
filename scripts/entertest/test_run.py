@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""entertest 원서접수 케이스별 테스트 러너 (회사 PC, Selenium).
+
+흐름: run-local.ps1이 ENTERTEST_RUN_ID/TARGET_URL/ACCOUNT 전달 →
+  Chrome 기동(브라우저 게이트 통과) → ID/PW 로그인 → CHECKS 순차 실행 →
+  실패 시 스크린샷 Storage 업로드 → /api/entertest/ingest POST.
+
+DOM 디스커버리: ENTERTEST_DISCOVER=true 로 실행하면 로그인 후 단계별 page_source/
+스크린샷을 scripts/entertest/discovery/ 에 저장하고 종료(셀렉터 확정용).
+"""
+import os
+import sys
+import time
+import json
+
+try:
+    from dotenv import load_dotenv
+
+    _repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    load_dotenv(os.path.join(_repo, ".env.local"))
+except Exception:
+    pass
+
+import requests
+
+try:
+    import undetected_chromedriver as uc
+except Exception:
+    uc = None
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+RUN_ID = os.getenv("ENTERTEST_RUN_ID", "")
+TARGET_URL = os.getenv("ENTERTEST_TARGET_URL", "")
+ACCOUNT = os.getenv("ENTERTEST_ACCOUNT", "")  # ID=PW 동일
+BASE = os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/")
+SECRET = os.getenv("CRON_SECRET", "")
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").rstrip("/")
+SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+DISCOVER = os.getenv("ENTERTEST_DISCOVER", "").lower() == "true"
+BUCKET = "entertest-screenshots"
+
+
+def make_driver():
+    opts = (uc.ChromeOptions() if uc else Options())
+    # 브라우저 게이트는 실제 Chrome UA면 통과. residential IP라 headless도 가능하나
+    # CF 안정성 위해 비headless 권장(작업 스케줄러는 데스크톱 세션에서 실행).
+    opts.add_argument("--start-maximized")
+    if uc:
+        return uc.Chrome(options=opts)
+    return webdriver.Chrome(options=opts)
+
+
+def login(driver, account: str) -> None:
+    """ID/PW 로그인 (2FA·CAPTCHA 없음, ID=PW 동일). 셀렉터는 10-A에서 확정."""
+    # placeholder: 10-A 디스커버리로 #txtId/#txtPw/#btnLogin 등 실제 셀렉터 확정 후 구현
+    raise NotImplementedError("login 셀렉터는 DOM 디스커버리(10-A) 후 구현")
+
+
+def upload_screenshot(driver, key: str):
+    """실패 스크린샷을 Supabase Storage에 업로드하고 public URL 반환."""
+    if not (SUPABASE_URL and SERVICE_KEY):
+        return None
+    png = driver.get_screenshot_as_png()
+    path = f"{RUN_ID}/{key}.png"
+    url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}"
+    r = requests.post(
+        url,
+        headers={
+            "Authorization": f"Bearer {SERVICE_KEY}",
+            "Content-Type": "image/png",
+            "x-upsert": "true",
+        },
+        data=png,
+        timeout=30,
+    )
+    if r.status_code not in (200, 201):
+        return None
+    return f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{path}"
+
+
+# CHECKS: 각 항목 (key, label, fn). fn(driver, ctx) -> (status, message).
+# 10-A 디스커버리로 실제 단계·셀렉터 확정 후 10-B에서 채운다.
+CHECKS = []  # 10-B에서 page_load/login/fill_steps/required_validation/test_payment_complete 추가
+
+
+def run_checks(driver):
+    results = []
+    for key, label, fn in CHECKS:
+        try:
+            status, message = fn(driver, {})
+        except Exception as e:  # noqa: BLE001
+            status, message = "fail", str(e)[:300]
+        shot = upload_screenshot(driver, key) if status == "fail" else None
+        item = {"key": key, "label": label, "status": status, "message": message}
+        if shot:
+            item["screenshot_url"] = shot
+        results.append(item)
+        if status == "fail":
+            # 치명 단계 실패 시 이후는 skip
+            break
+    # break로 누락된 뒤 케이스는 skip 처리
+    done_keys = {r["key"] for r in results}
+    for key, label, _ in CHECKS:
+        if key not in done_keys:
+            results.append({"key": key, "label": label, "status": "skip", "message": None})
+    return results
+
+
+def discover(driver) -> None:
+    """단계별 page_source/스크린샷 저장 (셀렉터 확정용)."""
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "discovery")
+    os.makedirs(out, exist_ok=True)
+    driver.get(TARGET_URL)
+    time.sleep(3)
+    with open(os.path.join(out, "01_notice.html"), "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+    driver.save_screenshot(os.path.join(out, "01_notice.png"))
+    print(f"[discover] saved to {out}")
+
+
+def ingest(status: str, checks, error=None) -> None:
+    body = {"id": RUN_ID, "status": status, "checks": checks}
+    if error:
+        body["error_message"] = error[:500]
+    r = requests.post(
+        f"{BASE}/api/entertest/ingest",
+        headers={"Authorization": f"Bearer {SECRET}", "Content-Type": "application/json"},
+        data=json.dumps(body),
+        timeout=30,
+    )
+    print(f"[ingest] {r.status_code} {r.text[:200]}")
+
+
+def main() -> int:
+    if not (RUN_ID and TARGET_URL and ACCOUNT and BASE and SECRET):
+        print("[error] 필수 환경변수 누락 (RUN_ID/TARGET_URL/ACCOUNT/BASE/SECRET)")
+        return 1
+    driver = make_driver()
+    try:
+        if DISCOVER:
+            login(driver, ACCOUNT)
+            discover(driver)
+            return 0
+        checks = run_checks(driver)
+        failed = any(c["status"] == "fail" for c in checks)
+        ingest("failed" if failed else "done", checks)
+        return 0
+    except Exception as e:  # noqa: BLE001 — 비정상 종료는 poll-local이 error 보고
+        print(f"[fatal] {e}")
+        return 1
+    finally:
+        driver.quit()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
