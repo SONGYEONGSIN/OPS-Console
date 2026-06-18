@@ -212,9 +212,10 @@ export default async function DashboardLivePage({
   const backupListRows: ListRow[] = backupsFiltered.map((b) => ({
     id: b.id,
     name:
-      b.leave_start_date && b.leave_end_date
+      b.title ??
+      (b.leave_start_date && b.leave_end_date
         ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
-        : b.summary_md.slice(0, 30),
+        : b.summary_md.slice(0, 30)),
     status: "active",
     owner: b.requester_email,
     substituteEmail: b.substitute_email,
@@ -375,9 +376,10 @@ export default async function DashboardLivePage({
     backup: backupsFiltered.slice(0, 20).map((b) => ({
       id: b.id,
       title:
-        b.leave_start_date && b.leave_end_date
+        b.title ??
+        (b.leave_start_date && b.leave_end_date
           ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
-          : b.summary_md.slice(0, 30),
+          : b.summary_md.slice(0, 30)),
       status: b.mail_status ?? "pending",
       createdAt: b.created_at,
       listRow: backupListRows.find((r) => r.id === b.id)!,
@@ -564,9 +566,10 @@ export default async function DashboardLivePage({
     ]);
 
   const backupTitle = (b: (typeof backupsFiltered)[number]) =>
-    b.leave_start_date && b.leave_end_date
+    b.title ??
+    (b.leave_start_date && b.leave_end_date
       ? `${b.leave_start_date} ~ ${b.leave_end_date} 백업`
-      : b.summary_md.slice(0, 30);
+      : b.summary_md.slice(0, 30));
 
   // 타임라인 서비스(오픈/마감) 팝오버 텍스트 — 대학·서비스에 운영자까지 표기.
   const svcTimelineText = (c: ClosingRow) =>
