@@ -4,6 +4,10 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $repo
 
+# 폴러 경로는 항상 '실제 ingest 실행'이다 — 셸에 남은 디스커버리/체크온리 플래그를 강제로 끈다.
+$env:ENTERTEST_DISCOVER = ""
+$env:ENTERTEST_CHECKS_ONLY = ""
+
 $log = Join-Path $repo "scripts\entertest\run-local.log"
 $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 "=== $ts 시작 (run=$($env:ENTERTEST_RUN_ID) url=$($env:ENTERTEST_TARGET_URL)) ===" |
