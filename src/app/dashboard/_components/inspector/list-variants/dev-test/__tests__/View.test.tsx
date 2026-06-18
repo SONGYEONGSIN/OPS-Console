@@ -24,8 +24,9 @@ const row: ListRow = {
 describe("DevTestView", () => {
   it("대학·서비스 헤더와 테스트 URL, 실행 버튼을 렌더한다", () => {
     render(<DevTestView row={row} />);
-    expect(screen.getByText(/서강대학교/)).toBeInTheDocument();
-    expect(screen.getByText(/수시모집/)).toBeInTheDocument();
+    // 대학명/서비스명은 서비스 기본 + 테스트 대상 두 곳에 노출됨
+    expect(screen.getAllByText(/서강대학교/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/수시모집/).length).toBeGreaterThan(0);
     // 테스트 URL에 service_id 포함
     expect(
       screen.getByDisplayValue(/entertest\.jinhakapply\.com\/Notice\/12345/),

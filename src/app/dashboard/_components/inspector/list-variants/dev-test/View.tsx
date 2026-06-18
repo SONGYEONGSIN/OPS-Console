@@ -51,6 +51,7 @@ export function DevTestView({ row }: ViewProps) {
   const runs = row.entertestRuns ?? [];
   const account = row.entertestAccount ?? null;
   const accountReady = !!account;
+  const [acctStart = "", acctEnd = ""] = (account ?? "").split("~");
   const testUrl = `https://entertest.jinhakapply.com/Notice/${serviceId}/A`;
 
   return (
@@ -98,62 +99,86 @@ export function DevTestView({ row }: ViewProps) {
         />
         <form action={acctAction} className="flex items-center gap-2">
           <input
-            name="account"
-            defaultValue={account ?? ""}
+            name="account_start"
+            defaultValue={acctStart}
             placeholder="jt29001"
+            className="min-w-0 flex-1 border border-line bg-cream px-2 py-1.5 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
+          />
+          <span className="shrink-0 text-sm text-muted">~</span>
+          <input
+            name="account_end"
+            defaultValue={acctEnd}
+            placeholder="jt29005 (선택)"
             className="min-w-0 flex-1 border border-line bg-cream px-2 py-1.5 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
           />
           <button
             type="submit"
             disabled={acctPending}
-            className="shrink-0 cursor-pointer border border-line bg-paper px-3 py-1.5 text-xs text-ink transition-colors hover:border-vermilion hover:text-vermilion disabled:opacity-50"
+            className="shrink-0 cursor-pointer border border-line bg-paper px-3 py-1.5 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-50"
           >
             {account ? "수정" : "등록"}
           </button>
         </form>
         {acctState && (
           <p
-            className={`text-2xs ${acctState.ok ? "text-ink-soft" : "text-vermilion"}`}
+            className={`text-xs ${acctState.ok ? "text-ink-soft" : "text-vermilion"}`}
           >
             {acctState.message}
           </p>
         )}
-        <p className="text-2xs leading-relaxed text-muted">
-          담당자 배정 테스트 대역을 등록하세요. 다른 담당자 대역으로 등록해도
-          됩니다.
+        <p className="text-xs leading-relaxed text-muted">
+          담당자 배정 테스트 대역을 등록하세요.
         </p>
       </Section>
 
       <Divider />
 
       <Section title="테스트 실행">
-        <div className="space-y-1.5">
-          <span className="text-xs text-muted">테스트 URL</span>
-          <input
-            readOnly
-            value={testUrl}
-            className="w-full select-all border border-line-soft bg-cream px-2 py-1.5 text-sm text-ink-soft"
-            onClick={(e) => (e.target as HTMLInputElement).select()}
-          />
-        </div>
-        <form action={runAction} className="flex items-center gap-2">
-          <input type="hidden" name="serviceId" value={serviceId} />
-          <button
-            type="submit"
-            disabled={runPending || !accountReady}
-            className="cursor-pointer border border-ink bg-ink px-4 py-1.5 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/60"
-          >
-            {runPending ? "요청 중..." : "테스트 실행"}
-          </button>
-          {!accountReady && (
-            <span className="text-2xs text-vermilion">
-              대역 계정을 먼저 등록하세요.
-            </span>
-          )}
-        </form>
+        <DefList
+          items={[
+            {
+              term: "대상",
+              desc: `${row.universityName} · ${row.serviceName}`,
+            },
+            {
+              term: "URL",
+              desc: (
+                <input
+                  readOnly
+                  value={testUrl}
+                  className="w-full select-all border border-line-soft bg-cream px-2 py-1.5 text-sm text-ink-soft"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+              ),
+            },
+            {
+              term: "실행",
+              desc: (
+                <form
+                  action={runAction}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  <input type="hidden" name="serviceId" value={serviceId} />
+                  <button
+                    type="submit"
+                    disabled={runPending || !accountReady}
+                    className="cursor-pointer border border-ink bg-ink px-4 py-1.5 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/60"
+                  >
+                    {runPending ? "요청 중..." : "테스트 실행"}
+                  </button>
+                  {!accountReady && (
+                    <span className="text-xs text-vermilion">
+                      대역 계정을 먼저 등록하세요.
+                    </span>
+                  )}
+                </form>
+              ),
+            },
+          ]}
+        />
         {runState && (
           <p
-            className={`text-2xs ${runState.ok ? "text-ink-soft" : "text-vermilion"}`}
+            className={`text-xs ${runState.ok ? "text-ink-soft" : "text-vermilion"}`}
           >
             {runState.message}
           </p>
