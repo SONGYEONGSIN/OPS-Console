@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FIELD OPS // Operations Command</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Black&family=Martian+Mono:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bone: #ebe6dd;
+    --bone-raised: #f2ede4;
+    --bone-deep: #e0d9cc;
+    --ink: #141109;
+    --ink-soft: #3a342a;
+    --muted: #78705f;
+    --faint: #a89e8a;
+    --line: #141109;
+    --hazard: #ff4a1c;
+    --hazard-deep: #c9370f;
+    --go: #2b6a3d;
+    --wait: #d69a0c;
+    --info: #2258b8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bone);
+    color: var(--ink);
+    font-family: 'Archivo', sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  /* Grid overlay (very faint) */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(rgba(20, 17, 9, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(20, 17, 9, 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .shell {
+    position: relative;
+    z-index: 1;
+    padding: 20px 24px 40px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+
+  /* ============== HEADER ============== */
+  .header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0;
+    align-items: stretch;
+    border: 2px solid var(--line);
+    margin-bottom: 18px;
+    background: var(--bone-raised);
+  }
+
+  .brand {
+    padding: 14px 22px;
+    border-right: 2px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--ink);
+    color: var(--bone);
+  }
+  .brand .mark {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 24px;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .brand .mark em { color: var(--hazard); font-style: normal; }
+  .brand .sub {
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-top: 4px;
+  }
+
+  .header-status {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+  .h-cell {
+    padding: 12px 18px;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+  .h-cell:last-child { border-right: none; }
+  .h-cell .lbl {
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .h-cell .val {
+    font-family: 'Archivo', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .h-cell .val .hz { color: var(--hazard); }
+  .h-cell .val .go { color: var(--go); }
+
+  .clock-cell {
+    padding: 12px 22px;
+    border-left: 2px solid var(--line);
+    background: var(--hazard);
+    color: var(--bone);
+    min-width: 200px;
+  }
+  .clock-cell .tag {
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .clock-cell .time {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .clock-cell .date {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    margin-top: 2px;
+    opacity: 0.85;
+  }
+
+  /* ============== KPI ROW ============== */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 2px solid var(--line);
+    margin-bottom: 18px;
+    background: var(--bone-raised);
+  }
+  .kpi {
+    padding: 22px 24px 20px;
+    border-right: 1px solid var(--line);
+    position: relative;
+  }
+  .kpi:last-child { border-right: none; }
+  .kpi::before {
+    content: attr(data-no);
+    position: absolute;
+    top: 10px; right: 14px;
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--faint);
+  }
+
+  .kpi .label {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .kpi .value {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 64px;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    margin-bottom: 10px;
+  }
+  .kpi .value .unit { font-size: 24px; color: var(--muted); margin-left: 4px; }
+  .kpi.alert .value { color: var(--hazard); }
+  .kpi.good .value { color: var(--go); }
+
+  .kpi .delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 3px 9px 4px;
+    border: 1.5px solid var(--line);
+    background: var(--bone);
+    font-weight: 700;
+  }
+  .kpi .delta.up { background: var(--go); color: var(--bone); border-color: var(--go); }
+  .kpi .delta.down { background: var(--hazard); color: var(--bone); border-color: var(--hazard); }
+  .kpi .delta.flat { background: var(--ink); color: var(--bone); border-color: var(--ink); }
+
+  .kpi .kicker {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+  }
+
+  /* ============== KANBAN ============== */
+  .section-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0 8px;
+    margin: 22px 0 12px;
+    border-top: 3px double var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .section-bar h2 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .section-bar h2 em {
+    color: var(--hazard);
+    font-style: normal;
+  }
+  .section-bar .sec-meta {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    gap: 20px;
+  }
+  .section-bar .sec-meta strong { color: var(--ink); font-weight: 700; }
+
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  .col {
+    border: 2px solid var(--line);
+    background: var(--bone-raised);
+    display: flex;
+    flex-direction: column;
+    min-height: 480px;
+  }
+  .col-head {
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--ink);
+    color: var(--bone);
+  }
+  .col-head .name {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .col-head .count {
+    font-family: 'Martian Mono', monospace;
+    font-size: 11px;
+    background: var(--bone);
+    color: var(--ink);
+    padding: 2px 8px;
+    font-weight: 600;
+  }
+  .col.col-doing .col-head { background: var(--hazard); }
+  .col.col-review .col-head { background: var(--info); }
+  .col.col-done .col-head { background: var(--go); }
+
+  .col-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .ticket {
+    background: var(--bone);
+    border: 1.5px solid var(--line);
+    padding: 11px 12px 10px;
+    position: relative;
+    transition: transform 0.12s;
+    cursor: grab;
+  }
+  .ticket:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--line);
+  }
+  .ticket .t-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .ticket .tag {
+    padding: 1px 6px 2px;
+    background: var(--ink);
+    color: var(--bone);
+    font-weight: 600;
+  }
+  .ticket .tag.p1 { background: var(--hazard); }
+  .ticket .tag.p2 { background: var(--wait); color: var(--ink); }
+  .ticket .tag.p3 { background: var(--info); }
+  .ticket .tag.p4 { background: var(--bone-deep); color: var(--ink); }
+
+  .ticket .title {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+    margin-bottom: 10px;
+  }
+
+  .ticket .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(20, 17, 9, 0.2);
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .ticket .avatar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ticket .avatar .av {
+    width: 20px; height: 20px;
+    background: var(--ink);
+    color: var(--bone);
+    border-radius: 0;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0;
+  }
+  .ticket .avatar .av.a2 { background: var(--hazard); }
+  .ticket .avatar .av.a3 { background: var(--info); }
+  .ticket .avatar .av.a4 { background: var(--go); }
+  .ticket .avatar .av.a5 { background: var(--wait); color: var(--ink); }
+
+  .ticket .due { text-transform: uppercase; }
+  .ticket .due.hot { color: var(--hazard); font-weight: 600; }
+
+  /* Sub-ticket progress bar */
+  .ticket .sub {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(20, 17, 9, 0.2);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .ticket .sub-bar {
+    height: 4px;
+    background: var(--bone-deep);
+    position: relative;
+    border: 1px solid var(--line);
+  }
+  .ticket .sub-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    width: var(--p, 50%);
+  }
+  .col-doing .ticket .sub-bar::after { background: var(--hazard); }
+  .col-review .ticket .sub-bar::after { background: var(--info); }
+
+  /* ============== SPLIT: Team + Chart ============== */
+  .split {
+    display: grid;
+    grid-template-columns: 1.1fr 1.3fr;
+    gap: 18px;
+    margin-top: 22px;
+  }
+
+  .panel {
+    border: 2px solid var(--line);
+    background: var(--bone-raised);
+  }
+  .panel-head {
+    padding: 10px 16px;
+    border-bottom: 2px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--ink);
+    color: var(--bone);
+  }
+  .panel-head h3 {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .panel-head .ctl {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--bone);
+  }
+  .panel-head .ctl button {
+    background: transparent;
+    color: var(--bone);
+    border: none;
+    border-right: 1px solid var(--bone);
+    padding: 3px 9px 4px;
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .panel-head .ctl button:last-child { border-right: none; }
+  .panel-head .ctl button.on { background: var(--hazard); }
+
+  /* Team grid */
+  .team-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .member {
+    display: grid;
+    grid-template-columns: 34px 1fr auto 140px auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(20, 17, 9, 0.15);
+  }
+  .member:last-child { border-bottom: none; }
+  .member .av {
+    width: 34px; height: 34px;
+    background: var(--ink);
+    color: var(--bone);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0;
+  }
+  .member .av.a2 { background: var(--hazard); }
+  .member .av.a3 { background: var(--info); }
+  .member .av.a4 { background: var(--go); }
+  .member .av.a5 { background: var(--wait); color: var(--ink); }
+
+  .member .who {
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .member .who small {
+    display: block;
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+  .member .status {
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 3px 8px 4px;
+    border: 1.5px solid var(--line);
+    background: var(--bone);
+    white-space: nowrap;
+  }
+  .member .status.on { background: var(--go); color: var(--bone); border-color: var(--go); }
+  .member .status.break { background: var(--wait); color: var(--ink); border-color: var(--wait); }
+  .member .status.off { background: var(--bone-deep); color: var(--muted); }
+  .member .status.oncall { background: var(--hazard); color: var(--bone); border-color: var(--hazard); }
+
+  .member .load-bar {
+    height: 14px;
+    background: var(--bone);
+    border: 1.5px solid var(--line);
+    position: relative;
+  }
+  .member .load-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    width: var(--p, 50%);
+  }
+  .member .load-bar.hot::after { background: var(--hazard); }
+  .member .load-bar.med::after { background: var(--wait); }
+
+  .member .tickets {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    text-align: right;
+    line-height: 1;
+  }
+  .member .tickets small {
+    display: block;
+    font-family: 'Martian Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  /* Chart panel */
+  .chart-body {
+    padding: 20px 20px 14px;
+  }
+  .chart-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .chart-top .big {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 40px;
+    line-height: 0.9;
+    letter-spacing: -0.035em;
+  }
+  .chart-top .big .unit { font-size: 18px; color: var(--muted); margin-left: 4px; }
+  .chart-top .cap {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .chart-legend .sw {
+    display: inline-block;
+    width: 12px; height: 12px;
+    margin-right: 6px;
+    vertical-align: middle;
+    border: 1px solid var(--line);
+  }
+  .sla-chart {
+    width: 100%;
+    height: 200px;
+    display: block;
+  }
+
+  /* ============== SHIFT STRIP ============== */
+  .shifts {
+    margin-top: 22px;
+    border: 2px solid var(--line);
+    background: var(--bone-raised);
+  }
+  .shift-grid {
+    display: grid;
+    grid-template-columns: 120px repeat(24, 1fr);
+    border-top: none;
+  }
+  .shift-hr, .shift-cell {
+    border-right: 1px solid rgba(20, 17, 9, 0.12);
+    border-bottom: 1px solid rgba(20, 17, 9, 0.12);
+    padding: 6px 4px;
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-align: center;
+    color: var(--muted);
+    min-height: 28px;
+    position: relative;
+  }
+  .shift-hr:first-child, .shift-row > div:first-child {
+    border-right: 2px solid var(--line);
+    background: var(--ink);
+    color: var(--bone);
+    text-align: left;
+    padding-left: 12px;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .shift-row { display: contents; }
+
+  .shift-cell.work {
+    background: var(--ink);
+  }
+  .shift-cell.oncall {
+    background: var(--hazard);
+  }
+  .shift-cell.now {
+    box-shadow: inset 0 0 0 2px var(--hazard);
+  }
+  .shift-header .shift-hr { background: var(--bone-deep); color: var(--ink); }
+
+  /* ============== ACTIVITY ============== */
+  .activity {
+    margin-top: 22px;
+    border: 2px solid var(--line);
+    background: var(--bone-raised);
+  }
+  .activity-body {
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .act-col { padding: 4px 0; }
+  .act-col:first-child { border-right: 1px solid var(--line); }
+  .act-row {
+    display: grid;
+    grid-template-columns: 60px auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 9px 18px;
+    border-bottom: 1px dashed rgba(20, 17, 9, 0.15);
+    font-size: 12px;
+  }
+  .act-row:last-child { border-bottom: none; }
+  .act-row .time {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+  .act-row .chip {
+    font-family: 'Martian Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 2px 7px 3px;
+    border: 1.5px solid var(--line);
+    background: var(--bone);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .act-row .chip.crt { background: var(--hazard); color: var(--bone); border-color: var(--hazard); }
+  .act-row .chip.rsv { background: var(--go); color: var(--bone); border-color: var(--go); }
+  .act-row .chip.esc { background: var(--ink); color: var(--bone); }
+  .act-row .chip.nte { background: var(--info); color: var(--bone); border-color: var(--info); }
+  .act-row .msg { line-height: 1.35; }
+  .act-row .msg strong { font-weight: 700; }
+  .act-row .by {
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ============== FOOT ============== */
+  .foot {
+    margin-top: 26px;
+    padding-top: 16px;
+    border-top: 2px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Martian Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .foot strong { color: var(--ink); }
+
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .kanban { grid-template-columns: repeat(2, 1fr); }
+    .split { grid-template-columns: 1fr; }
+    .activity-body { grid-template-columns: 1fr; }
+    .act-col:first-child { border-right: none; border-bottom: 1px solid var(--line); }
+    .header { grid-template-columns: 1fr; }
+    .brand, .clock-cell { border-right: none; border-left: none; border-bottom: 2px solid var(--line); }
+    .header-status { grid-template-columns: repeat(2, 1fr); }
+    .h-cell:nth-child(2) { border-right: none; }
+  }
+  @media (max-width: 700px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .kpi:nth-child(2) { border-right: none; }
+    .kanban { grid-template-columns: 1fr; }
+    .shift-grid { grid-template-columns: 80px repeat(24, 1fr); font-size: 8px; }
+    .kpi .value { font-size: 46px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ HEADER ============ -->
+  <header class="header">
+    <div class="brand">
+      <div class="mark">FIELD <em>OPS</em></div>
+      <div class="sub">Operations Command · Shift 02</div>
+    </div>
+    <div class="header-status">
+      <div class="h-cell">
+        <div class="lbl">Shift Lead</div>
+        <div class="val">Y. Song</div>
+      </div>
+      <div class="h-cell">
+        <div class="lbl">On-Call</div>
+        <div class="val"><span class="hz">●</span> H. Park · #4821</div>
+      </div>
+      <div class="h-cell">
+        <div class="lbl">Queue</div>
+        <div class="val">47 open · <span class="hz">3 P1</span></div>
+      </div>
+      <div class="h-cell">
+        <div class="lbl">SLA 30D</div>
+        <div class="val"><span class="go">98.2%</span> · 1.8 breached</div>
+      </div>
+    </div>
+    <div class="clock-cell">
+      <div class="tag">// Live · Seoul</div>
+      <div class="time" id="clock">14:32:07</div>
+      <div class="date">FRI · APR 24 · 2026</div>
+    </div>
+  </header>
+
+  <!-- ============ KPI ============ -->
+  <section class="kpi-row">
+    <div class="kpi" data-no="01">
+      <div class="label">Tickets Open</div>
+      <div class="value">47</div>
+      <div class="delta down">▲ 8 vs yest</div>
+      <div class="kicker">14 New · 22 Ongoing · 11 Waiting</div>
+    </div>
+    <div class="kpi alert" data-no="02">
+      <div class="label">Avg First Response</div>
+      <div class="value">6<span class="unit">m 42s</span></div>
+      <div class="delta down">▲ 1m 12s</div>
+      <div class="kicker">Target ≤ 5m · Breach 4 hrs</div>
+    </div>
+    <div class="kpi good" data-no="03">
+      <div class="label">Resolved 24H</div>
+      <div class="value">132</div>
+      <div class="delta up">▲ 14%</div>
+      <div class="kicker">Avg resolution 3h 18m</div>
+    </div>
+    <div class="kpi" data-no="04">
+      <div class="label">CSAT · 7D</div>
+      <div class="value">4.7<span class="unit">/5</span></div>
+      <div class="delta flat">± 0.0</div>
+      <div class="kicker">214 responses · 86% 5-star</div>
+    </div>
+  </section>
+
+  <!-- ============ KANBAN ============ -->
+  <div class="section-bar">
+    <h2>Ticket <em>Board</em> · Live</h2>
+    <div class="sec-meta">
+      <span>FILTER · <strong>ALL TEAMS</strong></span>
+      <span>SORT · <strong>PRIORITY</strong></span>
+      <span>AUTO-REFRESH · <strong>30s</strong></span>
+    </div>
+  </div>
+
+  <section class="kanban">
+
+    <div class="col">
+      <div class="col-head">
+        <span class="name">Backlog</span>
+        <span class="count">14</span>
+      </div>
+      <div class="col-body">
+        <div class="ticket">
+          <div class="t-top"><span class="tag p2">P2</span><span>OPS-4102</span></div>
+          <div class="title">Regional dispatch — Gyeonggi route 7 reassignment</div>
+          <div class="meta">
+            <span class="avatar"><span class="av">UN</span>Unassigned</span>
+            <span class="due">DUE 16:00</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p3">P3</span><span>OPS-4101</span></div>
+          <div class="title">Shipment label template export failing for B2B accounts</div>
+          <div class="meta">
+            <span class="avatar"><span class="av">UN</span>Unassigned</span>
+            <span class="due">EOD</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p4">P4</span><span>OPS-4099</span></div>
+          <div class="title">Warehouse 2 · update cold-chain SOP documentation</div>
+          <div class="meta">
+            <span class="avatar"><span class="av">UN</span>Unassigned</span>
+            <span class="due">APR 28</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p3">P3</span><span>OPS-4095</span></div>
+          <div class="title">Driver app · offline mode sync conflict reports</div>
+          <div class="meta">
+            <span class="avatar"><span class="av">UN</span>Unassigned</span>
+            <span class="due">APR 26</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col col-doing">
+      <div class="col-head">
+        <span class="name">In Progress</span>
+        <span class="count">11</span>
+      </div>
+      <div class="col-body">
+        <div class="ticket">
+          <div class="t-top"><span class="tag p1">P1</span><span>OPS-4108</span></div>
+          <div class="title">Cold-chain breach · truck SL-14 · 3 pallets at risk</div>
+          <div class="sub">
+            <div class="sub-bar" style="--p: 65%"></div>
+            <span>04/06</span>
+          </div>
+          <div class="meta">
+            <span class="avatar"><span class="av a2">HP</span>H. Park</span>
+            <span class="due hot">SLA 18m</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p1">P1</span><span>OPS-4107</span></div>
+          <div class="title">Payment gateway intermittent 5xx — merchant A-91</div>
+          <div class="sub">
+            <div class="sub-bar" style="--p: 40%"></div>
+            <span>02/05</span>
+          </div>
+          <div class="meta">
+            <span class="avatar"><span class="av a3">JK</span>J. Kim</span>
+            <span class="due hot">SLA 42m</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p2">P2</span><span>OPS-4104</span></div>
+          <div class="title">Busan hub scan-gun firmware rollback</div>
+          <div class="sub">
+            <div class="sub-bar" style="--p: 80%"></div>
+            <span>04/05</span>
+          </div>
+          <div class="meta">
+            <span class="avatar"><span class="av a5">SL</span>S. Lee</span>
+            <span class="due">15:30</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p2">P2</span><span>OPS-4098</span></div>
+          <div class="title">Returns pipeline — duplicate RMA records cleanup</div>
+          <div class="meta">
+            <span class="avatar"><span class="av a4">MC</span>M. Cho</span>
+            <span class="due">16:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col col-review">
+      <div class="col-head">
+        <span class="name">Review</span>
+        <span class="count">6</span>
+      </div>
+      <div class="col-body">
+        <div class="ticket">
+          <div class="t-top"><span class="tag p2">P2</span><span>OPS-4092</span></div>
+          <div class="title">Carrier SLA renegotiation — draft proposal v2</div>
+          <div class="sub">
+            <div class="sub-bar" style="--p: 100%"></div>
+            <span>05/05</span>
+          </div>
+          <div class="meta">
+            <span class="avatar"><span class="av a3">JK</span>J. Kim</span>
+            <span class="due">AWAIT LEAD</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p3">P3</span><span>OPS-4089</span></div>
+          <div class="title">Monthly incident post-mortem — March</div>
+          <div class="meta">
+            <span class="avatar"><span class="av a4">MC</span>M. Cho</span>
+            <span class="due">APR 25</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p4">P4</span><span>OPS-4081</span></div>
+          <div class="title">Onboarding doc update — new hire template</div>
+          <div class="meta">
+            <span class="avatar"><span class="av">UN</span>Unassigned</span>
+            <span class="due">APR 30</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col col-done">
+      <div class="col-head">
+        <span class="name">Resolved · Today</span>
+        <span class="count">16</span>
+      </div>
+      <div class="col-body">
+        <div class="ticket">
+          <div class="t-top"><span class="tag p1">P1</span><span>OPS-4093</span></div>
+          <div class="title">Daegu depot · conveyor belt jam cleared</div>
+          <div class="meta">
+            <span class="avatar"><span class="av a5">SL</span>S. Lee</span>
+            <span class="due">13:04</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p2">P2</span><span>OPS-4091</span></div>
+          <div class="title">Carrier API webhook signature mismatch</div>
+          <div class="meta">
+            <span class="avatar"><span class="av a3">JK</span>J. Kim</span>
+            <span class="due">12:48</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p3">P3</span><span>OPS-4088</span></div>
+          <div class="title">Address validation — Jeju edge case fix deployed</div>
+          <div class="meta">
+            <span class="avatar"><span class="av a2">HP</span>H. Park</span>
+            <span class="due">11:22</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="t-top"><span class="tag p2">P2</span><span>OPS-4085</span></div>
+          <div class="title">Inventory sync delay — warehouse 3 reconciled</div>
+          <div class="meta">
+            <span class="avatar"><span class="av a4">MC</span>M. Cho</span>
+            <span class="due">10:05</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============ SPLIT: Team + Chart ============ -->
+  <section class="split">
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Team Workload · Shift 02</h3>
+        <div class="ctl">
+          <button class="on">LOAD</button>
+          <button>SKILLS</button>
+          <button>TICKETS</button>
+        </div>
+      </div>
+      <div class="team-body">
+        <div class="member">
+          <div class="av">YS</div>
+          <div class="who">Yeongseok Song<small>Shift Lead · L4</small></div>
+          <div class="status oncall">ON-CALL</div>
+          <div class="load-bar hot" style="--p: 88%"></div>
+          <div class="tickets">9<small>active</small></div>
+        </div>
+        <div class="member">
+          <div class="av a2">HP</div>
+          <div class="who">Hyunjoo Park<small>Sr. Ops · L3</small></div>
+          <div class="status on">ACTIVE</div>
+          <div class="load-bar hot" style="--p: 82%"></div>
+          <div class="tickets">7<small>active</small></div>
+        </div>
+        <div class="member">
+          <div class="av a3">JK</div>
+          <div class="who">Jihyun Kim<small>Ops Engineer · L3</small></div>
+          <div class="status on">ACTIVE</div>
+          <div class="load-bar med" style="--p: 62%"></div>
+          <div class="tickets">5<small>active</small></div>
+        </div>
+        <div class="member">
+          <div class="av a4">MC</div>
+          <div class="who">Minjun Cho<small>Ops Analyst · L2</small></div>
+          <div class="status on">ACTIVE</div>
+          <div class="load-bar" style="--p: 54%"></div>
+          <div class="tickets">4<small>active</small></div>
+        </div>
+        <div class="member">
+          <div class="av a5">SL</div>
+          <div class="who">Seojin Lee<small>Field Coord · L2</small></div>
+          <div class="status break">ON BREAK</div>
+          <div class="load-bar" style="--p: 40%"></div>
+          <div class="tickets">3<small>active</small></div>
+        </div>
+        <div class="member">
+          <div class="av">DK</div>
+          <div class="who">Daehan Kwon<small>Dispatcher · L1</small></div>
+          <div class="status off">OFF SHIFT</div>
+          <div class="load-bar" style="--p: 0%"></div>
+          <div class="tickets">0<small>active</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h3>SLA Performance · 24h</h3>
+        <div class="ctl">
+          <button>24H</button>
+          <button class="on">7D</button>
+          <button>30D</button>
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="chart-top">
+          <div>
+            <div class="big">98.2<span class="unit">%</span></div>
+            <div class="cap">Within SLA · 30d avg</div>
+          </div>
+          <div class="chart-legend">
+            <span><span class="sw" style="background: var(--ink);"></span>Within SLA</span>
+            <span><span class="sw" style="background: var(--hazard);"></span>Breached</span>
+          </div>
+        </div>
+        <svg class="sla-chart" viewBox="0 0 700 200" preserveAspectRatio="none">
+          <!-- Grid -->
+          <g stroke="rgba(20, 17, 9, 0.15)" stroke-width="0.5">
+            <line x1="0" y1="40" x2="700" y2="40"/>
+            <line x1="0" y1="80" x2="700" y2="80"/>
+            <line x1="0" y1="120" x2="700" y2="120"/>
+            <line x1="0" y1="160" x2="700" y2="160"/>
+          </g>
+          <g font-family="Martian Mono" font-size="9" fill="var(--muted)">
+            <text x="4" y="44">100%</text>
+            <text x="4" y="84">95</text>
+            <text x="4" y="124">90</text>
+            <text x="4" y="164">85</text>
+          </g>
+
+          <!-- Target line -->
+          <line x1="40" y1="50" x2="680" y2="50" stroke="var(--hazard)" stroke-width="1" stroke-dasharray="4 4"/>
+          <text x="680" y="46" text-anchor="end" font-family="Martian Mono" font-size="9" fill="var(--hazard)">TARGET 99%</text>
+
+          <!-- Stacked bars (within=dark, breach=hazard on top) -->
+          <g>
+            <!-- Day 1 -->
+            <rect x="60"  y="62"  width="40" height="118" fill="var(--ink)"/>
+            <rect x="60"  y="56"  width="40" height="6"   fill="var(--hazard)"/>
+            <!-- Day 2 -->
+            <rect x="120" y="54"  width="40" height="126" fill="var(--ink)"/>
+            <rect x="120" y="50"  width="40" height="4"   fill="var(--hazard)"/>
+            <!-- Day 3 -->
+            <rect x="180" y="66"  width="40" height="114" fill="var(--ink)"/>
+            <rect x="180" y="58"  width="40" height="8"   fill="var(--hazard)"/>
+            <!-- Day 4 -->
+            <rect x="240" y="50"  width="40" height="130" fill="var(--ink)"/>
+            <rect x="240" y="48"  width="40" height="2"   fill="var(--hazard)"/>
+            <!-- Day 5 -->
+            <rect x="300" y="52"  width="40" height="128" fill="var(--ink)"/>
+            <rect x="300" y="48"  width="40" height="4"   fill="var(--hazard)"/>
+            <!-- Day 6 -->
+            <rect x="360" y="74"  width="40" height="106" fill="var(--ink)"/>
+            <rect x="360" y="60"  width="40" height="14"  fill="var(--hazard)"/>
+            <!-- Day 7 (today) -->
+            <rect x="420" y="58"  width="40" height="122" fill="var(--ink)"/>
+            <rect x="420" y="52"  width="40" height="6"   fill="var(--hazard)"/>
+            <!-- Cumulative line marker -->
+            <rect x="480" y="54"  width="40" height="126" fill="var(--ink)"/>
+            <rect x="480" y="50"  width="40" height="4"   fill="var(--hazard)"/>
+            <rect x="540" y="52"  width="40" height="128" fill="var(--ink)"/>
+            <rect x="540" y="48"  width="40" height="4"   fill="var(--hazard)"/>
+            <rect x="600" y="56"  width="40" height="124" fill="var(--ink)"/>
+            <rect x="600" y="52"  width="40" height="4"   fill="var(--hazard)"/>
+          </g>
+
+          <!-- Trend line -->
+          <polyline
+            points="80,62 140,54 200,66 260,50 320,52 380,74 440,58 500,54 560,52 620,56"
+            fill="none" stroke="var(--hazard)" stroke-width="1.5" stroke-dasharray="0"/>
+          <g fill="var(--hazard)">
+            <circle cx="80"  cy="62" r="3"/>
+            <circle cx="140" cy="54" r="3"/>
+            <circle cx="200" cy="66" r="3"/>
+            <circle cx="260" cy="50" r="3"/>
+            <circle cx="320" cy="52" r="3"/>
+            <circle cx="380" cy="74" r="3"/>
+            <circle cx="440" cy="58" r="3"/>
+            <circle cx="500" cy="54" r="3"/>
+            <circle cx="560" cy="52" r="3"/>
+            <circle cx="620" cy="56" r="3"/>
+          </g>
+
+          <!-- Day labels -->
+          <g font-family="Martian Mono" font-size="9" fill="var(--muted)" text-anchor="middle" letter-spacing="0.12em">
+            <text x="80"  y="195">MON</text>
+            <text x="140" y="195">TUE</text>
+            <text x="200" y="195">WED</text>
+            <text x="260" y="195">THU</text>
+            <text x="320" y="195">FRI</text>
+            <text x="380" y="195">SAT</text>
+            <text x="440" y="195">SUN</text>
+            <text x="500" y="195">MON</text>
+            <text x="560" y="195">WED</text>
+            <text x="620" y="195">FRI</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============ SHIFTS ============ -->
+  <div class="section-bar">
+    <h2>Shift <em>Schedule</em> · 24H</h2>
+    <div class="sec-meta">
+      <span>TIMEZONE · <strong>KST</strong></span>
+      <span>NOW · <strong>14:32</strong></span>
+      <span>COVERAGE · <strong>CONTINUOUS</strong></span>
+    </div>
+  </div>
+
+  <section class="shifts">
+    <div class="shift-grid">
+      <div class="shift-row shift-header">
+        <div class="shift-hr">Member</div>
+        <div class="shift-hr">00</div><div class="shift-hr">01</div><div class="shift-hr">02</div><div class="shift-hr">03</div>
+        <div class="shift-hr">04</div><div class="shift-hr">05</div><div class="shift-hr">06</div><div class="shift-hr">07</div>
+        <div class="shift-hr">08</div><div class="shift-hr">09</div><div class="shift-hr">10</div><div class="shift-hr">11</div>
+        <div class="shift-hr">12</div><div class="shift-hr">13</div><div class="shift-hr">14</div><div class="shift-hr">15</div>
+        <div class="shift-hr">16</div><div class="shift-hr">17</div><div class="shift-hr">18</div><div class="shift-hr">19</div>
+        <div class="shift-hr">20</div><div class="shift-hr">21</div><div class="shift-hr">22</div><div class="shift-hr">23</div>
+      </div>
+
+      <div class="shift-row">
+        <div class="shift-hr">Y. Song</div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work now"></div><div class="shift-cell work"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+      </div>
+
+      <div class="shift-row">
+        <div class="shift-hr">H. Park</div>
+        <div class="shift-cell oncall"></div><div class="shift-cell oncall"></div><div class="shift-cell oncall"></div><div class="shift-cell oncall"></div>
+        <div class="shift-cell oncall"></div><div class="shift-cell oncall"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work now"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+      </div>
+
+      <div class="shift-row">
+        <div class="shift-hr">J. Kim</div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work now"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+      </div>
+
+      <div class="shift-row">
+        <div class="shift-hr">M. Cho</div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div>
+        <div class="shift-cell work"></div>
+        <div class="shift-cell work now"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div>
+      </div>
+
+      <div class="shift-row">
+        <div class="shift-hr">S. Lee</div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell now"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+      </div>
+
+      <div class="shift-row">
+        <div class="shift-hr">D. Kwon</div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell now"></div>
+        <div class="shift-cell"></div><div class="shift-cell"></div><div class="shift-cell"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div><div class="shift-cell work"></div>
+        <div class="shift-cell work"></div><div class="shift-cell work"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACTIVITY ============ -->
+  <div class="section-bar">
+    <h2>Activity <em>Log</em></h2>
+    <div class="sec-meta">
+      <span>LAST 4H · <strong>112 EVENTS</strong></span>
+      <span>ESCALATIONS · <strong>2</strong></span>
+    </div>
+  </div>
+
+  <section class="activity">
+    <div class="activity-body">
+      <div class="act-col">
+        <div class="act-row">
+          <span class="time">14:31</span>
+          <span class="chip crt">P1</span>
+          <span class="msg"><strong>OPS-4108</strong> opened — cold-chain breach, truck SL-14</span>
+          <span class="by">→ H. PARK</span>
+        </div>
+        <div class="act-row">
+          <span class="time">14:22</span>
+          <span class="chip esc">ESC</span>
+          <span class="msg"><strong>OPS-4107</strong> escalated to L3 after 2nd SLA warning</span>
+          <span class="by">J. KIM</span>
+        </div>
+        <div class="act-row">
+          <span class="time">14:04</span>
+          <span class="chip rsv">RSV</span>
+          <span class="msg"><strong>OPS-4093</strong> resolved — depot conveyor cleared · 22min</span>
+          <span class="by">S. LEE</span>
+        </div>
+        <div class="act-row">
+          <span class="time">13:48</span>
+          <span class="chip nte">NTE</span>
+          <span class="msg">Shift handover complete · 47 open tickets · 3 P1</span>
+          <span class="by">Y. SONG</span>
+        </div>
+        <div class="act-row">
+          <span class="time">13:22</span>
+          <span class="chip rsv">RSV</span>
+          <span class="msg"><strong>OPS-4091</strong> resolved — carrier webhook sig fixed</span>
+          <span class="by">J. KIM</span>
+        </div>
+        <div class="act-row">
+          <span class="time">12:58</span>
+          <span class="chip nte">NTE</span>
+          <span class="msg">Capacity alert cleared · WH-02 throughput nominal</span>
+          <span class="by">SYSTEM</span>
+        </div>
+      </div>
+
+      <div class="act-col">
+        <div class="act-row">
+          <span class="time">12:48</span>
+          <span class="chip rsv">RSV</span>
+          <span class="msg"><strong>OPS-4088</strong> resolved — Jeju address validation</span>
+          <span class="by">H. PARK</span>
+        </div>
+        <div class="act-row">
+          <span class="time">12:14</span>
+          <span class="chip crt">P1</span>
+          <span class="msg"><strong>OPS-4107</strong> opened — merchant A-91 gateway 5xx</span>
+          <span class="by">→ J. KIM</span>
+        </div>
+        <div class="act-row">
+          <span class="time">11:42</span>
+          <span class="chip esc">ESC</span>
+          <span class="msg"><strong>OPS-4084</strong> escalated — customer refund > ₩1M threshold</span>
+          <span class="by">M. CHO → LEAD</span>
+        </div>
+        <div class="act-row">
+          <span class="time">11:20</span>
+          <span class="chip nte">NTE</span>
+          <span class="msg">Daily stand-up notes published · 6 attendees</span>
+          <span class="by">Y. SONG</span>
+        </div>
+        <div class="act-row">
+          <span class="time">10:58</span>
+          <span class="chip rsv">RSV</span>
+          <span class="msg"><strong>OPS-4085</strong> resolved — WH3 inventory reconciled · 1,284 SKUs</span>
+          <span class="by">M. CHO</span>
+        </div>
+        <div class="act-row">
+          <span class="time">10:12</span>
+          <span class="chip nte">NTE</span>
+          <span class="msg">Carrier partner review completed · Q2 scorecard drafted</span>
+          <span class="by">J. KIM</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOT ============ -->
+  <footer class="foot">
+    <div><strong>FIELD OPS</strong> · OPERATIONS COMMAND · V 3.8</div>
+    <div>DATA Δ 12s · AUTO-REFRESH ENABLED</div>
+    <div>SHIFT 02 · 14:32 KST · APR 24 2026</div>
+  </footer>
+
+</div>
+
+<script>
+  function pad(n) { return n.toString().padStart(2, '0'); }
+  function tick() {
+    const d = new Date();
+    document.getElementById('clock').textContent =
+      `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>

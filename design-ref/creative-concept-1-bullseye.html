@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>파격 제안 1: Bullseye 집중 뷰</title>
+  <style>
+    :root {
+      --washi: #ede6d2; --cream: #faf4e6; --paper: #fbf7f0;
+      --ink: #15120c; --inkSoft: #3d3529; --muted: #716855; --faint: #a8a08a;
+      --line: #15120c; --lineSoft: rgba(21, 18, 12, 0.12);
+      --vermilion: #b8331e; --gold: #9c7a2c; --indigo: #1f3a5f;
+    }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink);
+      font-family: "Pretendard Variable", Pretendard, system-ui, sans-serif;
+      height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+    }
+    .header {
+      padding: 20px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center;
+      background: var(--cream);
+    }
+    .title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase; }
+    .live-badge { display: flex; align-items: center; gap: 8px; color: var(--vermilion); font-weight: 700; border: 1px solid var(--vermilion); padding: 4px 12px; font-size: 12px; }
+    .pulse { width: 8px; height: 8px; background: var(--vermilion); border-radius: 50%; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    
+    .arena { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, var(--paper) 0%, var(--washi) 100%); overflow: hidden; }
+    
+    /* 동심원 (Concentric Rings) */
+    .ring { position: absolute; border: 1px solid var(--lineSoft); border-radius: 50%; pointer-events: none; }
+    .ring-1 { width: 300px; height: 300px; border: 2px solid var(--vermilion); border-style: dashed; background: rgba(184, 51, 30, 0.03); }
+    .ring-2 { width: 600px; height: 600px; border: 1px solid var(--line); }
+    .ring-3 { width: 900px; height: 900px; }
+    
+    .axis { position: absolute; background: var(--lineSoft); }
+    .axis.v { width: 1px; height: 100%; }
+    .axis.h { width: 100%; height: 1px; }
+
+    /* 데이터 노드들 */
+    .node { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: transform 0.2s; }
+    .node:hover { transform: translate(-50%, -50%) scale(1.1); z-index: 10; }
+    .node .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); background: var(--cream); }
+    .node.critical .dot { background: var(--vermilion); border-color: var(--vermilion); box-shadow: 0 0 0 4px rgba(184, 51, 30, 0.2); }
+    .node.warning .dot { background: var(--gold); border-color: var(--gold); }
+    .node.info .dot { background: var(--indigo); border-color: var(--indigo); }
+    .node-label { background: var(--ink); color: var(--paper); padding: 4px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; border-radius: 2px; }
+    .node.critical .node-label { background: var(--vermilion); }
+    
+    /* 배치 설정 */
+    .n1 { top: 50%; left: 50%; }
+    .n2 { top: 40%; left: 45%; }
+    .n3 { top: 60%; left: 55%; }
+    
+    .n4 { top: 30%; left: 30%; }
+    .n5 { top: 75%; left: 30%; }
+    .n6 { top: 20%; left: 65%; }
+
+    .n7 { top: 15%; left: 80%; }
+    .n8 { top: 80%; left: 85%; }
+    .n9 { top: 10%; left: 20%; }
+
+    /* 모니터링 패널 */
+    .panel { position: absolute; bottom: 20px; left: 20px; border: 1px solid var(--line); background: var(--paper); padding: 16px; width: 300px; box-shadow: 4px 4px 0 var(--lineSoft); }
+    .panel-title { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+    .log-item { font-size: 12px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed var(--lineSoft); display: flex; gap: 8px; }
+    .log-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Severity Radar / 관제 센터</div>
+    <div class="live-badge"><div class="pulse"></div>실시간 관측 중</div>
+  </div>
+  <div class="arena">
+    <!-- 크로스헤어 축 -->
+    <div class="axis v"></div>
+    <div class="axis h"></div>
+    
+    <!-- 동심원 영역 -->
+    <div class="ring ring-3"></div>
+    <div class="ring ring-2"></div>
+    <div class="ring ring-1"></div>
+    
+    <!-- Zone 라벨 -->
+    <div style="position:absolute; top:calc(50% - 150px); left:50%; transform:translate(-50%, -100%); font-size:10px; font-weight:700; color:var(--vermilion);">CRITICAL ZONE</div>
+    <div style="position:absolute; top:calc(50% - 300px); left:50%; transform:translate(-50%, -100%); font-size:10px; font-weight:700; color:var(--inkSoft);">WARNING ZONE</div>
+    
+    <!-- 노드들 -->
+    <div class="node critical n1"><div class="dot"></div><div class="node-label">결제 서버 응답지연</div></div>
+    <div class="node critical n2"><div class="dot"></div><div class="node-label">DB CPU 98%</div></div>
+    <div class="node critical n3"><div class="dot"></div><div class="node-label">API Gateway 에러율 급증</div></div>
+    
+    <div class="node warning n4"><div class="dot"></div><div class="node-label">인증 지연 발생</div></div>
+    <div class="node warning n5"><div class="dot"></div><div class="node-label">메모리 경고 (Node 3)</div></div>
+    <div class="node warning n6"><div class="dot"></div><div class="node-label">배치 작업 지연</div></div>
+    
+    <div class="node info n7"><div class="dot"></div><div class="node-label">신규 배포 진행중</div></div>
+    <div class="node info n8"><div class="dot"></div><div class="node-label">트래픽 증가 (이벤트)</div></div>
+    <div class="node info n9"><div class="dot"></div><div class="node-label">정기 백업 완료</div></div>
+  </div>
+  
+  <div class="panel">
+    <div class="panel-title">LATEST EVENTS</div>
+    <div class="log-item"><span class="log-time">14:02:11</span><span>결제 서버 응답지연 5초 초과</span></div>
+    <div class="log-item"><span class="log-time">14:01:45</span><span>DB CPU 98% 도달</span></div>
+    <div class="log-item"><span class="log-time">14:00:12</span><span>API Gateway 500 에러 감지</span></div>
+  </div>
+</body>
+</html>

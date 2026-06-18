@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>운영부 상황실 — Broadsheet 실시간 현황(v2)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet"/>
+<script>
+tailwind.config={theme:{extend:{colors:{paper:'#fbf7f0',cream:'#faf4e6',washi:'#ede6d2','washi-raised':'#f4eddd',ink:'#15120c','ink-soft':'#3d3529',muted:'#716855',faint:'#a8a08a',line:'#15120c','line-soft':'rgba(21,18,12,0.12)',vermilion:'#b8331e','vermilion-deep':'#8e2412',indigo:'#1f3a5f',amber:'#d97706',sage:'#556b2f',gold:'#9c7a2c'},fontFamily:{sans:['"Pretendard Variable"','Pretendard','system-ui','sans-serif'],serif:['"Nanum Myeongjo"','Georgia','serif']}}}}
+</script>
+<style>
+body{background:#fbf7f0;color:#15120c}.shadow-offset{box-shadow:8px 8px 0 rgba(21,18,12,.12)}.shadow-offset-sm{box-shadow:4px 4px 0 rgba(21,18,12,.12)}
+.badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.06em;padding:1px 5px;color:#faf4e6}
+/* 가로 타임라인 */
+.tl{position:relative;height:124px;margin:8px 12px}
+.tl-line{position:absolute;left:0;right:0;top:62px;height:2px;background:#15120c}
+.tl-hour{position:absolute;top:62px;transform:translateX(-50%);text-align:center}
+.tl-hour .tick{width:1px;height:7px;background:#a8a08a;margin:0 auto}
+.tl-hour .lab{font-size:10px;color:#716855;font-variant-numeric:tabular-nums;margin-top:3px}
+.tl-ev{position:absolute;top:62px;transform:translateX(-50%)}
+.tl-ev .dot{width:13px;height:13px;border-radius:50%;border:3px solid #faf4e6;transform:translate(-50%,-50%);position:absolute;top:1px;left:0}
+.tl-ev.err .dot{background:#b8331e}.tl-ev.info .dot{background:#15120c}.tl-ev.warn .dot{background:#d97706}
+.tl-ev .cal{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;width:max-content;max-width:190px}
+.tl-ev .cal .t{font-size:10px;font-weight:700;color:#716855;font-variant-numeric:tabular-nums}
+.tl-ev .cal .m{font-size:11px;font-weight:700;line-height:1.2;white-space:normal}
+.tl-ev .cal.err .m{color:#b8331e}
+.tl-ev .cal.up{bottom:16px}.tl-ev .cal.dn{top:18px}
+.tl-now{position:absolute;top:44px;bottom:42px;width:2px;background:#b8331e}
+.tl-now .lb{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:800;letter-spacing:.1em;color:#b8331e;background:#fbf7f0;padding:0 3px;animation:nowblink 1.4s ease-in-out infinite}
+.tl-now .dot{position:absolute;left:50%;top:18px;width:11px;height:11px;border-radius:50%;background:#b8331e;border:2px solid #fbf7f0;transform:translate(-50%,-50%);z-index:2}
+.tl-now .ping{position:absolute;left:50%;top:18px;width:11px;height:11px;border-radius:50%;background:#b8331e;transform:translate(-50%,-50%);animation:nowping 1.6s cubic-bezier(0,0,.2,1) infinite;z-index:1}
+@keyframes nowping{0%{transform:translate(-50%,-50%) scale(.6);opacity:.85}70%,100%{transform:translate(-50%,-50%) scale(3);opacity:0}}
+@keyframes nowblink{0%,100%{opacity:1}50%{opacity:.4}}
+.live-blink{animation:liveblink 1.2s ease-in-out infinite}
+@keyframes liveblink{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.tl-now .ping{animation:none;opacity:.25}.tl-now .lb{animation:none}.live-blink{animation:none}}
+</style>
+</head>
+<body class="font-sans min-h-screen">
+
+<div class="px-4 py-8 md:px-8 md:py-10">
+  <div class="max-w-[1480px] mx-auto bg-cream border border-line shadow-offset p-6 md:p-9 relative">
+
+    <!-- Masthead -->
+    <div class="border-b-[4px] border-ink pb-5 mb-7">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-line pb-2 mb-5 gap-2">
+        <div class="flex items-center gap-4 text-xs font-bold tracking-widest text-muted uppercase"><span>어플라이 · 운영부</span><span class="text-line-soft">|</span><span class="relative"><button id="syslog-toggle" type="button" class="inline-flex items-center gap-1.5 text-vermilion font-black whitespace-nowrap cursor-pointer hover:text-vermilion-deep"><span class="live-blink">●</span><span>시스템 로그</span><span id="syslog-caret" class="inline-block transition-transform text-[20px] leading-none -translate-y-px">▸</span></button><div id="syslog-panel" class="hidden absolute left-0 top-full mt-2 z-50 w-[440px] border border-line bg-paper shadow-offset-sm p-3 text-left normal-case tracking-normal"><div class="flex items-center justify-between border-b border-line-soft pb-1 mb-2"><span class="text-[9px] font-bold uppercase tracking-[0.1em] text-muted">최근 시스템 로그</span><span class="text-[9px] text-faint tabular-nums">최근 6건</span></div><ul class="flex flex-col gap-1.5 text-[11px] font-medium text-ink-soft"><li><span class="text-faint tabular-nums mr-1.5">09:42:17</span><span class="text-gold font-bold">[NAV]</span> 서강대 수시 1차 계약 체결 — 서명 완료</li><li><span class="text-faint tabular-nums mr-1.5">09:41:02</span><span class="text-vermilion font-bold">[INCIDENT]</span> #INC-2026-031 경위서 긴급 검토 접수</li><li><span class="text-faint tabular-nums mr-1.5">09:35:18</span><span class="text-gold font-bold">[NAV]</span> 이화여대 정시 마감 D-2 진입</li><li><span class="text-faint tabular-nums mr-1.5">09:18:44</span><span class="text-indigo font-bold">[BACKUP]</span> [고려대] 백업 미확인 3건</li><li><span class="text-faint tabular-nums mr-1.5">09:05:09</span><span class="text-sage font-bold">[CONTRACT]</span> 서강대 수시 1차 계약 검토 시작</li><li><span class="text-faint tabular-nums mr-1.5">08:52:31</span><span class="text-amber font-bold">[DEPLOY]</span> v4.2.1 배포 시작</li></ul></div></span><span class="text-line-soft">|</span><span><span class="cursor-pointer text-muted hover:text-ink">전체</span> <span class="text-line-soft">/</span> <span class="cursor-pointer text-ink">내 담당</span></span></div>
+        <div class="text-xs font-bold text-muted uppercase tracking-[0.2em]"><span id="mast-date">Vol. 2026 / 06 · 13(금) 20:54:00 KST</span> <span class="ml-3 text-vermilion font-black"><span class="live-blink">●</span> LIVE</span></div>
+      </div>
+      <div class="text-center"><h1 class="text-5xl md:text-[72px] font-black tracking-[-0.04em] leading-none uppercase text-ink">운영부 상황실</h1><div class="text-sm md:text-[15px] font-semibold text-muted tracking-[0.25em] mt-3 uppercase">Real-Time Operations Monitoring &amp; Triage</div></div>
+    </div>
+
+    <!-- 실시간 운영 로그 (가로 타임라인 09:00~18:00) -->
+    <div class="mb-7">
+      <div class="border border-line bg-paper shadow-offset-sm p-5">
+      <h3 class="text-2xl font-black leading-tight mb-1 tracking-tight">실시간 운영 로그</h3>
+      <div class="flex justify-between items-center border-y border-line py-1 text-[10px] font-bold text-muted uppercase tracking-[0.1em] mb-4">
+        <span>Live Activity Stream</span>
+        <span class="tabular-nums">09:00–18:00 <span class="text-ink-soft" id="leave-wrap">(퇴근까지 <span id="leave-countdown">—</span>)</span></span>
+      </div>
+      <div class="tl">
+        <div class="tl-line"></div>
+        <!-- 시간 눈금 09~18 -->
+        <div class="tl-hour" style="left:0%"><div class="tick"></div><div class="lab">09</div></div>
+        <div class="tl-hour" style="left:11.1%"><div class="tick"></div><div class="lab">10</div></div>
+        <div class="tl-hour" style="left:22.2%"><div class="tick"></div><div class="lab">11</div></div>
+        <div class="tl-hour" style="left:33.3%"><div class="tick"></div><div class="lab">12</div></div>
+        <div class="tl-hour" style="left:44.4%"><div class="tick"></div><div class="lab">13</div></div>
+        <div class="tl-hour" style="left:55.6%"><div class="tick"></div><div class="lab">14</div></div>
+        <div class="tl-hour" style="left:66.7%"><div class="tick"></div><div class="lab">15</div></div>
+        <div class="tl-hour" style="left:77.8%"><div class="tick"></div><div class="lab">16</div></div>
+        <div class="tl-hour" style="left:88.9%"><div class="tick"></div><div class="lab">17</div></div>
+        <div class="tl-hour" style="left:100%"><div class="tick"></div><div class="lab">18</div></div>
+        <!-- 이벤트 (가로 배치) -->
+        <div class="tl-ev err" style="left:5.4%"><div class="dot"></div><div class="cal up err"><span class="t">09:29</span><div class="m">이화여대 정시 마감 D-2</div></div></div>
+        <div class="tl-ev info" style="left:7.8%"><div class="dot"></div><div class="cal dn"><span class="t">09:41</span><div class="m">서강대 계약 체결</div></div></div>
+        <div class="tl-ev info" style="left:29.6%"><div class="dot"></div><div class="cal up"><span class="t">11:40</span><div class="m">백업 요청 3건 접수</div></div></div>
+        <div class="tl-ev warn" style="left:52.8%"><div class="dot"></div><div class="cal dn"><span class="t">13:45</span><div class="m">v4.2.1 배포 시작</div></div></div>
+        <div class="tl-ev err" style="left:55.9%"><div class="dot"></div><div class="cal up err"><span class="t">14:02</span><div class="m">API 응답 지연 504</div></div></div>
+        <div class="tl-ev info" style="left:81.5%"><div class="dot"></div><div class="cal dn"><span class="t">16:20</span><div class="m">#HO-0438 인수인계 갱신</div></div></div>
+        <!-- 현재 시각 마커 -->
+        <div class="tl-now" style="left:100%"><span class="lb">NOW</span><span class="ping"></span><span class="dot"></span></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- AUTO 헤드라인 (타임라인 아래 단독 전폭) -->
+    <div class="mb-9 border-2 border-ink shadow-offset-sm bg-paper flex flex-col md:flex-row justify-between p-5 gap-4">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 mb-2"><span class="bg-ink text-cream px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]">AUTO ▸ 우선순위 자동</span><span class="text-[11px] font-bold uppercase tracking-[0.14em] text-vermilion">오늘의 톱 · 즉시</span></div>
+        <h2 class="text-3xl font-black leading-tight tracking-tight">미처리 사고 <span class="text-vermilion tabular-nums">3</span>건 · 오늘 마감 서비스 <span class="text-vermilion tabular-nums">2</span>건 · 미수채권 독려 <span class="text-vermilion tabular-nums">10:00</span> 발송 예정</h2>
+        <p class="mt-2 text-sm text-muted">마지막 갱신 20:54:10 — 총 미처리 우선순위 항목 <strong class="text-ink-soft">18</strong>건</p>
+      </div>
+      <div class="shrink-0 flex flex-col items-center justify-center w-16 h-16 rounded-full border-2 border-vermilion text-vermilion"><span class="text-2xl font-bold leading-none tabular-nums">3</span><span class="text-[9px] font-bold uppercase tracking-widest mt-1">긴급</span></div>
+    </div>
+
+    <!-- 3-6-3 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 lg:gap-10">
+      <!-- 좌(3) -->
+      <div class="lg:col-span-3 flex flex-col gap-9 border-b lg:border-b-0 lg:border-r border-line-soft lg:pr-10 pb-7 lg:pb-0">
+        <div>
+          <h3 class="text-2xl font-black leading-tight mb-1 tracking-tight">현황 요약</h3>
+          <div class="border-y border-line py-1 text-[10px] font-bold text-muted uppercase tracking-[0.1em] mb-5">ServiceCycle &amp; Data</div>
+          <div class="flex flex-col border-y border-line-soft divide-y divide-line-soft bg-washi-raised">
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">계약</span><span class="text-lg font-bold tabular-nums">24 / 418</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">오픈예정</span><span class="text-lg font-bold tabular-nums">2,193</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">진행 중</span><span class="text-lg font-bold tabular-nums">142</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">마감완료</span><span class="text-lg font-bold tabular-nums">303</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-vermilion">미수채권</span><span class="text-lg font-bold tabular-nums text-vermilion">41 / 52</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">백업요청</span><span class="text-lg font-bold tabular-nums">5</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">인수인계</span><span class="text-lg font-bold tabular-nums">0 / 2,511</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">대학연락처</span><span class="text-lg font-bold tabular-nums">20</span></div>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-2xl font-black leading-tight mb-1 tracking-tight">핵심 지표</h3>
+          <div class="border-y border-line py-1 text-[10px] font-bold text-muted uppercase tracking-[0.1em] mb-5">Critical Metrics</div>
+          <div class="flex flex-col border-y border-line-soft divide-y divide-line-soft bg-washi-raised">
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">내 할 일 · 주요업무</span><span class="text-lg font-bold tabular-nums">2 / 5</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">내 할 일 · 프로젝트</span><span class="text-lg font-bold tabular-nums">1 / 3</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">AI 산출물</span><span class="text-lg font-bold tabular-nums">8</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-vermilion">사고처리</span><span class="text-lg font-bold tabular-nums text-vermilion">35</span></div>
+            <div class="flex items-center justify-between px-4 py-2.5"><span class="text-[10px] font-bold uppercase tracking-[0.1em] text-muted">서비스 마감</span><span class="text-lg font-bold tabular-nums text-sage">13</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- 중앙(6): 긴급도 분류 -->
+      <div class="lg:col-span-6 border-b lg:border-b-0 lg:border-r border-line-soft lg:pr-10 pb-7 lg:pb-0">
+        <h3 class="text-2xl font-black leading-tight mb-1 tracking-tight">긴급도 분류</h3>
+        <div class="border-y border-line py-1 text-[10px] font-bold text-muted uppercase tracking-[0.1em] mb-5 flex justify-between"><span>Triage · 긴급도 기준 자동 분류</span><span class="text-[10px] text-ink-soft">행 클릭 → 상세</span></div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="border border-line bg-cream"><div class="bg-vermilion text-cream text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 flex justify-between"><span>지금 당장</span><span class="tabular-nums">3</span></div><ul class="divide-y divide-line-soft h-[262px] overflow-y-auto">
+            <li class="px-3 py-2 border-l-[3px] !border-l-vermilion"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-vermilion">사고</span><span class="text-[10px] font-bold text-ink-soft">미처리</span></div><div class="text-[12px] font-medium leading-snug">서울시 사립초 4회 초과 지원</div></li>
+            <li class="px-3 py-2 border-l-[3px] !border-l-vermilion"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-vermilion">사고</span><span class="text-[10px] font-bold text-ink-soft">미처리</span></div><div class="text-[12px] font-medium leading-snug">영재학교 중복지원 예외처리</div></li>
+            <li class="px-3 py-2 border-l-[3px] !border-l-vermilion"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-vermilion">사고</span><span class="text-[10px] font-bold text-ink-soft">처리중</span></div><div class="text-[12px] font-medium leading-snug">동일추천서 중복작성 개선 건</div></li>
+          </ul></div>
+          <div class="border border-line bg-cream"><div class="bg-washi-raised text-ink text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 flex justify-between border-b border-line-soft"><span>오늘</span><span class="tabular-nums text-muted">0</span></div><div class="h-[262px] flex items-center justify-center text-xs text-faint">—</div></div>
+          <div class="border border-line bg-cream"><div class="bg-washi-raised text-ink text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 flex justify-between border-b border-line-soft"><span>이번 주</span><span class="tabular-nums text-muted">5</span></div><ul class="divide-y divide-line-soft h-[262px] overflow-y-auto">
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-ink">할일</span><span class="text-[10px] font-bold text-ink-soft">D-4</span></div><div class="text-[12px] font-medium">독학사 미팅</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-gold">인수인계</span><span class="text-[10px] font-bold text-ink-soft">작성중</span></div><div class="text-[12px] font-medium">부산대학교 · 수시</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-gold">인수인계</span><span class="text-[10px] font-bold text-ink-soft">작성중</span></div><div class="text-[12px] font-medium">조선대학교 · 수시모집</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-ink">할일</span><span class="text-[10px] font-bold text-ink-soft">D-5</span></div><div class="text-[12px] font-medium">백업요청 검토 — 운영3팀</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-sage">계약</span><span class="text-[10px] font-bold text-ink-soft">검토중</span></div><div class="text-[12px] font-medium">경북대 · 수시 계약 검토</div></li>
+          </ul></div>
+          <div class="border border-line bg-cream"><div class="bg-washi-raised text-ink text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 flex justify-between border-b border-line-soft"><span>추적중</span><span class="tabular-nums text-muted">54</span></div><ul class="divide-y divide-line-soft h-[262px] overflow-y-auto">
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-amber">일정</span><span class="text-[10px] font-bold text-ink-soft">1.6</span></div><div class="text-[12px] font-medium">정시 당직 - 운영1팀</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-amber">일정</span><span class="text-[10px] font-bold text-ink-soft">1.5</span></div><div class="text-[12px] font-medium">정시 당직 - 운영2팀</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-sage">계약</span><span class="text-[10px] font-bold text-ink-soft">계약완료</span></div><div class="text-[12px] font-medium">조선대 · 수시</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-amber">일정</span><span class="text-[10px] font-bold text-ink-soft">1.4</span></div><div class="text-[12px] font-medium">정시 당직 - 운영3팀</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-sage">계약</span><span class="text-[10px] font-bold text-ink-soft">계약완료</span></div><div class="text-[12px] font-medium">부산대 · 정시</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-gold">인수인계</span><span class="text-[10px] font-bold text-ink-soft">완료</span></div><div class="text-[12px] font-medium">전남대 · 수시모집</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-amber">일정</span><span class="text-[10px] font-bold text-ink-soft">1.3</span></div><div class="text-[12px] font-medium">정시 당직 - 운영4팀</div></li>
+            <li class="px-3 py-2"><div class="flex gap-1.5 items-center mb-0.5"><span class="badge bg-sage">계약</span><span class="text-[10px] font-bold text-ink-soft">계약완료</span></div><div class="text-[12px] font-medium">충남대 · 수시</div></li>
+          </ul></div>
+        </div>
+      </div>
+      <!-- 우(3): 피드 -->
+      <div class="lg:col-span-3 flex flex-col gap-6">
+        <div class="flex-1 flex flex-col">
+          <h3 class="text-2xl font-black leading-tight mb-1 tracking-tight">우선순위 피드</h3>
+          <div class="border-y border-line py-1 text-[10px] font-bold text-muted uppercase tracking-[0.1em] mb-4 flex justify-between items-center"><span>Live Feed</span><span class="bg-ink text-cream px-1.5 py-0.5 text-[9px] tabular-nums">62건</span></div>
+          <div class="flex flex-wrap gap-1 mb-3 text-[10px] font-bold uppercase">
+            <button class="bg-ink text-cream px-2 py-1">전체 62</button><button class="border border-line-soft text-muted px-2 py-1">사고 20</button><button class="border border-line-soft text-muted px-2 py-1">일정 15</button><button class="border border-line-soft text-muted px-2 py-1">계약 8</button><button class="border border-line-soft text-muted px-2 py-1">인수인계 6</button><button class="border border-line-soft text-muted px-2 py-1">서비스 5</button><button class="border border-line-soft text-muted px-2 py-1">백업 4</button><button class="border border-line-soft text-muted px-2 py-1">미수채권 2</button><button class="border border-line-soft text-muted px-2 py-1">할일 1</button><button class="border border-line-soft text-muted px-2 py-1">공지 1</button>
+          </div>
+          <div id="feed-list" class="flex flex-col gap-2.5">
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-vermilion">사고</span><span class="text-[10px] text-faint tabular-nums">09:41 · 오늘</span></div><div class="font-bold text-sm leading-snug">#INC-2026-031 경위서 긴급 검토</div><div class="text-[10px] text-muted mt-0.5">서울대 입학처 시스템 접속 장애</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-vermilion-deep">미수채권</span><span class="text-[10px] text-faint tabular-nums">D+18</span></div><div class="font-bold text-sm leading-snug">서울대학교 3,200,000원 미수</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-gold">인수인계</span><span class="text-[10px] text-faint tabular-nums">3일 전</span></div><div class="font-bold text-sm leading-snug">#HO-0438 진행률 12% — 지연</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-indigo">백업</span><span class="text-[10px] text-faint tabular-nums">09:18</span></div><div class="font-bold text-sm leading-snug">[고려대] 백업 미확인 3건</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-amber">일정</span><span class="text-[10px] text-faint tabular-nums">10:00</span></div><div class="font-bold text-sm leading-snug">미수채권 독려 메일 발송 예정</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-sage">계약</span><span class="text-[10px] text-faint tabular-nums">09:05</span></div><div class="font-bold text-sm leading-snug">서강대 수시 1차 계약 체결 확인</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-vermilion">사고</span><span class="text-[10px] text-faint tabular-nums">어제</span></div><div class="font-bold text-sm leading-snug">#INC-2026-029 중복지원 예외처리</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-indigo">백업</span><span class="text-[10px] text-faint tabular-nums">08:52</span></div><div class="font-bold text-sm leading-snug">[연세대] 백업 요청 5건 접수</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-amber">일정</span><span class="text-[10px] text-faint tabular-nums">1.6</span></div><div class="font-bold text-sm leading-snug">정시 당직 - 운영1팀</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-gold">인수인계</span><span class="text-[10px] text-faint tabular-nums">2일 전</span></div><div class="font-bold text-sm leading-snug">부산대학교 · 수시 인수인계 작성중</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-vermilion-deep">미수채권</span><span class="text-[10px] text-faint tabular-nums">D+11</span></div><div class="font-bold text-sm leading-snug">고려대학교 1,800,000원 미수</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-sage">계약</span><span class="text-[10px] text-faint tabular-nums">어제</span></div><div class="font-bold text-sm leading-snug">경북대 · 수시 계약 검토중</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-amber">일정</span><span class="text-[10px] text-faint tabular-nums">1.5</span></div><div class="font-bold text-sm leading-snug">정시 당직 - 운영2팀</div></div>
+            <div class="feed-card border border-line-soft p-3 bg-white"><div class="flex justify-between items-center mb-1"><span class="badge bg-indigo">백업</span><span class="text-[10px] text-faint tabular-nums">08:30</span></div><div class="font-bold text-sm leading-snug">[성균관대] 백업 미확인 2건</div></div>
+          </div>
+          <div id="feed-nav" class="flex items-center justify-between mt-3 text-[11px] font-bold text-muted">
+            <button id="feed-prev" class="border border-line-soft px-3 py-1 disabled:opacity-30 hover:bg-washi-raised">◀ 이전</button>
+            <span id="feed-page" class="tabular-nums">1 / 1</span>
+            <button id="feed-next" class="border border-line-soft px-3 py-1 disabled:opacity-30 hover:bg-washi-raised">다음 ▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  (function(){
+    function tick(){
+      var p = new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date());
+      var g = function(t){var f=p.find(function(x){return x.type===t});return f?f.value:'';};
+      var el = document.getElementById('mast-date');
+      if(el) el.textContent = 'Vol. '+g('year')+' / '+g('month')+' · '+g('day')+'('+g('weekday')+') '+g('hour')+':'+g('minute')+':'+g('second')+' KST';
+      // 퇴근(18:00 KST)까지 남은 시간
+      var cd = document.getElementById('leave-countdown');
+      var wrap = document.getElementById('leave-wrap');
+      if(cd && wrap){
+        var nowSec = parseInt(g('hour'),10)*3600 + parseInt(g('minute'),10)*60 + parseInt(g('second'),10);
+        var remain = 18*3600 - nowSec;
+        if(remain > 0){
+          var hh = Math.floor(remain/3600), mm = Math.floor((remain%3600)/60), ss = remain%60;
+          var pad = function(n){return (n<10?'0':'')+n;};
+          cd.textContent = hh+':'+pad(mm)+':'+pad(ss);
+        } else {
+          wrap.textContent = '(업무 종료)';
+        }
+      }
+    }
+    tick(); setInterval(tick, 1000);
+
+    // 우선순위 피드 — 10개씩 페이지 넘기기
+    (function(){
+      var PAGE = 10;
+      var cards = [].slice.call(document.querySelectorAll('#feed-list .feed-card'));
+      var prev = document.getElementById('feed-prev');
+      var next = document.getElementById('feed-next');
+      var ind = document.getElementById('feed-page');
+      var nav = document.getElementById('feed-nav');
+      if(!cards.length || !nav) return;
+      var pages = Math.ceil(cards.length / PAGE);
+      var page = 0;
+      function render(){
+        cards.forEach(function(c, i){
+          var on = i >= page*PAGE && i < (page+1)*PAGE;
+          c.style.display = on ? '' : 'none';
+        });
+        ind.textContent = (page+1) + ' / ' + pages;
+        prev.disabled = page === 0;
+        next.disabled = page >= pages-1;
+        if(pages <= 1) nav.style.display = 'none';
+      }
+      prev.addEventListener('click', function(){ if(page>0){ page--; render(); }});
+      next.addEventListener('click', function(){ if(page<pages-1){ page++; render(); }});
+      render();
+    })();
+
+    // 시스템 로그 — 펼치기/접기
+    (function(){
+      var toggle = document.getElementById('syslog-toggle');
+      var panel = document.getElementById('syslog-panel');
+      var caret = document.getElementById('syslog-caret');
+      if(!toggle || !panel) return;
+      function setOpen(open){
+        panel.classList.toggle('hidden', !open);
+        if(caret) caret.style.transform = open ? 'rotate(90deg)' : '';
+      }
+      toggle.addEventListener('click', function(e){
+        e.stopPropagation();
+        setOpen(panel.classList.contains('hidden'));
+      });
+      document.addEventListener('click', function(e){
+        if(!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== toggle){
+          setOpen(false);
+        }
+      });
+    })();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>운영부 상황실 · 실시간 현황</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+/* ══════════════════════════════════════════════════════
+   OPS-Console Design Tokens — 1:1 globals.css 동기
+   ══════════════════════════════════════════════════════ */
+:root {
+  --washi:         #ede6d2;
+  --washi-raised:  #f4eddd;
+  --cream:         #faf4e6;
+  --paper:         #fbf7f0;
+  --sidebar:       #efe7d7;
+  --sidebar-hover: #dcd4bc;
+  --ink:           #15120c;
+  --ink-soft:      #3d3529;
+  --muted:         #716855;
+  --faint:         #a8a08a;
+  --line:          #15120c;
+  --line-soft:     rgba(21,18,12,0.12);
+  --vermilion:     #b8331e;
+  --vermilion-deep:#8e2412;
+  --indigo:        #1f3a5f;
+  --amber:         #d97706;
+  --gold:          #9c7a2c;
+  --sage:          #556b2f;
+
+  /* Typography — globals.css 스케일 */
+  --text-xs:  11px;
+  --text-sm:  12px;
+  --text-md:  13px;
+  --text-lg:  15px;
+  --text-xl:  20px;
+  --text-2xl: 26px;
+  --text-3xl: 40px;
+
+  /* Spacing */
+  --sp1: 4px;
+  --sp2: 8px;
+  --sp3: 12px;
+  --sp4: 16px;
+  --sp5: 20px;
+  --sp6: 28px;
+  --sp7: 40px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   Base
+   ══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-padding-top: 80px;
+}
+
+body {
+  background: var(--washi);
+  color: var(--ink);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'ss06' on;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Washi 종이 텍스처 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' seed='5'/><feColorMatrix values='0 0 0 0 0.82 0 0 0 0 0.74 0 0 0 0 0.58 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 34px 28px auto 1fr;
+}
+
+/* ══════════════════════════════════════════════════════
+   TITLE BAR (folio-dashboard.html 원형 유지)
+   ══════════════════════════════════════════════════════ */
+.titlebar {
+  background: var(--ink);
+  color: var(--cream);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.window-ctrls {
+  display: flex;
+  gap: 7px;
+  margin-right: 18px;
+}
+.window-ctrls .c {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(250,244,230,0.2);
+}
+.window-ctrls .c:nth-child(1) { background: var(--vermilion); }
+.window-ctrls .c:nth-child(2) { background: var(--gold); }
+.window-ctrls .c:nth-child(3) { background: var(--sage); }
+
+.titlebar-text {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.titlebar-text em {
+  color: var(--vermilion);
+  font-style: normal;
+  margin: 0 6px;
+}
+.titlebar-text .en {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-left: 8px;
+}
+.titlebar-right {
+  display: flex;
+  gap: 14px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════════════════
+   COMMAND BAR — 시스템 헬스 + 실시간 로그 티커
+   ══════════════════════════════════════════════════════ */
+.command-bar {
+  background: var(--washi-raised);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 0;
+  overflow: hidden;
+}
+
+.health-cluster {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  padding-right: 18px;
+  border-right: 1px solid var(--line-soft);
+  height: 100%;
+}
+
+.health-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.led.ok {
+  background: var(--sage);
+  box-shadow: 0 0 4px var(--sage);
+  animation: led-pulse 2.4s ease-in-out infinite;
+}
+.led.warn {
+  background: var(--amber);
+  box-shadow: 0 0 4px var(--amber);
+  animation: led-pulse 1.6s ease-in-out infinite;
+}
+.led.err {
+  background: var(--vermilion);
+  box-shadow: 0 0 4px var(--vermilion);
+  animation: led-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes led-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.9); }
+  50%       { opacity: 1;    transform: scale(1.15); }
+}
+
+.ticker-wrap {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 18px;
+  position: relative;
+}
+.ticker-wrap::before,
+.ticker-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 32px;
+  z-index: 2;
+  pointer-events: none;
+}
+.ticker-wrap::before {
+  left: 18px;
+  background: linear-gradient(to right, var(--washi-raised), transparent);
+}
+.ticker-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--washi-raised), transparent);
+}
+
+.ticker-track {
+  display: flex;
+  gap: 0;
+  width: max-content;
+  animation: ticker-scroll 42s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
+
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 22px 0 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ticker-item .t-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex-shrink: 0;
+}
+.ticker-item .t-dot.info { background: var(--indigo); }
+.ticker-item .t-dot.warn { background: var(--amber); }
+.ticker-item .t-dot.err  { background: var(--vermilion); }
+.ticker-item .t-time {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+.ticker-item .t-msg { color: var(--ink-soft); }
+.ticker-item .t-sep {
+  color: var(--faint);
+  margin: 0 10px 0 0;
+  font-size: 9px;
+}
+
+.bar-live {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 16px;
+  border-left: 1px solid var(--line-soft);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--vermilion);
+}
+.bar-live .live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--vermilion);
+  animation: live-dot 1.2s ease-in-out infinite;
+}
+@keyframes live-dot {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════
+   MAIN LAYOUT — 사이드바 + 콘텐츠
+   ══════════════════════════════════════════════════════ */
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  overflow: hidden;
+  height: calc(100vh - 34px - 28px);
+}
+
+/* ── 사이드바 (folio-dashboard 원형) ── */
+.sidebar {
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  padding: 16px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--faint); }
+
+.sb-section {
+  padding: 0 14px;
+  margin-bottom: 20px;
+}
+.sb-title {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sb-title .dash {
+  flex: 1;
+  height: 1px;
+  background: var(--line-soft);
+}
+
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 8px 5px 6px;
+  cursor: pointer;
+  font-size: var(--text-md);
+  color: var(--ink-soft);
+  border-left: 2px solid transparent;
+  margin: 0 -14px;
+  padding-left: 20px;
+  min-height: 32px;
+  transition: background 0.1s;
+  text-decoration: none;
+}
+.sb-item:hover { background: var(--sidebar-hover); }
+.sb-item.active {
+  background: var(--washi-raised);
+  border-left-color: var(--vermilion);
+  color: var(--ink);
+  font-weight: 500;
+}
+.sb-item .ico {
+  font-size: 13px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.sb-item.active .ico { color: var(--vermilion); }
+.sb-item .count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.sb-item.active .count { color: var(--vermilion); font-weight: 500; }
+.sb-item .count.urgent {
+  background: var(--vermilion);
+  color: var(--cream);
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════
+   CONTENT AREA
+   ══════════════════════════════════════════════════════ */
+.content {
+  background: var(--cream);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.content::-webkit-scrollbar { width: 6px; }
+.content::-webkit-scrollbar-thumb {
+  background: var(--line-soft);
+  border-radius: 4px;
+}
+
+/* ── 페이지 헤더 ── */
+.page-head {
+  padding: 32px 40px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--cream);
+}
+
+.page-head .overline {
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.page-head .overline .sep { color: var(--faint); }
+.page-head .overline .date-badge {
+  color: var(--vermilion);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  font-weight: 500;
+}
+
+/* 핵심 헤드라인 — 큰 에디토리얼 타이포 */
+.headline-block {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 24px;
+}
+.headline-text {
+  font-size: clamp(22px, 2.4vw, 32px);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  max-width: 740px;
+}
+.headline-text .hl-num {
+  color: var(--vermilion);
+  font-variant-numeric: tabular-nums;
+}
+.headline-text .hl-sep {
+  color: var(--faint);
+  font-weight: 400;
+  margin: 0 4px;
+  font-size: 0.85em;
+}
+.headline-sub {
+  margin-top: 8px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.headline-stamp {
+  width: 52px; height: 52px;
+  border: 2px solid var(--vermilion);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--vermilion);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.headline-stamp .stamp-num {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.headline-stamp .stamp-label {
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+/* ── 대시보드 그리드 ── */
+.dash-body {
+  flex: 1;
+  padding: 24px 40px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION 1 — 서비스 라이프사이클 파이프
+   ══════════════════════════════════════════════════════ */
+.section-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-soft);
+}
+
+.pipeline {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  align-items: center;
+  background: var(--washi-raised);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.pipe-stage {
+  padding: 18px 20px 16px;
+  position: relative;
+}
+.pipe-stage:hover { background: rgba(21,18,12,0.03); }
+
+.pipe-stage .stage-label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.pipe-stage .stage-count {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.pipe-stage .stage-count.has-alert { color: var(--vermilion); }
+.pipe-stage .stage-count.ok-count  { color: var(--sage); }
+.pipe-stage .stage-desc {
+  font-size: 10px;
+  color: var(--faint);
+  margin-top: 4px;
+}
+.pipe-stage .stage-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+}
+.pipe-stage.s1 .stage-bar { background: var(--indigo); }
+.pipe-stage.s2 .stage-bar { background: var(--amber); }
+.pipe-stage.s3 .stage-bar { background: var(--sage); }
+.pipe-stage.s4 .stage-bar { background: var(--gold); }
+
+.pipe-arrow {
+  padding: 0 2px;
+  color: var(--faint);
+  font-size: 16px;
+  user-select: none;
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION 2 — 메트릭 카드 5종
+   ══════════════════════════════════════════════════════ */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
+.metric-card {
+  background: var(--washi-raised);
+  border: 1px solid var(--line-soft);
+  padding: 18px 18px 16px;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: border-color 0.15s;
+}
+.metric-card:hover { border-color: var(--line); }
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+.metric-card.c-contract::before { background: var(--indigo); }
+.metric-card.c-receivable::before { background: var(--vermilion); }
+.metric-card.c-backup::before { background: var(--amber); }
+.metric-card.c-handover::before { background: var(--sage); }
+.metric-card.c-contact::before { background: var(--gold); }
+
+.metric-card .m-icon {
+  font-size: 16px;
+  margin-bottom: 10px;
+  opacity: 0.7;
+}
+.metric-card .m-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.metric-card .m-num {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.metric-card .m-num .m-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 2px;
+}
+.metric-card .m-desc {
+  font-size: 10px;
+  color: var(--faint);
+  line-height: 1.4;
+}
+.metric-card .m-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 6px;
+  padding: 2px 7px;
+  font-variant-numeric: tabular-nums;
+}
+.metric-card .m-delta.up {
+  color: var(--vermilion);
+  background: rgba(184,51,30,0.08);
+}
+.metric-card .m-delta.steady {
+  color: var(--muted);
+  background: rgba(21,18,12,0.06);
+}
+.metric-card .m-delta.ok {
+  color: var(--sage);
+  background: rgba(85,107,47,0.1);
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION 3 — 통합 우선순위 피드
+   ══════════════════════════════════════════════════════ */
+.feed-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--washi-raised);
+  border: 1px solid var(--line);
+}
+
+.feed-header {
+  padding: 14px 20px 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.feed-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.feed-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.feed-meta {
+  font-size: var(--text-xs);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 밑줄형 필터 칩 — folio-dashboard 탭 언어 그대로 */
+.filter-chips {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+
+.fchip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color 0.1s, border-color 0.1s;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
+}
+.fchip:hover { color: var(--ink); }
+.fchip.active {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--vermilion);
+}
+.fchip .chip-count {
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  background: var(--line-soft);
+  color: var(--muted);
+  min-width: 18px;
+  text-align: center;
+}
+.fchip.active .chip-count {
+  background: var(--vermilion);
+  color: var(--cream);
+}
+
+/* 피드 테이블 */
+.feed-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.feed-table thead tr {
+  border-bottom: 1px solid var(--line);
+  background: var(--washi);
+}
+.feed-table thead th {
+  padding: 8px 14px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.feed-table thead th.right { text-align: right; }
+
+.feed-table tbody tr {
+  border-bottom: 1px dashed var(--line-soft);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.feed-table tbody tr:hover { background: rgba(21,18,12,0.03); }
+.feed-table tbody tr.pinned { background: rgba(184,51,30,0.04); }
+.feed-table tbody tr:last-child { border-bottom: none; }
+
+.feed-table td {
+  padding: 10px 14px;
+  font-size: var(--text-sm);
+  color: var(--ink-soft);
+  vertical-align: middle;
+}
+
+/* 구분 배지 */
+.badge {
+  display: inline-block;
+  padding: 2px 8px 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.badge.b-service  { background: var(--indigo);   color: var(--cream); }
+.badge.b-incident { background: var(--vermilion); color: var(--cream); }
+.badge.b-todo     { background: var(--muted);     color: var(--cream); }
+.badge.b-backup   { background: var(--amber);     color: var(--cream); }
+.badge.b-handover { background: var(--sage);      color: var(--cream); }
+.badge.b-schedule { background: var(--gold);      color: var(--cream); }
+.badge.b-contract { background: var(--ink-soft);  color: var(--cream); }
+.badge.b-notice   { background: var(--faint);     color: var(--ink); }
+.badge.b-recv     { border: 1px solid var(--vermilion); color: var(--vermilion); background: transparent; }
+
+/* 상태 칩 */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.status-chip .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-chip.open  .dot { background: var(--amber); }
+.status-chip.done  .dot { background: var(--sage); }
+.status-chip.urgent .dot { background: var(--vermilion); animation: led-pulse 0.9s ease-in-out infinite; }
+.status-chip.pending .dot { background: var(--faint); }
+.status-chip.urgent { color: var(--vermilion); font-weight: 700; }
+
+.feed-content {
+  font-size: var(--text-md);
+  color: var(--ink);
+  font-weight: 400;
+}
+.feed-content .sub {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.feed-content .tag {
+  display: inline-block;
+  font-size: 9px;
+  color: var(--faint);
+  border: 1px solid var(--line-soft);
+  padding: 0px 5px;
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.feed-time {
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+.feed-time .ago {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 1px;
+}
+
+/* 긴급 강조행 */
+.pinned td:first-child {
+  position: relative;
+}
+.pinned td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--vermilion);
+}
+
+/* ══════════════════════════════════════════════════════
+   UTILITIES
+   ══════════════════════════════════════════════════════ */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0);
+  white-space: nowrap; border: 0;
+}
+</style>
+</head>
+
+<body>
+<div class="app" role="application">
+
+  <!-- ① 타이틀 바 -->
+  <header class="titlebar" role="banner">
+    <div class="window-ctrls" aria-hidden="true">
+      <span class="c"></span>
+      <span class="c"></span>
+      <span class="c"></span>
+    </div>
+    <div class="titlebar-text" aria-label="운영부 상황실 OPS Console">
+      운영부 <em>상황실</em> <span class="en">OPS CONSOLE</span>
+    </div>
+    <div class="titlebar-right" aria-label="시스템 정보">
+      <span>v2.11.0</span>
+      <span>PROD</span>
+      <span id="titlebar-clock">09:42:17</span>
+    </div>
+  </header>
+
+  <!-- ② 커맨드 바 — 시스템 헬스 + 로그 티커 -->
+  <div class="command-bar" role="status" aria-live="polite" aria-label="시스템 상태 및 실시간 로그">
+    <div class="health-cluster" aria-label="시스템 헬스">
+      <div class="health-item">
+        <span class="led ok" aria-label="서버 정상"></span>
+        <span>서버</span>
+      </div>
+      <div class="health-item">
+        <span class="led ok" aria-label="빌드 정상"></span>
+        <span>빌드</span>
+      </div>
+      <div class="health-item">
+        <span class="led warn" aria-label="SmileEDI 경고"></span>
+        <span>SmileEDI</span>
+      </div>
+      <div class="health-item">
+        <span class="led ok" aria-label="DB 정상"></span>
+        <span>DB</span>
+      </div>
+      <div class="health-item">
+        <span class="led ok" aria-label="메일 서버 정상"></span>
+        <span>메일</span>
+      </div>
+    </div>
+
+    <div class="ticker-wrap" aria-label="실시간 운영 로그">
+      <div class="ticker-track" aria-hidden="true">
+        <!-- 항목 복제 (seamless loop) -->
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:41</span><span class="t-msg">한국대학교 수시 2차 인수인계 요청 메일 발송 완료</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot warn"></span><span class="t-time">09:38</span><span class="t-msg">미수채권 독려 예약 — 13건 · 오전 10:00 발송 예정</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot err"></span><span class="t-time">09:35</span><span class="t-msg">사고보고 #2024-031 접수 — 경희대학교 학생부종합 면접 일정 오류</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:29</span><span class="t-msg">서강대 수시 1차 계약 체결 확인 — 계약서 서명 완료</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:21</span><span class="t-msg">홍길동 → 5월 연차 백업 — 담당 서비스 3건 인수 처리</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot warn"></span><span class="t-time">09:15</span><span class="t-msg">이화여대 정시 마감 D-2 — 서비스 마감 체크리스트 미완 3항목</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:08</span><span class="t-msg">인사이트 수집 잡 완료 — 신규 영상 12건 적재</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">08:59</span><span class="t-msg">연세대 학생부교과 미수채권 입금 확인 — ₩2,200,000 자동 매칭</span><span class="t-sep">·</span></div>
+        <!-- 루프 복제 -->
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:41</span><span class="t-msg">한국대학교 수시 2차 인수인계 요청 메일 발송 완료</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot warn"></span><span class="t-time">09:38</span><span class="t-msg">미수채권 독려 예약 — 13건 · 오전 10:00 발송 예정</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot err"></span><span class="t-time">09:35</span><span class="t-msg">사고보고 #2024-031 접수 — 경희대학교 학생부종합 면접 일정 오류</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:29</span><span class="t-msg">서강대 수시 1차 계약 체결 확인 — 계약서 서명 완료</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:21</span><span class="t-msg">홍길동 → 5월 연차 백업 — 담당 서비스 3건 인수 처리</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot warn"></span><span class="t-time">09:15</span><span class="t-msg">이화여대 정시 마감 D-2 — 서비스 마감 체크리스트 미완 3항목</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">09:08</span><span class="t-msg">인사이트 수집 잡 완료 — 신규 영상 12건 적재</span><span class="t-sep">·</span></div>
+        <div class="ticker-item"><span class="t-dot info"></span><span class="t-time">08:59</span><span class="t-msg">연세대 학생부교과 미수채권 입금 확인 — ₩2,200,000 자동 매칭</span><span class="t-sep">·</span></div>
+      </div>
+    </div>
+
+    <div class="bar-live" aria-label="실시간 갱신 중">
+      <span class="live-dot" aria-hidden="true"></span>
+      LIVE
+    </div>
+  </div>
+
+  <!-- ③ 메인 레이아웃 -->
+  <div class="layout" role="main">
+
+    <!-- 사이드바 -->
+    <nav class="sidebar" aria-label="운영 메뉴">
+      <div class="sb-section">
+        <div class="sb-title">
+          <span>현황 관제</span>
+          <span class="dash"></span>
+        </div>
+        <a class="sb-item active" href="#" aria-current="page">
+          <span class="ico" aria-hidden="true">◉</span>
+          실시간 현황
+          <span class="count urgent" aria-label="긴급 3건">3</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">▦</span>
+          서비스 관리
+          <span class="count">47</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">◐</span>
+          사고 보고
+          <span class="count urgent" aria-label="긴급 3건">3</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">◷</span>
+          일정 관리
+          <span class="count">8</span>
+        </a>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">
+          <span>운영 업무</span>
+          <span class="dash"></span>
+        </div>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">◈</span>
+          계약 관리
+          <span class="count">12</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">◎</span>
+          미수채권
+          <span class="count urgent" aria-label="독촉 13건">13</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">⇄</span>
+          백업 요청
+          <span class="count">5</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">⇒</span>
+          인수인계
+          <span class="count">7</span>
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">☎</span>
+          대학 연락처
+        </a>
+      </div>
+
+      <div class="sb-section">
+        <div class="sb-title">
+          <span>분석 · AI</span>
+          <span class="dash"></span>
+        </div>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">◆</span>
+          AI 인사이트
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">▣</span>
+          업무 활동 로그
+        </a>
+        <a class="sb-item" href="#">
+          <span class="ico" aria-hidden="true">⚙</span>
+          자동화 잡
+        </a>
+      </div>
+    </nav>
+
+    <!-- 콘텐츠 -->
+    <div class="content">
+
+      <!-- 페이지 헤더 -->
+      <header class="page-head">
+        <div class="overline" aria-hidden="true">
+          <span>운영부 상황실</span>
+          <span class="sep">·</span>
+          <span>실시간 현황</span>
+          <span class="sep">·</span>
+          <span class="date-badge">2026.06.11 (수)</span>
+        </div>
+        <div class="headline-block">
+          <div>
+            <h1 class="headline-text">
+              미처리 사고 <span class="hl-num">3</span>건<span class="hl-sep">·</span>오늘 마감 서비스 <span class="hl-num">2</span>건<span class="hl-sep">·</span>미수채권 독려 <span class="hl-num">10:00</span> 발송 예정
+            </h1>
+            <p class="headline-sub">마지막 갱신 09:42:17 &nbsp;—&nbsp; 총 미처리 우선순위 항목 <strong>19</strong>건</p>
+          </div>
+          <div class="headline-stamp" aria-label="긴급 3건">
+            <span class="stamp-num">3</span>
+            <span class="stamp-label">긴급</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 대시보드 바디 -->
+      <div class="dash-body">
+
+        <!-- Section A: 서비스 라이프사이클 파이프 -->
+        <section aria-labelledby="pipeline-heading">
+          <div class="section-label">
+            <span id="pipeline-heading">서비스 라이프사이클</span>
+          </div>
+          <div class="pipeline" role="list">
+            <div class="pipe-stage s1" role="listitem">
+              <div class="pipe-stage .stage-bar"></div>
+              <div class="stage-label">오픈 예정</div>
+              <div class="stage-count">8</div>
+              <div class="stage-desc">D-30 이내 오픈 대기</div>
+              <span class="stage-bar" aria-hidden="true"></span>
+            </div>
+            <div class="pipe-arrow" aria-hidden="true">→</div>
+            <div class="pipe-stage s2" role="listitem">
+              <div class="stage-label">진행 중</div>
+              <div class="stage-count has-alert">23</div>
+              <div class="stage-desc">사고 3건 포함</div>
+              <span class="stage-bar" aria-hidden="true"></span>
+            </div>
+            <div class="pipe-arrow" aria-hidden="true">→</div>
+            <div class="pipe-stage s3" role="listitem">
+              <div class="stage-label">마감 완료</div>
+              <div class="stage-count ok-count">16</div>
+              <div class="stage-desc">이번 달 기준</div>
+              <span class="stage-bar" aria-hidden="true"></span>
+            </div>
+            <div class="pipe-arrow" aria-hidden="true">→</div>
+            <div class="pipe-stage s4" role="listitem">
+              <div class="stage-label">전형료 정산</div>
+              <div class="stage-count">5</div>
+              <div class="stage-desc">미수채권 포함</div>
+              <span class="stage-bar" aria-hidden="true"></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section B: 서비스 현황 메트릭 5종 -->
+        <section aria-labelledby="metrics-heading">
+          <div class="section-label">
+            <span id="metrics-heading">핵심 지표</span>
+          </div>
+          <div class="metrics-row">
+
+            <article class="metric-card c-contract" aria-label="계약 체결 현황">
+              <div class="m-icon" aria-hidden="true">◈</div>
+              <div class="m-label">계약 체결</div>
+              <div class="m-num">12<span class="m-unit">건</span></div>
+              <div class="m-desc">이번 달 신규 체결</div>
+              <div class="m-delta up" aria-label="전월 대비 2건 증가">↑ +2건</div>
+            </article>
+
+            <article class="metric-card c-receivable" aria-label="미수채권 현황">
+              <div class="m-icon" aria-hidden="true">◎</div>
+              <div class="m-label">미수채권</div>
+              <div class="m-num">₩<span style="font-size:22px">3,750</span><span class="m-unit">만</span></div>
+              <div class="m-desc">독촉 대상 13건 포함</div>
+              <div class="m-delta up" aria-label="이전 대비 증가">↑ 미처리 13건</div>
+            </article>
+
+            <article class="metric-card c-backup" aria-label="백업 요청 현황">
+              <div class="m-icon" aria-hidden="true">⇄</div>
+              <div class="m-label">백업 요청</div>
+              <div class="m-num">5<span class="m-unit">건</span></div>
+              <div class="m-desc">진행 중 2 · 완료 3</div>
+              <div class="m-delta steady" aria-label="변동 없음">— 전주 동일</div>
+            </article>
+
+            <article class="metric-card c-handover" aria-label="인수인계 현황">
+              <div class="m-icon" aria-hidden="true">⇒</div>
+              <div class="m-label">인수인계</div>
+              <div class="m-num">7<span class="m-unit">건</span></div>
+              <div class="m-desc">요청 4 · 수신 3</div>
+              <div class="m-delta ok" aria-label="처리 완료 증가">↓ 완료 4건</div>
+            </article>
+
+            <article class="metric-card c-contact" aria-label="대학 연락처 현황">
+              <div class="m-icon" aria-hidden="true">☎</div>
+              <div class="m-label">대학 연락처</div>
+              <div class="m-num">148<span class="m-unit">개교</span></div>
+              <div class="m-desc">최근 업데이트 3건</div>
+              <div class="m-delta steady" aria-label="변동 없음">— 이번 주 +3</div>
+            </article>
+
+          </div>
+        </section>
+
+        <!-- Section C: 통합 우선순위 피드 -->
+        <section aria-labelledby="feed-heading">
+          <div class="feed-section">
+
+            <div class="feed-header">
+              <div class="feed-title-row">
+                <h2 class="feed-title" id="feed-heading">우선순위 피드</h2>
+                <span class="feed-meta">총 19건 · 09:42 기준</span>
+              </div>
+
+              <!-- 밑줄형 필터 칩 -->
+              <div class="filter-chips" role="tablist" aria-label="피드 필터">
+                <button class="fchip active" role="tab" aria-selected="true" aria-controls="feed-body">
+                  전체 <span class="chip-count">19</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  서비스 <span class="chip-count">6</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  내 할일 <span class="chip-count">4</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  사고 <span class="chip-count">3</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  백업 <span class="chip-count">2</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  인수인계 <span class="chip-count">1</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  일정 <span class="chip-count">1</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  계약 <span class="chip-count">1</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  공지 <span class="chip-count">0</span>
+                </button>
+                <button class="fchip" role="tab" aria-selected="false">
+                  미수채권 <span class="chip-count">1</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 테이블 -->
+            <div id="feed-body" role="tabpanel">
+              <table class="feed-table" aria-label="우선순위 피드 목록">
+                <thead>
+                  <tr>
+                    <th scope="col">구분</th>
+                    <th scope="col">상태</th>
+                    <th scope="col">내용</th>
+                    <th scope="col" class="right">발생 시점</th>
+                  </tr>
+                </thead>
+                <tbody>
+
+                  <tr class="pinned" aria-label="긴급 항목">
+                    <td><span class="badge b-incident">사고</span></td>
+                    <td>
+                      <span class="status-chip urgent">
+                        <span class="dot" aria-hidden="true"></span>
+                        긴급
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        경희대학교 학생부종합 면접 일정 오류 — 담당 확인 요청
+                        <span class="sub">#2024-031 · 담당: 김운영 · 미할당</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      09:35
+                      <span class="ago">7분 전</span>
+                    </td>
+                  </tr>
+
+                  <tr class="pinned" aria-label="긴급 항목">
+                    <td><span class="badge b-service">서비스</span></td>
+                    <td>
+                      <span class="status-chip urgent">
+                        <span class="dot" aria-hidden="true"></span>
+                        마감 D-0
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        이화여대 정시 합격자 발표 — 오늘 마감
+                        <span class="sub">서비스 #S-2024-088 · 담당: 박담당 · 미완 3항목</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      08:00
+                      <span class="ago">오늘 마감</span>
+                    </td>
+                  </tr>
+
+                  <tr class="pinned" aria-label="긴급 항목">
+                    <td><span class="badge b-recv">미수채권</span></td>
+                    <td>
+                      <span class="status-chip urgent">
+                        <span class="dot" aria-hidden="true"></span>
+                        독촉 D+30
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        중앙대학교 학생부교과 미수 ₩4,800,000 — 미입금 30일 경과
+                        <span class="sub">학교 담당 이연락 (02-820-****) · 오늘 10:00 자동 발송</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      D+30
+                      <span class="ago">즉시 처리</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-service">서비스</span></td>
+                    <td>
+                      <span class="status-chip open">
+                        <span class="dot" aria-hidden="true"></span>
+                        진행 중
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        한양대학교 수시 2차 학생부종합 — 서류 접수 검토 중
+                        <span class="sub">#S-2024-091 · 담당: 이담당 · D-14</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      어제
+                      <span class="ago">D-14</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-todo">내 할일</span></td>
+                    <td>
+                      <span class="status-chip open">
+                        <span class="dot" aria-hidden="true"></span>
+                        미완료
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        고려대학교 정시 계약서 최종 검토 및 날인 처리
+                        <span class="sub">기한 오늘 18:00 · 생성 어제</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      어제
+                      <span class="ago">오늘 마감</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-backup">백업</span></td>
+                    <td>
+                      <span class="status-chip open">
+                        <span class="dot" aria-hidden="true"></span>
+                        진행 중
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        홍길동 5월 연차 백업 — 담당 서비스 3건 인수 진행
+                        <span class="sub">6월 14~16일 · 대리: 최백업</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      06/10
+                      <span class="ago">어제</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-incident">사고</span></td>
+                    <td>
+                      <span class="status-chip open">
+                        <span class="dot" aria-hidden="true"></span>
+                        검토 중
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        성균관대학교 수시 소프트웨어학과 선발 인원 오기재
+                        <span class="sub">#2024-030 · 담당: 최사고 · 경위서 작성 중</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      06/09
+                      <span class="ago">2일 전</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-handover">인수인계</span></td>
+                    <td>
+                      <span class="status-chip pending">
+                        <span class="dot" aria-hidden="true"></span>
+                        수신 대기
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        한국대학교 수시 2차 인수인계 — 메일 발송 완료, 수신 확인 대기
+                        <span class="sub">발송 09:41 · 수신자: 신담당</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      09:41
+                      <span class="ago">1분 전</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-contract">계약</span></td>
+                    <td>
+                      <span class="status-chip done">
+                        <span class="dot" aria-hidden="true"></span>
+                        체결 완료
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        서강대학교 수시 1차 계약 체결 확인 <span class="tag">계약서 수령</span>
+                        <span class="sub">#C-2024-067 · 계약금 ₩5,500,000</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      09:29
+                      <span class="ago">13분 전</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-schedule">일정</span></td>
+                    <td>
+                      <span class="status-chip open">
+                        <span class="dot" aria-hidden="true"></span>
+                        예정
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        팀 주간 운영 회의 — 6월 미수채권 현황 안건 포함
+                        <span class="sub">오늘 14:00 · 참석: 운영팀 전원</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      오늘
+                      <span class="ago">14:00</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-service">서비스</span></td>
+                    <td>
+                      <span class="status-chip open">
+                        <span class="dot" aria-hidden="true"></span>
+                        오픈 예정
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        연세대학교 정시 가군 — D-8 오픈 준비
+                        <span class="sub">#S-2024-094 · 담당: 정담당 · 체크리스트 7/10</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      06/09
+                      <span class="ago">D-8</span>
+                    </td>
+                  </tr>
+
+                  <tr>
+                    <td><span class="badge b-incident">사고</span></td>
+                    <td>
+                      <span class="status-chip done">
+                        <span class="dot" aria-hidden="true"></span>
+                        처리 완료
+                      </span>
+                    </td>
+                    <td>
+                      <div class="feed-content">
+                        서울대학교 정시 나군 원서접수 마감 시간 오안내 — 수정 완료
+                        <span class="sub">#2024-029 · 경위서 발송 완료</span>
+                      </div>
+                    </td>
+                    <td class="feed-time">
+                      06/08
+                      <span class="ago">3일 전</span>
+                    </td>
+                  </tr>
+
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </section>
+
+      </div><!-- /.dash-body -->
+    </div><!-- /.content -->
+  </div><!-- /.layout -->
+</div><!-- /.app -->
+
+<script>
+/* 실시간 시계 */
+(function () {
+  var el = document.getElementById('titlebar-clock');
+  if (!el) return;
+  function tick() {
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var s = String(now.getSeconds()).padStart(2, '0');
+    el.textContent = h + ':' + m + ':' + s;
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+/* 필터 칩 인터랙션 */
+(function () {
+  var chips = document.querySelectorAll('.fchip');
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chips.forEach(function (c) {
+        c.classList.remove('active');
+        c.setAttribute('aria-selected', 'false');
+      });
+      chip.classList.add('active');
+      chip.setAttribute('aria-selected', 'true');
+    });
+    chip.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        chip.click();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

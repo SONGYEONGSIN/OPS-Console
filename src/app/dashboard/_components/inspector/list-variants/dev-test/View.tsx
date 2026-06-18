@@ -5,8 +5,8 @@ import {
   requestEntertestRun,
   type EntertestActionState,
 } from "@/features/entertest/actions";
-import type { TestableService } from "@/features/entertest/queries";
-import type { EntertestRun, EntertestRunStatus } from "@/features/entertest/schemas";
+import type { EntertestRunStatus } from "@/features/entertest/schemas";
+import type { ViewProps } from "../types";
 
 const STATUS_LABEL: Record<EntertestRunStatus, string> = {
   pending: "대기",
@@ -31,46 +31,30 @@ function StatusBadge({ status }: { status: EntertestRunStatus }) {
 }
 
 /**
- * dev-test 우측 인스펙터.
- * 선택 서비스의 테스트 URL, 테스트 실행 폼, 실행 로그를 표시한다.
+ * dev-test variant 인스펙터 View — 선택 서비스의 테스트 URL, 실행 폼, 실행 이력.
+ * 행 외 데이터(runs/accountReady)는 page가 ListRow에 임베드(entertestRuns 등).
  */
-export function DevTestInspector({
-  service,
-  runs,
-  accountReady,
-}: {
-  service: TestableService | null;
-  runs: EntertestRun[];
-  accountReady: boolean;
-}) {
+export function DevTestView({ row }: ViewProps) {
   const [runState, runAction, runPending] = useActionState<
     EntertestActionState,
     FormData
   >(requestEntertestRun, undefined);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  if (!service) {
-    return (
-      <div className="flex h-full items-center justify-center border border-line bg-paper p-8">
-        <p className="text-sm text-muted">왼쪽에서 서비스를 선택하세요.</p>
-      </div>
-    );
-  }
-
-  const serviceRuns = runs.filter((r) => r.service_id === service.service_id);
-  const testUrl = `https://entertest.jinhakapply.com/Notice/${service.service_id}/A`;
+  const serviceId = row.serviceIdNum ?? 0;
+  const runs = row.entertestRuns ?? [];
+  const accountReady = row.entertestAccountReady ?? false;
+  const testUrl = `https://entertest.jinhakapply.com/Notice/${serviceId}/A`;
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 헤더 */}
       <div className="border border-line bg-paper px-4 py-3">
         <h2 className="text-sm font-semibold text-ink">
-          {service.university_name} — {service.service_name}
-          <span className="ml-1 font-normal text-muted">({service.service_id})</span>
+          {row.universityName} — {row.serviceName}
+          <span className="ml-1 font-normal text-muted">({serviceId})</span>
         </h2>
       </div>
 
-      {/* 테스트 URL */}
       <section className="border border-line bg-paper px-4 py-3">
         <h3 className="mb-1.5 text-xs font-semibold text-ink">테스트 URL</h3>
         <input
@@ -81,11 +65,10 @@ export function DevTestInspector({
         />
       </section>
 
-      {/* 테스트 실행 */}
       <section className="border border-line bg-paper px-4 py-3">
         <h3 className="mb-2 text-xs font-semibold text-ink">테스트 실행</h3>
         <form action={runAction} className="flex items-center gap-2">
-          <input type="hidden" name="serviceId" value={service.service_id} />
+          <input type="hidden" name="serviceId" value={serviceId} />
           <button
             type="submit"
             disabled={runPending || !accountReady}
@@ -108,19 +91,17 @@ export function DevTestInspector({
         )}
       </section>
 
-      {/* 실행 로그 */}
       <section className="border border-line bg-paper">
         <h3 className="border-b border-line-soft px-4 py-2 text-xs font-semibold text-ink">
-          실행 이력{" "}
-          <span className="font-normal text-muted">({serviceRuns.length}건)</span>
+          실행 이력 <span className="font-normal text-muted">({runs.length}건)</span>
         </h3>
-        {serviceRuns.length === 0 ? (
+        {runs.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-muted">
             이 서비스의 실행 이력이 없습니다.
           </p>
         ) : (
           <ul className="divide-y divide-line-soft">
-            {serviceRuns.map((run) => {
+            {runs.map((run) => {
               const open = expanded === run.id;
               return (
                 <li key={run.id}>

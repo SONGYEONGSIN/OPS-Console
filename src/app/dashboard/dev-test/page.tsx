@@ -1,6 +1,9 @@
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
+import { ListPattern } from "../_components/patterns/ListPattern";
+import type { ListRow } from "../_components/patterns/ListPattern";
+import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
@@ -8,22 +11,39 @@ import {
   listTestableServices,
   getMyEntertestAccount,
 } from "@/features/entertest/queries";
-import { DevTestClient } from "./DevTestClient";
+import type { EntertestRun } from "@/features/entertest/schemas";
+import { DevTestControls } from "./DevTestControls";
+
+const PAGE_SIZE = 30;
+
+/** null 제거 + 중복 제거 + 정렬한 distinct 옵션. */
+function distinct(values: (string | null)[]): string[] {
+  return [...new Set(values.filter((v): v is string => !!v))].sort();
+}
 
 /**
- * /dashboard/dev-test — closing_services 기반 서비스 선택 + 테스트 자동화.
- * 좌측: 서비스 목록(칩/셀렉트 필터 + 검색 + 클라이언트 페이지네이션).
- * 우측: 선택 서비스의 테스트 URL, 테스트 계정 등록/수정, 테스트 실행, 실행 로그.
+ * /dashboard/dev-test — 표준 ListPattern + dev-test variant 인스펙터.
+ * controlsRow: 테스트 계정 등록 + 검색/필터(searchParam). 행 클릭 → 인스펙터에서 테스트 실행/이력.
  */
-export default async function DevTestPage() {
+export default async function DevTestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    category?: string;
+    region?: string;
+    universityType?: string;
+    admissionType?: string;
+  }>;
+}) {
   const slug = "dev-test";
   await requireMenu(slug);
-
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const config = resolvePageMeta(slug, meta);
 
+  const sp = await searchParams;
   const me = await getCurrentOperator();
   const [services, runs, myAccount] = await Promise.all([
     listTestableServices(),
@@ -31,15 +51,86 @@ export default async function DevTestPage() {
     me ? getMyEntertestAccount(me.email) : Promise.resolve(null),
   ]);
 
+  // 필터 옵션은 전체 서비스 기준 distinct.
+  const options = {
+    categoryOptions: distinct(services.map((s) => s.category)),
+    regionOptions: distinct(services.map((s) => s.region)),
+    universityTypeOptions: distinct(services.map((s) => s.university_type)),
+    admissionTypeOptions: distinct(services.map((s) => s.admission_type)),
+  };
+
+  // searchParam 서버 필터.
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const filtered = services.filter((s) => {
+    if (sp.category && s.category !== sp.category) return false;
+    if (sp.region && s.region !== sp.region) return false;
+    if (sp.universityType && s.university_type !== sp.universityType)
+      return false;
+    if (sp.admissionType && s.admission_type !== sp.admissionType) return false;
+    if (
+      q &&
+      !`${s.university_name} ${s.service_name}`.toLowerCase().includes(q)
+    )
+      return false;
+    return true;
+  });
+
+  const total = filtered.length;
+  const page = sp.page ? Math.max(1, Number(sp.page)) : 1;
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // service_id별 실행 이력 그룹핑.
+  const runsByService = new Map<number, EntertestRun[]>();
+  for (const r of runs) {
+    if (r.service_id == null) continue;
+    const arr = runsByService.get(r.service_id) ?? [];
+    arr.push(r);
+    runsByService.set(r.service_id, arr);
+  }
+  const accountReady = !!myAccount;
+
+  const rows: ListRow[] = paged.map((s) => ({
+    id: String(s.service_id),
+    name: s.service_name,
+    status: "active",
+    owner: s.operator_name ?? "",
+    serviceIdNum: s.service_id,
+    universityName: s.university_name,
+    serviceName: s.service_name,
+    category: s.category ?? "",
+    region: s.region ?? "",
+    universityType: s.university_type ?? "",
+    operatorName: s.operator_name ?? "",
+    entertestRuns: runsByService.get(s.service_id) ?? [],
+    entertestAccountReady: accountReady,
+  }));
+
+  const config = resolvePageMeta(slug, meta, total);
+
   return (
-    <div className="flex flex-col">
+    <>
       <PageHeader
         pathname={pathname}
         meta={config.meta}
         headline={config.headline}
         description={config.description}
+        autoRefresh
       />
-      <DevTestClient services={services} runs={runs} myAccount={myAccount} />
-    </div>
+      <ListPattern
+        title="개발 테스트"
+        data={{ rows }}
+        variant="dev-test"
+        readOnly
+        liveData
+        controlsRow={<DevTestControls myAccount={myAccount} {...options} />}
+        footer={
+          <ListPagination
+            key="dev-test-pagination"
+            total={total}
+            pageSize={PAGE_SIZE}
+          />
+        }
+      />
+    </>
   );
 }

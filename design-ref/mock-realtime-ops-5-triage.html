@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>운영부 상황실 · 실시간 현황 — TRIAGE BOARD</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+/* ══════════════════════════════════════════════════════
+   OPS-Console Design Tokens — globals.css 1:1 동기
+   ══════════════════════════════════════════════════════ */
+:root {
+  --washi:          #ede6d2;
+  --washi-raised:   #f4eddd;
+  --cream:          #faf4e6;
+  --paper:          #fbf7f0;
+  --sidebar:        #efe7d7;
+  --sidebar-hover:  #dcd4bc;
+  --ink:            #15120c;
+  --ink-soft:       #3d3529;
+  --muted:          #716855;
+  --faint:          #a8a08a;
+  --line:           #15120c;
+  --line-soft:      rgba(21,18,12,0.12);
+  --line-mid:       rgba(21,18,12,0.22);
+  --vermilion:      #b8331e;
+  --vermilion-deep: #8e2412;
+  --indigo:         #1f3a5f;
+  --amber:          #d97706;
+  --gold:           #9c7a2c;
+  --sage:           #556b2f;
+
+  --text-3xs: 9px;
+  --text-2xs: 10px;
+  --text-xs:  11px;
+  --text-sm:  12px;
+  --text-md:  13px;
+  --text-lg:  15px;
+  --text-xl:  20px;
+  --text-2xl: 26px;
+  --text-3xl: 40px;
+
+  --sp1: 4px;
+  --sp2: 8px;
+  --sp3: 12px;
+  --sp4: 16px;
+  --sp5: 20px;
+  --sp6: 28px;
+  --sp7: 40px;
+
+  /* 트리아지 컬럼 두께 괘선 */
+  --col-rule: 2px solid var(--line);
+  --col-rule-soft: 1px solid var(--line-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   Base
+   ══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-padding-top: 80px; }
+
+body {
+  background: var(--washi);
+  color: var(--ink);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'ss06' on;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Washi 종이 텍스처 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' seed='5'/><feColorMatrix values='0 0 0 0 0.82 0 0 0 0 0.74 0 0 0 0 0.58 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 34px 28px auto auto 1fr;
+}
+
+/* ══════════════════════════════════════════════════════
+   TITLE BAR
+   ══════════════════════════════════════════════════════ */
+.titlebar {
+  background: var(--ink);
+  color: var(--cream);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.window-ctrls { display: flex; gap: 7px; margin-right: 18px; }
+.window-ctrls .c {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(250,244,230,0.2);
+}
+.window-ctrls .c:nth-child(1) { background: var(--vermilion); }
+.window-ctrls .c:nth-child(2) { background: var(--gold); }
+.window-ctrls .c:nth-child(3) { background: var(--sage); }
+
+.titlebar-text {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.titlebar-text em { color: var(--vermilion); font-style: normal; margin: 0 6px; }
+.titlebar-text .en { font-size: 12px; opacity: 0.8; margin-left: 8px; }
+.titlebar-right {
+  display: flex; gap: 14px;
+  font-size: 10px; letter-spacing: 0.08em; opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════════════════
+   COMMAND BAR — 시스템 헬스 LED + 실시간 로그 티커
+   ══════════════════════════════════════════════════════ */
+.command-bar {
+  background: var(--washi-raised);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 0;
+  overflow: hidden;
+}
+
+.health-cluster {
+  display: flex; align-items: center;
+  gap: 14px; flex-shrink: 0;
+  padding-right: 18px;
+  border-right: 1px solid var(--line-soft);
+  height: 100%;
+}
+.health-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* LED */
+.led {
+  width: 7px; height: 7px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.led.ok {
+  background: var(--sage);
+  box-shadow: 0 0 4px var(--sage);
+  animation: led-pulse 2.4s ease-in-out infinite;
+}
+.led.warn {
+  background: var(--amber);
+  box-shadow: 0 0 4px var(--amber);
+  animation: led-pulse 1.6s ease-in-out infinite;
+}
+.led.err {
+  background: var(--vermilion);
+  box-shadow: 0 0 4px var(--vermilion);
+  animation: led-pulse 0.9s ease-in-out infinite;
+}
+@keyframes led-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.9); }
+  50%       { opacity: 1;    transform: scale(1.15); }
+}
+
+/* 티커 */
+.ticker-wrap {
+  flex: 1; overflow: hidden;
+  padding: 0 18px; position: relative;
+}
+.ticker-wrap::before, .ticker-wrap::after {
+  content: '';
+  position: absolute; top: 0; bottom: 0;
+  width: 32px; z-index: 2; pointer-events: none;
+}
+.ticker-wrap::before {
+  left: 18px;
+  background: linear-gradient(to right, var(--washi-raised), transparent);
+}
+.ticker-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, var(--washi-raised), transparent);
+}
+.ticker-track {
+  display: flex; gap: 0; width: max-content;
+  animation: ticker-scroll 48s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
+@keyframes ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 22px 0 0;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ticker-item .t-dot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--faint); flex-shrink: 0;
+}
+.ticker-item .t-dot.info { background: var(--indigo); }
+.ticker-item .t-dot.warn { background: var(--amber); }
+.ticker-item .t-dot.err  { background: var(--vermilion); }
+.ticker-item .t-time { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 10px; }
+.ticker-item .t-msg  { color: var(--ink-soft); }
+.ticker-item .t-sep  { color: var(--faint); margin: 0 10px 0 0; font-size: 9px; }
+
+.bar-live {
+  flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+  padding-left: 16px; border-left: 1px solid var(--line-soft);
+  font-size: var(--text-xs); font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--vermilion);
+}
+.bar-live .live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--vermilion);
+  animation: live-dot 1.2s ease-in-out infinite;
+}
+@keyframes live-dot {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════
+   상단 밴드 — 자동 헤드라인 + 라이프사이클 파이프 + 메트릭
+   ══════════════════════════════════════════════════════ */
+.top-band {
+  background: var(--cream);
+  border-bottom: 2px solid var(--line);
+}
+
+/* 헤드라인 행 */
+.headline-bar {
+  padding: 16px 32px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+}
+.hl-overline {
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hl-overline .date-badge {
+  color: var(--vermilion);
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  font-size: 11px;
+  margin-left: 10px;
+}
+.hl-text {
+  font-size: clamp(18px, 1.8vw, 26px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+.hl-text .hl-num { color: var(--vermilion); font-variant-numeric: tabular-nums; }
+.hl-text .hl-sep { color: var(--faint); font-weight: 400; margin: 0 6px; font-size: 0.8em; }
+.hl-text .hl-ok  { color: var(--sage); }
+.hl-stamp {
+  margin-left: auto; flex-shrink: 0;
+  width: 48px; height: 48px;
+  border: 2px solid var(--vermilion);
+  border-radius: 50%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--vermilion);
+}
+.hl-stamp .sn { font-size: 17px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.hl-stamp .sl { font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1px; }
+
+/* 파이프 + 메트릭 행 (괘선 밴드) */
+.stats-band {
+  display: grid;
+  grid-template-columns: auto 1px 1fr;
+  border-bottom: none;
+}
+
+/* 라이프사이클 파이프 */
+.lifecycle-pipe {
+  display: flex;
+  align-items: stretch;
+  border-right: none;
+}
+.pipe-stage {
+  padding: 12px 20px 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 110px;
+}
+.pipe-stage + .pipe-stage {
+  border-left: 1px solid var(--line-soft);
+}
+.pipe-stage .ps-label {
+  font-size: 8px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 4px; font-weight: 500;
+}
+.pipe-stage .ps-count {
+  font-size: 28px; font-weight: 700;
+  line-height: 1; letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.pipe-stage .ps-count.alert { color: var(--vermilion); }
+.pipe-stage .ps-count.ok    { color: var(--sage); }
+.pipe-stage .ps-desc {
+  font-size: 9px; color: var(--faint); margin-top: 3px;
+}
+.pipe-stage .ps-bar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+}
+.pipe-stage.s1 .ps-bar { background: var(--indigo); }
+.pipe-stage.s2 .ps-bar { background: var(--amber); }
+.pipe-stage.s3 .ps-bar { background: var(--sage); }
+.pipe-stage.s4 .ps-bar { background: var(--gold); }
+
+.pipe-arr {
+  color: var(--faint); font-size: 13px;
+  align-self: center; padding: 0 4px; user-select: none;
+  flex-shrink: 0;
+}
+
+/* 수직 구분자 */
+.stats-divider {
+  background: var(--line);
+  width: 2px;
+  align-self: stretch;
+}
+
+/* 메트릭 5종 — 타뷸러 숫자 */
+.metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.metric-cell {
+  padding: 12px 16px 10px;
+  position: relative;
+  cursor: default;
+}
+.metric-cell + .metric-cell {
+  border-left: 1px solid var(--line-soft);
+}
+.metric-cell .mc-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.metric-cell.m-contract .mc-bar   { background: var(--indigo); }
+.metric-cell.m-receivable .mc-bar { background: var(--vermilion); }
+.metric-cell.m-backup .mc-bar     { background: var(--amber); }
+.metric-cell.m-handover .mc-bar   { background: var(--sage); }
+.metric-cell.m-contact .mc-bar    { background: var(--gold); }
+
+.metric-cell .mc-label {
+  font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+  font-weight: 500; margin-bottom: 4px;
+  white-space: nowrap;
+}
+.metric-cell .mc-num {
+  font-size: 24px; font-weight: 700;
+  line-height: 1; letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.metric-cell .mc-num .mc-unit {
+  font-size: 11px; font-weight: 400;
+  color: var(--muted); margin-left: 2px;
+}
+.metric-cell .mc-desc { font-size: 9px; color: var(--faint); margin-top: 3px; }
+.metric-cell .mc-delta {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 9px; font-weight: 600;
+  padding: 1px 5px; margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.mc-delta.alert { color: var(--vermilion); background: rgba(184,51,30,0.08); }
+.mc-delta.ok    { color: var(--sage);      background: rgba(85,107,47,0.10); }
+.mc-delta.warn  { color: var(--amber);     background: rgba(217,119,6,0.10); }
+
+/* ══════════════════════════════════════════════════════
+   TRIAGE BOARD — 핵심 영역
+   굵은 세로 괘선으로 시간축 컬럼 분류
+   ══════════════════════════════════════════════════════ */
+.triage-board {
+  display: grid;
+  /* 지금 당장 / 오늘 / 이번 주 / 추적중 = 1:1.4:1.4:1 비율 */
+  grid-template-columns: 1fr 1.4fr 1.4fr 1fr;
+  flex: 1;
+  min-height: 0;
+  /* 컬럼 간 굵은 세로 괘선 */
+  border-top: 2px solid var(--line);
+}
+
+/* 컬럼 간 굵은 구분선 */
+.triage-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  background: var(--cream);
+}
+.triage-col + .triage-col {
+  border-left: var(--col-rule);
+}
+
+/* 컬럼 헤더 */
+.col-head {
+  padding: 10px 16px 9px;
+  border-bottom: var(--col-rule);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  background: var(--washi-raised);
+  flex-shrink: 0;
+}
+.col-head-label {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--ink);
+}
+.col-head-en {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.col-head-count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* 긴급 컬럼 강조 */
+.triage-col.now .col-head {
+  background: var(--vermilion);
+}
+.triage-col.now .col-head-label,
+.triage-col.now .col-head-en {
+  color: var(--cream);
+}
+.triage-col.now .col-head-count {
+  color: rgba(250,244,230,0.8);
+}
+
+/* 컬럼 내 아이템 목록 */
+.col-items {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+  padding: 0;
+}
+.col-items::-webkit-scrollbar { width: 3px; }
+.col-items::-webkit-scrollbar-thumb { background: var(--faint); }
+
+/* 트리아지 아이템 */
+.triage-item {
+  padding: 10px 16px 9px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: default;
+  transition: background 0.1s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.triage-item:hover { background: rgba(21,18,12,0.03); }
+.triage-item:last-child { border-bottom: none; }
+
+/* 긴급 아이템 — 가장 강한 강조 */
+.triage-item.urgent {
+  background: rgba(184,51,30,0.05);
+  border-left: 3px solid var(--vermilion);
+  padding-left: 13px;
+}
+.triage-item.urgent:hover { background: rgba(184,51,30,0.08); }
+
+.ti-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* 구분 배지 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badge.b-service   { background: var(--indigo);   color: var(--cream); }
+.badge.b-todo      { background: var(--sage);      color: var(--cream); }
+.badge.b-incident  { background: var(--vermilion); color: var(--cream); }
+.badge.b-backup    { background: var(--amber);     color: var(--ink); }
+.badge.b-handover  { background: var(--gold);      color: var(--cream); }
+.badge.b-schedule  { background: var(--muted);     color: var(--cream); }
+.badge.b-contract  { background: var(--indigo);    color: var(--cream); opacity: 0.8; }
+.badge.b-notice    { background: var(--ink);       color: var(--cream); }
+.badge.b-recv      { background: var(--vermilion); color: var(--cream); opacity: 0.85; }
+
+/* 상태 링 */
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.status-dot.s-urgent  { background: var(--vermilion); box-shadow: 0 0 4px var(--vermilion); }
+.status-dot.s-warn    { background: var(--amber); }
+.status-dot.s-ok      { background: var(--sage); }
+.status-dot.s-pending { background: var(--faint); border: 1px solid var(--muted); }
+.status-dot.s-info    { background: var(--indigo); }
+
+.ti-title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+.ti-title.overdue { color: var(--vermilion); }
+
+.ti-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.ti-meta .assignee {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 10px;
+}
+.ti-meta .ts { margin-left: auto; }
+.ti-meta .dday {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  font-variant-numeric: tabular-nums;
+}
+.ti-meta .dday.over {
+  background: var(--vermilion); color: var(--cream);
+}
+.ti-meta .dday.warn {
+  background: var(--amber); color: var(--ink);
+}
+.ti-meta .dday.safe {
+  background: rgba(85,107,47,0.12); color: var(--sage);
+}
+
+/* 빈 슬롯 */
+.col-empty {
+  padding: 20px 16px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.06em;
+}
+
+/* ══════════════════════════════════════════════════════
+   FULL FEED TABLE — 트리아지 아래 전체 테이블
+   ══════════════════════════════════════════════════════ */
+.feed-section {
+  background: var(--washi-raised);
+  border-top: 2px solid var(--line);
+}
+
+.feed-header {
+  padding: 12px 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+.feed-title-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.feed-title {
+  font-size: var(--text-lg);
+  font-weight: 600; letter-spacing: -0.02em; color: var(--ink);
+}
+.feed-meta { font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 밑줄형 필터 칩 */
+.filter-chips {
+  display: flex; gap: 0;
+  overflow-x: auto; scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+
+.fchip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 13px;
+  font-size: var(--text-sm); font-weight: 500;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color 0.1s, border-color 0.1s;
+  background: transparent;
+  border-top: none; border-left: none; border-right: none;
+  font-family: inherit;
+  margin-bottom: -1px; position: relative; z-index: 1;
+}
+.fchip:hover { color: var(--ink); border-bottom-color: var(--line-soft); }
+.fchip.active {
+  color: var(--ink); font-weight: 600;
+  border-bottom-color: var(--vermilion);
+}
+.fchip .fc-count {
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px; min-width: 16px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.fchip .fc-count.has-alert {
+  background: var(--vermilion); color: var(--cream);
+}
+.fchip .fc-count:not(.has-alert) {
+  background: rgba(21,18,12,0.08); color: var(--muted);
+}
+
+/* 테이블 */
+.feed-table-wrap {
+  overflow-x: auto;
+}
+.feed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.feed-table thead th {
+  padding: 9px 16px;
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: var(--col-rule);
+  background: var(--washi-raised);
+  white-space: nowrap;
+}
+.feed-table thead th:first-child { padding-left: 24px; }
+.feed-table thead th:last-child  { padding-right: 24px; }
+
+.feed-table tbody tr {
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 0.1s;
+}
+.feed-table tbody tr:hover { background: rgba(21,18,12,0.025); }
+.feed-table tbody tr:last-child { border-bottom: none; }
+.feed-table tbody tr.row-urgent {
+  background: rgba(184,51,30,0.04);
+}
+.feed-table tbody tr.row-urgent:hover { background: rgba(184,51,30,0.07); }
+
+.feed-table td {
+  padding: 9px 16px;
+  vertical-align: middle;
+  color: var(--ink-soft);
+}
+.feed-table td:first-child { padding-left: 24px; }
+.feed-table td:last-child  { padding-right: 24px; }
+
+.td-time {
+  font-size: 10px; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.td-content { max-width: 340px; }
+.td-content .c-title {
+  font-size: var(--text-sm); color: var(--ink);
+  font-weight: 500; line-height: 1.35;
+}
+.td-content .c-sub {
+  font-size: 10px; color: var(--muted); margin-top: 1px;
+}
+.td-status {
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.td-status .s-label {
+  font-size: 10px; color: var(--muted);
+}
+.td-assignee {
+  font-size: 10px; color: var(--muted);
+  white-space: nowrap;
+}
+
+/* 트리아지 컬럼 표식 (테이블 내 시간축 컬럼 참조 표시) */
+.triage-ref {
+  display: inline-flex; align-items: center;
+  height: 14px; padding: 0 5px;
+  font-size: 8px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.triage-ref.now  { background: var(--vermilion); color: var(--cream); }
+.triage-ref.td   { background: rgba(21,18,12,0.10); color: var(--ink); }
+.triage-ref.week { background: rgba(21,18,12,0.07); color: var(--muted); }
+.triage-ref.wch  { background: rgba(21,18,12,0.05); color: var(--faint); border: 1px solid var(--line-soft); }
+</style>
+</head>
+<body>
+<div class="app" role="application" aria-label="운영부 상황실 실시간 현황">
+
+  <!-- ══ TITLE BAR ══ -->
+  <header class="titlebar" role="banner">
+    <div class="window-ctrls" aria-hidden="true">
+      <span class="c"></span><span class="c"></span><span class="c"></span>
+    </div>
+    <div class="titlebar-text">
+      운영부 상황실 <em>·</em> OPSROOM
+      <span class="en">REALTIME STATUS</span>
+    </div>
+    <div class="titlebar-right" aria-label="현재 시각 및 기준 정보">
+      <span id="live-time">09:42:17</span>
+      <span>2026-06-11</span>
+      <span>KST</span>
+    </div>
+  </header>
+
+  <!-- ══ COMMAND BAR ══ -->
+  <div class="command-bar" role="complementary" aria-label="시스템 상태 및 실시간 로그">
+    <div class="health-cluster">
+      <div class="health-item">
+        <span class="led ok" role="img" aria-label="DB 정상"></span>
+        <span>DB</span>
+      </div>
+      <div class="health-item">
+        <span class="led ok" role="img" aria-label="API 정상"></span>
+        <span>API</span>
+      </div>
+      <div class="health-item">
+        <span class="led warn" role="img" aria-label="메일 경고"></span>
+        <span>메일</span>
+      </div>
+      <div class="health-item">
+        <span class="led ok" role="img" aria-label="스케줄러 정상"></span>
+        <span>CRON</span>
+      </div>
+    </div>
+
+    <div class="ticker-wrap" aria-live="polite" aria-label="실시간 운영 로그">
+      <div class="ticker-track" id="ticker">
+        <!-- 원본 아이템 -->
+        <div class="ticker-item">
+          <span class="t-dot err"></span>
+          <span class="t-time">09:41</span>
+          <span class="t-msg">사고보고 #INC-2026-031 긴급 검토 요청 — 김미래 담당</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot warn"></span>
+          <span class="t-time">09:38</span>
+          <span class="t-msg">미수채권 D+18 경보 — 서울대학교 3,200,000원</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot info"></span>
+          <span class="t-time">09:35</span>
+          <span class="t-msg">서비스 마감 자동 감지 — [2026-1학기] 세종대 입학처 완료 처리</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot"></span>
+          <span class="t-time">09:30</span>
+          <span class="t-msg">인수인계 #HO-0441 PDF 발송 완료 — 박준혁 → 이수민</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot info"></span>
+          <span class="t-time">09:22</span>
+          <span class="t-msg">receivables-deposit-match 완료 — 12건 매칭, 2건 mismatch</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot warn"></span>
+          <span class="t-time">09:18</span>
+          <span class="t-msg">백업 요청 미확인 3건 — [2026 고려대] 박규현 담당</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot"></span>
+          <span class="t-time">09:10</span>
+          <span class="t-msg">계약 서명 완료 — 2026 연세대 입학지원팀 (CS-0892)</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item">
+          <span class="t-dot info"></span>
+          <span class="t-time">08:59</span>
+          <span class="t-msg">insights-collect 완료 — 영상 14건 수집</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <!-- 루프용 복제 -->
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot err"></span>
+          <span class="t-time">09:41</span>
+          <span class="t-msg">사고보고 #INC-2026-031 긴급 검토 요청 — 김미래 담당</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot warn"></span>
+          <span class="t-time">09:38</span>
+          <span class="t-msg">미수채권 D+18 경보 — 서울대학교 3,200,000원</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot info"></span>
+          <span class="t-time">09:35</span>
+          <span class="t-msg">서비스 마감 자동 감지 — [2026-1학기] 세종대 입학처 완료 처리</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot"></span>
+          <span class="t-time">09:30</span>
+          <span class="t-msg">인수인계 #HO-0441 PDF 발송 완료 — 박준혁 → 이수민</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot info"></span>
+          <span class="t-time">09:22</span>
+          <span class="t-msg">receivables-deposit-match 완료 — 12건 매칭, 2건 mismatch</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot warn"></span>
+          <span class="t-time">09:18</span>
+          <span class="t-msg">백업 요청 미확인 3건 — [2026 고려대] 박규현 담당</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot"></span>
+          <span class="t-time">09:10</span>
+          <span class="t-msg">계약 서명 완료 — 2026 연세대 입학지원팀 (CS-0892)</span>
+          <span class="t-sep">◆</span>
+        </div>
+        <div class="ticker-item" aria-hidden="true">
+          <span class="t-dot info"></span>
+          <span class="t-time">08:59</span>
+          <span class="t-msg">insights-collect 완료 — 영상 14건 수집</span>
+          <span class="t-sep">◆</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar-live" aria-label="실시간 업데이트 중">
+      <span class="live-dot" aria-hidden="true"></span>
+      LIVE
+    </div>
+  </div>
+
+  <!-- ══ TOP BAND — 헤드라인 + 파이프 + 메트릭 ══ -->
+  <div class="top-band" role="region" aria-label="오늘 핵심 현황 요약">
+
+    <!-- 자동 헤드라인 -->
+    <div class="headline-bar">
+      <div class="hl-overline">
+        오늘의 핵심 현황
+        <span class="date-badge">목요일 · 2026. 6. 11</span>
+      </div>
+      <h1 class="hl-text">
+        진행 서비스 <span class="hl-num">47</span>건 중
+        <span class="hl-sep">·</span>
+        긴급처리 <span class="hl-num">3</span>건
+        <span class="hl-sep">·</span>
+        미수채권 <span class="hl-num">D+18</span> 경보
+        <span class="hl-sep">·</span>
+        백업 <span class="hl-ok">전원 배정</span>
+      </h1>
+      <div class="hl-stamp" aria-label="오늘 총 활성 건수: 47건">
+        <span class="sn">47</span>
+        <span class="sl">Active</span>
+      </div>
+    </div>
+
+    <!-- 라이프사이클 파이프 + 메트릭 밴드 -->
+    <div class="stats-band">
+
+      <!-- 서비스 라이프사이클 파이프 -->
+      <section class="lifecycle-pipe" aria-label="서비스 라이프사이클 현황">
+        <div class="pipe-stage s1">
+          <div class="ps-label">오픈예정</div>
+          <div class="ps-count">12</div>
+          <div class="ps-desc">D-30 이내</div>
+          <div class="ps-bar" aria-hidden="true"></div>
+        </div>
+        <span class="pipe-arr" aria-hidden="true">›</span>
+        <div class="pipe-stage s2">
+          <div class="ps-label">진행중</div>
+          <div class="ps-count alert">47</div>
+          <div class="ps-desc">현재 운영</div>
+          <div class="ps-bar" aria-hidden="true"></div>
+        </div>
+        <span class="pipe-arr" aria-hidden="true">›</span>
+        <div class="pipe-stage s3">
+          <div class="ps-label">마감완료</div>
+          <div class="ps-count ok">8</div>
+          <div class="ps-desc">이번 달</div>
+          <div class="ps-bar" aria-hidden="true"></div>
+        </div>
+        <span class="pipe-arr" aria-hidden="true">›</span>
+        <div class="pipe-stage s4">
+          <div class="ps-label">전형료정산</div>
+          <div class="ps-count">5</div>
+          <div class="ps-desc">정산 대기</div>
+          <div class="ps-bar" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <!-- 세로 구분선 -->
+      <div class="stats-divider" role="separator" aria-hidden="true"></div>
+
+      <!-- 메트릭 5종 -->
+      <section class="metrics-strip" aria-label="핵심 지표 5종">
+        <div class="metric-cell m-contract">
+          <div class="mc-bar" aria-hidden="true"></div>
+          <div class="mc-label">계약체결</div>
+          <div class="mc-num">23<span class="mc-unit">건</span></div>
+          <div class="mc-desc">이번 달</div>
+          <div class="mc-delta ok">+4 전월비</div>
+        </div>
+        <div class="metric-cell m-receivable">
+          <div class="mc-bar" aria-hidden="true"></div>
+          <div class="mc-label">미수채권</div>
+          <div class="mc-num">7<span class="mc-unit">건</span></div>
+          <div class="mc-desc">D+10 이상</div>
+          <div class="mc-delta alert">D+18 최장</div>
+        </div>
+        <div class="metric-cell m-backup">
+          <div class="mc-bar" aria-hidden="true"></div>
+          <div class="mc-label">백업배정</div>
+          <div class="mc-num">47<span class="mc-unit">/47</span></div>
+          <div class="mc-desc">전원 배정</div>
+          <div class="mc-delta ok">미배정 0</div>
+        </div>
+        <div class="metric-cell m-handover">
+          <div class="mc-bar" aria-hidden="true"></div>
+          <div class="mc-label">인수인계</div>
+          <div class="mc-num">3<span class="mc-unit">건</span></div>
+          <div class="mc-desc">진행 중</div>
+          <div class="mc-delta warn">1건 지연</div>
+        </div>
+        <div class="metric-cell m-contact">
+          <div class="mc-bar" aria-hidden="true"></div>
+          <div class="mc-label">대학연락처</div>
+          <div class="mc-num">184<span class="mc-unit">개</span></div>
+          <div class="mc-desc">등록됨</div>
+          <div class="mc-delta ok">갱신 최신</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ══ TRIAGE BOARD — 시간축 컬럼 분류 ══ -->
+  <main
+    class="triage-board"
+    role="region"
+    aria-label="트리아지 보드 — 시급도/시간축 분류"
+  >
+
+    <!-- 컬럼 1: 지금 당장 (NOW) -->
+    <section class="triage-col now" aria-label="지금 당장 처리 필요 — 3건">
+      <header class="col-head">
+        <span class="col-head-label">지금 당장</span>
+        <span class="col-head-en">NOW</span>
+        <span class="col-head-count" aria-label="3건">3</span>
+      </header>
+      <ol class="col-items" aria-label="지금 당장 처리 필요 항목">
+
+        <li class="triage-item urgent">
+          <div class="ti-top">
+            <span class="badge b-incident">사고</span>
+            <span class="status-dot s-urgent" role="img" aria-label="긴급"></span>
+            <span class="ti-title overdue">#INC-2026-031 경위서 긴급 검토</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">김미래</span>
+            <span class="dday over">D+1</span>
+            <span class="ts">09:41 발생</span>
+          </div>
+        </li>
+
+        <li class="triage-item urgent">
+          <div class="ti-top">
+            <span class="badge b-recv">미수채권</span>
+            <span class="status-dot s-urgent" role="img" aria-label="긴급"></span>
+            <span class="ti-title overdue">서울대 3,200,000원 D+18 경보</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">이수민</span>
+            <span class="dday over">D+18</span>
+            <span class="ts">오늘 경과</span>
+          </div>
+        </li>
+
+        <li class="triage-item urgent">
+          <div class="ti-top">
+            <span class="badge b-handover">인수인계</span>
+            <span class="status-dot s-urgent" role="img" aria-label="긴급"></span>
+            <span class="ti-title overdue">#HO-0438 진행률 12% 지연</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">박규현</span>
+            <span class="dday over">D+3</span>
+            <span class="ts">3일 전 시작</span>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <!-- 컬럼 2: 오늘 처리 -->
+    <section class="triage-col" aria-label="오늘 처리 필요 — 5건">
+      <header class="col-head">
+        <span class="col-head-label">오늘</span>
+        <span class="col-head-en">TODAY</span>
+        <span class="col-head-count" aria-label="5건">5</span>
+      </header>
+      <ol class="col-items" aria-label="오늘 처리 필요 항목">
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-backup">백업</span>
+            <span class="status-dot s-warn" role="img" aria-label="주의"></span>
+            <span class="ti-title">[고려대 2026] 백업 미확인 3건 확인 요청</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">박규현</span>
+            <span class="dday warn">D-day</span>
+            <span class="ts">09:18</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-contract">계약</span>
+            <span class="status-dot s-info" role="img" aria-label="정보"></span>
+            <span class="ti-title">CS-0894 이화여대 최종 서명 대기</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">최유진</span>
+            <span class="dday warn">D-day</span>
+            <span class="ts">어제 접수</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-schedule">일정</span>
+            <span class="status-dot s-warn" role="img" aria-label="주의"></span>
+            <span class="ti-title">14:00 연세대 담당자 미팅 — 수시 서비스 협의</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">이수민</span>
+            <span class="dday warn">4시간 후</span>
+            <span class="ts">오늘 14:00</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-todo">내할일</span>
+            <span class="status-dot s-pending" role="img" aria-label="대기"></span>
+            <span class="ti-title">성균관대 서비스 마감 체크리스트 완료 처리</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">나 (송운석)</span>
+            <span class="ts">오늘 마감</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-notice">공지</span>
+            <span class="status-dot s-info" role="img" aria-label="정보"></span>
+            <span class="ti-title">2026 하반기 오픈 서비스 일정 내부 공지 발송</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">김미래</span>
+            <span class="ts">오늘 중</span>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <!-- 컬럼 3: 이번 주 -->
+    <section class="triage-col" aria-label="이번 주 처리 필요 — 6건">
+      <header class="col-head">
+        <span class="col-head-label">이번 주</span>
+        <span class="col-head-en">THIS WEEK</span>
+        <span class="col-head-count" aria-label="6건">6</span>
+      </header>
+      <ol class="col-items" aria-label="이번 주 처리 필요 항목">
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-service">서비스</span>
+            <span class="status-dot s-warn" role="img" aria-label="주의"></span>
+            <span class="ti-title">[2026-1] 한양대 입학처 마감 D-3</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">박규현</span>
+            <span class="dday warn">D-3</span>
+            <span class="ts">6.14 마감</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-recv">미수채권</span>
+            <span class="status-dot s-warn" role="img" aria-label="주의"></span>
+            <span class="ti-title">경희대 미수채권 독려 메일 발송 예정</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">이수민</span>
+            <span class="dday warn">D+10</span>
+            <span class="ts">6.13 예정</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-handover">인수인계</span>
+            <span class="status-dot s-ok" role="img" aria-label="정상"></span>
+            <span class="ti-title">#HO-0441 박준혁→이수민 최종 확인 대기</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">이수민</span>
+            <span class="dday safe">D-2</span>
+            <span class="ts">6.13 마감</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-contract">계약</span>
+            <span class="status-dot s-pending" role="img" aria-label="대기"></span>
+            <span class="ti-title">CS-0895 숙명여대 계약서 검토 요청</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">최유진</span>
+            <span class="ts">6.15 마감</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-backup">백업</span>
+            <span class="status-dot s-ok" role="img" aria-label="정상"></span>
+            <span class="ti-title">[2026 서강대] 백업 담당자 배정 완료 확인</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">박규현</span>
+            <span class="ts">6.12</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-schedule">일정</span>
+            <span class="status-dot s-info" role="img" aria-label="정보"></span>
+            <span class="ti-title">주간 운영 회의 — 서비스 현황 보고</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">전체</span>
+            <span class="ts">6.13 10:00</span>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+    <!-- 컬럼 4: 추적중 -->
+    <section class="triage-col" aria-label="추적 중 — 4건">
+      <header class="col-head">
+        <span class="col-head-label">추적중</span>
+        <span class="col-head-en">WATCHING</span>
+        <span class="col-head-count" aria-label="4건">4</span>
+      </header>
+      <ol class="col-items" aria-label="추적 중 항목">
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-service">서비스</span>
+            <span class="status-dot s-info" role="img" aria-label="정보"></span>
+            <span class="ti-title">[2026-2학기] 고려대 수시 오픈 예정</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">이수민</span>
+            <span class="dday safe">D-18</span>
+            <span class="ts">6.29 오픈</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-incident">사고</span>
+            <span class="status-dot s-pending" role="img" aria-label="대기"></span>
+            <span class="ti-title">#INC-2026-029 경위서 발송 후 회신 대기</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">김미래</span>
+            <span class="ts">6.7 발송</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-recv">미수채권</span>
+            <span class="status-dot s-pending" role="img" aria-label="대기"></span>
+            <span class="ti-title">서강대 전형료 입금 확인 대기 (자동매칭)</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">자동</span>
+            <span class="ts">D+5</span>
+          </div>
+        </li>
+
+        <li class="triage-item">
+          <div class="ti-top">
+            <span class="badge b-contract">계약</span>
+            <span class="status-dot s-pending" role="img" aria-label="대기"></span>
+            <span class="ti-title">CS-0890 동국대 법무 검토 중</span>
+          </div>
+          <div class="ti-meta">
+            <span class="assignee">최유진</span>
+            <span class="ts">10일 경과</span>
+          </div>
+        </li>
+
+      </ol>
+    </section>
+
+  </main>
+
+  <!-- ══ FULL FEED TABLE ══ -->
+  <section class="feed-section" role="region" aria-label="통합 우선순위 피드 전체">
+    <div class="feed-header">
+      <div class="feed-title-row">
+        <h2 class="feed-title">통합 우선순위 피드</h2>
+        <span class="feed-meta">최근 업데이트 <strong>09:42</strong></span>
+      </div>
+      <nav class="filter-chips" role="tablist" aria-label="피드 필터">
+        <button class="fchip active" role="tab" aria-selected="true" aria-controls="feed-table">
+          전체 <span class="fc-count has-alert">18</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          서비스 <span class="fc-count">4</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          내할일 <span class="fc-count">2</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          사고 <span class="fc-count has-alert">2</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          백업 <span class="fc-count">3</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          인수인계 <span class="fc-count">2</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          일정 <span class="fc-count">2</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          계약 <span class="fc-count">3</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          공지 <span class="fc-count">1</span>
+        </button>
+        <button class="fchip" role="tab" aria-selected="false">
+          미수채권 <span class="fc-count has-alert">3</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="feed-table-wrap" id="feed-table" role="tabpanel">
+      <table class="feed-table" aria-label="통합 우선순위 피드 목록">
+        <thead>
+          <tr>
+            <th scope="col">구분</th>
+            <th scope="col">상태</th>
+            <th scope="col">내용</th>
+            <th scope="col">담당자</th>
+            <th scope="col">발생시점</th>
+            <th scope="col">트리아지</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-urgent">
+            <td><span class="badge b-incident">사고</span></td>
+            <td><div class="td-status"><span class="status-dot s-urgent" role="img" aria-label="긴급"></span><span class="s-label">긴급</span></div></td>
+            <td class="td-content">
+              <div class="c-title">#INC-2026-031 경위서 긴급 검토</div>
+              <div class="c-sub">서울대 입학처 시스템 접속 장애 사고</div>
+            </td>
+            <td class="td-assignee">김미래</td>
+            <td class="td-time">09:41 오늘</td>
+            <td><span class="triage-ref now">지금</span></td>
+          </tr>
+          <tr class="row-urgent">
+            <td><span class="badge b-recv">미수채권</span></td>
+            <td><div class="td-status"><span class="status-dot s-urgent" role="img" aria-label="긴급"></span><span class="s-label">D+18</span></div></td>
+            <td class="td-content">
+              <div class="c-title">서울대학교 3,200,000원 미수 경보</div>
+              <div class="c-sub">독려 메일 2회 발송 후 미입금 상태</div>
+            </td>
+            <td class="td-assignee">이수민</td>
+            <td class="td-time">D+18 경과</td>
+            <td><span class="triage-ref now">지금</span></td>
+          </tr>
+          <tr class="row-urgent">
+            <td><span class="badge b-handover">인수인계</span></td>
+            <td><div class="td-status"><span class="status-dot s-urgent" role="img" aria-label="긴급"></span><span class="s-label">지연</span></div></td>
+            <td class="td-content">
+              <div class="c-title">#HO-0438 진행률 12% — 3일 지연</div>
+              <div class="c-sub">박규현 → 강지훈 인수인계 지연</div>
+            </td>
+            <td class="td-assignee">박규현</td>
+            <td class="td-time">3일 전</td>
+            <td><span class="triage-ref now">지금</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-backup">백업</span></td>
+            <td><div class="td-status"><span class="status-dot s-warn" role="img" aria-label="주의"></span><span class="s-label">미확인</span></div></td>
+            <td class="td-content">
+              <div class="c-title">[고려대 2026] 백업 미확인 3건</div>
+              <div class="c-sub">박규현 오늘 중 확인 필요</div>
+            </td>
+            <td class="td-assignee">박규현</td>
+            <td class="td-time">09:18 오늘</td>
+            <td><span class="triage-ref td">오늘</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-contract">계약</span></td>
+            <td><div class="td-status"><span class="status-dot s-info" role="img" aria-label="대기"></span><span class="s-label">서명대기</span></div></td>
+            <td class="td-content">
+              <div class="c-title">CS-0894 이화여대 최종 서명 대기</div>
+              <div class="c-sub">어제 접수 — 오늘 중 확인 필요</div>
+            </td>
+            <td class="td-assignee">최유진</td>
+            <td class="td-time">어제 접수</td>
+            <td><span class="triage-ref td">오늘</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-schedule">일정</span></td>
+            <td><div class="td-status"><span class="status-dot s-warn" role="img" aria-label="주의"></span><span class="s-label">4시간 후</span></div></td>
+            <td class="td-content">
+              <div class="c-title">14:00 연세대 담당자 미팅</div>
+              <div class="c-sub">수시 서비스 협의 — 회의실 B</div>
+            </td>
+            <td class="td-assignee">이수민</td>
+            <td class="td-time">오늘 14:00</td>
+            <td><span class="triage-ref td">오늘</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-todo">내할일</span></td>
+            <td><div class="td-status"><span class="status-dot s-pending" role="img" aria-label="대기"></span><span class="s-label">대기</span></div></td>
+            <td class="td-content">
+              <div class="c-title">성균관대 서비스 마감 체크리스트 완료 처리</div>
+              <div class="c-sub">오늘 마감 — 4개 항목 미완료</div>
+            </td>
+            <td class="td-assignee">나</td>
+            <td class="td-time">오늘 마감</td>
+            <td><span class="triage-ref td">오늘</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-service">서비스</span></td>
+            <td><div class="td-status"><span class="status-dot s-warn" role="img" aria-label="주의"></span><span class="s-label">D-3</span></div></td>
+            <td class="td-content">
+              <div class="c-title">[2026-1] 한양대 입학처 서비스 마감 D-3</div>
+              <div class="c-sub">6.14 마감 — 체크리스트 완료 필요</div>
+            </td>
+            <td class="td-assignee">박규현</td>
+            <td class="td-time">6.14 마감</td>
+            <td><span class="triage-ref week">이번 주</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-recv">미수채권</span></td>
+            <td><div class="td-status"><span class="status-dot s-warn" role="img" aria-label="주의"></span><span class="s-label">D+10</span></div></td>
+            <td class="td-content">
+              <div class="c-title">경희대 미수채권 독려 메일 발송 예정</div>
+              <div class="c-sub">1,800,000원 — 6.13 발송 예정</div>
+            </td>
+            <td class="td-assignee">이수민</td>
+            <td class="td-time">6.13 예정</td>
+            <td><span class="triage-ref week">이번 주</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-incident">사고</span></td>
+            <td><div class="td-status"><span class="status-dot s-pending" role="img" aria-label="대기"></span><span class="s-label">회신대기</span></div></td>
+            <td class="td-content">
+              <div class="c-title">#INC-2026-029 경위서 발송 후 회신 대기</div>
+              <div class="c-sub">6.7 발송 — 학교 측 회신 없음</div>
+            </td>
+            <td class="td-assignee">김미래</td>
+            <td class="td-time">6.7 발송</td>
+            <td><span class="triage-ref wch">추적중</span></td>
+          </tr>
+          <tr>
+            <td><span class="badge b-contract">계약</span></td>
+            <td><div class="td-status"><span class="status-dot s-pending" role="img" aria-label="대기"></span><span class="s-label">검토중</span></div></td>
+            <td class="td-content">
+              <div class="c-title">CS-0890 동국대 법무 검토 중</div>
+              <div class="c-sub">10일 경과 — 법무팀 회신 대기</div>
+            </td>
+            <td class="td-assignee">최유진</td>
+            <td class="td-time">10일 경과</td>
+            <td><span class="triage-ref wch">추적중</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   실시간 시계
+   ══════════════════════════════════════════════════════ */
+(function () {
+  var el = document.getElementById('live-time');
+  if (!el) return;
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function tick() {
+    var d = new Date();
+    el.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+/* ══════════════════════════════════════════════════════
+   필터 칩 상호작용 (기본 탭 토글)
+   ══════════════════════════════════════════════════════ */
+(function () {
+  var chips = document.querySelectorAll('.fchip');
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chips.forEach(function (c) {
+        c.classList.remove('active');
+        c.setAttribute('aria-selected', 'false');
+      });
+      chip.classList.add('active');
+      chip.setAttribute('aria-selected', 'true');
+    });
+    chip.addEventListener('keydown', function (e) {
+      var idx = Array.from(chips).indexOf(chip);
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        var next = chips[(idx + 1) % chips.length];
+        next.focus(); next.click();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        var prev = chips[(idx - 1 + chips.length) % chips.length];
+        prev.focus(); prev.click();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
