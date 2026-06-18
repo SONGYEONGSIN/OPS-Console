@@ -6,7 +6,8 @@
   실패 시 스크린샷 Storage 업로드 → /api/entertest/ingest POST.
 
 DOM 디스커버리: ENTERTEST_DISCOVER=true 로 실행하면 로그인 후 단계별 page_source/
-스크린샷을 scripts/entertest/discovery/ 에 저장하고 종료(셀렉터 확정용).
+스크린샷 + 필드/버튼 인벤토리({단계}.fields.json)를 scripts/entertest/discovery/ 에
+저장하고 종료(셀렉터 확정용 — 실제 원서작성 자동완주 v2 설계 입력).
 """
 import os
 import sys
@@ -229,10 +230,61 @@ def run_checks(driver):
     return results
 
 
+# 현재 페이지의 입력 필드/버튼을 구조화 추출 (ASP.NET WebForms raw HTML은 거대·노이즈가
+# 커서, 작성 로직 설계엔 이 인벤토리가 훨씬 유용하다). 읽기 전용 — 클릭/제출 안 함.
+_INVENTORY_JS = r"""
+const vis = el => !!(el.offsetParent || el.getClientRects().length);
+const labelFor = el => {
+  if (el.id) { const l = document.querySelector('label[for="' + el.id + '"]'); if (l) return (l.innerText||'').trim(); }
+  const p = el.closest('label'); if (p) return (p.innerText||'').trim();
+  return '';
+};
+const fields = [...document.querySelectorAll('input,select,textarea')].map(el => {
+  const o = {
+    tag: el.tagName.toLowerCase(),
+    type: (el.getAttribute('type')||'').toLowerCase(),
+    id: el.id||'', name: el.name||'',
+    label: labelFor(el),
+    required: !!(el.required || el.getAttribute('aria-required')==='true'),
+    placeholder: el.placeholder||'',
+    visible: vis(el),
+  };
+  if (o.tag === 'select') o.options = [...el.options].map(x => ({v:x.value, t:(x.text||'').trim()}));
+  return o;
+});
+const buttons = [...document.querySelectorAll('button,a,input[type=button],input[type=submit],input[type=image]')]
+  .filter(vis)
+  .map(el => ({
+    tag: el.tagName.toLowerCase(),
+    type: (el.getAttribute('type')||'').toLowerCase(),
+    id: el.id||'', name: el.name||'',
+    text: ((el.innerText||el.value||el.getAttribute('alt')||'')).trim().slice(0,40),
+    onclick: (el.getAttribute('onclick')||'').slice(0,160),
+    href: (el.getAttribute('href')||'').slice(0,160),
+  }))
+  .filter(b => b.text || b.onclick || b.href);
+return {url: location.href, title: document.title, fields, buttons};
+"""
+
+
+def _inventory(driver, out: str, name: str) -> None:
+    """현재 페이지 필드/버튼 인벤토리를 {name}.fields.json 으로 저장 (실패해도 흐름 무중단)."""
+    try:
+        data = driver.execute_script(_INVENTORY_JS)
+        with open(os.path.join(out, f"{name}.fields.json"), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        nf = len(data.get("fields", []))
+        nb = len(data.get("buttons", []))
+        print(f"[discover] {name} 인벤토리 — 필드 {nf} / 버튼 {nb}")
+    except Exception as e:  # noqa: BLE001 — 인벤토리 추출 실패는 디스커버리 흐름을 막지 않는다
+        print(f"[discover] {name} 인벤토리 추출 실패: {e}")
+
+
 def _snapshot(driver, out: str, name: str) -> None:
     with open(os.path.join(out, f"{name}.html"), "w", encoding="utf-8") as f:
         f.write(driver.page_source)
     driver.save_screenshot(os.path.join(out, f"{name}.png"))
+    _inventory(driver, out, name)
     print(f"[discover] {name} — url={driver.current_url}")
 
 
