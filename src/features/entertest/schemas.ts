@@ -51,7 +51,6 @@ export const entertestRunSchema = z.object({
   requested_by: z.string(),
   requested_at: z.string(),
   target_url: z.string(),
-  test_account: z.string().nullable(),
   status: entertestRunStatusSchema,
   claimed_at: z.string().nullable(),
   finished_at: z.string().nullable(),

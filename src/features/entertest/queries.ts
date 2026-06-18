@@ -7,7 +7,9 @@ export async function listEntertestRuns(limit = 50): Promise<EntertestRun[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("entertest_test_runs")
-    .select("*")
+    .select(
+      "id, requested_by, requested_at, target_url, status, claimed_at, finished_at, result, error_message",
+    )
     .order("requested_at", { ascending: false })
     .limit(limit);
   if (error || !data) return [];
