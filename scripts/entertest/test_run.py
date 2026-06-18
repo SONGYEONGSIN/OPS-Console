@@ -55,9 +55,10 @@ BUCKET = "entertest-screenshots"
 
 def make_driver():
     # entertest 게이트는 CF 챌린지("Just a moment")가 아니라 단순 브라우저(UA) 체크라
-    # 실제 Chrome이면 plain Selenium으로도 통과한다. undetected-chromedriver를 우선
-    # 시도하되(있으면), Chrome/드라이버 버전 불일치 등으로 기동 실패하면 plain으로 폴백한다.
-    if uc is not None:
+    # 실제 Chrome이면 plain Selenium으로 통과한다(검증됨). 기본은 plain.
+    # CF 챌린지가 있는 사이트에 한해 ENTERTEST_USE_UC=true로 undetected-chromedriver를 시도한다.
+    use_uc = os.getenv("ENTERTEST_USE_UC", "").lower() == "true"
+    if use_uc and uc is not None:
         try:
             uc_opts = uc.ChromeOptions()
             uc_opts.add_argument("--start-maximized")
