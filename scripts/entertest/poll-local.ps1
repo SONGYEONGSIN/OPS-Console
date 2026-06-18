@@ -19,8 +19,10 @@ function Get-DotEnv([string]$path, [string]$key) {
 }
 
 $envPath = Join-Path $repo ".env.local"
-$secret = Get-DotEnv $envPath "CRON_SECRET"
-$base = (Get-DotEnv $envPath "OPS_CONSOLE_BASE_URL").TrimEnd("/")
+# 프로세스 env가 설정돼 있으면 우선(로컬 테스트 시 localhost로 오버라이드 가능), 없으면 .env.local.
+$secret = if ($env:CRON_SECRET) { $env:CRON_SECRET } else { Get-DotEnv $envPath "CRON_SECRET" }
+$base = if ($env:OPS_CONSOLE_BASE_URL) { $env:OPS_CONSOLE_BASE_URL } else { Get-DotEnv $envPath "OPS_CONSOLE_BASE_URL" }
+$base = $base.TrimEnd("/")
 if (-not $secret -or -not $base) {
     Write-Host "[poll] CRON_SECRET / OPS_CONSOLE_BASE_URL 미설정 — 종료"
     exit 1
