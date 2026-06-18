@@ -48,6 +48,8 @@ SECRET = os.getenv("CRON_SECRET", "")
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").rstrip("/")
 SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 DISCOVER = os.getenv("ENTERTEST_DISCOVER", "").lower() == "true"
+# CHECKS만 로컬에서 돌려보고 결과를 출력(인제스트 안 함) — 회사 PC 빠른 검증용.
+CHECKS_ONLY = os.getenv("ENTERTEST_CHECKS_ONLY", "").lower() == "true"
 BUCKET = "entertest-screenshots"
 
 
@@ -132,9 +134,74 @@ def upload_screenshot(driver, key: str):
     return f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{path}"
 
 
-# CHECKS: 각 항목 (key, label, fn). fn(driver, ctx) -> (status, message).
-# 10-A 디스커버리로 실제 단계·셀렉터 확정 후 10-B에서 채운다.
-CHECKS = []  # 10-B에서 page_load/login/fill_steps/required_validation/test_payment_complete 추가
+# ── CHECKS (v1=A: 단계 도달성 스모크) ──────────────────────────────────────
+# DOM 디스커버리(10-A)로 확정한 흐름: Notice(유의사항) → /Login → 원서작성(ApplyFirst)
+# → 전형료 결제(Payment/UnivWritingList) → 접수완료확인(Payment/UnivPayResult).
+# 로그인된 테스트 계정으로 각 핵심 페이지가 정상 렌더되는지 검증한다.
+# 실제 원서작성 폼 자동완주 + 테스트결제는 v2(B)에서 별도 구현(fragile·서비스별 상이).
+
+
+def _body_ready(driver, timeout: int = 15) -> None:
+    WebDriverWait(driver, timeout).until(
+        EC.presence_of_element_located((By.TAG_NAME, "body"))
+    )
+
+
+def check_page_load(driver, ctx):
+    driver.get(TARGET_URL)
+    _body_ready(driver)
+    if "진학어플라이" not in (driver.title or ""):
+        return ("fail", f"예상 title 아님: {driver.title!r}")
+    if "/Notice/" not in driver.current_url:
+        return ("fail", f"Notice 페이지 미도달(브라우저 게이트?): {driver.current_url}")
+    return ("pass", None)
+
+
+def check_login(driver, ctx):
+    login(driver, ACCOUNT)  # 실패 시 예외 → run_checks가 fail 처리
+    if "/Login" in driver.current_url:
+        return ("fail", "로그인 후에도 /Login 잔류 (계정/검증 확인)")
+    src = driver.page_source
+    if "로그아웃" not in src and "Logout" not in src:
+        return ("fail", "로그인 마커(로그아웃) 미발견")
+    return ("pass", None)
+
+
+def check_apply_entry(driver, ctx):
+    sid = service_id_of(TARGET_URL)
+    driver.get(f"{origin_of(TARGET_URL)}/ApplyFirst/{sid}/A")
+    _body_ready(driver)
+    if "원서작성" not in driver.page_source:
+        return ("fail", "원서작성 진입 페이지 미확인('원서작성' 탭 없음)")
+    return ("pass", None)
+
+
+def check_payment_page(driver, ctx):
+    sid = service_id_of(TARGET_URL)
+    driver.get(f"{origin_of(TARGET_URL)}/Payment/UnivWritingList/{sid}")
+    _body_ready(driver)
+    if "전형료 결제" not in driver.page_source:
+        return ("fail", "전형료 결제 페이지 미확인")
+    return ("pass", None)
+
+
+def check_pay_result(driver, ctx):
+    sid = service_id_of(TARGET_URL)
+    driver.get(f"{origin_of(TARGET_URL)}/Payment/UnivPayResult/{sid}")
+    _body_ready(driver)
+    if "접수완료확인" not in driver.page_source:
+        return ("fail", "접수완료확인 페이지 미확인")
+    return ("pass", None)
+
+
+# 각 항목 (key, label, fn). fn(driver, ctx) -> (status, message). 확장 = 항목 1줄 추가.
+CHECKS = [
+    ("page_load", "페이지 로드(유의사항)", check_page_load),
+    ("login", "로그인", check_login),
+    ("apply_entry", "원서작성 진입", check_apply_entry),
+    ("payment_page", "전형료 결제 페이지", check_payment_page),
+    ("pay_result", "접수완료확인 페이지", check_pay_result),
+]
 
 
 def run_checks(driver):
@@ -230,10 +297,14 @@ def ingest(status: str, checks, error=None) -> None:
 
 
 def main() -> int:
-    # 디스커버리 1차 실행은 OPS/시크릿 불필요 — TARGET_URL만 있으면 된다.
+    # 디스커버리/CHECKS_ONLY는 OPS/시크릿 불필요 — TARGET_URL(+ACCOUNT)만 있으면 된다.
     if DISCOVER:
         if not TARGET_URL:
             print("[error] ENTERTEST_TARGET_URL 누락")
+            return 1
+    elif CHECKS_ONLY:
+        if not (TARGET_URL and ACCOUNT):
+            print("[error] CHECKS_ONLY: ENTERTEST_TARGET_URL/ACCOUNT 필요")
             return 1
     elif not (RUN_ID and TARGET_URL and ACCOUNT and BASE and SECRET):
         print("[error] 필수 환경변수 누락 (RUN_ID/TARGET_URL/ACCOUNT/BASE/SECRET)")
@@ -245,6 +316,9 @@ def main() -> int:
             return 0
         checks = run_checks(driver)
         failed = any(c["status"] == "fail" for c in checks)
+        if CHECKS_ONLY:
+            print(json.dumps({"failed": failed, "checks": checks}, ensure_ascii=False, indent=2))
+            return 0
         ingest("failed" if failed else "done", checks)
         return 0
     except Exception as e:  # noqa: BLE001 — 비정상 종료는 poll-local이 error 보고
