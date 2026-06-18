@@ -99,3 +99,12 @@ scripts/moa-closing/run-local.log
 # entertest 러너 로컬 산출물 (디스커버리 스냅샷/실행 로그)
 scripts/entertest/discovery/
 scripts/entertest/run-local.log
+
+# design-ref 스크래치(목업 HTML/스크린샷 PNG) — repo 제외.
+# 유지: 날짜별 *-design.md / *-plan.md, folio-*.html, concept-v4, realtime_dashboard.
+design-ref/*
+!design-ref/*-design.md
+!design-ref/*-plan.md
+!design-ref/folio-*.html
+!design-ref/live-dashboard-concept-v4.html
+!design-ref/realtime_dashboard.html
