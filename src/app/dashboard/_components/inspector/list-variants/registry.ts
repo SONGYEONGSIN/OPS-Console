@@ -93,6 +93,8 @@ import { AssignmentsView } from "./assignments/View";
 import { ASSIGNMENTS_FILTERS } from "./assignments/filters";
 import { DataRequestTable } from "./data-request/Table";
 import { DataRequestView } from "./data-request/View";
+import { DevTestView } from "./dev-test/View";
+import { DevTestTable } from "./dev-test/Table";
 import { DATA_REQUEST_FILTERS } from "./data-request/filters";
 import { PerformanceTable } from "./performance/Table";
 import { PerformanceView } from "./performance/View";
@@ -308,6 +310,11 @@ export const variantRegistry = {
     View: DataRequestView,
     Table: DataRequestTable,
     Filters: DATA_REQUEST_FILTERS,
+  },
+  "dev-test": {
+    View: DevTestView,
+    Table: DevTestTable,
+    Filters: [],
   },
   performance: {
     View: PerformanceView,

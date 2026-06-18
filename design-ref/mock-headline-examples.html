@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"/>
+<title>헤드라인 밴드 예시 화면 — A vs D (풀스크린 맥락)</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet"/>
+<style>
+:root{--washi:#ede6d2;--washi-raised:#f4eddd;--cream:#faf4e6;--paper:#fbf7f0;--sidebar:#efe7d7;
+--ink:#15120c;--ink-soft:#3d3529;--muted:#716855;--faint:#a8a08a;--line:#15120c;--line-soft:rgba(21,18,12,.12);
+--vermilion:#b8331e;--vermilion-deep:#8e2412;--indigo:#1f3a5f;--amber:#d97706;--gold:#9c7a2c;--sage:#556b2f;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#ddd6c8;font-family:'Pretendard Variable',Pretendard,sans-serif;color:var(--ink);font-size:13px;padding:24px}
+.exlabel{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--vermilion);margin:26px 4px 10px}
+.screen{background:var(--paper);border:1px solid var(--line-soft)}
+.num{color:var(--vermilion);font-variant-numeric:tabular-nums}.sep{color:var(--faint);margin:0 6px;font-size:.82em}
+.inner{padding:0 22px 20px}
+
+.statusbar{display:flex;align-items:center;border-bottom:2px solid var(--ink);background:var(--washi-raised);font-size:11px}
+.statusbar .health{display:flex;gap:13px;align-items:center;padding:6px 14px;border-right:1px solid var(--line-soft);white-space:nowrap}
+.statusbar .health b{color:var(--muted)}
+.led{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.led.ok{background:var(--sage)}.led.warn{background:var(--amber)}
+.statusbar .ticker{flex:1;min-width:0;padding:6px 14px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.statusbar .ticker .t{color:var(--gold);font-weight:700;margin-right:5px}
+.statusbar .live{padding:6px 13px;border-left:1px solid var(--line-soft);color:var(--vermilion);font-weight:700}
+
+.titlebar{display:flex;align-items:center;gap:12px;border:2px solid var(--line);background:var(--cream);padding:9px 16px;margin-top:20px}
+.titlebar .brand{font-size:19px;font-weight:700}.titlebar .en{font-size:9px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+.titlebar .liveind{font-size:10px;font-weight:700;color:var(--vermilion)}.titlebar .clock{font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.titlebar .toggle{margin-left:auto;display:flex;border:1px solid var(--line)}.titlebar .toggle span{padding:5px 12px;font-size:12px}.titlebar .toggle .on{background:var(--ink);color:var(--cream);font-weight:700}
+
+.stamp{width:56px;height:56px;border:2px solid var(--vermilion);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--vermilion);flex-shrink:0}
+.stamp .sn{font-size:18px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}.stamp .sl{font-size:7px;letter-spacing:.1em;margin-top:1px}
+.auto{width:fit-content;border:1px solid var(--line-soft);padding:2px 6px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* A 미니멀 */
+.A{display:flex;align-items:center;gap:18px;border:2px solid var(--ink);background:var(--cream);padding:18px 22px;margin-top:14px}
+.A .col{flex:1;min-width:0}.A .h1{font-size:23px;font-weight:700;line-height:1.25}
+.A .sub{font-size:12px;color:var(--muted);margin-top:7px}.A .sub strong{color:var(--ink-soft);font-weight:700}
+
+/* D 풍부 */
+.D{display:flex;align-items:stretch;border:2px solid var(--ink);background:var(--cream);margin-top:14px}
+.D .left{flex:1;min-width:0;padding:16px 22px;display:flex;flex-direction:column;justify-content:center}
+.D .h1{font-size:21px;font-weight:700;line-height:1.25;margin-top:6px}
+.D .sub{font-size:11px;color:var(--muted);margin-top:7px}.D .sub strong{color:var(--ink-soft);font-weight:700}
+.D .stats{display:flex;align-items:stretch;border-left:2px solid var(--ink)}
+.D .stat{display:flex;flex-direction:column;justify-content:center;padding:14px 18px;min-width:92px;border-left:1px solid var(--line-soft)}.D .stat:first-child{border-left:none}
+.D .stat .lbl{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;white-space:nowrap}
+.D .stat .val{font-size:24px;font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--ink)}.D .stat .val.alert{color:var(--vermilion)}.D .stat .val small{font-size:13px;color:var(--muted)}
+.D .stat .d{font-size:9px;color:var(--faint);margin-top:4px}
+.D .stampcell{display:flex;align-items:center;padding:0 20px;border-left:2px solid var(--ink)}
+
+.sumhead{display:flex;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-top:22px}
+.sumhead h2{font-size:19px;font-weight:700}.sumhead .s{font-size:12px;color:var(--muted);margin-left:8px}
+.cycle{display:flex;align-items:stretch;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background:var(--washi-raised);margin-top:11px}
+.cycle .lab{writing-mode:vertical-rl;transform:rotate(180deg);width:20px;background:var(--ink);color:var(--cream);font-size:11px;font-weight:700;letter-spacing:.12em;display:flex;align-items:center;justify-content:center}
+.cycle .card{flex:1;min-width:110px;padding:18px 14px;display:flex;flex-direction:column}
+.cycle .card .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.cycle .card .v{font-size:23px;font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.cycle .card .v small{font-size:13px;color:var(--muted)}.cycle .card .v.alert{color:var(--vermilion)}
+.cycle .card .d{font-size:10px;color:var(--faint);margin-top:7px}
+.cycle .arr{display:flex;align-items:center;color:var(--faint);padding:0 2px}
+</style></head>
+<body>
+
+<!-- ============ 예시 1 · A 미니멀 ============ -->
+<div class="exlabel">예시 1 · A — 미니멀 (헤드라인 한 줄 + 긴급. KPI 수치 없음)</div>
+<div class="screen">
+  <div class="statusbar"><div class="health"><b>시스템</b><span><span class="led ok"></span>서버</span><span><span class="led warn"></span>SmileEDI</span><span><span class="led ok"></span>DB</span></div><div class="ticker"><span class="t">[NAV]</span>09:35 서강대 수시 1차 계약 체결 확인 ◆ <span class="t">[INCIDENT]</span>09:29 이화여대 정시 마감 D-2</div><div class="live">● LIVE</div></div>
+  <div class="inner">
+    <div class="titlebar"><span class="brand">운영부 상황실</span><span class="en">OPS CONSOLE · REALTIME</span><span class="liveind">● LIVE MONITOR</span><span class="clock">2026-06-13 20:54 KST</span><span class="toggle"><span>전체</span><span class="on">내 담당</span></span></div>
+    <div class="A">
+      <div class="col">
+        <div class="h1">미처리 사고 <span class="num">3</span>건<span class="sep">·</span>오늘 마감 서비스 <span class="num">2</span>건<span class="sep">·</span>미수채권 독려 <span class="num">10:00</span> 발송 예정</div>
+        <div class="sub">마지막 갱신 20:54:10 &nbsp;—&nbsp; 총 미처리 우선순위 항목 <strong>18</strong>건</div>
+      </div>
+      <div class="stamp"><span class="sn">3</span><span class="sl">긴급</span></div>
+    </div>
+    <div class="sumhead"><h2>현황 요약</h2><span class="s">라이프사이클 · 핵심 지표</span></div>
+    <div class="cycle"><div class="lab">servicecycle</div>
+      <div class="card"><span class="lbl">계약체결</span><span class="v">24<small>/418</small></span><span class="d">(394) 미체결</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">오픈 예정</span><span class="v">2193</span><span class="d">배포 준비</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">진행 중</span><span class="v">142</span><span class="d">마감 연동</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">마감 완료</span><span class="v">303</span><span class="d">누적 303</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">미수채권</span><span class="v alert">41<small>/52</small></span><span class="d">(11) 미수</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">인수인계</span><span class="v">0<small>/2511</small></span><span class="d">(0) 완료</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">대학연락처</span><span class="v">20</span><span class="d">등록</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 예시 2 · D 풍부 ============ -->
+<div class="exlabel">예시 2 · D — 풍부하지만 깔끔 (헤드라인 + KPI 3종 통합 + 긴급) · 추천</div>
+<div class="screen">
+  <div class="statusbar"><div class="health"><b>시스템</b><span><span class="led ok"></span>서버</span><span><span class="led warn"></span>SmileEDI</span><span><span class="led ok"></span>DB</span></div><div class="ticker"><span class="t">[NAV]</span>09:35 서강대 수시 1차 계약 체결 확인 ◆ <span class="t">[INCIDENT]</span>09:29 이화여대 정시 마감 D-2</div><div class="live">● LIVE</div></div>
+  <div class="inner">
+    <div class="titlebar"><span class="brand">운영부 상황실</span><span class="en">OPS CONSOLE · REALTIME</span><span class="liveind">● LIVE MONITOR</span><span class="clock">2026-06-13 20:54 KST</span><span class="toggle"><span>전체</span><span class="on">내 담당</span></span></div>
+    <div class="D">
+      <div class="left">
+        <span class="auto">AUTO ▸ 우선순위 자동</span>
+        <div class="h1">미처리 사고 <span class="num">3</span>건<span class="sep">·</span>오늘 마감 서비스 <span class="num">2</span>건<span class="sep">·</span>미수채권 독려 <span class="num">10:00</span> 발송 예정</div>
+        <div class="sub">마지막 갱신 20:54:10 &nbsp;—&nbsp; 총 미처리 우선순위 항목 <strong>18</strong>건</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="lbl">사고 미해결</span><span class="val alert">35</span><span class="d">즉시 확인</span></div>
+        <div class="stat"><span class="lbl">내 할 일</span><span class="val">0<small>/1</small></span><span class="d">0% 완료</span></div>
+        <div class="stat"><span class="lbl">서비스 마감</span><span class="val">13</span><span class="d">D-7 내</span></div>
+      </div>
+      <div class="stampcell"><div class="stamp"><span class="sn">3</span><span class="sl">긴급</span></div></div>
+    </div>
+    <div class="sumhead"><h2>현황 요약</h2><span class="s">라이프사이클 · 핵심 지표</span></div>
+    <div class="cycle"><div class="lab">servicecycle</div>
+      <div class="card"><span class="lbl">계약체결</span><span class="v">24<small>/418</small></span><span class="d">(394) 미체결</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">오픈 예정</span><span class="v">2193</span><span class="d">배포 준비</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">진행 중</span><span class="v">142</span><span class="d">마감 연동</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">마감 완료</span><span class="v">303</span><span class="d">누적 303</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">미수채권</span><span class="v alert">41<small>/52</small></span><span class="d">(11) 미수</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">인수인계</span><span class="v">0<small>/2511</small></span><span class="d">(0) 완료</span></div><div class="arr">›</div>
+      <div class="card"><span class="lbl">대학연락처</span><span class="v">20</span><span class="d">등록</span></div>
+    </div>
+  </div>
+</div>
+
+</body></html>

@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>운영부 · 실시간 현황 — Focus Hero</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+/* ============================================================
+   OPS TOKENS — Design System 1:1
+   ============================================================ */
+:root {
+  --washi:          #ede6d2;
+  --washi-raised:   #f4eddd;
+  --cream:          #faf4e6;
+  --paper:          #fbf7f0;
+  --sidebar:        #e5dec8;
+  --ink:            #15120c;
+  --ink-soft:       #3d3529;
+  --muted:          #716855;
+  --faint:          #a8a08a;
+  --line:           #15120c;
+  --line-soft:      rgba(21, 18, 12, 0.12);
+  --line-mid:       rgba(21, 18, 12, 0.22);
+  --vermilion:      #b8331e;
+  --vermilion-deep: #8e2412;
+  --indigo:         #1f3a5f;
+  --amber:          #d97706;
+  --gold:           #9c7a2c;
+  --sage:           #556b2f;
+
+  --text-2xs: 10px;
+  --text-xs:  11px;
+  --text-sm:  12px;
+  --text-md:  13px;
+  --text-lg:  15px;
+  --text-xl:  20px;
+  --text-2xl: 26px;
+  --text-3xl: 44px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-7: 40px;
+  --space-8: 56px;
+
+  --drawer-ease: cubic-bezier(0.2, 0.0, 0.2, 1);
+}
+
+/* ============================================================
+   RESET
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--washi);
+  color: var(--ink);
+  font-family: 'Pretendard Variable', Pretendard, -apple-system, sans-serif;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  font-feature-settings: 'ss06' on;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Washi 노이즈 텍스처 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' seed='5'/><feColorMatrix values='0 0 0 0 0.82 0 0 0 0 0.74 0 0 0 0 0.58 0 0 0 0.1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ============================================================
+   APP SHELL — 세로 3행
+   ============================================================ */
+.app {
+  position: relative;
+  z-index: 1;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 28px 1fr;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   COMMAND BAR — 최상단 얇은 띠
+   ============================================================ */
+.cmd-bar {
+  background: var(--ink);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 0;
+  border-bottom: 1px solid rgba(250, 244, 230, 0.08);
+  overflow: hidden;
+}
+
+.cmd-bar-brand {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--vermilion);
+  white-space: nowrap;
+  padding-right: 14px;
+  border-right: 1px solid rgba(250, 244, 230, 0.12);
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+
+/* 헬스 LED 클러스터 */
+.cmd-health {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-right: 14px;
+  border-right: 1px solid rgba(250, 244, 230, 0.12);
+  margin-right: 14px;
+}
+
+.led-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-2xs);
+  color: rgba(250, 244, 230, 0.55);
+  letter-spacing: 0.06em;
+}
+
+.led {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.led.ok   { background: var(--sage);     box-shadow: 0 0 4px var(--sage); }
+.led.warn { background: var(--amber);    box-shadow: 0 0 4px var(--amber); }
+.led.err  { background: var(--vermilion); box-shadow: 0 0 4px var(--vermilion); }
+
+.led.ok, .led.warn {
+  animation: led-pulse 2.4s ease-in-out infinite;
+}
+
+/* 로그 티커 */
+.ticker-wrap {
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  mask-image: linear-gradient(to right, transparent 0, var(--ink) 40px, var(--ink) calc(100% - 40px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, var(--ink) 40px, var(--ink) calc(100% - 40px), transparent 100%);
+}
+
+.ticker-track {
+  display: flex;
+  gap: 0;
+  animation: ticker-scroll 38s linear infinite;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+}
+
+.ticker-item {
+  font-size: var(--text-2xs);
+  color: rgba(250, 244, 230, 0.45);
+  letter-spacing: 0.05em;
+  padding: 0 28px 0 0;
+}
+
+.ticker-item .t-tag {
+  font-weight: 600;
+  margin-right: 4px;
+  letter-spacing: 0.1em;
+}
+
+.ticker-item .t-tag.info  { color: #8bb3e5; }
+.ticker-item .t-tag.warn  { color: var(--amber); }
+.ticker-item .t-tag.err   { color: var(--vermilion); }
+.ticker-item .t-tag.ok    { color: var(--sage); }
+
+.ticker-sep {
+  color: rgba(250, 244, 230, 0.18);
+  padding: 0 14px 0 0;
+  font-size: 8px;
+}
+
+/* cmd bar 우측 */
+.cmd-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.cmd-clock {
+  color: rgba(250, 244, 230, 0.55);
+  letter-spacing: 0.08em;
+}
+
+.cmd-user {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(250, 244, 230, 0.55);
+}
+
+.cmd-av {
+  width: 16px; height: 16px;
+  background: var(--vermilion);
+  color: var(--cream);
+  font-size: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   BODY — 히어로 + 피드 좌우 레이아웃
+   ============================================================ */
+.body {
+  display: grid;
+  /* 히어로가 왼쪽 42%, 피드가 오른쪽 58% */
+  grid-template-columns: 42% 1fr;
+  overflow: hidden;
+}
+
+/* ============================================================
+   HERO PANEL — 왼쪽 전체 높이
+   ============================================================ */
+.hero-panel {
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 배경 워터마크 — 극대 타이포 */
+.hero-watermark {
+  position: absolute;
+  bottom: -20px;
+  right: -16px;
+  font-size: 280px;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  color: var(--line-soft);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--space-7) var(--space-7) var(--space-6);
+}
+
+/* 상단: 날짜·상태 레이블 */
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.hero-date {
+  font-size: var(--text-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-date em {
+  font-style: normal;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.hero-status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--sage);
+  box-shadow: 0 0 6px var(--sage);
+  flex-shrink: 0;
+  animation: led-pulse 2s ease-in-out infinite;
+}
+
+.hero-live-label {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* 메인 헤드라인 — 초대형 선언 카피 */
+.hero-headline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero-overline {
+  font-size: var(--text-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--vermilion);
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+}
+
+.hero-title {
+  font-size: clamp(40px, 4.5vw, 72px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin-bottom: var(--space-3);
+}
+
+.hero-title .num-accent {
+  color: var(--vermilion);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-title .line-break {
+  display: block;
+}
+
+.hero-subtitle {
+  font-size: var(--text-md);
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 340px;
+}
+
+/* 핵심 숫자 행 — 메트릭 5종 */
+.hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border-top: 1px solid var(--line-soft);
+  margin-top: var(--space-5);
+}
+
+.metric-cell {
+  padding: var(--space-4) var(--space-3) var(--space-3);
+  border-right: 1px solid var(--line-soft);
+  cursor: default;
+}
+
+.metric-cell:last-child { border-right: none; }
+
+.metric-cell:hover {
+  background: var(--washi-raised);
+}
+
+.metric-label {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: var(--space-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metric-value {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.metric-value.alert { color: var(--vermilion); }
+.metric-value.warn  { color: var(--amber); }
+.metric-value.ok    { color: var(--sage); }
+
+.metric-unit {
+  font-size: var(--text-2xs);
+  color: var(--faint);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 서비스 라이프사이클 — 4단계 가로 바 */
+.hero-lifecycle {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--line-soft);
+  margin-top: 0;
+}
+
+.lc-stage {
+  flex: 1;
+  padding: var(--space-3) var(--space-3);
+  border-right: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  cursor: default;
+  transition: background 0.1s;
+}
+
+.lc-stage:last-child { border-right: none; }
+.lc-stage:hover { background: var(--washi-raised); }
+
+/* 단계별 상단 칼라 바 */
+.lc-stage::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.lc-stage.stage-a::before { background: var(--indigo); }
+.lc-stage.stage-b::before { background: var(--amber); }
+.lc-stage.stage-c::before { background: var(--vermilion); }
+.lc-stage.stage-d::before { background: var(--sage); }
+
+.lc-label {
+  font-size: var(--text-2xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.lc-count {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.lc-desc {
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}
+
+/* ============================================================
+   FEED PANEL — 오른쪽
+   ============================================================ */
+.feed-panel {
+  background: var(--cream);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 피드 헤더 + 칩 필터 */
+.feed-header {
+  padding: var(--space-6) var(--space-7) 0;
+  border-bottom: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+
+.feed-header-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.feed-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.feed-total {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-total strong {
+  color: var(--vermilion);
+  font-weight: 600;
+}
+
+/* 칩 필터 — 밑줄형 (OPS 언어) */
+.chip-bar {
+  display: flex;
+  gap: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 calc(-1 * var(--space-7));
+  padding: 0 var(--space-7);
+}
+
+.chip-bar::-webkit-scrollbar { display: none; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px var(--space-4) 5px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.chip:hover { color: var(--ink); }
+
+.chip.active {
+  color: var(--ink);
+  border-bottom-color: var(--vermilion);
+}
+
+.chip-count {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: var(--washi-raised);
+  border: 1px solid var(--line-soft);
+  padding: 1px 5px;
+  line-height: 1.4;
+  min-width: 18px;
+  text-align: center;
+}
+
+.chip.active .chip-count {
+  background: var(--vermilion);
+  color: var(--cream);
+  border-color: var(--vermilion);
+}
+
+/* ============================================================
+   FEED TABLE
+   ============================================================ */
+.feed-body {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+}
+
+.feed-body::-webkit-scrollbar { width: 4px; }
+.feed-body::-webkit-scrollbar-thumb { background: var(--faint); border-radius: 0; }
+
+.feed-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 테이블 헤더 */
+.feed-table thead tr {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.feed-table thead th {
+  padding: var(--space-3) var(--space-7);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: left;
+  white-space: nowrap;
+  background: var(--washi-raised);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.feed-table thead th:first-child { width: 86px; }
+.feed-table thead th:nth-child(2) { width: 72px; }
+.feed-table thead th:nth-child(3) { flex: 1; }
+.feed-table thead th:last-child { width: 88px; text-align: right; }
+
+/* 테이블 행 */
+.feed-table tbody tr {
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: background 0.08s;
+}
+
+.feed-table tbody tr:hover { background: var(--washi-raised); }
+.feed-table tbody tr:last-child { border-bottom: none; }
+
+.feed-table tbody td {
+  padding: var(--space-3) var(--space-7);
+  vertical-align: middle;
+}
+
+/* 구분 배지 */
+.cat-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.cat-badge.service   { background: rgba(31, 58, 95, 0.08);   color: var(--indigo);   border-color: rgba(31, 58, 95, 0.18); }
+.cat-badge.incident  { background: rgba(184, 51, 30, 0.08);  color: var(--vermilion); border-color: rgba(184, 51, 30, 0.18); }
+.cat-badge.todo      { background: rgba(156, 122, 44, 0.08); color: var(--gold);     border-color: rgba(156, 122, 44, 0.18); }
+.cat-badge.backup    { background: rgba(85, 107, 47, 0.08);  color: var(--sage);     border-color: rgba(85, 107, 47, 0.18); }
+.cat-badge.handover  { background: rgba(113, 104, 85, 0.08); color: var(--muted);    border-color: var(--line-soft); }
+.cat-badge.schedule  { background: rgba(217, 119, 6, 0.08);  color: var(--amber);    border-color: rgba(217, 119, 6, 0.18); }
+.cat-badge.contract  { background: rgba(31, 58, 95, 0.12);   color: var(--indigo);   border-color: rgba(31, 58, 95, 0.22); }
+.cat-badge.notice    { background: rgba(21, 18, 12, 0.05);   color: var(--ink-soft); border-color: var(--line-soft); }
+.cat-badge.receivable{ background: rgba(184, 51, 30, 0.05);  color: var(--vermilion-deep); border-color: rgba(184, 51, 30, 0.12); }
+
+/* 상태 배지 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-badge.active    .status-dot { background: var(--sage);      box-shadow: 0 0 3px var(--sage); }
+.status-badge.pending   .status-dot { background: var(--amber);     box-shadow: 0 0 3px var(--amber); }
+.status-badge.alert     .status-dot { background: var(--vermilion); box-shadow: 0 0 3px var(--vermilion); animation: led-pulse 1.6s ease-in-out infinite; }
+.status-badge.done      .status-dot { background: var(--faint); }
+.status-badge.scheduled .status-dot { background: var(--indigo); }
+
+.status-badge.active    { color: var(--sage); }
+.status-badge.pending   { color: var(--amber); }
+.status-badge.alert     { color: var(--vermilion); }
+.status-badge.done      { color: var(--faint); }
+.status-badge.scheduled { color: var(--indigo); }
+
+/* 내용 셀 */
+.feed-content {
+  font-size: var(--text-md);
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.feed-content .main-text {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.feed-content .sub-text {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+/* 발생시점 셀 */
+.feed-time {
+  font-size: var(--text-sm);
+  color: var(--faint);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.feed-time .time-ago { display: block; }
+.feed-time .time-abs {
+  display: block;
+  font-size: var(--text-2xs);
+  color: rgba(168, 160, 138, 0.7);
+  margin-top: 1px;
+}
+
+/* ============================================================
+   FEED FOOTER — 페이지 메타
+   ============================================================ */
+.feed-footer {
+  padding: var(--space-3) var(--space-7);
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  background: var(--washi-raised);
+}
+
+.feed-footer-info {
+  font-size: var(--text-2xs);
+  color: var(--faint);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-footer-info strong {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.feed-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-2xs);
+  color: var(--faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--paper);
+  transition: background 0.1s, color 0.1s;
+}
+
+.feed-refresh:hover {
+  background: var(--washi);
+  color: var(--muted);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes led-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.9); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.count-anim {
+  animation: count-up 0.6s var(--drawer-ease) both;
+}
+
+/* 카운트업 지연 */
+.metric-cell:nth-child(1) .metric-value { animation-delay: 0.05s; }
+.metric-cell:nth-child(2) .metric-value { animation-delay: 0.12s; }
+.metric-cell:nth-child(3) .metric-value { animation-delay: 0.19s; }
+.metric-cell:nth-child(4) .metric-value { animation-delay: 0.26s; }
+.metric-cell:nth-child(5) .metric-value { animation-delay: 0.33s; }
+
+.lc-stage:nth-child(1) .lc-count { animation: count-up 0.5s var(--drawer-ease) 0.4s both; }
+.lc-stage:nth-child(2) .lc-count { animation: count-up 0.5s var(--drawer-ease) 0.5s both; }
+.lc-stage:nth-child(3) .lc-count { animation: count-up 0.5s var(--drawer-ease) 0.6s both; }
+.lc-stage:nth-child(4) .lc-count { animation: count-up 0.5s var(--drawer-ease) 0.7s both; }
+
+/* 히어로 타이틀 진입 */
+@keyframes hero-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.hero-title   { animation: hero-enter 0.7s var(--drawer-ease) 0.1s both; }
+.hero-subtitle { animation: hero-enter 0.7s var(--drawer-ease) 0.22s both; }
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .led, .led.ok, .led.warn,
+  .hero-status-dot,
+  .status-badge.alert .status-dot { animation: none; }
+
+  .hero-title, .hero-subtitle,
+  .metric-cell .metric-value,
+  .lc-stage .lc-count { animation: none; opacity: 1; transform: none; }
+
+  .feed-table tbody tr { transition: none; }
+  .chip { transition: none; }
+}
+</style>
+</head>
+
+<body>
+<div class="app" role="application" aria-label="운영부 실시간 현황">
+
+  <!-- ============================================================
+       COMMAND BAR
+       ============================================================ -->
+  <header class="cmd-bar" role="banner" aria-label="커맨드 바">
+    <span class="cmd-bar-brand" aria-label="운영부 상황실">OPSROOM</span>
+
+    <div class="cmd-health" role="status" aria-label="시스템 헬스">
+      <span class="led-item">
+        <span class="led ok" aria-hidden="true"></span>DB
+      </span>
+      <span class="led-item">
+        <span class="led ok" aria-hidden="true"></span>API
+      </span>
+      <span class="led-item">
+        <span class="led ok" aria-hidden="true"></span>MAIL
+      </span>
+      <span class="led-item">
+        <span class="led warn" aria-hidden="true"></span>EDI
+      </span>
+    </div>
+
+    <div class="ticker-wrap" aria-live="off" aria-label="운영 로그 피드">
+      <div class="ticker-track" id="ticker">
+        <span class="ticker-item"><span class="t-tag ok">OK</span>receivables-deposit-match 실행 완료 · 7건 매칭</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag info">INFO</span>이지은 · 계약서 검토 완료 — 서울대 K-MOOC 2026-2</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag warn">WARN</span>SmileEDI 응답 지연 1.4s · 재시도 1회</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag info">INFO</span>박지훈 · 인수인계 요청 발송 — 연세대 담당자</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag ok">OK</span>insights-collect 완료 · 영상 12편 수집</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag err">ERR</span>경위서 #2026-014 상태 이상 · admin 확인 요망</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag info">INFO</span>홍서연 · 백업 요청 메일 발송 — 고려대 3건</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag ok">OK</span>receivables-mail-operator 실행 · 5명 발송</span>
+        <span class="ticker-sep">·</span>
+        <!-- 복제 — 무한 루프용 -->
+        <span class="ticker-item"><span class="t-tag ok">OK</span>receivables-deposit-match 실행 완료 · 7건 매칭</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag info">INFO</span>이지은 · 계약서 검토 완료 — 서울대 K-MOOC 2026-2</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag warn">WARN</span>SmileEDI 응답 지연 1.4s · 재시도 1회</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag info">INFO</span>박지훈 · 인수인계 요청 발송 — 연세대 담당자</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag ok">OK</span>insights-collect 완료 · 영상 12편 수집</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag err">ERR</span>경위서 #2026-014 상태 이상 · admin 확인 요망</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag info">INFO</span>홍서연 · 백업 요청 메일 발송 — 고려대 3건</span>
+        <span class="ticker-sep">·</span>
+        <span class="ticker-item"><span class="t-tag ok">OK</span>receivables-mail-operator 실행 · 5명 발송</span>
+      </div>
+    </div>
+
+    <div class="cmd-right" aria-label="현재 사용자 및 시간">
+      <time class="cmd-clock" id="clock" datetime="" aria-live="polite">09:42:17</time>
+      <span class="cmd-user">
+        <span class="cmd-av" aria-hidden="true">이</span>
+        <span>이운영</span>
+      </span>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       BODY — 히어로 + 피드
+       ============================================================ -->
+  <div class="body">
+
+    <!-- ============================================================
+         HERO PANEL
+         ============================================================ -->
+    <section class="hero-panel" aria-labelledby="hero-title-id">
+      <span class="hero-watermark" aria-hidden="true">OPS</span>
+
+      <div class="hero-inner">
+        <!-- 아이브로우: 날짜 + 라이브 상태 -->
+        <div class="hero-eyebrow" role="status" aria-label="현재 상태">
+          <time class="hero-date" id="hero-date">
+            <em>2026년 6월 11일</em>&nbsp;목요일
+          </time>
+          <span class="hero-status-dot" aria-hidden="true"></span>
+          <span class="hero-live-label">Live</span>
+        </div>
+
+        <!-- 메인 선언 카피 -->
+        <div class="hero-headline">
+          <p class="hero-overline">오늘의 운영 현황</p>
+          <h1 class="hero-title" id="hero-title-id">
+            <span class="line-break">처리 대기</span>
+            <span class="num-accent" id="hero-count" aria-label="처리 대기 건수">38</span>건
+          </h1>
+          <p class="hero-subtitle">
+            사고 <strong>2건</strong>·미수 <strong>11건</strong>·백업 <strong>5건</strong>이 즉각 조치를 요구합니다.
+            인수인계·계약·일정은 별도 피드에서 확인하세요.
+          </p>
+        </div>
+
+        <!-- 메트릭 5종 -->
+        <section aria-label="핵심 지표">
+          <div class="hero-metrics" role="list">
+            <div class="metric-cell" role="listitem" tabindex="0" aria-label="계약 체결 건수">
+              <div class="metric-label">계약체결</div>
+              <div class="metric-value count-anim" id="m-contract">127</div>
+              <div class="metric-unit">건 · 이번 분기</div>
+            </div>
+            <div class="metric-cell" role="listitem" tabindex="0" aria-label="미수채권 건수">
+              <div class="metric-label">미수채권</div>
+              <div class="metric-value alert count-anim" id="m-receivable">11</div>
+              <div class="metric-unit">건 · 즉시 조치</div>
+            </div>
+            <div class="metric-cell" role="listitem" tabindex="0" aria-label="백업 요청 건수">
+              <div class="metric-label">백업요청</div>
+              <div class="metric-value warn count-anim" id="m-backup">5</div>
+              <div class="metric-unit">건 · 진행중</div>
+            </div>
+            <div class="metric-cell" role="listitem" tabindex="0" aria-label="인수인계 건수">
+              <div class="metric-label">인수인계</div>
+              <div class="metric-value count-anim" id="m-handover">9</div>
+              <div class="metric-unit">건 · 진행중</div>
+            </div>
+            <div class="metric-cell" role="listitem" tabindex="0" aria-label="대학 연락처 건수">
+              <div class="metric-label">대학연락처</div>
+              <div class="metric-value ok count-anim" id="m-contact">342</div>
+              <div class="metric-unit">건 · 등록</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 서비스 라이프사이클 4단계 -->
+        <section aria-label="서비스 라이프사이클">
+          <div class="hero-lifecycle" role="list">
+            <div class="lc-stage stage-a" role="listitem" tabindex="0" aria-label="계약중 서비스">
+              <span class="lc-label">계약중</span>
+              <span class="lc-count">23</span>
+              <span class="lc-desc">협의·검토</span>
+            </div>
+            <div class="lc-stage stage-b" role="listitem" tabindex="0" aria-label="운영중 서비스">
+              <span class="lc-label">운영중</span>
+              <span class="lc-count">84</span>
+              <span class="lc-desc">서비스 제공</span>
+            </div>
+            <div class="lc-stage stage-c" role="listitem" tabindex="0" aria-label="마감 예정 서비스">
+              <span class="lc-label">마감예정</span>
+              <span class="lc-count" style="color: var(--vermilion);">12</span>
+              <span class="lc-desc">D-60 이내</span>
+            </div>
+            <div class="lc-stage stage-d" role="listitem" tabindex="0" aria-label="완료된 서비스">
+              <span class="lc-label">완료</span>
+              <span class="lc-count">198</span>
+              <span class="lc-desc">누적</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         FEED PANEL
+         ============================================================ -->
+    <section class="feed-panel" aria-labelledby="feed-title-id">
+      <div class="feed-header">
+        <div class="feed-header-top">
+          <h2 class="feed-title" id="feed-title-id">통합 우선순위 피드</h2>
+          <span class="feed-total">총 <strong id="feed-count">38</strong>건 표시중</span>
+        </div>
+
+        <!-- 칩 필터 -->
+        <nav class="chip-bar" aria-label="피드 필터" role="tablist">
+          <button class="chip active" role="tab" aria-selected="true" aria-controls="feed-table-body" data-filter="all">
+            전체 <span class="chip-count">38</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="service">
+            서비스 <span class="chip-count">12</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="todo">
+            내 할일 <span class="chip-count">7</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="incident">
+            사고 <span class="chip-count" style="background: var(--vermilion); color: var(--cream); border-color: var(--vermilion);">2</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="backup">
+            백업 <span class="chip-count">5</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="handover">
+            인수인계 <span class="chip-count">4</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="schedule">
+            일정 <span class="chip-count">3</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="contract">
+            계약 <span class="chip-count">2</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="notice">
+            공지 <span class="chip-count">1</span>
+          </button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="receivable">
+            미수채권 <span class="chip-count" style="background: rgba(184,51,30,0.1); color: var(--vermilion); border-color: rgba(184,51,30,0.2);">11</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- 테이블 -->
+      <div class="feed-body" role="region" aria-label="우선순위 피드 목록">
+        <table class="feed-table" aria-label="통합 우선순위 피드 테이블">
+          <thead>
+            <tr>
+              <th scope="col">구분</th>
+              <th scope="col">상태</th>
+              <th scope="col">내용</th>
+              <th scope="col">발생시점</th>
+            </tr>
+          </thead>
+          <tbody id="feed-table-body">
+            <!-- Row 1 — 사고 (alert) -->
+            <tr tabindex="0" aria-label="사고 보고 — 경위서 미작성 알림">
+              <td><span class="cat-badge incident">사고</span></td>
+              <td>
+                <span class="status-badge alert">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  즉시 조치
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">경위서 #2026-014 — 상태 이상 · admin 확인 요망</div>
+                  <div class="sub-text">서울대 K-MOOC 서버 장애 · 담당: 이지은</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">18분 전</span>
+                  <span class="time-abs">09:24</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 2 — 미수채권 (alert) -->
+            <tr tabindex="0" aria-label="미수채권 — 연세대 경과 42일">
+              <td><span class="cat-badge receivable">미수</span></td>
+              <td>
+                <span class="status-badge alert">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  연체
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">연세대학교 K-MOOC 2분기 수강료 미수 — 경과 42일</div>
+                  <div class="sub-text">청구금액 1,200,000원 · 담당: 박지훈</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">42일 경과</span>
+                  <span class="time-abs">04.30</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 3 — 미수채권 (warn) -->
+            <tr tabindex="0" aria-label="미수채권 — 고려대 경과 18일">
+              <td><span class="cat-badge receivable">미수</span></td>
+              <td>
+                <span class="status-badge pending">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  독려예정
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">고려대학교 AI 교육 플랫폼 미수 — 경과 18일</div>
+                  <div class="sub-text">청구금액 850,000원 · 담당: 홍서연</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">18일 경과</span>
+                  <span class="time-abs">05.24</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 4 — 백업 요청 -->
+            <tr tabindex="0" aria-label="백업 요청 — 성균관대 진행중">
+              <td><span class="cat-badge backup">백업</span></td>
+              <td>
+                <span class="status-badge pending">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  진행중
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">성균관대학교 이러닝 센터 백업 요청 — 메일 발송 완료</div>
+                  <div class="sub-text">담당 대리: 최민준 · 기간 06.11 ~ 06.25</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">2시간 전</span>
+                  <span class="time-abs">07:38</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 5 — 내 할일 -->
+            <tr tabindex="0" aria-label="내 할일 — 계약서 검토 D-3">
+              <td><span class="cat-badge todo">할일</span></td>
+              <td>
+                <span class="status-badge pending">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  D-3
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">한양대 e-HY 계약서 최종 검토 및 서명 요청</div>
+                  <div class="sub-text">마감 06.14 · 서비스 개시 07.01 예정</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">어제</span>
+                  <span class="time-abs">06.10</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 6 — 인수인계 -->
+            <tr tabindex="0" aria-label="인수인계 — 박지훈 연세대 진행중">
+              <td><span class="cat-badge handover">인계</span></td>
+              <td>
+                <span class="status-badge active">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  진행중
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">박지훈 → 김민서 인수인계 — 연세대 K-MOOC 운영</div>
+                  <div class="sub-text">카테고리 14개 중 9개 완료 · 마감 06.20</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">3시간 전</span>
+                  <span class="time-abs">06:55</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 7 — 서비스 마감 예정 -->
+            <tr tabindex="0" aria-label="서비스 마감 예정 — 부산대 D-12">
+              <td><span class="cat-badge service">서비스</span></td>
+              <td>
+                <span class="status-badge alert">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  D-12
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">부산대학교 스마트캠퍼스 LMS — 서비스 마감 임박</div>
+                  <div class="sub-text">마감일 06.23 · 갱신 협의 未착수 · 담당: 이지은</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">4시간 전</span>
+                  <span class="time-abs">05:45</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 8 — 일정 -->
+            <tr tabindex="0" aria-label="오늘 일정 — 운영팀 주간 미팅">
+              <td><span class="cat-badge schedule">일정</span></td>
+              <td>
+                <span class="status-badge scheduled">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  오늘 14:00
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">운영팀 주간 미팅 — 전원 필참</div>
+                  <div class="sub-text">회의실 A · 어젠다: 미수 현황·사고 후속·Q3 계획</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">오늘</span>
+                  <span class="time-abs">14:00</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 9 — 계약 -->
+            <tr tabindex="0" aria-label="계약 — 인하대 계약서 서명 요청">
+              <td><span class="cat-badge contract">계약</span></td>
+              <td>
+                <span class="status-badge pending">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  서명 대기
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">인하대학교 온라인 교육 플랫폼 연장 계약 — 서명 요청 발송</div>
+                  <div class="sub-text">계약금 3,800,000원 · 기간 07.01 ~ 2027.06.30</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">1일 전</span>
+                  <span class="time-abs">06.10</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 10 — 사고 2번째 -->
+            <tr tabindex="0" aria-label="사고 — 중앙대 로그인 오류">
+              <td><span class="cat-badge incident">사고</span></td>
+              <td>
+                <span class="status-badge alert">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  조치중
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">중앙대학교 SSO 로그인 오류 — 수강생 약 200명 영향</div>
+                  <div class="sub-text">경위서 작성중 · 담당: 홍서연 · Azure AD 연동 문제</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">43분 전</span>
+                  <span class="time-abs">08:59</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 11 — 공지 -->
+            <tr tabindex="0" aria-label="공지 — 서버 점검 안내">
+              <td><span class="cat-badge notice">공지</span></td>
+              <td>
+                <span class="status-badge active">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  게시중
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">정기 서버 점검 안내 — 6월 15일 02:00~04:00 (KST)</div>
+                  <div class="sub-text">전체 서비스 중단 · 수강생 사전 공지 발송 예정</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">어제</span>
+                  <span class="time-abs">06.10 11:00</span>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 12 — 미수채권 3번째 -->
+            <tr tabindex="0" aria-label="미수채권 — 숙명여대 경과 15일">
+              <td><span class="cat-badge receivable">미수</span></td>
+              <td>
+                <span class="status-badge pending">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  독려예정
+                </span>
+              </td>
+              <td>
+                <div class="feed-content">
+                  <div class="main-text">숙명여자대학교 디지털 교육혁신 플랫폼 미수 — 경과 15일</div>
+                  <div class="sub-text">청구금액 670,000원 · 담당: 이운영</div>
+                </div>
+              </td>
+              <td>
+                <div class="feed-time">
+                  <span class="time-ago">15일 경과</span>
+                  <span class="time-abs">05.27</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 피드 풋터 -->
+      <footer class="feed-footer">
+        <span class="feed-footer-info">
+          <strong>12</strong>개 행 표시 · 마지막 갱신 <strong id="last-refresh">09:42:17</strong>
+        </span>
+        <button class="feed-refresh" aria-label="피드 새로고침" id="refresh-btn">
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+            <path d="M8 4.5A3.5 3.5 0 1 1 4.5 1a3.5 3.5 0 0 1 2.5 1.04" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+            <path d="M7 0v2H5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          새로고침
+        </button>
+      </footer>
+    </section>
+
+  </div><!-- /body -->
+</div><!-- /app -->
+
+<script>
+/* 시계 */
+(function () {
+  var clock = document.getElementById('clock');
+  var lastRefresh = document.getElementById('last-refresh');
+  var heroDate  = document.getElementById('hero-date');
+
+  function pad(n) { return n < 10 ? '0' + n : n; }
+
+  function tick() {
+    var now = new Date();
+    var h = pad(now.getHours());
+    var m = pad(now.getMinutes());
+    var s = pad(now.getSeconds());
+    var ts = h + ':' + m + ':' + s;
+    clock.textContent = ts;
+    clock.setAttribute('datetime', now.toISOString());
+
+    // 날짜 갱신
+    var days = ['일', '월', '화', '수', '목', '금', '토'];
+    var y = now.getFullYear();
+    var mo = pad(now.getMonth() + 1);
+    var d  = pad(now.getDate());
+    var day = days[now.getDay()];
+    heroDate.innerHTML = '<em>' + y + '년 ' + mo + '월 ' + d + '일</em>&nbsp;' + day + '요일';
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* 새로고침 버튼 */
+  document.getElementById('refresh-btn').addEventListener('click', function () {
+    var now = new Date();
+    var h = pad(now.getHours());
+    var m = pad(now.getMinutes());
+    var s = pad(now.getSeconds());
+    lastRefresh.textContent = h + ':' + m + ':' + s;
+    // 피드 행 fade-in 재생
+    var rows = document.querySelectorAll('#feed-table-body tr');
+    rows.forEach(function (r, i) {
+      r.style.opacity = '0';
+      r.style.transform = 'translateY(4px)';
+      setTimeout(function () {
+        r.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        r.style.opacity = '1';
+        r.style.transform = 'translateY(0)';
+      }, i * 30);
+    });
+  });
+})();
+
+/* 칩 필터 */
+(function () {
+  var chips = document.querySelectorAll('.chip');
+  chips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      chips.forEach(function (c) {
+        c.classList.remove('active');
+        c.setAttribute('aria-selected', 'false');
+      });
+      chip.classList.add('active');
+      chip.setAttribute('aria-selected', 'true');
+
+      var filter = chip.getAttribute('data-filter');
+      var rows = document.querySelectorAll('#feed-table-body tr');
+      var visible = 0;
+      rows.forEach(function (row) {
+        if (filter === 'all') {
+          row.style.display = '';
+          visible++;
+          return;
+        }
+        var badge = row.querySelector('.cat-badge');
+        var match = false;
+        if (badge) {
+          var cls = badge.className;
+          if (filter === 'service'    && cls.indexOf('service') > -1)    match = true;
+          if (filter === 'incident'   && cls.indexOf('incident') > -1)   match = true;
+          if (filter === 'todo'       && cls.indexOf('todo') > -1)       match = true;
+          if (filter === 'backup'     && cls.indexOf('backup') > -1)     match = true;
+          if (filter === 'handover'   && cls.indexOf('handover') > -1)   match = true;
+          if (filter === 'schedule'   && cls.indexOf('schedule') > -1)   match = true;
+          if (filter === 'contract'   && cls.indexOf('contract') > -1)   match = true;
+          if (filter === 'notice'     && cls.indexOf('notice') > -1)     match = true;
+          if (filter === 'receivable' && cls.indexOf('receivable') > -1) match = true;
+        }
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      document.getElementById('feed-count').textContent = visible;
+    });
+
+    /* 키보드 — Enter/Space */
+    chip.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        chip.click();
+      }
+    });
+  });
+})();
+
+/* 히어로 카운트업 */
+(function () {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  function countUp(el, target, duration) {
+    var start = 0;
+    var step = target / (duration / 16);
+    var current = start;
+    var timer = setInterval(function () {
+      current += step;
+      if (current >= target) {
+        current = target;
+        clearInterval(timer);
+      }
+      el.textContent = Math.round(current);
+    }, 16);
+  }
+
+  setTimeout(function () {
+    countUp(document.getElementById('hero-count'), 38, 800);
+  }, 300);
+
+  var metrics = [
+    { id: 'm-contract',  val: 127, delay: 200 },
+    { id: 'm-receivable', val: 11, delay: 300 },
+    { id: 'm-backup',    val: 5,   delay: 400 },
+    { id: 'm-handover',  val: 9,   delay: 500 },
+    { id: 'm-contact',   val: 342, delay: 600 },
+  ];
+
+  metrics.forEach(function (m) {
+    setTimeout(function () {
+      countUp(document.getElementById(m.id), m.val, 700);
+    }, m.delay);
+  });
+})();
+</script>
+</body>
+</html>

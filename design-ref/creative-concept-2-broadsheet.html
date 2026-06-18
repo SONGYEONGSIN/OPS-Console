@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>파격 제안 2: Broadsheet (신문 1면) 뷰</title>
+  <style>
+    :root {
+      --washi: #ede6d2; --cream: #faf4e6; --paper: #fbf7f0;
+      --ink: #15120c; --inkSoft: #3d3529; --muted: #716855;
+      --line: #15120c; --lineSoft: rgba(21, 18, 12, 0.2);
+      --vermilion: #b8331e;
+    }
+    body {
+      margin: 0; background: var(--paper); color: var(--ink);
+      font-family: "Pretendard Variable", "Nanum Myeongjo", serif; /* 신문 느낌을 위해 명조체 혼합 사용 가능하나 기본은 Pretendard */
+    }
+    .newspaper { max-width: 1200px; margin: 40px auto; padding: 20px; background: var(--cream); border: 1px solid var(--line); box-shadow: 10px 10px 0 var(--lineSoft); }
+    
+    /* 헤더 (제호) */
+    .masthead { text-align: center; border-bottom: 4px solid var(--ink); padding-bottom: 20px; margin-bottom: 20px; }
+    .masthead-top { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-bottom: 12px; text-transform: uppercase; }
+    .paper-title { font-size: 72px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; margin: 0; text-transform: uppercase; }
+    .paper-subtitle { font-size: 16px; font-weight: 600; color: var(--muted); letter-spacing: 0.2em; margin-top: 8px; }
+    
+    /* 1면 메인 헤드라인 */
+    .headline-wrap { text-align: center; margin-bottom: 40px; }
+    .headline { font-size: 56px; font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; margin: 0 0 16px 0; color: var(--vermilion); }
+    .headline-sub { font-size: 20px; font-weight: 500; color: var(--inkSoft); max-width: 800px; margin: 0 auto; line-height: 1.5; }
+    
+    /* 다단 레이아웃 */
+    .columns { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 24px; }
+    .col { border-right: 1px solid var(--lineSoft); padding-right: 24px; }
+    .col:last-child { border-right: none; padding-right: 0; }
+    
+    .article { margin-bottom: 30px; }
+    .a-title { font-size: 24px; font-weight: 800; line-height: 1.2; margin: 0 0 10px 0; letter-spacing: -0.02em; }
+    .a-meta { font-size: 12px; font-weight: 700; color: var(--muted); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px 0; margin-bottom: 12px; text-transform: uppercase; }
+    .a-body { font-size: 15px; line-height: 1.6; color: var(--inkSoft); text-align: justify; }
+    .a-body p { margin: 0 0 12px 0; }
+    
+    /* 핵심 수치 타이포그래피 강조 */
+    .big-number { font-size: 80px; font-weight: 900; line-height: 1; letter-spacing: -0.05em; text-align: center; margin: 20px 0; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 20px 0; }
+    .big-number span { display: block; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-top: 8px; }
+    
+    /* 라이브 티커 */
+    .ticker { background: var(--ink); color: var(--paper); padding: 8px 0; overflow: hidden; white-space: nowrap; margin-bottom: 20px; }
+    .ticker-content { display: inline-block; padding-left: 100%; animation: scroll 20s linear infinite; font-weight: 700; font-size: 14px; letter-spacing: 0.05em; }
+    .ticker-content span { margin-right: 40px; }
+    .ticker-content span.alert { color: #ff6b6b; }
+    @keyframes scroll { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+  </style>
+</head>
+<body>
+  <div class="ticker">
+    <div class="ticker-content">
+      <span class="alert">● BREAKING: 결제 시스템 트래픽 폭증으로 인한 일시적 지연 발생</span>
+      <span>● 신규 캠페인 '여름 특가' 배포 완료</span>
+      <span>● 실시간 동시 접속자 150,000명 돌파</span>
+      <span>● DB 클러스터 3번 노드 정상화 진행 중</span>
+    </div>
+  </div>
+
+  <div class="newspaper">
+    <div class="masthead">
+      <div class="masthead-top">
+        <span>Vol. 2026-06</span>
+        <span>실시간 작전 현황판</span>
+        <span style="color:var(--vermilion); font-weight:900;">LIVE UPDATE</span>
+      </div>
+      <h1 class="paper-title">THE OPS CHRONICLE</h1>
+      <div class="paper-subtitle">REAL-TIME SYSTEM MONITORING &amp; INTELLIGENCE</div>
+    </div>
+    
+    <div class="headline-wrap">
+      <h2 class="headline">결제 트래픽 300% 폭증<br>시스템 경계 태세 '심각' 격상</h2>
+      <p class="headline-sub">오후 2시 정각 시작된 '여름 특가' 이벤트로 인해 결제 게이트웨이 호출이 예상치를 300% 이상 상회하며 API 응답 지연 현상이 전 구역에 걸쳐 발생하고 있다.</p>
+    </div>
+    
+    <div class="columns">
+      <!-- 왼쪽 단 (수치 요약) -->
+      <div class="col">
+        <div class="article">
+          <h3 class="a-title">현재 접속자</h3>
+          <div class="big-number">152K <span>Active Users</span></div>
+          <div class="a-body">
+            <p>초당 요청수(RPS)가 12,000을 넘어서며 아키텍처 한계에 근접하고 있습니다. 오토스케일링 그룹이 작동하여 50개의 인스턴스가 추가로 프로비저닝 되었습니다.</p>
+          </div>
+        </div>
+        <div class="article">
+          <h3 class="a-title">에러 비율</h3>
+          <div class="big-number" style="color:var(--vermilion);">4.2% <span>Failure Rate</span></div>
+        </div>
+      </div>
+      
+      <!-- 가운데 단 (상세 현황 및 타임라인) -->
+      <div class="col">
+        <div class="article">
+          <h3 class="a-title">현장 대응 타임라인</h3>
+          <div class="a-meta">BY SRE TEAM • 14:05 KST</div>
+          <div class="a-body">
+            <p><strong>14:00</strong> 특가 이벤트가 오픈되자마자 대규모 트래픽이 유입되었습니다. 초기 1분간 대기열 시스템이 정상 작동했으나, 이후 DB 커넥션 풀이 고갈되기 시작했습니다.</p>
+            <p><strong>14:02</strong> 결제 서버 응답 시간이 5초를 초과하며 'Critical' 경보가 발령되었습니다. 백엔드 팀은 긴급히 비필수 API 호출을 차단하고 서킷 브레이커를 수동으로 개방했습니다.</p>
+            <p><strong>14:05 현재</strong> 트래픽 분산을 위해 CDN 캐시 히트율을 강제로 높였으며, 결제 대기열이 서서히 소화되고 있습니다. 하지만 여전히 주문 체결 지연에 대한 고객 문의가 CS 센터로 쇄도하고 있는 상황입니다. 운영팀은 후속 조치를 위해 대기 중입니다.</p>
+          </div>
+        </div>
+        <div style="border:1px solid var(--line); padding:20px; background:var(--paper);">
+          <h4 style="margin:0 0 10px 0; font-size:14px; text-transform:uppercase;">[ 지시 사항 ]</h4>
+          <p style="margin:0; font-size:14px; font-weight:700;">모든 부서는 불필요한 배치 작업을 중단하고 자원을 결제망으로 집중할 것.</p>
+        </div>
+      </div>
+      
+      <!-- 오른쪽 단 (서브 지표들) -->
+      <div class="col">
+        <div class="article">
+          <h3 class="a-title">인프라 상태</h3>
+          <div class="a-meta">NODE HEALTH</div>
+          <div style="margin-top:10px;">
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--lineSoft); padding:8px 0; font-weight:700;">
+              <span>WEB CLUSTER</span> <span style="color:var(--vermilion);">95% CPU</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--lineSoft); padding:8px 0; font-weight:700;">
+              <span>DB MASTER</span> <span style="color:var(--vermilion);">99% CONN</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--lineSoft); padding:8px 0; font-weight:700;">
+              <span>REDIS CACHE</span> <span>45% MEM</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--lineSoft); padding:8px 0; font-weight:700;">
+              <span>QUEUE</span> <span style="color:var(--vermilion);">BACKLOG</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

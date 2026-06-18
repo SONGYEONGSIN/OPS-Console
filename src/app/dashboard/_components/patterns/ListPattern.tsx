@@ -12,6 +12,7 @@ import { applyProjectFilter } from "../inspector/list-variants/project/filters";
 import { applyProjectTaskFilter } from "../inspector/list-variants/project-task/filters";
 import { applyMeetingFilter } from "../inspector/list-variants/meetings/filters";
 import type { Variant } from "../inspector/list-variants/types";
+import type { EntertestRun } from "@/features/entertest/schemas";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
 export type ListRow = {
@@ -462,6 +463,10 @@ export type ListRow = {
   dataRequestStatus?: "scheduled" | "sent" | null;
   /** data-request variant — 가장 이른 예약 시각(ISO). status='scheduled'일 때 */
   dataRequestScheduledAt?: string | null;
+  /** dev-test variant — 이 서비스의 entertest 실행 이력 (page가 service_id별 임베드) */
+  entertestRuns?: EntertestRun[];
+  /** dev-test variant — 테스트 계정 등록 여부 (실행 버튼 활성 조건) */
+  entertestAccountReady?: boolean;
   /** meetings variant — 회의 유형 (MEETING_TYPES). page가 meeting.type 매핑 */
   meetingType?: "regular" | "field" | "project" | "memo" | "urgent";
   /** meetings variant — 회의 제목 */

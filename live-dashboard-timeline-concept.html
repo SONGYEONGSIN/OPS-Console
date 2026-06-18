@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OPS-Console — 실시간 현황 (타임라인 중심)</title>
+    <style>
+      :root {
+        --paper: #fbf7f0; /* 밝은 한지 톤 */
+        --cream: #faf4e6;
+        --washi-raised: #f4eddd;
+        --ink: #15120c;
+        --ink-soft: #3d3529;
+        --muted: #716855;
+        --faint: #a8a08a;
+        --line: #15120c;
+        --line-soft: rgba(21, 18, 12, 0.12);
+        --vermilion: #b8331e;
+        --green-light: #48bb78;
+        --amber: #d97706;
+        --indigo: #1f3a5f;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background-color: var(--paper);
+        color: var(--ink);
+        font-family:
+          "Pretendard Variable",
+          Pretendard,
+          -apple-system,
+          BlinkMacSystemFont,
+          system-ui,
+          sans-serif;
+        font-size: 13px;
+        line-height: 1.45;
+        padding: 30px;
+        position: relative;
+        min-height: 100vh;
+      }
+
+      /* 한지 질감 & 모눈 격자 배경 */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.35;
+        background-image: 
+          linear-gradient(rgba(21, 18, 12, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(21, 18, 12, 0.05) 1px, transparent 1px),
+          url("data:image/svg+xml;utf8,<svg viewBox='0 0 300 300' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' seed='5'/><feColorMatrix values='0 0 0 0 0.82 0 0 0 0 0.74 0 0 0 0 0.58 0 0 0 0.15 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        background-size: 20px 20px, 20px 20px, auto;
+      }
+
+      /* ═════════════════════════════════════════════════════════
+         오버슛 설계 보더 프레임 (Cross-hair Corners)
+         ═════════════════════════════════════════════════════════ */
+      .outer-frame {
+        position: relative;
+        z-index: 1;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      /* 격자 크로스 보더 라인 */
+      .border-line-h {
+        position: absolute;
+        left: -10px;
+        right: -10px;
+        height: 2px;
+        background-color: var(--line);
+      }
+      .border-line-h.top { top: 10px; }
+      .border-line-h.bottom { bottom: 10px; }
+
+      .border-line-v {
+        position: absolute;
+        top: -10px;
+        bottom: -10px;
+        width: 2px;
+        background-color: var(--line);
+      }
+      .border-line-v.left { left: 10px; }
+      .border-line-v.right { right: 10px; }
+
+      .inner-content {
+        padding: 10px 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      /* ═════════════════════════════════════════════════════════
+         상단 마스트헤드 (Header)
+         ═════════════════════════════════════════════════════════ */
+      header.masthead {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        border-bottom: 2px solid var(--line);
+        padding-bottom: 12px;
+      }
+
+      .brand-box {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .brand-console {
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .brand-console::before {
+        content: "";
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        background-color: var(--line);
+        clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+      }
+
+      .brand-title {
+        font-size: 32px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        margin: 4px 0 0 0;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .status-box {
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+      }
+
+      .status-date {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .clock {
+        font-size: 22px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+      }
+
+      .live-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: var(--green-light);
+        margin-top: 2px;
+      }
+
+      .live-indicator .dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background-color: var(--green-light);
+        box-shadow: 0 0 4px var(--green-light);
+        animation: live-pulse 1s infinite alternate;
+      }
+
+      @keyframes live-pulse {
+        0% { transform: scale(0.9); opacity: 0.5; }
+        100% { transform: scale(1.15); opacity: 1; }
+      }
+
+      /* ═════════════════════════════════════════════════════════
+         중앙 오늘의 흐름 타임라인 (Timeline Axis)
+         ═════════════════════════════════════════════════════════ */
+      .timeline-panel {
+        border: 2px solid var(--line);
+        background-color: var(--cream);
+        padding: 20px 24px 35px 24px;
+        box-shadow: 0 4px 0 var(--line);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line-soft);
+        padding-bottom: 8px;
+      }
+
+      .panel-title {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin: 0;
+      }
+
+      .current-time-indicator {
+        font-size: 9px;
+        font-weight: 800;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* 가로 시간축 컨테이너 */
+      .timeline-track-container {
+        position: relative;
+        height: 240px;
+        margin-top: 10px;
+      }
+
+      /* 가로 시간축 실선 */
+      .timeline-main-axis {
+        position: absolute;
+        top: 24px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background-color: var(--line);
+        z-index: 2;
+      }
+
+      /* 시간 눈금선 및 라벨 */
+      .timeline-tick {
+        position: absolute;
+        top: 18px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transform: translateX(-50%);
+        z-index: 3;
+      }
+
+      .tick-line {
+        width: 1px;
+        height: 14px;
+        background-color: var(--line);
+      }
+
+      .tick-label {
+        font-family: monospace;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--ink-soft);
+        margin-top: 10px;
+      }
+
+      .tick-label-top {
+        font-family: monospace;
+        font-size: 9px;
+        font-weight: 700;
+        color: var(--muted);
+        position: absolute;
+        top: -18px;
+      }
+
+      /* 현재 시각 지시선 (Vertical NOW Line) */
+      .timeline-now-line {
+        position: absolute;
+        top: 8px;
+        bottom: -20px;
+        width: 2px;
+        background-color: var(--line);
+        z-index: 10;
+      }
+
+      .timeline-now-line::before {
+        content: "";
+        position: absolute;
+        top: -6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid var(--line);
+      }
+
+      /* 세로 드롭 라인 (Vertical Drop Lines) & 사건 레이블 */
+      .timeline-event {
+        position: absolute;
+        top: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transform: translateX(-50%);
+        z-index: 4;
+      }
+
+      .event-dot-axis {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2.5px solid var(--paper);
+        z-index: 5;
+        margin-top: -3.5px;
+      }
+      .event-dot-axis.blue { background-color: var(--indigo); }
+      .event-dot-axis.green { background-color: var(--green-light); }
+      .event-dot-axis.yellow { background-color: var(--amber); }
+      .event-dot-axis.red { background-color: var(--vermilion); }
+
+      .event-drop-line {
+        width: 1.5px;
+        background-color: var(--line);
+        margin-top: -2px;
+      }
+
+      .event-card {
+        border: 1.5px solid var(--line);
+        background: var(--washi-raised);
+        padding: 8px 10px;
+        border-radius: 1px;
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        white-space: nowrap;
+        box-shadow: 2px 2px 0 var(--line-soft);
+        position: relative;
+        transition: transform 0.15s;
+        cursor: pointer;
+      }
+      .event-card:hover {
+        transform: scale(1.03);
+        background-color: var(--paper);
+      }
+
+      .event-card-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-top: 4px;
+      }
+      .event-card-dot.blue { background-color: var(--indigo); }
+      .event-card-dot.green { background-color: var(--green-light); }
+      .event-card-dot.yellow { background-color: var(--amber); }
+      .event-card-dot.red { background-color: var(--vermilion); }
+
+      .event-info {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .event-title {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .event-time-meta {
+        font-size: 9.5px;
+        color: var(--muted);
+        margin-top: 2px;
+        font-weight: 600;
+      }
+
+      /* 엇갈림 높이 설정을 통해 텍스트 중첩 방지 (Staggered Heights) */
+      .event-drop-line.len-1 { height: 180px; }
+      .event-drop-line.len-2 { height: 125px; }
+      .event-drop-line.len-3 { height: 75px; }
+      .event-drop-line.len-4 { height: 35px; }
+
+      /* ═════════════════════════════════════════════════════════
+         하단 2열 정보 레이아웃 (Attention & Feed)
+         ═════════════════════════════════════════════════════════ */
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.6fr;
+        gap: 20px;
+        align-items: start;
+      }
+
+      .grid-panel {
+        border: 2px solid var(--line);
+        background-color: var(--cream);
+        padding: 16px 18px;
+        box-shadow: 0 4px 0 var(--line);
+      }
+
+      .grid-panel-title {
+        font-size: 12px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin: 0 0 12px 0;
+        border-bottom: 2px solid var(--line);
+        padding-bottom: 6px;
+      }
+
+      /* 좌측: ATTENTION CHECKLIST */
+      .checklist-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 4px 0;
+      }
+
+      .checklist-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 9px;
+        font-weight: 800;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+
+      .checklist-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 4px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .checklist-row:last-child {
+        border-bottom: none;
+      }
+
+      .checklist-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      /* 커스텀 직각 체크박스 */
+      .custom-checkbox {
+        width: 14px;
+        height: 14px;
+        border: 1.5px solid var(--line);
+        background-color: var(--paper);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        cursor: pointer;
+      }
+
+      .custom-checkbox.checked::after {
+        content: "✓";
+        font-size: 10px;
+        font-weight: bold;
+        color: var(--ink);
+        line-height: 1;
+      }
+
+      .checklist-label {
+        font-size: 11.5px;
+        font-weight: 750;
+      }
+
+      .checklist-time {
+        font-family: monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      /* 우측: PRIORITY FEED TABLE */
+      .feed-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .feed-table th {
+        font-size: 9px;
+        font-weight: 800;
+        color: var(--muted);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--line);
+        padding: 6px 4px;
+        text-align: left;
+      }
+
+      .feed-table td {
+        padding: 8px 4px;
+        border-bottom: 1px solid var(--line-soft);
+        font-size: 11.5px;
+        color: var(--ink-soft);
+      }
+
+      .feed-table tbody tr:hover {
+        background-color: var(--washi-raised);
+        cursor: pointer;
+      }
+
+      /* 상태 서클 인디케이터 */
+      .status-circle-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .status-circle {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+      }
+      .status-circle.red { background-color: var(--vermilion); }
+      .status-circle.yellow { background-color: var(--amber); }
+      .status-circle.white { background-color: var(--paper); }
+      .status-circle.blue { background-color: var(--indigo); }
+    </style>
+  </head>
+  <body>
+    <!-- 오버슛 설계 보더 그리드 -->
+    <div class="border-line-h top"></div>
+    <div class="border-line-h bottom"></div>
+    <div class="border-line-v left"></div>
+    <div class="border-line-v right"></div>
+
+    <div class="outer-frame">
+      <div class="inner-content">
+        
+        <!-- ① 상단 헤더 -->
+        <header class="masthead">
+          <div class="brand-box">
+            <span class="brand-console">OPS-Console</span>
+            <h1 class="brand-title">Real-Time Status</h1>
+          </div>
+          <div class="status-box">
+            <span class="status-date" id="live-date">Monday, 21 Oct 2024</span>
+            <span class="clock" id="live-time">11:42:15 KST</span>
+            <div class="live-indicator">
+              <span class="dot"></span>
+              <span>LIVE</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- ② 오늘의 흐름 타임라인 패널 -->
+        <section class="timeline-panel" aria-label="오늘의 흐름 실시간 타임라인">
+          <div class="panel-header">
+            <h2 class="panel-title">Timeline Axis</h2>
+            <div class="current-time-indicator" id="current-time-label">11:42 Current Time</div>
+          </div>
+
+          <div class="timeline-track-container">
+            <!-- 가로 시간축 실선 -->
+            <div class="timeline-main-axis"></div>
+
+            <!-- 시간 눈금들 (9시 ~ 18시) -->
+            <div class="timeline-tick" style="left: 0%;">
+              <span class="tick-label-top">KST</span>
+              <div class="tick-line"></div>
+              <span class="tick-label">9:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 11.11%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">10:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 22.22%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">11:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 33.33%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">12:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 44.44%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">13:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 55.56%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">14:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 66.67%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">15:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 77.78%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">16:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 88.89%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">17:00</span>
+            </div>
+            <div class="timeline-tick" style="left: 100%;">
+              <div class="tick-line"></div>
+              <span class="tick-label">18:00</span>
+            </div>
+
+            <!-- 실시간 NOW 라인 (11:42 KST 기준 위치: 약 30%) -->
+            <div class="timeline-now-line" id="now-vertical-line" style="left: 30%;"></div>
+
+            <!-- 세로 드롭 라인들 & 사건 카드들 -->
+            <!-- 9:55 KST - User Traffic Spike (Drop Line 180px) -->
+            <div class="timeline-event" style="left: 10.18%;">
+              <div class="event-dot-axis blue"></div>
+              <div class="event-drop-line len-1"></div>
+              <div class="event-card">
+                <span class="event-card-dot blue"></span>
+                <div class="event-info">
+                  <span class="event-title">User Traffic Spike</span>
+                  <span class="event-time-meta">9:55 KST | User Traffic Spike</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 10:35 KST - Database Sync Complete (Drop Line 125px) -->
+            <div class="timeline-event" style="left: 17.59%;">
+              <div class="event-dot-axis green"></div>
+              <div class="event-drop-line len-2"></div>
+              <div class="event-card">
+                <span class="event-card-dot green"></span>
+                <div class="event-info">
+                  <span class="event-title">Database Sync Complete</span>
+                  <span class="event-time-meta">10:35 KST | Database Sync Complete</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 11:05 KST - Server Node 04 Restarted (Drop Line 75px) -->
+            <div class="timeline-event" style="left: 23.14%;">
+              <div class="event-dot-axis yellow"></div>
+              <div class="event-drop-line len-3"></div>
+              <div class="event-card">
+                <span class="event-card-dot yellow"></span>
+                <div class="event-info">
+                  <span class="event-title">Server Node 04 Restarted</span>
+                  <span class="event-time-meta">11:05 KST | CPU Usage 04 Restarted</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 11:28 KST - Network Latency Peak (Drop Line 35px) -->
+            <div class="timeline-event" style="left: 27.41%;">
+              <div class="event-dot-axis red"></div>
+              <div class="event-drop-line len-4"></div>
+              <div class="event-card">
+                <span class="event-card-dot red"></span>
+                <div class="event-info">
+                  <span class="event-title">Network Latency Peak (Alert)</span>
+                  <span class="event-time-meta">11:28 KST | Latency > 250ms</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ③ 하단 2열 정보 그리드 -->
+        <div class="bottom-grid">
+          
+          <!-- 좌측: ATTENTION CHECKLIST -->
+          <div class="grid-panel">
+            <h2 class="grid-panel-title">Attention Checklist</h2>
+            <div class="checklist-container">
+              <div class="checklist-header">
+                <span>Items</span>
+                <span>Time / Status</span>
+              </div>
+              
+              <!-- 항목 1 (체크 완료) -->
+              <div class="checklist-row">
+                <div class="checklist-left">
+                  <div class="custom-checkbox checked"></div>
+                  <span class="checklist-label">Review Alert: Node 04</span>
+                </div>
+                <span class="checklist-time">11:15</span>
+              </div>
+
+              <!-- 항목 2 (대기 중) -->
+              <div class="checklist-row">
+                <div class="checklist-left">
+                  <div class="custom-checkbox"></div>
+                  <span class="checklist-label">Confirm DB Sync Integrity</span>
+                </div>
+                <span class="checklist-time" style="color: var(--muted); font-size: 10px; text-transform: uppercase;">pending</span>
+              </div>
+
+              <!-- 항목 3 (체크 완료) -->
+              <div class="checklist-row">
+                <div class="checklist-left">
+                  <div class="custom-checkbox checked"></div>
+                  <span class="checklist-label">Verify Network Status</span>
+                </div>
+                <span class="checklist-time">10:55</span>
+              </div>
+
+              <!-- 항목 4 (대기 중) -->
+              <div class="checklist-row">
+                <div class="checklist-left">
+                  <div class="custom-checkbox"></div>
+                  <span class="checklist-label">Investigate High Latency</span>
+                </div>
+                <span class="checklist-time">11:32</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측: PRIORITY FEED TABLE -->
+          <div class="grid-panel">
+            <h2 class="grid-panel-title">Priority Feed Table</h2>
+            <table class="feed-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Event ID</th>
+                  <th>Description</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="status-circle-group">
+                      <span class="status-circle red"></span>
+                      <span>Critical</span>
+                    </div>
+                  </td>
+                  <td style="color: var(--vermilion); font-weight: 750;">High</td>
+                  <td>EVT-1025</td>
+                  <td>Latency Spike > 250ms</td>
+                  <td style="font-family: monospace; font-weight: 700;">11:28</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="status-circle-group">
+                      <span class="status-circle yellow"></span>
+                      <span>Warning</span>
+                    </div>
+                  </td>
+                  <td style="color: var(--amber); font-weight: 750;">Medium</td>
+                  <td>EVT-1021</td>
+                  <td>CPU Usage 88% (Node 12)</td>
+                  <td style="font-family: monospace; font-weight: 700;">11:18</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="status-circle-group">
+                      <span class="status-circle white"></span>
+                      <span>Resolved</span>
+                    </div>
+                  </td>
+                  <td>Low</td>
+                  <td>EVT-1015</td>
+                  <td>Node 04 Restarted</td>
+                  <td style="font-family: monospace; font-weight: 700;">11:05</td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="status-circle-group">
+                      <span class="status-circle blue"></span>
+                      <span>Info</span>
+                    </div>
+                  </td>
+                  <td>Low</td>
+                  <td>EVT-1008</td>
+                  <td>User Session Count High</td>
+                  <td style="font-family: monospace; font-weight: 700;">09:55</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+      // KST 기준 실시간 시계 연동 및 NOW 지시선 실시간 갱신 스크립트
+      function updateClock() {
+        const now = new Date();
+
+        // 1. 헤더 날짜 및 시간 포맷
+        const dateOptions = { timeZone: "Asia/Seoul", weekday: "long", year: "numeric", month: "short", day: "numeric" };
+        const timeOptions = { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false };
+        
+        const dateStr = new Intl.DateTimeFormat("en-US", dateOptions).format(now);
+        const timeStr = new Intl.DateTimeFormat("en-US", timeOptions).format(now) + " KST";
+
+        document.getElementById("live-date").textContent = dateStr;
+        document.getElementById("live-time").textContent = timeStr;
+
+        // 2. NOW 세로선 동적 배치 (09:00 ~ 18:00 범위, 분 단위 환산)
+        const kstParts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "Asia/Seoul",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }).formatToParts(now);
+
+        const hour = Number(kstParts.find(p => p.type === 'hour').value);
+        const minute = Number(kstParts.find(p => p.type === 'minute').value);
+        const totalMinutes = hour * 60 + minute;
+
+        const startMin = 9 * 60; // 09:00
+        const endMin = 18 * 60;  // 18:00
+        
+        let pct = ((totalMinutes - startMin) / (endMin - startMin)) * 100;
+        pct = Math.max(0, Math.min(100, pct)); // 0% ~ 100% 범위 클램프
+
+        // NOW 라인 위치 이동
+        document.getElementById("now-vertical-line").style.left = pct + "%";
+        
+        // 헤더 텍스트 갱신
+        const timeFormatted = String(hour).padStart(2, '0') + ":" + String(minute).padStart(2, '0');
+        document.getElementById("current-time-label").textContent = timeFormatted + " Current Time";
+      }
+
+      updateClock();
+      setInterval(updateClock, 1000); // 1초 단위 업데이트
+    </script>
+  </body>
+</html>
