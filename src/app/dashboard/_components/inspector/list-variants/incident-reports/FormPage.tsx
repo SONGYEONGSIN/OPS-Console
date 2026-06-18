@@ -28,7 +28,7 @@ function Sheet({
   fill?: boolean;
 }) {
   return (
-    <div className="mx-auto w-full max-w-[210mm] bg-cream shadow-sm">
+    <div className="mx-auto w-full max-w-[210mm] bg-white shadow-sm">
       <div
         className={`flex flex-col pt-[10mm] pr-[20mm] pb-[10mm] pl-[18mm] text-sm leading-relaxed text-ink ${
           fill ? "min-h-[297mm]" : ""
@@ -105,7 +105,9 @@ function CoverPage({ m }: { m: FormModel }) {
       {/* 회색 바 + 푸터 (전결/결재/시행·접수/연락처) — 직인 라인과 가깝게 */}
       {/* 일회성: 실제 공문 회색 구분 바 색 (토큰 line은 거의 검정이라 부적합) */}
       <div className="mt-12 h-2.5 w-full bg-[#cfc9bb]" aria-hidden />
-      <p className="mt-3 text-right text-sm font-bold">전결 {m.jeonkyeolDate}</p>
+      <p className="mt-3 text-right text-sm font-bold">
+        전결 {m.jeonkyeolDate}
+      </p>
       <div className="mt-3 flex w-full items-baseline justify-between text-sm">
         {m.approvalLine
           .filter((a) => a.name)
