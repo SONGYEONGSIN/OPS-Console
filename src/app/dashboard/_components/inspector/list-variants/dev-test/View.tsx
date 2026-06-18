@@ -8,7 +8,7 @@ import {
 } from "@/features/entertest/actions";
 import type { EntertestRunStatus } from "@/features/entertest/schemas";
 import type { ViewProps } from "../types";
-import { Section, DefList } from "../shared";
+import { Section, DefList, Divider } from "../shared";
 
 const STATUS_LABEL: Record<EntertestRunStatus, string> = {
   pending: "대기",
@@ -78,6 +78,8 @@ export function DevTestView({ row }: ViewProps) {
         />
       </Section>
 
+      <Divider />
+
       <Section title="테스트 대역 계정">
         <DefList
           items={[
@@ -122,6 +124,8 @@ export function DevTestView({ row }: ViewProps) {
         </p>
       </Section>
 
+      <Divider />
+
       <Section title="테스트 실행">
         <div className="space-y-1.5">
           <span className="text-xs text-muted">테스트 URL</span>
@@ -155,6 +159,8 @@ export function DevTestView({ row }: ViewProps) {
           </p>
         )}
       </Section>
+
+      <Divider />
 
       <Section title={`실행 이력 (${runs.length}건)`}>
         {runs.length === 0 ? (
