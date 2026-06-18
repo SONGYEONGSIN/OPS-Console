@@ -52,7 +52,10 @@ describe("buildMonthGrid", () => {
 });
 
 describe("groupItemsByDay", () => {
-  const baseEvent: Omit<ScheduleEventRow, "id" | "type" | "title" | "start_at" | "all_day"> = {
+  const baseEvent: Omit<
+    ScheduleEventRow,
+    "id" | "type" | "title" | "start_at" | "all_day"
+  > = {
     created_by_email: "x@x.com",
     created_at: "2026-05-01T00:00:00Z",
     updated_at: "2026-05-01T00:00:00Z",
@@ -272,6 +275,25 @@ describe("groupItemsByDay", () => {
     expect(map.get("2026-05-20")?.[0]?.rowRef).toBe(
       map.get("2026-05-22")?.[0]?.rowRef,
     );
+  });
+
+  it("휴가 기간 중 주말(토·일)은 표기에서 제외한다", () => {
+    const leaves: BackupLeaveInput[] = [
+      {
+        ...baseLeave,
+        id: "aaaaaaaa-0000-0000-0000-000000000009",
+        team: "운영2팀",
+        name: "박시현",
+        leaveType: "연차",
+        startYmd: "2026-05-22", // 금
+        endYmd: "2026-05-25", // 월
+      },
+    ];
+    const map = groupItemsByDay([], [], leaves);
+    expect(map.get("2026-05-22")?.[0]?.category).toBe("backup-leave"); // 금 표기
+    expect(map.get("2026-05-25")?.[0]?.category).toBe("backup-leave"); // 월 표기
+    expect(map.get("2026-05-23")).toBeUndefined(); // 토 제외
+    expect(map.get("2026-05-24")).toBeUndefined(); // 일 제외
   });
 
   it("백업 휴가는 팀공통 일정보다도 셀 최상단에 정렬된다", () => {

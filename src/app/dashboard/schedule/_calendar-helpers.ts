@@ -58,6 +58,12 @@ function ymdAddDays(ymd: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+/** YMD의 요일 (0=일 ~ 6=토). UTC 기준 — 날짜 자체의 요일이라 tz 무관. */
+function ymdWeekday(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
 export type CalendarCell = {
   /** KST 기준 자정의 Date (정렬·비교 용) */
   date: Date;
@@ -203,16 +209,20 @@ export function groupItemsByDay(
     let cur = lv.startYmd;
     let guard = 0;
     while (cur <= endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
-      push(cur, {
-        id: `${lv.id}::${cur}`,
-        ymd: cur,
-        category: "backup-leave",
-        label,
-        sortKey: "",
-        all_day: true,
-        sourceVariant: "backup",
-        rowRef: lv.rowRef,
-      });
+      // 주말(토=6, 일=0)은 휴가 표기 제외 — 평일만 셀에 표시.
+      const dow = ymdWeekday(cur);
+      if (dow !== 0 && dow !== 6) {
+        push(cur, {
+          id: `${lv.id}::${cur}`,
+          ymd: cur,
+          category: "backup-leave",
+          label,
+          sortKey: "",
+          all_day: true,
+          sourceVariant: "backup",
+          rowRef: lv.rowRef,
+        });
+      }
       cur = ymdAddDays(cur, 1);
       guard++;
     }
