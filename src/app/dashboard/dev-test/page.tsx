@@ -5,14 +5,15 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
   listEntertestRuns,
+  listTestableServices,
   getMyEntertestAccount,
 } from "@/features/entertest/queries";
 import { DevTestClient } from "./DevTestClient";
 
 /**
- * /dashboard/dev-test — entertest 원서접수 케이스별 테스트 자동화.
- * 운영자가 URL+본인 계정으로 실행 요청 → 회사 PC 폴러가 실행 → 이력/상세 표시.
- * 정적 세그먼트라 [slug] list 패턴을 오버라이드한다.
+ * /dashboard/dev-test — closing_services 기반 서비스 선택 + 테스트 자동화.
+ * 좌측: 서비스 목록(칩/셀렉트 필터 + 검색 + 클라이언트 페이지네이션).
+ * 우측: 선택 서비스의 테스트 URL, 테스트 계정 등록/수정, 테스트 실행, 실행 로그.
  */
 export default async function DevTestPage() {
   const slug = "dev-test";
@@ -24,8 +25,9 @@ export default async function DevTestPage() {
   const config = resolvePageMeta(slug, meta);
 
   const me = await getCurrentOperator();
-  const [runs, myAccount] = await Promise.all([
-    listEntertestRuns(50),
+  const [services, runs, myAccount] = await Promise.all([
+    listTestableServices(),
+    listEntertestRuns(200),
     me ? getMyEntertestAccount(me.email) : Promise.resolve(null),
   ]);
 
@@ -37,7 +39,7 @@ export default async function DevTestPage() {
         headline={config.headline}
         description={config.description}
       />
-      <DevTestClient runs={runs} myAccount={myAccount} />
+      <DevTestClient services={services} runs={runs} myAccount={myAccount} />
     </div>
   );
 }
