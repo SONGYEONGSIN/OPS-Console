@@ -137,10 +137,6 @@ export function DevTestView({ row }: ViewProps) {
         <DefList
           items={[
             {
-              term: "대상",
-              desc: `${row.universityName} · ${row.serviceName}`,
-            },
-            {
               term: "URL",
               desc: (
                 <input
