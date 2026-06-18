@@ -8,15 +8,10 @@ import { getMyEntertestAccount } from "./queries";
 
 export type EntertestActionState = { ok: boolean; message: string } | undefined;
 
-const urlSchema = z
-  .string()
-  .url("올바른 URL이 아닙니다.")
-  .refine((u) => u.includes("entertest.jinhakapply.com"), {
-    message: "entertest.jinhakapply.com 주소만 허용됩니다.",
-  });
+const serviceIdSchema = z.coerce.number().int().positive();
 
 /**
- * 테스트 실행 요청 — pending 1건 적재. 회사 PC 폴러가 claim해 실행한다.
+ * 테스트 실행 요청 — 선택 서비스(service_id)로 entertest URL을 유도해 pending 적재.
  * 본인 테스트 계정 미등록이면 거부. 이미 대기/진행 중이면 중복 적재 방지.
  */
 export async function requestEntertestRun(
@@ -26,10 +21,12 @@ export async function requestEntertestRun(
   const me = await getCurrentOperator();
   if (!me) return { ok: false, message: "로그인이 필요합니다." };
 
-  const parsedUrl = urlSchema.safeParse(formData.get("targetUrl"));
-  if (!parsedUrl.success) {
-    return { ok: false, message: parsedUrl.error.issues[0].message };
+  const parsedId = serviceIdSchema.safeParse(formData.get("serviceId"));
+  if (!parsedId.success) {
+    return { ok: false, message: "테스트할 서비스를 선택하세요." };
   }
+  const serviceId = parsedId.data;
+  const targetUrl = `https://entertest.jinhakapply.com/Notice/${serviceId}/A`;
 
   const account = await getMyEntertestAccount(me.email);
   if (!account) {
@@ -56,9 +53,10 @@ export async function requestEntertestRun(
 
   const { error } = await admin.from("entertest_test_runs").insert({
     requested_by: me.email,
-    target_url: parsedUrl.data,
+    target_url: targetUrl,
     test_account: account,
     status: "pending",
+    service_id: serviceId,
   });
   if (error) return { ok: false, message: error.message };
 

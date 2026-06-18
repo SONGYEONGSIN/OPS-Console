@@ -53,6 +53,7 @@ describe("entertest schemas", () => {
       requested_by: "a@b.com",
       requested_at: "2026-06-18T00:00:00Z",
       target_url: "https://entertest.jinhakapply.com/Notice/1098146/A",
+      service_id: null,
       status: "pending",
       claimed_at: null,
       finished_at: null,
