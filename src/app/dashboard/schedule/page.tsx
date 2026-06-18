@@ -132,17 +132,13 @@ export default async function SchedulePage({
       : servicesShifted;
 
   // leave_type가 저장된 백업 요청 → 달력 셀 최상단 "팀-이름-휴가유형" 표기.
-  // 캘린더 뷰에서만 fetch. mine=true면 본인이 요청한 휴가만.
-  const allBackupLeaves =
+  // 팀 자리비움 공유 목적이라 mine 스코프와 무관하게 항상 팀 전체 표시 (캘린더 뷰에서만 fetch).
+  const backupLeaves =
     view === "calendar"
       ? (await listBackupRequests({ pageSize: 200 })).rows.filter(
           (r) => r.leave_type && r.leave_start_date,
         )
       : [];
-  const backupLeaves =
-    mineActive && myEmail
-      ? allBackupLeaves.filter((r) => r.requester_email === myEmail)
-      : allBackupLeaves;
 
   const { rows, total } = paginateRows(events.map(eventToListRow), sp.page);
   const config = resolvePageMeta(slug, meta, total);

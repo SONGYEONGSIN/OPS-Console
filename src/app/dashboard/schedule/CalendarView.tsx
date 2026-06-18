@@ -360,7 +360,9 @@ export function CalendarView({
                       onClick={() => handleItemClick(item)}
                       data-team-common={item.isTeamCommon ? "true" : "false"}
                       className={`flex w-full items-center gap-1 text-left text-2xs text-ink hover:text-vermilion ${
-                        item.isTeamCommon ? "font-bold" : ""
+                        item.isTeamCommon || item.category === "backup-leave"
+                          ? "font-bold"
+                          : ""
                       }`}
                     >
                       <span
@@ -369,7 +371,7 @@ export function CalendarView({
                         className={`inline-block h-2 w-2 shrink-0 rounded-full ${DOT_COLOR[item.category]}`}
                         aria-hidden
                       />
-                      {item.isTeamCommon ? (
+                      {item.isTeamCommon || item.category === "backup-leave" ? (
                         <span
                           aria-hidden
                           className="shrink-0 animate-star-twinkle text-vermilion"
