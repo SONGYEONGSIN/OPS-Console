@@ -4,6 +4,7 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
+import { ScopeChips } from "@/components/common/ScopeChips";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
@@ -31,6 +32,7 @@ export default async function DevTestPage({
   searchParams: Promise<{
     page?: string;
     q?: string;
+    mine?: string;
     category?: string;
     region?: string;
     universityType?: string;
@@ -59,9 +61,12 @@ export default async function DevTestPage({
     admissionTypeOptions: distinct(services.map((s) => s.admission_type)),
   };
 
-  // searchParam 서버 필터.
+  // searchParam 서버 필터. mine 기본 true(내 대학) — operator_name === 본인.
+  const mine = sp.mine !== "false";
+  const myName = me?.displayName ?? null;
   const q = (sp.q ?? "").trim().toLowerCase();
   const filtered = services.filter((s) => {
+    if (mine && myName && s.operator_name !== myName) return false;
     if (sp.category && s.category !== sp.category) return false;
     if (sp.region && s.region !== sp.region) return false;
     if (sp.universityType && s.university_type !== sp.universityType)
@@ -121,6 +126,9 @@ export default async function DevTestPage({
         readOnly
         liveData
         controlsRow={<DevTestControls {...options} />}
+        inlineFilters={
+          <ScopeChips key="dev-test-scope" total={total} mineLabel="내 대학" />
+        }
         footer={
           <ListPagination
             key="dev-test-pagination"
