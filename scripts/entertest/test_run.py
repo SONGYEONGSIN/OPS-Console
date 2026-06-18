@@ -45,12 +45,18 @@ BUCKET = "entertest-screenshots"
 
 
 def make_driver():
-    opts = (uc.ChromeOptions() if uc else Options())
-    # 브라우저 게이트는 실제 Chrome UA면 통과. residential IP라 headless도 가능하나
-    # CF 안정성 위해 비headless 권장(작업 스케줄러는 데스크톱 세션에서 실행).
+    # entertest 게이트는 CF 챌린지("Just a moment")가 아니라 단순 브라우저(UA) 체크라
+    # 실제 Chrome이면 plain Selenium으로도 통과한다. undetected-chromedriver를 우선
+    # 시도하되(있으면), Chrome/드라이버 버전 불일치 등으로 기동 실패하면 plain으로 폴백한다.
+    if uc is not None:
+        try:
+            uc_opts = uc.ChromeOptions()
+            uc_opts.add_argument("--start-maximized")
+            return uc.Chrome(options=uc_opts)
+        except Exception as e:  # noqa: BLE001 — uc 기동 실패 시 plain Selenium 폴백
+            print(f"[driver] undetected-chromedriver 기동 실패 → plain Selenium 폴백: {e}")
+    opts = Options()
     opts.add_argument("--start-maximized")
-    if uc:
-        return uc.Chrome(options=opts)
     return webdriver.Chrome(options=opts)
 
 
