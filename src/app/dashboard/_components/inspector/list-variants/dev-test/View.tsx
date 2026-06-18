@@ -3,10 +3,12 @@
 import { useActionState, useState } from "react";
 import {
   requestEntertestRun,
+  setMyEntertestAccount,
   type EntertestActionState,
 } from "@/features/entertest/actions";
 import type { EntertestRunStatus } from "@/features/entertest/schemas";
 import type { ViewProps } from "../types";
+import { Section, DefList } from "../shared";
 
 const STATUS_LABEL: Record<EntertestRunStatus, string> = {
   pending: "대기",
@@ -31,10 +33,14 @@ function StatusBadge({ status }: { status: EntertestRunStatus }) {
 }
 
 /**
- * dev-test variant 인스펙터 View — 선택 서비스의 테스트 URL, 실행 폼, 실행 이력.
- * 행 외 데이터(runs/accountReady)는 page가 ListRow에 임베드(entertestRuns 등).
+ * dev-test variant 인스펙터 View — 표준 Section 구성.
+ * 테스트 대역 계정 등록 + 테스트 실행 + 실행 이력. 행 외 데이터는 ListRow에 임베드.
  */
 export function DevTestView({ row }: ViewProps) {
+  const [acctState, acctAction, acctPending] = useActionState<
+    EntertestActionState,
+    FormData
+  >(setMyEntertestAccount, undefined);
   const [runState, runAction, runPending] = useActionState<
     EntertestActionState,
     FormData
@@ -43,30 +49,76 @@ export function DevTestView({ row }: ViewProps) {
 
   const serviceId = row.serviceIdNum ?? 0;
   const runs = row.entertestRuns ?? [];
-  const accountReady = row.entertestAccountReady ?? false;
+  const account = row.entertestAccount ?? null;
+  const accountReady = !!account;
   const testUrl = `https://entertest.jinhakapply.com/Notice/${serviceId}/A`;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="border border-line bg-paper px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">
-          {row.universityName} — {row.serviceName}
-          <span className="ml-1 font-normal text-muted">({serviceId})</span>
-        </h2>
-      </div>
-
-      <section className="border border-line bg-paper px-4 py-3">
-        <h3 className="mb-1.5 text-xs font-semibold text-ink">테스트 URL</h3>
-        <input
-          readOnly
-          value={testUrl}
-          className="w-full select-all border border-line-soft bg-cream px-2 py-1 text-xs text-ink-soft"
-          onClick={(e) => (e.target as HTMLInputElement).select()}
+    <div className="space-y-6">
+      <Section title="테스트 대역 계정">
+        <DefList
+          items={[
+            {
+              term: "등록 계정",
+              desc: account ? (
+                <span>
+                  <span className="font-semibold">{account}</span>
+                  <span className="ml-1 text-xs text-muted">(ID=PW 동일)</span>
+                </span>
+              ) : (
+                <span className="font-bold text-vermilion">미등록</span>
+              ),
+            },
+          ]}
         />
-      </section>
+        <form action={acctAction} className="flex items-center gap-2">
+          <input
+            name="account"
+            defaultValue={account ?? ""}
+            placeholder="jt29001"
+            className="border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+          />
+          <button
+            type="submit"
+            disabled={acctPending}
+            className="cursor-pointer border border-line bg-paper px-3 py-1 text-xs text-ink transition-colors hover:border-vermilion hover:text-vermilion disabled:opacity-50"
+          >
+            {account ? "수정" : "등록"}
+          </button>
+          {acctState && (
+            <span
+              className={`text-2xs ${acctState.ok ? "text-ink-soft" : "text-vermilion"}`}
+            >
+              {acctState.message}
+            </span>
+          )}
+        </form>
+        <p className="text-2xs text-muted">
+          담당자 배정 테스트 대역을 등록하세요. 다른 담당자 대역으로 등록해도
+          됩니다.
+        </p>
+      </Section>
 
-      <section className="border border-line bg-paper px-4 py-3">
-        <h3 className="mb-2 text-xs font-semibold text-ink">테스트 실행</h3>
+      <Section title="테스트">
+        <DefList
+          items={[
+            {
+              term: "대상",
+              desc: `${row.universityName} · ${row.serviceName} (${serviceId})`,
+            },
+            {
+              term: "URL",
+              desc: (
+                <input
+                  readOnly
+                  value={testUrl}
+                  className="w-full select-all border border-line-soft bg-cream px-2 py-1 text-xs text-ink-soft"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+              ),
+            },
+          ]}
+        />
         <form action={runAction} className="flex items-center gap-2">
           <input type="hidden" name="serviceId" value={serviceId} />
           <button
@@ -78,29 +130,24 @@ export function DevTestView({ row }: ViewProps) {
           </button>
           {!accountReady && (
             <span className="text-2xs text-vermilion">
-              상단에서 테스트 계정을 먼저 등록하세요.
+              테스트 대역 계정을 먼저 등록하세요.
             </span>
           )}
         </form>
         {runState && (
           <p
-            className={`mt-2 text-2xs ${runState.ok ? "text-ink-soft" : "text-vermilion"}`}
+            className={`text-2xs ${runState.ok ? "text-ink-soft" : "text-vermilion"}`}
           >
             {runState.message}
           </p>
         )}
-      </section>
+      </Section>
 
-      <section className="border border-line bg-paper">
-        <h3 className="border-b border-line-soft px-4 py-2 text-xs font-semibold text-ink">
-          실행 이력 <span className="font-normal text-muted">({runs.length}건)</span>
-        </h3>
+      <Section title={`실행 이력 (${runs.length}건)`}>
         {runs.length === 0 ? (
-          <p className="px-4 py-6 text-center text-xs text-muted">
-            이 서비스의 실행 이력이 없습니다.
-          </p>
+          <p className="text-xs text-muted">이 서비스의 실행 이력이 없습니다.</p>
         ) : (
-          <ul className="divide-y divide-line-soft">
+          <ul className="divide-y divide-line-soft border-y border-line-soft">
             {runs.map((run) => {
               const open = expanded === run.id;
               return (
@@ -108,7 +155,7 @@ export function DevTestView({ row }: ViewProps) {
                   <button
                     type="button"
                     onClick={() => setExpanded(open ? null : run.id)}
-                    className="flex w-full cursor-pointer items-center gap-3 px-4 py-2 text-left text-xs hover:bg-washi-raised"
+                    className="flex w-full cursor-pointer items-center gap-3 py-2 text-left text-xs hover:bg-washi-raised"
                   >
                     <StatusBadge status={run.status} />
                     <span className="text-muted">
@@ -122,7 +169,7 @@ export function DevTestView({ row }: ViewProps) {
                     )}
                   </button>
                   {open && run.result && (
-                    <ul className="bg-cream px-4 py-2">
+                    <ul className="bg-cream px-2 py-2">
                       {run.result.checks.map((c) => (
                         <li
                           key={c.key}
@@ -162,7 +209,7 @@ export function DevTestView({ row }: ViewProps) {
                     </ul>
                   )}
                   {open && !run.result && run.error_message && (
-                    <p className="bg-cream px-4 py-2 text-2xs text-vermilion">
+                    <p className="bg-cream px-2 py-2 text-2xs text-vermilion">
                       {run.error_message}
                     </p>
                   )}
@@ -171,7 +218,7 @@ export function DevTestView({ row }: ViewProps) {
             })}
           </ul>
         )}
-      </section>
+      </Section>
     </div>
   );
 }

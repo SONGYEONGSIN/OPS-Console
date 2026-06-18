@@ -87,8 +87,6 @@ export default async function DevTestPage({
     arr.push(r);
     runsByService.set(r.service_id, arr);
   }
-  const accountReady = !!myAccount;
-
   const rows: ListRow[] = paged.map((s) => ({
     id: String(s.service_id),
     name: s.service_name,
@@ -102,7 +100,7 @@ export default async function DevTestPage({
     universityType: s.university_type ?? "",
     operatorName: s.operator_name ?? "",
     entertestRuns: runsByService.get(s.service_id) ?? [],
-    entertestAccountReady: accountReady,
+    entertestAccount: myAccount,
   }));
 
   const config = resolvePageMeta(slug, meta, total);
@@ -122,7 +120,7 @@ export default async function DevTestPage({
         variant="dev-test"
         readOnly
         liveData
-        controlsRow={<DevTestControls myAccount={myAccount} {...options} />}
+        controlsRow={<DevTestControls {...options} />}
         footer={
           <ListPagination
             key="dev-test-pagination"

@@ -465,8 +465,8 @@ export type ListRow = {
   dataRequestScheduledAt?: string | null;
   /** dev-test variant — 이 서비스의 entertest 실행 이력 (page가 service_id별 임베드) */
   entertestRuns?: EntertestRun[];
-  /** dev-test variant — 테스트 계정 등록 여부 (실행 버튼 활성 조건) */
-  entertestAccountReady?: boolean;
+  /** dev-test variant — 등록된 테스트 대역 계정(로그인 운영자). 미등록이면 null */
+  entertestAccount?: string | null;
   /** meetings variant — 회의 유형 (MEETING_TYPES). page가 meeting.type 매핑 */
   meetingType?: "regular" | "field" | "project" | "memo" | "urgent";
   /** meetings variant — 회의 제목 */
