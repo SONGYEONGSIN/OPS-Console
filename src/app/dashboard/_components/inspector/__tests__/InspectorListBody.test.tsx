@@ -116,7 +116,7 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
     allowedMenus: ["my-todo", "feedback"],
   };
 
-  it("admin이 편집 모드 → member row 편집 시 admin-only 5개는 hide, 비-adminOnly는 자동 체크 + disabled", () => {
+  it("admin이 편집 모드 → member row 편집 시 admin-only 4개는 hide, 비-adminOnly는 자동 체크 + disabled", () => {
     render(
       <InspectorListBody
         row={teamRow}
@@ -128,16 +128,19 @@ describe("InspectorListBody team variant — 메뉴 권한 체크박스", () => 
       />,
     );
     expect(screen.getByRole("group", { name: /메뉴 권한/ })).toBeInTheDocument();
-    // member row → admin-only 5개 체크박스 미노출
+    // member row → admin-only 4개(team/settings/notices/outcomes) 체크박스 미노출
     expect(screen.queryByRole("checkbox", { name: /^team$/i })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: /^settings$/i })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: /^notices$/i })).toBeNull();
     expect(screen.queryByRole("checkbox", { name: /^outcomes$/i })).toBeNull();
-    expect(screen.queryByRole("checkbox", { name: /^automations$/i })).toBeNull();
-    // 비-adminOnly는 자동 체크 + disabled (정책 반영)
+    // 비-adminOnly는 자동 체크 + disabled (정책 반영).
+    // automations는 #548로 전원 노출 → 비-adminOnly이므로 노출+자동체크.
     const myTodo = screen.getByRole("checkbox", { name: /^my-todo$/i });
     expect(myTodo).toBeChecked();
     expect(myTodo).toBeDisabled();
+    const automations = screen.getByRole("checkbox", { name: /^automations$/i });
+    expect(automations).toBeChecked();
+    expect(automations).toBeDisabled();
   });
 
   it("admin row 편집 시 admin-only 메뉴도 노출 + 모두 자동 체크", () => {
