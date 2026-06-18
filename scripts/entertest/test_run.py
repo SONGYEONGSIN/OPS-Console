@@ -74,14 +74,29 @@ LOGIN_BTN_SEL = "ContentPlaceHolderPage_btn_Send"
 
 
 def login(driver, account: str) -> None:
-    """ID/PW 로그인 (2FA·CAPTCHA 없음, ID=PW 동일). entertest /Login WebForms 폼."""
+    """ID/PW 로그인 (2FA·CAPTCHA 없음, ID=PW 동일). entertest /Login WebForms 폼.
+
+    input이 즉시 interactable하지 않은 환경이 있어 JS로 값 주입 후 페이지의 Login()을 호출한다.
+    Login()은 빈값 검증 → 비밀번호 encodeURIComponent → btn_Send 클릭(ASP.NET postback)을 수행하므로
+    단순 send_keys/submit보다 폼 규약에 맞다.
+    """
     driver.get(f"{origin_of(TARGET_URL)}/Login")
     WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.ID, LOGIN_ID_SEL))
     )
-    driver.find_element(By.ID, LOGIN_ID_SEL).send_keys(account)
-    driver.find_element(By.ID, LOGIN_PW_SEL).send_keys(account)  # ID=PW 동일
-    driver.find_element(By.ID, LOGIN_BTN_SEL).click()
+    driver.execute_script(
+        "document.getElementById(arguments[0]).value = arguments[2];"
+        "document.getElementById(arguments[1]).value = arguments[2];",
+        LOGIN_ID_SEL,
+        LOGIN_PW_SEL,
+        account,
+    )
+    # 페이지 Login() 우선(pwd 인코딩 포함), 없으면 submit 버튼 직접 클릭.
+    driver.execute_script(
+        "if (typeof Login === 'function') { Login(); }"
+        " else { document.getElementById(arguments[0]).click(); }",
+        LOGIN_BTN_SEL,
+    )
     # 로그인 성공 시 /Login 을 벗어난다(실패 시 alert/잔류). 최대 15초 대기.
     WebDriverWait(driver, 15).until(lambda d: "/Login" not in d.current_url)
 
