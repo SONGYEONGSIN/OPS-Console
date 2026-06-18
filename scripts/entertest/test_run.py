@@ -12,6 +12,13 @@ import os
 import sys
 import time
 import json
+from urllib.parse import urlsplit
+
+
+def origin_of(url: str) -> str:
+    """URL에서 scheme://host origin 추출 (예: https://entertest.jinhakapply.com)."""
+    s = urlsplit(url)
+    return f"{s.scheme}://{s.netloc}"
 
 try:
     from dotenv import load_dotenv
@@ -134,6 +141,15 @@ def discover(driver) -> None:
     driver.get(TARGET_URL)
     time.sleep(3)
     _snapshot(driver, out, "01_notice")
+
+    # 로그인 페이지 캡처 — 폼 셀렉터(ID/PW/로그인 버튼) 확정용. Notice엔 폼이 없고
+    # GoLogin()이 {origin}/Login 으로 이동한다.
+    try:
+        driver.get(f"{origin_of(TARGET_URL)}/Login")
+        time.sleep(2)
+        _snapshot(driver, out, "00_login")
+    except Exception as e:  # noqa: BLE001
+        print(f"[discover] 로그인 페이지 캡처 실패: {e}")
 
     # 로그인 구현 후 재실행 시 로그인 후 단계도 캡처 (1차 실행에선 NotImplementedError로 skip)
     try:
