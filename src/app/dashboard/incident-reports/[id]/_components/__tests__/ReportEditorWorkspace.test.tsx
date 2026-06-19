@@ -192,7 +192,7 @@ describe("ReportEditorWorkspace", () => {
     render(<ReportEditorWorkspace report={report} />);
     fireEvent.click(screen.getByRole("button", { name: "+ 처리 행 추가" }));
     fireEvent.change(screen.getByLabelText("처리 시간 1"), {
-      target: { value: "09.27 14:27" },
+      target: { value: "2026-09-27T14:27" },
     });
     fireEvent.change(screen.getByLabelText("처리 내용 1"), {
       target: { value: "오류 확인 요청" },
@@ -209,7 +209,7 @@ describe("ReportEditorWorkspace", () => {
       expect(mockUpdate).toHaveBeenCalledWith(
         report.id,
         expect.objectContaining({
-          handling_rows: [{ time: "09.27 14:27", content: "오류 확인 요청" }],
+          handling_rows: [{ time: "2026-09-27T14:27", content: "오류 확인 요청" }],
         }),
       ),
     );

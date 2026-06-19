@@ -35,12 +35,11 @@ export function HandlingRowsEditor({
         {rows.map((r, i) => (
           <div key={i} className="flex items-stretch gap-1">
             <input
+              type="datetime-local"
               aria-label={`처리 시간 ${i + 1}`}
               value={r.time}
-              maxLength={100}
-              placeholder="일시"
               onChange={(e) => updateRow(i, { time: e.target.value })}
-              className={`${cellClass} w-24 flex-none`}
+              className={`${cellClass} w-44 flex-none`}
             />
             <textarea
               aria-label={`처리 내용 ${i + 1}`}
