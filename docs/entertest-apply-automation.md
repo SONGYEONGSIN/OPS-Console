@@ -135,6 +135,23 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
 
 블로커 요약: ① searchfield 트리거 셀렉터, ② 결과-row 선택 onclick — 둘만 확보하면 헬퍼 완성 가능.
 
+### 진행 로그 (2026-06-19, 4차 — 검색팝업 결과선택 완전 해독 ✅)
+
+**SEARCHFIELD 결과선택 메커니즘 전부 규명·검증 → `select_search_result()` 헬퍼 구현.**
+- searchfield 컨테이너: `<span jwtype="SEARCHFIELD" searchid="{X}" id="F_{X}">` (+ readonly `txt{X}Name` + hidden `hdn{X}Code`). jw 프레임워크(`jwidx`).
+- **트리거 = `a#btn{searchid}`** (class `btn_search navy`). 예 `#btnNationality`,`#btnGraduteUniv`,`#btnMajor`. 클릭 → `#SearchLayer_Pop` 오픈. (`Search()` JS는 jQuery바인딩=전역호출 불가 → 이 버튼 클릭이 정답.) 일부 btn은 `display:none`(조건부).
+- 팝업: 검색 input(보이는 `#SearchLayer_Pop input[type=text]`) + **`a.btn_search`("검색")** → 결과 `<ul><li>`.
+  - 첫 `<li>` = 안내("해당하는 …를 선택하세요."). 데이터 li = `<li style="cursor:pointer"><a><span class="title">중국</span><span class="detail">CHINA</span></a></li>`.
+  - **데이터 li 클릭(jQuery 바인딩, inline onclick 없음)** → `hdn{X}Code` + `txt{X}Name` 세팅 + 팝업 자동 닫힘. **검증됨**: `#btnNationality`→"중국"→`hdnNationalityCode=C0012184`, `txtNationalityName=중국`.
+- 구현: `select_search_result(driver, searchid, query)` + `_resolve_open_popup(driver)`(이미 열린 팝업을 여러 쿼리로 해소). 루프 no-#globalAlert+팝업 분기에서 `_resolve_open_popup` 호출.
+
+**남은 과제 (전체 폼 수렴 — 별도):**
+- **DoValidate 피드백 불안정**: 같은 코드인데 어떤 실행은 globalAlert가 뜨고(여권→이수학년 진행) 어떤 실행은
+  globalAlert/팝업 둘 다 안 뜸 → 비동기(마스크 onchange·검색결과 AJAX·저장 confirm) 레이스로 추정.
+  안정화 필요: 각 단계 사이 명시적 대기(요소/네트워크 idle), DoValidate 직후 alert/confirm/네트워크 settle 대기.
+- **per-searchfield 쿼리**: `_resolve_open_popup`은 광역 쿼리(중국/中/大学/…) 폭격 → 필드별 적합 쿼리·결과 0건 처리 보강 필요.
+- 1104069는 searchfield 18 + 마스크/영중문 페어 long-tail → 완주까지 추가 그라인드. 단 **핵심 메커니즘(진입·저장루프·모달·검색팝업 결과선택)은 모두 확보**.
+
 ## 참고
 
 - DISCOVER 모드(`ENTERTEST_DISCOVER=true`)가 단계별 page_source/스크린샷 + 필드/버튼 인벤토리(`{단계}.fields.json`)를

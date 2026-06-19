@@ -275,6 +275,62 @@ def _force_fill_for_message(driver, msg):
         return None
 
 
+# SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정):
+#   트리거 a#btn{searchid} 클릭 → #SearchLayer_Pop 오픈 → input에 검색어 → a.btn_search 클릭 →
+#   결과 <ul><li>(첫 li는 안내) → 데이터 li(cursor:pointer, <a><span.title>) 클릭(jQuery) → 코드/이름 세팅 + 팝업 닫힘.
+def _popup_open(driver) -> bool:
+    return bool(driver.execute_script(
+        "var p=document.getElementById('SearchLayer_Pop'); return !!(p && getComputedStyle(p).display!=='none');"
+    ))
+
+
+def _resolve_open_popup(driver) -> str:
+    """이미 열린 #SearchLayer_Pop을 해소 — 여러 검색어를 시도해 첫 데이터 결과를 클릭(코드/이름 세팅).
+
+    반환: 선택된 결과 텍스트(성공) 또는 ''(실패). 외국인 중문 폼이라 중문/한글/광역 쿼리를 폭넓게 시도.
+    """
+    if not _popup_open(driver):
+        return ""
+    for q in ("중국", "中", "大学", "大", "学", "서울", "a", "A"):
+        clicked_text = driver.execute_script(
+            r"""
+            var q=arguments[0]; var p=document.getElementById('SearchLayer_Pop');
+            var inp=Array.prototype.slice.call(p.querySelectorAll('input[type=text]'))
+              .find(function(e){return getComputedStyle(e).display!=='none';});
+            if(inp){ inp.value=q; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('keyup',{bubbles:true})); }
+            var b=Array.prototype.slice.call(p.querySelectorAll('a.btn_search')).find(function(x){return /검색/.test(x.innerText||'');});
+            if(b) b.click();
+            return true;
+            """,
+            q,
+        )
+        time.sleep(1.4)
+        picked = driver.execute_script(
+            r"""
+            var p=document.getElementById('SearchLayer_Pop');
+            var lis=Array.prototype.slice.call(p.querySelectorAll('li'))
+              .filter(function(x){ return x.querySelector('a') && (x.style.cursor==='pointer' || x.querySelector('a span.title')); });
+            if(lis.length){ var t=(lis[0].innerText||'').replace(/\s+/g,' ').trim(); lis[0].click(); return t; }
+            return '';
+            """
+        )
+        if picked:
+            time.sleep(0.6)
+            return picked[:40]
+        if not _popup_open(driver):
+            return "(닫힘)"
+    return ""
+
+
+def select_search_result(driver, searchid: str, query: str) -> str:
+    """특정 searchfield(트리거 a#btn{searchid})를 열어 query로 검색 후 첫 결과 선택."""
+    driver.execute_script("var b=document.getElementById('btn'+arguments[0]); if(b) b.click();", searchid)
+    time.sleep(1.2)
+    if not _popup_open(driver):
+        return ""
+    return _resolve_open_popup(driver)
+
+
 def _close_search_popup(driver) -> None:
     """SEARCHFIELD 검색 팝업(#SearchLayer_Pop, .layer.search1)을 닫기(a.close '닫기'). ESC 안 먹음."""
     driver.execute_script(
@@ -333,16 +389,15 @@ def check_apply_write(driver, ctx):
             return ("pass" if ok else "fail",
                     f"저장 후 결제목록 {'원서 있음(결제직전 도달)' if ok else '비어있음'} ({i+1}회 시도)")
         if not m:
-            # /Wonseo 잔류 + #globalAlert 없음 → SEARCHFIELD 검증이 검색팝업을 띄운 경우가 흔하다
-            # (hidden 코드만으로 통과 안 되는 필드 → 검색 결과 선택 필요. 다음 단계 작업).
-            sp = driver.execute_script(
-                "var p=document.getElementById('SearchLayer_Pop');"
-                "return p && getComputedStyle(p).display!=='none';"
-            )
-            if sp:
-                last = "SEARCHFIELD 검색팝업 대기 — 결과 자동선택 필요(미구현)"
-            print(f"[apply]   (#globalAlert 없음 — 검색팝업={bool(sp)})")
-            time.sleep(0.5)
+            # /Wonseo 잔류 + #globalAlert 없음 → SEARCHFIELD 검증이 검색팝업을 띄운 경우.
+            # 검색 결과를 자동 선택해 실제 코드/이름 세팅(hidden '1' 우회로 부족한 필드 해소).
+            if _popup_open(driver):
+                picked = _resolve_open_popup(driver)
+                print(f"[apply]   ↳ 검색결과 선택: {picked or '실패'}")
+                last = f"검색팝업 해소: {picked or '결과없음'}"
+            else:
+                print("[apply]   (#globalAlert/검색팝업 없음 — 계속)")
+            time.sleep(0.4)
             continue
         if any(k in m for k in ("저장되었습니다", "저장 완료", "작성되었습니다", "성공", "접수")):
             return ("pass", f"저장 성공 모달 확인 ({i+1}회): {m[:80]}")
