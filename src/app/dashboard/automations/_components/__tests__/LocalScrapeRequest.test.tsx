@@ -35,13 +35,13 @@ describe("LocalScrapeRequest", () => {
     vi.clearAllMocks();
   });
 
-  it("제목과 '로컬 실행 요청' 버튼을 렌더한다", () => {
+  it("제목과 '로컬 실행' 버튼을 렌더한다", () => {
     renderRow(<LocalScrapeRequest latest={null} isAdmin={true} />);
     expect(
       screen.getByText("서비스 마감 — 로컬 수동 실행"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /로컬 실행 요청/ }),
+      screen.getByRole("button", { name: /로컬 실행/ }),
     ).toBeInTheDocument();
   });
 
@@ -63,7 +63,7 @@ describe("LocalScrapeRequest", () => {
   it("비admin이 요청 클릭 시 알럿 + 액션 미호출", () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
     renderRow(<LocalScrapeRequest latest={null} isAdmin={false} />);
-    fireEvent.click(screen.getByRole("button", { name: /로컬 실행 요청/ }));
+    fireEvent.click(screen.getByRole("button", { name: /로컬 실행/ }));
     expect(alertSpy).toHaveBeenCalledWith("관리자만 실행 가능합니다.");
     expect(requestLocalScrapeAction).not.toHaveBeenCalled();
     alertSpy.mockRestore();

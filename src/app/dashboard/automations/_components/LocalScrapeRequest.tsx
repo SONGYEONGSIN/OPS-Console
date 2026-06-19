@@ -70,7 +70,7 @@ export function LocalScrapeRequest({
               disabled={pending}
               className="inline-flex w-fit items-center border border-vermilion bg-vermilion cursor-pointer px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {pending ? "요청 중…" : "로컬 실행 요청"}
+              {pending ? "요청 중…" : "로컬 실행"}
             </button>
           </form>
           {state ? (
