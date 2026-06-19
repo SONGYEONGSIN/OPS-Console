@@ -17,7 +17,10 @@ import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 import { eventToListRow } from "./_row-mapper";
 import { CalendarView } from "./CalendarView";
 import { ScheduleViewToggle } from "./ScheduleViewToggle";
-import { buildMonthGrid } from "./_calendar-helpers";
+import {
+  buildMonthGrid,
+  filterVisibleScheduleEvents,
+} from "./_calendar-helpers";
 import { ListPagination } from "@/components/common/ListPagination";
 import { paginateRows } from "@/lib/list/paginate";
 
@@ -100,12 +103,11 @@ export default async function SchedulePage({
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
   const myEmail = me?.email ?? null;
 
-  const events =
-    mineActive && myEmail
-      ? allEvents.filter(
-          (e) => e.assignee_email === myEmail || e.created_by_email === myEmail,
-        )
-      : allEvents;
+  // "내 일정" 모드에서도 팀 공통(담당자 없음) 일정은 전원 노출 — filterVisibleScheduleEvents 참조.
+  const events = filterVisibleScheduleEvents(allEvents, {
+    mineActive,
+    myEmail,
+  });
 
   // calendar view면 month grid 범위로 services range fetch.
   // DB 데이터가 작년 기준이라 fetch range는 -OFFSET, 표시 시 +OFFSET shift.

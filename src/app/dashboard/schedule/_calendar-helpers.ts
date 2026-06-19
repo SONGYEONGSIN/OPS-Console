@@ -122,6 +122,27 @@ export function buildMonthGrid(year: number, month0: number): CalendarCell[] {
   return cells;
 }
 
+/**
+ * "내 일정" 모드 가시성 필터.
+ *
+ * mineActive=false 또는 myEmail 없음이면 전체 반환. mineActive면 본인(담당자 또는 생성자) 일정에 더해
+ * **팀 공통(담당자 없음, !assignee_email)** 일정도 포함한다 — 팀 공통은 누가 만들었든 전원에게 보여야
+ * 하므로 내 일정 모드에서도 노출. (남이 만든 개인 일정만 가려진다.)
+ */
+export function filterVisibleScheduleEvents(
+  events: ScheduleEventRow[],
+  opts: { mineActive: boolean; myEmail: string | null },
+): ScheduleEventRow[] {
+  const { mineActive, myEmail } = opts;
+  if (!mineActive || !myEmail) return events;
+  return events.filter(
+    (e) =>
+      !e.assignee_email || // 팀 공통(담당자 없음) — 전원 노출
+      e.assignee_email === myEmail ||
+      e.created_by_email === myEmail,
+  );
+}
+
 export function groupItemsByDay(
   events: ScheduleEventRow[],
   services: ServicesRow[],
