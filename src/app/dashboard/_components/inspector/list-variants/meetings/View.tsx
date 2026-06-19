@@ -93,6 +93,35 @@ function DocBody({ nodes }: { nodes: PdfNode[] }) {
   );
 }
 
+function runsText(runs: PdfRun[]): string {
+  return runs.map((r) => r.text).join("");
+}
+
+/** PdfNode[]를 heading 기준으로 섹션 분할 — 경위서식 라벨+내용박스 렌더용. */
+function groupByHeading(
+  nodes: PdfNode[],
+): { title: string | null; body: PdfNode[] }[] {
+  const sections: { title: string | null; body: PdfNode[] }[] = [];
+  let cur: { title: string | null; body: PdfNode[] } = {
+    title: null,
+    body: [],
+  };
+  for (const n of nodes) {
+    if (n.kind === "heading") {
+      if (cur.title !== null || cur.body.length > 0) sections.push(cur);
+      cur = { title: runsText(n.runs) || "(제목 없음)", body: [] };
+    } else {
+      cur.body.push(n);
+    }
+  }
+  if (cur.title !== null || cur.body.length > 0) sections.push(cur);
+  return sections;
+}
+
+function bodyHasText(body: PdfNode[]): boolean {
+  return body.some((n) => n.runs.some((r) => r.text.trim() !== ""));
+}
+
 function TabButton({
   active,
   onClick,
@@ -122,6 +151,7 @@ export function MeetingView({ row }: ViewProps) {
   const type = (row.meetingType ?? "regular") as MeetingType;
   const status = (row.meetingStatus ?? "draft") as MeetingStatus;
   const nodes = blocksToPdfModel((row.meetingContent ?? []) as Parameters<typeof blocksToPdfModel>[0]);
+  const sections = groupByHeading(nodes);
   const attendees = row.meetingAttendees ?? [];
 
   return (
@@ -187,35 +217,56 @@ export function MeetingView({ row }: ViewProps) {
           </Link>
         </div>
       ) : (
-        <div className="space-y-3">
-          {/* 경위서식 문서 — 정해진 양식의 정식 회의록 */}
-          <article className="border border-line bg-paper p-5 [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
-            <header className="mb-3 border-b border-ink pb-2">
-              <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
-                {MEETING_TYPE_LABELS[type]} 회의록
-              </p>
-              <h3 className="mt-1 text-lg font-bold text-ink">
+        <div className="space-y-6">
+          {/* 경위서식 — 헤더 + 섹션별 라벨/내용박스 */}
+          <section className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-ink">
                 {row.meetingTitle ?? row.name ?? "제목 없음"}
-              </h3>
-              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-ink-soft">
-                <dt className="text-muted">일시</dt>
-                <dd>{row.meetingDate || "-"}</dd>
-                <dt className="text-muted">장소</dt>
-                <dd>{row.meetingLocation || "-"}</dd>
-                <dt className="text-muted">참석자</dt>
-                <dd>{attendees.length > 0 ? attendees.join(", ") : "-"}</dd>
-                <dt className="text-muted">작성자</dt>
-                <dd>{row.meetingAuthor || row.owner || "-"}</dd>
-              </dl>
-            </header>
-            <DocBody nodes={nodes} />
-          </article>
+                <span className="ml-1.5 text-xs font-normal text-muted">
+                  · {MEETING_TYPE_LABELS[type]}
+                </span>
+              </span>
+              <span className="ml-auto inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft">
+                {MEETING_STATUS_LABELS[status]}
+              </span>
+            </div>
+            <p className="text-xs text-muted">
+              {[
+                row.meetingDate || null,
+                row.meetingLocation || null,
+                attendees.length > 0 ? `참석 ${attendees.length}명` : null,
+                row.meetingAuthor || row.owner || null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "—"}
+            </p>
+          </section>
+
           <Link
             href={`/dashboard/meetings/${row.id}`}
-            className="inline-block border border-line bg-paper px-3 py-1.5 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+            className="block w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:bg-washi-raised"
           >
-            편집·PDF·메일 화면 열기
+            회의록 편집·PDF·메일 화면 열기
           </Link>
+
+          <Divider />
+
+          {sections.length === 0 ? (
+            <p className="text-xs text-muted">작성된 내용이 없습니다.</p>
+          ) : (
+            sections.map((s, i) => (
+              <Section key={i} title={s.title ?? "개요"}>
+                <div className="rounded bg-washi-raised p-2.5">
+                  {bodyHasText(s.body) ? (
+                    <DocBody nodes={s.body} />
+                  ) : (
+                    <span className="text-xs text-muted">—</span>
+                  )}
+                </div>
+              </Section>
+            ))
+          )}
         </div>
       )}
     </div>
