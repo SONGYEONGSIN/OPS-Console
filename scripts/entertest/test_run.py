@@ -50,8 +50,11 @@ from selenium.webdriver.support import expected_conditions as EC
 
 RUN_ID = os.getenv("ENTERTEST_RUN_ID", "")
 TARGET_URL = os.getenv("ENTERTEST_TARGET_URL", "")
-# 대역(범위) "jt29001~jt29005"로 등록 가능 — 로그인은 범위 시작 계정 사용. ID=PW 동일.
-ACCOUNT = os.getenv("ENTERTEST_ACCOUNT", "").split("~")[0].strip()
+# 대역(범위) "jt29001~jt29005"로 등록 가능. ID=PW 동일.
+# ACCOUNT_SPEC=원본 범위 문자열, ACCOUNT=현재 사용 계정(기본=첫 계정). check_apply_write는 대역을 펼쳐
+# 접수완료로 소진되지 않은 계정을 자동 순환 선택하며 ACCOUNT(전역)를 갱신한다(아래 expand_accounts).
+ACCOUNT_SPEC = os.getenv("ENTERTEST_ACCOUNT", "").strip()
+ACCOUNT = ACCOUNT_SPEC.split("~")[0].strip()
 BASE = os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/")
 SECRET = os.getenv("CRON_SECRET", "")
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "").rstrip("/")
@@ -61,6 +64,9 @@ DISCOVER = os.getenv("ENTERTEST_DISCOVER", "").lower() == "true"
 CHECKS_ONLY = os.getenv("ENTERTEST_CHECKS_ONLY", "").lower() == "true"
 # check_apply_write(원서작성 완주) 단독 실행 — 인제스트 안 함, 결과만 출력(개발/검증용).
 APPLY_WRITE = os.getenv("ENTERTEST_APPLY_WRITE", "").lower() == "true"
+# 결제(테스트 결제)+접수완료까지 진행(opt-in). ⚠️ 접수완료 시 같은 계정/학교 재작성이 막힌다(계정 소진)
+# → 반복 테스트는 결제직전(기본)으로, 전 과정 완주 검증만 PAY=true + 깨끗한 계정 사용.
+PAY = os.getenv("ENTERTEST_PAY", "").lower() == "true"
 BUCKET = "entertest-screenshots"
 
 
@@ -68,16 +74,21 @@ def make_driver():
     # entertest 게이트는 CF 챌린지("Just a moment")가 아니라 단순 브라우저(UA) 체크라
     # 실제 Chrome이면 plain Selenium으로 통과한다(검증됨). 기본은 plain.
     # CF 챌린지가 있는 사이트에 한해 ENTERTEST_USE_UC=true로 undetected-chromedriver를 시도한다.
+    # 원서작성 흐름은 네이티브 alert/confirm을 띄운다(예: 재진입 시 "이미 작성한 원서가 있습니다").
+    # unhandledPromptBehavior=accept로 자동 수락 → Selenium UnexpectedAlertPresentException 회피
+    # (페이지 JS 레벨 override는 _INSTALL_ALERT_CAPTURE_JS가 별도 담당).
     use_uc = os.getenv("ENTERTEST_USE_UC", "").lower() == "true"
     if use_uc and uc is not None:
         try:
             uc_opts = uc.ChromeOptions()
             uc_opts.add_argument("--start-maximized")
+            uc_opts.set_capability("unhandledPromptBehavior", "accept")
             return uc.Chrome(options=uc_opts)
         except Exception as e:  # noqa: BLE001 — uc 기동 실패 시 plain Selenium 폴백
             print(f"[driver] undetected-chromedriver 기동 실패 → plain Selenium 폴백: {e}")
     opts = Options()
     opts.add_argument("--start-maximized")
+    opts.set_capability("unhandledPromptBehavior", "accept")
     return webdriver.Chrome(options=opts)
 
 
@@ -93,8 +104,17 @@ def login(driver, account: str) -> None:
     input이 즉시 interactable하지 않은 환경이 있어 JS로 값 주입 후 페이지의 Login()을 호출한다.
     Login()은 빈값 검증 → 비밀번호 encodeURIComponent → btn_Send 클릭(ASP.NET postback)을 수행하므로
     단순 send_keys/submit보다 폼 규약에 맞다.
+
+    계정 순환 시 이전 세션이 남으면 /Login이 인증상태로 리다이렉트되어 폼이 없으므로, 도메인 진입 후
+    쿠키를 비워 미인증 상태로 만든 뒤 /Login을 다시 연다.
     """
-    driver.get(f"{origin_of(TARGET_URL)}/Login")
+    base = origin_of(TARGET_URL)
+    driver.get(f"{base}/Login")
+    try:
+        driver.delete_all_cookies()  # 이전 계정 세션 제거(순환 로그인)
+    except Exception:  # noqa: BLE001
+        pass
+    driver.get(f"{base}/Login")
     WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.ID, LOGIN_ID_SEL))
     )
@@ -115,6 +135,32 @@ def login(driver, account: str) -> None:
     WebDriverWait(driver, 15).until(lambda d: "/Login" not in d.current_url)
 
 
+def expand_accounts(spec: str):
+    """계정 대역 문자열을 계정 리스트로 펼친다.
+
+    "jt29001~jt29005" → [jt29001..jt29005], "jt29001~29005" → 동일(끝은 접두사 생략 가능),
+    "jt29005"(단일) → [jt29005]. 끝<시작이거나 파싱 실패면 시작 계정만.
+    """
+    import re
+
+    spec = (spec or "").strip()
+    if not spec:
+        return []
+    if "~" not in spec:
+        return [spec]
+    a, b = [s.strip() for s in spec.split("~", 1)]
+    ma = re.match(r"^(\D*)(\d+)$", a)
+    if not ma:
+        return [a]
+    prefix, start_s = ma.group(1), ma.group(2)
+    width, start_n = len(start_s), int(start_s)
+    mb = re.search(r"(\d+)$", b)
+    end_n = int(mb.group(1)) if mb else start_n
+    if end_n < start_n:
+        return [a]
+    return [f"{prefix}{str(n).zfill(width)}" for n in range(start_n, end_n + 1)]
+
+
 def service_id_of(url: str) -> str:
     """TARGET_URL(.../Notice/{id}/A)에서 서비스 id 추출."""
     parts = [p for p in urlsplit(url).path.split("/") if p]
@@ -131,13 +177,32 @@ def enter_wonseo(driver, sid: str) -> None:
     (src=/Noti/{sid}/T) 안의 동의서. 동의 체크박스(c0=모두동의 + chkNotice*) 전체 체크 →
     버튼 onApply() → confirm("원서를 작성하시겠습니까?") 수락 → /Wonseo/{sid}/{N}/A
     (실제 폼, default content) 도달.
+
+    기존 원서가 있으면(반복 실행) ApplyFirst가 네이티브 alert("이미 작성한 원서가 있습니다",
+    드라이버가 자동 수락) 후 편집 페이지 /Wonseo/{sid}/{N}/AC/{ApplyID}로 직행한다(동의 iframe 없음).
+    두 경로(신규 동의 / 기존 편집)를 모두 처리한다.
     """
     base = origin_of(TARGET_URL)
     driver.get(f"{base}/ApplyFirst/{sid}/A")
-    # iframe 진입 필수 — 바깥 문서엔 nav/footer뿐, 동의서·폼은 #frmNotice 안.
-    WebDriverWait(driver, 15).until(
-        EC.frame_to_be_available_and_switch_to_it((By.ID, "frmNotice"))
+    # 신규(#frmNotice 동의 iframe) vs 기존(곧장 /Wonseo 편집) 분기 대기.
+    WebDriverWait(driver, 20).until(lambda d: (
+        "/Wonseo/" in d.current_url
+        or d.execute_script("return !!document.getElementById('frmNotice');")
+    ))
+    if "/Wonseo/" in driver.current_url:
+        return  # 기존 원서 편집 진입 — 동의 단계 불필요
+    driver.switch_to.frame("frmNotice")
+    # 신규(동의 iframe /Noti/{sid}/T, 체크박스 6) vs 접수완료-차단(/Noti/{sid}/A, 체크박스 0) 판별.
+    # 접수완료 후엔 ApplyFirst가 단순 공지로 바운스 → 같은 계정/학교 재작성 불가.
+    n_chk = driver.execute_script(
+        "return document.querySelectorAll('input[type=checkbox]').length;"
     )
+    if not n_chk:
+        driver.switch_to.default_content()
+        raise RuntimeError(
+            "원서작성 진입 불가 — 이미 접수완료된 원서가 있어 재작성이 막힘(계정/학교 소진). "
+            "반복 테스트는 다른 테스트 계정(jt29001~) 사용."
+        )
     # 동의 체크박스 전체 체크 + confirm 자동 수락(프레임 컨텍스트) 후 onApply().
     driver.execute_script(
         "window.confirm = function () { return true; };"
@@ -150,6 +215,165 @@ def enter_wonseo(driver, sid: str) -> None:
     driver.switch_to.default_content()
     # onApply가 top 문서를 /Wonseo로 이동 — 도달 대기.
     WebDriverWait(driver, 20).until(lambda d: "/Wonseo/" in d.current_url)
+
+
+def delete_unpaid_applications(driver) -> int:
+    """미접수(미결제) 원서를 삭제 — 반복 실행 시 깨끗한 신규 작성 경로를 보장(편집 모드 회피). 삭제 건수 반환.
+
+    해독(5차): /MyPage/PayingPage의 '삭제하기'(jQuery) → Deletelayer(chkagree 동의 + passwd 본인확인 +
+    btnpasswdCheck '확인' → btnDelete '미접수 원서 삭제'). 테스트 계정은 ID=PW. 네이티브 confirm은
+    드라이버 unhandledPromptBehavior=accept가 자동 수락.
+    """
+    base = origin_of(TARGET_URL)
+    deleted = 0
+    for _ in range(10):  # 여러 건이면 반복 — 매 회 목록 갱신
+        driver.get(base + "/MyPage/PayingPage")
+        _body_ready(driver)
+        time.sleep(1.2)
+        has = driver.execute_script(
+            "return Array.prototype.some.call(document.querySelectorAll('a'), function(a){"
+            "  return /삭제하기/.test(a.innerText||'') && getComputedStyle(a).display!=='none'; });"
+        )
+        if not has:
+            break
+        driver.execute_script(
+            "var a=Array.prototype.find.call(document.querySelectorAll('a'), function(x){"
+            "  return /삭제하기/.test(x.innerText||''); }); if(a) a.click();"
+        )
+        time.sleep(1.0)
+        # 동의 체크 + 비밀번호(=계정) 입력 → 본인확인 → 삭제.
+        # (chkagree: 클릭 1회로 체크. set-true 후 click하면 토글되어 풀림 → "동의 안 함" 거부.)
+        driver.execute_script(
+            "var c=document.getElementById('chkagree');"
+            "if(c){ if(!c.checked){ try{c.click()}catch(e){} } if(!c.checked){ c.checked=true;"
+            "  c.dispatchEvent(new Event('change',{bubbles:true})); } }"
+            "var p=document.getElementById('passwd'); if(p){ p.value=arguments[0];"
+            "  p.dispatchEvent(new Event('input',{bubbles:true})); p.dispatchEvent(new Event('change',{bubbles:true})); }",
+            ACCOUNT,
+        )
+        time.sleep(0.3)
+        driver.execute_script("var b=document.getElementById('btnpasswdCheck'); if(b) b.click();")
+        time.sleep(1.2)
+        driver.execute_script("var b=document.getElementById('btnDelete'); if(b) b.click();")
+        time.sleep(2.0)  # confirm 자동수락 + 삭제 AJAX settle
+        deleted += 1
+    return deleted
+
+
+_TEST_PHOTO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_test_photo.jpg")
+
+
+def _ensure_test_photo() -> str:
+    """업로드용 테스트 사진(300x400=3cm×4cm 비율 JPEG) 생성/재사용. PIL 필요."""
+    if os.path.exists(_TEST_PHOTO_PATH):
+        return _TEST_PHOTO_PATH
+    from PIL import Image  # 로컬 실행 환경 의존(스크립트 전용)
+
+    Image.new("RGB", (300, 400), (180, 180, 190)).save(_TEST_PHOTO_PATH, "JPEG", quality=85)
+    return _TEST_PHOTO_PATH
+
+
+def upload_photo(driver) -> bool:
+    """사진 직접 업로드(필수 필드, 서버가 storageUrl 검증 → 위조 불가).
+
+    해독(5차): #UpPic '바로 업로드' = PhotoDirect() → iframe #__frmHelper(DirectPhotoUpload.aspx)에
+    <input type=file id=UploadedPicture>. send_keys로 실제 이미지 주입(네이티브 다이얼로그 우회) →
+    #UploadBtn '업로드' → 서버 저장 후 부모 EventDirectUpload(storageUrl,…) → PhotoRegist가
+    실제 txtPhotoFileName/ext 세팅 + 팝업 자동 닫힘. 성공 시 True.
+    """
+    path = _ensure_test_photo()
+    driver.switch_to.default_content()
+    driver.execute_script("if(typeof PhotoDirect==='function'){ PhotoDirect(); }")
+    try:
+        WebDriverWait(driver, 15).until(lambda d: d.execute_script(
+            "var f=document.getElementById('__frmHelper');"
+            "return !!(f && /DirectPhotoUpload/.test(f.src||''));"
+        ))
+    except Exception:  # noqa: BLE001 — 사진 필드 없는 전형이면 팝업 미오픈
+        driver.switch_to.default_content()
+        return False
+    try:
+        driver.switch_to.frame("__frmHelper")
+        inp = WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.ID, "UploadedPicture"))
+        )
+        inp.send_keys(path)
+        time.sleep(1.2)
+        driver.execute_script(
+            "var b=document.getElementById('UploadBtn');"
+            "if(b){ b.click(); } else if(typeof __doPostBack==='function'){ __doPostBack('ButtonUpload',''); }"
+        )
+    finally:
+        driver.switch_to.default_content()
+    # PhotoRegist 완료(txtPhotoFileName 채워짐) 대기.
+    for _ in range(24):
+        time.sleep(0.5)
+        fn = driver.execute_script(
+            "var e=document.getElementById('txtPhotoFileName'); return e?e.value:'';"
+        )
+        if fn:
+            return True
+    return False
+
+
+def _filefield_filled(driver, name: str) -> bool:
+    """FILEFIELD(name) 컨테이너의 파일명 hidden(input[name$=Name])이 채워졌는지."""
+    return bool(driver.execute_script(
+        "var s=document.querySelector('[jwtype=FILEFIELD][name=\"'+arguments[0]+'\"]');"
+        "if(!s) return false; var i=s.querySelector('input[name$=Name]'); return !!(i && i.value);",
+        name,
+    ))
+
+
+def upload_documents(driver) -> int:
+    """필수 서류 FILEFIELD를 실제 업로드(여권/외국인등록증 등). 업로드 성공 개수 반환.
+
+    해독(5차): 트리거 btn{Name}Edit 클릭 → iframe #__frmHelper(JSFileUpload) <input type=file id=UploadedFile>.
+    send_keys로 실제 파일 주입(다이얼로그 우회) → #UploadBtn '저장'(uploadFile()) → UploadEvent가
+    컨테이너 파일명 hidden 세팅 + 팝업 닫힘. (사진과 동일 패턴, 위조 불가 — 서버가 파일 검증.)
+    """
+    path = _ensure_test_photo()  # 여권/등록증 accept=이미지 — 동일 JPEG 재사용
+    driver.switch_to.default_content()
+    names = driver.execute_script(
+        "return Array.prototype.map.call(document.querySelectorAll('[jwtype=FILEFIELD]'),"
+        "function(s){ return s.getAttribute('name'); }).filter(Boolean);"
+    )
+    done = 0
+    for name in names:
+        if _filefield_filled(driver, name):
+            done += 1
+            continue
+        driver.switch_to.default_content()
+        driver.execute_script(
+            "var b=document.getElementById('btn'+arguments[0]+'Edit'); if(b){ b.click(); }", name
+        )
+        try:
+            WebDriverWait(driver, 15).until(lambda d: d.execute_script(
+                "var f=document.getElementById('__frmHelper');"
+                "return !!(f && /JSFileUpload/.test(f.src||''));"
+            ))
+        except Exception:  # noqa: BLE001 — 트리거 없거나 팝업 미오픈
+            driver.switch_to.default_content()
+            continue
+        try:
+            driver.switch_to.frame("__frmHelper")
+            inp = WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.ID, "UploadedFile"))
+            )
+            inp.send_keys(path)
+            time.sleep(1.0)
+            driver.execute_script(
+                "if(typeof uploadFile==='function'){ uploadFile(); }"
+                "else { var b=document.getElementById('UploadBtn'); if(b) b.click(); }"
+            )
+        finally:
+            driver.switch_to.default_content()
+        for _ in range(24):
+            time.sleep(0.5)
+            if _filefield_filled(driver, name):
+                done += 1
+                break
+    return done
 
 
 # ── check_apply_write (v2/B): 원서작성 폼 자동 채움 + 저장 검증루프 (해독 문서 기반) ──────────
@@ -193,11 +417,8 @@ document.querySelectorAll('input[type=text],input[type=tel],input[type=number],i
  'hdnPrevUnivNationCode'].forEach(function(id){ var el=document.getElementById(id); if(el&&!el.value) el.value='1'; });
 // 자동합산 총계(readonly) — 타깃 set.
 var _tot=document.getElementById('txtTotal'); if(_tot && (!_tot.value||_tot.value==='0')){ _tot.value='12'; _tot.dispatchEvent(new Event('change',{bubbles:true})); }
-// 3) 업로드 우회 — hidden만 세팅(결제직전까지 파일 존재 검증 없음)
-[['hdnUploadFileName','test.jpg'],['hdnUploadFileOrgFile','test.jpg'],['hdnUploadFileSize','12345'],['hdnUploadFileType','image/jpeg'],
- ['hdnUploadFile1Name','test.jpg'],['hdnUploadFile1OrgFile','test.jpg'],['hdnUploadFile1Size','12345'],['hdnUploadFile1Type','image/jpeg']
-].forEach(function(p){ var el=document.getElementById(p[0]); if(el&&!el.value) el.value=p[1]; });
-try{ if(typeof PhotoRegist==='function') PhotoRegist({storageUrl:'https://image.jinhakapply.com/test.jpg',FileName:'test',Ext:'jpg',Size:12345}); }catch(e){}
+// 3) 업로드 필드 — 가짜 hidden 주입 금지. 사진/서류 모두 서버가 실제 파일을 검증(위조 시 CommonError).
+//    필요 시 upload_photo()/upload_documents()로 실제 업로드.
 // 4) 라디오 — 필수 그룹 기본 선택(빈 그룹만)
 ['rdoSelTypeCodeE','rdoEMemSsnSelectN','rdoPersonalDataAgree11','rdoPersonalDataAgree21','rdoGraduteStatus2'].forEach(function(id){
   var el=document.getElementById(id); if(el&&!el.checked) el.click(); });
@@ -209,24 +430,49 @@ document.querySelectorAll('select').forEach(function(s){
 """
 
 
-# 검증 모달 텍스트 — JS로 직접(애니메이션/표시 토글에 견고). #globalAlert(.layer attention) 우선.
-# 검증 모달은 #globalAlert만 본다. (div.layer_cont/.layer.attention 류는 SEARCHFIELD 검색팝업
-# #SearchLayer_Pop과 클래스가 겹쳐 "검색"을 오탐 → #globalAlert로 한정.)
-# #globalAlert는 position:fixed + 0-size wrapper라 offsetParent/clientRects로는 '안 보임'으로 오판 →
-# display/visibility + 텍스트 존재로만 판정.
-_MODAL_JS = r"""
-var g=document.getElementById('globalAlert');
-if(g){ var st=getComputedStyle(g);
-  if(st.display!=='none' && st.visibility!=='hidden'){
-    var t=(g.innerText||'').replace(/확인/g,'').trim(); if(t) return t; } }
-return null;
+# 검증 피드백 채널 = 네이티브 alert() (해독 5차, DoValidate.toString 확인):
+#   DoValidate() → window.JWValidate() → 첫 미충족 필드를 alert("…를 입력해 주세요.")로 표시 후 return.
+#   사이트 자체 alert 래퍼가 #globalAlert를 그리지만, 자동화는 alert를 후킹해 메시지를 직접 캡처한다
+#   (override로 삼키면 피드백 소실 = 기존 "DoValidate 불안정" 버그의 진짜 원인).
+# 캡처 설치: window.alert가 window.__alertMsg에 마지막 메시지를 적재(삼키지 않고 보존), confirm=true.
+_INSTALL_ALERT_CAPTURE_JS = r"""
+window.__alertMsg = null;
+// 이 사이트의 alert/confirm은 Promise(thenable) 반환식이고, 저장 경로 JX.ExecuteSaveEvents가
+// confirm(...).then(t).catch(DoValidateExcept) / alert(...).finally(...)로 체이닝한다. override가
+// boolean/undefined를 반환하면 체인이 깨져 저장이 중단(DoValidateExcept)되므로 thenable을 반환한다.
+// (동기 thenable — .then/.catch/.finally 콜백을 즉시 실행해 저장 흐름을 진행. confirm은 자동 yes.)
+function __thenable(resolveVal){
+  var t={ then:function(f){ if(f) f(resolveVal); return t; },
+          catch:function(){ return t; },
+          finally:function(f){ if(f) f(); return t; } };
+  return t;
+}
+window.alert = function(m){ window.__alertMsg = (m==null?'':String(m)); return __thenable(); };
+window.confirm = function(){ return __thenable(true); };
 """
 
 
-def _modal_text(driver):
-    """검증 모달 표시 텍스트(없으면 None). 1104069은 #globalAlert 사용."""
+def _alert_text(driver):
+    """캡처된 alert 메시지를 읽고 비운다(consume). 없으면 None.
+
+    #globalAlert(사이트 alert 래퍼의 시각요소)도 폴백으로 함께 확인.
+    """
     try:
-        return driver.execute_script(_MODAL_JS)
+        msg = driver.execute_script(
+            "var m=window.__alertMsg; window.__alertMsg=null; return m;"
+        )
+        if msg:
+            return msg
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return driver.execute_script(
+            "var g=document.getElementById('globalAlert');"
+            "if(g){ var st=getComputedStyle(g);"
+            "  if(st.display!=='none' && st.visibility!=='hidden'){"
+            "    var t=(g.innerText||'').replace(/확인/g,'').trim(); if(t) return t; } }"
+            "return null;"
+        )
     except Exception:  # noqa: BLE001
         return None
 
@@ -234,10 +480,6 @@ def _modal_text(driver):
 # 검증 모달이 지목한 필드를 placeholder/label 매칭으로 찾아 force-fill(readonly/숨김 무시).
 # broad-fill이 놓치는 hidden/readonly/조건부 필드를 모달 메시지 기반으로 수렴시키는 일반 메커니즘.
 _FORCE_FILL_JS = r"""
-var msg=(arguments[0]||'');
-function norm(s){ return (s||'').replace(/[\s ]/g,'')
-  .replace(/[를을]?(입력|선택|체크)해?\s*주세요\.?/g,'').replace(/[()（）]/g,'').trim(); }
-var key=norm(msg); if(!key) return null;
 function val(el){ var id=el.id||'';
   if(/^txtC/.test(id)) return '测试';
   if(/Email/i.test(id)) return 'test@test.com';
@@ -250,19 +492,29 @@ function val(el){ var id=el.id||'';
   if(/Passport/i.test(id)) return 'EM0000000';
   if(/Addr1/i.test(id)) return /^txtC/.test(id)?'100000':'12345';
   return 'TEST'; }
-var els=document.querySelectorAll('input,textarea,select');
-for(var i=0;i<els.length;i++){ var el=els[i];
-  if(el.type==='hidden') continue;
-  var ph=norm(el.placeholder||''); var lab='';
-  if(el.id){ var l=document.querySelector('label[for="'+el.id+'"]'); if(l) lab=norm(l.innerText||''); }
-  var hit=(ph && (key.indexOf(ph)>=0||ph.indexOf(key)>=0)) || (lab && (key.indexOf(lab)>=0||lab.indexOf(key)>=0));
-  if(hit){
-    if(el.tagName.toLowerCase()==='select'){ if(el.options.length>1) el.selectedIndex=1; }
-    else { el.removeAttribute('readonly'); el.value=val(el); }
-    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true}));
-    return (el.id||el.name||'matched')+' = '+(el.value||'[select]');
-  }
-}
+// jw 프레임워크: 필수 필드 컨테이너 <span jwtype korname searchid requiredalert="…주세요.">에 메타 보존.
+// requiredalert == alert 메시지(정확 일치) → fuzzy 라벨 매칭(엉뚱한 그룹 선택 버그) 제거.
+var raw=(arguments[0]||'').trim();
+var field=null;
+try{ field=document.querySelector('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'); }catch(e){}
+if(!field){ var cs=document.querySelectorAll('[korname]');
+  for(var i=0;i<cs.length;i++){ var kn=cs[i].getAttribute('korname')||''; if(kn && raw.indexOf(kn)>=0){ field=cs[i]; break; } } }
+if(!field) return null;
+var jt=(field.getAttribute('jwtype')||'').toUpperCase();
+var sid=field.getAttribute('searchid')||'';
+if(jt==='SEARCHFIELD' || sid) return 'SEARCH:'+sid;  // 파이썬이 select_search_result 호출
+function fire(el){ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+var radios=field.querySelectorAll('input[type=radio]');
+if(radios.length){ var pick=null;
+  for(var i=0;i<radios.length;i++){ if(/^(1|Y)$/i.test(radios[i].value)){ pick=radios[i]; break; } }
+  pick=pick||radios[0]; pick.checked=true; try{ pick.click(); }catch(e){} fire(pick);
+  return (pick.id||pick.name||'radio')+' = checked('+pick.value+')'; }
+var checks=field.querySelectorAll('input[type=checkbox]');
+if(checks.length){ var n=0; checks.forEach(function(c){ if(!c.checked){ c.checked=true; try{c.click()}catch(e){} fire(c); n++; } }); return 'checkbox x'+n; }
+var sel=field.querySelector('select');
+if(sel){ if(sel.options.length>1) sel.selectedIndex=1; fire(sel); return (sel.id||'select')+' = idx1'; }
+var txt=field.querySelector('input[type=text],input[type=tel],input[type=number],input:not([type]),textarea,input[type=hidden]');
+if(txt){ txt.removeAttribute('readonly'); txt.value=val(txt); fire(txt); return (txt.id||txt.name||'text')+' = '+txt.value; }
 return null;
 """
 
@@ -354,60 +606,161 @@ def _close_modal(driver) -> None:
 
 
 def check_apply_write(driver, ctx):
-    """원서작성 폼 자동 완주(결제직전까지). 1104069 PoC."""
+    """원서작성 폼 자동 완주(결제직전 또는 ENTERTEST_PAY 시 접수완료까지). 1104069 PoC.
+
+    계정 대역 자동 순환: ENTERTEST_ACCOUNT가 범위(jt29001~jt29005)면 펼쳐서, 접수완료로 소진(진입 차단)되지
+    않은 첫 계정을 자동 선택한다. PAY 모드는 실행마다 1계정 소진 → 다음 실행 시 다음 계정으로 순환(등록 개수만큼).
+    결제직전(기본)은 계정 재사용 가능(삭제→재생성)이라 보통 첫 계정만 쓴다.
+    """
+    global ACCOUNT
     sid = service_id_of(TARGET_URL)
-    # 자체적으로 로그인 보장 (CHECKS 시퀀스에선 check_login이 선행하지만, 단독 실행/안전 위해).
-    if "/Login" in driver.current_url or "로그아웃" not in driver.page_source:
-        login(driver, ACCOUNT)
-    enter_wonseo(driver, sid)
+    accounts = expand_accounts(ACCOUNT_SPEC) or ([ACCOUNT] if ACCOUNT else [])
+    print(f"[apply] 계정 대역: {len(accounts)}개 {accounts}")
+    chosen, idx = None, -1
+    for idx, acc in enumerate(accounts):
+        ACCOUNT = acc  # 전역 갱신 — login/delete(passwd)/이후 단계가 이 계정 사용
+        login(driver, acc)
+        # 기존 미접수 원서 삭제 — 깨끗한 신규 작성 경로로(편집 모드 trivial-pass 방지, 반복 안정).
+        n_del = delete_unpaid_applications(driver)
+        try:
+            enter_wonseo(driver, sid)
+        except RuntimeError as e:
+            # 접수완료로 진입 차단된 계정 → 다음 계정으로 순환.
+            print(f"[apply] {acc} 진입 불가({n_del}건 삭제) — {str(e)[:50]}… 다음 계정 시도")
+            continue
+        chosen = acc
+        print(f"[apply] 사용 계정: {acc} (대역 {len(accounts)}개 중 {idx+1}번째, 미접수 삭제 {n_del}건)")
+        break
+    if not chosen:
+        return ("fail", f"대역 {len(accounts)}개 전부 소진(접수완료/차단) — 사용 가능 계정 없음")
     print(f"[apply] 진입 완료 - {driver.current_url}")
-    driver.execute_script("window.confirm=function(){return true;}; window.alert=function(){};")
+    # 업로드 전 broad-fill 선행(중요): 라디오/select 클릭이 조건부 섹션을 재렌더하며 업로드 hidden을
+    # 리셋한다. 먼저 채워 렌더를 안정화하면 이후 broad-fill은 멱등(이미 채워짐→무동작)이라 업로드가
+    # 보존된다. (검증됨: 선행 안 하면 hdnUploadFileName이 broad-fill마다 비워짐.)
+    for _ in range(2):
+        _close_search_popup(driver)
+        driver.execute_script(_WONSEO_FILL_JS)
+        time.sleep(0.4)
+        _close_search_popup(driver)
+    # 사진/서류는 필수이고 서버가 실제 파일을 검증(위조 시 CommonError) → 실제 업로드.
+    photo_ok = upload_photo(driver)
+    print(f"[apply] 사진 업로드: {'OK' if photo_ok else '미수행(필드 없음/실패)'}")
+    doc_n = upload_documents(driver)
+    print(f"[apply] 서류 업로드: {doc_n}건")
     last = None
+    saved = False
+    valid_i = 0
     for i in range(15):
-        _close_search_popup(driver)  # 이전 회차에 열린 검색팝업이 DoValidate를 막지 않도록
+        _close_search_popup(driver)  # 이전 회차에 열린 검색팝업이 검증을 막지 않도록
         driver.execute_script(_WONSEO_FILL_JS)
         time.sleep(0.4)
         _close_search_popup(driver)  # 채움 중 열렸을 수 있는 검색팝업 닫기
-        driver.execute_script(
-            "window.confirm=function(){return true;};"
-            "if(typeof DoValidate==='function'){ DoValidate(); } else { console.log('no DoValidate'); }"
+        # JWValidate()로 검증 상태 확인 — 첫 미충족 1건을 alert로 표시(캡처). 통과 시에만 저장(DoValidate).
+        # (DoValidate를 직접 돌리지 않아 "파일 업로드 완료" 등 비검증 alert 노이즈를 피한다.)
+        is_valid = driver.execute_script(
+            _INSTALL_ALERT_CAPTURE_JS
+            + "return (typeof JWValidate==='function') ? !!JWValidate() : null;"
         )
-        # 검증 모달은 애니메이션으로 늦게 뜰 수 있어 최대 5s 폴링.
-        m = None
-        for _ in range(10):
-            time.sleep(0.5)
-            m = _modal_text(driver)
-            if m:
-                break
-        cur = driver.current_url
-        print(f"[apply] {i+1}회 저장 — 모달: {(m or '없음')[:120].replace(chr(10),' ')}")
-        if "/Wonseo/" not in cur:
-            # 폼 이탈 = 저장/제출됨 → 결제직전(작성목록) 도달 확인.
-            driver.get(f"{origin_of(TARGET_URL)}/Payment/UnivWritingList/{sid}")
-            _body_ready(driver)
-            ok = "없습니다" not in driver.page_source
-            return ("pass" if ok else "fail",
-                    f"저장 후 결제목록 {'원서 있음(결제직전 도달)' if ok else '비어있음'} ({i+1}회 시도)")
+        m = _alert_text(driver)
+        print(f"[apply] {i+1}회 — JWValidate={is_valid} 메시지: {(m or '없음')[:110].replace(chr(10),' ')}")
+        if is_valid:
+            # 모든 클라 검증 통과 → 저장(thenable alert/confirm으로 ExecuteSaveEvents 체인 진행).
+            valid_i = i + 1
+            driver.execute_script(
+                _INSTALL_ALERT_CAPTURE_JS
+                + "if(typeof DoValidate==='function'){ DoValidate(); }"
+            )
+            time.sleep(3)  # 저장 POST/네비게이션 settle
+            for _ in range(8):
+                if "/Wonseo/" not in driver.current_url:
+                    break
+                time.sleep(0.5)
+            saved = True
+            break
         if not m:
-            # /Wonseo 잔류 + #globalAlert 없음 → SEARCHFIELD 검증이 검색팝업을 띄운 경우.
-            # 검색 결과를 자동 선택해 실제 코드/이름 세팅(hidden '1' 우회로 부족한 필드 해소).
+            # 검증 false인데 메시지 없음 → SEARCHFIELD 검색팝업이 떠 있을 수 있음 → 결과 선택으로 해소.
             if _popup_open(driver):
                 picked = _resolve_open_popup(driver)
                 print(f"[apply]   ↳ 검색결과 선택: {picked or '실패'}")
                 last = f"검색팝업 해소: {picked or '결과없음'}"
             else:
-                print("[apply]   (#globalAlert/검색팝업 없음 — 계속)")
+                print("[apply]   (검증 false·메시지/팝업 없음 — 계속)")
             time.sleep(0.4)
             continue
-        if any(k in m for k in ("저장되었습니다", "저장 완료", "작성되었습니다", "성공", "접수")):
-            return ("pass", f"저장 성공 모달 확인 ({i+1}회): {m[:80]}")
         last = m.replace("\n", " ")[:200]
-        # 모달이 지목한 필드를 force-fill (broad-fill이 놓친 hidden/readonly/조건부 필드 수렴).
+        # 검증이 지목한 필드를 force-fill (broad-fill이 놓친 hidden/readonly/조건부 필드 수렴).
         matched = _force_fill_for_message(driver, m)
-        print(f"[apply]   ↳ force-fill: {matched}")
+        if matched and matched.startswith("SEARCH:"):
+            # SEARCHFIELD → 검색팝업을 열어 결과 선택(코드/이름 세팅). searchid 미상이면 광역 해소.
+            searchid = matched[len("SEARCH:"):]
+            picked = select_search_result(driver, searchid, "") if searchid else ""
+            if not picked and _popup_open(driver):
+                picked = _resolve_open_popup(driver)
+            print(f"[apply]   ↳ search[{searchid}]: {picked or '실패'}")
+        else:
+            print(f"[apply]   ↳ force-fill: {matched}")
         _close_modal(driver)
         time.sleep(0.5)
-    return ("fail", f"저장 검증 루프 미통과(15회). 마지막 모달: {last}")
+
+    # 결제목록(권위)으로 최종 판정 — URL 변화/신규·편집 모드 무관. '결제하기' 버튼 존재 = 결제직전 도달.
+    driver.get(f"{origin_of(TARGET_URL)}/Payment/UnivWritingList/{sid}")
+    _body_ready(driver)
+    import re as _re
+    body = _re.sub(r"\s+", " ", driver.execute_script("return document.body.innerText||'';"))
+    has_app = ("결제하기" in body) and ("작성한 원서가 없습니다" not in body)
+    if not has_app:
+        return ("fail", f"[{chosen}] 결제목록 비어있음 (마지막 검증 메시지: {last}, 저장시도={saved})")
+    base_msg = f"[{chosen}] 결제직전 도달 — 결제목록에 원서 있음 (JWValidate 통과 {valid_i}회차, 저장={saved})"
+    if not PAY:
+        return ("pass", base_msg)
+    # opt-in: 테스트 결제 → 접수완료까지.
+    done, receipt = complete_payment(driver, sid)
+    if done:
+        return ("pass", f"[{chosen}] 접수완료 — 수험(접수)번호 {receipt} (테스트 결제, {base_msg})")
+    return ("fail", f"[{chosen}] 결제직전 도달했으나 접수완료 실패 ({base_msg})")
+
+
+def complete_payment(driver, sid: str):
+    """전형료 결제(테스트 결제) → 접수완료. (done: bool, receipt: str|None) 반환.
+
+    해독(5차): 결제목록 '결제하기' → /Payment/UnivPayBegin → 결제수단 화면의 '테스트 결제' 버튼
+    (onclick=PayClick('btnPay','PayTest') = 테스트 사이트 전용 PG, 실과금 없음) → /Payment/PayConfirm
+    "원서접수가 완료되었습니다" → /Payment/UnivPayResult 에 수험(접수)번호.
+    ⚠️ 접수완료 시 같은 계정/학교 재작성 불가(계정 소진).
+    """
+    base = origin_of(TARGET_URL)
+    driver.get(f"{base}/Payment/UnivWritingList/{sid}")
+    _body_ready(driver)
+    driver.execute_script(
+        "var a=Array.prototype.find.call(document.querySelectorAll('a'),"
+        "function(b){ return /결제하기/.test(b.innerText||''); }); if(a) a.click();"
+    )
+    try:
+        WebDriverWait(driver, 15).until(
+            lambda d: "/UnivPayBegin/" in d.current_url or "/PayConfirm/" in d.current_url
+        )
+    except Exception:  # noqa: BLE001
+        return (False, None)
+    driver.execute_script(_INSTALL_ALERT_CAPTURE_JS)
+    driver.execute_script(
+        "var a=Array.prototype.find.call(document.querySelectorAll('a,button,input'),"
+        "function(b){ return /테스트 결제/.test(b.innerText||b.value||''); }); if(a) a.click();"
+    )
+    for _ in range(20):  # 접수완료 대기
+        time.sleep(1)
+        if "/PayConfirm/" in driver.current_url or "접수가 완료" in driver.page_source:
+            break
+    # 접수완료확인에서 수험(접수)번호 확보.
+    driver.get(f"{base}/Payment/UnivPayResult/{sid}")
+    _body_ready(driver)
+    time.sleep(1)
+    import re as _re
+    body = _re.sub(r"\s+", " ", driver.execute_script("return document.body.innerText||'';"))
+    m = _re.search(r"수험\(?접수\)?번호\s*([0-9A-Za-z]{8,})", body)
+    receipt = m.group(1) if m else None
+    done = ("접수원서" in body) and (receipt is not None)
+    print(f"[apply] 접수완료확인 — 수험번호: {receipt or '미확인'}")
+    return (done, receipt)
 
 
 def upload_screenshot(driver, key: str):
@@ -680,6 +1033,8 @@ def main() -> int:
             import traceback
             try:
                 status, message = check_apply_write(driver, {})
+            except RuntimeError as e:  # 진입 차단 등 예상된 실패는 메시지만(트레이스백 불필요)
+                status, message = "fail", str(e)
             except Exception:  # noqa: BLE001
                 traceback.print_exc()
                 status, message = "fail", "예외 — 위 트레이스백 참조"

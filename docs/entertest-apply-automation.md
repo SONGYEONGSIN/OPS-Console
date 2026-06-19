@@ -4,7 +4,10 @@
 확장하기 위한 리버스엔지니어링 결과. 러너 `scripts/entertest/test_run.py`의 `check_apply_write`(미구현)
 구현 근거가 된다. (2026-06 해독)
 
-> 결제 직전까지 = 원서 작성 → 저장 → `/Payment/UnivWritingList`(결제 수단 선택) 도달. **실제 결제/접수완료는 하지 않음.**
+> 결제 직전까지(기본) = 원서 작성 → 저장 → `/Payment/UnivWritingList`(결제 수단 선택) 도달.
+> **`ENTERTEST_PAY=true` opt-in 시 테스트 결제 → 접수완료까지** 진행(테스트 사이트 전용 PG, 실과금 없음).
+> ⚠️ 접수완료 시 같은 계정/학교 재작성 불가(계정 소진) → 반복 테스트는 기본(결제직전)으로, 전 과정 완주 검증만
+> PAY=true + 깨끗한 계정. 둘 다 ✅ 검증 완료(5·6차 로그).
 
 ## 환경 전제
 
@@ -151,6 +154,62 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
   안정화 필요: 각 단계 사이 명시적 대기(요소/네트워크 idle), DoValidate 직후 alert/confirm/네트워크 settle 대기.
 - **per-searchfield 쿼리**: `_resolve_open_popup`은 광역 쿼리(중국/中/大学/…) 폭격 → 필드별 적합 쿼리·결과 0건 처리 보강 필요.
 - 1104069는 searchfield 18 + 마스크/영중문 페어 long-tail → 완주까지 추가 그라인드. 단 **핵심 메커니즘(진입·저장루프·모달·검색팝업 결과선택)은 모두 확보**.
+
+### 진행 로그 (2026-06-19, 5차 — ✅ 결제 직전까지 완주 달성)
+
+`check_apply_write`가 1104069(외국인 중문 편입 worst-case)에서 **결제목록 도달까지 완전 통과**(`status: pass`,
+2회차 JWValidate 통과 + 저장). 4차의 "DoValidate 피드백 불안정"은 잘못된 채널 추정이었고, 진짜 원인 5가지를 규명·수정:
+
+1. **검증 피드백 = 네이티브 `alert()`** (not `#globalAlert`). `DoValidate`→`window.JWValidate()`가 첫 미충족 1건을
+   `alert("…주세요.")`로 표시. 루프가 `window.alert`를 **무력화(no-op)** 해서 메시지를 통째로 삼킨 게 "불안정"의 정체.
+   → `_INSTALL_ALERT_CAPTURE_JS`: alert를 `window.__alertMsg`에 **캡처**(삼키지 않음). `_alert_text()`로 소비.
+2. **필드 정확 매칭 = jw 컨테이너 속성**. fuzzy 라벨/placeholder 매칭은 "동의" 부분문자열로 엉뚱한 라디오를 골랐다
+   (`rdoPersonalDataAgree3` vs 실제 `F_UnivAgree`). jw는 필수 컨테이너 `<span jwtype korname searchid
+   requiredalert="…주세요.">`에 메타 보존 → **`[requiredalert="<메시지>"]` 정확 일치**로 필드 특정,
+   `jwtype`별 처리(RADIOFIELD→첫 라디오(value 1/Y) 체크, SEARCHFIELD→`SEARCH:{searchid}` 신호, TEXT→값 주입).
+   라디오는 `el.value=` 가 아니라 **`checked`/click** 필요.
+3. **사진·서류는 위조 불가 — 실제 업로드 필수**. 가짜 `PhotoRegist`/hidden 주입 시 서버가 storageUrl/파일을 검증해
+   **`/Error/CommonError`(저장 실패)**. 사진(`hdnFlagPhoto=3`) = `#UpPic`→`PhotoDirect()`→iframe `#__frmHelper`
+   (`DirectPhotoUpload.aspx`) `<input type=file id=UploadedPicture>` **`send_keys`**(다이얼로그 우회)→`#UploadBtn`→
+   서버가 실제 storageUrl 생성→`PhotoRegist`. 서류(여권 `F_UploadFile`/외국인등록증 `F_UploadFile1`) = 트리거
+   `btn{Name}Edit`→iframe `JSFileUpload` `<input type=file id=UploadedFile>` send_keys→`#UploadBtn`(`uploadFile()`).
+   → `upload_photo()` / `upload_documents()`. 테스트 이미지는 PIL 300×400 JPEG(`_test_photo.jpg`, gitignore).
+4. **업로드 보존 = broad-fill 선행**. 라디오/select 클릭이 조건부 섹션을 재렌더하며 업로드 hidden을 리셋한다
+   (검증됨: broad-fill마다 `hdnUploadFileName` 비워짐). **업로드 전 broad-fill 2회로 렌더 안정화** → 이후 broad-fill은
+   멱등(이미 채워짐→무동작)이라 업로드 생존.
+5. **저장 경로 완성 = thenable alert/confirm**. 사이트의 `alert`/`confirm`은 **Promise 반환식**이고 저장 경로
+   `JX.ExecuteSaveEvents`가 `confirm(...).then(t).catch(DoValidateExcept)`/`alert(...).finally(...)`로 체이닝.
+   override가 boolean/undefined 반환 시 체인이 깨져 **저장이 조용히 중단**(DoValidateExcept). → override가 **동기 thenable**
+   반환(confirm 자동 yes). 이 수정 직후 실제 저장 성공("이미 동일학교에 작성한 원서가 있습니다" 네이티브 alert가 증거).
+
+**반복 실행 안정화:**
+- **성공 판정 = 결제목록 권위**: URL 변화/신규·편집 모드에 의존하지 않고, 루프는 **`JWValidate()` 게이트**(통과 시에만
+  `DoValidate`로 저장)로 돌린 뒤 `/Payment/UnivWritingList`에 `결제하기` 버튼 존재 + `작성한 원서가 없습니다` 부재로 판정.
+  (`DoValidate` 직접 폴링이 "파일 업로드 완료" 등 비검증 alert를 오탐하던 문제도 제거.)
+- **삭제 선행 = 매 회 신규 경로**: `delete_unpaid_applications()`가 `/MyPage/PayingPage` `삭제하기`→Deletelayer
+  (chkagree 동의 **클릭 1회**(set+click은 토글되어 풀림) + passwd=계정(ID=PW) + `btnpasswdCheck`→`btnDelete`).
+  네이티브 confirm은 드라이버 `unhandledPromptBehavior=accept`로 자동 수락. 기존 원서가 있으면 ApplyFirst가 편집
+  페이지 `/Wonseo/{sid}/{N}/AC/{ApplyID}`로 직행하므로 `enter_wonseo`도 신규(동의 iframe)/기존(직행) 양 경로 처리.
+
+**검증(연속 2회 pass)**: `ENTERTEST_APPLY_WRITE=true … python scripts/entertest/test_run.py`
+→ 삭제 N건 → 신규 진입 → 사진 OK/서류 2건 → JWValidate 2회차 통과·저장 → `결제직전 도달 — 결제목록에 원서 있음`.
+
+**남은 확장(별도)**: 다른 전형(학부 수시/정시·대학원 등) 폼 차이 대응, per-searchfield 적합 쿼리(현재 광역 폭격으로
+충분 — 검증은 코드 존재만 확인), `check_apply_write`를 CHECKS 시퀀스/ingest에 정식 편입할지 결정.
+
+### 진행 로그 (2026-06-19, 6차 — ✅ 결제·접수완료까지 완주)
+
+`ENTERTEST_PAY=true` opt-in으로 **테스트 결제 → 접수완료**까지 codify·검증(jt29001 → 수험번호 `2026U14010851004`,
+`status: pass`). 전 과정: 원서작성 → 저장 → 사진/서류 업로드 → 결제직전 → 테스트 결제 → 접수완료.
+
+- **결제 흐름**(`complete_payment()`): 결제목록 `결제하기` → `/Payment/UnivPayBegin/{sid}/{ApplyID}` 결제수단 화면
+  (계좌이체/신용카드/진학캐쉬 + **테스트 결제** 버튼 `onclick=PayClick('btnPay','PayTest')`=테스트 사이트 전용 PG, **실과금 없음**)
+  → 테스트 결제 클릭 → `/Payment/PayConfirm/{sid}` "원서접수가 완료되었습니다" → `/Payment/UnivPayResult/{sid}`에
+  **수험(접수)번호**(예 `2026U14010851004`) + 출력물. 미접수원서 → 접수원서로 이동.
+- **계정 소진 주의**: 접수완료 후 같은 계정/학교는 재작성 불가 — ApplyFirst가 `/Notice/{sid}/A`로 바운스(동의 iframe
+  체크박스 0개; 신규는 `/Noti/{sid}/T` 체크박스 6개). `enter_wonseo`가 **체크박스 0개면 "접수완료 차단" RuntimeError**로
+  명확히 보고(main이 트레이스백 없이 메시지만). → 반복 테스트는 jt29001~ 중 미사용 계정 사용.
+- **소진 현황**: jt29005(수동 결제 검증), jt29001(코드 PAY 검증) = 1104069 접수완료 상태. jt29002~29004는 클린.
 
 ## 참고
 
