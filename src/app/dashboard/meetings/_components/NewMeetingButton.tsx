@@ -27,7 +27,7 @@ export function NewMeetingButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="border border-ink bg-ink px-3 py-1.5 text-sm text-cream hover:bg-ink-soft"
+        className="cursor-pointer border border-ink bg-ink px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-ink-soft"
       >
         + 새 회의록
       </button>
