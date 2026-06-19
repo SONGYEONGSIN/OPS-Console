@@ -178,6 +178,7 @@ document.querySelectorAll('input[type=text],input[type=tel],input[type=number],i
   else if(/PeriodStart/.test(id)) v='20180302';
   else if(/PeriodEnd/.test(id)) v='20210228';
   else if(/Total/i.test(id)) v='12';
+  else if(/Semester/i.test(id)) v='42';  // 마스크 "X학년 Y학기" → 2자리
   else if(/Year/i.test(id)) v='4';
   else if(/Web/i.test(id)) v='http://test.com';
   else if(/Fax/i.test(id)) v='021234567';
@@ -244,7 +245,8 @@ function val(el){ var id=el.id||'';
   if(/Gradute.*Period/i.test(id)) return '202002';
   if(/Period/i.test(id)) return '20200302';
   if(/Total/i.test(id)) return '12';
-  if(/Year|Semester/i.test(id)) return '4';
+  if(/Semester/i.test(id)) return '42';  // 마스크 "X학년 Y학기" → 2자리(4학년 2학기)
+  if(/Year/i.test(id)) return '4';
   if(/Passport/i.test(id)) return 'EM0000000';
   if(/Addr1/i.test(id)) return /^txtC/.test(id)?'100000':'12345';
   return 'TEST'; }

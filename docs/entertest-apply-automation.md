@@ -113,13 +113,27 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
 - **루프 전진 확인**(검색팝업 닫은 뒤): `여권번호`(EM0000000) → `이수학년 및 학기`까지 진행.
 - 조기종료 버그 수정: "모달 없음=성공" 오판 제거 → **URL이 `/Wonseo` 벗어났을 때만** 저장성공 판정.
 
-**현재 블로커 (다음 단계 — 검색결과 자동선택):**
-- 특정 SEARCHFIELD(예: 대학/학과)는 hidden `*Code='1'` 만으로 검증이 **통과되지 않고**, DoValidate가
-  `#globalAlert` 대신 **검색팝업(`#SearchLayer_Pop`)을 띄움** → 루프가 #globalAlert 없음으로 공회전.
-- 해결: 검색팝업에서 **검색어 입력 → 검색 → 첫 결과 클릭**으로 실제 코드/이름을 세팅하는 헬퍼 추가.
-  (또는 어떤 searchid가 코드주입을 거부하는지 특정해 정확한 hidden 필드 세팅.) 팝업 내부 구조
-  (검색 input·`a.btn_search`·결과 리스트 row 셀렉터)부터 디스커버리 필요.
-- 그 뒤 long-tail(졸업대학 영/중문 페어 등)은 메시지 기반 force-fill로 대부분 수렴 예상.
+### 진행 로그 (2026-06-19, 3차 — 검색팝업/마스크 디스커버리)
+
+검색팝업 구조·트리거 거의 규명. 단 **결과-row 선택 onclick은 미확보**(다음 단계 핵심).
+- **`#SearchLayer_Pop` 구조**: 헤더(예 "대학 검색") + 검색 input(placeholder "대학명을…", **id/name 없음**
+  → `#SearchLayer_Pop input[type=text]`(보이는 것)으로 선택) + **`a.btn_search`("검색")** + `a.close`("닫기").
+  **결과 table/list는 검색 클릭 후 동적 로드**(초기 비어 있음).
+- **팝업 오픈 = jQuery 바인딩 `Search(searchid)`** (예 `Search("Major")`/`"UnivSubMajor"`/`"MiddleSchool"`/`this.id`).
+  ⚠️ **전역 아님** — `execute_script("Search(...)")` → `ReferenceError`. 인라인 `onclick="Search("`도 **없음**(전부
+  jQuery 바인딩). → 팝업 열려면 **searchfield 돋보기 트리거 요소를 실제 click**해야 함(트리거 셀렉터 미특정).
+- **마스크 필드**: `txtGraduteUnivYearSemester`("이수학년 및 학기")는 마스크 "X학년 Y학기" → '4'면 "4학년 _학기"
+  (학기 빈칸)로 검증 실패 → **'42'(4학년 2학기)** 필요. force-fill/broad-fill `/Semester/` 분기 추가(적용 완료).
+  다른 마스크 필드도 같은 식으로 2~N자리 필요할 수 있음.
+
+**다음 단계 정확한 순서:**
+1. searchfield **돋보기 트리거 요소 셀렉터** 디스커버리(magnifier/`.btn_search`류가 jQuery로 `Search()` 바인딩).
+   클릭해 `#SearchLayer_Pop` 오픈. (form HTML `06_wonseo.html`에서 searchfield 옆 trigger 마크업 확인.)
+2. 팝업 input에 쿼리 입력 → `a.btn_search` click → 동적 결과 대기 → **첫 결과 row 클릭 = 코드/이름 세팅**
+   (이 onclick 메커니즘이 미확보분 — 결과 row의 onclick/`data-*` 확인 필요).
+3. `select_search_result(driver, query)` 헬퍼화 → 막히는 searchfield별 호출. 그 뒤 long-tail은 force-fill로 수렴.
+
+블로커 요약: ① searchfield 트리거 셀렉터, ② 결과-row 선택 onclick — 둘만 확보하면 헬퍼 완성 가능.
 
 ## 참고
 
