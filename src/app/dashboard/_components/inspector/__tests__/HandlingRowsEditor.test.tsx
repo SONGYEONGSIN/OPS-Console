@@ -24,7 +24,7 @@ describe("HandlingRowsEditor", () => {
     expect(onChange).toHaveBeenCalledWith([{ time: "", content: "줄1\n줄2" }]);
   });
 
-  it("시간 칸 입력을 반영한다", () => {
+  it("시간 칸은 datetime-local 달력+시간 선택기이고 입력을 반영한다", () => {
     const onChange = vi.fn();
     render(
       <HandlingRowsEditor
@@ -32,11 +32,12 @@ describe("HandlingRowsEditor", () => {
         onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByLabelText("처리 시간 1"), {
-      target: { value: "06.02 14:27" },
-    });
+    const time = screen.getByLabelText("처리 시간 1") as HTMLInputElement;
+    expect(time.tagName).toBe("INPUT");
+    expect(time.type).toBe("datetime-local");
+    fireEvent.change(time, { target: { value: "2026-06-19T14:27" } });
     expect(onChange).toHaveBeenCalledWith([
-      { time: "06.02 14:27", content: "" },
+      { time: "2026-06-19T14:27", content: "" },
     ]);
   });
 
