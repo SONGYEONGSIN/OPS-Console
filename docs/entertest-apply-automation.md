@@ -101,6 +101,26 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
 **검증 도구**: `ENTERTEST_APPLY_WRITE=true ENTERTEST_TARGET_URL=.../Notice/1104069/A ENTERTEST_ACCOUNT=jt29005 python scripts/entertest/test_run.py`
 — 진입 후 채움+저장을 15회 반복하며 각 회 모달 메시지를 출력. (이 PC에서 직접 실행 가능 — Chrome 필요.)
 
+### 진행 로그 갱신 (2026-06-19, 2차)
+
+검증 모달/검색팝업 정체를 완전히 규명하고 루프를 전진시킴:
+- **검증 모달 = `#globalAlert`만** 본다. (`div.layer_cont`/`.layer.attention`은 SEARCHFIELD 검색팝업과
+  클래스가 겹쳐 "검색" 오탐 → `_MODAL_JS`를 `#globalAlert` 단독으로 한정.)
+- **SEARCHFIELD 검색팝업 = `#SearchLayer_Pop`** (class `layer search1`), 닫기 = `a.close`("닫기"). ESC 안 먹음.
+  → `_close_search_popup()` 추가, 루프 매 회 채움 전후로 닫아 DoValidate 차단 방지.
+- **메시지 기반 force-fill** 추가(`_force_fill_for_message`): 검증 모달이 지목한 필드를 placeholder/label로
+  찾아 readonly/숨김 무시하고 force-set → broad-fill이 놓친 hidden/조건부 필드 수렴.
+- **루프 전진 확인**(검색팝업 닫은 뒤): `여권번호`(EM0000000) → `이수학년 및 학기`까지 진행.
+- 조기종료 버그 수정: "모달 없음=성공" 오판 제거 → **URL이 `/Wonseo` 벗어났을 때만** 저장성공 판정.
+
+**현재 블로커 (다음 단계 — 검색결과 자동선택):**
+- 특정 SEARCHFIELD(예: 대학/학과)는 hidden `*Code='1'` 만으로 검증이 **통과되지 않고**, DoValidate가
+  `#globalAlert` 대신 **검색팝업(`#SearchLayer_Pop`)을 띄움** → 루프가 #globalAlert 없음으로 공회전.
+- 해결: 검색팝업에서 **검색어 입력 → 검색 → 첫 결과 클릭**으로 실제 코드/이름을 세팅하는 헬퍼 추가.
+  (또는 어떤 searchid가 코드주입을 거부하는지 특정해 정확한 hidden 필드 세팅.) 팝업 내부 구조
+  (검색 input·`a.btn_search`·결과 리스트 row 셀렉터)부터 디스커버리 필요.
+- 그 뒤 long-tail(졸업대학 영/중문 페어 등)은 메시지 기반 force-fill로 대부분 수렴 예상.
+
 ## 참고
 
 - DISCOVER 모드(`ENTERTEST_DISCOVER=true`)가 단계별 page_source/스크린샷 + 필드/버튼 인벤토리(`{단계}.fields.json`)를

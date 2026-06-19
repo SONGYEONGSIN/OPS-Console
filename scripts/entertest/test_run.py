@@ -209,20 +209,15 @@ document.querySelectorAll('select').forEach(function(s){
 
 
 # 검증 모달 텍스트 — JS로 직접(애니메이션/표시 토글에 견고). #globalAlert(.layer attention) 우선.
+# 검증 모달은 #globalAlert만 본다. (div.layer_cont/.layer.attention 류는 SEARCHFIELD 검색팝업
+# #SearchLayer_Pop과 클래스가 겹쳐 "검색"을 오탐 → #globalAlert로 한정.)
+# #globalAlert는 position:fixed + 0-size wrapper라 offsetParent/clientRects로는 '안 보임'으로 오판 →
+# display/visibility + 텍스트 존재로만 판정.
 _MODAL_JS = r"""
-// 주의: #globalAlert는 position:fixed + 0-size wrapper라 offsetParent/clientRects로는 '안 보임'으로
-// 오판된다. display/visibility + 텍스트 존재로만 판정한다.
-var sels=['#globalAlert','div.layer_cont','.layer.attention1','.layer.attention'];
-for (var i=0;i<sels.length;i++){
-  var els=document.querySelectorAll(sels[i]);
-  for (var j=0;j<els.length;j++){
-    var el=els[j], st=getComputedStyle(el);
-    if(st.display!=='none' && st.visibility!=='hidden'){
-      var t=(el.innerText||'').replace(/확인/g,'').trim();
-      if(t) return t;
-    }
-  }
-}
+var g=document.getElementById('globalAlert');
+if(g){ var st=getComputedStyle(g);
+  if(st.display!=='none' && st.visibility!=='hidden'){
+    var t=(g.innerText||'').replace(/확인/g,'').trim(); if(t) return t; } }
 return null;
 """
 
@@ -235,14 +230,69 @@ def _modal_text(driver):
         return None
 
 
+# 검증 모달이 지목한 필드를 placeholder/label 매칭으로 찾아 force-fill(readonly/숨김 무시).
+# broad-fill이 놓치는 hidden/readonly/조건부 필드를 모달 메시지 기반으로 수렴시키는 일반 메커니즘.
+_FORCE_FILL_JS = r"""
+var msg=(arguments[0]||'');
+function norm(s){ return (s||'').replace(/[\s ]/g,'')
+  .replace(/[를을]?(입력|선택|체크)해?\s*주세요\.?/g,'').replace(/[()（）]/g,'').trim(); }
+var key=norm(msg); if(!key) return null;
+function val(el){ var id=el.id||'';
+  if(/^txtC/.test(id)) return '测试';
+  if(/Email/i.test(id)) return 'test@test.com';
+  if(/Mobile|Tel/i.test(id)) return '01012345678';
+  if(/Gradute.*Period/i.test(id)) return '202002';
+  if(/Period/i.test(id)) return '20200302';
+  if(/Total/i.test(id)) return '12';
+  if(/Year|Semester/i.test(id)) return '4';
+  if(/Passport/i.test(id)) return 'EM0000000';
+  if(/Addr1/i.test(id)) return /^txtC/.test(id)?'100000':'12345';
+  return 'TEST'; }
+var els=document.querySelectorAll('input,textarea,select');
+for(var i=0;i<els.length;i++){ var el=els[i];
+  if(el.type==='hidden') continue;
+  var ph=norm(el.placeholder||''); var lab='';
+  if(el.id){ var l=document.querySelector('label[for="'+el.id+'"]'); if(l) lab=norm(l.innerText||''); }
+  var hit=(ph && (key.indexOf(ph)>=0||ph.indexOf(key)>=0)) || (lab && (key.indexOf(lab)>=0||lab.indexOf(key)>=0));
+  if(hit){
+    if(el.tagName.toLowerCase()==='select'){ if(el.options.length>1) el.selectedIndex=1; }
+    else { el.removeAttribute('readonly'); el.value=val(el); }
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true}));
+    return (el.id||el.name||'matched')+' = '+(el.value||'[select]');
+  }
+}
+return null;
+"""
+
+
+def _force_fill_for_message(driver, msg):
+    """검증 모달 메시지가 지목한 필드를 찾아 force-fill. 매칭 안 되면 None."""
+    try:
+        return driver.execute_script(_FORCE_FILL_JS, msg)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _close_search_popup(driver) -> None:
+    """SEARCHFIELD 검색 팝업(#SearchLayer_Pop, .layer.search1)을 닫기(a.close '닫기'). ESC 안 먹음."""
+    driver.execute_script(
+        "var p=document.getElementById('SearchLayer_Pop');"
+        "var roots=p?[p]:Array.prototype.slice.call(document.querySelectorAll('.layer.search1, .layer.search'));"
+        "roots.forEach(function(r){ if(getComputedStyle(r).display==='none') return;"
+        "  r.querySelectorAll('a.close, a.btn_close, button.close, a').forEach(function(b){"
+        "    var t=(b.innerText||''); var cls=(b.className||'').toString();"
+        "    if(/닫기|关闭/.test(t) || cls.indexOf('close')>=0){ try{b.click()}catch(e){} } }); });"
+    )
+
+
 def _close_modal(driver) -> None:
-    """검증 모달의 확인/닫기 버튼 클릭(#globalAlert 등으로 한정 — 페이지 이탈 방지)."""
+    """검증 모달(#globalAlert)의 확인 버튼 클릭(페이지 이탈 방지) + 검색 팝업도 닫기."""
     driver.execute_script(
         "var box = document.getElementById('globalAlert');"
-        "var scopes = box ? [box] : Array.from(document.querySelectorAll('div.layer_cont, .layer.attention1, .layer.attention'));"
-        "scopes.forEach(function(s){ s.querySelectorAll('a,button,input[type=button]').forEach(function(b){"
-        "  var t=(b.innerText||b.value||''); if(/확인|닫기|确认|关闭|OK/i.test(t)){ try{b.click()}catch(e){} } }); });"
+        "if(box){ box.querySelectorAll('a,button,input[type=button]').forEach(function(b){"
+        "  var t=(b.innerText||b.value||''); if(/확인|确认|OK/i.test(t)){ try{b.click()}catch(e){} } }); }"
     )
+    _close_search_popup(driver)
 
 
 def check_apply_write(driver, ctx):
@@ -256,8 +306,10 @@ def check_apply_write(driver, ctx):
     driver.execute_script("window.confirm=function(){return true;}; window.alert=function(){};")
     last = None
     for i in range(15):
+        _close_search_popup(driver)  # 이전 회차에 열린 검색팝업이 DoValidate를 막지 않도록
         driver.execute_script(_WONSEO_FILL_JS)
         time.sleep(0.4)
+        _close_search_popup(driver)  # 채움 중 열렸을 수 있는 검색팝업 닫기
         driver.execute_script(
             "window.confirm=function(){return true;};"
             "if(typeof DoValidate==='function'){ DoValidate(); } else { console.log('no DoValidate'); }"
@@ -269,17 +321,33 @@ def check_apply_write(driver, ctx):
             m = _modal_text(driver)
             if m:
                 break
+        cur = driver.current_url
         print(f"[apply] {i+1}회 저장 — 모달: {(m or '없음')[:120].replace(chr(10),' ')}")
-        if not m:
-            # 모달 없음 → 저장 진행됨 추정. 결제직전(작성목록) 도달 확인.
+        if "/Wonseo/" not in cur:
+            # 폼 이탈 = 저장/제출됨 → 결제직전(작성목록) 도달 확인.
             driver.get(f"{origin_of(TARGET_URL)}/Payment/UnivWritingList/{sid}")
             _body_ready(driver)
             ok = "없습니다" not in driver.page_source
             return ("pass" if ok else "fail",
                     f"저장 후 결제목록 {'원서 있음(결제직전 도달)' if ok else '비어있음'} ({i+1}회 시도)")
-        if any(k in m for k in ("저장되었습니다", "저장 완료", "작성되었습니다", "성공")):
+        if not m:
+            # /Wonseo 잔류 + #globalAlert 없음 → SEARCHFIELD 검증이 검색팝업을 띄운 경우가 흔하다
+            # (hidden 코드만으로 통과 안 되는 필드 → 검색 결과 선택 필요. 다음 단계 작업).
+            sp = driver.execute_script(
+                "var p=document.getElementById('SearchLayer_Pop');"
+                "return p && getComputedStyle(p).display!=='none';"
+            )
+            if sp:
+                last = "SEARCHFIELD 검색팝업 대기 — 결과 자동선택 필요(미구현)"
+            print(f"[apply]   (#globalAlert 없음 — 검색팝업={bool(sp)})")
+            time.sleep(0.5)
+            continue
+        if any(k in m for k in ("저장되었습니다", "저장 완료", "작성되었습니다", "성공", "접수")):
             return ("pass", f"저장 성공 모달 확인 ({i+1}회): {m[:80]}")
         last = m.replace("\n", " ")[:200]
+        # 모달이 지목한 필드를 force-fill (broad-fill이 놓친 hidden/readonly/조건부 필드 수렴).
+        matched = _force_fill_for_message(driver, m)
+        print(f"[apply]   ↳ force-fill: {matched}")
         _close_modal(driver)
         time.sleep(0.5)
     return ("fail", f"저장 검증 루프 미통과(15회). 마지막 모달: {last}")
