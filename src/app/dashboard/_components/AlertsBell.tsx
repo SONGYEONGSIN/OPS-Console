@@ -111,7 +111,7 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
                   role="listbox"
                   className={`flex flex-col ${gi > 0 ? "border-t border-line-soft" : ""}`}
                 >
-                  <li className="px-3 pb-0.5 pt-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+                  <li className="px-3 pb-0.5 pt-2 text-xs uppercase tracking-[0.14em] text-ink-soft">
                     {g.category}
                   </li>
                   {g.items.map((alert) => (
