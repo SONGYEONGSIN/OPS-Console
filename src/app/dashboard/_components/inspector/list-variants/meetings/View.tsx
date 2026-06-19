@@ -106,7 +106,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`cursor-pointer border-b-2 px-1 pb-1.5 text-sm transition-colors ${
+      className={`flex-1 cursor-pointer border-b-2 px-1 pb-1.5 text-center text-sm transition-colors ${
         active
           ? "border-ink font-semibold text-ink"
           : "border-transparent text-muted hover:text-ink"
@@ -126,7 +126,7 @@ export function MeetingView({ row }: ViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-4 border-b border-line-soft">
+      <div className="flex border-b border-line-soft">
         <TabButton active={tab === "content"} onClick={() => setTab("content")}>
           회의내용
         </TabButton>
