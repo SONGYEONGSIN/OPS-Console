@@ -111,7 +111,7 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
                   role="listbox"
                   className={`flex flex-col ${gi > 0 ? "border-t border-line-soft" : ""}`}
                 >
-                  <li className="px-3 pb-0.5 pt-2 text-xs uppercase tracking-[0.14em] text-ink-soft">
+                  <li className="px-3 pb-0.5 pt-2 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
                     {g.category}
                   </li>
                   {g.items.map((alert) => (
@@ -119,7 +119,7 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
                       <Link
                         href={alert.href}
                         onClick={() => setOpen(false)}
-                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm font-medium text-ink hover:bg-washi-raised"
+                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm text-ink hover:bg-washi-raised"
                       >
                         <span className="truncate">{alert.label}</span>
                         <span className="shrink-0 text-xs text-muted">

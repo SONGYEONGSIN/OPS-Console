@@ -179,7 +179,7 @@ export function SearchBox() {
                     <Link
                       href={h.href}
                       onClick={() => setOpen(false)}
-                      className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm font-medium text-ink hover:bg-washi-raised"
+                      className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm text-ink hover:bg-washi-raised"
                     >
                       <span className="truncate">
                         {h.primary}{" "}
