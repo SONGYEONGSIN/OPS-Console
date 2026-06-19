@@ -115,6 +115,34 @@ def service_id_of(url: str) -> str:
     return parts[1] if len(parts) > 1 else ""
 
 
+def enter_wonseo(driver, sid: str) -> None:
+    """원서작성 폼(Wonseo) 진입 — check_apply_write(v2)의 진입 단계.
+
+    해독(docs/entertest-apply-automation.md): ApplyFirst → 실제 콘텐츠는 iframe #frmNotice
+    (src=/Noti/{sid}/T) 안의 동의서. 동의 체크박스(c0=모두동의 + chkNotice*) 전체 체크 →
+    버튼 onApply() → confirm("원서를 작성하시겠습니까?") 수락 → /Wonseo/{sid}/{N}/A
+    (실제 폼, default content) 도달.
+    """
+    base = origin_of(TARGET_URL)
+    driver.get(f"{base}/ApplyFirst/{sid}/A")
+    # iframe 진입 필수 — 바깥 문서엔 nav/footer뿐, 동의서·폼은 #frmNotice 안.
+    WebDriverWait(driver, 15).until(
+        EC.frame_to_be_available_and_switch_to_it((By.ID, "frmNotice"))
+    )
+    # 동의 체크박스 전체 체크 + confirm 자동 수락(프레임 컨텍스트) 후 onApply().
+    driver.execute_script(
+        "window.confirm = function () { return true; };"
+        "document.querySelectorAll('input[type=checkbox]').forEach(function (c) {"
+        "  if (!c.checked) { try { c.click(); } catch (e) { c.checked = true; } }"
+        "});"
+    )
+    time.sleep(0.5)
+    driver.execute_script("if (typeof onApply === 'function') { onApply(); }")
+    driver.switch_to.default_content()
+    # onApply가 top 문서를 /Wonseo로 이동 — 도달 대기.
+    WebDriverWait(driver, 20).until(lambda d: "/Wonseo/" in d.current_url)
+
+
 def upload_screenshot(driver, key: str):
     """실패 스크린샷을 Supabase Storage에 업로드하고 public URL 반환."""
     if not (SUPABASE_URL and SERVICE_KEY):
@@ -332,6 +360,15 @@ def discover(driver) -> None:
                 _snapshot(driver, out, name)
             except Exception as e:  # noqa: BLE001
                 print(f"[discover] {name} 캡처 실패: {e}")
+        # 원서작성 폼(Wonseo) 진입 + 인벤토리 — v2 check_apply_write 설계 입력.
+        # 진입 자체가 check_apply_write 1단계 검증이기도 하다.
+        try:
+            enter_wonseo(driver, sid)
+            time.sleep(2)
+            _snapshot(driver, out, "06_wonseo")
+        except Exception as e:  # noqa: BLE001
+            driver.switch_to.default_content()
+            print(f"[discover] Wonseo 진입/캡처 실패(진입 시퀀스 재확인 필요): {e}")
     except Exception as e:  # noqa: BLE001
         print(f"[discover] login 시도 실패(셀렉터 재확인 필요): {e}")
     print(f"[discover] saved to {out}")
