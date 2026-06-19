@@ -1,0 +1,59 @@
+/* 회의록 BlockNote 에디터 — 앱 에디토리얼 톤(cream/ink·Pretendard·각진 보더)으로 테마 오버라이드.
+   기본 Mantine 룩과 달리 페이지 디자인과 통일감을 준다. (1차안 — 로컬에서 미세조정) */
+.meeting-editor {
+  --bn-colors-editor-background: var(--paper);
+  --bn-colors-editor-text: var(--ink);
+  --bn-colors-menu-background: var(--paper);
+  --bn-colors-menu-text: var(--ink);
+  --bn-colors-tooltip-background: var(--ink);
+  --bn-colors-tooltip-text: var(--cream);
+  --bn-colors-hovered-background: var(--washi-raised);
+  --bn-colors-hovered-text: var(--ink);
+  --bn-colors-selected-background: var(--washi);
+  --bn-colors-selected-text: var(--ink);
+  --bn-colors-disabled-background: var(--washi);
+  --bn-colors-disabled-text: var(--muted);
+  --bn-colors-shadow: var(--line-soft);
+  --bn-colors-border: var(--line-soft);
+  --bn-colors-side-menu: var(--muted);
+  --bn-colors-highlights-gray-background: var(--washi);
+  --bn-font-family: inherit;
+  --bn-border-radius: 0;
+}
+
+/* 에디터 본문 배경/여백 */
+.meeting-editor .bn-editor {
+  background: var(--paper);
+  padding-inline: 0;
+}
+
+/* 본문 가독성 — 줄간격·본문색 */
+.meeting-editor .bn-block-content {
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+/* 헤딩 위계 — 기본값이 과하게 커서 절제된 크기로 (노션식 위계) */
+.meeting-editor .bn-block-content[data-content-type="heading"] {
+  color: var(--ink);
+}
+.meeting-editor .bn-block-content[data-level="1"] {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 0.4em;
+}
+.meeting-editor .bn-block-content[data-level="2"] {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-top: 0.6em;
+}
+.meeting-editor .bn-block-content[data-level="3"] {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.4em;
+}
+
+/* placeholder 색 — 은은하게 */
+.meeting-editor .bn-inline-content[data-placeholder]::before {
+  color: var(--faint);
+}
