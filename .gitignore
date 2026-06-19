@@ -96,9 +96,10 @@ __pycache__/
 # 로컬 스크래퍼 실행 로그 (작업 스케줄러)
 scripts/moa-closing/run-local.log
 
-# entertest 러너 로컬 산출물 (디스커버리 스냅샷/실행 로그)
+# entertest 러너 로컬 산출물 (디스커버리 스냅샷/실행 로그/업로드 테스트 이미지)
 scripts/entertest/discovery/
 scripts/entertest/run-local.log
+scripts/entertest/_test_photo.jpg
 
 # design-ref 스크래치(목업 HTML/스크린샷 PNG) — repo 제외.
 # 유지: 날짜별 *-design.md / *-plan.md, folio-*.html, concept-v4, realtime_dashboard.

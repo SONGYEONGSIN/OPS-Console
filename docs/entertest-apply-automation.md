@@ -4,7 +4,10 @@
 확장하기 위한 리버스엔지니어링 결과. 러너 `scripts/entertest/test_run.py`의 `check_apply_write`(미구현)
 구현 근거가 된다. (2026-06 해독)
 
-> 결제 직전까지 = 원서 작성 → 저장 → `/Payment/UnivWritingList`(결제 수단 선택) 도달. **실제 결제/접수완료는 하지 않음.**
+> 결제 직전까지(기본) = 원서 작성 → 저장 → `/Payment/UnivWritingList`(결제 수단 선택) 도달.
+> **`ENTERTEST_PAY=true` opt-in 시 테스트 결제 → 접수완료까지** 진행(테스트 사이트 전용 PG, 실과금 없음).
+> ⚠️ 접수완료 시 같은 계정/학교 재작성 불가(계정 소진) → 반복 테스트는 기본(결제직전)으로, 전 과정 완주 검증만
+> PAY=true + 깨끗한 계정. 둘 다 ✅ 검증 완료(5·6차 로그).
 
 ## 환경 전제
 
@@ -72,6 +75,141 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
 2. 타깃 전형 우선순위 + 유효 테스트 데이터(생년월일·자격조건)는 운영자 확정 필요.
    - 일부 전형은 **자격 거부 게이트** 있음(예: 8108005 경연대회 — "참가자격" 모달, 계정/전형 조건 의존).
    - 학부 수시/정시는 6월엔 미오픈 — 폼이 외국인/대학원보다 짧음. 가능하면 그 시기 PoC가 쉬움.
+
+## 진행 로그 — check_apply_write 1차 구현 (2026-06-19, 1104069)
+
+`scripts/entertest/test_run.py`에 `enter_wonseo` + `check_apply_write`(broad-fill + 저장 검증루프) 구현.
+`ENTERTEST_APPLY_WRITE=true`로 단독 실행(인제스트 X, 결과 출력)·반복 검증 가능.
+
+**작동 확인된 것:**
+- **진입 자동화 OK**: `enter_wonseo` — ApplyFirst → iframe `#frmNotice` 동의 체크박스 전체 체크 →
+  `window.confirm` override → `onApply()` → `/Wonseo/1104069/4/A` 도달.
+- **저장 트리거**: 저장 버튼 onclick = `javascript:DoValidate();` (이 폼 확정).
+- **검증 모달 = `#globalAlert`** (해독 본문의 `div.layer_cont`는 전형별 변형 — 1104069은 `#globalAlert`).
+  ⚠️ `#globalAlert`는 `position:fixed` + 0-size wrapper라 `offsetParent`/`getClientRects`가 0 →
+  가시성 판정은 **`display!=='none' && visibility!=='hidden'` + innerText 존재**로만 해야 한다(`_MODAL_JS`).
+- **검증 루프 진행 확인**(수동 diag, 모달 1건씩 닫으며): `여권번호를 입력해 주세요.`(passport=`EM0000000`)
+  → `초·중·고 전체 재학년수`(=`txtTotal`, **readonly 자동합산** → 타깃 set 필요).
+
+**현재 블로커 (다음 세션):**
+- 루프 자동실행 시 모달 텍스트가 매 회 **"검색"** 으로 고착. 원인 추정: DoValidate 직후 SEARCHFIELD
+  검색 팝업이 잠깐 떠서, 모달 **폴링(최대 5s)** 이 실제 `#globalAlert` 검증 메시지보다 "검색" 팝업을 먼저 잡음.
+  (수동 diag는 고정 2s 후 1회 읽어 `#globalAlert`를 잡았음 — 타이밍 차.)
+- 해결 방향(택1):
+  1. 모달 폴링에서 **"검색" 팝업은 무시**하고 `#globalAlert` 검증 메시지만 대기(검색 레이어 셀렉터 제외 / 검색 팝업 자동 닫기 후 재판정).
+  2. SEARCHFIELD(지원학과/국적 등) **검색 팝업이 애초에 안 뜨도록** 필요한 hidden 코드를 정확히 세팅.
+     (포괄 `[id^=hdn][id$=Code]='1'`은 오히려 검색 팝업을 유발 → 역효과. 어떤 코드가 트리거인지 특정 필요.)
+- 그 뒤 long-tail(졸업대학 주소/학과 영문·중문 페어 등) field-by-field 수렴 — 루프 모달 메시지를 워크리스트로.
+
+**검증 도구**: `ENTERTEST_APPLY_WRITE=true ENTERTEST_TARGET_URL=.../Notice/1104069/A ENTERTEST_ACCOUNT=jt29005 python scripts/entertest/test_run.py`
+— 진입 후 채움+저장을 15회 반복하며 각 회 모달 메시지를 출력. (이 PC에서 직접 실행 가능 — Chrome 필요.)
+
+### 진행 로그 갱신 (2026-06-19, 2차)
+
+검증 모달/검색팝업 정체를 완전히 규명하고 루프를 전진시킴:
+- **검증 모달 = `#globalAlert`만** 본다. (`div.layer_cont`/`.layer.attention`은 SEARCHFIELD 검색팝업과
+  클래스가 겹쳐 "검색" 오탐 → `_MODAL_JS`를 `#globalAlert` 단독으로 한정.)
+- **SEARCHFIELD 검색팝업 = `#SearchLayer_Pop`** (class `layer search1`), 닫기 = `a.close`("닫기"). ESC 안 먹음.
+  → `_close_search_popup()` 추가, 루프 매 회 채움 전후로 닫아 DoValidate 차단 방지.
+- **메시지 기반 force-fill** 추가(`_force_fill_for_message`): 검증 모달이 지목한 필드를 placeholder/label로
+  찾아 readonly/숨김 무시하고 force-set → broad-fill이 놓친 hidden/조건부 필드 수렴.
+- **루프 전진 확인**(검색팝업 닫은 뒤): `여권번호`(EM0000000) → `이수학년 및 학기`까지 진행.
+- 조기종료 버그 수정: "모달 없음=성공" 오판 제거 → **URL이 `/Wonseo` 벗어났을 때만** 저장성공 판정.
+
+### 진행 로그 (2026-06-19, 3차 — 검색팝업/마스크 디스커버리)
+
+검색팝업 구조·트리거 거의 규명. 단 **결과-row 선택 onclick은 미확보**(다음 단계 핵심).
+- **`#SearchLayer_Pop` 구조**: 헤더(예 "대학 검색") + 검색 input(placeholder "대학명을…", **id/name 없음**
+  → `#SearchLayer_Pop input[type=text]`(보이는 것)으로 선택) + **`a.btn_search`("검색")** + `a.close`("닫기").
+  **결과 table/list는 검색 클릭 후 동적 로드**(초기 비어 있음).
+- **팝업 오픈 = jQuery 바인딩 `Search(searchid)`** (예 `Search("Major")`/`"UnivSubMajor"`/`"MiddleSchool"`/`this.id`).
+  ⚠️ **전역 아님** — `execute_script("Search(...)")` → `ReferenceError`. 인라인 `onclick="Search("`도 **없음**(전부
+  jQuery 바인딩). → 팝업 열려면 **searchfield 돋보기 트리거 요소를 실제 click**해야 함(트리거 셀렉터 미특정).
+- **마스크 필드**: `txtGraduteUnivYearSemester`("이수학년 및 학기")는 마스크 "X학년 Y학기" → '4'면 "4학년 _학기"
+  (학기 빈칸)로 검증 실패 → **'42'(4학년 2학기)** 필요. force-fill/broad-fill `/Semester/` 분기 추가(적용 완료).
+  다른 마스크 필드도 같은 식으로 2~N자리 필요할 수 있음.
+
+**다음 단계 정확한 순서:**
+1. searchfield **돋보기 트리거 요소 셀렉터** 디스커버리(magnifier/`.btn_search`류가 jQuery로 `Search()` 바인딩).
+   클릭해 `#SearchLayer_Pop` 오픈. (form HTML `06_wonseo.html`에서 searchfield 옆 trigger 마크업 확인.)
+2. 팝업 input에 쿼리 입력 → `a.btn_search` click → 동적 결과 대기 → **첫 결과 row 클릭 = 코드/이름 세팅**
+   (이 onclick 메커니즘이 미확보분 — 결과 row의 onclick/`data-*` 확인 필요).
+3. `select_search_result(driver, query)` 헬퍼화 → 막히는 searchfield별 호출. 그 뒤 long-tail은 force-fill로 수렴.
+
+블로커 요약: ① searchfield 트리거 셀렉터, ② 결과-row 선택 onclick — 둘만 확보하면 헬퍼 완성 가능.
+
+### 진행 로그 (2026-06-19, 4차 — 검색팝업 결과선택 완전 해독 ✅)
+
+**SEARCHFIELD 결과선택 메커니즘 전부 규명·검증 → `select_search_result()` 헬퍼 구현.**
+- searchfield 컨테이너: `<span jwtype="SEARCHFIELD" searchid="{X}" id="F_{X}">` (+ readonly `txt{X}Name` + hidden `hdn{X}Code`). jw 프레임워크(`jwidx`).
+- **트리거 = `a#btn{searchid}`** (class `btn_search navy`). 예 `#btnNationality`,`#btnGraduteUniv`,`#btnMajor`. 클릭 → `#SearchLayer_Pop` 오픈. (`Search()` JS는 jQuery바인딩=전역호출 불가 → 이 버튼 클릭이 정답.) 일부 btn은 `display:none`(조건부).
+- 팝업: 검색 input(보이는 `#SearchLayer_Pop input[type=text]`) + **`a.btn_search`("검색")** → 결과 `<ul><li>`.
+  - 첫 `<li>` = 안내("해당하는 …를 선택하세요."). 데이터 li = `<li style="cursor:pointer"><a><span class="title">중국</span><span class="detail">CHINA</span></a></li>`.
+  - **데이터 li 클릭(jQuery 바인딩, inline onclick 없음)** → `hdn{X}Code` + `txt{X}Name` 세팅 + 팝업 자동 닫힘. **검증됨**: `#btnNationality`→"중국"→`hdnNationalityCode=C0012184`, `txtNationalityName=중국`.
+- 구현: `select_search_result(driver, searchid, query)` + `_resolve_open_popup(driver)`(이미 열린 팝업을 여러 쿼리로 해소). 루프 no-#globalAlert+팝업 분기에서 `_resolve_open_popup` 호출.
+
+**남은 과제 (전체 폼 수렴 — 별도):**
+- **DoValidate 피드백 불안정**: 같은 코드인데 어떤 실행은 globalAlert가 뜨고(여권→이수학년 진행) 어떤 실행은
+  globalAlert/팝업 둘 다 안 뜸 → 비동기(마스크 onchange·검색결과 AJAX·저장 confirm) 레이스로 추정.
+  안정화 필요: 각 단계 사이 명시적 대기(요소/네트워크 idle), DoValidate 직후 alert/confirm/네트워크 settle 대기.
+- **per-searchfield 쿼리**: `_resolve_open_popup`은 광역 쿼리(중국/中/大学/…) 폭격 → 필드별 적합 쿼리·결과 0건 처리 보강 필요.
+- 1104069는 searchfield 18 + 마스크/영중문 페어 long-tail → 완주까지 추가 그라인드. 단 **핵심 메커니즘(진입·저장루프·모달·검색팝업 결과선택)은 모두 확보**.
+
+### 진행 로그 (2026-06-19, 5차 — ✅ 결제 직전까지 완주 달성)
+
+`check_apply_write`가 1104069(외국인 중문 편입 worst-case)에서 **결제목록 도달까지 완전 통과**(`status: pass`,
+2회차 JWValidate 통과 + 저장). 4차의 "DoValidate 피드백 불안정"은 잘못된 채널 추정이었고, 진짜 원인 5가지를 규명·수정:
+
+1. **검증 피드백 = 네이티브 `alert()`** (not `#globalAlert`). `DoValidate`→`window.JWValidate()`가 첫 미충족 1건을
+   `alert("…주세요.")`로 표시. 루프가 `window.alert`를 **무력화(no-op)** 해서 메시지를 통째로 삼킨 게 "불안정"의 정체.
+   → `_INSTALL_ALERT_CAPTURE_JS`: alert를 `window.__alertMsg`에 **캡처**(삼키지 않음). `_alert_text()`로 소비.
+2. **필드 정확 매칭 = jw 컨테이너 속성**. fuzzy 라벨/placeholder 매칭은 "동의" 부분문자열로 엉뚱한 라디오를 골랐다
+   (`rdoPersonalDataAgree3` vs 실제 `F_UnivAgree`). jw는 필수 컨테이너 `<span jwtype korname searchid
+   requiredalert="…주세요.">`에 메타 보존 → **`[requiredalert="<메시지>"]` 정확 일치**로 필드 특정,
+   `jwtype`별 처리(RADIOFIELD→첫 라디오(value 1/Y) 체크, SEARCHFIELD→`SEARCH:{searchid}` 신호, TEXT→값 주입).
+   라디오는 `el.value=` 가 아니라 **`checked`/click** 필요.
+3. **사진·서류는 위조 불가 — 실제 업로드 필수**. 가짜 `PhotoRegist`/hidden 주입 시 서버가 storageUrl/파일을 검증해
+   **`/Error/CommonError`(저장 실패)**. 사진(`hdnFlagPhoto=3`) = `#UpPic`→`PhotoDirect()`→iframe `#__frmHelper`
+   (`DirectPhotoUpload.aspx`) `<input type=file id=UploadedPicture>` **`send_keys`**(다이얼로그 우회)→`#UploadBtn`→
+   서버가 실제 storageUrl 생성→`PhotoRegist`. 서류(여권 `F_UploadFile`/외국인등록증 `F_UploadFile1`) = 트리거
+   `btn{Name}Edit`→iframe `JSFileUpload` `<input type=file id=UploadedFile>` send_keys→`#UploadBtn`(`uploadFile()`).
+   → `upload_photo()` / `upload_documents()`. 테스트 이미지는 PIL 300×400 JPEG(`_test_photo.jpg`, gitignore).
+4. **업로드 보존 = broad-fill 선행**. 라디오/select 클릭이 조건부 섹션을 재렌더하며 업로드 hidden을 리셋한다
+   (검증됨: broad-fill마다 `hdnUploadFileName` 비워짐). **업로드 전 broad-fill 2회로 렌더 안정화** → 이후 broad-fill은
+   멱등(이미 채워짐→무동작)이라 업로드 생존.
+5. **저장 경로 완성 = thenable alert/confirm**. 사이트의 `alert`/`confirm`은 **Promise 반환식**이고 저장 경로
+   `JX.ExecuteSaveEvents`가 `confirm(...).then(t).catch(DoValidateExcept)`/`alert(...).finally(...)`로 체이닝.
+   override가 boolean/undefined 반환 시 체인이 깨져 **저장이 조용히 중단**(DoValidateExcept). → override가 **동기 thenable**
+   반환(confirm 자동 yes). 이 수정 직후 실제 저장 성공("이미 동일학교에 작성한 원서가 있습니다" 네이티브 alert가 증거).
+
+**반복 실행 안정화:**
+- **성공 판정 = 결제목록 권위**: URL 변화/신규·편집 모드에 의존하지 않고, 루프는 **`JWValidate()` 게이트**(통과 시에만
+  `DoValidate`로 저장)로 돌린 뒤 `/Payment/UnivWritingList`에 `결제하기` 버튼 존재 + `작성한 원서가 없습니다` 부재로 판정.
+  (`DoValidate` 직접 폴링이 "파일 업로드 완료" 등 비검증 alert를 오탐하던 문제도 제거.)
+- **삭제 선행 = 매 회 신규 경로**: `delete_unpaid_applications()`가 `/MyPage/PayingPage` `삭제하기`→Deletelayer
+  (chkagree 동의 **클릭 1회**(set+click은 토글되어 풀림) + passwd=계정(ID=PW) + `btnpasswdCheck`→`btnDelete`).
+  네이티브 confirm은 드라이버 `unhandledPromptBehavior=accept`로 자동 수락. 기존 원서가 있으면 ApplyFirst가 편집
+  페이지 `/Wonseo/{sid}/{N}/AC/{ApplyID}`로 직행하므로 `enter_wonseo`도 신규(동의 iframe)/기존(직행) 양 경로 처리.
+
+**검증(연속 2회 pass)**: `ENTERTEST_APPLY_WRITE=true … python scripts/entertest/test_run.py`
+→ 삭제 N건 → 신규 진입 → 사진 OK/서류 2건 → JWValidate 2회차 통과·저장 → `결제직전 도달 — 결제목록에 원서 있음`.
+
+**남은 확장(별도)**: 다른 전형(학부 수시/정시·대학원 등) 폼 차이 대응, per-searchfield 적합 쿼리(현재 광역 폭격으로
+충분 — 검증은 코드 존재만 확인), `check_apply_write`를 CHECKS 시퀀스/ingest에 정식 편입할지 결정.
+
+### 진행 로그 (2026-06-19, 6차 — ✅ 결제·접수완료까지 완주)
+
+`ENTERTEST_PAY=true` opt-in으로 **테스트 결제 → 접수완료**까지 codify·검증(jt29001 → 수험번호 `2026U14010851004`,
+`status: pass`). 전 과정: 원서작성 → 저장 → 사진/서류 업로드 → 결제직전 → 테스트 결제 → 접수완료.
+
+- **결제 흐름**(`complete_payment()`): 결제목록 `결제하기` → `/Payment/UnivPayBegin/{sid}/{ApplyID}` 결제수단 화면
+  (계좌이체/신용카드/진학캐쉬 + **테스트 결제** 버튼 `onclick=PayClick('btnPay','PayTest')`=테스트 사이트 전용 PG, **실과금 없음**)
+  → 테스트 결제 클릭 → `/Payment/PayConfirm/{sid}` "원서접수가 완료되었습니다" → `/Payment/UnivPayResult/{sid}`에
+  **수험(접수)번호**(예 `2026U14010851004`) + 출력물. 미접수원서 → 접수원서로 이동.
+- **계정 소진 주의**: 접수완료 후 같은 계정/학교는 재작성 불가 — ApplyFirst가 `/Notice/{sid}/A`로 바운스(동의 iframe
+  체크박스 0개; 신규는 `/Noti/{sid}/T` 체크박스 6개). `enter_wonseo`가 **체크박스 0개면 "접수완료 차단" RuntimeError**로
+  명확히 보고(main이 트레이스백 없이 메시지만). → 반복 테스트는 jt29001~ 중 미사용 계정 사용.
+- **소진 현황**: jt29005(수동 결제 검증), jt29001(코드 PAY 검증) = 1104069 접수완료 상태. jt29002~29004는 클린.
 
 ## 참고
 
