@@ -23,5 +23,8 @@ export function meetingToListRow(
     meetingDate: meeting.meeting_date ?? null,
     meetingAuthor: authorName || meeting.author_email,
     meetingStatus: meeting.status,
+    meetingLocation: meeting.location ?? null,
+    meetingAttendees: meeting.attendees ?? [],
+    meetingContent: meeting.content ?? [],
   };
 }
