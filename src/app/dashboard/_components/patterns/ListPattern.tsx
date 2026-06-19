@@ -477,6 +477,12 @@ export type ListRow = {
   meetingAuthor?: string;
   /** meetings variant — 작성 상태 (draft/sent) */
   meetingStatus?: "draft" | "sent";
+  /** meetings variant — 회의 장소 */
+  meetingLocation?: string | null;
+  /** meetings variant — 참석자 목록 */
+  meetingAttendees?: string[];
+  /** meetings variant — 회의 내용 블록(BlockNote content). 인스펙터 미리보기/문서 렌더용 */
+  meetingContent?: unknown[];
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
