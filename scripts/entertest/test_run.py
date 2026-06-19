@@ -15,6 +15,13 @@ import time
 import json
 from urllib.parse import urlsplit
 
+# Windows 콘솔(cp949)에서도 한글/특수문자 print가 깨지지 않도록 utf-8로 강제.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:  # noqa: BLE001
+    pass
+
 
 def origin_of(url: str) -> str:
     """URL에서 scheme://host origin 추출 (예: https://entertest.jinhakapply.com)."""
@@ -52,6 +59,8 @@ SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 DISCOVER = os.getenv("ENTERTEST_DISCOVER", "").lower() == "true"
 # CHECKS만 로컬에서 돌려보고 결과를 출력(인제스트 안 함) — 회사 PC 빠른 검증용.
 CHECKS_ONLY = os.getenv("ENTERTEST_CHECKS_ONLY", "").lower() == "true"
+# check_apply_write(원서작성 완주) 단독 실행 — 인제스트 안 함, 결과만 출력(개발/검증용).
+APPLY_WRITE = os.getenv("ENTERTEST_APPLY_WRITE", "").lower() == "true"
 BUCKET = "entertest-screenshots"
 
 
@@ -141,6 +150,139 @@ def enter_wonseo(driver, sid: str) -> None:
     driver.switch_to.default_content()
     # onApply가 top 문서를 /Wonseo로 이동 — 도달 대기.
     WebDriverWait(driver, 20).until(lambda d: "/Wonseo/" in d.current_url)
+
+
+# ── check_apply_write (v2/B): 원서작성 폼 자동 채움 + 저장 검증루프 (해독 문서 기반) ──────────
+# 전략: 진입 → 보이는 텍스트/라디오/select를 포맷 규칙대로 broad-fill + hidden SEARCHFIELD 코드/
+# 업로드 hidden 직접 주입 → DoValidate()(저장) → 커스텀 검증 모달(div.layer_cont)이 첫 미충족 1건씩
+# 표시 → 닫고 재채움/재저장 반복 → 모달이 더 안 뜨면(또는 성공 모달) 결제직전 도달로 판정.
+# 1104069(외국인 중문 편입 worst-case) PoC. 다른 전형은 후속 확장.
+
+# 보이는 입력 broad-fill — 포맷 규칙: 중문(txtC*)·날짜(Period)·외국인등록번호·연락처/이메일 등 분기.
+_WONSEO_FILL_JS = r"""
+function setVal(el, v){ if(!el) return; el.value=v;
+  el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+// 1) 보이는 텍스트/textarea (빈 것만)
+document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input:not([type]),textarea').forEach(function(el){
+  if(el.getClientRects().length===0) return; if(el.value) return; if(el.readOnly) return;  // SEARCHFIELD 표시는 readonly → 건드리면 검색팝업 → skip
+  var id=el.id||''; var v='TEST';
+  if(/^txtC/.test(id)) v='测试';
+  else if(/Email/i.test(id)) v='test@test.com';
+  else if(/Mobile|Tel/i.test(id)) v='01012345678';
+  else if(/Addr1/i.test(id)) v=/^txtC/.test(id)?'100000':'12345';
+  else if(/Passport/i.test(id)) v='EM0000000';
+  else if(/EMemSsn_1/.test(id)) v='050101';
+  else if(/EMemSsn_2/.test(id)) v='6000000';
+  else if(/GradutePeriodStart/.test(id)) v='201803';
+  else if(/GradutePeriodEnd/.test(id)) v='202102';
+  else if(/PeriodStart/.test(id)) v='20180302';
+  else if(/PeriodEnd/.test(id)) v='20210228';
+  else if(/Total/i.test(id)) v='12';
+  else if(/Year/i.test(id)) v='4';
+  else if(/Web/i.test(id)) v='http://test.com';
+  else if(/Fax/i.test(id)) v='021234567';
+  else if(/Name$/.test(id)) v=/Nationality/.test(id)?'中国':(/^txtC/.test(id)?'测试':'TEST');
+  setVal(el, v);
+});
+// 2) hidden SEARCHFIELD 코드 — 비어있지 않으면 통과(해독: 값 무관). 빈 것만 '1'.
+['hdnUnivMajorCode','hdnUnivSubMajorCode','hdnMajor2Code','hdnUnivSubMajor2Code','hdnNationalityCode',
+ 'hdnNationality_EngCode','hdnNationality2Code','hdnExamNationalityCode','hdnSchoolNationalityCode',
+ 'hdnGraduteUnivCode','hdnGraduteUnivNationCode','hdnGraduteunivMajorCode','hdnHiGradeNameCode',
+ 'hdnGGradeNameCode','hdnEnterUnivCode','hdnEnterUnivMajorCode','hdnPrevUnivCode','hdnPrevUnivMajorCode',
+ 'hdnPrevUnivNationCode'].forEach(function(id){ var el=document.getElementById(id); if(el&&!el.value) el.value='1'; });
+// 자동합산 총계(readonly) — 타깃 set.
+var _tot=document.getElementById('txtTotal'); if(_tot && (!_tot.value||_tot.value==='0')){ _tot.value='12'; _tot.dispatchEvent(new Event('change',{bubbles:true})); }
+// 3) 업로드 우회 — hidden만 세팅(결제직전까지 파일 존재 검증 없음)
+[['hdnUploadFileName','test.jpg'],['hdnUploadFileOrgFile','test.jpg'],['hdnUploadFileSize','12345'],['hdnUploadFileType','image/jpeg'],
+ ['hdnUploadFile1Name','test.jpg'],['hdnUploadFile1OrgFile','test.jpg'],['hdnUploadFile1Size','12345'],['hdnUploadFile1Type','image/jpeg']
+].forEach(function(p){ var el=document.getElementById(p[0]); if(el&&!el.value) el.value=p[1]; });
+try{ if(typeof PhotoRegist==='function') PhotoRegist({storageUrl:'https://image.jinhakapply.com/test.jpg',FileName:'test',Ext:'jpg',Size:12345}); }catch(e){}
+// 4) 라디오 — 필수 그룹 기본 선택(빈 그룹만)
+['rdoSelTypeCodeE','rdoEMemSsnSelectN','rdoPersonalDataAgree11','rdoPersonalDataAgree21','rdoGraduteStatus2'].forEach(function(id){
+  var el=document.getElementById(id); if(el&&!el.checked) el.click(); });
+var g=document.querySelector('[id^=rdoGraduation]'); if(g&&!g.checked) g.click();
+// 5) select 첫 실제 옵션(미선택만)
+document.querySelectorAll('select').forEach(function(s){
+  if((s.offsetParent||s.getClientRects().length) && s.selectedIndex<=0 && s.options.length>1){
+    s.selectedIndex=1; s.dispatchEvent(new Event('change',{bubbles:true})); } });
+"""
+
+
+# 검증 모달 텍스트 — JS로 직접(애니메이션/표시 토글에 견고). #globalAlert(.layer attention) 우선.
+_MODAL_JS = r"""
+// 주의: #globalAlert는 position:fixed + 0-size wrapper라 offsetParent/clientRects로는 '안 보임'으로
+// 오판된다. display/visibility + 텍스트 존재로만 판정한다.
+var sels=['#globalAlert','div.layer_cont','.layer.attention1','.layer.attention'];
+for (var i=0;i<sels.length;i++){
+  var els=document.querySelectorAll(sels[i]);
+  for (var j=0;j<els.length;j++){
+    var el=els[j], st=getComputedStyle(el);
+    if(st.display!=='none' && st.visibility!=='hidden'){
+      var t=(el.innerText||'').replace(/확인/g,'').trim();
+      if(t) return t;
+    }
+  }
+}
+return null;
+"""
+
+
+def _modal_text(driver):
+    """검증 모달 표시 텍스트(없으면 None). 1104069은 #globalAlert 사용."""
+    try:
+        return driver.execute_script(_MODAL_JS)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _close_modal(driver) -> None:
+    """검증 모달의 확인/닫기 버튼 클릭(#globalAlert 등으로 한정 — 페이지 이탈 방지)."""
+    driver.execute_script(
+        "var box = document.getElementById('globalAlert');"
+        "var scopes = box ? [box] : Array.from(document.querySelectorAll('div.layer_cont, .layer.attention1, .layer.attention'));"
+        "scopes.forEach(function(s){ s.querySelectorAll('a,button,input[type=button]').forEach(function(b){"
+        "  var t=(b.innerText||b.value||''); if(/확인|닫기|确认|关闭|OK/i.test(t)){ try{b.click()}catch(e){} } }); });"
+    )
+
+
+def check_apply_write(driver, ctx):
+    """원서작성 폼 자동 완주(결제직전까지). 1104069 PoC."""
+    sid = service_id_of(TARGET_URL)
+    # 자체적으로 로그인 보장 (CHECKS 시퀀스에선 check_login이 선행하지만, 단독 실행/안전 위해).
+    if "/Login" in driver.current_url or "로그아웃" not in driver.page_source:
+        login(driver, ACCOUNT)
+    enter_wonseo(driver, sid)
+    print(f"[apply] 진입 완료 - {driver.current_url}")
+    driver.execute_script("window.confirm=function(){return true;}; window.alert=function(){};")
+    last = None
+    for i in range(15):
+        driver.execute_script(_WONSEO_FILL_JS)
+        time.sleep(0.4)
+        driver.execute_script(
+            "window.confirm=function(){return true;};"
+            "if(typeof DoValidate==='function'){ DoValidate(); } else { console.log('no DoValidate'); }"
+        )
+        # 검증 모달은 애니메이션으로 늦게 뜰 수 있어 최대 5s 폴링.
+        m = None
+        for _ in range(10):
+            time.sleep(0.5)
+            m = _modal_text(driver)
+            if m:
+                break
+        print(f"[apply] {i+1}회 저장 — 모달: {(m or '없음')[:120].replace(chr(10),' ')}")
+        if not m:
+            # 모달 없음 → 저장 진행됨 추정. 결제직전(작성목록) 도달 확인.
+            driver.get(f"{origin_of(TARGET_URL)}/Payment/UnivWritingList/{sid}")
+            _body_ready(driver)
+            ok = "없습니다" not in driver.page_source
+            return ("pass" if ok else "fail",
+                    f"저장 후 결제목록 {'원서 있음(결제직전 도달)' if ok else '비어있음'} ({i+1}회 시도)")
+        if any(k in m for k in ("저장되었습니다", "저장 완료", "작성되었습니다", "성공")):
+            return ("pass", f"저장 성공 모달 확인 ({i+1}회): {m[:80]}")
+        last = m.replace("\n", " ")[:200]
+        _close_modal(driver)
+        time.sleep(0.5)
+    return ("fail", f"저장 검증 루프 미통과(15회). 마지막 모달: {last}")
 
 
 def upload_screenshot(driver, key: str):
@@ -393,6 +535,10 @@ def main() -> int:
         if not TARGET_URL:
             print("[error] ENTERTEST_TARGET_URL 누락")
             return 1
+    elif APPLY_WRITE:
+        if not (TARGET_URL and ACCOUNT):
+            print("[error] APPLY_WRITE: ENTERTEST_TARGET_URL/ACCOUNT 필요")
+            return 1
     elif CHECKS_ONLY:
         if not (TARGET_URL and ACCOUNT):
             print("[error] CHECKS_ONLY: ENTERTEST_TARGET_URL/ACCOUNT 필요")
@@ -404,6 +550,15 @@ def main() -> int:
     try:
         if DISCOVER:
             discover(driver)
+            return 0
+        if APPLY_WRITE:
+            import traceback
+            try:
+                status, message = check_apply_write(driver, {})
+            except Exception:  # noqa: BLE001
+                traceback.print_exc()
+                status, message = "fail", "예외 — 위 트레이스백 참조"
+            print(json.dumps({"apply_write": {"status": status, "message": message}}, ensure_ascii=False, indent=2))
             return 0
         checks = run_checks(driver)
         failed = any(c["status"] == "fail" for c in checks)

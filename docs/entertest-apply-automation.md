@@ -73,6 +73,34 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
    - 일부 전형은 **자격 거부 게이트** 있음(예: 8108005 경연대회 — "참가자격" 모달, 계정/전형 조건 의존).
    - 학부 수시/정시는 6월엔 미오픈 — 폼이 외국인/대학원보다 짧음. 가능하면 그 시기 PoC가 쉬움.
 
+## 진행 로그 — check_apply_write 1차 구현 (2026-06-19, 1104069)
+
+`scripts/entertest/test_run.py`에 `enter_wonseo` + `check_apply_write`(broad-fill + 저장 검증루프) 구현.
+`ENTERTEST_APPLY_WRITE=true`로 단독 실행(인제스트 X, 결과 출력)·반복 검증 가능.
+
+**작동 확인된 것:**
+- **진입 자동화 OK**: `enter_wonseo` — ApplyFirst → iframe `#frmNotice` 동의 체크박스 전체 체크 →
+  `window.confirm` override → `onApply()` → `/Wonseo/1104069/4/A` 도달.
+- **저장 트리거**: 저장 버튼 onclick = `javascript:DoValidate();` (이 폼 확정).
+- **검증 모달 = `#globalAlert`** (해독 본문의 `div.layer_cont`는 전형별 변형 — 1104069은 `#globalAlert`).
+  ⚠️ `#globalAlert`는 `position:fixed` + 0-size wrapper라 `offsetParent`/`getClientRects`가 0 →
+  가시성 판정은 **`display!=='none' && visibility!=='hidden'` + innerText 존재**로만 해야 한다(`_MODAL_JS`).
+- **검증 루프 진행 확인**(수동 diag, 모달 1건씩 닫으며): `여권번호를 입력해 주세요.`(passport=`EM0000000`)
+  → `초·중·고 전체 재학년수`(=`txtTotal`, **readonly 자동합산** → 타깃 set 필요).
+
+**현재 블로커 (다음 세션):**
+- 루프 자동실행 시 모달 텍스트가 매 회 **"검색"** 으로 고착. 원인 추정: DoValidate 직후 SEARCHFIELD
+  검색 팝업이 잠깐 떠서, 모달 **폴링(최대 5s)** 이 실제 `#globalAlert` 검증 메시지보다 "검색" 팝업을 먼저 잡음.
+  (수동 diag는 고정 2s 후 1회 읽어 `#globalAlert`를 잡았음 — 타이밍 차.)
+- 해결 방향(택1):
+  1. 모달 폴링에서 **"검색" 팝업은 무시**하고 `#globalAlert` 검증 메시지만 대기(검색 레이어 셀렉터 제외 / 검색 팝업 자동 닫기 후 재판정).
+  2. SEARCHFIELD(지원학과/국적 등) **검색 팝업이 애초에 안 뜨도록** 필요한 hidden 코드를 정확히 세팅.
+     (포괄 `[id^=hdn][id$=Code]='1'`은 오히려 검색 팝업을 유발 → 역효과. 어떤 코드가 트리거인지 특정 필요.)
+- 그 뒤 long-tail(졸업대학 주소/학과 영문·중문 페어 등) field-by-field 수렴 — 루프 모달 메시지를 워크리스트로.
+
+**검증 도구**: `ENTERTEST_APPLY_WRITE=true ENTERTEST_TARGET_URL=.../Notice/1104069/A ENTERTEST_ACCOUNT=jt29005 python scripts/entertest/test_run.py`
+— 진입 후 채움+저장을 15회 반복하며 각 회 모달 메시지를 출력. (이 PC에서 직접 실행 가능 — Chrome 필요.)
+
 ## 참고
 
 - DISCOVER 모드(`ENTERTEST_DISCOVER=true`)가 단계별 page_source/스크린샷 + 필드/버튼 인벤토리(`{단계}.fields.json`)를
