@@ -34,11 +34,17 @@ describe("MeetingView (회의내용/회의문서 2탭)", () => {
     expect(screen.getByText("예산 검토")).toBeInTheDocument();
   });
 
-  it("회의문서 탭은 경위서식 문서(유형 회의록 + 제목)를 렌더한다", () => {
+  it("회의문서 탭은 경위서식(헤더 + 섹션 라벨/내용박스)으로 렌더한다", () => {
     render(<MeetingView row={row} />);
     fireEvent.click(screen.getByRole("button", { name: "회의문서" }));
-    expect(screen.getByText(/정기회의 회의록/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "월간 운영회의" })).toBeInTheDocument();
+    expect(screen.getAllByText(/월간 운영회의/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/정기회의/)).toBeInTheDocument();
+    // 내용 헤딩이 섹션 라벨로, 본문이 내용박스로
+    expect(screen.getByText("안건")).toBeInTheDocument();
+    expect(screen.getByText("예산 검토")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /편집·PDF·메일 화면 열기/ }),
+    ).toBeInTheDocument();
   });
 
   it("편집 화면으로 이동하는 링크를 제공한다", () => {
