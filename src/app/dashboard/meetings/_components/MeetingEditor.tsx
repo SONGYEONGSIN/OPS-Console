@@ -5,6 +5,7 @@ import type { PartialBlock } from "@blocknote/core";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
+import "./meeting-editor.css";
 import { saveMeetingContent } from "@/features/meetings/actions";
 
 type Props = { id: string; initialContent: unknown[] };
@@ -49,7 +50,9 @@ export function MeetingEditor({ id, initialContent }: Props) {
       >
         {statusLabel}
       </div>
-      <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
+      <div className="meeting-editor">
+        <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
+      </div>
     </div>
   );
 }
