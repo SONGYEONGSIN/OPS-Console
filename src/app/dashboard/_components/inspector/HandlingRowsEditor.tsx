@@ -56,7 +56,7 @@ export function HandlingRowsEditor({
               aria-label={`처리 행 삭제 ${i + 1}`}
               title="행 삭제"
               onClick={() => removeRow(i)}
-              className="flex-none cursor-pointer self-start border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
+              className="flex-none cursor-pointer self-start border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
             >
               ✕
             </button>
