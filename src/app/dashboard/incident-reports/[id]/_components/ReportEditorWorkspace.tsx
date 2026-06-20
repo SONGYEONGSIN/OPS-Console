@@ -340,7 +340,7 @@ export function ReportEditorWorkspace({
               </div>
 
               <div className="mt-3">
-                {renderField({ ...POST_FIELDS[0], heightClass: "h-[132px]" })}
+                {renderField({ ...POST_FIELDS[0], rows: 5 })}
               </div>
             </div>
             <div className="mt-3 space-y-2">
