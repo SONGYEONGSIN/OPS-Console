@@ -47,9 +47,10 @@ describe("MeetingView (회의내용/회의문서 2탭)", () => {
     ).toBeInTheDocument();
   });
 
-  it("편집 화면으로 이동하는 링크를 제공한다", () => {
+  it("회의문서 탭 링크가 편집 화면으로 이동한다", () => {
     render(<MeetingView row={row} />);
-    const link = screen.getByRole("link", { name: /편집 화면 열기/ });
+    fireEvent.click(screen.getByRole("button", { name: "회의문서" }));
+    const link = screen.getByRole("link", { name: /회의록 내용 보기/ });
     expect(link).toHaveAttribute("href", "/dashboard/meetings/m-1");
   });
 });
