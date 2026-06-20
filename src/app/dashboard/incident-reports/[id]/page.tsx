@@ -74,7 +74,7 @@ export default async function IncidentReportEditorPage({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <section className="flex min-h-0 flex-1 flex-col px-5 py-3 md:px-6 lg:px-7">
+      <section className="flex min-h-0 flex-1 flex-col px-5 pb-3 pt-6 md:px-6 lg:px-7">
         {/* 컴팩트 헤더 — 좌측 목록 이동 + 제목, 우측 끝(문서 뷰어 폭)에 PDF.
             오른쪽 w-[360px] 스페이서가 편집 패널 폭과 같아 PDF가 뷰어 영역 우측 끝에 정렬됨. */}
         <header className="mb-2 flex gap-4">

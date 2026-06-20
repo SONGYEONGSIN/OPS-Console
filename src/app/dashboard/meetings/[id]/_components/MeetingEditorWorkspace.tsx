@@ -83,7 +83,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
               href={`/api/meetings/${meeting.id}/pdf`}
               target="_blank"
               rel="noreferrer"
-              className="border border-vermilion bg-vermilion px-3 py-1 text-sm text-cream transition-colors hover:bg-vermilion-deep"
+              className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
             >
               PDF
             </a>
