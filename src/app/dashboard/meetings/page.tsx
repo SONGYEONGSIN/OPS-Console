@@ -92,7 +92,6 @@ export default async function MeetingsPage({
       data={{ rows }}
       header={header}
       variant="meetings"
-      readOnly
       liveData
       currentUserName={me?.displayName ?? me?.email ?? ""}
       currentUserEmail={me?.email ?? null}
