@@ -68,32 +68,36 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* 상단바 — 좌: 목록 이동(버튼) / 우: PDF·메일 발송 (경위서 편집과 동일 구조) */}
-      <div className="mb-2 flex items-center justify-between">
-        <Link
-          href="/dashboard/meetings"
-          className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
-        >
-          ← 목록 이동
-        </Link>
-        <div className="flex items-center gap-2">
-          <a
-            href={`/api/meetings/${meeting.id}/pdf`}
-            target="_blank"
-            rel="noreferrer"
-            className="border border-ink px-3 py-1 text-sm hover:bg-ink hover:text-cream"
+      {/* 상단바 — 좌: 목록 이동(버튼) / 우(문서 영역 끝): PDF·메일 발송 (경위서 편집과 동일 위치).
+          w-[400px] 스페이서가 편집 패널 폭과 같아 PDF가 문서 뷰어 우측 끝에 정렬됨. */}
+      <div className="mb-2 flex gap-4">
+        <div className="flex min-w-0 flex-1 items-center justify-between">
+          <Link
+            href="/dashboard/meetings"
+            className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
           >
-            PDF
-          </a>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={send}
-            className="border border-ink bg-ink px-3 py-1 text-sm text-cream disabled:opacity-50"
-          >
-            메일 발송
-          </button>
+            ← 목록 이동
+          </Link>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/meetings/${meeting.id}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="border border-ink px-3 py-1 text-sm hover:bg-ink hover:text-cream"
+            >
+              PDF
+            </a>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={send}
+              className="border border-ink bg-ink px-3 py-1 text-sm text-cream disabled:opacity-50"
+            >
+              메일 발송
+            </button>
+          </div>
         </div>
+        <div className="w-[400px] shrink-0" aria-hidden />
       </div>
 
       <div className="flex min-h-0 flex-1 gap-4">
