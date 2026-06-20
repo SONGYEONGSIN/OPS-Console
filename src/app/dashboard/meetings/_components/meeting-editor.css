@@ -41,6 +41,8 @@
 .meeting-editor .bn-block-content[data-content-type="heading"] {
   color: var(--ink);
   --level: 1.5em; /* 기본/level1 */
+  /* 기본 padding-top:18px이 헤딩 텍스트만 내려 +/드래그 아이콘과 어긋나므로 축소 */
+  padding-top: 4px;
 }
 .meeting-editor .bn-block-content[data-content-type="heading"][data-level="2"] {
   --level: 1.25em;
