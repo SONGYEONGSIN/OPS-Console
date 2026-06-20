@@ -194,7 +194,7 @@ export function ReportEditorWorkspace({
           <textarea
             aria-label={label}
             value={draft[key]}
-            rows={grow ? undefined : 6}
+            rows={grow ? undefined : 8}
             maxLength={5000}
             onChange={(e) => setField(key, e.target.value)}
             className={`${inputClass} resize-y ${grow ? "min-h-[8rem] flex-1" : ""}`}
@@ -213,7 +213,7 @@ export function ReportEditorWorkspace({
   }
 
   return (
-    <div className="flex gap-4">
+    <div className="flex items-start gap-4">
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="bg-paper p-6">
           <FormPage model={model} page={page} />
@@ -249,7 +249,7 @@ export function ReportEditorWorkspace({
           </span>
         </div>
         {editable ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-col">
             <div className="flex flex-col pr-1">
               <div className="space-y-3">
               {/* 수신대학·서비스명·제목 — 연결 사고에서 동기화(읽기전용) */}
@@ -337,7 +337,7 @@ export function ReportEditorWorkspace({
 
               <div className="mt-3">{renderField(POST_FIELDS[0])}</div>
             </div>
-            <div className="mt-auto space-y-2 pt-3">
+            <div className="mt-3 space-y-2">
               {error && <p className="text-xs text-vermilion">{error}</p>}
               {saved && <p className="text-xs text-sage">저장되었습니다.</p>}
               <button
