@@ -25,7 +25,7 @@ export function isReportLiveMirrored(status: ReportStatus): boolean {
 }
 
 export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
-  draft: "작성중",
+  draft: "작성 중",
   pending_approval: "승인대기",
   approved: "승인완료",
   rejected: "반려",

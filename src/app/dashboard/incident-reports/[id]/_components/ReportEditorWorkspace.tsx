@@ -248,7 +248,13 @@ export function ReportEditorWorkspace({
       <aside className="flex w-[360px] shrink-0 flex-col border-l border-line pl-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-bold text-ink">편집</span>
-          <span className="text-2xs text-muted">
+          <span
+            className={`inline-block px-2 py-0.5 text-2xs ${
+              report.status === "draft"
+                ? "bg-vermilion text-cream"
+                : "bg-line-soft text-ink-soft"
+            }`}
+          >
             {REPORT_STATUS_LABEL[report.status]}
           </span>
         </div>
