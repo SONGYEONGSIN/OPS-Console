@@ -22,9 +22,12 @@
 }
 
 /* 에디터 본문 배경/여백 */
+/* BlockNote 사이드 메뉴(+/드래그 핸들)가 콘텐츠 왼쪽 바깥에 뜨므로,
+   왼쪽 여백을 둬서 패널 안에 머물게 한다(밖으로 튀어나옴 방지). */
 .meeting-editor .bn-editor {
   background: var(--paper);
-  padding-inline: 0;
+  padding-left: 2.75rem;
+  padding-right: 0.25rem;
 }
 
 /* 본문 가독성 — 줄간격·본문색 */

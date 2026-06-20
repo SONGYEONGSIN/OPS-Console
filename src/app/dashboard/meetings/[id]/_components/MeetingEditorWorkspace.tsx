@@ -70,7 +70,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 상단바 — 좌: 목록 이동(버튼) / 우(문서 영역 끝): PDF·메일 발송 (경위서 편집과 동일 위치).
           w-[400px] 스페이서가 편집 패널 폭과 같아 PDF가 문서 뷰어 우측 끝에 정렬됨. */}
-      <div className="mb-2 flex gap-4">
+      <div className="mb-4 flex gap-4">
         <div className="flex min-w-0 flex-1 items-center justify-between">
           <Link
             href="/dashboard/meetings"
