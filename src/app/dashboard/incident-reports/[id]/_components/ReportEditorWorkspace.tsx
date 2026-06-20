@@ -245,7 +245,7 @@ export function ReportEditorWorkspace({
         </div>
       </div>
 
-      <aside className="flex w-[440px] shrink-0 flex-col border-l border-line pl-4">
+      <aside className="flex w-[360px] shrink-0 flex-col border-l border-line pl-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-bold text-ink">편집</span>
           <span
