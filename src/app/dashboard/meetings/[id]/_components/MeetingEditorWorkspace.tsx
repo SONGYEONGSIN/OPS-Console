@@ -67,14 +67,14 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
   }
 
   return (
-    <div className="p-6">
-      {/* 상단바 — 좌: 목록 이동 / 우: PDF·메일 발송 (사고보고와 동일 구조) */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* 상단바 — 좌: 목록 이동(버튼) / 우: PDF·메일 발송 (경위서 편집과 동일 구조) */}
+      <div className="mb-2 flex items-center justify-between">
         <Link
           href="/dashboard/meetings"
-          className="text-sm text-vermilion hover:underline"
+          className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
         >
-          ← 회의록 목록
+          ← 목록 이동
         </Link>
         <div className="flex items-center gap-2">
           <a
@@ -96,9 +96,9 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
         </div>
       </div>
 
-      <div className="flex items-start gap-6">
-        {/* 좌측 — 실제 문서 미리보기 (편집 내용 실시간 반영) */}
-        <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1 gap-4">
+        {/* 좌측 — 실제 문서 미리보기 (편집 내용 실시간 반영, 내부 스크롤) */}
+        <div className="min-w-0 flex-1 overflow-y-auto">
           <MeetingDocument
             title={title}
             typeLabel={MEETING_TYPE_LABELS[meeting.type]}
@@ -109,61 +109,69 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
           />
         </div>
 
-        {/* 우측 — 편집툴 인스펙터 (메타 + 노션 에디터) */}
-        <aside className="sticky top-6 w-[400px] shrink-0 border-l border-line pl-5">
+        {/* 우측 — 편집 패널 (헤더 고정 + 메타·에디터 내부 스크롤) */}
+        <aside className="flex min-h-0 w-[400px] shrink-0 flex-col border-l border-line pl-5">
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-semibold text-ink">편집</span>
-            <span className="bg-line-soft px-2 py-0.5 text-xs">
+            <span className="text-sm font-bold text-ink">편집</span>
+            <span
+              className={`inline-block px-2 py-0.5 text-2xs ${
+                meeting.status === "draft"
+                  ? "bg-vermilion text-cream"
+                  : "bg-line-soft text-ink-soft"
+              }`}
+            >
               {MEETING_STATUS_LABELS[meeting.status]}
             </span>
           </div>
 
-          <span className="mb-2 inline-block bg-line-soft px-2 py-0.5 text-xs">
-          {MEETING_TYPE_LABELS[meeting.type]}
-        </span>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={saveMeta}
-          className="mb-3 w-full border-none bg-transparent text-xl font-black outline-none"
-          placeholder="제목 없음"
-        />
-        <div className="mb-1 flex gap-2 text-sm">
-          <span className="w-14 text-muted">일시</span>
-          <input
-            type="datetime-local"
-            value={meetingDate}
-            onChange={(e) => setMeetingDate(e.target.value)}
-            onBlur={saveMeta}
-            onClick={(e) => e.currentTarget.showPicker?.()}
-            className="flex-1 cursor-pointer bg-line-soft px-2 py-1"
-          />
-        </div>
-        <div className="mb-1 flex gap-2 text-sm">
-          <span className="w-14 text-muted">장소</span>
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            onBlur={saveMeta}
-            className="flex-1 bg-line-soft px-2 py-1"
-          />
-        </div>
-        <div className="mb-4 flex gap-2 text-sm">
-          <span className="w-14 text-muted">참석자</span>
-          <input
-            value={attendees}
-            onChange={(e) => setAttendees(e.target.value)}
-            onBlur={saveMeta}
-            className="flex-1 bg-line-soft px-2 py-1"
-            placeholder="쉼표로 구분"
-          />
-        </div>
-        <hr className="mb-4 border-line-soft" />
-        <MeetingEditor
-          id={meeting.id}
-          initialContent={meeting.content}
-          onContentChange={setContent}
-        />
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <span className="mb-2 inline-block bg-line-soft px-2 py-0.5 text-xs">
+              {MEETING_TYPE_LABELS[meeting.type]}
+            </span>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={saveMeta}
+              className="mb-3 w-full border-none bg-transparent text-xl font-black outline-none"
+              placeholder="제목 없음"
+            />
+            <div className="mb-1 flex gap-2 text-sm">
+              <span className="w-14 text-muted">일시</span>
+              <input
+                type="datetime-local"
+                value={meetingDate}
+                onChange={(e) => setMeetingDate(e.target.value)}
+                onBlur={saveMeta}
+                onClick={(e) => e.currentTarget.showPicker?.()}
+                className="flex-1 cursor-pointer bg-line-soft px-2 py-1"
+              />
+            </div>
+            <div className="mb-1 flex gap-2 text-sm">
+              <span className="w-14 text-muted">장소</span>
+              <input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                onBlur={saveMeta}
+                className="flex-1 bg-line-soft px-2 py-1"
+              />
+            </div>
+            <div className="mb-4 flex gap-2 text-sm">
+              <span className="w-14 text-muted">참석자</span>
+              <input
+                value={attendees}
+                onChange={(e) => setAttendees(e.target.value)}
+                onBlur={saveMeta}
+                className="flex-1 bg-line-soft px-2 py-1"
+                placeholder="쉼표로 구분"
+              />
+            </div>
+            <hr className="mb-4 border-line-soft" />
+            <MeetingEditor
+              id={meeting.id}
+              initialContent={meeting.content}
+              onContentChange={setContent}
+            />
+          </div>
         </aside>
       </div>
     </div>
