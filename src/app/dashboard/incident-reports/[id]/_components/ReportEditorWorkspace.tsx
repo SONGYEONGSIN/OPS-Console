@@ -187,10 +187,10 @@ export function ReportEditorWorkspace({
           <textarea
             aria-label={label}
             value={draft[key]}
-            rows={4}
+            rows={7}
             maxLength={5000}
             onChange={(e) => setField(key, e.target.value)}
-            className={inputClass}
+            className={`${inputClass} resize-y`}
           />
         ) : (
           <input
