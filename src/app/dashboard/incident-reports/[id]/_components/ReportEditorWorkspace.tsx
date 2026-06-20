@@ -175,22 +175,29 @@ export function ReportEditorWorkspace({
     key,
     label,
     textarea,
+    grow = false,
   }: {
     key: TextKey;
     label: string;
     textarea: boolean;
+    grow?: boolean;
   }) {
     return (
-      <label key={key} className="block text-xs">
+      <label
+        key={key}
+        className={
+          grow ? "flex min-h-0 flex-1 flex-col text-xs" : "block text-xs"
+        }
+      >
         <span className="mb-1 block text-muted">{label}</span>
         {textarea ? (
           <textarea
             aria-label={label}
             value={draft[key]}
-            rows={7}
+            rows={grow ? undefined : 6}
             maxLength={5000}
             onChange={(e) => setField(key, e.target.value)}
-            className={`${inputClass} resize-y`}
+            className={`${inputClass} resize-y ${grow ? "min-h-[8rem] flex-1" : ""}`}
           />
         ) : (
           <input
@@ -243,7 +250,8 @@ export function ReportEditorWorkspace({
         </div>
         {editable ? (
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
+              <div className="shrink-0 space-y-3">
               {/* 수신대학·서비스명·제목 — 연결 사고에서 동기화(읽기전용) */}
               <div className="space-y-1 border-b border-line pb-2 text-xs">
                 <p className="text-muted">
@@ -325,8 +333,12 @@ export function ReportEditorWorkspace({
 
               {/* 처리 — 시간/내용 행 편집기 (경위서·사고보고 공용) */}
               <HandlingRowsEditor rows={rows} onChange={setRows} />
+              </div>
 
-              {POST_FIELDS.map(renderField)}
+              {/* 대책 — 남은 높이를 채워 박스 하단이 좌측 문서 하단과 정렬되게 */}
+              <div className="mt-3 flex min-h-0 flex-1 flex-col">
+                {renderField({ ...POST_FIELDS[0], grow: true })}
+              </div>
             </div>
             <div className="mt-3 space-y-2">
               {error && <p className="text-xs text-vermilion">{error}</p>}
