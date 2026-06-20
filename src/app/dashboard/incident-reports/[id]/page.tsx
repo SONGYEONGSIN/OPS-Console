@@ -77,14 +77,14 @@ export default async function IncidentReportEditorPage({
   const config = resolvePageMeta("incidents", meta);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col">
       <PageHeader
         pathname="/dashboard/incidents"
         meta={config.meta}
         headline={config.headline}
         description={config.description}
       />
-      <section className="flex min-h-0 flex-1 flex-col p-5 md:p-6 lg:p-7">
+      <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
         {/* 워크스페이스 컬럼 폭에 맞춰 — 좌측 뒤로가기 + 공문 뷰어 우측 끝에 PDF.
             오른쪽 w-[360px] 스페이서가 편집 패널 폭과 같아 PDF가 뷰어 영역 우측 끝에 정렬됨. */}
         <header className="mb-4 flex gap-4">
