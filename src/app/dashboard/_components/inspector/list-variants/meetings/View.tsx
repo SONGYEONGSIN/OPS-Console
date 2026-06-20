@@ -170,33 +170,31 @@ export function MeetingView({ row }: ViewProps) {
 
       {tab === "content" ? (
         <div className="space-y-6">
+          {/* 헤더 — 제목 + 상태 배지 + 분류(유형) (사고정보 탭 형식) */}
+          <section className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-ink">
+                {row.meetingTitle ?? row.name ?? "제목 없음"}
+              </span>
+              <span className="ml-auto inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft">
+                {MEETING_STATUS_LABELS[status]}
+              </span>
+            </div>
+            <p className="text-xs text-muted">{MEETING_TYPE_LABELS[type]}</p>
+          </section>
+
+          <Divider />
+
           <Section title="회의 정보">
             <DefList
               items={[
-                { term: "제목", desc: row.meetingTitle ?? row.name ?? "-" },
-                {
-                  term: "유형",
-                  desc: (
-                    <span className="inline-block bg-washi-raised px-2 py-0.5 text-xs text-ink">
-                      {MEETING_TYPE_LABELS[type]}
-                    </span>
-                  ),
-                },
-                {
-                  term: "상태",
-                  desc: (
-                    <span className="inline-block bg-line-soft px-2 py-0.5 text-xs text-ink">
-                      {MEETING_STATUS_LABELS[status]}
-                    </span>
-                  ),
-                },
-                { term: "일시", desc: row.meetingDate || "-" },
-                { term: "장소", desc: row.meetingLocation || "-" },
+                { term: "일시", desc: row.meetingDate || "—" },
+                { term: "장소", desc: row.meetingLocation || "—" },
                 {
                   term: "참석자",
-                  desc: attendees.length > 0 ? attendees.join(", ") : "-",
+                  desc: attendees.length > 0 ? attendees.join(", ") : "—",
                 },
-                { term: "작성자", desc: row.meetingAuthor || row.owner || "-" },
+                { term: "작성자", desc: row.meetingAuthor || row.owner || "—" },
               ]}
             />
           </Section>
@@ -206,15 +204,6 @@ export function MeetingView({ row }: ViewProps) {
           <Section title="내용">
             <DocBody nodes={nodes} />
           </Section>
-
-          <Divider />
-
-          <Link
-            href={`/dashboard/meetings/${row.id}`}
-            className="inline-block border border-line bg-paper px-3 py-1.5 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-          >
-            회의록 편집 화면 열기
-          </Link>
         </div>
       ) : (
         <div className="space-y-6">
