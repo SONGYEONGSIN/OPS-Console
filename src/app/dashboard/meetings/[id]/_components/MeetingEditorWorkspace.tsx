@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { MeetingRow } from "@/features/meetings/schemas";
 import {
@@ -66,47 +67,58 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
   }
 
   return (
-    <div className="flex items-start gap-6 p-6">
-      {/* 좌측 — 실제 문서 미리보기 (편집 내용 실시간 반영) */}
-      <div className="min-w-0 flex-1">
-        <MeetingDocument
-          title={title}
-          typeLabel={MEETING_TYPE_LABELS[meeting.type]}
-          dateDisplay={meetingDate.replace("T", " ")}
-          location={location}
-          attendees={parseAttendees(attendees)}
-          content={content}
-        />
+    <div className="p-6">
+      {/* 상단바 — 좌: 목록 이동 / 우: PDF·메일 발송 (사고보고와 동일 구조) */}
+      <div className="mb-4 flex items-center justify-between">
+        <Link
+          href="/dashboard/meetings"
+          className="text-sm text-vermilion hover:underline"
+        >
+          ← 회의록 목록
+        </Link>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/meetings/${meeting.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="border border-ink px-3 py-1 text-sm hover:bg-ink hover:text-cream"
+          >
+            PDF
+          </a>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={send}
+            className="border border-ink bg-ink px-3 py-1 text-sm text-cream disabled:opacity-50"
+          >
+            메일 발송
+          </button>
+        </div>
       </div>
 
-      {/* 우측 — 편집툴 인스펙터 (메타 + 노션 에디터) */}
-      <aside className="sticky top-6 w-[400px] shrink-0 border-l border-line pl-5">
-        <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-semibold text-ink">편집</span>
-          <div className="flex items-center gap-2">
+      <div className="flex items-start gap-6">
+        {/* 좌측 — 실제 문서 미리보기 (편집 내용 실시간 반영) */}
+        <div className="min-w-0 flex-1">
+          <MeetingDocument
+            title={title}
+            typeLabel={MEETING_TYPE_LABELS[meeting.type]}
+            dateDisplay={meetingDate.replace("T", " ")}
+            location={location}
+            attendees={parseAttendees(attendees)}
+            content={content}
+          />
+        </div>
+
+        {/* 우측 — 편집툴 인스펙터 (메타 + 노션 에디터) */}
+        <aside className="sticky top-6 w-[400px] shrink-0 border-l border-line pl-5">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-semibold text-ink">편집</span>
             <span className="bg-line-soft px-2 py-0.5 text-xs">
               {MEETING_STATUS_LABELS[meeting.status]}
             </span>
-            <a
-              href={`/api/meetings/${meeting.id}/pdf`}
-              target="_blank"
-              rel="noreferrer"
-              className="border border-ink px-3 py-1 text-sm hover:bg-ink hover:text-cream"
-            >
-              PDF
-            </a>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={send}
-              className="border border-ink bg-ink px-3 py-1 text-sm text-cream disabled:opacity-50"
-            >
-              메일 발송
-            </button>
           </div>
-        </div>
 
-        <span className="mb-2 inline-block bg-line-soft px-2 py-0.5 text-xs">
+          <span className="mb-2 inline-block bg-line-soft px-2 py-0.5 text-xs">
           {MEETING_TYPE_LABELS[meeting.type]}
         </span>
         <input
@@ -123,7 +135,8 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
             value={meetingDate}
             onChange={(e) => setMeetingDate(e.target.value)}
             onBlur={saveMeta}
-            className="flex-1 bg-line-soft px-2 py-1"
+            onClick={(e) => e.currentTarget.showPicker?.()}
+            className="flex-1 cursor-pointer bg-line-soft px-2 py-1"
           />
         </div>
         <div className="mb-1 flex gap-2 text-sm">
@@ -151,7 +164,8 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
           initialContent={meeting.content}
           onContentChange={setContent}
         />
-      </aside>
+        </aside>
+      </div>
     </div>
   );
 }
