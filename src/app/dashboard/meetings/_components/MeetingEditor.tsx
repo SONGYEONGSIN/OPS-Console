@@ -8,9 +8,14 @@ import "@blocknote/mantine/style.css";
 import "./meeting-editor.css";
 import { saveMeetingContent } from "@/features/meetings/actions";
 
-type Props = { id: string; initialContent: unknown[] };
+type Props = {
+  id: string;
+  initialContent: unknown[];
+  /** 편집 중 내용을 부모로 실시간 전달 (좌측 문서 미리보기용) */
+  onContentChange?: (blocks: unknown[]) => void;
+};
 
-export function MeetingEditor({ id, initialContent }: Props) {
+export function MeetingEditor({ id, initialContent, onContentChange }: Props) {
   const editor = useCreateBlockNote({
     initialContent:
       initialContent.length > 0
@@ -28,6 +33,7 @@ export function MeetingEditor({ id, initialContent }: Props) {
   );
 
   function handleChange() {
+    onContentChange?.(editor.document);
     setStatus("saving");
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {

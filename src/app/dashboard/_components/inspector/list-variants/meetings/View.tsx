@@ -247,7 +247,7 @@ export function MeetingView({ row }: ViewProps) {
             href={`/dashboard/meetings/${row.id}`}
             className="block w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:bg-washi-raised"
           >
-            회의록 편집·PDF·메일 화면 열기
+            회의록 내용 보기
           </Link>
 
           <Divider />
