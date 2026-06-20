@@ -77,7 +77,7 @@ export default async function IncidentReportEditorPage({
   const config = resolvePageMeta("incidents", meta);
 
   return (
-    <div className="flex h-[calc(100dvh-52px)] min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <PageHeader
         pathname="/dashboard/incidents"
         meta={config.meta}
