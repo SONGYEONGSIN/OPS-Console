@@ -43,7 +43,7 @@ describe("MeetingView (회의내용/회의문서 2탭)", () => {
     expect(screen.getByText("안건")).toBeInTheDocument();
     expect(screen.getByText("예산 검토")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /편집·PDF·메일 화면 열기/ }),
+      screen.getByRole("link", { name: /회의록 내용 보기/ }),
     ).toBeInTheDocument();
   });
 
