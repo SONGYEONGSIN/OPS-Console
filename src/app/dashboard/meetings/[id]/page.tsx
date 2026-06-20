@@ -12,5 +12,11 @@ export default async function MeetingEditPage({
   const { id } = await params;
   const meeting = await getMeeting(id);
   if (!meeting) notFound();
-  return <MeetingEditorWorkspace meeting={meeting} />;
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <section className="flex min-h-0 flex-1 flex-col px-5 py-3 md:px-6 lg:px-7">
+        <MeetingEditorWorkspace meeting={meeting} />
+      </section>
+    </div>
+  );
 }
