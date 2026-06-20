@@ -147,7 +147,7 @@ export function IncidentReportView({
       <button
         type="button"
         onClick={() => router.push(`/dashboard/incident-reports/${row.id}`)}
-        className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi-raised"
+        className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
       >
         경위서 내용 보기
       </button>
