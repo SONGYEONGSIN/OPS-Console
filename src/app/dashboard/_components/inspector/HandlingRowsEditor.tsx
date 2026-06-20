@@ -39,7 +39,8 @@ export function HandlingRowsEditor({
               aria-label={`처리 시간 ${i + 1}`}
               value={r.time}
               onChange={(e) => updateRow(i, { time: e.target.value })}
-              className={`${cellClass} w-44 flex-none`}
+              onClick={(e) => e.currentTarget.showPicker?.()}
+              className={`${cellClass} w-40 flex-none cursor-pointer`}
             />
             <textarea
               aria-label={`처리 내용 ${i + 1}`}
