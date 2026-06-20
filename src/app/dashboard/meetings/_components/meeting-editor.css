@@ -33,24 +33,26 @@
   color: var(--ink-soft);
 }
 
-/* 헤딩 위계 — 기본값이 과하게 커서 절제된 크기로 (노션식 위계) */
+/* 헤딩 위계 — BlockNote는 font-size:var(--level)로 동작(기본 level2=2em으로 과대).
+   --level 변수를 절제된 값으로 오버라이드(노션식 위계). --prev-level은 헤딩 뒤 블록 간격용. */
 .meeting-editor .bn-block-content[data-content-type="heading"] {
   color: var(--ink);
+  --level: 1.5em; /* 기본/level1 */
 }
-.meeting-editor .bn-block-content[data-level="1"] {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-top: 0.4em;
+.meeting-editor .bn-block-content[data-content-type="heading"][data-level="2"] {
+  --level: 1.25em;
 }
-.meeting-editor .bn-block-content[data-level="2"] {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin-top: 0.6em;
+.meeting-editor .bn-block-content[data-content-type="heading"][data-level="3"] {
+  --level: 1.1em;
 }
-.meeting-editor .bn-block-content[data-level="3"] {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 0.4em;
+.meeting-editor [data-prev-level="1"] {
+  --prev-level: 1.5em;
+}
+.meeting-editor [data-prev-level="2"] {
+  --prev-level: 1.25em;
+}
+.meeting-editor [data-prev-level="3"] {
+  --prev-level: 1.1em;
 }
 
 /* placeholder 색 — 은은하게 */
