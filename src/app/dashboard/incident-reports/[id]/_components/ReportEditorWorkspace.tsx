@@ -176,11 +176,13 @@ export function ReportEditorWorkspace({
     label,
     textarea,
     grow = false,
+    rows = 6,
   }: {
     key: TextKey;
     label: string;
     textarea: boolean;
     grow?: boolean;
+    rows?: number;
   }) {
     return (
       <label
@@ -194,7 +196,7 @@ export function ReportEditorWorkspace({
           <textarea
             aria-label={label}
             value={draft[key]}
-            rows={grow ? undefined : 6}
+            rows={grow ? undefined : rows}
             maxLength={5000}
             onChange={(e) => setField(key, e.target.value)}
             className={`${inputClass} resize-y ${grow ? "min-h-[8rem] flex-1" : ""}`}
@@ -335,7 +337,9 @@ export function ReportEditorWorkspace({
               <HandlingRowsEditor rows={rows} onChange={setRows} />
               </div>
 
-              <div className="mt-3">{renderField(POST_FIELDS[0])}</div>
+              <div className="mt-3">
+                {renderField({ ...POST_FIELDS[0], rows: 5 })}
+              </div>
             </div>
             <div className="mt-3 space-y-2">
               {error && <p className="text-xs text-vermilion">{error}</p>}
