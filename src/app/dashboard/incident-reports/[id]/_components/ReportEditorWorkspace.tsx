@@ -217,9 +217,9 @@ export function ReportEditorWorkspace({
   }
 
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex min-h-0 flex-1 gap-4">
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="bg-paper p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-paper p-6">
           <FormPage model={model} page={page} />
         </div>
         <div className="mt-3 flex items-center justify-center gap-3 text-sm">
@@ -253,8 +253,8 @@ export function ReportEditorWorkspace({
           </span>
         </div>
         {editable ? (
-          <div className="flex flex-col">
-            <div className="flex flex-col pr-1">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
               <div className="space-y-3">
               {/* 수신대학·서비스명·제목 — 연결 사고에서 동기화(읽기전용) */}
               <div className="space-y-1 border-b border-line pb-2 text-xs">
@@ -339,9 +339,7 @@ export function ReportEditorWorkspace({
               <HandlingRowsEditor rows={rows} onChange={setRows} />
               </div>
 
-              <div className="mt-3">
-                {renderField({ ...POST_FIELDS[0], rows: 5 })}
-              </div>
+              <div className="mt-3">{renderField(POST_FIELDS[0])}</div>
             </div>
             <div className="mt-3 space-y-2">
               {error && <p className="text-xs text-vermilion">{error}</p>}
