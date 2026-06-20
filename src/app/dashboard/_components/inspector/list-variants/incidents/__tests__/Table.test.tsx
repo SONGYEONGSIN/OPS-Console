@@ -26,7 +26,7 @@ describe("IncidentTable 경위서 상태 배지", () => {
     expect(screen.getByText("없음")).toBeInTheDocument();
   });
 
-  it("draft → '작성중', pending_approval → '승인대기', sent → '발송완료'", () => {
+  it("draft → '작성 중', pending_approval → '승인대기', sent → '발송완료'", () => {
     render(
       <IncidentTable
         rows={[
@@ -38,7 +38,7 @@ describe("IncidentTable 경위서 상태 배지", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.getByText("작성중")).toBeInTheDocument();
+    expect(screen.getByText("작성 중")).toBeInTheDocument();
     expect(screen.getByText("승인대기")).toBeInTheDocument();
     expect(screen.getByText("발송완료")).toBeInTheDocument();
   });

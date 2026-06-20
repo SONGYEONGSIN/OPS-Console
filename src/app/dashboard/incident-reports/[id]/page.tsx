@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { findSidebarMeta } from "../../_data";
-import { resolvePageMeta } from "../../_data/page-meta-derive";
 import { PdfButton } from "./_components/PdfButton";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
@@ -73,8 +72,6 @@ export default async function IncidentReportEditorPage({
     ceoRole: report.ceo_role ?? liveChain?.ceo?.role ?? null,
   };
 
-  const config = resolvePageMeta("incidents", meta);
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <section className="flex min-h-0 flex-1 flex-col p-5 md:p-6 lg:p-7">
@@ -82,18 +79,12 @@ export default async function IncidentReportEditorPage({
             오른쪽 w-[360px] 스페이서가 편집 패널 폭과 같아 PDF가 뷰어 영역 우측 끝에 정렬됨. */}
         <header className="mb-4 flex gap-4">
           <div className="flex min-w-0 flex-1 items-center justify-between">
-            <div className="flex min-w-0 items-center gap-3">
-              <Link
-                href="/dashboard/incidents"
-                className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
-              >
-                ← 목록 이동
-              </Link>
-              <span className="truncate text-sm font-bold text-ink">
-                {config.headline.title}
-                {config.headline.accent ? ` ${config.headline.accent}` : ""}
-              </span>
-            </div>
+            <Link
+              href="/dashboard/incidents"
+              className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+            >
+              ← 목록 이동
+            </Link>
             <PdfButton reportId={report.id} />
           </div>
           <div className="w-[360px] shrink-0" aria-hidden />
