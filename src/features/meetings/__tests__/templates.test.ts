@@ -5,15 +5,17 @@ describe("buildSeedBlocks", () => {
   it("외근·출장 보고 시드 섹션", () => {
     expect(MEETING_SEED_HEADINGS.field).toEqual([
       "방문 개요",
+      "목적",
       "면담 내용",
       "주요 결과",
+      "이슈·특이사항",
       "후속조치",
     ]);
   });
   it("각 헤딩은 heading 블록 + 빈 후속 블록", () => {
     const blocks = buildSeedBlocks("memo");
     const headings = blocks.filter((b) => b.type === "heading").map((b) => b.content);
-    expect(headings).toEqual(["논의 주제", "메모", "액션아이템"]);
+    expect(headings).toEqual(["논의 주제", "메모", "액션아이템", "다음 체크인"]);
   });
   it("액션아이템 헤딩 뒤 checkListItem", () => {
     const blocks = buildSeedBlocks("regular");
