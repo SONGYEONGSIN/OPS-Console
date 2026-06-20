@@ -91,7 +91,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
               type="button"
               disabled={busy}
               onClick={send}
-              className="border border-ink bg-ink px-3 py-1 text-sm text-cream disabled:opacity-50"
+              className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
             >
               메일 발송
             </button>

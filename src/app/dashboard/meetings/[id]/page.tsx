@@ -14,7 +14,7 @@ export default async function MeetingEditPage({
   if (!meeting) notFound();
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <section className="flex min-h-0 flex-1 flex-col px-5 py-3 md:px-6 lg:px-7">
+      <section className="flex min-h-0 flex-1 flex-col px-5 pb-3 pt-6 md:px-6 lg:px-7">
         <MeetingEditorWorkspace meeting={meeting} />
       </section>
     </div>
