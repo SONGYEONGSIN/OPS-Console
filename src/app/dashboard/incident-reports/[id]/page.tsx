@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { findSidebarMeta } from "../../_data";
 import { resolvePageMeta } from "../../_data/page-meta-derive";
-import { PageHeader } from "../../_components/page-header/PageHeader";
 import { PdfButton } from "./_components/PdfButton";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
@@ -77,24 +76,24 @@ export default async function IncidentReportEditorPage({
   const config = resolvePageMeta("incidents", meta);
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        pathname="/dashboard/incidents"
-        meta={config.meta}
-        headline={config.headline}
-        description={config.description}
-      />
-      <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
-        {/* 워크스페이스 컬럼 폭에 맞춰 — 좌측 뒤로가기 + 공문 뷰어 우측 끝에 PDF.
+    <div className="flex h-full min-h-0 flex-col">
+      <section className="flex min-h-0 flex-1 flex-col p-5 md:p-6 lg:p-7">
+        {/* 컴팩트 헤더 — 좌측 목록 이동 + 제목, 우측 끝(문서 뷰어 폭)에 PDF.
             오른쪽 w-[360px] 스페이서가 편집 패널 폭과 같아 PDF가 뷰어 영역 우측 끝에 정렬됨. */}
         <header className="mb-4 flex gap-4">
           <div className="flex min-w-0 flex-1 items-center justify-between">
-            <Link
-              href="/dashboard/incidents"
-              className="inline-flex items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
-            >
-              ← 목록 이동
-            </Link>
+            <div className="flex min-w-0 items-center gap-3">
+              <Link
+                href="/dashboard/incidents"
+                className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+              >
+                ← 목록 이동
+              </Link>
+              <span className="truncate text-sm font-bold text-ink">
+                {config.headline.title}
+                {config.headline.accent ? ` ${config.headline.accent}` : ""}
+              </span>
+            </div>
             <PdfButton reportId={report.id} />
           </div>
           <div className="w-[360px] shrink-0" aria-hidden />

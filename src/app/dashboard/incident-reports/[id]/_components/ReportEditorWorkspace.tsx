@@ -335,7 +335,10 @@ export function ReportEditorWorkspace({
               <HandlingRowsEditor rows={rows} onChange={setRows} />
               </div>
 
-              <div className="mt-3">{renderField(POST_FIELDS[0])}</div>
+              {/* 대책 — 남은 높이를 채워 박스 하단이 좌측 문서 영역 하단과 정렬 */}
+              <div className="mt-3 flex min-h-0 flex-1 flex-col">
+                {renderField({ ...POST_FIELDS[0], grow: true })}
+              </div>
             </div>
             <div className="mt-3 space-y-2">
               {error && <p className="text-xs text-vermilion">{error}</p>}
