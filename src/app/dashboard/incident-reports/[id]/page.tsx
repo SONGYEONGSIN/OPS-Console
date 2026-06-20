@@ -91,9 +91,9 @@ export default async function IncidentReportEditorPage({
           <div className="flex min-w-0 flex-1 items-center justify-between">
             <Link
               href="/dashboard/incidents"
-              className="text-vermilion hover:underline"
+              className="inline-flex items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
             >
-              ← 사고 보고 목록
+              ← 목록 이동
             </Link>
             <PdfButton reportId={report.id} />
           </div>
