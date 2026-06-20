@@ -83,7 +83,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
               href={`/api/meetings/${meeting.id}/pdf`}
               target="_blank"
               rel="noreferrer"
-              className="border border-ink px-3 py-1 text-sm hover:bg-ink hover:text-cream"
+              className="border border-vermilion bg-vermilion px-3 py-1 text-sm text-cream transition-colors hover:bg-vermilion-deep"
             >
               PDF
             </a>
@@ -102,7 +102,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
 
       <div className="flex min-h-0 flex-1 gap-4">
         {/* 좌측 — 실제 문서 미리보기 (편집 내용 실시간 반영, 내부 스크롤) */}
-        <div className="min-w-0 flex-1 overflow-y-auto">
+        <div className="min-w-0 flex-1 overflow-y-auto px-2 pt-2">
           <MeetingDocument
             title={title}
             typeLabel={MEETING_TYPE_LABELS[meeting.type]}
