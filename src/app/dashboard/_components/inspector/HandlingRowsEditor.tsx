@@ -3,7 +3,7 @@
 import type { HandlingRow } from "@/features/incident-reports/schemas";
 
 const cellClass =
-  "border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none";
+  "border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:bg-situation-bg focus:outline-none";
 
 /**
  * 처리(시간/내용) 행 편집기 — 경위서·사고보고 공용.
