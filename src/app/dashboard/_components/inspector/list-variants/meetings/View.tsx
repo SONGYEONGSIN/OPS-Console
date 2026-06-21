@@ -10,6 +10,7 @@ import {
   type PdfNode,
   type PdfRun,
 } from "@/features/meetings/pdf-model";
+import { isMeetingDoc } from "@/features/meetings/form-model";
 import {
   MEETING_TYPE_LABELS,
   MEETING_STATUS_LABELS,
@@ -183,7 +184,24 @@ export function MeetingView({ row }: ViewProps) {
   const [tab, setTab] = useState<"content" | "document">("content");
   const type = (row.meetingType ?? "regular") as MeetingType;
   const status = (row.meetingStatus ?? "draft") as MeetingStatus;
-  const nodes = blocksToPdfModel((row.meetingContent ?? []) as Parameters<typeof blocksToPdfModel>[0]);
+  // v2 양식이면 섹션 제목을 heading 노드로 요약(전체 양식·표는 편집 화면에서).
+  // v1(BlockNote 블록 배열)이면 기존 변환.
+  const v2doc = isMeetingDoc(row.meetingContent) ? row.meetingContent : null;
+  const nodes: PdfNode[] = v2doc
+    ? v2doc.sections.flatMap((s) =>
+        "title" in s
+          ? [
+              {
+                kind: "heading" as const,
+                level: 2 as const,
+                runs: [{ text: s.title, bold: false, italic: false }],
+              },
+            ]
+          : [],
+      )
+    : blocksToPdfModel(
+        (row.meetingContent ?? []) as Parameters<typeof blocksToPdfModel>[0],
+      );
   const sections = groupByHeading(nodes);
   const attendees = row.meetingAttendees ?? [];
 

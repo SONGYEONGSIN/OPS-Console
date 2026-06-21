@@ -481,8 +481,8 @@ export type ListRow = {
   meetingLocation?: string | null;
   /** meetings variant — 참석자 목록 */
   meetingAttendees?: string[];
-  /** meetings variant — 회의 내용 블록(BlockNote content). 인스펙터 미리보기/문서 렌더용 */
-  meetingContent?: unknown[];
+  /** meetings variant — 회의 내용. v1=BlockNote 블록 배열 / v2=MeetingDoc 객체 */
+  meetingContent?: unknown;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
