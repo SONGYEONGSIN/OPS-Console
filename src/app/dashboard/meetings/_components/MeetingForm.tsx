@@ -91,6 +91,7 @@ export function MeetingForm({
             !(sec.idx && i === 0) && !(sec.status && i === sec.headers.length - 1),
         ).length;
         return (
+          <>
           <div className="register">
             <div className="reg-row head" style={{ gridTemplateColumns: cols }}>
               {sec.headers.map((h, i) => (
@@ -157,27 +158,28 @@ export function MeetingForm({
                 </div>
               );
             })}
-            <div className="addrow left">
-              <button
-                type="button"
-                className="addbtn"
-                onClick={() =>
-                  patchSection(si, {
-                    ...sec,
-                    rows: [
-                      ...sec.rows,
-                      {
-                        cells: Array.from({ length: dataCols }, () => ""),
-                        status: sec.status ? "talk" : undefined,
-                      },
-                    ],
-                  })
-                }
-              >
-                ＋ 행 추가
-              </button>
-            </div>
           </div>
+          <div className="addrow left">
+            <button
+              type="button"
+              className="addbtn"
+              onClick={() =>
+                patchSection(si, {
+                  ...sec,
+                  rows: [
+                    ...sec.rows,
+                    {
+                      cells: Array.from({ length: dataCols }, () => ""),
+                      status: sec.status ? "talk" : undefined,
+                    },
+                  ],
+                })
+              }
+            >
+              ＋ 행 추가
+            </button>
+          </div>
+          </>
         );
       }
       case "ledger":
