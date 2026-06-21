@@ -111,7 +111,7 @@ export function MeetingForm({
                     if (sec.idx && i === 0)
                       return (
                         <div key={i} className="rc idx">
-                          {ri + 1}
+                          {String(ri + 1).padStart(2, "0")}
                         </div>
                       );
                     if (sec.status && i === sec.headers.length - 1) {
@@ -351,7 +351,7 @@ export function MeetingForm({
               {sec.items.map((t, ii) => (
                 <div key={ii} className={isNotes ? "note" : "sitem"}>
                   <span className={isNotes ? "rev" : "bullet"}>
-                    {isNotes ? "" : "•"}
+                    {isNotes ? String(ii + 1).padStart(2, "0") : "•"}
                   </span>
                   <Editable
                     className="tx"

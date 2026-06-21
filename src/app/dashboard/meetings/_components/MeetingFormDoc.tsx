@@ -33,7 +33,7 @@ function TableSection({ sec }: { sec: Extract<Section, { kind: "table" }> }) {
               if (sec.idx && i === 0)
                 return (
                   <div key={i} className="rc idx">
-                    {ri + 1}
+                    {String(ri + 1).padStart(2, "0")}
                   </div>
                 );
               if (sec.status && i === sec.headers.length - 1) {
@@ -122,7 +122,7 @@ function SectionBody({ sec }: { sec: Section }) {
         <div className="notes">
           {sec.items.map((t, i) => (
             <div key={i} className="note">
-              <span className="rev" />
+              <span className="rev">{String(i + 1).padStart(2, "0")}</span>
               <div className="tx">{t}</div>
             </div>
           ))}
