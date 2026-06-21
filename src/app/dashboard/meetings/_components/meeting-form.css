@@ -184,3 +184,10 @@
 .meeting-form .mf-save{font-family:var(--mono);font-size:11px;color:var(--muted)}
 .meeting-form .mf-status{font-family:var(--mono);font-size:11px;font-weight:700;background:var(--hair);color:var(--ink);padding:3px 9px}
 .meeting-form .mf-status.draft{background:var(--redline);color:#fff}
+
+/* 삭제 계열 추가버튼 (안건 삭제 등) — 빨간 점선 */
+.meeting-form .addbtn.danger{color:var(--redline);border-color:var(--redline)}
+.meeting-form .addbtn.danger:hover{background:var(--redline);color:#fff;border-style:solid}
+
+/* 안건 내 추가버튼 줄(Q&A추가/안건삭제)이 ledger 세로 점선을 가리도록 흰 배경 */
+.meeting-form .agenda-block .addrow{position:relative;z-index:2;background:var(--paper)}

@@ -182,6 +182,7 @@ export function MeetingForm({
       }
       case "ledger":
         return (
+          <>
           <div className="ledger">
             {sec.stations.map((st, sti) => (
               <div key={sti} className="agenda-block">
@@ -296,31 +297,44 @@ export function MeetingForm({
                     >
                       ＋ Q&A 추가
                     </button>
+                    <button
+                      type="button"
+                      className="addbtn danger"
+                      onClick={() =>
+                        patchSection(si, {
+                          ...sec,
+                          stations: sec.stations.filter((_, k) => k !== sti),
+                        })
+                      }
+                    >
+                      안건 삭제
+                    </button>
                   </div>
                 </div>
               </div>
             ))}
-            <div className="addrow left">
-              <button
-                type="button"
-                className="addbtn"
-                onClick={() =>
-                  patchSection(si, {
-                    ...sec,
-                    stations: [
-                      ...sec.stations,
-                      {
-                        title: "",
-                        threads: [{ q: "", a: "", status: "talk" }],
-                      },
-                    ],
-                  })
-                }
-              >
-                ＋ 안건 추가
-              </button>
-            </div>
           </div>
+          <div className="addrow">
+            <button
+              type="button"
+              className="addbtn"
+              onClick={() =>
+                patchSection(si, {
+                  ...sec,
+                  stations: [
+                    ...sec.stations,
+                    {
+                      title: "",
+                      threads: [{ q: "", a: "", status: "talk" }],
+                    },
+                  ],
+                })
+              }
+            >
+              ＋ 안건 추가
+            </button>
+          </div>
+          </>
         );
       case "kv":
         return (
