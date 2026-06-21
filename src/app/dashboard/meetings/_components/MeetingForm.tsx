@@ -57,9 +57,23 @@ function gridCols(headers: string[], idx: boolean, status: boolean): string {
 export function MeetingForm({
   doc,
   onChange,
+  masthead,
 }: {
   doc: MeetingDoc;
   onChange: (doc: MeetingDoc) => void;
+  /** 마스트헤드(유형/제목/일시·장소·참석자) — 워크스페이스에서 메타 편집 주입 */
+  masthead?: {
+    typeLabel: string;
+    title: string;
+    onTitle: (v: string) => void;
+    dateValue: string;
+    location: string;
+    attendees: string;
+    onDate: (v: string) => void;
+    onLocation: (v: string) => void;
+    onAttendees: (v: string) => void;
+    onMetaBlur: () => void;
+  };
 }) {
   // 섹션 i를 patch한 새 doc 전달
   const patchSection = (i: number, sec: Section) =>
@@ -393,6 +407,53 @@ export function MeetingForm({
     <div className="meeting-form">
       <div className="paper">
         <div className="sheet">
+          {masthead && (
+            <>
+              <div className="dispatch">{masthead.typeLabel} 회의록</div>
+              <div className="title-wrap">
+                <h1>
+                  <Editable
+                    value={masthead.title}
+                    placeholder="제목 없음"
+                    onCommit={masthead.onTitle}
+                  />
+                </h1>
+                <div className="dateline">
+                  <div>
+                    일시{" "}
+                    <input
+                      type="datetime-local"
+                      value={masthead.dateValue}
+                      onChange={(e) => masthead.onDate(e.target.value)}
+                      onBlur={masthead.onMetaBlur}
+                      onClick={(e) => e.currentTarget.showPicker?.()}
+                      className="mf-meta-input"
+                    />
+                  </div>
+                  <div>
+                    장소{" "}
+                    <input
+                      value={masthead.location}
+                      onChange={(e) => masthead.onLocation(e.target.value)}
+                      onBlur={masthead.onMetaBlur}
+                      placeholder="—"
+                      className="mf-meta-input"
+                    />
+                  </div>
+                  <div>
+                    참석{" "}
+                    <input
+                      value={masthead.attendees}
+                      onChange={(e) => masthead.onAttendees(e.target.value)}
+                      onBlur={masthead.onMetaBlur}
+                      placeholder="쉼표로 구분"
+                      className="mf-meta-input"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
           {doc.titleBlock.length > 0 && (
             <div className="titleblock">
               {doc.titleBlock.map((tb, i) => (

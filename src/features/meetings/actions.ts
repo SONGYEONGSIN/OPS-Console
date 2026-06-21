@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { buildSeedBlocks } from "./templates";
+import { buildSeedDoc } from "./form-templates";
 import { meetingMetaSchema, type MeetingType } from "./schemas";
 import { canRevokeSend } from "./actions-guard";
 
@@ -16,7 +16,7 @@ export async function createMeeting(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("meetings")
-    .insert({ type, author_email: me.email, content: buildSeedBlocks(type) })
+    .insert({ type, author_email: me.email, content: buildSeedDoc(type) })
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
@@ -46,7 +46,7 @@ export async function updateMeetingMeta(
 
 export async function saveMeetingContent(
   id: string,
-  content: unknown[],
+  content: unknown,
 ): Promise<{ ok: boolean; error?: string }> {
   const me = await getCurrentOperator();
   if (!me?.email) return { ok: false, error: "인증이 필요합니다." };
