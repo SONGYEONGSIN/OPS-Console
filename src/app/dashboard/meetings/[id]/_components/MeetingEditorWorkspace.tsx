@@ -74,29 +74,15 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* 상단바 — 목록 이동 / PDF / 메일 발송 */}
+      {/* 상단바 — 목록 이동 / PDF / 메일 발송 (저장표시·상태배지는 문서 영역 안으로) */}
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard/meetings"
-            className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
-          >
-            ← 목록 이동
-          </Link>
-          <span className="text-xs text-muted">
-            {saved ? "✓ 자동 저장됨" : "저장 중…"}
-          </span>
-        </div>
+        <Link
+          href="/dashboard/meetings"
+          className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+        >
+          ← 목록 이동
+        </Link>
         <div className="flex items-center gap-2">
-          <span
-            className={`inline-block px-2 py-0.5 text-2xs ${
-              meeting.status === "draft"
-                ? "bg-vermilion text-cream"
-                : "bg-line-soft text-ink-soft"
-            }`}
-          >
-            {MEETING_STATUS_LABELS[meeting.status]}
-          </span>
           <a
             href={`/api/meetings/${meeting.id}/pdf`}
             target="_blank"
@@ -123,6 +109,9 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
             onChange={onDocChange}
             masthead={{
               typeLabel: MEETING_TYPE_LABELS[meeting.type],
+              saveLabel: saved ? "✓ 자동 저장됨" : "저장 중…",
+              statusLabel: MEETING_STATUS_LABELS[meeting.status],
+              statusDraft: meeting.status === "draft",
               title,
               onTitle: (v) => {
                 setTitle(v);

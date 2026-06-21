@@ -1,7 +1,7 @@
 /* 회의록 v2 양식 스타일 — docs/meeting-templates.html 이식.
    전역 오염 방지 위해 .meeting-form 스코프. 색은 앱 토큰으로 매핑(navy→ink/vermilion). */
 .meeting-form{
-  --ink:#15120c; --ink-2:#3d3529; --paper:#fdfdfb; --grid:rgba(21,18,12,.05); --hair:#d8cfbb;
+  --ink:#15120c; --ink-2:#3d3529; --paper:#ffffff; --grid:rgba(21,18,12,.035); --hair:#d8cfbb;
   --redline:#b8331e; --muted:#716855;
   --talk:#d97706; --done:#556b2f; --follow:#b8331e; --hold:#a8a08a;
   --accent:#15120c;
@@ -176,3 +176,9 @@
   background:transparent;border:none;border-bottom:1px dotted var(--hair);text-align:right;
   padding:1px 2px;min-width:120px;outline:none}
 .meeting-form .mf-meta-input:focus{border-bottom-color:var(--accent);background:#fff}
+
+/* 문서 영역 상단 — 좌: 자동저장 표시 / 우: 상태 배지 */
+.meeting-form .mf-statusbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.meeting-form .mf-save{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.meeting-form .mf-status{font-family:var(--mono);font-size:11px;font-weight:700;background:var(--hair);color:var(--ink);padding:3px 9px}
+.meeting-form .mf-status.draft{background:var(--redline);color:#fff}
