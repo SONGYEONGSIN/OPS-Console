@@ -178,7 +178,7 @@ function V2SectionBody({ sec }: { sec: Section }) {
                 if (sec.idx && i === 0)
                   return (
                     <Text style={s.td} key={i}>
-                      {ri + 1}
+                      {String(ri + 1).padStart(2, "0")}
                     </Text>
                   );
                 if (sec.status && i === dataCols - 1)
