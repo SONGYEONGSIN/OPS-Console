@@ -15,9 +15,6 @@
     "design-sync": "node scripts/design-sync.mjs"
   },
   "dependencies": {
-    "@blocknote/core": "^0.51.4",
-    "@blocknote/mantine": "^0.51.4",
-    "@blocknote/react": "^0.51.4",
     "@google/generative-ai": "^0.24.1",
     "@react-pdf/renderer": "^4.5.1",
     "@sentry/nextjs": "^10.54.0",
