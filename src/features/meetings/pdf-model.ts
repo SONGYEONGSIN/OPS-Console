@@ -37,6 +37,19 @@ function toRuns(content: unknown): PdfRun[] {
   return a;
 }
 
+/** 표 셀 → runs. 셀은 string(시드) / inline content array / tableCell 객체(에디터 저장) 모두 처리. */
+function cellRuns(cell: unknown): PdfRun[] {
+  if (typeof cell === "string") {
+    return cell ? [{ text: cell, bold: false, italic: false }] : [];
+  }
+  if (Array.isArray(cell)) return toRuns(cell);
+  // BlockNote 정규화 형태: { type:"tableCell", content:[...] }
+  if (cell && typeof cell === "object" && "content" in cell) {
+    return toRuns((cell as { content: unknown }).content);
+  }
+  return [];
+}
+
 export function blocksToPdfModel(blocks: Block[]): PdfNode[] {
   const out: PdfNode[] = [];
   for (const b of blocks ?? []) {
@@ -67,13 +80,7 @@ export function blocksToPdfModel(blocks: Block[]): PdfNode[] {
           | { headerRows?: number; rows?: { cells?: unknown[] }[] }
           | undefined;
         const rows = (tc?.rows ?? []).map((r) =>
-          (r.cells ?? []).map((cell) =>
-            typeof cell === "string"
-              ? cell
-                ? [{ text: cell, bold: false, italic: false }]
-                : []
-              : toRuns(cell),
-          ),
+          (r.cells ?? []).map((cell) => cellRuns(cell)),
         );
         out.push({ kind: "table", headerRows: tc?.headerRows ?? 0, rows });
         break;
