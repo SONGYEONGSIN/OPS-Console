@@ -434,8 +434,8 @@ export function MeetingForm({
                   />
                 </h1>
                 <div className="dateline">
-                  <div>
-                    일시{" "}
+                  <div className="mf-meta-row">
+                    <span className="mf-meta-label">일시</span>
                     <input
                       type="datetime-local"
                       value={masthead.dateValue}
@@ -445,8 +445,8 @@ export function MeetingForm({
                       className="mf-meta-input"
                     />
                   </div>
-                  <div>
-                    장소{" "}
+                  <div className="mf-meta-row">
+                    <span className="mf-meta-label">장소</span>
                     <input
                       value={masthead.location}
                       onChange={(e) => masthead.onLocation(e.target.value)}
