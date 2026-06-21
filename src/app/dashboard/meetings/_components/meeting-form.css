@@ -1,0 +1,172 @@
+/* 회의록 v2 양식 스타일 — docs/meeting-templates.html 이식.
+   전역 오염 방지 위해 .meeting-form 스코프. 색은 앱 토큰으로 매핑(navy→ink/vermilion). */
+.meeting-form{
+  --ink:#15120c; --ink-2:#3d3529; --paper:#fdfdfb; --grid:rgba(21,18,12,.05); --hair:#d8cfbb;
+  --redline:#b8331e; --muted:#716855;
+  --talk:#d97706; --done:#556b2f; --follow:#b8331e; --hold:#a8a08a;
+  --accent:#15120c;
+  --mono:"Pretendard",system-ui,sans-serif; --page:215mm;
+  font-family:"Pretendard",system-ui,sans-serif; color:var(--ink); line-height:1.55; font-size:14px;
+}
+  .meeting-form *{box-sizing:border-box;margin:0;padding:0}
+.meeting-form .mono{font-family:var(--mono)}
+.meeting-form /* toolbar */
+  .bar{max-width:var(--page);margin:0 auto 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meeting-form .bar .sp{flex:1}
+.meeting-form .b{font-family:var(--mono);font-size:13px;font-weight:700;border:1.5px solid var(--ink);background:#fff;color:var(--ink);
+     padding:9px 16px;border-radius:0;cursor:pointer;transition:.12s}
+.meeting-form .b:hover{background:var(--ink);color:#fff}
+.meeting-form .b.accent{border-color:var(--accent);color:#fff;background:var(--accent)}
+.meeting-form .b.accent:hover{filter:brightness(.88)}
+.meeting-form .b.red{border-color:var(--redline);color:var(--redline)}
+.meeting-form .b.red:hover{background:var(--redline);color:#fff}
+.meeting-form .bar .tip{font-family:var(--mono);font-size:11px;color:#5d6e86}
+.meeting-form /* paper */
+  .paper{max-width:var(--page);margin:0 auto;background:var(--paper);box-shadow:0 10px 34px rgba(15,38,71,.18);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:22px 22px;background-position:-1px -1px;border:1.5px solid var(--accent);position:relative}
+.meeting-form .sheet{padding:34px 40px 60px;position:relative}
+.meeting-form .paper::before, .meeting-form .paper::after{content:'';position:absolute;width:16px;height:16px;border:2px solid var(--accent);pointer-events:none}
+.meeting-form .paper::before{top:10px;left:10px;border-right:none;border-bottom:none}
+.meeting-form .paper::after{bottom:10px;right:10px;border-left:none;border-top:none}
+.meeting-form /* masthead */
+  .dispatch{font-family:var(--mono);font-size:12.5px;letter-spacing:.01em;color:var(--accent);
+    font-weight:800;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.meeting-form .dispatch::after{content:'';flex:1;height:1.5px;background:repeating-linear-gradient(90deg,var(--accent) 0 7px,transparent 7px 13px)}
+.meeting-form .title-wrap{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.meeting-form h1{font-size:42px;font-weight:900;letter-spacing:-.03em;line-height:.95;color:var(--accent)}
+.meeting-form h1 .sub{display:block;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.01em;color:var(--ink-2);margin-top:8px}
+.meeting-form .dateline{font-family:var(--mono);font-size:12px;color:var(--ink-2);text-align:right;line-height:1.7}
+.meeting-form .dateline b{color:var(--ink)}
+.meeting-form /* title block */
+  .titleblock{margin-top:24px;border:2px solid var(--accent);background:rgba(252,253,255,.85);display:grid;grid-template-columns:repeat(4,1fr)}
+.meeting-form .tb{border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);padding:8px 11px;min-height:50px}
+.meeting-form .tb:nth-child(4n){border-right:none}
+.meeting-form .tb.w2{grid-column:span 2}
+.meeting-form .tb.w4{grid-column:span 4;border-right:none}
+.meeting-form .tb.last{border-bottom:none}
+.meeting-form .tb .k{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.01em;color:var(--muted)}
+.meeting-form .tb .v{font-size:13.5px;font-weight:500;margin-top:2px;color:var(--ink)}
+.meeting-form /* section label */
+  .seclabel{display:flex;align-items:center;gap:12px;margin:34px 0 18px}
+.meeting-form .seclabel .no{font-family:var(--mono);font-size:13px;font-weight:700;color:#fff;background:var(--accent);padding:3px 9px;letter-spacing:.05em}
+.meeting-form .seclabel h2{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.meeting-form .seclabel .rule{flex:1;height:1px;background:var(--hair)}
+.meeting-form /* ledger spine */
+  .ledger{position:relative;padding:4px 0}
+.meeting-form .ledger::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:2px;
+    background:repeating-linear-gradient(var(--accent) 0 6px,transparent 6px 12px);transform:translateX(-1px)}
+.meeting-form .station{position:relative;text-align:center;margin:8px 0 18px;z-index:2}
+.meeting-form .station span{display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:#fff;padding:6px 16px 6px 8px;font-weight:800;font-size:14.5px}
+.meeting-form .station .sn{font-family:var(--mono);font-size:12px;background:#fff;color:var(--accent);padding:1px 7px;font-weight:700}
+.meeting-form .thread{position:relative;margin:0 0 4px}
+.meeting-form .node{position:absolute;left:50%;top:14px;transform:translate(-50%,-50%);z-index:3;width:30px;height:30px;border-radius:50%;
+    background:var(--paper);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent)}
+.meeting-form .ex{display:flex;margin-bottom:8px;position:relative}
+.meeting-form .ex .card{width:60%;border:1.5px solid var(--hair);background:#fff;padding:10px 13px;position:relative}
+.meeting-form .ex.q{justify-content:flex-start}
+.meeting-form .ex.a{justify-content:flex-end}
+.meeting-form .ex.q .card{border-left:3px solid var(--ink-2)}
+.meeting-form .ex.a .card{border-right:3px solid var(--done)}
+.meeting-form .ex.q .card::after, .meeting-form .ex.a .card::after{content:'';position:absolute;top:16px;width:40%;height:1.5px;background:var(--hair)}
+.meeting-form .ex.q .card::after{left:100%}
+.meeting-form .ex.a .card::after{right:100%}
+.meeting-form .who{font-family:var(--mono);font-size:11px;font-weight:700;display:inline-block;margin-bottom:4px;padding:1px 7px}
+.meeting-form .ex.q .who{color:var(--ink-2);background:#eef3fb}
+.meeting-form .ex.a .who{color:var(--done);background:#e8f5ef}
+.meeting-form .ex .body{font-size:13.5px;line-height:1.6}
+.meeting-form /* stamp */
+  .stamp{position:absolute;top:2px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.04em;padding:3px 9px;
+    border:1.5px solid;transform:rotate(-4deg);cursor:pointer;user-select:none;white-space:nowrap;transition:.12s;z-index:4;background:rgba(255,255,255,.9)}
+.meeting-form .ex.q .stamp{right:2px}
+.meeting-form .stamp:hover{transform:rotate(-4deg) scale(1.05)}
+.meeting-form .stamp.st-talk{color:var(--talk);border-color:var(--talk)}
+.meeting-form .stamp.st-done{color:var(--done);border-color:var(--done)}
+.meeting-form .stamp.st-follow{color:var(--follow);border-color:var(--follow)}
+.meeting-form .stamp.st-hold{color:var(--hold);border-color:var(--hold)}
+.meeting-form .thread-tools{text-align:center;margin:2px 0 16px;position:relative;z-index:2}
+.meeting-form /* generic grid table (register / timeline / raci / milestone / risk) */
+  .register{border:2px solid var(--accent)}
+.meeting-form .reg-row{display:grid;border-bottom:1px solid var(--hair);position:relative}
+.meeting-form .reg-row:last-child{border-bottom:none}
+.meeting-form .reg-row.head{background:var(--accent);color:#fff}
+.meeting-form .reg-row.head .rc{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.01em;color:#fff}
+.meeting-form .rc{padding:9px 11px;border-right:1px solid var(--hair);font-size:13px;min-height:20px}
+.meeting-form .reg-row .rc:last-child{border-right:none}
+.meeting-form .reg-row.head .rc{border-right-color:rgba(255,255,255,.25)}
+.meeting-form .rc.idx{text-align:center;font-family:var(--mono);color:var(--muted)}
+.meeting-form .reg-row.head .rc.idx{color:#fff}
+.meeting-form .rc.stat{cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;user-select:none}
+.meeting-form .rc.stat.st-talk{color:var(--talk)}
+.meeting-form .rc.stat.st-done{color:var(--done)}
+.meeting-form .rc.stat.st-follow{color:var(--follow)}
+.meeting-form .rc.stat.st-hold{color:var(--hold)}
+.meeting-form /* simple list */
+  .slist{border-left:3px solid var(--accent);padding:2px 0 2px 0}
+.meeting-form .sitem{display:flex;gap:10px;font-size:13.5px;line-height:1.6;position:relative;padding:7px 26px 7px 14px}
+.meeting-form .sitem+.sitem{border-top:1px dotted var(--hair)}
+.meeting-form .sitem .bullet{flex:0 0 auto;color:var(--accent);font-weight:800;margin-top:1px}
+.meeting-form .sitem .tx{flex:1}
+.meeting-form /* kv blocks */
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.meeting-form .kvbox{border:1.5px solid var(--hair);background:#fff;padding:0}
+.meeting-form .kvbox.full{grid-column:1 / -1}
+.meeting-form .kvbox .kh{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;background:var(--ink-2);padding:6px 11px}
+.meeting-form .kvbox .kb{padding:10px 12px;font-size:13.5px;line-height:1.6;min-height:48px}
+.meeting-form /* notes (redline) */
+  .notes{border-left:3px solid var(--redline);padding:4px 0 4px 16px}
+.meeting-form .note{display:flex;gap:9px;font-size:13.5px;line-height:1.6;position:relative;padding:5px 26px 5px 0}
+.meeting-form .note+.note{border-top:1px dotted var(--hair)}
+.meeting-form .note .rev{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--redline);flex:0 0 auto;padding-top:2px}
+.meeting-form .note .tx{flex:1}
+.meeting-form /* incident banner */
+  .banner{display:flex;align-items:center;gap:14px;border:2px solid var(--redline);background:#fdeceb;padding:13px 18px;margin-top:6px}
+.meeting-form .banner .sev{font-family:var(--mono);font-weight:800;font-size:13px;color:#fff;background:var(--redline);padding:5px 12px}
+.meeting-form .banner .btxt{font-weight:700;font-size:15px;color:var(--redline);flex:1}
+.meeting-form .banner .bstat{font-family:var(--mono);font-weight:700;font-size:13px;border:1.5px solid;padding:5px 12px;cursor:pointer;user-select:none}
+.meeting-form .banner .bstat.st-talk{color:var(--talk);border-color:var(--talk)}
+.meeting-form .banner .bstat.st-done{color:var(--done);border-color:var(--done)}
+.meeting-form .banner .bstat.st-follow{color:var(--follow);border-color:var(--follow)}
+.meeting-form .banner .bstat.st-hold{color:var(--hold);border-color:var(--hold)}
+.meeting-form /* sign block */
+  .signs{margin-top:30px;display:flex;justify-content:flex-end}
+.meeting-form .sgrid{display:flex;border:2px solid var(--accent)}
+.meeting-form .sg{width:84px;text-align:center;border-right:1px solid var(--hair)}
+.meeting-form .sg:last-child{border-right:none}
+.meeting-form .sg .h{font-family:var(--mono);font-size:11px;font-weight:700;padding:5px;border-bottom:1px solid var(--hair);background:#eef3fb;color:var(--ink-2)}
+.meeting-form .sg .s{height:56px}
+.meeting-form /* editable */
+  [contenteditable]{outline:none;transition:background .1s,box-shadow .1s}
+.meeting-form [contenteditable]:hover{background:rgba(214,64,62,.06)}
+.meeting-form [contenteditable]:focus{background:#fff;box-shadow:0 0 0 2px rgba(15,38,71,.35)}
+.meeting-form [contenteditable]:empty::before{content:attr(data-ph);color:#a9b6c9;font-weight:400}
+.meeting-form /* add / del */
+  .addbtn{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);background:#fff;
+    border:1.5px dashed var(--hair);padding:6px 13px;cursor:pointer;transition:.12s}
+.meeting-form .addbtn:hover{border-color:var(--accent);border-style:solid}
+.meeting-form .del{position:absolute;width:21px;height:21px;border:1px solid var(--hair);background:#fff;color:var(--redline);
+    cursor:pointer;font-size:13px;line-height:1;opacity:0;transition:.12s;z-index:6;display:flex;align-items:center;justify-content:center}
+.meeting-form .thread:hover .del.t-del, .meeting-form .note:hover .del, .meeting-form .reg-row:hover .del, .meeting-form .sitem:hover .del{opacity:1}
+.meeting-form .del.t-del{top:-2px;right:0}
+.meeting-form .note .del, .meeting-form .sitem .del{top:4px;right:0}
+.meeting-form .reg-row .del{top:7px;right:4px}
+.meeting-form .addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:center}
+.meeting-form .addrow.left{justify-content:flex-start}
+.meeting-form /* modal */
+  .modal{position:fixed;inset:0;background:rgba(15,38,71,.55);display:none;align-items:flex-start;justify-content:center;
+    padding:60px 16px;z-index:50;backdrop-filter:blur(2px)}
+.meeting-form .modal.open{display:flex}
+.meeting-form .msheet{width:520px;max-width:100%;background:var(--paper);border:1.5px solid var(--ink);box-shadow:0 18px 50px rgba(15,38,71,.4)}
+.meeting-form .mhead{background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px}
+.meeting-form .mhead h3{font-size:19px;font-weight:800}
+.meeting-form .mx{width:36px;height:36px;border:1.5px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:18px;cursor:pointer;transition:.12s}
+.meeting-form .mx:hover{background:#fff;color:var(--ink)}
+.meeting-form .mbody{padding:18px 20px 22px;display:flex;flex-direction:column;gap:11px}
+.meeting-form .topt{display:flex;align-items:center;gap:13px;text-align:left;border:1.5px solid var(--hair);background:#fff;
+    padding:15px 17px;cursor:pointer;transition:.12s;font-family:inherit}
+.meeting-form .topt:hover{border-color:var(--ink);background:#f3f7fc;transform:translateX(2px)}
+.meeting-form .topt .tn{font-family:var(--mono);font-size:12px;font-weight:700;color:#fff;background:var(--ink);width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.meeting-form .topt.red .tn{background:var(--redline)}
+.meeting-form .topt .tlabel{display:block;font-size:15.5px;font-weight:700;color:var(--ink)}
+.meeting-form .topt .tdesc{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;font-weight:400}
