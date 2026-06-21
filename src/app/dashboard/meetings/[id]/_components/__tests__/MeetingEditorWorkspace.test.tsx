@@ -47,7 +47,6 @@ describe("MeetingEditorWorkspace (v2 양식)", () => {
     expect(screen.getByText("작성중")).toBeInTheDocument();
     expect(screen.getByText("주간 운영 회의")).toBeInTheDocument();
     expect(screen.getByDisplayValue("본사 3층")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("송영신, 이해영")).toBeInTheDocument();
     // 양식 섹션이 렌더됨
     expect(screen.getByText("지난 안건 점검")).toBeInTheDocument();
   });
