@@ -22,7 +22,7 @@
 .meeting-form .b.red:hover{background:var(--redline);color:#fff}
 .meeting-form .bar .tip{font-family:var(--mono);font-size:11px;color:#5d6e86}
 .meeting-form /* paper */
-  .paper{max-width:var(--page);margin:0 auto;background:var(--paper);box-shadow:0 10px 34px rgba(15,38,71,.18);
+  .paper{max-width:210mm;min-height:297mm;margin:0 auto;background:var(--paper);box-shadow:0 10px 34px rgba(15,38,71,.18);
     background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
     background-size:22px 22px;background-position:-1px -1px;border:1.5px solid var(--accent);position:relative}
 .meeting-form .sheet{padding:34px 40px 60px;position:relative}
