@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { renderMeetingPdf } from "../meeting-pdf";
 import type { MeetingRow } from "@/features/meetings/schemas";
+import { buildSeedDoc } from "@/features/meetings/form-templates";
 
 const base: MeetingRow = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -55,6 +56,24 @@ describe("renderMeetingPdf", () => {
         } as unknown as MeetingRow),
       );
       expect(buf.subarray(0, 4).toString()).toBe("%PDF");
+    },
+  );
+
+  it(
+    "v2 양식 문서(MeetingDoc)도 PDF로 렌더한다",
+    { timeout: 20000 },
+    async () => {
+      for (const t of ["regular", "project", "urgent"] as const) {
+        const buf = await renderToBuffer(
+          renderMeetingPdf({
+            ...base,
+            type: t,
+            content: buildSeedDoc(t),
+          } as unknown as MeetingRow),
+        );
+        expect(buf.subarray(0, 4).toString()).toBe("%PDF");
+        expect(buf.byteLength).toBeGreaterThan(1000);
+      }
     },
   );
 });
