@@ -64,6 +64,9 @@ export function MeetingForm({
   /** 마스트헤드(유형/제목/일시·장소·참석자) — 워크스페이스에서 메타 편집 주입 */
   masthead?: {
     typeLabel: string;
+    saveLabel?: string;
+    statusLabel?: string;
+    statusDraft?: boolean;
     title: string;
     onTitle: (v: string) => void;
     dateValue: string;
@@ -409,6 +412,18 @@ export function MeetingForm({
         <div className="sheet">
           {masthead && (
             <>
+              {(masthead.saveLabel || masthead.statusLabel) && (
+                <div className="mf-statusbar">
+                  <span className="mf-save">{masthead.saveLabel}</span>
+                  {masthead.statusLabel && (
+                    <span
+                      className={`mf-status${masthead.statusDraft ? " draft" : ""}`}
+                    >
+                      {masthead.statusLabel}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="dispatch">{masthead.typeLabel} 회의록</div>
               <div className="title-wrap">
                 <h1>
