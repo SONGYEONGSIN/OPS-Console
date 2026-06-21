@@ -36,7 +36,10 @@ function Runs({ runs }: { runs: PdfRun[] }) {
 /** PdfNode[] → 읽기용 JSX (회의내용 미리보기 / 회의문서 본문 공용). */
 function DocBody({ nodes }: { nodes: PdfNode[] }) {
   const meaningful = nodes.filter(
-    (n) => n.runs.some((r) => r.text.trim() !== "") || n.kind === "heading",
+    (n) =>
+      n.kind === "heading" ||
+      n.kind === "table" ||
+      n.runs.some((r) => r.text.trim() !== ""),
   );
   if (meaningful.length === 0) {
     return <p className="text-xs text-muted">작성된 내용이 없습니다.</p>;
@@ -81,6 +84,34 @@ function DocBody({ nodes }: { nodes: PdfNode[] }) {
                 </span>
               </p>
             );
+          case "table":
+            return (
+              <table
+                key={i}
+                className="w-full border-collapse text-xs text-ink-soft"
+              >
+                <tbody>
+                  {n.rows.map((row, ri) => (
+                    <tr key={ri}>
+                      {row.map((cell, ci) => {
+                        const isHead = ri < n.headerRows;
+                        const Cell = isHead ? "th" : "td";
+                        return (
+                          <Cell
+                            key={ci}
+                            className={`border border-line-soft px-1.5 py-1 text-left align-top ${
+                              isHead ? "bg-washi-raised font-semibold text-ink" : ""
+                            }`}
+                          >
+                            <Runs runs={cell} />
+                          </Cell>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
           default:
             return (
               <p key={i} className="text-sm text-ink-soft">
@@ -119,7 +150,9 @@ function groupByHeading(
 }
 
 function bodyHasText(body: PdfNode[]): boolean {
-  return body.some((n) => n.runs.some((r) => r.text.trim() !== ""));
+  return body.some((n) =>
+    n.kind === "table" ? true : n.runs.some((r) => r.text.trim() !== ""),
+  );
 }
 
 function TabButton({

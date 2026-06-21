@@ -55,6 +55,10 @@ const s = StyleSheet.create({
   para: { marginBottom: 3, lineHeight: 1.5 },
   li: { flexDirection: "row", marginBottom: 2, lineHeight: 1.5 },
   liMark: { width: 14 },
+  table: { marginVertical: 4, borderTop: "1px solid #d8d2c4", borderLeft: "1px solid #d8d2c4" },
+  tr: { flexDirection: "row" },
+  td: { flex: 1, borderRight: "1px solid #d8d2c4", borderBottom: "1px solid #d8d2c4", padding: 3, fontSize: 9 },
+  th: { flex: 1, borderRight: "1px solid #d8d2c4", borderBottom: "1px solid #d8d2c4", padding: 3, fontSize: 9, fontWeight: 700, backgroundColor: "#f4eddd" },
 });
 
 function Runs({ runs }: { runs: PdfRun[] }) {
@@ -87,6 +91,20 @@ function Node({ node, idx }: { node: PdfNode; idx: number }) {
     return (
       <View style={s.para}>
         <Runs runs={node.runs} />
+      </View>
+    );
+  if (node.kind === "table")
+    return (
+      <View style={s.table}>
+        {node.rows.map((row, ri) => (
+          <View style={s.tr} key={ri}>
+            {row.map((cell, ci) => (
+              <View style={ri < node.headerRows ? s.th : s.td} key={ci}>
+                <Runs runs={cell} />
+              </View>
+            ))}
+          </View>
+        ))}
       </View>
     );
   const mark =
