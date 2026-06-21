@@ -4,7 +4,8 @@ export type PdfNode =
   | { kind: "paragraph"; runs: PdfRun[] }
   | { kind: "bullet"; runs: PdfRun[] }
   | { kind: "numbered"; runs: PdfRun[] }
-  | { kind: "check"; checked: boolean; runs: PdfRun[] };
+  | { kind: "check"; checked: boolean; runs: PdfRun[] }
+  | { kind: "table"; headerRows: number; rows: PdfRun[][][] };
 
 type StyledText = { type: "text"; text?: string; styles?: { bold?: boolean; italic?: boolean } };
 type LinkInline = { type: "link"; href?: string; content?: unknown };
@@ -59,6 +60,24 @@ export function blocksToPdfModel(blocks: Block[]): PdfNode[] {
       case "paragraph":
         out.push({ kind: "paragraph", runs });
         break;
+      case "table": {
+        // b.content = { type:"tableContent", headerRows?, rows:[{cells:[...]}] }
+        // cell은 string(시드) 또는 inline content array(편집 후) 둘 다 처리.
+        const tc = b.content as
+          | { headerRows?: number; rows?: { cells?: unknown[] }[] }
+          | undefined;
+        const rows = (tc?.rows ?? []).map((r) =>
+          (r.cells ?? []).map((cell) =>
+            typeof cell === "string"
+              ? cell
+                ? [{ text: cell, bold: false, italic: false }]
+                : []
+              : toRuns(cell),
+          ),
+        );
+        out.push({ kind: "table", headerRows: tc?.headerRows ?? 0, rows });
+        break;
+      }
       default:
         out.push({ kind: "paragraph", runs });
     }

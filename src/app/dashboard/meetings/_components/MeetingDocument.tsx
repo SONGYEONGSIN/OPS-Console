@@ -102,6 +102,36 @@ export function MeetingDocument({
                     </span>
                   </p>
                 );
+              case "table":
+                return (
+                  <table
+                    key={i}
+                    className="w-full border-collapse text-sm text-ink-soft"
+                  >
+                    <tbody>
+                      {n.rows.map((row, ri) => (
+                        <tr key={ri}>
+                          {row.map((cell, ci) => {
+                            const isHead = ri < n.headerRows;
+                            const Cell = isHead ? "th" : "td";
+                            return (
+                              <Cell
+                                key={ci}
+                                className={`border border-line-soft px-2 py-1 text-left align-top ${
+                                  isHead
+                                    ? "bg-washi-raised font-semibold text-ink"
+                                    : ""
+                                }`}
+                              >
+                                <Runs runs={cell} />
+                              </Cell>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
               default:
                 return (
                   <p key={i} className="text-sm leading-relaxed text-ink-soft">

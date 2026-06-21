@@ -80,6 +80,8 @@ describe("blocksToPdfModel", () => {
       },
     ]);
     expect(m.map((n) => n.kind)).toEqual(["bullet", "bullet"]);
-    expect(m[1].runs[0].text).toBe("자식");
+    const second = m[1];
+    if (second.kind === "table") throw new Error("expected non-table node");
+    expect(second.runs[0].text).toBe("자식");
   });
 });
