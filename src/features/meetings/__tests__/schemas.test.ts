@@ -32,4 +32,8 @@ describe("meetingRowSchema", () => {
   it("잘못된 type 거부", () => {
     expect(meetingRowSchema.safeParse({ ...valid, type: "x" }).success).toBe(false);
   });
+  it("v2 양식 content(객체)도 파싱", () => {
+    const v2 = { ...valid, content: { formVersion: 2, typeId: "field", sections: [] } };
+    expect(meetingRowSchema.safeParse(v2).success).toBe(true);
+  });
 });

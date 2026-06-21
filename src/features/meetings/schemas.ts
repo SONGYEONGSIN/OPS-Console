@@ -28,7 +28,10 @@ export const meetingRowSchema = z.object({
   attendees: z.array(z.string()).default([]),
   author_email: z.string(),
   status: z.enum(MEETING_STATUSES),
-  content: z.array(z.unknown()).default([]),
+  // v1=BlockNote 블록 배열 / v2=MeetingDoc 양식 객체. 둘 다 허용.
+  content: z
+    .union([z.array(z.unknown()), z.record(z.string(), z.unknown())])
+    .default([]),
   sharepoint_url: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
