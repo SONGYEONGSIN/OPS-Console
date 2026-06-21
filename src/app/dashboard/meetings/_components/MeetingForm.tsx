@@ -455,16 +455,6 @@ export function MeetingForm({
                       className="mf-meta-input"
                     />
                   </div>
-                  <div>
-                    참석{" "}
-                    <input
-                      value={masthead.attendees}
-                      onChange={(e) => masthead.onAttendees(e.target.value)}
-                      onBlur={masthead.onMetaBlur}
-                      placeholder="쉼표로 구분"
-                      className="mf-meta-input"
-                    />
-                  </div>
                 </div>
               </div>
             </>
