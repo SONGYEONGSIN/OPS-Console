@@ -5,8 +5,8 @@
   --redline:#b8331e; --muted:#716855;
   --talk:#d97706; --done:#556b2f; --follow:#b8331e; --hold:#a8a08a;
   --accent:#15120c;
-  --mono:"Pretendard",system-ui,sans-serif; --page:215mm;
-  font-family:"Pretendard",system-ui,sans-serif; color:var(--ink); line-height:1.55; font-size:14px;
+  --mono:var(--font-sans); --page:215mm;
+  font-family:var(--font-sans); color:var(--ink); line-height:1.55; font-size:14px;
 }
   .meeting-form *{box-sizing:border-box;margin:0;padding:0}
 .meeting-form .mono{font-family:var(--mono)}
