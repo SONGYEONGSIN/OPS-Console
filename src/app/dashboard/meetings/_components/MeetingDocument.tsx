@@ -41,7 +41,7 @@ export function MeetingDocument({
   );
 
   return (
-    <article className="mx-auto max-w-[760px] border border-line-soft bg-situation-bg px-10 py-12 [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
+    <article className="mx-auto w-full max-w-[210mm] min-h-[297mm] border border-line-soft bg-white pb-[15mm] pl-[18mm] pr-[20mm] pt-[15mm] [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
       <header className="mb-6 border-b border-ink pb-4 text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-vermilion">
           {typeLabel} 회의록
