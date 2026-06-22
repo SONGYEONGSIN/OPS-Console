@@ -61,7 +61,7 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={8}
-              className="w-full border border-line bg-washi px-3 py-2 text-sm text-ink"
+              className="w-full border border-line bg-cream px-3 py-2 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
               placeholder="회신 본문 (AI 초안 — 검토 후 편집)"
             />
             <div className="flex items-center gap-2">
