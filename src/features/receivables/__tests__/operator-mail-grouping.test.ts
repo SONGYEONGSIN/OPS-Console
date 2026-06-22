@@ -44,7 +44,7 @@ describe("groupReceivablesByOperator", () => {
     expect(groups).toHaveLength(2);
 
     const sgk = groups.find((g) => g.operator.name === "김슬기");
-    expect(sgk!.operator.email).toBe("bluewhich87@jinhakapply.com");
+    expect(sgk!.operator.email).toBe("bluewhich87@jinhak.com");
     expect(sgk!.items).toHaveLength(2);
     expect(sgk!.totalAmount).toBe(150000);
     expect(sgk!.items[0].daysOverdue).toBe(30);
