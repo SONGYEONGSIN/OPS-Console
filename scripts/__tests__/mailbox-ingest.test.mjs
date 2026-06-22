@@ -12,6 +12,7 @@ import {
   fetchFolderMessages,
   collectInboxFolderIds,
   graphGetWithRetry,
+  appendSignature,
 } from "../mailbox-ingest.mjs";
 
 describe("isAutoSender", () => {
@@ -439,5 +440,29 @@ describe("collectInboxFolderIds — 재귀 + nextLink", () => {
     expect(childUrl).not.toContain("%24");
     expect(childUrl).toContain("$top=100");
     expect(childUrl).toContain("$select=id,displayName");
+  });
+});
+
+describe("appendSignature", () => {
+  it("signature가 null/빈/공백이면 body 그대로 반환", () => {
+    expect(appendSignature("회신 본문입니다.", null)).toBe("회신 본문입니다.");
+    expect(appendSignature("회신 본문입니다.", undefined)).toBe("회신 본문입니다.");
+    expect(appendSignature("회신 본문입니다.", "")).toBe("회신 본문입니다.");
+    expect(appendSignature("회신 본문입니다.", "   \n  ")).toBe("회신 본문입니다.");
+  });
+
+  it("signature가 있으면 body\\n\\nsignature 형태로 append", () => {
+    expect(appendSignature("안녕하세요.", "운영부 홍길동")).toBe(
+      "안녕하세요.\n\n운영부 홍길동",
+    );
+  });
+
+  it("body 끝 공백/줄바꿈은 trim 후 append", () => {
+    expect(appendSignature("안녕하세요.\n\n  ", "운영부 홍길동")).toBe(
+      "안녕하세요.\n\n운영부 홍길동",
+    );
+    expect(appendSignature("안녕하세요.   ", "운영부 홍길동")).toBe(
+      "안녕하세요.\n\n운영부 홍길동",
+    );
   });
 });

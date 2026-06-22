@@ -252,7 +252,14 @@ export function shouldSkipMessage({ fromEmail, subject }) {
   );
 }
 
-async function generateDraft(message) {
+// 메일함별 서명을 초안 본문 끝에 append. signature가 비었으면(null/빈/공백) body 그대로.
+// Outlook 서명은 Graph로 못 읽고 발송 시 자동첨부도 안 되므로 초안에 미리 붙여 운영자가 편집·발송.
+export function appendSignature(body, signature) {
+  if (!signature || signature.trim() === "") return body;
+  return `${body.trimEnd()}\n\n${signature}`;
+}
+
+async function generateDraft(message, signature) {
   const prompt = [
     "당신은 대학 입학 원서접수 운영부의 담당자입니다.",
     "아래 받은 메일에 대한 회신 초안을 한국어 비즈니스 정중체로 작성하세요.",
@@ -270,7 +277,8 @@ async function generateDraft(message) {
     body: JSON.stringify({ model: LLM_MODEL, prompt, stream: false }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status} ${await res.text()}`);
-  return (await res.json()).response?.trim() ?? "";
+  const rawBody = (await res.json()).response?.trim() ?? "";
+  return appendSignature(rawBody, signature);
 }
 
 async function main() {
@@ -298,7 +306,7 @@ async function main() {
   // 대상 운영자 = mailbox_settings row 존재 (메뉴 사용 운영자 한정, 스펙 §13)
   const { data: settings, error: setErr } = await supabase
     .from("mailbox_settings")
-    .select("owner_email, auto_draft_enabled, last_synced_at");
+    .select("owner_email, auto_draft_enabled, last_synced_at, signature");
   if (setErr) throw new Error(`settings: ${setErr.message}`);
   if (!settings || settings.length === 0) {
     console.log("대상 메일함 없음 (mailbox_settings 비어있음).");
@@ -377,7 +385,7 @@ async function main() {
       if ((count ?? 0) > 0) continue;
 
       try {
-        const draftBody = await generateDraft(m);
+        const draftBody = await generateDraft(m, s.signature);
         const { error: dErr } = await supabase.from("mailbox_drafts").insert({
           message_id: up.id,
           draft_body: draftBody,
