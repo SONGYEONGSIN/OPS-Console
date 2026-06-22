@@ -3,11 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
-import {
-  todoCreateSchema,
-  todoUpdateSchema,
-  type TodoRow,
-} from "./schemas";
+import { todoCreateSchema, todoUpdateSchema, type TodoRow } from "./schemas";
+import { syncTodoCompletion } from "./completion-sync";
 
 export type TodoActionResult =
   | { ok: true; row: TodoRow }
@@ -30,8 +27,10 @@ export async function createTodo(input: unknown): Promise<TodoActionResult> {
   }
 
   // 위임 차단 — assignee/created_by 모두 본인으로 강제 (스코프 외 기능)
+  // status='done'으로 생성 시 done/done_at도 일치(완료 항목 기록 시 체크 상태 일관).
   const payload = {
     ...parsed.data,
+    ...syncTodoCompletion(parsed.data, new Date().toISOString()),
     assignee_email: me.email,
     created_by_email: me.email,
   };
@@ -57,11 +56,14 @@ export async function updateTodo(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
 
+  // 상태값(status='done') ↔ 완료 체크(done) 양방향 동기화 — 둘 중 하나만 바꿔도 일치 유지.
+  const synced = syncTodoCompletion(parsed.data, new Date().toISOString());
+
   // RLS가 본인 외 차단. 행 존재 여부만 체크.
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("todos")
-    .update(parsed.data)
+    .update(synced)
     .eq("id", id)
     .select()
     .maybeSingle();
