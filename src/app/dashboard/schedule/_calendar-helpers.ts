@@ -170,11 +170,12 @@ export function groupItemsByDay(
       isTeamCommon,
       rowRef: e,
     });
-    // 멀티데이 일정: 종료일이 시작일과 다르면 종료 ymd에도 push (services 패턴 정합).
-    // rowRef는 동일 event라 두 셀에서 인스펙터 열어도 같은 row 표시.
+    // 멀티데이 일정: 시작~종료 사이 모든 날짜에 펼친다 (중간 날짜 누락 버그 수정).
+    // rowRef는 동일 event라 어느 셀에서 인스펙터를 열어도 같은 row 표시.
     if (e.end_at) {
       const endYmd = toKstYmd(e.end_at);
       if (endYmd !== startYmd) {
+        // 종료일: 종료 시각 sortKey 유지. 중간일(start+1 ~ end-1): 진행중 = all_day 최상단("").
         push(endYmd, {
           id: `${e.id}::end`,
           ymd: endYmd,
@@ -186,6 +187,23 @@ export function groupItemsByDay(
           isTeamCommon,
           rowRef: e,
         });
+        let cur = ymdAddDays(startYmd, 1);
+        let guard = 0;
+        while (cur < endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
+          push(cur, {
+            id: `${e.id}::${cur}`,
+            ymd: cur,
+            category: e.type,
+            label: e.title,
+            sortKey: "",
+            all_day: e.all_day,
+            sourceVariant: "schedule",
+            isTeamCommon,
+            rowRef: e,
+          });
+          cur = ymdAddDays(cur, 1);
+          guard++;
+        }
       }
     }
   }

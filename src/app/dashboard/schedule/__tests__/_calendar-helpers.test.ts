@@ -162,6 +162,32 @@ describe("groupItemsByDay", () => {
     );
   });
 
+  it("멀티데이 일정은 시작~종료 사이 중간 날짜에도 모두 표기한다 (28일 누락 버그)", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "99999999-9999-9999-9999-999999999999",
+        type: "application",
+        title: "원서접수 기간",
+        start_at: "2026-07-26T15:00:00Z", // KST 7/27 00:00
+        end_at: "2026-07-29T14:59:00Z", // KST 7/29 23:59
+        all_day: true,
+      },
+    ];
+    const map = groupItemsByDay(events, []);
+    // 시작(27)·중간(28)·종료(29) 모두 표기되어야 한다
+    for (const ymd of ["2026-07-27", "2026-07-28", "2026-07-29"]) {
+      expect(map.get(ymd)?.[0]?.label).toBe("원서접수 기간");
+    }
+    // 중간 날짜도 같은 원본 rowRef (인스펙터 동일 표시)
+    expect(map.get("2026-07-28")?.[0]?.rowRef).toBe(
+      map.get("2026-07-27")?.[0]?.rowRef,
+    );
+    // 범위 밖(26/30)은 등록되지 않음
+    expect(map.get("2026-07-26")).toBeUndefined();
+    expect(map.get("2026-07-30")).toBeUndefined();
+  });
+
   it("팀 공통(assignee_email=null) 일정은 isTeamCommon=true + 셀 최상단으로 정렬", () => {
     const events: ScheduleEventRow[] = [
       {
