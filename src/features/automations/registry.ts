@@ -88,7 +88,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "운영부 뉴스 수집",
     description:
       "대학 관련 뉴스(통폐합·폐교·정원감축 등)를 멀티소스 RSS로 수집해 운영부 뉴스 페이지에 적재합니다.",
-    scheduleInfo: "1시간 주기 자동 (cron-job.org)",
+    scheduleInfo: "평일 06~18시 매시 (cron-job.org)",
     cooldownMinutes: 30,
     run: runNewsCollect,
   },
