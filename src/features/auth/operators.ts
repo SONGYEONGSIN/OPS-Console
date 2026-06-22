@@ -28,8 +28,8 @@ const E = "운영부" as const;
 const REAL_OPERATORS: readonly Operator[] = [
   { name: "허승철", email: "alcure23@jinhakapply.com",   team: "운영1팀", role: "부장",   empNo: "200806010", hiredAt: "2008-06-01", birthDate: "1982-10-06", gender: "남", division: D, department: E },
   { name: "한효진", email: "hhj@jinhakapply.com",         team: "운영1팀", role: "TL",     empNo: "20220701",  hiredAt: "2007-05-30", birthDate: "1981-06-14", gender: "남", division: D, department: E },
-  { name: "김슬기", email: "bluewhich87@jinhakapply.com", team: "운영1팀", role: "매니저", empNo: "20150703",  hiredAt: "2011-02-07", birthDate: "1987-06-09", gender: "여", division: D, department: E },
-  { name: "김지영", email: "kjy0926@jinhakapply.com",     team: "운영1팀", role: "매니저", empNo: "20160702",  hiredAt: "2016-07-27", birthDate: "1989-09-26", gender: "여", division: D, department: E },
+  { name: "김슬기", email: "bluewhich87@jinhak.com", team: "운영1팀", role: "매니저", empNo: "20150703",  hiredAt: "2011-02-07", birthDate: "1987-06-09", gender: "여", division: D, department: E },
+  { name: "김지영", email: "kjy0926@jinhak.com",     team: "운영1팀", role: "매니저", empNo: "20160702",  hiredAt: "2016-07-27", birthDate: "1989-09-26", gender: "여", division: D, department: E },
   { name: "정윤나", email: "annooy@jinhakapply.com",      team: "운영1팀", role: "매니저", empNo: "20190801",  hiredAt: "2019-08-01", birthDate: "1995-09-16", gender: "여", division: D, department: E },
   { name: "김유민", email: "sept98@jinhakapply.com",      team: "운영1팀", role: "매니저", empNo: "20230506",  hiredAt: "2023-05-18", birthDate: "1998-09-07", gender: "여", division: D, department: E },
   { name: "기자의", email: "jkee@jinhakapply.com",        team: "운영1팀", role: "매니저", empNo: "20240501",  hiredAt: "2024-05-02", birthDate: "1999-03-13", gender: "여", division: D, department: E },
