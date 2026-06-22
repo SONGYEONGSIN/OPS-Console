@@ -8,6 +8,7 @@ import {
   type MeetingStatus,
 } from "@/features/meetings/schemas";
 import { MEETING_STATUS_TONE } from "./status";
+import { formatMeetingDateKst } from "@/features/meetings/format-meeting-date";
 
 type Props = {
   rows: ListRow[];
@@ -55,7 +56,7 @@ export function MeetingTable({ rows, selectedId, onSelect }: Props) {
                   {row.meetingTitle ?? row.name}
                 </td>
                 <td className="px-3 py-2 text-sm text-ink-soft">
-                  {row.meetingDate ?? "—"}
+                  {formatMeetingDateKst(row.meetingDate)}
                 </td>
                 <td className="px-3 py-2 text-sm text-ink-soft">
                   {row.meetingAuthor ?? "—"}
