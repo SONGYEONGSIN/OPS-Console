@@ -269,6 +269,13 @@ export function assembleDraft(operatorName, bodyContent) {
   return `${intro}\n\n${bodyContent.trim()}\n\n감사합니다.`;
 }
 
+// 문장 경계(마침표·물음표·느낌표 + 공백)마다 줄바꿈. 소수점(6.22)·약어는 공백이
+// 없어 영향 없고, 기존 줄바꿈(\n)도 보존(공백/탭만 매칭).
+export function splitSentences(text) {
+  if (!text) return text;
+  return text.replace(/([.!?])[ \t]+/g, "$1\n").trim();
+}
+
 async function generateDraft(message, operatorName) {
   const prompt = [
     "당신은 대학 입학 원서접수 운영부의 담당자입니다.",
@@ -289,7 +296,7 @@ async function generateDraft(message, operatorName) {
   });
   if (!res.ok) throw new Error(`ollama ${res.status} ${await res.text()}`);
   const rawBody = (await res.json()).response?.trim() ?? "";
-  return assembleDraft(operatorName, rawBody);
+  return assembleDraft(operatorName, splitSentences(rawBody));
 }
 
 async function main() {

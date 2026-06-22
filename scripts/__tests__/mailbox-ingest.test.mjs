@@ -13,7 +13,28 @@ import {
   collectInboxFolderIds,
   graphGetWithRetry,
   assembleDraft,
+  splitSentences,
 } from "../mailbox-ingest.mjs";
+
+describe("splitSentences", () => {
+  it("마침표+공백마다 줄바꿈한다", () => {
+    expect(splitSentences("확인 중입니다. 완료 후 안내드리겠습니다. 감사합니다.")).toBe(
+      "확인 중입니다.\n완료 후 안내드리겠습니다.\n감사합니다.",
+    );
+  });
+  it("소수점(공백 없음)은 줄바꿈하지 않는다", () => {
+    expect(splitSentences("6.22 마감 건입니다.")).toBe("6.22 마감 건입니다.");
+  });
+  it("기존 줄바꿈은 보존한다", () => {
+    expect(splitSentences("첫 줄.\n둘째 줄. 셋째.")).toBe("첫 줄.\n둘째 줄.\n셋째.");
+  });
+  it("물음표·느낌표도 분리한다", () => {
+    expect(splitSentences("맞나요? 네! 끝.")).toBe("맞나요?\n네!\n끝.");
+  });
+  it("빈 값은 그대로", () => {
+    expect(splitSentences("")).toBe("");
+  });
+});
 
 describe("isAutoSender", () => {
   it("null/undefined → true (skip)", () => {
