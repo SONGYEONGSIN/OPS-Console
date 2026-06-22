@@ -64,12 +64,12 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
               className="w-full border border-line bg-cream px-3 py-2 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
               placeholder="회신 본문 (AI 초안 — 검토 후 편집)"
             />
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 disabled={busy || draft.trim().length === 0}
                 onClick={handleSend}
-                className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep disabled:opacity-50"
+                className="flex-1 cursor-pointer border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:cursor-default disabled:opacity-50"
               >
                 발송
               </button>
@@ -77,7 +77,7 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
                 type="button"
                 disabled={busy}
                 onClick={() => setDraft("")}
-                className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-ink hover:text-cream"
+                className="flex-1 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-vermilion hover:text-cream"
               >
                 폐기
               </button>
