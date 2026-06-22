@@ -80,10 +80,118 @@ export async function fetchInbox(token, ownerEmail, since) {
   return (await res.json()).value ?? [];
 }
 
-const SKIP_PATTERNS = [/no-?reply/i, /mailer-daemon/i, /postmaster/i, /newsletter/i];
+// 특정 폴더의 메시지 조회 (fetchInbox의 폴더별 일반화). 인코딩 방식 동일.
+export async function fetchFolderMessages(token, ownerEmail, folderId, since) {
+  const filterSuffix = since
+    ? `&$filter=receivedDateTime%20gt%20${encodeURIComponent(since)}`
+    : "";
+  const url =
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}` +
+    `/mailFolders/${folderId}/messages` +
+    `?$top=50` +
+    `&$orderby=receivedDateTime%20desc` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
+    filterSuffix;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok)
+    throw new Error(`folder ${folderId} ${res.status} ${await res.text()}`);
+  return (await res.json()).value ?? [];
+}
+
+// 받은편지함의 직속 폴더 id를 조회한 뒤 childFolders를 재귀로 모두 모아
+// 폴더 id 배열(받은편지함 자신 포함)을 반환. nextLink 페이지네이션 처리.
+export async function collectInboxFolderIds(token, ownerEmail) {
+  const headers = { Authorization: `Bearer ${token}` };
+  const userPath = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}`;
+
+  // 1) 받은편지함 자신의 id 확보
+  const inboxRes = await fetch(`${userPath}/mailFolders/inbox`, { headers });
+  if (!inboxRes.ok)
+    throw new Error(`inbox folder ${inboxRes.status} ${await inboxRes.text()}`);
+  const inbox = await inboxRes.json();
+  const rootId = inbox.id;
+
+  const ids = [rootId];
+  const seen = new Set([rootId]);
+
+  // 2) BFS/DFS로 childFolders 재귀 수집
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const parentId = queue.shift();
+    let next =
+      `${userPath}/mailFolders/${parentId}/childFolders` +
+      `?$top=100&$select=id,displayName`;
+    while (next) {
+      const res = await fetch(next, { headers });
+      if (!res.ok)
+        throw new Error(
+          `childFolders ${parentId} ${res.status} ${await res.text()}`,
+        );
+      const json = await res.json();
+      for (const f of json.value ?? []) {
+        if (f.id && !seen.has(f.id)) {
+          seen.add(f.id);
+          ids.push(f.id);
+          queue.push(f.id);
+        }
+      }
+      next = json["@odata.nextLink"] ?? null;
+    }
+  }
+
+  return ids;
+}
+
+// 사내 도메인 — 고객·내부 정상 메일이므로 bulk 패턴 매칭돼도 절대 skip 안 함(과차단 방지)
+const INTERNAL_DOMAINS = [/@jinhakapply\.com$/i, /@jinhak\.com$/i];
+
+// bulk/뉴스레터/자동발송 판정 패턴. info@는 과차단 위험으로 의도적 제외.
+const SKIP_PATTERNS = [
+  /no-?reply/i,
+  /mailer-daemon/i,
+  /postmaster/i,
+  /newsletter/i,
+  // bulk 발신 도메인
+  /stibee\.com/i,
+  /maily\.so/i,
+  /mailchimp/i,
+  /sendgrid/i,
+  /mailgun/i,
+  /amazonses/i,
+  /sendpulse/i,
+  /mktomail/i,
+  /cmail/i,
+  /hubspotemail/i,
+  /rmail/i,
+  // bulk 서브도메인/접두
+  /@news\./i,
+  /@newsletter\./i,
+  /@mail\./i,
+  /promotion/i,
+  /noti/i,
+  // 자동발송 토큰
+  /bounce/i,
+  /notifications?/i,
+  /donotreply/i,
+  /do-not-reply/i,
+  /auto/i,
+  /marketing/i,
+  /promo/i,
+];
+
 export function isAutoSender(fromEmail) {
   if (!fromEmail) return true;
-  return SKIP_PATTERNS.some((re) => re.test(fromEmail));
+  const addr = fromEmail.toLowerCase();
+  // 사내 도메인은 과차단 방지 — 항상 통과
+  if (INTERNAL_DOMAINS.some((re) => re.test(addr))) return false;
+  return SKIP_PATTERNS.some((re) => re.test(addr));
+}
+
+// 제목 기반 광고 판정 — (AD)/[AD]/(광고)/[광고] 표기. 정상 단어(Admission 등) 오판 방지.
+const AD_SUBJECT_PATTERNS = [/[([]\s*ad\s*[)\]]/i, /[([]\s*광고\s*[)\]]/];
+export function isAdSubject(subject) {
+  if (!subject) return false;
+  return AD_SUBJECT_PATTERNS.some((re) => re.test(subject));
 }
 
 async function generateDraft(message) {
@@ -141,9 +249,23 @@ async function main() {
   let drafted = 0;
 
   for (const s of settings) {
-    const inbox = await fetchInbox(token, s.owner_email, s.last_synced_at);
+    // 최초(last_synced_at null) 운영자는 과거 메일 폭주 방지를 위해 최근 24h만 처리
+    const since =
+      s.last_synced_at ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
+    const folderIds = await collectInboxFolderIds(token, s.owner_email);
+    const inbox = (
+      await Promise.all(
+        folderIds.map((fid) =>
+          fetchFolderMessages(token, s.owner_email, fid, since),
+        ),
+      )
+    ).flat();
+
     for (const m of inbox) {
-      const skip = isAutoSender(m.from?.emailAddress?.address);
+      const skip =
+        isAutoSender(m.from?.emailAddress?.address) || isAdSubject(m.subject);
       const rowData = {
         owner_email: s.owner_email,
         graph_message_id: m.id,
