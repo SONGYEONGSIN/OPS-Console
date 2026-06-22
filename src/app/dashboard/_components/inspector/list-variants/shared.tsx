@@ -19,11 +19,16 @@ export function Section({
 
 export function DefList({
   items,
+  dense = false,
 }: {
   items: { term: string; desc: ReactNode }[];
+  dense?: boolean;
 }) {
   return (
-    <dl className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 text-sm">
+    <dl
+      className={`grid grid-cols-[88px_1fr] gap-x-3 text-sm ${dense ? "gap-y-1" : "gap-y-2"}`}
+    >
+      {/* dense=true: 행 간격 축소(gap-y-1) — 메일함 등 조밀 표시용 */}
       {items.map((item, i) => (
         <div key={i} className="contents">
           <dt className="text-xs text-muted">{item.term}</dt>
