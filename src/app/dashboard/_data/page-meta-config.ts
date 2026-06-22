@@ -49,6 +49,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "이번 달", title: "운영부 달력" },
     description: "운영부 시프트·이벤트·휴가·교육 일정을 한곳에 관리합니다.",
   },
+  news: {
+    headline: { accent: "개요", title: "운영부 뉴스" },
+    description:
+      "대학 통폐합·폐교·정원감축 등 운영부 관련 뉴스를 자동 수집해 최신순으로 모아봅니다.",
+  },
   handover: {
     headline: { accent: "요청 · 자료", title: "인수인계" },
     description: "서비스별 인수인계 내용을 카테고리별로 작성·조회합니다.",
