@@ -79,16 +79,20 @@ async function getGraphToken() {
   return (await res.json()).access_token;
 }
 
-async function fetchInbox(token, ownerEmail, since) {
-  const params = new URLSearchParams({
-    $top: "50",
-    $orderby: "receivedDateTime desc",
-    $select: "id,subject,bodyPreview,body,from,receivedDateTime,isRead",
-  });
-  if (since) params.set("$filter", `receivedDateTime gt ${since}`);
-  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(
-    ownerEmail,
-  )}/mailFolders/inbox/messages?${params.toString()}`;
+// 인코딩 기준: src/lib/microsoft/mail-read.ts getInboxMessages (server-only라 직접 import 불가, 동일 방식 유지)
+// URLSearchParams는 OData 키 $를 %24로 인코딩하므로 사용하지 않는다.
+// 키는 리터럴 $, 공백은 %20, 값은 encodeURIComponent로 직접 조합한다.
+export async function fetchInbox(token, ownerEmail, since) {
+  const filterSuffix = since
+    ? `&$filter=receivedDateTime%20gt%20${encodeURIComponent(since)}`
+    : "";
+  const url =
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}` +
+    `/mailFolders/inbox/messages` +
+    `?$top=50` +
+    `&$orderby=receivedDateTime%20desc` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
+    filterSuffix;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`inbox ${res.status} ${await res.text()}`);
   return (await res.json()).value ?? [];
