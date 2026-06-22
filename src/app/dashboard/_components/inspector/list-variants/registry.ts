@@ -106,6 +106,9 @@ import {
 import { MailboxView } from "./mailbox/View";
 import { MailboxTable } from "./mailbox/Table";
 import { MAILBOX_FILTERS } from "./mailbox/filters";
+import { NewsView } from "./news/View";
+import { NewsTable } from "./news/Table";
+import { NEWS_FILTERS } from "./news/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -331,5 +334,11 @@ export const variantRegistry = {
     Table: MailboxTable,
     Filters: MAILBOX_FILTERS,
     // blank 없음 — 수신 메일은 ingest 잡이 적재 (신규 생성 흐름 없음)
+  },
+  news: {
+    // 읽기 전용 — 수집 뉴스 (편집/신규 없음). 잡이 적재.
+    View: NewsView,
+    Table: NewsTable,
+    Filters: NEWS_FILTERS,
   },
 } as const satisfies Record<Variant, RegistryEntry>;
