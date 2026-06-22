@@ -8,6 +8,7 @@ import { runServiceNoticeMail } from "./jobs/service-notice-mail";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
+import { runNewsCollect } from "./jobs/news-collect";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -81,6 +82,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "매주 월요일 10:00 (cron-job.org → OPS → GitHub Actions)",
     cooldownMinutes: 60,
     run: runClosingScrape,
+  },
+  {
+    id: "news-collect",
+    label: "운영부 뉴스 수집",
+    description:
+      "대학 관련 뉴스(통폐합·폐교·정원감축 등)를 멀티소스 RSS로 수집해 운영부 뉴스 페이지에 적재합니다.",
+    scheduleInfo: "30분 주기 자동 (cron-job.org)",
+    cooldownMinutes: 30,
+    run: runNewsCollect,
   },
 ];
 
