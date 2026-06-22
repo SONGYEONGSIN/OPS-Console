@@ -147,7 +147,7 @@ export function ContractInfoForm({
                   onChange={(e) =>
                     onChange?.({ ...value, [f.key]: e.target.value })
                   }
-                  className="flex-1 border border-line bg-cream px-2 py-1 text-ink"
+                  className="flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
                 >
                   <option value="">선택</option>
                   {opts.map((o) => (
@@ -178,7 +178,7 @@ export function ContractInfoForm({
               rows={2}
               maxLength={2000}
               placeholder="예: ※ 학부 계약시 포함"
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             />
           )}
         </label>

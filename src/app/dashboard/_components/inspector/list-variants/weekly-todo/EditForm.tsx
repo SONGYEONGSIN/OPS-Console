@@ -84,7 +84,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="제목"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="할 일 제목"
         />
       </label>
@@ -95,7 +95,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
           value={row.body ?? ""}
           onChange={(e) => setRow({ ...row, body: e.target.value })}
           rows={3}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="설명 (선택)"
         />
       </label>
@@ -125,7 +125,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                 });
               else setRow({ ...row, category: v });
             }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택 안 함</option>
             {CATEGORY_OPTIONS.map((opt) => (
@@ -140,7 +140,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
             aria-label="카테고리 직접 입력"
             value={row.category}
             onChange={(e) => setRow({ ...row, category: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
             placeholder="기타 카테고리명 직접 입력"
           />
         ) : null}
@@ -157,7 +157,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                 priority: e.target.value as ListRow["priority"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {PRIORITY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -177,7 +177,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                 todoStatus: e.target.value as ListRow["todoStatus"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -201,7 +201,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                   : null,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
           <input
             type="time"
@@ -215,7 +215,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                   null,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </div>
       </label>

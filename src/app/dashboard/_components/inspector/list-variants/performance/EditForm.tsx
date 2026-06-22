@@ -86,7 +86,7 @@ export function PerformanceEditForm({ row, onSave, onCancel }: EditFormProps) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={8}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder={`${STEP_LABEL[step]} 내용을 작성해주세요`}
         />
       </label>
@@ -101,7 +101,7 @@ export function PerformanceEditForm({ row, onSave, onCancel }: EditFormProps) {
               aria-label="성과평가 등급"
               value={gradePerformance}
               onChange={(e) => setGradePerformance(e.target.value as Grade | "")}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
               title={
                 gradePerformance
                   ? GRADE_DESCRIPTION_PERFORMANCE[gradePerformance]
@@ -129,7 +129,7 @@ export function PerformanceEditForm({ row, onSave, onCancel }: EditFormProps) {
               aria-label="역량평가 등급"
               value={gradeCompetency}
               onChange={(e) => setGradeCompetency(e.target.value as Grade | "")}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink"
+              className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
               title={
                 gradeCompetency
                   ? GRADE_DESCRIPTION_COMPETENCY[gradeCompetency]

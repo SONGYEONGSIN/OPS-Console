@@ -47,7 +47,7 @@ export function MyTodoForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="제목"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="할 일"
         />
       </label>
@@ -58,7 +58,7 @@ export function MyTodoForm({ row, setRow, onSave, onCancel }: Props) {
           value={row.body ?? ""}
           onChange={(e) => setRow({ ...row, body: e.target.value })}
           rows={4}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="설명 (선택)"
         />
       </label>
@@ -74,7 +74,7 @@ export function MyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                 priority: e.target.value as ListRow["priority"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {TODO_PRIORITY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -95,7 +95,7 @@ export function MyTodoForm({ row, setRow, onSave, onCancel }: Props) {
                 dueAt: e.target.value ? localKstToIso(e.target.value) : null,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
