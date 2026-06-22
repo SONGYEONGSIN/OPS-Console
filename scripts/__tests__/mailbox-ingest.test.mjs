@@ -8,6 +8,7 @@ import {
   fetchInbox,
   fetchFolderMessages,
   collectInboxFolderIds,
+  graphGetWithRetry,
 } from "../mailbox-ingest.mjs";
 
 describe("isAutoSender", () => {
@@ -191,6 +192,55 @@ describe("fetchFolderMessages URL 인코딩 (폴더별 일반화, OData 리터�
     const url = spy.mock.calls[0][0];
     expect(url).not.toContain("$filter");
     expect(url).not.toContain("%24");
+  });
+});
+
+describe("graphGetWithRetry — 429 백오프 재시도", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("첫 호출 429(Retry-After) → 대기 후 재시도 → 200 성공", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      calls++;
+      if (calls === 1) {
+        return {
+          ok: false,
+          status: 429,
+          headers: { get: (h) => (h === "Retry-After" ? "1" : null) },
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ value: [] }) };
+    });
+
+    const promise = graphGetWithRetry("https://graph/x", "tok");
+    await vi.runAllTimersAsync();
+    const res = await promise;
+
+    expect(res.ok).toBe(true);
+    expect(res.status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("maxRetries 초과해도 계속 429면 마지막 429 응답 반환(throw 안 함)", async () => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: { get: () => null },
+    });
+
+    const promise = graphGetWithRetry("https://graph/x", "tok", 2);
+    await vi.runAllTimersAsync();
+    const res = await promise;
+
+    expect(res.status).toBe(429);
+    // 최초 1회 + 재시도 2회 = 3
+    expect(spy).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
   });
 });
 

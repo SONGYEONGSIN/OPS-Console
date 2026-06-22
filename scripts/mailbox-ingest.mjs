@@ -42,6 +42,26 @@ const DRY_RUN = process.argv.slice(2).includes("--dry-run");
 const OLLAMA_URL = env.OLLAMA_URL ?? "http://localhost:11434";
 const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "exaone3.5:7.8b";
 
+// Graph GET + 429(ApplicationThrottled) 백오프 재시도.
+// Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦다.
+// Retry-After 헤더(초) 우선, 없으면 기본 2초. 최대 3회 재시도.
+export async function graphGetWithRetry(url, token, maxRetries = 3) {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) return res; // 호출부에서 !res.ok 처리(throw/skip)
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : 2000;
+    await new Promise((r) => setTimeout(r, waitMs));
+    attempt++;
+  }
+}
+
 async function getGraphToken() {
   const body = new URLSearchParams({
     grant_type: "client_credentials",
@@ -75,7 +95,7 @@ export async function fetchInbox(token, ownerEmail, since) {
     `&$orderby=receivedDateTime%20desc` +
     `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
     filterSuffix;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await graphGetWithRetry(url, token);
   if (!res.ok) throw new Error(`inbox ${res.status} ${await res.text()}`);
   return (await res.json()).value ?? [];
 }
@@ -92,7 +112,7 @@ export async function fetchFolderMessages(token, ownerEmail, folderId, since) {
     `&$orderby=receivedDateTime%20desc` +
     `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
     filterSuffix;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await graphGetWithRetry(url, token);
   if (!res.ok)
     throw new Error(`folder ${folderId} ${res.status} ${await res.text()}`);
   return (await res.json()).value ?? [];
@@ -101,11 +121,10 @@ export async function fetchFolderMessages(token, ownerEmail, folderId, since) {
 // 받은편지함의 직속 폴더 id를 조회한 뒤 childFolders를 재귀로 모두 모아
 // 폴더 id 배열(받은편지함 자신 포함)을 반환. nextLink 페이지네이션 처리.
 export async function collectInboxFolderIds(token, ownerEmail) {
-  const headers = { Authorization: `Bearer ${token}` };
   const userPath = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}`;
 
   // 1) 받은편지함 자신의 id 확보
-  const inboxRes = await fetch(`${userPath}/mailFolders/inbox`, { headers });
+  const inboxRes = await graphGetWithRetry(`${userPath}/mailFolders/inbox`, token);
   if (!inboxRes.ok)
     throw new Error(`inbox folder ${inboxRes.status} ${await inboxRes.text()}`);
   const inbox = await inboxRes.json();
@@ -114,7 +133,7 @@ export async function collectInboxFolderIds(token, ownerEmail) {
   const ids = [rootId];
   const seen = new Set([rootId]);
 
-  // 2) BFS/DFS로 childFolders 재귀 수집
+  // 2) BFS로 childFolders 재귀 수집 — 메일박스당 동시성 한도(4) 회피 위해 한 번에 하나씩 await.
   const queue = [rootId];
   while (queue.length > 0) {
     const parentId = queue.shift();
@@ -122,7 +141,7 @@ export async function collectInboxFolderIds(token, ownerEmail) {
       `${userPath}/mailFolders/${parentId}/childFolders` +
       `?$top=100&$select=id,displayName`;
     while (next) {
-      const res = await fetch(next, { headers });
+      const res = await graphGetWithRetry(next, token);
       if (!res.ok)
         throw new Error(
           `childFolders ${parentId} ${res.status} ${await res.text()}`,
@@ -255,13 +274,23 @@ async function main() {
 
     // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
     const folderIds = await collectInboxFolderIds(token, s.owner_email);
-    const inbox = (
-      await Promise.all(
-        folderIds.map((fid) =>
-          fetchFolderMessages(token, s.owner_email, fid, since),
-        ),
-      )
-    ).flat();
+
+    // 폴더별 메시지는 순차 fetch — 메일박스당 동시 요청 한도(~4) 초과 시
+    // 429 ApplicationThrottled로 잡이 죽으므로 한 번에 하나씩 처리한다.
+    // graphGetWithRetry로 3회 재시도 후에도 429면 그 폴더만 건너뛰고 잡은 계속.
+    const inbox = [];
+    for (const fid of folderIds) {
+      try {
+        const msgs = await fetchFolderMessages(token, s.owner_email, fid, since);
+        inbox.push(...msgs);
+      } catch (e) {
+        if (/\b429\b/.test(e.message)) {
+          console.warn(`folder skip (429 throttled): ${s.owner_email} ${fid}`);
+          continue;
+        }
+        throw e;
+      }
+    }
 
     for (const m of inbox) {
       const skip =
