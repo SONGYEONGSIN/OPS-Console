@@ -6,7 +6,10 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listMailbox, getAutoDraftEnabled } from "@/features/mailbox/queries";
-import { sendMailReply } from "@/features/mailbox/actions";
+import {
+  sendMailReply,
+  ensureMailboxSettings,
+} from "@/features/mailbox/actions";
 import { mailboxEntryToListRow } from "./_row-mapper";
 import { AutoDraftToggle } from "./AutoDraftToggle";
 
@@ -20,6 +23,10 @@ export default async function MailboxPage() {
 
   const me = await getCurrentOperator();
   const myEmail = me?.email ?? "";
+
+  // 메일함 접근 시 본인 계정을 수집 대상으로 자동 등록(insert-if-absent, 자동초안 OFF).
+  // 다음 cron ingest부터 본인 외부고객 메일이 수집된다. 기존 토글은 보존.
+  if (myEmail) await ensureMailboxSettings(myEmail);
 
   const entries = myEmail ? await listMailbox(myEmail) : [];
   const autoEnabled = myEmail ? await getAutoDraftEnabled(myEmail) : true;
