@@ -41,6 +41,6 @@ notify pgrst, 'reload schema';
 
 -- 검증 (수동):
 -- \d public.news
--- 기대: 7 컬럼 (id, link, title, source, published_at, summary, keyword, collected_at)
+-- 기대: 8 컬럼 (id, link, title, source, published_at, summary, keyword, collected_at)
 -- select indexname from pg_indexes where tablename='news' order by 1;
 -- 기대: 2 user index + 1 pkey + 1 unique (link)
