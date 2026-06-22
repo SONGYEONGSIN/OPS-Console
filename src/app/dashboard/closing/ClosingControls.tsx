@@ -11,13 +11,20 @@ const DEBOUNCE_MS = 300;
  * 서비스 마감 — 검색 input(?q, 대학·서비스·운영자) + 카테고리 셀렉트(?category).
  * contacts/services와 동일한 표준 controlsRow 구성. URL 기반(SSR 호환), 변경 시 page 초기화.
  */
-export function ClosingControls({ categories }: { categories: string[] }) {
+export function ClosingControls({
+  categories,
+  months,
+}: {
+  categories: string[];
+  months: string[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
 
   const [q, setQ] = useState(params.get("q") ?? "");
   const category = params.get("category") ?? "";
+  const month = params.get("month") ?? "";
 
   useEffect(() => {
     const current = params.get("q") ?? "";
@@ -55,6 +62,13 @@ export function ClosingControls({ categories }: { categories: string[] }) {
         options={categories}
         placeholder="카테고리 전체"
         ariaLabel="카테고리 필터"
+      />
+      <ListSelect
+        value={month}
+        onChange={(v) => navigate({ month: v || null })}
+        options={months}
+        placeholder="월 전체"
+        ariaLabel="월 필터"
       />
     </div>
   );

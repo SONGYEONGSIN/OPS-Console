@@ -8,6 +8,25 @@ import type { ClosingRow } from "./schemas";
 
 const ymd = (iso: string) => iso.slice(0, 10);
 
+/**
+ * "YYYY-MM" → 그 달의 [start, end) 경계(end는 다음 달 1일, exclusive). 12월은 다음 해 1월로 롤오버.
+ * 형식 오류(YYYY-MM 아님, 월 1~12 벗어남)면 null. 월별 필터(오픈/마감 날짜 비교)에 사용.
+ */
+export function monthRange(
+  month: string,
+): { start: string; end: string } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec((month ?? "").trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  if (mo < 1 || mo > 12) return null;
+  const start = `${y}-${String(mo).padStart(2, "0")}-01`;
+  const ny = mo === 12 ? y + 1 : y;
+  const nmo = mo === 12 ? 1 : mo + 1;
+  const end = `${ny}-${String(nmo).padStart(2, "0")}-01`;
+  return { start, end };
+}
+
 /** YYYY-MM-DD 에 일수를 더한 YYYY-MM-DD (UTC 산술로 DST 무관). */
 function addDaysYmd(base: string, days: number): string {
   const [y, m, d] = base.split("-").map(Number);

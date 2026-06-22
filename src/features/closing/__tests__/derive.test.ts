@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import type { ClosingRow } from "../schemas";
-import { imminentClosings, upcomingOpens, openingsWithin } from "../derive";
+import {
+  imminentClosings,
+  upcomingOpens,
+  openingsWithin,
+  monthRange,
+} from "../derive";
 
 /** ClosingRow 최소 팩토리 — 테스트 관심 필드만 덮어쓴다. */
 function row(partial: Partial<ClosingRow>): ClosingRow {
@@ -139,5 +144,34 @@ describe("openingsWithin — 오픈 예정 중 오늘~N일 이내(triage 노출�
       row({ id: "d0", write_start_at: "2026-06-16T09:00:00+09:00" }),
     ];
     expect(openingsWithin(rows, TODAY).map((r) => r.id)).toEqual(["d0", "d3"]);
+  });
+});
+
+describe("monthRange — YYYY-MM → [start, end) 경계", () => {
+  it("일반 월: 7월 → 2026-07-01 ~ 2026-08-01", () => {
+    expect(monthRange("2026-07")).toEqual({
+      start: "2026-07-01",
+      end: "2026-08-01",
+    });
+  });
+
+  it("12월 → 다음 해 1월로 롤오버", () => {
+    expect(monthRange("2026-12")).toEqual({
+      start: "2026-12-01",
+      end: "2027-01-01",
+    });
+  });
+
+  it("1월 경계", () => {
+    expect(monthRange("2027-01")).toEqual({
+      start: "2027-01-01",
+      end: "2027-02-01",
+    });
+  });
+
+  it("형식 오류 → null", () => {
+    expect(monthRange("2026")).toBeNull();
+    expect(monthRange("")).toBeNull();
+    expect(monthRange("2026-13")).toBeNull();
   });
 });

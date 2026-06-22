@@ -6,7 +6,11 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { listClosing, listClosingCategories } from "@/features/closing/queries";
+import {
+  listClosing,
+  listClosingCategories,
+  listClosingMonths,
+} from "@/features/closing/queries";
 import { closingRowToListRow } from "./_row-mapper";
 import { ClosingStatusChips } from "./_StatusChips";
 import { ClosingControls } from "./ClosingControls";
@@ -24,6 +28,7 @@ export default async function ClosingPage({
     status?: string;
     q?: string;
     category?: string;
+    month?: string;
   }>;
 }) {
   const slug = "closing";
@@ -42,16 +47,18 @@ export default async function ClosingPage({
   const closedStatus = status === "open" ? "open" : "all";
   const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
 
-  const [{ rows: closing, total }, categories] = await Promise.all([
+  const [{ rows: closing, total }, categories, months] = await Promise.all([
     listClosing({
       page: sp.page ? Number(sp.page) : 1,
       pageSize: 30,
       search: sp.q,
       category: sp.category,
+      month: sp.month,
       closedStatus,
       operatorName,
     }),
     listClosingCategories(),
+    listClosingMonths(),
   ]);
   const rows: ListRow[] = closing.map(closingRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
@@ -78,7 +85,11 @@ export default async function ClosingPage({
       readOnly
       liveData
       controlsRow={
-        <ClosingControls key="closing-controls" categories={categories} />
+        <ClosingControls
+          key="closing-controls"
+          categories={categories}
+          months={months}
+        />
       }
       inlineFilters={<ClosingStatusChips key="closing-scope" />}
       footer={
