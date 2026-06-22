@@ -47,6 +47,12 @@ export type BackupLeaveInput = {
 /** 멀티데이 휴가 펼침 상한 — 비정상 범위로 인한 폭주 방지 */
 const MAX_LEAVE_SPAN_DAYS = 366;
 
+/**
+ * 멀티데이 펼침 시 주말(토·일) 셀을 제외하는 일정 유형 — 연차/교육 등 근무일 기반.
+ * 입시·행사·원서접수(application/pims/event 등)는 주말에도 진행되므로 주말에도 표기한다.
+ */
+const WEEKEND_SKIP_TYPES = new Set<ScheduleType>(["leave", "training"]);
+
 /** "YYYY-MM-DD"에 일수를 더한 새 "YYYY-MM-DD" (타임존 무관 — 달력상 자연일) */
 function ymdAddDays(ymd: string, days: number): string {
   const [y, m, d] = ymd.split("-").map(Number);
@@ -178,13 +184,15 @@ export function groupItemsByDay(
       continue;
     }
 
-    // 멀티데이 일정: 시작~종료 모든 날짜에 펼치되 주말(토·일)은 제외(백업 휴가와 동일 규칙).
+    // 멀티데이 일정: 시작~종료 모든 날짜에 펼친다. 연차·교육(WEEKEND_SKIP_TYPES)만 주말(토·일) 제외 —
+    // 입시·행사·원서접수 등은 주말에도 진행되므로 표기 유지.
     // 시작일=시작 시각 sortKey, 종료일=종료 시각, 중간일=""(진행중 = all_day 최상단). rowRef는 동일 event.
+    const skipWeekend = WEEKEND_SKIP_TYPES.has(e.type);
     let cur = startYmd;
     let guard = 0;
     while (cur <= endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
       const dow = ymdWeekday(cur);
-      if (dow !== 0 && dow !== 6) {
+      if (!(skipWeekend && (dow === 0 || dow === 6))) {
         const isStart = cur === startYmd;
         const isEnd = cur === endYmd;
         push(cur, {
