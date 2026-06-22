@@ -4,8 +4,16 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const sendGraphMail: Mock = vi.fn(async () => ({ ok: true }));
 vi.mock("@/lib/microsoft/sendmail", () => ({ sendGraphMail: (...a: unknown[]) => sendGraphMail(...a) }));
 const insertMock: Mock = vi.fn(async () => ({ error: null }));
+const maybeSingleMock: Mock = vi.fn(async () => ({
+  data: { name: "나", department: "운영부", team: "운영2팀", role: "팀장", phone: "(02)000-0000" },
+}));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: vi.fn(() => ({ from: () => ({ insert: insertMock }) })),
+  createAdminClient: vi.fn(() => ({
+    from: () => ({
+      insert: insertMock,
+      select: () => ({ eq: () => ({ maybeSingle: maybeSingleMock }) }),
+    }),
+  })),
 }));
 const getCurrentOperator: Mock = vi.fn(async () => ({ email: "me@op.com", displayName: "나" }));
 vi.mock("@/features/auth/queries", () => ({ getCurrentOperator: () => getCurrentOperator() }));
@@ -45,15 +53,20 @@ describe("sendDataRequestAction", () => {
     expect(sendGraphMail).not.toHaveBeenCalled();
   });
 
-  it("정상 발송 — 발신자=본인 + sendGraphMail(평문 text) + insert(sent)", async () => {
+  it("정상 발송 — 발신자=본인 + sendGraphMail(html+서명) + insert(sent)", async () => {
     const r = await sendDataRequestAction(undefined, fd());
     expect(sendGraphMail).toHaveBeenCalledTimes(1);
     const mailCall = sendGraphMail.mock.calls[0] as [Record<string, unknown>];
     expect(mailCall[0]).toMatchObject({
       senderUserId: "me@op.com",
       toEmail: "a@b.com",
-      text: "안녕하세요",
     });
+    // 평문 text 대신 HTML(본문 + 운영자 서명)로 발송
+    expect(mailCall[0].text).toBeUndefined();
+    const html = mailCall[0].html as string;
+    expect(html).toContain("안녕하세요");
+    expect(html).toContain("(주)진학어플라이");
+    expect(html).toContain('<a href="https://www.jinhakapply.com/">원서접수</a>');
     expect(mailCall[0].subject).toContain("[진학어플라이]");
     expect(insertMock).toHaveBeenCalled();
     const insertCall = insertMock.mock.calls[0] as [Record<string, unknown>];

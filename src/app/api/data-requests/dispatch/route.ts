@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
+import { buildReplyHtml } from "@/lib/mail-signature";
 
 type DueRow = {
   id: string;
@@ -48,13 +49,19 @@ async function handle(): Promise<Response> {
       dispatchedDry += 1;
       patch = { status: "dry_run", sent_at: new Date().toISOString() };
     } else {
+      // 발신 명의(row.sender_email)의 운영자 정보로 HTML 서명 생성. row별 1회 조회.
+      const { data: senderSig } = await supabase
+        .from("operators")
+        .select("name, department, team, role, phone")
+        .eq("email", row.sender_email)
+        .maybeSingle();
       const result = await sendGraphMail({
         senderUserId: row.sender_email,
         toEmail: row.to_email,
         toName: row.to_name ?? undefined,
         cc: row.cc ?? [],
         subject: row.subject,
-        text: row.body,
+        html: buildReplyHtml(row.body, senderSig ?? {}),
       });
       if (result.ok) {
         sent += 1;

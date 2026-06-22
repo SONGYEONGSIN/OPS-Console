@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
+import { buildReplyHtml } from "@/lib/mail-signature";
 import { sendDataRequestInputSchema, dataRequestCcSchema } from "./schemas";
 import { parseScheduledAtKst } from "./schedule-time";
 
@@ -82,16 +83,24 @@ export async function sendDataRequestAction(
   let status: "sent" | "failed" | "dry_run" = "sent";
   let error: string | null = null;
 
+  const supabase = createAdminClient();
+
   if (dryRun) {
     status = "dry_run";
   } else {
+    // 발신 명의(본인)의 운영자 정보로 HTML 서명 생성.
+    const { data: senderSig } = await supabase
+      .from("operators")
+      .select("name, department, team, role, phone")
+      .eq("email", me.email)
+      .maybeSingle();
     const result = await sendGraphMail({
       senderUserId: me.email,
       toEmail: input.toEmail,
       toName: input.toName,
       cc: input.cc,
       subject: input.subject,
-      text: input.body,
+      html: buildReplyHtml(input.body, senderSig ?? {}),
     });
     if (!result.ok) {
       status = "failed";
@@ -99,7 +108,6 @@ export async function sendDataRequestAction(
     }
   }
 
-  const supabase = createAdminClient();
   const { error: insertError } = await supabase.from("data_request_sends").insert({
     service_id: input.serviceId ?? null,
     university_name: input.universityName,
