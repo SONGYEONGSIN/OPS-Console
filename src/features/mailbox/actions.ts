@@ -6,6 +6,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { logActivity } from "@/features/worklog/log";
 import { sendReplySchema, setAutoDraftSchema } from "./schemas";
+import { buildReplyHtml } from "./signature";
 
 export type MailboxActionResult = { ok: true } | { ok: false; error: string };
 
@@ -46,13 +47,21 @@ export async function sendMailReply(
     ? msg.subject
     : `RE: ${msg.subject ?? ""}`;
 
+  // 발신 명의(메일함 주인)의 운영자 정보로 HTML 서명 생성.
+  const { data: ownerOp } = await admin
+    .from("operators")
+    .select("name, department, team, role, phone")
+    .eq("email", msg.owner_email)
+    .maybeSingle();
+  const html = buildReplyHtml(parsed.data.editedBody, ownerOp ?? {});
+
   if (!dryRun) {
     const result = await sendGraphMail({
       senderUserId: msg.owner_email, // 메일함 주인 명의 발송
       toEmail: msg.from_email,
       toName: msg.from_name ?? undefined,
       subject,
-      text: parsed.data.editedBody,
+      html, // plain → HTML + 클릭 가능 서명
     });
     if (!result.ok) return { ok: false, error: result.error };
   }

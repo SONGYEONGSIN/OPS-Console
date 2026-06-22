@@ -31,6 +31,24 @@ function makeAdmin(message: Record<string, unknown> | null) {
         }),
       };
     }
+    if (table === "operators") {
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                name: "송영신",
+                department: "운영부",
+                team: "운영2팀",
+                role: "팀장",
+                phone: "(02)2013-0669",
+              },
+              error: null,
+            }),
+          }),
+        }),
+      };
+    }
     if (table === "mailbox_drafts") return { insert: draftInsert };
     if (table === "mailbox_settings") return { upsert: settingsUpsert };
     throw new Error("unexpected table " + table);
@@ -72,7 +90,17 @@ describe("sendMailReply", () => {
     const r = await sendMailReply(msg.id, "회신드립니다.");
     expect(r.ok).toBe(true);
     expect(mockSendGraphMail).toHaveBeenCalledWith(
-      expect.objectContaining({ senderUserId: "op@x.com", toEmail: "kim@u.ac.kr" }),
+      expect.objectContaining({
+        senderUserId: "op@x.com",
+        toEmail: "kim@u.ac.kr",
+        html: expect.stringContaining("회신드립니다."),
+      }),
+    );
+    // HTML 발송이므로 text 인자는 넘기지 않는다.
+    expect(mockSendGraphMail.mock.calls[0][0]).not.toHaveProperty("text");
+    // 클릭 가능 서명 링크가 본문에 포함된다.
+    expect(mockSendGraphMail.mock.calls[0][0].html).toContain(
+      '<a href="https://www.jinhakapply.com/">원서접수</a>',
     );
     expect(draftInsert.mock.calls[0][0]).toEqual(
       expect.objectContaining({ status: "sent", sent_by_email: "op@x.com" }),
