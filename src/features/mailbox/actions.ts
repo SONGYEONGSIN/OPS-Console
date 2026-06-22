@@ -116,3 +116,32 @@ export async function setAutoDraftEnabled(
   revalidatePath(MAILBOX_PATH);
   return { ok: true };
 }
+
+/**
+ * 본인 메일함 수집 등록 — 메일함 페이지 접근 시 호출.
+ * `mailbox_settings` row를 insert-if-absent로 보장(자동초안 기본 OFF, opt-in).
+ * 이미 row가 있으면 ignoreDuplicates로 토글 설정을 보존한다.
+ * cron ingest는 row 존재 운영자만 순회하므로(스펙 §13), 메일함을 연 운영자가
+ * 다음 수집부터 자동으로 본인 계정 수집 대상이 된다.
+ */
+export async function ensureMailboxSettings(
+  ownerEmail: string,
+): Promise<MailboxActionResult> {
+  const me = await getCurrentOperator();
+  if (!me?.email || me.email !== ownerEmail) {
+    return { ok: false, error: "권한 없음 — 본인 메일함만 등록할 수 있습니다." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("mailbox_settings").upsert(
+    {
+      owner_email: ownerEmail,
+      auto_draft_enabled: false,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "owner_email", ignoreDuplicates: true },
+  );
+  if (error) return { ok: false, error: error.message };
+
+  return { ok: true };
+}

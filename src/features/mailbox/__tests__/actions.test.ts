@@ -15,7 +15,11 @@ vi.mock("@/lib/microsoft/sendmail", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/features/worklog/log", () => ({ logActivity: vi.fn() }));
 
-import { sendMailReply, setAutoDraftEnabled } from "../actions";
+import {
+  sendMailReply,
+  setAutoDraftEnabled,
+  ensureMailboxSettings,
+} from "../actions";
 
 /** message_id로 owner/from/subject join 조회 → 결과를 반환하는 가짜 admin client */
 function makeAdmin(message: Record<string, unknown> | null) {
@@ -130,5 +134,30 @@ describe("setAutoDraftEnabled", () => {
     expect(settingsUpsert.mock.calls[0][0]).toEqual(
       expect.objectContaining({ owner_email: "op@x.com", auto_draft_enabled: false }),
     );
+  });
+});
+
+describe("ensureMailboxSettings", () => {
+  it("본인 메일함 row를 auto_draft_enabled=false로 insert-if-absent (기존 토글 보존)", async () => {
+    const { client, settingsUpsert } = makeAdmin(null);
+    mockAdmin.mockReturnValue(client);
+    const r = await ensureMailboxSettings("op@x.com");
+    expect(r.ok).toBe(true);
+    // 신규 등록은 자동초안 OFF 기본값
+    expect(settingsUpsert.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ owner_email: "op@x.com", auto_draft_enabled: false }),
+    );
+    // 기존 row가 있으면 덮어쓰지 않음 (ignoreDuplicates)
+    expect(settingsUpsert.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ onConflict: "owner_email", ignoreDuplicates: true }),
+    );
+  });
+
+  it("본인 메일함이 아니면 권한 거부", async () => {
+    mockGetOperator.mockResolvedValue({ permission: "member", email: "other@x.com" });
+    const { client } = makeAdmin(null);
+    mockAdmin.mockReturnValue(client);
+    const r = await ensureMailboxSettings("op@x.com");
+    expect(r.ok).toBe(false);
   });
 });
