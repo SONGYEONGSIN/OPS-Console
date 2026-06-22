@@ -10,8 +10,12 @@ begin;
 -- 1) 기존 title 중복 제거 (collected_at 최신 1건만 유지)
 ------------------------------------------------------------
 
+-- (collected_at, id) 복합 비교로 동률(같은 수집 실행 = 동일 collected_at)에도
+-- id(uuid) tiebreaker로 정확히 1건만 생존. collected_at 단독 비교는 동률 시
+-- 양쪽 다 미삭제 → unique 인덱스 생성 실패.
 delete from public.news a using public.news b
-  where a.title = b.title and a.collected_at < b.collected_at;
+  where a.title = b.title
+    and (a.collected_at, a.id) < (b.collected_at, b.id);
 
 ------------------------------------------------------------
 -- 2) unique 키 link → title 전환
