@@ -47,7 +47,7 @@ export function PostForm({
           aria-label="제목"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="제목을 입력해주세요"
         />
       </label>
@@ -58,7 +58,7 @@ export function PostForm({
           value={row.body ?? ""}
           onChange={(e) => setRow({ ...row, body: e.target.value })}
           rows={8}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="본문을 작성해주세요"
         />
       </label>
@@ -77,7 +77,7 @@ export function PostForm({
             aria-label="등록자"
             value={row.author ?? ""}
             onChange={(e) => setRow({ ...row, author: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {(variant === "post-notice"
@@ -99,7 +99,7 @@ export function PostForm({
           onChange={(e) =>
             setRow({ ...row, status: e.target.value as ListRow["status"] })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           {postStatusKeys(variant).map((s) => (
             <option key={s} value={s}>

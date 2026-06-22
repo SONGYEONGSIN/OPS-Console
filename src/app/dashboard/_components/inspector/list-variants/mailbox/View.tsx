@@ -61,7 +61,7 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={8}
-              className="w-full border border-line bg-washi px-3 py-2 text-sm text-ink"
+              className="w-full border border-line bg-cream px-3 py-2 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
               placeholder="회신 본문 (AI 초안 — 검토 후 편집)"
             />
             <div className="flex items-center gap-2">
@@ -80,14 +80,6 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
                 className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-ink hover:text-cream"
               >
                 폐기
-              </button>
-              <button
-                type="button"
-                disabled
-                title="초안 재생성은 로컬 수집 잡이 담당합니다 (Phase 1)"
-                className="cursor-not-allowed border border-line bg-transparent px-3 py-1 text-xs text-muted opacity-50"
-              >
-                다시 생성
               </button>
             </div>
           </div>

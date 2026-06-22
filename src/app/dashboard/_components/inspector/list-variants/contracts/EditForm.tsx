@@ -85,7 +85,7 @@ export function ContractsEditForm({
               }
               readOnly={readonly}
               list={listId}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink disabled:bg-washi-raised read-only:bg-washi-raised"
+              className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white disabled:bg-washi-raised read-only:bg-washi-raised"
             />
             {options && options.length > 0 && (
               <datalist id={listId}>

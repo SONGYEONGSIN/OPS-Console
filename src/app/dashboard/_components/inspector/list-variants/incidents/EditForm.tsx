@@ -119,7 +119,7 @@ export function IncidentEditForm({
           onChange={(e) =>
             setRow({ ...row, incidentYear: Number(e.target.value) })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           {yearOptions.map((y) => (
             <option key={y} value={y}>
@@ -213,7 +213,7 @@ export function IncidentEditForm({
                   .value as (typeof APP_TYPE_OPTIONS)[number],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {APP_TYPE_OPTIONS.map((v) => (
               <option key={v} value={v}>
@@ -234,7 +234,7 @@ export function IncidentEditForm({
             }
             maxLength={50}
             placeholder="결제 / 원서작성 / 사이트 / 경쟁률 / 기타"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
           <datalist id="incident-category-options">
             {incidentCategorySuggestions.map((c) => (
@@ -256,7 +256,7 @@ export function IncidentEditForm({
                 incidentOccurredDate: e.target.value || null,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
 
@@ -271,7 +271,7 @@ export function IncidentEditForm({
                 incidentResolvedDate: e.target.value || null,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
@@ -283,7 +283,7 @@ export function IncidentEditForm({
           value={row.incidentTitle ?? ""}
           onChange={(e) => setRow({ ...row, incidentTitle: e.target.value })}
           maxLength={200}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="예: 결제 오류 / 발표 페이지 문구 오안내"
         />
       </label>
@@ -302,7 +302,7 @@ export function IncidentEditForm({
           rows={4}
           maxLength={5000}
           placeholder="사고 발생 과정 (Markdown 가능)"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
 
@@ -317,7 +317,7 @@ export function IncidentEditForm({
           rows={3}
           maxLength={5000}
           placeholder="근본 원인"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
 
@@ -340,7 +340,7 @@ export function IncidentEditForm({
           rows={3}
           maxLength={5000}
           placeholder="재발 방지 대책"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
 
@@ -395,7 +395,7 @@ export function IncidentEditForm({
               incidentStatus: e.target.value as (typeof STATUS_OPTIONS)[number],
             })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           {STATUS_OPTIONS.map((v) => (
             <option key={v} value={v}>

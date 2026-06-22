@@ -80,7 +80,7 @@ export function SchoolContactPicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="대학 연락처 검색 (이름/이메일) → 선택 시 추가"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:outline-none"
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
           {matches.length > 0 && (
             <ul
