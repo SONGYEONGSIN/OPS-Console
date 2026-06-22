@@ -22,6 +22,9 @@ export const todoRowSchema = z.object({
   category: z.string().nullable().optional(),
   progress: z.number().int().min(0).max(100).nullable().optional(),
   status: todoStatusSchema.nullable().optional(),
+  // services 자동 등록 연결 키(멱등) + 자동 등록 항목 soft-delete 표시.
+  source_service_id: z.string().uuid().nullable().optional(),
+  auto_dismissed: z.boolean().optional(),
   assignee_email: z.string().email(),
   created_by_email: z.string().email(),
   created_at: z.string(),
@@ -38,6 +41,7 @@ export const todoCreateSchema = z.object({
   category: z.string().nullable().optional(),
   progress: z.number().int().min(0).max(100).nullable().optional(),
   status: todoStatusSchema.nullable().optional(),
+  source_service_id: z.string().uuid().nullable().optional(),
   assignee_email: z.string().email(),
   created_by_email: z.string().email(),
 });
@@ -54,6 +58,7 @@ export const todoUpdateSchema = z.object({
   category: z.string().nullable().optional(),
   progress: z.number().int().min(0).max(100).nullable().optional(),
   status: todoStatusSchema.nullable().optional(),
+  auto_dismissed: z.boolean().optional(),
 });
 
 export type TodoUpdate = z.infer<typeof todoUpdateSchema>;

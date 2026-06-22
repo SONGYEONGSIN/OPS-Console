@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { todoCreateSchema, todoUpdateSchema, type TodoRow } from "./schemas";
 import { syncTodoCompletion } from "./completion-sync";
+import { computeMissingApplicationTodos } from "./application-sync";
+import type { ServicesRow } from "@/features/services/schemas";
 
 export type TodoActionResult =
   | { ok: true; row: TodoRow }
@@ -87,6 +89,55 @@ export async function deleteTodo(id: string): Promise<TodoActionResult> {
   if (!data) return { ok: false, error: NOT_FOUND_ERROR };
   revalidatePath(TODO_PATH);
   return { ok: true, row: data as TodoRow };
+}
+
+/**
+ * 원서접수 services → 주요업무(todos) 자동 동기화.
+ *
+ * 본인 담당 services 중 아직 todo로 연결 안 된 것을 일괄 생성한다(멱등 — source_service_id 존재 시 skip,
+ * 삭제됨 항목 포함하여 재생성 안 함). my-todo weekly 페이지 진입 시 호출. 진입 자동이므로 실패해도
+ * 페이지를 깨지 않고 0건으로 반환(다음 진입에 재시도).
+ */
+export async function syncApplicationTodos(
+  services: ServicesRow[],
+): Promise<{ created: number }> {
+  try {
+    const me = await getCurrentOperator();
+    if (!me || me.permission === "viewer" || me.permission === null) {
+      return { created: 0 };
+    }
+    const mine = services.filter(
+      (s) => s.operator_email === me.email || s.developer_email === me.email,
+    );
+    if (mine.length === 0) return { created: 0 };
+
+    const supabase = await createClient();
+    const { data: existing } = await supabase
+      .from("todos")
+      .select("source_service_id")
+      .not("source_service_id", "is", null);
+
+    const payloads = computeMissingApplicationTodos(
+      mine,
+      existing ?? [],
+      me.email,
+    );
+    if (payloads.length === 0) return { created: 0 };
+
+    const { data, error } = await supabase
+      .from("todos")
+      .insert(payloads)
+      .select("id");
+    if (error) {
+      console.error("[syncApplicationTodos] insert error:", error.message);
+      return { created: 0 };
+    }
+    revalidatePath(TODO_PATH);
+    return { created: data?.length ?? 0 };
+  } catch (e) {
+    console.error("[syncApplicationTodos] failed:", e);
+    return { created: 0 };
+  }
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   createTodo,
   updateTodo,
   deleteTodo,
+  syncApplicationTodos,
 } from "@/features/todos/actions";
 import { listMyProjectsWithTasks } from "@/features/projects/queries";
 import {
@@ -64,7 +65,6 @@ export default async function MyTodoPage({
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
 
   // Tab1 — Weekly
-  const todos = activeTab === "weekly" ? await listMyTodos() : [];
   const weekAnchor = sp.week ?? getTodayKstYmd();
   const weekStartYmd = getKstWeekStart(weekAnchor);
 
@@ -83,8 +83,7 @@ export default async function MyTodoPage({
   const myEmail = me?.email ?? "";
   const servicesFiltered = mineOnly
     ? servicesRaw.filter(
-        (s) =>
-          s.operator_email === myEmail || s.developer_email === myEmail,
+        (s) => s.operator_email === myEmail || s.developer_email === myEmail,
       )
     : servicesRaw;
   const services = servicesFiltered.map((s) => ({
@@ -92,6 +91,13 @@ export default async function MyTodoPage({
     write_start_at: shiftYmdYear(s.write_start_at, SERVICES_YEAR_OFFSET),
     write_end_at: shiftYmdYear(s.write_end_at, SERVICES_YEAR_OFFSET),
   }));
+
+  // 원서접수 services를 주요업무로 자동 동기화(멱등) 후 todos 조회 → 자동 생성분 즉시 반영.
+  // 진입 시 자동 — 실패해도 조용히 0건(페이지 무중단). 삭제된 항목은 재생성 안 함.
+  if (activeTab === "weekly") {
+    await syncApplicationTodos(services);
+  }
+  const todos = activeTab === "weekly" ? await listMyTodos() : [];
 
   // Tab2 — Projects
   const projectsWithTasks =
@@ -134,6 +140,12 @@ export default async function MyTodoPage({
       return r.ok ? { ok: true } : { ok: false, error: r.error };
     }
     if (row.status === "deleted") {
+      // 자동 등록(원서접수) 항목은 soft-delete(auto_dismissed) → 재생성 방지 + '삭제됨'으로 추적.
+      // 수동 todo는 종전대로 hard delete.
+      if (row.sourceServiceId) {
+        const r = await updateTodo(row.id, { auto_dismissed: true });
+        return r.ok ? { ok: true } : { ok: false, error: r.error };
+      }
       const r = await deleteTodo(row.id);
       return r.ok ? { ok: true } : { ok: false, error: r.error };
     }

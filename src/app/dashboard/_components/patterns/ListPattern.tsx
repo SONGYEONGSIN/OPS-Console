@@ -75,6 +75,10 @@ export type ListRow = {
   progress?: number | null;
   /** weekly-todo / project / project-task — 상태 enum */
   todoStatus?: "todo" | "in_progress" | "done" | "blocked" | null;
+  /** weekly-todo — 원서접수 자동 등록 연결 service id (있으면 자동 항목) */
+  sourceServiceId?: string | null;
+  /** weekly-todo — 자동 등록 항목 soft-delete 표시('삭제됨') */
+  autoDismissed?: boolean;
   /** project-task — parent project id */
   projectId?: string;
   /** project / project-task — 날짜 (YYYY-MM-DD KST) — schedule의 start_at/end_at은 timestamptz여서 별도 필드 */
