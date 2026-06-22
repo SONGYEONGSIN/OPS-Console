@@ -6,7 +6,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { logActivity } from "@/features/worklog/log";
 import { sendReplySchema, setAutoDraftSchema } from "./schemas";
-import { buildReplyHtml } from "./signature";
+import { buildReplyHtml } from "@/lib/mail-signature";
 
 export type MailboxActionResult = { ok: true } | { ok: false; error: string };
 

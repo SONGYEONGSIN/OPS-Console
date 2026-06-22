@@ -10,10 +10,16 @@ const updateMock = vi.fn((patch: Record<string, unknown>) => {
   void patch;
   return { eq: updateEqMock };
 });
+const maybeSingleMock = vi.fn(async () => ({
+  data: { name: "나", department: "운영부", team: "운영2팀", role: "팀장", phone: "(02)000-0000" },
+}));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
     rpc: rpcMock,
-    from: () => ({ update: updateMock }),
+    from: (table: string) =>
+      table === "operators"
+        ? { select: () => ({ eq: () => ({ maybeSingle: maybeSingleMock }) }) }
+        : { update: updateMock },
   })),
 }));
 
@@ -62,7 +68,11 @@ describe("dispatch route", () => {
     const json = await res.json();
     expect(sendGraphMail).toHaveBeenCalledTimes(2);
     expect(updateEqMock).toHaveBeenCalledTimes(2);
-    expect(sendGraphMail.mock.calls[0][0]).toMatchObject({ senderUserId: "me@op.com", toEmail: "a@b.com", text: "b1" });
+    expect(sendGraphMail.mock.calls[0][0]).toMatchObject({ senderUserId: "me@op.com", toEmail: "a@b.com" });
+    // 평문 text 대신 HTML(본문 + 운영자 서명)로 발송
+    expect(sendGraphMail.mock.calls[0][0].text).toBeUndefined();
+    expect(sendGraphMail.mock.calls[0][0].html).toContain("b1");
+    expect(sendGraphMail.mock.calls[0][0].html).toContain("(주)진학어플라이");
     expect(json).toMatchObject({ ok: true, dispatched: 2, sent: 1, failed: 1, updateFailed: 0 });
   });
 

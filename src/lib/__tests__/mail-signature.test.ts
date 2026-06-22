@@ -5,7 +5,7 @@ import {
   buildHtmlSignature,
   buildReplyHtml,
   type OperatorSig,
-} from "../signature";
+} from "../mail-signature";
 
 const FULL: OperatorSig = {
   name: "송영신",
