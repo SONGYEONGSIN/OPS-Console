@@ -21,6 +21,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 function loadEnv() {
   const fromFile = existsSync(".env.local")
@@ -40,25 +41,6 @@ const env = loadEnv();
 const DRY_RUN = process.argv.slice(2).includes("--dry-run");
 const OLLAMA_URL = env.OLLAMA_URL ?? "http://localhost:11434";
 const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "exaone3.5:7.8b";
-
-for (const k of [
-  "AZURE_AD_TENANT_ID",
-  "AZURE_AD_CLIENT_ID",
-  "AZURE_AD_CLIENT_SECRET",
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
-]) {
-  if (!env[k]) {
-    console.error(`Missing required env: ${k}`);
-    process.exit(1);
-  }
-}
-
-const supabase = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false } },
-);
 
 async function getGraphToken() {
   const body = new URLSearchParams({
@@ -124,6 +106,25 @@ async function generateDraft(message) {
 }
 
 async function main() {
+  for (const k of [
+    "AZURE_AD_TENANT_ID",
+    "AZURE_AD_CLIENT_ID",
+    "AZURE_AD_CLIENT_SECRET",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ]) {
+    if (!env[k]) {
+      console.error(`Missing required env: ${k}`);
+      process.exit(1);
+    }
+  }
+
+  const supabase = createClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+
   const token = await getGraphToken();
 
   // 대상 운영자 = mailbox_settings row 존재 (메뉴 사용 운영자 한정, 스펙 §13)
@@ -208,7 +209,12 @@ async function main() {
   console.log(`done — ingested=${ingested} drafted=${drafted} dryRun=${DRY_RUN}`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
