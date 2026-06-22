@@ -42,6 +42,26 @@ const DRY_RUN = process.argv.slice(2).includes("--dry-run");
 const OLLAMA_URL = env.OLLAMA_URL ?? "http://localhost:11434";
 const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "exaone3.5:7.8b";
 
+// Graph GET + 429(ApplicationThrottled) 백오프 재시도.
+// Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦다.
+// Retry-After 헤더(초) 우선, 없으면 기본 2초. 최대 3회 재시도.
+export async function graphGetWithRetry(url, token, maxRetries = 3, extraHeaders = {}) {
+  let attempt = 0;
+  while (true) {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, ...extraHeaders },
+    });
+    if (res.status !== 429) return res;
+    if (attempt >= maxRetries) return res; // 호출부에서 !res.ok 처리(throw/skip)
+    const retryAfter = Number(res.headers.get("Retry-After"));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : 2000;
+    await new Promise((r) => setTimeout(r, waitMs));
+    attempt++;
+  }
+}
+
 async function getGraphToken() {
   const body = new URLSearchParams({
     grant_type: "client_credentials",
@@ -75,22 +95,195 @@ export async function fetchInbox(token, ownerEmail, since) {
     `&$orderby=receivedDateTime%20desc` +
     `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
     filterSuffix;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  // Prefer: text → 본문을 HTML 대신 plain text로 받는다 (인스펙터 태그 노출 방지).
+  const res = await graphGetWithRetry(url, token, 3, {
+    Prefer: 'outlook.body-content-type="text"',
+  });
   if (!res.ok) throw new Error(`inbox ${res.status} ${await res.text()}`);
   return (await res.json()).value ?? [];
 }
 
-const SKIP_PATTERNS = [/no-?reply/i, /mailer-daemon/i, /postmaster/i, /newsletter/i];
-export function isAutoSender(fromEmail) {
-  if (!fromEmail) return true;
-  return SKIP_PATTERNS.some((re) => re.test(fromEmail));
+// 특정 폴더의 메시지 조회 (fetchInbox의 폴더별 일반화). 인코딩 방식 동일.
+export async function fetchFolderMessages(token, ownerEmail, folderId, since) {
+  const filterSuffix = since
+    ? `&$filter=receivedDateTime%20gt%20${encodeURIComponent(since)}`
+    : "";
+  const url =
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}` +
+    `/mailFolders/${folderId}/messages` +
+    `?$top=50` +
+    `&$orderby=receivedDateTime%20desc` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
+    filterSuffix;
+  // Prefer: text → 본문을 HTML 대신 plain text로 받는다 (인스펙터 태그 노출 방지).
+  const res = await graphGetWithRetry(url, token, 3, {
+    Prefer: 'outlook.body-content-type="text"',
+  });
+  if (!res.ok)
+    throw new Error(`folder ${folderId} ${res.status} ${await res.text()}`);
+  return (await res.json()).value ?? [];
 }
 
-async function generateDraft(message) {
+// 받은편지함의 직속 폴더 id를 조회한 뒤 childFolders를 재귀로 모두 모아
+// 폴더 id 배열(받은편지함 자신 포함)을 반환. nextLink 페이지네이션 처리.
+export async function collectInboxFolderIds(token, ownerEmail) {
+  const userPath = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}`;
+
+  // 1) 받은편지함 자신의 id 확보
+  const inboxRes = await graphGetWithRetry(`${userPath}/mailFolders/inbox`, token);
+  if (!inboxRes.ok)
+    throw new Error(`inbox folder ${inboxRes.status} ${await inboxRes.text()}`);
+  const inbox = await inboxRes.json();
+  const rootId = inbox.id;
+
+  const ids = [rootId];
+  const seen = new Set([rootId]);
+
+  // 2) BFS로 childFolders 재귀 수집 — 메일박스당 동시성 한도(4) 회피 위해 한 번에 하나씩 await.
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const parentId = queue.shift();
+    let next =
+      `${userPath}/mailFolders/${parentId}/childFolders` +
+      `?$top=100&$select=id,displayName`;
+    while (next) {
+      const res = await graphGetWithRetry(next, token);
+      if (!res.ok)
+        throw new Error(
+          `childFolders ${parentId} ${res.status} ${await res.text()}`,
+        );
+      const json = await res.json();
+      for (const f of json.value ?? []) {
+        if (f.id && !seen.has(f.id)) {
+          seen.add(f.id);
+          ids.push(f.id);
+          queue.push(f.id);
+        }
+      }
+      next = json["@odata.nextLink"] ?? null;
+    }
+  }
+
+  return ids;
+}
+
+// 사내 도메인 — 이 메일함은 외부 고객(대학 담당자) 회신 초안 전용이므로
+// 사내(@jinhak.com/@jinhakapply.com) 발신은 수집·초안 대상에서 제외(skip)한다.
+const INTERNAL_DOMAINS = [/@jinhakapply\.com$/i, /@jinhak\.com$/i];
+
+// bulk/뉴스레터/자동발송 판정 패턴. info@는 과차단 위험으로 의도적 제외.
+const SKIP_PATTERNS = [
+  /no-?reply/i,
+  /mailer-daemon/i,
+  /postmaster/i,
+  /newsletter/i,
+  // bulk 발신 도메인
+  /stibee\.com/i,
+  /maily\.so/i,
+  /mailchimp/i,
+  /sendgrid/i,
+  /mailgun/i,
+  /amazonses/i,
+  /sendpulse/i,
+  /mktomail/i,
+  /cmail/i,
+  /hubspotemail/i,
+  /rmail/i,
+  // bulk 서브도메인/접두
+  /@news\./i,
+  /@newsletter\./i,
+  /@mail\./i,
+  /promotion/i,
+  /noti/i,
+  // 자동발송 토큰
+  /bounce/i,
+  /notifications?/i,
+  /donotreply/i,
+  /do-not-reply/i,
+  /auto/i,
+  /marketing/i,
+  /promo/i,
+];
+
+export function isAutoSender(fromEmail) {
+  if (!fromEmail) return true;
+  const addr = fromEmail.toLowerCase();
+  return SKIP_PATTERNS.some((re) => re.test(addr));
+}
+
+// 사내 발신 판정 — 외부 고객 전용 메일함이므로 사내 도메인은 skip 대상.
+export function isInternalSender(fromEmail) {
+  if (!fromEmail) return false;
+  const addr = fromEmail.toLowerCase();
+  return INTERNAL_DOMAINS.some((re) => re.test(addr));
+}
+
+// 제목 기반 광고 판정 — (AD)/[AD]/(광고)/[광고] 표기. 정상 단어(Admission 등) 오판 방지.
+const AD_SUBJECT_PATTERNS = [/[([]\s*ad\s*[)\]]/i, /[([]\s*광고\s*[)\]]/];
+export function isAdSubject(subject) {
+  if (!subject) return false;
+  return AD_SUBJECT_PATTERNS.some((re) => re.test(subject));
+}
+
+// 제목 기반 시스템/결재 알림 판정 — 전자결재·승인·반려 워크플로 알림(외부 시스템 포함)은 회신 대상 아님.
+const SYSTEM_SUBJECT_PATTERNS = [
+  "전자결재",
+  "결재요청",
+  "결재완료",
+  "결재-완료",
+  "결재-결재요청",
+  "결재-회수",
+  "승인요청",
+  "승인완료",
+  "반려",
+];
+export function isSystemSubject(subject) {
+  if (!subject) return false;
+  return SYSTEM_SUBJECT_PATTERNS.some((kw) => subject.includes(kw));
+}
+
+// 통합 skip 판정 — 사내 발신·광고·시스템 알림·자동발송이면 수집/초안 모두 제외.
+export function shouldSkipMessage({ fromEmail, subject }) {
+  return (
+    isAutoSender(fromEmail) ||
+    isAdSubject(subject) ||
+    isInternalSender(fromEmail) ||
+    isSystemSubject(subject)
+  );
+}
+
+// 초안을 고정 틀로 조립한다. AI는 본문 내용(bodyContent)만 생성하고,
+// 인사·자기소개·맺음은 코드가 고정 조립한다. 서명은 초안에 붙이지 않는다 —
+// 서명은 웹 발송 시점에 HTML로 첨부하므로 ingest 초안에는 서명을 넣지 않는다(중복 방지).
+//   안녕하세요.
+//   진학어플라이 {operatorName}입니다.   (operatorName 없으면 "진학어플라이입니다.")
+//
+//   {bodyContent.trim()}
+//
+//   감사합니다.
+export function assembleDraft(operatorName, bodyContent) {
+  const hasName = operatorName != null && operatorName.trim() !== "";
+  const intro = hasName
+    ? `안녕하세요.\n진학어플라이 ${operatorName.trim()}입니다.`
+    : "안녕하세요.\n진학어플라이입니다.";
+  return `${intro}\n\n${bodyContent.trim()}\n\n감사합니다.`;
+}
+
+// 문장 경계(마침표·물음표·느낌표 + 공백)마다 줄바꿈. 소수점(6.22)·약어는 공백이
+// 없어 영향 없고, 기존 줄바꿈(\n)도 보존(공백/탭만 매칭).
+export function splitSentences(text) {
+  if (!text) return text;
+  return text.replace(/([.!?])[ \t]+/g, "$1\n").trim();
+}
+
+async function generateDraft(message, operatorName) {
   const prompt = [
     "당신은 대학 입학 원서접수 운영부의 담당자입니다.",
-    "아래 받은 메일에 대한 회신 초안을 한국어 비즈니스 정중체로 작성하세요.",
-    "인사 → 용건 확인 → 안내/조치 → 마무리 인사 순. 서명은 제외.",
+    "아래 받은 메일에 대한 회신의 '본문 내용'만 작성하세요.",
+    "인사말('안녕하세요' 등)·자기소개·맺음말('감사합니다' 등)·서명·이름은 절대 쓰지 마세요. 핵심 용건에 대한 답변만 작성합니다.",
+    "최대한 간결하게(2~4문장) 한국어 비즈니스 정중체로 작성하세요. 대괄호 [] 는 어떤 경우에도 쓰지 마세요.",
+    "금액·날짜 등 모르는 정보는 지어내지 말고 '확인 후 안내드리겠습니다'처럼 처리하며, 처리 완료·발급 완료 등 확정되지 않은 결과를 단정하지 마세요.",
+    "마크다운(**, ##, - 목록)을 쓰지 마세요.",
     "",
     `[제목] ${message.subject ?? ""}`,
     `[본문] ${(message.bodyPreview ?? message.body ?? "").slice(0, 2000)}`,
@@ -102,7 +295,8 @@ async function generateDraft(message) {
     body: JSON.stringify({ model: LLM_MODEL, prompt, stream: false }),
   });
   if (!res.ok) throw new Error(`ollama ${res.status} ${await res.text()}`);
-  return (await res.json()).response?.trim() ?? "";
+  const rawBody = (await res.json()).response?.trim() ?? "";
+  return assembleDraft(operatorName, splitSentences(rawBody));
 }
 
 async function main() {
@@ -141,25 +335,59 @@ async function main() {
   let drafted = 0;
 
   for (const s of settings) {
-    const inbox = await fetchInbox(token, s.owner_email, s.last_synced_at);
+    // 최초(last_synced_at null) 운영자는 과거 메일 폭주 방지를 위해 최근 24h만 처리
+    const since =
+      s.last_synced_at ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // 운영자 행 — 초안 자기소개("진학어플라이 OOO입니다.")에만 사용.
+    // 메시지 루프 밖에서 1회 조회해 재사용. 서명은 ingest 초안에 붙이지 않으므로 name만 조회.
+    const { data: op } = await supabase
+      .from("operators")
+      .select("name")
+      .eq("email", s.owner_email)
+      .maybeSingle();
+    const operatorName = op?.name ?? null;
+
+    // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
+    const folderIds = await collectInboxFolderIds(token, s.owner_email);
+
+    // 폴더별 메시지는 순차 fetch — 메일박스당 동시 요청 한도(~4) 초과 시
+    // 429 ApplicationThrottled로 잡이 죽으므로 한 번에 하나씩 처리한다.
+    // graphGetWithRetry로 3회 재시도 후에도 429면 그 폴더만 건너뛰고 잡은 계속.
+    const inbox = [];
+    for (const fid of folderIds) {
+      try {
+        const msgs = await fetchFolderMessages(token, s.owner_email, fid, since);
+        inbox.push(...msgs);
+      } catch (e) {
+        if (/\b429\b/.test(e.message)) {
+          console.warn(`folder skip (429 throttled): ${s.owner_email} ${fid}`);
+          continue;
+        }
+        throw e;
+      }
+    }
+
     for (const m of inbox) {
-      const skip = isAutoSender(m.from?.emailAddress?.address);
+      const fromEmail = m.from?.emailAddress?.address ?? null;
+      // 사내·광고·시스템·자동발송 메일은 수집 자체에서 제외 — upsert도 초안도 하지 않는다.
+      if (shouldSkipMessage({ fromEmail, subject: m.subject })) continue;
+
       const rowData = {
         owner_email: s.owner_email,
         graph_message_id: m.id,
         from_name: m.from?.emailAddress?.name ?? null,
-        from_email: m.from?.emailAddress?.address ?? null,
+        from_email: fromEmail,
         subject: m.subject ?? null,
         body_preview: m.bodyPreview ?? null,
         body: m.body?.content ?? null,
         received_at: m.receivedDateTime ?? null,
         is_read: m.isRead ?? false,
-        draft_skipped: skip,
       };
 
       if (DRY_RUN) {
         console.log(
-          `[dry] ${s.owner_email} ← ${rowData.from_email} | ${rowData.subject}${skip ? " (skip)" : ""}`,
+          `[dry] ${s.owner_email} ← ${rowData.from_email} | ${rowData.subject}`,
         );
         continue;
       }
@@ -175,8 +403,8 @@ async function main() {
       }
       ingested++;
 
-      // 초안 생성 조건: auto ON + 미필터 + 기존 draft 없음
-      if (!s.auto_draft_enabled || skip) continue;
+      // 초안 생성 조건: auto ON + 기존 draft 없음 (skip 메일은 위에서 이미 continue됨)
+      if (!s.auto_draft_enabled) continue;
       const { count } = await supabase
         .from("mailbox_drafts")
         .select("id", { count: "exact", head: true })
@@ -184,7 +412,7 @@ async function main() {
       if ((count ?? 0) > 0) continue;
 
       try {
-        const draftBody = await generateDraft(m);
+        const draftBody = await generateDraft(m, operatorName);
         const { error: dErr } = await supabase.from("mailbox_drafts").insert({
           message_id: up.id,
           draft_body: draftBody,

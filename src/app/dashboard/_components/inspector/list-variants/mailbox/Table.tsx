@@ -12,9 +12,12 @@ function formatTime(iso?: string | null): string {
   if (!iso) return "-";
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
-    hour: "2-digit",
+    year: "2-digit",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
   }).format(new Date(iso));
 }
 
