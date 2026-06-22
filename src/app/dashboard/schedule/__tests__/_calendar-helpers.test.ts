@@ -215,6 +215,49 @@ describe("groupItemsByDay", () => {
     expect(map.get("2026-07-26")).toBeUndefined();
   });
 
+  it("입시·행사 멀티데이(application/pims/event)는 주말에도 표기한다", () => {
+    const mk = (
+      type: ScheduleEventRow["type"],
+      id: string,
+    ): ScheduleEventRow => ({
+      ...baseEvent,
+      id,
+      type,
+      title: `${type} 기간`,
+      start_at: "2026-07-23T15:00:00Z", // KST 7/24(금)
+      end_at: "2026-07-26T15:00:00Z", // KST 7/27(월) — 25토·26일 포함
+      all_day: true,
+    });
+    for (const type of ["application", "pims", "event"] as const) {
+      const map = groupItemsByDay(
+        [mk(type, `id-${type}-0000-0000-000000000000`)],
+        [],
+      );
+      // 주말(25토·26일)에도 표기되어야 한다
+      expect(map.get("2026-07-25")?.[0]?.label).toBe(`${type} 기간`);
+      expect(map.get("2026-07-26")?.[0]?.label).toBe(`${type} 기간`);
+    }
+  });
+
+  it("교육(training) 멀티데이는 주말 셀 제외", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "66666666-6666-6666-6666-666666666666",
+        type: "training",
+        title: "온보딩 교육",
+        start_at: "2026-07-23T15:00:00Z", // KST 7/24(금)
+        end_at: "2026-07-27T15:00:00Z", // KST 7/28(화)
+        all_day: true,
+      },
+    ];
+    const map = groupItemsByDay(events, []);
+    expect(map.get("2026-07-24")?.[0]?.label).toBe("온보딩 교육");
+    expect(map.get("2026-07-27")?.[0]?.label).toBe("온보딩 교육");
+    expect(map.get("2026-07-25")).toBeUndefined();
+    expect(map.get("2026-07-26")).toBeUndefined();
+  });
+
   it("단일일(멀티데이 아님) 일정은 주말이어도 표기한다", () => {
     const events: ScheduleEventRow[] = [
       {
