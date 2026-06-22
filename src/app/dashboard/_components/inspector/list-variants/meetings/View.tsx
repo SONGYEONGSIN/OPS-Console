@@ -11,6 +11,7 @@ import {
   type PdfRun,
 } from "@/features/meetings/pdf-model";
 import { isMeetingDoc } from "@/features/meetings/form-model";
+import { formatMeetingDateKst } from "@/features/meetings/format-meeting-date";
 import {
   MEETING_TYPE_LABELS,
   MEETING_STATUS_LABELS,
@@ -51,10 +52,7 @@ function DocBody({ nodes }: { nodes: PdfNode[] }) {
         switch (n.kind) {
           case "heading":
             return (
-              <p
-                key={i}
-                className="pt-2 text-sm font-bold text-ink first:pt-0"
-              >
+              <p key={i} className="pt-2 text-sm font-bold text-ink first:pt-0">
                 <Runs runs={n.runs} />
               </p>
             );
@@ -101,7 +99,9 @@ function DocBody({ nodes }: { nodes: PdfNode[] }) {
                           <Cell
                             key={ci}
                             className={`border border-line-soft px-1.5 py-1 text-left align-top ${
-                              isHead ? "bg-washi-raised font-semibold text-ink" : ""
+                              isHead
+                                ? "bg-washi-raised font-semibold text-ink"
+                                : ""
                             }`}
                           >
                             <Runs runs={cell} />
@@ -239,7 +239,7 @@ export function MeetingView({ row }: ViewProps) {
           <Section title="회의 정보">
             <DefList
               items={[
-                { term: "일시", desc: row.meetingDate || "—" },
+                { term: "일시", desc: formatMeetingDateKst(row.meetingDate) },
                 { term: "장소", desc: row.meetingLocation || "—" },
                 {
                   term: "참석자",
@@ -273,7 +273,7 @@ export function MeetingView({ row }: ViewProps) {
             </div>
             <p className="text-xs text-muted">
               {[
-                row.meetingDate || null,
+                row.meetingDate ? formatMeetingDateKst(row.meetingDate) : null,
                 row.meetingLocation || null,
                 attendees.length > 0 ? `참석 ${attendees.length}명` : null,
                 row.meetingAuthor || row.owner || null,
