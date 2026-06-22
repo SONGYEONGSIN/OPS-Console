@@ -31,6 +31,7 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
     <div className="space-y-6">
       <Section title="메일">
         <DefList
+          dense
           items={[
             { term: "보낸이", desc: row.mailFromName || row.mailFromEmail || "-" },
             { term: "주소", desc: row.mailFromEmail || "-" },
