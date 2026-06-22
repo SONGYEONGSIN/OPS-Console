@@ -41,3 +41,24 @@ export function upcomingOpens(
       (a.write_start_at ?? "").localeCompare(b.write_start_at ?? ""),
     );
 }
+
+/**
+ * 작성시작(write_start_at)이 오늘 ~ 오늘+withinDays(기본 7) 범위인 오픈 예정 건.
+ * 긴급도 분류(triage)의 '오늘'·'이번 주' 버킷 노출용 — 건수 제한 없이 전부 포함하되,
+ * 그보다 먼 미래 오픈은 '추적중' 비대를 막기 위해 제외한다. write_start_at 오름차순.
+ */
+export function openingsWithin(
+  rows: ClosingRow[],
+  todayYmd: string,
+  withinDays = 7,
+): ClosingRow[] {
+  const upper = addDaysYmd(todayYmd, withinDays);
+  return rows
+    .filter((r) => {
+      const start = r.write_start_at ? ymd(r.write_start_at) : "";
+      return !!start && start >= todayYmd && start <= upper;
+    })
+    .sort((a, b) =>
+      (a.write_start_at ?? "").localeCompare(b.write_start_at ?? ""),
+    );
+}

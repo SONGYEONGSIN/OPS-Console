@@ -34,6 +34,30 @@ describe("WeeklyTodoTable", () => {
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
 
+  it("autoDismissed 행 — '삭제됨' 배지 표시", () => {
+    render(
+      <WeeklyTodoTable
+        rows={[makeRow({ autoDismissed: true })]}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onToggleDone={vi.fn(async () => {})}
+      />,
+    );
+    expect(screen.getByText("삭제됨")).toBeInTheDocument();
+  });
+
+  it("autoDismissed 아니면 '삭제됨' 미표시", () => {
+    render(
+      <WeeklyTodoTable
+        rows={[makeRow()]}
+        selectedId={null}
+        onSelect={vi.fn()}
+        onToggleDone={vi.fn(async () => {})}
+      />,
+    );
+    expect(screen.queryByText("삭제됨")).toBeNull();
+  });
+
   it("빈 행 — '데이터 없음'", () => {
     render(
       <WeeklyTodoTable
