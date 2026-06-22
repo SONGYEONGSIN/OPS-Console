@@ -13,6 +13,7 @@ import {
   collectInboxFolderIds,
   graphGetWithRetry,
   appendSignature,
+  assembleDraft,
 } from "../mailbox-ingest.mjs";
 
 describe("isAutoSender", () => {
@@ -463,6 +464,44 @@ describe("appendSignature", () => {
     );
     expect(appendSignature("안녕하세요.   ", "운영부 홍길동")).toBe(
       "안녕하세요.\n\n운영부 홍길동",
+    );
+  });
+});
+
+describe("assembleDraft — 고정 틀(인사+자기소개+본문+감사+서명) 조립", () => {
+  it("operatorName 있으면 자기소개에 이름 + 본문 + 감사 + 서명", () => {
+    expect(assembleDraft("송영신", "확인하겠습니다.", "SIG")).toBe(
+      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    );
+  });
+
+  it("operatorName null이면 자기소개를 '진학어플라이입니다.'로 대체", () => {
+    expect(assembleDraft(null, "확인하겠습니다.", "SIG")).toBe(
+      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    );
+  });
+
+  it("operatorName 빈/공백 문자열도 '진학어플라이입니다.'로 대체", () => {
+    expect(assembleDraft("", "확인하겠습니다.", "SIG")).toBe(
+      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    );
+    expect(assembleDraft("   ", "확인하겠습니다.", "SIG")).toBe(
+      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    );
+  });
+
+  it("signature 없으면 서명 없이 '감사합니다.'로 끝남", () => {
+    expect(assembleDraft("송영신", "확인하겠습니다.", null)).toBe(
+      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.",
+    );
+    expect(assembleDraft("송영신", "확인하겠습니다.", "")).toBe(
+      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.",
+    );
+  });
+
+  it("body 앞뒤 공백은 trim 후 조립", () => {
+    expect(assembleDraft("송영신", "  확인하겠습니다.\n\n  ", "SIG")).toBe(
+      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
     );
   });
 });

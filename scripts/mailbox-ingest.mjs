@@ -259,14 +259,33 @@ export function appendSignature(body, signature) {
   return `${body.trimEnd()}\n\n${signature}`;
 }
 
-async function generateDraft(message, signature) {
+// 초안을 고정 틀로 조립한다. AI는 본문 내용(bodyContent)만 생성하고,
+// 인사·자기소개·맺음·서명은 코드가 고정 조립한다.
+//   안녕하세요.
+//   진학어플라이 {operatorName}입니다.   (operatorName 없으면 "진학어플라이입니다.")
+//
+//   {bodyContent.trim()}
+//
+//   감사합니다.
+//
+//   {signature}   (signature 없으면 생략 — appendSignature 위임)
+export function assembleDraft(operatorName, bodyContent, signature) {
+  const hasName = operatorName != null && operatorName.trim() !== "";
+  const intro = hasName
+    ? `안녕하세요.\n진학어플라이 ${operatorName.trim()}입니다.`
+    : "안녕하세요.\n진학어플라이입니다.";
+  const assembled = `${intro}\n\n${bodyContent.trim()}\n\n감사합니다.`;
+  return appendSignature(assembled, signature);
+}
+
+async function generateDraft(message, signature, operatorName) {
   const prompt = [
     "당신은 대학 입학 원서접수 운영부의 담당자입니다.",
-    "아래 받은 메일에 대한 회신 초안을 한국어 비즈니스 정중체로 작성하세요.",
-    "자연스러운 한 편의 회신문으로만 작성하세요. 섹션 라벨이나 마크다운(**, ##, - 목록)을 쓰지 마세요.",
-    "대괄호 [] 는 어떤 경우에도 쓰지 마세요. 금액·날짜 등 모르는 정보는 지어내거나 빈칸으로 두지 말고 '확인 후 안내드리겠습니다'처럼 자연스럽게 처리하세요.",
-    "처리 완료·발급 완료 등 확정되지 않은 결과를 단정하지 마세요. 요청을 접수했고 확인 후 회신하겠다는 톤으로 쓰세요.",
-    "회신 인사로 시작하되, 마지막에 'OOO 드림'·소속·부서·이름 등 맺음 서명을 쓰지 마세요(서명은 자동으로 덧붙음). 본문은 '감사합니다.' 같은 짧은 인사로 끝내세요.",
+    "아래 받은 메일에 대한 회신의 '본문 내용'만 작성하세요.",
+    "인사말('안녕하세요' 등)·자기소개·맺음말('감사합니다' 등)·서명·이름은 절대 쓰지 마세요. 핵심 용건에 대한 답변만 작성합니다.",
+    "최대한 간결하게(2~4문장) 한국어 비즈니스 정중체로 작성하세요. 대괄호 [] 는 어떤 경우에도 쓰지 마세요.",
+    "금액·날짜 등 모르는 정보는 지어내지 말고 '확인 후 안내드리겠습니다'처럼 처리하며, 처리 완료·발급 완료 등 확정되지 않은 결과를 단정하지 마세요.",
+    "마크다운(**, ##, - 목록)을 쓰지 마세요.",
     "",
     `[제목] ${message.subject ?? ""}`,
     `[본문] ${(message.bodyPreview ?? message.body ?? "").slice(0, 2000)}`,
@@ -279,7 +298,7 @@ async function generateDraft(message, signature) {
   });
   if (!res.ok) throw new Error(`ollama ${res.status} ${await res.text()}`);
   const rawBody = (await res.json()).response?.trim() ?? "";
-  return appendSignature(rawBody, signature);
+  return assembleDraft(operatorName, rawBody, signature);
 }
 
 async function main() {
@@ -321,6 +340,14 @@ async function main() {
     // 최초(last_synced_at null) 운영자는 과거 메일 폭주 방지를 위해 최근 24h만 처리
     const since =
       s.last_synced_at ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // 운영자 이름 — 초안 자기소개("진학어플라이 OOO입니다.")에 사용. 메시지 루프 밖에서 1회 조회해 재사용.
+    const { data: op } = await supabase
+      .from("operators")
+      .select("name")
+      .eq("email", s.owner_email)
+      .maybeSingle();
+    const operatorName = op?.name ?? null;
 
     // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
     const folderIds = await collectInboxFolderIds(token, s.owner_email);
@@ -386,7 +413,7 @@ async function main() {
       if ((count ?? 0) > 0) continue;
 
       try {
-        const draftBody = await generateDraft(m, s.signature);
+        const draftBody = await generateDraft(m, s.signature, operatorName);
         const { error: dErr } = await supabase.from("mailbox_drafts").insert({
           message_id: up.id,
           draft_body: draftBody,
