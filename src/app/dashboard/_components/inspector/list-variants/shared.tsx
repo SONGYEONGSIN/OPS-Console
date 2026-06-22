@@ -26,9 +26,9 @@ export function DefList({
 }) {
   return (
     <dl
-      className={`grid grid-cols-[88px_1fr] gap-x-3 text-sm ${dense ? "gap-y-1" : "gap-y-2"}`}
+      className={`grid text-sm ${dense ? "grid-cols-[56px_1fr] gap-x-2 gap-y-1" : "grid-cols-[88px_1fr] gap-x-3 gap-y-2"}`}
     >
-      {/* dense=true: 행 간격 축소(gap-y-1) — 메일함 등 조밀 표시용 */}
+      {/* dense=true: 라벨 컬럼·수평/수직 간격 축소 — 메일함 등 조밀 표시용 */}
       {items.map((item, i) => (
         <div key={i} className="contents">
           <dt className="text-xs text-muted">{item.term}</dt>
