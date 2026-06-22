@@ -83,7 +83,9 @@ export function WeeklyTodoTable({
                 onClick={() => onSelect(row)}
                 className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
                   selectedId === row.id ? "bg-washi-raised" : ""
-                } ${row.done ? "opacity-60 [&_td]:line-through" : ""}`}
+                } ${row.done ? "opacity-60 [&_td]:line-through" : ""} ${
+                  row.autoDismissed ? "opacity-60" : ""
+                }`}
               >
                 <td className="px-3 py-2">
                   {row.priority && (
@@ -97,7 +99,16 @@ export function WeeklyTodoTable({
                 <td className="px-3 py-2 text-xs text-ink-soft">
                   {row.category ?? "-"}
                 </td>
-                <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
+                <td className="px-3 py-2 font-medium text-ink">
+                  <span className={row.autoDismissed ? "line-through" : ""}>
+                    {row.name}
+                  </span>
+                  {row.autoDismissed && (
+                    <span className="ml-2 inline-block px-1.5 py-0.5 align-middle text-[10px] no-underline bg-washi-raised text-muted">
+                      삭제됨
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-2 text-sm text-ink-soft">
                   {formatDueAt(row.dueAt)}
                 </td>
@@ -109,7 +120,9 @@ export function WeeklyTodoTable({
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="text-ink-soft tabular-nums">{progress}%</span>
+                    <span className="text-ink-soft tabular-nums">
+                      {progress}%
+                    </span>
                   </div>
                 </td>
                 <td className="px-3 py-2">

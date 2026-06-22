@@ -15,5 +15,7 @@ export function todoToListRow(t: TodoRow): ListRow {
     category: t.category ?? undefined,
     progress: t.progress ?? 0,
     todoStatus: t.status ?? "todo",
+    sourceServiceId: t.source_service_id ?? null,
+    autoDismissed: t.auto_dismissed ?? false,
   };
 }
