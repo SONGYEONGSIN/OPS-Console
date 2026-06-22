@@ -45,11 +45,11 @@ const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "exaone3.5:7.8b";
 // Graph GET + 429(ApplicationThrottled) 백오프 재시도.
 // Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦다.
 // Retry-After 헤더(초) 우선, 없으면 기본 2초. 최대 3회 재시도.
-export async function graphGetWithRetry(url, token, maxRetries = 3) {
+export async function graphGetWithRetry(url, token, maxRetries = 3, extraHeaders = {}) {
   let attempt = 0;
   while (true) {
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...extraHeaders },
     });
     if (res.status !== 429) return res;
     if (attempt >= maxRetries) return res; // 호출부에서 !res.ok 처리(throw/skip)
@@ -95,7 +95,10 @@ export async function fetchInbox(token, ownerEmail, since) {
     `&$orderby=receivedDateTime%20desc` +
     `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
     filterSuffix;
-  const res = await graphGetWithRetry(url, token);
+  // Prefer: text → 본문을 HTML 대신 plain text로 받는다 (인스펙터 태그 노출 방지).
+  const res = await graphGetWithRetry(url, token, 3, {
+    Prefer: 'outlook.body-content-type="text"',
+  });
   if (!res.ok) throw new Error(`inbox ${res.status} ${await res.text()}`);
   return (await res.json()).value ?? [];
 }
@@ -112,7 +115,10 @@ export async function fetchFolderMessages(token, ownerEmail, folderId, since) {
     `&$orderby=receivedDateTime%20desc` +
     `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
     filterSuffix;
-  const res = await graphGetWithRetry(url, token);
+  // Prefer: text → 본문을 HTML 대신 plain text로 받는다 (인스펙터 태그 노출 방지).
+  const res = await graphGetWithRetry(url, token, 3, {
+    Prefer: 'outlook.body-content-type="text"',
+  });
   if (!res.ok)
     throw new Error(`folder ${folderId} ${res.status} ${await res.text()}`);
   return (await res.json()).value ?? [];
