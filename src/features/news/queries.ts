@@ -7,19 +7,22 @@ import { newsRowSchema, type NewsRow } from "./schemas";
  * RLS: authenticated → 모든 row read 허용 (운영부 공개 정책).
  * 정렬: published_at desc (최신 기사 우선) — null published_at은 후순위.
  * page(1-base)/pageSize로 range 조회, 전체 건수(total) 함께 반환.
+ * search가 있으면 title ilike 부분일치로 필터.
  */
 export async function listNews(
-  opts: { page?: number; pageSize?: number } = {},
+  opts: { page?: number; pageSize?: number; search?: string } = {},
 ): Promise<{ rows: NewsRow[]; total: number }> {
   const page = opts.page && opts.page > 0 ? opts.page : 1;
   const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 30;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  const search = opts.search?.trim();
+
   const supabase = await createClient();
-  const { data, count, error } = await supabase
-    .from("news")
-    .select("*", { count: "exact" })
+  let query = supabase.from("news").select("*", { count: "exact" });
+  if (search) query = query.ilike("title", `%${search}%`);
+  const { data, count, error } = await query
     .order("published_at", { ascending: false, nullsFirst: false })
     .range(from, to);
 

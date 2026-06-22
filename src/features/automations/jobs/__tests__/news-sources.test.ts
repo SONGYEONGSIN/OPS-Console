@@ -5,6 +5,7 @@ import {
   parseRssItems,
   mapRssItemsToNews,
   dedupeByLink,
+  dedupeByTitle,
   rfc2822ToIso,
   stripHtml,
   type RssItem,
@@ -108,5 +109,25 @@ describe("dedupeByLink", () => {
       { link: "L2", title: "c", source: null, published_at: null, summary: null, keyword: "통폐합" },
     ];
     expect(dedupeByLink(rows).map((r) => r.link)).toEqual(["L1", "L2"]);
+  });
+});
+
+describe("dedupeByTitle", () => {
+  it("동일 title 첫 건만 유지 (link 다르더라도)", () => {
+    const rows = [
+      { link: "L1", title: "통폐합 추진", source: null, published_at: null, summary: null, keyword: "통폐합" },
+      { link: "L2", title: "통폐합 추진", source: null, published_at: null, summary: null, keyword: "폐교" },
+      { link: "L3", title: "정원감축 확정", source: null, published_at: null, summary: null, keyword: "정원감축" },
+    ];
+    const out = dedupeByTitle(rows);
+    expect(out.map((r) => r.title)).toEqual(["통폐합 추진", "정원감축 확정"]);
+    expect(out.map((r) => r.link)).toEqual(["L1", "L3"]);
+  });
+  it("title 없는 항목은 제외", () => {
+    const rows = [
+      { link: "L1", title: "", source: null, published_at: null, summary: null, keyword: "통폐합" },
+      { link: "L2", title: "정원감축", source: null, published_at: null, summary: null, keyword: "정원감축" },
+    ];
+    expect(dedupeByTitle(rows).map((r) => r.title)).toEqual(["정원감축"]);
   });
 });

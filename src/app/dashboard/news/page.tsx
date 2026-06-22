@@ -7,13 +7,14 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listNews } from "@/features/news/queries";
 import { newsRowToListRow } from "./_row-mapper";
+import { NewsControls } from "./NewsControls";
 
 const PAGE_SIZE = 30;
 
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string }>;
 }) {
   const slug = "news";
   await requireMenu(slug);
@@ -24,7 +25,11 @@ export default async function NewsPage({
 
   const sp = await searchParams;
   const page = sp.page ? Number(sp.page) : 1;
-  const { rows: news, total } = await listNews({ page, pageSize: PAGE_SIZE });
+  const { rows: news, total } = await listNews({
+    page,
+    pageSize: PAGE_SIZE,
+    search: sp.q,
+  });
   const rows: ListRow[] = news.map(newsRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
@@ -48,6 +53,7 @@ export default async function NewsPage({
       variant="news"
       readOnly
       liveData
+      controlsRow={<NewsControls key="news-controls" />}
       footer={
         <ListPagination key="news-pagination" total={total} pageSize={PAGE_SIZE} />
       }

@@ -122,3 +122,17 @@ export function dedupeByLink(rows: NewsRow[]): NewsRow[] {
   }
   return Array.from(map.values());
 }
+
+/**
+ * title 기준 dedupe — 첫 건 유지.
+ * 같은 기사가 키워드마다 다른 구글 뉴스 link로 잡히는 문제 해결
+ * (link-unique로는 중복 미차단). title이 같으면 동일 기사로 본다.
+ */
+export function dedupeByTitle(rows: NewsRow[]): NewsRow[] {
+  const map = new Map<string, NewsRow>();
+  for (const r of rows) {
+    if (!r.title) continue;
+    if (!map.has(r.title)) map.set(r.title, r);
+  }
+  return Array.from(map.values());
+}

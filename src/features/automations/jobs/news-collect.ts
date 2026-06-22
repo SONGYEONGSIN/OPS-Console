@@ -6,6 +6,7 @@ import {
   parseRssItems,
   mapRssItemsToNews,
   dedupeByLink,
+  dedupeByTitle,
   type NewsRow,
 } from "./news-sources";
 import type { AutomationRunResult } from "../types";
@@ -42,8 +43,9 @@ export async function runNewsCollect(): Promise<AutomationRunResult> {
     }
   }
 
-  // dedupe (link 기준)
-  const rows = dedupeByLink(collected);
+  // dedupe — link 기준 1차 후 title 기준 2차
+  // (같은 기사가 키워드마다 다른 구글 뉴스 link로 잡혀 link-unique로 미차단)
+  const rows = dedupeByTitle(dedupeByLink(collected));
   if (rows.length === 0) {
     return {
       ok: errors.length === 0,
@@ -56,12 +58,12 @@ export async function runNewsCollect(): Promise<AutomationRunResult> {
 
   const errorSuffix = () => (errors.length ? ` (${errors.length}건 오류)` : "");
 
-  // 4) admin upsert (onConflict link)
+  // 4) admin upsert (onConflict title — 동일 기사 중복 방지)
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("news")
-    .upsert(rows, { onConflict: "link", ignoreDuplicates: false })
-    .select("link");
+    .upsert(rows, { onConflict: "title", ignoreDuplicates: false })
+    .select("title");
   if (error) {
     return { ok: false, message: `upsert 실패: ${error.message}` };
   }
