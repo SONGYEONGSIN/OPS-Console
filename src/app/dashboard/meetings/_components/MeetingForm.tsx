@@ -421,7 +421,6 @@ export function MeetingForm({
     }
   };
 
-  let letterIdx = 0;
   return (
     <div className="meeting-form">
       <div className="paper">
@@ -503,8 +502,12 @@ export function MeetingForm({
           {doc.sections.map((sec, i) => {
             if (sec.kind === "banner")
               return <div key={i}>{renderBody(sec, i)}</div>;
-            const letter = LETTERS[letterIdx] ?? "";
-            letterIdx += 1;
+            // 앞선 non-banner 섹션 개수로 letter 산출 — 렌더 중 변수 재할당 회피(React Compiler).
+            const letter =
+              LETTERS[
+                doc.sections.slice(0, i).filter((s) => s.kind !== "banner")
+                  .length
+              ] ?? "";
             return (
               <div key={i}>
                 <div className="seclabel">
