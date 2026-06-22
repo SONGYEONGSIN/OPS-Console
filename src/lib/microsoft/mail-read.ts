@@ -46,21 +46,18 @@ export async function getInboxMessages(
     };
   }
 
-  const params = new URLSearchParams();
-  params.set("$top", String(top));
-  params.set("$orderby", "receivedDateTime desc");
-  params.set(
-    "$select",
-    "id,subject,bodyPreview,body,from,receivedDateTime,isRead",
-  );
-  // URLSearchParams는 공백을 '+'로 인코딩 — Graph가 허용. (sendmail.ts와 동일 fetch 스타일)
-  // $filter의 ISO 타임스탬프 내 ':'는 인코딩하지 않도록 raw append
+  // URLSearchParams는 $를 %24로 인코딩하므로 사용하지 않는다.
+  // OData 키는 리터럴 $, 공백은 %20으로 직접 조합한다.
   const filterSuffix = since
-    ? `&%24filter=receivedDateTime+gt+${since}`
+    ? `&$filter=receivedDateTime%20gt%20${encodeURIComponent(since)}`
     : "";
-  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(
-    ownerEmail,
-  )}/mailFolders/inbox/messages?${params.toString()}${filterSuffix}`;
+  const url =
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(ownerEmail)}` +
+    `/mailFolders/inbox/messages` +
+    `?$top=${top}` +
+    `&$orderby=receivedDateTime%20desc` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
+    filterSuffix;
 
   let res: Response;
   try {

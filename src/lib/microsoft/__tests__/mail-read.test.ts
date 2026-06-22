@@ -41,13 +41,15 @@ describe("getInboxMessages", () => {
     );
   });
 
-  it("since 지정 시 $filter receivedDateTime gt 포함", async () => {
+  it("since 지정 시 $filter receivedDateTime gt 포함 (리터럴 $ + %20 공백)", async () => {
     const fetchMock = vi
       .spyOn(global, "fetch")
       .mockResolvedValue(new Response(JSON.stringify(okBody), { status: 200 }));
     await getInboxMessages("op@x.com", "2026-06-21T00:00:00Z");
     const calledUrl = fetchMock.mock.calls[0][0] as string;
-    expect(calledUrl).toContain("receivedDateTime+gt+2026-06-21T00:00:00Z");
+    // OData 키는 리터럴 $, 공백은 %20, since 값은 encodeURIComponent 결과
+    expect(calledUrl).toContain("$filter=receivedDateTime%20gt%20");
+    expect(calledUrl).toContain(encodeURIComponent("2026-06-21T00:00:00Z"));
   });
 
   it("401은 unauthorized 에러 키", async () => {
