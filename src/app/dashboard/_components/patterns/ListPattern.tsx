@@ -487,6 +487,27 @@ export type ListRow = {
   meetingAttendees?: string[];
   /** meetings variant — 회의 내용. v1=BlockNote 블록 배열 / v2=MeetingDoc 객체 */
   meetingContent?: unknown;
+  /** mailbox variant — Graph 메시지 id (발송/재생성 키) */
+  mailId?: string;
+  /** mailbox — 메일함 주인 (owner_email = me) */
+  mailOwnerEmail?: string;
+  /** mailbox — 발신자 이름/주소 */
+  mailFromName?: string | null;
+  mailFromEmail?: string | null;
+  /** mailbox — 제목 */
+  mailSubject?: string | null;
+  /** mailbox — 본문(읽기 전용 표시용) */
+  mailBody?: string | null;
+  /** mailbox — 수신 시각 (ISO) */
+  mailReceivedAt?: string | null;
+  /** mailbox — 열람 여부 (● 미열람 / ○ 열람) */
+  mailIsRead?: boolean;
+  /** mailbox — 초안 존재 여부 (✎초안준비 배지) */
+  mailHasDraft?: boolean;
+  /** mailbox — AI 초안 본문 (textarea 초기값) */
+  mailDraftBody?: string | null;
+  /** mailbox — 최신 draft 상태 (sent면 발송 완료 표시) */
+  mailDraftStatus?: "draft" | "sent" | "discarded" | "dry_run" | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -589,6 +610,11 @@ type Props = {
     item_key: string;
     checked: boolean;
   }) => Promise<{ ok: boolean; error?: string }>;
+  /** mailbox variant — 회신 발송 (페이지 server action 배선). InspectorListBody로 전달. */
+  onMailReply?: (
+    messageId: string,
+    editedBody: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 인스펙터의 독려 메일 발송이 dry-run 모드인지 (env 기반, server에서 결정). */
   receivablesMailDryRun?: boolean;
   /** ai-work variant — 신규 행 생성 시 owner 자동 채움용 (현재 운영자 이름) */
@@ -674,6 +700,7 @@ export function ListPattern({
   liveData = false,
   onInvite,
   onChecklistToggle,
+  onMailReply,
   receivablesMailDryRun = true,
   currentUserName,
   backupOperators,
@@ -931,6 +958,7 @@ export function ListPattern({
               currentUserName={currentUserName}
               onInvite={onInvite}
               onChecklistToggle={onChecklistToggle}
+              onMailReply={onMailReply}
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
               backupServiceCandidates={backupServiceCandidates}

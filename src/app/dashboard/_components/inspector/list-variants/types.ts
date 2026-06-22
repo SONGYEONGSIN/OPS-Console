@@ -28,7 +28,8 @@ export type Variant =
   | "worklog"
   | "data-request"
   | "dev-test"
-  | "performance";
+  | "performance"
+  | "mailbox";
 
 /** cohort variant — 온보딩 체크리스트 토글 server action 입력. */
 export type ChecklistToggleInput = {
@@ -45,6 +46,11 @@ export type ViewProps = {
   /** cohort variant — 인스펙터 내 체크리스트 토글 (없으면 읽기 전용). */
   onChecklistToggle?: (
     input: ChecklistToggleInput,
+  ) => Promise<{ ok: boolean; error?: string }>;
+  /** mailbox variant — 회신 발송 (페이지 server action 배선). */
+  onMailReply?: (
+    messageId: string,
+    editedBody: string,
   ) => Promise<{ ok: boolean; error?: string }>;
 };
 

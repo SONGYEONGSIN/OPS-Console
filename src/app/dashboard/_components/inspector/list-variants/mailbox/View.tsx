@@ -1,0 +1,98 @@
+"use client";
+
+import { useState } from "react";
+import { Section, DefList, Divider } from "../shared";
+import type { ViewProps } from "../types";
+
+function formatTs(iso?: string | null): string {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(iso));
+}
+
+export function MailboxView({ row, onMailReply }: ViewProps) {
+  const [draft, setDraft] = useState(row.mailDraftBody ?? "");
+  const [busy, setBusy] = useState(false);
+  const sent =
+    row.mailDraftStatus === "sent" || row.mailDraftStatus === "dry_run";
+
+  async function handleSend() {
+    if (!onMailReply || !row.mailId) return;
+    setBusy(true);
+    const r = await onMailReply(row.id, draft);
+    setBusy(false);
+    if (!r.ok) alert(`발송 실패: ${r.error ?? "알 수 없는 오류"}`);
+  }
+
+  return (
+    <div className="space-y-6">
+      <Section title="메일">
+        <DefList
+          items={[
+            { term: "보낸이", desc: row.mailFromName || row.mailFromEmail || "-" },
+            { term: "주소", desc: row.mailFromEmail || "-" },
+            { term: "제목", desc: row.mailSubject || "(제목 없음)" },
+            { term: "수신", desc: <span>{formatTs(row.mailReceivedAt)}</span> },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="본문">
+        <p className="whitespace-pre-wrap text-sm text-ink-soft">
+          {row.mailBody || row.mailDraftBody || "(본문 없음)"}
+        </p>
+      </Section>
+
+      <Divider />
+
+      <Section title="AI 회신 초안">
+        {sent ? (
+          <p className="text-sm text-muted">
+            이미 발송된 메일입니다. ({row.mailDraftStatus})
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={8}
+              className="w-full border border-line bg-washi px-3 py-2 text-sm text-ink"
+              placeholder="회신 본문 (AI 초안 — 검토 후 편집)"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busy || draft.trim().length === 0}
+                onClick={handleSend}
+                className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep disabled:opacity-50"
+              >
+                발송
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setDraft("")}
+                className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-ink hover:text-cream"
+              >
+                폐기
+              </button>
+              <button
+                type="button"
+                disabled
+                title="초안 재생성은 로컬 수집 잡이 담당합니다 (Phase 1)"
+                className="cursor-not-allowed border border-line bg-transparent px-3 py-1 text-xs text-muted opacity-50"
+              >
+                다시 생성
+              </button>
+            </div>
+          </div>
+        )}
+      </Section>
+    </div>
+  );
+}
