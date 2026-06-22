@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { closingServicesRowSchema, type ClosingRow } from "./schemas";
+import { monthRange } from "./derive";
 
 export type ClosingFilter = {
   search?: string;
@@ -11,6 +12,8 @@ export type ClosingFilter = {
   closedStatus?: "closed" | "open" | "all";
   /** '내 마감' 칩 — operator_name 일치(현재 운영자 이름)로 본인 담당만. */
   operatorName?: string;
+  /** 월별 필터 "YYYY-MM" — 해당 월에 오픈(write_start_at) 또는 마감(write_end_at)한 건. */
+  month?: string;
   page?: number;
   pageSize?: number;
 };
@@ -53,6 +56,15 @@ export async function listClosing(
     query = query.lt("pay_end_at", new Date().toISOString());
   else if (filter.closedStatus === "open")
     query = query.gte("pay_end_at", new Date().toISOString());
+
+  // 월별 — 해당 월에 오픈(write_start_at) 또는 마감(write_end_at)한 건.
+  const range = filter.month ? monthRange(filter.month) : null;
+  if (range) {
+    query = query.or(
+      `and(write_start_at.gte.${range.start},write_start_at.lt.${range.end}),` +
+        `and(write_end_at.gte.${range.start},write_end_at.lt.${range.end})`,
+    );
+  }
 
   query = query.order("pay_end_at", { ascending: false });
 
@@ -104,4 +116,30 @@ export async function listClosingCategories(): Promise<string[]> {
     if (c) set.add(c);
   }
   return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
+}
+
+/**
+ * 월별 셀렉트 옵션 — closing_services의 오픈(write_start_at)·마감(write_end_at) 날짜에서
+ * distinct "YYYY-MM" 수집(빈값 제외). 최신 월 먼저(내림차순).
+ */
+export async function listClosingMonths(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("closing_services")
+    .select("write_start_at, write_end_at");
+  if (error) {
+    console.error("[listClosingMonths] supabase error:", error);
+    return [];
+  }
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const r = row as {
+      write_start_at?: string | null;
+      write_end_at?: string | null;
+    };
+    for (const iso of [r.write_start_at, r.write_end_at]) {
+      if (iso && iso.length >= 7) set.add(iso.slice(0, 7)); // "YYYY-MM"
+    }
+  }
+  return Array.from(set).sort((a, b) => b.localeCompare(a));
 }
