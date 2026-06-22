@@ -65,9 +65,11 @@ describe("MailboxView", () => {
     expect(screen.getByPlaceholderText(/회신 본문/)).toHaveValue("");
   });
 
-  it("다시 생성 — Phase 1 비활성(disabled)", () => {
+  it("다시 생성 버튼은 없다 (제거됨)", () => {
     render(<MailboxView row={baseRow} />);
-    expect(screen.getByRole("button", { name: "다시 생성" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "다시 생성" }),
+    ).not.toBeInTheDocument();
   });
 
   it("이미 발송된 메일 — 편집 영역 대신 안내 표시", () => {

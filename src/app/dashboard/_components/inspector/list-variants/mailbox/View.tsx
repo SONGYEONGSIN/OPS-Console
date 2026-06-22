@@ -81,14 +81,6 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
               >
                 폐기
               </button>
-              <button
-                type="button"
-                disabled
-                title="초안 재생성은 로컬 수집 잡이 담당합니다 (Phase 1)"
-                className="cursor-not-allowed border border-line bg-transparent px-3 py-1 text-xs text-muted opacity-50"
-              >
-                다시 생성
-              </button>
             </div>
           </div>
         )}
