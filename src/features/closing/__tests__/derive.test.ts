@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ClosingRow } from "../schemas";
-import { imminentClosings, upcomingOpens } from "../derive";
+import { imminentClosings, upcomingOpens, openingsWithin } from "../derive";
 
 /** ClosingRow 최소 팩토리 — 테스트 관심 필드만 덮어쓴다. */
 function row(partial: Partial<ClosingRow>): ClosingRow {
@@ -94,5 +94,50 @@ describe("upcomingOpens — 작성시작(오픈) 예정", () => {
       "soon",
       "late",
     ]);
+  });
+});
+
+describe("openingsWithin — 오픈 예정 중 오늘~N일 이내(triage 노출용)", () => {
+  it("오늘(D-0) 오픈 건을 포함한다", () => {
+    const rows = [row({ write_start_at: "2026-06-16T09:00:00+09:00" })];
+    expect(openingsWithin(rows, TODAY)).toHaveLength(1);
+  });
+
+  it("D-7(오늘+7) 오픈 건을 포함한다 (기본 범위 경계)", () => {
+    const rows = [row({ write_start_at: "2026-06-23T09:00:00+09:00" })];
+    expect(openingsWithin(rows, TODAY)).toHaveLength(1);
+  });
+
+  it("D-8(오늘+8) 오픈 건은 제외한다 (track 비대 방지)", () => {
+    const rows = [row({ write_start_at: "2026-06-24T09:00:00+09:00" })];
+    expect(openingsWithin(rows, TODAY)).toHaveLength(0);
+  });
+
+  it("과거 오픈 건은 제외한다", () => {
+    const rows = [row({ write_start_at: "2026-06-10T09:00:00+09:00" })];
+    expect(openingsWithin(rows, TODAY)).toHaveLength(0);
+  });
+
+  it("같은 날 여러 건(오늘 오픈 다수)을 모두 포함한다 — cap 없음", () => {
+    const rows = Array.from({ length: 27 }, (_, i) =>
+      row({ id: `o${i}`, write_start_at: "2026-06-16T09:00:00+09:00" }),
+    );
+    expect(openingsWithin(rows, TODAY)).toHaveLength(27);
+  });
+
+  it("withinDays 커스텀 — 0이면 오늘만", () => {
+    const rows = [
+      row({ id: "today", write_start_at: "2026-06-16T09:00:00+09:00" }),
+      row({ id: "tomorrow", write_start_at: "2026-06-17T09:00:00+09:00" }),
+    ];
+    expect(openingsWithin(rows, TODAY, 0).map((r) => r.id)).toEqual(["today"]);
+  });
+
+  it("write_start_at 오름차순 정렬", () => {
+    const rows = [
+      row({ id: "d3", write_start_at: "2026-06-19T09:00:00+09:00" }),
+      row({ id: "d0", write_start_at: "2026-06-16T09:00:00+09:00" }),
+    ];
+    expect(openingsWithin(rows, TODAY).map((r) => r.id)).toEqual(["d0", "d3"]);
   });
 });

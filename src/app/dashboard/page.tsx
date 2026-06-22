@@ -20,7 +20,11 @@ import { contractsRowToListRow } from "./contracts/_row-mapper";
 import type { ContractRow } from "@/features/contracts/schemas";
 import { createClient } from "@/lib/supabase/server";
 import { closingRowToListRow } from "./closing/_row-mapper";
-import { upcomingOpens, imminentClosings } from "@/features/closing/derive";
+import {
+  upcomingOpens,
+  imminentClosings,
+  openingsWithin,
+} from "@/features/closing/derive";
 import type { ClosingRow } from "@/features/closing/schemas";
 import { incidentToListRow } from "./incidents/_row-mapper";
 import { eventToListRow } from "./schedule/_row-mapper";
@@ -355,16 +359,18 @@ export default async function DashboardLivePage({
       listRow: todosListRows.find((r) => r.id === t.id) ?? todoToListRow(t),
     })),
     services: [
-      // 오픈 예정 — write_start_at 기준
-      ...closingOpensUpcoming.slice(0, 5).map((c) => ({
+      // 오픈 예정 — write_start_at 기준. triage '오늘'·'이번 주' 노출용으로 7일 이내 전부(cap 없음).
+      // 타임라인의 '서비스 오픈 N건'(오늘 오픈 전체)과 '오늘' 버킷 건수를 일치시킨다.
+      // (그보다 먼 미래 오픈은 '추적중' 비대 방지로 openingsWithin이 제외.)
+      ...openingsWithin(closingRows, todayYmd).map((c) => ({
         id: c.id,
         title: `${c.university_name} · ${c.service_name}`,
         writeStartAt: c.write_start_at,
         createdAt: c.created_at,
         listRow: closingRowToListRow(c),
       })),
-      // 마감 임박/오늘 — pay_end_at(결제 마감) 기준. id 충돌 방지로 -close 접미.
-      ...closingImminent.slice(0, 5).map((c) => ({
+      // 마감 임박/오늘 — pay_end_at(결제 마감, D-3 이내) 기준. id 충돌 방지로 -close 접미.
+      ...closingImminent.map((c) => ({
         id: `${c.id}-close`,
         title: `${c.university_name} · ${c.service_name}`,
         writeStartAt: null,
