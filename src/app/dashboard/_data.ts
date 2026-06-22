@@ -95,6 +95,13 @@ export const sidebarSections: SbSection[] = [
             slug: "contacts",
             pattern: "list",
           },
+          {
+            ico: "·",
+            label: "메일함",
+            count: "",
+            slug: "mailbox",
+            pattern: "list",
+          },
         ],
       },
       {

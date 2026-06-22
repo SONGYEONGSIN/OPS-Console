@@ -30,6 +30,11 @@ type Props = {
     item_key: string;
     checked: boolean;
   }) => Promise<{ ok: boolean; error?: string }>;
+  /** mailbox variant — 회신 발송 server action wrapper. */
+  onMailReply?: (
+    messageId: string,
+    editedBody: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
   /** receivables variant — 적요 셀 PATCH server action. */
   onUpdateRemarks?: (
     row: ListRow,
@@ -108,6 +113,7 @@ export function InspectorListBody({
   currentUserTeam = null,
   onInvite,
   onChecklistToggle,
+  onMailReply,
   onUpdateRemarks,
   receivablesMailDryRun = true,
   backupOperators,
@@ -135,6 +141,7 @@ export function InspectorListBody({
         currentUserPermission={currentUserPermission}
         receivablesMailDryRun={receivablesMailDryRun}
         onChecklistToggle={onChecklistToggle}
+        onMailReply={onMailReply}
       />
     );
   }
@@ -193,6 +200,7 @@ function ViewMode({
   currentUserPermission = null,
   receivablesMailDryRun = true,
   onChecklistToggle,
+  onMailReply,
 }: {
   row: ListRow;
   variant: Variant;
@@ -204,6 +212,10 @@ function ViewMode({
     item_key: string;
     checked: boolean;
   }) => Promise<{ ok: boolean; error?: string }>;
+  onMailReply?: (
+    messageId: string,
+    editedBody: string,
+  ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   if (variant === "post-feedback" || variant === "post-notice") {
     return <PostView row={row} variant={variant} />;
@@ -217,6 +229,7 @@ function ViewMode({
         currentUserPermission={currentUserPermission}
         receivablesMailDryRun={receivablesMailDryRun}
         onChecklistToggle={onChecklistToggle}
+        onMailReply={onMailReply}
       />
     );
   }

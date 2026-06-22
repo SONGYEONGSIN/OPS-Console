@@ -103,6 +103,9 @@ import {
   PERFORMANCE_FILTERS,
   blankPerformanceRow,
 } from "./performance/filters";
+import { MailboxView } from "./mailbox/View";
+import { MailboxTable } from "./mailbox/Table";
+import { MAILBOX_FILTERS } from "./mailbox/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -322,5 +325,11 @@ export const variantRegistry = {
     Table: PerformanceTable,
     Filters: PERFORMANCE_FILTERS,
     blank: blankPerformanceRow,
+  },
+  mailbox: {
+    View: MailboxView,
+    Table: MailboxTable,
+    Filters: MAILBOX_FILTERS,
+    // blank 없음 — 수신 메일은 ingest 잡이 적재 (신규 생성 흐름 없음)
   },
 } as const satisfies Record<Variant, RegistryEntry>;
