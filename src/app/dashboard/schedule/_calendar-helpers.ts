@@ -159,52 +159,52 @@ export function groupItemsByDay(
   for (const e of events) {
     const startYmd = toKstYmd(e.start_at);
     const isTeamCommon = !e.assignee_email;
-    push(startYmd, {
-      id: e.id,
-      ymd: startYmd,
-      category: e.type,
-      label: e.title,
-      sortKey: toKstSortKey(e.start_at, e.all_day),
-      all_day: e.all_day,
-      sourceVariant: "schedule",
-      isTeamCommon,
-      rowRef: e,
-    });
-    // 멀티데이 일정: 시작~종료 사이 모든 날짜에 펼친다 (중간 날짜 누락 버그 수정).
-    // rowRef는 동일 event라 어느 셀에서 인스펙터를 열어도 같은 row 표시.
-    if (e.end_at) {
-      const endYmd = toKstYmd(e.end_at);
-      if (endYmd !== startYmd) {
-        // 종료일: 종료 시각 sortKey 유지. 중간일(start+1 ~ end-1): 진행중 = all_day 최상단("").
-        push(endYmd, {
-          id: `${e.id}::end`,
-          ymd: endYmd,
+    const endYmd = e.end_at ? toKstYmd(e.end_at) : startYmd;
+    const isMultiDay = endYmd !== startYmd;
+
+    // 단일일 일정: 주말이어도 그대로 표기(특정일 이벤트).
+    if (!isMultiDay) {
+      push(startYmd, {
+        id: e.id,
+        ymd: startYmd,
+        category: e.type,
+        label: e.title,
+        sortKey: toKstSortKey(e.start_at, e.all_day),
+        all_day: e.all_day,
+        sourceVariant: "schedule",
+        isTeamCommon,
+        rowRef: e,
+      });
+      continue;
+    }
+
+    // 멀티데이 일정: 시작~종료 모든 날짜에 펼치되 주말(토·일)은 제외(백업 휴가와 동일 규칙).
+    // 시작일=시작 시각 sortKey, 종료일=종료 시각, 중간일=""(진행중 = all_day 최상단). rowRef는 동일 event.
+    let cur = startYmd;
+    let guard = 0;
+    while (cur <= endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
+      const dow = ymdWeekday(cur);
+      if (dow !== 0 && dow !== 6) {
+        const isStart = cur === startYmd;
+        const isEnd = cur === endYmd;
+        push(cur, {
+          id: isStart ? e.id : isEnd ? `${e.id}::end` : `${e.id}::${cur}`,
+          ymd: cur,
           category: e.type,
           label: e.title,
-          sortKey: toKstSortKey(e.end_at, e.all_day),
+          sortKey: isStart
+            ? toKstSortKey(e.start_at, e.all_day)
+            : isEnd
+              ? toKstSortKey(e.end_at as string, e.all_day)
+              : "",
           all_day: e.all_day,
           sourceVariant: "schedule",
           isTeamCommon,
           rowRef: e,
         });
-        let cur = ymdAddDays(startYmd, 1);
-        let guard = 0;
-        while (cur < endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
-          push(cur, {
-            id: `${e.id}::${cur}`,
-            ymd: cur,
-            category: e.type,
-            label: e.title,
-            sortKey: "",
-            all_day: e.all_day,
-            sourceVariant: "schedule",
-            isTeamCommon,
-            rowRef: e,
-          });
-          cur = ymdAddDays(cur, 1);
-          guard++;
-        }
       }
+      cur = ymdAddDays(cur, 1);
+      guard++;
     }
   }
 

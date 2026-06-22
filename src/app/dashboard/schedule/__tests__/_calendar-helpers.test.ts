@@ -188,6 +188,49 @@ describe("groupItemsByDay", () => {
     expect(map.get("2026-07-30")).toBeUndefined();
   });
 
+  it("멀티데이 일정은 주말(토·일) 셀에는 표기하지 않는다", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "88888888-8888-8888-8888-888888888888",
+        type: "leave",
+        title: "운영1팀-김유민-연차",
+        start_at: "2026-07-21T15:00:00Z", // KST 7/22(수)
+        end_at: "2026-07-26T15:00:00Z", // KST 7/27(월)
+        all_day: true,
+      },
+    ];
+    const map = groupItemsByDay(events, []);
+    // 평일(22수·23목·24금·27월)은 표기
+    for (const ymd of [
+      "2026-07-22",
+      "2026-07-23",
+      "2026-07-24",
+      "2026-07-27",
+    ]) {
+      expect(map.get(ymd)?.[0]?.label).toBe("운영1팀-김유민-연차");
+    }
+    // 주말(25토·26일)은 제외
+    expect(map.get("2026-07-25")).toBeUndefined();
+    expect(map.get("2026-07-26")).toBeUndefined();
+  });
+
+  it("단일일(멀티데이 아님) 일정은 주말이어도 표기한다", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "77777777-7777-7777-7777-777777777777",
+        type: "event",
+        title: "주말 행사",
+        start_at: "2026-07-25T01:00:00Z", // KST 7/25(토)
+        end_at: null,
+        all_day: false,
+      },
+    ];
+    const map = groupItemsByDay(events, []);
+    expect(map.get("2026-07-25")?.[0]?.label).toBe("주말 행사");
+  });
+
   it("팀 공통(assignee_email=null) 일정은 isTeamCommon=true + 셀 최상단으로 정렬", () => {
     const events: ScheduleEventRow[] = [
       {
