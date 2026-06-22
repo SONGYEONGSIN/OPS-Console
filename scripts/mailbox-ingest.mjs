@@ -252,70 +252,24 @@ export function shouldSkipMessage({ fromEmail, subject }) {
   );
 }
 
-// operators 행으로 운영자별 동적 서명(plain text + URL)을 생성한다.
-// 회사명/주소/F번호/4개 링크는 고정, 부서·팀·직책·이름·내선(T.)은 op 필드로 변수화.
-// op = { name, department, team, role, phone } — 각 필드 누락 시 해당 부분 자연스럽게 생략.
-const SIGNATURE_FOOTER = [
-  "서울특별시 종로구 경희궁길 34 (진학기획B/D 3F)",
-];
-const SIGNATURE_LINKS = [
-  "원서접수 https://www.jinhakapply.com/",
-  "진학닷컴 https://www.jinhak.com/",
-  "CATCH https://www.catch.co.kr/",
-  "JINHAKPRO(전임·강사·연구원채용) https://www.jinhakpro.com/",
-];
-export function buildSignature(op = {}) {
-  const clean = (v) => (typeof v === "string" ? v.trim() : "");
-  const department = clean(op.department);
-  const team = clean(op.team);
-  const role = clean(op.role);
-  const name = clean(op.name);
-  const phone = clean(op.phone);
-
-  // 1줄: (주)진학어플라이  {부서} {팀} | {직책}  — 회사명과 부서·팀 사이 공백 2칸(원본 유지)
-  const orgParts = [department, team].filter(Boolean).join(" ");
-  let firstLine = "(주)진학어플라이";
-  if (orgParts) firstLine += `  ${orgParts}`;
-  if (role) firstLine += `${orgParts ? " " : "  "}| ${role}`;
-
-  // T./F. 줄: phone 있으면 T. {phone} | F. ..., 없으면 F. ...만 (빈 'T. ' 금지)
-  const contactLine = phone
-    ? `T. ${phone} | F. 02-730-0517`
-    : "F. 02-730-0517";
-
-  const lines = [firstLine];
-  if (name) lines.push(name);
-  lines.push(...SIGNATURE_FOOTER, contactLine, ...SIGNATURE_LINKS);
-  return lines.join("\n");
-}
-
-// 메일함별 서명을 초안 본문 끝에 append. signature가 비었으면(null/빈/공백) body 그대로.
-// Outlook 서명은 Graph로 못 읽고 발송 시 자동첨부도 안 되므로 초안에 미리 붙여 운영자가 편집·발송.
-export function appendSignature(body, signature) {
-  if (!signature || signature.trim() === "") return body;
-  return `${body.trimEnd()}\n\n${signature}`;
-}
-
 // 초안을 고정 틀로 조립한다. AI는 본문 내용(bodyContent)만 생성하고,
-// 인사·자기소개·맺음·서명은 코드가 고정 조립한다.
+// 인사·자기소개·맺음은 코드가 고정 조립한다. 서명은 초안에 붙이지 않는다 —
+// 서명은 웹 발송 시점에 HTML로 첨부하므로 ingest 초안에는 서명을 넣지 않는다(중복 방지).
 //   안녕하세요.
 //   진학어플라이 {operatorName}입니다.   (operatorName 없으면 "진학어플라이입니다.")
 //
 //   {bodyContent.trim()}
 //
 //   감사합니다.
-//
-//   {signature}   (signature 없으면 생략 — appendSignature 위임)
-export function assembleDraft(operatorName, bodyContent, signature) {
+export function assembleDraft(operatorName, bodyContent) {
   const hasName = operatorName != null && operatorName.trim() !== "";
   const intro = hasName
     ? `안녕하세요.\n진학어플라이 ${operatorName.trim()}입니다.`
     : "안녕하세요.\n진학어플라이입니다.";
-  const assembled = `${intro}\n\n${bodyContent.trim()}\n\n감사합니다.`;
-  return appendSignature(assembled, signature);
+  return `${intro}\n\n${bodyContent.trim()}\n\n감사합니다.`;
 }
 
-async function generateDraft(message, signature, operatorName) {
+async function generateDraft(message, operatorName) {
   const prompt = [
     "당신은 대학 입학 원서접수 운영부의 담당자입니다.",
     "아래 받은 메일에 대한 회신의 '본문 내용'만 작성하세요.",
@@ -335,7 +289,7 @@ async function generateDraft(message, signature, operatorName) {
   });
   if (!res.ok) throw new Error(`ollama ${res.status} ${await res.text()}`);
   const rawBody = (await res.json()).response?.trim() ?? "";
-  return assembleDraft(operatorName, rawBody, signature);
+  return assembleDraft(operatorName, rawBody);
 }
 
 async function main() {
@@ -378,16 +332,14 @@ async function main() {
     const since =
       s.last_synced_at ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    // 운영자 행 — 초안 자기소개("진학어플라이 OOO입니다.") + 동적 서명에 사용.
-    // 메시지 루프 밖에서 1회 조회해 재사용. 서명은 mailbox_settings.signature(정적) 대신
-    // operators 필드(부서·팀·직책·내선)로 buildSignature가 동적 생성한다.
+    // 운영자 행 — 초안 자기소개("진학어플라이 OOO입니다.")에만 사용.
+    // 메시지 루프 밖에서 1회 조회해 재사용. 서명은 ingest 초안에 붙이지 않으므로 name만 조회.
     const { data: op } = await supabase
       .from("operators")
-      .select("name, department, team, role, phone")
+      .select("name")
       .eq("email", s.owner_email)
       .maybeSingle();
     const operatorName = op?.name ?? null;
-    const signature = buildSignature(op ?? {});
 
     // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
     const folderIds = await collectInboxFolderIds(token, s.owner_email);
@@ -453,7 +405,7 @@ async function main() {
       if ((count ?? 0) > 0) continue;
 
       try {
-        const draftBody = await generateDraft(m, signature, operatorName);
+        const draftBody = await generateDraft(m, operatorName);
         const { error: dErr } = await supabase.from("mailbox_drafts").insert({
           message_id: up.id,
           draft_body: draftBody,

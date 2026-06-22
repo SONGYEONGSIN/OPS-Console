@@ -12,9 +12,7 @@ import {
   fetchFolderMessages,
   collectInboxFolderIds,
   graphGetWithRetry,
-  appendSignature,
   assembleDraft,
-  buildSignature,
 } from "../mailbox-ingest.mjs";
 
 describe("isAutoSender", () => {
@@ -445,174 +443,37 @@ describe("collectInboxFolderIds — 재귀 + nextLink", () => {
   });
 });
 
-describe("buildSignature — operators 기반 동적 서명 (plain text + URL)", () => {
-  const LINKS = [
-    "원서접수 https://www.jinhakapply.com/",
-    "진학닷컴 https://www.jinhak.com/",
-    "CATCH https://www.catch.co.kr/",
-    "JINHAKPRO(전임·강사·연구원채용) https://www.jinhakpro.com/",
-  ];
-
-  it("전체 필드 → 첫 줄 공백 2칸, 이름 줄, 주소, T.|F. 한 줄, 링크 4줄", () => {
-    const sig = buildSignature({
-      name: "송영신",
-      department: "운영부",
-      team: "운영2팀",
-      role: "팀장",
-      phone: "(02)2013-0669",
-    });
-    expect(sig).toBe(
-      [
-        "(주)진학어플라이  운영부 운영2팀 | 팀장",
-        "송영신",
-        "서울특별시 종로구 경희궁길 34 (진학기획B/D 3F)",
-        "T. (02)2013-0669 | F. 02-730-0517",
-        ...LINKS,
-      ].join("\n"),
-    );
-  });
-
-  it("회사명과 부서·팀 사이 공백 2칸 유지", () => {
-    const sig = buildSignature({
-      name: "송영신",
-      department: "운영부",
-      team: "운영2팀",
-      role: "팀장",
-      phone: "(02)2013-0669",
-    });
-    expect(sig.split("\n")[0]).toBe("(주)진학어플라이  운영부 운영2팀 | 팀장");
-  });
-
-  it("phone 없음 → F.만, 빈 'T. ' 금지", () => {
-    const sig = buildSignature({
-      name: "송영신",
-      department: "운영부",
-      team: "운영2팀",
-      role: "팀장",
-    });
-    const lines = sig.split("\n");
-    expect(lines).toContain("F. 02-730-0517");
-    expect(sig).not.toContain("T. |");
-    expect(sig).not.toMatch(/T\.\s*$/m);
-    expect(sig).not.toContain("T. F.");
-  });
-
-  it("role 없음 → '| 팀장' 생략", () => {
-    const sig = buildSignature({
-      name: "송영신",
-      department: "운영부",
-      team: "운영2팀",
-      phone: "(02)2013-0669",
-    });
-    // 첫 줄에 직책 구분자가 없어야 함 (T./F. 줄의 '|'와 무관)
-    expect(sig.split("\n")[0]).toBe("(주)진학어플라이  운영부 운영2팀");
-    expect(sig.split("\n")[0]).not.toContain("|");
-  });
-
-  it("name 없음 → name 줄 생략 (빈 줄 아님)", () => {
-    const sig = buildSignature({
-      department: "운영부",
-      team: "운영2팀",
-      role: "팀장",
-      phone: "(02)2013-0669",
-    });
-    expect(sig).toBe(
-      [
-        "(주)진학어플라이  운영부 운영2팀 | 팀장",
-        "서울특별시 종로구 경희궁길 34 (진학기획B/D 3F)",
-        "T. (02)2013-0669 | F. 02-730-0517",
-        ...LINKS,
-      ].join("\n"),
-    );
-  });
-
-  it("department만 있음 → team 없이 자연스럽게", () => {
-    const sig = buildSignature({
-      name: "송영신",
-      department: "운영부",
-      role: "팀장",
-      phone: "(02)2013-0669",
-    });
-    expect(sig.split("\n")[0]).toBe("(주)진학어플라이  운영부 | 팀장");
-  });
-
-  it("빈 객체 → 회사명/주소/F./링크만 (크래시 없음)", () => {
-    const sig = buildSignature({});
-    expect(sig.split("\n")[0]).toBe("(주)진학어플라이");
-    expect(sig).toContain("서울특별시 종로구 경희궁길 34 (진학기획B/D 3F)");
-    expect(sig).toContain("F. 02-730-0517");
-    expect(sig).not.toContain("T.");
-  });
-
-  it("링크 4개 URL 정확 (jinhakapply/jinhak/catch/jinhakpro)", () => {
-    const sig = buildSignature({ name: "송영신" });
-    expect(sig).toContain("원서접수 https://www.jinhakapply.com/");
-    expect(sig).toContain("진학닷컴 https://www.jinhak.com/");
-    expect(sig).toContain("CATCH https://www.catch.co.kr/");
-    expect(sig).toContain(
-      "JINHAKPRO(전임·강사·연구원채용) https://www.jinhakpro.com/",
-    );
-  });
-});
-
-describe("appendSignature", () => {
-  it("signature가 null/빈/공백이면 body 그대로 반환", () => {
-    expect(appendSignature("회신 본문입니다.", null)).toBe("회신 본문입니다.");
-    expect(appendSignature("회신 본문입니다.", undefined)).toBe("회신 본문입니다.");
-    expect(appendSignature("회신 본문입니다.", "")).toBe("회신 본문입니다.");
-    expect(appendSignature("회신 본문입니다.", "   \n  ")).toBe("회신 본문입니다.");
-  });
-
-  it("signature가 있으면 body\\n\\nsignature 형태로 append", () => {
-    expect(appendSignature("안녕하세요.", "운영부 홍길동")).toBe(
-      "안녕하세요.\n\n운영부 홍길동",
-    );
-  });
-
-  it("body 끝 공백/줄바꿈은 trim 후 append", () => {
-    expect(appendSignature("안녕하세요.\n\n  ", "운영부 홍길동")).toBe(
-      "안녕하세요.\n\n운영부 홍길동",
-    );
-    expect(appendSignature("안녕하세요.   ", "운영부 홍길동")).toBe(
-      "안녕하세요.\n\n운영부 홍길동",
-    );
-  });
-});
-
-describe("assembleDraft — 고정 틀(인사+자기소개+본문+감사+서명) 조립", () => {
-  it("operatorName 있으면 자기소개에 이름 + 본문 + 감사 + 서명", () => {
-    expect(assembleDraft("송영신", "확인하겠습니다.", "SIG")).toBe(
-      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+describe("assembleDraft — 고정 틀(인사+자기소개+본문+감사) 조립, 서명 없음", () => {
+  it("operatorName 있으면 자기소개에 이름 + 본문 + 감사 (서명 줄 없음)", () => {
+    expect(assembleDraft("송영신", "확인하겠습니다.")).toBe(
+      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.",
     );
   });
 
   it("operatorName null이면 자기소개를 '진학어플라이입니다.'로 대체", () => {
-    expect(assembleDraft(null, "확인하겠습니다.", "SIG")).toBe(
-      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    expect(assembleDraft(null, "확인하겠습니다.")).toBe(
+      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.",
     );
   });
 
   it("operatorName 빈/공백 문자열도 '진학어플라이입니다.'로 대체", () => {
-    expect(assembleDraft("", "확인하겠습니다.", "SIG")).toBe(
-      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    expect(assembleDraft("", "확인하겠습니다.")).toBe(
+      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.",
     );
-    expect(assembleDraft("   ", "확인하겠습니다.", "SIG")).toBe(
-      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    expect(assembleDraft("   ", "확인하겠습니다.")).toBe(
+      "안녕하세요.\n진학어플라이입니다.\n\n확인하겠습니다.\n\n감사합니다.",
     );
   });
 
-  it("signature 없으면 서명 없이 '감사합니다.'로 끝남", () => {
-    expect(assembleDraft("송영신", "확인하겠습니다.", null)).toBe(
-      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.",
-    );
-    expect(assembleDraft("송영신", "확인하겠습니다.", "")).toBe(
-      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.",
-    );
+  it("출력은 항상 '감사합니다.'로 끝남 (서명 append 없음)", () => {
+    const out = assembleDraft("송영신", "확인하겠습니다.");
+    expect(out.endsWith("감사합니다.")).toBe(true);
+    expect(out).not.toContain("(주)진학어플라이");
   });
 
   it("body 앞뒤 공백은 trim 후 조립", () => {
-    expect(assembleDraft("송영신", "  확인하겠습니다.\n\n  ", "SIG")).toBe(
-      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.\n\nSIG",
+    expect(assembleDraft("송영신", "  확인하겠습니다.\n\n  ")).toBe(
+      "안녕하세요.\n진학어플라이 송영신입니다.\n\n확인하겠습니다.\n\n감사합니다.",
     );
   });
 });
