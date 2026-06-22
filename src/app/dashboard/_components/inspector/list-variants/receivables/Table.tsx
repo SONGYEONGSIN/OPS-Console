@@ -1,6 +1,7 @@
 "use client";
 
 import type { ListRow } from "../../../patterns/ListPattern";
+import { elapsedDays } from "./helpers";
 
 type Props = {
   rows: ListRow[];
@@ -17,6 +18,8 @@ export function ReceivablesTable({ rows, selectedId, onSelect }: Props) {
           <th className="whitespace-nowrap px-3 py-2">거래처</th>
           <th className="whitespace-nowrap px-3 py-2">거래내역</th>
           <th className="whitespace-nowrap px-3 py-2">운영자</th>
+          <th className="whitespace-nowrap px-3 py-2 text-right">경과일수</th>
+          <th className="whitespace-nowrap px-3 py-2">학교 담당자 이메일</th>
           <th className="whitespace-nowrap px-3 py-2 text-right">청구금액</th>
           <th className="whitespace-nowrap px-3 py-2">입금여부</th>
         </tr>
@@ -24,7 +27,7 @@ export function ReceivablesTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={6} className="px-3 py-6 text-center text-muted">
+            <td colSpan={8} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
@@ -48,6 +51,15 @@ export function ReceivablesTable({ rows, selectedId, onSelect }: Props) {
               </td>
               <td className="whitespace-nowrap px-3 py-2 text-sm text-ink-soft">
                 {row.owner || "-"}
+              </td>
+              <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-ink-soft">
+                {(() => {
+                  const d = elapsedDays(row.meta);
+                  return d === null ? "-" : `${d}일`;
+                })()}
+              </td>
+              <td className="whitespace-nowrap px-3 py-2 text-sm text-ink-soft">
+                {row.receivablesCells?.schoolOwner || "-"}
               </td>
               <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-ink">
                 {row.author ?? "-"}
