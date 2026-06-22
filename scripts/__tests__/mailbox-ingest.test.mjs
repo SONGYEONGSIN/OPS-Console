@@ -5,6 +5,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   isAutoSender,
   isAdSubject,
+  isInternalSender,
+  isSystemSubject,
+  shouldSkipMessage,
   fetchInbox,
   fetchFolderMessages,
   collectInboxFolderIds,
@@ -82,11 +85,97 @@ describe("isAutoSender", () => {
     expect(isAutoSender("info@university.ac.kr")).toBe(false);
   });
 
-  it("사내 도메인(jinhakapply/jinhak)은 bulk 패턴 매칭돼도 절대 skip 안 함", () => {
-    expect(isAutoSender("noreply@jinhakapply.com")).toBe(false);
-    expect(isAutoSender("newsletter@jinhak.com")).toBe(false);
-    expect(isAutoSender("noti@jinhakapply.com")).toBe(false);
-    expect(isAutoSender("marketing@jinhak.com")).toBe(false);
+  it("사내 도메인이라도 bulk 패턴이면 isAutoSender로도 skip (보호 제거됨)", () => {
+    expect(isAutoSender("noreply@jinhakapply.com")).toBe(true);
+    expect(isAutoSender("newsletter@jinhak.com")).toBe(true);
+    expect(isAutoSender("noti@jinhakapply.com")).toBe(true);
+    expect(isAutoSender("marketing@jinhak.com")).toBe(true);
+  });
+});
+
+describe("isInternalSender", () => {
+  it("사내 도메인(jinhak/jinhakapply) → true (skip 대상)", () => {
+    expect(isInternalSender("a@jinhak.com")).toBe(true);
+    expect(isInternalSender("b@jinhakapply.com")).toBe(true);
+    expect(isInternalSender("PERSON@JINHAK.COM")).toBe(true);
+  });
+
+  it("외부 도메인(.ac.kr/.or.kr/gmail) → false", () => {
+    expect(isInternalSender("staff@snu.ac.kr")).toBe(false);
+    expect(isInternalSender("x@kcue.or.kr")).toBe(false);
+    expect(isInternalSender("c@gmail.com")).toBe(false);
+  });
+
+  it("null/undefined/빈 문자열 → false", () => {
+    expect(isInternalSender(null)).toBe(false);
+    expect(isInternalSender(undefined)).toBe(false);
+    expect(isInternalSender("")).toBe(false);
+  });
+});
+
+describe("isSystemSubject", () => {
+  it("전자결재/결재/승인/반려 패턴 → true", () => {
+    expect(isSystemSubject("[전자결재-완료] 6월 비용")).toBe(true);
+    expect(isSystemSubject("결재요청: 출장비")).toBe(true);
+    expect(isSystemSubject("결재완료 안내")).toBe(true);
+    expect(isSystemSubject("[결재-완료] 문서")).toBe(true);
+    expect(isSystemSubject("[결재-결재요청] 문서")).toBe(true);
+    expect(isSystemSubject("[결재-회수] 문서")).toBe(true);
+    expect(isSystemSubject("승인요청 드립니다")).toBe(true);
+    expect(isSystemSubject("승인완료 처리되었습니다")).toBe(true);
+    expect(isSystemSubject("반려 안내")).toBe(true);
+  });
+
+  it("외부 고객 일반 문의 → false", () => {
+    expect(isSystemSubject("숙명여대 원서접수 문의")).toBe(false);
+    expect(isSystemSubject("RE: 접수 일정 확인")).toBe(false);
+    expect(isSystemSubject("")).toBe(false);
+    expect(isSystemSubject(null)).toBe(false);
+    expect(isSystemSubject(undefined)).toBe(false);
+  });
+});
+
+describe("shouldSkipMessage", () => {
+  it("사내 발신 → skip true", () => {
+    expect(
+      shouldSkipMessage({ fromEmail: "staff@jinhak.com", subject: "안녕하세요" }),
+    ).toBe(true);
+  });
+
+  it("광고 제목 → skip true", () => {
+    expect(
+      shouldSkipMessage({ fromEmail: "shop@example.com", subject: "(광고) 세일" }),
+    ).toBe(true);
+  });
+
+  it("시스템/결재 제목 → skip true (외부 발신이라도)", () => {
+    expect(
+      shouldSkipMessage({
+        fromEmail: "notice@officedepot.co.kr",
+        subject: "승인요청 안내",
+      }),
+    ).toBe(true);
+  });
+
+  it("자동발송 발신자 → skip true", () => {
+    expect(
+      shouldSkipMessage({ fromEmail: "noreply@vendor.com", subject: "안내" }),
+    ).toBe(true);
+  });
+
+  it(".ac.kr 외부 고객 일반 문의 → skip false (통과)", () => {
+    expect(
+      shouldSkipMessage({
+        fromEmail: "staff@snu.ac.kr",
+        subject: "원서접수 문의드립니다",
+      }),
+    ).toBe(false);
+  });
+
+  it(".or.kr 외부 고객 → skip false (통과)", () => {
+    expect(
+      shouldSkipMessage({ fromEmail: "x@kcue.or.kr", subject: "일정 확인" }),
+    ).toBe(false);
   });
 });
 

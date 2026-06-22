@@ -161,7 +161,8 @@ export async function collectInboxFolderIds(token, ownerEmail) {
   return ids;
 }
 
-// 사내 도메인 — 고객·내부 정상 메일이므로 bulk 패턴 매칭돼도 절대 skip 안 함(과차단 방지)
+// 사내 도메인 — 이 메일함은 외부 고객(대학 담당자) 회신 초안 전용이므로
+// 사내(@jinhak.com/@jinhakapply.com) 발신은 수집·초안 대상에서 제외(skip)한다.
 const INTERNAL_DOMAINS = [/@jinhakapply\.com$/i, /@jinhak\.com$/i];
 
 // bulk/뉴스레터/자동발송 판정 패턴. info@는 과차단 위험으로 의도적 제외.
@@ -201,9 +202,14 @@ const SKIP_PATTERNS = [
 export function isAutoSender(fromEmail) {
   if (!fromEmail) return true;
   const addr = fromEmail.toLowerCase();
-  // 사내 도메인은 과차단 방지 — 항상 통과
-  if (INTERNAL_DOMAINS.some((re) => re.test(addr))) return false;
   return SKIP_PATTERNS.some((re) => re.test(addr));
+}
+
+// 사내 발신 판정 — 외부 고객 전용 메일함이므로 사내 도메인은 skip 대상.
+export function isInternalSender(fromEmail) {
+  if (!fromEmail) return false;
+  const addr = fromEmail.toLowerCase();
+  return INTERNAL_DOMAINS.some((re) => re.test(addr));
 }
 
 // 제목 기반 광고 판정 — (AD)/[AD]/(광고)/[광고] 표기. 정상 단어(Admission 등) 오판 방지.
@@ -211,6 +217,33 @@ const AD_SUBJECT_PATTERNS = [/[([]\s*ad\s*[)\]]/i, /[([]\s*광고\s*[)\]]/];
 export function isAdSubject(subject) {
   if (!subject) return false;
   return AD_SUBJECT_PATTERNS.some((re) => re.test(subject));
+}
+
+// 제목 기반 시스템/결재 알림 판정 — 전자결재·승인·반려 워크플로 알림(외부 시스템 포함)은 회신 대상 아님.
+const SYSTEM_SUBJECT_PATTERNS = [
+  "전자결재",
+  "결재요청",
+  "결재완료",
+  "결재-완료",
+  "결재-결재요청",
+  "결재-회수",
+  "승인요청",
+  "승인완료",
+  "반려",
+];
+export function isSystemSubject(subject) {
+  if (!subject) return false;
+  return SYSTEM_SUBJECT_PATTERNS.some((kw) => subject.includes(kw));
+}
+
+// 통합 skip 판정 — 사내 발신·광고·시스템 알림·자동발송이면 수집/초안 모두 제외.
+export function shouldSkipMessage({ fromEmail, subject }) {
+  return (
+    isAutoSender(fromEmail) ||
+    isAdSubject(subject) ||
+    isInternalSender(fromEmail) ||
+    isSystemSubject(subject)
+  );
 }
 
 async function generateDraft(message) {
@@ -293,24 +326,25 @@ async function main() {
     }
 
     for (const m of inbox) {
-      const skip =
-        isAutoSender(m.from?.emailAddress?.address) || isAdSubject(m.subject);
+      const fromEmail = m.from?.emailAddress?.address ?? null;
+      // 사내·광고·시스템·자동발송 메일은 수집 자체에서 제외 — upsert도 초안도 하지 않는다.
+      if (shouldSkipMessage({ fromEmail, subject: m.subject })) continue;
+
       const rowData = {
         owner_email: s.owner_email,
         graph_message_id: m.id,
         from_name: m.from?.emailAddress?.name ?? null,
-        from_email: m.from?.emailAddress?.address ?? null,
+        from_email: fromEmail,
         subject: m.subject ?? null,
         body_preview: m.bodyPreview ?? null,
         body: m.body?.content ?? null,
         received_at: m.receivedDateTime ?? null,
         is_read: m.isRead ?? false,
-        draft_skipped: skip,
       };
 
       if (DRY_RUN) {
         console.log(
-          `[dry] ${s.owner_email} ← ${rowData.from_email} | ${rowData.subject}${skip ? " (skip)" : ""}`,
+          `[dry] ${s.owner_email} ← ${rowData.from_email} | ${rowData.subject}`,
         );
         continue;
       }
@@ -326,8 +360,8 @@ async function main() {
       }
       ingested++;
 
-      // 초안 생성 조건: auto ON + 미필터 + 기존 draft 없음
-      if (!s.auto_draft_enabled || skip) continue;
+      // 초안 생성 조건: auto ON + 기존 draft 없음 (skip 메일은 위에서 이미 continue됨)
+      if (!s.auto_draft_enabled) continue;
       const { count } = await supabase
         .from("mailbox_drafts")
         .select("id", { count: "exact", head: true })
