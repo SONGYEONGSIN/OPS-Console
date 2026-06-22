@@ -252,6 +252,43 @@ export function shouldSkipMessage({ fromEmail, subject }) {
   );
 }
 
+// operators 행으로 운영자별 동적 서명(plain text + URL)을 생성한다.
+// 회사명/주소/F번호/4개 링크는 고정, 부서·팀·직책·이름·내선(T.)은 op 필드로 변수화.
+// op = { name, department, team, role, phone } — 각 필드 누락 시 해당 부분 자연스럽게 생략.
+const SIGNATURE_FOOTER = [
+  "서울특별시 종로구 경희궁길 34 (진학기획B/D 3F)",
+];
+const SIGNATURE_LINKS = [
+  "원서접수 https://www.jinhakapply.com/",
+  "진학닷컴 https://www.jinhak.com/",
+  "CATCH https://www.catch.co.kr/",
+  "JINHAKPRO(전임·강사·연구원채용) https://www.jinhakpro.com/",
+];
+export function buildSignature(op = {}) {
+  const clean = (v) => (typeof v === "string" ? v.trim() : "");
+  const department = clean(op.department);
+  const team = clean(op.team);
+  const role = clean(op.role);
+  const name = clean(op.name);
+  const phone = clean(op.phone);
+
+  // 1줄: (주)진학어플라이  {부서} {팀} | {직책}  — 회사명과 부서·팀 사이 공백 2칸(원본 유지)
+  const orgParts = [department, team].filter(Boolean).join(" ");
+  let firstLine = "(주)진학어플라이";
+  if (orgParts) firstLine += `  ${orgParts}`;
+  if (role) firstLine += `${orgParts ? " " : "  "}| ${role}`;
+
+  // T./F. 줄: phone 있으면 T. {phone} | F. ..., 없으면 F. ...만 (빈 'T. ' 금지)
+  const contactLine = phone
+    ? `T. ${phone} | F. 02-730-0517`
+    : "F. 02-730-0517";
+
+  const lines = [firstLine];
+  if (name) lines.push(name);
+  lines.push(...SIGNATURE_FOOTER, contactLine, ...SIGNATURE_LINKS);
+  return lines.join("\n");
+}
+
 // 메일함별 서명을 초안 본문 끝에 append. signature가 비었으면(null/빈/공백) body 그대로.
 // Outlook 서명은 Graph로 못 읽고 발송 시 자동첨부도 안 되므로 초안에 미리 붙여 운영자가 편집·발송.
 export function appendSignature(body, signature) {
@@ -326,7 +363,7 @@ async function main() {
   // 대상 운영자 = mailbox_settings row 존재 (메뉴 사용 운영자 한정, 스펙 §13)
   const { data: settings, error: setErr } = await supabase
     .from("mailbox_settings")
-    .select("owner_email, auto_draft_enabled, last_synced_at, signature");
+    .select("owner_email, auto_draft_enabled, last_synced_at");
   if (setErr) throw new Error(`settings: ${setErr.message}`);
   if (!settings || settings.length === 0) {
     console.log("대상 메일함 없음 (mailbox_settings 비어있음).");
@@ -341,13 +378,16 @@ async function main() {
     const since =
       s.last_synced_at ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    // 운영자 이름 — 초안 자기소개("진학어플라이 OOO입니다.")에 사용. 메시지 루프 밖에서 1회 조회해 재사용.
+    // 운영자 행 — 초안 자기소개("진학어플라이 OOO입니다.") + 동적 서명에 사용.
+    // 메시지 루프 밖에서 1회 조회해 재사용. 서명은 mailbox_settings.signature(정적) 대신
+    // operators 필드(부서·팀·직책·내선)로 buildSignature가 동적 생성한다.
     const { data: op } = await supabase
       .from("operators")
-      .select("name")
+      .select("name, department, team, role, phone")
       .eq("email", s.owner_email)
       .maybeSingle();
     const operatorName = op?.name ?? null;
+    const signature = buildSignature(op ?? {});
 
     // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
     const folderIds = await collectInboxFolderIds(token, s.owner_email);
@@ -413,7 +453,7 @@ async function main() {
       if ((count ?? 0) > 0) continue;
 
       try {
-        const draftBody = await generateDraft(m, s.signature, operatorName);
+        const draftBody = await generateDraft(m, signature, operatorName);
         const { error: dErr } = await supabase.from("mailbox_drafts").insert({
           message_id: up.id,
           draft_body: draftBody,
