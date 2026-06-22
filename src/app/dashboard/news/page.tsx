@@ -3,11 +3,19 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
+import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { listNews } from "@/features/news/queries";
+import { listNews, listNewsSources } from "@/features/news/queries";
 import { newsRowToListRow } from "./_row-mapper";
+import { NewsControls } from "./NewsControls";
 
-export default async function NewsPage() {
+const PAGE_SIZE = 30;
+
+export default async function NewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string; source?: string }>;
+}) {
   const slug = "news";
   await requireMenu(slug);
 
@@ -15,9 +23,19 @@ export default async function NewsPage() {
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
 
-  const news = await listNews();
+  const sp = await searchParams;
+  const page = sp.page ? Number(sp.page) : 1;
+  const [{ rows: news, total }, sources] = await Promise.all([
+    listNews({
+      page,
+      pageSize: PAGE_SIZE,
+      search: sp.q,
+      source: sp.source,
+    }),
+    listNewsSources(),
+  ]);
   const rows: ListRow[] = news.map(newsRowToListRow);
-  const config = resolvePageMeta(slug, meta, news.length);
+  const config = resolvePageMeta(slug, meta, total);
 
   const header = (
     <div key="news-header">
@@ -39,6 +57,10 @@ export default async function NewsPage() {
       variant="news"
       readOnly
       liveData
+      controlsRow={<NewsControls key="news-controls" sources={sources} />}
+      footer={
+        <ListPagination key="news-pagination" total={total} pageSize={PAGE_SIZE} />
+      }
     />
   );
 }

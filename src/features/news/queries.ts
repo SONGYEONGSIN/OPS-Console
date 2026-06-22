@@ -3,22 +3,39 @@ import { createClient } from "@/lib/supabase/server";
 import { newsRowSchema, type NewsRow } from "./schemas";
 
 /**
- * 운영부 뉴스 목록 fetch (RSC).
+ * 운영부 뉴스 목록 fetch (RSC) — 서버 페이지네이션.
  * RLS: authenticated → 모든 row read 허용 (운영부 공개 정책).
  * 정렬: published_at desc (최신 기사 우선) — null published_at은 후순위.
- * 최대 100건.
+ * page(1-base)/pageSize로 range 조회, 전체 건수(total) 함께 반환.
+ * search가 있으면 title ilike 부분일치로, source가 있으면 출처 일치로 필터.
  */
-export async function listNews(): Promise<NewsRow[]> {
+export async function listNews(
+  opts: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    source?: string;
+  } = {},
+): Promise<{ rows: NewsRow[]; total: number }> {
+  const page = opts.page && opts.page > 0 ? opts.page : 1;
+  const pageSize = opts.pageSize && opts.pageSize > 0 ? opts.pageSize : 30;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const search = opts.search?.trim();
+  const source = opts.source?.trim();
+
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("news")
-    .select("*")
+  let query = supabase.from("news").select("*", { count: "exact" });
+  if (search) query = query.ilike("title", `%${search}%`);
+  if (source) query = query.eq("source", source);
+  const { data, count, error } = await query
     .order("published_at", { ascending: false, nullsFirst: false })
-    .limit(100);
+    .range(from, to);
 
   if (error) {
     console.error("[listNews] supabase error:", error);
-    return [];
+    return { rows: [], total: 0 };
   }
 
   const parsed: NewsRow[] = [];
@@ -33,5 +50,30 @@ export async function listNews(): Promise<NewsRow[]> {
         row,
       );
   }
-  return parsed;
+  return { rows: parsed, total: count ?? 0 };
+}
+
+/**
+ * 출처(source) 필터용 distinct 목록 — 비어있지 않은 출처를 중복 제거해 가나다순 반환.
+ * 셀렉트 옵션 소스. 데이터 규모상 source 컬럼만 fetch 후 JS dedupe.
+ */
+export async function listNewsSources(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("news")
+    .select("source")
+    .not("source", "is", null)
+    .limit(2000);
+
+  if (error) {
+    console.error("[listNewsSources] supabase error:", error);
+    return [];
+  }
+
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const s = (row.source ?? "").trim();
+    if (s) set.add(s);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
 }
