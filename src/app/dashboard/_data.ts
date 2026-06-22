@@ -47,6 +47,14 @@ export const sidebarSections: SbSection[] = [
         slug: "schedule",
         pattern: "list",
       },
+      {
+        kind: "item",
+        ico: "▤",
+        label: "운영부 뉴스",
+        count: "",
+        slug: "news",
+        pattern: "list",
+      },
     ],
   },
   {

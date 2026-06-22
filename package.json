@@ -23,6 +23,7 @@
     "docx": "^9.7.1",
     "driver.js": "^1.4.0",
     "exceljs": "^4.4.0",
+    "fast-xml-parser": "^5.9.3",
     "googleapis": "^171.4.0",
     "next": "16.2.4",
     "react": "19.2.4",

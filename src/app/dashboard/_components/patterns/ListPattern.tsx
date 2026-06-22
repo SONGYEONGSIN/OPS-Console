@@ -508,6 +508,16 @@ export type ListRow = {
   mailDraftBody?: string | null;
   /** mailbox — 최신 draft 상태 (sent면 발송 완료 표시) */
   mailDraftStatus?: "draft" | "sent" | "discarded" | "dry_run" | null;
+  /** news variant — 원문(또는 구글 리다이렉트) 링크 */
+  newsLink?: string;
+  /** news — 언론사명 */
+  newsSource?: string | null;
+  /** news — 기사 게시일 (ISO) */
+  newsPublishedAt?: string | null;
+  /** news — 요약 스니펫 (description HTML 제거) */
+  newsSummary?: string | null;
+  /** news — 수집에 사용된 검색 키워드 */
+  newsKeyword?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
