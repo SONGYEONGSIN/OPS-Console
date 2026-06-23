@@ -10,10 +10,20 @@ import {
   sendMailReply,
   ensureMailboxSettings,
 } from "@/features/mailbox/actions";
+import {
+  canAccessMailbox,
+  listMailboxesDelegatedTo,
+} from "@/features/mailbox/delegation";
+import { operatorNameByEmail } from "@/features/auth/operators";
 import { mailboxEntryToListRow } from "./_row-mapper";
 import { AutoDraftToggle } from "./AutoDraftToggle";
+import { MailboxOwnerSwitcher } from "./MailboxOwnerSwitcher";
 
-export default async function MailboxPage() {
+export default async function MailboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ owner?: string }>;
+}) {
   const slug = "mailbox";
   await requireMenu(slug);
 
@@ -28,8 +38,28 @@ export default async function MailboxPage() {
   // 다음 cron ingest부터 본인 외부고객 메일이 수집된다. 기존 토글은 보존.
   if (myEmail) await ensureMailboxSettings(myEmail);
 
-  const entries = myEmail ? await listMailbox(myEmail) : [];
-  const autoEnabled = myEmail ? await getAutoDraftEnabled(myEmail) : true;
+  const sp = await searchParams;
+  const requestedOwner = sp.owner?.trim() || myEmail;
+  // 본인 또는 활성 위임만 열람. 권한 없으면 본인 메일함으로 폴백.
+  const owner =
+    requestedOwner === myEmail ||
+    (myEmail && (await canAccessMailbox(myEmail, requestedOwner)))
+      ? requestedOwner
+      : myEmail;
+
+  const delegatedOwners = myEmail
+    ? await listMailboxesDelegatedTo(myEmail)
+    : [];
+  const ownerOptions = [
+    { email: myEmail, label: "내 메일함" },
+    ...delegatedOwners.map((e) => ({
+      email: e,
+      label: `${operatorNameByEmail(e) || e} 메일함`,
+    })),
+  ];
+
+  const entries = owner ? await listMailbox(owner) : [];
+  const autoEnabled = owner ? await getAutoDraftEnabled(owner) : true;
   const rows: ListRow[] = entries.map(mailboxEntryToListRow);
   const config = resolvePageMeta(slug, meta, entries.length);
 
@@ -65,13 +95,16 @@ export default async function MailboxPage() {
       currentUserName={me?.displayName ?? me?.email ?? ""}
       onMailReply={onMailReply}
       extraActions={
-        myEmail ? (
-          <AutoDraftToggle
-            key="mailbox-toggle"
-            ownerEmail={myEmail}
-            initialEnabled={autoEnabled}
-          />
-        ) : undefined
+        <div className="flex items-center gap-2">
+          <MailboxOwnerSwitcher options={ownerOptions} current={owner} />
+          {owner === myEmail && myEmail ? (
+            <AutoDraftToggle
+              key="mailbox-toggle"
+              ownerEmail={myEmail}
+              initialEnabled={autoEnabled}
+            />
+          ) : null}
+        </div>
       }
     />
   );
