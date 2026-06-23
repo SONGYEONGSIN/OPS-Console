@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { logActivity } from "@/features/worklog/log";
-import { sendReplySchema, setAutoDraftSchema } from "./schemas";
+import { sendReplySchema, setAutoDraftSchema, delegationInputSchema } from "./schemas";
+import { canAccessMailbox } from "./delegation";
 import { buildReplyHtml } from "@/lib/mail-signature";
 
 export type MailboxActionResult = { ok: true } | { ok: false; error: string };
@@ -34,9 +35,9 @@ export async function sendMailReply(
   if (msgErr) return { ok: false, error: msgErr.message };
   if (!msg) return { ok: false, error: "메일을 찾을 수 없습니다." };
 
-  // Phase 1: 본인 메일함만 발송 가능 (Phase 2에서 canAccessMailbox로 확장).
-  if (msg.owner_email !== me.email) {
-    return { ok: false, error: "권한 없음 — 본인 메일함이 아닙니다." };
+  // 본인 메일함이거나 활성 위임을 받은 경우만 발송 가능 (발신 명의는 주인).
+  if (!(await canAccessMailbox(me.email, msg.owner_email))) {
+    return { ok: false, error: "권한 없음 — 본인 또는 위임받은 메일함이 아닙니다." };
   }
   if (!msg.from_email) {
     return { ok: false, error: "원발신자 주소가 없어 회신할 수 없습니다." };
@@ -111,6 +112,71 @@ export async function setAutoDraftEnabled(
     },
     { onConflict: "owner_email" },
   );
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(MAILBOX_PATH);
+  return { ok: true };
+}
+
+/** 위임 등록 — owner=me 고정. B는 실 운영자여야 하고 본인은 불가. 재위임 시 revoked_at 복구. */
+export async function grantMailboxDelegation(
+  granteeEmail: string,
+): Promise<MailboxActionResult> {
+  const parsed = delegationInputSchema.safeParse({ granteeEmail });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
+  }
+  const grantee = parsed.data.granteeEmail;
+
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "로그인이 필요합니다." };
+  if (me.email === grantee) {
+    return { ok: false, error: "본인에게 위임할 수 없습니다." };
+  }
+
+  const admin = createAdminClient();
+  const { data: op, error: opError } = await admin
+    .from("operators")
+    .select("email")
+    .eq("email", grantee)
+    .maybeSingle();
+  if (opError) return { ok: false, error: opError.message };
+  if (!op) {
+    return { ok: false, error: "등록되지 않은 운영자입니다." };
+  }
+
+  const { error } = await admin.from("mailbox_delegations").upsert(
+    {
+      owner_email: me.email,
+      grantee_email: grantee,
+      granted_at: new Date().toISOString(),
+      revoked_at: null,
+    },
+    { onConflict: "owner_email,grantee_email" },
+  );
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(MAILBOX_PATH);
+  return { ok: true };
+}
+
+/** 위임 해제 — owner=me 고정. revoked_at 설정(soft). */
+export async function revokeMailboxDelegation(
+  granteeEmail: string,
+): Promise<MailboxActionResult> {
+  const parsed = delegationInputSchema.safeParse({ granteeEmail });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
+  }
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "로그인이 필요합니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("mailbox_delegations")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("owner_email", me.email)
+    .eq("grantee_email", parsed.data.granteeEmail);
   if (error) return { ok: false, error: error.message };
 
   revalidatePath(MAILBOX_PATH);

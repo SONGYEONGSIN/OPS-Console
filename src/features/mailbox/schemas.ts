@@ -43,3 +43,16 @@ export const setAutoDraftSchema = z.object({
   enabled: z.boolean(),
 });
 export type SetAutoDraftInput = z.infer<typeof setAutoDraftSchema>;
+
+export const mailboxDelegationSchema = z.object({
+  id: z.string().uuid(),
+  owner_email: z.string(),
+  grantee_email: z.string(),
+  granted_at: z.string(),
+  revoked_at: z.string().nullable(),
+});
+export type MailboxDelegation = z.infer<typeof mailboxDelegationSchema>;
+
+export const delegationInputSchema = z.object({
+  granteeEmail: z.string().email("올바른 이메일이 아닙니다."),
+});
