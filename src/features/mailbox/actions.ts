@@ -6,6 +6,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { logActivity } from "@/features/worklog/log";
 import { sendReplySchema, setAutoDraftSchema, delegationInputSchema } from "./schemas";
+import { canAccessMailbox } from "./delegation";
 import { buildReplyHtml } from "@/lib/mail-signature";
 
 export type MailboxActionResult = { ok: true } | { ok: false; error: string };
@@ -34,9 +35,9 @@ export async function sendMailReply(
   if (msgErr) return { ok: false, error: msgErr.message };
   if (!msg) return { ok: false, error: "메일을 찾을 수 없습니다." };
 
-  // Phase 1: 본인 메일함만 발송 가능 (Phase 2에서 canAccessMailbox로 확장).
-  if (msg.owner_email !== me.email) {
-    return { ok: false, error: "권한 없음 — 본인 메일함이 아닙니다." };
+  // 본인 메일함이거나 활성 위임을 받은 경우만 발송 가능 (발신 명의는 주인).
+  if (!(await canAccessMailbox(me.email, msg.owner_email))) {
+    return { ok: false, error: "권한 없음 — 본인 또는 위임받은 메일함이 아닙니다." };
   }
   if (!msg.from_email) {
     return { ok: false, error: "원발신자 주소가 없어 회신할 수 없습니다." };

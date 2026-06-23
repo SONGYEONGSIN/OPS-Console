@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockAdmin, mockGetOperator, mockSendGraphMail } = vi.hoisted(() => ({
+const { mockAdmin, mockGetOperator, mockSendGraphMail, mockCanAccess } = vi.hoisted(() => ({
   mockAdmin: vi.fn(),
   mockGetOperator: vi.fn(),
   mockSendGraphMail: vi.fn(),
+  mockCanAccess: vi.fn(),
 }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mockAdmin }));
 vi.mock("@/features/auth/queries", () => ({
@@ -14,6 +15,7 @@ vi.mock("@/lib/microsoft/sendmail", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/features/worklog/log", () => ({ logActivity: vi.fn() }));
+vi.mock("../delegation", () => ({ canAccessMailbox: mockCanAccess }));
 
 import {
   sendMailReply,
@@ -65,6 +67,7 @@ function makeAdmin(message: Record<string, unknown> | null) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetOperator.mockResolvedValue({ permission: "member", email: "op@x.com" });
+  mockCanAccess.mockResolvedValue(false);
 });
 
 describe("sendMailReply", () => {
@@ -83,6 +86,7 @@ describe("sendMailReply", () => {
 
   it("본인 메일함이 아니면 권한 거부", async () => {
     mockGetOperator.mockResolvedValue({ permission: "member", email: "other@x.com" });
+    mockCanAccess.mockResolvedValue(false);
     const { client } = makeAdmin(msg);
     mockAdmin.mockReturnValue(client);
     const r = await sendMailReply(msg.id, "회신");
@@ -90,6 +94,7 @@ describe("sendMailReply", () => {
   });
 
   it("정상 발송 — sendGraphMail(sender=owner_email) 호출 + draft status='sent'", async () => {
+    mockCanAccess.mockResolvedValue(true);
     const { client, draftInsert } = makeAdmin(msg);
     mockAdmin.mockReturnValue(client);
     mockSendGraphMail.mockResolvedValue({ ok: true });
@@ -114,6 +119,7 @@ describe("sendMailReply", () => {
   });
 
   it("MAIL_DRY_RUN=true 시 sendGraphMail 미호출 + status='dry_run'", async () => {
+    mockCanAccess.mockResolvedValue(true);
     vi.stubEnv("MAIL_DRY_RUN", "true");
     const { client, draftInsert } = makeAdmin(msg);
     mockAdmin.mockReturnValue(client);
@@ -124,6 +130,27 @@ describe("sendMailReply", () => {
       expect.objectContaining({ status: "dry_run" }),
     );
     vi.unstubAllEnvs();
+  });
+
+  it("위임받은 B가 A 메일함 발송 허용 (canAccessMailbox=true)", async () => {
+    mockGetOperator.mockResolvedValue({ permission: "member", email: "b@x.com" });
+    mockCanAccess.mockResolvedValue(true);
+    const { client } = makeAdmin(msg); // msg.owner_email = "op@x.com"
+    mockAdmin.mockReturnValue(client);
+    mockSendGraphMail.mockResolvedValue({ ok: true });
+    const r = await sendMailReply(msg.id, "회신");
+    expect(r.ok).toBe(true);
+    // 발신 명의는 owner(op@x.com), 처리자는 b@x.com
+    expect(mockSendGraphMail.mock.calls[0][0].senderUserId).toBe("op@x.com");
+  });
+
+  it("위임 없는 타인 발송 거부 (canAccessMailbox=false)", async () => {
+    mockGetOperator.mockResolvedValue({ permission: "member", email: "c@x.com" });
+    mockCanAccess.mockResolvedValue(false);
+    const { client } = makeAdmin(msg);
+    mockAdmin.mockReturnValue(client);
+    const r = await sendMailReply(msg.id, "회신");
+    expect(r.ok).toBe(false);
   });
 });
 
