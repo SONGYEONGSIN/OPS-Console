@@ -42,7 +42,10 @@ export async function listMyDelegations(
     .eq("owner_email", ownerEmail)
     .is("revoked_at", null)
     .order("granted_at", { ascending: false });
-  if (error) return [];
+  if (error) {
+    console.error("[listMyDelegations] error:", error.message);
+    return [];
+  }
   const rows: MailboxDelegation[] = [];
   for (const r of data ?? []) {
     const p = mailboxDelegationSchema.safeParse(r);
@@ -61,6 +64,9 @@ export async function listMailboxesDelegatedTo(
     .select("owner_email")
     .eq("grantee_email", granteeEmail)
     .is("revoked_at", null);
-  if (error) return [];
+  if (error) {
+    console.error("[listMailboxesDelegatedTo] error:", error.message);
+    return [];
+  }
   return (data ?? []).map((r) => r.owner_email as string);
 }
