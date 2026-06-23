@@ -41,11 +41,10 @@ export default async function MailboxPage({
   const sp = await searchParams;
   const requestedOwner = sp.owner?.trim() || myEmail;
   // 본인 또는 활성 위임만 열람. 권한 없으면 본인 메일함으로 폴백.
-  const owner =
+  const canView =
     requestedOwner === myEmail ||
-    (myEmail && (await canAccessMailbox(myEmail, requestedOwner)))
-      ? requestedOwner
-      : myEmail;
+    (!!myEmail && (await canAccessMailbox(myEmail, requestedOwner)));
+  const owner = canView ? requestedOwner : myEmail;
 
   const delegatedOwners = myEmail
     ? await listMailboxesDelegatedTo(myEmail)
@@ -54,7 +53,7 @@ export default async function MailboxPage({
     { email: myEmail, label: "내 메일함" },
     ...delegatedOwners.map((e) => ({
       email: e,
-      label: `${operatorNameByEmail(e) || e} 메일함`,
+      label: `${operatorNameByEmail(e)} 메일함`,
     })),
   ];
 
