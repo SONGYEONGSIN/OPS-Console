@@ -3,15 +3,28 @@ import type { ReactNode } from "react";
 export function Section({
   title,
   children,
+  action,
 }: {
   title: string;
   children: ReactNode;
+  /** 제목 줄 우측에 정렬되는 슬롯(예: 출처 배지). 없으면 기존 레이아웃 유지. */
+  action?: ReactNode;
 }) {
+  const heading = (
+    <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-muted">
+      {title}
+    </h4>
+  );
   return (
     <section className="space-y-3">
-      <h4 className="text-xs font-medium uppercase tracking-[0.12em] text-muted">
-        {title}
-      </h4>
+      {action ? (
+        <div className="flex items-center justify-between gap-2">
+          {heading}
+          {action}
+        </div>
+      ) : (
+        heading
+      )}
       {children}
     </section>
   );
