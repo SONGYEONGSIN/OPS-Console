@@ -1,5 +1,6 @@
 import type { ListRow } from "../_components/patterns/ListPattern";
 import type { MailboxEntry } from "@/features/mailbox/queries";
+import { cleanMailBody } from "@/features/mailbox/clean-body";
 
 export function mailboxEntryToListRow(e: MailboxEntry): ListRow {
   const { message: m, latestDraft: d } = e;
@@ -13,7 +14,7 @@ export function mailboxEntryToListRow(e: MailboxEntry): ListRow {
     mailFromName: m.from_name,
     mailFromEmail: m.from_email,
     mailSubject: m.subject,
-    mailBody: m.body,
+    mailBody: cleanMailBody(m.body),
     mailReceivedAt: m.received_at,
     mailIsRead: m.is_read,
     mailHasDraft: d !== null,
