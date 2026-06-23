@@ -48,6 +48,7 @@ describe("mailboxEntryToListRow", () => {
     expect(row.mailHasDraft).toBe(false);
     expect(row.mailDraftBody).toBeNull();
     expect(row.mailDraftStatus).toBeNull();
+    expect(row.mailDraftModel).toBeNull();
   });
 
   it("제목 null 시 '(제목 없음)' 폴백", () => {
@@ -75,5 +76,6 @@ describe("mailboxEntryToListRow", () => {
     expect(row.mailHasDraft).toBe(true);
     expect(row.mailDraftBody).toBe("안녕하세요, 확인해보겠습니다.");
     expect(row.mailDraftStatus).toBe("draft");
+    expect(row.mailDraftModel).toBe("qwen2.5");
   });
 });

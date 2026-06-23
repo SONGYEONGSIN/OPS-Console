@@ -33,7 +33,10 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
         <DefList
           dense
           items={[
-            { term: "보낸이", desc: row.mailFromName || row.mailFromEmail || "-" },
+            {
+              term: "보낸이",
+              desc: row.mailFromName || row.mailFromEmail || "-",
+            },
             { term: "주소", desc: row.mailFromEmail || "-" },
             { term: "제목", desc: row.mailSubject || "(제목 없음)" },
             { term: "수신", desc: <span>{formatTs(row.mailReceivedAt)}</span> },
@@ -52,6 +55,11 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
       <Divider />
 
       <Section title="AI 회신 초안">
+        {row.mailDraftModel && (
+          <span className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-xs text-ink-soft">
+            <span aria-hidden>✦</span> AI 생성 · {row.mailDraftModel}
+          </span>
+        )}
         {sent ? (
           <p className="text-sm text-muted">
             이미 발송된 메일입니다. ({row.mailDraftStatus})
