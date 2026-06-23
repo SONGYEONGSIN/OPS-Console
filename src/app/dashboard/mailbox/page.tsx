@@ -13,12 +13,12 @@ import {
 import {
   canAccessMailbox,
   listMailboxesDelegatedTo,
+  listMyDelegations,
 } from "@/features/mailbox/delegation";
 import { operatorNameByEmail } from "@/features/auth/operators";
 import { mailboxEntryToListRow } from "./_row-mapper";
 import { AutoDraftToggle } from "./AutoDraftToggle";
 import { MailboxOwnerSwitcher } from "./MailboxOwnerSwitcher";
-import { listMyDelegations } from "@/features/mailbox/delegation";
 import { MailboxDelegationPanel } from "./MailboxDelegationPanel";
 
 export default async function MailboxPage({
