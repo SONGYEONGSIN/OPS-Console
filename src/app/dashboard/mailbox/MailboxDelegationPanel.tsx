@@ -9,11 +9,15 @@ import {
 import type { MailboxDelegation } from "@/features/mailbox/schemas";
 import { operatorNameByEmail } from "@/features/auth/operators";
 
-/** 위임 관리 — 내가 준 위임 목록 + 추가/해제(owner=me 고정 서버 액션). */
+type Candidate = { email: string; name: string };
+
+/** 위임 관리 — 내가 준 위임 목록 + 추가(조직 운영자 선택)/해제(owner=me 고정 서버 액션). */
 export function MailboxDelegationPanel({
   delegations,
+  candidates,
 }: {
   delegations: MailboxDelegation[];
+  candidates: Candidate[];
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -46,19 +50,25 @@ export function MailboxDelegationPanel({
             </p>
 
             <div className="flex items-center gap-2">
-              <input
-                type="email"
+              <select
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="위임할 운영자 이메일"
+                aria-label="위임할 운영자 선택"
                 className="flex-1 border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
-              />
+              >
+                <option value="">위임할 운영자 선택</option>
+                {candidates.map((c) => (
+                  <option key={c.email} value={c.email}>
+                    {c.name} ({c.email})
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
-                disabled={pending || !email.trim()}
+                disabled={pending || !email}
                 onClick={() =>
                   run(async () => {
-                    const r = await grantMailboxDelegation(email.trim());
+                    const r = await grantMailboxDelegation(email);
                     if (r.ok) setEmail("");
                     return r;
                   })
