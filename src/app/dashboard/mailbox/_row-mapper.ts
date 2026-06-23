@@ -20,5 +20,6 @@ export function mailboxEntryToListRow(e: MailboxEntry): ListRow {
     mailHasDraft: d !== null,
     mailDraftBody: d?.draft_body ?? null,
     mailDraftStatus: d?.status ?? null,
+    mailDraftModel: d?.model_used ?? null,
   };
 }

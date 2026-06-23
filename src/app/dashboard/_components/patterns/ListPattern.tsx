@@ -508,6 +508,8 @@ export type ListRow = {
   mailDraftBody?: string | null;
   /** mailbox — 최신 draft 상태 (sent면 발송 완료 표시) */
   mailDraftStatus?: "draft" | "sent" | "discarded" | "dry_run" | null;
+  /** mailbox — 초안 생성 모델명 (AI 생성 출처 배지용; 사람 발송분은 null) */
+  mailDraftModel?: string | null;
   /** news variant — 원문(또는 구글 리다이렉트) 링크 */
   newsLink?: string;
   /** news — 언론사명 */
