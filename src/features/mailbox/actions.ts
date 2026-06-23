@@ -134,11 +134,12 @@ export async function grantMailboxDelegation(
   }
 
   const admin = createAdminClient();
-  const { data: op } = await admin
+  const { data: op, error: opError } = await admin
     .from("operators")
     .select("email")
     .eq("email", grantee)
     .maybeSingle();
+  if (opError) return { ok: false, error: opError.message };
   if (!op) {
     return { ok: false, error: "등록되지 않은 운영자입니다." };
   }

@@ -170,7 +170,11 @@ function makeDelegationAdmin() {
     data: { email: "b@x.com" },
     error: null,
   });
-  const delegationUpdateEq2 = vi.fn().mockResolvedValue({ error: null });
+  // revoke 체인: .update({...}).eq(col1,val1).eq(col2,val2)
+  // eq2 — 두 번째 .eq(grantee_email, ...) 인자 캡처
+  const eq2 = vi.fn().mockResolvedValue({ error: null });
+  // eq1 — 첫 번째 .eq(owner_email, ...) 인자 캡처, eq2 반환
+  const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
   const from = vi.fn((table: string) => {
     if (table === "operators") {
       return { select: () => ({ eq: () => ({ maybeSingle: operatorMaybe }) }) };
@@ -178,12 +182,12 @@ function makeDelegationAdmin() {
     if (table === "mailbox_delegations") {
       return {
         upsert: delegationUpsert,
-        update: () => ({ eq: () => ({ eq: delegationUpdateEq2 }) }),
+        update: vi.fn().mockReturnValue({ eq: eq1 }),
       };
     }
     throw new Error("unexpected table " + table);
   });
-  return { client: { from }, delegationUpsert, operatorMaybe, delegationUpdateEq2 };
+  return { client: { from }, delegationUpsert, operatorMaybe, eq1, eq2 };
 }
 
 describe("grantMailboxDelegation", () => {
@@ -221,11 +225,23 @@ describe("grantMailboxDelegation", () => {
 });
 
 describe("revokeMailboxDelegation", () => {
-  it("revoked_at update 호출", async () => {
-    const { client, delegationUpdateEq2 } = makeDelegationAdmin();
+  it("owner_email=me, grantee_email=b@x.com 필터로 revoked_at update 호출", async () => {
+    const { client, eq1, eq2 } = makeDelegationAdmin();
     mockAdmin.mockReturnValue(client);
     const r = await revokeMailboxDelegation("b@x.com");
     expect(r.ok).toBe(true);
-    expect(delegationUpdateEq2).toHaveBeenCalled();
+    expect(eq1).toHaveBeenCalledWith("owner_email", "op@x.com");
+    expect(eq2).toHaveBeenCalledWith("grantee_email", "b@x.com");
+  });
+});
+
+describe("grantMailboxDelegation — operators 조회 DB에러", () => {
+  it("operators 조회 error 시 ok:false + 에러 메시지 전달", async () => {
+    const { client, operatorMaybe } = makeDelegationAdmin();
+    operatorMaybe.mockResolvedValue({ data: null, error: { message: "boom" } });
+    mockAdmin.mockReturnValue(client);
+    const r = await grantMailboxDelegation("b@x.com");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("boom");
   });
 });
