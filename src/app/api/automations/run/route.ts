@@ -49,6 +49,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 로컬 전용 잡은 서버리스로 실행 불가(Ollama 등 로컬 의존). 잘못 호출돼도 거부한다.
+  if (job.localOnly) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `로컬 전용 자동화는 cron 실행 대상이 아닙니다: ${jobId}`,
+      },
+      { status: 400 },
+    );
+  }
+
   // UI 토글 OFF면 cron skip — 사용자가 자동 실행을 의도적으로 끈 상태.
   // 호출됐으나 OFF로 스킵된 사실도 실행 이력에 남겨, "왜 안 도는지"를 추적 가능하게 한다.
   const enabled = await getJobEnabled(jobId);

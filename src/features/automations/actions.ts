@@ -58,6 +58,14 @@ export async function runAutomationAction(
     return { ok: false, message: `알 수 없는 자동화: ${jobId}` };
   }
 
+  if (job.localOnly) {
+    return {
+      ok: false,
+      message:
+        "로컬 전용 자동화입니다. Mac mini의 로컬 cron(Ollama)에서 실행되며, 여기서는 실행할 수 없습니다.",
+    };
+  }
+
   if (await getJobEnabled(jobId)) {
     return {
       ok: false,

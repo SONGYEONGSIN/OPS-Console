@@ -92,6 +92,21 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cooldownMinutes: 30,
     run: runNewsCollect,
   },
+  {
+    id: "mailbox-ingest",
+    label: "메일함 AI 초안 생성",
+    description:
+      "운영자 수신함을 수집하고 외부 고객 메일에 AI 회신 초안을 생성합니다.\n로컬 LLM(Ollama)을 쓰므로 서버리스가 아닌 로컬 머신(Mac mini) cron에서만 실행됩니다.",
+    scheduleInfo: "로컬 cron (Mac mini · launchd)",
+    cooldownMinutes: 0,
+    localOnly: true,
+    // 로컬 전용 — 서버리스로는 Ollama에 닿지 못한다. 잘못 호출돼도 실행하지 않고 안내만 반환.
+    run: async () => ({
+      ok: false,
+      message:
+        "로컬 전용 자동화입니다. Mac mini의 로컬 cron(Ollama)에서 실행되며, 여기서는 실행할 수 없습니다.",
+    }),
+  },
 ];
 
 export function getJob(id: string): AutomationJob | undefined {

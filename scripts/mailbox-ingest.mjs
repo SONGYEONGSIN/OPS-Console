@@ -309,7 +309,13 @@ async function generateDraft(message, operatorName) {
   return assembleDraft(operatorName, splitSentences(rawBody));
 }
 
+// automation_runs 이력 메시지 — 자동화 메뉴에서 "수집/초안 몇 건, 모델 무엇"을 보여준다. (순수)
+export function buildIngestRunMessage(ingested, drafted, model) {
+  return `수집 ${ingested}건 · 초안 ${drafted}건 생성 · 모델 ${model}`;
+}
+
 async function main() {
+  const startedMs = Date.now();
   for (const k of [
     "AZURE_AD_TENANT_ID",
     "AZURE_AD_CLIENT_ID",
@@ -445,14 +451,52 @@ async function main() {
   }
 
   console.log(`done — ingested=${ingested} drafted=${drafted} dryRun=${DRY_RUN}`);
+
+  // 자동화 메뉴 관측용 — 로컬 전용 잡(mailbox-ingest) 실행 1건을 automation_runs에 적재.
+  // best-effort: 적재 실패가 잡 결과를 깨지 않도록 삼킨다. dry-run은 기록하지 않는다.
+  if (!DRY_RUN) {
+    try {
+      await supabase.from("automation_runs").insert({
+        job_id: "mailbox-ingest",
+        ok: true,
+        skipped: false,
+        message: buildIngestRunMessage(ingested, drafted, LLM_MODEL),
+        duration_ms: Date.now() - startedMs,
+      });
+    } catch (e) {
+      console.error("automation_runs 적재 실패:", e.message);
+    }
+  }
 }
 
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  main().catch((e) => {
+  main().catch(async (e) => {
     console.error(e);
+    // 실패도 자동화 메뉴에서 보이도록 best-effort 기록 (env/DB 불가 시 조용히 무시).
+    if (!DRY_RUN) {
+      try {
+        const sb = createClient(
+          env.NEXT_PUBLIC_SUPABASE_URL,
+          env.SUPABASE_SERVICE_ROLE_KEY,
+          { auth: { autoRefreshToken: false, persistSession: false } },
+        );
+        await sb.from("automation_runs").insert({
+          job_id: "mailbox-ingest",
+          ok: false,
+          skipped: false,
+          message: `실패: ${e instanceof Error ? e.message : String(e)}`.slice(
+            0,
+            1000,
+          ),
+          duration_ms: null,
+        });
+      } catch {
+        // 기록 실패는 무시
+      }
+    }
     process.exit(1);
   });
 }

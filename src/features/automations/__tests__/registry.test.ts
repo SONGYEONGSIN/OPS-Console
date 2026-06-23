@@ -16,6 +16,15 @@ describe("automation registry", () => {
     expect(typeof job?.run).toBe("function");
   });
 
+  it("mailbox-ingest는 localOnly 잡이고 run은 안내 메시지(ok:false)를 반환한다", async () => {
+    const job = getJob("mailbox-ingest");
+    expect(job).toBeDefined();
+    expect(job?.localOnly).toBe(true);
+    const result = await job!.run();
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/로컬|Mac/i);
+  });
+
   it("모든 잡은 고유 id를 가진다", () => {
     const ids = AUTOMATION_JOBS.map((j) => j.id);
     expect(new Set(ids).size).toBe(ids.length);
