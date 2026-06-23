@@ -17,7 +17,7 @@
 //
 // 필요 env(.env.local): AZURE_AD_TENANT_ID/CLIENT_ID/CLIENT_SECRET,
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-//   MAILBOX_LLM_MODEL(기본 exaone3.5:7.8b), OLLAMA_URL(기본 http://localhost:11434)
+//   MAILBOX_LLM_MODEL(기본 qwen2.5:14b-instruct), OLLAMA_URL(기본 http://localhost:11434)
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
@@ -40,7 +40,7 @@ function loadEnv() {
 const env = loadEnv();
 const DRY_RUN = process.argv.slice(2).includes("--dry-run");
 const OLLAMA_URL = env.OLLAMA_URL ?? "http://localhost:11434";
-const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "exaone3.5:7.8b";
+const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "qwen2.5:14b-instruct";
 
 // Graph GET + 429(ApplicationThrottled) 백오프 재시도.
 // Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦다.
