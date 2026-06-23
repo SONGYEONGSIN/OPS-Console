@@ -34,7 +34,7 @@ export function MailboxDelegationPanel({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center border border-line bg-transparent px-3 py-2 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+        className="inline-flex cursor-pointer items-center border border-ink bg-ink px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90"
       >
         위임 관리
       </button>
