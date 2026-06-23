@@ -19,6 +19,8 @@ import {
   sendMailReply,
   setAutoDraftEnabled,
   ensureMailboxSettings,
+  grantMailboxDelegation,
+  revokeMailboxDelegation,
 } from "../actions";
 
 /** message_id로 owner/from/subject join 조회 → 결과를 반환하는 가짜 admin client */
@@ -159,5 +161,71 @@ describe("ensureMailboxSettings", () => {
     mockAdmin.mockReturnValue(client);
     const r = await ensureMailboxSettings("op@x.com");
     expect(r.ok).toBe(false);
+  });
+});
+
+function makeDelegationAdmin() {
+  const delegationUpsert = vi.fn().mockResolvedValue({ error: null });
+  const operatorMaybe = vi.fn().mockResolvedValue({
+    data: { email: "b@x.com" },
+    error: null,
+  });
+  const delegationUpdateEq2 = vi.fn().mockResolvedValue({ error: null });
+  const from = vi.fn((table: string) => {
+    if (table === "operators") {
+      return { select: () => ({ eq: () => ({ maybeSingle: operatorMaybe }) }) };
+    }
+    if (table === "mailbox_delegations") {
+      return {
+        upsert: delegationUpsert,
+        update: () => ({ eq: () => ({ eq: delegationUpdateEq2 }) }),
+      };
+    }
+    throw new Error("unexpected table " + table);
+  });
+  return { client: { from }, delegationUpsert, operatorMaybe, delegationUpdateEq2 };
+}
+
+describe("grantMailboxDelegation", () => {
+  it("본인(owner=me) → B에게 위임 upsert(revoked_at=null)", async () => {
+    const { client, delegationUpsert } = makeDelegationAdmin();
+    mockAdmin.mockReturnValue(client);
+    const r = await grantMailboxDelegation("b@x.com");
+    expect(r.ok).toBe(true);
+    expect(delegationUpsert.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        owner_email: "op@x.com",
+        grantee_email: "b@x.com",
+        revoked_at: null,
+      }),
+    );
+    expect(delegationUpsert.mock.calls[0][1]).toEqual(
+      expect.objectContaining({ onConflict: "owner_email,grantee_email" }),
+    );
+  });
+
+  it("본인에게 위임 → 거부", async () => {
+    const { client } = makeDelegationAdmin();
+    mockAdmin.mockReturnValue(client);
+    const r = await grantMailboxDelegation("op@x.com");
+    expect(r.ok).toBe(false);
+  });
+
+  it("미존재 운영자 → 거부", async () => {
+    const { client, operatorMaybe } = makeDelegationAdmin();
+    operatorMaybe.mockResolvedValue({ data: null, error: null });
+    mockAdmin.mockReturnValue(client);
+    const r = await grantMailboxDelegation("ghost@x.com");
+    expect(r.ok).toBe(false);
+  });
+});
+
+describe("revokeMailboxDelegation", () => {
+  it("revoked_at update 호출", async () => {
+    const { client, delegationUpdateEq2 } = makeDelegationAdmin();
+    mockAdmin.mockReturnValue(client);
+    const r = await revokeMailboxDelegation("b@x.com");
+    expect(r.ok).toBe(true);
+    expect(delegationUpdateEq2).toHaveBeenCalled();
   });
 });
