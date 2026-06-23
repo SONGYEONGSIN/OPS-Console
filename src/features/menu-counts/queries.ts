@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
+import { getMyDataRequestServices } from "@/features/data-requests/queries";
 
 type CountResult = { count: number | null; error: { message: string } | null };
 
@@ -25,6 +26,18 @@ async function countContracts(): Promise<readonly [string, number | null]> {
   } catch (e) {
     console.error("[menu-counts] contracts fail:", e);
     return ["contracts", null];
+  }
+}
+/** 자료 요청 — 본인 담당 services 수(listServices ownerMe 필터). fetch 실패 시 null */
+async function countDataRequests(
+  meEmail: string | null,
+): Promise<readonly [string, number | null]> {
+  try {
+    const { total } = await getMyDataRequestServices(meEmail ?? "", 1, 1);
+    return ["data-requests", total];
+  } catch (e) {
+    console.error("[menu-counts] data-requests fail:", e);
+    return ["data-requests", null];
   }
 }
 async function countReceivables(): Promise<readonly [string, number | null]> {
@@ -99,6 +112,7 @@ export async function getMenuCounts(
     ),
     countContracts(),
     countReceivables(),
+    countDataRequests(currentUserEmail),
     countOf("worklog", supabase.from("worklog").select("*", head)),
   ]);
 
