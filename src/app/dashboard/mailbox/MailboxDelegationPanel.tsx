@@ -36,7 +36,7 @@ export function MailboxDelegationPanel({
         onClick={() => setOpen(true)}
         className="inline-flex cursor-pointer items-center border border-ink bg-ink px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90"
       >
-        위임 관리
+        메일 위임
       </button>
       {open ? (
         <ModalShell title="메일함 위임 관리" onClose={() => setOpen(false)}>
