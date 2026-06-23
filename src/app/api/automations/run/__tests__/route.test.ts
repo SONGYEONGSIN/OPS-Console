@@ -44,6 +44,19 @@ describe("/api/automations/run — enabled gate", () => {
     mockRun.mockResolvedValue({ ok: true, message: "done" });
   });
 
+  it("localOnly 잡 → 400 + run 미호출 (서버리스 cron 실행 대상 아님)", async () => {
+    mockGetJob.mockReturnValue({
+      id: "mailbox-ingest",
+      label: "메일함 AI 초안 생성",
+      localOnly: true,
+      run: mockRun,
+    });
+    const res = await POST(req({ secret: "s3cr3t", jobId: "mailbox-ingest" }));
+    expect(res.status).toBe(400);
+    expect(mockRun).not.toHaveBeenCalled();
+    expect(mockGetJobEnabled).not.toHaveBeenCalled();
+  });
+
   it("enabled=false → job.run() 미호출 + ok:true skipped:true 반환 (cron silent skip)", async () => {
     mockGetJobEnabled.mockResolvedValue(false);
     const res = await POST(

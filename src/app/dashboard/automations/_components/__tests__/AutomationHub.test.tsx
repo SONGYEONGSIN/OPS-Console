@@ -27,6 +27,7 @@ const base: AutomationStatus = {
   lastRunAt: null,
   cooldownRemainingMinutes: 0,
   enabled: false,
+  localOnly: false,
 };
 
 describe("AutomationHub", () => {
@@ -86,6 +87,33 @@ describe("AutomationHub", () => {
     fireEvent.click(screen.getByRole("button", { name: /강제 실행/ }));
     expect(
       screen.getByRole("button", { name: /quota 소모 — 확인/ }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("AutomationHub — localOnly 잡", () => {
+  const local: AutomationStatus = {
+    ...base,
+    id: "mailbox-ingest",
+    label: "메일함 AI 초안 생성",
+    localOnly: true,
+  };
+
+  it("localOnly면 '지금 실행'·ON/OFF 토글 대신 '로컬 전용' 표시", () => {
+    render(<AutomationHub statuses={[local]} />);
+    expect(screen.getByText(/로컬 전용/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /지금 실행/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "ON" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("localOnly여도 행 클릭으로 실행 로그는 볼 수 있다", () => {
+    render(<AutomationHub statuses={[local]} />);
+    expect(
+      screen.getByRole("button", { name: /메일함 AI 초안 생성/ }),
     ).toBeInTheDocument();
   });
 });

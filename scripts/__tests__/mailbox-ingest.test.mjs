@@ -15,7 +15,21 @@ import {
   assembleDraft,
   splitSentences,
   buildDraftPrompt,
+  buildIngestRunMessage,
 } from "../mailbox-ingest.mjs";
+
+describe("buildIngestRunMessage — automation_runs 이력 메시지", () => {
+  it("수집·초안 건수와 모델명을 담는다", () => {
+    expect(buildIngestRunMessage(5, 2, "exaone3.5:7.8b")).toBe(
+      "수집 5건 · 초안 2건 생성 · 모델 exaone3.5:7.8b",
+    );
+  });
+  it("0건도 표기한다", () => {
+    expect(buildIngestRunMessage(0, 0, "qwen2.5:14b-instruct")).toBe(
+      "수집 0건 · 초안 0건 생성 · 모델 qwen2.5:14b-instruct",
+    );
+  });
+});
 
 describe("splitSentences", () => {
   it("마침표+공백마다 줄바꿈한다", () => {

@@ -24,7 +24,9 @@ import { computeCooldownRemaining, getJobEnabled } from "../queries";
 import { revalidatePath } from "next/cache";
 
 const mockGetJob = getJob as unknown as ReturnType<typeof vi.fn>;
-const mockCooldown = computeCooldownRemaining as unknown as ReturnType<typeof vi.fn>;
+const mockCooldown = computeCooldownRemaining as unknown as ReturnType<
+  typeof vi.fn
+>;
 const mockEnabled = getJobEnabled as unknown as ReturnType<typeof vi.fn>;
 
 function fd(jobId: string, force?: string) {
@@ -88,6 +90,15 @@ describe("runAutomationAction", () => {
     const r = await runAutomationAction(undefined, fd("insights-collect"));
     expect(run).toHaveBeenCalledOnce();
     expect(r?.ok).toBe(true);
+  });
+
+  it("localOnly 잡이면 수동 실행 거부 + run 미호출", async () => {
+    const run = vi.fn();
+    mockGetJob.mockReturnValue({ ...fakeJob(run), localOnly: true });
+    const r = await runAutomationAction(undefined, fd("mailbox-ingest"));
+    expect(r?.ok).toBe(false);
+    expect(r?.message).toMatch(/로컬|Mac/i);
+    expect(run).not.toHaveBeenCalled();
   });
 
   it("자동 실행(enabled) 상태면 수동 실행 거부 + run 미호출", async () => {

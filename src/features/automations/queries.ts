@@ -160,6 +160,7 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
         now,
       ),
       enabled: settings.get(job.id) ?? false,
+      localOnly: job.localOnly ?? false,
     });
   }
   return out;

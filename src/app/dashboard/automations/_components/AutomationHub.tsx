@@ -149,10 +149,18 @@ function AutomationRow({
         </div>
       </td>
       <td className="px-3 py-3">
-        <EnabledToggle status={status} isAdmin={isAdmin} />
+        {status.localOnly ? (
+          <span className="text-xs text-muted">로컬 전용 (Mac mini)</span>
+        ) : (
+          <EnabledToggle status={status} isAdmin={isAdmin} />
+        )}
       </td>
       <td className="px-3 py-3">
-        <RunControl status={status} isAdmin={isAdmin} />
+        {status.localOnly ? (
+          <span className="text-xs text-muted">—</span>
+        ) : (
+          <RunControl status={status} isAdmin={isAdmin} />
+        )}
       </td>
     </tr>
   );
