@@ -54,12 +54,16 @@ export function MailboxView({ row, onMailReply }: ViewProps) {
 
       <Divider />
 
-      <Section title="AI 회신 초안">
-        {row.mailDraftModel && (
-          <span className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-xs text-ink-soft">
-            <span aria-hidden>✦</span> AI 생성 · {row.mailDraftModel}
-          </span>
-        )}
+      <Section
+        title="AI 회신 초안"
+        action={
+          row.mailDraftModel ? (
+            <span className="inline-flex items-center gap-1 bg-line-soft px-2 py-0.5 text-xs text-ink-soft">
+              <span aria-hidden>✦</span> AI 모델 · {row.mailDraftModel}
+            </span>
+          ) : undefined
+        }
+      >
         {sent ? (
           <p className="text-sm text-muted">
             이미 발송된 메일입니다. ({row.mailDraftStatus})
