@@ -18,6 +18,8 @@ import { operatorNameByEmail } from "@/features/auth/operators";
 import { mailboxEntryToListRow } from "./_row-mapper";
 import { AutoDraftToggle } from "./AutoDraftToggle";
 import { MailboxOwnerSwitcher } from "./MailboxOwnerSwitcher";
+import { listMyDelegations } from "@/features/mailbox/delegation";
+import { MailboxDelegationPanel } from "./MailboxDelegationPanel";
 
 export default async function MailboxPage({
   searchParams,
@@ -45,6 +47,8 @@ export default async function MailboxPage({
     requestedOwner === myEmail ||
     (!!myEmail && (await canAccessMailbox(myEmail, requestedOwner)));
   const owner = canView ? requestedOwner : myEmail;
+
+  const myDelegations = myEmail ? await listMyDelegations(myEmail) : [];
 
   const delegatedOwners = myEmail
     ? await listMailboxesDelegatedTo(myEmail)
@@ -97,11 +101,14 @@ export default async function MailboxPage({
         <div className="flex items-center gap-2">
           <MailboxOwnerSwitcher options={ownerOptions} current={owner} />
           {owner === myEmail && myEmail ? (
-            <AutoDraftToggle
-              key="mailbox-toggle"
-              ownerEmail={myEmail}
-              initialEnabled={autoEnabled}
-            />
+            <>
+              <MailboxDelegationPanel delegations={myDelegations} />
+              <AutoDraftToggle
+                key="mailbox-toggle"
+                ownerEmail={myEmail}
+                initialEnabled={autoEnabled}
+              />
+            </>
           ) : null}
         </div>
       }
