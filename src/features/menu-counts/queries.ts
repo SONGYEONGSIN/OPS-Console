@@ -64,6 +64,8 @@ export async function getMenuCounts(
       supabase.from("operators").select("*", head).eq("status", "active"),
     ),
     countOf("schedule", supabase.from("schedule_events").select("*", head)),
+    countOf("news", supabase.from("news").select("*", head)),
+    countOf("meetings", supabase.from("meetings").select("*", head)),
     countOf(
       "notices",
       supabase.from("posts").select("*", head).eq("domain", "notice"),
