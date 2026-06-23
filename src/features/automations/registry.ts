@@ -78,8 +78,8 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "closing-scrape",
     label: "서비스 마감 스크래핑",
     description:
-      "Moa 서비스조회를 스크래핑해 작성마감이 지난 서비스를 '서비스 마감' 페이지에 적재하는 GitHub Actions 워크플로를 트리거합니다.\n실행 주기는 워크플로(스크래퍼)가 판정합니다.",
-    scheduleInfo: "매주 월요일 10:00 (cron-job.org → OPS → GitHub Actions)",
+      "Moa 서비스조회를 스크래핑해 작성마감이 지난 서비스를 '서비스 마감' 페이지에 적재합니다.\n회사 PC 예약 작업이 직접 실행합니다 — 웹·GitHub Actions는 Cloudflare 차단으로 실행 불가.",
+    scheduleInfo: "매주 월요일 10:00 (회사 PC 로컬 예약 작업)",
     cooldownMinutes: 60,
     run: runClosingScrape,
   },
