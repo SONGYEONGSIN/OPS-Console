@@ -1,10 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { mailboxEntryToListRow } from "../_row-mapper";
 import type { MailboxEntry } from "@/features/mailbox/queries";
-import type {
-  MailboxMessage,
-  MailboxDraft,
-} from "@/features/mailbox/schemas";
+import type { MailboxMessage, MailboxDraft } from "@/features/mailbox/schemas";
 
 const message: MailboxMessage = {
   id: crypto.randomUUID(),
@@ -59,6 +56,17 @@ describe("mailboxEntryToListRow", () => {
       latestDraft: null,
     };
     expect(mailboxEntryToListRow(entry).name).toBe("(제목 없음)");
+  });
+
+  it("본문의 추적 비콘/cid 잔재는 cleanMailBody로 정제해 매핑한다", () => {
+    const entry: MailboxEntry = {
+      message: {
+        ...message,
+        body: "[http://webmail.kcue.or.kr/mail/dsn/3540352]\r\n\r\n안녕하세요.\r\n\r\n[cid:img.png]",
+      },
+      latestDraft: null,
+    };
+    expect(mailboxEntryToListRow(entry).mailBody).toBe("안녕하세요.");
   });
 
   it("초안 있는 메일: mailHasDraft=true + draft 본문/상태 매핑", () => {

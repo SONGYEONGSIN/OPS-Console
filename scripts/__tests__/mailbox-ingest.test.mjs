@@ -14,6 +14,7 @@ import {
   graphGetWithRetry,
   assembleDraft,
   splitSentences,
+  buildDraftPrompt,
 } from "../mailbox-ingest.mjs";
 
 describe("splitSentences", () => {
@@ -221,6 +222,32 @@ describe("isAdSubject", () => {
   it("'ADMISSION' 같은 정상 단어를 광고로 오판하지 않음", () => {
     expect(isAdSubject("Admission guide")).toBe(false);
     expect(isAdSubject("ADD 문의")).toBe(false);
+  });
+});
+
+describe("buildDraftPrompt — 안내/공지(FYI) 회신 가이드 포함", () => {
+  it("제목·본문을 프롬프트에 포함한다", () => {
+    const p = buildDraftPrompt({
+      subject: "원서접수 일정 문의",
+      bodyPreview: "마감일이 언제인가요?",
+    });
+    expect(p).toContain("[제목] 원서접수 일정 문의");
+    expect(p).toContain("[본문] 마감일이 언제인가요?");
+  });
+
+  it("질문·요청 없는 안내/공지성 메일은 복창하지 말고 수신 확인 위주로 작성하도록 지시한다", () => {
+    const p = buildDraftPrompt({ subject: "안내", bodyPreview: "공유드립니다." });
+    // 안내성 메일 처리 규칙이 프롬프트에 명시되어야 한다
+    expect(p).toMatch(/안내|공지/);
+    expect(p).toMatch(/복창|요약하지|되풀이/);
+    expect(p).toMatch(/확인/);
+  });
+
+  it("bodyPreview 우선, 없으면 body 사용 + 2000자 컷", () => {
+    const long = "가".repeat(3000);
+    const p = buildDraftPrompt({ subject: "s", body: long });
+    expect(p).toContain("[본문] " + "가".repeat(2000));
+    expect(p).not.toContain("가".repeat(2001));
   });
 });
 

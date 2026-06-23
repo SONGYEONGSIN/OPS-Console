@@ -276,18 +276,28 @@ export function splitSentences(text) {
   return text.replace(/([.!?])[ \t]+/g, "$1\n").trim();
 }
 
-async function generateDraft(message, operatorName) {
-  const prompt = [
+// 회신 초안 LLM 프롬프트를 조립한다(순수 함수 — 테스트 가능).
+// 핵심: 안내/공지(FYI)성 메일은 답할 용건이 없으므로 원문을 복창·요약하면
+// 발신자에게 같은 내용을 되돌려주는 어색한 회신이 된다. 이 경우 내용을 한 줄로
+// 짧게 짚고 "확인했다"는 수신 확인 위주로 작성하도록 분기 지시한다.
+export function buildDraftPrompt(message) {
+  return [
     "당신은 대학 입학 원서접수 운영부의 담당자입니다.",
     "아래 받은 메일에 대한 회신의 '본문 내용'만 작성하세요.",
     "인사말('안녕하세요' 등)·자기소개·맺음말('감사합니다' 등)·서명·이름은 절대 쓰지 마세요. 핵심 용건에 대한 답변만 작성합니다.",
     "최대한 간결하게(2~4문장) 한국어 비즈니스 정중체로 작성하세요. 대괄호 [] 는 어떤 경우에도 쓰지 마세요.",
+    "메일에 질문·요청이 있으면 그 용건에만 답하세요.",
+    "메일이 질문·요청 없는 안내/공지(FYI)성이면, 원문 내용을 길게 복창하거나 요약하지 마세요. 안내 내용을 한 줄로만 짧게 짚고 '확인하였습니다'처럼 수신 확인 위주로 작성하세요.",
     "금액·날짜 등 모르는 정보는 지어내지 말고 '확인 후 안내드리겠습니다'처럼 처리하며, 처리 완료·발급 완료 등 확정되지 않은 결과를 단정하지 마세요.",
     "마크다운(**, ##, - 목록)을 쓰지 마세요.",
     "",
     `[제목] ${message.subject ?? ""}`,
     `[본문] ${(message.bodyPreview ?? message.body ?? "").slice(0, 2000)}`,
   ].join("\n");
+}
+
+async function generateDraft(message, operatorName) {
+  const prompt = buildDraftPrompt(message);
 
   const res = await fetch(`${OLLAMA_URL}/api/generate`, {
     method: "POST",
