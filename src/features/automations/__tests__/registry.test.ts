@@ -25,6 +25,13 @@ describe("automation registry", () => {
     expect(result.message).toMatch(/로컬|Mac/i);
   });
 
+  it("notice-teams-share 잡이 서버리스(비 localOnly)로 등록되어 있다", () => {
+    const job = getJob("notice-teams-share");
+    expect(job).toBeDefined();
+    expect(job?.localOnly).toBeFalsy();
+    expect(typeof job?.run).toBe("function");
+  });
+
   it("모든 잡은 고유 id를 가진다", () => {
     const ids = AUTOMATION_JOBS.map((j) => j.id);
     expect(new Set(ids).size).toBe(ids.length);
