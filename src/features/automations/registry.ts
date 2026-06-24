@@ -9,6 +9,7 @@ import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
 import { runNewsCollect } from "./jobs/news-collect";
+import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -106,6 +107,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
       message:
         "로컬 전용 자동화입니다. Mac mini의 로컬 cron(Ollama)에서 실행되며, 여기서는 실행할 수 없습니다.",
     }),
+  },
+  {
+    id: "notice-teams-share",
+    label: "공지 Teams 공유",
+    description:
+      "새로 작성된 공지사항을 감지해 Teams 그룹채팅에 자동 공유합니다.",
+    scheduleInfo: "30분 간격 (cron-job.org)",
+    cooldownMinutes: 30,
+    run: runNoticeTeamsShare,
   },
 ];
 
