@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { isOwnerOrActiveDelegate } from "../delegation";
+import { isOwnerOrActiveDelegate, expiryFromDate } from "../delegation";
+
+describe("expiryFromDate — 종료일(YYYY-MM-DD) → KST 그날 끝 ISO", () => {
+  it("날짜를 KST 23:59:59.999 만료로 변환한다", () => {
+    // 2026-07-24 23:59:59.999 +09:00 == 2026-07-24T14:59:59.999Z
+    expect(expiryFromDate("2026-07-24")).toBe("2026-07-24T14:59:59.999Z");
+  });
+  it("null/빈 값(무기한)은 null", () => {
+    expect(expiryFromDate(null)).toBeNull();
+    expect(expiryFromDate("")).toBeNull();
+  });
+});
 
 describe("isOwnerOrActiveDelegate", () => {
   const active = [{ owner_email: "a@x.com", grantee_email: "b@x.com" }];
