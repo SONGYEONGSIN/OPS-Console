@@ -520,6 +520,14 @@ export type ListRow = {
   newsSummary?: string | null;
   /** news — 수집에 사용된 검색 키워드 */
   newsKeyword?: string | null;
+  /** quotes 도메인 — 견적서 필드 */
+  quoteCustomer?: string;
+  quoteDate?: string; // YYYY-MM-DD
+  quoteAmount?: number | null;
+  quoteOwner?: string; // owner_email
+  quoteStatus?: "draft" | "sent" | "won" | "lost";
+  quoteValidUntil?: string | null;
+  quoteNote?: string | null;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

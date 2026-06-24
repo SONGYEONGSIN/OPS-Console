@@ -109,6 +109,10 @@ import { MAILBOX_FILTERS } from "./mailbox/filters";
 import { NewsView } from "./news/View";
 import { NewsTable } from "./news/Table";
 import { NEWS_FILTERS } from "./news/filters";
+import { QuoteView } from "./quotes/View";
+import { QuoteEditForm } from "./quotes/EditForm";
+import { QuoteTable } from "./quotes/Table";
+import { QUOTE_FILTERS, blankQuoteRow } from "./quotes/filters";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -340,5 +344,12 @@ export const variantRegistry = {
     View: NewsView,
     Table: NewsTable,
     Filters: NEWS_FILTERS,
+  },
+  quotes: {
+    View: QuoteView,
+    EditForm: QuoteEditForm,
+    Table: QuoteTable,
+    Filters: QUOTE_FILTERS,
+    blank: blankQuoteRow,
   },
 } as const satisfies Record<Variant, RegistryEntry>;

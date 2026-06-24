@@ -103,6 +103,7 @@ export async function getMenuCounts(
     countOf("contacts", supabase.from("contacts").select("*", head)),
     countOf("backup", supabase.from("backup_requests").select("*", head)),
     countOf("incidents", supabase.from("incidents").select("*", head)),
+    countOf("quotes", supabase.from("quotes").select("*", head)),
     countOf(
       "handover",
       supabase
