@@ -110,7 +110,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
   },
   {
     id: "notice-teams-share",
-    label: "공지 Teams 공유",
+    label: "공지 운영부 Teams 공유",
     description:
       "새로 작성된 공지사항을 감지해 Teams 그룹채팅에 자동 공유합니다.",
     scheduleInfo: "30분 간격 (cron-job.org)",
