@@ -1,7 +1,7 @@
 "use client";
 
 import type { EditFormProps } from "../types";
-import { QUOTE_STATUS_LABEL } from "@/features/quotes/schemas";
+import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/features/quotes/schemas";
 
 const STATUS_OPTIONS = Object.entries(QUOTE_STATUS_LABEL) as [
   keyof typeof QUOTE_STATUS_LABEL,
@@ -86,7 +86,7 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
           onChange={(e) =>
             setRow({
               ...row,
-              quoteStatus: e.target.value as typeof row.quoteStatus,
+              quoteStatus: e.target.value as QuoteStatus,
             })
           }
           className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
@@ -130,30 +130,32 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
       </label>
 
       {/* 버튼 */}
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          className="rounded bg-ink px-4 py-1.5 text-sm text-cream hover:bg-ink/80"
+          className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90"
         >
           저장
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded border border-line px-4 py-1.5 text-sm text-ink-soft hover:bg-washi-raised"
+          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
         >
           취소
         </button>
-        {!isNew && (
+      </div>
+      {!isNew && (
+        <div className="border-t border-line-soft pt-3">
           <button
             type="button"
             onClick={handleDelete}
-            className="ml-auto rounded px-4 py-1.5 text-sm text-muted hover:bg-washi-raised hover:text-vermilion"
+            className="w-full border border-vermilion-deep bg-transparent px-3 py-1.5 text-sm text-vermilion-deep hover:bg-vermilion-deep hover:text-cream"
           >
             삭제
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }
