@@ -50,9 +50,17 @@ export const mailboxDelegationSchema = z.object({
   grantee_email: z.string(),
   granted_at: z.string(),
   revoked_at: z.string().nullable(),
+  // 만료 시각(ISO). null = 무기한. 만료되면 접근 판정에서 자동 제외(지연 만료).
+  expires_at: z.string().nullable().optional(),
 });
 export type MailboxDelegation = z.infer<typeof mailboxDelegationSchema>;
 
 export const delegationInputSchema = z.object({
   granteeEmail: z.string().email("올바른 이메일이 아닙니다."),
+  // 종료일(YYYY-MM-DD, KST). null = 무기한. 미지정 시 무기한으로 본다.
+  expiresOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "올바른 날짜가 아닙니다.")
+    .nullable()
+    .optional(),
 });

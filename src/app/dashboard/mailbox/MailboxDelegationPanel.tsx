@@ -11,7 +11,21 @@ import { operatorNameByEmail } from "@/features/auth/operators";
 
 type Candidate = { email: string; name: string };
 
-/** 위임 관리 — 내가 준 위임 목록 + 추가(조직 운영자 선택)/해제(owner=me 고정 서버 액션). */
+// 오늘(KST) YYYY-MM-DD — date input min. 과거 날짜 선택 방지.
+function todayKst(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+// 만료 ISO → "YYYY-MM-DD까지" / null → "무기한" (KST 표기).
+function expiryLabel(expiresAt: string | null | undefined): string {
+  if (!expiresAt) return "무기한";
+  const ymd = new Date(expiresAt).toLocaleDateString("en-CA", {
+    timeZone: "Asia/Seoul",
+  });
+  return `${ymd}까지`;
+}
+
+/** 위임 관리 — 내가 준 위임 목록 + 추가(운영자+기간 선택)/해제(owner=me 고정 서버 액션). */
 export function MailboxDelegationPanel({
   delegations,
   candidates,
@@ -21,6 +35,8 @@ export function MailboxDelegationPanel({
 }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
+  const [expiresOn, setExpiresOn] = useState("");
+  const [indefinite, setIndefinite] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -49,12 +65,12 @@ export function MailboxDelegationPanel({
               위임하면 상대가 내 메일함을 열람하고 내 명의로 회신할 수 있습니다.
             </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2">
               <select
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 aria-label="위임할 운영자 선택"
-                className="flex-1 border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
+                className="border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
               >
                 <option value="">위임할 운영자 선택</option>
                 {candidates.map((c) => (
@@ -63,20 +79,48 @@ export function MailboxDelegationPanel({
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                disabled={pending || !email}
-                onClick={() =>
-                  run(async () => {
-                    const r = await grantMailboxDelegation(email);
-                    if (r.ok) setEmail("");
-                    return r;
-                  })
-                }
-                className="inline-flex items-center border border-vermilion bg-vermilion px-3 py-2 text-sm text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                위임
-              </button>
+
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted">종료일</label>
+                <input
+                  type="date"
+                  value={expiresOn}
+                  min={todayKst()}
+                  disabled={indefinite}
+                  onChange={(e) => setExpiresOn(e.target.value)}
+                  aria-label="위임 종료일"
+                  className="border border-line bg-cream px-2 py-1.5 text-sm text-ink outline-none focus:bg-white focus:border-vermilion disabled:opacity-50"
+                />
+                <label className="flex cursor-pointer items-center gap-1 text-xs text-ink">
+                  <input
+                    type="checkbox"
+                    checked={indefinite}
+                    onChange={(e) => setIndefinite(e.target.checked)}
+                  />
+                  무기한
+                </label>
+                <button
+                  type="button"
+                  disabled={pending || !email || (!indefinite && !expiresOn)}
+                  onClick={() =>
+                    run(async () => {
+                      const r = await grantMailboxDelegation(
+                        email,
+                        indefinite ? null : expiresOn,
+                      );
+                      if (r.ok) {
+                        setEmail("");
+                        setExpiresOn("");
+                        setIndefinite(false);
+                      }
+                      return r;
+                    })
+                  }
+                  className="ml-auto inline-flex items-center border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  위임
+                </button>
+              </div>
             </div>
             {msg ? <span className="text-xs text-vermilion">{msg}</span> : null}
 
@@ -95,6 +139,9 @@ export function MailboxDelegationPanel({
                       {operatorNameByEmail(d.grantee_email) || d.grantee_email}
                       <span className="ml-2 text-xs text-muted">
                         {d.grantee_email}
+                      </span>
+                      <span className="ml-2 text-xs text-vermilion">
+                        {expiryLabel(d.expires_at)}
                       </span>
                     </span>
                     <button

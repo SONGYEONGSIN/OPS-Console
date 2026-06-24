@@ -5,8 +5,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { logActivity } from "@/features/worklog/log";
-import { sendReplySchema, setAutoDraftSchema, delegationInputSchema } from "./schemas";
-import { canAccessMailbox } from "./delegation";
+import {
+  sendReplySchema,
+  setAutoDraftSchema,
+  delegationInputSchema,
+} from "./schemas";
+import { canAccessMailbox, expiryFromDate } from "./delegation";
 import { buildReplyHtml } from "@/lib/mail-signature";
 
 export type MailboxActionResult = { ok: true } | { ok: false; error: string };
@@ -37,7 +41,10 @@ export async function sendMailReply(
 
   // 본인 메일함이거나 활성 위임을 받은 경우만 발송 가능 (발신 명의는 주인).
   if (!(await canAccessMailbox(me.email, msg.owner_email))) {
-    return { ok: false, error: "권한 없음 — 본인 또는 위임받은 메일함이 아닙니다." };
+    return {
+      ok: false,
+      error: "권한 없음 — 본인 또는 위임받은 메일함이 아닙니다.",
+    };
   }
   if (!msg.from_email) {
     return { ok: false, error: "원발신자 주소가 없어 회신할 수 없습니다." };
@@ -100,7 +107,10 @@ export async function setAutoDraftEnabled(
 
   const me = await getCurrentOperator();
   if (!me?.email || me.email !== parsed.data.ownerEmail) {
-    return { ok: false, error: "권한 없음 — 본인 메일함 설정만 변경할 수 있습니다." };
+    return {
+      ok: false,
+      error: "권한 없음 — 본인 메일함 설정만 변경할 수 있습니다.",
+    };
   }
 
   const admin = createAdminClient();
@@ -121,12 +131,20 @@ export async function setAutoDraftEnabled(
 /** 위임 등록 — owner=me 고정. B는 실 운영자여야 하고 본인은 불가. 재위임 시 revoked_at 복구. */
 export async function grantMailboxDelegation(
   granteeEmail: string,
+  expiresOn?: string | null,
 ): Promise<MailboxActionResult> {
-  const parsed = delegationInputSchema.safeParse({ granteeEmail });
+  const parsed = delegationInputSchema.safeParse({
+    granteeEmail,
+    expiresOn: expiresOn ?? null,
+  });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
   const grantee = parsed.data.granteeEmail;
+  const expiresAt = expiryFromDate(parsed.data.expiresOn ?? null);
+  if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+    return { ok: false, error: "종료일은 오늘 이후여야 합니다." };
+  }
 
   const me = await getCurrentOperator();
   if (!me?.email) return { ok: false, error: "로그인이 필요합니다." };
@@ -151,6 +169,7 @@ export async function grantMailboxDelegation(
       grantee_email: grantee,
       granted_at: new Date().toISOString(),
       revoked_at: null,
+      expires_at: expiresAt,
     },
     { onConflict: "owner_email,grantee_email" },
   );
@@ -195,7 +214,10 @@ export async function ensureMailboxSettings(
 ): Promise<MailboxActionResult> {
   const me = await getCurrentOperator();
   if (!me?.email || me.email !== ownerEmail) {
-    return { ok: false, error: "권한 없음 — 본인 메일함만 등록할 수 있습니다." };
+    return {
+      ok: false,
+      error: "권한 없음 — 본인 메일함만 등록할 수 있습니다.",
+    };
   }
 
   const admin = createAdminClient();

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockAdmin, mockGetOperator, mockSendGraphMail, mockCanAccess } = vi.hoisted(() => ({
-  mockAdmin: vi.fn(),
-  mockGetOperator: vi.fn(),
-  mockSendGraphMail: vi.fn(),
-  mockCanAccess: vi.fn(),
-}));
+const { mockAdmin, mockGetOperator, mockSendGraphMail, mockCanAccess } =
+  vi.hoisted(() => ({
+    mockAdmin: vi.fn(),
+    mockGetOperator: vi.fn(),
+    mockSendGraphMail: vi.fn(),
+    mockCanAccess: vi.fn(),
+  }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mockAdmin }));
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: mockGetOperator,
@@ -15,7 +16,11 @@ vi.mock("@/lib/microsoft/sendmail", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/features/worklog/log", () => ({ logActivity: vi.fn() }));
-vi.mock("../delegation", () => ({ canAccessMailbox: mockCanAccess }));
+vi.mock("../delegation", () => ({
+  canAccessMailbox: mockCanAccess,
+  expiryFromDate: (ymd: string | null) =>
+    ymd ? new Date(`${ymd}T23:59:59.999+09:00`).toISOString() : null,
+}));
 
 import {
   sendMailReply,
@@ -34,7 +39,9 @@ function makeAdmin(message: Record<string, unknown> | null) {
       return {
         select: () => ({
           eq: () => ({
-            maybeSingle: vi.fn().mockResolvedValue({ data: message, error: null }),
+            maybeSingle: vi
+              .fn()
+              .mockResolvedValue({ data: message, error: null }),
           }),
         }),
       };
@@ -66,7 +73,10 @@ function makeAdmin(message: Record<string, unknown> | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetOperator.mockResolvedValue({ permission: "member", email: "op@x.com" });
+  mockGetOperator.mockResolvedValue({
+    permission: "member",
+    email: "op@x.com",
+  });
   mockCanAccess.mockResolvedValue(false);
 });
 
@@ -85,7 +95,10 @@ describe("sendMailReply", () => {
   });
 
   it("본인 메일함이 아니면 권한 거부", async () => {
-    mockGetOperator.mockResolvedValue({ permission: "member", email: "other@x.com" });
+    mockGetOperator.mockResolvedValue({
+      permission: "member",
+      email: "other@x.com",
+    });
     mockCanAccess.mockResolvedValue(false);
     const { client } = makeAdmin(msg);
     mockAdmin.mockReturnValue(client);
@@ -133,7 +146,10 @@ describe("sendMailReply", () => {
   });
 
   it("위임받은 B가 A 메일함 발송 허용 (canAccessMailbox=true)", async () => {
-    mockGetOperator.mockResolvedValue({ permission: "member", email: "b@x.com" });
+    mockGetOperator.mockResolvedValue({
+      permission: "member",
+      email: "b@x.com",
+    });
     mockCanAccess.mockResolvedValue(true);
     const { client } = makeAdmin(msg); // msg.owner_email = "op@x.com"
     mockAdmin.mockReturnValue(client);
@@ -145,7 +161,10 @@ describe("sendMailReply", () => {
   });
 
   it("위임 없는 타인 발송 거부 (canAccessMailbox=false)", async () => {
-    mockGetOperator.mockResolvedValue({ permission: "member", email: "c@x.com" });
+    mockGetOperator.mockResolvedValue({
+      permission: "member",
+      email: "c@x.com",
+    });
     mockCanAccess.mockResolvedValue(false);
     const { client } = makeAdmin(msg);
     mockAdmin.mockReturnValue(client);
@@ -161,7 +180,10 @@ describe("setAutoDraftEnabled", () => {
     const r = await setAutoDraftEnabled("op@x.com", false);
     expect(r.ok).toBe(true);
     expect(settingsUpsert.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ owner_email: "op@x.com", auto_draft_enabled: false }),
+      expect.objectContaining({
+        owner_email: "op@x.com",
+        auto_draft_enabled: false,
+      }),
     );
   });
 });
@@ -174,16 +196,25 @@ describe("ensureMailboxSettings", () => {
     expect(r.ok).toBe(true);
     // 신규 등록은 자동초안 OFF 기본값
     expect(settingsUpsert.mock.calls[0][0]).toEqual(
-      expect.objectContaining({ owner_email: "op@x.com", auto_draft_enabled: false }),
+      expect.objectContaining({
+        owner_email: "op@x.com",
+        auto_draft_enabled: false,
+      }),
     );
     // 기존 row가 있으면 덮어쓰지 않음 (ignoreDuplicates)
     expect(settingsUpsert.mock.calls[0][1]).toEqual(
-      expect.objectContaining({ onConflict: "owner_email", ignoreDuplicates: true }),
+      expect.objectContaining({
+        onConflict: "owner_email",
+        ignoreDuplicates: true,
+      }),
     );
   });
 
   it("본인 메일함이 아니면 권한 거부", async () => {
-    mockGetOperator.mockResolvedValue({ permission: "member", email: "other@x.com" });
+    mockGetOperator.mockResolvedValue({
+      permission: "member",
+      email: "other@x.com",
+    });
     const { client } = makeAdmin(null);
     mockAdmin.mockReturnValue(client);
     const r = await ensureMailboxSettings("op@x.com");
@@ -233,6 +264,32 @@ describe("grantMailboxDelegation", () => {
     expect(delegationUpsert.mock.calls[0][1]).toEqual(
       expect.objectContaining({ onConflict: "owner_email,grantee_email" }),
     );
+  });
+
+  it("종료일 지정 시 expires_at(KST 그날 끝)을 upsert에 담는다", async () => {
+    const { client, delegationUpsert } = makeDelegationAdmin();
+    mockAdmin.mockReturnValue(client);
+    const r = await grantMailboxDelegation("b@x.com", "2099-07-24");
+    expect(r.ok).toBe(true);
+    expect(delegationUpsert.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ expires_at: "2099-07-24T14:59:59.999Z" }),
+    );
+  });
+
+  it("무기한(null/미지정)이면 expires_at=null", async () => {
+    const { client, delegationUpsert } = makeDelegationAdmin();
+    mockAdmin.mockReturnValue(client);
+    await grantMailboxDelegation("b@x.com", null);
+    expect(delegationUpsert.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ expires_at: null }),
+    );
+  });
+
+  it("과거 종료일 → 거부", async () => {
+    const { client } = makeDelegationAdmin();
+    mockAdmin.mockReturnValue(client);
+    const r = await grantMailboxDelegation("b@x.com", "2000-01-01");
+    expect(r.ok).toBe(false);
   });
 
   it("본인에게 위임 → 거부", async () => {
