@@ -89,8 +89,9 @@ export function MailboxDelegationPanel({
                   value={expiresOn}
                   min={todayKst()}
                   onChange={(e) => setExpiresOn(e.target.value)}
+                  onClick={(e) => e.currentTarget.showPicker?.()}
                   aria-label="위임 종료일"
-                  className="border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
+                  className="cursor-pointer border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
                 />
               </label>
 
