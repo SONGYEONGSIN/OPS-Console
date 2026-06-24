@@ -131,6 +131,12 @@ export const sidebarSections: SbSection[] = [
             slug: "meetings",
             pattern: "list",
           },
+          {
+            ico: "·",
+            label: "견적서",
+            slug: "quotes",
+            pattern: "list",
+          },
         ],
       },
     ],
