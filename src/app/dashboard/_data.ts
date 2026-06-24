@@ -134,6 +134,7 @@ export const sidebarSections: SbSection[] = [
           {
             ico: "·",
             label: "견적서",
+            count: "",
             slug: "quotes",
             pattern: "list",
           },
