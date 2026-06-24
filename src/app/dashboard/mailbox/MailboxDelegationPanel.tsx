@@ -36,7 +36,6 @@ export function MailboxDelegationPanel({
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [expiresOn, setExpiresOn] = useState("");
-  const [indefinite, setIndefinite] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -84,41 +83,26 @@ export function MailboxDelegationPanel({
               </label>
 
               <label className="flex flex-col gap-1 text-xs text-muted">
-                위임 기간
-                <div className="flex items-center gap-3">
-                  <input
-                    type="date"
-                    value={expiresOn}
-                    min={todayKst()}
-                    disabled={indefinite}
-                    onChange={(e) => setExpiresOn(e.target.value)}
-                    aria-label="위임 종료일"
-                    className="flex-1 border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion disabled:opacity-50"
-                  />
-                  <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-sm text-ink">
-                    <input
-                      type="checkbox"
-                      checked={indefinite}
-                      onChange={(e) => setIndefinite(e.target.checked)}
-                    />
-                    무기한
-                  </label>
-                </div>
+                위임 종료일
+                <input
+                  type="date"
+                  value={expiresOn}
+                  min={todayKst()}
+                  onChange={(e) => setExpiresOn(e.target.value)}
+                  aria-label="위임 종료일"
+                  className="border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
+                />
               </label>
 
               <button
                 type="button"
-                disabled={pending || !email || (!indefinite && !expiresOn)}
+                disabled={pending || !email || !expiresOn}
                 onClick={() =>
                   run(async () => {
-                    const r = await grantMailboxDelegation(
-                      email,
-                      indefinite ? null : expiresOn,
-                    );
+                    const r = await grantMailboxDelegation(email, expiresOn);
                     if (r.ok) {
                       setEmail("");
                       setExpiresOn("");
-                      setIndefinite(false);
                     }
                     return r;
                   })

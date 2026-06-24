@@ -27,12 +27,12 @@ describe("MailboxDelegationPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("버튼 클릭 시 종료일 입력·무기한 체크가 있는 모달이 열린다", () => {
+  it("버튼 클릭 시 종료일 입력이 있는 모달이 열린다 (무기한 옵션 없음)", () => {
     render(<MailboxDelegationPanel delegations={[]} candidates={candidates} />);
     fireEvent.click(screen.getByRole("button", { name: "메일함 위임" }));
     expect(screen.getByText("메일함 위임 관리")).toBeInTheDocument();
     expect(screen.getByLabelText("위임 종료일")).toBeInTheDocument();
-    expect(screen.getByText("무기한")).toBeInTheDocument();
+    expect(screen.queryByText("무기한")).not.toBeInTheDocument();
   });
 
   it("종료일 선택 후 위임 → grant(email, 날짜) 호출", () => {
@@ -48,15 +48,13 @@ describe("MailboxDelegationPanel", () => {
     expect(grantMock).toHaveBeenCalledWith("b@x.com", "2099-07-24");
   });
 
-  it("무기한 체크 후 위임 → grant(email, null) 호출", () => {
+  it("종료일 없이는 위임 버튼이 비활성", () => {
     render(<MailboxDelegationPanel delegations={[]} candidates={candidates} />);
     fireEvent.click(screen.getByRole("button", { name: "메일함 위임" }));
     fireEvent.change(screen.getByLabelText("위임할 운영자 선택"), {
       target: { value: "b@x.com" },
     });
-    fireEvent.click(screen.getByLabelText("무기한"));
-    fireEvent.click(screen.getByRole("button", { name: "위임" }));
-    expect(grantMock).toHaveBeenCalledWith("b@x.com", null);
+    expect(screen.getByRole("button", { name: "위임" })).toBeDisabled();
   });
 
   it("위임 목록에 만료 라벨(날짜까지)을 표시한다", () => {
