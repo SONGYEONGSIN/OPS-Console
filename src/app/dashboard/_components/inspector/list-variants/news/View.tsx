@@ -19,6 +19,7 @@ export function NewsView({ row }: ViewProps) {
     <div className="space-y-6">
       <Section title="기사">
         <DefList
+          dense
           items={[
             { term: "제목", desc: row.name || "-" },
             { term: "출처", desc: row.newsSource || "-" },
