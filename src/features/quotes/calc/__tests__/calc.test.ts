@@ -54,8 +54,33 @@ describe("recomputeDocument — system/outsource 행 amount 자동 기입", () =
     expect(out.rows[0].amount).toBe(10000);
     expect(out.subtotal).toBe(10000);
     expect(sum.subtotal).toBe(1000);
-    // quoteTotals = Σ소계 (labor 빈섹션 0)
-    expect(r.totals.supply).toBe(60000 + 10000 + 1000);
+    // ④총비용산출(summary)은 ①②③의 산출/요약이므로 supply에서 제외(이중계산 방지)
+    expect(r.totals.supply).toBe(60000 + 10000);
+  });
+});
+
+describe("quoteTotals — summary 섹션 합계 제외", () => {
+  it("system 60000 + outsource 10000 + summary 1000 → supply=70000 (summary 제외)", () => {
+    const base = blankDocument("dev");
+    const doc = recomputeDocument({
+      ...base,
+      sections: base.sections.map((s) => {
+        if (s.id === "system") {
+          return { ...s, rows: [{ category: "서버", item: "VM", qty: 2, months: 3, unit: 10000, amount: null }] };
+        }
+        if (s.id === "outsource") {
+          return { ...s, rows: [{ category: "실비", item: "택배", qty: 5, unit: 2000, amount: null }] };
+        }
+        if (s.id === "summary") {
+          return { ...s, rows: [{ category: "합", detail: "x", amount: 1000 }] };
+        }
+        return s;
+      }),
+    });
+    // summary 섹션 subtotal은 표시용으로 계속 계산되지만 supply에는 미반영
+    const sum = doc.sections.find((s) => s.id === "summary")!;
+    expect(sum.subtotal).toBe(1000);
+    expect(doc.totals.supply).toBe(70000);
   });
 });
 

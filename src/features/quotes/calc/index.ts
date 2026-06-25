@@ -55,10 +55,10 @@ export function quoteTotals(
   opts?: { vatIncluded?: boolean },
 ): QuoteTotals {
   const vatIncluded = opts?.vatIncluded ?? document.totals.vatIncluded ?? false;
-  const subtotalSum = document.sections.reduce(
-    (acc, s) => acc + sectionSubtotal(s),
-    0,
-  );
+  // ④총비용산출(summary)은 ①②③의 산출/요약이므로 합계에서 제외(이중계산 방지)
+  const subtotalSum = document.sections
+    .filter((s) => s.id !== "summary")
+    .reduce((acc, s) => acc + sectionSubtotal(s), 0);
   if (vatIncluded) {
     const total = subtotalSum;
     const supply = Math.round(total / 1.1);

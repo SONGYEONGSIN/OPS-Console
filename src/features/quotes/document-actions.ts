@@ -27,7 +27,12 @@ export async function createQuoteWithType(
   const tp = quoteTypeSchema.safeParse(type);
   if (!tp.success) return { ok: false, error: "잘못된 견적 유형입니다." };
 
-  const document = recomputeDocument(blankDocument(tp.data));
+  const today = KST_TODAY();
+  const blank = blankDocument(tp.data);
+  const document = recomputeDocument({
+    ...blank,
+    header: { ...blank.header, quoteDate: today },
+  });
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quotes")
@@ -36,7 +41,7 @@ export async function createQuoteWithType(
       document,
       amount: document.totals.total,
       customer: "",
-      quote_date: KST_TODAY(),
+      quote_date: today,
       status: "draft",
     })
     .select("id")
