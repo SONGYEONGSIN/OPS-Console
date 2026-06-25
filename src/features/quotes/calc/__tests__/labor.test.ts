@@ -22,7 +22,7 @@ describe("sectionSubtotal labor", () => {
   it("직접인건비=인원×단가×투입일×참여율 합 → 적산 = 인건비합계", () => {
     // 1명 × 578206 × 10일 × 1.0 = 5,782,060 직접
     const section = {
-      id: "labor", title: "인건비", kind: "labor" as const,
+      id: "labor", title: "인건비", kind: "labor" as const, note: "",
       rates: { overhead: 1.1, techFee: 0.2 },
       columns: [
         { key: "role", label: "직무", kind: "text" as const },
@@ -41,10 +41,10 @@ describe("sectionSubtotal labor", () => {
 });
 
 describe("blankDocument labor", () => {
-  it('kind === "labor" 섹션 반환, 컬럼 role/count/daily/days/ratio/direct 포함', () => {
+  it('labor 섹션(sections[1])이 kind === "labor", 컬럼 role/count/daily/days/ratio/direct 포함', () => {
     const doc = blankDocument("labor");
-    expect(doc.sections).toHaveLength(1);
-    const s = doc.sections[0];
+    expect(doc.sections).toHaveLength(4);
+    const s = doc.sections[1];
     expect(s.kind).toBe("labor");
     const keys = s.columns.map((c) => c.key);
     expect(keys).toContain("role");
@@ -70,16 +70,19 @@ describe("recomputeDocument labor 행 direct 기입", () => {
     const input = blankDocument("labor");
     const doc = {
       ...input,
-      sections: [{
-        ...input.sections[0],
-        rows: [{ role: "기획", count: 1, daily: 578206, days: 10, ratio: 1, direct: null }],
-      }],
+      sections: input.sections.map((s) =>
+        s.id === "labor"
+          ? { ...s, rows: [{ role: "기획", count: 1, daily: 578206, days: 10, ratio: 1, direct: null }] }
+          : s,
+      ),
     };
     const result = recomputeDocument(doc);
-    const row = result.sections[0].rows[0];
+    const laborSec = result.sections.find((s) => s.id === "labor")!;
+    const row = laborSec.rows[0];
     expect(row.direct).toBe(5782060);
     // 인건비합계 = 5782060 + 6360266 + 2428465 = 14570791
-    expect(result.sections[0].subtotal).toBe(14570791);
+    expect(laborSec.subtotal).toBe(14570791);
+    // 다른 섹션 빈 행 → totals.supply == 인건비합계
     expect(result.totals.supply).toBe(14570791);
   });
 });

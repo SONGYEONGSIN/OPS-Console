@@ -7,7 +7,7 @@ describe("renderQuotePdf", () => {
   it("dev 문서 → PDF 버퍼 생성", async () => {
     const doc = {
       ...blankDocument("dev"),
-      sections: [{ id: "main", title: "견적 내역", kind: "simple" as const,
+      sections: [{ id: "main", title: "견적 내역", kind: "simple" as const, note: "",
         columns: blankDocument("dev").sections[0].columns,
         rows: [{ category: "개발", detail: "시스템 구축", note: "", amount: 1000000 }], subtotal: 0 }],
     };

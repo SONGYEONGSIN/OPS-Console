@@ -18,6 +18,10 @@ export const quoteHeaderSchema = z.object({
   quoteDate: z.string().default(""),
   validUntil: z.string().default(""),
   manager: z.string().default(""),
+  recipientCount: z.string().default(""),
+  paymentTerms: z.string().default("계약서 항목에 따름"),
+  managerTel: z.string().default(""),
+  managerEmail: z.string().default(""),
 });
 export type QuoteHeader = z.infer<typeof quoteHeaderSchema>;
 
@@ -36,6 +40,7 @@ export const quoteSectionSchema = z.object({
   id: z.string(),
   title: z.string(),
   kind: z.enum(["simple", "labor"]).default("simple"),
+  note: z.string().default(""),
   rates: z.object({ overhead: z.number().default(1.1), techFee: z.number().default(0.2) }).optional(),
   columns: z.array(quoteColumnSchema),
   rows: z.array(quoteRowSchema),
@@ -56,36 +61,24 @@ export const quoteDocumentSchema = z.object({
   header: quoteHeaderSchema,
   sections: z.array(quoteSectionSchema),
   totals: quoteTotalsSchema,
+  guide: z.array(z.string()).default([]),
   terms: z.array(z.string()).default([]),
 });
 export type QuoteDocument = z.infer<typeof quoteDocumentSchema>;
 
-function simpleSection() {
+/** 1. 시스템 이용 — 수량×기간×단가 자동계산. */
+function systemSection() {
   return {
-    id: "main",
-    title: "견적 내역",
+    id: "system",
+    title: "1. 시스템(인프라·장비) 이용",
     kind: "simple" as const,
+    note: "",
     columns: [
       { key: "category", label: "구분", kind: "text" as const },
-      { key: "detail", label: "상세내역", kind: "text" as const },
-      { key: "note", label: "비고", kind: "text" as const },
-      { key: "amount", label: "비용", kind: "amount" as const },
-    ],
-    rows: [],
-    subtotal: 0,
-  };
-}
-function platformSection() {
-  return {
-    id: "main",
-    title: "서비스 내역",
-    kind: "simple" as const,
-    columns: [
-      { key: "category", label: "구분", kind: "text" as const },
-      { key: "service", label: "세부서비스", kind: "text" as const },
-      { key: "features", label: "기능명세", kind: "multiline" as const },
-      { key: "period", label: "기간", kind: "text" as const },
-      { key: "qty", label: "수량", kind: "text" as const },
+      { key: "item", label: "항목", kind: "text" as const },
+      { key: "qty", label: "수량", kind: "number" as const },
+      { key: "months", label: "기간(월)", kind: "number" as const },
+      { key: "unit", label: "단가(원/월)", kind: "number" as const },
       { key: "amount", label: "금액", kind: "amount" as const },
     ],
     rows: [],
@@ -93,11 +86,13 @@ function platformSection() {
   };
 }
 
+/** 2. 인건비 — SP3 KOSA 6열 적산(직접인건비·제경비·기술료). */
 function laborSection() {
   return {
     id: "labor",
-    title: "인건비 (적산)",
+    title: "2. 인건비 (직접인건비·제경비·기술료)",
     kind: "labor" as const,
+    note: "",
     rates: { overhead: 1.1, techFee: 0.2 },
     columns: [
       { key: "role", label: "직무/등급", kind: "text" as const },
@@ -112,14 +107,44 @@ function laborSection() {
   };
 }
 
-/** 유형별 빈 문서. dev/fee=4열 simple 섹션, platform=6열 기능나열 섹션, labor=KOSA 인건비 적산 섹션. */
+/** 3. 외주비/비용 — 수량×단가 자동계산. */
+function outsourceSection() {
+  return {
+    id: "outsource",
+    title: "3. 외주비/비용 (장비·실비·수수료)",
+    kind: "simple" as const,
+    note: "",
+    columns: [
+      { key: "category", label: "구분", kind: "text" as const },
+      { key: "item", label: "항목", kind: "text" as const },
+      { key: "qty", label: "수량/건수", kind: "number" as const },
+      { key: "unit", label: "단가", kind: "number" as const },
+      { key: "amount", label: "금액", kind: "amount" as const },
+    ],
+    rows: [],
+    subtotal: 0,
+  };
+}
+
+/** 4. 총 비용 및 단가 산출 — 금액 직접입력. */
+function summarySection() {
+  return {
+    id: "summary",
+    title: "4. 총 비용 및 단가 산출",
+    kind: "simple" as const,
+    note: "",
+    columns: [
+      { key: "category", label: "구분", kind: "text" as const },
+      { key: "detail", label: "내역", kind: "text" as const },
+      { key: "amount", label: "금액", kind: "amount" as const },
+    ],
+    rows: [],
+    subtotal: 0,
+  };
+}
+
+/** 전 유형 동일 4섹션 빈 문서. type은 라벨/badge용. */
 export function blankDocument(type: QuoteType): QuoteDocument {
-  const sections =
-    type === "platform"
-      ? [platformSection()]
-      : type === "labor"
-        ? [laborSection()]
-        : [simpleSection()];
   return {
     type,
     header: {
@@ -129,9 +154,14 @@ export function blankDocument(type: QuoteType): QuoteDocument {
       quoteDate: "",
       validUntil: "견적일로부터 30일 이내",
       manager: "",
+      recipientCount: "",
+      paymentTerms: "계약서 항목에 따름",
+      managerTel: "",
+      managerEmail: "",
     },
-    sections,
+    sections: [systemSection(), laborSection(), outsourceSection(), summarySection()],
     totals: { supply: 0, vat: 0, total: 0, vatIncluded: false },
+    guide: [],
     terms: [],
   };
 }

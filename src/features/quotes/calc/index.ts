@@ -17,12 +17,27 @@ export function laborRowDirect(row: Record<string, string | number | null>): num
   return Math.round(num("count") * num("daily") * num("days") * num("ratio"));
 }
 
-/** 섹션 소계 — labor: 인건비 적산(직접+제경비+기술료). simple: amount 컬럼 행 합. */
+/** 행 자동계산 — system=수량×기간×단가, outsource=수량×단가, labor=적산, 그 외=amount 직접입력. */
+export function rowComputed(
+  section: QuoteSection,
+  row: Record<string, string | number | null>,
+): number {
+  const n = (k: string) => (typeof row[k] === "number" ? (row[k] as number) : 0);
+  if (section.kind === "labor") return laborRowDirect(row);
+  if (section.id === "system") return Math.round(n("qty") * n("months") * n("unit"));
+  if (section.id === "outsource") return Math.round(n("qty") * n("unit"));
+  return n("amount"); // summary/기타: 직접입력
+}
+
+/** 섹션 소계 — labor: 인건비 적산(직접+제경비+기술료). system/outsource: 행 자동계산 합. 그 외: amount 직접 합. */
 export function sectionSubtotal(section: QuoteSection): number {
   if (section.kind === "labor") {
     const direct = section.rows.reduce((acc, r) => acc + laborRowDirect(r), 0);
     const rates = section.rates ?? { overhead: 1.1, techFee: 0.2 };
     return laborRollup({ direct, overheadRate: rates.overhead, techFeeRate: rates.techFee }).total;
+  }
+  if (section.id === "system" || section.id === "outsource") {
+    return section.rows.reduce((acc, r) => acc + rowComputed(section, r), 0);
   }
   // 기존 simple: amount 컬럼 합
   const amountKeys = section.columns.filter((c) => c.kind === "amount").map((c) => c.key);
@@ -59,6 +74,11 @@ export function recomputeDocument(document: QuoteDocument): QuoteDocument {
   const sections = document.sections.map((s) => {
     if (s.kind === "labor") {
       const rows = s.rows.map((r) => ({ ...r, direct: laborRowDirect(r) }));
+      const withRows = { ...s, rows };
+      return { ...withRows, subtotal: sectionSubtotal(withRows) };
+    }
+    if (s.id === "system" || s.id === "outsource") {
+      const rows = s.rows.map((r) => ({ ...r, amount: rowComputed(s, r) }));
       const withRows = { ...s, rows };
       return { ...withRows, subtotal: sectionSubtotal(withRows) };
     }
