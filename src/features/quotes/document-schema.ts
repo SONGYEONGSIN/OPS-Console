@@ -35,6 +35,8 @@ export const quoteColumnSchema = z.object({
 export const quoteSectionSchema = z.object({
   id: z.string(),
   title: z.string(),
+  kind: z.enum(["simple", "labor"]).default("simple"),
+  rates: z.object({ overhead: z.number().default(1.1), techFee: z.number().default(0.2) }).optional(),
   columns: z.array(quoteColumnSchema),
   rows: z.array(quoteRowSchema),
   subtotal: z.number().default(0),
@@ -62,6 +64,7 @@ function simpleSection() {
   return {
     id: "main",
     title: "견적 내역",
+    kind: "simple" as const,
     columns: [
       { key: "category", label: "구분", kind: "text" as const },
       { key: "detail", label: "상세내역", kind: "text" as const },
@@ -76,6 +79,7 @@ function platformSection() {
   return {
     id: "main",
     title: "서비스 내역",
+    kind: "simple" as const,
     columns: [
       { key: "category", label: "구분", kind: "text" as const },
       { key: "service", label: "세부서비스", kind: "text" as const },
@@ -89,9 +93,33 @@ function platformSection() {
   };
 }
 
-/** 유형별 빈 문서. dev/fee/labor=4열 simple 섹션, platform=6열 기능나열 섹션. (labor은 SP3에서 분기 추가) */
+function laborSection() {
+  return {
+    id: "labor",
+    title: "인건비 (적산)",
+    kind: "labor" as const,
+    rates: { overhead: 1.1, techFee: 0.2 },
+    columns: [
+      { key: "role", label: "직무/등급", kind: "text" as const },
+      { key: "count", label: "인원(명)", kind: "number" as const },
+      { key: "daily", label: "노임단가(일)", kind: "number" as const },
+      { key: "days", label: "투입기간(일)", kind: "number" as const },
+      { key: "ratio", label: "참여율", kind: "number" as const },
+      { key: "direct", label: "직접인건비", kind: "amount" as const },
+    ],
+    rows: [],
+    subtotal: 0,
+  };
+}
+
+/** 유형별 빈 문서. dev/fee=4열 simple 섹션, platform=6열 기능나열 섹션, labor=KOSA 인건비 적산 섹션. */
 export function blankDocument(type: QuoteType): QuoteDocument {
-  const sections = type === "platform" ? [platformSection()] : [simpleSection()];
+  const sections =
+    type === "platform"
+      ? [platformSection()]
+      : type === "labor"
+        ? [laborSection()]
+        : [simpleSection()];
   return {
     type,
     header: {

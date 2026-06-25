@@ -5,7 +5,7 @@ import { blankDocument } from "../../document-schema";
 describe("sectionSubtotal", () => {
   it("amount 컬럼 합", () => {
     const s = {
-      id: "main", title: "", subtotal: 0,
+      id: "main", title: "", kind: "simple" as const, subtotal: 0,
       columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
       rows: [{ amount: 1000 }, { amount: 2000 }, { amount: null }],
     };
@@ -18,7 +18,7 @@ describe("quoteTotals", () => {
     const d = recomputeDocument({
       ...blankDocument("dev"),
       sections: [{
-        id: "main", title: "", subtotal: 0,
+        id: "main", title: "", kind: "simple" as const, subtotal: 0,
         columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
         rows: [{ amount: 1000000 }],
       }],
@@ -67,7 +67,7 @@ describe("quoteTotals — vatIncluded 역산", () => {
     const d = {
       ...blankDocument("dev"),
       sections: [{
-        id: "main", title: "", subtotal: 0,
+        id: "main", title: "", kind: "simple" as const, subtotal: 0,
         columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
         rows: [{ amount: 1100000 }],
       }],
@@ -87,12 +87,12 @@ describe("recomputeDocument — 멀티섹션 소계 합산", () => {
       ...blankDocument("dev"),
       sections: [
         {
-          id: "sec1", title: "섹션1", subtotal: 0,
+          id: "sec1", title: "섹션1", kind: "simple" as const, subtotal: 0,
           columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
           rows: [{ amount: 300000 }],
         },
         {
-          id: "sec2", title: "섹션2", subtotal: 0,
+          id: "sec2", title: "섹션2", kind: "simple" as const, subtotal: 0,
           columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
           rows: [{ amount: 700000 }],
         },

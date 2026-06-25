@@ -32,15 +32,19 @@ describe("blankDocument platform", () => {
     const d = blankDocument("dev");
     expect(d.sections[0].columns.map((c) => c.key)).toEqual(["category", "detail", "note", "amount"]);
   });
-  it("labor — simple 4열(category/detail/note/amount) 반환 (SP3 회귀 탐지)", () => {
+  it("labor — KOSA 인건비 적산 6열 반환", () => {
     const d = blankDocument("labor");
     expect(d.type).toBe("labor");
+    expect(d.sections[0].kind).toBe("labor");
     expect(d.sections[0].columns.map((c) => c.key)).toEqual([
-      "category",
-      "detail",
-      "note",
-      "amount",
+      "role",
+      "count",
+      "daily",
+      "days",
+      "ratio",
+      "direct",
     ]);
+    expect(d.sections[0].rates).toEqual({ overhead: 1.1, techFee: 0.2 });
     expect(quoteDocumentSchema.safeParse(d).success).toBe(true);
   });
 });

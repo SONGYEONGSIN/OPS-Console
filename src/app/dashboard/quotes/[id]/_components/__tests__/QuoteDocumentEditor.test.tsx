@@ -101,6 +101,33 @@ describe("QuoteDocumentEditor", () => {
     expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
   });
 
+  describe("labor 섹션 에디터", () => {
+    it("labor 유형 선택 시 요율 입력이 렌더되고, 행 추가 후 등급 드롭다운 선택 시 단가가 채워진다", () => {
+      render(
+        <QuoteDocumentEditor
+          id="q-1"
+          quoteType="labor"
+          document={blankDocument("labor")}
+          customer="테스트 대학"
+          onSave={mockSave}
+        />,
+      );
+      // 요율 입력(제경비율, 기술료율)은 초기부터 렌더됨
+      expect(screen.getByLabelText("제경비율")).toBeInTheDocument();
+      expect(screen.getByLabelText("기술료율")).toBeInTheDocument();
+
+      // 행 추가 후 등급 드롭다운 등장
+      fireEvent.click(screen.getByText("+ 행 추가"));
+      const gradeSelect = screen.getByRole("combobox", { name: /등급 선택/ });
+      expect(gradeSelect).toBeInTheDocument();
+
+      // 등급 선택 → 단가 채움
+      fireEvent.change(gradeSelect, { target: { value: "planner" } });
+      // IT기획자 578206 이 노임단가(일) 숫자 입력에 표시되어야 함
+      expect(screen.getByDisplayValue("578206")).toBeInTheDocument();
+    });
+  });
+
   describe("유형 변경 confirm 분기", () => {
     afterEach(() => {
       vi.restoreAllMocks();
