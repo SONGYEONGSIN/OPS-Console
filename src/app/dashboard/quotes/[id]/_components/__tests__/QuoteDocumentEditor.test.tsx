@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { blankDocument } from "@/features/quotes/document-schema";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { blankDocument, QUOTE_TYPE_LABELS } from "@/features/quotes/document-schema";
 
 const { mockSave } = vi.hoisted(() => ({
   mockSave: vi.fn(),
@@ -62,5 +62,114 @@ describe("QuoteDocumentEditor", () => {
     expect(screen.getByText("공급가액")).toBeInTheDocument();
     expect(screen.getByText("부가세")).toBeInTheDocument();
     expect(screen.getByText("합계")).toBeInTheDocument();
+  });
+
+  it("유형 선택기가 렌더되며 현재 quoteType 값이 선택되어 있다", () => {
+    render(
+      <QuoteDocumentEditor
+        id="q-1"
+        quoteType="dev"
+        document={blankDocument("dev")}
+        customer="테스트 대학"
+        onSave={mockSave}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: /견적서 유형/ });
+    expect(select).toBeInTheDocument();
+    expect((select as HTMLSelectElement).value).toBe("dev");
+    // 모든 유형 옵션이 있는지 확인
+    expect(screen.getByText(QUOTE_TYPE_LABELS["dev"])).toBeInTheDocument();
+    expect(screen.getByText(QUOTE_TYPE_LABELS["platform"])).toBeInTheDocument();
+  });
+
+  it("빈 문서에서 platform 선택 시 platform 6열 컬럼으로 교체된다", () => {
+    render(
+      <QuoteDocumentEditor
+        id="q-1"
+        quoteType="dev"
+        document={blankDocument("dev")}
+        customer="테스트 대학"
+        onSave={mockSave}
+      />,
+    );
+    const select = screen.getByRole("combobox", { name: /견적서 유형/ });
+    fireEvent.change(select, { target: { value: "platform" } });
+    // platform 컬럼: 세부서비스·기능명세 등장
+    expect(screen.getByText("세부서비스")).toBeInTheDocument();
+    expect(screen.getByText("기능명세")).toBeInTheDocument();
+    // dev 전용 컬럼 '상세내역'은 사라짐
+    expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
+  });
+
+  describe("유형 변경 confirm 분기", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("confirm=false 시 유형·섹션이 유지된다(dev 컬럼 그대로, platform 컬럼 없음)", () => {
+      // rows가 있는 dev 문서
+      const docWithRow = {
+        ...blankDocument("dev"),
+        sections: [
+          {
+            ...blankDocument("dev").sections[0],
+            rows: [{ category: "작업", detail: "UI 개발", note: "", amount: 0 }],
+          },
+        ],
+      };
+
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+
+      render(
+        <QuoteDocumentEditor
+          id="q-1"
+          quoteType="dev"
+          document={docWithRow}
+          customer="테스트 대학"
+          onSave={mockSave}
+        />,
+      );
+
+      const select = screen.getByRole("combobox", { name: /견적서 유형/ });
+      fireEvent.change(select, { target: { value: "platform" } });
+
+      // dev 컬럼 헤더가 여전히 존재해야 함
+      expect(screen.getByText("상세내역")).toBeInTheDocument();
+      // platform 전용 컬럼은 없어야 함
+      expect(screen.queryByText("세부서비스")).not.toBeInTheDocument();
+      // select 값도 dev 유지
+      expect((select as HTMLSelectElement).value).toBe("dev");
+    });
+
+    it("confirm=true 시 platform 컬럼으로 교체된다", () => {
+      const docWithRow = {
+        ...blankDocument("dev"),
+        sections: [
+          {
+            ...blankDocument("dev").sections[0],
+            rows: [{ category: "작업", detail: "UI 개발", note: "", amount: 0 }],
+          },
+        ],
+      };
+
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+
+      render(
+        <QuoteDocumentEditor
+          id="q-1"
+          quoteType="dev"
+          document={docWithRow}
+          customer="테스트 대학"
+          onSave={mockSave}
+        />,
+      );
+
+      const select = screen.getByRole("combobox", { name: /견적서 유형/ });
+      fireEvent.change(select, { target: { value: "platform" } });
+
+      expect(screen.getByText("세부서비스")).toBeInTheDocument();
+      expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
+      expect((select as HTMLSelectElement).value).toBe("platform");
+    });
   });
 });
