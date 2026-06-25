@@ -12,7 +12,7 @@ export function laborRollup(input: {
 }
 
 /** labor 섹션 한 행의 직접인건비 = 인원×노임단가×투입일×참여율. */
-function laborRowDirect(row: Record<string, string | number | null>): number {
+export function laborRowDirect(row: Record<string, string | number | null>): number {
   const num = (k: string) => (typeof row[k] === "number" ? (row[k] as number) : 0);
   return Math.round(num("count") * num("daily") * num("days") * num("ratio"));
 }
@@ -56,10 +56,14 @@ export function quoteTotals(
 
 /** 섹션 소계 + 총계를 재계산한 문서 반환(불변). 저장 시 서버가 호출. */
 export function recomputeDocument(document: QuoteDocument): QuoteDocument {
-  const sections = document.sections.map((s) => ({
-    ...s,
-    subtotal: sectionSubtotal(s),
-  }));
+  const sections = document.sections.map((s) => {
+    if (s.kind === "labor") {
+      const rows = s.rows.map((r) => ({ ...r, direct: laborRowDirect(r) }));
+      const withRows = { ...s, rows };
+      return { ...withRows, subtotal: sectionSubtotal(withRows) };
+    }
+    return { ...s, subtotal: sectionSubtotal(s) };
+  });
   const next = { ...document, sections };
   return { ...next, totals: quoteTotals(next) };
 }
