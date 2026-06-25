@@ -86,24 +86,38 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: "#dddddd",
   },
-  // 머리말
+  // 머리말 — 타이틀
   titleBlock: {
-    marginBottom: 18,
+    marginBottom: 16,
     paddingBottom: 10,
     borderBottomWidth: 2,
     borderBottomColor: "#b8331e",
     alignItems: "center",
   },
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: 700,
     color: "#1a1a1a",
-    letterSpacing: 8,
+    letterSpacing: 10,
   },
-  headerBox: {
-    marginBottom: 18,
-    padding: 10,
-    backgroundColor: "#f4eddd",
+  // 2열 헤더
+  headerGrid: {
+    flexDirection: "row",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1a1a1a",
+  },
+  headerCol: {
+    flex: 1,
+  },
+  headerColLeft: {
+    paddingRight: 12,
+    borderRightWidth: 0.5,
+    borderRightColor: "#dddddd",
+  },
+  headerColRight: {
+    paddingLeft: 12,
   },
   headerRow: {
     flexDirection: "row",
@@ -112,7 +126,7 @@ const styles = StyleSheet.create({
   headerLabel: {
     fontSize: 9,
     color: "#666666",
-    width: 72,
+    width: 64,
   },
   headerValue: {
     fontSize: 10,
@@ -125,30 +139,15 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     flex: 1,
   },
-  // 발신자
-  senderBlock: {
-    marginBottom: 18,
-    borderTopWidth: 0.5,
-    borderTopColor: "#dddddd",
-    paddingTop: 8,
-  },
-  senderRow: {
-    flexDirection: "row",
-    marginBottom: 2,
-  },
-  senderLabel: {
-    fontSize: 8,
-    color: "#999999",
-    width: 48,
-  },
-  senderValue: {
-    fontSize: 8,
-    color: "#555555",
+  headerValueCost: {
+    fontSize: 11,
+    color: "#b8331e",
+    fontWeight: 700,
     flex: 1,
   },
   // 섹션 표
   sectionBlock: {
-    marginBottom: 18,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 11,
@@ -158,6 +157,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     marginBottom: 0,
+  },
+  sectionNote: {
+    fontSize: 8,
+    color: "#555555",
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
   tableRow: {
     flexDirection: "row",
@@ -251,7 +256,7 @@ const styles = StyleSheet.create({
   },
   // 합계
   totalsBlock: {
-    marginBottom: 18,
+    marginBottom: 16,
     padding: 10,
     borderWidth: 1,
     borderColor: "#b8331e",
@@ -285,17 +290,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: "right",
   },
-  // 약관
-  termsBlock: {
+  // 안내사항
+  guideBlock: {
     marginBottom: 10,
   },
-  termsTitle: {
+  guideTitle: {
     fontSize: 9,
     fontWeight: 700,
     color: "#333333",
     marginBottom: 4,
   },
-  termLine: {
+  guideLine: {
     fontSize: 8,
     color: "#555555",
     marginBottom: 2,
@@ -324,12 +329,8 @@ function cellValue(
   return String(v);
 }
 
-function SectionTable({
-  section,
-}: {
-  section: QuoteSection;
-}) {
-  const { columns, rows, kind, rates, subtotal } = section;
+function SectionTable({ section }: { section: QuoteSection }) {
+  const { columns, rows, kind, rates, subtotal, note } = section;
 
   // labor 섹션: 적산 블록 추가
   // PDF는 recomputeDocument 거친 doc을 받으므로 r.direct 필드를 재사용(단일 소스)
@@ -403,6 +404,9 @@ function SectionTable({
           </View>
         </View>
       )}
+
+      {/* 섹션 문구 */}
+      {note ? <Text style={styles.sectionNote}>※ {note}</Text> : null}
     </View>
   );
 }
@@ -414,15 +418,7 @@ export type QuotePdfInput = {
 
 function QuoteDocument({ document: rawDoc, customer }: QuotePdfInput) {
   const doc = recomputeDocument(rawDoc);
-  const { header, sections, totals, terms } = doc;
-
-  const senderLines: { label: string; value: string }[] = [
-    { label: "회사명", value: QUOTE_SENDER.company },
-    { label: "대표자", value: QUOTE_SENDER.ceo },
-    ...(QUOTE_SENDER.address ? [{ label: "주소", value: QUOTE_SENDER.address }] : []),
-    ...(QUOTE_SENDER.fax ? [{ label: "팩스", value: QUOTE_SENDER.fax }] : []),
-    ...(QUOTE_SENDER.email ? [{ label: "이메일", value: QUOTE_SENDER.email }] : []),
-  ];
+  const { header, sections, totals, guide } = doc;
 
   return (
     <Document>
@@ -438,54 +434,73 @@ function QuoteDocument({ document: rawDoc, customer }: QuotePdfInput) {
           <Text style={styles.title}>견 적 서</Text>
         </View>
 
-        {/* 머리말 — 수신·견적명·번호·일자·유효기간·담당 */}
-        <View style={styles.headerBox}>
-          {header.recipient && (
+        {/* 2열 헤더 — 좌: 견적 정보 / 우: 발신자 상수 + 담당자 */}
+        <View style={styles.headerGrid}>
+          {/* 좌 */}
+          <View style={[styles.headerCol, styles.headerColLeft]}>
             <View style={styles.headerRow}>
               <Text style={styles.headerLabel}>수 신</Text>
               <Text style={styles.headerValueBold}>{header.recipient}</Text>
             </View>
-          )}
-          {header.quoteName && (
             <View style={styles.headerRow}>
               <Text style={styles.headerLabel}>견적명</Text>
               <Text style={styles.headerValue}>{header.quoteName}</Text>
             </View>
-          )}
-          {header.quoteNo && (
             <View style={styles.headerRow}>
-              <Text style={styles.headerLabel}>견적번호</Text>
-              <Text style={styles.headerValue}>{header.quoteNo}</Text>
+              <Text style={styles.headerLabel}>접수인원</Text>
+              <Text style={styles.headerValue}>{header.recipientCount}</Text>
             </View>
-          )}
-          {header.quoteDate && (
             <View style={styles.headerRow}>
-              <Text style={styles.headerLabel}>견적일</Text>
+              <Text style={styles.headerLabel}>견적비용</Text>
+              <Text style={styles.headerValueCost}>
+                ₩{formatAmount(totals.total)} (VAT 포함)
+              </Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>견적일자</Text>
               <Text style={styles.headerValue}>{header.quoteDate}</Text>
             </View>
-          )}
-          {header.validUntil && (
             <View style={styles.headerRow}>
               <Text style={styles.headerLabel}>유효기간</Text>
               <Text style={styles.headerValue}>{header.validUntil}</Text>
             </View>
-          )}
-          {header.manager && (
             <View style={styles.headerRow}>
-              <Text style={styles.headerLabel}>담 당</Text>
+              <Text style={styles.headerLabel}>결제조건</Text>
+              <Text style={styles.headerValue}>{header.paymentTerms}</Text>
+            </View>
+          </View>
+
+          {/* 우 */}
+          <View style={[styles.headerCol, styles.headerColRight]}>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>법인명</Text>
+              <Text style={styles.headerValueBold}>{QUOTE_SENDER.company}</Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>대표이사</Text>
+              <Text style={styles.headerValue}>{QUOTE_SENDER.ceo}</Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>등록번호</Text>
+              <Text style={styles.headerValue}>{QUOTE_SENDER.bizNo}</Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>주 소</Text>
+              <Text style={styles.headerValue}>{QUOTE_SENDER.address}</Text>
+            </View>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>담당자</Text>
               <Text style={styles.headerValue}>{header.manager}</Text>
             </View>
-          )}
-        </View>
-
-        {/* 발신자 */}
-        <View style={styles.senderBlock}>
-          {senderLines.map((line) => (
-            <View key={line.label} style={styles.senderRow}>
-              <Text style={styles.senderLabel}>{line.label}</Text>
-              <Text style={styles.senderValue}>{line.value}</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>전 화</Text>
+              <Text style={styles.headerValue}>{header.managerTel}</Text>
             </View>
-          ))}
+            <View style={styles.headerRow}>
+              <Text style={styles.headerLabel}>이메일</Text>
+              <Text style={styles.headerValue}>{header.managerEmail}</Text>
+            </View>
+          </View>
         </View>
 
         {/* 섹션 표 */}
@@ -512,12 +527,12 @@ function QuoteDocument({ document: rawDoc, customer }: QuotePdfInput) {
           </Text>
         </View>
 
-        {/* 약관 */}
-        {terms.length > 0 && (
-          <View style={styles.termsBlock}>
-            <Text style={styles.termsTitle}>[유의사항]</Text>
-            {terms.map((line, i) => (
-              <Text key={i} style={styles.termLine}>
+        {/* 안내사항 */}
+        {guide.length > 0 && (
+          <View style={styles.guideBlock}>
+            <Text style={styles.guideTitle}>■ 산출 근거 및 주의 안내사항</Text>
+            {guide.map((line, i) => (
+              <Text key={i} style={styles.guideLine}>
                 {line}
               </Text>
             ))}
