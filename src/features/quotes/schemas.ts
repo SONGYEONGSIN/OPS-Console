@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { quoteTypeSchema } from "./document-schema";
 
 export const QUOTE_STATUS_VALUES = ["draft", "sent", "won", "lost"] as const;
 export const quoteStatusSchema = z.enum(QUOTE_STATUS_VALUES);
@@ -20,6 +21,8 @@ export const quoteRowSchema = z.object({
   owner_email: z.string().nullable().optional(),
   status: quoteStatusSchema,
   note: z.string().nullable().optional(),
+  quote_type: quoteTypeSchema.optional(),
+  document: z.unknown().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
