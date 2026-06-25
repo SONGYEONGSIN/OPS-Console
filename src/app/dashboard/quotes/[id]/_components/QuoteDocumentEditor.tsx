@@ -285,7 +285,7 @@ function SectionTable({
     <div className="mb-2">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="bg-washi-raised text-left text-xs text-muted">
+          <tr className="bg-washi text-left text-xs text-muted">
             {section.columns.map((col) => (
               <th
                 key={col.key}
@@ -663,7 +663,6 @@ export function QuoteDocumentEditor({
         <div className="flex items-center gap-3">
           {/* 유형 선택기 */}
           <label className="flex items-center gap-1.5 text-xs text-muted">
-            <span>견적서 유형</span>
             <select
               aria-label="견적서 유형"
               value={currentQuoteType}
@@ -697,7 +696,7 @@ export function QuoteDocumentEditor({
                 e.preventDefault();
               }
             }}
-            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
           >
             PDF
           </a>
