@@ -198,7 +198,7 @@ function LaborRatesRow({
   }
 
   return (
-    <div className="mb-2 flex items-center gap-4 text-xs text-muted">
+    <div className="flex items-center gap-3 text-xs text-cream">
       <label className="flex items-center gap-1" htmlFor={`${section.id}-overhead`}>
         제경비율
         <input
@@ -211,7 +211,7 @@ function LaborRatesRow({
             const n = parseFloat(e.target.value);
             if (!isNaN(n)) setRate("overhead", n);
           }}
-          className="w-16 border border-line bg-transparent px-1 py-0.5 text-right text-ink outline-none focus:border-ink"
+          className="w-14 border border-cream bg-transparent px-1 py-0.5 text-right text-cream outline-none focus:border-cream"
         />
       </label>
       <label className="flex items-center gap-1" htmlFor={`${section.id}-techfee`}>
@@ -226,7 +226,7 @@ function LaborRatesRow({
             const n = parseFloat(e.target.value);
             if (!isNaN(n)) setRate("techFee", n);
           }}
-          className="w-16 border border-line bg-transparent px-1 py-0.5 text-right text-ink outline-none focus:border-ink"
+          className="w-14 border border-cream bg-transparent px-1 py-0.5 text-right text-cream outline-none focus:border-cream"
         />
       </label>
     </div>
@@ -283,9 +283,6 @@ function SectionTable({
 
   return (
     <div className="mb-2">
-      {isLabor && (
-        <LaborRatesRow section={section} onSectionChange={onSectionChange} />
-      )}
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-washi-raised text-left text-xs text-muted">
@@ -467,14 +464,16 @@ function SectionTable({
           )}
         </tbody>
       </table>
-      <button
-        type="button"
-        onClick={addRow}
-        className="mt-1 text-xs text-muted transition-colors hover:text-ink"
-        aria-label="행 추가"
-      >
-        + 행 추가
-      </button>
+      <div className="mt-1 flex justify-end">
+        <button
+          type="button"
+          onClick={addRow}
+          className="border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
+          aria-label="행 추가"
+        >
+          + 행 추가
+        </button>
+      </div>
       {isLabor && <LaborRollupBlock section={section} />}
     </div>
   );
@@ -489,17 +488,26 @@ function SectionBlock({
   section: QuoteSection;
   onSectionChange: (s: QuoteSection) => void;
 }) {
+  const isLabor = section.kind === "labor";
+
   return (
-    <section className="border border-line bg-washi p-4">
-      <h3 className="mb-2 text-sm font-bold text-ink">{section.title}</h3>
-      <SectionTable section={section} onSectionChange={onSectionChange} />
-      <textarea
-        rows={2}
-        value={section.note}
-        onChange={(e) => onSectionChange({ ...section, note: e.target.value })}
-        className="mt-2 w-full resize-none border border-line-soft bg-transparent px-2 py-1 text-xs text-ink outline-none focus:border-ink"
-        placeholder="이 항목 관련 문구/설명"
-      />
+    <section className="border border-line bg-washi">
+      <div className="flex items-center justify-between bg-ink px-3 py-1.5">
+        <h3 className="text-sm font-bold text-cream">{section.title}</h3>
+        {isLabor && (
+          <LaborRatesRow section={section} onSectionChange={onSectionChange} />
+        )}
+      </div>
+      <div className="p-4">
+        <SectionTable section={section} onSectionChange={onSectionChange} />
+          <textarea
+          rows={2}
+          value={section.note}
+          onChange={(e) => onSectionChange({ ...section, note: e.target.value })}
+          className="mt-2 w-full resize-none border border-line-soft bg-transparent px-2 py-1 text-xs text-ink outline-none focus:border-ink"
+          placeholder="이 항목 관련 문구/설명"
+        />
+      </div>
     </section>
   );
 }
@@ -548,13 +556,15 @@ function GuideEditor({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={addLine}
-        className="mt-1 text-xs text-muted transition-colors hover:text-ink"
-      >
-        + 안내 추가
-      </button>
+      <div className="mt-1 flex justify-end">
+        <button
+          type="button"
+          onClick={addLine}
+          className="border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
+        >
+          + 안내 추가
+        </button>
+      </div>
     </div>
   );
 }
@@ -687,7 +697,7 @@ export function QuoteDocumentEditor({
                 e.preventDefault();
               }
             }}
-            className="border border-ink bg-transparent px-4 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
           >
             PDF
           </a>
@@ -695,46 +705,49 @@ export function QuoteDocumentEditor({
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="border border-ink bg-transparent px-4 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
+            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
           >
             {saving ? "저장 중…" : "저장"}
           </button>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 pb-6 pt-2">
-        {/* 타이틀 + 구분선 */}
-        <div className="border-b border-ink pb-2">
-          <h1 className="text-center text-2xl font-bold text-ink">견적서</h1>
+      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-6 pt-2">
+        {/* A4 폭 문서 시트 */}
+        <div className="mx-auto w-full max-w-[210mm] space-y-5 border border-line bg-cream px-10 py-8">
+          {/* 타이틀 + 구분선 */}
+          <div className="border-b border-ink pb-2">
+            <h1 className="text-center text-2xl font-bold text-ink">견적서</h1>
+          </div>
+
+          {/* 공통 헤더 2열 */}
+          <DocumentHeader
+            header={doc.header}
+            total={doc.totals.total}
+            onHeaderChange={onHeaderChange}
+          />
+
+          {/* 4섹션 */}
+          <div className="space-y-4">
+            {doc.sections.map((section, idx) => (
+              <SectionBlock
+                key={section.id}
+                section={section}
+                onSectionChange={(s) => onSectionChange(idx, s)}
+              />
+            ))}
+          </div>
+
+          {/* 안내사항 */}
+          <GuideEditor guide={doc.guide} onGuideChange={onGuideChange} />
+
+          {/* 합계 한글 표기 */}
+          {doc.totals.total > 0 && (
+            <p className="text-right text-xs text-muted">
+              일금 {koreanAmount(doc.totals.total)}원 정 (VAT 포함)
+            </p>
+          )}
         </div>
-
-        {/* 공통 헤더 2열 */}
-        <DocumentHeader
-          header={doc.header}
-          total={doc.totals.total}
-          onHeaderChange={onHeaderChange}
-        />
-
-        {/* 4섹션 */}
-        <div className="space-y-4">
-          {doc.sections.map((section, idx) => (
-            <SectionBlock
-              key={section.id}
-              section={section}
-              onSectionChange={(s) => onSectionChange(idx, s)}
-            />
-          ))}
-        </div>
-
-        {/* 안내사항 */}
-        <GuideEditor guide={doc.guide} onGuideChange={onGuideChange} />
-
-        {/* 합계 한글 표기 */}
-        {doc.totals.total > 0 && (
-          <p className="text-right text-xs text-muted">
-            일금 {koreanAmount(doc.totals.total)}원 정 (VAT 포함)
-          </p>
-        )}
       </div>
     </div>
   );
