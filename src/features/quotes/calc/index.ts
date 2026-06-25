@@ -69,8 +69,9 @@ function groupToKorean(g: number): string {
 
 /** 숫자 → 한글 금액(예: 1100000 → '일백십만'). 0·음수·소수 → '영'. */
 export function koreanAmount(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "영";
   const v0 = Math.floor(n);
-  if (!Number.isFinite(n) || v0 <= 0) return "영";
+  if (v0 <= 0) return "영";
   let v = v0;
   const groups: string[] = [];
   let gi = 0;

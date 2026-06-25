@@ -323,11 +323,20 @@ export function QuoteDocumentEditor({
   id,
   quoteType,
   document: initialDocument,
+  customer,
   onSave,
 }: QuoteDocumentEditorProps) {
-  const [doc, setDoc] = useState<QuoteDocument>(() =>
-    recomputeDocument(initialDocument),
-  );
+  const [doc, setDoc] = useState<QuoteDocument>(() => {
+    // 신규 문서(recipient 비어있음)일 때만 customer로 prefill
+    const seed =
+      !initialDocument.header.recipient && customer
+        ? {
+            ...initialDocument,
+            header: { ...initialDocument.header, recipient: customer },
+          }
+        : initialDocument;
+    return recomputeDocument(seed);
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

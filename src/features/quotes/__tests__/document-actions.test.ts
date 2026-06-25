@@ -1,6 +1,6 @@
 import { it, expect, vi, beforeEach } from "vitest";
-const { mockAdmin, mockGetOperator } = vi.hoisted(() => ({ mockAdmin: vi.fn(), mockGetOperator: vi.fn() }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mockAdmin }));
+const { mockCreateClient, mockGetOperator } = vi.hoisted(() => ({ mockCreateClient: vi.fn(), mockGetOperator: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: mockCreateClient }));
 vi.mock("@/features/auth/queries", () => ({ getCurrentOperator: mockGetOperator }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { saveQuoteDocument } from "../document-actions";
@@ -10,7 +10,7 @@ beforeEach(() => { vi.clearAllMocks(); mockGetOperator.mockResolvedValue({ email
 
 it("저장 시 recompute → amount=총계 update", async () => {
   const update = vi.fn(() => ({ eq: vi.fn().mockResolvedValue({ error: null }) }));
-  mockAdmin.mockReturnValue({ from: () => ({ update }) });
+  mockCreateClient.mockResolvedValue({ from: () => ({ update }) });
   const doc = { ...blankDocument("dev"), sections: [{ id:"main", title:"", subtotal:0, columns:[{key:"amount",label:"비용",kind:"amount" as const}], rows:[{ amount: 1000000 }] }] };
   const r = await saveQuoteDocument("q1", doc, "dev");
   expect(r.ok).toBe(true);

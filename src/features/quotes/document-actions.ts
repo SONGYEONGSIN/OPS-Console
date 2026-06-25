@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getCurrentOperator } from "@/features/auth/queries";
 import {
   quoteDocumentSchema,
@@ -25,8 +25,8 @@ export async function saveQuoteDocument(
 
   // 서버 재계산(클라이언트 값 불신) → amount 동기화
   const recomputed = recomputeDocument(parsed.data);
-  const admin = createAdminClient();
-  const { error } = await admin
+  const supabase = await createClient();
+  const { error } = await supabase
     .from("quotes")
     .update({
       quote_type: tp.data,
