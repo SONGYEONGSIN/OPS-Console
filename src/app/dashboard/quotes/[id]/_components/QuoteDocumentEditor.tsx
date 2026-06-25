@@ -12,7 +12,8 @@ import {
   blankDocument,
 } from "@/features/quotes/document-schema";
 import { QUOTE_SENDER } from "@/features/quotes/sender";
-import { recomputeDocument, koreanAmount } from "@/features/quotes/calc";
+import { recomputeDocument, koreanAmount, laborRollup } from "@/features/quotes/calc";
+import { KOSA_2026, kosaDaily } from "@/features/quotes/kosa-2026";
 import { saveQuoteDocument } from "@/features/quotes/document-actions";
 
 // ────────────── 헬퍼 ──────────────
@@ -105,6 +106,83 @@ function Masthead({
   );
 }
 
+// ────────────── 노임단가 적산 내역 ──────────────
+
+function LaborRollupBlock({ section }: { section: QuoteSection }) {
+  const directSum = section.rows.reduce((acc, r) => {
+    const num = (k: string) => (typeof r[k] === "number" ? (r[k] as number) : 0);
+    return acc + Math.round(num("count") * num("daily") * num("days") * num("ratio"));
+  }, 0);
+  const rates = section.rates ?? { overhead: 1.1, techFee: 0.2 };
+  const rollup = laborRollup({ direct: directSum, overheadRate: rates.overhead, techFeeRate: rates.techFee });
+
+  return (
+    <div className="mt-2 border border-line bg-washi-raised px-3 py-2 text-xs">
+      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5">
+        <span className="text-muted">직접인건비합계</span>
+        <span className="text-right text-ink">{formatKrw(rollup.direct)} 원</span>
+        <span className="text-muted">제경비</span>
+        <span className="text-right text-ink">{formatKrw(rollup.overhead)} 원</span>
+        <span className="text-muted">기술료</span>
+        <span className="text-right text-ink">{formatKrw(rollup.techFee)} 원</span>
+        <span className="font-medium text-ink">인건비합계</span>
+        <span className="text-right font-medium text-ink">{formatKrw(rollup.total)} 원</span>
+      </div>
+    </div>
+  );
+}
+
+// ────────────── 노임단가 요율 입력 ──────────────
+
+function LaborRatesRow({
+  section,
+  onSectionChange,
+}: {
+  section: QuoteSection;
+  onSectionChange: (s: QuoteSection) => void;
+}) {
+  const rates = section.rates ?? { overhead: 1.1, techFee: 0.2 };
+
+  function setRate(key: "overhead" | "techFee", value: number) {
+    onSectionChange({ ...section, rates: { ...rates, [key]: value } });
+  }
+
+  return (
+    <div className="mb-2 flex items-center gap-4 text-xs text-muted">
+      <label className="flex items-center gap-1" htmlFor={`${section.id}-overhead`}>
+        제경비율
+        <input
+          id={`${section.id}-overhead`}
+          aria-label="제경비율"
+          type="number"
+          step="0.01"
+          value={rates.overhead}
+          onChange={(e) => {
+            const n = parseFloat(e.target.value);
+            if (!isNaN(n)) setRate("overhead", n);
+          }}
+          className="w-16 border border-line bg-transparent px-1 py-0.5 text-right text-ink outline-none focus:border-ink"
+        />
+      </label>
+      <label className="flex items-center gap-1" htmlFor={`${section.id}-techfee`}>
+        기술료율
+        <input
+          id={`${section.id}-techfee`}
+          aria-label="기술료율"
+          type="number"
+          step="0.01"
+          value={rates.techFee}
+          onChange={(e) => {
+            const n = parseFloat(e.target.value);
+            if (!isNaN(n)) setRate("techFee", n);
+          }}
+          className="w-16 border border-line bg-transparent px-1 py-0.5 text-right text-ink outline-none focus:border-ink"
+        />
+      </label>
+    </div>
+  );
+}
+
 // ────────────── 섹션 표 ──────────────
 
 function SectionTable({
@@ -114,10 +192,22 @@ function SectionTable({
   section: QuoteSection;
   onSectionChange: (s: QuoteSection) => void;
 }) {
+  const isLabor = section.kind === "labor";
+
   function setCell(rowIdx: number, key: string, value: string | number) {
     const rows = section.rows.map((r, i) =>
       i === rowIdx ? { ...r, [key]: value } : r,
     );
+    onSectionChange({ ...section, rows });
+  }
+
+  function setLaborGrade(rowIdx: number, gradeKey: string) {
+    const daily = kosaDaily(gradeKey);
+    const grade = KOSA_2026.find((g) => g.key === gradeKey);
+    const rows = section.rows.map((r, i) => {
+      if (i !== rowIdx) return r;
+      return { ...r, daily, role: grade ? grade.name : r.role };
+    });
     onSectionChange({ ...section, rows });
   }
 
@@ -138,6 +228,9 @@ function SectionTable({
   return (
     <div className="mb-2">
       <div className="mb-1 text-xs font-medium text-muted">{section.title}</div>
+      {isLabor && (
+        <LaborRatesRow section={section} onSectionChange={onSectionChange} />
+      )}
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="bg-washi-raised text-left text-xs text-muted">
@@ -169,6 +262,56 @@ function SectionTable({
                 {section.columns.map((col) => {
                   const raw = row[col.key];
                   const strVal = raw == null ? "" : String(raw);
+
+                  // labor 섹션: direct 컬럼은 읽기전용(자동계산)
+                  if (isLabor && col.key === "direct") {
+                    const numVal = typeof raw === "number" ? raw : 0;
+                    return (
+                      <td
+                        key={col.key}
+                        className="border border-line bg-washi-raised px-2 py-0.5 text-right text-xs text-muted"
+                      >
+                        {formatKrw(numVal)}
+                      </td>
+                    );
+                  }
+
+                  // labor 섹션: daily 컬럼은 등급 드롭다운 + 숫자 직접 입력
+                  if (isLabor && col.key === "daily") {
+                    const numVal = typeof raw === "number" ? raw : 0;
+                    return (
+                      <td key={col.key} className="border border-line px-1 py-0.5">
+                        <div className="flex items-center gap-1">
+                          <select
+                            aria-label="등급 선택"
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (e.target.value) setLaborGrade(rowIdx, e.target.value);
+                            }}
+                            className="border border-line bg-cream px-1 py-0.5 text-xs text-ink outline-none focus:border-ink"
+                          >
+                            <option value="">등급 선택</option>
+                            {KOSA_2026.map((g) => (
+                              <option key={g.key} value={g.key}>
+                                {g.name}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            value={numVal === 0 ? "" : numVal}
+                            onChange={(e) => {
+                              const n = e.target.value === "" ? 0 : Number(e.target.value);
+                              setCell(rowIdx, col.key, isNaN(n) ? 0 : n);
+                            }}
+                            className="w-24 bg-transparent text-right text-sm text-ink outline-none"
+                            placeholder="0"
+                          />
+                        </div>
+                      </td>
+                    );
+                  }
+
                   if (col.kind === "amount") {
                     const numVal = typeof raw === "number" ? raw : 0;
                     return (
@@ -239,6 +382,7 @@ function SectionTable({
       >
         + 행 추가
       </button>
+      {isLabor && <LaborRollupBlock section={section} />}
     </div>
   );
 }
