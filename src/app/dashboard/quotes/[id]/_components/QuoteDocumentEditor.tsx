@@ -585,6 +585,14 @@ export function QuoteDocumentEditor({
           {saved && !saving && (
             <span className="text-xs text-muted">저장됨</span>
           )}
+          <a
+            href={`/api/quotes/${id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border border-ink bg-transparent px-4 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+          >
+            PDF
+          </a>
           <button
             type="button"
             onClick={handleSave}
