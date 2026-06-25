@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Section, DefList } from "../shared";
 import type { ViewProps } from "../types";
 import { QUOTE_STATUS_LABEL } from "@/features/quotes/schemas";
@@ -12,6 +13,14 @@ export function QuoteView({ row }: ViewProps) {
 
   return (
     <div className="space-y-6 p-4">
+      {/* 문서 작성/열기 진입 */}
+      <Link
+        href={`/dashboard/quotes/${row.id}`}
+        className="inline-flex items-center border border-ink px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+      >
+        문서 작성 / 열기
+      </Link>
+
       <Section title="견적 정보">
         <DefList
           items={[
