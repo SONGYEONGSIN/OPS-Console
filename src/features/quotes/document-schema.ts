@@ -30,7 +30,7 @@ export type QuoteRow = z.infer<typeof quoteRowSchema>;
 export const quoteColumnSchema = z.object({
   key: z.string(),
   label: z.string(),
-  kind: z.enum(["text", "number", "amount"]).default("text"),
+  kind: z.enum(["text", "number", "amount", "multiline"]).default("text"),
 });
 export const quoteSectionSchema = z.object({
   id: z.string(),
@@ -58,14 +58,40 @@ export const quoteDocumentSchema = z.object({
 });
 export type QuoteDocument = z.infer<typeof quoteDocumentSchema>;
 
-/** 유형별 빈 문서. dev/fee는 4열 단일 섹션. (platform/labor은 SP2/SP3에서 확장) */
+function simpleSection() {
+  return {
+    id: "main",
+    title: "견적 내역",
+    columns: [
+      { key: "category", label: "구분", kind: "text" as const },
+      { key: "detail", label: "상세내역", kind: "text" as const },
+      { key: "note", label: "비고", kind: "text" as const },
+      { key: "amount", label: "비용", kind: "amount" as const },
+    ],
+    rows: [],
+    subtotal: 0,
+  };
+}
+function platformSection() {
+  return {
+    id: "main",
+    title: "서비스 내역",
+    columns: [
+      { key: "category", label: "구분", kind: "text" as const },
+      { key: "service", label: "세부서비스", kind: "text" as const },
+      { key: "features", label: "기능명세", kind: "multiline" as const },
+      { key: "period", label: "기간", kind: "text" as const },
+      { key: "qty", label: "수량", kind: "text" as const },
+      { key: "amount", label: "금액", kind: "amount" as const },
+    ],
+    rows: [],
+    subtotal: 0,
+  };
+}
+
+/** 유형별 빈 문서. dev/fee/labor=4열 simple 섹션, platform=6열 기능나열 섹션. (labor은 SP3에서 분기 추가) */
 export function blankDocument(type: QuoteType): QuoteDocument {
-  const simpleColumns = [
-    { key: "category", label: "구분", kind: "text" as const },
-    { key: "detail", label: "상세내역", kind: "text" as const },
-    { key: "note", label: "비고", kind: "text" as const },
-    { key: "amount", label: "비용", kind: "amount" as const },
-  ];
+  const sections = type === "platform" ? [platformSection()] : [simpleSection()];
   return {
     type,
     header: {
@@ -76,9 +102,7 @@ export function blankDocument(type: QuoteType): QuoteDocument {
       validUntil: "견적일로부터 30일 이내",
       manager: "",
     },
-    sections: [
-      { id: "main", title: "견적 내역", columns: simpleColumns, rows: [], subtotal: 0 },
-    ],
+    sections,
     totals: { supply: 0, vat: 0, total: 0, vatIncluded: false },
     terms: [],
   };
