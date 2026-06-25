@@ -421,7 +421,11 @@ export function QuoteDocumentEditor({
             <select
               aria-label="견적서 유형"
               value={currentQuoteType}
-              onChange={(e) => handleTypeChange(e.target.value as QuoteType)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if ((QUOTE_TYPES as readonly string[]).includes(val))
+                  handleTypeChange(val as QuoteType);
+              }}
               className="border border-line bg-cream px-2 py-1 text-sm text-ink outline-none focus:border-ink"
             >
               {QUOTE_TYPES.map((t) => (

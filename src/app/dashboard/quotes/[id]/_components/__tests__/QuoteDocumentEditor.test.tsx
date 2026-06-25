@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { blankDocument, QUOTE_TYPE_LABELS } from "@/features/quotes/document-schema";
 
@@ -99,5 +99,77 @@ describe("QuoteDocumentEditor", () => {
     expect(screen.getByText("기능명세")).toBeInTheDocument();
     // dev 전용 컬럼 '상세내역'은 사라짐
     expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
+  });
+
+  describe("유형 변경 confirm 분기", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("confirm=false 시 유형·섹션이 유지된다(dev 컬럼 그대로, platform 컬럼 없음)", () => {
+      // rows가 있는 dev 문서
+      const docWithRow = {
+        ...blankDocument("dev"),
+        sections: [
+          {
+            ...blankDocument("dev").sections[0],
+            rows: [{ category: "작업", detail: "UI 개발", note: "", amount: 0 }],
+          },
+        ],
+      };
+
+      vi.spyOn(window, "confirm").mockReturnValue(false);
+
+      render(
+        <QuoteDocumentEditor
+          id="q-1"
+          quoteType="dev"
+          document={docWithRow}
+          customer="테스트 대학"
+          onSave={mockSave}
+        />,
+      );
+
+      const select = screen.getByRole("combobox", { name: /견적서 유형/ });
+      fireEvent.change(select, { target: { value: "platform" } });
+
+      // dev 컬럼 헤더가 여전히 존재해야 함
+      expect(screen.getByText("상세내역")).toBeInTheDocument();
+      // platform 전용 컬럼은 없어야 함
+      expect(screen.queryByText("세부서비스")).not.toBeInTheDocument();
+      // select 값도 dev 유지
+      expect((select as HTMLSelectElement).value).toBe("dev");
+    });
+
+    it("confirm=true 시 platform 컬럼으로 교체된다", () => {
+      const docWithRow = {
+        ...blankDocument("dev"),
+        sections: [
+          {
+            ...blankDocument("dev").sections[0],
+            rows: [{ category: "작업", detail: "UI 개발", note: "", amount: 0 }],
+          },
+        ],
+      };
+
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+
+      render(
+        <QuoteDocumentEditor
+          id="q-1"
+          quoteType="dev"
+          document={docWithRow}
+          customer="테스트 대학"
+          onSave={mockSave}
+        />,
+      );
+
+      const select = screen.getByRole("combobox", { name: /견적서 유형/ });
+      fireEvent.change(select, { target: { value: "platform" } });
+
+      expect(screen.getByText("세부서비스")).toBeInTheDocument();
+      expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
+      expect((select as HTMLSelectElement).value).toBe("platform");
+    });
   });
 });

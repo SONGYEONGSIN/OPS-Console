@@ -32,4 +32,15 @@ describe("blankDocument platform", () => {
     const d = blankDocument("dev");
     expect(d.sections[0].columns.map((c) => c.key)).toEqual(["category", "detail", "note", "amount"]);
   });
+  it("labor — simple 4열(category/detail/note/amount) 반환 (SP3 회귀 탐지)", () => {
+    const d = blankDocument("labor");
+    expect(d.type).toBe("labor");
+    expect(d.sections[0].columns.map((c) => c.key)).toEqual([
+      "category",
+      "detail",
+      "note",
+      "amount",
+    ]);
+    expect(quoteDocumentSchema.safeParse(d).success).toBe(true);
+  });
 });
