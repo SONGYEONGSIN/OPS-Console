@@ -8,6 +8,8 @@ import {
   type QuoteSection,
   type QuoteRow,
   QUOTE_TYPE_LABELS,
+  QUOTE_TYPES,
+  blankDocument,
 } from "@/features/quotes/document-schema";
 import { QUOTE_SENDER } from "@/features/quotes/sender";
 import { recomputeDocument, koreanAmount } from "@/features/quotes/calc";
@@ -187,6 +189,21 @@ function SectionTable({
                       </td>
                     );
                   }
+                  if (col.kind === "multiline") {
+                    return (
+                      <td key={col.key} className="border border-line px-1 py-0.5">
+                        <textarea
+                          rows={2}
+                          value={strVal}
+                          onChange={(e) =>
+                            setCell(rowIdx, col.key, e.target.value)
+                          }
+                          className="w-full resize-none bg-transparent text-sm text-ink outline-none"
+                          placeholder=""
+                        />
+                      </td>
+                    );
+                  }
                   return (
                     <td key={col.key} className="border border-line px-1 py-0.5">
                       <input
@@ -321,11 +338,13 @@ export interface QuoteDocumentEditorProps {
 
 export function QuoteDocumentEditor({
   id,
-  quoteType,
+  quoteType: initialQuoteType,
   document: initialDocument,
   customer,
   onSave,
 }: QuoteDocumentEditorProps) {
+  const [currentQuoteType, setCurrentQuoteType] =
+    useState<QuoteType>(initialQuoteType);
   const [doc, setDoc] = useState<QuoteDocument>(() => {
     // 신규 문서(recipient 비어있음)일 때만 customer로 prefill
     const seed =
@@ -346,6 +365,20 @@ export function QuoteDocumentEditor({
     setSaved(false);
   }
 
+  function handleTypeChange(newType: QuoteType) {
+    const hasRows = doc.sections.some((s) => s.rows.length > 0);
+    if (hasRows) {
+      const confirmed = window.confirm(
+        `유형을 변경하면 입력된 섹션 행이 초기화됩니다. 계속하시겠습니까?`,
+      );
+      if (!confirmed) return;
+    }
+    const newDoc = blankDocument(newType);
+    // 머리말·약관 보존
+    updateDoc({ ...newDoc, header: doc.header, terms: doc.terms });
+    setCurrentQuoteType(newType);
+  }
+
   function onHeaderChange(header: QuoteDocument["header"]) {
     updateDoc({ ...doc, header });
   }
@@ -362,7 +395,7 @@ export function QuoteDocumentEditor({
   async function handleSave() {
     setSaving(true);
     setSaveError(null);
-    const res = await onSave(id, doc, quoteType);
+    const res = await onSave(id, doc, currentQuoteType);
     setSaving(false);
     if (res.ok) {
       setSaved(true);
@@ -382,6 +415,22 @@ export function QuoteDocumentEditor({
           ← 목록 이동
         </Link>
         <div className="flex items-center gap-3">
+          {/* 유형 선택기 */}
+          <label className="flex items-center gap-1.5 text-xs text-muted">
+            <span>견적서 유형</span>
+            <select
+              aria-label="견적서 유형"
+              value={currentQuoteType}
+              onChange={(e) => handleTypeChange(e.target.value as QuoteType)}
+              className="border border-line bg-cream px-2 py-1 text-sm text-ink outline-none focus:border-ink"
+            >
+              {QUOTE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {QUOTE_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </label>
           {saveError && (
             <span className="text-xs text-vermilion">{saveError}</span>
           )}
@@ -402,7 +451,7 @@ export function QuoteDocumentEditor({
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 pb-6 pt-2">
         {/* 마스트헤드 */}
         <Masthead
-          quoteType={quoteType}
+          quoteType={currentQuoteType}
           header={doc.header}
           onHeaderChange={onHeaderChange}
         />
