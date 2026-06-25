@@ -30,6 +30,33 @@ describe("quoteInputSchema", () => {
     });
     expect(r.success).toBe(true);
   });
+  it("quote_type 유효값 통과 + parsed.data에 보존", () => {
+    const r = quoteInputSchema.safeParse({
+      customer: "가천대",
+      quote_date: "2026-06-24",
+      status: "draft",
+      quote_type: "platform",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.quote_type).toBe("platform");
+  });
+  it("quote_type 무효값 거부", () => {
+    const r = quoteInputSchema.safeParse({
+      customer: "가천대",
+      quote_date: "2026-06-24",
+      status: "draft",
+      quote_type: "xxx",
+    });
+    expect(r.success).toBe(false);
+  });
+  it("quote_type 생략 허용 (optional)", () => {
+    const r = quoteInputSchema.safeParse({
+      customer: "가천대",
+      quote_date: "2026-06-24",
+      status: "draft",
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 describe("QUOTE_STATUS_LABEL", () => {

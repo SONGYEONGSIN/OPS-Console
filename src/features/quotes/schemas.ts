@@ -37,5 +37,6 @@ export const quoteInputSchema = z.object({
   owner_email: z.string().nullable().optional(),
   status: quoteStatusSchema,
   note: z.string().nullable().optional(),
+  quote_type: quoteTypeSchema.optional(),
 });
 export type QuoteInput = z.infer<typeof quoteInputSchema>;

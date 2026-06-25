@@ -29,6 +29,7 @@ export function blankQuoteRow(opts?: {
     quoteStatus: "draft",
     quoteValidUntil: null,
     quoteNote: null,
+    quoteType: "dev",
   };
 }
 
