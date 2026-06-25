@@ -35,6 +35,8 @@ export const quoteColumnSchema = z.object({
 export const quoteSectionSchema = z.object({
   id: z.string(),
   title: z.string(),
+  kind: z.enum(["simple", "labor"]).default("simple"),
+  rates: z.object({ overhead: z.number().default(1.1), techFee: z.number().default(0.2) }).optional(),
   columns: z.array(quoteColumnSchema),
   rows: z.array(quoteRowSchema),
   subtotal: z.number().default(0),
@@ -62,6 +64,7 @@ function simpleSection() {
   return {
     id: "main",
     title: "견적 내역",
+    kind: "simple" as const,
     columns: [
       { key: "category", label: "구분", kind: "text" as const },
       { key: "detail", label: "상세내역", kind: "text" as const },
@@ -76,6 +79,7 @@ function platformSection() {
   return {
     id: "main",
     title: "서비스 내역",
+    kind: "simple" as const,
     columns: [
       { key: "category", label: "구분", kind: "text" as const },
       { key: "service", label: "세부서비스", kind: "text" as const },

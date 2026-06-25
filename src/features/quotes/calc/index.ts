@@ -1,16 +1,35 @@
 import type { QuoteSection, QuoteDocument, QuoteTotals } from "../document-schema";
 
-/** 섹션 소계 — kind 'amount' 컬럼들의 행 합. (dev/fee: 'amount' 단일) */
+/** 적산 — 직접인건비 → 제경비 → 기술료 → 합계. (반올림: 원 단위) */
+export function laborRollup(input: {
+  direct: number;
+  overheadRate: number;
+  techFeeRate: number;
+}): { direct: number; overhead: number; techFee: number; total: number } {
+  const overhead = Math.round(input.direct * input.overheadRate);
+  const techFee = Math.round((input.direct + overhead) * input.techFeeRate);
+  return { direct: input.direct, overhead, techFee, total: input.direct + overhead + techFee };
+}
+
+/** labor 섹션 한 행의 직접인건비 = 인원×노임단가×투입일×참여율. */
+function laborRowDirect(row: Record<string, string | number | null>): number {
+  const num = (k: string) => (typeof row[k] === "number" ? (row[k] as number) : 0);
+  return Math.round(num("count") * num("daily") * num("days") * num("ratio"));
+}
+
+/** 섹션 소계 — labor: 인건비 적산(직접+제경비+기술료). simple: amount 컬럼 행 합. */
 export function sectionSubtotal(section: QuoteSection): number {
-  const amountKeys = section.columns
-    .filter((c) => c.kind === "amount")
-    .map((c) => c.key);
+  if (section.kind === "labor") {
+    const direct = section.rows.reduce((acc, r) => acc + laborRowDirect(r), 0);
+    const rates = section.rates ?? { overhead: 1.1, techFee: 0.2 };
+    return laborRollup({ direct, overheadRate: rates.overhead, techFeeRate: rates.techFee }).total;
+  }
+  // 기존 simple: amount 컬럼 합
+  const amountKeys = section.columns.filter((c) => c.kind === "amount").map((c) => c.key);
   let sum = 0;
-  for (const row of section.rows) {
-    for (const k of amountKeys) {
-      const v = row[k];
-      if (typeof v === "number") sum += v;
-    }
+  for (const row of section.rows) for (const k of amountKeys) {
+    const v = row[k];
+    if (typeof v === "number") sum += v;
   }
   return sum;
 }
