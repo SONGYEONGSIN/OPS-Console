@@ -491,7 +491,7 @@ function SectionBlock({
   const isLabor = section.kind === "labor";
 
   return (
-    <section className="border border-line bg-washi">
+    <section className="border border-line bg-white">
       <div className="flex items-center justify-between bg-ink px-3 py-1.5">
         <h3 className="text-sm font-bold text-cream">{section.title}</h3>
         {isLabor && (
@@ -714,7 +714,7 @@ export function QuoteDocumentEditor({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-6 pt-2">
         {/* A4 폭 문서 시트 */}
-        <div className="mx-auto w-full max-w-[210mm] space-y-5 border border-line bg-cream px-10 py-8">
+        <div className="mx-auto w-full max-w-[210mm] space-y-5 border border-line bg-white px-10 py-8">
           {/* 타이틀 + 구분선 */}
           <div className="border-b border-ink pb-2">
             <h1 className="text-center text-2xl font-bold text-ink">견적서</h1>
