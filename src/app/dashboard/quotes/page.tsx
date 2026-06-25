@@ -111,8 +111,7 @@ export default async function QuotesPage({
       data={{ rows }}
       header={header}
       variant="quotes"
-      canCreate={canEdit}
-      createLabel="+ 새 견적서"
+      canCreate={false}
       readOnly={!canEdit}
       currentUserPermission={me?.permission ?? null}
       currentUserEmail={me?.email ?? null}
