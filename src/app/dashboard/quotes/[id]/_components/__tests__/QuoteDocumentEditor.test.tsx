@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { blankDocument, QUOTE_TYPE_LABELS } from "@/features/quotes/document-schema";
 
@@ -17,186 +17,132 @@ beforeEach(() => {
   mockSave.mockResolvedValue({ ok: true });
 });
 
+function renderEditor(type: Parameters<typeof blankDocument>[0] = "dev") {
+  return render(
+    <QuoteDocumentEditor
+      id="q-1"
+      quoteType={type}
+      document={blankDocument(type)}
+      customer="테스트 대학"
+      onSave={mockSave}
+    />,
+  );
+}
+
 describe("QuoteDocumentEditor", () => {
-  it("마스트헤드 6개 필드 라벨과 발신자 회사명을 표시한다", () => {
-    render(
-      <QuoteDocumentEditor
-        id="q-1"
-        quoteType="dev"
-        document={blankDocument("dev")}
-        customer="테스트 대학"
-        onSave={mockSave}
-      />,
-    );
+  it("최상단에 견적서 타이틀을 표시한다", () => {
+    renderEditor();
+    expect(screen.getByRole("heading", { name: "견적서" })).toBeInTheDocument();
+  });
+
+  it("공통 헤더 좌측 필드 라벨(수신·견적명·접수인원·견적비용·결제조건)을 표시한다", () => {
+    renderEditor();
     expect(screen.getByText("수신")).toBeInTheDocument();
     expect(screen.getByText("견적명")).toBeInTheDocument();
-    expect(screen.getByText("견적번호")).toBeInTheDocument();
+    expect(screen.getByText("접수인원")).toBeInTheDocument();
+    expect(screen.getByText("견적비용")).toBeInTheDocument();
+    expect(screen.getByText("결제조건")).toBeInTheDocument();
+  });
+
+  it("공통 헤더 우측 발신자 상수(법인명·등록번호·주소)를 읽기전용으로 표시한다", () => {
+    renderEditor();
     expect(screen.getByText("주식회사 진학어플라이")).toBeInTheDocument();
+    expect(screen.getByText("101-86-62676")).toBeInTheDocument();
+    expect(
+      screen.getByText("서울 종로구 경희궁길 34 진학기획빌딩"),
+    ).toBeInTheDocument();
   });
 
-  it("섹션 표 컬럼 헤더(구분·상세내역·비고·비용)를 표시한다", () => {
-    render(
-      <QuoteDocumentEditor
-        id="q-1"
-        quoteType="dev"
-        document={blankDocument("dev")}
-        customer="테스트 대학"
-        onSave={mockSave}
-      />,
-    );
-    expect(screen.getByText("구분")).toBeInTheDocument();
-    expect(screen.getByText("상세내역")).toBeInTheDocument();
-    expect(screen.getByText("비용")).toBeInTheDocument();
+  it("담당자 연락처(전화·이메일) 입력 필드를 제공한다", () => {
+    renderEditor();
+    expect(screen.getByLabelText("담당자 전화")).toBeInTheDocument();
+    expect(screen.getByLabelText("담당자 이메일")).toBeInTheDocument();
   });
 
-  it("합계 영역(공급가·부가세·합계) 레이블을 표시한다", () => {
-    render(
-      <QuoteDocumentEditor
-        id="q-1"
-        quoteType="dev"
-        document={blankDocument("dev")}
-        customer="테스트 대학"
-        onSave={mockSave}
-      />,
-    );
-    expect(screen.getByText("공급가액")).toBeInTheDocument();
-    expect(screen.getByText("부가세")).toBeInTheDocument();
-    expect(screen.getByText("합계")).toBeInTheDocument();
+  it("4개 섹션 제목을 모두 표시한다", () => {
+    renderEditor();
+    expect(
+      screen.getByText("1. 시스템(인프라·장비) 이용"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("2. 인건비 (직접인건비·제경비·기술료)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("3. 외주비/비용 (장비·실비·수수료)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("4. 총 비용 및 단가 산출")).toBeInTheDocument();
+  });
+
+  it("각 섹션에 문구 textarea를 제공한다", () => {
+    renderEditor();
+    const notes = screen.getAllByPlaceholderText("이 항목 관련 문구/설명");
+    expect(notes).toHaveLength(4);
+  });
+
+  it("최하단 안내사항(guide) 섹션 제목을 표시한다", () => {
+    renderEditor();
+    expect(
+      screen.getByText("산출 근거 및 주의 안내사항"),
+    ).toBeInTheDocument();
+  });
+
+  it("안내사항 라인을 추가할 수 있다", () => {
+    renderEditor();
+    fireEvent.click(screen.getByText("+ 안내 추가"));
+    expect(
+      screen.getByPlaceholderText("안내 내용 입력"),
+    ).toBeInTheDocument();
   });
 
   it("유형 선택기가 렌더되며 현재 quoteType 값이 선택되어 있다", () => {
-    render(
-      <QuoteDocumentEditor
-        id="q-1"
-        quoteType="dev"
-        document={blankDocument("dev")}
-        customer="테스트 대학"
-        onSave={mockSave}
-      />,
-    );
+    renderEditor();
     const select = screen.getByRole("combobox", { name: /견적서 유형/ });
     expect(select).toBeInTheDocument();
     expect((select as HTMLSelectElement).value).toBe("dev");
-    // 모든 유형 옵션이 있는지 확인
     expect(screen.getByText(QUOTE_TYPE_LABELS["dev"])).toBeInTheDocument();
     expect(screen.getByText(QUOTE_TYPE_LABELS["platform"])).toBeInTheDocument();
   });
 
-  it("빈 문서에서 platform 선택 시 platform 6열 컬럼으로 교체된다", () => {
-    render(
-      <QuoteDocumentEditor
-        id="q-1"
-        quoteType="dev"
-        document={blankDocument("dev")}
-        customer="테스트 대학"
-        onSave={mockSave}
-      />,
-    );
-    const select = screen.getByRole("combobox", { name: /견적서 유형/ });
-    fireEvent.change(select, { target: { value: "platform" } });
-    // platform 컬럼: 세부서비스·기능명세 등장
-    expect(screen.getByText("세부서비스")).toBeInTheDocument();
-    expect(screen.getByText("기능명세")).toBeInTheDocument();
-    // dev 전용 컬럼 '상세내역'은 사라짐
-    expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
+  it("system 섹션 행 추가 후 수량·기간·단가 입력 시 금액이 자동계산된다", () => {
+    renderEditor();
+    // system 섹션 표에 행 추가 (첫 + 행 추가 버튼)
+    const addButtons = screen.getAllByText("+ 행 추가");
+    fireEvent.click(addButtons[0]);
+    // 수량 2 × 기간 3 × 단가 10000 = 60000
+    const qty = screen.getByLabelText("수량");
+    const months = screen.getByLabelText("기간(월)");
+    const unit = screen.getByLabelText("단가(원/월)");
+    fireEvent.change(qty, { target: { value: "2" } });
+    fireEvent.change(months, { target: { value: "3" } });
+    fireEvent.change(unit, { target: { value: "10000" } });
+    // 자동계산 금액 표시(읽기전용 셀)
+    expect(screen.getByText("60,000")).toBeInTheDocument();
   });
 
   describe("labor 섹션 에디터", () => {
-    it("labor 유형 선택 시 요율 입력이 렌더되고, 행 추가 후 등급 드롭다운 선택 시 단가가 채워진다", () => {
-      render(
-        <QuoteDocumentEditor
-          id="q-1"
-          quoteType="labor"
-          document={blankDocument("labor")}
-          customer="테스트 대학"
-          onSave={mockSave}
-        />,
-      );
-      // 요율 입력(제경비율, 기술료율)은 초기부터 렌더됨
+    it("요율 입력이 렌더되고, 행 추가 후 등급 드롭다운 선택 시 단가가 채워진다", () => {
+      renderEditor("labor");
       expect(screen.getByLabelText("제경비율")).toBeInTheDocument();
       expect(screen.getByLabelText("기술료율")).toBeInTheDocument();
 
-      // 행 추가 후 등급 드롭다운 등장
-      fireEvent.click(screen.getByText("+ 행 추가"));
+      // labor 섹션은 두번째 섹션 → + 행 추가 버튼 인덱스 1
+      const addButtons = screen.getAllByText("+ 행 추가");
+      fireEvent.click(addButtons[1]);
       const gradeSelect = screen.getByRole("combobox", { name: /등급 선택/ });
       expect(gradeSelect).toBeInTheDocument();
 
-      // 등급 선택 → 단가 채움
       fireEvent.change(gradeSelect, { target: { value: "planner" } });
-      // IT기획자 578206 이 노임단가(일) 숫자 입력에 표시되어야 함
       expect(screen.getByDisplayValue("578206")).toBeInTheDocument();
     });
   });
 
-  describe("유형 변경 confirm 분기", () => {
-    afterEach(() => {
-      vi.restoreAllMocks();
+  it("저장 버튼 클릭 시 onSave를 현재 문서로 호출한다", async () => {
+    renderEditor();
+    fireEvent.click(screen.getByText("저장"));
+    await vi.waitFor(() => {
+      expect(mockSave).toHaveBeenCalledTimes(1);
     });
-
-    it("confirm=false 시 유형·섹션이 유지된다(dev 컬럼 그대로, platform 컬럼 없음)", () => {
-      // rows가 있는 dev 문서
-      const docWithRow = {
-        ...blankDocument("dev"),
-        sections: [
-          {
-            ...blankDocument("dev").sections[0],
-            rows: [{ category: "작업", detail: "UI 개발", note: "", amount: 0 }],
-          },
-        ],
-      };
-
-      vi.spyOn(window, "confirm").mockReturnValue(false);
-
-      render(
-        <QuoteDocumentEditor
-          id="q-1"
-          quoteType="dev"
-          document={docWithRow}
-          customer="테스트 대학"
-          onSave={mockSave}
-        />,
-      );
-
-      const select = screen.getByRole("combobox", { name: /견적서 유형/ });
-      fireEvent.change(select, { target: { value: "platform" } });
-
-      // dev 컬럼 헤더가 여전히 존재해야 함
-      expect(screen.getByText("상세내역")).toBeInTheDocument();
-      // platform 전용 컬럼은 없어야 함
-      expect(screen.queryByText("세부서비스")).not.toBeInTheDocument();
-      // select 값도 dev 유지
-      expect((select as HTMLSelectElement).value).toBe("dev");
-    });
-
-    it("confirm=true 시 platform 컬럼으로 교체된다", () => {
-      const docWithRow = {
-        ...blankDocument("dev"),
-        sections: [
-          {
-            ...blankDocument("dev").sections[0],
-            rows: [{ category: "작업", detail: "UI 개발", note: "", amount: 0 }],
-          },
-        ],
-      };
-
-      vi.spyOn(window, "confirm").mockReturnValue(true);
-
-      render(
-        <QuoteDocumentEditor
-          id="q-1"
-          quoteType="dev"
-          document={docWithRow}
-          customer="테스트 대학"
-          onSave={mockSave}
-        />,
-      );
-
-      const select = screen.getByRole("combobox", { name: /견적서 유형/ });
-      fireEvent.change(select, { target: { value: "platform" } });
-
-      expect(screen.getByText("세부서비스")).toBeInTheDocument();
-      expect(screen.queryByText("상세내역")).not.toBeInTheDocument();
-      expect((select as HTMLSelectElement).value).toBe("platform");
-    });
+    expect(mockSave.mock.calls[0][0]).toBe("q-1");
+    expect(mockSave.mock.calls[0][2]).toBe("dev");
   });
 });

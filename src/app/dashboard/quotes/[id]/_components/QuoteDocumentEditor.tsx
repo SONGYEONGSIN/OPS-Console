@@ -26,29 +26,64 @@ function blankRow(section: QuoteSection): QuoteRow {
   return Object.fromEntries(section.columns.map((c) => [c.key, ""]));
 }
 
-// ────────────── 마스트헤드 ──────────────
+// ────────────── 공통 헤더 ──────────────
 
 interface HeaderField {
   key: keyof QuoteDocument["header"];
   label: string;
 }
 
-const HEADER_FIELDS: HeaderField[] = [
+const HEADER_LEFT_FIELDS: HeaderField[] = [
   { key: "recipient", label: "수신" },
   { key: "quoteName", label: "견적명" },
-  { key: "quoteNo", label: "견적번호" },
-  { key: "quoteDate", label: "견적일" },
-  { key: "validUntil", label: "유효기간" },
-  { key: "manager", label: "담당자" },
+  { key: "recipientCount", label: "접수인원" },
 ];
 
-function Masthead({
-  quoteType,
+const HEADER_LEFT_TAIL_FIELDS: HeaderField[] = [
+  { key: "quoteDate", label: "견적일자" },
+  { key: "validUntil", label: "유효기간" },
+  { key: "paymentTerms", label: "결제조건" },
+];
+
+function HeaderInputRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="contents">
+      <span className="py-0.5 text-xs font-medium text-muted">{label}</span>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="border-b border-line-soft bg-transparent py-0.5 text-sm text-ink outline-none focus:border-ink"
+        placeholder={`${label} 입력`}
+      />
+    </div>
+  );
+}
+
+function SenderRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <span className="py-0.5 text-xs text-muted">{label}</span>
+      <span className="py-0.5 text-sm text-ink">{value}</span>
+    </>
+  );
+}
+
+function DocumentHeader({
   header,
+  total,
   onHeaderChange,
 }: {
-  quoteType: QuoteType;
   header: QuoteDocument["header"];
+  total: number;
   onHeaderChange: (header: QuoteDocument["header"]) => void;
 }) {
   function setField(key: keyof QuoteDocument["header"], value: string) {
@@ -56,51 +91,66 @@ function Masthead({
   }
 
   return (
-    <div className="border border-line bg-washi p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-base font-bold text-ink">
-          {QUOTE_TYPE_LABELS[quoteType]} 견적서
-        </h1>
-        <span className="text-xs text-muted">견적서</span>
-      </div>
-
-      {/* 수신처·메타 그리드 */}
-      <div className="mb-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        {HEADER_FIELDS.map(({ key, label }) => (
-          <div key={key} className="contents">
-            <span className="py-0.5 text-xs font-medium text-muted">{label}</span>
-            <input
-              type="text"
-              value={header[key]}
-              onChange={(e) => setField(key, e.target.value)}
-              className="border-b border-line-soft bg-transparent py-0.5 text-sm text-ink outline-none focus:border-ink"
-              placeholder={`${label} 입력`}
-            />
-          </div>
+    <div className="grid grid-cols-2 gap-x-8 border-b border-ink pb-5">
+      {/* 좌측: 견적 정보 */}
+      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        {HEADER_LEFT_FIELDS.map(({ key, label }) => (
+          <HeaderInputRow
+            key={key}
+            label={label}
+            value={header[key]}
+            onChange={(v) => setField(key, v)}
+          />
+        ))}
+        {/* 견적비용 — totals.total 파생, 읽기전용 */}
+        <span className="py-0.5 text-xs font-medium text-muted">견적비용</span>
+        <span className="py-0.5 text-sm font-bold text-vermilion">
+          ₩{formatKrw(total)} (VAT 포함)
+        </span>
+        {HEADER_LEFT_TAIL_FIELDS.map(({ key, label }) => (
+          <HeaderInputRow
+            key={key}
+            label={label}
+            value={header[key]}
+            onChange={(v) => setField(key, v)}
+          />
         ))}
       </div>
 
-      {/* 발신자 (읽기전용) */}
-      <div className="border-t border-line pt-3">
-        <p className="mb-1 text-xs font-medium text-muted">발신</p>
-        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-sm">
-          <span className="text-xs text-muted">상호</span>
-          <span className="text-sm text-ink">{QUOTE_SENDER.company}</span>
-          <span className="text-xs text-muted">대표자</span>
-          <span className="text-sm text-ink">{QUOTE_SENDER.ceo}</span>
-          {QUOTE_SENDER.address && (
-            <>
-              <span className="text-xs text-muted">주소</span>
-              <span className="text-sm text-ink">{QUOTE_SENDER.address}</span>
-            </>
-          )}
-          {QUOTE_SENDER.fax && (
-            <>
-              <span className="text-xs text-muted">팩스</span>
-              <span className="text-sm text-ink">{QUOTE_SENDER.fax}</span>
-            </>
-          )}
-        </div>
+      {/* 우측: 발신자(상수) + 담당자 연락처 */}
+      <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <SenderRow label="법인명" value={QUOTE_SENDER.company} />
+        <SenderRow label="대표이사" value={QUOTE_SENDER.ceo} />
+        <SenderRow label="등록번호" value={QUOTE_SENDER.bizNo} />
+        <SenderRow label="주소" value={QUOTE_SENDER.address} />
+
+        <span className="py-0.5 text-xs font-medium text-muted">담당자</span>
+        <input
+          aria-label="담당자"
+          type="text"
+          value={header.manager}
+          onChange={(e) => setField("manager", e.target.value)}
+          className="border-b border-line-soft bg-transparent py-0.5 text-sm text-ink outline-none focus:border-ink"
+          placeholder="담당자 입력"
+        />
+        <span className="py-0.5 text-xs font-medium text-muted">전화</span>
+        <input
+          aria-label="담당자 전화"
+          type="text"
+          value={header.managerTel}
+          onChange={(e) => setField("managerTel", e.target.value)}
+          className="border-b border-line-soft bg-transparent py-0.5 text-sm text-ink outline-none focus:border-ink"
+          placeholder="전화 입력"
+        />
+        <span className="py-0.5 text-xs font-medium text-muted">이메일</span>
+        <input
+          aria-label="담당자 이메일"
+          type="text"
+          value={header.managerEmail}
+          onChange={(e) => setField("managerEmail", e.target.value)}
+          className="border-b border-line-soft bg-transparent py-0.5 text-sm text-ink outline-none focus:border-ink"
+          placeholder="이메일 입력"
+        />
       </div>
     </div>
   );
@@ -185,6 +235,11 @@ function LaborRatesRow({
 
 // ────────────── 섹션 표 ──────────────
 
+/** system/outsource: amount 컬럼은 rowComputed 자동값(읽기전용). 그 외 simple: 직접입력. */
+function isAutoAmount(section: QuoteSection): boolean {
+  return section.id === "system" || section.id === "outsource";
+}
+
 function SectionTable({
   section,
   onSectionChange,
@@ -193,6 +248,7 @@ function SectionTable({
   onSectionChange: (s: QuoteSection) => void;
 }) {
   const isLabor = section.kind === "labor";
+  const autoAmount = isAutoAmount(section);
 
   function setCell(rowIdx: number, key: string, value: string | number) {
     const rows = section.rows.map((r, i) =>
@@ -227,7 +283,6 @@ function SectionTable({
 
   return (
     <div className="mb-2">
-      <div className="mb-1 text-xs font-medium text-muted">{section.title}</div>
       {isLabor && (
         <LaborRatesRow section={section} onSectionChange={onSectionChange} />
       )}
@@ -298,6 +353,7 @@ function SectionTable({
                             ))}
                           </select>
                           <input
+                            aria-label={col.label}
                             type="number"
                             value={numVal === 0 ? "" : numVal}
                             onChange={(e) => {
@@ -312,7 +368,41 @@ function SectionTable({
                     );
                   }
 
+                  // amount 컬럼
                   if (col.kind === "amount") {
+                    const numVal = typeof raw === "number" ? raw : 0;
+                    // system/outsource: 자동계산값 읽기전용 표시
+                    if (autoAmount) {
+                      return (
+                        <td
+                          key={col.key}
+                          className="border border-line bg-washi-raised px-2 py-0.5 text-right text-xs text-muted"
+                        >
+                          {formatKrw(numVal)}
+                        </td>
+                      );
+                    }
+                    return (
+                      <td
+                        key={col.key}
+                        className="border border-line px-1 py-0.5 text-right"
+                      >
+                        <input
+                          aria-label={col.label}
+                          type="number"
+                          value={numVal === 0 ? "" : numVal}
+                          onChange={(e) => {
+                            const n = e.target.value === "" ? 0 : Number(e.target.value);
+                            setCell(rowIdx, col.key, isNaN(n) ? 0 : n);
+                          }}
+                          className="w-full bg-transparent text-right text-sm text-ink outline-none"
+                          placeholder="0"
+                        />
+                      </td>
+                    );
+                  }
+                  // number 컬럼 (수량·기간·단가 등)
+                  if (col.kind === "number") {
                     const numVal = typeof raw === "number" ? raw : 0;
                     return (
                       <td
@@ -320,6 +410,7 @@ function SectionTable({
                         className="border border-line px-1 py-0.5 text-right"
                       >
                         <input
+                          aria-label={col.label}
                           type="number"
                           value={numVal === 0 ? "" : numVal}
                           onChange={(e) => {
@@ -336,6 +427,7 @@ function SectionTable({
                     return (
                       <td key={col.key} className="border border-line px-1 py-0.5">
                         <textarea
+                          aria-label={col.label}
                           rows={2}
                           value={strVal}
                           onChange={(e) =>
@@ -350,6 +442,7 @@ function SectionTable({
                   return (
                     <td key={col.key} className="border border-line px-1 py-0.5">
                       <input
+                        aria-label={col.label}
                         type="text"
                         value={strVal}
                         onChange={(e) => setCell(rowIdx, col.key, e.target.value)}
@@ -387,73 +480,69 @@ function SectionTable({
   );
 }
 
-// ────────────── 합계 영역 ──────────────
+// ────────────── 섹션(제목 + 표 + 문구) ──────────────
 
-function TotalsBlock({ totals }: { totals: QuoteDocument["totals"] }) {
+function SectionBlock({
+  section,
+  onSectionChange,
+}: {
+  section: QuoteSection;
+  onSectionChange: (s: QuoteSection) => void;
+}) {
   return (
-    <div className="border border-line bg-washi-raised p-4">
-      <div className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
-        <span className="text-xs text-muted">공급가액</span>
-        <span className="text-right text-sm text-ink">
-          {formatKrw(totals.supply)} 원
-        </span>
-        <span className="text-xs text-muted">부가세</span>
-        <span className="text-right text-sm text-ink">
-          {formatKrw(totals.vat)} 원
-        </span>
-        <span className="font-bold text-ink">합계</span>
-        <span className="text-right font-bold text-ink">
-          {formatKrw(totals.total)} 원
-        </span>
-      </div>
-      {totals.total > 0 && (
-        <p className="mt-2 text-xs text-muted">
-          일금 {koreanAmount(totals.total)}원 정 (VAT 포함)
-        </p>
-      )}
-    </div>
+    <section className="border border-line bg-washi p-4">
+      <h3 className="mb-2 text-sm font-bold text-ink">{section.title}</h3>
+      <SectionTable section={section} onSectionChange={onSectionChange} />
+      <textarea
+        rows={2}
+        value={section.note}
+        onChange={(e) => onSectionChange({ ...section, note: e.target.value })}
+        className="mt-2 w-full resize-none border border-line-soft bg-transparent px-2 py-1 text-xs text-ink outline-none focus:border-ink"
+        placeholder="이 항목 관련 문구/설명"
+      />
+    </section>
   );
 }
 
-// ────────────── 약관 ──────────────
+// ────────────── 안내사항(guide) ──────────────
 
-function TermsEditor({
-  terms,
-  onTermsChange,
+function GuideEditor({
+  guide,
+  onGuideChange,
 }: {
-  terms: string[];
-  onTermsChange: (terms: string[]) => void;
+  guide: string[];
+  onGuideChange: (guide: string[]) => void;
 }) {
-  function setTerm(idx: number, value: string) {
-    onTermsChange(terms.map((t, i) => (i === idx ? value : t)));
+  function setLine(idx: number, value: string) {
+    onGuideChange(guide.map((g, i) => (i === idx ? value : g)));
   }
 
-  function addTerm() {
-    onTermsChange([...terms, ""]);
+  function addLine() {
+    onGuideChange([...guide, ""]);
   }
 
-  function deleteTerm(idx: number) {
-    onTermsChange(terms.filter((_, i) => i !== idx));
+  function deleteLine(idx: number) {
+    onGuideChange(guide.filter((_, i) => i !== idx));
   }
 
   return (
-    <div>
-      <p className="mb-1 text-xs font-medium text-muted">약관 및 특기사항</p>
-      {terms.map((term, idx) => (
+    <div className="border-t border-ink pt-4">
+      <p className="mb-2 text-sm font-bold text-ink">산출 근거 및 주의 안내사항</p>
+      {guide.map((line, idx) => (
         <div key={idx} className="mb-1 flex items-center gap-2">
           <span className="text-xs text-muted">{idx + 1}.</span>
           <input
             type="text"
-            value={term}
-            onChange={(e) => setTerm(idx, e.target.value)}
+            value={line}
+            onChange={(e) => setLine(idx, e.target.value)}
             className="flex-1 border-b border-line-soft bg-transparent py-0.5 text-sm text-ink outline-none focus:border-ink"
-            placeholder="약관 내용 입력"
+            placeholder="안내 내용 입력"
           />
           <button
             type="button"
-            onClick={() => deleteTerm(idx)}
+            onClick={() => deleteLine(idx)}
             className="text-xs text-muted transition-colors hover:text-vermilion"
-            aria-label="약관 삭제"
+            aria-label="안내 삭제"
           >
             ×
           </button>
@@ -461,10 +550,10 @@ function TermsEditor({
       ))}
       <button
         type="button"
-        onClick={addTerm}
+        onClick={addLine}
         className="mt-1 text-xs text-muted transition-colors hover:text-ink"
       >
-        + 약관 추가
+        + 안내 추가
       </button>
     </div>
   );
@@ -520,8 +609,8 @@ export function QuoteDocumentEditor({
       if (!confirmed) return;
     }
     const newDoc = blankDocument(newType);
-    // 머리말·약관 보존
-    updateDoc({ ...newDoc, header: doc.header, terms: doc.terms });
+    // 머리말·약관·안내 보존
+    updateDoc({ ...newDoc, header: doc.header, terms: doc.terms, guide: doc.guide });
     setCurrentQuoteType(newType);
   }
 
@@ -534,8 +623,8 @@ export function QuoteDocumentEditor({
     updateDoc({ ...doc, sections });
   }
 
-  function onTermsChange(terms: string[]) {
-    updateDoc({ ...doc, terms });
+  function onGuideChange(guide: string[]) {
+    updateDoc({ ...doc, guide });
   }
 
   async function handleSave() {
@@ -614,17 +703,22 @@ export function QuoteDocumentEditor({
       </div>
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 pb-6 pt-2">
-        {/* 마스트헤드 */}
-        <Masthead
-          quoteType={currentQuoteType}
+        {/* 타이틀 + 구분선 */}
+        <div className="border-b border-ink pb-2">
+          <h1 className="text-center text-2xl font-bold text-ink">견적서</h1>
+        </div>
+
+        {/* 공통 헤더 2열 */}
+        <DocumentHeader
           header={doc.header}
+          total={doc.totals.total}
           onHeaderChange={onHeaderChange}
         />
 
-        {/* 섹션 표 */}
+        {/* 4섹션 */}
         <div className="space-y-4">
           {doc.sections.map((section, idx) => (
-            <SectionTable
+            <SectionBlock
               key={section.id}
               section={section}
               onSectionChange={(s) => onSectionChange(idx, s)}
@@ -632,11 +726,15 @@ export function QuoteDocumentEditor({
           ))}
         </div>
 
-        {/* 합계 */}
-        <TotalsBlock totals={doc.totals} />
+        {/* 안내사항 */}
+        <GuideEditor guide={doc.guide} onGuideChange={onGuideChange} />
 
-        {/* 약관 */}
-        <TermsEditor terms={doc.terms} onTermsChange={onTermsChange} />
+        {/* 합계 한글 표기 */}
+        {doc.totals.total > 0 && (
+          <p className="text-right text-xs text-muted">
+            일금 {koreanAmount(doc.totals.total)}원 정 (VAT 포함)
+          </p>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { QuotesControls } from "./QuotesControls";
+import { NewQuoteButton } from "./_components/NewQuoteButton";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listQuotes } from "@/features/quotes/queries";
@@ -117,6 +118,7 @@ export default async function QuotesPage({
       currentUserEmail={me?.email ?? null}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       controlsRow={controlsRow}
+      extraActions={canEdit ? <NewQuoteButton /> : undefined}
       inlineFilters={
         <ScopeChips key="quotes-scope" total={total} mineLabel="내 견적서" />
       }

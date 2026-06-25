@@ -1,11 +1,93 @@
 import { describe, it, expect } from "vitest";
-import { sectionSubtotal, koreanAmount, quoteTotals, recomputeDocument } from "../index";
+import {
+  sectionSubtotal,
+  koreanAmount,
+  quoteTotals,
+  recomputeDocument,
+  rowComputed,
+} from "../index";
 import { blankDocument } from "../../document-schema";
+
+describe("rowComputed — 행 자동계산", () => {
+  it("system: 수량 × 기간 × 단가", () => {
+    const sys = blankDocument("dev").sections[0];
+    expect(rowComputed(sys, { qty: 2, months: 3, unit: 10000 })).toBe(60000);
+  });
+  it("outsource: 수량 × 단가", () => {
+    const out = blankDocument("dev").sections[2];
+    expect(rowComputed(out, { qty: 5, unit: 2000 })).toBe(10000);
+  });
+  it("labor: laborRowDirect 적산", () => {
+    const labor = blankDocument("dev").sections[1];
+    expect(rowComputed(labor, { count: 1, daily: 578206, days: 10, ratio: 1 })).toBe(5782060);
+  });
+  it("summary(기타): amount 직접입력 그대로", () => {
+    const sum = blankDocument("dev").sections[3];
+    expect(rowComputed(sum, { amount: 12345 })).toBe(12345);
+  });
+});
+
+describe("recomputeDocument — system/outsource 행 amount 자동 기입", () => {
+  it("system 행 amount = 수량×기간×단가, outsource 행 amount = 수량×단가, summary 직접", () => {
+    const base = blankDocument("dev");
+    const doc = {
+      ...base,
+      sections: base.sections.map((s) => {
+        if (s.id === "system") {
+          return { ...s, rows: [{ category: "서버", item: "VM", qty: 2, months: 3, unit: 10000, amount: null }] };
+        }
+        if (s.id === "outsource") {
+          return { ...s, rows: [{ category: "실비", item: "택배", qty: 5, unit: 2000, amount: null }] };
+        }
+        if (s.id === "summary") {
+          return { ...s, rows: [{ category: "합", detail: "x", amount: 1000 }] };
+        }
+        return s;
+      }),
+    };
+    const r = recomputeDocument(doc);
+    const sys = r.sections.find((s) => s.id === "system")!;
+    const out = r.sections.find((s) => s.id === "outsource")!;
+    const sum = r.sections.find((s) => s.id === "summary")!;
+    expect(sys.rows[0].amount).toBe(60000);
+    expect(sys.subtotal).toBe(60000);
+    expect(out.rows[0].amount).toBe(10000);
+    expect(out.subtotal).toBe(10000);
+    expect(sum.subtotal).toBe(1000);
+    // ④총비용산출(summary)은 ①②③의 산출/요약이므로 supply에서 제외(이중계산 방지)
+    expect(r.totals.supply).toBe(60000 + 10000);
+  });
+});
+
+describe("quoteTotals — summary 섹션 합계 제외", () => {
+  it("system 60000 + outsource 10000 + summary 1000 → supply=70000 (summary 제외)", () => {
+    const base = blankDocument("dev");
+    const doc = recomputeDocument({
+      ...base,
+      sections: base.sections.map((s) => {
+        if (s.id === "system") {
+          return { ...s, rows: [{ category: "서버", item: "VM", qty: 2, months: 3, unit: 10000, amount: null }] };
+        }
+        if (s.id === "outsource") {
+          return { ...s, rows: [{ category: "실비", item: "택배", qty: 5, unit: 2000, amount: null }] };
+        }
+        if (s.id === "summary") {
+          return { ...s, rows: [{ category: "합", detail: "x", amount: 1000 }] };
+        }
+        return s;
+      }),
+    });
+    // summary 섹션 subtotal은 표시용으로 계속 계산되지만 supply에는 미반영
+    const sum = doc.sections.find((s) => s.id === "summary")!;
+    expect(sum.subtotal).toBe(1000);
+    expect(doc.totals.supply).toBe(70000);
+  });
+});
 
 describe("sectionSubtotal", () => {
   it("amount 컬럼 합", () => {
     const s = {
-      id: "main", title: "", kind: "simple" as const, subtotal: 0,
+      id: "main", title: "", kind: "simple" as const, note: "", subtotal: 0,
       columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
       rows: [{ amount: 1000 }, { amount: 2000 }, { amount: null }],
     };
@@ -18,7 +100,7 @@ describe("quoteTotals", () => {
     const d = recomputeDocument({
       ...blankDocument("dev"),
       sections: [{
-        id: "main", title: "", kind: "simple" as const, subtotal: 0,
+        id: "main", title: "", kind: "simple" as const, note: "", subtotal: 0,
         columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
         rows: [{ amount: 1000000 }],
       }],
@@ -67,7 +149,7 @@ describe("quoteTotals — vatIncluded 역산", () => {
     const d = {
       ...blankDocument("dev"),
       sections: [{
-        id: "main", title: "", kind: "simple" as const, subtotal: 0,
+        id: "main", title: "", kind: "simple" as const, note: "", subtotal: 0,
         columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
         rows: [{ amount: 1100000 }],
       }],
@@ -87,12 +169,12 @@ describe("recomputeDocument — 멀티섹션 소계 합산", () => {
       ...blankDocument("dev"),
       sections: [
         {
-          id: "sec1", title: "섹션1", kind: "simple" as const, subtotal: 0,
+          id: "sec1", title: "섹션1", kind: "simple" as const, note: "", subtotal: 0,
           columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
           rows: [{ amount: 300000 }],
         },
         {
-          id: "sec2", title: "섹션2", kind: "simple" as const, subtotal: 0,
+          id: "sec2", title: "섹션2", kind: "simple" as const, note: "", subtotal: 0,
           columns: [{ key: "amount", label: "비용", kind: "amount" as const }],
           rows: [{ amount: 700000 }],
         },
