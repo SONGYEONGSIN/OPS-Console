@@ -2,11 +2,23 @@
 
 import type { EditFormProps } from "../types";
 import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/features/quotes/schemas";
+import {
+  QUOTE_TYPE_LABELS,
+  type QuoteType,
+} from "@/features/quotes/document-schema";
 
 const STATUS_OPTIONS = Object.entries(QUOTE_STATUS_LABEL) as [
   keyof typeof QUOTE_STATUS_LABEL,
   string,
 ][];
+
+const TYPE_OPTIONS = Object.entries(QUOTE_TYPE_LABELS) as [
+  keyof typeof QUOTE_TYPE_LABELS,
+  string,
+][];
+
+const FIELD_CLASS =
+  "w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
 export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) {
   const isNew = !row.id;
@@ -18,38 +30,53 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
 
   return (
     <form
-      className="flex flex-col gap-4 p-4"
+      className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         onSave(row);
       }}
     >
-      {/* 고객 */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">고객</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">견적서 유형</span>
+        <select
+          aria-label="견적서 유형"
+          value={row.quoteType ?? "dev"}
+          onChange={(e) =>
+            setRow({ ...row, quoteType: e.target.value as QuoteType })
+          }
+          className={FIELD_CLASS}
+        >
+          {TYPE_OPTIONS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">고객</span>
         <input
           type="text"
           value={row.quoteCustomer ?? ""}
           onChange={(e) => setRow({ ...row, quoteCustomer: e.target.value })}
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          className={FIELD_CLASS}
           placeholder="고객명"
         />
       </label>
 
-      {/* 견적일 */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">견적일</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">견적일</span>
         <input
           type="date"
           value={row.quoteDate ?? ""}
           onChange={(e) => setRow({ ...row, quoteDate: e.target.value })}
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          className={FIELD_CLASS}
         />
       </label>
 
-      {/* 금액 */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">금액 (원)</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">금액 (원)</span>
         <input
           type="number"
           min={0}
@@ -61,26 +88,24 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
               quoteAmount: e.target.value === "" ? null : Number(e.target.value),
             })
           }
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          className={FIELD_CLASS}
           placeholder="0"
         />
       </label>
 
-      {/* 담당 (owner email) */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">담당 (이메일)</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">담당 (이메일)</span>
         <input
           type="email"
           value={row.quoteOwner ?? ""}
           onChange={(e) => setRow({ ...row, quoteOwner: e.target.value })}
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          className={FIELD_CLASS}
           placeholder="operator@example.com"
         />
       </label>
 
-      {/* 상태 */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">상태</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">상태</span>
         <select
           value={row.quoteStatus ?? "draft"}
           onChange={(e) =>
@@ -89,7 +114,7 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
               quoteStatus: e.target.value as QuoteStatus,
             })
           }
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          className={FIELD_CLASS}
         >
           {STATUS_OPTIONS.map(([value, label]) => (
             <option key={value} value={value}>
@@ -99,9 +124,8 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
         </select>
       </label>
 
-      {/* 유효기간 */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">유효기간</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">유효기간</span>
         <input
           type="date"
           value={row.quoteValidUntil ?? ""}
@@ -111,25 +135,21 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
               quoteValidUntil: e.target.value === "" ? null : e.target.value,
             })
           }
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          className={FIELD_CLASS}
         />
       </label>
 
-      {/* 비고 */}
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-muted">비고</span>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">비고</span>
         <textarea
           rows={3}
           value={row.quoteNote ?? ""}
-          onChange={(e) =>
-            setRow({ ...row, quoteNote: e.target.value || null })
-          }
-          className="rounded border border-line px-3 py-1.5 text-sm text-ink focus:border-ink focus:outline-none"
+          onChange={(e) => setRow({ ...row, quoteNote: e.target.value || null })}
+          className={FIELD_CLASS}
           placeholder="메모"
         />
       </label>
 
-      {/* 버튼 */}
       <div className="flex gap-2 pt-2">
         <button
           type="submit"

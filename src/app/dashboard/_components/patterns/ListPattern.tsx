@@ -528,6 +528,7 @@ export type ListRow = {
   quoteStatus?: "draft" | "sent" | "won" | "lost";
   quoteValidUntil?: string | null;
   quoteNote?: string | null;
+  quoteType?: "dev" | "fee" | "platform" | "labor";
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

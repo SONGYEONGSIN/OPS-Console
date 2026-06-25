@@ -93,6 +93,7 @@ export default async function QuotesPage({
       owner_email: row.quoteOwner ?? null,
       status: row.quoteStatus ?? "draft",
       note: row.quoteNote ?? null,
+      quote_type: row.quoteType,
     };
 
     if (isNew) {

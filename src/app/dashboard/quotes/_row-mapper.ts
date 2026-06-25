@@ -28,5 +28,6 @@ export function quoteRowToListRow(q: QuoteRow): ListRow {
     quoteStatus: q.status,
     quoteValidUntil: q.valid_until ?? null,
     quoteNote: q.note ?? null,
+    quoteType: q.quote_type ?? "dev",
   };
 }
