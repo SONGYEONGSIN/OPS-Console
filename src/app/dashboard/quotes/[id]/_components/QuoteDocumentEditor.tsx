@@ -502,11 +502,13 @@ export function QuoteDocumentEditor({
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   function updateDoc(next: QuoteDocument) {
     setDoc(recomputeDocument(next));
     setSaved(false);
+    setDirty(true);
   }
 
   function handleTypeChange(newType: QuoteType) {
@@ -543,6 +545,7 @@ export function QuoteDocumentEditor({
     setSaving(false);
     if (res.ok) {
       setSaved(true);
+      setDirty(false);
     } else {
       setSaveError(res.error ?? "저장 실패");
     }
@@ -585,6 +588,20 @@ export function QuoteDocumentEditor({
           {saved && !saving && (
             <span className="text-xs text-muted">저장됨</span>
           )}
+          <a
+            href={`/api/quotes/${id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={dirty && !saved ? "저장 후 최신 PDF가 반영됩니다" : undefined}
+            onClick={(e) => {
+              if (dirty && !saved && !window.confirm("저장하지 않은 변경은 PDF에 반영되지 않습니다. 계속할까요?")) {
+                e.preventDefault();
+              }
+            }}
+            className="border border-ink bg-transparent px-4 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+          >
+            PDF
+          </a>
           <button
             type="button"
             onClick={handleSave}
