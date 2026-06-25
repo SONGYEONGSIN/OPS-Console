@@ -8,13 +8,12 @@ import {
   Font,
 } from "@react-pdf/renderer";
 import path from "node:path";
-import type { QuoteDocument } from "@/features/quotes/document-schema";
+import type { QuoteDocument, QuoteSection } from "@/features/quotes/document-schema";
 import { QUOTE_SENDER } from "@/features/quotes/sender";
 import {
   recomputeDocument,
   koreanAmount,
   laborRollup,
-  laborRowDirect,
 } from "@/features/quotes/calc";
 
 const PRETENDARD_REGULAR = path.join(
@@ -328,13 +327,14 @@ function cellValue(
 function SectionTable({
   section,
 }: {
-  section: import("@/features/quotes/document-schema").QuoteSection;
+  section: QuoteSection;
 }) {
   const { columns, rows, kind, rates, subtotal } = section;
 
   // labor 섹션: 적산 블록 추가
+  // PDF는 recomputeDocument 거친 doc을 받으므로 r.direct 필드를 재사용(단일 소스)
   const directSum = kind === "labor"
-    ? rows.reduce((acc, r) => acc + laborRowDirect(r), 0)
+    ? rows.reduce((acc, r) => acc + (typeof r.direct === "number" ? r.direct : 0), 0)
     : 0;
   const effectiveRates = rates ?? { overhead: 1.1, techFee: 0.2 };
   const rollup = kind === "labor"
