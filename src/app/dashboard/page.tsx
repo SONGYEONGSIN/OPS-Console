@@ -112,6 +112,8 @@ export default async function DashboardLivePage({
   // 오픈 예정(write_start_at ≥ 오늘) / 마감 임박(pay_end_at D-3 이내). derive.ts.
   const closingOpensUpcoming = upcomingOpens(closingRows, todayYmd);
   const closingImminent = imminentClosings(closingRows, todayYmd);
+  // 오픈 임박: 작성시작(write_start_at) D-3 이내. 마감 임박과 동일 창으로 통일.
+  const closingOpensImminent = openingsWithin(closingRows, todayYmd, 3);
   const openCount = closingOpensUpcoming.length;
 
   // ─── 사고 ─────────────────────────────────────────────
@@ -454,6 +456,7 @@ export default async function DashboardLivePage({
   }).length;
   // 마감 임박: closing pay_end_at(결제마감) D-3 이내(derive.ts) 중 가장 임박한 건.
   const topClosing = closingImminent[0];
+  const topOpen = closingOpensImminent[0];
   const topIncident = unresolvedIncidents[0];
   // 팝업 리스트용 미리보기 행 (각 최대 30건, 모달 내부 스크롤). "MM.DD" 시각 + 제목.
   const POPUP_ROW_CAP = 30;
@@ -461,6 +464,12 @@ export default async function DashboardLivePage({
   // 마감 시각은 마감임박 기준과 동일하게 pay_end_at(결제마감)으로 통일.
   const deadlineRows = closingImminent.slice(0, POPUP_ROW_CAP).map((c) => ({
     time: c.pay_end_at ? mmdd(c.pay_end_at) : undefined,
+    title: `${c.university_name} · ${c.service_name}`,
+    sub: c.operator_name ? `담당 ${c.operator_name}` : undefined,
+  }));
+  // 오픈 시각은 작성시작(write_start_at) 기준.
+  const openRows = closingOpensImminent.slice(0, POPUP_ROW_CAP).map((c) => ({
+    time: c.write_start_at ? mmdd(c.write_start_at) : undefined,
     title: `${c.university_name} · ${c.service_name}`,
     sub: c.operator_name ? `담당 ${c.operator_name}` : undefined,
   }));
@@ -502,6 +511,7 @@ export default async function DashboardLivePage({
   const headline: HeadlineInput = {
     incidentsUnresolved: unresolvedIncidents.length,
     deadlinesToday: closingImminent.length,
+    opensImminent: closingOpensImminent.length,
     // 미수 10일+ 일수 임계값은 page.tsx 시트 모수에 없어 미수(active) 전체 건수로 대체.
     overdueReceivables: receivablesUnpaid,
     inProgressServices: inProgressServicesCount,
@@ -515,8 +525,19 @@ export default async function DashboardLivePage({
             86_400_000,
         )
       : undefined,
+    topOpenLabel: topOpen
+      ? `${topOpen.university_name} · ${topOpen.service_name}`
+      : undefined,
+    topOpenDays: topOpen?.write_start_at
+      ? Math.round(
+          (Date.parse(topOpen.write_start_at.slice(0, 10)) -
+            Date.parse(todayYmd)) /
+            86_400_000,
+        )
+      : undefined,
     topIncidentLabel: topIncident?.title ?? undefined,
     deadlineRows,
+    openRows,
     incidentRows,
     receivableRows,
   };

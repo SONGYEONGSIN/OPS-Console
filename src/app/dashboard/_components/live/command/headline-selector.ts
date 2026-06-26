@@ -12,15 +12,21 @@ export type HeadlinePreviewRow = { time?: string; title: string; sub?: string };
 export type HeadlineInput = {
   incidentsUnresolved: number;
   deadlinesToday: number;
+  /** 작성시작(오픈)이 임박한 건수. 미지정 시 0(오픈 임박 항목 미노출). */
+  opensImminent?: number;
   overdueReceivables: number;
   inProgressServices: number;
   topDeadlineLabel?: string;
   /** 가장 임박한 마감까지 남은 일수 (0=오늘). sub의 "D-n" 표기용. */
   topDeadlineDays?: number;
+  topOpenLabel?: string;
+  /** 가장 임박한 오픈까지 남은 일수 (0=오늘). sub의 "D-n" 표기용. */
+  topOpenDays?: number;
   topIncidentLabel?: string;
   /** 팝업 리스트용 — 항목별 미리보기 행 (없으면 빈 배열로 처리). */
   incidentRows?: HeadlinePreviewRow[];
   deadlineRows?: HeadlinePreviewRow[];
+  openRows?: HeadlinePreviewRow[];
   receivableRows?: HeadlinePreviewRow[];
 };
 
@@ -76,6 +82,16 @@ function urgentItems(input: HeadlineInput): UrgentItem[] {
           ? `${i.topDeadlineLabel} D-${i.topDeadlineDays ?? 0}`
           : undefined,
       rowsFrom: (i) => i.deadlineRows ?? [],
+    },
+    {
+      label: "오픈 임박",
+      count: input.opensImminent ?? 0,
+      href: "/dashboard/closing",
+      subFrom: (i) =>
+        i.topOpenLabel
+          ? `${i.topOpenLabel} D-${i.topOpenDays ?? 0}`
+          : undefined,
+      rowsFrom: (i) => i.openRows ?? [],
     },
     {
       label: "미수채권 10일+",

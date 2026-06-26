@@ -36,6 +36,27 @@ describe("selectHeadline — 항목 preview rows", () => {
     expect(r.items[0].rows).toEqual([]);
   });
 
+  it("오픈 임박도 urgent 항목으로 노출 — 마감과 미수 사이 순서", () => {
+    const r = selectHeadline({
+      ...ZERO,
+      deadlinesToday: 2,
+      opensImminent: 4,
+      overdueReceivables: 3,
+      topOpenLabel: "한양대학교 · 수시 1차",
+      topOpenDays: 2,
+      openRows: [{ time: "06.29", title: "한양대학교 · 수시 1차" }],
+    });
+    const labels = r.items.map((i) => i.label);
+    expect(labels).toEqual(["마감 임박", "오픈 임박", "미수채권 10일+"]);
+    const openItem = r.items.find((i) => i.label === "오픈 임박");
+    expect(openItem?.count).toBe(4);
+    expect(openItem?.href).toBe("/dashboard/closing");
+    expect(openItem?.sub).toBe("한양대학교 · 수시 1차 D-2");
+    expect(openItem?.rows).toHaveLength(1);
+    // 긴급 총합에도 포함(마감2 + 오픈4 + 미수3 = 9)
+    expect(r.urgentTotal).toBe(9);
+  });
+
   it("각 항목은 자기 sub를 가진다 — 마감은 topDeadline, 미수는 없음", () => {
     const r = selectHeadline({
       ...ZERO,
