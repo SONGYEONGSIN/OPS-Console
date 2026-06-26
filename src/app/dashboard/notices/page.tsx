@@ -65,6 +65,7 @@ export default async function NoticesPage({
         author_id: null,
         owner_label: ownerLabel,
         status: row.status as PostRow["status"],
+        announce_on: row.noticeAnnounceOn ?? null,
       });
       return result.ok ? { ok: true } : { ok: false, error: result.error };
     }
@@ -77,6 +78,7 @@ export default async function NoticesPage({
       body: row.body ?? null,
       owner_label: row.owner || null,
       status: row.status as PostRow["status"],
+      announce_on: row.noticeAnnounceOn ?? null,
     });
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
@@ -109,6 +111,7 @@ function postToListRow(post: PostRow): ListRow {
     author: author?.name ?? post.author_email,
     owner: post.owner_label ?? "",
     status: post.status as ListRow["status"],
+    noticeAnnounceOn: post.announce_on ?? null,
     meta: formatKstDate(post.created_at),
   };
 }
