@@ -5,8 +5,45 @@ vi.mock("@/features/receivables-match/apply-mismatch-action", () => ({
   applyMismatchAsMatch: vi.fn().mockResolvedValue({ ok: true, patched: true }),
 }));
 
-import { AutomationLogPanel } from "../AutomationLogPanel";
+import { AutomationLogPanel, buildTimeline } from "../AutomationLogPanel";
 import type { JobRunLog } from "@/features/automations/run-logs-normalize";
+import type { AutomationRunEntry } from "@/features/automations/types";
+
+describe("buildTimeline — 시각 내림차순 정렬", () => {
+  it("run에 매칭 안 되는 최신 날짜 상세가 과거 run보다 위로 온다", () => {
+    const runs: AutomationRunEntry[] = [
+      {
+        ranAt: "2026-06-22T01:00:24Z",
+        ok: true,
+        skipped: true,
+        message: "자동 실행 OFF — cron skip",
+      },
+      {
+        ranAt: "2026-06-17T04:49:37Z",
+        ok: true,
+        skipped: false,
+        message: "트리거",
+      },
+    ];
+    const log: JobRunLog = {
+      jobId: "closing-scrape",
+      kind: "closing-scrape",
+      entries: [
+        // idx0 — 6.22 run과 같은 날짜(매칭)
+        { ranAt: "2026-06-22T01:00:57Z", status: "success", serviceCount: 491, message: null },
+        // idx1,2 — 6.26 (어떤 run에도 매칭 안 됨 = leftover, 가장 최신)
+        { ranAt: "2026-06-26T12:14:08Z", status: "failed", serviceCount: 0, message: "TimeoutException" },
+        { ranAt: "2026-06-26T08:20:34Z", status: "failed", serviceCount: 0, message: "RuntimeError" },
+      ],
+    };
+    const tl = buildTimeline(runs, log);
+    // 최신 6.26 detail-only가 맨 위, 그 뒤 6.22 run, 6.17 run 순
+    expect(tl[0].kind).toBe("detail-only");
+    expect(tl[0].kind === "detail-only" && tl[0].dateKey).toBe("2026-06-26");
+    expect(tl[1].kind === "run" && tl[1].run.ranAt).toBe("2026-06-22T01:00:24Z");
+    expect(tl[2].kind === "run" && tl[2].run.ranAt).toBe("2026-06-17T04:49:37Z");
+  });
+});
 
 describe("AutomationLogPanel", () => {
   it("loading 상태", () => {
