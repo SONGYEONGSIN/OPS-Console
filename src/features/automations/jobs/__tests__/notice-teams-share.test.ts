@@ -95,9 +95,9 @@ describe("runNoticeTeamsShare", () => {
     expect(r.details?.shared ?? 0).toBe(0);
   });
 
-  it("채팅방 미설정(둘 다 빈값)이면 전송 생략", async () => {
+  it("TEAMS_NOTICE_CHAT_ID 미설정이면 TEAMS_CHAT_ID(차주보고)로 폴백하지 않고 전송 생략", async () => {
     vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
-    vi.stubEnv("TEAMS_CHAT_ID", "");
+    vi.stubEnv("TEAMS_CHAT_ID", "19:chajubogo@thread.v2"); // 설정돼 있어도 폴백 X
     const r = await runNoticeTeamsShare();
     expect(r.ok).toBe(true);
     expect(r.message).toMatch(/채팅방|미설정/);
