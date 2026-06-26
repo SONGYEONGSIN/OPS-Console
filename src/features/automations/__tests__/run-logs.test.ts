@@ -14,7 +14,14 @@ import { getJobRunLog } from "../run-logs";
 function mockAdmin(table: string, data: unknown[]) {
   const limit = vi.fn().mockResolvedValue({ data });
   const order = vi.fn(() => ({ limit }));
-  const select = vi.fn(() => ({ order }));
+  // notice-teams resolver는 .eq(...).not(...) 필터 체인을 거치므로 self를 반환해
+  // .order()까지 도달하도록 한다(다른 resolver는 select→order 직행).
+  const builder: Record<string, unknown> = { order };
+  const eq = vi.fn(() => builder);
+  const not = vi.fn(() => builder);
+  builder.eq = eq;
+  builder.not = not;
+  const select = vi.fn(() => builder);
   const from = vi.fn((t: string) => {
     expect(t).toBe(table);
     return { select };
@@ -22,7 +29,7 @@ function mockAdmin(table: string, data: unknown[]) {
   (createAdminClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     from,
   });
-  return { from, select, order, limit };
+  return { from, select, eq, not, order, limit };
 }
 
 beforeEach(() => {
@@ -144,6 +151,24 @@ describe("getJobRunLog", () => {
     expect(log.kind).toBe("service-notice");
     if (log.kind === "service-notice") {
       expect(log.entries[0].serviceCount).toBe(5);
+    }
+  });
+
+  it("notice-teams-share → posts 공유 공지 조회 + notice-teams 매핑", async () => {
+    mockAdmin("posts", [
+      {
+        title: "정기 점검 안내",
+        notice_shared_at: "2026-06-20T01:00:00Z",
+        owner_label: "운영부",
+        author_email: "ops@example.com",
+      },
+    ]);
+    const log = await getJobRunLog("notice-teams-share");
+    expect(log.kind).toBe("notice-teams");
+    if (log.kind === "notice-teams") {
+      expect(log.entries[0].title).toBe("정기 점검 안내");
+      expect(log.entries[0].author).toBe("운영부");
+      expect(log.entries[0].sharedAt).toBe("2026-06-20T01:00:00Z");
     }
   });
 

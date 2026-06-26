@@ -71,6 +71,12 @@ export type ServiceNoticeEntry = {
   errorMessage: string | null;
 };
 
+export type NoticeTeamsEntry = {
+  sharedAt: string;
+  title: string;
+  author: string;
+};
+
 export type ClosingRunEntry = {
   ranAt: string;
   status: "success" | "skipped" | "failed";
@@ -97,6 +103,7 @@ export type JobRunLog =
   | { jobId: string; kind: "insights"; entries: InsightsBatchEntry[] }
   | { jobId: string; kind: "smileedi"; entries: SmileEdiEntry[] }
   | { jobId: string; kind: "service-notice"; entries: ServiceNoticeEntry[] }
+  | { jobId: string; kind: "notice-teams"; entries: NoticeTeamsEntry[] }
   | { jobId: string; kind: "closing-scrape"; entries: ClosingRunEntry[] }
   | { jobId: string; kind: "weekly-report"; entries: WeeklyReportEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
@@ -269,6 +276,21 @@ export function toServiceNoticeEntry(
     serviceCount: row.service_count ?? 0,
     status: row.status,
     errorMessage: row.error_message ?? null,
+  };
+}
+
+type NoticeTeamsRow = {
+  title: string;
+  notice_shared_at: string;
+  owner_label: string | null;
+  author_email: string;
+};
+
+export function toNoticeTeamsEntry(row: NoticeTeamsRow): NoticeTeamsEntry {
+  return {
+    sharedAt: row.notice_shared_at,
+    title: row.title,
+    author: row.owner_label ?? row.author_email,
   };
 }
 
