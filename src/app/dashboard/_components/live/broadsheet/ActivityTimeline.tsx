@@ -51,7 +51,12 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setPopover(null);
     };
-    const onScroll = () => setPopover(null);
+    // 페이지 스크롤 시에만 닫는다. 팝오버 내부(타임라인 컨테이너) 스크롤은 무시 —
+    // 그렇지 않으면 내부 목록을 휠로 스크롤하는 순간 닫혀 스크롤이 안 되는 것처럼 보인다.
+    const onScroll = (e: Event) => {
+      if (tlRef.current?.contains(e.target as Node)) return;
+      setPopover(null);
+    };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, true);
