@@ -39,10 +39,10 @@ const NOTICE_STATUS_LABEL: Record<ListRow["status"], string> = {
   deleted: "삭제",
 };
 
-function postLabelFor(
-  variant: PostVariant,
-): Record<ListRow["status"], string> {
-  return variant === "post-notice" ? NOTICE_STATUS_LABEL : FEEDBACK_STATUS_LABEL;
+function postLabelFor(variant: PostVariant): Record<ListRow["status"], string> {
+  return variant === "post-notice"
+    ? NOTICE_STATUS_LABEL
+    : FEEDBACK_STATUS_LABEL;
 }
 
 const FEEDBACK_STATUS_KEYS: ListRow["status"][] = [
@@ -52,7 +52,11 @@ const FEEDBACK_STATUS_KEYS: ListRow["status"][] = [
   "approved",
 ];
 
-const NOTICE_STATUS_KEYS: ListRow["status"][] = ["urgent", "active", "approved"];
+const NOTICE_STATUS_KEYS: ListRow["status"][] = [
+  "urgent",
+  "active",
+  "approved",
+];
 
 export function postStatusKeys(variant: PostVariant): ListRow["status"][] {
   return variant === "post-notice" ? NOTICE_STATUS_KEYS : FEEDBACK_STATUS_KEYS;
@@ -76,15 +80,15 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">등록자</th>
           {variant === "post-feedback" && <th className="px-3 py-2">담당</th>}
           <th className="px-3 py-2">작성일</th>
+          {variant === "post-notice" && (
+            <th className="px-3 py-2">팀즈 발송</th>
+          )}
         </tr>
       </thead>
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td
-              colSpan={variant === "post-notice" ? 5 : 6}
-              className="px-3 py-6 text-center text-muted"
-            >
+            <td colSpan={6} className="px-3 py-6 text-center text-muted">
               데이터 없음
             </td>
           </tr>
@@ -119,6 +123,17 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
               <td className="px-3 py-2 text-xs text-muted">
                 {row.meta ?? "-"}
               </td>
+              {variant === "post-notice" && (
+                <td className="px-3 py-2 text-xs">
+                  {row.noticeSharedAt ? (
+                    <span className="inline-block bg-line-soft px-2 py-0.5 text-ink">
+                      발송됨
+                    </span>
+                  ) : (
+                    <span className="text-muted">미발송</span>
+                  )}
+                </td>
+              )}
             </tr>
           ))
         )}

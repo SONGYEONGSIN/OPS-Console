@@ -112,6 +112,7 @@ function postToListRow(post: PostRow): ListRow {
     owner: post.owner_label ?? "",
     status: post.status as ListRow["status"],
     noticeAnnounceOn: post.announce_on ?? null,
+    noticeSharedAt: post.notice_shared_at ?? null,
     meta: formatKstDate(post.created_at),
   };
 }
