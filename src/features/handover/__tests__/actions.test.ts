@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const {
-  mockGetCurrentOperator,
-  mockUpsertResult,
-  upsertPayloads,
-} = vi.hoisted(() => ({
-  mockGetCurrentOperator: vi.fn(),
-  mockUpsertResult: vi.fn(),
-  upsertPayloads: [] as unknown[],
-}));
+const { mockGetCurrentOperator, mockUpsertResult, upsertPayloads } = vi.hoisted(
+  () => ({
+    mockGetCurrentOperator: vi.fn(),
+    mockUpsertResult: vi.fn(),
+    upsertPayloads: [] as unknown[],
+  }),
+);
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/features/auth/queries", () => ({
@@ -96,22 +94,34 @@ describe("upsertHandoverRecord", () => {
     expect(payload.status).toBe("draft");
   });
 
-  it("14 필드 모두 채움 → status=ready", async () => {
+  it("14 필드 모두 채움(구조화 포함) → status=ready", async () => {
     mockGetCurrentOperator.mockResolvedValue(meOperator);
     mockUpsertResult.mockReturnValue({ data: sampleRow, error: null });
 
-    const payload14: Record<string, string> = { service_id: serviceId };
+    // 순수 md 필드(8개) 텍스트로 채움
+    const payload: Record<string, unknown> = { service_id: serviceId };
     for (const k of [
-      "contract_info_md", "contract_data_md",
-      "work_basic_md", "work_generator_md", "work_site_md", "work_output_md",
-      "work_rate_md", "work_file_md", "work_etc_md",
-      "payment_fee_md", "payment_invoice_md",
-      "school_contact_md", "docs_md", "notes_md",
-    ]) payload14[k] = "x";
+      "contract_data_md", // checklist 없이 md fallback으로 충족
+      "work_basic_md",
+      "work_generator_md",
+      "work_site_md",
+      "work_output_md",
+      "work_rate_md",
+      "work_file_md",
+      "work_etc_md",
+      "docs_md",
+      "notes_md",
+    ])
+      payload[k] = "x";
+    // 구조화 4필드는 구조화 데이터로 충족 (md 아님)
+    payload.contract_info = { title: "원서접수" };
+    payload.payment_fee = { memo: "처리" };
+    payload.payment_invoice = { issueType: "역발행" };
+    payload.school_contacts = [{ id: "1", name: "홍길동" }];
 
-    await upsertHandoverRecord(payload14);
-    const payload = upsertPayloads[0] as Record<string, unknown>;
-    expect(payload.status).toBe("ready");
+    await upsertHandoverRecord(payload);
+    const out = upsertPayloads[0] as Record<string, unknown>;
+    expect(out.status).toBe("ready");
   });
 
   it("upsert payload에 author_email/name + updated_at 자동", async () => {
