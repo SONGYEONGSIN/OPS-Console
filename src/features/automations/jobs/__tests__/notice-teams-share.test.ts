@@ -19,11 +19,17 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 import { runNoticeTeamsShare, buildNoticeMessage } from "../notice-teams-share";
 
-// posts.select(...).eq("domain","notice").is("notice_shared_at",null).order().limit()
+// posts.select(...).eq("domain","notice").is("notice_shared_at",null).or(...).order().limit()
+const orArg = { value: "" };
 function wireSelect(rows: Array<Record<string, unknown>>) {
+  orArg.value = "";
   const limit = vi.fn(async () => ({ data: rows, error: null }));
   const order = vi.fn(() => ({ limit }));
-  const is = vi.fn(() => ({ order }));
+  const or = vi.fn((expr: string) => {
+    orArg.value = expr;
+    return { order };
+  });
+  const is = vi.fn(() => ({ or }));
   const eq = vi.fn(() => ({ is }));
   const select = vi.fn(() => ({ eq }));
   const update = vi.fn(() => ({ eq: updateEq }));
@@ -69,6 +75,16 @@ describe("runNoticeTeamsShare", () => {
     );
     expect(updateEq).toHaveBeenCalledTimes(1); // notice_shared_at 표시
     expect(r.details?.shared).toBe(1);
+  });
+
+  it("공지일(announce_on)이 오늘 이하 또는 null인 건만 조회한다", async () => {
+    wireSelect([{ id: "n1", title: "t", body: "b", owner_label: "운영부" }]);
+    await runNoticeTeamsShare();
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Seoul",
+    });
+    expect(orArg.value).toContain("announce_on.is.null");
+    expect(orArg.value).toContain(`announce_on.lte.${today}`);
   });
 
   it("미공유 공지 없으면 발송 없이 0건", async () => {

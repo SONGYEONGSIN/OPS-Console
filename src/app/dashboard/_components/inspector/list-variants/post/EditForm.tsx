@@ -108,6 +108,22 @@ export function PostForm({
           ))}
         </select>
       </label>
+      {variant === "post-notice" && (
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">
+            공지일 (이 날짜에 Teams 공유 · 비우면 즉시)
+          </span>
+          <input
+            type="date"
+            aria-label="공지일"
+            value={row.noticeAnnounceOn ?? ""}
+            onChange={(e) =>
+              setRow({ ...row, noticeAnnounceOn: e.target.value || null })
+            }
+            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          />
+        </label>
+      )}
       <div className="flex gap-2 pt-2">
         <button
           type="submit"

@@ -21,11 +21,20 @@ export const postRowSchema = z.object({
   author_id: z.string().uuid().nullable().optional(),
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema,
+  // 공지일(YYYY-MM-DD) — 이 날짜에 Teams 1회 공유. null = 작성 즉시. notice 전용.
+  announce_on: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
 
 export type PostRow = z.infer<typeof postRowSchema>;
+
+// 공지일 입력 — YYYY-MM-DD 또는 null(즉시).
+const announceOnField = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "올바른 날짜가 아닙니다.")
+  .nullable()
+  .optional();
 
 export const postCreateSchema = z.object({
   domain: postDomainSchema,
@@ -36,6 +45,7 @@ export const postCreateSchema = z.object({
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema.default("urgent"),
   slug: z.string().optional(),
+  announce_on: announceOnField,
 });
 
 export type PostCreate = z.infer<typeof postCreateSchema>;
@@ -45,6 +55,7 @@ export const postUpdateSchema = z.object({
   body: z.string().nullable().optional(),
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema.optional(),
+  announce_on: announceOnField,
 });
 
 export type PostUpdate = z.infer<typeof postUpdateSchema>;

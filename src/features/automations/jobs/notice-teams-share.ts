@@ -45,12 +45,17 @@ export async function runNoticeTeamsShare(): Promise<AutomationRunResult> {
     };
   }
 
+  // 공지일(announce_on)이 오늘(KST) 이하이거나 미설정(즉시)인 건만 공유 대상.
+  const todayKst = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Seoul",
+  });
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("posts")
     .select("id, title, body, owner_label, author_email")
     .eq("domain", "notice")
     .is("notice_shared_at", null)
+    .or(`announce_on.is.null,announce_on.lte.${todayKst}`)
     .order("created_at", { ascending: true })
     .limit(BATCH);
   if (error) return { ok: false, message: `공지 조회 실패: ${error.message}` };
