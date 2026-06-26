@@ -23,19 +23,18 @@ export function buildNoticeMessage(n: {
 
 /**
  * 공지사항(posts.domain='notice') 중 미공유분을 Teams 그룹채팅에 발송한다.
- * - 채팅방: TEAMS_NOTICE_CHAT_ID (없으면 TEAMS_CHAT_ID 폴백)
+ * - 채팅방: TEAMS_NOTICE_CHAT_ID (공지 전용). 미설정 시 발송 생략(차주보고 방으로 폴백 안 함)
  * - 발신 명의: TEAMS_NOTICE_SENDER (위임 토큰 필요)
  * - 멱등: 발송 성공한 공지만 notice_shared_at 기록 → 다음 run에서 제외. 실패분은 재시도.
  */
 export async function runNoticeTeamsShare(): Promise<AutomationRunResult> {
-  const chatId =
-    process.env.TEAMS_NOTICE_CHAT_ID || process.env.TEAMS_CHAT_ID || "";
+  // 공지 전용 방만 사용 — 미설정 시 차주보고 방(TEAMS_CHAT_ID)으로 폴백하지 않고 발송 생략.
+  const chatId = process.env.TEAMS_NOTICE_CHAT_ID || "";
   const sender = process.env.TEAMS_NOTICE_SENDER || "";
   if (!chatId) {
     return {
       ok: true,
-      message:
-        "Teams 채팅방 미설정 (TEAMS_NOTICE_CHAT_ID/TEAMS_CHAT_ID) — 전송 생략",
+      message: "Teams 채팅방 미설정 (TEAMS_NOTICE_CHAT_ID) — 전송 생략",
     };
   }
   if (!sender) {
