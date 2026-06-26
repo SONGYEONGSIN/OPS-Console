@@ -470,7 +470,32 @@ export default async function DashboardLivePage({
   const receivableRows = receivablesFeedRows
     .filter((r) => r.status === "active")
     .slice(0, POPUP_ROW_CAP)
-    .map((r) => ({ title: r.name ?? "" }));
+    .map((r) => {
+      // 가용 필드: name=학교명, schoolOwner=학교담당자, author=청구금액,
+      // meta=청구일자, dueDate=입금예정일. 빈 값은 생략하고 결합.
+      const schoolOwner = r.receivablesCells?.schoolOwner?.trim();
+      const amount = r.author?.trim();
+      const billedAt = r.meta?.trim();
+      const dueDate = r.receivablesCells?.dueDate?.trim();
+      const title = [r.name?.trim(), schoolOwner]
+        .filter((p): p is string => Boolean(p))
+        .join(" · ");
+      // 금액 셀에 이미 통화 표기가 있으면 그대로, 숫자만이면 "원" 부가.
+      const amountLabel = amount
+        ? /[원,]/.test(amount)
+          ? amount
+          : `${amount}원`
+        : undefined;
+      const sub =
+        [
+          amountLabel,
+          billedAt && `청구 ${billedAt}`,
+          dueDate && `예정 ${dueDate}`,
+        ]
+          .filter((p): p is string => Boolean(p))
+          .join(" · ") || undefined;
+      return { title, sub };
+    });
   const headline: HeadlineInput = {
     incidentsUnresolved: unresolvedIncidents.length,
     deadlinesToday: closingImminent.length,

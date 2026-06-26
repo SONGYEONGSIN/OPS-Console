@@ -6,8 +6,8 @@
  * 모든 지표가 0이면 calm 모드 — 진행 중 서비스 건수로 "순항" 카피를 보여준다.
  */
 
-/** 팝업 항목 리스트 1행 — 시각(선택) + 제목. */
-export type HeadlinePreviewRow = { time?: string; title: string };
+/** 팝업 항목 리스트 1행 — 시각(선택) + 제목 + 보조 상세(선택). */
+export type HeadlinePreviewRow = { time?: string; title: string; sub?: string };
 
 export type HeadlineInput = {
   incidentsUnresolved: number;
