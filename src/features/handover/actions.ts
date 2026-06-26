@@ -10,6 +10,7 @@ import {
   type HandoverStatus,
 } from "./schemas";
 import { HANDOVER_FIELD_KEYS } from "./categories";
+import { isHandoverRecordComplete } from "./completion";
 
 export type UpsertResult =
   | { ok: true; row: HandoverRecordRow }
@@ -36,11 +37,11 @@ export async function upsertHandoverRecord(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
   }
 
-  const allFilled = HANDOVER_FIELD_KEYS.every((k) => {
-    const v = parsed.data[k];
-    return v != null && String(v).trim().length > 0;
-  });
-  const status: HandoverStatus = allFilled ? "ready" : "draft";
+  // status는 UI 배지(progress.ts isFieldFilled)와 동일 규칙으로 판정 —
+  // 구조화 필드(계약정보·정산·학교담당자 등)는 구조화 데이터로 완료 여부를 본다.
+  const status: HandoverStatus = isHandoverRecordComplete(parsed.data)
+    ? "ready"
+    : "draft";
 
   const supabase = await createClient();
   const { data, error } = await supabase
