@@ -28,7 +28,7 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("권한 없음")).toBeInTheDocument();
   });
 
-  it("빈 로그 → 실행 기록 없음", () => {
+  it("빈 로그 + 빈 runs → 실행 기록 없음", () => {
     const log: JobRunLog = {
       jobId: "receivables-deposit-match",
       kind: "deposit-match",
@@ -74,7 +74,6 @@ describe("AutomationLogPanel", () => {
         log={null}
       />,
     );
-    expect(screen.getByText("실행 이력")).toBeInTheDocument();
     expect(screen.getByText("발송 대상 없음")).toBeInTheDocument();
     expect(screen.getByText("성공")).toBeInTheDocument();
     expect(screen.getByText("스킵")).toBeInTheDocument();
@@ -82,48 +81,118 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("시트 미연결")).toBeInTheDocument();
   });
 
-  it("run 기반 잡(deposit-match)은 발송 상세가 있으면 '실행 이력' 숨김(중복 제거)", () => {
+  it("통합 타임라인 — 같은 날짜의 run과 발송 상세를 한 블록에 인라인", () => {
     const log: JobRunLog = {
-      jobId: "receivables-deposit-match",
-      kind: "deposit-match",
+      jobId: "smileedi-mail",
+      kind: "smileedi",
       entries: [
         {
-          startedAt: "2026-06-16T02:00:18Z",
-          finishedAt: "2026-06-16T02:00:30Z",
-          mode: "live",
-          matchedCount: 0,
-          mismatchCount: 0,
-          errorCount: 0,
-          matchedLines: [],
-          mismatchLines: [],
-          mismatchItems: [],
-          errorLines: [],
-          skipLines: [],
+          // 2026-06-16 KST (UTC+9): 06-16 10:00 KST
+          sentAt: "2026-06-16T01:00:00Z",
+          recipientName: "이담당",
+          recipientEmail: "lee@example.com",
+          companyNames: ["가나상사"],
+          invoiceCount: 3,
+          totalSupplyAmount: 1500000,
+          status: "sent",
+          errorMessage: null,
         },
       ],
     };
-    render(
+    const { container } = render(
       <AutomationLogPanel
-        label="입금 매칭 자동화"
+        label="세금계산서 역발행 알림"
         loading={false}
         error={null}
         runs={[
           {
-            ranAt: "2026-06-16T02:00:27Z",
+            // 2026-06-16 KST
+            ranAt: "2026-06-16T01:00:05Z",
             ok: true,
             skipped: false,
-            message: "매칭 0 · 불일치 0 · 에러 0",
+            message: "역발행 1건 발송",
           },
         ]}
         log={log}
       />,
     );
-    // 발송 상세(run별 시각 포함)가 있으므로 상단 '실행 이력' 섹션은 숨긴다.
+    // 통합: 별도 '발송 상세'/'실행 이력' 섹션 헤더 없음
+    expect(screen.queryByText("발송 상세")).not.toBeInTheDocument();
     expect(screen.queryByText("실행 이력")).not.toBeInTheDocument();
-    expect(screen.getByText("발송 상세")).toBeInTheDocument();
+    // run 메시지와 발송 상세가 모두 보인다
+    expect(screen.getByText("역발행 1건 발송")).toBeInTheDocument();
+    expect(screen.getByText("이담당 (lee@example.com)")).toBeInTheDocument();
+    // 같은 블록(같은 timeline-item) 안에 run 메시지와 상세가 함께 위치
+    const item = container.querySelector("[data-timeline-item]");
+    expect(item).not.toBeNull();
+    expect(item?.textContent).toContain("역발행 1건 발송");
+    expect(item?.textContent).toContain("이담당 (lee@example.com)");
   });
 
-  it("deposit-match 로그 — 카운트와 불일치 줄 렌더", () => {
+  it("통합 타임라인 — run에 매칭 안 되는 상세는 폴백으로 자체 시각 노출", () => {
+    const log: JobRunLog = {
+      jobId: "smileedi-mail",
+      kind: "smileedi",
+      entries: [
+        {
+          sentAt: "2026-06-10T01:00:00Z",
+          recipientName: "박담당",
+          recipientEmail: "park@example.com",
+          companyNames: ["다라상사"],
+          invoiceCount: 1,
+          totalSupplyAmount: 200000,
+          status: "sent",
+          errorMessage: null,
+        },
+      ],
+    };
+    render(
+      <AutomationLogPanel
+        label="세금계산서 역발행 알림"
+        loading={false}
+        error={null}
+        runs={[
+          {
+            // 다른 날짜 — 상세와 매칭되지 않음
+            ranAt: "2026-06-16T01:00:05Z",
+            ok: true,
+            skipped: false,
+            message: "역발행 0건 — 대상 없음",
+          },
+        ]}
+        log={log}
+      />,
+    );
+    // run도 보이고 매칭 안 된 상세도 정보 손실 없이 노출
+    expect(screen.getByText("역발행 0건 — 대상 없음")).toBeInTheDocument();
+    expect(screen.getByText("박담당 (park@example.com)")).toBeInTheDocument();
+  });
+
+  it("통합 타임라인 — runs가 전혀 없어도 상세를 자체 시각으로 노출(insights)", () => {
+    const log: JobRunLog = {
+      jobId: "insights-collect",
+      kind: "insights",
+      entries: [
+        {
+          collectedAt: "2026-05-31T08:00:00Z",
+          videoCount: 5,
+          sampleTitles: ["바이브코딩 입문"],
+        },
+      ],
+    };
+    render(
+      <AutomationLogPanel
+        label="인사이트 영상 수집"
+        loading={false}
+        error={null}
+        log={log}
+      />,
+    );
+    expect(screen.getByText("5건 수집")).toBeInTheDocument();
+    expect(screen.getByText(/바이브코딩 입문/)).toBeInTheDocument();
+  });
+
+  it("deposit-match 로그 — 카운트와 불일치 줄 렌더(통합 블록 안)", () => {
     const log: JobRunLog = {
       jobId: "receivables-deposit-match",
       kind: "deposit-match",
@@ -207,6 +276,68 @@ describe("AutomationLogPanel", () => {
       screen.getByText("매칭 0 · 불일치 0 · 에러 0 · 스킵 1"),
     ).toBeInTheDocument();
     expect(screen.getByText(/row 8 이미 입금완료 — skip/)).toBeInTheDocument();
+  });
+
+  it("같은 날짜 run이 여러 개(deposit-match 매시간)여도 상세는 정보 손실 없이 노출", () => {
+    const log: JobRunLog = {
+      jobId: "receivables-deposit-match",
+      kind: "deposit-match",
+      entries: [
+        {
+          startedAt: "2026-06-16T01:00:00Z",
+          finishedAt: "2026-06-16T01:00:30Z",
+          mode: "live",
+          matchedCount: 1,
+          mismatchCount: 0,
+          errorCount: 0,
+          matchedLines: ["₩100,000 1:1 매칭 (가 ↔ 가입금)"],
+          mismatchLines: [],
+          mismatchItems: [],
+          errorLines: [],
+          skipLines: [],
+        },
+        {
+          startedAt: "2026-06-16T05:00:00Z",
+          finishedAt: "2026-06-16T05:00:30Z",
+          mode: "live",
+          matchedCount: 1,
+          mismatchCount: 0,
+          errorCount: 0,
+          matchedLines: ["₩200,000 1:1 매칭 (나 ↔ 나입금)"],
+          mismatchLines: [],
+          mismatchItems: [],
+          errorLines: [],
+          skipLines: [],
+        },
+      ],
+    };
+    render(
+      <AutomationLogPanel
+        label="입금 매칭 자동화"
+        loading={false}
+        error={null}
+        runs={[
+          {
+            ranAt: "2026-06-16T05:00:05Z",
+            ok: true,
+            skipped: false,
+            message: "오후 실행",
+          },
+          {
+            ranAt: "2026-06-16T01:00:05Z",
+            ok: true,
+            skipped: false,
+            message: "오전 실행",
+          },
+        ]}
+        log={log}
+      />,
+    );
+    // 같은 KST 날짜 — 두 매칭 상세가 모두 노출되어 정보 손실이 없다
+    expect(screen.getByText(/₩100,000 1:1 매칭/)).toBeInTheDocument();
+    expect(screen.getByText(/₩200,000 1:1 매칭/)).toBeInTheDocument();
+    expect(screen.getByText("오전 실행")).toBeInTheDocument();
+    expect(screen.getByText("오후 실행")).toBeInTheDocument();
   });
 
   it("mail-operator 로그 — 수신자/상태 렌더", () => {

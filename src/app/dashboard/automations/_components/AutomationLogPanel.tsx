@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import {
-  Section,
   DefList,
   Divider,
 } from "@/app/dashboard/_components/inspector/list-variants/shared";
@@ -23,6 +22,15 @@ import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatc
 
 function fmtTime(iso: string): string {
   return new Date(iso).toLocaleString("ko-KR");
+}
+
+/** ISO 시각을 KST(Asia/Seoul) 기준 YYYY-MM-DD로. cron은 보통 1일 1회라 날짜 키가 안전. */
+function kstDateKey(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  // en-CA 로케일은 YYYY-MM-DD 형식을 반환
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 }
 
 /**
@@ -417,26 +425,111 @@ function RunStatusBadge({ entry }: { entry: AutomationRunEntry }) {
   );
 }
 
-/** 공통 실행 이력 — automation_runs 기반. 발송 0건·스킵·실패도 실행 사실을 보여준다. */
-function RunHistoryList({ runs }: { runs: AutomationRunEntry[] }) {
-  return (
-    <div className="space-y-3">
-      {runs.map((e, i) => (
-        <div key={i} className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-ink">{fmtTime(e.ranAt)}</span>
-            <RunStatusBadge entry={e} />
-          </div>
-          {e.message && (
-            <p className={`text-xs ${e.ok ? "text-muted" : "text-vermilion"}`}>
-              {e.message}
-            </p>
-          )}
-          {i < runs.length - 1 && <Divider />}
-        </div>
-      ))}
-    </div>
-  );
+/**
+ * 발송 상세 entry들의 시각 필드를 인덱스 순서대로 추출 — kind마다 필드명이 달라
+ * (deposit-match=startedAt, *메일=sentAt, run계열=ranAt, insights=collectedAt)
+ * union narrowing으로 타입 단언 없이 통일한다.
+ */
+function entrySentAtList(log: JobRunLog): string[] {
+  switch (log.kind) {
+    case "deposit-match":
+      return log.entries.map((e) => e.startedAt);
+    case "mail-operator":
+    case "smileedi":
+    case "service-notice":
+      return log.entries.map((e) => e.sentAt);
+    case "closing-scrape":
+    case "weekly-report":
+      return log.entries.map((e) => e.ranAt);
+    case "insights":
+      return log.entries.map((e) => e.collectedAt);
+    default:
+      return [];
+  }
+}
+
+/**
+ * log.entries에서 kind를 보존하며 부분집합을 골라 다시 JobRunLog 형태로 묶는다.
+ * 각 List 컴포넌트가 entries 배열을 그대로 소비하므로 dispatcher가 kind 분기로 재사용.
+ */
+function DetailEntries({
+  log,
+  indices,
+}: {
+  log: JobRunLog;
+  indices: number[];
+}) {
+  switch (log.kind) {
+    case "deposit-match":
+      return (
+        <DepositMatchList entries={indices.map((i) => log.entries[i])} />
+      );
+    case "mail-operator":
+      return (
+        <MailOperatorList entries={indices.map((i) => log.entries[i])} />
+      );
+    case "smileedi":
+      return <SmileEdiList entries={indices.map((i) => log.entries[i])} />;
+    case "service-notice":
+      return (
+        <ServiceNoticeList entries={indices.map((i) => log.entries[i])} />
+      );
+    case "closing-scrape":
+      return (
+        <ClosingScrapeList entries={indices.map((i) => log.entries[i])} />
+      );
+    case "weekly-report":
+      return (
+        <WeeklyReportList entries={indices.map((i) => log.entries[i])} />
+      );
+    case "insights":
+      return <InsightsList entries={indices.map((i) => log.entries[i])} />;
+    default:
+      return null;
+  }
+}
+
+/** 타임라인 1블록 — run(있으면) + 같은 날짜 발송 상세, 또는 run 없는 폴백 상세. */
+type TimelineBlock =
+  | { kind: "run"; run: AutomationRunEntry; detailIndices: number[] }
+  | { kind: "detail-only"; dateKey: string; detailIndices: number[] };
+
+/**
+ * runs(desc)를 기준으로, 같은 KST 날짜의 발송 상세 entry를 인라인 묶는다.
+ * run에 매칭되지 않은 상세(상세만 있고 run 없음/다른 날짜)는 자체 날짜로 폴백 블록에 노출 — 정보 손실 금지.
+ */
+function buildTimeline(
+  runs: AutomationRunEntry[],
+  log: JobRunLog | null,
+): TimelineBlock[] {
+  const detailByDate = new Map<string, number[]>();
+  if (log) {
+    entrySentAtList(log).forEach((sentAt, i) => {
+      const key = kstDateKey(sentAt);
+      const list = detailByDate.get(key) ?? [];
+      list.push(i);
+      detailByDate.set(key, list);
+    });
+  }
+  const consumed = new Set<string>();
+  const blocks: TimelineBlock[] = runs.map((run) => {
+    const key = kstDateKey(run.ranAt);
+    const detailIndices = !consumed.has(key) ? (detailByDate.get(key) ?? []) : [];
+    if (detailIndices.length > 0) consumed.add(key);
+    return { kind: "run", run, detailIndices };
+  });
+  // 폴백 — 어떤 run에도 매칭되지 않은 발송 상세 날짜를 자체 시각으로 노출.
+  const leftover: TimelineBlock[] = [];
+  for (const [dateKey, indices] of detailByDate) {
+    if (consumed.has(dateKey)) continue;
+    leftover.push({ kind: "detail-only", dateKey, detailIndices: indices });
+  }
+  leftover.sort((a, b) => {
+    const ak = a.kind === "detail-only" ? a.dateKey : "";
+    const bk = b.kind === "detail-only" ? b.dateKey : "";
+    return ak < bk ? 1 : ak > bk ? -1 : 0;
+  });
+  return [...blocks, ...leftover];
 }
 
 type Props = {
@@ -454,13 +547,8 @@ export function AutomationLogPanel({
   runs = [],
   log,
 }: Props) {
-  const hasDetail = !!log && log.entries.length > 0;
-  const hasRuns = runs.length > 0;
-  // 발송 상세가 '각 실행'을 시각과 함께 보여주는 run 기반 잡은 상단 '실행 이력'(automation_runs)이
-  // 중복 → 상세가 있으면 숨긴다. (발송 단위 잡 — 0건 시 상세가 비는 — 은 실행 이력으로 보완 유지.)
-  const RUN_BASED_KINDS = ["deposit-match", "closing-scrape", "weekly-report"];
-  const isRunBased = !!log && RUN_BASED_KINDS.includes(log.kind);
-  const showRuns = hasRuns && !(isRunBased && hasDetail);
+  // 실행 로그(runs) 밑에 같은 날짜의 발송 상세를 인라인으로 묶은 통합 타임라인.
+  const timeline = buildTimeline(runs, log);
   return (
     <div className="space-y-5">
       <header className="space-y-1">
@@ -472,40 +560,41 @@ export function AutomationLogPanel({
         <p className="text-xs text-muted">불러오는 중…</p>
       ) : error ? (
         <p className="text-xs text-vermilion">{error}</p>
-      ) : !showRuns && !hasDetail ? (
+      ) : timeline.length === 0 ? (
         <p className="text-xs text-muted">실행 기록이 없습니다.</p>
       ) : (
         <div className="space-y-5">
-          {showRuns && (
-            <Section title="실행 이력">
-              <RunHistoryList runs={runs} />
-            </Section>
-          )}
-          {log && log.entries.length > 0 && (
-            <Section title="발송 상세">
-              {log.kind === "deposit-match" && (
-                <DepositMatchList entries={log.entries} />
+          {timeline.map((block, i) => (
+            <div key={i} data-timeline-item className="space-y-3">
+              {block.kind === "run" ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-ink">
+                      {fmtTime(block.run.ranAt)}
+                    </span>
+                    <RunStatusBadge entry={block.run} />
+                  </div>
+                  {block.run.message && (
+                    <p
+                      className={`text-xs ${block.run.ok ? "text-muted" : "text-vermilion"}`}
+                    >
+                      {block.run.message}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+              {log && block.detailIndices.length > 0 && (
+                <div
+                  className={
+                    block.kind === "run" ? "border-l border-line pl-3" : ""
+                  }
+                >
+                  <DetailEntries log={log} indices={block.detailIndices} />
+                </div>
               )}
-              {log.kind === "mail-operator" && (
-                <MailOperatorList entries={log.entries} />
-              )}
-              {log.kind === "smileedi" && (
-                <SmileEdiList entries={log.entries} />
-              )}
-              {log.kind === "service-notice" && (
-                <ServiceNoticeList entries={log.entries} />
-              )}
-              {log.kind === "closing-scrape" && (
-                <ClosingScrapeList entries={log.entries} />
-              )}
-              {log.kind === "weekly-report" && (
-                <WeeklyReportList entries={log.entries} />
-              )}
-              {log.kind === "insights" && (
-                <InsightsList entries={log.entries} />
-              )}
-            </Section>
-          )}
+              {i < timeline.length - 1 && <Divider />}
+            </div>
+          ))}
         </div>
       )}
     </div>
