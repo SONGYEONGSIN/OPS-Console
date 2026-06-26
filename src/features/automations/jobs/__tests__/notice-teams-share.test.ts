@@ -60,6 +60,10 @@ describe("buildNoticeMessage", () => {
     expect(html).not.toContain("<b>x</b>");
     expect(html).toContain("&lt;b&gt;x&lt;/b&gt; &amp; y");
   });
+  it("작성자 라인(— ...)을 넣지 않는다", () => {
+    const html = buildNoticeMessage({ title: "안내", body: "본문" });
+    expect(html).not.toContain("—");
+  });
 });
 
 describe("runNoticeTeamsShare", () => {
