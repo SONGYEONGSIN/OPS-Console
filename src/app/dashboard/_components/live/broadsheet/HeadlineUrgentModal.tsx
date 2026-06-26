@@ -11,6 +11,8 @@ export type HeadlineUrgentItem = {
   /** count 대신 표시할 문자열(예: "24 / 418"). */
   valueText?: string;
   href: string;
+  /** 항목 고유 요약 문구(상단). 없으면 미표시. */
+  sub?: string;
   rows?: HeadlineUrgentRow[];
 };
 

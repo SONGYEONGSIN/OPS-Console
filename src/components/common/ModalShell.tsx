@@ -6,7 +6,8 @@ import { createPortal } from "react-dom";
 const SIZE_CLASS = {
   sm: "max-w-[360px]",
   md: "max-w-md",
-  lg: "max-w-2xl",
+  lg: "max-w-xl",
+  xl: "max-w-2xl",
 } as const;
 
 type Props = {

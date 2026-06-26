@@ -174,7 +174,7 @@ export function SendReceivablesMailButton({
           title="미수채권 독려 메일 발송"
           ariaLabel="미수채권 독려 메일 발송"
           onClose={reset}
-          size="lg"
+          size="xl"
           footer={
             <>
               <button

@@ -68,7 +68,7 @@ export function BroadsheetHeadline({ input }: { input: HeadlineInput }) {
       {selected && (
         <HeadlineUrgentModal
           item={selected}
-          sub={r.sub}
+          sub={selected.sub}
           onClose={() => setSelected(null)}
         />
       )}

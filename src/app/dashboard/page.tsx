@@ -462,6 +462,7 @@ export default async function DashboardLivePage({
   const deadlineRows = closingImminent.slice(0, POPUP_ROW_CAP).map((c) => ({
     time: c.pay_end_at ? mmdd(c.pay_end_at) : undefined,
     title: `${c.university_name} · ${c.service_name}`,
+    sub: c.operator_name ? `담당 ${c.operator_name}` : undefined,
   }));
   const incidentRows = unresolvedIncidents.slice(0, POPUP_ROW_CAP).map((i) => ({
     time: i.occurred_date ? mmdd(i.occurred_date) : undefined,
@@ -471,8 +472,9 @@ export default async function DashboardLivePage({
     .filter((r) => r.status === "active")
     .slice(0, POPUP_ROW_CAP)
     .map((r) => {
-      // 가용 필드: name=학교명, schoolOwner=학교담당자, author=청구금액,
-      // meta=청구일자, dueDate=입금예정일. 빈 값은 생략하고 결합.
+      // 가용 필드: name=학교명, owner=운영자(담당), schoolOwner=학교담당자,
+      // author=청구금액, meta=청구일자, dueDate=입금예정일. 빈 값은 생략하고 결합.
+      const operator = r.owner?.trim();
       const schoolOwner = r.receivablesCells?.schoolOwner?.trim();
       const amount = r.author?.trim();
       const billedAt = r.meta?.trim();
@@ -488,6 +490,7 @@ export default async function DashboardLivePage({
         : undefined;
       const sub =
         [
+          operator && `담당 ${operator}`,
           amountLabel,
           billedAt && `청구 ${billedAt}`,
           dueDate && `예정 ${dueDate}`,

@@ -34,11 +34,13 @@ export type HeadlineResult = {
   href: string;
   /** 긴급 원형 표시값 — 활성 urgent 항목 합계(미처리사고+오늘마감+미수채권). 헤드라인과 동일 기준. */
   urgentTotal: number;
-  /** 활성 urgent 항목 — 항목별 개별 링크용(라벨/건수/href/리스트). calm이면 빈 배열. */
+  /** 활성 urgent 항목 — 항목별 개별 링크용(라벨/건수/href/sub/리스트). calm이면 빈 배열. */
   items: {
     label: string;
     count: number;
     href: string;
+    /** 항목 고유 요약 문구(모달 상단). 마감=topDeadline, 미수=없음 등. */
+    sub?: string;
     rows: HeadlinePreviewRow[];
   }[];
 };
@@ -120,6 +122,7 @@ export function selectHeadline(input: HeadlineInput): HeadlineResult {
         label: i.label,
         count: i.count,
         href: i.href,
+        sub: i.subFrom(input),
         rows: i.rowsFrom(input),
       })),
     };
