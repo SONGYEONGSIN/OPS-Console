@@ -74,16 +74,6 @@ function urgentItems(input: HeadlineInput): UrgentItem[] {
       rowsFrom: (i) => i.incidentRows ?? [],
     },
     {
-      label: "마감 임박",
-      count: input.deadlinesToday,
-      href: "/dashboard/closing",
-      subFrom: (i) =>
-        i.topDeadlineLabel
-          ? `${i.topDeadlineLabel} D-${i.topDeadlineDays ?? 0}`
-          : undefined,
-      rowsFrom: (i) => i.deadlineRows ?? [],
-    },
-    {
       label: "오픈 임박",
       count: input.opensImminent ?? 0,
       href: "/dashboard/closing",
@@ -92,6 +82,16 @@ function urgentItems(input: HeadlineInput): UrgentItem[] {
           ? `${i.topOpenLabel} D-${i.topOpenDays ?? 0}`
           : undefined,
       rowsFrom: (i) => i.openRows ?? [],
+    },
+    {
+      label: "마감 임박",
+      count: input.deadlinesToday,
+      href: "/dashboard/closing",
+      subFrom: (i) =>
+        i.topDeadlineLabel
+          ? `${i.topDeadlineLabel} D-${i.topDeadlineDays ?? 0}`
+          : undefined,
+      rowsFrom: (i) => i.deadlineRows ?? [],
     },
     {
       label: "미수채권 10일+",

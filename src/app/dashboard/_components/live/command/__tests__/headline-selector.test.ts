@@ -36,7 +36,7 @@ describe("selectHeadline — 항목 preview rows", () => {
     expect(r.items[0].rows).toEqual([]);
   });
 
-  it("오픈 임박도 urgent 항목으로 노출 — 마감과 미수 사이 순서", () => {
+  it("오픈 임박이 마감 임박보다 앞에 노출된다", () => {
     const r = selectHeadline({
       ...ZERO,
       deadlinesToday: 2,
@@ -47,7 +47,7 @@ describe("selectHeadline — 항목 preview rows", () => {
       openRows: [{ time: "06.29", title: "한양대학교 · 수시 1차" }],
     });
     const labels = r.items.map((i) => i.label);
-    expect(labels).toEqual(["마감 임박", "오픈 임박", "미수채권 10일+"]);
+    expect(labels).toEqual(["오픈 임박", "마감 임박", "미수채권 10일+"]);
     const openItem = r.items.find((i) => i.label === "오픈 임박");
     expect(openItem?.count).toBe(4);
     expect(openItem?.href).toBe("/dashboard/closing");
