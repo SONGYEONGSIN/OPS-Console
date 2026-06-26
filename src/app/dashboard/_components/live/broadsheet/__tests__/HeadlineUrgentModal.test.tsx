@@ -39,6 +39,25 @@ describe("HeadlineUrgentModal", () => {
     expect(screen.getByText("대구가톨릭대 D-0")).toBeInTheDocument();
   });
 
+  it("row.sub가 있으면 제목과 함께 보조 상세를 표시한다", () => {
+    const item = {
+      label: "미수채권 10일+",
+      count: 3,
+      href: "/dashboard/receivables",
+      rows: [
+        {
+          title: "한국대 · 김담당",
+          sub: "1,200,000원 · 청구 06.01 · 예정 06.15",
+        },
+      ],
+    };
+    render(<HeadlineUrgentModal item={item} onClose={() => {}} />);
+    expect(screen.getByText("한국대 · 김담당")).toBeInTheDocument();
+    expect(
+      screen.getByText("1,200,000원 · 청구 06.01 · 예정 06.15"),
+    ).toBeInTheDocument();
+  });
+
   it("닫기 버튼 클릭 시 onClose를 호출한다", () => {
     const onClose = vi.fn();
     render(<HeadlineUrgentModal item={ITEM} onClose={onClose} />);

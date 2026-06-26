@@ -9,8 +9,8 @@ export type StatRow = {
   tone?: "default" | "vermilion" | "sage";
   /** 있으면 행이 클릭 가능 — 모달의 "페이지 이동하기" 대상. */
   href?: string;
-  /** 모달에 표시할 상세 리스트(시각·제목). */
-  detailRows?: { time?: string; title: string }[];
+  /** 모달에 표시할 상세 리스트(시각·제목·보조 상세). */
+  detailRows?: { time?: string; title: string; sub?: string }[];
 };
 
 export function StatList({ rows }: { rows: StatRow[] }) {
