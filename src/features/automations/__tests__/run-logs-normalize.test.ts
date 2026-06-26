@@ -9,6 +9,7 @@ import {
   toMailOperatorEntry,
   toSmileEdiEntry,
   toServiceNoticeEntry,
+  toNoticeTeamsEntry,
   toWeeklyReportEntry,
   toClosingRunEntry,
   groupInsightsBatches,
@@ -338,6 +339,32 @@ describe("toServiceNoticeEntry", () => {
     });
     expect(entry.serviceCount).toBe(0);
     expect(entry.recipientName).toBeNull();
+  });
+});
+
+describe("toNoticeTeamsEntry", () => {
+  it("공유된 공지 row를 정규화 (author = owner_label 우선)", () => {
+    const entry = toNoticeTeamsEntry({
+      title: "정기 점검 안내",
+      notice_shared_at: "2026-06-20T01:00:00Z",
+      owner_label: "운영부",
+      author_email: "ops@example.com",
+    });
+    expect(entry).toEqual({
+      sharedAt: "2026-06-20T01:00:00Z",
+      title: "정기 점검 안내",
+      author: "운영부",
+    });
+  });
+
+  it("owner_label이 null이면 author_email로 폴백", () => {
+    const entry = toNoticeTeamsEntry({
+      title: "긴급 공지",
+      notice_shared_at: "2026-06-20T02:00:00Z",
+      owner_label: null,
+      author_email: "kim@example.com",
+    });
+    expect(entry.author).toBe("kim@example.com");
   });
 });
 

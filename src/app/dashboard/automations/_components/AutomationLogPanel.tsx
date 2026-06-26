@@ -14,6 +14,7 @@ import {
   type InsightsBatchEntry,
   type SmileEdiEntry,
   type ServiceNoticeEntry,
+  type NoticeTeamsEntry,
   type ClosingRunEntry,
   type WeeklyReportEntry,
 } from "@/features/automations/run-logs-normalize";
@@ -261,6 +262,25 @@ function ServiceNoticeList({ entries }: { entries: ServiceNoticeEntry[] }) {
   );
 }
 
+function NoticeTeamsList({ entries }: { entries: NoticeTeamsEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <span className="text-xs text-ink">{fmtTime(e.sharedAt)}</span>
+          <DefList
+            items={[
+              { term: "공지", desc: `[공지] ${e.title}` },
+              { term: "작성자", desc: e.author },
+            ]}
+          />
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const WEEKLY_STATUS_LABEL: Record<WeeklyReportEntry["status"], string> = {
   created: "생성",
   skipped: "스킵",
@@ -438,6 +458,8 @@ function entrySentAtList(log: JobRunLog): string[] {
     case "smileedi":
     case "service-notice":
       return log.entries.map((e) => e.sentAt);
+    case "notice-teams":
+      return log.entries.map((e) => e.sharedAt);
     case "closing-scrape":
     case "weekly-report":
       return log.entries.map((e) => e.ranAt);
@@ -473,6 +495,10 @@ function DetailEntries({
     case "service-notice":
       return (
         <ServiceNoticeList entries={indices.map((i) => log.entries[i])} />
+      );
+    case "notice-teams":
+      return (
+        <NoticeTeamsList entries={indices.map((i) => log.entries[i])} />
       );
     case "closing-scrape":
       return (

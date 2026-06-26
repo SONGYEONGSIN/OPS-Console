@@ -369,6 +369,30 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("발송")).toBeInTheDocument();
   });
 
+  it("notice-teams 로그 — 공유 공지 제목/작성자 렌더", () => {
+    const log: JobRunLog = {
+      jobId: "notice-teams-share",
+      kind: "notice-teams",
+      entries: [
+        {
+          sharedAt: "2026-06-20T01:00:00Z",
+          title: "정기 점검 안내",
+          author: "운영부",
+        },
+      ],
+    };
+    render(
+      <AutomationLogPanel
+        label="공지 Teams 공유"
+        loading={false}
+        error={null}
+        log={log}
+      />,
+    );
+    expect(screen.getByText(/정기 점검 안내/)).toBeInTheDocument();
+    expect(screen.getByText(/운영부/)).toBeInTheDocument();
+  });
+
   it("insights 로그 — 수집 건수/샘플 제목 렌더", () => {
     const log: JobRunLog = {
       jobId: "insights-collect",

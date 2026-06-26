@@ -6,6 +6,7 @@ import {
   toMailOperatorEntry,
   toSmileEdiEntry,
   toServiceNoticeEntry,
+  toNoticeTeamsEntry,
   toWeeklyReportEntry,
   toClosingRunEntry,
   groupInsightsBatches,
@@ -103,6 +104,24 @@ async function serviceNoticeLog(jobId: string): Promise<JobRunLog> {
   };
 }
 
+// 공지 Teams 공유 — 별도 sends 테이블 없이 posts.notice_shared_at에 공유 시각을
+// 기록한다. 발송 상세 = 공유된 공지 목록(domain='notice' and notice_shared_at not null).
+async function noticeTeamsShareLog(jobId: string): Promise<JobRunLog> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("posts")
+    .select("title, notice_shared_at, owner_label, author_email")
+    .eq("domain", "notice")
+    .not("notice_shared_at", "is", null)
+    .order("notice_shared_at", { ascending: false })
+    .limit(LOG_LIMIT);
+  return {
+    jobId,
+    kind: "notice-teams",
+    entries: (data ?? []).map(toNoticeTeamsEntry),
+  };
+}
+
 // 본부차주보고 알림 — weekly_report_runs 실행 기록 조회.
 async function weeklyReportLog(jobId: string): Promise<JobRunLog> {
   const admin = createAdminClient();
@@ -156,6 +175,7 @@ const LOG_RESOLVERS: Record<string, (jobId: string) => Promise<JobRunLog>> = {
   "receivables-deposit-match": depositMatchLog,
   "smileedi-mail": smileEdiLog,
   "service-notice-mail": serviceNoticeLog,
+  "notice-teams-share": noticeTeamsShareLog,
   "closing-scrape": closingScrapeLog,
   "weekly-report-rollover": weeklyReportLog,
 };
