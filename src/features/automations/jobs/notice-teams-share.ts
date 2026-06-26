@@ -10,15 +10,13 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** 공지 → Teams 메시지 HTML. (순수) 제목/본문 escape, 줄바꿈→<br/>, 작성자 표기. */
+/** 공지 → Teams 메시지 HTML. (순수) 제목/본문 escape, 줄바꿈→<br/>. 작성자 라인은 넣지 않는다. */
 export function buildNoticeMessage(n: {
   title: string;
   body?: string | null;
-  author_label?: string | null;
 }): string {
   const body = escapeHtml(n.body ?? "").replace(/\n/g, "<br/>");
-  const who = n.author_label ? `<br/><br/>— ${escapeHtml(n.author_label)}` : "";
-  return `<b>[공지] ${escapeHtml(n.title)}</b><br/><br/>${body}${who}`;
+  return `<b>[공지] ${escapeHtml(n.title)}</b><br/><br/>${body}`;
 }
 
 /**
@@ -51,7 +49,7 @@ export async function runNoticeTeamsShare(): Promise<AutomationRunResult> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("posts")
-    .select("id, title, body, owner_label, author_email")
+    .select("id, title, body")
     .eq("domain", "notice")
     .is("notice_shared_at", null)
     .or(`announce_on.is.null,announce_on.lte.${todayKst}`)
@@ -75,8 +73,6 @@ export async function runNoticeTeamsShare(): Promise<AutomationRunResult> {
       const html = buildNoticeMessage({
         title: n.title as string,
         body: (n.body as string | null) ?? null,
-        author_label:
-          (n.owner_label as string | null) ?? (n.author_email as string),
       });
       await sendTeamsChatMessage({ operatorEmail: sender, chatId, html });
       const { error: upErr } = await admin
