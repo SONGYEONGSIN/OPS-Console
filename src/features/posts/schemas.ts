@@ -23,6 +23,8 @@ export const postRowSchema = z.object({
   status: postStatusSchema,
   // 공지일(YYYY-MM-DD) — 이 날짜에 Teams 1회 공유. null = 작성 즉시. notice 전용.
   announce_on: z.string().nullable().optional(),
+  // Teams 공유 완료 시각(ISO). null = 미발송. notice 전용.
+  notice_shared_at: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });

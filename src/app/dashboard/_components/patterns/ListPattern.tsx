@@ -40,6 +40,8 @@ export type ListRow = {
   body?: string;
   /** post-notice — 공지일(YYYY-MM-DD). 이 날짜에 Teams 1회 공유. null=즉시 */
   noticeAnnounceOn?: string | null;
+  /** post-notice — Teams 공유 완료 시각(ISO). null=미발송 */
+  noticeSharedAt?: string | null;
   /** post 도메인 — 등록자 (작성자). owner는 처리 담당자로 분리. */
   author?: string;
   /** team 도메인 — 메뉴 접근 권한 (slug 배열). admin은 빈 배열로 두고 bypass. */
