@@ -63,7 +63,7 @@ export function BulkPasteContacts() {
         <ModalShell
           title="연락처 일괄등록"
           onClose={close}
-          size="lg"
+          size="xl"
           footer={
             <>
               <button

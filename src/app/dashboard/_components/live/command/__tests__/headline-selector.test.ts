@@ -35,6 +35,21 @@ describe("selectHeadline — 항목 preview rows", () => {
     const r = selectHeadline({ ...ZERO, overdueReceivables: 3 });
     expect(r.items[0].rows).toEqual([]);
   });
+
+  it("각 항목은 자기 sub를 가진다 — 마감은 topDeadline, 미수는 없음", () => {
+    const r = selectHeadline({
+      ...ZERO,
+      deadlinesToday: 2,
+      overdueReceivables: 3,
+      topDeadlineLabel: "동서대학교 · 신/편입학모집",
+      topDeadlineDays: 1,
+    });
+    const deadlineItem = r.items.find((i) => i.label === "마감 임박");
+    const receivableItem = r.items.find((i) => i.label === "미수채권 10일+");
+    expect(deadlineItem?.sub).toBe("동서대학교 · 신/편입학모집 D-1");
+    // 미수채권 항목은 마감 문구가 새어들지 않아야 한다(자체 sub 없음).
+    expect(receivableItem?.sub).toBeUndefined();
+  });
 });
 
 describe("selectHeadline — urgent 우선순위", () => {
