@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ModalShell } from "@/components/common/ModalShell";
 
-export type HeadlineUrgentRow = { time?: string; title: string };
+export type HeadlineUrgentRow = { time?: string; title: string; sub?: string };
 export type HeadlineUrgentItem = {
   label: string;
   /** 큰 숫자 표시값(건수). valueText가 있으면 그쪽 우선. */
@@ -29,7 +29,7 @@ export function HeadlineUrgentModal({ item, sub, onClose }: Props) {
     <ModalShell
       title={item.label}
       onClose={onClose}
-      size="sm"
+      size="lg"
       footer={
         <>
           <button
@@ -63,7 +63,7 @@ export function HeadlineUrgentModal({ item, sub, onClose }: Props) {
       {sub && <p className="mt-2 text-sm text-muted">{sub}</p>}
 
       {item.rows && item.rows.length > 0 && (
-        <ul className="mt-4 max-h-[280px] divide-y divide-line-soft overflow-y-auto border-y border-line">
+        <ul className="mt-4 max-h-[460px] divide-y divide-line-soft overflow-y-auto border-y border-line">
           {item.rows.map((row, i) => (
             <li
               key={`${row.title}-${i}`}
@@ -74,7 +74,12 @@ export function HeadlineUrgentModal({ item, sub, onClose }: Props) {
                   {row.time}
                 </span>
               )}
-              <span className="text-ink-soft">{row.title}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-ink-soft">{row.title}</span>
+                {row.sub && (
+                  <span className="mt-0.5 text-xs text-muted">{row.sub}</span>
+                )}
+              </div>
             </li>
           ))}
         </ul>
