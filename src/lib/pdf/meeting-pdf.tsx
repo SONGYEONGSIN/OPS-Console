@@ -64,6 +64,9 @@ const s = StyleSheet.create({
   tr: { flexDirection: "row" },
   td: { flex: 1, borderRight: "1px solid #d8d2c4", borderBottom: "1px solid #d8d2c4", padding: 3, fontSize: 9 },
   th: { flex: 1, borderRight: "1px solid #d8d2c4", borderBottom: "1px solid #d8d2c4", padding: 3, fontSize: 9, fontWeight: 700, backgroundColor: "#f4eddd" },
+  // 번호(#) 전용 좁은 컬럼 — flex 균등분배 대신 고정 너비.
+  tdNo: { width: 32, flexGrow: 0, flexShrink: 0, borderRight: "1px solid #d8d2c4", borderBottom: "1px solid #d8d2c4", padding: 3, fontSize: 9 },
+  thNo: { width: 32, flexGrow: 0, flexShrink: 0, borderRight: "1px solid #d8d2c4", borderBottom: "1px solid #d8d2c4", padding: 3, fontSize: 9, fontWeight: 700, backgroundColor: "#f4eddd" },
   // v2 양식 스타일
   dispatch: { fontSize: 9, fontWeight: 700, color: "#15120c", marginBottom: 4, letterSpacing: 0.5 },
   v2title: { fontSize: 24, fontWeight: 700, color: "#15120c", marginBottom: 10, borderBottom: "1.5px solid #15120c", paddingBottom: 8 },
@@ -72,17 +75,18 @@ const s = StyleSheet.create({
   tbCellFull: { width: "100%", borderBottom: "1px solid #d8cfbb", padding: "5px 8px" },
   tbK: { fontSize: 8, fontWeight: 700, color: "#716855" },
   tbV: { fontSize: 10, color: "#15120c", marginTop: 1 },
-  seclabel: { flexDirection: "row", alignItems: "center", marginTop: 14, marginBottom: 6 },
+  seclabel: { flexDirection: "row", alignItems: "center", marginTop: 11, marginBottom: 5 },
   secNo: { fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#15120c", padding: "2px 6px", marginRight: 6 },
   secTitle: { fontSize: 13, fontWeight: 700, color: "#15120c" },
+  noteNo: { width: 20, fontSize: 9, fontWeight: 700, color: "#15120c" },
   kvRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   kvBox: { width: "48%", border: "1px solid #d8cfbb", marginBottom: 6 },
   kvK: { fontSize: 8, fontWeight: 700, color: "#faf4e6", backgroundColor: "#3d3529", padding: "4px 8px" },
   kvV: { fontSize: 10, padding: "6px 8px", minHeight: 28 },
-  station: { fontSize: 11, fontWeight: 700, color: "#faf4e6", backgroundColor: "#15120c", padding: "4px 10px", marginTop: 6, marginBottom: 4, alignSelf: "flex-start" },
-  qaRow: { marginBottom: 4, paddingLeft: 8 },
+  station: { fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#15120c", padding: "2px 7px", marginTop: 5, marginBottom: 3, alignSelf: "flex-start" },
+  qaRow: { marginBottom: 3, paddingLeft: 8 },
   qaWho: { fontSize: 8, fontWeight: 700, color: "#3d3529" },
-  qaBody: { fontSize: 10, marginBottom: 2 },
+  qaBody: { fontSize: 10, marginBottom: 1, lineHeight: 1.35 },
   banner: { flexDirection: "row", alignItems: "center", border: "1.5px solid #b8331e", backgroundColor: "#fdeceb", padding: "8px 12px", marginVertical: 4 },
   bannerSev: { fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#b8331e", padding: "3px 8px", marginRight: 8 },
   bannerTxt: { fontSize: 11, fontWeight: 700, color: "#b8331e", flex: 1 },
@@ -165,7 +169,7 @@ function V2SectionBody({ sec }: { sec: Section }) {
       <View style={s.table}>
         <View style={s.tr}>
           {sec.headers.map((h, i) => (
-            <Text style={s.th} key={i}>
+            <Text style={sec.idx && i === 0 ? s.thNo : s.th} key={i}>
               {h}
             </Text>
           ))}
@@ -177,7 +181,7 @@ function V2SectionBody({ sec }: { sec: Section }) {
               {Array.from({ length: dataCols }).map((_, i) => {
                 if (sec.idx && i === 0)
                   return (
-                    <Text style={s.td} key={i}>
+                    <Text style={s.tdNo} key={i}>
                       {String(ri + 1).padStart(2, "0")}
                     </Text>
                   );
@@ -237,7 +241,7 @@ function V2SectionBody({ sec }: { sec: Section }) {
       <View>
         {sec.items.map((t, i) => (
           <View key={i} style={s.note}>
-            <Text style={s.liMark}>•</Text>
+            <Text style={s.noteNo}>{String(i + 1).padStart(2, "0")}</Text>
             <Text>{t}</Text>
           </View>
         ))}
@@ -265,7 +269,7 @@ function renderMeetingFormPdf(meeting: MeetingRow, doc: MeetingDoc) {
     <Document>
       <Page size="A4" style={s.page}>
         <Text style={s.dispatch}>
-          [운영부 상황실] · {MEETING_TYPE_LABELS[meeting.type]} 회의록
+          {MEETING_TYPE_LABELS[meeting.type]} 회의록
         </Text>
         <Text style={s.v2title}>{meeting.title || "제목 없음"}</Text>
         <View style={s.metaRow}>
