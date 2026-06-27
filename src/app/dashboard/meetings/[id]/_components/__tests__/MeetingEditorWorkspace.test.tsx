@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { MeetingRow } from "@/features/meetings/schemas";
 import { buildSeedDoc } from "@/features/meetings/form-templates";
+import { OPERATORS } from "@/features/auth/operators";
 
 const { mockUpdateMeta, mockSend, mockSaveContent } = vi.hoisted(() => ({
   mockUpdateMeta: vi.fn(),
@@ -85,12 +86,22 @@ describe("MeetingEditorWorkspace (v2 양식)", () => {
     });
   });
 
-  it("메일 발송 시 참석자 목록으로 sendMeetingMinutes 호출", async () => {
+  it("메일 발송 클릭 시 모달이 열리고, 참석자와 일치하는 운영자 이메일로 발송", async () => {
     mockSend.mockResolvedValue({ ok: true });
     render(<MeetingEditorWorkspace meeting={meeting} />);
+    // 버튼 클릭은 더 이상 직접 발송하지 않고 모달을 연다(참석자 이름 직송 버그 차단).
     fireEvent.click(screen.getByRole("button", { name: "메일 발송" }));
+    expect(mockSend).not.toHaveBeenCalled();
+    expect(screen.getByText("회의록 메일 발송")).toBeInTheDocument();
+    // 참석자 "송영신"·"이해영" 둘 다 운영자라 초기 선택 → 그 이메일들로 발송
+    const emailOf = (name: string) =>
+      OPERATORS.find((o) => o.name === name)?.email;
+    fireEvent.click(screen.getByRole("button", { name: /^발송 \(/ }));
     await waitFor(() =>
-      expect(mockSend).toHaveBeenCalledWith("m-1", ["송영신", "이해영"]),
+      expect(mockSend).toHaveBeenCalledWith("m-1", [
+        emailOf("송영신"),
+        emailOf("이해영"),
+      ]),
     );
   });
 
