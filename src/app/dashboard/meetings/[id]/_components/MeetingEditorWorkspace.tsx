@@ -9,6 +9,7 @@ import {
   saveMeetingContent,
 } from "@/features/meetings/actions";
 import { sendMeetingMinutes } from "@/features/meetings/mail-actions";
+import { MeetingMailModal } from "./MeetingMailModal";
 import { MeetingForm } from "../../_components/MeetingForm";
 import { isMeetingDoc, type MeetingDoc } from "@/features/meetings/form-model";
 
@@ -43,6 +44,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
     isMeetingDoc(meeting.content) ? meeting.content : null,
   );
   const [busy, setBusy] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
   const [saved, setSaved] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,11 +67,15 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
     }, 800);
   }
 
-  async function send() {
+  async function send(emails: string[]) {
     setBusy(true);
-    const res = await sendMeetingMinutes(meeting.id, parseAttendees(attendees));
+    const res = await sendMeetingMinutes(meeting.id, emails);
     setBusy(false);
-    if (!res.ok) alert(res.error);
+    if (res.ok) {
+      setMailOpen(false);
+    } else {
+      alert(res.error);
+    }
   }
 
   return (
@@ -94,7 +100,7 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
           <button
             type="button"
             disabled={busy}
-            onClick={send}
+            onClick={() => setMailOpen(true)}
             className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
           >
             메일 발송
@@ -133,6 +139,15 @@ export function MeetingEditorWorkspace({ meeting }: { meeting: MeetingRow }) {
           </p>
         )}
       </div>
+
+      {mailOpen && (
+        <MeetingMailModal
+          attendees={parseAttendees(attendees)}
+          busy={busy}
+          onClose={() => setMailOpen(false)}
+          onSend={send}
+        />
+      )}
     </div>
   );
 }

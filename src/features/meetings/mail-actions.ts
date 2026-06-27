@@ -8,6 +8,7 @@ import { getMeeting } from "./queries";
 import { renderMeetingPdf } from "@/lib/pdf/meeting-pdf";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
+import { isValidEmail } from "./recipients";
 
 const DRY_RUN = process.env.MAIL_DRY_RUN === "true";
 const PATH_PREFIX = "/dashboard/meetings";
@@ -20,6 +21,15 @@ export async function sendMeetingMinutes(
   if (!me?.email) return { ok: false, error: "인증이 필요합니다." };
   if (recipients.length === 0) {
     return { ok: false, error: "수신자를 한 명 이상 지정하세요." };
+  }
+  // 참석자 "이름"이 그대로 넘어오면 Graph가 ErrorInvalidRecipients(400)를 던진다.
+  // 발송 전에 이메일 형식을 검증해 명확한 한글 에러로 차단.
+  const invalid = recipients.filter((r) => !isValidEmail(r));
+  if (invalid.length > 0) {
+    return {
+      ok: false,
+      error: `유효한 이메일이 아닙니다: ${invalid.join(", ")}`,
+    };
   }
 
   const meeting = await getMeeting(id);
