@@ -134,24 +134,36 @@ export function MeetingForm({
                     }
                     const cellIdx = ci;
                     ci += 1;
+                    const commitCell = (v: string) => {
+                      const rows = sec.rows.map((row, k) =>
+                        k === ri
+                          ? {
+                              ...row,
+                              cells: row.cells.map((c, m) =>
+                                m === cellIdx ? v : c,
+                              ),
+                            }
+                          : row,
+                      );
+                      patchSection(si, { ...sec, rows });
+                    };
+                    // '기한' 컬럼은 날짜 선택(클릭 시 달력) — 나머지는 자유 텍스트.
+                    if (sec.headers[i] === "기한")
+                      return (
+                        <input
+                          key={i}
+                          type="date"
+                          className="rc mf-date-cell"
+                          value={r.cells[cellIdx] ?? ""}
+                          onChange={(e) => commitCell(e.target.value)}
+                        />
+                      );
                     return (
                       <Editable
                         key={i}
                         className="rc"
                         value={r.cells[cellIdx] ?? ""}
-                        onCommit={(v) => {
-                          const rows = sec.rows.map((row, k) =>
-                            k === ri
-                              ? {
-                                  ...row,
-                                  cells: row.cells.map((c, m) =>
-                                    m === cellIdx ? v : c,
-                                  ),
-                                }
-                              : row,
-                          );
-                          patchSection(si, { ...sec, rows });
-                        }}
+                        onCommit={commitCell}
                       />
                     );
                   })}

@@ -54,7 +54,7 @@ const s = StyleSheet.create({
   page: { padding: 40, fontFamily: "Pretendard", fontSize: 10, color: "#15120c" },
   brand: { fontSize: 9, color: "#b8331e", fontWeight: 700, marginBottom: 4 },
   title: { fontSize: 18, fontWeight: 700, marginBottom: 8 },
-  metaRow: { flexDirection: "row", marginBottom: 2, fontSize: 9, color: "#3d3529" },
+  metaRow: { flexDirection: "row", marginBottom: 4, fontSize: 9, color: "#3d3529" },
   metaKey: { width: 60, color: "#716855" },
   h2: { fontSize: 12, fontWeight: 700, marginTop: 12, marginBottom: 4, color: "#b8331e" },
   para: { marginBottom: 3, lineHeight: 1.5 },
@@ -70,20 +70,20 @@ const s = StyleSheet.create({
   // v2 양식 스타일
   dispatch: { fontSize: 9, fontWeight: 700, color: "#15120c", marginBottom: 4, letterSpacing: 0.5 },
   v2title: { fontSize: 24, fontWeight: 700, color: "#15120c", marginBottom: 10, borderBottom: "1.5px solid #15120c", paddingBottom: 8 },
-  tbWrap: { flexDirection: "row", flexWrap: "wrap", border: "1px solid #15120c", marginBottom: 6 },
+  tbWrap: { flexDirection: "row", flexWrap: "wrap", border: "1px solid #15120c", marginTop: 10, marginBottom: 6 },
   tbCell: { width: "25%", borderRight: "1px solid #d8cfbb", borderBottom: "1px solid #d8cfbb", padding: "5px 8px" },
   tbCellFull: { width: "100%", borderBottom: "1px solid #d8cfbb", padding: "5px 8px" },
   tbK: { fontSize: 8, fontWeight: 700, color: "#716855" },
   tbV: { fontSize: 10, color: "#15120c", marginTop: 1 },
   seclabel: { flexDirection: "row", alignItems: "center", marginTop: 11, marginBottom: 5 },
-  secNo: { fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#15120c", padding: "2px 6px", marginRight: 6 },
+  secNo: { width: 22, textAlign: "center", fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#15120c", padding: "2px 0", marginRight: 6 },
   secTitle: { fontSize: 13, fontWeight: 700, color: "#15120c" },
   noteNo: { width: 20, fontSize: 9, fontWeight: 700, color: "#15120c" },
   kvRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   kvBox: { width: "48%", border: "1px solid #d8cfbb", marginBottom: 6 },
   kvK: { fontSize: 8, fontWeight: 700, color: "#faf4e6", backgroundColor: "#3d3529", padding: "4px 8px" },
   kvV: { fontSize: 10, padding: "6px 8px", minHeight: 28 },
-  station: { fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#15120c", padding: "2px 7px", marginTop: 5, marginBottom: 3, alignSelf: "flex-start" },
+  station: { width: 22, textAlign: "center", fontSize: 9, fontWeight: 700, color: "#faf4e6", backgroundColor: "#b8331e", padding: "2px 0", marginTop: 5, marginBottom: 3, alignSelf: "flex-start" },
   qaRow: { marginBottom: 3, paddingLeft: 8 },
   qaWho: { fontSize: 8, fontWeight: 700, color: "#3d3529" },
   qaBody: { fontSize: 10, marginBottom: 1, lineHeight: 1.35 },
@@ -215,9 +215,9 @@ function V2SectionBody({ sec }: { sec: Section }) {
             </Text>
             {st.threads.map((th, ti) => (
               <View key={ti} style={s.qaRow}>
-                <Text style={s.qaWho}>대학 · 질문 [{STAMP_KO[th.status]}]</Text>
+                <Text style={s.qaWho}>Q. 대학 [{STAMP_KO[th.status]}]</Text>
                 <Text style={s.qaBody}>{th.q}</Text>
-                <Text style={s.qaWho}>진학 · 답변</Text>
+                <Text style={s.qaWho}>A. 진학</Text>
                 <Text style={s.qaBody}>{th.a}</Text>
               </View>
             ))}

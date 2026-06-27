@@ -57,4 +57,23 @@ describe("MeetingForm (편집 가능 양식)", () => {
     expect(onChange).toHaveBeenCalled();
     void ledger;
   });
+
+  it("후속조치 '기한' 셀은 날짜 입력(달력)이며 선택 시 onChange", () => {
+    const { onChange } = setup("regular");
+    const dateCells = document.querySelectorAll(
+      'input[type="date"].mf-date-cell',
+    );
+    expect(dateCells.length).toBeGreaterThan(0);
+    fireEvent.change(dateCells[0], { target: { value: "2026-07-01" } });
+    expect(onChange).toHaveBeenCalled();
+    const next = onChange.mock.calls.at(-1)![0];
+    const table = next.sections.find(
+      (s) => s.kind === "table" && s.headers.includes("기한"),
+    );
+    expect(table?.kind === "table").toBe(true);
+    if (table?.kind !== "table") return;
+    const kiIdx = table.headers.indexOf("기한");
+    // idx 컬럼(#) 1개를 제외한 데이터 셀 인덱스 = kiIdx - 1
+    expect(table.rows[0].cells[kiIdx - 1]).toBe("2026-07-01");
+  });
 });

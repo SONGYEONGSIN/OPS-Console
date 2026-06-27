@@ -179,6 +179,13 @@
   padding:1px 2px;min-width:120px;outline:none}
 .meeting-form .mf-meta-input:focus{border-bottom-color:var(--accent);background:#fff}
 
+/* 후속조치 '기한' 셀 — 클릭 시 달력. .rc 박스를 유지하되 input 기본 크롬 제거 */
+.meeting-form .rc.mf-date-cell{appearance:none;-webkit-appearance:none;
+  font-family:inherit;font-size:13px;color:var(--ink);background:transparent;border:none;
+  border-right:1px solid var(--hair);outline:none;width:100%;cursor:pointer}
+.meeting-form .reg-row .rc.mf-date-cell:last-child{border-right:none}
+.meeting-form .rc.mf-date-cell:focus{background:#fff}
+
 /* 문서 영역 상단 — 좌: 자동저장 표시 / 우: 상태 배지 */
 .meeting-form .mf-statusbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .meeting-form .mf-save{font-family:var(--mono);font-size:11px;color:var(--muted)}
