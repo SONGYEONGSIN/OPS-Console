@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteMeeting } from "@/features/meetings/actions";
@@ -30,12 +29,6 @@ export function MeetingEditForm({ row, onCancel }: EditFormProps) {
       <p className="text-sm text-ink">
         회의록 내용 편집은 전용 화면에서 진행합니다.
       </p>
-      <Link
-        href={`/dashboard/meetings/${row.id}`}
-        className="inline-block border border-ink px-3 py-1 text-sm hover:bg-ink hover:text-cream"
-      >
-        편집 화면 열기
-      </Link>
 
       {error && <p className="text-xs text-vermilion">{error}</p>}
 
@@ -51,7 +44,7 @@ export function MeetingEditForm({ row, onCancel }: EditFormProps) {
       <button
         type="button"
         onClick={onCancel}
-        className="block w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+        className="block w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
       >
         닫기
       </button>
