@@ -28,16 +28,17 @@ describe("MeetingEditForm 삭제", () => {
     mockRefresh.mockReset();
   });
 
-  it("편집 화면 링크 + 삭제 버튼을 노출한다", () => {
+  it("편집 화면 링크는 노출하지 않고 삭제·닫기 버튼만 노출한다", () => {
     render(
       <MeetingEditForm row={row} setRow={noop} onSave={noop} onCancel={noop} />,
     );
     expect(
-      screen.getByRole("link", { name: /편집 화면 열기/ }),
-    ).toBeInTheDocument();
+      screen.queryByRole("link", { name: /편집 화면 열기/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /회의록 삭제/ }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "닫기" })).toBeInTheDocument();
   });
 
   it("확인 시 deleteMeeting(id) 호출 + 목록 갱신", async () => {
