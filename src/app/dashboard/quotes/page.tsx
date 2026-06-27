@@ -113,6 +113,8 @@ export default async function QuotesPage({
       variant="quotes"
       canCreate={false}
       readOnly={!canEdit}
+      hideVariantFilters
+
       currentUserPermission={me?.permission ?? null}
       currentUserEmail={me?.email ?? null}
       currentUserName={me?.displayName ?? me?.email ?? ""}
