@@ -15,6 +15,8 @@ import { QUOTE_SENDER } from "@/features/quotes/sender";
 import { recomputeDocument, koreanAmount, laborRollup } from "@/features/quotes/calc";
 import { KOSA_2026, kosaDaily } from "@/features/quotes/kosa-2026";
 import { saveQuoteDocument } from "@/features/quotes/document-actions";
+import { sendQuoteMail } from "@/features/quotes/mail-actions";
+import { QuoteMailModal } from "./QuoteMailModal";
 
 // ────────────── 헬퍼 ──────────────
 
@@ -603,6 +605,16 @@ export function QuoteDocumentEditor({
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailBusy, setMailBusy] = useState(false);
+
+  async function sendMail(emails: string[]) {
+    setMailBusy(true);
+    const res = await sendQuoteMail(id, emails);
+    setMailBusy(false);
+    if (res.ok) setMailOpen(false);
+    else alert(res.error ?? "발송 실패");
+  }
 
   function updateDoc(next: QuoteDocument) {
     setDoc(recomputeDocument(next));
@@ -702,6 +714,23 @@ export function QuoteDocumentEditor({
           </a>
           <button
             type="button"
+            onClick={() => {
+              if (
+                dirty &&
+                !saved &&
+                !window.confirm(
+                  "저장하지 않은 변경은 발송 PDF에 반영되지 않습니다. 계속할까요?",
+                )
+              )
+                return;
+              setMailOpen(true);
+            }}
+            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+          >
+            메일 발송
+          </button>
+          <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
@@ -710,6 +739,15 @@ export function QuoteDocumentEditor({
           </button>
         </div>
       </div>
+
+      {mailOpen && (
+        <QuoteMailModal
+          recipientName={doc.header.recipient}
+          busy={mailBusy}
+          onClose={() => setMailOpen(false)}
+          onSend={sendMail}
+        />
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-6 pt-2">
         {/* A4 폭 문서 시트 */}
