@@ -520,42 +520,45 @@ type TimelineBlock =
   | { kind: "run"; run: AutomationRunEntry; detailIndices: number[] }
   | { kind: "detail-only"; dateKey: string; detailIndices: number[] };
 
+/** ISO 시각 → epoch ms (정렬용). 파싱 실패 시 0. */
+function epochMs(iso: string): number {
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
 /**
- * runs(desc)를 기준으로, 같은 KST 날짜의 발송 상세 entry를 인라인 묶는다.
- * run에 매칭되지 않은 상세(상세만 있고 run 없음/다른 날짜)는 자체 날짜로 폴백 블록에 노출 — 정보 손실 금지.
+ * run과 발송 상세를 하나의 타임라인으로 합쳐 **시각 내림차순(최신 우선)** 정렬한다.
+ * 같은 KST 날짜의 상세는 해당 run 블록에 인라인 묶고, 어떤 run에도 매칭 안 된 상세는
+ * 자체 시각의 폴백 블록으로 노출(정보 손실 금지). run/폴백 블록을 대표 시각으로 함께 정렬한다.
  */
-function buildTimeline(
+export function buildTimeline(
   runs: AutomationRunEntry[],
   log: JobRunLog | null,
 ): TimelineBlock[] {
+  const sentAtList = log ? entrySentAtList(log) : [];
   const detailByDate = new Map<string, number[]>();
-  if (log) {
-    entrySentAtList(log).forEach((sentAt, i) => {
-      const key = kstDateKey(sentAt);
-      const list = detailByDate.get(key) ?? [];
-      list.push(i);
-      detailByDate.set(key, list);
-    });
-  }
+  sentAtList.forEach((sentAt, i) => {
+    const key = kstDateKey(sentAt);
+    const list = detailByDate.get(key) ?? [];
+    list.push(i);
+    detailByDate.set(key, list);
+  });
   const consumed = new Set<string>();
-  const blocks: TimelineBlock[] = runs.map((run) => {
+  // 대표 시각(ts)을 함께 들고 다니다 마지막에 내림차순 정렬.
+  const sortable: { block: TimelineBlock; ts: number }[] = runs.map((run) => {
     const key = kstDateKey(run.ranAt);
     const detailIndices = !consumed.has(key) ? (detailByDate.get(key) ?? []) : [];
     if (detailIndices.length > 0) consumed.add(key);
-    return { kind: "run", run, detailIndices };
+    return { block: { kind: "run", run, detailIndices }, ts: epochMs(run.ranAt) };
   });
   // 폴백 — 어떤 run에도 매칭되지 않은 발송 상세 날짜를 자체 시각으로 노출.
-  const leftover: TimelineBlock[] = [];
   for (const [dateKey, indices] of detailByDate) {
     if (consumed.has(dateKey)) continue;
-    leftover.push({ kind: "detail-only", dateKey, detailIndices: indices });
+    // 대표 시각 = 해당 날짜 상세 중 가장 늦은 시각.
+    const ts = indices.reduce((max, i) => Math.max(max, epochMs(sentAtList[i])), 0);
+    sortable.push({ block: { kind: "detail-only", dateKey, detailIndices: indices }, ts });
   }
-  leftover.sort((a, b) => {
-    const ak = a.kind === "detail-only" ? a.dateKey : "";
-    const bk = b.kind === "detail-only" ? b.dateKey : "";
-    return ak < bk ? 1 : ak > bk ? -1 : 0;
-  });
-  return [...blocks, ...leftover];
+  return sortable.sort((a, b) => b.ts - a.ts).map((s) => s.block);
 }
 
 type Props = {
