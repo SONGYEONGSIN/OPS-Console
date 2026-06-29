@@ -39,7 +39,7 @@ export function HandoverEditorWorkspace({
   onCopyHandover: EditFormProps["onCopyHandover"];
 }) {
   const [row, setRowState] = useState<ListRow>(initialRow);
-  const [active, setActive] = useState<HandoverCategoryKey | null>(null);
+  const [active, setActive] = useState<HandoverCategoryKey>("contract");
   const [status, setStatus] = useState<StatusKey>(
     (initialRow.handoverStatus as StatusKey | undefined) ?? "none",
   );
@@ -78,6 +78,7 @@ export function HandoverEditorWorkspace({
         </Link>
         <div className="flex items-center gap-3">
           <span
+            aria-label={`작성상태 ${STATUS_LABEL[status]}`}
             className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
           >
             {STATUS_LABEL[status]}
@@ -91,18 +92,16 @@ export function HandoverEditorWorkspace({
       <div className="flex min-h-0 flex-1 border border-line">
         <HandoverCategoryRail
           row={row}
-          active={active ?? "contract"}
+          active={active}
           onChange={(key) => setActive(key)}
         />
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {active !== null && (
-            <HandoverCategoryFields
-              row={row}
-              setRow={setRow}
-              category={active}
-              contractsStatusOptions={contractsStatusOptions}
-            />
-          )}
+          <HandoverCategoryFields
+            row={row}
+            setRow={setRow}
+            category={active}
+            contractsStatusOptions={contractsStatusOptions}
+          />
           {onCopyHandover ? (
             <CopySection
               fromServiceId={row.id}

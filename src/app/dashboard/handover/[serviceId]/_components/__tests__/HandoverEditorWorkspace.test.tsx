@@ -50,7 +50,7 @@ describe("HandoverEditorWorkspace", () => {
     setup();
     const link = screen.getByRole("link", { name: /목록 이동/ });
     expect(link).toHaveAttribute("href", "/dashboard/handover");
-    expect(screen.getByText("미작성")).toBeInTheDocument();
+    expect(screen.getByLabelText(/작성상태/)).toHaveTextContent("미작성");
   });
 
   it("레일 클릭 → 우측 카테고리 전환", () => {
