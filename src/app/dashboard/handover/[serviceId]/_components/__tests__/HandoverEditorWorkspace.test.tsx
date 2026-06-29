@@ -78,4 +78,23 @@ describe("HandoverEditorWorkspace", () => {
       notes_md: "메모입력",
     });
   });
+
+  it("연속 입력 → 디바운스 후 마지막 값으로 한 번만 저장", async () => {
+    setup();
+    fireEvent.click(screen.getByRole("button", { name: /기타/ }));
+    fireEvent.click(screen.getByRole("button", { name: /특이사항/ }));
+    const textarea = screen.getByLabelText("특이사항");
+    fireEvent.change(textarea, { target: { value: "첫" } });
+    fireEvent.change(textarea, { target: { value: "첫둘" } });
+    fireEvent.change(textarea, { target: { value: "첫둘셋" } });
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    // 디바운스 + rowRef 최신값 추적 → 누적된 마지막 값으로 단 한 번만 저장.
+    expect(upsertMock).toHaveBeenCalledTimes(1);
+    expect(upsertMock.mock.calls[0][0]).toMatchObject({
+      service_id: "svc-1",
+      notes_md: "첫둘셋",
+    });
+  });
 });
