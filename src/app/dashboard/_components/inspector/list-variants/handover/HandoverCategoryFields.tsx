@@ -107,10 +107,11 @@ export function HandoverCategoryFields({
                       [ROW_TO_FIELD[f.key]]: e.target.value,
                     }))
                   }
-                  rows={2}
+                  rows={3}
                   maxLength={10000}
                   placeholder="추가 메모(선택)"
-                  className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+                  // field-sizing-content: 작성된 메모는 스크롤 없이 높이 자동 확장
+                  className="field-sizing-content min-h-16 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
                 />
               </label>
             </ContractChecklist>
@@ -153,10 +154,11 @@ export function HandoverCategoryFields({
                   [ROW_TO_FIELD[f.key]]: e.target.value,
                 }))
               }
-              rows={6}
+              rows={8}
               maxLength={10000}
               placeholder={FIELD_EXAMPLE[f.key]}
-              className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+              // field-sizing-content: 기존 내용이 있으면 스크롤 없이 높이 자동 확장
+              className="field-sizing-content min-h-32 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             />
           );
         }

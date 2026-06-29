@@ -97,4 +97,26 @@ describe("HandoverEditorWorkspace", () => {
       notes_md: "첫둘셋",
     });
   });
+
+  it("상단바에 대학명 · 서비스명 제목 표시", () => {
+    setup();
+    expect(screen.getByText(/숙명여자대학교/)).toBeInTheDocument();
+    expect(screen.getByText(/Fall Admission/)).toBeInTheDocument();
+  });
+
+  it("복제 버튼 클릭 → 드롭다운(다른 서비스로 복제) 토글", () => {
+    render(
+      <HandoverEditorWorkspace
+        initialRow={initialRow}
+        contractsStatusOptions={[]}
+        handoverServiceCandidates={[]}
+        onCopyHandover={vi.fn().mockResolvedValue({ ok: true })}
+      />,
+    );
+    expect(screen.queryByText("다른 서비스로 복제")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "복제" }));
+    expect(screen.getByText("다른 서비스로 복제")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "복제" }));
+    expect(screen.queryByText("다른 서비스로 복제")).toBeNull();
+  });
 });
