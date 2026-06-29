@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { ListRow } from "../../../patterns/ListPattern";
 
 type Props = {
@@ -24,7 +25,8 @@ const STATUS_TONE: Record<StatusKey, string> = {
   published: "bg-ink/10 text-ink",
 };
 
-export function HandoverTable({ rows, selectedId, onSelect }: Props) {
+export function HandoverTable({ rows }: Props) {
+  const router = useRouter();
   return (
     <table className="w-full text-sm">
       <thead>
@@ -48,10 +50,8 @@ export function HandoverTable({ rows, selectedId, onSelect }: Props) {
             return (
               <tr
                 key={row.id}
-                onClick={() => onSelect(row)}
-                className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                  selectedId === row.id ? "bg-washi-raised" : ""
-                }`}
+                onClick={() => router.push(`/dashboard/handover/${row.id}`)}
+                className="cursor-pointer border-b border-line-soft hover:bg-washi-raised"
               >
                 <td className="px-3 py-2">
                   <span className="font-medium text-ink">
@@ -61,9 +61,7 @@ export function HandoverTable({ rows, selectedId, onSelect }: Props) {
                     · {row.serviceName ?? "—"}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-xs text-ink-soft">
-                  {row.owner}
-                </td>
+                <td className="px-3 py-2 text-xs text-ink-soft">{row.owner}</td>
                 <td className="px-3 py-2 text-xs text-ink-soft">
                   {row.applicationType ?? "—"}
                 </td>

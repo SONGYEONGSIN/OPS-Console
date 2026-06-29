@@ -3,6 +3,11 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { HandoverTable } from "../Table";
 import type { ListRow } from "../../../../patterns/ListPattern";
 
+const pushMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
+
 const baseRow: ListRow = {
   id: "aaaaaaaa-1111-4111-8111-111111111111",
   name: "서울대학교 · 수시",
@@ -42,16 +47,12 @@ describe("HandoverTable", () => {
     expect(screen.getByText("미작성")).toBeInTheDocument();
   });
 
-  it("row 클릭 → onSelect 호출", () => {
-    const onSelect = vi.fn();
+  it("row 클릭 → 풀스크린 편집기로 라우팅", () => {
+    pushMock.mockReset();
     render(
-      <HandoverTable
-        rows={[baseRow]}
-        selectedId={null}
-        onSelect={onSelect}
-      />,
+      <HandoverTable rows={[baseRow]} selectedId={null} onSelect={() => {}} />,
     );
     fireEvent.click(screen.getByText("서울대학교").closest("tr")!);
-    expect(onSelect).toHaveBeenCalledWith(baseRow);
+    expect(pushMock).toHaveBeenCalledWith(`/dashboard/handover/${baseRow.id}`);
   });
 });
