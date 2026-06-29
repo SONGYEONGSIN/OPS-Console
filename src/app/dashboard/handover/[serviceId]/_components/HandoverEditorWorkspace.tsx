@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type SetStateAction } from "react";
 import Link from "next/link";
 import type { ListRow } from "@/app/dashboard/_components/patterns/ListPattern";
 import { HandoverCategoryFields } from "@/app/dashboard/_components/inspector/list-variants/handover/HandoverCategoryFields";
@@ -47,6 +47,20 @@ export function HandoverEditorWorkspace({
   );
   const [saved, setSaved] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 복제 드롭다운 — 상단 우측 '복제' 버튼으로 토글, 바깥 클릭 시 닫힘.
+  const [copyOpen, setCopyOpen] = useState(false);
+  const copyRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!copyOpen) return;
+    function onDocMouseDown(e: MouseEvent) {
+      if (copyRef.current && !copyRef.current.contains(e.target as Node)) {
+        setCopyOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [copyOpen]);
 
   function scheduleSave(next: ListRow) {
     setSaved(false);
@@ -72,14 +86,22 @@ export function HandoverEditorWorkspace({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between">
-        <Link
-          href="/dashboard/handover"
-          className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
-        >
-          ← 목록 이동
-        </Link>
-        <div className="flex items-center gap-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href="/dashboard/handover"
+            className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+          >
+            ← 목록 이동
+          </Link>
+          {/* 대학명 · 서비스명 */}
+          <p className="min-w-0 truncate text-sm font-bold text-ink">
+            {row.universityName ?? "—"}
+            <span className="text-muted"> · </span>
+            {row.serviceName ?? "—"}
+          </p>
+        </div>
+        <div className="flex flex-none items-center gap-3">
           <span
             aria-label={`작성상태 ${STATUS_LABEL[status]}`}
             className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
@@ -89,6 +111,27 @@ export function HandoverEditorWorkspace({
           <span className="text-xs text-muted">
             {saved ? "✓ 자동 저장됨" : "저장 중…"}
           </span>
+          {onCopyHandover ? (
+            <div className="relative" ref={copyRef}>
+              <button
+                type="button"
+                aria-expanded={copyOpen}
+                onClick={() => setCopyOpen((v) => !v)}
+                className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
+              >
+                복제
+              </button>
+              {copyOpen ? (
+                <div className="absolute right-0 z-20 mt-1 w-80 border border-line bg-washi-raised p-3 shadow-lg">
+                  <CopySection
+                    fromServiceId={row.id}
+                    candidates={handoverServiceCandidates ?? []}
+                    onCopy={onCopyHandover}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -105,13 +148,6 @@ export function HandoverEditorWorkspace({
             category={active}
             contractsStatusOptions={contractsStatusOptions}
           />
-          {onCopyHandover ? (
-            <CopySection
-              fromServiceId={row.id}
-              candidates={handoverServiceCandidates ?? []}
-              onCopy={onCopyHandover}
-            />
-          ) : null}
         </div>
       </div>
     </div>

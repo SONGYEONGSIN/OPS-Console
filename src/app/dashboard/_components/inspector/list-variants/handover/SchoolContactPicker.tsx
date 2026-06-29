@@ -115,31 +115,32 @@ export function SchoolContactPicker({
           {items.map((c) => (
             <li
               key={c.id}
-              className="flex items-stretch gap-2 border border-line bg-cream px-2 py-1.5"
+              className="flex items-center gap-2 border border-line bg-cream px-2 py-1.5"
             >
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="truncate text-ink">
+              {/* 한 줄 표시 — 이름(직함) · 전화[복사] · 이메일[복사] */}
+              <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden whitespace-nowrap">
+                <span className="flex-none text-ink">
                   {c.name}
                   {c.jobTitle ? ` (${c.jobTitle})` : ""}
-                </p>
+                </span>
                 {c.phone ? (
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-2xs text-muted">{c.phone}</p>
+                  <span className="flex flex-none items-center gap-1 text-2xs text-muted">
+                    <span>· {c.phone}</span>
                     <CopyButton value={c.phone} label={`${c.name} 전화`} />
-                  </div>
+                  </span>
                 ) : null}
                 {c.email ? (
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-2xs text-muted">{c.email}</p>
+                  <span className="flex min-w-0 items-center gap-1 text-2xs text-muted">
+                    <span className="truncate">· {c.email}</span>
                     <CopyButton value={c.email} label={`${c.name} 이메일`} />
-                  </div>
+                  </span>
                 ) : null}
               </div>
               <button
                 type="button"
                 aria-label={`${c.name} 삭제`}
                 onClick={() => onChange(items.filter((it) => it.id !== c.id))}
-                className="flex-none cursor-pointer self-start border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
+                className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
               >
                 ✕
               </button>
