@@ -73,8 +73,10 @@ export async function upsertHandoverRecord(
     },
   });
 
+  // 목록만 revalidate — 편집기 라우트(/dashboard/handover/[serviceId])는
+  // 자동저장마다 RSC 소프트 리프레시를 일으키므로 제외(편집 중 리렌더 최소화).
+  // 편집기 작성상태 배지는 클라이언트가 응답(res.row.status)으로 직접 갱신한다.
   revalidatePath("/dashboard/handover");
-  revalidatePath(`/dashboard/handover/${parsed.data.service_id}`);
   return { ok: true, row: data as HandoverRecordRow };
 }
 

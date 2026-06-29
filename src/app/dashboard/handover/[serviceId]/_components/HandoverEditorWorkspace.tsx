@@ -39,6 +39,8 @@ export function HandoverEditorWorkspace({
   onCopyHandover: EditFormProps["onCopyHandover"];
 }) {
   const [row, setRowState] = useState<ListRow>(initialRow);
+  // 최신 row를 동기 추적 — setRow가 state updater 밖에서 next를 계산하도록.
+  const rowRef = useRef<ListRow>(initialRow);
   const [active, setActive] = useState<HandoverCategoryKey>("contract");
   const [status, setStatus] = useState<StatusKey>(
     (initialRow.handoverStatus as StatusKey | undefined) ?? "none",
@@ -56,15 +58,16 @@ export function HandoverEditorWorkspace({
     }, 800);
   }
 
+  // 사이드이펙트(자동저장 스케줄)는 state updater 밖에서 — updater는 순수하게 유지.
+  // rowRef로 최신값을 동기 추적하므로 연속 입력도 누적 후 한 번만 저장된다.
   function setRow(updater: SetStateAction<ListRow>) {
-    setRowState((prev) => {
-      const next =
-        typeof updater === "function"
-          ? (updater as (p: ListRow) => ListRow)(prev)
-          : updater;
-      scheduleSave(next);
-      return next;
-    });
+    const next =
+      typeof updater === "function"
+        ? (updater as (p: ListRow) => ListRow)(rowRef.current)
+        : updater;
+    rowRef.current = next;
+    setRowState(next);
+    scheduleSave(next);
   }
 
   return (
