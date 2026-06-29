@@ -16,16 +16,13 @@ export function HandoverCategoryRail({
   active: HandoverCategoryKey;
   onChange: (key: HandoverCategoryKey) => void;
 }) {
-  let filledTotal = 0;
-  let fieldTotal = 0;
-
   const items = HANDOVER_CATEGORIES.map((cat) => {
     const { filled, total } = categoryProgress(row, cat.key);
-    filledTotal += filled;
-    fieldTotal += total;
     const mark = filled === 0 ? "○" : filled === total ? "●" : "◐";
     return { cat, filled, total, mark };
   });
+  const filledTotal = items.reduce((sum, it) => sum + it.filled, 0);
+  const fieldTotal = items.reduce((sum, it) => sum + it.total, 0);
 
   return (
     <nav className="flex w-44 shrink-0 flex-col border-r border-line">
