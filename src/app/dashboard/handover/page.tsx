@@ -30,6 +30,7 @@ import {
 } from "@/features/handover/actions";
 import type { HandoverStatus } from "@/features/handover/schemas";
 import type { HandoverProgressStatus } from "@/features/handover/progress-schemas";
+import { buildHandoverUpsertInput } from "../_components/inspector/list-variants/handover/upsert-input";
 
 const PAGE_SIZE = 30;
 
@@ -119,9 +120,7 @@ export default async function HandoverPage({
           services={paged}
           allServices={allReady}
           operators={operatorCandidates}
-          step1HeaderRight={
-            <ScopeChips total={total} mineLabel="내 서비스" />
-          }
+          step1HeaderRight={<ScopeChips total={total} mineLabel="내 서비스" />}
           step1Footer={
             <ListPagination total={total} pageSize={PROGRESS_PAGE_SIZE} />
           }
@@ -135,13 +134,15 @@ export default async function HandoverPage({
     const mineHist = params.mine !== "false";
     const statusHist = params.status as HandoverProgressStatus | undefined;
     const pageHist = Math.max(1, Number(params.page) || 1);
-    const { rows: progressRows, total: totalHist } = await listHandoverProgress({
-      q: params.q,
-      status: statusHist,
-      toEmail: mineHist ? me?.email : undefined,
-      page: pageHist,
-      pageSize: PAGE_SIZE,
-    });
+    const { rows: progressRows, total: totalHist } = await listHandoverProgress(
+      {
+        q: params.q,
+        status: statusHist,
+        toEmail: mineHist ? me?.email : undefined,
+        page: pageHist,
+        pageSize: PAGE_SIZE,
+      },
+    );
     return (
       <div>
         <PageHeader
@@ -258,46 +259,7 @@ export default async function HandoverPage({
     row: ListRow,
   ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    const r = await upsertHandoverRecord({
-      service_id: row.id,
-      contract_info_md: row.handoverContractInfoMd ?? null,
-      contract_info: row.handoverContractInfo ?? {
-        title: "",
-        type: "",
-        progress: "",
-        status: "",
-        memo: "",
-      },
-      contract_data_md: row.handoverContractDataMd ?? null,
-      contract_data_checklist: (row.handoverContractChecklist ?? []).filter(
-        (c) => c.text.trim(),
-      ),
-      work_basic_md: row.handoverWorkBasicMd ?? null,
-      work_generator_md: row.handoverWorkGeneratorMd ?? null,
-      work_site_md: row.handoverWorkSiteMd ?? null,
-      work_output_md: row.handoverWorkOutputMd ?? null,
-      work_rate_md: row.handoverWorkRateMd ?? null,
-      work_file_md: row.handoverWorkFileMd ?? null,
-      work_etc_md: row.handoverWorkEtcMd ?? null,
-      payment_fee_md: row.handoverPaymentFeeMd ?? null,
-      payment_invoice_md: row.handoverPaymentInvoiceMd ?? null,
-      payment_fee: row.handoverPaymentFee ?? {
-        deadline: "",
-        manager: "",
-        memo: "",
-      },
-      payment_invoice: row.handoverPaymentInvoice ?? {
-        issueType: "",
-        memo: "",
-      },
-      school_contact_md: row.handoverSchoolContactMd ?? null,
-      school_contacts: (row.handoverSchoolContacts ?? []).filter((c) =>
-        c.name.trim(),
-      ),
-      docs_md: row.handoverDocsMd ?? null,
-      docs_checklist: (row.handoverDocsChecklist ?? []).filter((c) => c.text.trim()),
-      notes_md: row.handoverNotesMd ?? null,
-    });
+    const r = await upsertHandoverRecord(buildHandoverUpsertInput(row));
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
@@ -314,11 +276,7 @@ export default async function HandoverPage({
       contractsStatusOptions={contractStatusOptions}
       onCopyHandover={onCopyHandover}
       inlineFilters={
-        <ScopeChips
-          key="handover-scope"
-          total={total}
-          mineLabel="내 서비스"
-        />
+        <ScopeChips key="handover-scope" total={total} mineLabel="내 서비스" />
       }
       footer={
         <ListPagination
