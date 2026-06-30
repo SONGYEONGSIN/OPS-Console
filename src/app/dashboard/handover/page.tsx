@@ -205,6 +205,7 @@ export default async function HandoverPage({
       controlsRow={controlsRow}
       variant="handover"
       canCreate={false}
+      liveData
       currentUserName={me?.displayName ?? me?.email ?? ""}
       inlineFilters={
         <ScopeChips key="handover-scope" total={total} mineLabel="내 서비스" />
