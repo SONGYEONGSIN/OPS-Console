@@ -6,6 +6,7 @@ import {
   View,
   StyleSheet,
   Font,
+  Link,
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
   },
   // 카테고리 — 페이지 break 시 헤더만 외롭게 끝에 남지 않도록 minPresenceAhead
   category: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   categoryTitle: {
     fontSize: 13,
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
   },
   // 필드 — 좌측 보더로 구조 시각화
   field: {
-    marginBottom: 14,
+    marginBottom: 10,
     paddingLeft: 10,
     borderLeftWidth: 2,
     borderLeftColor: "#eeeeee",
@@ -170,6 +171,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     lineHeight: 1.7,
     color: "#1a1a1a",
+  },
+  link: {
+    color: "#1d4ed8",
+    textDecoration: "underline",
   },
   fieldEmpty: {
     fontSize: 9,
@@ -208,6 +213,19 @@ const styles = StyleSheet.create({
   },
 });
 
+/** 텍스트 내 http(s) URL을 클릭 가능한 Link로 변환 (PDF). */
+function linkify(text: string) {
+  return text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <Link key={i} src={part} style={styles.link}>
+        {part}
+      </Link>
+    ) : (
+      part
+    ),
+  );
+}
+
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -229,7 +247,9 @@ function HandoverDocument(input: HandoverPdfInput) {
         {/* fixed: 모든 페이지 상단 컨텍스트 (서비스명) */}
         <View fixed style={styles.runningHeader}>
           <Text style={styles.runningHeaderLeft}>{headerLine}</Text>
-          <Text style={styles.runningHeaderRight}>운영부 상황실 · 인수인계</Text>
+          <Text style={styles.runningHeaderRight}>
+            운영부 상황실 · 인수인계
+          </Text>
         </View>
 
         <View style={styles.header}>
@@ -237,7 +257,8 @@ function HandoverDocument(input: HandoverPdfInput) {
             인수인계 — {input.universityName} · {input.serviceName}
           </Text>
           <Text style={styles.subtitle}>
-            {input.applicationType} · 발송 {formatDate(input.createdAt)} · 운영부 상황실
+            {input.applicationType} · 발송 {formatDate(input.createdAt)} ·
+            운영부 상황실
           </Text>
         </View>
 
@@ -260,8 +281,8 @@ function HandoverDocument(input: HandoverPdfInput) {
           <View
             key={cat.key}
             style={styles.category}
-            // 카테고리 헤더 + 본문 최소 100pt 함께 진입 — 헤더만 외롭게 끝에 남지 않게
-            minPresenceAhead={100}
+            // 카테고리 헤더 + 본문 일부만 함께 진입 — 헤더 외로움 방지하되 페이지 하단 빈 공간 최소화
+            minPresenceAhead={36}
           >
             <Text style={styles.categoryTitle}>{cat.label}</Text>
             {cat.fields.map((f) => {
@@ -285,7 +306,7 @@ function HandoverDocument(input: HandoverPdfInput) {
                     ) : (
                       lines.map((line, i) => (
                         <Text key={i} style={styles.fieldValue}>
-                          {line}
+                          {linkify(line)}
                         </Text>
                       ))
                     )}
@@ -312,7 +333,9 @@ function HandoverDocument(input: HandoverPdfInput) {
                           </Text>
                         ))}
                         {memo ? (
-                          <Text style={styles.fieldValue}>메모: {memo}</Text>
+                          <Text style={styles.fieldValue}>
+                            메모: {linkify(memo)}
+                          </Text>
                         ) : null}
                       </>
                     )}
@@ -341,7 +364,10 @@ function HandoverDocument(input: HandoverPdfInput) {
                 );
               }
               // 정산 — 전형료/계산서 구조화 폼
-              if (f.key === "payment_fee_md" || f.key === "payment_invoice_md") {
+              if (
+                f.key === "payment_fee_md" ||
+                f.key === "payment_invoice_md"
+              ) {
                 const isFee = f.key === "payment_fee_md";
                 const p = isFee ? input.paymentFee : input.paymentInvoice;
                 const lines = p
@@ -363,7 +389,7 @@ function HandoverDocument(input: HandoverPdfInput) {
                     ) : (
                       lines.map((line, i) => (
                         <Text key={i} style={styles.fieldValue}>
-                          {line}
+                          {linkify(line)}
                         </Text>
                       ))
                     )}
@@ -376,7 +402,7 @@ function HandoverDocument(input: HandoverPdfInput) {
                 <View key={f.key} style={styles.field}>
                   <Text style={styles.fieldLabel}>{f.label}</Text>
                   {text ? (
-                    <Text style={styles.fieldValue}>{text}</Text>
+                    <Text style={styles.fieldValue}>{linkify(text)}</Text>
                   ) : (
                     <Text style={styles.fieldEmpty}>(미작성)</Text>
                   )}
@@ -387,9 +413,9 @@ function HandoverDocument(input: HandoverPdfInput) {
         ))}
 
         {input.notes && (
-          <View style={styles.notesBox} minPresenceAhead={60}>
+          <View style={styles.notesBox} minPresenceAhead={30}>
             <Text style={styles.notesLabel}>인계 메모</Text>
-            <Text style={styles.notesText}>{input.notes}</Text>
+            <Text style={styles.notesText}>{linkify(input.notes)}</Text>
           </View>
         )}
 

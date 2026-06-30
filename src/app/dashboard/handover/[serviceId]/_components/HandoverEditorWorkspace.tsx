@@ -74,15 +74,20 @@ export function HandoverEditorWorkspace({
           >
             ← 목록 이동
           </Link>
-          {/* 대학명 · 서비스명 */}
+          {/* 접수구분 · 대학명 · 서비스명 */}
           <p className="min-w-0 truncate text-sm font-bold text-ink">
+            {row.applicationType ? (
+              <span className="mr-1 font-normal text-muted">
+                {row.applicationType}
+              </span>
+            ) : null}
             {row.universityName ?? "—"}
             <span className="text-muted"> · </span>
             {row.serviceName ?? "—"}
           </p>
         </div>
         <div className="flex flex-none items-center gap-3">
-          <span className="text-xs text-muted">
+          <span className="text-xs font-bold text-muted">
             {saved ? "✓ 자동 저장됨" : "저장 중…"}
           </span>
           {onCopyHandover ? (

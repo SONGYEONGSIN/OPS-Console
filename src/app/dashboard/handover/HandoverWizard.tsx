@@ -652,8 +652,8 @@ function Step4({
 }) {
   return (
     <section className="flex flex-col items-center justify-center gap-4 py-12">
-      <div className="flex h-16 w-16 items-center justify-center border-2 border-sage bg-sage/20 text-2xl text-sage">
-        ✓
+      <div className="text-5xl" aria-hidden>
+        🎉
       </div>
       <h3 className="text-xl font-bold text-ink">인수인계 완료</h3>
       <p className="max-w-md text-center text-sm text-ink-soft">
