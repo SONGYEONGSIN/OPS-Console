@@ -69,9 +69,16 @@ describe("buildEditorRow", () => {
 
   it("연락처 후보 부착", () => {
     const row = buildEditorRow(service, null, [
-      { name: "홍길동", jobTitle: "팀장", phone: "010", email: "x@y.z" },
+      {
+        name: "홍길동",
+        jobTitle: "팀장",
+        phone: "010",
+        ext: "1234",
+        email: "x@y.z",
+      },
     ]);
     expect(row.handoverSchoolContactCandidates).toHaveLength(1);
     expect(row.handoverSchoolContactCandidates?.[0]?.name).toBe("홍길동");
+    expect(row.handoverSchoolContactCandidates?.[0]?.ext).toBe("1234");
   });
 });

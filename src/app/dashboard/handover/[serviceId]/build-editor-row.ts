@@ -6,6 +6,7 @@ type ContactCandidate = {
   name: string;
   jobTitle: string | null;
   phone: string | null;
+  ext: string | null;
   email: string | null;
 };
 
@@ -59,6 +60,7 @@ export function buildEditorRow(
       name: c.name,
       jobTitle: c.jobTitle,
       phone: c.phone,
+      ext: c.ext,
       email: c.email,
     })),
   };

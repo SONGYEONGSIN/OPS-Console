@@ -13,8 +13,22 @@ const row: ListRow = {
     { id: "b", text: "   ", done: false },
   ],
   handoverSchoolContacts: [
-    { id: "c", name: "홍길동", jobTitle: null, phone: null, email: null },
-    { id: "d", name: "  ", jobTitle: null, phone: null, email: null },
+    {
+      id: "c",
+      name: "홍길동",
+      jobTitle: null,
+      phone: null,
+      ext: null,
+      email: null,
+    },
+    {
+      id: "d",
+      name: "  ",
+      jobTitle: null,
+      phone: null,
+      ext: null,
+      email: null,
+    },
   ],
   handoverNotesMd: "특이사항",
 };

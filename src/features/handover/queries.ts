@@ -253,6 +253,7 @@ export type HandoverContactCandidate = {
   name: string;
   jobTitle: string | null;
   phone: string | null;
+  ext: string | null;
   email: string | null;
 };
 
@@ -269,7 +270,7 @@ export async function getHandoverContactCandidates(
   const { data, error } = await supabase
     .from("contacts")
     .select(
-      "university_name, customer_name, job_title, contact_phone, contact_email",
+      "university_name, customer_name, job_title, contact_phone, contact_ext, contact_email",
     )
     .in("university_name", unique)
     .order("customer_name", { ascending: true });
@@ -282,6 +283,7 @@ export async function getHandoverContactCandidates(
     name: c.customer_name as string,
     jobTitle: (c.job_title as string | null) ?? null,
     phone: (c.contact_phone as string | null) ?? null,
+    ext: (c.contact_ext as string | null) ?? null,
     email: (c.contact_email as string | null) ?? null,
   }));
 }

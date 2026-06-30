@@ -67,6 +67,7 @@ export const schoolContactSchema = z.object({
   name: z.string().max(100),
   jobTitle: z.string().max(100).nullable().default(null),
   phone: z.string().max(50).nullable().default(null),
+  ext: z.string().max(50).nullable().default(null),
   email: z.string().max(200).nullable().default(null),
 });
 export type SchoolContact = z.infer<typeof schoolContactSchema>;

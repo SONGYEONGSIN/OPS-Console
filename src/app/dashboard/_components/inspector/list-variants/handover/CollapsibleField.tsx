@@ -32,7 +32,7 @@ export function CollapsibleField({
         <span className="font-bold text-ink-soft">{label}</span>
         <span
           className={`ml-auto inline-block px-2 py-0.5 text-2xs ${
-            filled ? "bg-sage/15 text-sage" : "bg-washi-raised text-muted"
+            filled ? "bg-ink text-cream" : "bg-vermilion text-cream"
           }`}
         >
           {filled ? "작성완료" : "미작성"}

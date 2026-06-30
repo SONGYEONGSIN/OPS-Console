@@ -8,6 +8,7 @@ export type SchoolContactCandidate = {
   name: string;
   jobTitle: string | null;
   phone: string | null;
+  ext: string | null;
   email: string | null;
 };
 
@@ -56,6 +57,7 @@ export function SchoolContactPicker({
           name: c.name,
           jobTitle: c.jobTitle,
           phone: c.phone,
+          ext: c.ext,
           email: c.email,
         },
       ]);
@@ -118,7 +120,7 @@ export function SchoolContactPicker({
                   >
                     {c.name}
                     {c.jobTitle ? ` (${c.jobTitle})` : ""}
-                    {c.phone ? ` · ${c.phone}` : ""}
+                    {c.ext ? ` · ${c.ext}` : ""}
                     {c.email ? ` · ${c.email}` : ""}
                   </button>
                 </li>
@@ -142,9 +144,9 @@ export function SchoolContactPicker({
                   {c.name}
                   {c.jobTitle ? ` (${c.jobTitle})` : ""}
                 </span>
-                {c.phone ? (
+                {c.ext ? (
                   <span className="flex-none text-2xs text-muted">
-                    · {c.phone}
+                    · {c.ext}
                   </span>
                 ) : null}
                 {c.email ? (
