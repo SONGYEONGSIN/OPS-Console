@@ -253,9 +253,9 @@ const CHEV_FIRST =
 // 마지막 단계 — 왼쪽 노치로 맞물리되 오른쪽은 화살표 없이 평평(흐름의 끝).
 const CHEV_LAST = "[clip-path:polygon(0_0,100%_0,100%_100%,0_100%,16px_50%)]";
 // clip-path는 테두리·box-shadow를 잘라내므로 drop-shadow로 처리한다.
-// 4면 1px 보더라인(line-soft) + 하단 그림자로 볼록(입체) 효과. 화살표 형태 유지.
+// 4면 1px 진한 보더라인(line=ink)으로 비활성 블록을 또렷하게 + 하단 그림자로 볼록(입체).
 const CHEV_RAISED =
-  "[filter:drop-shadow(1px_0_0_var(--line-soft))_drop-shadow(-1px_0_0_var(--line-soft))_drop-shadow(0_1px_0_var(--line-soft))_drop-shadow(0_-1px_0_var(--line-soft))_drop-shadow(0_2px_2px_var(--line-soft))]";
+  "[filter:drop-shadow(1px_0_0_var(--line))_drop-shadow(-1px_0_0_var(--line))_drop-shadow(0_1px_0_var(--line))_drop-shadow(0_-1px_0_var(--line))_drop-shadow(0_2px_2px_var(--line-soft))]";
 
 function ProgressBar({ step }: { step: Step }) {
   return (
