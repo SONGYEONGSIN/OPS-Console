@@ -53,7 +53,7 @@ describe("HandoverEditorWorkspace", () => {
       "/dashboard/handover",
     );
     expect(
-      screen.getByRole("link", { name: "인수인계 진행 이동" }),
+      screen.getByRole("link", { name: /인수인계 진행 이동/ }),
     ).toHaveAttribute("href", "/dashboard/handover?tab=progress");
     // 작성상태 배지는 제거됨
     expect(screen.queryByLabelText(/작성상태/)).toBeNull();

@@ -85,12 +85,6 @@ export function HandoverEditorWorkspace({
           <span className="text-xs text-muted">
             {saved ? "✓ 자동 저장됨" : "저장 중…"}
           </span>
-          <Link
-            href="/dashboard/handover?tab=progress"
-            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-          >
-            인수인계 진행 이동
-          </Link>
           {onCopyHandover ? (
             <div className="relative" ref={copyRef}>
               <button
@@ -118,6 +112,12 @@ export function HandoverEditorWorkspace({
               ) : null}
             </div>
           ) : null}
+          <Link
+            href="/dashboard/handover?tab=progress"
+            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+          >
+            인수인계 진행 이동 →
+          </Link>
         </div>
       </div>
 
