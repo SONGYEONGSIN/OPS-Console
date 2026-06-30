@@ -33,6 +33,7 @@ export default async function HandoverEditorPage({
       name: c.name,
       jobTitle: c.jobTitle,
       phone: c.phone,
+      ext: c.ext,
       email: c.email,
     })),
   );

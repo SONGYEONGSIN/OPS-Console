@@ -70,7 +70,7 @@ export function CopySection({
   }
 
   return (
-    <section className="mt-4 space-y-2 border-t border-line-soft pt-3">
+    <section className="space-y-2">
       <p className="text-2xs uppercase tracking-[0.18em] text-muted">
         다른 서비스로 복제
       </p>

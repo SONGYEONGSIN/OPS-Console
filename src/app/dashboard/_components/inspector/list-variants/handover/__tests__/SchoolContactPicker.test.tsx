@@ -8,29 +8,42 @@ const candidates = [
     name: "김담당",
     jobTitle: "실무",
     phone: "051-510-0000",
+    ext: "1234",
     email: "kim@univ.ac.kr",
   },
-  { name: "이전산", jobTitle: "전산", phone: null, email: "lee@univ.ac.kr" },
+  {
+    name: "이전산",
+    jobTitle: "전산",
+    phone: null,
+    ext: null,
+    email: "lee@univ.ac.kr",
+  },
 ];
 
 describe("SchoolContactPicker", () => {
   it("검색어 입력 시 대학 연락처 후보 표시", () => {
     render(
-      <SchoolContactPicker candidates={candidates} items={[]} onChange={() => {}} />,
+      <SchoolContactPicker
+        candidates={candidates}
+        items={[]}
+        onChange={() => {}}
+      />,
     );
     fireEvent.change(screen.getByLabelText("학교담당자 검색"), {
       target: { value: "김" },
     });
-    expect(
-      screen.getByRole("button", { name: /김담당/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /김담당/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /이전산/ })).toBeNull();
   });
 
   it("후보 선택 시 구조화 항목으로 리스트에 추가", () => {
     const onChange = vi.fn();
     render(
-      <SchoolContactPicker candidates={candidates} items={[]} onChange={onChange} />,
+      <SchoolContactPicker
+        candidates={candidates}
+        items={[]}
+        onChange={onChange}
+      />,
     );
     fireEvent.change(screen.getByLabelText("학교담당자 검색"), {
       target: { value: "김" },
@@ -42,6 +55,7 @@ describe("SchoolContactPicker", () => {
       name: "김담당",
       jobTitle: "실무",
       phone: "051-510-0000",
+      ext: "1234",
       email: "kim@univ.ac.kr",
     });
   });
@@ -54,6 +68,7 @@ describe("SchoolContactPicker", () => {
         name: "김담당",
         jobTitle: "실무",
         phone: "051-510-0000",
+        ext: "1234",
         email: "kim@univ.ac.kr",
       },
     ];
@@ -80,6 +95,7 @@ describe("SchoolContactPicker", () => {
         name: "김담당",
         jobTitle: "실무",
         phone: null,
+        ext: null,
         email: null,
       },
     ];
@@ -98,6 +114,8 @@ describe("SchoolContactPicker", () => {
     render(
       <SchoolContactPicker candidates={[]} items={[]} onChange={() => {}} />,
     );
-    expect(screen.getByText(/등록된 대학 연락처가 없습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/등록된 대학 연락처가 없습니다/),
+    ).toBeInTheDocument();
   });
 });

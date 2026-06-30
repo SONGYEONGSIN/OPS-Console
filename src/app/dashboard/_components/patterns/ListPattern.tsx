@@ -403,6 +403,7 @@ export type ListRow = {
     name: string;
     jobTitle: string | null;
     phone: string | null;
+    ext: string | null;
     email: string | null;
   }[];
   /** 컨텍 — 해당 대학 연락처 후보 (학교담당자 검색·등록용) */
@@ -410,6 +411,7 @@ export type ListRow = {
     name: string;
     jobTitle: string | null;
     phone: string | null;
+    ext: string | null;
     email: string | null;
   }[];
   handoverWorkBasicMd?: string | null;

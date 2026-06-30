@@ -13,9 +13,9 @@ const base: ListRow = {
 
 describe("isFieldFilled", () => {
   it("md 필드 — 공백/빈문자는 미작성", () => {
-    expect(isFieldFilled({ ...base, handoverWorkBasicMd: "" }, "work_basic_md")).toBe(
-      false,
-    );
+    expect(
+      isFieldFilled({ ...base, handoverWorkBasicMd: "" }, "work_basic_md"),
+    ).toBe(false);
     expect(
       isFieldFilled({ ...base, handoverWorkBasicMd: "  " }, "work_basic_md"),
     ).toBe(false);
@@ -60,13 +60,19 @@ describe("isFieldFilled", () => {
     expect(isFieldFilled(base, "payment_fee_md")).toBe(false);
     expect(
       isFieldFilled(
-        { ...base, handoverPaymentFee: { deadline: "5영업일", manager: "", memo: "" } },
+        {
+          ...base,
+          handoverPaymentFee: { deadline: "5영업일", manager: "", memo: "" },
+        },
         "payment_fee_md",
       ),
     ).toBe(true);
     expect(
       isFieldFilled(
-        { ...base, handoverPaymentInvoice: { issueType: "청구발행", memo: "" } },
+        {
+          ...base,
+          handoverPaymentInvoice: { issueType: "청구발행", memo: "" },
+        },
         "payment_invoice_md",
       ),
     ).toBe(true);
@@ -78,7 +84,14 @@ describe("isFieldFilled", () => {
         {
           ...base,
           handoverSchoolContacts: [
-            { id: "x", name: "송영신", jobTitle: null, phone: null, email: null },
+            {
+              id: "x",
+              name: "송영신",
+              jobTitle: null,
+              phone: null,
+              ext: null,
+              email: null,
+            },
           ],
         },
         "school_contact_md",
