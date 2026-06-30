@@ -30,6 +30,13 @@ const baseHandoverFields = {
   school_contact_md: null,
   docs_md: null,
   notes_md: null,
+  category: "공통원서",
+  contract_info: null,
+  contract_data_checklist: [],
+  payment_fee: null,
+  payment_invoice: null,
+  school_contacts: [],
+  docs_checklist: [],
 };
 const services = [
   {
@@ -53,13 +60,18 @@ const operators = [
   { email: "a@x.com", name: "허승철" },
   { email: "b@x.com", name: "김슬기" },
 ];
+const from = { name: "테스트인계자", email: "from@x.com" };
 
 describe("HandoverWizard", () => {
   beforeEach(() => createSpy.mockReset());
 
   it("step1 — 서비스 후보 라디오 표시 + 선택 후 다음 활성", () => {
-    render(<HandoverWizard services={services} operators={operators} />);
-    expect(screen.getByRole("heading", { name: /서비스 선택/ })).toBeInTheDocument();
+    render(
+      <HandoverWizard services={services} operators={operators} from={from} />,
+    );
+    expect(
+      screen.getByRole("heading", { name: /서비스 선택/ }),
+    ).toBeInTheDocument();
     const next = screen.getByRole("button", { name: /다음/ });
     expect(next).toBeDisabled();
     fireEvent.click(screen.getByLabelText(/KARTS/));
@@ -67,26 +79,70 @@ describe("HandoverWizard", () => {
   });
 
   it("step1 → step2 인수자 선택 표시", () => {
-    render(<HandoverWizard services={services} operators={operators} />);
+    render(
+      <HandoverWizard services={services} operators={operators} from={from} />,
+    );
     fireEvent.click(screen.getByLabelText(/KARTS/));
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
-    expect(screen.getByRole("heading", { name: /인수자 선택/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /인수자 선택/ }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/허승철/)).toBeInTheDocument();
   });
 
   it("step3 — 메모 textarea 표시 + 확인 버튼", () => {
-    render(<HandoverWizard services={services} operators={operators} />);
+    render(
+      <HandoverWizard services={services} operators={operators} from={from} />,
+    );
     fireEvent.click(screen.getByLabelText(/KARTS/));
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
     fireEvent.click(screen.getByLabelText(/허승철/));
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
     expect(screen.getByLabelText("메모")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "인계 시작" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "인계 시작" }),
+    ).toBeInTheDocument();
+  });
+
+  it("step3 — 인계자(현재 사용자)·카테고리·구조화 필드(계약정보) 표시", () => {
+    const withContent = [
+      {
+        ...services[0],
+        category: "수시",
+        contract_info: {
+          title: "원서접수 대행",
+          type: "",
+          progress: "",
+          status: "",
+          memo: "",
+        },
+      },
+    ];
+    render(
+      <HandoverWizard
+        services={withContent}
+        operators={operators}
+        from={from}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText(/KARTS/));
+    fireEvent.click(screen.getByRole("button", { name: /다음/ }));
+    fireEvent.click(screen.getByLabelText(/허승철/));
+    fireEvent.click(screen.getByRole("button", { name: /다음/ }));
+    // 인계자 = 현재 사용자
+    expect(screen.getByText("테스트인계자")).toBeInTheDocument();
+    // 카테고리 prefix
+    expect(screen.getByText("수시")).toBeInTheDocument();
+    // 계약 카테고리 펼치면 구조화 계약정보가 (미작성) 아닌 실내용으로 표시
+    fireEvent.click(screen.getByRole("button", { name: /계약/ }));
+    expect(screen.getByText("원서접수 대행")).toBeInTheDocument();
   });
 
   it("step4 — createHandoverProgress 호출 + 완료 표시", async () => {
     createSpy.mockResolvedValue({ ok: true, row: { id: "prog-1" } });
-    render(<HandoverWizard services={services} operators={operators} />);
+    render(
+      <HandoverWizard services={services} operators={operators} from={from} />,
+    );
     fireEvent.click(screen.getByLabelText(/KARTS/));
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
     fireEvent.click(screen.getByLabelText(/허승철/));
@@ -105,11 +161,15 @@ describe("HandoverWizard", () => {
   });
 
   it("뒤로 버튼으로 이전 step 복귀", () => {
-    render(<HandoverWizard services={services} operators={operators} />);
+    render(
+      <HandoverWizard services={services} operators={operators} from={from} />,
+    );
     fireEvent.click(screen.getByLabelText(/KARTS/));
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
     fireEvent.click(screen.getByRole("button", { name: /이전/ }));
-    expect(screen.getByRole("heading", { name: /서비스 선택/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /서비스 선택/ }),
+    ).toBeInTheDocument();
   });
 
   it("step1Footer prop이 있으면 Step1 테이블 아래에 렌더", () => {
@@ -117,6 +177,7 @@ describe("HandoverWizard", () => {
       <HandoverWizard
         services={services}
         operators={operators}
+        from={from}
         step1Footer={<div data-testid="footer-slot">페이지네이션</div>}
       />,
     );
@@ -130,10 +191,13 @@ describe("HandoverWizard", () => {
         services={[]}
         allServices={services}
         operators={operators}
+        from={from}
       />,
     );
     // services가 비었으므로 Step1에서 선택 불가 → 직접 상태를 확인하기 어려워
     // 여기서는 allServices prop이 type error 없이 렌더되는지만 확인
-    expect(screen.getByRole("heading", { name: /서비스 선택/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /서비스 선택/ }),
+    ).toBeInTheDocument();
   });
 });

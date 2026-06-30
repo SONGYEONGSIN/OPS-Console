@@ -8,6 +8,7 @@ import {
   HANDOVER_CATEGORIES,
   type HandoverFieldKey,
 } from "@/features/handover/categories";
+import { isHandoverFieldComplete } from "@/features/handover/completion";
 import type { ReadyService } from "@/features/handover/progress-queries";
 
 type Operator = {
@@ -21,6 +22,8 @@ type Props = {
   /** 전체 목록 (페이지네이션 전). selectedService 조회용. 미지정 시 services로 fallback. */
   allServices?: ReadyService[];
   operators: Operator[];
+  /** 인계자 — 현재 로그인 사용자 (step3 표시 + 발송 from). */
+  from: { name: string; email: string };
   /** Step1 헤더 카운트 바로 옆에 인라인 노출 (예: ScopeChips). */
   step1HeaderRight?: React.ReactNode;
   /** Step1 테이블 하단 슬롯 (예: ListPagination). */
@@ -29,7 +32,12 @@ type Props = {
 
 type Step = 1 | 2 | 3 | 4;
 
-const STEP_LABELS = ["서비스 선택", "인수자 선택", "최종 확인", "인수인계 완료"];
+const STEP_LABELS = [
+  "서비스 선택",
+  "인수자 선택",
+  "최종 확인",
+  "인수인계 완료",
+];
 
 function formatDate(s: string): string {
   const d = new Date(s);
@@ -44,6 +52,7 @@ export function HandoverWizard({
   services,
   allServices,
   operators,
+  from,
   step1HeaderRight,
   step1Footer,
 }: Props) {
@@ -57,7 +66,9 @@ export function HandoverWizard({
   const [isPending, startTransition] = useTransition();
 
   // allServices가 있으면 전체 목록에서 조회 (페이지네이션 후 services에 없어도 찾음)
-  const selectedService = (allServices ?? services).find((s) => s.id === serviceId);
+  const selectedService = (allServices ?? services).find(
+    (s) => s.id === serviceId,
+  );
 
   function handleConfirm() {
     if (!serviceId || !to) return;
@@ -97,12 +108,11 @@ export function HandoverWizard({
             footer={step1Footer}
           />
         )}
-        {step === 2 && (
-          <Step2 operators={operators} to={to} onSelect={setTo} />
-        )}
+        {step === 2 && <Step2 operators={operators} to={to} onSelect={setTo} />}
         {step === 3 && selectedService && to && (
           <Step3
             service={selectedService}
+            from={from}
             to={to}
             notes={notes}
             onNotesChange={setNotes}
@@ -299,6 +309,11 @@ function Step1({
                       />
                     </td>
                     <td className="px-3 py-2">
+                      {s.category ? (
+                        <span className="mr-1 text-xs text-muted">
+                          {s.category}
+                        </span>
+                      ) : null}
                       <span className="font-medium text-ink">
                         {s.university_name}
                       </span>
@@ -399,12 +414,14 @@ function Step2({
 
 function Step3({
   service,
+  from,
   to,
   notes,
   onNotesChange,
   error,
 }: {
   service: ReadyService;
+  from: { name: string; email: string };
   to: Operator;
   notes: string;
   onNotesChange: (v: string) => void;
@@ -422,10 +439,18 @@ function Step3({
       <dl className="grid grid-cols-[120px_1fr] gap-y-3 border border-line bg-cream p-4 text-sm">
         <dt className="text-muted">서비스</dt>
         <dd className="text-ink">
+          {service.category ? (
+            <span className="mr-1 text-xs text-muted">{service.category}</span>
+          ) : null}
           <span className="font-medium">{service.university_name}</span>
           <span className="ml-1 text-xs text-muted">
             · {service.service_name}
           </span>
+        </dd>
+        <dt className="text-muted">인계자</dt>
+        <dd className="text-ink">
+          <span className="font-medium">{from.name}</span>
+          <span className="ml-1 text-xs text-muted">· {from.email}</span>
         </dd>
         <dt className="text-muted">인수자</dt>
         <dd className="text-ink">
@@ -469,11 +494,10 @@ function CategoryAccordion({
   service: ReadyService;
 }) {
   const [open, setOpen] = useState(false);
-  const filled = category.fields.filter((f) => {
-    const key = `${f.key.replace(/_md$/, "_md")}` as HandoverFieldKey;
-    const v = service[key as keyof ReadyService];
-    return typeof v === "string" && v.trim().length > 0;
-  }).length;
+  // 구조화 필드(계약정보/정산/컨텍/체크리스트)는 *_md가 아닌 구조화 데이터로 판정.
+  const filled = category.fields.filter((f) =>
+    isHandoverFieldComplete(service, f.key),
+  ).length;
   return (
     <div className="border-b border-line-soft last:border-b-0">
       <button
@@ -494,25 +518,125 @@ function CategoryAccordion({
       </button>
       {open && (
         <div className="space-y-3 border-t border-line-soft bg-cream px-4 py-3">
-          {category.fields.map((f) => {
-            const v = service[f.key as keyof ReadyService];
-            const text = typeof v === "string" ? v : "";
-            return (
-              <div key={f.key}>
-                <div className="text-xs text-muted">{f.label}</div>
-                {text ? (
-                  <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-xs text-ink">
-                    {text}
-                  </pre>
-                ) : (
-                  <p className="mt-1 text-xs italic text-muted">(미작성)</p>
-                )}
-              </div>
-            );
-          })}
+          {category.fields.map((f) => (
+            <div key={f.key}>
+              <div className="text-xs text-muted">{f.label}</div>
+              <FieldBody service={service} fieldKey={f.key} />
+            </div>
+          ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** step3 미리보기 — 필드별 본문. 구조화 필드는 JSON 데이터로 렌더. */
+function FieldBody({
+  service,
+  fieldKey,
+}: {
+  service: ReadyService;
+  fieldKey: HandoverFieldKey;
+}) {
+  if (!isHandoverFieldComplete(service, fieldKey)) {
+    return <p className="mt-1 text-xs italic text-muted">(미작성)</p>;
+  }
+
+  const labeled = (rows: [string, string | null | undefined][]) => (
+    <div className="mt-1 space-y-0.5 text-xs text-ink">
+      {rows
+        .filter(([, v]) => v && String(v).trim())
+        .map(([k, v]) => (
+          <div key={k}>
+            <span className="text-muted">{k}: </span>
+            {v}
+          </div>
+        ))}
+    </div>
+  );
+  const memoBlock = (memo: string | null | undefined) =>
+    memo && memo.trim() ? (
+      <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-xs text-ink">
+        {memo}
+      </pre>
+    ) : null;
+
+  if (fieldKey === "contract_info_md") {
+    const c = service.contract_info;
+    return labeled([
+      ["제목", c?.title],
+      ["형태", c?.type],
+      ["진행", c?.progress],
+      ["상태", c?.status],
+      ["메모", c?.memo],
+    ]);
+  }
+  if (fieldKey === "contract_data_md" || fieldKey === "docs_md") {
+    const isDocs = fieldKey === "docs_md";
+    const checklist = isDocs
+      ? service.docs_checklist
+      : service.contract_data_checklist;
+    const memo = isDocs ? service.docs_md : service.contract_data_md;
+    return (
+      <div className="mt-1 space-y-1 text-xs text-ink">
+        {checklist
+          .filter((c) => c.text.trim())
+          .map((c) => (
+            <div key={c.id}>
+              <span aria-hidden className="text-muted">
+                {c.done ? "☑ " : "☐ "}
+              </span>
+              {c.text}
+            </div>
+          ))}
+        {memoBlock(memo)}
+      </div>
+    );
+  }
+  if (fieldKey === "payment_fee_md") {
+    const p = service.payment_fee;
+    return (
+      <>
+        {labeled([
+          ["정산기한", p?.deadline],
+          ["담당자", p?.manager],
+        ])}
+        {memoBlock(p?.memo)}
+      </>
+    );
+  }
+  if (fieldKey === "payment_invoice_md") {
+    const p = service.payment_invoice;
+    return (
+      <>
+        {labeled([["발행유형", p?.issueType]])}
+        {memoBlock(p?.memo)}
+      </>
+    );
+  }
+  if (fieldKey === "school_contact_md") {
+    return (
+      <ul className="mt-1 space-y-0.5 text-xs text-ink">
+        {service.school_contacts.map((c) => (
+          <li key={c.id}>
+            <span className="font-medium">
+              {c.name}
+              {c.jobTitle ? ` (${c.jobTitle})` : ""}
+            </span>
+            {c.ext ? <span className="text-muted"> · {c.ext}</span> : null}
+            {c.email ? <span className="text-muted"> · {c.email}</span> : null}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  // 일반 텍스트 필드 (work_*, notes)
+  const v = service[fieldKey as keyof ReadyService];
+  return (
+    <pre className="mt-1 whitespace-pre-wrap break-words font-sans text-xs text-ink">
+      {typeof v === "string" ? v : ""}
+    </pre>
   );
 }
 
@@ -537,6 +661,7 @@ function Step4({
       <h3 className="text-xl font-bold text-ink">인수인계 완료</h3>
       <p className="max-w-md text-center text-sm text-ink-soft">
         <span className="font-medium text-ink">
+          {service.category ? `${service.category} ` : ""}
           {service.university_name} · {service.service_name}
         </span>
         <br />
