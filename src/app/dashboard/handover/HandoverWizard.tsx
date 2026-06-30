@@ -33,10 +33,10 @@ type Props = {
 type Step = 1 | 2 | 3 | 4;
 
 const STEP_LABELS = [
-  "📋 서비스 선택",
-  "👤 인수자 선택",
-  "✅ 최종 확인",
-  "🎉 인수인계 완료",
+  "◇ 서비스 선택",
+  "◎ 인수자 선택",
+  "✓ 최종 확인",
+  "◈ 인수인계 완료",
 ];
 
 function formatDate(s: string): string {
