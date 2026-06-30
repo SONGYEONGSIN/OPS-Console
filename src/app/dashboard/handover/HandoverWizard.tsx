@@ -252,10 +252,10 @@ const CHEV_FIRST =
   "[clip-path:polygon(0_0,calc(100%_-_16px)_0,100%_50%,calc(100%_-_16px)_100%,0_100%)]";
 // 마지막 단계 — 왼쪽 노치로 맞물리되 오른쪽은 화살표 없이 평평(흐름의 끝).
 const CHEV_LAST = "[clip-path:polygon(0_0,100%_0,100%_100%,0_100%,16px_50%)]";
-// clip-path는 테두리를 잘라 화살표 외곽선이 사라지므로, drop-shadow 4방향으로
-// 잘린 모양을 따라가는 1px 외곽선을 그린다(비활성 단계도 화살표로 보이게).
-const CHEV_OUTLINE =
-  "[filter:drop-shadow(1px_0_0_var(--line))_drop-shadow(-1px_0_0_var(--line))_drop-shadow(0_1px_0_var(--line))_drop-shadow(0_-1px_0_var(--line))]";
+// clip-path는 테두리·box-shadow를 잘라내므로 drop-shadow로 처리한다.
+// 볼록(입체) 효과: 상단 cream 하이라이트 + 하단 line-soft 그림자, 좌우 1px 외곽선(화살표 형태 유지).
+const CHEV_RAISED =
+  "[filter:drop-shadow(0_-1px_0_var(--cream))_drop-shadow(0_2px_2px_var(--line-soft))_drop-shadow(1px_0_0_var(--line-soft))_drop-shadow(-1px_0_0_var(--line-soft))]";
 
 function ProgressBar({ step }: { step: Step }) {
   return (
@@ -266,12 +266,13 @@ function ProgressBar({ step }: { step: Step }) {
         const active = n === step;
         const first = i === 0;
         const last = i === STEP_LABELS.length - 1;
-        // 비활성 단계는 진한 washi로 채워 블록이 또렷하게(페이지보다 진하게).
-        const tone = active
+        // 흰색 계열(paper) 바탕 + 볼록 입체. 활성 단계만 vermilion.
+        const baseTone = active
           ? "bg-vermilion text-cream font-bold"
           : done
-            ? `bg-washi text-ink ${CHEV_OUTLINE}`
-            : `bg-washi text-muted ${CHEV_OUTLINE}`;
+            ? "bg-paper text-ink"
+            : "bg-paper text-muted";
+        const tone = `${baseTone} ${CHEV_RAISED}`;
         const clip = first
           ? CHEV_FIRST
           : last
