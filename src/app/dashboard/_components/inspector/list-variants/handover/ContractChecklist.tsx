@@ -46,9 +46,7 @@ export function ContractChecklist({
           )}
           현재 ({items.length}/{HANDOVER_CHECKLIST_MAX})
           {items.length > 0 && (
-            <span className="ml-1 text-faint">
-              · 완료 {received}/{items.length}
-            </span>
+            <span className="ml-1 text-faint">· 완료 {received}/{items.length}</span>
           )}
         </span>
         {!readOnly && (
@@ -69,9 +67,7 @@ export function ContractChecklist({
       {/* 항목 + 메모(children) — 임베드(아코디언) 시 외곽선 없이 */}
       <div
         className={
-          embedded
-            ? "space-y-2 pt-1"
-            : "space-y-2 border-y border-line-soft py-3"
+          embedded ? "space-y-2 pt-1" : "space-y-2 border-y border-line-soft py-3"
         }
       >
         {items.length === 0 ? (
@@ -146,9 +142,7 @@ export function ContractChecklist({
                   <button
                     type="button"
                     aria-label={`항목 ${idx + 1} 삭제`}
-                    onClick={() =>
-                      onChange?.(items.filter((_, i) => i !== idx))
-                    }
+                    onClick={() => onChange?.(items.filter((_, i) => i !== idx))}
                     className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
                   >
                     ✕
