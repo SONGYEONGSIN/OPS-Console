@@ -162,6 +162,13 @@ export async function sendHandoverMail(
     toEmail: p.to_email,
     notes: p.notes,
     historyUrl: `${baseUrl()}/dashboard/handover?tab=history`,
+    fields,
+    contractInfo,
+    contractChecklist,
+    docsChecklist,
+    schoolContacts,
+    paymentFee,
+    paymentInvoice,
   });
 
   if (isDryRun()) {
