@@ -13,24 +13,17 @@ import { HandoverWizard } from "./HandoverWizard";
 import { HandoverHistory } from "./HandoverHistory";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listOperators } from "@/features/operators/queries";
-import { listContracts } from "@/features/contracts/queries";
 import { requireMenu } from "@/features/auth/menu-guard";
 import {
   listServicesWithHandover,
-  getHandoverContactCandidates,
   type HandoverListRow,
 } from "@/features/handover/queries";
 import {
   listHandoverProgress,
   listReadyServices,
 } from "@/features/handover/progress-queries";
-import {
-  upsertHandoverRecord,
-  copyHandoverRecord,
-} from "@/features/handover/actions";
 import type { HandoverStatus } from "@/features/handover/schemas";
 import type { HandoverProgressStatus } from "@/features/handover/progress-schemas";
-import { buildHandoverUpsertInput } from "../_components/inspector/list-variants/handover/upsert-input";
 
 const PAGE_SIZE = 30;
 
@@ -188,58 +181,7 @@ export default async function HandoverPage({
     pageSize: PAGE_SIZE,
   });
   const rows: ListRow[] = dbRows.map(handoverToListRow);
-  // 컨텍 — 각 행 대학의 연락처 후보를 부착(학교담당자 검색·등록용)
-  const contactCandidates = await getHandoverContactCandidates(
-    rows.map((r) => r.universityName ?? "").filter(Boolean),
-  );
-  const contactsByUniv = new Map<string, typeof contactCandidates>();
-  for (const c of contactCandidates) {
-    const arr = contactsByUniv.get(c.universityName) ?? [];
-    arr.push(c);
-    contactsByUniv.set(c.universityName, arr);
-  }
-  for (const r of rows) {
-    r.handoverSchoolContactCandidates = (
-      contactsByUniv.get(r.universityName ?? "") ?? []
-    ).map((c) => ({
-      name: c.name,
-      jobTitle: c.jobTitle,
-      phone: c.phone,
-      email: c.email,
-    }));
-  }
   const config = resolvePageMeta(slug, meta, total);
-
-  // 복제 대상 서비스 후보 — 전체 services with handover status (검색용 light)
-  const { rows: allWithHandover } = await listServicesWithHandover({
-    pageSize: 3000,
-  });
-  const handoverServiceCandidates = allWithHandover.map((r) => ({
-    id: r.service_id,
-    serviceId: r.service_number,
-    universityName: r.university_name,
-    serviceName: r.service_name,
-    hasRecord: r.handover_status != null,
-  }));
-
-  // 계약정보 상태 셀렉트 옵션 — 계약 메뉴 계약현황 distinct (best-effort, 실패 시 빈 목록)
-  let contractStatusOptions: string[] = [];
-  try {
-    const { rows: allContracts } = await listContracts();
-    contractStatusOptions = [
-      ...new Set(allContracts.map((c) => c.status).filter((v) => v.trim())),
-    ];
-  } catch {
-    contractStatusOptions = [];
-  }
-
-  async function onCopyHandover(
-    fromServiceId: string,
-    toServiceIds: string[],
-  ): Promise<{ ok: boolean; error?: string; copiedCount?: number }> {
-    "use server";
-    return await copyHandoverRecord(fromServiceId, toServiceIds);
-  }
 
   const header = (
     <div key="handover-header">
@@ -255,14 +197,6 @@ export default async function HandoverPage({
   );
   const controlsRow = <HandoverControls key="handover-controls" />;
 
-  async function onPersist(
-    row: ListRow,
-  ): Promise<{ ok: boolean; error?: string }> {
-    "use server";
-    const r = await upsertHandoverRecord(buildHandoverUpsertInput(row));
-    return r.ok ? { ok: true } : { ok: false, error: r.error };
-  }
-
   return (
     <ListPattern
       title="서비스"
@@ -272,9 +206,6 @@ export default async function HandoverPage({
       variant="handover"
       canCreate={false}
       currentUserName={me?.displayName ?? me?.email ?? ""}
-      handoverServiceCandidates={handoverServiceCandidates}
-      contractsStatusOptions={contractStatusOptions}
-      onCopyHandover={onCopyHandover}
       inlineFilters={
         <ScopeChips key="handover-scope" total={total} mineLabel="내 서비스" />
       }
@@ -285,7 +216,6 @@ export default async function HandoverPage({
           pageSize={PAGE_SIZE}
         />
       }
-      onPersist={onPersist}
     />
   );
 }

@@ -85,8 +85,6 @@ import { MeetingEditForm } from "./meetings/EditForm";
 import { MeetingTable } from "./meetings/Table";
 import { MEETING_FILTERS, blankMeetingRow } from "./meetings/filters";
 import { HandoverTable } from "./handover/Table";
-import { HandoverEditForm } from "./handover/EditForm";
-import { HandoverView } from "./handover/View";
 import { WorklogView } from "./worklog/View";
 import { AssignmentsTable } from "./assignments/Table";
 import { AssignmentsView } from "./assignments/View";
@@ -299,8 +297,8 @@ export const variantRegistry = {
     blank: blankMeetingRow,
   },
   handover: {
-    View: HandoverView,
-    EditForm: HandoverEditForm,
+    // View/EditForm 없음 — 작성 탭 행 클릭은 풀스크린 편집기(/dashboard/handover/[serviceId])로
+    // navigate하므로 인스펙터 패널을 사용하지 않는다. Table만 목록 렌더에 필요.
     Table: HandoverTable,
     // Filters 빈 배열 — 작성상태 chips는 페이지의 HandoverControls select가 담당 (page-size 한정
     // chip 카운트가 0/30 처럼 헷갈리는 표시를 피하기 위해 chips 자체 비표시).
