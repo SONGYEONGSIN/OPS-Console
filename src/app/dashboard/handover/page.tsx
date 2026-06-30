@@ -113,6 +113,10 @@ export default async function HandoverPage({
           services={paged}
           allServices={allReady}
           operators={operatorCandidates}
+          from={{
+            name: me?.displayName ?? me?.email ?? "",
+            email: me?.email ?? "",
+          }}
           step1HeaderRight={<ScopeChips total={total} mineLabel="내 서비스" />}
           step1Footer={
             <ListPagination total={total} pageSize={PROGRESS_PAGE_SIZE} />

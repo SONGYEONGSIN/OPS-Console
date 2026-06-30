@@ -1,6 +1,13 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { HandoverProgressStatus } from "./progress-schemas";
+import type {
+  ContractInfo,
+  PaymentFee,
+  PaymentInvoice,
+  ContractChecklistItem,
+  SchoolContact,
+} from "./schemas";
 
 export type ProgressListRow = {
   id: string;
@@ -115,6 +122,8 @@ export type ReadyService = {
   university_name: string;
   service_name: string;
   application_type: string;
+  /** services.category — 서비스 분류 (대학명 앞 표기용) */
+  category: string;
   operator_name: string | null;
   /** handover_records.updated_at — 인수인계 내용 마지막 작성일 */
   updated_at: string;
@@ -133,16 +142,25 @@ export type ReadyService = {
   school_contact_md: string | null;
   docs_md: string | null;
   notes_md: string | null;
+  /** 구조화 필드 — 계약정보/정산/컨텍/체크리스트 미리보기용 */
+  contract_info: ContractInfo | null;
+  contract_data_checklist: ContractChecklistItem[];
+  payment_fee: PaymentFee | null;
+  payment_invoice: PaymentInvoice | null;
+  school_contacts: SchoolContact[];
+  docs_checklist: ContractChecklistItem[];
 };
 
 /** wizard step1 후보 — handover_records.status='ready' + 14 sub-field 포함.
  *  ownerEmail 지정 시 services.operator_email OR developer_email = ownerEmail 필터(클라이언트 측). */
-export async function listReadyServices(ownerEmail?: string): Promise<ReadyService[]> {
+export async function listReadyServices(
+  ownerEmail?: string,
+): Promise<ReadyService[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("handover_records")
     .select(
-      "service_id, updated_at, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md, services(id, service_id, university_name, service_name, application_type, operator_name, operator_email, developer_email)",
+      "service_id, updated_at, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md, contract_info, contract_data_checklist, payment_fee, payment_invoice, school_contacts, docs_checklist, services(id, service_id, university_name, service_name, application_type, category, operator_name, operator_email, developer_email)",
     )
     .eq("status", "ready")
     .limit(1000);
@@ -167,12 +185,19 @@ export async function listReadyServices(ownerEmail?: string): Promise<ReadyServi
     school_contact_md: string | null;
     docs_md: string | null;
     notes_md: string | null;
+    contract_info: ContractInfo | null;
+    contract_data_checklist: ContractChecklistItem[] | null;
+    payment_fee: PaymentFee | null;
+    payment_invoice: PaymentInvoice | null;
+    school_contacts: SchoolContact[] | null;
+    docs_checklist: ContractChecklistItem[] | null;
     services: {
       id: string;
       service_id: number;
       university_name: string;
       service_name: string;
       application_type: string;
+      category: string;
       operator_name: string | null;
       operator_email: string | null;
       developer_email: string | null;
@@ -192,6 +217,7 @@ export async function listReadyServices(ownerEmail?: string): Promise<ReadyServi
       university_name: r.services!.university_name,
       service_name: r.services!.service_name,
       application_type: r.services!.application_type,
+      category: r.services!.category,
       operator_name: r.services!.operator_name,
       updated_at: r.updated_at,
       contract_info_md: r.contract_info_md,
@@ -208,5 +234,11 @@ export async function listReadyServices(ownerEmail?: string): Promise<ReadyServi
       school_contact_md: r.school_contact_md,
       docs_md: r.docs_md,
       notes_md: r.notes_md,
+      contract_info: r.contract_info,
+      contract_data_checklist: r.contract_data_checklist ?? [],
+      payment_fee: r.payment_fee,
+      payment_invoice: r.payment_invoice,
+      school_contacts: r.school_contacts ?? [],
+      docs_checklist: r.docs_checklist ?? [],
     }));
 }
