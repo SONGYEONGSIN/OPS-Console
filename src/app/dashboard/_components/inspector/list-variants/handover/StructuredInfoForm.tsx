@@ -83,10 +83,11 @@ export function StructuredInfoForm({
             aria-label="메모"
             value={value.memo ?? ""}
             onChange={(e) => onChange?.({ ...value, memo: e.target.value })}
-            rows={2}
+            rows={3}
             maxLength={2000}
             placeholder="추가 메모(선택)"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            // field-sizing-content: 작성된 메모는 스크롤 없이 높이 자동 확장
+            className="field-sizing-content min-h-16 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         )}
       </label>

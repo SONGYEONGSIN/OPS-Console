@@ -8,24 +8,8 @@ import { CopySection } from "@/app/dashboard/_components/inspector/list-variants
 import { buildHandoverUpsertInput } from "@/app/dashboard/_components/inspector/list-variants/handover/upsert-input";
 import { upsertHandoverRecord } from "@/features/handover/actions";
 import { type HandoverCategoryKey } from "@/features/handover/categories";
-import type { HandoverStatus } from "@/features/handover/schemas";
 import type { EditFormProps } from "@/app/dashboard/_components/inspector/list-variants/types";
 import { HandoverCategoryRail } from "./HandoverCategoryRail";
-
-type StatusKey = HandoverStatus | "none";
-
-const STATUS_LABEL: Record<StatusKey, string> = {
-  none: "미작성",
-  draft: "작성중",
-  ready: "작성완료",
-  published: "인계완료",
-};
-const STATUS_TONE: Record<StatusKey, string> = {
-  none: "bg-washi-raised text-muted",
-  draft: "bg-vermilion/15 text-vermilion",
-  ready: "bg-sage/15 text-sage",
-  published: "bg-ink/10 text-ink",
-};
 
 export function HandoverEditorWorkspace({
   initialRow,
@@ -42,9 +26,6 @@ export function HandoverEditorWorkspace({
   // 최신 row를 동기 추적 — setRow가 state updater 밖에서 next를 계산하도록.
   const rowRef = useRef<ListRow>(initialRow);
   const [active, setActive] = useState<HandoverCategoryKey>("contract");
-  const [status, setStatus] = useState<StatusKey>(
-    (initialRow.handoverStatus as StatusKey | undefined) ?? "none",
-  );
   const [saved, setSaved] = useState(true);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 복제 드롭다운 — 상단 우측 '복제' 버튼으로 토글, 바깥 클릭 시 닫힘.
@@ -68,7 +49,6 @@ export function HandoverEditorWorkspace({
     timer.current = setTimeout(async () => {
       const res = await upsertHandoverRecord(buildHandoverUpsertInput(next));
       setSaved(res.ok);
-      if (res.ok) setStatus(res.row.status);
     }, 800);
   }
 
@@ -102,15 +82,15 @@ export function HandoverEditorWorkspace({
           </p>
         </div>
         <div className="flex flex-none items-center gap-3">
-          <span
-            aria-label={`작성상태 ${STATUS_LABEL[status]}`}
-            className={`inline-block px-2 py-0.5 text-2xs ${STATUS_TONE[status]}`}
-          >
-            {STATUS_LABEL[status]}
-          </span>
           <span className="text-xs text-muted">
             {saved ? "✓ 자동 저장됨" : "저장 중…"}
           </span>
+          <Link
+            href="/dashboard/handover?tab=progress"
+            className="border border-ink bg-transparent px-3 py-1 text-sm text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+          >
+            인수인계 진행 이동
+          </Link>
           {onCopyHandover ? (
             <div className="relative" ref={copyRef}>
               <button
@@ -122,7 +102,13 @@ export function HandoverEditorWorkspace({
                 복제
               </button>
               {copyOpen ? (
-                <div className="absolute right-0 z-20 mt-1 w-80 border border-line bg-washi-raised p-3 shadow-lg">
+                // 배경·섀도우는 알림(AlertsBell) 드롭다운과 동일 톤
+                <div className="absolute right-0 z-20 mt-1 w-80 border border-chrome-graphite bg-paper p-3 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
+                  <p className="mb-2 truncate border-b border-line-soft pb-2 text-xs font-bold text-ink">
+                    {row.universityName ?? "—"}
+                    <span className="text-muted"> · </span>
+                    {row.serviceName ?? "—"}
+                  </p>
                   <CopySection
                     fromServiceId={row.id}
                     candidates={handoverServiceCandidates ?? []}

@@ -46,11 +46,17 @@ describe("HandoverEditorWorkspace", () => {
     vi.useRealTimers();
   });
 
-  it("상단 목록 이동 링크 + 미작성 배지", () => {
+  it("상단 목록 이동 + 인수인계 진행 이동 링크 (상태 배지 없음)", () => {
     setup();
-    const link = screen.getByRole("link", { name: /목록 이동/ });
-    expect(link).toHaveAttribute("href", "/dashboard/handover");
-    expect(screen.getByLabelText(/작성상태/)).toHaveTextContent("미작성");
+    expect(screen.getByRole("link", { name: /목록 이동/ })).toHaveAttribute(
+      "href",
+      "/dashboard/handover",
+    );
+    expect(
+      screen.getByRole("link", { name: "인수인계 진행 이동" }),
+    ).toHaveAttribute("href", "/dashboard/handover?tab=progress");
+    // 작성상태 배지는 제거됨
+    expect(screen.queryByLabelText(/작성상태/)).toBeNull();
   });
 
   it("레일 클릭 → 우측 카테고리 전환", () => {

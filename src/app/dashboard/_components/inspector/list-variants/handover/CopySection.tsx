@@ -75,7 +75,7 @@ export function CopySection({
         다른 서비스로 복제
       </p>
       <p className="text-2xs text-muted">
-        현재 내용을 1차 기준으로 2·3차 등 다른 서비스에 복사합니다.
+        현재 서비스 내용을 다른 서비스(2, 3차)로 복제 가능합니다.
       </p>
       <input
         aria-label="복제 대상 서비스 검색"
