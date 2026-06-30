@@ -185,61 +185,45 @@ export function HandoverWizard({
 
 /* ──────────────────────────── ProgressBar ──────────────────────────── */
 
+// 화살표(쉐브론) 모양 — 오른쪽 뾰족 + (첫 단계 외) 왼쪽 노치로 맞물림.
+const CHEV =
+  "[clip-path:polygon(0_0,calc(100%_-_16px)_0,100%_50%,calc(100%_-_16px)_100%,0_100%,16px_50%)]";
+const CHEV_FIRST =
+  "[clip-path:polygon(0_0,calc(100%_-_16px)_0,100%_50%,calc(100%_-_16px)_100%,0_100%)]";
+
 function ProgressBar({ step }: { step: Step }) {
   return (
-    <ol className="flex items-center text-xs">
+    <ol className="flex items-stretch text-sm">
       {STEP_LABELS.map((label, i) => {
         const n = (i + 1) as Step;
         const done = n < step;
         const active = n === step;
-        const isLast = i === STEP_LABELS.length - 1;
+        const first = i === 0;
+        // 시안 B — 아웃라인 쉐브론, 현재 단계만 채움
+        const tone = active
+          ? "border-vermilion bg-vermilion text-cream font-bold"
+          : done
+            ? "border-ink text-ink"
+            : "border-line text-muted";
+        const numTone = active
+          ? "bg-cream text-vermilion"
+          : done
+            ? "bg-ink text-cream"
+            : "border border-line bg-paper text-muted";
         return (
           <li
             key={label}
-            className={`flex items-center ${isLast ? "" : "flex-1"}`}
+            aria-current={active ? "step" : undefined}
+            className={`flex flex-1 items-center gap-2 whitespace-nowrap border py-3 pl-7 pr-5 ${tone} ${
+              first ? CHEV_FIRST : `${CHEV} -ml-[14px]`
+            }`}
           >
-            <div
-              className={`flex flex-shrink-0 items-center gap-2 transition-all ${
-                active ? "scale-105" : ""
-              }`}
+            <span
+              className={`inline-flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-xs font-bold ${numTone}`}
             >
-              <span
-                className={`inline-flex h-9 w-9 items-center justify-center border-2 text-sm font-semibold transition-all ${
-                  active
-                    ? "border-vermilion bg-vermilion text-cream shadow-[2px_2px_0_var(--vermilion-deep)]"
-                    : done
-                      ? "border-sage bg-sage text-cream"
-                      : "border-line bg-cream text-muted"
-                }`}
-              >
-                {done ? "✓" : n}
-              </span>
-              <span
-                className={`whitespace-nowrap text-sm ${
-                  active
-                    ? "font-bold text-ink"
-                    : done
-                      ? "text-ink-soft"
-                      : "text-muted"
-                }`}
-              >
-                {label}
-              </span>
-              {active && (
-                <span
-                  aria-hidden
-                  className="ml-1 inline-block h-2 w-2 animate-pulse bg-vermilion"
-                />
-              )}
-            </div>
-            {!isLast && (
-              <span
-                aria-hidden
-                className={`mx-3 h-0.5 flex-1 transition-colors ${
-                  done ? "bg-sage" : "bg-line"
-                }`}
-              />
-            )}
+              {done ? "✓" : n}
+            </span>
+            {label}
           </li>
         );
       })}
