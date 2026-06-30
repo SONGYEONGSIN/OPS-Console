@@ -224,11 +224,6 @@ function ProgressBar({ step }: { step: Step }) {
           : done
             ? `bg-washi text-ink ${CHEV_OUTLINE}`
             : `bg-washi text-muted ${CHEV_OUTLINE}`;
-        const numTone = active
-          ? "bg-cream text-vermilion"
-          : done
-            ? "bg-ink text-cream"
-            : "border border-line bg-paper text-muted";
         const clip = first
           ? CHEV_FIRST
           : last
@@ -238,13 +233,8 @@ function ProgressBar({ step }: { step: Step }) {
           <li
             key={label}
             aria-current={active ? "step" : undefined}
-            className={`flex flex-1 items-center gap-2 whitespace-nowrap py-3 pl-7 pr-5 ${tone} ${clip}`}
+            className={`flex flex-1 items-center justify-center whitespace-nowrap py-3 px-6 ${tone} ${clip}`}
           >
-            <span
-              className={`inline-flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-xs font-bold ${numTone}`}
-            >
-              {done ? "✓" : n}
-            </span>
             {label}
           </li>
         );
