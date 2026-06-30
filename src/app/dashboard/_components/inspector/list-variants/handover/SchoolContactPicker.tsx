@@ -74,14 +74,36 @@ export function SchoolContactPicker({
         </p>
       ) : (
         <div className="relative">
-          <input
-            type="text"
-            aria-label="학교담당자 검색"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="대학 연락처 검색 (이름/이메일) → 선택 시 추가"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
-          />
+          <div className="relative">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+              className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted"
+            >
+              <circle
+                cx="7"
+                cy="7"
+                r="4.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+              <path
+                d="m11 11 3 3"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              type="text"
+              aria-label="학교담당자 검색"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="대학 연락처 검색 (이름/이메일) → 선택 시 추가"
+              className="w-full border border-line bg-cream py-1 pl-7 pr-2 text-ink transition-colors focus:border-ink focus:bg-white"
+            />
+          </div>
           {matches.length > 0 && (
             <ul
               aria-label="연락처 검색 결과"
@@ -113,20 +135,16 @@ export function SchoolContactPicker({
       ) : (
         <ul className="space-y-1.5">
           {items.map((c) => (
-            <li
-              key={c.id}
-              className="flex items-center gap-2 border border-line bg-cream px-2 py-1.5"
-            >
-              {/* 한 줄 표시 — 이름(직함) · 전화[복사] · 이메일[복사] */}
-              <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden whitespace-nowrap">
+            <li key={c.id} className="flex items-stretch gap-2">
+              {/* 한 줄 표시 — 이름(직함) · 전화 · 이메일[복사]. 박스는 내용만, X는 박스 밖. */}
+              <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden whitespace-nowrap border border-line bg-cream px-2 py-1.5">
                 <span className="flex-none text-ink">
                   {c.name}
                   {c.jobTitle ? ` (${c.jobTitle})` : ""}
                 </span>
                 {c.phone ? (
-                  <span className="flex flex-none items-center gap-1 text-2xs text-muted">
-                    <span>· {c.phone}</span>
-                    <CopyButton value={c.phone} label={`${c.name} 전화`} />
+                  <span className="flex-none text-2xs text-muted">
+                    · {c.phone}
                   </span>
                 ) : null}
                 {c.email ? (
@@ -140,7 +158,7 @@ export function SchoolContactPicker({
                 type="button"
                 aria-label={`${c.name} 삭제`}
                 onClick={() => onChange(items.filter((it) => it.id !== c.id))}
-                className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+                className="flex flex-none cursor-pointer items-center justify-center border border-line bg-transparent px-2.5 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
               >
                 ✕
               </button>

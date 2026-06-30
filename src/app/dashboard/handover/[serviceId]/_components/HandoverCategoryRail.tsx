@@ -54,7 +54,7 @@ export function HandoverCategoryRail({
           );
         })}
       </ul>
-      <p className="mt-auto border-t border-line-soft px-4 py-3 text-xs text-muted">
+      <p className="mt-auto border-t border-line-soft px-4 py-3 text-xs font-bold text-ink">
         진행 {filledTotal}/{fieldTotal}
       </p>
     </nav>

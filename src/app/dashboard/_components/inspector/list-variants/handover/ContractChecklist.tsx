@@ -143,7 +143,7 @@ export function ContractChecklist({
                     type="button"
                     aria-label={`항목 ${idx + 1} 삭제`}
                     onClick={() => onChange?.(items.filter((_, i) => i !== idx))}
-                    className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted hover:border-vermilion hover:text-vermilion"
+                    className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
                   >
                     ✕
                   </button>
