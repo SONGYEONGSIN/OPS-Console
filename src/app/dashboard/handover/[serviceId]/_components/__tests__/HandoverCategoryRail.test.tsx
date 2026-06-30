@@ -43,7 +43,7 @@ describe("HandoverCategoryRail", () => {
     render(
       <HandoverCategoryRail row={row} active="contract" onChange={vi.fn()} />,
     );
-    expect(screen.getByText(/진행 2\/14/)).toBeInTheDocument();
+    expect(screen.getByText(/현재 2\/14 작성완료/)).toBeInTheDocument();
   });
 
   it("카테고리 클릭 시 onChange(key) 호출", () => {
