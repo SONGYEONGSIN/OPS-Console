@@ -26,6 +26,18 @@ export function buildEditorRow(
   record: HandoverRecordRow | null,
   contacts: ContactCandidate[],
 ): ListRow {
+  // 기존 저장 연락처(#738 이전)에 내선(ext)이 비어있으면 master 후보에서 보강.
+  const extByKey = new Map(
+    contacts
+      .filter((c) => c.ext)
+      .map((c) => [`${c.name}|${c.email ?? ""}`, c.ext]),
+  );
+  const schoolContacts = (record?.school_contacts ?? []).map((sc) =>
+    sc.ext
+      ? sc
+      : { ...sc, ext: extByKey.get(`${sc.name}|${sc.email ?? ""}`) ?? sc.ext },
+  );
+
   return {
     id: service.id,
     name: `${service.university_name} · ${service.service_name}`,
@@ -52,7 +64,7 @@ export function buildEditorRow(
     handoverPaymentFee: record?.payment_fee ?? EMPTY_PAYMENT_FEE,
     handoverPaymentInvoice: record?.payment_invoice ?? EMPTY_PAYMENT_INVOICE,
     handoverSchoolContactMd: record?.school_contact_md ?? null,
-    handoverSchoolContacts: record?.school_contacts ?? [],
+    handoverSchoolContacts: schoolContacts,
     handoverDocsMd: record?.docs_md ?? null,
     handoverDocsChecklist: record?.docs_checklist ?? [],
     handoverNotesMd: record?.notes_md ?? null,

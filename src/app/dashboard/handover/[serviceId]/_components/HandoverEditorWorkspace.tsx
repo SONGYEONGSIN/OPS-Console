@@ -77,9 +77,7 @@ export function HandoverEditorWorkspace({
           {/* 접수구분 · 대학명 · 서비스명 */}
           <p className="min-w-0 truncate text-sm font-bold text-ink">
             {row.applicationType ? (
-              <span className="mr-1 font-normal text-muted">
-                {row.applicationType}
-              </span>
+              <span className="mr-1">{row.applicationType}</span>
             ) : null}
             {row.universityName ?? "—"}
             <span className="text-muted"> · </span>
@@ -104,6 +102,9 @@ export function HandoverEditorWorkspace({
                 // 배경·섀도우는 알림(AlertsBell) 드롭다운과 동일 톤
                 <div className="absolute right-0 z-20 mt-1 w-80 border border-chrome-graphite bg-paper p-3 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
                   <p className="mb-2 truncate border-b border-line-soft pb-2 text-xs font-bold text-ink">
+                    {row.applicationType ? (
+                      <span className="mr-1">{row.applicationType}</span>
+                    ) : null}
                     {row.universityName ?? "—"}
                     <span className="text-muted"> · </span>
                     {row.serviceName ?? "—"}

@@ -10,7 +10,10 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "node:path";
-import { HANDOVER_CATEGORIES, type HandoverFieldKey } from "@/features/handover/categories";
+import {
+  HANDOVER_CATEGORIES,
+  type HandoverFieldKey,
+} from "@/features/handover/categories";
 
 const PRETENDARD_REGULAR = path.join(
   process.cwd(),
@@ -213,9 +216,16 @@ const styles = StyleSheet.create({
   },
 });
 
-/** 텍스트 내 http(s) URL을 클릭 가능한 Link로 변환 (PDF). */
+/**
+ * 텍스트 내 http(s) URL을 클릭 가능한 Link로 변환 + 들여쓰기 보존 (PDF).
+ * react-pdf는 줄 선두 공백을 접으므로(white-space:normal), 각 줄 선두의
+ * 공백/탭을 non-breaking space로 치환해 편집기에서의 들여쓰기를 유지한다.
+ */
 function linkify(text: string) {
-  return text.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
+  const preserved = text.replace(/^[ \t]+/gm, (m) =>
+    " ".repeat(m.replace(/\t/g, "    ").length),
+  );
+  return preserved.split(/(https?:\/\/[^\s]+)/g).map((part, i) =>
     /^https?:\/\//.test(part) ? (
       <Link key={i} src={part} style={styles.link}>
         {part}

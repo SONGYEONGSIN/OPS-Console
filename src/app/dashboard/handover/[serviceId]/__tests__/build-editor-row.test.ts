@@ -81,4 +81,56 @@ describe("buildEditorRow", () => {
     expect(row.handoverSchoolContactCandidates?.[0]?.name).toBe("홍길동");
     expect(row.handoverSchoolContactCandidates?.[0]?.ext).toBe("1234");
   });
+
+  it("기존 저장 연락처에 내선(ext) 없으면 master 후보에서 backfill", () => {
+    const record = {
+      ...({ school_contacts: [] } as unknown as HandoverRecordRow),
+      service_id: "svc-uuid",
+      status: "ready",
+      contract_info: {
+        title: "",
+        type: "",
+        progress: "",
+        status: "",
+        memo: "",
+      },
+      contract_data_checklist: [],
+      payment_fee: { deadline: "", manager: "", memo: "" },
+      payment_invoice: { issueType: "", memo: "" },
+      docs_checklist: [],
+      // #738 이전 저장 — ext 없음
+      school_contacts: [
+        {
+          id: "c1",
+          name: "최열",
+          jobTitle: "직원",
+          phone: null,
+          ext: null,
+          email: "cig@pusan.ac.kr",
+        },
+        {
+          id: "c2",
+          name: "정대성",
+          jobTitle: null,
+          phone: null,
+          ext: null,
+          email: "die@pusan.ac.kr",
+        },
+      ],
+    } as unknown as HandoverRecordRow;
+    const row = buildEditorRow(service, record, [
+      {
+        name: "최열",
+        jobTitle: "직원",
+        phone: null,
+        ext: "051-510-3554",
+        email: "cig@pusan.ac.kr",
+      },
+    ]);
+    const sc = row.handoverSchoolContacts ?? [];
+    // 후보에 있는 최열은 내선 보강
+    expect(sc.find((c) => c.name === "최열")?.ext).toBe("051-510-3554");
+    // 후보에 없는 정대성은 그대로 null
+    expect(sc.find((c) => c.name === "정대성")?.ext).toBeNull();
+  });
 });
