@@ -190,6 +190,10 @@ const CHEV =
   "[clip-path:polygon(0_0,calc(100%_-_16px)_0,100%_50%,calc(100%_-_16px)_100%,0_100%,16px_50%)]";
 const CHEV_FIRST =
   "[clip-path:polygon(0_0,calc(100%_-_16px)_0,100%_50%,calc(100%_-_16px)_100%,0_100%)]";
+// clip-path는 테두리를 잘라 화살표 외곽선이 사라지므로, drop-shadow 4방향으로
+// 잘린 모양을 따라가는 1px 외곽선을 그린다(비활성 단계도 화살표로 보이게).
+const CHEV_OUTLINE =
+  "[filter:drop-shadow(1px_0_0_var(--line))_drop-shadow(-1px_0_0_var(--line))_drop-shadow(0_1px_0_var(--line))_drop-shadow(0_-1px_0_var(--line))]";
 
 function ProgressBar({ step }: { step: Step }) {
   return (
@@ -199,12 +203,12 @@ function ProgressBar({ step }: { step: Step }) {
         const done = n < step;
         const active = n === step;
         const first = i === 0;
-        // 시안 B — 아웃라인 쉐브론, 현재 단계만 채움
+        // 시안 B — 아웃라인 쉐브론. 현재 단계만 채움, 나머지는 페이지색 채움 + 외곽선.
         const tone = active
-          ? "border-vermilion bg-vermilion text-cream font-bold"
+          ? "bg-vermilion text-cream font-bold"
           : done
-            ? "border-ink text-ink"
-            : "border-line text-muted";
+            ? `bg-cream text-ink ${CHEV_OUTLINE}`
+            : `bg-cream text-muted ${CHEV_OUTLINE}`;
         const numTone = active
           ? "bg-cream text-vermilion"
           : done
@@ -214,7 +218,7 @@ function ProgressBar({ step }: { step: Step }) {
           <li
             key={label}
             aria-current={active ? "step" : undefined}
-            className={`flex flex-1 items-center gap-2 whitespace-nowrap border py-3 pl-7 pr-5 ${tone} ${
+            className={`flex flex-1 items-center gap-2 whitespace-nowrap py-3 pl-7 pr-5 ${tone} ${
               first ? CHEV_FIRST : `${CHEV} -ml-[14px]`
             }`}
           >
