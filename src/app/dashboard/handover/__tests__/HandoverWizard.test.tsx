@@ -30,7 +30,6 @@ const baseHandoverFields = {
   school_contact_md: null,
   docs_md: null,
   notes_md: null,
-  category: "공통원서",
   contract_info: null,
   contract_data_checklist: [],
   payment_fee: null,
@@ -104,11 +103,11 @@ describe("HandoverWizard", () => {
     ).toBeInTheDocument();
   });
 
-  it("step3 — 인계자(현재 사용자)·카테고리·구조화 필드(계약정보) 표시", () => {
+  it("step3 — 인계자(현재 사용자)·접수구분·구조화 필드(계약정보) 표시", () => {
     const withContent = [
       {
         ...services[0],
-        category: "수시",
+        application_type: "반응형원서",
         contract_info: {
           title: "원서접수 대행",
           type: "",
@@ -131,8 +130,8 @@ describe("HandoverWizard", () => {
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
     // 인계자 = 현재 사용자
     expect(screen.getByText("테스트인계자")).toBeInTheDocument();
-    // 카테고리 prefix
-    expect(screen.getByText("수시")).toBeInTheDocument();
+    // 접수구분(application_type) prefix
+    expect(screen.getByText("반응형원서")).toBeInTheDocument();
     // 계약 카테고리 펼치면 구조화 계약정보가 (미작성) 아닌 실내용으로 표시
     fireEvent.click(screen.getByRole("button", { name: /계약/ }));
     expect(screen.getByText("원서접수 대행")).toBeInTheDocument();

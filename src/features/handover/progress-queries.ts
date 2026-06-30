@@ -122,8 +122,6 @@ export type ReadyService = {
   university_name: string;
   service_name: string;
   application_type: string;
-  /** services.category — 서비스 분류 (대학명 앞 표기용) */
-  category: string;
   operator_name: string | null;
   /** handover_records.updated_at — 인수인계 내용 마지막 작성일 */
   updated_at: string;
@@ -160,7 +158,7 @@ export async function listReadyServices(
   const { data, error } = await supabase
     .from("handover_records")
     .select(
-      "service_id, updated_at, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md, contract_info, contract_data_checklist, payment_fee, payment_invoice, school_contacts, docs_checklist, services(id, service_id, university_name, service_name, application_type, category, operator_name, operator_email, developer_email)",
+      "service_id, updated_at, contract_info_md, contract_data_md, work_basic_md, work_generator_md, work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, payment_invoice_md, school_contact_md, docs_md, notes_md, contract_info, contract_data_checklist, payment_fee, payment_invoice, school_contacts, docs_checklist, services(id, service_id, university_name, service_name, application_type, operator_name, operator_email, developer_email)",
     )
     .eq("status", "ready")
     .limit(1000);
@@ -197,7 +195,6 @@ export async function listReadyServices(
       university_name: string;
       service_name: string;
       application_type: string;
-      category: string;
       operator_name: string | null;
       operator_email: string | null;
       developer_email: string | null;
@@ -217,7 +214,6 @@ export async function listReadyServices(
       university_name: r.services!.university_name,
       service_name: r.services!.service_name,
       application_type: r.services!.application_type,
-      category: r.services!.category,
       operator_name: r.services!.operator_name,
       updated_at: r.updated_at,
       contract_info_md: r.contract_info_md,
