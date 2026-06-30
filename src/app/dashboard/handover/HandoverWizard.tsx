@@ -97,6 +97,18 @@ export function HandoverWizard({
 
   return (
     <div className="flex min-h-[calc(100vh-280px)] flex-col p-7">
+      {/* 처리 중 — 화면 중앙 로딩 스피너 오버레이 */}
+      {isPending && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-ink/35"
+          role="status"
+          aria-live="polite"
+          aria-label="처리 중"
+        >
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-cream/30 border-t-cream" />
+          <span className="text-sm text-cream">처리 중…</span>
+        </div>
+      )}
       <ProgressBar step={step} />
       <div className="mt-8 flex-1">
         {step === 1 && (
