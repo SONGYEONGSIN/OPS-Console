@@ -253,9 +253,9 @@ const CHEV_FIRST =
 // 마지막 단계 — 왼쪽 노치로 맞물리되 오른쪽은 화살표 없이 평평(흐름의 끝).
 const CHEV_LAST = "[clip-path:polygon(0_0,100%_0,100%_100%,0_100%,16px_50%)]";
 // clip-path는 테두리·box-shadow를 잘라내므로 drop-shadow로 처리한다.
-// 볼록(입체) 효과: 상단 cream 하이라이트 + 하단 line-soft 그림자, 좌우 1px 외곽선(화살표 형태 유지).
+// 4면 1px 보더라인(line-soft) + 하단 그림자로 볼록(입체) 효과. 화살표 형태 유지.
 const CHEV_RAISED =
-  "[filter:drop-shadow(0_-1px_0_var(--cream))_drop-shadow(0_2px_2px_var(--line-soft))_drop-shadow(1px_0_0_var(--line-soft))_drop-shadow(-1px_0_0_var(--line-soft))]";
+  "[filter:drop-shadow(1px_0_0_var(--line-soft))_drop-shadow(-1px_0_0_var(--line-soft))_drop-shadow(0_1px_0_var(--line-soft))_drop-shadow(0_-1px_0_var(--line-soft))_drop-shadow(0_2px_2px_var(--line-soft))]";
 
 function ProgressBar({ step }: { step: Step }) {
   return (
@@ -266,12 +266,12 @@ function ProgressBar({ step }: { step: Step }) {
         const active = n === step;
         const first = i === 0;
         const last = i === STEP_LABELS.length - 1;
-        // 흰색 계열(paper) 바탕 + 볼록 입체. 활성 단계만 vermilion.
+        // 온보딩 섹션과 동일 배경(situation-bg) + 보더 + 볼록 입체. 활성 단계만 vermilion.
         const baseTone = active
           ? "bg-vermilion text-cream font-bold"
           : done
-            ? "bg-paper text-ink"
-            : "bg-paper text-muted";
+            ? "bg-situation-bg text-ink"
+            : "bg-situation-bg text-muted";
         const tone = `${baseTone} ${CHEV_RAISED}`;
         const clip = first
           ? CHEV_FIRST
