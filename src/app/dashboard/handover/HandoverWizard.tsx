@@ -33,11 +33,59 @@ type Props = {
 type Step = 1 | 2 | 3 | 4;
 
 const STEP_LABELS = [
-  "◇ 서비스 선택",
-  "◎ 인수자 선택",
-  "✓ 최종 확인",
-  "◈ 인수인계 완료",
+  "서비스 선택",
+  "인수자 선택",
+  "최종 확인",
+  "인수인계 완료",
 ];
+
+/** 단계별 커스텀 라인 아이콘 — currentColor로 텍스트 색을 따라간다. */
+function StepIcon({ index }: { index: number }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    className: "h-4 w-4 flex-none",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+  if (index === 0)
+    // 서비스 선택 — 목록
+    return (
+      <svg {...common}>
+        <path d="M9 6h11M9 12h11M9 18h11" />
+        <circle cx="4.5" cy="6" r="1" />
+        <circle cx="4.5" cy="12" r="1" />
+        <circle cx="4.5" cy="18" r="1" />
+      </svg>
+    );
+  if (index === 1)
+    // 인수자 선택 — 사람
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="3.4" />
+        <path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2" />
+      </svg>
+    );
+  if (index === 2)
+    // 최종 확인 — 클립보드 체크
+    return (
+      <svg {...common}>
+        <rect x="5" y="4.5" width="14" height="16" rx="2" />
+        <path d="M9 4.5h6v2.5H9z" />
+        <path d="M8.7 13l2.3 2.3 4.3-4.8" />
+      </svg>
+    );
+  // 인수인계 완료 — 깃발
+  return (
+    <svg {...common}>
+      <path d="M6 21V4" />
+      <path d="M6 4.5h11l-2.2 3 2.2 3H6" />
+    </svg>
+  );
+}
 
 function formatDate(s: string): string {
   const d = new Date(s);
@@ -233,8 +281,9 @@ function ProgressBar({ step }: { step: Step }) {
           <li
             key={label}
             aria-current={active ? "step" : undefined}
-            className={`flex flex-1 items-center justify-center whitespace-nowrap py-3 px-6 ${tone} ${clip}`}
+            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap py-3 px-6 ${tone} ${clip}`}
           >
+            <StepIcon index={i} />
             {label}
           </li>
         );
