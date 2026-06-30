@@ -279,8 +279,8 @@ function ProgressBar({ step }: { step: Step }) {
             aria-current={active ? "step" : undefined}
             className={`relative flex-1 ${overlap} ${active ? "z-10" : ""}`}
           >
-            {/* 보더(외곽) 레이어 — line 색 쉐브론 */}
-            <div className={`relative bg-line ${clip} ${CHEV_DEPTH}`}>
+            {/* 보더(외곽) 레이어 — 온보딩 카드와 동일 연한 그레이(line-soft) 쉐브론 */}
+            <div className={`relative bg-line-soft ${clip} ${CHEV_DEPTH}`}>
               {/* 채움(내부) 레이어 — 1.5px 인셋으로 전체 외곽에 보더 두께 형성 */}
               <div
                 aria-hidden
