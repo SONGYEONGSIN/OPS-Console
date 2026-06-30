@@ -252,10 +252,8 @@ const CHEV_FIRST =
   "[clip-path:polygon(0_0,calc(100%_-_16px)_0,100%_50%,calc(100%_-_16px)_100%,0_100%)]";
 // 마지막 단계 — 왼쪽 노치로 맞물리되 오른쪽은 화살표 없이 평평(흐름의 끝).
 const CHEV_LAST = "[clip-path:polygon(0_0,100%_0,100%_100%,0_100%,16px_50%)]";
-// clip-path는 테두리·box-shadow를 잘라내므로 drop-shadow로 처리한다.
-// 4면 1px 진한 보더라인(line=ink)으로 비활성 블록을 또렷하게 + 하단 그림자로 볼록(입체).
-const CHEV_RAISED =
-  "[filter:drop-shadow(1px_0_0_var(--line))_drop-shadow(-1px_0_0_var(--line))_drop-shadow(0_1px_0_var(--line))_drop-shadow(0_-1px_0_var(--line))_drop-shadow(0_2px_2px_var(--line-soft))]";
+// 볼록(입체) — clip-path가 box-shadow를 잘라내므로 drop-shadow로 하단 그림자만 준다.
+const CHEV_DEPTH = "[filter:drop-shadow(0_2px_2px_var(--line-soft))]";
 
 function ProgressBar({ step }: { step: Step }) {
   return (
@@ -266,26 +264,36 @@ function ProgressBar({ step }: { step: Step }) {
         const active = n === step;
         const first = i === 0;
         const last = i === STEP_LABELS.length - 1;
-        // 온보딩 섹션과 동일 배경(situation-bg) + 보더 + 볼록 입체. 활성 단계만 vermilion.
-        const baseTone = active
-          ? "bg-vermilion text-cream font-bold"
+        // 활성만 vermilion, 나머지는 온보딩 섹션과 동일 배경(situation-bg).
+        const fill = active ? "bg-vermilion" : "bg-situation-bg";
+        const text = active
+          ? "text-cream font-bold"
           : done
-            ? "bg-situation-bg text-ink"
-            : "bg-situation-bg text-muted";
-        const tone = `${baseTone} ${CHEV_RAISED}`;
-        const clip = first
-          ? CHEV_FIRST
-          : last
-            ? `${CHEV_LAST} -ml-[14px]`
-            : `${CHEV} -ml-[14px]`;
+            ? "text-ink"
+            : "text-muted";
+        const clip = first ? CHEV_FIRST : last ? CHEV_LAST : CHEV;
+        const overlap = first ? "" : "-ml-[14px]";
         return (
           <li
             key={label}
             aria-current={active ? "step" : undefined}
-            className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap py-3 px-6 ${tone} ${clip}`}
+            className={`relative flex-1 ${overlap} ${active ? "z-10" : ""}`}
           >
-            <StepIcon index={i} />
-            {label}
+            {/* 보더(외곽) 레이어 — line 색 쉐브론 */}
+            <div className={`relative bg-line ${clip} ${CHEV_DEPTH}`}>
+              {/* 채움(내부) 레이어 — 1.5px 인셋으로 전체 외곽에 보더 두께 형성 */}
+              <div
+                aria-hidden
+                className={`absolute inset-[1.5px] ${fill} ${clip}`}
+              />
+              {/* 콘텐츠 */}
+              <div
+                className={`relative z-10 flex items-center justify-center gap-1.5 whitespace-nowrap py-3 px-6 ${text}`}
+              >
+                <StepIcon index={i} />
+                {label}
+              </div>
+            </div>
           </li>
         );
       })}
