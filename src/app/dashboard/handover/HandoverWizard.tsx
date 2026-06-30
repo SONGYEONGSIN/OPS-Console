@@ -140,7 +140,7 @@ export function HandoverWizard({
             <button
               type="button"
               onClick={() => setStep((s) => (s - 1) as Step)}
-              className="cursor-pointer border border-line bg-transparent px-5 py-2 text-sm tracking-[0.04em] text-ink hover:border-vermilion hover:text-vermilion"
+              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
             >
               ← 이전
             </button>
@@ -152,7 +152,7 @@ export function HandoverWizard({
               type="button"
               disabled={!serviceId}
               onClick={() => setStep(2)}
-              className="cursor-pointer border border-ink bg-ink px-5 py-2 text-sm tracking-[0.04em] text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               다음 →
             </button>
@@ -162,7 +162,7 @@ export function HandoverWizard({
               type="button"
               disabled={!to}
               onClick={() => setStep(3)}
-              className="cursor-pointer border border-ink bg-ink px-5 py-2 text-sm tracking-[0.04em] text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               다음 →
             </button>
@@ -172,7 +172,7 @@ export function HandoverWizard({
               type="button"
               disabled={isPending}
               onClick={handleConfirm}
-              className="cursor-pointer border border-ink bg-ink px-5 py-2 text-sm tracking-[0.04em] text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? "처리 중..." : "인계 시작"}
             </button>
@@ -309,11 +309,6 @@ function Step1({
                       />
                     </td>
                     <td className="px-3 py-2">
-                      {s.category ? (
-                        <span className="mr-1 text-xs text-muted">
-                          {s.category}
-                        </span>
-                      ) : null}
                       <span className="font-medium text-ink">
                         {s.university_name}
                       </span>
@@ -439,8 +434,10 @@ function Step3({
       <dl className="grid grid-cols-[120px_1fr] gap-y-3 border border-line bg-cream p-4 text-sm">
         <dt className="text-muted">서비스</dt>
         <dd className="text-ink">
-          {service.category ? (
-            <span className="mr-1 text-xs text-muted">{service.category}</span>
+          {service.application_type ? (
+            <span className="mr-1 text-xs text-muted">
+              {service.application_type}
+            </span>
           ) : null}
           <span className="font-medium">{service.university_name}</span>
           <span className="ml-1 text-xs text-muted">
@@ -661,7 +658,7 @@ function Step4({
       <h3 className="text-xl font-bold text-ink">인수인계 완료</h3>
       <p className="max-w-md text-center text-sm text-ink-soft">
         <span className="font-medium text-ink">
-          {service.category ? `${service.category} ` : ""}
+          {service.application_type ? `${service.application_type} ` : ""}
           {service.university_name} · {service.service_name}
         </span>
         <br />
