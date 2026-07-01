@@ -142,9 +142,9 @@ function displayWidth(s: string): number {
   return w;
 }
 
-/** text 의 표시폭에 맞춰 전각 대시(―, 폭 2) 개수를 계산한 구분선. */
+/** text 의 셀 폭(한글=2)만큼 전각 대시(―)를 채워 합계 줄 끝(닫는 괄호)까지 닿는 구분선. */
 function ruleFor(text: string): string {
-  return "―".repeat(Math.max(8, Math.round(displayWidth(text) / 2)));
+  return "―".repeat(Math.max(12, displayWidth(text)));
 }
 
 /** 팀 보고 브리핑 Teams 메시지 HTML(contentType: html). */
@@ -187,7 +187,7 @@ export function buildBriefingHtml(input: {
     }
   }
 
-  lines.push("<br/><b>· 서비스 마감 임박 (7일 내)</b>");
+  lines.push("<br/><b>· 서비스 마감 (7일 내)</b>");
   if (closing.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
   } else {
