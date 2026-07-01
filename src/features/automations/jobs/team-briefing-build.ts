@@ -187,7 +187,7 @@ export function buildBriefingHtml(input: {
     }
   }
 
-  lines.push("<br/><b>· 서비스 마감 임박 (7일 내)</b>");
+  lines.push("<br/><b>· 서비스 마감 (7일 내)</b>");
   if (closing.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
   } else {
