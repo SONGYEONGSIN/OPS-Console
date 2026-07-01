@@ -79,6 +79,14 @@ describe("handover html document (attachment)", () => {
     );
   });
 
+  it("목차 클릭 시 해당 섹션으로 이동 — 앵커 링크 + 섹션 id", () => {
+    const h = buildHandoverHtmlDocument(base);
+    expect(h).toContain('href="#sec-contract"');
+    expect(h).toContain('id="sec-contract"');
+    expect(h).toContain('href="#sec-etc"');
+    expect(h).toContain('id="sec-etc"');
+  });
+
   it("XSS escape", () => {
     const h = buildHandoverHtmlDocument({
       ...base,

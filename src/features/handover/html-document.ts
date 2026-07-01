@@ -149,22 +149,27 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   });
   const completeCount = cats.filter((c) => c.complete).length;
   const totalCats = cats.length;
-  const pct = totalCats ? Math.round((completeCount / totalCats) * 100) : 0;
+  // 진행률 게이지 — 6칸 배터리 (완료 영역 수만큼 채움)
+  const batteryCells = Array.from(
+    { length: totalCats },
+    (_, i) =>
+      `<span class="cell ${i < completeCount ? "cellfull" : "cellempty"}"></span>`,
+  ).join("");
 
   const tocRows = cats
     .map(
       ({ cat, filled, total, complete }, i) => `
-        <div class="tocrow">
+        <a class="tocrow" href="#sec-${cat.key}">
           <span class="tocname"><span class="tocno">${String(i + 1).padStart(2, "0")}</span>${escapeHtml(cat.label)}</span>
           <span class="chip ${complete ? "chipok" : "chippartial"}">${filled}/${total}</span>
-        </div>`,
+        </a>`,
     )
     .join("");
 
   const sections = cats
     .map(
       ({ cat, filled, total }) => `
-        <section class="sec">
+        <section class="sec" id="sec-${cat.key}">
           <div class="sechead">
             <span class="sectitle">${escapeHtml(cat.label)}</span>
             <span class="seccount">${filled}/${total}</span>
@@ -209,6 +214,7 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
     --line:#e2dac9; --sage:#5c7346;
   }
   *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
   body{margin:0;background:#d9d2c2;color:var(--ink);
     font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     -webkit-font-smoothing:antialiased;line-height:1.6;}
@@ -218,22 +224,27 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   .brand{font-size:11px;letter-spacing:.24em;opacity:.9;margin-bottom:10px;}
   .btitle{font-size:26px;font-weight:800;letter-spacing:-.01em;}
   .bsub{font-size:13px;opacity:.92;margin-top:7px;}
-  .meta{background:var(--washi);padding:16px 34px;display:flex;
-    justify-content:space-between;align-items:center;gap:32px;flex-wrap:wrap;}
-  .metafields{display:flex;gap:48px;}
+  .meta{background:#e0e0e5;padding:16px 34px;display:flex;
+    justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;}
   .metacol{display:grid;grid-template-columns:52px auto;gap:6px 14px;align-items:baseline;}
-  .metacol b{color:var(--muted);font-weight:600;font-size:12px;}
-  .metacol span{font-size:12px;color:var(--ink);}
-  .prog{text-align:right;}
-  .progn{font-size:22px;font-weight:800;color:var(--vermilion-deep);line-height:1;}
-  .progl{font-size:11px;color:var(--muted);margin-top:3px;}
-  .progbar{height:7px;width:160px;background:#e0d5bf;border-radius:99px;overflow:hidden;margin-top:7px;margin-left:auto;}
-  .progbar i{display:block;height:100%;background:var(--sage);}
+  .metacol b{color:#43434a;font-weight:600;font-size:12px;}
+  .metacol span{font-size:12px;color:#1f1f24;}
+  .prog{display:flex;flex-direction:column;align-items:flex-end;}
+  .progn{font-size:22px;font-weight:800;color:#1f1f24;line-height:1;}
+  .progl{font-size:11px;color:#43434a;margin-top:3px;}
+  .battery{display:flex;align-items:center;gap:2px;margin-top:8px;}
+  .battcells{display:flex;gap:2px;padding:2px;border:1.5px solid #43434a;border-radius:3px;}
+  .cell{width:15px;height:11px;border-radius:1px;}
+  .cellfull{background:#5c7346;}
+  .cellempty{background:#cfcfd5;}
+  .battcap{width:3px;height:7px;background:#43434a;border-radius:0 2px 2px 0;}
   .bodywrap{display:flex;align-items:stretch;}
   .rail{width:210px;flex:none;background:var(--paper);border-right:1px solid var(--line);padding:24px 20px;}
   .railcap{font-size:10px;letter-spacing:.2em;color:var(--faint);font-weight:700;margin-bottom:10px;}
-  .tocrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;}
+  .tocrow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;
+    text-decoration:none;color:inherit;cursor:pointer;}
   .tocrow + .tocrow{border-top:1px solid var(--line);}
+  .tocrow:hover .tocname{color:var(--vermilion);}
   .tocname{font-weight:600;font-size:13px;}
   .tocno{color:var(--faint);margin-right:9px;font-variant-numeric:tabular-nums;}
   .chip{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;}
@@ -243,7 +254,7 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   .railcap2{font-size:10px;letter-spacing:.14em;color:var(--faint);font-weight:700;margin-bottom:5px;}
   .railmemotext{font-size:12px;white-space:pre-wrap;}
   .main{flex:1;padding:24px 34px;min-width:0;}
-  .sec{margin-bottom:22px;}
+  .sec{margin-bottom:22px;scroll-margin-top:16px;}
   .sechead{display:flex;justify-content:space-between;align-items:flex-end;
     border-bottom:2.5px solid var(--vermilion);padding-bottom:5px;margin-bottom:10px;}
   .sectitle{font-size:15px;font-weight:800;color:var(--vermilion);}
@@ -275,20 +286,21 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
     </div>
 
     <div class="meta">
-      <div class="metafields">
-        <div class="metacol">
-          <b>인계자</b><span>${escapeHtml(input.fromName)} · ${escapeHtml(input.fromEmail)}</span>
-          <b>인수자</b><span>${escapeHtml(input.toName)} · ${escapeHtml(input.toEmail)}</span>
-        </div>
-        <div class="metacol">
-          <b>접수구분</b><span>${escapeHtml(input.applicationType)}</span>
-          <b>발송일</b><span>${escapeHtml(formatYmd(input.createdAt))}</span>
-        </div>
+      <div class="metacol">
+        <b>인계자</b><span>${escapeHtml(input.fromName)} · ${escapeHtml(input.fromEmail)}</span>
+        <b>인수자</b><span>${escapeHtml(input.toName)} · ${escapeHtml(input.toEmail)}</span>
+      </div>
+      <div class="metacol">
+        <b>서비스</b><span>${subtitle}</span>
+        <b>인계일</b><span>${escapeHtml(formatYmd(input.createdAt))}</span>
       </div>
       <div class="prog">
         <div class="progn">${completeCount} / ${totalCats}</div>
         <div class="progl">영역 작성 완료</div>
-        <div class="progbar"><i style="width:${pct}%"></i></div>
+        <div class="battery">
+          <div class="battcells">${batteryCells}</div>
+          <div class="battcap"></div>
+        </div>
       </div>
     </div>
 
