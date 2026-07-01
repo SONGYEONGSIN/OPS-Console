@@ -10,6 +10,7 @@ import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
 import { runNewsCollect } from "./jobs/news-collect";
 import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
+import { runTeamBriefing } from "./jobs/team-briefing";
 
 export const AUTOMATION_JOBS: AutomationJob[] = [
   {
@@ -116,6 +117,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "30분 간격 (cron-job.org)",
     cooldownMinutes: 30,
     run: runNoticeTeamsShare,
+  },
+  {
+    id: "team-briefing",
+    label: "팀 보고 브리핑",
+    description:
+      "계약진행 현황과 팀업무 현황(다음주 일정·서비스 마감 임박)을 집계해 Teams 그룹채팅에 자동 브리핑합니다.",
+    scheduleInfo: "매주 금요일 (cron-job.org)",
+    cooldownMinutes: 60,
+    run: runTeamBriefing,
   },
 ];
 
