@@ -122,6 +122,31 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** 완료율 = 완료 / (완료+진행중). 모수 0이면 "—". 소수 1자리. */
+function completionPct(done: number, ongoing: number): string {
+  const total = done + ongoing;
+  if (total === 0) return "—";
+  return `${((done / total) * 100).toFixed(1)}%`;
+}
+
+/** 문자열 표시폭(half-unit) — 한글/전각=2, 그 외=1. 프로포셔널 폰트라 근사치. */
+function displayWidth(s: string): number {
+  let w = 0;
+  for (const ch of s) {
+    const wide =
+      /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦　-〿]/.test(
+        ch,
+      );
+    w += wide ? 2 : 1;
+  }
+  return w;
+}
+
+/** text 의 표시폭에 맞춰 전각 대시(―, 폭 2) 개수를 계산한 구분선. */
+function ruleFor(text: string): string {
+  return "―".repeat(Math.max(8, Math.round(displayWidth(text) / 2)));
+}
+
 /** 팀 보고 브리핑 Teams 메시지 HTML(contentType: html). */
 export function buildBriefingHtml(input: {
   dateLabel: string;
@@ -135,15 +160,16 @@ export function buildBriefingHtml(input: {
   lines.push(`<b>[팀 보고 브리핑] ${escapeHtml(dateLabel)}</b>`);
 
   // 1. 계약진행 현황
-  lines.push("<br/><br/><b>■ 계약진행 현황</b>");
+  lines.push("<br/><br/><b>■ 계약현황</b>");
   for (const s of contracts.bySheet) {
     lines.push(
-      `<br/>· ${escapeHtml(s.sheet)}: 완료 ${s.done} · 진행중 ${s.ongoing}`,
+      `<br/>· ${escapeHtml(s.sheet)}: 총 ${s.done + s.ongoing} · 완료 ${s.done} · 진행중 ${s.ongoing} (완료 ${completionPct(s.done, s.ongoing)})`,
     );
   }
-  lines.push(
-    `<br/><b>합계: 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing}</b>`,
-  );
+  const totalAll = contracts.totalDone + contracts.totalOngoing;
+  const totalLine = `합계: 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})`;
+  lines.push(`<br/>${ruleFor(totalLine)}`);
+  lines.push(`<br/><b>${totalLine}</b>`);
 
   // 2. 팀업무 현황
   lines.push("<br/><br/><b>■ 팀업무 현황</b>");
