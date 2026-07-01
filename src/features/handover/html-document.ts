@@ -30,14 +30,15 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** escape + http(s) URL을 <a>로 + 줄바꿈 <br>. */
+/**
+ * escape + http(s) URL을 <a>로 변환. 줄바꿈/들여쓰기는 렌더 컨테이너의
+ * `white-space:pre-wrap`으로 보존하므로 여기서 <br> 치환하지 않는다.
+ */
 function textHtml(s: string): string {
-  return escapeHtml(s)
-    .replace(
-      /(https?:\/\/[^\s<]+)/g,
-      '<a href="$1" style="color:#2352c9;">$1</a>',
-    )
-    .replace(/\n/g, "<br>");
+  return escapeHtml(s).replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" style="color:#2352c9;">$1</a>',
+  );
 }
 
 function formatYmd(iso: string): string {
@@ -201,6 +202,19 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
       .join(" · "),
   );
 
+  // 메타 '서비스' 값 — 대학명 강조(볼드), 접수구분·서비스명은 연하게
+  const serviceValue = [
+    input.applicationType.trim() &&
+      `<span class="dim">${escapeHtml(input.applicationType)}</span>`,
+    `<span class="pri">${escapeHtml(input.universityName)}</span>`,
+    input.serviceName.trim() &&
+      `<span class="dim">${escapeHtml(input.serviceName)}</span>`,
+  ]
+    .filter(Boolean)
+    .join('<span class="dim"> · </span>');
+  const person = (name: string, email: string) =>
+    `<span class="pri">${escapeHtml(name)}</span><span class="dim"> · ${escapeHtml(email)}</span>`;
+
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -229,10 +243,12 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   .metacol{display:grid;grid-template-columns:52px auto;gap:6px 14px;align-items:baseline;}
   .metacol b{color:#43434a;font-weight:600;font-size:12px;}
   .metacol span{font-size:12px;color:#1f1f24;}
+  .metacol .pri{font-weight:700;color:#1f1f24;}
+  .metacol .dim{font-weight:400;color:#6b6b72;}
   .prog{display:flex;flex-direction:column;align-items:flex-end;}
   .progn{font-size:22px;font-weight:800;color:#1f1f24;line-height:1;}
   .progl{font-size:11px;color:#43434a;margin-top:3px;}
-  .battery{display:flex;align-items:center;gap:2px;margin-top:8px;}
+  .battery{display:flex;align-items:center;gap:2px;margin-top:8px;margin-right:-4px;}
   .battcells{display:flex;gap:2px;padding:2px;border:1.5px solid #43434a;border-radius:3px;}
   .cell{width:15px;height:11px;border-radius:1px;}
   .cellfull{background:#5c7346;}
@@ -262,11 +278,11 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   .fld{display:grid;grid-template-columns:80px 1fr;gap:14px;padding:8px 2px;}
   .fld + .fld{border-top:1px solid var(--washi-raised);}
   .fldk{color:var(--vermilion-deep);font-size:12px;font-weight:700;}
-  .fldv{font-size:13px;line-height:1.75;}
+  .fldv{font-size:13px;line-height:1.75;overflow-wrap:anywhere;word-break:break-word;}
   .kvline{display:grid;grid-template-columns:44px 1fr;gap:10px;}
   .kvk{color:var(--muted);font-weight:600;}
-  .valline{}
-  .memoline{color:var(--muted);margin-top:3px;}
+  .valline{white-space:pre-wrap;}
+  .memoline{color:var(--muted);margin-top:3px;white-space:pre-wrap;}
   .chkline{}
   .chkdone{color:var(--sage);font-weight:700;}
   .chktodo{color:var(--faint);}
@@ -287,11 +303,11 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
 
     <div class="meta">
       <div class="metacol">
-        <b>인계자</b><span>${escapeHtml(input.fromName)} · ${escapeHtml(input.fromEmail)}</span>
-        <b>인수자</b><span>${escapeHtml(input.toName)} · ${escapeHtml(input.toEmail)}</span>
+        <b>인계자</b><span>${person(input.fromName, input.fromEmail)}</span>
+        <b>인수자</b><span>${person(input.toName, input.toEmail)}</span>
       </div>
       <div class="metacol">
-        <b>서비스</b><span>${subtitle}</span>
+        <b>서비스</b><span>${serviceValue}</span>
         <b>인계일</b><span>${escapeHtml(formatYmd(input.createdAt))}</span>
       </div>
       <div class="prog">
