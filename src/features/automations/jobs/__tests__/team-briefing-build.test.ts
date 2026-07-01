@@ -83,11 +83,11 @@ describe("buildBriefingHtml", () => {
       },
       weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
       schedule,
-      upcoming: [
+      closing: [
         {
           university_name: "건국대",
           service_name: "수시",
-          write_start_at: "2026-07-05",
+          pay_end_at: "2026-07-05T07:00:00+09:00",
           operator_name: "송영신",
         },
       ],

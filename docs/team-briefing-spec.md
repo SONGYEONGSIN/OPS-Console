@@ -18,7 +18,7 @@
 
 ### 2. 팀업무 현황
 - **일정**: `listScheduleEvents()` — `src/features/schedule/queries.ts`. 유형 7종(`shift/event/leave/training/application/pims/external_meeting`), 필드 `type/start_at/end_at/title/all_day/assignee_email`. → 이번주(또는 다음주) 범위를 카테고리별로 그룹.
-- **서비스 마감 임박**: `services.write_start_at` 기준. ⚠️ 기존 `listUpcomingForOperator(email, windowDays)`는 **본인 담당만** 반환 → 팀 전체용은 **신규 team-wide 쿼리** 또는 services를 `write_start_at ∈ [today, today+N]`로 직접 필터 필요.
+- **서비스 마감 임박**: `closing_services.pay_end_at`(결제마감) 기준 — 대시보드 '마감 임박'과 동일 소스(`imminentClosings`). ⚠️ `services.write_start_at`은 '오픈(작성 시작)'이라 마감과 무관하며 데이터도 직전 시즌 vintage. 잡은 cron이라 admin client로 `closing_services`를 `pay_end_at ∈ [today, today+7]` 직접 필터.
 
 ## 발송 인프라 (준비됨)
 
