@@ -202,13 +202,13 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
       .join(" · "),
   );
 
-  // 메타 '서비스' 값 — 대학명 강조(볼드), 접수구분·서비스명은 연하게
+  // 메타 '서비스' 값 — 접수구분·대학명·서비스명 모두 볼드, 구분점만 연하게
   const serviceValue = [
     input.applicationType.trim() &&
-      `<span class="dim">${escapeHtml(input.applicationType)}</span>`,
+      `<span class="pri">${escapeHtml(input.applicationType)}</span>`,
     `<span class="pri">${escapeHtml(input.universityName)}</span>`,
     input.serviceName.trim() &&
-      `<span class="dim">${escapeHtml(input.serviceName)}</span>`,
+      `<span class="pri">${escapeHtml(input.serviceName)}</span>`,
   ]
     .filter(Boolean)
     .join('<span class="dim"> · </span>');

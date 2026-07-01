@@ -87,11 +87,11 @@ describe("handover html document (attachment)", () => {
     expect(h).toContain('id="sec-etc"');
   });
 
-  it("메타 서비스 값 — 대학명 강조(pri) + 접수구분·서비스명 연하게(dim)", () => {
+  it("메타 서비스 값 — 접수구분·대학명·서비스명 모두 볼드(pri)", () => {
     const h = buildHandoverHtmlDocument(base);
     expect(h).toContain('<span class="pri">부산대학교</span>');
-    expect(h).toContain('<span class="dim">공통원서</span>');
-    expect(h).toContain('<span class="dim">수시</span>');
+    expect(h).toContain('<span class="pri">공통원서</span>');
+    expect(h).toContain('<span class="pri">수시</span>');
   });
 
   it("다중행 필드 — 들여쓰기/줄바꿈 보존(<br> 미사용, pre-wrap)", () => {
