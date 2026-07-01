@@ -93,7 +93,7 @@ describe("buildBriefingHtml", () => {
       ],
     });
     expect(html).toContain("팀 보고 브리핑");
-    expect(html).toContain("계약진행 현황");
+    expect(html).toContain("계약현황");
     // 완료 % — 4년제 1/(1+2)=33.3% + 총 개수 3
     expect(html).toContain("완료 33.3%");
     expect(html).toContain("총 3 · 완료 1 · 진행중 2");

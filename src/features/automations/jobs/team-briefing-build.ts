@@ -142,14 +142,16 @@ export function buildBriefingHtml(input: {
   lines.push(`<b>[팀 보고 브리핑] ${escapeHtml(dateLabel)}</b>`);
 
   // 1. 계약진행 현황
-  lines.push("<br/><br/><b>■ 계약진행 현황</b>");
+  lines.push("<br/><br/><b>■ 계약현황</b>");
   for (const s of contracts.bySheet) {
     lines.push(
       `<br/>· ${escapeHtml(s.sheet)}: 총 ${s.done + s.ongoing} · 완료 ${s.done} · 진행중 ${s.ongoing} (완료 ${completionPct(s.done, s.ongoing)})`,
     );
   }
   const totalAll = contracts.totalDone + contracts.totalOngoing;
-  lines.push("<br/>――――――――――――――――");
+  lines.push(
+    "<br/>――――――――――――――――――――――――――――――――――――",
+  );
   lines.push(
     `<br/><b>합계: 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})</b>`,
   );
