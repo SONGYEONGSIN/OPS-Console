@@ -112,6 +112,7 @@ export async function sendHandoverMail(
         name: string;
         jobTitle: string | null;
         phone: string | null;
+        ext: string | null;
         email: string | null;
       }[])
     : [];
