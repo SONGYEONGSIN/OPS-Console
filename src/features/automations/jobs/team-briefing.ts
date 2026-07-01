@@ -1,0 +1,125 @@
+import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
+import { listContracts } from "@/features/contracts/queries";
+import { CONTRACT_SHEETS } from "@/features/contracts/schemas";
+import type { AutomationRunResult } from "../types";
+import {
+  aggregateContracts,
+  nextWeekdayRange,
+  groupScheduleInRange,
+  buildBriefingHtml,
+  type BriefEvent,
+  type UpcomingService,
+} from "./team-briefing-build";
+
+const UPCOMING_WINDOW_DAYS = 7;
+
+function kstTodayYmd(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+function addDaysYmd(ymd: string, n: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
+/**
+ * 팀 보고 브리핑 — 매주 금요일 Teams 그룹채팅에 계약진행/팀업무 현황 스냅샷 발송.
+ * cron 실행(세션 없음)이라 Supabase는 admin client로 직접 조회한다.
+ * env: TEAMS_CHAT_ID(그룹채팅) + TEAMS_BRIEFING_SENDER(위임 토큰 명의). 미설정 시 발송 생략.
+ * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 결과만.
+ */
+export async function runTeamBriefing(): Promise<AutomationRunResult> {
+  const chatId = process.env.TEAMS_CHAT_ID || "";
+  const sender = process.env.TEAMS_BRIEFING_SENDER || "";
+  const dryRun =
+    process.env.TEAM_BRIEFING_DRY_RUN === "true" ||
+    process.env.MAIL_DRY_RUN === "true";
+
+  if (!chatId) {
+    return { ok: true, message: "Teams 채팅방 미설정 (TEAMS_CHAT_ID) — 전송 생략" };
+  }
+  if (!sender && !dryRun) {
+    return {
+      ok: true,
+      message: "발신자 미설정 (TEAMS_BRIEFING_SENDER) — 전송 생략",
+    };
+  }
+
+  const todayYmd = kstTodayYmd();
+  const weekRange = nextWeekdayRange(todayYmd);
+  const limitYmd = addDaysYmd(todayYmd, UPCOMING_WINDOW_DAYS);
+
+  // 1. 계약진행 현황 — SharePoint Excel(Graph, cron-safe)
+  const { rows: contractRows } = await listContracts();
+  const contracts = aggregateContracts(
+    contractRows.map((r) => ({ sheet: r.sheet, status: r.status })),
+    CONTRACT_SHEETS,
+  );
+
+  const admin = createAdminClient();
+
+  // 2. 팀업무 현황 — 다음주(월~금) 일정
+  const { data: evData, error: evErr } = await admin
+    .from("schedule_events")
+    .select("type, title, start_at, all_day")
+    .gte("start_at", `${weekRange.startYmd}T00:00:00+09:00`)
+    .lte("start_at", `${weekRange.endYmd}T23:59:59+09:00`)
+    .order("start_at", { ascending: true });
+  if (evErr) return { ok: false, message: `일정 조회 실패: ${evErr.message}` };
+  const schedule = groupScheduleInRange(
+    (evData ?? []) as BriefEvent[],
+    weekRange.startYmd,
+    weekRange.endYmd,
+  );
+
+  // 3. 서비스 마감 임박 (write_start_at D-7 이내, 팀 전체)
+  const { data: svcData, error: svcErr } = await admin
+    .from("services")
+    .select("university_name, service_name, write_start_at, operator_name")
+    .not("write_start_at", "is", null)
+    .gte("write_start_at", todayYmd)
+    .lte("write_start_at", limitYmd)
+    .order("write_start_at", { ascending: true });
+  if (svcErr) return { ok: false, message: `서비스 조회 실패: ${svcErr.message}` };
+  const upcoming = (svcData ?? []) as UpcomingService[];
+
+  const html = buildBriefingHtml({
+    dateLabel: todayYmd,
+    contracts,
+    weekRange,
+    schedule,
+    upcoming,
+  });
+
+  const details = {
+    contractsDone: contracts.totalDone,
+    contractsOngoing: contracts.totalOngoing,
+    scheduleGroups: schedule.length,
+    upcoming: upcoming.length,
+  };
+
+  if (dryRun) {
+    return {
+      ok: true,
+      message: `DRY-RUN — 브리핑 생성(발송 생략). 계약 완료 ${contracts.totalDone}·진행 ${contracts.totalOngoing}, 마감임박 ${upcoming.length}건`,
+      details,
+    };
+  }
+
+  try {
+    await sendTeamsChatMessage({ operatorEmail: sender, chatId, html });
+  } catch (e) {
+    return {
+      ok: false,
+      message: `Teams 발송 실패: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  return {
+    ok: true,
+    message: `팀 보고 브리핑 발송 완료 (마감임박 ${upcoming.length}건)`,
+    details,
+  };
+}

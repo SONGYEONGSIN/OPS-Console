@@ -1,7 +1,8 @@
-# 팀 보고 브리핑 자동화 — 스펙 (구현 대기)
+# 팀 보고 브리핑 자동화 — 스펙 (구현 완료)
 
-> 상태: **설계 확정 · 구현 대기** (2026-07-01 확정)
-> 재개: 이 문서 기준으로 새 automations 잡을 구현하면 됨. 배포 없이 로컬에서 개발·드라이런 가능.
+> 상태: **구현 완료** (2026-07-01) — 코드/테스트/레지스트리 반영. 운영 전환(cron-job.org 등록 + Teams env)만 남음.
+> 결정: 일정 = **다음주 월~금(평일)**, 마감 임박 window = **7일**, 드라이런 = `TEAM_BRIEFING_DRY_RUN` 또는 `MAIL_DRY_RUN`.
+> 구현: `jobs/team-briefing-build.ts`(순수 집계·HTML) + `jobs/team-briefing.ts`(`runTeamBriefing`) + `registry.ts` 등록(id `team-briefing`).
 
 ## 목적
 
@@ -46,10 +47,10 @@
 
 ## 구현 체크리스트
 
-- [ ] team-wide 마감 임박 쿼리 (`listUpcomingServices(windowDays)` 등) 추가 또는 services 필터
-- [ ] 집계·메시지 빌더 순수 함수 + 단위 테스트 (TDD)
-- [ ] `jobs/team-briefing.ts` `runTeamBriefing()` — 계약/일정/마감 fetch → HTML 조립 → `sendTeamsChatMessage`
-- [ ] `registry.ts` 등록 (scheduleInfo "매주 금요일")
-- [ ] 드라이런 플래그 + 이력
-- [ ] 로컬 `/api/automations/run?jobId=team-briefing` 드라이런 확인
-- [ ] cron-job.org 매주 금요일 등록 (운영 전환)
+- [x] team-wide 마감 임박 — 잡에서 admin client로 `services` 직접 필터(write_start_at D-7, cron-safe)
+- [x] 집계·메시지 빌더 순수 함수 + 단위 테스트 (TDD) — `team-briefing-build.ts` (계약집계/다음주 평일범위/일정그룹/HTML)
+- [x] `jobs/team-briefing.ts` `runTeamBriefing()` — 계약(SharePoint)/일정·마감(admin) fetch → HTML 조립 → `sendTeamsChatMessage`
+- [x] `registry.ts` 등록 (id `team-briefing`, scheduleInfo "매주 금요일")
+- [x] 드라이런 플래그(`TEAM_BRIEFING_DRY_RUN`/`MAIL_DRY_RUN`) + 이력(runner가 automation_runs 적재)
+- [ ] 로컬 `/api/automations/run?jobId=team-briefing` 드라이런 확인 (운영)
+- [ ] Teams env(`TEAMS_CHAT_ID`/`TEAMS_BRIEFING_SENDER`) + cron-job.org 매주 금요일 등록 (운영 전환)
