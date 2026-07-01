@@ -248,7 +248,7 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   .prog{display:flex;flex-direction:column;align-items:flex-end;}
   .progn{font-size:22px;font-weight:800;color:#1f1f24;line-height:1;}
   .progl{font-size:11px;color:#43434a;margin-top:3px;}
-  .battery{display:flex;align-items:center;gap:2px;margin-top:8px;margin-right:-4px;}
+  .battery{display:flex;align-items:center;gap:2px;margin-top:8px;transform:translateX(8px);}
   .battcells{display:flex;gap:2px;padding:2px;border:1.5px solid #43434a;border-radius:3px;}
   .cell{width:15px;height:11px;border-radius:1px;}
   .cellfull{background:#5c7346;}
