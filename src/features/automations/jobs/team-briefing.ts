@@ -71,7 +71,7 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
   // 2. 팀업무 현황 — 다음주(월~금) 일정
   const { data: evData, error: evErr } = await admin
     .from("schedule_events")
-    .select("type, title, start_at, all_day")
+    .select("type, title, start_at, end_at, all_day")
     .gte("start_at", `${weekRange.startYmd}T00:00:00+09:00`)
     .lte("start_at", `${weekRange.endYmd}T23:59:59+09:00`)
     .order("start_at", { ascending: true });

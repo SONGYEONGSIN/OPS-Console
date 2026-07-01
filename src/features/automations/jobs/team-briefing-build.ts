@@ -58,9 +58,23 @@ export type BriefEvent = {
   type: string;
   title: string;
   start_at: string;
+  end_at?: string | null;
   all_day: boolean;
 };
 export type ScheduleGroup = { type: string; label: string; items: BriefEvent[] };
+
+/** 일정 날짜 표기 — 단일일 "MM-DD", 다중일 "MM-DD~DD"(같은 달) 또는 "MM-DD~MM-DD". */
+export function eventDateLabel(e: BriefEvent): string {
+  const s = kstYmd(e.start_at);
+  const en = e.end_at ? kstYmd(e.end_at) : "";
+  if (!en || en === s) return s.slice(5);
+  const sMMDD = s.slice(5);
+  const eMMDD = en.slice(5);
+  // 같은 달이면 뒤쪽은 일(DD)만
+  return s.slice(0, 7) === en.slice(0, 7)
+    ? `${sMMDD}~${eMMDD.slice(3)}`
+    : `${sMMDD}~${eMMDD}`;
+}
 
 /** 일정 유형 표시 순서 + 한글 라벨 (schedule scheduleTypeSchema 기준). */
 const SCHEDULE_TYPE_ORDER = [
@@ -181,7 +195,7 @@ export function buildBriefingHtml(input: {
   } else {
     for (const g of schedule) {
       const titles = g.items
-        .map((i) => `${escapeHtml(i.title)}(${kstYmd(i.start_at).slice(5)})`)
+        .map((i) => `${escapeHtml(i.title)}(${eventDateLabel(i)})`)
         .join(", ");
       lines.push(`<br/>&nbsp;&nbsp;[${escapeHtml(g.label)}] ${titles}`);
     }

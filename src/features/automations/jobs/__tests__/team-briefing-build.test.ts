@@ -4,6 +4,7 @@ import {
   nextWeekdayRange,
   groupScheduleInRange,
   buildBriefingHtml,
+  eventDateLabel,
   type ScheduleGroup,
 } from "../team-briefing-build";
 
@@ -43,6 +44,33 @@ describe("nextWeekdayRange", () => {
       startYmd: "2026-07-13",
       endYmd: "2026-07-17",
     });
+  });
+});
+
+describe("eventDateLabel", () => {
+  const base = { type: "leave", title: "x", all_day: true };
+  it("단일일은 MM-DD", () => {
+    expect(
+      eventDateLabel({ ...base, start_at: "2026-07-06T00:00:00+09:00" }),
+    ).toBe("07-06");
+  });
+  it("같은 달 다중일은 MM-DD~DD", () => {
+    expect(
+      eventDateLabel({
+        ...base,
+        start_at: "2026-07-06T00:00:00+09:00",
+        end_at: "2026-07-10T00:00:00+09:00",
+      }),
+    ).toBe("07-06~10");
+  });
+  it("다른 달 다중일은 MM-DD~MM-DD", () => {
+    expect(
+      eventDateLabel({
+        ...base,
+        start_at: "2026-07-30T00:00:00+09:00",
+        end_at: "2026-08-02T00:00:00+09:00",
+      }),
+    ).toBe("07-30~08-02");
   });
 });
 
