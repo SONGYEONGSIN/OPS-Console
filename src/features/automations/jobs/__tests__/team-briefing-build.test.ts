@@ -5,6 +5,7 @@ import {
   groupScheduleInRange,
   buildBriefingHtml,
   eventDateLabel,
+  groupClosingByDate,
   type ScheduleGroup,
 } from "../team-briefing-build";
 
@@ -91,7 +92,36 @@ describe("groupScheduleInRange", () => {
   });
 });
 
+describe("groupClosingByDate", () => {
+  it("마감일별로 묶어 날짜 오름차순", () => {
+    const g = groupClosingByDate([
+      { university_name: "A대", service_name: "s1", pay_end_at: "2026-07-03T07:00:00+09:00", operator_name: "김" },
+      { university_name: "B대", service_name: "s2", pay_end_at: "2026-07-01T07:00:00+09:00", operator_name: "이" },
+      { university_name: "C대", service_name: "s3", pay_end_at: "2026-07-03T07:00:00+09:00", operator_name: "박" },
+    ]);
+    expect(g.map((x) => x.date)).toEqual(["2026-07-01", "2026-07-03"]);
+    expect(g[1].items.map((i) => i.university_name)).toEqual(["A대", "C대"]);
+  });
+});
+
 describe("buildBriefingHtml", () => {
+  it("마감은 날짜별 그룹(헤더 [MM-DD] N건)으로 렌더", () => {
+    const html = buildBriefingHtml({
+      dateLabel: "2026-07-01",
+      contracts: { bySheet: [], totalDone: 0, totalOngoing: 0 },
+      weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
+      schedule: [],
+      closing: [
+        { university_name: "가천대", service_name: "외국인 3차", pay_end_at: "2026-07-01T07:00:00+09:00", operator_name: "김유민" },
+        { university_name: "단국대", service_name: "후기", pay_end_at: "2026-07-03T07:00:00+09:00", operator_name: "정윤나" },
+      ],
+    });
+    expect(html).toContain("· 총 2건");
+    expect(html).toContain("[07-01] 1건");
+    expect(html).toContain("[07-03] 1건");
+    expect(html).toContain("가천대 외국인 3차 (김유민)");
+  });
+
   it("두 섹션 제목 + 계약 합계 + 마감임박 항목 포함, 제목 escape", () => {
     const schedule: ScheduleGroup[] = [
       {

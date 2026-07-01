@@ -132,6 +132,22 @@ export type ClosingItem = {
   operator_name: string | null;
 };
 
+/** 마감(pay_end_at) KST 날짜별로 묶어 날짜 오름차순 반환. */
+export function groupClosingByDate(
+  closing: ClosingItem[],
+): { date: string; items: ClosingItem[] }[] {
+  const map = new Map<string, ClosingItem[]>();
+  for (const c of closing) {
+    const d = kstYmd(c.pay_end_at);
+    const arr = map.get(d) ?? [];
+    arr.push(c);
+    map.set(d, arr);
+  }
+  return [...map.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .map(([date, items]) => ({ date, items }));
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -201,15 +217,21 @@ export function buildBriefingHtml(input: {
     }
   }
 
-  lines.push("<br/><b>· 서비스 마감 (7일 내)</b>");
+  lines.push(`<br/><b>· 서비스 마감 (7일 내) · 총 ${closing.length}건</b>`);
   if (closing.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
   } else {
-    for (const u of closing) {
-      const op = u.operator_name ? ` (${escapeHtml(u.operator_name)})` : "";
+    // 마감일별 그룹 — 날짜 헤더(건수) + 그 아래 대학·서비스·담당자.
+    for (const g of groupClosingByDate(closing)) {
       lines.push(
-        `<br/>&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)} — 마감 ${kstYmd(u.pay_end_at)}${op}`,
+        `<br/>&nbsp;&nbsp;<b>[${g.date.slice(5)}] ${g.items.length}건</b>`,
       );
+      for (const u of g.items) {
+        const op = u.operator_name ? ` (${escapeHtml(u.operator_name)})` : "";
+        lines.push(
+          `<br/>&nbsp;&nbsp;&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)}${op}`,
+        );
+      }
     }
   }
 
