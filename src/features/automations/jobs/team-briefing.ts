@@ -28,23 +28,30 @@ function addDaysYmd(ymd: string, n: number): string {
 /**
  * 팀 보고 브리핑 — 매주 금요일 Teams 그룹채팅에 계약진행/팀업무 현황 스냅샷 발송.
  * cron 실행(세션 없음)이라 Supabase는 admin client로 직접 조회한다.
- * env: TEAMS_CHAT_ID(그룹채팅) + TEAMS_BRIEFING_SENDER(위임 토큰 명의). 미설정 시 발송 생략.
- * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 결과만.
+ * env: TEAMS_CHAT_ID(그룹채팅) + TEAMS_BRIEFING_SENDER(위임 토큰 명의). 미설정 시
+ *   공지 공유용 TEAMS_NOTICE_CHAT_ID / TEAMS_NOTICE_SENDER 로 폴백(동일 그룹채팅 사용).
+ * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 집계 결과만.
  */
 export async function runTeamBriefing(): Promise<AutomationRunResult> {
-  const chatId = process.env.TEAMS_CHAT_ID || "";
-  const sender = process.env.TEAMS_BRIEFING_SENDER || "";
+  const chatId =
+    process.env.TEAMS_CHAT_ID || process.env.TEAMS_NOTICE_CHAT_ID || "";
+  const sender =
+    process.env.TEAMS_BRIEFING_SENDER || process.env.TEAMS_NOTICE_SENDER || "";
   const dryRun =
     process.env.TEAM_BRIEFING_DRY_RUN === "true" ||
     process.env.MAIL_DRY_RUN === "true";
 
-  if (!chatId) {
-    return { ok: true, message: "Teams 채팅방 미설정 (TEAMS_CHAT_ID) — 전송 생략" };
-  }
-  if (!sender && !dryRun) {
+  // 발송 시에만 env 필요 — 드라이런은 집계까지 수행해 결과를 확인할 수 있게 한다.
+  if (!dryRun && !chatId) {
     return {
       ok: true,
-      message: "발신자 미설정 (TEAMS_BRIEFING_SENDER) — 전송 생략",
+      message: "Teams 채팅방 미설정 (TEAMS_CHAT_ID/TEAMS_NOTICE_CHAT_ID) — 전송 생략",
+    };
+  }
+  if (!dryRun && !sender) {
+    return {
+      ok: true,
+      message: "발신자 미설정 (TEAMS_BRIEFING_SENDER/TEAMS_NOTICE_SENDER) — 전송 생략",
     };
   }
 

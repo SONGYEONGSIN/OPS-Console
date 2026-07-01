@@ -69,6 +69,8 @@ beforeEach(() => {
   });
   vi.stubEnv("TEAMS_CHAT_ID", "chat-1");
   vi.stubEnv("TEAMS_BRIEFING_SENDER", "ops@x.com");
+  vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
+  vi.stubEnv("TEAMS_NOTICE_SENDER", "");
   vi.stubEnv("TEAM_BRIEFING_DRY_RUN", "");
   vi.stubEnv("MAIL_DRY_RUN", "");
 });
