@@ -573,7 +573,7 @@ function CategoryAccordion({
         <div className="space-y-3 border-t border-line-soft bg-cream px-4 py-3">
           {category.fields.map((f) => (
             <div key={f.key}>
-              <div className="text-xs text-muted">{f.label}</div>
+              <div className="text-xs font-bold text-ink">{f.label}</div>
               <FieldBody service={service} fieldKey={f.key} />
             </div>
           ))}
