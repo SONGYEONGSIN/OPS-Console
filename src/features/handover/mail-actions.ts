@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
-import { renderHandoverPdf } from "@/lib/pdf/handover-pdf";
+import { buildHandoverHtmlDocument } from "./html-document";
 import {
   buildHandoverMailHtml,
   buildHandoverMailSubject,
@@ -28,11 +28,11 @@ function baseUrl(): string {
 }
 
 /**
- * 인수인계 메일 발송 — PDF(14 sub-field) 첨부 + HTML 본문.
+ * 인수인계 메일 발송 — HTML 문서 첨부 + HTML 본문.
  *
  * - 발신: 현재 로그인 사용자 (handover_progress.from_email)
  * - 수신: handover_progress.to_email
- * - 첨부: handover_records 14 sub-field → PDF (Pretendard 한글)
+ * - 첨부: handover_records 14 sub-field → 독립 HTML 문서(clean-v2, 브라우저 열람)
  * - 본문: 인계자/인수자/서비스 + history 페이지 링크
  *
  * MAIL_DRY_RUN=true 시 실제 발송 안 함 (DB 변경 없이 ok 반환).
@@ -127,8 +127,8 @@ export async function sendHandoverMail(
     memo: typeof pi.memo === "string" ? pi.memo : "",
   };
 
-  // 2) PDF 생성
-  const pdfBuf = await renderHandoverPdf({
+  // 2) 첨부 HTML 문서 생성 (clean-v2 레이아웃 — 브라우저에서 열람/인쇄)
+  const attachmentHtml = buildHandoverHtmlDocument({
     universityName: p.services.university_name,
     serviceName: p.services.service_name,
     applicationType: p.services.application_type,
@@ -173,7 +173,7 @@ export async function sendHandoverMail(
 
   if (isDryRun()) {
     console.log(
-      `[handover-mail] DRY_RUN — to=${p.to_email} subject="${subject}" pdf=${pdfBuf.length}bytes`,
+      `[handover-mail] DRY_RUN — to=${p.to_email} subject="${subject}" html=${attachmentHtml.length}chars`,
     );
     return { ok: true, status: "dry_run" };
   }
@@ -187,9 +187,9 @@ export async function sendHandoverMail(
     html,
     attachments: [
       {
-        name: `handover-${p.services.service_id}-${p.services.university_name}.pdf`,
-        contentBytes: pdfBuf.toString("base64"),
-        contentType: "application/pdf",
+        name: `handover-${p.services.service_id}-${p.services.university_name}.html`,
+        contentBytes: Buffer.from(attachmentHtml, "utf-8").toString("base64"),
+        contentType: "text/html; charset=utf-8",
       },
     ],
   });

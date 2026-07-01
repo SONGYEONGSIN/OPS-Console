@@ -208,7 +208,7 @@ export function buildHandoverMailHtml(input: HandoverMailInput): string {
 
     <p style="font-size:14px;line-height:1.6;margin:0 0 16px;">
       <strong>${toName}</strong>님, <strong>${fromName}</strong>님이 위 서비스를 인계 요청하셨습니다.<br>
-      아래 인수인계 내용을 펼쳐 확인하실 수 있고, 첨부 PDF에도 동일하게 정리되어 있습니다.
+      아래 인수인계 내용을 펼쳐 확인하실 수 있고, 첨부 HTML 파일에도 동일하게 정리되어 있습니다.
     </p>
 
     <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
