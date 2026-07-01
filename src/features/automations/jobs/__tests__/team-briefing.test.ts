@@ -56,12 +56,12 @@ beforeEach(() => {
   });
   adminFrom.mockImplementation((table: string) => {
     if (table === "schedule_events") return chain([]);
-    if (table === "services")
+    if (table === "closing_services")
       return chain([
         {
           university_name: "건국대",
           service_name: "수시",
-          write_start_at: "2026-07-05",
+          pay_end_at: "2026-07-05T07:00:00+09:00",
           operator_name: "송영신",
         },
       ]);
@@ -89,7 +89,7 @@ describe("runTeamBriefing", () => {
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
     expect(r.message).toContain("DRY-RUN");
-    expect(r.details?.upcoming).toBe(1);
+    expect(r.details?.closing).toBe(1);
     expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 

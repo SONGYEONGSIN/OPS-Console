@@ -110,10 +110,11 @@ export function groupScheduleInRange(
 
 // ─── HTML 빌더 ───────────────────────────────────────────────
 
-export type UpcomingService = {
+/** 서비스 마감 임박 1건 — closing_services(결제마감 pay_end_at) 기준. */
+export type ClosingItem = {
   university_name: string;
   service_name: string;
-  write_start_at: string;
+  pay_end_at: string;
   operator_name: string | null;
 };
 
@@ -127,9 +128,9 @@ export function buildBriefingHtml(input: {
   contracts: ContractSummary;
   weekRange: { startYmd: string; endYmd: string };
   schedule: ScheduleGroup[];
-  upcoming: UpcomingService[];
+  closing: ClosingItem[];
 }): string {
-  const { dateLabel, contracts, weekRange, schedule, upcoming } = input;
+  const { dateLabel, contracts, weekRange, schedule, closing } = input;
   const lines: string[] = [];
   lines.push(`<b>[팀 보고 브리핑] ${escapeHtml(dateLabel)}</b>`);
 
@@ -161,13 +162,13 @@ export function buildBriefingHtml(input: {
   }
 
   lines.push("<br/><b>· 서비스 마감 임박 (7일 내)</b>");
-  if (upcoming.length === 0) {
-    lines.push("<br/>&nbsp;&nbsp;임박 서비스 없음");
+  if (closing.length === 0) {
+    lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
   } else {
-    for (const u of upcoming) {
+    for (const u of closing) {
       const op = u.operator_name ? ` (${escapeHtml(u.operator_name)})` : "";
       lines.push(
-        `<br/>&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)} — ${escapeHtml(u.write_start_at)}${op}`,
+        `<br/>&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)} — 마감 ${kstYmd(u.pay_end_at)}${op}`,
       );
     }
   }

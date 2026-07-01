@@ -10,7 +10,7 @@ import {
   groupScheduleInRange,
   buildBriefingHtml,
   type BriefEvent,
-  type UpcomingService,
+  type ClosingItem,
 } from "./team-briefing-build";
 
 const UPCOMING_WINDOW_DAYS = 7;
@@ -82,36 +82,36 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
     weekRange.endYmd,
   );
 
-  // 3. 서비스 마감 임박 (write_start_at D-7 이내, 팀 전체)
-  const { data: svcData, error: svcErr } = await admin
-    .from("services")
-    .select("university_name, service_name, write_start_at, operator_name")
-    .not("write_start_at", "is", null)
-    .gte("write_start_at", todayYmd)
-    .lte("write_start_at", limitYmd)
-    .order("write_start_at", { ascending: true });
-  if (svcErr) return { ok: false, message: `서비스 조회 실패: ${svcErr.message}` };
-  const upcoming = (svcData ?? []) as UpcomingService[];
+  // 3. 서비스 마감 임박 — closing_services 결제마감(pay_end_at) D-7 이내(팀 전체)
+  const { data: clData, error: clErr } = await admin
+    .from("closing_services")
+    .select("university_name, service_name, pay_end_at, operator_name")
+    .not("pay_end_at", "is", null)
+    .gte("pay_end_at", `${todayYmd}T00:00:00+09:00`)
+    .lte("pay_end_at", `${limitYmd}T23:59:59+09:00`)
+    .order("pay_end_at", { ascending: true });
+  if (clErr) return { ok: false, message: `마감 조회 실패: ${clErr.message}` };
+  const closing = (clData ?? []) as ClosingItem[];
 
   const html = buildBriefingHtml({
     dateLabel: todayYmd,
     contracts,
     weekRange,
     schedule,
-    upcoming,
+    closing,
   });
 
   const details = {
     contractsDone: contracts.totalDone,
     contractsOngoing: contracts.totalOngoing,
     scheduleGroups: schedule.length,
-    upcoming: upcoming.length,
+    closing: closing.length,
   };
 
   if (dryRun) {
     return {
       ok: true,
-      message: `DRY-RUN — 브리핑 생성(발송 생략). 계약 완료 ${contracts.totalDone}·진행 ${contracts.totalOngoing}, 마감임박 ${upcoming.length}건`,
+      message: `DRY-RUN — 브리핑 생성(발송 생략). 계약 완료 ${contracts.totalDone}·진행 ${contracts.totalOngoing}, 마감임박 ${closing.length}건`,
       details,
     };
   }
@@ -126,7 +126,7 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
   }
   return {
     ok: true,
-    message: `팀 보고 브리핑 발송 완료 (마감임박 ${upcoming.length}건)`,
+    message: `팀 보고 브리핑 발송 완료 (마감임박 ${closing.length}건)`,
     details,
   };
 }
