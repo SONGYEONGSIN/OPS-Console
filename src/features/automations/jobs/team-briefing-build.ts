@@ -122,6 +122,13 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** 완료율 = 완료 / (완료+진행중). 모수 0이면 "—". 소수 1자리. */
+function completionPct(done: number, ongoing: number): string {
+  const total = done + ongoing;
+  if (total === 0) return "—";
+  return `${((done / total) * 100).toFixed(1)}%`;
+}
+
 /** 팀 보고 브리핑 Teams 메시지 HTML(contentType: html). */
 export function buildBriefingHtml(input: {
   dateLabel: string;
@@ -138,11 +145,11 @@ export function buildBriefingHtml(input: {
   lines.push("<br/><br/><b>■ 계약진행 현황</b>");
   for (const s of contracts.bySheet) {
     lines.push(
-      `<br/>· ${escapeHtml(s.sheet)}: 완료 ${s.done} · 진행중 ${s.ongoing}`,
+      `<br/>· ${escapeHtml(s.sheet)}: 완료 ${s.done} · 진행중 ${s.ongoing} (완료율 ${completionPct(s.done, s.ongoing)})`,
     );
   }
   lines.push(
-    `<br/><b>합계: 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing}</b>`,
+    `<br/><b>합계: 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료율 ${completionPct(contracts.totalDone, contracts.totalOngoing)})</b>`,
   );
 
   // 2. 팀업무 현황
