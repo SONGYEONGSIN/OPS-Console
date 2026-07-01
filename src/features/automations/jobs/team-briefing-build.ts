@@ -145,11 +145,13 @@ export function buildBriefingHtml(input: {
   lines.push("<br/><br/><b>■ 계약진행 현황</b>");
   for (const s of contracts.bySheet) {
     lines.push(
-      `<br/>· ${escapeHtml(s.sheet)}: 완료 ${s.done} · 진행중 ${s.ongoing} (완료율 ${completionPct(s.done, s.ongoing)})`,
+      `<br/>· ${escapeHtml(s.sheet)}: 총 ${s.done + s.ongoing} · 완료 ${s.done} · 진행중 ${s.ongoing} (완료 ${completionPct(s.done, s.ongoing)})`,
     );
   }
+  const totalAll = contracts.totalDone + contracts.totalOngoing;
+  lines.push("<br/>――――――――――――――――");
   lines.push(
-    `<br/><b>합계: 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료율 ${completionPct(contracts.totalDone, contracts.totalOngoing)})</b>`,
+    `<br/><b>합계: 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})</b>`,
   );
 
   // 2. 팀업무 현황
