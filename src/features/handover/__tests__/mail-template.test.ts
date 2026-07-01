@@ -66,7 +66,7 @@ describe("handover mail template", () => {
     expect(h).not.toContain("인계 메모");
   });
 
-  it("html — 인수인계 내용 <details> 6카테고리 + 구조화 필드 렌더 + URL 링크", () => {
+  it("html — 본문에는 상세 인수인계 내용(details) 미포함 — 첨부 HTML로 대체", () => {
     const h = buildHandoverMailHtml({
       ...base,
       contractInfo: {
@@ -74,18 +74,12 @@ describe("handover mail template", () => {
         type: "",
         progress: "",
         status: "",
-        memo: "참고 https://jinhaksa.sharepoint.com/x",
+        memo: "",
       },
     });
-    expect(h).toContain("인수인계 내용");
-    expect(h).toContain("<details");
-    expect(h).toContain("계약");
-    // 구조화 계약정보가 (미작성) 아닌 실내용으로
-    expect(h).toContain("원서접수 대행");
-    // URL은 클릭 가능한 <a>로
-    expect(h).toContain('<a href="https://jinhaksa.sharepoint.com/x"');
-    // 빈 필드는 (미작성)
-    expect(h).toContain("(미작성)");
+    expect(h).not.toContain("<details");
+    expect(h).not.toContain("원서접수 대행");
+    expect(h).toContain("첨부된 HTML 파일");
   });
 
   it("html — 브랜딩 통일: 헤더/푸터 + 'Folio'/'TEST'/'테스트' 부재", () => {

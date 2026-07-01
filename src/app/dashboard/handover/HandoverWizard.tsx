@@ -148,13 +148,15 @@ export function HandoverWizard({
       {/* 처리 중 — 화면 중앙 로딩 스피너 오버레이 */}
       {isPending && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-ink/35"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-ink/60"
           role="status"
           aria-live="polite"
           aria-label="처리 중"
         >
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-cream/30 border-t-cream" />
-          <span className="text-sm text-cream">처리 중…</span>
+          <div className="h-24 w-24 animate-spin rounded-full border-[7px] border-cream/25 border-t-cream" />
+          <span className="text-lg font-medium tracking-[0.04em] text-cream">
+            처리 중…
+          </span>
         </div>
       )}
       <ProgressBar step={step} />
@@ -528,7 +530,7 @@ function Step3({
           rows={3}
           maxLength={2000}
           placeholder="인계 시 참고할 메모"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink"
+          className="w-full border border-line bg-cream px-2 py-1 text-ink focus:border-ink focus:bg-white focus:outline-none"
         />
       </label>
 
@@ -706,9 +708,58 @@ function Step4({
 }) {
   return (
     <section className="flex flex-col items-center justify-center gap-4 py-12">
-      <div className="text-5xl" aria-hidden>
-        🎉
-      </div>
+      <svg
+        width="78"
+        height="78"
+        viewBox="0 0 64 64"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden
+      >
+        {/* popper 고깔 */}
+        <path d="M9 55 L23 33 L33 43 Z" className="fill-vermilion" />
+        <path
+          d="M9 55 L17 42 L24 47 L15 52 Z"
+          className="fill-vermilion opacity-40"
+        />
+        {/* 터지는 조각 */}
+        <circle cx="30" cy="15" r="3" className="fill-sage" />
+        <circle cx="49" cy="26" r="2.6" className="fill-vermilion" />
+        <circle cx="52" cy="40" r="3" className="fill-ink" />
+        <circle cx="41" cy="11" r="2.2" className="fill-sage" />
+        <rect
+          x="34"
+          y="23"
+          width="5.4"
+          height="5.4"
+          rx="1.2"
+          transform="rotate(24 36.7 25.7)"
+          className="fill-vermilion"
+        />
+        <rect
+          x="45"
+          y="33"
+          width="4.6"
+          height="4.6"
+          rx="1.1"
+          transform="rotate(-18 47.3 35.3)"
+          className="fill-sage"
+        />
+        <path
+          d="M31 21 q5 -7 11 -8"
+          className="stroke-sage"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d="M37 32 q7 -1 12 3"
+          className="stroke-ink"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </svg>
       <h3 className="text-xl font-bold text-ink">인수인계 완료</h3>
       <p className="max-w-md text-center text-sm text-ink-soft">
         <span className="font-medium text-ink">
@@ -721,7 +772,7 @@ function Step4({
         {!mailWarning && (
           <>
             <br />
-            메일이 발송되었고 PDF 인수인계 자료가 첨부되었습니다.
+            메일이 발송되었고 인수인계 자료(HTML)가 첨부되었습니다.
           </>
         )}
       </p>
@@ -736,7 +787,7 @@ function Step4({
       <button
         type="button"
         onClick={onRestart}
-        className="cursor-pointer border border-line bg-transparent px-5 py-2 text-sm tracking-[0.04em] text-ink hover:border-vermilion hover:text-vermilion"
+        className="cursor-pointer border border-line bg-transparent px-5 py-2 text-sm tracking-[0.04em] text-ink hover:border-ink hover:bg-ink hover:text-cream"
       >
         새 인계 시작
       </button>
