@@ -187,7 +187,7 @@ export async function sendHandoverMail(
     html,
     attachments: [
       {
-        name: `handover-${p.services.service_id}-${p.services.university_name}.html`,
+        name: `${p.services.university_name}-${p.services.application_type} ${p.services.service_name}-인수인계 확인서.html`,
         contentBytes: Buffer.from(attachmentHtml, "utf-8").toString("base64"),
         contentType: "text/html; charset=utf-8",
       },
