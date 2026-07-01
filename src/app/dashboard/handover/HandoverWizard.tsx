@@ -153,8 +153,8 @@ export function HandoverWizard({
           aria-live="polite"
           aria-label="처리 중"
         >
-          <div className="h-24 w-24 animate-spin rounded-full border-[7px] border-cream/25 border-t-cream" />
-          <span className="text-lg font-medium tracking-[0.04em] text-cream">
+          <div className="h-32 w-32 animate-spin rounded-full border-[9px] border-cream/25 border-t-cream" />
+          <span className="text-2xl font-semibold tracking-[0.04em] text-cream">
             처리 중…
           </span>
         </div>

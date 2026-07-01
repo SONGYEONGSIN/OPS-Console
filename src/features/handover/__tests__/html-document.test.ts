@@ -104,6 +104,23 @@ describe("handover html document (attachment)", () => {
     expect(h).toContain("1줄\n    들여쓴 2줄");
   });
 
+  it("컨텍 학교담당자 — 내선(ext) 표기, 휴대폰(phone) 미표기", () => {
+    const h = buildHandoverHtmlDocument({
+      ...base,
+      schoolContacts: [
+        {
+          name: "정대성",
+          jobTitle: "직원",
+          phone: "010-3171-5515",
+          ext: "051-510-3554",
+          email: "die@pusan.ac.kr",
+        },
+      ],
+    });
+    expect(h).toContain("051-510-3554");
+    expect(h).not.toContain("010-3171-5515");
+  });
+
   it("XSS escape", () => {
     const h = buildHandoverHtmlDocument({
       ...base,

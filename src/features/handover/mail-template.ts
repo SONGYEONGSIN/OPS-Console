@@ -17,6 +17,7 @@ export type HandoverMailContent = {
     name: string;
     jobTitle: string | null;
     phone: string | null;
+    ext: string | null;
     email: string | null;
   }[];
   paymentFee: { deadline: string; manager: string; memo: string };

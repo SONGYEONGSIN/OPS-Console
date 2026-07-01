@@ -122,7 +122,7 @@ function fieldValueHtml(
     return input.schoolContacts
       .map(
         (c) =>
-          `<div class="pplline">${escapeHtml(c.name)}<span class="ppldim">${c.jobTitle ? ` (${escapeHtml(c.jobTitle)})` : ""}${c.phone ? ` · ${escapeHtml(c.phone)}` : ""}${c.email ? ` · ${escapeHtml(c.email)}` : ""}</span></div>`,
+          `<div class="pplline">${escapeHtml(c.name)}<span class="ppldim">${c.jobTitle ? ` (${escapeHtml(c.jobTitle)})` : ""}${c.ext ? ` · ${escapeHtml(c.ext)}` : ""}${c.email ? ` · ${escapeHtml(c.email)}` : ""}</span></div>`,
       )
       .join("");
   }
@@ -277,7 +277,7 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   .seccount{font-size:11px;color:var(--muted);font-weight:600;}
   .fld{display:grid;grid-template-columns:80px 1fr;gap:14px;padding:8px 2px;}
   .fld + .fld{border-top:1px solid var(--washi-raised);}
-  .fldk{color:var(--vermilion-deep);font-size:12px;font-weight:700;}
+  .fldk{color:var(--ink);font-size:12px;font-weight:700;}
   .fldv{font-size:13px;line-height:1.75;overflow-wrap:anywhere;word-break:break-word;}
   .kvline{display:grid;grid-template-columns:44px 1fr;gap:10px;}
   .kvk{color:var(--muted);font-weight:600;}
