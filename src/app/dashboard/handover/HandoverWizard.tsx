@@ -491,14 +491,14 @@ function Step3({
         <dt className="text-muted">서비스</dt>
         <dd className="text-ink">
           {service.application_type ? (
-            <span className="mr-1 text-xs text-muted">
-              {service.application_type}
-            </span>
+            <>
+              <span className="font-medium">{service.application_type}</span>
+              <span className="text-muted"> · </span>
+            </>
           ) : null}
           <span className="font-medium">{service.university_name}</span>
-          <span className="ml-1 text-xs text-muted">
-            · {service.service_name}
-          </span>
+          <span className="text-muted"> · </span>
+          <span className="font-medium">{service.service_name}</span>
         </dd>
         <dt className="text-muted">인계자</dt>
         <dd className="text-ink">
