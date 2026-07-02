@@ -74,7 +74,7 @@ export function DevTestView({ row }: ViewProps) {
           items={[
             {
               term: "service_id",
-              desc: <span className="font-mono">{serviceId}</span>,
+              desc: serviceId,
             },
             { term: "대학명", desc: row.universityName ?? "-" },
             { term: "서비스명", desc: row.serviceName ?? "-" },
