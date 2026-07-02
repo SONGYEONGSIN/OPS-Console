@@ -68,7 +68,7 @@ describe("findSidebarSiblings", () => {
 describe("findSidebarParentGroup", () => {
   it("group 안 item — group label 반환", () => {
     expect(findSidebarParentGroup("/dashboard/services")).toBe("서비스사이클");
-    expect(findSidebarParentGroup("/dashboard/contacts")).toBe("고객 응대");
+    expect(findSidebarParentGroup("/dashboard/contacts")).toBe("고객응대");
   });
 
   it("section 직속 item — null 반환", () => {

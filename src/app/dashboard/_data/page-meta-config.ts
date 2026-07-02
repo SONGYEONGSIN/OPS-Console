@@ -91,11 +91,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "본인 프로필·권한·메일·외부 연동·시스템 정보를 한곳에서 확인합니다.",
   },
   "data-requests": {
-    headline: { accent: "고객 응대", title: "자료 요청" },
+    headline: { accent: "고객응대", title: "자료 요청" },
     description: "담당 서비스의 대학 연락처로 자료 요청 메일을 발송합니다.",
   },
   mailbox: {
-    headline: { accent: "고객 응대", title: "메일함" },
+    headline: { accent: "고객응대", title: "메일함" },
     description:
       "본인 Outlook 수신함을 확인하고 AI 회신 초안을 검토·발송합니다.",
   },

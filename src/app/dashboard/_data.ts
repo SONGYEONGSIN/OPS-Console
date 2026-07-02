@@ -71,14 +71,14 @@ export const sidebarSections: SbSection[] = [
       {
         kind: "item",
         ico: "⌬",
-        label: "백업 요청",
+        label: "백업요청",
         count: "",
         slug: "backup",
         pattern: "list",
       },
       {
         kind: "group",
-        label: "고객 응대",
+        label: "고객응대",
         count: "",
         defaultOpen: true,
         items: [
@@ -114,7 +114,7 @@ export const sidebarSections: SbSection[] = [
       },
       {
         kind: "group",
-        label: "자료 보관",
+        label: "자료보관",
         count: "",
         defaultOpen: true,
         items: [
