@@ -48,6 +48,15 @@ describe("SPECIAL_MAP — 운영 발견 alias", () => {
     expect(isNameMatchStrong("한양대학교", "국제관광대학원")).toBe(true);
   });
 
+  // 입금 거래내용 '명지특수대학원'(명지대학교 산하)도 명지대로 매핑.
+  it("명지특수대학원 → 명지대", () => {
+    expect(normalizeName("명지특수대학원")).toBe("명지대");
+  });
+
+  it("명지특수대학원 입금이 명지대학교 미수와 강매칭된다", () => {
+    expect(isNameMatchStrong("명지대학교", "명지특수대학원")).toBe(true);
+  });
+
   // 입금 거래내용 '한양인공지능융'(은행 표기 절단)도 한양대학교 산하 → 한양대.
   it("한양인공지능융 → 한양대", () => {
     expect(normalizeName("한양인공지능융")).toBe("한양대");
