@@ -34,17 +34,17 @@ describe("BackupTable", () => {
     expect(screen.getByText("2026-05-20 ~ 2026-05-25")).toBeInTheDocument();
     // 제목
     expect(screen.getByText("백업 요청 1")).toBeInTheDocument();
-    // 상태 헤더 + sent → 발송됨 배지
+    // 상태 헤더 + sent → 발송완료 배지
     expect(screen.getByText("상태")).toBeInTheDocument();
-    expect(screen.getByText("발송됨")).toBeInTheDocument();
+    expect(screen.getByText("발송완료")).toBeInTheDocument();
     // 발송일자 — KST 'yyyy-mm-dd HH:mm' (UTC 01:30 = KST 10:30 → 2026-05-26 10:30)
     expect(screen.getByText("2026-05-26 10:30")).toBeInTheDocument();
   });
 
-  it("mailStatus='scheduled'면 상태 칸에 '예약됨' 배지", () => {
+  it("mailStatus='scheduled'면 상태 칸에 '예약완료' 배지", () => {
     const row: ListRow = { ...sampleRow, mailStatus: "scheduled" };
     render(<BackupTable rows={[row]} selectedId={null} onSelect={() => {}} />);
-    expect(screen.getByText("예약됨")).toBeInTheDocument();
+    expect(screen.getByText("예약완료")).toBeInTheDocument();
   });
 
   it("mailSentAt 없으면 '—'", () => {

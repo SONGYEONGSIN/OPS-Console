@@ -5,18 +5,18 @@ import { ResendMailButton } from "./ResendMailButton";
 
 const MAIL_STATUS_LABEL = {
   pending: "대기",
-  scheduled: "예약됨",
+  scheduled: "예약완료",
   sending: "발송 중",
-  sent: "발송됨",
+  sent: "발송완료",
   mail_failed: "발송 실패",
   dry_run: "테스트",
 } as const;
 
 const MAIL_STATUS_TONE = {
   pending: "bg-washi-raised text-muted",
-  scheduled: "bg-washi-raised text-ink",
+  scheduled: "bg-vermilion text-cream",
   sending: "bg-washi-raised text-ink-soft",
-  sent: "bg-sage/15 text-sage",
+  sent: "bg-ink text-cream",
   mail_failed: "bg-vermilion/15 text-vermilion",
   dry_run: "bg-washi-raised text-ink-soft",
 } as const;

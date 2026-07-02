@@ -42,14 +42,14 @@ export function isWriteStartPast(iso: string | null | undefined, now: Date): boo
 function StatusBadge({ status }: { status?: "scheduled" | "sent" | null }) {
   if (status === "scheduled")
     return (
-      <span className="inline-block bg-washi-raised px-2 py-0.5 text-2xs text-ink">
-        예약됨
+      <span className="inline-block bg-vermilion px-2 py-0.5 text-2xs text-cream">
+        예약완료
       </span>
     );
   if (status === "sent")
     return (
-      <span className="inline-block bg-sage/15 px-2 py-0.5 text-2xs text-sage">
-        발송됨
+      <span className="inline-block bg-ink px-2 py-0.5 text-2xs text-cream">
+        발송완료
       </span>
     );
   return <span className="text-ink-soft">—</span>;
