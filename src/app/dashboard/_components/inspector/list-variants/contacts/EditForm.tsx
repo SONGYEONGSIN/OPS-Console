@@ -63,20 +63,16 @@ export function ContactsForm({
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">직함</span>
-          <input
-            aria-label="직함"
-            value={row.jobTitle ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, jobTitle: e.target.value || null })
-            }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
-            placeholder="팀장 / 과장 / 주임 / ..."
-          />
-        </label>
-      </div>
+      <label className="block text-xs">
+        <span className="mb-1 block text-muted">직함</span>
+        <input
+          aria-label="직함"
+          value={row.jobTitle ?? ""}
+          onChange={(e) => setRow({ ...row, jobTitle: e.target.value || null })}
+          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          placeholder="팀장 / 과장 / 주임 / ..."
+        />
+      </label>
 
       <div className="block text-xs">
         <span className="mb-1 block text-muted">대학명 (검색)</span>
