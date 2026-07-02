@@ -39,9 +39,13 @@ export default async function ContractsPage({
   const sheetResult = contractSheetEnum.safeParse(sp.sheet);
   const sheetFilter = sheetResult.success ? sheetResult.data : undefined;
 
-  const { rows: allContracts } = await listContracts({
+  const { rows: fetchedContracts } = await listContracts({
     sheet: sheetFilter,
   });
+  // 서비스여부 'Y'인 계약만 노출 (서비스 미연결·미완료 행 제외)
+  const allContracts = fetchedContracts.filter(
+    (r) => r.serviceActive.trim().toUpperCase() === "Y",
+  );
 
   // 검색 필터 — 대학명·넘버링 ilike (client-side, case-insensitive)
   const qRaw = (sp.q ?? "").trim();

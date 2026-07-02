@@ -21,8 +21,12 @@ async function countOf(
 /** SharePoint Excel 도메인 count — fetch 실패 시 null로 fallback (사이드바 빈 칸) */
 async function countContracts(): Promise<readonly [string, number | null]> {
   try {
-    const { total } = await listContracts();
-    return ["contracts", total];
+    // 테이블과 동일하게 서비스여부 'Y' 계약만 카운트
+    const { rows } = await listContracts();
+    const count = rows.filter(
+      (r) => r.serviceActive.trim().toUpperCase() === "Y",
+    ).length;
+    return ["contracts", count];
   } catch (e) {
     console.error("[menu-counts] contracts fail:", e);
     return ["contracts", null];
