@@ -28,7 +28,10 @@ export type TestableService = {
   university_type: string | null;
   admission_type: string | null;
   operator_name: string | null;
+  write_start_at: string | null;
   write_end_at: string | null;
+  pay_start_at: string | null;
+  pay_end_at: string | null;
 };
 
 /** 테스트 대상 서비스 목록 — closing_services(서비스 마감 실데이터) 라이트 컬럼 전체. */
@@ -37,7 +40,7 @@ export async function listTestableServices(): Promise<TestableService[]> {
   const { data, error } = await supabase
     .from("closing_services")
     .select(
-      "service_id, university_name, service_name, category, region, university_type, admission_type, operator_name, write_end_at",
+      "service_id, university_name, service_name, category, region, university_type, admission_type, operator_name, write_start_at, write_end_at, pay_start_at, pay_end_at",
     )
     .order("write_end_at", { ascending: false, nullsFirst: false });
   if (error || !data) return [];

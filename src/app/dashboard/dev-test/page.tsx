@@ -105,6 +105,10 @@ export default async function DevTestPage({
     universityType: s.university_type ?? "",
     applicationType: s.admission_type ?? "",
     operatorName: s.operator_name ?? "",
+    writeStartAt: s.write_start_at,
+    writeEndAt: s.write_end_at,
+    payStartAt: s.pay_start_at,
+    payEndAt: s.pay_end_at,
     entertestRuns: runsByService.get(s.service_id) ?? [],
     entertestAccount: myAccount,
   }));
