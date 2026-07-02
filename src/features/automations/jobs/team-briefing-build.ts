@@ -12,14 +12,18 @@ export type ContractSummary = {
   totalOngoing: number;
 };
 
-/** 시트별 완료/진행중 카운트 + 합계. 진행중 = status가 "계약완료"가 아닌 행. */
+/**
+ * 시트별 완료/진행중 카운트 + 합계.
+ * 완료 = status가 "계약완료"로 시작(예: "계약완료", "계약완료(영업)", "계약완료(운영)").
+ * 진행중 = 그 외 전부(공란·"메일발송"·"미완료" 등).
+ */
 export function aggregateContracts(
   rows: { sheet: string; status: string }[],
   sheets: readonly string[],
 ): ContractSummary {
   const bySheet: ContractAgg[] = sheets.map((sheet) => {
     const inSheet = rows.filter((r) => r.sheet === sheet);
-    const done = inSheet.filter((r) => r.status === "계약완료").length;
+    const done = inSheet.filter((r) => r.status.startsWith("계약완료")).length;
     return { sheet, done, ongoing: inSheet.length - done };
   });
   return {
@@ -47,7 +51,7 @@ export function nextWeekdayRange(todayYmd: string): {
   endYmd: string;
 } {
   const dow = ymdToUtc(todayYmd).getUTCDay(); // 0=일 … 6=토
-  const toMon = ((1 - dow + 7) % 7) || 7; // 0(월)이면 7 → 다음 주 월
+  const toMon = (1 - dow + 7) % 7 || 7; // 0(월)이면 7 → 다음 주 월
   const startYmd = addDaysYmd(todayYmd, toMon);
   return { startYmd, endYmd: addDaysYmd(startYmd, 4) };
 }
@@ -61,7 +65,11 @@ export type BriefEvent = {
   end_at?: string | null;
   all_day: boolean;
 };
-export type ScheduleGroup = { type: string; label: string; items: BriefEvent[] };
+export type ScheduleGroup = {
+  type: string;
+  label: string;
+  items: BriefEvent[];
+};
 
 /** 일정 날짜 표기 — 단일일 "MM-DD", 다중일 "MM-DD~DD"(같은 달) 또는 "MM-DD~MM-DD". */
 export function eventDateLabel(e: BriefEvent): string {
@@ -163,10 +171,7 @@ function completionPct(done: number, ongoing: number): string {
 function displayWidth(s: string): number {
   let w = 0;
   for (const ch of s) {
-    const wide =
-      /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦　-〿]/.test(
-        ch,
-      );
+    const wide = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦　-〿]/.test(ch);
     w += wide ? 2 : 1;
   }
   return w;
