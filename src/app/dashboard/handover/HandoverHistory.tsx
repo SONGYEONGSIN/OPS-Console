@@ -128,7 +128,7 @@ export function HandoverHistory({ rows, meEmail }: Props) {
                         type="button"
                         disabled={isPending}
                         onClick={() => handleCancel(r.id)}
-                        className="ml-1 cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:border-vermilion hover:text-vermilion disabled:opacity-50"
+                        className="ml-1 cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
                       >
                         취소
                       </button>
