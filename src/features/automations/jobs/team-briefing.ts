@@ -45,13 +45,15 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
   if (!dryRun && !chatId) {
     return {
       ok: true,
-      message: "Teams 채팅방 미설정 (TEAMS_CHAT_ID/TEAMS_NOTICE_CHAT_ID) — 전송 생략",
+      message:
+        "Teams 채팅방 미설정 (TEAMS_CHAT_ID/TEAMS_NOTICE_CHAT_ID) — 전송 생략",
     };
   }
   if (!dryRun && !sender) {
     return {
       ok: true,
-      message: "발신자 미설정 (TEAMS_BRIEFING_SENDER/TEAMS_NOTICE_SENDER) — 전송 생략",
+      message:
+        "발신자 미설정 (TEAMS_BRIEFING_SENDER/TEAMS_NOTICE_SENDER) — 전송 생략",
     };
   }
 
@@ -59,10 +61,14 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
   const weekRange = nextWeekdayRange(todayYmd);
   const limitYmd = addDaysYmd(todayYmd, UPCOMING_WINDOW_DAYS);
 
-  // 1. 계약진행 현황 — SharePoint Excel(Graph, cron-safe)
+  // 1. 계약진행 현황 — SharePoint Excel(Graph, cron-safe).
+  //    계약 테이블/사이드바 카운트와 동일하게 서비스여부 'Y' 계약만 집계.
   const { rows: contractRows } = await listContracts();
+  const activeContractRows = contractRows.filter(
+    (r) => (r.serviceActive ?? "").trim().toUpperCase() === "Y",
+  );
   const contracts = aggregateContracts(
-    contractRows.map((r) => ({ sheet: r.sheet, status: r.status })),
+    activeContractRows.map((r) => ({ sheet: r.sheet, status: r.status })),
     CONTRACT_SHEETS,
   );
 
