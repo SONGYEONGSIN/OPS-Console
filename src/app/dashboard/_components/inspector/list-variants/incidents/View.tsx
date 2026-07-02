@@ -19,7 +19,7 @@ import {
 const STATUS_TONE = {
   미처리: "bg-washi-raised text-muted",
   처리중: "bg-vermilion/15 text-vermilion",
-  처리완료: "bg-sage/15 text-sage",
+  처리완료: "bg-ink text-cream",
   보류: "bg-washi-raised text-ink-soft",
 } as const;
 

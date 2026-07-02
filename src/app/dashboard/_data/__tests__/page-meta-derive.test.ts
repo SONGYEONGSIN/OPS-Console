@@ -20,7 +20,7 @@ describe("derivePageMeta", () => {
     };
     const result = derivePageMeta("contacts", sidebarMeta);
     expect(result.headline.title).toBe("대학 연락처");
-    expect(result.headline.accent).toBe("고객 응대");
+    expect(result.headline.accent).toBe("고객응대");
     expect(labelOf(result.meta)).toContain("87건");
     // '자동 새로고침 30초'는 ListPattern 헤더에서 카운트다운으로 직접 표시 (PageMeta에서 제외)
     expect(result.meta?.[0].tone).toBe("accent"); // 첫 항목(시프트)이 accent
