@@ -7,12 +7,10 @@ const { sendTeamsMock, adminFrom, listContractsMock } = vi.hoisted(() => ({
     }),
   ),
   adminFrom: vi.fn(),
-  listContractsMock: vi.fn(
-    async () => ({
-      rows: [] as { sheet: string; status: string }[],
-      total: 0,
-    }),
-  ),
+  listContractsMock: vi.fn(async () => ({
+    rows: [] as { sheet: string; status: string; serviceActive: string }[],
+    total: 0,
+  })),
 }));
 
 vi.mock("@/lib/microsoft/teams", () => ({
@@ -49,10 +47,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   listContractsMock.mockResolvedValue({
     rows: [
-      { sheet: "4년제", status: "계약완료" },
-      { sheet: "4년제", status: "" },
+      { sheet: "4년제", status: "계약완료", serviceActive: "Y" },
+      { sheet: "4년제", status: "", serviceActive: "Y" },
+      // 서비스여부 N → 집계 제외
+      { sheet: "4년제", status: "계약완료", serviceActive: "N" },
     ],
-    total: 2,
+    total: 3,
   });
   adminFrom.mockImplementation((table: string) => {
     if (table === "schedule_events") return chain([]);
@@ -90,6 +90,9 @@ describe("runTeamBriefing", () => {
     expect(r.ok).toBe(true);
     expect(r.message).toContain("DRY-RUN");
     expect(r.details?.closing).toBe(1);
+    // 서비스여부 'Y' 2건만 집계(N 1건 제외) → 완료 1·진행중 1
+    expect(r.details?.contractsDone).toBe(1);
+    expect(r.details?.contractsOngoing).toBe(1);
     expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 
