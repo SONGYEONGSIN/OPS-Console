@@ -50,7 +50,7 @@ export function ContractsTable({ rows, selectedId, onSelect }: Props) {
                   {row.contractSheet ?? "-"}
                 </span>
               </td>
-              <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+              <td className="px-3 py-2 text-xs text-ink-soft">
                 {row.numbering || "-"}
               </td>
               <td className="px-3 py-2 font-medium text-ink">
