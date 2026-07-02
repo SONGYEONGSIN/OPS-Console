@@ -18,6 +18,19 @@ const STATUS_LABEL: Record<EntertestRunStatus, string> = {
   error: "오류",
 };
 
+/** ISO → KST 'YYYY-MM-DD'. 값 없으면 '-'. */
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
 function StatusBadge({ status }: { status: EntertestRunStatus }) {
   const tone =
     status === "done"
@@ -75,6 +88,14 @@ export function DevTestView({ row }: ViewProps) {
                 "-"
               ),
             },
+            {
+              term: "작성기간",
+              desc: `${fmtDate(row.writeStartAt)} ~ ${fmtDate(row.writeEndAt)}`,
+            },
+            {
+              term: "결제기간",
+              desc: `${fmtDate(row.payStartAt)} ~ ${fmtDate(row.payEndAt)}`,
+            },
           ]}
         />
       </Section>
@@ -114,7 +135,7 @@ export function DevTestView({ row }: ViewProps) {
           <button
             type="submit"
             disabled={acctPending}
-            className="shrink-0 cursor-pointer border border-line bg-paper px-3 py-1.5 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-50"
+            className="shrink-0 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
           >
             {account ? "수정" : "등록"}
           </button>
@@ -139,7 +160,7 @@ export function DevTestView({ row }: ViewProps) {
           <input
             readOnly
             value={testUrl}
-            className="w-full select-all border border-line-soft bg-cream px-2 py-1.5 text-sm text-ink-soft"
+            className="w-full select-all border border-line bg-cream px-2 py-1.5 text-sm text-ink-soft"
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
           <span className="text-xs text-muted">실행</span>
@@ -148,7 +169,7 @@ export function DevTestView({ row }: ViewProps) {
             <button
               type="submit"
               disabled={runPending || !accountReady}
-              className="cursor-pointer border border-ink bg-ink px-4 py-1.5 text-xs font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:text-cream/60"
+              className="cursor-pointer border border-ink bg-ink px-3 py-1.5 text-sm font-medium text-cream transition-colors hover:bg-vermilion disabled:cursor-not-allowed disabled:opacity-50"
             >
               {runPending ? "요청 중..." : "테스트 실행"}
             </button>
