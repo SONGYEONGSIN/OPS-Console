@@ -207,11 +207,11 @@ export function buildBriefingHtml(input: {
   lines.push(`<br/><b>${ruleFor(totalLine)}</b>`);
   lines.push(`<br/><b>${totalLine}</b>`);
 
-  // 2. 팀업무 현황
-  lines.push("<br/><br/><b>■ 팀업무 현황</b>");
+  // 2. 차주 팀 업무 현황 — 주간 범위는 섹션 헤더에.
   lines.push(
-    `<br/><b>· 다음주 일정 (${weekRange.startYmd} ~ ${weekRange.endYmd})</b>`,
+    `<br/><br/><b>■ 차주 팀 업무 현황 (${weekRange.startYmd} ~ ${weekRange.endYmd})</b>`,
   );
+  lines.push("<br/><b>· 다음주 일정</b>");
   if (schedule.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;예정된 일정 없음");
   } else {
@@ -223,16 +223,18 @@ export function buildBriefingHtml(input: {
     }
   }
 
-  lines.push(`<br/><b>· 서비스 마감 (7일 내) · 총 ${closing.length}건</b>`);
+  // 서비스 마감 — 앞에 빈 줄로 일정 섹션과 구분.
+  lines.push(`<br/><br/><b>· 서비스 마감 (7일 내) · 총 ${closing.length}건</b>`);
   if (closing.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
   } else {
     // 마감일별 그룹 — 날짜 헤더(건수) + 그 아래 대학·서비스·담당자.
+    // 그룹당 최대 10건 표시, 10건 초과 시 헤더 "10건+" · 앞 10건만 노출.
     for (const g of groupClosingByDate(closing)) {
-      lines.push(
-        `<br/>&nbsp;&nbsp;<b>[${g.date.slice(5)}] ${g.items.length}건</b>`,
-      );
-      for (const u of g.items) {
+      const shown = g.items.slice(0, 10);
+      const countLabel = g.items.length > 10 ? "10건+" : `${g.items.length}건`;
+      lines.push(`<br/>&nbsp;&nbsp;<b>[${g.date.slice(5)}] ${countLabel}</b>`);
+      for (const u of shown) {
         const op = u.operator_name ? ` (${escapeHtml(u.operator_name)})` : "";
         lines.push(
           `<br/>&nbsp;&nbsp;&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)}${op}`,

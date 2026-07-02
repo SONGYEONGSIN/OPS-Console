@@ -23,7 +23,7 @@ export function ContractsView({ row }: ViewProps) {
             {
               term: "넘버링",
               desc: (
-                <span className="font-mono text-xs">{row.numbering || "-"}</span>
+                <span className="text-xs">{row.numbering || "-"}</span>
               ),
             },
             { term: "대학·학교명", desc: row.name || "-" },

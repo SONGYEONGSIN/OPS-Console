@@ -206,11 +206,31 @@ describe("buildBriefingHtml", () => {
     // 완료 % — 4년제 1/(1+2)=33.3% + 총 개수 3
     expect(html).toContain("완료 33.3%");
     expect(html).toContain("총 3 · 완료 1 · 진행중 2");
-    expect(html).toContain("팀업무 현황");
+    expect(html).toContain("차주 팀 업무 현황");
     expect(html).toContain("건국대");
     expect(html).toContain("수시");
     // escape 적용
     expect(html).toContain("A&lt;&gt;&amp;");
     expect(html).not.toContain("A<>&");
+  });
+
+  it("마감 그룹이 10건 초과면 헤더 '10건+' + 앞 10건만 노출", () => {
+    const closing = Array.from({ length: 13 }, (_, i) => ({
+      university_name: `대학${i}`,
+      service_name: "s",
+      pay_end_at: "2026-07-03T07:00:00+09:00",
+      operator_name: "김",
+    }));
+    const html = buildBriefingHtml({
+      dateLabel: "2026-07-01",
+      contracts: { bySheet: [], totalDone: 0, totalOngoing: 0 },
+      weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
+      schedule: [],
+      closing,
+    });
+    expect(html).toContain("[07-03] 10건+");
+    expect(html).toContain("· 총 13건"); // 총계는 실제 건수
+    expect(html).toContain("대학9"); // 10번째(index 9)까지 노출
+    expect(html).not.toContain("대학10"); // 11번째부터 생략
   });
 });
