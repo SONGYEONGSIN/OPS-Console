@@ -65,9 +65,9 @@ function formatYmdHmKst(iso: string): string {
 /** 백업 mail_status → 목록 배지. backup/View.tsx 라벨·톤과 일치. */
 const MAIL_STATUS_BADGE: Record<string, { label: string; tone: string }> = {
   pending: { label: "대기", tone: "bg-washi-raised text-muted" },
-  scheduled: { label: "예약됨", tone: "bg-washi-raised text-ink" },
+  scheduled: { label: "예약완료", tone: "bg-vermilion text-cream" },
   sending: { label: "발송 중", tone: "bg-washi-raised text-ink-soft" },
-  sent: { label: "발송됨", tone: "bg-sage/15 text-sage" },
+  sent: { label: "발송완료", tone: "bg-ink text-cream" },
   mail_failed: { label: "발송 실패", tone: "bg-vermilion/15 text-vermilion" },
   dry_run: { label: "테스트", tone: "bg-washi-raised text-ink-soft" },
 };
