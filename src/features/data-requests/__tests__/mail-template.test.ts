@@ -14,12 +14,15 @@ describe("buildDefaultDataRequestText", () => {
     expect(subject).toContain("조선대학교");
     expect(subject).toContain("수시모집");
     expect(body).toContain("진학어플라이 송영신입니다");
-    expect(body).toContain("[요청 항목]");
+    expect(body).toContain("[요청 자료]");
     expect(body).toContain("모집요강");
-    expect(body).toContain("(작년 일정 : 2025.05.11 ~ 2025.06.02)");
+    expect(body).toContain("※ 작년 접수 일정 : 2025.05.11 ~ 2025.06.02");
+    // 회신 기한 = 작년 접수 시작(2025.05.11) - 7일 = 5월 4일
+    expect(body).toContain("5월 4일까지 회신 부탁드립니다");
+    expect(body).toContain("약 2주 정도 소요");
   });
 
-  it("일정이 비어있으면 작년 일정 라인 생략", () => {
+  it("일정이 비어있으면 작년 일정 라인·기한 생략", () => {
     const { body } = buildDefaultDataRequestText({
       operatorName: "송영신",
       universityName: "조선대학교",
@@ -27,6 +30,7 @@ describe("buildDefaultDataRequestText", () => {
       writeStart: "",
       writeEnd: "",
     });
-    expect(body).not.toContain("작년 일정");
+    expect(body).not.toContain("작년 접수 일정");
+    expect(body).toContain("아래 자료가 준비되시면 회신 부탁드립니다");
   });
 });

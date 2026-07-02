@@ -76,42 +76,43 @@ export function ContactsForm({
             placeholder="팀장 / 과장 / 주임 / ..."
           />
         </label>
-        <div className="block text-xs">
-          <span className="mb-1 block text-muted">대학명 (검색)</span>
-          <ListSearch
-            value={universityQuery || (row.universityName ?? "")}
-            onChange={(v) => {
-              setUniversityQuery(v);
-              setRow({ ...row, universityName: v });
-              setJustSelected(false);
-            }}
-            placeholder="대학명을 검색하거나 직접 입력"
-            ariaLabel="대학명"
-            size="sm"
-          />
-          {!justSelected && universityMatches.length > 0 && (
-            <ul
-              aria-label="대학명 검색 결과"
-              className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
-            >
-              {universityMatches.map((u) => (
-                <li key={u}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRow({ ...row, universityName: u });
-                      setUniversityQuery(u);
-                      setJustSelected(true);
-                    }}
-                    className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
-                  >
-                    {u}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      </div>
+
+      <div className="block text-xs">
+        <span className="mb-1 block text-muted">대학명 (검색)</span>
+        <ListSearch
+          value={universityQuery || (row.universityName ?? "")}
+          onChange={(v) => {
+            setUniversityQuery(v);
+            setRow({ ...row, universityName: v });
+            setJustSelected(false);
+          }}
+          placeholder="대학명을 검색하거나 직접 입력"
+          ariaLabel="대학명"
+          size="sm"
+        />
+        {!justSelected && universityMatches.length > 0 && (
+          <ul
+            aria-label="대학명 검색 결과"
+            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+          >
+            {universityMatches.map((u) => (
+              <li key={u}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRow({ ...row, universityName: u });
+                    setUniversityQuery(u);
+                    setJustSelected(true);
+                  }}
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
+                >
+                  {u}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -248,7 +249,9 @@ export function ContactsForm({
             type="button"
             onClick={() => {
               if (
-                window.confirm("이 연락처를 삭제하시겠습니까? 되돌릴 수 없습니다.")
+                window.confirm(
+                  "이 연락처를 삭제하시겠습니까? 되돌릴 수 없습니다.",
+                )
               ) {
                 onSave({ ...row, status: "deleted" });
               }
