@@ -203,7 +203,8 @@ export function buildBriefingHtml(input: {
   }
   const totalAll = contracts.totalDone + contracts.totalOngoing;
   const totalLine = `합계: 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})`;
-  lines.push(`<br/>${ruleFor(totalLine)}`);
+  // 구분선도 합계 라인과 동일하게 볼드 — 비볼드면 폭이 좁아 닫는 괄호에 못 미침
+  lines.push(`<br/><b>${ruleFor(totalLine)}</b>`);
   lines.push(`<br/><b>${totalLine}</b>`);
 
   // 2. 팀업무 현황
