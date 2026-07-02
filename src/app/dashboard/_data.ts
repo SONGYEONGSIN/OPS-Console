@@ -84,21 +84,21 @@ export const sidebarSections: SbSection[] = [
         items: [
           {
             ico: "·",
-            label: "자료 요청",
+            label: "자료요청",
             count: "",
             slug: "data-requests",
             pattern: "list",
           },
           {
             ico: "·",
-            label: "사고 보고",
+            label: "사고보고",
             count: "",
             slug: "incidents",
             pattern: "list",
           },
           {
             ico: "·",
-            label: "대학 연락처",
+            label: "대학연락처",
             count: "",
             slug: "contacts",
             pattern: "list",

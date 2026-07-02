@@ -91,7 +91,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "본인 프로필·권한·메일·외부 연동·시스템 정보를 한곳에서 확인합니다.",
   },
   "data-requests": {
-    headline: { accent: "고객응대", title: "자료 요청" },
+    headline: { accent: "고객응대", title: "자료요청" },
     description: "담당 서비스의 대학 연락처로 자료 요청 메일을 발송합니다.",
   },
   mailbox: {
