@@ -7,6 +7,7 @@ import {
   type EntertestActionState,
 } from "@/features/entertest/actions";
 import type { EntertestRunStatus } from "@/features/entertest/schemas";
+import { operatorNameByEmail } from "@/features/auth/operators";
 import type { ViewProps } from "../types";
 import { Section, DefList, Divider } from "../shared";
 
@@ -209,7 +210,9 @@ export function DevTestView({ row }: ViewProps) {
                     <span className="text-muted">
                       {run.requested_at.slice(0, 16).replace("T", " ")}
                     </span>
-                    <span className="text-ink-soft">{run.requested_by}</span>
+                    <span className="text-ink-soft">
+                      {operatorNameByEmail(run.requested_by)}
+                    </span>
                     {run.result && (
                       <span className="ml-auto text-ink">
                         {run.result.summary.pass}/{run.result.summary.total} 통과
