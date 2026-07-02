@@ -17,8 +17,8 @@ describe("buildDefaultDataRequestText", () => {
     expect(body).toContain("[요청 자료]");
     expect(body).toContain("모집요강");
     expect(body).toContain("※ 작년 접수 일정 : 2025.05.11 ~ 2025.06.02");
-    // 회신 기한 = 작년 접수 시작(2025.05.11) - 7일 = 5월 4일
-    expect(body).toContain("5월 4일까지 회신 부탁드립니다");
+    // 회신 기한 = 작년 접수 시작(2025.05.11) - 14일 = 4월 27일
+    expect(body).toContain("4월 27일까지 회신 부탁드립니다");
     expect(body).toContain("약 2주 정도 소요");
   });
 

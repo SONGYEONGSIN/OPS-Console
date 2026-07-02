@@ -1,12 +1,12 @@
 /**
- * 작년 접수 시작일(YYYY.MM.DD) 기준 -7일을 'M월 D일'로 반환 — 회신 기한 제안값.
+ * 작년 접수 시작일(YYYY.MM.DD) 기준 -14일(2주 전)을 'M월 D일'로 반환 — 회신 기한 제안값.
  * (올해 접수 시작일 데이터가 없어 작년 시작일의 월·일을 기준으로 삼는다. 운영자 편집 전제)
  */
 function reminderDeadline(writeStart: string): string {
   const m = writeStart.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
   if (!m) return "";
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  d.setDate(d.getDate() - 7);
+  d.setDate(d.getDate() - 14);
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
