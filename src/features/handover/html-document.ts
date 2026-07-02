@@ -229,7 +229,7 @@ export function buildHandoverHtmlDocument(input: HandoverHtmlInput): string {
   }
   *{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
-  body{margin:0;background:#d9d2c2;color:var(--ink);
+  body{margin:0;background:#f2efe8;color:var(--ink);
     font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     -webkit-font-smoothing:antialiased;line-height:1.6;}
   .sheet{max-width:900px;margin:24px auto;background:#fff;
