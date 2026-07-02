@@ -16,7 +16,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description: "대학별 운영/개발 배정·업무분장·가격정책을 조회합니다.",
   },
   outcomes: {
-    headline: { accent: "분석 · AI", title: "성과 리포트" },
+    headline: { accent: "분석 · AI", title: "성과리포트" },
     description:
       "8단계 평가 워크플로우로 목표·계획·평가를 한곳에서 관리합니다.",
   },
@@ -36,7 +36,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "바이브코딩·운영 노하우·트러블슈팅·협업·도구 사용법을 탭별로 정리한 운영부 공통 가이드입니다.",
   },
   services: {
-    headline: { accent: "서비스사이클", title: "서비스 목록" },
+    headline: { accent: "서비스사이클", title: "서비스목록" },
     description:
       "현재 운영 중인 서비스 목록을 확인하고 인스펙터에서 상세 지표를 봅니다.",
   },
@@ -81,7 +81,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "사내 데이터(사고·인수인계·TIP·백업·연락처·서비스)를 자연어로 검색합니다. Gemini가 근거와 함께 답변합니다.",
   },
   automations: {
-    headline: { accent: "AI & 자동화", title: "자동화 실행" },
+    headline: { accent: "AI & 자동화", title: "자동화실행" },
     description:
       "운영 자동화 작업을 수동으로 실행합니다. admin 전용 — quota를 소모하므로 신중히 사용합니다.",
   },
