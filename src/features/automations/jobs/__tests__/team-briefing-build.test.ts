@@ -12,19 +12,20 @@ import {
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
 
 describe("aggregateContracts", () => {
-  it("시트별 완료/진행중 카운트 + 합계 (진행중 = status가 계약완료가 아닌 행)", () => {
+  it("완료 = '계약완료' 접두(접미사 포함), 그 외는 진행중", () => {
     const rows = [
       { sheet: "4년제", status: "계약완료" },
-      { sheet: "4년제", status: "" },
-      { sheet: "전문대", status: "계약완료" },
+      { sheet: "4년제", status: "계약완료(영업)" }, // 접미사도 완료
+      { sheet: "4년제", status: "메일발송" }, // 완료 아님 → 진행중
+      { sheet: "전문대", status: "계약완료(운영)" },
       { sheet: "기타", status: "진행" },
     ];
     const r = aggregateContracts(rows, SHEETS);
     const byName = Object.fromEntries(r.bySheet.map((s) => [s.sheet, s]));
-    expect(byName["4년제"]).toEqual({ sheet: "4년제", done: 1, ongoing: 1 });
+    expect(byName["4년제"]).toEqual({ sheet: "4년제", done: 2, ongoing: 1 });
     expect(byName["전문대"]).toEqual({ sheet: "전문대", done: 1, ongoing: 0 });
     expect(byName["기타"]).toEqual({ sheet: "기타", done: 0, ongoing: 1 });
-    expect(r.totalDone).toBe(2);
+    expect(r.totalDone).toBe(3);
     expect(r.totalOngoing).toBe(2);
     // 5개 시트 모두 순서대로 포함
     expect(r.bySheet.map((s) => s.sheet)).toEqual([...SHEETS]);
@@ -78,10 +79,30 @@ describe("eventDateLabel", () => {
 describe("groupScheduleInRange", () => {
   it("범위 내 일정만 유형별 그룹(범위 밖 제외)", () => {
     const events = [
-      { type: "shift", title: "A 근무", start_at: "2026-07-06T00:00:00+09:00", all_day: true },
-      { type: "leave", title: "B 휴가", start_at: "2026-07-08T00:00:00+09:00", all_day: true },
-      { type: "shift", title: "C 근무", start_at: "2026-07-07T00:00:00+09:00", all_day: true },
-      { type: "shift", title: "범위밖", start_at: "2026-07-20T00:00:00+09:00", all_day: true },
+      {
+        type: "shift",
+        title: "A 근무",
+        start_at: "2026-07-06T00:00:00+09:00",
+        all_day: true,
+      },
+      {
+        type: "leave",
+        title: "B 휴가",
+        start_at: "2026-07-08T00:00:00+09:00",
+        all_day: true,
+      },
+      {
+        type: "shift",
+        title: "C 근무",
+        start_at: "2026-07-07T00:00:00+09:00",
+        all_day: true,
+      },
+      {
+        type: "shift",
+        title: "범위밖",
+        start_at: "2026-07-20T00:00:00+09:00",
+        all_day: true,
+      },
     ];
     const g = groupScheduleInRange(events, "2026-07-06", "2026-07-10");
     const shift = g.find((x) => x.type === "shift");
@@ -95,9 +116,24 @@ describe("groupScheduleInRange", () => {
 describe("groupClosingByDate", () => {
   it("마감일별로 묶어 날짜 오름차순", () => {
     const g = groupClosingByDate([
-      { university_name: "A대", service_name: "s1", pay_end_at: "2026-07-03T07:00:00+09:00", operator_name: "김" },
-      { university_name: "B대", service_name: "s2", pay_end_at: "2026-07-01T07:00:00+09:00", operator_name: "이" },
-      { university_name: "C대", service_name: "s3", pay_end_at: "2026-07-03T07:00:00+09:00", operator_name: "박" },
+      {
+        university_name: "A대",
+        service_name: "s1",
+        pay_end_at: "2026-07-03T07:00:00+09:00",
+        operator_name: "김",
+      },
+      {
+        university_name: "B대",
+        service_name: "s2",
+        pay_end_at: "2026-07-01T07:00:00+09:00",
+        operator_name: "이",
+      },
+      {
+        university_name: "C대",
+        service_name: "s3",
+        pay_end_at: "2026-07-03T07:00:00+09:00",
+        operator_name: "박",
+      },
     ]);
     expect(g.map((x) => x.date)).toEqual(["2026-07-01", "2026-07-03"]);
     expect(g[1].items.map((i) => i.university_name)).toEqual(["A대", "C대"]);
@@ -112,8 +148,18 @@ describe("buildBriefingHtml", () => {
       weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
       schedule: [],
       closing: [
-        { university_name: "가천대", service_name: "외국인 3차", pay_end_at: "2026-07-01T07:00:00+09:00", operator_name: "김유민" },
-        { university_name: "단국대", service_name: "후기", pay_end_at: "2026-07-03T07:00:00+09:00", operator_name: "정윤나" },
+        {
+          university_name: "가천대",
+          service_name: "외국인 3차",
+          pay_end_at: "2026-07-01T07:00:00+09:00",
+          operator_name: "김유민",
+        },
+        {
+          university_name: "단국대",
+          service_name: "후기",
+          pay_end_at: "2026-07-03T07:00:00+09:00",
+          operator_name: "정윤나",
+        },
       ],
     });
     expect(html).toContain("· 총 2건");
@@ -128,7 +174,12 @@ describe("buildBriefingHtml", () => {
         type: "shift",
         label: "근무",
         items: [
-          { type: "shift", title: "A<>&", start_at: "2026-07-06T00:00:00+09:00", all_day: true },
+          {
+            type: "shift",
+            title: "A<>&",
+            start_at: "2026-07-06T00:00:00+09:00",
+            all_day: true,
+          },
         ],
       },
     ];
