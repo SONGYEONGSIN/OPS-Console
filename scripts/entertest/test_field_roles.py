@@ -51,6 +51,16 @@ class OtherRoleTest(unittest.TestCase):
         grad = role_value("DATEFIELD", {"korname": "졸업일자"})
         self.assertLess(int(enter), int(grad))
 
+    def test_date_yyyymm_when_maxlength_6(self):
+        # maxlength=6 → YYYYMM(6자리), 그 외 → YYYYMMDD(8자리)
+        self.assertEqual(len(role_value("DATEFIELD", {"maxlength": "6"})), 6)
+        self.assertEqual(len(role_value("DATEFIELD", {"maxlength": "8"})), 8)
+        # 6자리에서도 졸업>입학 순서 유지
+        e = role_value("DATEFIELD", {"maxlength": "6", "korname": "입학"})
+        g = role_value("DATEFIELD", {"maxlength": "6", "korname": "졸업"})
+        self.assertLess(int(e), int(g))
+        self.assertEqual(len(e), 6)
+
     def test_date_by_id_hint(self):
         self.assertLess(
             int(role_value("DATEFIELD", {"idref": "txtStartDate"})),

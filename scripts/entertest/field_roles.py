@@ -28,13 +28,15 @@ def role_value(jwtype: str, attrs: dict) -> str | None:
         return "test@test.com"
 
     if jt == "DATEFIELD":
+        # maxlength로 포맷 구분: 6=YYYYMM(고교 졸업일 등), 그 외=YYYYMMDD(8).
         # 졸업일자 > 입학일자 제약(검증) → korname/id로 입학/졸업 구분해 순서 보장.
+        six = str(attrs.get("maxlength") or "") == "6"
         hint = (attrs.get("korname") or "") + (attrs.get("idref") or attrs.get("id") or "")
         if any(k in hint for k in ("졸업", "Gradut", "End")):
-            return "20220228"  # 졸업(늦은 날짜)
+            return "202202" if six else "20220228"  # 졸업(늦은 날짜)
         if any(k in hint for k in ("입학", "Enter", "Start", "재학")):
-            return "20180302"  # 입학(이른 날짜)
-        return "20200228"  # YYYYMMDD (maxlength=8) 기본
+            return "201803" if six else "20180302"  # 입학(이른 날짜)
+        return "202002" if six else "20200228"  # 기본
 
     if jt in ("SEARCHFIELD", "FILEFIELD"):
         return None  # 특수 처리 — 호출부가 select_search_result / upload_* 위임
