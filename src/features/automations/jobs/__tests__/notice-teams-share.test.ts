@@ -81,6 +81,33 @@ describe("runNoticeTeamsShare", () => {
     expect(r.details?.shared).toBe(1);
   });
 
+  it("각 공지를 작성자(author_email) 명의로 발송한다 (ys1114/alcure23)", async () => {
+    wireSelect([
+      {
+        id: "n1",
+        title: "공지A",
+        body: "b",
+        owner_label: "운영부",
+        author_email: "alcure23@jinhakapply.com",
+      },
+      {
+        id: "n2",
+        title: "공지B",
+        body: "b",
+        owner_label: "운영부",
+        author_email: "ys1114@jinhakapply.com",
+      },
+    ]);
+    await runNoticeTeamsShare();
+    expect(sendTeamsMock).toHaveBeenCalledTimes(2);
+    expect(sendTeamsMock.mock.calls[0][0].operatorEmail).toBe(
+      "alcure23@jinhakapply.com",
+    );
+    expect(sendTeamsMock.mock.calls[1][0].operatorEmail).toBe(
+      "ys1114@jinhakapply.com",
+    );
+  });
+
   it("공지일(announce_on)이 오늘 이하 또는 null인 건만 조회한다", async () => {
     wireSelect([{ id: "n1", title: "t", body: "b", owner_label: "운영부" }]);
     await runNoticeTeamsShare();

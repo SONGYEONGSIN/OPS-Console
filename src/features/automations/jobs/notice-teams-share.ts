@@ -22,8 +22,8 @@ export function buildNoticeMessage(n: {
 /**
  * 공지사항(posts.domain='notice') 중 미공유분을 Teams 그룹채팅에 발송한다.
  * - 채팅방: TEAMS_NOTICE_CHAT_ID (공지 전용). 미설정 시 발송 생략(차주보고 방으로 폴백 안 함)
- * - 발신 명의: TEAMS_NOTICE_SENDER, 미설정 시 기본값 ys1114@jinhakapply.com
- *   (공지 등록 계정 ys1114/alcure23 중 하나. env로 오버라이드 가능)
+ * - 발신 명의: 각 공지의 작성자(posts.author_email)로 발송 (ys1114/alcure23 등 등록 계정).
+ *   author_email 없으면 TEAMS_NOTICE_SENDER, 그것도 없으면 기본값 ys1114@jinhakapply.com.
  * - 멱등: 발송 성공한 공지만 notice_shared_at 기록 → 다음 run에서 제외. 실패분은 재시도.
  */
 const NOTICE_SENDER_DEFAULT = "ys1114@jinhakapply.com";
@@ -46,7 +46,7 @@ export async function runNoticeTeamsShare(): Promise<AutomationRunResult> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("posts")
-    .select("id, title, body")
+    .select("id, title, body, author_email")
     .eq("domain", "notice")
     .is("notice_shared_at", null)
     .or(`announce_on.is.null,announce_on.lte.${todayKst}`)
@@ -71,7 +71,9 @@ export async function runNoticeTeamsShare(): Promise<AutomationRunResult> {
         title: n.title as string,
         body: (n.body as string | null) ?? null,
       });
-      await sendTeamsChatMessage({ operatorEmail: sender, chatId, html });
+      // 각 공지를 작성자 명의로 발송 — 작성자 없으면 기본 발신자(sender)로.
+      const noticeSender = (n.author_email as string | null) || sender;
+      await sendTeamsChatMessage({ operatorEmail: noticeSender, chatId, html });
       const { error: upErr } = await admin
         .from("posts")
         .update({ notice_shared_at: new Date().toISOString() })
