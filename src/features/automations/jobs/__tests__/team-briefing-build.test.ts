@@ -214,7 +214,7 @@ describe("buildBriefingHtml", () => {
     expect(html).not.toContain("A<>&");
   });
 
-  it("마감 그룹이 10건 초과면 헤더 '10건+' + 앞 10건만 노출", () => {
+  it("마감 그룹이 10건 초과면 헤더 '10건+ (전체 N건)' + 앞 10건만 노출", () => {
     const closing = Array.from({ length: 13 }, (_, i) => ({
       university_name: `대학${i}`,
       service_name: "s",
@@ -228,7 +228,7 @@ describe("buildBriefingHtml", () => {
       schedule: [],
       closing,
     });
-    expect(html).toContain("[07-03] 10건+");
+    expect(html).toContain("[07-03] 10건+ (전체 13건)"); // 캡 라벨에 전체 개수
     expect(html).toContain("· 총 13건"); // 총계는 실제 건수
     expect(html).toContain("대학9"); // 10번째(index 9)까지 노출
     expect(html).not.toContain("대학10"); // 11번째부터 생략
