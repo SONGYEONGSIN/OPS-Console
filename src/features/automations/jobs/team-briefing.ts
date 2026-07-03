@@ -28,16 +28,16 @@ function addDaysYmd(ymd: string, n: number): string {
 /**
  * 팀 보고 브리핑 — 매주 금요일 Teams 그룹채팅에 계약진행/팀업무 현황 스냅샷 발송.
  * cron 실행(세션 없음)이라 Supabase는 admin client로 직접 조회한다.
- * 방: 공지와 동일한 TEAMS_NOTICE_CHAT_ID(공지 방) 우선 → 없으면 TEAMS_CHAT_ID(차주보고 방) 폴백.
+ * 방: 공지와 동일한 TEAMS_NOTICE_CHAT_ID(공지 방)만 사용 — 미설정 시 발송 생략(로그만).
+ *   차주보고 방(TEAMS_CHAT_ID)으로 폴백하지 않는다.
  * 발신: TEAMS_BRIEFING_SENDER → TEAMS_NOTICE_SENDER → 없으면 기본값 ys1114@jinhakapply.com.
  * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 집계 결과만.
  */
 const BRIEFING_SENDER_DEFAULT = "ys1114@jinhakapply.com";
 
 export async function runTeamBriefing(): Promise<AutomationRunResult> {
-  // 공지 Teams 공유와 동일한 방으로 발송 — TEAMS_NOTICE_CHAT_ID 우선.
-  const chatId =
-    process.env.TEAMS_NOTICE_CHAT_ID || process.env.TEAMS_CHAT_ID || "";
+  // 공지 Teams 공유와 동일한 방(공지 방)만 사용 — 차주보고 방으로 폴백 안 함.
+  const chatId = process.env.TEAMS_NOTICE_CHAT_ID || "";
   const sender =
     process.env.TEAMS_BRIEFING_SENDER ||
     process.env.TEAMS_NOTICE_SENDER ||
@@ -46,12 +46,11 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
     process.env.TEAM_BRIEFING_DRY_RUN === "true" ||
     process.env.MAIL_DRY_RUN === "true";
 
-  // 발송 시에만 방 env 필요 — 드라이런은 집계까지 수행해 결과를 확인할 수 있게 한다.
+  // 방 미설정이면 발송하지 않고 로그만 남긴다(차주보고 방 폴백 없음). 드라이런은 집계까지 수행.
   if (!dryRun && !chatId) {
     return {
       ok: true,
-      message:
-        "Teams 채팅방 미설정 (TEAMS_CHAT_ID/TEAMS_NOTICE_CHAT_ID) — 전송 생략",
+      message: "Teams 채팅방 미설정 (TEAMS_NOTICE_CHAT_ID) — 발송 생략(로그만)",
     };
   }
 
