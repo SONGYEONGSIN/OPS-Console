@@ -510,8 +510,10 @@ function _vis(x){ var e=x.querySelector('input,select,textarea'); return !!(e &&
 function _incomplete(x){
   var rs=x.querySelectorAll('input[type=radio]'); if(rs.length) return !Array.prototype.some.call(rs,function(r){return r.checked;});
   var cs2=x.querySelectorAll('input[type=checkbox]'); if(cs2.length) return !Array.prototype.some.call(cs2,function(c){return c.checked;});
-  var sel=x.querySelector('select'); if(sel) return sel.selectedIndex<=0;
+  // text를 select보다 먼저 검사: SCOREFIELD는 점수 text + Max select를 함께 가지는데, broad-fill이
+  // Max select를 채우면 select-먼저 검사 시 점수 text가 비어도 '완료'로 오판(전적대학 평점평균 반복 원인).
   var t=x.querySelector('input[type=text],input[inputmode],textarea,input:not([type])'); if(t) return !t.value;
+  var sel=x.querySelector('select'); if(sel) return sel.selectedIndex<=0;
   return true;
 }
 function _pick(list){ var v=list.filter(_vis); return v.filter(_incomplete)[0] || v[0] || list[0] || null; }
