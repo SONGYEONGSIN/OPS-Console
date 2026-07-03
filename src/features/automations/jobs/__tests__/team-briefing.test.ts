@@ -67,17 +67,18 @@ beforeEach(() => {
       ]);
     return chain([]);
   });
-  vi.stubEnv("TEAMS_CHAT_ID", "chat-1");
+  vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "chat-1"); // 방 소스(공지 방)
+  vi.stubEnv("TEAMS_CHAT_ID", ""); // 차주보고 방 — 브리핑 미사용
   vi.stubEnv("TEAMS_BRIEFING_SENDER", "ops@x.com");
-  vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
   vi.stubEnv("TEAMS_NOTICE_SENDER", "");
   vi.stubEnv("TEAM_BRIEFING_DRY_RUN", "");
   vi.stubEnv("MAIL_DRY_RUN", "");
 });
 
 describe("runTeamBriefing", () => {
-  it("TEAMS_CHAT_ID 미설정 시 발송 생략", async () => {
-    vi.stubEnv("TEAMS_CHAT_ID", "");
+  it("공지 방(TEAMS_NOTICE_CHAT_ID) 미설정이면 발송 생략(로그만) — 차주보고 방 폴백 안 함", async () => {
+    vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
+    vi.stubEnv("TEAMS_CHAT_ID", "chat-1"); // 있어도 폴백 X
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
     expect(r.message).toContain("미설정");
@@ -107,9 +108,9 @@ describe("runTeamBriefing", () => {
     expect(arg.html).toContain("건국대");
   });
 
-  it("수신 방은 공지 방(TEAMS_NOTICE_CHAT_ID) 우선", async () => {
+  it("수신 방은 공지 방(TEAMS_NOTICE_CHAT_ID)만 사용 (차주보고 방 무시)", async () => {
     vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "19:notice-room@thread.v2");
-    vi.stubEnv("TEAMS_CHAT_ID", "chat-1"); // 있어도 공지 방 우선
+    vi.stubEnv("TEAMS_CHAT_ID", "chat-1"); // 무시됨
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
     expect(sendTeamsMock).toHaveBeenCalledTimes(1);
