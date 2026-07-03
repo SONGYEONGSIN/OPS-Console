@@ -48,6 +48,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from field_roles import role_value  # jwtype role 레지스트리 (범용 엔진 2단계)
+
 RUN_ID = os.getenv("ENTERTEST_RUN_ID", "")
 TARGET_URL = os.getenv("ENTERTEST_TARGET_URL", "")
 # 대역(범위) "jt29001~jt29005"로 등록 가능. ID=PW 동일.
@@ -506,17 +508,23 @@ var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
 if(jt==='SEARCHFIELD' || sid) return 'SEARCH:'+sid;  // 파이썬이 select_search_result 호출
 function fire(el){ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
-// PHONEFIELD: JX PhoneFnc 정규식이 랜드라인/휴대를 구분한다(해독, default.js PhoneFnc):
-//   phone(랜드라인) /^(02|0[3-9][0-9])(...)([0-9]{4})$/  → 0215881588(02-1588-1588)
-//   mobile(휴대)    /^(010)([0-9]{4})([0-9]{4})$/         → 01012345678
-// '010…'은 landline 정규식 불합격 → 전화번호(Telephone) 필드가 무한 반복하던 근본 원인.
-if(jt==='PHONEFIELD'){
-  var pv=(field.getAttribute('data-phone-validate')||'').toLowerCase();
-  var pval=(pv.indexOf('phone')>-1 && pv.indexOf('mobile')<0) ? '0215881588' : '01012345678';
-  var pin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
-  if(pin){ pin.removeAttribute('readonly'); pin.value=pval; fire(pin);
-    pin.dispatchEvent(new Event('blur',{bubbles:true}));  // PhoneFnc 재포맷 + IsComplete
-    return (pin.id||pin.name||'phone')+' = '+pval+' (pv='+pv+')'; }
+// ADDRESSFIELD: 우편번호 검색 팝업 대신 JX(name).Set(...)로 RoadData 세팅(해독):
+//   저장 핸들러 ADDRESS.text()가 this.RoadData(null)에 ROADJUSOETC를 쓰다 크래시하던 원인 해소.
+if(jt==='ADDRESSFIELD'){
+  var an=field.getAttribute('name')||'';
+  try{ if(window.JX && an){ JX(an).Set({BASEAREA:'06236',ROADJUSO:'서울특별시 테헤란로 1',
+    OLDJUSO1:'서울특별시 역삼동 1',ROADJUSOETC:'101',REGION:'서울'}); } }catch(e){}
+  var det=field.querySelector("input[id$='RoadJusoEtc'],input[name$='RoadJusoEtc']");
+  if(det){ det.removeAttribute('readonly'); det.value='101'; fire(det); det.dispatchEvent(new Event('blur',{bubbles:true})); }
+  return an+' = JX.Set(addr)+detail';
+}
+// 값-role(PHONE/EMAIL/DATE): 값 결정은 파이썬 field_roles.role_value(단일 소스·단위테스트).
+// JS는 대상 input과 jwtype·data-* 신호만 넘기고, 파이썬이 값을 계산해 _SET_VALUE_JS로 주입한다.
+if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
+  var vin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
+  if(vin){ return 'ROLE:'+JSON.stringify({id:vin.id||vin.name, jwtype:jt,
+    attrs:{'data-phone-validate':field.getAttribute('data-phone-validate')||'',
+           'maxlength':vin.getAttribute('maxlength')||''}}); }
 }
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
@@ -524,7 +532,9 @@ if(radios.length){ var pick=null;
   pick=pick||radios[0]; pick.checked=true; try{ pick.click(); }catch(e){} fire(pick);
   return (pick.id||pick.name||'radio')+' = checked('+pick.value+')'; }
 var checks=field.querySelectorAll('input[type=checkbox]');
-if(checks.length){ var n=0; checks.forEach(function(c){ if(!c.checked){ c.checked=true; try{c.click()}catch(e){} fire(c); n++; } }); return 'checkbox x'+n; }
+// 체크박스는 click이 토글이므로 checked=true 후 click하면 도로 해제된다(반복 원인).
+// click 먼저(자연 체크 + onclick 핸들러) → 그래도 미체크면 force → fire.
+if(checks.length){ var n=0; checks.forEach(function(c){ if(!c.checked){ try{c.click()}catch(e){} if(!c.checked) c.checked=true; fire(c); n++; } }); return 'checkbox x'+n; }
 var sel=field.querySelector('select');
 if(sel){ if(sel.options.length>1) sel.selectedIndex=1; fire(sel); return (sel.id||'select')+' = idx1'; }
 var txt=field.querySelector('input[type=text],input[type=tel],input[type=number],input:not([type]),textarea,input[type=hidden]');
@@ -533,12 +543,42 @@ return null;
 """
 
 
+# 값-role 주입: id/name으로 input을 찾아 값 세팅 + input/change/blur(PhoneFnc 재포맷·검증).
+_SET_VALUE_JS = r"""
+var el=document.getElementById(arguments[0]) || (document.getElementsByName(arguments[0])[0]);
+if(!el) return false;
+el.removeAttribute('readonly'); el.value=arguments[1];
+el.dispatchEvent(new Event('input',{bubbles:true}));
+el.dispatchEvent(new Event('change',{bubbles:true}));
+el.dispatchEvent(new Event('blur',{bubbles:true}));
+return true;
+"""
+
+
 def _force_fill_for_message(driver, msg):
-    """검증 모달 메시지가 지목한 필드를 찾아 force-fill. 매칭 안 되면 None."""
+    """검증 모달 메시지가 지목한 필드를 찾아 force-fill. 매칭 안 되면 None.
+
+    값-role(ROLE: 마커)은 field_roles.role_value로 값을 결정 후 주입(구조 role은 JS 내부 처리).
+    """
     try:
-        return driver.execute_script(_FORCE_FILL_JS, msg)
+        r = driver.execute_script(_FORCE_FILL_JS, msg)
     except Exception:  # noqa: BLE001
         return None
+    if isinstance(r, str) and r.startswith("ROLE:"):
+        try:
+            desc = json.loads(r[len("ROLE:"):])
+        except Exception:  # noqa: BLE001
+            return None
+        v = role_value(desc.get("jwtype", ""), desc.get("attrs") or {})
+        if v is None:
+            return None
+        fid = desc.get("id") or ""
+        try:
+            ok = driver.execute_script(_SET_VALUE_JS, fid, v)
+        except Exception:  # noqa: BLE001
+            return None
+        return f"{fid} = {v} (role={desc.get('jwtype')})" if ok else None
+    return r
 
 
 # SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정):
