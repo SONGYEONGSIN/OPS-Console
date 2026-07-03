@@ -500,14 +500,23 @@ function val(el){ var id=el.id||'';
 // requiredalert == alert 메시지(정확 일치) → fuzzy 라벨 매칭(엉뚱한 그룹 선택 버그) 제거.
 var raw=(arguments[0]||'').trim();
 var field=null;
-// 같은 requiredalert를 여러 필드가 공유(NotUse 숨김 변형 + 실제 활성 필드)한다 → 내부 입력이
-// 보이는(활성) 래퍼를 우선 선택. 전부 숨김이면 첫 매치로 폴백(원래 동작).
+// 같은 requiredalert를 여러 필드가 공유한다(NotUse 숨김 변형 + 활성 필드, 그리고 편입 등으로 나타난
+// 전적대학 섹션의 동일 라벨 필드). 이미 채워진(complete) 것 말고 → 보이는(활성) + 미완료(incomplete)
+// 래퍼를 우선 선택. 전부 완료/숨김이면 폴백.
 function _vis(x){ var e=x.querySelector('input,select,textarea'); return !!(e && (e.offsetParent!==null || e.getClientRects().length>0)); }
+function _incomplete(x){
+  var rs=x.querySelectorAll('input[type=radio]'); if(rs.length) return !Array.prototype.some.call(rs,function(r){return r.checked;});
+  var cs2=x.querySelectorAll('input[type=checkbox]'); if(cs2.length) return !Array.prototype.some.call(cs2,function(c){return c.checked;});
+  var sel=x.querySelector('select'); if(sel) return sel.selectedIndex<=0;
+  var t=x.querySelector('input[type=text],input[inputmode],textarea,input:not([type])'); if(t) return !t.value;
+  return true;
+}
+function _pick(list){ var v=list.filter(_vis); return v.filter(_incomplete)[0] || v[0] || list[0] || null; }
 try{ var ms=Array.prototype.slice.call(document.querySelectorAll('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'));
-  field = ms.filter(_vis)[0] || ms[0] || null; }catch(e){}
+  field = _pick(ms); }catch(e){}
 if(!field){ var cs=Array.prototype.slice.call(document.querySelectorAll('[korname]'));
   var kmatch=cs.filter(function(c){ var kn=c.getAttribute('korname')||''; return kn && raw.indexOf(kn)>=0; });
-  field = kmatch.filter(_vis)[0] || kmatch[0] || null; }
+  field = _pick(kmatch); }
 if(!field) return null;
 var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
@@ -557,7 +566,10 @@ if(jt==='SCOREFIELD'){
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
   for(var i=0;i<radios.length;i++){ if(/^(1|Y)$/i.test(radios[i].value)){ pick=radios[i]; break; } }
-  pick=pick||radios[0]; pick.checked=true; try{ pick.click(); }catch(e){} fire(pick);
+  pick=pick||radios[0];
+  // checked=true 후 click하면 커스텀 onclick이 토글로 도로 해제한다(관찰). DOM만 바꾸면 JX 내부
+  // 검증 상태가 안 바뀌므로 미체크일 때 click(자연 선택 + onclick→JX 갱신), 그래도 미체크면 force.
+  if(!pick.checked){ try{ pick.click(); }catch(e){} } if(!pick.checked){ pick.checked=true; } fire(pick);
   return (pick.id||pick.name||'radio')+' = checked('+pick.value+')'; }
 var checks=field.querySelectorAll('input[type=checkbox]');
 // 체크박스는 click이 토글이므로 checked=true 후 click하면 도로 해제된다(반복 원인).
