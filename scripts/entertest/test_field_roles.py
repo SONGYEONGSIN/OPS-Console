@@ -45,6 +45,18 @@ class OtherRoleTest(unittest.TestCase):
         self.assertEqual(len(v), 8)
         self.assertTrue(v.isdigit())
 
+    def test_date_graduation_after_enrollment(self):
+        # 졸업일자 > 입학일자 제약 → 입학은 이른 날짜, 졸업은 늦은 날짜
+        enter = role_value("DATEFIELD", {"korname": "입학일자"})
+        grad = role_value("DATEFIELD", {"korname": "졸업일자"})
+        self.assertLess(int(enter), int(grad))
+
+    def test_date_by_id_hint(self):
+        self.assertLess(
+            int(role_value("DATEFIELD", {"idref": "txtStartDate"})),
+            int(role_value("DATEFIELD", {"idref": "txtGraduteEndDate"})),
+        )
+
     def test_search_and_file_are_special(self):
         # SEARCHFIELD/FILEFIELD는 값-주입이 아니라 특수 처리(파이썬/JS 위임) → None
         self.assertIsNone(role_value("SEARCHFIELD", {"searchid": "Major"}))

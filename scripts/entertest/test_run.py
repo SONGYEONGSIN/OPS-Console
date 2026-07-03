@@ -526,10 +526,20 @@ if(jt==='ADDRESSFIELD'){
 // 값-role(PHONE/EMAIL/DATE): 값 결정은 파이썬 field_roles.role_value(단일 소스·단위테스트).
 // JS는 대상 input과 jwtype·data-* 신호만 넘기고, 파이썬이 값을 계산해 _SET_VALUE_JS로 주입한다.
 if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
-  var vin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
-  if(vin){ return 'ROLE:'+JSON.stringify({id:vin.id||vin.name, jwtype:jt,
-    attrs:{'data-phone-validate':field.getAttribute('data-phone-validate')||'',
-           'maxlength':vin.getAttribute('maxlength')||''}}); }
+  // 같은 requiredalert를 여러 변형(visible + 숨김 NotUse)이 공유하고, 날짜쌍(data-linkeddate)이
+  // 숨김 변형을 가리키기도 한다 → 모든 변형을 채워야 연결 검증이 통과한다. 각 input의 id/korname을
+  // 파이썬 role_value로 개별 결정(입학=이른 날짜/졸업=늦은 날짜 등).
+  var wraps=Array.prototype.slice.call(document.querySelectorAll('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'));
+  if(!wraps.length) wraps=[field];
+  var items=[];
+  wraps.forEach(function(w){
+    var inp=w.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
+    if(inp) items.push({id:inp.id||inp.name,
+      'data-phone-validate':w.getAttribute('data-phone-validate')||'',
+      'maxlength':inp.getAttribute('maxlength')||'',
+      'korname':w.getAttribute('korname')||'', 'idref':inp.id||''});
+  });
+  if(items.length) return 'ROLE:'+JSON.stringify({jwtype:jt, items:items});
 }
 // SCOREFIELD(평점평균 등): 래퍼에 점수 input + Max 스케일 select가 함께 있어 select 브랜치가
 // Max만 채우던 문제 → 점수 input을 스케일 기준값으로 채움(Max≥10=100점제→'80', 그 외 4점대→'3.5').
@@ -566,7 +576,10 @@ _SET_VALUE_JS = r"""
 var el=document.getElementById(arguments[0]) || (document.getElementsByName(arguments[0])[0]);
 if(!el) return false;
 el.removeAttribute('readonly'); el.value=arguments[1];
+// Date/마스크 헬퍼는 keydown/keyup에 반응(연결날짜 data-linkeddate 검증 포함) → 전 이벤트 발화.
 el.dispatchEvent(new Event('input',{bubbles:true}));
+el.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true}));
+el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
 el.dispatchEvent(new Event('change',{bubbles:true}));
 el.dispatchEvent(new Event('blur',{bubbles:true}));
 return true;
@@ -587,15 +600,20 @@ def _force_fill_for_message(driver, msg):
             desc = json.loads(r[len("ROLE:"):])
         except Exception:  # noqa: BLE001
             return None
-        v = role_value(desc.get("jwtype", ""), desc.get("attrs") or {})
-        if v is None:
-            return None
-        fid = desc.get("id") or ""
-        try:
-            ok = driver.execute_script(_SET_VALUE_JS, fid, v)
-        except Exception:  # noqa: BLE001
-            return None
-        return f"{fid} = {v} (role={desc.get('jwtype')})" if ok else None
+        jt = desc.get("jwtype", "")
+        items = desc.get("items") or ([desc] if desc.get("id") else [])
+        filled = []
+        for it in items:
+            v = role_value(jt, it)
+            if v is None:
+                continue
+            fid = it.get("id") or ""
+            try:
+                if driver.execute_script(_SET_VALUE_JS, fid, v):
+                    filled.append(f"{fid}={v}")
+            except Exception:  # noqa: BLE001
+                continue
+        return f"{', '.join(filled)} (role={jt})" if filled else None
     return r
 
 
@@ -735,7 +753,8 @@ def check_apply_write(driver, ctx):
     last = None
     saved = False
     valid_i = 0
-    for i in range(15):
+    # 전형별 필수 필드 수가 다르다(외국인 ~13, 대학원 평점/백분위/편입/재학 등 더 많음) → 넉넉히.
+    for i in range(30):
         _close_search_popup(driver)  # 이전 회차에 열린 검색팝업이 검증을 막지 않도록
         driver.execute_script(_WONSEO_FILL_JS)
         time.sleep(0.4)
