@@ -581,45 +581,58 @@ def _force_fill_for_message(driver, msg):
     return r
 
 
-# SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정):
-#   트리거 a#btn{searchid} 클릭 → #SearchLayer_Pop 오픈 → input에 검색어 → a.btn_search 클릭 →
-#   결과 <ul><li>(첫 li는 안내) → 데이터 li(cursor:pointer, <a><span.title>) 클릭(jQuery) → 코드/이름 세팅 + 팝업 닫힘.
+# SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정 — 폼별 결과 구조 2종):
+#   트리거 a#btn{searchid} 클릭 → #SearchLayer_Pop 오픈 → (선택) input에 검색어 → a.btn_search 클릭 →
+#   결과: ① <ul><li>(외국인 중문 폼, cursor:pointer / a span.title) 또는
+#         ② <table#SearchResult><tr cursor:pointer>(대학원 등 국내 폼, 팝업 열자마자 전체 목록 선로드).
+#   첫 데이터 행 클릭(jQuery) → 코드/이름 세팅 + 팝업 닫힘.
 def _popup_open(driver) -> bool:
     return bool(driver.execute_script(
         "var p=document.getElementById('SearchLayer_Pop'); return !!(p && getComputedStyle(p).display!=='none');"
     ))
 
 
-def _resolve_open_popup(driver) -> str:
-    """이미 열린 #SearchLayer_Pop을 해소 — 여러 검색어를 시도해 첫 데이터 결과를 클릭(코드/이름 세팅).
+# 열린 팝업에서 첫 데이터 결과(li형/table tr형 모두)를 클릭 → 선택 텍스트 반환(없으면 '').
+_PICK_RESULT_JS = r"""
+var p=document.getElementById('SearchLayer_Pop'); if(!p) return '';
+var rows=Array.prototype.slice.call(p.querySelectorAll('table tbody tr, li')).filter(function(x){
+  if(x.tagName==='TR'){ return x.style.cursor==='pointer' && x.getElementsByTagName('td').length>0; }
+  return x.querySelector('a') && (x.style.cursor==='pointer' || x.querySelector('a span.title'));
+});
+if(rows.length){ var t=(rows[0].innerText||'').replace(/\s+/g,' ').trim(); rows[0].click(); return t; }
+return '';
+"""
 
-    반환: 선택된 결과 텍스트(성공) 또는 ''(실패). 외국인 중문 폼이라 중문/한글/광역 쿼리를 폭넓게 시도.
+# 팝업 검색어 입력 + '검색' 버튼 클릭.
+_SEARCH_POPUP_JS = r"""
+var q=arguments[0]; var p=document.getElementById('SearchLayer_Pop'); if(!p) return false;
+var inp=Array.prototype.slice.call(p.querySelectorAll('input[type=text]'))
+  .find(function(e){return getComputedStyle(e).display!=='none';});
+if(inp){ inp.value=q; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('keyup',{bubbles:true})); }
+var b=Array.prototype.slice.call(p.querySelectorAll('a.btn_search')).find(function(x){return /검색/.test(x.innerText||'');});
+if(b) b.click(); return true;
+"""
+
+
+def _resolve_open_popup(driver) -> str:
+    """이미 열린 #SearchLayer_Pop을 해소 — 첫 데이터 결과를 클릭(코드/이름 세팅).
+
+    반환: 선택된 결과 텍스트(성공) 또는 ''(실패).
+    ① 전체 목록 선로드형(table)은 검색 없이 바로 첫 행 선택.
+    ② 검색형은 빈쿼리(전체)→국내 학과 공통어→외국인 중문 순으로 폭넓게 시도.
     """
     if not _popup_open(driver):
         return ""
-    for q in ("중국", "中", "大学", "大", "学", "서울", "a", "A"):
-        clicked_text = driver.execute_script(
-            r"""
-            var q=arguments[0]; var p=document.getElementById('SearchLayer_Pop');
-            var inp=Array.prototype.slice.call(p.querySelectorAll('input[type=text]'))
-              .find(function(e){return getComputedStyle(e).display!=='none';});
-            if(inp){ inp.value=q; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('keyup',{bubbles:true})); }
-            var b=Array.prototype.slice.call(p.querySelectorAll('a.btn_search')).find(function(x){return /검색/.test(x.innerText||'');});
-            if(b) b.click();
-            return true;
-            """,
-            q,
-        )
+    # ① 선로드된 결과가 있으면 검색 없이 즉시 선택
+    picked = driver.execute_script(_PICK_RESULT_JS)
+    if picked:
+        time.sleep(0.6)
+        return picked[:40]
+    # ② 검색형: 빈쿼리(전체 목록) 우선, 국내 학과어, 외국인 중문 순
+    for q in ("", "학", "가", "경영", "국어", "공학", "교육", "간호", "중국", "中", "大学", "大", "学", "서울", "a", "A"):
+        driver.execute_script(_SEARCH_POPUP_JS, q)
         time.sleep(1.4)
-        picked = driver.execute_script(
-            r"""
-            var p=document.getElementById('SearchLayer_Pop');
-            var lis=Array.prototype.slice.call(p.querySelectorAll('li'))
-              .filter(function(x){ return x.querySelector('a') && (x.style.cursor==='pointer' || x.querySelector('a span.title')); });
-            if(lis.length){ var t=(lis[0].innerText||'').replace(/\s+/g,' ').trim(); lis[0].click(); return t; }
-            return '';
-            """
-        )
+        picked = driver.execute_script(_PICK_RESULT_JS)
         if picked:
             time.sleep(0.6)
             return picked[:40]
