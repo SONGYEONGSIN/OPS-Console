@@ -500,9 +500,14 @@ function val(el){ var id=el.id||'';
 // requiredalert == alert 메시지(정확 일치) → fuzzy 라벨 매칭(엉뚱한 그룹 선택 버그) 제거.
 var raw=(arguments[0]||'').trim();
 var field=null;
-try{ field=document.querySelector('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'); }catch(e){}
-if(!field){ var cs=document.querySelectorAll('[korname]');
-  for(var i=0;i<cs.length;i++){ var kn=cs[i].getAttribute('korname')||''; if(kn && raw.indexOf(kn)>=0){ field=cs[i]; break; } } }
+// 같은 requiredalert를 여러 필드가 공유(NotUse 숨김 변형 + 실제 활성 필드)한다 → 내부 입력이
+// 보이는(활성) 래퍼를 우선 선택. 전부 숨김이면 첫 매치로 폴백(원래 동작).
+function _vis(x){ var e=x.querySelector('input,select,textarea'); return !!(e && (e.offsetParent!==null || e.getClientRects().length>0)); }
+try{ var ms=Array.prototype.slice.call(document.querySelectorAll('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'));
+  field = ms.filter(_vis)[0] || ms[0] || null; }catch(e){}
+if(!field){ var cs=Array.prototype.slice.call(document.querySelectorAll('[korname]'));
+  var kmatch=cs.filter(function(c){ var kn=c.getAttribute('korname')||''; return kn && raw.indexOf(kn)>=0; });
+  field = kmatch.filter(_vis)[0] || kmatch[0] || null; }
 if(!field) return null;
 var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
