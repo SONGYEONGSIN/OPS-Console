@@ -106,4 +106,15 @@ describe("runTeamBriefing", () => {
     expect(arg.html).toContain("팀 보고 브리핑");
     expect(arg.html).toContain("건국대");
   });
+
+  it("발신자 env 모두 미설정이면 기본값(ys1114)으로 발송", async () => {
+    vi.stubEnv("TEAMS_BRIEFING_SENDER", "");
+    vi.stubEnv("TEAMS_NOTICE_SENDER", "");
+    const r = await runTeamBriefing();
+    expect(r.ok).toBe(true);
+    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
+    expect(sendTeamsMock.mock.calls[0][0].operatorEmail).toBe(
+      "ys1114@jinhakapply.com",
+    );
+  });
 });
