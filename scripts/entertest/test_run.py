@@ -550,18 +550,26 @@ if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
   });
   if(items.length) return 'ROLE:'+JSON.stringify({jwtype:jt, items:items});
 }
-// SCOREFIELD(평점평균 등): 래퍼에 점수 input + Max 스케일 select가 함께 있어 select 브랜치가
-// Max만 채우던 문제 → 점수 input을 스케일 기준값으로 채움(Max≥10=100점제→'80', 그 외 4점대→'3.5').
+// SCOREFIELD(평점평균 등): DOM .value만 세팅하면 JX 내부검증 상태가 안 바뀌어 값이 안 붙는다(관찰).
+// → JX(name).Set()으로 컴포넌트 상태까지 세팅(Exec 검증 포함). Max 스케일 SELECTFIELD({name}Max)도
+// JX로 세팅. 점수값은 스케일 기준(Max≥10=100점제→'80', 그 외 4점대→'3.5'). JX 없으면 DOM 폴백.
 if(jt==='SCOREFIELD'){
+  var wname=field.getAttribute('name')||'';
   var scoreIn=Array.prototype.slice.call(field.querySelectorAll('input')).find(function(x){
     var t=(x.type||'').toLowerCase(); return t!=='hidden'&&t!=='radio'&&t!=='checkbox'; });
-  var maxSel=field.querySelector('select');
-  if(maxSel && maxSel.options.length>1){ maxSel.selectedIndex=1; fire(maxSel); }
-  var mx=maxSel?parseFloat((((maxSel.value||(maxSel.options[maxSel.selectedIndex]||{}).text)||'')+'').replace(/[^0-9.]/g,'')):NaN;
+  var maxWrap=document.getElementById('F_'+wname+'Max');
+  var maxSel=maxWrap?maxWrap.querySelector('select'):field.querySelector('select');
+  var maxv=(maxSel && maxSel.options.length>1)?maxSel.options[1].value:'';
+  var mx=parseFloat((maxv+'').replace(/[^0-9.]/g,''));
   var sv=(!isNaN(mx)&&mx>=10)?'80':'3.5';
-  if(scoreIn){ scoreIn.removeAttribute('readonly'); scoreIn.value=sv; fire(scoreIn);
-    scoreIn.dispatchEvent(new Event('blur',{bubbles:true}));
-    return (scoreIn.id||'score')+' = '+sv+' (max='+(isNaN(mx)?'?':mx)+')'; }
+  var jxDone=false;
+  try{ if(window.JX){ if(maxv){ var mc=JX(wname+'Max'); if(mc) mc.Set(maxv); }
+    var sc=JX(wname); if(sc){ sc.Set(sv); jxDone=true; } } }catch(e){}
+  if(!jxDone && scoreIn){  // JX 실패 폴백: DOM
+    if(maxSel && maxSel.options.length>1){ maxSel.selectedIndex=1; fire(maxSel); }
+    scoreIn.removeAttribute('readonly'); scoreIn.value=sv; fire(scoreIn);
+    scoreIn.dispatchEvent(new Event('blur',{bubbles:true})); }
+  return (scoreIn&&scoreIn.id||wname)+' = '+sv+' (max='+maxv+', jx='+jxDone+')';
 }
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
