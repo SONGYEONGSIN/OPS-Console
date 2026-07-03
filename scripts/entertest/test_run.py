@@ -392,7 +392,9 @@ document.querySelectorAll('input[type=text],input[type=tel],input[type=number],i
   var id=el.id||''; var v='TEST';
   if(/^txtC/.test(id)) v='测试';
   else if(/Email/i.test(id)) v='test@test.com';
-  else if(/Mobile|Tel/i.test(id)) v='01012345678';
+  else if(/Mobile|Tel/i.test(id)){ var _pw=el.closest('[jwtype=PHONEFIELD]');
+    var _pv=((_pw&&_pw.getAttribute('data-phone-validate'))||'').toLowerCase();
+    v=(_pv.indexOf('phone')>-1 && _pv.indexOf('mobile')<0) ? '0215881588' : '01012345678'; }  // 랜드라인 vs 휴대 구분
   else if(/Addr1/i.test(id)) v=/^txtC/.test(id)?'100000':'12345';
   else if(/Passport/i.test(id)) v='EM0000000';
   else if(/EMemSsn_1/.test(id)) v='050101';
@@ -504,6 +506,18 @@ var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
 if(jt==='SEARCHFIELD' || sid) return 'SEARCH:'+sid;  // 파이썬이 select_search_result 호출
 function fire(el){ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+// PHONEFIELD: JX PhoneFnc 정규식이 랜드라인/휴대를 구분한다(해독, default.js PhoneFnc):
+//   phone(랜드라인) /^(02|0[3-9][0-9])(...)([0-9]{4})$/  → 0215881588(02-1588-1588)
+//   mobile(휴대)    /^(010)([0-9]{4})([0-9]{4})$/         → 01012345678
+// '010…'은 landline 정규식 불합격 → 전화번호(Telephone) 필드가 무한 반복하던 근본 원인.
+if(jt==='PHONEFIELD'){
+  var pv=(field.getAttribute('data-phone-validate')||'').toLowerCase();
+  var pval=(pv.indexOf('phone')>-1 && pv.indexOf('mobile')<0) ? '0215881588' : '01012345678';
+  var pin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
+  if(pin){ pin.removeAttribute('readonly'); pin.value=pval; fire(pin);
+    pin.dispatchEvent(new Event('blur',{bubbles:true}));  // PhoneFnc 재포맷 + IsComplete
+    return (pin.id||pin.name||'phone')+' = '+pval+' (pv='+pv+')'; }
+}
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
   for(var i=0;i<radios.length;i++){ if(/^(1|Y)$/i.test(radios[i].value)){ pick=radios[i]; break; } }
