@@ -233,6 +233,19 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
   `.../Notice/1210065/A ...` (실패). `discovery/*.fields.json`의 전화(phoStuTel1/2/3·txtStuTel)·국적·동의 필드 `requiredalert`/`korname`/`maxlength`를 비교해 role 매핑 근거 확보.
 - **2단계 예정**: `field_definitions.py`(role→포맷·값·감지) + `form_configs.py`(폼별 델타). 1104069를 회귀 앵커로.
 
+### 진행 로그 (2026-07-03, 9차 — PHONEFIELD 랜드라인/휴대 포맷 구분 ✅)
+
+DISCOVER + 실측(APPLY_WRITE)으로 1210065 **전화번호 무한 반복** 블로커의 근본 원인을 규명·수정.
+
+- **재현**: APPLY_WRITE(jt29005)에서 `txtStuTel = 01012345678` 세팅에도 "전화번호(Telephone No.)를 입력해 주세요"가 7~15회 반복(진행 불가).
+- **근본 원인**(추측 아님 — 페이지 인라인 JS `PhoneFnc` 정규식 실물): PHONEFIELD는 `data-phone-validate`로 랜드라인/휴대를 구분한다.
+  - `phone`(랜드라인) `/^(02|0[3-9][0-9])([0-9]{1}[0-9]{2,3})([0-9]{4})$/`
+  - `mobile`(휴대) `/^(010)([0-9]{4})([0-9]{4})$/`
+  - `CompleteCheck`는 `val().replace(비숫자,'')` 후 정규식 검사 → **`010…`은 랜드라인 정규식 불합격**. `txtStuTel`(전화번호=랜드라인)에 휴대폰 번호를 넣어 무한 반복.
+- **수정**(surgical): `_FORCE_FILL_JS`에 PHONEFIELD 분기 추가 — `data-phone-validate`에 phone만 있으면 `0215881588`(02-1588-1588), 아니면 `01012345678`. `_WONSEO_FILL_JS` 전화 분기도 상위 `[jwtype=PHONEFIELD]` 래퍼의 `data-phone-validate`로 동일 구분. 값 세팅 후 `blur`로 PhoneFnc 재포맷/완료.
+- **검증**(실측): 재실행 시 전화번호 모달 **완전 소멸** → 국적 검색까지 통과, 다음 롱테일(`졸업(예정)일` DATEFIELD=`txtHiGradeYMD1`)로 전진. 전화 블로커 해소 확인.
+- **남은 롱테일**(2단계 role 레지스트리 대상): DATEFIELD(`YMD` 날짜 포맷) 등 jwtype별 채우기 규칙 일반화.
+
 ## 참고
 
 - DISCOVER 모드(`ENTERTEST_DISCOVER=true`)가 단계별 page_source/스크린샷 + 필드/버튼 인벤토리(`{단계}.fields.json`)를
