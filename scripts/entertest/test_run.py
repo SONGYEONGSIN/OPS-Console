@@ -887,6 +887,29 @@ const labelFor = el => {
   const p = el.closest('label'); if (p) return (p.innerText||'').trim();
   return '';
 };
+// 사이트가 필드에 선언한 '의미' 속성 — 범용 작성 엔진의 role 매핑 근거.
+// jinhakapply(JWValidate)는 korname(한글 필드명)·requiredalert(검증 실패 메시지)·
+// jwtype(SEARCHFIELD 등)·searchid 를 필드나 상위 래퍼에 붙인다. id 정규식 추측 대신 이걸 읽는다.
+const SEM = ['korname','requiredalert','jwtype','searchid','searchtype','format','maxlength','onkeyup','onblur','onchange'];
+const semOf = el => {
+  const o = {};
+  for (const a of el.attributes) {
+    const n = a.name.toLowerCase();
+    if (n.startsWith('jw') || n.startsWith('data-') || SEM.includes(n)) o[a.name] = (a.value||'').slice(0,120);
+  }
+  return o;
+};
+// 필드 자체에 jw/korname 이 없으면 상위 4단계까지 래퍼에서 찾는다(JWValidate 컨테이너 패턴).
+const wrapSemOf = el => {
+  let p = el.parentElement;
+  for (let i=0; i<4 && p; i++, p=p.parentElement) {
+    if (p.getAttribute && (p.getAttribute('jwtype')||p.getAttribute('korname')||p.getAttribute('requiredalert'))) {
+      const o = {}; for (const a of p.attributes){ const n=a.name.toLowerCase(); if(n.startsWith('jw')||SEM.includes(n)) o[a.name]=(a.value||'').slice(0,120); }
+      return o;
+    }
+  }
+  return {};
+};
 const fields = [...document.querySelectorAll('input,select,textarea')].map(el => {
   const o = {
     tag: el.tagName.toLowerCase(),
@@ -895,7 +918,13 @@ const fields = [...document.querySelectorAll('input,select,textarea')].map(el =>
     label: labelFor(el),
     required: !!(el.required || el.getAttribute('aria-required')==='true'),
     placeholder: el.placeholder||'',
+    maxlength: el.getAttribute('maxlength')||'',
+    readonly: el.hasAttribute('readonly'),
+    disabled: !!el.disabled,
+    cls: (el.className||'').slice(0,120),
     visible: vis(el),
+    attrs: semOf(el),
+    wrap: wrapSemOf(el),
   };
   if (o.tag === 'select') o.options = [...el.options].map(x => ({v:x.value, t:(x.text||'').trim()}));
   return o;
@@ -921,9 +950,17 @@ def _inventory(driver, out: str, name: str) -> None:
         data = driver.execute_script(_INVENTORY_JS)
         with open(os.path.join(out, f"{name}.fields.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        nf = len(data.get("fields", []))
+        fields = data.get("fields", [])
+        nf = len(fields)
         nb = len(data.get("buttons", []))
-        print(f"[discover] {name} 인벤토리 — 필드 {nf} / 버튼 {nb}")
+        # 의미 속성(korname/requiredalert/jwtype)을 필드 또는 래퍼에 가진 필드 수 — role 매핑 신호.
+        sem = sum(
+            1
+            for x in fields
+            if any(k in (x.get("attrs") or {}) for k in ("korname", "requiredalert", "jwtype"))
+            or any(k in (x.get("wrap") or {}) for k in ("korname", "requiredalert", "jwtype"))
+        )
+        print(f"[discover] {name} 인벤토리 — 필드 {nf} (의미속성 {sem}) / 버튼 {nb}")
     except Exception as e:  # noqa: BLE001 — 인벤토리 추출 실패는 디스커버리 흐름을 막지 않는다
         print(f"[discover] {name} 인벤토리 추출 실패: {e}")
 

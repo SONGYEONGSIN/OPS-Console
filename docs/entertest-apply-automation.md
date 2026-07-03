@@ -223,6 +223,16 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
 - **계정 미소진**(폼 저장 실패) — jt29005~jt29010 그대로.
 - 검증 실행(집): `ENTERTEST_APPLY_WRITE=true ENTERTEST_PAY=true ENTERTEST_TARGET_URL=https://entertest.jinhakapply.com/Notice/1210065/A ENTERTEST_ACCOUNT=jt29005~jt29010 python scripts/entertest/test_run.py`
 
+### 진행 로그 (2026-07-03, 8차 — 범용 작성 엔진 1단계: DISCOVER 의미속성 캡처 강화)
+
+폼마다 무한 루프로 재확인하는 하드코딩(id 정규식·전화 10자리 고정) 대신, **사이트가 필드에 선언한 의미 속성을 읽어 role 기반으로 채우는 범용 엔진**으로 가는 첫 단계.
+
+- `_INVENTORY_JS` 강화 — 필드별로 `korname`(한글명)·`requiredalert`(검증 실패 메시지)·`jwtype`(SEARCHFIELD 등)·`searchid`·`maxlength`·`readonly`/`disabled`·`class` + 모든 `jw*`/`data-*` 속성(`attrs`)과, 필드에 없으면 상위 4단계 래퍼의 jw 속성(`wrap`)까지 캡처. `[discover]` 로그에 `(의미속성 N)` 표기.
+- **다음 (증거 수집)**: 두 폼을 DISCOVER로 덤프해 비교 →
+  `ENTERTEST_DISCOVER=true ENTERTEST_TARGET_URL=.../Notice/1104069/A ...` (성공 골든),
+  `.../Notice/1210065/A ...` (실패). `discovery/*.fields.json`의 전화(phoStuTel1/2/3·txtStuTel)·국적·동의 필드 `requiredalert`/`korname`/`maxlength`를 비교해 role 매핑 근거 확보.
+- **2단계 예정**: `field_definitions.py`(role→포맷·값·감지) + `form_configs.py`(폼별 델타). 1104069를 회귀 앵커로.
+
 ## 참고
 
 - DISCOVER 모드(`ENTERTEST_DISCOVER=true`)가 단계별 page_source/스크린샷 + 필드/버튼 인벤토리(`{단계}.fields.json`)를
