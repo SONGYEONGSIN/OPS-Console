@@ -48,6 +48,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+from field_roles import role_value  # jwtype role 레지스트리 (범용 엔진 2단계)
+
 RUN_ID = os.getenv("ENTERTEST_RUN_ID", "")
 TARGET_URL = os.getenv("ENTERTEST_TARGET_URL", "")
 # 대역(범위) "jt29001~jt29005"로 등록 가능. ID=PW 동일.
@@ -506,17 +508,13 @@ var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
 if(jt==='SEARCHFIELD' || sid) return 'SEARCH:'+sid;  // 파이썬이 select_search_result 호출
 function fire(el){ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
-// PHONEFIELD: JX PhoneFnc 정규식이 랜드라인/휴대를 구분한다(해독, default.js PhoneFnc):
-//   phone(랜드라인) /^(02|0[3-9][0-9])(...)([0-9]{4})$/  → 0215881588(02-1588-1588)
-//   mobile(휴대)    /^(010)([0-9]{4})([0-9]{4})$/         → 01012345678
-// '010…'은 landline 정규식 불합격 → 전화번호(Telephone) 필드가 무한 반복하던 근본 원인.
-if(jt==='PHONEFIELD'){
-  var pv=(field.getAttribute('data-phone-validate')||'').toLowerCase();
-  var pval=(pv.indexOf('phone')>-1 && pv.indexOf('mobile')<0) ? '0215881588' : '01012345678';
-  var pin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
-  if(pin){ pin.removeAttribute('readonly'); pin.value=pval; fire(pin);
-    pin.dispatchEvent(new Event('blur',{bubbles:true}));  // PhoneFnc 재포맷 + IsComplete
-    return (pin.id||pin.name||'phone')+' = '+pval+' (pv='+pv+')'; }
+// 값-role(PHONE/EMAIL/DATE): 값 결정은 파이썬 field_roles.role_value(단일 소스·단위테스트).
+// JS는 대상 input과 jwtype·data-* 신호만 넘기고, 파이썬이 값을 계산해 _SET_VALUE_JS로 주입한다.
+if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
+  var vin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
+  if(vin){ return 'ROLE:'+JSON.stringify({id:vin.id||vin.name, jwtype:jt,
+    attrs:{'data-phone-validate':field.getAttribute('data-phone-validate')||'',
+           'maxlength':vin.getAttribute('maxlength')||''}}); }
 }
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
@@ -533,12 +531,42 @@ return null;
 """
 
 
+# 값-role 주입: id/name으로 input을 찾아 값 세팅 + input/change/blur(PhoneFnc 재포맷·검증).
+_SET_VALUE_JS = r"""
+var el=document.getElementById(arguments[0]) || (document.getElementsByName(arguments[0])[0]);
+if(!el) return false;
+el.removeAttribute('readonly'); el.value=arguments[1];
+el.dispatchEvent(new Event('input',{bubbles:true}));
+el.dispatchEvent(new Event('change',{bubbles:true}));
+el.dispatchEvent(new Event('blur',{bubbles:true}));
+return true;
+"""
+
+
 def _force_fill_for_message(driver, msg):
-    """검증 모달 메시지가 지목한 필드를 찾아 force-fill. 매칭 안 되면 None."""
+    """검증 모달 메시지가 지목한 필드를 찾아 force-fill. 매칭 안 되면 None.
+
+    값-role(ROLE: 마커)은 field_roles.role_value로 값을 결정 후 주입(구조 role은 JS 내부 처리).
+    """
     try:
-        return driver.execute_script(_FORCE_FILL_JS, msg)
+        r = driver.execute_script(_FORCE_FILL_JS, msg)
     except Exception:  # noqa: BLE001
         return None
+    if isinstance(r, str) and r.startswith("ROLE:"):
+        try:
+            desc = json.loads(r[len("ROLE:"):])
+        except Exception:  # noqa: BLE001
+            return None
+        v = role_value(desc.get("jwtype", ""), desc.get("attrs") or {})
+        if v is None:
+            return None
+        fid = desc.get("id") or ""
+        try:
+            ok = driver.execute_script(_SET_VALUE_JS, fid, v)
+        except Exception:  # noqa: BLE001
+            return None
+        return f"{fid} = {v} (role={desc.get('jwtype')})" if ok else None
+    return r
 
 
 # SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정):
