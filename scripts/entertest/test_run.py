@@ -391,6 +391,9 @@ function setVal(el, v){ if(!el) return; el.value=v;
 // 1) 보이는 텍스트/textarea (빈 것만)
 document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input:not([type]),textarea').forEach(function(el){
   if(el.getClientRects().length===0) return; if(el.value) return; if(el.readOnly) return;  // SEARCHFIELD 표시는 readonly → 건드리면 검색팝업 → skip
+  // typed-role 필드(날짜/기간/점수/전화/이메일)에 'TEST' 쓰레기값을 넣으면 검증이 거부하고 role
+  // 처리를 방해한다 → broad-fill은 건너뛰고 role 기반 force-fill(JX.Set 등)에 맡긴다.
+  if(el.closest('[jwtype=DATEFIELD],[jwtype=DATERANGEFIELD],[jwtype=SCOREFIELD],[jwtype=PHONEFIELD],[jwtype=EMAILFIELD]')) return;
   var id=el.id||''; var v='TEST';
   if(/^txtC/.test(id)) v='测试';
   else if(/Email/i.test(id)) v='test@test.com';
@@ -570,6 +573,29 @@ if(jt==='SCOREFIELD'){
     scoreIn.removeAttribute('readonly'); scoreIn.value=sv; fire(scoreIn);
     scoreIn.dispatchEvent(new Event('blur',{bubbles:true})); }
   return (scoreIn&&scoreIn.id||wname)+' = '+sv+' (max='+maxv+', jx='+jxDone+')';
+}
+// DATERANGEFIELD(재학기간·재직기간 등): Start/End 쌍 입력. maxlength로 YYYYMM(6)/YYYYMMDD(8) 구분,
+// start<end. JX(name).Set(start,end) 우선(DateRange 헬퍼 상태), 실패 시 두 입력 직접 채움.
+if(jt==='DATERANGEFIELD'){
+  var dname=field.getAttribute('name')||'';
+  var dinps=Array.prototype.slice.call(field.querySelectorAll("input[type=text],input[inputmode]"))
+    .filter(function(x){ return x.offsetParent!==null||x.getClientRects().length>0; });
+  var six=dinps[0] && dinps[0].getAttribute('maxlength')==='6';
+  // raw(입력창) 값은 YYYYMM(6)/YYYYMMDD(8). JX.Set은 moment(data-display, strict) 파싱이라
+  // 표시 포맷(예 "YYYY년 MM월")에 맞춘 문자열이 필요 → data-display 토큰 치환으로 생성.
+  var rawS=six?'201803':'20180302', rawE=six?'202002':'20200228';
+  function fmtD(disp,y,m,dd){ return (disp||'').replace('YYYY',y).replace('MM',m).replace('DD',dd); }
+  var disp=field.getAttribute('data-display')||'';
+  var ds=disp?fmtD(disp,'2018','03','02'):rawS, de=disp?fmtD(disp,'2020','02','28'):rawE;
+  var djx=false;
+  try{ if(window.JX && dname){ var dc=JX(dname); if(dc && dc.Set){ dc.Set(ds,de); djx=true; } } }catch(e){}
+  if(!djx && dinps.length>=2){
+    dinps[0].value=rawS; dinps[1].value=rawE;
+    [dinps[0],dinps[1]].forEach(function(x){ x.removeAttribute('readonly');
+      x.dispatchEvent(new Event('input',{bubbles:true})); x.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
+      x.dispatchEvent(new Event('change',{bubbles:true})); x.dispatchEvent(new Event('blur',{bubbles:true})); });
+  }
+  return (dname||'daterange')+' = '+ds+'~'+de+' (jx='+djx+')';
 }
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
