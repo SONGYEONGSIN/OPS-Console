@@ -391,6 +391,9 @@ function setVal(el, v){ if(!el) return; el.value=v;
 // 1) 보이는 텍스트/textarea (빈 것만)
 document.querySelectorAll('input[type=text],input[type=tel],input[type=number],input:not([type]),textarea').forEach(function(el){
   if(el.getClientRects().length===0) return; if(el.value) return; if(el.readOnly) return;  // SEARCHFIELD 표시는 readonly → 건드리면 검색팝업 → skip
+  // typed-role 필드(날짜/기간/점수/전화/이메일)에 'TEST' 쓰레기값을 넣으면 검증이 거부하고 role
+  // 처리를 방해한다 → broad-fill은 건너뛰고 role 기반 force-fill(JX.Set 등)에 맡긴다.
+  if(el.closest('[jwtype=DATEFIELD],[jwtype=DATERANGEFIELD],[jwtype=SCOREFIELD],[jwtype=PHONEFIELD],[jwtype=EMAILFIELD]')) return;
   var id=el.id||''; var v='TEST';
   if(/^txtC/.test(id)) v='测试';
   else if(/Email/i.test(id)) v='test@test.com';
