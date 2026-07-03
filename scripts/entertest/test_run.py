@@ -522,7 +522,9 @@ if(radios.length){ var pick=null;
   pick=pick||radios[0]; pick.checked=true; try{ pick.click(); }catch(e){} fire(pick);
   return (pick.id||pick.name||'radio')+' = checked('+pick.value+')'; }
 var checks=field.querySelectorAll('input[type=checkbox]');
-if(checks.length){ var n=0; checks.forEach(function(c){ if(!c.checked){ c.checked=true; try{c.click()}catch(e){} fire(c); n++; } }); return 'checkbox x'+n; }
+// 체크박스는 click이 토글이므로 checked=true 후 click하면 도로 해제된다(반복 원인).
+// click 먼저(자연 체크 + onclick 핸들러) → 그래도 미체크면 force → fire.
+if(checks.length){ var n=0; checks.forEach(function(c){ if(!c.checked){ try{c.click()}catch(e){} if(!c.checked) c.checked=true; fire(c); n++; } }); return 'checkbox x'+n; }
 var sel=field.querySelector('select');
 if(sel){ if(sel.options.length>1) sel.selectedIndex=1; fire(sel); return (sel.id||'select')+' = idx1'; }
 var txt=field.querySelector('input[type=text],input[type=tel],input[type=number],input:not([type]),textarea,input[type=hidden]');
