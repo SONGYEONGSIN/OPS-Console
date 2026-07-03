@@ -531,6 +531,19 @@ if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
     attrs:{'data-phone-validate':field.getAttribute('data-phone-validate')||'',
            'maxlength':vin.getAttribute('maxlength')||''}}); }
 }
+// SCOREFIELD(평점평균 등): 래퍼에 점수 input + Max 스케일 select가 함께 있어 select 브랜치가
+// Max만 채우던 문제 → 점수 input을 스케일 기준값으로 채움(Max≥10=100점제→'80', 그 외 4점대→'3.5').
+if(jt==='SCOREFIELD'){
+  var scoreIn=Array.prototype.slice.call(field.querySelectorAll('input')).find(function(x){
+    var t=(x.type||'').toLowerCase(); return t!=='hidden'&&t!=='radio'&&t!=='checkbox'; });
+  var maxSel=field.querySelector('select');
+  if(maxSel && maxSel.options.length>1){ maxSel.selectedIndex=1; fire(maxSel); }
+  var mx=maxSel?parseFloat((((maxSel.value||(maxSel.options[maxSel.selectedIndex]||{}).text)||'')+'').replace(/[^0-9.]/g,'')):NaN;
+  var sv=(!isNaN(mx)&&mx>=10)?'80':'3.5';
+  if(scoreIn){ scoreIn.removeAttribute('readonly'); scoreIn.value=sv; fire(scoreIn);
+    scoreIn.dispatchEvent(new Event('blur',{bubbles:true}));
+    return (scoreIn.id||'score')+' = '+sv+' (max='+(isNaN(mx)?'?':mx)+')'; }
+}
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
   for(var i=0;i<radios.length;i++){ if(/^(1|Y)$/i.test(radios[i].value)){ pick=radios[i]; break; } }
