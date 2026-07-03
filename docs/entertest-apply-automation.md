@@ -211,6 +211,18 @@ EnterUnivMajor, PrevUniv, PrevUnivMajor, PrevUnivNation.
   명확히 보고(main이 트레이스백 없이 메시지만). → 반복 테스트는 jt29001~ 중 미사용 계정 사용.
 - **소진 현황**: jt29005(수동 결제 검증), jt29001(코드 PAY 검증) = 1104069 접수완료 상태. jt29002~29004는 클린.
 
+### 진행 로그 (2026-07-03, 7차 — service_id 1210065(부산대 외국인 신입학) 전화필드 블로커 ⚠️ 미해결)
+
+1104069(외국인 편입)는 완주하지만 **1210065(외국인 신입학)는 폼이 달라 전화번호 검증에서 무한루프 FAIL**("결제목록 비어있음"). 정밀 진단 결과:
+
+- **폴러 스모크(run_checks 5체크)는 "페이지 도달"만 확인** — 폼 미작성. 그래서 dev-test의 "완료 pass 5/5"는 실제 접수완료가 아님. `ENTERTEST_PAY`는 run_checks와 무관(check_apply_write 전용).
+- **전화 필드 구조**: 3분할 hidden `phoStuTel1/2/3` — ⚠️ **`id`가 아니라 `name` 기반**(ASP.NET WebForms). `getElementById` 실패 → `getElementsByName` 필요. visible `txtStuTel`은 `maxLength=13` = **대시 형식 "010-1234-5678" 기대**. 기존 `_WONSEO_FILL_JS`/`_FORCE_FILL_JS`는 "01012345678"만 넣어 pho2/3 빈값 → FAIL.
+- **시도(모두 벽)**: ① JS로 pho1/2/3 직접세팅 → JWValidate 실행 시 리셋. ② `send_keys` 실타이핑 → pho 분할은 됨(010/1234/5678)이나 JWValidate가 unmasked txtStuTel에서 재파생해 깨짐. ③ **txtStuTel 대시형 + pho1/2/3 정확 세팅 → 값 전부 유지되는데도 JWValidate가 계속 "전화번호를 입력해 주세요" 거부.**
+- **결론(핵심)**: 이 폼 JWValidate 전화 검증은 단순 값 채움으로 안 풀림 — **JS 데이터구조/검증 플래그/특정 입력 시퀀스** 요구로 추정. **다음: 사이트 JWValidate 전화 검증 로직 직접 리버스엔지니어링**(브라우저 devtools로 JWValidate 소스 + 전화 관련 hidden/JS var 추적).
+- 그 외 남은 미충족 필수: 국적(SEARCHFIELD `txtNationalityName`/`txtHiSchoolNationalityName`), 동의(`chkTempOK11`·`rdoRefundSelectY`·`rdoAwarenessSurvey1`·`rdoUnivAgreeY`).
+- **계정 미소진**(폼 저장 실패) — jt29005~jt29010 그대로.
+- 검증 실행(집): `ENTERTEST_APPLY_WRITE=true ENTERTEST_PAY=true ENTERTEST_TARGET_URL=https://entertest.jinhakapply.com/Notice/1210065/A ENTERTEST_ACCOUNT=jt29005~jt29010 python scripts/entertest/test_run.py`
+
 ## 참고
 
 - DISCOVER 모드(`ENTERTEST_DISCOVER=true`)가 단계별 page_source/스크린샷 + 필드/버튼 인벤토리(`{단계}.fields.json`)를
