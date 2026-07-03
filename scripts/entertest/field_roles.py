@@ -28,7 +28,13 @@ def role_value(jwtype: str, attrs: dict) -> str | None:
         return "test@test.com"
 
     if jt == "DATEFIELD":
-        return "20200228"  # YYYYMMDD (maxlength=8)
+        # 졸업일자 > 입학일자 제약(검증) → korname/id로 입학/졸업 구분해 순서 보장.
+        hint = (attrs.get("korname") or "") + (attrs.get("idref") or attrs.get("id") or "")
+        if any(k in hint for k in ("졸업", "Gradut", "End")):
+            return "20220228"  # 졸업(늦은 날짜)
+        if any(k in hint for k in ("입학", "Enter", "Start", "재학")):
+            return "20180302"  # 입학(이른 날짜)
+        return "20200228"  # YYYYMMDD (maxlength=8) 기본
 
     if jt in ("SEARCHFIELD", "FILEFIELD"):
         return None  # 특수 처리 — 호출부가 select_search_result / upload_* 위임

@@ -500,9 +500,14 @@ function val(el){ var id=el.id||'';
 // requiredalert == alert 메시지(정확 일치) → fuzzy 라벨 매칭(엉뚱한 그룹 선택 버그) 제거.
 var raw=(arguments[0]||'').trim();
 var field=null;
-try{ field=document.querySelector('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'); }catch(e){}
-if(!field){ var cs=document.querySelectorAll('[korname]');
-  for(var i=0;i<cs.length;i++){ var kn=cs[i].getAttribute('korname')||''; if(kn && raw.indexOf(kn)>=0){ field=cs[i]; break; } } }
+// 같은 requiredalert를 여러 필드가 공유(NotUse 숨김 변형 + 실제 활성 필드)한다 → 내부 입력이
+// 보이는(활성) 래퍼를 우선 선택. 전부 숨김이면 첫 매치로 폴백(원래 동작).
+function _vis(x){ var e=x.querySelector('input,select,textarea'); return !!(e && (e.offsetParent!==null || e.getClientRects().length>0)); }
+try{ var ms=Array.prototype.slice.call(document.querySelectorAll('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'));
+  field = ms.filter(_vis)[0] || ms[0] || null; }catch(e){}
+if(!field){ var cs=Array.prototype.slice.call(document.querySelectorAll('[korname]'));
+  var kmatch=cs.filter(function(c){ var kn=c.getAttribute('korname')||''; return kn && raw.indexOf(kn)>=0; });
+  field = kmatch.filter(_vis)[0] || kmatch[0] || null; }
 if(!field) return null;
 var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
@@ -521,10 +526,33 @@ if(jt==='ADDRESSFIELD'){
 // 값-role(PHONE/EMAIL/DATE): 값 결정은 파이썬 field_roles.role_value(단일 소스·단위테스트).
 // JS는 대상 input과 jwtype·data-* 신호만 넘기고, 파이썬이 값을 계산해 _SET_VALUE_JS로 주입한다.
 if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
-  var vin=field.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
-  if(vin){ return 'ROLE:'+JSON.stringify({id:vin.id||vin.name, jwtype:jt,
-    attrs:{'data-phone-validate':field.getAttribute('data-phone-validate')||'',
-           'maxlength':vin.getAttribute('maxlength')||''}}); }
+  // 같은 requiredalert를 여러 변형(visible + 숨김 NotUse)이 공유하고, 날짜쌍(data-linkeddate)이
+  // 숨김 변형을 가리키기도 한다 → 모든 변형을 채워야 연결 검증이 통과한다. 각 input의 id/korname을
+  // 파이썬 role_value로 개별 결정(입학=이른 날짜/졸업=늦은 날짜 등).
+  var wraps=Array.prototype.slice.call(document.querySelectorAll('[requiredalert="'+raw.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]'));
+  if(!wraps.length) wraps=[field];
+  var items=[];
+  wraps.forEach(function(w){
+    var inp=w.querySelector('input[type=text],input[inputmode=numeric],input:not([type=hidden])');
+    if(inp) items.push({id:inp.id||inp.name,
+      'data-phone-validate':w.getAttribute('data-phone-validate')||'',
+      'maxlength':inp.getAttribute('maxlength')||'',
+      'korname':w.getAttribute('korname')||'', 'idref':inp.id||''});
+  });
+  if(items.length) return 'ROLE:'+JSON.stringify({jwtype:jt, items:items});
+}
+// SCOREFIELD(평점평균 등): 래퍼에 점수 input + Max 스케일 select가 함께 있어 select 브랜치가
+// Max만 채우던 문제 → 점수 input을 스케일 기준값으로 채움(Max≥10=100점제→'80', 그 외 4점대→'3.5').
+if(jt==='SCOREFIELD'){
+  var scoreIn=Array.prototype.slice.call(field.querySelectorAll('input')).find(function(x){
+    var t=(x.type||'').toLowerCase(); return t!=='hidden'&&t!=='radio'&&t!=='checkbox'; });
+  var maxSel=field.querySelector('select');
+  if(maxSel && maxSel.options.length>1){ maxSel.selectedIndex=1; fire(maxSel); }
+  var mx=maxSel?parseFloat((((maxSel.value||(maxSel.options[maxSel.selectedIndex]||{}).text)||'')+'').replace(/[^0-9.]/g,'')):NaN;
+  var sv=(!isNaN(mx)&&mx>=10)?'80':'3.5';
+  if(scoreIn){ scoreIn.removeAttribute('readonly'); scoreIn.value=sv; fire(scoreIn);
+    scoreIn.dispatchEvent(new Event('blur',{bubbles:true}));
+    return (scoreIn.id||'score')+' = '+sv+' (max='+(isNaN(mx)?'?':mx)+')'; }
 }
 var radios=field.querySelectorAll('input[type=radio]');
 if(radios.length){ var pick=null;
@@ -548,7 +576,10 @@ _SET_VALUE_JS = r"""
 var el=document.getElementById(arguments[0]) || (document.getElementsByName(arguments[0])[0]);
 if(!el) return false;
 el.removeAttribute('readonly'); el.value=arguments[1];
+// Date/마스크 헬퍼는 keydown/keyup에 반응(연결날짜 data-linkeddate 검증 포함) → 전 이벤트 발화.
 el.dispatchEvent(new Event('input',{bubbles:true}));
+el.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true}));
+el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
 el.dispatchEvent(new Event('change',{bubbles:true}));
 el.dispatchEvent(new Event('blur',{bubbles:true}));
 return true;
@@ -569,57 +600,75 @@ def _force_fill_for_message(driver, msg):
             desc = json.loads(r[len("ROLE:"):])
         except Exception:  # noqa: BLE001
             return None
-        v = role_value(desc.get("jwtype", ""), desc.get("attrs") or {})
-        if v is None:
-            return None
-        fid = desc.get("id") or ""
-        try:
-            ok = driver.execute_script(_SET_VALUE_JS, fid, v)
-        except Exception:  # noqa: BLE001
-            return None
-        return f"{fid} = {v} (role={desc.get('jwtype')})" if ok else None
+        jt = desc.get("jwtype", "")
+        items = desc.get("items") or ([desc] if desc.get("id") else [])
+        filled = []
+        for it in items:
+            v = role_value(jt, it)
+            if v is None:
+                continue
+            fid = it.get("id") or ""
+            try:
+                if driver.execute_script(_SET_VALUE_JS, fid, v):
+                    filled.append(f"{fid}={v}")
+            except Exception:  # noqa: BLE001
+                continue
+        return f"{', '.join(filled)} (role={jt})" if filled else None
     return r
 
 
-# SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정):
-#   트리거 a#btn{searchid} 클릭 → #SearchLayer_Pop 오픈 → input에 검색어 → a.btn_search 클릭 →
-#   결과 <ul><li>(첫 li는 안내) → 데이터 li(cursor:pointer, <a><span.title>) 클릭(jQuery) → 코드/이름 세팅 + 팝업 닫힘.
+# SEARCHFIELD 검색팝업에서 결과 선택 (디스커버리 확정 — 폼별 결과 구조 2종):
+#   트리거 a#btn{searchid} 클릭 → #SearchLayer_Pop 오픈 → (선택) input에 검색어 → a.btn_search 클릭 →
+#   결과: ① <ul><li>(외국인 중문 폼, cursor:pointer / a span.title) 또는
+#         ② <table#SearchResult><tr cursor:pointer>(대학원 등 국내 폼, 팝업 열자마자 전체 목록 선로드).
+#   첫 데이터 행 클릭(jQuery) → 코드/이름 세팅 + 팝업 닫힘.
 def _popup_open(driver) -> bool:
     return bool(driver.execute_script(
         "var p=document.getElementById('SearchLayer_Pop'); return !!(p && getComputedStyle(p).display!=='none');"
     ))
 
 
-def _resolve_open_popup(driver) -> str:
-    """이미 열린 #SearchLayer_Pop을 해소 — 여러 검색어를 시도해 첫 데이터 결과를 클릭(코드/이름 세팅).
+# 열린 팝업에서 첫 데이터 결과(li형/table tr형 모두)를 클릭 → 선택 텍스트 반환(없으면 '').
+_PICK_RESULT_JS = r"""
+var p=document.getElementById('SearchLayer_Pop'); if(!p) return '';
+var rows=Array.prototype.slice.call(p.querySelectorAll('table tbody tr, li')).filter(function(x){
+  if(x.tagName==='TR'){ return x.style.cursor==='pointer' && x.getElementsByTagName('td').length>0; }
+  return x.querySelector('a') && (x.style.cursor==='pointer' || x.querySelector('a span.title'));
+});
+if(rows.length){ var t=(rows[0].innerText||'').replace(/\s+/g,' ').trim(); rows[0].click(); return t; }
+return '';
+"""
 
-    반환: 선택된 결과 텍스트(성공) 또는 ''(실패). 외국인 중문 폼이라 중문/한글/광역 쿼리를 폭넓게 시도.
+# 팝업 검색어 입력 + '검색' 버튼 클릭.
+_SEARCH_POPUP_JS = r"""
+var q=arguments[0]; var p=document.getElementById('SearchLayer_Pop'); if(!p) return false;
+var inp=Array.prototype.slice.call(p.querySelectorAll('input[type=text]'))
+  .find(function(e){return getComputedStyle(e).display!=='none';});
+if(inp){ inp.value=q; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('keyup',{bubbles:true})); }
+var b=Array.prototype.slice.call(p.querySelectorAll('a.btn_search')).find(function(x){return /검색/.test(x.innerText||'');});
+if(b) b.click(); return true;
+"""
+
+
+def _resolve_open_popup(driver) -> str:
+    """이미 열린 #SearchLayer_Pop을 해소 — 첫 데이터 결과를 클릭(코드/이름 세팅).
+
+    반환: 선택된 결과 텍스트(성공) 또는 ''(실패).
+    ① 전체 목록 선로드형(table)은 검색 없이 바로 첫 행 선택.
+    ② 검색형은 빈쿼리(전체)→국내 학과 공통어→외국인 중문 순으로 폭넓게 시도.
     """
     if not _popup_open(driver):
         return ""
-    for q in ("중국", "中", "大学", "大", "学", "서울", "a", "A"):
-        clicked_text = driver.execute_script(
-            r"""
-            var q=arguments[0]; var p=document.getElementById('SearchLayer_Pop');
-            var inp=Array.prototype.slice.call(p.querySelectorAll('input[type=text]'))
-              .find(function(e){return getComputedStyle(e).display!=='none';});
-            if(inp){ inp.value=q; inp.dispatchEvent(new Event('input',{bubbles:true})); inp.dispatchEvent(new Event('keyup',{bubbles:true})); }
-            var b=Array.prototype.slice.call(p.querySelectorAll('a.btn_search')).find(function(x){return /검색/.test(x.innerText||'');});
-            if(b) b.click();
-            return true;
-            """,
-            q,
-        )
+    # ① 선로드된 결과가 있으면 검색 없이 즉시 선택
+    picked = driver.execute_script(_PICK_RESULT_JS)
+    if picked:
+        time.sleep(0.6)
+        return picked[:40]
+    # ② 검색형: 빈쿼리(전체 목록) 우선, 국내 학과어, 외국인 중문 순
+    for q in ("", "학", "가", "경영", "국어", "공학", "교육", "간호", "중국", "中", "大学", "大", "学", "서울", "a", "A"):
+        driver.execute_script(_SEARCH_POPUP_JS, q)
         time.sleep(1.4)
-        picked = driver.execute_script(
-            r"""
-            var p=document.getElementById('SearchLayer_Pop');
-            var lis=Array.prototype.slice.call(p.querySelectorAll('li'))
-              .filter(function(x){ return x.querySelector('a') && (x.style.cursor==='pointer' || x.querySelector('a span.title')); });
-            if(lis.length){ var t=(lis[0].innerText||'').replace(/\s+/g,' ').trim(); lis[0].click(); return t; }
-            return '';
-            """
-        )
+        picked = driver.execute_script(_PICK_RESULT_JS)
         if picked:
             time.sleep(0.6)
             return picked[:40]
@@ -704,7 +753,8 @@ def check_apply_write(driver, ctx):
     last = None
     saved = False
     valid_i = 0
-    for i in range(15):
+    # 전형별 필수 필드 수가 다르다(외국인 ~13, 대학원 평점/백분위/편입/재학 등 더 많음) → 넉넉히.
+    for i in range(30):
         _close_search_popup(driver)  # 이전 회차에 열린 검색팝업이 검증을 막지 않도록
         driver.execute_script(_WONSEO_FILL_JS)
         time.sleep(0.4)
