@@ -508,6 +508,16 @@ var jt=(field.getAttribute('jwtype')||'').toUpperCase();
 var sid=field.getAttribute('searchid')||'';
 if(jt==='SEARCHFIELD' || sid) return 'SEARCH:'+sid;  // 파이썬이 select_search_result 호출
 function fire(el){ el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+// ADDRESSFIELD: 우편번호 검색 팝업 대신 JX(name).Set(...)로 RoadData 세팅(해독):
+//   저장 핸들러 ADDRESS.text()가 this.RoadData(null)에 ROADJUSOETC를 쓰다 크래시하던 원인 해소.
+if(jt==='ADDRESSFIELD'){
+  var an=field.getAttribute('name')||'';
+  try{ if(window.JX && an){ JX(an).Set({BASEAREA:'06236',ROADJUSO:'서울특별시 테헤란로 1',
+    OLDJUSO1:'서울특별시 역삼동 1',ROADJUSOETC:'101',REGION:'서울'}); } }catch(e){}
+  var det=field.querySelector("input[id$='RoadJusoEtc'],input[name$='RoadJusoEtc']");
+  if(det){ det.removeAttribute('readonly'); det.value='101'; fire(det); det.dispatchEvent(new Event('blur',{bubbles:true})); }
+  return an+' = JX.Set(addr)+detail';
+}
 // 값-role(PHONE/EMAIL/DATE): 값 결정은 파이썬 field_roles.role_value(단일 소스·단위테스트).
 // JS는 대상 input과 jwtype·data-* 신호만 넘기고, 파이썬이 값을 계산해 _SET_VALUE_JS로 주입한다.
 if(jt==='PHONEFIELD'||jt==='EMAILFIELD'||jt==='DATEFIELD'){
