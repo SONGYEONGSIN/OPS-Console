@@ -108,11 +108,14 @@ describe("runNoticeTeamsShare", () => {
     expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 
-  it("발신자 미설정이면 전송 생략", async () => {
+  it("발신자 env 미설정이면 기본값(ys1114)으로 발송", async () => {
     vi.stubEnv("TEAMS_NOTICE_SENDER", "");
+    wireSelect([{ id: "n1", title: "t", body: "b", owner_label: "운영부" }]);
     const r = await runNoticeTeamsShare();
     expect(r.ok).toBe(true);
-    expect(r.message).toMatch(/발신자|미설정/);
-    expect(sendTeamsMock).not.toHaveBeenCalled();
+    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
+    expect(sendTeamsMock.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ operatorEmail: "ys1114@jinhakapply.com" }),
+    );
   });
 });
