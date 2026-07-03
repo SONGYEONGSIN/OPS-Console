@@ -107,6 +107,17 @@ describe("runTeamBriefing", () => {
     expect(arg.html).toContain("건국대");
   });
 
+  it("수신 방은 공지 방(TEAMS_NOTICE_CHAT_ID) 우선", async () => {
+    vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "19:notice-room@thread.v2");
+    vi.stubEnv("TEAMS_CHAT_ID", "chat-1"); // 있어도 공지 방 우선
+    const r = await runTeamBriefing();
+    expect(r.ok).toBe(true);
+    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
+    expect(sendTeamsMock.mock.calls[0][0].chatId).toBe(
+      "19:notice-room@thread.v2",
+    );
+  });
+
   it("발신자 env 모두 미설정이면 기본값(ys1114)으로 발송", async () => {
     vi.stubEnv("TEAMS_BRIEFING_SENDER", "");
     vi.stubEnv("TEAMS_NOTICE_SENDER", "");
