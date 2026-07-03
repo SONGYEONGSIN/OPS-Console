@@ -28,15 +28,16 @@ function addDaysYmd(ymd: string, n: number): string {
 /**
  * 팀 보고 브리핑 — 매주 금요일 Teams 그룹채팅에 계약진행/팀업무 현황 스냅샷 발송.
  * cron 실행(세션 없음)이라 Supabase는 admin client로 직접 조회한다.
- * 방: TEAMS_CHAT_ID(차주보고 방과 동일) → 없으면 TEAMS_NOTICE_CHAT_ID 폴백.
+ * 방: 공지와 동일한 TEAMS_NOTICE_CHAT_ID(공지 방) 우선 → 없으면 TEAMS_CHAT_ID(차주보고 방) 폴백.
  * 발신: TEAMS_BRIEFING_SENDER → TEAMS_NOTICE_SENDER → 없으면 기본값 ys1114@jinhakapply.com.
  * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 집계 결과만.
  */
 const BRIEFING_SENDER_DEFAULT = "ys1114@jinhakapply.com";
 
 export async function runTeamBriefing(): Promise<AutomationRunResult> {
+  // 공지 Teams 공유와 동일한 방으로 발송 — TEAMS_NOTICE_CHAT_ID 우선.
   const chatId =
-    process.env.TEAMS_CHAT_ID || process.env.TEAMS_NOTICE_CHAT_ID || "";
+    process.env.TEAMS_NOTICE_CHAT_ID || process.env.TEAMS_CHAT_ID || "";
   const sender =
     process.env.TEAMS_BRIEFING_SENDER ||
     process.env.TEAMS_NOTICE_SENDER ||
