@@ -506,7 +506,9 @@ var field=null;
 // 같은 requiredalert를 여러 필드가 공유한다(NotUse 숨김 변형 + 활성 필드, 그리고 편입 등으로 나타난
 // 전적대학 섹션의 동일 라벨 필드). 이미 채워진(complete) 것 말고 → 보이는(활성) + 미완료(incomplete)
 // 래퍼를 우선 선택. 전부 완료/숨김이면 폴백.
-function _vis(x){ var e=x.querySelector('input,select,textarea'); return !!(e && (e.offsetParent!==null || e.getClientRects().length>0)); }
+// hidden 아닌 첫 입력의 가시성으로 판정 — SEARCHFIELD는 첫 input이 hidden 코드라, 그걸 보면 활성
+// 필드도 '안 보임'으로 오판(다중 학교 SEARCHFIELD에서 채워진 것으로 폴백하던 반복 원인).
+function _vis(x){ var e=x.querySelector('input:not([type=hidden]),select,textarea'); return !!(e && (e.offsetParent!==null || e.getClientRects().length>0)); }
 function _incomplete(x){
   var rs=x.querySelectorAll('input[type=radio]'); if(rs.length) return !Array.prototype.some.call(rs,function(r){return r.checked;});
   var cs2=x.querySelectorAll('input[type=checkbox]'); if(cs2.length) return !Array.prototype.some.call(cs2,function(c){return c.checked;});
