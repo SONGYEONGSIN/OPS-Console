@@ -394,7 +394,7 @@ document.querySelectorAll('input[type=text],input[type=tel],input[type=number],i
   // typed-role 필드(날짜/기간/점수/전화/이메일)에 'TEST' 쓰레기값을 넣으면 검증이 거부하고 role
   // 처리를 방해한다 → broad-fill은 건너뛰고 role 기반 force-fill(JX.Set 등)에 맡긴다.
   if(el.closest('[jwtype=DATEFIELD],[jwtype=DATERANGEFIELD],[jwtype=SCOREFIELD],[jwtype=PHONEFIELD],[jwtype=EMAILFIELD]')) return;
-  var id=el.id||''; var v='TEST';
+  var id=el.id||''; var v=((el.type||'').toLowerCase()==='number')?'90':'TEST';  // number는 'TEST' 거부
   if(/^txtC/.test(id)) v='测试';
   else if(/Email/i.test(id)) v='test@test.com';
   else if(/Mobile|Tel/i.test(id)){ var _pw=el.closest('[jwtype=PHONEFIELD]');
@@ -488,6 +488,7 @@ def _alert_text(driver):
 # broad-fill이 놓치는 hidden/readonly/조건부 필드를 모달 메시지 기반으로 수렴시키는 일반 메커니즘.
 _FORCE_FILL_JS = r"""
 function val(el){ var id=el.id||'';
+  if((el.type||'').toLowerCase()==='number') return '90';  // number 입력은 'TEST' 거부 → 숫자(영어점수 등)
   if(/^txtC/.test(id)) return '测试';
   if(/Email/i.test(id)) return 'test@test.com';
   if(/Mobile|Tel/i.test(id)) return '01012345678';
