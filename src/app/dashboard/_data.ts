@@ -409,15 +409,6 @@ export const sidebarSections: SbSection[] = [
       },
       {
         kind: "item",
-        ico: "◔",
-        label: "업무배정",
-        count: "",
-        slug: "work-assignment",
-        pattern: "list",
-        adminOnly: true,
-      },
-      {
-        kind: "item",
         ico: "⚙",
         label: "시스템 설정",
         count: "",
@@ -440,6 +431,15 @@ export const sidebarSections: SbSection[] = [
         count: "",
         slug: "feedback",
         pattern: "list",
+      },
+      {
+        kind: "item",
+        ico: "◔",
+        label: "업무배정",
+        count: "",
+        slug: "work-assignment",
+        pattern: "list",
+        adminOnly: true,
       },
       {
         kind: "item",
