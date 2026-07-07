@@ -1,5 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { isContractCompleted, prevYm } from "../completion";
+import { isContractCompleted, isServiceActive, prevYm } from "../completion";
+
+describe("isServiceActive", () => {
+  it("서비스여부 'Y'(공백/대소문자 허용)만 true", () => {
+    expect(isServiceActive("Y")).toBe(true);
+    expect(isServiceActive(" Y ")).toBe(true);
+    expect(isServiceActive("y")).toBe(true);
+  });
+
+  it("공란/N/기타는 false", () => {
+    expect(isServiceActive("")).toBe(false);
+    expect(isServiceActive("N")).toBe(false);
+    expect(isServiceActive("보류")).toBe(false);
+  });
+});
 
 describe("isContractCompleted", () => {
   it("완료 상태값을 인식 (변형 포함)", () => {
