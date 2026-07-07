@@ -7,16 +7,24 @@ import { z } from "zod";
 export const cycleStatusSchema = z.enum(["open", "closed"]);
 export type CycleStatus = z.infer<typeof cycleStatusSchema>;
 
-/** 8단계 평가 워크플로우 — 1=목표설정, 2=실행계획, 3=계획검토, 4=중간점검,
- *  5=점검검토, 6=자기평가, 7=종합평가, 8=완료. */
-export const STEP_VALUES = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+/** 4단계 관리자 중심 워크플로우 — 1=목표설정(팀원), 2=실행계획·성과지표(팀원),
+ *  3=정량집계·관리자평가(관리자), 4=발행완료. */
+export const STEP_VALUES = [1, 2, 3, 4] as const;
 export type Step = (typeof STEP_VALUES)[number];
 export const stepSchema = z
   .number()
   .int()
   .refine((v): v is Step => STEP_VALUES.includes(v as Step), {
-    message: "step은 1..8 사이의 정수",
+    message: "step은 1..4 사이의 정수",
   });
+
+/** 단계 라벨 (Stepper/View/Table 공통 단일 소스). */
+export const STEP_LABEL: Record<Step, string> = {
+  1: "목표설정",
+  2: "실행계획·지표",
+  3: "정량집계·평가",
+  4: "발행완료",
+};
 
 export const ROLE_VALUES = ["evaluator", "evaluatee"] as const;
 export type Role = (typeof ROLE_VALUES)[number];
@@ -133,3 +141,62 @@ export const reviewCreateSchema = z.object({
   grade_competency: gradeSchema.nullable().optional(),
 });
 export type ReviewCreate = z.infer<typeof reviewCreateSchema>;
+
+/* ════════════════════════════════════════════════════════════
+   신규: 성과지표(performance_metrics) + 관리자 루브릭(performance_rubric_scores)
+   ════════════════════════════════════════════════════════════ */
+
+/** 성과지표 row — assignment당 N개, weight 합=80(정수 points). */
+export const metricRowSchema = z.object({
+  id: z.string().uuid(),
+  assignment_id: z.string().uuid(),
+  name: z.string().min(1),
+  /** 가중치 (정수 points, 합=80 검증은 scoring.isValidMetricWeights) */
+  weight: z.number().int().min(0).max(80),
+  /** 정량 소스 키 (aggregators/registry) 또는 null(수동 지표) */
+  source_key: z.string().nullable(),
+  /** before/after 수동 입력 (시간절감·오류율 등) */
+  before_value: z.number().nullable(),
+  after_value: z.number().nullable(),
+  /** 달성률 0~100 (scoring 입력) */
+  achievement: z.number().min(0).max(100).nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type MetricRow = z.infer<typeof metricRowSchema>;
+
+export const metricCreateSchema = z.object({
+  assignment_id: z.string().uuid(),
+  name: z.string().min(1),
+  weight: z.number().int().min(0).max(80),
+  source_key: z.string().nullable().optional(),
+  before_value: z.number().nullable().optional(),
+  after_value: z.number().nullable().optional(),
+  achievement: z.number().min(0).max(100).nullable().optional(),
+});
+export type MetricCreate = z.infer<typeof metricCreateSchema>;
+
+/** 관리자 루브릭 항목 — 태도·문화 / 협업 / 문제해결. */
+export const RUBRIC_CRITERIA = ["태도·문화", "협업", "문제해결"] as const;
+export type RubricCriterion = (typeof RUBRIC_CRITERIA)[number];
+export const rubricCriterionSchema = z.enum(RUBRIC_CRITERIA);
+
+export const rubricScoreRowSchema = z.object({
+  id: z.string().uuid(),
+  assignment_id: z.string().uuid(),
+  criterion: rubricCriterionSchema,
+  /** 1~5 척도 */
+  score: z.number().int().min(1).max(5),
+  comment: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type RubricScoreRow = z.infer<typeof rubricScoreRowSchema>;
+
+export const rubricUpsertSchema = z.object({
+  assignment_id: z.string().uuid(),
+  criterion: rubricCriterionSchema,
+  score: z.number().int().min(1).max(5),
+  comment: z.string().nullable().optional(),
+});
+export type RubricUpsert = z.infer<typeof rubricUpsertSchema>;

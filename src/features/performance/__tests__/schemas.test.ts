@@ -22,8 +22,8 @@ describe("performance schemas — enums", () => {
     expect(() => cycleStatusSchema.parse("archived")).toThrow();
   });
 
-  it("STEP_VALUES = [1..8]", () => {
-    expect(STEP_VALUES).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  it("STEP_VALUES = [1..4]", () => {
+    expect(STEP_VALUES).toEqual([1, 2, 3, 4]);
   });
 
   it("ROLE_VALUES = ['evaluator','evaluatee']", () => {
@@ -71,12 +71,12 @@ describe("assignmentRowSchema", () => {
   it("current_step 1 — parse 성공", () => {
     expect(assignmentRowSchema.parse(valid).current_step).toBe(1);
   });
-  it("current_step 8 — parse 성공", () => {
+  it("current_step 4 — parse 성공", () => {
     expect(
-      assignmentRowSchema.parse({ ...valid, current_step: 8 }).current_step,
-    ).toBe(8);
+      assignmentRowSchema.parse({ ...valid, current_step: 4 }).current_step,
+    ).toBe(4);
   });
-  it("current_step 0 — reject (범위 1-8)", () => {
+  it("current_step 0 — reject (범위 1-4)", () => {
     expect(() =>
       assignmentRowSchema.parse({ ...valid, current_step: 0 }),
     ).toThrow();

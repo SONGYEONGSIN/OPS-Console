@@ -39,17 +39,8 @@ export default async function OutcomesPage({
   );
   const config = resolvePageMeta(slug, meta, total);
 
-  // admin인 경우 페이지 상단에 8단계별 분포 요약 노출.
-  const stepCounts: Record<Step, number> = {
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-    6: 0,
-    7: 0,
-    8: 0,
-  };
+  // admin인 경우 페이지 상단에 4단계별 분포 요약 노출.
+  const stepCounts: Record<Step, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
   for (const a of assignments) stepCounts[a.current_step] += 1;
 
   // header 영역: PageHeader 다음에 admin 권한 시 AdminSummary 결합.

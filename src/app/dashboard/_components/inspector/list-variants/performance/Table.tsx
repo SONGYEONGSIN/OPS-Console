@@ -1,6 +1,11 @@
 "use client";
 
 import type { ListRow } from "../../../patterns/ListPattern";
+import {
+  STEP_LABEL,
+  STEP_VALUES,
+  type Step,
+} from "@/features/performance/schemas";
 
 type Props = {
   rows: ListRow[];
@@ -8,16 +13,7 @@ type Props = {
   onSelect: (row: ListRow) => void;
 };
 
-const STEP_LABEL: Record<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, string> = {
-  1: "목표설정",
-  2: "실행계획",
-  3: "계획검토",
-  4: "중간점검",
-  5: "점검검토",
-  6: "자기평가",
-  7: "종합평가",
-  8: "완료",
-};
+const STEP_MAX = STEP_VALUES.length;
 
 /** performance 도메인 테이블 — 사이클 / 평가자 / 팀원 / 현재 단계 / 진척률.
  *  표준 톤(ServicesTable) — 외부 border/bg 없이 row separator만. */
@@ -42,8 +38,8 @@ export function PerformanceTable({ rows, selectedId, onSelect }: Props) {
           </tr>
         ) : (
           rows.map((row) => {
-            const step = row.performanceCurrentStep ?? 1;
-            const percent = Math.round((step / 8) * 100);
+            const step = (row.performanceCurrentStep ?? 1) as Step;
+            const percent = Math.round((step / STEP_MAX) * 100);
             return (
               <tr
                 key={row.id}
