@@ -10,6 +10,11 @@ export function isContractCompleted(status: string): boolean {
   return /완료/.test(s);
 }
 
+/** 서비스여부 값이 'Y'인지 (공백/대소문자 허용). */
+export function isServiceActive(value: string): boolean {
+  return value.trim().toUpperCase() === "Y";
+}
+
 /**
  * 시트별 완료/전체 건수를 sheets 순서대로 집계 (0건 시트 포함).
  * rows는 sheet/status만 있으면 되므로 ContractRow 부분집합으로 받는다.

@@ -25,16 +25,17 @@ describe("kstYm", () => {
 });
 
 describe("countCompletedContracts", () => {
-  it("완료 상태 행만 카운트", async () => {
+  it("서비스여부 Y + 완료 상태 행만 카운트", async () => {
     vi.mocked(listContracts).mockResolvedValue({
       rows: [
-        { status: "계약완료" },
-        { status: "계약완료(영업)" },
-        { status: "계약 미완료" },
-        { status: "영업팀진행" },
+        { status: "계약완료", serviceActive: "Y" },
+        { status: "계약완료(영업)", serviceActive: "Y" },
+        { status: "계약완료", serviceActive: "" }, // 서비스여부 미설정 → 제외
+        { status: "계약 미완료", serviceActive: "Y" },
+        { status: "영업팀진행", serviceActive: "Y" },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ] as any,
-      total: 4,
+      total: 5,
     });
     expect(await countCompletedContracts()).toBe(2);
   });
