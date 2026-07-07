@@ -50,6 +50,19 @@ export const kpiItemSchema = z.object({
   unit: z.string(),
   /** 증가 = good / bad / neutral (사고는 감소가 good) */
   goodOnIncrease: z.boolean(),
+  /**
+   * 세부 분해 (예: 계약 체결의 시트별 완료/전체 건수). 없으면 단일 값 카드로 표시.
+   * value=완료, total=전체(완료율 분모). 저장된 구형 리포트 하위호환을 위해 optional.
+   */
+  breakdown: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.number(),
+        total: z.number().optional(),
+      }),
+    )
+    .optional(),
 });
 export type KpiItem = z.infer<typeof kpiItemSchema>;
 

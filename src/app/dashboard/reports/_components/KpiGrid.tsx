@@ -1,6 +1,7 @@
 import type { KpiItem } from "@/features/reports/schemas";
 import { KpiCard } from "./KpiCard";
 import { ServiceFlowCard } from "./ServiceFlowCard";
+import { ContractSheetCard } from "./ContractSheetCard";
 
 type Props = {
   kpis: KpiItem[];
@@ -29,9 +30,13 @@ export function KpiGrid({ kpis, className = "" }: Props) {
       ) : open ? (
         <KpiCard item={open} />
       ) : null}
-      {rest.map((kpi) => (
-        <KpiCard key={kpi.key} item={kpi} />
-      ))}
+      {rest.map((kpi) =>
+        kpi.key === "contract" && kpi.breakdown ? (
+          <ContractSheetCard key={kpi.key} item={kpi} />
+        ) : (
+          <KpiCard key={kpi.key} item={kpi} />
+        ),
+      )}
     </div>
   );
 }

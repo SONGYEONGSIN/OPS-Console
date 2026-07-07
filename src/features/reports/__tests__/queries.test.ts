@@ -8,7 +8,10 @@ vi.mock("@/features/contracts/queries", () => ({
   listContracts: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
 vi.mock("@/features/contracts/completion-snapshot", () => ({
-  countCompletedContracts: vi.fn(async () => 0),
+  countCompletedContractsBySheet: vi.fn(async () => ({
+    total: 0,
+    bySheet: [],
+  })),
   getSnapshotCount: vi.fn(async () => null),
   kstYm: vi.fn(() => "2026-05"),
 }));
