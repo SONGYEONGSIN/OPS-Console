@@ -214,12 +214,7 @@ export type ListRow = {
   leaveEndDate?: string | null;
   /** backup 도메인 — 메일 발송 상태. PR-6: scheduled/sending 추가 */
   mailStatus?:
-    | "pending"
-    | "scheduled"
-    | "sending"
-    | "sent"
-    | "mail_failed"
-    | "dry_run";
+    "pending" | "scheduled" | "sending" | "sent" | "mail_failed" | "dry_run";
   /** backup 도메인 — 메일 발송 시각 (ISO, nullable) */
   mailSentAt?: string | null;
   /** backup 도메인 — 메일 에러 메시지 (nullable) */
@@ -333,11 +328,7 @@ export type ListRow = {
   incidentStatus?: "미처리" | "처리중" | "처리완료" | "보류";
   /** incident-reports (경위서) — 결재 상태 */
   incidentReportStatus?:
-    | "draft"
-    | "pending_approval"
-    | "approved"
-    | "rejected"
-    | "sent";
+    "draft" | "pending_approval" | "approved" | "rejected" | "sent";
   /** incident-reports — 수신대학 */
   incidentReportUniversity?: string;
   incidentReportServiceName?: string;
@@ -535,6 +526,9 @@ export type ListRow = {
   quoteValidUntil?: string | null;
   quoteNote?: string | null;
   quoteType?: "dev" | "fee" | "platform" | "labor";
+  /** payment variant — 비용지급일 (읽기전용). 날짜는 startDateYmd 재사용. */
+  paymentCategory?: string;
+  paymentSheet?: string;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;

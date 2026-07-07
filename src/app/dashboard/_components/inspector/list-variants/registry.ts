@@ -34,10 +34,7 @@ import { MY_TODO_FILTERS, blankMyTodoRow } from "./my-todo/filters";
 import { WeeklyTodoTable } from "./weekly-todo/Table";
 import { WeeklyTodoForm } from "./weekly-todo/EditForm";
 import { WeeklyTodoView } from "./weekly-todo/View";
-import {
-  WEEKLY_TODO_FILTERS,
-  blankWeeklyTodoRow,
-} from "./weekly-todo/filters";
+import { WEEKLY_TODO_FILTERS, blankWeeklyTodoRow } from "./weekly-todo/filters";
 import { ProjectTable } from "./project/Table";
 import { ProjectForm } from "./project/EditForm";
 import { ProjectView } from "./project/View";
@@ -111,6 +108,7 @@ import { QuoteView } from "./quotes/View";
 import { QuoteEditForm } from "./quotes/EditForm";
 import { QuoteTable } from "./quotes/Table";
 import { QUOTE_FILTERS, blankQuoteRow } from "./quotes/filters";
+import { PaymentView } from "./payment/View";
 import type { ListRow } from "../../patterns/ListPattern";
 import type { Variant, ViewProps, EditFormProps } from "./types";
 import type { ComponentType } from "react";
@@ -349,5 +347,9 @@ export const variantRegistry = {
     Table: QuoteTable,
     Filters: QUOTE_FILTERS,
     blank: blankQuoteRow,
+  },
+  payment: {
+    // 읽기 전용 — 비용지급일 (SharePoint Excel 원본, 편집/신규 없음). 달력 칩 클릭 상세.
+    View: PaymentView,
   },
 } as const satisfies Record<Variant, RegistryEntry>;

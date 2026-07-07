@@ -31,7 +31,8 @@ export type Variant =
   | "performance"
   | "mailbox"
   | "news"
-  | "quotes";
+  | "quotes"
+  | "payment";
 
 /** cohort variant — 온보딩 체크리스트 토글 server action 입력. */
 export type ChecklistToggleInput = {
