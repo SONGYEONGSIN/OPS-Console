@@ -1,7 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listContracts } from "./queries";
-import { isContractCompleted } from "./completion";
+import { isContractCompleted, tallyBySheet } from "./completion";
+import { CONTRACT_SHEETS, type ContractSheet } from "./schemas";
 
 /** KST 기준 현재 월 'YYYY-MM'. */
 export function kstYm(d: Date): string {
@@ -22,6 +23,31 @@ export async function countCompletedContracts(): Promise<number> {
     return r.rows.filter((row) => isContractCompleted(row.status)).length;
   } catch {
     return 0;
+  }
+}
+
+/**
+ * 계약 시트별 완료/전체 건수 + 완료 총합 (라이브). 실패 시 0.
+ * - total: 완료 총합(value), bySheet: 시트별 {completed, total}
+ */
+export async function countCompletedContractsBySheet(): Promise<{
+  total: number;
+  bySheet: { sheet: ContractSheet; completed: number; total: number }[];
+}> {
+  try {
+    const r = await listContracts();
+    const bySheet = tallyBySheet(r.rows, CONTRACT_SHEETS);
+    const total = bySheet.reduce((s, x) => s + x.completed, 0);
+    return { total, bySheet };
+  } catch {
+    return {
+      total: 0,
+      bySheet: CONTRACT_SHEETS.map((sheet) => ({
+        sheet,
+        completed: 0,
+        total: 0,
+      })),
+    };
   }
 }
 

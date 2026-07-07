@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { sumAmountColumn } from "./receivables-amount";
 import {
-  countCompletedContracts,
+  countCompletedContractsBySheet,
   getSnapshotCount,
   kstYm,
 } from "@/features/contracts/completion-snapshot";
@@ -221,6 +221,7 @@ function makeKpi(
   key: KpiItem["key"],
   value: number,
   prev: number | null,
+  breakdown?: KpiItem["breakdown"],
 ): KpiItem {
   const meta = KPI_META[key];
   const { delta, deltaPct } = computeDelta(value, prev);
@@ -233,6 +234,7 @@ function makeKpi(
     deltaPct,
     unit: meta.unit,
     goodOnIncrease: meta.goodOnIncrease,
+    ...(breakdown ? { breakdown } : {}),
   };
 }
 
@@ -288,7 +290,7 @@ export async function getReportKpis(
     countMailSent(admin, prevRange),
     countTable(admin, "worklog", "created_at", range),
     countTable(admin, "worklog", "created_at", prevRange),
-    countCompletedContracts(),
+    countCompletedContractsBySheet(),
     sumReceivables(),
   ]);
 
@@ -300,7 +302,15 @@ export async function getReportKpis(
     makeKpi("service-open", svcOpenNow, svcOpenPrev),
     makeKpi("service-close", svcCloseNow, svcClosePrev),
     makeKpi("incident", incNow, incPrev),
-    makeKpi("contract", contractNow, contractPrev),
+    makeKpi(
+      "contract",
+      contractNow.total,
+      contractPrev,
+      // 카드에는 4년제·전문대 시트만 노출 (value=완료, total=전체)
+      contractNow.bySheet
+        .filter((s) => s.sheet === "4년제" || s.sheet === "전문대")
+        .map((s) => ({ label: s.sheet, value: s.completed, total: s.total })),
+    ),
     makeKpi("receivables", rcvNow, null),
     makeKpi("handover", hoNow, hoPrev),
     makeKpi("backup", bkNow, bkPrev),
