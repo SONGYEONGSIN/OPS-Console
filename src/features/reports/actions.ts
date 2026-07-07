@@ -3,12 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { reportCreateSchema, type ReportCreateInput } from "./schemas";
+import {
+  reportCreateSchema,
+  reportRenameSchema,
+  type ReportCreateInput,
+  type ReportRenameInput,
+} from "./schemas";
 import { getReportKpis } from "./queries";
 
 export type ReportActionResult =
-  | { ok: true; id: string }
-  | { ok: false; error: string };
+  { ok: true; id: string } | { ok: false; error: string };
 
 /**
  * 리포트 생성 — 현재 시점의 KPI 스냅샷을 fetch해서 DB에 영속화.
@@ -49,6 +53,33 @@ export async function createReport(
 }
 
 /**
+ * 리포트 제목 수정 — admin·member (viewer 차단). 오타 정정 등.
+ */
+export async function updateReportTitle(
+  input: ReportRenameInput,
+): Promise<ReportActionResult> {
+  const parsed = reportRenameSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
+  }
+  const me = await getCurrentOperator();
+  if (!me || me.permission === "viewer" || me.permission === null) {
+    return { ok: false, error: "권한 없음" };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("reports")
+    .update({ title: parsed.data.title })
+    .eq("id", parsed.data.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/dashboard/reports");
+  revalidatePath(`/dashboard/reports/${parsed.data.id}`);
+  return { ok: true, id: parsed.data.id };
+}
+
+/**
  * 리포트 삭제 — admin만.
  */
 export async function deleteReport(id: string): Promise<ReportActionResult> {
@@ -75,10 +106,10 @@ export async function toggleReportShare(
     .select("share_token")
     .eq("id", id)
     .maybeSingle();
-  const nextToken =
-    (existing as { share_token: string | null } | null)?.share_token
-      ? null
-      : crypto.randomUUID();
+  const nextToken = (existing as { share_token: string | null } | null)
+    ?.share_token
+    ? null
+    : crypto.randomUUID();
   const { error } = await admin
     .from("reports")
     .update({ share_token: nextToken })

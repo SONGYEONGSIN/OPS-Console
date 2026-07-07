@@ -20,16 +20,21 @@ export function KpiCard({ item }: Props) {
   const hasDelta = delta !== null;
   const isIncrease = hasDelta && delta > 0;
   const isDecrease = hasDelta && delta < 0;
-  const isGood = isIncrease ? goodOnIncrease : isDecrease ? !goodOnIncrease : false;
+  const isGood = isIncrease
+    ? goodOnIncrease
+    : isDecrease
+      ? !goodOnIncrease
+      : false;
   const arrow = isIncrease ? "▲" : isDecrease ? "▼" : "·";
-  const toneClass = !hasDelta || delta === 0
-    ? "text-muted"
-    : isGood
-      ? "text-vermilion"
-      : "text-ink-soft";
+  const toneClass =
+    !hasDelta || delta === 0
+      ? "text-muted"
+      : isGood
+        ? "text-vermilion"
+        : "text-ink-soft";
 
   return (
-    <div className="flex flex-col gap-1 border border-line bg-washi p-4">
+    <div className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4">
       <div className="text-xs font-medium text-muted">{label}</div>
       <div className="flex items-baseline gap-1">
         <span className="text-2xl font-bold tabular-nums text-ink">
@@ -42,7 +47,10 @@ export function KpiCard({ item }: Props) {
           <span>{arrow}</span>
           <span className="tabular-nums">{Math.abs(delta)}</span>
           {deltaPct !== null ? (
-            <span className="text-muted">({deltaPct > 0 ? "+" : ""}{deltaPct}%)</span>
+            <span className="text-muted">
+              ({deltaPct > 0 ? "+" : ""}
+              {deltaPct}%)
+            </span>
           ) : null}
         </div>
       ) : (

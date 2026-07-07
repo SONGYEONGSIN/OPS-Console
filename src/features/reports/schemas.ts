@@ -85,3 +85,9 @@ export const reportCreateSchema = z.object({
   period: reportPeriodSchema,
 });
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
+
+export const reportRenameSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().min(1).max(200),
+});
+export type ReportRenameInput = z.infer<typeof reportRenameSchema>;

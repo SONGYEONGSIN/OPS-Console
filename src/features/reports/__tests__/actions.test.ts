@@ -8,7 +8,8 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 vi.mock("../queries", async () => {
-  const actual = await vi.importActual<typeof import("../queries")>("../queries");
+  const actual =
+    await vi.importActual<typeof import("../queries")>("../queries");
   return {
     ...actual,
     getReportKpis: vi.fn(async () => ({
@@ -33,7 +34,7 @@ vi.mock("../queries", async () => {
 
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createReport } from "../actions";
+import { createReport, updateReportTitle } from "../actions";
 
 function mockAdmin(returnedRow: Record<string, unknown> | null) {
   const single = vi.fn().mockResolvedValue({
@@ -103,6 +104,71 @@ describe("createReport", () => {
       allowedMenus: [],
     });
     const r = await createReport({ title: "", period: "this-month" });
+    expect(r.ok).toBe(false);
+  });
+});
+
+const UUID = "550e8400-e29b-41d4-a716-446655440000";
+
+function mockAdminUpdate(err: { message: string } | null) {
+  const eq = vi.fn().mockResolvedValue({ error: err });
+  const update = vi.fn().mockReturnValue({ eq });
+  const from = vi.fn().mockReturnValue({ update });
+  vi.mocked(createAdminClient).mockReturnValue({
+    from,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+  return { from, update, eq };
+}
+
+function mockOperator(permission: "admin" | "member" | "viewer" | null) {
+  vi.mocked(getCurrentOperator).mockResolvedValue({
+    email: "m@x.com",
+    operator: null,
+    displayName: "m",
+    role: "",
+    team: null,
+    permission,
+    allowedMenus: [],
+  });
+}
+
+describe("updateReportTitle", () => {
+  it("viewer 권한 거부 — DB 미호출", async () => {
+    mockOperator("viewer");
+    const { from } = mockAdminUpdate(null);
+    const r = await updateReportTitle({ id: UUID, title: "새 제목" });
+    expect(r.ok).toBe(false);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("member 권한 성공 — title UPDATE", async () => {
+    mockOperator("member");
+    const { update, eq } = mockAdminUpdate(null);
+    const r = await updateReportTitle({ id: UUID, title: "고친 제목" });
+    expect(r.ok).toBe(true);
+    expect(update).toHaveBeenCalledWith({ title: "고친 제목" });
+    expect(eq).toHaveBeenCalledWith("id", UUID);
+  });
+
+  it("title 빈 값 → 검증 실패", async () => {
+    mockOperator("member");
+    mockAdminUpdate(null);
+    const r = await updateReportTitle({ id: UUID, title: "" });
+    expect(r.ok).toBe(false);
+  });
+
+  it("id가 uuid 아님 → 검증 실패", async () => {
+    mockOperator("member");
+    mockAdminUpdate(null);
+    const r = await updateReportTitle({ id: "not-a-uuid", title: "X" });
+    expect(r.ok).toBe(false);
+  });
+
+  it("DB 에러 → ok:false", async () => {
+    mockOperator("admin");
+    mockAdminUpdate({ message: "db fail" });
+    const r = await updateReportTitle({ id: UUID, title: "X" });
     expect(r.ok).toBe(false);
   });
 });

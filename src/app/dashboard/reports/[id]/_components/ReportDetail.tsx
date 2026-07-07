@@ -1,6 +1,7 @@
 import type { ReportRow } from "@/features/reports/schemas";
 import { KpiCard } from "../../_components/KpiCard";
 import { ShareControls } from "./ShareControls";
+import { EditableTitle } from "./EditableTitle";
 
 type Props = {
   report: ReportRow;
@@ -26,9 +27,7 @@ export function ReportDetail({ report }: Props) {
   return (
     <article className="flex flex-col gap-6">
       <header className="border-b border-line pb-4">
-        <h2 className="text-2xl font-bold tracking-[-0.02em] text-ink">
-          {report.title}
-        </h2>
+        <EditableTitle reportId={report.id} initialTitle={report.title} />
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted">
           <span>
             {report.periodStart} ~ {report.periodEnd}
@@ -49,10 +48,7 @@ export function ReportDetail({ report }: Props) {
         >
           PDF 다운로드
         </a>
-        <ShareControls
-          reportId={report.id}
-          initialToken={report.shareToken}
-        />
+        <ShareControls reportId={report.id} initialToken={report.shareToken} />
       </div>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
