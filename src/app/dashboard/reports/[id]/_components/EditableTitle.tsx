@@ -68,7 +68,7 @@ export function EditableTitle({ reportId, initialTitle }: Props) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+      <div className="flex items-stretch gap-2">
         <input
           type="text"
           value={value}
@@ -79,13 +79,13 @@ export function EditableTitle({ reportId, initialTitle }: Props) {
             if (e.key === "Enter") handleSave();
             if (e.key === "Escape") handleCancel();
           }}
-          className="min-w-0 flex-1 border border-line bg-cream px-2 py-1 text-2xl font-bold text-ink outline-none focus:border-vermilion"
+          className="h-10 min-w-0 flex-1 border border-line bg-cream px-2 text-2xl font-bold text-ink outline-none focus:border-vermilion"
         />
         <button
           type="button"
           onClick={handleSave}
           disabled={pending}
-          className="shrink-0 border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream hover:opacity-90 disabled:opacity-50"
+          className="h-10 shrink-0 border border-vermilion bg-vermilion px-3 text-sm text-cream hover:opacity-90 disabled:opacity-50"
         >
           {pending ? "저장 중…" : "저장"}
         </button>
@@ -93,7 +93,7 @@ export function EditableTitle({ reportId, initialTitle }: Props) {
           type="button"
           onClick={handleCancel}
           disabled={pending}
-          className="shrink-0 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-vermilion disabled:opacity-50"
+          className="h-10 shrink-0 border border-line bg-transparent px-3 text-sm text-ink hover:border-vermilion disabled:opacity-50"
         >
           취소
         </button>

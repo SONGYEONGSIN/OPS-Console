@@ -3,12 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
-import type {
-  ReportPeriod,
-  KpiItem,
-  KpiSnapshot,
-  ReportRow,
-} from "./schemas";
+import type { ReportPeriod, KpiItem, KpiSnapshot, ReportRow } from "./schemas";
 import { reportRowSchema } from "./schemas";
 
 const KST_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
@@ -55,7 +50,10 @@ export function getPeriodRange(period: ReportPeriod): PeriodRange {
     return { startYmd: kstYmd(mon), endYmd: kstYmd(sun) };
   }
   if (period === "this-month") {
-    return { startYmd: startOfMonth(year, month1), endYmd: endOfMonth(year, month1) };
+    return {
+      startYmd: startOfMonth(year, month1),
+      endYmd: endOfMonth(year, month1),
+    };
   }
   if (period === "last-month") {
     const py = month1 === 1 ? year - 1 : year;
@@ -66,7 +64,10 @@ export function getPeriodRange(period: ReportPeriod): PeriodRange {
     // Q1: 1-3 / Q2: 4-6 / Q3: 7-9 / Q4: 10-12
     const qStart = Math.floor((month1 - 1) / 3) * 3 + 1;
     const qEnd = qStart + 2;
-    return { startYmd: startOfMonth(year, qStart), endYmd: endOfMonth(year, qEnd) };
+    return {
+      startYmd: startOfMonth(year, qStart),
+      endYmd: endOfMonth(year, qEnd),
+    };
   }
   // year
   return { startYmd: `${year}-01-01`, endYmd: `${year}-12-31` };
@@ -92,7 +93,7 @@ export function getPrevPeriodRange(period: ReportPeriod): PeriodRange {
   }
   if (period === "last-month") {
     const py = month1 <= 2 ? year - 1 : year;
-    const pm = ((month1 - 2 + 12) % 12) || 12;
+    const pm = (month1 - 2 + 12) % 12 || 12;
     return { startYmd: startOfMonth(py, pm), endYmd: endOfMonth(py, pm) };
   }
   if (period === "quarter") {
@@ -131,20 +132,6 @@ async function countTable(
     .lte(field, isoEnd(range.endYmd));
   if (error) return 0;
   return count ?? 0;
-}
-
-/** services는 raw 데이터가 -1년 (2025) 기준이라 표시 기간을 -1년 shift해서 query */
-function shiftYmdYear(ymd: string, delta: number): string {
-  const m = /^(\d{4})(.*)$/.exec(ymd);
-  if (!m) return ymd;
-  return `${Number(m[1]) + delta}${m[2]}`;
-}
-
-function shiftRangeYear(range: PeriodRange, delta: number): PeriodRange {
-  return {
-    startYmd: shiftYmdYear(range.startYmd, delta),
-    endYmd: shiftYmdYear(range.endYmd, delta),
-  };
 }
 
 /** Date 컬럼(timestamp 아님) 카운트 — incidents.occurred_date 등 */
@@ -208,7 +195,10 @@ async function sumReceivables(): Promise<number> {
   }
 }
 
-function computeDelta(value: number, prev: number | null): {
+function computeDelta(
+  value: number,
+  prev: number | null,
+): {
   delta: number | null;
   deltaPct: number | null;
 } {
@@ -223,6 +213,7 @@ const KPI_META: Record<
   { label: string; unit: string; goodOnIncrease: boolean }
 > = {
   "service-open": { label: "서비스 오픈", unit: "건", goodOnIncrease: true },
+  "service-close": { label: "서비스 마감", unit: "건", goodOnIncrease: true },
   incident: { label: "사고", unit: "건", goodOnIncrease: false },
   contract: { label: "계약 체결", unit: "건", goodOnIncrease: true },
   receivables: { label: "미수채권", unit: "건", goodOnIncrease: false },
@@ -264,14 +255,14 @@ export async function getReportKpis(
   const prevRange = getPrevPeriodRange(period);
   const admin = createAdminClient();
 
-  // services raw 데이터는 -1년 기준 (CLAUDE.md 명시) — query range 도 -1년 shift
-  const svcRange = shiftRangeYear(range, -1);
-  const svcPrevRange = shiftRangeYear(prevRange, -1);
-
-  // Supabase 도메인 6 — 현재 + 전 기간 병렬
+  // 서비스 오픈/마감은 '서비스마감' 메뉴 소스(closing_services)에서 조회.
+  //   - write_start_at = 원서접수 오픈, write_end_at = 원서접수 마감
+  //   - 스크래퍼가 현재 학년도 실데이터를 적재하므로 services 테이블의 -1년 shift 불필요.
   const [
-    svcNow,
-    svcPrev,
+    svcOpenNow,
+    svcOpenPrev,
+    svcCloseNow,
+    svcClosePrev,
     incNow,
     incPrev,
     hoNow,
@@ -285,8 +276,10 @@ export async function getReportKpis(
     contractNow,
     rcvNow,
   ] = await Promise.all([
-    countTable(admin, "services", "write_start_at", svcRange),
-    countTable(admin, "services", "write_start_at", svcPrevRange),
+    countTable(admin, "closing_services", "write_start_at", range),
+    countTable(admin, "closing_services", "write_start_at", prevRange),
+    countTable(admin, "closing_services", "write_end_at", range),
+    countTable(admin, "closing_services", "write_end_at", prevRange),
     // incidents는 occurred_date (실제 사고 발생일, date 타입) — created_at은 import 시점
     countTableByDate(admin, "incidents", "occurred_date", range),
     countTableByDate(admin, "incidents", "occurred_date", prevRange),
@@ -304,7 +297,8 @@ export async function getReportKpis(
 
   // SharePoint 2는 시즌 개념 없어 전 기간 비교 null (1차 MVP)
   const kpis: KpiItem[] = [
-    makeKpi("service-open", svcNow, svcPrev),
+    makeKpi("service-open", svcOpenNow, svcOpenPrev),
+    makeKpi("service-close", svcCloseNow, svcClosePrev),
     makeKpi("incident", incNow, incPrev),
     makeKpi("contract", contractNow, null),
     makeKpi("receivables", rcvNow, null),
