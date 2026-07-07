@@ -1,5 +1,5 @@
 import type { ReportRow } from "@/features/reports/schemas";
-import { KpiCard } from "../../_components/KpiCard";
+import { KpiGrid } from "../../_components/KpiGrid";
 import { ShareControls } from "./ShareControls";
 import { EditableTitle } from "./EditableTitle";
 
@@ -51,11 +51,7 @@ export function ReportDetail({ report }: Props) {
         <ShareControls reportId={report.id} initialToken={report.shareToken} />
       </div>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {report.kpis.map((k) => (
-          <KpiCard key={k.key} item={k} />
-        ))}
-      </section>
+      <KpiGrid kpis={report.kpis} />
     </article>
   );
 }

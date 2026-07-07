@@ -8,7 +8,7 @@ import {
   type ReportPeriod,
 } from "@/features/reports/schemas";
 import { PeriodSelector } from "./_components/PeriodSelector";
-import { KpiCard } from "./_components/KpiCard";
+import { KpiGrid } from "./_components/KpiGrid";
 import { ReportsList } from "./_components/ReportsList";
 
 function pickPeriod(raw: string | undefined): ReportPeriod {
@@ -56,11 +56,7 @@ export default async function ReportsPage({
           <PeriodSelector />
         </header>
 
-        <section className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {snap.kpis.map((kpi) => (
-            <KpiCard key={kpi.key} item={kpi} />
-          ))}
-        </section>
+        <KpiGrid kpis={snap.kpis} className="mb-8" />
 
         <ReportsList reports={savedReports} />
       </section>
