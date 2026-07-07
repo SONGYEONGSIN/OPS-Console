@@ -4,8 +4,49 @@ import {
   dedupeByVideoId,
   excludeBlocked,
   rankTopN,
+  sanitizeText,
+  sanitizeVideo,
   type CollectedVideo,
 } from "../jobs/insights-collect";
+
+describe("sanitizeText", () => {
+  it("NUL·C0 제어문자를 제거 (탭/개행/CR은 유지)", () => {
+    expect(sanitizeText("a\u0000b")).toBe("ab");
+    expect(sanitizeText("ab")).toBe("ab");
+    expect(sanitizeText("a\tb\nc\rd")).toBe("a\tb\nc\rd");
+  });
+
+  it("짝 없는 서로게이트를 제거", () => {
+    expect(sanitizeText("a\uD800b")).toBe("ab"); // lone high
+    expect(sanitizeText("a\uDC00b")).toBe("ab"); // lone low
+  });
+
+  it("정상 텍스트·유효 이모지(서로게이트 페어)는 보존", () => {
+    expect(sanitizeText("정상 텍스트 abc")).toBe("정상 텍스트 abc");
+    expect(sanitizeText("hi 🚀")).toBe("hi 🚀");
+  });
+});
+
+describe("sanitizeVideo", () => {
+  it("문자열 필드를 sanitize하고 null description은 유지", () => {
+    const dirty: CollectedVideo = {
+      video_id: "x",
+      title: "t\u0000",
+      channel_title: "c\uD800",
+      thumbnail_url: "u",
+      published_at: "2026-05-10T00:00:00Z",
+      description: "d\u0000",
+      keyword: "k",
+      view_count: 1,
+    };
+    const clean = sanitizeVideo(dirty);
+    expect(clean.title).toBe("t");
+    expect(clean.channel_title).toBe("c");
+    expect(clean.description).toBe("d");
+    expect(clean.keyword).toBe("k");
+    expect(sanitizeVideo({ ...dirty, description: null }).description).toBeNull();
+  });
+});
 
 function v(id: string, view?: number): CollectedVideo {
   return {

@@ -23,6 +23,31 @@ export type CollectedVideo = {
   view_count?: number;
 };
 
+/**
+ * Postgres JSON 파싱을 깨뜨리는 무효 문자 제거.
+ * - NUL·C0 제어문자(탭/개행/CR 제외): "unsupported Unicode escape sequence"
+ * - 짝 없는 서로게이트(깨진 이모지): "invalid input syntax for type json"
+ * PostgREST가 upsert 본문을 JSON으로 파싱 후 캐스팅하므로 사전 정제가 필요하다.
+ */
+export function sanitizeText(s: string): string {
+  return s
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "")
+    .replace(/(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1");
+}
+
+/** CollectedVideo의 문자열 필드를 정제 (null description은 유지). */
+export function sanitizeVideo(v: CollectedVideo): CollectedVideo {
+  return {
+    ...v,
+    title: sanitizeText(v.title),
+    channel_title: sanitizeText(v.channel_title),
+    thumbnail_url: sanitizeText(v.thumbnail_url),
+    keyword: sanitizeText(v.keyword),
+    description: v.description == null ? v.description : sanitizeText(v.description),
+  };
+}
+
 export function batchIds(ids: string[], size: number): string[][] {
   const out: string[][] = [];
   for (let i = 0; i < ids.length; i += size) {
@@ -285,7 +310,8 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
   const errorSuffix = () => (errors.length ? ` (${errors.length}건 오류)` : "");
 
   // 5) 조회수 높은 순 상위 N (관련성/조회수 임계 필터 없음 — curated 채널)
-  const topN = rankTopN(enriched, MAX_UPSERT_PER_RUN);
+  //    upsert 직전 무효 유니코드 문자 제거 (Postgres JSON 파싱 실패 방지)
+  const topN = rankTopN(enriched, MAX_UPSERT_PER_RUN).map(sanitizeVideo);
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
