@@ -12,11 +12,7 @@ vi.mock("@/features/receivables/queries", () => ({
 }));
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  getPeriodRange,
-  getPrevPeriodRange,
-  getReportKpis,
-} from "../queries";
+import { getPeriodRange, getPrevPeriodRange, getReportKpis } from "../queries";
 
 function mockAdmin(counts: Record<string, number>) {
   const from = vi.fn((table: string) => ({
@@ -32,6 +28,7 @@ function mockAdmin(counts: Record<string, number>) {
     from,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
+  return from;
 }
 
 beforeEach(() => {
@@ -94,7 +91,7 @@ describe("getPrevPeriodRange — 전 기간 (비교용)", () => {
 });
 
 describe("getReportKpis", () => {
-  it("8 카드 항목 모두 포함 (service-open/incident/contract/receivables/handover/backup/mail/worklog)", async () => {
+  it("9 카드 항목 모두 포함 (service-open/service-close 포함)", async () => {
     mockAdmin({});
     const snap = await getReportKpis("this-month");
     const keys = snap.kpis.map((k) => k.key).sort();
@@ -105,9 +102,25 @@ describe("getReportKpis", () => {
       "incident",
       "mail",
       "receivables",
+      "service-close",
       "service-open",
       "worklog",
     ]);
+  });
+
+  it("서비스 오픈/마감은 closing_services 테이블에서 조회 (services 아님)", async () => {
+    const from = mockAdmin({});
+    await getReportKpis("this-month");
+    expect(from).toHaveBeenCalledWith("closing_services");
+    expect(from).not.toHaveBeenCalledWith("services");
+  });
+
+  it("service-close는 goodOnIncrease=true (중립톤)", async () => {
+    mockAdmin({});
+    const snap = await getReportKpis("this-month");
+    const close = snap.kpis.find((k) => k.key === "service-close");
+    expect(close?.goodOnIncrease).toBe(true);
+    expect(close?.label).toBe("서비스 마감");
   });
 
   it("period + periodRange 포함", async () => {

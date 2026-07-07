@@ -29,6 +29,7 @@ export const REPORT_PERIOD_LABELS: Record<ReportPeriod, string> = {
 export const kpiItemSchema = z.object({
   key: z.enum([
     "service-open",
+    "service-close",
     "incident",
     "contract",
     "receivables",
