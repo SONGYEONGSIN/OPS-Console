@@ -137,7 +137,7 @@ function ReportDocument({ report }: { report: ReportRow }) {
     <Document>
       <Page size="A4" style={styles.page}>
         <View fixed style={styles.runningHeader}>
-          <Text style={styles.runningHeaderLeft}>운영부 분석보고서</Text>
+          <Text style={styles.runningHeaderLeft}>운영부 운영보고서</Text>
           <Text>{headerLine}</Text>
         </View>
 

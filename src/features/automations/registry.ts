@@ -132,7 +132,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "contract-completion-snapshot",
     label: "계약 완료 월별 스냅샷",
     description:
-      "계약 시트의 '완료' 건수를 현재 월 스냅샷으로 저장합니다. 분석보고서 '계약 체결' 카드가 전월 대비 증감을 이 스냅샷으로 산출합니다. (엑셀은 셀 변경 시각을 남기지 않아 월별 집계로 대체)",
+      "계약 시트의 '완료' 건수를 현재 월 스냅샷으로 저장합니다. 운영보고서 '계약 체결' 카드가 전월 대비 증감을 이 스냅샷으로 산출합니다. (엑셀은 셀 변경 시각을 남기지 않아 월별 집계로 대체)",
     scheduleInfo: "매일 09:00 권장 (cron-job.org)",
     cooldownMinutes: 60,
     run: runContractCompletionSnapshot,
