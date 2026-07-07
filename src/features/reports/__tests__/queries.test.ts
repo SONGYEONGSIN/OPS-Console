@@ -7,6 +7,11 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/features/contracts/queries", () => ({
   listContracts: vi.fn(async () => ({ rows: [], total: 0 })),
 }));
+vi.mock("@/features/contracts/completion-snapshot", () => ({
+  countCompletedContracts: vi.fn(async () => 0),
+  getSnapshotCount: vi.fn(async () => null),
+  kstYm: vi.fn(() => "2026-05"),
+}));
 vi.mock("@/features/receivables/queries", () => ({
   fetchReceivablesSheet: vi.fn(async () => null),
 }));

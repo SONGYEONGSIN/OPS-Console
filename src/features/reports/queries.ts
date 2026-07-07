@@ -1,9 +1,14 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { sumAmountColumn } from "./receivables-amount";
+import {
+  countCompletedContracts,
+  getSnapshotCount,
+  kstYm,
+} from "@/features/contracts/completion-snapshot";
+import { prevYm } from "@/features/contracts/completion";
 import type { ReportPeriod, KpiItem, KpiSnapshot, ReportRow } from "./schemas";
 import { reportRowSchema } from "./schemas";
 
@@ -173,17 +178,6 @@ async function countMailSent(
   return total;
 }
 
-async function countContracts(): Promise<number> {
-  try {
-    const r = await listContracts();
-    return r.rows.filter(
-      (row) => row.status === "체결완료" || row.status === "계약완료",
-    ).length;
-  } catch {
-    return 0;
-  }
-}
-
 async function sumReceivables(): Promise<number> {
   try {
     const sheet = await fetchReceivablesSheet();
@@ -255,6 +249,9 @@ export async function getReportKpis(
   const prevRange = getPrevPeriodRange(period);
   const admin = createAdminClient();
 
+  // 계약 '체결'은 완료 시각이 없어 월별 스냅샷 방식: 현재 완료 건수 vs 직전 월 스냅샷.
+  const contractPrevYm = prevYm(kstYm(new Date()));
+
   // 서비스 오픈/마감은 '서비스마감' 메뉴 소스(closing_services)에서 조회.
   //   - write_start_at = 원서접수 오픈, write_end_at = 원서접수 마감
   //   - 스크래퍼가 현재 학년도 실데이터를 적재하므로 services 테이블의 -1년 shift 불필요.
@@ -291,16 +288,19 @@ export async function getReportKpis(
     countMailSent(admin, prevRange),
     countTable(admin, "worklog", "created_at", range),
     countTable(admin, "worklog", "created_at", prevRange),
-    countContracts(),
+    countCompletedContracts(),
     sumReceivables(),
   ]);
+
+  // 계약 체결 전월 스냅샷 (없으면 null → 비교 불가)
+  const contractPrev = await getSnapshotCount(contractPrevYm);
 
   // SharePoint 2는 시즌 개념 없어 전 기간 비교 null (1차 MVP)
   const kpis: KpiItem[] = [
     makeKpi("service-open", svcOpenNow, svcOpenPrev),
     makeKpi("service-close", svcCloseNow, svcClosePrev),
     makeKpi("incident", incNow, incPrev),
-    makeKpi("contract", contractNow, null),
+    makeKpi("contract", contractNow, contractPrev),
     makeKpi("receivables", rcvNow, null),
     makeKpi("handover", hoNow, hoPrev),
     makeKpi("backup", bkNow, bkPrev),
