@@ -7,6 +7,7 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
 import { listAssignmentsForUser } from "@/features/performance/queries";
+import { createCycleWithAssignment } from "@/features/performance/actions";
 import { OPERATORS } from "@/features/auth/operators";
 import { AdminSummary } from "./_AdminSummary";
 import type { Step } from "@/features/performance/schemas";
@@ -62,10 +63,21 @@ export default async function OutcomesPage({
     </>
   );
 
-  // 1차 PR — onPersist는 placeholder (각 단계 server action은 EditForm에서 직접 호출 예정)
-  async function onPersist(): Promise<{ ok: boolean; error?: string }> {
+  // 신규(+ 새 사이클): 팀원 선택 + 사이클명 → cycle+assignment 생성 (관리자=본인).
+  // 기존 assignment 편집(목표/지표/루브릭)은 상세 페이지에서 처리.
+  const meEmail = me?.email ?? "";
+  async function onPersist(
+    row: ListRow,
+    isNew: boolean,
+  ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    return { ok: true };
+    if (!isNew) return { ok: true };
+    const r = await createCycleWithAssignment({
+      cycleName: row.name ?? "",
+      evaluateeEmail: row.performanceEvaluateeEmail ?? "",
+      evaluatorEmail: meEmail,
+    });
+    return { ok: r.ok, error: r.error };
   }
 
   return (

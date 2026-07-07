@@ -108,6 +108,41 @@ export async function submitPlan(
   return advanceStep(assignmentId, 2, 3);
 }
 
+/** 새 사이클 + 팀원 assignment 생성 (관리자=본인, step 1 시작). */
+export async function createCycleWithAssignment(input: {
+  cycleName: string;
+  evaluateeEmail: string;
+  evaluatorEmail: string;
+}): Promise<{ ok: boolean; error?: string; id?: string }> {
+  const cycleName = input.cycleName?.trim();
+  if (!cycleName) return { ok: false, error: "사이클명을 입력하세요." };
+  if (!input.evaluateeEmail) return { ok: false, error: "팀원을 선택하세요." };
+  const supabase = await createClient();
+  const { data: cycle, error: cErr } = await supabase
+    .from("performance_cycles")
+    .insert({ name: cycleName, status: "open" })
+    .select("id")
+    .single();
+  if (cErr || !cycle) {
+    return { ok: false, error: cErr?.message ?? "사이클 생성 실패" };
+  }
+  const { data: asg, error: aErr } = await supabase
+    .from("performance_assignments")
+    .insert({
+      cycle_id: cycle.id,
+      evaluator_email: input.evaluatorEmail,
+      evaluatee_email: input.evaluateeEmail,
+      current_step: 1,
+    })
+    .select("id")
+    .single();
+  if (aErr || !asg) {
+    return { ok: false, error: aErr?.message ?? "assignment 생성 실패" };
+  }
+  revalidatePath(REVALIDATE);
+  return { ok: true, id: asg.id };
+}
+
 /* ─── 신규: 성과지표(step 2) + 관리자 루브릭(step 3) + 발행(step 4) ─── */
 
 /** step=2 — 팀원이 성과지표 추가 (assignment당 N개). */

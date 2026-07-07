@@ -18,7 +18,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   outcomes: {
     headline: { accent: "분석 · AI", title: "성과리포트" },
     description:
-      "8단계 평가 워크플로우로 목표·계획·평가를 한곳에서 관리합니다.",
+      "4단계로 팀원별 목표·성과지표(80%)·관리자평가(20%)를 관리합니다.",
   },
   reports: {
     headline: { accent: "분석 · 보고", title: "운영보고서" },
