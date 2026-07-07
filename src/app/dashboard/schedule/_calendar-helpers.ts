@@ -4,14 +4,18 @@ import type {
 } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
+import type { PaymentDate } from "@/features/payment-dates/schemas";
 
 export type CalendarCategory =
   | "service-start"
   | "service-end"
   | "backup-leave"
+  | "payment-personal"
+  | "payment-shared"
   | ScheduleType; // shift / event / leave / training
 
-export type CalendarSourceVariant = "schedule" | "services" | "backup";
+export type CalendarSourceVariant =
+  "schedule" | "services" | "backup" | "payment";
 
 export type CalendarItem = {
   id: string;
@@ -25,7 +29,7 @@ export type CalendarItem = {
   /** schedule_event 중 assignee_email=null (팀 공통). 정렬·강조(★ + bold)용 */
   isTeamCommon?: boolean;
   /** Inspector에 전달할 원본 row (variant에 따라 분기) */
-  rowRef: ScheduleEventRow | ServicesRow | BackupRequestRow;
+  rowRef: ScheduleEventRow | ServicesRow | BackupRequestRow | PaymentDate;
 };
 
 /**
@@ -153,6 +157,7 @@ export function groupItemsByDay(
   events: ScheduleEventRow[],
   services: ServicesRow[],
   backupLeaves: BackupLeaveInput[] = [],
+  paymentDates: PaymentDate[] = [],
 ): Map<string, CalendarItem[]> {
   const map = new Map<string, CalendarItem[]>();
 
@@ -273,6 +278,24 @@ export function groupItemsByDay(
       cur = ymdAddDays(cur, 1);
       guard++;
     }
+  }
+
+  // 비용지급일 — 개인/공용을 해당 날짜 셀에 all_day 칩으로. 읽기전용(Excel 원본), 전사 공통.
+  for (let i = 0; i < paymentDates.length; i++) {
+    const pd = paymentDates[i];
+    const category: CalendarCategory = pd.category.includes("개인")
+      ? "payment-personal"
+      : "payment-shared";
+    push(pd.ymd, {
+      id: `payment-${pd.ymd}-${i}`,
+      ymd: pd.ymd,
+      category,
+      label: `${pd.category}비용`,
+      sortKey: "",
+      all_day: true,
+      sourceVariant: "payment",
+      rowRef: pd,
+    });
   }
 
   // 셀별 정렬: 백업휴가 → 팀공통 → all_day → sortKey asc (안정 정렬)

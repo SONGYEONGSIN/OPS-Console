@@ -13,6 +13,7 @@ import {
 } from "@/features/schedule/actions";
 import { listServicesForCalendar } from "@/features/services/queries";
 import { listBackupRequests } from "@/features/backup-requests/queries";
+import { fetchPaymentDates } from "@/features/payment-dates/queries";
 import { fetchKoreanHolidays } from "@/lib/holidays/google-ical";
 import { eventToListRow } from "./_row-mapper";
 import { CalendarView } from "./CalendarView";
@@ -142,6 +143,9 @@ export default async function SchedulePage({
         )
       : [];
 
+  // 비용지급일 (SharePoint Excel) — 캘린더 뷰에서만 fetch. 전사 공통이라 mine 무관.
+  const paymentDates = view === "calendar" ? await fetchPaymentDates() : [];
+
   const { rows, total } = paginateRows(events.map(eventToListRow), sp.page);
   const config = resolvePageMeta(slug, meta, total);
 
@@ -199,6 +203,7 @@ export default async function SchedulePage({
           services={services}
           backupLeaves={backupLeaves}
           holidays={holidays}
+          paymentDates={paymentDates}
           currentMonth={currentMonth}
           view="calendar"
           canWrite={canWrite}

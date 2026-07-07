@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { ScheduleEventRow } from "@/features/schedule/schemas";
 import type { ServicesRow } from "@/features/services/schemas";
 import type { BackupRequestRow } from "@/features/backup-requests/schemas";
+import type { PaymentDate } from "@/features/payment-dates/schemas";
 import type { Holiday } from "@/lib/holidays/google-ical";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { InspectorPanel } from "../_components/inspector/InspectorPanel";
@@ -31,6 +32,8 @@ type Props = {
   backupLeaves?: BackupRequestRow[];
   /** Google '한국 공휴일' iCal feed에서 가져온 read-only 항목. 셀 배경 + dot. */
   holidays?: Holiday[];
+  /** 비용지급일 (SharePoint Excel) — 읽기전용 all_day 칩. 전사 공통(mine 무관). */
+  paymentDates?: PaymentDate[];
   currentMonth: CurrentMonth;
   view: "calendar" | "list";
   canWrite: boolean;
@@ -56,6 +59,8 @@ const DOT_COLOR: Record<CalendarCategory, string> = {
   application: "bg-vermilion-deep",
   pims: "bg-gold",
   external_meeting: "bg-indigo",
+  "payment-personal": "bg-gold",
+  "payment-shared": "bg-green-light",
 };
 
 function eventToListRow(ev: ScheduleEventRow): ListRow {
@@ -104,6 +109,18 @@ function backupRowToListRow(r: BackupRequestRow): ListRow {
   };
 }
 
+function paymentRowToListRow(pd: PaymentDate): ListRow {
+  return {
+    id: `payment-${pd.ymd}-${pd.category}`,
+    name: `${pd.category}비용`,
+    status: "active",
+    owner: "",
+    startDateYmd: pd.ymd,
+    paymentCategory: pd.category,
+    paymentSheet: pd.sheetName,
+  };
+}
+
 function blankScheduleListRow(defaultYmd: string): ListRow {
   return {
     id: "",
@@ -125,6 +142,7 @@ export function CalendarView({
   services,
   backupLeaves = [],
   holidays,
+  paymentDates = [],
   currentMonth,
   view,
   canWrite,
@@ -155,8 +173,8 @@ export function CalendarView({
     [backupLeaves],
   );
   const byDay = useMemo(
-    () => groupItemsByDay(events, services, backupLeaveInputs),
-    [events, services, backupLeaveInputs],
+    () => groupItemsByDay(events, services, backupLeaveInputs, paymentDates),
+    [events, services, backupLeaveInputs, paymentDates],
   );
   // ymd → 공휴일 제목들 (보통 1개, 대체공휴일 등으로 2개 이상도 가능)
   const holidaysByDay = useMemo(() => {
@@ -174,7 +192,7 @@ export function CalendarView({
   const inspector = useInspectorState<{
     item: CalendarItem | null;
     row: ListRow;
-    sourceVariant: "schedule" | "services" | "backup";
+    sourceVariant: "schedule" | "services" | "backup" | "payment";
   }>();
 
   const [creating, setCreating] = useState(false);
@@ -239,6 +257,13 @@ export function CalendarView({
         item,
         row: backupRowToListRow(br),
         sourceVariant: "backup",
+      });
+    } else if (item.sourceVariant === "payment") {
+      const pd = item.rowRef as PaymentDate;
+      inspector.open({
+        item,
+        row: paymentRowToListRow(pd),
+        sourceVariant: "payment",
       });
     } else {
       const svc = item.rowRef as ServicesRow;
