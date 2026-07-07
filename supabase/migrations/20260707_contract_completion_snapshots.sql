@@ -33,5 +33,7 @@ create policy ccs_read
   using (true);
 
 grant select on public.contract_completion_snapshots to authenticated;
+-- 잡·서버(admin/service_role)는 RLS 우회하지만 테이블 GRANT는 별도 필요
+grant all on public.contract_completion_snapshots to service_role;
 
 commit;
