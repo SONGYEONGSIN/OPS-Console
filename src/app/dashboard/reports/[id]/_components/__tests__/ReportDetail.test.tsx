@@ -1,7 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ReportDetail } from "../ReportDetail";
 import type { ReportRow } from "@/features/reports/schemas";
+
+// EditableTitle(useRouter) + ShareControls(액션) client 의존성 모킹
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+vi.mock("@/features/reports/actions", () => ({
+  updateReportTitle: vi.fn(),
+  toggleReportShare: vi.fn(),
+}));
 
 const sample: ReportRow = {
   id: "11111111-1111-1111-1111-111111111111",
