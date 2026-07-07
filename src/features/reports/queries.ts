@@ -3,6 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
+import { sumAmountColumn } from "./receivables-amount";
 import type { ReportPeriod, KpiItem, KpiSnapshot, ReportRow } from "./schemas";
 import { reportRowSchema } from "./schemas";
 
@@ -187,9 +188,8 @@ async function sumReceivables(): Promise<number> {
   try {
     const sheet = await fetchReceivablesSheet();
     if (!sheet) return 0;
-    // 단순 합계 — 헤더 매핑 없이 receivablesToListRow의 author(금액) 사용은 복잡.
-    // 1차 MVP는 active row 수만 (금액 합산은 follow-up).
-    return sheet.rows.length;
+    // '청구금액' 컬럼 합산 (원). 시트 전체 미수 행 대상.
+    return sumAmountColumn(sheet.headers, sheet.rows, sheet.rowsText);
   } catch {
     return 0;
   }
@@ -216,7 +216,7 @@ const KPI_META: Record<
   "service-close": { label: "서비스 마감", unit: "건", goodOnIncrease: true },
   incident: { label: "사고", unit: "건", goodOnIncrease: false },
   contract: { label: "계약 체결", unit: "건", goodOnIncrease: true },
-  receivables: { label: "미수채권", unit: "건", goodOnIncrease: false },
+  receivables: { label: "미수채권", unit: "원", goodOnIncrease: false },
   handover: { label: "인수인계", unit: "건", goodOnIncrease: true },
   backup: { label: "백업 요청", unit: "건", goodOnIncrease: false },
   mail: { label: "메일 발송", unit: "건", goodOnIncrease: true },
