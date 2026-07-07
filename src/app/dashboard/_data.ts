@@ -319,7 +319,7 @@ export const sidebarSections: SbSection[] = [
           },
           {
             ico: "·",
-            label: "분석보고서",
+            label: "운영보고서",
             count: "",
             slug: "reports",
             pattern: "list",
