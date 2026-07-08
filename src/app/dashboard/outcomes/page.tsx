@@ -86,10 +86,12 @@ export default async function OutcomesPage({
       data={{ rows }}
       header={header}
       variant="performance"
-      // admin만 + 새 사이클 가능 (실제 사이클/매핑 생성은 follow-up)
+      // admin만 + 새 사이클 가능. 팀원 select는 본인 팀으로 한정.
       canCreate={isAdmin}
       createLabel="+ 새 사이클"
       currentUserName={me?.displayName}
+      currentUserTeam={me?.team ?? undefined}
+      currentUserEmail={me?.email ?? undefined}
       onPersist={onPersist}
       footer={
         <ListPagination key="outcomes-pagination" total={total} pageSize={30} />

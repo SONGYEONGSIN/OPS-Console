@@ -7,12 +7,20 @@ describe("AdminSummary", () => {
     render(<AdminSummary total={5} stepCounts={{ 1: 1, 2: 1, 3: 1, 4: 2 }} />);
     expect(screen.getByText(/전체 5건/)).toBeInTheDocument();
     expect(screen.getByText(/발행완료 2건/)).toBeInTheDocument();
-    expect(screen.getByText(/40%/)).toBeInTheDocument();
+    // 헤더 발행완료율 40% + 카드 4 완료율 40% (다중 매칭)
+    expect(screen.getAllByText(/40%/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("총 0건 — 0% 표시", () => {
     render(<AdminSummary total={0} stepCounts={{ 1: 0, 2: 0, 3: 0, 4: 0 }} />);
-    expect(screen.getByText(/0%/)).toBeInTheDocument();
+    expect(screen.getAllByText(/0%/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("각 카드에 건수/전체 + 비중(완료율) 표기", () => {
+    render(<AdminSummary total={4} stepCounts={{ 1: 1, 2: 0, 3: 0, 4: 0 }} />);
+    // step1: 1/4명 → 비중 25%
+    expect(screen.getAllByText(/\/ 4명/).length).toBe(4);
+    expect(screen.getByText(/비중 25%/)).toBeInTheDocument();
   });
 
   it("4단계 라벨 모두 노출", () => {

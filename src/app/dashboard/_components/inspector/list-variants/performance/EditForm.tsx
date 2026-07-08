@@ -5,11 +5,11 @@ import { STEP_LABEL, type Step } from "@/features/performance/schemas";
 import { OPERATORS } from "@/features/auth/operators";
 import { PerformanceStepper } from "./Stepper";
 
-const TEAM_MEMBERS = OPERATORS.filter((o) => !o.name.startsWith("테스트"));
+const REAL_OPERATORS = OPERATORS.filter((o) => !o.name.startsWith("테스트"));
 
 /**
  * performance EditForm — 표준 인스펙터 폼.
- * - 신규(+ 새 사이클): 팀원 선택 + 사이클명 → onSave(row) → cycle+assignment 생성.
+ * - 신규(+ 새 사이클): 팀원 선택(본인 팀 한정, 본인 제외) + 사이클명 → cycle+assignment 생성.
  * - 기존: 진행 요약 + 상세/리포트 페이지 링크 (목표·지표·루브릭 편집은 상세 페이지).
  */
 export function PerformanceEditForm({
@@ -17,8 +17,16 @@ export function PerformanceEditForm({
   setRow,
   onSave,
   onCancel,
+  currentUserTeam = null,
+  currentUserEmail = null,
 }: EditFormProps) {
   const isNew = !row.id;
+  // 본인 팀 팀원만 (팀 미지정 관리자는 전체), 본인 제외
+  const teamMembers = REAL_OPERATORS.filter(
+    (o) =>
+      o.email !== currentUserEmail &&
+      (!currentUserTeam || o.team === currentUserTeam),
+  );
 
   if (!isNew) {
     const step = (row.performanceCurrentStep ?? 1) as Step;
@@ -74,7 +82,7 @@ export function PerformanceEditForm({
           value={row.performanceEvaluateeEmail ?? ""}
           onChange={(e) => {
             const email = e.target.value;
-            const op = TEAM_MEMBERS.find((o) => o.email === email);
+            const op = teamMembers.find((o) => o.email === email);
             setRow({
               ...row,
               performanceEvaluateeEmail: email,
@@ -86,7 +94,7 @@ export function PerformanceEditForm({
           required
         >
           <option value="">선택…</option>
-          {TEAM_MEMBERS.map((o) => (
+          {teamMembers.map((o) => (
             <option key={o.email} value={o.email}>
               {o.name} ({o.team})
             </option>

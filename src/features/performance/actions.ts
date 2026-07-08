@@ -118,18 +118,42 @@ export async function createCycleWithAssignment(input: {
   if (!cycleName) return { ok: false, error: "사이클명을 입력하세요." };
   if (!input.evaluateeEmail) return { ok: false, error: "팀원을 선택하세요." };
   const supabase = await createClient();
-  const { data: cycle, error: cErr } = await supabase
+
+  // cycle은 팀원 공유 — 같은 이름 있으면 재사용, 없으면 생성 (name UNIQUE 제약 준수).
+  let cycleId: string | undefined;
+  const { data: existing } = await supabase
     .from("performance_cycles")
-    .insert({ name: cycleName, status: "open" })
     .select("id")
-    .single();
-  if (cErr || !cycle) {
-    return { ok: false, error: cErr?.message ?? "사이클 생성 실패" };
+    .eq("name", cycleName)
+    .maybeSingle();
+  if (existing) {
+    cycleId = (existing as { id: string }).id;
+    // 동일 사이클에 같은 팀원 중복 방지
+    const { data: dup } = await supabase
+      .from("performance_assignments")
+      .select("id")
+      .eq("cycle_id", cycleId)
+      .eq("evaluatee_email", input.evaluateeEmail)
+      .maybeSingle();
+    if (dup) {
+      return { ok: false, error: "이 사이클에 이미 등록된 팀원입니다." };
+    }
+  } else {
+    const { data: cycle, error: cErr } = await supabase
+      .from("performance_cycles")
+      .insert({ name: cycleName, status: "open" })
+      .select("id")
+      .single();
+    if (cErr || !cycle) {
+      return { ok: false, error: cErr?.message ?? "사이클 생성 실패" };
+    }
+    cycleId = cycle.id;
   }
+
   const { data: asg, error: aErr } = await supabase
     .from("performance_assignments")
     .insert({
-      cycle_id: cycle.id,
+      cycle_id: cycleId,
       evaluator_email: input.evaluatorEmail,
       evaluatee_email: input.evaluateeEmail,
       current_step: 1,
