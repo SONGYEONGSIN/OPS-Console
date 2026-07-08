@@ -119,8 +119,8 @@ export type ListRow = {
   canToggleChecklist?: boolean;
   /** performance — 평가 사이클 이름 (예: '2026 상반기') */
   performanceCycleName?: string;
-  /** performance — 8단계 현재 진행 단계 */
-  performanceCurrentStep?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  /** performance — 4단계 현재 진행 단계 */
+  performanceCurrentStep?: 1 | 2 | 3 | 4;
   /** performance — 평가자 이름 */
   performanceEvaluatorName?: string;
   /** performance — 팀원 이름 */

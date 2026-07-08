@@ -1,19 +1,14 @@
 import type { Step, Role } from "./schemas";
 
 /**
- * 8단계 평가 워크플로우의 단계별 actor.
- * - 1=목표설정(평가자), 2=실행계획(팀원), 3=계획검토(평가자), 4=중간점검(팀원),
- *   5=점검검토(평가자), 6=자기평가(팀원), 7=종합평가(평가자), 8=완료(누구도 X).
+ * 4단계 관리자 중심 워크플로우의 단계별 actor.
+ * - 1=목표설정(팀원), 2=실행계획·성과지표(팀원), 3=정량집계·관리자평가(관리자), 4=발행완료(X).
  */
 export const STEP_ACTOR: Record<Step, Role | null> = {
-  1: "evaluator",
+  1: "evaluatee",
   2: "evaluatee",
   3: "evaluator",
-  4: "evaluatee",
-  5: "evaluator",
-  6: "evaluatee",
-  7: "evaluator",
-  8: null,
+  4: null,
 };
 
 /**

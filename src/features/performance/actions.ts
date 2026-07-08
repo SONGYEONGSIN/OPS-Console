@@ -5,10 +5,14 @@ import {
   goalCreateSchema,
   planUpsertSchema,
   reviewCreateSchema,
+  metricCreateSchema,
+  rubricUpsertSchema,
+  RUBRIC_CRITERIA,
   type Step,
 } from "./schemas";
+import { isValidMetricWeights } from "./scoring";
 
-const REVALIDATE = "/dashboard/performance";
+const REVALIDATE = "/dashboard/outcomes";
 
 /** assignment의 current_step을 expected → next로 optimistic update.
  *  expected와 일치하지 않으면 race로 간주, 실패. */
@@ -102,4 +106,138 @@ export async function submitPlan(
   assignmentId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   return advanceStep(assignmentId, 2, 3);
+}
+
+/** 새 사이클 + 팀원 assignment 생성 (관리자=본인, step 1 시작). */
+export async function createCycleWithAssignment(input: {
+  cycleName: string;
+  evaluateeEmail: string;
+  evaluatorEmail: string;
+}): Promise<{ ok: boolean; error?: string; id?: string }> {
+  const cycleName = input.cycleName?.trim();
+  if (!cycleName) return { ok: false, error: "사이클명을 입력하세요." };
+  if (!input.evaluateeEmail) return { ok: false, error: "팀원을 선택하세요." };
+  const supabase = await createClient();
+
+  // cycle은 팀원 공유 — 같은 이름 있으면 재사용, 없으면 생성 (name UNIQUE 제약 준수).
+  let cycleId: string | undefined;
+  const { data: existing } = await supabase
+    .from("performance_cycles")
+    .select("id")
+    .eq("name", cycleName)
+    .maybeSingle();
+  if (existing) {
+    cycleId = (existing as { id: string }).id;
+    // 동일 사이클에 같은 팀원 중복 방지
+    const { data: dup } = await supabase
+      .from("performance_assignments")
+      .select("id")
+      .eq("cycle_id", cycleId)
+      .eq("evaluatee_email", input.evaluateeEmail)
+      .maybeSingle();
+    if (dup) {
+      return { ok: false, error: "이 사이클에 이미 등록된 팀원입니다." };
+    }
+  } else {
+    const { data: cycle, error: cErr } = await supabase
+      .from("performance_cycles")
+      .insert({ name: cycleName, status: "open" })
+      .select("id")
+      .single();
+    if (cErr || !cycle) {
+      return { ok: false, error: cErr?.message ?? "사이클 생성 실패" };
+    }
+    cycleId = cycle.id;
+  }
+
+  const { data: asg, error: aErr } = await supabase
+    .from("performance_assignments")
+    .insert({
+      cycle_id: cycleId,
+      evaluator_email: input.evaluatorEmail,
+      evaluatee_email: input.evaluateeEmail,
+      current_step: 1,
+    })
+    .select("id")
+    .single();
+  if (aErr || !asg) {
+    return { ok: false, error: aErr?.message ?? "assignment 생성 실패" };
+  }
+  revalidatePath(REVALIDATE);
+  return { ok: true, id: asg.id };
+}
+
+/* ─── 신규: 성과지표(step 2) + 관리자 루브릭(step 3) + 발행(step 4) ─── */
+
+/** step=2 — 팀원이 성과지표 추가 (assignment당 N개). */
+export async function createMetric(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = metricCreateSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("performance_metrics")
+    .insert(parsed.data);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(REVALIDATE);
+  return { ok: true };
+}
+
+/** step=2 완료 — 성과지표 가중치 합=80 검증 후 step 3(관리자 평가)로 전진. */
+export async function submitMetrics(
+  assignmentId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_metrics")
+    .select("weight")
+    .eq("assignment_id", assignmentId);
+  if (error) return { ok: false, error: error.message };
+  const weights = (data ?? []).map((m) => (m as { weight: number }).weight);
+  if (!isValidMetricWeights(weights)) {
+    return { ok: false, error: "성과지표 가중치 합이 80이어야 합니다." };
+  }
+  return advanceStep(assignmentId, 2, 3);
+}
+
+/** step=3 — 관리자가 루브릭 항목 채점(upsert, criterion 유니크). */
+export async function upsertRubric(
+  input: unknown,
+): Promise<{ ok: boolean; error?: string }> {
+  const parsed = rubricUpsertSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0].message };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("performance_rubric_scores")
+    .upsert(parsed.data, { onConflict: "assignment_id,criterion" });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(REVALIDATE);
+  return { ok: true };
+}
+
+/** step=3 완료 — 루브릭 3개 항목 전부 채점 확인 후 step 4(발행)로 전진. */
+export async function publishReport(
+  assignmentId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("performance_rubric_scores")
+    .select("criterion")
+    .eq("assignment_id", assignmentId);
+  if (error) return { ok: false, error: error.message };
+  const scored = new Set(
+    (data ?? []).map((r) => (r as { criterion: string }).criterion),
+  );
+  if (!RUBRIC_CRITERIA.every((c) => scored.has(c))) {
+    return {
+      ok: false,
+      error: "관리자 루브릭 3개 항목을 모두 채점해야 발행할 수 있습니다.",
+    };
+  }
+  return advanceStep(assignmentId, 3, 4);
 }

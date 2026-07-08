@@ -1,35 +1,29 @@
-import type { Step } from "@/features/performance/schemas";
+import { STEP_VALUES, STEP_LABEL, type Step } from "@/features/performance/schemas";
+import { STEP_ACTOR } from "@/features/performance/permission";
 
-const STEPS: { step: Step; label: string; actor: string }[] = [
-  { step: 1, label: "목표설정", actor: "평가자" },
-  { step: 2, label: "실행계획", actor: "팀원" },
-  { step: 3, label: "계획검토", actor: "평가자" },
-  { step: 4, label: "중간점검", actor: "팀원" },
-  { step: 5, label: "점검검토", actor: "평가자" },
-  { step: 6, label: "자기평가", actor: "팀원" },
-  { step: 7, label: "종합평가", actor: "평가자" },
-  { step: 8, label: "완료", actor: "—" },
-];
+const ACTOR_LABEL: Record<string, string> = {
+  evaluator: "관리자",
+  evaluatee: "팀원",
+};
 
 type Props = {
   currentStep: Step;
 };
 
 /**
- * 8단계 평가 워크플로우 시각 stepper.
- * - currentStep 미만 = 완료 (✓ + ink 톤)
- * - currentStep = 활성 (vermilion 강조)
- * - currentStep 초과 = 잠금 (muted)
+ * 4단계 관리자 중심 워크플로우 시각 stepper.
+ * - currentStep 미만 = 완료 (✓ + ink), 현재 = 활성 (vermilion), 초과 = 잠금 (muted)
  */
 export function PerformanceStepper({ currentStep }: Props) {
   return (
     <ol
       data-testid="performance-stepper"
-      className="grid grid-cols-8 gap-1 text-center"
+      className="grid grid-cols-4 gap-1 text-center"
     >
-      {STEPS.map(({ step, label, actor }) => {
+      {STEP_VALUES.map((step) => {
         const done = step < currentStep;
         const active = step === currentStep;
+        const actor = STEP_ACTOR[step];
         const stateClass = done
           ? "border-ink bg-ink text-cream"
           : active
@@ -48,9 +42,11 @@ export function PerformanceStepper({ currentStep }: Props) {
                 active ? "font-bold text-ink" : "text-ink-muted"
               }`}
             >
-              {label}
+              {STEP_LABEL[step]}
             </span>
-            <span className="text-[9px] text-muted">{actor}</span>
+            <span className="text-[9px] text-muted">
+              {actor ? ACTOR_LABEL[actor] : "—"}
+            </span>
           </li>
         );
       })}

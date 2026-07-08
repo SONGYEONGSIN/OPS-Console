@@ -7,6 +7,7 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { canEditOperators } from "@/features/auth/permission";
 import { listAssignmentsForUser } from "@/features/performance/queries";
+import { createCycleWithAssignment } from "@/features/performance/actions";
 import { OPERATORS } from "@/features/auth/operators";
 import { AdminSummary } from "./_AdminSummary";
 import type { Step } from "@/features/performance/schemas";
@@ -39,18 +40,17 @@ export default async function OutcomesPage({
   );
   const config = resolvePageMeta(slug, meta, total);
 
-  // admin인 경우 페이지 상단에 8단계별 분포 요약 노출.
-  const stepCounts: Record<Step, number> = {
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-    6: 0,
-    7: 0,
-    8: 0,
-  };
+  // admin인 경우 페이지 상단에 4단계별 분포 요약 노출.
+  const stepCounts: Record<Step, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
   for (const a of assignments) stepCounts[a.current_step] += 1;
+
+  // 요약 분모 = 관리자가 평가할 팀원 총원 (본인 팀, 본인·테스트 제외).
+  const teamSize = OPERATORS.filter(
+    (o) =>
+      !o.name.startsWith("테스트") &&
+      o.email !== me?.email &&
+      (!me?.team || o.team === me.team),
+  ).length;
 
   // header 영역: PageHeader 다음에 admin 권한 시 AdminSummary 결합.
   // 표준 페이지 흐름(breadcrumb → headline → 본문)을 유지하기 위해 header prop에 묶어 전달.
@@ -65,16 +65,27 @@ export default async function OutcomesPage({
       />
       {isAdmin ? (
         <div className="px-7 pt-4">
-          <AdminSummary stepCounts={stepCounts} total={assignments.length} />
+          <AdminSummary stepCounts={stepCounts} teamSize={teamSize} />
         </div>
       ) : null}
     </>
   );
 
-  // 1차 PR — onPersist는 placeholder (각 단계 server action은 EditForm에서 직접 호출 예정)
-  async function onPersist(): Promise<{ ok: boolean; error?: string }> {
+  // 신규(+ 새 사이클): 팀원 선택 + 사이클명 → cycle+assignment 생성 (관리자=본인).
+  // 기존 assignment 편집(목표/지표/루브릭)은 상세 페이지에서 처리.
+  const meEmail = me?.email ?? "";
+  async function onPersist(
+    row: ListRow,
+    isNew: boolean,
+  ): Promise<{ ok: boolean; error?: string }> {
     "use server";
-    return { ok: true };
+    if (!isNew) return { ok: true };
+    const r = await createCycleWithAssignment({
+      cycleName: row.name ?? "",
+      evaluateeEmail: row.performanceEvaluateeEmail ?? "",
+      evaluatorEmail: meEmail,
+    });
+    return { ok: r.ok, error: r.error };
   }
 
   return (
@@ -83,10 +94,12 @@ export default async function OutcomesPage({
       data={{ rows }}
       header={header}
       variant="performance"
-      // admin만 + 새 사이클 가능 (실제 사이클/매핑 생성은 follow-up)
+      // admin만 + 새 사이클 가능. 팀원 select는 본인 팀으로 한정.
       canCreate={isAdmin}
       createLabel="+ 새 사이클"
       currentUserName={me?.displayName}
+      currentUserTeam={me?.team ?? undefined}
+      currentUserEmail={me?.email ?? undefined}
       onPersist={onPersist}
       footer={
         <ListPagination key="outcomes-pagination" total={total} pageSize={30} />
