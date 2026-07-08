@@ -32,7 +32,7 @@ export function PerformanceView({ row }: ViewProps) {
               term: "현재 단계",
               desc: (
                 <span className="inline-block border border-vermilion bg-vermilion px-2 py-0.5 text-xs text-cream">
-                  {step}. {STEP_LABEL[step]}
+                  {STEP_LABEL[step]}
                 </span>
               ),
             },
