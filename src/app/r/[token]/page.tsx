@@ -22,7 +22,7 @@ export default async function SharedReportPage({
       <div className="mx-auto max-w-5xl p-6 md:p-8">
         <header className="border-b border-line pb-4">
           <p className="text-xs uppercase tracking-[0.06em] text-muted">
-            [운영부 상황실] 운영보고서 공유 view
+            [운영부 상황실] 운영리포트 공유 view
           </p>
           <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em] text-ink">
             {report.title}

@@ -47,7 +47,7 @@ export default async function OutcomesPrintPage({
     <article className="space-y-6">
       <header className="border-b-2 border-ink pb-4">
         <p className="text-xs uppercase tracking-[0.18em] text-vermilion">
-          [운영부 상황실] 운영보고서
+          [운영부 상황실] 운영리포트
         </p>
         <h1 className="mt-2 text-2xl font-extrabold tracking-[-0.02em] text-ink">
           {detail.cycle.name}

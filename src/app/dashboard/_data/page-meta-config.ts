@@ -21,7 +21,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "4단계로 팀원별 목표·성과지표(80%)·관리자평가(20%)를 관리합니다.",
   },
   reports: {
-    headline: { accent: "분석 · 보고", title: "운영보고서" },
+    headline: { accent: "분석 · 보고", title: "운영리포트" },
     description:
       "기간별 운영 KPI 8 카드(서비스·사고·계약·미수채권·인수인계·백업·메일·워크로그) + 저장된 리포트 목록.",
   },
