@@ -22,13 +22,16 @@ export function PerformanceView({ row }: ViewProps) {
       <Section title="기본">
         <DefList
           items={[
-            { term: "사이클", desc: row.performanceCycleName ?? row.name ?? "-" },
+            {
+              term: "사이클",
+              desc: row.performanceCycleName ?? row.name ?? "-",
+            },
             { term: "관리자", desc: row.performanceEvaluatorName ?? "-" },
             { term: "팀원", desc: row.performanceEvaluateeName ?? "-" },
             {
               term: "현재 단계",
               desc: (
-                <span className="inline-block border border-ink bg-cream px-2 py-0.5 text-xs text-ink">
+                <span className="inline-block border border-vermilion bg-vermilion px-2 py-0.5 text-xs text-cream">
                   {step}. {STEP_LABEL[step]}
                 </span>
               ),
