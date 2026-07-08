@@ -59,7 +59,7 @@ export function PerformanceTable({ rows, selectedId, onSelect }: Props) {
                 </td>
                 <td className="px-3 py-2">
                   <span className="inline-block bg-washi-raised px-2 py-0.5 text-xs text-ink">
-                    {step}. {STEP_LABEL[step]}
+                    {STEP_LABEL[step]}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-right text-xs text-muted tabular-nums">

@@ -44,6 +44,14 @@ export default async function OutcomesPage({
   const stepCounts: Record<Step, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
   for (const a of assignments) stepCounts[a.current_step] += 1;
 
+  // 요약 분모 = 관리자가 평가할 팀원 총원 (본인 팀, 본인·테스트 제외).
+  const teamSize = OPERATORS.filter(
+    (o) =>
+      !o.name.startsWith("테스트") &&
+      o.email !== me?.email &&
+      (!me?.team || o.team === me.team),
+  ).length;
+
   // header 영역: PageHeader 다음에 admin 권한 시 AdminSummary 결합.
   // 표준 페이지 흐름(breadcrumb → headline → 본문)을 유지하기 위해 header prop에 묶어 전달.
   const header = (
@@ -57,7 +65,7 @@ export default async function OutcomesPage({
       />
       {isAdmin ? (
         <div className="px-7 pt-4">
-          <AdminSummary stepCounts={stepCounts} total={assignments.length} />
+          <AdminSummary stepCounts={stepCounts} teamSize={teamSize} />
         </div>
       ) : null}
     </>

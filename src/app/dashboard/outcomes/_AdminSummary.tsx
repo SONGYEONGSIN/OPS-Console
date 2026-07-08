@@ -7,7 +7,8 @@ import {
 type Props = {
   /** assignment row의 current_step 분포 */
   stepCounts: Record<Step, number>;
-  total: number;
+  /** 분모 — 관리자가 평가할 팀원 총원 (미시작 인원 포함). */
+  teamSize: number;
 };
 
 /** 발행완료 단계 = 마지막 단계. */
@@ -15,14 +16,13 @@ const DONE_STEP = STEP_VALUES[STEP_VALUES.length - 1];
 
 /**
  * admin 요약 — 단계별 분포를 운영보고서(KpiCard) 톤의 카드 4열로 표시.
- * - 각 카드: 단계 번호 배지 + 라벨 + 큰 건수(건)
- * - 건수 있는 단계는 숫자를 강조(ink), 빈 단계는 muted
- * - 발행완료 카드는 상단 ink 액센트로 구분
+ * - 분모는 평가 대상 팀원 총원(teamSize) — 아직 사이클 미생성 인원도 반영.
+ * - 각 카드: 단계 번호 배지 + 라벨 + 큰 건수 / 팀원총원 + 비중(완료율)
  */
-export function AdminSummary({ stepCounts, total }: Props) {
+export function AdminSummary({ stepCounts, teamSize }: Props) {
   const completed = stepCounts[DONE_STEP] ?? 0;
   const completedPercent =
-    total === 0 ? 0 : Math.round((completed / total) * 100);
+    teamSize === 0 ? 0 : Math.round((completed / teamSize) * 100);
   const steps: Step[] = [...STEP_VALUES];
 
   return (
@@ -30,7 +30,7 @@ export function AdminSummary({ stepCounts, total }: Props) {
       <header className="flex items-baseline justify-between">
         <h3 className="text-xl font-bold text-ink">관리자 요약</h3>
         <span className="text-xs text-ink-soft tabular-nums">
-          전체 {total}건 · 발행완료 {completed}건 ({completedPercent}%)
+          전체 {teamSize}명 · 발행완료 {completed}명 ({completedPercent}%)
         </span>
       </header>
 
@@ -71,12 +71,13 @@ export function AdminSummary({ stepCounts, total }: Props) {
                   {count}
                 </span>
                 <span className="text-xs text-muted tabular-nums">
-                  / {total}명
+                  / {teamSize}명
                 </span>
               </div>
               <div className="text-2xs text-muted tabular-nums">
                 {done ? "완료율" : "비중"}{" "}
-                {total === 0 ? 0 : Math.round((count / total) * 1000) / 10}%
+                {teamSize === 0 ? 0 : Math.round((count / teamSize) * 1000) / 10}
+                %
               </div>
             </div>
           );
