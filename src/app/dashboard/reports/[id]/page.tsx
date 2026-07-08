@@ -36,7 +36,7 @@ export default async function ReportDetailPage({
             href="/dashboard/reports"
             className="text-vermilion hover:underline"
           >
-            ← 운영보고서 목록
+            ← 운영리포트 목록
           </Link>
         </header>
         <ReportDetail report={report} />

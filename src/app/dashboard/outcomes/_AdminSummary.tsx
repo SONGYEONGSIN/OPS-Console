@@ -15,7 +15,7 @@ type Props = {
 const DONE_STEP = STEP_VALUES[STEP_VALUES.length - 1];
 
 /**
- * admin 요약 — 단계별 분포를 운영보고서(KpiCard) 톤의 카드 4열로 표시.
+ * admin 요약 — 단계별 분포를 운영리포트(KpiCard) 톤의 카드 4열로 표시.
  * - 분모는 평가 대상 팀원 총원(teamSize) — 아직 사이클 미생성 인원도 반영.
  * - 각 카드: 단계 번호 배지 + 라벨 + 큰 건수 / 팀원총원 + 비중(완료율)
  */
