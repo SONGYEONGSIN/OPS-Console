@@ -133,13 +133,16 @@ export function HandoverEditorWorkspace({
           active={active}
           onChange={(key) => setActive(key)}
         />
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <HandoverCategoryFields
-            row={row}
-            setRow={setRow}
-            category={active}
-            contractsStatusOptions={contractsStatusOptions}
-          />
+        {/* 크림 바탕 — 섹션 카드가 흰색으로 떠 보이도록. 본문은 max-w로 가독 폭 제한 */}
+        <div className="min-h-0 flex-1 overflow-y-auto bg-washi-raised p-6">
+          <div className="mx-auto w-full max-w-3xl">
+            <HandoverCategoryFields
+              row={row}
+              setRow={setRow}
+              category={active}
+              contractsStatusOptions={contractsStatusOptions}
+            />
+          </div>
         </div>
       </div>
     </div>

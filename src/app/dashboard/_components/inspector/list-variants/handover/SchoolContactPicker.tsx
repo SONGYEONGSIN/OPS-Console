@@ -103,7 +103,7 @@ export function SchoolContactPicker({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="대학 연락처 검색 (이름/이메일) → 선택 시 추가"
-              className="w-full border border-line bg-cream py-1.5 pl-7 pr-2 text-ink transition-colors focus:border-ink focus:bg-white"
+              className="w-full border border-line bg-white py-1.5 pl-7 pr-2 text-ink transition-colors focus:border-ink"
             />
           </div>
           {matches.length > 0 && (
@@ -131,7 +131,7 @@ export function SchoolContactPicker({
       )}
 
       {items.length === 0 ? (
-        <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+        <p className="border border-dashed border-line-soft bg-washi-raised px-3 py-3 text-center text-2xs text-muted">
           추가된 학교담당자가 없습니다.
         </p>
       ) : (

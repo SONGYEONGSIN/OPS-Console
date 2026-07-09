@@ -46,7 +46,7 @@ export function StructuredInfoForm({
                 onChange={(e) =>
                   onChange?.({ ...value, [f.key]: e.target.value })
                 }
-                className="flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+                className="flex-1 border border-line bg-white px-2.5 py-1.5 text-ink transition-colors focus:border-ink"
               >
                 <option value="">선택</option>
                 {opts.map((o) => (
@@ -64,7 +64,7 @@ export function StructuredInfoForm({
                 }
                 maxLength={200}
                 placeholder={f.placeholder}
-                className="flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+                className="flex-1 border border-line bg-white px-2.5 py-1.5 text-ink transition-colors focus:border-ink"
               />
             )}
           </label>
@@ -87,7 +87,7 @@ export function StructuredInfoForm({
             maxLength={2000}
             placeholder="추가 메모(선택)"
             // field-sizing-content: 작성된 메모는 스크롤 없이 높이 자동 확장
-            className="field-sizing-content min-h-16 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="field-sizing-content min-h-16 w-full border border-line bg-white px-2.5 py-1.5 text-ink transition-colors focus:border-ink"
           />
         )}
       </label>
