@@ -1,5 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { kstDayRangeIso, aggregateSourceRuns } from "../today-runs";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(),
+}));
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  kstDayRangeIso,
+  aggregateSourceRuns,
+  fetchSourceRuns,
+  RUN_SOURCES,
+} from "../today-runs";
 
 const SRC = {
   jobId: "insights-collect",
@@ -44,6 +55,70 @@ describe("aggregateSourceRuns", () => {
 
   it("유효 값이 하나도 없으면 null", () => {
     expect(aggregateSourceRuns(SRC, [{ collected_at: "" }])).toBeNull();
+  });
+});
+
+/** admin.from(t).select(c).gte().lt().is()?.order().limit() 체인 모킹 */
+function mockAdmin() {
+  const limit = vi.fn().mockResolvedValue({ data: [] });
+  const builder: Record<string, unknown> = {};
+  const order = vi.fn(() => ({ limit }));
+  const gte = vi.fn(() => builder);
+  const lt = vi.fn(() => builder);
+  const is = vi.fn(() => builder);
+  builder.order = order;
+  builder.gte = gte;
+  builder.lt = lt;
+  builder.is = is;
+  const select = vi.fn(() => builder);
+  const from = vi.fn(() => ({ select }));
+  (createAdminClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+    from,
+  });
+  return { is };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("fetchSourceRuns — 수동 발송 제외", () => {
+  it("학교담당자 잡 소스는 cronOnlyCol='triggered_by' 로 설정된다", () => {
+    const school = RUN_SOURCES.find(
+      (s) => s.jobId === "receivables-mail-school",
+    );
+    expect(school?.cronOnlyCol).toBe("triggered_by");
+  });
+
+  it("다른 잡 소스에는 cronOnlyCol 이 없다", () => {
+    const others = RUN_SOURCES.filter(
+      (s) => s.jobId !== "receivables-mail-school",
+    );
+    expect(others.every((s) => s.cronOnlyCol === undefined)).toBe(true);
+  });
+
+  it("cronOnlyCol 이 있으면 .is(col, null) 필터를 건다", async () => {
+    const { is } = mockAdmin();
+    const school = RUN_SOURCES.find(
+      (s) => s.jobId === "receivables-mail-school",
+    )!;
+    await fetchSourceRuns(
+      school,
+      "2026-07-09T00:00:00+09:00",
+      "2026-07-10T00:00:00+09:00",
+    );
+    expect(is).toHaveBeenCalledWith("triggered_by", null);
+  });
+
+  it("cronOnlyCol 이 없으면 필터를 걸지 않는다", async () => {
+    const { is } = mockAdmin();
+    const other = RUN_SOURCES.find((s) => s.jobId === "insights-collect")!;
+    await fetchSourceRuns(
+      other,
+      "2026-07-09T00:00:00+09:00",
+      "2026-07-10T00:00:00+09:00",
+    );
+    expect(is).not.toHaveBeenCalled();
   });
 });
 

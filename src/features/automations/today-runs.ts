@@ -35,9 +35,14 @@ export type RunSource = {
   table: string;
   col: string;
   label: string;
+  /**
+   * 수동 발송과 이력 테이블을 공유하는 잡에서, cron 실행만 남기기 위해
+   * `IS NULL` 을 걸 컬럼. 지정하지 않으면 필터 없음.
+   */
+  cronOnlyCol?: string;
 };
 
-const RUN_SOURCES: RunSource[] = [
+export const RUN_SOURCES: RunSource[] = [
   {
     jobId: "receivables-deposit-match",
     table: "receivables_match_runs",
@@ -55,6 +60,8 @@ const RUN_SOURCES: RunSource[] = [
     table: "receivables_mail_sends",
     col: "sent_at",
     label: "학교담당자 미수채권 알림",
+    // 수동 발송(triggered_by 채워짐)은 cron 실행이 아니므로 타임라인에서 제외
+    cronOnlyCol: "triggered_by",
   },
   {
     jobId: "smileedi-mail",
@@ -111,17 +118,21 @@ export function aggregateSourceRuns(
   };
 }
 
-async function fetchSourceRuns(
+export async function fetchSourceRuns(
   source: RunSource,
   startIso: string,
   endIso: string,
 ): Promise<AutomationRun | null> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const base = admin
     .from(source.table)
     .select(source.col)
     .gte(source.col, startIso)
-    .lt(source.col, endIso)
+    .lt(source.col, endIso);
+  const filtered = source.cronOnlyCol
+    ? base.is(source.cronOnlyCol, null)
+    : base;
+  const { data } = await filtered
     .order(source.col, { ascending: false })
     .limit(TABLE_FETCH_LIMIT);
   const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
