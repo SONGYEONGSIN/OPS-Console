@@ -56,6 +56,11 @@ async function mailOperatorLog(jobId: string): Promise<JobRunLog> {
 
 // 학교담당자 미수채권 알림 — receivables_mail_sends가 운영자 알림과 동일 스키마라
 // mail-operator entry/렌더를 그대로 재사용한다.
+/**
+ * 수동 발송(인스펙터 '독려 메일 발송')과 cron 발송이 같은 이력 테이블을 공유한다.
+ * 자동화 실행 로그에는 cron 발송만 노출해야 "오늘 cron이 돌았는가"를 판단할 수 있으므로
+ * triggered_by(=버튼 누른 admin)가 채워진 수동 발송 행은 제외한다.
+ */
 async function mailSchoolLog(jobId: string): Promise<JobRunLog> {
   const admin = createAdminClient();
   const { data } = await admin
@@ -63,6 +68,7 @@ async function mailSchoolLog(jobId: string): Promise<JobRunLog> {
     .select(
       "sent_at, recipient_name, recipient_email, customer_names, receivable_count, total_amount, status, error_message",
     )
+    .is("triggered_by", null)
     .order("sent_at", { ascending: false })
     .limit(LOG_LIMIT);
   return {

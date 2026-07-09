@@ -19,8 +19,11 @@ function mockAdmin(table: string, data: unknown[]) {
   const builder: Record<string, unknown> = { order };
   const eq = vi.fn(() => builder);
   const not = vi.fn(() => builder);
+  // mail-school resolver는 .is("triggered_by", null)로 수동 발송을 걸러낸다.
+  const is = vi.fn(() => builder);
   builder.eq = eq;
   builder.not = not;
+  builder.is = is;
   const select = vi.fn(() => builder);
   const from = vi.fn((t: string) => {
     expect(t).toBe(table);
@@ -29,7 +32,7 @@ function mockAdmin(table: string, data: unknown[]) {
   (createAdminClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     from,
   });
-  return { from, select, eq, not, order, limit };
+  return { from, select, eq, not, is, order, limit };
 }
 
 beforeEach(() => {
@@ -113,6 +116,19 @@ describe("getJobRunLog", () => {
     if (log.kind === "mail-operator") {
       expect(log.entries[0].recipientName).toBe("학교담당");
     }
+  });
+
+  it("receivables-mail-school → 수동 발송(triggered_by not null) 제외 필터 적용", async () => {
+    const { is } = mockAdmin("receivables_mail_sends", []);
+    await getJobRunLog("receivables-mail-school");
+    // 자동화 실행 로그에는 cron 발송만 — 수동 발송은 triggered_by가 채워진다.
+    expect(is).toHaveBeenCalledWith("triggered_by", null);
+  });
+
+  it("receivables-mail-operator → triggered_by 필터를 걸지 않는다 (수동 경로 없음)", async () => {
+    const { is } = mockAdmin("receivables_operator_mail_sends", []);
+    await getJobRunLog("receivables-mail-operator");
+    expect(is).not.toHaveBeenCalled();
   });
 
   it("smileedi-mail → smileedi_mail_sends 조회 + smileedi 매핑", async () => {
