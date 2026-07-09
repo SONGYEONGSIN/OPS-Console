@@ -70,6 +70,14 @@ PR #829에서 섹션마다 흰 카드(`border border-line bg-white` + `px-4 py-3
 - `npm test` / `npm run typecheck` / `npm run lint` / `npm run build`
 - Vercel 프리뷰에서 6개 카테고리(계약·작업·정산·컨텍·서류·기타) 육안 확인
 
-## 미해결
+## 후속 (2026-07-09, 프리뷰 확인 후)
 
-시트 폭 `210mm`가 좌측 rail(176px)과 함께 있을 때 좁은 화면에서 어떻게 보이는지는 프리뷰에서 확인이 필요하다. 필요하면 `max-w-[210mm]`에 `w-full`을 함께 걸어 축소를 허용한다.
+시트를 본문에만 적용하니 rail과 시트 사이에 큰 빈 공간이 생기고, 편집기 전체 폭이 여전히 넓었다. 시트를 바깥으로 끌어올려 **rail까지 감싸는 한 장**으로 바꾼다.
+
+- 시트 = `mx-auto flex w-full max-w-5xl border border-line bg-white shadow-offset` (rail + 본문을 함께 감쌈)
+- 스크롤은 본문에만 (`overflow-y-auto`) — rail은 항상 보인다
+- 본문 여백 `px-10 pt-8 pb-14` 는 시트 내부로 이동
+- rail은 배경 클래스가 없어 시트의 흰색을 상속. 활성 항목 `bg-washi-raised` 가 흰 바탕에서 대비를 얻는다
+- 상단 툴바도 `mx-auto w-full max-w-5xl` 로 시트와 폭을 맞춘다
+
+폭은 `max-w-5xl`(1024px). rail 176px을 빼면 본문이 약 846px로, 회의록 `.paper`(210mm ≈ 794px)와 근접한다. `max-w-[210mm]` 를 직접 쓰면 rail 폭만큼 본문이 좁아지므로 총폭 기준으로 잡았다.

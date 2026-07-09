@@ -66,7 +66,8 @@ export function HandoverEditorWorkspace({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      {/* 툴바도 시트와 같은 폭으로 정렬 (max-w-5xl) */}
+      <div className="mx-auto mb-3 flex w-full max-w-5xl items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/dashboard/handover"
@@ -127,23 +128,22 @@ export function HandoverEditorWorkspace({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 border border-line">
+      {/* 카테고리 rail + 본문을 한 장의 흰 시트로. 바깥은 bg-paper 상속.
+          스크롤은 본문에만 — rail은 항상 보인다. w-full로 좁은 화면 축소 허용 */}
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 border border-line bg-white shadow-offset">
         <HandoverCategoryRail
           row={row}
           active={active}
           onChange={(key) => setActive(key)}
         />
-        {/* 회의록 편집기와 동일한 흰 시트 — 바깥은 bg-paper 상속, 시트만 흰색 */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
-          {/* 210mm = meeting-form.css .paper max-width. w-full로 좁은 화면 축소 허용 */}
-          <div className="mx-auto w-full max-w-[210mm] border border-line bg-white px-10 pt-8 pb-14 shadow-offset">
-            <HandoverCategoryFields
-              row={row}
-              setRow={setRow}
-              category={active}
-              contractsStatusOptions={contractsStatusOptions}
-            />
-          </div>
+        {/* px-10 pt-8 pb-14 = meeting-form.css .sheet padding (34px 40px 60px) */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-10 pt-8 pb-14">
+          <HandoverCategoryFields
+            row={row}
+            setRow={setRow}
+            category={active}
+            contractsStatusOptions={contractsStatusOptions}
+          />
         </div>
       </div>
     </div>
