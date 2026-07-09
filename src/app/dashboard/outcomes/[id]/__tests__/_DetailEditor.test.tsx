@@ -10,6 +10,7 @@ vi.mock("@/features/performance/actions", () => ({
   submitMetrics: vi.fn(async () => ({ ok: true })),
   upsertRubric: vi.fn(async () => ({ ok: true })),
   publishReport: vi.fn(async () => ({ ok: true })),
+  previewMetricQuant: vi.fn(async () => null),
 }));
 
 import { OutcomeDetailEditor } from "../_DetailEditor";

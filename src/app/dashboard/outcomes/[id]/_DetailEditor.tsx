@@ -22,6 +22,7 @@ import {
   submitMetrics,
   upsertRubric,
   publishReport,
+  previewMetricQuant,
 } from "@/features/performance/actions";
 
 type Result = { ok: boolean; error?: string };
@@ -279,6 +280,22 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
   const [weight, setWeight] = useState("");
   const [sourceKey, setSourceKey] = useState("");
   const [achievement, setAchievement] = useState("");
+  const [preview, setPreview] = useState<QuantVal>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
+  async function onSourceChange(key: string) {
+    setSourceKey(key);
+    setPreview(null);
+    if (!key) return;
+    setLoadingPreview(true);
+    const q = await previewMetricQuant(assignmentId, key);
+    setLoadingPreview(false);
+    setPreview(q);
+    // rate 소스(사고 처리완료율 등)는 값이 0~100 %라 달성률로 자동 반영
+    const kind = AGGREGATOR_REGISTRY[key as keyof typeof AGGREGATOR_REGISTRY]?.kind;
+    if (q && kind === "rate") setAchievement(String(q.value));
+  }
+
   return (
     <form
       className="space-y-2 border border-line-soft bg-white p-3"
@@ -297,6 +314,7 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
         setWeight("");
         setSourceKey("");
         setAchievement("");
+        setPreview(null);
       }}
     >
       <input
@@ -332,7 +350,7 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
         <select
           aria-label="정량 소스"
           value={sourceKey}
-          onChange={(e) => setSourceKey(e.target.value)}
+          onChange={(e) => onSourceChange(e.target.value)}
           className="flex-1 border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
         >
           <option value="">수동</option>
@@ -343,6 +361,28 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
           ))}
         </select>
       </div>
+      {sourceKey ? (
+        <p className="text-2xs text-muted">
+          {loadingPreview ? (
+            "현재값 불러오는 중…"
+          ) : preview ? (
+            <>
+              현재값{" "}
+              <span className="font-bold text-ink">
+                {preview.value}
+                {preview.unit}
+              </span>
+              {preview.detail ? ` (${preview.detail})` : ""}
+              {AGGREGATOR_REGISTRY[sourceKey as keyof typeof AGGREGATOR_REGISTRY]
+                ?.kind === "rate"
+                ? " · 달성률 자동 반영됨"
+                : " · 건수 소스(달성률은 목표 대비 직접 입력)"}
+            </>
+          ) : (
+            "현재값 없음"
+          )}
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={pending}

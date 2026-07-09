@@ -11,6 +11,15 @@ import {
   type Step,
 } from "./schemas";
 import { isValidMetricWeights } from "./scoring";
+import { getQuantPreview } from "./queries";
+
+/** 지표 추가 폼 — 소스 선택 시 팀원 기준 현재 정량값 미리보기 (달성률 자동 채움용). */
+export async function previewMetricQuant(
+  assignmentId: string,
+  sourceKey: string,
+): Promise<{ value: number; unit: string; detail?: string } | null> {
+  return getQuantPreview(assignmentId, sourceKey);
+}
 
 const REVALIDATE = "/dashboard/outcomes";
 

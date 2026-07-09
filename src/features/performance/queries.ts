@@ -64,6 +64,22 @@ async function computeQuant(
   return null;
 }
 
+/** 지표 추가 폼용 — assignment의 팀원 기준 정량 소스 현재값 미리보기. */
+export async function getQuantPreview(
+  assignmentId: string,
+  sourceKey: string,
+): Promise<MetricValue | null> {
+  const supabase = await createClient();
+  const { data: aRow } = await supabase
+    .from("performance_assignments")
+    .select("evaluatee_email")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  if (!aRow) return null;
+  const email = (aRow as { evaluatee_email: string }).evaluatee_email;
+  return computeQuant(supabase, sourceKey, email, currentYearPeriod());
+}
+
 /** 본인이 evaluator OR evaluatee인 assignment + cycle 정보 조인.
  *  admin은 전체 조회 — RLS가 자동 분기.
  */
