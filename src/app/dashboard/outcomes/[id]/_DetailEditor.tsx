@@ -239,7 +239,7 @@ function GoalAdd({ assignmentId, pending, run }: AddProps) {
   const [body, setBody] = useState("");
   return (
     <form
-      className="space-y-2 border border-line-soft bg-washi p-3"
+      className="space-y-2 border border-line-soft bg-white p-3"
       onSubmit={(e) => {
         e.preventDefault();
         run(() => createGoal({ assignment_id: assignmentId, title, body }));
@@ -281,7 +281,7 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
   const [achievement, setAchievement] = useState("");
   return (
     <form
-      className="space-y-2 border border-line-soft bg-washi p-3"
+      className="space-y-2 border border-line-soft bg-white p-3"
       onSubmit={(e) => {
         e.preventDefault();
         run(() =>
