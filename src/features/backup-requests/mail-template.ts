@@ -160,7 +160,7 @@ export function buildBackupMailHtml(input: BackupMailInput): string {
     </div>
 
     <p style="font-size:12px;color:#999;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-      운영부 상황실 자동발송 — 동일 내용의 PDF 파일이 첨부되어 있습니다.
+      운영부 상황실 자동발송 — 동일 내용의 HTML 파일이 첨부되어 있습니다.
     </p>
   </div>
 </body>

@@ -7,7 +7,7 @@ import {
   type GraphMailRecipient,
 } from "@/lib/microsoft/sendmail";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { renderBackupRequestPdf } from "@/lib/pdf/backup-request-pdf";
+import { buildBackupRequestHtmlDocument } from "./html-document";
 import {
   sendBackupMailInputSchema,
   type SendBackupMailInput,
@@ -192,24 +192,18 @@ export async function sendBackupRequestMail(
     const subject = buildBackupMailSubject(mailInput);
     const html = buildBackupMailHtml(mailInput);
 
-    // PDF 생성 — 그룹별로 본인 담당 services만 포함
-    let pdfBuffer: Buffer;
-    try {
-      pdfBuffer = await renderBackupRequestPdf({
-        requesterName: me.displayName ?? me.email,
-        requesterEmail: backup.requester_email,
-        substituteName: group.name,
-        substituteEmail: recipientEmail,
-        leaveStartDate: backup.leave_start_date ?? null,
-        leaveEndDate: backup.leave_end_date ?? null,
-        services: group.services,
-        summaryMd: backup.summary_md,
-        createdAt: backup.created_at,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return { ok: false, error: `pdf_error: ${msg}` };
-    }
+    // HTML 첨부 생성 — 그룹별로 본인 담당 services만 포함 (인수인계 확인서 레이아웃 참고)
+    const attachmentHtml = buildBackupRequestHtmlDocument({
+      requesterName: me.displayName ?? me.email,
+      requesterEmail: backup.requester_email,
+      substituteName: group.name,
+      substituteEmail: recipientEmail,
+      leaveStartDate: backup.leave_start_date ?? null,
+      leaveEndDate: backup.leave_end_date ?? null,
+      services: group.services,
+      summaryMd: backup.summary_md,
+      createdAt: backup.created_at,
+    });
 
     const sendRes = await sendGraphMail({
       senderUserId: me.email,
@@ -221,9 +215,9 @@ export async function sendBackupRequestMail(
       html,
       attachments: [
         {
-          name: `backup-${backup.id.slice(0, 8)}.pdf`,
-          contentType: "application/pdf",
-          contentBytes: pdfBuffer.toString("base64"),
+          name: `백업요청-${group.name}.html`,
+          contentType: "text/html; charset=utf-8",
+          contentBytes: Buffer.from(attachmentHtml, "utf-8").toString("base64"),
         },
       ],
     });
