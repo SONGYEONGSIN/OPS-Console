@@ -131,7 +131,7 @@ export function SchoolContactPicker({
       )}
 
       {items.length === 0 ? (
-        <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+        <p className="border border-dashed border-line-soft bg-washi-raised px-2 py-2 text-2xs text-muted">
           추가된 학교담당자가 없습니다.
         </p>
       ) : (
@@ -139,7 +139,7 @@ export function SchoolContactPicker({
           {items.map((c) => (
             <li key={c.id} className="flex items-center gap-2">
               {/* 한 줄 표시 — 이름(직함) · 전화 · 이메일[복사]. 박스는 내용만, X는 박스 밖. */}
-              <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden whitespace-nowrap border border-line bg-cream px-2 py-1.5">
+              <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden whitespace-nowrap border border-line-soft bg-washi-raised px-2 py-1.5">
                 <span className="flex-none text-ink">
                   {c.name}
                   {c.jobTitle ? ` (${c.jobTitle})` : ""}

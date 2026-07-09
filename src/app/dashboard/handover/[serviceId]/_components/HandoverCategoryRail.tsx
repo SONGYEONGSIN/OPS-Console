@@ -34,19 +34,25 @@ export function HandoverCategoryRail({
               <button
                 type="button"
                 onClick={() => onChange(cat.key)}
-                className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
+                className={`flex w-full cursor-pointer items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
                   on
-                    ? "bg-washi-raised font-medium text-ink"
+                    ? "bg-ink font-medium text-cream"
                     : "text-ink-soft hover:bg-washi"
                 }`}
               >
                 <span>
-                  <span aria-hidden className="mr-2 text-muted">
+                  {/* 검정 배경에서는 text-muted가 묻히므로 크림 계열로 */}
+                  <span
+                    aria-hidden
+                    className={`mr-2 ${on ? "text-cream/70" : "text-muted"}`}
+                  >
                     {mark}
                   </span>
                   {cat.label}
                 </span>
-                <span className="text-2xs text-muted">
+                <span
+                  className={`text-2xs ${on ? "text-cream/70" : "text-muted"}`}
+                >
                   {filled}/{total}
                 </span>
               </button>
