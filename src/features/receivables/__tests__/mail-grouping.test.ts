@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { ReceivablesSheet } from "../queries";
 import {
   groupRecipientsByOwner,
+  groupOwnerByOperator,
   findMailSentDateCol,
 } from "../mail-grouping";
 
@@ -87,7 +88,9 @@ describe("groupRecipientsByOwner", () => {
     ]);
     const { groups, excluded } = groupRecipientsByOwner(sheet, 10, NOW);
     expect(groups).toEqual([]);
-    expect(excluded.some((e) => e.reason === "missing_owner_column")).toBe(true);
+    expect(excluded.some((e) => e.reason === "missing_owner_column")).toBe(
+      true,
+    );
   });
 
   it("청구일자 컬럼 누락 시 groups=[], excluded에 missing_billing_date_column", () => {
@@ -103,6 +106,96 @@ describe("groupRecipientsByOwner", () => {
   });
 });
 
+describe("groupOwnerByOperator", () => {
+  it("같은 학교담당자 + 다른 운영자 → 운영자별 2 그룹으로 분리", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "same@x.com"], // 10일
+      ["2026-05-15", "B학교", "원서", 500_000, "한효진", "same@x.com"], // 15일
+    ]);
+    const { groups, blocked } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(blocked).toEqual([]);
+    expect(groups).toHaveLength(2);
+    const senders = groups.map((g) => g.sender.email).sort();
+    expect(senders).toEqual(["hhj@jinhakapply.com", "ys1114@jinhakapply.com"]);
+    for (const g of groups) expect(g.recipient.email).toBe("same@x.com");
+  });
+
+  it("같은 (운영자, 학교담당자) → 1 그룹 병합 + totalAmount 합산", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "same@x.com"],
+      ["2026-05-15", "A학교 분교", "원서", 500_000, "송영신", "same@x.com"],
+    ]);
+    const { groups } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].items).toHaveLength(2);
+    expect(groups[0].totalAmount).toBe(1_500_000);
+    expect(groups[0].sender).toEqual({
+      name: "송영신",
+      email: "ys1114@jinhakapply.com",
+    });
+  });
+
+  it("경과 >= threshold 만 포함 — 마일스톤 미적용 (12일도 포함)", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-18", "A학교", "원서", 1_000_000, "송영신", "a@x.com"], // 12일 ✓
+      ["2026-05-22", "B학교", "원서", 500_000, "송영신", "b@x.com"], //  8일 ✗
+    ]);
+    const { groups } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups.map((g) => g.recipient.email)).toEqual(["a@x.com"]);
+  });
+
+  it("운영자명 매핑 실패 → blocked[operator_email_not_mapped], 나머지는 정상 발송 대상", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "same@x.com"],
+      ["2026-05-15", "C학교", "원서", 700_000, "홍길둥", "same@x.com"], // 명단에 없음
+    ]);
+    const { groups, blocked } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].sender.email).toBe("ys1114@jinhakapply.com");
+    expect(blocked).toHaveLength(1);
+    expect(blocked[0].reason).toBe("operator_email_not_mapped");
+    expect(blocked[0].customerName).toBe("C학교");
+  });
+
+  it("운영자명 빈 셀 → blocked[operator_not_found]", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "", "a@x.com"],
+    ]);
+    const { groups, blocked } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups).toEqual([]);
+    expect(blocked.map((b) => b.reason)).toContain("operator_not_found");
+  });
+
+  it("잘못된 학교담당자 이메일 → blocked[invalid_email]", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "not-an-email"],
+    ]);
+    const { groups, blocked } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups).toEqual([]);
+    expect(blocked.map((b) => b.reason)).toContain("invalid_email");
+  });
+
+  it("운영자 컬럼 누락 시 groups=[], blocked에 missing_operator_column", () => {
+    const headersNoOp = HEADERS.filter((h) => h !== "운영자");
+    const sheet = mkSheet(headersNoOp, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "a@x.com"],
+    ]);
+    const { groups, blocked } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups).toEqual([]);
+    expect(blocked.some((b) => b.reason === "missing_operator_column")).toBe(
+      true,
+    );
+  });
+
+  it("items에 1-based Excel 행번호(excelRow)를 채운다", () => {
+    const sheet = mkSheet(HEADERS, [
+      ["2026-05-20", "A학교", "원서", 1_000_000, "송영신", "a@x.com"],
+    ]);
+    const { groups } = groupOwnerByOperator(sheet, 10, NOW);
+    expect(groups[0].items[0].excelRow).toBe(2);
+  });
+});
+
 describe("excelRow / findMailSentDateCol", () => {
   it("items에 1-based Excel 행번호(excelRow)를 채운다", () => {
     const sheet = mkSheet(HEADERS, [
@@ -114,7 +207,9 @@ describe("excelRow / findMailSentDateCol", () => {
   });
 
   it("findMailSentDateCol — '메일발송일자' 헤더 인덱스, 없으면 -1", () => {
-    expect(findMailSentDateCol([...HEADERS, "메일발송일자"])).toBe(HEADERS.length);
+    expect(findMailSentDateCol([...HEADERS, "메일발송일자"])).toBe(
+      HEADERS.length,
+    );
     expect(findMailSentDateCol(HEADERS)).toBe(-1);
   });
 });

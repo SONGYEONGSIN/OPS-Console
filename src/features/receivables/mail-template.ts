@@ -22,21 +22,6 @@ function uniqueCustomers(group: ReminderGroup): string[] {
   );
 }
 
-/**
- * 본문 인사말에 쓸 발신자명 — 그룹 청구건의 실제 담당 운영자명.
- * 운영자가 유일하면 그 이름, 비어있거나 복수(모호)면 fallback(발송 트리거한 운영자명).
- * 독려메일은 admin이 대신 발송해도 본문은 채권 담당 운영자 이름으로 나가야 한다.
- */
-export function resolveSenderName(
-  group: ReminderGroup,
-  fallback: string,
-): string {
-  const operators = Array.from(
-    new Set(group.items.map((it) => it.operatorLabel?.trim()).filter(Boolean)),
-  );
-  return operators.length === 1 ? operators[0]! : fallback;
-}
-
 /** 메일 제목 */
 export function buildReminderSubject(args: {
   group: ReminderGroup;

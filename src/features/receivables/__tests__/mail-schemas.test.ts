@@ -3,6 +3,7 @@ import {
   recipientSchema,
   reminderItemSchema,
   reminderGroupSchema,
+  operatorReminderGroupSchema,
   sendReminderInputSchema,
 } from "../mail-schemas";
 
@@ -24,6 +25,11 @@ const validGroup = {
   recipient: validRecipient,
   items: [validItem],
   totalAmount: 1_500_000,
+};
+
+const validOperatorGroup = {
+  ...validGroup,
+  sender: { name: "송영신", email: "ys1114@jinhakapply.com" },
 };
 
 describe("recipientSchema", () => {
@@ -69,31 +75,84 @@ describe("reminderGroupSchema", () => {
   });
 });
 
+describe("operatorReminderGroupSchema", () => {
+  it("sender(발신 운영자) 포함 그룹 통과", () => {
+    expect(
+      operatorReminderGroupSchema.safeParse(validOperatorGroup).success,
+    ).toBe(true);
+  });
+
+  it("sender 누락 거부 — 발신 운영자 없이는 발송 불가", () => {
+    expect(operatorReminderGroupSchema.safeParse(validGroup).success).toBe(
+      false,
+    );
+  });
+
+  it("sender.email 형식 오류 거부", () => {
+    const bad = {
+      ...validOperatorGroup,
+      sender: { name: "송영신", email: "not-an-email" },
+    };
+    expect(operatorReminderGroupSchema.safeParse(bad).success).toBe(false);
+  });
+});
+
 describe("sendReminderInputSchema", () => {
-  it("thresholdDays 0 이하 거부", () => {
-    const bad = {
-      thresholdDays: 0,
-      groups: [validGroup],
-      dryRun: false,
-    };
-    expect(sendReminderInputSchema.safeParse(bad).success).toBe(false);
-  });
-
-  it("groups 빈 배열 거부", () => {
-    const bad = {
-      thresholdDays: 10,
-      groups: [],
-      dryRun: false,
-    };
-    expect(sendReminderInputSchema.safeParse(bad).success).toBe(false);
-  });
-
-  it("정상 input 통과", () => {
+  it("bundle scope 정상 input 통과", () => {
     const ok = {
-      thresholdDays: 10,
-      groups: [validGroup],
+      recipientEmail: "manager@school.ac.kr",
+      scope: "bundle",
       dryRun: true,
     };
     expect(sendReminderInputSchema.safeParse(ok).success).toBe(true);
+  });
+
+  it("single scope + customerName 통과", () => {
+    const ok = {
+      recipientEmail: "manager@school.ac.kr",
+      scope: "single",
+      customerName: "○○대학교",
+      dryRun: false,
+    };
+    expect(sendReminderInputSchema.safeParse(ok).success).toBe(true);
+  });
+
+  it("single scope 인데 customerName 누락 거부", () => {
+    const bad = {
+      recipientEmail: "manager@school.ac.kr",
+      scope: "single",
+      dryRun: false,
+    };
+    expect(sendReminderInputSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("recipientEmail 형식 오류 거부", () => {
+    const bad = {
+      recipientEmail: "not-an-email",
+      scope: "bundle",
+      dryRun: false,
+    };
+    expect(sendReminderInputSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("알 수 없는 scope 거부", () => {
+    const bad = {
+      recipientEmail: "manager@school.ac.kr",
+      scope: "everything",
+      dryRun: false,
+    };
+    expect(sendReminderInputSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("클라이언트가 groups(발신자 포함)를 실어보내도 무시 — 서버 재도출", () => {
+    const withGroups = {
+      recipientEmail: "manager@school.ac.kr",
+      scope: "bundle",
+      dryRun: false,
+      groups: [validOperatorGroup],
+    };
+    const r = sendReminderInputSchema.safeParse(withGroups);
+    expect(r.success).toBe(true);
+    expect(r.success && "groups" in r.data).toBe(false);
   });
 });

@@ -4,7 +4,6 @@ import {
   formatWon,
   buildReminderHtml,
   buildReminderSubject,
-  resolveSenderName,
 } from "../mail-template";
 import type { ReminderGroup } from "../mail-schemas";
 
@@ -85,31 +84,6 @@ describe("buildReminderSubject", () => {
     });
     expect(s).toContain("Folio");
     expect(s).toContain("세금계산서");
-  });
-});
-
-describe("resolveSenderName", () => {
-  it("그룹 운영자가 유일하면 그 운영자명 사용 (발송자 fallback 무시)", () => {
-    expect(resolveSenderName(singleCustomerGroup, "관리자")).toBe("송영신");
-  });
-
-  it("운영자가 비어있으면 fallback(발송자명)", () => {
-    const g: ReminderGroup = {
-      ...singleCustomerGroup,
-      items: [{ ...singleCustomerGroup.items[0], operatorLabel: "" }],
-    };
-    expect(resolveSenderName(g, "관리자")).toBe("관리자");
-  });
-
-  it("운영자가 여러 명이면 fallback (모호 — 발송자명)", () => {
-    const g: ReminderGroup = {
-      ...multiCustomerGroup,
-      items: [
-        { ...multiCustomerGroup.items[0], operatorLabel: "한효진" },
-        { ...multiCustomerGroup.items[1], operatorLabel: "박시현" },
-      ],
-    };
-    expect(resolveSenderName(g, "관리자")).toBe("관리자");
   });
 });
 
