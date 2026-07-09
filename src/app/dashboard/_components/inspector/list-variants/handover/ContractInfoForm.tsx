@@ -123,9 +123,7 @@ export function ContractInfoForm({
 
       <div
         className={
-          embedded
-            ? "space-y-2"
-            : "space-y-2 border-y border-line-soft py-3"
+          embedded ? "space-y-2" : "space-y-2 border-y border-line-soft py-3"
         }
       >
         {FIELDS.map((f) => {
@@ -163,7 +161,7 @@ export function ContractInfoForm({
         <label className="block">
           <span className="mb-1 block text-muted">메모</span>
           {readOnly ? (
-            <div className="min-h-[3.5rem] w-full border border-line bg-cream px-2 py-1">
+            <div className="min-h-[3.5rem] w-full border border-line-soft bg-washi-raised px-2 py-1">
               {value.memo ? (
                 <LinkifiedText text={value.memo} />
               ) : (

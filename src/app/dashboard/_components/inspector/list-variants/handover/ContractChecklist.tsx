@@ -71,7 +71,7 @@ export function ContractChecklist({
         }
       >
         {items.length === 0 ? (
-          <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+          <p className="border border-dashed border-line-soft bg-washi-raised px-2 py-2 text-2xs text-muted">
             {readOnly
               ? `등록된 ${label} 항목이 없습니다.`
               : `필요한 ${label} 항목을 추가하세요.`}
