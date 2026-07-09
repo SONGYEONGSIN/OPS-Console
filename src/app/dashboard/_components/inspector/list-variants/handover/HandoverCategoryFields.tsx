@@ -41,7 +41,7 @@ export function HandoverCategoryFields({
   if (!cat) return null;
 
   return (
-    <div className="space-y-2.5 pb-6">
+    <div className="space-y-3">
       {cat.fields.map((f) => {
         const filled = isFieldFilled(row, f.key);
         let body: ReactNode;
@@ -111,7 +111,7 @@ export function HandoverCategoryFields({
                   maxLength={10000}
                   placeholder="추가 메모(선택)"
                   // field-sizing-content: 작성된 메모는 스크롤 없이 높이 자동 확장
-                  className="field-sizing-content min-h-16 w-full border border-line bg-white px-2.5 py-1.5 text-ink transition-colors focus:border-ink"
+                  className="field-sizing-content min-h-16 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
                 />
               </label>
             </ContractChecklist>
@@ -158,7 +158,7 @@ export function HandoverCategoryFields({
               maxLength={10000}
               placeholder={FIELD_EXAMPLE[f.key]}
               // field-sizing-content: 기존 내용이 있으면 스크롤 없이 높이 자동 확장
-              className="field-sizing-content min-h-32 w-full border border-line bg-white px-2.5 py-1.5 text-ink transition-colors focus:border-ink"
+              className="field-sizing-content min-h-24 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             />
           );
         }
