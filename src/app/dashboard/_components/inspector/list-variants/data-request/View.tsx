@@ -153,7 +153,7 @@ export function DataRequestView({ row }: ViewProps) {
         {!justSelected && matches.length > 0 && (
           <ul
             aria-label="수신자 검색 결과"
-            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-washi-raised"
+            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-white"
           >
             {matches.map((r) => (
               <li key={r.email}>
@@ -178,26 +178,6 @@ export function DataRequestView({ row }: ViewProps) {
 
       <div className="block text-xs">
         <span className="mb-1 block text-muted">참조 (CC)</span>
-        {cc.length > 0 && (
-          <div className="mb-1.5 flex flex-wrap gap-1.5">
-            {cc.map((c) => (
-              <span
-                key={c.email}
-                className="inline-flex items-center gap-1 border border-line px-2 py-0.5 text-ink"
-              >
-                {c.name}
-                <button
-                  type="button"
-                  onClick={() => removeCc(c.email)}
-                  aria-label={`${c.name} 참조 제거`}
-                  className="cursor-pointer text-muted hover:text-vermilion"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
         {toEmail && (
           <select
             value=""
@@ -215,6 +195,26 @@ export function DataRequestView({ row }: ViewProps) {
                 </option>
               ))}
           </select>
+        )}
+        {cc.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {cc.map((c) => (
+              <span
+                key={c.email}
+                className="inline-flex items-center gap-1 border border-line px-2 py-0.5 text-ink"
+              >
+                {c.name}
+                <button
+                  type="button"
+                  onClick={() => removeCc(c.email)}
+                  aria-label={`${c.name} 참조 제거`}
+                  className="cursor-pointer text-muted hover:text-vermilion"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
