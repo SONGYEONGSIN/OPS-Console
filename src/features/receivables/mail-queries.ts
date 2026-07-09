@@ -1,7 +1,11 @@
 import "server-only";
 import { fetchReceivablesSheet } from "./queries";
-import { groupRecipientsByOwner } from "./mail-grouping";
-import type { ReminderGroup, ExcludedReason } from "./mail-schemas";
+import { groupRecipientsByOwner, groupOwnerByOperator } from "./mail-grouping";
+import type {
+  ReminderGroup,
+  OperatorReminderGroup,
+  ExcludedReason,
+} from "./mail-schemas";
 
 export type ReminderPreview = {
   thresholdDays: number;
@@ -12,6 +16,11 @@ export type ReminderPreview = {
 };
 
 const DEFAULT_THRESHOLD_DAYS = 10;
+
+/** 독려 대상 경과일수 임계값 — 미리보기/발송이 동일 기준을 쓰도록 공유. */
+export function readThresholdDays(): number {
+  return readThreshold();
+}
 
 function readThreshold(): number {
   const raw = process.env.MAIL_REMINDER_THRESHOLD_DAYS;
@@ -38,7 +47,11 @@ export async function previewReminderRecipients(
     };
   }
 
-  const { groups, excluded } = groupRecipientsByOwner(sheet, thresholdDays, now);
+  const { groups, excluded } = groupRecipientsByOwner(
+    sheet,
+    thresholdDays,
+    now,
+  );
   return {
     thresholdDays,
     groups,
@@ -51,13 +64,18 @@ export async function previewReminderRecipients(
 export type FindGroupForEmailResult = {
   thresholdDays: number;
   sheetAvailable: boolean;
-  /** 해당 이메일이 학교담당자 컬럼에 있고 임계값 이상인 경우의 그룹. 없으면 null */
-  group: ReminderGroup | null;
+  /**
+   * 해당 학교담당자의 (담당 운영자별) 그룹 목록. 운영자가 여러 명이면 N개 —
+   * 각 그룹이 해당 운영자 메일박스에서 1통씩 발송된다.
+   */
+  groups: OperatorReminderGroup[];
+  /** 운영자 이메일 매핑 실패 등으로 발송에서 제외된 행 (해당 학교담당자 건만) */
+  blocked: ExcludedReason[];
 };
 
 /**
  * 인스펙터에서 호출 — 특정 학교담당자 이메일에 묶이는 그룹 데이터를 조회.
- * 같은 이메일로 묶이는 다른 미수 청구건이 있으면 모두 group.items 에 포함된다.
+ * 같은 이메일이라도 담당 운영자가 다르면 별도 그룹으로 분리된다(발신 메일박스가 다름).
  * (호출자가 단건/묶음 선택 UI를 표시)
  */
 export async function findGroupForEmail(
@@ -67,11 +85,18 @@ export async function findGroupForEmail(
   const thresholdDays = readThreshold();
   const sheet = await fetchReceivablesSheet();
   if (!sheet) {
-    return { thresholdDays, sheetAvailable: false, group: null };
+    return { thresholdDays, sheetAvailable: false, groups: [], blocked: [] };
   }
-  const { groups } = groupRecipientsByOwner(sheet, thresholdDays, now);
+  const { groups, blocked } = groupOwnerByOperator(sheet, thresholdDays, now);
   const normalized = targetEmail.trim().toLowerCase();
-  const group =
-    groups.find((g) => g.recipient.email.toLowerCase() === normalized) ?? null;
-  return { thresholdDays, sheetAvailable: true, group };
+  return {
+    thresholdDays,
+    sheetAvailable: true,
+    groups: groups.filter(
+      (g) => g.recipient.email.toLowerCase() === normalized,
+    ),
+    blocked: blocked.filter(
+      (b) => b.recipientEmail?.toLowerCase() === normalized,
+    ),
+  };
 }
