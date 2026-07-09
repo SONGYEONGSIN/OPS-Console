@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockGetCurrentOperator,
   mockSendGraphMail,
-  mockRenderPdf,
   mockGetById,
   mockAdminInsert,
   mockAdminUpdate,
@@ -12,7 +11,6 @@ const {
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockSendGraphMail: vi.fn(),
-  mockRenderPdf: vi.fn(),
   mockGetById: vi.fn(),
   mockAdminInsert: vi.fn(),
   mockAdminUpdate: vi.fn(),
@@ -30,10 +28,6 @@ vi.mock("@/features/auth/queries", () => ({
 
 vi.mock("@/lib/microsoft/sendmail", () => ({
   sendGraphMail: mockSendGraphMail,
-}));
-
-vi.mock("@/lib/pdf/backup-request-pdf", () => ({
-  renderBackupRequestPdf: mockRenderPdf,
 }));
 
 vi.mock("../queries", () => ({
@@ -118,13 +112,11 @@ const teamMates = [
 beforeEach(() => {
   mockGetCurrentOperator.mockReset();
   mockSendGraphMail.mockReset();
-  mockRenderPdf.mockReset();
   mockGetById.mockReset();
   mockAdminInsert.mockReset();
   mockAdminUpdate.mockReset();
   mockAdminOpsSelect.mockReset();
 
-  mockRenderPdf.mockResolvedValue(Buffer.from("fake-pdf-content".repeat(100)));
   mockAdminInsert.mockResolvedValue({ data: null, error: null });
   mockAdminUpdate.mockResolvedValue({ data: null, error: null });
   // operators select chain: .eq("team", x).neq("email", a).neq("email", b)
@@ -181,7 +173,8 @@ describe("sendBackupRequestMail", () => {
       ]),
     );
     expect(call.attachments).toBeDefined();
-    expect(call.attachments[0].name).toMatch(/\.pdf$/);
+    expect(call.attachments[0].name).toMatch(/\.html$/);
+    expect(call.attachments[0].contentType).toMatch(/text\/html/);
     delete process.env.MAIL_DRY_RUN;
   });
 
