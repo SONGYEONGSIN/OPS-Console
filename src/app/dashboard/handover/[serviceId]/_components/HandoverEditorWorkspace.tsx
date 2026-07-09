@@ -75,15 +75,6 @@ export function HandoverEditorWorkspace({
           >
             ← 목록 이동
           </Link>
-          {/* 접수구분 · 대학명 · 서비스명 */}
-          <p className="min-w-0 truncate text-sm font-bold text-ink">
-            {row.applicationType ? (
-              <span className="mr-1">{row.applicationType}</span>
-            ) : null}
-            {row.universityName ?? "—"}
-            <span className="text-muted"> · </span>
-            {row.serviceName ?? "—"}
-          </p>
         </div>
         <div className="flex flex-none items-center gap-3">
           <span className="text-xs font-bold text-muted">
@@ -128,22 +119,34 @@ export function HandoverEditorWorkspace({
         </div>
       </div>
 
-      {/* 카테고리 rail + 본문을 한 장의 흰 시트로. 바깥은 bg-paper 상속.
-          스크롤은 본문에만 — rail은 항상 보인다. w-full로 좁은 화면 축소 허용 */}
-      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 border border-line bg-white shadow-offset">
-        <HandoverCategoryRail
-          row={row}
-          active={active}
-          onChange={(key) => setActive(key)}
-        />
-        {/* px-10 pt-8 pb-14 = meeting-form.css .sheet padding (34px 40px 60px) */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-10 pt-8 pb-14">
-          <HandoverCategoryFields
+      {/* 문서 제목 + 카테고리 rail + 본문을 한 장의 흰 시트로. 바깥은 bg-paper 상속.
+          스크롤은 본문에만 — 제목과 rail은 항상 보인다. w-full로 좁은 화면 축소 허용 */}
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col border border-line bg-white shadow-offset">
+        {/* 문서 제목 (masthead) — 접수구분 · 대학명 · 서비스명 */}
+        <p className="shrink-0 truncate border-b border-line px-6 py-3.5 text-base font-bold text-ink">
+          {row.applicationType ? (
+            <span className="mr-1.5">{row.applicationType}</span>
+          ) : null}
+          {row.universityName ?? "—"}
+          <span className="text-muted"> · </span>
+          {row.serviceName ?? "—"}
+        </p>
+
+        <div className="flex min-h-0 flex-1">
+          <HandoverCategoryRail
             row={row}
-            setRow={setRow}
-            category={active}
-            contractsStatusOptions={contractsStatusOptions}
+            active={active}
+            onChange={(key) => setActive(key)}
           />
+          {/* px-10 pt-8 pb-14 = meeting-form.css .sheet padding (34px 40px 60px) */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-10 pt-8 pb-14">
+            <HandoverCategoryFields
+              row={row}
+              setRow={setRow}
+              category={active}
+              contractsStatusOptions={contractsStatusOptions}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -24,14 +24,15 @@ export function CollapsibleField({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer items-center gap-2 py-2 text-xs"
+        className="flex w-full cursor-pointer items-center gap-2 py-2.5"
       >
-        <span className="text-base leading-none text-muted">
+        <span className="text-lg leading-none text-muted">
           {open ? "▾" : "▸"}
         </span>
-        <span className="font-bold text-ink-soft">{label}</span>
+        {/* 섹션 제목 — 시트 안의 소제목 위계 */}
+        <span className="text-base font-bold text-ink">{label}</span>
         <span
-          className={`ml-auto inline-block px-2 py-0.5 text-2xs ${
+          className={`ml-auto inline-block px-2.5 py-1 text-xs ${
             filled ? "bg-ink text-cream" : "bg-vermilion text-cream"
           }`}
         >
