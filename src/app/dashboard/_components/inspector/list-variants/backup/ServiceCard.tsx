@@ -98,7 +98,7 @@ export function ServiceCard({
   }
 
   return (
-    <div className="border border-line-soft bg-paper p-2.5">
+    <div className="border border-line-soft bg-white p-2.5">
       {/* 헤더: 대학명 — 서비스명(서비스ID) / × */}
       <div className="flex items-center gap-2">
         <span className="flex-1 text-xs font-semibold text-ink">
