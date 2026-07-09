@@ -70,14 +70,16 @@ export function StructuredInfoForm({
           </label>
         );
       })}
-      <label className="block">
-        <span className="mb-1 block text-muted">메모</span>
+      <label className="flex items-start gap-2">
+        <span className="w-14 flex-none pt-1 text-muted">메모</span>
         {readOnly ? (
-          value.memo ? (
-            <LinkifiedText text={value.memo} />
-          ) : (
-            <p className="text-faint">—</p>
-          )
+          <div className="flex-1">
+            {value.memo ? (
+              <LinkifiedText text={value.memo} />
+            ) : (
+              <p className="text-faint">—</p>
+            )}
+          </div>
         ) : (
           <textarea
             aria-label="메모"
@@ -87,7 +89,7 @@ export function StructuredInfoForm({
             maxLength={2000}
             placeholder="추가 메모(선택)"
             // field-sizing-content: 작성된 메모는 스크롤 없이 높이 자동 확장
-            className="field-sizing-content min-h-16 w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="field-sizing-content min-h-16 flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         )}
       </label>
