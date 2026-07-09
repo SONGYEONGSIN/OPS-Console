@@ -138,8 +138,9 @@ export function HandoverEditorWorkspace({
             active={active}
             onChange={(key) => setActive(key)}
           />
-          {/* px-10 pt-8 pb-14 = meeting-form.css .sheet padding (34px 40px 60px) */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-10 pt-8 pb-14">
+          {/* 좌우·하단은 meeting-form.css .sheet padding(40px/60px) 기준.
+              상단은 masthead가 이미 여백을 만들고 rail 첫 항목과 어긋나므로 좁게 */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-10 pt-3 pb-14">
             <HandoverCategoryFields
               row={row}
               setRow={setRow}
