@@ -133,9 +133,10 @@ export function HandoverEditorWorkspace({
           active={active}
           onChange={(key) => setActive(key)}
         />
-        {/* 크림 바탕 — 섹션 카드가 흰색으로 떠 보이도록. 본문은 max-w로 가독 폭 제한 */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-washi-raised p-6">
-          <div className="mx-auto w-full max-w-3xl">
+        {/* 회의록 편집기와 동일한 흰 시트 — 바깥은 bg-paper 상속, 시트만 흰색 */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 py-4">
+          {/* 210mm = meeting-form.css .paper max-width. w-full로 좁은 화면 축소 허용 */}
+          <div className="mx-auto w-full max-w-[210mm] border border-line bg-white px-10 pt-8 pb-14 shadow-offset">
             <HandoverCategoryFields
               row={row}
               setRow={setRow}
