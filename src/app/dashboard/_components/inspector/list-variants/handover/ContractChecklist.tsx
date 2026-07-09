@@ -46,7 +46,9 @@ export function ContractChecklist({
           )}
           현재 ({items.length}/{HANDOVER_CHECKLIST_MAX})
           {items.length > 0 && (
-            <span className="ml-1 text-faint">· 완료 {received}/{items.length}</span>
+            <span className="ml-1 text-faint">
+              · 완료 {received}/{items.length}
+            </span>
           )}
         </span>
         {!readOnly && (
@@ -67,11 +69,13 @@ export function ContractChecklist({
       {/* 항목 + 메모(children) — 임베드(아코디언) 시 외곽선 없이 */}
       <div
         className={
-          embedded ? "space-y-2 pt-1" : "space-y-2 border-y border-line-soft py-3"
+          embedded
+            ? "space-y-2 pt-1"
+            : "space-y-2 border-y border-line-soft py-3"
         }
       >
         {items.length === 0 ? (
-          <p className="border border-dashed border-line-soft bg-cream px-2 py-2 text-2xs text-muted">
+          <p className="border border-dashed border-line-soft bg-washi-raised px-3 py-3 text-center text-2xs text-muted">
             {readOnly
               ? `등록된 ${label} 항목이 없습니다.`
               : `필요한 ${label} 항목을 추가하세요.`}
@@ -135,14 +139,16 @@ export function ContractChecklist({
                     }
                     maxLength={200}
                     placeholder="체크 항목"
-                    className="flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+                    className="flex-1 border border-line bg-white px-2.5 py-1.5 text-ink transition-colors focus:border-ink"
                   />
                 )}
                 {!readOnly && (
                   <button
                     type="button"
                     aria-label={`항목 ${idx + 1} 삭제`}
-                    onClick={() => onChange?.(items.filter((_, i) => i !== idx))}
+                    onClick={() =>
+                      onChange?.(items.filter((_, i) => i !== idx))
+                    }
                     className="flex-none cursor-pointer border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
                   >
                     ✕
