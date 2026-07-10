@@ -1,7 +1,7 @@
 # 서비스 마감 스크랩 — Windows 작업 스케줄러 등록 (이 PC에서 1회 실행)
 #
-# 매주 금요일 09:00에 run-local.ps1을 실행. 격주 off주는 스크래퍼가 스스로 [SKIP] 종료하므로
-# 트리거는 매주로 둔다. 헤드리스라 화면(데스크톱 세션)이 필요 없다.
+# 평일(월~금) 09:00에 run-local.ps1을 실행. 주기 판정(격주 off주 [SKIP])은 스크래퍼 내부 게이트가
+# 담당하므로 트리거는 단순 반복으로 둔다. 헤드리스라 화면(데스크톱 세션)이 필요 없다.
 #
 # 기본(로그온 시에만 실행):
 #   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/moa-closing/register-task.ps1
@@ -28,15 +28,16 @@ $taskName = "OPS-Console-Closing-Scrape"
 $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$runner`""
 
-# 매주 금요일 09:00 (격주 판정은 스크래퍼 내부 게이트)
-$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At 09:00am
+# 평일 09:00 (주기 판정은 스크래퍼 내부 게이트)
+$trigger = New-ScheduledTaskTrigger -Weekly `
+    -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 09:00am
 
 # 꺼져 있었으면 다음 켜질 때 실행, 절전이면 깨워서 실행 시도, 배터리에서도 실행.
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 20)
 
-$desc = "Moa 서비스마감 스크랩 -> OPS 적재. 매주 금 09:00(격주는 스크래퍼가 판정). 회사/가정 IP라 Cloudflare 통과."
+$desc = "Moa 서비스마감 스크랩 -> OPS 적재. 평일 09:00(주기는 스크래퍼가 판정). 회사/가정 IP라 Cloudflare 통과."
 
 $user = "$env:USERDOMAIN\$env:USERNAME"
 
