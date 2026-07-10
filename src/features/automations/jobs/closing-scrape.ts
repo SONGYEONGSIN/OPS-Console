@@ -1,27 +1,25 @@
 import "server-only";
-import { dispatchWorkflow } from "@/lib/github/dispatch-workflow";
+import {
+  enqueueLocalScrapeRequest,
+  AUTOMATION_REQUESTER,
+} from "@/features/closing/scrape-requests/enqueue";
 import type { AutomationRunResult } from "../types";
 
 /**
- * AutomationJob.run — Moa 서비스마감 스크래핑 트리거 (순수 디스패처).
+ * AutomationJob.run — Moa 서비스마감 스크래핑 요청 (로컬 폴러 큐 적재).
  *
- * SmileEDI(워크플로→OPS 메일 잡)와 반대 방향. 본 잡은 GitHub `workflow_dispatch`로
- * `moa-closing-scrape.yml`을 1회 깨우기만 한다. 격주 게이트·로그인·SMS 2FA·엑셀 파싱·
- * 마감 필터·인제스트 POST는 모두 워크플로(Python 스크래퍼)가 담당한다.
+ * GitHub Actions 러너는 데이터센터 IP라 Moa의 Cloudflare 챌린지를 통과하지 못한다
+ * (2026-06-08 이후 6회 연속 '로그인 폼 미등장' 실패). 실제 스크랩은 회사 PC의
+ * 폴러(poll-local.ps1)가 수행하므로, 본 잡은 closing_scrape_requests에 pending
+ * 1건을 적재하기만 한다. 폴러가 5분 내 claim해 run-local을 실행하고,
+ * 결과는 스크래퍼가 /api/closing/run-log로 보고한다.
  *
- * 트리거 경로: cron-job.org 매주 월 → /api/automations/run?jobId=closing-scrape → run().
- * 실행 주기(주간/격주)는 스크래퍼가 판정(off주 exit 0)하므로 본 잡은 매번 dispatch한다. 현재 주간.
+ * 격주 게이트·로그인·SMS 2FA·엑셀 파싱·인제스트 POST는 모두 스크래퍼가 담당한다.
  *
- * 환경변수: dispatchWorkflow가 GITHUB_DISPATCH_TOKEN/REPO/WORKFLOW 검증(누락 시 ok:false).
+ * 트리거 경로: cron-job.org → /api/automations/run?jobId=closing-scrape → run().
+ * 자동화 카드의 수동 실행도 같은 run()을 타므로 자동/수동이 동일 경로다.
  */
 export async function runClosingScrape(): Promise<AutomationRunResult> {
-  const result = await dispatchWorkflow();
-  if (!result.ok) {
-    return { ok: false, message: `GitHub 워크플로 트리거 실패 — ${result.error}` };
-  }
-  return {
-    ok: true,
-    message:
-      "Moa 서비스마감 스크래핑 워크플로를 트리거했습니다. (실행 주기는 워크플로가 판정)",
-  };
+  const result = await enqueueLocalScrapeRequest(AUTOMATION_REQUESTER);
+  return { ok: result.ok, message: result.message };
 }

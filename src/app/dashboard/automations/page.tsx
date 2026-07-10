@@ -3,7 +3,6 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getAutomationStatuses } from "@/features/automations/queries";
-import { getLatestScrapeRequest } from "@/features/closing/scrape-requests/queries";
 import { AutomationHub } from "./_components/AutomationHub";
 
 export default async function AutomationsPage() {
@@ -17,7 +16,6 @@ export default async function AutomationsPage() {
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
   const statuses = await getAutomationStatuses();
-  const latestScrapeRequest = await getLatestScrapeRequest();
   const config = resolvePageMeta(slug, meta, statuses.length);
 
   const header = (
@@ -43,7 +41,6 @@ export default async function AutomationsPage() {
         <AutomationHub
           statuses={statuses}
           isAdmin={isAdmin}
-          localScrapeRequest={latestScrapeRequest}
         />
       </section>
     </>

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/github/dispatch-workflow", () => ({
-  dispatchWorkflow: vi.fn(),
+vi.mock("@/features/closing/scrape-requests/enqueue", () => ({
+  enqueueLocalScrapeRequest: vi.fn(),
+  AUTOMATION_REQUESTER: "automation",
 }));
 
-import { dispatchWorkflow } from "@/lib/github/dispatch-workflow";
+import { enqueueLocalScrapeRequest } from "@/features/closing/scrape-requests/enqueue";
 import { runClosingScrape } from "../closing-scrape";
 
 describe("runClosingScrape", () => {
@@ -13,24 +14,41 @@ describe("runClosingScrape", () => {
     vi.clearAllMocks();
   });
 
-  it("dispatch 성공 → ok:true (워크플로 1회 트리거)", async () => {
-    vi.mocked(dispatchWorkflow).mockResolvedValue({ ok: true });
+  it("로컬 큐에 requested_by='automation'으로 1건 적재", async () => {
+    vi.mocked(enqueueLocalScrapeRequest).mockResolvedValue({
+      ok: true,
+      message: "로컬 실행을 요청했습니다.",
+    });
 
     const r = await runClosingScrape();
 
     expect(r.ok).toBe(true);
-    expect(dispatchWorkflow).toHaveBeenCalledTimes(1);
+    expect(enqueueLocalScrapeRequest).toHaveBeenCalledTimes(1);
+    expect(enqueueLocalScrapeRequest).toHaveBeenCalledWith("automation");
   });
 
-  it("dispatch 실패 → ok:false + 헬퍼 에러 메시지 전달", async () => {
-    vi.mocked(dispatchWorkflow).mockResolvedValue({
+  it("적재 실패 → ok:false + 원인 메시지 전달", async () => {
+    vi.mocked(enqueueLocalScrapeRequest).mockResolvedValue({
       ok: false,
-      error: "환경변수 누락: GITHUB_DISPATCH_TOKEN",
+      message: "이미 대기/진행 중인 요청이 있습니다.",
     });
 
     const r = await runClosingScrape();
 
     expect(r.ok).toBe(false);
-    expect(r.message).toContain("GITHUB_DISPATCH_TOKEN");
+    expect(r.message).toContain("대기/진행 중");
+  });
+
+  it("GitHub workflow_dispatch를 더 이상 호출하지 않는다", async () => {
+    vi.mocked(enqueueLocalScrapeRequest).mockResolvedValue({
+      ok: true,
+      message: "ok",
+    });
+
+    await runClosingScrape();
+
+    // dispatch-workflow 모듈이 제거됐으므로 import 자체가 없어야 한다.
+    const mod = await import("../closing-scrape");
+    expect(Object.keys(mod)).toEqual(["runClosingScrape"]);
   });
 });

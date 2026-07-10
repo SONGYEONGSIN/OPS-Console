@@ -6,9 +6,6 @@ vi.mock("@/features/automations/actions", () => ({
   runAutomationAction: vi.fn(),
   setAutomationEnabledAction: vi.fn(),
 }));
-vi.mock("@/features/closing/scrape-requests/actions", () => ({
-  requestLocalScrapeAction: vi.fn(),
-}));
 
 import { AutomationHub } from "../AutomationHub";
 import {
