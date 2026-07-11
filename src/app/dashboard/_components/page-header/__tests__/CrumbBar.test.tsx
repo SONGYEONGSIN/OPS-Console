@@ -27,9 +27,9 @@ describe("CrumbBar", () => {
     expect(screen.getByText("서비스")).toBeInTheDocument();
   });
 
-  it("washi-raised 배경 + 하단 line-soft 보더 적용", () => {
+  it("sidebar 배경(왼쪽 메뉴바와 동일 톤) + 하단 line-soft 보더 적용", () => {
     const { container } = renderInProvider();
-    const bar = container.querySelector("div.bg-washi-raised");
+    const bar = container.querySelector("div.bg-sidebar");
     expect(bar).not.toBeNull();
     expect(bar?.className).toContain("border-b");
     expect(bar?.className).toContain("border-line-soft");

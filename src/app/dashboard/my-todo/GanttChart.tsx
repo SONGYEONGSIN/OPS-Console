@@ -89,7 +89,7 @@ export function GanttChart({ items }: Props) {
 
   if (!range || days.length === 0) {
     return (
-      <div className="border border-line-soft bg-cream p-6 text-center text-xs text-muted">
+      <div className="border border-line-soft bg-situation-bg p-6 text-center text-xs text-muted">
         프로젝트 또는 일정이 없습니다. 일정을 추가하면 Gantt 차트가 표시됩니다.
       </div>
     );
@@ -143,7 +143,7 @@ export function GanttChart({ items }: Props) {
                 <div
                   key={d}
                   style={{ gridRow: 2, gridColumn: i + 2 }}
-                  className="border-r border-b border-line bg-cream py-0.5 text-center text-2xs"
+                  className="border-r border-b border-line bg-situation-bg py-0.5 text-center text-2xs"
                 >
                   <div className="text-ink">{dayNum}</div>
                   <div className={wd.tone}>{wd.label}</div>
@@ -165,7 +165,7 @@ export function GanttChart({ items }: Props) {
                 style={{ gridTemplateColumns: gridCols }}
               >
                 <div
-                  className={`border-l border-r border-b border-line bg-cream px-2 py-1 text-xs ${
+                  className={`border-l border-r border-b border-line bg-situation-bg px-2 py-1 text-xs ${
                     item.isParent
                       ? "font-bold text-ink"
                       : "pl-4 text-ink-soft"
@@ -179,7 +179,7 @@ export function GanttChart({ items }: Props) {
                   return (
                     <div
                       key={d}
-                      className="border-r border-b border-line bg-cream p-0.5 min-h-[28px]"
+                      className="border-r border-b border-line bg-situation-bg p-0.5 min-h-[28px]"
                     >
                       {isInRange ? (
                         <div

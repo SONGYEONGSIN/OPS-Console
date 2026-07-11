@@ -176,7 +176,7 @@ export function WeeklyView({
           {WEEKDAY_LABELS.map((wd) => (
             <div
               key={wd}
-              className="bg-cream py-2 text-center text-xs font-bold text-ink"
+              className="bg-situation-bg py-2 text-center text-xs font-bold text-ink"
             >
               {wd}
             </div>
@@ -204,7 +204,7 @@ export function WeeklyView({
                 key={d}
                 data-testid={`weekly-cell-${d}`}
                 data-today={isToday ? "true" : "false"}
-                className={`min-h-[120px] bg-cream p-1.5 text-2xs text-ink ${
+                className={`min-h-[120px] bg-situation-bg p-1.5 text-2xs text-ink ${
                   isToday ? "ring-1 ring-inset ring-vermilion" : ""
                 }`}
               >

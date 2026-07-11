@@ -24,7 +24,7 @@ export function PageTabs({ pathname }: { pathname: string }) {
             key={tab.slug}
             className={`relative flex items-center gap-2 px-5 py-2 text-sm transition-colors ${
               active
-                ? "-mb-px border border-t-2 border-x-line-soft border-b-cream border-t-vermilion bg-cream font-bold text-ink"
+                ? "-mb-px border border-t-2 border-x-line-soft border-b-paper border-t-vermilion bg-paper font-bold text-ink"
                 : "border-t-2 border-transparent text-muted hover:text-ink"
             }`}
           >
