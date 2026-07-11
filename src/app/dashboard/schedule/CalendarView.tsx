@@ -323,7 +323,7 @@ export function CalendarView({
         {WEEKDAY_LABELS.map((wd, i) => (
           <div
             key={wd}
-            className={`bg-cream py-2 text-center text-xs font-bold ${
+            className={`bg-situation-bg py-2 text-center text-xs font-bold ${
               i === 0 ? "text-vermilion" : i === 6 ? "text-indigo" : "text-ink"
             }`}
           >
@@ -349,7 +349,7 @@ export function CalendarView({
               data-today={isToday ? "true" : "false"}
               data-holiday={isHoliday ? "true" : "false"}
               className={`min-h-[100px] p-1.5 text-2xs ${
-                isHoliday ? "bg-vermilion/10" : "bg-cream"
+                isHoliday ? "bg-vermilion/10" : "bg-situation-bg"
               } ${cell.inMonth ? "text-ink" : "text-faint"} ${
                 isToday ? "ring-1 ring-inset ring-vermilion" : ""
               }`}

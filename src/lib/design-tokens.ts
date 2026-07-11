@@ -16,8 +16,8 @@ export const colors = {
   washiRaised: "#f4eddd",
   cream: "#faf4e6",
   paper: "#fbf7f0",
-  sidebar: "#efe7d7",
-  sidebarHover: "#dcd4bc",
+  sidebar: "#fffdf7", // 웜 화이트 — 사이드바·네비 밴드 (콘텐츠 paper보다 밝은 크롬)
+  sidebarHover: "#f0e9d9",
   // Ink (text)
   ink: "#15120c",
   inkSoft: "#3d3529",
@@ -35,7 +35,7 @@ export const colors = {
   sage: "#556b2f",
   // OPS Console chrome 전용 (별도 레이어 — chrome bar만 적용)
   chromeGraphite: "#18181b",
-  chromeSnow: "#f5f5f4",
+  chromeSnow: "#fffdf7", // 웜 화이트 — 사이드바·네비 밴드와 톤 통일
   chromeMuted: "#71717a",
 } as const;
 

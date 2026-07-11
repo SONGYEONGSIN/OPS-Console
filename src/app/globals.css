@@ -12,9 +12,10 @@
   --cream: #faf4e6;
   /* 운영부 상황실 카드 배경 — 밝은 흰색 계열(페이지 paper보다 밝게 떠 보이도록) */
   --situation-bg: #fdfdfb;
+  /* 콘텐츠 본문 paper, 사이드바·네비 밴드는 웜 화이트(#fffdf7) */
   --paper: #fbf7f0;
-  --sidebar: #efe7d7;
-  --sidebar-hover: #dcd4bc;
+  --sidebar: #fffdf7;
+  --sidebar-hover: #f0e9d9;
   --ink: #15120c;
   --ink-soft: #3d3529;
   --muted: #716855;
@@ -33,7 +34,7 @@
 
   /* OPS Console chrome 전용 (chrome bar만 적용) */
   --chrome-graphite: #18181b;
-  --chrome-snow: #f5f5f4;
+  --chrome-snow: #fffdf7; /* 웜 화이트 — 사이드바·네비 밴드와 톤 통일 */
   --chrome-muted: #71717a;
 
   /* Console 컬러 팔레트 — 사이드바·토스트 등 */
@@ -628,3 +629,4 @@ button.bs-tl-ev .cal.cal-group,
   font-size: 0.95rem;
   line-height: 1.7;
 }
+

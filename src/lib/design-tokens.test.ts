@@ -17,14 +17,14 @@ describe("design-tokens / colors", () => {
     expect(colors.washi).toBe("#ede6d2");
     expect(colors.cream).toBe("#faf4e6");
     expect(colors.paper).toBe("#fbf7f0");
-    expect(colors.sidebar).toBe("#efe7d7");
+    expect(colors.sidebar).toBe("#fffdf7");
     expect(colors.ink).toBe("#15120c");
     expect(colors.vermilion).toBe("#b8331e");
   });
 
   it("OPS Console chrome 토큰을 정확한 값으로 노출한다", () => {
     expect(colors.chromeGraphite).toBe("#18181b");
-    expect(colors.chromeSnow).toBe("#f5f5f4");
+    expect(colors.chromeSnow).toBe("#fffdf7");
     expect(colors.chromeMuted).toBe("#71717a");
   });
 });
