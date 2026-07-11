@@ -120,7 +120,7 @@ export function GanttChart({ items }: Props) {
           >
             <div
               style={{ gridRow: "1 / span 2", gridColumn: 1 }}
-              className="border-t border-l border-r border-b border-line bg-washi-raised flex items-center justify-center text-xs font-bold text-ink"
+              className="border-t border-l border-r border-b border-line bg-situation-bg flex items-center justify-center text-xs font-bold text-ink"
             >
               프로젝트 / 업무
             </div>
@@ -131,7 +131,7 @@ export function GanttChart({ items }: Props) {
                   gridRow: 1,
                   gridColumn: `${g.start} / span ${g.span}`,
                 }}
-                className="border-t border-r border-b border-line bg-washi-raised py-1 text-center text-2xs font-bold text-ink"
+                className="border-t border-r border-b border-line bg-situation-bg py-1 text-center text-2xs font-bold text-ink"
               >
                 {g.ym}
               </div>
