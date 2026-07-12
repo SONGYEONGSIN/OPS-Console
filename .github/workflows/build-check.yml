@@ -37,7 +37,8 @@ jobs:
         run: npm run lint
 
       - name: TypeScript
-        run: npx tsc --noEmit
+        # next-env.d.ts는 gitignore된 생성 파일 — fresh clone에서 typegen으로 재생성 후 검사
+        run: npx next typegen && npx tsc --noEmit
 
       - name: Vitest
         run: npm test

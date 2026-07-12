@@ -86,6 +86,7 @@ E2E 운영 메모:
 
 빌드 운영 메모:
 - `NODE_ENV=development` shell leak 시 `next build`가 dev React로 prerender → `/_global-error` useContext 에러 발생. `unset NODE_ENV` 또는 `NODE_ENV=production` 강제. CI는 unset 정상 동작
+- `next-env.d.ts`는 gitignore (dev/build마다 routes.d.ts 참조가 바뀌는 생성 파일). fresh clone에서 typecheck 전에 `npx next typegen` 필요 (CI 반영됨)
 
 ## 운영 메일·PDF (Microsoft Graph sendMail)
 

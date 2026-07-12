@@ -12,6 +12,8 @@ coverage/
 out/
 build/
 .next-dev*.log
+# dev/build 실행마다 routes.d.ts 참조 경로가 바뀌는 생성 파일 — CI는 next typegen으로 재생성
+next-env.d.ts
 
 # TypeScript
 *.tsbuildinfo
