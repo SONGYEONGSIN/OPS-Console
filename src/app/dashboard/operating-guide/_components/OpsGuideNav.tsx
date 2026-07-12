@@ -10,7 +10,7 @@ type Props = {
 
 /**
  * 운영 가이드 좌측 nav.
- * /dashboard/settings 의 SettingsClient nav 톤(◉ · / border-vermilion / bg-vermilion/10) 차용.
+ * 선택/호버는 표준 인터랙션 색(◉ · / border-vermilion / bg-vermilion/10) — 이 스타일이 nav 선택 표준.
  * URL ?tab= 으로 선택 상태 관리. 미지정 시 첫 탭(바이브코딩).
  */
 export function OpsGuideNav({ tabs }: Props) {

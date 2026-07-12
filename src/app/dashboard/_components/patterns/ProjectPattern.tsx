@@ -191,7 +191,7 @@ function ImprovementsPanel({
           key={`${im.title}-${i}`}
           onClick={() => onSelect(i, im)}
           className={`flex cursor-pointer items-center gap-3 py-3 hover:bg-washi-raised ${
-            selectedIndex === i ? "bg-washi-raised" : ""
+            selectedIndex === i ? "bg-vermilion/10" : ""
           }`}
         >
           <span className="flex-1 text-sm text-ink">{im.title}</span>

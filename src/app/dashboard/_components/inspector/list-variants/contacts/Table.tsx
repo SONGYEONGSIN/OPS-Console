@@ -42,7 +42,7 @@ export function ContactsTable({ rows, selectedId, onSelect }: Props) {
               key={row.id}
               onClick={() => onSelect(row)}
               className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                selectedId === row.id ? "bg-washi-raised" : ""
+                selectedId === row.id ? "bg-vermilion/10" : ""
               }`}
             >
               <td className={`px-3 py-2 text-sm ${activeTone(row.customerActive)}`}>

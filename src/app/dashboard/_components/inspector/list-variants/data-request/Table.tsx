@@ -95,7 +95,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
                   past
                     ? "border-b border-line-soft bg-washi opacity-60 cursor-not-allowed"
                     : `cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                        selectedId === row.id ? "bg-washi-raised" : ""
+                        selectedId === row.id ? "bg-vermilion/10" : ""
                       }`
                 }
               >
