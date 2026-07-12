@@ -51,7 +51,7 @@ export function HandoverTable({ rows }: Props) {
               <tr
                 key={row.id}
                 onClick={() => router.push(`/dashboard/handover/${row.id}`)}
-                className="cursor-pointer border-b border-line-soft hover:bg-washi-raised"
+                className="cursor-pointer border-b border-line-soft hover:bg-line-soft"
               >
                 <td className="px-3 py-2">
                   <span className="font-medium text-ink">

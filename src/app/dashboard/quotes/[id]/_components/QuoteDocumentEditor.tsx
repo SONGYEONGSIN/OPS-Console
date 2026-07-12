@@ -312,7 +312,7 @@ function SectionTable({
             </tr>
           ) : (
             section.rows.map((row, rowIdx) => (
-              <tr key={rowIdx} className="hover:bg-washi-raised">
+              <tr key={rowIdx} className="hover:bg-line-soft">
                 {section.columns.map((col) => {
                   const raw = row[col.key];
                   const strVal = raw == null ? "" : String(raw);

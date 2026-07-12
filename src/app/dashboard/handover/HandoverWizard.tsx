@@ -352,7 +352,7 @@ function Step1({
                   <tr
                     key={s.id}
                     onClick={() => onSelect(s.id)}
-                    className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-vermilion/10" : ""}`}
+                    className={`cursor-pointer border-b border-line-soft hover:bg-line-soft ${selected ? "bg-vermilion/10" : ""}`}
                   >
                     <td className="px-3 py-2">
                       <input
@@ -429,7 +429,7 @@ function Step2({
                 <tr
                   key={o.email}
                   onClick={() => onSelect(o)}
-                  className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-vermilion/10" : ""}`}
+                  className={`cursor-pointer border-b border-line-soft hover:bg-line-soft ${selected ? "bg-vermilion/10" : ""}`}
                 >
                   <td className="w-12 px-3 py-2">
                     <input
@@ -556,7 +556,7 @@ function CategoryAccordion({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full cursor-pointer items-center justify-between bg-transparent px-4 py-3 text-left hover:bg-washi-raised"
+        className="flex w-full cursor-pointer items-center justify-between bg-transparent px-4 py-3 text-left hover:bg-line-soft"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2">

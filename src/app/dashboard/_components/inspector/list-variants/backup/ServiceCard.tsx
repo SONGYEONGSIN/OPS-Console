@@ -160,7 +160,7 @@ export function ServiceCard({
                 <button
                   type="button"
                   onClick={() => addContact(c)}
-                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-washi-raised"
+                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-line-soft"
                 >
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>

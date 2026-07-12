@@ -59,7 +59,7 @@ export function DevTestTable({ rows, selectedId, onSelect }: Props) {
               <tr
                 key={row.id}
                 onClick={() => onSelect(row)}
-                className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                className={`cursor-pointer border-b border-line-soft hover:bg-line-soft ${
                   selectedId === row.id ? "bg-vermilion/10" : ""
                 }`}
               >

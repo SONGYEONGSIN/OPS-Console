@@ -190,7 +190,7 @@ function ImprovementsPanel({
         <li
           key={`${im.title}-${i}`}
           onClick={() => onSelect(i, im)}
-          className={`flex cursor-pointer items-center gap-3 py-3 hover:bg-washi-raised ${
+          className={`flex cursor-pointer items-center gap-3 py-3 hover:bg-line-soft ${
             selectedIndex === i ? "bg-vermilion/10" : ""
           }`}
         >

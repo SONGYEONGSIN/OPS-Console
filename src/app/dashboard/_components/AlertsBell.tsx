@@ -119,7 +119,7 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
                       <Link
                         href={alert.href}
                         onClick={() => setOpen(false)}
-                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm text-ink hover:bg-washi-raised"
+                        className="grid grid-cols-[1fr_auto] items-baseline gap-2 px-3 py-2 text-sm text-ink hover:bg-line-soft"
                       >
                         <span className="truncate">{alert.label}</span>
                         <span className="shrink-0 text-xs text-muted">
