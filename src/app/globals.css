@@ -8,7 +8,7 @@
 :root {
   /* Palette */
   --washi: #ede6d2;
-  --washi-raised: #f4eddd;
+  --washi-raised: #f5f2ec; /* 웜 뉴트럴 — raised 표면(헤더 밴드·호버). 크림기 제거, paper 반 단계 아래 */
   --cream: #faf4e6;
   /* 운영부 상황실 카드 배경 — 밝은 흰색 계열(페이지 paper보다 밝게 떠 보이도록) */
   --situation-bg: #fdfdfb;

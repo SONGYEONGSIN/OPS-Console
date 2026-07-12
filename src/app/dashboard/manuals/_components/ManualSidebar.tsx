@@ -84,8 +84,8 @@ function CategoryButton({
       aria-current={active ? "page" : undefined}
       className={`flex items-center gap-2 border-l-2 px-3 py-2 text-left text-sm transition-colors max-md:border-l-0 max-md:border-b-2 max-md:px-4 ${
         active
-          ? "border-vermilion bg-vermilion/10 font-medium text-vermilion"
-          : "border-transparent text-ink hover:bg-line-soft"
+          ? "border-vermilion bg-washi-raised font-medium text-ink"
+          : "border-transparent text-ink hover:bg-washi-raised"
       }`}
     >
       <span className="text-xs">{active ? "◉" : "·"}</span>
