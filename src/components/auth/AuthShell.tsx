@@ -12,7 +12,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative z-10 grid h-screen grid-rows-[26px_1fr_26px]">
       <AuthTitleBar />
-      <main className="flex items-center justify-center overflow-y-auto bg-paper px-4 py-5 md:px-5 md:py-6 lg:px-7 lg:py-8">
+      <main className="flex items-center justify-center overflow-y-auto bg-chrome-snow px-4 py-5 md:px-5 md:py-6 lg:px-7 lg:py-8">
         <div className="w-full max-w-[420px]">{children}</div>
       </main>
       <AuthStatusBar />
