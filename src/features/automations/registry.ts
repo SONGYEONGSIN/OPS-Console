@@ -123,7 +123,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "team-briefing",
     label: "팀 보고 브리핑",
     description:
-      "계약진행 현황과 팀업무 현황(다음주 일정·서비스 마감 임박)을 집계해 Teams 그룹채팅에 자동 브리핑합니다.",
+      "계약진행 현황(누적)·차주 팀 업무(일정/서비스 마감)·AI 활용(내 AI 작업/TIP/인사이트)을 집계해 Teams 그룹채팅에 자동 브리핑합니다.",
     scheduleInfo: "매주 금요일 10:00 (cron-job.org)",
     cooldownMinutes: 60,
     run: runTeamBriefing,
