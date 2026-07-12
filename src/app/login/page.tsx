@@ -48,7 +48,7 @@ function LoginPageContent() {
 
   return (
     <div className="relative z-10 grid h-screen grid-rows-[1fr]">
-      <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-paper">
+      <main className="flex h-full min-h-0 items-center justify-center overflow-y-auto bg-chrome-snow">
         <AuthPanel
           mode={mode}
           setMode={setMode}
