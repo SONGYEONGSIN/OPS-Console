@@ -54,6 +54,7 @@ OPS-Console/
 - **Design Tokens**: `src/lib/design-tokens.ts` — 색상, 간격, 타이포 중앙 정의
 - **Common Components**: `src/components/common/` — 재사용 UI 패턴 (3회+ 반복 추출)
 - **색상 규칙**: 컴포넌트에서 하드코딩 hex/rgb/hsl 금지, Tailwind 클래스 또는 토큰 사용
+- **인터랙션 표준** (#846·#848): 목록/메뉴 항목형(테이블 행·nav·드롭다운·자동완성)은 호버 `hover:bg-line-soft`, 선택 `border-vermilion bg-vermilion/10 text-vermilion` — 운영가이드 좌측 nav가 기준. 버튼/토글/페이지네이션 호버는 별도 (이 표준 적용 금지)
 - **검증**: `hooks/design-lint.sh`가 Write/Edit 시 자동 감지, `/design-audit`로 전체 스캔
 
 ## list-variants 아키텍처 (open/closed)
@@ -111,6 +112,7 @@ E2E 운영 메모:
 | `insights-collect` | 매일 08:00 (KST) | YouTube 인기 영상 수집 → 인사이트 페이지 | `insight_videos.collected_at` |
 | `receivables-mail-operator` | 평일 10:00 (KST) | 운영자별 미수채권 본인 메일 알림 | `receivables_operator_mail_sends` |
 | `receivables-deposit-match` | 매시간 | 미수 ↔ 입금내역 자동 매칭 (단건/N:1/N:M) + K/J열 PATCH + mismatch admin 알림 | `receivables_match_runs` (jsonb payload) |
+| `team-briefing` | 매주 금 10:00 (KST) | 팀 보고 브리핑 Teams 발송 — 계약현황(누적)·차주 팀 업무(일정/마감)·AI 활용(내 AI 작업/TIP/인사이트 영상링크, 최근 7일) | `automation_runs` (공통) |
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
 
