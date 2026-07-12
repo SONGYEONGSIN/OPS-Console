@@ -142,7 +142,7 @@ function ItemRow({
 
   const className = `-ml-4 grid w-[calc(100%+1rem)] grid-cols-[18px_1fr_auto] items-center gap-2.5 border-l-2 bg-transparent px-2 py-1.5 pl-[22px] text-left text-md transition-colors ${
     isActive
-      ? "border-vermilion bg-washi-raised font-medium text-ink"
+      ? "border-vermilion bg-vermilion/10 font-medium text-vermilion"
       : "border-transparent text-ink-soft hover:bg-sidebar-hover"
   }`;
 

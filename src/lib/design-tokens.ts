@@ -13,7 +13,7 @@
 export const colors = {
   // Paper / surface
   washi: "#ede6d2",
-  washiRaised: "#f4eddd",
+  washiRaised: "#f5f2ec", // 웜 뉴트럴 — raised 표면(헤더 밴드·호버). 크림기 제거, paper 반 단계 아래
   cream: "#faf4e6",
   paper: "#fbf7f0",
   sidebar: "#fffdf7", // 웜 화이트 — 사이드바·네비 밴드 (콘텐츠 paper보다 밝은 크롬)

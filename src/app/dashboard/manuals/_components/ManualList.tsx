@@ -53,7 +53,7 @@ export function ManualList({ heading, hint, rows }: Props) {
                   href={row.webUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="grid grid-cols-[24px_1fr_80px_60px] items-center gap-3 px-1 py-2 text-sm hover:bg-line-soft"
+                  className="grid grid-cols-[24px_1fr_80px_60px] items-center gap-3 px-1 py-2 text-sm hover:bg-washi-raised"
                 >
                   <span className="text-xs text-muted">
                     {isFolder ? "▦" : "§"}

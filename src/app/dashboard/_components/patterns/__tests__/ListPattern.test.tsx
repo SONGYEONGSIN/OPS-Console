@@ -75,11 +75,11 @@ describe("ListPattern", () => {
     expect(screen.queryByText("민원 접수 #1")).not.toBeInTheDocument();
   });
 
-  it("선택된 행 — 시각적으로 강조 (bg-washi-raised)", () => {
+  it("선택된 행 — 시각적으로 강조 (bg-vermilion/10)", () => {
     render(<ListPattern title="민원 목록" data={{ rows: sampleRows }} />);
     const row = screen.getByText("민원 접수 #2").closest("tr");
     fireEvent.click(row!);
-    expect(row?.className).toContain("bg-washi-raised");
+    expect(row?.className).toContain("bg-vermilion/10");
   });
 });
 

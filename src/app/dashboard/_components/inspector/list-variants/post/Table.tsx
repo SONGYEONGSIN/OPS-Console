@@ -98,7 +98,7 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
               key={row.id}
               onClick={() => onSelect(row)}
               className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                selectedId === row.id ? "bg-washi-raised" : ""
+                selectedId === row.id ? "bg-vermilion/10" : ""
               } ${row.status === "deleted" ? "opacity-50 [&_td]:line-through" : ""}`}
             >
               <td className="px-3 py-2 font-mono text-xs text-muted">

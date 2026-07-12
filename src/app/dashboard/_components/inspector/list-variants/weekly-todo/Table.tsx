@@ -82,7 +82,7 @@ export function WeeklyTodoTable({
                 key={row.id}
                 onClick={() => onSelect(row)}
                 className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
-                  selectedId === row.id ? "bg-washi-raised" : ""
+                  selectedId === row.id ? "bg-vermilion/10" : ""
                 } ${row.done ? "opacity-60 [&_td]:line-through" : ""} ${
                   row.autoDismissed ? "opacity-60" : ""
                 }`}

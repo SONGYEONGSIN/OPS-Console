@@ -352,7 +352,7 @@ function Step1({
                   <tr
                     key={s.id}
                     onClick={() => onSelect(s.id)}
-                    className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-washi-raised" : ""}`}
+                    className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-vermilion/10" : ""}`}
                   >
                     <td className="px-3 py-2">
                       <input
@@ -429,7 +429,7 @@ function Step2({
                 <tr
                   key={o.email}
                   onClick={() => onSelect(o)}
-                  className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-washi-raised" : ""}`}
+                  className={`cursor-pointer border-b border-line-soft hover:bg-washi-raised ${selected ? "bg-vermilion/10" : ""}`}
                 >
                   <td className="w-12 px-3 py-2">
                     <input
