@@ -265,9 +265,9 @@ function DocRow({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`group relative grid w-full cursor-pointer grid-cols-[30px_2fr_110px_120px_100px_80px] items-center gap-3.5 border-b border-dashed border-line-soft bg-transparent py-3 text-left transition-colors hover:bg-washi-raised max-[1279px]:grid-cols-[26px_2fr_100px_100px_80px] max-[1279px]:[&>*:nth-child(5)]:hidden max-lg:grid-cols-[26px_2fr_110px_90px] max-lg:[&>*:nth-child(5)]:hidden max-lg:[&>*:nth-child(6)]:hidden max-md:block max-md:min-h-16 max-md:border-line-soft max-md:py-3 max-md:pl-[calc(40px+var(--space-3)*2)] max-md:pr-3 max-md:before:absolute max-md:before:bottom-2 max-md:before:left-0 max-md:before:top-2 max-md:before:w-[3px] max-md:before:content-[''] ${STATUS_STRIPE_MOBILE[svc.status]} ${
+      className={`group relative grid w-full cursor-pointer grid-cols-[30px_2fr_110px_120px_100px_80px] items-center gap-3.5 border-b border-dashed border-line-soft bg-transparent py-3 text-left transition-colors hover:bg-line-soft max-[1279px]:grid-cols-[26px_2fr_100px_100px_80px] max-[1279px]:[&>*:nth-child(5)]:hidden max-lg:grid-cols-[26px_2fr_110px_90px] max-lg:[&>*:nth-child(5)]:hidden max-lg:[&>*:nth-child(6)]:hidden max-md:block max-md:min-h-16 max-md:border-line-soft max-md:py-3 max-md:pl-[calc(40px+var(--space-3)*2)] max-md:pr-3 max-md:before:absolute max-md:before:bottom-2 max-md:before:left-0 max-md:before:top-2 max-md:before:w-[3px] max-md:before:content-[''] ${STATUS_STRIPE_MOBILE[svc.status]} ${
         selected
-          ? "bg-washi-raised before:absolute before:-left-9 before:-right-9 before:bottom-0 before:top-0 before:border-y before:border-vermilion before:content-[''] max-md:bg-washi-raised max-md:before:left-0 max-md:before:right-auto"
+          ? "bg-vermilion/10 before:absolute before:-left-9 before:-right-9 before:bottom-0 before:top-0 before:border-y before:border-vermilion before:content-[''] max-md:bg-vermilion/10 max-md:before:left-0 max-md:before:right-auto"
           : ""
       }`}
     >

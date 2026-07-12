@@ -91,7 +91,7 @@ export function CopySection({
         <ul className="max-h-48 space-y-0.5 overflow-y-auto border border-line-soft p-1">
           {results.map((c) => (
             <li key={c.id}>
-              <label className="flex cursor-pointer items-center gap-2 px-1 py-1 text-xs hover:bg-washi-raised">
+              <label className="flex cursor-pointer items-center gap-2 px-1 py-1 text-xs hover:bg-line-soft">
                 <input
                   type="checkbox"
                   checked={selected.has(c.id)}

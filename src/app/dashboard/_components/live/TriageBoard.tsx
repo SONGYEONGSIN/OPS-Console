@@ -72,7 +72,7 @@ export function TriageBoard({ items, onSelect }: Props) {
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(it)}
-                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 hover:bg-washi-raised ${
+                    className={`flex w-full cursor-pointer flex-col gap-0.5 border-b border-line-soft px-3 py-1.5 text-left transition-colors last:border-b-0 hover:bg-line-soft ${
                       col.accent ? "border-l-[3px] border-l-vermilion" : ""
                     }`}
                   >

@@ -204,7 +204,7 @@ export function DevTestView({ row }: ViewProps) {
                   <button
                     type="button"
                     onClick={() => setExpanded(open ? null : run.id)}
-                    className="flex w-full cursor-pointer items-center gap-3 py-2 text-left text-xs hover:bg-washi-raised"
+                    className="flex w-full cursor-pointer items-center gap-3 py-2 text-left text-xs hover:bg-line-soft"
                   >
                     <StatusBadge status={run.status} />
                     <span className="text-muted">

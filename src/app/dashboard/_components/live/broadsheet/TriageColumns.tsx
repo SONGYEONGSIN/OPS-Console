@@ -63,7 +63,7 @@ export function TriageColumns({ items, onSelect }: Props) {
                     key={it.id}
                     type="button"
                     onClick={() => onSelect(it)}
-                    className={`block w-full cursor-pointer px-3 py-2 text-left hover:bg-washi-raised ${
+                    className={`block w-full cursor-pointer px-3 py-2 text-left hover:bg-line-soft ${
                       col.accent ? "border-l-[3px] !border-l-vermilion" : ""
                     }`}
                   >

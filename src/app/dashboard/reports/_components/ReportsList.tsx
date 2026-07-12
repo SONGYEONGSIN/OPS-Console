@@ -55,7 +55,7 @@ export function ReportsList({ reports }: Props) {
               <tr
                 key={r.id}
                 onClick={() => router.push(`/dashboard/reports/${r.id}`)}
-                className="cursor-pointer border-b border-line-soft hover:bg-washi-raised"
+                className="cursor-pointer border-b border-line-soft hover:bg-line-soft"
               >
                 <td className="px-3 py-2 font-medium text-ink">
                   <span className="mr-1 text-muted">§</span>

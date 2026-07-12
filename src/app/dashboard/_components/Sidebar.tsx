@@ -143,7 +143,7 @@ function ItemRow({
   const className = `-ml-4 grid w-[calc(100%+1rem)] grid-cols-[18px_1fr_auto] items-center gap-2.5 border-l-2 bg-transparent px-2 py-1.5 pl-[22px] text-left text-md transition-colors ${
     isActive
       ? "border-vermilion bg-vermilion/10 font-medium text-vermilion"
-      : "border-transparent text-ink-soft hover:bg-sidebar-hover"
+      : "border-transparent text-ink-soft hover:bg-line-soft"
   }`;
 
   const inner = (
@@ -223,7 +223,7 @@ function SubItemRow({ item, pathname }: { item: SbItem; pathname: string }) {
   const className = `relative grid w-full grid-cols-[10px_1fr_auto] items-center gap-2.5 bg-transparent px-2 py-1.5 pl-[18px] text-left text-xs transition-colors ${
     isActive
       ? "font-medium text-vermilion"
-      : "text-ink-soft hover:bg-sidebar-hover"
+      : "text-ink-soft hover:bg-line-soft"
   }`;
 
   const inner = (

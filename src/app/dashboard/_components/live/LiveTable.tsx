@@ -52,7 +52,7 @@ export function LiveTable({ items, onSelect }: Props) {
                   className={`relative cursor-pointer border-b border-line-soft transition-colors last:border-b-0 ${
                     urgent
                       ? "bg-vermilion/[0.04] hover:bg-vermilion/[0.07]"
-                      : "hover:bg-washi-raised"
+                      : "hover:bg-line-soft"
                   }`}
                 >
                   {/* 구분 — 솔리드 배지 (urgent 좌측 vermilion 스트라이프) */}

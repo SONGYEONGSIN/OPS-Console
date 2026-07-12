@@ -15,7 +15,6 @@
   /* 콘텐츠 본문 paper, 사이드바·네비 밴드는 웜 화이트(#fffdf7) */
   --paper: #fbf7f0;
   --sidebar: #fffdf7;
-  --sidebar-hover: #f0e9d9;
   --ink: #15120c;
   --ink-soft: #3d3529;
   --muted: #716855;
@@ -116,7 +115,6 @@
   --color-cream: var(--cream);
   --color-paper: var(--paper);
   --color-sidebar: var(--sidebar);
-  --color-sidebar-hover: var(--sidebar-hover);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-muted: var(--muted);

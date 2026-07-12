@@ -178,7 +178,7 @@ export function ActivityTimeline({ entries }: { entries: ActivityLogEntry[] }) {
                 {popover.members.map((m) => (
                   <li
                     key={m.id}
-                    className="flex gap-2 px-2.5 py-1.5 hover:bg-washi-raised"
+                    className="flex gap-2 px-2.5 py-1.5 hover:bg-line-soft"
                   >
                     <span className="shrink-0 tabular-nums text-[10px] text-muted">
                       {m.hms.slice(0, 5)}

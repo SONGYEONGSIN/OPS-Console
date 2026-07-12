@@ -37,7 +37,7 @@ export function StatList({ rows }: { rows: StatRow[] }) {
             key={r.label}
             type="button"
             onClick={() => setOpen(r)}
-            className="flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-washi-raised cursor-pointer"
+            className="flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-line-soft cursor-pointer"
           >
             <span className={labelCls(r)}>{r.label}</span>
             <span className={valueCls(r)}>{r.value}</span>

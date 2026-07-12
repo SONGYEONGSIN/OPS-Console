@@ -94,7 +94,7 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
                 className={
                   past
                     ? "border-b border-line-soft bg-washi opacity-60 cursor-not-allowed"
-                    : `cursor-pointer border-b border-line-soft hover:bg-washi-raised ${
+                    : `cursor-pointer border-b border-line-soft hover:bg-line-soft ${
                         selectedId === row.id ? "bg-vermilion/10" : ""
                       }`
                 }
