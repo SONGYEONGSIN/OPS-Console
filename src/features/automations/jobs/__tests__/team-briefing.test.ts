@@ -65,6 +65,36 @@ beforeEach(() => {
           operator_name: "송영신",
         },
       ]);
+    if (table === "operators")
+      return chain([{ email: "kim@x.com", name: "김유민" }]);
+    if (table === "ai_work")
+      return chain([
+        {
+          title: "계약서 검토 자동화",
+          ai_tool: "claude",
+          author_email: "kim@x.com",
+          saved_hours: 3,
+        },
+        {
+          title: "주간보고 초안",
+          ai_tool: "chatgpt",
+          author_email: "lee@x.com", // operators에 없음 → email 앞부분 폴백
+          saved_hours: null,
+        },
+      ]);
+    if (table === "ai_tips")
+      return chain([
+        { title: "요약 자동화 팁", ai_tool: "claude", author_email: "kim@x.com" },
+      ]);
+    if (table === "insight_videos")
+      return chain([
+        {
+          title: "Claude Code 실전",
+          channel_title: "바이브랩스",
+          view_count: 123456,
+          video_id: "abc123",
+        },
+      ]);
     return chain([]);
   });
   vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "chat-1"); // 방 소스(공지 방)
@@ -117,6 +147,26 @@ describe("runTeamBriefing", () => {
     expect(sendTeamsMock.mock.calls[0][0].chatId).toBe(
       "19:notice-room@thread.v2",
     );
+  });
+
+  it("AI 활용 섹션 — 작업/TIP 집계 + 작성자 이름 매핑(미등록은 email 앞부분)", async () => {
+    const r = await runTeamBriefing();
+    expect(r.ok).toBe(true);
+    const html = sendTeamsMock.mock.calls[0][0].html;
+    expect(html).toContain("■ AI 활용 (최근 7일)");
+    expect(html).toContain("· 내 AI 작업 2건 · 절감 3h");
+    expect(html).toContain("계약서 검토 자동화 (claude · 김유민 · 3h)");
+    expect(html).toContain("주간보고 초안 (chatgpt · lee)"); // 이름 폴백 + 절감h 생략
+    expect(html).toContain("· TIP 공유 (신규 1 · 누적 1)");
+    expect(html).toContain("요약 자동화 팁 (claude · 김유민)");
+    expect(html).toContain("· AI 인사이트 (신규 수집 1건)");
+    expect(html).toContain(
+      '<a href="https://www.youtube.com/watch?v=abc123">Claude Code 실전</a> (바이브랩스 · 조회 12.3만)',
+    );
+    expect(r.details?.aiWorkCount).toBe(2);
+    expect(r.details?.aiWorkSavedHours).toBe(3);
+    expect(r.details?.tipsNew).toBe(1);
+    expect(r.details?.insightsNew).toBe(1);
   });
 
   it("발신자 env 모두 미설정이면 기본값(ys1114)으로 발송", async () => {

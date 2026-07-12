@@ -160,6 +160,99 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// ─── AI 활용 (내 AI 작업 + TIP 공유) ────────────────────────
+
+const AI_LIST_MAX = 5;
+
+export type AiWorkBriefItem = {
+  title: string;
+  ai_tool: string;
+  author_name: string;
+  saved_hours: number | null;
+};
+export type AiWorkBrief = {
+  count: number;
+  savedHours: number;
+  items: AiWorkBriefItem[];
+  more: number;
+};
+
+/** 절감 시간 표기 — 정수는 그대로, 소수는 1자리 반올림 (예: 3 → "3", 1.25 → "1.3"). */
+export function fmtHours(h: number): string {
+  const r = Math.round(h * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
+/** 최근 7일 내 AI 작업 — 건수·절감시간 합계(null 제외) + 앞 N건 목록. */
+export function summarizeAiWork(
+  rows: AiWorkBriefItem[],
+  maxItems = AI_LIST_MAX,
+): AiWorkBrief {
+  return {
+    count: rows.length,
+    savedHours: rows.reduce((a, r) => a + (r.saved_hours ?? 0), 0),
+    items: rows.slice(0, maxItems),
+    more: Math.max(0, rows.length - maxItems),
+  };
+}
+
+export type TipBriefItem = {
+  title: string;
+  ai_tool: string;
+  author_name: string;
+};
+export type TipsBrief = {
+  newCount: number;
+  totalCount: number;
+  items: TipBriefItem[];
+  more: number;
+};
+
+/** 최근 7일 신규 TIP 목록 + 누적 건수. */
+export function summarizeTips(
+  newRows: TipBriefItem[],
+  totalCount: number,
+  maxItems = AI_LIST_MAX,
+): TipsBrief {
+  return {
+    newCount: newRows.length,
+    totalCount,
+    items: newRows.slice(0, maxItems),
+    more: Math.max(0, newRows.length - maxItems),
+  };
+}
+
+const INSIGHT_LIST_MAX = 3;
+
+export type InsightBriefItem = {
+  title: string;
+  channel_title: string;
+  view_count: number | null;
+  url: string;
+};
+export type InsightsBrief = {
+  newCount: number;
+  items: InsightBriefItem[];
+};
+
+/** 조회수 표기 — 1만 미만 그대로, 이상은 만 단위 1자리(정수면 소수 생략). */
+export function fmtViews(n: number): string {
+  if (n < 10000) return String(n);
+  const man = Math.round(n / 1000) / 10;
+  return `${Number.isInteger(man) ? String(man) : man.toFixed(1)}만`;
+}
+
+/** 최근 7일 수집 인사이트 영상 — 조회수 상위 N건(null은 뒤로) + 전체 신규 건수. */
+export function summarizeInsights(
+  rows: InsightBriefItem[],
+  maxItems = INSIGHT_LIST_MAX,
+): InsightsBrief {
+  const sorted = [...rows].sort(
+    (a, b) => (b.view_count ?? -1) - (a.view_count ?? -1),
+  );
+  return { newCount: rows.length, items: sorted.slice(0, maxItems) };
+}
+
 /** 완료율 = 완료 / (완료+진행중). 모수 0이면 "—". 소수 1자리. */
 function completionPct(done: number, ongoing: number): string {
   const total = done + ongoing;
@@ -182,20 +275,32 @@ function ruleFor(text: string): string {
   return "―".repeat(Math.max(12, displayWidth(text)));
 }
 
-/** 팀 보고 브리핑 Teams 메시지 HTML(contentType: html). */
+/** 팀 보고 브리핑 Teams 메시지 HTML(contentType: html) — 차주 업무 → 계약(누적) → AI 활용 순. */
 export function buildBriefingHtml(input: {
   dateLabel: string;
   contracts: ContractSummary;
   weekRange: { startYmd: string; endYmd: string };
   schedule: ScheduleGroup[];
   closing: ClosingItem[];
+  aiWork: AiWorkBrief;
+  tips: TipsBrief;
+  insights: InsightsBrief;
 }): string {
-  const { dateLabel, contracts, weekRange, schedule, closing } = input;
+  const {
+    dateLabel,
+    contracts,
+    weekRange,
+    schedule,
+    closing,
+    aiWork,
+    tips,
+    insights,
+  } = input;
   const lines: string[] = [];
   lines.push(`<b>[팀 보고 브리핑] ${escapeHtml(dateLabel)}</b>`);
 
-  // 1. 계약진행 현황
-  lines.push("<br/><br/><b>■ 계약현황</b>");
+  // 1. 계약진행 현황 (누적)
+  lines.push("<br/><br/><b>■ 계약현황 (누적)</b>");
   for (const s of contracts.bySheet) {
     lines.push(
       `<br/>· ${escapeHtml(s.sheet)}: 총 ${s.done + s.ongoing} · 완료 ${s.done} · 진행중 ${s.ongoing} (완료 ${completionPct(s.done, s.ongoing)})`,
@@ -207,11 +312,11 @@ export function buildBriefingHtml(input: {
   lines.push(`<br/><b>${ruleFor(totalLine)}</b>`);
   lines.push(`<br/><b>${totalLine}</b>`);
 
-  // 2. 차주 팀 업무 현황 — 주간 범위는 섹션 헤더에.
+  // 2. 차주 팀 업무 — 일정 + 서비스 마감. 주간 범위는 섹션 헤더에.
   lines.push(
-    `<br/><br/><b>■ 차주 팀 업무 현황 (${weekRange.startYmd} ~ ${weekRange.endYmd})</b>`,
+    `<br/><br/><b>■ 차주 팀 업무 (${weekRange.startYmd} ~ ${weekRange.endYmd})</b>`,
   );
-  lines.push("<br/><b>· 다음주 일정</b>");
+  lines.push("<br/><b>· 일정</b>");
   if (schedule.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;예정된 일정 없음");
   } else {
@@ -223,9 +328,9 @@ export function buildBriefingHtml(input: {
     }
   }
 
-  // 서비스 마감 — 앞에 빈 줄로 일정 섹션과 구분.
+  // 서비스 마감 — 앞에 빈 줄로 일정과 구분.
   lines.push(
-    `<br/><br/><b>· 서비스 마감 (7일 내) · 총 ${closing.length}건</b>`,
+    `<br/><br/><b>· 서비스 마감 (7일 내 · 총 ${closing.length}건)</b>`,
   );
   if (closing.length === 0) {
     lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
@@ -245,6 +350,54 @@ export function buildBriefingHtml(input: {
           `<br/>&nbsp;&nbsp;&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)}${op}`,
         );
       }
+    }
+  }
+
+  // 3. AI 활용 — 내 AI 작업(my-ai-work) + TIP 공유(ai-tips), 최근 7일.
+  lines.push("<br/><br/><b>■ AI 활용 (최근 7일)</b>");
+  const savedSuffix =
+    aiWork.savedHours > 0 ? ` · 절감 ${fmtHours(aiWork.savedHours)}h` : "";
+  lines.push(`<br/><b>· 내 AI 작업 ${aiWork.count}건${savedSuffix}</b>`);
+  if (aiWork.count === 0) {
+    lines.push("<br/>&nbsp;&nbsp;등록된 AI 작업 없음");
+  } else {
+    for (const w of aiWork.items) {
+      const hours =
+        w.saved_hours != null ? ` · ${fmtHours(w.saved_hours)}h` : "";
+      lines.push(
+        `<br/>&nbsp;&nbsp;${escapeHtml(w.title)} (${escapeHtml(w.ai_tool)} · ${escapeHtml(w.author_name)}${hours})`,
+      );
+    }
+    if (aiWork.more > 0) lines.push(`<br/>&nbsp;&nbsp;외 ${aiWork.more}건`);
+  }
+
+  lines.push(
+    `<br/><br/><b>· TIP 공유 (신규 ${tips.newCount} · 누적 ${tips.totalCount})</b>`,
+  );
+  if (tips.newCount === 0) {
+    lines.push("<br/>&nbsp;&nbsp;신규 TIP 없음");
+  } else {
+    for (const t of tips.items) {
+      lines.push(
+        `<br/>&nbsp;&nbsp;${escapeHtml(t.title)} (${escapeHtml(t.ai_tool)} · ${escapeHtml(t.author_name)})`,
+      );
+    }
+    if (tips.more > 0) lines.push(`<br/>&nbsp;&nbsp;외 ${tips.more}건`);
+  }
+
+  // 인사이트 — 최근 7일 수집 영상 중 조회수 상위만 노출.
+  lines.push(
+    `<br/><br/><b>· AI 인사이트 (신규 수집 ${insights.newCount}건)</b>`,
+  );
+  if (insights.newCount === 0) {
+    lines.push("<br/>&nbsp;&nbsp;신규 수집 영상 없음");
+  } else {
+    for (const v of insights.items) {
+      const views =
+        v.view_count != null ? ` · 조회 ${fmtViews(v.view_count)}` : "";
+      lines.push(
+        `<br/>&nbsp;&nbsp;<a href="${escapeHtml(v.url)}">${escapeHtml(v.title)}</a> (${escapeHtml(v.channel_title)}${views})`,
+      );
     }
   }
 

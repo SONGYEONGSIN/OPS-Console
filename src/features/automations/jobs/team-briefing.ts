@@ -9,14 +9,24 @@ import {
   nextWeekdayRange,
   groupScheduleInRange,
   buildBriefingHtml,
+  summarizeAiWork,
+  summarizeTips,
+  summarizeInsights,
   type BriefEvent,
   type ClosingItem,
 } from "./team-briefing-build";
 
 const UPCOMING_WINDOW_DAYS = 7;
+const AI_WINDOW_DAYS = 7;
 
 function kstTodayYmd(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+function kstWeekdayShort(): string {
+  return new Date().toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    weekday: "short",
+  });
 }
 function addDaysYmd(ymd: string, n: number): string {
   const [y, m, d] = ymd.split("-").map(Number);
@@ -96,12 +106,108 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
   if (clErr) return { ok: false, message: `마감 조회 실패: ${clErr.message}` };
   const closing = (clData ?? []) as ClosingItem[];
 
+  // 4. AI 활용 — 내 AI 작업 + TIP 공유, 최근 7일(등록일 기준).
+  //    author_email은 노출하지 않고 operators 이름으로 변환(미등록은 @ 앞부분).
+  const sinceIso = `${addDaysYmd(todayYmd, -AI_WINDOW_DAYS)}T00:00:00+09:00`;
+
+  const { data: opData, error: opErr } = await admin
+    .from("operators")
+    .select("email, name")
+    .order("email", { ascending: true });
+  if (opErr)
+    return { ok: false, message: `운영자 조회 실패: ${opErr.message}` };
+  const nameByEmail = new Map(
+    ((opData ?? []) as { email: string; name: string }[]).map((o) => [
+      o.email,
+      o.name,
+    ]),
+  );
+  const displayName = (email: string) =>
+    nameByEmail.get(email) ?? email.split("@")[0];
+
+  const { data: awData, error: awErr } = await admin
+    .from("ai_work")
+    .select("title, ai_tool, author_email, saved_hours")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false });
+  if (awErr)
+    return { ok: false, message: `AI 작업 조회 실패: ${awErr.message}` };
+  const aiWork = summarizeAiWork(
+    (
+      (awData ?? []) as {
+        title: string;
+        ai_tool: string;
+        author_email: string;
+        saved_hours: number | null;
+      }[]
+    ).map((w) => ({
+      title: w.title,
+      ai_tool: w.ai_tool,
+      author_name: displayName(w.author_email),
+      saved_hours: w.saved_hours,
+    })),
+  );
+
+  const { data: tipNewData, error: tnErr } = await admin
+    .from("ai_tips")
+    .select("title, ai_tool, author_email")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false });
+  if (tnErr)
+    return { ok: false, message: `TIP 조회 실패: ${tnErr.message}` };
+  const { data: tipAllData, error: taErr } = await admin
+    .from("ai_tips")
+    .select("id")
+    .order("created_at", { ascending: false });
+  if (taErr)
+    return { ok: false, message: `TIP 누적 조회 실패: ${taErr.message}` };
+  const tips = summarizeTips(
+    (
+      (tipNewData ?? []) as {
+        title: string;
+        ai_tool: string;
+        author_email: string;
+      }[]
+    ).map((t) => ({
+      title: t.title,
+      ai_tool: t.ai_tool,
+      author_name: displayName(t.author_email),
+    })),
+    (tipAllData ?? []).length,
+  );
+
+  const { data: ivData, error: ivErr } = await admin
+    .from("insight_videos")
+    .select("title, channel_title, view_count, video_id")
+    .gte("collected_at", sinceIso)
+    .order("collected_at", { ascending: false });
+  if (ivErr)
+    return { ok: false, message: `인사이트 조회 실패: ${ivErr.message}` };
+  const insights = summarizeInsights(
+    (
+      (ivData ?? []) as {
+        title: string;
+        channel_title: string;
+        view_count: number | null;
+        video_id: string;
+      }[]
+    ).map((v) => ({
+      title: v.title,
+      channel_title: v.channel_title,
+      view_count: v.view_count,
+      url: `https://www.youtube.com/watch?v=${encodeURIComponent(v.video_id)}`,
+    })),
+  );
+
   const html = buildBriefingHtml({
-    dateLabel: todayYmd,
+    dateLabel: `${todayYmd} (${kstWeekdayShort()})`,
     contracts,
     weekRange,
     schedule,
     closing,
+    aiWork,
+    tips,
+    insights,
   });
 
   const details = {
@@ -109,12 +215,17 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
     contractsOngoing: contracts.totalOngoing,
     scheduleGroups: schedule.length,
     closing: closing.length,
+    aiWorkCount: aiWork.count,
+    aiWorkSavedHours: aiWork.savedHours,
+    tipsNew: tips.newCount,
+    tipsTotal: tips.totalCount,
+    insightsNew: insights.newCount,
   };
 
   if (dryRun) {
     return {
       ok: true,
-      message: `DRY-RUN — 브리핑 생성(발송 생략). 계약 완료 ${contracts.totalDone}·진행 ${contracts.totalOngoing}, 마감임박 ${closing.length}건`,
+      message: `DRY-RUN — 브리핑 생성(발송 생략). 계약 완료 ${contracts.totalDone}·진행 ${contracts.totalOngoing}, 마감임박 ${closing.length}건, AI작업 ${aiWork.count}건·TIP 신규 ${tips.newCount}건`,
       details,
     };
   }
