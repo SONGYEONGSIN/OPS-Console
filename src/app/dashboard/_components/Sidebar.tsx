@@ -293,11 +293,11 @@ function SidebarFooter({
 
   return (
     <div className="mx-4 mt-5 border border-line bg-situation-bg px-3.5 py-3">
-      <div className="mb-1.5 flex justify-between text-3xs uppercase tracking-[0.12em] text-muted">
+      <div className="mb-1.5 flex justify-between text-3xs uppercase tracking-[0.12em] text-ink-soft">
         <span className="tracking-[0.04em] normal-case">현재 사용자</span>
         <strong className="font-medium text-ink">{displayName}</strong>
       </div>
-      <div className="mb-2 text-2xs text-muted">
+      <div className="mb-2 text-2xs text-ink-soft">
         {role}
         {team && <> · {team}</>}
       </div>
@@ -312,7 +312,7 @@ function SidebarFooter({
           }}
         />
       </div>
-      <div className="mt-2 text-2xs text-muted">{workLabel}</div>
+      <div className="mt-2 text-2xs text-ink-soft">{workLabel}</div>
     </div>
   );
 }
