@@ -46,6 +46,8 @@ export type ListRow = {
   author?: string;
   /** team 도메인 — 메뉴 접근 권한 (slug 배열). admin은 빈 배열로 두고 bypass. */
   allowedMenus?: string[];
+  /** team 도메인 — 팀 기반 자동 CC(백업요청 메일)에서 제외 */
+  mailCcExcluded?: boolean;
   /** post 도메인 — 사람 친화 글번호 (예: 'FB-001'). 없으면 id(uuid) 단축 표시. */
   slug?: string;
   /** schedule 도메인 — 일정 분류 (shift/event/leave/training/application/pims). */

@@ -56,7 +56,8 @@ async function fetchCcOperators(
     .from("operators")
     .select("email,name,team")
     .eq("team", team)
-    .eq("status", "active");
+    .eq("status", "active")
+    .eq("mail_cc_excluded", false);
   for (const e of excludeEmails) {
     query = query.neq("email", e);
   }

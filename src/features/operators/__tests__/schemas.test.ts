@@ -142,6 +142,64 @@ describe("operatorRowSchema allowed_menus", () => {
   });
 });
 
+describe("operatorRowSchema mail_cc_excluded", () => {
+  const baseRow = {
+    id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    email: "x@y.com",
+    name: "x",
+    team: "운영1팀",
+    role: "매니저",
+    emp_no: "1",
+    hired_at: "2024-01-01",
+    birth_date: "1990-01-01",
+    gender: "남",
+    division: "어플라이사업본부",
+    department: "운영부",
+    status: "active",
+    permission: "member",
+    leader: null,
+    created_at: "2026-05-09T00:00:00Z",
+    updated_at: "2026-05-09T00:00:00Z",
+  };
+
+  it("mail_cc_excluded=true 통과 + 노출", () => {
+    const r = operatorRowSchema.safeParse({
+      ...baseRow,
+      mail_cc_excluded: true,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.mail_cc_excluded).toBe(true);
+  });
+
+  it("mail_cc_excluded 누락 시 default false", () => {
+    const r = operatorRowSchema.safeParse(baseRow);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.mail_cc_excluded).toBe(false);
+  });
+
+  it("mail_cc_excluded 비-boolean 거부", () => {
+    const r = operatorRowSchema.safeParse({
+      ...baseRow,
+      mail_cc_excluded: "yes",
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("operatorUpdateSchema mail_cc_excluded", () => {
+  it("mail_cc_excluded만 update OK + data 노출", () => {
+    const r = operatorUpdateSchema.safeParse({ mail_cc_excluded: true });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.mail_cc_excluded).toBe(true);
+  });
+
+  it("mail_cc_excluded 비-boolean 거부", () => {
+    expect(
+      operatorUpdateSchema.safeParse({ mail_cc_excluded: "yes" }).success,
+    ).toBe(false);
+  });
+});
+
 describe("operatorUpdateSchema allowed_menus", () => {
   it("allowed_menus만 update OK", () => {
     expect(

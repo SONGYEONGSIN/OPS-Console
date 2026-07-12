@@ -8,6 +8,7 @@ const {
   mockAdminUpdate,
   mockAdminFromOps,
   mockAdminOpsSelect,
+  mockAdminOpsEq,
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockSendGraphMail: vi.fn(),
@@ -16,6 +17,7 @@ const {
   mockAdminUpdate: vi.fn(),
   mockAdminFromOps: vi.fn(),
   mockAdminOpsSelect: vi.fn(),
+  mockAdminOpsEq: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({
@@ -116,12 +118,13 @@ beforeEach(() => {
   mockAdminInsert.mockReset();
   mockAdminUpdate.mockReset();
   mockAdminOpsSelect.mockReset();
+  mockAdminOpsEq.mockReset();
 
   mockAdminInsert.mockResolvedValue({ data: null, error: null });
   mockAdminUpdate.mockResolvedValue({ data: null, error: null });
-  // operators select chain: .eq("team", x).neq("email", a).neq("email", b)
+  // operators select chain: .eq("team", x).eq("status", "active").eq("mail_cc_excluded", false).neq("email", a).neq("email", b)
   const opsBuilder: Record<string, unknown> = {};
-  opsBuilder.eq = () => opsBuilder;
+  opsBuilder.eq = mockAdminOpsEq.mockReturnValue(opsBuilder);
   opsBuilder.neq = () => opsBuilder;
   opsBuilder.then = (onFulfilled: (v: unknown) => unknown) =>
     Promise.resolve({ data: teamMates, error: null }).then(onFulfilled);
@@ -175,6 +178,20 @@ describe("sendBackupRequestMail", () => {
     expect(call.attachments).toBeDefined();
     expect(call.attachments[0].name).toMatch(/\.html$/);
     expect(call.attachments[0].contentType).toMatch(/text\/html/);
+    delete process.env.MAIL_DRY_RUN;
+  });
+
+  it("정상 발송 — CC 쿼리에 mail_cc_excluded=false 필터 적용 (자동 CC 제외)", async () => {
+    process.env.MAIL_DRY_RUN = "false";
+    mockGetCurrentOperator.mockResolvedValue(requester);
+    mockGetById.mockResolvedValue(backupRow);
+    mockSendGraphMail.mockResolvedValue({ ok: true, messageId: "msg-1" });
+
+    await sendBackupRequestMail({ backup_request_id: backupRow.id });
+
+    expect(mockAdminOpsEq).toHaveBeenCalledWith("team", "ops");
+    expect(mockAdminOpsEq).toHaveBeenCalledWith("status", "active");
+    expect(mockAdminOpsEq).toHaveBeenCalledWith("mail_cc_excluded", false);
     delete process.env.MAIL_DRY_RUN;
   });
 

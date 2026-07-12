@@ -80,6 +80,7 @@ export default async function TeamPage({
       status: row.status as OperatorRow["status"],
       permission: row.permission,
       allowed_menus: row.allowedMenus,
+      mail_cc_excluded: row.mailCcExcluded ?? false,
       leader: row.leader ?? null,
       phone: row.operatorPhone ?? null,
       deleted_reason: isNowDeleted ? (row.deletedReason ?? null) : null,
@@ -115,6 +116,7 @@ function operatorToListRow(op: OperatorRow): ListRow {
     operatorPhone: op.phone ?? undefined,
     permission: op.permission,
     allowedMenus: op.allowed_menus,
+    mailCcExcluded: op.mail_cc_excluded,
   };
 }
 
