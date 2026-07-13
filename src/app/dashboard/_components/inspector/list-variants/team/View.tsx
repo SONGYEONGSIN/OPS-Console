@@ -82,6 +82,12 @@ export function TeamView({ row }: ViewProps) {
               { term: "소속 팀", desc: row.owner },
               { term: "직급", desc: row.meta ?? "-" },
               {
+                term: "자동 CC",
+                desc: row.mailCcExcluded
+                  ? "제외 (백업요청 참조 미포함)"
+                  : "포함",
+              },
+              {
                 term: "상태",
                 desc: (
                   <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
@@ -145,6 +151,10 @@ export function TeamView({ row }: ViewProps) {
               desc: row.permission ? PERMISSION_LABEL[row.permission] : "-",
             },
             { term: "직급 권한", desc: roleToPermission(op.role) },
+            {
+              term: "자동 CC",
+              desc: row.mailCcExcluded ? "제외 (백업요청 참조 미포함)" : "포함",
+            },
             { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
           ]}
         />

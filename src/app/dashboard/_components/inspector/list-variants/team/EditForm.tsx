@@ -114,6 +114,21 @@ export function TeamForm({
           <option value="deleted">삭제</option>
         </select>
       </label>
+      <label className="flex items-center gap-1.5 text-xs text-ink">
+        <input
+          type="checkbox"
+          aria-label="자동 CC 제외"
+          checked={row.mailCcExcluded ?? false}
+          onChange={(e) =>
+            setRow({ ...row, mailCcExcluded: e.target.checked })
+          }
+          className="h-3.5 w-3.5"
+        />
+        <span>
+          백업요청 자동 CC에서 제외{" "}
+          <span className="text-faint">(팀 메일 참조 미포함)</span>
+        </span>
+      </label>
       {canEditPermission && (
         <label className="block text-xs">
           <span className="mb-1 block text-muted">권한</span>
