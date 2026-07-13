@@ -7,7 +7,10 @@ import { HandoverCategoryFields } from "@/app/dashboard/_components/inspector/li
 import { CopySection } from "@/app/dashboard/_components/inspector/list-variants/handover/CopySection";
 import { buildHandoverUpsertInput } from "@/app/dashboard/_components/inspector/list-variants/handover/upsert-input";
 import { upsertHandoverRecord } from "@/features/handover/actions";
-import { type HandoverCategoryKey } from "@/features/handover/categories";
+import {
+  HANDOVER_CATEGORIES,
+  type HandoverCategoryKey,
+} from "@/features/handover/categories";
 import type { EditFormProps } from "@/app/dashboard/_components/inspector/list-variants/types";
 import { HandoverCategoryRail } from "./HandoverCategoryRail";
 
@@ -64,10 +67,12 @@ export function HandoverEditorWorkspace({
     scheduleSave(next);
   }
 
+  const activeCategory =
+    HANDOVER_CATEGORIES.find((c) => c.key === active) ?? HANDOVER_CATEGORIES[0];
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* 툴바도 시트와 같은 폭으로 정렬 (max-w-5xl) */}
-      <div className="mx-auto mb-3 flex w-full max-w-5xl items-center justify-between gap-3">
+      <div className="mb-4 flex w-full items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/dashboard/handover"
@@ -119,35 +124,40 @@ export function HandoverEditorWorkspace({
         </div>
       </div>
 
-      {/* 문서 제목 + 카테고리 rail + 본문을 한 장의 흰 시트로. 바깥은 bg-paper 상속.
-          스크롤은 본문에만 — 제목과 rail은 항상 보인다. w-full로 좁은 화면 축소 허용 */}
-      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col border border-line bg-white shadow-offset">
-        {/* 문서 제목 (masthead) — 접수구분 · 대학명 · 서비스명 */}
-        <p className="shrink-0 truncate border-b border-line px-6 py-3.5 text-base font-bold text-ink">
+      {/* 운영가이드 레이아웃 — 제목 헤더 + 좌 nav / 우 패널 grid (박스 시트 제거) */}
+      <header className="mb-4 shrink-0">
+        <h2 className="truncate text-xl font-bold text-ink">
           {row.applicationType ? (
             <span className="mr-1.5">{row.applicationType}</span>
           ) : null}
           {row.universityName ?? "—"}
           <span className="text-muted"> · </span>
           {row.serviceName ?? "—"}
-        </p>
+        </h2>
+      </header>
 
-        <div className="flex min-h-0 flex-1">
-          <HandoverCategoryRail
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
+        <HandoverCategoryRail
+          row={row}
+          active={active}
+          onChange={(key) => setActive(key)}
+        />
+        <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pb-14 pr-4">
+          {/* 패널 헤더 — 운영가이드 우측 패널(OpsGuidePanel) 톤 */}
+          <header>
+            <h3 className="text-xl font-semibold tracking-[-0.02em]">
+              {activeCategory.label}
+            </h3>
+            <p className="mt-1 text-xs text-muted">
+              {activeCategory.fields.map((f) => f.label).join(" · ")}
+            </p>
+          </header>
+          <HandoverCategoryFields
             row={row}
-            active={active}
-            onChange={(key) => setActive(key)}
+            setRow={setRow}
+            category={active}
+            contractsStatusOptions={contractsStatusOptions}
           />
-          {/* 좌우·하단은 meeting-form.css .sheet padding(40px/60px) 기준.
-              상단은 masthead가 이미 여백을 만들고 rail 첫 항목과 어긋나므로 좁게 */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-10 pt-3 pb-14">
-            <HandoverCategoryFields
-              row={row}
-              setRow={setRow}
-              category={active}
-              contractsStatusOptions={contractsStatusOptions}
-            />
-          </div>
         </div>
       </div>
     </div>

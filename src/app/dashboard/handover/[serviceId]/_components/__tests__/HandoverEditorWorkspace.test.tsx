@@ -110,6 +110,12 @@ describe("HandoverEditorWorkspace", () => {
     expect(screen.getByText(/Fall Admission/)).toBeInTheDocument();
   });
 
+  it("운영가이드 레이아웃 — 카테고리 패널 헤더(제목 + 필드 구성 설명)", () => {
+    setup();
+    expect(screen.getByRole("heading", { name: "계약" })).toBeInTheDocument();
+    expect(screen.getByText("계약정보 · 계약자료")).toBeInTheDocument();
+  });
+
   it("복제 버튼 클릭 → 드롭다운(다른 서비스로 복제) 토글", () => {
     render(
       <HandoverEditorWorkspace

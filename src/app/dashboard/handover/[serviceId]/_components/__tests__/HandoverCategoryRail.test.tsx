@@ -46,6 +46,30 @@ describe("HandoverCategoryRail", () => {
     expect(screen.getByText(/현재 2\/14 작성완료/)).toBeInTheDocument();
   });
 
+  it("선택/호버가 운영가이드 nav 표준 — vermilion 선택, line-soft 호버 (#846)", () => {
+    render(
+      <HandoverCategoryRail row={row} active="contract" onChange={vi.fn()} />,
+    );
+    const active = screen.getByRole("button", { name: /계약/ });
+    expect(active.className).toMatch(/border-vermilion/);
+    expect(active.className).toMatch(/bg-vermilion\/10/);
+    expect(active.className).toMatch(/text-vermilion/);
+    expect(active.className).not.toMatch(/bg-ink/);
+    const inactive = screen.getByRole("button", { name: /작업/ });
+    expect(inactive.className).toMatch(/hover:bg-line-soft/);
+  });
+
+  it("운영가이드 nav 구조 — aria-label + 라벨/진행 2줄 항목", () => {
+    render(
+      <HandoverCategoryRail row={row} active="contract" onChange={vi.fn()} />,
+    );
+    expect(
+      screen.getByRole("navigation", { name: "인수인계 카테고리" }),
+    ).toBeInTheDocument();
+    // 항목 2줄째 — 진행 desc
+    expect(screen.getByText("2/2 작성")).toBeInTheDocument();
+  });
+
   it("카테고리 클릭 시 onChange(key) 호출", () => {
     const onChange = vi.fn();
     render(
