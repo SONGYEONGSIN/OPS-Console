@@ -47,6 +47,15 @@ describe("MeetingView (회의내용/회의문서 2탭)", () => {
     ).toBeInTheDocument();
   });
 
+  it("회의문서 탭 헤더는 회의내용 탭과 동일한 형식(유형 라벨 단독 행, 메타 나열 없음)", () => {
+    render(<MeetingView row={row} />);
+    fireEvent.click(screen.getByRole("button", { name: "회의문서" }));
+    // 유형 라벨이 제목 인라인("· 정기회의")이 아니라 단독 행으로 렌더
+    expect(screen.getByText("정기회의")).toBeInTheDocument();
+    // 날짜·장소·참석·작성자 " · " 나열 메타 행 제거
+    expect(screen.queryByText(/참석 2명/)).toBeNull();
+  });
+
   it("회의문서 탭 링크가 편집 화면으로 이동한다", () => {
     render(<MeetingView row={row} />);
     fireEvent.click(screen.getByRole("button", { name: "회의문서" }));

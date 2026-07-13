@@ -258,29 +258,17 @@ export function MeetingView({ row }: ViewProps) {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* 경위서식 — 헤더 + 섹션별 라벨/내용박스 */}
+          {/* 경위서식 — 헤더(회의내용 탭과 동일 형식) + 섹션별 라벨/내용박스 */}
           <section className="space-y-1.5">
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-ink">
                 {row.meetingTitle ?? row.name ?? "제목 없음"}
-                <span className="ml-1.5 text-xs font-normal text-muted">
-                  · {MEETING_TYPE_LABELS[type]}
-                </span>
               </span>
               <span className="ml-auto inline-block bg-line-soft px-2 py-0.5 text-2xs text-ink-soft">
                 {MEETING_STATUS_LABELS[status]}
               </span>
             </div>
-            <p className="text-xs text-muted">
-              {[
-                row.meetingDate ? formatMeetingDateKst(row.meetingDate) : null,
-                row.meetingLocation || null,
-                attendees.length > 0 ? `참석 ${attendees.length}명` : null,
-                row.meetingAuthor || row.owner || null,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "—"}
-            </p>
+            <p className="text-xs text-muted">{MEETING_TYPE_LABELS[type]}</p>
           </section>
 
           <Link
