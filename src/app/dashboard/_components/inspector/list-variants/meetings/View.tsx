@@ -285,7 +285,7 @@ export function MeetingView({ row }: ViewProps) {
 
           <Link
             href={`/dashboard/meetings/${row.id}`}
-            className="block w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:bg-washi-raised"
+            className="block w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
           >
             회의록 내용 보기
           </Link>
