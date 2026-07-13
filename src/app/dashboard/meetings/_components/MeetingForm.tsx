@@ -156,6 +156,7 @@ export function MeetingForm({
                           className="rc mf-date-cell"
                           value={r.cells[cellIdx] ?? ""}
                           onChange={(e) => commitCell(e.target.value)}
+                          onClick={(e) => e.currentTarget.showPicker?.()}
                         />
                       );
                     return (

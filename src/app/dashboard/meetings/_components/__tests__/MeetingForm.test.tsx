@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MeetingForm } from "../MeetingForm";
 import { buildSeedDoc } from "@/features/meetings/form-templates";
 import type { MeetingDoc } from "@/features/meetings/form-model";
@@ -56,6 +56,21 @@ describe("MeetingForm (편집 가능 양식)", () => {
     fireEvent.blur(el);
     expect(onChange).toHaveBeenCalled();
     void ledger;
+  });
+
+  it("후속조치 '기한' 셀 클릭 시 달력(showPicker)이 열린다 — 외근·출장 템플릿", () => {
+    // jsdom에는 showPicker가 없어 prototype mock으로 호출 여부만 검증
+    const showPicker = vi.fn();
+    (
+      HTMLInputElement.prototype as HTMLInputElement & {
+        showPicker: () => void;
+      }
+    ).showPicker = showPicker;
+    setup("field");
+    const dateCell = document.querySelector('input[type="date"].mf-date-cell')!;
+    expect(dateCell).not.toBeNull();
+    fireEvent.click(dateCell);
+    expect(showPicker).toHaveBeenCalled();
   });
 
   it("후속조치 '기한' 셀은 날짜 입력(달력)이며 선택 시 onChange", () => {
