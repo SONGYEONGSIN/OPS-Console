@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  parseWorklogRow,
   formatWorklogConsoleLine,
   formatIncidentToast,
   formatTodoToast,
@@ -7,6 +8,47 @@ import {
   formatDataRequestSendToast,
   formatHandoverToast,
 } from "../realtime-event-formatters";
+
+describe("parseWorklogRow", () => {
+  it("정상 payload → row 반환", () => {
+    expect(
+      parseWorklogRow({
+        level: "INFO",
+        domain: "nav",
+        msg: "페이지 진입",
+        user_name: "김지나",
+        user_email: "jina@example.com",
+      }),
+    ).toMatchObject({
+      level: "INFO",
+      domain: "nav",
+      msg: "페이지 진입",
+      user_name: "김지나",
+      user_email: "jina@example.com",
+    });
+  });
+
+  it("RLS 미인가(만료 세션) 빈 payload({}) → null", () => {
+    expect(parseWorklogRow({})).toBeNull();
+  });
+
+  it("필수 필드(level/domain/msg) 일부 누락 → null", () => {
+    expect(parseWorklogRow({ level: "INFO" })).toBeNull();
+    expect(parseWorklogRow({ level: "INFO", domain: "nav" })).toBeNull();
+    expect(parseWorklogRow({ domain: "nav", msg: "m" })).toBeNull();
+  });
+
+  it("object가 아닌 입력(null/undefined) → null", () => {
+    expect(parseWorklogRow(null)).toBeNull();
+    expect(parseWorklogRow(undefined)).toBeNull();
+  });
+
+  it("user_name/user_email 없는 정상 payload → row 반환", () => {
+    const row = parseWorklogRow({ level: "DEBUG", domain: "sys", msg: "ok" });
+    expect(row).not.toBeNull();
+    expect(formatWorklogConsoleLine(row!).text).toBe("[SYS] ok");
+  });
+});
 
 describe("formatWorklogConsoleLine", () => {
   it("INFO level → type=info, 도메인 대문자 + msg 조합", () => {
