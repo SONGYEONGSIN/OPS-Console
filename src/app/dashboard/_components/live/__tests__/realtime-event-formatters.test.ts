@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   parseWorklogRow,
+  parseIncidentRow,
+  parseTodoRow,
+  parseBackupRequestRow,
+  parseDataRequestSendRow,
+  parseHandoverRecordRow,
   formatWorklogConsoleLine,
   formatIncidentToast,
   formatTodoToast,
@@ -8,6 +13,60 @@ import {
   formatDataRequestSendToast,
   formatHandoverToast,
 } from "../realtime-event-formatters";
+
+describe("토스트 채널 payload 검증 — RLS 미인가 빈 payload는 null", () => {
+  it("parseIncidentRow: 정상 → row / 빈·누락 → null", () => {
+    expect(
+      parseIncidentRow({ title: "Redis 장애", owner_email: "a@b.c" }),
+    ).toMatchObject({ title: "Redis 장애", owner_email: "a@b.c" });
+    expect(parseIncidentRow({ title: "장애" })).toMatchObject({
+      title: "장애",
+      owner_email: null,
+    });
+    expect(parseIncidentRow({})).toBeNull();
+    expect(parseIncidentRow(null)).toBeNull();
+  });
+
+  it("parseTodoRow: 정상 → row / 빈 → null", () => {
+    expect(parseTodoRow({ title: "문서 정리" })).toMatchObject({
+      title: "문서 정리",
+    });
+    expect(parseTodoRow({})).toBeNull();
+  });
+
+  it("parseBackupRequestRow: 정상 → row / 빈·필수 누락 → null", () => {
+    expect(
+      parseBackupRequestRow({
+        summary_md: "백업 요청",
+        requester_email: "a@b.c",
+      }),
+    ).toMatchObject({ summary_md: "백업 요청", requester_email: "a@b.c" });
+    expect(parseBackupRequestRow({})).toBeNull();
+    expect(parseBackupRequestRow({ summary_md: "만" })).toBeNull();
+  });
+
+  it("parseDataRequestSendRow: 정상 → row / 빈 → null", () => {
+    expect(
+      parseDataRequestSendRow({
+        university_name: "중앙대학교",
+        status: "sent",
+        created_by_email: "a@b.c",
+      }),
+    ).toMatchObject({ university_name: "중앙대학교", status: "sent" });
+    expect(parseDataRequestSendRow({})).toBeNull();
+  });
+
+  it("parseHandoverRecordRow: 정상 → row / 빈 → null", () => {
+    expect(
+      parseHandoverRecordRow({
+        author_name: "홍길동",
+        author_email: "hong@example.com",
+        service_id: "abc-123",
+      }),
+    ).toMatchObject({ author_name: "홍길동", service_id: "abc-123" });
+    expect(parseHandoverRecordRow({})).toBeNull();
+  });
+});
 
 describe("parseWorklogRow", () => {
   it("정상 payload → row 반환", () => {

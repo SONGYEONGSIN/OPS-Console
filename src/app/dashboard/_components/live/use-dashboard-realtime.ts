@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "./ToastContainer";
 import {
   parseWorklogRow,
+  parseIncidentRow,
+  parseTodoRow,
+  parseBackupRequestRow,
+  parseDataRequestSendRow,
+  parseHandoverRecordRow,
   formatWorklogConsoleLine,
   formatIncidentToast,
   formatTodoToast,
@@ -60,10 +65,8 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "incidents" },
         (payload) => {
-          const row = payload.new as {
-            title: string;
-            owner_email?: string | null;
-          };
+          const row = parseIncidentRow(payload.new);
+          if (!row) return;
           if (mine && myEmail && row.owner_email !== myEmail) return;
           const t = formatIncidentToast(row);
           showToast(t.text);
@@ -79,10 +82,8 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "todos" },
         (payload) => {
-          const row = payload.new as {
-            title: string;
-            owner_email?: string | null;
-          };
+          const row = parseTodoRow(payload.new);
+          if (!row) return;
           if (mine && myEmail && row.owner_email !== myEmail) return;
           showToast(formatTodoToast(row).text);
         },
@@ -97,10 +98,8 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "backup_requests" },
         (payload) => {
-          const row = payload.new as {
-            summary_md: string;
-            requester_email: string;
-          };
+          const row = parseBackupRequestRow(payload.new);
+          if (!row) return;
           if (mine && myEmail && row.requester_email !== myEmail) return;
           showToast(formatBackupRequestToast(row).text);
         },
@@ -115,11 +114,8 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "data_request_sends" },
         (payload) => {
-          const row = payload.new as {
-            university_name: string;
-            status: string;
-            created_by_email: string;
-          };
+          const row = parseDataRequestSendRow(payload.new);
+          if (!row) return;
           if (mine && myEmail && row.created_by_email !== myEmail) return;
           const t = formatDataRequestSendToast(row);
           if (t) showToast(t.text);
@@ -135,11 +131,8 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "handover_records" },
         (payload) => {
-          const row = payload.new as {
-            author_name: string;
-            author_email: string;
-            service_id: string;
-          };
+          const row = parseHandoverRecordRow(payload.new);
+          if (!row) return;
           if (mine && myEmail && row.author_email !== myEmail) return;
           showToast(formatHandoverToast(row).text);
         },
