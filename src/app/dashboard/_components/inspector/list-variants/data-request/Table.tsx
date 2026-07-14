@@ -34,7 +34,10 @@ function formatSendDateTime(iso?: string | null): string {
 }
 
 /** 작성시작(시즌 보정된 전체 날짜)이 now 이전이면 true. iso는 page에서 +1년 보정된 값. */
-export function isWriteStartPast(iso: string | null | undefined, now: Date): boolean {
+export function isWriteStartPast(
+  iso: string | null | undefined,
+  now: Date,
+): boolean {
   if (!iso) return false;
   return new Date(iso).getTime() < now.getTime();
 }
@@ -93,19 +96,33 @@ export function DataRequestTable({ rows, selectedId, onSelect }: Props) {
                 aria-disabled={past || undefined}
                 className={
                   past
-                    ? "border-b border-line-soft bg-washi opacity-60 cursor-not-allowed"
+                    ? "border-b border-line-soft bg-search-field-bg opacity-60 cursor-not-allowed"
                     : `cursor-pointer border-b border-line-soft hover:bg-line-soft ${
                         selectedId === row.id ? "bg-vermilion/10" : ""
                       }`
                 }
               >
-                <td className="px-3 py-2 font-medium text-ink">{row.universityName ?? "—"}</td>
-                <td className="px-3 py-2 text-ink">{row.serviceName ?? row.name}</td>
-                <td className="px-3 py-2 text-ink-soft">{formatMonthDay(row.writeStartAt)}</td>
-                <td className="px-3 py-2"><StatusBadge status={row.dataRequestStatus} /></td>
-                <td className="px-3 py-2 text-ink-soft">{formatSendDateTime(row.dataRequestLastSentAt)}</td>
-                <td className="px-3 py-2 text-ink-soft">{row.operatorName ?? "—"}</td>
-                <td className="px-3 py-2 text-ink-soft">{row.developerName ?? "—"}</td>
+                <td className="px-3 py-2 font-medium text-ink">
+                  {row.universityName ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-ink">
+                  {row.serviceName ?? row.name}
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  {formatMonthDay(row.writeStartAt)}
+                </td>
+                <td className="px-3 py-2">
+                  <StatusBadge status={row.dataRequestStatus} />
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  {formatSendDateTime(row.dataRequestLastSentAt)}
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  {row.operatorName ?? "—"}
+                </td>
+                <td className="px-3 py-2 text-ink-soft">
+                  {row.developerName ?? "—"}
+                </td>
               </tr>
             );
           })
