@@ -1,6 +1,7 @@
 // 원서GEN 로그인 → A/AU.js 수집 → 변경분만 claude -p 분석 → Supabase 적재
 // 실행: node scripts/dev-control-analyze.mjs [serviceId ...]  (미지정 시 전체 testable)
 import fs from "node:fs";
+import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson } from "./lib/dev-control-lib.mjs";
@@ -57,11 +58,13 @@ function analyze(kind, code) {
   // 안전장치: 이 subprocess는 이 리포 CWD에서 실행되며 프로젝트 .claude/settings.json의
   // 기존 허용 목록을 상속해 Bash/git 등을 승인 없이 실행할 수 있다 — 라이브 검증 중
   // 실제로 `git checkout`을 자체 판단으로 실행해 브랜치를 전환한 사례를 확인했다.
-  // 이 호출은 순수 텍스트 분석(JSON 요약 생성)만 필요하므로 도구 사용을 전면 차단한다.
+  // 이 호출은 순수 텍스트 분석(JSON 요약 생성)만 필요하므로 도구 사용을 전면 차단하고,
+  // cwd도 리포 밖(os.tmpdir())으로 옮겨 이 리포의 .claude 설정 자체를 상속하지 못하게 한다.
   const out = execFileSync(CLAUDE_BIN, ["-p", "--disallowedTools", "Bash Edit Write NotebookEdit Task"], {
     input: buildClaudePrompt(kind, code),
     encoding: "utf8", maxBuffer: 10 * 1024 * 1024, timeout: 300_000,
     shell: process.platform === "win32",
+    cwd: os.tmpdir(),
   });
   return parseClaudeJson(out);
 }
@@ -82,15 +85,19 @@ const ids = argIds.length ? argIds : [...new Set(services.map((s) => s.service_i
 
 await login();
 let analyzed = 0, skipped = 0, failed = 0;
+const seen = new Set();
 for (const id of ids) {
   for (const genFlag of GEN_FLAGS) {
     const files = await fetchDevInfo(id, genFlag);
     if (!files) continue;
     for (const f of files) {
+      const seenKey = `${id}:${f.fileName}`;
+      if (seen.has(seenKey)) continue;
+      seen.add(seenKey);
       const hash = sha256(f.content);
       const { data: prev } = await sb.from("dev_control_analyses")
         .select("id, code_hash, flags").eq("service_id", id)
-        .eq("gen_flag", genFlag).eq("kind", f.kind).maybeSingle();
+        .eq("file_name", f.fileName).maybeSingle();
       if (prev?.code_hash === hash) { skipped++; continue; }
       let summary_md = null, flags = [];
       try {
@@ -102,9 +109,9 @@ for (const id of ids) {
         console.error(`[dev-control] 분석 실패 ${id}/${genFlag}/${f.kind}: ${e.message} — raw만 저장`);
       }
       const { error: upErr } = await sb.from("dev_control_analyses").upsert({
-        service_id: id, gen_flag: genFlag, kind: f.kind, code_hash: hash,
+        service_id: id, gen_flag: genFlag, kind: f.kind, file_name: f.fileName, code_hash: hash,
         raw_code: f.content, summary_md, flags, analyzed_at: new Date().toISOString(),
-      }, { onConflict: "service_id,gen_flag,kind" });
+      }, { onConflict: "service_id,file_name" });
       if (upErr) { failed++; console.error(`[dev-control] upsert 실패: ${upErr.message}`); }
       else analyzed++;
     }

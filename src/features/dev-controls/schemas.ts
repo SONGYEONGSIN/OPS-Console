@@ -20,6 +20,7 @@ export const updateDevControlFlagSchema = z.object({
 export type DevControlAnalysis = {
   id: string;
   service_id: number;
+  file_name: string;
   gen_flag: string;
   kind: "A" | "AU";
   code_hash: string;

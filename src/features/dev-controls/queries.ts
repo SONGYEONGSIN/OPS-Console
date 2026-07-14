@@ -7,7 +7,7 @@ export async function listDevControlAnalyses(): Promise<DevControlAnalysis[]> {
   const { data, error } = await supabase
     .from("dev_control_analyses")
     .select(
-      "id, service_id, gen_flag, kind, code_hash, raw_code, summary_md, flags, analyzed_at",
+      "id, service_id, file_name, gen_flag, kind, code_hash, raw_code, summary_md, flags, analyzed_at",
     )
     .order("analyzed_at", { ascending: false });
   if (error)
