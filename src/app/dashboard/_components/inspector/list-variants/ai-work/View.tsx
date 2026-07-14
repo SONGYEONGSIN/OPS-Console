@@ -115,7 +115,7 @@ export function AiWorkView({ row }: ViewProps) {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="cursor-pointer border border-line bg-transparent px-2 py-0.5 text-2xs text-ink hover:bg-washi"
+                className="cursor-pointer border border-line bg-transparent px-2 py-0.5 text-2xs text-ink hover:bg-line-soft"
               >
                 {copied ? "복사됨" : "프롬프트 복사"}
               </button>

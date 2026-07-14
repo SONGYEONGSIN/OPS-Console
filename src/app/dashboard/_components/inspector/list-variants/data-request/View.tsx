@@ -253,7 +253,7 @@ export function DataRequestView({ row }: ViewProps) {
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               sendMode === "now"
                 ? "bg-ink text-cream"
-                : "bg-cream text-ink hover:bg-washi"
+                : "bg-white text-ink hover:bg-line-soft"
             }`}
           >
             지금 발송
@@ -264,8 +264,8 @@ export function DataRequestView({ row }: ViewProps) {
             onClick={() => setSendMode("schedule")}
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               sendMode === "schedule"
-                ? "bg-ink text-cream"
-                : "bg-cream text-ink hover:bg-washi"
+                ? "border-vermilion bg-vermilion text-cream"
+                : "bg-white text-ink hover:bg-line-soft"
             }`}
           >
             예약 발송
@@ -308,7 +308,7 @@ export function DataRequestView({ row }: ViewProps) {
             setScheduledAt("");
             setSendMode("now");
           }}
-          className="flex-1 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          className="flex-1 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft"
         >
           취소
         </button>

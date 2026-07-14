@@ -264,7 +264,7 @@ export function BackupForm({
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               mode === "single"
                 ? "bg-ink text-cream"
-                : "bg-cream text-ink hover:bg-washi"
+                : "bg-white text-ink hover:bg-line-soft"
             }`}
           >
             1명 일괄
@@ -276,7 +276,7 @@ export function BackupForm({
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               mode === "perService"
                 ? "bg-ink text-cream"
-                : "bg-cream text-ink hover:bg-washi"
+                : "bg-white text-ink hover:bg-line-soft"
             }`}
           >
             서비스별
@@ -398,7 +398,7 @@ export function BackupForm({
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               sendMode === "now"
                 ? "bg-ink text-cream"
-                : "bg-cream text-ink hover:bg-washi"
+                : "bg-white text-ink hover:bg-line-soft"
             }`}
           >
             지금 발송
@@ -410,7 +410,7 @@ export function BackupForm({
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
               sendMode === "schedule"
                 ? "bg-ink text-cream"
-                : "bg-cream text-ink hover:bg-washi"
+                : "bg-white text-ink hover:bg-line-soft"
             }`}
           >
             예약 발송
@@ -442,7 +442,7 @@ export function BackupForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft"
         >
           취소
         </button>
