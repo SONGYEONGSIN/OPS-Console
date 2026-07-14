@@ -77,13 +77,35 @@ export function CopySection({
       <p className="text-2xs text-muted">
         현재 서비스 내용을 다른 서비스(2, 3차)로 복제 가능합니다.
       </p>
-      <input
-        aria-label="복제 대상 서비스 검색"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="대학명 · 서비스명 · service_id 검색"
-        className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
-      />
+      <div className="relative">
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+          className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted"
+        >
+          <circle
+            cx="7"
+            cy="7"
+            r="4.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="m11 11 3 3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+        <input
+          aria-label="복제 대상 서비스 검색"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="대학명 · 서비스명 · service_id 검색"
+          className="w-full border border-line-soft bg-search-field-bg py-1 pl-7 pr-2 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+        />
+      </div>
       {term && results.length === 0 ? (
         <p className="text-2xs text-muted">검색 결과 없음</p>
       ) : null}
