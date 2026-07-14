@@ -19,6 +19,8 @@ export const categorySchema = z.enum([
   "translation",
   "meeting",
   "automation",
+  "productivity",
+  "devtool",
   "etc",
 ]);
 export type AiWorkCategory = z.infer<typeof categorySchema>;
