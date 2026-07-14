@@ -55,7 +55,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
       "대학 통폐합·폐교·정원감축 등 운영부 관련 뉴스를 자동 수집해 최신순으로 모아봅니다.",
   },
   handover: {
-    headline: { accent: "요청 · 자료", title: "인수인계" },
+    headline: { accent: "서비스", title: "인수인계" },
     description: "서비스별 인수인계 내용을 카테고리별로 작성·조회합니다.",
   },
   feedback: {
