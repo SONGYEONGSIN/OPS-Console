@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ToastProvider } from "../ToastContainer";
 
@@ -105,6 +105,38 @@ describe("useDashboardRealtime", () => {
     // 만료된 JWT로 구독 중이면 Realtime이 빈 레코드로 이벤트를 전달한다
     expect(() => worklogCh!.trigger("worklog", {})).not.toThrow();
     expect(onConsoleLine).not.toHaveBeenCalled();
+  });
+
+  it("빈 payload({}) → backup_requests crash 없이 스킵", () => {
+    const onConsoleLine = vi.fn();
+    renderHook(
+      () =>
+        useDashboardRealtime({ mine: false, myEmail: null, onConsoleLine }),
+      { wrapper },
+    );
+
+    const bkCh = mockChannels.find((ch) => ch._handlers.has("backup_requests"));
+    // 현재 코드는 summary_md.slice에서 crash — 검증 후에는 스킵되어야 한다
+    expect(() =>
+      act(() => {
+        bkCh!.trigger("backup_requests", {});
+      }),
+    ).not.toThrow();
+  });
+
+  it("빈 payload({}) → incidents 토스트 미표시 ('[사고] undefined' 방지)", () => {
+    const onConsoleLine = vi.fn();
+    renderHook(
+      () =>
+        useDashboardRealtime({ mine: false, myEmail: null, onConsoleLine }),
+      { wrapper },
+    );
+
+    const incCh = mockChannels.find((ch) => ch._handlers.has("incidents"));
+    act(() => {
+      incCh!.trigger("incidents", {});
+    });
+    expect(screen.queryByText(/\[사고\]/)).toBeNull();
   });
 
   it("mine=true + myEmail 불일치 시 worklog 무시", () => {

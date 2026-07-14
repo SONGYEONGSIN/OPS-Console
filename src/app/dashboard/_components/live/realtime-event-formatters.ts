@@ -11,14 +11,24 @@ type WorklogRow = {
 };
 
 /**
- * Realtime worklog payload 검증 — 만료된 JWT(RLS 미인가)로 구독 중이면
- * 이벤트가 빈 레코드({})로 도착한다. 필수 필드가 없으면 null을 반환해
- * 포매터 진입 전에 걸러낸다.
+ * Realtime payload 검증 공통 — 만료된 JWT(RLS 미인가)로 구독 중이면
+ * 이벤트가 빈 레코드({})로 도착한다. 각 parse*는 필수 필드가 없으면
+ * null을 반환해 포매터/토스트 진입 전에 걸러낸다.
  */
+function asRecord(input: unknown): Record<string, unknown> | null {
+  return typeof input === "object" && input !== null
+    ? (input as Record<string, unknown>)
+    : null;
+}
+
+function optStr(r: Record<string, unknown>, key: string): string | null {
+  return typeof r[key] === "string" ? (r[key] as string) : null;
+}
+
 export function parseWorklogRow(input: unknown): WorklogRow | null {
-  if (typeof input !== "object" || input === null) return null;
-  const r = input as Record<string, unknown>;
+  const r = asRecord(input);
   if (
+    !r ||
     typeof r.level !== "string" ||
     typeof r.domain !== "string" ||
     typeof r.msg !== "string"
@@ -29,8 +39,53 @@ export function parseWorklogRow(input: unknown): WorklogRow | null {
     level: r.level,
     domain: r.domain,
     msg: r.msg,
-    user_name: typeof r.user_name === "string" ? r.user_name : null,
-    user_email: typeof r.user_email === "string" ? r.user_email : null,
+    user_name: optStr(r, "user_name"),
+    user_email: optStr(r, "user_email"),
+  };
+}
+
+export function parseIncidentRow(input: unknown): IncidentRow | null {
+  const r = asRecord(input);
+  if (!r || typeof r.title !== "string") return null;
+  return { title: r.title, owner_email: optStr(r, "owner_email") };
+}
+
+export function parseTodoRow(input: unknown): TodoRow | null {
+  const r = asRecord(input);
+  if (!r || typeof r.title !== "string") return null;
+  return { title: r.title, owner_email: optStr(r, "owner_email") };
+}
+
+export function parseBackupRequestRow(
+  input: unknown,
+): BackupRequestRow | null {
+  const r = asRecord(input);
+  if (
+    !r ||
+    typeof r.summary_md !== "string" ||
+    typeof r.requester_email !== "string"
+  ) {
+    return null;
+  }
+  return { summary_md: r.summary_md, requester_email: r.requester_email };
+}
+
+export function parseDataRequestSendRow(
+  input: unknown,
+): DataRequestSendRow | null {
+  const r = asRecord(input);
+  if (
+    !r ||
+    typeof r.university_name !== "string" ||
+    typeof r.status !== "string" ||
+    typeof r.created_by_email !== "string"
+  ) {
+    return null;
+  }
+  return {
+    university_name: r.university_name,
+    status: r.status,
+    created_by_email: r.created_by_email,
   };
 }
 type IncidentRow = { title: string; owner_email?: string | null };
@@ -77,6 +132,25 @@ type HandoverRecordRow = {
   author_email: string;
   service_id: string;
 };
+
+export function parseHandoverRecordRow(
+  input: unknown,
+): HandoverRecordRow | null {
+  const r = asRecord(input);
+  if (
+    !r ||
+    typeof r.author_name !== "string" ||
+    typeof r.author_email !== "string" ||
+    typeof r.service_id !== "string"
+  ) {
+    return null;
+  }
+  return {
+    author_name: r.author_name,
+    author_email: r.author_email,
+    service_id: r.service_id,
+  };
+}
 
 /** handover_records INSERT → 토스트 이벤트 (항상 info). */
 export function formatHandoverToast(row: HandoverRecordRow): ToastEvent {
