@@ -9,7 +9,12 @@ import {
 import { buildDefaultDataRequestText } from "@/features/data-requests/mail-template";
 import { DateInput } from "@/components/common/DateInput";
 
-type Recipient = { email: string; name: string; department: string | null; universityName: string };
+type Recipient = {
+  email: string;
+  name: string;
+  department: string | null;
+  universityName: string;
+};
 
 /** ISO → KST 'YYYY.MM.DD HH:mm'. null/실패 시 빈 문자열. */
 function formatKstDateTime(iso: string | null | undefined): string {
@@ -24,7 +29,13 @@ function formatKstDateTime(iso: string | null | undefined): string {
     hourCycle: "h23",
   }).formatToParts(new Date(iso));
   const g = (t: string) => p.find((x) => x.type === t)?.value;
-  const [y, m, d, hh, mi] = [g("year"), g("month"), g("day"), g("hour"), g("minute")];
+  const [y, m, d, hh, mi] = [
+    g("year"),
+    g("month"),
+    g("day"),
+    g("hour"),
+    g("minute"),
+  ];
   return y && m && d && hh && mi ? `${y}.${m}.${d} ${hh}:${mi}` : "";
 }
 
@@ -39,12 +50,10 @@ export function DataRequestView({ row }: ViewProps) {
     writeStart: sched?.start ?? "",
     writeEnd: sched?.end ?? "",
   });
-  const [state, formAction, pending] = useActionState<DataRequestActionState, FormData>(
-    sendDataRequestAction,
-    undefined,
-  );
-  const [search, setSearch] = useState("");
-  const [justSelected, setJustSelected] = useState(false);
+  const [state, formAction, pending] = useActionState<
+    DataRequestActionState,
+    FormData
+  >(sendDataRequestAction, undefined);
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState<Recipient[]>([]);
   const [scheduledAt, setScheduledAt] = useState("");
@@ -53,26 +62,19 @@ export function DataRequestView({ row }: ViewProps) {
 
   const mailStatus = row.dataRequestStatus ?? null;
 
-  const term = search.trim().toLowerCase();
-  const matches =
-    term === ""
-      ? []
-      : recipients.filter(
-          (r) => r.name.toLowerCase().includes(term) || r.email.toLowerCase().includes(term),
-        );
   const toRecipient = recipients.find((r) => r.email === toEmail);
 
-  const selectTo = (r: Recipient) => {
-    setCc((prev) => prev.filter((c) => c.email !== r.email));
-    setToEmail(r.email);
-    setSearch(r.name);
-    setJustSelected(true);
+  const selectTo = (email: string) => {
+    setCc((prev) => prev.filter((c) => c.email !== email));
+    setToEmail(email);
   };
   const addCc = (email: string) => {
     const r = recipients.find((x) => x.email === email);
-    if (r && !cc.some((c) => c.email === email) && email !== toEmail) setCc([...cc, r]);
+    if (r && !cc.some((c) => c.email === email) && email !== toEmail)
+      setCc([...cc, r]);
   };
-  const removeCc = (email: string) => setCc(cc.filter((c) => c.email !== email));
+  const removeCc = (email: string) =>
+    setCc(cc.filter((c) => c.email !== email));
 
   const inputClass =
     "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
@@ -84,7 +86,8 @@ export function DataRequestView({ row }: ViewProps) {
           {row.universityName} · {row.serviceName ?? row.name}
         </h2>
         <p className="text-xs text-muted">
-          이 대학에 등록된 연락처 이메일이 없습니다. 대학연락처에서 이메일을 먼저 등록하세요.
+          이 대학에 등록된 연락처 이메일이 없습니다. 대학연락처에서 이메일을
+          먼저 등록하세요.
         </p>
       </div>
     );
@@ -120,7 +123,11 @@ export function DataRequestView({ row }: ViewProps) {
         </div>
       ) : null}
 
-      <input type="hidden" name="universityName" value={row.universityName ?? ""} />
+      <input
+        type="hidden"
+        name="universityName"
+        value={row.universityName ?? ""}
+      />
       <input type="hidden" name="serviceId" value={row.id} />
       <input type="hidden" name="mode" value={sendMode} />
       <input type="hidden" name="toEmail" value={toEmail} />
@@ -128,52 +135,38 @@ export function DataRequestView({ row }: ViewProps) {
       <input
         type="hidden"
         name="cc"
-        value={JSON.stringify(cc.map((c) => ({ email: c.email, name: c.name })))}
+        value={JSON.stringify(
+          cc.map((c) => ({ email: c.email, name: c.name })),
+        )}
       />
 
       <div className="block text-xs">
         <span className="mb-1 block text-muted">발신자</span>
         <div className="w-full border border-line bg-washi-raised px-2 py-1 text-ink">
-          {sender ? `${sender.name} · ${sender.email}` : "본인 메일박스에서 발송"}
+          {sender
+            ? `${sender.name} · ${sender.email}`
+            : "본인 메일박스에서 발송"}
         </div>
       </div>
 
       <div className="block text-xs">
         <span className="mb-1 block text-muted">수신자</span>
-        <input
-          type="text"
-          value={search}
+        <select
+          aria-label="수신자 선택"
+          value={toEmail}
           onChange={(e) => {
-            setSearch(e.target.value);
-            setJustSelected(false);
+            if (e.target.value) selectTo(e.target.value);
           }}
-          placeholder="연락처 검색 (이름/이메일)"
           className={inputClass}
-        />
-        {!justSelected && matches.length > 0 && (
-          <ul
-            aria-label="수신자 검색 결과"
-            className="mt-1 max-h-40 overflow-y-auto border border-line-soft bg-white"
-          >
-            {matches.map((r) => (
-              <li key={r.email}>
-                <button
-                  type="button"
-                  onClick={() => selectTo(r)}
-                  className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
-                >
-                  {r.name}
-                  {r.department ? ` (${r.department})` : ""} · {r.email}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {toRecipient && (
-          <p className="mt-1 text-2xs text-muted">
-            받는 사람: <span className="text-ink">{toRecipient.name} · {toRecipient.email}</span>
-          </p>
-        )}
+        >
+          <option value="">수신자 선택</option>
+          {recipients.map((r) => (
+            <option key={r.email} value={r.email}>
+              {r.name}
+              {r.department ? ` (${r.department})` : ""} · {r.email}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="block text-xs">
@@ -188,7 +181,10 @@ export function DataRequestView({ row }: ViewProps) {
           >
             <option value="">참조 추가</option>
             {recipients
-              .filter((r) => r.email !== toEmail && !cc.some((c) => c.email === r.email))
+              .filter(
+                (r) =>
+                  r.email !== toEmail && !cc.some((c) => c.email === r.email),
+              )
               .map((r) => (
                 <option key={r.email} value={r.email}>
                   {r.name} · {r.email}
@@ -241,7 +237,9 @@ export function DataRequestView({ row }: ViewProps) {
       </label>
 
       {state ? (
-        <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>{state.message}</p>
+        <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>
+          {state.message}
+        </p>
       ) : null}
 
       {/* 발송 모드 — 지금 발송 / 예약 발송 (backup 패턴: gap 분리 + 각 버튼 border) */}
@@ -253,7 +251,9 @@ export function DataRequestView({ row }: ViewProps) {
             aria-pressed={sendMode === "now"}
             onClick={() => setSendMode("now")}
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
-              sendMode === "now" ? "bg-ink text-cream" : "bg-cream text-ink hover:bg-washi"
+              sendMode === "now"
+                ? "bg-ink text-cream"
+                : "bg-cream text-ink hover:bg-washi"
             }`}
           >
             지금 발송
@@ -263,7 +263,9 @@ export function DataRequestView({ row }: ViewProps) {
             aria-pressed={sendMode === "schedule"}
             onClick={() => setSendMode("schedule")}
             className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
-              sendMode === "schedule" ? "bg-ink text-cream" : "bg-cream text-ink hover:bg-washi"
+              sendMode === "schedule"
+                ? "bg-ink text-cream"
+                : "bg-cream text-ink hover:bg-washi"
             }`}
           >
             예약 발송
@@ -291,7 +293,9 @@ export function DataRequestView({ row }: ViewProps) {
       <div className="flex gap-2 pt-2">
         <button
           type="submit"
-          disabled={pending || !toEmail || (sendMode === "schedule" && !scheduledAt)}
+          disabled={
+            pending || !toEmail || (sendMode === "schedule" && !scheduledAt)
+          }
           className="flex-1 cursor-pointer border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:cursor-default disabled:opacity-50"
         >
           {pending ? "저장 중…" : "저장"}
@@ -301,8 +305,6 @@ export function DataRequestView({ row }: ViewProps) {
           onClick={() => {
             setToEmail("");
             setCc([]);
-            setSearch("");
-            setJustSelected(false);
             setScheduledAt("");
             setSendMode("now");
           }}

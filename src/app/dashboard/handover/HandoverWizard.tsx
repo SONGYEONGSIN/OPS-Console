@@ -202,7 +202,7 @@ export function HandoverWizard({
             <button
               type="button"
               onClick={() => setStep((s) => (s - 1) as Step)}
-              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+              className="cursor-pointer border border-line px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
             >
               ← 이전
             </button>
@@ -214,7 +214,7 @@ export function HandoverWizard({
               type="button"
               disabled={!serviceId}
               onClick={() => setStep(2)}
-              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer border border-line px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               다음 →
             </button>
@@ -224,7 +224,7 @@ export function HandoverWizard({
               type="button"
               disabled={!to}
               onClick={() => setStep(3)}
-              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer border border-line px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               다음 →
             </button>
@@ -234,7 +234,7 @@ export function HandoverWizard({
               type="button"
               disabled={isPending}
               onClick={handleConfirm}
-              className="cursor-pointer border border-line bg-cream px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer border border-line px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isPending ? "처리 중..." : "인계 시작"}
             </button>
@@ -329,7 +329,7 @@ function Step1({
         </span>
       </header>
       {services.length === 0 ? (
-        <p className="border border-line bg-cream p-6 text-center text-sm text-muted">
+        <p className="border border-line-soft bg-situation-bg p-6 text-center text-sm text-muted">
           작성완료된 서비스가 없습니다. 먼저 인수인계 내용 탭에서 작성을
           완료하세요.
         </p>
@@ -487,7 +487,7 @@ function Step3({
         </span>
       </header>
 
-      <dl className="grid grid-cols-[120px_1fr] gap-y-3 border border-line bg-cream p-4 text-sm">
+      <dl className="grid grid-cols-[120px_1fr] gap-y-3 border border-line-soft bg-situation-bg p-4 text-sm">
         <dt className="text-muted">서비스</dt>
         <dd className="text-ink">
           {service.application_type ? (
@@ -514,7 +514,7 @@ function Step3({
 
       <div>
         <h4 className="mb-2 text-sm font-semibold text-ink">인수인계 내용</h4>
-        <div className="border border-line">
+        <div className="border border-line-soft">
           {HANDOVER_CATEGORIES.map((cat) => (
             <CategoryAccordion key={cat.key} category={cat} service={service} />
           ))}
@@ -570,7 +570,7 @@ function CategoryAccordion({
         </span>
       </button>
       {open && (
-        <div className="space-y-3 border-t border-line-soft bg-cream px-4 py-3">
+        <div className="space-y-3 border-t border-line-soft bg-situation-bg px-4 py-3">
           {category.fields.map((f) => (
             <div key={f.key}>
               <div className="text-xs font-bold text-ink">{f.label}</div>
@@ -787,7 +787,7 @@ function Step4({
       <button
         type="button"
         onClick={onRestart}
-        className="cursor-pointer border border-line bg-transparent px-5 py-2 text-sm tracking-[0.04em] text-ink hover:border-ink hover:bg-ink hover:text-cream"
+        className="cursor-pointer border border-line bg-transparent px-5 py-2 text-sm tracking-[0.04em] text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
       >
         새 인계 시작
       </button>

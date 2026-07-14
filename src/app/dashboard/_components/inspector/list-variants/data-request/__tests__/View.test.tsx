@@ -64,15 +64,18 @@ describe("DataRequestView", () => {
     expect(screen.getByRole("button", { name: /^저장$/ })).toBeDisabled();
   });
 
-  it("연락처 검색 시 결과 목록에 후보가 나오고 클릭하면 선택된다", () => {
+  it("수신자 셀렉트에 전체 후보가 나오고 선택하면 저장 활성", () => {
     render(<DataRequestView row={row()} />);
-    const search = screen.getByPlaceholderText(/연락처 검색/);
-    fireEvent.change(search, { target: { value: "김" } });
-    const result = screen.getByRole("button", { name: /김담당/ });
-    expect(result).toBeInTheDocument();
-    fireEvent.click(result);
+    const select = screen.getByLabelText("수신자 선택") as HTMLSelectElement;
+    expect(
+      screen.getByRole("option", { name: /김담당 \(입학처\) · kim@u\.ac\.kr/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /이담당 · lee@u\.ac\.kr/ }),
+    ).toBeInTheDocument();
+    fireEvent.change(select, { target: { value: "kim@u.ac.kr" } });
+    expect(select.value).toBe("kim@u.ac.kr");
     expect(screen.getByRole("button", { name: /^저장$/ })).toBeEnabled();
-    expect(screen.getByText(/받는 사람:/)).toBeInTheDocument();
   });
 
   it("기본은 지금 발송 — 예약 시각 숨김, '예약 발송' 토글 클릭 시 노출", () => {
@@ -86,10 +89,9 @@ describe("DataRequestView", () => {
   it("예약 발송 모드 + 예약 시각 미입력이면 저장 버튼 비활성", () => {
     render(<DataRequestView row={row()} />);
     // To 선택
-    fireEvent.change(screen.getByPlaceholderText(/연락처 검색/), {
-      target: { value: "김" },
+    fireEvent.change(screen.getByLabelText("수신자 선택"), {
+      target: { value: "kim@u.ac.kr" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /김담당/ }));
     // 예약 발송 토글로 전환 → 예약 시각 미입력이면 저장 비활성
     fireEvent.click(screen.getByRole("button", { name: "예약 발송" }));
     expect(screen.getByRole("button", { name: /^저장$/ })).toBeDisabled();
@@ -98,14 +100,12 @@ describe("DataRequestView", () => {
   it("취소 버튼은 선택한 수신자/예약 입력을 초기화한다", () => {
     render(<DataRequestView row={row()} />);
     // To 선택
-    fireEvent.change(screen.getByPlaceholderText(/연락처 검색/), {
-      target: { value: "김" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /김담당/ }));
-    expect(screen.getByText(/받는 사람:/)).toBeInTheDocument();
+    const select = screen.getByLabelText("수신자 선택") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "kim@u.ac.kr" } });
+    expect(screen.getByRole("button", { name: /^저장$/ })).toBeEnabled();
     // 취소 → 초기화
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
-    expect(screen.queryByText(/받는 사람:/)).toBeNull();
+    expect(select.value).toBe("");
     expect(screen.getByRole("button", { name: /^저장$/ })).toBeDisabled();
   });
 
