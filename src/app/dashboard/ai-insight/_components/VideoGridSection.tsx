@@ -112,7 +112,7 @@ export function VideoGridSection({
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage === 1}
-              className="border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-ink transition-opacity hover:bg-line-soft disabled:opacity-40"
             >
               ← 이전
             </button>
@@ -123,7 +123,7 @@ export function VideoGridSection({
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
-              className="border border-line bg-cream px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
+              className="border border-line bg-paper px-3 py-1.5 text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
             >
               다음 →
             </button>
@@ -157,7 +157,7 @@ function FilterButton({
       className={`border px-3 py-1 text-xs transition-colors ${
         active
           ? "border-vermilion bg-vermilion text-cream"
-          : "border-line bg-cream text-ink hover:bg-washi-raised"
+          : "border-line bg-paper text-ink hover:bg-line-soft"
       }`}
     >
       {label}
