@@ -42,7 +42,7 @@ export function ContactsForm({
             aria-label="활성화"
             value={row.customerActive ?? "재직"}
             onChange={(e) => setRow({ ...row, customerActive: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {ACTIVE_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -57,7 +57,7 @@ export function ContactsForm({
             aria-label="고객명"
             value={row.name ?? ""}
             onChange={(e) => setRow({ ...row, name: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             required
           />
         </label>
@@ -69,7 +69,7 @@ export function ContactsForm({
           aria-label="직함"
           value={row.jobTitle ?? ""}
           onChange={(e) => setRow({ ...row, jobTitle: e.target.value || null })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="팀장 / 과장 / 주임 / ..."
         />
       </label>
@@ -120,7 +120,7 @@ export function ContactsForm({
             onChange={(e) =>
               setRow({ ...row, departmentName: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             placeholder="입학팀 / 입학처 / ..."
           />
         </label>
@@ -132,7 +132,7 @@ export function ContactsForm({
             onChange={(e) =>
               setRow({ ...row, jobRole: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택...</option>
             {JOB_ROLE_OPTIONS.map((o) => (
@@ -153,7 +153,7 @@ export function ContactsForm({
             onChange={(e) =>
               setRow({ ...row, managementGrade: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택...</option>
             {MANAGEMENT_GRADE_OPTIONS.map((o) => (
@@ -171,7 +171,7 @@ export function ContactsForm({
             onChange={(e) =>
               setRow({ ...row, relationshipGrade: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택...</option>
             {RELATIONSHIP_GRADE_OPTIONS.map((o) => (
@@ -193,7 +193,7 @@ export function ContactsForm({
               setRow({ ...row, contactPhone: e.target.value || null })
             }
             placeholder="010-0000-0000"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
         <label className="block text-xs">
@@ -205,7 +205,7 @@ export function ContactsForm({
               setRow({ ...row, contactExt: e.target.value || null })
             }
             placeholder="031-000-0000"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
@@ -219,7 +219,7 @@ export function ContactsForm({
           onChange={(e) =>
             setRow({ ...row, contactEmail: e.target.value || null })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
 

@@ -98,7 +98,7 @@ export function AlertsBell({ items }: { items: OpsAlert[] }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[200] mt-2 w-[340px] border border-chrome-graphite bg-sidebar py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
+          className="absolute right-0 top-full z-[200] mt-2 w-[340px] border border-chrome-graphite bg-paper py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="border-b border-line-soft px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-vermilion">

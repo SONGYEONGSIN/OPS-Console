@@ -8,6 +8,8 @@ import {
 } from "@/features/handover/queries";
 import { copyHandoverRecord } from "@/features/handover/actions";
 import { listContracts } from "@/features/contracts/queries";
+import { CrumbBar } from "@/app/dashboard/_components/page-header/CrumbBar";
+import { derivePatternMeta } from "@/app/dashboard/_data/page-meta-derive";
 import { buildEditorRow } from "./build-editor-row";
 import { HandoverEditorWorkspace } from "./_components/HandoverEditorWorkspace";
 
@@ -71,12 +73,15 @@ export default async function HandoverEditorPage({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <section className="flex min-h-0 flex-1 flex-col px-5 pb-3 pt-6 md:px-6 lg:px-7">
+      {/* 표준 크럼 띠 — 목록 페이지와 동일한 위치 정체성 (요청·자료 / 인수인계) */}
+      <CrumbBar pathname="/dashboard/handover" />
+      <section className="flex min-h-0 flex-1 flex-col">
         <HandoverEditorWorkspace
           initialRow={row}
           contractsStatusOptions={contractsStatusOptions}
           handoverServiceCandidates={handoverServiceCandidates}
           onCopyHandover={onCopyHandover}
+          metaItems={derivePatternMeta(undefined, undefined)}
         />
       </section>
     </div>

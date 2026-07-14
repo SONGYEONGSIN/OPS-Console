@@ -133,7 +133,7 @@ export function SearchBox() {
       </div>
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 top-full z-[200] mt-1 border border-line bg-sidebar py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
+        <div className="absolute left-0 right-0 top-full z-[200] mt-1 border border-line bg-paper py-1 [box-shadow:4px_6px_0_rgba(21,18,12,0.15)]">
           {results.length > 0 ? (
             <ul role="listbox" className="flex flex-col">
               {results.map((r, i) => (

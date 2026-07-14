@@ -48,7 +48,7 @@ export function AiTipsForm({
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
           maxLength={80}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="예: 회의록 5문장 요약 프롬프트"
         />
       </label>
@@ -59,7 +59,7 @@ export function AiTipsForm({
             aria-label="AI 도구"
             value={row.aiTool ?? ""}
             onChange={(e) => setRow({ ...row, aiTool: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {AI_TOOL_OPTIONS.map((opt) => (
@@ -75,7 +75,7 @@ export function AiTipsForm({
             aria-label="카테고리"
             value={row.category ?? ""}
             onChange={(e) => setRow({ ...row, category: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {CATEGORY_OPTIONS.map((opt) => (
@@ -94,7 +94,7 @@ export function AiTipsForm({
           onChange={(e) => setRow({ ...row, summary: e.target.value })}
           rows={3}
           maxLength={500}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="어떤 상황에서 쓰는 팁인지 짧게"
         />
       </label>
@@ -108,7 +108,7 @@ export function AiTipsForm({
           onChange={(e) => setRow({ ...row, reusePrompt: e.target.value })}
           rows={6}
           required
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="동료가 복사해서 바로 쓸 수 있는 프롬프트 (필수)"
         />
       </label>
@@ -127,7 +127,7 @@ export function AiTipsForm({
                 .filter((t) => t.length > 0),
             });
           }}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="회의록, 주간"
         />
       </label>

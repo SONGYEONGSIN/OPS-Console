@@ -49,7 +49,7 @@ export function AiWorkForm({
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
           maxLength={120}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="예: 회의록 요약 자동화"
         />
       </label>
@@ -60,14 +60,14 @@ export function AiWorkForm({
             aria-label="작업 시작일"
             value={row.workStartDate ?? ""}
             onChange={(e) => setRow({ ...row, workStartDate: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
           <DateInput
             aria-label="작업 종료일"
             value={row.workEndDate ?? ""}
             min={row.workStartDate ?? undefined}
             onChange={(e) => setRow({ ...row, workEndDate: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </div>
       </fieldset>
@@ -78,7 +78,7 @@ export function AiWorkForm({
             aria-label="AI 도구"
             value={row.aiTool ?? ""}
             onChange={(e) => setRow({ ...row, aiTool: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {AI_TOOL_OPTIONS.map((opt) => (
@@ -94,7 +94,7 @@ export function AiWorkForm({
             aria-label="카테고리"
             value={row.category ?? ""}
             onChange={(e) => setRow({ ...row, category: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {CATEGORY_OPTIONS.map((opt) => (
@@ -112,7 +112,7 @@ export function AiWorkForm({
           value={row.summary ?? ""}
           onChange={(e) => setRow({ ...row, summary: e.target.value })}
           rows={5}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="무엇을, 왜, 어떤 결과를 얻었는지 (Markdown 가능)"
         />
       </label>
@@ -125,7 +125,7 @@ export function AiWorkForm({
             setRow({ ...row, featureDesc: e.target.value || null })
           }
           rows={5}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="이 작업/도구가 수행하는 기능을 설명 (선택)"
         />
       </label>
@@ -138,7 +138,7 @@ export function AiWorkForm({
           onChange={(e) =>
             setRow({ ...row, outputUrl: e.target.value || null })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="https://notion.so/... (선택)"
         />
       </label>
@@ -151,7 +151,7 @@ export function AiWorkForm({
             setRow({ ...row, reusePrompt: e.target.value || null })
           }
           rows={6}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="동료가 복사해서 바로 쓸 수 있는 프롬프트 (선택)"
         />
       </label>
@@ -171,7 +171,7 @@ export function AiWorkForm({
                   e.target.value === "" ? null : Number(e.target.value),
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             placeholder="0.5"
           />
         </label>
@@ -190,7 +190,7 @@ export function AiWorkForm({
                   .filter((t) => t.length > 0),
               });
             }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             placeholder="회의록, 주간"
           />
         </label>

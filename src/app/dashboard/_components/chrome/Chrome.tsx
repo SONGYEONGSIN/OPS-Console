@@ -15,7 +15,7 @@ type Props = {
  * Chrome — 데스크탑(≥md) chrome bar 통합 wrapper.
  *
  * 1fr/1fr/1fr 그리드로 좌(brand) · 중(search) · 우(timer/bell/user) 3-zone 조립.
- * 높이 52px, 상하 2px chrome-graphite 보더, snow 배경.
+ * 높이 52px, 상하 2px chrome-graphite 보더, paper 배경(콘텐츠와 통일 표준).
  * Server component (children에 client SearchBox 포함되어도 wrapper는 server).
  */
 export function Chrome({ operator, alerts, sections }: Props) {
@@ -23,7 +23,7 @@ export function Chrome({ operator, alerts, sections }: Props) {
     <div
       role="banner"
       data-tutorial="topbar"
-      className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1.4fr_1fr] items-center border-y-2 border-chrome-graphite bg-chrome-snow px-[18px] md:grid"
+      className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1.4fr_1fr] items-center border-y-2 border-chrome-graphite bg-paper px-[18px] md:grid"
     >
       <div className="justify-self-start">
         <ChromeBrand />

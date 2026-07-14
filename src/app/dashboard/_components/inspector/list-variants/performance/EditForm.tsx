@@ -90,7 +90,7 @@ export function PerformanceEditForm({
               owner: op?.name ?? "",
             });
           }}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink focus:border-ink focus:bg-white"
           required
         >
           <option value="">선택…</option>
@@ -108,7 +108,7 @@ export function PerformanceEditForm({
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
           placeholder="예: 2026 상반기"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink focus:border-ink focus:bg-white"
           required
         />
       </label>

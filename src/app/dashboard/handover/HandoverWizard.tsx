@@ -530,7 +530,7 @@ function Step3({
           rows={3}
           maxLength={2000}
           placeholder="인계 시 참고할 메모"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink focus:border-ink focus:bg-white focus:outline-none"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink focus:border-ink focus:bg-white focus:outline-none"
         />
       </label>
 

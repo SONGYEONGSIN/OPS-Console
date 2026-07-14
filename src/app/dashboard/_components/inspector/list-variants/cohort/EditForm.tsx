@@ -36,7 +36,7 @@ export function CohortForm({
           aria-label="제목"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="회차 제목 (예: 2026 Q2 신입 — 김지나)"
         />
       </label>
@@ -55,7 +55,7 @@ export function CohortForm({
                 author: op?.name ?? email,
               });
             }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {OPERATORS.map((op) => (
@@ -81,7 +81,7 @@ export function CohortForm({
                 owner: op?.name ?? "",
               });
             }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">미정</option>
             {OPERATORS.map((op) => (
@@ -99,7 +99,7 @@ export function CohortForm({
             aria-label="시작일"
             value={row.startDate ?? ""}
             onChange={(e) => setRow({ ...row, startDate: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
         <label className="block text-xs">
@@ -110,7 +110,7 @@ export function CohortForm({
             onChange={(e) =>
               setRow({ ...row, endDate: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
@@ -125,7 +125,7 @@ export function CohortForm({
               cohortStatus: e.target.value as ListRow["cohortStatus"],
             })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           {COHORT_STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -141,7 +141,7 @@ export function CohortForm({
           value={row.body ?? ""}
           onChange={(e) => setRow({ ...row, body: e.target.value })}
           rows={3}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="자유 메모"
         />
       </label>

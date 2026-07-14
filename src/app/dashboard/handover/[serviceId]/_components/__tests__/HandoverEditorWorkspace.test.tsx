@@ -110,6 +110,15 @@ describe("HandoverEditorWorkspace", () => {
     expect(screen.getByText(/Fall Admission/)).toBeInTheDocument();
   });
 
+  it("표준 페이지 헤더 — h1 헤드라인(인수인계 — 대학명) + 메타 라인(저장 상태)", () => {
+    setup();
+    const h1 = screen.getByRole("heading", { level: 1 });
+    expect(h1).toHaveTextContent("인수인계");
+    expect(h1).toHaveTextContent("숙명여자대학교");
+    // 메타 라인에 자동 저장 상태 노출
+    expect(screen.getByText("✓ 자동 저장됨")).toBeInTheDocument();
+  });
+
   it("운영가이드 레이아웃 — 카테고리 패널 헤더(제목 + 필드 구성 설명)", () => {
     setup();
     expect(screen.getByRole("heading", { name: "계약" })).toBeInTheDocument();

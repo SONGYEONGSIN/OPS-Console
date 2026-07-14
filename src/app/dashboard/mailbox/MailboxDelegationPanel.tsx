@@ -71,7 +71,7 @@ export function MailboxDelegationPanel({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   aria-label="위임할 운영자 선택"
-                  className="border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
+                  className="border border-line-soft bg-field-bg px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
                 >
                   <option value="">선택하세요</option>
                   {candidates.map((c) => (
@@ -91,7 +91,7 @@ export function MailboxDelegationPanel({
                   onChange={(e) => setExpiresOn(e.target.value)}
                   onClick={(e) => e.currentTarget.showPicker?.()}
                   aria-label="위임 종료일"
-                  className="cursor-pointer border border-line bg-cream px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
+                  className="cursor-pointer border border-line-soft bg-field-bg px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
                 />
               </label>
 

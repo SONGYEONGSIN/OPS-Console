@@ -145,7 +145,7 @@ export function ContractInfoForm({
                   onChange={(e) =>
                     onChange?.({ ...value, [f.key]: e.target.value })
                   }
-                  className="flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+                  className="flex-1 border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
                 >
                   <option value="">선택</option>
                   {opts.map((o) => (
@@ -158,10 +158,10 @@ export function ContractInfoForm({
             </label>
           );
         })}
-        <label className="block">
-          <span className="mb-1 block text-muted">메모</span>
+        <label className="flex items-start gap-2">
+          <span className="w-10 flex-none pt-1 text-muted">메모</span>
           {readOnly ? (
-            <div className="min-h-[3.5rem] w-full border border-line-soft bg-washi-raised px-2 py-1">
+            <div className="min-h-[3.5rem] flex-1 border border-line-soft bg-washi-raised px-2 py-1">
               {value.memo ? (
                 <LinkifiedText text={value.memo} />
               ) : (
@@ -176,7 +176,7 @@ export function ContractInfoForm({
               rows={2}
               maxLength={2000}
               placeholder="예: ※ 학부 계약시 포함"
-              className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+              className="flex-1 border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
             />
           )}
         </label>

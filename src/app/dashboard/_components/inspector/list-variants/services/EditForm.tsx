@@ -110,7 +110,7 @@ export function ServicesForm({
           aria-label="서비스명"
           value={row.serviceName ?? ""}
           onChange={(e) => setRow({ ...row, serviceName: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           required
         />
       </label>
@@ -142,7 +142,7 @@ export function ServicesForm({
               serviceIdNum: e.target.value ? Number(e.target.value) : undefined,
             })
           }
-          className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 font-mono text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder={
             selectedUniversity
               ? `${selectedUniversity.key}${String(selectedUniversity.nextSeq).padStart(3, "0")}`
@@ -161,7 +161,7 @@ export function ServicesForm({
             onChange={(e) =>
               setRow({ ...row, applicationType: e.target.value })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {APPLICATION_TYPE_OPTIONS.map((o) => (
@@ -177,7 +177,7 @@ export function ServicesForm({
             aria-label="지역"
             value={row.region ?? ""}
             onChange={(e) => setRow({ ...row, region: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {REGION_OPTIONS.map((o) => (
@@ -196,7 +196,7 @@ export function ServicesForm({
             aria-label="대학구분"
             value={row.universityType ?? ""}
             onChange={(e) => setRow({ ...row, universityType: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {UNIVERSITY_TYPE_OPTIONS.map((o) => (
@@ -212,7 +212,7 @@ export function ServicesForm({
             aria-label="카테고리"
             value={row.category ?? ""}
             onChange={(e) => setRow({ ...row, category: e.target.value })}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {CATEGORY_OPTIONS.map((o) => (
@@ -239,7 +239,7 @@ export function ServicesForm({
                 operatorName: op?.name ?? null,
               });
             }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {servicesOperators.map((op) => (
@@ -263,7 +263,7 @@ export function ServicesForm({
                 developerName: op?.name ?? null,
               });
             }}
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="">선택…</option>
             {servicesOperators.map((op) => (
@@ -285,7 +285,7 @@ export function ServicesForm({
             onChange={(e) =>
               setRow({ ...row, writeStartAt: dateToIso(e.target.value) })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
         <label className="block text-xs">
@@ -296,7 +296,7 @@ export function ServicesForm({
             onChange={(e) =>
               setRow({ ...row, writeEndAt: dateToIso(e.target.value) })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
@@ -309,7 +309,7 @@ export function ServicesForm({
             onChange={(e) =>
               setRow({ ...row, payStartAt: dateToIso(e.target.value) })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
         <label className="block text-xs">
@@ -320,7 +320,7 @@ export function ServicesForm({
             onChange={(e) =>
               setRow({ ...row, payEndAt: dateToIso(e.target.value) })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>

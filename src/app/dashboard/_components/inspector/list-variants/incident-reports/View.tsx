@@ -23,7 +23,7 @@ type Recipient = { email: string; name: string; jobTitle: string | null };
 type CcRecipient = { email: string; name: string };
 
 const inputClass =
-  "w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
 /** 본문 텍스트 블록 — 비어있으면 "—" */
 function BodyText({ value }: { value: string | null | undefined }) {

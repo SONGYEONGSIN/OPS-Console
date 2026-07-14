@@ -75,7 +75,7 @@ export function DataRequestView({ row }: ViewProps) {
   const removeCc = (email: string) => setCc(cc.filter((c) => c.email !== email));
 
   const inputClass =
-    "w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
+    "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
   if (recipients.length === 0) {
     return (

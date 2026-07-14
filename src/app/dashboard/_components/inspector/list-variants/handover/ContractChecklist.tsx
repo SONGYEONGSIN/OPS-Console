@@ -135,7 +135,7 @@ export function ContractChecklist({
                     }
                     maxLength={200}
                     placeholder="체크 항목"
-                    className="flex-1 border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+                    className="flex-1 border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
                   />
                 )}
                 {!readOnly && (

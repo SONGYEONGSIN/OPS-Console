@@ -16,8 +16,9 @@ describe("design-tokens / colors", () => {
   it("기존 핵심 토큰을 유지한다", () => {
     expect(colors.washi).toBe("#ede6d2");
     expect(colors.cream).toBe("#faf4e6");
-    expect(colors.paper).toBe("#fbf7f0");
+    expect(colors.paper).toBe("#ffffff");
     expect(colors.sidebar).toBe("#fffdf7");
+    expect(colors.fieldBg).toBe("#fdfdfb");
     expect(colors.ink).toBe("#15120c");
     expect(colors.vermilion).toBe("#b8331e");
   });
