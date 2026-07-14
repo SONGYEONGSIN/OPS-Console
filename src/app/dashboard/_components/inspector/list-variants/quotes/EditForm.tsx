@@ -160,7 +160,7 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft"
         >
           취소
         </button>

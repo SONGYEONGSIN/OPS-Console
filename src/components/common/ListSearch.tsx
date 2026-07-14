@@ -8,8 +8,8 @@ type Props = {
   ariaLabel?: string;
   /**
    * 사이즈 variant:
-   * - default: 목록 페이지 (py-2 + bg-washi-raised + border-line-soft)
-   * - sm: EditForm 내 (py-1 + bg-cream + border-line — 다른 input과 시각 통일)
+   * - default: 목록 페이지 (py-2 + bg-search-field-bg + border-line-soft)
+   * - sm: EditForm 내 (py-1 — 배경·보더는 default와 동일 검색창 표준)
    */
   size?: "default" | "sm";
   /** container에 추가할 className (예: max-width 제한) */
@@ -38,7 +38,7 @@ export function ListSearch({
     "transition-colors focus-within:border-ink focus-within:bg-white";
   const containerClass =
     size === "sm"
-      ? `flex w-full items-center gap-1.5 border border-line bg-cream px-2 py-1 ${focusClass}`
+      ? `flex w-full items-center gap-1.5 border border-line-soft bg-search-field-bg px-2 py-1 ${focusClass}`
       : `flex flex-1 min-w-[240px] items-center gap-1.5 border border-line-soft bg-search-field-bg px-3 py-2 ${focusClass}`;
   return (
     <div className={`${containerClass} ${className ?? ""}`}>

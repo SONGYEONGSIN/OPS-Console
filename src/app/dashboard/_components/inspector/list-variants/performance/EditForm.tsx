@@ -49,14 +49,14 @@ export function PerformanceEditForm({
           href={`/dashboard/outcomes/${row.id}/print`}
           target="_blank"
           rel="noreferrer"
-          className="block border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:bg-washi"
+          className="block border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:bg-line-soft"
         >
           리포트 미리보기
         </a>
         <button
           type="button"
           onClick={onCancel}
-          className="w-full border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          className="w-full border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft"
         >
           닫기
         </button>
@@ -122,7 +122,7 @@ export function PerformanceEditForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+          className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft"
         >
           취소
         </button>
