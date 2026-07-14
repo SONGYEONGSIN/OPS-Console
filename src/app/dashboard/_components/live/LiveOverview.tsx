@@ -204,7 +204,7 @@ function LiveOverviewInner({
   return (
     <div className="h-full overflow-y-auto bg-paper">
       <div className="px-4 py-8 md:px-8 md:py-10">
-        <div className="border border-line bg-situation-bg p-6 shadow-offset md:p-9">
+        <div>
           <Masthead mine={mine} activityLog={activityLog} />
           <ActivityTimeline entries={timelineEvents} />
           <BroadsheetHeadline input={headline} />
@@ -230,7 +230,9 @@ function LiveOverviewInner({
               <h3 className={SECTION_H3}>긴급도 분류</h3>
               <div className={`${SECTION_LABEL} flex justify-between`}>
                 <span>Triage · 긴급도 기준 자동 분류</span>
-                <span className="text-[10px] text-ink-soft">행 클릭 → 상세</span>
+                <span className="text-[10px] text-ink-soft">
+                  행 클릭 → 상세
+                </span>
               </div>
               <TriageColumns items={tableItems} onSelect={select} />
             </div>
