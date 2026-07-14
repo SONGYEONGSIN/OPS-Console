@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "./ToastContainer";
 import {
+  parseWorklogRow,
   formatWorklogConsoleLine,
   formatIncidentToast,
   formatTodoToast,
@@ -42,13 +43,9 @@ export function useDashboardRealtime({ mine, myEmail, onConsoleLine }: Args) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "worklog" },
         (payload) => {
-          const row = payload.new as {
-            level: string;
-            domain: string;
-            msg: string;
-            user_email?: string;
-            user_name?: string;
-          };
+          // RLS 미인가(만료 세션) 이벤트는 빈 레코드로 도착 — 검증 실패 시 스킵
+          const row = parseWorklogRow(payload.new);
+          if (!row) return;
           if (mine && myEmail && row.user_email !== myEmail) return;
           onConsoleLineRef.current(formatWorklogConsoleLine(row));
         },

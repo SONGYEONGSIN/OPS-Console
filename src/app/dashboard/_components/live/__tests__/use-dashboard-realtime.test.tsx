@@ -89,6 +89,24 @@ describe("useDashboardRealtime", () => {
     );
   });
 
+  it("RLS 미인가 빈 payload({}) → crash 없이 스킵 (onConsoleLine 미호출)", () => {
+    const onConsoleLine = vi.fn();
+    renderHook(
+      () =>
+        useDashboardRealtime({
+          mine: false,
+          myEmail: null,
+          onConsoleLine,
+        }),
+      { wrapper },
+    );
+
+    const worklogCh = mockChannels.find((ch) => ch._handlers.has("worklog"));
+    // 만료된 JWT로 구독 중이면 Realtime이 빈 레코드로 이벤트를 전달한다
+    expect(() => worklogCh!.trigger("worklog", {})).not.toThrow();
+    expect(onConsoleLine).not.toHaveBeenCalled();
+  });
+
   it("mine=true + myEmail 불일치 시 worklog 무시", () => {
     const onConsoleLine = vi.fn();
     renderHook(

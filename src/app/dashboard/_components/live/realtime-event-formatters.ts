@@ -7,7 +7,32 @@ type WorklogRow = {
   domain: string;
   msg: string;
   user_name?: string | null;
+  user_email?: string | null;
 };
+
+/**
+ * Realtime worklog payload 검증 — 만료된 JWT(RLS 미인가)로 구독 중이면
+ * 이벤트가 빈 레코드({})로 도착한다. 필수 필드가 없으면 null을 반환해
+ * 포매터 진입 전에 걸러낸다.
+ */
+export function parseWorklogRow(input: unknown): WorklogRow | null {
+  if (typeof input !== "object" || input === null) return null;
+  const r = input as Record<string, unknown>;
+  if (
+    typeof r.level !== "string" ||
+    typeof r.domain !== "string" ||
+    typeof r.msg !== "string"
+  ) {
+    return null;
+  }
+  return {
+    level: r.level,
+    domain: r.domain,
+    msg: r.msg,
+    user_name: typeof r.user_name === "string" ? r.user_name : null,
+    user_email: typeof r.user_email === "string" ? r.user_email : null,
+  };
+}
 type IncidentRow = { title: string; owner_email?: string | null };
 type TodoRow = { title: string; owner_email?: string | null };
 type BackupRequestRow = { summary_md: string; requester_email: string };
