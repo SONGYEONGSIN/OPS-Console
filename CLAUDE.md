@@ -55,6 +55,7 @@ OPS-Console/
 - **Common Components**: `src/components/common/` — 재사용 UI 패턴 (3회+ 반복 추출)
 - **색상 규칙**: 컴포넌트에서 하드코딩 hex/rgb/hsl 금지, Tailwind 클래스 또는 토큰 사용
 - **인터랙션 표준** (#846·#848): 목록/메뉴 항목형(테이블 행·nav·드롭다운·자동완성)은 호버 `hover:bg-line-soft`, 선택 `border-vermilion bg-vermilion/10 text-vermilion` — 운영가이드 좌측 nav가 기준. 버튼/토글/페이지네이션 호버는 별도 (이 표준 적용 금지)
+- **표면·입력창 표준** (화이트 리뉴얼): 콘텐츠·크롬 배경 `bg-paper`(#ffffff, 사이드바만 웜 화이트 유지) / 카드·빈 상태 영역 `bg-situation-bg`(#fdfdfb, 운영리포트 카드 기준) / 기본 입력창(input/select/textarea) `border-line-soft bg-field-bg`(#fdfdfb) + `focus:border-ink focus:bg-white` / 검색창 `border-line-soft bg-search-field-bg`(잉크 4% 틴트) + 포커스 동일. 색 조정은 globals.css 토큰 한 줄로
 - **검증**: `hooks/design-lint.sh`가 Write/Edit 시 자동 감지, `/design-audit`로 전체 스캔
 
 ## list-variants 아키텍처 (open/closed)

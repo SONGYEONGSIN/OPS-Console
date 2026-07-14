@@ -21,7 +21,7 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
       type="button"
       onClick={copy}
       aria-label={`${label ?? value} 복사`}
-      className="flex-none cursor-pointer border border-line-soft bg-cream px-1.5 py-0.5 text-2xs text-muted hover:border-vermilion hover:text-vermilion"
+      className="flex-none cursor-pointer border border-line-soft bg-cream px-1.5 py-0.5 text-2xs text-muted transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
     >
       {copied ? "복사됨" : "복사"}
     </button>

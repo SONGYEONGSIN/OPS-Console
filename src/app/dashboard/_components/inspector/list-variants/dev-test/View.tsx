@@ -124,14 +124,14 @@ export function DevTestView({ row }: ViewProps) {
             name="account_start"
             defaultValue={acctStart}
             placeholder="jt29001"
-            className="min-w-0 flex-1 border border-line bg-cream px-2 py-1.5 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
+            className="min-w-0 flex-1 border border-line-soft bg-field-bg px-2 py-1.5 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
           />
           <span className="shrink-0 text-sm text-muted">~</span>
           <input
             name="account_end"
             defaultValue={acctEnd}
             placeholder="jt29005 (선택)"
-            className="min-w-0 flex-1 border border-line bg-cream px-2 py-1.5 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
+            className="min-w-0 flex-1 border border-line-soft bg-field-bg px-2 py-1.5 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
           />
           <button
             type="submit"

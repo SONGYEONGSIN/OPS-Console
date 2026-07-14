@@ -77,7 +77,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="제목"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="일정 제목"
         />
       </label>
@@ -88,7 +88,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
           value={row.body ?? ""}
           onChange={(e) => setRow({ ...row, body: e.target.value })}
           rows={4}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="설명 (선택)"
         />
       </label>
@@ -103,7 +103,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
               scheduleType: e.target.value as ListRow["scheduleType"],
             })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           {SCHEDULE_TYPE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -136,7 +136,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
                 ),
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
           {row.allDay ? null : (
             <input
@@ -152,7 +152,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
                   ),
                 })
               }
-              className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+              className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
             />
           )}
         </div>
@@ -171,7 +171,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
                   : null,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
           {row.allDay ? null : (
             <input
@@ -186,7 +186,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
                     : null,
                 })
               }
-              className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+              className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
             />
           )}
         </div>
@@ -206,7 +206,7 @@ export function ScheduleForm({ row, setRow, onSave, onCancel }: Props) {
                 : "",
             })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="">팀 공통 (담당자 없음)</option>
           {OPERATORS.map((op) => (

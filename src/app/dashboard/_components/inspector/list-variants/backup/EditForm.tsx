@@ -184,7 +184,7 @@ export function BackupForm({
               ),
             }));
           }}
-          className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
+          className="w-full border border-line-soft bg-field-bg transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
         >
           <option value="">선택…</option>
           {LEAVE_TYPE_VALUES.map((t) => (
@@ -214,7 +214,7 @@ export function BackupForm({
                 ),
               }));
             }}
-            className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
+            className="w-full border border-line-soft bg-field-bg transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
           />
         </label>
 
@@ -236,7 +236,7 @@ export function BackupForm({
                 ),
               }));
             }}
-            className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
+            className="w-full border border-line-soft bg-field-bg transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
           />
         </label>
       </div>
@@ -299,7 +299,7 @@ export function BackupForm({
                 substituteName: op?.name ?? "",
               });
             }}
-            className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
+            className="w-full border border-line-soft bg-field-bg transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
           >
             <option value="">선택…</option>
             {backupOperators.map((op) => (
@@ -382,7 +382,7 @@ export function BackupForm({
           onChange={(e) => setRow({ ...row, summary: e.target.value })}
           rows={6}
           maxLength={5000}
-          className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
+          className="w-full border border-line-soft bg-field-bg transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
           placeholder="전체 휴가 컨텍스트 — 일정·인사말 (Markdown 가능)"
         />
       </label>
@@ -427,7 +427,7 @@ export function BackupForm({
             value={scheduledAtInput}
             onChange={(e) => setScheduledAtInput(e.target.value)}
             required
-            className="w-full border border-line bg-cream transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
+            className="w-full border border-line-soft bg-field-bg transition-colors focus:border-ink focus:bg-white px-2 py-1 text-ink"
           />
         </label>
       )}

@@ -253,7 +253,7 @@ function GoalAdd({ assignmentId, pending, run }: AddProps) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="목표 제목"
-        className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+        className="w-full border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
         required
       />
       <textarea
@@ -262,7 +262,7 @@ function GoalAdd({ assignmentId, pending, run }: AddProps) {
         onChange={(e) => setBody(e.target.value)}
         placeholder="세부 내용 (선택)"
         rows={2}
-        className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+        className="w-full border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
       />
       <button
         type="submit"
@@ -322,7 +322,7 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="지표명"
-        className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+        className="w-full border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
         required
       />
       <div className="flex gap-2">
@@ -334,7 +334,7 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           placeholder="가중치"
-          className="w-24 border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+          className="w-24 border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
           required
         />
         <input
@@ -345,13 +345,13 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
           value={achievement}
           onChange={(e) => setAchievement(e.target.value)}
           placeholder="달성률%"
-          className="w-24 border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+          className="w-24 border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
         />
         <select
           aria-label="정량 소스"
           value={sourceKey}
           onChange={(e) => onSourceChange(e.target.value)}
-          className="flex-1 border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+          className="flex-1 border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
         >
           <option value="">수동</option>
           {AGGREGATOR_KEYS.map((k) => (
@@ -424,7 +424,7 @@ function RubricRow({
           aria-label={`${criterion} 점수`}
           value={score}
           onChange={(e) => setScore(e.target.value)}
-          className="w-16 border border-line bg-cream px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
+          className="w-16 border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
           required
         >
           <option value="">-</option>
@@ -441,7 +441,7 @@ function RubricRow({
         onChange={(e) => setComment(e.target.value)}
         placeholder="근거 코멘트"
         rows={2}
-        className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink focus:border-ink focus:bg-white"
+        className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink focus:border-ink focus:bg-white"
       />
       <button
         type="submit"

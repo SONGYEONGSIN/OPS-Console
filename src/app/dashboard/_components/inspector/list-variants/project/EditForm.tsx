@@ -40,7 +40,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="프로젝트명"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="예: 신제품 프로모션"
         />
       </label>
@@ -51,7 +51,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
           value={row.description ?? ""}
           onChange={(e) => setRow({ ...row, description: e.target.value })}
           rows={3}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -68,7 +68,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
               owner: found?.name ?? "",
             });
           }}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="">선택</option>
           {OPERATORS.map((op) => (
@@ -87,7 +87,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
             onChange={(e) =>
               setRow({ ...row, startDateYmd: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
         <label className="block text-xs">
@@ -98,7 +98,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
             onChange={(e) =>
               setRow({ ...row, endDateYmd: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
@@ -114,7 +114,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
                 priority: e.target.value as ListRow["priority"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {PRIORITY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -134,7 +134,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
                 todoStatus: e.target.value as ListRow["todoStatus"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>

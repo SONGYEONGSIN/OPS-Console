@@ -82,7 +82,7 @@ export function CopySection({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="대학명 · 서비스명 · service_id 검색"
-        className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+        className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
       />
       {term && results.length === 0 ? (
         <p className="text-2xs text-muted">검색 결과 없음</p>

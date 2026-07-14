@@ -18,7 +18,7 @@ const TYPE_OPTIONS = Object.entries(QUOTE_TYPE_LABELS) as [
 ][];
 
 const FIELD_CLASS =
-  "w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
 export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) {
   const isNew = !row.id;

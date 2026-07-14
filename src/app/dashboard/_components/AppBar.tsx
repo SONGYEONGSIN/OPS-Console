@@ -13,7 +13,7 @@ export function AppBar() {
   return (
     <header
       role="banner"
-      className="relative z-30 hidden h-12 items-center gap-2 border-b border-line bg-washi px-3 max-md:flex"
+      className="relative z-30 hidden h-12 items-center gap-2 border-b border-line bg-paper px-3 max-md:flex"
     >
       <button
         type="button"

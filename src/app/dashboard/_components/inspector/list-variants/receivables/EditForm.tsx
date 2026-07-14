@@ -69,7 +69,7 @@ export function ReceivablesForm({
                       })
                     }
                     rows={3}
-                    className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
+                    className="w-full border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
                     placeholder="입금완료, 메일 발송 완료 등"
                   />
                 ) : i === dueDateIdx ? (
@@ -85,7 +85,7 @@ export function ReceivablesForm({
                         },
                       })
                     }
-                    className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
+                    className="w-full border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
                   />
                 ) : (
                   <div className="space-y-1">
@@ -102,7 +102,7 @@ export function ReceivablesForm({
                           },
                         })
                       }
-                      className="w-full border border-line bg-cream px-2 py-1 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
+                      className="w-full border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink transition-colors focus:border-ink focus:bg-white"
                       placeholder="manager@school.ac.kr"
                     />
                     {value && !EMAIL_RE.test(value.trim()) ? (

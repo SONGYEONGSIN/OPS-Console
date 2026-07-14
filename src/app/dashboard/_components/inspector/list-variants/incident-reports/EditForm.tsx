@@ -3,7 +3,7 @@
 import type { EditFormProps } from "../types";
 
 const inputClass =
-  "w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
 export function IncidentReportEditForm({
   row,

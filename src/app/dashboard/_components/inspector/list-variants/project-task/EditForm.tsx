@@ -52,7 +52,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="하위 업무명"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           placeholder="예: 블로그 포스팅"
         />
       </label>
@@ -77,7 +77,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
               owner: found?.name ?? "",
             });
           }}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="">팀 공통</option>
           {OPERATORS.map((op) => (
@@ -96,7 +96,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
             onChange={(e) =>
               setRow({ ...row, startDateYmd: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
         <label className="block text-xs">
@@ -107,7 +107,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
             onChange={(e) =>
               setRow({ ...row, endDateYmd: e.target.value || null })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       </div>
@@ -123,7 +123,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
                 priority: e.target.value as ListRow["priority"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {PRIORITY_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -143,7 +143,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
                 todoStatus: e.target.value as ListRow["todoStatus"],
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -287,7 +287,7 @@ function ChecklistEditor({
                 }
                 maxLength={200}
                 placeholder="체크 항목"
-                className={`flex-1 border border-line bg-cream px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white ${
+                className={`flex-1 border border-line-soft bg-field-bg px-2 py-1 text-xs text-ink transition-colors focus:border-ink focus:bg-white ${
                   item.done ? "text-muted line-through" : ""
                 }`}
               />

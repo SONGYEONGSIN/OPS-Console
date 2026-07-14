@@ -25,7 +25,7 @@ export function DefaultForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="이름"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -34,7 +34,7 @@ export function DefaultForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="ID"
           value={row.id}
           onChange={(e) => setRow({ ...row, id: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 font-mono text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -43,7 +43,7 @@ export function DefaultForm({ row, setRow, onSave, onCancel }: Props) {
           aria-label="담당"
           value={row.owner}
           onChange={(e) => setRow({ ...row, owner: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -54,7 +54,7 @@ export function DefaultForm({ row, setRow, onSave, onCancel }: Props) {
           onChange={(e) =>
             setRow({ ...row, status: e.target.value as ListRow["status"] })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="active">활성</option>
           <option value="approved">정상</option>

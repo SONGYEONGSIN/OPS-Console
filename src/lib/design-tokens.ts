@@ -15,8 +15,9 @@ export const colors = {
   washi: "#ede6d2",
   washiRaised: "#f5f2ec", // 웜 뉴트럴 — raised 표면(헤더 밴드·호버). 크림기 제거, paper 반 단계 아래
   cream: "#faf4e6",
-  paper: "#fbf7f0",
-  sidebar: "#fffdf7", // 웜 화이트 — 사이드바·네비 밴드 (콘텐츠 paper보다 밝은 크롬)
+  paper: "#ffffff",
+  sidebar: "#fffdf7", // 웜 화이트 — 사이드바·네비 밴드 (콘텐츠 paper(흰색)와 구분되는 크롬)
+  fieldBg: "#fdfdfb", // 운영리포트 카드(situationBg)와 동일 톤 — 기본 입력창(input/select/textarea) 배경 표준, 포커스 시 흰색
   sidebarHover: "#f0e9d9",
   // Ink (text)
   ink: "#15120c",

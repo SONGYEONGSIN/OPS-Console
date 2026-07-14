@@ -12,8 +12,8 @@
   --cream: #faf4e6;
   /* 운영부 상황실 카드 배경 — 밝은 흰색 계열(페이지 paper보다 밝게 떠 보이도록) */
   --situation-bg: #fdfdfb;
-  /* 콘텐츠 본문 paper, 사이드바·네비 밴드는 웜 화이트(#fffdf7) */
-  --paper: #fbf7f0;
+  /* 콘텐츠 본문 paper(흰색), 사이드바·네비 밴드는 웜 화이트(#fffdf7) */
+  --paper: #ffffff;
   --sidebar: #fffdf7;
   --ink: #15120c;
   --ink-soft: #3d3529;
@@ -21,8 +21,10 @@
   --faint: #a8a08a;
   --line: #15120c;
   --line-soft: rgba(21, 18, 12, 0.12);
-  /* 검색창 기본 배경 — 버밀리언 틴트(5%). 색 변경은 이 한 줄만 수정. */
-  --search-field-bg: rgba(184, 51, 30, 0.05);
+  /* 검색창 기본 배경 — 흰 paper 위 잉크 4% 틴트(기본 표준), 포커스 시 흰색. 색 변경은 이 한 줄만 수정. */
+  --search-field-bg: rgba(21, 18, 12, 0.04);
+  /* 기본 입력창(input/select/textarea) 배경 표준 — 운영리포트 카드(situation-bg)와 동일 톤, 포커스 시 흰색. 색 변경은 이 한 줄만 수정. */
+  --field-bg: #fdfdfb;
   --vermilion: #b8331e;
   --vermilion-deep: #8e2412;
   --indigo: #1f3a5f;
@@ -122,6 +124,7 @@
   --color-line: var(--line);
   --color-line-soft: var(--line-soft);
   --color-search-field-bg: var(--search-field-bg);
+  --color-field-bg: var(--field-bg);
   --color-vermilion: var(--vermilion);
   --color-vermilion-deep: var(--vermilion-deep);
   --color-indigo: var(--indigo);

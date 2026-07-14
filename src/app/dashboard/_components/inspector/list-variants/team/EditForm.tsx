@@ -26,7 +26,7 @@ export function TeamForm({
           aria-label="이름"
           value={row.name}
           onChange={(e) => setRow({ ...row, name: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -35,7 +35,7 @@ export function TeamForm({
           aria-label="이메일"
           value={row.id}
           onChange={(e) => setRow({ ...row, id: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 font-mono text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 font-mono text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -47,7 +47,7 @@ export function TeamForm({
             setRow({ ...row, operatorPhone: e.target.value || undefined })
           }
           placeholder="예: (02)2013-0669"
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         />
       </label>
       <label className="block text-xs">
@@ -56,7 +56,7 @@ export function TeamForm({
           aria-label="팀"
           value={row.owner}
           onChange={(e) => setRow({ ...row, owner: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="운영1팀">운영1팀</option>
           <option value="운영2팀">운영2팀</option>
@@ -68,7 +68,7 @@ export function TeamForm({
           aria-label="직급"
           value={row.meta ?? ""}
           onChange={(e) => setRow({ ...row, meta: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="사장">사장</option>
           <option value="이사">이사</option>
@@ -87,7 +87,7 @@ export function TeamForm({
           aria-label="직속 상사"
           value={row.leader ?? ""}
           onChange={(e) => setRow({ ...row, leader: e.target.value })}
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="">자동 derive (팀장/부장)</option>
           {OPERATORS.filter((x) => x.email !== row.id).map((op) => (
@@ -106,7 +106,7 @@ export function TeamForm({
           onChange={(e) =>
             setRow({ ...row, status: e.target.value as ListRow["status"] })
           }
-          className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
           <option value="active">활성</option>
           <option value="inactive">점검중</option>
@@ -141,7 +141,7 @@ export function TeamForm({
                 permission: e.target.value as OperatorPermission,
               })
             }
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           >
             <option value="admin">관리자 (admin)</option>
             <option value="member">구성원 (member)</option>
@@ -211,7 +211,7 @@ export function TeamForm({
               setRow({ ...row, deletedReason: e.target.value })
             }
             placeholder="퇴사 / 권한 회수 / 부서 이동 등"
-            className="w-full border border-line bg-cream px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
         </label>
       )}
