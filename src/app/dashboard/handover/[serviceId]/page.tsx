@@ -1,16 +1,9 @@
 import { notFound } from "next/navigation";
 import { requireMenu } from "@/features/auth/menu-guard";
-import {
-  getServiceForHandover,
-  getHandoverByServiceId,
-  getHandoverContactCandidates,
-  listServicesWithHandover,
-} from "@/features/handover/queries";
 import { copyHandoverRecord } from "@/features/handover/actions";
-import { listContracts } from "@/features/contracts/queries";
 import { CrumbBar } from "@/app/dashboard/_components/page-header/CrumbBar";
 import { derivePatternMeta } from "@/app/dashboard/_data/page-meta-derive";
-import { buildEditorRow } from "./build-editor-row";
+import { loadHandoverEditorData } from "../editor-data";
 import { HandoverEditorWorkspace } from "./_components/HandoverEditorWorkspace";
 
 export default async function HandoverEditorPage({
@@ -21,47 +14,9 @@ export default async function HandoverEditorPage({
   await requireMenu("handover");
   const { serviceId } = await params;
 
-  const service = await getServiceForHandover(serviceId);
-  if (!service) notFound();
-
-  const record = await getHandoverByServiceId(serviceId);
-  const contacts = await getHandoverContactCandidates([
-    service.university_name,
-  ]);
-  const row = buildEditorRow(
-    service,
-    record,
-    contacts.map((c) => ({
-      name: c.name,
-      jobTitle: c.jobTitle,
-      phone: c.phone,
-      ext: c.ext,
-      email: c.email,
-    })),
-  );
-
-  // 복제 대상 후보 (전체 서비스 light)
-  const { rows: allWithHandover } = await listServicesWithHandover({
-    pageSize: 3000,
-  });
-  const handoverServiceCandidates = allWithHandover.map((r) => ({
-    id: r.service_id,
-    serviceId: r.service_number,
-    universityName: r.university_name,
-    serviceName: r.service_name,
-    hasRecord: r.handover_status != null,
-  }));
-
-  // 계약정보 상태 셀렉트 옵션 (best-effort)
-  let contractsStatusOptions: string[] = [];
-  try {
-    const { rows: allContracts } = await listContracts();
-    contractsStatusOptions = [
-      ...new Set(allContracts.map((c) => c.status).filter((v) => v.trim())),
-    ];
-  } catch {
-    contractsStatusOptions = [];
-  }
+  const data = await loadHandoverEditorData(serviceId);
+  if (!data) notFound();
+  const { row, handoverServiceCandidates, contractsStatusOptions } = data;
 
   async function onCopyHandover(
     fromServiceId: string,
