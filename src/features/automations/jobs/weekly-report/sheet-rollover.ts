@@ -132,6 +132,28 @@ export async function rolloverWorkbookBuffer(
       ...workbook.worksheets.filter((w) => w.name !== newSheet).map(orderOf),
     );
     (target as unknown as { orderNo: number }).orderNo = minOrder - 1;
+
+    // 열 때 새 시트가 기본 선택되도록 — 이전 시트에 tabSelected가 남으면
+    // 사용자가 이전 주차 시트에 잘못 작성하게 된다. tabSelected는 exceljs
+    // 런타임 지원이나 d.ts에 누락 — 좁은 타입으로 접근.
+    for (const w of workbook.worksheets) {
+      const selected = w.name === newSheet;
+      if ((!w.views || w.views.length === 0) && selected) {
+        w.views = [{} as ExcelJS.WorksheetView];
+      }
+      for (const v of w.views ?? []) {
+        (v as unknown as { tabSelected?: boolean }).tabSelected = selected;
+      }
+    }
+    // 새 시트는 orderNo 최소값이라 기록 순서상 첫 탭 → activeTab 0.
+    const baseView = workbook.views?.[0] ?? {
+      x: 0,
+      y: 0,
+      width: 10000,
+      height: 20000,
+      visibility: "visible" as const,
+    };
+    workbook.views = [{ ...baseView, firstSheet: 0, activeTab: 0 }];
   }
 
   const out = await workbook.xlsx.writeBuffer();
