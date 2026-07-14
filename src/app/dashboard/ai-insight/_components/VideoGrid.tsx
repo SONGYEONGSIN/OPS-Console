@@ -10,7 +10,7 @@ type Props = {
 export function VideoGrid({ videos, onSelect }: Props) {
   if (videos.length === 0) {
     return (
-      <div className="border border-line bg-washi-raised p-10 text-center text-sm text-muted">
+      <div className="border border-line bg-situation-bg p-10 text-center text-sm text-muted">
         오늘은 신규 수집이 없습니다 — 내일 다시 확인해주세요.
       </div>
     );
@@ -23,7 +23,7 @@ export function VideoGrid({ videos, onSelect }: Props) {
           key={v.id}
           type="button"
           onClick={() => onSelect(v)}
-          className="group flex flex-col overflow-hidden border border-line bg-cream text-left transition-colors hover:border-vermilion focus:border-vermilion focus:outline-none"
+          className="group flex flex-col overflow-hidden border border-line bg-situation-bg text-left transition-colors hover:border-vermilion focus:border-vermilion focus:outline-none"
         >
           <div className="relative aspect-video w-full overflow-hidden bg-washi">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -49,7 +49,7 @@ export function VideoGrid({ videos, onSelect }: Props) {
               </span>
             </div>
             <div className="mt-auto flex items-center justify-between gap-2">
-              <span className="inline-flex items-center border border-line bg-washi-raised px-2 py-0.5 text-xs text-ink">
+              <span className="inline-flex items-center border border-line bg-paper px-2 py-0.5 text-xs text-ink">
                 {v.keyword}
               </span>
               {typeof v.view_count === "number" && (
