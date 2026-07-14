@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import { rolloverWorkbookBuffer } from "../sheet-rollover";
 
 const SHEET_RE = /\d{4}년\s*\d+월\s*\d+주차/;
@@ -85,6 +86,73 @@ describe("rolloverWorkbookBuffer", () => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(out.buffer);
     expect(wb.worksheets[0].name).toBe("2026년 1월 4주차");
+  });
+
+  it("차주 시트가 열 때 기본 선택 — activeTab=0 + 이전 시트 tabSelected 해제", async () => {
+    // 실사용 재현: 이전 주차 시트가 선택된 상태로 저장된 워크북
+    const src = new ExcelJS.Workbook();
+    const ws = src.addWorksheet("2026년 1월 3주차");
+    ws.getCell("B2").value = "주간 업무보고 2026년 1월 3주차";
+    ws.getCell("B3").value = "기간 1/12~1/16";
+    ws.getCell("C3").value = "차주 1/19~1/23";
+    ws.views = [
+      { tabSelected: true } as unknown as ExcelJS.WorksheetView, // exceljs 런타임 지원, d.ts 누락
+    ];
+    src.views = [
+      {
+        x: 0,
+        y: 0,
+        width: 10000,
+        height: 20000,
+        firstSheet: 0,
+        activeTab: 0,
+        visibility: "visible",
+      },
+    ];
+    const buffer = (await src.xlsx.writeBuffer()) as ArrayBuffer;
+
+    const out = await rolloverWorkbookBuffer({
+      buffer,
+      sheetRe: SHEET_RE,
+      year: 2026,
+      month: 1,
+      week: 4,
+    });
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(out.buffer);
+    // 새 시트가 맨 앞 + 열 때 활성 탭
+    expect(wb.worksheets[0].name).toBe("2026년 1월 4주차");
+    expect(wb.views[0]?.activeTab).toBe(0);
+
+    // tabSelected는 exceljs가 파싱에서 버리므로 zip 내부 XML로 검증:
+    // 첫 번째 <sheet>(=새 시트)의 rId가 가리키는 sheet xml만 tabSelected="1".
+    const zip = await JSZip.loadAsync(out.buffer);
+    const workbookXml = await zip.file("xl/workbook.xml")!.async("string");
+    const firstSheet = workbookXml.match(
+      /<sheet [^>]*name="([^"]+)"[^>]*r:id="(rId\d+)"/,
+    );
+    if (!firstSheet) throw new Error("workbook.xml에 sheet 없음");
+    expect(firstSheet[1]).toBe("2026년 1월 4주차");
+    const relsXml = await zip
+      .file("xl/_rels/workbook.xml.rels")!
+      .async("string");
+    const rel = relsXml.match(
+      new RegExp(`Id="${firstSheet[2]}"[^>]*Target="([^"]+)"`),
+    );
+    if (!rel) throw new Error("rels에 새 시트 매핑 없음");
+    const newSheetPath = `xl/${rel[1].replace(/^\//, "")}`;
+    const newSheetXml = await zip.file(newSheetPath)!.async("string");
+    expect(newSheetXml).toContain('tabSelected="1"');
+    // 다른 시트 xml에는 tabSelected 없음
+    const others = Object.keys(zip.files).filter(
+      (f) => /^xl\/worksheets\/sheet\d+\.xml$/.test(f) && f !== newSheetPath,
+    );
+    expect(others.length).toBeGreaterThan(0);
+    for (const f of others) {
+      const xml = await zip.file(f)!.async("string");
+      expect(xml).not.toContain('tabSelected="1"');
+    }
   });
 
   it("newSheet === sourceSheet 면 복제 없이 소스 시트에 직접 날짜 갱신", async () => {
