@@ -111,3 +111,4 @@ design-ref/*
 !design-ref/folio-*.html
 !design-ref/live-dashboard-concept-v4.html
 !design-ref/realtime_dashboard.html
+scripts/logs/
