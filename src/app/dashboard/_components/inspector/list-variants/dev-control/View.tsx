@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateDevControlFlag } from "@/features/dev-controls/actions";
+import {
+  updateDevControlFlag,
+  requestDevControlAnalyze,
+} from "@/features/dev-controls/actions";
 import type {
   DevControlAnalysis,
+  DevControlAnalyzeRequest,
   DevControlFlag,
 } from "@/features/dev-controls/schemas";
 import type { ViewProps } from "../types";
@@ -113,6 +117,65 @@ function DevControlSection({ analysis }: { analysis: DevControlAnalysis }) {
   );
 }
 
+/**
+ * '지금 분석' 요청 컨트롤 — 웹→PC 폴러 수동 재분석 트리거.
+ * 최신 요청이 pending/running이면 비활성 + 배지, failed면 message 노출 후 재시도 가능.
+ * 상태는 페이지 로드 스냅샷 (새로고침으로 갱신).
+ */
+function AnalyzeRequestControl({
+  serviceId,
+  request,
+}: {
+  serviceId?: number;
+  request?: DevControlAnalyzeRequest;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [requested, setRequested] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (typeof serviceId !== "number") return null;
+
+  // 방금 요청 성공 시 로컬로 pending 취급 (revalidate 전 이중 클릭 방지)
+  const status = requested ? "pending" : request?.status;
+  const blocked = status === "pending" || status === "running";
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-2">
+        {status === "pending" && (
+          <span className="inline-block bg-vermilion/10 px-2 py-0.5 text-2xs text-vermilion">
+            분석 대기
+          </span>
+        )}
+        {status === "running" && (
+          <span className="inline-block bg-ink px-2 py-0.5 text-2xs text-cream">
+            분석 중
+          </span>
+        )}
+        <button
+          type="button"
+          disabled={blocked || isPending}
+          onClick={() => {
+            setError(null);
+            startTransition(async () => {
+              const r = await requestDevControlAnalyze({ serviceId });
+              if (r.ok) setRequested(true);
+              else setError(r.error ?? "요청 실패");
+            });
+          }}
+          className="cursor-pointer border border-line bg-transparent px-2.5 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          지금 분석
+        </button>
+      </div>
+      {status === "failed" && request?.message && (
+        <p className="text-2xs text-vermilion">실패: {request.message}</p>
+      )}
+      {error && <p className="text-2xs text-vermilion">{error}</p>}
+    </div>
+  );
+}
+
 /** analyses 정렬 — kind(A→AU) 우선, 동일 kind는 file_name 순. */
 function sortAnalyses(analyses: DevControlAnalysis[]): DevControlAnalysis[] {
   return [...analyses].sort((a, b) => {
@@ -128,12 +191,22 @@ function sortAnalyses(analyses: DevControlAnalysis[]): DevControlAnalysis[] {
 export function DevControlView({ row }: ViewProps) {
   const analyses = row.devControlAnalyses ?? [];
 
+  const header = (
+    <div className="flex items-start justify-between gap-3">
+      <h2 className="text-lg font-medium text-ink">
+        {row.universityName} · {row.serviceName ?? row.name}
+      </h2>
+      <AnalyzeRequestControl
+        serviceId={row.serviceIdNum}
+        request={row.devControlRequest}
+      />
+    </div>
+  );
+
   if (analyses.length === 0) {
     return (
       <div className="space-y-3">
-        <h2 className="text-lg font-medium text-ink">
-          {row.universityName} · {row.serviceName ?? row.name}
-        </h2>
+        {header}
         <p className="text-xs text-muted">수집된 원서제어 없음</p>
       </div>
     );
@@ -141,9 +214,7 @@ export function DevControlView({ row }: ViewProps) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium text-ink">
-        {row.universityName} · {row.serviceName ?? row.name}
-      </h2>
+      {header}
       {sortAnalyses(analyses).map((analysis) => (
         <DevControlSection key={analysis.id} analysis={analysis} />
       ))}

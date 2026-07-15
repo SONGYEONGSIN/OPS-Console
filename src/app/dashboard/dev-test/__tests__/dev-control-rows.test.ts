@@ -51,6 +51,29 @@ function makeAnalysis(
 }
 
 describe("buildDevControlRows", () => {
+  it("requests Map의 최신 요청을 행에 devControlRequest로 첨부한다", () => {
+    const services = [
+      makeService({ service_id: 1 }),
+      makeService({ service_id: 2, university_name: "다라대학교" }),
+    ];
+    const request = {
+      id: "q1",
+      service_id: 1,
+      requested_by: "송영신",
+      status: "pending" as const,
+      requested_at: "2026-07-15T00:00:00Z",
+      claimed_at: null,
+      finished_at: null,
+      message: null,
+    };
+    const rows = buildDevControlRows(services, [], new Map([[1, request]]));
+
+    const withReq = rows.find((r) => r.id === "1");
+    const withoutReq = rows.find((r) => r.id === "2");
+    expect(withReq?.devControlRequest).toEqual(request);
+    expect(withoutReq?.devControlRequest).toBeUndefined();
+  });
+
   it("분석 있는 서비스는 여러 파일을 하나의 행으로 그룹핑한다", () => {
     const services = [makeService({ service_id: 1 })];
     const analyses = [
