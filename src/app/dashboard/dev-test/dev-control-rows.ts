@@ -1,5 +1,8 @@
 import type { ListRow } from "../_components/patterns/ListPattern";
-import type { DevControlAnalysis } from "@/features/dev-controls/schemas";
+import type {
+  DevControlAnalysis,
+  DevControlAnalyzeRequest,
+} from "@/features/dev-controls/schemas";
 import type { TestableService } from "@/features/entertest/queries";
 
 /** analyses 중 가장 최근 analyzed_at (ISO). 빈 배열이면 null. */
@@ -20,6 +23,7 @@ function latestAnalyzedAt(analyses: DevControlAnalysis[]): string | null {
 export function buildDevControlRows(
   services: TestableService[],
   analyses: DevControlAnalysis[],
+  requests: Map<number, DevControlAnalyzeRequest> = new Map(),
 ): ListRow[] {
   const analysesByService = new Map<number, DevControlAnalysis[]>();
   for (const analysis of analyses) {
@@ -38,6 +42,7 @@ export function buildDevControlRows(
     serviceName: s.service_name,
     operatorName: s.operator_name ?? "",
     devControlAnalyses: analysesByService.get(s.service_id) ?? [],
+    devControlRequest: requests.get(s.service_id),
   }));
 
   return [...rows].sort((a, b) => {

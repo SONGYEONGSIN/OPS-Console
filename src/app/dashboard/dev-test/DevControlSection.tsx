@@ -1,4 +1,5 @@
 import { listDevControlAnalyses } from "@/features/dev-controls/queries";
+import { listLatestDevControlRequests } from "@/features/dev-controls/requests-query";
 import { listTestableServices } from "@/features/entertest/queries";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -18,12 +19,13 @@ type Props = {
  * q(대학명·서비스명) 서버 필터 후 ListPattern variant="dev-control"로 렌더.
  */
 export async function DevControlSection({ q, page }: Props) {
-  const [services, analyses] = await Promise.all([
+  const [services, analyses, requests] = await Promise.all([
     listTestableServices(),
     listDevControlAnalyses(),
+    listLatestDevControlRequests(),
   ]);
 
-  const rows = buildDevControlRows(services, analyses);
+  const rows = buildDevControlRows(services, analyses, requests);
 
   const query = (q ?? "").trim().toLowerCase();
   const filtered = query

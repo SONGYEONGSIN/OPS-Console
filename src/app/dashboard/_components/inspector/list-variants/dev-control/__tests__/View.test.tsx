@@ -6,9 +6,13 @@ import type { DevControlAnalysis } from "@/features/dev-controls/schemas";
 
 vi.mock("@/features/dev-controls/actions", () => ({
   updateDevControlFlag: vi.fn(async () => ({ ok: true })),
+  requestDevControlAnalyze: vi.fn(async () => ({ ok: true })),
 }));
 
-import { updateDevControlFlag } from "@/features/dev-controls/actions";
+import {
+  updateDevControlFlag,
+  requestDevControlAnalyze,
+} from "@/features/dev-controls/actions";
 
 function analysis(
   overrides: Partial<DevControlAnalysis> = {},
@@ -118,5 +122,83 @@ describe("DevControlView", () => {
     render(<DevControlView row={r} />);
 
     expect(screen.getByText("수집된 원서제어 없음")).toBeInTheDocument();
+  });
+
+  it("'지금 분석' 버튼 클릭 → requestDevControlAnalyze({ serviceId }) 호출", async () => {
+    const r = row({ serviceIdNum: 1001, devControlAnalyses: [analysis()] });
+    render(<DevControlView row={r} />);
+
+    const btn = screen.getByRole("button", { name: "지금 분석" });
+    expect(btn).toBeEnabled();
+    fireEvent.click(btn);
+
+    await waitFor(() =>
+      expect(requestDevControlAnalyze).toHaveBeenCalledWith({
+        serviceId: 1001,
+      }),
+    );
+  });
+
+  it("요청 pending → 버튼 disabled + '분석 대기' 배지", () => {
+    const r = row({
+      serviceIdNum: 1001,
+      devControlAnalyses: [analysis()],
+      devControlRequest: {
+        id: "q1",
+        service_id: 1001,
+        requested_by: "송영신",
+        status: "pending",
+        requested_at: "2026-07-15T00:00:00Z",
+        claimed_at: null,
+        finished_at: null,
+        message: null,
+      },
+    });
+    render(<DevControlView row={r} />);
+
+    expect(screen.getByRole("button", { name: "지금 분석" })).toBeDisabled();
+    expect(screen.getByText("분석 대기")).toBeInTheDocument();
+  });
+
+  it("요청 running → 버튼 disabled + '분석 중' 배지", () => {
+    const r = row({
+      serviceIdNum: 1001,
+      devControlAnalyses: [analysis()],
+      devControlRequest: {
+        id: "q1",
+        service_id: 1001,
+        requested_by: "송영신",
+        status: "running",
+        requested_at: "2026-07-15T00:00:00Z",
+        claimed_at: "2026-07-15T00:05:00Z",
+        finished_at: null,
+        message: null,
+      },
+    });
+    render(<DevControlView row={r} />);
+
+    expect(screen.getByRole("button", { name: "지금 분석" })).toBeDisabled();
+    expect(screen.getByText("분석 중")).toBeInTheDocument();
+  });
+
+  it("요청 failed → 버튼 활성 + message 노출", () => {
+    const r = row({
+      serviceIdNum: 1001,
+      devControlAnalyses: [analysis()],
+      devControlRequest: {
+        id: "q1",
+        service_id: 1001,
+        requested_by: "송영신",
+        status: "failed",
+        requested_at: "2026-07-15T00:00:00Z",
+        claimed_at: "2026-07-15T00:05:00Z",
+        finished_at: "2026-07-15T00:07:00Z",
+        message: "exit 1",
+      },
+    });
+    render(<DevControlView row={r} />);
+
+    expect(screen.getByRole("button", { name: "지금 분석" })).toBeEnabled();
+    expect(screen.getByText(/exit 1/)).toBeInTheDocument();
   });
 });

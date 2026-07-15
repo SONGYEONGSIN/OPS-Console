@@ -7,15 +7,34 @@ const selectFlagsMock: Mock = vi.fn(async () => ({
   error: null,
 }));
 const updateMock: Mock = vi.fn(async () => ({ error: null }));
+
+const requestState: { existing: unknown[]; insertErr: unknown } = {
+  existing: [],
+  insertErr: null,
+};
+const insertMock: Mock = vi.fn(() => ({
+  select: () => ({
+    single: () =>
+      Promise.resolve({ data: { id: "r1" }, error: requestState.insertErr }),
+  }),
+}));
+
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
     from: () => ({
       select: () => ({
-        eq: () => ({ single: selectFlagsMock }),
+        eq: () => ({
+          single: selectFlagsMock,
+          in: () => ({
+            limit: () =>
+              Promise.resolve({ data: requestState.existing, error: null }),
+          }),
+        }),
       }),
       update: () => ({
         eq: updateMock,
       }),
+      insert: insertMock,
     }),
   })),
 }));
@@ -28,7 +47,7 @@ vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: () => getCurrentOperator(),
 }));
 
-import { updateDevControlFlag } from "../actions";
+import { updateDevControlFlag, requestDevControlAnalyze } from "../actions";
 
 const ANALYSIS_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -99,5 +118,44 @@ describe("updateDevControlFlag", () => {
     const r = await updateDevControlFlag(input());
     expect(updateMock).toHaveBeenCalled();
     expect(r.ok).toBe(true);
+  });
+});
+
+describe("requestDevControlAnalyze", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    requestState.existing = [];
+    requestState.insertErr = null;
+    getCurrentOperator.mockResolvedValue({
+      email: "me@op.com",
+      displayName: "송영신",
+    });
+  });
+
+  it("미로그인이면 거부", async () => {
+    getCurrentOperator.mockResolvedValue(null as unknown);
+    expect(await requestDevControlAnalyze({ serviceId: 5 })).toEqual({
+      ok: false,
+      error: "로그인이 필요합니다",
+    });
+  });
+
+  it("serviceId 형식 오류면 거부", async () => {
+    const r = await requestDevControlAnalyze({ serviceId: -1 });
+    expect(r.ok).toBe(false);
+  });
+
+  it("동일 서비스 pending/running 있으면 거부", async () => {
+    requestState.existing = [{ id: "x", status: "pending" }];
+    expect(await requestDevControlAnalyze({ serviceId: 5 })).toEqual({
+      ok: false,
+      error: "이미 분석 대기/진행 중입니다",
+    });
+  });
+
+  it("정상 요청이면 insert 후 ok", async () => {
+    expect(await requestDevControlAnalyze({ serviceId: 5 })).toEqual({
+      ok: true,
+    });
   });
 });
