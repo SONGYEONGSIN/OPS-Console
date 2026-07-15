@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
-import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson } from "./lib/dev-control-lib.mjs";
+import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson, sanitizeFlags } from "./lib/dev-control-lib.mjs";
 
 const env = Object.fromEntries(
   fs.readFileSync(new URL("../.env.local", import.meta.url), "utf8")
@@ -103,7 +103,7 @@ for (const id of ids) {
       try {
         const res = analyze(f.kind, f.content);
         summary_md = res.summary_md;
-        flags = mergeFlags(prev?.flags, res.flags);
+        flags = mergeFlags(prev?.flags, sanitizeFlags(res.flags));
       } catch (e) {
         failed++;
         console.error(`[dev-control] 분석 실패 ${id}/${genFlag}/${f.kind}: ${e.message} — raw만 저장`);

@@ -23,7 +23,11 @@ export async function updateDevControlFlag(
     .single();
   if (error) return { ok: false, error: error.message };
 
-  const flags = z.array(devControlFlagSchema).parse(data.flags);
+  const parsedFlags = z.array(devControlFlagSchema).safeParse(data.flags);
+  if (!parsedFlags.success)
+    return { ok: false, error: "저장된 플래그 형식이 올바르지 않습니다" };
+
+  const flags = parsedFlags.data;
   const next = flags.map((f) =>
     f.key === parsed.data.flagKey
       ? { ...f, checked: parsed.data.checked, note: parsed.data.note }

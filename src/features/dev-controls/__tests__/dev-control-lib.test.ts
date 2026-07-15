@@ -4,6 +4,7 @@ import {
   parseDevInfo,
   parseClaudeJson,
   sha256,
+  sanitizeFlags,
 } from "../../../../scripts/lib/dev-control-lib.mjs";
 
 describe("parseDevInfo", () => {
@@ -36,5 +37,48 @@ describe("sha256", () => {
   it("같은 입력 같은 해시", () => {
     expect(sha256("a")).toBe(sha256("a"));
     expect(sha256("a")).not.toBe(sha256("b"));
+  });
+});
+
+describe("sanitizeFlags", () => {
+  it("severity가 warn/info 외 값이면 info로 클램프", () => {
+    const out = sanitizeFlags([
+      { key: "k1", label: "L1", snippet: "s", severity: "critical" },
+    ]);
+    expect(out).toEqual([
+      { key: "k1", label: "L1", snippet: "s", severity: "info" },
+    ]);
+  });
+
+  it("snippet 누락이면 빈 문자열 기본값", () => {
+    const out = sanitizeFlags([{ key: "k1", label: "L1", severity: "warn" }]);
+    expect(out[0]).toEqual({
+      key: "k1",
+      label: "L1",
+      snippet: "",
+      severity: "warn",
+    });
+  });
+
+  it("label이 빈 문자열/공백이면 해당 flag 제거", () => {
+    const out = sanitizeFlags([
+      { key: "k1", label: "", snippet: "s", severity: "warn" },
+      { key: "k2", label: "   ", snippet: "s", severity: "warn" },
+      { key: "k3", label: "정상", snippet: "s", severity: "warn" },
+    ]);
+    expect(out.map((f) => f.key)).toEqual(["k3"]);
+  });
+
+  it("key 누락 flag 제거", () => {
+    const out = sanitizeFlags([
+      { label: "L", snippet: "s", severity: "warn" },
+      { key: "k1", label: "L", snippet: "s", severity: "warn" },
+    ]);
+    expect(out.map((f) => f.key)).toEqual(["k1"]);
+  });
+
+  it("정상 flag는 그대로 통과", () => {
+    const flag = { key: "k1", label: "L1", snippet: "s", severity: "warn" };
+    expect(sanitizeFlags([flag])).toEqual([flag]);
   });
 });

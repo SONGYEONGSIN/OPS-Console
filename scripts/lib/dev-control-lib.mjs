@@ -32,6 +32,25 @@ export function buildClaudePrompt(kind, code) {
   ].join("\n");
 }
 
+/**
+ * claude -p가 생성한 flags가 스키마(devControlFlagSchema)를 벗어나는 경우를 방어한다.
+ * - key/label 누락(빈 문자열/공백 포함)이면 해당 flag를 제거
+ * - snippet 누락이면 빈 문자열 기본값
+ * - severity가 "warn"|"info" 외 값이면 "info"로 클램프
+ */
+export function sanitizeFlags(flags) {
+  if (!Array.isArray(flags)) return [];
+  return flags
+    .filter((f) => typeof f?.key === "string" && f.key.trim() !== "")
+    .filter((f) => typeof f?.label === "string" && f.label.trim() !== "")
+    .map((f) => ({
+      key: f.key,
+      label: f.label,
+      snippet: typeof f.snippet === "string" ? f.snippet : "",
+      severity: f.severity === "warn" || f.severity === "info" ? f.severity : "info",
+    }));
+}
+
 /** claude -p stdout에서 JSON 추출 (펜스/전후 텍스트 허용). */
 export function parseClaudeJson(stdout) {
   const fence = stdout.match(/```json\s*([\s\S]*?)```/);
