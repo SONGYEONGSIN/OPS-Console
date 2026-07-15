@@ -28,7 +28,7 @@
 **Interfaces:**
 - Produces: 테이블 `dev_control_analyze_requests(id uuid, service_id bigint, requested_by text, status pending|running|done|failed, requested_at, claimed_at, finished_at, message)` + `(service_id, status)` 인덱스
 
-- [ ] **Step 1: 마이그레이션 SQL 작성**
+- [x] **Step 1: 마이그레이션 SQL 작성**
 
 ```sql
 -- 개발 탭 원서제어 '수동 분석' 요청 큐 (웹 → PC 폴러 풀 트리거, closing_scrape_requests와 동형)
@@ -57,9 +57,9 @@ create index if not exists dev_control_analyze_requests_service_status_idx
   on public.dev_control_analyze_requests (service_id, status);
 ```
 
-- [ ] **Step 2: Supabase 대시보드 SQL Editor에서 적용** (컨트롤러/사용자 수행 — DB 직접 포트 차단)
+- [x] **Step 2: Supabase 대시보드 SQL Editor에서 적용** (컨트롤러/사용자 수행 — DB 직접 포트 차단)
 
-- [ ] **Step 3: service_role 스모크 검증** (컨트롤러 수행)
+- [x] **Step 3: service_role 스모크 검증** (컨트롤러 수행)
 
 ```bash
 node - <<'EOF'
@@ -74,7 +74,7 @@ EOF
 ```
 Expected: `insert: ok pending`
 
-- [ ] **Step 4: Commit** — `git add supabase/migrations/20260715_dev_control_analyze_requests.sql && git commit -m "feat(dev-control): 수동 분석 요청 큐 테이블 + RLS"`
+- [x] **Step 4: Commit** — `git add supabase/migrations/20260715_dev_control_analyze_requests.sql && git commit -m "feat(dev-control): 수동 분석 요청 큐 테이블 + RLS"`
 
 ---
 
@@ -93,7 +93,7 @@ Expected: `insert: ok pending`
   - `type DevControlAnalyzeRequest = { id: string; service_id: number; requested_by: string | null; status: DevControlRequestStatus; requested_at: string; claimed_at: string | null; finished_at: string | null; message: string | null }`
   - `requestDevControlAnalyze(input: unknown): Promise<{ ok: boolean; error?: string }>` — 로그인 확인 + 중복(pending/running) 가드 + insert(requested_by = me.displayName ?? me.email) + `revalidatePath("/dashboard/dev-test")`
 
-- [ ] **Step 1: schemas.ts에 스키마·타입 추가**
+- [x] **Step 1: schemas.ts에 스키마·타입 추가**
 
 ```ts
 // src/features/dev-controls/schemas.ts 에 append
@@ -119,7 +119,7 @@ export type DevControlAnalyzeRequest = {
 };
 ```
 
-- [ ] **Step 2: 실패 테스트 작성** — `src/features/dev-controls/__tests__/actions.test.ts`에 describe 추가 (기존 파일의 supabase admin mock 관례 재사용; 없으면 아래 mock 구조로 신규 생성)
+- [x] **Step 2: 실패 테스트 작성** — `src/features/dev-controls/__tests__/actions.test.ts`에 describe 추가 (기존 파일의 supabase admin mock 관례 재사용; 없으면 아래 mock 구조로 신규 생성)
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -181,9 +181,9 @@ describe("requestDevControlAnalyze", () => {
 });
 ```
 
-- [ ] **Step 3: 실행 → FAIL 확인** — `npx vitest run src/features/dev-controls/__tests__/actions.test.ts`
+- [x] **Step 3: 실행 → FAIL 확인** — `npx vitest run src/features/dev-controls/__tests__/actions.test.ts`
 
-- [ ] **Step 4: action 구현** — `src/features/dev-controls/actions.ts`에 append
+- [x] **Step 4: action 구현** — `src/features/dev-controls/actions.ts`에 append
 
 ```ts
 import { requestDevControlAnalyzeSchema } from "./schemas";
@@ -224,9 +224,9 @@ export async function requestDevControlAnalyze(
 
 주의: `getCurrentOperator` 반환 객체의 실제 필드명(`displayName`/`email`)을 `src/features/auth/queries.ts`에서 확인 후 맞출 것. `updateDevControlFlag`가 이미 `me.` 없이 존재 여부만 쓰므로 필드 접근은 이 action이 처음 — 반드시 확인.
 
-- [ ] **Step 5: 실행 → PASS + tsc** — `npx vitest run src/features/dev-controls` / `npx tsc --noEmit`
+- [x] **Step 5: 실행 → PASS + tsc** — `npx vitest run src/features/dev-controls` / `npx tsc --noEmit`
 
-- [ ] **Step 6: Commit** — `feat(dev-control): 수동 분석 요청 server action (중복 가드)`
+- [x] **Step 6: Commit** — `feat(dev-control): 수동 분석 요청 server action (중복 가드)`
 
 ---
 
@@ -241,7 +241,7 @@ export async function requestDevControlAnalyze(
 - Consumes: Task 1 테이블, `createAdminClient`, `process.env.CRON_SECRET`
 - Produces: `GET`(claim → `{ ok, request: { id, service_id, requested_at, requested_by } | null }`) / `POST { id, ok, message }`(→ done/failed)
 
-- [ ] **Step 1: 실패 테스트 작성** — `closing/scrape-request/__tests__/route.test.ts`의 mock 구조를 복사하되 GET이 `service_id`를 반환하는지, 미인증 401, POST done/failed 전이를 검증
+- [x] **Step 1: 실패 테스트 작성** — `closing/scrape-request/__tests__/route.test.ts`의 mock 구조를 복사하되 GET이 `service_id`를 반환하는지, 미인증 401, POST done/failed 전이를 검증
 
 ```ts
 // 핵심 케이스 (closing route.test.ts builder/get/post 헬퍼 복사):
@@ -252,9 +252,9 @@ export async function requestDevControlAnalyze(
 // - POST without id → 400
 ```
 
-- [ ] **Step 2: 실행 → FAIL 확인** — `npx vitest run src/app/api/dev-controls`
+- [x] **Step 2: 실행 → FAIL 확인** — `npx vitest run src/app/api/dev-controls`
 
-- [ ] **Step 3: route 구현** (closing route를 미러링, 테이블명·claim select에 service_id 추가)
+- [x] **Step 3: route 구현** (closing route를 미러링, 테이블명·claim select에 service_id 추가)
 
 ```ts
 import { NextResponse, type NextRequest } from "next/server";
@@ -327,16 +327,16 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: proxy.ts PUBLIC_PATHS에 등록**
+- [x] **Step 4: proxy.ts PUBLIC_PATHS에 등록**
 
 ```ts
 // src/proxy.ts PUBLIC_PATHS 배열에 추가 (closing 항목들 근처)
   "/api/dev-controls/analyze-request",
 ```
 
-- [ ] **Step 5: 실행 → PASS + tsc** — `npx vitest run src/app/api/dev-controls` / `npx tsc --noEmit`
+- [x] **Step 5: 실행 → PASS + tsc** — `npx vitest run src/app/api/dev-controls` / `npx tsc --noEmit`
 
-- [ ] **Step 6: Commit** — `feat(dev-control): 수동 분석 폴러 API + proxy PUBLIC_PATHS 등록`
+- [x] **Step 6: Commit** — `feat(dev-control): 수동 분석 폴러 API + proxy PUBLIC_PATHS 등록`
 
 ---
 
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
 - Consumes: Task 3 API `/api/dev-controls/analyze-request`, `.env.local`의 `CRON_SECRET`/`OPS_CONSOLE_BASE_URL`, `scripts/dev-control-analyze.mjs`
 - Produces: 작업 스케줄러 `OPS-Console-DevControl-Poll` (5분 간격)
 
-- [ ] **Step 1: poll-local.ps1 작성** (moa-closing/poll-local.ps1 복사 → 엔드포인트·실행 커맨드 치환. run-local 분리 없이 node 직접 호출)
+- [x] **Step 1: poll-local.ps1 작성** (moa-closing/poll-local.ps1 복사 → 엔드포인트·실행 커맨드 치환. run-local 분리 없이 node 직접 호출)
 
 ```powershell
 # 개발 탭 원서제어 '수동 분석' — 로컬 폴러 (회사 PC, 작업 스케줄러가 5분마다 호출)
@@ -413,7 +413,7 @@ Write-Host "[poll] 완료 보고: ok=$ok ($msg)"
 exit 0
 ```
 
-- [ ] **Step 2: register-poll-task.ps1 작성** (moa-closing/register-poll-task.ps1 복사 → runner 경로·태스크명 치환)
+- [x] **Step 2: register-poll-task.ps1 작성** (moa-closing/register-poll-task.ps1 복사 → runner 경로·태스크명 치환)
 
 ```powershell
 # 개발 탭 수동 분석 로컬 폴러 — Windows 작업 스케줄러 등록 (이 PC에서 1회 실행)
@@ -445,7 +445,7 @@ Write-Host "등록 완료: $taskName (5분 간격)"
 
 주의: moa-closing/register-poll-task.ps1의 실제 `-Settings`/`-User` 구성이 위와 다르면 그쪽을 정본으로 복사할 것 (S4U/StorePassword 분기 포함). 위는 축약본 — 원본 우선.
 
-- [ ] **Step 3: Commit** — `feat(dev-control): 수동 분석 PC 폴러 + 스케줄러 등록 스크립트`
+- [x] **Step 3: Commit** — `feat(dev-control): 수동 분석 PC 폴러 + 스케줄러 등록 스크립트`
 
 (스크립트는 단위 테스트 없음 — Task 6 라이브 검증에서 확인)
 
@@ -468,7 +468,7 @@ Write-Host "등록 완료: $taskName (5분 간격)"
   - ListRow 확장 `devControlRequest?: DevControlAnalyzeRequest`
   - View: `serviceId`(row.serviceIdNum)로 '지금 분석' 버튼, pending/running이면 disabled + 배지
 
-- [ ] **Step 1: requests-query.ts 작성 (server) + 테스트는 View에서 커버**
+- [x] **Step 1: requests-query.ts 작성 (server) + 테스트는 View에서 커버**
 
 ```ts
 // src/features/dev-controls/requests-query.ts
@@ -493,7 +493,7 @@ export async function listLatestDevControlRequests(): Promise<
 }
 ```
 
-- [ ] **Step 2: 실패 테스트 작성 (View 버튼)** — 기존 dev-control View.test.tsx에 케이스 추가
+- [x] **Step 2: 실패 테스트 작성 (View 버튼)** — 기존 dev-control View.test.tsx에 케이스 추가
 
 ```ts
 // 추가 케이스 (기존 파일의 렌더 헬퍼·mock 재사용):
@@ -507,9 +507,9 @@ export async function listLatestDevControlRequests(): Promise<
 // 4) status === "failed" → 버튼 활성 + message 노출
 ```
 
-- [ ] **Step 3: 실행 → FAIL**
+- [x] **Step 3: 실행 → FAIL**
 
-- [ ] **Step 4: 구현**
+- [x] **Step 4: 구현**
   - `ListPattern.tsx` ListRow: `devControlRequest?: DevControlAnalyzeRequest;` (import type 추가)
   - `dev-control-rows.ts` `buildDevControlRows(services, analyses, requests)` — 3번째 인자 `Map<number, DevControlAnalyzeRequest>` 추가, 각 row에 `devControlRequest: requests.get(s.service_id)` 첨부. 기존 호출부(DevControlSection) 함께 수정
   - `DevControlSection.tsx`: `listLatestDevControlRequests()`를 `Promise.all`에 추가, `buildDevControlRows(services, analyses, requests)` 호출
@@ -517,19 +517,19 @@ export async function listLatestDevControlRequests(): Promise<
 
 주의: `ViewProps`에 `row`가 있고 `row.serviceIdNum`(number)이 rows에서 세팅됨(dev-control-rows.ts 확인). View는 client component이므로 `devControlRequest`도 row로 전달돼 접근 가능.
 
-- [ ] **Step 5: 실행 → PASS + tsc + inspector 회귀** — `npx vitest run "src/app/dashboard/_components/inspector/list-variants/dev-control" src/app/dashboard/dev-test` / `npx tsc --noEmit`
+- [x] **Step 5: 실행 → PASS + tsc + inspector 회귀** — `npx vitest run "src/app/dashboard/_components/inspector/list-variants/dev-control" src/app/dashboard/dev-test` / `npx tsc --noEmit`
 
-- [ ] **Step 6: Commit** — `feat(dev-control): 개발탭 '지금 분석' 버튼 + 요청 상태 배지`
+- [x] **Step 6: Commit** — `feat(dev-control): 개발탭 '지금 분석' 버튼 + 요청 상태 배지`
 
 ---
 
 ### Task 6: 최종 검증 + 라이브 + PR
 
-- [ ] **Step 1: 마이그레이션 적용 확인** (Task 1 Step 2-3 완료 상태 재확인)
+- [x] **Step 1: 마이그레이션 적용 확인** (Task 1 Step 2-3 완료 상태 재확인)
 - [ ] **Step 2: 폴러 등록** — `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-control/register-poll-task.ps1` → 작업 `OPS-Console-DevControl-Poll` 확인
 - [ ] **Step 3: 라이브 e2e** — 프로덕션(또는 로컬) 개발탭에서 서비스 '지금 분석' 클릭 → `dev_control_analyze_requests` pending 확인 → 폴러 수동 트리거(`schtasks /Run /TN OPS-Console-DevControl-Poll`) → 상태 running→done 전이 + `dev_control_analyses` 갱신 확인
-- [ ] **Step 4: 정적 검증** — `npm run lint`(0 에러) / `npx tsc --noEmit`(0) / `npx vitest run src/features/dev-controls src/app/dashboard/dev-test src/app/dashboard/_components/inspector/list-variants/dev-control src/app/dashboard/api/dev-controls`(전부 통과)
-- [ ] **Step 5: PR** — `feat(dev-control): 개발 탭 수동 분석(웹→PC 폴러)` (Summary + Test plan, squash) + 설계·계획 문서 스테이징
+- [x] **Step 4: 정적 검증** — `npm run lint`(0 에러) / `npx tsc --noEmit`(0) / `npx vitest run src/features/dev-controls src/app/dashboard/dev-test src/app/dashboard/_components/inspector/list-variants/dev-control src/app/dashboard/api/dev-controls`(전부 통과)
+- [x] **Step 5: PR** — `feat(dev-control): 개발 탭 수동 분석(웹→PC 폴러)` (Summary + Test plan, squash) + 설계·계획 문서 스테이징
 
 ## Self-Review 결과
 
