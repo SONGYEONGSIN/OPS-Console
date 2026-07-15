@@ -16,7 +16,7 @@ describe("PAGE_META", () => {
   it("my-todo/schedule/handover 헤드라인 정의", () => {
     expect(PAGE_META["my-todo"].headline.accent).toBe("내 계획");
     expect(PAGE_META.schedule.headline.title).toBe("운영부 달력");
-    expect(PAGE_META.handover.headline.accent).toBe("요청 · 자료");
+    expect(PAGE_META.handover.headline.accent).toBe("서비스");
   });
 
   it("미정의 slug는 undefined (fallback은 호출부에서 처리)", () => {

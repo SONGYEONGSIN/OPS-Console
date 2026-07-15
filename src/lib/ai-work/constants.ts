@@ -28,6 +28,8 @@ export const CATEGORY_LABEL: Record<AiWorkCategory, string> = {
   translation: "번역",
   meeting: "회의",
   automation: "자동화",
+  productivity: "생산성",
+  devtool: "개발도구",
   etc: "기타",
 };
 
@@ -39,6 +41,8 @@ export const CATEGORY_TONE: Record<AiWorkCategory, string> = {
   translation: "bg-gold/20 text-gold",
   meeting: "bg-muted/30 text-muted",
   automation: "bg-sage/15 text-sage",
+  productivity: "bg-gold/15 text-gold",
+  devtool: "bg-indigo/10 text-indigo",
   etc: "bg-line-soft text-ink-muted",
 };
 
@@ -63,5 +67,7 @@ export const CATEGORY_OPTIONS: ReadonlyArray<{
   { value: "translation", label: CATEGORY_LABEL.translation },
   { value: "meeting", label: CATEGORY_LABEL.meeting },
   { value: "automation", label: CATEGORY_LABEL.automation },
+  { value: "productivity", label: CATEGORY_LABEL.productivity },
+  { value: "devtool", label: CATEGORY_LABEL.devtool },
   { value: "etc", label: CATEGORY_LABEL.etc },
 ];

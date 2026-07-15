@@ -50,6 +50,11 @@ describe("CATEGORY constants", () => {
     expect(CATEGORY_OPTIONS.length).toBe(categorySchema.options.length);
   });
 
+  it("생산성·개발도구 라벨이 정의되어 있다", () => {
+    expect(CATEGORY_LABEL.productivity).toBe("생산성");
+    expect(CATEGORY_LABEL.devtool).toBe("개발도구");
+  });
+
   it("CATEGORY 라벨에 한자 사용 0", () => {
     for (const label of Object.values(CATEGORY_LABEL)) {
       expect(/[一-鿿]/.test(label)).toBe(false);

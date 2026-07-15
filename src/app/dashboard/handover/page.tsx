@@ -18,6 +18,9 @@ import {
   listServicesWithHandover,
   type HandoverListRow,
 } from "@/features/handover/queries";
+import { copyHandoverRecord } from "@/features/handover/actions";
+import { loadHandoverEditorData } from "./editor-data";
+import { HandoverEditorWorkspace } from "./[serviceId]/_components/HandoverEditorWorkspace";
 import {
   listHandoverProgress,
   listReadyServices,
@@ -34,6 +37,8 @@ type SearchParams = {
   page?: string;
   tab?: string;
   mine?: string;
+  /** 작성 탭 인라인 편집기 — 목록 아래 고정 섹션으로 열 서비스 id */
+  edit?: string;
 };
 
 export default async function HandoverPage({
@@ -201,27 +206,69 @@ export default async function HandoverPage({
   );
   const controlsRow = <HandoverControls key="handover-controls" />;
 
+  // 인라인 편집기 — 행 클릭(?edit=) 시 목록 아래 고정 섹션으로 렌더
+  const editorData = params.edit
+    ? await loadHandoverEditorData(params.edit)
+    : null;
+  const closeQs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (k !== "edit" && v) closeQs.set(k, v);
+  }
+  const closeHref = closeQs.size
+    ? `/dashboard/handover?${closeQs.toString()}`
+    : "/dashboard/handover";
+
+  async function onCopyHandover(
+    fromServiceId: string,
+    toServiceIds: string[],
+  ): Promise<{ ok: boolean; error?: string; copiedCount?: number }> {
+    "use server";
+    return await copyHandoverRecord(fromServiceId, toServiceIds);
+  }
+
   return (
-    <ListPattern
-      title="서비스"
-      data={{ rows }}
-      header={header}
-      controlsRow={controlsRow}
-      variant="handover"
-      canCreate={false}
-      liveData
-      currentUserName={me?.displayName ?? me?.email ?? ""}
-      inlineFilters={
-        <ScopeChips key="handover-scope" total={total} mineLabel="내 서비스" />
-      }
-      footer={
-        <ListPagination
-          key="handover-pagination"
-          total={total}
-          pageSize={PAGE_SIZE}
-        />
-      }
-    />
+    <div>
+      <ListPattern
+        title="서비스"
+        data={{ rows }}
+        header={header}
+        controlsRow={controlsRow}
+        variant="handover"
+        canCreate={false}
+        liveData
+        currentUserName={me?.displayName ?? me?.email ?? ""}
+        inlineFilters={
+          <ScopeChips
+            key="handover-scope"
+            total={total}
+            mineLabel="내 서비스"
+          />
+        }
+        footer={
+          <ListPagination
+            key="handover-pagination"
+            total={total}
+            pageSize={PAGE_SIZE}
+          />
+        }
+      />
+      {editorData ? (
+        <section
+          aria-label="인수인계 인라인 편집기"
+          className="border-t-2 border-ink px-5 pb-12 pt-5 md:px-6 lg:px-7"
+        >
+          <HandoverEditorWorkspace
+            key={editorData.row.id}
+            initialRow={editorData.row}
+            contractsStatusOptions={editorData.contractsStatusOptions}
+            handoverServiceCandidates={editorData.handoverServiceCandidates}
+            onCopyHandover={onCopyHandover}
+            embedded
+            closeHref={closeHref}
+          />
+        </section>
+      ) : null}
+    </div>
   );
 }
 

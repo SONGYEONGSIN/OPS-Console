@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ListRow } from "../../../patterns/ListPattern";
 
 type Props = {
@@ -27,6 +27,17 @@ const STATUS_TONE: Record<StatusKey, string> = {
 
 export function HandoverTable({ rows }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("edit");
+
+  // 목록 아래 인라인 편집기 오픈 — 기존 검색/필터 쿼리 보존.
+  // 일반 페이지 이동처럼 상단부터 표시 (기본 scroll-to-top)
+  function openEditor(id: string) {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set("edit", id);
+    router.push(`/dashboard/handover?${sp.toString()}`);
+  }
+
   return (
     <table className="w-full text-sm">
       <thead>
@@ -50,8 +61,10 @@ export function HandoverTable({ rows }: Props) {
             return (
               <tr
                 key={row.id}
-                onClick={() => router.push(`/dashboard/handover/${row.id}`)}
-                className="cursor-pointer border-b border-line-soft hover:bg-line-soft"
+                onClick={() => openEditor(row.id)}
+                className={`cursor-pointer border-b border-line-soft transition-colors hover:bg-line-soft ${
+                  row.id === editId ? "bg-vermilion/10" : ""
+                }`}
               >
                 <td className="px-3 py-2">
                   <span className="font-medium text-ink">

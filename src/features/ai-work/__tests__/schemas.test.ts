@@ -30,7 +30,7 @@ describe("aiToolSchema", () => {
 });
 
 describe("categorySchema", () => {
-  it("허용 enum 8개를 통과시킨다", () => {
+  it("허용 enum 10개를 통과시킨다", () => {
     const cats = [
       "code",
       "doc",
@@ -39,6 +39,8 @@ describe("categorySchema", () => {
       "translation",
       "meeting",
       "automation",
+      "productivity",
+      "devtool",
       "etc",
     ];
     for (const c of cats) {

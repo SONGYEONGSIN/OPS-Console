@@ -34,7 +34,7 @@ export function InsightInspectorBody({ video, canDelete, onDeleted }: Props) {
           <span>{formatDate(video.published_at)}</span>
           <span
             aria-label="키워드"
-            className="ml-auto inline-flex items-center border border-line bg-washi-raised px-2 py-0.5 text-xs text-ink"
+            className="ml-auto inline-flex items-center border border-line bg-paper px-2 py-0.5 text-xs text-ink"
           >
             {video.keyword}
           </span>
@@ -42,14 +42,14 @@ export function InsightInspectorBody({ video, canDelete, onDeleted }: Props) {
       </div>
 
       {video.description ? (
-        <section className="border border-line bg-washi-raised p-3">
+        <section className="border border-line bg-situation-bg p-3">
           <h3 className="mb-1 text-xs font-semibold text-muted">요약</h3>
           <p className="min-h-48 max-h-96 overflow-y-auto pr-1 text-sm leading-relaxed text-ink whitespace-pre-wrap">
             {video.description}
           </p>
         </section>
       ) : (
-        <section className="border border-line-soft bg-washi p-3 text-xs text-muted">
+        <section className="border border-line-soft bg-situation-bg p-3 text-xs text-muted">
           영상 설명이 없습니다. 임베드 플레이어를 확인하세요.
         </section>
       )}
