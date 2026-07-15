@@ -29,3 +29,20 @@ export type DevControlAnalysis = {
   flags: DevControlFlag[];
   analyzed_at: string;
 };
+
+export const requestDevControlAnalyzeSchema = z.object({
+  serviceId: z.number().int().positive(),
+});
+
+export type DevControlRequestStatus = "pending" | "running" | "done" | "failed";
+
+export type DevControlAnalyzeRequest = {
+  id: string;
+  service_id: number;
+  requested_by: string | null;
+  status: DevControlRequestStatus;
+  requested_at: string;
+  claimed_at: string | null;
+  finished_at: string | null;
+  message: string | null;
+};
