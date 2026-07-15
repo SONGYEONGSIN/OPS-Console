@@ -5,16 +5,26 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { listNews, listNewsSources } from "@/features/news/queries";
+import {
+  listNews,
+  listNewsSources,
+  listNewsKeywords,
+} from "@/features/news/queries";
 import { newsRowToListRow } from "./_row-mapper";
 import { NewsControls } from "./NewsControls";
+import { NewsKeywordChips } from "./NewsKeywordChips";
 
 const PAGE_SIZE = 30;
 
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string; source?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    source?: string;
+    keyword?: string;
+  }>;
 }) {
   const slug = "news";
   await requireMenu(slug);
@@ -25,14 +35,16 @@ export default async function NewsPage({
 
   const sp = await searchParams;
   const page = sp.page ? Number(sp.page) : 1;
-  const [{ rows: news, total }, sources] = await Promise.all([
+  const [{ rows: news, total }, sources, keywords] = await Promise.all([
     listNews({
       page,
       pageSize: PAGE_SIZE,
       search: sp.q,
       source: sp.source,
+      keyword: sp.keyword,
     }),
     listNewsSources(),
+    listNewsKeywords(),
   ]);
   const rows: ListRow[] = news.map(newsRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
@@ -58,6 +70,9 @@ export default async function NewsPage({
       readOnly
       liveData
       controlsRow={<NewsControls key="news-controls" sources={sources} />}
+      inlineFilters={
+        <NewsKeywordChips key="news-keyword-chips" keywords={keywords} />
+      }
       footer={
         <ListPagination key="news-pagination" total={total} pageSize={PAGE_SIZE} />
       }
