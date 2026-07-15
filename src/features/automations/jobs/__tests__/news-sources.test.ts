@@ -8,6 +8,7 @@ import {
   dedupeByTitle,
   rfc2822ToIso,
   stripHtml,
+  stripTitleSuffix,
   type RssItem,
 } from "../news-sources";
 
@@ -79,7 +80,53 @@ describe("stripHtml", () => {
   });
 });
 
+describe("stripTitleSuffix", () => {
+  it("제목 끝 ' - 출처' 접미사 제거", () => {
+    expect(stripTitleSuffix("A대학 통폐합 추진 - 한국대학신문", "한국대학신문")).toBe(
+      "A대학 통폐합 추진",
+    );
+  });
+  it("접미사가 출처와 다르면 그대로", () => {
+    expect(stripTitleSuffix("A대학 통폐합 - 다른신문", "한국대학신문")).toBe(
+      "A대학 통폐합 - 다른신문",
+    );
+  });
+  it("본문 중간의 ' - 출처'는 건드리지 않음 (끝 일치만)", () => {
+    expect(
+      stripTitleSuffix("한국대학신문 - 창간 특집 - 한국대학신문", "한국대학신문"),
+    ).toBe("한국대학신문 - 창간 특집");
+  });
+  it("출처가 비어 있으면 그대로", () => {
+    expect(stripTitleSuffix("제목 - 어디", "")).toBe("제목 - 어디");
+  });
+  it("제거 후 빈 문자열이 되면 원본 유지", () => {
+    expect(stripTitleSuffix(" - 한국대학신문", "한국대학신문")).toBe(
+      " - 한국대학신문",
+    );
+  });
+  it("이중 접미사도 반복 제거 (실데이터 사례: 머니투데이 2중)", () => {
+    expect(
+      stripTitleSuffix("정원 감축 지원 - 머니투데이 - 머니투데이", "머니투데이"),
+    ).toBe("정원 감축 지원");
+  });
+});
+
 describe("mapRssItemsToNews", () => {
+  it("제목의 ' - 출처' 접미사를 제거해 저장 (title dedup 정확도)", () => {
+    const items: RssItem[] = [
+      {
+        title: "A대학 B대학 통폐합 추진 - 한국대학신문",
+        link: "https://x/1",
+        pubDate: "",
+        description: "",
+        source: "한국대학신문",
+      },
+    ];
+    expect(mapRssItemsToNews(items, "통폐합")[0].title).toBe(
+      "A대학 B대학 통폐합 추진",
+    );
+  });
+
   it("RssItem[]을 news row로 정규화 + keyword 주입", () => {
     const items = parseRssItems(FIXTURE_XML);
     const rows = mapRssItemsToNews(items, "통폐합");
