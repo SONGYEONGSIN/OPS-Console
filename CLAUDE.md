@@ -25,7 +25,7 @@ OPS-Console/
 │   │   └── dashboard/                   # OPS Console
 │   │       ├── _components/             # chrome / sidebar / patterns / inspector / page-header
 │   │       │   ├── PageActivityLogger.tsx  # 페이지 enter/leave 자동 worklog 적재
-│   │       │   └── inspector/list-variants/  # 16 variant registry (open/closed)
+│   │       │   └── inspector/list-variants/  # 31 variant registry (open/closed)
 │   │       ├── _data/                   # sidebar / page-meta-config / page-meta-derive
 │   │       ├── services / contracts / contacts / incidents / backup / receivables  # 운영 list
 │   │       ├── handover / onboarding / my-todo / my-ai-work / ai-tips             # 작업 list
@@ -61,7 +61,7 @@ OPS-Console/
 ## list-variants 아키텍처 (open/closed)
 
 - **위치**: `src/app/dashboard/_components/inspector/list-variants/`
-- **레지스트리**: `registry.ts`가 import-time static binding으로 **16 variant** → 컴포넌트 매핑 (cohort/team/receivables/ai-work/ai-tips/post-feedback/post-notice/schedule/my-todo/default/backup/services/contracts/contacts/incidents/handover). RSC 직렬화 호환 — inline factory 금지
+- **레지스트리**: `registry.ts`가 import-time static binding으로 **31 variant** → 컴포넌트 매핑 (전체 목록은 `list-variants/types.ts` Variant union 참조). RSC 직렬화 호환 — inline factory 금지
 - **슬롯**: 각 variant 폴더에 `View.tsx` / `EditForm.tsx` / `Table.tsx` / `filters.ts` (filter 옵션 + blank 행 factory). 모두 optional
 - **신규 도메인 추가 비용**: 1 폴더 신설 + `registry.ts` 1줄 + `types.ts` Variant union 1줄. dispatcher 무변경
 - **Variant union 단일 정의**: `list-variants/types.ts`에 한 곳만. InspectorListBody / ListPattern이 import type으로 재사용
