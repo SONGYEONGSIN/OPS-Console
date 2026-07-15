@@ -2,9 +2,11 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   NEWS_SOURCES,
+  OPERATIONAL_KEYWORDS,
   buildGoogleNewsRssUrl,
   parseRssItems,
   mapRssItemsToNews,
+  mapFeedItemsToNews,
   dedupeByLink,
   dedupeByTitle,
   type NewsRow,
@@ -21,19 +23,21 @@ export const CONTEXT_WINDOW_DAYS = 30;
 async function fetchSourceRows(
   source: (typeof NEWS_SOURCES)[number],
 ): Promise<NewsRow[]> {
-  const url =
-    source.kind === "google"
-      ? buildGoogleNewsRssUrl(`대학 ${source.keyword}`)
-      : source.url;
+  const isGoogle = source.kind === "google";
+  const url = isGoogle
+    ? buildGoogleNewsRssUrl(`대학 ${source.keyword}`)
+    : source.url;
+  const name = isGoogle ? source.keyword : source.label;
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(
-      `${source.keyword} HTTP ${res.status}: ${body.slice(0, 200)}`,
-    );
+    throw new Error(`${name} HTTP ${res.status}: ${body.slice(0, 200)}`);
   }
   const xml = await res.text();
-  return mapRssItemsToNews(parseRssItems(xml), source.keyword);
+  const items = parseRssItems(xml);
+  return isGoogle
+    ? mapRssItemsToNews(items, source.keyword)
+    : mapFeedItemsToNews(items, OPERATIONAL_KEYWORDS, source.label);
 }
 
 export async function runNewsCollect(): Promise<AutomationRunResult> {

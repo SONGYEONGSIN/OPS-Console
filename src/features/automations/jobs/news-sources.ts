@@ -1,9 +1,10 @@
 import { XMLParser } from "fast-xml-parser";
 
-/** 수집 소스 정의 — 구글 뉴스 키워드 검색 또는 직접 RSS 피드. */
+/** 수집 소스 정의 — 구글 뉴스 키워드 검색 또는 전문지 직접 RSS 피드.
+ *  feed는 전체기사 피드라 키워드를 고정하지 않고 기사별로 운영 키워드를 매칭한다. */
 export type NewsSource =
   | { kind: "google"; keyword: string }
-  | { kind: "feed"; keyword: string; url: string; label: string };
+  | { kind: "feed"; url: string; label: string };
 
 /** 구글 뉴스 RSS 키워드 검색 URL. q는 인코딩. */
 export function buildGoogleNewsRssUrl(query: string): string {
@@ -23,9 +24,30 @@ export const NEWS_SOURCES: NewsSource[] = [
   { kind: "google", keyword: "정원감축" },
   { kind: "google", keyword: "글로컬대학" },
   { kind: "google", keyword: "구조조정" },
-  // placeholder — 실 피드 URL 검증 후 활성화 (스펙 §3, §10):
-  // { kind: "feed", keyword: "교육부", url: "https://www.moe.go.kr/.../rss", label: "교육부" },
+  // 전문지 직접 피드 (2026-07-15 URL 동작 검증) — 전체기사 피드이므로
+  // mapFeedItemsToNews가 운영 키워드 매칭 기사만 수집한다.
+  // 교육부(moe.go.kr) RSS는 서비스 종료 확인 → 스펙 §10에 따라 제외.
+  {
+    kind: "feed",
+    url: "https://news.unn.net/rss/allArticle.xml",
+    label: "한국대학신문",
+  },
+  {
+    kind: "feed",
+    url: "https://www.kyosu.net/rss/allArticle.xml",
+    label: "교수신문",
+  },
+  {
+    kind: "feed",
+    url: "https://www.usline.kr/rss/allArticle.xml",
+    label: "유스라인",
+  },
 ];
+
+/** 운영 키워드 — 구글 뉴스 소스의 키워드가 단일 소스(피드 매칭에도 재사용). */
+export const OPERATIONAL_KEYWORDS: string[] = NEWS_SOURCES.filter(
+  (s): s is Extract<NewsSource, { kind: "google" }> => s.kind === "google",
+).map((s) => s.keyword);
 
 export type RssItem = {
   title: string;
@@ -77,9 +99,12 @@ export function parseRssItems(xml: string): RssItem[] {
   });
 }
 
-/** RFC2822 pubDate → ISO 문자열. 파싱 불가 시 null. */
+/** pubDate → ISO 문자열. 파싱 불가 시 null.
+ *  전문지 CMS(ndsoft) 형식 "YYYY-MM-DD HH:mm:ss"는 타임존이 없어 KST(+09:00)로 해석. */
 export function rfc2822ToIso(pubDate: string): string | null {
-  const ms = Date.parse(pubDate);
+  const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$/.exec(pubDate.trim());
+  const normalized = m ? `${m[1]}T${m[2]}+09:00` : pubDate;
+  const ms = Date.parse(normalized);
   return Number.isNaN(ms) ? null : new Date(ms).toISOString();
 }
 
@@ -126,6 +151,35 @@ export function mapRssItemsToNews(items: RssItem[], keyword: string): NewsRow[] 
         source: it.source || null,
         published_at: rfc2822ToIso(it.pubDate),
         summary: it.description ? stripHtml(it.description) || null : null,
+        keyword,
+      },
+    ];
+  });
+}
+
+/**
+ * 전문지 전체기사 피드 → news row[]. 제목·요약에 운영 키워드가 매칭되는 기사만
+ * 수집(메뉴 목적 유지), 매칭 키워드를 keyword로 부여. <source>가 없으므로 label을 출처로.
+ */
+export function mapFeedItemsToNews(
+  items: RssItem[],
+  keywords: readonly string[],
+  label: string,
+): NewsRow[] {
+  return items.flatMap((it) => {
+    if (!it.link || !it.title) return [];
+    const summary = it.description ? stripHtml(it.description) || null : null;
+    const haystack = `${it.title} ${summary ?? ""}`;
+    const keyword = keywords.find((k) => haystack.includes(k));
+    if (!keyword) return [];
+    const source = it.source || label;
+    return [
+      {
+        link: it.link,
+        title: stripTitleSuffix(it.title, source),
+        source,
+        published_at: rfc2822ToIso(it.pubDate),
+        summary,
         keyword,
       },
     ];
