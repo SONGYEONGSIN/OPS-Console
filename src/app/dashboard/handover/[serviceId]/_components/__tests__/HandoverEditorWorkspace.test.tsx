@@ -125,27 +125,6 @@ describe("HandoverEditorWorkspace", () => {
     expect(screen.getByText("계약정보 · 계약자료")).toBeInTheDocument();
   });
 
-  it("embedded — 풀 헤드라인(h1) 없이 컴팩트 헤더 + 닫기 링크", () => {
-    render(
-      <HandoverEditorWorkspace
-        initialRow={initialRow}
-        contractsStatusOptions={[]}
-        handoverServiceCandidates={[]}
-        onCopyHandover={undefined}
-        embedded
-        closeHref="/dashboard/handover?q=%EC%88%99%EB%AA%85"
-      />,
-    );
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
-    expect(screen.getByText(/숙명여자대학교/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /닫기/ })).toHaveAttribute(
-      "href",
-      "/dashboard/handover?q=%EC%88%99%EB%AA%85",
-    );
-    // 페이지 전용 요소(← 목록 이동)는 embedded에서 미노출
-    expect(screen.queryByRole("link", { name: /목록 이동/ })).toBeNull();
-  });
-
   it("복제 버튼 클릭 → 드롭다운(다른 서비스로 복제) 토글", () => {
     render(
       <HandoverEditorWorkspace

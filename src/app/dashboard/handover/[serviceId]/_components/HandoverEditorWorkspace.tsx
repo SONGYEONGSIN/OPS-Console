@@ -22,8 +22,6 @@ export function HandoverEditorWorkspace({
   handoverServiceCandidates,
   onCopyHandover,
   metaItems = [],
-  embedded = false,
-  closeHref,
 }: {
   initialRow: ListRow;
   contractsStatusOptions: string[];
@@ -31,10 +29,6 @@ export function HandoverEditorWorkspace({
   onCopyHandover: EditFormProps["onCopyHandover"];
   /** 표준 헤더 메타 라인 앞부분 (오전/오후 · 날짜) — 서버에서 계산해 전달 */
   metaItems?: MetaItem[];
-  /** 목록 아래 인라인 모드 — 풀 페이지 헤더 대신 컴팩트 헤더(제목+닫기) */
-  embedded?: boolean;
-  /** embedded 닫기(×) 링크 — ?edit 제거된 목록 URL */
-  closeHref?: string;
 }) {
   const [row, setRowState] = useState<ListRow>(initialRow);
   // 최신 row를 동기 추적 — setRow가 state updater 밖에서 next를 계산하도록.
@@ -130,64 +124,30 @@ export function HandoverEditorWorkspace({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {embedded ? (
-        /* 인라인(목록 아래) 모드 — 컴팩트 헤더: 제목 + 저장 상태 + 액션 + 닫기 */
-        <header className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-line-soft pb-3">
-          <h2 className="min-w-0 truncate text-lg font-bold text-ink">
-            인수인계 작성
-            <span aria-hidden className="mx-2 font-medium text-vermilion">
-              —
-            </span>
-            {headlineTitle}
-            <span className="ml-1.5 text-sm font-medium text-muted">
-              · {row.serviceName ?? "—"}
-            </span>
-          </h2>
-          <div className="flex flex-none items-center gap-3">
-            <span className="text-xs font-bold text-muted">{savedLabel}</span>
+      {/* 표준 페이지 헤더 — 목록 페이지(PageHeader)와 동일 구성: 메타 라인 + 헤드라인 + 우측 액션 */}
+      <header className="shrink-0 bg-paper px-9 pb-[18px] pt-6">
+        <PageMeta items={[...metaItems, { label: savedLabel }]} />
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <PageHeadline
+            accent="인수인계"
+            title={headlineTitle}
+            description={row.serviceName ?? undefined}
+          />
+          <div className="flex flex-none items-center gap-3 pb-1">
+            <Link
+              href="/dashboard/handover"
+              className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+            >
+              ← 목록 이동
+            </Link>
             {copyControl}
             {progressLink}
-            {closeHref ? (
-              <Link
-                href={closeHref}
-                aria-label="편집기 닫기"
-                className="inline-flex h-7 w-7 items-center justify-center border border-line text-lg leading-none text-ink-soft transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-              >
-                ×
-              </Link>
-            ) : null}
           </div>
-        </header>
-      ) : (
-        /* 표준 페이지 헤더 — 목록 페이지(PageHeader)와 동일 구성: 메타 라인 + 헤드라인 + 우측 액션 */
-        <header className="shrink-0 bg-paper px-9 pb-[18px] pt-6">
-          <PageMeta items={[...metaItems, { label: savedLabel }]} />
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-            <PageHeadline
-              accent="인수인계"
-              title={headlineTitle}
-              description={row.serviceName ?? undefined}
-            />
-            <div className="flex flex-none items-center gap-3 pb-1">
-              <Link
-                href="/dashboard/handover"
-                className="inline-flex shrink-0 items-center border border-line px-3 py-1 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
-              >
-                ← 목록 이동
-              </Link>
-              {copyControl}
-              {progressLink}
-            </div>
-          </div>
-        </header>
-      )}
+        </div>
+      </header>
 
       {/* 운영가이드 레이아웃 — 좌 nav / 우 패널 grid (박스 시트 제거) */}
-      <div
-        className={`grid min-h-0 flex-1 grid-cols-1 gap-6 md:grid-cols-[240px_1fr] ${
-          embedded ? "" : "px-5 pb-3 md:px-6 lg:px-7"
-        }`}
-      >
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 px-5 pb-3 md:grid-cols-[240px_1fr] md:px-6 lg:px-7">
         <HandoverCategoryRail
           row={row}
           active={active}
