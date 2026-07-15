@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   mailboxMessageSchema,
-  mailboxDraftSchema,
   sendReplySchema,
   setAutoDraftSchema,
 } from "../schemas";
