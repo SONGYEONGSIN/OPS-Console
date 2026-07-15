@@ -15,6 +15,7 @@ import {
 import type { EntertestRun } from "@/features/entertest/schemas";
 import { DevTestControls } from "./DevTestControls";
 import { DevTestTabs } from "./DevTestTabs";
+import { DevControlSection } from "./DevControlSection";
 
 const PAGE_SIZE = 30;
 
@@ -128,9 +129,7 @@ export default async function DevTestPage({
       />
       <DevTestTabs />
       {sp.tab === "dev" ? (
-        <p className="border border-line-soft bg-situation-bg p-6 text-center text-sm text-muted">
-          개발 탭 준비 중 — 수집·분석 데이터 연결은 다음 단계에서 연동됩니다.
-        </p>
+        <DevControlSection q={sp.q} page={sp.page} />
       ) : (
         <ListPattern
           title="개발 · 테스트"
