@@ -96,14 +96,33 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-/** RssItem[] → news row[]. link·title 없는 항목 제외, keyword 주입. */
+/**
+ * 구글 뉴스 제목 꼬리 ' - 출처' 제거 — 같은 기사가 매체 접미사만 다르게 들어와
+ * title dedup을 비껴가는 것을 막고 목록 표시도 깔끔하게 한다.
+ * 끝 일치(` - ${source}`)일 때만 제거, 제거 결과가 비면 원본 유지.
+ */
+export function stripTitleSuffix(title: string, source: string): string {
+  const src = source.trim();
+  if (!src) return title;
+  const suffix = ` - ${src}`;
+  let out = title;
+  // 실데이터에 이중 접미사("… - 머니투데이 - 머니투데이") 존재 — 반복 제거
+  while (out.endsWith(suffix)) {
+    const stripped = out.slice(0, -suffix.length);
+    if (!stripped.trim()) break;
+    out = stripped;
+  }
+  return out;
+}
+
+/** RssItem[] → news row[]. link·title 없는 항목 제외, 접미사 제거 + keyword 주입. */
 export function mapRssItemsToNews(items: RssItem[], keyword: string): NewsRow[] {
   return items.flatMap((it) => {
     if (!it.link || !it.title) return [];
     return [
       {
         link: it.link,
-        title: it.title,
+        title: stripTitleSuffix(it.title, it.source),
         source: it.source || null,
         published_at: rfc2822ToIso(it.pubDate),
         summary: it.description ? stripHtml(it.description) || null : null,
