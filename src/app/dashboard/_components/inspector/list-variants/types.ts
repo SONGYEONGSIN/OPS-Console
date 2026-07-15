@@ -28,6 +28,7 @@ export type Variant =
   | "worklog"
   | "data-request"
   | "dev-test"
+  | "dev-control"
   | "performance"
   | "mailbox"
   | "news"

@@ -13,6 +13,7 @@ import { applyProjectTaskFilter } from "../inspector/list-variants/project-task/
 import { applyMeetingFilter } from "../inspector/list-variants/meetings/filters";
 import type { Variant } from "../inspector/list-variants/types";
 import type { EntertestRun } from "@/features/entertest/schemas";
+import type { DevControlAnalysis } from "@/features/dev-controls/schemas";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
 export type ListRow = {
@@ -470,6 +471,8 @@ export type ListRow = {
   entertestRuns?: EntertestRun[];
   /** dev-test variant — 등록된 테스트 대역 계정(로그인 운영자). 미등록이면 null */
   entertestAccount?: string | null;
+  /** dev-control variant — 서비스별 원서제어 분석(A/AU × gen_flag) 배열 */
+  devControlAnalyses?: DevControlAnalysis[];
   /** meetings variant — 회의 유형 (MEETING_TYPES). page가 meeting.type 매핑 */
   meetingType?: "regular" | "field" | "project" | "memo" | "urgent";
   /** meetings variant — 회의 제목 */
