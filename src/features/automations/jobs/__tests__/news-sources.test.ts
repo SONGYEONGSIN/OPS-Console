@@ -4,6 +4,7 @@ import {
   buildGoogleNewsRssUrl,
   parseRssItems,
   mapRssItemsToNews,
+  mapFeedItemsToNews,
   dedupeByLink,
   dedupeByTitle,
   rfc2822ToIso,
@@ -39,6 +40,54 @@ describe("NEWS_SOURCES", () => {
       expect.arrayContaining(["통폐합", "폐교", "정원감축", "글로컬대학", "구조조정"]),
     );
   });
+
+  it("전문지 직접 피드 3종 포함 (한국대학신문·교수신문·유스라인)", () => {
+    const labels = NEWS_SOURCES.filter((s) => s.kind === "feed").map((s) =>
+      s.kind === "feed" ? s.label : "",
+    );
+    expect(labels).toEqual(
+      expect.arrayContaining(["한국대학신문", "교수신문", "유스라인"]),
+    );
+  });
+});
+
+describe("mapFeedItemsToNews", () => {
+  const KEYWORDS = ["통폐합", "폐교", "정원감축"];
+  const item = (title: string, description = ""): RssItem => ({
+    title,
+    link: `https://news.unn.net/${title}`,
+    pubDate: "2026-07-15 09:00:00",
+    description,
+    source: "",
+  });
+
+  it("운영 키워드가 제목에 있는 기사만 수집 + 매칭 키워드 부여", () => {
+    const rows = mapFeedItemsToNews(
+      [item("A대·B대 통폐합 추진"), item("총장 인터뷰"), item("C대 폐교 위기")],
+      KEYWORDS,
+      "한국대학신문",
+    );
+    expect(rows.map((r) => r.title)).toEqual([
+      "A대·B대 통폐합 추진",
+      "C대 폐교 위기",
+    ]);
+    expect(rows.map((r) => r.keyword)).toEqual(["통폐합", "폐교"]);
+  });
+
+  it("요약(description)에만 키워드가 있어도 수집", () => {
+    const rows = mapFeedItemsToNews(
+      [item("교육부 정책 발표", "수도권 대학 정원감축 계획 포함")],
+      KEYWORDS,
+      "교수신문",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].keyword).toBe("정원감축");
+  });
+
+  it("피드는 <source>가 없으므로 label을 출처로", () => {
+    const rows = mapFeedItemsToNews([item("D대 통폐합")], KEYWORDS, "유스라인");
+    expect(rows[0].source).toBe("유스라인");
+  });
 });
 
 describe("buildGoogleNewsRssUrl", () => {
@@ -71,6 +120,11 @@ describe("rfc2822ToIso", () => {
   });
   it("파싱 불가 입력은 null", () => {
     expect(rfc2822ToIso("not-a-date")).toBeNull();
+  });
+  it("전문지 CMS 형식('YYYY-MM-DD HH:mm:ss')은 KST(+09:00)로 해석", () => {
+    expect(rfc2822ToIso("2026-07-15 09:00:00")).toBe(
+      "2026-07-15T00:00:00.000Z",
+    );
   });
 });
 
