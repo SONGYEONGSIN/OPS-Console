@@ -90,6 +90,8 @@ import { DataRequestTable } from "./data-request/Table";
 import { DataRequestView } from "./data-request/View";
 import { DevTestView } from "./dev-test/View";
 import { DevTestTable } from "./dev-test/Table";
+import { DevControlView } from "./dev-control/View";
+import { DevControlTable } from "./dev-control/Table";
 import { DATA_REQUEST_FILTERS } from "./data-request/filters";
 import { PerformanceTable } from "./performance/Table";
 import { PerformanceView } from "./performance/View";
@@ -320,6 +322,11 @@ export const variantRegistry = {
   "dev-test": {
     View: DevTestView,
     Table: DevTestTable,
+    Filters: [],
+  },
+  "dev-control": {
+    View: DevControlView,
+    Table: DevControlTable,
     Filters: [],
   },
   performance: {
