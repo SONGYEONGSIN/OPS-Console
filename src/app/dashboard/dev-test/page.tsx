@@ -14,6 +14,7 @@ import {
 } from "@/features/entertest/queries";
 import type { EntertestRun } from "@/features/entertest/schemas";
 import { DevTestControls } from "./DevTestControls";
+import { DevTestTabs } from "./DevTestTabs";
 
 const PAGE_SIZE = 30;
 
@@ -37,6 +38,7 @@ export default async function DevTestPage({
     region?: string;
     universityType?: string;
     admissionType?: string;
+    tab?: string;
   }>;
 }) {
   const slug = "dev-test";
@@ -124,24 +126,35 @@ export default async function DevTestPage({
         description={config.description}
         autoRefresh
       />
-      <ListPattern
-        title="개발 · 테스트"
-        data={{ rows }}
-        variant="dev-test"
-        readOnly
-        liveData
-        controlsRow={<DevTestControls {...options} />}
-        inlineFilters={
-          <ScopeChips key="dev-test-scope" total={total} mineLabel="내 대학" />
-        }
-        footer={
-          <ListPagination
-            key="dev-test-pagination"
-            total={total}
-            pageSize={PAGE_SIZE}
-          />
-        }
-      />
+      <DevTestTabs />
+      {sp.tab === "dev" ? (
+        <p className="border border-line-soft bg-situation-bg p-6 text-center text-sm text-muted">
+          개발 탭 준비 중 — 수집·분석 데이터 연결은 다음 단계에서 연동됩니다.
+        </p>
+      ) : (
+        <ListPattern
+          title="개발 · 테스트"
+          data={{ rows }}
+          variant="dev-test"
+          readOnly
+          liveData
+          controlsRow={<DevTestControls {...options} />}
+          inlineFilters={
+            <ScopeChips
+              key="dev-test-scope"
+              total={total}
+              mineLabel="내 대학"
+            />
+          }
+          footer={
+            <ListPagination
+              key="dev-test-pagination"
+              total={total}
+              pageSize={PAGE_SIZE}
+            />
+          }
+        />
+      )}
     </>
   );
 }
