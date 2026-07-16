@@ -70,7 +70,7 @@ export default async function NewsPage({
       readOnly
       liveData
       controlsRow={<NewsControls key="news-controls" sources={sources} />}
-      inlineFilters={
+      extraActionsLeft={
         <NewsKeywordChips key="news-keyword-chips" keywords={keywords} />
       }
       footer={

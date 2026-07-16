@@ -29,8 +29,6 @@ function setup() {
     <HandoverEditorWorkspace
       initialRow={initialRow}
       contractsStatusOptions={[]}
-      handoverServiceCandidates={[]}
-      onCopyHandover={undefined}
     />,
   );
 }
@@ -110,11 +108,12 @@ describe("HandoverEditorWorkspace", () => {
     expect(screen.getByText(/Fall Admission/)).toBeInTheDocument();
   });
 
-  it("표준 페이지 헤더 — h1 헤드라인(인수인계 — 대학명) + 메타 라인(저장 상태)", () => {
+  it("헤더 — h1(대학명 · 서비스명, '인수인계' 접두 없음) + 메타 라인(저장 상태)", () => {
     setup();
     const h1 = screen.getByRole("heading", { level: 1 });
-    expect(h1).toHaveTextContent("인수인계");
+    expect(h1).not.toHaveTextContent("인수인계");
     expect(h1).toHaveTextContent("숙명여자대학교");
+    expect(h1).toHaveTextContent("Fall Admission");
     // 메타 라인에 자동 저장 상태 노출
     expect(screen.getByText("✓ 자동 저장됨")).toBeInTheDocument();
   });
@@ -125,19 +124,8 @@ describe("HandoverEditorWorkspace", () => {
     expect(screen.getByText("계약정보 · 계약자료")).toBeInTheDocument();
   });
 
-  it("복제 버튼 클릭 → 드롭다운(다른 서비스로 복제) 토글", () => {
-    render(
-      <HandoverEditorWorkspace
-        initialRow={initialRow}
-        contractsStatusOptions={[]}
-        handoverServiceCandidates={[]}
-        onCopyHandover={vi.fn().mockResolvedValue({ ok: true })}
-      />,
-    );
-    expect(screen.queryByText("다른 서비스로 복제")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "복제" }));
-    expect(screen.getByText("다른 서비스로 복제")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "복제" }));
-    expect(screen.queryByText("다른 서비스로 복제")).toBeNull();
+  it("복제 버튼은 편집기에 없음 (작성 탭 목록으로 이동)", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: "복제" })).toBeNull();
   });
 });

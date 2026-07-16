@@ -46,12 +46,7 @@ export async function listNews(
     const r = newsRowSchema.safeParse(row);
     if (r.success) parsed.push(r.data);
     else
-      console.error(
-        "[listNews] zod parse fail:",
-        r.error.issues,
-        "row:",
-        row,
-      );
+      console.error("[listNews] zod parse fail:", r.error.issues, "row:", row);
   }
   return { rows: parsed, total: count ?? 0 };
 }
@@ -82,10 +77,12 @@ export async function listNewsSources(): Promise<string[]> {
 }
 
 /**
- * 키워드 칩 필터용 distinct 목록 — 수집 키워드(NEWS_SOURCES 유래)를 실데이터 기준으로.
- * listNewsSources와 동일 패턴 (keyword 컬럼만 fetch 후 JS dedupe, 가나다순).
+ * 키워드 칩 필터용 distinct 목록 + 키워드별 건수 — 수집 키워드(NEWS_SOURCES 유래)를
+ * 실데이터 기준으로. listNewsSources와 동일 패턴 (keyword 컬럼만 fetch 후 JS 집계, 가나다순).
  */
-export async function listNewsKeywords(): Promise<string[]> {
+export async function listNewsKeywords(): Promise<
+  { keyword: string; count: number }[]
+> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("news")
@@ -98,10 +95,12 @@ export async function listNewsKeywords(): Promise<string[]> {
     return [];
   }
 
-  const set = new Set<string>();
+  const counts = new Map<string, number>();
   for (const row of data ?? []) {
     const k = (row.keyword ?? "").trim();
-    if (k) set.add(k);
+    if (k) counts.set(k, (counts.get(k) ?? 0) + 1);
   }
-  return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
+  return Array.from(counts, ([keyword, count]) => ({ keyword, count })).sort(
+    (a, b) => a.keyword.localeCompare(b.keyword, "ko"),
+  );
 }

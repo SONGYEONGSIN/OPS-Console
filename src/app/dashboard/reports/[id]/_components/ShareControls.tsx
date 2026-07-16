@@ -42,7 +42,7 @@ export function ShareControls({ reportId, initialToken }: Props) {
         type="button"
         onClick={handleToggle}
         disabled={pending}
-        className="border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-vermilion hover:text-vermilion disabled:opacity-50"
+        className="border border-line bg-white px-3 py-1.5 text-sm text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
       >
         {pending ? "처리 중…" : "공유 링크 생성"}
       </button>
@@ -50,13 +50,13 @@ export function ShareControls({ reportId, initialToken }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-2 border border-line bg-washi px-3 py-1.5 text-sm">
+    <div className="flex items-center gap-2 border border-line-soft bg-search-field-bg px-3 py-1.5 text-sm">
       <span className="text-xs text-muted">공유:</span>
       <code className="break-all text-xs text-ink">/r/{token}</code>
       <button
         type="button"
         onClick={handleCopy}
-        className="border border-line bg-cream px-2 py-0.5 text-xs text-ink hover:border-vermilion"
+        className="border border-line bg-white px-2 py-0.5 text-xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
       >
         {copied ? "복사됨" : "복사"}
       </button>
@@ -64,7 +64,7 @@ export function ShareControls({ reportId, initialToken }: Props) {
         type="button"
         onClick={handleToggle}
         disabled={pending}
-        className="text-xs text-muted hover:text-vermilion"
+        className="border border-line bg-white px-2 py-0.5 text-xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
       >
         해제
       </button>
