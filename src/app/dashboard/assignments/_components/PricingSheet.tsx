@@ -152,8 +152,8 @@ function SectionCard({ section }: { section: PricingSection }) {
   const bodyMatrix = computeBodyMatrix(paddedBody);
 
   return (
-    <article className="border border-line bg-cream [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
-      <header className="border-b border-line bg-washi px-5 py-3">
+    <article className="border border-line-soft bg-situation-bg">
+      <header className="border-b border-line-soft bg-search-field-bg px-5 py-3">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-base font-bold text-ink">
             {section.title || "(섹션)"}
@@ -169,7 +169,7 @@ function SectionCard({ section }: { section: PricingSection }) {
           <table className="w-full table-fixed border-collapse text-sm">
             {headerCells.length > 0 ? (
               <thead>
-                <tr className="border-b-2 border-ink/20 bg-washi">
+                <tr className="border-b-2 border-ink/20 bg-search-field-bg">
                   {headerCells.map((c, i) => (
                     <th
                       key={i}
@@ -187,7 +187,10 @@ function SectionCard({ section }: { section: PricingSection }) {
             {bodyMatrix.length > 0 ? (
               <tbody>
                 {bodyMatrix.map((row, ri) => (
-                  <tr key={ri} className="border-b border-line-soft last:border-b-0">
+                  <tr
+                    key={ri}
+                    className="border-b border-line-soft last:border-b-0"
+                  >
                     {row.map((c, ci) => {
                       if (c.skip) return null;
                       // 첫 컬럼 폭을 카드 전체에 통일 (table-fixed + w-[20%]).
@@ -217,11 +220,11 @@ function SectionCard({ section }: { section: PricingSection }) {
       ) : null}
 
       {section.notes.length > 0 ? (
-        <footer className="space-y-1 border-t border-line-soft bg-washi-raised px-5 py-3">
+        <footer className="space-y-1 border-t border-line-soft bg-search-field-bg px-5 py-3">
           {section.notes.map((n, i) => (
             <p
               key={i}
-              className="block whitespace-pre-wrap text-xs leading-relaxed text-muted"
+              className="block whitespace-pre-wrap text-xs leading-relaxed text-vermilion"
             >
               {n}
             </p>
@@ -256,7 +259,7 @@ function CategoryButtons({
             className={`cursor-pointer border px-3 py-1 text-xs font-medium transition-colors ${
               isActive
                 ? "border-vermilion bg-vermilion text-cream hover:bg-vermilion-deep"
-                : "border-line bg-cream text-ink hover:border-ink"
+                : "border-line bg-paper text-ink hover:bg-line-soft"
             }`}
           >
             {cat}
@@ -287,14 +290,13 @@ export function PricingSheet({ parsed }: { parsed: PricingSheetParsed }) {
   };
   const total = counts.원서접수 + counts.PIMS + counts.입학상담앱;
 
-  const initialActive =
-    CATEGORY_ORDER.find((c) => counts[c] > 0) ?? "원서접수";
+  const initialActive = CATEGORY_ORDER.find((c) => counts[c] > 0) ?? "원서접수";
   const [active, setActive] = useState<PricingCategory>(initialActive);
 
   if (total === 0) {
     return (
       <section className="p-7">
-        <div className="border border-dashed border-line bg-washi-raised p-8 text-center">
+        <div className="border border-line-soft bg-situation-bg p-8 text-center">
           <p className="text-sm text-muted">가격정책 데이터가 없습니다.</p>
         </div>
       </section>

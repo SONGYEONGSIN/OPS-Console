@@ -9,7 +9,7 @@ export function SheetGrid({ sheet }: { sheet: AssignmentSheet }) {
   const cols = sheet.columnCount;
   return (
     <section className="p-7">
-      <div className="w-full overflow-x-auto border border-line bg-cream [box-shadow:3px_4px_0_rgba(21,18,12,0.08)]">
+      <div className="w-full overflow-x-auto border border-line-soft bg-situation-bg">
         <table className="w-full border-collapse text-sm">
           <tbody>
             {sheet.rowsText.map((row, ri) => {
@@ -20,9 +20,9 @@ export function SheetGrid({ sheet }: { sheet: AssignmentSheet }) {
                   key={ri}
                   className={`border-b border-line-soft ${
                     isBanner
-                      ? "bg-washi"
+                      ? "bg-search-field-bg"
                       : isSectionStart
-                        ? "border-t-2 border-ink/15 bg-washi"
+                        ? "border-t-2 border-ink/15 bg-search-field-bg"
                         : ""
                   }`}
                 >
