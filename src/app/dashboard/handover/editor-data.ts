@@ -18,6 +18,25 @@ export type HandoverEditorData = {
 };
 
 /**
+ * 복제 원본/대상 후보 (전체 서비스 light) — 편집기 로더와
+ * 작성 탭 목록의 복제 버튼(HandoverListCopy)이 공유한다.
+ */
+export async function listHandoverCopyCandidates(): Promise<
+  HandoverEditorData["handoverServiceCandidates"]
+> {
+  const { rows: allWithHandover } = await listServicesWithHandover({
+    pageSize: 3000,
+  });
+  return allWithHandover.map((r) => ({
+    id: r.service_id,
+    serviceId: r.service_number,
+    universityName: r.university_name,
+    serviceName: r.service_name,
+    hasRecord: r.handover_status != null,
+  }));
+}
+
+/**
  * 인수인계 편집기 초기 데이터 로더 — 전용 페이지([serviceId])와
  * 목록(?edit=) 인라인 편집기가 공유한다. 서비스가 없으면 null.
  */
@@ -43,17 +62,7 @@ export async function loadHandoverEditorData(
     })),
   );
 
-  // 복제 대상 후보 (전체 서비스 light)
-  const { rows: allWithHandover } = await listServicesWithHandover({
-    pageSize: 3000,
-  });
-  const handoverServiceCandidates = allWithHandover.map((r) => ({
-    id: r.service_id,
-    serviceId: r.service_number,
-    universityName: r.university_name,
-    serviceName: r.service_name,
-    hasRecord: r.handover_status != null,
-  }));
+  const handoverServiceCandidates = await listHandoverCopyCandidates();
 
   // 계약정보 상태 셀렉트 옵션 (best-effort)
   let contractsStatusOptions: string[] = [];

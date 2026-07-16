@@ -2,15 +2,18 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
+export type NewsKeywordCount = { keyword: string; count: number };
+
 /**
  * 운영부 뉴스 — 수집 키워드 칩 필터(?keyword).
  * 칩 클릭 시 set, 활성 칩 재클릭 시 해제. 변경 시 page 리셋.
- * 선택 표준: border-vermilion bg-vermilion/10 text-vermilion (#846).
+ * 배지 표준: 인사이트 영상 수집 칩과 동일 — 활성 버밀리언 솔리드,
+ * 라벨에 건수 표기 `키워드 (N)`, 헤더 우측 정렬(ml-auto).
  */
 export function NewsKeywordChips({
   keywords,
 }: {
-  keywords: readonly string[];
+  keywords: readonly NewsKeywordCount[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -18,6 +21,8 @@ export function NewsKeywordChips({
   const active = params.get("keyword") ?? "";
 
   if (keywords.length === 0) return null;
+
+  const total = keywords.reduce((sum, k) => sum + k.count, 0);
 
   const select = (kw: string) => {
     const next = new URLSearchParams(params.toString());
@@ -28,33 +33,33 @@ export function NewsKeywordChips({
   };
 
   const chipClass = (isActive: boolean) =>
-    `cursor-pointer border px-2.5 py-0.5 text-xs transition-colors ${
+    `cursor-pointer border px-3 py-1 text-xs transition-colors ${
       isActive
-        ? "border-vermilion bg-vermilion/10 text-vermilion"
-        : "border-line-soft bg-transparent text-muted hover:bg-line-soft hover:text-ink"
+        ? "border-vermilion bg-vermilion text-cream"
+        : "border-line bg-paper text-ink hover:bg-line-soft"
     }`;
 
   return (
     <div
       role="group"
       aria-label="키워드 필터"
-      className="flex flex-wrap items-center gap-1.5"
+      className="ml-auto flex flex-wrap items-center gap-1"
     >
       <button
         type="button"
         onClick={() => select("")}
         className={chipClass(active === "")}
       >
-        전체
+        전체 ({total})
       </button>
-      {keywords.map((kw) => (
+      {keywords.map(({ keyword, count }) => (
         <button
-          key={kw}
+          key={keyword}
           type="button"
-          onClick={() => select(kw)}
-          className={chipClass(active === kw)}
+          onClick={() => select(keyword)}
+          className={chipClass(active === keyword)}
         >
-          {kw}
+          {keyword} ({count})
         </button>
       ))}
     </div>

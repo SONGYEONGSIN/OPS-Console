@@ -39,7 +39,8 @@ export function ReportDetail({ report }: Props) {
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <ShareControls reportId={report.id} initialToken={report.shareToken} />
         <a
           href={`/api/reports/${report.id}/pdf`}
           className="border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream hover:opacity-90"
@@ -48,7 +49,6 @@ export function ReportDetail({ report }: Props) {
         >
           PDF 다운로드
         </a>
-        <ShareControls reportId={report.id} initialToken={report.shareToken} />
       </div>
 
       <KpiGrid kpis={report.kpis} />

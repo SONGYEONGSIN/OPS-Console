@@ -18,7 +18,7 @@ export default async function SharedReportPage({
   if (!report) notFound();
 
   return (
-    <main className="min-h-screen bg-cream">
+    <main className="min-h-screen bg-paper">
       <div className="mx-auto max-w-5xl p-6 md:p-8">
         <header className="border-b border-line pb-4">
           <p className="text-xs uppercase tracking-[0.06em] text-muted">
@@ -39,7 +39,8 @@ export default async function SharedReportPage({
         </section>
 
         <footer className="mt-8 border-t border-line pt-4 text-xs text-muted">
-          본 페이지는 외부 공유 링크입니다. 링크가 비활성화되면 조회할 수 없습니다.
+          본 페이지는 외부 공유 링크입니다. 링크가 비활성화되면 조회할 수
+          없습니다.
         </footer>
       </div>
     </main>

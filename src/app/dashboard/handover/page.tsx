@@ -2,6 +2,8 @@ import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
+import { HandoverListCopy } from "./HandoverListCopy";
+import { listHandoverCopyCandidates } from "./editor-data";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -185,6 +187,8 @@ export default async function HandoverPage({
     pageSize: PAGE_SIZE,
   });
   const rows: ListRow[] = dbRows.map(handoverToListRow);
+  // 복제 버튼(제목줄 우측)용 원본/대상 후보 — 편집기와 동일 소스
+  const copyCandidates = await listHandoverCopyCandidates();
   const config = resolvePageMeta(slug, meta, total);
 
   const header = (
@@ -209,6 +213,7 @@ export default async function HandoverPage({
       controlsRow={controlsRow}
       variant="handover"
       canCreate={false}
+      extraActionsLeft={<HandoverListCopy candidates={copyCandidates} />}
       liveData
       currentUserName={me?.displayName ?? me?.email ?? ""}
       inlineFilters={

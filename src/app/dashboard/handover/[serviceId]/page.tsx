@@ -1,30 +1,27 @@
 import { notFound } from "next/navigation";
 import { requireMenu } from "@/features/auth/menu-guard";
-import { copyHandoverRecord } from "@/features/handover/actions";
 import { CrumbBar } from "@/app/dashboard/_components/page-header/CrumbBar";
-import { derivePatternMeta } from "@/app/dashboard/_data/page-meta-derive";
 import { loadHandoverEditorData } from "../editor-data";
 import { HandoverEditorWorkspace } from "./_components/HandoverEditorWorkspace";
+
+/** KST YYYY-MM-DD — 메타 라인 '생성' 표기(현재 기준). */
+function todayKst(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(
+    new Date(),
+  );
+}
 
 export default async function HandoverEditorPage({
   params,
 }: {
   params: Promise<{ serviceId: string }>;
 }) {
-  await requireMenu("handover");
+  const me = await requireMenu("handover");
   const { serviceId } = await params;
 
   const data = await loadHandoverEditorData(serviceId);
   if (!data) notFound();
-  const { row, handoverServiceCandidates, contractsStatusOptions } = data;
-
-  async function onCopyHandover(
-    fromServiceId: string,
-    toServiceIds: string[],
-  ): Promise<{ ok: boolean; error?: string; copiedCount?: number }> {
-    "use server";
-    return await copyHandoverRecord(fromServiceId, toServiceIds);
-  }
+  const { row, contractsStatusOptions } = data;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -34,9 +31,10 @@ export default async function HandoverEditorPage({
         <HandoverEditorWorkspace
           initialRow={row}
           contractsStatusOptions={contractsStatusOptions}
-          handoverServiceCandidates={handoverServiceCandidates}
-          onCopyHandover={onCopyHandover}
-          metaItems={derivePatternMeta(undefined, undefined)}
+          metaItems={[
+            { label: `생성 ${todayKst()}` },
+            { label: me.displayName },
+          ]}
         />
       </section>
     </div>
