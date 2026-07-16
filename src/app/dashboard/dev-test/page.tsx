@@ -36,7 +36,6 @@ export default async function DevTestPage({
     q?: string;
     mine?: string;
     category?: string;
-    region?: string;
     universityType?: string;
     admissionType?: string;
     tab?: string;
@@ -59,7 +58,6 @@ export default async function DevTestPage({
   // 필터 옵션은 전체 서비스 기준 distinct.
   const options = {
     categoryOptions: distinct(services.map((s) => s.category)),
-    regionOptions: distinct(services.map((s) => s.region)),
     universityTypeOptions: distinct(services.map((s) => s.university_type)),
     admissionTypeOptions: distinct(services.map((s) => s.admission_type)),
   };
@@ -71,7 +69,6 @@ export default async function DevTestPage({
   const filtered = services.filter((s) => {
     if (mine && myName && s.operator_name !== myName) return false;
     if (sp.category && s.category !== sp.category) return false;
-    if (sp.region && s.region !== sp.region) return false;
     if (sp.universityType && s.university_type !== sp.universityType)
       return false;
     if (sp.admissionType && s.admission_type !== sp.admissionType) return false;
@@ -128,8 +125,14 @@ export default async function DevTestPage({
         autoRefresh
       />
       <DevTestTabs />
-      {sp.tab === "dev" ? (
-        <DevControlSection q={sp.q} page={sp.page} />
+      {sp.tab !== "test" ? (
+        <DevControlSection
+          q={sp.q}
+          page={sp.page}
+          category={sp.category}
+          universityType={sp.universityType}
+          admissionType={sp.admissionType}
+        />
       ) : (
         <ListPattern
           title="개발 · 테스트"

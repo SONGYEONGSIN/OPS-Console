@@ -11,21 +11,50 @@ const PAGE_SIZE = 30;
 type Props = {
   q?: string;
   page?: string;
+  category?: string;
+  universityType?: string;
+  admissionType?: string;
 };
+
+/** null 제거 + 중복 제거 + 정렬한 distinct 옵션. */
+function distinct(values: (string | null)[]): string[] {
+  return [...new Set(values.filter((v): v is string => !!v))].sort();
+}
 
 /**
  * 개발 탭 — 원서제어 분석 목록 (서버 컴포넌트).
  * listTestableServices + listDevControlAnalyses를 buildDevControlRows로 조립,
- * q(대학명·서비스명) 서버 필터 후 ListPattern variant="dev-control"로 렌더.
+ * q(대학명·서비스명) + 카테고리/대학구분/접수구분 서버 필터 후
+ * ListPattern variant="dev-control"로 렌더.
  */
-export async function DevControlSection({ q, page }: Props) {
+export async function DevControlSection({
+  q,
+  page,
+  category,
+  universityType,
+  admissionType,
+}: Props) {
   const [services, analyses, requests] = await Promise.all([
     listTestableServices(),
     listDevControlAnalyses(),
     listLatestDevControlRequests(),
   ]);
 
-  const rows = buildDevControlRows(services, analyses, requests);
+  // 필터 옵션은 전체 서비스 기준 distinct (테스트 탭과 동일 규칙, 지역 제외).
+  const options = {
+    categoryOptions: distinct(services.map((s) => s.category)),
+    universityTypeOptions: distinct(services.map((s) => s.university_type)),
+    admissionTypeOptions: distinct(services.map((s) => s.admission_type)),
+  };
+
+  const filteredServices = services.filter((s) => {
+    if (category && s.category !== category) return false;
+    if (universityType && s.university_type !== universityType) return false;
+    if (admissionType && s.admission_type !== admissionType) return false;
+    return true;
+  });
+
+  const rows = buildDevControlRows(filteredServices, analyses, requests);
 
   const query = (q ?? "").trim().toLowerCase();
   const filtered = query
@@ -47,7 +76,7 @@ export async function DevControlSection({ q, page }: Props) {
       variant="dev-control"
       readOnly
       liveData
-      controlsRow={<DevControlSearch />}
+      controlsRow={<DevControlSearch {...options} />}
       footer={
         <ListPagination
           key="dev-control-pagination"

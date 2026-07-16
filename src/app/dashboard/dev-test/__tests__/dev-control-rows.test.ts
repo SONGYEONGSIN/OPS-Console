@@ -51,6 +51,14 @@ function makeAnalysis(
 }
 
 describe("buildDevControlRows", () => {
+  it("접수구분(admission_type)을 applicationType으로 첨부한다", () => {
+    const rows = buildDevControlRows(
+      [makeService({ admission_type: "반응형원서" })],
+      [],
+    );
+    expect(rows[0].applicationType).toBe("반응형원서");
+  });
+
   it("requests Map의 최신 요청을 행에 devControlRequest로 첨부한다", () => {
     const services = [
       makeService({ service_id: 1 }),
