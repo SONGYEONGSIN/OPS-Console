@@ -94,6 +94,12 @@ describe("ContractInfoForm", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /불러오기/ }));
     const pick = await screen.findByRole("button", { name: /건국대학교/ });
+    // 학교명 앞에 카테고리(시트명) 배지 표기
+    expect(pick).toHaveTextContent("4년제");
+    // 선택 패널 배경은 카드 표준(bg-situation-bg)
+    expect(screen.getByLabelText("계약 검색 결과").className).toContain(
+      "bg-situation-bg",
+    );
     fireEvent.click(pick);
     // 계약완료(영업팀진행/입찰 아님) → 진행 운영 / 형태 수의 / 제목 원서접수
     expect(onChange).toHaveBeenCalledWith(
@@ -108,8 +114,6 @@ describe("ContractInfoForm", () => {
 
   it("universityName 없으면 검색 버튼 미표시", () => {
     render(<ContractInfoForm value={value} onChange={vi.fn()} />);
-    expect(
-      screen.queryByRole("button", { name: /불러오기/ }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: /불러오기/ })).toBeNull();
   });
 });

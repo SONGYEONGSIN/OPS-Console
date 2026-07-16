@@ -10,7 +10,7 @@ type Props = {
  */
 export function OpsGuidePanel({ tab }: Props) {
   return (
-    <div className="flex flex-col gap-4 overflow-y-auto">
+    <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto">
       <header className="mb-2">
         <h3 className="text-xl font-semibold tracking-[-0.02em]">{tab.label}</h3>
         <p className="mt-1 text-xs text-muted">{tab.desc}</p>

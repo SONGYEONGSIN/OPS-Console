@@ -100,7 +100,7 @@ export function ContractInfoForm({
       {!readOnly && matches.length > 0 && (
         <ul
           aria-label="계약 검색 결과"
-          className="max-h-40 space-y-0.5 overflow-y-auto border border-line-soft bg-washi-raised p-1"
+          className="max-h-40 space-y-0.5 overflow-y-auto border border-line-soft bg-situation-bg p-1"
         >
           {matches.map((m, i) => (
             <li key={`${m.sheet}-${m.numbering}-${i}`}>
@@ -109,6 +109,11 @@ export function ContractInfoForm({
                 onClick={() => applyMatch(m)}
                 className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
               >
+                {m.sheet ? (
+                  <span className="mr-1.5 inline-block bg-line-soft px-1.5 py-0.5 text-2xs text-muted">
+                    {m.sheet}
+                  </span>
+                ) : null}
                 <span className="text-ink">{m.name}</span>
                 <span className="ml-1 text-muted">
                   {m.operator ? `· 진행 ${m.operator}` : ""}
