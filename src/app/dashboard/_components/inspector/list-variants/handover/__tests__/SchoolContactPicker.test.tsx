@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { SchoolContactPicker } from "../SchoolContactPicker";
 import type { SchoolContact } from "@/features/handover/schemas";
 
@@ -21,7 +21,7 @@ const candidates = [
 ];
 
 describe("SchoolContactPicker", () => {
-  it("검색어 입력 시 대학 연락처 후보 표시", () => {
+  it("셀렉트에 대학 연락처 후보 표시 (이름·직함·이메일 라벨)", () => {
     render(
       <SchoolContactPicker
         candidates={candidates}
@@ -29,14 +29,17 @@ describe("SchoolContactPicker", () => {
         onChange={() => {}}
       />,
     );
-    fireEvent.change(screen.getByLabelText("학교담당자 검색"), {
-      target: { value: "김" },
-    });
-    expect(screen.getByRole("button", { name: /김담당/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /이전산/ })).toBeNull();
+    const select = screen.getByLabelText("학교담당자 선택");
+    expect(select).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "김담당 (실무) · kim@univ.ac.kr" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "이전산 (전산) · lee@univ.ac.kr" }),
+    ).toBeInTheDocument();
   });
 
-  it("후보 선택 시 구조화 항목으로 리스트에 추가", () => {
+  it("셀렉트에서 선택 시 구조화 항목으로 추가 + 셀렉트 리셋", () => {
     const onChange = vi.fn();
     render(
       <SchoolContactPicker
@@ -45,10 +48,8 @@ describe("SchoolContactPicker", () => {
         onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByLabelText("학교담당자 검색"), {
-      target: { value: "김" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /김담당/ }));
+    const select = screen.getByLabelText("학교담당자 선택") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "0" } });
     const added = onChange.mock.calls[0][0] as SchoolContact[];
     expect(added).toHaveLength(1);
     expect(added[0]).toMatchObject({
@@ -58,10 +59,10 @@ describe("SchoolContactPicker", () => {
       ext: "1234",
       email: "kim@univ.ac.kr",
     });
+    expect(select.value).toBe("");
   });
 
-  it("이미 추가된 동일 담당자는 중복 추가하지 않는다", () => {
-    const onChange = vi.fn();
+  it("이미 추가된 담당자는 셀렉트 옵션에서 제외", () => {
     const items: SchoolContact[] = [
       {
         id: "x",
@@ -76,15 +77,15 @@ describe("SchoolContactPicker", () => {
       <SchoolContactPicker
         candidates={candidates}
         items={items}
-        onChange={onChange}
+        onChange={() => {}}
       />,
     );
-    fireEvent.change(screen.getByLabelText("학교담당자 검색"), {
-      target: { value: "김" },
-    });
-    const results = screen.getByLabelText("연락처 검색 결과");
-    fireEvent.click(within(results).getByRole("button", { name: /김담당/ }));
-    expect(onChange).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("option", { name: /김담당/ }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("option", { name: /이전산/ }),
+    ).toBeInTheDocument();
   });
 
   it("추가된 담당자 × 클릭 시 리스트에서 제거", () => {

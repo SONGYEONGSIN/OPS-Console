@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { SchoolContact } from "@/features/handover/schemas";
 import { CopyButton } from "./CopyButton";
 
@@ -19,8 +18,9 @@ function newId(): string {
 }
 
 /**
- * 컨텍 — 학교담당자. 해당 대학 연락처를 검색해 선택하면 구조화 리스트에 추가한다.
- * 각 담당자는 개별 행(이름(직함)/전화/이메일)으로 표시되고 × 로 개별 삭제한다.
+ * 컨텍 — 학교담당자. 해당 대학 연락처 셀렉트에서 선택하면 구조화 리스트에 추가한다.
+ * 이미 추가된 담당자는 옵션에서 제외. 각 담당자는 개별 행(이름(직함)/전화/이메일)으로
+ * 표시되고 × 로 개별 삭제한다.
  */
 export function SchoolContactPicker({
   candidates,
@@ -34,35 +34,34 @@ export function SchoolContactPicker({
   /** 아코디언 내부 — 자체 제목('학교담당자')을 숨긴다. */
   embedded?: boolean;
 }) {
-  const [search, setSearch] = useState("");
-  const term = search.trim().toLowerCase();
-  const matches =
-    term === ""
-      ? []
-      : candidates.filter(
-          (c) =>
-            c.name.toLowerCase().includes(term) ||
-            (c.email ?? "").toLowerCase().includes(term),
-        );
-
-  function add(c: SchoolContactCandidate) {
-    const dup = items.some(
+  // 이미 추가된 담당자(이름+이메일 동일)는 옵션에서 제외
+  const isAdded = (c: SchoolContactCandidate) =>
+    items.some(
       (it) => it.name === c.name && (it.email ?? "") === (c.email ?? ""),
     );
-    if (!dup) {
-      onChange([
-        ...items,
-        {
-          id: newId(),
-          name: c.name,
-          jobTitle: c.jobTitle,
-          phone: c.phone,
-          ext: c.ext,
-          email: c.email,
-        },
-      ]);
-    }
-    setSearch("");
+  const selectable = candidates
+    .map((c, i) => ({ candidate: c, index: i }))
+    .filter(({ candidate }) => !isAdded(candidate));
+
+  function optionLabel(c: SchoolContactCandidate): string {
+    const job = c.jobTitle ? ` (${c.jobTitle})` : "";
+    const email = c.email ? ` · ${c.email}` : "";
+    return `${c.name}${job}${email}`;
+  }
+
+  function add(c: SchoolContactCandidate) {
+    if (isAdded(c)) return;
+    onChange([
+      ...items,
+      {
+        id: newId(),
+        name: c.name,
+        jobTitle: c.jobTitle,
+        phone: c.phone,
+        ext: c.ext,
+        email: c.email,
+      },
+    ]);
   }
 
   return (
@@ -75,59 +74,22 @@ export function SchoolContactPicker({
           등록된 대학 연락처가 없습니다. (대학연락처 메뉴에서 먼저 등록)
         </p>
       ) : (
-        <div className="relative">
-          <div className="relative">
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-              className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted"
-            >
-              <circle
-                cx="7"
-                cy="7"
-                r="4.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <path
-                d="m11 11 3 3"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <input
-              type="text"
-              aria-label="학교담당자 검색"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="대학 연락처 검색 (이름/이메일) → 선택 시 추가"
-              className="w-full border border-line-soft bg-search-field-bg py-1.5 pl-7 pr-2 text-ink transition-colors focus:border-ink focus:bg-white"
-            />
-          </div>
-          {matches.length > 0 && (
-            <ul
-              aria-label="연락처 검색 결과"
-              className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto border border-line-soft bg-washi-raised"
-            >
-              {matches.map((c, i) => (
-                <li key={`${c.email ?? c.name}-${i}`}>
-                  <button
-                    type="button"
-                    onClick={() => add(c)}
-                    className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-2xs text-ink hover:bg-line-soft"
-                  >
-                    {c.name}
-                    {c.jobTitle ? ` (${c.jobTitle})` : ""}
-                    {c.ext ? ` · ${c.ext}` : ""}
-                    {c.email ? ` · ${c.email}` : ""}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <select
+          aria-label="학교담당자 선택"
+          value=""
+          onChange={(e) => {
+            const idx = Number(e.target.value);
+            if (Number.isInteger(idx) && candidates[idx]) add(candidates[idx]);
+          }}
+          className="w-full border border-line-soft bg-field-bg px-2 py-1.5 text-ink transition-colors focus:border-ink focus:bg-white"
+        >
+          <option value="">담당자 선택 → 추가</option>
+          {selectable.map(({ candidate, index }) => (
+            <option key={`${candidate.email ?? candidate.name}-${index}`} value={index}>
+              {optionLabel(candidate)}
+            </option>
+          ))}
+        </select>
       )}
 
       {items.length === 0 ? (
