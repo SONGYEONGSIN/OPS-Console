@@ -9,7 +9,6 @@ const DEBOUNCE_MS = 300;
 
 type Props = {
   categoryOptions: readonly string[];
-  regionOptions: readonly string[];
   universityTypeOptions: readonly string[];
   admissionTypeOptions: readonly string[];
 };
@@ -20,7 +19,6 @@ type Props = {
  */
 export function DevTestControls({
   categoryOptions,
-  regionOptions,
   universityTypeOptions,
   admissionTypeOptions,
 }: Props) {
@@ -49,20 +47,17 @@ export function DevTestControls({
 
   return (
     <div className="flex flex-wrap items-center gap-2 px-7 pt-3">
-      <ListSearch value={q} onChange={setQ} placeholder="대학명·서비스명 검색" />
+      <ListSearch
+        value={q}
+        onChange={setQ}
+        placeholder="대학명·서비스명 검색"
+      />
       <ListSelect
         value={params.get("category") ?? ""}
         onChange={(v) => navigate({ category: v || null })}
         options={categoryOptions}
         placeholder="카테고리 전체"
         ariaLabel="카테고리 필터"
-      />
-      <ListSelect
-        value={params.get("region") ?? ""}
-        onChange={(v) => navigate({ region: v || null })}
-        options={regionOptions}
-        placeholder="지역 전체"
-        ariaLabel="지역 필터"
       />
       <ListSelect
         value={params.get("universityType") ?? ""}

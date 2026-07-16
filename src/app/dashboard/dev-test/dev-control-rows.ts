@@ -41,6 +41,7 @@ export function buildDevControlRows(
     universityName: s.university_name,
     serviceName: s.service_name,
     operatorName: s.operator_name ?? "",
+    applicationType: s.admission_type ?? "",
     devControlAnalyses: analysesByService.get(s.service_id) ?? [],
     devControlRequest: requests.get(s.service_id),
   }));

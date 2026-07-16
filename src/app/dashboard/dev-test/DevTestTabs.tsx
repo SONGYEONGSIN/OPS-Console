@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 const TABS = [
-  { key: "test", label: "테스트" },
   { key: "dev", label: "개발" },
+  { key: "test", label: "테스트" },
 ] as const;
 
 export function DevTestTabs() {
   const params = useSearchParams();
-  const active = params.get("tab") ?? "test";
+  const active = params.get("tab") ?? "dev";
 
   return (
     <div className="px-7">
@@ -18,7 +18,7 @@ export function DevTestTabs() {
         {TABS.map((t) => {
           const isActive = active === t.key;
           const href =
-            t.key === "test"
+            t.key === "dev"
               ? "/dashboard/dev-test"
               : `/dashboard/dev-test?tab=${t.key}`;
           return (

@@ -13,17 +13,16 @@ import { DevTestControls } from "../DevTestControls";
 
 const opts = {
   categoryOptions: ["수시", "정시"],
-  regionOptions: ["서울"],
   universityTypeOptions: [],
   admissionTypeOptions: [],
 };
 
 describe("DevTestControls", () => {
-  it("검색 + 필터 셀렉트를 노출한다", () => {
+  it("검색 + 필터 셀렉트를 노출한다 (지역 필터는 없음)", () => {
     render(<DevTestControls {...opts} />);
     expect(screen.getByPlaceholderText(/검색/)).toBeInTheDocument();
     expect(screen.getByLabelText("카테고리 필터")).toBeInTheDocument();
-    expect(screen.getByLabelText("지역 필터")).toBeInTheDocument();
+    expect(screen.queryByLabelText("지역 필터")).toBeNull();
   });
 
   it("카테고리 선택 시 searchParam으로 이동", () => {
