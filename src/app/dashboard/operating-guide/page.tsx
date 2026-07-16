@@ -20,8 +20,7 @@ export default async function OperatingGuidePage({
 
   const sp = await searchParams;
   const requestedTab = sp.tab?.trim() ?? "";
-  const activeTab =
-    findTabByValue(requestedTab) ?? OPERATING_GUIDE_TABS[0];
+  const activeTab = findTabByValue(requestedTab) ?? OPERATING_GUIDE_TABS[0];
 
   const config = resolvePageMeta(slug, meta);
 
@@ -40,7 +39,10 @@ export default async function OperatingGuidePage({
         </header>
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
-          <OpsGuideNav tabs={OPERATING_GUIDE_TABS} />
+          {/* 좌측 메뉴 고정 — 인수인계 작성 편집기와 동일 (스크롤 시 상단 고정) */}
+          <div className="md:sticky md:top-8 md:self-start">
+            <OpsGuideNav tabs={OPERATING_GUIDE_TABS} />
+          </div>
           <OpsGuidePanel tab={activeTab} />
         </div>
       </section>

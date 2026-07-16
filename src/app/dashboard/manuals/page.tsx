@@ -44,9 +44,21 @@ function categoryItemsFrom(rows: ManualRow[]): CategoryItem[] {
       continue;
     }
     if (key === "_folder") {
-      map.set(key, { value: "_folder", label: "폴더", desc: null, sortOrder: 0, count: 1 });
+      map.set(key, {
+        value: "_folder",
+        label: "폴더",
+        desc: null,
+        sortOrder: 0,
+        count: 1,
+      });
     } else if (key === "_etc") {
-      map.set(key, { value: "_etc", label: "기타", desc: null, sortOrder: 99, count: 1 });
+      map.set(key, {
+        value: "_etc",
+        label: "기타",
+        desc: null,
+        sortOrder: 99,
+        count: 1,
+      });
     } else {
       map.set(key, {
         value: key,
@@ -68,7 +80,11 @@ function headingFor(category: string, items: CategoryItem[]): string {
   return item.desc ?? item.label;
 }
 
-function hintFor(category: string, items: CategoryItem[], total: number): string {
+function hintFor(
+  category: string,
+  items: CategoryItem[],
+  total: number,
+): string {
   if (category === "all") return `총 ${total}개 항목`;
   const item = items.find((c) => c.value === category);
   if (!item) return "";
@@ -147,10 +163,16 @@ export default async function ManualsPage({
         ) : null}
 
         <div className="grid flex-1 min-h-0 grid-cols-1 gap-6 md:grid-cols-[240px_1fr]">
+          {/* 좌측 메뉴 고정 — 인수인계 작성 편집기와 동일 (스크롤 시 상단 고정) */}
           {inSubfolder ? (
             <div />
           ) : (
-            <ManualSidebar totalCount={allRows.length} categories={categories} />
+            <div className="md:sticky md:top-8 md:self-start">
+              <ManualSidebar
+                totalCount={allRows.length}
+                categories={categories}
+              />
+            </div>
           )}
           <ManualList heading={heading} hint={hint} rows={filtered} />
         </div>
