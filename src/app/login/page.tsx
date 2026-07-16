@@ -518,6 +518,9 @@ function SSOButton() {
         // https://graph.microsoft.com/Files.ReadWrite.All 형태 전체 URI로 교체.
         scopes:
           "openid profile email offline_access Files.ReadWrite.All Sites.ReadWrite.All",
+        // prompt=login — 브라우저에 MS 세션이 남아 있어도 항상 재인증 강제.
+        // 로그아웃·자동 세션 만료 후 버튼 클릭만으로 자동 재로그인되는 것 차단(공용 PC 보안).
+        queryParams: { prompt: "login" },
       },
     });
   };

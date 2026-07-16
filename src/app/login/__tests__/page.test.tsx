@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import LoginPage from "../page";
 
 let mockedParams: URLSearchParams;
@@ -7,9 +7,17 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => mockedParams,
 }));
 
+const signInWithOAuthMock = vi.fn(async () => ({ data: {}, error: null }));
+vi.mock("@supabase/ssr", () => ({
+  createBrowserClient: () => ({
+    auth: { signInWithOAuth: signInWithOAuthMock },
+  }),
+}));
+
 describe("LoginPage", () => {
   beforeEach(() => {
     mockedParams = new URLSearchParams();
+    signInWithOAuthMock.mockClear();
   });
 
   it("Suspense 통과 후 핵심 요소(Microsoft SSO 버튼) 렌더", () => {
@@ -17,6 +25,21 @@ describe("LoginPage", () => {
     expect(
       screen.getByRole("button", { name: /Microsoft SSO로 계속/ })
     ).toBeInTheDocument();
+  });
+
+  it("SSO는 prompt=login 강제 — 로그아웃/세션만료 후 MS 세션 잔존해도 자동 로그인 차단", async () => {
+    render(<LoginPage />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /Microsoft SSO로 계속/ }),
+    );
+    await waitFor(() => expect(signInWithOAuthMock).toHaveBeenCalledTimes(1));
+    const args = signInWithOAuthMock.mock.calls[0] as unknown[];
+    const call = args[0] as {
+      provider: string;
+      options: { queryParams?: Record<string, string> };
+    };
+    expect(call.provider).toBe("azure");
+    expect(call.options.queryParams?.prompt).toBe("login");
   });
 
   it("로그인 화면은 상단 바(브랜드·시계)를 노출하지 않는다", () => {
