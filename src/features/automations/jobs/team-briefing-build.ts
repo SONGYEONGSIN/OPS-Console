@@ -293,6 +293,39 @@ export function upcomingAnniversaries(
   );
 }
 
+/** 생일 — 발행 주에 생일이 도래하는 운영자 (연도 무시, operators.birth_date). */
+export type Birthday = { name: string; dateYmd: string };
+
+/** 발행일부터 windowDays일 내 도래하는 생일. 올해분이 지났으면 내년으로. */
+export function upcomingBirthdays(
+  operators: { name: string; birth_date: string }[],
+  todayYmd: string,
+  windowDays = 7,
+): Birthday[] {
+  const limitYmd = addDaysYmd(todayYmd, windowDays);
+  const todayYear = Number(todayYmd.slice(0, 4));
+  const out: Birthday[] = [];
+  for (const op of operators) {
+    const birth = op.birth_date?.slice(0, 10);
+    if (!birth || !/^\d{4}-\d{2}-\d{2}$/.test(birth)) continue;
+    const monthDay = birth.slice(5);
+    let ymd = `${todayYear}-${monthDay}`;
+    if (ymd < todayYmd) ymd = `${todayYear + 1}-${monthDay}`;
+    if (ymd >= todayYmd && ymd <= limitYmd) out.push({ name: op.name, dateYmd: ymd });
+  }
+  return out.sort((a, b) =>
+    a.dateYmd < b.dateYmd ? -1 : a.dateYmd > b.dateYmd ? 1 : 0,
+  );
+}
+
+/** 뉴스레터 사진/영상 — Supabase Storage 공개 URL + 캡션(원 파일명 유래). */
+export type BriefingMedia = { src: string; caption?: string };
+export type BriefingImages = {
+  cover?: BriefingMedia;
+  gallery?: BriefingMedia[];
+  videos?: BriefingMedia[];
+};
+
 /** claude -p가 생성하는 뉴스레터 스토리 — 캐치 제목 + 인트로 + 섹션별 이야기. */
 export type BriefingStory = {
   headline: string;
@@ -317,6 +350,10 @@ export type BriefingPayload = {
   insights: InsightsBrief;
   /** 근속 마일스톤 (발행 주 도래분) — 구버전 발행분은 없음 */
   milestones?: Milestone[];
+  /** 생일 (발행 주 도래분, 연도 무시) */
+  birthdays?: Birthday[];
+  /** 사진·영상 (Supabase Storage newsletter 버킷 최근 업로드분) */
+  images?: BriefingImages;
   /** claude -p 생성 스토리 — 없으면 페이지가 수치 중심으로 렌더 */
   story?: BriefingStory;
 };

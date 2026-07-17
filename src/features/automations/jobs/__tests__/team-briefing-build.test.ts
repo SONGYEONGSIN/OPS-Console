@@ -12,6 +12,7 @@ import {
   fmtHours,
   fmtViews,
   upcomingAnniversaries,
+  upcomingBirthdays,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
@@ -317,5 +318,38 @@ describe("upcomingAnniversaries", () => {
 
   it("해당자 없으면 빈 배열", () => {
     expect(upcomingAnniversaries([], "2026-07-17")).toEqual([]);
+  });
+});
+
+describe("upcomingBirthdays", () => {
+  const ops = [
+    { name: "김유민", birth_date: "1995-07-20" },
+    { name: "박시현", birth_date: "1988-07-23" },
+    { name: "이전산", birth_date: "1990-09-01" }, // 윈도우 밖
+  ];
+
+  it("발행일부터 7일 내 생일(연도 무시) — 날짜 오름차순", () => {
+    expect(upcomingBirthdays(ops, "2026-07-17")).toEqual([
+      { name: "김유민", dateYmd: "2026-07-20" },
+      { name: "박시현", dateYmd: "2026-07-23" },
+    ]);
+  });
+
+  it("올해 생일이 지났으면 내년으로 — 윈도우 밖이면 제외", () => {
+    expect(
+      upcomingBirthdays([{ name: "김유민", birth_date: "1995-07-10" }], "2026-07-17"),
+    ).toEqual([]);
+  });
+
+  it("birth_date 없거나 잘못된 형식은 무시", () => {
+    expect(
+      upcomingBirthdays(
+        [
+          { name: "a", birth_date: "" },
+          { name: "b", birth_date: "invalid" },
+        ],
+        "2026-07-17",
+      ),
+    ).toEqual([]);
   });
 });

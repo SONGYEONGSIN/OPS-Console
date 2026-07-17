@@ -76,14 +76,14 @@ const payload: BriefingPayload = {
 };
 
 describe("BriefingNewsletter", () => {
-  it("제호(주간 브리핑·호수·발행일) 렌더", () => {
+  it("제호 — '운영부 마법사' + #012(3자리 패딩) + 발행일", () => {
     render(<BriefingNewsletter issueNo={12} payload={payload} />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /주간 브리핑/ }),
+      screen.getByRole("heading", { level: 1, name: /주간 뉴스레터/ }),
     ).toBeInTheDocument();
-    expect(screen.getByText("#12")).toBeInTheDocument();
+    expect(screen.getAllByText(/#012/).length).toBeGreaterThan(0);
     expect(screen.getByText(/2026-07-17 \(금\)/)).toBeInTheDocument();
-    expect(screen.getByText("운영부 상황실")).toBeInTheDocument();
+    expect(screen.getByText("운영부 마법사")).toBeInTheDocument();
   });
 
   it("계약현황 — 시트별 수치 + 합계·완료율", () => {
@@ -155,24 +155,56 @@ describe("BriefingNewsletter", () => {
     expect(screen.getByText(/건국대 수시 마감이 코앞입니다/)).toBeInTheDocument();
   });
 
-  it("근속 기념일 코너 — milestones 있을 때 축하 렌더, 없으면 미노출", () => {
+  it("기념일 코너 — 근속 + 생일 함께 렌더, 없으면 미노출", () => {
     const { rerender } = render(
       <BriefingNewsletter
         issueNo={12}
         payload={{
           ...payload,
-          milestones: [
-            { name: "박시현", years: 10, dateYmd: "2026-07-22" },
-          ],
+          milestones: [{ name: "박시현", years: 10, dateYmd: "2026-07-22" }],
+          birthdays: [{ name: "김유민", dateYmd: "2026-07-21" }],
         }}
       />,
     );
     expect(screen.getByText(/이번 주의 기념일/)).toBeInTheDocument();
     expect(screen.getByText("박시현")).toBeInTheDocument();
     expect(screen.getByText(/입사 10주년/)).toBeInTheDocument();
+    expect(screen.getByText("김유민")).toBeInTheDocument();
+    expect(screen.getByText("생일")).toBeInTheDocument();
 
     rerender(<BriefingNewsletter issueNo={12} payload={payload} />);
     expect(screen.queryByText(/이번 주의 기념일/)).toBeNull();
+  });
+
+  it("사진·영상 — 커버 + 앨범 그리드(캡션) + 비디오 렌더", () => {
+    const { container } = render(
+      <BriefingNewsletter
+        issueNo={12}
+        payload={{
+          ...payload,
+          images: {
+            cover: { src: "https://cdn/x/cover.jpg", caption: "운영1팀 단체사진" },
+            gallery: [
+              { src: "https://cdn/x/g1.jpg", caption: "발표하는 승철 부장님" },
+              { src: "https://cdn/x/g2.jpg" },
+            ],
+            videos: [
+              { src: "https://cdn/x/v1.mp4", caption: "미션 영상" },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(screen.getByAltText("운영1팀 단체사진")).toHaveAttribute(
+      "src",
+      "https://cdn/x/cover.jpg",
+    );
+    expect(screen.getByText(/이번 주 앨범/)).toBeInTheDocument();
+    expect(screen.getByText("발표하는 승철 부장님")).toBeInTheDocument();
+    expect(screen.getByText(/이번 주 영상/)).toBeInTheDocument();
+    const video = container.querySelector("video");
+    expect(video).not.toBeNull();
+    expect(video!.getAttribute("src")).toBe("https://cdn/x/v1.mp4");
   });
 
   it("빈 섹션 — 일정·마감·AI 모두 빈 문구", () => {

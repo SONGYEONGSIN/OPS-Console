@@ -21,8 +21,6 @@ export const colors = {
   // 뉴스레터(/r/briefing) 전용 — 스티비 레퍼런스 클론 팔레트 (다른 화면 사용 금지)
   nlSky: "#68bae2",
   nlSkySoft: "#c9e7f6",
-  nlPink: "#fad4d4",
-  nlPinkSoft: "#fdeeee",
   nlIvory: "#f8f9f1",
   nlInk: "#292929",
   nlMuted: "#999999",
