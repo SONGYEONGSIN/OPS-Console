@@ -254,29 +254,59 @@ export function summarizeInsights(
 }
 
 /** 완료율 = 완료 / (완료+진행중). 모수 0이면 "—". 소수 1자리. */
-function completionPct(done: number, ongoing: number): string {
+export function completionPct(done: number, ongoing: number): string {
   const total = done + ongoing;
   if (total === 0) return "—";
   return `${((done / total) * 100).toFixed(1)}%`;
 }
 
-/** 문자열 표시폭(half-unit) — 한글/전각=2, 그 외=1. 프로포셔널 폰트라 근사치. */
-function displayWidth(s: string): number {
-  let w = 0;
-  for (const ch of s) {
-    const wide = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦　-〿]/.test(ch);
-    w += wide ? 2 : 1;
+/** 근속 마일스톤 — 발행 주에 입사 기념일이 도래하는 운영자. */
+export type Milestone = { name: string; years: number; dateYmd: string };
+
+/**
+ * 발행일부터 windowDays일 내 도래하는 입사 기념일(1주년 이상).
+ * 올해 기념일이 지났으면 내년 날짜로 계산. 날짜 오름차순.
+ */
+export function upcomingAnniversaries(
+  operators: { name: string; hired_at: string }[],
+  todayYmd: string,
+  windowDays = 7,
+): Milestone[] {
+  const limitYmd = addDaysYmd(todayYmd, windowDays);
+  const todayYear = Number(todayYmd.slice(0, 4));
+  const out: Milestone[] = [];
+  for (const op of operators) {
+    const hired = op.hired_at?.slice(0, 10);
+    if (!hired || hired.length !== 10) continue;
+    const hiredYear = Number(hired.slice(0, 4));
+    const monthDay = hired.slice(5);
+    let annivYmd = `${todayYear}-${monthDay}`;
+    if (annivYmd < todayYmd) annivYmd = `${todayYear + 1}-${monthDay}`;
+    const years = Number(annivYmd.slice(0, 4)) - hiredYear;
+    if (years < 1) continue;
+    if (annivYmd >= todayYmd && annivYmd <= limitYmd) {
+      out.push({ name: op.name, years, dateYmd: annivYmd });
+    }
   }
-  return w;
+  return out.sort((a, b) =>
+    a.dateYmd < b.dateYmd ? -1 : a.dateYmd > b.dateYmd ? 1 : 0,
+  );
 }
 
-/** text 의 셀 폭(한글=2)만큼 전각 대시(―)를 채워 합계 줄 끝(닫는 괄호)까지 닿는 구분선. */
-function ruleFor(text: string): string {
-  return "―".repeat(Math.max(12, displayWidth(text)));
-}
+/** claude -p가 생성하는 뉴스레터 스토리 — 캐치 제목 + 인트로 + 섹션별 이야기. */
+export type BriefingStory = {
+  headline: string;
+  intro: string;
+  sections: {
+    contracts: string;
+    schedule: string;
+    closing: string;
+    ai: string;
+  };
+};
 
-/** 팀 보고 브리핑 Teams 메시지 HTML(contentType: html) — 차주 업무 → 계약(누적) → AI 활용 순. */
-export function buildBriefingHtml(input: {
+/** 뉴스레터 페이지(/r/briefing/[token])가 렌더할 브리핑 구조화 payload. */
+export type BriefingPayload = {
   dateLabel: string;
   contracts: ContractSummary;
   weekRange: { startYmd: string; endYmd: string };
@@ -285,121 +315,51 @@ export function buildBriefingHtml(input: {
   aiWork: AiWorkBrief;
   tips: TipsBrief;
   insights: InsightsBrief;
-}): string {
-  const {
-    dateLabel,
-    contracts,
-    weekRange,
-    schedule,
-    closing,
-    aiWork,
-    tips,
-    insights,
-  } = input;
-  const lines: string[] = [];
-  lines.push(`<b>[팀 보고 브리핑] ${escapeHtml(dateLabel)}</b>`);
+  /** 근속 마일스톤 (발행 주 도래분) — 구버전 발행분은 없음 */
+  milestones?: Milestone[];
+  /** claude -p 생성 스토리 — 없으면 페이지가 수치 중심으로 렌더 */
+  story?: BriefingStory;
+};
 
-  // 1. 계약진행 현황 (누적)
-  lines.push("<br/><br/><b>■ 계약현황 (누적)</b>");
-  for (const s of contracts.bySheet) {
+/**
+ * Teams 티저 메시지 HTML — 제호(호수·날짜) + 핵심 수치 요약 + 뉴스레터 링크.
+ * 상세 내용은 뉴스레터 웹페이지가 렌더한다 (Teams 채팅은 스타일 제한).
+ */
+export function buildBriefingTeaserHtml(input: {
+  issueNo: number;
+  dateLabel: string;
+  /** claude -p 생성 캐치 제목 — 있으면 첫 줄, 제호는 둘째 줄로 */
+  headline?: string;
+  contracts: ContractSummary;
+  closing: ClosingItem[];
+  aiWork: AiWorkBrief;
+  tips: TipsBrief;
+  url: string;
+}): string {
+  const { issueNo, dateLabel, headline, contracts, closing, aiWork, tips, url } =
+    input;
+  const totalAll = contracts.totalDone + contracts.totalOngoing;
+  const savedSuffix =
+    aiWork.savedHours > 0 ? `(절감 ${fmtHours(aiWork.savedHours)}h)` : "";
+  const lines: string[] = [];
+  if (headline) {
+    lines.push(`<b>📰 ${escapeHtml(headline)}</b>`);
     lines.push(
-      `<br/>· ${escapeHtml(s.sheet)}: 총 ${s.done + s.ongoing} · 완료 ${s.done} · 진행중 ${s.ongoing} (완료 ${completionPct(s.done, s.ongoing)})`,
+      `<br/>운영부 주간 브리핑 #${issueNo} · ${escapeHtml(dateLabel)}`,
+    );
+  } else {
+    lines.push(
+      `<b>📰 [운영부 주간 브리핑] #${issueNo} · ${escapeHtml(dateLabel)}</b>`,
     );
   }
-  const totalAll = contracts.totalDone + contracts.totalOngoing;
-  const totalLine = `합계: 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})`;
-  // 구분선도 합계 라인과 동일하게 볼드 — 비볼드면 폭이 좁아 닫는 괄호에 못 미침
-  lines.push(`<br/><b>${ruleFor(totalLine)}</b>`);
-  lines.push(`<br/><b>${totalLine}</b>`);
-
-  // 2. 차주 팀 업무 — 일정 + 서비스 마감. 주간 범위는 섹션 헤더에.
   lines.push(
-    `<br/><br/><b>■ 차주 팀 업무 (${weekRange.startYmd} ~ ${weekRange.endYmd})</b>`,
+    `<br/>계약 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})`,
   );
-  lines.push("<br/><b>· 일정</b>");
-  if (schedule.length === 0) {
-    lines.push("<br/>&nbsp;&nbsp;예정된 일정 없음");
-  } else {
-    for (const g of schedule) {
-      const titles = g.items
-        .map((i) => `${escapeHtml(i.title)}(${eventDateLabel(i)})`)
-        .join(", ");
-      lines.push(`<br/>&nbsp;&nbsp;[${escapeHtml(g.label)}] ${titles}`);
-    }
-  }
-
-  // 서비스 마감 — 앞에 빈 줄로 일정과 구분.
   lines.push(
-    `<br/><br/><b>· 서비스 마감 (7일 내 · 총 ${closing.length}건)</b>`,
+    `<br/>마감 임박 ${closing.length}건 · AI 작업 ${aiWork.count}건${savedSuffix} · 신규 TIP ${tips.newCount}건`,
   );
-  if (closing.length === 0) {
-    lines.push("<br/>&nbsp;&nbsp;임박 마감 없음");
-  } else {
-    // 마감일별 그룹 — 날짜 헤더(건수) + 그 아래 대학·서비스·담당자.
-    // 그룹당 최대 10건 표시, 10건 초과 시 헤더 "10건+ (전체 N건)" · 앞 10건만 노출.
-    for (const g of groupClosingByDate(closing)) {
-      const shown = g.items.slice(0, 10);
-      const countLabel =
-        g.items.length > 10
-          ? `10건+ (전체 ${g.items.length}건)`
-          : `${g.items.length}건`;
-      lines.push(`<br/>&nbsp;&nbsp;<b>[${g.date.slice(5)}] ${countLabel}</b>`);
-      for (const u of shown) {
-        const op = u.operator_name ? ` (${escapeHtml(u.operator_name)})` : "";
-        lines.push(
-          `<br/>&nbsp;&nbsp;&nbsp;&nbsp;${escapeHtml(u.university_name)} ${escapeHtml(u.service_name)}${op}`,
-        );
-      }
-    }
-  }
-
-  // 3. AI 활용 — 내 AI 작업(my-ai-work) + TIP 공유(ai-tips), 최근 7일.
-  lines.push("<br/><br/><b>■ AI 활용 (최근 7일)</b>");
-  const savedSuffix =
-    aiWork.savedHours > 0 ? ` · 절감 ${fmtHours(aiWork.savedHours)}h` : "";
-  lines.push(`<br/><b>· 내 AI 작업 ${aiWork.count}건${savedSuffix}</b>`);
-  if (aiWork.count === 0) {
-    lines.push("<br/>&nbsp;&nbsp;등록된 AI 작업 없음");
-  } else {
-    for (const w of aiWork.items) {
-      const hours =
-        w.saved_hours != null ? ` · ${fmtHours(w.saved_hours)}h` : "";
-      lines.push(
-        `<br/>&nbsp;&nbsp;${escapeHtml(w.title)} (${escapeHtml(w.ai_tool)} · ${escapeHtml(w.author_name)}${hours})`,
-      );
-    }
-    if (aiWork.more > 0) lines.push(`<br/>&nbsp;&nbsp;외 ${aiWork.more}건`);
-  }
-
   lines.push(
-    `<br/><br/><b>· TIP 공유 (신규 ${tips.newCount} · 누적 ${tips.totalCount})</b>`,
+    `<br/><br/><a href="${escapeHtml(url)}">👉 뉴스레터 전체 보기</a>`,
   );
-  if (tips.newCount === 0) {
-    lines.push("<br/>&nbsp;&nbsp;신규 TIP 없음");
-  } else {
-    for (const t of tips.items) {
-      lines.push(
-        `<br/>&nbsp;&nbsp;${escapeHtml(t.title)} (${escapeHtml(t.ai_tool)} · ${escapeHtml(t.author_name)})`,
-      );
-    }
-    if (tips.more > 0) lines.push(`<br/>&nbsp;&nbsp;외 ${tips.more}건`);
-  }
-
-  // 인사이트 — 최근 7일 수집 영상 중 조회수 상위만 노출.
-  lines.push(
-    `<br/><br/><b>· AI 인사이트 (신규 수집 ${insights.newCount}건)</b>`,
-  );
-  if (insights.newCount === 0) {
-    lines.push("<br/>&nbsp;&nbsp;신규 수집 영상 없음");
-  } else {
-    for (const v of insights.items) {
-      const views =
-        v.view_count != null ? ` · 조회 ${fmtViews(v.view_count)}` : "";
-      lines.push(
-        `<br/>&nbsp;&nbsp;<a href="${escapeHtml(v.url)}">${escapeHtml(v.title)}</a> (${escapeHtml(v.channel_title)}${views})`,
-      );
-    }
-  }
-
   return lines.join("");
 }

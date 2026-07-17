@@ -114,7 +114,7 @@ E2E 운영 메모:
 | `insights-collect` | 매일 08:00 (KST) | YouTube 인기 영상 수집 → 인사이트 페이지 | `insight_videos.collected_at` |
 | `receivables-mail-operator` | 평일 10:00 (KST) | 운영자별 미수채권 본인 메일 알림 | `receivables_operator_mail_sends` |
 | `receivables-deposit-match` | 매시간 | 미수 ↔ 입금내역 자동 매칭 (단건/N:1/N:M) + K/J열 PATCH + mismatch admin 알림 | `receivables_match_runs` (jsonb payload) |
-| `team-briefing` | 매주 금 10:00 (KST) | 팀 보고 브리핑 Teams 발송 — 계약현황(누적)·차주 팀 업무(일정/마감)·AI 활용(내 AI 작업/TIP/인사이트 영상링크, 최근 7일) | `automation_runs` (공통) |
+| `team-briefing` | 매주 금 10:00 — **상시 맥 launchd** (`scripts/team-briefing/publish-local.mjs`) | 주간 브리핑 **뉴스레터 발행**(스티비풍 `/r/briefing/[token]`, claude -p 스토리+근속 기념일) + Teams **티저**(제목·수치·링크). 서버 API: `/api/team-briefing/draft·publish` (CRON_SECRET). registry 잡은 수동/폴백(스토리 없음) — **Vercel cron 스케줄은 제거 필수** | `team_briefings` + `automation_runs` |
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
 

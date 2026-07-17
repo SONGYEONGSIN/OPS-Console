@@ -3,7 +3,7 @@ import {
   aggregateContracts,
   nextWeekdayRange,
   groupScheduleInRange,
-  buildBriefingHtml,
+  buildBriefingTeaserHtml,
   eventDateLabel,
   groupClosingByDate,
   summarizeAiWork,
@@ -11,17 +11,10 @@ import {
   summarizeInsights,
   fmtHours,
   fmtViews,
-  type ScheduleGroup,
-  type AiWorkBrief,
-  type TipsBrief,
-  type InsightsBrief,
+  upcomingAnniversaries,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
-
-const NO_AI: AiWorkBrief = { count: 0, savedHours: 0, items: [], more: 0 };
-const NO_TIPS: TipsBrief = { newCount: 0, totalCount: 0, items: [], more: 0 };
-const NO_INSIGHTS: InsightsBrief = { newCount: 0, items: [] };
 
 describe("aggregateContracts", () => {
   it("완료 = '계약완료' 접두(접미사 포함), 그 외는 진행중", () => {
@@ -152,115 +145,60 @@ describe("groupClosingByDate", () => {
   });
 });
 
-describe("buildBriefingHtml", () => {
-  it("마감은 날짜별 그룹(헤더 [MM-DD] N건)으로 렌더", () => {
-    const html = buildBriefingHtml({
-      dateLabel: "2026-07-01",
-      contracts: { bySheet: [], totalDone: 0, totalOngoing: 0 },
-      weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
-      schedule: [],
-      aiWork: NO_AI,
-      tips: NO_TIPS,
-      insights: NO_INSIGHTS,
-      closing: [
-        {
-          university_name: "가천대",
-          service_name: "외국인 3차",
-          pay_end_at: "2026-07-01T07:00:00+09:00",
-          operator_name: "김유민",
-        },
-        {
-          university_name: "단국대",
-          service_name: "후기",
-          pay_end_at: "2026-07-03T07:00:00+09:00",
-          operator_name: "정윤나",
-        },
-      ],
-    });
-    expect(html).toContain("· 총 2건");
-    expect(html).toContain("[07-01] 1건");
-    expect(html).toContain("[07-03] 1건");
-    expect(html).toContain("가천대 외국인 3차 (김유민)");
-  });
-
-  it("두 섹션 제목 + 계약 합계 + 마감임박 항목 포함, 제목 escape", () => {
-    const schedule: ScheduleGroup[] = [
+describe("buildBriefingTeaserHtml", () => {
+  const contracts = {
+    bySheet: [{ sheet: "4년제", done: 3, ongoing: 1 }],
+    totalDone: 3,
+    totalOngoing: 1,
+  };
+  const base = {
+    issueNo: 12,
+    dateLabel: "2026-07-17 (금)",
+    contracts,
+    closing: [
       {
-        type: "shift",
-        label: "근무",
-        items: [
-          {
-            type: "shift",
-            title: "A<>&",
-            start_at: "2026-07-06T00:00:00+09:00",
-            all_day: true,
-          },
-        ],
+        university_name: "건국대",
+        service_name: "수시",
+        pay_end_at: "2026-07-20T00:00:00+09:00",
+        operator_name: null,
       },
-    ];
-    const html = buildBriefingHtml({
-      dateLabel: "2026-07-03",
-      contracts: {
-        bySheet: [{ sheet: "4년제", done: 1, ongoing: 2 }],
-        totalDone: 1,
-        totalOngoing: 2,
-      },
-      weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
-      schedule,
-      aiWork: NO_AI,
-      tips: NO_TIPS,
-      insights: NO_INSIGHTS,
-      closing: [
-        {
-          university_name: "건국대",
-          service_name: "수시",
-          pay_end_at: "2026-07-05T07:00:00+09:00",
-          operator_name: "송영신",
-        },
-      ],
-    });
-    expect(html).toContain("팀 보고 브리핑");
-    // 3개 대섹션 + 순서(계약현황 → 차주 팀 업무 → AI 활용)
-    expect(html).toContain("■ 차주 팀 업무 (2026-07-06 ~ 2026-07-10)");
-    expect(html).toContain("■ 계약현황 (누적)");
-    expect(html).toContain("■ AI 활용 (최근 7일)");
-    expect(html.indexOf("■ 계약현황")).toBeLessThan(
-      html.indexOf("■ 차주 팀 업무"),
+    ],
+    aiWork: { count: 5, savedHours: 12, items: [], more: 0 },
+    tips: { newCount: 2, totalCount: 30, items: [], more: 0 },
+    url: "https://ops.example.com/r/briefing/tok123",
+  };
+
+  it("제호(호수·날짜) + 핵심 수치 + 뉴스레터 링크", () => {
+    const html = buildBriefingTeaserHtml(base);
+    expect(html).toContain("[운영부 주간 브리핑] #12");
+    expect(html).toContain("2026-07-17 (금)");
+    expect(html).toContain("완료 3");
+    expect(html).toContain("진행중 1");
+    expect(html).toContain("마감 임박 1건");
+    expect(html).toContain("AI 작업 5건");
+    expect(html).toContain("절감 12h");
+    expect(html).toContain("신규 TIP 2건");
+    expect(html).toContain(
+      '<a href="https://ops.example.com/r/briefing/tok123">',
     );
-    expect(html.indexOf("■ 차주 팀 업무")).toBeLessThan(
-      html.indexOf("■ AI 활용"),
-    );
-    // 완료 % — 4년제 1/(1+2)=33.3% + 총 개수 3
-    expect(html).toContain("완료 33.3%");
-    expect(html).toContain("총 3 · 완료 1 · 진행중 2");
-    expect(html).toContain("건국대");
-    expect(html).toContain("수시");
-    // escape 적용
-    expect(html).toContain("A&lt;&gt;&amp;");
-    expect(html).not.toContain("A<>&");
+    expect(html).toContain("뉴스레터 전체 보기");
   });
 
-  it("마감 그룹이 10건 초과면 헤더 '10건+ (전체 N건)' + 앞 10건만 노출", () => {
-    const closing = Array.from({ length: 13 }, (_, i) => ({
-      university_name: `대학${i}`,
-      service_name: "s",
-      pay_end_at: "2026-07-03T07:00:00+09:00",
-      operator_name: "김",
-    }));
-    const html = buildBriefingHtml({
-      dateLabel: "2026-07-01",
-      contracts: { bySheet: [], totalDone: 0, totalOngoing: 0 },
-      weekRange: { startYmd: "2026-07-06", endYmd: "2026-07-10" },
-      schedule: [],
-      aiWork: NO_AI,
-      tips: NO_TIPS,
-      insights: NO_INSIGHTS,
-      closing,
+  it("절감 0시간이면 절감 표기 생략", () => {
+    const html = buildBriefingTeaserHtml({
+      ...base,
+      aiWork: { count: 0, savedHours: 0, items: [], more: 0 },
     });
-    expect(html).toContain("[07-03] 10건+ (전체 13건)"); // 캡 라벨에 전체 개수
-    expect(html).toContain("· 총 13건"); // 총계는 실제 건수
-    expect(html).toContain("대학9"); // 10번째(index 9)까지 노출
-    expect(html).not.toContain("대학10"); // 11번째부터 생략
+    expect(html).not.toContain("절감");
+  });
+
+  it("headline이 있으면 캐치 제목이 첫 줄, 제호는 둘째 줄로", () => {
+    const html = buildBriefingTeaserHtml({
+      ...base,
+      headline: "계약 340건 돌파! 이번 주 운영부가 해낸 일들",
+    });
+    expect(html).toContain("📰 계약 340건 돌파! 이번 주 운영부가 해낸 일들");
+    expect(html).toContain("운영부 주간 브리핑 #12 · 2026-07-17 (금)");
   });
 });
 
@@ -324,117 +262,6 @@ describe("summarizeTips", () => {
   });
 });
 
-describe("buildBriefingHtml — AI 활용 섹션", () => {
-  const base = {
-    dateLabel: "2026-07-13 (금)",
-    contracts: { bySheet: [], totalDone: 0, totalOngoing: 0 },
-    weekRange: { startYmd: "2026-07-14", endYmd: "2026-07-18" },
-    schedule: [] as ScheduleGroup[],
-    closing: [],
-  };
-
-  it("AI 작업 요약+목록(절감h 유무 분기) + TIP 목록, 제목 escape", () => {
-    const html = buildBriefingHtml({
-      ...base,
-      aiWork: {
-        count: 2,
-        savedHours: 4.5,
-        items: [
-          {
-            title: "계약서 <검토>",
-            ai_tool: "claude",
-            author_name: "김OO",
-            saved_hours: 3,
-          },
-          {
-            title: "주간보고 초안",
-            ai_tool: "chatgpt",
-            author_name: "이OO",
-            saved_hours: null,
-          },
-        ],
-        more: 0,
-      },
-      tips: {
-        newCount: 2,
-        totalCount: 47,
-        items: [
-          { title: "요약 자동화", ai_tool: "claude", author_name: "김OO" },
-          { title: "검수 패턴", ai_tool: "gemini", author_name: "박OO" },
-        ],
-        more: 0,
-      },
-      insights: {
-        newCount: 12,
-        items: [
-          {
-            title: "Claude Code 실전",
-            channel_title: "바이브랩스",
-            view_count: 123456,
-            url: "https://www.youtube.com/watch?v=abc123",
-          },
-          {
-            title: "AI 에이전트 입문",
-            channel_title: "짐코딩",
-            view_count: null,
-            url: "https://www.youtube.com/watch?v=def456",
-          },
-        ],
-      },
-    });
-    expect(html).toContain("· 내 AI 작업 2건 · 절감 4.5h");
-    expect(html).toContain("계약서 &lt;검토&gt; (claude · 김OO · 3h)");
-    expect(html).toContain("주간보고 초안 (chatgpt · 이OO)"); // 절감h 없으면 생략
-    expect(html).toContain("· TIP 공유 (신규 2 · 누적 47)");
-    expect(html).toContain("요약 자동화 (claude · 김OO)");
-    expect(html).toContain("검수 패턴 (gemini · 박OO)");
-    expect(html).toContain("· AI 인사이트 (신규 수집 12건)");
-    // 제목은 해당 영상으로 이동하는 링크
-    expect(html).toContain(
-      '<a href="https://www.youtube.com/watch?v=abc123">Claude Code 실전</a> (바이브랩스 · 조회 12.3만)',
-    );
-    expect(html).toContain(
-      '<a href="https://www.youtube.com/watch?v=def456">AI 에이전트 입문</a> (짐코딩)',
-    ); // 조회수 없으면 생략
-  });
-
-  it("초과 건수는 '외 N건'으로 표시", () => {
-    const html = buildBriefingHtml({
-      ...base,
-      aiWork: {
-        count: 7,
-        savedHours: 10,
-        items: [
-          {
-            title: "t",
-            ai_tool: "claude",
-            author_name: "김",
-            saved_hours: 1,
-          },
-        ],
-        more: 2,
-      },
-      tips: NO_TIPS,
-      insights: NO_INSIGHTS,
-    });
-    expect(html).toContain("외 2건");
-  });
-
-  it("0건 폴백 — 작업/TIP/인사이트 없음 문구", () => {
-    const html = buildBriefingHtml({
-      ...base,
-      aiWork: NO_AI,
-      tips: NO_TIPS,
-      insights: NO_INSIGHTS,
-    });
-    expect(html).toContain("등록된 AI 작업 없음");
-    expect(html).toContain("신규 TIP 없음");
-    expect(html).toContain("· 내 AI 작업 0건");
-    expect(html).toContain("(신규 0 · 누적 0)");
-    expect(html).toContain("신규 수집 영상 없음");
-  });
-});
-
 describe("fmtViews", () => {
   it("1만 미만은 그대로, 이상은 만 단위 1자리(정수면 소수 생략)", () => {
     expect(fmtViews(9800)).toBe("9800");
@@ -461,5 +288,34 @@ describe("summarizeInsights", () => {
     ]);
     expect(s.newCount).toBe(5);
     expect(s.items.map((i) => i.title)).toEqual(["c", "d", "e"]);
+  });
+});
+
+describe("upcomingAnniversaries", () => {
+  const ops = [
+    { name: "김유민", hired_at: "2025-07-20" },
+    { name: "박시현", hired_at: "2016-07-22" },
+    { name: "이전산", hired_at: "2020-09-01" }, // 윈도우 밖
+    { name: "신입이", hired_at: "2026-07-21" }, // 올해 입사 — 0주년 제외
+  ];
+
+  it("발행일부터 7일 내 도래하는 입사 기념일만 (주년 계산·날짜 오름차순)", () => {
+    const r = upcomingAnniversaries(ops, "2026-07-17");
+    expect(r).toEqual([
+      { name: "김유민", years: 1, dateYmd: "2026-07-20" },
+      { name: "박시현", years: 10, dateYmd: "2026-07-22" },
+    ]);
+  });
+
+  it("올해 기념일이 이미 지난 경우 내년 날짜로 계산 — 윈도우 밖이면 제외", () => {
+    const r = upcomingAnniversaries(
+      [{ name: "김유민", hired_at: "2025-07-10" }],
+      "2026-07-17",
+    );
+    expect(r).toEqual([]);
+  });
+
+  it("해당자 없으면 빈 배열", () => {
+    expect(upcomingAnniversaries([], "2026-07-17")).toEqual([]);
   });
 });

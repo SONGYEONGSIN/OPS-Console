@@ -18,6 +18,14 @@ export const colors = {
   paper: "#ffffff",
   sidebar: "#fffdf7", // 웜 화이트 — 사이드바·네비 밴드 (콘텐츠 paper(흰색)와 구분되는 크롬)
   fieldBg: "#fdfdfb", // 운영리포트 카드(situationBg)와 동일 톤 — 기본 입력창(input/select/textarea) 배경 표준, 포커스 시 흰색
+  // 뉴스레터(/r/briefing) 전용 — 스티비 레퍼런스 클론 팔레트 (다른 화면 사용 금지)
+  nlSky: "#68bae2",
+  nlSkySoft: "#c9e7f6",
+  nlPink: "#fad4d4",
+  nlPinkSoft: "#fdeeee",
+  nlIvory: "#f8f9f1",
+  nlInk: "#292929",
+  nlMuted: "#999999",
   sidebarHover: "#f0e9d9",
   // Ink (text)
   ink: "#15120c",
