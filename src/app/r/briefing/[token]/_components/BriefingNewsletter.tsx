@@ -436,9 +436,6 @@ export function BriefingNewsletter({
             <br />
             [운영부 상황실] OPS Console · 피드백은 개선요청 메뉴로 남겨주세요.
           </p>
-          <p className="mt-2">
-            링크를 아는 사람만 열람할 수 있는 공유 페이지입니다.
-          </p>
         </footer>
       </article>
     </div>
