@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { sendTeamsMock, adminFrom, listContractsMock } = vi.hoisted(() => ({
-  sendTeamsMock: vi.fn(
-    async (_args: { operatorEmail: string; chatId: string; html: string }) => ({
-      id: "m1",
-    }),
-  ),
-  adminFrom: vi.fn(),
-  listContractsMock: vi.fn(async () => ({
-    rows: [] as { sheet: string; status: string; serviceActive: string }[],
-    total: 0,
-  })),
-}));
+const { sendTeamsMock, adminFrom, listContractsMock, insertBriefingMock } =
+  vi.hoisted(() => ({
+    sendTeamsMock: vi.fn(
+      async (_args: {
+        operatorEmail: string;
+        chatId: string;
+        html: string;
+      }) => ({ id: "m1" }),
+    ),
+    adminFrom: vi.fn(),
+    insertBriefingMock: vi.fn(async (_row: unknown) => ({ error: null })),
+    listContractsMock: vi.fn(async () => ({
+      rows: [] as { sheet: string; status: string; serviceActive: string }[],
+      total: 0,
+    })),
+  }));
 
 vi.mock("@/lib/microsoft/teams", () => ({
   sendTeamsChatMessage: sendTeamsMock,
@@ -55,6 +59,12 @@ beforeEach(() => {
     total: 3,
   });
   adminFrom.mockImplementation((table: string) => {
+    if (table === "team_briefings")
+      return {
+        // 호수 count 조회 — select가 곧바로 await됨
+        select: () => Promise.resolve({ count: 0, error: null }),
+        insert: insertBriefingMock,
+      };
     if (table === "schedule_events") return chain([]);
     if (table === "closing_services")
       return chain([
@@ -127,15 +137,41 @@ describe("runTeamBriefing", () => {
     expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 
-  it("정상 시 Teams 발송 — 발신자/채팅방/브리핑 HTML", async () => {
+  it("정상 시 Teams 티저 발송 — 발신자/채팅방/제호·수치·뉴스레터 링크", async () => {
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
     expect(sendTeamsMock).toHaveBeenCalledTimes(1);
     const arg = sendTeamsMock.mock.calls[0][0];
     expect(arg.operatorEmail).toBe("ops@x.com");
     expect(arg.chatId).toBe("chat-1");
-    expect(arg.html).toContain("팀 보고 브리핑");
-    expect(arg.html).toContain("건국대");
+    expect(arg.html).toContain("[운영부 주간 브리핑] #1");
+    expect(arg.html).toContain("마감 임박 1건");
+    expect(arg.html).toContain("/r/briefing/");
+    expect(arg.html).toContain("뉴스레터 전체 보기");
+  });
+
+  it("뉴스레터 발행 — team_briefings에 payload·share_token insert", async () => {
+    const r = await runTeamBriefing();
+    expect(r.ok).toBe(true);
+    expect(insertBriefingMock).toHaveBeenCalledTimes(1);
+    const row = insertBriefingMock.mock.calls[0][0] as {
+      issue_no: number;
+      payload: {
+        aiWork: { items: { author_name: string }[] };
+        closing: unknown[];
+      };
+      share_token: string;
+    };
+    expect(row.issue_no).toBe(1);
+    expect(row.share_token).toMatch(/^[0-9a-f]{32}$/);
+    expect(row.payload.closing).toHaveLength(1);
+    // 작성자 이름 매핑 — operators 등록자는 이름, 미등록은 email 앞부분
+    expect(row.payload.aiWork.items.map((i) => i.author_name)).toEqual([
+      "김유민",
+      "lee",
+    ]);
+    // 티저 링크가 발행 토큰을 가리킴
+    expect(sendTeamsMock.mock.calls[0][0].html).toContain(row.share_token);
   });
 
   it("수신 방은 공지 방(TEAMS_NOTICE_CHAT_ID)만 사용 (차주보고 방 무시)", async () => {
@@ -149,20 +185,12 @@ describe("runTeamBriefing", () => {
     );
   });
 
-  it("AI 활용 섹션 — 작업/TIP 집계 + 작성자 이름 매핑(미등록은 email 앞부분)", async () => {
+  it("AI 활용 집계 — details 수치 + 티저에 작업·TIP 카운트", async () => {
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
     const html = sendTeamsMock.mock.calls[0][0].html;
-    expect(html).toContain("■ AI 활용 (최근 7일)");
-    expect(html).toContain("· 내 AI 작업 2건 · 절감 3h");
-    expect(html).toContain("계약서 검토 자동화 (claude · 김유민 · 3h)");
-    expect(html).toContain("주간보고 초안 (chatgpt · lee)"); // 이름 폴백 + 절감h 생략
-    expect(html).toContain("· TIP 공유 (신규 1 · 누적 1)");
-    expect(html).toContain("요약 자동화 팁 (claude · 김유민)");
-    expect(html).toContain("· AI 인사이트 (신규 수집 1건)");
-    expect(html).toContain(
-      '<a href="https://www.youtube.com/watch?v=abc123">Claude Code 실전</a> (바이브랩스 · 조회 12.3만)',
-    );
+    expect(html).toContain("AI 작업 2건(절감 3h)");
+    expect(html).toContain("신규 TIP 1건");
     expect(r.details?.aiWorkCount).toBe(2);
     expect(r.details?.aiWorkSavedHours).toBe(3);
     expect(r.details?.tipsNew).toBe(1);

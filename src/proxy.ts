@@ -11,6 +11,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  /api/entertest/test-request — 회사 PC 폴러가 테스트 실행 요청을 claim/완료 보고.
  *  /api/entertest/ingest — entertest 테스트 러너가 케이스별 결과를 적재.
  *  /api/dev-controls/analyze-request — 회사 PC 폴러가 개발탭 수동 분석 요청을 claim/완료 보고.
+ *  /api/team-briefing — 상시 맥 launchd가 주간 브리핑 초안 조회(draft)/발행(publish).
  *  CRON_SECRET 헤더로 자체 인증하므로 미들웨어 인증 가드는 통과시킨다. */
 const PUBLIC_PATHS = [
   "/login",
@@ -26,6 +27,7 @@ const PUBLIC_PATHS = [
   "/api/entertest/test-request",
   "/api/entertest/ingest",
   "/api/dev-controls/analyze-request",
+  "/api/team-briefing",
   /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
   "/r",
 ];

@@ -25,6 +25,16 @@
   --search-field-bg: rgba(21, 18, 12, 0.04);
   /* 기본 입력창(input/select/textarea) 배경 표준 — 운영리포트 카드(situation-bg)와 동일 톤, 포커스 시 흰색. 색 변경은 이 한 줄만 수정. */
   --field-bg: #fdfdfb;
+
+  /* 뉴스레터(/r/briefing) 전용 — 스티비 레퍼런스(dragonmamaclub) 충실 클론 팔레트.
+     본 앱 브랜드(ink/vermilion)와 분리된 게스트 발행물 스킨. 다른 화면에서 사용 금지. */
+  --nl-sky: #68bae2;
+  --nl-sky-soft: #c9e7f6;
+  --nl-pink: #fad4d4;
+  --nl-pink-soft: #fdeeee;
+  --nl-ivory: #f8f9f1;
+  --nl-ink: #292929;
+  --nl-muted: #999999;
   --vermilion: #b8331e;
   --vermilion-deep: #8e2412;
   --indigo: #1f3a5f;
@@ -125,6 +135,13 @@
   --color-line-soft: var(--line-soft);
   --color-search-field-bg: var(--search-field-bg);
   --color-field-bg: var(--field-bg);
+  --color-nl-sky: var(--nl-sky);
+  --color-nl-sky-soft: var(--nl-sky-soft);
+  --color-nl-pink: var(--nl-pink);
+  --color-nl-pink-soft: var(--nl-pink-soft);
+  --color-nl-ivory: var(--nl-ivory);
+  --color-nl-ink: var(--nl-ink);
+  --color-nl-muted: var(--nl-muted);
   --color-vermilion: var(--vermilion);
   --color-vermilion-deep: var(--vermilion-deep);
   --color-indigo: var(--indigo);
