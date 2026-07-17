@@ -87,6 +87,7 @@ export function buildStoryPrompt(payload, issueNo) {
 - intro: 인사 + 이번 호 핵심 요약 2문장
 - 각 sections 값: 해당 카테고리를 2~3문장의 짧은 이야기로. 수치는 자연스럽게 녹이고, 데이터에 없는 사실을 지어내지 마세요.
 - 생일·근속 기념일이 있으면 intro에 자연스럽게 축하를 담으세요.
+- schedule 이야기는 휴가에만 쏠리지 말고, 근무·원서접수·PIMS·교육·일반 일정(비용 처리 등)도 있으면 골고루 다루세요.
 
 [주간 데이터 — 제${issueNo}호 · ${payload.dateLabel} 발행]
 - 계약(누적): 총 ${totalAll} · 완료 ${c.totalDone} · 진행중 ${c.totalOngoing} (완료율 ${pct(c.totalDone, c.totalOngoing)}) / 시트별: ${sheets}

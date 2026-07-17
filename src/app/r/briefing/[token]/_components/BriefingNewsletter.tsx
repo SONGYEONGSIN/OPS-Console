@@ -53,7 +53,7 @@ export function BriefingNewsletter({
   return (
     <div className="text-nl-ink">
       {/* ── 제호 — 아래 페이지 전체 라인으로 본문과 구분 ── */}
-      <header className="border-b-2 border-nl-ink">
+      <header className="border-b-2 border-nl-sky">
         <div className="mx-auto max-w-[640px] px-5 pb-8 pt-10">
           <div className="flex items-center gap-3">
             <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-nl-sky text-white">
@@ -142,7 +142,7 @@ export function BriefingNewsletter({
             <Card>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-nl-sky-soft text-left text-xs text-nl-muted">
+                  <tr className="border-b border-nl-sky-soft text-left text-xs text-nl-ink">
                     <th className="py-1.5 pr-2 font-medium">시트</th>
                     <th className="py-1.5 pr-2 text-right font-medium">총</th>
                     <th className="py-1.5 pr-2 text-right font-medium">완료</th>
@@ -434,10 +434,7 @@ export function BriefingNewsletter({
           <p>
             매주 금요일 10:00, 운영부 마법사가 한 주를 모아 전해드립니다 📮
             <br />
-            [운영부 상황실] OPS Console · 피드백은 개선요청 메뉴로 남겨주세요.
-          </p>
-          <p className="mt-2">
-            링크를 아는 사람만 열람할 수 있는 공유 페이지입니다.
+            피드백은 운영부 상황실 개선요청 메뉴에 남겨주세요.
           </p>
         </footer>
       </article>
