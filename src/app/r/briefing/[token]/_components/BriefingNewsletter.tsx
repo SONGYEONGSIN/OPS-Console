@@ -434,7 +434,7 @@ export function BriefingNewsletter({
           <p>
             매주 금요일 10:00, 운영부 마법사가 한 주를 모아 전해드립니다 📮
             <br />
-            [운영부 상황실] OPS Console · 피드백은 개선요청 메뉴로 남겨주세요.
+            피드백은 운영부 상황실 개선요청 메뉴에 남겨주세요.
           </p>
         </footer>
       </article>
