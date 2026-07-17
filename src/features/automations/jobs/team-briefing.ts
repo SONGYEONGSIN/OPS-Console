@@ -13,7 +13,10 @@ import {
   summarizeTips,
   summarizeInsights,
   upcomingAnniversaries,
+  upcomingBirthdays,
   type BriefEvent,
+  type BriefingImages,
+  type BriefingMedia,
   type BriefingPayload,
   type ClosingItem,
 } from "./team-briefing-build";
@@ -55,6 +58,71 @@ function baseUrl(): string {
     process.env.FOLIO_BASE_URL ??
     "http://localhost:3000"
   );
+}
+
+const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
+const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
+const IMAGE_WINDOW_DAYS = 7;
+const GALLERY_MAX = 6;
+
+/**
+ * Storage newsletter 버킷의 최근 업로드 폴더(YYYYMMDD ≥ 발행일-7일)에서
+ * 사진·영상을 수집. captions.json이 있으면 파일별 캡션 매핑.
+ * 업로드는 scripts/team-briefing/upload-assets.mjs 참조.
+ */
+async function collectNewsletterImages(
+  admin: ReturnType<typeof createAdminClient>,
+  todayYmd: string,
+): Promise<BriefingImages | undefined> {
+  const sinceCompact = addDaysYmd(todayYmd, -IMAGE_WINDOW_DAYS).replaceAll(
+    "-",
+    "",
+  );
+  const storage = admin.storage.from("newsletter");
+  const { data: rootEntries, error } = await storage.list("", { limit: 100 });
+  if (error || !rootEntries) return undefined;
+
+  const gallery: BriefingMedia[] = [];
+  const videos: BriefingMedia[] = [];
+  const folders = rootEntries
+    .filter((e) => /^\d{8}$/.test(e.name) && e.name >= sinceCompact)
+    .map((e) => e.name)
+    .sort();
+
+  for (const folder of folders) {
+    const { data: files } = await storage.list(folder, { limit: 100 });
+    if (!files) continue;
+
+    let captions: Record<string, string> = {};
+    if (files.some((f) => f.name === "captions.json")) {
+      const { data: blob } = await storage.download(`${folder}/captions.json`);
+      if (blob) {
+        try {
+          captions = JSON.parse(await blob.text()) as Record<string, string>;
+        } catch {
+          captions = {};
+        }
+      }
+    }
+
+    for (const f of files) {
+      const path = `${folder}/${f.name}`;
+      const { data: pub } = storage.getPublicUrl(path);
+      const media: BriefingMedia = {
+        src: pub.publicUrl,
+        caption: captions[f.name],
+      };
+      if (IMAGE_EXT.test(f.name)) gallery.push(media);
+      else if (VIDEO_EXT.test(f.name)) videos.push(media);
+    }
+  }
+
+  if (gallery.length === 0 && videos.length === 0) return undefined;
+  return {
+    cover: gallery[0],
+    gallery: gallery.slice(1, 1 + GALLERY_MAX),
+    videos: videos.slice(0, 2),
+  };
 }
 
 export type BriefingDetails = {
@@ -122,7 +190,7 @@ export async function buildBriefingData(): Promise<
 
   const { data: opData, error: opErr } = await admin
     .from("operators")
-    .select("email, name, hired_at")
+    .select("email, name, hired_at, birth_date")
     .order("email", { ascending: true });
   if (opErr)
     return { ok: false, message: `운영자 조회 실패: ${opErr.message}` };
@@ -130,18 +198,34 @@ export async function buildBriefingData(): Promise<
     email: string;
     name: string;
     hired_at?: string;
+    birth_date?: string | null;
   }[];
   const nameByEmail = new Map(operators.map((o) => [o.email, o.name]));
   const displayName = (email: string) =>
     nameByEmail.get(email) ?? email.split("@")[0];
 
-  // 근속 마일스톤 — 발행일부터 7일 내 도래하는 입사 기념일
+  // 근속 마일스톤 + 생일 — 발행일부터 7일 내 도래분
   const milestones = upcomingAnniversaries(
     operators
       .filter((o) => o.hired_at)
       .map((o) => ({ name: o.name, hired_at: o.hired_at! })),
     todayYmd,
   );
+  const birthdays = upcomingBirthdays(
+    operators
+      .filter((o) => o.birth_date)
+      .map((o) => ({ name: o.name, birth_date: o.birth_date! })),
+    todayYmd,
+  );
+
+  // 사진·영상 — Storage newsletter 버킷의 최근 업로드 폴더(YYYYMMDD) 스캔.
+  // 부가 콘텐츠라 실패해도 발행은 계속 (이미지 없이).
+  let images: BriefingImages | undefined;
+  try {
+    images = await collectNewsletterImages(admin, todayYmd);
+  } catch {
+    images = undefined;
+  }
 
   const { data: awData, error: awErr } = await admin
     .from("ai_work")
@@ -226,6 +310,8 @@ export async function buildBriefingData(): Promise<
     tips,
     insights,
     milestones,
+    birthdays,
+    images,
   };
 
   return {

@@ -68,6 +68,7 @@ const payload = {
     ],
   },
   milestones: [{ name: "박시현", years: 10, dateYmd: "2026-07-22" }],
+  birthdays: [{ name: "김유민", dateYmd: "2026-07-21" }],
 };
 
 describe("buildStoryPrompt", () => {
@@ -81,17 +82,23 @@ describe("buildStoryPrompt", () => {
     expect(p).toContain("박시현 10주년");
     expect(p).toContain("야간 당직");
     expect(p).toContain("계약서 검토 자동화");
+    // 운영부 업무 컨텍스트 + 제호 + 생일
+    expect(p).toContain("원서접수");
+    expect(p).toContain("PIMS");
+    expect(p).toContain("운영부 마법사");
+    expect(p).toContain("김유민(07-21)");
   });
 
   it("빈 섹션은 '없음'으로 표기", () => {
     const p = buildStoryPrompt(
-      { ...payload, schedule: [], closing: [], milestones: [] },
+      { ...payload, schedule: [], closing: [], milestones: [], birthdays: [] },
       1,
     );
     expect(p).toContain("차주 일정");
     expect(p).toMatch(/차주 일정[^\n]*없음/);
     expect(p).toMatch(/마감 임박[^\n]*없음/);
     expect(p).toMatch(/근속 기념일[^\n]*없음/);
+    expect(p).toMatch(/생일[^\n]*없음/);
   });
 });
 

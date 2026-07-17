@@ -30,8 +30,6 @@
      본 앱 브랜드(ink/vermilion)와 분리된 게스트 발행물 스킨. 다른 화면에서 사용 금지. */
   --nl-sky: #68bae2;
   --nl-sky-soft: #c9e7f6;
-  --nl-pink: #fad4d4;
-  --nl-pink-soft: #fdeeee;
   --nl-ivory: #f8f9f1;
   --nl-ink: #292929;
   --nl-muted: #999999;
@@ -137,8 +135,6 @@
   --color-field-bg: var(--field-bg);
   --color-nl-sky: var(--nl-sky);
   --color-nl-sky-soft: var(--nl-sky-soft);
-  --color-nl-pink: var(--nl-pink);
-  --color-nl-pink-soft: var(--nl-pink-soft);
   --color-nl-ivory: var(--nl-ivory);
   --color-nl-ink: var(--nl-ink);
   --color-nl-muted: var(--nl-muted);
