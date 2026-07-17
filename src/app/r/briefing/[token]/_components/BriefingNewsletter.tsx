@@ -53,7 +53,7 @@ export function BriefingNewsletter({
   return (
     <div className="text-nl-ink">
       {/* ── 제호 — 아래 페이지 전체 라인으로 본문과 구분 ── */}
-      <header className="border-b-2 border-nl-ink">
+      <header className="border-b-2 border-nl-sky">
         <div className="mx-auto max-w-[640px] px-5 pb-8 pt-10">
           <div className="flex items-center gap-3">
             <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-nl-sky text-white">
@@ -142,7 +142,7 @@ export function BriefingNewsletter({
             <Card>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-nl-sky-soft text-left text-xs text-nl-muted">
+                  <tr className="border-b border-nl-sky-soft text-left text-xs text-nl-ink">
                     <th className="py-1.5 pr-2 font-medium">시트</th>
                     <th className="py-1.5 pr-2 text-right font-medium">총</th>
                     <th className="py-1.5 pr-2 text-right font-medium">완료</th>
