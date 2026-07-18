@@ -1,12 +1,12 @@
 // scripts/mailbox-ingest.mjs
 //
-// 메일함 ingest — 로컬 cron(launchd) 진입점. Vercel(서버리스)은 로컬 LLM 불가하여
+// 메일함 ingest — 로컬 cron(launchd) 진입점. Vercel(서버리스)은 로컬 claude CLI 불가하여
 // 수신→DB→초안 생성은 이 로컬 잡이 담당하고, 웹앱은 표시·승인·발송만 한다.
 //
 // 흐름:
 //   1) Graph Application 토큰(client_credentials)으로 대상 운영자 수신함 조회
 //   2) mailbox_messages upsert (onConflict graph_message_id — 멱등)
-//   3) auto_draft_enabled=true 운영자의 미초안·미필터 메일을 Ollama로 회신 초안 생성
+//   3) auto_draft_enabled=true 운영자의 미초안·미필터 메일을 claude -p로 회신 초안 생성
 //   4) mailbox_drafts insert
 //
 // 대상 운영자: mailbox_settings에 row 존재하는 운영자 (스펙 §13 — 메뉴 사용 운영자 한정).
@@ -17,11 +17,13 @@
 //
 // 필요 env(.env.local): AZURE_AD_TENANT_ID/CLIENT_ID/CLIENT_SECRET,
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
-//   MAILBOX_LLM_MODEL(기본 qwen2.5:14b-instruct), OLLAMA_URL(기본 http://localhost:11434)
+//   CLAUDE_BIN(기본 claude), MAILBOX_LLM_MODEL(model_used 라벨, 기본 claude)
 
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync, existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { execFileSync } from "node:child_process";
+import os from "node:os";
 
 function loadEnv() {
   const fromFile = existsSync(".env.local")
@@ -39,8 +41,10 @@ function loadEnv() {
 
 const env = loadEnv();
 const DRY_RUN = process.argv.slice(2).includes("--dry-run");
-const OLLAMA_URL = env.OLLAMA_URL ?? "http://localhost:11434";
-const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "qwen2.5:14b-instruct";
+// 초안 생성 = 로컬 claude CLI(-p). team-briefing/dev-control과 동일한 안전 호출.
+const CLAUDE_BIN =
+  env.CLAUDE_BIN || (process.platform === "win32" ? "claude.cmd" : "claude");
+const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "claude"; // model_used 라벨 · 이력 표기용
 
 // Graph GET + 429(ApplicationThrottled) 백오프 재시도.
 // Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦다.
@@ -296,16 +300,24 @@ export function buildDraftPrompt(message) {
   ].join("\n");
 }
 
-async function generateDraft(message, operatorName) {
+// claude -p로 회신 본문을 생성한다. dev-control/team-briefing과 동일 안전장치:
+// 도구 전면 차단(Bash/Edit/Write/NotebookEdit/Task) + repo 밖 cwd(프로젝트 .claude 설정 상속 방지).
+// 프롬프트는 stdin으로 전달. 실패 시 throw → 호출부가 해당 메일만 skip하고 잡은 계속.
+function generateDraft(message, operatorName) {
   const prompt = buildDraftPrompt(message);
-
-  const res = await fetch(`${OLLAMA_URL}/api/generate`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ model: LLM_MODEL, prompt, stream: false }),
-  });
-  if (!res.ok) throw new Error(`ollama ${res.status} ${await res.text()}`);
-  const rawBody = (await res.json()).response?.trim() ?? "";
+  const out = execFileSync(
+    CLAUDE_BIN,
+    ["-p", "--disallowedTools", "Bash Edit Write NotebookEdit Task"],
+    {
+      input: prompt,
+      encoding: "utf8",
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 120_000,
+      shell: process.platform === "win32",
+      cwd: os.tmpdir(),
+    },
+  );
+  const rawBody = out.trim();
   return assembleDraft(operatorName, splitSentences(rawBody));
 }
 
