@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 로컬 전용 잡은 서버리스로 실행 불가(Ollama 등 로컬 의존). 잘못 호출돼도 거부한다.
+  // 로컬 전용 잡은 서버리스로 실행 불가(로컬 claude CLI 등 로컬 의존). 잘못 호출돼도 거부한다.
   if (job.localOnly) {
     return NextResponse.json(
       {
