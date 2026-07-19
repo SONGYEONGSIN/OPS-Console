@@ -3,6 +3,7 @@ import {
   filterByPublishedAfter,
   mapPlaylistItemsToVideos,
   extractUploadsPlaylists,
+  buildCollectRunMessage,
   type CollectedVideo,
 } from "../insights-collect";
 
@@ -69,6 +70,26 @@ describe("mapPlaylistItemsToVideos", () => {
       ],
     };
     expect(mapPlaylistItemsToVideos(json, "데키랩")).toHaveLength(0);
+  });
+});
+
+describe("buildCollectRunMessage", () => {
+  it("신규/갱신/정리를 구분해 표기 (upsert 배치를 '적재'로 뭉뚱그리지 않음)", () => {
+    expect(buildCollectRunMessage(4, 6, 16, 0)).toBe(
+      "신규 4건 · 갱신 6건 · 정리 16건",
+    );
+  });
+
+  it("오류가 있으면 접미사로 붙인다", () => {
+    expect(buildCollectRunMessage(4, 6, 16, 2)).toBe(
+      "신규 4건 · 갱신 6건 · 정리 16건 (2건 오류)",
+    );
+  });
+
+  it("전부 0이어도 형식 유지", () => {
+    expect(buildCollectRunMessage(0, 0, 0, 0)).toBe(
+      "신규 0건 · 갱신 0건 · 정리 0건",
+    );
   });
 });
 
