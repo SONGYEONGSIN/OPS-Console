@@ -80,6 +80,21 @@ export function rankTopN(rows: CollectedVideo[], n: number): CollectedVideo[] {
     .slice(0, n);
 }
 
+/**
+ * 실행 이력 메시지 — 신규 insert와 기존 갱신을 구분한다.
+ * upsert(ignoreDuplicates:false)는 이미 있던 영상도 배치에 포함해 갱신하므로,
+ * 배치 크기를 '적재'로 뭉뚱그리면 실제 신규보다 커 보인다(예: 상위 10건 중 신규 4·갱신 6).
+ */
+export function buildCollectRunMessage(
+  newCount: number,
+  updatedCount: number,
+  cleaned: number,
+  errorCount: number,
+): string {
+  const suffix = errorCount ? ` (${errorCount}건 오류)` : "";
+  return `신규 ${newCount}건 · 갱신 ${updatedCount}건 · 정리 ${cleaned}건${suffix}`;
+}
+
 /** 차단 목록(insight_video_blocklist)에 등록된 video_id를 제외 — 삭제된 영상 재수집 방지. */
 export function excludeBlocked(
   rows: CollectedVideo[],
@@ -307,17 +322,30 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
     view_count: viewMap.get(r.video_id) ?? r.view_count,
   }));
 
-  const errorSuffix = () => (errors.length ? ` (${errors.length}건 오류)` : "");
-
   // 5) 조회수 높은 순 상위 N (관련성/조회수 임계 필터 없음 — curated 채널)
   //    upsert 직전 무효 유니코드 문자 제거 (Postgres JSON 파싱 실패 방지)
   const topN = rankTopN(enriched, MAX_UPSERT_PER_RUN).map(sanitizeVideo);
+  const topNIds = topN.map((v) => v.video_id);
 
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+
+  // 신규/갱신 구분 — upsert 직전에 이미 존재하는 video_id를 조회한다.
+  // (upsert 후엔 전부 존재하므로 반드시 사전 조회. collected_at은 갱신하지 않아
+  //  기존 행은 최초 수집일을 유지 = 메뉴의 날짜별 그룹과 일치.)
+  const { data: existingRows, error: existErr } = await supabase
     .from("insight_videos")
-    .upsert(topN, { onConflict: "video_id", ignoreDuplicates: false })
-    .select("video_id");
+    .select("video_id")
+    .in("video_id", topNIds);
+  if (existErr) {
+    return { ok: false, message: `기존 조회 실패: ${existErr.message}` };
+  }
+  const existingIds = new Set((existingRows ?? []).map((r) => r.video_id));
+  const newCount = topNIds.filter((id) => !existingIds.has(id)).length;
+  const updatedCount = topNIds.length - newCount;
+
+  const { error } = await supabase
+    .from("insight_videos")
+    .upsert(topN, { onConflict: "video_id", ignoreDuplicates: false });
   if (error) {
     return { ok: false, message: `upsert 실패: ${error.message}` };
   }
@@ -336,9 +364,15 @@ export async function runInsightsCollect(): Promise<AutomationRunResult> {
 
   return {
     ok: true,
-    message: `${data?.length ?? 0}건 적재, ${deleted?.length ?? 0}건 정리${errorSuffix()}`,
+    message: buildCollectRunMessage(
+      newCount,
+      updatedCount,
+      deleted?.length ?? 0,
+      errors.length,
+    ),
     details: {
-      upserted: data?.length ?? 0,
+      inserted: newCount,
+      updated: updatedCount,
       cleaned: deleted?.length ?? 0,
       errors: errors.length,
     },
