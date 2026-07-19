@@ -5,6 +5,7 @@ import {
   parseClaudeJson,
   sha256,
   sanitizeFlags,
+  buildClaudePrompt,
 } from "../../../../scripts/lib/dev-control-lib.mjs";
 
 describe("parseDevInfo", () => {
@@ -19,6 +20,28 @@ describe("parseDevInfo", () => {
       { fileName: "Apply1_A.js", kind: "A", content: "var a=1;" },
       { fileName: "Apply1_AU.js", kind: "AU", content: "var u=1;" },
     ]);
+  });
+});
+
+describe("buildClaudePrompt", () => {
+  it("코드와 kind별 역할을 포함한다", () => {
+    const a = buildClaudePrompt("A", "var a=1;");
+    const au = buildClaudePrompt("AU", "var u=1;");
+    expect(a).toContain("var a=1;");
+    expect(a).toContain("운영자가 직접 관리");
+    expect(au).toContain("개발자만 관리");
+  });
+
+  it("장황한 '## 제어 요약' 마크다운 형식을 강제하지 않는다", () => {
+    expect(buildClaudePrompt("A", "code")).not.toContain("## 제어 요약");
+  });
+
+  it("운영자 관점·간결을 지시한다", () => {
+    expect(buildClaudePrompt("A", "code")).toContain("간결");
+  });
+
+  it("AU(개발자 제어)는 더 짧게 지시한다 (운영자 직접 관리 아님)", () => {
+    expect(buildClaudePrompt("AU", "code")).toMatch(/짧|1~3줄|간단/);
   });
 });
 
