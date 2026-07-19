@@ -112,14 +112,16 @@ export function AiWorkView({ row }: ViewProps) {
           <Divider />
           <Section title="재사용 프롬프트">
             <div className="space-y-2">
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="cursor-pointer border border-line bg-transparent px-2 py-0.5 text-2xs text-ink hover:bg-line-soft"
-              >
-                {copied ? "복사됨" : "프롬프트 복사"}
-              </button>
-              <pre className="whitespace-pre-wrap border border-line bg-washi-raised px-3 py-2 text-xs leading-relaxed text-ink">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="cursor-pointer border border-line bg-transparent px-2 py-0.5 text-2xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream"
+                >
+                  {copied ? "복사됨" : "프롬프트 복사"}
+                </button>
+              </div>
+              <pre className="whitespace-pre-wrap break-words border border-line bg-washi-raised px-3 py-2 text-xs leading-relaxed text-ink">
                 {row.reusePrompt}
               </pre>
             </div>
