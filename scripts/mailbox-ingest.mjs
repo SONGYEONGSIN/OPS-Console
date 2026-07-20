@@ -97,7 +97,7 @@ export async function fetchInbox(token, ownerEmail, since) {
     `/mailFolders/inbox/messages` +
     `?$top=50` +
     `&$orderby=receivedDateTime%20desc` +
-    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead,internetMessageHeaders` +
     filterSuffix;
   // Prefer: text → 본문을 HTML 대신 plain text로 받는다 (인스펙터 태그 노출 방지).
   const res = await graphGetWithRetry(url, token, 3, {
@@ -117,7 +117,7 @@ export async function fetchFolderMessages(token, ownerEmail, folderId, since) {
     `/mailFolders/${folderId}/messages` +
     `?$top=50` +
     `&$orderby=receivedDateTime%20desc` +
-    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead` +
+    `&$select=id,subject,bodyPreview,body,from,receivedDateTime,isRead,internetMessageHeaders` +
     filterSuffix;
   // Prefer: text → 본문을 HTML 대신 plain text로 받는다 (인스펙터 태그 노출 방지).
   const res = await graphGetWithRetry(url, token, 3, {
@@ -246,13 +246,48 @@ export function isSystemSubject(subject) {
   return SYSTEM_SUBJECT_PATTERNS.some((kw) => subject.includes(kw));
 }
 
-// 통합 skip 판정 — 사내 발신·광고·시스템 알림·자동발송이면 수집/초안 모두 제외.
-export function shouldSkipMessage({ fromEmail, subject }) {
+// 대량발송/캠페인 헤더 마커 — 1:1 사람 메일엔 없고 ESP/캠페인 발송에만 붙는다.
+// 발신주소·제목이 정상처럼 보이는 회사 대량메일(CJ eMsSMTP, Tesla SendGrid 등)을
+// 도메인 blocklist 없이 잡기 위한 시그널. name 존재만으로 bulk로 보는 헤더 목록.
+const BULK_HEADER_NAMES = new Set([
+  "list-unsubscribe", // 뉴스레터 표준(RFC 2369)
+  "list-id",
+  "feedback-id", // 범용 ESP FBL
+  "x-sg-eid", // SendGrid (Tesla 등)
+  "x-sg-id",
+  "x-mail_id", // 한국 TMS/eMsSMTP 캠페인 (CJ 등)
+  "x-send_type",
+  "x-list_table",
+  "x-member_id",
+  "x-csa-complaints",
+  "x-mailgun-sid", // Mailgun
+  "x-ses-outgoing", // Amazon SES
+]);
+// X-Mailer 값이 대량발송 솔루션이면 bulk (일반 Outlook/Apple Mail 값은 통과).
+const BULK_MAILER_VALUE =
+  /emssmtp|mailchimp|sendgrid|amazonses|sendpulse|mailgun|stibee|postmark/i;
+
+// 헤더 배열(Graph internetMessageHeaders: {name,value}[])에서 대량발송 시그널을 찾는다.
+export function hasBulkHeader(headers) {
+  if (!Array.isArray(headers)) return false;
+  return headers.some((h) => {
+    const name = (h?.name ?? "").toLowerCase();
+    const value = String(h?.value ?? "");
+    if (BULK_HEADER_NAMES.has(name)) return true;
+    if (name === "precedence" && /\b(bulk|list|junk)\b/i.test(value)) return true;
+    if (name === "x-mailer" && BULK_MAILER_VALUE.test(value)) return true;
+    return false;
+  });
+}
+
+// 통합 skip 판정 — 사내 발신·광고·시스템 알림·자동발송·대량발송 헤더면 수집/초안 모두 제외.
+export function shouldSkipMessage({ fromEmail, subject, headers }) {
   return (
     isAutoSender(fromEmail) ||
     isAdSubject(subject) ||
     isInternalSender(fromEmail) ||
-    isSystemSubject(subject)
+    isSystemSubject(subject) ||
+    hasBulkHeader(headers)
   );
 }
 
@@ -398,8 +433,15 @@ async function main() {
 
     for (const m of inbox) {
       const fromEmail = m.from?.emailAddress?.address ?? null;
-      // 사내·광고·시스템·자동발송 메일은 수집 자체에서 제외 — upsert도 초안도 하지 않는다.
-      if (shouldSkipMessage({ fromEmail, subject: m.subject })) continue;
+      // 사내·광고·시스템·자동발송·대량발송 메일은 수집 자체에서 제외 — upsert도 초안도 하지 않는다.
+      if (
+        shouldSkipMessage({
+          fromEmail,
+          subject: m.subject,
+          headers: m.internetMessageHeaders,
+        })
+      )
+        continue;
 
       const rowData = {
         owner_email: s.owner_email,
