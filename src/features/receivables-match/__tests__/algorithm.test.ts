@@ -136,3 +136,30 @@ describe("runMatch — mismatch 유사도 게이트 (명백히 다른 거래처 
     expect(r.mismatches.length).toBe(1);
   });
 });
+
+describe("runMatch — 적요 미처리 판정은 '입금완료'만 제외 (자유메모는 매칭 대상)", () => {
+  const deposit: DepositRow[] = [
+    { row: 100, date: "2026-07-15", amount: 110000, content: "한양대창업대학", matchedFlag: "" },
+  ];
+
+  it("자유메모가 있는 미수도 N:1 합산에 포함 (한양대 70,000+40,000=110,000)", () => {
+    const misu: MisuRow[] = [
+      { rowNumber: 6, date: "2026-05-28", customer: "한양대학교", amount: 70000, note: "202606180003 거래 건의 수수료와 같이 입금함" },
+      { rowNumber: 18, date: "2026-06-18", customer: "한양대학교", amount: 40000, note: "" },
+    ];
+    const r = runMatch(misu, deposit);
+    expect(r.matched).toHaveLength(1);
+    expect(r.matched[0].misuRows.slice().sort((a, b) => a - b)).toEqual([6, 18]);
+    expect(r.matched[0].kind).toBe("nToOne");
+  });
+
+  it("'입금완료' 적요는 여전히 제외 (합산 불가 → 미매칭)", () => {
+    const misu: MisuRow[] = [
+      { rowNumber: 5, date: "2026-05-28", customer: "한양대학교", amount: 70000, note: "입금완료" },
+      { rowNumber: 18, date: "2026-06-18", customer: "한양대학교", amount: 40000, note: "" },
+    ];
+    const r = runMatch(misu, deposit);
+    expect(r.matched).toHaveLength(0);
+    expect(r.unmatchedDep).toContain(100);
+  });
+});
