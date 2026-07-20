@@ -22,7 +22,7 @@ function isDateMatch(billDate: string, depDate: string): boolean {
 
 /**
  * GAS `collectUnpaidMisuByCustomer_` 1:1 — 거래처별 미수 미처리 청구 수집.
- * - 적요 비어있는 행만
+ * - 적요가 "입금완료"가 아닌 행 (빈칸 + 자유 메모 포함 — isUnpaidMisu와 동일 기준)
  * - 청구일 ≤ limitDate
  * - 거래처명 정규화 후 정확 일치
  */
@@ -35,7 +35,7 @@ export function collectUnpaidMisuByCustomer(
   const out: MisuRow[] = [];
   for (const row of rows) {
     if (!row.date || !row.customer || !row.amount) continue;
-    if (row.note && row.note.trim() !== "") continue;
+    if ((row.note ?? "").trim() === "입금완료") continue;
     if (row.date > limitDate) continue;
     if (normalizeName(row.customer) === target) {
       out.push(row);

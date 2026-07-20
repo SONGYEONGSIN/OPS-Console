@@ -45,8 +45,12 @@ function latestDate(rows: { date: string }[]): string {
 // admin 확인 요청한다. (보정: 명백히 다름 ≤ 0.33 / 실제 별칭 ≥ 0.50 — 그 사이 0.4로 컷)
 const MISMATCH_MIN_SIMILARITY = 0.4;
 
+// 미처리(매칭 대상) 판정 — 적요가 정확히 "입금완료"일 때만 처리완료로 제외한다.
+// (매칭 성공 시 patch가 K열에 정확히 "입금완료"를 기록하므로 재매칭 안전.)
+// 그 외 자유 메모("…수수료와 같이 입금함" 등)는 처리 신호가 아니므로 매칭 대상에 포함.
+// 입금 시트의 matchedFlag !== "처리완료" 규칙과 동일한 구조.
 function isUnpaidMisu(m: MisuRow): boolean {
-  return !m.note || m.note.trim() === "";
+  return (m.note ?? "").trim() !== "입금완료";
 }
 function isUnpaidDeposit(d: DepositRow): boolean {
   return !d.matchedFlag || d.matchedFlag.trim() !== "처리완료";
