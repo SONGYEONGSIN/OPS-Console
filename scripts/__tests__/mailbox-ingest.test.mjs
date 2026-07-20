@@ -7,6 +7,7 @@ import {
   isAdSubject,
   isInternalSender,
   isSystemSubject,
+  hasBulkHeader,
   shouldSkipMessage,
   fetchInbox,
   fetchFolderMessages,
@@ -172,6 +173,67 @@ describe("isSystemSubject", () => {
   });
 });
 
+describe("hasBulkHeader — 대량발송/캠페인 헤더 마커 감지", () => {
+  it("SendGrid(X-SG-EID/X-SG-ID) — Tesla류 → true", () => {
+    expect(
+      hasBulkHeader([
+        { name: "X-SG-EID", value: "u001.abc==" },
+        { name: "X-SG-ID", value: "u001.def==" },
+        { name: "X-Entity-ID", value: "u001.ghi==" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("한국 TMS/eMsSMTP 캠페인(X-SEND_TYPE/X-MAIL_ID/X-LIST_TABLE) — CJ류 → true", () => {
+    expect(
+      hasBulkHeader([
+        { name: "X-MAIL_ID", value: "<UE9TVF9JRD0y>" },
+        { name: "X-SEND_TYPE", value: "<U1RZUEU9Q0FNUA==>" },
+        { name: "X-LIST_TABLE", value: "<TElTVF9UQUJMRT0=>" },
+        { name: "X-Mailer", value: "eMsSMTP Ver6.5( PLUTO-build 0322 )" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("List-Unsubscribe/List-Id(뉴스레터) → true", () => {
+    expect(
+      hasBulkHeader([{ name: "List-Unsubscribe", value: "<https://x/u>" }]),
+    ).toBe(true);
+    expect(hasBulkHeader([{ name: "List-Id", value: "news.brand.com" }])).toBe(
+      true,
+    );
+  });
+
+  it("Precedence: bulk|list → true (값 검사)", () => {
+    expect(hasBulkHeader([{ name: "Precedence", value: "bulk" }])).toBe(true);
+    expect(hasBulkHeader([{ name: "Precedence", value: "list" }])).toBe(true);
+  });
+
+  it("Feedback-ID(범용 ESP) + X-Mailer 대량솔루션 값 → true", () => {
+    expect(hasBulkHeader([{ name: "Feedback-ID", value: "1:2:3" }])).toBe(true);
+    expect(
+      hasBulkHeader([{ name: "X-Mailer", value: "MailChimp Mailer" }]),
+    ).toBe(true);
+  });
+
+  it("1:1 사람 메일(일반 Outlook 헤더, bulk 마커 없음) → false", () => {
+    expect(
+      hasBulkHeader([
+        { name: "MIME-Version", value: "1.0" },
+        { name: "X-Mailer", value: "Microsoft Outlook 16.0" },
+        { name: "Content-Type", value: "text/plain" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("빈 배열/null/undefined/비배열 → false", () => {
+    expect(hasBulkHeader([])).toBe(false);
+    expect(hasBulkHeader(null)).toBe(false);
+    expect(hasBulkHeader(undefined)).toBe(false);
+    expect(hasBulkHeader("x")).toBe(false);
+  });
+});
+
 describe("shouldSkipMessage", () => {
   it("사내 발신 → skip true", () => {
     expect(
@@ -200,11 +262,44 @@ describe("shouldSkipMessage", () => {
     ).toBe(true);
   });
 
+  it("CJ류 캠페인 헤더 → 발신·제목 정상이라도 skip true", () => {
+    expect(
+      shouldSkipMessage({
+        fromEmail: "cjfoodville@cj.net",
+        subject: "[CJ푸드빌]광고성 정보수신 동의 내역 안내",
+        headers: [
+          { name: "X-MAIL_ID", value: "<x>" },
+          { name: "X-SEND_TYPE", value: "<U1RZUEU9Q0FNUA==>" },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("Tesla류 SendGrid 헤더 → skip true", () => {
+    expect(
+      shouldSkipMessage({
+        fromEmail: "southkorea@tesla.com",
+        subject: "FSD 구매 방식 변경 예정",
+        headers: [{ name: "X-SG-EID", value: "u001.x" }],
+      }),
+    ).toBe(true);
+  });
+
   it(".ac.kr 외부 고객 일반 문의 → skip false (통과)", () => {
     expect(
       shouldSkipMessage({
         fromEmail: "staff@snu.ac.kr",
         subject: "원서접수 문의드립니다",
+      }),
+    ).toBe(false);
+  });
+
+  it(".ac.kr 고객 메일 + bulk 마커 없는 헤더 → skip false (통과)", () => {
+    expect(
+      shouldSkipMessage({
+        fromEmail: "staff@snu.ac.kr",
+        subject: "원서접수 문의드립니다",
+        headers: [{ name: "X-Mailer", value: "Microsoft Outlook 16.0" }],
       }),
     ).toBe(false);
   });
