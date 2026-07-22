@@ -324,6 +324,14 @@ export const sidebarSections: SbSection[] = [
             slug: "reports",
             pattern: "list",
           },
+          {
+            ico: "·",
+            label: "체크리스트",
+            count: "",
+            slug: "checklist",
+            pattern: "list",
+            adminOnly: true,
+          },
         ],
       },
       {
