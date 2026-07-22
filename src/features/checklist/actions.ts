@@ -5,45 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/features/auth/permission";
 import { createRoundSchema, itemPatchSchema, type Department } from "./schemas";
 import { CHECKLIST_TEMPLATE } from "./template";
-import type { ChecklistItem } from "./schemas";
-
-type SeedRow = {
-  department: Department;
-  category: string;
-  title: string;
-  status: null;
-  note: string;
-  sortOrder: number;
-};
-
-// 순수: 시드 방식별 삽입할 items 행 생성
-export function buildSeedItems(
-  seed: "template" | "clone" | "empty",
-  template: { department: Department; category: string; title: string }[],
-  clonedItems: Pick<
-    ChecklistItem,
-    "department" | "category" | "title" | "sortOrder"
-  >[],
-): SeedRow[] {
-  if (seed === "empty") return [];
-  if (seed === "clone")
-    return clonedItems.map((i) => ({
-      department: i.department,
-      category: i.category,
-      title: i.title,
-      status: null,
-      note: "",
-      sortOrder: i.sortOrder,
-    }));
-  return template.map((t, idx) => ({
-    department: t.department,
-    category: t.category,
-    title: t.title,
-    status: null,
-    note: "",
-    sortOrder: idx,
-  }));
-}
+import { buildSeedItems } from "./seed";
 
 function newToken(): string {
   return randomBytes(24).toString("base64url");

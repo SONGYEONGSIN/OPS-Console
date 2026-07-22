@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildSeedItems } from "../actions";
+import { buildSeedItems } from "../seed";
 import { CHECKLIST_TEMPLATE } from "../template";
 
 describe("buildSeedItems", () => {
