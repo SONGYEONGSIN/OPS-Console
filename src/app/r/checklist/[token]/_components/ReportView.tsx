@@ -91,8 +91,26 @@ export function ReportView({
                         <div className="min-w-0">
                           <div className="text-sm text-ink">{i.title}</div>
                           {i.note ? (
-                            <div className="mt-0.5 text-xs text-muted">
+                            <div className="mt-0.5 whitespace-pre-wrap text-xs text-muted">
                               {i.note}
+                            </div>
+                          ) : null}
+                          {i.attachments.length > 0 ? (
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {i.attachments.map((url) => (
+                                <a
+                                  key={url}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <img
+                                    src={url}
+                                    alt="첨부 이미지"
+                                    className="h-16 w-16 rounded border border-line-soft object-cover"
+                                  />
+                                </a>
+                              ))}
                             </div>
                           ) : null}
                         </div>

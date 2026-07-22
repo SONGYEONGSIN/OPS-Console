@@ -30,6 +30,7 @@ function makeItem(overrides: Partial<ChecklistItem> = {}): ChecklistItem {
     status: "todo",
     note: "",
     sortOrder: 0,
+    attachments: [],
     ...overrides,
   };
 }

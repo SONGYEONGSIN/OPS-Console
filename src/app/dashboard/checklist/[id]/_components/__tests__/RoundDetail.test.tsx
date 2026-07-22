@@ -34,7 +34,7 @@ const items: ChecklistItem[] = [
     title: "원서 접수 확인",
     status: "done",
     note: "",
-    sortOrder: 0,
+    sortOrder: 0, attachments: [],
   },
   {
     id: "i-2",
@@ -44,7 +44,7 @@ const items: ChecklistItem[] = [
     title: "결제 확인",
     status: "in_progress",
     note: "",
-    sortOrder: 1,
+    sortOrder: 1, attachments: [],
   },
   {
     id: "i-3",
@@ -54,7 +54,7 @@ const items: ChecklistItem[] = [
     title: "서버 점검",
     status: "todo",
     note: "",
-    sortOrder: 0,
+    sortOrder: 0, attachments: [],
   },
 ];
 
