@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getRoundWithItems, listTokens } from "@/features/checklist/queries";
@@ -15,6 +16,12 @@ export default async function ChecklistRoundPage({
   const tokens = await listTokens(id);
   return (
     <div className="p-5 md:p-6 lg:p-7">
+      <Link
+        href="/dashboard/checklist"
+        className="mb-4 inline-block text-sm text-muted hover:underline"
+      >
+        ← 체크리스트 목록
+      </Link>
       <RoundDetail round={data.round} items={data.items} tokens={tokens} />
     </div>
   );

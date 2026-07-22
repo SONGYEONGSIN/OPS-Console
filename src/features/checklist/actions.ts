@@ -103,7 +103,10 @@ export async function createRoundAction(_prev: unknown, formData: FormData) {
       sort_order: r.sortOrder,
     }),
   );
-  if (rows.length) await sb.from("checklist_items").insert(rows);
+  if (rows.length) {
+    const { error: seedError } = await sb.from("checklist_items").insert(rows);
+    if (seedError) return { ok: false, error: seedError.message };
+  }
   revalidatePath("/dashboard/checklist");
   return { ok: true, id: round.id };
 }
@@ -142,7 +145,7 @@ export async function addItemAction(
 ) {
   await requireAdmin();
   const sb = createAdminClient();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("checklist_items")
     .insert({
       round_id: roundId,
@@ -153,6 +156,7 @@ export async function addItemAction(
     })
     .select("id")
     .single();
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/dashboard/checklist/${roundId}`);
   return { ok: true, id: data?.id };
 }
@@ -160,7 +164,8 @@ export async function addItemAction(
 export async function deleteItemAction(itemId: string, roundId: string) {
   await requireAdmin();
   const sb = createAdminClient();
-  await sb.from("checklist_items").delete().eq("id", itemId);
+  const { error } = await sb.from("checklist_items").delete().eq("id", itemId);
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/dashboard/checklist/${roundId}`);
   return { ok: true };
 }
@@ -172,11 +177,12 @@ export async function issueTokenAction(
 ) {
   await requireAdmin();
   const sb = createAdminClient();
-  const { data } = await sb
+  const { data, error } = await sb
     .from("checklist_share_tokens")
     .insert({ round_id: roundId, kind, department, token: newToken() })
     .select("token")
     .single();
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/dashboard/checklist/${roundId}`);
   return { ok: true, token: data?.token };
 }
@@ -188,7 +194,11 @@ export async function toggleTokenAction(
 ) {
   await requireAdmin();
   const sb = createAdminClient();
-  await sb.from("checklist_share_tokens").update({ enabled }).eq("id", tokenId);
+  const { error } = await sb
+    .from("checklist_share_tokens")
+    .update({ enabled })
+    .eq("id", tokenId);
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/dashboard/checklist/${roundId}`);
   return { ok: true };
 }

@@ -330,6 +330,7 @@ export const sidebarSections: SbSection[] = [
             count: "",
             slug: "checklist",
             pattern: "list",
+            adminOnly: true,
           },
         ],
       },

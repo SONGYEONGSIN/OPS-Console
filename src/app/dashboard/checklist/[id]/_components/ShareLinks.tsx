@@ -52,12 +52,14 @@ export function ShareLinks({ roundId, tokens }: Props) {
               {t ? (
                 <>
                   <button
+                    type="button"
                     onClick={() => copy(t.token)}
                     className="text-vermilion"
                   >
                     링크 복사
                   </button>
                   <button
+                    type="button"
                     onClick={() => toggleTokenAction(t.id, roundId, !t.enabled)}
                     className="text-muted"
                   >
@@ -66,6 +68,7 @@ export function ShareLinks({ roundId, tokens }: Props) {
                 </>
               ) : (
                 <button
+                  type="button"
                   disabled={busy}
                   onClick={() => issue("dept-fill", d)}
                   className="text-vermilion"
@@ -80,11 +83,16 @@ export function ShareLinks({ roundId, tokens }: Props) {
       <div className="mt-2 text-xs">
         임원 보고 링크:{" "}
         {report ? (
-          <button onClick={() => copy(report.token)} className="text-vermilion">
+          <button
+            type="button"
+            onClick={() => copy(report.token)}
+            className="text-vermilion"
+          >
             복사
           </button>
         ) : (
           <button
+            type="button"
             disabled={busy}
             onClick={() => issue("report", null)}
             className="text-vermilion"

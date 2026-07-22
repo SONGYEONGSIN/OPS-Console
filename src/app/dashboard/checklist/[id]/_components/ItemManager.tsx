@@ -48,6 +48,7 @@ export function ItemManager({ roundId, department, items }: Props) {
               <Row key={i.id} roundId={roundId} item={i} />
             ))}
           <button
+            type="button"
             onClick={() => addItemAction(roundId, department, cat)}
             className="mt-1 text-xs text-vermilion"
           >
@@ -78,6 +79,7 @@ function Row({ roundId, item }: { roundId: string; item: ChecklistItem }) {
         {STATUSES.map((s) => (
           <button
             key={s}
+            type="button"
             onClick={() => {
               setStatus(s);
               updateItemAction(item.id, { status: s });
@@ -92,6 +94,7 @@ function Row({ roundId, item }: { roundId: string; item: ChecklistItem }) {
           </button>
         ))}
         <button
+          type="button"
           onClick={() => deleteItemAction(item.id, roundId)}
           className="px-1 text-xs text-muted"
         >
