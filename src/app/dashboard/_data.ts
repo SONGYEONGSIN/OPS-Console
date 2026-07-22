@@ -326,7 +326,7 @@ export const sidebarSections: SbSection[] = [
           },
           {
             ico: "·",
-            label: "체크리스트",
+            label: "원서접수점검",
             count: "",
             slug: "checklist",
             pattern: "list",
