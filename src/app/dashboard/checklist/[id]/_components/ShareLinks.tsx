@@ -1,106 +1,99 @@
 "use client";
 
-import { useState } from "react";
-import {
-  DEPARTMENTS,
-  type Department,
-  type ShareToken,
-} from "@/features/checklist/schemas";
-import {
-  issueTokenAction,
-  toggleTokenAction,
-} from "@/features/checklist/actions";
+import { useState, useTransition } from "react";
+import type { ShareToken } from "@/features/checklist/schemas";
+import { toggleChecklistShare } from "@/features/checklist/actions";
 
-type Props = {
-  roundId: string;
-  tokens: ShareToken[];
-};
+const STD =
+  "cursor-pointer border border-ink bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50";
+const STD_SM =
+  "cursor-pointer border border-line bg-white px-2 py-0.5 text-xs text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50";
 
 /**
- * 회차 상세 — 부서별 fill 링크 + 임원 보고 링크 발급/복사/토글.
- * URL 규격: {origin}/r/checklist/{token} (공개 라우트는 Plan 2에서 구현).
+ * 공유 링크 토글 1종 — reports ShareControls 패턴(생성/해제). 표준 버튼 스타일.
+ * 없으면 '{label} 생성', 있으면 복사/해제. URL = {origin}/r/checklist/{token}.
  */
-export function ShareLinks({ roundId, tokens }: Props) {
-  const [busy, setBusy] = useState(false);
+function ShareControl({
+  roundId,
+  kind,
+  label,
+  initialToken,
+}: {
+  roundId: string;
+  kind: "fill" | "report";
+  label: string;
+  initialToken: string | null;
+}) {
+  const [token, setToken] = useState<string | null>(initialToken);
+  const [pending, startTransition] = useTransition();
+  const [copied, setCopied] = useState(false);
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const report = tokens.find((t) => t.kind === "report");
-  const deptToken = (d: Department) =>
-    tokens.find((t) => t.kind === "dept-fill" && t.department === d);
-  const copy = (tok: string) =>
-    navigator.clipboard.writeText(`${origin}/r/checklist/${tok}`);
-  const issue = async (
-    kind: "dept-fill" | "report",
-    dept: Department | null,
-  ) => {
-    setBusy(true);
-    await issueTokenAction(roundId, kind, dept);
-    setBusy(false);
+
+  const toggle = () =>
+    startTransition(async () => {
+      const r = await toggleChecklistShare(roundId, kind);
+      if (r.ok) setToken(r.token ?? null);
+    });
+  const copy = async () => {
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(`${origin}/r/checklist/${token}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
   };
 
+  if (!token) {
+    return (
+      <button type="button" onClick={toggle} disabled={pending} className={STD}>
+        {pending ? "처리 중…" : `${label} 생성`}
+      </button>
+    );
+  }
   return (
-    <section className="border border-line-soft bg-situation-bg p-4">
-      <h3 className="text-sm font-bold text-ink">공유 링크</h3>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {DEPARTMENTS.map((d) => {
-          const t = deptToken(d);
-          return (
-            <div
-              key={d}
-              className="flex items-center gap-1 border border-line px-2 py-1 text-xs"
-            >
-              <span className="font-medium">{d}</span>
-              {t ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => copy(t.token)}
-                    className="text-vermilion"
-                  >
-                    링크 복사
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleTokenAction(t.id, roundId, !t.enabled)}
-                    className="text-muted"
-                  >
-                    {t.enabled ? "비활성" : "활성"}
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => issue("dept-fill", d)}
-                  className="text-vermilion"
-                >
-                  발급
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-2 text-xs">
-        임원 보고 링크:{" "}
-        {report ? (
-          <button
-            type="button"
-            onClick={() => copy(report.token)}
-            className="text-vermilion"
-          >
-            복사
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => issue("report", null)}
-            className="text-vermilion"
-          >
-            발급
-          </button>
-        )}
-      </div>
-    </section>
+    <div className="flex items-center gap-1.5 border border-line-soft bg-search-field-bg px-2 py-1">
+      <span className="text-xs text-muted">{label}</span>
+      <button type="button" onClick={copy} className={STD_SM}>
+        {copied ? "복사됨" : "복사"}
+      </button>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={pending}
+        className={STD_SM}
+      >
+        해제
+      </button>
+    </div>
+  );
+}
+
+/** 작성 공유 링크(fill) + 확인 공유 링크(report) — 회차 상세 액션 행. */
+export function ShareLinks({
+  roundId,
+  tokens,
+}: {
+  roundId: string;
+  tokens: ShareToken[];
+}) {
+  const fill = tokens.find((t) => t.kind === "fill");
+  const report = tokens.find((t) => t.kind === "report");
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <ShareControl
+        roundId={roundId}
+        kind="fill"
+        label="작성 공유 링크"
+        initialToken={fill?.token ?? null}
+      />
+      <ShareControl
+        roundId={roundId}
+        kind="report"
+        label="확인 공유 링크"
+        initialToken={report?.token ?? null}
+      />
+    </div>
   );
 }
