@@ -32,8 +32,8 @@ export function NewRoundModal({ rounds, onClose }: Props) {
 
   return (
     <ModalShell
-      title="새 회차 생성"
-      ariaLabel="새 회차"
+      title="새 모집시기 생성"
+      ariaLabel="새 모집시기"
       onClose={onClose}
       size="md"
       footer={
@@ -95,23 +95,23 @@ export function NewRoundModal({ rounds, onClose }: Props) {
             </label>
             <label className="inline-flex items-center gap-1.5">
               <input type="radio" name="seed" value="clone" />
-              이전 회차 복제
+              이전 모집시기 복제
             </label>
             <label className="inline-flex items-center gap-1.5">
-              <input type="radio" name="seed" value="empty" />빈 회차
+              <input type="radio" name="seed" value="empty" />빈 모집시기
             </label>
           </div>
         </fieldset>
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-xs text-muted">
-            복제할 회차 (이전 회차 복제 선택 시)
+            복제할 모집시기 (이전 모집시기 복제 선택 시)
           </span>
           <select
             name="cloneFromRoundId"
             className="border border-line-soft bg-field-bg px-2 py-1.5 text-sm text-ink focus:border-ink focus:bg-white"
           >
-            <option value="">복제할 회차 선택</option>
+            <option value="">복제할 모집시기 선택</option>
             {rounds.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.title}

@@ -25,7 +25,7 @@ export function RoundsList({ rounds }: Props) {
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-          <th className="px-3 py-2">회차</th>
+          <th className="px-3 py-2">모집시기</th>
           <th className="px-3 py-2">점검 기간</th>
           <th className="px-3 py-2">진행</th>
           <th className="px-3 py-2">완료율</th>
@@ -39,7 +39,8 @@ export function RoundsList({ rounds }: Props) {
               colSpan={5}
               className="px-3 py-8 text-center text-sm text-muted"
             >
-              회차가 없습니다. 우측 상단 ‘+ 새 회차’로 첫 회차를 만드세요.
+              모집시기가 없습니다. 우측 상단 ‘+ 새 모집시기’로 첫 모집시기를
+              만드세요.
             </td>
           </tr>
         ) : (

@@ -30,7 +30,7 @@ const sample: ChecklistRound & { completion: Completion } = {
 describe("RoundsList (표준 테이블)", () => {
   it("빈 rounds → 안내문구", () => {
     render(<RoundsList rounds={[]} />);
-    expect(screen.getByText(/회차가 없습니다/)).toBeInTheDocument();
+    expect(screen.getByText(/모집시기가 없습니다/)).toBeInTheDocument();
   });
 
   it("행 렌더 — 제목 / 진행 / 완료율 / 기간 / 상태", () => {
