@@ -24,8 +24,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 const items: ChecklistItem[] = [
-  { id: "i1", roundId: "R1", department: "기획파트", category: "사이트(PC/M)", title: "광고배너 노출", status: null, note: "", sortOrder: 0 },
-  { id: "i2", roundId: "R1", department: "개발부", category: "서버/시스템", title: "웹 서버 확인", status: null, note: "", sortOrder: 0 },
+  { id: "i1", roundId: "R1", department: "기획파트", category: "사이트(PC/M)", title: "광고배너 노출", status: null, note: "", sortOrder: 0, attachments: [] },
+  { id: "i2", roundId: "R1", department: "개발부", category: "서버/시스템", title: "웹 서버 확인", status: null, note: "", sortOrder: 0, attachments: [] },
 ];
 
 beforeEach(() => fillUpdateItem.mockClear());

@@ -7,6 +7,8 @@ import {
   fillUpdateItem,
   fillAddItem,
   fillDeleteItem,
+  fillUploadImage,
+  fillRemoveAttachment,
 } from "@/features/checklist/fill-actions";
 import { STATUS_LABEL, STATUS_STYLE } from "./status-ui";
 
@@ -117,6 +119,8 @@ function FillRow({
 }) {
   const [status, setStatus] = useState<ItemStatus | null>(item.status);
   const [note, setNote] = useState(item.note);
+  const [attachments, setAttachments] = useState<string[]>(item.attachments);
+  const [uploading, setUploading] = useState(false);
   const [save, setSave] = useState<SaveState>("idle");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -124,6 +128,32 @@ function FillRow({
     setSave("saving");
     const r = await fillUpdateItem(token, item.id, patch);
     setSave(r.ok ? "saved" : "error");
+  };
+
+  // 클립보드 이미지 붙여넣기 → 업로드 후 썸네일 추가
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = Array.from(e.clipboardData.items)
+      .find((it) => it.type.startsWith("image/"))
+      ?.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    setUploading(true);
+    setSave("saving");
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const r = await fillUploadImage(token, item.id, String(reader.result));
+      setUploading(false);
+      if (r.ok) {
+        setAttachments((a) => [...a, r.url]);
+        setSave("saved");
+      } else setSave("error");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAttachment = async (url: string) => {
+    setAttachments((a) => a.filter((u) => u !== url));
+    await fillRemoveAttachment(token, item.id, url);
   };
 
   const onStatus = (s: ItemStatus) => {
@@ -182,10 +212,37 @@ function FillRow({
         value={note}
         onChange={(e) => onNote(e.target.value)}
         onBlur={flushNote}
-        placeholder="메모 (여러 줄 입력 가능)"
+        onPaste={onPaste}
+        placeholder="메모 (여러 줄 입력 · 이미지 붙여넣기 가능)"
         rows={2}
         className="mt-2 w-full resize-y border border-line-soft bg-field-bg px-2 py-1 text-xs transition-colors focus:border-ink focus:bg-white"
       />
+      {attachments.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {attachments.map((url) => (
+            <div key={url} className="relative">
+              <a href={url} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={url}
+                  alt="첨부 이미지"
+                  className="h-20 w-20 rounded border border-line-soft object-cover"
+                />
+              </a>
+              <button
+                type="button"
+                onClick={() => removeAttachment(url)}
+                aria-label="첨부 삭제"
+                className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-ink text-2xs leading-none text-cream"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {uploading ? (
+        <p className="mt-1 text-2xs text-muted">이미지 업로드 중…</p>
+      ) : null}
     </div>
   );
 }

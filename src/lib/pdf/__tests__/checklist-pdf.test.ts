@@ -12,8 +12,8 @@ const round: ChecklistRound = {
   createdAt: "2026-07-22T10:00:00Z",
 };
 const items: ChecklistItem[] = [
-  { id: "i1", roundId: round.id, department: "개발부", category: "서버/시스템", title: "웹 서버 동작 확인", status: "done", note: "정상", sortOrder: 0 },
-  { id: "i2", roundId: round.id, department: "운영부", category: "결제사", title: "결제사 세팅", status: "in_progress", note: "", sortOrder: 0 },
+  { id: "i1", roundId: round.id, department: "개발부", category: "서버/시스템", title: "웹 서버 동작 확인", status: "done", note: "정상", sortOrder: 0, attachments: [] },
+  { id: "i2", roundId: round.id, department: "운영부", category: "결제사", title: "결제사 세팅", status: "in_progress", note: "", sortOrder: 0, attachments: [] },
 ];
 
 describe("renderChecklistPdf", () => {

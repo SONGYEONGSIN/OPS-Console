@@ -25,6 +25,7 @@ function mapItem(r: Record<string, unknown>): ChecklistItem {
     status: (r.status as ChecklistItem["status"]) ?? null,
     note: (r.note as string) ?? "",
     sortOrder: (r.sort_order as number) ?? 0,
+    attachments: (r.attachments as string[]) ?? [],
   };
 }
 

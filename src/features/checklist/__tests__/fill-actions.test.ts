@@ -7,7 +7,12 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-import { fillUpdateItem, fillDeleteItem, fillAddItem } from "../fill-actions";
+import {
+  fillUpdateItem,
+  fillDeleteItem,
+  fillAddItem,
+  fillUploadImage,
+} from "../fill-actions";
 
 type TokenRow = { round_id: string; kind: string; enabled: boolean };
 type ItemRow = { round_id: string };
@@ -105,6 +110,25 @@ describe("fillAddItem — 유효 토큰 + 부서 지정", () => {
     const r = await fillAddItem("t", "없는부서", "cat", "x");
     expect(r.ok).toBe(false);
     expect(sbState.calls.inserted).toBe(false);
+  });
+});
+
+describe("fillUploadImage — 형식/토큰/회차 스코프 강제 (스토리지 도달 전)", () => {
+  const PNG = "data:image/png;base64,iVBORw0KGgo=";
+  it("이미지 dataURL이 아니면 거부", async () => {
+    sbState = makeSb({ token: validFill });
+    const r = await fillUploadImage("t", "i1", "data:text/plain;base64,YWJj");
+    expect(r.ok).toBe(false);
+  });
+  it("report 토큰이면 거부", async () => {
+    sbState = makeSb({ token: { ...validFill, kind: "report" } });
+    const r = await fillUploadImage("t", "i1", PNG);
+    expect(r.ok).toBe(false);
+  });
+  it("타 회차 항목이면 거부", async () => {
+    sbState = makeSb({ token: validFill, item: { round_id: "R2" } });
+    const r = await fillUploadImage("t", "i1", PNG);
+    expect(r.ok).toBe(false);
   });
 });
 
