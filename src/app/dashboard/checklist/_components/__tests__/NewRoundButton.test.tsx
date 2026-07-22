@@ -12,15 +12,15 @@ vi.mock("@/features/checklist/actions", () => ({
 describe("NewRoundButton", () => {
   it("렌더 + 클릭 시 modal 노출", () => {
     render(<NewRoundButton rounds={[]} />);
-    expect(screen.queryByText(/새 회차 생성/)).toBeNull();
-    fireEvent.click(screen.getByText("+ 새 회차"));
-    expect(screen.getByText(/새 회차 생성/)).toBeInTheDocument();
+    expect(screen.queryByText(/새 모집시기 생성/)).toBeNull();
+    fireEvent.click(screen.getByText("+ 새 모집시기"));
+    expect(screen.getByText(/새 모집시기 생성/)).toBeInTheDocument();
   });
 
   it("취소 클릭 → modal 닫힘", () => {
     render(<NewRoundButton rounds={[]} />);
-    fireEvent.click(screen.getByText("+ 새 회차"));
+    fireEvent.click(screen.getByText("+ 새 모집시기"));
     fireEvent.click(screen.getByText("취소"));
-    expect(screen.queryByText(/새 회차 생성/)).toBeNull();
+    expect(screen.queryByText(/새 모집시기 생성/)).toBeNull();
   });
 });

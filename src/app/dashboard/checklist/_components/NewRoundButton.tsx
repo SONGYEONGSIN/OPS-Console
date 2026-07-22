@@ -16,7 +16,7 @@ export function NewRoundButton({ rounds }: Props) {
         onClick={() => setOpen(true)}
         className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream hover:opacity-90"
       >
-        + 새 회차
+        + 새 모집시기
       </button>
       {open ? (
         <NewRoundModal rounds={rounds} onClose={() => setOpen(false)} />
