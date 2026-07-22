@@ -14,11 +14,11 @@ const rounds = [{ id: "round-1", title: "2026학년도 정시모집" }];
 describe("NewRoundModal", () => {
   it("렌더 — 제목 input + 시작 방식 라디오 3개 + 복제 회차 select", () => {
     render(<NewRoundModal rounds={rounds} onClose={() => {}} />);
-    expect(screen.getByText("새 회차 생성")).toBeInTheDocument();
+    expect(screen.getByText("새 모집시기 생성")).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/수시모집/)).toBeInTheDocument();
     expect(screen.getByLabelText("기본 템플릿")).toBeInTheDocument();
-    expect(screen.getByLabelText("이전 회차 복제")).toBeInTheDocument();
-    expect(screen.getByLabelText("빈 회차")).toBeInTheDocument();
+    expect(screen.getByLabelText("이전 모집시기 복제")).toBeInTheDocument();
+    expect(screen.getByLabelText("빈 모집시기")).toBeInTheDocument();
     expect(screen.getByText("2026학년도 정시모집")).toBeInTheDocument();
   });
 

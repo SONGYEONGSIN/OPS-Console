@@ -28,7 +28,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   checklist: {
     headline: { accent: "분석 · 보고", title: "원서접수 점검" },
     description:
-      "회차별 원서접수 점검 체크리스트 — 부서별 링크 작성·자동저장, 임원 보고·PDF.",
+      "모집시기별 원서접수 점검 체크리스트 — 부서별 링크 작성·자동저장, 임원 보고·PDF.",
   },
   manuals: {
     headline: { accent: "매뉴얼 · 가이드", title: "운영 매뉴얼" },
