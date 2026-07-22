@@ -22,17 +22,27 @@ export function RoundDetail({ round, items, tokens }: Props) {
   const all = computeCompletion(items);
   return (
     <article className="flex flex-col gap-6">
-      <header className="border-b border-line pb-4">
-        <p className="text-xs uppercase tracking-[0.06em] text-muted">
-          [운영부 상황실] · 원서접수 점검사항 체크리스트
-        </p>
-        <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em] text-ink">
-          {round.title}
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"} ·{" "}
-          {round.createdBy ?? ""}
-        </p>
+      <header className="flex items-start justify-between gap-3 border-b border-line pb-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.06em] text-muted">
+            [운영부 상황실] · 원서접수 점검사항 체크리스트
+          </p>
+          <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em] text-ink">
+            {round.title}
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"} ·{" "}
+            {round.createdBy ?? ""}
+          </p>
+        </div>
+        <a
+          href={`/api/checklist/${round.id}/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-none border border-ink bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+        >
+          PDF 저장
+        </a>
       </header>
 
       <ShareLinks roundId={round.id} tokens={tokens} />
