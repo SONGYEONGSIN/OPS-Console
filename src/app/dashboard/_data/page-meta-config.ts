@@ -25,6 +25,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "기간별 운영 KPI 8 카드(서비스·사고·계약·미수채권·인수인계·백업·메일·워크로그) + 저장된 리포트 목록.",
   },
+  checklist: {
+    headline: { accent: "분석 · 보고", title: "원서접수 점검" },
+    description:
+      "회차별 원서접수 점검 체크리스트 — 부서별 링크 작성·자동저장, 임원 보고·PDF.",
+  },
   manuals: {
     headline: { accent: "매뉴얼 · 가이드", title: "운영 매뉴얼" },
     description:
