@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { computeCompletion, type Completion } from "./completion";
 import type { ChecklistRound, ChecklistItem, ShareToken } from "./schemas";
 
@@ -62,6 +63,49 @@ export async function getRoundWithItems(id: string) {
     .order("department")
     .order("sort_order");
   return { round: mapRound(round), items: (items ?? []).map(mapItem) };
+}
+
+/**
+ * 공유 토큰 1건으로 회차·항목 조회 — 공개(비로그인) 페이지용.
+ * 비로그인이라 RLS(authenticated)가 막으므로 토큰 검증 후 service_role(admin)로 읽는다.
+ * 토큰이 없거나 비활성이면 null (→ notFound).
+ */
+export async function getRoundByToken(token: string): Promise<{
+  token: ShareToken;
+  round: ChecklistRound;
+  items: ChecklistItem[];
+} | null> {
+  const sb = createAdminClient();
+  const { data: tok } = await sb
+    .from("checklist_share_tokens")
+    .select("*")
+    .eq("token", token)
+    .maybeSingle();
+  if (!tok || !tok.enabled) return null;
+  const { data: round } = await sb
+    .from("checklist_rounds")
+    .select("*")
+    .eq("id", tok.round_id)
+    .maybeSingle();
+  if (!round) return null;
+  const { data: items } = await sb
+    .from("checklist_items")
+    .select("*")
+    .eq("round_id", tok.round_id)
+    .order("department")
+    .order("sort_order");
+  return {
+    token: {
+      id: tok.id,
+      roundId: tok.round_id,
+      kind: tok.kind,
+      department: tok.department ?? null,
+      token: tok.token,
+      enabled: tok.enabled,
+    },
+    round: mapRound(round),
+    items: (items ?? []).map(mapItem),
+  };
 }
 
 export async function listTokens(roundId: string): Promise<ShareToken[]> {
