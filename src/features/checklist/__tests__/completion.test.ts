@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { computeCompletion } from "../completion";
+import type { ItemStatus } from "../schemas";
 
-const item = (status) => ({
+const item = (status: ItemStatus | null) => ({
   id: "x",
   roundId: "r",
   department: "개발부",
