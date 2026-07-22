@@ -1,12 +1,16 @@
-# 팀 브리핑 뉴스레터 — 로컬 발행기 (상시 맥)
+# 팀 브리핑 뉴스레터 — 로컬 발행기
 
-매주 금 10:00, 이 맥에서 `claude -p`로 스토리를 생성해 뉴스레터를 발행하고
-Teams에 티저를 보낸다. (mailbox-ingest와 동일한 launchd 패턴)
+매주 금 10:00, `claude -p`로 스토리를 생성해 뉴스레터를 발행하고 Teams에 티저를 보낸다.
+
+> **⚠️ 실행 머신 = 회사 Windows PC (claude 인증된 머신).** `claude -p`의 구독 OAuth는
+> **로그인 사용자 세션에서만** 유효하다. Mac mini launchd 같은 headless 컨텍스트엔 인증
+> 세션이 없어 claude 스토리가 실패하고 수치 요약 폴백만 나온다(mailbox-ingest가 같은 이유로
+> Windows 작업 스케줄러로 이전됨, #893). 아래 **Windows 작업 스케줄러 등록**을 사용한다.
 
 ## 흐름
 
 ```
-launchd (금 10:00)
+작업 스케줄러 (금 10:00, 로그온 시) → team-briefing-publish.cmd
   → node scripts/team-briefing/publish-local.mjs
       1. GET  /api/team-briefing/draft   — 서버가 주간 데이터 집계 반환 (CRON_SECRET)
       2. claude -p                        — 캐치 제목 + 섹션별 스토리 (실패 시 수치 요약 폴백)
@@ -19,17 +23,22 @@ launchd (금 10:00)
 - `OPS_CONSOLE_BASE_URL` — 프로덕션 베이스 URL (예: https://ops-console.example.com)
 - `CLAUDE_BIN` (선택) — claude CLI 경로 override
 
-## launchd 등록 (1회)
+## Windows 작업 스케줄러 등록 (회사 PC, 1회)
 
-```bash
-cp scripts/team-briefing/com.opsconsole.team-briefing.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.opsconsole.team-briefing.plist
-# 즉시 1회 테스트
-launchctl start com.opsconsole.team-briefing
-tail -f ~/Library/Logs/team-briefing.log
+```powershell
+# 레포 최신화 후 레포 루트에서
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/register-team-briefing-task.ps1
+# 발행 없이 스토리만 미리보기
+node scripts\team-briefing\publish-local.mjs --dry
+# 실제 1회 발행 테스트 (뉴스레터 + Teams 발송)
+Start-ScheduledTask -TaskName "OPS-Console-Team-Briefing"
 ```
 
-해제: `launchctl unload ~/Library/LaunchAgents/com.opsconsole.team-briefing.plist`
+- 매주 금 10:00, 로그온 시. 로그: `scripts\logs\team-briefing-YYYYMMDD.log`
+- 해제: `Unregister-ScheduledTask -TaskName "OPS-Console-Team-Briefing" -Confirm:$false`
+
+> Mac launchd(`com.opsconsole.team-briefing.plist`)는 claude -p 인증 세션 부재로 스토리가
+> 폴백만 나오므로 **사용하지 않는다**(문서 상단 경고 참조).
 
 ## 수동 실행
 
