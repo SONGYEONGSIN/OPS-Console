@@ -12,8 +12,7 @@ vi.mock("@/features/checklist/actions", () => ({
   updateItemAction: vi.fn(),
   addItemAction: vi.fn(),
   deleteItemAction: vi.fn(),
-  issueTokenAction: vi.fn(),
-  toggleTokenAction: vi.fn(),
+  toggleChecklistShare: vi.fn(),
 }));
 
 const round: ChecklistRound = {
@@ -94,8 +93,9 @@ describe("RoundDetail", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("ShareLinks 공유 링크 섹션 렌더", () => {
+  it("공유 링크 액션 행 — 작성/확인 링크 생성 버튼 렌더", () => {
     render(<RoundDetail round={round} items={items} tokens={tokens} />);
-    expect(screen.getByText("공유 링크")).toBeInTheDocument();
+    expect(screen.getByText("작성 공유 링크 생성")).toBeInTheDocument();
+    expect(screen.getByText("확인 공유 링크 생성")).toBeInTheDocument();
   });
 });

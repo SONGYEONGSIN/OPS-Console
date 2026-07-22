@@ -53,10 +53,11 @@ export type ChecklistItem = {
   sortOrder: number;
 };
 
+// 공유 토큰: fill = 전 부서 통합 작성 링크, report = 임원 보고(읽기) 링크. (각 회차당 1개씩)
 export type ShareToken = {
   id: string;
   roundId: string;
-  kind: "dept-fill" | "report";
+  kind: "fill" | "report";
   department: Department | null;
   token: string;
   enabled: boolean;

@@ -132,35 +132,33 @@ export async function deleteItemAction(itemId: string, roundId: string) {
   return { ok: true };
 }
 
-export async function issueTokenAction(
+/**
+ * 공유 링크 토글(생성/해제) — reports `toggleReportShare` 패턴. 회차·kind당 1개.
+ * fill = 전 부서 통합 작성 링크, report = 임원 보고(읽기) 링크. 있으면 삭제, 없으면 발급.
+ */
+export async function toggleChecklistShare(
   roundId: string,
-  kind: "dept-fill" | "report",
-  department: Department | null,
+  kind: "fill" | "report",
 ) {
   await requireAdmin();
   const sb = createAdminClient();
+  const { data: existing } = await sb
+    .from("checklist_share_tokens")
+    .select("id")
+    .eq("round_id", roundId)
+    .eq("kind", kind)
+    .maybeSingle();
+  if (existing) {
+    await sb.from("checklist_share_tokens").delete().eq("id", existing.id);
+    revalidatePath(`/dashboard/checklist/${roundId}`);
+    return { ok: true, token: null };
+  }
   const { data, error } = await sb
     .from("checklist_share_tokens")
-    .insert({ round_id: roundId, kind, department, token: newToken() })
+    .insert({ round_id: roundId, kind, department: null, token: newToken() })
     .select("token")
     .single();
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/dashboard/checklist/${roundId}`);
   return { ok: true, token: data?.token };
-}
-
-export async function toggleTokenAction(
-  tokenId: string,
-  roundId: string,
-  enabled: boolean,
-) {
-  await requireAdmin();
-  const sb = createAdminClient();
-  const { error } = await sb
-    .from("checklist_share_tokens")
-    .update({ enabled })
-    .eq("id", tokenId);
-  if (error) return { ok: false, error: error.message };
-  revalidatePath(`/dashboard/checklist/${roundId}`);
-  return { ok: true };
 }

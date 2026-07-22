@@ -4,56 +4,64 @@ import { FillForm } from "../FillForm";
 import type { ChecklistItem } from "@/features/checklist/schemas";
 
 const fillUpdateItem = vi.fn(
-  async (_token: string, _itemId: string, _patch: unknown) => ({ ok: true }),
+  async (_t: string, _i: string, _p: unknown) => ({ ok: true }),
 );
 const fillAddItem = vi.fn(
-  async (_token: string, _category: string, _title: string) => ({
+  async (_t: string, _d: string, _c: string, _ti: string) => ({
     ok: true,
     id: "new",
   }),
 );
-const fillDeleteItem = vi.fn(async (_token: string, _itemId: string) => ({
-  ok: true,
-}));
+const fillDeleteItem = vi.fn(async (_t: string, _i: string) => ({ ok: true }));
 vi.mock("@/features/checklist/fill-actions", () => ({
-  fillUpdateItem: (token: string, itemId: string, patch: unknown) =>
-    fillUpdateItem(token, itemId, patch),
-  fillAddItem: (token: string, category: string, title: string) =>
-    fillAddItem(token, category, title),
-  fillDeleteItem: (token: string, itemId: string) =>
-    fillDeleteItem(token, itemId),
+  fillUpdateItem: (t: string, i: string, p: unknown) => fillUpdateItem(t, i, p),
+  fillAddItem: (t: string, d: string, c: string, ti: string) =>
+    fillAddItem(t, d, c, ti),
+  fillDeleteItem: (t: string, i: string) => fillDeleteItem(t, i),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 
 const items: ChecklistItem[] = [
-  { id: "i1", roundId: "R1", department: "개발부", category: "서버/시스템", title: "웹 서버 동작 확인", status: null, note: "", sortOrder: 0 },
+  { id: "i1", roundId: "R1", department: "기획파트", category: "사이트(PC/M)", title: "광고배너 노출", status: null, note: "", sortOrder: 0 },
+  { id: "i2", roundId: "R1", department: "개발부", category: "서버/시스템", title: "웹 서버 확인", status: null, note: "", sortOrder: 0 },
 ];
 
-beforeEach(() => {
-  fillUpdateItem.mockClear();
-});
+beforeEach(() => fillUpdateItem.mockClear());
 
-describe("FillForm", () => {
-  it("회차·부서·항목·분야를 렌더한다", () => {
+describe("FillForm (전 부서 통합 작성)", () => {
+  it("모든 부서·항목을 렌더한다", () => {
     render(
-      <FillForm token="tok" department="개발부" roundTitle="2027 수시" periodStart="2026-08-01" periodEnd="2026-09-01" items={items} />,
+      <FillForm token="tok" roundTitle="2027 수시" periodStart={null} periodEnd={null} items={items} />,
     );
     expect(screen.getByText("2027 수시")).toBeInTheDocument();
+    expect(screen.getByText("기획파트")).toBeInTheDocument();
     expect(screen.getByText("개발부")).toBeInTheDocument();
-    expect(screen.getByText("웹 서버 동작 확인")).toBeInTheDocument();
-    expect(screen.getByText("서버/시스템")).toBeInTheDocument();
+    expect(screen.getByText("광고배너 노출")).toBeInTheDocument();
+    expect(screen.getByText("웹 서버 확인")).toBeInTheDocument();
   });
 
-  it("상태 칩 클릭 시 fillUpdateItem(token, itemId, {status})를 호출한다", () => {
-    render(<FillForm token="tok" department="개발부" roundTitle="R" periodStart={null} periodEnd={null} items={items} />);
+  it("상태 칩 클릭 → fillUpdateItem(token, itemId, {status})", () => {
+    render(
+      <FillForm token="tok" roundTitle="R" periodStart={null} periodEnd={null} items={[items[0]]} />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "완료" }));
     expect(fillUpdateItem).toHaveBeenCalledWith("tok", "i1", { status: "done" });
   });
 
-  it("항목이 없으면 안내 문구를 보여준다", () => {
-    render(<FillForm token="tok" department="개발부" roundTitle="R" periodStart={null} periodEnd={null} items={[]} />);
+  it("메모는 여러 줄 입력용 textarea (엔터 지원)", () => {
+    render(
+      <FillForm token="tok" roundTitle="R" periodStart={null} periodEnd={null} items={[items[0]]} />,
+    );
+    const memo = screen.getByPlaceholderText(/메모/);
+    expect(memo.tagName).toBe("TEXTAREA");
+  });
+
+  it("빈 항목이면 안내 문구", () => {
+    render(
+      <FillForm token="tok" roundTitle="R" periodStart={null} periodEnd={null} items={[]} />,
+    );
     expect(screen.getByText(/항목이 없습니다/)).toBeInTheDocument();
   });
 });
