@@ -84,20 +84,15 @@ describe("ItemManager", () => {
     );
   });
 
-  it("메모 입력 후 blur → updateItemAction(itemId, { note }) 호출", async () => {
+  it("부서가 작성한 메모 내용이 관리자 화면에 표시된다(parity)", () => {
     render(
       <ItemManager
         roundId={roundId}
         department="운영부"
-        items={[makeItem()]}
+        items={[{ ...makeItem(), note: "부서 작성 메모" }]}
       />,
     );
-    const noteInput = screen.getByPlaceholderText("메모");
-    fireEvent.change(noteInput, { target: { value: "확인 완료" } });
-    fireEvent.blur(noteInput);
-    await waitFor(() =>
-      expect(mockUpdate).toHaveBeenCalledWith("item-1", { note: "확인 완료" }),
-    );
+    expect(screen.getByText("부서 작성 메모")).toBeInTheDocument();
   });
 
   it("항목 추가 클릭 → addItemAction(roundId, department, category) 호출", async () => {

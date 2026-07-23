@@ -4,6 +4,7 @@ import {
   Page,
   Text,
   View,
+  Image as PdfImage,
   StyleSheet,
   Font,
   renderToBuffer,
@@ -16,6 +17,10 @@ import type {
 } from "@/features/checklist/schemas";
 import { DEPARTMENTS, deptLabel } from "@/features/checklist/schemas";
 import { computeCompletion } from "@/features/checklist/completion";
+import {
+  stripNoteHtml,
+  extractNoteImages,
+} from "@/features/checklist/note-html";
 
 const PRETENDARD_REGULAR = path.join(
   process.cwd(),
@@ -131,6 +136,7 @@ const styles = StyleSheet.create({
   itemMain: { flex: 1, paddingRight: 8 },
   itemTitle: { fontSize: 9.5 },
   itemNote: { fontSize: 8, color: "#888", marginTop: 1 },
+  noteImage: { marginTop: 3, width: 160 },
   badge: { fontSize: 8, fontWeight: 700 },
   runningFooter: {
     position: "absolute",
@@ -215,9 +221,18 @@ function ChecklistDocument({
                       <View key={i.id} style={styles.itemRow} wrap={false}>
                         <View style={styles.itemMain}>
                           <Text style={styles.itemTitle}>{i.title}</Text>
-                          {i.note ? (
-                            <Text style={styles.itemNote}>{i.note}</Text>
+                          {stripNoteHtml(i.note) ? (
+                            <Text style={styles.itemNote}>
+                              {stripNoteHtml(i.note)}
+                            </Text>
                           ) : null}
+                          {extractNoteImages(i.note).map((url) => (
+                            <PdfImage
+                              key={url}
+                              src={url}
+                              style={styles.noteImage}
+                            />
+                          ))}
                         </View>
                         <Text
                           style={[

@@ -84,7 +84,7 @@ describe("FillForm (전 부서 통합 작성)", () => {
     });
   });
 
-  it("메모는 여러 줄 입력용 textarea (엔터 지원)", () => {
+  it("메모는 리치 에디터(contentEditable 멀티라인)로 렌더", () => {
     render(
       <FillForm
         token="tok"
@@ -94,8 +94,9 @@ describe("FillForm (전 부서 통합 작성)", () => {
         items={[items[0]]}
       />,
     );
-    const memo = screen.getByPlaceholderText(/메모/);
-    expect(memo.tagName).toBe("TEXTAREA");
+    const memo = screen.getByRole("textbox");
+    expect(memo).toHaveAttribute("contenteditable", "true");
+    expect(memo).toHaveAttribute("aria-multiline", "true");
   });
 
   it("빈 항목이면 안내 문구", () => {

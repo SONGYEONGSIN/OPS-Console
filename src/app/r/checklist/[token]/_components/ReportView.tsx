@@ -96,9 +96,10 @@ export function ReportView({
                         <div className="min-w-0">
                           <div className="text-sm text-ink">{i.title}</div>
                           {i.note ? (
-                            <div className="mt-0.5 whitespace-pre-wrap text-xs text-muted">
-                              {i.note}
-                            </div>
+                            <div
+                              className="mt-0.5 whitespace-pre-wrap text-xs text-muted [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded [&_img]:border [&_img]:border-line-soft"
+                              dangerouslySetInnerHTML={{ __html: i.note }}
+                            />
                           ) : null}
                           {i.attachments.length > 0 ? (
                             <div className="mt-1.5 flex flex-wrap gap-1.5">

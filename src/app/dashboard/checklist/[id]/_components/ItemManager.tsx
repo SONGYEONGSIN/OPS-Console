@@ -72,7 +72,6 @@ export function ItemManager({ roundId, department, items }: Props) {
 
 function Row({ roundId, item }: { roundId: string; item: ChecklistItem }) {
   const [status, setStatus] = useState<ItemStatus | null>(item.status);
-  const [note, setNote] = useState(item.note);
 
   const onStatus = (s: ItemStatus) => {
     const next = status === s ? null : s;
@@ -104,14 +103,14 @@ function Row({ roundId, item }: { roundId: string; item: ChecklistItem }) {
           </button>
         </div>
       </div>
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        onBlur={() => updateItemAction(item.id, { note })}
-        placeholder="메모"
-        rows={4}
-        className="mt-2 w-full resize-y border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white"
-      />
+      {item.note ? (
+        <div
+          className="mt-2 whitespace-pre-wrap border border-line-soft bg-field-bg px-2 py-1.5 text-sm text-ink [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded [&_img]:border [&_img]:border-line-soft"
+          dangerouslySetInnerHTML={{ __html: item.note }}
+        />
+      ) : (
+        <div className="mt-2 text-xs text-muted">메모 없음</div>
+      )}
       {item.attachments.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
           {item.attachments.map((url) => (

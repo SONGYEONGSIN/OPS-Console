@@ -1,6 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { RichNote } from "./RichNote";
 import type { ChecklistItem, ItemStatus } from "@/features/checklist/schemas";
 import {
   DEPARTMENTS,
@@ -158,11 +159,8 @@ function FillRow({
   onDeleted: () => void;
 }) {
   const [status, setStatus] = useState<ItemStatus | null>(item.status);
-  const [note, setNote] = useState(item.note);
   const [attachments, setAttachments] = useState<string[]>(item.attachments);
-  const [uploading, setUploading] = useState(false);
   const [save, setSave] = useState<SaveState>("idle");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const persist = async (patch: Record<string, unknown>) => {
     setSave("saving");
@@ -170,25 +168,16 @@ function FillRow({
     setSave(r.ok ? "saved" : "error");
   };
 
-  // 클립보드 이미지 붙여넣기 → 업로드 후 썸네일 추가
-  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const file = Array.from(e.clipboardData.items)
-      .find((it) => it.type.startsWith("image/"))
-      ?.getAsFile();
-    if (!file) return;
-    e.preventDefault();
-    setUploading(true);
+  // 이미지 붙여넣기 → 업로드 후 URL 반환(RichNote가 note HTML에 인라인 삽입).
+  const uploadImage = async (dataUrl: string): Promise<string | null> => {
     setSave("saving");
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const r = await fillUploadImage(token, item.id, String(reader.result));
-      setUploading(false);
-      if (r.ok) {
-        setAttachments((a) => [...a, r.url]);
-        setSave("saved");
-      } else setSave("error");
-    };
-    reader.readAsDataURL(file);
+    const r = await fillUploadImage(token, item.id, dataUrl);
+    if (r.ok) {
+      setSave("saved");
+      return r.url;
+    }
+    setSave("error");
+    return null;
   };
 
   const removeAttachment = async (url: string) => {
@@ -200,20 +189,6 @@ function FillRow({
     const next = status === s ? null : s;
     setStatus(next);
     persist({ status: next });
-  };
-
-  const onNote = (v: string) => {
-    setNote(v);
-    setSave("saving");
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => persist({ note: v }), 800);
-  };
-  const flushNote = () => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-      persist({ note });
-    }
   };
 
   return (
@@ -244,14 +219,10 @@ function FillRow({
           삭제
         </button>
       </div>
-      <textarea
-        value={note}
-        onChange={(e) => onNote(e.target.value)}
-        onBlur={flushNote}
-        onPaste={onPaste}
-        placeholder="메모 (여러 줄 입력 · 이미지 붙여넣기 가능)"
-        rows={6}
-        className="mt-2 w-full resize-y border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white"
+      <RichNote
+        initialHtml={item.note}
+        onSave={(html) => persist({ note: html })}
+        onPasteImage={uploadImage}
       />
       {attachments.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
@@ -275,9 +246,6 @@ function FillRow({
             </div>
           ))}
         </div>
-      ) : null}
-      {uploading ? (
-        <p className="mt-1 text-2xs text-muted">이미지 업로드 중…</p>
       ) : null}
     </div>
   );
