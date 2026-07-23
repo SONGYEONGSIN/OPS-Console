@@ -13,6 +13,8 @@ import {
   fmtViews,
   upcomingAnniversaries,
   upcomingBirthdays,
+  pickFeatureIntro,
+  FEATURE_INTROS,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
@@ -164,7 +166,7 @@ describe("buildBriefingTeaserHtml", () => {
         operator_name: null,
       },
     ],
-    aiWork: { count: 5, savedHours: 12, items: [], more: 0 },
+    aiWork: { count: 5, totalCount: 5, savedHours: 12, items: [], more: 0 },
     tips: { newCount: 2, totalCount: 30, items: [], more: 0 },
     url: "https://ops.example.com/r/briefing/tok123",
   };
@@ -188,7 +190,7 @@ describe("buildBriefingTeaserHtml", () => {
   it("절감 0시간이면 절감 표기 생략", () => {
     const html = buildBriefingTeaserHtml({
       ...base,
-      aiWork: { count: 0, savedHours: 0, items: [], more: 0 },
+      aiWork: { count: 0, totalCount: 0, savedHours: 0, items: [], more: 0 },
     });
     expect(html).not.toContain("절감");
   });
@@ -220,9 +222,10 @@ describe("summarizeAiWork", () => {
     saved_hours: saved,
   });
 
-  it("건수·절감시간 합계(null 제외) + 목록", () => {
-    const s = summarizeAiWork([row("a", 3), row("b", 1.5), row("c", null)]);
+  it("신규 건수·절감시간 합계(null 제외) + 누적 + 목록", () => {
+    const s = summarizeAiWork([row("a", 3), row("b", 1.5), row("c", null)], 12);
     expect(s.count).toBe(3);
+    expect(s.totalCount).toBe(12);
     expect(s.savedHours).toBe(4.5);
     expect(s.items).toHaveLength(3);
     expect(s.more).toBe(0);
@@ -231,10 +234,12 @@ describe("summarizeAiWork", () => {
   it("5건 초과 시 앞 5건만 + more에 초과 건수", () => {
     const s = summarizeAiWork(
       Array.from({ length: 7 }, (_, i) => row(`t${i}`, 1)),
+      20,
     );
     expect(s.items).toHaveLength(5);
     expect(s.more).toBe(2);
     expect(s.count).toBe(7);
+    expect(s.totalCount).toBe(20);
   });
 });
 
@@ -316,8 +321,30 @@ describe("upcomingAnniversaries", () => {
     expect(r).toEqual([]);
   });
 
+  it("마일스톤(1·3·5·7·10·15·20년)만 — 그 외 연차는 제외", () => {
+    const r = upcomingAnniversaries(
+      [
+        { name: "2년차", hired_at: "2024-07-20" }, // 2년 — 제외
+        { name: "3년차", hired_at: "2023-07-21" }, // 3년 — 포함
+        { name: "6년차", hired_at: "2020-07-22" }, // 6년 — 제외
+      ],
+      "2026-07-17",
+    );
+    expect(r).toEqual([{ name: "3년차", years: 3, dateYmd: "2026-07-21" }]);
+  });
+
   it("해당자 없으면 빈 배열", () => {
     expect(upcomingAnniversaries([], "2026-07-17")).toEqual([]);
+  });
+});
+
+describe("pickFeatureIntro", () => {
+  it("호수별로 순환 선택 (1호=첫 항목, 초과 시 wrap)", () => {
+    expect(pickFeatureIntro(1)).toEqual(FEATURE_INTROS[0]);
+    expect(pickFeatureIntro(2)).toEqual(FEATURE_INTROS[1]);
+    expect(pickFeatureIntro(FEATURE_INTROS.length + 1)).toEqual(
+      FEATURE_INTROS[0],
+    );
   });
 });
 

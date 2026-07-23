@@ -39,6 +39,7 @@ const payload: BriefingPayload = {
   ],
   aiWork: {
     count: 2,
+    totalCount: 9,
     savedHours: 3,
     items: [
       {
@@ -215,7 +216,7 @@ describe("BriefingNewsletter", () => {
           ...payload,
           schedule: [],
           closing: [],
-          aiWork: { count: 0, savedHours: 0, items: [], more: 0 },
+          aiWork: { count: 0, totalCount: 0, savedHours: 0, items: [], more: 0 },
           tips: { newCount: 0, totalCount: 30, items: [], more: 0 },
           insights: { newCount: 0, items: [] },
         }}
@@ -223,6 +224,6 @@ describe("BriefingNewsletter", () => {
     );
     expect(screen.getByText("예정된 일정 없음")).toBeInTheDocument();
     expect(screen.getByText("임박한 마감 없음")).toBeInTheDocument();
-    expect(screen.getByText("등록된 AI 작업 없음")).toBeInTheDocument();
+    expect(screen.getByText("이번 주 신규 AI 작업 없음")).toBeInTheDocument();
   });
 });
