@@ -6,7 +6,7 @@ import type {
   Department,
   ItemStatus,
 } from "@/features/checklist/schemas";
-import { STATUSES } from "@/features/checklist/schemas";
+import { STATUSES, deptLabel } from "@/features/checklist/schemas";
 import {
   updateItemAction,
   addItemAction,
@@ -20,6 +20,14 @@ const LABEL: Record<ItemStatus, string> = {
   na: "해당없음",
 };
 
+// 상태 칩 표준(작성폼과 동일): 기본 흰 배경 + 호버 빨강, 선택 시 버밀리언 틴트. 삭제는 기본 빨강 버튼.
+const CHIP_BASE = "border px-2 py-1 text-xs transition-colors";
+const CHIP_ON = "border-vermilion bg-vermilion/10 text-vermilion";
+const CHIP_OFF =
+  "border-line bg-paper text-ink hover:border-vermilion hover:text-vermilion";
+const DELETE_BTN =
+  "border border-vermilion bg-vermilion px-2 py-1 text-xs text-cream transition-colors hover:opacity-90";
+
 type Props = {
   roundId: string;
   department: Department;
@@ -27,30 +35,32 @@ type Props = {
 };
 
 /**
- * 회차 상세 — 부서 섹션: 분야별 그룹 + 항목 행(상태칩/메모/삭제) + 항목 추가.
- * admin 전용 편집 — 전 부서 항목 편집 가능 (공개 fill 폼은 Plan 2).
+ * 회차 상세 — 부서 섹션: 분야별 그룹 + 항목 행(제목·상태칩·삭제 한 줄 + 메모 전폭 + 첨부) + 항목 추가.
+ * 작성폼(공개 fill)과 동일 내용·스타일로 표시 — 부서가 작성한 메모/이미지가 여기서도 보인다.
  */
 export function ItemManager({ roundId, department, items }: Props) {
   const cats = Array.from(new Set(items.map((i) => i.category)));
   return (
     <section>
       <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold text-ink">
-        {department}
+        {deptLabel(department)}
       </h2>
       {cats.map((cat) => (
         <div key={cat} className="mt-3">
           <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
             {cat || "(분야 없음)"}
           </p>
-          {items
-            .filter((i) => i.category === cat)
-            .map((i) => (
-              <Row key={i.id} roundId={roundId} item={i} />
-            ))}
+          <div className="space-y-2">
+            {items
+              .filter((i) => i.category === cat)
+              .map((i) => (
+                <Row key={i.id} roundId={roundId} item={i} />
+              ))}
+          </div>
           <button
             type="button"
             onClick={() => addItemAction(roundId, department, cat)}
-            className="mt-1 text-xs text-vermilion"
+            className="mt-2 text-xs text-vermilion hover:underline"
           >
             ＋ 항목 추가
           </button>
@@ -63,44 +73,58 @@ export function ItemManager({ roundId, department, items }: Props) {
 function Row({ roundId, item }: { roundId: string; item: ChecklistItem }) {
   const [status, setStatus] = useState<ItemStatus | null>(item.status);
   const [note, setNote] = useState(item.note);
+
+  const onStatus = (s: ItemStatus) => {
+    const next = status === s ? null : s;
+    setStatus(next);
+    updateItemAction(item.id, { status: next });
+  };
+
   return (
-    <div className="mb-[-1px] grid grid-cols-[1fr_auto] items-start gap-3 border border-line-soft bg-situation-bg p-3">
-      <div>
-        <div className="text-sm">{item.title}</div>
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onBlur={() => updateItemAction(item.id, { note })}
-          placeholder="메모"
-          className="mt-1 w-full border border-line-soft bg-field-bg px-2 py-1 text-xs focus:border-ink focus:bg-white"
-        />
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {STATUSES.map((s) => (
+    <div className="border border-line-soft bg-paper p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-sm text-ink">{item.title}</div>
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onStatus(s)}
+              className={`${CHIP_BASE} ${status === s ? CHIP_ON : CHIP_OFF}`}
+            >
+              {LABEL[s]}
+            </button>
+          ))}
           <button
-            key={s}
             type="button"
-            onClick={() => {
-              setStatus(s);
-              updateItemAction(item.id, { status: s });
-            }}
-            className={`border px-2 py-1 text-xs ${
-              status === s
-                ? "border-vermilion bg-vermilion/10 text-vermilion"
-                : "border-line text-muted hover:bg-line-soft"
-            }`}
+            onClick={() => deleteItemAction(item.id, roundId)}
+            className={DELETE_BTN}
           >
-            {LABEL[s]}
+            삭제
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => deleteItemAction(item.id, roundId)}
-          className="px-1 text-xs text-muted"
-        >
-          삭제
-        </button>
+        </div>
       </div>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        onBlur={() => updateItemAction(item.id, { note })}
+        placeholder="메모"
+        rows={4}
+        className="mt-2 w-full resize-y border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white"
+      />
+      {item.attachments.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {item.attachments.map((url) => (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={url}
+                alt="첨부 이미지"
+                className="h-20 w-20 rounded border border-line-soft object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

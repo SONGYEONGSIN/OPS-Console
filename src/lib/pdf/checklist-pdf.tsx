@@ -14,7 +14,7 @@ import type {
   ChecklistItem,
   ItemStatus,
 } from "@/features/checklist/schemas";
-import { DEPARTMENTS } from "@/features/checklist/schemas";
+import { DEPARTMENTS, deptLabel } from "@/features/checklist/schemas";
 import { computeCompletion } from "@/features/checklist/completion";
 
 const PRETENDARD_REGULAR = path.join(
@@ -169,7 +169,7 @@ function ChecklistDocument({
       <Page size="A4" style={styles.page}>
         <View fixed style={styles.runningHeader}>
           <Text style={styles.runningHeaderLeft}>
-            [운영부 상황실] · 원서접수 점검 체크리스트
+            어플라이본부 원서접수 점검 진행 상황
           </Text>
           <Text>{round.title}</Text>
         </View>
@@ -201,7 +201,7 @@ function ChecklistDocument({
           return (
             <View key={dept} style={styles.deptSection}>
               <View style={styles.deptHeader} minPresenceAhead={40}>
-                <Text style={styles.deptTitle}>{dept}</Text>
+                <Text style={styles.deptTitle}>{deptLabel(dept)}</Text>
                 <Text style={styles.deptMeta}>
                   {c.done}/{c.total} · {c.pct}%
                 </Text>
@@ -256,5 +256,7 @@ export async function renderChecklistPdf(
   round: ChecklistRound,
   items: ChecklistItem[],
 ): Promise<Buffer> {
-  return await renderToBuffer(<ChecklistDocument round={round} items={items} />);
+  return await renderToBuffer(
+    <ChecklistDocument round={round} items={items} />,
+  );
 }

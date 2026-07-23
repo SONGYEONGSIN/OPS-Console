@@ -53,7 +53,7 @@ describe("ItemManager", () => {
         items={[makeItem()]}
       />,
     );
-    expect(screen.getByRole("heading", { name: "운영부" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "운영" })).toBeInTheDocument();
     expect(screen.getByText("접수")).toBeInTheDocument();
     expect(screen.getByText("원서 접수 확인")).toBeInTheDocument();
   });

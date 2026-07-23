@@ -1,5 +1,8 @@
-import type { ChecklistRound, ChecklistItem } from "@/features/checklist/schemas";
-import { DEPARTMENTS } from "@/features/checklist/schemas";
+import type {
+  ChecklistRound,
+  ChecklistItem,
+} from "@/features/checklist/schemas";
+import { DEPARTMENTS, deptLabel } from "@/features/checklist/schemas";
 import { computeCompletion } from "@/features/checklist/completion";
 import { STATUS_LABEL, STATUS_STYLE } from "./status-ui";
 
@@ -20,10 +23,10 @@ export function ReportView({
   ];
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8">
       <header className="border-b-2 border-vermilion pb-4">
         <p className="text-xs uppercase tracking-[0.06em] text-muted">
-          [운영부 상황실] · 원서접수 점검사항 체크리스트
+          어플라이본부 원서접수 점검 진행 상황
         </p>
         <h1 className="mt-2 text-2xl font-bold text-ink">{round.title}</h1>
         <p className="mt-1 text-sm text-muted">
@@ -70,7 +73,9 @@ export function ReportView({
         return (
           <section key={dept} className="mt-6">
             <div className="flex items-baseline justify-between border-b-2 border-ink pb-1.5">
-              <h2 className="text-base font-bold text-ink">{dept}</h2>
+              <h2 className="text-base font-bold text-ink">
+                {deptLabel(dept)}
+              </h2>
               <span className="text-xs text-muted">
                 {c.done}/{c.total} · {c.pct}%
               </span>

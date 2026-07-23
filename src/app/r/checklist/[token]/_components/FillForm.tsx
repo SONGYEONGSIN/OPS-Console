@@ -2,7 +2,12 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChecklistItem, ItemStatus } from "@/features/checklist/schemas";
-import { DEPARTMENTS, STATUSES } from "@/features/checklist/schemas";
+import {
+  DEPARTMENTS,
+  STATUSES,
+  deptLabel,
+  type Department,
+} from "@/features/checklist/schemas";
 import {
   fillUpdateItem,
   fillAddItem,
@@ -10,13 +15,21 @@ import {
   fillUploadImage,
   fillRemoveAttachment,
 } from "@/features/checklist/fill-actions";
-import { STATUS_LABEL, STATUS_STYLE } from "./status-ui";
+import { STATUS_LABEL } from "./status-ui";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+// 상태 칩 표준: 기본 흰 배경 + 호버 빨강, 선택 시 버밀리언 틴트. 삭제는 기본 빨강 버튼.
+const CHIP_BASE = "border px-2 py-1 text-xs transition-colors";
+const CHIP_ON = "border-vermilion bg-vermilion/10 text-vermilion";
+const CHIP_OFF =
+  "border-line bg-paper text-ink hover:border-vermilion hover:text-vermilion";
+const DELETE_BTN =
+  "border border-vermilion bg-vermilion px-2 py-1 text-xs text-cream transition-colors hover:opacity-90";
+
 /**
  * 통합 작성 폼 — fill 토큰 링크(로그인 불필요). 전 부서 항목을 부서→분야로 묶어 노출.
- * 상태 칩 즉시저장 + 메모(textarea·여러 줄) 디바운스 저장 + 항목 추가/삭제.
+ * 상단 부서 필터 배지로 자기 부서만 볼 수 있음. 상태 칩 즉시저장 + 메모 디바운스 저장 + 항목 추가/삭제.
  */
 export function FillForm({
   token,
@@ -32,20 +45,47 @@ export function FillForm({
   items: ChecklistItem[];
 }) {
   const router = useRouter();
+  const [activeDept, setActiveDept] = useState<Department | null>(null);
   const depts = DEPARTMENTS.filter((d) =>
     items.some((i) => i.department === d),
   );
+  const shown = depts.filter((d) => activeDept === null || d === activeDept);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8">
       <header className="border-b-2 border-vermilion pb-4">
-        <p className="text-xs uppercase tracking-[0.06em] text-muted">
-          [운영부 상황실] · 원서접수 점검 체크리스트
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-ink">{roundTitle}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {periodStart ?? "-"} ~ {periodEnd ?? "-"}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.06em] text-muted">
+              어플라이본부 원서접수 점검 진행 상황
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-ink">{roundTitle}</h1>
+            <p className="mt-1 text-sm text-muted">
+              {periodStart ?? "-"} ~ {periodEnd ?? "-"}
+            </p>
+          </div>
+          {depts.length > 1 ? (
+            <div className="flex flex-wrap justify-end gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveDept(null)}
+                className={`${CHIP_BASE} ${activeDept === null ? CHIP_ON : CHIP_OFF}`}
+              >
+                전체
+              </button>
+              {depts.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setActiveDept(d)}
+                  className={`${CHIP_BASE} ${activeDept === d ? CHIP_ON : CHIP_OFF}`}
+                >
+                  {deptLabel(d)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <p className="mt-3 text-xs text-muted">
           각 부서 항목의 상태와 메모를 입력하면 자동 저장됩니다. 다 마치면 창을
           닫으면 됩니다.
@@ -58,13 +98,13 @@ export function FillForm({
         </p>
       ) : null}
 
-      {depts.map((dept) => {
+      {shown.map((dept) => {
         const deptItems = items.filter((i) => i.department === dept);
         const cats = Array.from(new Set(deptItems.map((i) => i.category)));
         return (
           <section key={dept} className="mt-8">
             <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold text-ink">
-              {dept}
+              {deptLabel(dept)}
             </h2>
             {cats.map((cat) => (
               <div key={cat} className="mt-4">
@@ -177,22 +217,18 @@ function FillRow({
   };
 
   return (
-    <div className="border border-line-soft bg-situation-bg p-3">
+    <div className="border border-line-soft bg-paper p-3">
       <div className="flex items-start justify-between gap-2">
         <span className="text-sm text-ink">{item.title}</span>
         <SaveBadge state={save} />
       </div>
-      <div className="mt-2 flex flex-wrap gap-1">
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-1">
         {STATUSES.map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => onStatus(s)}
-            className={`border px-2 py-1 text-xs transition-colors ${
-              status === s
-                ? STATUS_STYLE[s]
-                : "border-line-soft text-muted hover:bg-line-soft"
-            }`}
+            className={`${CHIP_BASE} ${status === s ? CHIP_ON : CHIP_OFF}`}
           >
             {STATUS_LABEL[s]}
           </button>
@@ -203,7 +239,7 @@ function FillRow({
             await fillDeleteItem(token, item.id);
             onDeleted();
           }}
-          className="ml-auto px-2 py-1 text-xs text-muted hover:text-vermilion"
+          className={DELETE_BTN}
         >
           삭제
         </button>
@@ -214,8 +250,8 @@ function FillRow({
         onBlur={flushNote}
         onPaste={onPaste}
         placeholder="메모 (여러 줄 입력 · 이미지 붙여넣기 가능)"
-        rows={2}
-        className="mt-2 w-full resize-y border border-line-soft bg-field-bg px-2 py-1 text-xs transition-colors focus:border-ink focus:bg-white"
+        rows={6}
+        className="mt-2 w-full resize-y border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white"
       />
       {attachments.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">

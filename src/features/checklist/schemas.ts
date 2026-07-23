@@ -10,6 +10,11 @@ export const DEPARTMENTS = [
 export const STATUSES = ["done", "in_progress", "todo", "na"] as const;
 
 export type Department = (typeof DEPARTMENTS)[number];
+
+/** 표시용 부서 라벨 — 접미사(파트/팀/부) 제거. 기획파트→기획, 운영부→운영, 고객지원팀→고객지원. */
+export function deptLabel(d: Department): string {
+  return d.replace(/(파트|팀|부)$/, "");
+}
 export type ItemStatus = (typeof STATUSES)[number];
 
 export const departmentSchema = z.enum(DEPARTMENTS);

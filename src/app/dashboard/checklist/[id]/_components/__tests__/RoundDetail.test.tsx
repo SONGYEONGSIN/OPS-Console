@@ -34,7 +34,8 @@ const items: ChecklistItem[] = [
     title: "원서 접수 확인",
     status: "done",
     note: "",
-    sortOrder: 0, attachments: [],
+    sortOrder: 0,
+    attachments: [],
   },
   {
     id: "i-2",
@@ -44,7 +45,8 @@ const items: ChecklistItem[] = [
     title: "결제 확인",
     status: "in_progress",
     note: "",
-    sortOrder: 1, attachments: [],
+    sortOrder: 1,
+    attachments: [],
   },
   {
     id: "i-3",
@@ -54,7 +56,8 @@ const items: ChecklistItem[] = [
     title: "서버 점검",
     status: "todo",
     note: "",
-    sortOrder: 0, attachments: [],
+    sortOrder: 0,
+    attachments: [],
   },
 ];
 
@@ -86,10 +89,10 @@ describe("RoundDetail", () => {
 
   it("항목이 있는 부서만 섹션 렌더 — 항목 없는 부서는 미렌더", () => {
     render(<RoundDetail round={round} items={items} tokens={tokens} />);
-    expect(screen.getByRole("heading", { name: "운영부" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "개발부" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "운영" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "개발" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "기획파트" }),
+      screen.queryByRole("heading", { name: "기획" }),
     ).not.toBeInTheDocument();
   });
 
