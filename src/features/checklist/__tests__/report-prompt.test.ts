@@ -80,6 +80,11 @@ describe("buildReportPrompt", () => {
     expect(p).toContain("첨부 이미지");
   });
 
+  it("수시 전용(정시 제외) + 표 학년도 2027·2026만 지침을 담는다", () => {
+    expect(p).toContain("정시(정시모집)");
+    expect(p).toContain("2027학년도와 2026학년도만");
+  });
+
   it("imagePaths 제공 시 해당 항목에 이미지 파일 경로를 참조한다", () => {
     const withImg: ChecklistItem = {
       ...items[0],
