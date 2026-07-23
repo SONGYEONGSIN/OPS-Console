@@ -171,7 +171,8 @@ export type AiWorkBriefItem = {
   saved_hours: number | null;
 };
 export type AiWorkBrief = {
-  count: number;
+  count: number; // 이번 주 신규
+  totalCount: number; // 누적
   savedHours: number;
   items: AiWorkBriefItem[];
   more: number;
@@ -183,13 +184,15 @@ export function fmtHours(h: number): string {
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
 
-/** 최근 7일 내 AI 작업 — 건수·절감시간 합계(null 제외) + 앞 N건 목록. */
+/** 최근 7일 신규 AI 작업 목록 + 누적 건수 (TIP과 동일한 신규/누적 표기). */
 export function summarizeAiWork(
   rows: AiWorkBriefItem[],
+  totalCount: number,
   maxItems = AI_LIST_MAX,
 ): AiWorkBrief {
   return {
     count: rows.length,
+    totalCount,
     savedHours: rows.reduce((a, r) => a + (r.saved_hours ?? 0), 0),
     items: rows.slice(0, maxItems),
     more: Math.max(0, rows.length - maxItems),
@@ -263,14 +266,17 @@ export function completionPct(done: number, ongoing: number): string {
 /** 근속 마일스톤 — 발행 주에 입사 기념일이 도래하는 운영자. */
 export type Milestone = { name: string; years: number; dateYmd: string };
 
+/** 축하 대상 근속 연차 — 매년이 아니라 이 마일스톤 해만 멘트한다. */
+export const MILESTONE_YEARS = new Set([1, 3, 5, 7, 10, 15, 20]);
+
 /**
- * 발행일부터 windowDays일 내 도래하는 입사 기념일(1주년 이상).
+ * 발행일부터 windowDays일 내 도래하는 입사 기념일 중 마일스톤(1·3·5·7·10·15·20년)만.
  * 올해 기념일이 지났으면 내년 날짜로 계산. 날짜 오름차순.
  */
 export function upcomingAnniversaries(
   operators: { name: string; hired_at: string }[],
   todayYmd: string,
-  windowDays = 7,
+  windowDays = 14,
 ): Milestone[] {
   const limitYmd = addDaysYmd(todayYmd, windowDays);
   const todayYear = Number(todayYmd.slice(0, 4));
@@ -283,7 +289,7 @@ export function upcomingAnniversaries(
     let annivYmd = `${todayYear}-${monthDay}`;
     if (annivYmd < todayYmd) annivYmd = `${todayYear + 1}-${monthDay}`;
     const years = Number(annivYmd.slice(0, 4)) - hiredYear;
-    if (years < 1) continue;
+    if (!MILESTONE_YEARS.has(years)) continue;
     if (annivYmd >= todayYmd && annivYmd <= limitYmd) {
       out.push({ name: op.name, years, dateYmd: annivYmd });
     }
@@ -300,7 +306,7 @@ export type Birthday = { name: string; dateYmd: string };
 export function upcomingBirthdays(
   operators: { name: string; birth_date: string }[],
   todayYmd: string,
-  windowDays = 7,
+  windowDays = 14,
 ): Birthday[] {
   const limitYmd = addDaysYmd(todayYmd, windowDays);
   const todayYear = Number(todayYmd.slice(0, 4));
@@ -316,6 +322,64 @@ export function upcomingBirthdays(
   return out.sort((a, b) =>
     a.dateYmd < b.dateYmd ? -1 : a.dateYmd > b.dateYmd ? 1 : 0,
   );
+}
+
+/** 이번 주 기능 소개 — OPS Console 메뉴/기능을 매 호 하나씩 돌아가며 소개. */
+export type FeatureIntro = { menu: string; title: string; desc: string };
+
+/** 소개 카탈로그 — 호수별로 순환 노출. 새 기능 추가 시 여기 1줄. */
+export const FEATURE_INTROS: FeatureIntro[] = [
+  {
+    menu: "개발 · AI > 개발/테스트 > 개발 탭",
+    title: "원서제어 파일 분석",
+    desc: "서비스별 원서제어(A.js·AU.js) 코드를 claude가 운영자 관점으로 요약해줍니다. 과거 학년도·마감일·하드코딩 전형코드 등 확인할 지점을 자동으로 짚어줘요.",
+  },
+  {
+    menu: "고객응대 > 메일함",
+    title: "메일함 위임",
+    desc: "휴가 등으로 자리를 비울 때, 다른 운영자에게 본인 메일함 열람·회신 권한을 위임할 수 있어요. 발신 명의는 원래 담당자로 유지되고 실제 처리자는 별도로 기록됩니다.",
+  },
+  {
+    menu: "이번 달 > 운영부 달력 · 서비스 > 백업 요청",
+    title: "백업 요청 → 달력 자동 연동",
+    desc: "백업 요청에 휴가유형을 넣으면 운영부 달력 상단에 '팀-이름-휴가유형'으로 자동 표기돼 팀 전체가 자리비움을 바로 인지합니다.",
+  },
+  {
+    menu: "분석 · 보고 > 원서접수점검",
+    title: "부서별 공유 링크 체크리스트",
+    desc: "모집시기마다 작성 공유 링크 하나를 부서에 뿌리면, 로그인 없이 각 부서가 자기 항목을 작성·자동저장합니다. 임원 보고용 확인 링크는 별도예요.",
+  },
+  {
+    menu: "AI & 자동화 > 자동화실행 · 미수채권",
+    title: "미수 ↔ 입금 자동 매칭",
+    desc: "매시간 미수채권과 입금내역을 대조해 단건·합산(N:1)까지 자동 매칭합니다. 담당자별 미수 알림 메일도 평일 아침 자동 발송돼요.",
+  },
+  {
+    menu: "서비스 > 인수인계",
+    title: "서비스별 인수인계 + 메일/PDF",
+    desc: "14개 카테고리로 인수인계를 작성하고, 위저드에서 학교담당자에게 PDF 첨부 메일까지 한 번에 보냅니다.",
+  },
+  {
+    menu: "분석 · 보고 > 운영리포트",
+    title: "기간별 KPI 리포트 + 공유",
+    desc: "서비스·사고·계약·미수·인수인계·백업·메일·워크로그 8개 KPI를 기간별로 모아 봅니다. 공유 링크 생성·PDF 다운로드로 임원 보고도 간편해요.",
+  },
+  {
+    menu: "AI & 자동화 > TIP 공유",
+    title: "AI 활용 팁 · 재사용 프롬프트",
+    desc: "운영부에서 통하는 AI 활용 팁과 그대로 복사해 쓰는 프롬프트를 모읍니다. 좋은 프롬프트를 발견하면 바로 공유해 주세요.",
+  },
+  {
+    menu: "개요 > 운영부 뉴스",
+    title: "대학 뉴스 자동 수집",
+    desc: "대학 통폐합·폐교·정원감축 등 운영부 관련 뉴스를 매일 자동 수집해 최신순으로 모아 봅니다.",
+  },
+];
+
+/** 호수(1부터)로 소개 항목을 순환 선택. */
+export function pickFeatureIntro(issueNo: number): FeatureIntro {
+  const n = Math.max(1, Math.floor(issueNo));
+  return FEATURE_INTROS[(n - 1) % FEATURE_INTROS.length];
 }
 
 /** 뉴스레터 사진/영상 — Supabase Storage 공개 URL + 캡션(원 파일명 유래). */
@@ -352,6 +416,8 @@ export type BriefingPayload = {
   milestones?: Milestone[];
   /** 생일 (발행 주 도래분, 연도 무시) */
   birthdays?: Birthday[];
+  /** 이번 주 기능 소개 (호수별 순환) — 구버전 발행분은 없음 */
+  featureIntro?: FeatureIntro;
   /** 사진·영상 (Supabase Storage newsletter 버킷 최근 업로드분) */
   images?: BriefingImages;
   /** claude -p 생성 스토리 — 없으면 페이지가 수치 중심으로 렌더 */

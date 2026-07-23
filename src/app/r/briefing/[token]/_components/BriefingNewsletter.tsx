@@ -42,6 +42,7 @@ export function BriefingNewsletter({
     insights,
     milestones = [],
     birthdays = [],
+    featureIntro,
     images,
     story,
   } = payload;
@@ -128,6 +129,25 @@ export function BriefingNewsletter({
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {/* ── 이번 주 기능 소개 (있을 때만) ────────────── */}
+          {featureIntro && (
+            <section className="rounded-[13px] bg-nl-ivory p-6">
+              <h2 className="flex items-center gap-2 text-lg font-bold">
+                <CrystalBallIcon className="h-6 w-6 text-nl-sky" />
+                이번 주 기능 소개
+              </h2>
+              <p className="mt-2 text-xs font-medium text-nl-muted">
+                {featureIntro.menu}
+              </p>
+              <p className="mt-1 text-[17px] font-bold text-nl-sky">
+                {featureIntro.title}
+              </p>
+              <p className="mt-1.5 text-[15px] leading-[1.8]">
+                {featureIntro.desc}
+              </p>
             </section>
           )}
 
@@ -283,14 +303,14 @@ export function BriefingNewsletter({
             <div className="space-y-3">
               <Card>
                 <h3 className="text-sm font-bold">
-                  내 AI 작업 {aiWork.count}건
+                  AI 작업 · 신규 {aiWork.count} / 누적 {aiWork.totalCount}
                   {aiWork.savedHours > 0
                     ? ` · 절감 ${fmtHours(aiWork.savedHours)}h`
                     : ""}
                 </h3>
                 {aiWork.count === 0 ? (
                   <div className="mt-1.5">
-                    <Empty>등록된 AI 작업 없음</Empty>
+                    <Empty>이번 주 신규 AI 작업 없음</Empty>
                   </div>
                 ) : (
                   <ul className="mt-1.5 space-y-1">

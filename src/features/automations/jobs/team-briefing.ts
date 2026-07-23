@@ -14,6 +14,7 @@ import {
   summarizeInsights,
   upcomingAnniversaries,
   upcomingBirthdays,
+  pickFeatureIntro,
   type BriefEvent,
   type BriefingImages,
   type BriefingMedia,
@@ -234,6 +235,11 @@ export async function buildBriefingData(): Promise<
     .order("created_at", { ascending: false });
   if (awErr)
     return { ok: false, message: `AI 작업 조회 실패: ${awErr.message}` };
+  const { count: aiWorkTotal, error: awtErr } = await admin
+    .from("ai_work")
+    .select("id", { count: "exact", head: true });
+  if (awtErr)
+    return { ok: false, message: `AI 작업 누적 조회 실패: ${awtErr.message}` };
   const aiWork = summarizeAiWork(
     (
       (awData ?? []) as {
@@ -248,6 +254,7 @@ export async function buildBriefingData(): Promise<
       author_name: displayName(w.author_email),
       saved_hours: w.saved_hours,
     })),
+    aiWorkTotal ?? 0,
   );
 
   const { data: tipNewData, error: tnErr } = await admin
@@ -300,6 +307,12 @@ export async function buildBriefingData(): Promise<
     })),
   );
 
+  // 이번 주 기능 소개 — 다음 발행 호수 기준으로 순환 선택.
+  const { count: publishedCount } = await admin
+    .from("team_briefings")
+    .select("id", { count: "exact", head: true });
+  const featureIntro = pickFeatureIntro((publishedCount ?? 0) + 1);
+
   const payload: BriefingPayload = {
     dateLabel: `${todayYmd} (${kstWeekdayShort()})`,
     contracts,
@@ -311,6 +324,7 @@ export async function buildBriefingData(): Promise<
     insights,
     milestones,
     birthdays,
+    featureIntro,
     images,
   };
 
