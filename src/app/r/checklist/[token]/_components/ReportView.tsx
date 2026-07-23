@@ -25,6 +25,12 @@ function statusBadge(status: ItemStatus): string {
     : "border-vermilion bg-vermilion text-cream";
 }
 
+// 완료율(소수 1자리) — 해당없음 제외.
+function pctDecimal(done: number, total: number, na: number): string {
+  const denom = total - na;
+  return denom > 0 ? ((done / denom) * 100).toFixed(1) : "0.0";
+}
+
 /** 임원 보고/공유 뷰 — report 토큰 링크(읽기 전용). 부서 필터 + 요약 KPI + 부서→분야→항목·상태·메모. */
 export function ReportView({
   round,
@@ -97,10 +103,13 @@ export function ReportView({
               <span className="text-xs font-medium text-muted">
                 {deptLabel(d)}
               </span>
-              <span className="text-2xl font-bold text-ink">
-                {c.done}/{c.total}
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-ink">{c.done}</span>
+                <span className="text-xs text-muted">/ {c.total}건</span>
+              </div>
+              <span className="text-xs text-muted">
+                완료율 {pctDecimal(c.done, c.total, c.na)}%
               </span>
-              <span className="text-xs text-muted">완료율 {c.pct}%</span>
             </button>
           );
         })}

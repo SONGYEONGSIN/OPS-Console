@@ -321,17 +321,25 @@ function FillRow({
 
   const persist = async (patch: Record<string, unknown>) => {
     setSave("saving");
-    const r = await fillUpdateItem(token, item.id, patch);
-    setSave(r.ok ? "saved" : "error");
+    try {
+      const r = await fillUpdateItem(token, item.id, patch);
+      setSave(r.ok ? "saved" : "error");
+    } catch {
+      setSave("error");
+    }
   };
 
   // 이미지 붙여넣기 → 업로드 후 URL 반환(RichNote가 note HTML에 인라인 삽입).
   const uploadImage = async (dataUrl: string): Promise<string | null> => {
     setSave("saving");
-    const r = await fillUploadImage(token, item.id, dataUrl);
-    if (r.ok) {
-      setSave("saved");
-      return r.url;
+    try {
+      const r = await fillUploadImage(token, item.id, dataUrl);
+      if (r.ok) {
+        setSave("saved");
+        return r.url;
+      }
+    } catch {
+      // 아래에서 error 처리
     }
     setSave("error");
     return null;
