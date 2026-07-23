@@ -96,7 +96,7 @@ export function RichNote({
       onPaste={onPaste}
       onMouseDown={onMouseDown}
       dangerouslySetInnerHTML={{ __html: initialHtml }}
-      className="mt-2 min-h-32 w-full whitespace-pre-wrap border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white focus:outline-none [&:empty]:before:text-muted [&:empty]:before:content-[attr(data-placeholder)] [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-[ew-resize] [&_img]:rounded [&_img]:border [&_img]:border-line-soft"
+      className="mt-2 min-h-32 w-full whitespace-pre-wrap border border-line-soft bg-field-bg px-2 py-1.5 text-sm transition-colors focus:border-ink focus:bg-white focus:outline-none [&:empty]:before:text-muted [&:empty]:before:content-[attr(data-placeholder)] [&_img]:my-1 [&_img]:max-w-full [&_img]:cursor-[ew-resize] [&_img]:rounded [&_img]:border [&_img]:border-line-soft [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5"
     />
   );
 }

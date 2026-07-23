@@ -166,7 +166,7 @@ export function ReportView({
                           <div className="text-sm text-ink">{i.title}</div>
                           {i.note ? (
                             <div
-                              className="mt-0.5 whitespace-pre-wrap text-xs text-muted [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded [&_img]:border [&_img]:border-line-soft"
+                              className="mt-0.5 whitespace-pre-wrap text-xs text-muted [&_img]:my-1 [&_img]:max-w-full [&_img]:rounded [&_img]:border [&_img]:border-line-soft [&_table]:my-2 [&_table]:border-collapse [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5"
                               dangerouslySetInnerHTML={{ __html: i.note }}
                             />
                           ) : null}
