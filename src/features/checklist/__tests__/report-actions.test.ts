@@ -6,6 +6,9 @@ const h = vi.hoisted(() => ({
   getRoundWithItems: vi.fn(),
   execFileSync: vi.fn(),
   updateEq: vi.fn(),
+  writeFileSync: vi.fn(),
+  unlinkSync: vi.fn(),
+  fetchFn: vi.fn(),
 }));
 
 vi.mock("@/features/auth/permission", () => ({ requireAdmin: h.requireAdmin }));
@@ -13,6 +16,11 @@ vi.mock("../queries", () => ({ getRoundWithItems: h.getRoundWithItems }));
 vi.mock("node:child_process", () => ({
   default: { execFileSync: h.execFileSync },
   execFileSync: h.execFileSync,
+}));
+vi.mock("node:fs", () => ({
+  default: { writeFileSync: h.writeFileSync, unlinkSync: h.unlinkSync },
+  writeFileSync: h.writeFileSync,
+  unlinkSync: h.unlinkSync,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({
@@ -54,6 +62,7 @@ describe("generateChecklistReport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.requireAdmin.mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", h.fetchFn);
   });
 
   it("회차 없으면 에러", async () => {
@@ -97,5 +106,26 @@ describe("generateChecklistReport", () => {
     const res = await generateChecklistReport("r1");
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.error).toContain("claude 실행 실패");
+  });
+
+  it("메모 이미지가 있으면 다운로드→프롬프트 참조→정리한다", async () => {
+    const url = "https://x/storage/v1/object/public/checklist/a.jpg";
+    const withImg = { ...item, note: `<img src="${url}">` };
+    h.getRoundWithItems.mockResolvedValue({ round, items: [withImg] });
+    h.fetchFn.mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    });
+    h.execFileSync.mockReturnValue("<h2>요약</h2>");
+    h.updateEq.mockReturnValue({ error: null });
+
+    const res = await generateChecklistReport("r1");
+
+    expect(res).toEqual({ ok: true });
+    expect(h.fetchFn).toHaveBeenCalledWith(url);
+    expect(h.writeFileSync).toHaveBeenCalledOnce();
+    const opts = h.execFileSync.mock.calls[0][2] as { input: string };
+    expect(opts.input).toContain("[첨부 이미지"); // 프롬프트에 경로 참조
+    expect(h.unlinkSync).toHaveBeenCalledOnce(); // 임시파일 정리
   });
 });

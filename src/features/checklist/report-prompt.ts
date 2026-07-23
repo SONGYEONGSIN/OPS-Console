@@ -3,7 +3,7 @@
 // 화이트리스트 HTML 서술형 리포트를 강제한다. 실제 실행/저장은 report-actions.ts.
 import type { ChecklistRound, ChecklistItem, ItemStatus } from "./schemas";
 import { DEPARTMENTS, deptLabel } from "./schemas";
-import { stripNoteHtml } from "./note-html";
+import { stripNoteHtml, extractNoteImages } from "./note-html";
 
 const STATUS_LABEL: Record<ItemStatus, string> = {
   done: "완료",
@@ -12,10 +12,15 @@ const STATUS_LABEL: Record<ItemStatus, string> = {
   na: "해당없음",
 };
 
-/** 작성된 전체 내용 → claude -p 프롬프트. 서술형 HTML 리포트를 강제한다. */
+/**
+ * 작성된 전체 내용 → claude -p 프롬프트. 서술형 HTML 리포트를 강제한다.
+ * imagePaths: 메모 이미지 URL → 로컬 파일 경로. 있으면 해당 항목에 경로를 참조해
+ * claude가 Read로 이미지 내용(표·수치)까지 반영하게 한다.
+ */
 export function buildReportPrompt(
   round: ChecklistRound,
   items: ChecklistItem[],
+  imagePaths: Record<string, string> = {},
 ): string {
   const material: string[] = [];
   for (const dept of DEPARTMENTS) {
@@ -36,6 +41,10 @@ export function buildReportPrompt(
               .map((l) => `    ${l}`)
               .join("\n"),
           );
+        for (const url of extractNoteImages(it.note)) {
+          const fp = imagePaths[url];
+          if (fp) material.push(`    [첨부 이미지 → 파일 경로: ${fp}]`);
+        }
       }
     }
   }
@@ -59,13 +68,19 @@ export function buildReportPrompt(
     "<ul><li><b>의사선발전형(지역의사제)</b><ul><li><b>대상</b> : 서울 제외 비수도권 32개 의대</li><li><b>규모</b> : 2027학년도 증원분 490명 전량 지역의사전형 선발(3,058→3,548명)</li><li><b>영향</b> : 전형 신설에 따른 원서접수 작업 변경 반영 필요</li></ul></li></ul>",
     "7. 수치 비교·표 데이터(당직 편성, 계약 체결률 등)는 <table>로 정리한다.",
     "8. 완료/진행중/작업전 같은 상태는 '현황' 항목으로 따로 표기하지 말고, 필요하면 도입 서술 문단에만 자연스럽게 녹인다.",
+    "9. 항목에 '[첨부 이미지 → 파일 경로: …]'가 있으면 Read 도구로 그 이미지 파일을 반드시 열어, 담긴 표·수치를 해당 항목의 서술·표에 반영한다. 이미지 자체를 출력에 넣지는 말고 내용만 반영한다.",
   ].join("\n");
 }
 
-/** claude 출력에서 리포트 HTML만 추출 — 코드펜스/전후 공백 제거. */
+/** claude 출력에서 리포트 HTML만 추출 — 코드펜스 + 첫 태그 앞/뒤 잡텍스트 제거. */
 export function extractReportHtml(raw: string): string {
   let s = raw.trim();
   const fence = /^```(?:html)?\s*([\s\S]*?)\s*```$/i.exec(s);
   if (fence) s = fence[1].trim();
+  // claude가 "Here is the report:" 같은 설명을 앞뒤에 붙이는 경우 제거.
+  s = s
+    .replace(/^[^<]*/, "")
+    .replace(/[^>]*$/, "")
+    .trim();
   return s;
 }

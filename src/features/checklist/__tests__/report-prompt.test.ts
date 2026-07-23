@@ -75,6 +75,22 @@ describe("buildReportPrompt", () => {
     expect(p).toContain("개조식"); // 세부 개조식
     expect(p).toContain("분류"); // 하위 불릿 '분류 : 내용' 형태
   });
+
+  it("첨부 이미지 읽기 지침을 담는다", () => {
+    expect(p).toContain("첨부 이미지");
+  });
+
+  it("imagePaths 제공 시 해당 항목에 이미지 파일 경로를 참조한다", () => {
+    const withImg: ChecklistItem = {
+      ...items[0],
+      note: '<p>접수 예측</p><img src="https://x/storage/v1/object/public/checklist/a.jpg">',
+    };
+    const p2 = buildReportPrompt(round, [withImg], {
+      "https://x/storage/v1/object/public/checklist/a.jpg": "/tmp/a.jpg",
+    });
+    expect(p2).toContain("/tmp/a.jpg");
+    expect(p2).toContain("접수 예측"); // 이미지 옆 텍스트도 유지
+  });
 });
 
 describe("extractReportHtml", () => {
@@ -85,5 +101,10 @@ describe("extractReportHtml", () => {
   });
   it("펜스 없는 HTML은 그대로(trim)", () => {
     expect(extractReportHtml("  <h2>x</h2>  ")).toBe("<h2>x</h2>");
+  });
+  it("첫 태그 앞 설명/뒤 잡텍스트를 제거한다", () => {
+    expect(
+      extractReportHtml("Here is the report:\n\n<h2>요약</h2><p>x</p>\n\n끝."),
+    ).toBe("<h2>요약</h2><p>x</p>");
   });
 });
