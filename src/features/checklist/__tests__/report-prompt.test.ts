@@ -70,8 +70,9 @@ describe("buildReportPrompt", () => {
     expect(p).toContain("<table>");
   });
 
-  it("임원 보고용 개조식(분류 : 내용) 지침을 담는다", () => {
-    expect(p).toContain("개조식");
+  it("서술형+개조식 결합 지침을 담는다", () => {
+    expect(p).toContain("서술"); // 도입 서술 문단
+    expect(p).toContain("개조식"); // 세부 개조식
     expect(p).toContain("분류"); // 하위 불릿 '분류 : 내용' 형태
   });
 });
