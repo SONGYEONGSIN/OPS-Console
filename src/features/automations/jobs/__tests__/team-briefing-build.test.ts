@@ -13,7 +13,7 @@ import {
   fmtViews,
   upcomingAnniversaries,
   upcomingBirthdays,
-  pickFeatureIntro,
+  pickFeatureIntros,
   FEATURE_INTROS,
 } from "../team-briefing-build";
 
@@ -313,24 +313,33 @@ describe("upcomingAnniversaries", () => {
     ]);
   });
 
-  it("올해 기념일이 이미 지난 경우 내년 날짜로 계산 — 윈도우 밖이면 제외", () => {
-    const r = upcomingAnniversaries(
-      [{ name: "김유민", hired_at: "2025-07-10" }],
-      "2026-07-17",
+  it("최근 지난 기념일(며칠 전 만 N년)도 포함 — 창 밖(수개월)은 제외", () => {
+    // 전지은 케이스: 열흘 전 만 1년 → 포함
+    const included = upcomingAnniversaries(
+      [{ name: "전지은", hired_at: "2025-07-14" }],
+      "2026-07-24",
     );
-    expect(r).toEqual([]);
+    expect(included).toEqual([
+      { name: "전지은", years: 1, dateYmd: "2026-07-14" },
+    ]);
+    // 수개월 뒤 기념일 → 제외
+    expect(
+      upcomingAnniversaries([{ name: "먼사람", hired_at: "2020-11-01" }], "2026-07-24"),
+    ).toEqual([]);
   });
 
-  it("마일스톤(1·3·5·7·10·15·20년)만 — 그 외 연차는 제외", () => {
+  it("전체 연차 축하 — 마일스톤 아닌 해(2·6년)도 포함", () => {
     const r = upcomingAnniversaries(
       [
-        { name: "2년차", hired_at: "2024-07-20" }, // 2년 — 제외
-        { name: "3년차", hired_at: "2023-07-21" }, // 3년 — 포함
-        { name: "6년차", hired_at: "2020-07-22" }, // 6년 — 제외
+        { name: "2년차", hired_at: "2024-07-20" },
+        { name: "6년차", hired_at: "2020-07-22" },
       ],
       "2026-07-17",
     );
-    expect(r).toEqual([{ name: "3년차", years: 3, dateYmd: "2026-07-21" }]);
+    expect(r.map((m) => `${m.name}:${m.years}`)).toEqual([
+      "2년차:2",
+      "6년차:6",
+    ]);
   });
 
   it("해당자 없으면 빈 배열", () => {
@@ -338,13 +347,11 @@ describe("upcomingAnniversaries", () => {
   });
 });
 
-describe("pickFeatureIntro", () => {
-  it("호수별로 순환 선택 (1호=첫 항목, 초과 시 wrap)", () => {
-    expect(pickFeatureIntro(1)).toEqual(FEATURE_INTROS[0]);
-    expect(pickFeatureIntro(2)).toEqual(FEATURE_INTROS[1]);
-    expect(pickFeatureIntro(FEATURE_INTROS.length + 1)).toEqual(
-      FEATURE_INTROS[0],
-    );
+describe("pickFeatureIntros", () => {
+  it("호수별로 서로 다른 count개 묶음 (1호=앞 3개, 2호=다음 3개)", () => {
+    expect(pickFeatureIntros(1, 3)).toEqual(FEATURE_INTROS.slice(0, 3));
+    expect(pickFeatureIntros(2, 3)).toEqual(FEATURE_INTROS.slice(3, 6));
+    expect(pickFeatureIntros(1, 3)).toHaveLength(3);
   });
 });
 
