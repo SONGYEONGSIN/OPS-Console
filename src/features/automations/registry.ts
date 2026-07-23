@@ -99,15 +99,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "mailbox-ingest",
     label: "메일함 AI 초안 생성",
     description:
-      "운영자 수신함을 수집하고 외부 고객 메일에 AI 회신 초안을 생성합니다.\n로컬 claude CLI(-p)를 쓰므로 서버리스가 아닌 로컬 머신(Mac mini) cron에서만 실행됩니다.",
-    scheduleInfo: "로컬 cron (Mac mini · launchd)",
+      "운영자 수신함을 수집하고 외부 고객 메일에 AI 회신 초안을 생성합니다.\n로컬 claude CLI(-p)를 쓰므로 서버리스가 아닌 회사 PC(Windows 작업 스케줄러)에서 실행됩니다.",
+    scheduleInfo: "회사 PC Windows 작업 스케줄러 (claude CLI)",
     cooldownMinutes: 0,
     localOnly: true,
     // 로컬 전용 — 서버리스로는 로컬 claude CLI에 닿지 못한다. 잘못 호출돼도 실행하지 않고 안내만 반환.
     run: async () => ({
       ok: false,
       message:
-        "로컬 전용 자동화입니다. Mac mini의 로컬 cron(claude CLI)에서 실행되며, 여기서는 실행할 수 없습니다.",
+        "로컬 전용 자동화입니다. 회사 PC(Windows 작업 스케줄러, claude CLI)에서 실행되며, 여기서는 실행할 수 없습니다.",
     }),
   },
   {
@@ -124,7 +124,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "팀 보고 브리핑",
     description:
       "계약진행 현황(누적)·차주 팀 업무(일정/서비스 마감)·AI 활용(내 AI 작업/TIP/인사이트)을 집계해 Teams 그룹채팅에 자동 브리핑합니다.",
-    scheduleInfo: "매주 금요일 10:00 (cron-job.org)",
+    scheduleInfo: "매주 금요일 10:00 (회사 PC Windows 작업 스케줄러)",
     cooldownMinutes: 60,
     run: runTeamBriefing,
   },
