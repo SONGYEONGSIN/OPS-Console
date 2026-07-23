@@ -14,7 +14,7 @@ import {
   summarizeInsights,
   upcomingAnniversaries,
   upcomingBirthdays,
-  pickFeatureIntro,
+  pickFeatureIntros,
   type BriefEvent,
   type BriefingImages,
   type BriefingMedia,
@@ -307,11 +307,11 @@ export async function buildBriefingData(): Promise<
     })),
   );
 
-  // 이번 주 기능 소개 — 다음 발행 호수 기준으로 순환 선택.
+  // 이번 주 기능 소개 — 다음 발행 호수 기준으로 3개 순환 선택.
   const { count: publishedCount } = await admin
     .from("team_briefings")
     .select("id", { count: "exact", head: true });
-  const featureIntro = pickFeatureIntro((publishedCount ?? 0) + 1);
+  const featureIntros = pickFeatureIntros((publishedCount ?? 0) + 1, 3);
 
   const payload: BriefingPayload = {
     dateLabel: `${todayYmd} (${kstWeekdayShort()})`,
@@ -324,7 +324,7 @@ export async function buildBriefingData(): Promise<
     insights,
     milestones,
     birthdays,
-    featureIntro,
+    featureIntros,
     images,
   };
 

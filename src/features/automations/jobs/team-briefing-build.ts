@@ -263,21 +263,20 @@ export function completionPct(done: number, ongoing: number): string {
   return `${((done / total) * 100).toFixed(1)}%`;
 }
 
-/** 근속 마일스톤 — 발행 주에 입사 기념일이 도래하는 운영자. */
+/** 근속 기념일 — 발행 주 전후에 입사 기념일이 도래하는 운영자. */
 export type Milestone = { name: string; years: number; dateYmd: string };
 
-/** 축하 대상 근속 연차 — 매년이 아니라 이 마일스톤 해만 멘트한다. */
-export const MILESTONE_YEARS = new Set([1, 3, 5, 7, 10, 15, 20]);
-
 /**
- * 발행일부터 windowDays일 내 도래하는 입사 기념일 중 마일스톤(1·3·5·7·10·15·20년)만.
- * 올해 기념일이 지났으면 내년 날짜로 계산. 날짜 오름차순.
+ * 발행일 기준 [-lookbackDays, +windowDays] 창에 드는 입사 기념일(1주년 이상, 전체 연차).
+ * 최근 지난 기념일(예: 며칠 전 만 1년)도 놓치지 않도록 과거 방향도 본다. 날짜 오름차순.
  */
 export function upcomingAnniversaries(
   operators: { name: string; hired_at: string }[],
   todayYmd: string,
   windowDays = 14,
+  lookbackDays = 14,
 ): Milestone[] {
+  const startYmd = addDaysYmd(todayYmd, -lookbackDays);
   const limitYmd = addDaysYmd(todayYmd, windowDays);
   const todayYear = Number(todayYmd.slice(0, 4));
   const out: Milestone[] = [];
@@ -286,12 +285,15 @@ export function upcomingAnniversaries(
     if (!hired || hired.length !== 10) continue;
     const hiredYear = Number(hired.slice(0, 4));
     const monthDay = hired.slice(5);
-    let annivYmd = `${todayYear}-${monthDay}`;
-    if (annivYmd < todayYmd) annivYmd = `${todayYear + 1}-${monthDay}`;
-    const years = Number(annivYmd.slice(0, 4)) - hiredYear;
-    if (!MILESTONE_YEARS.has(years)) continue;
-    if (annivYmd >= todayYmd && annivYmd <= limitYmd) {
-      out.push({ name: op.name, years, dateYmd: annivYmd });
+    // 연말/연초 경계까지 커버하도록 작년·올해·내년 기념일 후보를 본다.
+    for (const y of [todayYear - 1, todayYear, todayYear + 1]) {
+      const annivYmd = `${y}-${monthDay}`;
+      const years = y - hiredYear;
+      if (years < 1) continue;
+      if (annivYmd >= startYmd && annivYmd <= limitYmd) {
+        out.push({ name: op.name, years, dateYmd: annivYmd });
+        break; // 한 명당 하나
+      }
     }
   }
   return out.sort((a, b) =>
@@ -376,10 +378,15 @@ export const FEATURE_INTROS: FeatureIntro[] = [
   },
 ];
 
-/** 호수(1부터)로 소개 항목을 순환 선택. */
-export function pickFeatureIntro(issueNo: number): FeatureIntro {
+/** 호수(1부터)로 소개 항목을 count개 순환 선택 (매 호 서로 다른 묶음). */
+export function pickFeatureIntros(issueNo: number, count = 3): FeatureIntro[] {
+  const len = FEATURE_INTROS.length;
   const n = Math.max(1, Math.floor(issueNo));
-  return FEATURE_INTROS[(n - 1) % FEATURE_INTROS.length];
+  const take = Math.min(Math.max(1, count), len);
+  const start = ((n - 1) * take) % len;
+  const out: FeatureIntro[] = [];
+  for (let i = 0; i < take; i++) out.push(FEATURE_INTROS[(start + i) % len]);
+  return out;
 }
 
 /** 뉴스레터 사진/영상 — Supabase Storage 공개 URL + 캡션(원 파일명 유래). */
@@ -416,8 +423,8 @@ export type BriefingPayload = {
   milestones?: Milestone[];
   /** 생일 (발행 주 도래분, 연도 무시) */
   birthdays?: Birthday[];
-  /** 이번 주 기능 소개 (호수별 순환) — 구버전 발행분은 없음 */
-  featureIntro?: FeatureIntro;
+  /** 이번 주 기능 소개 (호수별 순환, 3개 내외) — 구버전 발행분은 없음 */
+  featureIntros?: FeatureIntro[];
   /** 사진·영상 (Supabase Storage newsletter 버킷 최근 업로드분) */
   images?: BriefingImages;
   /** claude -p 생성 스토리 — 없으면 페이지가 수치 중심으로 렌더 */

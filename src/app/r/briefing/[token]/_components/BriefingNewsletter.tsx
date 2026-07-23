@@ -42,7 +42,7 @@ export function BriefingNewsletter({
     insights,
     milestones = [],
     birthdays = [],
-    featureIntro,
+    featureIntros = [],
     images,
     story,
   } = payload;
@@ -133,21 +133,23 @@ export function BriefingNewsletter({
           )}
 
           {/* ── 이번 주 기능 소개 (있을 때만) ────────────── */}
-          {featureIntro && (
+          {featureIntros.length > 0 && (
             <section className="rounded-[13px] bg-nl-ivory p-6">
               <h2 className="flex items-center gap-2 text-lg font-bold">
                 <CrystalBallIcon className="h-6 w-6 text-nl-sky" />
                 이번 주 기능 소개
               </h2>
-              <p className="mt-2 text-xs font-medium text-nl-muted">
-                {featureIntro.menu}
-              </p>
-              <p className="mt-1 text-[17px] font-bold text-nl-sky">
-                {featureIntro.title}
-              </p>
-              <p className="mt-1.5 text-[15px] leading-[1.8]">
-                {featureIntro.desc}
-              </p>
+              <ul className="mt-3 space-y-4">
+                {featureIntros.map((f) => (
+                  <li key={f.title}>
+                    <p className="text-xs font-medium text-nl-muted">{f.menu}</p>
+                    <p className="mt-0.5 text-[16px] font-bold text-nl-sky">
+                      {f.title}
+                    </p>
+                    <p className="mt-1 text-[15px] leading-[1.75]">{f.desc}</p>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 
