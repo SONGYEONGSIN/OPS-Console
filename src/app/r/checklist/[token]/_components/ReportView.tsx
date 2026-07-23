@@ -41,12 +41,6 @@ export function ReportView({
     ? items.filter((i) => i.department === activeDept)
     : items;
   const all = computeCompletion(shownItems);
-  const kpis: [string, number][] = [
-    ["전체 항목", all.total],
-    ["완료", all.done],
-    ["진행중", all.inProgress],
-    ["작업전", all.todo],
-  ];
   const shownDepts = depts.filter(
     (d) => activeDept === null || d === activeDept,
   );
@@ -85,16 +79,31 @@ export function ReportView({
         </div>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {kpis.map(([label, n]) => (
-          <div
-            key={label}
-            className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4"
-          >
-            <span className="text-xs font-medium text-muted">{label}</span>
-            <span className="text-2xl font-bold text-ink">{n}</span>
-          </div>
-        ))}
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+        {depts.map((d) => {
+          const c = computeCompletion(items.filter((i) => i.department === d));
+          const active = activeDept === d;
+          return (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setActiveDept(active ? null : d)}
+              className={`flex flex-col gap-1 border p-4 text-left transition-colors ${
+                active
+                  ? "border-vermilion bg-vermilion/5"
+                  : "border-line-soft bg-situation-bg hover:border-vermilion"
+              }`}
+            >
+              <span className="text-xs font-medium text-muted">
+                {deptLabel(d)}
+              </span>
+              <span className="text-2xl font-bold text-ink">
+                {c.done}/{c.total}
+              </span>
+              <span className="text-xs text-muted">완료율 {c.pct}%</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="mt-3">

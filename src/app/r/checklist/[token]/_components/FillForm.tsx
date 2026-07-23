@@ -106,9 +106,16 @@ export function FillForm({
         const cats = Array.from(new Set(deptItems.map((i) => i.category)));
         return (
           <section key={dept} className="mt-8">
-            <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold text-ink">
-              {deptLabel(dept)}
-            </h2>
+            <div className="flex items-center justify-between border-b-2 border-ink pb-1.5">
+              <h2 className="text-base font-bold text-ink">
+                {deptLabel(dept)}
+              </h2>
+              <AddCategoryRow
+                token={token}
+                department={dept}
+                onAdded={() => router.refresh()}
+              />
+            </div>
             {cats.map((cat) => {
               const catItems = deptItems.filter((i) => i.category === cat);
               return (
@@ -133,11 +140,6 @@ export function FillForm({
                 </div>
               );
             })}
-            <AddCategoryRow
-              token={token}
-              department={dept}
-              onAdded={() => router.refresh()}
-            />
           </section>
         );
       })}
@@ -157,21 +159,19 @@ function AddCategoryRow({
 }) {
   const [busy, setBusy] = useState(false);
   return (
-    <div className="mt-3">
-      <button
-        type="button"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          await fillAddItem(token, department, "새 분야", "새 항목");
-          setBusy(false);
-          onAdded();
-        }}
-        className="border border-line bg-paper px-2 py-1 text-xs font-semibold text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
-      >
-        ＋ 분야 추가
-      </button>
-    </div>
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await fillAddItem(token, department, "새 분야", "새 항목");
+        setBusy(false);
+        onAdded();
+      }}
+      className="border border-line bg-paper px-2 py-1 text-xs font-semibold text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
+    >
+      ＋ 분야 추가
+    </button>
   );
 }
 
@@ -199,6 +199,7 @@ function CategoryItems({
   const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
   const [seen, setSeen] = useState(ids);
   const dragId = useRef<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   if (ids !== seen) {
     setSeen(ids);
     setOrder(items.map((i) => i.id));
@@ -229,14 +230,30 @@ function CategoryItems({
           <div
             key={id}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={() => onDrop(id)}
-            className="flex items-start gap-1"
+            onDragEnter={() =>
+              dragId.current && dragId.current !== id && setOverId(id)
+            }
+            onDragLeave={() => setOverId((o) => (o === id ? null : o))}
+            onDrop={() => {
+              setOverId(null);
+              onDrop(id);
+            }}
+            className={`flex items-start gap-1 rounded ${
+              overId === id ? "ring-2 ring-vermilion" : ""
+            }`}
           >
             <button
               type="button"
               draggable
-              onDragStart={() => {
+              onDragStart={(e) => {
                 dragId.current = id;
+                const row = e.currentTarget.parentElement;
+                if (row) e.dataTransfer.setDragImage(row, 16, 16);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragEnd={() => {
+                dragId.current = null;
+                setOverId(null);
               }}
               aria-label="순서 이동"
               className="mt-3 cursor-grab select-none px-1 text-muted hover:text-ink active:cursor-grabbing"
