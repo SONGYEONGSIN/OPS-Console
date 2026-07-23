@@ -69,6 +69,11 @@ describe("buildReportPrompt", () => {
     expect(p).toContain("HTML");
     expect(p).toContain("<table>");
   });
+
+  it("임원 보고용 개조식(분류 : 내용) 지침을 담는다", () => {
+    expect(p).toContain("개조식");
+    expect(p).toContain("분류"); // 하위 불릿 '분류 : 내용' 형태
+  });
 });
 
 describe("extractReportHtml", () => {

@@ -40,7 +40,7 @@ export async function generateChecklistReport(
         input: prompt,
         encoding: "utf8",
         maxBuffer: 10 * 1024 * 1024,
-        timeout: 180_000,
+        timeout: 300_000, // 개조식 재구성은 수분 소요 가능
         shell: process.platform === "win32",
         cwd: os.tmpdir(),
       },

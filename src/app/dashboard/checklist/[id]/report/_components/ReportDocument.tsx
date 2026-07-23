@@ -5,8 +5,9 @@ import type { ChecklistRound } from "@/features/checklist/schemas";
 import { generateChecklistReport } from "@/features/checklist/report-actions";
 
 // 서술형 보고 문서 스타일 — 제목/문단/표/목록. 정화된 HTML을 문서처럼 렌더.
+// 임원 보고용 개조식 아웃라인 — 최상위 불릿 '–', 하위 불릿 '·'. 표는 테두리.
 const REPORT_CLASS =
-  "[&>*:first-child]:mt-0 [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-line [&_h2]:pb-1 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-ink [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-ink [&_p]:my-2 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-ink [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_li]:text-sm [&_li]:text-ink [&_b]:font-semibold [&_table]:my-3 [&_table]:border-collapse [&_table]:text-sm [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1";
+  "[&>*:first-child]:mt-0 [&_h2]:mb-2 [&_h2]:mt-6 [&_h2]:border-b [&_h2]:border-line [&_h2]:pb-1 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-ink [&_h3]:mb-1 [&_h3]:mt-3 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-ink [&_p]:my-2 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-ink [&_ul]:my-1.5 [&_ul]:list-none [&_ul]:pl-4 [&_ul_ul]:my-1 [&_li]:relative [&_li]:my-1 [&_li]:pl-4 [&_li]:text-sm [&_li]:leading-relaxed [&_li]:text-ink [&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:text-muted [&_li]:before:content-['–'] [&_ul_ul_li]:before:content-['·'] [&_b]:font-semibold [&_table]:my-3 [&_table]:border-collapse [&_table]:text-sm [&_th]:border [&_th]:border-line [&_th]:bg-line-soft [&_th]:px-2 [&_th]:py-1 [&_th]:font-semibold [&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-1";
 
 function formatKST(iso: string | null): string {
   if (!iso) return "";
