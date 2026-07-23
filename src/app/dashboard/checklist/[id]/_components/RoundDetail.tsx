@@ -24,14 +24,13 @@ export function RoundDetail({ round, items, tokens }: Props) {
     <article className="flex flex-col gap-6">
       <header className="border-b border-line pb-4">
         <p className="text-xs uppercase tracking-[0.06em] text-muted">
-          [운영부 상황실] · 원서접수 점검사항 체크리스트
+          어플라이본부 원서접수 점검 진행 상황
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em] text-ink">
           {round.title}
         </h1>
         <p className="mt-2 text-sm text-muted">
-          {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"} ·{" "}
-          {round.createdBy ?? ""}
+          {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"}
         </p>
       </header>
 
@@ -39,12 +38,12 @@ export function RoundDetail({ round, items, tokens }: Props) {
       <div className="flex flex-wrap items-center justify-end gap-3">
         <ShareLinks roundId={round.id} tokens={tokens} />
         <a
-          href={`/api/checklist/${round.id}/pdf`}
+          href={`/dashboard/checklist/${round.id}/report`}
           target="_blank"
           rel="noopener noreferrer"
-          className="border border-ink bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream"
+          className="border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream transition-opacity hover:opacity-90"
         >
-          PDF 저장
+          보고리포트
         </a>
       </div>
 

@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { FillForm } from "../FillForm";
 import type { ChecklistItem } from "@/features/checklist/schemas";
 
-const fillUpdateItem = vi.fn(
-  async (_t: string, _i: string, _p: unknown) => ({ ok: true }),
-);
+const fillUpdateItem = vi.fn(async (_t: string, _i: string, _p: unknown) => ({
+  ok: true,
+}));
 const fillAddItem = vi.fn(
   async (_t: string, _d: string, _c: string, _ti: string) => ({
     ok: true,
@@ -24,8 +24,28 @@ vi.mock("next/navigation", () => ({
 }));
 
 const items: ChecklistItem[] = [
-  { id: "i1", roundId: "R1", department: "기획파트", category: "사이트(PC/M)", title: "광고배너 노출", status: null, note: "", sortOrder: 0, attachments: [] },
-  { id: "i2", roundId: "R1", department: "개발부", category: "서버/시스템", title: "웹 서버 확인", status: null, note: "", sortOrder: 0, attachments: [] },
+  {
+    id: "i1",
+    roundId: "R1",
+    department: "기획파트",
+    category: "사이트(PC/M)",
+    title: "광고배너 노출",
+    status: null,
+    note: "",
+    sortOrder: 0,
+    attachments: [],
+  },
+  {
+    id: "i2",
+    roundId: "R1",
+    department: "개발부",
+    category: "서버/시스템",
+    title: "웹 서버 확인",
+    status: null,
+    note: "",
+    sortOrder: 0,
+    attachments: [],
+  },
 ];
 
 beforeEach(() => fillUpdateItem.mockClear());
@@ -33,34 +53,62 @@ beforeEach(() => fillUpdateItem.mockClear());
 describe("FillForm (전 부서 통합 작성)", () => {
   it("모든 부서·항목을 렌더한다", () => {
     render(
-      <FillForm token="tok" roundTitle="2027 수시" periodStart={null} periodEnd={null} items={items} />,
+      <FillForm
+        token="tok"
+        roundTitle="2027 수시"
+        periodStart={null}
+        periodEnd={null}
+        items={items}
+      />,
     );
     expect(screen.getByText("2027 수시")).toBeInTheDocument();
-    expect(screen.getByText("기획파트")).toBeInTheDocument();
-    expect(screen.getByText("개발부")).toBeInTheDocument();
-    expect(screen.getByText("광고배너 노출")).toBeInTheDocument();
-    expect(screen.getByText("웹 서버 확인")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "기획" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "개발" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("광고배너 노출")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("웹 서버 확인")).toBeInTheDocument();
   });
 
   it("상태 칩 클릭 → fillUpdateItem(token, itemId, {status})", () => {
     render(
-      <FillForm token="tok" roundTitle="R" periodStart={null} periodEnd={null} items={[items[0]]} />,
+      <FillForm
+        token="tok"
+        roundTitle="R"
+        periodStart={null}
+        periodEnd={null}
+        items={[items[0]]}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: "완료" }));
-    expect(fillUpdateItem).toHaveBeenCalledWith("tok", "i1", { status: "done" });
+    expect(fillUpdateItem).toHaveBeenCalledWith("tok", "i1", {
+      status: "done",
+    });
   });
 
-  it("메모는 여러 줄 입력용 textarea (엔터 지원)", () => {
+  it("메모는 리치 에디터(contentEditable 멀티라인)로 렌더", () => {
     render(
-      <FillForm token="tok" roundTitle="R" periodStart={null} periodEnd={null} items={[items[0]]} />,
+      <FillForm
+        token="tok"
+        roundTitle="R"
+        periodStart={null}
+        periodEnd={null}
+        items={[items[0]]}
+      />,
     );
-    const memo = screen.getByPlaceholderText(/메모/);
-    expect(memo.tagName).toBe("TEXTAREA");
+    const memo = screen
+      .getAllByRole("textbox")
+      .find((b) => b.getAttribute("contenteditable") === "true");
+    expect(memo).toHaveAttribute("aria-multiline", "true");
   });
 
   it("빈 항목이면 안내 문구", () => {
     render(
-      <FillForm token="tok" roundTitle="R" periodStart={null} periodEnd={null} items={[]} />,
+      <FillForm
+        token="tok"
+        roundTitle="R"
+        periodStart={null}
+        periodEnd={null}
+        items={[]}
+      />,
     );
     expect(screen.getByText(/항목이 없습니다/)).toBeInTheDocument();
   });

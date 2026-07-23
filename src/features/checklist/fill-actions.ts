@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { itemPatchSchema, DEPARTMENTS, type Department } from "./schemas";
+import { sanitizeNoteHtml } from "./note-html";
 import {
   assertWriteToken,
   assertItemInRound,
@@ -39,10 +40,24 @@ function toDbPatch(p: {
 }) {
   const out: Record<string, unknown> = {};
   if ("status" in p) out.status = p.status ?? null;
-  if (p.note !== undefined) out.note = p.note;
+  if (p.note !== undefined) out.note = p.note; // note는 파싱 전 presanitizeNote로 정화됨
   if (p.title !== undefined) out.title = p.title;
   if (p.category !== undefined) out.category = p.category;
   return out;
+}
+
+// 공개 입력 note는 길이 검증 '전에' sanitize한다 — 붙여넣기 시 base64 data 이미지가
+// 섞여 들어와도 제거되어(허용 스킴 https만) note 길이초과로 저장 실패하는 것을 막는다.
+function presanitizeNote(patch: unknown): unknown {
+  if (
+    patch &&
+    typeof patch === "object" &&
+    typeof (patch as Record<string, unknown>).note === "string"
+  ) {
+    const p = patch as Record<string, unknown>;
+    return { ...p, note: sanitizeNoteHtml(p.note as string) };
+  }
+  return patch;
 }
 
 export async function fillUpdateItem(
@@ -50,7 +65,7 @@ export async function fillUpdateItem(
   itemId: string,
   patch: unknown,
 ): Promise<Result> {
-  const parsed = itemPatchSchema.safeParse(patch);
+  const parsed = itemPatchSchema.safeParse(presanitizeNote(patch));
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0].message };
 
@@ -132,7 +147,47 @@ export async function fillDeleteItem(
   return { ok: true };
 }
 
-const IMAGE_RE = /^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
+/**
+ * 항목 순서 변경 — itemIds를 새 순서로 받아 그 항목들의 기존 sort_order 값을
+ * 순서대로 재배분한다(같은 값 집합 유지 → 다른 분야 항목과의 상대 위치 보존).
+ * 모든 항목이 토큰 회차 범위여야 한다.
+ */
+export async function fillReorderItems(
+  token: string,
+  itemIds: string[],
+): Promise<Result> {
+  const sb = createAdminClient();
+  const gate = await loadWriteToken(sb, token);
+  if (!gate.ok) return gate;
+
+  const { data: rows } = await sb
+    .from("checklist_items")
+    .select("id, round_id, sort_order")
+    .in("id", itemIds);
+  const found = rows ?? [];
+  if (found.length !== itemIds.length)
+    return { ok: false, error: "일부 항목을 찾을 수 없습니다." };
+  for (const r of found) {
+    const scope = assertItemInRound(r, gate.row);
+    if (!scope.ok) return { ok: false, error: denyMessage(scope.reason) };
+  }
+
+  const orders = found.map((r) => r.sort_order as number).sort((a, b) => a - b);
+  const now = new Date().toISOString();
+  await Promise.all(
+    itemIds.map((id, idx) =>
+      sb
+        .from("checklist_items")
+        .update({ sort_order: orders[idx] ?? idx, updated_at: now })
+        .eq("id", id),
+    ),
+  );
+  revalidatePath(`/r/checklist/${token}`);
+  return { ok: true };
+}
+
+const IMAGE_RE =
+  /^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 /** 작성폼 이미지 붙여넣기 — dataURL 업로드 후 항목 attachments에 공개 URL 추가. */
@@ -169,12 +224,8 @@ export async function fillUploadImage(
   if (up.error) return { ok: false, error: up.error.message };
   const url = sb.storage.from("checklist").getPublicUrl(path).data.publicUrl;
 
-  const next = [...((item.attachments as string[]) ?? []), url];
-  const { error } = await sb
-    .from("checklist_items")
-    .update({ attachments: next, updated_at: new Date().toISOString() })
-    .eq("id", itemId);
-  if (error) return { ok: false, error: error.message };
+  // 인라인 삽입 방식: 업로드 후 URL만 반환한다(에디터가 note HTML에 <img>로 삽입 후 저장).
+  // attachments 배열에는 더 이상 추가하지 않는다(중복 표시 방지). 기존 attachments는 레거시 표시 유지.
   revalidatePath(`/r/checklist/${token}`);
   return { ok: true, url };
 }

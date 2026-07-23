@@ -5,9 +5,9 @@ import type { ShareToken } from "@/features/checklist/schemas";
 import { toggleChecklistShare } from "@/features/checklist/actions";
 
 const STD =
-  "cursor-pointer border border-ink bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50";
+  "cursor-pointer border border-ink bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50";
 const STD_SM =
-  "cursor-pointer border border-line bg-white px-2 py-0.5 text-xs text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50";
+  "cursor-pointer border border-line bg-white px-2 py-0.5 text-xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50";
 
 /**
  * 공유 링크 토글 1종 — reports ShareControls 패턴(생성/해제). 표준 버튼 스타일.
@@ -91,7 +91,7 @@ export function ShareLinks({
       <ShareControl
         roundId={roundId}
         kind="report"
-        label="확인 공유 링크"
+        label="보고용 링크"
         initialToken={report?.token ?? null}
       />
     </div>

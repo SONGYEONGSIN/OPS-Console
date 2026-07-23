@@ -1,0 +1,102 @@
+// 메모(note) HTML sanitizer — 의존성 없이 어떤 런타임(Vercel 서버리스 포함)에서도 동작.
+// 공개 토큰으로 누구나 쓸 수 있어 관리자/보고 렌더 전 반드시 정화한다.
+// 전략: script/style 제거 → 허용 이미지만 추출 → 전부 이스케이프(어떤 태그도 못 살아남게) →
+//       화이트리스트 태그만 '속성 없이' 선별 복원 → 이미지 복원.
+// 이스케이프 후 정해진 안전 패턴만 되살리므로 mXSS/속성주입이 불가능하다.
+// 허용: 텍스트·줄바꿈·기본서식·표·목록 + 우리 스토리지 img(+숫자 width). td/th는 colspan/rowspan(숫자)만.
+
+const BLOCK_TAGS =
+  "p|div|span|b|strong|i|em|u|s|ul|ol|li|table|thead|tbody|tfoot|tr|caption|h1|h2|h3|h4|h5|h6|hr";
+
+function defaultStoragePrefix(): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  return `${base}/storage/v1/object/public/checklist/`;
+}
+
+/** 공개 입력 note HTML을 안전한 HTML로 정화한다. */
+export function sanitizeNoteHtml(
+  html: string,
+  storagePrefix: string = defaultStoragePrefix(),
+): string {
+  if (!html) return "";
+  // 0) script/style 는 내용까지 통째로 제거
+  let s = html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "");
+
+  // 1) 허용 이미지(우리 스토리지 src + 숫자 width)만 추출 → 플레이스홀더()
+  const imgs: string[] = [];
+  s = s.replace(/<img\b[^>]*>/gi, (tag) => {
+    const srcM = /\bsrc\s*=\s*"([^"]*)"/i.exec(tag);
+    const src = srcM ? srcM[1] : "";
+    if (!storagePrefix || !src.startsWith(storagePrefix)) return ""; // 외부/위험 이미지 제거
+    if (/["'<>\\]/.test(src)) return ""; // src 방어
+    const wM = /\bwidth\s*=\s*"?(\d+)"?/i.exec(tag);
+    const width = wM ? wM[1] : "";
+    const idx = imgs.length;
+    imgs.push(
+      `<img src="${src}" alt="첨부 이미지"${width ? ` width="${width}"` : ""}>`,
+    );
+    return `IMG${idx}`;
+  });
+
+  // 2) 전부 이스케이프 — 이 시점 이후 어떤 원본 태그도 살아남지 못한다.
+  s = s
+    .replace(/&(?![a-zA-Z#][a-zA-Z0-9]*;)/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // 3) 화이트리스트 태그만 선별 복원(속성 제거). td/th는 colspan/rowspan(숫자)만 유지.
+  // 태그명 뒤 경계(?=[\s/]|&gt;) — ul을 u로 오인식하는 등 prefix 태그 오매칭 방지.
+  const openBlock = new RegExp(
+    `&lt;(${BLOCK_TAGS})(?=[\\s/]|&gt;)(?:(?!&gt;)[\\s\\S])*?&gt;`,
+    "gi",
+  );
+  const closeBlock = new RegExp(`&lt;/(${BLOCK_TAGS})\\s*&gt;`, "gi");
+  s = s
+    .replace(/&lt;br\s*\/?&gt;/gi, "<br>")
+    .replace(openBlock, (_m, tag: string) => `<${tag.toLowerCase()}>`)
+    .replace(closeBlock, (_m, tag: string) => `</${tag.toLowerCase()}>`)
+    .replace(
+      /&lt;(td|th)(?=[\s/]|&gt;)((?:(?!&gt;)[\s\S])*?)&gt;/gi,
+      (_m, tag: string, attrs: string) => {
+        const cs = /colspan\s*=\s*"?(\d+)/i.exec(attrs);
+        const rs = /rowspan\s*=\s*"?(\d+)/i.exec(attrs);
+        return `<${tag.toLowerCase()}${cs ? ` colspan="${cs[1]}"` : ""}${
+          rs ? ` rowspan="${rs[1]}"` : ""
+        }>`;
+      },
+    )
+    .replace(
+      /&lt;\/(td|th)\s*&gt;/gi,
+      (_m, tag: string) => `</${tag.toLowerCase()}>`,
+    );
+
+  // 4) 이미지 복원
+  s = s.replace(/IMG(\d+)/g, (_m, i) => imgs[Number(i)] ?? "");
+  return s;
+}
+
+/** PDF·텍스트 표시용 — 태그 제거하되 블록/줄바꿈은 개행으로 보존. */
+export function stripNoteHtml(html: string): string {
+  if (!html) return "";
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<\/(p|div|tr|li|table|h[1-6])\s*>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(td|th)\s*>/gi, "\t")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** note HTML 안의 이미지 URL 목록 추출 (PDF 이미지 렌더용). */
+export function extractNoteImages(html: string): string[] {
+  return Array.from(html.matchAll(/<img[^>]+src="([^"]+)"/gi)).map((m) => m[1]);
+}

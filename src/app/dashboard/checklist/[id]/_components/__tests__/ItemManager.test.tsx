@@ -53,12 +53,12 @@ describe("ItemManager", () => {
         items={[makeItem()]}
       />,
     );
-    expect(screen.getByRole("heading", { name: "운영부" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "운영" })).toBeInTheDocument();
     expect(screen.getByText("접수")).toBeInTheDocument();
     expect(screen.getByText("원서 접수 확인")).toBeInTheDocument();
   });
 
-  it("현재 상태 칩이 활성(vermilion) 스타일 적용", () => {
+  it("현재 상태 칩이 활성(검정 배경) 스타일 적용", () => {
     render(
       <ItemManager
         roundId={roundId}
@@ -67,7 +67,7 @@ describe("ItemManager", () => {
       />,
     );
     const doneChip = screen.getByRole("button", { name: "완료" });
-    expect(doneChip.className).toContain("border-vermilion");
+    expect(doneChip.className).toContain("bg-ink");
   });
 
   it("상태칩 클릭 → updateItemAction(itemId, { status }) 호출", async () => {
@@ -84,20 +84,15 @@ describe("ItemManager", () => {
     );
   });
 
-  it("메모 입력 후 blur → updateItemAction(itemId, { note }) 호출", async () => {
+  it("부서가 작성한 메모 내용이 관리자 화면에 표시된다(parity)", () => {
     render(
       <ItemManager
         roundId={roundId}
         department="운영부"
-        items={[makeItem()]}
+        items={[{ ...makeItem(), note: "부서 작성 메모" }]}
       />,
     );
-    const noteInput = screen.getByPlaceholderText("메모");
-    fireEvent.change(noteInput, { target: { value: "확인 완료" } });
-    fireEvent.blur(noteInput);
-    await waitFor(() =>
-      expect(mockUpdate).toHaveBeenCalledWith("item-1", { note: "확인 완료" }),
-    );
+    expect(screen.getByText("부서 작성 메모")).toBeInTheDocument();
   });
 
   it("항목 추가 클릭 → addItemAction(roundId, department, category) 호출", async () => {

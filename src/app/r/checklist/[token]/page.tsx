@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRoundByToken } from "@/features/checklist/queries";
+import { ReportBody } from "@/components/checklist/ReportBody";
 import { FillForm } from "./_components/FillForm";
 import { ReportView } from "./_components/ReportView";
 
@@ -27,6 +28,26 @@ export default async function SharedChecklistPage({
           periodEnd={round.periodEnd}
           items={items}
         />
+      </main>
+    );
+  }
+
+  // report 토큰: AI 보고리포트(서술형 HTML)가 있으면 그걸, 없으면 항목 현황 뷰로 폴백.
+  if (round.reportHtml) {
+    return (
+      <main className="min-h-screen bg-paper">
+        <div className="mx-auto max-w-4xl px-4 py-8">
+          <header className="mb-5 border-b-2 border-vermilion pb-3">
+            <p className="text-xs uppercase tracking-[0.06em] text-muted">
+              어플라이본부 원서접수 점검 보고리포트
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-ink">{round.title}</h1>
+            <p className="mt-1 text-sm text-muted">
+              {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"}
+            </p>
+          </header>
+          <ReportBody html={round.reportHtml} />
+        </div>
       </main>
     );
   }

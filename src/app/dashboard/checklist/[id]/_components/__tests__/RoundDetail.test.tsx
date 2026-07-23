@@ -23,6 +23,8 @@ const round: ChecklistRound = {
   status: "active",
   createdBy: "ys1114@x.com",
   createdAt: "2027-01-01T00:00:00Z",
+  reportHtml: null,
+  reportGeneratedAt: null,
 };
 
 const items: ChecklistItem[] = [
@@ -34,7 +36,8 @@ const items: ChecklistItem[] = [
     title: "원서 접수 확인",
     status: "done",
     note: "",
-    sortOrder: 0, attachments: [],
+    sortOrder: 0,
+    attachments: [],
   },
   {
     id: "i-2",
@@ -44,7 +47,8 @@ const items: ChecklistItem[] = [
     title: "결제 확인",
     status: "in_progress",
     note: "",
-    sortOrder: 1, attachments: [],
+    sortOrder: 1,
+    attachments: [],
   },
   {
     id: "i-3",
@@ -54,18 +58,19 @@ const items: ChecklistItem[] = [
     title: "서버 점검",
     status: "todo",
     note: "",
-    sortOrder: 0, attachments: [],
+    sortOrder: 0,
+    attachments: [],
   },
 ];
 
 const tokens: ShareToken[] = [];
 
 describe("RoundDetail", () => {
-  it("회차 제목 + 기간 + 생성자 표시", () => {
+  it("회차 제목 + 기간 표시 (생성자 이메일은 미표시)", () => {
     render(<RoundDetail round={round} items={items} tokens={tokens} />);
     expect(screen.getByText("2027학년도 수시모집")).toBeInTheDocument();
     expect(screen.getByText(/2027-01-01.*2027-01-31/)).toBeInTheDocument();
-    expect(screen.getByText(/ys1114@x.com/)).toBeInTheDocument();
+    expect(screen.queryByText(/ys1114@x.com/)).not.toBeInTheDocument();
   });
 
   it("요약 KPI — 전체 항목 라벨 + 총 개수(computeCompletion 연동)", () => {
@@ -86,16 +91,16 @@ describe("RoundDetail", () => {
 
   it("항목이 있는 부서만 섹션 렌더 — 항목 없는 부서는 미렌더", () => {
     render(<RoundDetail round={round} items={items} tokens={tokens} />);
-    expect(screen.getByRole("heading", { name: "운영부" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "개발부" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "운영" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "개발" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "기획파트" }),
+      screen.queryByRole("heading", { name: "기획" }),
     ).not.toBeInTheDocument();
   });
 
   it("공유 링크 액션 행 — 작성/확인 링크 생성 버튼 렌더", () => {
     render(<RoundDetail round={round} items={items} tokens={tokens} />);
     expect(screen.getByText("작성 공유 링크 생성")).toBeInTheDocument();
-    expect(screen.getByText("확인 공유 링크 생성")).toBeInTheDocument();
+    expect(screen.getByText("보고용 링크 생성")).toBeInTheDocument();
   });
 });
