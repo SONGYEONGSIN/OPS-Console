@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { renderChecklistPdf } from "../checklist-pdf";
-import type { ChecklistRound, ChecklistItem } from "@/features/checklist/schemas";
+import type {
+  ChecklistRound,
+  ChecklistItem,
+} from "@/features/checklist/schemas";
 
 const round: ChecklistRound = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -10,10 +13,32 @@ const round: ChecklistRound = {
   status: "active",
   createdBy: "ys1114@x.com",
   createdAt: "2026-07-22T10:00:00Z",
+  reportHtml: null,
+  reportGeneratedAt: null,
 };
 const items: ChecklistItem[] = [
-  { id: "i1", roundId: round.id, department: "개발부", category: "서버/시스템", title: "웹 서버 동작 확인", status: "done", note: "정상", sortOrder: 0, attachments: [] },
-  { id: "i2", roundId: round.id, department: "운영부", category: "결제사", title: "결제사 세팅", status: "in_progress", note: "", sortOrder: 0, attachments: [] },
+  {
+    id: "i1",
+    roundId: round.id,
+    department: "개발부",
+    category: "서버/시스템",
+    title: "웹 서버 동작 확인",
+    status: "done",
+    note: "정상",
+    sortOrder: 0,
+    attachments: [],
+  },
+  {
+    id: "i2",
+    roundId: round.id,
+    department: "운영부",
+    category: "결제사",
+    title: "결제사 세팅",
+    status: "in_progress",
+    note: "",
+    sortOrder: 0,
+    attachments: [],
+  },
 ];
 
 describe("renderChecklistPdf", () => {

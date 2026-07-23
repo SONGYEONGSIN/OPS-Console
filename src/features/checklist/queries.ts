@@ -13,6 +13,8 @@ function mapRound(r: Record<string, unknown>): ChecklistRound {
     status: r.status as ChecklistRound["status"],
     createdBy: (r.created_by as string) ?? null,
     createdAt: r.created_at as string,
+    reportHtml: (r.report_html as string) ?? null,
+    reportGeneratedAt: (r.report_generated_at as string) ?? null,
   };
 }
 function mapItem(r: Record<string, unknown>): ChecklistItem {

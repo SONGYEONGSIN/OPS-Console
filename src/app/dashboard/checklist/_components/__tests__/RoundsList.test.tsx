@@ -24,6 +24,8 @@ const sample: ChecklistRound & { completion: Completion } = {
   status: "active",
   createdBy: "ys1114@x.com",
   createdAt: "2027-01-01T00:00:00Z",
+  reportHtml: null,
+  reportGeneratedAt: null,
   completion,
 };
 
@@ -38,9 +40,7 @@ describe("RoundsList (표준 테이블)", () => {
     expect(screen.getByText("2027학년도 수시모집")).toBeInTheDocument();
     expect(screen.getByText("5/10")).toBeInTheDocument();
     expect(screen.getByText("50%")).toBeInTheDocument();
-    expect(
-      screen.getByText("2027-01-01 ~ 2027-01-31"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("2027-01-01 ~ 2027-01-31")).toBeInTheDocument();
     expect(screen.getByText("진행중")).toBeInTheDocument();
   });
 

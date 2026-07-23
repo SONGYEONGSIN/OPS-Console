@@ -45,6 +45,8 @@ export type ChecklistRound = {
   status: "draft" | "active" | "closed";
   createdBy: string | null;
   createdAt: string;
+  reportHtml: string | null; // AI 생성 보고리포트(정화된 HTML)
+  reportGeneratedAt: string | null; // 리포트 생성 시각(ISO)
 };
 
 export type ChecklistItem = {

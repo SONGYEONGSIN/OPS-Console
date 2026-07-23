@@ -14,6 +14,8 @@ const round: ChecklistRound = {
   status: "active",
   createdBy: "me@x",
   createdAt: "2026-07-22",
+  reportHtml: null,
+  reportGeneratedAt: null,
 };
 const items: ChecklistItem[] = [
   {
