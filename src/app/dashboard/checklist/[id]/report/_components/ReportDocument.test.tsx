@@ -41,4 +41,14 @@ describe("ReportDocument", () => {
     expect(screen.getByText("요약")).toBeTruthy();
     expect(screen.getByText(/전체 완료율 79%/)).toBeTruthy();
   });
+
+  it("h3 카테고리 문구 앞에 SVG 구분자를 주입한다", () => {
+    const { container } = render(
+      <ReportDocument
+        round={{ ...base, reportHtml: "<h3>결제사</h3><p>본문</p>" }}
+      />,
+    );
+    expect(container.querySelector("h3 svg")).toBeTruthy();
+    expect(screen.getByText("결제사")).toBeTruthy();
+  });
 });
