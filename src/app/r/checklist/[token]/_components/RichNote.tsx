@@ -21,7 +21,13 @@ export function RichNote({
   const ref = useRef<HTMLDivElement>(null);
 
   const save = () => {
-    if (ref.current) onSave(ref.current.innerHTML);
+    if (!ref.current) return;
+    // 붙여넣기 과정에서 base64 data 이미지가 남았으면 제거 — 업로드된 URL 이미지만 유지.
+    // (data URL은 서버에서 어차피 제거되지만, 저장 payload 폭증/길이초과 실패를 막는다.)
+    ref.current
+      .querySelectorAll('img[src^="data:"]')
+      .forEach((el) => el.remove());
+    onSave(ref.current.innerHTML);
   };
 
   const insertImage = (url: string) => {

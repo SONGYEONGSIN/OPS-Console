@@ -40,10 +40,24 @@ function toDbPatch(p: {
 }) {
   const out: Record<string, unknown> = {};
   if ("status" in p) out.status = p.status ?? null;
-  if (p.note !== undefined) out.note = sanitizeNoteHtml(p.note);
+  if (p.note !== undefined) out.note = p.note; // note는 파싱 전 presanitizeNote로 정화됨
   if (p.title !== undefined) out.title = p.title;
   if (p.category !== undefined) out.category = p.category;
   return out;
+}
+
+// 공개 입력 note는 길이 검증 '전에' sanitize한다 — 붙여넣기 시 base64 data 이미지가
+// 섞여 들어와도 제거되어(허용 스킴 https만) note 길이초과로 저장 실패하는 것을 막는다.
+function presanitizeNote(patch: unknown): unknown {
+  if (
+    patch &&
+    typeof patch === "object" &&
+    typeof (patch as Record<string, unknown>).note === "string"
+  ) {
+    const p = patch as Record<string, unknown>;
+    return { ...p, note: sanitizeNoteHtml(p.note as string) };
+  }
+  return patch;
 }
 
 export async function fillUpdateItem(
@@ -51,7 +65,7 @@ export async function fillUpdateItem(
   itemId: string,
   patch: unknown,
 ): Promise<Result> {
-  const parsed = itemPatchSchema.safeParse(patch);
+  const parsed = itemPatchSchema.safeParse(presanitizeNote(patch));
   if (!parsed.success)
     return { ok: false, error: parsed.error.issues[0].message };
 
