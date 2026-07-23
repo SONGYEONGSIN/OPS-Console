@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { itemPatchSchema, DEPARTMENTS, type Department } from "./schemas";
+import { sanitizeNoteHtml } from "./note-html";
 import {
   assertWriteToken,
   assertItemInRound,
@@ -39,7 +40,7 @@ function toDbPatch(p: {
 }) {
   const out: Record<string, unknown> = {};
   if ("status" in p) out.status = p.status ?? null;
-  if (p.note !== undefined) out.note = p.note;
+  if (p.note !== undefined) out.note = sanitizeNoteHtml(p.note);
   if (p.title !== undefined) out.title = p.title;
   if (p.category !== undefined) out.category = p.category;
   return out;
@@ -132,7 +133,8 @@ export async function fillDeleteItem(
   return { ok: true };
 }
 
-const IMAGE_RE = /^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
+const IMAGE_RE =
+  /^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 /** 작성폼 이미지 붙여넣기 — dataURL 업로드 후 항목 attachments에 공개 URL 추가. */
@@ -169,12 +171,8 @@ export async function fillUploadImage(
   if (up.error) return { ok: false, error: up.error.message };
   const url = sb.storage.from("checklist").getPublicUrl(path).data.publicUrl;
 
-  const next = [...((item.attachments as string[]) ?? []), url];
-  const { error } = await sb
-    .from("checklist_items")
-    .update({ attachments: next, updated_at: new Date().toISOString() })
-    .eq("id", itemId);
-  if (error) return { ok: false, error: error.message };
+  // 인라인 삽입 방식: 업로드 후 URL만 반환한다(에디터가 note HTML에 <img>로 삽입 후 저장).
+  // attachments 배열에는 더 이상 추가하지 않는다(중복 표시 방지). 기존 attachments는 레거시 표시 유지.
   revalidatePath(`/r/checklist/${token}`);
   return { ok: true, url };
 }

@@ -22,7 +22,7 @@ export const statusSchema = z.enum(STATUSES);
 
 export const itemPatchSchema = z.object({
   status: statusSchema.nullable().optional(),
-  note: z.string().max(2000).optional(),
+  note: z.string().max(20000).optional(), // 리치에디터 HTML(인라인 이미지 URL 포함)
   title: z.string().min(1).max(500).optional(),
   category: z.string().max(200).optional(),
 });
