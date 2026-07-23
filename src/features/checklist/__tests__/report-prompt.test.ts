@@ -80,6 +80,10 @@ describe("buildReportPrompt", () => {
     expect(p).toContain("첨부 이미지");
   });
 
+  it("제목틀 일관성(부서·카테고리 명칭 그대로) 지침을 담는다", () => {
+    expect(p).toContain("그대로 사용");
+  });
+
   it("수시 전용(정시 제외) + 접수건수표(진학사·유웨이·전문대 1·2차) 지침을 담는다", () => {
     expect(p).toContain("정시(정시모집)");
     expect(p).toContain("유웨이");

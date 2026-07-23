@@ -11,6 +11,14 @@ describe("ReportBody", () => {
     expect(screen.getByText("결제사")).toBeTruthy();
   });
 
+  it("최상위 항목(li) 앞에도 공통 SVG 마커를 주입한다", () => {
+    const { container } = render(
+      <ReportBody html="<ul><li><b>제목</b></li></ul>" />,
+    );
+    expect(container.querySelector("li svg")).toBeTruthy();
+    expect(screen.getByText("제목")).toBeTruthy();
+  });
+
   it("제목·표 내용을 렌더한다", () => {
     render(
       <ReportBody html="<h2>요약</h2><table><tbody><tr><td>셀값</td></tr></tbody></table>" />,
