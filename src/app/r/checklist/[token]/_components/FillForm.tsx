@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RichNote } from "./RichNote";
 import type { ChecklistItem, ItemStatus } from "@/features/checklist/schemas";
@@ -15,6 +15,7 @@ import {
   fillDeleteItem,
   fillUploadImage,
   fillRemoveAttachment,
+  fillReorderItems,
 } from "@/features/checklist/fill-actions";
 import { STATUS_LABEL } from "./status-ui";
 
@@ -118,16 +119,11 @@ export function FillForm({
                     itemIds={catItems.map((i) => i.id)}
                     onRenamed={() => router.refresh()}
                   />
-                  <div className="space-y-2">
-                    {catItems.map((i) => (
-                      <FillRow
-                        key={i.id}
-                        token={token}
-                        item={i}
-                        onDeleted={() => router.refresh()}
-                      />
-                    ))}
-                  </div>
+                  <CategoryItems
+                    token={token}
+                    items={catItems}
+                    onChanged={() => router.refresh()}
+                  />
                   <AddRow
                     token={token}
                     department={dept}
@@ -137,9 +133,44 @@ export function FillForm({
                 </div>
               );
             })}
+            <AddCategoryRow
+              token={token}
+              department={dept}
+              onAdded={() => router.refresh()}
+            />
           </section>
         );
       })}
+    </div>
+  );
+}
+
+// 부서에 새 분야 추가 — 새 분야명으로 항목 1개 생성(빈 분야는 렌더되지 않으므로).
+function AddCategoryRow({
+  token,
+  department,
+  onAdded,
+}: {
+  token: string;
+  department: string;
+  onAdded: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          await fillAddItem(token, department, "새 분야", "새 항목");
+          setBusy(false);
+          onAdded();
+        }}
+        className="border border-line bg-paper px-2 py-1 text-xs font-semibold text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:opacity-50"
+      >
+        ＋ 분야 추가
+      </button>
     </div>
   );
 }
@@ -152,6 +183,74 @@ function SaveBadge({ state }: { state: SaveState }) {
   if (state === "error")
     return <span className="text-2xs text-vermilion">저장 실패</span>;
   return null;
+}
+
+// 분야 내 항목 목록 — 드래그 핸들(⠿)로 순서 변경(sort_order 재배분).
+function CategoryItems({
+  token,
+  items,
+  onChanged,
+}: {
+  token: string;
+  items: ChecklistItem[];
+  onChanged: () => void;
+}) {
+  const ids = items.map((i) => i.id).join(",");
+  const [order, setOrder] = useState<string[]>(() => items.map((i) => i.id));
+  const [seen, setSeen] = useState(ids);
+  const dragId = useRef<string | null>(null);
+  if (ids !== seen) {
+    setSeen(ids);
+    setOrder(items.map((i) => i.id));
+  }
+
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const onDrop = async (targetId: string) => {
+    const src = dragId.current;
+    dragId.current = null;
+    if (!src || src === targetId) return;
+    const from = order.indexOf(src);
+    const to = order.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrder(next);
+    await fillReorderItems(token, next);
+    onChanged();
+  };
+
+  return (
+    <div className="space-y-2">
+      {order.map((id) => {
+        const item = byId.get(id);
+        if (!item) return null;
+        return (
+          <div
+            key={id}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => onDrop(id)}
+            className="flex items-start gap-1"
+          >
+            <button
+              type="button"
+              draggable
+              onDragStart={() => {
+                dragId.current = id;
+              }}
+              aria-label="순서 이동"
+              className="mt-3 cursor-grab select-none px-1 text-muted hover:text-ink active:cursor-grabbing"
+            >
+              ⠿
+            </button>
+            <div className="min-w-0 flex-1">
+              <FillRow token={token} item={item} onDeleted={onChanged} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 // 분야(카테고리) 라벨 — 편집 가능. 이름 변경 시 해당 분야의 전 항목 category를 갱신.

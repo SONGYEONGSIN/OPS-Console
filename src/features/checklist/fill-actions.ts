@@ -147,6 +147,45 @@ export async function fillDeleteItem(
   return { ok: true };
 }
 
+/**
+ * 항목 순서 변경 — itemIds를 새 순서로 받아 그 항목들의 기존 sort_order 값을
+ * 순서대로 재배분한다(같은 값 집합 유지 → 다른 분야 항목과의 상대 위치 보존).
+ * 모든 항목이 토큰 회차 범위여야 한다.
+ */
+export async function fillReorderItems(
+  token: string,
+  itemIds: string[],
+): Promise<Result> {
+  const sb = createAdminClient();
+  const gate = await loadWriteToken(sb, token);
+  if (!gate.ok) return gate;
+
+  const { data: rows } = await sb
+    .from("checklist_items")
+    .select("id, round_id, sort_order")
+    .in("id", itemIds);
+  const found = rows ?? [];
+  if (found.length !== itemIds.length)
+    return { ok: false, error: "일부 항목을 찾을 수 없습니다." };
+  for (const r of found) {
+    const scope = assertItemInRound(r, gate.row);
+    if (!scope.ok) return { ok: false, error: denyMessage(scope.reason) };
+  }
+
+  const orders = found.map((r) => r.sort_order as number).sort((a, b) => a - b);
+  const now = new Date().toISOString();
+  await Promise.all(
+    itemIds.map((id, idx) =>
+      sb
+        .from("checklist_items")
+        .update({ sort_order: orders[idx] ?? idx, updated_at: now })
+        .eq("id", id),
+    ),
+  );
+  revalidatePath(`/r/checklist/${token}`);
+  return { ok: true };
+}
+
 const IMAGE_RE =
   /^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
