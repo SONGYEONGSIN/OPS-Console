@@ -44,7 +44,7 @@ describe("ReportView", () => {
   it("회차 제목·부서·항목·상태 라벨을 렌더한다", () => {
     render(<ReportView round={round} items={items} />);
     expect(screen.getByText("2027학년도 수시모집")).toBeInTheDocument();
-    expect(screen.getByText("개발")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "개발" })).toBeInTheDocument();
     expect(screen.getByText("웹 서버 동작 확인")).toBeInTheDocument();
     expect(screen.getByText("결제사 세팅")).toBeInTheDocument();
     expect(screen.getAllByText("완료").length).toBeGreaterThan(0);

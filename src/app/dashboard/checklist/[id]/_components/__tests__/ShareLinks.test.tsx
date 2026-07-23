@@ -11,7 +11,14 @@ const mockToggle = vi.mocked(toggleChecklistShare);
 
 const roundId = "11111111-1111-1111-1111-111111111111";
 function tok(kind: "fill" | "report", token: string): ShareToken {
-  return { id: `t-${kind}`, roundId, kind, department: null, token, enabled: true };
+  return {
+    id: `t-${kind}`,
+    roundId,
+    kind,
+    department: null,
+    token,
+    enabled: true,
+  };
 }
 
 describe("ShareLinks (작성/확인 통합)", () => {
@@ -20,10 +27,10 @@ describe("ShareLinks (작성/확인 통합)", () => {
     mockToggle.mockResolvedValue({ ok: true, token: "new-tok" });
   });
 
-  it("토큰 없음 → '작성 공유 링크 생성' + '확인 공유 링크 생성' 버튼", () => {
+  it("토큰 없음 → '작성 공유 링크 생성' + '보고용 링크 생성' 버튼", () => {
     render(<ShareLinks roundId={roundId} tokens={[]} />);
     expect(screen.getByText("작성 공유 링크 생성")).toBeInTheDocument();
-    expect(screen.getByText("확인 공유 링크 생성")).toBeInTheDocument();
+    expect(screen.getByText("보고용 링크 생성")).toBeInTheDocument();
   });
 
   it("작성 링크 생성 클릭 → toggleChecklistShare(roundId,'fill')", async () => {
@@ -36,7 +43,7 @@ describe("ShareLinks (작성/확인 통합)", () => {
 
   it("확인 링크 생성 클릭 → toggleChecklistShare(roundId,'report')", async () => {
     render(<ShareLinks roundId={roundId} tokens={[]} />);
-    fireEvent.click(screen.getByText("확인 공유 링크 생성"));
+    fireEvent.click(screen.getByText("보고용 링크 생성"));
     await waitFor(() =>
       expect(mockToggle).toHaveBeenCalledWith(roundId, "report"),
     );

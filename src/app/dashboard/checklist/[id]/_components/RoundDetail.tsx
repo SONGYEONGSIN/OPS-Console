@@ -24,14 +24,13 @@ export function RoundDetail({ round, items, tokens }: Props) {
     <article className="flex flex-col gap-6">
       <header className="border-b border-line pb-4">
         <p className="text-xs uppercase tracking-[0.06em] text-muted">
-          [운영부 상황실] · 원서접수 점검사항 체크리스트
+          어플라이본부 원서접수 점검 진행 상황
         </p>
         <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em] text-ink">
           {round.title}
         </h1>
         <p className="mt-2 text-sm text-muted">
-          {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"} ·{" "}
-          {round.createdBy ?? ""}
+          {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"}
         </p>
       </header>
 

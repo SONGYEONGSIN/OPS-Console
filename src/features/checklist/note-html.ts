@@ -16,13 +16,17 @@ export function sanitizeNoteHtml(
 ): string {
   return sanitizeHtml(html, {
     allowedTags: ["br", "div", "p", "b", "i", "u", "img"],
-    allowedAttributes: { img: ["src", "alt"] },
+    allowedAttributes: { img: ["src", "alt", "width"] },
     allowedSchemes: ["https"],
     transformTags: {
       img: (_tagName, attribs): sanitizeHtml.Tag => {
         const src = attribs.src ?? "";
         if (storagePrefix && src.startsWith(storagePrefix)) {
-          return { tagName: "img", attribs: { src, alt: "첨부 이미지" } };
+          const attrs: Record<string, string> = { src, alt: "첨부 이미지" };
+          // 리사이즈 폭(px) 보존 — 숫자만 허용(CSS 아님, 안전).
+          const width = (attribs.width ?? "").replace(/[^0-9]/g, "");
+          if (width) attrs.width = width;
+          return { tagName: "img", attribs: attrs };
         }
         // 외부/위험 이미지는 제거
         return { tagName: "span", attribs: {} };

@@ -31,6 +31,19 @@ describe("sanitizeNoteHtml (공개 토큰 입력 → XSS 방어)", () => {
     expect(out).not.toContain("onerror");
   });
 
+  it("리사이즈 width(숫자)는 보존, 비숫자 width는 제거", () => {
+    const keep = sanitizeNoteHtml(
+      `<img src="${PREFIX}x.png" width="300">`,
+      PREFIX,
+    );
+    expect(keep).toContain('width="300"');
+    const strip = sanitizeNoteHtml(
+      `<img src="${PREFIX}x.png" width="abc">`,
+      PREFIX,
+    );
+    expect(strip).not.toContain("abc");
+  });
+
   it("우리 스토리지가 아닌 외부 img는 제거", () => {
     const out = sanitizeNoteHtml(`<img src="https://evil.com/x.png">`, PREFIX);
     expect(out).not.toContain("evil.com");

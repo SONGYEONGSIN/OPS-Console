@@ -64,8 +64,8 @@ describe("FillForm (전 부서 통합 작성)", () => {
     expect(screen.getByText("2027 수시")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "기획" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "개발" })).toBeInTheDocument();
-    expect(screen.getByText("광고배너 노출")).toBeInTheDocument();
-    expect(screen.getByText("웹 서버 확인")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("광고배너 노출")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("웹 서버 확인")).toBeInTheDocument();
   });
 
   it("상태 칩 클릭 → fillUpdateItem(token, itemId, {status})", () => {
@@ -94,8 +94,9 @@ describe("FillForm (전 부서 통합 작성)", () => {
         items={[items[0]]}
       />,
     );
-    const memo = screen.getByRole("textbox");
-    expect(memo).toHaveAttribute("contenteditable", "true");
+    const memo = screen
+      .getAllByRole("textbox")
+      .find((b) => b.getAttribute("contenteditable") === "true");
     expect(memo).toHaveAttribute("aria-multiline", "true");
   });
 

@@ -1,12 +1,31 @@
+"use client";
+import { useState } from "react";
 import type {
   ChecklistRound,
   ChecklistItem,
+  ItemStatus,
 } from "@/features/checklist/schemas";
-import { DEPARTMENTS, deptLabel } from "@/features/checklist/schemas";
+import {
+  DEPARTMENTS,
+  deptLabel,
+  type Department,
+} from "@/features/checklist/schemas";
 import { computeCompletion } from "@/features/checklist/completion";
-import { STATUS_LABEL, STATUS_STYLE } from "./status-ui";
+import { STATUS_LABEL } from "./status-ui";
 
-/** 임원 보고/공유 뷰 — report 토큰 링크(읽기 전용). 요약 KPI + 부서→분야→항목·상태·메모. */
+const BADGE_BASE = "border px-2 py-1 text-xs transition-colors";
+const BADGE_ON = "border-vermilion bg-vermilion text-cream";
+const BADGE_OFF =
+  "border-line bg-paper text-ink hover:border-vermilion hover:bg-vermilion hover:text-cream";
+
+// 확인 뷰 상태 뱃지: 완료=검정, 나머지=빨강.
+function statusBadge(status: ItemStatus): string {
+  return status === "done"
+    ? "border-ink bg-ink text-cream"
+    : "border-vermilion bg-vermilion text-cream";
+}
+
+/** 임원 보고/공유 뷰 — report 토큰 링크(읽기 전용). 부서 필터 + 요약 KPI + 부서→분야→항목·상태·메모. */
 export function ReportView({
   round,
   items,
@@ -14,13 +33,23 @@ export function ReportView({
   round: ChecklistRound;
   items: ChecklistItem[];
 }) {
-  const all = computeCompletion(items);
+  const [activeDept, setActiveDept] = useState<Department | null>(null);
+  const depts = DEPARTMENTS.filter((d) =>
+    items.some((i) => i.department === d),
+  );
+  const shownItems = activeDept
+    ? items.filter((i) => i.department === activeDept)
+    : items;
+  const all = computeCompletion(shownItems);
   const kpis: [string, number][] = [
     ["전체 항목", all.total],
     ["완료", all.done],
     ["진행중", all.inProgress],
     ["작업전", all.todo],
   ];
+  const shownDepts = depts.filter(
+    (d) => activeDept === null || d === activeDept,
+  );
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -33,6 +62,28 @@ export function ReportView({
           {round.periodStart ?? "-"} ~ {round.periodEnd ?? "-"}
         </p>
       </header>
+
+      {depts.length > 1 ? (
+        <div className="mt-3 flex flex-wrap justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveDept(null)}
+            className={`${BADGE_BASE} ${activeDept === null ? BADGE_ON : BADGE_OFF}`}
+          >
+            전체
+          </button>
+          {depts.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setActiveDept(d)}
+              className={`${BADGE_BASE} ${activeDept === d ? BADGE_ON : BADGE_OFF}`}
+            >
+              {deptLabel(d)}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         {kpis.map(([label, n]) => (
@@ -65,7 +116,7 @@ export function ReportView({
         </p>
       ) : null}
 
-      {DEPARTMENTS.map((dept) => {
+      {shownDepts.map((dept) => {
         const deptItems = items.filter((i) => i.department === dept);
         if (deptItems.length === 0) return null;
         const c = computeCompletion(deptItems);
@@ -122,7 +173,7 @@ export function ReportView({
                         </div>
                         {i.status ? (
                           <span
-                            className={`flex-none border px-2 py-0.5 text-xs ${STATUS_STYLE[i.status]}`}
+                            className={`flex-none border px-2 py-0.5 text-xs ${statusBadge(i.status)}`}
                           >
                             {STATUS_LABEL[i.status]}
                           </span>

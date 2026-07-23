@@ -20,9 +20,9 @@ const LABEL: Record<ItemStatus, string> = {
   na: "해당없음",
 };
 
-// 상태 칩 표준(작성폼과 동일): 기본 흰 배경 + 호버 빨강, 선택 시 버밀리언 틴트. 삭제는 기본 빨강 버튼.
+// 상태 칩 표준(작성폼과 동일): 기본 흰 배경 + 호버 빨강, 선택 시 검정 배경. 삭제는 기본 빨강 버튼.
 const CHIP_BASE = "border px-2 py-1 text-xs transition-colors";
-const CHIP_ON = "border-vermilion bg-vermilion/10 text-vermilion";
+const CHIP_ON = "border-ink bg-ink text-cream";
 const CHIP_OFF =
   "border-line bg-paper text-ink hover:border-vermilion hover:text-vermilion";
 const DELETE_BTN =
