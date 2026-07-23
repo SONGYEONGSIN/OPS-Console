@@ -167,6 +167,31 @@ export function groupItemsByDay(
     else map.set(ymd, [item]);
   };
 
+  // 백업요청으로 등록된 (날짜 → 이름들). 백업 휴가 렌더와 동일 규칙(평일만)으로 펼친다.
+  // 같은 날 같은 사람이 백업요청 등록돼 있으면 중복되는 schedule leave 이벤트를 숨긴다.
+  const backupNamesByDay = new Map<string, string[]>();
+  for (const lv of backupLeaves) {
+    if (!lv.startYmd || !lv.name) continue;
+    const bEnd =
+      lv.endYmd && lv.endYmd >= lv.startYmd ? lv.endYmd : lv.startYmd;
+    let bCur = lv.startYmd;
+    let bGuard = 0;
+    while (bCur <= bEnd && bGuard < MAX_LEAVE_SPAN_DAYS) {
+      const dow = ymdWeekday(bCur);
+      if (dow !== 0 && dow !== 6) {
+        const list = backupNamesByDay.get(bCur);
+        if (list) list.push(lv.name);
+        else backupNamesByDay.set(bCur, [lv.name]);
+      }
+      bCur = ymdAddDays(bCur, 1);
+      bGuard++;
+    }
+  }
+  // 해당 날짜에 백업요청 이름이 title에 포함된 연차(leave) 이벤트 = 중복 → 백업요청만 남기고 숨김.
+  const isBackupDupLeave = (type: ScheduleType, title: string, ymd: string) =>
+    type === "leave" &&
+    (backupNamesByDay.get(ymd)?.some((n) => title.includes(n)) ?? false);
+
   for (const e of events) {
     const startYmd = toKstYmd(e.start_at);
     const isTeamCommon = !e.assignee_email;
@@ -175,6 +200,7 @@ export function groupItemsByDay(
 
     // 단일일 일정: 주말이어도 그대로 표기(특정일 이벤트).
     if (!isMultiDay) {
+      if (isBackupDupLeave(e.type, e.title, startYmd)) continue;
       push(startYmd, {
         id: e.id,
         ymd: startYmd,
@@ -197,7 +223,10 @@ export function groupItemsByDay(
     let guard = 0;
     while (cur <= endYmd && guard < MAX_LEAVE_SPAN_DAYS) {
       const dow = ymdWeekday(cur);
-      if (!(skipWeekend && (dow === 0 || dow === 6))) {
+      if (
+        !(skipWeekend && (dow === 0 || dow === 6)) &&
+        !isBackupDupLeave(e.type, e.title, cur)
+      ) {
         const isStart = cur === startYmd;
         const isEnd = cur === endYmd;
         push(cur, {

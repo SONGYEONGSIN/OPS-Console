@@ -305,6 +305,64 @@ describe("groupItemsByDay", () => {
     ]);
   });
 
+  it("같은 날 같은 사람이 백업요청 등록돼 있으면 schedule leave 중복 제거 — 백업요청만", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "88888888-8888-8888-8888-888888888888",
+        type: "leave",
+        title: "운영2팀-윤지혜-연차",
+        start_at: "2026-07-23T15:00:00Z", // KST 7/24(금)
+        all_day: true,
+        assignee_email: null,
+      },
+    ];
+    const backupLeaves: BackupLeaveInput[] = [
+      {
+        id: "bl-1",
+        team: "운영2팀",
+        name: "윤지혜",
+        leaveType: "연차",
+        startYmd: "2026-07-24",
+        endYmd: null,
+        rowRef: {} as unknown as BackupLeaveInput["rowRef"],
+      },
+    ];
+    const items = groupItemsByDay(events, [], backupLeaves).get("2026-07-24") ?? [];
+    expect(items).toHaveLength(1);
+    expect(items[0].category).toBe("backup-leave");
+    expect(items[0].sourceVariant).toBe("backup");
+  });
+
+  it("백업요청 없는 사람의 schedule leave는 그대로 유지", () => {
+    const events: ScheduleEventRow[] = [
+      {
+        ...baseEvent,
+        id: "99999999-9999-9999-9999-999999999999",
+        type: "leave",
+        title: "운영1팀-김유민-연차",
+        start_at: "2026-07-23T15:00:00Z", // KST 7/24
+        all_day: true,
+        assignee_email: null,
+      },
+    ];
+    const backupLeaves: BackupLeaveInput[] = [
+      {
+        id: "bl-2",
+        team: "운영2팀",
+        name: "윤지혜",
+        leaveType: "연차",
+        startYmd: "2026-07-24",
+        endYmd: null,
+        rowRef: {} as unknown as BackupLeaveInput["rowRef"],
+      },
+    ];
+    const items = groupItemsByDay(events, [], backupLeaves).get("2026-07-24") ?? [];
+    // 김유민 leave(유지) + 윤지혜 backup-leave = 2
+    expect(items).toHaveLength(2);
+    expect(items.some((i) => i.label === "운영1팀-김유민-연차")).toBe(true);
+  });
+
   it("schedule event end_at이 시작과 같은 날이면 종료 push 안 함 (중복 방지)", () => {
     const events: ScheduleEventRow[] = [
       {
