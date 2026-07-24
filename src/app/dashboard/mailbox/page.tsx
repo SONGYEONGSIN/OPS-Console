@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
+import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listMailbox, getAutoDraftEnabled } from "@/features/mailbox/queries";
@@ -22,10 +23,12 @@ import { AutoDraftToggle } from "./AutoDraftToggle";
 import { MailboxOwnerSwitcher } from "./MailboxOwnerSwitcher";
 import { MailboxDelegationPanel } from "./MailboxDelegationPanel";
 
+const PAGE_SIZE = 30;
+
 export default async function MailboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ owner?: string }>;
+  searchParams: Promise<{ owner?: string; page?: string }>;
 }) {
   const slug = "mailbox";
   await requireMenu(slug);
@@ -74,8 +77,15 @@ export default async function MailboxPage({
 
   const entries = owner ? await listMailbox(owner) : [];
   const autoEnabled = owner ? await getAutoDraftEnabled(owner) : true;
-  const rows: ListRow[] = entries.map(mailboxEntryToListRow);
-  const config = resolvePageMeta(slug, meta, entries.length);
+  // 30개 기준 client-side slice 페이지네이션. 메일함 전환 시 OwnerSwitcher가 page 초기화.
+  const total = entries.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(totalPages, Math.max(1, Number(sp.page) || 1));
+  const start = (page - 1) * PAGE_SIZE;
+  const rows: ListRow[] = entries
+    .slice(start, start + PAGE_SIZE)
+    .map(mailboxEntryToListRow);
+  const config = resolvePageMeta(slug, meta, total);
 
   const header = (
     <div key="mailbox-header">
@@ -108,6 +118,13 @@ export default async function MailboxPage({
       liveData
       currentUserName={me?.displayName ?? me?.email ?? ""}
       onMailReply={onMailReply}
+      footer={
+        <ListPagination
+          key="mailbox-pagination"
+          total={total}
+          pageSize={PAGE_SIZE}
+        />
+      }
       extraActions={
         <div className="flex items-center gap-2">
           <MailboxOwnerSwitcher options={ownerOptions} current={owner} />

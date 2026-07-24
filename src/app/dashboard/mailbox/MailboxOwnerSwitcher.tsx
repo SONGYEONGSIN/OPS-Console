@@ -22,6 +22,7 @@ export function MailboxOwnerSwitcher({
     const next = new URLSearchParams(params.toString());
     if (v) next.set("owner", v);
     else next.delete("owner");
+    next.delete("page"); // 메일함 전환 시 1페이지로
     router.push(`${pathname}?${next.toString()}`);
   };
 
