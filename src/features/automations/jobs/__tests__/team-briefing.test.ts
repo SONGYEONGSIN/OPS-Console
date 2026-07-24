@@ -94,7 +94,11 @@ beforeEach(() => {
       ]);
     if (table === "ai_tips")
       return chain([
-        { title: "요약 자동화 팁", ai_tool: "claude", author_email: "kim@x.com" },
+        {
+          title: "요약 자동화 팁",
+          ai_tool: "claude",
+          author_email: "kim@x.com",
+        },
       ]);
     if (table === "insight_videos")
       return chain([
@@ -147,7 +151,7 @@ describe("runTeamBriefing", () => {
     expect(arg.html).toContain("[운영부 주간 브리핑] #1");
     expect(arg.html).toContain("마감 임박 1건");
     expect(arg.html).toContain("/r/briefing/");
-    expect(arg.html).toContain("뉴스레터 전체 보기");
+    expect(arg.html).toContain("뉴스레터에서 전체 이야기 확인하기");
   });
 
   it("뉴스레터 발행 — team_briefings에 payload·share_token insert", async () => {

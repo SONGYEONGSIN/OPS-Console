@@ -112,8 +112,7 @@ export function BriefingNewsletter({
                     key={`bd-${b.name}-${b.dateYmd}`}
                     className="text-[15px] leading-[1.8]"
                   >
-                    <b>{b.name}</b>님의{" "}
-                    <b className="text-nl-sky">생일</b>이{" "}
+                    <b>{b.name}</b>님의 <b className="text-nl-sky">생일</b>이{" "}
                     {b.dateYmd.slice(5).replace("-", "/")}에 있어요 —
                     축하해주세요 🎈
                   </li>
@@ -124,8 +123,8 @@ export function BriefingNewsletter({
                     className="text-[15px] leading-[1.8]"
                   >
                     <b>{m.name}</b>님이 {m.dateYmd.slice(5).replace("-", "/")}에{" "}
-                    <b className="text-nl-sky">입사 {m.years}주년</b>을 맞아요 —
-                    축하해주세요 👏
+                    <b className="text-nl-sky">입사 {m.years}주년</b>을{" "}
+                    {m.isPast ? "맞았어요" : "맞아요"} — 축하해주세요 👏
                   </li>
                 ))}
               </ul>
@@ -142,7 +141,9 @@ export function BriefingNewsletter({
               <ul className="mt-3 space-y-4">
                 {featureIntros.map((f) => (
                   <li key={f.title}>
-                    <p className="text-xs font-medium text-nl-muted">{f.menu}</p>
+                    <p className="text-xs font-medium text-nl-muted">
+                      {f.menu}
+                    </p>
                     <p className="mt-0.5 text-[16px] font-bold text-nl-sky">
                       {f.title}
                     </p>
@@ -168,7 +169,9 @@ export function BriefingNewsletter({
                     <th className="py-1.5 pr-2 font-medium">시트</th>
                     <th className="py-1.5 pr-2 text-right font-medium">총</th>
                     <th className="py-1.5 pr-2 text-right font-medium">완료</th>
-                    <th className="py-1.5 pr-2 text-right font-medium">진행중</th>
+                    <th className="py-1.5 pr-2 text-right font-medium">
+                      진행중
+                    </th>
                     <th className="py-1.5 text-right font-medium">완료율</th>
                   </tr>
                 </thead>
@@ -357,7 +360,9 @@ export function BriefingNewsletter({
                       </li>
                     ))}
                     {tips.more > 0 && (
-                      <li className="text-xs text-nl-muted">외 {tips.more}건</li>
+                      <li className="text-xs text-nl-muted">
+                        외 {tips.more}건
+                      </li>
                     )}
                   </ul>
                 )}

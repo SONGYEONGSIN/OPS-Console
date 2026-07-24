@@ -245,15 +245,17 @@ export function fmtViews(n: number): string {
   return `${Number.isInteger(man) ? String(man) : man.toFixed(1)}만`;
 }
 
-/** 최근 7일 수집 인사이트 영상 — 조회수 상위 N건(null은 뒤로) + 전체 신규 건수. */
+/** 최근 7일 수집 인사이트 영상 — 랜덤 최대 N건(매 발행 다른 묶음) + 전체 신규 건수. */
 export function summarizeInsights(
   rows: InsightBriefItem[],
   maxItems = INSIGHT_LIST_MAX,
 ): InsightsBrief {
-  const sorted = [...rows].sort(
-    (a, b) => (b.view_count ?? -1) - (a.view_count ?? -1),
-  );
-  return { newCount: rows.length, items: sorted.slice(0, maxItems) };
+  const shuffled = [...rows];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return { newCount: rows.length, items: shuffled.slice(0, maxItems) };
 }
 
 /** 완료율 = 완료 / (완료+진행중). 모수 0이면 "—". 소수 1자리. */
@@ -264,7 +266,12 @@ export function completionPct(done: number, ongoing: number): string {
 }
 
 /** 근속 기념일 — 발행 주 전후에 입사 기념일이 도래하는 운영자. */
-export type Milestone = { name: string; years: number; dateYmd: string };
+export type Milestone = {
+  name: string;
+  years: number;
+  dateYmd: string;
+  isPast: boolean; // 발행일 이전(이미 지난 기념일)이면 true → 과거형 렌더
+};
 
 /**
  * 발행일 기준 [-lookbackDays, +windowDays] 창에 드는 입사 기념일(1주년 이상, 전체 연차).
@@ -291,7 +298,12 @@ export function upcomingAnniversaries(
       const years = y - hiredYear;
       if (years < 1) continue;
       if (annivYmd >= startYmd && annivYmd <= limitYmd) {
-        out.push({ name: op.name, years, dateYmd: annivYmd });
+        out.push({
+          name: op.name,
+          years,
+          dateYmd: annivYmd,
+          isPast: annivYmd < todayYmd,
+        });
         break; // 한 명당 하나
       }
     }
@@ -319,7 +331,8 @@ export function upcomingBirthdays(
     const monthDay = birth.slice(5);
     let ymd = `${todayYear}-${monthDay}`;
     if (ymd < todayYmd) ymd = `${todayYear + 1}-${monthDay}`;
-    if (ymd >= todayYmd && ymd <= limitYmd) out.push({ name: op.name, dateYmd: ymd });
+    if (ymd >= todayYmd && ymd <= limitYmd)
+      out.push({ name: op.name, dateYmd: ymd });
   }
   return out.sort((a, b) =>
     a.dateYmd < b.dateYmd ? -1 : a.dateYmd > b.dateYmd ? 1 : 0,
@@ -446,8 +459,16 @@ export function buildBriefingTeaserHtml(input: {
   tips: TipsBrief;
   url: string;
 }): string {
-  const { issueNo, dateLabel, headline, contracts, closing, aiWork, tips, url } =
-    input;
+  const {
+    issueNo,
+    dateLabel,
+    headline,
+    contracts,
+    closing,
+    aiWork,
+    tips,
+    url,
+  } = input;
   const totalAll = contracts.totalDone + contracts.totalOngoing;
   const savedSuffix =
     aiWork.savedHours > 0 ? `(절감 ${fmtHours(aiWork.savedHours)}h)` : "";
@@ -462,6 +483,7 @@ export function buildBriefingTeaserHtml(input: {
       `<b>📰 [운영부 주간 브리핑] #${issueNo} · ${escapeHtml(dateLabel)}</b>`,
     );
   }
+  lines.push(`<br/><br/>👀 이번 주 운영부, 무슨 일이 있었을까요?`);
   lines.push(
     `<br/>계약 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})`,
   );
@@ -469,7 +491,7 @@ export function buildBriefingTeaserHtml(input: {
     `<br/>마감 임박 ${closing.length}건 · AI 작업 ${aiWork.count}건${savedSuffix} · 신규 TIP ${tips.newCount}건`,
   );
   lines.push(
-    `<br/><br/><a href="${escapeHtml(url)}">👉 뉴스레터 전체 보기</a>`,
+    `<br/><br/><b>👉 <a href="${escapeHtml(url)}">지금 뉴스레터에서 전체 이야기 확인하기 →</a></b>`,
   );
   return lines.join("");
 }
