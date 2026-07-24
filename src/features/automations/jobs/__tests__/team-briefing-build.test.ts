@@ -231,8 +231,8 @@ describe("summarizeAiWork", () => {
     expect(s.count).toBe(2); // 신규
     expect(s.totalCount).toBe(12);
     expect(s.savedHours).toBe(4.5); // 신규 절감(null 제외)
-    expect(s.items).toHaveLength(4); // 최근 4건 표시
-    expect(s.more).toBe(8); // 누적 12 - 표시 4
+    expect(s.items).toHaveLength(3); // 최근 3건 표시(최대 3)
+    expect(s.more).toBe(9); // 누적 12 - 표시 3
   });
 
   it("신규 0이어도 최근 누적으로 목록을 채운다", () => {
@@ -243,11 +243,11 @@ describe("summarizeAiWork", () => {
     expect(s.more).toBe(0);
   });
 
-  it("최근 5건 초과 시 앞 5건만", () => {
+  it("최근 3건 초과 시 앞 3건만", () => {
     const recent = Array.from({ length: 7 }, (_, i) => row(`t${i}`, 1));
     const s = summarizeAiWork([], recent, 20);
-    expect(s.items).toHaveLength(5);
-    expect(s.more).toBe(15); // 누적 20 - 표시 5
+    expect(s.items).toHaveLength(3);
+    expect(s.more).toBe(17); // 누적 20 - 표시 3
   });
 });
 
@@ -270,11 +270,11 @@ describe("summarizeTips", () => {
     expect(s.more).toBe(44); // 누적 47 - 표시 3
   });
 
-  it("최근 5건 초과 시 앞 5건만", () => {
+  it("최근 3건 초과 시 앞 3건만", () => {
     const recent = Array.from({ length: 6 }, (_, i) => tip(`t${i}`));
     const s = summarizeTips([], recent, 50);
-    expect(s.items).toHaveLength(5);
-    expect(s.more).toBe(45);
+    expect(s.items).toHaveLength(3);
+    expect(s.more).toBe(47);
   });
 });
 

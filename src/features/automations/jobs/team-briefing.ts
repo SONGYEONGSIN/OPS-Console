@@ -249,12 +249,12 @@ export async function buildBriefingData(): Promise<
     .order("created_at", { ascending: false });
   if (awErr)
     return { ok: false, message: `AI 작업 조회 실패: ${awErr.message}` };
-  // 목록은 최근 누적에서 채운다(신규 0이어도 최근 작업 노출). 5 = AI_LIST_MAX.
+  // 목록은 최근 누적에서 채운다(신규 0이어도 최근 작업 노출). 3 = AI_LIST_MAX.
   const { data: awRecent } = await admin
     .from("ai_work")
     .select(AW_SELECT)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(3);
   const { count: aiWorkTotal, error: awtErr } = await admin
     .from("ai_work")
     .select("id", { count: "exact", head: true });
@@ -280,12 +280,12 @@ export async function buildBriefingData(): Promise<
     .gte("created_at", sinceIso)
     .order("created_at", { ascending: false });
   if (tnErr) return { ok: false, message: `TIP 조회 실패: ${tnErr.message}` };
-  // 목록은 최근 누적에서 채운다(신규 3건 미만이어도). 5 = AI_LIST_MAX.
+  // 목록은 최근 누적에서 채운다(신규 3건 미만이어도). 3 = AI_LIST_MAX.
   const { data: tipRecent } = await admin
     .from("ai_tips")
     .select(TIP_SELECT)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(3);
   const { data: tipAllData, error: taErr } = await admin
     .from("ai_tips")
     .select("id");

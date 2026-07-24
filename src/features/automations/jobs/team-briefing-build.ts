@@ -162,7 +162,7 @@ function escapeHtml(s: string): string {
 
 // ─── AI 활용 (내 AI 작업 + TIP 공유) ────────────────────────
 
-const AI_LIST_MAX = 5;
+const AI_LIST_MAX = 3;
 
 export type AiWorkBriefItem = {
   title: string;
