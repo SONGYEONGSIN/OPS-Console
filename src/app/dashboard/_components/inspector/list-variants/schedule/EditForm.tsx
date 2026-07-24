@@ -20,7 +20,8 @@ const SCHEDULE_TYPE_OPTIONS: {
     | "training"
     | "application"
     | "pims"
-    | "external_meeting";
+    | "external_meeting"
+    | "meeting";
   label: string;
 }[] = [
   { value: "shift", label: "시프트" },
@@ -30,6 +31,7 @@ const SCHEDULE_TYPE_OPTIONS: {
   { value: "application", label: "원서접수" },
   { value: "pims", label: "PIMS" },
   { value: "external_meeting", label: "외부미팅" },
+  { value: "meeting", label: "회의" },
 ];
 
 const KST_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
