@@ -83,8 +83,9 @@ export function buildStoryPrompt(payload, issueNo) {
 
 규칙:
 - 반드시 아래 형식의 JSON만 출력하세요 (설명·코드펜스 금지):
-{"headline": "...", "intro": "...", "sections": {"contracts": "...", "schedule": "...", "closing": "...", "ai": "..."}}
+{"headline": "...", "teaser": "...", "intro": "...", "sections": {"contracts": "...", "schedule": "...", "closing": "...", "ai": "..."}}
 - headline: 뉴스레터를 열어보고 싶게 만드는 창의적이고 위트 있는 한 줄 제목 (20자 내외, 이모지 최대 1개). 수치 나열('완료율 48.7%')은 피하고, 이번 주 분위기·성취·계절감을 감각적인 한 컷으로 표현하세요. 매 호 톤과 소재를 다르게 (때론 질문형·비유·계절·응원 등). 예: "절반의 문턱에서, 운영부의 여름" / "마감 러시, 우리는 준비됐어요"
+- teaser: Teams 미리보기용 낚시 한 줄. '운영부 마법사'가 이번 호를 예고하는 페르소나 톤으로, 지금 뉴스레터를 열지 않으면 궁금해서 못 배기게 만드는 자극적·호기심 문장(35자 내외, 이모지 1개). 수치 나열 금지, headline과 다른 문장. 예: "계약 절반의 문턱, 이번 주 무슨 일이? 👀" / "9월이 오기 전, 꼭 봐야 할 소식 🔮"
 - intro: 인사 + 이번 호 핵심 요약 2문장
 - 각 sections 값: 해당 카테고리를 2~3문장의 짧은 이야기로. 수치는 자연스럽게 녹이고, 데이터에 없는 사실을 지어내지 마세요.
 - 생일·근속 기념일이 있으면 intro에 자연스럽게 축하를 담으세요.
@@ -126,6 +127,7 @@ export function parseStoryJson(text) {
   }
   return {
     headline: obj.headline,
+    teaser: isStr(obj?.teaser) ? obj.teaser : undefined, // 선택 — 없어도 통과
     intro: obj.intro,
     sections: {
       contracts: s.contracts,
@@ -141,6 +143,7 @@ export function fallbackStory(payload) {
   const c = payload.contracts;
   return {
     headline: `이번 주 운영부 — 계약 완료 ${c.totalDone}건 (${pct(c.totalDone, c.totalOngoing)})`,
+    teaser: "이번 주 운영부 소식, 지금 뉴스레터에서 확인하세요 ✨",
     intro: "이번 주 운영부 주요 현황을 전해드립니다.",
     sections: {
       contracts: `누적 계약 완료 ${c.totalDone}건, 진행중 ${c.totalOngoing}건으로 완료율 ${pct(c.totalDone, c.totalOngoing)}입니다.`,

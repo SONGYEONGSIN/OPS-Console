@@ -423,6 +423,8 @@ export type BriefingImages = {
 /** claude -p가 생성하는 뉴스레터 스토리 — 캐치 제목 + 인트로 + 섹션별 이야기. */
 export type BriefingStory = {
   headline: string;
+  /** Teams 티저용 낚시 한 줄('운영부 마법사' 페르소나·자극적). 없으면 기본 문구. */
+  teaser?: string;
   intro: string;
   sections: {
     contracts: string;
@@ -463,6 +465,8 @@ export function buildBriefingTeaserHtml(input: {
   dateLabel: string;
   /** claude -p 생성 캐치 제목 — 있으면 첫 줄, 제호는 둘째 줄로 */
   headline?: string;
+  /** claude -p 생성 낚시 티저(페르소나·자극적) — 없으면 기본 호기심 문구 */
+  teaser?: string;
   contracts: ContractSummary;
   closing: ClosingItem[];
   aiWork: AiWorkBrief;
@@ -473,27 +477,29 @@ export function buildBriefingTeaserHtml(input: {
     issueNo,
     dateLabel,
     headline,
+    teaser,
     contracts,
     closing,
     aiWork,
     tips,
     url,
   } = input;
+  const issue = `#${String(issueNo).padStart(3, "0")}`; // 뉴스레터와 동일 3자리
   const totalAll = contracts.totalDone + contracts.totalOngoing;
   const savedSuffix =
     aiWork.savedHours > 0 ? `(절감 ${fmtHours(aiWork.savedHours)}h)` : "";
   const lines: string[] = [];
   if (headline) {
     lines.push(`<b>📰 ${escapeHtml(headline)}</b>`);
-    lines.push(
-      `<br/>운영부 주간 브리핑 #${issueNo} · ${escapeHtml(dateLabel)}`,
-    );
+    lines.push(`<br/>운영부 주간 브리핑 ${issue} · ${escapeHtml(dateLabel)}`);
   } else {
     lines.push(
-      `<b>📰 [운영부 주간 브리핑] #${issueNo} · ${escapeHtml(dateLabel)}</b>`,
+      `<b>📰 [운영부 주간 브리핑] ${issue} · ${escapeHtml(dateLabel)}</b>`,
     );
   }
-  lines.push(`<br/><br/>👀 이번 주 운영부, 무슨 일이 있었을까요?`);
+  lines.push(
+    `<br/><br/>👀 ${escapeHtml(teaser || "이번 주 운영부, 무슨 일이 있었을까요?")}`,
+  );
   lines.push(
     `<br/>계약 총 ${totalAll} · 완료 ${contracts.totalDone} · 진행중 ${contracts.totalOngoing} (완료 ${completionPct(contracts.totalDone, contracts.totalOngoing)})`,
   );

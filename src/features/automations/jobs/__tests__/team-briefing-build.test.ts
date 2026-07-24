@@ -173,7 +173,7 @@ describe("buildBriefingTeaserHtml", () => {
 
   it("제호(호수·날짜) + 핵심 수치 + 뉴스레터 링크", () => {
     const html = buildBriefingTeaserHtml(base);
-    expect(html).toContain("[운영부 주간 브리핑] #12");
+    expect(html).toContain("[운영부 주간 브리핑] #012");
     expect(html).toContain("2026-07-17 (금)");
     expect(html).toContain("완료 3");
     expect(html).toContain("진행중 1");
@@ -201,7 +201,15 @@ describe("buildBriefingTeaserHtml", () => {
       headline: "계약 340건 돌파! 이번 주 운영부가 해낸 일들",
     });
     expect(html).toContain("📰 계약 340건 돌파! 이번 주 운영부가 해낸 일들");
-    expect(html).toContain("운영부 주간 브리핑 #12 · 2026-07-17 (금)");
+    expect(html).toContain("운영부 주간 브리핑 #012 · 2026-07-17 (금)");
+  });
+
+  it("teaser가 있으면 낚시 문구로 사용", () => {
+    const html = buildBriefingTeaserHtml({
+      ...base,
+      teaser: "계약 절반의 문턱, 이번 주 무슨 일이? 👀",
+    });
+    expect(html).toContain("계약 절반의 문턱, 이번 주 무슨 일이? 👀");
   });
 });
 

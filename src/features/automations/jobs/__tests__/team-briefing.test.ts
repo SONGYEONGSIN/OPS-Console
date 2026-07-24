@@ -155,7 +155,7 @@ describe("runTeamBriefing", () => {
     const arg = sendTeamsMock.mock.calls[0][0];
     expect(arg.operatorEmail).toBe("ops@x.com");
     expect(arg.chatId).toBe("chat-1");
-    expect(arg.html).toContain("[운영부 주간 브리핑] #1");
+    expect(arg.html).toContain("[운영부 주간 브리핑] #001");
     expect(arg.html).toContain("마감 임박 1건");
     expect(arg.html).toContain("/r/briefing/");
     expect(arg.html).toContain("뉴스레터에서 전체 이야기 확인하기");
