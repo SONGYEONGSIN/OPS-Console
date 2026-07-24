@@ -398,6 +398,7 @@ export async function publishBriefing(
     issueNo,
     dateLabel: payload.dateLabel,
     headline: payload.story?.headline,
+    teaser: payload.story?.teaser,
     contracts: payload.contracts,
     closing: payload.closing,
     aiWork: payload.aiWork,
