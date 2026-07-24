@@ -13,9 +13,11 @@ const DEBOUNCE_MS = 300;
  */
 export function ClosingControls({
   categories,
+  universityTypes,
   months,
 }: {
   categories: string[];
+  universityTypes: string[];
   months: string[];
 }) {
   const router = useRouter();
@@ -24,6 +26,7 @@ export function ClosingControls({
 
   const [q, setQ] = useState(params.get("q") ?? "");
   const category = params.get("category") ?? "";
+  const universityType = params.get("universityType") ?? "";
   const month = params.get("month") ?? "";
 
   useEffect(() => {
@@ -62,6 +65,13 @@ export function ClosingControls({
         options={categories}
         placeholder="카테고리 전체"
         ariaLabel="카테고리 필터"
+      />
+      <ListSelect
+        value={universityType}
+        onChange={(v) => navigate({ universityType: v || null })}
+        options={universityTypes}
+        placeholder="대학구분 전체"
+        ariaLabel="대학구분 필터"
       />
       <ListSelect
         value={month}
