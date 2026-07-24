@@ -49,22 +49,50 @@ export default async function ClosingPage({
   const closedStatus = status === "open" ? "open" : "all";
   const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
 
-  const [{ rows: closing, total }, categories, universityTypes, months] =
-    await Promise.all([
-      listClosing({
-        page: sp.page ? Number(sp.page) : 1,
-        pageSize: 30,
-        search: sp.q,
-        category: sp.category,
-        universityType: sp.universityType,
-        month: sp.month,
-        closedStatus,
-        operatorName,
-      }),
-      listClosingCategories(),
-      listClosingUniversityTypes(),
-      listClosingMonths(),
-    ]);
+  // 칩 카운트 — scope(status/mine) 무시, 검색·카테고리 등 다른 필터는 적용. count-only(pageSize:1).
+  const countFilter = {
+    search: sp.q,
+    category: sp.category,
+    universityType: sp.universityType,
+    month: sp.month,
+  } as const;
+
+  const [
+    { rows: closing, total },
+    categories,
+    universityTypes,
+    months,
+    allCount,
+    mineCount,
+    openCount,
+  ] = await Promise.all([
+    listClosing({
+      page: sp.page ? Number(sp.page) : 1,
+      pageSize: 30,
+      search: sp.q,
+      category: sp.category,
+      universityType: sp.universityType,
+      month: sp.month,
+      closedStatus,
+      operatorName,
+    }),
+    listClosingCategories(),
+    listClosingUniversityTypes(),
+    listClosingMonths(),
+    listClosing({ ...countFilter, closedStatus: "all", pageSize: 1 }).then(
+      (r) => r.total,
+    ),
+    listClosing({
+      ...countFilter,
+      closedStatus: "all",
+      operatorName: me?.displayName ?? "",
+      pageSize: 1,
+    }).then((r) => r.total),
+    listClosing({ ...countFilter, closedStatus: "open", pageSize: 1 }).then(
+      (r) => r.total,
+    ),
+  ]);
+  const counts = { all: allCount, mine: mineCount, open: openCount };
   const rows: ListRow[] = closing.map(closingRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
@@ -97,7 +125,7 @@ export default async function ClosingPage({
           months={months}
         />
       }
-      inlineFilters={<ClosingStatusChips key="closing-scope" />}
+      inlineFilters={<ClosingStatusChips key="closing-scope" counts={counts} />}
       footer={
         <ListPagination key="closing-pagination" total={total} pageSize={30} />
       }
