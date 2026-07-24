@@ -118,6 +118,26 @@ export async function listClosingCategories(): Promise<string[]> {
   return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
 }
 
+/** 대학구분 셀렉트 옵션 — closing_services의 distinct university_type(빈값 제외) 가나다순. */
+export async function listClosingUniversityTypes(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("closing_services")
+    .select("university_type");
+  if (error) {
+    console.error("[listClosingUniversityTypes] supabase error:", error);
+    return [];
+  }
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const t = (
+      row as { university_type?: string | null }
+    ).university_type?.trim();
+    if (t) set.add(t);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
+}
+
 /**
  * 월별 셀렉트 옵션 — closing_services의 오픈(write_start_at)·마감(write_end_at) 날짜에서
  * distinct "YYYY-MM" 수집(빈값 제외). 최신 월 먼저(내림차순).

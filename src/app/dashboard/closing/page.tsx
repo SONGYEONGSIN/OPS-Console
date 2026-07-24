@@ -9,6 +9,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import {
   listClosing,
   listClosingCategories,
+  listClosingUniversityTypes,
   listClosingMonths,
 } from "@/features/closing/queries";
 import { closingRowToListRow } from "./_row-mapper";
@@ -28,6 +29,7 @@ export default async function ClosingPage({
     status?: string;
     q?: string;
     category?: string;
+    universityType?: string;
     month?: string;
   }>;
 }) {
@@ -47,19 +49,22 @@ export default async function ClosingPage({
   const closedStatus = status === "open" ? "open" : "all";
   const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
 
-  const [{ rows: closing, total }, categories, months] = await Promise.all([
-    listClosing({
-      page: sp.page ? Number(sp.page) : 1,
-      pageSize: 30,
-      search: sp.q,
-      category: sp.category,
-      month: sp.month,
-      closedStatus,
-      operatorName,
-    }),
-    listClosingCategories(),
-    listClosingMonths(),
-  ]);
+  const [{ rows: closing, total }, categories, universityTypes, months] =
+    await Promise.all([
+      listClosing({
+        page: sp.page ? Number(sp.page) : 1,
+        pageSize: 30,
+        search: sp.q,
+        category: sp.category,
+        universityType: sp.universityType,
+        month: sp.month,
+        closedStatus,
+        operatorName,
+      }),
+      listClosingCategories(),
+      listClosingUniversityTypes(),
+      listClosingMonths(),
+    ]);
   const rows: ListRow[] = closing.map(closingRowToListRow);
   const config = resolvePageMeta(slug, meta, total);
 
@@ -88,6 +93,7 @@ export default async function ClosingPage({
         <ClosingControls
           key="closing-controls"
           categories={categories}
+          universityTypes={universityTypes}
           months={months}
         />
       }
