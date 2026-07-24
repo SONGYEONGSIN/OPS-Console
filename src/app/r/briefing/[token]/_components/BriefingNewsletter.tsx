@@ -313,9 +313,9 @@ export function BriefingNewsletter({
                     ? ` · 절감 ${fmtHours(aiWork.savedHours)}h`
                     : ""}
                 </h3>
-                {aiWork.count === 0 ? (
+                {aiWork.items.length === 0 ? (
                   <div className="mt-1.5">
-                    <Empty>이번 주 신규 AI 작업 없음</Empty>
+                    <Empty>아직 등록된 AI 작업이 없어요</Empty>
                   </div>
                 ) : (
                   <ul className="mt-1.5 space-y-1">
@@ -344,9 +344,9 @@ export function BriefingNewsletter({
                 <h3 className="text-sm font-bold">
                   TIP 공유 · 신규 {tips.newCount} / 누적 {tips.totalCount}
                 </h3>
-                {tips.newCount === 0 ? (
+                {tips.items.length === 0 ? (
                   <div className="mt-1.5">
-                    <Empty>신규 TIP 없음</Empty>
+                    <Empty>아직 등록된 TIP이 없어요</Empty>
                   </div>
                 ) : (
                   <ul className="mt-1.5 space-y-1">

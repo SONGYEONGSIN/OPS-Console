@@ -237,6 +237,8 @@ describe("BriefingNewsletter", () => {
     );
     expect(screen.getByText("예정된 일정 없음")).toBeInTheDocument();
     expect(screen.getByText("임박한 마감 없음")).toBeInTheDocument();
-    expect(screen.getByText("이번 주 신규 AI 작업 없음")).toBeInTheDocument();
+    expect(
+      screen.getByText("아직 등록된 AI 작업이 없어요"),
+    ).toBeInTheDocument();
   });
 });

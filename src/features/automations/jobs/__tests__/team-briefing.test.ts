@@ -29,20 +29,27 @@ vi.mock("@/features/contracts/queries", () => ({
 
 import { runTeamBriefing } from "../team-briefing";
 
+type ChainResult = { data: unknown[]; count: number; error: null };
 type Chain = {
   select: () => Chain;
   not: () => Chain;
   gte: () => Chain;
   lte: () => Chain;
-  order: () => Promise<{ data: unknown[]; error: unknown }>;
+  order: () => Chain;
+  limit: () => Chain;
+  then: (resolve: (v: ChainResult) => void) => void;
 };
+// 완전 체이너블 + thenable — 어느 체인 뒤에 await/limit이 와도 동작.
 function chain(data: unknown[]): Chain {
+  const result: ChainResult = { data, count: data.length, error: null };
   const c: Chain = {
     select: () => c,
     not: () => c,
     gte: () => c,
     lte: () => c,
-    order: () => Promise.resolve({ data, error: null }),
+    order: () => c,
+    limit: () => c,
+    then: (resolve) => resolve(result),
   };
   return c;
 }
