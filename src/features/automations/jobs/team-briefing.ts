@@ -228,59 +228,72 @@ export async function buildBriefingData(): Promise<
     images = undefined;
   }
 
-  const { data: awData, error: awErr } = await admin
+  type AwRow = {
+    title: string;
+    ai_tool: string;
+    author_email: string;
+    saved_hours: number | null;
+  };
+  const mapAw = (rows: AwRow[] | null) =>
+    (rows ?? []).map((w) => ({
+      title: w.title,
+      ai_tool: w.ai_tool,
+      author_name: displayName(w.author_email),
+      saved_hours: w.saved_hours,
+    }));
+  const AW_SELECT = "title, ai_tool, author_email, saved_hours";
+  const { data: awNew, error: awErr } = await admin
     .from("ai_work")
-    .select("title, ai_tool, author_email, saved_hours")
+    .select(AW_SELECT)
     .gte("created_at", sinceIso)
     .order("created_at", { ascending: false });
   if (awErr)
     return { ok: false, message: `AI 작업 조회 실패: ${awErr.message}` };
+  // 목록은 최근 누적에서 채운다(신규 0이어도 최근 작업 노출). 5 = AI_LIST_MAX.
+  const { data: awRecent } = await admin
+    .from("ai_work")
+    .select(AW_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(5);
   const { count: aiWorkTotal, error: awtErr } = await admin
     .from("ai_work")
     .select("id", { count: "exact", head: true });
   if (awtErr)
     return { ok: false, message: `AI 작업 누적 조회 실패: ${awtErr.message}` };
   const aiWork = summarizeAiWork(
-    (
-      (awData ?? []) as {
-        title: string;
-        ai_tool: string;
-        author_email: string;
-        saved_hours: number | null;
-      }[]
-    ).map((w) => ({
-      title: w.title,
-      ai_tool: w.ai_tool,
-      author_name: displayName(w.author_email),
-      saved_hours: w.saved_hours,
-    })),
+    mapAw(awNew as AwRow[] | null),
+    mapAw(awRecent as AwRow[] | null),
     aiWorkTotal ?? 0,
   );
 
-  const { data: tipNewData, error: tnErr } = await admin
-    .from("ai_tips")
-    .select("title, ai_tool, author_email")
-    .gte("created_at", sinceIso)
-    .order("created_at", { ascending: false });
-  if (tnErr) return { ok: false, message: `TIP 조회 실패: ${tnErr.message}` };
-  const { data: tipAllData, error: taErr } = await admin
-    .from("ai_tips")
-    .select("id")
-    .order("created_at", { ascending: false });
-  if (taErr)
-    return { ok: false, message: `TIP 누적 조회 실패: ${taErr.message}` };
-  const tips = summarizeTips(
-    (
-      (tipNewData ?? []) as {
-        title: string;
-        ai_tool: string;
-        author_email: string;
-      }[]
-    ).map((t) => ({
+  type TipRow = { title: string; ai_tool: string; author_email: string };
+  const mapTip = (rows: TipRow[] | null) =>
+    (rows ?? []).map((t) => ({
       title: t.title,
       ai_tool: t.ai_tool,
       author_name: displayName(t.author_email),
-    })),
+    }));
+  const TIP_SELECT = "title, ai_tool, author_email";
+  const { data: tipNewData, error: tnErr } = await admin
+    .from("ai_tips")
+    .select(TIP_SELECT)
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false });
+  if (tnErr) return { ok: false, message: `TIP 조회 실패: ${tnErr.message}` };
+  // 목록은 최근 누적에서 채운다(신규 3건 미만이어도). 5 = AI_LIST_MAX.
+  const { data: tipRecent } = await admin
+    .from("ai_tips")
+    .select(TIP_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const { data: tipAllData, error: taErr } = await admin
+    .from("ai_tips")
+    .select("id");
+  if (taErr)
+    return { ok: false, message: `TIP 누적 조회 실패: ${taErr.message}` };
+  const tips = summarizeTips(
+    mapTip(tipNewData as TipRow[] | null),
+    mapTip(tipRecent as TipRow[] | null),
     (tipAllData ?? []).length,
   );
 

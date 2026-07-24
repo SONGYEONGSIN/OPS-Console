@@ -184,18 +184,23 @@ export function fmtHours(h: number): string {
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
 
-/** 최근 7일 신규 AI 작업 목록 + 누적 건수 (TIP과 동일한 신규/누적 표기). */
+/**
+ * AI 작업 — 신규 건수·절감(신규 기준). 목록(items)은 최근 누적에서 최대 N건 채운다
+ * (이번 주 신규가 0이어도 최근 작업이 보이도록). newRows=이번 주 신규, recentRows=최근순 누적.
+ */
 export function summarizeAiWork(
-  rows: AiWorkBriefItem[],
+  newRows: AiWorkBriefItem[],
+  recentRows: AiWorkBriefItem[],
   totalCount: number,
   maxItems = AI_LIST_MAX,
 ): AiWorkBrief {
+  const items = recentRows.slice(0, maxItems);
   return {
-    count: rows.length,
+    count: newRows.length,
     totalCount,
-    savedHours: rows.reduce((a, r) => a + (r.saved_hours ?? 0), 0),
-    items: rows.slice(0, maxItems),
-    more: Math.max(0, rows.length - maxItems),
+    savedHours: newRows.reduce((a, r) => a + (r.saved_hours ?? 0), 0),
+    items,
+    more: Math.max(0, totalCount - items.length),
   };
 }
 
@@ -211,17 +216,22 @@ export type TipsBrief = {
   more: number;
 };
 
-/** 최근 7일 신규 TIP 목록 + 누적 건수. */
+/**
+ * TIP — 신규/누적 건수. 목록(items)은 최근 누적에서 최대 N건 채운다
+ * (이번 주 신규가 3건 미만이어도 최근 TIP이 보이도록). newRows=신규, recentRows=최근순 누적.
+ */
 export function summarizeTips(
   newRows: TipBriefItem[],
+  recentRows: TipBriefItem[],
   totalCount: number,
   maxItems = AI_LIST_MAX,
 ): TipsBrief {
+  const items = recentRows.slice(0, maxItems);
   return {
     newCount: newRows.length,
     totalCount,
-    items: newRows.slice(0, maxItems),
-    more: Math.max(0, newRows.length - maxItems),
+    items,
+    more: Math.max(0, totalCount - items.length),
   };
 }
 
