@@ -59,6 +59,7 @@ const DOT_COLOR: Record<CalendarCategory, string> = {
   application: "bg-vermilion-deep",
   pims: "bg-gold",
   external_meeting: "bg-indigo",
+  meeting: "bg-sage",
   "payment-personal": "bg-gold",
   "payment-shared": "bg-green-light",
 };
