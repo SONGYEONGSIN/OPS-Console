@@ -67,7 +67,9 @@ const payload = {
       },
     ],
   },
-  milestones: [{ name: "박시현", years: 10, dateYmd: "2026-07-22" }],
+  milestones: [
+    { name: "박시현", years: 10, dateYmd: "2026-07-22", isPast: false },
+  ],
   birthdays: [{ name: "김유민", dateYmd: "2026-07-21" }],
 };
 
@@ -122,9 +124,7 @@ describe("parseStoryJson", () => {
   it("필드 누락/비문자열 → null", () => {
     expect(parseStoryJson(JSON.stringify({ headline: "x" }))).toBeNull();
     expect(
-      parseStoryJson(
-        JSON.stringify({ ...valid, sections: { contracts: 1 } }),
-      ),
+      parseStoryJson(JSON.stringify({ ...valid, sections: { contracts: 1 } })),
     ).toBeNull();
   });
 

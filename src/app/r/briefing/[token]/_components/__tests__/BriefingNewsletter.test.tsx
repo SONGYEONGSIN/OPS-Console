@@ -60,7 +60,9 @@ const payload: BriefingPayload = {
   tips: {
     newCount: 1,
     totalCount: 30,
-    items: [{ title: "요약 자동화 팁", ai_tool: "claude", author_name: "김유민" }],
+    items: [
+      { title: "요약 자동화 팁", ai_tool: "claude", author_name: "김유민" },
+    ],
     more: 0,
   },
   insights: {
@@ -153,7 +155,9 @@ describe("BriefingNewsletter", () => {
     expect(
       screen.getByText(/4년제 시트에서 완료율이 크게 올랐어요/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/건국대 수시 마감이 코앞입니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/건국대 수시 마감이 코앞입니다/),
+    ).toBeInTheDocument();
   });
 
   it("기념일 코너 — 근속 + 생일 함께 렌더, 없으면 미노출", () => {
@@ -162,7 +166,9 @@ describe("BriefingNewsletter", () => {
         issueNo={12}
         payload={{
           ...payload,
-          milestones: [{ name: "박시현", years: 10, dateYmd: "2026-07-22" }],
+          milestones: [
+            { name: "박시현", years: 10, dateYmd: "2026-07-22", isPast: false },
+          ],
           birthdays: [{ name: "김유민", dateYmd: "2026-07-21" }],
         }}
       />,
@@ -184,14 +190,15 @@ describe("BriefingNewsletter", () => {
         payload={{
           ...payload,
           images: {
-            cover: { src: "https://cdn/x/cover.jpg", caption: "운영1팀 단체사진" },
+            cover: {
+              src: "https://cdn/x/cover.jpg",
+              caption: "운영1팀 단체사진",
+            },
             gallery: [
               { src: "https://cdn/x/g1.jpg", caption: "발표하는 승철 부장님" },
               { src: "https://cdn/x/g2.jpg" },
             ],
-            videos: [
-              { src: "https://cdn/x/v1.mp4", caption: "미션 영상" },
-            ],
+            videos: [{ src: "https://cdn/x/v1.mp4", caption: "미션 영상" }],
           },
         }}
       />,
@@ -216,7 +223,13 @@ describe("BriefingNewsletter", () => {
           ...payload,
           schedule: [],
           closing: [],
-          aiWork: { count: 0, totalCount: 0, savedHours: 0, items: [], more: 0 },
+          aiWork: {
+            count: 0,
+            totalCount: 0,
+            savedHours: 0,
+            items: [],
+            more: 0,
+          },
           tips: { newCount: 0, totalCount: 30, items: [], more: 0 },
           insights: { newCount: 0, items: [] },
         }}

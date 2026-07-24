@@ -184,7 +184,7 @@ describe("buildBriefingTeaserHtml", () => {
     expect(html).toContain(
       '<a href="https://ops.example.com/r/briefing/tok123">',
     );
-    expect(html).toContain("뉴스레터 전체 보기");
+    expect(html).toContain("뉴스레터에서 전체 이야기 확인하기");
   });
 
   it("절감 0시간이면 절감 표기 생략", () => {
@@ -284,16 +284,25 @@ describe("summarizeInsights", () => {
     url: `https://www.youtube.com/watch?v=${title}`,
   });
 
-  it("조회수 상위 N건(기본 3) — null은 뒤로, newCount는 전체", () => {
-    const s = summarizeInsights([
+  it("랜덤 최대 N건(기본 3) — newCount는 전체, items는 중복 없는 부분집합", () => {
+    const rows = [
       v("a", 100),
       v("b", null),
       v("c", 900),
       v("d", 500),
       v("e", 300),
-    ]);
+    ];
+    const s = summarizeInsights(rows);
     expect(s.newCount).toBe(5);
-    expect(s.items.map((i) => i.title)).toEqual(["c", "d", "e"]);
+    expect(s.items).toHaveLength(3);
+    const titles = new Set(rows.map((r) => r.title));
+    expect(s.items.every((i) => titles.has(i.title))).toBe(true);
+    expect(new Set(s.items.map((i) => i.title)).size).toBe(3);
+  });
+
+  it("수집이 N개 미만이면 전체 반환", () => {
+    const s = summarizeInsights([v("a", 1), v("b", 2)]);
+    expect(s.items).toHaveLength(2);
   });
 });
 
@@ -308,23 +317,26 @@ describe("upcomingAnniversaries", () => {
   it("발행일부터 7일 내 도래하는 입사 기념일만 (주년 계산·날짜 오름차순)", () => {
     const r = upcomingAnniversaries(ops, "2026-07-17");
     expect(r).toEqual([
-      { name: "김유민", years: 1, dateYmd: "2026-07-20" },
-      { name: "박시현", years: 10, dateYmd: "2026-07-22" },
+      { name: "김유민", years: 1, dateYmd: "2026-07-20", isPast: false },
+      { name: "박시현", years: 10, dateYmd: "2026-07-22", isPast: false },
     ]);
   });
 
-  it("최근 지난 기념일(며칠 전 만 N년)도 포함 — 창 밖(수개월)은 제외", () => {
-    // 전지은 케이스: 열흘 전 만 1년 → 포함
+  it("최근 지난 기념일도 포함하되 isPast:true로 표시 — 창 밖(수개월)은 제외", () => {
+    // 전지은 케이스: 열흘 전 만 1년 → 포함, 과거라 isPast:true (렌더는 과거형)
     const included = upcomingAnniversaries(
       [{ name: "전지은", hired_at: "2025-07-14" }],
       "2026-07-24",
     );
     expect(included).toEqual([
-      { name: "전지은", years: 1, dateYmd: "2026-07-14" },
+      { name: "전지은", years: 1, dateYmd: "2026-07-14", isPast: true },
     ]);
     // 수개월 뒤 기념일 → 제외
     expect(
-      upcomingAnniversaries([{ name: "먼사람", hired_at: "2020-11-01" }], "2026-07-24"),
+      upcomingAnniversaries(
+        [{ name: "먼사람", hired_at: "2020-11-01" }],
+        "2026-07-24",
+      ),
     ).toEqual([]);
   });
 
@@ -371,7 +383,10 @@ describe("upcomingBirthdays", () => {
 
   it("올해 생일이 지났으면 내년으로 — 윈도우 밖이면 제외", () => {
     expect(
-      upcomingBirthdays([{ name: "김유민", birth_date: "1995-07-10" }], "2026-07-17"),
+      upcomingBirthdays(
+        [{ name: "김유민", birth_date: "1995-07-10" }],
+        "2026-07-17",
+      ),
     ).toEqual([]);
   });
 
