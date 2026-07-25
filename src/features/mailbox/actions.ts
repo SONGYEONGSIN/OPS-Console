@@ -95,6 +95,41 @@ export async function sendMailReply(
   return { ok: true };
 }
 
+/** 메일 열람 처리 — 안읽음 → is_read=true. 본인/위임 메일함만. 이미 읽음이면 no-op. */
+export async function markMailRead(
+  messageId: string,
+): Promise<MailboxActionResult> {
+  if (!messageId) return { ok: false, error: "messageId 누락" };
+
+  const me = await getCurrentOperator();
+  if (!me?.email) return { ok: false, error: "로그인이 필요합니다." };
+
+  const admin = createAdminClient();
+  const { data: msg, error: msgErr } = await admin
+    .from("mailbox_messages")
+    .select("id, owner_email, is_read")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (msgErr) return { ok: false, error: msgErr.message };
+  if (!msg) return { ok: false, error: "메일을 찾을 수 없습니다." };
+
+  if (!(await canAccessMailbox(me.email, msg.owner_email))) {
+    return { ok: false, error: "권한 없음 — 본인 또는 위임받은 메일함이 아닙니다." };
+  }
+
+  // 이미 읽음이면 write·revalidate 스킵 (열람마다 리렌더 churn 방지).
+  if (msg.is_read) return { ok: true };
+
+  const { error } = await admin
+    .from("mailbox_messages")
+    .update({ is_read: true })
+    .eq("id", messageId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(MAILBOX_PATH);
+  return { ok: true };
+}
+
 /** 메일함 자동초안 토글 (요구사항 4). settings upsert. */
 export async function setAutoDraftEnabled(
   ownerEmail: string,

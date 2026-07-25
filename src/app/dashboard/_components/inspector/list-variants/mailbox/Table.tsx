@@ -6,6 +6,8 @@ type Props = {
   rows: ListRow[];
   selectedId: string | null;
   onSelect: (row: ListRow) => void;
+  /** 경과일 계산 기준(테스트 주입용). 기본 현재 시각. */
+  nowMs?: number;
 };
 
 function formatTime(iso?: string | null): string {
@@ -21,7 +23,15 @@ function formatTime(iso?: string | null): string {
   }).format(new Date(iso));
 }
 
-export function MailboxTable({ rows, selectedId, onSelect }: Props) {
+/** 수신 후 경과 일수(floor). 없음/미래면 0. */
+function daysSince(iso: string | null | undefined, nowMs: number): number {
+  if (!iso) return 0;
+  const d = nowMs - new Date(iso).getTime();
+  return d <= 0 ? 0 : Math.floor(d / 86_400_000);
+}
+
+export function MailboxTable({ rows, selectedId, onSelect, nowMs }: Props) {
+  const now = nowMs ?? new Date().getTime();
   return (
     <table className="w-full text-sm">
       <thead>
@@ -29,7 +39,7 @@ export function MailboxTable({ rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">상태</th>
           <th className="px-3 py-2">발신자</th>
           <th className="px-3 py-2">제목</th>
-          <th className="px-3 py-2">초안</th>
+          <th className="px-3 py-2">회신</th>
           <th className="px-3 py-2">수신</th>
         </tr>
       </thead>
@@ -63,13 +73,34 @@ export function MailboxTable({ rows, selectedId, onSelect }: Props) {
                 {row.mailSubject || "(제목 없음)"}
               </td>
               <td className="px-3 py-2">
-                {row.mailHasDraft ? (
-                  <span className="inline-block bg-line-soft px-2 py-0.5 text-xs text-ink">
-                    {row.mailDraftStatus === "sent" ? "발송됨" : "✎ 초안"}
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted">-</span>
-                )}
+                {(() => {
+                  const replied =
+                    row.mailDraftStatus === "sent" ||
+                    row.mailDraftStatus === "dry_run";
+                  if (replied) {
+                    return <span className="text-xs text-muted">회신완료</span>;
+                  }
+                  const days = daysSince(row.mailReceivedAt, now);
+                  return (
+                    <span className="inline-flex items-center gap-1 text-xs">
+                      {days >= 1 && (
+                        <span
+                          className={
+                            days >= 3 ? "text-vermilion" : "text-muted"
+                          }
+                        >
+                          {days}일 경과 ·
+                        </span>
+                      )}
+                      <span className="font-medium text-ink">미회신</span>
+                      {row.mailHasDraft && (
+                        <span className="text-muted" title="AI 초안 대기">
+                          ✦
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
               </td>
               <td className="px-3 py-2 text-sm text-ink-soft">
                 {formatTime(row.mailReceivedAt)}

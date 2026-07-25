@@ -80,14 +80,14 @@ describe("MailboxView", () => {
 });
 
 describe("MailboxTable", () => {
-  it("열 헤더 — 상태/발신자/제목/초안/수신", () => {
+  it("열 헤더 — 상태/발신자/제목/회신/수신", () => {
     render(
       <MailboxTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
     );
     expect(screen.getByText("상태")).toBeInTheDocument();
     expect(screen.getByText("발신자")).toBeInTheDocument();
     expect(screen.getByText("제목")).toBeInTheDocument();
-    expect(screen.getByText("초안")).toBeInTheDocument();
+    expect(screen.getByText("회신")).toBeInTheDocument();
     expect(screen.getByText("수신")).toBeInTheDocument();
   });
 
@@ -109,14 +109,15 @@ describe("MailboxTable", () => {
     expect(screen.getByText("○")).toBeInTheDocument();
   });
 
-  it("초안 있음 — 배지 노출", () => {
+  it("미회신(미발송 초안) — '미회신' + AI초안 대기(✦)", () => {
     render(
       <MailboxTable rows={[baseRow]} selectedId={null} onSelect={vi.fn()} />,
     );
-    expect(screen.getByText("✎ 초안")).toBeInTheDocument();
+    expect(screen.getByText("미회신")).toBeInTheDocument();
+    expect(screen.getByText("✦")).toBeInTheDocument();
   });
 
-  it("발송됨 — '발송됨' 배지", () => {
+  it("발송됨 — '회신완료' 표시", () => {
     render(
       <MailboxTable
         rows={[{ ...baseRow, mailDraftStatus: "sent" }]}
@@ -124,7 +125,7 @@ describe("MailboxTable", () => {
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.getByText("발송됨")).toBeInTheDocument();
+    expect(screen.getByText("회신완료")).toBeInTheDocument();
   });
 
   it("행 클릭 — onSelect 호출", () => {

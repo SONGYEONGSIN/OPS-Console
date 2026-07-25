@@ -28,6 +28,7 @@ import {
   ensureMailboxSettings,
   grantMailboxDelegation,
   revokeMailboxDelegation,
+  markMailRead,
 } from "../actions";
 
 /** message_id로 owner/from/subject join 조회 → 결과를 반환하는 가짜 admin client */
@@ -170,6 +171,70 @@ describe("sendMailReply", () => {
     mockAdmin.mockReturnValue(client);
     const r = await sendMailReply(msg.id, "회신");
     expect(r.ok).toBe(false);
+  });
+});
+
+function makeReadAdmin(message: Record<string, unknown> | null) {
+  const updateEq = vi.fn().mockResolvedValue({ error: null });
+  const update = vi.fn().mockReturnValue({ eq: updateEq });
+  const from = vi.fn((table: string) => {
+    if (table === "mailbox_messages") {
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: vi
+              .fn()
+              .mockResolvedValue({ data: message, error: null }),
+          }),
+        }),
+        update,
+      };
+    }
+    throw new Error("unexpected table " + table);
+  });
+  return { client: { from }, update };
+}
+
+describe("markMailRead", () => {
+  const MID = "22222222-2222-4222-8222-222222222222";
+
+  it("안읽음 메일 열람 → is_read=true update", async () => {
+    mockCanAccess.mockResolvedValue(true);
+    const { client, update } = makeReadAdmin({
+      id: MID,
+      owner_email: "op@x.com",
+      is_read: false,
+    });
+    mockAdmin.mockReturnValue(client);
+    const r = await markMailRead(MID);
+    expect(r.ok).toBe(true);
+    expect(update).toHaveBeenCalledWith({ is_read: true });
+  });
+
+  it("이미 읽은 메일이면 update 미호출 (no-op)", async () => {
+    mockCanAccess.mockResolvedValue(true);
+    const { client, update } = makeReadAdmin({
+      id: MID,
+      owner_email: "op@x.com",
+      is_read: true,
+    });
+    mockAdmin.mockReturnValue(client);
+    const r = await markMailRead(MID);
+    expect(r.ok).toBe(true);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("권한 없는 메일함이면 거부 + update 미호출", async () => {
+    mockCanAccess.mockResolvedValue(false);
+    const { client, update } = makeReadAdmin({
+      id: MID,
+      owner_email: "op@x.com",
+      is_read: false,
+    });
+    mockAdmin.mockReturnValue(client);
+    const r = await markMailRead(MID);
+    expect(r.ok).toBe(false);
+    expect(update).not.toHaveBeenCalled();
   });
 });
 
