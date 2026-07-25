@@ -8,7 +8,14 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listMailbox, getAutoDraftEnabled } from "@/features/mailbox/queries";
 import {
+  filterScope,
+  countScopes,
+  matchesSearch,
+  type MailboxScope,
+} from "@/features/mailbox/triage";
+import {
   sendMailReply,
+  markMailRead,
   ensureMailboxSettings,
 } from "@/features/mailbox/actions";
 import {
@@ -22,13 +29,22 @@ import { mailboxEntryToListRow } from "./_row-mapper";
 import { AutoDraftToggle } from "./AutoDraftToggle";
 import { MailboxOwnerSwitcher } from "./MailboxOwnerSwitcher";
 import { MailboxDelegationPanel } from "./MailboxDelegationPanel";
+import { MailboxScopeChips } from "./MailboxScopeChips";
+import { MailboxControls } from "./MailboxControls";
 
 const PAGE_SIZE = 30;
+// 트리아지: 전량(상한) fetch 후 인메모리 검색·scope 필터·slice (receivables 방식).
+const FETCH_LIMIT = 500;
 
 export default async function MailboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ owner?: string; page?: string }>;
+  searchParams: Promise<{
+    owner?: string;
+    page?: string;
+    scope?: string;
+    q?: string;
+  }>;
 }) {
   const slug = "mailbox";
   await requireMenu(slug);
@@ -75,14 +91,27 @@ export default async function MailboxPage({
     })),
   ];
 
-  const entries = owner ? await listMailbox(owner) : [];
+  const allEntries = owner ? await listMailbox(owner, FETCH_LIMIT) : [];
   const autoEnabled = owner ? await getAutoDraftEnabled(owner) : true;
-  // 30개 기준 client-side slice 페이지네이션. 메일함 전환 시 OwnerSwitcher가 page 초기화.
-  const total = entries.length;
+
+  // 트리아지 — 검색 적용 → scope별 카운트(칩) → scope 필터 → 30개 slice 페이지네이션.
+  const now = new Date().getTime();
+  const q = sp.q?.trim() ?? "";
+  const scope: MailboxScope =
+    sp.scope === "unreplied" || sp.scope === "today" || sp.scope === "unread"
+      ? sp.scope
+      : "all";
+  const searched = q
+    ? allEntries.filter((e) => matchesSearch(e, q))
+    : allEntries;
+  const counts = countScopes(searched, now);
+  const scoped = filterScope(searched, scope, now);
+
+  const total = scoped.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(totalPages, Math.max(1, Number(sp.page) || 1));
   const start = (page - 1) * PAGE_SIZE;
-  const rows: ListRow[] = entries
+  const rows: ListRow[] = scoped
     .slice(start, start + PAGE_SIZE)
     .map(mailboxEntryToListRow);
   const config = resolvePageMeta(slug, meta, total);
@@ -108,6 +137,12 @@ export default async function MailboxPage({
     return r.ok ? { ok: true } : { ok: false, error: r.error };
   }
 
+  // 메일 열람 시 읽음 처리(안읽음 → is_read=true). row.id = mailbox_messages.id.
+  async function onMailOpen(row: ListRow): Promise<void> {
+    "use server";
+    if (row.id) await markMailRead(row.id);
+  }
+
   return (
     <ListPattern
       title={meta.label}
@@ -118,6 +153,11 @@ export default async function MailboxPage({
       liveData
       currentUserName={me?.displayName ?? me?.email ?? ""}
       onMailReply={onMailReply}
+      onSelectRow={onMailOpen}
+      controlsRow={<MailboxControls key="mailbox-controls" />}
+      inlineFilters={
+        <MailboxScopeChips key="mailbox-scope" counts={counts} />
+      }
       footer={
         <ListPagination
           key="mailbox-pagination"
