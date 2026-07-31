@@ -34,14 +34,23 @@
 
 ### 초안 알림 채팅 ID 얻는 법 (1회)
 
-Graph `/chats` 조회는 위임 토큰이 필요해 스크립트로는 안 된다. Teams 클라이언트에서 직접 얻는다.
+**"나와의 채팅"(Notes to self)을 쓸 경우 값은 `48:notes` 고정이다.**
 
-1. Teams에서 알림받을 채팅(본인과의 채팅 권장)을 연다
-2. 채팅 상단 `⋯` → **채팅 링크 복사**
-3. 복사된 URL에서 `19:`로 시작해 `@thread.v2`로 끝나는 구간이 chat ID다
-   `https://teams.microsoft.com/l/chat/19%3Aabc...%40thread.v2/0` → `19:abc...@thread.v2`
-   (`%3A`→`:`, `%40`→`@` 로 디코딩)
-4. `.env.local`과 Vercel 환경변수에 `TEAMS_BRIEFING_DRAFT_CHAT_ID`로 등록
+```
+TEAMS_BRIEFING_DRAFT_CHAT_ID=48:notes
+```
+
+`48:notes`는 Graph `GET /me/chats` **목록에는 나오지 않지만**
+`POST /chats/48%3Anotes/messages`는 정상 동작한다 (2026-07-31 실측 201).
+목록에 없다고 잘못된 값으로 판단하지 말 것.
+
+다른 채팅(1:1·그룹)을 쓰려면 Teams에서 채팅 상단 `⋯` → **채팅 링크 복사** 후
+URL에서 `19:`로 시작해 `@thread.v2` 또는 `@unq.gbl.spaces`로 끝나는 구간을 쓴다
+(`%3A`→`:`, `%40`→`@` 로 디코딩). 목록 확인은 `listMyChats(operatorEmail)` 헬퍼
+(`src/lib/microsoft/teams.ts`) 참조 — 위임 토큰이 필요해 앱 컨텍스트에서만 동작한다.
+
+`.env.local`과 **Vercel 환경변수(Production)** 양쪽에 등록한다. 실제 알림 발송은
+서버(`/api/team-briefing/stage`)에서 일어나므로 **Vercel 쪽이 실제 동작을 좌우한다.**
 
 ## Windows 작업 스케줄러 등록 (회사 PC, 1회)
 
