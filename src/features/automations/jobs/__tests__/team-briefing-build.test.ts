@@ -17,6 +17,8 @@ import {
   FEATURE_INTROS,
   excludeSeenCelebrations,
   celebrationKey,
+  pickAlbum,
+  ALBUM_MAX,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
@@ -482,5 +484,40 @@ describe("upcomingBirthdays", () => {
         "2026-07-17",
       ),
     ).toEqual([]);
+  });
+});
+
+describe("pickAlbum — 앨범 노출 상한", () => {
+  const media = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      src: `https://cdn/p${i + 1}.jpg`,
+      caption: `사진 ${i + 1}`,
+    }));
+
+  it("11장이면 커버 1 + 앨범 10 — 한 장도 잘리지 않는다", () => {
+    const r = pickAlbum(media(11), []);
+    expect(r!.cover!.caption).toBe("사진 1");
+    expect(r!.gallery).toHaveLength(10);
+    expect(r!.gallery!.at(-1)!.caption).toBe("사진 11");
+  });
+
+  it("상한을 넘으면 커버 포함 ALBUM_MAX장까지만", () => {
+    const r = pickAlbum(media(ALBUM_MAX + 5), []);
+    expect(r!.gallery).toHaveLength(ALBUM_MAX - 1);
+  });
+
+  it("영상은 최대 2건", () => {
+    const r = pickAlbum(media(1), media(4));
+    expect(r!.videos).toHaveLength(2);
+  });
+
+  it("사진·영상이 모두 없으면 undefined", () => {
+    expect(pickAlbum([], [])).toBeUndefined();
+  });
+
+  it("영상만 있으면 커버 없이 영상만", () => {
+    const r = pickAlbum([], media(1));
+    expect(r!.cover).toBeUndefined();
+    expect(r!.videos).toHaveLength(1);
   });
 });
