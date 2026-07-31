@@ -6,7 +6,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   runAutomationInputSchema,
   setAutomationEnabledInputSchema,
+  publishBriefingDraftInputSchema,
 } from "./schemas";
+import { publishStagedDraft } from "./jobs/team-briefing";
 import { getJob } from "./registry";
 import {
   computeCooldownRemaining,
@@ -135,4 +137,37 @@ export async function setAutomationEnabledAction(
 
   revalidatePath("/dashboard/automations");
   return { ok: true, message: enabled ? "자동 실행 켜짐" : "자동 실행 꺼짐" };
+}
+
+/**
+ * 초안 발행 확정 — 자동화 페이지 [발행] 버튼. admin 전용.
+ * 사람이 미리보기로 내용을 확인한 뒤에만 그룹채팅 티저가 나간다.
+ * 실행 이력 메시지에 뉴스레터 링크를 남겨 로그에서 바로 열 수 있게 한다.
+ */
+export async function publishBriefingDraftAction(
+  _prev: RunActionState,
+  formData: FormData,
+): Promise<RunActionState> {
+  await requireAdmin();
+
+  const parsed = publishBriefingDraftInputSchema.safeParse({
+    draftId: formData.get("draftId"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0].message };
+  }
+
+  const startedMs = Date.now();
+  const r = await publishStagedDraft(parsed.data.draftId);
+  const message = r.ok
+    ? `#${r.issueNo}호 발행 (Teams ${r.sent ? "발송" : "생략"}) — ${r.url}`
+    : r.message;
+  await recordAutomationRun("team-briefing", {
+    ok: r.ok,
+    skipped: false,
+    message,
+    durationMs: Date.now() - startedMs,
+  });
+  revalidatePath("/dashboard/automations");
+  return { ok: r.ok, message };
 }
