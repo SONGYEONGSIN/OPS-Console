@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { publishBriefing } from "@/features/automations/jobs/team-briefing";
+import { stageBriefingDraft } from "@/features/automations/jobs/team-briefing";
 import type { BriefingPayload } from "@/features/automations/jobs/team-briefing-build";
 import { getJobEnabled } from "@/features/automations/queries";
 import { recordAutomationRun } from "@/features/automations/run-recorder";
@@ -7,11 +7,12 @@ import { recordAutomationRun } from "@/features/automations/run-recorder";
 const JOB_ID = "team-briefing";
 
 /**
- * 주간 브리핑 발행 — `Authorization: Bearer ${CRON_SECRET}` 인증.
- * body { payload } (claude -p 스토리 포함 가능) → team_briefings insert + Teams 티저 발송.
+ * 주간 브리핑 초안 저장 — `Authorization: Bearer ${CRON_SECRET}` 인증.
+ * body { payload } (claude -p 스토리 포함 가능) → team_briefings에 status='draft'로 insert.
+ * 그룹채팅 티저는 여기서 보내지 않는다 — 사람이 미리보기로 확인한 뒤 자동화 페이지에서 발행한다.
  *
- * enabled gate: 실제 부수효과(발행 + Teams 발송)가 일어나는 지점이므로 draft와 별개로
- * 여기서도 토글을 확인한다. 발행 결과는 automation_runs에 기록해 '마지막 실행'에 반영한다.
+ * enabled gate: draft 라우트와 별개로 여기서도 토글을 확인한다(직접 호출 차단).
+ * 초안 생성 결과는 automation_runs에 기록해 '마지막 실행'에 반영한다.
  */
 function authorized(request: NextRequest, secret: string): boolean {
   return request.headers.get("authorization") === `Bearer ${secret}`;
@@ -51,17 +52,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       skipped: true,
-      message: "자동 실행 OFF — 발행 skip",
+      message: "자동 실행 OFF — 초안 skip",
     });
   }
 
   const startedMs = Date.now();
-  const r = await publishBriefing(payload);
+  const r = await stageBriefingDraft(payload);
   await recordAutomationRun(JOB_ID, {
     ok: r.ok,
     skipped: false,
     message: r.ok
-      ? `주간 브리핑 #${r.issueNo} 발행 (Teams ${r.sent ? "발송" : "생략"})`
+      ? `초안 #${r.nextIssueNo}호 생성 — 발행 대기${r.notified ? "" : " · 본인 Teams 알림 미설정"}`
       : r.message,
     durationMs: Date.now() - startedMs,
   });
@@ -70,8 +71,7 @@ export async function POST(request: NextRequest) {
   }
   return NextResponse.json({
     ok: true,
-    issueNo: r.issueNo,
     url: r.url,
-    sent: r.sent,
+    nextIssueNo: r.nextIssueNo,
   });
 }

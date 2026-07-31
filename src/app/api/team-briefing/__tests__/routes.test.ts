@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const {
   buildMock,
-  publishMock,
+  stageMock,
   mockCreateAdminClient,
   getJobEnabledMock,
   recordRunMock,
 } = vi.hoisted(() => ({
   buildMock: vi.fn(),
-  publishMock: vi.fn(),
+  stageMock: vi.fn(),
   mockCreateAdminClient: vi.fn(),
   getJobEnabledMock: vi.fn(),
   recordRunMock: vi.fn(),
@@ -16,7 +16,7 @@ const {
 
 vi.mock("@/features/automations/jobs/team-briefing", () => ({
   buildBriefingData: buildMock,
-  publishBriefing: publishMock,
+  stageBriefingDraft: stageMock,
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: mockCreateAdminClient,
@@ -29,7 +29,7 @@ vi.mock("@/features/automations/run-recorder", () => ({
 }));
 
 import { GET } from "../draft/route";
-import { POST } from "../publish/route";
+import { POST } from "../stage/route";
 
 function get(secret?: string) {
   return new Request("http://localhost/api/team-briefing/draft", {
@@ -102,16 +102,16 @@ describe("/api/team-briefing/draft", () => {
   });
 });
 
-describe("/api/team-briefing/publish", () => {
+describe("/api/team-briefing/stage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "s3cr3t";
     getJobEnabledMock.mockResolvedValue(true);
-    publishMock.mockResolvedValue({
+    stageMock.mockResolvedValue({
       ok: true,
-      issueNo: 5,
       url: "https://x/r/briefing/tok",
-      sent: true,
+      nextIssueNo: 2,
+      notified: true,
     });
   });
 
@@ -129,28 +129,28 @@ describe("/api/team-briefing/publish", () => {
     ).toBe(400);
   });
 
-  it("정상 — publishBriefing에 payload 전달, issueNo/url/sent 반환", async () => {
+  it("정상 — stageBriefingDraft에 payload 전달, url/nextIssueNo 반환", async () => {
     const res = await POST(
       post({ secret: "s3cr3t", body: { payload: samplePayload } }),
     );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.issueNo).toBe(5);
-    expect(json.sent).toBe(true);
-    expect(publishMock).toHaveBeenCalledWith(
+    expect(json.nextIssueNo).toBe(2);
+    expect(json.url).toBe("https://x/r/briefing/tok");
+    expect(stageMock).toHaveBeenCalledWith(
       expect.objectContaining({ dateLabel: "2026-07-17 (금)" }),
     );
   });
 
-  it("발행 실패 → 500", async () => {
-    publishMock.mockResolvedValue({ ok: false, message: "insert 실패" });
+  it("초안 저장 실패 → 500", async () => {
+    stageMock.mockResolvedValue({ ok: false, message: "insert 실패" });
     expect(
       (await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } })))
         .status,
     ).toBe(500);
   });
 
-  it("자동 실행 OFF면 발행하지 않고 skipped:true", async () => {
+  it("자동 실행 OFF면 초안도 만들지 않고 skipped:true", async () => {
     getJobEnabledMock.mockResolvedValue(false);
     const res = await POST(
       post({ secret: "s3cr3t", body: { payload: samplePayload } }),
@@ -158,19 +158,39 @@ describe("/api/team-briefing/publish", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.skipped).toBe(true);
-    expect(publishMock).not.toHaveBeenCalled();
+    expect(stageMock).not.toHaveBeenCalled();
   });
 
-  it("발행 성공 시 automation_runs에 실행 기록 (마지막 실행 갱신)", async () => {
+  it("초안 생성 시 automation_runs에 '발행 대기' 기록", async () => {
     await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } }));
     expect(recordRunMock).toHaveBeenCalledWith(
       "team-briefing",
-      expect.objectContaining({ ok: true, skipped: false }),
+      expect.objectContaining({
+        ok: true,
+        skipped: false,
+        message: expect.stringContaining("발행 대기"),
+      }),
     );
   });
 
-  it("발행 실패도 실행 기록 (ok:false)", async () => {
-    publishMock.mockResolvedValue({ ok: false, message: "insert 실패" });
+  it("본인 Teams 알림 미설정이면 이력 메시지에 남긴다", async () => {
+    stageMock.mockResolvedValue({
+      ok: true,
+      url: "https://x/r/briefing/tok",
+      nextIssueNo: 2,
+      notified: false,
+    });
+    await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } }));
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "team-briefing",
+      expect.objectContaining({
+        message: expect.stringContaining("알림 미설정"),
+      }),
+    );
+  });
+
+  it("초안 저장 실패도 실행 기록 (ok:false)", async () => {
+    stageMock.mockResolvedValue({ ok: false, message: "insert 실패" });
     await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } }));
     expect(recordRunMock).toHaveBeenCalledWith(
       "team-briefing",
