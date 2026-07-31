@@ -419,6 +419,7 @@ export function BriefingNewsletter({
               icon={<CameraIcon className="h-6 w-6 text-nl-sky" />}
               title="이번 주 앨범"
             >
+              {story?.sections.album && <Story>{story.sections.album}</Story>}
               <div className="grid grid-cols-2 gap-3">
                 {images.gallery.map((g, i) => (
                   <figure key={i}>

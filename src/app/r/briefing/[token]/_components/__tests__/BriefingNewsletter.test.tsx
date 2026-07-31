@@ -235,6 +235,37 @@ describe("BriefingNewsletter", () => {
     expect(screen.getByText(/입사 10주년/)).toBeInTheDocument();
   });
 
+  it("앨범 — claude 코멘트 문단이 사진 그리드 위에 렌더된다", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={12}
+        payload={{
+          ...payload,
+          images: {
+            cover: { src: "https://cdn/x/cover.jpg", caption: "군산 숙소" },
+            gallery: [{ src: "https://cdn/x/g1.jpg", caption: "철길마을" }],
+            videos: [],
+          },
+          story: {
+            headline: "h",
+            intro: "i",
+            sections: {
+              contracts: "c",
+              schedule: "s",
+              closing: "cl",
+              ai: "a",
+              album: "이번 주말엔 군산으로 다녀왔어요.",
+            },
+          },
+        }}
+      />,
+    );
+    expect(
+      screen.getByText("이번 주말엔 군산으로 다녀왔어요."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("철길마을")).toBeInTheDocument();
+  });
+
   it("사진·영상 — 커버 + 앨범 그리드(캡션) + 비디오 렌더", () => {
     const { container } = render(
       <BriefingNewsletter
