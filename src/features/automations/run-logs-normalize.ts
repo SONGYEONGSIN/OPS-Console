@@ -50,6 +50,29 @@ export type InsightsBatchEntry = {
   sampleTitles: string[];
 };
 
+export type BriefingEntry = {
+  publishedAt: string;
+  issueNo: number;
+  url: string;
+};
+
+/** team_briefings 발행 행 → 로그 entry. 구 행은 published_at이 없어 created_at으로 대체. */
+export function toBriefingEntry(
+  row: {
+    issue_no: number;
+    share_token: string;
+    published_at: string | null;
+    created_at: string;
+  },
+  baseUrl: string,
+): BriefingEntry {
+  return {
+    publishedAt: row.published_at ?? row.created_at,
+    issueNo: row.issue_no,
+    url: `${baseUrl}/r/briefing/${row.share_token}`,
+  };
+}
+
 export type SmileEdiEntry = {
   sentAt: string;
   recipientName: string | null;
@@ -106,6 +129,7 @@ export type JobRunLog =
   | { jobId: string; kind: "notice-teams"; entries: NoticeTeamsEntry[] }
   | { jobId: string; kind: "closing-scrape"; entries: ClosingRunEntry[] }
   | { jobId: string; kind: "weekly-report"; entries: WeeklyReportEntry[] }
+  | { jobId: string; kind: "briefing"; entries: BriefingEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
 
 export function formatKrw(amount: number): string {
