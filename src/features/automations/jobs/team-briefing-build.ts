@@ -461,6 +461,29 @@ export type BriefingImages = {
   videos?: BriefingMedia[];
 };
 
+/**
+ * 앨범 노출 상한 — 커버 1장을 포함한 총 장수.
+ * 주간 업로드(10~15장)를 자르지 않으면서, 실수로 대량 업로드된 경우의 폭주만 막는다.
+ * 코멘트(story.album)는 업로드된 캡션 전체를 보고 쓰므로, 상한이 낮으면
+ * 글에는 언급됐는데 사진은 없는 불일치가 생긴다.
+ */
+export const ALBUM_MAX = 20;
+/** 영상 노출 상한 — 용량이 커 본문 무게를 좌우한다. */
+export const ALBUM_VIDEO_MAX = 2;
+
+/** 수집된 사진·영상 → 뉴스레터에 실을 커버/앨범/영상. 둘 다 없으면 undefined. */
+export function pickAlbum(
+  gallery: BriefingMedia[],
+  videos: BriefingMedia[],
+): BriefingImages | undefined {
+  if (gallery.length === 0 && videos.length === 0) return undefined;
+  return {
+    cover: gallery[0],
+    gallery: gallery.slice(1, ALBUM_MAX),
+    videos: videos.slice(0, ALBUM_VIDEO_MAX),
+  };
+}
+
 /** claude -p가 생성하는 뉴스레터 스토리 — 캐치 제목 + 인트로 + 섹션별 이야기. */
 export type BriefingStory = {
   headline: string;

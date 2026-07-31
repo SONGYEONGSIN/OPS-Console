@@ -17,6 +17,7 @@ import {
   upcomingAnniversaries,
   upcomingBirthdays,
   excludeSeenCelebrations,
+  pickAlbum,
   pickFeatureIntros,
   type BriefEvent,
   type BriefingImages,
@@ -58,7 +59,6 @@ const BRIEFING_SENDER_DEFAULT = "ys1114@jinhakapply.com";
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
 const IMAGE_WINDOW_DAYS = 7;
-const GALLERY_MAX = 6;
 
 /**
  * Storage newsletter 버킷의 최근 업로드 폴더(YYYYMMDD ≥ 발행일-7일)에서
@@ -112,12 +112,7 @@ async function collectNewsletterImages(
     }
   }
 
-  if (gallery.length === 0 && videos.length === 0) return undefined;
-  return {
-    cover: gallery[0],
-    gallery: gallery.slice(1, 1 + GALLERY_MAX),
-    videos: videos.slice(0, 2),
-  };
+  return pickAlbum(gallery, videos);
 }
 
 export type BriefingDetails = {
