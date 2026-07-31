@@ -1,12 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildBriefingData } from "@/features/automations/jobs/team-briefing";
+import { getJobEnabled } from "@/features/automations/queries";
+import { recordAutomationRun } from "@/features/automations/run-recorder";
+
+const JOB_ID = "team-briefing";
 
 /**
  * 주간 브리핑 초안 — `Authorization: Bearer ${CRON_SECRET}` 인증.
- * 상시 맥 launchd(scripts/team-briefing/publish-local.mjs)가 호출:
+ * 로컬 스케줄러(scripts/team-briefing/publish-local.mjs)가 호출:
  *   GET → 서버가 주간 데이터 집계(payload) + 다음 호수 반환.
  * 로컬이 claude -p로 스토리를 붙여 POST /api/team-briefing/publish 로 발행한다.
+ *
+ * enabled gate: 자동화 페이지 토글 OFF면 집계 전에 skip. /api/automations/run과
+ * 동일한 게이트 — 로컬 경로에 게이트가 없어 OFF 상태로 발행되던 문제를 막는다.
  */
 function authorized(request: NextRequest, secret: string): boolean {
   return request.headers.get("authorization") === `Bearer ${secret}`;
@@ -25,6 +32,13 @@ export async function GET(request: NextRequest) {
       { ok: false, error: "unauthorized" },
       { status: 401 },
     );
+  }
+
+  // 토글 OFF면 집계·스토리 생성 없이 조기 종료. 호출 사실은 이력에 남겨 추적 가능하게 한다.
+  if (!(await getJobEnabled(JOB_ID))) {
+    const message = "자동 실행 OFF — 로컬 발행 skip";
+    await recordAutomationRun(JOB_ID, { ok: true, skipped: true, message });
+    return NextResponse.json({ ok: true, skipped: true, message });
   }
 
   const built = await buildBriefingData();

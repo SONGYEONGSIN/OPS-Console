@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { buildMock, publishMock, mockCreateAdminClient } = vi.hoisted(() => ({
+const {
+  buildMock,
+  publishMock,
+  mockCreateAdminClient,
+  getJobEnabledMock,
+  recordRunMock,
+} = vi.hoisted(() => ({
   buildMock: vi.fn(),
   publishMock: vi.fn(),
   mockCreateAdminClient: vi.fn(),
+  getJobEnabledMock: vi.fn(),
+  recordRunMock: vi.fn(),
 }));
 
 vi.mock("@/features/automations/jobs/team-briefing", () => ({
@@ -12,6 +20,12 @@ vi.mock("@/features/automations/jobs/team-briefing", () => ({
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: mockCreateAdminClient,
+}));
+vi.mock("@/features/automations/queries", () => ({
+  getJobEnabled: getJobEnabledMock,
+}));
+vi.mock("@/features/automations/run-recorder", () => ({
+  recordAutomationRun: recordRunMock,
 }));
 
 import { GET } from "../draft/route";
@@ -43,6 +57,7 @@ describe("/api/team-briefing/draft", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "s3cr3t";
+    getJobEnabledMock.mockResolvedValue(true);
     buildMock.mockResolvedValue({
       ok: true,
       payload: samplePayload,
@@ -72,12 +87,26 @@ describe("/api/team-briefing/draft", () => {
     buildMock.mockResolvedValue({ ok: false, message: "조회 실패" });
     expect((await GET(get("s3cr3t"))).status).toBe(500);
   });
+
+  it("자동 실행 OFF면 집계하지 않고 skipped:true + 실행이력 skip 기록", async () => {
+    getJobEnabledMock.mockResolvedValue(false);
+    const res = await GET(get("s3cr3t"));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.skipped).toBe(true);
+    expect(buildMock).not.toHaveBeenCalled();
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "team-briefing",
+      expect.objectContaining({ skipped: true }),
+    );
+  });
 });
 
 describe("/api/team-briefing/publish", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "s3cr3t";
+    getJobEnabledMock.mockResolvedValue(true);
     publishMock.mockResolvedValue({
       ok: true,
       issueNo: 5,
@@ -119,5 +148,33 @@ describe("/api/team-briefing/publish", () => {
       (await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } })))
         .status,
     ).toBe(500);
+  });
+
+  it("자동 실행 OFF면 발행하지 않고 skipped:true", async () => {
+    getJobEnabledMock.mockResolvedValue(false);
+    const res = await POST(
+      post({ secret: "s3cr3t", body: { payload: samplePayload } }),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.skipped).toBe(true);
+    expect(publishMock).not.toHaveBeenCalled();
+  });
+
+  it("발행 성공 시 automation_runs에 실행 기록 (마지막 실행 갱신)", async () => {
+    await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } }));
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "team-briefing",
+      expect.objectContaining({ ok: true, skipped: false }),
+    );
+  });
+
+  it("발행 실패도 실행 기록 (ok:false)", async () => {
+    publishMock.mockResolvedValue({ ok: false, message: "insert 실패" });
+    await POST(post({ secret: "s3cr3t", body: { payload: samplePayload } }));
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "team-briefing",
+      expect.objectContaining({ ok: false }),
+    );
   });
 });

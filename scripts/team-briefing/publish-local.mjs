@@ -77,6 +77,10 @@ if (!draftRes.ok) {
   process.exit(1);
 }
 const draft = await draftRes.json();
+if (draft.skipped) {
+  console.log(`[briefing] ${draft.message ?? "자동 실행 OFF"} — 종료`);
+  process.exit(0);
+}
 
 // 2) 스토리 생성 (claude -p → 폴백)
 const { story, source } = generateStory(draft.payload, draft.nextIssueNo);
