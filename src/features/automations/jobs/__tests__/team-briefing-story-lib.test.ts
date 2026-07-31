@@ -145,3 +145,56 @@ describe("fallbackStory", () => {
     }
   });
 });
+
+describe("기념일·기능 소개 코멘트", () => {
+  it("프롬프트에 기능 소개 목록과 두 섹션 키가 포함된다", () => {
+    const p = buildStoryPrompt(
+      {
+        ...payload,
+        featureIntros: [
+          {
+            menu: "서비스 > 인수인계",
+            title: "서비스별 인수인계 + 메일/PDF",
+            desc: "14개 카테고리로 작성",
+          },
+        ],
+      },
+      3,
+    );
+    expect(p).toContain("celebration");
+    expect(p).toContain("features");
+    expect(p).toContain("서비스별 인수인계 + 메일/PDF");
+  });
+
+  it("celebration/features가 있으면 파싱 결과에 담긴다", () => {
+    const r = parseStoryJson(
+      JSON.stringify({
+        headline: "h",
+        intro: "i",
+        sections: {
+          contracts: "c",
+          schedule: "s",
+          closing: "cl",
+          ai: "a",
+          celebration: "축하 코멘트",
+          features: "기능 코멘트",
+        },
+      }),
+    );
+    expect(r).not.toBeNull();
+    expect(r!.sections.celebration).toBe("축하 코멘트");
+    expect(r!.sections.features).toBe("기능 코멘트");
+  });
+
+  it("celebration/features가 없어도 파싱 성공 (구 발행분 호환)", () => {
+    const r = parseStoryJson(
+      JSON.stringify({
+        headline: "h",
+        intro: "i",
+        sections: { contracts: "c", schedule: "s", closing: "cl", ai: "a" },
+      }),
+    );
+    expect(r).not.toBeNull();
+    expect(r!.sections.celebration).toBeUndefined();
+  });
+});

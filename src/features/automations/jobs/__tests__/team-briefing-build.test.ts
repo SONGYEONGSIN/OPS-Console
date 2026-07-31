@@ -15,6 +15,8 @@ import {
   upcomingBirthdays,
   pickFeatureIntros,
   FEATURE_INTROS,
+  excludeSeenCelebrations,
+  celebrationKey,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
@@ -377,11 +379,73 @@ describe("upcomingAnniversaries", () => {
   });
 });
 
-describe("pickFeatureIntros", () => {
-  it("호수별로 서로 다른 count개 묶음 (1호=앞 3개, 2호=다음 3개)", () => {
-    expect(pickFeatureIntros(1, 3)).toEqual(FEATURE_INTROS.slice(0, 3));
-    expect(pickFeatureIntros(2, 3)).toEqual(FEATURE_INTROS.slice(3, 6));
-    expect(pickFeatureIntros(1, 3)).toHaveLength(3);
+describe("FEATURE_INTROS 카탈로그", () => {
+  it("인수인계·사고보고가 앞 2건 (2호 소개 대상)", () => {
+    expect(FEATURE_INTROS[0].menu).toContain("인수인계");
+    expect(FEATURE_INTROS[1].menu).toContain("사고보고");
+  });
+
+  it("메뉴 중복 없음", () => {
+    const menus = FEATURE_INTROS.map((f) => `${f.menu}|${f.title}`);
+    expect(new Set(menus).size).toBe(menus.length);
+  });
+});
+
+describe("pickFeatureIntros — 2호 앵커 순환", () => {
+  it("2호는 인수인계·사고보고 2건만", () => {
+    const r = pickFeatureIntros(2);
+    expect(r).toEqual(FEATURE_INTROS.slice(0, 2));
+    expect(r).toHaveLength(2);
+  });
+
+  it("3호는 앵커 다음(index 2)부터 3건", () => {
+    expect(pickFeatureIntros(3)).toEqual(FEATURE_INTROS.slice(2, 5));
+  });
+
+  it("4호는 그 다음 3건 — 이어서 진행", () => {
+    expect(pickFeatureIntros(4)).toEqual(FEATURE_INTROS.slice(5, 8));
+  });
+
+  it("카탈로그 끝을 넘어가면 앞으로 순환", () => {
+    const len = FEATURE_INTROS.length;
+    const many = pickFeatureIntros(40);
+    expect(many).toHaveLength(3);
+    for (const f of many) expect(FEATURE_INTROS).toContain(f);
+    expect(len).toBeGreaterThan(3);
+  });
+
+  it("count를 명시하면 그 개수를 따른다", () => {
+    expect(pickFeatureIntros(3, 1)).toHaveLength(1);
+  });
+});
+
+describe("excludeSeenCelebrations — 이미 발행된 호에 실린 기념일 제외", () => {
+  const milestones = [
+    { name: "김지영", years: 10, dateYmd: "2026-07-27", isPast: true },
+    { name: "정윤나", years: 7, dateYmd: "2026-08-01", isPast: false },
+  ];
+
+  it("이미 실린 (이름+날짜)는 걸러낸다", () => {
+    const seen = new Set([celebrationKey("ms", "김지영", "2026-07-27")]);
+    expect(excludeSeenCelebrations(milestones, "ms", seen)).toEqual([
+      milestones[1],
+    ]);
+  });
+
+  it("같은 사람이라도 날짜(연차)가 다르면 남긴다", () => {
+    const seen = new Set([celebrationKey("ms", "김지영", "2025-07-27")]);
+    expect(excludeSeenCelebrations(milestones, "ms", seen)).toHaveLength(2);
+  });
+
+  it("종류(ms/bd)가 다르면 서로 간섭하지 않는다", () => {
+    const seen = new Set([celebrationKey("bd", "김지영", "2026-07-27")]);
+    expect(excludeSeenCelebrations(milestones, "ms", seen)).toHaveLength(2);
+  });
+
+  it("빈 seen이면 그대로 통과", () => {
+    expect(excludeSeenCelebrations(milestones, "ms", new Set())).toEqual(
+      milestones,
+    );
   });
 });
 

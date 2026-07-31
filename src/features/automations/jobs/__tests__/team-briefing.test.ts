@@ -72,14 +72,30 @@ function chain(data: unknown[]): Chain {
  * `.select(...).eq(...)` 는 호수 count로 await 되기도 하고(thenable),
  * `.maybeSingle()` 로 초안 1건을 꺼내기도 한다.
  */
-const briefingsState = { publishedCount: 0, draft: null as unknown };
+const briefingsState = {
+  publishedCount: 0,
+  draft: null as unknown,
+  // getPublishedCelebrationKeys가 읽는 발행분 payload 목록
+  publishedPayloads: [] as unknown[],
+  operatorRows: [] as unknown[],
+};
 function briefingsTable() {
-  const eqResult = {
+  // 한 체인이 세 용도로 쓰인다:
+  //   .select().eq()               → 호수 count (await)
+  //   .select().eq().maybeSingle() → 초안 1건
+  //   .select().eq().order().limit() → 발행분 payload 목록 (기념일 중복 제거)
+  const eqResult: Record<string, unknown> = {
     then: (resolve: (v: unknown) => void) =>
       resolve({ count: briefingsState.publishedCount, error: null }),
     maybeSingle: () =>
       Promise.resolve({ data: briefingsState.draft, error: null }),
   };
+  eqResult.order = () => eqResult;
+  eqResult.limit = () =>
+    Promise.resolve({
+      data: briefingsState.publishedPayloads.map((payload) => ({ payload })),
+      error: null,
+    });
   return {
     select: () => ({ eq: () => eqResult }),
     delete: () => ({ eq: deleteDraftMock }),
@@ -92,6 +108,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   briefingsState.publishedCount = 0;
   briefingsState.draft = null;
+  briefingsState.publishedPayloads = [];
+  briefingsState.operatorRows = [{ email: "kim@x.com", name: "김유민" }];
   listContractsMock.mockResolvedValue({
     rows: [
       { sheet: "4년제", status: "계약완료", serviceActive: "Y" },
@@ -113,8 +131,7 @@ beforeEach(() => {
           operator_name: "송영신",
         },
       ]);
-    if (table === "operators")
-      return chain([{ email: "kim@x.com", name: "김유민" }]);
+    if (table === "operators") return chain(briefingsState.operatorRows);
     if (table === "ai_work")
       return chain([
         {
@@ -156,6 +173,14 @@ beforeEach(() => {
   vi.stubEnv("TEAM_BRIEFING_DRY_RUN", "");
   vi.stubEnv("MAIL_DRY_RUN", "");
 });
+
+/** 오늘(KST) 기준 offset일의 YYYY-MM-DD — 실행 시점에 무관한 기념일 픽스처용. */
+function ymdInKst(offsetDays: number): string {
+  return new Date(Date.now() + offsetDays * 86_400_000).toLocaleDateString(
+    "en-CA",
+    { timeZone: "Asia/Seoul" },
+  );
+}
 
 function samplePayload(): BriefingPayload {
   return {
@@ -304,6 +329,37 @@ describe("runTeamBriefing (초안 생성)", () => {
       "김유민",
       "lee",
     ]);
+  });
+
+  it("이미 발행된 호에 실린 기념일은 초안에서 제외된다", async () => {
+    // 실행 시점과 무관하게 윈도우 안에 들도록 '오늘+3일' 기준으로 입사일을 만든다.
+    const annivYmd = ymdInKst(3);
+    const hiredAt = `${Number(annivYmd.slice(0, 4)) - 5}${annivYmd.slice(4)}`;
+    briefingsState.operatorRows = [
+      { email: "kim@x.com", name: "김유민", hired_at: hiredAt },
+    ];
+
+    // 발행 이력이 없으면 기념일이 실린다 (필터가 무조건 비우지 않음을 확인)
+    const before = await runTeamBriefing();
+    expect(before.ok).toBe(true);
+    const beforeRow = insertBriefingMock.mock.calls[0][0] as {
+      payload: { milestones?: { name: string; dateYmd: string }[] };
+    };
+    expect(beforeRow.payload.milestones).toEqual([
+      expect.objectContaining({ name: "김유민", dateYmd: annivYmd, years: 5 }),
+    ]);
+
+    // 같은 기념일이 이미 발행됐다면 제외된다
+    insertBriefingMock.mockClear();
+    briefingsState.publishedPayloads = [
+      { milestones: [{ name: "김유민", dateYmd: annivYmd }] },
+    ];
+    const after = await runTeamBriefing();
+    expect(after.ok).toBe(true);
+    const afterRow = insertBriefingMock.mock.calls[0][0] as {
+      payload: { milestones?: { name: string }[] };
+    };
+    expect(afterRow.payload.milestones).toEqual([]);
   });
 
   it("AI 활용 집계 — details 수치", async () => {

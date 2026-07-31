@@ -2,6 +2,10 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { BriefingPayload } from "@/features/automations/jobs/team-briefing-build";
 import { briefingUrl } from "./url";
+import { celebrationKey } from "@/features/automations/jobs/team-briefing-build";
+
+// 기념일 중복 검사 대상 발행분 수 — 기념일 키에 연도가 들어가 1년치면 충분하다.
+const CELEBRATION_LOOKBACK_ISSUES = 60;
 
 export type TeamBriefing = {
   issueNo: number;
@@ -55,4 +59,30 @@ export async function getPendingBriefingDraft(): Promise<PendingBriefingDraft | 
     url: briefingUrl(data.share_token as string),
     createdAt: data.created_at as string,
   };
+}
+
+/**
+ * 이미 발행된 호에 실린 기념일 키 집합 — 다음 호에서 같은 기념일 재등장을 막는다.
+ * 기념일 윈도우가 [-14, +14]로 넓어 주간 발행 시 최대 4호에 걸쳐 겹치던 문제 대응.
+ */
+export async function getPublishedCelebrationKeys(): Promise<Set<string>> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("team_briefings")
+    .select("payload")
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(CELEBRATION_LOOKBACK_ISSUES);
+  const keys = new Set<string>();
+  for (const row of data ?? []) {
+    const p = row.payload as {
+      milestones?: { name: string; dateYmd: string }[];
+      birthdays?: { name: string; dateYmd: string }[];
+    } | null;
+    for (const m of p?.milestones ?? [])
+      keys.add(celebrationKey("ms", m.name, m.dateYmd));
+    for (const b of p?.birthdays ?? [])
+      keys.add(celebrationKey("bd", b.name, b.dateYmd));
+  }
+  return keys;
 }
