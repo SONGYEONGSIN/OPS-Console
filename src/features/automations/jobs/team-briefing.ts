@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import { listContracts } from "@/features/contracts/queries";
+import { briefingUrl } from "@/features/team-briefings/url";
 import { CONTRACT_SHEETS } from "@/features/contracts/schemas";
 import type { AutomationRunResult } from "../types";
 import {
@@ -51,15 +52,6 @@ function addDaysYmd(ymd: string, n: number): string {
  * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 집계 결과만.
  */
 const BRIEFING_SENDER_DEFAULT = "ys1114@jinhakapply.com";
-
-/** 뉴스레터 공유 링크 베이스 — posts/handover 메일 링크와 동일 관례. */
-function baseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.FOLIO_BASE_URL ??
-    "http://localhost:3000"
-  );
-}
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
@@ -391,7 +383,7 @@ export async function publishBriefing(
   if (insErr)
     return { ok: false, message: `뉴스레터 발행 실패: ${insErr.message}` };
 
-  const url = `${baseUrl()}/r/briefing/${shareToken}`;
+  const url = briefingUrl(shareToken);
   if (!chatId) return { ok: true, issueNo, url, sent: false };
 
   const html = buildBriefingTeaserHtml({
