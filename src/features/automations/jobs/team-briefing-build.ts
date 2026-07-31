@@ -355,6 +355,16 @@ export type FeatureIntro = { menu: string; title: string; desc: string };
 /** 소개 카탈로그 — 호수별로 순환 노출. 새 기능 추가 시 여기 1줄. */
 export const FEATURE_INTROS: FeatureIntro[] = [
   {
+    menu: "서비스 > 인수인계",
+    title: "서비스별 인수인계 + 메일/PDF",
+    desc: "14개 카테고리로 인수인계를 작성하고, 위저드에서 학교담당자에게 PDF 첨부 메일까지 한 번에 보냅니다.",
+  },
+  {
+    menu: "서비스 > 사고보고",
+    title: "사고 등록부터 경위서 승인까지",
+    desc: "운영 중 발생한 사고를 학년도·부서·상태로 모아 봅니다. 경위서를 붙여 승인 요청하면 승인대기·승인완료 상태가 목록에서 바로 보여, 어디까지 처리됐는지 찾아다닐 필요가 없어요.",
+  },
+  {
     menu: "개발 · AI > 개발/테스트 > 개발 탭",
     title: "원서제어 파일 분석",
     desc: "서비스별 원서제어(A.js·AU.js) 코드를 claude가 운영자 관점으로 요약해줍니다. 과거 학년도·마감일·하드코딩 전형코드 등 확인할 지점을 자동으로 짚어줘요.",
@@ -380,11 +390,6 @@ export const FEATURE_INTROS: FeatureIntro[] = [
     desc: "매시간 미수채권과 입금내역을 대조해 단건·합산(N:1)까지 자동 매칭합니다. 담당자별 미수 알림 메일도 평일 아침 자동 발송돼요.",
   },
   {
-    menu: "서비스 > 인수인계",
-    title: "서비스별 인수인계 + 메일/PDF",
-    desc: "14개 카테고리로 인수인계를 작성하고, 위저드에서 학교담당자에게 PDF 첨부 메일까지 한 번에 보냅니다.",
-  },
-  {
     menu: "분석 · 보고 > 운영리포트",
     title: "기간별 KPI 리포트 + 공유",
     desc: "서비스·사고·계약·미수·인수인계·백업·메일·워크로그 8개 KPI를 기간별로 모아 봅니다. 공유 링크 생성·PDF 다운로드로 임원 보고도 간편해요.",
@@ -401,15 +406,51 @@ export const FEATURE_INTROS: FeatureIntro[] = [
   },
 ];
 
-/** 호수(1부터)로 소개 항목을 count개 순환 선택 (매 호 서로 다른 묶음). */
-export function pickFeatureIntros(issueNo: number, count = 3): FeatureIntro[] {
+/**
+ * 소개 순환 기준점 — 이 호수에서 카탈로그 앞(인수인계·사고보고)부터 다시 시작한다.
+ * 2호를 이 둘로 지정한 요청에 맞춘 앵커이며, 이후 호는 그 다음부터 perIssue건씩 이어간다.
+ */
+const FEATURE_ROTATION = { anchorIssueNo: 2, anchorCount: 2, perIssue: 3 };
+
+/** 호수(1부터)로 소개 항목을 순환 선택 (매 호 서로 다른 묶음). */
+export function pickFeatureIntros(
+  issueNo: number,
+  count?: number,
+): FeatureIntro[] {
   const len = FEATURE_INTROS.length;
   const n = Math.max(1, Math.floor(issueNo));
-  const take = Math.min(Math.max(1, count), len);
-  const start = ((n - 1) * take) % len;
+  const { anchorIssueNo, anchorCount, perIssue } = FEATURE_ROTATION;
+  const sinceAnchor = Math.max(0, n - anchorIssueNo);
+  const take = Math.min(
+    Math.max(1, count ?? (sinceAnchor === 0 ? anchorCount : perIssue)),
+    len,
+  );
+  // 앵커 호 이전이거나 앵커 호면 카탈로그 앞부터, 이후면 앵커가 소비한 만큼 건너뛴 지점부터.
+  const start =
+    sinceAnchor === 0 ? 0 : (anchorCount + (sinceAnchor - 1) * perIssue) % len;
   const out: FeatureIntro[] = [];
   for (let i = 0; i < take; i++) out.push(FEATURE_INTROS[(start + i) % len]);
   return out;
+}
+
+/** 기념일 1건의 고유 키 — 종류+이름+날짜. 같은 사람의 다른 해 기념일은 다른 키. */
+export function celebrationKey(
+  kind: "ms" | "bd",
+  name: string,
+  dateYmd: string,
+): string {
+  return `${kind}:${name}:${dateYmd}`;
+}
+
+/**
+ * 이미 발행된 호에 실린 기념일을 걸러낸다.
+ * 윈도우가 [-14, +14]로 넓어 주간 발행 시 같은 기념일이 여러 호에 겹쳐 나오던 문제를 막는다.
+ * 윈도우를 좁히지 않으므로 발행을 한 주 건너뛰어도 기념일이 누락되지 않는다.
+ */
+export function excludeSeenCelebrations<
+  T extends { name: string; dateYmd: string },
+>(items: T[], kind: "ms" | "bd", seen: Set<string>): T[] {
+  return items.filter((i) => !seen.has(celebrationKey(kind, i.name, i.dateYmd)));
 }
 
 /** 뉴스레터 사진/영상 — Supabase Storage 공개 URL + 캡션(원 파일명 유래). */
@@ -431,6 +472,10 @@ export type BriefingStory = {
     schedule: string;
     closing: string;
     ai: string;
+    /** 기념일 코멘트 — 구 발행분에는 없어 optional. */
+    celebration?: string;
+    /** 기능 소개 코멘트 — 구 발행분에는 없어 optional. */
+    features?: string;
   };
 };
 

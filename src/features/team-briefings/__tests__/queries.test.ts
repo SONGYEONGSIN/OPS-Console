@@ -12,6 +12,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 import {
   getTeamBriefingByShareToken,
   getPendingBriefingDraft,
+  getPublishedCelebrationKeys,
 } from "../queries";
 
 function builder() {
@@ -109,5 +110,46 @@ describe("getPendingBriefingDraft", () => {
     expect(r!.id).toBe("d1");
     expect(r!.issueNo).toBe(2);
     expect(r!.url).toBe("https://ops.example.com/r/briefing/tok2");
+  });
+});
+
+describe("getPublishedCelebrationKeys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("발행분 payload의 근속·생일을 키 집합으로 모은다", async () => {
+    const b: Record<string, unknown> = {};
+    for (const m of ["select", "eq", "order", "limit"]) b[m] = vi.fn(() => b);
+    b.then = (resolve: (v: unknown) => void) =>
+      resolve({
+        data: [
+          {
+            payload: {
+              milestones: [{ name: "김지영", dateYmd: "2026-07-27" }],
+              birthdays: [{ name: "박시현", dateYmd: "2026-08-03" }],
+            },
+          },
+          { payload: { milestones: [{ name: "전지은", dateYmd: "2026-07-14" }] } },
+        ],
+        error: null,
+      });
+    mockCreateAdminClient.mockReturnValue({ from: vi.fn(() => b) });
+
+    const keys = await getPublishedCelebrationKeys();
+    expect(keys.has("ms:김지영:2026-07-27")).toBe(true);
+    expect(keys.has("bd:박시현:2026-08-03")).toBe(true);
+    expect(keys.has("ms:전지은:2026-07-14")).toBe(true);
+    expect(keys.size).toBe(3);
+  });
+
+  it("payload에 기념일이 없어도 안전하게 빈 집합", async () => {
+    const b: Record<string, unknown> = {};
+    for (const m of ["select", "eq", "order", "limit"]) b[m] = vi.fn(() => b);
+    b.then = (resolve: (v: unknown) => void) =>
+      resolve({ data: [{ payload: {} }, { payload: null }], error: null });
+    mockCreateAdminClient.mockReturnValue({ from: vi.fn(() => b) });
+
+    expect((await getPublishedCelebrationKeys()).size).toBe(0);
   });
 });

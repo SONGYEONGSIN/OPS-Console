@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import { listContracts } from "@/features/contracts/queries";
 import { briefingUrl } from "@/features/team-briefings/url";
+import { getPublishedCelebrationKeys } from "@/features/team-briefings/queries";
 import { CONTRACT_SHEETS } from "@/features/contracts/schemas";
 import type { AutomationRunResult } from "../types";
 import {
@@ -15,6 +16,7 @@ import {
   summarizeInsights,
   upcomingAnniversaries,
   upcomingBirthdays,
+  excludeSeenCelebrations,
   pickFeatureIntros,
   type BriefEvent,
   type BriefingImages,
@@ -197,18 +199,28 @@ export async function buildBriefingData(): Promise<
   const displayName = (email: string) =>
     nameByEmail.get(email) ?? email.split("@")[0];
 
-  // 근속 마일스톤 + 생일 — 발행일부터 7일 내 도래분
-  const milestones = upcomingAnniversaries(
-    operators
-      .filter((o) => o.hired_at)
-      .map((o) => ({ name: o.name, hired_at: o.hired_at! })),
-    todayYmd,
+  // 근속 마일스톤 + 생일 — 윈도우가 주간 발행보다 넓어 겹치므로,
+  // 이미 발행된 호에 실린 건은 제외해 같은 기념일이 반복 노출되지 않게 한다.
+  const seenCelebrations = await getPublishedCelebrationKeys();
+  const milestones = excludeSeenCelebrations(
+    upcomingAnniversaries(
+      operators
+        .filter((o) => o.hired_at)
+        .map((o) => ({ name: o.name, hired_at: o.hired_at! })),
+      todayYmd,
+    ),
+    "ms",
+    seenCelebrations,
   );
-  const birthdays = upcomingBirthdays(
-    operators
-      .filter((o) => o.birth_date)
-      .map((o) => ({ name: o.name, birth_date: o.birth_date! })),
-    todayYmd,
+  const birthdays = excludeSeenCelebrations(
+    upcomingBirthdays(
+      operators
+        .filter((o) => o.birth_date)
+        .map((o) => ({ name: o.name, birth_date: o.birth_date! })),
+      todayYmd,
+    ),
+    "bd",
+    seenCelebrations,
   );
 
   // 사진·영상 — Storage newsletter 버킷의 최근 업로드 폴더(YYYYMMDD) 스캔.
@@ -312,11 +324,13 @@ export async function buildBriefingData(): Promise<
     })),
   );
 
-  // 이번 주 기능 소개 — 다음 발행 호수 기준으로 3개 순환 선택.
+  // 이번 주 기능 소개 — 다음 발행 호수 기준 순환 선택.
+  // 초안은 세지 않는다(발행분만) — 초안이 있는 상태로 재생성해도 같은 호수를 유지해야 한다.
   const { count: publishedCount } = await admin
     .from("team_briefings")
-    .select("id", { count: "exact", head: true });
-  const featureIntros = pickFeatureIntros((publishedCount ?? 0) + 1, 3);
+    .select("id", { count: "exact", head: true })
+    .eq("status", "published");
+  const featureIntros = pickFeatureIntros((publishedCount ?? 0) + 1);
 
   const payload: BriefingPayload = {
     dateLabel: `${todayYmd} (${kstWeekdayShort()})`,

@@ -101,57 +101,67 @@ export function BriefingNewsletter({
         <div className="space-y-10">
           {/* ── 기념일 — 생일 + 근속 (있을 때만) ─────────── */}
           {hasCelebration && (
-            <section className="rounded-[13px] bg-nl-ivory p-6">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                <CakeIcon className="h-6 w-6 text-nl-sky" />
-                이번 주의 기념일
-              </h2>
-              <ul className="mt-3 space-y-1.5">
-                {birthdays.map((b) => (
-                  <li
-                    key={`bd-${b.name}-${b.dateYmd}`}
-                    className="text-[15px] leading-[1.8]"
-                  >
-                    <b>{b.name}</b>님의 <b className="text-nl-sky">생일</b>이{" "}
-                    {b.dateYmd.slice(5).replace("-", "/")}에 있어요 —
-                    축하해주세요 🎈
-                  </li>
-                ))}
-                {milestones.map((m) => (
-                  <li
-                    key={`ms-${m.name}-${m.dateYmd}`}
-                    className="text-[15px] leading-[1.8]"
-                  >
-                    <b>{m.name}</b>님이 {m.dateYmd.slice(5).replace("-", "/")}에{" "}
-                    <b className="text-nl-sky">입사 {m.years}주년</b>을{" "}
-                    {m.isPast ? "맞았어요" : "맞아요"} — 축하해주세요 👏
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <Section
+              icon={<CakeIcon className="h-6 w-6 text-nl-sky" />}
+              title="이번 주의 기념일"
+            >
+              {story?.sections.celebration && (
+                <Story>{story.sections.celebration}</Story>
+              )}
+              <Card>
+                <ul className="space-y-1.5">
+                  {birthdays.map((b) => (
+                    <li
+                      key={`bd-${b.name}-${b.dateYmd}`}
+                      className="text-[15px] leading-[1.8]"
+                    >
+                      <b>{b.name}</b>님의 <b className="text-nl-sky">생일</b>이{" "}
+                      {b.dateYmd.slice(5).replace("-", "/")}에 있어요 —
+                      축하해주세요 🎈
+                    </li>
+                  ))}
+                  {milestones.map((m) => (
+                    <li
+                      key={`ms-${m.name}-${m.dateYmd}`}
+                      className="text-[15px] leading-[1.8]"
+                    >
+                      <b>{m.name}</b>님이 {m.dateYmd.slice(5).replace("-", "/")}
+                      에 <b className="text-nl-sky">입사 {m.years}주년</b>을{" "}
+                      {m.isPast ? "맞았어요" : "맞아요"} — 축하해주세요 👏
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </Section>
           )}
 
           {/* ── 이번 주 기능 소개 (있을 때만) ────────────── */}
           {featureIntros.length > 0 && (
-            <section className="rounded-[13px] bg-nl-ivory p-6">
-              <h2 className="flex items-center gap-2 text-lg font-bold">
-                <CrystalBallIcon className="h-6 w-6 text-nl-sky" />
-                이번 주 기능 소개
-              </h2>
-              <ul className="mt-3 space-y-4">
-                {featureIntros.map((f) => (
-                  <li key={f.title}>
-                    <p className="text-xs font-medium text-nl-muted">
-                      {f.menu}
-                    </p>
-                    <p className="mt-0.5 text-[16px] font-bold text-nl-sky">
-                      {f.title}
-                    </p>
-                    <p className="mt-1 text-[15px] leading-[1.75]">{f.desc}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <Section
+              icon={<CrystalBallIcon className="h-6 w-6 text-nl-sky" />}
+              title="이번 주 기능 소개"
+            >
+              {story?.sections.features && (
+                <Story>{story.sections.features}</Story>
+              )}
+              <Card>
+                <ul className="space-y-4">
+                  {featureIntros.map((f) => (
+                    <li key={f.title}>
+                      <p className="text-xs font-medium text-nl-muted">
+                        {f.menu}
+                      </p>
+                      <p className="mt-0.5 text-[16px] font-bold text-nl-sky">
+                        {f.title}
+                      </p>
+                      <p className="mt-1 text-[15px] leading-[1.75]">
+                        {f.desc}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </Section>
           )}
 
           {/* ── 계약 이야기 ──────────────────────────────── */}

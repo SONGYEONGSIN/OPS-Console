@@ -183,6 +183,58 @@ describe("BriefingNewsletter", () => {
     expect(screen.queryByText(/이번 주의 기념일/)).toBeNull();
   });
 
+  it("기념일·기능 소개 — claude 코멘트 문단이 카드 위에 렌더된다", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={12}
+        payload={{
+          ...payload,
+          milestones: [
+            { name: "박시현", years: 10, dateYmd: "2026-07-22", isPast: false },
+          ],
+          featureIntros: [
+            {
+              menu: "서비스 > 사고보고",
+              title: "사고 등록부터 경위서 승인까지",
+              desc: "승인대기·승인완료 상태가 목록에서 바로 보여요.",
+            },
+          ],
+          story: {
+            headline: "h",
+            intro: "i",
+            sections: {
+              contracts: "c",
+              schedule: "s",
+              closing: "cl",
+              ai: "a",
+              celebration: "이번 주는 축하할 일이 많아요.",
+              features: "사고보고는 이럴 때 씁니다.",
+            },
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("이번 주는 축하할 일이 많아요.")).toBeInTheDocument();
+    expect(screen.getByText("사고보고는 이럴 때 씁니다.")).toBeInTheDocument();
+    expect(screen.getByText("사고 등록부터 경위서 승인까지")).toBeInTheDocument();
+  });
+
+  it("기념일·기능 소개 — 코멘트가 없으면 문단 없이 목록만", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={12}
+        payload={{
+          ...payload,
+          milestones: [
+            { name: "박시현", years: 10, dateYmd: "2026-07-22", isPast: false },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText(/이번 주의 기념일/)).toBeInTheDocument();
+    expect(screen.getByText(/입사 10주년/)).toBeInTheDocument();
+  });
+
   it("사진·영상 — 커버 + 앨범 그리드(캡션) + 비디오 렌더", () => {
     const { container } = render(
       <BriefingNewsletter
