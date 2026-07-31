@@ -6,6 +6,7 @@ export type TeamBriefing = {
   issueNo: number;
   briefingDate: string;
   payload: BriefingPayload;
+  status: "draft" | "published";
 };
 
 /**
@@ -19,7 +20,7 @@ export async function getTeamBriefingByShareToken(
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("team_briefings")
-    .select("issue_no, briefing_date, payload")
+    .select("issue_no, briefing_date, payload, status")
     .eq("share_token", token)
     .maybeSingle();
   if (error || !data) return null;
@@ -27,5 +28,6 @@ export async function getTeamBriefingByShareToken(
     issueNo: data.issue_no as number,
     briefingDate: data.briefing_date as string,
     payload: data.payload as BriefingPayload,
+    status: data.status === "draft" ? "draft" : "published",
   };
 }
