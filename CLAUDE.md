@@ -37,7 +37,7 @@ OPS-Console/
 │   │   # handover (records/progress/mail/categories) · onboarding (cohorts/checklist)
 │   │   # ai-work · ai-tips · todos · worklog · schedule · posts · todos · menu-counts
 │   ├── lib/
-│   │   ├── pdf/                         # handover-pdf · backup-request-pdf (Pretendard Bold + fixed h/f)
+│   │   ├── pdf/                         # incident · incident-report · meeting · quote · report (Pretendard Bold + fixed h/f)
 │   │   ├── microsoft/                   # Graph sendMail · workbook-session · auth
 │   │   └── supabase/                    # server / browser / admin
 │   └── proxy.ts                         # 미인증 가드 + /login 리다이렉트 (Next 16)
@@ -89,17 +89,18 @@ E2E 운영 메모:
 - `NODE_ENV=development` shell leak 시 `next build`가 dev React로 prerender → `/_global-error` useContext 에러 발생. `unset NODE_ENV` 또는 `NODE_ENV=production` 강제. CI는 unset 정상 동작
 - `next-env.d.ts`는 gitignore (dev/build마다 routes.d.ts 참조가 바뀌는 생성 파일). fresh clone에서 typecheck 전에 `npx next typegen` 필요 (CI 반영됨)
 
-## 운영 메일·PDF (Microsoft Graph sendMail)
+## 운영 메일·첨부 (Microsoft Graph sendMail)
 
-- **브랜드 통일**: 메일 제목/본문/PDF 헤더 모두 `[운영부 상황실]` (OPS-Console 노출 X)
+- **브랜드 통일**: 메일 제목/본문/첨부 헤더 모두 `[운영부 상황실]` (OPS-Console 노출 X)
 - **발신자**: 로그인한 운영자 본인 메일박스 (Azure AD UPN = operators.email). Azure AD App에 `Mail.Send` Application permission + admin consent 필요
 - **안전장치**: `MAIL_DRY_RUN=true` 시 실제 발송 안 함, 이력 테이블에 `status='dry_run'`만 적재
+- **첨부 형식**: 인수인계·백업요청은 **HTML 첨부**(`.html`, `text/html`) — 메일 클라이언트에서 바로 열린다. PDF는 사고/경위서·회의록·견적·리포트에서 사용
 - **PDF 시인성** (`src/lib/pdf/*-pdf.tsx`): Pretendard Regular + Bold 다중 weight, 모든 페이지 fixed header(서비스명·브랜드) + footer(자동발송·페이지 번호), 카테고리 배지(흰 글씨 + vermilion 배경), `minPresenceAhead`로 헤더 외로움 방지, 배경색 제거(메일 클라이언트 테마)
 
 도메인별 동작:
 - **미수채권 독려** (receivables): admin 수동 트리거 → 경과일수 ≥ `MAIL_REMINDER_THRESHOLD_DAYS`(기본 10일) 청구건을 `학교담당자` 컬럼 이메일로 그룹화 일괄 발송. 이력 `receivables_mail_sends`
-- **인수인계 요청** (handover): wizard step3에서 발송. 14 카테고리 → PDF 첨부. 이력 `handover_progress`
-- **백업 요청** (backup-requests): 그룹별 발송 — 1명 일괄 모드 (single group) / 서비스별 모드 (per-substitute group). **PDF도 그룹별 본인 담당 services만 렌더** (메일 본문↔PDF 일관). 이력 `backup_request_mail_sends`
+- **인수인계 요청** (handover): wizard step3에서 발송. 14 카테고리 → **HTML 첨부**(`features/handover/html-document.ts`). 이력 `handover_progress`
+- **백업 요청** (backup-requests): 그룹별 발송 — 1명 일괄 모드 (single group) / 서비스별 모드 (per-substitute group). **HTML 첨부도 그룹별 본인 담당 services만 렌더** (메일 본문↔첨부 일관). 이력 `backup_request_mail_sends`
 
 테스트 발송 스크립트 (DB 영향 없음, 단일 Graph 호출):
 - `scripts/handover-mail-test.mjs` — `TARGET_EMAIL=` 환경 변수

@@ -356,8 +356,8 @@ export type FeatureIntro = { menu: string; title: string; desc: string };
 export const FEATURE_INTROS: FeatureIntro[] = [
   {
     menu: "서비스 > 인수인계",
-    title: "서비스별 인수인계 + 메일/PDF",
-    desc: "14개 카테고리로 인수인계를 작성하고, 위저드에서 학교담당자에게 PDF 첨부 메일까지 한 번에 보냅니다.",
+    title: "서비스별 인수인계 + 메일 발송",
+    desc: "14개 카테고리로 인수인계를 작성하고, 위저드에서 학교담당자에게 확인서(HTML) 첨부 메일까지 한 번에 보냅니다.",
   },
   {
     menu: "서비스 > 사고보고",

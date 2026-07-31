@@ -88,7 +88,7 @@ SRC_DIR="C:/Users/me/Downloads/20260731" FOLDER=20260731 node scripts/team-brief
 - **원본 파일명(확장자 제외)이 그대로 캡션**이 된다 — 올리기 전에 파일명을 캡션 문장으로 정리할 것
 - 사진은 최대 1280px · JPEG q75로 재인코딩(`photo-NN.jpg`), 영상은 원본 그대로(`video-NN.ext`)
 - 같은 날 재실행하면 기존 번호 다음부터 이어 붙는다
-- 뉴스레터에 실리는 사진은 **커버 1장 + 앨범 6장 = 7장**이 상한 (`GALLERY_MAX`)
+- 뉴스레터에 실리는 사진은 **커버 포함 총 20장**이 상한 (`ALBUM_MAX`), 영상은 2건
 - `public/newsletter/*` 는 gitignore — 공개 레포라 직원 사진을 커밋하지 않는다.
   따라서 이 폴더는 PC 간에 따라가지 않는다
 
