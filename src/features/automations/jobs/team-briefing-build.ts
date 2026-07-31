@@ -476,6 +476,8 @@ export type BriefingStory = {
     celebration?: string;
     /** 기능 소개 코멘트 — 구 발행분에는 없어 optional. */
     features?: string;
+    /** 사진·영상 코멘트 — 구 발행분에는 없어 optional. */
+    album?: string;
   };
 };
 

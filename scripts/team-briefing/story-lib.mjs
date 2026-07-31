@@ -65,6 +65,12 @@ export function buildStoryPrompt(payload, issueNo) {
       : payload.featureIntros
           .map((f) => `${f.title}(${f.menu}) — ${f.desc}`)
           .join(" / ");
+  const captions = [
+    payload.images?.cover?.caption,
+    ...(payload.images?.gallery ?? []).map((g) => g.caption),
+    ...(payload.images?.videos ?? []).map((v) => v.caption),
+  ].filter((c) => typeof c === "string" && c.length > 0);
+  const albumLine = captions.length === 0 ? "없음" : captions.join(" / ");
   const milestoneLine =
     (payload.milestones ?? []).length === 0
       ? "없음"
@@ -89,13 +95,14 @@ export function buildStoryPrompt(payload, issueNo) {
 
 규칙:
 - 반드시 아래 형식의 JSON만 출력하세요 (설명·코드펜스 금지):
-{"headline": "...", "teaser": "...", "intro": "...", "sections": {"contracts": "...", "schedule": "...", "closing": "...", "ai": "...", "celebration": "...", "features": "..."}}
+{"headline": "...", "teaser": "...", "intro": "...", "sections": {"contracts": "...", "schedule": "...", "closing": "...", "ai": "...", "celebration": "...", "features": "...", "album": "..."}}
 - headline: 뉴스레터를 열어보고 싶게 만드는 창의적이고 위트 있는 한 줄 제목 (20자 내외, 이모지 최대 1개). 수치 나열('완료율 48.7%')은 피하고, 이번 주 분위기·성취·계절감을 감각적인 한 컷으로 표현하세요. 매 호 톤과 소재를 다르게 (때론 질문형·비유·계절·응원 등). 예: "절반의 문턱에서, 운영부의 여름" / "마감 러시, 우리는 준비됐어요"
 - teaser: Teams 미리보기용 낚시 한 줄. '운영부 마법사'가 이번 호를 예고하는 페르소나 톤으로, 지금 뉴스레터를 열지 않으면 궁금해서 못 배기게 만드는 자극적·호기심 문장(35자 내외, 이모지 1개). 수치 나열 금지, headline과 다른 문장. 예: "계약 절반의 문턱, 이번 주 무슨 일이? 👀" / "9월이 오기 전, 꼭 봐야 할 소식 🔮"
 - intro: 인사 + 이번 호 핵심 요약 2문장
 - 각 sections 값: 해당 카테고리를 2~3문장의 짧은 이야기로. 수치는 자연스럽게 녹이고, 데이터에 없는 사실을 지어내지 마세요.
 - celebration: 아래 근속 기념일·생일을 한데 묶어 축하하는 2~3문장. 대상이 모두 '없음'이면 빈 문자열("")로 두세요.
 - features: 아래 '이번 주 기능 소개' 항목들을 왜 지금 알아두면 좋은지 운영 맥락으로 엮는 2~3문장. 기능 이름을 나열만 하지 말고 어떤 상황에서 쓰는지 한 컷으로 그려주세요.
+- album: 아래 사진·영상 캡션에서 어떤 자리였는지 읽어내 그날의 분위기를 2~3문장으로. 캡션에 없는 사실(장소·인물·사건)은 지어내지 마세요. 사진이 '없음'이면 빈 문자열("")로 두세요.
 - 생일·근속 기념일이 있으면 intro에도 자연스럽게 축하를 담으세요.
 - schedule 이야기는 휴가에만 쏠리지 말고, 근무·원서접수·PIMS·교육·일반 일정(비용 처리 등)도 있으면 골고루 다루세요.
 
@@ -106,7 +113,8 @@ export function buildStoryPrompt(payload, issueNo) {
 - AI 활용(최근 7일): ${aiLine}
 - 근속 기념일(발행 주): ${milestoneLine}
 - 생일(발행 주): ${birthdayLine}
-- 이번 주 기능 소개: ${featureLine}`;
+- 이번 주 기능 소개: ${featureLine}
+- 사진·영상: ${albumLine}`;
 }
 
 /** claude 응답 텍스트 → BriefingStory | null. 코드펜스/전후 텍스트 허용. */
@@ -146,6 +154,7 @@ export function parseStoryJson(text) {
       // 선택 — 구 발행분/구 응답에는 없다. 빈 문자열도 미노출로 취급.
       celebration: isStr(s.celebration) ? s.celebration : undefined,
       features: isStr(s.features) ? s.features : undefined,
+      album: isStr(s.album) ? s.album : undefined,
     },
   };
 }

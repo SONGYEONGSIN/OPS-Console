@@ -198,3 +198,58 @@ describe("기념일·기능 소개 코멘트", () => {
     expect(r!.sections.celebration).toBeUndefined();
   });
 });
+
+describe("앨범 코멘트 (album)", () => {
+  it("프롬프트에 사진 캡션 목록과 album 키가 포함된다", () => {
+    const p = buildStoryPrompt(
+      {
+        ...payload,
+        images: {
+          cover: { src: "https://cdn/c.jpg", caption: "군산성산애독채팬션-조경" },
+          gallery: [
+            { src: "https://cdn/g1.jpg", caption: "철길마을-달고나 체험" },
+            { src: "https://cdn/g2.jpg", caption: "초원사진관-8월의 크리스마스" },
+          ],
+          videos: [{ src: "https://cdn/v.mp4", caption: "단합대회 영상" }],
+        },
+      },
+      3,
+    );
+    expect(p).toContain("album");
+    expect(p).toContain("철길마을-달고나 체험");
+    expect(p).toContain("초원사진관-8월의 크리스마스");
+    expect(p).toContain("단합대회 영상");
+  });
+
+  it("사진이 없으면 '없음'으로 표기", () => {
+    const p = buildStoryPrompt(payload, 3);
+    expect(p).toContain("사진·영상: 없음");
+  });
+
+  it("album이 있으면 파싱 결과에 담기고, 없어도 파싱 성공", () => {
+    const withAlbum = parseStoryJson(
+      JSON.stringify({
+        headline: "h",
+        intro: "i",
+        sections: {
+          contracts: "c",
+          schedule: "s",
+          closing: "cl",
+          ai: "a",
+          album: "군산으로 다녀왔어요.",
+        },
+      }),
+    );
+    expect(withAlbum!.sections.album).toBe("군산으로 다녀왔어요.");
+
+    const without = parseStoryJson(
+      JSON.stringify({
+        headline: "h",
+        intro: "i",
+        sections: { contracts: "c", schedule: "s", closing: "cl", ai: "a" },
+      }),
+    );
+    expect(without).not.toBeNull();
+    expect(without!.sections.album).toBeUndefined();
+  });
+});
