@@ -49,10 +49,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // 호수는 발행분만 세어 매긴다 — 대기 중인 초안이 호수를 밀면
+  // claude 스토리('제N호로 인사드려요')와 실제 발행 호수가 어긋난다.
   const admin = createAdminClient();
   const { count } = await admin
     .from("team_briefings")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .eq("status", "published");
 
   return NextResponse.json({
     ok: true,
