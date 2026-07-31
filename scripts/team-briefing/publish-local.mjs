@@ -1,8 +1,9 @@
-// 주간 브리핑 로컬 발행기 — 상시 맥 launchd가 매주 금 10:00 실행.
+// 주간 브리핑 로컬 초안 생성기 — 회사 PC Windows 작업 스케줄러가 매주 금 10:00 실행.
 //
 // 흐름: GET /api/team-briefing/draft(서버 집계) → claude -p 스토리 생성
-//   → POST /api/team-briefing/publish(발행 + Teams 티저).
-// claude 실패/파싱 실패 시 수치 요약 폴백으로 발행한다 (발행은 항상 성공).
+//   → POST /api/team-briefing/stage(초안 저장 + 본인 Teams 알림).
+// 그룹채팅 티저는 여기서 나가지 않는다 — 사람이 미리보기로 확인한 뒤 자동화 페이지에서 발행한다.
+// claude 실패/파싱 실패 시 수치 요약 폴백으로 초안을 만든다 (초안 생성은 항상 성공).
 //
 // 자격: 레포 루트 .env.local의 CRON_SECRET / OPS_CONSOLE_BASE_URL.
 // 실행: node scripts/team-briefing/publish-local.mjs [--dry]  (--dry는 스토리만 출력)
@@ -91,8 +92,8 @@ if (dry) {
   process.exit(0);
 }
 
-// 3) 발행 + Teams 티저
-const pubRes = await fetch(`${BASE}/api/team-briefing/publish`, {
+// 3) 초안 저장 + 본인 Teams 알림
+const pubRes = await fetch(`${BASE}/api/team-briefing/stage`, {
   method: "POST",
   headers: { ...headers, "Content-Type": "application/json" },
   body: JSON.stringify({ payload: { ...draft.payload, story } }),
@@ -100,10 +101,10 @@ const pubRes = await fetch(`${BASE}/api/team-briefing/publish`, {
 const pub = await pubRes.json().catch(() => ({}));
 if (!pubRes.ok || !pub.ok) {
   console.error(
-    `[briefing] publish 실패 HTTP ${pubRes.status}: ${JSON.stringify(pub).slice(0, 300)}`,
+    `[briefing] stage 실패 HTTP ${pubRes.status}: ${JSON.stringify(pub).slice(0, 300)}`,
   );
   process.exit(1);
 }
 console.log(
-  `[briefing] #${pub.issueNo} 발행 완료 — ${pub.url} (Teams ${pub.sent ? "발송됨" : "발송 생략"})`,
+  `[briefing] 초안 #${pub.nextIssueNo}호 저장 완료 — ${pub.url} (자동화 페이지에서 발행)`,
 );

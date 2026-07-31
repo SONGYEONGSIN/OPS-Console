@@ -12,6 +12,7 @@ import {
   toNoticeTeamsEntry,
   toWeeklyReportEntry,
   toClosingRunEntry,
+  toBriefingEntry,
   groupInsightsBatches,
 } from "../run-logs-normalize";
 
@@ -471,5 +472,35 @@ describe("toWeeklyReportEntry", () => {
     expect(entry.fileName).toBeNull();
     expect(entry.teamsSent).toBe(false);
     expect(entry.status).toBe("failed");
+  });
+});
+
+describe("toBriefingEntry (팀 브리핑 발행 이력)", () => {
+  it("published_at 우선, 공유 토큰으로 뉴스레터 URL 생성", () => {
+    const e = toBriefingEntry(
+      {
+        issue_no: 2,
+        share_token: "abc123",
+        published_at: "2026-07-31T01:10:00.000Z",
+        created_at: "2026-07-31T01:00:00.000Z",
+      },
+      "https://ops.example.com",
+    );
+    expect(e.issueNo).toBe(2);
+    expect(e.publishedAt).toBe("2026-07-31T01:10:00.000Z");
+    expect(e.url).toBe("https://ops.example.com/r/briefing/abc123");
+  });
+
+  it("published_at이 없는 구 행은 created_at을 쓴다", () => {
+    const e = toBriefingEntry(
+      {
+        issue_no: 1,
+        share_token: "old",
+        published_at: null,
+        created_at: "2026-07-24T04:35:01.786Z",
+      },
+      "https://ops.example.com",
+    );
+    expect(e.publishedAt).toBe("2026-07-24T04:35:01.786Z");
   });
 });

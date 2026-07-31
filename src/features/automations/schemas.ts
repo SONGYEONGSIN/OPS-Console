@@ -12,4 +12,14 @@ export const setAutomationEnabledInputSchema = z.object({
   enabled: z.boolean(),
 });
 
-export type SetAutomationEnabledInput = z.infer<typeof setAutomationEnabledInputSchema>;
+export type SetAutomationEnabledInput = z.infer<
+  typeof setAutomationEnabledInputSchema
+>;
+
+export const publishBriefingDraftInputSchema = z.object({
+  draftId: z.string().uuid(),
+});
+
+export type PublishBriefingDraftInput = z.infer<
+  typeof publishBriefingDraftInputSchema
+>;

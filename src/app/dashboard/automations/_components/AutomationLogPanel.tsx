@@ -17,6 +17,7 @@ import {
   type NoticeTeamsEntry,
   type ClosingRunEntry,
   type WeeklyReportEntry,
+  type BriefingEntry,
 } from "@/features/automations/run-logs-normalize";
 import type { AutomationRunEntry } from "@/features/automations/types";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
@@ -401,6 +402,28 @@ function ClosingScrapeList({ entries }: { entries: ClosingRunEntry[] }) {
   );
 }
 
+function BriefingList({ entries }: { entries: BriefingEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <span className="text-xs text-ink">{fmtTime(e.publishedAt)}</span>
+          <DefList items={[{ term: "호수", desc: `#${e.issueNo}호` }]} />
+          <a
+            href={e.url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-vermilion underline underline-offset-2"
+          >
+            뉴스레터 열기 →
+          </a>
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
   return (
     <div className="space-y-5">
@@ -465,6 +488,8 @@ function entrySentAtList(log: JobRunLog): string[] {
       return log.entries.map((e) => e.ranAt);
     case "insights":
       return log.entries.map((e) => e.collectedAt);
+    case "briefing":
+      return log.entries.map((e) => e.publishedAt);
     default:
       return [];
   }
@@ -483,33 +508,23 @@ function DetailEntries({
 }) {
   switch (log.kind) {
     case "deposit-match":
-      return (
-        <DepositMatchList entries={indices.map((i) => log.entries[i])} />
-      );
+      return <DepositMatchList entries={indices.map((i) => log.entries[i])} />;
     case "mail-operator":
-      return (
-        <MailOperatorList entries={indices.map((i) => log.entries[i])} />
-      );
+      return <MailOperatorList entries={indices.map((i) => log.entries[i])} />;
     case "smileedi":
       return <SmileEdiList entries={indices.map((i) => log.entries[i])} />;
     case "service-notice":
-      return (
-        <ServiceNoticeList entries={indices.map((i) => log.entries[i])} />
-      );
+      return <ServiceNoticeList entries={indices.map((i) => log.entries[i])} />;
     case "notice-teams":
-      return (
-        <NoticeTeamsList entries={indices.map((i) => log.entries[i])} />
-      );
+      return <NoticeTeamsList entries={indices.map((i) => log.entries[i])} />;
     case "closing-scrape":
-      return (
-        <ClosingScrapeList entries={indices.map((i) => log.entries[i])} />
-      );
+      return <ClosingScrapeList entries={indices.map((i) => log.entries[i])} />;
     case "weekly-report":
-      return (
-        <WeeklyReportList entries={indices.map((i) => log.entries[i])} />
-      );
+      return <WeeklyReportList entries={indices.map((i) => log.entries[i])} />;
     case "insights":
       return <InsightsList entries={indices.map((i) => log.entries[i])} />;
+    case "briefing":
+      return <BriefingList entries={indices.map((i) => log.entries[i])} />;
     default:
       return null;
   }
@@ -547,16 +562,27 @@ export function buildTimeline(
   // 대표 시각(ts)을 함께 들고 다니다 마지막에 내림차순 정렬.
   const sortable: { block: TimelineBlock; ts: number }[] = runs.map((run) => {
     const key = kstDateKey(run.ranAt);
-    const detailIndices = !consumed.has(key) ? (detailByDate.get(key) ?? []) : [];
+    const detailIndices = !consumed.has(key)
+      ? (detailByDate.get(key) ?? [])
+      : [];
     if (detailIndices.length > 0) consumed.add(key);
-    return { block: { kind: "run", run, detailIndices }, ts: epochMs(run.ranAt) };
+    return {
+      block: { kind: "run", run, detailIndices },
+      ts: epochMs(run.ranAt),
+    };
   });
   // 폴백 — 어떤 run에도 매칭되지 않은 발송 상세 날짜를 자체 시각으로 노출.
   for (const [dateKey, indices] of detailByDate) {
     if (consumed.has(dateKey)) continue;
     // 대표 시각 = 해당 날짜 상세 중 가장 늦은 시각.
-    const ts = indices.reduce((max, i) => Math.max(max, epochMs(sentAtList[i])), 0);
-    sortable.push({ block: { kind: "detail-only", dateKey, detailIndices: indices }, ts });
+    const ts = indices.reduce(
+      (max, i) => Math.max(max, epochMs(sentAtList[i])),
+      0,
+    );
+    sortable.push({
+      block: { kind: "detail-only", dateKey, detailIndices: indices },
+      ts,
+    });
   }
   return sortable.sort((a, b) => b.ts - a.ts).map((s) => s.block);
 }

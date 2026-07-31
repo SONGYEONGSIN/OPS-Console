@@ -1,21 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { sendTeamsMock, adminFrom, listContractsMock, insertBriefingMock } =
-  vi.hoisted(() => ({
-    sendTeamsMock: vi.fn(
-      async (_args: {
-        operatorEmail: string;
-        chatId: string;
-        html: string;
-      }) => ({ id: "m1" }),
-    ),
-    adminFrom: vi.fn(),
-    insertBriefingMock: vi.fn(async (_row: unknown) => ({ error: null })),
-    listContractsMock: vi.fn(async () => ({
-      rows: [] as { sheet: string; status: string; serviceActive: string }[],
-      total: 0,
-    })),
-  }));
+const {
+  sendTeamsMock,
+  adminFrom,
+  listContractsMock,
+  insertBriefingMock,
+  deleteDraftMock,
+  updateBriefingMock,
+} = vi.hoisted(() => ({
+  sendTeamsMock: vi.fn(
+    async (_args: { operatorEmail: string; chatId: string; html: string }) => ({
+      id: "m1",
+    }),
+  ),
+  adminFrom: vi.fn(),
+  insertBriefingMock: vi.fn(async (_row: unknown) => ({ error: null })),
+  deleteDraftMock: vi.fn(async () => ({ error: null })),
+  updateBriefingMock: vi.fn((_row: unknown) => ({
+    eq: vi.fn(async () => ({ error: null })),
+  })),
+  listContractsMock: vi.fn(async () => ({
+    rows: [] as { sheet: string; status: string; serviceActive: string }[],
+    total: 0,
+  })),
+}));
 
 vi.mock("@/lib/microsoft/teams", () => ({
   sendTeamsChatMessage: sendTeamsMock,
@@ -27,7 +35,12 @@ vi.mock("@/features/contracts/queries", () => ({
   listContracts: listContractsMock,
 }));
 
-import { runTeamBriefing } from "../team-briefing";
+import {
+  runTeamBriefing,
+  stageBriefingDraft,
+  publishStagedDraft,
+} from "../team-briefing";
+import type { BriefingPayload } from "../team-briefing-build";
 
 type ChainResult = { data: unknown[]; count: number; error: null };
 type Chain = {
@@ -54,8 +67,31 @@ function chain(data: unknown[]): Chain {
   return c;
 }
 
+/**
+ * team_briefings 테이블 목 — 한 체인이 두 용도로 쓰인다.
+ * `.select(...).eq(...)` 는 호수 count로 await 되기도 하고(thenable),
+ * `.maybeSingle()` 로 초안 1건을 꺼내기도 한다.
+ */
+const briefingsState = { publishedCount: 0, draft: null as unknown };
+function briefingsTable() {
+  const eqResult = {
+    then: (resolve: (v: unknown) => void) =>
+      resolve({ count: briefingsState.publishedCount, error: null }),
+    maybeSingle: () =>
+      Promise.resolve({ data: briefingsState.draft, error: null }),
+  };
+  return {
+    select: () => ({ eq: () => eqResult }),
+    delete: () => ({ eq: deleteDraftMock }),
+    insert: insertBriefingMock,
+    update: updateBriefingMock,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  briefingsState.publishedCount = 0;
+  briefingsState.draft = null;
   listContractsMock.mockResolvedValue({
     rows: [
       { sheet: "4년제", status: "계약완료", serviceActive: "Y" },
@@ -66,12 +102,7 @@ beforeEach(() => {
     total: 3,
   });
   adminFrom.mockImplementation((table: string) => {
-    if (table === "team_briefings")
-      return {
-        // 호수 count 조회 — select가 곧바로 await됨
-        select: () => Promise.resolve({ count: 0, error: null }),
-        insert: insertBriefingMock,
-      };
+    if (table === "team_briefings") return briefingsTable();
     if (table === "schedule_events") return chain([]);
     if (table === "closing_services")
       return chain([
@@ -126,17 +157,103 @@ beforeEach(() => {
   vi.stubEnv("MAIL_DRY_RUN", "");
 });
 
-describe("runTeamBriefing", () => {
-  it("공지 방(TEAMS_NOTICE_CHAT_ID) 미설정이면 발송 생략(로그만) — 차주보고 방 폴백 안 함", async () => {
-    vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
-    vi.stubEnv("TEAMS_CHAT_ID", "chat-1"); // 있어도 폴백 X
-    const r = await runTeamBriefing();
+function samplePayload(): BriefingPayload {
+  return {
+    dateLabel: "2026-07-31 (금)",
+    contracts: { bySheet: [], totalDone: 0, totalOngoing: 0 },
+    weekRange: { startYmd: "2026-08-03", endYmd: "2026-08-07" },
+    schedule: [],
+    closing: [],
+    aiWork: { count: 0, totalCount: 0, savedHours: 0, items: [], more: 0 },
+    tips: { newCount: 0, totalCount: 0, items: [], more: 0 },
+    insights: { newCount: 0, items: [] },
+  };
+}
+
+describe("stageBriefingDraft", () => {
+  it("기존 초안을 지우고 status=draft로 저장한다", async () => {
+    const r = await stageBriefingDraft(samplePayload());
     expect(r.ok).toBe(true);
-    expect(r.message).toContain("미설정");
+    expect(deleteDraftMock).toHaveBeenCalledWith("status", "draft");
+    const row = insertBriefingMock.mock.calls[0][0] as { status: string };
+    expect(row.status).toBe("draft");
+  });
+
+  it("호수는 published 행만 세어 매긴다", async () => {
+    briefingsState.publishedCount = 3;
+    const r = await stageBriefingDraft(samplePayload());
+    expect(r.ok && r.nextIssueNo).toBe(4);
+  });
+
+  it("그룹채팅 티저를 보내지 않는다", async () => {
+    vi.stubEnv("TEAMS_BRIEFING_DRAFT_CHAT_ID", "");
+    await stageBriefingDraft(samplePayload());
     expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 
-  it("DRY-RUN 시 발송하지 않고 집계 결과만 반환", async () => {
+  it("초안 알림 방이 설정되면 본인 채팅으로 미리보기 링크를 보낸다", async () => {
+    vi.stubEnv("TEAMS_BRIEFING_DRAFT_CHAT_ID", "19:me@thread.v2");
+    const r = await stageBriefingDraft(samplePayload());
+    expect(r.ok && r.notified).toBe(true);
+    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
+    const arg = sendTeamsMock.mock.calls[0][0];
+    expect(arg.chatId).toBe("19:me@thread.v2");
+    expect(arg.html).toContain("/r/briefing/");
+    expect(arg.html).toContain("초안");
+  });
+
+  it("알림 실패해도 초안은 유지 (notified:false)", async () => {
+    vi.stubEnv("TEAMS_BRIEFING_DRAFT_CHAT_ID", "19:me@thread.v2");
+    sendTeamsMock.mockRejectedValueOnce(new Error("graph 403"));
+    const r = await stageBriefingDraft(samplePayload());
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.notified).toBe(false);
+  });
+});
+
+describe("publishStagedDraft", () => {
+  beforeEach(() => {
+    briefingsState.draft = {
+      id: "d1",
+      issue_no: 2,
+      share_token: "tok2",
+      payload: samplePayload(),
+    };
+    briefingsState.publishedCount = 1;
+  });
+
+  it("status/published_at을 갱신하고 토큰은 유지하며 그룹 티저를 보낸다", async () => {
+    const r = await publishStagedDraft("d1");
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.issueNo).toBe(2);
+    expect(r.ok && r.url).toContain("/r/briefing/tok2");
+    const row = updateBriefingMock.mock.calls[0][0] as {
+      status: string;
+      published_at: string;
+    };
+    expect(row.status).toBe("published");
+    expect(row.published_at).toBeTruthy();
+    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
+    expect(sendTeamsMock.mock.calls[0][0].chatId).toBe("chat-1");
+    expect(sendTeamsMock.mock.calls[0][0].html).toContain("tok2");
+  });
+
+  it("초안이 없으면 ok:false", async () => {
+    briefingsState.draft = null;
+    const r = await publishStagedDraft("missing");
+    expect(r.ok).toBe(false);
+  });
+
+  it("그룹 방 미설정이면 발행만 하고 발송 생략", async () => {
+    vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
+    const r = await publishStagedDraft("d1");
+    expect(r.ok && r.sent).toBe(false);
+    expect(sendTeamsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("runTeamBriefing (초안 생성)", () => {
+  it("DRY-RUN 시 저장하지 않고 집계 결과만 반환", async () => {
     vi.stubEnv("MAIL_DRY_RUN", "true");
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
@@ -145,35 +262,41 @@ describe("runTeamBriefing", () => {
     // 서비스여부 'Y' 2건만 집계(N 1건 제외) → 완료 1·진행중 1
     expect(r.details?.contractsDone).toBe(1);
     expect(r.details?.contractsOngoing).toBe(1);
+    expect(insertBriefingMock).not.toHaveBeenCalled();
     expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 
-  it("정상 시 Teams 티저 발송 — 발신자/채팅방/제호·수치·뉴스레터 링크", async () => {
+  it("정상 실행은 초안만 만들고 그룹채팅에 발송하지 않는다", async () => {
+    vi.stubEnv("TEAMS_BRIEFING_DRAFT_CHAT_ID", "");
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
-    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
-    const arg = sendTeamsMock.mock.calls[0][0];
-    expect(arg.operatorEmail).toBe("ops@x.com");
-    expect(arg.chatId).toBe("chat-1");
-    expect(arg.html).toContain("[운영부 주간 브리핑] #001");
-    expect(arg.html).toContain("마감 임박 1건");
-    expect(arg.html).toContain("/r/briefing/");
-    expect(arg.html).toContain("뉴스레터에서 전체 이야기 확인하기");
+    expect(r.message).toContain("초안");
+    expect(r.message).toContain("발행 대기");
+    expect(insertBriefingMock).toHaveBeenCalledTimes(1);
+    expect(sendTeamsMock).not.toHaveBeenCalled();
   });
 
-  it("뉴스레터 발행 — team_briefings에 payload·share_token insert", async () => {
+  it("그룹 방 미설정이어도 초안은 생성된다", async () => {
+    vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "");
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
     expect(insertBriefingMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("초안 payload — 작성자 이름 매핑 + 마감 목록", async () => {
+    const r = await runTeamBriefing();
+    expect(r.ok).toBe(true);
     const row = insertBriefingMock.mock.calls[0][0] as {
       issue_no: number;
+      status: string;
+      share_token: string;
       payload: {
         aiWork: { items: { author_name: string }[] };
         closing: unknown[];
       };
-      share_token: string;
     };
     expect(row.issue_no).toBe(1);
+    expect(row.status).toBe("draft");
     expect(row.share_token).toMatch(/^[0-9a-f]{32}$/);
     expect(row.payload.closing).toHaveLength(1);
     // 작성자 이름 매핑 — operators 등록자는 이름, 미등록은 email 앞부분
@@ -181,39 +304,23 @@ describe("runTeamBriefing", () => {
       "김유민",
       "lee",
     ]);
-    // 티저 링크가 발행 토큰을 가리킴
-    expect(sendTeamsMock.mock.calls[0][0].html).toContain(row.share_token);
   });
 
-  it("수신 방은 공지 방(TEAMS_NOTICE_CHAT_ID)만 사용 (차주보고 방 무시)", async () => {
-    vi.stubEnv("TEAMS_NOTICE_CHAT_ID", "19:notice-room@thread.v2");
-    vi.stubEnv("TEAMS_CHAT_ID", "chat-1"); // 무시됨
+  it("AI 활용 집계 — details 수치", async () => {
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
-    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
-    expect(sendTeamsMock.mock.calls[0][0].chatId).toBe(
-      "19:notice-room@thread.v2",
-    );
-  });
-
-  it("AI 활용 집계 — details 수치 + 티저에 작업·TIP 카운트", async () => {
-    const r = await runTeamBriefing();
-    expect(r.ok).toBe(true);
-    const html = sendTeamsMock.mock.calls[0][0].html;
-    expect(html).toContain("AI 작업 2건(절감 3h)");
-    expect(html).toContain("신규 TIP 1건");
     expect(r.details?.aiWorkCount).toBe(2);
     expect(r.details?.aiWorkSavedHours).toBe(3);
     expect(r.details?.tipsNew).toBe(1);
     expect(r.details?.insightsNew).toBe(1);
   });
 
-  it("발신자 env 모두 미설정이면 기본값(ys1114)으로 발송", async () => {
+  it("초안 알림 발신자 env 모두 미설정이면 기본값(ys1114)", async () => {
+    vi.stubEnv("TEAMS_BRIEFING_DRAFT_CHAT_ID", "19:me@thread.v2");
     vi.stubEnv("TEAMS_BRIEFING_SENDER", "");
     vi.stubEnv("TEAMS_NOTICE_SENDER", "");
     const r = await runTeamBriefing();
     expect(r.ok).toBe(true);
-    expect(sendTeamsMock).toHaveBeenCalledTimes(1);
     expect(sendTeamsMock.mock.calls[0][0].operatorEmail).toBe(
       "ys1114@jinhakapply.com",
     );

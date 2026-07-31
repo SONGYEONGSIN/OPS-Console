@@ -11,6 +11,17 @@ vi.mock("../queries", () => ({
   getJobEnabled: vi.fn(async () => false),
 }));
 
+const { recordRunMock, publishStagedDraftMock } = vi.hoisted(() => ({
+  recordRunMock: vi.fn(async () => {}),
+  publishStagedDraftMock: vi.fn(),
+}));
+vi.mock("../run-recorder", () => ({
+  recordAutomationRun: recordRunMock,
+}));
+vi.mock("../jobs/team-briefing", () => ({
+  publishStagedDraft: publishStagedDraftMock,
+}));
+
 const upsertMock = vi.fn(async () => ({ error: null }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(() => ({
@@ -18,7 +29,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   })),
 }));
 
-import { runAutomationAction, setAutomationEnabledAction } from "../actions";
+import {
+  runAutomationAction,
+  setAutomationEnabledAction,
+  publishBriefingDraftAction,
+} from "../actions";
 import { getJob } from "../registry";
 import { computeCooldownRemaining, getJobEnabled } from "../queries";
 import { revalidatePath } from "next/cache";
@@ -130,5 +145,57 @@ describe("setAutomationEnabledAction", () => {
     const r = await setAutomationEnabledAction(undefined, f);
     expect(upsertMock).toHaveBeenCalled();
     expect(r?.ok).toBe(true);
+  });
+});
+
+describe("publishBriefingDraftAction", () => {
+  const DRAFT_ID = "11111111-2222-4333-8444-555555555555";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    publishStagedDraftMock.mockResolvedValue({
+      ok: true,
+      issueNo: 2,
+      url: "https://x/r/briefing/tok2",
+      sent: true,
+    });
+  });
+
+  it("draftId 누락이면 ok:false + 발행 미호출", async () => {
+    const r = await publishBriefingDraftAction(undefined, new FormData());
+    expect(r?.ok).toBe(false);
+    expect(publishStagedDraftMock).not.toHaveBeenCalled();
+  });
+
+  it("정상 — 발행 호출 + 실행 이력에 링크 기록 + revalidate", async () => {
+    const f = new FormData();
+    f.set("draftId", DRAFT_ID);
+    const r = await publishBriefingDraftAction(undefined, f);
+    expect(r?.ok).toBe(true);
+    expect(publishStagedDraftMock).toHaveBeenCalledWith(DRAFT_ID);
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "team-briefing",
+      expect.objectContaining({
+        ok: true,
+        skipped: false,
+        message: expect.stringContaining("/r/briefing/tok2"),
+      }),
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/automations");
+  });
+
+  it("발행 실패도 실행 이력에 남긴다", async () => {
+    publishStagedDraftMock.mockResolvedValue({
+      ok: false,
+      message: "발행할 초안이 없습니다",
+    });
+    const f = new FormData();
+    f.set("draftId", DRAFT_ID);
+    const r = await publishBriefingDraftAction(undefined, f);
+    expect(r?.ok).toBe(false);
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "team-briefing",
+      expect.objectContaining({ ok: false }),
+    );
   });
 });

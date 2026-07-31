@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import { listContracts } from "@/features/contracts/queries";
+import { briefingUrl } from "@/features/team-briefings/url";
 import { CONTRACT_SHEETS } from "@/features/contracts/schemas";
 import type { AutomationRunResult } from "../types";
 import {
@@ -51,15 +52,6 @@ function addDaysYmd(ymd: string, n: number): string {
  * 드라이런: TEAM_BRIEFING_DRY_RUN 또는 MAIL_DRY_RUN = "true" → 외부 호출 없이 집계 결과만.
  */
 const BRIEFING_SENDER_DEFAULT = "ys1114@jinhakapply.com";
-
-/** 뉴스레터 공유 링크 베이스 — posts/handover 메일 링크와 동일 관례. */
-function baseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ??
-    process.env.FOLIO_BASE_URL ??
-    "http://localhost:3000"
-  );
-}
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
@@ -358,42 +350,119 @@ export async function buildBriefingData(): Promise<
   };
 }
 
+/** 발신자 — 초안 알림·그룹 티저 공통. */
+function briefingSender(): string {
+  return (
+    process.env.TEAMS_BRIEFING_SENDER ||
+    process.env.TEAMS_NOTICE_SENDER ||
+    BRIEFING_SENDER_DEFAULT
+  );
+}
+
+/** 발행분 수 + 1 — 초안은 세지 않는다(호수가 밀리지 않도록). */
+async function nextIssueNo(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<{ ok: true; value: number } | { ok: false; message: string }> {
+  const { count, error } = await admin
+    .from("team_briefings")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "published");
+  if (error)
+    return { ok: false, message: `브리핑 호수 조회 실패: ${error.message}` };
+  return { ok: true, value: (count ?? 0) + 1 };
+}
+
 /**
- * 뉴스레터 발행 — team_briefings insert 후 Teams 티저 발송.
+ * 초안 저장 — 사람이 내용을 확인할 수 있도록 발행 전 단계에 세워둔다.
+ * 그룹채팅 티저는 보내지 않는다. 본인 Teams 채팅으로만 미리보기 링크를 알린다.
+ * 초안은 1건만 유지 — 새 초안이 이전 초안을 대체한다.
+ */
+export async function stageBriefingDraft(
+  payload: BriefingPayload,
+): Promise<
+  | { ok: true; url: string; nextIssueNo: number; notified: boolean }
+  | { ok: false; message: string }
+> {
+  const admin = createAdminClient();
+  const issue = await nextIssueNo(admin);
+  if (!issue.ok) return issue;
+
+  const { error: delErr } = await admin
+    .from("team_briefings")
+    .delete()
+    .eq("status", "draft");
+  if (delErr)
+    return { ok: false, message: `이전 초안 정리 실패: ${delErr.message}` };
+
+  const shareToken = crypto.randomUUID().replace(/-/g, "");
+  const { error: insErr } = await admin.from("team_briefings").insert({
+    issue_no: issue.value,
+    briefing_date: kstTodayYmd(),
+    payload,
+    share_token: shareToken,
+    status: "draft",
+  });
+  if (insErr)
+    return { ok: false, message: `초안 저장 실패: ${insErr.message}` };
+
+  const url = briefingUrl(shareToken);
+  const draftChatId = process.env.TEAMS_BRIEFING_DRAFT_CHAT_ID || "";
+  if (!draftChatId)
+    return { ok: true, url, nextIssueNo: issue.value, notified: false };
+
+  try {
+    await sendTeamsChatMessage({
+      operatorEmail: briefingSender(),
+      chatId: draftChatId,
+      html: `<p><b>[운영부 상황실]</b> 주간 브리핑 초안 #${issue.value}호가 준비됐습니다.</p><p><a href="${url}">미리보기 열기</a></p><p>확인 후 자동화 페이지에서 발행하세요.</p>`,
+    });
+  } catch {
+    // 알림 실패로 초안을 버리지 않는다. 호출부가 notified:false를 이력에 남긴다.
+    return { ok: true, url, nextIssueNo: issue.value, notified: false };
+  }
+  return { ok: true, url, nextIssueNo: issue.value, notified: true };
+}
+
+/**
+ * 초안 발행 확정 — 호수를 확정하고 그룹채팅 티저를 발송한다.
+ * share_token은 초안 때 부여한 값을 유지한다(확인한 링크 = 팀에 나가는 링크).
  * 방 미설정이면 발행만 하고 발송은 생략(sent: false).
  */
-export async function publishBriefing(
-  payload: BriefingPayload,
+export async function publishStagedDraft(
+  draftId: string,
 ): Promise<
   | { ok: true; issueNo: number; url: string; sent: boolean }
   | { ok: false; message: string }
 > {
-  const chatId = process.env.TEAMS_NOTICE_CHAT_ID || "";
-  const sender =
-    process.env.TEAMS_BRIEFING_SENDER ||
-    process.env.TEAMS_NOTICE_SENDER ||
-    BRIEFING_SENDER_DEFAULT;
-
   const admin = createAdminClient();
-  const { count, error: cntErr } = await admin
+  const { data: draft } = await admin
     .from("team_briefings")
-    .select("id", { count: "exact", head: true });
-  if (cntErr)
-    return { ok: false, message: `브리핑 호수 조회 실패: ${cntErr.message}` };
-  const issueNo = (count ?? 0) + 1;
-  const shareToken = crypto.randomUUID().replace(/-/g, "");
-  const { error: insErr } = await admin.from("team_briefings").insert({
-    issue_no: issueNo,
-    briefing_date: kstTodayYmd(),
-    payload,
-    share_token: shareToken,
-  });
-  if (insErr)
-    return { ok: false, message: `뉴스레터 발행 실패: ${insErr.message}` };
+    .select("id, issue_no, share_token, payload")
+    .eq("id", draftId)
+    .maybeSingle();
+  if (!draft) return { ok: false, message: "발행할 초안이 없습니다" };
 
-  const url = `${baseUrl()}/r/briefing/${shareToken}`;
+  const issue = await nextIssueNo(admin);
+  if (!issue.ok) return issue;
+
+  const { error: updErr } = await admin
+    .from("team_briefings")
+    .update({
+      status: "published",
+      published_at: new Date().toISOString(),
+      issue_no: issue.value,
+    })
+    .eq("id", draftId);
+  if (updErr)
+    return { ok: false, message: `발행 처리 실패: ${updErr.message}` };
+
+  const issueNo = issue.value;
+  const payload = draft.payload as BriefingPayload;
+  const url = briefingUrl(draft.share_token as string);
+  const chatId = process.env.TEAMS_NOTICE_CHAT_ID || "";
   if (!chatId) return { ok: true, issueNo, url, sent: false };
 
+  const sender = briefingSender();
   const html = buildBriefingTeaserHtml({
     issueNo,
     dateLabel: payload.dateLabel,
@@ -416,20 +485,14 @@ export async function publishBriefing(
   return { ok: true, issueNo, url, sent: true };
 }
 
-/** registry 수동 실행/폴백 — 스토리 없이 집계→발행→티저. 정규 발행은 로컬 launchd. */
+/**
+ * registry 수동 실행/폴백 — 스토리 없이 집계→초안 저장. 정규 초안은 로컬 스케줄러.
+ * 어느 경로로도 사람 확인 없이 그룹채팅에 나가지 않도록 여기서도 초안까지만 만든다.
+ */
 export async function runTeamBriefing(): Promise<AutomationRunResult> {
-  const chatId = process.env.TEAMS_NOTICE_CHAT_ID || "";
   const dryRun =
     process.env.TEAM_BRIEFING_DRY_RUN === "true" ||
     process.env.MAIL_DRY_RUN === "true";
-
-  // 방 미설정이면 발행/발송 없이 로그만(차주보고 방 폴백 없음). 드라이런은 집계까지 수행.
-  if (!dryRun && !chatId) {
-    return {
-      ok: true,
-      message: "Teams 채팅방 미설정 (TEAMS_NOTICE_CHAT_ID) — 발송 생략(로그만)",
-    };
-  }
 
   const built = await buildBriefingData();
   if (!built.ok) return { ok: false, message: built.message };
@@ -438,16 +501,16 @@ export async function runTeamBriefing(): Promise<AutomationRunResult> {
   if (dryRun) {
     return {
       ok: true,
-      message: `DRY-RUN — 브리핑 생성(발행·발송 생략). 계약 완료 ${details.contractsDone}·진행 ${details.contractsOngoing}, 마감임박 ${details.closing}건, AI작업 ${details.aiWorkCount}건·TIP 신규 ${details.tipsNew}건`,
+      message: `DRY-RUN — 브리핑 생성(초안 저장 생략). 계약 완료 ${details.contractsDone}·진행 ${details.contractsOngoing}, 마감임박 ${details.closing}건, AI작업 ${details.aiWorkCount}건·TIP 신규 ${details.tipsNew}건`,
       details,
     };
   }
 
-  const published = await publishBriefing(payload);
-  if (!published.ok) return { ok: false, message: published.message };
+  const staged = await stageBriefingDraft(payload);
+  if (!staged.ok) return { ok: false, message: staged.message };
   return {
     ok: true,
-    message: `팀 보고 브리핑 #${published.issueNo} 발행·발송 완료 (마감임박 ${details.closing}건)`,
-    details: { ...details, issueNo: published.issueNo },
+    message: `초안 #${staged.nextIssueNo}호 생성 — 발행 대기 (마감임박 ${details.closing}건)${staged.notified ? "" : " · 본인 Teams 알림 미설정"}`,
+    details: { ...details, issueNo: staged.nextIssueNo },
   };
 }

@@ -114,7 +114,7 @@ E2E 운영 메모:
 | `insights-collect` | 매일 08:00 (KST) | YouTube 인기 영상 수집 → 인사이트 페이지 | `insight_videos.collected_at` |
 | `receivables-mail-operator` | 평일 10:00 (KST) | 운영자별 미수채권 본인 메일 알림 | `receivables_operator_mail_sends` |
 | `receivables-deposit-match` | 매시간 | 미수 ↔ 입금내역 자동 매칭 (단건/N:1/N:M) + K/J열 PATCH + mismatch admin 알림 | `receivables_match_runs` (jsonb payload) |
-| `team-briefing` | 매주 금 10:00 — **상시 맥 launchd** (`scripts/team-briefing/publish-local.mjs`) | 주간 브리핑 **뉴스레터 발행**(스티비풍 `/r/briefing/[token]`, claude -p 스토리+근속 기념일) + Teams **티저**(제목·수치·링크). 서버 API: `/api/team-briefing/draft·publish` (CRON_SECRET). registry 잡은 수동/폴백(스토리 없음) — **Vercel cron 스케줄은 제거 필수** | `team_briefings` + `automation_runs` |
+| `team-briefing` | 매주 금 10:00 — **회사 PC Windows 작업 스케줄러** (`scripts/team-briefing/publish-local.mjs`) | 주간 브리핑 **초안 생성까지만**(스티비풍 `/r/briefing/[token]`, claude -p 스토리+근속 기념일) + 본인 Teams 채팅으로 미리보기 알림. **그룹채팅 티저는 자동화 페이지 [발행] 확정 시에만 발송**. 서버 API: `/api/team-briefing/draft·stage` (CRON_SECRET), 발행은 admin server action. registry 잡(수동 실행)도 초안 생성 — **Vercel cron 스케줄은 제거 필수** | `team_briefings`(status draft/published) + `automation_runs` |
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
 

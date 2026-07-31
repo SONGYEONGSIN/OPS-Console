@@ -9,9 +9,11 @@ import {
   toNoticeTeamsEntry,
   toWeeklyReportEntry,
   toClosingRunEntry,
+  toBriefingEntry,
   groupInsightsBatches,
   type JobRunLog,
 } from "./run-logs-normalize";
+import { briefingBaseUrl } from "@/features/team-briefings/url";
 
 // 인스펙터에 한 번에 표시할 최근 실행 이력 수.
 const LOG_LIMIT = 20;
@@ -174,6 +176,33 @@ async function insightsLog(jobId: string): Promise<JobRunLog> {
   };
 }
 
+/** 팀 브리핑 — 발행분(status=published)을 호수·뉴스레터 링크와 함께 노출한다. */
+async function briefingLog(jobId: string): Promise<JobRunLog> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("team_briefings")
+    .select("issue_no, share_token, published_at, created_at")
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .limit(LOG_LIMIT);
+  const base = briefingBaseUrl();
+  return {
+    jobId,
+    kind: "briefing",
+    entries: (data ?? []).map((r) =>
+      toBriefingEntry(
+        {
+          issue_no: r.issue_no as number,
+          share_token: r.share_token as string,
+          published_at: (r.published_at as string | null) ?? null,
+          created_at: r.created_at as string,
+        },
+        base,
+      ),
+    ),
+  };
+}
+
 const LOG_RESOLVERS: Record<string, (jobId: string) => Promise<JobRunLog>> = {
   "insights-collect": insightsLog,
   "receivables-mail-operator": mailOperatorLog,
@@ -184,6 +213,7 @@ const LOG_RESOLVERS: Record<string, (jobId: string) => Promise<JobRunLog>> = {
   "notice-teams-share": noticeTeamsShareLog,
   "closing-scrape": closingScrapeLog,
   "weekly-report-rollover": weeklyReportLog,
+  "team-briefing": briefingLog,
 };
 
 export async function getJobRunLog(jobId: string): Promise<JobRunLog> {
