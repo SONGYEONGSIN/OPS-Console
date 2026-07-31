@@ -5,6 +5,7 @@ import {
   getJobRunLogAction,
   runAutomationAction,
   setAutomationEnabledAction,
+  publishBriefingDraftAction,
   type RunActionState,
 } from "@/features/automations/actions";
 import type {
@@ -142,6 +143,12 @@ function AutomationRow({
             ? `마지막 실행 ${new Date(status.lastRunAt).toLocaleString("ko-KR")}`
             : "실행 기록 없음"}
         </div>
+        {status.pendingDraft && (
+          <div className="mt-1 text-[11px] text-vermilion">
+            초안 #{status.pendingDraft.issueNo}호 발행 대기 (
+            {new Date(status.pendingDraft.createdAt).toLocaleString("ko-KR")})
+          </div>
+        )}
       </td>
       <td className="px-3 py-3">
         {status.localOnly ? (
@@ -151,13 +158,67 @@ function AutomationRow({
         )}
       </td>
       <td className="px-3 py-3">
-        {status.localOnly ? (
+        {status.pendingDraft ? (
+          <DraftControl draft={status.pendingDraft} isAdmin={isAdmin} />
+        ) : status.localOnly ? (
           <span className="text-xs text-muted">—</span>
         ) : (
           <RunControl status={status} isAdmin={isAdmin} />
         )}
       </td>
     </tr>
+  );
+}
+
+/**
+ * 초안 대기 상태 — [미리보기]로 내용을 확인한 뒤 [발행]으로 확정한다.
+ * 발행 전까지 그룹채팅에는 아무것도 나가지 않는다.
+ */
+function DraftControl({
+  draft,
+  isAdmin,
+}: {
+  draft: NonNullable<AutomationStatus["pendingDraft"]>;
+  isAdmin: boolean;
+}) {
+  const [state, formAction, pending] = useActionState<RunActionState, FormData>(
+    publishBriefingDraftAction,
+    undefined,
+  );
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <a
+        href={draft.url}
+        target="_blank"
+        rel="noreferrer"
+        className="text-xs text-vermilion underline underline-offset-2"
+      >
+        미리보기 →
+      </a>
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          if (!isAdmin) {
+            e.preventDefault();
+            alert(ADMIN_ONLY_MSG);
+          }
+        }}
+      >
+        <input type="hidden" name="draftId" value={draft.id} />
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex w-fit items-center border border-vermilion bg-vermilion cursor-pointer px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {pending ? "발행 중…" : "발행"}
+        </button>
+      </form>
+      {state ? (
+        <span className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>
+          {state.message}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

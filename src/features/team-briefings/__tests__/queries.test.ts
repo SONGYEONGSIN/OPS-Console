@@ -9,7 +9,10 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: mockCreateAdminClient,
 }));
 
-import { getTeamBriefingByShareToken } from "../queries";
+import {
+  getTeamBriefingByShareToken,
+  getPendingBriefingDraft,
+} from "../queries";
 
 function builder() {
   const b: Record<string, unknown> = {};
@@ -76,5 +79,35 @@ describe("getTeamBriefingByShareToken", () => {
     };
     const r = await getTeamBriefingByShareToken("tok-old");
     expect(r!.status).toBe("published");
+  });
+});
+
+describe("getPendingBriefingDraft", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.result = { data: null, error: null };
+    mockCreateAdminClient.mockReturnValue({ from: vi.fn(() => builder()) });
+    process.env.NEXT_PUBLIC_APP_URL = "https://ops.example.com";
+  });
+
+  it("초안 없으면 null", async () => {
+    expect(await getPendingBriefingDraft()).toBeNull();
+  });
+
+  it("초안이 있으면 id/호수/미리보기 URL 반환", async () => {
+    state.result = {
+      data: {
+        id: "d1",
+        issue_no: 2,
+        share_token: "tok2",
+        created_at: "2026-07-31T01:00:00Z",
+      },
+      error: null,
+    };
+    const r = await getPendingBriefingDraft();
+    expect(r).not.toBeNull();
+    expect(r!.id).toBe("d1");
+    expect(r!.issueNo).toBe(2);
+    expect(r!.url).toBe("https://ops.example.com/r/briefing/tok2");
   });
 });

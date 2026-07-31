@@ -36,6 +36,13 @@ export type AutomationStatus = {
   lastRunAt: string | null;
   cooldownRemainingMinutes: number;
   enabled: boolean;
+  /** 발행 대기 중인 초안 (team-briefing 전용) — 없으면 undefined. */
+  pendingDraft?: {
+    id: string;
+    issueNo: number;
+    url: string;
+    createdAt: string;
+  };
   /** 로컬 전용 잡 여부 — UI가 수동/자동 컨트롤 대신 '로컬 전용' 표시로 분기. */
   localOnly: boolean;
 };

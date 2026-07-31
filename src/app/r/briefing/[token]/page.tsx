@@ -18,6 +18,12 @@ export default async function SharedBriefingPage({
   return (
     // 스티비 레퍼런스 클론 — 흰 바탕 단일 컬럼 (앱 브랜드와 분리된 발행물 스킨)
     <main className="min-h-screen bg-white">
+      {/* 초안 링크를 실수로 공유해도 오해가 없도록 발행 전임을 명시한다. */}
+      {briefing.status === "draft" && (
+        <div className="border-b border-line bg-situation-bg px-4 py-3 text-center text-sm text-vermilion">
+          초안입니다 — 아직 발행되지 않았습니다.
+        </div>
+      )}
       <BriefingNewsletter
         issueNo={briefing.issueNo}
         payload={briefing.payload}

@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTOMATION_JOBS } from "./registry";
+import { getPendingBriefingDraft } from "@/features/team-briefings/queries";
 import type { AutomationStatus } from "./types";
 
 export function computeCooldownRemaining(
@@ -147,6 +148,11 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
   const out: AutomationStatus[] = [];
   for (const job of AUTOMATION_JOBS) {
     const lastRunAt = await getJobLastRunAt(job.id);
+    // 팀 브리핑만 초안 단계를 가진다 — 대기 초안이 있으면 카드에 미리보기/발행을 띄운다.
+    const pendingDraft =
+      job.id === "team-briefing"
+        ? ((await getPendingBriefingDraft()) ?? undefined)
+        : undefined;
     out.push({
       id: job.id,
       label: job.label,
@@ -161,6 +167,7 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
       ),
       enabled: settings.get(job.id) ?? false,
       localOnly: job.localOnly ?? false,
+      pendingDraft,
     });
   }
   return out;
