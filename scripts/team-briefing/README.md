@@ -69,6 +69,29 @@ Start-ScheduledTask -TaskName "OPS-Console-Team-Briefing"
 > Mac launchd(`com.opsconsole.team-briefing.plist`)는 claude -p 인증 세션 부재로 스토리가
 > 폴백만 나오므로 **사용하지 않는다**(문서 상단 경고 참조).
 
+## 사진·영상 업로드
+
+뉴스레터 사진은 레포가 아니라 **Supabase Storage `newsletter` 버킷**(공개)의
+날짜 폴더(`YYYYMMDD`)에서 읽는다. 발행일 기준 **7일 이내 폴더만** 수집된다.
+
+```bash
+# 기본 — public/newsletter/ 의 파일을 오늘 날짜 폴더로 업로드
+node scripts/team-briefing/upload-assets.mjs
+
+# 업로드 없이 리사이즈 결과만 확인
+node scripts/team-briefing/upload-assets.mjs --dry
+
+# 다른 폴더/날짜 지정
+SRC_DIR="C:/Users/me/Downloads/20260731" FOLDER=20260731 node scripts/team-briefing/upload-assets.mjs
+```
+
+- **원본 파일명(확장자 제외)이 그대로 캡션**이 된다 — 올리기 전에 파일명을 캡션 문장으로 정리할 것
+- 사진은 최대 1280px · JPEG q75로 재인코딩(`photo-NN.jpg`), 영상은 원본 그대로(`video-NN.ext`)
+- 같은 날 재실행하면 기존 번호 다음부터 이어 붙는다
+- 뉴스레터에 실리는 사진은 **커버 1장 + 앨범 6장 = 7장**이 상한 (`GALLERY_MAX`)
+- `public/newsletter/*` 는 gitignore — 공개 레포라 직원 사진을 커밋하지 않는다.
+  따라서 이 폴더는 PC 간에 따라가지 않는다
+
 ## 수동 실행
 
 ```bash
