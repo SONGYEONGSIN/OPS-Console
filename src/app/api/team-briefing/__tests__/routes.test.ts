@@ -6,12 +6,14 @@ const {
   mockCreateAdminClient,
   getJobEnabledMock,
   recordRunMock,
+  eqSpy,
 } = vi.hoisted(() => ({
   buildMock: vi.fn(),
   stageMock: vi.fn(),
   mockCreateAdminClient: vi.fn(),
   getJobEnabledMock: vi.fn(),
   recordRunMock: vi.fn(),
+  eqSpy: vi.fn(() => Promise.resolve({ count: 4, error: null })),
 }));
 
 vi.mock("@/features/automations/jobs/team-briefing", () => ({
@@ -65,7 +67,7 @@ describe("/api/team-briefing/draft", () => {
     });
     mockCreateAdminClient.mockReturnValue({
       from: () => ({
-        select: () => Promise.resolve({ count: 4, error: null }),
+        select: () => ({ eq: eqSpy }),
       }),
     });
   });
@@ -74,13 +76,18 @@ describe("/api/team-briefing/draft", () => {
     expect((await GET(get())).status).toBe(401);
   });
 
-  it("정상 — payload + nextIssueNo(count+1) 반환", async () => {
+  it("정상 — payload + nextIssueNo(발행분+1) 반환", async () => {
     const res = await GET(get("s3cr3t"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
     expect(json.payload.dateLabel).toBe("2026-07-17 (금)");
     expect(json.nextIssueNo).toBe(5);
+  });
+
+  it("호수는 발행분만 세어 매긴다 — 대기 중인 초안이 호수를 밀지 않는다", async () => {
+    await GET(get("s3cr3t"));
+    expect(eqSpy).toHaveBeenCalledWith("status", "published");
   });
 
   it("집계 실패 → 500", async () => {
