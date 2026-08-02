@@ -3,6 +3,7 @@ import { listLatestDevControlRequests } from "@/features/dev-controls/requests-q
 import { listTestableServices } from "@/features/entertest/queries";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
+import { ScopeChips } from "@/components/common/ScopeChips";
 import { buildDevControlRows } from "./dev-control-rows";
 import { DevControlSearch } from "./DevControlSearch";
 
@@ -14,6 +15,10 @@ type Props = {
   category?: string;
   universityType?: string;
   admissionType?: string;
+  /** ScopeChips searchParam 원본. "false"면 전체, 그 외(미지정 포함)는 내 대학. */
+  mine?: string;
+  /** 로그인 운영자 표시명 — services.operator_name과 비교. */
+  myName?: string | null;
 };
 
 /** null 제거 + 중복 제거 + 정렬한 distinct 옵션. */
@@ -24,7 +29,7 @@ function distinct(values: (string | null)[]): string[] {
 /**
  * 개발 탭 — 원서제어 분석 목록 (서버 컴포넌트).
  * listTestableServices + listDevControlAnalyses를 buildDevControlRows로 조립,
- * q(대학명·서비스명) + 카테고리/대학구분/접수구분 서버 필터 후
+ * q(대학명·서비스명) + 전체/내 대학 + 카테고리/대학구분/접수구분 서버 필터 후
  * ListPattern variant="dev-control"로 렌더.
  */
 export async function DevControlSection({
@@ -33,6 +38,8 @@ export async function DevControlSection({
   category,
   universityType,
   admissionType,
+  mine: mineParam,
+  myName,
 }: Props) {
   const [services, analyses, requests] = await Promise.all([
     listTestableServices(),
@@ -47,7 +54,10 @@ export async function DevControlSection({
     admissionTypeOptions: distinct(services.map((s) => s.admission_type)),
   };
 
+  // mine 기본 true(내 대학) — 테스트 탭과 동일 규칙, operator_name === 본인.
+  const mine = mineParam !== "false";
   const filteredServices = services.filter((s) => {
+    if (mine && myName && s.operator_name !== myName) return false;
     if (category && s.category !== category) return false;
     if (universityType && s.university_type !== universityType) return false;
     if (admissionType && s.admission_type !== admissionType) return false;
@@ -77,6 +87,9 @@ export async function DevControlSection({
       readOnly
       liveData
       controlsRow={<DevControlSearch {...options} />}
+      inlineFilters={
+        <ScopeChips key="dev-control-scope" total={total} mineLabel="내 대학" />
+      }
       footer={
         <ListPagination
           key="dev-control-pagination"
