@@ -31,7 +31,7 @@ export const ratioLinkErrorSchema = z.object({
   serviceId: z.number().int().positive(),
   url: z.string().url(),
   /** HTTP 상태코드. 요청 자체가 실패하면 0 */
-  status: z.number().int(),
+  status: z.number().int().nonnegative(),
   reason: z.string().default(""),
 });
 

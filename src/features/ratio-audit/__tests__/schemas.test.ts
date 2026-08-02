@@ -83,4 +83,12 @@ describe("ratioAuditIngestSchema", () => {
     const parsed = ratioAuditIngestSchema.safeParse({ ...valid, scannedCount: -1 });
     expect(parsed.success).toBe(false);
   });
+
+  it("linkErrors의 status 음수는 거부", () => {
+    const parsed = ratioAuditIngestSchema.safeParse({
+      ...valid,
+      linkErrors: [{ ...valid.linkErrors[0], status: -1 }],
+    });
+    expect(parsed.success).toBe(false);
+  });
 });
