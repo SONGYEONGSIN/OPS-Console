@@ -288,6 +288,6 @@ REAL: https://addon.jinhakapply.com/RatioV1/RatioH/Ratio{UnivServiceID}{Seq}.htm
 
 ## 14. 향후 (이번 범위 아님)
 
-- 회사 윈도우 PC 전환 — `closing_scrape_requests` 큐 + `poll-local.ps1` 폴러 패턴 복제, 자동화 페이지 버튼으로 트리거
+- ~~회사 윈도우 PC 전환~~ — **완료**: `ratio_audit_requests` 큐(`20260803_ratio_audit_requests.sql`) + `poll-local.ps1` 폴러로 `closing_scrape_requests` 패턴 복제, 자동화 페이지(`/dashboard/automations`)의 `ratio-audit` 잡 [실행] 버튼으로 트리거. cron 미등록 — 수동 실행 전용
 - 판정 정확도 안정 후: 담당 운영자별 개인 알림, 주 1회 자동 실행, 대시보드 조회 화면
 - 수시 외 모집구분 확대

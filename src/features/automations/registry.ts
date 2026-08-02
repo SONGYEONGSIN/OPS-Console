@@ -8,6 +8,7 @@ import { runServiceNoticeMail } from "./jobs/service-notice-mail";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
+import { runRatioAudit } from "./jobs/ratio-audit";
 import { runNewsCollect } from "./jobs/news-collect";
 import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
 import { runTeamBriefing } from "./jobs/team-briefing";
@@ -85,6 +86,15 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     scheduleInfo: "평일 09:00 (회사 PC 로컬 예약 작업)",
     cooldownMinutes: 60,
     run: runClosingScrape,
+  },
+  {
+    id: "ratio-audit",
+    label: "경쟁률 세팅 점검",
+    description:
+      "Moa 경쟁률 세팅(스케줄·안내 문구·접수일정)을 점검해 오설정을 Teams로 알립니다.\n회사 PC 폴러가 직접 실행합니다 — 브라우저·Moa 로그인·로컬 claude 판정이 필요해 웹·GitHub Actions에서 실행 불가.\n여기서 '실행'을 누르면 로컬 실행 요청만 적재되고, 회사 PC 폴러가 5분 내 처리합니다. 자동 스케줄은 없는 수동 실행 전용 잡입니다.",
+    scheduleInfo: "수동 실행 — 로컬 폴러가 수행 (cron 미등록)",
+    cooldownMinutes: 60,
+    run: runRatioAudit,
   },
   {
     id: "news-collect",

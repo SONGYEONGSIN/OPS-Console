@@ -116,10 +116,11 @@ E2E 운영 메모:
 | `receivables-mail-operator` | 평일 10:00 (KST) | 운영자별 미수채권 본인 메일 알림 | `receivables_operator_mail_sends` |
 | `receivables-deposit-match` | 매시간 | 미수 ↔ 입금내역 자동 매칭 (단건/N:1/N:M) + K/J열 PATCH + mismatch admin 알림 | `receivables_match_runs` (jsonb payload) |
 | `team-briefing` | 매주 금 10:00 — **회사 PC Windows 작업 스케줄러** (`scripts/team-briefing/publish-local.mjs`) | 주간 브리핑 **초안 생성까지만**(스티비풍 `/r/briefing/[token]`, claude -p 스토리+근속 기념일) + 본인 Teams 채팅으로 미리보기 알림. **그룹채팅 티저는 자동화 페이지 [발행] 확정 시에만 발송**. 서버 API: `/api/team-briefing/draft·stage` (CRON_SECRET), 발행은 admin server action. registry 잡(수동 실행)도 초안 생성 — **Vercel cron 스케줄은 제거 필수** | `team_briefings`(status draft/published) + `automation_runs` |
+| `ratio-audit` | 수동 실행 — 회사 PC 폴러가 수행 (cron 미등록) | Moa 경쟁률 세팅(스케줄·안내 문구·접수일정) 오설정을 점검해 Teams로 알립니다. closing-scrape와 동일 패턴 — 자동화 페이지 [실행]은 `ratio_audit_requests`에 pending만 적재하고, 회사 PC 폴러(`scripts/moa-ratio/poll-local.ps1`)가 5분 내 claim해 `audit.py`를 실행 | `ratio_audit_requests` + `ratio_audit_runs` |
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
 
-경쟁률 세팅 점검은 자동화 registry가 아니라 로컬 수동 실행이다 — `RATIO_AUDIT_DRY_RUN`/`TEAMS_RATIO_AUDIT_CHAT_ID`/`TEAMS_RATIO_AUDIT_SENDER` 필요. 상세: `docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md`
+경쟁률 세팅 점검(`ratio-audit`)은 자동화 페이지에서 실행 요청만 하고, 실제 점검은 회사 PC 폴러가 수행한다 — `RATIO_AUDIT_DRY_RUN`/`TEAMS_RATIO_AUDIT_CHAT_ID`/`TEAMS_RATIO_AUDIT_SENDER` 필요. 상세: `docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md`
 
 GAS 미수채권 자동화는 4-PR 시리즈로 OPS-Console로 이전 완료 — 폐기 가이드: `docs/gas-receivables-decommission.md`.
 
