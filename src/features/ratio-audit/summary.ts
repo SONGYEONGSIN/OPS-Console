@@ -58,7 +58,7 @@ export function buildRatioAuditHtml(input: RatioAuditIngest): string {
     `<p><b>[운영부 상황실]</b> 경쟁률 세팅 점검 — ` +
     `순회 ${s.scannedCount} / 이상 ${s.findingCount} / 링크오류 ${s.linkErrorCount}</p>`;
 
-  if (s.findingCount === 0 && s.linkErrorCount === 0) {
+  if (s.findingCount === 0 && s.linkErrorCount === 0 && input.skipped.length === 0) {
     return `${header}<p>이상 없음.</p>`;
   }
 
@@ -81,6 +81,7 @@ export function buildRatioAuditHtml(input: RatioAuditIngest): string {
     : "";
 
   const more = rest > 0 ? `<p>외 ${rest}건</p>` : "";
+  const noFinding = s.findingCount === 0 && s.linkErrorCount === 0 ? "<p>이상 없음.</p>" : "";
   const links = input.linkErrors.length
     ? `<p>링크오류 ${input.linkErrors.length}건 — ` +
       input.linkErrors
@@ -93,5 +94,5 @@ export function buildRatioAuditHtml(input: RatioAuditIngest): string {
     ? `<p>건너뜀 ${input.skipped.length}건</p>`
     : "";
 
-  return `${header}${table}${more}${links}${skipped}`;
+  return `${header}${table}${more}${noFinding}${links}${skipped}`;
 }

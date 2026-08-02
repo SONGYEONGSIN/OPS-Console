@@ -86,4 +86,19 @@ describe("buildRatioAuditHtml", () => {
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
   });
+
+  it("이상과 링크오류가 모두 0이면 '이상 없음'만 나오고 건너뜀은 없다", () => {
+    const html = buildRatioAuditHtml(base);
+    expect(html).toContain("이상 없음");
+    expect(html).not.toContain("건너뜀");
+  });
+
+  it("이상과 링크오류는 0이지만 건너뜀이 있으면 '이상 없음'과 '건너뜀'이 둘 다 나온다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      skipped: [{ serviceId: 9, reason: "진입 실패" }],
+    });
+    expect(html).toContain("이상 없음");
+    expect(html).toContain("건너뜀 1건");
+  });
 });
