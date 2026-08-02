@@ -58,9 +58,10 @@ class ScheduleLineTest(unittest.TestCase):
 
 
 class PromptTest(unittest.TestCase):
-    def _svc(self):
+    def _svc(self, seq=1):
         return {
             "service_id": 1093020,
+            "seq": seq,
             "university_name": "성신여자대학교",
             "service_name": "수시",
             "schedule_lines": SAMPLE_SCHEDULE,
@@ -81,21 +82,29 @@ class PromptTest(unittest.TestCase):
         p = build_prompt([self._svc()])
         self.assertIn("JSON", p)
 
+    def test_prompt_distinguishes_seq_for_same_service_id(self):
+        # 홍익대 1172089 같이 같은 serviceId가 차수(Seq)만 다른 두 설정 페이지를
+        # 가질 때, claude가 블록을 구분할 수 있도록 seq가 프롬프트에 드러나야 한다.
+        svc1, svc2 = self._svc(seq=1), self._svc(seq=2)
+        p = build_prompt([svc1, svc2])
+        self.assertIn("seq: 1", p)
+        self.assertIn("seq: 2", p)
+
 
 class ParseTest(unittest.TestCase):
     def test_parses_plain_json(self):
-        raw = '{"results":[{"serviceId":1,"items":[{"type":"year","field":"top",' \
+        raw = '{"results":[{"serviceId":1,"seq":1,"items":[{"type":"year","field":"top",' \
               '"found":"2025학년도","expect":"2026","quote":"q"}]}]}'
         out = parse_response(raw)
-        self.assertEqual(list(out.keys()), [1])
-        self.assertEqual(out[1][0]["type"], "year")
+        self.assertEqual(list(out.keys()), [(1, 1)])
+        self.assertEqual(out[(1, 1)][0]["type"], "year")
 
     def test_parses_fenced_json(self):
-        raw = '```json\n{"results":[{"serviceId":7,"items":[]}]}\n```'
-        self.assertEqual(parse_response(raw), {7: []})
+        raw = '```json\n{"results":[{"serviceId":7,"seq":2,"items":[]}]}\n```'
+        self.assertEqual(parse_response(raw), {(7, 2): []})
 
     def test_rejects_unknown_type(self):
-        raw = '{"results":[{"serviceId":1,"items":[{"type":"typo","field":"top",' \
+        raw = '{"results":[{"serviceId":1,"seq":1,"items":[{"type":"typo","field":"top",' \
               '"found":"a","expect":"b","quote":""}]}]}'
         with self.assertRaises(ValueError):
             parse_response(raw)
@@ -103,6 +112,35 @@ class ParseTest(unittest.TestCase):
     def test_rejects_non_json(self):
         with self.assertRaises(ValueError):
             parse_response("판정 결과를 알려드리겠습니다")
+
+    def test_rejects_missing_seq(self):
+        # seq 누락 시 추측 판정 없이 ValueError — 어느 차수 결과인지 알 수 없기 때문.
+        raw = '{"results":[{"serviceId":1,"items":[{"type":"year","field":"top",' \
+              '"found":"a","expect":"b","quote":"q"}]}]}'
+        with self.assertRaises(ValueError):
+            parse_response(raw)
+
+    def test_rejects_non_integer_seq(self):
+        raw = '{"results":[{"serviceId":1,"seq":"1","items":[]}]}'
+        with self.assertRaises(ValueError):
+            parse_response(raw)
+
+    def test_distinguishes_same_service_id_different_seq(self):
+        # 핵심 회귀 테스트: 홍익대 1172089 1차/2차처럼 같은 serviceId에 seq가
+        # 다른 두 항목이 한 배치 응답에 있을 때, 서로 덮어쓰지 않고 둘 다 보존되어야
+        # 한다(기존 결함: out[sid] = items 가 뒤 항목으로 앞 항목을 덮어썼다).
+        raw = (
+            '{"results":['
+            '{"serviceId":1172089,"seq":1,"items":[{"type":"schedule","field":"pre_open",'
+            '"found":"1차 값","expect":"1차 기대값","quote":"q1"}]},'
+            '{"serviceId":1172089,"seq":2,"items":[{"type":"schedule","field":"pre_open",'
+            '"found":"2차 값","expect":"2차 기대값","quote":"q2"}]}'
+            "]}"
+        )
+        out = parse_response(raw)
+        self.assertEqual(set(out.keys()), {(1172089, 1), (1172089, 2)})
+        self.assertEqual(out[(1172089, 1)][0]["found"], "1차 값")
+        self.assertEqual(out[(1172089, 2)][0]["found"], "2차 값")
 
 
 if __name__ == "__main__":

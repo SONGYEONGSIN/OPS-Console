@@ -444,7 +444,7 @@ def main() -> int:
                                         "reason": f"판정 실패: {e2}"[:200]})
                     continue
             for svc in batch:
-                items = verdict.get(svc["service_id"], [])
+                items = verdict.get((svc["service_id"], svc["seq"]), [])
                 if not items:
                     continue
                 findings.append({

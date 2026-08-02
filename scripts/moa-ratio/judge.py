@@ -58,7 +58,7 @@ def build_prompt(services: list[dict]) -> str:
         lines = filter_schedule_lines(svc.get("schedule_lines") or [])
         years = ", ".join(sorted(schedule_years(svc.get("schedule_lines") or []))) or "없음"
         blocks.append(
-            f"### serviceId: {svc['service_id']}\n"
+            f"### serviceId: {svc['service_id']} / seq: {svc['seq']}\n"
             f"대학: {svc.get('university_name', '')} / 서비스: {svc.get('service_name', '')}\n"
             f"스케줄 연도 집합: {years}\n"
             f"스케줄 세팅:\n" + "\n".join(f"- {line}" for line in lines) + "\n"
@@ -76,18 +76,25 @@ def build_prompt(services: list[dict]) -> str:
         "2. type=schedule — 문구에 적힌 공개 날짜·시각이 스케줄 세팅과 다르면 이상이다. "
         "스케줄이 특정 날짜까지만 반복되어 마감일 문구에서 일부 시각이 빠진 것은 정상이다.\n"
         "3. 확신이 없으면 보고하지 마라. 추측 금지.\n\n"
+        "같은 serviceId 가 차수(seq)만 다른 별개 설정으로 여러 번 나올 수 있다 — "
+        "블록 헤더의 seq 로 구분하고, 응답에도 그 seq 를 그대로 되돌려줘라.\n\n"
         "출력은 JSON만. 설명·코드펜스 없이 아래 형태로만 답하라.\n"
-        '{"results":[{"serviceId":123,"items":[{"type":"year|schedule",'
+        '{"results":[{"serviceId":123,"seq":1,"items":[{"type":"year|schedule",'
         '"field":"pre_open|top","found":"문구에서 발견한 값",'
         '"expect":"스케줄 기준 기대값","quote":"원문 발췌"}]}]}\n'
         "이상이 없는 서비스는 items 를 빈 배열로 둔다. "
-        "입력에 있는 모든 serviceId 를 결과에 포함하라.\n\n"
+        "입력에 있는 모든 (serviceId, seq) 조합을 결과에 포함하라.\n\n"
         "=== 입력 ===\n" + "\n".join(blocks)
     )
 
 
-def parse_response(raw: str) -> dict[int, list[dict]]:
-    """claude 응답 → {serviceId: items}. 형식이 어긋나면 ValueError (추측 판정 금지)."""
+def parse_response(raw: str) -> dict[tuple[int, int], list[dict]]:
+    """claude 응답 → {(serviceId, seq): items}. 형식이 어긋나면 ValueError (추측 판정 금지).
+
+    같은 serviceId 가 차수(seq)만 다른 별개 설정으로 존재할 수 있어(예: 홍익대
+    1172089 1차/2차) serviceId 단독 키는 뒤 항목이 앞 항목을 조용히 덮어쓴다.
+    seq 를 함께 키잉해 이 결함을 막는다.
+    """
     text = (raw or "").strip()
     fence = re.search(r"```(?:json)?\s*(.+?)\s*```", text, re.S)
     if fence:
@@ -104,11 +111,12 @@ def parse_response(raw: str) -> dict[int, list[dict]]:
     if not isinstance(results, list):
         raise ValueError("results 배열 없음")
 
-    out: dict[int, list[dict]] = {}
+    out: dict[tuple[int, int], list[dict]] = {}
     for row in results:
         sid = row.get("serviceId")
+        seq = row.get("seq")
         items = row.get("items", [])
-        if not isinstance(sid, int) or not isinstance(items, list):
+        if not isinstance(sid, int) or not isinstance(seq, int) or not isinstance(items, list):
             raise ValueError(f"행 형식 오류: {row!r}")
         for item in items:
             if item.get("type") not in VALID_TYPES:
@@ -118,7 +126,7 @@ def parse_response(raw: str) -> dict[int, list[dict]]:
             if not item.get("found") or not item.get("expect"):
                 raise ValueError(f"found/expect 누락: {item!r}")
             item.setdefault("quote", "")
-        out[sid] = items
+        out[(sid, seq)] = items
     return out
 
 
