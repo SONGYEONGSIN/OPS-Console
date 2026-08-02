@@ -39,7 +39,7 @@ import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존
 from judge import build_prompt, clean_text, parse_response, run_claude  # noqa: E402
 
 MOA_BASE = "https://moa.jinhakapply.com"
-LIST_API = f"{MOA_BASE}/Ratio/GetRatioList"
+RATIO_SETTING_LIST_URL = f"{MOA_BASE}/Ratio/RatioSetting"
 DETAIL_URL = MOA_BASE + "/Ratio/RatioSetting/{sid}?Seq={seq}&Server={server}"
 HTML_BASE = {
     "REAL": "https://addon.jinhakapply.com/RatioV1/",
@@ -138,24 +138,77 @@ def fetch_targets(base_url: str, secret: str) -> dict[int, dict]:
     return {int(r["serviceId"]): r for r in rows}
 
 
-def fetch_ratio_list(driver, server: str) -> list[dict]:
-    """GetRatioList 를 페이지 컨텍스트에서 POST. 전체 목록이 한 번에 온다."""
-    script = """
-    const done = arguments[arguments.length - 1];
-    fetch(arguments[0], {
-      method: 'POST', credentials: 'include',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({MACHINE: arguments[1], ServiceName: '', Manager: '',
-        Developer: '', CategoryTypeName: '', IsActive: '', strFlag: '', Search: ''}),
-    }).then(r => r.json()).then(d => done(JSON.stringify(d))).catch(e => done('ERR:' + e));
+def _dump_page(driver, out_dir: str, label: str) -> None:
+    """목록 조회 실패 시 진단용 — 현재 페이지 HTML·스크린샷을 out_dir에 남긴다.
+
+    scrape.py의 _dump_page와 같은 목적이나, 저장 경로를 그 함수가 쓰는
+    CLOSING_DUMP_DIR(scrape.py 전용 env)이 아니라 이 스크립트의 OUT_JSON 디렉터리로
+    맞추기 위해 별도로 둔다(scrape.py는 수정하지 않는다는 제약).
     """
-    driver.set_script_timeout(120)
-    raw = driver.execute_async_script(script, LIST_API, server)
-    if raw.startswith("ERR:"):
-        raise RuntimeError(f"{server} 목록 조회 실패: {raw[:200]}")
-    rows = json.loads(raw)
-    print(f"[OK] {server} 목록 {len(rows)}건")
-    return rows
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        html_path = os.path.join(out_dir, f"fail-{label}.html")
+        png_path = os.path.join(out_dir, f"fail-{label}.png")
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(driver.page_source or "")
+        driver.save_screenshot(png_path)
+        print(f"[DUMP] url={driver.current_url} title={driver.title!r}")
+        print(f"[DUMP] 저장: {html_path} / {png_path}")
+    except Exception as exc:  # noqa: BLE001 — 덤프 실패로 원래 에러를 가리지 않는다
+        print(f"[DUMP] 덤프 실패(무시): {exc}")
+
+
+def fetch_ratio_list(driver, wait, server: str, dump_dir: str) -> list[dict]:
+    """목록 페이지 자체의 GetRatioList()를 페이지 컨텍스트에서 호출해 전체 목록을 받는다.
+
+    raw fetch로 POST /Ratio/GetRatioList를 직접 호출하면 서버가 JSON 대신 전체
+    HTML 페이지를 반환한다(라이브 실행 확인: "ERR:SyntaxError ... <!DOCTYPE"). 페이지의
+    원래 구현은 jQuery $.ajax인데, jQuery는 X-Requested-With: XMLHttpRequest 헤더를
+    자동으로 붙이고 ASP.NET MVC는 Request.IsAjaxRequest()로 이 헤더 유무를 분기해
+    없으면(raw fetch) JSON 대신 HTML을 돌려준다. 사이트의 GetRatioList()를 그대로
+    호출하면 헤더·직렬화·쿠키 인증을 사이트가 하던 그대로 재현하므로 이 분기를
+    신경 쓸 필요가 없다.
+
+    라디오 클릭 → 운영자 드롭다운 비우기(#ddlDirectManager, 로그인 계정이 기본
+    선택되는 함정 — 부록 A) → window.RatioList 초기화 → GetRatioList() 호출 →
+    폴링 순서다. 초기화 없이 값 존재만 보면 페이지 로드 시 자동 실행되는 검색
+    1회(부록 A 함정 2)가 채워둔 이전 결과를 우리 결과로 오인한다.
+    """
+    label = f"ratio-list-{server}"
+    try:
+        wait.until(EC.presence_of_element_located((By.ID, "ddlDirectManager")))
+        radio_id = "rdoRatioServer1" if server == "REAL" else "rdoRatioServer2"
+        driver.execute_script(f"document.getElementById('{radio_id}').click();")
+        driver.execute_script(
+            "var el = document.getElementById('ddlDirectManager');"
+            "el.value = '';"
+            "el.dispatchEvent(new Event('change', {bubbles: true}));"
+        )
+        driver.execute_script("window.RatioList = null; GetRatioList();")
+
+        deadline = time.monotonic() + 120
+        raw = None
+        while time.monotonic() < deadline:
+            raw = driver.execute_script(
+                "return Array.isArray(window.RatioList) ? "
+                "JSON.stringify(window.RatioList) : null;"
+            )
+            if raw is not None:
+                break
+            time.sleep(1)
+
+        if raw is None:
+            title = driver.execute_script("return document.title;")
+            href = driver.execute_script("return location.href;")
+            raise RuntimeError(
+                f"{server} 목록 조회 타임아웃(120s) — title={title!r} href={href!r}"
+            )
+        rows = json.loads(raw)
+        print(f"[OK] {server} 목록 {len(rows)}건")
+        return rows
+    except Exception:
+        _dump_page(driver, dump_dir, label)
+        raise
 
 
 def extract_detail(driver, wait, sid: int, seq, server: str) -> dict:
@@ -221,6 +274,11 @@ def main() -> int:
         print(f"[FAIL] 환경변수 누락: {missing}")
         return 1
 
+    # 목록 조회 실패 시 진단 덤프(_dump_page)를 이 디렉터리에 남긴다 — 최종 결과
+    # 파일(out)과 같은 위치라 실패해도 한 곳만 보면 된다.
+    out = os.getenv("OUT_JSON", os.path.join(tempfile.gettempdir(), "ratio-audit.json"))
+    dump_dir = os.path.dirname(out) or tempfile.gettempdir()
+
     targets = fetch_targets(base_url, secret)
 
     driver = scrape.setup_driver(tempfile.mkdtemp(prefix="moa-ratio-"), True)
@@ -228,9 +286,9 @@ def main() -> int:
     findings, link_errors, skipped, collected = [], [], [], []
     try:
         login_and_2fa(driver, wait, env)
-        driver.get(f"{MOA_BASE}/Ratio/RatioSetting")
+        driver.get(RATIO_SETTING_LIST_URL)
 
-        test_rows = [r for r in fetch_ratio_list(driver, "TEST")
+        test_rows = [r for r in fetch_ratio_list(driver, wait, "TEST", dump_dir)
                      if int(r["UnivServiceID"]) in targets]
         print(f"[OK] 교집합 {len(test_rows)}건 순회 시작")
 
@@ -289,7 +347,8 @@ def main() -> int:
                 })
             print(f"[INFO] 판정 {min(start + BATCH_SIZE, len(collected))}/{len(collected)}")
 
-        for row in fetch_ratio_list(driver, "REAL"):
+        driver.get(RATIO_SETTING_LIST_URL)  # extract_detail이 상세 페이지로 이동시켰으므로 복귀
+        for row in fetch_ratio_list(driver, wait, "REAL", dump_dir):
             sid = int(row["UnivServiceID"])
             if sid not in targets:
                 continue
@@ -311,8 +370,8 @@ def main() -> int:
           f"링크오류 {len(link_errors)} / 건너뜀 {len(skipped)}")
 
     # 인제스트 성패와 무관하게 항상 먼저 파일로 남긴다 — POST 실패 시 SMS 인증·순회를
-    # 다시 타지 않고 이 파일로 복구할 수 있게 경로를 stdout에 남긴다.
-    out = os.getenv("OUT_JSON", os.path.join(tempfile.gettempdir(), "ratio-audit.json"))
+    # 다시 타지 않고 이 파일로 복구할 수 있게 경로를 stdout에 남긴다. (out은 main
+    # 상단에서 dump_dir과 함께 이미 계산됨)
     with open(out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=1)
     print(f"[INFO] 결과 저장: {out}")
