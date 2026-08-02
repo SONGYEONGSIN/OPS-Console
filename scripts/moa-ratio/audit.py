@@ -382,12 +382,69 @@ def _extract_apply_period(driver) -> str:
         return ""
 
 
+# 스케줄 세팅/실행로그 두 컬럼을 담은 테이블의 summary 속성값. 이 값으로 테이블
+# 자체를 특정해야 tbody 첫 행의 첫 td(스케줄 세팅)만 골라낼 수 있다 — 페이지에는
+# 같은 class="sc"인 td가 이 테이블 안 2개 + 별도 'HTML 실행로그' 테이블 안 2개,
+# 총 4개가 있어 class만으로는 컬럼을 구분할 수 없다(라이브 확인: 홍익대
+# 1172089 상세 페이지).
+SCHEDULE_TABLE_SUMMARY = "스케줄세팅,스케줄실행로그"
+
+# 스케줄 세팅은 서비스당 보통 한 자릿수~10대 줄(반복 규칙 몇 개) 수준이다. 스케줄
+# 실행로그(수백 줄)가 셀렉터에 다시 섞이면 이 값을 크게 초과하므로, 같은 오염이
+# 재발했을 때 즉시 드러나는 카나리아 임계값으로 쓴다.
+SCHEDULE_LINE_WARN_THRESHOLD = 30
+
+# 실행로그 줄의 특징적 접미사 — "2026-08-02 오후 1:20:30 : 성공"처럼 끝난다.
+# 스케줄 세팅 컬럼에는 나타나지 않아야 하므로, 섞였다면 셀렉터가 잘못된 컬럼을
+# 잡았다는 신호다.
+_EXEC_LOG_SUFFIX_RE = re.compile(r":\s*(성공|실패)\s*$")
+
+
+def _warn_schedule_line_anomalies(details: list[dict]) -> None:
+    """수집된 스케줄 라인이 비정상 형태면 조용히 넘어가지 않고 경고를 출력한다.
+
+    - 0줄: SCHEDULE_TABLE_SUMMARY 테이블 자체를 못 찾았을 가능성 — 이 경우 판정
+      입력이 비어 오설정이 있어도 '이상 없음'으로 조용히 지나가 버린다.
+    - SCHEDULE_LINE_WARN_THRESHOLD 초과: 스케줄 실행로그(수백 줄)가 셀렉터에
+      다시 섞였을 가능성.
+    - ': 성공'/': 실패'로 끝나는 줄: 실행로그의 특징적 형태 — 섞였다면 컬럼을
+      잘못 잡았다는 신호다.
+    """
+    for d in details:
+        sid = d["service_id"]
+        lines = d.get("schedule_lines") or []
+        if not lines:
+            print(f"[WARN] serviceId={sid} 스케줄 세팅 0줄 — 테이블 셀렉터 확인 필요")
+            continue
+        if len(lines) > SCHEDULE_LINE_WARN_THRESHOLD:
+            print(
+                f"[WARN] serviceId={sid} 스케줄 라인 {len(lines)}줄 "
+                f"(임계값 {SCHEDULE_LINE_WARN_THRESHOLD} 초과) — 실행로그 유입 의심"
+            )
+        exec_like = [line for line in lines if _EXEC_LOG_SUFFIX_RE.search(line)]
+        if exec_like:
+            print(
+                f"[WARN] serviceId={sid} 실행로그 형태 라인 {len(exec_like)}건 혼입 의심 "
+                f"(예: {exec_like[0]!r})"
+            )
+
+
 def extract_detail(driver, wait, sid: int, seq, server: str) -> dict:
-    """설정/배포 페이지에서 스케줄 라인 + 오픈전/상단 문구 + 접수일정 추출."""
+    """설정/배포 페이지에서 스케줄 라인 + 오픈전/상단 문구 + 접수일정 추출.
+
+    스케줄 라인은 SCHEDULE_TABLE_SUMMARY 테이블의 tbody 첫 행 첫 td(스케줄 세팅
+    컬럼)만 대상으로 한다 — 두 번째 td(스케줄 실행로그)까지 함께 잡으면 수백 줄
+    잡음이 claude 판정 프롬프트를 잠식한다.
+    """
     driver.get(DETAIL_URL.format(sid=sid, seq=seq, server=server))
     wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, "#txtTopText"))
     lines = [
-        el.text for el in driver.find_elements(By.CSS_SELECTOR, "td.sc div.scroll_box ul li")
+        el.text
+        for el in driver.find_elements(
+            By.CSS_SELECTOR,
+            f'table[summary="{SCHEDULE_TABLE_SUMMARY}"] tbody tr:first-of-type '
+            "td:first-of-type div.scroll_box ul li",
+        )
     ]
     return {
         "service_id": sid,
@@ -503,6 +560,7 @@ def main() -> int:
 
         _save_collected_details(collected, dump_dir)
         _warn_empty_apply_period(collected)
+        _warn_schedule_line_anomalies(collected)
 
         for start in range(0, len(collected), BATCH_SIZE):
             batch = collected[start : start + BATCH_SIZE]
