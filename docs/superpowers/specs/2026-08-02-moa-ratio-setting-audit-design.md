@@ -43,12 +43,13 @@
                  → closing_services category='수시' 의 service_id·대학명·서비스명·담당자
   1  로그인      scrape.py 의 setup_driver + login_and_2fa 재사용
                  (Moa 로그인 → SMS 2FA 자동 → 캡차 감지 시 abort)
-  2  테스트 검색  /Ratio/RatioSetting → 서버='테스트', 운영자='선택', 모집구분='수시' → 검색
-  3  교집합      결과 테이블 ServiceID ∩ 0번 대상 목록
-  4  순회        각 행 '설정/배포' 진입 → 스케줄 세팅 / 오픈전 내용 / 상단 내용 텍스트 추출
+  2  테스트 목록  POST /Ratio/GetRatioList (MACHINE=TEST) → 전체 목록 JSON 1회
+  3  교집합      JSON의 UnivServiceID ∩ 0번 대상 목록 (서버 필터에 의존하지 않음)
+  4  순회        GET /Ratio/RatioSetting/{id}?Seq={seq}&Server=TEST
+                 → 스케줄 세팅 / 오픈전 내용 / 상단 내용 텍스트 추출
   5  판정        judge.py — 테스트용 라인 제외 → claude -p 배치(10건) → findings JSON
-  6  리얼 점검    서버='리얼' + 모집구분='수시' 재검색 → 3번과 같은 교집합 기준으로
-                 '주소' 컬럼 html URL 추출 → HTTP 상태 확인
+  6  리얼 점검    POST /Ratio/GetRatioList (MACHINE=REAL) → 같은 교집합 기준으로
+                 html URL 조립 → HTTP 상태 확인
   7  인제스트     POST /api/ratio-audit/ingest → 적재 + Teams 요약 발송
 ```
 
@@ -159,7 +160,11 @@ claude 호출 규약은 `dev-control-analyze.mjs`를 답습한다: 프롬프트�
 | Teams 발송 실패 | 적재는 유지하고 `notified=false`로 기록 (team-briefing 초안 알림과 동일) |
 | DRY RUN | `RATIO_AUDIT_DRY_RUN=true` → 인제스트 생략, 로컬 JSON 저장만 |
 
-## 10. Phase 0 — 셀렉터 디스커버리 (구현 전 선행)
+## 10. Phase 0 — 셀렉터 디스커버리 (2026-08-02 완료)
+
+라이브 확인 결과는 **부록 A**에 확정 기록. 아래는 당초 계획이며 전 항목이 확인됐다.
+
+
 
 `RatioSetting` DOM을 모르는 상태에서 코드를 쓰면 추측이 된다. 맥에서 로그인 후 `scrape.py`의 `_dump_page()`로 HTML·PNG를 덤프해 아래를 확정하고, 그 결과를 본 문서 부록에 적은 뒤 구현에 들어간다.
 
@@ -198,7 +203,87 @@ claude 호출 규약은 `dev-control-analyze.mjs`를 답습한다: 프롬프트�
 | `RATIO_AUDIT_DRY_RUN` | 인제스트 생략 | **신규** — 기본 false |
 | `OPS_CONSOLE_BASE_URL` | 스크래퍼 → 서버 호출 | 기존 값 재사용 |
 
-## 13. 향후 (이번 범위 아님)
+## 13. 부록 A — Phase 0 라이브 확인 결과 (2026-08-02)
+
+맥에서 실 로그인 2회로 확인. Make 웹훅이 `Queue is full.`(400) 상태여서 2FA는 수동 코드로 우회했다.
+
+### 검색 — UI 조작이 아니라 API 직접 호출
+
+`GetRatioList()`는 아래를 POST하고 **전체 목록을 JSON 배열로 한 번에** 반환한다. 페이징(`PrintRatioList(n)`)은 클라이언트가 `RatioList.slice()`로 자르는 것이라 **페이지 순회가 필요 없다**.
+
+```
+POST /Ratio/GetRatioList
+  MACHINE           = REAL | TEST          (input[name=rdoRatioServer]:checked)
+  ServiceName       = select[name=univ_service]           ('수시' 등)
+  Manager           = select[name=Operator]  → #ddlDirectManager
+  Developer         = select[name=Developer] → #ddlDirectDeveloper
+  CategoryTypeName  = select[name=univ_categorytypename]
+  IsActive          = select[name=univ_isActive]          ('' 전체 / 1 설정 / 0 미설정)
+  strFlag           = select[name=univ_strflag]           ('' 시작시간 / E 종료시간)
+  Search            = #univ_srch
+```
+
+응답 행 필드: `UnivServiceID`, `ServiceName`, `ShortName`, `Seq`, `StartDate`, `EndDate` (날짜는 `/Date(…)/` 형식).
+
+**함정 2건**
+- `#ddlDirectManager`는 **로그인 계정이 기본 선택**된다. 비우지 않으면 본인 담당만 조회된다 (마감 스크래퍼와 동일).
+- 페이지 로드 시 기본 조건으로 **자동 검색이 1회 실행**된다. 검색 후 `행 > 0`만 기다리면 자동 검색 결과를 우리 결과로 오인한다. 첫 행 ID 변화 또는 응답 자체를 기준으로 대기해야 한다. 애초에 API를 직접 호출하면 이 문제가 없다.
+
+### 상세 페이지 — 직접 URL
+
+```
+GET /Ratio/RatioSetting/{UnivServiceID}?Seq={Seq}&Server=TEST|REAL
+```
+
+목록에서 링크를 클릭할 필요가 없다.
+
+| 추출 대상 | 셀렉터 |
+|---|---|
+| 스케줄 세팅 | 스케줄 테이블 첫 컬럼 `td.sc div.scroll_box ul li` (각 li가 1스케줄 라인) |
+| 스케줄 실행로그 | 같은 행 두 번째 컬럼 — **수백 줄이므로 claude에 넘기지 않는다** |
+| 오픈전 내용 | `#txtOpenText` (사용 여부는 `input[name="RatioService.OpenType"]:checked`, 1=설정 2=사용안함) |
+| 상단 내용 | `#txtTopText` (타입은 `input[name="RatioService.TopType"]:checked`, 1=고정문구 2=직접입력) |
+| (범위 외) | `#txtTopSubText` 서브상단, `#txtFooterText` 하단 — 이번 점검 대상 아님 |
+
+textarea 값은 HTML 이스케이프된 마크업(`&lt;font color=red&gt;`, `&lt;br&gt;`)을 포함한다. 판정 전 언이스케이프 + 태그 제거가 필요하다.
+
+### 경쟁률 HTML 링크 — 조립 가능
+
+목록 JSON만으로 만들 수 있어 DOM 파싱이 필요 없다.
+
+```
+TEST: https://vapplytest.jinhakapply.com/RatioV1/RatioH/Ratio{UnivServiceID}{Seq}.html
+REAL: https://addon.jinhakapply.com/RatioV1/RatioH/Ratio{UnivServiceID}{Seq}.html
+```
+
+### 정상 샘플 (claude 프롬프트 기준 예시)
+
+서비스 1093020 성신여자대학교 수시 1차, 접수일정 2026-09-08 11:00 ~ 09-11 18:00.
+
+```
+스케줄 세팅
+  2026-07-21 11:00 ~ 2026-09-07 18:03 : 10분 반복 (테스트용)   ← 제외 대상
+  2026-09-08 11:00 : 한 번
+  2026-09-09 10:00 ~ 2026-09-11 10:03 : 10시 반복
+  2026-09-08 13:00 ~ 2026-09-11 13:03 : 13시 반복
+  2026-09-08 17:00 ~ 2026-09-10 17:03 : 17시 반복
+#txtTopText / #txtOpenText (동일)
+  ※ 원서접수기간: 2026.9.8.(화) 11:00 ~ 9.11.(금) 18:00
+  ※ 지원현황은 매일 오전 10시, 오후 1시, 오후 5시에 업데이트합니다.
+  ※ 마감일(9.11)에는 경쟁률 조회 서비스가 오전 10시, 오후 1시에 업데이트 하며, 이후 제공되지 않습니다.
+```
+
+10·13·17시 반복 ↔ 문구의 "오전 10시, 오후 1시, 오후 5시"가 일치하고, 17시 반복이 9-10까지라 마감일 문구에 17시가 빠진 것도 정합하다. **이상 0건으로 판정돼야 하는 기준 예시**로 프롬프트에 넣는다.
+
+### 세션
+
+3개 페이지 왕복까지 56초 동안 재로그인 없이 유지됐다. 241건 순회 시의 만료 여부는 아직 미확인이며, 실행이 목록 API 1회 + 상세 GET N회로 가벼워졌으므로 §10의 배치 분할 분기는 그대로 유지한다.
+
+### 미해결 — Make 웹훅
+
+`MAKE_SMS_CODE_URL`이 `400 Queue is full.`을 반환한다. Make 시나리오가 큐를 소비하지 못하는 상태(비활성 또는 오퍼레이션 한도 소진)로 보인다. 폴링 GET 자체가 큐를 더 채우므로 복구 전에는 폴링을 돌리지 않는다. **이 상태에서는 마감 스크래퍼·원서제어 폴러의 자동 로그인도 동일하게 실패한다.** 자동 실행 전환 전 복구가 선행돼야 한다.
+
+## 14. 향후 (이번 범위 아님)
 
 - 회사 윈도우 PC 전환 — `closing_scrape_requests` 큐 + `poll-local.ps1` 폴러 패턴 복제, 자동화 페이지 버튼으로 트리거
 - 판정 정확도 안정 후: 담당 운영자별 개인 알림, 주 1회 자동 실행, 대시보드 조회 화면
