@@ -106,6 +106,28 @@ describe("buildRatioAuditHtml", () => {
     expect(html).not.toContain("건너뜀");
   });
 
+  it("missing_schedule(스케줄 미설정) 이상은 한국어 라벨로 표에 나온다 (대구가톨릭대 1046110 재현)", () => {
+    const f: RatioFinding = {
+      serviceId: 1046110,
+      seq: 1,
+      universityName: "대구가톨릭대학교",
+      serviceName: "수시모집",
+      operatorName: "홍길동",
+      items: [
+        {
+          type: "missing_schedule",
+          field: "schedule",
+          found: "스케줄 세팅 없음",
+          expect: "경쟁률 스케줄 설정 필요",
+          quote: "",
+        },
+      ],
+    };
+    const html = buildRatioAuditHtml({ ...base, findings: [f] });
+    expect(html).toContain("스케줄 미설정");
+    expect(html).toContain("스케줄 세팅 없음");
+  });
+
   it("이상과 링크오류는 0이지만 건너뜀이 있으면 '이상 없음'과 '건너뜀'이 둘 다 나온다", () => {
     const html = buildRatioAuditHtml({
       ...base,

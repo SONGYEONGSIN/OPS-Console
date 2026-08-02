@@ -12,11 +12,13 @@ export const SUMMARY_TOP_N = 10;
 const FIELD_LABEL: Record<string, string> = {
   pre_open: "오픈전",
   top: "상단",
+  schedule: "스케줄",
 };
 
 const TYPE_LABEL: Record<string, string> = {
   year: "연도",
   schedule: "일정",
+  missing_schedule: "스케줄 미설정",
 };
 
 export function summarizeRatioAudit(input: RatioAuditIngest): {

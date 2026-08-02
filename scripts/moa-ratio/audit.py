@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.join(_REPO, "scripts", "moa-closing"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존 검증된 구현)
-from judge import build_prompt, clean_text, parse_response, run_claude  # noqa: E402
+from judge import build_prompt, clean_text, filter_schedule_lines, parse_response, run_claude  # noqa: E402
 from listfilter import filter_by_start_date  # noqa: E402
 
 MOA_BASE = "https://moa.jinhakapply.com"
@@ -478,6 +478,25 @@ def check_link(url: str, attempts: int = 3) -> tuple[int, str]:
     return last
 
 
+def _missing_schedule_item(svc: dict) -> dict | None:
+    """유효 스케줄('테스트용' 제외)이 0줄이면 missing_schedule finding 항목을 만든다.
+
+    claude에 묻지 않고 여기서 결정적으로 판단한다 — 스케줄 자체가 없으면 경쟁률이
+    아예 열리지 않아 연도·일정 불일치보다 심각하다(대구가톨릭대 1046110 재현).
+    유효 스케줄 판정은 judge.filter_schedule_lines를 그대로 재사용해 '테스트용'
+    라인 제외 기준이 갈라지지 않게 한다.
+    """
+    if filter_schedule_lines(svc.get("schedule_lines") or []):
+        return None
+    return {
+        "type": "missing_schedule",
+        "field": "schedule",
+        "found": "스케줄 세팅 없음",
+        "expect": "경쟁률 스케줄 설정 필요",
+        "quote": "",
+    }
+
+
 def main() -> int:
     dry_run = os.getenv("RATIO_AUDIT_DRY_RUN", "").lower() == "true"
     base_url = os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/")
@@ -579,7 +598,10 @@ def main() -> int:
                                         "reason": f"판정 실패: {e2}"[:200]})
                     continue
             for svc in batch:
-                items = verdict.get((svc["service_id"], svc["seq"]), [])
+                items = list(verdict.get((svc["service_id"], svc["seq"]), []))
+                missing_item = _missing_schedule_item(svc)
+                if missing_item:
+                    items.append(missing_item)
                 if not items:
                     continue
                 findings.append({

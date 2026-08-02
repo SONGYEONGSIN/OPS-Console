@@ -118,4 +118,25 @@ describe("ratioAuditIngestSchema", () => {
     });
     expect(parsed.success).toBe(true);
   });
+
+  it("missing_schedule type + schedule field 조합 통과 (스케줄 미설정 — 대구가톨릭대 1046110 재현)", () => {
+    const parsed = ratioAuditIngestSchema.safeParse({
+      ...valid,
+      findings: [
+        {
+          ...valid.findings[0],
+          items: [
+            {
+              type: "missing_schedule",
+              field: "schedule",
+              found: "스케줄 세팅 없음",
+              expect: "경쟁률 스케줄 설정 필요",
+              quote: "",
+            },
+          ],
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
 });

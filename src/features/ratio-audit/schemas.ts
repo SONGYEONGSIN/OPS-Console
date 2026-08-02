@@ -9,10 +9,14 @@ import { z } from "zod";
  */
 
 export const ratioFindingItemSchema = z.object({
-  /** year: 문구의 날짜 연도가 스케줄 연도 집합에 없음 / schedule: 날짜·시각 불일치 */
-  type: z.enum(["year", "schedule"]),
-  /** 어느 문구에서 발견했는지 — 오픈전 내용 / 상단 내용 */
-  field: z.enum(["pre_open", "top"]),
+  /**
+   * year: 문구의 날짜 연도가 스케줄 연도 집합에 없음 / schedule: 날짜·시각 불일치 /
+   * missing_schedule: 유효 스케줄이 0줄(경쟁률 자체가 열리지 않음, 연도·일정
+   * 불일치보다 심각 — 대구가톨릭대 1046110 재현)
+   */
+  type: z.enum(["year", "schedule", "missing_schedule"]),
+  /** 어느 문구에서 발견했는지 — 오픈전 내용 / 상단 내용 / schedule: 특정 문구가 아닌 스케줄 영역 자체 */
+  field: z.enum(["pre_open", "top", "schedule"]),
   found: z.string().min(1),
   expect: z.string().min(1),
   quote: z.string().default(""),
