@@ -119,6 +119,8 @@ E2E 운영 메모:
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
 
+경쟁률 세팅 점검은 자동화 registry가 아니라 로컬 수동 실행이다 — `RATIO_AUDIT_DRY_RUN`/`TEAMS_RATIO_AUDIT_CHAT_ID` 필요. 상세: `docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md`
+
 GAS 미수채권 자동화는 4-PR 시리즈로 OPS-Console로 이전 완료 — 폐기 가이드: `docs/gas-receivables-decommission.md`.
 
 ## 운영 자동 기록 (worklog)
