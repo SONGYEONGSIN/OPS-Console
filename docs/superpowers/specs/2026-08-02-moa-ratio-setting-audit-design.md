@@ -127,12 +127,14 @@ payload 구조:
 출력: 서비스당 `items[]`
 
 ```json
-{ "type": "year|schedule", "field": "pre_open|top",
+{ "type": "year|schedule|missing_schedule", "field": "pre_open|top|schedule",
   "found": "문구에서 발견한 값", "expect": "스케줄 기준 기대값", "quote": "원문 발췌" }
 ```
 
 - `type: year` — 문구의 날짜 연도가 **스케줄 라인들의 연도 집합에 없음**. 스케줄이 연말·연초에 걸쳐 두 연도를 포함하면 둘 다 정상으로 본다
 - `type: schedule` — 문구의 날짜·시각이 스케줄 세팅과 다름
+  - **접수 시작 기준점 해석**: 문구가 "X시부터 N시간(분) 단위로 업데이트" 형태이고 X가 접수 시작 시각이면, 스케줄 첫 실행이 X가 아니라 X+N이어도 정상이다 — 접수 시작을 기준으로 주기를 안내한 것이며, 접수 시작 시점엔 경쟁률이 0이라 갱신이 없을 수 있다(홍익대 1172089: 문구 "9.7.(월) 10:00부터 3시간 단위" ↔ 스케줄 첫 실행 13:00 = 정상). 특정 대학 예외가 아니라 `judge.build_prompt`의 일반 판정 규칙이다
+- `type: missing_schedule`, `field: schedule` — 유효 스케줄('테스트용' 제외)이 0줄. 경쟁률이 아예 열리지 않는 상태라 연도·일정 불일치보다 심각하다. **claude에 묻지 않고 `audit.py`가 결정적으로 판단**한다(`judge.filter_schedule_lines` 재사용) — `found`는 "스케줄 세팅 없음", `expect`는 "경쟁률 스케줄 설정 필요"로 고정, `quote`는 빈 문자열(대구가톨릭대 1046110 재현). 같은 서비스에 claude 판정(연도 오류 등)이 함께 있으면 `items[]`에 둘 다 담는다
 - 이상이 없으면 빈 배열
 
 claude 호출 규약은 `dev-control-analyze.mjs`를 답습한다: 프롬프트는 argv가 아닌 **stdin**으로 전달(ENAMETOOLONG 회피), 실행 cwd를 리포 밖(임시 디렉터리)에 두어 이 리포의 `.claude` 설정을 상속하지 않게 한다. 배치는 10건 단위(241건 ≈ 25회 호출).

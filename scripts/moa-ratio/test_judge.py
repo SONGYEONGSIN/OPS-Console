@@ -120,6 +120,18 @@ class PromptTest(unittest.TestCase):
         self.assertIn("접수 시작", rule_section)
         self.assertIn("이상이 아니다", rule_section)
 
+    def test_prompt_mentions_start_time_cycle_rule(self):
+        # 홍익대 1172089 재현 — "9. 7.(월) 10:00부터 3시간 단위로 업데이트" 문구는
+        # 접수 시작(10:00)을 기준점으로 한 주기 안내이고, 접수 시작 시점엔 경쟁률이
+        # 0이라 첫 실제 갱신이 10:00이 아니라 13:00(10+3시간)인 것이 정상이다.
+        # 판정기가 "문구는 10시인데 스케줄 첫 실행이 13시"를 불일치로 오판하지
+        # 않도록, 이 해석이 일반 규칙으로 프롬프트에 있어야 한다(특정 대학 예외 아님).
+        p = build_prompt([self._svc()])
+        rule_section = p.split("판정 규칙:")[1].split("같은 serviceId")[0]
+        self.assertIn("단위로 업데이트", rule_section)
+        self.assertIn("접수 시작", rule_section)
+        self.assertIn("이상으로 보고하지 마라", rule_section)
+
 
 class ParseTest(unittest.TestCase):
     def test_parses_plain_json(self):
