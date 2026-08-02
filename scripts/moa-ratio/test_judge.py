@@ -46,7 +46,15 @@ class ScheduleLineTest(unittest.TestCase):
         self.assertEqual(schedule_years(lines), {"2026", "2027"})
 
     def test_years_ignore_test_lines(self):
-        self.assertEqual(schedule_years(SAMPLE_SCHEDULE), {"2026"})
+        # 테스트용 라인만 다른 연도(2025)를 줘서 실제로 걸러지는지 판별한다.
+        # (SAMPLE_SCHEDULE 은 정상 라인도 전부 2026년이라 필터 유무를 구분 못 함)
+        lines = [
+            "2025-01-01 오전 10:00:00 : 한 번 (테스트용)",
+            "2026-09-09 오전 10:00:00 ~ 2026-09-11 오전 10:03:00 : 10시 반복",
+        ]
+        years = schedule_years(lines)
+        self.assertEqual(years, {"2026"})
+        self.assertNotIn("2025", years)
 
 
 class PromptTest(unittest.TestCase):

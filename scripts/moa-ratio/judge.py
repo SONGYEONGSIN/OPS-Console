@@ -9,7 +9,6 @@
 """
 import html as html_mod
 import json
-import os
 import re
 import subprocess
 import sys
