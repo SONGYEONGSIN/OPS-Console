@@ -132,6 +132,8 @@ export default async function DevTestPage({
           category={sp.category}
           universityType={sp.universityType}
           admissionType={sp.admissionType}
+          mine={sp.mine}
+          myName={myName}
         />
       ) : (
         <ListPattern
