@@ -19,6 +19,14 @@ describe("GET /api/ratio-audit/targets", () => {
     process.env.CRON_SECRET = "s3cret";
   });
 
+  it("CRON_SECRET 미설정이면 500이고 조회는 호출되지 않음", async () => {
+    process.env.CRON_SECRET = "";
+    const { GET } = await import("../route");
+    const res = await GET(getReq("Bearer s3cret"));
+    expect(res.status).toBe(500);
+    expect(listRatioAuditTargets).not.toHaveBeenCalled();
+  });
+
   it("인증 헤더 없으면 401", async () => {
     const { GET } = await import("../route");
     const res = await GET(getReq());
