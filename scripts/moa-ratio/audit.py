@@ -5,9 +5,10 @@
 
 흐름:
   대상 로딩(GET /api/ratio-audit/targets) → Moa 로그인(scrape.py 내부 부품 재사용)
-  → POST /Ratio/GetRatioList(TEST) 전체 목록 → 대상 교집합
+  → POST /Ratio/GetRatioList(TEST) 전체 목록 → listfilter.py 시작일 필터(9월 1일
+  이후) → 대상 교집합
   → GET /Ratio/RatioSetting/{id}?Seq&Server=TEST 순회로 스케줄·문구·접수일정 추출
-  → judge.py 배치 판정 → REAL 목록으로 html 링크 404 점검
+  → judge.py 배치 판정 → REAL 목록(동일 시작일 필터)으로 html 링크 404 점검
   → POST /api/ratio-audit/ingest
 
 읽기 전용. 저장·배포 버튼을 누르지 않는다.
@@ -38,6 +39,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존 검증된 구현)
 from judge import build_prompt, clean_text, parse_response, run_claude  # noqa: E402
+from listfilter import filter_by_start_date  # noqa: E402
 
 MOA_BASE = "https://moa.jinhakapply.com"
 RATIO_SETTING_LIST_URL = f"{MOA_BASE}/Ratio/RatioSetting"
@@ -415,8 +417,13 @@ def main() -> int:
 
         test_list_raw = fetch_ratio_list(driver, wait, "TEST", dump_dir)
         _save_raw_list(test_list_raw, dump_dir, "TEST")
-        test_rows = [r for r in test_list_raw if int(r["UnivServiceID"]) in targets]
-        _print_intersection_diagnostics("TEST", test_list_raw, targets, len(test_rows))
+        test_list_filtered = filter_by_start_date(test_list_raw)
+        print(
+            f"[INFO] TEST 목록 {len(test_list_raw)}건 → "
+            f"시작일 필터 후 {len(test_list_filtered)}건"
+        )
+        test_rows = [r for r in test_list_filtered if int(r["UnivServiceID"]) in targets]
+        _print_intersection_diagnostics("TEST", test_list_filtered, targets, len(test_rows))
         print(f"[OK] 교집합 {len(test_rows)}건 순회 시작")
 
         consecutive_skips = 0
@@ -478,8 +485,13 @@ def main() -> int:
         driver.get(RATIO_SETTING_LIST_URL)  # extract_detail이 상세 페이지로 이동시켰으므로 복귀
         real_list_raw = fetch_ratio_list(driver, wait, "REAL", dump_dir)
         _save_raw_list(real_list_raw, dump_dir, "REAL")
-        real_rows = [r for r in real_list_raw if int(r["UnivServiceID"]) in targets]
-        _print_intersection_diagnostics("REAL", real_list_raw, targets, len(real_rows))
+        real_list_filtered = filter_by_start_date(real_list_raw)
+        print(
+            f"[INFO] REAL 목록 {len(real_list_raw)}건 → "
+            f"시작일 필터 후 {len(real_list_filtered)}건"
+        )
+        real_rows = [r for r in real_list_filtered if int(r["UnivServiceID"]) in targets]
+        _print_intersection_diagnostics("REAL", real_list_filtered, targets, len(real_rows))
         for row in real_rows:
             sid = int(row["UnivServiceID"])
             url = f"{HTML_BASE['REAL']}RatioH/Ratio{sid}{row['Seq']}.html"
