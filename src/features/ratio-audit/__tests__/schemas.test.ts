@@ -6,6 +6,7 @@ const valid = {
   findings: [
     {
       serviceId: 1093020,
+      seq: 1,
       universityName: "성신여자대학교",
       serviceName: "수시",
       operatorName: "김지영",
@@ -48,6 +49,7 @@ describe("ratioAuditIngestSchema", () => {
       findings: [
         {
           serviceId: 1,
+          seq: 1,
           universityName: "가대",
           serviceName: "수시",
           operatorName: "홍길동",
@@ -90,5 +92,30 @@ describe("ratioAuditIngestSchema", () => {
       linkErrors: [{ ...valid.linkErrors[0], status: -1 }],
     });
     expect(parsed.success).toBe(false);
+  });
+
+  it("seq 누락은 거부 (같은 serviceId라도 1차/2차를 구분해야 한다)", () => {
+    const { seq: _seq, ...findingWithoutSeq } = valid.findings[0];
+    const parsed = ratioAuditIngestSchema.safeParse({
+      ...valid,
+      findings: [findingWithoutSeq],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("seq 0 이하는 거부 (Moa Seq는 1부터 시작)", () => {
+    const parsed = ratioAuditIngestSchema.safeParse({
+      ...valid,
+      findings: [{ ...valid.findings[0], seq: 0 }],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("seq 2(2차)도 정상 통과", () => {
+    const parsed = ratioAuditIngestSchema.safeParse({
+      ...valid,
+      findings: [{ ...valid.findings[0], seq: 2 }],
+    });
+    expect(parsed.success).toBe(true);
   });
 });

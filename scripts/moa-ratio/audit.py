@@ -326,6 +326,7 @@ def extract_detail(driver, wait, sid: int, seq, server: str) -> dict:
     ]
     return {
         "service_id": sid,
+        "seq": seq,
         "schedule_lines": lines,
         "pre_open_text": clean_text(
             driver.find_element(By.CSS_SELECTOR, "#txtOpenText").get_attribute("value") or ""
@@ -448,6 +449,7 @@ def main() -> int:
                     continue
                 findings.append({
                     "serviceId": svc["service_id"],
+                    "seq": svc["seq"],
                     "universityName": svc["university_name"],
                     "serviceName": svc["service_name"],
                     "operatorName": targets[svc["service_id"]]["operatorName"],

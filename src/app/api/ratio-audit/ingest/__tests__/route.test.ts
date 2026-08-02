@@ -24,6 +24,7 @@ function payload(overrides: Record<string, unknown> = {}) {
     findings: [
       {
         serviceId: 1093020,
+        seq: 1,
         universityName: "성신여자대학교",
         serviceName: "수시",
         operatorName: "김지영",

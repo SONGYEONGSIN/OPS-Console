@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import { summarizeRatioAudit, buildRatioAuditHtml, SUMMARY_TOP_N } from "../summary";
 import type { RatioAuditIngest, RatioFinding } from "../schemas";
 
-function finding(id: number, university: string): RatioFinding {
+function finding(id: number, university: string, seq = 1): RatioFinding {
   return {
     serviceId: id,
+    seq,
     universityName: university,
     serviceName: "수시",
     operatorName: "홍길동",
@@ -69,6 +70,18 @@ describe("buildRatioAuditHtml", () => {
     expect(html).toContain("성신여자대학교");
     expect(html).toContain("홍길동");
     expect(html).toContain("2025학년도");
+  });
+
+  it("같은 serviceId라도 차수(seq)가 다르면 표에서 구분된다 (홍익대 1172089 1차/2차 재현)", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      findings: [
+        finding(1172089, "홍익대학교", 1),
+        finding(1172089, "홍익대학교", 2),
+      ],
+    });
+    expect(html).toContain("1차");
+    expect(html).toContain("2차");
   });
 
   it(`상위 ${SUMMARY_TOP_N}건만 표에 넣고 나머지는 '외 N건'으로 줄인다`, () => {

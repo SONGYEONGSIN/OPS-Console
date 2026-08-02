@@ -72,11 +72,13 @@ export function buildRatioAuditHtml(input: RatioAuditIngest): string {
   const shown = input.findings.slice(0, SUMMARY_TOP_N);
   const rest = input.findings.length - shown.length;
 
+  // 같은 serviceId라도 1차/2차 설정이 별도 페이지라 seq 없이는 어느 쪽을 고쳐야
+  // 하는지 알 수 없다(홍익대 1172089 재현) — 열은 늘리지 않고 서비스명 옆에 붙인다.
   const rows = shown
     .map(
       (f) =>
         `<tr><td>${escapeHtml(f.universityName)}</td>` +
-        `<td>${escapeHtml(f.serviceName)}</td>` +
+        `<td>${escapeHtml(f.serviceName)} · ${f.seq}차</td>` +
         `<td>${escapeHtml(f.operatorName)}</td>` +
         `<td>${itemsLabel(f)}</td></tr>`,
     )

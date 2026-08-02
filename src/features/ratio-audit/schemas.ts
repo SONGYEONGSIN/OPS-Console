@@ -20,6 +20,8 @@ export const ratioFindingItemSchema = z.object({
 
 export const ratioFindingSchema = z.object({
   serviceId: z.number().int().positive(),
+  /** Moa Seq(1부터 시작) — 같은 serviceId에 1차/2차 등 별도 설정 페이지가 있을 수 있어 구분에 필요 */
+  seq: z.number().int().positive(),
   universityName: z.string().min(1),
   serviceName: z.string().default(""),
   operatorName: z.string().default(""),
