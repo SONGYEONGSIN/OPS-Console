@@ -99,7 +99,9 @@ describe("POST /api/ratio-audit/ingest", () => {
     expect(h.sendTeamsChatMessage).toHaveBeenCalledTimes(1);
     expect(h.sendTeamsChatMessage.mock.calls[0][0].chatId).toBe("chat-1");
     expect(h.update).toHaveBeenCalledWith({ notified: true });
-    expect((await res.json()).notified).toBe(true);
+    const json = await res.json();
+    expect(json.notified).toBe(true);
+    expect(json.notifyError).toBeUndefined();
   });
 
   it("Teams 발송이 실패해도 적재는 유지하고 notified=false", async () => {
@@ -118,6 +120,16 @@ describe("POST /api/ratio-audit/ingest", () => {
     const { POST } = await import("../route");
     const res = await POST(postReq(payload()));
     expect(h.sendTeamsChatMessage).not.toHaveBeenCalled();
-    expect((await res.json()).notified).toBe(false);
+    const json = await res.json();
+    expect(json.notified).toBe(false);
+    expect(json.notifyError).toBeUndefined();
+  });
+
+  it("CRON_SECRET 미설정이면 500이고 적재하지 않는다", async () => {
+    process.env.CRON_SECRET = "";
+    const { POST } = await import("../route");
+    const res = await POST(postReq(payload()));
+    expect(res.status).toBe(500);
+    expect(h.insert).not.toHaveBeenCalled();
   });
 });
