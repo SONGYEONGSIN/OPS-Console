@@ -27,6 +27,7 @@ import tempfile
 import time
 
 import requests
+from selenium.common.exceptions import NoAlertPresentException, UnexpectedAlertPresentException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -91,6 +92,24 @@ def poll_manual_code(path: str, timeout_sec: int, interval_sec: int) -> str:
     raise RuntimeError(f"수동 코드 파일 폴링 타임아웃 ({timeout_sec}s) — {path}")
 
 
+def _accept_alert_if_present(driver) -> str | None:
+    """2차 제출(인증번호 확인) 직후 뜬 native alert를 읽어 수용(accept)한다.
+
+    인증번호를 틀리면 Moa가 "인증번호를 다시 확인해주세요." 같은 alert를 띄운다.
+    이걸 처리하지 않은 채 다음 webdriver 명령(예: _abort_if_captcha의
+    find_elements)을 보내면 그 명령이 UnexpectedAlertPresentException 스택트레이스로
+    죽어 원인이 로그에 드러나지 않는다. 여기서 먼저 텍스트를 읽어 accept함으로써
+    호출부가 원인이 드러나는 RuntimeError로 바꿀 수 있게 한다.
+    """
+    try:
+        alert = driver.switch_to.alert
+        text = alert.text
+        alert.accept()
+        return text
+    except NoAlertPresentException:
+        return None
+
+
 def login_and_2fa(driver, wait, env) -> None:
     """Moa 로그인 + SMS 2FA. scrape.login_and_2fa와 동일 흐름을 이 스크립트 안에 풀어
     썼다(MANUAL_CODE_FILE 분기를 끼워 넣기 위함). #btnLogin 이중용도(1차 SMS발송 →
@@ -122,7 +141,15 @@ def login_and_2fa(driver, wait, env) -> None:
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["sms_code_input"]).send_keys(code)
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["sms_submit"]).click()  # 2차 → 인증확인
     time.sleep(2)
-    scrape._abort_if_captcha(driver)
+    try:
+        alert_text = _accept_alert_if_present(driver)
+        if alert_text is not None:
+            raise RuntimeError(f"로그인 실패: {alert_text}")
+        scrape._abort_if_captcha(driver)
+    except UnexpectedAlertPresentException as e:
+        # _accept_alert_if_present 이후 뒤늦게 뜬 alert 대비 — selenium이 이후 명령
+        # 실행 중 감지한 경우 예외에 담긴 텍스트를 그대로 노출한다.
+        raise RuntimeError(f"로그인 실패: {getattr(e, 'alert_text', None) or e}") from e
     print("[OK] 로그인 + 2FA 완료")
 
 
@@ -158,8 +185,35 @@ def _dump_page(driver, out_dir: str, label: str) -> None:
         print(f"[DUMP] 덤프 실패(무시): {exc}")
 
 
+def _read_operator_options(driver) -> list[dict[str, str]]:
+    """운영자 드롭다운(#ddlDirectManager) 옵션을 전부 읽는다. 빈 값('선택')은 제외.
+
+    사람 이름을 코드에 하드코딩하면 운영자가 늘거나 바뀔 때마다 이 파일을 고쳐야
+    한다 — 실행 시점에 DOM에서 읽어 그 문제를 없앤다.
+    """
+    raw = driver.execute_script(
+        "return Array.from(document.getElementById('ddlDirectManager').options)"
+        ".map(function(o) { return {value: o.value, text: o.text}; });"
+    )
+    return [o for o in raw if o["value"]]
+
+
+def _poll_ratio_list(driver, timeout_sec: int = 120) -> list[dict] | None:
+    """window.RatioList가 배열로 채워질 때까지 폴링. 타임아웃이면 None."""
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        raw = driver.execute_script(
+            "return Array.isArray(window.RatioList) ? "
+            "JSON.stringify(window.RatioList) : null;"
+        )
+        if raw is not None:
+            return json.loads(raw)
+        time.sleep(1)
+    return None
+
+
 def fetch_ratio_list(driver, wait, server: str, dump_dir: str) -> list[dict]:
-    """목록 페이지 자체의 GetRatioList()를 페이지 컨텍스트에서 호출해 전체 목록을 받는다.
+    """목록 페이지 자체의 GetRatioList()를 운영자별로 호출해 전체 목록을 모은다.
 
     raw fetch로 POST /Ratio/GetRatioList를 직접 호출하면 서버가 JSON 대신 전체
     HTML 페이지를 반환한다(라이브 실행 확인: "ERR:SyntaxError ... <!DOCTYPE"). 페이지의
@@ -169,46 +223,98 @@ def fetch_ratio_list(driver, wait, server: str, dump_dir: str) -> list[dict]:
     호출하면 헤더·직렬화·쿠키 인증을 사이트가 하던 그대로 재현하므로 이 분기를
     신경 쓸 필요가 없다.
 
-    라디오 클릭 → 운영자 드롭다운 비우기(#ddlDirectManager, 로그인 계정이 기본
-    선택되는 함정 — 부록 A) → window.RatioList 초기화 → GetRatioList() 호출 →
-    폴링 순서다. 초기화 없이 값 존재만 보면 페이지 로드 시 자동 실행되는 검색
-    1회(부록 A 함정 2)가 채워둔 이전 결과를 우리 결과로 오인한다.
+    운영자별로 순회하는 이유(라이브 실행으로 확인된 부록 A 함정의 실체): 운영자
+    드롭다운(#ddlDirectManager)을 ''(전체 의도)로 비우고 GetRatioList()를 호출해도
+    서버가 빈 값을 로그인 계정으로 되돌려 로그인한 운영자 담당분만 응답한다.
+    디스커버리 때 로그인 계정(송영신) 담당 283건과, 값을 비운 채 받은 283건이
+    정확히 일치했고, 다른 운영자(성신여자대학교 1093020 담당 김지영) 대상은
+    통째로 빠져 교집합이 0건이 됐다 — '전체'라는 옵션이 서버에는 없다는 뜻이다.
+    그래서 드롭다운 옵션을 전부 읽어 운영자마다 한 번씩 명시적으로 지정해
+    GetRatioList()를 호출하고 결과를 UnivServiceID+Seq 조합으로 중복 제거하며
+    합친다. 한 운영자 조회가 실패해도 경고만 남기고 나머지 운영자는 계속 순회한다
+    — 인증번호를 사람이 입력해야 해서 재시도 비용이 크므로, 일부 실패로 전체
+    순회를 죽이지 않는다.
     """
     label = f"ratio-list-{server}"
     try:
         wait.until(EC.presence_of_element_located((By.ID, "ddlDirectManager")))
         radio_id = "rdoRatioServer1" if server == "REAL" else "rdoRatioServer2"
         driver.execute_script(f"document.getElementById('{radio_id}').click();")
-        driver.execute_script(
-            "var el = document.getElementById('ddlDirectManager');"
-            "el.value = '';"
-            "el.dispatchEvent(new Event('change', {bubbles: true}));"
-        )
-        driver.execute_script("window.RatioList = null; GetRatioList();")
 
-        deadline = time.monotonic() + 120
-        raw = None
-        while time.monotonic() < deadline:
-            raw = driver.execute_script(
-                "return Array.isArray(window.RatioList) ? "
-                "JSON.stringify(window.RatioList) : null;"
-            )
-            if raw is not None:
-                break
-            time.sleep(1)
+        operators = _read_operator_options(driver)
+        if not operators:
+            raise RuntimeError("운영자 드롭다운 옵션을 찾지 못함(#ddlDirectManager)")
 
-        if raw is None:
-            title = driver.execute_script("return document.title;")
-            href = driver.execute_script("return location.href;")
-            raise RuntimeError(
-                f"{server} 목록 조회 타임아웃(120s) — title={title!r} href={href!r}"
+        merged: dict[tuple[int, object], dict] = {}
+        failed_operators = []
+        for i, op in enumerate(operators, 1):
+            try:
+                driver.execute_script(
+                    "var el = document.getElementById('ddlDirectManager');"
+                    "el.value = arguments[0];"
+                    "el.dispatchEvent(new Event('change', {bubbles: true}));",
+                    op["value"],
+                )
+                driver.execute_script("window.RatioList = null; GetRatioList();")
+                rows = _poll_ratio_list(driver)
+                if rows is None:
+                    raise RuntimeError("목록 조회 타임아웃(120s)")
+                for row in rows:
+                    merged[(int(row["UnivServiceID"]), row["Seq"])] = row
+            except Exception as e:  # noqa: BLE001 — 한 운영자 실패로 전체 순회를 죽이지 않는다
+                failed_operators.append(op["text"])
+                print(f"[WARN] {server} 운영자 '{op['text']}' 조회 실패, 건너뜀: {e}")
+                continue
+            print(
+                f"[INFO] {server} 운영자 {i}/{len(operators)} 조회 "
+                f"({op['text']}) — 누적 {len(merged)}건"
             )
-        rows = json.loads(raw)
+
+        if failed_operators:
+            print(f"[WARN] {server} 조회 실패 운영자 {len(failed_operators)}명: {failed_operators}")
+
+        rows = list(merged.values())
         print(f"[OK] {server} 목록 {len(rows)}건")
         return rows
     except Exception:
         _dump_page(driver, dump_dir, label)
         raise
+
+
+def _save_raw_list(rows: list[dict], out_dir: str, label: str) -> str:
+    """운영자별로 병합한 원본 Moa 목록을 진단용으로 저장한다.
+
+    같은 종류의 불일치(예: 교집합 0건)가 다시 나면, 인증번호를 다시 받아 로그인을
+    처음부터 돌리지 않고도 이 파일과 대상 목록을 나란히 놓고 원인을 바로 좁힐 수
+    있게 한다.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"moa-list-{label}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rows, f, ensure_ascii=False, indent=1)
+    print(f"[INFO] {label} 원본 목록 저장: {path}")
+    return path
+
+
+def _print_intersection_diagnostics(
+    label: str, moa_rows: list[dict], targets: dict[int, dict], matched_count: int
+) -> None:
+    """교집합 진단 한 줄 + 저조 시 ID 대조용 상위 5개를 출력한다.
+
+    교집합이 0건이거나 대상의 10% 미만이면 로그인 계정 한정 응답 같은 구조적
+    불일치일 가능성이 높다 — Moa/대상 ID를 나란히 찍어 로그인 없이도 즉시 대조할
+    수 있게 한다.
+    """
+    moa_count = len(moa_rows)
+    target_count = len(targets)
+    print(
+        f"[INFO] {label} 진단 — Moa 목록 {moa_count}건 / 대상 {target_count}건 / "
+        f"교집합 {matched_count}건"
+    )
+    if target_count and matched_count < target_count * 0.1:
+        moa_ids = [int(r["UnivServiceID"]) for r in moa_rows[:5]]
+        target_ids = list(targets.keys())[:5]
+        print(f"[WARN] {label} 교집합 저조 — Moa ID 상위5 {moa_ids} / 대상 ID 상위5 {target_ids}")
 
 
 def extract_detail(driver, wait, sid: int, seq, server: str) -> dict:
@@ -288,8 +394,10 @@ def main() -> int:
         login_and_2fa(driver, wait, env)
         driver.get(RATIO_SETTING_LIST_URL)
 
-        test_rows = [r for r in fetch_ratio_list(driver, wait, "TEST", dump_dir)
-                     if int(r["UnivServiceID"]) in targets]
+        test_list_raw = fetch_ratio_list(driver, wait, "TEST", dump_dir)
+        _save_raw_list(test_list_raw, dump_dir, "TEST")
+        test_rows = [r for r in test_list_raw if int(r["UnivServiceID"]) in targets]
+        _print_intersection_diagnostics("TEST", test_list_raw, targets, len(test_rows))
         print(f"[OK] 교집합 {len(test_rows)}건 순회 시작")
 
         consecutive_skips = 0
@@ -348,10 +456,12 @@ def main() -> int:
             print(f"[INFO] 판정 {min(start + BATCH_SIZE, len(collected))}/{len(collected)}")
 
         driver.get(RATIO_SETTING_LIST_URL)  # extract_detail이 상세 페이지로 이동시켰으므로 복귀
-        for row in fetch_ratio_list(driver, wait, "REAL", dump_dir):
+        real_list_raw = fetch_ratio_list(driver, wait, "REAL", dump_dir)
+        _save_raw_list(real_list_raw, dump_dir, "REAL")
+        real_rows = [r for r in real_list_raw if int(r["UnivServiceID"]) in targets]
+        _print_intersection_diagnostics("REAL", real_list_raw, targets, len(real_rows))
+        for row in real_rows:
             sid = int(row["UnivServiceID"])
-            if sid not in targets:
-                continue
             url = f"{HTML_BASE['REAL']}RatioH/Ratio{sid}{row['Seq']}.html"
             status, reason = check_link(url)
             if status != 200:
