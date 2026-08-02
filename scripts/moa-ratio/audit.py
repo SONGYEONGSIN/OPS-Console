@@ -319,6 +319,52 @@ def _print_intersection_diagnostics(
         print(f"[WARN] {label} 교집합 저조 — Moa ID 상위5 {moa_ids} / 대상 ID 상위5 {target_ids}")
 
 
+def _save_collected_details(details: list[dict], out_dir: str) -> str:
+    """상세 순회로 수집한 전체 항목(스케줄·문구·접수일정)을 진단용으로 저장한다.
+
+    claude 판정에 실제로 들어간 입력은 지금까지 어디에도 남지 않아, 라이브
+    재실행에서 오탐이 그대로 잡혀도 원인이 수집 실패(셀렉터 불일치로 접수일정이
+    빈 문자열)인지 판정 로직 문제인지 구분할 수 없었다. 원본 목록 저장
+    (_save_raw_list)과 같은 방식으로 out_dir(OUT_JSON과 같은 디렉터리)에 남긴다.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "collected-details.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(details, f, ensure_ascii=False, indent=1)
+    print(f"[INFO] 수집 상세 저장: {path}")
+    return path
+
+
+def _warn_empty_apply_period(details: list[dict]) -> None:
+    """접수일정 수집 실패(빈 문자열)를 조용히 넘기지 않고 경고로 드러낸다.
+
+    _extract_apply_period는 요소를 못 찾으면 판정을 막지 않으려고 빈 문자열로
+    되돌린다 — 그 설계는 유지하되, 실패가 있었다는 사실 자체는 순회 종료 후
+    한 번은 눈에 보여야 한다. 그래야 다음 오탐이 나왔을 때 "접수일정을 아예 못
+    받았다"와 "받았는데 판정이 틀렸다"를 재실행 없이 구분할 수 있다.
+    """
+    empty = [d for d in details if not d.get("apply_period")]
+    if empty:
+        sample_ids = [d["service_id"] for d in empty[:3]]
+        print(
+            f"[WARN] 접수일정 수집 실패 {len(empty)}건 — 상위3 serviceId {sample_ids}"
+        )
+
+
+def _save_first_batch_prompt(prompt: str, out_dir: str) -> str:
+    """claude에 실제로 보낸 첫 배치 프롬프트 전문을 저장한다.
+
+    접수일정이 프롬프트에 실제로 실렸는지는 build_prompt 소스를 읽는 것만으로는
+    확인할 수 없다 — 실행마다 실제로 나간 문자열을 눈으로 봐야 한다.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, "first-batch-prompt.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(prompt)
+    print(f"[INFO] 첫 배치 프롬프트 저장: {path}")
+    return path
+
+
 def _extract_apply_period(driver) -> str:
     """상단 '대학정보,접수일정' 테이블에서 접수일정 텍스트를 추출한다.
 
@@ -455,14 +501,20 @@ def main() -> int:
             if i % 20 == 0:
                 print(f"[INFO] {i}/{len(test_rows)} 순회")
 
+        _save_collected_details(collected, dump_dir)
+        _warn_empty_apply_period(collected)
+
         for start in range(0, len(collected), BATCH_SIZE):
             batch = collected[start : start + BATCH_SIZE]
+            prompt = build_prompt(batch)
+            if start == 0:
+                _save_first_batch_prompt(prompt, dump_dir)
             try:
-                verdict = parse_response(run_claude(build_prompt(batch)))
+                verdict = parse_response(run_claude(prompt))
             except Exception as e:  # noqa: BLE001 — 1회 재시도 후 배치 skip
                 print(f"[WARN] 배치 판정 실패, 재시도: {e}")
                 try:
-                    verdict = parse_response(run_claude(build_prompt(batch)))
+                    verdict = parse_response(run_claude(prompt))
                 except Exception as e2:  # noqa: BLE001
                     for svc in batch:
                         skipped.append({"serviceId": svc["service_id"],
