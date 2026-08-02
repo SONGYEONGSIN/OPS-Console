@@ -90,6 +90,36 @@ class PromptTest(unittest.TestCase):
         self.assertIn("seq: 1", p)
         self.assertIn("seq: 2", p)
 
+    def test_prompt_contains_apply_period(self):
+        # 접수일정을 알아야 "접수 시작 시각"과 "경쟁률 공개 시각"을 구분할 수 있다
+        # (홍익대 1172089 오탐 사례 — 접수일정 없이는 문구의 시각이 접수 시작인지
+        # 경쟁률 공개인지 판정기가 구분하지 못했다).
+        svc = self._svc()
+        svc["apply_period"] = "2026-09-08 오전 11:00:00 ~ 2026-09-11 오후 6:00:00"
+        p = build_prompt([svc])
+        self.assertIn("2026-09-08 오전 11:00:00 ~ 2026-09-11 오후 6:00:00", p)
+
+    def test_prompt_handles_missing_apply_period_key(self):
+        # extract_detail이 접수일정 요소를 못 찾으면 apply_period 키 자체가 없을 수
+        # 있다 — 죽지 않고 "없음"으로 표시되어야 한다.
+        svc = self._svc()
+        self.assertNotIn("apply_period", svc)
+        p = build_prompt([svc])
+        self.assertIn("접수일정:", p)
+        self.assertIn("없음", p)
+
+    def test_prompt_mentions_apply_period_judge_rule(self):
+        # 문구 시각이 접수일정(접수 시작·마감)과 일치하면 스케줄 시각과 달라도
+        # 이상이 아니라는 판정 규칙이 프롬프트에 명시돼야 한다(홍익대 1172089
+        # 오탐 방지). 연도 규칙(rule 1)의 "이상이 아니다"와 혼동되지 않도록
+        # '접수 시작'을 함께 검사한다.
+        p = build_prompt([self._svc()])
+        self.assertIn("접수 시작", p)
+        self.assertIn("이상이 아니다", p)
+        rule_section = p.split("판정 규칙:")[1].split("같은 serviceId")[0]
+        self.assertIn("접수 시작", rule_section)
+        self.assertIn("이상이 아니다", rule_section)
+
 
 class ParseTest(unittest.TestCase):
     def test_parses_plain_json(self):

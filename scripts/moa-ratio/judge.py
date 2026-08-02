@@ -57,9 +57,11 @@ def build_prompt(services: list[dict]) -> str:
     for svc in services:
         lines = filter_schedule_lines(svc.get("schedule_lines") or [])
         years = ", ".join(sorted(schedule_years(svc.get("schedule_lines") or []))) or "없음"
+        apply_period = svc.get("apply_period") or "없음"
         blocks.append(
             f"### serviceId: {svc['service_id']} / seq: {svc['seq']}\n"
             f"대학: {svc.get('university_name', '')} / 서비스: {svc.get('service_name', '')}\n"
+            f"접수일정: {apply_period}\n"
             f"스케줄 연도 집합: {years}\n"
             f"스케줄 세팅:\n" + "\n".join(f"- {line}" for line in lines) + "\n"
             f"[오픈전 내용]\n{svc.get('pre_open_text', '')}\n"
@@ -75,7 +77,10 @@ def build_prompt(services: list[dict]) -> str:
         "'2027학년도' 같은 학년도 표기는 달력연도와 다른 축이므로 이상이 아니다.\n"
         "2. type=schedule — 문구에 적힌 공개 날짜·시각이 스케줄 세팅과 다르면 이상이다. "
         "스케줄이 특정 날짜까지만 반복되어 마감일 문구에서 일부 시각이 빠진 것은 정상이다.\n"
-        "3. 확신이 없으면 보고하지 마라. 추측 금지.\n\n"
+        "3. 문구에 적힌 시각이 '접수일정'의 접수 시작·마감 시각과 일치하면, 스케줄 세팅 "
+        "시각과 달라도 이상이 아니다. 문구가 접수 시작(마감)을 안내하는 것인지 경쟁률 "
+        "공개 시각을 안내하는 것인지는 맥락으로 구분하라.\n"
+        "4. 확신이 없으면 보고하지 마라. 추측 금지.\n\n"
         "같은 serviceId 가 차수(seq)만 다른 별개 설정으로 여러 번 나올 수 있다 — "
         "블록 헤더의 seq 로 구분하고, 응답에도 그 seq 를 그대로 되돌려줘라.\n\n"
         "출력은 JSON만. 설명·코드펜스 없이 아래 형태로만 답하라.\n"

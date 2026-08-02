@@ -6,7 +6,7 @@
 흐름:
   대상 로딩(GET /api/ratio-audit/targets) → Moa 로그인(scrape.py 내부 부품 재사용)
   → POST /Ratio/GetRatioList(TEST) 전체 목록 → 대상 교집합
-  → GET /Ratio/RatioSetting/{id}?Seq&Server=TEST 순회로 스케줄·문구 추출
+  → GET /Ratio/RatioSetting/{id}?Seq&Server=TEST 순회로 스케줄·문구·접수일정 추출
   → judge.py 배치 판정 → REAL 목록으로 html 링크 404 점검
   → POST /api/ratio-audit/ingest
 
@@ -317,8 +317,25 @@ def _print_intersection_diagnostics(
         print(f"[WARN] {label} 교집합 저조 — Moa ID 상위5 {moa_ids} / 대상 ID 상위5 {target_ids}")
 
 
+def _extract_apply_period(driver) -> str:
+    """상단 '대학정보,접수일정' 테이블에서 접수일정 텍스트를 추출한다.
+
+    마크업: <table class="tbl type1 st1" summary="대학정보,접수일정"> 안에 td가
+    [대학정보, 접수일정] 순서로 2개 있다 — 두 번째가 접수일정 값이다. 서비스마다
+    페이지 구조가 다를 수 있어(예: 이 테이블 자체가 없는 경우) 요소를 못 찾으면
+    판정을 막지 않도록 빈 문자열로 되돌린다.
+    """
+    try:
+        cells = driver.find_elements(
+            By.CSS_SELECTOR, 'table.tbl.type1.st1[summary="대학정보,접수일정"] td'
+        )
+        return cells[1].text.strip() if len(cells) >= 2 else ""
+    except Exception:  # noqa: BLE001 — 접수일정 추출 실패로 전체 순회를 죽이지 않는다
+        return ""
+
+
 def extract_detail(driver, wait, sid: int, seq, server: str) -> dict:
-    """설정/배포 페이지에서 스케줄 라인 + 오픈전/상단 문구 추출."""
+    """설정/배포 페이지에서 스케줄 라인 + 오픈전/상단 문구 + 접수일정 추출."""
     driver.get(DETAIL_URL.format(sid=sid, seq=seq, server=server))
     wait.until(lambda d: d.find_elements(By.CSS_SELECTOR, "#txtTopText"))
     lines = [
@@ -328,6 +345,7 @@ def extract_detail(driver, wait, sid: int, seq, server: str) -> dict:
         "service_id": sid,
         "seq": seq,
         "schedule_lines": lines,
+        "apply_period": _extract_apply_period(driver),
         "pre_open_text": clean_text(
             driver.find_element(By.CSS_SELECTOR, "#txtOpenText").get_attribute("value") or ""
         ),
