@@ -101,4 +101,21 @@ describe("buildRatioAuditHtml", () => {
     expect(html).toContain("이상 없음");
     expect(html).toContain("건너뜀 1건");
   });
+
+  it("순회 0건이면 '이상 없음' 대신 점검 미실시 문구가 나온다", () => {
+    const html = buildRatioAuditHtml({ ...base, scannedCount: 0 });
+    expect(html).not.toContain("이상 없음");
+    expect(html).toContain("점검이 이뤄지지 않았습니다");
+  });
+
+  it("순회 0건 + 건너뜀이 있어도 '이상 없음'은 나오지 않고 건너뜀은 그대로 표시된다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      scannedCount: 0,
+      skipped: [{ serviceId: 9, reason: "진입 실패" }],
+    });
+    expect(html).not.toContain("이상 없음");
+    expect(html).toContain("점검이 이뤄지지 않았습니다");
+    expect(html).toContain("건너뜀 1건");
+  });
 });

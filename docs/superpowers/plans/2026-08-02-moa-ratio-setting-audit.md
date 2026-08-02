@@ -1368,16 +1368,16 @@ def fetch_targets(base_url: str, secret: str) -> dict[int, dict]:
 def fetch_ratio_list(driver, server: str) -> list[dict]:
     """GetRatioList 를 페이지 컨텍스트에서 POST. 전체 목록이 한 번에 온다."""
     script = """
-    const done = arguments[1];
+    const done = arguments[arguments.length - 1];
     fetch(arguments[0], {
       method: 'POST', credentials: 'include',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: new URLSearchParams({MACHINE: arguments[2], ServiceName: '', Manager: '',
+      body: new URLSearchParams({MACHINE: arguments[1], ServiceName: '', Manager: '',
         Developer: '', CategoryTypeName: '', IsActive: '', strFlag: '', Search: ''}),
     }).then(r => r.json()).then(d => done(JSON.stringify(d))).catch(e => done('ERR:' + e));
     """
     driver.set_script_timeout(120)
-    raw = driver.execute_async_script(script, LIST_API, None, server)
+    raw = driver.execute_async_script(script, LIST_API, server)
     if raw.startswith("ERR:"):
         raise RuntimeError(f"{server} 목록 조회 실패: {raw[:200]}")
     rows = json.loads(raw)

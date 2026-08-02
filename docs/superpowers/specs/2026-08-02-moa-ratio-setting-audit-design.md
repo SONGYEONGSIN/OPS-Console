@@ -200,6 +200,7 @@ claude 호출 규약은 `dev-control-analyze.mjs`를 답습한다: 프롬프트�
 | `MAKE_SMS_CODE_URL` | SMS 2FA 코드 웹훅 | 기존 값 재사용 |
 | `CRON_SECRET` | targets·ingest API 인증 | 기존 값 재사용 |
 | `TEAMS_RATIO_AUDIT_CHAT_ID` | 결과 알림 받을 개인 채팅 | **신규** — `listMyChats()`로 조회 |
+| `TEAMS_RATIO_AUDIT_SENDER` | Teams 발송 계정 override | **신규** — 미지정 시 `TEAMS_BRIEFING_SENDER` → 기본값(`ys1114@jinhakapply.com`) 순으로 폴백 |
 | `RATIO_AUDIT_DRY_RUN` | 인제스트 생략 | **신규** — 기본 false |
 | `OPS_CONSOLE_BASE_URL` | 스크래퍼 → 서버 호출 | 기존 값 재사용 |
 

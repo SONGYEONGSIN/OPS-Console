@@ -52,6 +52,13 @@ function itemsLabel(finding: RatioFinding): string {
     .join("<br>");
 }
 
+/** 순회 0건(전량 실패)이면 "이상 없음"이 정상으로 오독되지 않도록 별도 문구를 쓴다. */
+function noFindingText(scannedCount: number): string {
+  return scannedCount === 0
+    ? "<p>점검이 이뤄지지 않았습니다 — 순회 대상 0건.</p>"
+    : "<p>이상 없음.</p>";
+}
+
 export function buildRatioAuditHtml(input: RatioAuditIngest): string {
   const s = summarizeRatioAudit(input);
   const header =
@@ -59,7 +66,7 @@ export function buildRatioAuditHtml(input: RatioAuditIngest): string {
     `순회 ${s.scannedCount} / 이상 ${s.findingCount} / 링크오류 ${s.linkErrorCount}</p>`;
 
   if (s.findingCount === 0 && s.linkErrorCount === 0 && input.skipped.length === 0) {
-    return `${header}<p>이상 없음.</p>`;
+    return `${header}${noFindingText(s.scannedCount)}`;
   }
 
   const shown = input.findings.slice(0, SUMMARY_TOP_N);
@@ -81,7 +88,8 @@ export function buildRatioAuditHtml(input: RatioAuditIngest): string {
     : "";
 
   const more = rest > 0 ? `<p>외 ${rest}건</p>` : "";
-  const noFinding = s.findingCount === 0 && s.linkErrorCount === 0 ? "<p>이상 없음.</p>" : "";
+  const noFinding =
+    s.findingCount === 0 && s.linkErrorCount === 0 ? noFindingText(s.scannedCount) : "";
   const links = input.linkErrors.length
     ? `<p>링크오류 ${input.linkErrors.length}건 — ` +
       input.linkErrors
