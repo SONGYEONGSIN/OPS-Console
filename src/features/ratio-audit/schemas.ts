@@ -29,6 +29,12 @@ export const ratioFindingSchema = z.object({
   universityName: z.string().min(1),
   serviceName: z.string().default(""),
   operatorName: z.string().default(""),
+  /**
+   * Moa 스케줄 세팅 원문('테스트용' 제외 후). 알림에서 '무엇이 기준인지'를
+   * claude 요약값(items[].expect)이 아니라 실제 세팅으로 보여주기 위해 싣는다.
+   * 스케줄 자체가 없는 건(missing_schedule)은 빈 배열이 정상이다.
+   */
+  scheduleLines: z.array(z.string()).default([]),
   // 이상이 없으면 finding 자체를 보내지 않는다(빈 items는 계약 위반).
   items: z.array(ratioFindingItemSchema).min(1),
 });

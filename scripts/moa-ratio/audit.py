@@ -610,6 +610,11 @@ def main() -> int:
                     "universityName": svc["university_name"],
                     "serviceName": svc["service_name"],
                     "operatorName": targets[svc["service_id"]]["operatorName"],
+                    # 알림에서 '무엇이 기준인지'를 claude 요약값이 아니라 실제 세팅으로
+                    # 보여준다. 판정 입력과 같은 필터를 써야 알림과 판정이 어긋나지 않는다.
+                    "scheduleLines": filter_schedule_lines(
+                        svc.get("schedule_lines") or []
+                    ),
                     "items": items,
                 })
             print(f"[INFO] 판정 {min(start + BATCH_SIZE, len(collected))}/{len(collected)}")
