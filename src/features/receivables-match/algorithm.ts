@@ -40,9 +40,15 @@ function latestDate(rows: { date: string }[]): string {
 }
 
 // mismatch(금액 일치·이름 불일치) 확인 요청 최소 유사도.
-// 금액만 우연히 같고 거래처가 명백히 다른 건(예: 명지대↔충북대국제교류 0.29, 가천대↔동국대 0.33)을
-// 제외하고, 별칭 후보일 만큼 유사한 건(예: 서강대↔서강국제대학원 0.57, 한국외대 0.50)만
+// 금액만 우연히 같고 거래처가 명백히 다른 건을 제외하고, 별칭 후보일 만큼 유사한 건만
 // admin 확인 요청한다. (보정: 명백히 다름 ≤ 0.33 / 실제 별칭 ≥ 0.50 — 그 사이 0.4로 컷)
+//
+// ⚠️ 비교는 반드시 **normalizeName 적용 후** 수행한다. 원본끼리 비교하면 공유 접미사
+// '대학교'가 유사도를 부풀려 이 컷이 무력화된다 — 아래 표의 근거값은 정규화 기준이다.
+//   명지대↔충북대국제교류  원본 0.33 / 정규화 0.14
+//   가천대↔동국대          원본 0.60 / 정규화 0.33   ← 원본 비교 시 오탐
+//   건양대↔한국항공대      원본 0.43 / 정규화 0.20   ← 실제 오탐 발생 (2026-08-04)
+//   서강대↔서강국제대학원  원본 0.57 / 정규화 0.50   ← 진짜 별칭 후보, 통과해야 함
 const MISMATCH_MIN_SIMILARITY = 0.4;
 
 // 미처리(매칭 대상) 판정 — 적요가 정확히 "입금완료"일 때만 처리완료로 제외한다.
@@ -231,7 +237,10 @@ export function runMatch(
       if (
         m.amount === d.amount &&
         !isNameMatchStrong(m.customer, d.content, extraAliases) &&
-        similarity(m.customer, d.content) >= MISMATCH_MIN_SIMILARITY
+        similarity(
+          normalizeName(m.customer, extraAliases),
+          normalizeName(d.content, extraAliases),
+        ) >= MISMATCH_MIN_SIMILARITY
       ) {
         mismatches.push({
           misuRow: m.rowNumber,
