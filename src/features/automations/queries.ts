@@ -167,6 +167,7 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
       ),
       enabled: settings.get(job.id) ?? false,
       localOnly: job.localOnly ?? false,
+      manualOnly: job.manualOnly ?? false,
       pendingDraft,
     });
   }

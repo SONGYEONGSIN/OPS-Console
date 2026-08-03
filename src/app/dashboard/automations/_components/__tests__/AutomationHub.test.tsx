@@ -88,6 +88,27 @@ describe("AutomationHub", () => {
   });
 });
 
+describe("AutomationHub — manualOnly(수동 전용) 잡", () => {
+  const manual: AutomationStatus = {
+    ...base,
+    id: "ratio-audit",
+    manualOnly: true,
+  };
+
+  it("cron이 없는 잡은 자동 실행 토글 대신 '수동 전용'을 보여준다", () => {
+    render(<AutomationHub statuses={[manual]} />);
+    expect(screen.queryByRole("button", { name: "ON" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "OFF" })).toBeNull();
+    expect(screen.getByText(/수동 전용/)).toBeInTheDocument();
+  });
+
+  it("enabled=true여도 실행 버튼을 가리지 않는다 (켜두면 아무도 실행하지 않는 잡이 된다)", () => {
+    render(<AutomationHub statuses={[{ ...manual, enabled: true }]} />);
+    expect(screen.getByRole("button", { name: /지금 실행/ })).toBeEnabled();
+    expect(screen.queryByText(/자동 실행 중/)).toBeNull();
+  });
+});
+
 describe("AutomationHub — localOnly 잡", () => {
   const local: AutomationStatus = {
     ...base,

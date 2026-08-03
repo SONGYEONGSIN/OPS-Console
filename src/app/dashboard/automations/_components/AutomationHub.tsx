@@ -153,6 +153,8 @@ function AutomationRow({
       <td className="px-3 py-3">
         {status.localOnly ? (
           <span className="text-xs text-muted">로컬 전용 (Mac mini)</span>
+        ) : status.manualOnly ? (
+          <span className="text-xs text-muted">수동 전용 (cron 없음)</span>
         ) : (
           <EnabledToggle status={status} isAdmin={isAdmin} />
         )}
@@ -303,7 +305,9 @@ function RunControl({
   const confirming = armedAgainst !== null && armedAgainst.state === state;
   const inCooldown = status.cooldownRemainingMinutes > 0;
 
-  if (status.enabled) {
+  // 수동 전용 잡은 enabled 값이 남아 있어도 실행 버튼을 감추지 않는다 —
+  // 호출할 cron이 없어 버튼까지 사라지면 실행 경로가 통째로 없어진다.
+  if (status.enabled && !status.manualOnly) {
     return (
       <span className="text-xs text-muted">자동 실행 중 (수동 비활성)</span>
     );
