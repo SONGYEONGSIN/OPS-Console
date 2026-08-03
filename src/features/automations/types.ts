@@ -17,6 +17,13 @@ export type AutomationJob = {
    * cron route·수동 실행 액션은 실행을 거부한다. 이력은 그 머신이 automation_runs에 직접 적재.
    */
   localOnly?: boolean;
+  /**
+   * 수동 전용 잡 — cron 스케줄이 없어 자동 실행 토글이 의미가 없다.
+   *
+   * 토글을 켜면 UI가 수동 실행 버튼을 감추는데(자동 실행 중 표시), 정작 호출할
+   * cron이 없어 잡이 통째로 죽는다. 토글 자체를 없애 그 상태를 만들 수 없게 한다.
+   */
+  manualOnly?: boolean;
 };
 
 /** automation_runs 1행의 표시용 형태 — 실행 이력 패널/하이브리드 로그 공용. */
@@ -45,4 +52,6 @@ export type AutomationStatus = {
   };
   /** 로컬 전용 잡 여부 — UI가 수동/자동 컨트롤 대신 '로컬 전용' 표시로 분기. */
   localOnly: boolean;
+  /** 수동 전용(cron 없음) 여부 — UI가 자동 실행 토글을 숨기고 실행 버튼만 남긴다. */
+  manualOnly?: boolean;
 };
