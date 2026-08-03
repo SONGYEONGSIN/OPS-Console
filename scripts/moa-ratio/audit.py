@@ -129,7 +129,7 @@ def login_and_2fa(driver, wait, env) -> None:
     manual_file = env.get("manual_code_file", "")
     baseline = None if manual_file else scrape.fetch_sms_code(env["sms_url"])
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
-    scrape._abort_if_captcha(driver)
+    scrape._wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
     if manual_file:
         code = poll_manual_code(manual_file, MANUAL_CODE_TIMEOUT_SEC, MANUAL_CODE_INTERVAL_SEC)

@@ -67,7 +67,11 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import (
+    NoAlertPresentException,
+    TimeoutException,
+    UnexpectedAlertPresentException,
+)
 
 # undetected-chromedriver는 데이터센터(GH Actions)에서 Cloudflare 우회 시도용. residential
 # (회사/가정) IP는 plain selenium으로도 통과하므로 기본은 plain. Python 3.12+는 distutils
@@ -490,7 +494,7 @@ def login_and_2fa(driver, wait, env) -> None:
 
     baseline = fetch_sms_code(env["sms_url"])  # 제출 전 baseline
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
-    _abort_if_captcha(driver)
+    _wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
     code = poll_fresh_sms_code(
         env["sms_url"], baseline, env["sms_timeout"], env["sms_interval"]
@@ -510,6 +514,74 @@ def _abort_if_captcha(driver) -> None:
             "캡차 노출 감지 — 직전 로그인 실패 추정. 자동 해결 불가, abort. "
             "(자격증명/셀렉터 확인 후 재시도)"
         )
+
+
+# 1차 제출 후 서버 응답을 기다리는 상한. 응답만 보면 되므로 짧게 잡는다.
+LOGIN_STEP_TIMEOUT_SEC = int(os.getenv("MOA_LOGIN_STEP_TIMEOUT_SEC", "15"))
+
+
+def _visible(driver, selector: str) -> bool:
+    els = driver.find_elements(By.CSS_SELECTOR, selector)
+    return bool(els) and els[0].is_displayed()
+
+
+def _wait_login_accepted(driver, timeout_sec: int = LOGIN_STEP_TIMEOUT_SEC) -> None:
+    """1차 제출 결과 판정 — SMS 단계 진입(성공) / 캡차·무반응(실패).
+
+    자격증명이 틀리면 SMS가 아예 발송되지 않는데, 그대로 폴링에 들어가면 180초를
+    기다린 뒤 'SMS 코드 폴링 타임아웃'으로 죽어 원인이 로그에 남지 않는다
+    (2026-08-03 재현 — 실제 원인은 Moa 비밀번호 변경이었다).
+
+    캡차 검사만으로는 부족하다. `_abort_if_captcha`는 click 직후 즉시 실행돼
+    서버 응답이 돌아오기 전 화면을 보므로 실패를 놓친다. 여기서는 응답을 기다렸다가
+    판정한다. 실패하면 재시도하지 않는다 — 반복 실패는 계정 잠금으로 이어진다.
+    """
+
+    def state(d):
+        if _visible(d, SELECTORS["captcha_section"]):
+            return "captcha"
+        if _visible(d, SELECTORS["sms_code_input"]):
+            return "sms"
+        return False
+
+    # 제출 직후 뜬 native alert(예: 자격증명 오류)은 원인이 그대로 적혀 있다.
+    alert_text = _accept_alert_if_present(driver)
+    if alert_text:
+        raise RuntimeError(f"로그인 실패 — 중단(계정 잠금 방지): {alert_text}")
+
+    try:
+        result = WebDriverWait(driver, timeout_sec).until(state)
+    except UnexpectedAlertPresentException as e:
+        # 대기 중 뒤늦게 뜬 alert — selenium이 예외에 텍스트를 담아 준다.
+        raise RuntimeError(
+            f"로그인 실패 — 중단(계정 잠금 방지): {getattr(e, 'alert_text', None) or e}"
+        ) from e
+    except TimeoutException:
+        raise RuntimeError(
+            "로그인 실패 — 중단(계정 잠금 방지): 인증번호 입력 단계로 넘어가지 "
+            "않았습니다. MOA_USERNAME/MOA_PASSWORD 확인 필요."
+        ) from None
+
+    if result == "captcha":
+        raise RuntimeError(
+            "로그인 실패 — 중단(계정 잠금 방지): 캡차가 노출됐습니다"
+            "(직전 로그인 실패). 자격증명 확인 후 재시도."
+        )
+
+
+def _accept_alert_if_present(driver) -> str | None:
+    """떠 있는 native alert를 읽어 수용(accept)한다. 없으면 None.
+
+    처리하지 않으면 다음 webdriver 명령이 UnexpectedAlertPresentException으로 죽어
+    원인이 드러나지 않는다(audit.py 동일 처리).
+    """
+    try:
+        alert = driver.switch_to.alert
+        text = alert.text
+        alert.accept()
+        return text
+    except NoAlertPresentException:
+        return None
 
 
 def search_and_download(driver, wait, download_dir: str, ay: dict) -> str:
