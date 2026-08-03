@@ -33,6 +33,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+# 진단 로그 인코딩이 순회 결과를 좌우하면 안 된다.
+# 작업 스케줄러/PowerShell 폴러에서는 stdout이 cp949로 잡혀, 진행 로그 한 줄에 들어간
+# em dash(—) 때문에 UnicodeEncodeError로 순회가 통째로 죽었다(2026-08-03 재현 —
+# 로그인·목록 조회는 정상이었는데 첫 운영자 조회 로그를 찍다가 중단).
+for _stream in (sys.stdout, sys.stderr):
+    _stream.reconfigure(encoding="utf-8", errors="replace")
+
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(_REPO, "scripts", "moa-closing"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -558,8 +565,11 @@ def main() -> int:
                 collected.append(detail)
                 consecutive_skips = 0
             except Exception as e:  # noqa: BLE001 — 1건 실패로 전체를 죽이지 않는다
-                skipped.append({"serviceId": sid, "reason": f"{type(e).__name__}: {e}"[:200]})
+                reason = f"{type(e).__name__}: {e}"[:200]
+                skipped.append({"serviceId": sid, "reason": reason})
                 consecutive_skips += 1
+                # 사유를 결과 파일에만 남기면 실행 로그로는 왜 건너뛰었는지 알 수 없다.
+                print(f"[WARN] serviceId={sid} 상세 수집 실패, 건너뜀: {reason}")
                 # 세션 만료 시 상세 페이지가 로그인으로 리다이렉트되어 매건 40초
                 # 타임아웃으로 조용히 실패한다 — 연속 skip이 한도를 넘으면 즉시 중단.
                 if consecutive_skips >= MAX_CONSECUTIVE_SKIPS:
