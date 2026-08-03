@@ -6,6 +6,8 @@
 """
 import unittest
 
+import judge
+
 from judge import (
     build_prompt,
     clean_text,
@@ -184,6 +186,34 @@ class ParseTest(unittest.TestCase):
         self.assertEqual(out[(1172089, 1)][0]["found"], "1차 값")
         self.assertEqual(out[(1172089, 2)][0]["found"], "2차 값")
 
+
+
+class RunClaudeEncodingTest(unittest.TestCase):
+    """stdin/stdout 인코딩 고정 — 로케일(cp949)에 맡기면 프롬프트의 em dash 한 글자에
+    판정이 통째로 실패한다(2026-08-03 재현: 6배치 전부 실패 → 52건 건너뜀)."""
+
+    def test_utf8_is_pinned_for_subprocess(self):
+        captured = {}
+
+        def fake_run(cmd, **kwargs):
+            captured.update(kwargs)
+
+            class R:
+                returncode = 0
+                stdout = '{"results":[]}'
+                stderr = ""
+
+            return R()
+
+        original = judge.subprocess.run
+        judge.subprocess.run = fake_run
+        try:
+            judge.run_claude("판정 프롬프트 — em dash 포함")
+        finally:
+            judge.subprocess.run = original
+
+        self.assertEqual(captured.get("encoding"), "utf-8")
+        self.assertEqual(captured.get("errors"), "replace")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

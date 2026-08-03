@@ -60,13 +60,29 @@ $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
 $ok = $false
 $msg = ""
+# python이 stderr에 한 줄이라도 쓰면 $ErrorActionPreference='Stop'이 그 줄에서 터져
+# 트레이스백 나머지가 로그에도, 완료 보고에도 남지 않았다(2026-08-03 — 실제 원인인
+# UnicodeEncodeError가 통째로 유실되고 'Traceback (most recent call last):'만 보고됨).
+# 실행 구간만 Continue로 낮춰 전문을 남기고, 성패는 exit code로 판단한다.
+$prev = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 try {
-    python "scripts\moa-ratio\audit.py" *>> $log
+    $output = & python "scripts\moa-ratio\audit.py" 2>&1
     $code = $LASTEXITCODE
+    $output | Out-File -Append -Encoding utf8 $log
     $ok = ($code -eq 0)
-    $msg = "exit $code"
+    if ($ok) {
+        $msg = "exit 0"
+    } else {
+        # 마지막 몇 줄에 원인이 들어 있다 — OPS 실행 로그에서 바로 보이게 함께 보고한다.
+        $tail = (($output | Select-Object -Last 3) -join " / ")
+        if ($tail.Length -gt 300) { $tail = $tail.Substring($tail.Length - 300) }
+        $msg = "exit $code — $tail"
+    }
 } catch {
     $msg = "poller 예외: $($_.Exception.Message)"
+} finally {
+    $ErrorActionPreference = $prev
 }
 
 "=== $ts 종료 ($msg) ===" | Out-File -Append -Encoding utf8 $log

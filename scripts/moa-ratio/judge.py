@@ -150,6 +150,11 @@ def run_claude(prompt: str) -> str:
         input=prompt,
         capture_output=True,
         text=True,
+        # 로케일에 맡기면 스케줄러/폴러 환경(cp949)에서 프롬프트의 em dash 한 글자에
+        # UnicodeEncodeError가 나 배치 판정이 통째로 실패한다(2026-08-03 재현).
+        # 판정 대상이 한국어 문구이므로 응답 디코딩도 함께 고정한다.
+        encoding="utf-8",
+        errors="replace",
         timeout=300,
         cwd=tempfile.gettempdir(),
         shell=(sys.platform == "win32"),
