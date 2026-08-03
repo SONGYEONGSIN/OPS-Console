@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import { ratioAuditIngestSchema } from "@/features/ratio-audit/schemas";
+import { summarizeRatioAudit } from "@/features/ratio-audit/summary";
 import {
-  summarizeRatioAudit,
-  buildRatioAuditHtml,
-} from "@/features/ratio-audit/summary";
+  dispatchRatioAudit,
+  type RatioDispatchResult,
+} from "@/features/ratio-audit/dispatch";
 
 /**
  * 경쟁률 세팅 점검 결과 인제스트 — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -13,18 +13,8 @@ import {
  * 적재 → Teams 발송 순서를 지킨다. 발송이 실패해도 이력은 남기고 notified=false 로
  * 기록한다(주간 브리핑 초안 알림과 동일 원칙 — 알림 실패로 결과를 버리지 않는다).
  * 발송 실패 사유는 삼키지 않고 `notifyError`로 응답에 담아 관측 가능하게 남긴다.
- * 발신자는 팀 브리핑과 같은 계정을 쓰고, 방은 TEAMS_RATIO_AUDIT_CHAT_ID 로 분리한다.
+ * 발송 대상(담당자 개인 채팅 / 관리자 취합)은 dispatch.ts 가 정한다.
  */
-// 팀 브리핑과 동일 발신 계정 (team-briefing.ts BRIEFING_SENDER_DEFAULT).
-const SENDER_DEFAULT = "ys1114@jinhakapply.com";
-
-function sender(): string {
-  return (
-    process.env.TEAMS_RATIO_AUDIT_SENDER ||
-    process.env.TEAMS_BRIEFING_SENDER ||
-    SENDER_DEFAULT
-  );
-}
 
 export async function POST(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -36,14 +26,20 @@ export async function POST(request: Request) {
   }
   const auth = request.headers.get("authorization") ?? "";
   if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "unauthorized" },
+      { status: 401 },
+    );
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid json" },
+      { status: 400 },
+    );
   }
 
   const parsed = ratioAuditIngestSchema.safeParse(body);
@@ -76,24 +72,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const chatId = process.env.TEAMS_RATIO_AUDIT_CHAT_ID || "";
-  let notified = false;
-  let notifyError: string | undefined;
-  if (chatId) {
-    try {
-      await sendTeamsChatMessage({
-        operatorEmail: sender(),
-        chatId,
-        html: buildRatioAuditHtml(input),
-      });
-      await admin.from("ratio_audit_runs").update({ notified: true }).eq("id", data.id);
-      notified = true;
-    } catch (e) {
-      // 발송 실패로 적재를 무르지 않는다. notified=false 로 남기되, 에러를 삼키지
-      // 않고 notifyError로 응답에 담아 재발송 판단·관측에 쓴다.
-      notified = false;
-      notifyError = e instanceof Error ? e.message : String(e);
-    }
+  let dispatch: RatioDispatchResult;
+  try {
+    dispatch = await dispatchRatioAudit(input);
+  } catch (e) {
+    // 발송 실패로 적재를 무르지 않는다. notified=false 로 남기되, 에러를 삼키지
+    // 않고 notifyError로 응답에 담아 재발송 판단·관측에 쓴다.
+    return NextResponse.json({
+      ok: true,
+      id: data.id,
+      findingCount: s.findingCount,
+      notified: false,
+      notifyError: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  const notified = dispatch.sent > 0 || dispatch.adminNotified;
+  if (notified) {
+    await admin
+      .from("ratio_audit_runs")
+      .update({ notified: true })
+      .eq("id", data.id);
   }
 
   return NextResponse.json({
@@ -101,6 +100,9 @@ export async function POST(request: Request) {
     id: data.id,
     findingCount: s.findingCount,
     notified,
-    ...(notifyError ? { notifyError } : {}),
+    sent: dispatch.sent,
+    unassignedCount: dispatch.unassignedCount,
+    ...(dispatch.failed.length ? { failed: dispatch.failed } : {}),
+    ...(dispatch.adminError ? { notifyError: dispatch.adminError } : {}),
   });
 }

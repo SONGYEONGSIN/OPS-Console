@@ -129,56 +129,118 @@ function noFindingText(scannedCount: number): string {
     : "<p>이상 없음.</p>";
 }
 
-export function buildRatioAuditHtml(input: RatioAuditIngest): string {
-  const s = summarizeRatioAudit(input);
-  const header =
-    `<p><b>[운영부 상황실]</b> 경쟁률 세팅 점검 — ` +
-    `순회 ${s.scannedCount} / 이상 ${s.findingCount} / 링크오류 ${s.linkErrorCount}</p>`;
+const BRAND = "<b>[운영부 상황실]</b> 경쟁률 세팅 점검";
 
-  if (
-    s.findingCount === 0 &&
-    s.linkErrorCount === 0 &&
-    input.skipped.length === 0
-  ) {
-    return `${header}${noFindingText(s.scannedCount)}`;
-  }
-
-  const shown = input.findings.slice(0, SUMMARY_TOP_N);
-  const rest = input.findings.length - shown.length;
-
-  // 같은 serviceId라도 1차/2차 설정이 별도 페이지라 seq 없이는 어느 쪽을 고쳐야
-  // 하는지 알 수 없다(홍익대 1172089 재현) — 열은 늘리지 않고 서비스명 옆에 붙인다.
+/**
+ * 이상 건 표.
+ *
+ * 담당 열은 관리자 취합에만 넣는다 — 본인에게 보내는 메시지에서 '담당: 본인'은
+ * 한 칸을 통째로 낭비한다.
+ *
+ * 같은 serviceId라도 1차/2차 설정이 별도 페이지라 seq 없이는 어느 쪽을 고쳐야
+ * 하는지 알 수 없다(홍익대 1172089 재현) — 열은 늘리지 않고 서비스명 옆에 붙인다.
+ */
+function findingsTable(
+  findings: RatioFinding[],
+  opts: { withOperator: boolean },
+): string {
+  if (findings.length === 0) return "";
+  const shown = findings.slice(0, SUMMARY_TOP_N);
+  const rest = findings.length - shown.length;
   const rows = shown
     .map(
       (f) =>
         `<tr><td>${escapeHtml(f.universityName)}</td>` +
         `<td>${escapeHtml(f.serviceName)} · ${f.seq}차</td>` +
-        `<td>${escapeHtml(f.operatorName)}</td>` +
+        (opts.withOperator ? `<td>${escapeHtml(f.operatorName)}</td>` : "") +
         `<td>${itemsLabel(f)}</td></tr>`,
     )
     .join("");
+  const head =
+    `<tr><th>대학</th><th>서비스</th>` +
+    (opts.withOperator ? `<th>담당</th>` : "") +
+    `<th>내용</th></tr>`;
+  const more = rest > 0 ? `<p>외 ${rest}건</p>` : "";
+  return `<table border="1" cellpadding="4">${head}${rows}</table>${more}`;
+}
 
-  const table = shown.length
-    ? `<table border="1" cellpadding="4"><tr><th>대학</th><th>서비스</th>` +
-      `<th>담당</th><th>내용</th></tr>${rows}</table>`
+export type OperatorFindingGroup = {
+  operatorName: string;
+  findings: RatioFinding[];
+};
+
+/** 담당자별로 묶는다. 이름이 비어도 그룹을 만든다 — 조용히 사라지면 안 된다. */
+export function groupFindingsByOperator(
+  findings: RatioFinding[],
+): OperatorFindingGroup[] {
+  return findings.reduce<OperatorFindingGroup[]>((groups, f) => {
+    const name = f.operatorName;
+    return groups.some((g) => g.operatorName === name)
+      ? groups.map((g) =>
+          g.operatorName === name
+            ? { ...g, findings: [...g.findings, f] }
+            : g,
+        )
+      : [...groups, { operatorName: name, findings: [f] }];
+  }, []);
+}
+
+/** 담당 운영자 1:1 채팅으로 보내는 메시지 — 본인 담당 건만 담는다. */
+export function buildOperatorRatioAuditHtml(args: {
+  operatorName: string;
+  findings: RatioFinding[];
+}): string {
+  const header =
+    `<p>${BRAND} — ${escapeHtml(args.operatorName)}님 담당 ` +
+    `${args.findings.length}건</p>`;
+  return `${header}${findingsTable(args.findings, { withOperator: false })}`;
+}
+
+/**
+ * 관리자 취합 메시지 — 개인 발송으로 닿지 않은 것만 모은다.
+ *
+ * 담당 미상·발송 실패·링크오류·건너뜀은 아무에게도 가지 않으면 그대로 묻힌다.
+ * 발송 인원을 함께 적어 "몇 명에게 나갔는지"를 실행자가 바로 확인할 수 있게 한다.
+ */
+export function buildAdminRatioAuditHtml(args: {
+  input: RatioAuditIngest;
+  unassigned: RatioFinding[];
+  sentCount: number;
+  failed: { operatorName: string; reason: string }[];
+}): string {
+  const s = summarizeRatioAudit(args.input);
+  const header =
+    `<p>${BRAND} — ` +
+    `순회 ${s.scannedCount} / 이상 ${s.findingCount} / 링크오류 ${s.linkErrorCount}</p>`;
+
+  const failedText = args.failed.length
+    ? ` · 발송 실패 ${args.failed.length}명 — ` +
+      args.failed
+        .map((f) => `${escapeHtml(f.operatorName)}(${escapeHtml(f.reason)})`)
+        .join(", ")
+    : "";
+  const dispatch = `<p>개인 채팅 발송 ${args.sentCount}명${failedText}</p>`;
+
+  const unassigned = args.unassigned.length
+    ? `<p>담당 미상 ${args.unassigned.length}건 — 담당자를 확인해 직접 전달해야 합니다.</p>` +
+      findingsTable(args.unassigned, { withOperator: true })
     : "";
 
-  const more = rest > 0 ? `<p>외 ${rest}건</p>` : "";
-  const noFinding =
-    s.findingCount === 0 && s.linkErrorCount === 0
-      ? noFindingText(s.scannedCount)
-      : "";
-  const links = input.linkErrors.length
-    ? `<p>링크오류 ${input.linkErrors.length}건 — ` +
-      input.linkErrors
+  const links = args.input.linkErrors.length
+    ? `<p>링크오류 ${args.input.linkErrors.length}건 — ` +
+      args.input.linkErrors
         .slice(0, SUMMARY_TOP_N)
         .map((e) => `${e.serviceId}(${e.status})`)
         .join(", ") +
       `</p>`
     : "";
-  const skipped = input.skipped.length
-    ? `<p>건너뜀 ${input.skipped.length}건</p>`
+  const skipped = args.input.skipped.length
+    ? `<p>건너뜀 ${args.input.skipped.length}건</p>`
     : "";
+  const noFinding =
+    s.findingCount === 0 && s.linkErrorCount === 0
+      ? noFindingText(s.scannedCount)
+      : "";
 
-  return `${header}${table}${more}${noFinding}${links}${skipped}`;
+  return `${header}${dispatch}${unassigned}${noFinding}${links}${skipped}`;
 }

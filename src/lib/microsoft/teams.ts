@@ -46,7 +46,45 @@ export async function listMyChats(
   }));
 }
 
-/** Teams 그룹채팅에 HTML 메시지 전송 (위임 토큰 — Chat.ReadWrite). */
+/**
+ * 발신자 ↔ 대상 운영자의 1:1 채팅 id. 이미 있으면 Graph가 기존 채팅을 돌려준다(멱등).
+ *
+ * 대상은 UPN(메일 주소)으로 바인딩해 사용자 조회를 한 번 아낀다. 본인과의 self
+ * 채팅은 Graph가 거부하므로(2인 필수) 관리자 알림 채널은 chatId를 직접 설정한다.
+ */
+export async function ensureOneOnOneChat(args: {
+  operatorEmail: string;
+  targetEmail: string;
+}): Promise<string> {
+  const token = await getDelegatedGraphToken(args.operatorEmail, {
+    scope: TEAMS_SCOPE,
+  });
+  if (!token) throw new Error("Teams 위임 토큰 없음 (MS 재인증/동의 필요)");
+  const member = (email: string) => ({
+    "@odata.type": "#microsoft.graph.aadUserConversationMember",
+    roles: ["owner"],
+    "user@odata.bind": `${GRAPH}/users('${email}')`,
+  });
+  const res = await fetch(`${GRAPH}/chats`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      chatType: "oneOnOne",
+      members: [member(args.operatorEmail), member(args.targetEmail)],
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `[teams] chat ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+  return ((await res.json()) as { id: string }).id;
+}
+
+/** Teams 채팅에 HTML 메시지 전송 (위임 토큰 — Chat.ReadWrite). */
 export async function sendTeamsChatMessage(args: {
   operatorEmail: string;
   chatId: string;

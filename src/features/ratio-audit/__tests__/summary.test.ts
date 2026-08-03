@@ -1,10 +1,25 @@
 import { describe, it, expect } from "vitest";
 import {
   summarizeRatioAudit,
-  buildRatioAuditHtml,
+  buildAdminRatioAuditHtml,
+  buildOperatorRatioAuditHtml,
+  groupFindingsByOperator,
   SUMMARY_TOP_N,
   SCHEDULE_LINES_MAX,
 } from "../summary";
+
+/**
+ * 관리자 취합 메시지는 '담당 미상' 표 + 링크오류 + 건너뜀을 싣는다.
+ * 전체 표 렌더 검증은 여기(unassigned = 전체 findings)로 이어간다.
+ */
+function buildRatioAuditHtml(input: RatioAuditIngest): string {
+  return buildAdminRatioAuditHtml({
+    input,
+    unassigned: input.findings,
+    sentCount: 0,
+    failed: [],
+  });
+}
 import type { RatioAuditIngest, RatioFinding } from "../schemas";
 
 function finding(id: number, university: string, seq = 1): RatioFinding {
@@ -74,7 +89,7 @@ describe("summarizeRatioAudit", () => {
   });
 });
 
-describe("buildRatioAuditHtml", () => {
+describe("buildAdminRatioAuditHtml — 전체 표", () => {
   it("이상 0건이면 이상 없음 문구", () => {
     const html = buildRatioAuditHtml(base);
     expect(html).toContain("이상 없음");
@@ -297,5 +312,95 @@ describe("buildRatioAuditHtml", () => {
     expect(html).not.toContain("이상 없음");
     expect(html).toContain("점검이 이뤄지지 않았습니다");
     expect(html).toContain("건너뜀 1건");
+  });
+});
+
+describe("groupFindingsByOperator", () => {
+  it("담당자별로 묶고 등장 순서를 유지한다", () => {
+    const a = { ...finding(1, "가대"), operatorName: "김지나" };
+    const b = { ...finding(2, "나대"), operatorName: "이해영" };
+    const c = { ...finding(3, "다대"), operatorName: "김지나" };
+    const groups = groupFindingsByOperator([a, b, c]);
+    expect(groups.map((g) => g.operatorName)).toEqual(["김지나", "이해영"]);
+    expect(groups[0].findings).toHaveLength(2);
+    expect(groups[1].findings).toHaveLength(1);
+  });
+
+  it("담당자 이름이 비어 있어도 하나의 그룹으로 남긴다", () => {
+    const groups = groupFindingsByOperator([
+      { ...finding(1, "가대"), operatorName: "" },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].operatorName).toBe("");
+  });
+});
+
+describe("buildOperatorRatioAuditHtml", () => {
+  it("헤더에 본인 이름과 담당 건수를 담는다", () => {
+    const html = buildOperatorRatioAuditHtml({
+      operatorName: "김지나",
+      findings: [finding(1, "가대"), finding(2, "나대")],
+    });
+    expect(html).toContain("김지나");
+    expect(html).toContain("2건");
+  });
+
+  it("본인에게 보내는 메시지에는 담당 열을 넣지 않는다", () => {
+    const html = buildOperatorRatioAuditHtml({
+      operatorName: "김지나",
+      findings: [{ ...finding(1, "가대"), operatorName: "김지나" }],
+    });
+    expect(html).toContain("가대");
+    expect(html).not.toContain("<th>담당</th>");
+  });
+
+  it("세팅 원문 2단 구조는 개인 메시지에도 그대로 적용된다", () => {
+    const out = rendered(
+      buildOperatorRatioAuditHtml({
+        operatorName: "김지나",
+        findings: [finding(1, "가대")],
+      }),
+    );
+    expect(out).toContain(
+      "경쟁률 세팅: 2026-09-08 오전 9:00:00 ~ 2026-09-10 오후 4:03:00 : 60분 반복",
+    );
+    expect(out).toContain("상단 내용(연도): 2025학년도");
+  });
+
+  it(`상위 ${SUMMARY_TOP_N}건만 표에 넣고 나머지는 '외 N건'으로 줄인다`, () => {
+    const many = Array.from({ length: SUMMARY_TOP_N + 2 }, (_, i) =>
+      finding(i + 1, `대학${i + 1}`),
+    );
+    const html = buildOperatorRatioAuditHtml({
+      operatorName: "김지나",
+      findings: many,
+    });
+    expect(html).toContain(`대학${SUMMARY_TOP_N}`);
+    expect(html).not.toContain(`대학${SUMMARY_TOP_N + 1}`);
+    expect(html).toContain("외 2건");
+  });
+});
+
+describe("buildAdminRatioAuditHtml — 발송 결과", () => {
+  it("개인 발송 인원과 실패를 함께 싣는다", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, findings: [finding(1, "가대")] },
+      unassigned: [],
+      sentCount: 3,
+      failed: [{ operatorName: "김지나", reason: "graph 500" }],
+    });
+    expect(html).toContain("3명");
+    expect(html).toContain("김지나");
+    expect(html).toContain("graph 500");
+  });
+
+  it("담당 미상이 없으면 미상 표를 만들지 않는다", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, findings: [finding(1, "가대")] },
+      unassigned: [],
+      sentCount: 1,
+      failed: [],
+    });
+    expect(html).not.toContain("<table");
   });
 });
