@@ -1,0 +1,144 @@
+import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  ensureOneOnOneChat,
+  sendTeamsChatMessage,
+} from "@/lib/microsoft/teams";
+import type { RatioAuditIngest, RatioFinding } from "./schemas";
+import {
+  buildAdminRatioAuditHtml,
+  buildOperatorRatioAuditHtml,
+  groupFindingsByOperator,
+} from "./summary";
+
+/**
+ * 점검 결과 발송 — 담당 운영자 개인 1:1 채팅으로 본인 담당 건만 보낸다.
+ *
+ * 그룹방 일괄 발송은 "내 건이 뭔지" 각자 찾아야 해서 아무도 안 고친다. 대신
+ * 담당자에게 직접 보내되, 닿지 않은 것(담당 미상·발송 실패·링크오류·건너뜀)은
+ * 관리자 채팅으로 모아 알린다 — 조용히 묻히는 경로를 만들지 않는다.
+ *
+ * 발신자는 팀 브리핑과 같은 계정(위임 토큰 보유 운영자)이다.
+ */
+
+// 팀 브리핑과 동일 발신 계정 (team-briefing.ts BRIEFING_SENDER_DEFAULT).
+const SENDER_DEFAULT = "ys1114@jinhakapply.com";
+/**
+ * 관리자 취합 기본 채널 = 발신자 본인 노트 채팅.
+ *
+ * `48:notes`는 Teams가 계정마다 갖는 고정 self 채팅 id다(팀 브리핑 초안 알림과 동일).
+ * self 채팅은 Graph로 생성할 수 없어(2인 필수) 이 id를 쓴다. 기본값을 두는 이유는
+ * env 하나 빠뜨렸다고 '담당 미상·발송 실패'가 아무 데도 안 남는 상황을 막기 위함이다.
+ */
+const ADMIN_CHAT_DEFAULT = "48:notes";
+
+export type RatioDispatchResult = {
+  /** 개인 채팅 발송에 성공한 운영자 수 */
+  sent: number;
+  failed: { operatorName: string; reason: string }[];
+  /** 담당 미상 + operators 미매칭 이상 건수 */
+  unassignedCount: number;
+  adminNotified: boolean;
+  adminError?: string;
+};
+
+function sender(): string {
+  return (
+    process.env.TEAMS_RATIO_AUDIT_SENDER ||
+    process.env.TEAMS_BRIEFING_SENDER ||
+    SENDER_DEFAULT
+  );
+}
+
+/** 운영자 이름 → 메일. Moa 표기(closing_services.operator_name)와 대조한다. */
+async function operatorEmails(): Promise<Map<string, string>> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("operators").select("name, email");
+  if (error)
+    throw new Error(`[ratio-audit] 운영자 조회 실패: ${error.message}`);
+  return new Map(
+    (data ?? [])
+      .filter((r) => r.name && r.email)
+      .map((r) => [r.name as string, r.email as string]),
+  );
+}
+
+function reasonOf(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+export async function dispatchRatioAudit(
+  input: RatioAuditIngest,
+): Promise<RatioDispatchResult> {
+  const nothingToReport =
+    input.findings.length === 0 &&
+    input.linkErrors.length === 0 &&
+    input.skipped.length === 0;
+  if (nothingToReport) {
+    return { sent: 0, failed: [], unassignedCount: 0, adminNotified: false };
+  }
+
+  const from = sender();
+  const emails = await operatorEmails();
+  const groups = groupFindingsByOperator(input.findings);
+
+  const failed: RatioDispatchResult["failed"] = [];
+  const unassigned: RatioFinding[] = [];
+  let sent = 0;
+
+  // 순차 발송 — 대상이 20명 내외라 병렬로 Graph 스로틀을 살 이유가 없다.
+  for (const group of groups) {
+    const email = emails.get(group.operatorName);
+    if (!email) {
+      unassigned.push(...group.findings);
+      continue;
+    }
+    try {
+      const chatId = await ensureOneOnOneChat({
+        operatorEmail: from,
+        targetEmail: email,
+      });
+      await sendTeamsChatMessage({
+        operatorEmail: from,
+        chatId,
+        html: buildOperatorRatioAuditHtml({
+          operatorName: group.operatorName,
+          findings: group.findings,
+        }),
+      });
+      sent += 1;
+    } catch (e) {
+      // 한 명이 실패해도 나머지는 계속 보낸다. 실패는 관리자 메시지로 드러낸다.
+      failed.push({ operatorName: group.operatorName, reason: reasonOf(e) });
+    }
+  }
+
+  const adminChatId =
+    process.env.TEAMS_RATIO_AUDIT_ADMIN_CHAT_ID || ADMIN_CHAT_DEFAULT;
+  try {
+    await sendTeamsChatMessage({
+      operatorEmail: from,
+      chatId: adminChatId,
+      html: buildAdminRatioAuditHtml({
+        input,
+        unassigned,
+        sentCount: sent,
+        failed,
+      }),
+    });
+    return {
+      sent,
+      failed,
+      unassignedCount: unassigned.length,
+      adminNotified: true,
+    };
+  } catch (e) {
+    return {
+      sent,
+      failed,
+      unassignedCount: unassigned.length,
+      adminNotified: false,
+      adminError: reasonOf(e),
+    };
+  }
+}

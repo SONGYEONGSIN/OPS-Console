@@ -8,15 +8,23 @@ const h = vi.hoisted(() => ({
   update: vi.fn(),
   eq: vi.fn(),
   from: vi.fn(),
-  sendTeamsChatMessage: vi.fn(),
+  dispatchRatioAudit: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ from: h.from }),
 }));
-vi.mock("@/lib/microsoft/teams", () => ({
-  sendTeamsChatMessage: h.sendTeamsChatMessage,
+vi.mock("@/features/ratio-audit/dispatch", () => ({
+  dispatchRatioAudit: h.dispatchRatioAudit,
 }));
+
+const dispatched = (over: Record<string, unknown> = {}) => ({
+  sent: 1,
+  failed: [],
+  unassignedCount: 0,
+  adminNotified: true,
+  ...over,
+});
 
 function payload(overrides: Record<string, unknown> = {}) {
   return {
@@ -52,14 +60,13 @@ describe("POST /api/ratio-audit/ingest", () => {
     vi.resetModules();
     for (const fn of Object.values(h)) fn.mockReset();
     process.env.CRON_SECRET = "s3cret";
-    process.env.TEAMS_RATIO_AUDIT_CHAT_ID = "chat-1";
     h.single.mockResolvedValue(insertResult);
     h.select.mockReturnValue({ single: h.single });
     h.insert.mockReturnValue({ select: h.select });
     h.eq.mockResolvedValue({ error: null });
     h.update.mockReturnValue({ eq: h.eq });
     h.from.mockReturnValue({ insert: h.insert, update: h.update });
-    h.sendTeamsChatMessage.mockResolvedValue({ id: "msg-1" });
+    h.dispatchRatioAudit.mockResolvedValue(dispatched());
   });
 
   it("secret 불일치면 401", async () => {
@@ -94,36 +101,49 @@ describe("POST /api/ratio-audit/ingest", () => {
     expect(h.insert.mock.calls[0][0].status).toBe("partial");
   });
 
-  it("Teams로 요약을 보내고 notified=true 로 갱신", async () => {
+  it("담당자 발송 결과를 응답에 담고 notified=true 로 갱신", async () => {
     const { POST } = await import("../route");
     const res = await POST(postReq(payload()));
-    expect(h.sendTeamsChatMessage).toHaveBeenCalledTimes(1);
-    expect(h.sendTeamsChatMessage.mock.calls[0][0].chatId).toBe("chat-1");
+    expect(h.dispatchRatioAudit).toHaveBeenCalledTimes(1);
     expect(h.update).toHaveBeenCalledWith({ notified: true });
     const json = await res.json();
     expect(json.notified).toBe(true);
+    expect(json.sent).toBe(1);
     expect(json.notifyError).toBeUndefined();
   });
 
-  it("Teams 발송이 실패해도 적재는 유지하고 notified=false", async () => {
-    h.sendTeamsChatMessage.mockRejectedValue(new Error("graph 500"));
+  it("아무에게도 못 보냈으면 notified=false 로 남긴다", async () => {
+    h.dispatchRatioAudit.mockResolvedValue(
+      dispatched({ sent: 0, adminNotified: false, adminError: "채팅 미설정" }),
+    );
+    const { POST } = await import("../route");
+    const res = await POST(postReq(payload()));
+    expect(h.update).not.toHaveBeenCalled();
+    const json = await res.json();
+    expect(json.notified).toBe(false);
+    expect(json.notifyError).toBe("채팅 미설정");
+  });
+
+  it("개인 발송 실패는 응답에 그대로 드러낸다", async () => {
+    h.dispatchRatioAudit.mockResolvedValue(
+      dispatched({ failed: [{ operatorName: "김지나", reason: "graph 500" }] }),
+    );
+    const { POST } = await import("../route");
+    const json = await (await POST(postReq(payload()))).json();
+    expect(json.failed).toEqual([
+      { operatorName: "김지나", reason: "graph 500" },
+    ]);
+  });
+
+  it("발송 단계가 통째로 터져도 적재는 유지하고 notified=false", async () => {
+    h.dispatchRatioAudit.mockRejectedValue(new Error("운영자 조회 실패"));
     const { POST } = await import("../route");
     const res = await POST(postReq(payload()));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.notified).toBe(false);
+    expect(json.notifyError).toBe("운영자 조회 실패");
     expect(h.update).not.toHaveBeenCalled();
-    expect(json.notifyError).toBe("graph 500");
-  });
-
-  it("채팅방 미설정이면 발송을 건너뛴다", async () => {
-    process.env.TEAMS_RATIO_AUDIT_CHAT_ID = "";
-    const { POST } = await import("../route");
-    const res = await POST(postReq(payload()));
-    expect(h.sendTeamsChatMessage).not.toHaveBeenCalled();
-    const json = await res.json();
-    expect(json.notified).toBe(false);
-    expect(json.notifyError).toBeUndefined();
   });
 
   it("CRON_SECRET 미설정이면 500이고 적재하지 않는다", async () => {
