@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockCreateAdminClient, state } = vi.hoisted(() => ({
   mockCreateAdminClient: vi.fn(),
-  state: { result: { data: [] as unknown, error: null as unknown } },
+  state: {
+    result: { data: [] as unknown, error: null as unknown },
+    single: null as unknown,
+  },
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -27,7 +30,9 @@ function builder() {
   ]) {
     b[m] = vi.fn(() => b);
   }
-  b.maybeSingle = vi.fn(() => Promise.resolve(state.result));
+  b.maybeSingle = vi.fn(() =>
+    Promise.resolve(state.single ?? state.result),
+  );
   return b;
 }
 
@@ -53,6 +58,7 @@ describe("/api/ratio-audit/audit-request", () => {
     vi.clearAllMocks();
     process.env.CRON_SECRET = "s3cr3t";
     state.result = { data: [], error: null };
+    state.single = null;
     mockCreateAdminClient.mockReturnValue({ from: vi.fn(() => builder()) });
   });
 
@@ -71,6 +77,22 @@ describe("/api/ratio-audit/audit-request", () => {
     const res = await GET(get("s3cr3t"));
     expect(res.status).toBe(200);
     expect((await res.json()).request).toBeNull();
+  });
+
+  it("GET claim 응답에 점검 종류를 실어 보낸다 — 폴러가 무엇을 돌릴지 정한다", async () => {
+    state.result = { data: [{ id: "req-1" }], error: null };
+    state.single = {
+      data: {
+        id: "req-1",
+        requested_at: "2026-08-04T01:00:00Z",
+        requested_by: "admin@x.com",
+        kind: "page",
+      },
+      error: null,
+    };
+    const res = await GET(get("s3cr3t"));
+    const json = await res.json();
+    expect(json.request.kind).toBe("page");
   });
 
   it("POST id 누락 시 400", async () => {

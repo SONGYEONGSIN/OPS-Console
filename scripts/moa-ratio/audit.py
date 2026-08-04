@@ -506,6 +506,14 @@ def _missing_schedule_item(svc: dict) -> dict | None:
 
 def main() -> int:
     dry_run = os.getenv("RATIO_AUDIT_DRY_RUN", "").lower() == "true"
+    # 점검 종류 — 자동화 페이지 버튼이 둘로 나뉘어 있다.
+    #   schedule: TEST 서버 세팅·안내 문구 대조(상세 순회 + claude 판정)
+    #   page:     REAL 서버 경쟁률 HTML 링크 상태만 확인(로그인·목록까지만 공유)
+    kind = os.getenv("RATIO_AUDIT_KIND", "schedule").strip().lower()
+    if kind not in ("schedule", "page"):
+        print(f"[FAIL] RATIO_AUDIT_KIND 값 오류: {kind!r} (schedule|page)")
+        return 1
+    print(f"[INFO] 점검 종류: {kind}")
     base_url = os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/")
     secret = os.getenv("CRON_SECRET", "")
     if not secret or not base_url:
@@ -544,112 +552,130 @@ def main() -> int:
         login_and_2fa(driver, wait, env)
         driver.get(RATIO_SETTING_LIST_URL)
 
-        test_list_raw = fetch_ratio_list(driver, wait, "TEST", dump_dir)
-        _save_raw_list(test_list_raw, dump_dir, "TEST")
-        test_list_filtered = filter_by_start_date(test_list_raw)
-        print(
-            f"[INFO] TEST 목록 {len(test_list_raw)}건 → "
-            f"시작일 필터 후 {len(test_list_filtered)}건"
-        )
-        test_rows = [r for r in test_list_filtered if int(r["UnivServiceID"]) in targets]
-        _print_intersection_diagnostics("TEST", test_list_filtered, targets, len(test_rows))
-        print(f"[OK] 교집합 {len(test_rows)}건 순회 시작")
+        if kind == "schedule":
+            test_list_raw = fetch_ratio_list(driver, wait, "TEST", dump_dir)
+            _save_raw_list(test_list_raw, dump_dir, "TEST")
+            test_list_filtered = filter_by_start_date(test_list_raw)
+            print(
+                f"[INFO] TEST 목록 {len(test_list_raw)}건 → "
+                f"시작일 필터 후 {len(test_list_filtered)}건"
+            )
+            test_rows = [r for r in test_list_filtered if int(r["UnivServiceID"]) in targets]
+            _print_intersection_diagnostics("TEST", test_list_filtered, targets, len(test_rows))
+            print(f"[OK] 교집합 {len(test_rows)}건 순회 시작")
 
-        consecutive_skips = 0
-        for i, row in enumerate(test_rows, 1):
-            sid = int(row["UnivServiceID"])
-            try:
-                detail = extract_detail(driver, wait, sid, row["Seq"], "TEST")
-                detail["university_name"] = targets[sid]["universityName"]
-                detail["service_name"] = targets[sid]["serviceName"]
-                collected.append(detail)
-                consecutive_skips = 0
-            except Exception as e:  # noqa: BLE001 — 1건 실패로 전체를 죽이지 않는다
-                reason = f"{type(e).__name__}: {e}"[:200]
-                skipped.append({"serviceId": sid, "reason": reason})
-                consecutive_skips += 1
-                # 사유를 결과 파일에만 남기면 실행 로그로는 왜 건너뛰었는지 알 수 없다.
-                print(f"[WARN] serviceId={sid} 상세 수집 실패, 건너뜀: {reason}")
-                # 세션 만료 시 상세 페이지가 로그인으로 리다이렉트되어 매건 40초
-                # 타임아웃으로 조용히 실패한다 — 연속 skip이 한도를 넘으면 즉시 중단.
-                if consecutive_skips >= MAX_CONSECUTIVE_SKIPS:
-                    remaining = test_rows[i:]
-                    print(
-                        f"[FAIL] 연속 {consecutive_skips}건 건너뜀 — 세션 만료 의심, "
-                        f"순회 중단 (미시도 {len(remaining)}건)"
-                    )
-                    for r in remaining:
-                        skipped.append({
-                            "serviceId": int(r["UnivServiceID"]),
-                            "reason": f"연속 skip {consecutive_skips}건으로 순회 중단 — 미시도",
-                        })
-                    break
-            if i % 20 == 0:
-                print(f"[INFO] {i}/{len(test_rows)} 순회")
+            consecutive_skips = 0
+            for i, row in enumerate(test_rows, 1):
+                sid = int(row["UnivServiceID"])
+                try:
+                    detail = extract_detail(driver, wait, sid, row["Seq"], "TEST")
+                    detail["university_name"] = targets[sid]["universityName"]
+                    detail["service_name"] = targets[sid]["serviceName"]
+                    collected.append(detail)
+                    consecutive_skips = 0
+                except Exception as e:  # noqa: BLE001 — 1건 실패로 전체를 죽이지 않는다
+                    reason = f"{type(e).__name__}: {e}"[:200]
+                    skipped.append({"serviceId": sid, "reason": reason})
+                    consecutive_skips += 1
+                    # 사유를 결과 파일에만 남기면 실행 로그로는 왜 건너뛰었는지 알 수 없다.
+                    print(f"[WARN] serviceId={sid} 상세 수집 실패, 건너뜀: {reason}")
+                    # 세션 만료 시 상세 페이지가 로그인으로 리다이렉트되어 매건 40초
+                    # 타임아웃으로 조용히 실패한다 — 연속 skip이 한도를 넘으면 즉시 중단.
+                    if consecutive_skips >= MAX_CONSECUTIVE_SKIPS:
+                        remaining = test_rows[i:]
+                        print(
+                            f"[FAIL] 연속 {consecutive_skips}건 건너뜀 — 세션 만료 의심, "
+                            f"순회 중단 (미시도 {len(remaining)}건)"
+                        )
+                        for r in remaining:
+                            skipped.append({
+                                "serviceId": int(r["UnivServiceID"]),
+                                "reason": f"연속 skip {consecutive_skips}건으로 순회 중단 — 미시도",
+                            })
+                        break
+                if i % 20 == 0:
+                    print(f"[INFO] {i}/{len(test_rows)} 순회")
 
-        _save_collected_details(collected, dump_dir)
-        _warn_empty_apply_period(collected)
-        _warn_schedule_line_anomalies(collected)
+            _save_collected_details(collected, dump_dir)
+            _warn_empty_apply_period(collected)
+            _warn_schedule_line_anomalies(collected)
 
-        for start in range(0, len(collected), BATCH_SIZE):
-            batch = collected[start : start + BATCH_SIZE]
-            prompt = build_prompt(batch)
-            if start == 0:
-                _save_first_batch_prompt(prompt, dump_dir)
-            try:
-                verdict = parse_response(run_claude(prompt))
-            except Exception as e:  # noqa: BLE001 — 1회 재시도 후 배치 skip
-                print(f"[WARN] 배치 판정 실패, 재시도: {e}")
+            for start in range(0, len(collected), BATCH_SIZE):
+                batch = collected[start : start + BATCH_SIZE]
+                prompt = build_prompt(batch)
+                if start == 0:
+                    _save_first_batch_prompt(prompt, dump_dir)
                 try:
                     verdict = parse_response(run_claude(prompt))
-                except Exception as e2:  # noqa: BLE001
-                    for svc in batch:
-                        skipped.append({"serviceId": svc["service_id"],
-                                        "reason": f"판정 실패: {e2}"[:200]})
-                    continue
-            for svc in batch:
-                items = list(verdict.get((svc["service_id"], svc["seq"]), []))
-                missing_item = _missing_schedule_item(svc)
-                if missing_item:
-                    items.append(missing_item)
-                if not items:
-                    continue
-                findings.append({
-                    "serviceId": svc["service_id"],
-                    "seq": svc["seq"],
-                    "universityName": svc["university_name"],
-                    "serviceName": svc["service_name"],
-                    "operatorName": targets[svc["service_id"]]["operatorName"],
-                    # 알림에서 '무엇이 기준인지'를 claude 요약값이 아니라 실제 세팅으로
-                    # 보여준다. 판정 입력과 같은 필터를 써야 알림과 판정이 어긋나지 않는다.
-                    "scheduleLines": filter_schedule_lines(
-                        svc.get("schedule_lines") or []
-                    ),
-                    "items": items,
-                })
-            print(f"[INFO] 판정 {min(start + BATCH_SIZE, len(collected))}/{len(collected)}")
+                except Exception as e:  # noqa: BLE001 — 1회 재시도 후 배치 skip
+                    print(f"[WARN] 배치 판정 실패, 재시도: {e}")
+                    try:
+                        verdict = parse_response(run_claude(prompt))
+                    except Exception as e2:  # noqa: BLE001
+                        for svc in batch:
+                            skipped.append({"serviceId": svc["service_id"],
+                                            "reason": f"판정 실패: {e2}"[:200]})
+                        continue
+                for svc in batch:
+                    items = list(verdict.get((svc["service_id"], svc["seq"]), []))
+                    missing_item = _missing_schedule_item(svc)
+                    if missing_item:
+                        items.append(missing_item)
+                    if not items:
+                        continue
+                    findings.append({
+                        "serviceId": svc["service_id"],
+                        "seq": svc["seq"],
+                        "universityName": svc["university_name"],
+                        "serviceName": svc["service_name"],
+                        "operatorName": targets[svc["service_id"]]["operatorName"],
+                        # 알림에서 '무엇이 기준인지'를 claude 요약값이 아니라 실제 세팅으로
+                        # 보여준다. 판정 입력과 같은 필터를 써야 알림과 판정이 어긋나지 않는다.
+                        "scheduleLines": filter_schedule_lines(
+                            svc.get("schedule_lines") or []
+                        ),
+                        "items": items,
+                    })
+                print(f"[INFO] 판정 {min(start + BATCH_SIZE, len(collected))}/{len(collected)}")
 
-        driver.get(RATIO_SETTING_LIST_URL)  # extract_detail이 상세 페이지로 이동시켰으므로 복귀
-        real_list_raw = fetch_ratio_list(driver, wait, "REAL", dump_dir)
-        _save_raw_list(real_list_raw, dump_dir, "REAL")
-        real_list_filtered = filter_by_start_date(real_list_raw)
-        print(
-            f"[INFO] REAL 목록 {len(real_list_raw)}건 → "
-            f"시작일 필터 후 {len(real_list_filtered)}건"
-        )
-        real_rows = [r for r in real_list_filtered if int(r["UnivServiceID"]) in targets]
-        _print_intersection_diagnostics("REAL", real_list_filtered, targets, len(real_rows))
-        for row in real_rows:
-            sid = int(row["UnivServiceID"])
-            url = f"{HTML_BASE['REAL']}RatioH/Ratio{sid}{row['Seq']}.html"
-            status, reason = check_link(url)
-            if status != 200:
-                link_errors.append({"serviceId": sid, "url": url,
-                                    "status": status, "reason": reason})
+        if kind == "page":
+            # extract_detail이 상세 페이지로 이동시켰을 수 있으므로 목록으로 복귀
+            driver.get(RATIO_SETTING_LIST_URL)
+            real_list_raw = fetch_ratio_list(driver, wait, "REAL", dump_dir)
+            _save_raw_list(real_list_raw, dump_dir, "REAL")
+            real_list_filtered = filter_by_start_date(real_list_raw)
+            print(
+                f"[INFO] REAL 목록 {len(real_list_raw)}건 → "
+                f"시작일 필터 후 {len(real_list_filtered)}건"
+            )
+            real_rows = [
+                r for r in real_list_filtered if int(r["UnivServiceID"]) in targets
+            ]
+            _print_intersection_diagnostics(
+                "REAL", real_list_filtered, targets, len(real_rows)
+            )
+            for row in real_rows:
+                sid = int(row["UnivServiceID"])
+                url = f"{HTML_BASE['REAL']}RatioH/Ratio{sid}{row['Seq']}.html"
+                status, reason = check_link(url)
+                if status != 200:
+                    # 담당자 개인 채팅으로 보내려면 누구 담당인지 함께 실어야 한다.
+                    target = targets.get(sid, {})
+                    link_errors.append({
+                        "serviceId": sid,
+                        "url": url,
+                        "status": status,
+                        "reason": reason,
+                        "universityName": target.get("universityName", ""),
+                        "serviceName": target.get("serviceName", ""),
+                        "operatorName": target.get("operatorName", ""),
+                    })
+            print(f"[OK] REAL 링크 점검 {len(real_rows)}건 / 오류 {len(link_errors)}건")
     finally:
         driver.quit()
 
     payload = {
+        "kind": kind,
         "scannedCount": len(collected),
         "findings": findings,
         "linkErrors": link_errors,

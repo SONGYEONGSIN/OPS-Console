@@ -66,6 +66,7 @@ describe("enqueueLocalAuditRequest — 기본 적재", () => {
     expect(insert).toHaveBeenCalledWith({
       requested_by: "admin@x.com",
       status: "pending",
+      kind: "schedule",
     });
   });
 
@@ -78,6 +79,7 @@ describe("enqueueLocalAuditRequest — 기본 적재", () => {
     expect(insert).toHaveBeenCalledWith({
       requested_by: "automation",
       status: "pending",
+      kind: "schedule",
     });
   });
 });
@@ -144,6 +146,7 @@ describe("enqueueLocalAuditRequest — stale running 자동 복구", () => {
     expect(insert).toHaveBeenCalledWith({
       requested_by: "admin@x.com",
       status: "pending",
+      kind: "schedule",
     });
   });
 
@@ -184,5 +187,31 @@ describe("enqueueLocalAuditRequest — 오류 전달", () => {
 
     expect(r.ok).toBe(false);
     expect(r.message).toContain("insert boom");
+  });
+});
+
+describe("enqueueLocalAuditRequest — 점검 종류", () => {
+  it("페이지 점검 요청은 kind=page로 적재한다", async () => {
+    const { insert } = mockAdmin({ existing: [] });
+
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "page");
+
+    expect(r.ok).toBe(true);
+    expect(insert).toHaveBeenCalledWith({
+      requested_by: "admin@x.com",
+      status: "pending",
+      kind: "page",
+    });
+  });
+
+  it("종류가 달라도 동시에 돌리지 않는다 — 둘 다 Moa 로그인을 타 세션이 충돌한다", async () => {
+    const { insert } = mockAdmin({
+      existing: [{ id: "r1", status: "pending", claimed_at: null }],
+    });
+
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "page");
+
+    expect(r.ok).toBe(false);
+    expect(insert).not.toHaveBeenCalled();
   });
 });

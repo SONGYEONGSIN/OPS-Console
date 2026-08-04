@@ -51,12 +51,14 @@ if (-not $claim.request) {
     exit 0
 }
 $id = $claim.request.id
-Write-Host "[poll] 요청 claim: $id (by $($claim.request.requested_by))"
+# 종류를 안 주는 구버전 요청은 스케줄 점검으로 본다.
+$kind = if ($claim.request.kind) { $claim.request.kind } else { "schedule" }
+Write-Host "[poll] 요청 claim: $id / $kind (by $($claim.request.requested_by))"
 
 # --- 2) audit.py 실행 ---
 $log = Join-Path $repo "scripts\moa-ratio\poll-local.log"
 $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-"=== $ts 시작 (요청 $id) ===" | Out-File -Append -Encoding utf8 $log
+"=== $ts 시작 (요청 $id / $kind) ===" | Out-File -Append -Encoding utf8 $log
 
 $ok = $false
 $msg = ""
@@ -67,6 +69,8 @@ $msg = ""
 $prev = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 try {
+    # 무엇을 점검할지는 요청이 정한다 — 스케줄(세팅·문구) / 페이지(HTML 링크 상태)
+    $env:RATIO_AUDIT_KIND = $kind
     $output = & python "scripts\moa-ratio\audit.py" 2>&1
     $code = $LASTEXITCODE
     $output | Out-File -Append -Encoding utf8 $log
