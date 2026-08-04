@@ -9,6 +9,7 @@ import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
 import { runRatioAudit } from "./jobs/ratio-audit";
+import { runRatioPageCheck } from "./jobs/ratio-page-check";
 import { runNewsCollect } from "./jobs/news-collect";
 import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
 import { runTeamBriefing } from "./jobs/team-briefing";
@@ -91,11 +92,21 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     id: "ratio-audit",
     label: "경쟁률 세팅 점검",
     description:
-      "Moa 경쟁률 세팅(스케줄·안내 문구·접수일정)을 점검해 오설정을 담당 운영자 Teams 개인 채팅으로 알립니다.\n회사 PC 폴러가 직접 실행합니다 — 브라우저·Moa 로그인·로컬 claude 판정이 필요해 웹·GitHub Actions에서 실행 불가.\n여기서 '실행'을 누르면 로컬 실행 요청만 적재되고, 회사 PC 폴러가 5분 내 처리합니다. 자동 스케줄이 없어 이 버튼을 눌러야만 발송됩니다.\n담당 미상·발송 실패·링크오류는 관리자 채팅으로 취합됩니다.",
+      "Moa TEST 서버의 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 오설정을 담당 운영자 Teams 개인 채팅으로 알립니다.\n경쟁률 페이지(링크) 상태는 '경쟁률 페이지 점검'에서 따로 실행합니다.\n회사 PC 폴러가 직접 실행합니다 — 브라우저·Moa 로그인·로컬 claude 판정이 필요해 웹·GitHub Actions에서 실행 불가.\n여기서 '실행'을 누르면 로컬 실행 요청만 적재되고, 회사 PC 폴러가 5분 내 처리합니다. 자동 스케줄이 없어 이 버튼을 눌러야만 발송됩니다.\n담당 미상·발송 실패·링크오류는 관리자 채팅으로 취합됩니다.",
     scheduleInfo: "수동 실행 — 로컬 폴러가 수행 (cron 미등록)",
     cooldownMinutes: 60,
     manualOnly: true,
     run: runRatioAudit,
+  },
+  {
+    id: "ratio-page-check",
+    label: "경쟁률 페이지 점검",
+    description:
+      "REAL 서버의 경쟁률 HTML 페이지가 정상 응답하는지 점검해 담당 운영자 Teams 개인 채팅으로 알립니다.\n세팅 점검과 같은 회사 PC 폴러가 수행합니다 — 목록 조회에 Moa 로그인이 필요해 웹에서 실행 불가.\n여기서 '실행'을 누르면 로컬 실행 요청만 적재되고, 회사 PC 폴러가 5분 내 처리합니다.\n세팅 점검과 동시에는 실행되지 않습니다(같은 계정으로 로그인해 세션이 충돌).",
+    scheduleInfo: "수동 실행 — 로컬 폴러가 수행 (cron 미등록)",
+    cooldownMinutes: 60,
+    manualOnly: true,
+    run: runRatioPageCheck,
   },
   {
     id: "news-collect",

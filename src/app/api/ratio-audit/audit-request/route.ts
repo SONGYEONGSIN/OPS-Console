@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     .update({ status: "running", claimed_at: new Date().toISOString() })
     .eq("id", pending[0].id)
     .eq("status", "pending")
-    .select("id, requested_at, requested_by")
+    // kind는 폴러가 무엇을 돌릴지 정하는 값이다(schedule: 세팅·문구 / page: 링크 상태).
+    .select("id, requested_at, requested_by, kind")
     .maybeSingle();
   if (error) {
     return NextResponse.json(

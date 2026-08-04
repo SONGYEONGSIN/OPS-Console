@@ -6,6 +6,8 @@ import {
   groupFindingsByOperator,
   SUMMARY_TOP_N,
   SCHEDULE_LINES_MAX,
+  groupLinkErrorsByOperator,
+  buildOperatorPageCheckHtml,
 } from "../summary";
 
 /**
@@ -45,6 +47,7 @@ function finding(id: number, university: string, seq = 1): RatioFinding {
 }
 
 const base: RatioAuditIngest = {
+  kind: "schedule",
   scannedCount: 231,
   findings: [],
   linkErrors: [],
@@ -69,7 +72,15 @@ describe("summarizeRatioAudit", () => {
       ...base,
       findings: [finding(1, "가대"), finding(2, "나대")],
       linkErrors: [
-        { serviceId: 3, url: "https://x.test/a.html", status: 404, reason: "" },
+        {
+          serviceId: 3,
+          url: "https://x.test/a.html",
+          status: 404,
+          reason: "",
+          universityName: "",
+          serviceName: "",
+          operatorName: "",
+        },
       ],
     });
     expect(s).toEqual({
@@ -101,7 +112,15 @@ describe("buildAdminRatioAuditHtml — 전체 표", () => {
       ...base,
       findings: [finding(1, "가대")],
       linkErrors: [
-        { serviceId: 3, url: "https://x.test/a.html", status: 404, reason: "" },
+        {
+          serviceId: 3,
+          url: "https://x.test/a.html",
+          status: 404,
+          reason: "",
+          universityName: "",
+          serviceName: "",
+          operatorName: "",
+        },
       ],
     });
     expect(html).toContain("순회 231");
@@ -437,5 +456,83 @@ describe("공통 안내 문구(푸터)", () => {
       }),
     );
     expect(out).toContain("자동으로 알려드려요");
+  });
+});
+
+function linkError(serviceId: number, university: string, operatorName: string) {
+  return {
+    serviceId,
+    url: `https://addon.test/RatioH/Ratio${serviceId}1.html`,
+    status: 404,
+    reason: "",
+    universityName: university,
+    serviceName: "수시모집",
+    operatorName,
+  };
+}
+
+describe("페이지 점검(링크 404) 메시지", () => {
+  it("담당자별로 묶는다", () => {
+    const groups = groupLinkErrorsByOperator([
+      linkError(1, "가천대학교", "허승철"),
+      linkError(2, "연세대학교", "윤지혜"),
+      linkError(3, "수원대학교", "허승철"),
+    ]);
+    expect(groups.map((g) => g.operatorName)).toEqual(["허승철", "윤지혜"]);
+    expect(groups[0].linkErrors).toHaveLength(2);
+  });
+
+  it("본인 담당 링크만 대학·상태·주소와 함께 낸다", () => {
+    const html = buildOperatorPageCheckHtml({
+      operatorName: "허승철",
+      linkErrors: [linkError(1092059, "가천대학교", "허승철")],
+    });
+    expect(html).toContain("허승철");
+    expect(html).toContain("가천대학교");
+    expect(html).toContain("404");
+    expect(html).toContain("Ratio10920591.html");
+    // 담당 열은 본인 메시지에 불필요
+    expect(html).not.toContain("<th>담당</th>");
+  });
+
+  it("페이지 점검임을 제목에서 구분할 수 있다", () => {
+    const html = buildOperatorPageCheckHtml({
+      operatorName: "허승철",
+      linkErrors: [linkError(1, "가천대학교", "허승철")],
+    });
+    expect(html).toContain("페이지 점검");
+    expect(html).not.toContain("세팅 점검");
+  });
+
+  it("공통 안내 문구는 페이지 점검에도 붙는다", () => {
+    const out = rendered(
+      buildOperatorPageCheckHtml({
+        operatorName: "허승철",
+        linkErrors: [linkError(1, "가천대학교", "허승철")],
+      }),
+    );
+    expect(out).toContain("업무에 참고해 주세요");
+  });
+
+  it("관리자 취합 제목은 점검 종류를 따른다", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, kind: "page" },
+      unassigned: [],
+      sentCount: 0,
+      failed: [],
+    });
+    expect(html).toContain("페이지 점검");
+  });
+
+  it("담당 미상 링크오류는 관리자 표에 담당자와 함께 나온다", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, kind: "page" },
+      unassigned: [],
+      unassignedLinks: [linkError(9, "미상대학교", "")],
+      sentCount: 0,
+      failed: [],
+    });
+    expect(html).toContain("미상대학교");
+    expect(html).toContain("<th>담당</th>");
   });
 });

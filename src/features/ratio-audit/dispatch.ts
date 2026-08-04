@@ -4,11 +4,17 @@ import {
   ensureOneOnOneChat,
   sendTeamsChatMessage,
 } from "@/lib/microsoft/teams";
-import type { RatioAuditIngest, RatioFinding } from "./schemas";
+import type {
+  RatioAuditIngest,
+  RatioFinding,
+  RatioLinkError,
+} from "./schemas";
 import {
   buildAdminRatioAuditHtml,
+  buildOperatorPageCheckHtml,
   buildOperatorRatioAuditHtml,
   groupFindingsByOperator,
+  groupLinkErrorsByOperator,
 } from "./summary";
 
 /**
@@ -80,17 +86,47 @@ export async function dispatchRatioAudit(
 
   const from = sender();
   const emails = await operatorEmails();
-  const groups = groupFindingsByOperator(input.findings);
+  const isPage = input.kind === "page";
+
+  // 점검 종류에 따라 '담당자에게 보낼 것'이 다르다 — 스케줄은 이상 건, 페이지는 링크오류.
+  const groups: { operatorName: string; html: string }[] = isPage
+    ? groupLinkErrorsByOperator(input.linkErrors).map((g) => ({
+        operatorName: g.operatorName,
+        html: buildOperatorPageCheckHtml({
+          operatorName: g.operatorName,
+          linkErrors: g.linkErrors,
+        }),
+      }))
+    : groupFindingsByOperator(input.findings).map((g) => ({
+        operatorName: g.operatorName,
+        html: buildOperatorRatioAuditHtml({
+          operatorName: g.operatorName,
+          findings: g.findings,
+        }),
+      }));
 
   const failed: RatioDispatchResult["failed"] = [];
   const unassigned: RatioFinding[] = [];
+  const unassignedLinks: RatioLinkError[] = [];
   let sent = 0;
 
   // 순차 발송 — 대상이 20명 내외라 병렬로 Graph 스로틀을 살 이유가 없다.
   for (const group of groups) {
     const email = emails.get(group.operatorName);
     if (!email) {
-      unassigned.push(...group.findings);
+      if (isPage) {
+        unassignedLinks.push(
+          ...input.linkErrors.filter(
+            (e) => e.operatorName === group.operatorName,
+          ),
+        );
+      } else {
+        unassigned.push(
+          ...input.findings.filter(
+            (f) => f.operatorName === group.operatorName,
+          ),
+        );
+      }
       continue;
     }
     try {
@@ -101,10 +137,7 @@ export async function dispatchRatioAudit(
       await sendTeamsChatMessage({
         operatorEmail: from,
         chatId,
-        html: buildOperatorRatioAuditHtml({
-          operatorName: group.operatorName,
-          findings: group.findings,
-        }),
+        html: group.html,
       });
       sent += 1;
     } catch (e) {
@@ -113,6 +146,7 @@ export async function dispatchRatioAudit(
     }
   }
 
+  const unassignedTotal = unassigned.length + unassignedLinks.length;
   const adminChatId =
     process.env.TEAMS_RATIO_AUDIT_ADMIN_CHAT_ID || ADMIN_CHAT_DEFAULT;
   try {
@@ -122,6 +156,7 @@ export async function dispatchRatioAudit(
       html: buildAdminRatioAuditHtml({
         input,
         unassigned,
+        unassignedLinks,
         sentCount: sent,
         failed,
       }),
@@ -129,14 +164,14 @@ export async function dispatchRatioAudit(
     return {
       sent,
       failed,
-      unassignedCount: unassigned.length,
+      unassignedCount: unassignedTotal,
       adminNotified: true,
     };
   } catch (e) {
     return {
       sent,
       failed,
-      unassignedCount: unassigned.length,
+      unassignedCount: unassignedTotal,
       adminNotified: false,
       adminError: reasonOf(e),
     };

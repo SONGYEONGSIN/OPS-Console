@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { RatioAuditKind } from "../schemas";
 
 export type EnqueueResult = { ok: boolean; message: string };
 
@@ -45,11 +46,16 @@ function isStaleRunning(row: BlockingRow, now: Date): boolean {
  * (closing_scrape_requests에서 실제로 2주간 큐를 막은 사고가 있었다). STALE_RUNNING_MS를
  * 넘긴 running은 failed로 마감하고 새 요청을 받는다.
  *
+ * 종류(kind)가 달라도 동시에 실행하지 않는다 — 스케줄 점검과 페이지 점검 모두 Moa
+ * 로그인을 타므로 겹치면 세션이 충돌한다.
+ *
  * @param now stale 판정 기준 시각 (테스트 결정성을 위해 주입)
+ * @param kind 점검 종류 — schedule(세팅·문구) / page(HTML 링크 상태)
  */
 export async function enqueueLocalAuditRequest(
   requestedBy: string,
   now: Date = new Date(),
+  kind: RatioAuditKind = "schedule",
 ): Promise<EnqueueResult> {
   const admin = createAdminClient();
 
@@ -66,7 +72,7 @@ export async function enqueueLocalAuditRequest(
       return {
         ok: false,
         message:
-          "이미 대기/진행 중인 요청이 있습니다. 회사 PC 폴러 처리를 기다려 주세요.",
+          "이미 대기/진행 중인 점검이 있습니다. 회사 PC 폴러 처리를 기다려 주세요.",
       };
     }
 
@@ -85,7 +91,7 @@ export async function enqueueLocalAuditRequest(
 
   const { error } = await admin
     .from("ratio_audit_requests")
-    .insert({ requested_by: requestedBy, status: "pending" });
+    .insert({ requested_by: requestedBy, status: "pending", kind });
   if (error) return { ok: false, message: error.message };
 
   return {

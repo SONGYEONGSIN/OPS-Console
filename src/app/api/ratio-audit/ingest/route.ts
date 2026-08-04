@@ -56,6 +56,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from("ratio_audit_runs")
     .insert({
+      kind: input.kind,
       scanned_count: s.scannedCount,
       finding_count: s.findingCount,
       link_error_count: s.linkErrorCount,

@@ -39,6 +39,7 @@ function finding(university: string, operatorName: string): RatioFinding {
 }
 
 const base: RatioAuditIngest = {
+  kind: "schedule",
   scannedCount: 40,
   findings: [],
   linkErrors: [],
@@ -172,10 +173,104 @@ describe("dispatchRatioAudit", () => {
     const r = await dispatchRatioAudit({
       ...base,
       linkErrors: [
-        { serviceId: 7, url: "https://x.test/a.html", status: 404, reason: "" },
+        {
+          serviceId: 7,
+          url: "https://x.test/a.html",
+          status: 404,
+          reason: "",
+          universityName: "",
+          serviceName: "",
+          operatorName: "",
+        },
       ],
     });
     expect(r.adminNotified).toBe(true);
     expect(h.sendTeamsChatMessage.mock.calls[0][0].chatId).toBe("admin-chat");
+  });
+});
+
+describe("dispatchRatioAudit — 페이지 점검(kind=page)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    for (const fn of Object.values(h)) fn.mockReset();
+    process.env.TEAMS_RATIO_AUDIT_ADMIN_CHAT_ID = "admin-chat";
+    process.env.TEAMS_RATIO_AUDIT_SENDER = "sender@jinhakapply.com";
+    h.select.mockResolvedValue({ data: OPERATORS, error: null });
+    h.from.mockReturnValue({ select: h.select });
+    h.ensureOneOnOneChat.mockImplementation(
+      async (args: { targetEmail: string }) => `chat:${args.targetEmail}`,
+    );
+    h.sendTeamsChatMessage.mockResolvedValue({ id: "msg" });
+  });
+
+  function link(serviceId: number, university: string, operatorName: string) {
+    return {
+      serviceId,
+      url: `https://addon.test/RatioH/Ratio${serviceId}1.html`,
+      status: 404,
+      reason: "",
+      universityName: university,
+      serviceName: "수시모집",
+      operatorName,
+    };
+  }
+
+  it("링크오류를 담당자 개인 채팅으로 보낸다", async () => {
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      kind: "page",
+      linkErrors: [
+        link(1, "가천대학교", "김지나"),
+        link(2, "연세대학교", "이해영"),
+      ],
+    });
+
+    expect(r.sent).toBe(2);
+    const targets = h.sendTeamsChatMessage.mock.calls.map((c) => c[0].chatId);
+    expect(targets).toContain("chat:kjn@jinhakapply.com");
+    expect(targets).toContain("chat:lhy@jinhakapply.com");
+    const toKim = h.sendTeamsChatMessage.mock.calls.find(
+      (c) => c[0].chatId === "chat:kjn@jinhakapply.com",
+    )![0].html;
+    expect(toKim).toContain("페이지 점검");
+    expect(toKim).toContain("가천대학교");
+    expect(toKim).not.toContain("연세대학교");
+  });
+
+  it("페이지 점검에서는 스케줄 이상(findings)을 보내지 않는다", async () => {
+    const { dispatchRatioAudit } = await import("../dispatch");
+    await dispatchRatioAudit({
+      ...base,
+      kind: "page",
+      findings: [finding("한국체육대학교", "김지나")],
+      linkErrors: [link(1, "가천대학교", "김지나")],
+    });
+    const toKim = h.sendTeamsChatMessage.mock.calls.find(
+      (c) => c[0].chatId === "chat:kjn@jinhakapply.com",
+    )![0].html;
+    expect(toKim).not.toContain("한국체육대학교");
+  });
+
+  it("담당자를 못 찾은 링크오류는 관리자 취합으로 간다", async () => {
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      kind: "page",
+      linkErrors: [link(9, "미상대학교", "없는사람")],
+    });
+    expect(r.sent).toBe(0);
+    expect(r.unassignedCount).toBe(1);
+    const adminCall = h.sendTeamsChatMessage.mock.calls.find(
+      (c) => c[0].chatId === "admin-chat",
+    )!;
+    expect(adminCall[0].html).toContain("미상대학교");
+  });
+
+  it("링크오류가 없으면 아무에게도 보내지 않는다", async () => {
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({ ...base, kind: "page" });
+    expect(h.sendTeamsChatMessage).not.toHaveBeenCalled();
+    expect(r.sent).toBe(0);
   });
 });

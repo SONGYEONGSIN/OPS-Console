@@ -2,6 +2,7 @@ import type {
   RatioAuditIngest,
   RatioFinding,
   RatioFindingItem,
+  RatioLinkError,
 } from "./schemas";
 
 /**
@@ -129,7 +130,9 @@ function noFindingText(scannedCount: number): string {
     : "<p>이상 없음.</p>";
 }
 
-const BRAND = "<b>[운영부 상황실]</b> 경쟁률 세팅 점검";
+const BRAND_PREFIX = "<b>[운영부 상황실]</b>";
+const SCHEDULE_TITLE = `${BRAND_PREFIX} 경쟁률 세팅 점검`;
+const PAGE_TITLE = `${BRAND_PREFIX} 경쟁률 페이지 점검`;
 
 /**
  * 이상 건 표.
@@ -206,10 +209,76 @@ export function buildOperatorRatioAuditHtml(args: {
   findings: RatioFinding[];
 }): string {
   const header =
-    `<p>${BRAND} — ${escapeHtml(args.operatorName)}님 담당 ` +
+    `<p>${SCHEDULE_TITLE} — ${escapeHtml(args.operatorName)}님 담당 ` +
     `${args.findings.length}건</p>`;
   return (
     `${header}${findingsTable(args.findings, { withOperator: false })}` +
+    footerHtml()
+  );
+}
+
+/**
+ * 링크 상태 표 — 페이지 점검 결과.
+ *
+ * 상태코드만 있으면 어느 대학인지 알 수 없어 고칠 수 없다. 대학·서비스와 실제 주소를
+ * 함께 낸다(주소는 눌러서 바로 확인할 수 있어야 한다).
+ */
+function linkErrorsTable(
+  errors: RatioLinkError[],
+  opts: { withOperator: boolean },
+): string {
+  if (errors.length === 0) return "";
+  const shown = errors.slice(0, SUMMARY_TOP_N);
+  const rest = errors.length - shown.length;
+  const rows = shown
+    .map(
+      (e) =>
+        `<tr><td>${escapeHtml(e.universityName)}</td>` +
+        `<td>${escapeHtml(e.serviceName)}</td>` +
+        (opts.withOperator ? `<td>${escapeHtml(e.operatorName)}</td>` : "") +
+        `<td>${e.status}</td>` +
+        `<td>${escapeHtml(e.url)}</td></tr>`,
+    )
+    .join("");
+  const head =
+    `<tr><th>대학</th><th>서비스</th>` +
+    (opts.withOperator ? `<th>담당</th>` : "") +
+    `<th>상태</th><th>주소</th></tr>`;
+  const more = rest > 0 ? `<p>외 ${rest}건</p>` : "";
+  return `<table border="1" cellpadding="4">${head}${rows}</table>${more}`;
+}
+
+export type OperatorLinkErrorGroup = {
+  operatorName: string;
+  linkErrors: RatioLinkError[];
+};
+
+/** 링크오류를 담당자별로 묶는다. 이름이 비어도 그룹을 만든다. */
+export function groupLinkErrorsByOperator(
+  errors: RatioLinkError[],
+): OperatorLinkErrorGroup[] {
+  return errors.reduce<OperatorLinkErrorGroup[]>((groups, e) => {
+    const name = e.operatorName;
+    return groups.some((g) => g.operatorName === name)
+      ? groups.map((g) =>
+          g.operatorName === name
+            ? { ...g, linkErrors: [...g.linkErrors, e] }
+            : g,
+        )
+      : [...groups, { operatorName: name, linkErrors: [e] }];
+  }, []);
+}
+
+/** 담당 운영자 1:1 채팅으로 보내는 페이지 점검 메시지. */
+export function buildOperatorPageCheckHtml(args: {
+  operatorName: string;
+  linkErrors: RatioLinkError[];
+}): string {
+  const header =
+    `<p>${PAGE_TITLE} — ${escapeHtml(args.operatorName)}님 담당 ` +
+    `${args.linkErrors.length}건</p>`;
+  return (
+    `${header}${linkErrorsTable(args.linkErrors, { withOperator: false })}` +
     footerHtml()
   );
 }
@@ -223,12 +292,16 @@ export function buildOperatorRatioAuditHtml(args: {
 export function buildAdminRatioAuditHtml(args: {
   input: RatioAuditIngest;
   unassigned: RatioFinding[];
+  /** 페이지 점검에서 담당자를 못 찾은 링크오류 */
+  unassignedLinks?: RatioLinkError[];
   sentCount: number;
   failed: { operatorName: string; reason: string }[];
 }): string {
   const s = summarizeRatioAudit(args.input);
+  const isPage = args.input.kind === "page";
+  const title = isPage ? PAGE_TITLE : SCHEDULE_TITLE;
   const header =
-    `<p>${BRAND} — ` +
+    `<p>${title} — ` +
     `순회 ${s.scannedCount} / 이상 ${s.findingCount} / 링크오류 ${s.linkErrorCount}</p>`;
 
   const failedText = args.failed.length
@@ -239,9 +312,12 @@ export function buildAdminRatioAuditHtml(args: {
     : "";
   const dispatch = `<p>개인 채팅 발송 ${args.sentCount}명${failedText}</p>`;
 
-  const unassigned = args.unassigned.length
-    ? `<p>담당 미상 ${args.unassigned.length}건 — 담당자를 확인해 직접 전달해야 합니다.</p>` +
-      findingsTable(args.unassigned, { withOperator: true })
+  const unassignedLinks = args.unassignedLinks ?? [];
+  const unassignedCount = args.unassigned.length + unassignedLinks.length;
+  const unassigned = unassignedCount
+    ? `<p>담당 미상 ${unassignedCount}건 — 담당자를 확인해 직접 전달해야 합니다.</p>` +
+      findingsTable(args.unassigned, { withOperator: true }) +
+      linkErrorsTable(unassignedLinks, { withOperator: true })
     : "";
 
   const links = args.input.linkErrors.length

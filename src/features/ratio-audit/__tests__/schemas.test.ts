@@ -140,3 +140,55 @@ describe("ratioAuditIngestSchema", () => {
     expect(parsed.success).toBe(true);
   });
 });
+
+describe("점검 종류(kind)", () => {
+  it("kind를 안 보내면 스케줄 점검으로 본다 — 기존 스크래퍼 호환", () => {
+    const parsed = ratioAuditIngestSchema.parse({
+      scannedCount: 1,
+      findings: [],
+      linkErrors: [],
+      skipped: [],
+    });
+    expect(parsed.kind).toBe("schedule");
+  });
+
+  it("page는 허용, 모르는 값은 거절한다", () => {
+    const base = { scannedCount: 1, findings: [], linkErrors: [], skipped: [] };
+    expect(ratioAuditIngestSchema.parse({ ...base, kind: "page" }).kind).toBe(
+      "page",
+    );
+    expect(
+      ratioAuditIngestSchema.safeParse({ ...base, kind: "hmm" }).success,
+    ).toBe(false);
+  });
+
+  it("링크오류는 담당자 개인 채팅으로 보내야 하므로 대학·담당자를 함께 받는다", () => {
+    const parsed = ratioAuditIngestSchema.parse({
+      scannedCount: 1,
+      findings: [],
+      skipped: [],
+      linkErrors: [
+        {
+          serviceId: 7,
+          url: "https://x.test/a.html",
+          status: 404,
+          universityName: "가천대학교",
+          serviceName: "수시모집",
+          operatorName: "허승철",
+        },
+      ],
+    });
+    expect(parsed.linkErrors[0].operatorName).toBe("허승철");
+    expect(parsed.linkErrors[0].universityName).toBe("가천대학교");
+  });
+
+  it("담당자 정보가 없는 링크오류도 받는다(빈 문자열)", () => {
+    const parsed = ratioAuditIngestSchema.parse({
+      scannedCount: 1,
+      findings: [],
+      skipped: [],
+      linkErrors: [{ serviceId: 7, url: "https://x.test/a.html", status: 404 }],
+    });
+    expect(parsed.linkErrors[0].operatorName).toBe("");
+  });
+});

@@ -45,6 +45,13 @@ export const ratioLinkErrorSchema = z.object({
   /** HTTP 상태코드. 요청 자체가 실패하면 0 */
   status: z.number().int().nonnegative(),
   reason: z.string().default(""),
+  /**
+   * 담당자 개인 채팅으로 보내려면 누구 담당인지 알아야 한다.
+   * 대상 목록(closing_services)에 없는 serviceId면 빈 문자열이 정상.
+   */
+  universityName: z.string().default(""),
+  serviceName: z.string().default(""),
+  operatorName: z.string().default(""),
 });
 
 export const ratioSkippedSchema = z.object({
@@ -52,7 +59,15 @@ export const ratioSkippedSchema = z.object({
   reason: z.string().min(1),
 });
 
+/**
+ * 점검 종류 — 실행 버튼이 둘로 나뉘어 있다.
+ * schedule: TEST 서버 스케줄·안내 문구 대조 / page: REAL 서버 경쟁률 HTML 링크 상태.
+ */
+export const ratioAuditKindSchema = z.enum(["schedule", "page"]);
+
 export const ratioAuditIngestSchema = z.object({
+  // 종류를 안 보내는 구버전 스크래퍼는 스케줄 점검으로 본다.
+  kind: ratioAuditKindSchema.default("schedule"),
   scannedCount: z.number().int().nonnegative(),
   findings: z.array(ratioFindingSchema),
   linkErrors: z.array(ratioLinkErrorSchema),
@@ -64,3 +79,4 @@ export type RatioFinding = z.infer<typeof ratioFindingSchema>;
 export type RatioLinkError = z.infer<typeof ratioLinkErrorSchema>;
 export type RatioSkipped = z.infer<typeof ratioSkippedSchema>;
 export type RatioAuditIngest = z.infer<typeof ratioAuditIngestSchema>;
+export type RatioAuditKind = z.infer<typeof ratioAuditKindSchema>;
