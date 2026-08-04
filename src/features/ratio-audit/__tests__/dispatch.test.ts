@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   select: vi.fn(),
   ensureOneOnOneChat: vi.fn(),
   sendTeamsChatMessage: vi.fn(),
+  loadRatioAuditExceptions: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -14,6 +15,10 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/lib/microsoft/teams", () => ({
   ensureOneOnOneChat: h.ensureOneOnOneChat,
   sendTeamsChatMessage: h.sendTeamsChatMessage,
+}));
+vi.mock("../exceptions", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../exceptions")>()),
+  loadRatioAuditExceptions: h.loadRatioAuditExceptions,
 }));
 
 function finding(university: string, operatorName: string): RatioFinding {
@@ -63,6 +68,7 @@ describe("dispatchRatioAudit", () => {
       async (args: { targetEmail: string }) => `chat:${args.targetEmail}`,
     );
     h.sendTeamsChatMessage.mockResolvedValue({ id: "msg" });
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set<string>());
   });
 
   it("담당자별 1:1 채팅으로 본인 담당 건만 보낸다", async () => {
@@ -201,6 +207,7 @@ describe("dispatchRatioAudit — 페이지 점검(kind=page)", () => {
       async (args: { targetEmail: string }) => `chat:${args.targetEmail}`,
     );
     h.sendTeamsChatMessage.mockResolvedValue({ id: "msg" });
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set<string>());
   });
 
   function link(serviceId: number, university: string, operatorName: string) {
@@ -272,5 +279,101 @@ describe("dispatchRatioAudit — 페이지 점검(kind=page)", () => {
     const r = await dispatchRatioAudit({ ...base, kind: "page" });
     expect(h.sendTeamsChatMessage).not.toHaveBeenCalled();
     expect(r.sent).toBe(0);
+  });
+});
+
+describe("dispatchRatioAudit — 예외 처리", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    for (const fn of Object.values(h)) fn.mockReset();
+    process.env.TEAMS_RATIO_AUDIT_ADMIN_CHAT_ID = "admin-chat";
+    process.env.TEAMS_RATIO_AUDIT_SENDER = "sender@jinhakapply.com";
+    h.select.mockResolvedValue({ data: OPERATORS, error: null });
+    h.from.mockReturnValue({ select: h.select });
+    h.ensureOneOnOneChat.mockImplementation(
+      async (args: { targetEmail: string }) => `chat:${args.targetEmail}`,
+    );
+    h.sendTeamsChatMessage.mockResolvedValue({ id: "msg" });
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set<string>());
+  });
+
+  function findingFor(serviceId: number, university: string, seq = 1) {
+    return {
+      ...finding(university, "김지나"),
+      serviceId,
+      seq,
+    };
+  }
+
+  it("예외로 등록된 서비스는 담당자에게 보내지 않는다", async () => {
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set(["500:1"]));
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      findings: [findingFor(500, "연세대학교(서울)")],
+    });
+
+    expect(r.sent).toBe(0);
+    expect(r.excludedCount).toBe(1);
+    // 담당자에게는 안 가고, 관리자 요약만 나간다(제외 사실은 드러나야 한다).
+    const operatorCalls = h.sendTeamsChatMessage.mock.calls.filter(
+      (c) => c[0].chatId !== "admin-chat",
+    );
+    expect(operatorCalls).toHaveLength(0);
+  });
+
+  it("예외가 아닌 건은 그대로 발송한다", async () => {
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set(["500:1"]));
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      findings: [
+        findingFor(500, "연세대학교(서울)"),
+        findingFor(600, "한국체육대학교"),
+      ],
+    });
+
+    expect(r.sent).toBe(1);
+    expect(r.excludedCount).toBe(1);
+    const html = h.sendTeamsChatMessage.mock.calls[0][0].html;
+    expect(html).toContain("한국체육대학교");
+    expect(html).not.toContain("연세대학교");
+  });
+
+  it("예외 때문에 보낼 게 없어져도 관리자에게는 제외 건수를 알린다", async () => {
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set(["500:1"]));
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      findings: [findingFor(500, "연세대학교(서울)")],
+    });
+
+    expect(r.adminNotified).toBe(true);
+    const adminCall = h.sendTeamsChatMessage.mock.calls.find(
+      (c) => c[0].chatId === "admin-chat",
+    );
+    expect(adminCall![0].html).toContain("예외 1건");
+  });
+
+  it("페이지 점검의 링크오류에도 같은 예외가 적용된다", async () => {
+    h.loadRatioAuditExceptions.mockResolvedValue(new Set(["700:*"]));
+    const { dispatchRatioAudit } = await import("../dispatch");
+    const r = await dispatchRatioAudit({
+      ...base,
+      kind: "page",
+      linkErrors: [
+        {
+          serviceId: 700,
+          url: "https://x.test/a.html",
+          status: 404,
+          reason: "",
+          universityName: "가천대학교",
+          serviceName: "수시모집",
+          operatorName: "김지나",
+        },
+      ],
+    });
+    expect(r.sent).toBe(0);
+    expect(r.excludedCount).toBe(1);
   });
 });
