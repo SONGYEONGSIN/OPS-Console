@@ -175,9 +175,10 @@ function findingsTable(
  */
 function footerHtml(): string {
   return (
-    `<blockquote><p>👺 <b>오토깨비</b>입니다!<br>` +
-    `경쟁률 세팅에 운영자 확인이 필요한 건이 있을 때 자동으로 알려드려요.<br>` +
-    `데이터 기반으로 확인한 내용이니 업무에 참고해 주세요!</p></blockquote>`
+    `<blockquote><p>경쟁률 세팅에 운영자 확인이 필요한 건이 있을 때 ` +
+    `자동으로 알려드려요.<br>` +
+    `👺 <b>오토깨비</b>가 데이터 기반으로 확인한 내용이니 ` +
+    `업무에 참고해 주세요!</p></blockquote>`
   );
 }
 
