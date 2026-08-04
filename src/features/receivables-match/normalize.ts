@@ -87,6 +87,29 @@ export function normalizeName(
 }
 
 /**
+ * 이름이 SPECIAL_MAP·학습 alias에 걸려 특정 대학으로 '해소'됐는지.
+ *
+ * 매칭 규칙은 `normalizeName`의 특수 매핑과 동일하다(완전일치 또는 prefix, 공백 제거).
+ * 두 곳이 갈라지면 판정이 어긋나므로 함께 수정해야 한다.
+ *
+ * 용도: mismatch(금액 일치·이름 불일치) 확인 요청 제외. 별칭에 걸렸다는 것은 이 입금이
+ * 어느 대학인지 이미 안다는 뜻이므로, 미수 거래처와 다르면 표기 변형 후보가 아니라
+ * 그냥 다른 대학이다 (예: 한남대 ↔ 국제관광대학원(=한양대), 2026-08-04 오탐).
+ */
+export function resolvesViaAlias(
+  name: string,
+  extraAliases: Record<string, string> = {},
+): boolean {
+  if (!name) return false;
+  const n = String(name).replace(/\s+/g, "");
+  const map =
+    Object.keys(extraAliases).length > 0
+      ? { ...SPECIAL_MAP, ...extraAliases }
+      : SPECIAL_MAP;
+  return Object.keys(map).some((key) => n === key || n.startsWith(key));
+}
+
+/**
  * 캠퍼스 접미사 제거된 base 대학명 — `normalizeName` 결과 끝의 `(…)` 를 1개 제거.
  *
  * "을지대학교(성남)" → "을지대(성남)" → "을지대",

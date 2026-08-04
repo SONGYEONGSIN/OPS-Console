@@ -10,7 +10,7 @@ import {
   collectUnpaidDepositsByCustomer,
 } from "./collect";
 import { isNameMatchStrong, similarity } from "./similarity";
-import { normalizeName, baseName } from "./normalize";
+import { normalizeName, baseName, resolvesViaAlias } from "./normalize";
 
 /** isDateMatch: depDate >= billDate + 1일 */
 function addOneDay(iso: string): string {
@@ -237,6 +237,10 @@ export function runMatch(
       if (
         m.amount === d.amount &&
         !isNameMatchStrong(m.customer, d.content, extraAliases) &&
+        // 별칭에 걸린 거래내용은 정체가 이미 밝혀진 이름이다. 강매칭에서 걸러진 뒤에도
+        // 남았다면 미수 거래처와 다른 대학이라는 뜻이므로 확인 요청하지 않는다.
+        // (예: 한남대 ↔ 국제관광대학원(=한양대) — 정규화 유사도 0.667로 통과하던 오탐)
+        !resolvesViaAlias(d.content, extraAliases) &&
         similarity(
           normalizeName(m.customer, extraAliases),
           normalizeName(d.content, extraAliases),
