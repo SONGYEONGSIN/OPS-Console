@@ -404,3 +404,38 @@ describe("buildAdminRatioAuditHtml — 발송 결과", () => {
     expect(html).not.toContain("<table");
   });
 });
+
+describe("공통 안내 문구(푸터)", () => {
+  it("담당자 메시지 표 아래에 자동 발송 안내가 붙는다", () => {
+    const out = rendered(
+      buildOperatorRatioAuditHtml({
+        operatorName: "김지나",
+        findings: [finding(1, "가대")],
+      }),
+    );
+    expect(out).toContain("자동으로 알려드려요");
+    expect(out).toContain("업무에 참고해 주세요");
+  });
+
+  it("안내는 인용 블록으로 넣고 이미지는 쓰지 않는다", () => {
+    // Teams 채팅 본문의 이미지는 크기·위치를 지정해도 블록으로 떨어진다(라이브 확인).
+    const html = buildOperatorRatioAuditHtml({
+      operatorName: "김지나",
+      findings: [finding(1, "가대")],
+    });
+    expect(html).toContain("<blockquote>");
+    expect(html).not.toContain("<img");
+  });
+
+  it("관리자 취합 메시지에도 같은 문구가 붙는다", () => {
+    const out = rendered(
+      buildAdminRatioAuditHtml({
+        input: { ...base, findings: [finding(1, "가대")] },
+        unassigned: [],
+        sentCount: 1,
+        failed: [],
+      }),
+    );
+    expect(out).toContain("자동으로 알려드려요");
+  });
+});

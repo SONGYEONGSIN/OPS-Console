@@ -164,6 +164,21 @@ function findingsTable(
   return `<table border="1" cellpadding="4">${head}${rows}</table>${more}`;
 }
 
+/**
+ * 메시지 공통 안내 — 왜 이 알림을 받았는지를 밝힌다.
+ *
+ * 사람이 보낸 것으로 오해하면 회신이 온다.
+ * 이미지는 넣지 않는다 — Teams 채팅 본문의 이미지는 크기·위치를 지정해도 블록으로
+ * 떨어져 글자 옆에 서지 않는다(96/40/28px × 문장중간·인용블록·문단맨앞 라이브 확인).
+ */
+function footerHtml(): string {
+  return (
+    `<blockquote><p>경쟁률 세팅에 운영자 확인이 필요한 건이 있을 때 ` +
+    `자동으로 알려드려요.<br>` +
+    `데이터 기반으로 확인한 내용이니 업무에 참고해 주세요!</p></blockquote>`
+  );
+}
+
 export type OperatorFindingGroup = {
   operatorName: string;
   findings: RatioFinding[];
@@ -193,7 +208,10 @@ export function buildOperatorRatioAuditHtml(args: {
   const header =
     `<p>${BRAND} — ${escapeHtml(args.operatorName)}님 담당 ` +
     `${args.findings.length}건</p>`;
-  return `${header}${findingsTable(args.findings, { withOperator: false })}`;
+  return (
+    `${header}${findingsTable(args.findings, { withOperator: false })}` +
+    footerHtml()
+  );
 }
 
 /**
@@ -242,5 +260,8 @@ export function buildAdminRatioAuditHtml(args: {
       ? noFindingText(s.scannedCount)
       : "";
 
-  return `${header}${dispatch}${unassigned}${noFinding}${links}${skipped}`;
+  return (
+    `${header}${dispatch}${unassigned}${noFinding}${links}${skipped}` +
+    footerHtml()
+  );
 }
