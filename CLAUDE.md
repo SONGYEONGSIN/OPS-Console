@@ -123,6 +123,8 @@ E2E 운영 메모:
 
 경쟁률 점검은 **두 잡으로 나뉜다** — 세팅 점검(TEST, 스케줄·문구 대조 + claude 판정)과 페이지 점검(REAL, HTML 링크 상태). 같은 큐(`ratio_audit_requests.kind`)를 쓰고 폴러가 `RATIO_AUDIT_KIND`로 `audit.py` 동작을 고른다. 둘 다 Moa 로그인을 타므로 **동시 실행은 막는다**(pending/running 1건 정책, kind 무관). 필요 env: `RATIO_AUDIT_DRY_RUN`/`TEAMS_RATIO_AUDIT_SENDER`. 상세: `docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md`
 
+**예외**(`ratio_audit_exceptions`): '설정은 다르지만 합의된 정상'을 발송에서 뺀다(연세대 서울 수시 1차 — 접수 마감 17시, 마감 후 18시 공개는 내부 수동 진행 합의). `(service_id, seq)` 단위이며 seq null이면 전 차수. 판정 결과(payload)에는 그대로 남기고 **발송에서만** 제외하고, 관리자 메시지에 '예외 N건 제외'로 드러낸다. 등록은 DB 직접(관리 화면 없음).
+
 메시지 하단에는 공통 안내(자동 발송 고지)를 인용 블록으로 붙인다. **Teams 채팅 본문의 이미지는 인라인 배치가 불가능하다** — `hostedContents`로 올리면 렌더는 되지만 width/height를 무시하고 블록으로 떨어진다(96/40/28px × 문장중간·인용블록·문단맨앞 전부 라이브 확인). 이미지가 꼭 필요하면 Teams 사용자 지정 이모지 등록이 별도 경로.
 
 발송(`features/ratio-audit/dispatch.ts`): 이상 건을 담당자별로 묶어 **1:1 채팅**(`ensureOneOnOneChat` — Graph `POST /chats`, 기존 채팅 있으면 그대로 재사용)으로 본인 담당분만 보낸다. 이름→메일은 `operators.name` 대조. 담당 미상·미매칭·발송 실패·링크오류·건너뜀은 관리자 채팅으로 취합 — 기본 `48:notes`(발신자 본인 노트 채팅, self 채팅은 Graph로 생성 불가), `TEAMS_RATIO_AUDIT_ADMIN_CHAT_ID`로 덮어쓸 수 있다.

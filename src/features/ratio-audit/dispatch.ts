@@ -9,6 +9,7 @@ import type {
   RatioFinding,
   RatioLinkError,
 } from "./schemas";
+import { isExcluded, loadRatioAuditExceptions } from "./exceptions";
 import {
   buildAdminRatioAuditHtml,
   buildOperatorPageCheckHtml,
@@ -44,6 +45,8 @@ export type RatioDispatchResult = {
   failed: { operatorName: string; reason: string }[];
   /** 담당 미상 + operators 미매칭 이상 건수 */
   unassignedCount: number;
+  /** 예외 등록으로 발송에서 제외한 건수 */
+  excludedCount: number;
   adminNotified: boolean;
   adminError?: string;
 };
@@ -81,23 +84,42 @@ export async function dispatchRatioAudit(
     input.linkErrors.length === 0 &&
     input.skipped.length === 0;
   if (nothingToReport) {
-    return { sent: 0, failed: [], unassignedCount: 0, adminNotified: false };
+    return {
+      sent: 0,
+      failed: [],
+      unassignedCount: 0,
+      excludedCount: 0,
+      adminNotified: false,
+    };
   }
 
   const from = sender();
   const emails = await operatorEmails();
   const isPage = input.kind === "page";
 
+  // 합의된 정상(예: 마감 후 수동 공개)은 발송에서 뺀다 — 판정 결과에는 남아 있다.
+  const exceptions = await loadRatioAuditExceptions();
+  const findings = input.findings.filter(
+    (f) => !isExcluded(exceptions, f.serviceId, f.seq),
+  );
+  const linkErrors = input.linkErrors.filter(
+    (e) => !isExcluded(exceptions, e.serviceId, 1),
+  );
+  const excludedCount =
+    input.findings.length -
+    findings.length +
+    (input.linkErrors.length - linkErrors.length);
+
   // 점검 종류에 따라 '담당자에게 보낼 것'이 다르다 — 스케줄은 이상 건, 페이지는 링크오류.
   const groups: { operatorName: string; html: string }[] = isPage
-    ? groupLinkErrorsByOperator(input.linkErrors).map((g) => ({
+    ? groupLinkErrorsByOperator(linkErrors).map((g) => ({
         operatorName: g.operatorName,
         html: buildOperatorPageCheckHtml({
           operatorName: g.operatorName,
           linkErrors: g.linkErrors,
         }),
       }))
-    : groupFindingsByOperator(input.findings).map((g) => ({
+    : groupFindingsByOperator(findings).map((g) => ({
         operatorName: g.operatorName,
         html: buildOperatorRatioAuditHtml({
           operatorName: g.operatorName,
@@ -116,15 +138,11 @@ export async function dispatchRatioAudit(
     if (!email) {
       if (isPage) {
         unassignedLinks.push(
-          ...input.linkErrors.filter(
-            (e) => e.operatorName === group.operatorName,
-          ),
+          ...linkErrors.filter((e) => e.operatorName === group.operatorName),
         );
       } else {
         unassigned.push(
-          ...input.findings.filter(
-            (f) => f.operatorName === group.operatorName,
-          ),
+          ...findings.filter((f) => f.operatorName === group.operatorName),
         );
       }
       continue;
@@ -158,6 +176,7 @@ export async function dispatchRatioAudit(
         unassigned,
         unassignedLinks,
         sentCount: sent,
+        excludedCount,
         failed,
       }),
     });
@@ -165,6 +184,7 @@ export async function dispatchRatioAudit(
       sent,
       failed,
       unassignedCount: unassignedTotal,
+      excludedCount,
       adminNotified: true,
     };
   } catch (e) {
@@ -172,6 +192,7 @@ export async function dispatchRatioAudit(
       sent,
       failed,
       unassignedCount: unassignedTotal,
+      excludedCount,
       adminNotified: false,
       adminError: reasonOf(e),
     };

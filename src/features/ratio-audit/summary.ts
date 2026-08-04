@@ -295,6 +295,8 @@ export function buildAdminRatioAuditHtml(args: {
   /** 페이지 점검에서 담당자를 못 찾은 링크오류 */
   unassignedLinks?: RatioLinkError[];
   sentCount: number;
+  /** 예외 등록으로 발송에서 제외한 건수 */
+  excludedCount?: number;
   failed: { operatorName: string; reason: string }[];
 }): string {
   const s = summarizeRatioAudit(args.input);
@@ -310,7 +312,11 @@ export function buildAdminRatioAuditHtml(args: {
         .map((f) => `${escapeHtml(f.operatorName)}(${escapeHtml(f.reason)})`)
         .join(", ")
     : "";
-  const dispatch = `<p>개인 채팅 발송 ${args.sentCount}명${failedText}</p>`;
+  // 예외로 걸러진 건은 '조용히 사라진 것'이 아니라는 걸 실행자가 알아야 한다.
+  const excludedText = args.excludedCount
+    ? ` · 예외 ${args.excludedCount}건 제외`
+    : "";
+  const dispatch = `<p>개인 채팅 발송 ${args.sentCount}명${excludedText}${failedText}</p>`;
 
   const unassignedLinks = args.unassignedLinks ?? [];
   const unassignedCount = args.unassigned.length + unassignedLinks.length;
