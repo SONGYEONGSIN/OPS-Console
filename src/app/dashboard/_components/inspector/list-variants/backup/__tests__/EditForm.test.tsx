@@ -346,6 +346,13 @@ describe("BackupForm", () => {
     const results = screen.getByLabelText("백업 서비스 검색 결과");
     expect(results.textContent).toContain("원서");
     expect(results.textContent).toContain("발표");
+
+    // 글자만 다르면 눈에 안 띈다 — 배경색으로 갈라야 스캔이 된다.
+    const apply = screen.getByText("원서");
+    const announce = screen.getByText("발표");
+    expect(apply.className).not.toBe(announce.className);
+    expect(apply.className).toMatch(/bg-/);
+    expect(announce.className).toMatch(/bg-/);
   });
 
   it("PR-4: 서비스 검색·추가 → backupServicesDetail에 contacts:[]+note_md:null로 초기화된 detail 추가", () => {

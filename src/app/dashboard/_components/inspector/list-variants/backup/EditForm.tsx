@@ -26,6 +26,15 @@ type ServiceCandidate = {
 const MAX_SERVICES = 20;
 
 /**
+ * 검색 결과 배지 — 원서접수(Moa)와 발표(합격자통합관리)가 한 목록에 섞여 나온다.
+ * 글자만 다르면 스캔할 때 눈에 안 띄어 배경색으로 가른다.
+ */
+const KIND_BADGE: Record<"apply" | "announce", { label: string; className: string }> = {
+  apply: { label: "원서", className: "bg-indigo/15 text-indigo" },
+  announce: { label: "발표", className: "bg-sage/15 text-sage" },
+};
+
+/**
  * PR-6: row hydrate 시 백업자 모드 추론 — DB에 assign_mode 컬럼 두지 않고 데이터 분포로 판정.
  * - 서비스 없음 → single (default)
  * - 서비스 substitute_email distinct ≥ 2 → perService
@@ -342,8 +351,12 @@ export function BackupForm({
                   onClick={() => addService(c)}
                   className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-line-soft"
                 >
-                  <span className="mr-1 border border-line-soft px-1 text-[10px] text-muted">
-                    {c.kind === "announce" ? "발표" : "원서"}
+                  <span
+                    className={`mr-1 px-1 text-[10px] ${
+                      KIND_BADGE[c.kind ?? "apply"].className
+                    }`}
+                  >
+                    {KIND_BADGE[c.kind ?? "apply"].label}
                   </span>
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>
