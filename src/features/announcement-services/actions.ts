@@ -12,7 +12,8 @@ import {
   type AnnouncementServiceInput,
 } from "./schemas";
 
-const BACKUP_PATH = "/dashboard/backup";
+// 업로드는 서비스목록에서 하고, 검색 후보로 쓰는 곳은 백업 요청이다 — 둘 다 갱신한다.
+const REVALIDATE_PATHS = ["/dashboard/services", "/dashboard/backup"];
 const PERMISSION_ERROR = "권한 없음 — 발표 서비스 등록 권한이 없습니다.";
 
 function isOperator(me: CurrentOperator | null): boolean {
@@ -60,6 +61,6 @@ export async function upsertAnnouncementServicesBulk(
     level: "INFO",
     msg: "발표 서비스 일괄 등록",
   });
-  revalidatePath(BACKUP_PATH);
+  for (const path of REVALIDATE_PATHS) revalidatePath(path);
   return { ok: true, upserted: valid.length };
 }

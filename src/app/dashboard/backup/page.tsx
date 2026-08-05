@@ -19,7 +19,6 @@ import { listClosing } from "@/features/closing/queries";
 import type { ClosingRow } from "@/features/closing/schemas";
 import { listContacts } from "@/features/contacts/queries";
 import { listAnnouncementServiceCandidates } from "@/features/announcement-services/queries";
-import { BulkPasteAnnouncements } from "./BulkPasteAnnouncements";
 import type { ContactRow } from "@/features/contacts/schemas";
 
 const PAGE_SIZE = 30;
@@ -234,7 +233,6 @@ export default async function BackupPage({
       variant="backup"
       canCreate={canEdit}
       createLabel="+ 백업 요청"
-      extraActionsLeft={canEdit ? <BulkPasteAnnouncements /> : undefined}
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       currentUserTeam={me?.team ?? null}
