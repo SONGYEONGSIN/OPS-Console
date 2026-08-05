@@ -86,6 +86,8 @@ export type EditFormProps = {
     service_id: number;
     service_name: string;
     university_name: string;
+    /** 원서접수(Moa) / 발표(합격자통합관리) 구분 — 한 검색창에 섞여 나온다. */
+    kind?: "apply" | "announce";
   }[];
   /** backup variant — 대학 연락처 후보 (contacts 마스터 light fields). PR-5: email/phone 추가 — 메일/PDF 본문 노출용. ext(내선)도 함께 스냅샷. */
   backupContactCandidates?: {

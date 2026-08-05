@@ -659,6 +659,8 @@ type Props = {
     service_id: number;
     service_name: string;
     university_name: string;
+    /** 원서접수(Moa) / 발표(합격자통합관리) 구분 — 한 검색창에 섞여 나온다. */
+    kind?: "apply" | "announce";
   }[];
   /** backup variant — 대학 연락처 후보. PR-5: email/phone 추가. ext(내선) 포함 */
   backupContactCandidates?: {

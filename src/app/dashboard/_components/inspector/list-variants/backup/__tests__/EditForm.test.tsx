@@ -315,6 +315,39 @@ describe("BackupForm", () => {
     expect(screen.queryByText(/^대학 연락처 \(0\/20\)$/)).toBeNull();
   });
 
+  it("검색 결과는 원서접수·발표를 배지로 구분한다", () => {
+    // 한 검색창에 두 종류가 섞여 나오므로, 어느 시스템 서비스인지 보이지 않으면 고를 수 없다.
+    render(
+      <BackupForm
+        row={baseRow}
+        setRow={vi.fn()}
+        onSave={() => {}}
+        onCancel={() => {}}
+        backupServiceCandidates={[
+          {
+            id: "5072006",
+            service_id: 5072006,
+            service_name: "신입학",
+            university_name: "경찰대학",
+          },
+          {
+            id: "300416",
+            service_id: 300416,
+            service_name: "외국인 합격자발표",
+            university_name: "경찰대학",
+            kind: "announce" as const,
+          },
+        ]}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("백업 서비스 검색"), {
+      target: { value: "경찰" },
+    });
+    const results = screen.getByLabelText("백업 서비스 검색 결과");
+    expect(results.textContent).toContain("원서");
+    expect(results.textContent).toContain("발표");
+  });
+
   it("PR-4: 서비스 검색·추가 → backupServicesDetail에 contacts:[]+note_md:null로 초기화된 detail 추가", () => {
     const setRow = vi.fn();
     const candidates = [

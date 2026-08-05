@@ -106,6 +106,21 @@ E2E 운영 메모:
 - `scripts/handover-mail-test.mjs` — `TARGET_EMAIL=` 환경 변수
 - `scripts/backup-request-mail-test.mjs` — `MODE=bulk|per-service` + `TARGET_EMAIL` + `TARGET_EMAIL_2`
 
+## 백업 요청 서비스 검색 (원서접수 + 발표)
+
+백업 요청의 서비스 검색은 두 시스템을 **한 검색창**에서 찾고 `[원서]`/`[발표]` 배지로 구분한다.
+
+- **원서접수**: `closing_services` (Moa 스크래핑, 매일 덮어씀)
+- **발표**: `announcement_services` (합격자통합관리시스템 자료, 붙여넣기 업로드)
+
+발표 서비스를 `closing_services`에 섞으면 스크래핑이 덮어써 지워지므로 별도 테이블이다.
+업로드는 백업 페이지 `+ 발표 서비스 일괄등록`(연락처 일괄등록과 같은 붙여넣기 방식) —
+자료가 '발표 회차' 단위라 같은 서비스가 여러 줄로 오므로 `features/announcement-services/paste-parse.ts`가
+서비스ID 기준으로 합치고 최근 발표일만 남긴다. 검색 후보 범위는 **올해−2년**(고정 연도 아님).
+
+후보 키는 두 소스 모두 `String(service_id)` — 저장된 요청을 되읽을 때 같은 규칙으로 만들어지므로
+(`backup-requests/queries.ts`) 접두사를 붙이면 기존 요청 편집이 깨진다.
+
 ## 자동화 잡 (automations registry)
 
 `/dashboard/automations` (admin only) + GitHub Actions cron. 등록: `src/features/automations/registry.ts` 1줄 + `jobs/{id}.ts` 1 모듈. cron 진입점은 `/api/automations/run` (Authorization: Bearer CRON_SECRET).

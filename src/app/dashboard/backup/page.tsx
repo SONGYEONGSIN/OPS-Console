@@ -18,6 +18,8 @@ import type { BackupRequestRow } from "@/features/backup-requests/schemas";
 import { listClosing } from "@/features/closing/queries";
 import type { ClosingRow } from "@/features/closing/schemas";
 import { listContacts } from "@/features/contacts/queries";
+import { listAnnouncementServiceCandidates } from "@/features/announcement-services/queries";
+import { BulkPasteAnnouncements } from "./BulkPasteAnnouncements";
 import type { ContactRow } from "@/features/contacts/schemas";
 
 const PAGE_SIZE = 30;
@@ -87,7 +89,25 @@ export default async function BackupPage({
       service_id: s.service_id,
       service_name: s.service_name,
       university_name: s.university_name,
+      kind: "apply" as const,
     }));
+
+  // 합격자통합관리시스템(발표) 서비스 — 원서접수와 한 검색창에서 함께 찾는다.
+  // id는 String(service_id) 그대로 둔다: 저장된 요청을 되읽을 때 같은 규칙으로
+  // 만들어지므로(backup-requests/queries.ts), 접두사를 붙이면 편집 시 매칭이 깨진다.
+  const announcementCandidates = (await listAnnouncementServiceCandidates()).map(
+    (s) => ({
+      id: String(s.service_id),
+      service_id: s.service_id,
+      service_name: s.service_name,
+      university_name: s.university_name,
+      kind: "announce" as const,
+    }),
+  );
+  const backupServiceCandidatesAll = [
+    ...backupServiceCandidates,
+    ...announcementCandidates,
+  ];
 
   // contacts 카탈로그 light projection — chunk fetch 동일 패턴
   const contactCandidatesRaw: ContactRow[] = [];
@@ -214,11 +234,12 @@ export default async function BackupPage({
       variant="backup"
       canCreate={canEdit}
       createLabel="+ 백업 요청"
+      extraActionsLeft={canEdit ? <BulkPasteAnnouncements /> : undefined}
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       currentUserTeam={me?.team ?? null}
       backupOperators={backupOperators}
-      backupServiceCandidates={backupServiceCandidates}
+      backupServiceCandidates={backupServiceCandidatesAll}
       backupContactCandidates={backupContactCandidates}
       onPersist={onPersist}
       footer={

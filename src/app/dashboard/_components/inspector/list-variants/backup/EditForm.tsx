@@ -16,6 +16,11 @@ type ServiceCandidate = {
   service_id: number;
   service_name: string;
   university_name: string;
+  /**
+   * 어느 시스템 서비스인지 — 한 검색창에 원서접수(Moa)와 발표(합격자통합관리)가 섞여
+   * 나오므로 구분이 없으면 고를 수 없다. 저장된 요청을 되읽을 땐 알 수 없어 optional.
+   */
+  kind?: "apply" | "announce";
 };
 
 const MAX_SERVICES = 20;
@@ -337,6 +342,9 @@ export function BackupForm({
                   onClick={() => addService(c)}
                   className="block w-full cursor-pointer border-none bg-transparent px-2 py-1 text-left text-xs text-ink hover:bg-line-soft"
                 >
+                  <span className="mr-1 border border-line-soft px-1 text-[10px] text-muted">
+                    {c.kind === "announce" ? "발표" : "원서"}
+                  </span>
                   <span className="text-ink-soft">{c.university_name}</span>
                   <span className="mx-1 text-muted">—</span>
                   <span>{c.service_name}</span>
