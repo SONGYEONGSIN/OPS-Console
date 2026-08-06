@@ -56,6 +56,77 @@ export function nextWeekdayRange(todayYmd: string): {
   return { startYmd, endYmd: addDaysYmd(startYmd, 4) };
 }
 
+// ─── 수시 준비 주차 목표 ─────────────────────────────────────
+
+/** 4년제 수시 접수 시작일 — D-day 기준. 전문대도 같은 날 시작(9/30 종료). */
+const SASI_APPLY_START_YMD = "2026-09-07";
+
+type SasiWeek = {
+  label: string;
+  startYmd: string;
+  endYmd: string;
+  devTarget?: string;
+  testTarget?: string;
+  note?: string;
+};
+
+/**
+ * 2026 수시 준비 주차별 목표 — 운영부 확정표.
+ * 마지막 주차(9/4)를 넘기면 pickSasiGoal이 undefined를 돌려 섹션이 자동으로 사라진다.
+ */
+const SASI_WEEKS: SasiWeek[] = [
+  { label: "7월 5주차", startYmd: "2026-07-27", endYmd: "2026-08-02", devTarget: "20%" },
+  { label: "8월 1주차", startYmd: "2026-08-03", endYmd: "2026-08-09", devTarget: "50%", testTarget: "20%" },
+  { label: "8월 2주차", startYmd: "2026-08-10", endYmd: "2026-08-16", devTarget: "70%", testTarget: "50%" },
+  { label: "8월 3주차", startYmd: "2026-08-17", endYmd: "2026-08-23", devTarget: "100%", testTarget: "70%" },
+  { label: "8월 4주차", startYmd: "2026-08-24", endYmd: "2026-08-30", testTarget: "100%" },
+  { label: "9월 1주차", startYmd: "2026-08-31", endYmd: "2026-09-04", note: "최종 테스트 진행" },
+];
+
+export type SasiGoal = {
+  label: string;
+  /** "8/3~8/9" */
+  rangeLabel: string;
+  devTarget?: string;
+  testTarget?: string;
+  note?: string;
+  /** 4년제 접수 시작까지 남은 일수 */
+  dDay: number;
+  /** "9/7(월)" */
+  applyStartLabel: string;
+};
+
+/** "2026-08-03" → "8/3" (앞 0 제거) */
+function mmddSlash(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${Number(m)}/${Number(d)}`;
+}
+
+function daysBetween(fromYmd: string, toYmd: string): number {
+  const ms = ymdToUtc(toYmd).getTime() - ymdToUtc(fromYmd).getTime();
+  return Math.round(ms / 86400000);
+}
+
+/**
+ * 발행일이 속한 수시 주차 1건. 어느 주차에도 안 걸리면 undefined —
+ * 시즌이 끝나면 섹션이 저절로 사라지므로 나중에 코드를 지우러 올 필요가 없다.
+ */
+export function pickSasiGoal(todayYmd: string): SasiGoal | undefined {
+  const week = SASI_WEEKS.find(
+    (w) => todayYmd >= w.startYmd && todayYmd <= w.endYmd,
+  );
+  if (!week) return undefined;
+  return {
+    label: week.label,
+    rangeLabel: `${mmddSlash(week.startYmd)}~${mmddSlash(week.endYmd)}`,
+    devTarget: week.devTarget,
+    testTarget: week.testTarget,
+    note: week.note,
+    dDay: daysBetween(todayYmd, SASI_APPLY_START_YMD),
+    applyStartLabel: "9/7(월)",
+  };
+}
+
 // ─── 일정 그룹 ───────────────────────────────────────────────
 
 export type BriefEvent = {
@@ -524,6 +595,8 @@ export type BriefingPayload = {
   images?: BriefingImages;
   /** claude -p 생성 스토리 — 없으면 페이지가 수치 중심으로 렌더 */
   story?: BriefingStory;
+  /** 수시 준비 주차 목표 — 시즌 밖이면 없음 */
+  sasiGoal?: SasiGoal;
 };
 
 /**
