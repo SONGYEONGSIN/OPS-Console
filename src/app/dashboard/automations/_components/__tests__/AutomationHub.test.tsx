@@ -20,6 +20,7 @@ const base: AutomationStatus = {
   label: "인사이트 영상 수집",
   description: "설명",
   scheduleInfo: "매일 08:00",
+  cadence: "daily",
   cooldownMinutes: 60,
   lastRunAt: null,
   cooldownRemainingMinutes: 0,

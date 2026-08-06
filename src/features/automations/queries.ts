@@ -158,6 +158,7 @@ export async function getAutomationStatuses(): Promise<AutomationStatus[]> {
       label: job.label,
       description: job.description,
       scheduleInfo: job.scheduleInfo,
+      cadence: job.cadence,
       cooldownMinutes: job.cooldownMinutes,
       lastRunAt,
       cooldownRemainingMinutes: computeCooldownRemaining(

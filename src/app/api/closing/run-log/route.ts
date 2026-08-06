@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { closingRunLogSchema } from "@/features/closing/schemas";
+import { recordAutomationRun } from "@/features/automations/run-recorder";
 
 /**
  * 서비스 마감 스크래퍼 실행 결과 보고 endpoint — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -59,6 +60,14 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  // 공통 이력에도 남긴다 — 자동화 일일 보고와 실패 즉시 알림이 이 경로를 본다.
+  // 회사 PC에서 도는 잡이라 여기 말고는 서버가 실행 결과를 알 방법이 없다.
+  await recordAutomationRun("closing-scrape", {
+    ok: status !== "failed",
+    skipped: status === "skipped",
+    message: message ?? (status === "success" ? `적재 ${service_count}건` : ""),
+  });
 
   return NextResponse.json({ ok: true });
 }
