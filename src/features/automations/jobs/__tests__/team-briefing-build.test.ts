@@ -490,6 +490,26 @@ describe("upcomingBirthdays", () => {
       ),
     ).toEqual([]);
   });
+
+  // 주간 발행이므로 창이 7일을 넘으면 생일이 2주 전 호에 실린다. 그 호에 한 번 실리면
+  // excludeSeenCelebrations가 이후 호에서 빼므로, 정작 생일에 가까운 호에는 안 나온다.
+  it("8일 이상 남은 생일은 제외 — 다음 호가 맡는다", () => {
+    expect(
+      upcomingBirthdays(
+        [{ name: "임종우", birth_date: "1990-08-20" }],
+        "2026-08-07",
+      ),
+    ).toEqual([]);
+  });
+
+  it("7일 남은 생일은 포함 (경계)", () => {
+    expect(
+      upcomingBirthdays(
+        [{ name: "임종우", birth_date: "1990-08-20" }],
+        "2026-08-13",
+      ),
+    ).toEqual([{ name: "임종우", dateYmd: "2026-08-20" }]);
+  });
 });
 
 describe("pickAlbum — 앨범 노출 상한", () => {

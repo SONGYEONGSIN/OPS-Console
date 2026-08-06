@@ -397,11 +397,17 @@ export function upcomingAnniversaries(
 /** 생일 — 발행 주에 생일이 도래하는 운영자 (연도 무시, operators.birth_date). */
 export type Birthday = { name: string; dateYmd: string };
 
-/** 발행일부터 windowDays일 내 도래하는 생일. 올해분이 지났으면 내년으로. */
+/**
+ * 발행일부터 windowDays일 내 도래하는 생일. 올해분이 지났으면 내년으로.
+ *
+ * 기본 7일 = 발행 주기. 창을 넓히면 생일이 2주 전 호에 실리고, 한 번 실린 뒤엔
+ * excludeSeenCelebrations가 이후 호에서 빼므로 정작 생일에 가까운 호에는 안 나온다.
+ * 주기와 창을 같게 두어야 생일 직전 호에 정확히 한 번 실린다.
+ */
 export function upcomingBirthdays(
   operators: { name: string; birth_date: string }[],
   todayYmd: string,
-  windowDays = 14,
+  windowDays = 7,
 ): Birthday[] {
   const limitYmd = addDaysYmd(todayYmd, windowDays);
   const todayYear = Number(todayYmd.slice(0, 4));
