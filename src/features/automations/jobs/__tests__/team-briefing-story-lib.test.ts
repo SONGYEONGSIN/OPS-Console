@@ -314,6 +314,36 @@ describe("parseStoryJson — 대학가 소식 픽", () => {
     });
     expect(parseStoryJson(text)?.newsPick).toBeUndefined();
   });
+
+  it("LLM이 후보 URL에 다른 제목을 붙이면 후보 제목이 이긴다", () => {
+    const text = JSON.stringify({
+      ...base,
+      newsPick: {
+        title: "LLM이 지어낸 가짜 제목",
+        url: "https://a.example/1",
+        comment: "교육부가 직접 폐교 명령을 내릴 수 있게 됩니다.",
+      },
+    });
+    const story = parseStoryJson(text, candidates);
+    expect(story?.newsPick?.title).toBe("사립대학구조개선법 시행령 통과");
+  });
+
+  it("source가 LLM 응답에 없어도 후보 값으로 채워진다", () => {
+    const candidatesWithSource = [
+      { ...candidates[0], source: "usline" },
+      candidates[1],
+    ];
+    const text = JSON.stringify({
+      ...base,
+      newsPick: {
+        title: "사립대학구조개선법 시행령 통과",
+        url: "https://a.example/1",
+        comment: "교육부가 직접 폐교 명령을 내릴 수 있게 됩니다.",
+      },
+    });
+    const story = parseStoryJson(text, candidatesWithSource);
+    expect(story?.newsPick?.source).toBe("usline");
+  });
 });
 
 describe("buildStoryPrompt — 뉴스 후보", () => {

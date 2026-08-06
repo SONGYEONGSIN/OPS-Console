@@ -112,7 +112,7 @@ export function buildStoryPrompt(payload, issueNo) {
 - celebration: 아래 근속 기념일·생일을 한데 묶어 축하하는 2~3문장. 대상이 모두 '없음'이면 빈 문자열("")로 두세요.
 - features: 아래 '이번 주 기능 소개' 항목들을 왜 지금 알아두면 좋은지 운영 맥락으로 엮는 2~3문장. 기능 이름을 나열만 하지 말고 어떤 상황에서 쓰는지 한 컷으로 그려주세요.
 - album: 아래 사진·영상 캡션에서 어떤 자리였는지 읽어내 그날의 분위기를 2~3문장으로. 캡션에 없는 사실(장소·인물·사건)은 지어내지 마세요. 사진이 '없음'이면 빈 문자열("")로 두세요.
-- newsPick: 아래 '대학가 소식 후보' 중 운영부(대학 입시·원서접수 운영) 동료가 알아둘 만한 기사를 **정확히 1건만** 고르세요. title·url은 후보에 적힌 것을 **그대로 복사**하고(변형·창작 금지), comment에는 왜 알아둘 만한지를 1~2문장으로 쓰세요. 정치·연예 등 업무와 무관한 기사만 있거나 후보가 '없음'이면 newsPick 키를 아예 빼세요 — 억지로 고르지 마세요.
+- newsPick: 아래 '대학가 소식 후보' 중 운영부(대학 입시·원서접수 운영) 동료가 알아둘 만한 기사를 **정확히 1건만** 고르세요. title·url은 후보에 적힌 것을 **그대로 복사**하세요(변형·창작 금지) — url은 후보를 찾는 조회 키이므로 한 글자도 다르면 안 됩니다. 실제로 표시되는 제목·언론사·발행일은 이 url로 후보 데이터에서 그대로 채워지니 따로 적지 않아도 됩니다. comment에는 왜 알아둘 만한지를 1~2문장으로 쓰세요. 정치·연예 등 업무와 무관한 기사만 있거나 후보가 '없음'이면 newsPick 키를 아예 빼세요 — 억지로 고르지 마세요.
 - 생일·근속 기념일이 있으면 intro에도 자연스럽게 축하를 담으세요.
 - schedule 이야기는 휴가에만 쏠리지 말고, 근무·원서접수·PIMS·교육·일반 일정(비용 처리 등)도 있으면 골고루 다루세요.
 
@@ -158,14 +158,14 @@ export function parseStoryJson(text, candidates = []) {
     return null;
   }
   const p = obj?.newsPick;
-  const known = new Set(candidates.map((c) => c.url));
+  const hit = p && isStr(p.url) ? candidates.find((c) => c.url === p.url) : undefined;
   const newsPick =
-    p && isStr(p.title) && isStr(p.url) && isStr(p.comment) && known.has(p.url)
+    p && isStr(p.comment) && hit
       ? {
-          title: p.title,
-          url: p.url,
-          source: isStr(p.source) ? p.source : undefined,
-          publishedAt: isStr(p.publishedAt) ? p.publishedAt : undefined,
+          title: hit.title,
+          url: hit.url,
+          source: hit.source ?? undefined,
+          publishedAt: hit.publishedAt ?? undefined,
           comment: p.comment,
         }
       : undefined;
