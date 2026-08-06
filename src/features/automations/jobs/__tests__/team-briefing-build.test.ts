@@ -401,8 +401,12 @@ describe("pickFeatureIntros — 2호 앵커 순환", () => {
     expect(r).toHaveLength(2);
   });
 
-  it("3호는 앵커 다음(index 2)부터 3건", () => {
-    expect(pickFeatureIntros(3)).toEqual(FEATURE_INTROS.slice(2, 5));
+  it("3호는 핀으로 지정한 2건", () => {
+    const r = pickFeatureIntros(3);
+    expect(r.map((f) => f.title)).toEqual([
+      "경쟁률 세팅 점검 자동화",
+      "백업 요청 검색에 합격자통합관리 발표 서비스",
+    ]);
   });
 
   it("4호는 그 다음 3건 — 이어서 진행", () => {
@@ -567,5 +571,21 @@ describe("pickSasiGoal — 발행일이 속한 수시 주차", () => {
 
   it("시작 이전(7/26)도 없음", () => {
     expect(pickSasiGoal("2026-07-26")).toBeUndefined();
+  });
+});
+
+describe("pickFeatureIntros — 호수별 핀", () => {
+  it("핀 없는 호는 기존 순환을 그대로 쓴다", () => {
+    expect(pickFeatureIntros(4)).toEqual(FEATURE_INTROS.slice(5, 8));
+  });
+
+  it("핀이 있어도 count를 명시하면 그 개수만", () => {
+    expect(pickFeatureIntros(3, 1)).toHaveLength(1);
+  });
+
+  it("핀 항목은 카탈로그에 실제로 존재한다", () => {
+    for (const f of pickFeatureIntros(3)) {
+      expect(FEATURE_INTROS).toContain(f);
+    }
   });
 });

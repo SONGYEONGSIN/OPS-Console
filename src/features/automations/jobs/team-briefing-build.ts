@@ -475,6 +475,16 @@ export const FEATURE_INTROS: FeatureIntro[] = [
     title: "대학 뉴스 자동 수집",
     desc: "대학 통폐합·폐교·정원감축 등 운영부 관련 뉴스를 매일 자동 수집해 최신순으로 모아 봅니다.",
   },
+  {
+    menu: "AI & 자동화 > 자동화실행",
+    title: "경쟁률 세팅 점검 자동화",
+    desc: "TEST 서버 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 어긋난 건을 담당 운영자 Teams 개인 채팅으로 알립니다. 합의된 정상 건은 예외로 등록해 알림에서 뺄 수 있어요.",
+  },
+  {
+    menu: "서비스 > 백업 요청",
+    title: "백업 요청 검색에 합격자통합관리 발표 서비스",
+    desc: "백업 요청 서비스 검색에서 원서접수뿐 아니라 합격자통합관리시스템 발표 서비스도 함께 찾습니다. [원서]/[발표] 배지로 구분되고, 발표 서비스는 서비스목록에서 붙여넣기로 일괄등록해요.",
+  },
 ];
 
 /**
@@ -483,11 +493,31 @@ export const FEATURE_INTROS: FeatureIntro[] = [
  */
 const FEATURE_ROTATION = { anchorIssueNo: 2, anchorCount: 2, perIssue: 3 };
 
+/**
+ * 호수별 기능 소개 지정 — title로 지정한다.
+ *
+ * 인덱스로 잡으면 카탈로그에 항목을 추가할 때 뒤 인덱스가 밀려 과거 핀이 조용히
+ * 다른 기능을 가리킨다. title은 카탈로그 내 고유하고, 이 맵만 읽어도 어느 호에
+ * 무엇을 실었는지 사람이 안다. 핀이 없는 호는 FEATURE_ROTATION 순환이 돈다.
+ */
+const FEATURE_PINS: Record<number, string[]> = {
+  3: ["경쟁률 세팅 점검 자동화", "백업 요청 검색에 합격자통합관리 발표 서비스"],
+};
+
 /** 호수(1부터)로 소개 항목을 순환 선택 (매 호 서로 다른 묶음). */
 export function pickFeatureIntros(
   issueNo: number,
   count?: number,
 ): FeatureIntro[] {
+  const pinned = FEATURE_PINS[Math.max(1, Math.floor(issueNo))];
+  if (pinned) {
+    // title 오타로 발행이 깨지지 않게, 못 찾은 항목은 건너뛴다.
+    const picked = pinned
+      .map((t) => FEATURE_INTROS.find((f) => f.title === t))
+      .filter((f): f is FeatureIntro => f !== undefined);
+    if (picked.length > 0) return picked.slice(0, count ?? picked.length);
+  }
+
   const len = FEATURE_INTROS.length;
   const n = Math.max(1, Math.floor(issueNo));
   const { anchorIssueNo, anchorCount, perIssue } = FEATURE_ROTATION;
