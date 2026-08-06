@@ -168,16 +168,46 @@ def academic_year_range(now: datetime):
     }
 
 
-def fetch_sms_code(url: str) -> str | None:
-    """make 웹훅 GET → 응답=SMS 본문. 정규식으로 인증번호 추출(없으면 None)."""
+def _fetch_sms_body(url: str) -> str | None:
+    """make 웹훅 GET → SMS 본문. None은 '못 읽음'(본문에 코드가 없는 것과 구분)."""
     try:
         res = requests.get(url, timeout=10)
         res.raise_for_status()
     except requests.RequestException as e:
         print(f"[WARN] SMS GET 실패: {e}")
         return None
-    m = SMS_CODE_PATTERN.search(res.text or "")
+    return res.text or ""
+
+
+def _extract_code(body: str) -> str | None:
+    m = SMS_CODE_PATTERN.search(body)
     return m.group(1) if m else None
+
+
+def fetch_sms_code(url: str) -> str | None:
+    """make 웹훅 GET → 응답=SMS 본문. 정규식으로 인증번호 추출(없으면 None)."""
+    body = _fetch_sms_body(url)
+    return _extract_code(body) if body is not None else None
+
+
+def fetch_baseline_code(url: str, attempts: int = 3, interval_sec: int = 3) -> str | None:
+    """제출 '전' baseline — 웹훅을 못 읽으면 재시도 후 중단한다.
+
+    baseline이 None이면 poll_fresh_sms_code의 '직전과 달라졌는가' 판정이 무력화돼
+    웹훅에 남아 있던 직전 SMS(이미 만료된 코드)를 새 코드로 오인한다(2026-08-06).
+    웹훅을 못 읽은 것과 본문에 코드가 없는 것(첫 실행 등)은 구분한다 — 후자는 정상.
+    SMS 미발송 단계라 재시도/중단이 2FA 흐름을 깨지 않는다.
+    """
+    for i in range(attempts):
+        body = _fetch_sms_body(url)
+        if body is not None:
+            return _extract_code(body)
+        if i < attempts - 1:
+            time.sleep(interval_sec)
+    raise RuntimeError(
+        f"SMS 웹훅 응답 없음 {attempts}회 — 중단(직전 코드 오인 방지). "
+        "MAKE_SMS_CODE_URL 확인 필요."
+    )
 
 
 def poll_fresh_sms_code(url: str, baseline: str | None, timeout_sec: int, interval_sec: int) -> str:
@@ -492,7 +522,7 @@ def login_and_2fa(driver, wait, env) -> None:
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_id"]).send_keys(env["username"])
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_pw"]).send_keys(env["password"])
 
-    baseline = fetch_sms_code(env["sms_url"])  # 제출 전 baseline
+    baseline = fetch_baseline_code(env["sms_url"])  # 제출 전 baseline (못 읽으면 중단)
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
     _wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
