@@ -253,3 +253,90 @@ describe("앨범 코멘트 (album)", () => {
     expect(without!.sections.album).toBeUndefined();
   });
 });
+
+describe("parseStoryJson — 대학가 소식 픽", () => {
+  const candidates = [
+    { title: "사립대학구조개선법 시행령 통과", url: "https://a.example/1" },
+    { title: "광양보건대 폐교부지 공공매입 촉구", url: "https://a.example/2" },
+  ];
+  const base = {
+    headline: "h",
+    intro: "i",
+    sections: { contracts: "c", schedule: "s", closing: "cl", ai: "a" },
+  };
+
+  it("후보에 있는 링크를 고르면 newsPick이 살아남는다", () => {
+    const text = JSON.stringify({
+      ...base,
+      newsPick: {
+        title: "사립대학구조개선법 시행령 통과",
+        url: "https://a.example/1",
+        comment: "교육부가 직접 폐교 명령을 내릴 수 있게 됩니다.",
+      },
+    });
+    const story = parseStoryJson(text, candidates);
+    expect(story?.newsPick?.url).toBe("https://a.example/1");
+    expect(story?.newsPick?.comment).toContain("교육부");
+  });
+
+  it("후보에 없는 링크는 버린다 (환각 방지)", () => {
+    const text = JSON.stringify({
+      ...base,
+      newsPick: {
+        title: "지어낸 기사",
+        url: "https://fake.example/999",
+        comment: "그럴듯한 코멘트",
+      },
+    });
+    const story = parseStoryJson(text, candidates);
+    expect(story).not.toBeNull();
+    expect(story?.newsPick).toBeUndefined();
+  });
+
+  it("comment가 없으면 버린다", () => {
+    const text = JSON.stringify({
+      ...base,
+      newsPick: { title: "t", url: "https://a.example/1" },
+    });
+    expect(parseStoryJson(text, candidates)?.newsPick).toBeUndefined();
+  });
+
+  it("newsPick이 아예 없어도 story는 정상 파싱된다", () => {
+    const story = parseStoryJson(JSON.stringify(base), candidates);
+    expect(story?.headline).toBe("h");
+    expect(story?.newsPick).toBeUndefined();
+  });
+
+  it("후보를 안 넘기면 newsPick은 무조건 버린다", () => {
+    const text = JSON.stringify({
+      ...base,
+      newsPick: { title: "t", url: "https://a.example/1", comment: "c" },
+    });
+    expect(parseStoryJson(text)?.newsPick).toBeUndefined();
+  });
+});
+
+describe("buildStoryPrompt — 뉴스 후보", () => {
+  it("후보가 있으면 제목과 링크를 프롬프트에 싣는다", () => {
+    const p = buildStoryPrompt(
+      {
+        ...payload,
+        newsCandidates: [
+          {
+            title: "사립대 구조개선법 통과",
+            url: "https://a.example/1",
+            source: "usline",
+          },
+        ],
+      },
+      3,
+    );
+    expect(p).toContain("사립대 구조개선법 통과");
+    expect(p).toContain("https://a.example/1");
+    expect(p).toContain("newsPick");
+  });
+
+  it("후보가 없으면 '없음'으로 표기한다", () => {
+    expect(buildStoryPrompt(payload, 3)).toContain("대학가 소식 후보: 없음");
+  });
+});

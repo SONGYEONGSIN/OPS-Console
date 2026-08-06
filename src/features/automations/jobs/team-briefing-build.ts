@@ -585,12 +585,34 @@ export function pickAlbum(
   };
 }
 
+// ─── 대학가 소식 (통폐합·폐교) ───────────────────────────────
+
+/** claude에게 넘기는 뉴스 후보 1건 — news 테이블 row 축약. */
+export type NewsCandidate = {
+  title: string;
+  url: string;
+  source?: string | null;
+  publishedAt?: string | null;
+  keyword?: string | null;
+};
+
+/** claude가 고른 1건 + 운영부 관점 코멘트. */
+export type NewsPick = {
+  title: string;
+  url: string;
+  source?: string | null;
+  publishedAt?: string | null;
+  comment: string;
+};
+
 /** claude -p가 생성하는 뉴스레터 스토리 — 캐치 제목 + 인트로 + 섹션별 이야기. */
 export type BriefingStory = {
   headline: string;
   /** Teams 티저용 낚시 한 줄('운영부 마법사' 페르소나·자극적). 없으면 기본 문구. */
   teaser?: string;
   intro: string;
+  /** 대학가 소식 1건 — claude가 후보 중 골랐을 때만. 구 발행분에는 없다. */
+  newsPick?: NewsPick;
   sections: {
     contracts: string;
     schedule: string;
@@ -627,6 +649,8 @@ export type BriefingPayload = {
   story?: BriefingStory;
   /** 수시 준비 주차 목표 — 시즌 밖이면 없음 */
   sasiGoal?: SasiGoal;
+  /** 대학가 소식 후보 (통폐합·폐교, 최근 7일) — claude 선별 입력. 발행 후에도 남겨 감사 추적에 쓴다. */
+  newsCandidates?: NewsCandidate[];
 };
 
 /**
