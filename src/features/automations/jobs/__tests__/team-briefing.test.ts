@@ -39,13 +39,16 @@ import {
   runTeamBriefing,
   stageBriefingDraft,
   publishStagedDraft,
+  buildBriefingData,
 } from "../team-briefing";
+import { pickSasiGoal } from "../team-briefing-build";
 import type { BriefingPayload } from "../team-briefing-build";
 
 type ChainResult = { data: unknown[]; count: number; error: null };
 type Chain = {
   select: () => Chain;
   not: () => Chain;
+  in: () => Chain;
   gte: () => Chain;
   lte: () => Chain;
   order: () => Chain;
@@ -58,6 +61,7 @@ function chain(data: unknown[]): Chain {
   const c: Chain = {
     select: () => c,
     not: () => c,
+    in: () => c,
     gte: () => c,
     lte: () => c,
     order: () => c,
@@ -132,6 +136,16 @@ beforeEach(() => {
         },
       ]);
     if (table === "operators") return chain(briefingsState.operatorRows);
+    if (table === "news")
+      return chain([
+        {
+          title: "사립대학구조개선법 시행령 통과",
+          link: "https://a.example/1",
+          source: "usline",
+          published_at: "2026-08-06T00:00:00+09:00",
+          keyword: "폐교",
+        },
+      ]);
     if (table === "ai_work")
       return chain([
         {
@@ -379,6 +393,29 @@ describe("runTeamBriefing (초안 생성)", () => {
     expect(r.ok).toBe(true);
     expect(sendTeamsMock.mock.calls[0][0].operatorEmail).toBe(
       "ys1114@jinhakapply.com",
+    );
+  });
+
+  it("뉴스 후보와 수시 목표를 payload에 담는다", async () => {
+    const res = await buildBriefingData();
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.payload.newsCandidates).toEqual([
+      {
+        title: "사립대학구조개선법 시행령 통과",
+        url: "https://a.example/1",
+        source: "usline",
+        publishedAt: "2026-08-06T00:00:00+09:00",
+        keyword: "폐교",
+      },
+    ]);
+    // 수시 시즌 안이면 주차가, 밖이면 undefined가 들어간다. 실행일에 따라 값이 달라지므로
+    // 상수와 비교하지 않고 pickSasiGoal(오늘)과 일치하는지로 단언한다 —
+    // 그렇게 해야 9월이 지나도 이 테스트가 시들지 않는다.
+    expect(res.payload.sasiGoal).toEqual(
+      pickSasiGoal(
+        new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }),
+      ),
     );
   });
 });

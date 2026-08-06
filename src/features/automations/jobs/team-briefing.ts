@@ -19,11 +19,13 @@ import {
   excludeSeenCelebrations,
   pickAlbum,
   pickFeatureIntros,
+  pickSasiGoal,
   type BriefEvent,
   type BriefingImages,
   type BriefingMedia,
   type BriefingPayload,
   type ClosingItem,
+  type NewsCandidate,
 } from "./team-briefing-build";
 
 const UPCOMING_WINDOW_DAYS = 7;
@@ -218,6 +220,25 @@ export async function buildBriefingData(): Promise<
     seenCelebrations,
   );
 
+  // 대학가 소식 후보 — 통폐합·폐교 최근 7일. claude가 이 중 1건을 고른다.
+  // 최신순 상한 20건: 프롬프트 길이를 묶으면서 한 주치를 덮기에 충분하다.
+  const { data: newsData, error: newsErr } = await admin
+    .from("news")
+    .select("title, link, source, published_at, keyword")
+    .in("keyword", ["통폐합", "폐교"])
+    .gte("published_at", `${addDaysYmd(todayYmd, -7)}T00:00:00+09:00`)
+    .order("published_at", { ascending: false })
+    .limit(20);
+  if (newsErr)
+    return { ok: false, message: `뉴스 조회 실패: ${newsErr.message}` };
+  const newsCandidates: NewsCandidate[] = (newsData ?? []).map((n) => ({
+    title: String(n.title),
+    url: String(n.link),
+    source: n.source as string | null,
+    publishedAt: n.published_at as string | null,
+    keyword: n.keyword as string | null,
+  }));
+
   // 사진·영상 — Storage newsletter 버킷의 최근 업로드 폴더(YYYYMMDD) 스캔.
   // 부가 콘텐츠라 실패해도 발행은 계속 (이미지 없이).
   let images: BriefingImages | undefined;
@@ -340,6 +361,8 @@ export async function buildBriefingData(): Promise<
     birthdays,
     featureIntros,
     images,
+    newsCandidates,
+    sasiGoal: pickSasiGoal(todayYmd),
   };
 
   return {
