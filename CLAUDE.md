@@ -133,8 +133,22 @@ E2E 운영 메모:
 | `team-briefing` | 매주 금 10:00 — **회사 PC Windows 작업 스케줄러** (`scripts/team-briefing/publish-local.mjs`) | 주간 브리핑 **초안 생성까지만**(스티비풍 `/r/briefing/[token]`, claude -p 스토리+근속 기념일) + 본인 Teams 채팅으로 미리보기 알림. **그룹채팅 티저는 자동화 페이지 [발행] 확정 시에만 발송**. 서버 API: `/api/team-briefing/draft·stage` (CRON_SECRET), 발행은 admin server action. registry 잡(수동 실행)도 초안 생성 — **Vercel cron 스케줄은 제거 필수** | `team_briefings`(status draft/published) + `automation_runs` |
 | `ratio-audit` | 수동 실행 — 회사 PC 폴러가 수행 (cron 미등록) | **TEST 서버** 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 오설정을 담당 운영자 Teams 개인 채팅으로 알립니다. 자동화 페이지 [실행]은 `ratio_audit_requests`에 pending만 적재하고, 회사 PC 폴러(`scripts/moa-ratio/poll-local.ps1`)가 5분 내 claim해 `audit.py`를 실행 | `ratio_audit_requests` + `ratio_audit_runs` (kind=schedule) |
 | `ratio-page-check` | 수동 실행 — 같은 폴러가 수행 (cron 미등록) | **REAL 서버** 경쟁률 HTML 링크 상태(404 등)를 점검해 담당 운영자 개인 채팅으로 알립니다. 대상은 `StartDate ≥ 올해 9월 1일` — 수시 경쟁률이 열리는 9월부터 대상이 생깁니다 | `ratio_audit_requests` + `ratio_audit_runs` (kind=page) |
+| `automation-digest` | 매일 11:00 (cron-job.org) | 그날 전체 잡의 실행 결과 + **미실행 감지**를 본인 Teams 노트 채팅으로 보고 | `automation_runs` |
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
+
+## 자동화 실행 보고 (Teams)
+
+자동화 결과는 **두 경로**로 본인 Teams 노트 채팅(`48:notes`)에 온다. 발신자는 경쟁률 점검·팀 뉴스레터와 같은 계정(`TEAMS_AUTOMATION_SENDER` → `TEAMS_BRIEFING_SENDER` → 기본값).
+
+- **실패 즉시** — `recordAutomationRun`이 기록 직후 판정. **직전 실행도 실패면 다시 보내지 않는다**(`failure-notify.ts`) — 입금 매칭이 매시간이라 이 억제가 없으면 장애 하루에 24통이 온다. 지속 장애는 일일 보고가 매일 상기시킨다
+- **일일 보고** — `automation-digest` 잡이 11:00에 전체 잡을 훑는다. 실패 이벤트가 없는 **미실행**(cron 등록 누락·회사 PC 꺼짐)까지 잡는 게 목적
+
+미실행 판정은 `AutomationJob.cadence`(`hourly|weekday|daily|weekly|monthly|manual`)별 임계로만 본다 — `scheduleInfo`는 사람이 읽는 문장이라 기계 판정에 못 쓰고, 예정 시각 대비 판정은 격주 게이트·공휴일 때문에 오탐이 잦다. `weekday` 임계가 96h인 건 금→월 공백(72h)을 넘겨야 해서다.
+
+회사 PC 잡은 서버가 실행 결과를 알 길이 그 잡의 보고 endpoint뿐이라, 거기서도 `recordAutomationRun`을 호출해야 두 경로에 잡힌다(`/api/closing/run-log`가 그렇게 한다).
+
+`AUTOMATION_REPORT_DRY_RUN=true` 시 발송 없이 판정만.
 
 경쟁률 점검은 **두 잡으로 나뉜다** — 세팅 점검(TEST, 스케줄·문구 대조 + claude 판정)과 페이지 점검(REAL, HTML 링크 상태). 같은 큐(`ratio_audit_requests.kind`)를 쓰고 폴러가 `RATIO_AUDIT_KIND`로 `audit.py` 동작을 고른다. 둘 다 Moa 로그인을 타므로 **동시 실행은 막는다**(pending/running 1건 정책, kind 무관). 필요 env: `RATIO_AUDIT_DRY_RUN`/`TEAMS_RATIO_AUDIT_SENDER`. 상세: `docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md`
 

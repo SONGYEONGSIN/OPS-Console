@@ -4,11 +4,21 @@ export type AutomationRunResult = {
   details?: Record<string, number>;
 };
 
+/**
+ * 실행 주기 — 일일 보고의 '미실행' 판정 임계에만 쓴다. 화면 표시는 scheduleInfo가 맡는다.
+ *
+ * scheduleInfo("평일 10:00 자동 (cron-job.org)")는 사람이 읽는 문장이라 기계 판정에
+ * 쓸 수 없어 별도로 둔다. `manual`은 판정 대상에서 빠진다.
+ */
+export type AutomationCadence =
+  "hourly" | "weekday" | "daily" | "weekly" | "monthly" | "manual";
+
 export type AutomationJob = {
   id: string;
   label: string;
   description: string;
   scheduleInfo: string;
+  cadence: AutomationCadence;
   cooldownMinutes: number;
   run: () => Promise<AutomationRunResult>;
   /**
@@ -39,6 +49,8 @@ export type AutomationStatus = {
   label: string;
   description: string;
   scheduleInfo: string;
+  /** 일일 보고의 '미실행' 판정용 — 표시에는 쓰지 않는다. */
+  cadence: AutomationCadence;
   cooldownMinutes: number;
   lastRunAt: string | null;
   cooldownRemainingMinutes: number;
