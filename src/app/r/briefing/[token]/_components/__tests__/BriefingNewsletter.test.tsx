@@ -325,3 +325,70 @@ describe("BriefingNewsletter", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("대학가 소식 · 수시 준비 섹션", () => {
+  it("newsPick이 있으면 제목·코멘트·링크를 렌더한다", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={3}
+        payload={{
+          ...payload,
+          story: {
+            headline: "h",
+            intro: "i",
+            sections: {
+              contracts: "c",
+              schedule: "s",
+              closing: "cl",
+              ai: "a",
+            },
+            newsPick: {
+              title: "사립대학구조개선법 시행령 통과",
+              url: "https://a.example/1",
+              source: "usline",
+              comment: "교육부가 직접 폐교 명령을 내릴 수 있게 됩니다.",
+            },
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("대학가 소식")).toBeInTheDocument();
+    expect(screen.getByText(/교육부가 직접 폐교 명령/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "사립대학구조개선법 시행령 통과" }),
+    ).toHaveAttribute("href", "https://a.example/1");
+  });
+
+  it("newsPick이 없으면 섹션 자체가 없다", () => {
+    render(<BriefingNewsletter issueNo={3} payload={payload} />);
+    expect(screen.queryByText("대학가 소식")).not.toBeInTheDocument();
+  });
+
+  it("sasiGoal이 있으면 주차·목표·D-day를 렌더한다", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={3}
+        payload={{
+          ...payload,
+          sasiGoal: {
+            label: "8월 1주차",
+            rangeLabel: "8/3~8/9",
+            devTarget: "50%",
+            testTarget: "20%",
+            dDay: 35,
+            applyStartLabel: "9/7(월)",
+          },
+        }}
+      />,
+    );
+    expect(screen.getByText("수시 준비")).toBeInTheDocument();
+    expect(screen.getByText("8월 1주차 (8/3~8/9)")).toBeInTheDocument();
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(screen.getByText("D-35")).toBeInTheDocument();
+  });
+
+  it("sasiGoal이 없으면 섹션 자체가 없다", () => {
+    render(<BriefingNewsletter issueNo={3} payload={payload} />);
+    expect(screen.queryByText("수시 준비")).not.toBeInTheDocument();
+  });
+});

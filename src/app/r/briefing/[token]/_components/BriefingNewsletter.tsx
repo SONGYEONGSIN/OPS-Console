@@ -15,6 +15,8 @@ import {
   CakeIcon,
   CameraIcon,
   ClapperIcon,
+  NewspaperIcon,
+  FlagIcon,
 } from "./NewsletterIcons";
 
 /**
@@ -43,6 +45,7 @@ export function BriefingNewsletter({
     milestones = [],
     birthdays = [],
     featureIntros = [],
+    sasiGoal,
     images,
     story,
   } = payload;
@@ -131,6 +134,72 @@ export function BriefingNewsletter({
                     </li>
                   ))}
                 </ul>
+              </Card>
+            </Section>
+          )}
+
+          {/* ── 수시 준비 (시즌 안일 때만) ────────────── */}
+          {sasiGoal && (
+            <Section
+              icon={<FlagIcon className="h-6 w-6 text-nl-sky" />}
+              title="수시 준비"
+            >
+              <Card>
+                <p className="text-[16px] font-bold text-nl-sky">
+                  {`${sasiGoal.label} (${sasiGoal.rangeLabel})`}
+                </p>
+                {sasiGoal.note ? (
+                  <p className="mt-2 text-[15px] leading-[1.75]">
+                    {sasiGoal.note}
+                  </p>
+                ) : (
+                  <ul className="mt-2 space-y-1 text-[15px] leading-[1.75]">
+                    {sasiGoal.devTarget && (
+                      <li>
+                        <span className="text-nl-muted">개발요청</span>{" "}
+                        <span className="font-bold">{sasiGoal.devTarget}</span>
+                      </li>
+                    )}
+                    {sasiGoal.testTarget && (
+                      <li>
+                        <span className="text-nl-muted">테스트오픈</span>{" "}
+                        <span className="font-bold">{sasiGoal.testTarget}</span>
+                      </li>
+                    )}
+                  </ul>
+                )}
+                <p className="mt-3 text-[15px]">
+                  <span className="text-nl-muted">4년제 수시 접수까지 </span>
+                  <span className="font-bold text-nl-sky">{`D-${sasiGoal.dDay}`}</span>
+                  <span className="text-nl-muted">{` (${sasiGoal.applyStartLabel})`}</span>
+                </p>
+              </Card>
+            </Section>
+          )}
+
+          {/* ── 대학가 소식 (claude가 골랐을 때만) ────────── */}
+          {story?.newsPick && (
+            <Section
+              icon={<NewspaperIcon className="h-6 w-6 text-nl-sky" />}
+              title="대학가 소식"
+            >
+              <Card>
+                <a
+                  href={story.newsPick.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[16px] font-bold text-nl-sky underline"
+                >
+                  {story.newsPick.title}
+                </a>
+                {story.newsPick.source && (
+                  <p className="mt-0.5 text-xs font-medium text-nl-muted">
+                    {story.newsPick.source}
+                  </p>
+                )}
+                <p className="mt-2 text-[15px] leading-[1.75]">
+                  {story.newsPick.comment}
+                </p>
               </Card>
             </Section>
           )}

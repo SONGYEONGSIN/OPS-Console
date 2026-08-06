@@ -71,6 +71,15 @@ export function buildStoryPrompt(payload, issueNo) {
     ...(payload.images?.videos ?? []).map((v) => v.caption),
   ].filter((c) => typeof c === "string" && c.length > 0);
   const albumLine = captions.length === 0 ? "없음" : captions.join(" / ");
+  const newsLine =
+    (payload.newsCandidates ?? []).length === 0
+      ? "없음"
+      : payload.newsCandidates
+          .map(
+            (n, i) =>
+              `${i + 1}) ${n.title}${n.source ? `(${n.source})` : ""} ${n.url}`,
+          )
+          .join("\n  ");
   const milestoneLine =
     (payload.milestones ?? []).length === 0
       ? "없음"
@@ -95,7 +104,7 @@ export function buildStoryPrompt(payload, issueNo) {
 
 규칙:
 - 반드시 아래 형식의 JSON만 출력하세요 (설명·코드펜스 금지):
-{"headline": "...", "teaser": "...", "intro": "...", "sections": {"contracts": "...", "schedule": "...", "closing": "...", "ai": "...", "celebration": "...", "features": "...", "album": "..."}}
+{"headline": "...", "teaser": "...", "intro": "...", "sections": {"contracts": "...", "schedule": "...", "closing": "...", "ai": "...", "celebration": "...", "features": "...", "album": "..."}, "newsPick": {"title": "...", "url": "...", "comment": "..."}}
 - headline: 뉴스레터를 열어보고 싶게 만드는 창의적이고 위트 있는 한 줄 제목 (20자 내외, 이모지 최대 1개). 수치 나열('완료율 48.7%')은 피하고, 이번 주 분위기·성취·계절감을 감각적인 한 컷으로 표현하세요. 매 호 톤과 소재를 다르게 (때론 질문형·비유·계절·응원 등). 예: "절반의 문턱에서, 운영부의 여름" / "마감 러시, 우리는 준비됐어요"
 - teaser: Teams 미리보기용 낚시 한 줄. '운영부 마법사'가 이번 호를 예고하는 페르소나 톤으로, 지금 뉴스레터를 열지 않으면 궁금해서 못 배기게 만드는 자극적·호기심 문장(35자 내외, 이모지 1개). 수치 나열 금지, headline과 다른 문장. 예: "계약 절반의 문턱, 이번 주 무슨 일이? 👀" / "9월이 오기 전, 꼭 봐야 할 소식 🔮"
 - intro: 인사 + 이번 호 핵심 요약 2문장
@@ -103,6 +112,7 @@ export function buildStoryPrompt(payload, issueNo) {
 - celebration: 아래 근속 기념일·생일을 한데 묶어 축하하는 2~3문장. 대상이 모두 '없음'이면 빈 문자열("")로 두세요.
 - features: 아래 '이번 주 기능 소개' 항목들을 왜 지금 알아두면 좋은지 운영 맥락으로 엮는 2~3문장. 기능 이름을 나열만 하지 말고 어떤 상황에서 쓰는지 한 컷으로 그려주세요.
 - album: 아래 사진·영상 캡션에서 어떤 자리였는지 읽어내 그날의 분위기를 2~3문장으로. 캡션에 없는 사실(장소·인물·사건)은 지어내지 마세요. 사진이 '없음'이면 빈 문자열("")로 두세요.
+- newsPick: 아래 '대학가 소식 후보' 중 운영부(대학 입시·원서접수 운영) 동료가 알아둘 만한 기사를 **정확히 1건만** 고르세요. title·url은 후보에 적힌 것을 **그대로 복사**하세요(변형·창작 금지) — url은 후보를 찾는 조회 키이므로 한 글자도 다르면 안 됩니다. 실제로 표시되는 제목·언론사·발행일은 이 url로 후보 데이터에서 그대로 채워지니 따로 적지 않아도 됩니다. comment에는 왜 알아둘 만한지를 1~2문장으로 쓰세요. 정치·연예 등 업무와 무관한 기사만 있거나 후보가 '없음'이면 newsPick 키를 아예 빼세요 — 억지로 고르지 마세요.
 - 생일·근속 기념일이 있으면 intro에도 자연스럽게 축하를 담으세요.
 - schedule 이야기는 휴가에만 쏠리지 말고, 근무·원서접수·PIMS·교육·일반 일정(비용 처리 등)도 있으면 골고루 다루세요.
 
@@ -114,11 +124,16 @@ export function buildStoryPrompt(payload, issueNo) {
 - 근속 기념일(발행 주): ${milestoneLine}
 - 생일(발행 주): ${birthdayLine}
 - 이번 주 기능 소개: ${featureLine}
-- 사진·영상: ${albumLine}`;
+- 사진·영상: ${albumLine}
+- 대학가 소식 후보: ${newsLine}`;
 }
 
-/** claude 응답 텍스트 → BriefingStory | null. 코드펜스/전후 텍스트 허용. */
-export function parseStoryJson(text) {
+/**
+ * claude 응답 텍스트 → BriefingStory | null. 코드펜스/전후 텍스트 허용.
+ * candidates를 넘기면 newsPick.url이 후보에 실제로 있는지 대조한다 —
+ * LLM이 기사를 지어내 링크가 깨진 채 발행되는 것을 막는 유일한 방어선이다.
+ */
+export function parseStoryJson(text, candidates = []) {
   if (typeof text !== "string") return null;
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
@@ -142,10 +157,24 @@ export function parseStoryJson(text) {
   ) {
     return null;
   }
+  const p = obj?.newsPick;
+  const hit = p && isStr(p.url) ? candidates.find((c) => c.url === p.url) : undefined;
+  const newsPick =
+    p && isStr(p.comment) && hit
+      ? {
+          title: hit.title,
+          url: hit.url,
+          source: hit.source ?? undefined,
+          publishedAt: hit.publishedAt ?? undefined,
+          comment: p.comment,
+        }
+      : undefined;
+
   return {
     headline: obj.headline,
     teaser: isStr(obj?.teaser) ? obj.teaser : undefined, // 선택 — 없어도 통과
     intro: obj.intro,
+    newsPick,
     sections: {
       contracts: s.contracts,
       schedule: s.schedule,

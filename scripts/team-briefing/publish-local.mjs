@@ -55,7 +55,7 @@ function generateStory(payload, issueNo) {
         cwd: os.tmpdir(),
       },
     );
-    const story = parseStoryJson(out);
+    const story = parseStoryJson(out, payload.newsCandidates ?? []);
     if (story) return { story, source: "claude" };
     console.error("[briefing] claude 응답 파싱 실패 — 수치 요약 폴백 사용");
   } catch (e) {

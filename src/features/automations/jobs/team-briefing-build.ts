@@ -56,6 +56,77 @@ export function nextWeekdayRange(todayYmd: string): {
   return { startYmd, endYmd: addDaysYmd(startYmd, 4) };
 }
 
+// ─── 수시 준비 주차 목표 ─────────────────────────────────────
+
+/** 4년제 수시 접수 시작일 — D-day 기준. 전문대도 같은 날 시작(9/30 종료). */
+const SASI_APPLY_START_YMD = "2026-09-07";
+
+type SasiWeek = {
+  label: string;
+  startYmd: string;
+  endYmd: string;
+  devTarget?: string;
+  testTarget?: string;
+  note?: string;
+};
+
+/**
+ * 2026 수시 준비 주차별 목표 — 운영부 확정표.
+ * 마지막 주차(9/4)를 넘기면 pickSasiGoal이 undefined를 돌려 섹션이 자동으로 사라진다.
+ */
+const SASI_WEEKS: SasiWeek[] = [
+  { label: "7월 5주차", startYmd: "2026-07-27", endYmd: "2026-08-02", devTarget: "20%" },
+  { label: "8월 1주차", startYmd: "2026-08-03", endYmd: "2026-08-09", devTarget: "50%", testTarget: "20%" },
+  { label: "8월 2주차", startYmd: "2026-08-10", endYmd: "2026-08-16", devTarget: "70%", testTarget: "50%" },
+  { label: "8월 3주차", startYmd: "2026-08-17", endYmd: "2026-08-23", devTarget: "100%", testTarget: "70%" },
+  { label: "8월 4주차", startYmd: "2026-08-24", endYmd: "2026-08-30", testTarget: "100%" },
+  { label: "9월 1주차", startYmd: "2026-08-31", endYmd: "2026-09-04", note: "최종 테스트 진행" },
+];
+
+export type SasiGoal = {
+  label: string;
+  /** "8/3~8/9" */
+  rangeLabel: string;
+  devTarget?: string;
+  testTarget?: string;
+  note?: string;
+  /** 4년제 접수 시작까지 남은 일수 */
+  dDay: number;
+  /** "9/7(월)" */
+  applyStartLabel: string;
+};
+
+/** "2026-08-03" → "8/3" (앞 0 제거) */
+function mmddSlash(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${Number(m)}/${Number(d)}`;
+}
+
+function daysBetween(fromYmd: string, toYmd: string): number {
+  const ms = ymdToUtc(toYmd).getTime() - ymdToUtc(fromYmd).getTime();
+  return Math.round(ms / 86400000);
+}
+
+/**
+ * 발행일이 속한 수시 주차 1건. 어느 주차에도 안 걸리면 undefined —
+ * 시즌이 끝나면 섹션이 저절로 사라지므로 나중에 코드를 지우러 올 필요가 없다.
+ */
+export function pickSasiGoal(todayYmd: string): SasiGoal | undefined {
+  const week = SASI_WEEKS.find(
+    (w) => todayYmd >= w.startYmd && todayYmd <= w.endYmd,
+  );
+  if (!week) return undefined;
+  return {
+    label: week.label,
+    rangeLabel: `${mmddSlash(week.startYmd)}~${mmddSlash(week.endYmd)}`,
+    devTarget: week.devTarget,
+    testTarget: week.testTarget,
+    note: week.note,
+    dDay: daysBetween(todayYmd, SASI_APPLY_START_YMD),
+    applyStartLabel: "9/7(월)",
+  };
+}
+
 // ─── 일정 그룹 ───────────────────────────────────────────────
 
 export type BriefEvent = {
@@ -404,6 +475,16 @@ export const FEATURE_INTROS: FeatureIntro[] = [
     title: "대학 뉴스 자동 수집",
     desc: "대학 통폐합·폐교·정원감축 등 운영부 관련 뉴스를 매일 자동 수집해 최신순으로 모아 봅니다.",
   },
+  {
+    menu: "AI & 자동화 > 자동화실행",
+    title: "경쟁률 세팅 점검 자동화",
+    desc: "TEST 서버 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 어긋난 건을 담당 운영자 Teams 개인 채팅으로 알립니다. 합의된 정상 건은 예외로 등록해 알림에서 뺄 수 있어요.",
+  },
+  {
+    menu: "서비스 > 백업 요청",
+    title: "백업 요청 검색에 합격자통합관리 발표 서비스",
+    desc: "백업 요청 서비스 검색에서 원서접수뿐 아니라 합격자통합관리시스템 발표 서비스도 함께 찾습니다. [원서]/[발표] 배지로 구분되고, 발표 서비스는 서비스목록에서 붙여넣기로 일괄등록해요.",
+  },
 ];
 
 /**
@@ -412,11 +493,31 @@ export const FEATURE_INTROS: FeatureIntro[] = [
  */
 const FEATURE_ROTATION = { anchorIssueNo: 2, anchorCount: 2, perIssue: 3 };
 
+/**
+ * 호수별 기능 소개 지정 — title로 지정한다.
+ *
+ * 인덱스로 잡으면 카탈로그에 항목을 추가할 때 뒤 인덱스가 밀려 과거 핀이 조용히
+ * 다른 기능을 가리킨다. title은 카탈로그 내 고유하고, 이 맵만 읽어도 어느 호에
+ * 무엇을 실었는지 사람이 안다. 핀이 없는 호는 FEATURE_ROTATION 순환이 돈다.
+ */
+const FEATURE_PINS: Record<number, string[]> = {
+  3: ["경쟁률 세팅 점검 자동화", "백업 요청 검색에 합격자통합관리 발표 서비스"],
+};
+
 /** 호수(1부터)로 소개 항목을 순환 선택 (매 호 서로 다른 묶음). */
 export function pickFeatureIntros(
   issueNo: number,
   count?: number,
 ): FeatureIntro[] {
+  const pinned = FEATURE_PINS[Math.max(1, Math.floor(issueNo))];
+  if (pinned) {
+    // title 오타로 발행이 깨지지 않게, 못 찾은 항목은 건너뛴다.
+    const picked = pinned
+      .map((t) => FEATURE_INTROS.find((f) => f.title === t))
+      .filter((f): f is FeatureIntro => f !== undefined);
+    if (picked.length > 0) return picked.slice(0, count ?? picked.length);
+  }
+
   const len = FEATURE_INTROS.length;
   const n = Math.max(1, Math.floor(issueNo));
   const { anchorIssueNo, anchorCount, perIssue } = FEATURE_ROTATION;
@@ -484,12 +585,34 @@ export function pickAlbum(
   };
 }
 
+// ─── 대학가 소식 (통폐합·폐교) ───────────────────────────────
+
+/** claude에게 넘기는 뉴스 후보 1건 — news 테이블 row 축약. */
+export type NewsCandidate = {
+  title: string;
+  url: string;
+  source?: string | null;
+  publishedAt?: string | null;
+  keyword?: string | null;
+};
+
+/** claude가 고른 1건 + 운영부 관점 코멘트. */
+export type NewsPick = {
+  title: string;
+  url: string;
+  source?: string | null;
+  publishedAt?: string | null;
+  comment: string;
+};
+
 /** claude -p가 생성하는 뉴스레터 스토리 — 캐치 제목 + 인트로 + 섹션별 이야기. */
 export type BriefingStory = {
   headline: string;
   /** Teams 티저용 낚시 한 줄('운영부 마법사' 페르소나·자극적). 없으면 기본 문구. */
   teaser?: string;
   intro: string;
+  /** 대학가 소식 1건 — claude가 후보 중 골랐을 때만. 구 발행분에는 없다. */
+  newsPick?: NewsPick;
   sections: {
     contracts: string;
     schedule: string;
@@ -524,6 +647,10 @@ export type BriefingPayload = {
   images?: BriefingImages;
   /** claude -p 생성 스토리 — 없으면 페이지가 수치 중심으로 렌더 */
   story?: BriefingStory;
+  /** 수시 준비 주차 목표 — 시즌 밖이면 없음 */
+  sasiGoal?: SasiGoal;
+  /** 대학가 소식 후보 (통폐합·폐교, 최근 7일) — claude 선별 입력. 발행 후에도 남겨 감사 추적에 쓴다. */
+  newsCandidates?: NewsCandidate[];
 };
 
 /**

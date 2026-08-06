@@ -19,6 +19,7 @@ import {
   celebrationKey,
   pickAlbum,
   ALBUM_MAX,
+  pickSasiGoal,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
@@ -400,8 +401,12 @@ describe("pickFeatureIntros — 2호 앵커 순환", () => {
     expect(r).toHaveLength(2);
   });
 
-  it("3호는 앵커 다음(index 2)부터 3건", () => {
-    expect(pickFeatureIntros(3)).toEqual(FEATURE_INTROS.slice(2, 5));
+  it("3호는 핀으로 지정한 2건", () => {
+    const r = pickFeatureIntros(3);
+    expect(r.map((f) => f.title)).toEqual([
+      "경쟁률 세팅 점검 자동화",
+      "백업 요청 검색에 합격자통합관리 발표 서비스",
+    ]);
   });
 
   it("4호는 그 다음 3건 — 이어서 진행", () => {
@@ -519,5 +524,68 @@ describe("pickAlbum — 앨범 노출 상한", () => {
     const r = pickAlbum([], media(1));
     expect(r!.cover).toBeUndefined();
     expect(r!.videos).toHaveLength(1);
+  });
+});
+
+describe("pickSasiGoal — 발행일이 속한 수시 주차", () => {
+  it("8월 1주차 시작일(8/3)이면 개발 50%·테스트 20%", () => {
+    const g = pickSasiGoal("2026-08-03");
+    expect(g).toEqual({
+      label: "8월 1주차",
+      rangeLabel: "8/3~8/9",
+      devTarget: "50%",
+      testTarget: "20%",
+      note: undefined,
+      dDay: 35,
+      applyStartLabel: "9/7(월)",
+    });
+  });
+
+  it("주차 마지막 날(8/9)도 같은 주차", () => {
+    expect(pickSasiGoal("2026-08-09")?.label).toBe("8월 1주차");
+  });
+
+  it("다음 날(8/10)은 다음 주차로 넘어간다", () => {
+    const g = pickSasiGoal("2026-08-10");
+    expect(g?.label).toBe("8월 2주차");
+    expect(g?.devTarget).toBe("70%");
+    expect(g?.testTarget).toBe("50%");
+  });
+
+  it("8월 4주차는 개발 목표가 없고 테스트 100%만", () => {
+    const g = pickSasiGoal("2026-08-24");
+    expect(g?.devTarget).toBeUndefined();
+    expect(g?.testTarget).toBe("100%");
+  });
+
+  it("9월 1주차는 목표 대신 비고", () => {
+    const g = pickSasiGoal("2026-09-04");
+    expect(g?.label).toBe("9월 1주차");
+    expect(g?.note).toBe("최종 테스트 진행");
+    expect(g?.dDay).toBe(3);
+  });
+
+  it("마지막 주차를 넘기면 섹션이 사라진다", () => {
+    expect(pickSasiGoal("2026-09-05")).toBeUndefined();
+  });
+
+  it("시작 이전(7/26)도 없음", () => {
+    expect(pickSasiGoal("2026-07-26")).toBeUndefined();
+  });
+});
+
+describe("pickFeatureIntros — 호수별 핀", () => {
+  it("핀 없는 호는 기존 순환을 그대로 쓴다", () => {
+    expect(pickFeatureIntros(4)).toEqual(FEATURE_INTROS.slice(5, 8));
+  });
+
+  it("핀이 있어도 count를 명시하면 그 개수만", () => {
+    expect(pickFeatureIntros(3, 1)).toHaveLength(1);
+  });
+
+  it("핀 항목은 카탈로그에 실제로 존재한다", () => {
+    for (const f of pickFeatureIntros(3)) {
+      expect(FEATURE_INTROS).toContain(f);
+    }
   });
 });

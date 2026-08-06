@@ -127,3 +127,34 @@ export function ClapperIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** 신문 — 대학가 소식. 접힌 모서리에 표정. */
+export function NewspaperIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M4.5 7.5h14a1.5 1.5 0 0 1 1.5 1.5v11a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2V7.5Z" />
+      <path d="M20 11h2.5a1 1 0 0 1 1 1v8a2 2 0 0 1-2 2H20" />
+      <path d="M7.5 11h5v3h-5z" />
+      <path d="M15.5 11h1.5M15.5 14h1.5M7.5 17.5h9" />
+      <circle cx="9" cy="12.2" r="0.55" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="12.2" r="0.55" fill="currentColor" stroke="none" />
+      <path d="M9.3 13.2c.5.4 1 .4 1.5 0" strokeWidth={1.2} />
+    </svg>
+  );
+}
+
+/** 깃발 — 수시 준비 목표. 정상에 별 하나. */
+export function FlagIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M7 23V4.5" />
+      <path d="M7 5.5h11.5l-2.2 3.6 2.2 3.6H7" />
+      <path d="M4.8 23h4.4" />
+      <path
+        d="m11.4 8.1.5-1.1.5 1.1 1.2.2-.9.8.2 1.2-1-.6-1 .6.2-1.2-.9-.8 1.2-.2Z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </svg>
+  );
+}
