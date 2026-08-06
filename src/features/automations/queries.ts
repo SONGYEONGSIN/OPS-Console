@@ -1,5 +1,4 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AUTOMATION_JOBS } from "./registry";
 import { getPendingBriefingDraft } from "@/features/team-briefings/queries";
@@ -18,7 +17,7 @@ export function computeCooldownRemaining(
 }
 
 async function getInsightsLastRunAt(): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("insight_videos")
     .select("collected_at")
@@ -29,7 +28,7 @@ async function getInsightsLastRunAt(): Promise<string | null> {
 }
 
 async function getReceivablesMailOperatorLastRunAt(): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("receivables_operator_mail_sends")
     .select("sent_at")
@@ -40,7 +39,7 @@ async function getReceivablesMailOperatorLastRunAt(): Promise<string | null> {
 }
 
 async function getReceivablesDepositMatchLastRunAt(): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("receivables_match_runs")
     .select("started_at")
@@ -52,7 +51,7 @@ async function getReceivablesDepositMatchLastRunAt(): Promise<string | null> {
 
 // 발송 이력 테이블의 최신 sent_at 1건을 마지막 실행 시각으로 본다.
 async function getLatestSentAt(table: string): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from(table)
     .select("sent_at")
@@ -64,7 +63,7 @@ async function getLatestSentAt(table: string): Promise<string | null> {
 
 // closing-scrape는 closing_scrape_runs.ran_at(실행 보고 시각)을 마지막 실행으로 본다.
 async function getClosingScrapeLastRunAt(): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("closing_scrape_runs")
     .select("ran_at")
@@ -76,7 +75,7 @@ async function getClosingScrapeLastRunAt(): Promise<string | null> {
 
 // weekly_report_runs는 ran_at(실행 시각)을 마지막 실행으로 본다.
 async function getWeeklyReportLastRunAt(): Promise<string | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase
     .from("weekly_report_runs")
     .select("ran_at")
@@ -113,6 +112,14 @@ async function getLatestActualRunAt(jobId: string): Promise<string | null> {
   return data?.ran_at ?? null;
 }
 
+/**
+ * 잡의 마지막 실행 시각.
+ *
+ * 폴백 리졸버까지 admin client(service_role)를 쓴다 — cron 진입점(자동화 일일 보고)에는
+ * 세션이 없어 RLS server client로는 정책이 `to authenticated`인 결과 테이블
+ * (closing_scrape_runs 등)을 못 읽는다. null로 읽히면 멀쩡히 돌아간 잡이 '미실행'으로
+ * 오판된다. 호출부는 자동화 페이지(admin 전용)와 cron뿐이라 service_role read가 안전하다.
+ */
 export async function getJobLastRunAt(jobId: string): Promise<string | null> {
   // automation_runs 우선. 아직 적재 전(전환기)이면 기존 결과 테이블 역산으로 폴백.
   const fromRuns = await getLatestActualRunAt(jobId);
