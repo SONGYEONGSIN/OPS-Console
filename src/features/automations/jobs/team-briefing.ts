@@ -46,7 +46,7 @@ function addDaysYmd(ymd: string, n: number): string {
 }
 
 /**
- * 팀 보고 브리핑 — 주간 데이터 집계(buildBriefingData) + 뉴스레터 발행/Teams 티저(publishBriefing).
+ * 팀 뉴스레터 — 주간 데이터 집계(buildBriefingData) + 뉴스레터 발행/Teams 티저(publishBriefing).
  * 정규 발행 경로: 상시 맥 launchd(scripts/team-briefing/publish-local.mjs)가
  *   GET /api/team-briefing/draft → claude -p 스토리 생성 → POST /api/team-briefing/publish.
  * registry의 runTeamBriefing은 수동 실행/폴백용(스토리 없이 발행) — 자동 스케줄은 로컬로 이전.

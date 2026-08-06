@@ -143,9 +143,9 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
   },
   {
     id: "team-briefing",
-    label: "팀 보고 브리핑",
+    label: "팀 뉴스레터",
     description:
-      "계약진행 현황(누적)·차주 팀 업무(일정/서비스 마감)·AI 활용(내 AI 작업/TIP/인사이트)을 집계해 Teams 그룹채팅에 자동 브리핑합니다.",
+      "계약진행 현황(누적)·차주 팀 업무(일정/서비스 마감)·AI 활용(내 AI 작업/TIP/인사이트)을 집계해 주간 뉴스레터 초안을 만듭니다. [발행]으로 확정해야 Teams 그룹채팅에 티저가 나갑니다.",
     scheduleInfo: "매주 금요일 10:00 (회사 PC Windows 작업 스케줄러)",
     cooldownMinutes: 60,
     run: runTeamBriefing,
