@@ -61,6 +61,8 @@ const BRIEFING_SENDER_DEFAULT = "ys1114@jinhakapply.com";
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif)$/i;
 const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
 const IMAGE_WINDOW_DAYS = 7;
+/** captions.json에서 커버 지정에 쓰는 예약 키 — 값은 같은 폴더의 파일명. */
+const COVER_KEY = "__cover";
 
 /**
  * Storage newsletter 버킷의 최근 업로드 폴더(YYYYMMDD ≥ 발행일-7일)에서
@@ -80,6 +82,7 @@ async function collectNewsletterImages(
   if (error || !rootEntries) return undefined;
 
   const gallery: BriefingMedia[] = [];
+  let coverSrc: string | undefined;
   const videos: BriefingMedia[] = [];
   const folders = rootEntries
     .filter((e) => /^\d{8}$/.test(e.name) && e.name >= sinceCompact)
@@ -102,6 +105,13 @@ async function collectNewsletterImages(
       }
     }
 
+    // captions.json의 `__cover` = 이 폴더에서 커버로 쓸 파일명. 여러 폴더가 지정하면
+    // 나중 폴더(최신)가 이긴다 — 이번 주 사진을 표지로 올리는 게 자연스럽다.
+    const coverName = captions[COVER_KEY];
+    if (coverName && files.some((f) => f.name === coverName)) {
+      coverSrc = storage.getPublicUrl(`${folder}/${coverName}`).data.publicUrl;
+    }
+
     for (const f of files) {
       const path = `${folder}/${f.name}`;
       const { data: pub } = storage.getPublicUrl(path);
@@ -114,7 +124,7 @@ async function collectNewsletterImages(
     }
   }
 
-  return pickAlbum(gallery, videos);
+  return pickAlbum(gallery, videos, coverSrc);
 }
 
 export type BriefingDetails = {
