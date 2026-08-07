@@ -18,6 +18,7 @@ import {
   excludeSeenCelebrations,
   celebrationKey,
   pickAlbum,
+  excludeSeenImages,
   ALBUM_MAX,
   pickSasiGoal,
 } from "../team-briefing-build";
@@ -566,6 +567,31 @@ describe("pickAlbum — 앨범 노출 상한", () => {
     const r = pickAlbum(media(3), [], "https://cdn/p1.jpg");
     expect(r!.cover!.caption).toBe("사진 1");
     expect(r!.gallery!.map((g) => g.caption)).toEqual(["사진 2", "사진 3"]);
+  });
+});
+
+describe("excludeSeenImages — 이전 호에 실린 사진 제외", () => {
+  const media = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      src: `https://cdn/p${i + 1}.jpg`,
+      caption: `사진 ${i + 1}`,
+    }));
+
+  it("이미 발행된 src는 뺀다", () => {
+    const seen = new Set(["https://cdn/p1.jpg", "https://cdn/p3.jpg"]);
+    expect(excludeSeenImages(media(4), seen).map((m) => m.caption)).toEqual([
+      "사진 2",
+      "사진 4",
+    ]);
+  });
+
+  it("seen이 비어 있으면 그대로 통과", () => {
+    expect(excludeSeenImages(media(3), new Set())).toHaveLength(3);
+  });
+
+  it("전부 발행됐으면 빈 배열 — 앨범 섹션이 사라진다", () => {
+    const seen = new Set(media(3).map((m) => m.src));
+    expect(excludeSeenImages(media(3), seen)).toEqual([]);
   });
 });
 

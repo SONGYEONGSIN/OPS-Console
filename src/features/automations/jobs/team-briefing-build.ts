@@ -579,6 +579,19 @@ export const ALBUM_MAX = 20;
 export const ALBUM_VIDEO_MAX = 2;
 
 /**
+ * 이미 발행된 호에 실린 사진·영상 제외 — 같은 사진이 다음 호에 재등장하는 것을 막는다.
+ *
+ * 수집 창(최근 7일)이 발행 주기와 겹쳐, 한 번 올린 폴더가 두 호에 걸쳐 잡힌다.
+ * 기념일의 excludeSeenCelebrations와 같은 역할이며, 비교 키는 공개 URL(src)이다.
+ */
+export function excludeSeenImages(
+  media: BriefingMedia[],
+  seen: Set<string>,
+): BriefingMedia[] {
+  return media.filter((m) => !seen.has(m.src));
+}
+
+/**
  * 수집된 사진·영상 → 뉴스레터에 실을 커버/앨범/영상. 둘 다 없으면 undefined.
  *
  * `coverSrc`를 주면 그 사진을 커버로 올린다 — 기본값(가장 이른 폴더의 첫 파일)은
