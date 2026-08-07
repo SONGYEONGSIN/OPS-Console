@@ -3,7 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import { listContracts } from "@/features/contracts/queries";
 import { briefingUrl } from "@/features/team-briefings/url";
-import { getPublishedCelebrationKeys } from "@/features/team-briefings/queries";
+import {
+  getPublishedCelebrationKeys,
+  getPublishedImageSrcs,
+} from "@/features/team-briefings/queries";
 import { CONTRACT_SHEETS } from "@/features/contracts/schemas";
 import type { AutomationRunResult } from "../types";
 import {
@@ -17,6 +20,7 @@ import {
   upcomingAnniversaries,
   upcomingBirthdays,
   excludeSeenCelebrations,
+  excludeSeenImages,
   pickAlbum,
   pickFeatureIntros,
   pickSasiGoal,
@@ -124,7 +128,14 @@ async function collectNewsletterImages(
     }
   }
 
-  return pickAlbum(gallery, videos, coverSrc);
+  // 이전 호에 이미 실린 사진은 뺀다 — 수집 창(7일)이 주간 발행과 겹쳐 한 폴더가
+  // 두 호에 걸쳐 잡힌다. 커버 지정도 발행분이면 무효가 되어 다음 사진이 커버가 된다.
+  const seen = await getPublishedImageSrcs();
+  return pickAlbum(
+    excludeSeenImages(gallery, seen),
+    excludeSeenImages(videos, seen),
+    coverSrc && !seen.has(coverSrc) ? coverSrc : undefined,
+  );
 }
 
 export type BriefingDetails = {
