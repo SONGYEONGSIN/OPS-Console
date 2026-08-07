@@ -545,6 +545,28 @@ describe("pickAlbum — 앨범 노출 상한", () => {
     expect(r!.cover).toBeUndefined();
     expect(r!.videos).toHaveLength(1);
   });
+
+  it("coverSrc를 주면 그 사진이 커버 — 나머지는 원래 순서 유지", () => {
+    const r = pickAlbum(media(4), [], "https://cdn/p3.jpg");
+    expect(r!.cover!.caption).toBe("사진 3");
+    expect(r!.gallery!.map((g) => g.caption)).toEqual([
+      "사진 1",
+      "사진 2",
+      "사진 4",
+    ]);
+  });
+
+  it("coverSrc가 목록에 없으면 기존대로 첫 장이 커버", () => {
+    const r = pickAlbum(media(3), [], "https://cdn/없는사진.jpg");
+    expect(r!.cover!.caption).toBe("사진 1");
+    expect(r!.gallery!.map((g) => g.caption)).toEqual(["사진 2", "사진 3"]);
+  });
+
+  it("coverSrc가 이미 첫 장이면 순서가 바뀌지 않는다", () => {
+    const r = pickAlbum(media(3), [], "https://cdn/p1.jpg");
+    expect(r!.cover!.caption).toBe("사진 1");
+    expect(r!.gallery!.map((g) => g.caption)).toEqual(["사진 2", "사진 3"]);
+  });
 });
 
 describe("pickSasiGoal — 발행일이 속한 수시 주차", () => {

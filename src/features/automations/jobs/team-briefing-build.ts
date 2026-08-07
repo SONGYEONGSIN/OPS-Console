@@ -578,15 +578,27 @@ export const ALBUM_MAX = 20;
 /** 영상 노출 상한 — 용량이 커 본문 무게를 좌우한다. */
 export const ALBUM_VIDEO_MAX = 2;
 
-/** 수집된 사진·영상 → 뉴스레터에 실을 커버/앨범/영상. 둘 다 없으면 undefined. */
+/**
+ * 수집된 사진·영상 → 뉴스레터에 실을 커버/앨범/영상. 둘 다 없으면 undefined.
+ *
+ * `coverSrc`를 주면 그 사진을 커버로 올린다 — 기본값(가장 이른 폴더의 첫 파일)은
+ * 업로드 순서가 정하므로 편집 의도를 담을 수 없다. 지정이 없거나 목록에 없는
+ * src면 기존 동작(gallery[0])을 유지한다. 나머지 사진의 상대 순서는 보존한다.
+ */
 export function pickAlbum(
   gallery: BriefingMedia[],
   videos: BriefingMedia[],
+  coverSrc?: string,
 ): BriefingImages | undefined {
   if (gallery.length === 0 && videos.length === 0) return undefined;
+  const at = coverSrc ? gallery.findIndex((g) => g.src === coverSrc) : -1;
+  const ordered =
+    at > 0
+      ? [gallery[at], ...gallery.slice(0, at), ...gallery.slice(at + 1)]
+      : gallery;
   return {
-    cover: gallery[0],
-    gallery: gallery.slice(1, ALBUM_MAX),
+    cover: ordered[0],
+    gallery: ordered.slice(1, ALBUM_MAX),
     videos: videos.slice(0, ALBUM_VIDEO_MAX),
   };
 }
