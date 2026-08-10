@@ -175,7 +175,7 @@ Table/View는 폼 없이도 렌더된다.
 
 | 상황 | 처리 |
 |---|---|
-| 후보 목록이 비어 있음(운영자 1명) | 셀렉트 `disabled` + '선택할 동료 없음' 표기. 저장은 정상 |
+| 고를 후보가 없음(운영자 1명 / 전원 선택 완료) | 셀렉트를 `disabled`로 두고 '없음'을 그대로 보여준다. 저장은 정상 |
 | 저장된 이메일이 후보에 없음(퇴사·비활성) | 칩은 이메일 로컬파트로 그대로 표시하고 유지한다. 과거 기록을 조용히 지우지 않는다 |
 | 잘못된 이메일이 들어옴(직접 호출) | zod가 거부 → 기존 `parsed.error.issues[0].message` 경로로 사용자 메시지 |
 | 자기 자신·중복 지정 | `normalizeCollaborators`가 조용히 제거 (에러 아님 — 사용자 의도가 명확하다) |
@@ -199,16 +199,21 @@ Table/View는 폼 없이도 렌더된다.
 2. `src/features/ai-work/collaborators.ts`
 3. `src/features/ai-work/__tests__/collaborators.test.ts`
 
-수정 8
+수정 9
 
 4. `src/features/ai-work/schemas.ts`
 5. `src/features/ai-work/actions.ts`
-6. `src/app/dashboard/_components/patterns/ListPattern.tsx` — `ListRow` 2필드
-7. `src/app/dashboard/_components/inspector/list-variants/types.ts` — `EditFormProps.aiWorkOperators`
-8. `list-variants/ai-work/EditForm.tsx`
-9. `list-variants/ai-work/View.tsx`
-10. `list-variants/ai-work/Table.tsx`
-11. `src/app/dashboard/my-ai-work/page.tsx`
+6. `src/app/dashboard/_components/patterns/ListPattern.tsx` — `ListRow` 2필드 + `aiWorkOperators` 통과
+7. `src/app/dashboard/_components/inspector/InspectorListBody.tsx` — `aiWorkOperators` 통과
+8. `src/app/dashboard/_components/inspector/list-variants/types.ts` — `EditFormProps.aiWorkOperators`
+9. `list-variants/ai-work/EditForm.tsx`
+10. `list-variants/ai-work/View.tsx`
+11. `list-variants/ai-work/Table.tsx`
+12. `src/app/dashboard/my-ai-work/page.tsx`
+
+후보 목록은 `page → ListPattern → InspectorListBody → EditForm` 3단계로 전달된다
+(`backupOperators`와 동일 경로). 각 단계마다 타입 선언·구조분해·전달 3곳씩이라 한 군데만 빠져도
+후보가 `[]`로 도착한다.
 
 기존 테스트 파일(`schemas.test.ts`, `actions.test.ts`, 변이 테스트)에 케이스를 추가한다.
 
