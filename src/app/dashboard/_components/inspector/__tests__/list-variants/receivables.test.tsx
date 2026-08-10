@@ -63,6 +63,16 @@ describe("ReceivablesView", () => {
     ).toBeTruthy();
   });
 
+  it("메일 버튼은 '독려 메일' 라벨을 단 기본 정보 항목으로 온다", () => {
+    // 입금여부 배지와 같은 값 컬럼에 정렬돼야 '이 상태에 대한 행동'으로 읽힌다
+    render(<ReceivablesView row={baseRow} currentUserPermission="admin" />);
+    const term = screen.getByText("독려 메일");
+    expect(term.tagName).toBe("DT");
+    expect(term.nextElementSibling).toContainElement(
+      screen.getByRole("button", { name: /독려 메일 발송/ }),
+    );
+  });
+
   it("admin 아닌 경우 — 메일 버튼 미노출", () => {
     render(<ReceivablesView row={baseRow} currentUserPermission="member" />);
     expect(screen.queryByRole("button", { name: /독려 메일/ })).toBeNull();

@@ -231,7 +231,8 @@ export function SendReceivablesMailButton({
         type="button"
         onClick={trigger}
         disabled={!email || busy}
-        className="inline-flex items-center gap-2 border border-ink/20 bg-white px-3 py-1.5 text-xs font-medium text-ink hover:bg-washi-raised disabled:cursor-not-allowed disabled:opacity-40"
+        // 인스펙터 '입금여부' 배지와 같은 규격(px-2 py-0.5 text-xs)으로 맞춘다
+        className="inline-flex cursor-pointer items-center border border-line bg-transparent px-2 py-0.5 text-xs text-ink transition-colors hover:border-vermilion hover:bg-vermilion hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
         data-testid="inspector-send-mail"
       >
         독려 메일 발송
