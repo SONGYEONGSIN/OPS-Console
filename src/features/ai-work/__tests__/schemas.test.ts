@@ -66,6 +66,7 @@ const validRow = {
   saved_hours: 1.5,
   tags: ["번역", "매뉴얼"],
   author_email: "ysong2526@gmail.com",
+  collaborator_emails: [],
   author_id: "22222222-2222-4222-8222-222222222222",
   created_at: "2026-05-09T00:00:00Z",
   updated_at: "2026-05-09T00:00:00Z",
@@ -235,5 +236,50 @@ describe("aiWorkUpdateSchema", () => {
     expect(aiWorkUpdateSchema.safeParse({ ai_tool: "bard" }).success).toBe(
       false,
     );
+  });
+});
+
+describe("collaborator_emails", () => {
+  it("row: 이메일 배열을 통과시킨다", () => {
+    const parsed = aiWorkRowSchema.safeParse({
+      ...validRow,
+      collaborator_emails: ["a@x.com", "b@x.com"],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("row: 컬럼이 없으면 거부한다 (DB가 not null이라 항상 온다)", () => {
+    const { collaborator_emails: _omit, ...withoutColumn } = {
+      ...validRow,
+      collaborator_emails: [],
+    };
+    expect(aiWorkRowSchema.safeParse(withoutColumn).success).toBe(false);
+  });
+
+  it("이메일 형식이 아니면 거부한다", () => {
+    const parsed = aiWorkRowSchema.safeParse({
+      ...validRow,
+      collaborator_emails: ["not-an-email"],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("create: 생략하면 빈 배열이 기본값이다", () => {
+    const parsed = aiWorkCreateSchema.safeParse({
+      title: "제목",
+      work_start_date: "2026-08-10",
+      work_end_date: "2026-08-10",
+      ai_tool: "claude",
+      category: "code",
+      summary_md: "요약",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.collaborator_emails).toEqual([]);
+  });
+
+  it("update: 생략 가능하다", () => {
+    const parsed = aiWorkUpdateSchema.safeParse({ title: "수정" });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.collaborator_emails).toBeUndefined();
   });
 });
