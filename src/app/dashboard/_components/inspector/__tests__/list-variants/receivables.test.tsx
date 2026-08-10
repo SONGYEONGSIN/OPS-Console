@@ -53,6 +53,16 @@ describe("ReceivablesView", () => {
     ).toBeInTheDocument();
   });
 
+  it("메일 버튼은 입금여부 행 아래에 온다", () => {
+    // 발송 여부를 판단하는 근거(경과일수·입금여부)를 읽은 뒤 행동이 오도록
+    render(<ReceivablesView row={baseRow} currentUserPermission="admin" />);
+    const badge = screen.getByText("미수");
+    const button = screen.getByRole("button", { name: /독려 메일/ });
+    expect(
+      badge.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("admin 아닌 경우 — 메일 버튼 미노출", () => {
     render(<ReceivablesView row={baseRow} currentUserPermission="member" />);
     expect(screen.queryByRole("button", { name: /독려 메일/ })).toBeNull();
@@ -63,7 +73,10 @@ describe("ReceivablesView", () => {
       <ReceivablesView
         row={{
           ...baseRow,
-          receivablesCells: { ...baseRow.receivablesCells!, remarks: "입금 완료" },
+          receivablesCells: {
+            ...baseRow.receivablesCells!,
+            remarks: "입금 완료",
+          },
         }}
         currentUserPermission="admin"
       />,
@@ -138,7 +151,9 @@ describe("ReceivablesForm", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByText(/이메일 형식이 올바르지 않습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/이메일 형식이 올바르지 않습니다/),
+    ).toBeInTheDocument();
   });
 
   it("receivablesCells 미존재 — 안내 표시", () => {
