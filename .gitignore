@@ -116,3 +116,6 @@ scripts/logs/
 # 뉴스레터 원본 에셋 — Supabase Storage로 업로드 (공개 레포에 직원 사진 커밋 금지)
 public/newsletter/*
 !public/newsletter/README.md
+
+# reprompt 실행 산출물 (설계 결과물은 docs/superpowers/specs/로 옮겨 커밋)
+.reprompt/
