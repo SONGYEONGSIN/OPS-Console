@@ -325,6 +325,10 @@ export type ListRow = {
   incidentDepartment?: "운영부-운영1팀" | "운영부-운영2팀";
   /** ai-work / ai-tips — 작성자 이메일 (canDelete 권한 가드용) */
   authorEmail?: string;
+  /** ai-work — 공동작업자 이메일(저장 값). 표시 전용이라 권한에는 영향 없다. */
+  collaboratorEmails?: string[];
+  /** ai-work — 공동작업자 표시 이름. 서버(RSC)가 해석해 내려준다(Table/View는 후보 목록이 없다). */
+  collaboratorNames?: string[];
   /** incidents — 담당자 (본인 자동) */
   incidentAssigneeEmail?: string;
   incidentAssigneeName?: string;
