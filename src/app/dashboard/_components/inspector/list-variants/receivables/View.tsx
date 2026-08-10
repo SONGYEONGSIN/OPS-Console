@@ -17,64 +17,67 @@ export function ReceivablesView({
   return (
     <div className="space-y-6">
       <Section title="기본 정보">
-        {/* 발송 여부를 판단하는 근거(경과일수·입금여부)를 읽은 뒤 행동이 오도록
-            메일 버튼을 DefList 아래에 둔다. */}
-        <div className="space-y-3">
-          <DefList
-            items={[
-              { term: "거래처", desc: row.name || "-" },
-              { term: "청구일자", desc: row.meta ?? "-" },
-              {
-                term: "청구금액",
-                desc: <span className="text-ink">{row.author ?? "-"}</span>,
-              },
-              {
-                term: "경과일수",
-                desc:
-                  elapsed === null ? (
-                    <span className="text-muted">-</span>
-                  ) : (
-                    <span
-                      className={
-                        row.status === "approved"
-                          ? "text-muted"
-                          : elapsed >= 60
-                            ? "font-medium text-vermilion-deep"
-                            : elapsed >= 30
-                              ? "text-vermilion"
-                              : "text-ink"
-                      }
-                    >
-                      {elapsed}일 경과
-                    </span>
-                  ),
-              },
-              {
-                term: "입금여부",
-                desc: (
+        <DefList
+          items={[
+            { term: "거래처", desc: row.name || "-" },
+            { term: "청구일자", desc: row.meta ?? "-" },
+            {
+              term: "청구금액",
+              desc: <span className="text-ink">{row.author ?? "-"}</span>,
+            },
+            {
+              term: "경과일수",
+              desc:
+                elapsed === null ? (
+                  <span className="text-muted">-</span>
+                ) : (
                   <span
-                    className={`inline-block px-2 py-0.5 text-xs ${
+                    className={
                       row.status === "approved"
-                        ? "bg-washi-raised text-ink"
-                        : "bg-vermilion/20 text-vermilion-deep"
-                    }`}
+                        ? "text-muted"
+                        : elapsed >= 60
+                          ? "font-medium text-vermilion-deep"
+                          : elapsed >= 30
+                            ? "text-vermilion"
+                            : "text-ink"
+                    }
                   >
-                    {row.status === "approved" ? "수금" : "미수"}
+                    {elapsed}일 경과
                   </span>
                 ),
-              },
-            ]}
-          />
-          {canSendMail && schoolOwnerEmail && !isPaidByRemarks ? (
-            <div className="flex justify-end">
-              <SendReceivablesMailButton
-                email={schoolOwnerEmail}
-                customerName={row.name}
-                dryRun={mailDryRun}
-              />
-            </div>
-          ) : null}
-        </div>
+            },
+            {
+              term: "입금여부",
+              desc: (
+                <span
+                  className={`inline-block px-2 py-0.5 text-xs ${
+                    row.status === "approved"
+                      ? "bg-washi-raised text-ink"
+                      : "bg-vermilion/20 text-vermilion-deep"
+                  }`}
+                >
+                  {row.status === "approved" ? "수금" : "미수"}
+                </span>
+              ),
+            },
+            // 발송 여부를 판단하는 근거(경과일수·입금여부)를 읽은 뒤 행동이 오도록
+            // 입금여부 다음 항목으로 둔다 — 배지와 같은 값 컬럼에 정렬된다.
+            ...(canSendMail && schoolOwnerEmail && !isPaidByRemarks
+              ? [
+                  {
+                    term: "독려 메일",
+                    desc: (
+                      <SendReceivablesMailButton
+                        email={schoolOwnerEmail}
+                        customerName={row.name}
+                        dryRun={mailDryRun}
+                      />
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
       </Section>
 
       {row.body && (
