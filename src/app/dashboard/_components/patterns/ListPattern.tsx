@@ -657,6 +657,8 @@ type Props = {
   currentUserName?: string;
   /** backup variant — 백업자 후보 (active operators, 본인 제외) */
   backupOperators?: { email: string; name: string }[];
+  /** ai-work variant — 공동작업자 후보 (active operators, 본인 제외) */
+  aiWorkOperators?: { email: string; name: string }[];
   /** backup variant — 담당 서비스 후보 (services 카탈로그 light fields). EditForm multi-select. */
   backupServiceCandidates?: {
     id: string;
@@ -742,6 +744,7 @@ export function ListPattern({
   receivablesMailDryRun = true,
   currentUserName,
   backupOperators,
+  aiWorkOperators,
   backupServiceCandidates,
   backupContactCandidates,
   universityNameSuggestions,
@@ -999,6 +1002,7 @@ export function ListPattern({
               onMailReply={onMailReply}
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
+              aiWorkOperators={aiWorkOperators}
               backupServiceCandidates={backupServiceCandidates}
               backupContactCandidates={backupContactCandidates}
               universityNameSuggestions={universityNameSuggestions}

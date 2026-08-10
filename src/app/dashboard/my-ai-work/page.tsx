@@ -7,6 +7,7 @@ import { ScopeChips } from "@/components/common/ScopeChips";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listAiWorks } from "@/features/ai-work/queries";
+import { listOperators } from "@/features/operators/queries";
 import {
   createAiWork,
   updateAiWork,
@@ -34,6 +35,15 @@ export default async function MyAiWorkPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
   const allWorks = await listAiWorks();
+  const allOperators = await listOperators();
+  // 후보는 재직 중 + 본인 제외 (backup 도메인과 동일 규칙).
+  const aiWorkOperators = allOperators
+    .filter((op) => op.status === "active" && op.email !== me?.email)
+    .map((op) => ({ email: op.email, name: op.name }));
+  // 표시 이름은 퇴사자도 풀어야 하므로 필터 전 전체 목록으로 만든다.
+  const operatorNameByEmail = new Map(
+    allOperators.map((op) => [op.email, op.name] as const),
+  );
   const mine = sp.mine !== "false";
   const works =
     mine && me?.email
@@ -41,7 +51,7 @@ export default async function MyAiWorkPage({
       : allWorks;
   const ownerByEmail = await buildOwnerMap(works);
   const { rows, total } = paginateRows(
-    works.map((w) => aiWorkToListRow(w, ownerByEmail)),
+    works.map((w) => aiWorkToListRow(w, ownerByEmail, operatorNameByEmail)),
     sp.page,
   );
   const config = resolvePageMeta(slug, meta, total);
@@ -76,6 +86,7 @@ export default async function MyAiWorkPage({
         reuse_prompt: row.reusePrompt ?? null,
         saved_hours: row.savedHours ?? null,
         tags: row.tags ?? [],
+        collaborator_emails: row.collaboratorEmails ?? [],
       });
       return result.ok ? { ok: true } : { ok: false, error: result.error };
     }
@@ -95,6 +106,7 @@ export default async function MyAiWorkPage({
       reuse_prompt: row.reusePrompt ?? null,
       saved_hours: row.savedHours ?? null,
       tags: row.tags,
+      collaborator_emails: row.collaboratorEmails ?? [],
     });
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
@@ -111,6 +123,7 @@ export default async function MyAiWorkPage({
       currentUserName={me?.displayName ?? me?.email ?? ""}
       currentUserEmail={me?.email ?? null}
       currentUserPermission={me?.permission ?? null}
+      aiWorkOperators={aiWorkOperators}
       inlineFilters={
         <ScopeChips key="ai-work-scope" total={total} mineLabel="내 작업" />
       }
@@ -137,6 +150,7 @@ async function buildOwnerMap(works: AiWorkRow[]): Promise<Map<string, string>> {
 function aiWorkToListRow(
   w: AiWorkRow,
   ownerByEmail: Map<string, string>,
+  nameByEmail: Map<string, string>,
 ): ListRow {
   return {
     id: w.id,
@@ -144,6 +158,10 @@ function aiWorkToListRow(
     status: "active",
     owner: ownerByEmail.get(w.author_email) ?? w.author_email,
     authorEmail: w.author_email,
+    collaboratorEmails: w.collaborator_emails,
+    collaboratorNames: w.collaborator_emails.map(
+      (email) => nameByEmail.get(email) ?? email.split("@")[0] ?? email,
+    ),
     workStartDate: w.work_start_date,
     workEndDate: w.work_end_date,
     aiTool: w.ai_tool,
