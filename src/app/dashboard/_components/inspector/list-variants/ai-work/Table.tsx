@@ -43,6 +43,10 @@ export function AiWorkTable({ rows, selectedId, onSelect }: Props) {
           rows.map((row) => {
             const tool = row.aiTool as AiTool | undefined;
             const cat = row.category as AiWorkCategory | undefined;
+            // 등록자 + 공동작업자를 한 칸에 나열한다. 길어지면 CSS로 한 줄 말줄임.
+            const people = [row.owner, ...(row.collaboratorNames ?? [])]
+              .filter(Boolean)
+              .join(", ");
             return (
               <tr
                 key={row.id}
@@ -76,7 +80,9 @@ export function AiWorkTable({ rows, selectedId, onSelect }: Props) {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-sm text-ink-soft">{row.owner}</td>
+                <td className="max-w-[12rem] truncate px-3 py-2 text-sm text-ink-soft">
+                  {people}
+                </td>
                 <td className="px-3 py-2">
                   {isHttpUrl(row.outputUrl) ? (
                     <a
