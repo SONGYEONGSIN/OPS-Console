@@ -11,10 +11,10 @@ import {
   aiWorkUpdateSchema,
   type AiWorkRow,
 } from "./schemas";
+import { normalizeCollaborators } from "./collaborators";
 
 export type AiWorkActionResult =
-  | { ok: true; row: AiWorkRow }
-  | { ok: false; error: string };
+  { ok: true; row: AiWorkRow } | { ok: false; error: string };
 
 const PERMISSION_ERROR_VIEWER = "권한 없음 — AI 활용 등록 권한이 없습니다.";
 const PERMISSION_ERROR_AUTHOR = "권한 없음 — 본인이 작성한 항목이 아닙니다.";
@@ -33,7 +33,9 @@ function canEdit(authorEmail: string, me: CurrentOperator | null): boolean {
   return me.email === authorEmail;
 }
 
-export async function createAiWork(input: unknown): Promise<AiWorkActionResult> {
+export async function createAiWork(
+  input: unknown,
+): Promise<AiWorkActionResult> {
   const parsed = aiWorkCreateSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "invalid" };
@@ -47,6 +49,10 @@ export async function createAiWork(input: unknown): Promise<AiWorkActionResult> 
   const supabase = await createClient();
   const payload = {
     ...parsed.data,
+    collaborator_emails: normalizeCollaborators(
+      parsed.data.collaborator_emails,
+      me!.email,
+    ),
     author_email: me!.email,
   };
 
@@ -84,9 +90,20 @@ export async function updateAiWork(
     return { ok: false, error: PERMISSION_ERROR_AUTHOR };
   }
 
+  const patch =
+    parsed.data.collaborator_emails === undefined
+      ? parsed.data
+      : {
+          ...parsed.data,
+          collaborator_emails: normalizeCollaborators(
+            parsed.data.collaborator_emails,
+            target.author_email as string,
+          ),
+        };
+
   const { data, error } = await supabase
     .from("ai_work")
-    .update(parsed.data)
+    .update(patch)
     .eq("id", id)
     .select()
     .single();
