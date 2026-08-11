@@ -432,6 +432,7 @@ git commit -m "refactor: 사고·경위서·회의록 배지를 공통 규칙으
 - Modify: `src/app/dashboard/handover/HandoverHistory.tsx:21-25`
 - Modify: `src/app/dashboard/_components/inspector/list-variants/quotes/Table.tsx:14-19`
 - Modify: `src/app/dashboard/_components/inspector/list-variants/cohort/Table.tsx:18-22`
+- Create: `src/app/dashboard/_components/inspector/list-variants/cohort/__tests__/Table.test.tsx`
 - Modify: `src/app/dashboard/_components/inspector/list-variants/backup/View.tsx:15-22`
 - Modify: `src/app/dashboard/_components/patterns/ProjectPattern.tsx:17-21`
 
@@ -489,6 +490,75 @@ const COHORT_STATUS_COLOR: Record<CohortStatus, string> = {
   completed: BADGE_TONE.done,
 };
 ```
+
+**`cohort/Table.tsx`는 짝 테스트가 없어 `tdd-enforce` 훅이 편집을 막는다.** 훅을 우회하지 말고,
+먼저 아래 테스트 파일을 만들어 훅을 정상 통과시킨다. 이 파일이 이 태스크의 RED 단계다 —
+테스트를 만들고 실행해 실패를 확인한 뒤에 `Table.tsx`를 고친다.
+
+`src/app/dashboard/_components/inspector/list-variants/cohort/__tests__/Table.test.tsx` (신규):
+
+```tsx
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import type { ListRow } from "../../../../patterns/ListPattern";
+import { BADGE_TONE } from "../../badge-tone";
+import { CohortTable } from "../Table";
+
+const baseRow: ListRow = {
+  id: "11111111-1111-4111-8111-111111111111",
+  name: "2026년 1기",
+  status: "active",
+  owner: "송영신",
+};
+
+function toneOf(label: string): string {
+  const el = screen.getByText(label);
+  return el.className;
+}
+
+describe("CohortTable — 기수 상태 배지 톤", () => {
+  it("진행중은 progress 톤이다", () => {
+    render(
+      <CohortTable
+        rows={[{ ...baseRow, cohortStatus: "in_progress" }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(toneOf("진행중")).toContain(BADGE_TONE.progress);
+  });
+
+  it("완료는 done 톤이다", () => {
+    render(
+      <CohortTable
+        rows={[{ ...baseRow, cohortStatus: "completed" }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(toneOf("완료")).toContain(BADGE_TONE.done);
+  });
+
+  it("계획은 idle 톤이다", () => {
+    render(
+      <CohortTable
+        rows={[{ ...baseRow, cohortStatus: "planned" }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(toneOf("계획")).toContain(BADGE_TONE.idle);
+  });
+});
+```
+
+Run: `npx vitest run src/app/dashboard/_components/inspector/list-variants/cohort/__tests__/Table.test.tsx`
+Expected(RED): 3건 실패 — 현재 값이 `bg-line-soft text-muted`(계획만 우연히 통과할 수 있다),
+`bg-vermilion text-cream`, `bg-washi-raised text-ink`다. 최소 `완료` 케이스는 반드시 실패해야 한다.
+실패를 확인한 뒤에 위 색맵을 고친다.
+
+컴포넌트 export 이름(`CohortTable`)과 props가 위와 다르면 실제 시그니처에 맞춰 호출부만 고친다 —
+단언 내용(어떤 라벨이 어떤 톤인지)은 그대로 둔다.
 
 - [ ] **Step 3: backup·ProjectPattern 교체**
 
