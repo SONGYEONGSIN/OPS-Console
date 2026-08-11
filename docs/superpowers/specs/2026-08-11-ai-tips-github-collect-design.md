@@ -112,7 +112,9 @@ RLS: read는 authenticated 전원, insert는 service_role(수집 API), update는
 | README가 없거나 너무 김 | 앞부분 8000자만 claude에 넘긴다. 없으면 description만으로 생성 시도 |
 | 같은 리포 재등장 | unique 제약 → upsert 대신 무시. 이미 promoted/hidden이어도 마찬가지 |
 
-`AI_TIPS_COLLECT_DRY_RUN=true`면 적재 없이 판정만 한다.
+`node scripts/ai-tips/collect-local.mjs --dry`면 적재 없이 수집·초안 결과만 출력한다.
+env 플래그 대신 인자를 쓰는 것은 팀 뉴스레터 발행기(`publish-local.mjs --dry`)와 같은 방식이라
+회사 PC 러너 계열에서 손에 익은 형태를 유지하기 위해서다.
 
 ## 환경 변수와 배선
 
