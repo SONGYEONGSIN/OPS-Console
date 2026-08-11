@@ -7,6 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 import type { IncidentReportRow } from "@/features/incident-reports/schemas";
+import { BADGE_TONE } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
 
 const { mockUpdate, mockRefresh, mockUpdateIncident } = vi.hoisted(() => ({
   mockUpdate: vi.fn(),
@@ -209,9 +210,34 @@ describe("ReportEditorWorkspace", () => {
       expect(mockUpdate).toHaveBeenCalledWith(
         report.id,
         expect.objectContaining({
-          handling_rows: [{ time: "2026-09-27T14:27", content: "오류 확인 요청" }],
+          handling_rows: [
+            { time: "2026-09-27T14:27", content: "오류 확인 요청" },
+          ],
         }),
       ),
+    );
+  });
+});
+
+describe("ReportEditorWorkspace — 상태 배지 톤", () => {
+  it("반려는 주의 톤이다 — 목록과 같은 색이어야 한다", () => {
+    render(
+      <ReportEditorWorkspace report={{ ...report, status: "rejected" }} />,
+    );
+    expect(screen.getByText("반려").className).toContain(BADGE_TONE.attention);
+  });
+
+  it("승인완료는 완료 톤이다", () => {
+    render(
+      <ReportEditorWorkspace report={{ ...report, status: "approved" }} />,
+    );
+    expect(screen.getByText("승인완료").className).toContain(BADGE_TONE.done);
+  });
+
+  it("작성 중은 진행 톤이다", () => {
+    render(<ReportEditorWorkspace report={report} />);
+    expect(screen.getByText("작성 중").className).toContain(
+      BADGE_TONE.progress,
     );
   });
 });

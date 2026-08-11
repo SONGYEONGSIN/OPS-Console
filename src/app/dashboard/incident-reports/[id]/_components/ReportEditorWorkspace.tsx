@@ -15,6 +15,7 @@ import { updateIncidentReport } from "@/features/incident-reports/actions";
 import { updateIncident } from "@/features/incidents/actions";
 import { FormPage } from "@/app/dashboard/_components/inspector/list-variants/incident-reports/FormPage";
 import { HandlingRowsEditor } from "@/app/dashboard/_components/inspector/HandlingRowsEditor";
+import { statusBadgeTone } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
 
 type TextKey =
   | "recipient_university"
@@ -249,11 +250,7 @@ export function ReportEditorWorkspace({
         <div className="mb-3 flex items-center justify-between">
           <span className="text-sm font-bold text-ink">편집</span>
           <span
-            className={`inline-block px-2 py-0.5 text-2xs ${
-              report.status === "draft"
-                ? "bg-vermilion text-cream"
-                : "bg-line-soft text-ink-soft"
-            }`}
+            className={`inline-block px-2 py-0.5 text-2xs ${statusBadgeTone(REPORT_STATUS_LABEL[report.status])}`}
           >
             {REPORT_STATUS_LABEL[report.status]}
           </span>
@@ -262,87 +259,87 @@ export function ReportEditorWorkspace({
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
               <div className="space-y-3">
-              {/* 수신대학·서비스명·제목 — 연결 사고에서 동기화(읽기전용) */}
-              <div className="space-y-1 border-b border-line pb-2 text-xs">
-                <p className="text-muted">
-                  수신대학{" "}
-                  <span className="ml-1 text-ink">
-                    {draft.recipient_university || "—"}
-                  </span>
-                </p>
-                <p className="text-muted">
-                  서비스명{" "}
-                  <span className="ml-1 text-ink">{serviceName || "—"}</span>
-                </p>
-                <p className="text-muted">
-                  제목{" "}
-                  <span className="ml-1 text-ink">{draft.title || "—"}</span>
-                  <span className="ml-1.5 text-2xs text-faint">
-                    (사고에서 동기화 · 수정 불가)
-                  </span>
-                </p>
-              </div>
+                {/* 수신대학·서비스명·제목 — 연결 사고에서 동기화(읽기전용) */}
+                <div className="space-y-1 border-b border-line pb-2 text-xs">
+                  <p className="text-muted">
+                    수신대학{" "}
+                    <span className="ml-1 text-ink">
+                      {draft.recipient_university || "—"}
+                    </span>
+                  </p>
+                  <p className="text-muted">
+                    서비스명{" "}
+                    <span className="ml-1 text-ink">{serviceName || "—"}</span>
+                  </p>
+                  <p className="text-muted">
+                    제목{" "}
+                    <span className="ml-1 text-ink">{draft.title || "—"}</span>
+                    <span className="ml-1.5 text-2xs text-faint">
+                      (사고에서 동기화 · 수정 불가)
+                    </span>
+                  </p>
+                </div>
 
-              {/* 공문 cover — 1.인사말 / 2.사과 본문 / 3.맺음말 (경위 위에 배치).
+                {/* 공문 cover — 1.인사말 / 2.사과 본문 / 3.맺음말 (경위 위에 배치).
                   인사말·맺음말은 기본 자동문구로 채워두되 수정 가능(바꾸면 그 값 저장). */}
-              <div className="space-y-3 border-b border-line pb-2">
-                <label className="block text-xs">
-                  <span className="mb-1 block text-muted">
-                    인사말 (공문 1번){" "}
-                    {greeting !== autoGreeting && (
-                      <button
-                        type="button"
-                        onClick={() => setGreeting(autoGreeting)}
-                        className="ml-1 cursor-pointer border-none bg-transparent text-2xs text-vermilion hover:underline"
-                      >
-                        기본값 복원
-                      </button>
-                    )}
-                  </span>
-                  <textarea
-                    aria-label="인사말"
-                    value={greeting}
-                    rows={2}
-                    maxLength={1000}
-                    onChange={(e) => setGreeting(e.target.value)}
-                    className={inputClass}
-                  />
-                </label>
+                <div className="space-y-3 border-b border-line pb-2">
+                  <label className="block text-xs">
+                    <span className="mb-1 block text-muted">
+                      인사말 (공문 1번){" "}
+                      {greeting !== autoGreeting && (
+                        <button
+                          type="button"
+                          onClick={() => setGreeting(autoGreeting)}
+                          className="ml-1 cursor-pointer border-none bg-transparent text-2xs text-vermilion hover:underline"
+                        >
+                          기본값 복원
+                        </button>
+                      )}
+                    </span>
+                    <textarea
+                      aria-label="인사말"
+                      value={greeting}
+                      rows={2}
+                      maxLength={1000}
+                      onChange={(e) => setGreeting(e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
 
-                {renderField({
-                  key: "apology",
-                  label: "사과 본문 (공문 2번)",
-                  textarea: true,
-                })}
+                  {renderField({
+                    key: "apology",
+                    label: "사과 본문 (공문 2번)",
+                    textarea: true,
+                  })}
 
-                <label className="block text-xs">
-                  <span className="mb-1 block text-muted">
-                    맺음말 (공문 3번){" "}
-                    {closing !== DEFAULT_CLOSING && (
-                      <button
-                        type="button"
-                        onClick={() => setClosing(DEFAULT_CLOSING)}
-                        className="ml-1 cursor-pointer border-none bg-transparent text-2xs text-vermilion hover:underline"
-                      >
-                        기본값 복원
-                      </button>
-                    )}
-                  </span>
-                  <textarea
-                    aria-label="맺음말"
-                    value={closing}
-                    rows={2}
-                    maxLength={1000}
-                    onChange={(e) => setClosing(e.target.value)}
-                    className={inputClass}
-                  />
-                </label>
-              </div>
+                  <label className="block text-xs">
+                    <span className="mb-1 block text-muted">
+                      맺음말 (공문 3번){" "}
+                      {closing !== DEFAULT_CLOSING && (
+                        <button
+                          type="button"
+                          onClick={() => setClosing(DEFAULT_CLOSING)}
+                          className="ml-1 cursor-pointer border-none bg-transparent text-2xs text-vermilion hover:underline"
+                        >
+                          기본값 복원
+                        </button>
+                      )}
+                    </span>
+                    <textarea
+                      aria-label="맺음말"
+                      value={closing}
+                      rows={2}
+                      maxLength={1000}
+                      onChange={(e) => setClosing(e.target.value)}
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
 
-              {PRE_FIELDS.map(renderField)}
+                {PRE_FIELDS.map(renderField)}
 
-              {/* 처리 — 시간/내용 행 편집기 (경위서·사고보고 공용) */}
-              <HandlingRowsEditor rows={rows} onChange={setRows} />
+                {/* 처리 — 시간/내용 행 편집기 (경위서·사고보고 공용) */}
+                <HandlingRowsEditor rows={rows} onChange={setRows} />
               </div>
 
               <div className="mt-3">{renderField(POST_FIELDS[0])}</div>
