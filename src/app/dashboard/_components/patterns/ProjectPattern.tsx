@@ -5,6 +5,7 @@ import type { ProjectMockData } from "../../_data/patterns";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorImprovementBody } from "../inspector/InspectorImprovementBody";
 import { useInspectorState } from "../inspector/useInspectorState";
+import { BADGE_TONE } from "../inspector/list-variants/badge-tone";
 
 export type ProjectImprovement = ProjectMockData["improvements"][number];
 
@@ -15,9 +16,9 @@ const STATUS_LABEL: Record<ProjectMockData["improvements"][number]["status"], st
 };
 
 const STATUS_COLOR: Record<ProjectMockData["improvements"][number]["status"], string> = {
-  run: "bg-gold/20 text-gold",
-  rev: "bg-sage/20 text-sage",
-  wait: "bg-line-soft text-muted",
+  run: BADGE_TONE.progress,
+  rev: BADGE_TONE.idle,
+  wait: BADGE_TONE.idle,
 };
 
 type Tab = "detail" | "improvements" | "activities";

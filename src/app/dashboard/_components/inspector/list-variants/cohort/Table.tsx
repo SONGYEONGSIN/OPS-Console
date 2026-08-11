@@ -2,6 +2,7 @@
 
 import type { ListRow } from "../../../patterns/ListPattern";
 import type { CohortStatus } from "../../../patterns/ListPattern";
+import { BADGE_TONE } from "../badge-tone";
 
 type Props = {
   rows: ListRow[];
@@ -16,9 +17,9 @@ const COHORT_STATUS_LABEL: Record<CohortStatus, string> = {
 };
 
 const COHORT_STATUS_COLOR: Record<CohortStatus, string> = {
-  planned: "bg-line-soft text-muted",
-  in_progress: "bg-vermilion text-cream",
-  completed: "bg-washi-raised text-ink",
+  planned: BADGE_TONE.idle,
+  in_progress: BADGE_TONE.progress,
+  completed: BADGE_TONE.done,
 };
 
 function inviteBadgeLabel(

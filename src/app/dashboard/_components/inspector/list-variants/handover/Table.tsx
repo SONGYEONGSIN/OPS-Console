@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { ListRow } from "../../../patterns/ListPattern";
+import { BADGE_TONE } from "../badge-tone";
 
 type Props = {
   rows: ListRow[];
@@ -19,10 +20,10 @@ const STATUS_LABEL: Record<StatusKey, string> = {
 };
 
 const STATUS_TONE: Record<StatusKey, string> = {
-  none: "bg-washi-raised text-muted",
-  draft: "bg-vermilion/15 text-vermilion",
-  ready: "bg-sage/15 text-sage",
-  published: "bg-ink/10 text-ink",
+  none: BADGE_TONE.idle,
+  draft: BADGE_TONE.progress,
+  ready: BADGE_TONE.done,
+  published: BADGE_TONE.done,
 };
 
 export function HandoverTable({ rows }: Props) {

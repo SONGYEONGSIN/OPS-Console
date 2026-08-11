@@ -7,6 +7,7 @@ import {
   cancelHandoverProgress,
 } from "@/features/handover/progress-actions";
 import type { ProgressListRow } from "@/features/handover/progress-queries";
+import { BADGE_TONE } from "../_components/inspector/list-variants/badge-tone";
 
 type Props = {
   rows: ProgressListRow[];
@@ -19,9 +20,9 @@ const STATUS_LABEL: Record<ProgressListRow["status"], string> = {
   cancelled: "취소",
 };
 const STATUS_TONE: Record<ProgressListRow["status"], string> = {
-  in_progress: "bg-vermilion/15 text-vermilion",
-  completed: "bg-sage/15 text-sage",
-  cancelled: "bg-washi-raised text-muted",
+  in_progress: BADGE_TONE.progress,
+  completed: BADGE_TONE.done,
+  cancelled: BADGE_TONE.idle,
 };
 
 function formatTs(s: string): string {
