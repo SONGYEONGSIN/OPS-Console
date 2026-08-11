@@ -10,6 +10,7 @@ import type { EntertestRunStatus } from "@/features/entertest/schemas";
 import { operatorNameByEmail } from "@/features/auth/operators";
 import type { ViewProps } from "../types";
 import { Section, DefList, Divider } from "../shared";
+import { statusBadgeTone } from "../badge-tone";
 
 const STATUS_LABEL: Record<EntertestRunStatus, string> = {
   pending: "대기",
@@ -33,14 +34,10 @@ function fmtDate(iso: string | null | undefined): string {
 }
 
 function StatusBadge({ status }: { status: EntertestRunStatus }) {
-  const tone =
-    status === "done"
-      ? "text-ink bg-line-soft"
-      : status === "failed" || status === "error"
-        ? "text-paper bg-vermilion"
-        : "text-ink-soft bg-cream";
   return (
-    <span className={`inline-flex px-2 py-0.5 text-2xs ${tone}`}>
+    <span
+      className={`inline-flex px-2 py-0.5 text-2xs ${statusBadgeTone(STATUS_LABEL[status])}`}
+    >
       {STATUS_LABEL[status]}
     </span>
   );
@@ -165,7 +162,10 @@ export function DevTestView({ row }: ViewProps) {
             onClick={(e) => (e.target as HTMLInputElement).select()}
           />
           <span className="text-xs text-muted">실행</span>
-          <form action={runAction} className="flex flex-wrap items-center gap-2">
+          <form
+            action={runAction}
+            className="flex flex-wrap items-center gap-2"
+          >
             <input type="hidden" name="serviceId" value={serviceId} />
             <button
               type="submit"
@@ -194,7 +194,9 @@ export function DevTestView({ row }: ViewProps) {
 
       <Section title={`실행 이력 (${runs.length}건)`}>
         {runs.length === 0 ? (
-          <p className="text-xs text-muted">이 서비스의 실행 이력이 없습니다.</p>
+          <p className="text-xs text-muted">
+            이 서비스의 실행 이력이 없습니다.
+          </p>
         ) : (
           <ul className="divide-y divide-line-soft border-y border-line-soft">
             {runs.map((run) => {
@@ -215,7 +217,8 @@ export function DevTestView({ row }: ViewProps) {
                     </span>
                     {run.result && (
                       <span className="ml-auto text-ink">
-                        {run.result.summary.pass}/{run.result.summary.total} 통과
+                        {run.result.summary.pass}/{run.result.summary.total}{" "}
+                        통과
                       </span>
                     )}
                   </button>
