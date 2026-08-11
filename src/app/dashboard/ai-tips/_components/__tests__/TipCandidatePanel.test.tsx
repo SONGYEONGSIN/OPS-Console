@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { TipCandidatePanel } from "../TipCandidatePanel";
 import type { AiTipCandidateRow } from "@/features/ai-tip-candidates/schemas";
 
@@ -71,5 +71,21 @@ describe("TipCandidatePanel", () => {
       screen.getByRole("button", { name: "TIP으로 등록" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "숨김" })).toBeInTheDocument();
+  });
+
+  it("onPromote가 reject해도 버튼이 다시 활성화된다", async () => {
+    const onPromote = vi.fn().mockRejectedValue(new Error("network"));
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    render(
+      <TipCandidatePanel
+        candidates={[candidate()]}
+        onPromote={onPromote}
+        onHide={vi.fn()}
+      />,
+    );
+    const button = screen.getByRole("button", { name: "TIP으로 등록" });
+    fireEvent.click(button);
+    await waitFor(() => expect(button).not.toBeDisabled());
+    alertSpy.mockRestore();
   });
 });

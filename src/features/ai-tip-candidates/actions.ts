@@ -8,6 +8,10 @@ import { createAiTip } from "@/features/ai-tips/actions";
 const AI_TIPS_PATH = "/dashboard/ai-tips";
 const PERMISSION_ERROR = "권한 없음 — TIP 등록 권한이 없습니다.";
 const NOT_FOUND_ERROR = "후보를 찾을 수 없습니다.";
+// ai_tips 스키마 한도(title max 80, summary_md max 500) — 초안이든 폴백이든
+// 이 길이를 넘기면 createAiTip의 zod 파싱이 실패해 등록 자체가 막힌다.
+const TITLE_MAX_LENGTH = 80;
+const SUMMARY_MAX_LENGTH = 500;
 
 export type CandidateActionResult = { ok: boolean; error?: string };
 
@@ -15,6 +19,10 @@ async function canEdit(): Promise<boolean> {
   const me = await getCurrentOperator();
   if (!me) return false;
   return me.permission !== "viewer" && me.permission !== null;
+}
+
+function truncate(text: string, maxLength: number): string {
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
 }
 
 /**
@@ -36,12 +44,17 @@ export async function promoteCandidate(
   if (!c) return { ok: false, error: NOT_FOUND_ERROR };
 
   const created = await createAiTip({
-    title: c.draft_title ?? `GitHub: ${c.repo_full_name}`,
+    title: truncate(
+      c.draft_title ?? `GitHub: ${c.repo_full_name}`,
+      TITLE_MAX_LENGTH,
+    ),
     ai_tool: c.draft_ai_tool ?? "etc",
     category: c.draft_category ?? "automation",
-    summary_md:
+    summary_md: truncate(
       c.draft_summary_md ??
-      `${c.repo_description ?? c.repo_full_name}\n\n${c.repo_url}`,
+        `${c.repo_description ?? c.repo_full_name}\n\n${c.repo_url}`,
+      SUMMARY_MAX_LENGTH,
+    ),
     reuse_prompt:
       c.draft_reuse_prompt ??
       `${c.repo_url} 를 참고해 우리 업무에 적용할 방법을 정리해줘.`,

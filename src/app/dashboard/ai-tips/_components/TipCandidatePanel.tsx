@@ -19,9 +19,16 @@ export function TipCandidatePanel({ candidates, onPromote, onHide }: Props) {
     fn: (id: string) => Promise<{ ok: boolean; error?: string }>,
   ) => {
     setBusyId(id);
-    const res = await fn(id);
-    setBusyId(null);
-    if (!res.ok) window.alert(res.error ?? "처리에 실패했습니다.");
+    try {
+      const res = await fn(id);
+      if (!res.ok) window.alert(res.error ?? "처리에 실패했습니다.");
+    } catch {
+      // 세션 만료·타임아웃 등 액션 자체가 throw하는 경우 — 버튼이 영구히
+      // 잠기지 않도록 finally에서 busyId를 반드시 해제한다.
+      window.alert("처리 중 오류가 발생했습니다.");
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (

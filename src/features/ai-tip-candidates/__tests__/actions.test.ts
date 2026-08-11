@@ -108,6 +108,29 @@ describe("promoteCandidate", () => {
     expect((await promoteCandidate(candidate.id)).ok).toBe(false);
     expect(mockCreateAiTip).not.toHaveBeenCalled();
   });
+
+  it("리포명·설명이 길어도 TIP 스키마 길이 제한(title 80·summary_md 500)에 맞춰 자른다", async () => {
+    const longOwner = "o".repeat(60);
+    const longRepo = "r".repeat(100);
+    mockCandidateSelect.mockResolvedValue({
+      data: {
+        ...candidate,
+        repo_full_name: `${longOwner}/${longRepo}`,
+        repo_description: "d".repeat(400),
+        draft_title: null,
+        draft_summary_md: null,
+        draft_reuse_prompt: null,
+        draft_ai_tool: null,
+        draft_category: null,
+      },
+      error: null,
+    });
+    const res = await promoteCandidate(candidate.id);
+    expect(res.ok).toBe(true);
+    const arg = mockCreateAiTip.mock.calls[0][0];
+    expect(arg.title.length).toBeLessThanOrEqual(80);
+    expect(arg.summary_md.length).toBeLessThanOrEqual(500);
+  });
 });
 
 describe("hideCandidate", () => {
