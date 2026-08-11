@@ -57,3 +57,53 @@ describe("PostTable — 팀즈 발송여부 컬럼(post-notice)", () => {
     expect(screen.queryByText("팀즈 발송")).not.toBeInTheDocument();
   });
 });
+
+describe("PostTable — 공지일 컬럼(post-notice)", () => {
+  it("post-notice면 '공지일' 헤더가 있다", () => {
+    render(
+      <PostTable
+        variant="post-notice"
+        rows={[noticeRow()]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("공지일")).toBeInTheDocument();
+  });
+
+  it("공지일이 있으면 작성일과 같은 형식으로 보여준다", () => {
+    render(
+      <PostTable
+        variant="post-notice"
+        rows={[noticeRow({ noticeAnnounceOn: "2026-08-31" })]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("2026. 08. 31.")).toBeInTheDocument();
+  });
+
+  it("공지일이 없으면 '즉시' — 스키마상 null은 즉시 공지를 뜻한다", () => {
+    render(
+      <PostTable
+        variant="post-notice"
+        rows={[noticeRow({ noticeAnnounceOn: null })]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("즉시")).toBeInTheDocument();
+  });
+
+  it("post-feedback면 '공지일' 헤더가 없다", () => {
+    render(
+      <PostTable
+        variant="post-feedback"
+        rows={[noticeRow({ noticeAnnounceOn: "2026-08-31" })]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText("공지일")).not.toBeInTheDocument();
+  });
+});

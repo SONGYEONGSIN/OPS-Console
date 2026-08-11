@@ -69,6 +69,16 @@ export function postStatusLabel(
   return postLabelFor(variant)[status];
 }
 
+/**
+ * 공지일(announce_on, 'YYYY-MM-DD') → 작성일과 같은 표기('2026. 08. 31.').
+ * null은 스키마상 '즉시 공지'를 뜻하므로 '즉시'로 보여준다.
+ */
+export function formatAnnounceOn(value?: string | null): string {
+  if (!value) return "즉시";
+  const [y, m, d] = value.split("-");
+  return y && m && d ? `${y}. ${m}. ${d}.` : value;
+}
+
 export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
   return (
     <table className="w-full text-sm">
@@ -80,6 +90,7 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
           <th className="px-3 py-2">등록자</th>
           {variant === "post-feedback" && <th className="px-3 py-2">담당</th>}
           <th className="px-3 py-2">작성일</th>
+          {variant === "post-notice" && <th className="px-3 py-2">공지일</th>}
           {variant === "post-notice" && (
             <th className="px-3 py-2">팀즈 발송</th>
           )}
@@ -123,6 +134,11 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
               <td className="px-3 py-2 text-xs text-muted">
                 {row.meta ?? "-"}
               </td>
+              {variant === "post-notice" && (
+                <td className="px-3 py-2 text-xs text-muted">
+                  {formatAnnounceOn(row.noticeAnnounceOn)}
+                </td>
+              )}
               {variant === "post-notice" && (
                 <td className="px-3 py-2 text-xs">
                   {row.noticeSharedAt ? (
