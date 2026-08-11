@@ -100,6 +100,25 @@ const paidLabel = row.status === "approved" ? "수금" : "미수";
   테스트를 붙이는 방식으로는 '모르는 화면'을 못 잡는다. 렌더 지점 스캔 방식이 필요하고,
   그건 이 PR과 성격이 다르다
 
+### 명시적 이연 — 아직 규칙 밖인 상태 배지 3화면
+
+최종 리뷰가 **렌더 지점 훑기**(식별자 이름이 아니라 `className`의 `bg-*`+`text-*` 조합, 삼항식,
+클래스 문자열 반환 헬퍼)로 찾아냈다. 이 PR에 넣지 않고 후속으로 미룬다 —
+리뷰가 끝난 브랜치를 넓히지 않기 위해서다. **앱이 전부 전환됐다고 오해하지 않도록 여기 남긴다.**
+
+| 화면 | 위치 | 지금 상태 |
+|---|---|---|
+| 자동화 실행 로그 | `automations/_components/AutomationLogPanel.tsx` — `StatusBadge`(L89) / `WeeklyStatusBadge`(L292) / `ClosingStatusBadge`(L357) / `RunStatusBadge`(L454) | 삼항식 4개. 이 PR이 지운 옛 미수채권 팔레트(`bg-vermilion/20 text-vermilion-deep` 등)를 그대로 씀 → 같은 `실패`가 자동화 화면은 연빨강, 개발 테스트는 짙은 빨강 |
+| 개발 제어 | `list-variants/dev-control/View.tsx:145-154` | `분석 중`이 `bg-ink text-cream` — **완료 색**이다. 검정은 앱 전체에서 '끝남'인데 실행 중인 작업이 그 색이다. 형제 변형인 개발 테스트는 `실행 중`을 빨강으로 칠한다 |
+| 인수인계 위저드 | `list-variants/handover/CollapsibleField.tsx:35-40` | `미작성`이 `bg-vermilion text-cream`(진행). 같은 기능의 목록(`handover/Table.tsx`)은 `미작성`을 대기(회색)로 칠한다 |
+
+**후속 PR의 함정 — `성공`을 먼저 규칙에 넣어야 한다.** 자동화 로그의 라벨(성공 / 발송 / 스킵 /
+off주 / DRY-RUN / 생성)은 현재 규칙이 전부 모른다. `성공`을 완료 규칙에 넣지 않고 전환하면
+바로 옆 짙은 빨강 `실패` 옆에서 회색으로 떨어진다 — `오류` 때와 똑같은 실수를 반복하게 된다.
+배정 제안: 성공·발송 → 완료 / 스킵·off주·DRY-RUN·생성 → 대기.
+
+`_components/Content.tsx`의 장애·정상·주의 배지는 **importer가 없는 데모 코드**라 제외한다.
+
 ## 검증
 
 - `badge-tone.test.ts` — 새 라벨 3개(오류·미수·수금)가 기대 버킷을 돌려주는지. `장애` 때와 동일 패턴
