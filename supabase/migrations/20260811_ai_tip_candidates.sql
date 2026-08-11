@@ -18,11 +18,16 @@ create table if not exists public.ai_tip_candidates (
   draft_ai_tool       text,
   draft_category      text,
   status              text not null default 'pending',
-  collected_at        timestamptz not null default now(),
-  -- 컬럼 인라인 대신 테이블 레벨 제약 — team_briefings 마이그레이션과 같은 형태.
-  constraint ai_tip_candidates_status_check
-    check (status in ('pending', 'promoted', 'hidden'))
+  collected_at        timestamptz not null default now()
 );
+
+-- status 제약은 별도 문장으로 분리 — team_briefings 마이그레이션과 같은 형태.
+-- create table 안에 인라인으로 두면 SQL 에디터 붙여넣기에서 잘려 나가는 사고가 있었다.
+alter table public.ai_tip_candidates
+  drop constraint if exists ai_tip_candidates_status_check;
+alter table public.ai_tip_candidates
+  add constraint ai_tip_candidates_status_check
+  check (status in ('pending', 'promoted', 'hidden'));
 
 -- 후보 패널은 pending만 최신순으로 읽는다.
 create index if not exists ai_tip_candidates_status_collected_idx
