@@ -1,7 +1,7 @@
 "use client";
 
 import type { ListRow } from "../../../patterns/ListPattern";
-import { STATUS_COLOR } from "../status";
+import { statusBadgeTone } from "../badge-tone";
 
 type PostVariant = "post-feedback" | "post-notice";
 
@@ -14,7 +14,7 @@ type Props = {
 
 /**
  * post-feedback 4단계 흐름 — 등록자가 글 등록(요청) → admin이 확인 → 처리중 → 처리완료.
- * STATUS_COLOR는 의미 일관(urgent=red 강조 / approved=muted 종료)이라 그대로 사용.
+ * 색은 라벨 기준(statusBadgeTone) — 같은 enum을 피드백/공지가 다른 라벨로 쓰기 때문이다.
  */
 const FEEDBACK_STATUS_LABEL: Record<ListRow["status"], string> = {
   urgent: "요청",
@@ -107,7 +107,7 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
               <td className="px-3 py-2 font-medium text-ink">{row.name}</td>
               <td className="px-3 py-2">
                 <span
-                  className={`inline-block px-2 py-0.5 text-xs ${STATUS_COLOR[row.status]}`}
+                  className={`inline-block px-2 py-0.5 text-xs ${statusBadgeTone(postStatusLabel(variant, row.status))}`}
                 >
                   {postStatusLabel(variant, row.status)}
                 </span>

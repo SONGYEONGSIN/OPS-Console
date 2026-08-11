@@ -1,4 +1,5 @@
 import type { ListRow } from "../../patterns/ListPattern";
+import { BADGE_TONE } from "./badge-tone";
 
 /**
  * ListPattern variant 테이블 + InspectorPanel header 공통 상태 표기.
@@ -16,13 +17,13 @@ export const STATUS_LABEL: Record<ListRow["status"], string> = {
 };
 
 export const STATUS_COLOR: Record<ListRow["status"], string> = {
-  urgent: "bg-vermilion text-cream",
-  approved: "bg-line-soft text-muted",
-  review: "bg-gold/20 text-gold",
-  active: "bg-sage/20 text-sage",
-  inactive: "bg-gold/20 text-gold",
-  suspended: "bg-vermilion/20 text-vermilion",
-  deleted: "bg-ink/20 text-ink-soft",
+  urgent: BADGE_TONE.attention,
+  approved: BADGE_TONE.idle,
+  review: BADGE_TONE.progress,
+  active: BADGE_TONE.idle,
+  inactive: BADGE_TONE.progress,
+  suspended: BADGE_TONE.attention,
+  deleted: BADGE_TONE.idle,
 };
 
 export const STATUS_RING: Record<ListRow["status"], string> = {

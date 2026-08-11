@@ -1,16 +1,7 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import { Section, DefList, Divider } from "../shared";
 import { postStatusLabel } from "./Table";
-
-const STATUS_BADGE: Record<ListRow["status"], string> = {
-  urgent: "bg-vermilion text-cream",
-  active: "bg-sage/20 text-sage",
-  review: "bg-gold/20 text-gold",
-  approved: "bg-line-soft text-muted",
-  inactive: "bg-gold/20 text-gold",
-  suspended: "bg-vermilion/20 text-vermilion",
-  deleted: "bg-ink/20 text-ink-soft",
-};
+import { statusBadgeTone } from "../badge-tone";
 
 export function PostView({
   row,
@@ -20,7 +11,7 @@ export function PostView({
   variant: "post-feedback" | "post-notice";
 }) {
   const statusLabel = postStatusLabel(variant, row.status);
-  const statusColor = STATUS_BADGE[row.status];
+  const statusColor = statusBadgeTone(statusLabel);
 
   return (
     <div className="space-y-6">

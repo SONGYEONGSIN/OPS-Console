@@ -8,6 +8,7 @@ import {
 } from "@/features/auth/operators";
 import { PERMISSION_LABEL } from "@/features/operators/schemas";
 import { Section, DefList, Divider } from "../shared";
+import { statusBadgeTone } from "../badge-tone";
 
 const STATUS_LABEL: Record<ListRow["status"], string> = {
   urgent: "장애",
@@ -17,16 +18,6 @@ const STATUS_LABEL: Record<ListRow["status"], string> = {
   inactive: "점검중",
   suspended: "정지",
   deleted: "삭제",
-};
-
-const STATUS_BADGE: Record<ListRow["status"], string> = {
-  urgent: "bg-vermilion text-cream",
-  active: "bg-sage/20 text-sage",
-  review: "bg-gold/20 text-gold",
-  approved: "bg-line-soft text-muted",
-  inactive: "bg-gold/20 text-gold",
-  suspended: "bg-vermilion/20 text-vermilion",
-  deleted: "bg-ink/20 text-ink-soft",
 };
 
 function roleToPermission(role: string): string {
@@ -64,7 +55,7 @@ function peersOf(op: { team: string; email: string }): string[] {
 
 export function TeamView({ row }: ViewProps) {
   const statusLabel = STATUS_LABEL[row.status];
-  const statusColor = STATUS_BADGE[row.status];
+  const statusColor = statusBadgeTone(statusLabel);
   const op = OPERATORS.find((x) => x.email === row.id);
 
   if (!op) {
@@ -73,7 +64,10 @@ export function TeamView({ row }: ViewProps) {
         <Section title="계정 정보">
           <DefList
             items={[
-              { term: "이름", desc: <strong className="font-semibold">{row.name}</strong> },
+              {
+                term: "이름",
+                desc: <strong className="font-semibold">{row.name}</strong>,
+              },
               { term: "이메일", desc: row.id },
               {
                 term: "시스템 권한",
@@ -90,7 +84,9 @@ export function TeamView({ row }: ViewProps) {
               {
                 term: "상태",
                 desc: (
-                  <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
+                  <span
+                    className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}
+                  >
                     {statusLabel}
                   </span>
                 ),
@@ -111,8 +107,14 @@ export function TeamView({ row }: ViewProps) {
       <Section title="인사 정보">
         <DefList
           items={[
-            { term: "사번", desc: <span className="tabular-nums">{op.empNo}</span> },
-            { term: "이름", desc: <strong className="font-semibold">{op.name}</strong> },
+            {
+              term: "사번",
+              desc: <span className="tabular-nums">{op.empNo}</span>,
+            },
+            {
+              term: "이름",
+              desc: <strong className="font-semibold">{op.name}</strong>,
+            },
             { term: "성별", desc: op.gender },
             { term: "생년월일", desc: `${op.birthDate} (만 ${age}세)` },
             { term: "본부", desc: op.division },
@@ -122,7 +124,9 @@ export function TeamView({ row }: ViewProps) {
             {
               term: "상태",
               desc: (
-                <span className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}>
+                <span
+                  className={`inline-block px-2 py-0.5 text-xs ${statusColor}`}
+                >
                   {statusLabel}
                 </span>
               ),

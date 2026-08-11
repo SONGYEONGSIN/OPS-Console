@@ -6,14 +6,15 @@ import { OPERATORS, ageOf, tenureLabel } from "@/features/auth/operators";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 import { CohortChecklistPanel } from "./ChecklistPanel";
+import { BADGE_TONE } from "../badge-tone";
 
 const COHORT_STATUS_VIEW_LABEL: Record<
   NonNullable<ListRow["cohortStatus"]>,
   { label: string; color: string }
 > = {
-  planned: { label: "계획", color: "bg-line-soft text-muted" },
-  in_progress: { label: "진행중", color: "bg-vermilion text-cream" },
-  completed: { label: "완료", color: "bg-washi-raised text-ink" },
+  planned: { label: "계획", color: BADGE_TONE.idle },
+  in_progress: { label: "진행중", color: BADGE_TONE.progress },
+  completed: { label: "완료", color: BADGE_TONE.done },
 };
 
 function TabButton({

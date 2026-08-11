@@ -15,12 +15,13 @@ import {
   isReportLiveMirrored,
   type IncidentReportRow,
 } from "@/features/incident-reports/schemas";
+import { BADGE_TONE } from "../badge-tone";
 
 const STATUS_TONE = {
-  미처리: "bg-washi-raised text-muted",
-  처리중: "bg-vermilion/15 text-vermilion",
-  처리완료: "bg-ink text-cream",
-  보류: "bg-washi-raised text-ink-soft",
+  미처리: BADGE_TONE.idle,
+  처리중: BADGE_TONE.progress,
+  처리완료: BADGE_TONE.done,
+  보류: BADGE_TONE.idle,
 } as const;
 
 /** 본문 텍스트 블록 — 비어있으면 "—" */

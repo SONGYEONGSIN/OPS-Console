@@ -4,6 +4,7 @@ import type { ListRow } from "../../../patterns/ListPattern";
 import { QUOTE_STATUS_LABEL } from "@/features/quotes/schemas";
 import { operatorNameByEmail } from "@/features/auth/operators";
 import { formatKrw } from "./filters";
+import { BADGE_TONE } from "../badge-tone";
 
 type Props = {
   rows: ListRow[];
@@ -12,10 +13,10 @@ type Props = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  draft: "bg-washi-raised text-muted",
-  sent: "bg-vermilion/15 text-vermilion",
-  won: "bg-sage/15 text-sage",
-  lost: "bg-washi-raised text-ink-soft",
+  draft: BADGE_TONE.progress,
+  sent: BADGE_TONE.idle,
+  won: BADGE_TONE.done,
+  lost: BADGE_TONE.idle,
 };
 
 export function QuoteTable({ rows, selectedId, onSelect }: Props) {

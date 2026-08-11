@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 import { ResendMailButton } from "./ResendMailButton";
+import { BADGE_TONE } from "../badge-tone";
 
 const MAIL_STATUS_LABEL = {
   pending: "대기",
@@ -13,12 +14,12 @@ const MAIL_STATUS_LABEL = {
 } as const;
 
 const MAIL_STATUS_TONE = {
-  pending: "bg-washi-raised text-muted",
-  scheduled: "bg-vermilion text-cream",
-  sending: "bg-washi-raised text-ink-soft",
-  sent: "bg-ink text-cream",
-  mail_failed: "bg-vermilion/15 text-vermilion",
-  dry_run: "bg-washi-raised text-ink-soft",
+  pending: BADGE_TONE.idle,
+  scheduled: BADGE_TONE.idle,
+  sending: BADGE_TONE.progress,
+  sent: BADGE_TONE.done,
+  mail_failed: BADGE_TONE.attention,
+  dry_run: BADGE_TONE.idle,
 } as const;
 
 export function BackupView({ row }: ViewProps) {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ListRow } from "../../../patterns/ListPattern";
+import { BADGE_TONE } from "../badge-tone";
 
 type Props = {
   rows: ListRow[];
@@ -64,12 +65,12 @@ function formatYmdHmKst(iso: string): string {
 
 /** 백업 mail_status → 목록 배지. backup/View.tsx 라벨·톤과 일치. */
 const MAIL_STATUS_BADGE: Record<string, { label: string; tone: string }> = {
-  pending: { label: "대기", tone: "bg-washi-raised text-muted" },
-  scheduled: { label: "예약완료", tone: "bg-vermilion text-cream" },
-  sending: { label: "발송 중", tone: "bg-washi-raised text-ink-soft" },
-  sent: { label: "발송완료", tone: "bg-ink text-cream" },
-  mail_failed: { label: "발송 실패", tone: "bg-vermilion/15 text-vermilion" },
-  dry_run: { label: "테스트", tone: "bg-washi-raised text-ink-soft" },
+  pending: { label: "대기", tone: BADGE_TONE.idle },
+  scheduled: { label: "예약완료", tone: BADGE_TONE.idle },
+  sending: { label: "발송 중", tone: BADGE_TONE.progress },
+  sent: { label: "발송완료", tone: BADGE_TONE.done },
+  mail_failed: { label: "발송 실패", tone: BADGE_TONE.attention },
+  dry_run: { label: "테스트", tone: BADGE_TONE.idle },
 };
 
 function StatusBadge({ status }: { status?: string }) {

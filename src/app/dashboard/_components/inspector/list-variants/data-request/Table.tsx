@@ -1,6 +1,7 @@
 "use client";
 
 import type { ListRow } from "../../../patterns/ListPattern";
+import { BADGE_TONE } from "../badge-tone";
 
 function formatMonthDay(iso?: string | null): string {
   if (!iso) return "—";
@@ -45,13 +46,13 @@ export function isWriteStartPast(
 function StatusBadge({ status }: { status?: "scheduled" | "sent" | null }) {
   if (status === "scheduled")
     return (
-      <span className="inline-block bg-vermilion px-2 py-0.5 text-2xs text-cream">
+      <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.idle}`}>
         예약완료
       </span>
     );
   if (status === "sent")
     return (
-      <span className="inline-block bg-ink px-2 py-0.5 text-2xs text-cream">
+      <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.done}`}>
         발송완료
       </span>
     );

@@ -3,6 +3,7 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import { REPORT_STATUS_LABEL } from "@/features/incident-reports/schemas";
 import { STATUS_TONE as REPORT_STATUS_TONE } from "../incident-reports/status";
+import { BADGE_TONE } from "../badge-tone";
 
 type Props = {
   rows: ListRow[];
@@ -11,10 +12,10 @@ type Props = {
 };
 
 const STATUS_TONE = {
-  미처리: "bg-washi-raised text-muted",
-  처리중: "bg-vermilion/15 text-vermilion",
-  처리완료: "bg-ink text-cream",
-  보류: "bg-washi-raised text-ink-soft",
+  미처리: BADGE_TONE.idle,
+  처리중: BADGE_TONE.progress,
+  처리완료: BADGE_TONE.done,
+  보류: BADGE_TONE.idle,
 } as const;
 
 export function IncidentTable({ rows, selectedId, onSelect }: Props) {
