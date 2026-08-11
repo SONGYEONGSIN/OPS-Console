@@ -5,6 +5,7 @@ import type {
   EntertestRun,
   EntertestRunStatus,
 } from "@/features/entertest/schemas";
+import { statusBadgeTone } from "../badge-tone";
 
 type Props = {
   rows: ListRow[];
@@ -24,12 +25,6 @@ const STATUS_LABEL: Record<EntertestRunStatus, string> = {
 function latestRun(runs?: EntertestRun[]): EntertestRun | null {
   if (!runs || runs.length === 0) return null;
   return runs.reduce((a, b) => (a.requested_at >= b.requested_at ? a : b));
-}
-
-function statusTone(status: EntertestRunStatus): string {
-  if (status === "done") return "bg-line-soft text-ink";
-  if (status === "failed" || status === "error") return "bg-vermilion text-paper";
-  return "bg-cream text-ink-soft";
 }
 
 export function DevTestTable({ rows, selectedId, onSelect }: Props) {
@@ -93,7 +88,7 @@ export function DevTestTable({ rows, selectedId, onSelect }: Props) {
                 <td className="px-3 py-2">
                   {latest ? (
                     <span
-                      className={`inline-block px-2 py-0.5 text-xs ${statusTone(latest.status)}`}
+                      className={`inline-block px-2 py-0.5 text-xs ${statusBadgeTone(STATUS_LABEL[latest.status])}`}
                     >
                       {STATUS_LABEL[latest.status]}
                     </span>

@@ -13,7 +13,16 @@ describe("BADGE_TONE", () => {
 });
 
 describe("statusBadgeTone — 주의", () => {
-  for (const label of ["긴급", "장애", "발송 실패", "반려", "중단", "정지"]) {
+  for (const label of [
+    "긴급",
+    "장애",
+    "오류",
+    "미수",
+    "발송 실패",
+    "반려",
+    "중단",
+    "정지",
+  ]) {
     it(`${label} → attention`, () => {
       expect(statusBadgeTone(label)).toBe(BADGE_TONE.attention);
     });
@@ -50,6 +59,7 @@ describe("statusBadgeTone — 완료", () => {
     "승인완료",
     "발송완료",
     "수주",
+    "수금",
   ]) {
     it(`${label} → done`, () => {
       expect(statusBadgeTone(label)).toBe(BADGE_TONE.done);

@@ -8,6 +8,7 @@ vi.mock("@/features/entertest/actions", () => ({
 
 import { DevTestView } from "../View";
 import type { ListRow } from "../../../../patterns/ListPattern";
+import { BADGE_TONE } from "../../badge-tone";
 
 const row: ListRow = {
   id: "s-1",
@@ -46,5 +47,40 @@ describe("DevTestView", () => {
     render(<DevTestView row={row} />);
     expect(screen.getByText("테스트 대역 계정")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "수정" })).toBeInTheDocument();
+  });
+});
+
+type Run = ListRow["entertestRuns"] extends (infer R)[] ? R : never;
+
+function runWith(status: string): Run {
+  return {
+    id: "r1",
+    service_id: 1,
+    status,
+    requested_by: "kim",
+    requested_at: "2026-06-18T09:00:00Z",
+    result: null,
+    error_message: null,
+  } as Run;
+}
+
+describe("DevTestView — 상태 배지 톤", () => {
+  it("완료는 완료 톤(검정)이다", () => {
+    render(<DevTestView row={{ ...row, entertestRuns: [runWith("done")] }} />);
+    expect(screen.getByText("완료").className).toContain(BADGE_TONE.done);
+  });
+
+  it("오류는 주의 톤이다 — 실패와 같은 색이어야 한다", () => {
+    render(<DevTestView row={{ ...row, entertestRuns: [runWith("error")] }} />);
+    expect(screen.getByText("오류").className).toContain(BADGE_TONE.attention);
+  });
+
+  it("실행 중은 진행 톤이다", () => {
+    render(
+      <DevTestView row={{ ...row, entertestRuns: [runWith("running")] }} />,
+    );
+    expect(screen.getByText("실행 중").className).toContain(
+      BADGE_TONE.progress,
+    );
   });
 });
