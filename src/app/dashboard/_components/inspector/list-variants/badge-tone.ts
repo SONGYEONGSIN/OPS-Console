@@ -24,7 +24,7 @@ const DONE_EXCLUDED = new Set(["예약완료"]);
 /** '완료/종료' 문구가 없지만 정상 종료인 라벨. */
 const DONE_EXTRA = new Set(["수주"]);
 
-const ATTENTION = new Set(["긴급", "반려", "중단", "정지"]);
+const ATTENTION = new Set(["긴급", "장애", "반려", "중단", "정지"]);
 
 /**
  * 상태 라벨 → 배지 톤 클래스. 위에서부터 먼저 맞는 규칙을 적용한다.

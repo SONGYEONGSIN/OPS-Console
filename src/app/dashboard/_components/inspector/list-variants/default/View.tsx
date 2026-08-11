@@ -1,5 +1,6 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import { Section, DefList, Divider } from "../shared";
+import { statusBadgeTone } from "../badge-tone";
 
 const STATUS_LABEL: Record<ListRow["status"], string> = {
   urgent: "장애",
@@ -11,30 +12,23 @@ const STATUS_LABEL: Record<ListRow["status"], string> = {
   deleted: "삭제",
 };
 
-const STATUS_BADGE: Record<ListRow["status"], string> = {
-  urgent: "bg-vermilion text-cream",
-  active: "bg-sage/20 text-sage",
-  review: "bg-gold/20 text-gold",
-  approved: "bg-line-soft text-muted",
-  inactive: "bg-gold/20 text-gold",
-  suspended: "bg-vermilion/20 text-vermilion",
-  deleted: "bg-ink/20 text-ink-soft",
-};
-
 /**
  * 서비스 대시보드 인스펙터 — mockup 3섹션 풍부 구조.
  * default variant의 fallback view (운영 메뉴 mock 데이터 포함).
  */
 export function ServiceView({ row }: { row: ListRow }) {
   const statusLabel = STATUS_LABEL[row.status];
-  const statusColor = STATUS_BADGE[row.status];
+  const statusColor = statusBadgeTone(statusLabel);
 
   return (
     <div className="space-y-6">
       <Section title="속성">
         <DefList
           items={[
-            { term: "항목 ID", desc: <span className="font-mono">{row.id}</span> },
+            {
+              term: "항목 ID",
+              desc: <span className="font-mono">{row.id}</span>,
+            },
             { term: "네임스페이스", desc: "ops / 운영" },
             { term: "담당", desc: row.owner },
             { term: "포트", desc: ":8080 HTTP · :9000 gRPC" },
@@ -63,7 +57,8 @@ export function ServiceView({ row }: { row: ListRow }) {
               term: "처리량",
               desc: (
                 <span>
-                  12,480 req/s <span className="text-sage">▲ 8.2%</span> 전일 대비
+                  12,480 req/s <span className="text-sage">▲ 8.2%</span> 전일
+                  대비
                 </span>
               ),
             },
