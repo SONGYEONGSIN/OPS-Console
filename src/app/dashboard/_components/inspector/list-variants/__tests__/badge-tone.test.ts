@@ -128,3 +128,29 @@ describe("공용 STATUS_COLOR", () => {
     }
   });
 });
+
+import { STATUS_TONE as REPORT_STATUS_TONE } from "../incident-reports/status";
+import { MEETING_STATUS_TONE } from "../meetings/status";
+
+describe("경위서·회의록 상태 톤", () => {
+  const tones: string[] = Object.values(BADGE_TONE);
+
+  it("경위서: 모든 값이 BADGE_TONE 중 하나다", () => {
+    for (const [key, cls] of Object.entries(REPORT_STATUS_TONE)) {
+      expect(tones, `${key}가 규칙 밖 색을 쓴다`).toContain(cls);
+    }
+  });
+
+  it("경위서: 반려는 주의, 승인완료·발송완료는 완료다", () => {
+    expect(REPORT_STATUS_TONE.rejected).toBe(BADGE_TONE.attention);
+    expect(REPORT_STATUS_TONE.approved).toBe(BADGE_TONE.done);
+    expect(REPORT_STATUS_TONE.sent).toBe(BADGE_TONE.done);
+    expect(REPORT_STATUS_TONE.draft).toBe(BADGE_TONE.progress);
+    expect(REPORT_STATUS_TONE.pending_approval).toBe(BADGE_TONE.idle);
+  });
+
+  it("회의록: 작성 중은 진행, 발송은 완료다", () => {
+    expect(MEETING_STATUS_TONE.draft).toBe(BADGE_TONE.progress);
+    expect(MEETING_STATUS_TONE.sent).toBe(BADGE_TONE.done);
+  });
+});
