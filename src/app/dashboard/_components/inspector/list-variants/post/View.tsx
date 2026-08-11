@@ -1,6 +1,6 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import { Section, DefList, Divider } from "../shared";
-import { postStatusLabel } from "./Table";
+import { formatAnnounceOn, postStatusLabel } from "./Table";
 import { statusBadgeTone } from "../badge-tone";
 
 export function PostView({
@@ -26,6 +26,15 @@ export function PostView({
             },
             { term: "등록자", desc: row.author || "-" },
             { term: "작성일", desc: row.meta ?? "-" },
+            // 공지일은 공지사항에만 있는 개념 — 의견·건의에는 항목 자체를 두지 않는다.
+            ...(variant === "post-notice"
+              ? [
+                  {
+                    term: "공지일",
+                    desc: formatAnnounceOn(row.noticeAnnounceOn),
+                  },
+                ]
+              : []),
             {
               term: "상태",
               desc: (
