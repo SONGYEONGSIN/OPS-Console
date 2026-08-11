@@ -69,7 +69,7 @@ export function statusBadgeTone(label: string): string;
 
 | 버킷 | 라벨 |
 |---|---|
-| **주의** (vermilion-deep) | 긴급, 발송 실패, 반려, 중단, 정지 |
+| **주의** (vermilion-deep) | 긴급, 장애, 발송 실패, 반려, 중단, 정지 |
 | **진행** (vermilion) | 진행중, 진행 중, 진행, 처리중, 점검중, 작성중, 작성 중, 실행 중, 발송 중, 분석 중, 확인 |
 | **완료** (ink) | 처리완료, 완료, 종료, 작성완료, 인계완료, 승인완료, 발송완료, 수주 |
 | **대기** (line-soft) | 요청, 활성, 정상, 보류, 예약, 예약완료, 삭제, 미작성, 미처리, 취소, 계획, 대기, 검토, 승인대기, 발송, 실주, 테스트 |
@@ -130,6 +130,28 @@ export function statusBadgeTone(label: string): string;
 `LED_COLOR`, `DOT_COLOR`. 같은 색으로 통일하면 오히려 상태와 분류가 섞인다.
 
 `STATUS_RING`(공용, 점 표시)도 이번 범위 밖이다 — 배지 배경이 아니라 도트 색이고, 규칙이 다르다.
+
+### 조사 누락 (2026-08-11 구현 중 발견, 보강)
+
+위 목록은 `_COLOR`/`_TONE` 이름으로만 훑어 만든 것이라 **`STATUS_BADGE` 계열 4곳을 빠뜨렸다.**
+그대로 두면 같은 상태가 목록과 상세에서 다른 색이 되어, 이 설계가 없애려던 문제를 새로 만든다.
+계획의 Task 4b가 닫는다.
+
+| 파일 | 맵 | 문제 |
+|---|---|---|
+| `backup/Table.tsx` | `MAIL_STATUS_BADGE` | `backup/View.tsx`와 같은 6개 상태인데 옛 톤 유지 → 목록·상세 불일치 |
+| `default/View.tsx` | `STATUS_BADGE` | 공용 `status.ts`를 안 쓰고 자체 복제본 보유 |
+| `post/View.tsx` | `STATUS_BADGE` | 같음. 목록은 라벨 기준으로 옮겼는데 상세만 남음 |
+| `team/View.tsx` | `STATUS_BADGE` | 같음 |
+
+세 `View.tsx`는 전부 `statusLabel`을 바로 위에서 계산하고 있어, 로컬 맵을 **지우고**
+`statusBadgeTone(statusLabel)`로 바꾸는 게 맞다. 값만 갈아끼우면 중복이 남는다.
+
+**`장애` 라벨이 규칙에 없었다.** `default`·`team` 상세가 `urgent`를 "장애"로 부르는데
+주의 집합에 없어 그레이로 떨어진다. `ATTENTION`에 추가한다.
+
+**`cohort/Table.tsx`의 `inviteBadgeClass`(수락됨/수락 대기/미초대)는 범위 밖으로 둔다** —
+초대 진행도라는 다른 축이고, 세 라벨 모두 4버킷에서는 `idle` 하나로 뭉쳐 구분이 사라진다.
 
 ## 선례
 

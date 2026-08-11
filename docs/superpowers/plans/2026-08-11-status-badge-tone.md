@@ -607,6 +607,135 @@ git commit -m "refactor: 인수인계·견적·기수·백업·개선안 배지�
 
 ---
 
+### Task 4b: 설계가 놓친 상태 배지 4곳
+
+Task 4 구현 중 발견. 설계 단계 조사가 `_COLOR`/`_TONE` 이름만 훑어 **`STATUS_BADGE` 계열을 통째로 놓쳤다.**
+그 결과 지금 브랜치에는 **같은 상태가 목록과 상세에서 다른 색으로 보이는 불일치**가 있다 — 이 계획이
+없애려던 바로 그 문제를 새로 만든 셈이라 머지 전에 반드시 닫는다.
+
+**Files:**
+- Modify: `src/app/dashboard/_components/inspector/list-variants/badge-tone.ts` (`ATTENTION`에 `장애` 추가)
+- Modify: `src/app/dashboard/_components/inspector/list-variants/__tests__/badge-tone.test.ts`
+- Modify: `src/app/dashboard/_components/inspector/list-variants/backup/Table.tsx:66-73`
+- Modify: `src/app/dashboard/_components/inspector/list-variants/default/View.tsx:14-22,30`
+- Modify: `src/app/dashboard/_components/inspector/list-variants/post/View.tsx:5-13,23`
+- Modify: `src/app/dashboard/_components/inspector/list-variants/team/View.tsx:22-30,67`
+
+**Interfaces:**
+- Consumes: `BADGE_TONE`, `statusBadgeTone` (Task 1)
+- Produces: 없음
+
+**범위 밖으로 남기는 것** — `cohort/Table.tsx`의 `inviteBadgeClass`(수락됨 / 수락 대기 / 미초대).
+초대 진행도라는 다른 축이고, 세 라벨 모두 4버킷 규칙으로는 `idle` 하나로 뭉쳐 구분이 사라진다.
+상태 배지가 아니므로 건드리지 않는다.
+
+- [ ] **Step 1: `장애` 규칙 테스트 추가 (RED)**
+
+`default/View.tsx`와 `team/View.tsx`는 `urgent`를 **"장애"** 로 부른다. 현재 규칙에 없어 그레이로 떨어진다 —
+장애가 대기 상태와 같은 색이면 안 된다. `__tests__/badge-tone.test.ts`의 "주의" describe 블록 배열에
+`"장애"`를 추가한다. 기존 배열:
+
+```ts
+  for (const label of ["긴급", "발송 실패", "반려", "중단", "정지"]) {
+```
+
+바꾼 뒤:
+
+```ts
+  for (const label of ["긴급", "장애", "발송 실패", "반려", "중단", "정지"]) {
+```
+
+- [ ] **Step 2: 테스트 실행 — 실패 확인**
+
+Run: `npx vitest run src/app/dashboard/_components/inspector/list-variants/__tests__/badge-tone.test.ts`
+Expected: FAIL — `장애 → attention` 1건만 실패(현재 idle을 돌려준다)
+
+- [ ] **Step 3: 규칙에 `장애` 추가**
+
+`badge-tone.ts`의 `ATTENTION` Set 한 줄만 고친다.
+
+```ts
+const ATTENTION = new Set(["긴급", "장애", "반려", "중단", "정지"]);
+```
+
+Run: `npx vitest run src/app/dashboard/_components/inspector/list-variants/__tests__/badge-tone.test.ts`
+Expected: PASS
+
+- [ ] **Step 4: 상세 패널 3곳에서 중복 맵 제거**
+
+세 파일 모두 `statusLabel`을 바로 위에서 이미 계산하고 있다. 로컬 `STATUS_BADGE` 맵을 **삭제**하고
+색을 라벨에서 뽑는다. 맵을 `BADGE_TONE` 값으로 고쳐 쓰지 마라 — 중복이 남는다.
+
+`default/View.tsx` — 14-22행 `STATUS_BADGE` 선언 삭제, import 추가, 30행 교체:
+
+```ts
+import { statusBadgeTone } from "../badge-tone";
+```
+```ts
+  const statusColor = statusBadgeTone(statusLabel);
+```
+
+`post/View.tsx` — 5-13행 `STATUS_BADGE` 선언 삭제, import 추가, 23행 교체. `statusLabel`은
+22행에서 `postStatusLabel(variant, row.status)`로 이미 계산돼 있다:
+
+```ts
+import { statusBadgeTone } from "../badge-tone";
+```
+```ts
+  const statusColor = statusBadgeTone(statusLabel);
+```
+
+`team/View.tsx` — 22-30행 `STATUS_BADGE` 선언 삭제, import 추가, 67행 교체. 이 파일의
+`STATUS_LABEL`(12-20행, `urgent: "장애"`)은 **그대로 둔다**:
+
+```ts
+import { statusBadgeTone } from "../badge-tone";
+```
+```ts
+  const statusColor = statusBadgeTone(statusLabel);
+```
+
+- [ ] **Step 5: 백업 목록 배지 톤 교체**
+
+`backup/Table.tsx`의 `MAIL_STATUS_BADGE`는 `{ label, tone }` 구조라 앞의 맵들과 형태가 다르다.
+**`tone` 값만** 바꾸고 `label`은 손대지 않는다. `backup/View.tsx`(Task 4에서 이미 고침)와 같은 배정이어야 한다:
+
+```ts
+import { BADGE_TONE } from "../badge-tone";
+```
+```ts
+/** 백업 mail_status → 목록 배지. backup/View.tsx 라벨·톤과 일치. */
+const MAIL_STATUS_BADGE: Record<string, { label: string; tone: string }> = {
+  pending: { label: "대기", tone: BADGE_TONE.idle },
+  scheduled: { label: "예약완료", tone: BADGE_TONE.idle },
+  sending: { label: "발송 중", tone: BADGE_TONE.progress },
+  sent: { label: "발송완료", tone: BADGE_TONE.done },
+  mail_failed: { label: "발송 실패", tone: BADGE_TONE.attention },
+  dry_run: { label: "테스트", tone: BADGE_TONE.idle },
+};
+```
+
+- [ ] **Step 6: 누락 없는지 재확인**
+
+Run:
+```bash
+grep -rn "STATUS_BADGE\|_BADGE:" --include=*.tsx --include=*.ts src/app/dashboard/ | grep -v "__tests__"
+```
+Expected: `backup/Table.tsx`의 `MAIL_STATUS_BADGE`(이제 `BADGE_TONE` 사용)만 남는다.
+`default/View.tsx` / `post/View.tsx` / `team/View.tsx`의 히트는 0이어야 한다 — 선언을 지웠으므로.
+
+Run: `npx vitest run src/app/dashboard/_components/inspector/list-variants/` 및 `npm run typecheck`
+Expected: 테스트 전부 통과, 타입 에러 0
+
+- [ ] **Step 7: 커밋**
+
+```bash
+git add src/app/dashboard/_components/inspector/list-variants/
+git commit -m "fix: 목록·상세 배지 색 불일치 해소 (설계 조사 누락분)"
+```
+
+---
+
 ### Task 5: 전체 검증
 
 **Files:** 없음 (검증 전용)
