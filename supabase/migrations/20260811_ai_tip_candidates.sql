@@ -17,9 +17,11 @@ create table if not exists public.ai_tip_candidates (
   draft_tags          text[] not null default '{}',
   draft_ai_tool       text,
   draft_category      text,
-  status              text not null default 'pending'
-                      check (status in ('pending', 'promoted', 'hidden')),
-  collected_at        timestamptz not null default now()
+  status              text not null default 'pending',
+  collected_at        timestamptz not null default now(),
+  -- 컬럼 인라인 대신 테이블 레벨 제약 — team_briefings 마이그레이션과 같은 형태.
+  constraint ai_tip_candidates_status_check
+    check (status in ('pending', 'promoted', 'hidden'))
 );
 
 -- 후보 패널은 pending만 최신순으로 읽는다.
