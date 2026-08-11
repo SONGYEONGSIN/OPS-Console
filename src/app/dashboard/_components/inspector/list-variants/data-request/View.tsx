@@ -8,6 +8,7 @@ import {
 } from "@/features/data-requests/actions";
 import { buildDefaultDataRequestText } from "@/features/data-requests/mail-template";
 import { DateInput } from "@/components/common/DateInput";
+import { BADGE_TONE } from "../badge-tone";
 
 type Recipient = {
   email: string;
@@ -101,7 +102,9 @@ export function DataRequestView({ row }: ViewProps) {
 
       {mailStatus === "scheduled" ? (
         <div className="flex items-center gap-2 text-xs">
-          <span className="inline-block bg-vermilion px-2 py-0.5 text-2xs text-cream">
+          <span
+            className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.idle}`}
+          >
             예약완료
           </span>
           {row.dataRequestScheduledAt ? (
@@ -112,7 +115,9 @@ export function DataRequestView({ row }: ViewProps) {
         </div>
       ) : mailStatus === "sent" ? (
         <div className="flex items-center gap-2 text-xs">
-          <span className="inline-block bg-ink px-2 py-0.5 text-2xs text-cream">
+          <span
+            className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.done}`}
+          >
             발송완료
           </span>
           {row.dataRequestLastSentAt ? (
