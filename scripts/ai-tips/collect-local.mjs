@@ -60,6 +60,7 @@ async function fetchSeen() {
 
 async function searchRepos(createdAfter) {
   const all = [];
+  let failedTopics = 0;
   for (const topic of TOPICS) {
     // fetch 자체가 던지는 네트워크 예외(DNS·연결 리셋 등)까지 토픽 단위로 격리 —
     // 한 토픽이 죽어도 나머지 토픽 검색과 그때까지 모은 결과는 살아있어야 한다.
@@ -69,15 +70,17 @@ async function searchRepos(createdAfter) {
       const res = await fetch(url, { headers: ghHeaders() });
       if (!res.ok) {
         console.error(`[ai-tips] 검색 실패(${topic}): ${res.status}`);
+        failedTopics += 1;
         continue;
       }
       const json = await res.json();
       all.push(...(json.items ?? []));
     } catch (e) {
       console.error(`[ai-tips] 검색 실패(${topic}):`, e.message);
+      failedTopics += 1;
     }
   }
-  return all;
+  return { items: all, failedTopics };
 }
 
 async function fetchReadme(fullName) {
@@ -118,7 +121,18 @@ function generateDraft(repo, readme) {
 
 const seen = await fetchSeen();
 const createdAfter = createdAfterDate(new Date(), CREATED_WITHIN_DAYS);
-const items = await searchRepos(createdAfter);
+const { items, failedTopics } = await searchRepos(createdAfter);
+// 토픽이 전부 실패하면 items=[]라 그대로 두면 "후보 0건" 성공으로 기록된다 —
+// fetchSeen의 throw와 같은 방침으로, 이력에 실패로 남겨 일일 보고가 잡게 한다.
+if (failedTopics === TOPICS.length) {
+  console.error(
+    `[ai-tips] 검색 전체 실패(${failedTopics}/${TOPICS.length}개 토픽) — 종료`,
+  );
+  process.exit(1);
+}
+// 토픽 순서 편향 제거 — pickNewRepos가 배열 앞부분만 자르므로, 토픽별로 이어붙인 순서가
+// 아니라 전체 기준 스타 내림차순으로 정렬한 뒤 상위 MAX_PER_RUN건을 고른다.
+items.sort((a, b) => (b.stargazers_count ?? 0) - (a.stargazers_count ?? 0));
 const repos = pickNewRepos(items, seen, MAX_PER_RUN);
 console.log(`[ai-tips] 검색 ${items.length}건 → 신규 ${repos.length}건`);
 
