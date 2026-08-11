@@ -108,3 +108,74 @@ describe("AiWorkForm — 삭제 버튼 권한 가드 (admin OR 본인)", () => {
     confirmSpy.mockRestore();
   });
 });
+
+const operators = [
+  { email: "a@x.com", name: "김영희" },
+  { email: "b@x.com", name: "박철수" },
+];
+
+function renderForm(row: ListRow, setRow = vi.fn()) {
+  render(
+    <AiWorkForm
+      row={row}
+      setRow={setRow}
+      onSave={vi.fn()}
+      onCancel={vi.fn()}
+      currentUserEmail="hong@example.com"
+      currentUserPermission="member"
+      aiWorkOperators={operators}
+    />,
+  );
+  return setRow;
+}
+
+describe("AiWorkForm — 공동작업자", () => {
+  it("기본값은 '없음'이다", () => {
+    renderForm(baseRow);
+    const select = screen.getByLabelText("공동작업자") as HTMLSelectElement;
+    expect(select.value).toBe("");
+    expect(screen.getByRole("option", { name: "없음" })).toBeInTheDocument();
+  });
+
+  it("한 명 고르면 setRow에 이메일이 담긴다", () => {
+    const setRow = renderForm(baseRow);
+    fireEvent.change(screen.getByLabelText("공동작업자"), {
+      target: { value: "a@x.com" },
+    });
+    expect(setRow).toHaveBeenCalledWith({
+      ...baseRow,
+      collaboratorEmails: ["a@x.com"],
+    });
+  });
+
+  it("선택된 사람은 칩으로 보이고 옵션에서는 사라진다", () => {
+    renderForm({ ...baseRow, collaboratorEmails: ["a@x.com"] });
+    expect(screen.getByText("김영희")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "김영희" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "박철수" })).toBeInTheDocument();
+  });
+
+  it("칩의 제거 버튼이 해당 이메일만 뺀다", () => {
+    const setRow = renderForm({
+      ...baseRow,
+      collaboratorEmails: ["a@x.com", "b@x.com"],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "김영희 제외" }));
+    expect(setRow).toHaveBeenCalledWith({
+      ...baseRow,
+      collaboratorEmails: ["b@x.com"],
+    });
+  });
+
+  it("후보를 모두 고르면 셀렉트가 비활성된다", () => {
+    renderForm({ ...baseRow, collaboratorEmails: ["a@x.com", "b@x.com"] });
+    expect(screen.getByLabelText("공동작업자")).toBeDisabled();
+  });
+
+  it("후보에 없는 이메일(퇴사자)도 칩으로 유지한다", () => {
+    renderForm({ ...baseRow, collaboratorEmails: ["gone@x.com"] });
+    expect(screen.getByText("gone")).toBeInTheDocument();
+  });
+});

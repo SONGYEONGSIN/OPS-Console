@@ -44,6 +44,8 @@ type Props = {
   receivablesMailDryRun?: boolean;
   /** backup variant — 백업자 후보 (active operators, 본인 제외) */
   backupOperators?: { email: string; name: string }[];
+  /** ai-work variant — 공동작업자 후보 (active operators, 본인 제외) */
+  aiWorkOperators?: { email: string; name: string }[];
   /** backup variant — 담당 서비스 후보 (services 카탈로그 light fields) */
   backupServiceCandidates?: {
     id: string;
@@ -117,6 +119,7 @@ export function InspectorListBody({
   onUpdateRemarks,
   receivablesMailDryRun = true,
   backupOperators,
+  aiWorkOperators,
   backupServiceCandidates,
   backupContactCandidates,
   universityNameSuggestions,
@@ -175,6 +178,7 @@ export function InspectorListBody({
         onInvite={onInvite}
         onUpdateRemarks={onUpdateRemarks}
         backupOperators={backupOperators}
+        aiWorkOperators={aiWorkOperators}
         backupServiceCandidates={backupServiceCandidates}
         backupContactCandidates={backupContactCandidates}
         universityNameSuggestions={universityNameSuggestions}

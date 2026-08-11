@@ -325,6 +325,10 @@ export type ListRow = {
   incidentDepartment?: "운영부-운영1팀" | "운영부-운영2팀";
   /** ai-work / ai-tips — 작성자 이메일 (canDelete 권한 가드용) */
   authorEmail?: string;
+  /** ai-work — 공동작업자 이메일(저장 값). 표시 전용이라 권한에는 영향 없다. */
+  collaboratorEmails?: string[];
+  /** ai-work — 공동작업자 표시 이름. 서버(RSC)가 해석해 내려준다(Table/View는 후보 목록이 없다). */
+  collaboratorNames?: string[];
   /** incidents — 담당자 (본인 자동) */
   incidentAssigneeEmail?: string;
   incidentAssigneeName?: string;
@@ -653,6 +657,8 @@ type Props = {
   currentUserName?: string;
   /** backup variant — 백업자 후보 (active operators, 본인 제외) */
   backupOperators?: { email: string; name: string }[];
+  /** ai-work variant — 공동작업자 후보 (active operators, 본인 제외) */
+  aiWorkOperators?: { email: string; name: string }[];
   /** backup variant — 담당 서비스 후보 (services 카탈로그 light fields). EditForm multi-select. */
   backupServiceCandidates?: {
     id: string;
@@ -738,6 +744,7 @@ export function ListPattern({
   receivablesMailDryRun = true,
   currentUserName,
   backupOperators,
+  aiWorkOperators,
   backupServiceCandidates,
   backupContactCandidates,
   universityNameSuggestions,
@@ -995,6 +1002,7 @@ export function ListPattern({
               onMailReply={onMailReply}
               receivablesMailDryRun={receivablesMailDryRun}
               backupOperators={backupOperators}
+              aiWorkOperators={aiWorkOperators}
               backupServiceCandidates={backupServiceCandidates}
               backupContactCandidates={backupContactCandidates}
               universityNameSuggestions={universityNameSuggestions}

@@ -10,6 +10,7 @@ export function AiWorkForm({
   onCancel,
   currentUserEmail = null,
   currentUserPermission = null,
+  aiWorkOperators = [],
 }: EditFormProps) {
   // 태그 입력은 raw 텍스트를 로컬 보관 — 쉼표를 입력하는 즉시 split/filter로
   // 사라지는 것을 막는다. 다른 항목 선택(row.id 변경) 시에만 재동기화.
@@ -19,6 +20,27 @@ export function AiWorkForm({
     setPrevRowId(row.id);
     setTagsText((row.tags ?? []).join(", "));
   }
+  const selectedEmails = row.collaboratorEmails ?? [];
+  // 이미 고른 사람은 후보에서 뺀다 — 중복 선택 자체를 불가능하게 한다.
+  const remaining = aiWorkOperators.filter(
+    (op) => !selectedEmails.includes(op.email),
+  );
+  // 후보에 없는 이메일(퇴사·비활성)도 기록이므로 지우지 않고 로컬파트로 보여준다.
+  const nameOf = (email: string) =>
+    aiWorkOperators.find((op) => op.email === email)?.name ??
+    email.split("@")[0] ??
+    email;
+
+  const addCollaborator = (email: string) => {
+    if (!email) return;
+    setRow({ ...row, collaboratorEmails: [...selectedEmails, email] });
+  };
+  const removeCollaborator = (email: string) => {
+    setRow({
+      ...row,
+      collaboratorEmails: selectedEmails.filter((e) => e !== email),
+    });
+  };
   const isAdmin = currentUserPermission === "admin";
   const isOwnAuthor =
     !!currentUserEmail &&
@@ -42,6 +64,45 @@ export function AiWorkForm({
           </p>
         </div>
       )}
+      <div className="block text-xs">
+        <label className="block">
+          <span className="mb-1 block text-muted">공동작업자</span>
+          <select
+            aria-label="공동작업자"
+            value=""
+            disabled={remaining.length === 0}
+            onChange={(e) => addCollaborator(e.target.value)}
+            className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white disabled:text-muted"
+          >
+            <option value="">없음</option>
+            {remaining.map((op) => (
+              <option key={op.email} value={op.email}>
+                {op.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selectedEmails.length > 0 && (
+          <ul className="mt-1 flex flex-wrap gap-1">
+            {selectedEmails.map((email) => (
+              <li
+                key={email}
+                className="inline-flex items-center gap-1 border border-line-soft bg-washi-raised px-2 py-0.5 text-2xs text-ink"
+              >
+                {nameOf(email)}
+                <button
+                  type="button"
+                  aria-label={`${nameOf(email)} 제외`}
+                  onClick={() => removeCollaborator(email)}
+                  className="text-muted hover:text-vermilion"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <label className="block text-xs">
         <span className="mb-1 block text-muted">제목</span>
         <input

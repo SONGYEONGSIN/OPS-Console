@@ -64,6 +64,13 @@ export function AiWorkView({ row }: ViewProps) {
                 ),
               },
               { term: "등록자", desc: row.owner },
+              {
+                term: "공동작업자",
+                desc:
+                  row.collaboratorNames && row.collaboratorNames.length > 0
+                    ? row.collaboratorNames.join(", ")
+                    : "없음",
+              },
               ...(typeof row.savedHours === "number"
                 ? [{ term: "절감", desc: `${row.savedHours} 시간` }]
                 : []),

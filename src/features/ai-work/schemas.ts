@@ -41,6 +41,9 @@ const dateRangeRefine = <
   }
 };
 
+/** 공동작업자 이메일 배열 — operators.email 값을 담는다(이름 아님). */
+export const collaboratorEmailsSchema = z.array(z.string().email());
+
 export const aiWorkRowSchema = z
   .object({
     id: z.string().uuid(),
@@ -55,6 +58,7 @@ export const aiWorkRowSchema = z
     reuse_prompt: z.string().nullable().optional(),
     saved_hours: z.number().nonnegative().nullable().optional(),
     tags: z.array(z.string()),
+    collaborator_emails: collaboratorEmailsSchema,
     author_email: z.string().email(),
     author_id: z.string().uuid().nullable().optional(),
     created_at: z.string(),
@@ -77,6 +81,7 @@ export const aiWorkCreateSchema = z
     reuse_prompt: z.string().nullable().optional(),
     saved_hours: z.number().nonnegative().nullable().optional(),
     tags: z.array(z.string()).default([]),
+    collaborator_emails: collaboratorEmailsSchema.default([]),
   })
   .superRefine(dateRangeRefine);
 
@@ -95,6 +100,7 @@ export const aiWorkUpdateSchema = z
     reuse_prompt: z.string().nullable().optional(),
     saved_hours: z.number().nonnegative().nullable().optional(),
     tags: z.array(z.string()).optional(),
+    collaborator_emails: collaboratorEmailsSchema.optional(),
   })
   .superRefine((obj, ctx) => {
     // 둘 다 있을 때만 비교 (부분 업데이트 허용)

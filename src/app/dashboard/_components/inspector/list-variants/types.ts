@@ -102,6 +102,8 @@ export type EditFormProps = {
   universityNameSuggestions?: readonly string[];
   /** services variant — 운영자·개발자 후보 (operators 마스터, active) */
   servicesOperators?: { email: string; name: string }[];
+  /** ai-work variant — 공동작업자 후보 (active operators, 본인 제외) */
+  aiWorkOperators?: { email: string; name: string }[];
   /** services variant — 대학명 → 학교키·다음 시퀀스 매핑 (자동 service_id 부여용) */
   servicesUniversityKeys?: {
     universityName: string;

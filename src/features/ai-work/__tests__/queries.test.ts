@@ -33,6 +33,7 @@ const validRow = {
   saved_hours: 0.4,
   tags: ["회의록"],
   author_email: "ysong2526@gmail.com",
+  collaborator_emails: [],
   author_id: null,
   created_at: "2026-05-10T00:00:00Z",
   updated_at: "2026-05-10T00:00:00Z",
