@@ -107,3 +107,24 @@ describe("statusBadgeTone — 규칙의 함정", () => {
     expect(statusBadgeTone("")).toBe(BADGE_TONE.idle);
   });
 });
+
+import { STATUS_COLOR, STATUS_LABEL } from "../status";
+
+describe("공용 STATUS_COLOR", () => {
+  it("모든 값이 BADGE_TONE 중 하나다", () => {
+    const tones: string[] = Object.values(BADGE_TONE);
+    for (const [key, cls] of Object.entries(STATUS_COLOR)) {
+      expect(tones, `${key}가 규칙 밖 색을 쓴다`).toContain(cls);
+    }
+  });
+
+  it("기본 라벨의 의미와 색이 일치한다", () => {
+    for (const key of Object.keys(
+      STATUS_COLOR,
+    ) as (keyof typeof STATUS_COLOR)[]) {
+      expect(STATUS_COLOR[key], `${key}(${STATUS_LABEL[key]})`).toBe(
+        statusBadgeTone(STATUS_LABEL[key]),
+      );
+    }
+  });
+});
