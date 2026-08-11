@@ -8,7 +8,9 @@ import { aiTipCandidateBatchSchema } from "@/features/ai-tip-candidates/schemas"
  *
  * GET  — 이미 수집한 repo_full_name 전체. status 무관(promoted·hidden 포함)이라
  *        한 번 거른 리포가 다음 회차에 다시 올라오지 않는다.
- * POST — 후보 적재. repo_full_name unique 충돌은 무시하고 건수만 센다.
+ * POST — 후보 적재. 다중 행 insert는 1건만 repo_full_name UNIQUE를 위반해도 문장 전체가
+ *        롤백되므로 upsert(ignoreDuplicates)로 신규만 반영하고, select로 돌아온 실제
+ *        반영 건수만 inserted로 센다 (closing/ingest 라우트와 동일 전략).
  */
 function unauthorized(request: Request): NextResponse | null {
   const secret = process.env.CRON_SECRET;
@@ -71,11 +73,13 @@ export async function POST(request: Request) {
   let inserted = 0;
   if (rows.length > 0) {
     const supabase = createAdminClient();
-    // unique(repo_full_name) 충돌은 무시 — 같은 리포가 다시 와도 기존 후보를 덮지 않는다.
-    const { error } = await supabase
+    // repo_full_name 충돌은 무시하고 신규만 반영 — 다중 행 insert였다면 1건 중복이
+    // 배치 전체를 롤백시켰을 것. select로 실제 반영된 건수만 회수한다.
+    const { data, error } = await supabase
       .from("ai_tip_candidates")
-      .insert(rows, { count: "exact" });
-    if (error && !/duplicate key/i.test(error.message)) {
+      .upsert(rows, { onConflict: "repo_full_name", ignoreDuplicates: true })
+      .select("repo_full_name");
+    if (error) {
       await recordAutomationRun("ai-tips-collect", {
         ok: false,
         message: error.message,
@@ -85,7 +89,7 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
-    inserted = error ? 0 : rows.length;
+    inserted = data?.length ?? 0;
   }
 
   await recordAutomationRun("ai-tips-collect", {

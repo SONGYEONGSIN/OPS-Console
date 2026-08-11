@@ -1,16 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockSelect, mockInsert, mockRecordRun } = vi.hoisted(() => ({
-  mockSelect: vi.fn(),
-  mockInsert: vi.fn(),
-  mockRecordRun: vi.fn(),
-}));
+const { mockSelect, mockUpsert, mockUpsertSelect, mockRecordRun } = vi.hoisted(
+  () => ({
+    mockSelect: vi.fn(),
+    mockUpsert: vi.fn(),
+    mockUpsertSelect: vi.fn(),
+    mockRecordRun: vi.fn(),
+  }),
+);
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: () => ({
       select: mockSelect,
-      insert: mockInsert,
+      upsert: mockUpsert,
     }),
   }),
 }));
@@ -35,7 +38,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.CRON_SECRET = SECRET;
   mockSelect.mockResolvedValue({ data: [], error: null });
-  mockInsert.mockResolvedValue({ data: [], error: null });
+  mockUpsertSelect.mockResolvedValue({ data: [], error: null });
+  mockUpsert.mockReturnValue({ select: mockUpsertSelect });
 });
 
 describe("POST /api/ai-tips/candidates — 인증", () => {
@@ -51,7 +55,11 @@ describe("POST /api/ai-tips/candidates — 인증", () => {
 });
 
 describe("POST /api/ai-tips/candidates — 적재", () => {
-  it("후보를 insert하고 건수를 돌려준다", async () => {
+  it("후보를 upsert하고 실제 반영 건수를 돌려준다", async () => {
+    mockUpsertSelect.mockResolvedValue({
+      data: [{ repo_full_name: "a/one" }],
+      error: null,
+    });
     const res = await POST(
       req({
         candidates: [
@@ -64,8 +72,59 @@ describe("POST /api/ai-tips/candidates — 적재", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect(mockInsert).toHaveBeenCalled();
+    expect(mockUpsert).toHaveBeenCalled();
     await expect(res.json()).resolves.toMatchObject({ ok: true, inserted: 1 });
+  });
+
+  it("5건 중 1건이 중복이어도 새 4건은 정직하게 적재된다 — 다중 insert였다면 배치 전체가 롤백됐을 상황", async () => {
+    const candidates = [
+      "a/one",
+      "a/two",
+      "a/three",
+      "a/four",
+      "dup/existing",
+    ].map((name) => ({
+      repo_full_name: name,
+      repo_url: `https://github.com/${name}`,
+      stars: 10,
+    }));
+    // dup/existing은 이미 존재 — upsert(ignoreDuplicates)가 신규 4건만 select로 돌려준다.
+    mockUpsertSelect.mockResolvedValue({
+      data: candidates
+        .filter((c) => c.repo_full_name !== "dup/existing")
+        .map((c) => ({ repo_full_name: c.repo_full_name })),
+      error: null,
+    });
+    const res = await POST(req({ candidates }));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      inserted: 4,
+      skipped: 1,
+    });
+  });
+
+  it("insert 실패(중복 아닌 에러)면 500 + 실행 이력을 ok:false로 남긴다", async () => {
+    mockUpsertSelect.mockResolvedValue({
+      data: null,
+      error: { message: "connection refused" },
+    });
+    const res = await POST(
+      req({
+        candidates: [
+          {
+            repo_full_name: "a/one",
+            repo_url: "https://github.com/a/one",
+            stars: 300,
+          },
+        ],
+      }),
+    );
+    expect(res.status).toBe(500);
+    expect(mockRecordRun).toHaveBeenCalledWith(
+      "ai-tips-collect",
+      expect.objectContaining({ ok: false }),
+    );
   });
 
   it("수집 0건도 성공이다 — 그 주에 새 리포가 없을 수 있다", async () => {
