@@ -1,5 +1,6 @@
 import { SendReceivablesMailButton } from "@/components/receivables/SendReceivablesMailButton";
 import { Section, DefList, Divider } from "../shared";
+import { statusBadgeTone } from "../badge-tone";
 import { elapsedDays, pickSchoolOwnerEmail } from "./helpers";
 import type { ViewProps } from "../types";
 
@@ -14,6 +15,7 @@ export function ReceivablesView({
   const elapsed = elapsedDays(row.meta);
   const schoolOwnerEmail = pickSchoolOwnerEmail(cells);
   const isPaidByRemarks = /입금\s*완료/.test(cells?.remarks ?? "");
+  const paidLabel = row.status === "approved" ? "수금" : "미수";
   return (
     <div className="space-y-6">
       <Section title="기본 정보">
@@ -50,13 +52,9 @@ export function ReceivablesView({
               term: "입금여부",
               desc: (
                 <span
-                  className={`inline-block px-2 py-0.5 text-xs ${
-                    row.status === "approved"
-                      ? "bg-washi-raised text-ink"
-                      : "bg-vermilion/20 text-vermilion-deep"
-                  }`}
+                  className={`inline-block px-2 py-0.5 text-xs ${statusBadgeTone(paidLabel)}`}
                 >
-                  {row.status === "approved" ? "수금" : "미수"}
+                  {paidLabel}
                 </span>
               ),
             },
