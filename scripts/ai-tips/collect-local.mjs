@@ -61,15 +61,21 @@ async function fetchSeen() {
 async function searchRepos(createdAfter) {
   const all = [];
   for (const topic of TOPICS) {
-    const q = buildSearchQuery(topic, { minStars: MIN_STARS, createdAfter });
-    const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=10`;
-    const res = await fetch(url, { headers: ghHeaders() });
-    if (!res.ok) {
-      console.error(`[ai-tips] 검색 실패(${topic}): ${res.status}`);
-      continue;
+    // fetch 자체가 던지는 네트워크 예외(DNS·연결 리셋 등)까지 토픽 단위로 격리 —
+    // 한 토픽이 죽어도 나머지 토픽 검색과 그때까지 모은 결과는 살아있어야 한다.
+    try {
+      const q = buildSearchQuery(topic, { minStars: MIN_STARS, createdAfter });
+      const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=10`;
+      const res = await fetch(url, { headers: ghHeaders() });
+      if (!res.ok) {
+        console.error(`[ai-tips] 검색 실패(${topic}): ${res.status}`);
+        continue;
+      }
+      const json = await res.json();
+      all.push(...(json.items ?? []));
+    } catch (e) {
+      console.error(`[ai-tips] 검색 실패(${topic}):`, e.message);
     }
-    const json = await res.json();
-    all.push(...(json.items ?? []));
   }
   return all;
 }
