@@ -5,7 +5,13 @@
  * signUp 가능 이메일은 이 리스트로 제한. dashboard 인원 통계 + 인스펙터 풍부 표시에 재사용.
  */
 
-export type OperatorTeam = "운영1팀" | "운영2팀";
+/**
+ * 운영1팀·운영2팀은 운영부 소속. 기획팀은 운영부가 아니지만 미수채권 담당으로 시트에 등장해
+ * 이 목록에 등재한다 — 학교담당자 독려 메일이 담당자 이름→이메일을 여기서 찾기 때문이다.
+ * 팀 뉴스레터의 생일·근속 기념일은 운영부 팀으로 한정한다(team-briefing.ts).
+ */
+export type OperatorTeam = "운영1팀" | "운영2팀" | "기획팀";
+export type OperatorDepartment = "운영부" | "본부장 직속";
 export type OperatorRole = "부장" | "팀장" | "TL" | "매니저";
 export type OperatorGender = "남" | "여";
 
@@ -19,30 +25,233 @@ export type Operator = {
   birthDate: string;
   gender: OperatorGender;
   division: "어플라이사업본부";
-  department: "운영부";
+  department: OperatorDepartment;
 };
 
 const D = "어플라이사업본부" as const;
 const E = "운영부" as const;
+/** 기획팀은 운영부 소속이 아니라 본부장 직속이다. */
+const P = "본부장 직속" as const;
 
 const REAL_OPERATORS: readonly Operator[] = [
-  { name: "허승철", email: "alcure23@jinhakapply.com",   team: "운영1팀", role: "부장",   empNo: "200806010", hiredAt: "2008-06-01", birthDate: "1982-10-06", gender: "남", division: D, department: E },
-  { name: "한효진", email: "hhj@jinhakapply.com",         team: "운영1팀", role: "TL",     empNo: "20220701",  hiredAt: "2007-05-30", birthDate: "1981-06-14", gender: "남", division: D, department: E },
-  { name: "김슬기", email: "bluewhich87@jinhak.com", team: "운영1팀", role: "매니저", empNo: "20150703",  hiredAt: "2011-02-07", birthDate: "1987-06-09", gender: "여", division: D, department: E },
-  { name: "김지영", email: "kjy0926@jinhak.com",     team: "운영1팀", role: "매니저", empNo: "20160702",  hiredAt: "2016-07-27", birthDate: "1989-09-26", gender: "여", division: D, department: E },
-  { name: "정윤나", email: "annooy@jinhakapply.com",      team: "운영1팀", role: "매니저", empNo: "20190801",  hiredAt: "2019-08-01", birthDate: "1995-09-16", gender: "여", division: D, department: E },
-  { name: "김유민", email: "sept98@jinhakapply.com",      team: "운영1팀", role: "매니저", empNo: "20230506",  hiredAt: "2023-05-18", birthDate: "1998-09-07", gender: "여", division: D, department: E },
-  { name: "기자의", email: "jkee@jinhakapply.com",        team: "운영1팀", role: "매니저", empNo: "20240501",  hiredAt: "2024-05-02", birthDate: "1999-03-13", gender: "여", division: D, department: E },
-  { name: "전지은", email: "jje@jinhakapply.com",         team: "운영1팀", role: "매니저", empNo: "20250701",  hiredAt: "2025-07-14", birthDate: "2001-03-12", gender: "여", division: D, department: E },
-  { name: "송영신", email: "ys1114@jinhakapply.com",      team: "운영2팀", role: "팀장",   empNo: "20131004",  hiredAt: "2013-10-14", birthDate: "1987-12-01", gender: "남", division: D, department: E },
-  { name: "박시현", email: "pkm0313@jinhakapply.com",     team: "운영2팀", role: "매니저", empNo: "201008010", hiredAt: "2010-08-05", birthDate: "1984-03-13", gender: "여", division: D, department: E },
-  { name: "윤지혜", email: "wnlgp@jinhakapply.com",       team: "운영2팀", role: "TL",     empNo: "200505310", hiredAt: "2005-05-30", birthDate: "1984-10-22", gender: "여", division: D, department: E },
-  { name: "이해영", email: "haelee0201@jinhakapply.com",  team: "운영2팀", role: "매니저", empNo: "20170602",  hiredAt: "2017-06-12", birthDate: "1993-02-01", gender: "여", division: D, department: E },
-  { name: "임종우", email: "rsjw2014@jinhakapply.com",    team: "운영2팀", role: "매니저", empNo: "20220101",  hiredAt: "2022-01-10", birthDate: "1995-08-20", gender: "남", division: D, department: E },
-  { name: "전혜인", email: "hogj1213@jinhakapply.com",    team: "운영2팀", role: "매니저", empNo: "20230505",  hiredAt: "2023-05-18", birthDate: "1998-12-13", gender: "여", division: D, department: E },
-  { name: "김승현", email: "ksh@jinhakapply.com",         team: "운영2팀", role: "매니저", empNo: "P20250505", hiredAt: "2025-10-27", birthDate: "2000-11-20", gender: "여", division: D, department: E },
-  { name: "김지현", email: "kjh@jinhakapply.com",         team: "운영2팀", role: "매니저", empNo: "20240502",  hiredAt: "2024-05-02", birthDate: "1997-12-10", gender: "여", division: D, department: E },
-  { name: "김지나", email: "kjn@jinhakapply.com",         team: "운영2팀", role: "매니저", empNo: "20240702",  hiredAt: "2024-07-08", birthDate: "2000-02-02", gender: "여", division: D, department: E },
+  {
+    name: "허승철",
+    email: "alcure23@jinhakapply.com",
+    team: "운영1팀",
+    role: "부장",
+    empNo: "200806010",
+    hiredAt: "2008-06-01",
+    birthDate: "1982-10-06",
+    gender: "남",
+    division: D,
+    department: E,
+  },
+  {
+    name: "한효진",
+    email: "hhj@jinhakapply.com",
+    team: "운영1팀",
+    role: "TL",
+    empNo: "20220701",
+    hiredAt: "2007-05-30",
+    birthDate: "1981-06-14",
+    gender: "남",
+    division: D,
+    department: E,
+  },
+  {
+    name: "김슬기",
+    email: "bluewhich87@jinhak.com",
+    team: "운영1팀",
+    role: "매니저",
+    empNo: "20150703",
+    hiredAt: "2011-02-07",
+    birthDate: "1987-06-09",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "김지영",
+    email: "kjy0926@jinhak.com",
+    team: "운영1팀",
+    role: "매니저",
+    empNo: "20160702",
+    hiredAt: "2016-07-27",
+    birthDate: "1989-09-26",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "정윤나",
+    email: "annooy@jinhakapply.com",
+    team: "운영1팀",
+    role: "매니저",
+    empNo: "20190801",
+    hiredAt: "2019-08-01",
+    birthDate: "1995-09-16",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "김유민",
+    email: "sept98@jinhakapply.com",
+    team: "운영1팀",
+    role: "매니저",
+    empNo: "20230506",
+    hiredAt: "2023-05-18",
+    birthDate: "1998-09-07",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "기자의",
+    email: "jkee@jinhakapply.com",
+    team: "운영1팀",
+    role: "매니저",
+    empNo: "20240501",
+    hiredAt: "2024-05-02",
+    birthDate: "1999-03-13",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "전지은",
+    email: "jje@jinhakapply.com",
+    team: "운영1팀",
+    role: "매니저",
+    empNo: "20250701",
+    hiredAt: "2025-07-14",
+    birthDate: "2001-03-12",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "송영신",
+    email: "ys1114@jinhakapply.com",
+    team: "운영2팀",
+    role: "팀장",
+    empNo: "20131004",
+    hiredAt: "2013-10-14",
+    birthDate: "1987-12-01",
+    gender: "남",
+    division: D,
+    department: E,
+  },
+  {
+    name: "박시현",
+    email: "pkm0313@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "201008010",
+    hiredAt: "2010-08-05",
+    birthDate: "1984-03-13",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "윤지혜",
+    email: "wnlgp@jinhakapply.com",
+    team: "운영2팀",
+    role: "TL",
+    empNo: "200505310",
+    hiredAt: "2005-05-30",
+    birthDate: "1984-10-22",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "이해영",
+    email: "haelee0201@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "20170602",
+    hiredAt: "2017-06-12",
+    birthDate: "1993-02-01",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "임종우",
+    email: "rsjw2014@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "20220101",
+    hiredAt: "2022-01-10",
+    birthDate: "1995-08-20",
+    gender: "남",
+    division: D,
+    department: E,
+  },
+  {
+    name: "전혜인",
+    email: "hogj1213@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "20230505",
+    hiredAt: "2023-05-18",
+    birthDate: "1998-12-13",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "김승현",
+    email: "ksh@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "P20250505",
+    hiredAt: "2025-10-27",
+    birthDate: "2000-11-20",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "김지현",
+    email: "kjh@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "20240502",
+    hiredAt: "2024-05-02",
+    birthDate: "1997-12-10",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  {
+    name: "김지나",
+    email: "kjn@jinhakapply.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "20240702",
+    hiredAt: "2024-07-08",
+    birthDate: "2000-02-02",
+    gender: "여",
+    division: D,
+    department: E,
+  },
+  // 운영부가 아닌 본부장 직속 — 미수채권 담당으로 시트에 등장해 등재한다.
+  // 학교담당자 독려 메일이 담당자 이름→이메일을 이 목록에서 찾기 때문이다.
+  {
+    name: "조가현",
+    email: "cgh@jinhakapply.com",
+    team: "기획팀",
+    role: "매니저",
+    empNo: "20240506",
+    hiredAt: "2024-07-22",
+    birthDate: "2000-08-09",
+    gender: "여",
+    division: D,
+    department: P,
+  },
 ] as const;
 
 /**
@@ -51,8 +260,30 @@ const REAL_OPERATORS: readonly Operator[] = [
  * 테스트 종료 후 제거: 이 배열을 비우고 `node scripts/delete-user.mjs`로 auth/operators row 정리.
  */
 const TEST_OPERATORS: readonly Operator[] = [
-  { name: "테스트1", email: "ysong2526@gmail.com", team: "운영2팀", role: "매니저", empNo: "TEST001", hiredAt: "2026-05-29", birthDate: "1990-01-01", gender: "남", division: D, department: E },
-  { name: "테스트2", email: "yss040607@gmail.com", team: "운영2팀", role: "매니저", empNo: "TEST002", hiredAt: "2026-05-29", birthDate: "1990-01-01", gender: "남", division: D, department: E },
+  {
+    name: "테스트1",
+    email: "ysong2526@gmail.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "TEST001",
+    hiredAt: "2026-05-29",
+    birthDate: "1990-01-01",
+    gender: "남",
+    division: D,
+    department: E,
+  },
+  {
+    name: "테스트2",
+    email: "yss040607@gmail.com",
+    team: "운영2팀",
+    role: "매니저",
+    empNo: "TEST002",
+    hiredAt: "2026-05-29",
+    birthDate: "1990-01-01",
+    gender: "남",
+    division: D,
+    department: E,
+  },
 ] as const;
 
 export const OPERATORS: readonly Operator[] = [

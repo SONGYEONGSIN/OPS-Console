@@ -4,12 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "@/features/auth/actions";
 import type { OperatorPermission } from "@/features/operators/schemas";
+import type { OperatorTeam } from "@/features/auth/operators";
 
 type Props = {
   displayName: string;
   email: string;
   role: string;
-  team: "운영1팀" | "운영2팀" | null;
+  // 유니온을 자체 정의하지 않고 원본 타입을 쓴다 — 팀이 늘 때마다 여기가 어긋나지 않게.
+  team: OperatorTeam | null;
   /** admin이면 시스템 설정 메뉴 노출 (settings는 admin 전용) */
   permission?: OperatorPermission | null;
 };
