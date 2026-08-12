@@ -8,16 +8,32 @@ import {
 } from "../operators";
 
 describe("OPERATORS", () => {
-  it("실 인사 17명 정의 (운영1팀 8 + 운영2팀 9, 테스트 계정 제외)", () => {
-    // 임시 테스트 계정(@gmail)을 제외한 실 운영부 인사만 검증 — 정원 무결성.
+  it("실 인사 18명 — 운영부 17명(운영1팀 8 + 운영2팀 9) + 타 부서 1명", () => {
+    // 임시 테스트 계정(@gmail)을 제외한 실 인사만 검증 — 정원 무결성.
     // 실 인사 이메일 도메인은 @jinhakapply.com / @jinhak.com 혼재(#668 정정)하므로
     // 도메인 화이트리스트가 아닌 @gmail 테스트 계정 제외로 판별한다.
+    //
+    // 이 목록은 원래 운영부 조직도였으나, 미수채권 담당으로 시트에 등장하는 타 부서 인원도
+    // 등재한다 — 학교담당자 독려 메일이 담당자 이름→이메일을 여기서 찾기 때문이다.
+    // (명단에 없으면 그 담당자의 미수건은 모든 마일스톤에서 조용히 제외된다.)
     const real = OPERATORS.filter((o) => !o.email.endsWith("@gmail.com"));
-    expect(real.length).toBe(17);
-    const t1 = real.filter((o) => o.team === "운영1팀");
-    const t2 = real.filter((o) => o.team === "운영2팀");
-    expect(t1.length).toBe(8);
-    expect(t2.length).toBe(9);
+    expect(real.length).toBe(18);
+    const ops = real.filter((o) => o.department === "운영부");
+    expect(ops.length).toBe(17);
+    expect(ops.filter((o) => o.team === "운영1팀").length).toBe(8);
+    expect(ops.filter((o) => o.team === "운영2팀").length).toBe(9);
+    // 운영부 인원은 반드시 운영1/2팀 중 하나 — 부서와 팀이 어긋나면 안 된다.
+    expect(ops.every((o) => o.team === "운영1팀" || o.team === "운영2팀")).toBe(
+      true,
+    );
+  });
+
+  it("기획팀은 운영부가 아니라 본부장 직속", () => {
+    // 팀 뉴스레터의 생일·근속 기념일은 department='운영부'로 걸러진다(team-briefing.ts).
+    // 이 짝이 깨지면 타 부서 인원이 운영부 소식지에 실린다.
+    for (const op of OPERATORS.filter((o) => o.team === "기획팀")) {
+      expect(op.department).toBe("본부장 직속");
+    }
   });
 
   it("모든 operator는 empNo / hiredAt / birthDate / gender 필드 가짐", () => {
@@ -27,7 +43,7 @@ describe("OPERATORS", () => {
       expect(op.birthDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(["남", "여"]).toContain(op.gender);
       expect(op.division).toBe("어플라이사업본부");
-      expect(op.department).toBe("운영부");
+      expect(["운영부", "본부장 직속"]).toContain(op.department);
     }
   });
 
