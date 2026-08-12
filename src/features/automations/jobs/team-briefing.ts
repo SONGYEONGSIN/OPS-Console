@@ -203,16 +203,26 @@ export async function buildBriefingData(): Promise<
 
   const { data: opData, error: opErr } = await admin
     .from("operators")
-    .select("email, name, hired_at, birth_date")
+    .select("email, name, department, hired_at, birth_date")
     .order("email", { ascending: true });
   if (opErr)
     return { ok: false, message: `운영자 조회 실패: ${opErr.message}` };
   const operators = (opData ?? []) as {
     email: string;
     name: string;
+    department?: string | null;
     hired_at?: string;
     birth_date?: string | null;
   }[];
+  // 기념일은 운영부로 한정한다 — 이 뉴스레터는 운영부 소식지이고, 미수채권 담당으로
+  // 등재된 타 부서(본부장 직속 등) 인원의 생일·근속까지 실리면 안 된다.
+  // 팀이 아니라 부서로 거르는 이유: 운영부에 팀이 늘어도 자동으로 포함된다.
+  // 값이 없으면 운영부로 본다 — 컬럼 기본값이 '운영부'이고, 누락으로 사람이 조용히 빠지면 안 된다.
+  // 이름 변환(nameByEmail)은 전원 대상 — 타 부서가 올린 AI 작업도 이름이 나와야 한다.
+  const OPS_DEPARTMENT = "운영부";
+  const opsOperators = operators.filter(
+    (o) => (o.department ?? OPS_DEPARTMENT) === OPS_DEPARTMENT,
+  );
   const nameByEmail = new Map(operators.map((o) => [o.email, o.name]));
   const displayName = (email: string) =>
     nameByEmail.get(email) ?? email.split("@")[0];
@@ -222,7 +232,7 @@ export async function buildBriefingData(): Promise<
   const seenCelebrations = await getPublishedCelebrationKeys();
   const milestones = excludeSeenCelebrations(
     upcomingAnniversaries(
-      operators
+      opsOperators
         .filter((o) => o.hired_at)
         .map((o) => ({ name: o.name, hired_at: o.hired_at! })),
       todayYmd,
@@ -232,7 +242,7 @@ export async function buildBriefingData(): Promise<
   );
   const birthdays = excludeSeenCelebrations(
     upcomingBirthdays(
-      operators
+      opsOperators
         .filter((o) => o.birth_date)
         .map((o) => ({ name: o.name, birth_date: o.birth_date! })),
       todayYmd,
