@@ -187,6 +187,20 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cooldownMinutes: 60,
     run: runAutomationDigest,
   },
+  {
+    id: "ai-tips-collect",
+    label: "AI TIP 후보 수집",
+    description:
+      "GitHub에서 최근 뜨는 자동화·AI 리포를 수집해 claude로 TIP 초안까지 만들어 후보로 쌓습니다.\nTIP 페이지의 후보 패널에서 확인하고 등록합니다.",
+    scheduleInfo: "매주 월 09:00 — 회사 PC Windows 작업 스케줄러 (claude CLI)",
+    cadence: "weekly",
+    cooldownMinutes: 60,
+    localOnly: true,
+    run: async () => ({
+      ok: false,
+      message: "로컬 전용 — 회사 PC 작업 스케줄러가 실행합니다.",
+    }),
+  },
 ];
 
 export function getJob(id: string): AutomationJob | undefined {

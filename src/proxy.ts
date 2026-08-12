@@ -26,6 +26,7 @@ const PUBLIC_PATHS = [
   "/api/closing/ingest",
   "/api/closing/run-log",
   "/api/closing/scrape-request",
+  "/api/ai-tips/candidates",
   "/api/entertest/test-request",
   "/api/entertest/ingest",
   "/api/dev-controls/analyze-request",

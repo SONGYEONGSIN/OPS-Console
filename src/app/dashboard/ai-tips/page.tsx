@@ -12,6 +12,12 @@ import {
   updateAiTip,
   deleteAiTip,
 } from "@/features/ai-tips/actions";
+import { listPendingCandidates } from "@/features/ai-tip-candidates/queries";
+import {
+  promoteCandidate,
+  hideCandidate,
+} from "@/features/ai-tip-candidates/actions";
+import { TipCandidatePanel } from "./_components/TipCandidatePanel";
 import type { AiTipRow } from "@/features/ai-tips/schemas";
 import type { AiTool, AiWorkCategory } from "@/features/ai-work/schemas";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -31,6 +37,7 @@ export default async function AiTipsPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
   const allTips = await listAiTips();
+  const candidates = await listPendingCandidates();
   const mine = sp.mine !== "false";
   const tips =
     mine && me?.email
@@ -46,13 +53,20 @@ export default async function AiTipsPage({
   const canWrite = me?.permission !== "viewer" && me?.permission !== null;
 
   const header = (
-    <PageHeader
-      pathname={pathname}
-      meta={config.meta}
-      headline={config.headline}
-      description={config.description}
-      autoRefresh
-    />
+    <>
+      <PageHeader
+        pathname={pathname}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+        autoRefresh
+      />
+      <TipCandidatePanel
+        candidates={candidates}
+        onPromote={promoteCandidate}
+        onHide={hideCandidate}
+      />
+    </>
   );
 
   async function onPersist(
