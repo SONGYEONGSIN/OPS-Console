@@ -60,6 +60,8 @@ export function TeamForm({
         >
           <option value="운영1팀">운영1팀</option>
           <option value="운영2팀">운영2팀</option>
+          {/* 운영부는 아니지만 미수채권 담당으로 등재된 팀 — 빠지면 편집 시 팀이 바뀐다. */}
+          <option value="기획팀">기획팀</option>
         </select>
       </label>
       <label className="block text-xs">
@@ -119,9 +121,7 @@ export function TeamForm({
           type="checkbox"
           aria-label="자동 CC 제외"
           checked={row.mailCcExcluded ?? false}
-          onChange={(e) =>
-            setRow({ ...row, mailCcExcluded: e.target.checked })
-          }
+          onChange={(e) => setRow({ ...row, mailCcExcluded: e.target.checked })}
           className="h-3.5 w-3.5"
         />
         <span>
@@ -153,15 +153,15 @@ export function TeamForm({
         <fieldset className="block text-xs">
           <legend className="mb-1 block text-muted">메뉴 권한</legend>
           <p className="mb-2 text-2xs leading-relaxed text-muted">
-            현재 정책: admin은 전체 메뉴, member·viewer는 admin 전용 5개(조직권한·시스템설정·공지사항·성과리포트·자동화 실행)를 제외한 전체 메뉴를 자동 접근. 개별 토글은 사용하지 않습니다.
+            현재 정책: admin은 전체 메뉴, member·viewer는 admin 전용
+            5개(조직권한·시스템설정·공지사항·성과리포트·자동화 실행)를 제외한
+            전체 메뉴를 자동 접근. 개별 토글은 사용하지 않습니다.
           </p>
           <div className="space-y-3 border border-line bg-cream p-2">
             {sidebarSections.map((section) => {
               const isAdmin = row.permission === "admin";
               const items: SbItem[] = section.entries
-                .flatMap<SbItem>((e) =>
-                  e.kind === "item" ? [e] : e.items
-                )
+                .flatMap<SbItem>((e) => (e.kind === "item" ? [e] : e.items))
                 .filter((it) => !!it.slug)
                 .filter((it) => (isAdmin ? true : !it.adminOnly));
               if (items.length === 0) return null;
@@ -207,9 +207,7 @@ export function TeamForm({
             required
             rows={3}
             value={row.deletedReason ?? ""}
-            onChange={(e) =>
-              setRow({ ...row, deletedReason: e.target.value })
-            }
+            onChange={(e) => setRow({ ...row, deletedReason: e.target.value })}
             placeholder="퇴사 / 권한 회수 / 부서 이동 등"
             className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
