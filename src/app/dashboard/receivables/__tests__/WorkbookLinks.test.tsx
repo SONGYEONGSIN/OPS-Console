@@ -3,21 +3,21 @@ import { render, screen } from "@testing-library/react";
 import { WorkbookLinks } from "../WorkbookLinks";
 
 /**
- * 목록 헤더 액션 버튼 표준(외곽선 변형).
- * services의 BulkPasteAnnouncements와 같은 문자열 — 이 슬롯의 기준이다.
- * 처음 구현이 px-2/border-line-soft/hover:bg-line-soft로 어긋난 채 배포됐고,
- * 스타일을 아무도 단언하지 않아 테스트·CI가 전부 통과했다.
+ * 목록 헤더 액션 버튼 표준 — ListPattern 생성 버튼(`+ 백업 요청` 등)과 같은 문자열.
+ *
+ * 이 슬롯의 버튼 넷 중 셋이 솔리드다(생성 버튼·인수인계 복사=버밀리언, 연락처 일괄등록=잉크).
+ * 외곽선은 발표 서비스 일괄등록 하나뿐인데, 처음에 그 하나를 표준으로 골라 어긋났다.
  */
 const STANDARD_CLASSES = [
   "border",
-  "border-line",
-  "bg-transparent",
+  "border-vermilion",
+  "bg-vermilion",
   "px-3",
   "py-1",
   "text-xs",
-  "text-ink",
-  "transition-colors",
-  "hover:bg-washi",
+  "font-medium",
+  "text-cream",
+  "hover:bg-vermilion-deep",
 ];
 
 describe("WorkbookLinks", () => {
