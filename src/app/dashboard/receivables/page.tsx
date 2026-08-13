@@ -15,6 +15,8 @@ import {
 } from "./_row-mapper";
 import { ReceivablesControls } from "./ReceivablesControls";
 import { ReceivablesScopeChips } from "./ReceivablesScopeChips";
+import { WorkbookLinks } from "./WorkbookLinks";
+import { getReceivablesWorkbookLinks } from "@/features/receivables/workbook-links";
 import { ListPagination } from "@/components/common/ListPagination";
 import { paginateRows } from "@/lib/list/paginate";
 
@@ -42,6 +44,8 @@ export default async function ReceivablesPage({
   const term = (q ?? "").trim();
   const me = await getCurrentOperator();
   const myName = me?.displayName ?? me?.email ?? "";
+  // 원본 엑셀 바로가기 링크 — 실패해도 null로 와서 버튼만 안 뜬다(목록은 그대로).
+  const workbookLinks = await getReceivablesWorkbookLinks();
   const sheet = await fetchReceivablesSheet();
   const allRows: ListRow[] = sheet
     ? sheet.rows
@@ -151,6 +155,14 @@ export default async function ReceivablesPage({
         hideVariantFilters
         inlineFilters={
           <ReceivablesScopeChips key="receivables-scope" counts={counts} />
+        }
+        extraActionsLeft={
+          <WorkbookLinks
+            key="receivables-workbooks"
+            ledgerUrl={workbookLinks.ledgerUrl}
+            depositUrl={workbookLinks.depositUrl}
+            isAdmin={me?.permission === "admin"}
+          />
         }
         readOnly={!canEdit}
         onPersist={canEdit ? onPersist : undefined}
