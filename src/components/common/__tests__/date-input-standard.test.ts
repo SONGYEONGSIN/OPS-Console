@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 
 /**
  * 날짜 입력은 반드시 공통 컴포넌트 `DateInput`을 쓴다.
@@ -14,12 +14,13 @@ import { join } from "node:path";
  * 새 날짜 입력이 생기면 이 테스트가 파일·줄을 짚어 실패한다.
  */
 const SRC = join(process.cwd(), "src");
-const DATE_INPUT_PATH = join(
-  "src",
-  "components",
-  "common",
-  "DateInput.tsx",
-).replace(/\\/g, "/");
+/** 컴포넌트 자신은 예외 — raw input을 쓰는 게 이 파일의 존재 이유다. */
+const DATE_INPUT_PATH = "src/components/common/DateInput.tsx";
+
+/** OS 무관 상대경로(항상 `/`) — Windows에서만 통과하고 CI에서 깨지는 일을 막는다. */
+function toRelPosix(absPath: string): string {
+  return relative(process.cwd(), absPath).split(sep).join("/");
+}
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -55,8 +56,8 @@ describe("날짜 입력 표준", () => {
   it('raw <input type="date"> 없이 전부 DateInput을 쓴다', () => {
     const offenders: string[] = [];
     for (const file of walk(SRC)) {
-      const rel = file.replace(process.cwd() + "\\", "").replace(/\\/g, "/");
-      if (rel === DATE_INPUT_PATH) continue; // 컴포넌트 자신은 예외
+      const rel = toRelPosix(file);
+      if (rel === DATE_INPUT_PATH) continue;
       if (rel.includes("__tests__")) continue;
       for (const line of findRawDateInputs(readFileSync(file, "utf8"))) {
         offenders.push(`${rel}:${line}`);
@@ -66,6 +67,16 @@ describe("날짜 입력 표준", () => {
       offenders,
       `날짜 입력은 @/components/common/DateInput 을 쓰세요:\n${offenders.join("\n")}`,
     ).toEqual([]);
+  });
+
+  it("경로 비교가 OS에 안 걸린다 — Windows에서만 통과하고 CI에서 깨지면 안 된다", () => {
+    // 첫 시도가 정확히 이 지점에서 실패했다: 상대경로를 Windows 구분자로만 만들어
+    // 리눅스 CI에서 DateInput.tsx 자신이 위반으로 잡혔다.
+    const rel = toRelPosix(
+      join(process.cwd(), "src", "components", "common", "DateInput.tsx"),
+    );
+    expect(rel).toBe(DATE_INPUT_PATH);
+    expect(rel).not.toContain("\\");
   });
 
   it("탐지기 자체가 동작한다 — raw input은 잡고 DateInput은 넘긴다", () => {
