@@ -85,6 +85,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "사내 데이터(사고·인수인계·TIP·백업·연락처·서비스)를 자연어로 검색합니다. Gemini가 근거와 함께 답변합니다.",
   },
+  agents: {
+    headline: { accent: "AI & 자동화", title: "에이전트" },
+    description:
+      "운영 자동화를 파이프라인 네 단계로 묶어 봅니다. 무엇이 무엇을 위해 도는지 한눈에 봅니다.",
+  },
   automations: {
     headline: { accent: "AI & 자동화", title: "자동화실행" },
     description:
