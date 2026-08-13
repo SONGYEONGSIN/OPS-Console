@@ -1,6 +1,6 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import type { EditFormProps } from "../types";
-import { OPERATORS } from "@/features/auth/operators";
+import { OPERATORS, OPERATOR_TEAMS } from "@/features/auth/operators";
 import type { OperatorPermission } from "@/features/operators/schemas";
 import { sidebarSections, type SbItem } from "../../../../_data";
 
@@ -58,10 +58,12 @@ export function TeamForm({
           onChange={(e) => setRow({ ...row, owner: e.target.value })}
           className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
         >
-          <option value="운영1팀">운영1팀</option>
-          <option value="운영2팀">운영2팀</option>
-          {/* 운영부는 아니지만 미수채권 담당으로 등재된 팀 — 빠지면 편집 시 팀이 바뀐다. */}
-          <option value="기획팀">기획팀</option>
+          {/* 옵션을 직접 적지 않는다 — 빠진 팀이 있으면 그 사람을 편집할 때 팀이 바뀐다. */}
+          {OPERATOR_TEAMS.map((team) => (
+            <option key={team} value={team}>
+              {team}
+            </option>
+          ))}
         </select>
       </label>
       <label className="block text-xs">

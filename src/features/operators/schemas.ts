@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OPERATOR_TEAMS } from "@/features/auth/operators";
 
 export const operatorStatusSchema = z.enum([
   "active",
@@ -16,9 +17,9 @@ export const STATUS_LABEL: Record<OperatorStatus, string> = {
   deleted: "삭제",
 };
 
-// 기획팀은 운영부가 아니지만 미수채권 담당으로 등재된다 — auth/operators.ts의 OperatorTeam과 같은 집합.
-// 여기서 빠지면 listOperators가 그 행을 조용히 버려 조직권한 목록에서 사라진다.
-export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀", "기획팀"]);
+// 팀 목록을 여기 다시 적지 않는다 — 한 번 빠뜨렸을 때 listOperators가 그 행을 조용히 버려
+// 해당 인원이 조직권한 목록에서 사라졌고, 타입 검사도 CI도 그걸 못 잡았다.
+export const operatorTeamSchema = z.enum(OPERATOR_TEAMS);
 export const operatorRoleSchema = z.enum([
   "부장",
   "팀장",

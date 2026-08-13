@@ -10,7 +10,13 @@
  * 이 목록에 등재한다 — 학교담당자 독려 메일이 담당자 이름→이메일을 여기서 찾기 때문이다.
  * 팀 뉴스레터의 생일·근속 기념일은 운영부 팀으로 한정한다(team-briefing.ts).
  */
-export type OperatorTeam = "운영1팀" | "운영2팀" | "기획팀";
+/**
+ * 팀 값의 **단일 소스**. zod 스키마·팀 편집 드롭다운이 여기서 파생된다.
+ * 값을 바꾸면 `supabase/migrations`의 operators_team_check도 함께 고쳐야 하고,
+ * 안 고치면 `features/operators/__tests__/team-single-source.test.ts`가 잡는다.
+ */
+export const OPERATOR_TEAMS = ["운영1팀", "운영2팀", "기획팀"] as const;
+export type OperatorTeam = (typeof OPERATOR_TEAMS)[number];
 export type OperatorDepartment = "운영부" | "본부장 직속";
 export type OperatorRole = "부장" | "팀장" | "TL" | "매니저";
 export type OperatorGender = "남" | "여";
