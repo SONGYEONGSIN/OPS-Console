@@ -8,6 +8,7 @@ import {
 } from "@/features/mailbox/actions";
 import type { MailboxDelegation } from "@/features/mailbox/schemas";
 import { operatorNameByEmail } from "@/features/auth/operators";
+import { DateInput } from "@/components/common/DateInput";
 
 type Candidate = { email: string; name: string };
 
@@ -84,12 +85,10 @@ export function MailboxDelegationPanel({
 
               <label className="flex flex-col gap-1 text-xs text-muted">
                 위임 종료일
-                <input
-                  type="date"
+                <DateInput
                   value={expiresOn}
                   min={todayKst()}
                   onChange={(e) => setExpiresOn(e.target.value)}
-                  onClick={(e) => e.currentTarget.showPicker?.()}
                   aria-label="위임 종료일"
                   className="cursor-pointer border border-line-soft bg-field-bg px-3 py-2 text-sm text-ink outline-none focus:bg-white focus:border-vermilion"
                 />
