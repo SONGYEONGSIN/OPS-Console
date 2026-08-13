@@ -375,7 +375,7 @@ export const sidebarSections: SbSection[] = [
             ico: "·",
             label: "에이전트",
             slug: "agents",
-            pattern: "dash",
+            pattern: "list",
           },
           {
             ico: "·",
