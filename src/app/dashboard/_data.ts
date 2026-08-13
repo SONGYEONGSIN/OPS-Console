@@ -271,7 +271,12 @@ export const sidebarSections: SbSection[] = [
             pattern: "project",
           },
           { ico: "·", label: "초중고", slug: "k12", pattern: "project" },
-          { ico: "·", label: "인증", slug: "certification", pattern: "project" },
+          {
+            ico: "·",
+            label: "인증",
+            slug: "certification",
+            pattern: "project",
+          },
           { ico: "·", label: "대교협 연계", slug: "kcue", pattern: "project" },
           {
             ico: "·",
@@ -365,6 +370,12 @@ export const sidebarSections: SbSection[] = [
             count: "",
             slug: "ai-tips",
             pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "에이전트",
+            slug: "agents",
+            pattern: "dash",
           },
           {
             ico: "·",
@@ -515,8 +526,7 @@ export type InsTone = "sage" | "gold" | "vermilion";
 
 /** 값에 강조 색/굵기/주석 메타가 필요한 케이스용. 단순 문자열이 기본. */
 export type InsValue =
-  | string
-  | { text: string; tone?: InsTone; bold?: boolean; suffix?: string };
+  string | { text: string; tone?: InsTone; bold?: boolean; suffix?: string };
 
 export type InsField = { k: string; v: InsValue };
 
