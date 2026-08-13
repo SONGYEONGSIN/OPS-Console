@@ -1,6 +1,7 @@
 "use client";
 
 import type { HandlingRow } from "@/features/incident-reports/schemas";
+import { DateInput } from "@/components/common/DateInput";
 
 const cellClass =
   "border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:bg-situation-bg focus:outline-none";
@@ -34,12 +35,11 @@ export function HandlingRowsEditor({
         )}
         {rows.map((r, i) => (
           <div key={i} className="flex items-stretch gap-1">
-            <input
+            <DateInput
               type="datetime-local"
               aria-label={`처리 시간 ${i + 1}`}
               value={r.time}
               onChange={(e) => updateRow(i, { time: e.target.value })}
-              onClick={(e) => e.currentTarget.showPicker?.()}
               className={`${cellClass} w-36 flex-none cursor-pointer`}
             />
             <textarea

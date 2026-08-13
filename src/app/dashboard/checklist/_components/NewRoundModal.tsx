@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { createRoundAction } from "@/features/checklist/actions";
 import { ModalShell } from "@/components/common/ModalShell";
+import { DateInput } from "@/components/common/DateInput";
 
 type Props = {
   rounds: { id: string; title: string }[];
@@ -70,17 +71,15 @@ export function NewRoundModal({ rounds, onClose }: Props) {
         <div className="grid grid-cols-2 gap-2">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs text-muted">점검 시작</span>
-            <input
+            <DateInput
               name="periodStart"
-              type="date"
               className="border border-line-soft bg-field-bg px-2 py-1.5 text-sm text-ink focus:border-ink focus:bg-white"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs text-muted">점검 종료</span>
-            <input
+            <DateInput
               name="periodEnd"
-              type="date"
               className="border border-line-soft bg-field-bg px-2 py-1.5 text-sm text-ink focus:border-ink focus:bg-white"
             />
           </label>

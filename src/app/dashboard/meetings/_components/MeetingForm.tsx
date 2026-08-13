@@ -8,6 +8,7 @@ import {
   type Section,
   type StampStatus,
 } from "@/features/meetings/form-model";
+import { DateInput } from "@/components/common/DateInput";
 
 const LETTERS = "ABCDEFGHIJ".split("");
 
@@ -80,7 +81,10 @@ export function MeetingForm({
 }) {
   // 섹션 i를 patch한 새 doc 전달
   const patchSection = (i: number, sec: Section) =>
-    onChange({ ...doc, sections: doc.sections.map((s, j) => (j === i ? sec : s)) });
+    onChange({
+      ...doc,
+      sections: doc.sections.map((s, j) => (j === i ? sec : s)),
+    });
 
   const renderBody = (sec: Section, si: number) => {
     switch (sec.kind) {
@@ -88,267 +92,283 @@ export function MeetingForm({
         const cols = gridCols(sec.headers, sec.idx, sec.status);
         const dataCols = sec.headers.filter(
           (_, i) =>
-            !(sec.idx && i === 0) && !(sec.status && i === sec.headers.length - 1),
+            !(sec.idx && i === 0) &&
+            !(sec.status && i === sec.headers.length - 1),
         ).length;
         return (
           <>
-          <div className="register">
-            <div className="reg-row head" style={{ gridTemplateColumns: cols }}>
-              {sec.headers.map((h, i) => (
-                <div key={i} className={`rc${sec.idx && i === 0 ? " idx" : ""}`}>
-                  {h}
-                </div>
-              ))}
-            </div>
-            {sec.rows.map((r, ri) => {
-              let ci = 0;
-              return (
-                <div
-                  key={ri}
-                  className="reg-row"
-                  style={{ gridTemplateColumns: cols }}
-                >
-                  {sec.headers.map((_, i) => {
-                    if (sec.idx && i === 0)
+            <div className="register">
+              <div
+                className="reg-row head"
+                style={{ gridTemplateColumns: cols }}
+              >
+                {sec.headers.map((h, i) => (
+                  <div
+                    key={i}
+                    className={`rc${sec.idx && i === 0 ? " idx" : ""}`}
+                  >
+                    {h}
+                  </div>
+                ))}
+              </div>
+              {sec.rows.map((r, ri) => {
+                let ci = 0;
+                return (
+                  <div
+                    key={ri}
+                    className="reg-row"
+                    style={{ gridTemplateColumns: cols }}
+                  >
+                    {sec.headers.map((_, i) => {
+                      if (sec.idx && i === 0)
+                        return (
+                          <div key={i} className="rc idx">
+                            {String(ri + 1).padStart(2, "0")}
+                          </div>
+                        );
+                      if (sec.status && i === sec.headers.length - 1) {
+                        const st = r.status ?? "talk";
+                        return (
+                          <div
+                            key={i}
+                            className={`rc stat st-${st}`}
+                            onClick={() => {
+                              const rows = sec.rows.map((row, k) =>
+                                k === ri
+                                  ? { ...row, status: nextStatus(st) }
+                                  : row,
+                              );
+                              patchSection(si, { ...sec, rows });
+                            }}
+                          >
+                            {STAMP_LABELS[st]}
+                          </div>
+                        );
+                      }
+                      const cellIdx = ci;
+                      ci += 1;
+                      const commitCell = (v: string) => {
+                        const rows = sec.rows.map((row, k) =>
+                          k === ri
+                            ? {
+                                ...row,
+                                cells: row.cells.map((c, m) =>
+                                  m === cellIdx ? v : c,
+                                ),
+                              }
+                            : row,
+                        );
+                        patchSection(si, { ...sec, rows });
+                      };
+                      // '기한' 컬럼은 날짜 선택(클릭 시 달력) — 나머지는 자유 텍스트.
+                      if (sec.headers[i] === "기한")
+                        return (
+                          <DateInput
+                            key={i}
+                            className="rc mf-date-cell"
+                            value={r.cells[cellIdx] ?? ""}
+                            onChange={(e) => commitCell(e.target.value)}
+                          />
+                        );
                       return (
-                        <div key={i} className="rc idx">
-                          {String(ri + 1).padStart(2, "0")}
-                        </div>
-                      );
-                    if (sec.status && i === sec.headers.length - 1) {
-                      const st = r.status ?? "talk";
-                      return (
-                        <div
+                        <Editable
                           key={i}
-                          className={`rc stat st-${st}`}
-                          onClick={() => {
-                            const rows = sec.rows.map((row, k) =>
-                              k === ri ? { ...row, status: nextStatus(st) } : row,
-                            );
-                            patchSection(si, { ...sec, rows });
-                          }}
-                        >
-                          {STAMP_LABELS[st]}
-                        </div>
-                      );
-                    }
-                    const cellIdx = ci;
-                    ci += 1;
-                    const commitCell = (v: string) => {
-                      const rows = sec.rows.map((row, k) =>
-                        k === ri
-                          ? {
-                              ...row,
-                              cells: row.cells.map((c, m) =>
-                                m === cellIdx ? v : c,
-                              ),
-                            }
-                          : row,
-                      );
-                      patchSection(si, { ...sec, rows });
-                    };
-                    // '기한' 컬럼은 날짜 선택(클릭 시 달력) — 나머지는 자유 텍스트.
-                    if (sec.headers[i] === "기한")
-                      return (
-                        <input
-                          key={i}
-                          type="date"
-                          className="rc mf-date-cell"
+                          className="rc"
                           value={r.cells[cellIdx] ?? ""}
-                          onChange={(e) => commitCell(e.target.value)}
-                          onClick={(e) => e.currentTarget.showPicker?.()}
+                          onCommit={commitCell}
                         />
                       );
-                    return (
-                      <Editable
-                        key={i}
-                        className="rc"
-                        value={r.cells[cellIdx] ?? ""}
-                        onCommit={commitCell}
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-          <div className="addrow left">
-            <button
-              type="button"
-              className="addbtn"
-              onClick={() =>
-                patchSection(si, {
-                  ...sec,
-                  rows: [
-                    ...sec.rows,
-                    {
-                      cells: Array.from({ length: dataCols }, () => ""),
-                      status: sec.status ? "talk" : undefined,
-                    },
-                  ],
-                })
-              }
-            >
-              ＋ 행 추가
-            </button>
-          </div>
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="addrow left">
+              <button
+                type="button"
+                className="addbtn"
+                onClick={() =>
+                  patchSection(si, {
+                    ...sec,
+                    rows: [
+                      ...sec.rows,
+                      {
+                        cells: Array.from({ length: dataCols }, () => ""),
+                        status: sec.status ? "talk" : undefined,
+                      },
+                    ],
+                  })
+                }
+              >
+                ＋ 행 추가
+              </button>
+            </div>
           </>
         );
       }
       case "ledger":
         return (
           <>
-          <div className="ledger">
-            {sec.stations.map((st, sti) => (
-              <div key={sti} className="agenda-block">
-                <div className="station">
-                  <span>
-                    <i className="sn mono">{String(sti + 1).padStart(2, "0")}</i>
-                    <Editable
-                      className="mono"
-                      placeholder="안건 제목"
-                      value={st.title}
-                      onCommit={(v) => {
-                        const stations = sec.stations.map((s, k) =>
-                          k === sti ? { ...s, title: v } : s,
-                        );
-                        patchSection(si, { ...sec, stations });
-                      }}
-                    />
-                  </span>
-                </div>
-                <div className="thr-holder">
-                  {st.threads.map((th, ti) => (
-                    <div key={ti} className="thread">
-                      <div className="node">
-                        {sti + 1}·{ti + 1}
-                      </div>
-                      <div className="ex q">
-                        <div className="card">
-                          <span className="who">대학 · 질문</span>
-                          <Editable
-                            className="body"
-                            placeholder="논의·질문 내용"
-                            value={th.q}
-                            onCommit={(v) => {
-                              const stations = sec.stations.map((s, k) =>
-                                k === sti
-                                  ? {
-                                      ...s,
-                                      threads: s.threads.map((t, m) =>
-                                        m === ti ? { ...t, q: v } : t,
-                                      ),
-                                    }
-                                  : s,
-                              );
-                              patchSection(si, { ...sec, stations });
-                            }}
-                          />
-                          <span
-                            className={`stamp st-${th.status}`}
-                            onClick={() => {
-                              const stations = sec.stations.map((s, k) =>
-                                k === sti
-                                  ? {
-                                      ...s,
-                                      threads: s.threads.map((t, m) =>
-                                        m === ti
-                                          ? { ...t, status: nextStatus(t.status) }
-                                          : t,
-                                      ),
-                                    }
-                                  : s,
-                              );
-                              patchSection(si, { ...sec, stations });
-                            }}
-                          >
-                            {STAMP_LABELS[th.status]}
-                          </span>
+            <div className="ledger">
+              {sec.stations.map((st, sti) => (
+                <div key={sti} className="agenda-block">
+                  <div className="station">
+                    <span>
+                      <i className="sn mono">
+                        {String(sti + 1).padStart(2, "0")}
+                      </i>
+                      <Editable
+                        className="mono"
+                        placeholder="안건 제목"
+                        value={st.title}
+                        onCommit={(v) => {
+                          const stations = sec.stations.map((s, k) =>
+                            k === sti ? { ...s, title: v } : s,
+                          );
+                          patchSection(si, { ...sec, stations });
+                        }}
+                      />
+                    </span>
+                  </div>
+                  <div className="thr-holder">
+                    {st.threads.map((th, ti) => (
+                      <div key={ti} className="thread">
+                        <div className="node">
+                          {sti + 1}·{ti + 1}
+                        </div>
+                        <div className="ex q">
+                          <div className="card">
+                            <span className="who">대학 · 질문</span>
+                            <Editable
+                              className="body"
+                              placeholder="논의·질문 내용"
+                              value={th.q}
+                              onCommit={(v) => {
+                                const stations = sec.stations.map((s, k) =>
+                                  k === sti
+                                    ? {
+                                        ...s,
+                                        threads: s.threads.map((t, m) =>
+                                          m === ti ? { ...t, q: v } : t,
+                                        ),
+                                      }
+                                    : s,
+                                );
+                                patchSection(si, { ...sec, stations });
+                              }}
+                            />
+                            <span
+                              className={`stamp st-${th.status}`}
+                              onClick={() => {
+                                const stations = sec.stations.map((s, k) =>
+                                  k === sti
+                                    ? {
+                                        ...s,
+                                        threads: s.threads.map((t, m) =>
+                                          m === ti
+                                            ? {
+                                                ...t,
+                                                status: nextStatus(t.status),
+                                              }
+                                            : t,
+                                        ),
+                                      }
+                                    : s,
+                                );
+                                patchSection(si, { ...sec, stations });
+                              }}
+                            >
+                              {STAMP_LABELS[th.status]}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="ex a">
+                          <div className="card">
+                            <span className="who">진학 · 답변</span>
+                            <Editable
+                              className="body"
+                              placeholder="답변·결정 내용"
+                              value={th.a}
+                              onCommit={(v) => {
+                                const stations = sec.stations.map((s, k) =>
+                                  k === sti
+                                    ? {
+                                        ...s,
+                                        threads: s.threads.map((t, m) =>
+                                          m === ti ? { ...t, a: v } : t,
+                                        ),
+                                      }
+                                    : s,
+                                );
+                                patchSection(si, { ...sec, stations });
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
-                      <div className="ex a">
-                        <div className="card">
-                          <span className="who">진학 · 답변</span>
-                          <Editable
-                            className="body"
-                            placeholder="답변·결정 내용"
-                            value={th.a}
-                            onCommit={(v) => {
-                              const stations = sec.stations.map((s, k) =>
-                                k === sti
-                                  ? {
-                                      ...s,
-                                      threads: s.threads.map((t, m) =>
-                                        m === ti ? { ...t, a: v } : t,
-                                      ),
-                                    }
-                                  : s,
-                              );
-                              patchSection(si, { ...sec, stations });
-                            }}
-                          />
-                        </div>
-                      </div>
+                    ))}
+                    <div className="addrow">
+                      <button
+                        type="button"
+                        className="addbtn"
+                        onClick={() => {
+                          const stations = sec.stations.map((s, k) =>
+                            k === sti
+                              ? {
+                                  ...s,
+                                  threads: [
+                                    ...s.threads,
+                                    {
+                                      q: "",
+                                      a: "",
+                                      status: "talk" as StampStatus,
+                                    },
+                                  ],
+                                }
+                              : s,
+                          );
+                          patchSection(si, { ...sec, stations });
+                        }}
+                      >
+                        ＋ Q&A 추가
+                      </button>
+                      <button
+                        type="button"
+                        className="addbtn danger"
+                        onClick={() =>
+                          patchSection(si, {
+                            ...sec,
+                            stations: sec.stations.filter((_, k) => k !== sti),
+                          })
+                        }
+                      >
+                        안건 삭제
+                      </button>
                     </div>
-                  ))}
-                  <div className="addrow">
-                    <button
-                      type="button"
-                      className="addbtn"
-                      onClick={() => {
-                        const stations = sec.stations.map((s, k) =>
-                          k === sti
-                            ? {
-                                ...s,
-                                threads: [
-                                  ...s.threads,
-                                  { q: "", a: "", status: "talk" as StampStatus },
-                                ],
-                              }
-                            : s,
-                        );
-                        patchSection(si, { ...sec, stations });
-                      }}
-                    >
-                      ＋ Q&A 추가
-                    </button>
-                    <button
-                      type="button"
-                      className="addbtn danger"
-                      onClick={() =>
-                        patchSection(si, {
-                          ...sec,
-                          stations: sec.stations.filter((_, k) => k !== sti),
-                        })
-                      }
-                    >
-                      안건 삭제
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="addrow">
-            <button
-              type="button"
-              className="addbtn"
-              onClick={() =>
-                patchSection(si, {
-                  ...sec,
-                  stations: [
-                    ...sec.stations,
-                    {
-                      title: "",
-                      threads: [{ q: "", a: "", status: "talk" }],
-                    },
-                  ],
-                })
-              }
-            >
-              ＋ 안건 추가
-            </button>
-          </div>
+              ))}
+            </div>
+            <div className="addrow">
+              <button
+                type="button"
+                className="addbtn"
+                onClick={() =>
+                  patchSection(si, {
+                    ...sec,
+                    stations: [
+                      ...sec.stations,
+                      {
+                        title: "",
+                        threads: [{ q: "", a: "", status: "talk" }],
+                      },
+                    ],
+                  })
+                }
+              >
+                ＋ 안건 추가
+              </button>
+            </div>
           </>
         );
       case "kv":
@@ -464,12 +484,11 @@ export function MeetingForm({
                 <div className="dateline">
                   <div className="mf-meta-row">
                     <span className="mf-meta-label">일시</span>
-                    <input
+                    <DateInput
                       type="datetime-local"
                       value={masthead.dateValue}
                       onChange={(e) => masthead.onDate(e.target.value)}
                       onBlur={masthead.onMetaBlur}
-                      onClick={(e) => e.currentTarget.showPicker?.()}
                       className="mf-meta-input"
                     />
                   </div>

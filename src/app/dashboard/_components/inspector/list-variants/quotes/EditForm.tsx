@@ -1,11 +1,15 @@
 "use client";
 
 import type { EditFormProps } from "../types";
-import { QUOTE_STATUS_LABEL, type QuoteStatus } from "@/features/quotes/schemas";
+import {
+  QUOTE_STATUS_LABEL,
+  type QuoteStatus,
+} from "@/features/quotes/schemas";
 import {
   QUOTE_TYPE_LABELS,
   type QuoteType,
 } from "@/features/quotes/document-schema";
+import { DateInput } from "@/components/common/DateInput";
 
 const STATUS_OPTIONS = Object.entries(QUOTE_STATUS_LABEL) as [
   keyof typeof QUOTE_STATUS_LABEL,
@@ -20,7 +24,12 @@ const TYPE_OPTIONS = Object.entries(QUOTE_TYPE_LABELS) as [
 const FIELD_CLASS =
   "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
-export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) {
+export function QuoteEditForm({
+  row,
+  setRow,
+  onSave,
+  onCancel,
+}: EditFormProps) {
   const isNew = !row.id;
 
   function handleDelete() {
@@ -67,8 +76,7 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">견적일</span>
-        <input
-          type="date"
+        <DateInput
           value={row.quoteDate ?? ""}
           onChange={(e) => setRow({ ...row, quoteDate: e.target.value })}
           className={FIELD_CLASS}
@@ -85,7 +93,8 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
           onChange={(e) =>
             setRow({
               ...row,
-              quoteAmount: e.target.value === "" ? null : Number(e.target.value),
+              quoteAmount:
+                e.target.value === "" ? null : Number(e.target.value),
             })
           }
           className={FIELD_CLASS}
@@ -126,8 +135,7 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
 
       <label className="block text-xs">
         <span className="mb-1 block text-muted">유효기간</span>
-        <input
-          type="date"
+        <DateInput
           value={row.quoteValidUntil ?? ""}
           onChange={(e) =>
             setRow({
@@ -144,7 +152,9 @@ export function QuoteEditForm({ row, setRow, onSave, onCancel }: EditFormProps) 
         <textarea
           rows={3}
           value={row.quoteNote ?? ""}
-          onChange={(e) => setRow({ ...row, quoteNote: e.target.value || null })}
+          onChange={(e) =>
+            setRow({ ...row, quoteNote: e.target.value || null })
+          }
           className={FIELD_CLASS}
           placeholder="메모"
         />

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { OPERATORS } from "@/features/auth/operators";
 import { postStatusKeys, postStatusLabel } from "./Table";
+import { DateInput } from "@/components/common/DateInput";
 
 type Props = {
   row: ListRow;
@@ -113,8 +114,7 @@ export function PostForm({
           <span className="mb-1 block text-muted">
             공지일 (이 날짜에 Teams 공유 · 비우면 즉시)
           </span>
-          <input
-            type="date"
+          <DateInput
             aria-label="공지일"
             value={row.noticeAnnounceOn ?? ""}
             onChange={(e) =>
