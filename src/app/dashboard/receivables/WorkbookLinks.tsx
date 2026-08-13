@@ -7,10 +7,11 @@ type Props = {
   isAdmin: boolean;
 };
 
-// 목록 헤더 액션 버튼 표준(외곽선 변형) — services의 BulkPasteAnnouncements와 동일.
-// 같은 슬롯에는 솔리드(bg-ink) 변형도 있으나, 이 둘은 외부 파일로 나가는 보조 동작이라 외곽선을 쓴다.
+// 목록 헤더 액션 버튼 표준 — ListPattern 생성 버튼(`+ 백업 요청` 등)과 같은 문자열.
+// 이 슬롯의 버튼은 대부분 솔리드다. 미수채권에는 생성 버튼이 없어(스크래핑으로 채워지는 목록)
+// 버밀리언을 써도 기본 액션과 부딪히지 않는다.
 const LINK_CLASS =
-  "cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:bg-washi";
+  "cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep";
 
 /**
  * 원본 엑셀 바로가기 — 미수채권 칩 줄 오른쪽.
