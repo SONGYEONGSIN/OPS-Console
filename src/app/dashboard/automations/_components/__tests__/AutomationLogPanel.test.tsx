@@ -6,6 +6,7 @@ vi.mock("@/features/receivables-match/apply-mismatch-action", () => ({
 }));
 
 import { AutomationLogPanel, buildTimeline } from "../AutomationLogPanel";
+import { BADGE_TONE } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
 import type { JobRunLog } from "@/features/automations/run-logs-normalize";
 import type { AutomationRunEntry } from "@/features/automations/types";
 
@@ -30,18 +31,37 @@ describe("buildTimeline — 시각 내림차순 정렬", () => {
       kind: "closing-scrape",
       entries: [
         // idx0 — 6.22 run과 같은 날짜(매칭)
-        { ranAt: "2026-06-22T01:00:57Z", status: "success", serviceCount: 491, message: null },
+        {
+          ranAt: "2026-06-22T01:00:57Z",
+          status: "success",
+          serviceCount: 491,
+          message: null,
+        },
         // idx1,2 — 6.26 (어떤 run에도 매칭 안 됨 = leftover, 가장 최신)
-        { ranAt: "2026-06-26T12:14:08Z", status: "failed", serviceCount: 0, message: "TimeoutException" },
-        { ranAt: "2026-06-26T08:20:34Z", status: "failed", serviceCount: 0, message: "RuntimeError" },
+        {
+          ranAt: "2026-06-26T12:14:08Z",
+          status: "failed",
+          serviceCount: 0,
+          message: "TimeoutException",
+        },
+        {
+          ranAt: "2026-06-26T08:20:34Z",
+          status: "failed",
+          serviceCount: 0,
+          message: "RuntimeError",
+        },
       ],
     };
     const tl = buildTimeline(runs, log);
     // 최신 6.26 detail-only가 맨 위, 그 뒤 6.22 run, 6.17 run 순
     expect(tl[0].kind).toBe("detail-only");
     expect(tl[0].kind === "detail-only" && tl[0].dateKey).toBe("2026-06-26");
-    expect(tl[1].kind === "run" && tl[1].run.ranAt).toBe("2026-06-22T01:00:24Z");
-    expect(tl[2].kind === "run" && tl[2].run.ranAt).toBe("2026-06-17T04:49:37Z");
+    expect(tl[1].kind === "run" && tl[1].run.ranAt).toBe(
+      "2026-06-22T01:00:24Z",
+    );
+    expect(tl[2].kind === "run" && tl[2].run.ranAt).toBe(
+      "2026-06-17T04:49:37Z",
+    );
   });
 });
 
@@ -116,6 +136,43 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText("스킵")).toBeInTheDocument();
     expect(screen.getByText("실패")).toBeInTheDocument();
     expect(screen.getByText("시트 미연결")).toBeInTheDocument();
+  });
+
+  it("실행 배지 색이 공통 규칙을 따른다 — 성공이 실패 옆에서 묻히지 않는다", () => {
+    render(
+      <AutomationLogPanel
+        label="세금계산서 역발행 알림"
+        loading={false}
+        error={null}
+        runs={[
+          {
+            ranAt: "2026-06-15T01:00:00Z",
+            ok: true,
+            skipped: false,
+            message: "",
+          },
+          {
+            ranAt: "2026-06-14T01:00:00Z",
+            ok: true,
+            skipped: true,
+            message: "",
+          },
+          {
+            ranAt: "2026-06-13T01:00:00Z",
+            ok: false,
+            skipped: false,
+            message: "",
+          },
+        ]}
+        log={null}
+      />,
+    );
+    // 성공을 완료 규칙에 넣지 않으면 대기(그레이)로 떨어져 진한 빨강 '실패' 옆에서 안 보인다.
+    expect(screen.getByText("성공")).toHaveClass(...BADGE_TONE.done.split(" "));
+    expect(screen.getByText("실패")).toHaveClass(
+      ...BADGE_TONE.attention.split(" "),
+    );
+    expect(screen.getByText("스킵")).toHaveClass(...BADGE_TONE.idle.split(" "));
   });
 
   it("통합 타임라인 — 같은 날짜의 run과 발송 상세를 한 블록에 인라인", () => {
@@ -403,7 +460,10 @@ describe("AutomationLogPanel", () => {
       />,
     );
     expect(screen.getByText("김운영 (kim@example.com)")).toBeInTheDocument();
-    expect(screen.getByText("발송")).toBeInTheDocument();
+    // '발송'이 아니라 '발송완료' — 견적서의 '발송'은 응답 대기라 같은 색을 줄 수 없다(badge-tone.ts).
+    expect(screen.getByText("발송완료")).toHaveClass(
+      ...BADGE_TONE.done.split(" "),
+    );
   });
 
   it("notice-teams 로그 — 공유 공지 제목/작성자 렌더", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { statusBadgeTone } from "../badge-tone";
 
 /**
  * 접이식 필드 — 작업 탭처럼 필드가 많은 카테고리에서 사용.
@@ -32,9 +33,9 @@ export function CollapsibleField({
         {/* 섹션 제목 — 시트 안의 소제목 위계 */}
         <span className="text-base font-bold text-ink">{label}</span>
         <span
-          className={`ml-auto inline-block px-2.5 py-1 text-xs ${
-            filled ? "bg-ink text-cream" : "bg-vermilion text-cream"
-          }`}
+          className={`ml-auto inline-block px-2.5 py-1 text-xs ${statusBadgeTone(
+            filled ? "작성완료" : "미작성",
+          )}`}
         >
           {filled ? "작성완료" : "미작성"}
         </span>
