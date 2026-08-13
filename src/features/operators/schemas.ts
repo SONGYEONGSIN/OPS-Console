@@ -16,7 +16,9 @@ export const STATUS_LABEL: Record<OperatorStatus, string> = {
   deleted: "삭제",
 };
 
-export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀"]);
+// 기획팀은 운영부가 아니지만 미수채권 담당으로 등재된다 — auth/operators.ts의 OperatorTeam과 같은 집합.
+// 여기서 빠지면 listOperators가 그 행을 조용히 버려 조직권한 목록에서 사라진다.
+export const operatorTeamSchema = z.enum(["운영1팀", "운영2팀", "기획팀"]);
 export const operatorRoleSchema = z.enum([
   "부장",
   "팀장",
@@ -28,11 +30,7 @@ export const operatorRoleSchema = z.enum([
 ]);
 export const operatorGenderSchema = z.enum(["남", "여"]);
 
-export const operatorPermissionSchema = z.enum([
-  "admin",
-  "member",
-  "viewer",
-]);
+export const operatorPermissionSchema = z.enum(["admin", "member", "viewer"]);
 
 export type OperatorPermission = z.infer<typeof operatorPermissionSchema>;
 
