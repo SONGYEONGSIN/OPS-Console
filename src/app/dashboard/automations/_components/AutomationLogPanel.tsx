@@ -5,6 +5,7 @@ import {
   DefList,
   Divider,
 } from "@/app/dashboard/_components/inspector/list-variants/shared";
+import { statusBadgeTone } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
 import {
   formatKrw,
   type JobRunLog,
@@ -72,6 +73,13 @@ function MismatchApplyButton({ item }: { item: DepositMismatchItem }) {
   );
 }
 
+/** 상태 배지 크기 — 색은 statusBadgeTone이 정하고 여기선 여백·글자만 잡는다. */
+const BADGE_BOX = "inline-block px-2 py-0.5 text-[11px]";
+
+/**
+ * 실행 모드 — 상태가 아니라서 공통 배지 규칙을 쓰지 않는다.
+ * 규칙대로면 LIVE가 대기(그레이)로 떨어져 '실제로 메일이 나갔다'는 신호가 묻힌다.
+ */
 function ModeBadge({ mode }: { mode: "dry_run" | "live" }) {
   return (
     <span
@@ -87,20 +95,11 @@ function ModeBadge({ mode }: { mode: "dry_run" | "live" }) {
 }
 
 function StatusBadge({ status }: { status: "sent" | "failed" | "dry_run" }) {
+  // '발송'이 아니라 '발송완료' — 견적서의 '발송'은 응답 대기 상태라 뜻이 다르다(badge-tone.ts).
   const label =
-    status === "sent" ? "발송" : status === "failed" ? "실패" : "DRY-RUN";
+    status === "sent" ? "발송완료" : status === "failed" ? "실패" : "DRY-RUN";
   return (
-    <span
-      className={`inline-block px-2 py-0.5 text-[11px] ${
-        status === "failed"
-          ? "bg-vermilion/20 text-vermilion-deep"
-          : status === "sent"
-            ? "bg-washi-raised text-ink"
-            : "bg-washi-raised text-muted"
-      }`}
-    >
-      {label}
-    </span>
+    <span className={`${BADGE_BOX} ${statusBadgeTone(label)}`}>{label}</span>
   );
 }
 
@@ -294,18 +293,9 @@ function WeeklyStatusBadge({
 }: {
   status: WeeklyReportEntry["status"];
 }) {
+  const label = WEEKLY_STATUS_LABEL[status];
   return (
-    <span
-      className={`inline-block px-2 py-0.5 text-[11px] ${
-        status === "failed"
-          ? "bg-vermilion/20 text-vermilion-deep"
-          : status === "created"
-            ? "bg-washi-raised text-ink"
-            : "bg-washi-raised text-muted"
-      }`}
-    >
-      {WEEKLY_STATUS_LABEL[status]}
-    </span>
+    <span className={`${BADGE_BOX} ${statusBadgeTone(label)}`}>{label}</span>
   );
 }
 
@@ -355,18 +345,9 @@ const CLOSING_STATUS_LABEL: Record<ClosingRunEntry["status"], string> = {
 };
 
 function ClosingStatusBadge({ status }: { status: ClosingRunEntry["status"] }) {
+  const label = CLOSING_STATUS_LABEL[status];
   return (
-    <span
-      className={`inline-block px-2 py-0.5 text-[11px] ${
-        status === "failed"
-          ? "bg-vermilion/20 text-vermilion-deep"
-          : status === "success"
-            ? "bg-washi-raised text-ink"
-            : "bg-washi-raised text-muted"
-      }`}
-    >
-      {CLOSING_STATUS_LABEL[status]}
-    </span>
+    <span className={`${BADGE_BOX} ${statusBadgeTone(label)}`}>{label}</span>
   );
 }
 
@@ -454,17 +435,7 @@ function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
 function RunStatusBadge({ entry }: { entry: AutomationRunEntry }) {
   const label = entry.skipped ? "스킵" : entry.ok ? "성공" : "실패";
   return (
-    <span
-      className={`inline-block px-2 py-0.5 text-[11px] ${
-        !entry.ok
-          ? "bg-vermilion/20 text-vermilion-deep"
-          : entry.skipped
-            ? "bg-washi-raised text-muted"
-            : "bg-washi-raised text-ink"
-      }`}
-    >
-      {label}
-    </span>
+    <span className={`${BADGE_BOX} ${statusBadgeTone(label)}`}>{label}</span>
   );
 }
 

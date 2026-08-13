@@ -60,6 +60,9 @@ describe("statusBadgeTone — 완료", () => {
     "발송완료",
     "수주",
     "수금",
+    // 자동화 실행 로그 — 잡이 정상 종료했다는 뜻이다.
+    "성공",
+    "생성",
   ]) {
     it(`${label} → done`, () => {
       expect(statusBadgeTone(label)).toBe(BADGE_TONE.done);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { statusBadgeTone } from "../badge-tone";
 import {
   updateDevControlFlag,
   requestDevControlAnalyze,
@@ -143,12 +144,16 @@ function AnalyzeRequestControl({
     <div className="flex flex-col items-end gap-1">
       <div className="flex items-center gap-2">
         {status === "pending" && (
-          <span className="inline-block bg-vermilion/10 px-2 py-0.5 text-2xs text-vermilion">
+          <span
+            className={`inline-block px-2 py-0.5 text-2xs ${statusBadgeTone("분석 대기")}`}
+          >
             분석 대기
           </span>
         )}
         {status === "running" && (
-          <span className="inline-block bg-ink px-2 py-0.5 text-2xs text-cream">
+          <span
+            className={`inline-block px-2 py-0.5 text-2xs ${statusBadgeTone("분석 중")}`}
+          >
             분석 중
           </span>
         )}
