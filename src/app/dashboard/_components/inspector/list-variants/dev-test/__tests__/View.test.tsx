@@ -5,6 +5,7 @@ vi.mock("@/features/entertest/actions", () => ({
   requestEntertestRun: vi.fn(),
   setMyEntertestAccount: vi.fn(),
   cancelEntertestRun: vi.fn(),
+  deleteEntertestRun: vi.fn(),
 }));
 
 import { DevTestView } from "../View";
@@ -137,5 +138,61 @@ describe("DevTestView — 대기 요청 취소", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
+  });
+});
+
+describe("DevTestView — 끝난 이력 삭제", () => {
+  const rowWith = (run: Run): ListRow => ({ ...row, entertestRuns: [run] });
+
+  it("본인 실패 건에는 삭제 버튼이 있다", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("failed", "me@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
+  });
+
+  it("오류 건도 실패와 같이 삭제할 수 있다", () => {
+    // 오류(러너 비정상 종료)는 실패와 같은 범주 — 배지 톤도 같다.
+    render(
+      <DevTestView
+        row={rowWith(runWith("error", "me@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
+  });
+
+  it("완료 건은 지울 수 없다 — 남길 가치가 있는 성공 기록", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("done", "me@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+  });
+
+  it("남의 실패 건에는 삭제 버튼이 없다", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("failed", "other@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
+  });
+
+  it("admin은 남의 실패 건도 지울 수 있다", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("failed", "other@x.com"))}
+        currentUserEmail="me@x.com"
+        currentUserPermission="admin"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
   });
 });

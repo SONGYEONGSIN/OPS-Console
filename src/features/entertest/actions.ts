@@ -124,6 +124,48 @@ export async function cancelEntertestRun(
   return { ok: true, message: "대기 중인 요청을 취소했습니다." };
 }
 
+/**
+ * 끝난 실행 이력 삭제 — 실패·오류 건만. 요청자 본인 또는 admin.
+ *
+ * 완료(done)는 남길 가치가 있는 성공 기록이라 지우지 않고, 실행 중(running)은
+ * 폴러가 돌고 있어 손대지 않는다. 대기(pending) 취소는 cancelEntertestRun.
+ * 취소와 같은 이유로 status·요청자 조건을 DELETE 필터에 함께 건다.
+ */
+export async function deleteEntertestRun(
+  _prev: EntertestActionState,
+  formData: FormData,
+): Promise<{ ok: boolean; message: string }> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, message: "로그인이 필요합니다." };
+
+  const parsedId = runIdSchema.safeParse(formData.get("runId"));
+  if (!parsedId.success) {
+    return { ok: false, message: "삭제할 이력을 찾을 수 없습니다." };
+  }
+
+  const admin = createAdminClient();
+  let query = admin
+    .from("entertest_test_runs")
+    .delete()
+    .eq("id", parsedId.data)
+    .in("status", ["failed", "error"]);
+  if (me.permission !== "admin") {
+    query = query.eq("requested_by", me.email);
+  }
+  const { data, error } = await query.select("id");
+  if (error) return { ok: false, message: error.message };
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      message:
+        "삭제할 수 없습니다. 실패·오류 건이 아니거나 본인 요청이 아닙니다.",
+    };
+  }
+
+  revalidatePath("/dashboard/dev-test");
+  return { ok: true, message: "실행 이력을 삭제했습니다." };
+}
+
 const accountSchema = z
   .string()
   .trim()
