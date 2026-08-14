@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { scheduleTypeSchema } from "@/features/schedule/schemas";
 import {
   aggregateContracts,
   nextWeekdayRange,
@@ -91,6 +92,23 @@ describe("eventDateLabel", () => {
 });
 
 describe("groupScheduleInRange", () => {
+  it("스키마의 모든 일정 유형이 그룹에 나온다", () => {
+    // 표시 순서 화이트리스트가 스키마와 어긋나면 그 유형은 에러 없이 조용히 사라진다.
+    // 실제 사고: meeting(회의)이 빠져 8/21 대교협 기술회의가 4호에서 누락됐다.
+    const events = scheduleTypeSchema.options.map((type) => ({
+      type,
+      title: `${type} 일정`,
+      start_at: "2026-08-18T09:00:00+09:00",
+      all_day: true,
+    }));
+    const seen = groupScheduleInRange(events, "2026-08-17", "2026-08-21")
+      .flatMap((g) => g.items)
+      .map((e) => e.type);
+    for (const type of scheduleTypeSchema.options) {
+      expect(seen, `${type}이(가) 빠졌다`).toContain(type);
+    }
+  });
+
   it("범위 내 일정만 유형별 그룹(범위 밖 제외)", () => {
     const events = [
       {
