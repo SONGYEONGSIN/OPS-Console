@@ -12,6 +12,40 @@ import { getWorkbookSession } from "./workbook-session";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 
+/**
+ * 공문관리대장 원본(SharePoint) webUrl — 사고보고 화면의 바로가기 버튼용.
+ *
+ * 조회 실패는 null로 돌려준다. 버튼을 안 그리는 편이 깨진 링크를 누르게 하는 것보다 낫고,
+ * 링크 하나 때문에 사고보고 목록 전체가 못 뜨는 일은 없어야 한다.
+ * (미수채권 workbook-links와 같은 원칙)
+ */
+export async function getGongmunLedgerUrl(): Promise<string | null> {
+  const driveId = process.env.SHAREPOINT_DRIVE_ID;
+  const itemId = process.env.SHAREPOINT_GONGMUN_ITEM_ID;
+  if (!driveId || !itemId) {
+    console.error(
+      "[gongmun] SHAREPOINT_DRIVE_ID / SHAREPOINT_GONGMUN_ITEM_ID 미설정",
+    );
+    return null;
+  }
+  try {
+    const token = await getGraphToken();
+    const res = await fetch(
+      `${GRAPH}/drives/${driveId}/items/${itemId}?$select=webUrl`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) {
+      console.error(`[gongmun] webUrl 조회 실패: ${res.status}`);
+      return null;
+    }
+    const json = (await res.json()) as { webUrl?: string };
+    return json.webUrl ?? null;
+  } catch (e) {
+    console.error("[gongmun] webUrl 조회 예외:", e);
+    return null;
+  }
+}
+
 /** 시행번호 prefix — 운영{YY}{MM}-{DD} */
 export function formatDocPrefix(date: Date): string {
   const yy = String(date.getFullYear()).slice(2);
@@ -100,9 +134,7 @@ export function findSenderRowIndex(
   docNumber: string,
 ): number {
   const target = String(docNumber).trim();
-  return bColumnValues.findIndex(
-    (v) => String(v ?? "").trim() === target,
-  );
+  return bColumnValues.findIndex((v) => String(v ?? "").trim() === target);
 }
 
 export type LedgerRow = {
@@ -135,9 +167,11 @@ export async function appendSenderRow(
   for (let i = 0; i < text.length; i++) {
     if (String(text[i]?.[1] ?? "").trim()) lastIdx = i;
   }
-  const lastSeqRaw = lastIdx >= 0 ? String(text[lastIdx]?.[0] ?? "").trim() : "";
+  const lastSeqRaw =
+    lastIdx >= 0 ? String(text[lastIdx]?.[0] ?? "").trim() : "";
   const lastSeq = Number(lastSeqRaw);
-  const nextSeq = Number.isFinite(lastSeq) && lastSeq > 0 ? lastSeq + 1 : lastIdx + 2;
+  const nextSeq =
+    Number.isFinite(lastSeq) && lastSeq > 0 ? lastSeq + 1 : lastIdx + 2;
   const nextExcelRow = startRow + (lastIdx >= 0 ? lastIdx : text.length) + 1;
 
   const address = `A${nextExcelRow}:G${nextExcelRow}`;
