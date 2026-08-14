@@ -30,6 +30,14 @@ function operator(permission: CurrentOperator["permission"]): CurrentOperator {
   };
 }
 
+/** 런처 클릭 — 실제 브라우저처럼 mousedown을 먼저 흘린다.
+ *  InspectorPanel이 document mousedown으로 외부 클릭을 판정하기 때문에,
+ *  이 순서를 지켜야 "열린 상태에서 런처를 눌러도 안 닫히는" 회귀가 드러난다. */
+function clickLauncher(el: HTMLElement) {
+  fireEvent.mouseDown(el);
+  fireEvent.click(el);
+}
+
 describe("AssistantLauncher", () => {
   it("운영자에게 우하단 런처 버튼을 보여준다", () => {
     render(<AssistantLauncher me={operator("member")} />);
@@ -47,24 +55,37 @@ describe("AssistantLauncher", () => {
     expect(screen.queryByRole("button", { name: "어시스턴트" })).toBeNull();
   });
 
-  it("런처를 누르면 채팅 패널이 열린다", () => {
+  it("런처를 누르면 인스펙터 패널이 열린다", () => {
     render(<AssistantLauncher me={operator("member")} />);
-    const panel = screen.getByRole("dialog", { hidden: true });
-    expect(panel).not.toBeVisible();
+    // 닫힘 = aria-hidden — 접근성 트리에서 빠진다
+    expect(screen.queryByRole("complementary")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "어시스턴트" }));
-    expect(screen.getByRole("dialog")).toBeVisible();
+    clickLauncher(screen.getByRole("button", { name: "어시스턴트" }));
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
+  });
+
+  it("열린 상태에서 런처를 다시 누르면 닫힌다", () => {
+    // InspectorPanel은 document mousedown으로 외부 클릭을 판정한다. 런처는 패널
+    // 밖이라 mousedown이 먼저 닫고 이어진 click 토글이 다시 열어버릴 수 있다.
+    render(<AssistantLauncher me={operator("member")} />);
+    const launcher = screen.getByRole("button", { name: "어시스턴트" });
+
+    clickLauncher(launcher);
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
+
+    clickLauncher(launcher);
+    expect(screen.queryByRole("complementary")).toBeNull();
   });
 
   it("ESC로 패널을 닫는다", () => {
     render(<AssistantLauncher me={operator("admin")} />);
-    fireEvent.click(screen.getByRole("button", { name: "어시스턴트" }));
-    expect(screen.getByRole("dialog")).toBeVisible();
+    clickLauncher(screen.getByRole("button", { name: "어시스턴트" }));
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
 
     act(() => {
-      fireEvent.keyDown(document, { key: "Escape" });
+      fireEvent.keyDown(window, { key: "Escape" });
     });
-    expect(screen.getByRole("dialog", { hidden: true })).not.toBeVisible();
+    expect(screen.queryByRole("complementary")).toBeNull();
   });
 
   it("패널을 닫아도 대화는 유지된다 — AssistantClient를 언마운트하지 않는다", () => {
@@ -72,9 +93,9 @@ describe("AssistantLauncher", () => {
     render(<AssistantLauncher me={operator("member")} />);
     const launcher = screen.getByRole("button", { name: "어시스턴트" });
 
-    fireEvent.click(launcher); // 열기
-    fireEvent.click(launcher); // 닫기
-    fireEvent.click(launcher); // 다시 열기
+    clickLauncher(launcher); // 열기
+    clickLauncher(launcher); // 닫기
+    clickLauncher(launcher); // 다시 열기
 
     expect(mountSpy).toHaveBeenCalledTimes(1);
   });
