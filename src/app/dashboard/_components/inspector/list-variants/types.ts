@@ -46,6 +46,8 @@ export type ChecklistToggleInput = {
 export type ViewProps = {
   row: ListRow;
   currentUserPermission?: OperatorPermission | null;
+  /** dev-test variant — 본인 요청 판별 (대기 요청 취소 노출). */
+  currentUserEmail?: string | null;
   receivablesMailDryRun?: boolean;
   /** cohort variant — 인스펙터 내 체크리스트 토글 (없으면 읽기 전용). */
   onChecklistToggle?: (

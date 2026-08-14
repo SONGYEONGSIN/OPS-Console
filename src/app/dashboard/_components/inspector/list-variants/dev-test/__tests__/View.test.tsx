@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react";
 vi.mock("@/features/entertest/actions", () => ({
   requestEntertestRun: vi.fn(),
   setMyEntertestAccount: vi.fn(),
+  cancelEntertestRun: vi.fn(),
 }));
 
 import { DevTestView } from "../View";
@@ -60,12 +61,12 @@ describe("DevTestView", () => {
 
 type Run = ListRow["entertestRuns"] extends (infer R)[] ? R : never;
 
-function runWith(status: string): Run {
+function runWith(status: string, requestedBy = "kim"): Run {
   return {
     id: "r1",
     service_id: 1,
     status,
-    requested_by: "kim",
+    requested_by: requestedBy,
     requested_at: "2026-06-18T09:00:00Z",
     result: null,
     error_message: null,
@@ -90,5 +91,51 @@ describe("DevTestView — 상태 배지 톤", () => {
     expect(screen.getByText("실행 중").className).toContain(
       BADGE_TONE.progress,
     );
+  });
+});
+
+describe("DevTestView — 대기 요청 취소", () => {
+  const rowWith = (run: Run): ListRow => ({ ...row, entertestRuns: [run] });
+
+  it("본인이 요청한 대기 건에는 취소 버튼이 있다", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("pending", "me@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
+  });
+
+  it("이미 실행이 시작된 건에는 취소 버튼이 없다", () => {
+    // running은 폴러가 이미 집어간 상태 — 되돌릴 수 없다.
+    render(
+      <DevTestView
+        row={rowWith(runWith("running", "me@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "취소" })).toBeNull();
+  });
+
+  it("남의 대기 요청에는 취소 버튼이 없다", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("pending", "other@x.com"))}
+        currentUserEmail="me@x.com"
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "취소" })).toBeNull();
+  });
+
+  it("admin은 남의 대기 요청도 취소할 수 있다", () => {
+    render(
+      <DevTestView
+        row={rowWith(runWith("pending", "other@x.com"))}
+        currentUserEmail="me@x.com"
+        currentUserPermission="admin"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "취소" })).toBeInTheDocument();
   });
 });

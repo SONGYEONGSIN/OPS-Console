@@ -78,6 +78,52 @@ export async function requestEntertestRun(
   };
 }
 
+const runIdSchema = z.string().uuid();
+
+/**
+ * 대기 중인 테스트 요청 취소 — 요청자 본인 또는 admin만.
+ *
+ * 대기/진행 1건 정책 때문에 pending이 남아 있으면 아무도 새 테스트를 못 돌린다.
+ * 폴러 claim(pending → running)과 경합하므로 조회 후 삭제가 아니라
+ * status·요청자 조건을 DELETE 필터에 함께 걸어 한 번에 처리한다 —
+ * 그 사이 claim됐다면 지워지는 행이 0건이 되어 실패로 돌아온다.
+ * 실행되지 않은 요청이라 남길 결과가 없어 행을 지운다.
+ */
+export async function cancelEntertestRun(
+  _prev: EntertestActionState,
+  formData: FormData,
+): Promise<{ ok: boolean; message: string }> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, message: "로그인이 필요합니다." };
+
+  const parsedId = runIdSchema.safeParse(formData.get("runId"));
+  if (!parsedId.success) {
+    return { ok: false, message: "취소할 요청을 찾을 수 없습니다." };
+  }
+
+  const admin = createAdminClient();
+  let query = admin
+    .from("entertest_test_runs")
+    .delete()
+    .eq("id", parsedId.data)
+    .eq("status", "pending");
+  if (me.permission !== "admin") {
+    query = query.eq("requested_by", me.email);
+  }
+  const { data, error } = await query.select("id");
+  if (error) return { ok: false, message: error.message };
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      message:
+        "취소할 수 없습니다. 이미 실행이 시작됐거나 본인 요청이 아닙니다.",
+    };
+  }
+
+  revalidatePath("/dashboard/dev-test");
+  return { ok: true, message: "대기 중인 요청을 취소했습니다." };
+}
+
 const accountSchema = z
   .string()
   .trim()
