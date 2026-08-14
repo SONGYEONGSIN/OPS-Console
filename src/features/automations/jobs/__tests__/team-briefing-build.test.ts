@@ -22,6 +22,8 @@ import {
   excludeSeenImages,
   ALBUM_MAX,
   pickSasiGoal,
+  backupRequestsToEvents,
+  paymentDatesToEvents,
 } from "../team-briefing-build";
 
 const SHEETS = ["4년제", "전문대", "초중고", "대학원", "기타"] as const;
@@ -88,6 +90,75 @@ describe("eventDateLabel", () => {
         end_at: "2026-08-02T00:00:00+09:00",
       }),
     ).toBe("07-30~08-02");
+  });
+});
+
+describe("backupRequestsToEvents — 백업 요청도 차주 휴가로 싣는다", () => {
+  const names = { "a@x.com": "임종우" };
+  const base = {
+    requester_email: "a@x.com",
+    requester_team: "운영2팀",
+    leave_type: "연차",
+    leave_start_date: "2026-08-18",
+    leave_end_date: "2026-08-21",
+  };
+
+  it("일정 목록과 같은 표기(팀-이름-유형)로 바꾼다", () => {
+    const [e] = backupRequestsToEvents(
+      [base],
+      names,
+      "2026-08-17",
+      "2026-08-21",
+    );
+    expect(e.type).toBe("leave");
+    expect(e.title).toBe("운영2팀-임종우-연차");
+    expect(e.start_at.slice(0, 10)).toBe("2026-08-18");
+    expect(e.end_at?.slice(0, 10)).toBe("2026-08-21");
+  });
+
+  it("차주 이전에 시작해도 겹치면 싣는다", () => {
+    // start_at만 보면 주말 시작 휴가가 통째로 사라진다.
+    const r = {
+      ...base,
+      leave_start_date: "2026-08-15",
+      leave_end_date: "2026-08-19",
+    };
+    expect(
+      backupRequestsToEvents([r], names, "2026-08-17", "2026-08-21"),
+    ).toHaveLength(1);
+  });
+
+  it("겹치지 않으면 뺀다", () => {
+    const r = {
+      ...base,
+      leave_start_date: "2026-09-01",
+      leave_end_date: "2026-09-02",
+    };
+    expect(
+      backupRequestsToEvents([r], names, "2026-08-17", "2026-08-21"),
+    ).toHaveLength(0);
+  });
+
+  it("이름을 못 찾으면 이메일 앞부분으로 대체한다 — 조용히 빼지 않는다", () => {
+    const [e] = backupRequestsToEvents([base], {}, "2026-08-17", "2026-08-21");
+    expect(e.title).toBe("운영2팀-a-연차");
+  });
+});
+
+describe("paymentDatesToEvents — 비용지급일도 차주 일정에 싣는다", () => {
+  it("범위 안 비용지급일을 '비용' 유형으로 바꾼다", () => {
+    const rows = [
+      { ymd: "2026-08-20", category: "개인" },
+      { ymd: "2026-08-20", category: "공용" },
+      { ymd: "2026-09-01", category: "개인" },
+    ];
+    const out = paymentDatesToEvents(rows, "2026-08-17", "2026-08-21");
+    expect(out).toHaveLength(2);
+    expect(out[0].type).toBe("payment");
+    expect(out.map((e) => e.title)).toEqual([
+      "개인 비용지급일",
+      "공용 비용지급일",
+    ]);
   });
 });
 
