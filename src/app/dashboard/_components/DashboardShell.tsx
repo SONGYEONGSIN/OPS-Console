@@ -8,6 +8,7 @@ import { SidebarToggleProvider } from "./sidebar-toggle-context";
 import { PageActivityLogger } from "./PageActivityLogger";
 import { DocumentTitle } from "./DocumentTitle";
 import { TutorialTour } from "./tutorial/TutorialTour";
+import { AssistantLauncher } from "./assistant-launcher/AssistantLauncher";
 import type { CurrentOperator } from "@/features/auth/queries";
 
 /**
@@ -97,6 +98,8 @@ export function DashboardShell({
             인스펙터(transform 드로어) 안의 모달이 fixed로 갇히는 것을 피하면서
             document.body 직속 portal의 이벤트 위임 문제도 회피한다. */}
         <div id="ops-modal-root" />
+        {/* 어시스턴트 런처도 같은 이유로 여기(transform 조상 없는 최상위)에 둔다. */}
+        <AssistantLauncher me={me} />
       </SidebarToggleProvider>
     </OpenTabsProvider>
   );
