@@ -47,6 +47,26 @@ export async function listTestableServices(): Promise<TestableService[]> {
   return data as TestableService[];
 }
 
+/**
+ * 테스트 URL 호스트를 정하는 접수구분 조회 (buildEntertestTargetUrl 입력).
+ * 서비스를 찾지 못하면 null — closing_services는 매일 스크래핑으로 덮어써서
+ * 목록을 그린 뒤 사라질 수 있다. 화면이 보낸 값을 믿지 않고 DB에서 다시 읽는다.
+ */
+export async function findServiceAdmissionType(
+  serviceId: number,
+): Promise<{ admissionType: string | null } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("closing_services")
+    .select("admission_type")
+    .eq("service_id", serviceId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    admissionType: (data as { admission_type: string | null }).admission_type,
+  };
+}
+
 /** 로그인 운영자의 entertest 테스트 계정 ID. 미등록이면 null. */
 export async function getMyEntertestAccount(
   email: string,
