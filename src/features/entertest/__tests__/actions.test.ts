@@ -21,7 +21,11 @@ vi.mock("../queries", () => ({
   findServiceAdmissionType: h.findServiceAdmissionType,
 }));
 
-import { cancelEntertestRun, requestEntertestRun } from "../actions";
+import {
+  cancelEntertestRun,
+  deleteEntertestRun,
+  requestEntertestRun,
+} from "../actions";
 
 function form(serviceId: string): FormData {
   const fd = new FormData();
@@ -87,19 +91,24 @@ describe("requestEntertestRun — 접수구분에 따른 target_url", () => {
   });
 });
 
-/** delete().eq()...select() 체이닝 목. eq 호출 인자를 기록해 필터를 검증한다. */
+/** delete().eq()/.in()...select() 체이닝 목. 필터 인자를 기록해 검증한다. */
 function deleteChain(rows: { id: string }[] | null) {
   const eqCalls: [string, unknown][] = [];
+  const inCalls: [string, unknown][] = [];
   const chain = {
     eq(col: string, val: unknown) {
       eqCalls.push([col, val]);
+      return chain;
+    },
+    in(col: string, vals: unknown) {
+      inCalls.push([col, vals]);
       return chain;
     },
     async select() {
       return { data: rows, error: null };
     },
   };
-  return { chain, eqCalls };
+  return { chain, eqCalls, inCalls };
 }
 
 const RUN_ID = "5aaa587a-640b-442a-9cbf-85f99321319e";
@@ -167,6 +176,68 @@ describe("cancelEntertestRun — 대기 중인 요청 취소", () => {
     });
 
     const r = await cancelEntertestRun(undefined, cancelForm("not-a-uuid"));
+
+    expect(r.ok).toBe(false);
+    expect(h.from).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteEntertestRun — 끝난 실행 이력 삭제", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("본인 실패 건을 지운다 — 실패·오류만 삭제 대상", async () => {
+    h.getCurrentOperator.mockResolvedValue({
+      email: "me@x.com",
+      permission: "member",
+    });
+    const { chain, eqCalls, inCalls } = deleteChain([{ id: RUN_ID }]);
+    h.from.mockReturnValue({ delete: () => chain });
+
+    const r = await deleteEntertestRun(undefined, cancelForm(RUN_ID));
+
+    expect(r.ok).toBe(true);
+    expect(eqCalls).toContainEqual(["id", RUN_ID]);
+    expect(eqCalls).toContainEqual(["requested_by", "me@x.com"]);
+    // 완료(done)는 성공 기록이라 남기고, 실행 중은 진행 중이라 손대지 않는다.
+    expect(inCalls).toContainEqual(["status", ["failed", "error"]]);
+  });
+
+  it("admin은 남의 실패 건도 지운다", async () => {
+    h.getCurrentOperator.mockResolvedValue({
+      email: "admin@x.com",
+      permission: "admin",
+    });
+    const { chain, eqCalls } = deleteChain([{ id: RUN_ID }]);
+    h.from.mockReturnValue({ delete: () => chain });
+
+    const r = await deleteEntertestRun(undefined, cancelForm(RUN_ID));
+
+    expect(r.ok).toBe(true);
+    expect(eqCalls.map(([col]) => col)).not.toContain("requested_by");
+  });
+
+  it("완료·실행 중이거나 남의 요청이면 지워지지 않는다", async () => {
+    h.getCurrentOperator.mockResolvedValue({
+      email: "me@x.com",
+      permission: "member",
+    });
+    const { chain } = deleteChain([]);
+    h.from.mockReturnValue({ delete: () => chain });
+
+    const r = await deleteEntertestRun(undefined, cancelForm(RUN_ID));
+
+    expect(r.ok).toBe(false);
+  });
+
+  it("runId가 uuid가 아니면 DB를 건드리지 않는다", async () => {
+    h.getCurrentOperator.mockResolvedValue({
+      email: "me@x.com",
+      permission: "member",
+    });
+
+    const r = await deleteEntertestRun(undefined, cancelForm("nope"));
 
     expect(r.ok).toBe(false);
     expect(h.from).not.toHaveBeenCalled();

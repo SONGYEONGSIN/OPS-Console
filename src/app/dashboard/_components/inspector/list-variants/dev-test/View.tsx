@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import {
   cancelEntertestRun,
+  deleteEntertestRun,
   requestEntertestRun,
   setMyEntertestAccount,
   type EntertestActionState,
@@ -66,13 +67,23 @@ export function DevTestView({
     EntertestActionState,
     FormData
   >(cancelEntertestRun, undefined);
+  const [deleteState, deleteAction, deletePending] = useActionState<
+    EntertestActionState,
+    FormData
+  >(deleteEntertestRun, undefined);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  /** 대기 중이고, 본인 요청이거나 admin일 때만 취소 가능 (서버에서 재검증). */
+  /** 본인 요청이거나 admin이면 그 이력을 처리할 수 있다 (서버에서 재검증). */
+  const mayManage = (run: { requested_by: string }): boolean =>
+    currentUserPermission === "admin" || run.requested_by === currentUserEmail;
+
+  /** 대기 중일 때만 취소 — 폴러가 집어간 뒤에는 되돌릴 수 없다. */
   const canCancel = (run: { status: string; requested_by: string }): boolean =>
-    run.status === "pending" &&
-    (currentUserPermission === "admin" ||
-      run.requested_by === currentUserEmail);
+    run.status === "pending" && mayManage(run);
+
+  /** 실패·오류로 끝난 이력만 삭제 — 완료는 성공 기록이라 남긴다. */
+  const canDelete = (run: { status: string; requested_by: string }): boolean =>
+    (run.status === "failed" || run.status === "error") && mayManage(run);
 
   const serviceId = row.serviceIdNum ?? 0;
   const runs = row.entertestRuns ?? [];
@@ -252,6 +263,18 @@ export function DevTestView({
                         </button>
                       </form>
                     )}
+                    {canDelete(run) && (
+                      <form action={deleteAction} className="shrink-0">
+                        <input type="hidden" name="runId" value={run.id} />
+                        <button
+                          type="submit"
+                          disabled={deletePending}
+                          className="cursor-pointer border border-line bg-transparent px-2 py-0.5 text-2xs text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
+                        >
+                          삭제
+                        </button>
+                      </form>
+                    )}
                   </div>
                   {open && run.result && (
                     <ul className="bg-cream px-2 py-2">
@@ -308,6 +331,13 @@ export function DevTestView({
             className={`text-xs ${cancelState.ok ? "text-ink-soft" : "text-vermilion"}`}
           >
             {cancelState.message}
+          </p>
+        )}
+        {deleteState && (
+          <p
+            className={`text-xs ${deleteState.ok ? "text-ink-soft" : "text-vermilion"}`}
+          >
+            {deleteState.message}
           </p>
         )}
       </Section>
