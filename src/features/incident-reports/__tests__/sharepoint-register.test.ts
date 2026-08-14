@@ -151,7 +151,10 @@ describe("uploadAndLinkReportFile", () => {
       pdf,
     );
 
-    expect(r).toEqual({ sharepointUrl: "https://sp/x.docx" });
+    expect(r).toEqual({
+      sharepointUrl: "https://sp/x.docx",
+      ledgerLinked: true,
+    });
 
     // 업로드: docNumber 포함한 .pdf 파일명, PDF content-type, 주입 버퍼 그대로
     expect(uploadFileToFolder).toHaveBeenCalledTimes(1);
@@ -173,6 +176,27 @@ describe("uploadAndLinkReportFile", () => {
     expect(linkArgs[1]).toBe("gongmun-1");
     expect(linkArgs[3]).toBe("운영2606-0202");
     expect(linkArgs[4]).toBe("https://sp/x.docx");
+  });
+
+  it("대장에 그 시행번호 행이 없으면 ledgerLinked false — 업로드는 그대로", async () => {
+    // 사람이 대장 행을 지운 뒤 발송하면 갱신할 행이 없다. 조용히 성공으로
+    // 넘기면 화면엔 링크가 보이는데 대장은 비어 아무도 모른다.
+    (updateSenderRowLink as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      false,
+    );
+
+    const r = await uploadAndLinkReportFile(
+      REP,
+      "운영2606-0202",
+      new Date(),
+      Buffer.from("%PDF-fake"),
+    );
+
+    expect(r).toEqual({
+      sharepointUrl: "https://sp/x.docx",
+      ledgerLinked: false,
+    });
+    expect(uploadFileToFolder).toHaveBeenCalledTimes(1);
   });
 
   it("env 누락 → null, 업로드 호출 안 함", async () => {

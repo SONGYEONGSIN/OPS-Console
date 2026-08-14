@@ -12,6 +12,7 @@ vi.mock("../sharepoint-register", () => ({
   assignDocNumber: vi.fn(async () => ({ docNumber: "운영2606-0202" })),
   uploadAndLinkReportFile: vi.fn(async () => ({
     sharepointUrl: "https://sp/x.docx",
+    ledgerLinked: true,
   })),
 }));
 vi.mock("@/lib/microsoft/delegated-token", () => ({
@@ -41,6 +42,7 @@ import {
   uploadAndLinkReportFile,
 } from "../sharepoint-register";
 import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
+import { logActivity } from "@/features/worklog/log";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -258,6 +260,37 @@ describe("sendIncidentReport", () => {
     const done = updates.find((u) => "doc_number" in u);
     expect(done?.doc_number).toBe("운영2606-0101");
     expect(done?.sharepoint_url).toBe("https://sp/x.docx");
+  });
+
+  it("대장 F링크 갱신 실패는 업무활동로그에 남긴다 (조용히 성공 처리 금지)", async () => {
+    (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue({
+      email: "me@x.com",
+      displayName: "나",
+      permission: "member",
+    });
+    (sendGraphMail as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      messageId: "msg-1",
+    });
+    (uploadAndLinkReportFile as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      { sharepointUrl: "https://sp/x.docx", ledgerLinked: false },
+    );
+    const { client } = buildAdminMock({
+      ...APPROVED_REPORT,
+      doc_number: "운영2606-0101",
+    });
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const r = await sendIncidentReport({
+      id: APPROVED_REPORT.id,
+      to_email: "a@b.com",
+      subject: "제목",
+      body: "본문",
+    });
+
+    expect(r.ok).toBe(true); // 메일은 나갔다 — 발송 자체를 실패시키지 않는다
+    const logArgs = (logActivity as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(logArgs.msg).toContain("공문관리대장 미기입");
   });
 });
 

@@ -164,6 +164,10 @@ export async function releaseDocNumber(
  * 파일 업로드 — 발송본 PDF를 06.경위서에 올리고 발신대장 그 행의 F링크 갱신.
  * config 없으면 null. pdf는 메일 첨부와 동일한 버퍼(중복 렌더 회피).
  * opts.token으로 위임 토큰 주입.
+ *
+ * ledgerLinked=false = 그 시행번호 행이 대장에 없어 링크를 못 채웠다는 뜻.
+ * 업로드는 됐으므로 sharepointUrl은 유효하다 — 둘을 갈라서 돌려주지 않으면
+ * 대장이 비어도 화면엔 링크가 정상으로 보여 아무도 알아채지 못한다.
  */
 export async function uploadAndLinkReportFile(
   rep: RegisterInput,
@@ -171,7 +175,7 @@ export async function uploadAndLinkReportFile(
   today: Date,
   pdf: Buffer,
   opts?: { token?: string },
-): Promise<{ sharepointUrl: string } | null> {
+): Promise<{ sharepointUrl: string; ledgerLinked: boolean } | null> {
   const cfg = sharePointConfig();
   if (!cfg) return null;
 
@@ -185,7 +189,7 @@ export async function uploadAndLinkReportFile(
     { token: opts?.token },
   );
 
-  await updateSenderRowLink(
+  const ledgerLinked = await updateSenderRowLink(
     cfg.driveId,
     cfg.gongmunItemId,
     today.getFullYear(),
@@ -193,5 +197,5 @@ export async function uploadAndLinkReportFile(
     up.webUrl,
   );
 
-  return { sharepointUrl: up.webUrl };
+  return { sharepointUrl: up.webUrl, ledgerLinked };
 }
