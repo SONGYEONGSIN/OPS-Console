@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMyEntertestAccount } from "./queries";
+import { findServiceAdmissionType, getMyEntertestAccount } from "./queries";
+import { buildEntertestTargetUrl } from "./target-url";
 
 export type EntertestActionState = { ok: boolean; message: string } | undefined;
 
@@ -26,7 +27,6 @@ export async function requestEntertestRun(
     return { ok: false, message: "테스트할 서비스를 선택하세요." };
   }
   const serviceId = parsedId.data;
-  const targetUrl = `https://entertest.jinhakapply.com/Notice/${serviceId}/A`;
 
   const account = await getMyEntertestAccount(me.email);
   if (!account) {
@@ -36,6 +36,17 @@ export async function requestEntertestRun(
         "테스트 계정이 등록되지 않았습니다. 먼저 본인 계정을 등록하세요.",
     };
   }
+
+  // 접수구분에 따라 테스트 시스템(entertest/nstest)이 갈린다.
+  // 모르는 채로 적재하면 폴러가 엉뚱한 시스템을 열게 되므로 여기서 멈춘다.
+  const service = await findServiceAdmissionType(serviceId);
+  if (!service) {
+    return {
+      ok: false,
+      message: "서비스 정보를 찾을 수 없습니다. 목록을 새로고침해 주세요.",
+    };
+  }
+  const targetUrl = buildEntertestTargetUrl(serviceId, service.admissionType);
 
   const admin = createAdminClient();
   const { data: existing, error: selErr } = await admin

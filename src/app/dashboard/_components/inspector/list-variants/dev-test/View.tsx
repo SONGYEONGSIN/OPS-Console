@@ -7,6 +7,7 @@ import {
   type EntertestActionState,
 } from "@/features/entertest/actions";
 import type { EntertestRunStatus } from "@/features/entertest/schemas";
+import { buildEntertestTargetUrl } from "@/features/entertest/target-url";
 import { operatorNameByEmail } from "@/features/auth/operators";
 import type { ViewProps } from "../types";
 import { Section, DefList, Divider } from "../shared";
@@ -63,7 +64,8 @@ export function DevTestView({ row }: ViewProps) {
   const account = row.entertestAccount ?? null;
   const accountReady = !!account;
   const [acctStart = "", acctEnd = ""] = (account ?? "").split("~");
-  const testUrl = `https://entertest.jinhakapply.com/Notice/${serviceId}/A`;
+  // 실제 적재 주소(requestEntertestRun)와 같은 규칙 — 접수구분이 호스트를 정한다.
+  const testUrl = buildEntertestTargetUrl(serviceId, row.applicationType);
 
   return (
     <div className="space-y-6">

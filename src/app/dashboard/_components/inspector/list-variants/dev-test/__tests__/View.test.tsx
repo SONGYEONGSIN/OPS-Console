@@ -37,6 +37,14 @@ describe("DevTestView", () => {
     ).toBeInTheDocument();
   });
 
+  it("공통원서 서비스는 nstest 주소를 보여준다", () => {
+    // 공통원서는 entertest가 아닌 별도 테스트 시스템에서 열린다.
+    render(<DevTestView row={{ ...row, applicationType: "공통원서" }} />);
+    expect(
+      screen.getByDisplayValue("https://nstest.jinhakapply.com/Notice/12345/A"),
+    ).toBeInTheDocument();
+  });
+
   it("계정 미등록이면 실행 버튼 disabled + 안내", () => {
     render(<DevTestView row={{ ...row, entertestAccount: null }} />);
     expect(screen.getByRole("button", { name: /테스트 실행/ })).toBeDisabled();
