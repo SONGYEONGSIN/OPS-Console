@@ -9,11 +9,23 @@ const messageSchema = z.object({
   content: z.string().min(1).max(4000),
 });
 
+/**
+ * 지금 보고 있는 화면. 클라이언트가 보내는 값이라 그대로 프롬프트에 넣으면
+ * 주입 통로가 된다 — 형태와 길이를 여기서 좁게 묶는다.
+ */
+const pageContextSchema = z.object({
+  path: z.string().min(1).max(120),
+  label: z.string().min(1).max(60),
+  pattern: z.string().min(1).max(20),
+});
+
 const inputSchema = z.object({
   /** 신규 사용자 질문 (검색 + 컨텍스트 생성용). messages 마지막이 아니어도 우선 사용 */
   question: z.string().min(1).max(500),
   /** 이전 대화 (multi-turn). 비어있으면 single-shot과 동일 동작 */
   history: z.array(messageSchema).max(20).optional(),
+  /** 질문 시점에 열려 있던 화면. 없으면 화면 섹션을 붙이지 않는다. */
+  pageContext: pageContextSchema.optional(),
 });
 
 const SYSTEM_INSTRUCTION = `당신은 OPS-Console(진학어플라이 운영부 시스템)의 어시스턴트입니다.
@@ -72,7 +84,11 @@ export async function POST(req: Request): Promise<Response> {
 
   // 마지막 user 메시지에 question + 참고 자료 컨텍스트를 합쳐 Gemini에 전달.
   // 이전 history는 그대로 multi-turn context로 유지.
-  const userContent = `## 사용자 질문\n${question}\n\n## 참고 자료\n${referenceText}`;
+  const page = parsed.data.pageContext;
+  const pageText = page
+    ? `\n\n## 지금 보고 있는 화면\n${page.label} (${page.path} · ${page.pattern})`
+    : "";
+  const userContent = `## 사용자 질문\n${question}${pageText}\n\n## 참고 자료\n${referenceText}`;
   const messages: ChatMessage[] = [
     ...history,
     { role: "user", content: userContent },

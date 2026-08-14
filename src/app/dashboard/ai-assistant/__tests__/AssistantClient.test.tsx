@@ -2,9 +2,33 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AssistantClient } from "../AssistantClient";
 
+const { pathnameRef } = vi.hoisted(() => ({
+  pathnameRef: { current: "/dashboard/incidents" },
+}));
+vi.mock("next/navigation", () => ({
+  usePathname: () => pathnameRef.current,
+}));
+
+/** 마지막 fetch 요청 body를 꺼낸다. */
+function lastRequestBody(): Record<string, unknown> {
+  const mock = vi.mocked(globalThis.fetch).mock;
+  const init = mock.calls[mock.calls.length - 1][1] as RequestInit;
+  return JSON.parse(init.body as string);
+}
+
+function stubOk() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      json: async () => ({ ok: true, answer: "답변", sources: [] }),
+    }),
+  );
+}
+
 describe("AssistantClient (chat)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    pathnameRef.current = "/dashboard/incidents";
   });
 
   it("초기 — empty state + 예시 4개 + 입력창", () => {
@@ -130,5 +154,55 @@ describe("AssistantClient (chat)", () => {
       expect(body.history).toHaveLength(2);
       expect(body.history[0].content).toBe("첫 질문");
     });
+  });
+});
+
+describe("AssistantClient — 현재 페이지 첨부", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pathnameRef.current = "/dashboard/incidents";
+  });
+
+  it("사이드바에 있는 화면이면 첨부 칩이 켜진 채로 보인다", () => {
+    render(<AssistantClient />);
+    expect(
+      screen.getByRole("button", { name: /현재 페이지 첨부/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("켜져 있으면 질문에 pageContext를 실어 보낸다", async () => {
+    stubOk();
+    render(<AssistantClient />);
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "이 화면 뭐야" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    expect(lastRequestBody().pageContext).toEqual({
+      path: "/dashboard/incidents",
+      label: "사고보고",
+      pattern: "list",
+    });
+  });
+
+  it("칩을 끄면 pageContext를 보내지 않는다", async () => {
+    stubOk();
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /현재 페이지 첨부/ }));
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "미수채권 얼마" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    expect(lastRequestBody().pageContext).toBeUndefined();
+  });
+
+  it("사이드바에 없는 경로면 칩 자체를 그리지 않는다", () => {
+    // 첨부할 화면 정보가 없는데 칩만 떠 있으면 켜도 아무 일이 안 일어난다.
+    pathnameRef.current = "/dashboard/알수없는화면";
+    render(<AssistantClient />);
+    expect(screen.queryByRole("button", { name: /현재 페이지 첨부/ })).toBeNull();
   });
 });
