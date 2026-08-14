@@ -410,8 +410,9 @@ describe("pickFeatureIntros — 2호 앵커 순환", () => {
     ]);
   });
 
-  it("4호는 그 다음 3건 — 이어서 진행", () => {
-    expect(pickFeatureIntros(4)).toEqual(FEATURE_INTROS.slice(5, 8));
+  it("핀 없는 호는 그 다음 3건 — 이어서 진행", () => {
+    // 4호는 '소개 없음'으로 핀이 걸려 순환에서 빠졌다. 순환 검증은 5호로 한다.
+    expect(pickFeatureIntros(5)).toEqual(FEATURE_INTROS.slice(8, 11));
   });
 
   it("카탈로그 끝을 넘어가면 앞으로 순환", () => {
@@ -620,6 +621,12 @@ describe("pickSasiGoal — 발행일이 속한 수시 주차", () => {
     expect(g?.testTarget).toBe("50%");
   });
 
+  it("8월 2주차는 금요일(8/14)에 끝난다", () => {
+    // 표시 문구가 '8/10~8/14'여야 한다. 8/16(일)까지로 두면 실제 일정과 어긋난다.
+    expect(pickSasiGoal("2026-08-10")?.rangeLabel).toBe("8/10~8/14");
+    expect(pickSasiGoal("2026-08-14")?.label).toBe("8월 2주차");
+  });
+
   it("8월 4주차는 개발 목표가 없고 테스트 100%만", () => {
     const g = pickSasiGoal("2026-08-24");
     expect(g?.devTarget).toBeUndefined();
@@ -644,7 +651,7 @@ describe("pickSasiGoal — 발행일이 속한 수시 주차", () => {
 
 describe("pickFeatureIntros — 호수별 핀", () => {
   it("핀 없는 호는 기존 순환을 그대로 쓴다", () => {
-    expect(pickFeatureIntros(4)).toEqual(FEATURE_INTROS.slice(5, 8));
+    expect(pickFeatureIntros(5)).toEqual(FEATURE_INTROS.slice(8, 11));
   });
 
   it("핀이 있어도 count를 명시하면 그 개수만", () => {
@@ -655,5 +662,11 @@ describe("pickFeatureIntros — 호수별 핀", () => {
     for (const f of pickFeatureIntros(3)) {
       expect(FEATURE_INTROS).toContain(f);
     }
+  });
+
+  it("빈 배열 핀은 그 호에 기능 소개를 싣지 않는다", () => {
+    // 순환으로 흘려보내면 '이번 호는 없음'을 표현할 방법이 사라진다.
+    // 렌더러가 featureIntros.length === 0이면 섹션 전체를 감춘다.
+    expect(pickFeatureIntros(4)).toEqual([]);
   });
 });

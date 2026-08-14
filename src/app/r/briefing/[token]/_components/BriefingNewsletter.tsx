@@ -58,7 +58,7 @@ export function BriefingNewsletter({
     <div className="text-nl-ink">
       {/* ── 제호 — 아래 페이지 전체 라인으로 본문과 구분 ── */}
       <header className="border-b-2 border-nl-sky">
-        <div className="mx-auto max-w-[640px] px-5 pb-8 pt-10">
+        <div className="mx-auto max-w-[960px] px-5 pb-8 pt-10">
           <div className="flex items-center gap-3">
             <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-nl-sky text-white">
               <WizardHatIcon className="h-8 w-8" />
@@ -83,7 +83,7 @@ export function BriefingNewsletter({
         </div>
       </header>
 
-      <article className="mx-auto max-w-[640px] px-5 pb-12 pt-9">
+      <article className="mx-auto max-w-[960px] px-5 pb-12 pt-9">
         {/* 커버 사진 */}
         {images?.cover && (
           <figure className="mb-9">

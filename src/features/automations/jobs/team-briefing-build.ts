@@ -77,7 +77,7 @@ type SasiWeek = {
 const SASI_WEEKS: SasiWeek[] = [
   { label: "7월 5주차", startYmd: "2026-07-27", endYmd: "2026-08-02", devTarget: "20%" },
   { label: "8월 1주차", startYmd: "2026-08-03", endYmd: "2026-08-09", devTarget: "50%", testTarget: "20%" },
-  { label: "8월 2주차", startYmd: "2026-08-10", endYmd: "2026-08-16", devTarget: "70%", testTarget: "50%" },
+  { label: "8월 2주차", startYmd: "2026-08-10", endYmd: "2026-08-14", devTarget: "70%", testTarget: "50%" },
   { label: "8월 3주차", startYmd: "2026-08-17", endYmd: "2026-08-23", devTarget: "100%", testTarget: "70%" },
   { label: "8월 4주차", startYmd: "2026-08-24", endYmd: "2026-08-30", testTarget: "100%" },
   { label: "9월 1주차", startYmd: "2026-08-31", endYmd: "2026-09-04", note: "최종 테스트 진행" },
@@ -508,6 +508,8 @@ const FEATURE_ROTATION = { anchorIssueNo: 2, anchorCount: 2, perIssue: 3 };
  */
 const FEATURE_PINS: Record<number, string[]> = {
   3: ["경쟁률 세팅 점검 자동화", "백업 요청 검색에 합격자통합관리 발표 서비스"],
+  /** 빈 배열 = 이번 호는 기능 소개 없음. 렌더러가 섹션 전체를 감춘다. */
+  4: [],
 };
 
 /** 호수(1부터)로 소개 항목을 순환 선택 (매 호 서로 다른 묶음). */
@@ -517,6 +519,9 @@ export function pickFeatureIntros(
 ): FeatureIntro[] {
   const pinned = FEATURE_PINS[Math.max(1, Math.floor(issueNo))];
   if (pinned) {
+    // 빈 배열은 '이번 호는 소개 없음' — 순환으로 흘리면 그 뜻을 표현할 방법이 없다.
+    // 아래 오타 폴백과 구분된다: 오타는 '지정했는데 못 찾은 것', 빈 배열은 '지정 안 함'.
+    if (pinned.length === 0) return [];
     // title 오타로 발행이 깨지지 않게, 못 찾은 항목은 건너뛴다.
     const picked = pinned
       .map((t) => FEATURE_INTROS.find((f) => f.title === t))
