@@ -20,7 +20,6 @@
     "@sentry/nextjs": "^10.54.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
-    "docx": "^9.7.1",
     "driver.js": "^1.4.0",
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.9.3",

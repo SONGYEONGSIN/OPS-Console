@@ -17,6 +17,20 @@ vi.mock("../sharepoint-register", () => ({
 vi.mock("@/lib/microsoft/delegated-token", () => ({
   getDelegatedGraphToken: vi.fn(async () => null),
 }));
+vi.mock("@/features/incidents/queries", () => ({
+  getIncidentById: vi.fn(async () => ({
+    assignee_name: "김지현",
+    assignee_email: "kjh@x.com",
+  })),
+}));
+vi.mock("../queries", () => ({
+  resolveApprovalChain: vi.fn(async () => ({
+    author: { name: "김지현", email: "kjh@x.com", phone: "02-2013-0605" },
+    approver: { name: "송영신", email: "ys@x.com", role: "팀장" },
+    director: { name: "허승철", role: "부장" },
+    ceo: { name: "이이화", role: "이사" },
+  })),
+}));
 
 import { sendIncidentReport } from "../mail-actions";
 import { getCurrentOperator } from "@/features/auth/queries";
@@ -26,6 +40,7 @@ import {
   assignDocNumber,
   uploadAndLinkReportFile,
 } from "../sharepoint-register";
+import { renderIncidentReportPdf } from "@/lib/pdf/incident-report-pdf";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -144,7 +159,10 @@ describe("sendIncidentReport", () => {
       subject: "제목",
       body: "본문",
     });
-    expect(r).toEqual({ ok: false, error: "승인 완료된 경위서만 발송할 수 있습니다." });
+    expect(r).toEqual({
+      ok: false,
+      error: "승인 완료된 경위서만 발송할 수 있습니다.",
+    });
   });
 
   it("DRY_RUN → 실제 발송 없이 이력 dry_run + report sent", async () => {
@@ -170,8 +188,9 @@ describe("sendIncidentReport", () => {
     // 수신자 1행만 이력 적재(CC는 메일헤더), report.recipient_emails = [to, ...cc]
     expect(inserts).toHaveLength(1);
     expect(inserts.every((row) => row.status === "dry_run")).toBe(true);
-    expect(updates[0]?.status).toBe("sent");
-    expect(updates[0]?.recipient_emails).toEqual(["a@b.com", "c@d.com"]);
+    const done = updates.find((u) => "status" in u);
+    expect(done?.status).toBe("sent");
+    expect(done?.recipient_emails).toEqual(["a@b.com", "c@d.com"]);
   });
 
   it("비-DRY_RUN + 미발번 → assignDocNumber로 채번 후 업로드+F링크 반영", async () => {
@@ -202,8 +221,9 @@ describe("sendIncidentReport", () => {
     const upArgs = (uploadAndLinkReportFile as ReturnType<typeof vi.fn>).mock
       .calls[0];
     expect(upArgs[1]).toBe("운영2606-0202");
-    expect(updates[0]?.doc_number).toBe("운영2606-0202");
-    expect(updates[0]?.sharepoint_url).toBe("https://sp/x.docx");
+    const done = updates.find((u) => "doc_number" in u);
+    expect(done?.doc_number).toBe("운영2606-0202");
+    expect(done?.sharepoint_url).toBe("https://sp/x.docx");
   });
 
   it("비-DRY_RUN + 이미 발번 → assignDocNumber 미호출, 그 번호로 업로드", async () => {
@@ -235,7 +255,69 @@ describe("sendIncidentReport", () => {
     const upArgs = (uploadAndLinkReportFile as ReturnType<typeof vi.fn>).mock
       .calls[0];
     expect(upArgs[1]).toBe("운영2606-0101");
-    expect(updates[0]?.doc_number).toBe("운영2606-0101");
-    expect(updates[0]?.sharepoint_url).toBe("https://sp/x.docx");
+    const done = updates.find((u) => "doc_number" in u);
+    expect(done?.doc_number).toBe("운영2606-0101");
+    expect(done?.sharepoint_url).toBe("https://sp/x.docx");
+  });
+});
+
+/**
+ * 화면(사고 담당자 + 라이브 결재라인)과 문서가 갈라지던 문제.
+ * 문서는 저장 스냅샷을 쓰는데 화면·공문관리대장은 라이브라, 보낸 공문에
+ * 엉뚱한 담당자와 빈 결재라인이 찍혔다. 발송 시점에 스냅샷을 확정한다.
+ */
+describe("sendIncidentReport — 발송 직전 스냅샷 확정", () => {
+  const me = {
+    email: "me@x.com",
+    displayName: "나",
+    permission: "admin" as const,
+  };
+
+  // 사고와 연결된 경위서 — 담당자 스냅샷은 사고의 assignee에서 온다.
+  const LINKED = { ...APPROVED_REPORT, incident_id: "inc-1" };
+
+  async function send(report = LINKED) {
+    (getCurrentOperator as ReturnType<typeof vi.fn>).mockResolvedValue(me);
+    const built = buildAdminMock(report);
+    (createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      built.client,
+    );
+    process.env.MAIL_DRY_RUN = "true";
+    const r = await sendIncidentReport({
+      id: report.id,
+      to_email: "a@b.com",
+      subject: "제목",
+      body: "본문",
+    });
+    return { r, ...built };
+  }
+
+  it("사고 담당자와 라이브 결재라인을 DB에 확정한다", async () => {
+    const { updates } = await send();
+    const snapshot = updates.find((u) => "author_name" in u);
+    expect(snapshot).toMatchObject({
+      author_name: "김지현",
+      author_email: "kjh@x.com",
+      approver_name: "송영신",
+      approver_role: "팀장",
+      director_name: "허승철",
+      director_role: "부장",
+      ceo_name: "이이화",
+      ceo_role: "이사",
+    });
+  });
+
+  it("확정한 값으로 문서를 만든다 — 저장 스냅샷과 문서가 어긋나지 않게", async () => {
+    await send();
+    const pdfArg = (renderIncidentReportPdf as ReturnType<typeof vi.fn>).mock
+      .calls[0][0] as Record<string, unknown>;
+    expect(pdfArg).toMatchObject({
+      authorName: "김지현",
+      authorPhone: "02-2013-0605",
+      approverName: "송영신",
+      approverRole: "팀장",
+      directorName: "허승철",
+      ceoName: "이이화",
+    });
   });
 });
