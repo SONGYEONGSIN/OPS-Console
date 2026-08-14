@@ -177,8 +177,9 @@ const LAYOUT = {
   },
   panel: {
     root: "flex h-full min-h-0 flex-col",
-    list: "min-h-0 flex-1 space-y-6 overflow-y-auto bg-washi px-4 py-4",
-    form: "flex shrink-0 flex-col gap-2 border-t border-line bg-cream p-3",
+    // 인스펙터 본문 가로 여백(p-5)에 맞춘다 — 헤더와 좌우가 어긋나면 안 된다.
+    list: "min-h-0 flex-1 space-y-6 overflow-y-auto bg-washi px-5 py-4",
+    form: "flex shrink-0 flex-col gap-2 border-t border-line bg-cream px-5 py-3",
   },
 } as const;
 

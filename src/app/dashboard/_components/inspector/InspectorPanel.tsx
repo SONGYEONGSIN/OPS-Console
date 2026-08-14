@@ -5,6 +5,13 @@ import { useEffect, useRef } from "react";
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** md+ 폭. 기본은 표준 320px — 대화처럼 가로로 읽는 본문만 넓힌다. */
+  widthClassName?: string;
+  /**
+   * 본문 컨테이너 클래스. 기본은 단일 스크롤 + p-5.
+   * 바닥에 고정할 요소가 있는 본문(채팅 입력창 등)은 flex 레이아웃으로 바꾼다.
+   */
+  bodyClassName?: string;
   children: React.ReactNode;
 };
 
@@ -13,7 +20,15 @@ type Props = {
  * - open 시 우측에서 슬라이드인 (380px @ md+, 100vw @ <md)
  * - ESC / 외부 클릭 / 닫기 버튼 모두 onClose 트리거
  */
-export function InspectorPanel({ open, onClose, children }: Props) {
+export function InspectorPanel({
+  open,
+  onClose,
+  widthClassName = "md:w-[320px]",
+  // scrollbar-gutter:stable — 내용 길이에 따라 스크롤바가 생겼다 사라지며
+  // 본문 폭이 출렁이는 현상 방지(스크롤바 공간을 항상 예약)
+  bodyClassName = "h-full overflow-y-auto p-5 [scrollbar-gutter:stable]",
+  children,
+}: Props) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -43,15 +58,11 @@ export function InspectorPanel({ open, onClose, children }: Props) {
       ref={ref}
       role="complementary"
       aria-hidden={!open}
-      className={`fixed right-0 top-[74px] bottom-[27px] z-40 w-full bg-paper border-l border-line transition-transform duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] [box-shadow:var(--shadow-drawer-right)] md:top-[52px] md:bottom-[27px] md:w-[320px] ${
+      className={`fixed right-0 top-[74px] bottom-[27px] z-40 w-full bg-paper border-l border-line transition-transform duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] [box-shadow:var(--shadow-drawer-right)] md:top-[52px] md:bottom-[27px] ${widthClassName} ${
         open ? "translate-x-0" : "translate-x-full"
       }`}
     >
-      {/* scrollbar-gutter:stable — 내용 길이에 따라 스크롤바가 생겼다 사라지며
-          본문 폭이 출렁이는 현상 방지(스크롤바 공간을 항상 예약) */}
-      <div className="h-full overflow-y-auto p-5 [scrollbar-gutter:stable]">
-        {children}
-      </div>
+      <div className={bodyClassName}>{children}</div>
     </aside>
   );
 }

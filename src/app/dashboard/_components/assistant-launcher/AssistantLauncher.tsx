@@ -1,29 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { AssistantClient } from "../../ai-assistant/AssistantClient";
+import { InspectorPanel } from "../inspector/InspectorPanel";
 import type { CurrentOperator } from "@/features/auth/queries";
 
 /**
- * 어시스턴트 채팅 런처 — 우하단 고정 버튼 + 도킹 패널.
+ * 어시스턴트 채팅 런처 — 우하단 고정 버튼 + 인스펙터 슬라이드인 패널.
  *
- * 모달이 아니라 도킹 패널이라 ModalShell을 쓰지 않는다. 뒤 화면을 계속 보면서
- * 쓰는 물건이라 스크림을 깔면 안 된다(헤더 모양만 ModalShell 관례를 따른다).
+ * 패널은 표준 InspectorPanel을 그대로 쓴다. 슬라이드인·ESC·외부 클릭 닫힘이
+ * 거기 이미 있고, 채팅만 다른 셸을 쓰면 화면마다 드로어 동작이 갈린다.
+ * 폭만 표준(320px)보다 넓힌다 — 대화는 가로로 읽는 글이라 320px에서 답답하다.
  *
- * 패널은 열림/닫힘과 무관하게 항상 마운트하고 hidden으로만 토글한다.
- * 언마운트하면 닫을 때마다 대화가 통째로 날아간다.
+ * 패널은 열림/닫힘과 무관하게 항상 마운트된다(InspectorPanel이 transform으로만
+ * 숨긴다). 언마운트하면 닫을 때마다 대화가 통째로 날아간다.
  */
 export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
 
   // /api/assistant/ask가 viewer를 403으로 막는다 — 눌러도 실패할 버튼은 안 그린다.
   if (!me || me.permission === "viewer") return null;
@@ -32,36 +26,38 @@ export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
 
   return (
     <>
-      <div
-        role="dialog"
-        aria-label="어시스턴트"
-        hidden={!open}
-        className="fixed bottom-24 right-6 z-40 flex h-[600px] max-h-[calc(100vh-8rem)] w-[420px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden border border-line bg-paper shadow-offset"
+      <InspectorPanel
+        open={open}
+        onClose={close}
+        widthClassName="md:w-[460px]"
+        bodyClassName="flex h-full flex-col overflow-hidden"
       >
-        <div className="flex items-center justify-between bg-ink px-4 py-2.5">
-          <h2 className="text-lg font-bold tracking-tight text-cream">
-            어시스턴트
-          </h2>
-          <button
-            type="button"
-            aria-label="닫기"
-            onClick={() => setOpen(false)}
-            className="inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center border border-line bg-paper text-2xl leading-none text-ink-soft transition-colors hover:border-vermilion hover:text-vermilion"
-          >
-            ×
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
+        {/* InspectorChrome은 ListRow(id·상태 뱃지)를 요구해 채팅에 맞지 않는다.
+            가짜 row를 지어내지 않고 헤더 관례(eyebrow + 굵은 구분선)만 따른다. */}
+        <header className="shrink-0 border-b-2 border-ink px-5 pb-4 pt-5">
+          <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+            어시스턴트 · 사내 데이터 질의
+          </p>
+          <h3 className="text-xl font-bold tracking-[-0.01em] text-ink">
+            무엇을 찾으시나요
+          </h3>
+        </header>
+        <div className="min-h-0 flex-1">
           <AssistantClient userName={userName} variant="panel" />
         </div>
-      </div>
+      </InspectorPanel>
 
       <button
         type="button"
         aria-label="어시스턴트"
         aria-expanded={open}
+        // InspectorPanel은 document mousedown으로 외부 클릭을 판정한다. 런처는
+        // 패널 밖이라, 막지 않으면 mousedown이 먼저 닫고 이어진 click 토글이
+        // 다시 열어버려 "열린 상태에서 런처를 눌러도 안 닫히는" 상태가 된다.
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-40 inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-ink text-cream shadow-offset transition-colors hover:bg-vermilion"
+        // 상태바가 bottom-[27px]까지 차지한다 — 그 위로 확실히 띄운다.
+        className="fixed bottom-14 right-6 z-40 inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-ink text-cream shadow-offset transition-colors hover:bg-vermilion"
       >
         <svg
           aria-hidden
