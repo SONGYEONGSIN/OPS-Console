@@ -159,9 +159,34 @@ function AssistantAvatar({
 type Props = {
   /** 운영자 표시명 (사용자 메시지 캐릭터에 사용) */
   userName?: string;
+  /**
+   * 놓이는 자리에 따른 레이아웃.
+   * page = 메뉴 페이지(넉넉한 높이 + sticky 입력) / panel = 우하단 도킹 패널(부모 높이를 채움).
+   * 대화 로직은 동일하고 컨테이너 클래스만 갈린다.
+   */
+  variant?: "page" | "panel";
 };
 
-export function AssistantClient({ userName = "운영자" }: Props) {
+/** variant별 컨테이너 클래스 — 로직과 무관한 레이아웃 차이만 담는다. */
+const LAYOUT = {
+  page: {
+    root: "flex flex-col gap-4",
+    list: "min-h-[520px] space-y-6 border border-line-soft bg-washi px-6 py-6",
+    form:
+      "sticky bottom-4 flex flex-col gap-2 border border-line bg-cream p-3 shadow-[0_-1px_0_rgba(0,0,0,0.04)]",
+  },
+  panel: {
+    root: "flex h-full min-h-0 flex-col",
+    list: "min-h-0 flex-1 space-y-6 overflow-y-auto bg-washi px-4 py-4",
+    form: "flex shrink-0 flex-col gap-2 border-t border-line bg-cream p-3",
+  },
+} as const;
+
+export function AssistantClient({
+  userName = "운영자",
+  variant = "page",
+}: Props) {
+  const layout = LAYOUT[variant];
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -259,9 +284,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={layout.root}>
       {/* 메시지 영역 — worklog 패턴: 화면 전체 폭 (parent p-7 padding 사용) */}
-      <div className="min-h-[520px] space-y-6 border border-line-soft bg-washi px-6 py-6">
+      <div className={layout.list}>
         {messages.length === 0 ? (
           <EmptyState onPick={(ex) => send(ex)} />
         ) : (
@@ -272,11 +297,8 @@ export function AssistantClient({ userName = "운영자" }: Props) {
         <div ref={endRef} />
       </div>
 
-      {/* 입력 영역 — sticky 하단 */}
-      <form
-        onSubmit={handleSubmit}
-        className="sticky bottom-4 flex flex-col gap-2 border border-line bg-cream p-3 shadow-[0_-1px_0_rgba(0,0,0,0.04)]"
-      >
+      {/* 입력 영역 — page는 sticky 하단, panel은 패널 바닥 고정 */}
+      <form onSubmit={handleSubmit} className={layout.form}>
         <textarea
           aria-label="질문 입력"
           value={input}
