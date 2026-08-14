@@ -12,7 +12,7 @@ const ALL_SLUGS = [
   "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
   // 분석 · AI
   "worklog", "outcomes", "reports",
-  "ai-insight", "ai-assistant", "my-ai-work", "ai-tips",
+  "ai-insight", "my-ai-work", "ai-tips",
   // 매뉴얼 · 가이드
   "manual", "sop", "vibe-coding", "meetings", "faq",
   // 관리

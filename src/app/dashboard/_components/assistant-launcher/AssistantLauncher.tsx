@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { AssistantClient } from "../../ai-assistant/AssistantClient";
+import { AssistantClient } from "./AssistantClient";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import type { CurrentOperator } from "@/features/auth/queries";
 

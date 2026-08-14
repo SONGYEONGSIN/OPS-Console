@@ -13,7 +13,7 @@ const ALL_SLUGS = [
   "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
   // 분석 · AI
   "worklog", "outcomes", "reports",
-  "ai-insight", "ai-assistant", "my-ai-work", "ai-tips",
+  "ai-insight", "my-ai-work", "ai-tips",
   // 매뉴얼 · 가이드
   "manuals", "operating-guide", "meetings", "faq",
   // 관리
@@ -47,6 +47,10 @@ describe("findSidebarMeta 46 slug 검증", () => {
 
   it("잘못된 slug → null", () => {
     expect(findSidebarMeta("nonexistent-zzz")).toBeNull();
+  });
+
+  it("어시스턴트는 사이드바에 없다 — 우하단 런처로 대체됐다", () => {
+    expect(findSidebarMeta("ai-assistant")).toBeNull();
   });
 });
 

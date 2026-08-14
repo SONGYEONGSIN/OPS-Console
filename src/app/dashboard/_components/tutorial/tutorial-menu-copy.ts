@@ -325,13 +325,6 @@ export const MENU_COPY: Record<string, MenuCopy> = {
 
   // ── 나머지 구현 메뉴 (batch 4) ───────────────────────────────────
   // 읽기전용·문서·대시보드·채팅형은 액션 버튼이 없어 buttons: [] (빌더가 버튼 스텝 생략).
-  "ai-assistant": {
-    overview: "사내 데이터를 자연어로 검색하는 AI 어시스턴트입니다.",
-    interaction:
-      "채팅형 인터페이스입니다. 질문을 입력하면 답변이 표시됩니다(목록·인스펙터 방식 아님).",
-    buttons: [],
-  },
-
   assignments: {
     overview:
       "대학배정·업무분장·가격정책을 관리하는 곳입니다(SharePoint 연동, 3개 탭).",

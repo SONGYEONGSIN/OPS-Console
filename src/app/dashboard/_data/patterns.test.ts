@@ -9,7 +9,7 @@ const ALL_SLUGS = [
   "pims", "reception-admin", "internal-admin", "competition", "generator",
   "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
   "worklog", "outcomes", "reports",
-  "ai-insight", "ai-assistant", "my-ai-work", "ai-tips",
+  "ai-insight", "my-ai-work", "ai-tips",
   "manuals", "operating-guide", "meetings", "faq",
   "team", "settings", "onboarding", "feedback", "notices",
 ];
