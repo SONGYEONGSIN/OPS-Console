@@ -21,6 +21,8 @@ import { incidentToListRow } from "./_row-mapper";
 import { toIncidentPayload } from "./_to-payload";
 import { PendingApprovalChip } from "./PendingApprovalChip";
 import { ApprovedReportChip } from "./ApprovedReportChip";
+import { GongmunLink } from "./GongmunLink";
+import { getGongmunLedgerUrl } from "@/lib/microsoft/gongmun-ledger";
 import {
   createIncident,
   updateIncident,
@@ -74,6 +76,9 @@ export default async function IncidentsPage({
 
   const me = await getCurrentOperator();
   const canEdit = me?.permission === "admin" || me?.permission === "member";
+
+  // 공문관리대장 원본 바로가기 — 실패해도 null로 와서 버튼만 안 뜬다(목록은 그대로).
+  const gongmunUrl = await getGongmunLedgerUrl();
 
   const defaultYear = currentAcademicYear();
   const selectedYear = params.year ? Number(params.year) : defaultYear;
@@ -198,6 +203,9 @@ export default async function IncidentsPage({
       variant="incidents"
       canCreate={canEdit}
       createLabel="+ 사고 보고"
+      extraActionsLeft={
+        <GongmunLink key="incidents-gongmun" url={gongmunUrl} />
+      }
       readOnly={!canEdit}
       currentUserPermission={me?.permission ?? null}
       currentUserEmail={me?.email ?? null}
