@@ -86,6 +86,69 @@ describe("POST /api/assistant/ask", () => {
     expect(json.sources[0].domain).toBe("incident");
   });
 
+  it("pageContext를 주면 지금 보고 있는 화면을 프롬프트에 싣는다", async () => {
+    vi.mocked(getCurrentOperator).mockResolvedValue({
+      email: "m@x.com",
+      displayName: "M",
+      permission: "member",
+    } as never);
+    vi.mocked(searchAllDomains).mockResolvedValue([]);
+    vi.mocked(askGemini).mockResolvedValue({ ok: true, text: "답변" });
+    const { POST } = await import("../route");
+    await POST(
+      postReq({
+        question: "이 화면 뭐하는 곳이야",
+        pageContext: {
+          path: "/dashboard/incidents",
+          label: "사고 보고",
+          pattern: "list",
+        },
+      }),
+    );
+    const sent = vi.mocked(askGemini).mock.calls[0][0];
+    const messages = sent.messages ?? [];
+    const userContent = messages[messages.length - 1]?.content ?? "";
+    expect(userContent).toContain("사고 보고");
+    expect(userContent).toContain("/dashboard/incidents");
+  });
+
+  it("pageContext가 없으면 화면 섹션을 넣지 않는다", async () => {
+    vi.mocked(getCurrentOperator).mockResolvedValue({
+      email: "m@x.com",
+      displayName: "M",
+      permission: "member",
+    } as never);
+    vi.mocked(searchAllDomains).mockResolvedValue([]);
+    vi.mocked(askGemini).mockResolvedValue({ ok: true, text: "답변" });
+    const { POST } = await import("../route");
+    await POST(postReq({ question: "미수채권 얼마" }));
+    const sent = vi.mocked(askGemini).mock.calls[0][0];
+    const messages = sent.messages ?? [];
+    const userContent = messages[messages.length - 1]?.content ?? "";
+    expect(userContent).not.toContain("지금 보고 있는 화면");
+  });
+
+  it("pageContext 길이 초과 → 400 (클라이언트 값이라 프롬프트 주입 통로가 된다)", async () => {
+    vi.mocked(getCurrentOperator).mockResolvedValue({
+      email: "m@x.com",
+      displayName: "M",
+      permission: "member",
+    } as never);
+    const { POST } = await import("../route");
+    const res = await POST(
+      postReq({
+        question: "x",
+        pageContext: {
+          path: "/dashboard/incidents",
+          label: "라".repeat(200),
+          pattern: "list",
+        },
+      }),
+    );
+    expect(res.status).toBe(400);
+    expect(vi.mocked(askGemini)).not.toHaveBeenCalled();
+  });
+
   it("Gemini 호출 실패 → 500 + 에러 메시지", async () => {
     vi.mocked(getCurrentOperator).mockResolvedValue({
       email: "m@x.com",

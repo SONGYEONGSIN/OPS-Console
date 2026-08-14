@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
+import { usePathname } from "next/navigation";
+import { findSidebarMeta } from "../_data";
 import Link from "next/link";
 
 type Source = {
@@ -188,6 +197,18 @@ export function AssistantClient({
   variant = "page",
 }: Props) {
   const layout = LAYOUT[variant];
+  const pathname = usePathname();
+  const [attachPage, setAttachPage] = useState(true);
+
+  // 지금 열려 있는 화면 — 사이드바에 등록된 메뉴일 때만 붙인다.
+  // 상세 경로(/dashboard/incident-reports/{id})도 첫 세그먼트로 메뉴를 찾는다.
+  const pageContext = useMemo(() => {
+    const slug = pathname?.split("/")[2];
+    if (!slug) return null;
+    const meta = findSidebarMeta(slug);
+    if (!meta) return null;
+    return { path: pathname, label: meta.label, pattern: meta.pattern };
+  }, [pathname]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -223,6 +244,7 @@ export function AssistantClient({
         body: JSON.stringify({
           question,
           history: history.map((h) => ({ role: h.role, content: h.content })),
+          ...(attachPage && pageContext ? { pageContext } : {}),
         }),
       });
       const json = (await res.json()) as
@@ -300,6 +322,23 @@ export function AssistantClient({
 
       {/* 입력 영역 — page는 sticky 하단, panel은 패널 바닥 고정 */}
       <form onSubmit={handleSubmit} className={layout.form}>
+        {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
+        {pageContext && (
+          <div>
+            <button
+              type="button"
+              aria-pressed={attachPage}
+              onClick={() => setAttachPage((v) => !v)}
+              className={`cursor-pointer border px-2.5 py-1 text-2xs transition-colors ${
+                attachPage
+                  ? "border-vermilion bg-vermilion/10 text-vermilion"
+                  : "border-line-soft bg-transparent text-muted hover:bg-washi"
+              }`}
+            >
+              현재 페이지 첨부 {attachPage ? "켜짐" : "꺼짐"} · {pageContext.label}
+            </button>
+          </div>
+        )}
         <textarea
           aria-label="질문 입력"
           value={input}
