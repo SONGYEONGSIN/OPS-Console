@@ -14,6 +14,7 @@ import { runNewsCollect } from "./jobs/news-collect";
 import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
 import { runTeamBriefing } from "./jobs/team-briefing";
 import { runContractCompletionSnapshot } from "./jobs/contract-completion-snapshot";
+import { runKnowledgeIndex } from "./jobs/knowledge-index";
 // 이 잡은 registry 전체를 훑어야 해서 queries → registry 순환이 생긴다. queries가
 // AUTOMATION_JOBS를 함수 안에서만 읽으므로 평가 순서와 무관하게 안전하다.
 import { runAutomationDigest } from "./jobs/automation-digest";
@@ -176,6 +177,16 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cadence: "daily",
     cooldownMinutes: 60,
     run: runContractCompletionSnapshot,
+  },
+  {
+    id: "knowledge-index",
+    label: "업무 지식망 인덱싱",
+    description:
+      "SharePoint 지식망 볼트를 훑어 검색 인덱스를 갱신합니다.\n원본은 마크다운 파일이고 인덱스는 사본입니다 — 볼트에서 지운 문서는 인덱스에서도 빠집니다. 문서를 쓴 직후 바로 반영하려면 수동 실행하세요.",
+    scheduleInfo: "매일 09:00 (cron-job.org)",
+    cadence: "daily",
+    cooldownMinutes: 5,
+    run: runKnowledgeIndex,
   },
   {
     id: "automation-digest",

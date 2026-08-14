@@ -45,6 +45,11 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         agent: "tip-scout",
         source: { kind: "job", jobId: "ai-tips-collect" },
       },
+      {
+        role: "지식",
+        agent: "vault-indexer",
+        source: { kind: "job", jobId: "knowledge-index" },
+      },
     ],
   },
   {
