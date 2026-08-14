@@ -75,12 +75,45 @@ type SasiWeek = {
  * 마지막 주차(9/4)를 넘기면 pickSasiGoal이 undefined를 돌려 섹션이 자동으로 사라진다.
  */
 const SASI_WEEKS: SasiWeek[] = [
-  { label: "7월 5주차", startYmd: "2026-07-27", endYmd: "2026-08-02", devTarget: "20%" },
-  { label: "8월 1주차", startYmd: "2026-08-03", endYmd: "2026-08-09", devTarget: "50%", testTarget: "20%" },
-  { label: "8월 2주차", startYmd: "2026-08-10", endYmd: "2026-08-14", devTarget: "70%", testTarget: "50%" },
-  { label: "8월 3주차", startYmd: "2026-08-17", endYmd: "2026-08-23", devTarget: "100%", testTarget: "70%" },
-  { label: "8월 4주차", startYmd: "2026-08-24", endYmd: "2026-08-30", testTarget: "100%" },
-  { label: "9월 1주차", startYmd: "2026-08-31", endYmd: "2026-09-04", note: "최종 테스트 진행" },
+  {
+    label: "7월 5주차",
+    startYmd: "2026-07-27",
+    endYmd: "2026-08-02",
+    devTarget: "20%",
+  },
+  {
+    label: "8월 1주차",
+    startYmd: "2026-08-03",
+    endYmd: "2026-08-09",
+    devTarget: "50%",
+    testTarget: "20%",
+  },
+  {
+    label: "8월 2주차",
+    startYmd: "2026-08-10",
+    endYmd: "2026-08-14",
+    devTarget: "70%",
+    testTarget: "50%",
+  },
+  {
+    label: "8월 3주차",
+    startYmd: "2026-08-17",
+    endYmd: "2026-08-23",
+    devTarget: "100%",
+    testTarget: "70%",
+  },
+  {
+    label: "8월 4주차",
+    startYmd: "2026-08-24",
+    endYmd: "2026-08-30",
+    testTarget: "100%",
+  },
+  {
+    label: "9월 1주차",
+    startYmd: "2026-08-31",
+    endYmd: "2026-09-04",
+    note: "최종 테스트 진행",
+  },
 ];
 
 export type SasiGoal = {
@@ -165,6 +198,8 @@ const SCHEDULE_TYPE_ORDER = [
   "pims",
   "event",
   "leave",
+  /** schedule_events 밖 소스 — 비용지급일(SharePoint). scheduleTypeSchema에는 없다. */
+  "payment",
 ] as const;
 const SCHEDULE_TYPE_LABEL: Record<string, string> = {
   shift: "근무",
@@ -175,6 +210,7 @@ const SCHEDULE_TYPE_LABEL: Record<string, string> = {
   pims: "PIMS",
   event: "일정",
   leave: "휴가",
+  payment: "비용",
 };
 
 /** ISO 시각 → KST(Asia/Seoul) YYYY-MM-DD. */
@@ -184,15 +220,80 @@ export function kstYmd(iso: string): string {
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 }
 
+/**
+ * 백업 요청 → 차주 일정(휴가) 변환.
+ *
+ * 운영부 달력 화면은 schedule_events 말고도 백업 요청·비용지급일을 겹쳐 그린다.
+ * 뉴스레터가 schedule_events만 읽어, 달력에 보이는 휴가가 브리핑에서 통째로
+ * 빠지는 일이 있었다(2026-08 임종우 연차). 같은 소스를 함께 읽는다.
+ *
+ * 범위 판정은 **겹침**이다 — 시작일만 보면 주말·전주에 시작해 차주로 이어지는
+ * 휴가가 사라진다.
+ */
+export type BriefBackupRequest = {
+  requester_email: string;
+  requester_team?: string | null;
+  leave_type?: string | null;
+  leave_start_date?: string | null;
+  leave_end_date?: string | null;
+};
+export function backupRequestsToEvents(
+  rows: BriefBackupRequest[],
+  nameByEmail: Record<string, string>,
+  startYmd: string,
+  endYmd: string,
+): BriefEvent[] {
+  const out: BriefEvent[] = [];
+  for (const r of rows) {
+    const s = r.leave_start_date;
+    if (!s) continue;
+    const e = r.leave_end_date ?? s;
+    if (!(s <= endYmd && e >= startYmd)) continue;
+    // 이름을 못 찾아도 버리지 않는다 — 조용히 빠지는 것이 가장 나쁜 실패다.
+    const name =
+      nameByEmail[r.requester_email] ?? r.requester_email.split("@")[0];
+    const parts = [r.requester_team, name, r.leave_type].filter(
+      (v): v is string => typeof v === "string" && v.length > 0,
+    );
+    out.push({
+      type: "leave",
+      title: parts.join("-"),
+      start_at: `${s}T00:00:00+09:00`,
+      end_at: `${e}T00:00:00+09:00`,
+      all_day: true,
+    });
+  }
+  return out;
+}
+
+/** 비용지급일(SharePoint) → 차주 일정('비용') 변환. */
+export type BriefPaymentDate = { ymd: string; category: string };
+export function paymentDatesToEvents(
+  rows: BriefPaymentDate[],
+  startYmd: string,
+  endYmd: string,
+): BriefEvent[] {
+  return rows
+    .filter((r) => r.ymd >= startYmd && r.ymd <= endYmd)
+    .map((r) => ({
+      type: "payment",
+      title: `${r.category} 비용지급일`,
+      start_at: `${r.ymd}T00:00:00+09:00`,
+      all_day: true,
+    }));
+}
+
 /** [startYmd, endYmd] 범위(KST 날짜)의 일정을 유형별로 그룹. 빈 유형은 제외. */
 export function groupScheduleInRange(
   events: BriefEvent[],
   startYmd: string,
   endYmd: string,
 ): ScheduleGroup[] {
+  // 겹침 판정 — 시작일만 보면 전주·주말에 시작해 범위로 이어지는 일정이 사라진다.
   const inRange = events.filter((e) => {
-    const ymd = kstYmd(e.start_at);
-    return ymd >= startYmd && ymd <= endYmd;
+    const s = kstYmd(e.start_at);
+    const en = e.end_at ? kstYmd(e.end_at) : s;
+    return s <= endYmd && en >= startYmd;
   });
   const groups: ScheduleGroup[] = [];
   for (const type of SCHEDULE_TYPE_ORDER) {
@@ -564,7 +665,9 @@ export function celebrationKey(
 export function excludeSeenCelebrations<
   T extends { name: string; dateYmd: string },
 >(items: T[], kind: "ms" | "bd", seen: Set<string>): T[] {
-  return items.filter((i) => !seen.has(celebrationKey(kind, i.name, i.dateYmd)));
+  return items.filter(
+    (i) => !seen.has(celebrationKey(kind, i.name, i.dateYmd)),
+  );
 }
 
 /** 뉴스레터 사진/영상 — Supabase Storage 공개 URL + 캡션(원 파일명 유래). */

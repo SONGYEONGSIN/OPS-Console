@@ -1,4 +1,5 @@
 import "server-only";
+import { fetchPaymentDates } from "@/features/payment-dates/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTeamsChatMessage } from "@/lib/microsoft/teams";
 import { listContracts } from "@/features/contracts/queries";
@@ -25,6 +26,9 @@ import {
   pickFeatureIntros,
   pickSasiGoal,
   type BriefEvent,
+  type BriefBackupRequest,
+  backupRequestsToEvents,
+  paymentDatesToEvents,
   type BriefingImages,
   type BriefingMedia,
   type BriefingPayload,
@@ -176,15 +180,28 @@ export async function buildBriefingData(): Promise<
   const { data: evData, error: evErr } = await admin
     .from("schedule_events")
     .select("type, title, start_at, end_at, all_day")
-    .gte("start_at", `${weekRange.startYmd}T00:00:00+09:00`)
+    // 시작일만 걸면 전주·주말에 시작해 차주로 이어지는 일정이 아예 안 잡힌다.
+    // 넉넉히 당겨오고 겹침 판정은 groupScheduleInRange가 한다.
+    .gte("start_at", `${addDaysYmd(weekRange.startYmd, -31)}T00:00:00+09:00`)
     .lte("start_at", `${weekRange.endYmd}T23:59:59+09:00`)
     .order("start_at", { ascending: true });
   if (evErr) return { ok: false, message: `일정 조회 실패: ${evErr.message}` };
-  const schedule = groupScheduleInRange(
-    (evData ?? []) as BriefEvent[],
-    weekRange.startYmd,
-    weekRange.endYmd,
-  );
+
+  // 2-b. 운영부 달력은 schedule_events 말고도 백업 요청·비용지급일을 겹쳐 그린다.
+  //      뉴스레터가 schedule_events만 읽어 달력에 보이는 휴가·비용일이 빠졌다.
+  //      (2026-08 임종우 연차·개인/공용 비용지급일) 같은 소스를 함께 읽는다.
+  const { data: brData, error: brErr } = await admin
+    .from("backup_requests")
+    .select(
+      "requester_email, requester_team, leave_type, leave_start_date, leave_end_date",
+    )
+    .lte("leave_start_date", weekRange.endYmd)
+    .gte("leave_end_date", weekRange.startYmd);
+  if (brErr)
+    return { ok: false, message: `백업 요청 조회 실패: ${brErr.message}` };
+
+  // 비용지급일은 SharePoint라 실패해도 브리핑을 막지 않는다(fetchPaymentDates가 []를 준다).
+  const paymentRows = await fetchPaymentDates();
 
   // 3. 서비스 마감 임박 — closing_services 결제마감(pay_end_at) D-7 이내(팀 전체)
   const { data: clData, error: clErr } = await admin
@@ -226,6 +243,23 @@ export async function buildBriefingData(): Promise<
   const nameByEmail = new Map(operators.map((o) => [o.email, o.name]));
   const displayName = (email: string) =>
     nameByEmail.get(email) ?? email.split("@")[0];
+
+  // 차주 일정 = schedule_events + 백업 요청(휴가) + 비용지급일.
+  // 운영자 이름 변환이 필요해 operators 조회 뒤에 조립한다.
+  const schedule = groupScheduleInRange(
+    [
+      ...((evData ?? []) as BriefEvent[]),
+      ...backupRequestsToEvents(
+        (brData ?? []) as BriefBackupRequest[],
+        Object.fromEntries(nameByEmail),
+        weekRange.startYmd,
+        weekRange.endYmd,
+      ),
+      ...paymentDatesToEvents(paymentRows, weekRange.startYmd, weekRange.endYmd),
+    ],
+    weekRange.startYmd,
+    weekRange.endYmd,
+  );
 
   // 근속 마일스톤 + 생일 — 윈도우가 주간 발행보다 넓어 겹치므로,
   // 이미 발행된 호에 실린 건은 제외해 같은 기념일이 반복 노출되지 않게 한다.
