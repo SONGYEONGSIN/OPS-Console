@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import {
+  cancelEntertestRun,
   requestEntertestRun,
   setMyEntertestAccount,
   type EntertestActionState,
@@ -48,7 +49,11 @@ function StatusBadge({ status }: { status: EntertestRunStatus }) {
  * dev-test variant 인스펙터 View — 표준 Section/DefList 구성.
  * 서비스 기본 / 테스트 대역 계정 / 테스트 실행 / 실행 이력.
  */
-export function DevTestView({ row }: ViewProps) {
+export function DevTestView({
+  row,
+  currentUserEmail,
+  currentUserPermission,
+}: ViewProps) {
   const [acctState, acctAction, acctPending] = useActionState<
     EntertestActionState,
     FormData
@@ -57,7 +62,17 @@ export function DevTestView({ row }: ViewProps) {
     EntertestActionState,
     FormData
   >(requestEntertestRun, undefined);
+  const [cancelState, cancelAction, cancelPending] = useActionState<
+    EntertestActionState,
+    FormData
+  >(cancelEntertestRun, undefined);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  /** 대기 중이고, 본인 요청이거나 admin일 때만 취소 가능 (서버에서 재검증). */
+  const canCancel = (run: { status: string; requested_by: string }): boolean =>
+    run.status === "pending" &&
+    (currentUserPermission === "admin" ||
+      run.requested_by === currentUserEmail);
 
   const serviceId = row.serviceIdNum ?? 0;
   const runs = row.entertestRuns ?? [];
@@ -205,25 +220,39 @@ export function DevTestView({ row }: ViewProps) {
               const open = expanded === run.id;
               return (
                 <li key={run.id}>
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(open ? null : run.id)}
-                    className="flex w-full cursor-pointer items-center gap-3 py-2 text-left text-xs hover:bg-line-soft"
-                  >
-                    <StatusBadge status={run.status} />
-                    <span className="text-muted">
-                      {run.requested_at.slice(0, 16).replace("T", " ")}
-                    </span>
-                    <span className="text-ink-soft">
-                      {operatorNameByEmail(run.requested_by)}
-                    </span>
-                    {run.result && (
-                      <span className="ml-auto text-ink">
-                        {run.result.summary.pass}/{run.result.summary.total}{" "}
-                        통과
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpanded(open ? null : run.id)}
+                      className="flex flex-1 cursor-pointer items-center gap-3 py-2 text-left text-xs hover:bg-line-soft"
+                    >
+                      <StatusBadge status={run.status} />
+                      <span className="text-muted">
+                        {run.requested_at.slice(0, 16).replace("T", " ")}
                       </span>
+                      <span className="text-ink-soft">
+                        {operatorNameByEmail(run.requested_by)}
+                      </span>
+                      {run.result && (
+                        <span className="ml-auto text-ink">
+                          {run.result.summary.pass}/{run.result.summary.total}{" "}
+                          통과
+                        </span>
+                      )}
+                    </button>
+                    {canCancel(run) && (
+                      <form action={cancelAction} className="shrink-0">
+                        <input type="hidden" name="runId" value={run.id} />
+                        <button
+                          type="submit"
+                          disabled={cancelPending}
+                          className="cursor-pointer border border-line bg-transparent px-2 py-0.5 text-2xs text-ink transition-colors hover:bg-ink hover:text-cream disabled:opacity-50"
+                        >
+                          취소
+                        </button>
+                      </form>
                     )}
-                  </button>
+                  </div>
                   {open && run.result && (
                     <ul className="bg-cream px-2 py-2">
                       {run.result.checks.map((c) => (
@@ -273,6 +302,13 @@ export function DevTestView({ row }: ViewProps) {
               );
             })}
           </ul>
+        )}
+        {cancelState && (
+          <p
+            className={`text-xs ${cancelState.ok ? "text-ink-soft" : "text-vermilion"}`}
+          >
+            {cancelState.message}
+          </p>
         )}
       </Section>
     </div>

@@ -142,6 +142,7 @@ export function InspectorListBody({
         row={row}
         variant={variant}
         currentUserPermission={currentUserPermission}
+        currentUserEmail={currentUserEmail}
         receivablesMailDryRun={receivablesMailDryRun}
         onChecklistToggle={onChecklistToggle}
         onMailReply={onMailReply}
@@ -202,6 +203,7 @@ function ViewMode({
   row,
   variant,
   currentUserPermission = null,
+  currentUserEmail = null,
   receivablesMailDryRun = true,
   onChecklistToggle,
   onMailReply,
@@ -209,6 +211,7 @@ function ViewMode({
   row: ListRow;
   variant: Variant;
   currentUserPermission?: OperatorPermission | null;
+  currentUserEmail?: string | null;
   receivablesMailDryRun?: boolean;
   onChecklistToggle?: (input: {
     cohort_id: string;
@@ -231,6 +234,7 @@ function ViewMode({
       <View
         row={row}
         currentUserPermission={currentUserPermission}
+        currentUserEmail={currentUserEmail}
         receivablesMailDryRun={receivablesMailDryRun}
         onChecklistToggle={onChecklistToggle}
         onMailReply={onMailReply}
