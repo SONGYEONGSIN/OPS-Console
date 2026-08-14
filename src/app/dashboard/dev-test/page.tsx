@@ -142,6 +142,8 @@ export default async function DevTestPage({
           variant="dev-test"
           readOnly
           liveData
+          currentUserEmail={me?.email ?? null}
+          currentUserPermission={me?.permission ?? null}
           controlsRow={<DevTestControls {...options} />}
           inlineFilters={
             <ScopeChips
