@@ -12,15 +12,12 @@ vi.mock("@/lib/microsoft/drive-upload", () => ({
     webUrl: "https://sp/x.docx",
   })),
 }));
-vi.mock("@/lib/docx/incident-report-docx", () => ({
-  renderIncidentReportDocx: vi.fn(async () => Buffer.from("PK")),
-}));
 
 import {
   assignDocNumber,
   uploadAndLinkReportFile,
   sharePointConfig,
-  DOCX_CONTENT_TYPE,
+  PDF_CONTENT_TYPE,
   type RegisterInput,
 } from "../sharepoint-register";
 import {
@@ -29,7 +26,6 @@ import {
   updateSenderRowLink,
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
-import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
 
 const REP: RegisterInput = {
   recipient_university: "건국대학교",
@@ -112,8 +108,7 @@ describe("assignDocNumber", () => {
       author: "나",
     });
 
-    // 발번 단계는 docx 렌더/업로드를 하지 않는다
-    expect(renderIncidentReportDocx).not.toHaveBeenCalled();
+    // 발번 단계는 업로드를 하지 않는다
     expect(uploadFileToFolder).not.toHaveBeenCalled();
   });
 
@@ -146,18 +141,19 @@ describe("assignDocNumber", () => {
 });
 
 describe("uploadAndLinkReportFile", () => {
-  it("docx 렌더 → 업로드 → 발신대장 F링크 갱신 후 sharepointUrl 반환", async () => {
-    const r = await uploadAndLinkReportFile(REP, "운영2606-0202", new Date());
+  it("주입받은 PDF 업로드 → 발신대장 F링크 갱신 후 sharepointUrl 반환", async () => {
+    // 보관본은 메일에 보낸 것과 같은 PDF — 별도 렌더 없이 버퍼를 주입받는다.
+    const pdf = Buffer.from("%PDF-fake");
+    const r = await uploadAndLinkReportFile(
+      REP,
+      "운영2606-0202",
+      new Date(),
+      pdf,
+    );
 
     expect(r).toEqual({ sharepointUrl: "https://sp/x.docx" });
 
-    // docx는 docNumber 포함해 렌더
-    expect(renderIncidentReportDocx).toHaveBeenCalledTimes(1);
-    const docxArg = (renderIncidentReportDocx as ReturnType<typeof vi.fn>).mock
-      .calls[0][0] as Record<string, unknown>;
-    expect(docxArg.docNumber).toBe("운영2606-0202");
-
-    // 업로드: docNumber 포함한 .docx 파일명, DOCX content-type
+    // 업로드: docNumber 포함한 .pdf 파일명, PDF content-type, 주입 버퍼 그대로
     expect(uploadFileToFolder).toHaveBeenCalledTimes(1);
     const upArgs = (uploadFileToFolder as ReturnType<typeof vi.fn>).mock
       .calls[0];
@@ -165,8 +161,9 @@ describe("uploadAndLinkReportFile", () => {
     expect(upArgs[1]).toBe("folder-1");
     const fileName = upArgs[2] as string;
     expect(fileName).toContain("운영2606-0202");
-    expect(fileName.endsWith(".docx")).toBe(true);
-    expect(upArgs[4]).toBe(DOCX_CONTENT_TYPE);
+    expect(fileName.endsWith(".pdf")).toBe(true);
+    expect(upArgs[3]).toBe(pdf);
+    expect(upArgs[4]).toBe(PDF_CONTENT_TYPE);
 
     // 발신대장: 같은 docNumber 행의 F열을 업로드 webUrl로 갱신
     expect(updateSenderRowLink).toHaveBeenCalledTimes(1);
@@ -180,15 +177,24 @@ describe("uploadAndLinkReportFile", () => {
 
   it("env 누락 → null, 업로드 호출 안 함", async () => {
     delete process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID;
-    const r = await uploadAndLinkReportFile(REP, "운영2606-0202", new Date());
+    const r = await uploadAndLinkReportFile(
+      REP,
+      "운영2606-0202",
+      new Date(),
+      Buffer.from("%PDF-fake"),
+    );
     expect(r).toBeNull();
     expect(uploadFileToFolder).not.toHaveBeenCalled();
   });
 
   it("opts.token을 업로드에 전달", async () => {
-    await uploadAndLinkReportFile(REP, "운영2606-0202", new Date(), {
-      token: "delegated-tok",
-    });
+    await uploadAndLinkReportFile(
+      REP,
+      "운영2606-0202",
+      new Date(),
+      Buffer.from("%PDF-fake"),
+      { token: "delegated-tok" },
+    );
     const upArgs = (uploadFileToFolder as ReturnType<typeof vi.fn>).mock
       .calls[0];
     expect(upArgs[5]).toMatchObject({ token: "delegated-tok" });
@@ -199,6 +205,7 @@ describe("uploadAndLinkReportFile", () => {
       { ...REP, title: 'a/b:c*?"<>|d' },
       "운영2606-0202",
       new Date(),
+      Buffer.from("%PDF-fake"),
     );
     const fileName = (uploadFileToFolder as ReturnType<typeof vi.fn>).mock
       .calls[0][2] as string;

@@ -14,6 +14,7 @@ import {
 } from "./sharepoint-register";
 import { getDelegatedGraphToken } from "@/lib/microsoft/delegated-token";
 import { getIncidentById } from "@/features/incidents/queries";
+import { resolveApprovalChain } from "./queries";
 import { incidentReportSendSchema, type IncidentReportRow } from "./schemas";
 
 export type SendIncidentReportResult =
@@ -54,61 +55,59 @@ export async function sendIncidentReport(
     return { ok: false, error: "발송 권한이 없습니다." };
   }
 
+  // 담당자·결재라인 스냅샷 확정 — 화면(상세 페이지)은 사고 담당자 + 라이브 결재라인을
+  // 매번 새로 계산해 보여주는데 문서는 저장값을 쓴다. 그대로 두면 화면에서 본 것과
+  // 다른 공문이 나가므로(공문관리대장 작성자도 사고 담당자 기준), 발송 시점에 맞춰 굳힌다.
+  const incident = rep.incident_id
+    ? await getIncidentById(rep.incident_id).catch(() => null)
+    : null;
+  const dutyName = incident?.assignee_name ?? rep.author_name;
+  const dutyEmail = incident?.assignee_email ?? rep.author_email;
+  const chain = await resolveApprovalChain(dutyEmail).catch(() => null);
+  const snapshot = {
+    author_name: dutyName,
+    author_email: dutyEmail,
+    approver_name: chain?.approver?.name ?? rep.approver_name,
+    approver_role: chain?.approver?.role ?? rep.approver_role,
+    director_name: chain?.director?.name ?? rep.director_name,
+    director_role: chain?.director?.role ?? rep.director_role,
+    ceo_name: chain?.ceo?.name ?? rep.ceo_name,
+    ceo_role: chain?.ceo?.role ?? rep.ceo_role,
+  };
+  await admin.from("incident_reports").update(snapshot).eq("id", rep.id);
+  const sending = { ...rep, ...snapshot };
+
   // 발번 보장 — 보통 PDF 클릭 시점에 채번되지만, 안 거친 edge 대비 발송 시 보강.
   let docNumber: string | null = rep.doc_number ?? null;
   if (!docNumber) {
-    // 대장 작성자 = 사고보고 담당자(사고 assignee). 없으면 리포트 작성자 폴백.
-    const incident = rep.incident_id
-      ? await getIncidentById(rep.incident_id).catch(() => null)
-      : null;
-    const assigned = await assignDocNumber(rep as RegisterInput, new Date(), {
-      ledgerAuthor: incident?.assignee_name ?? rep.author_name,
-    });
+    const assigned = await assignDocNumber(
+      sending as RegisterInput,
+      new Date(),
+      { ledgerAuthor: dutyName },
+    );
     docNumber = assigned?.docNumber ?? null;
   }
 
-  // 파일 업로드 + 발신대장 F링크 — 발송 시점에만.
-  let sharepointUrl: string | null = null;
-  if (!dryRun && docNumber) {
-    // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
-    const delegatedToken = await getDelegatedGraphToken(me.email).catch(
-      () => null,
-    );
-    const up = await uploadAndLinkReportFile(
-      rep as RegisterInput,
-      docNumber,
-      new Date(),
-      { token: delegatedToken ?? undefined },
-    ).catch((e) => {
-      console.error(
-        "[sendIncidentReport] SharePoint 업로드 실패 (메일은 계속):",
-        e,
-      );
-      return null;
-    });
-    sharepointUrl = up?.sharepointUrl ?? null;
-  }
-
-  // 공문 하단 연락처 전화 — 작성자(담당자) 운영자의 전화번호.
+  // 공문 하단 연락처 전화 — 담당자 운영자의 전화번호.
   const { data: authorOp } = await admin
     .from("operators")
     .select("phone")
-    .eq("email", rep.author_email)
+    .eq("email", dutyEmail)
     .maybeSingle();
 
   const pdf = await renderIncidentReportPdf({
-    recipientUniversity: rep.recipient_university,
-    title: rep.title,
-    draftDate: rep.draft_date,
-    authorName: rep.author_name,
-    authorEmail: rep.author_email,
-    authorPhone: authorOp?.phone ?? null,
-    approverName: rep.approver_name,
-    approverRole: rep.approver_role,
-    directorName: rep.director_name,
-    directorRole: rep.director_role,
-    ceoName: rep.ceo_name,
-    ceoRole: rep.ceo_role,
+    recipientUniversity: sending.recipient_university,
+    title: sending.title,
+    draftDate: sending.draft_date,
+    authorName: sending.author_name,
+    authorEmail: sending.author_email,
+    authorPhone: chain?.author?.phone ?? authorOp?.phone ?? null,
+    approverName: sending.approver_name,
+    approverRole: sending.approver_role,
+    directorName: sending.director_name,
+    directorRole: sending.director_role,
+    ceoName: sending.ceo_name,
+    ceoRole: sending.ceo_role,
     docNumber,
     apology: rep.apology ?? "",
     gyeongwi: rep.gyeongwi,
@@ -122,6 +121,29 @@ export async function sendIncidentReport(
     contentBytes: pdf.toString("base64"),
     contentType: "application/pdf",
   };
+
+  // 보관본 업로드 + 발신대장 F링크 — 발송 시점에만. 메일에 붙인 그 PDF를 그대로 올린다.
+  let sharepointUrl: string | null = null;
+  if (!dryRun && docNumber) {
+    // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
+    const delegatedToken = await getDelegatedGraphToken(me.email).catch(
+      () => null,
+    );
+    const up = await uploadAndLinkReportFile(
+      sending as RegisterInput,
+      docNumber,
+      new Date(),
+      pdf,
+      { token: delegatedToken ?? undefined },
+    ).catch((e) => {
+      console.error(
+        "[sendIncidentReport] SharePoint 업로드 실패 (메일은 계속):",
+        e,
+      );
+      return null;
+    });
+    sharepointUrl = up?.sharepointUrl ?? null;
+  }
 
   const { data: opRow } = await admin
     .from("operators")

@@ -8,21 +8,22 @@ import {
   deleteSenderRow,
 } from "@/lib/microsoft/gongmun-ledger";
 import { uploadFileToFolder } from "@/lib/microsoft/drive-upload";
-import { renderIncidentReportDocx } from "@/lib/docx/incident-report-docx";
 import type { HandlingRow } from "./schemas";
 
 /**
  * 경위서 SharePoint 연동 — 2단계로 분리.
  *
  * 1) assignDocNumber (PDF 버튼 = 발번 시점): 공문관리대장 채번 + 발신 시트 행추가
- *    (F=파일링크는 빈칸). docx 렌더/업로드 없음.
- * 2) uploadAndLinkReportFile (발송 시점): docx(시행번호 포함) 렌더 → 06.경위서 업로드
+ *    (F=파일링크는 빈칸). 업로드 없음.
+ * 2) uploadAndLinkReportFile (발송 시점): 메일에 첨부한 그 PDF를 06.경위서에 업로드
  *    → 발신 시트 그 행의 F열을 파일 링크로 갱신.
  * env 3개가 모두 설정돼야 동작하며, 하나라도 없으면 null.
+ *
+ * 보관본은 발송본과 같은 파일이어야 한다 — 예전엔 별도 docx를 렌더해 올렸는데,
+ * 그 렌더러가 결재라인·사과문 인사말을 PDF와 다르게 그려 두 문서가 갈라졌다.
  */
 
-export const DOCX_CONTENT_TYPE =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export const PDF_CONTENT_TYPE = "application/pdf";
 
 export type SharePointConfig = {
   driveId: string;
@@ -107,7 +108,7 @@ function ymd(today: Date): string {
 }
 
 /**
- * 발번 — 채번 후 발신대장에 행추가(F=파일링크는 빈칸). docx 렌더/업로드 없음.
+ * 발번 — 채번 후 발신대장에 행추가(F=파일링크는 빈칸). 업로드 없음.
  * config 없으면 null.
  */
 export async function assignDocNumber(
@@ -160,47 +161,27 @@ export async function releaseDocNumber(
 }
 
 /**
- * 파일 업로드 — docx(번호 포함) 렌더 → 06.경위서 업로드 → 발신대장 그 행의 F링크 갱신.
- * config 없으면 null. opts.token으로 위임 토큰 주입.
+ * 파일 업로드 — 발송본 PDF를 06.경위서에 올리고 발신대장 그 행의 F링크 갱신.
+ * config 없으면 null. pdf는 메일 첨부와 동일한 버퍼(중복 렌더 회피).
+ * opts.token으로 위임 토큰 주입.
  */
 export async function uploadAndLinkReportFile(
   rep: RegisterInput,
   docNumber: string,
   today: Date,
+  pdf: Buffer,
   opts?: { token?: string },
 ): Promise<{ sharepointUrl: string } | null> {
   const cfg = sharePointConfig();
   if (!cfg) return null;
 
-  const docx = await renderIncidentReportDocx({
-    recipientUniversity: rep.recipient_university,
-    title: rep.title,
-    draftDate: rep.draft_date,
-    authorName: rep.author_name,
-    authorEmail: rep.author_email,
-    authorPhone: null, // docx는 연락처 줄을 렌더하지 않음
-    approverName: rep.approver_name,
-    approverRole: rep.approver_role,
-    directorName: rep.director_name,
-    directorRole: rep.director_role,
-    ceoName: rep.ceo_name,
-    ceoRole: rep.ceo_role,
-    docNumber,
-    apology: rep.apology ?? "",
-    gyeongwi: rep.gyeongwi,
-    cause: rep.cause,
-    handling: rep.handling,
-    handlingRows: rep.handling_rows,
-    prevention: rep.prevention,
-  });
-
-  const fileName = sanitizeFileName(`${rep.title}_${docNumber}.docx`);
+  const fileName = sanitizeFileName(`${rep.title}_${docNumber}.pdf`);
   const up = await uploadFileToFolder(
     cfg.driveId,
     cfg.folderItemId,
     fileName,
-    docx,
-    DOCX_CONTENT_TYPE,
+    pdf,
+    PDF_CONTENT_TYPE,
     { token: opts?.token },
   );
 
