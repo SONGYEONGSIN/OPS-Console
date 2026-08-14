@@ -124,6 +124,7 @@ export async function sendIncidentReport(
 
   // 보관본 업로드 + 발신대장 F링크 — 발송 시점에만. 메일에 붙인 그 PDF를 그대로 올린다.
   let sharepointUrl: string | null = null;
+  let ledgerLinked = true;
   if (!dryRun && docNumber) {
     // 위임 토큰이 있으면 업로드 "만든 사람"=운영자, 없으면 서비스 계정 폴백.
     const delegatedToken = await getDelegatedGraphToken(me.email).catch(
@@ -143,6 +144,14 @@ export async function sendIncidentReport(
       return null;
     });
     sharepointUrl = up?.sharepointUrl ?? null;
+    // 대장에 그 시행번호 행이 없으면(사람이 지웠거나 채번이 안 됐거나) 링크를 못 채운다.
+    // 업로드는 됐으므로 화면엔 링크가 보인다 — 여기서 안 남기면 아무도 모른다.
+    if (up && !up.ledgerLinked) {
+      ledgerLinked = false;
+      console.error(
+        `[sendIncidentReport] 공문관리대장에 ${docNumber} 행이 없어 F링크 미기입`,
+      );
+    }
   }
 
   const { data: opRow } = await admin
@@ -203,7 +212,7 @@ export async function sendIncidentReport(
     target_type: "incident_reports",
     target_id: rep.id,
     target_name: rep.title,
-    msg: `경위서 발송 (수신 ${parsed.data.to_email}${parsed.data.cc_emails.length ? `, CC ${parsed.data.cc_emails.length}` : ""})${docNumber ? ` 시행 ${docNumber}` : ""}${dryRun ? " [dry_run]" : ""}`,
+    msg: `경위서 발송 (수신 ${parsed.data.to_email}${parsed.data.cc_emails.length ? `, CC ${parsed.data.cc_emails.length}` : ""})${docNumber ? ` 시행 ${docNumber}` : ""}${ledgerLinked ? "" : " [공문관리대장 미기입]"}${dryRun ? " [dry_run]" : ""}`,
   });
 
   revalidatePath(PATH);

@@ -11,6 +11,7 @@ import {
   updateSenderRowLink,
   deleteSenderRow,
   findSenderRowIndex,
+  linkCellBody,
 } from "../gongmun-ledger";
 
 // 시행번호 = 운영 + YY + MM + '-' + DD + 일련번호2자리 (그날 순번)
@@ -83,8 +84,9 @@ describe("updateSenderRowLink", () => {
     expect(patchUrl).toContain(encodeURIComponent("F3:F3"));
     const patchInit = fetchMock.mock.calls[1][1] as RequestInit;
     expect(patchInit.method).toBe("PATCH");
+    // 사람이 손으로 넣은 기존 행과 같은 모양 — 표시는 "링크"
     expect(JSON.parse(patchInit.body as string)).toEqual({
-      values: [["https://sp/x.docx"]],
+      formulas: [[`=HYPERLINK("https://sp/x.docx","링크")`]],
     });
   });
 
@@ -105,6 +107,34 @@ describe("updateSenderRowLink", () => {
 
     expect(ok).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1); // usedRange GET만
+  });
+});
+
+describe("linkCellBody", () => {
+  it("URL을 =HYPERLINK 수식으로 — 표시 텍스트는 '링크'", () => {
+    expect(linkCellBody("https://sp/x.pdf")).toEqual({
+      formulas: [[`=HYPERLINK("https://sp/x.pdf","링크")`]],
+    });
+  });
+
+  it("퍼센트 인코딩을 풀어 쓴다 (HYPERLINK 주소 255자 제한 회피)", () => {
+    // 인코딩 상태 281자 → 디코딩 41자
+    const encoded = "https://sp/" + "%EA%B0%80".repeat(30);
+    expect(encoded.length).toBeGreaterThan(255);
+    const body = linkCellBody(encoded) as { formulas: string[][] };
+    expect(body.formulas[0][0]).toBe(
+      `=HYPERLINK("https://sp/${"가".repeat(30)}","링크")`,
+    );
+  });
+
+  it("디코딩해도 255자를 넘으면 URL 원문을 값으로 쓴다", () => {
+    // HYPERLINK가 #VALUE! 를 내므로 수식 대신 원문 — 링크는 살아 있다.
+    const long = "https://sp/" + "a".repeat(300);
+    expect(linkCellBody(long)).toEqual({ values: [[long]] });
+  });
+
+  it("빈 링크는 값으로 (발번 시점 F열 빈칸)", () => {
+    expect(linkCellBody("")).toEqual({ values: [[""]] });
   });
 });
 

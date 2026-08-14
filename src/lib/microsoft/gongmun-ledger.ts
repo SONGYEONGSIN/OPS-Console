@@ -137,6 +137,26 @@ export function findSenderRowIndex(
   return bColumnValues.findIndex((v) => String(v ?? "").trim() === target);
 }
 
+/** HYPERLINK 주소 인자 길이 상한 — 넘으면 Excel이 #VALUE! 를 낸다. */
+const HYPERLINK_ADDRESS_MAX = 255;
+
+/**
+ * F열(링크) 셀에 쓸 PATCH body.
+ *
+ * 사람이 손으로 넣은 기존 행은 "링크"로 표시되는 하이퍼링크인데 앱이 쓴 행만 URL 원문이
+ * 그대로 드러나 모양이 갈렸다. =HYPERLINK 수식으로 같은 모양을 만든다.
+ * SharePoint webUrl은 한글 경로가 퍼센트 인코딩돼 쉽게 255자를 넘으므로(실측 403자)
+ * 디코딩해 길이를 줄이고, 그래도 넘치면 원문을 값으로 쓴다 — 보기엔 아쉬워도 링크는 산다.
+ */
+export function linkCellBody(
+  link: string,
+): { formulas: string[][] } | { values: string[][] } {
+  if (!link) return { values: [[""]] };
+  const address = decodeURIComponent(link);
+  if (address.length > HYPERLINK_ADDRESS_MAX) return { values: [[link]] };
+  return { formulas: [[`=HYPERLINK("${address}","링크")`]] };
+}
+
 export type LedgerRow = {
   docNumber: string;
   date: string; // YYYY-MM-DD
@@ -244,7 +264,7 @@ export async function updateSenderRowLink(
       "content-type": "application/json",
       "workbook-session-id": sessionId,
     },
-    body: JSON.stringify({ values: [[link]] }),
+    body: JSON.stringify(linkCellBody(link)),
   });
   if (!res.ok) {
     throw new Error(
