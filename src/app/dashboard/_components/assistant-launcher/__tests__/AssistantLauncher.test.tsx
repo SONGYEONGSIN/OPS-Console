@@ -6,7 +6,7 @@ import type { CurrentOperator } from "@/features/auth/queries";
 // AssistantClient는 마운트 횟수만 관찰한다 — 패널을 닫을 때 언마운트되면
 // 대화가 통째로 날아가므로, 그 회귀를 잡는 게 이 mock의 목적.
 const { mountSpy } = vi.hoisted(() => ({ mountSpy: vi.fn() }));
-vi.mock("../../../ai-assistant/AssistantClient", async () => {
+vi.mock("../AssistantClient", async () => {
   const { useEffect } = await import("react");
   return {
     AssistantClient: () => {

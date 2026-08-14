@@ -49,7 +49,6 @@ describe("MENU_COPY 무결성", () => {
 
   it("나머지 구현 메뉴 batch4를 모두 포함한다", () => {
     for (const slug of [
-      "ai-assistant",
       "assignments",
       "automations",
       "feedback",

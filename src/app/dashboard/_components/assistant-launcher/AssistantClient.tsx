@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { usePathname } from "next/navigation";
-import { findSidebarMeta } from "../_data";
+import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
 
 type Source = {

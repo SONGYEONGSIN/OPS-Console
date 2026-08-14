@@ -353,12 +353,6 @@ export const sidebarSections: SbSection[] = [
           },
           {
             ico: "·",
-            label: "어시스턴트",
-            slug: "ai-assistant",
-            pattern: "dash",
-          },
-          {
-            ico: "·",
             label: "내 작업",
             count: "",
             slug: "my-ai-work",
