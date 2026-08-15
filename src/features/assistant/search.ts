@@ -51,13 +51,33 @@ export function scoreText(text: string, tokens: string[]): number {
 
 function snippet(text: string | null | undefined): string {
   if (!text) return "";
-  const trimmed = text.trim().replace(/\s+/g, " ");
+  // 모든 도메인이 여기를 지난다 — 마크다운 제거를 한 곳에서 건다.
+  const trimmed = plainSnippet(text);
   return trimmed.length > SNIPPET_MAX_LEN
     ? trimmed.slice(0, SNIPPET_MAX_LEN) + "…"
     : trimmed;
 }
 
 /** 지식망 1행 — 검색에 쓰는 최소 형태. */
+/**
+ * 근거 스니펫에서 마크다운 기호를 걷어낸다.
+ *
+ * 스니펫은 문서 원문을 그대로 자른 것이라 `##`·`**`·백틱·표 파이프가 섞인다.
+ * 좁은 패널에서는 그 기호가 글자를 덮어 읽기 어렵다. 렌더링이 아니라 **한 줄
+ * 미리보기**라 마크다운으로 그리지 않고 기호만 없앤다.
+ */
+export function plainSnippet(text: string): string {
+  return text
+    .replace(/```+/g, " ") // 코드펜스
+    .replace(/`/g, "") // 인라인 코드
+    .replace(/^\s*#{1,6}\s*/gm, "") // 제목
+    .replace(/\*\*|__/g, "") // 굵게
+    .replace(/^\s*[-*+]\s+/gm, "") // 목록 기호
+    .replace(/\|/g, " ") // 표 파이프
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export type KnowledgeRow = {
   path: string;
   category: string;

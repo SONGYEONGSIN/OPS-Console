@@ -62,8 +62,8 @@ const DOMAIN_TONE: Record<Source["domain"], string> = {
   knowledge: "bg-vermilion/10 text-vermilion",
   incident: "bg-vermilion/15 text-vermilion",
   handover: "bg-sage/15 text-sage",
-  "ai-tip": "bg-washi-raised text-ink",
-  backup: "bg-washi-raised text-ink-soft",
+  "ai-tip": "bg-situation-bg text-ink",
+  backup: "bg-situation-bg text-ink-soft",
   contact: "bg-line-soft text-ink",
   service: "bg-line-soft text-ink-soft",
 };
@@ -332,7 +332,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* 메시지 영역 — worklog 패턴: 화면 전체 폭 (parent p-7 padding 사용) */}
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-washi px-5 py-4">
+      {/* 배경은 콘텐츠 표준 bg-paper(#ffffff). 이전엔 washi(#ede6d2)라 이 패널만
+          화이트 리뉴얼 전 색으로 남아 있었다. */}
+      <div className="min-h-0 flex-1 space-y-7 overflow-y-auto bg-paper px-5 py-4">
         {messages.length === 0 ? (
           <EmptyState onPick={(ex) => send(ex)} />
         ) : (
@@ -346,7 +348,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       {/* 입력 영역 — page는 sticky 하단, panel은 패널 바닥 고정 */}
       <form
         onSubmit={handleSubmit}
-        className="flex shrink-0 flex-col gap-2 border-t border-line bg-cream px-5 py-3"
+        className="flex shrink-0 flex-col gap-2 border-t border-line-soft bg-paper px-5 py-3"
       >
         {/*
           칩은 인스펙터 표준(ScopeChips)을 따른다 — 테두리 상자가 아니라
@@ -383,7 +385,8 @@ export function AssistantClient({ userName = "운영자" }: Props) {
           className="resize-none border border-line-soft bg-field-bg px-2.5 py-2 text-sm text-ink outline-none transition-colors focus:border-ink focus:bg-white"
         />
 
-        <div className="flex items-center justify-between gap-2">
+        {/* 우하단 런처(56px 원형)가 이 줄을 덮는다 — 그만큼 오른쪽을 비운다 */}
+        <div className="flex items-center justify-between gap-2 pr-16">
           <button
             type="button"
             onClick={reset}
