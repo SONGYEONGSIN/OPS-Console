@@ -19,6 +19,7 @@ export type EnvSnapshot = {
     manualItemId: { configured: boolean; preview: string };
     gongmunItemId: { configured: boolean; preview: string };
     incidentReportFolderId: { configured: boolean; preview: string };
+    knowledgeFolderId: { configured: boolean; preview: string };
     meetingsFolderId: { configured: boolean; preview: string };
     smileediDriveId: { configured: boolean; preview: string };
     smileediItemId: { configured: boolean; preview: string };
@@ -98,6 +99,10 @@ export function getEnvSnapshot(): EnvSnapshot {
           process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID,
         ),
         preview: preview(process.env.SHAREPOINT_INCIDENT_REPORT_FOLDER_ID),
+      },
+      knowledgeFolderId: {
+        configured: Boolean(process.env.SHAREPOINT_KNOWLEDGE_FOLDER_ID),
+        preview: preview(process.env.SHAREPOINT_KNOWLEDGE_FOLDER_ID),
       },
       meetingsFolderId: {
         configured: Boolean(process.env.SHAREPOINT_MEETINGS_FOLDER_ID),
