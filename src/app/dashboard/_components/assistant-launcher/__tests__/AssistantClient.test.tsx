@@ -34,7 +34,7 @@ describe("AssistantClient (chat)", () => {
   it("초기 — empty state + 예시 4개 + 입력창", () => {
     render(<AssistantClient />);
     expect(screen.getByLabelText("질문 입력")).toBeInTheDocument();
-    expect(screen.getByText(/외국인 전형/)).toBeInTheDocument();
+    expect(screen.getByText(/다음주 휴가자/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "전송" })).toBeInTheDocument();
   });
 
@@ -126,7 +126,7 @@ describe("AssistantClient (chat)", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "대화 초기화" }));
     expect(screen.queryByText("답변")).toBeNull();
-    expect(screen.getByText(/외국인 전형/)).toBeInTheDocument();
+    expect(screen.getByText(/다음주 휴가자/)).toBeInTheDocument();
   });
 
   it("multi-turn — 두 번째 질문 시 history 함께 전송", async () => {
@@ -166,7 +166,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
   it("사이드바에 있는 화면이면 첨부 칩이 켜진 채로 보인다", () => {
     render(<AssistantClient />);
     expect(
-      screen.getByRole("button", { name: /현재 페이지 첨부/ }),
+      screen.getByRole("button", { name: /첨부/ }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -189,7 +189,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
   it("칩을 끄면 pageContext를 보내지 않는다", async () => {
     stubOk();
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /현재 페이지 첨부/ }));
+    fireEvent.click(screen.getByRole("button", { name: /첨부/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "미수채권 얼마" },
     });
@@ -203,7 +203,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
     // 첨부할 화면 정보가 없는데 칩만 떠 있으면 켜도 아무 일이 안 일어난다.
     pathnameRef.current = "/dashboard/알수없는화면";
     render(<AssistantClient />);
-    expect(screen.queryByRole("button", { name: /현재 페이지 첨부/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /첨부/ })).toBeNull();
   });
 });
 
@@ -287,7 +287,7 @@ describe("AssistantClient — Claude 모드", () => {
 
   it("모드 토글이 있고 기본은 빠른 답변이다 — 회사 PC가 꺼져도 어시스턴트는 살아 있어야 한다", () => {
     render(<AssistantClient />);
-    const toggle = screen.getByRole("button", { name: /Claude로 깊게/ });
+    const toggle = screen.getByRole("button", { name: /Claude|빠른 답변/ });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -302,7 +302,7 @@ describe("AssistantClient — Claude 모드", () => {
       },
     ]);
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /Claude로 깊게/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "시행번호?" },
     });
@@ -319,7 +319,7 @@ describe("AssistantClient — Claude 모드", () => {
   it("아무도 안 가져가면 회사 PC가 꺼졌다고 말한다 — 조용히 도는 것처럼 보이면 안 된다", async () => {
     stubClaude([{ ok: true, status: "pending", answer: null, sources: [] }]);
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /Claude로 깊게/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "시행번호?" },
     });
@@ -335,7 +335,7 @@ describe("AssistantClient — Claude 모드", () => {
       { ok: true, status: "failed", answer: null, sources: [], message: "빈 응답" },
     ]);
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /Claude로 깊게/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "x" },
     });

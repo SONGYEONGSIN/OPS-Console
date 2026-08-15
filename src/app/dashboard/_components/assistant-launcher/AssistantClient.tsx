@@ -76,7 +76,7 @@ const DOMAIN_TONE: Record<Source["domain"], string> = {
 const EXAMPLES = [
   "경위서 어떻게 보내지?",
   "공문 시행번호는 어떻게 매겨져?",
-  "외국인 전형 입력 오류 사례 있어?",
+  "다음주 휴가자 누가 있어?",
   "한양대 연락처 알려줘",
 ];
 
@@ -348,75 +348,59 @@ export function AssistantClient({ userName = "운영자" }: Props) {
         onSubmit={handleSubmit}
         className="flex shrink-0 flex-col gap-2 border-t border-line bg-cream px-5 py-3"
       >
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/*
-            Claude는 회사 PC의 구독으로 돌아 볼트 문서를 직접 읽는다(실측 30~45초).
-            기본을 즉답으로 두는 이유는 PC가 꺼진 날에도 어시스턴트가 살아 있어야 해서다.
-          */}
-          <button
-            type="button"
-            aria-pressed={deep}
+        {/*
+          칩은 인스펙터 표준(ScopeChips)을 따른다 — 테두리 상자가 아니라
+          밑줄(vermilion) 텍스트. 좁은 패널에서 상자 두 개는 입력창보다 시끄럽다.
+        */}
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+          <ModeChip
+            active={deep}
             onClick={() => setDeep((v) => !v)}
-            className={`cursor-pointer border px-2.5 py-1 text-2xs transition-colors ${
-              deep
-                ? "border-vermilion bg-vermilion/10 text-vermilion"
-                : "border-line-soft bg-transparent text-muted hover:bg-washi"
-            }`}
-          >
-            Claude로 깊게 {deep ? "켜짐" : "꺼짐"}
-          </button>
-          {deep && (
-            <span className="text-2xs text-muted">
-              지식망 문서를 직접 읽습니다 · 30초쯤 걸립니다
-            </span>
+            label={deep ? "Claude · 지식망 읽기" : "빠른 답변"}
+          />
+          {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
+          {pageContext && (
+            <ModeChip
+              active={attachPage}
+              onClick={() => setAttachPage((v) => !v)}
+              label={`${pageContext.label} 첨부`}
+            />
           )}
+          <span className="ml-auto pr-1 text-2xs text-muted">
+            {deep ? "문서를 직접 읽습니다 · 30초쯤" : "즉답 · 검색 요약"}
+          </span>
         </div>
 
-        {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
-        {pageContext && (
-          <div>
-            <button
-              type="button"
-              aria-pressed={attachPage}
-              onClick={() => setAttachPage((v) => !v)}
-              className={`cursor-pointer border px-2.5 py-1 text-2xs transition-colors ${
-                attachPage
-                  ? "border-vermilion bg-vermilion/10 text-vermilion"
-                  : "border-line-soft bg-transparent text-muted hover:bg-washi"
-              }`}
-            >
-              현재 페이지 첨부 {attachPage ? "켜짐" : "꺼짐"} · {pageContext.label}
-            </button>
-          </div>
-        )}
         <textarea
           aria-label="질문 입력"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="어떤 정보를 찾으시나요? Shift+Enter로 줄바꿈, Enter로 전송."
+          placeholder="무엇을 찾으시나요? Enter로 전송 · Shift+Enter 줄바꿈"
           rows={2}
           disabled={pending}
           maxLength={500}
-          className="resize-none border-none bg-transparent px-2 py-1 text-sm text-ink outline-none focus:ring-0"
+          className="resize-none border border-line-soft bg-field-bg px-2.5 py-2 text-sm text-ink outline-none transition-colors focus:border-ink focus:bg-white"
         />
-        <div className="flex items-center justify-between gap-2 border-t border-line-soft pt-2">
+
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={reset}
             disabled={pending || messages.length === 0}
-            className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-xs text-ink-soft hover:bg-washi disabled:cursor-not-allowed disabled:opacity-50"
+            className="cursor-pointer bg-transparent px-1 py-1 text-xs text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             대화 초기화
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-2xs text-muted">
-              {input.length}/500
-            </span>
+            {/* 글자수는 한계에 가까울 때만 — 평소엔 노이즈다 */}
+            {input.length > 400 && (
+              <span className="text-2xs text-muted">{input.length}/500</span>
+            )}
             <button
               type="submit"
               disabled={pending || !input.trim()}
-              className="cursor-pointer border border-line bg-ink px-4 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="cursor-pointer bg-ink px-4 py-1.5 text-sm font-medium text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {pending ? "답변 중…" : "전송"}
             </button>
@@ -424,6 +408,36 @@ export function AssistantClient({ userName = "운영자" }: Props) {
         </div>
       </form>
     </div>
+  );
+}
+
+/** 인스펙터 표준 칩 — 테두리 없이 밑줄로 선택을 표시한다(ScopeChips와 동형). */
+function ModeChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`relative cursor-pointer border-none bg-transparent px-2 py-1 text-2xs transition-colors ${
+        active ? "font-bold text-ink" : "text-muted hover:text-ink"
+      }`}
+    >
+      {label}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute bottom-0.5 left-2 right-2 h-0.5 bg-vermilion"
+        />
+      )}
+    </button>
   );
 }
 
@@ -445,42 +459,11 @@ function MessageCard({
     }
   };
 
-  const userInitial = userName.slice(0, 1);
-
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
-        <div className="flex max-w-[78%] flex-col items-end gap-1">
-          <div className="mb-1 flex items-center gap-1.5 text-2xs text-muted">
-            <span>{userName}</span>
-            <span aria-hidden>·</span>
-            {message.ts && <span>{formatTimeKst(message.ts)}</span>}
-          </div>
-          <div className="flex items-start gap-2.5">
-            <div className="border border-line bg-ink px-4 py-2.5 text-sm leading-relaxed text-cream">
-              <p className="whitespace-pre-wrap">{message.content}</p>
-            </div>
-            <div
-              aria-hidden
-              className="mt-0.5 flex h-11 w-11 flex-shrink-0 items-center justify-center border border-line bg-cream text-lg font-semibold text-ink"
-            >
-              {userInitial}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // assistant
-  return (
-    <div className="flex items-start gap-2.5">
-      <div className="mt-0.5">
-        <AssistantAvatar size="sm" fontSize="text-xl" />
-      </div>
-      <div className="flex max-w-[82%] flex-col gap-1">
-        <div className="mb-1 flex items-center gap-1.5 text-2xs text-muted">
-          <span className="font-medium text-vermilion">{ASSISTANT_NAME}</span>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex items-baseline gap-1.5 text-2xs text-muted">
+          <span>{userName}</span>
           {message.ts && (
             <>
               <span aria-hidden>·</span>
@@ -488,8 +471,31 @@ function MessageCard({
             </>
           )}
         </div>
+        {/* 아바타 상자를 뺐다 — 460px 패널에서 44px를 먹는데 바로 위 이름표와 같은 말을 한다 */}
+        <div className="max-w-[85%] bg-ink px-3.5 py-2 text-sm leading-relaxed text-cream">
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // assistant — 답은 패널 폭을 다 쓴다. 아바타와 말풍선 테두리를 빼고 여백으로 나눈다.
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline gap-1.5 text-2xs">
+        <span className="font-medium text-vermilion">{ASSISTANT_NAME}</span>
+        {message.ts && (
+          <>
+            <span aria-hidden className="text-muted">
+              ·
+            </span>
+            <span className="text-muted">{formatTimeKst(message.ts)}</span>
+          </>
+        )}
+      </div>
+      <div className="space-y-2.5">
         {message.pending ? (
-          <div className="border border-line-soft bg-washi-raised px-3.5 py-2 text-sm text-ink-soft">
+          <div className="text-sm text-ink-soft">
             <span className="inline-flex items-center gap-2">
               <span className="inline-flex h-1.5 items-center gap-1">
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:0ms]" />
@@ -506,7 +512,7 @@ function MessageCard({
               렌더러라 불릿만 알았고, Claude가 잘 쓰는 제목·표가 날것으로 보였다.
               원시 HTML은 렌더하지 않는다(rehype-raw 미사용) — 답에 섞여도 실행 안 된다.
             */}
-            <div className="chat-md space-y-1 border border-line-soft bg-washi-raised px-3.5 py-2.5 text-sm leading-relaxed text-ink">
+            <div className="chat-md text-sm leading-relaxed text-ink">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {message.content}
               </ReactMarkdown>
@@ -519,31 +525,28 @@ function MessageCard({
               식별자라(원본이 파일) 열람 화면도 경로로 연다.
             */}
             {message.vaultSources && message.vaultSources.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <p className="text-2xs uppercase tracking-[0.18em] text-muted">
+              <div className="space-y-1 border-t border-line-soft pt-2.5">
+                <p className="text-2xs font-medium uppercase tracking-[0.12em] text-muted">
                   읽은 지식망 문서 {message.vaultSources.length}건
                 </p>
-                <div className="space-y-1">
-                  {message.vaultSources.map((path) => (
-                    <Link
-                      key={path}
-                      href={`/dashboard/knowledge?doc=${encodeURIComponent(path)}`}
-                      className="flex items-baseline gap-2 border border-line-soft bg-cream px-2.5 py-2 transition-colors hover:bg-washi"
-                    >
-                      <span className="inline-block bg-vermilion/10 px-1.5 py-0.5 text-2xs text-vermilion">
-                        지식망
-                      </span>
-                      <span className="text-xs font-medium text-ink">
-                        {path.replace(/\.md$/, "")}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
+                {/* 목록 항목형 — 인터랙션 표준(hover:bg-line-soft). 상자 대신 여백으로 나눈다 */}
+                {message.vaultSources.map((path) => (
+                  <Link
+                    key={path}
+                    href={`/dashboard/knowledge?doc=${encodeURIComponent(path)}`}
+                    className="-mx-1.5 flex items-baseline gap-2 px-1.5 py-1 transition-colors hover:bg-line-soft"
+                  >
+                    <span className="shrink-0 text-2xs text-vermilion">지식망</span>
+                    <span className="text-xs text-ink">
+                      {path.replace(/\.md$/, "")}
+                    </span>
+                  </Link>
+                ))}
               </div>
             )}
             {message.sources && message.sources.length > 0 && (
-              <div className="space-y-1.5 pt-1">
-                <p className="text-2xs uppercase tracking-[0.18em] text-muted">
+              <div className="space-y-1 border-t border-line-soft pt-2.5">
+                <p className="text-2xs font-medium uppercase tracking-[0.12em] text-muted">
                   근거 {message.sources.length}건
                 </p>
                 <div className="space-y-1">
@@ -551,7 +554,7 @@ function MessageCard({
                     <Link
                       key={`${s.domain}-${s.id}-${i}`}
                       href={s.deepLink}
-                      className="block border border-line-soft bg-cream px-2.5 py-2 transition-colors hover:bg-washi"
+                      className="-mx-1.5 block px-1.5 py-1.5 transition-colors hover:bg-line-soft"
                     >
                       <div className="flex items-baseline gap-2">
                         <span className="text-2xs text-muted">[{i + 1}]</span>
@@ -602,13 +605,14 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
           </p>
         </div>
       </div>
-      <ul className="space-y-1.5">
+      {/* 예시도 목록 항목형 — 상자 대신 호버(hover:bg-line-soft)로 누를 수 있음을 알린다 */}
+      <ul className="-mx-1.5">
         {EXAMPLES.map((ex) => (
           <li key={ex}>
             <button
               type="button"
               onClick={() => onPick(ex)}
-              className="w-full cursor-pointer border border-line-soft bg-cream px-3 py-2 text-left text-xs leading-relaxed text-ink transition-colors hover:border-line hover:bg-line-soft"
+              className="w-full cursor-pointer bg-transparent px-1.5 py-1.5 text-left text-xs leading-relaxed text-ink transition-colors hover:bg-line-soft"
             >
               {ex}
             </button>
