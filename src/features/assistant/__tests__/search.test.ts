@@ -5,6 +5,7 @@ import {
   knowledgeSource,
   knowledgeHaystack,
   type Source,
+  plainSnippet,
 } from "../search";
 
 describe("tokenize", () => {
@@ -124,5 +125,41 @@ describe("knowledgeHaystack — 무엇으로 매칭하나", () => {
     expect(scoreText(h, ["규칙"])).toBe(1);
     expect(scoreText(h, ["18시"])).toBe(1);
     expect(scoreText(h, ["송영신"])).toBe(1);
+  });
+});
+
+/**
+ * 근거 스니펫은 문서 원문을 잘라 만든다. 마크다운이 그대로 섞여 나오면
+ * 좁은 패널에서 `##`·`**`·백틱이 글자를 덮어 읽기 어렵다.
+ */
+describe("plainSnippet", () => {
+  it("제목 기호를 걷어낸다", () => {
+    expect(plainSnippet("## 무엇\n승인된 경위서를 보낸다")).toBe(
+      "무엇 승인된 경위서를 보낸다",
+    );
+  });
+
+  it("굵게 표시를 걷어내되 글자는 남긴다", () => {
+    expect(plainSnippet("**승인** 상태여야 한다")).toBe("승인 상태여야 한다");
+  });
+
+  it("인라인 코드와 코드펜스 기호를 걷어낸다", () => {
+    expect(plainSnippet("`MAIL_DRY_RUN=true`면 발송 안 함")).toBe(
+      "MAIL_DRY_RUN=true면 발송 안 함",
+    );
+    expect(plainSnippet("``` 운영2608-1401 ```")).toBe("운영2608-1401");
+  });
+
+  it("목록 기호와 표 파이프를 공백으로 바꾼다", () => {
+    expect(plainSnippet("- 첫째\n- 둘째")).toBe("첫째 둘째");
+    expect(plainSnippet("| 경로 | 언제 |")).toBe("경로 언제");
+  });
+
+  it("여러 줄과 연속 공백을 한 칸으로 모은다", () => {
+    expect(plainSnippet("가나\n\n다라   마바")).toBe("가나 다라 마바");
+  });
+
+  it("빈 문자열은 그대로", () => {
+    expect(plainSnippet("")).toBe("");
   });
 });
