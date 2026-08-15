@@ -37,6 +37,8 @@ type ChatMessage = {
   content: string;
   /** assistant 메시지에만 부착 */
   sources?: Source[];
+  /** Claude 모드 근거 — 볼트 문서 경로. Source[]와 달리 파일이라 경로가 곧 식별자다. */
+  vaultSources?: string[];
   warning?: string;
   /** 진행 중 표시용 */
   pending?: boolean;
@@ -182,6 +184,25 @@ type Props = {
 
 
 
+/** Claude 모드 폴링 — 회사 PC가 답을 적을 때까지 기다린다. */
+const POLL_MS = 2000;
+/** 실측 30~45초. 3분이면 폴러가 물려 있는 것이다. */
+const POLL_TIMEOUT_MS = 180_000;
+/**
+ * 이 시간 동안 pending에서 안 움직이면 아무도 claim하지 않은 것 = 회사 PC가 꺼졌다.
+ * running으로 넘어갔다면 PC는 살아 있으니 이 판정을 하지 않는다.
+ */
+const UNCLAIMED_MS = 15_000;
+
+type ClaudePoll = {
+  ok: boolean;
+  status?: string;
+  answer?: string | null;
+  sources?: string[];
+  message?: string | null;
+  error?: string;
+};
+
 export function AssistantClient({ userName = "운영자" }: Props) {
   const pathname = usePathname();
   const [attachPage, setAttachPage] = useState(true);
@@ -198,6 +219,8 @@ export function AssistantClient({ userName = "운영자" }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  // 기본은 Gemini 즉답. Claude는 회사 PC를 타서 30초쯤 걸리므로 고를 때만 쓴다.
+  const [deep, setDeep] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // 새 메시지 추가 시 하단 자동 스크롤 (jsdom 환경에서 scrollIntoView 미구현 → guard)
@@ -207,6 +230,77 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       el.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [messages]);
+
+  /** 마지막 assistant 메시지를 갈아끼운다 — 답·에러 모두 이 자리에 들어간다. */
+  const replaceLast = (patch: Partial<ChatMessage> & { content: string }) => {
+    setMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last && last.role === "assistant") {
+        copy[copy.length - 1] = {
+          role: "assistant",
+          ts: last.ts ?? new Date().toISOString(),
+          ...patch,
+        };
+      }
+      return copy;
+    });
+  };
+
+  /**
+   * Claude 모드 — 질문을 회사 PC 큐에 넣고 답이 적힐 때까지 폴링한다.
+   * 답이 안 오는 이유가 두 가지(아직 도는 중 / PC가 꺼짐)라 구분해서 알린다.
+   */
+  const sendToClaude = async (question: string) => {
+    const enq = await fetch("/api/assistant/claude", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        question,
+        ...(attachPage && pageContext
+          ? { pageContext: `${pageContext.label} (${pageContext.path})` }
+          : {}),
+      }),
+    });
+    const enqJson = (await enq.json()) as { ok: boolean; id?: string; error?: string };
+    if (!enqJson.ok || !enqJson.id) {
+      replaceLast({ content: `❌ ${enqJson.error ?? "요청 적재 실패"}` });
+      return;
+    }
+
+    const startedAt = Date.now();
+    for (;;) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      const elapsed = Date.now() - startedAt;
+
+      const res = await fetch(`/api/assistant/claude?id=${enqJson.id}`);
+      const json = (await res.json()) as ClaudePoll;
+
+      if (json.status === "done") {
+        replaceLast({
+          content: json.answer ?? "",
+          vaultSources: json.sources ?? [],
+        });
+        return;
+      }
+      if (json.status === "failed") {
+        replaceLast({ content: `❌ ${json.message ?? "실행 실패"}` });
+        return;
+      }
+      // 아무도 안 가져갔다 = 폴러가 안 돈다. 도는 척하지 않고 말한다.
+      if (json.status === "pending" && elapsed > UNCLAIMED_MS) {
+        replaceLast({
+          content:
+            "❌ 회사 PC가 응답하지 않습니다. Claude 모드는 회사 PC의 구독으로 도는데 폴러가 꺼져 있는 것 같습니다 — 빠른 답변 모드로 물어보세요.",
+        });
+        return;
+      }
+      if (elapsed > POLL_TIMEOUT_MS) {
+        replaceLast({ content: "❌ 시간이 초과됐습니다 (3분)." });
+        return;
+      }
+    }
+  };
 
   const send = async (text: string) => {
     if (!text.trim() || pending) return;
@@ -224,6 +318,10 @@ export function AssistantClient({ userName = "운영자" }: Props) {
     setInput("");
     setPending(true);
     try {
+      if (deep) {
+        await sendToClaude(question);
+        return;
+      }
       const res = await fetch("/api/assistant/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -311,6 +409,30 @@ export function AssistantClient({ userName = "운영자" }: Props) {
         onSubmit={handleSubmit}
         className="flex shrink-0 flex-col gap-2 border-t border-line bg-cream px-5 py-3"
       >
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/*
+            Claude는 회사 PC의 구독으로 돌아 볼트 문서를 직접 읽는다(실측 30~45초).
+            기본을 즉답으로 두는 이유는 PC가 꺼진 날에도 어시스턴트가 살아 있어야 해서다.
+          */}
+          <button
+            type="button"
+            aria-pressed={deep}
+            onClick={() => setDeep((v) => !v)}
+            className={`cursor-pointer border px-2.5 py-1 text-2xs transition-colors ${
+              deep
+                ? "border-vermilion bg-vermilion/10 text-vermilion"
+                : "border-line-soft bg-transparent text-muted hover:bg-washi"
+            }`}
+          >
+            Claude로 깊게 {deep ? "켜짐" : "꺼짐"}
+          </button>
+          {deep && (
+            <span className="text-2xs text-muted">
+              지식망 문서를 직접 읽습니다 · 30초쯤 걸립니다
+            </span>
+          )}
+        </div>
+
         {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
         {pageContext && (
           <div>
@@ -445,6 +567,33 @@ function MessageCard({
             </div>
             {message.warning && (
               <p className="text-2xs text-muted">⚠️ {message.warning}</p>
+            )}
+            {/*
+              Claude 모드 근거 — 모델이 실제로 Read한 볼트 문서다. 제목이 아니라 경로가
+              식별자라(원본이 파일) 열람 화면도 경로로 연다.
+            */}
+            {message.vaultSources && message.vaultSources.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <p className="text-2xs uppercase tracking-[0.18em] text-muted">
+                  읽은 지식망 문서 {message.vaultSources.length}건
+                </p>
+                <div className="space-y-1">
+                  {message.vaultSources.map((path) => (
+                    <Link
+                      key={path}
+                      href={`/dashboard/knowledge?doc=${encodeURIComponent(path)}`}
+                      className="flex items-baseline gap-2 border border-line-soft bg-cream px-2.5 py-2 transition-colors hover:bg-washi"
+                    >
+                      <span className="inline-block bg-vermilion/10 px-1.5 py-0.5 text-2xs text-vermilion">
+                        지식망
+                      </span>
+                      <span className="text-xs font-medium text-ink">
+                        {path.replace(/\.md$/, "")}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             )}
             {message.sources && message.sources.length > 0 && (
               <div className="space-y-1.5 pt-1">
