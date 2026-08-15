@@ -26,6 +26,7 @@ const VAULT = process.env.KNOWLEDGE_VAULT_PATH;
 const POLL_MS = Number(process.env.ASSISTANT_POLL_MS ?? 2000);
 
 // 도구는 화이트리스트로 주되, 위험한 것은 명시적으로 뺀다.
+// (MCP 서버 차단은 아래 query() 옵션 쪽 — allowedTools로는 안 막힌다.)
 // 실측(2026-08-16): allowedTools만 주고 permissionMode=bypassPermissions면 Bash가 그대로
 // 실행된다. disallowedTools를 함께 줘야 "Bash로 실행하라"는 프롬프트 지시도 무시된다.
 // 볼트는 운영자 전원이 쓰는 파일이라 이 차단이 인젝션 방어의 본체다.
@@ -82,6 +83,15 @@ async function answerWithVault(prompt) {
       allowedTools: ALLOWED,
       disallowedTools: DISALLOWED,
       permissionMode: "bypassPermissions",
+
+      // 이 PC의 Claude에 붙어 있는 MCP 서버를 상속하지 않는다.
+      // 실측(2026-08-16): 이 셋이 없으면 disallowedTools를 줘도 MCP 도구가 그대로
+      // 열려 있다 — "구글 캘린더 조회해줘" 한 줄로 개인 캘린더를 읽어냈다.
+      // 볼트는 운영자 전원이 쓰는 파일이라, 문서 한 줄이 회사 PC의 메일·Teams·
+      // 노션에 닿는 경로가 된다. 도구 차단만으로는 부족하고 여기서 끊어야 한다.
+      strictMcpConfig: true, // 프로젝트/사용자/플러그인 MCP 설정 전부 무시
+      mcpServers: {}, // 넘겨줄 MCP 없음
+      settingSources: [], // ~/.claude, .claude/settings.json 미로드
     },
   });
 
