@@ -53,6 +53,16 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("미인증 + assistant/claude/claim(회사 PC 폴러)은 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(reqFor("/api/assistant/claude/claim"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("미인증 + assistant/claude(웹 창구)는 public이 아니다 — 본인 질문만 다뤄야 한다", async () => {
+    const res = await proxy(reqFor("/api/assistant/claude"));
+    expect(res.headers.get("location")).toContain("/login");
+  });
+
   it("로그인 상태 + /login → /dashboard 리다이렉트", async () => {
     updateSession.mockResolvedValue({
       supabaseResponse: NextResponse.next(),

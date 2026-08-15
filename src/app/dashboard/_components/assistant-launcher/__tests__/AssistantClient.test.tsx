@@ -206,3 +206,88 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
     expect(screen.queryByRole("button", { name: /현재 페이지 첨부/ })).toBeNull();
   });
 });
+
+/**
+ * Claude 모드 — 질문을 회사 PC 큐에 넣고 결과를 폴링한다.
+ * fetch를 경로별로 갈라 응답한다(POST 적재 / GET 조회).
+ */
+function stubClaude(sequence: Array<Record<string, unknown>>) {
+  let i = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) => {
+      if (String(url).startsWith("/api/assistant/claude?")) {
+        const body = sequence[Math.min(i++, sequence.length - 1)];
+        return Promise.resolve({ json: async () => body });
+      }
+      return Promise.resolve({ json: async () => ({ ok: true, id: "req-1" }) });
+    }),
+  );
+}
+
+describe("AssistantClient — Claude 모드", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pathnameRef.current = "/dashboard/incidents";
+  });
+
+  it("모드 토글이 있고 기본은 빠른 답변이다 — 회사 PC가 꺼져도 어시스턴트는 살아 있어야 한다", () => {
+    render(<AssistantClient />);
+    const toggle = screen.getByRole("button", { name: /Claude로 깊게/ });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("Claude 모드로 보내면 큐에 적재하고 답을 폴링해 보여준다", async () => {
+    stubClaude([
+      { ok: true, status: "running", answer: null, sources: [] },
+      {
+        ok: true,
+        status: "done",
+        answer: "볼트에 따르면 이렇습니다",
+        sources: ["개념/공문 시행번호 채번 규칙.md"],
+      },
+    ]);
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /Claude로 깊게/ }));
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "시행번호?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(
+      () => expect(screen.getByText("볼트에 따르면 이렇습니다")).toBeInTheDocument(),
+      { timeout: 5000 },
+    );
+    // 근거는 볼트 문서 — 눌러서 그 문서로 갈 수 있어야 한다
+    expect(screen.getByText(/공문 시행번호 채번 규칙/)).toBeInTheDocument();
+  });
+
+  it("아무도 안 가져가면 회사 PC가 꺼졌다고 말한다 — 조용히 도는 것처럼 보이면 안 된다", async () => {
+    stubClaude([{ ok: true, status: "pending", answer: null, sources: [] }]);
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /Claude로 깊게/ }));
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "시행번호?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(() => expect(screen.getByText(/회사 PC/)).toBeInTheDocument(), {
+      timeout: 20000,
+    });
+  }, 25000);
+
+  it("실패하면 사유를 보여준다", async () => {
+    stubClaude([
+      { ok: true, status: "failed", answer: null, sources: [], message: "빈 응답" },
+    ]);
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /Claude로 깊게/ }));
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+    await waitFor(() => expect(screen.getByText(/빈 응답/)).toBeInTheDocument(), {
+      timeout: 5000,
+    });
+  });
+});
