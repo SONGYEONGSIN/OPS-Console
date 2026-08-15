@@ -12,8 +12,20 @@ import { usePathname } from "next/navigation";
 import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
 
+/**
+ * 서버 `features/assistant/search.ts`의 Source와 같은 모양을 여기 다시 적는다 —
+ * 그쪽은 server-only라 client가 import할 수 없다. **도메인을 추가할 때 양쪽을
+ * 같이 고쳐야 한다**(안 고치면 라벨이 없어 배지가 빈칸으로 나온다).
+ */
 type Source = {
-  domain: "incident" | "handover" | "ai-tip" | "backup" | "contact" | "service";
+  domain:
+    | "knowledge"
+    | "incident"
+    | "handover"
+    | "ai-tip"
+    | "backup"
+    | "contact"
+    | "service";
   id: string;
   title: string;
   snippet: string;
@@ -33,6 +45,7 @@ type ChatMessage = {
 };
 
 const DOMAIN_LABEL: Record<Source["domain"], string> = {
+  knowledge: "지식망",
   incident: "사고",
   handover: "인수인계",
   "ai-tip": "TIP",
@@ -42,6 +55,7 @@ const DOMAIN_LABEL: Record<Source["domain"], string> = {
 };
 
 const DOMAIN_TONE: Record<Source["domain"], string> = {
+  knowledge: "bg-vermilion/10 text-vermilion",
   incident: "bg-vermilion/15 text-vermilion",
   handover: "bg-sage/15 text-sage",
   "ai-tip": "bg-washi-raised text-ink",
@@ -50,20 +64,16 @@ const DOMAIN_TONE: Record<Source["domain"], string> = {
   service: "bg-line-soft text-ink-soft",
 };
 
+/**
+ * 빈 화면 예시 — 460px 패널에 담기게 4개만. 한 줄에 들어가는 길이로 짧게 쓴다.
+ * 지식망을 앞에 둔 이유: 절차·규칙은 문서가 답하는 게 맞고, 그 경로를 먼저 보여줘야
+ * 운영자가 "지식망에 쓰면 여기서 답이 나온다"를 알게 된다.
+ */
 const EXAMPLES = [
-  // 사고 이력
-  "외국인 전형 입력 오류는 어떻게 처리하지?",
-  "추천서 확인페이지 지원자 생년월일 잘림 이슈 본 적 있어?",
-  "결제 실패 사례 — 최근 처리 방법 알려줘",
-  // 백업·인수인계
-  "지난달 가천대 백업 시점에 어떤 이슈가 있었어?",
-  "온라인 추천서 운영 인수인계 메모 찾아줘",
-  // 연락처·서비스
+  "경위서 어떻게 보내지?",
+  "공문 시행번호는 어떻게 매겨져?",
+  "외국인 전형 입력 오류 사례 있어?",
   "한양대 연락처 알려줘",
-  "조선대 수시 운영자 누구야?",
-  // AI TIP
-  "Claude 프롬프트 추천 — 사고 보고서 작성용",
-  "엑셀 데이터 정리 자동화 팁 알려줘",
 ];
 
 /** KST HH:mm 시간 포매팅 */
@@ -168,35 +178,11 @@ function AssistantAvatar({
 type Props = {
   /** 운영자 표시명 (사용자 메시지 캐릭터에 사용) */
   userName?: string;
-  /**
-   * 놓이는 자리에 따른 레이아웃.
-   * page = 메뉴 페이지(넉넉한 높이 + sticky 입력) / panel = 우하단 도킹 패널(부모 높이를 채움).
-   * 대화 로직은 동일하고 컨테이너 클래스만 갈린다.
-   */
-  variant?: "page" | "panel";
 };
 
-/** variant별 컨테이너 클래스 — 로직과 무관한 레이아웃 차이만 담는다. */
-const LAYOUT = {
-  page: {
-    root: "flex flex-col gap-4",
-    list: "min-h-[520px] space-y-6 border border-line-soft bg-washi px-6 py-6",
-    form:
-      "sticky bottom-4 flex flex-col gap-2 border border-line bg-cream p-3 shadow-[0_-1px_0_rgba(0,0,0,0.04)]",
-  },
-  panel: {
-    root: "flex h-full min-h-0 flex-col",
-    // 인스펙터 본문 가로 여백(p-5)에 맞춘다 — 헤더와 좌우가 어긋나면 안 된다.
-    list: "min-h-0 flex-1 space-y-6 overflow-y-auto bg-washi px-5 py-4",
-    form: "flex shrink-0 flex-col gap-2 border-t border-line bg-cream px-5 py-3",
-  },
-} as const;
 
-export function AssistantClient({
-  userName = "운영자",
-  variant = "page",
-}: Props) {
-  const layout = LAYOUT[variant];
+
+export function AssistantClient({ userName = "운영자" }: Props) {
   const pathname = usePathname();
   const [attachPage, setAttachPage] = useState(true);
 
@@ -307,9 +293,9 @@ export function AssistantClient({
   };
 
   return (
-    <div className={layout.root}>
+    <div className="flex h-full min-h-0 flex-col">
       {/* 메시지 영역 — worklog 패턴: 화면 전체 폭 (parent p-7 padding 사용) */}
-      <div className={layout.list}>
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-washi px-5 py-4">
         {messages.length === 0 ? (
           <EmptyState onPick={(ex) => send(ex)} />
         ) : (
@@ -321,7 +307,10 @@ export function AssistantClient({
       </div>
 
       {/* 입력 영역 — page는 sticky 하단, panel은 패널 바닥 고정 */}
-      <form onSubmit={handleSubmit} className={layout.form}>
+      <form
+        onSubmit={handleSubmit}
+        className="flex shrink-0 flex-col gap-2 border-t border-line bg-cream px-5 py-3"
+      >
         {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
         {pageContext && (
           <div>
@@ -508,31 +497,29 @@ function MessageCard({
 
 function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
-    <div className="space-y-6 py-10">
-      <div className="space-y-3 text-center">
-        <div className="mx-auto inline-block">
-          <AssistantAvatar size="lg" fontSize="text-4xl" />
+    <div className="space-y-4 py-6">
+      <div className="flex items-center gap-3">
+        <AssistantAvatar size="sm" fontSize="text-base" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink">{ASSISTANT_NAME}</p>
+          <p className="text-xs text-muted">
+            업무 지식망과 운영 데이터에서 찾아 답합니다.
+          </p>
         </div>
-        <p className="text-base font-medium text-ink">
-          안녕하세요, <span className="text-vermilion">{ASSISTANT_NAME}</span>
-          입니다
-        </p>
-        <p className="text-xs text-muted">
-          사고·인수인계·TIP·백업·연락처·서비스 데이터에 자연어로 질문해주세요.
-        </p>
       </div>
-      <div className="mx-auto grid max-w-[640px] grid-cols-1 gap-2 sm:grid-cols-2">
+      <ul className="space-y-1.5">
         {EXAMPLES.map((ex) => (
-          <button
-            key={ex}
-            type="button"
-            onClick={() => onPick(ex)}
-            className="cursor-pointer border border-line-soft bg-cream px-3 py-2.5 text-left text-xs leading-relaxed text-ink transition-colors hover:border-line hover:bg-line-soft"
-          >
-            {ex}
-          </button>
+          <li key={ex}>
+            <button
+              type="button"
+              onClick={() => onPick(ex)}
+              className="w-full cursor-pointer border border-line-soft bg-cream px-3 py-2 text-left text-xs leading-relaxed text-ink transition-colors hover:border-line hover:bg-line-soft"
+            >
+              {ex}
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

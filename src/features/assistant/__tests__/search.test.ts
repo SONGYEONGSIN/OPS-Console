@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { tokenize, scoreText, type Source } from "../search";
+import {
+  tokenize,
+  scoreText,
+  knowledgeSource,
+  knowledgeHaystack,
+  type Source,
+} from "../search";
 
 describe("tokenize", () => {
   it("공백 split + 길이 2 이상만 유지", () => {
@@ -60,5 +66,63 @@ describe("Source type", () => {
       deepLink: "/dashboard/incidents",
     };
     expect(s.domain).toBe("incident");
+  });
+});
+
+describe("knowledgeSource — 지식망 행 → Source", () => {
+  it("문서 경로로 열람 화면 deep-link를 만든다", () => {
+    // 근거를 눌러 그 문서로 바로 갈 수 있어야 인용이 확인 가능해진다.
+    const s = knowledgeSource({
+      path: "플레이북/경위서 발송 절차.md",
+      category: "플레이북",
+      title: "경위서 발송 절차",
+      owner: "송영신",
+      body: "승인 완료된 경위서를 보낸다.",
+    });
+    expect(s.domain).toBe("knowledge");
+    expect(s.title).toBe("경위서 발송 절차");
+    expect(s.deepLink).toBe(
+      "/dashboard/knowledge?doc=" +
+        encodeURIComponent("플레이북/경위서 발송 절차.md"),
+    );
+  });
+
+  it("id는 경로를 그대로 쓴다 — 지식망은 uuid가 아니라 경로가 식별자다", () => {
+    const s = knowledgeSource({
+      path: "규칙/메일 자동 CC 제외 대상.md",
+      category: "규칙",
+      title: "메일 자동 CC 제외 대상",
+      owner: null,
+      body: "본문",
+    });
+    expect(s.id).toBe("규칙/메일 자동 CC 제외 대상.md");
+  });
+
+  it("본문이 길면 잘라 스니펫으로 준다", () => {
+    const s = knowledgeSource({
+      path: "개념/x.md",
+      category: "개념",
+      title: "x",
+      owner: null,
+      body: "가".repeat(400),
+    });
+    expect(s.snippet.length).toBeLessThan(400);
+    expect(s.snippet.endsWith("…")).toBe(true);
+  });
+});
+
+describe("knowledgeHaystack — 무엇으로 매칭하나", () => {
+  it("제목·분류·본문·작성자를 모두 검색 대상에 넣는다", () => {
+    const h = knowledgeHaystack({
+      path: "규칙/연세대 서울 수시 1차 경쟁률 예외.md",
+      category: "규칙",
+      title: "연세대 서울 수시 1차 경쟁률 예외",
+      owner: "송영신",
+      body: "접수 마감이 17시이고 18시에 공개한다.",
+    });
+    expect(scoreText(h, ["연세대"])).toBe(1);
+    expect(scoreText(h, ["규칙"])).toBe(1);
+    expect(scoreText(h, ["18시"])).toBe(1);
+    expect(scoreText(h, ["송영신"])).toBe(1);
   });
 });

@@ -12,7 +12,8 @@ export type SourceDomain =
   | "ai-tip"
   | "backup"
   | "contact"
-  | "service";
+  | "service"
+  | "knowledge";
 
 export type Source = {
   domain: SourceDomain;
@@ -56,6 +57,37 @@ function snippet(text: string | null | undefined): string {
     : trimmed;
 }
 
+/** 지식망 1행 — 검색에 쓰는 최소 형태. */
+export type KnowledgeRow = {
+  path: string;
+  category: string;
+  title: string;
+  owner: string | null;
+  body: string;
+};
+
+/**
+ * 매칭 대상 텍스트. 분류·작성자까지 넣는 이유 — 운영자는 "규칙 중에 뭐 있어",
+ * "송영신이 쓴 문서" 같은 식으로도 묻는다.
+ */
+export function knowledgeHaystack(r: KnowledgeRow): string {
+  return [r.title, r.category, r.owner, r.body].filter(Boolean).join(" ");
+}
+
+/**
+ * 지식망 행 → Source. 식별자는 uuid가 아니라 **경로**다 — 원본이 파일이고
+ * 열람 화면도 경로로 문서를 연다. deep-link가 근거 확인 경로가 된다.
+ */
+export function knowledgeSource(r: KnowledgeRow): Source {
+  return {
+    domain: "knowledge",
+    id: r.path,
+    title: r.title,
+    snippet: snippet(r.body),
+    deepLink: `/dashboard/knowledge?doc=${encodeURIComponent(r.path)}`,
+  };
+}
+
 type SearchInput = { question: string };
 
 /**
@@ -70,7 +102,7 @@ export async function searchAllDomains(
 
   const supabase = await createClient();
 
-  const [incidents, handovers, tips, backups, contacts, services] =
+  const [incidents, handovers, tips, backups, contacts, services, knowledge] =
     await Promise.all([
       searchIncidents(supabase, tokens),
       searchHandovers(supabase, tokens),
@@ -78,12 +110,44 @@ export async function searchAllDomains(
       searchBackups(supabase, tokens),
       searchContacts(supabase, tokens),
       searchServices(supabase, tokens),
+      searchKnowledge(supabase, tokens),
     ]);
 
-  return [...incidents, ...handovers, ...tips, ...backups, ...contacts, ...services];
+  // 지식망을 앞에 둔다 — 절차·규칙을 묻는 질문에서 가장 신뢰할 근거다.
+  // 사람이 쓰고 owner가 책임지는 문서이고, 나머지는 운영 데이터의 파편이다.
+  return [
+    ...knowledge,
+    ...incidents,
+    ...handovers,
+    ...tips,
+    ...backups,
+    ...contacts,
+    ...services,
+  ];
 }
 
 type SB = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * 업무 지식망 — knowledge_docs 인덱스를 검색한다.
+ * 인덱스는 볼트(SharePoint 마크다운)의 사본이라, 여기 없으면 아직 인덱싱 전이다.
+ */
+async function searchKnowledge(supabase: SB, tokens: string[]): Promise<Source[]> {
+  const { data } = await supabase
+    .from("knowledge_docs")
+    .select("path, category, title, owner, body")
+    .limit(FETCH_LIMIT_PER_DOMAIN);
+  if (!data) return [];
+  const scored = (data as KnowledgeRow[]).map((r) => ({
+    row: r,
+    score: scoreText(knowledgeHaystack(r), tokens),
+  }));
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, TOP_PER_DOMAIN)
+    .map((s) => knowledgeSource(s.row));
+}
 
 async function searchIncidents(supabase: SB, tokens: string[]): Promise<Source[]> {
   const { data } = await supabase
