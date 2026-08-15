@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildVaultPrompt,
   collectSourcePaths,
+  kstToday,
   type SdkToolUse,
 } from "@/features/assistant/claude-prompt";
 
@@ -86,6 +87,8 @@ export async function GET(request: NextRequest) {
       prompt: buildVaultPrompt({
         question: row.question,
         pageContext: row.page_context,
+        // 폴러 PC의 시계를 믿지 않는다 — 어긋나면 "다음주"가 통째로 밀린다.
+        today: kstToday(),
       }),
     },
   });

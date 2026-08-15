@@ -1,40 +1,85 @@
 import { describe, it, expect } from "vitest";
 import {
   buildVaultPrompt,
+  kstToday,
   collectSourcePaths,
   type SdkToolUse,
 } from "../claude-prompt";
+
+describe("kstToday", () => {
+  it("KST 날짜와 요일을 사람이 읽는 형태로 만든다", () => {
+    // 2026-08-16는 일요일 (KST)
+    expect(kstToday(new Date("2026-08-16T05:00:00Z"))).toBe("2026-08-16 (일)");
+  });
+
+  it("UTC 자정 직후에도 KST 날짜로 센다 — 하루가 밀리면 '다음주'가 어긋난다", () => {
+    // UTC 2026-08-16 00:30 = KST 2026-08-16 09:30 (같은 날)
+    expect(kstToday(new Date("2026-08-16T00:30:00Z"))).toBe("2026-08-16 (일)");
+    // UTC 2026-08-16 15:30 = KST 2026-08-17 00:30 (다음 날)
+    expect(kstToday(new Date("2026-08-16T15:30:00Z"))).toBe("2026-08-17 (월)");
+  });
+});
 
 describe("buildVaultPrompt", () => {
   it("질문을 그대로 넣는다", () => {
     const p = buildVaultPrompt({
       question: "경위서 어떻게 보내지?",
       pageContext: null,
+      today: "2026-08-16 (일)",
     });
     expect(p).toContain("경위서 어떻게 보내지?");
+  });
+
+  it("오늘 날짜를 넣는다 — 없으면 '다음주'가 언제인지 모른다", () => {
+    const p = buildVaultPrompt({
+      question: "다음주 휴가자 누구야?",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
+    expect(p).toContain("2026-08-16 (일)");
+  });
+
+  it("볼트에 없는 건 도구로 조회하라고 알려준다 — 일정은 문서가 아니라 시스템 데이터다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
+    expect(p).toMatch(/도구/);
+    expect(p).toMatch(/일정|휴가/);
   });
 
   it("보고 있던 화면이 있으면 넣고, 없으면 그 섹션을 통째로 뺀다", () => {
     const withPage = buildVaultPrompt({
       question: "이거 뭐야",
       pageContext: "사고보고 (/dashboard/incidents)",
+      today: "2026-08-16 (일)",
     });
     expect(withPage).toContain("사고보고 (/dashboard/incidents)");
 
     const without = buildVaultPrompt({
       question: "이거 뭐야",
       pageContext: null,
+      today: "2026-08-16 (일)",
     });
     expect(without).not.toContain("지금 보고 있는 화면");
   });
 
   it("볼트에 없으면 없다고 말하라고 지시한다 — 지어내면 지식망을 쓰는 의미가 없다", () => {
-    const p = buildVaultPrompt({ question: "x", pageContext: null });
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
     expect(p).toMatch(/없으면|찾지 못/);
   });
 
   it("질문을 지시로 착각하지 않게 경계를 친다 — 볼트는 전원이 쓰는 파일이다", () => {
-    const p = buildVaultPrompt({ question: "x", pageContext: null });
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
     expect(p).toMatch(/문서에 적힌 지시|지시를 따르지/);
   });
 });

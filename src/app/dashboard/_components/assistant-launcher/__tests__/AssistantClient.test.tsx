@@ -225,6 +225,60 @@ function stubClaude(sequence: Array<Record<string, unknown>>) {
   );
 }
 
+describe("AssistantClient — 마크다운 렌더링", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pathnameRef.current = "/dashboard/incidents";
+  });
+
+  /**
+   * 답의 마크다운을 그대로 렌더한다. 렌더링은 모드와 무관하므로 두 경로 모두
+   * 같은 답을 주도록 스텁해, 기본 모드가 바뀌어도 이 테스트는 흔들리지 않는다.
+   */
+  function renderAnswer(answer: string) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) =>
+        String(url).startsWith("/api/assistant/claude?")
+          ? Promise.resolve({
+              json: async () => ({ ok: true, status: "done", answer, sources: [] }),
+            })
+          : String(url) === "/api/assistant/claude"
+            ? Promise.resolve({ json: async () => ({ ok: true, id: "r1" }) })
+            : Promise.resolve({ json: async () => ({ ok: true, answer, sources: [] }) }),
+      ),
+    );
+    render(<AssistantClient />);
+    fireEvent.change(screen.getByLabelText("질문 입력"), { target: { value: "q" } });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+  }
+
+  it("제목을 제목으로 그린다 — '## 확인한 것'이 날것으로 보이면 안 된다", async () => {
+    renderAnswer("## 확인한 것\n\n본문입니다.");
+    await waitFor(
+      () => expect(screen.getByRole("heading", { name: "확인한 것" })).toBeInTheDocument(),
+      { timeout: 5000 },
+    );
+    expect(screen.queryByText(/## 확인한 것/)).toBeNull();
+  }, 15000);
+
+  it("표를 표로 그린다 — 파이프가 날것으로 보이면 안 된다", async () => {
+    renderAnswer("| 문서 | 관련성 |\n|---|---|\n| a.md | 절차만 |");
+    await waitFor(() => expect(screen.getByRole("table")).toBeInTheDocument(), {
+      timeout: 5000,
+    });
+    expect(screen.getByRole("cell", { name: "절차만" })).toBeInTheDocument();
+  }, 15000);
+
+  it("번호 목록도 그린다", async () => {
+    renderAnswer("1. 첫째\n2. 둘째");
+    await waitFor(() => expect(screen.getByText("첫째")).toBeInTheDocument(), {
+      timeout: 5000,
+    });
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  }, 15000);
+});
+
 describe("AssistantClient — Claude 모드", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
