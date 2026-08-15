@@ -35,6 +35,8 @@ type Source = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** 도는 동안 지금 무엇을 하고 있는지 (Claude 모드는 30초쯤 걸린다) */
+  pendingNote?: string;
   /** assistant 메시지에만 부착 */
   sources?: Source[];
   /** Claude 모드 근거 — 볼트 문서 경로. Source[]와 달리 파일이라 경로가 곧 식별자다. */
@@ -219,8 +221,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
-  // 기본은 Gemini 즉답. Claude는 회사 PC를 타서 30초쯤 걸리므로 고를 때만 쓴다.
-  const [deep, setDeep] = useState(false);
+  // 기본이 Claude다 — 지식망 문서를 직접 읽은 답이 어시스턴트의 본체이기 때문이다.
+  // 끄면 Gemini 즉답으로 간다(회사 PC가 꺼진 날의 경로이기도 하다).
+  const [deep, setDeep] = useState(true);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // 새 메시지 추가 시 하단 자동 스크롤 (jsdom 환경에서 scrollIntoView 미구현 → guard)
@@ -268,6 +271,18 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       return;
     }
 
+    setMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last && last.role === "assistant") {
+        copy[copy.length - 1] = {
+          ...last,
+          pendingNote: "회사 PC로 보냈습니다…",
+        };
+      }
+      return copy;
+    });
+
     const startedAt = Date.now();
     for (;;) {
       await new Promise((r) => setTimeout(r, POLL_MS));
@@ -275,6 +290,21 @@ export function AssistantClient({ userName = "운영자" }: Props) {
 
       const res = await fetch(`/api/assistant/claude?id=${enqJson.id}`);
       const json = (await res.json()) as ClaudePoll;
+
+      // claim되면 볼트를 읽기 시작한 것 — 여기서 대부분의 시간을 쓴다.
+      if (json.status === "running") {
+        setMessages((prev) => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+          if (last && last.role === "assistant" && last.pending) {
+            copy[copy.length - 1] = {
+              ...last,
+              pendingNote: "지식망 문서를 읽는 중…",
+            };
+          }
+          return copy;
+        });
+      }
 
       if (json.status === "done") {
         replaceLast({
@@ -411,8 +441,8 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       >
         <div className="flex flex-wrap items-center gap-1.5">
           {/*
-            Claude는 회사 PC의 구독으로 돌아 볼트 문서를 직접 읽는다(실측 30~45초).
-            기본을 즉답으로 두는 이유는 PC가 꺼진 날에도 어시스턴트가 살아 있어야 해서다.
+            기본은 Claude — 회사 PC의 구독으로 돌며 볼트 문서를 직접 읽는다(실측 30~45초).
+            끄면 Gemini 즉답. 회사 PC가 꺼진 날 쓸 경로라 남겨둔다.
           */}
           <button
             type="button"
@@ -424,13 +454,13 @@ export function AssistantClient({ userName = "운영자" }: Props) {
                 : "border-line-soft bg-transparent text-muted hover:bg-washi"
             }`}
           >
-            Claude로 깊게 {deep ? "켜짐" : "꺼짐"}
+            {deep ? "Claude · 지식망 읽기" : "빠른 답변"}
           </button>
-          {deep && (
-            <span className="text-2xs text-muted">
-              지식망 문서를 직접 읽습니다 · 30초쯤 걸립니다
-            </span>
-          )}
+          <span className="text-2xs text-muted">
+            {deep
+              ? "문서를 직접 읽어 답합니다 · 30초쯤"
+              : "즉답 · 검색 요약만 봅니다"}
+          </span>
         </div>
 
         {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
@@ -557,7 +587,7 @@ function MessageCard({
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:150ms]" />
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:300ms]" />
               </span>
-              답변 중…
+              {message.pendingNote ?? "답변 중…"}
             </span>
           </div>
         ) : (
