@@ -84,7 +84,9 @@ export function KnowledgeDocView({
         )}
       </header>
 
-      <div className="knowledge-body max-w-[72ch] text-sm leading-relaxed text-ink">
+      {/* 읽기 폭을 72ch로 묶어뒀더니 넓은 화면에서 오른쪽 절반이 통째로 비었다.
+          지식망 문서는 표·코드블록이 많아 그 폭이 특히 아깝다 — 열을 다 쓴다. */}
+      <div className="knowledge-body text-sm leading-relaxed text-ink">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{doc.body}</ReactMarkdown>
       </div>
     </article>
