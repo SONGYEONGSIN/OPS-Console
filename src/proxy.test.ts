@@ -63,6 +63,11 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toContain("/login");
   });
 
+  it("미인증 + assistant/tools/*(폴러 도구 창구)는 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(reqFor("/api/assistant/tools/schedule"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("로그인 상태 + /login → /dashboard 리다이렉트", async () => {
     updateSession.mockResolvedValue({
       supabaseResponse: NextResponse.next(),

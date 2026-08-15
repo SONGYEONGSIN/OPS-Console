@@ -11,6 +11,8 @@ import {
 import { usePathname } from "next/navigation";
 import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 /**
  * 서버 `features/assistant/search.ts`의 Source와 같은 모양을 여기 다시 적는다 —
@@ -92,69 +94,6 @@ function formatTimeKst(iso: string): string {
  * 단순 마크다운 → React nodes (Gemini가 자주 쓰는 형식만 가벼이 처리).
  * 의존성 추가 없이 ** ** bold + `code` inline + - bullet 만.
  */
-function renderInline(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  let i = 0;
-  // 패턴: **bold** | `code` | 그 외 텍스트
-  const re = /(\*\*([^*]+)\*\*|`([^`]+)`)/g;
-  let m: RegExpExecArray | null;
-  let key = 0;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > i) parts.push(text.slice(i, m.index));
-    if (m[2] !== undefined) {
-      parts.push(
-        <strong key={`b${key++}`} className="font-semibold text-ink">
-          {m[2]}
-        </strong>,
-      );
-    } else if (m[3] !== undefined) {
-      parts.push(
-        <code
-          key={`c${key++}`}
-          className="rounded bg-washi px-1 py-0.5 font-mono text-[11px] text-ink"
-        >
-          {m[3]}
-        </code>,
-      );
-    }
-    i = m.index + m[0].length;
-  }
-  if (i < text.length) parts.push(text.slice(i));
-  return parts;
-}
-
-function renderMarkdown(text: string): React.ReactNode {
-  // 줄 단위로 - bullet 처리 + 빈 줄은 spacing
-  const lines = text.split("\n");
-  const blocks: React.ReactNode[] = [];
-  let bulletGroup: string[] = [];
-  const flushBullets = () => {
-    if (bulletGroup.length === 0) return;
-    blocks.push(
-      <ul key={`u${blocks.length}`} className="my-1 list-disc space-y-0.5 pl-5">
-        {bulletGroup.map((b, i) => (
-          <li key={i}>{renderInline(b)}</li>
-        ))}
-      </ul>,
-    );
-    bulletGroup = [];
-  };
-  lines.forEach((line, i) => {
-    const trimmed = line.trimStart();
-    if (/^[-•]\s+/.test(trimmed)) {
-      bulletGroup.push(trimmed.replace(/^[-•]\s+/, ""));
-    } else {
-      flushBullets();
-      if (line.trim() === "") {
-        blocks.push(<div key={`s${i}`} className="h-2" aria-hidden />);
-      } else {
-        blocks.push(<p key={i}>{renderInline(line)}</p>);
-      }
-    }
-  });
-  flushBullets();
-  return <>{blocks}</>;
-}
 
 const ASSISTANT_NAME = "운영부 상황실 어시스턴트";
 
@@ -562,8 +501,15 @@ function MessageCard({
           </div>
         ) : (
           <>
-            <div className="space-y-1 border border-line-soft bg-washi-raised px-3.5 py-2.5 text-sm leading-relaxed text-ink">
-              {renderMarkdown(message.content)}
+            {/*
+              지식망 페이지와 같은 react-markdown을 쓴다. 직전까지 손으로 짠 줄 단위
+              렌더러라 불릿만 알았고, Claude가 잘 쓰는 제목·표가 날것으로 보였다.
+              원시 HTML은 렌더하지 않는다(rehype-raw 미사용) — 답에 섞여도 실행 안 된다.
+            */}
+            <div className="chat-md space-y-1 border border-line-soft bg-washi-raised px-3.5 py-2.5 text-sm leading-relaxed text-ink">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
             </div>
             {message.warning && (
               <p className="text-2xs text-muted">⚠️ {message.warning}</p>

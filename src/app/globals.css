@@ -760,3 +760,102 @@ button.bs-tl-ev .cal.cal-group,
   border-top: 1px solid var(--line-soft);
   margin: 1.6rem 0;
 }
+
+/* 어시스턴트 채팅 답변의 마크다운.
+   .knowledge-body와 같은 토큰을 쓰되 여백을 좁힌다 — 문서가 아니라 말풍선이라
+   문서용 2rem 제목 여백을 그대로 쓰면 한 문단이 화면을 다 먹는다. */
+.chat-md {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.chat-md > *:first-child {
+  margin-top: 0;
+}
+.chat-md > *:last-child {
+  margin-bottom: 0;
+}
+.chat-md h1,
+.chat-md h2,
+.chat-md h3 {
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.35;
+  margin-top: 1rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.9375rem;
+}
+.chat-md p {
+  margin: 0.5rem 0;
+}
+.chat-md ul,
+.chat-md ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.chat-md ul {
+  list-style: disc;
+}
+.chat-md ol {
+  list-style: decimal;
+}
+.chat-md li {
+  margin: 0.15rem 0;
+}
+.chat-md strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.chat-md a {
+  color: var(--vermilion);
+  border-bottom: 1px solid color-mix(in oklab, var(--vermilion) 40%, transparent);
+}
+.chat-md code {
+  background: var(--washi);
+  border: 1px solid var(--line-soft);
+  padding: 0.05rem 0.3rem;
+  font-size: 0.9em;
+}
+.chat-md pre {
+  background: var(--washi);
+  border: 1px solid var(--line-soft);
+  padding: 0.6rem 0.75rem;
+  margin: 0.5rem 0;
+  overflow-x: auto;
+}
+.chat-md pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.chat-md blockquote {
+  border-left: 2px solid var(--line-soft);
+  padding-left: 0.7rem;
+  margin: 0.5rem 0;
+  color: var(--ink-soft);
+}
+/* 좁은 패널이라 표는 제 폭을 쓰되 넘치면 표만 가로 스크롤한다 */
+.chat-md table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.9em;
+}
+.chat-md th,
+.chat-md td {
+  border: 1px solid var(--line-soft);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+.chat-md th {
+  background: var(--washi);
+  font-weight: 700;
+}
+.chat-md hr {
+  border: none;
+  border-top: 1px solid var(--line-soft);
+  margin: 0.75rem 0;
+}

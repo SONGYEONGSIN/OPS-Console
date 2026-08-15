@@ -16,7 +16,8 @@
 
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
+import { z } from "zod";
 
 config({ path: ".env.local" });
 
@@ -30,7 +31,7 @@ const POLL_MS = Number(process.env.ASSISTANT_POLL_MS ?? 2000);
 // 실측(2026-08-16): allowedTools만 주고 permissionMode=bypassPermissions면 Bash가 그대로
 // 실행된다. disallowedTools를 함께 줘야 "Bash로 실행하라"는 프롬프트 지시도 무시된다.
 // 볼트는 운영자 전원이 쓰는 파일이라 이 차단이 인젝션 방어의 본체다.
-const ALLOWED = ["Read", "Glob", "Grep"];
+const ALLOWED = ["Read", "Glob", "Grep", "mcp__ops__schedule_range"];
 const DISALLOWED = [
   "Bash",
   "Write",
@@ -72,6 +73,59 @@ async function report(id, ok, { answer, toolUses, message }) {
   if (!res.ok) throw new Error(`report ${res.status}`);
 }
 
+/**
+ * 운영 데이터 조회 도구.
+ *
+ * 볼트에 없는 것(누가 언제 쉬는지 등)을 Claude가 직접 물어볼 수 있게 붙인다.
+ * DB를 직접 보지 않고 OPS-Console API를 거치는 이유는 **서비스 키를 이 PC에
+ * 내려보내지 않기 위해서**다 — 이 PC가 아는 건 CRON_SECRET뿐이다.
+ */
+const opsTools = createSdkMcpServer({
+  name: "ops",
+  tools: [
+    tool(
+      "schedule_range",
+      "운영부 일정을 기간으로 조회한다. 휴가·당직·회의·마감 등 '누가 언제 무엇을 하는지'는 볼트 문서가 아니라 이 도구로 확인한다.",
+      {
+        from: z.string().describe("조회 시작일 YYYY-MM-DD"),
+        to: z.string().describe("조회 종료일 YYYY-MM-DD (그날 포함)"),
+        type: z
+          .enum([
+            "shift",
+            "event",
+            "leave",
+            "training",
+            "application",
+            "pims",
+            "external_meeting",
+            "meeting",
+          ])
+          .optional()
+          .describe("종류. 휴가·연차는 leave. 생략하면 전 종류"),
+      },
+      async ({ from, to, type }) => {
+        const qs = new URLSearchParams({ from, to });
+        if (type) qs.set("type", type);
+        const res = await fetch(`${BASE}/api/assistant/tools/schedule?${qs}`, {
+          headers,
+        });
+        const body = await res.json();
+        if (!res.ok || !body.ok) {
+          return {
+            content: [
+              { type: "text", text: `조회 실패: ${body.error ?? res.status}` },
+            ],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text", text: JSON.stringify(body.events) }],
+        };
+      },
+    ),
+  ],
+});
+
 /** 볼트를 cwd로 Claude를 돌린다. 답과 쓴 도구를 그대로 돌려준다(해석은 서버가). */
 async function answerWithVault(prompt) {
   const uses = [];
@@ -90,7 +144,9 @@ async function answerWithVault(prompt) {
       // 볼트는 운영자 전원이 쓰는 파일이라, 문서 한 줄이 회사 PC의 메일·Teams·
       // 노션에 닿는 경로가 된다. 도구 차단만으로는 부족하고 여기서 끊어야 한다.
       strictMcpConfig: true, // 프로젝트/사용자/플러그인 MCP 설정 전부 무시
-      mcpServers: {}, // 넘겨줄 MCP 없음
+      // strictMcpConfig 하에서는 여기 넘긴 것만 살아남는다 — 우리 도구만 붙고
+      // 이 PC에 설치된 다른 MCP는 여전히 차단된다.
+      mcpServers: { ops: opsTools },
       settingSources: [], // ~/.claude, .claude/settings.json 미로드
     },
   });
