@@ -80,6 +80,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "AI & 자동화", title: "TIP 공유" },
     description: "운영부 공통 AI 활용 팁과 재사용 가능한 프롬프트를 모읍니다.",
   },
+  knowledge: {
+    headline: { accent: "AI & 자동화", title: "업무 지식망" },
+    description:
+      "운영 업무의 개념·절차·규칙·결정을 모읍니다. 원본은 SharePoint 볼트의 문서이고 여기서는 읽기만 합니다 — 편집은 옵시디언에서 합니다.",
+  },
   agents: {
     headline: { accent: "AI & 자동화", title: "에이전트" },
     description:

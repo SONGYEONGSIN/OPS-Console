@@ -346,6 +346,13 @@ export const sidebarSections: SbSection[] = [
         items: [
           {
             ico: "·",
+            label: "업무 지식망",
+            count: "",
+            slug: "knowledge",
+            pattern: "list",
+          },
+          {
+            ico: "·",
             label: "인사이트",
             count: "",
             slug: "ai-insight",
