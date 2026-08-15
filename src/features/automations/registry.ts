@@ -183,8 +183,11 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "업무 지식망 인덱싱",
     description:
       "SharePoint 지식망 볼트를 훑어 검색 인덱스를 갱신합니다.\n원본은 마크다운 파일이고 인덱스는 사본입니다 — 볼트에서 지운 문서는 인덱스에서도 빠집니다. 문서를 쓴 직후 바로 반영하려면 수동 실행하세요.",
-    scheduleInfo: "매일 09:00 (cron-job.org)",
-    cadence: "daily",
+    // 10분마다 — 문서를 쓰고 화면에서 안 보이면 '고장 났나'로 읽힌다.
+    // cadence는 hourly로 둔다(10분 값이 없다). 미실행 판정이 실제 주기보다
+    // 느슨해질 뿐이라 오탐이 안 나고, 멈춘 인덱스는 몇 시간 안에 잡힌다.
+    scheduleInfo: "10분마다 (cron-job.org)",
+    cadence: "hourly",
     cooldownMinutes: 5,
     run: runKnowledgeIndex,
   },

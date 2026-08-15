@@ -644,3 +644,119 @@ button.bs-tl-ev .cal.cal-group,
   line-height: 1.7;
 }
 
+
+/* ── 지식망 문서 본문 ──────────────────────────────────────────
+   react-markdown이 만든 h2/ul/table 등은 Tailwind preflight가 전부 리셋해
+   제목도 목록도 본문과 똑같이 보인다. 이 스코프에서만 되살린다.
+   prose 플러그인을 쓰지 않는 이유: 자체 회색 팔레트가 앱 토큰과 충돌한다. */
+/* 한글은 기본값이 아무 글자에서나 끊겨 '했 / 다'처럼 단어가 갈린다.
+   keep-all로 어절(공백) 단위로 끊고, 한 토큰이 줄보다 길 때만(긴 URL 등)
+   break-word로 예외를 둔다. */
+.knowledge-body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.knowledge-body > *:first-child {
+  margin-top: 0;
+}
+.knowledge-body h1,
+.knowledge-body h2,
+.knowledge-body h3 {
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.35;
+  margin-top: 2rem;
+  margin-bottom: 0.6rem;
+}
+.knowledge-body h1 {
+  font-size: 1.25rem;
+}
+.knowledge-body h2 {
+  font-size: 1.0625rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.knowledge-body h3 {
+  font-size: 0.9375rem;
+}
+.knowledge-body p {
+  margin-bottom: 0.9rem;
+}
+.knowledge-body ul,
+.knowledge-body ol {
+  margin: 0 0 0.9rem 0;
+  padding-left: 1.25rem;
+}
+.knowledge-body ul {
+  list-style: disc;
+}
+.knowledge-body ol {
+  list-style: decimal;
+}
+.knowledge-body li {
+  margin-bottom: 0.35rem;
+}
+.knowledge-body li > ul,
+.knowledge-body li > ol {
+  margin-top: 0.35rem;
+  margin-bottom: 0;
+}
+.knowledge-body strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.knowledge-body a {
+  color: var(--vermilion);
+  border-bottom: 1px solid color-mix(in srgb, var(--vermilion) 40%, transparent);
+}
+.knowledge-body code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.875em;
+  background: var(--washi);
+  border: 1px solid var(--line-soft);
+  padding: 0.05rem 0.3rem;
+}
+.knowledge-body pre {
+  background: var(--washi);
+  border: 1px solid var(--line-soft);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.9rem;
+  overflow-x: auto;
+}
+.knowledge-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.knowledge-body blockquote {
+  border-left: 3px solid var(--line);
+  padding-left: 0.9rem;
+  margin: 0 0 0.9rem 0;
+  color: var(--ink-soft);
+}
+/* 표는 좁은 화면에서 페이지를 밀지 않도록 자체 스크롤 */
+.knowledge-body table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin-bottom: 0.9rem;
+  font-size: 0.8125rem;
+}
+.knowledge-body th,
+.knowledge-body td {
+  border: 1px solid var(--line-soft);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+.knowledge-body th {
+  background: var(--washi);
+  font-weight: 700;
+}
+.knowledge-body hr {
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+  margin: 1.6rem 0;
+}
