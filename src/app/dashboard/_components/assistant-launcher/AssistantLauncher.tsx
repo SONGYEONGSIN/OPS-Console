@@ -43,7 +43,7 @@ export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
           </h3>
         </header>
         <div className="min-h-0 flex-1">
-          <AssistantClient userName={userName} variant="panel" />
+          <AssistantClient userName={userName} />
         </div>
       </InspectorPanel>
 
