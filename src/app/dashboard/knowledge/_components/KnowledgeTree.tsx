@@ -55,13 +55,18 @@ export function KnowledgeTree({
         ) : (
           filtered.map((g) => (
             <section key={g.category} className="mb-4">
-              <h3 className="mb-1 px-2 text-2xs uppercase tracking-[0.14em] text-muted">
-                {g.category}
+              <h3 className="mb-1 flex items-baseline gap-2 px-2 text-2xs uppercase tracking-[0.14em] text-muted">
+                <span>{g.category}</span>
+                <span className="font-mono">{g.docs.length}</span>
               </h3>
               <ul>
                 {g.docs.map((d) => {
                   const active = d.path === selected;
-                  const flawed = d.missing.length > 0 || d.categoryMismatch;
+                  // '형식' 한 단어로는 뭘 고칠지 모른다 — 빠진 필드 이름을 그대로 보여준다.
+                  const flaws = [
+                    ...d.missing,
+                    ...(d.categoryMismatch ? ["분류"] : []),
+                  ];
                   return (
                     <li key={`${g.category}:${d.path}`}>
                       <Link
@@ -74,9 +79,9 @@ export function KnowledgeTree({
                         }`}
                       >
                         <span className="flex-1">{d.title}</span>
-                        {flawed && (
-                          <span className="shrink-0 text-2xs text-muted">
-                            형식
+                        {flaws.length > 0 && (
+                          <span className="shrink-0 font-mono text-2xs text-muted">
+                            {flaws.join(" ")}
                           </span>
                         )}
                       </Link>
