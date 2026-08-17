@@ -45,6 +45,20 @@ const DISALLOWED = [
 /** 한 건이 무한정 물고 있지 않게 — 실측 30~45초라 3분이면 이상 상황이다. */
 const TIMEOUT_MS = 180_000;
 
+/**
+ * HTTP 한 번의 상한.
+ *
+ * 없으면 네트워크가 어중간하게 끊길 때(맥 절전 복귀 등) fetch가 영원히 매달려
+ * 폴러가 살아 있는 채로 아무 일도 안 한다 — 실제로 겪었다. 로그도 안 찍히니
+ * 밖에서는 "조용히 잘 도는 중"과 구분되지 않는다.
+ */
+const HTTP_TIMEOUT_MS = 15_000;
+
+/** 타임아웃이 걸린 fetch. 실패는 그대로 던져 호출부의 백오프로 넘긴다. */
+async function fetchWithTimeout(url, init = {}) {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(HTTP_TIMEOUT_MS) });
+}
+
 if (!BASE || !SECRET) {
   console.error("[assistant] OPS_CONSOLE_BASE_URL / CRON_SECRET 미설정 — 종료");
   process.exit(1);
@@ -58,14 +72,14 @@ const endpoint = `${BASE}/api/assistant/claude/claim`;
 const headers = { authorization: `Bearer ${SECRET}` };
 
 async function claim() {
-  const res = await fetch(endpoint, { headers });
+  const res = await fetchWithTimeout(endpoint, { headers });
   if (!res.ok) throw new Error(`claim ${res.status}`);
   const body = await res.json();
   return body.request ?? null;
 }
 
 async function report(id, ok, { answer, toolUses, message }) {
-  const res = await fetch(endpoint, {
+  const res = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: { ...headers, "content-type": "application/json" },
     body: JSON.stringify({ id, ok, answer, toolUses, vaultRoot: VAULT, message }),
@@ -106,9 +120,10 @@ const opsTools = createSdkMcpServer({
       async ({ from, to, type }) => {
         const qs = new URLSearchParams({ from, to });
         if (type) qs.set("type", type);
-        const res = await fetch(`${BASE}/api/assistant/tools/schedule?${qs}`, {
-          headers,
-        });
+        const res = await fetchWithTimeout(
+          `${BASE}/api/assistant/tools/schedule?${qs}`,
+          { headers },
+        );
         const body = await res.json();
         if (!res.ok || !body.ok) {
           return {
@@ -169,6 +184,19 @@ async function answerWithVault(prompt) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const stamp = () => new Date().toLocaleTimeString("ko-KR", { hour12: false });
+
+/**
+ * 살아 있다는 신호를 주기적으로 남긴다.
+ *
+ * 대기 중에는 아무것도 안 찍혀서, 밖에서 보면 **멈춘 것과 구분되지 않는다**.
+ * 실제로 로그가 조용해 죽은 줄 알고 확인한 적이 있다.
+ */
+const HEARTBEAT_MS = 5 * 60 * 1000;
+let lastBeat = 0;
+
+/** 같은 실패로 로그가 도배되지 않게 — 첫 건과 10건마다만 남긴다. */
+let failStreak = 0;
 
 console.log(`[assistant] 폴링 시작 — ${endpoint} (${POLL_MS}ms), 볼트: ${VAULT}`);
 
@@ -177,13 +205,25 @@ for (;;) {
   let req = null;
   try {
     req = await claim();
+    if (failStreak > 0) {
+      console.log(`[assistant] ${stamp()} 서버 복구 (실패 ${failStreak}건 뒤)`);
+      failStreak = 0;
+    }
   } catch (e) {
-    console.error(`[assistant] claim 실패: ${e.message}`);
+    failStreak += 1;
+    if (failStreak === 1 || failStreak % 10 === 0) {
+      console.error(`[assistant] ${stamp()} claim 실패 ${failStreak}건째: ${e.message}`);
+    }
     await sleep(POLL_MS * 5);
     continue;
   }
 
   if (!req) {
+    const now = Date.now();
+    if (now - lastBeat >= HEARTBEAT_MS) {
+      console.log(`[assistant] ${stamp()} 대기 중`);
+      lastBeat = now;
+    }
     await sleep(POLL_MS);
     continue;
   }

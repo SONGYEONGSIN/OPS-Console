@@ -40,11 +40,34 @@ function guard(request: NextRequest): NextResponse | string {
   return secret;
 }
 
+/**
+ * 이 시간 넘게 running이면 그 폴러는 죽은 것으로 본다.
+ *
+ * 폴러가 claim한 뒤 죽으면(프로세스 종료·맥 절전) 그 행은 영원히 running에
+ * 남는다 — 실제로 그렇게 박힌 요청이 있었다. 클라이언트는 3분에 끊고, 폴러
+ * 자체 타임아웃도 3분이라 5분이면 살아 있는 작업을 뺏지 않는다.
+ *
+ * 되살리지 않고 실패로 닫는 이유: 3분 전에 물어본 사람은 이미 화면을 떠났고,
+ * 아무도 안 보는 답을 다시 만드는 건 구독 사용량만 쓴다.
+ */
+const STALE_RUNNING_MS = 5 * 60 * 1000;
+
 export async function GET(request: NextRequest) {
   const g = guard(request);
   if (typeof g !== "string") return g;
 
   const admin = createAdminClient();
+
+  await admin
+    .from("assistant_requests")
+    .update({
+      status: "failed",
+      message: "폴러가 응답 없이 중단됐습니다",
+      finished_at: new Date().toISOString(),
+    })
+    .eq("status", "running")
+    .lt("claimed_at", new Date(Date.now() - STALE_RUNNING_MS).toISOString());
+
   const { data: pending } = await admin
     .from("assistant_requests")
     .select("id")
