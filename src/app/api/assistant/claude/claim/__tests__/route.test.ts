@@ -4,6 +4,8 @@ const state = {
   pending: [] as { id: string }[],
   claimed: null as Record<string, unknown> | null,
   updates: [] as Record<string, unknown>[],
+  eqFilters: [] as [string, unknown][],
+  ltFilters: [] as [string, unknown][],
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -11,7 +13,14 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: () => {
       const chain = {
         select: () => chain,
-        eq: () => chain,
+        eq: (col: string, val: unknown) => {
+          state.eqFilters.push([col, val]);
+          return chain;
+        },
+        lt: (col: string, val: unknown) => {
+          state.ltFilters.push([col, val]);
+          return chain;
+        },
         order: () => chain,
         limit: () => Promise.resolve({ data: state.pending }),
         update: (patch: Record<string, unknown>) => {
@@ -41,12 +50,31 @@ describe("assistant claude claim endpoint", () => {
     state.pending = [];
     state.claimed = null;
     state.updates = [];
+    state.eqFilters = [];
+    state.ltFilters = [];
     process.env.CRON_SECRET = "s3cret";
   });
 
   it("CRON_SECRET이 틀리면 401 — 이 endpoint는 회사 PC 폴러 전용이다", async () => {
     const res = await GET(req({ method: "GET", auth: "Bearer wrong" }));
     expect(res.status).toBe(401);
+  });
+
+  it("오래 물고 있는 running은 실패로 정리한다 — 폴러가 죽으면 큐에 영원히 남는다", async () => {
+    await GET(req({ method: "GET", auth: "Bearer s3cret" }));
+    const sweep = state.updates[0];
+    expect(sweep.status).toBe("failed");
+    expect(String(sweep.message)).toMatch(/폴러|중단/);
+    // running 인 것만, 그리고 claimed_at 이 오래된 것만 건드린다
+    expect(state.eqFilters).toContainEqual(["status", "running"]);
+    expect(state.ltFilters[0][0]).toBe("claimed_at");
+  });
+
+  it("정리 기준은 클라이언트 타임아웃(3분)보다 넉넉하다 — 돌고 있는 걸 뺏으면 안 된다", async () => {
+    const before = Date.now();
+    await GET(req({ method: "GET", auth: "Bearer s3cret" }));
+    const cutoff = new Date(String(state.ltFilters[0][1])).getTime();
+    expect(before - cutoff).toBeGreaterThanOrEqual(3 * 60 * 1000);
   });
 
   it("대기 요청이 없으면 request: null", async () => {
@@ -60,7 +88,8 @@ describe("assistant claude claim endpoint", () => {
     const res = await GET(req({ method: "GET", auth: "Bearer s3cret" }));
     const body = await res.json();
     expect(body.request.id).toBe("r1");
-    expect(state.updates[0].status).toBe("running");
+    // updates[0]은 stale 정리, [1]이 이번 claim
+    expect(state.updates[1].status).toBe("running");
   });
 
   it("프롬프트를 서버가 만들어 내려준다 — 폴러에 로직을 두면 고칠 때마다 회사 PC를 만져야 한다", async () => {
