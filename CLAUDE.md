@@ -160,6 +160,25 @@ E2E 운영 메모:
 
 GAS 미수채권 자동화는 4-PR 시리즈로 OPS-Console로 이전 완료 — 폐기 가이드: `docs/gas-receivables-decommission.md`.
 
+## 어시스턴트 (우하단 채팅 런처)
+
+메뉴가 아니라 **화면에 고정된 채팅 아이콘** → 표준 `InspectorPanel`이 열린다 (`_components/assistant-launcher/`).
+
+**두 모드가 있고 기본은 Claude다.**
+
+| 모드 | 실행 위치 | 무엇을 보나 | 지연 |
+|---|---|---|---|
+| **Claude · 지식망 읽기** (기본) | **회사 PC**의 구독(Agent SDK) | 볼트 마크다운을 **직접 Read** + 일정 조회 도구 | 30~40초 |
+| 빠른 답변 | Vercel (Gemini 2.5-flash) | Supabase 인덱스 검색 요약 7도메인 | 즉답 |
+
+자동 대체는 하지 않는다 — 조용히 넘기면 회사 PC가 며칠 죽어 있어도 모른다. 15초간 아무도 claim하지 않으면 화면에 "회사 PC가 응답하지 않습니다"로 드러낸다.
+
+- **큐**: `assistant_requests` (본인 것만 RLS). 웹 창구 `/api/assistant/claude`(세션) ↔ 폴러 창구 `/api/assistant/claude/claim`(CRON_SECRET)
+- **폴러**: `scripts/assistant/serve-local.mjs` — 상주(2초 폴링). 셋업·문제해결은 `docs/assistant-poller-setup.md`
+- **판단은 전부 서버에** — 프롬프트 조립·근거 추출이 `features/assistant/claude-prompt.ts`에 있어 프롬프트를 고칠 때 회사 PC를 안 만진다
+- **도구**: `/api/assistant/tools/*` (CRON_SECRET). 현재 일정 조회 1개. 볼트에 없는 운영 데이터는 문서가 아니라 도구로 답한다
+- **격리 필수**: `strictMcpConfig`+`mcpServers`+`settingSources:[]` 없이는 그 PC의 MCP(메일·Teams·노션)에 에이전트가 닿는다. 볼트는 전원이 쓰는 파일이라 문서 한 줄이 그 경로를 연다
+
 ## 운영 자동 기록 (worklog)
 
 - **PageActivityLogger** (client) — `DashboardShell`에 mount, 페이지 진입/이탈을 `/api/worklog/log`로 POST (DEBUG/nav/enter|leave)
