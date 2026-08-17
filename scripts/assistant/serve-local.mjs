@@ -145,6 +145,12 @@ const opsTools = createSdkMcpServer({
 async function answerWithVault(prompt) {
   const uses = [];
   let answer = "";
+  // 3분 상한은 abortController로 건다. run.interrupt()는 **도구가 응답을 안 준
+  // 상태에서 부르면** SDK가 `[ede_diagnostic] ... stop_reason=tool_use` 라는
+  // 진단 문자열을 던진다 — 운영자에게 그대로 보이면 아무 뜻이 없다.
+  // (2026-08-17 재현: 끝나지 않는 도구 + interrupt → 그 문구, + abort → "aborted by user")
+  const ac = new AbortController();
+  let timedOut = false;
   const run = query({
     prompt,
     options: {
@@ -163,10 +169,14 @@ async function answerWithVault(prompt) {
       // 이 PC에 설치된 다른 MCP는 여전히 차단된다.
       mcpServers: { ops: opsTools },
       settingSources: [], // ~/.claude, .claude/settings.json 미로드
+      abortController: ac,
     },
   });
 
-  const timer = setTimeout(() => run.interrupt?.(), TIMEOUT_MS);
+  const timer = setTimeout(() => {
+    timedOut = true;
+    ac.abort();
+  }, TIMEOUT_MS);
   try {
     for await (const m of run) {
       if (m.type === "assistant") {
@@ -176,6 +186,10 @@ async function answerWithVault(prompt) {
       }
       if (m.type === "result") answer = m.result ?? "";
     }
+  } catch (e) {
+    // 사유를 사람 말로 바꿔 보고한다 — 화면에 그대로 뜨는 문장이다.
+    if (timedOut) throw new Error("3분을 넘겨 중단했습니다");
+    throw e;
   } finally {
     clearTimeout(timer);
   }
