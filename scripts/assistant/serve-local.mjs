@@ -31,7 +31,13 @@ const POLL_MS = Number(process.env.ASSISTANT_POLL_MS ?? 2000);
 // 실측(2026-08-16): allowedTools만 주고 permissionMode=bypassPermissions면 Bash가 그대로
 // 실행된다. disallowedTools를 함께 줘야 "Bash로 실행하라"는 프롬프트 지시도 무시된다.
 // 볼트는 운영자 전원이 쓰는 파일이라 이 차단이 인젝션 방어의 본체다.
-const ALLOWED = ["Read", "Glob", "Grep", "mcp__ops__schedule_range"];
+const ALLOWED = [
+  "Read",
+  "Glob",
+  "Grep",
+  "mcp__ops__schedule_range",
+  "mcp__ops__report_gap",
+];
 const DISALLOWED = [
   "Bash",
   "Write",
@@ -138,8 +144,57 @@ const opsTools = createSdkMcpServer({
         };
       },
     ),
+    tool(
+      "report_gap",
+      "질문에 완전히 답하지 못했을 때 무엇이 없어서 못 했는지 남긴다. 충분히 답했으면 부르지 않는다.",
+      {
+        kind: z
+          .enum(["missing", "shallow", "tool"])
+          .describe(
+            "missing=주제 자체가 볼트에 없음 / shallow=문서는 있는데 물어본 층위가 없음 / tool=문서가 아니라 시스템 데이터가 필요",
+          ),
+        topic: z
+          .string()
+          .describe("빠진 지식의 주제. 짧고 일반적으로(예: '휴가 등록 절차')"),
+        note: z.string().optional().describe("무엇이 어떻게 부족했는지 한두 문장"),
+        nearPaths: z
+          .array(z.string())
+          .optional()
+          .describe("shallow일 때 근처까지 간 볼트 문서 경로"),
+      },
+      async ({ kind, topic, note, nearPaths }) => {
+        const res = await fetchWithTimeout(`${BASE}/api/assistant/tools/gap`, {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body: JSON.stringify({
+            kind,
+            topic,
+            note,
+            nearPaths,
+            // 질문·요청자는 폴러가 안다 — 모델이 옮겨 적다 틀리게 두지 않는다.
+            question: current.question,
+            requestId: current.id,
+            operatorEmail: current.operator_email,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.ok) {
+          return {
+            content: [{ type: "text", text: `기록 실패: ${body.error ?? res.status}` }],
+            isError: true,
+          };
+        }
+        return { content: [{ type: "text", text: "기록했습니다." }] };
+      },
+    ),
   ],
 });
+
+/**
+ * 지금 처리 중인 요청. report_gap 도구가 질문·요청자를 여기서 읽는다 —
+ * 모델이 프롬프트에서 옮겨 적게 하면 틀리거나 잘린다.
+ */
+let current = { id: null, question: "", operator_email: null };
 
 /** 볼트를 cwd로 Claude를 돌린다. 답과 쓴 도구를 그대로 돌려준다(해석은 서버가). */
 async function answerWithVault(prompt) {
@@ -243,6 +298,11 @@ for (;;) {
   }
 
   console.log(`[assistant] claim ${req.id} (${req.operator_email}): ${req.question.slice(0, 40)}`);
+  current = {
+    id: req.id,
+    question: req.question,
+    operator_email: req.operator_email,
+  };
   const t0 = Date.now();
   try {
     const { answer, toolUses } = await answerWithVault(req.prompt);

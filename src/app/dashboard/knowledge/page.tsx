@@ -7,8 +7,11 @@ import {
   getKnowledgeDoc,
 } from "@/features/knowledge/queries";
 import { groupByCategory } from "@/features/knowledge/shared";
+import { listOpenGaps } from "@/features/knowledge/gaps";
+import { groupGaps } from "@/features/knowledge/gaps-shared";
 import { KnowledgeTree } from "./_components/KnowledgeTree";
 import { KnowledgeDocView } from "./_components/KnowledgeDoc";
+import { KnowledgeGaps } from "./_components/KnowledgeGaps";
 
 /**
  * 업무 지식망 열람 — 좌측 트리 + 우측 문서. 읽기 전용이고 편집은 옵시디언이 한다.
@@ -34,6 +37,9 @@ export default async function KnowledgePage({
   const selectedPath = docParam ?? null;
   const doc = selectedPath ? await getKnowledgeDoc(selectedPath) : null;
 
+  // 문서를 안 골랐을 때만 필요하다 — 고른 상태에서 조회하면 헛일이다.
+  const gaps = doc ? [] : groupGaps(await listOpenGaps());
+
   return (
     <div className="flex flex-col">
       <PageHeader
@@ -56,9 +62,8 @@ export default async function KnowledgePage({
           ) : doc ? (
             <KnowledgeDocView doc={doc} allPaths={rows.map((r) => r.path)} />
           ) : (
-            <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
-              좌측에서 문서를 선택하세요.
-            </p>
+            /* 빈 칸에 "좌측에서 선택하세요"만 두느니, 무엇을 더 써야 하는지를 보여준다 */
+            <KnowledgeGaps groups={gaps} />
           )}
         </div>
       </section>

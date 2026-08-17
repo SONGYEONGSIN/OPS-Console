@@ -65,6 +65,25 @@ describe("buildVaultPrompt", () => {
     expect(without).not.toContain("지금 보고 있는 화면");
   });
 
+  it("못 답한 건 report_gap으로 남기라고 지시한다 — 본문 문장으로만 있으면 기계가 못 읽는다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
+    expect(p).toContain("report_gap");
+  });
+
+  it("문서가 있는데 층위만 없을 때와 아예 없을 때를 구분하라고 지시한다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
+    expect(p).toContain("shallow");
+    expect(p).toContain("missing");
+  });
+
   it("볼트에 없으면 없다고 말하라고 지시한다 — 지어내면 지식망을 쓰는 의미가 없다", () => {
     const p = buildVaultPrompt({
       question: "x",
