@@ -37,6 +37,8 @@ type Source = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** 도는 동안 지금 무엇을 하고 있는지 (Claude 모드는 30초쯤 걸린다) */
+  pendingNote?: string;
   /** assistant 메시지에만 부착 */
   sources?: Source[];
   /** Claude 모드 근거 — 볼트 문서 경로. Source[]와 달리 파일이라 경로가 곧 식별자다. */
@@ -158,8 +160,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
-  // 기본은 Gemini 즉답. Claude는 회사 PC를 타서 30초쯤 걸리므로 고를 때만 쓴다.
-  const [deep, setDeep] = useState(false);
+  // 기본이 Claude다 — 지식망 문서를 직접 읽은 답이 어시스턴트의 본체이고,
+  // 끄면 Gemini 즉답으로 간다(회사 PC가 꺼진 날 쓸 경로라 남겨둔다).
+  const [deep, setDeep] = useState(true);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // 새 메시지 추가 시 하단 자동 스크롤 (jsdom 환경에서 scrollIntoView 미구현 → guard)
@@ -169,6 +172,18 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       el.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [messages]);
+
+  /** 도는 동안의 진행 문구만 바꾼다 — 답이 들어오기 전까지만 유효하다. */
+  const setPendingNote = (note: string) => {
+    setMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last && last.role === "assistant" && last.pending) {
+        copy[copy.length - 1] = { ...last, pendingNote: note };
+      }
+      return copy;
+    });
+  };
 
   /** 마지막 assistant 메시지를 갈아끼운다 — 답·에러 모두 이 자리에 들어간다. */
   const replaceLast = (patch: Partial<ChatMessage> & { content: string }) => {
@@ -207,6 +222,8 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       return;
     }
 
+    setPendingNote("회사 PC로 보냈습니다…");
+
     const startedAt = Date.now();
     for (;;) {
       await new Promise((r) => setTimeout(r, POLL_MS));
@@ -214,6 +231,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
 
       const res = await fetch(`/api/assistant/claude?id=${enqJson.id}`);
       const json = (await res.json()) as ClaudePoll;
+
+      // claim되면 볼트를 읽기 시작한 것 — 여기서 대부분의 시간을 쓴다.
+      if (json.status === "running") setPendingNote("지식망 문서를 읽는 중…");
 
       if (json.status === "done") {
         replaceLast({
@@ -505,7 +525,7 @@ function MessageCard({
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:150ms]" />
                 <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:300ms]" />
               </span>
-              답변 중…
+              {message.pendingNote ?? "답변 중…"}
             </span>
           </div>
         ) : (

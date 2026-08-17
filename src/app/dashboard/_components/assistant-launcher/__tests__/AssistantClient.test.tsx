@@ -16,6 +16,16 @@ function lastRequestBody(): Record<string, unknown> {
   return JSON.parse(init.body as string);
 }
 
+/**
+ * 즉답(Gemini) 경로 확인용 — 기본이 Claude라 토글을 꺼야 그 경로로 간다.
+ * 각 테스트에서 반복하지 않도록 렌더와 묶는다.
+ */
+function renderFastMode() {
+  const r = render(<AssistantClient />);
+  fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
+  return r;
+}
+
 function stubOk() {
   vi.stubGlobal(
     "fetch",
@@ -57,7 +67,7 @@ describe("AssistantClient (chat)", () => {
         }),
       }),
     );
-    render(<AssistantClient />);
+    renderFastMode();
     const ta = screen.getByLabelText("질문 입력") as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "테스트 질문" } });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
@@ -77,7 +87,7 @@ describe("AssistantClient (chat)", () => {
         json: async () => ({ ok: false, error: "test error" }),
       }),
     );
-    render(<AssistantClient />);
+    renderFastMode();
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "x" },
     });
@@ -99,7 +109,7 @@ describe("AssistantClient (chat)", () => {
         }),
       }),
     );
-    render(<AssistantClient />);
+    renderFastMode();
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "asdf" },
     });
@@ -116,7 +126,7 @@ describe("AssistantClient (chat)", () => {
         json: async () => ({ ok: true, answer: "답변", sources: [] }),
       }),
     );
-    render(<AssistantClient />);
+    renderFastMode();
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "x" },
     });
@@ -134,7 +144,7 @@ describe("AssistantClient (chat)", () => {
       json: async () => ({ ok: true, answer: "답변", sources: [] }),
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<AssistantClient />);
+    renderFastMode();
     // 첫 질문
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "첫 질문" },
@@ -164,7 +174,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
   });
 
   it("사이드바에 있는 화면이면 첨부 칩이 켜진 채로 보인다", () => {
-    render(<AssistantClient />);
+    renderFastMode();
     expect(
       screen.getByRole("button", { name: /첨부/ }),
     ).toHaveAttribute("aria-pressed", "true");
@@ -172,7 +182,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
 
   it("켜져 있으면 질문에 pageContext를 실어 보낸다", async () => {
     stubOk();
-    render(<AssistantClient />);
+    renderFastMode();
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "이 화면 뭐야" },
     });
@@ -188,7 +198,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
 
   it("칩을 끄면 pageContext를 보내지 않는다", async () => {
     stubOk();
-    render(<AssistantClient />);
+    renderFastMode();
     fireEvent.click(screen.getByRole("button", { name: /첨부/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "미수채권 얼마" },
@@ -202,7 +212,7 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
   it("사이드바에 없는 경로면 칩 자체를 그리지 않는다", () => {
     // 첨부할 화면 정보가 없는데 칩만 떠 있으면 켜도 아무 일이 안 일어난다.
     pathnameRef.current = "/dashboard/알수없는화면";
-    render(<AssistantClient />);
+    renderFastMode();
     expect(screen.queryByRole("button", { name: /첨부/ })).toBeNull();
   });
 });
@@ -285,10 +295,10 @@ describe("AssistantClient — Claude 모드", () => {
     pathnameRef.current = "/dashboard/incidents";
   });
 
-  it("모드 토글이 있고 기본은 빠른 답변이다 — 회사 PC가 꺼져도 어시스턴트는 살아 있어야 한다", () => {
+  it("기본이 Claude다 — 지식망 문서를 직접 읽은 답이 어시스턴트의 본체다", () => {
     render(<AssistantClient />);
     const toggle = screen.getByRole("button", { name: /Claude|빠른 답변/ });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
   });
 
   it("Claude 모드로 보내면 큐에 적재하고 답을 폴링해 보여준다", async () => {
@@ -302,7 +312,6 @@ describe("AssistantClient — Claude 모드", () => {
       },
     ]);
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "시행번호?" },
     });
@@ -316,10 +325,33 @@ describe("AssistantClient — Claude 모드", () => {
     expect(screen.getByText(/공문 시행번호 채번 규칙/)).toBeInTheDocument();
   });
 
+  it("도는 동안 무엇을 하고 있는지 보여준다 — 30초를 '답변 중'만 보면 멈춘 줄 안다", async () => {
+    stubClaude([
+      { ok: true, status: "pending", answer: null, sources: [] },
+      { ok: true, status: "running", answer: null, sources: [] },
+      { ok: true, status: "running", answer: null, sources: [] },
+      { ok: true, status: "done", answer: "답", sources: [] },
+    ]);
+    render(<AssistantClient />);
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "시행번호?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    // claim 전 → 회사 PC로 보냈다는 것, claim 후 → 문서를 읽고 있다는 것
+    await waitFor(
+      () => expect(screen.getByText(/회사 PC로 보냈습니다/)).toBeInTheDocument(),
+      { timeout: 5000 },
+    );
+    await waitFor(
+      () => expect(screen.getByText(/지식망 문서를 읽는 중/)).toBeInTheDocument(),
+      { timeout: 8000 },
+    );
+  }, 15000);
+
   it("아무도 안 가져가면 회사 PC가 꺼졌다고 말한다 — 조용히 도는 것처럼 보이면 안 된다", async () => {
     stubClaude([{ ok: true, status: "pending", answer: null, sources: [] }]);
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "시행번호?" },
     });
@@ -335,7 +367,6 @@ describe("AssistantClient — Claude 모드", () => {
       { ok: true, status: "failed", answer: null, sources: [], message: "빈 응답" },
     ]);
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "x" },
     });
