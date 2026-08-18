@@ -83,6 +83,10 @@ export const FETCH_CONFIG: Record<SourceDomain, FetchConfig> = {
     idColumn: "id",
     titleFields: ["university_name", "customer_name"],
     bodyFields: [
+      // 연락 수단이 먼저다 — 이 도메인을 여는 이유가 그것이다.
+      { key: "contact_phone", label: "전화" },
+      { key: "contact_ext", label: "내선" },
+      { key: "contact_email", label: "이메일" },
       { key: "department_name", label: "부서" },
       { key: "job_title", label: "직함" },
       { key: "job_role", label: "담당 업무" },

@@ -182,8 +182,10 @@ export const DOMAIN_SELECTS = {
     "services(university_name, service_name)",
   ai_tips: "id, title, summary_md, reuse_prompt, ai_tool, category, tags",
   backup_requests: "id, title, summary_md, substitute_name",
+  // 연락 수단이 빠지면 "조선대 연락처 알려줘"에 이름·직함만 답하게 된다.
+  // 실제로 그렇게 답하고 빈틈까지 남긴 적이 있다(2026-08-19).
   contacts:
-    "id, customer_name, university_name, job_title, job_role, department_name",
+    "id, customer_name, university_name, job_title, job_role, department_name, contact_phone, contact_ext, contact_email",
   services:
     "id, university_name, service_name, category, application_type, region",
 } as const;
@@ -409,6 +411,9 @@ async function searchContacts(
     job_title: string | null;
     job_role: string | null;
     department_name: string | null;
+    contact_phone: string | null;
+    contact_ext: string | null;
+    contact_email: string | null;
   };
   const scored = (data as Row[]).map((r) => ({
     row: r,
@@ -433,8 +438,19 @@ async function searchContacts(
       domain: "contact" as const,
       id: x.row.id,
       title: `${x.row.university_name} — ${x.row.customer_name}`,
+      // 연락 수단을 앞에 둔다 — 연락처를 묻는 사람이 원하는 건 그것이다.
+      // 라벨 '내선'은 화면(contacts/View.tsx)과 맞춘다. 괄호로 묶어 붙이면
+      // 앞 번호의 내선처럼 읽히는데, 실제 값은 유선 전화번호다(02-710-9285 형태).
       snippet: snippet(
-        [x.row.job_title, x.row.department_name].filter(Boolean).join(" / "),
+        [
+          x.row.contact_phone,
+          x.row.contact_ext ? `내선 ${x.row.contact_ext}` : null,
+          x.row.contact_email,
+          x.row.job_title,
+          x.row.department_name,
+        ]
+          .filter(Boolean)
+          .join(" / "),
       ),
       deepLink: `/dashboard/contacts`,
     }));

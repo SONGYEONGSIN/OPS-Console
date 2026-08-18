@@ -161,3 +161,26 @@ describe("전문 조회(fetch) 컬럼 — 실제 스키마와 대조", () => {
     });
   }
 });
+
+/**
+ * 위 검사는 "없는 컬럼을 조회하는 것"을 잡는다. 반대 방향 — **있는 데이터를
+ * 안 실어 보내는 것**은 못 잡는데, 증상이 똑같이 조용하다.
+ *
+ * 실제 사고(2026-08-19): "조선대 연락처 알려줘"에 어시스턴트가 "연락 수단을
+ * 알 수 없다"고 답하고 빈틈까지 남겼다. 그런데 DB에는 343건 중 전화 205·
+ * 이메일 261건이 들어 있었다. 검색도 전문 조회도 그 두 컬럼을 안 실었을 뿐이다.
+ *
+ * 연락처를 묻는 질문에 연락 수단이 없으면 그 도메인은 있으나 마나다.
+ */
+describe("연락처는 연락 수단을 실어 보낸다", () => {
+  it("검색이 전화·이메일을 조회한다", () => {
+    expect(DOMAIN_SELECTS.contacts).toContain("contact_phone");
+    expect(DOMAIN_SELECTS.contacts).toContain("contact_email");
+  });
+
+  it("전문 조회가 전화·이메일을 본문에 담는다", () => {
+    const keys = FETCH_CONFIG.contact.bodyFields.map((f) => f.key);
+    expect(keys).toContain("contact_phone");
+    expect(keys).toContain("contact_email");
+  });
+});
