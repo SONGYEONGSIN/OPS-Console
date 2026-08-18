@@ -405,8 +405,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
           className="resize-none border border-line-soft bg-field-bg px-2.5 py-2 text-sm text-ink outline-none transition-colors focus:border-ink focus:bg-white"
         />
 
-        {/* 우하단 런처(56px 원형)가 이 줄을 덮는다 — 그만큼 오른쪽을 비운다 */}
-        <div className="flex items-center justify-between gap-2 pr-16">
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={reset}
