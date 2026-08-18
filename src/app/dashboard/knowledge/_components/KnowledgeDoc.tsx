@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
+import { PROPOSAL_FOLDER } from "@/features/knowledge/frontmatter";
+import { ProposalDelete } from "./ProposalDelete";
 import { isStale, type KnowledgeDocFull } from "@/features/knowledge/shared";
 
 /**
@@ -54,6 +56,14 @@ export function KnowledgeDocView({
             채워주세요.
           </p>
         )}
+        {/*
+          제안 초안만 화면에서 지운다 — 본 위치는 계속 옵시디언에서 지운다.
+          에이전트가 만든 초안이 쌓이는데 치울 길이 화면에 없어서 열었다.
+        */}
+        {doc.path.startsWith(`${PROPOSAL_FOLDER}/`) && (
+          <ProposalDelete path={doc.path} title={doc.title} />
+        )}
+
         {doc.categoryMismatch && (
           <p className="mt-2 border border-line-soft bg-washi px-3 py-2 text-xs text-ink-soft">
             문서에 적힌 분류가 <b>폴더</b>와 다릅니다. 화면은 폴더를 따릅니다 —

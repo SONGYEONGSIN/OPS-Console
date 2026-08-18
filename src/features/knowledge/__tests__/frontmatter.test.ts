@@ -122,3 +122,45 @@ owner: 나
     expect(a.contentHash).not.toBe(c.contentHash);
   });
 });
+
+/**
+ * `제안/`은 분류 불일치로 보지 않는다.
+ *
+ * 에이전트 초안은 **폴더가 `제안`이고 frontmatter는 목표 분류**(엔티티 등)다 —
+ * 볼트 설계 §7이 정한 격리 구조라 불일치가 정상이다. 그런데 그걸 미비로 세면
+ * 초안이 생길 때마다 `미분류`가 부풀어 "고칠 목록"이 쓸모없어진다(2026-08-18 실측:
+ * 제안 2건이 그대로 미분류 2건으로 잡혔다).
+ */
+describe("parseKnowledgeDoc — 제안 폴더", () => {
+  const fm = `---
+title: 부산대학교 수시 서비스 세팅
+category: 엔티티
+updated: 2026-08-18
+owner: ys1114@jinhakapply.com
+related: []
+---
+
+본문`;
+
+  it("제안 폴더는 frontmatter 분류가 달라도 불일치가 아니다", () => {
+    const doc = parseKnowledgeDoc("제안/부산대학교 수시 서비스 세팅.md", fm);
+    expect(doc.categoryMismatch).toBe(false);
+  });
+
+  it("제안 폴더 문서의 분류는 frontmatter 값을 쓴다 — 옮겨질 자리를 보여준다", () => {
+    const doc = parseKnowledgeDoc("제안/부산대학교 수시 서비스 세팅.md", fm);
+    expect(doc.category).toBe("엔티티");
+  });
+
+  it("제안이 아닌 폴더는 여전히 불일치를 잡는다", () => {
+    const doc = parseKnowledgeDoc("규칙/x.md", fm);
+    expect(doc.categoryMismatch).toBe(true);
+    expect(doc.category).toBe("규칙");
+  });
+
+  it("제안 폴더인데 frontmatter 분류가 없으면 제안으로 남는다", () => {
+    const doc = parseKnowledgeDoc("제안/y.md", "---\ntitle: y\n---\n\n본문");
+    expect(doc.category).toBe("제안");
+    expect(doc.categoryMismatch).toBe(false);
+  });
+});
