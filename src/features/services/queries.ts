@@ -11,7 +11,11 @@ export type ServicesFilter = {
   universityType?: string;
   applicationType?: string;
   solo?: boolean;
-  sort?: "write_end_asc" | "service_id_asc" | "created_desc";
+  sort?:
+    | "write_end_asc"
+    | "write_start_asc"
+    | "service_id_asc"
+    | "created_desc";
   page?: number;
   pageSize?: number;
 };
@@ -64,6 +68,13 @@ export async function listServices(
   const sort = filter.sort ?? "write_end_asc";
   if (sort === "write_end_asc") {
     query = query.order("write_end_at", { ascending: true, nullsFirst: false });
+  } else if (sort === "write_start_asc") {
+    // 작성시작 열을 보여주는 화면(자료 요청)이 쓴다. 빈 값은 뒤로 — 앞에 몰리면
+    // 목록 첫 화면이 비어 보인다.
+    query = query.order("write_start_at", {
+      ascending: true,
+      nullsFirst: false,
+    });
   } else if (sort === "service_id_asc") {
     query = query.order("service_id", { ascending: true });
   } else {

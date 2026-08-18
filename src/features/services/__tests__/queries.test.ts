@@ -179,3 +179,37 @@ describe("listServicesForCalendar", () => {
     expect(result).toEqual([]);
   });
 });
+
+/**
+ * 자료 요청 화면은 '작성시작' 열을 보여주는데 정렬은 write_end_at(작성마감)
+ * 기본값을 쓰고 있었다. 화면에는 MM-DD만 나와서, 보는 사람에게는 그냥
+ * 뒤죽박죽으로 보인다.
+ */
+describe("listServices — 작성시작 정렬", () => {
+  beforeEach(() => {
+    mockResult.mockReset();
+    builderCalls.length = 0;
+  });
+
+  it("write_start_asc를 주면 작성시작 오름차순으로 정렬한다", async () => {
+    mockResult.mockReturnValue({ data: [validRow], count: 1, error: null });
+    await listServices({ sort: "write_start_asc" });
+    const order = builderCalls.find((c) => c.method === "order");
+    expect(order?.args[0]).toBe("write_start_at");
+    expect(order?.args[1]).toMatchObject({ ascending: true });
+  });
+
+  it("작성시작이 빈 행은 뒤로 보낸다 — 앞에 몰리면 목록이 비어 보인다", async () => {
+    mockResult.mockReturnValue({ data: [validRow], count: 1, error: null });
+    await listServices({ sort: "write_start_asc" });
+    const order = builderCalls.find((c) => c.method === "order");
+    expect(order?.args[1]).toMatchObject({ nullsFirst: false });
+  });
+
+  it("기본값은 그대로 write_end_at — 다른 화면을 건드리지 않는다", async () => {
+    mockResult.mockReturnValue({ data: [validRow], count: 1, error: null });
+    await listServices();
+    const order = builderCalls.find((c) => c.method === "order");
+    expect(order?.args[0]).toBe("write_end_at");
+  });
+});

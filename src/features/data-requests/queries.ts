@@ -141,7 +141,15 @@ export async function getSendStatusByServiceIds(
 
 /** 본인 담당 services (operator OR developer = me). 페이지네이션(1-base) — { rows, total } */
 export async function getMyDataRequestServices(meEmail: string, page = 1, pageSize = 30) {
-  return listServices({ ownerEmail: meEmail, ownerMe: true, page, pageSize });
+  // 목록이 '작성시작' 열을 보여주므로 그 기준으로 정렬한다. 기본값(작성마감)을
+  // 쓰면 화면에는 MM-DD만 나와 뒤죽박죽으로 보인다.
+  return listServices({
+    ownerEmail: meEmail,
+    ownerMe: true,
+    page,
+    pageSize,
+    sort: "write_start_asc",
+  });
 }
 
 /** 본인 담당 대학들의 연락처 → 수신자 후보 */
