@@ -376,3 +376,36 @@ describe("AssistantClient — Claude 모드", () => {
     });
   });
 });
+
+/**
+ * 칩 이름에 켜짐/꺼짐이 없어 지금 첨부되는지 알 수 없었다. #994에서 표기를
+ * 줄이며 없앴는데, 사용자가 "이 기능이 작동하는 게 맞냐"고 물을 만큼 안 보였다.
+ */
+describe("AssistantClient — 첨부 칩 상태 표시", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pathnameRef.current = "/dashboard/incidents";
+  });
+
+  it("켜져 있으면 '켜짐'이라고 쓴다", () => {
+    render(<AssistantClient />);
+    expect(
+      screen.getByRole("button", { name: /첨부 켜짐/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("끄면 '꺼짐'으로 바뀐다", () => {
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /첨부 켜짐/ }));
+    expect(
+      screen.getByRole("button", { name: /첨부 꺼짐/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("어느 화면인지도 함께 보여준다 — 무엇이 첨부되는지 알아야 한다", () => {
+    render(<AssistantClient />);
+    expect(
+      screen.getByRole("button", { name: /사고보고/ }),
+    ).toBeInTheDocument();
+  });
+});

@@ -61,11 +61,6 @@ export default async function AiTipsPage({
         description={config.description}
         autoRefresh
       />
-      <TipCandidatePanel
-        candidates={candidates}
-        onPromote={promoteCandidate}
-        onHide={hideCandidate}
-      />
     </>
   );
 
@@ -117,7 +112,15 @@ export default async function AiTipsPage({
       }
       onPersist={onPersist}
       footer={
-        <ListPagination key="ai-tips-pagination" total={total} pageSize={30} />
+        <>
+          <ListPagination key="ai-tips-pagination" total={total} pageSize={30} />
+          {/* 후보는 등록된 TIP 아래에 둔다. 위에 있으면 정작 본 목록을 밀어낸다. */}
+          <TipCandidatePanel
+            candidates={candidates}
+            onPromote={promoteCandidate}
+            onHide={hideCandidate}
+          />
+        </>
       }
     />
   );
