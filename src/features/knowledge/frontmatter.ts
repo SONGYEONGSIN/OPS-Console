@@ -36,8 +36,18 @@ function parseList(raw: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * 에이전트 초안이 들어가는 폴더. 볼트 설계 §7 — 사람이 승인해 본 위치로 옮긴다.
+ *
+ * 여기 문서는 **폴더와 frontmatter 분류가 다른 게 정상**이다(폴더는 `제안`,
+ * frontmatter는 옮겨질 자리). 그걸 불일치로 세면 초안이 생길 때마다 `미분류`가
+ * 부풀어 "고칠 목록"이 쓸모없어진다.
+ */
+export const PROPOSAL_FOLDER = "제안";
+
 export function parseKnowledgeDoc(path: string, text: string): KnowledgeDoc {
-  const category = path.split("/")[0] ?? "";
+  const folder = path.split("/")[0] ?? "";
+  const isProposal = folder === PROPOSAL_FOLDER;
   const fileTitle = (path.split("/").pop() ?? "").replace(/\.md$/, "");
 
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
@@ -50,6 +60,9 @@ export function parseKnowledgeDoc(path: string, text: string): KnowledgeDoc {
   const fmCategory = field("category");
   const updatedRaw = field("updated");
   const relatedRaw = field("related");
+
+  // 제안 문서는 frontmatter 분류가 곧 "옮겨질 자리"라 그걸 분류로 쓴다.
+  const category = isProposal ? fmCategory || folder : folder;
 
   const missing = REQUIRED.filter((k) =>
     // category는 폴더에서 오므로 항상 있다 — frontmatter 값이 비어도 누락이 아니다.
@@ -65,7 +78,9 @@ export function parseKnowledgeDoc(path: string, text: string): KnowledgeDoc {
     related: relatedRaw ? parseList(relatedRaw) : [],
     body,
     missing,
-    categoryMismatch: Boolean(fmCategory) && fmCategory !== category,
+    // 제안 폴더는 구조적으로 폴더≠분류다 — 불일치로 세지 않는다.
+    categoryMismatch:
+      !isProposal && Boolean(fmCategory) && fmCategory !== folder,
     contentHash: createHash("sha256").update(text, "utf8").digest("hex"),
   };
 }
