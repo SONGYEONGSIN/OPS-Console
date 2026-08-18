@@ -115,10 +115,22 @@ type SearchInput = { question: string };
  * RLS로 권한 있는 row만 조회됨 (cookies 기반 supabase client).
  */
 export async function searchAllDomains(input: SearchInput): Promise<Source[]> {
+  return searchDomainsWith(await createClient(), input);
+}
+
+/**
+ * 같은 검색을 **클라이언트를 받아서** 수행한다.
+ *
+ * 어시스턴트 도구(`/api/assistant/tools/search`)는 세션이 없다 — 큐를 통해
+ * CRON_SECRET으로 불리므로 쿠키가 없다. 그래서 클라이언트를 주입받는다.
+ * 권한은 그 라우트가 요청자를 확인해서 건다(설계 §2).
+ */
+export async function searchDomainsWith(
+  supabase: SB,
+  input: SearchInput,
+): Promise<Source[]> {
   const tokens = tokenize(input.question);
   if (tokens.length === 0) return [];
-
-  const supabase = await createClient();
 
   const [incidents, handovers, tips, backups, contacts, services, knowledge] =
     await Promise.all([
