@@ -114,9 +114,7 @@ type SearchInput = { question: string };
  * 모든 도메인을 병렬 검색하여 도메인별 top-3 source 합쳐 반환.
  * RLS로 권한 있는 row만 조회됨 (cookies 기반 supabase client).
  */
-export async function searchAllDomains(
-  input: SearchInput,
-): Promise<Source[]> {
+export async function searchAllDomains(input: SearchInput): Promise<Source[]> {
   const tokens = tokenize(input.question);
   if (tokens.length === 0) return [];
 
@@ -152,10 +150,39 @@ type SB = Awaited<ReturnType<typeof createClient>>;
  * 업무 지식망 — knowledge_docs 인덱스를 검색한다.
  * 인덱스는 볼트(SharePoint 마크다운)의 사본이라, 여기 없으면 아직 인덱싱 전이다.
  */
-async function searchKnowledge(supabase: SB, tokens: string[]): Promise<Source[]> {
+/**
+ * 도메인별 조회 컬럼 — 단일 소스.
+ *
+ * 여기 적힌 이름이 실제 스키마와 어긋나면 supabase-js가 예외를 던지지 않고
+ * `{data: null}`을 돌려주고, 각 검색 함수의 `if (!data) return []`가 그것을
+ * "자료 없음"으로 바꾼다. 즉 **틀린 컬럼은 조용한 0건**이 된다.
+ * `__tests__/domain-selects.test.ts`가 마이그레이션과 대조해 이를 막는다.
+ */
+export const DOMAIN_SELECTS = {
+  knowledge_docs: "path, category, title, owner, body",
+  incidents:
+    "id, title, university_name, category, cause_summary, root_cause, resolution, prevention",
+  // 인수인계는 제목 컬럼이 없다 — 서비스에서 가져오고, 본문은 *_md 14개를 합친다.
+  handover_records:
+    "id, service_id, contract_info_md, contract_data_md, work_basic_md, work_generator_md, " +
+    "work_site_md, work_output_md, work_rate_md, work_file_md, work_etc_md, payment_fee_md, " +
+    "payment_invoice_md, school_contact_md, docs_md, notes_md, " +
+    "services(university_name, service_name)",
+  ai_tips: "id, title, summary_md, reuse_prompt, ai_tool, category, tags",
+  backup_requests: "id, title, summary_md, substitute_name",
+  contacts:
+    "id, customer_name, university_name, job_title, job_role, department_name",
+  services:
+    "id, university_name, service_name, category, application_type, region",
+} as const;
+
+async function searchKnowledge(
+  supabase: SB,
+  tokens: string[],
+): Promise<Source[]> {
   const { data } = await supabase
     .from("knowledge_docs")
-    .select("path, category, title, owner, body")
+    .select(DOMAIN_SELECTS.knowledge_docs)
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
   const scored = (data as KnowledgeRow[]).map((r) => ({
@@ -169,12 +196,13 @@ async function searchKnowledge(supabase: SB, tokens: string[]): Promise<Source[]
     .map((s) => knowledgeSource(s.row));
 }
 
-async function searchIncidents(supabase: SB, tokens: string[]): Promise<Source[]> {
+async function searchIncidents(
+  supabase: SB,
+  tokens: string[],
+): Promise<Source[]> {
   const { data } = await supabase
     .from("incidents")
-    .select(
-      "id, title, university_name, category, cause_summary, root_cause, resolution, prevention",
-    )
+    .select(DOMAIN_SELECTS.incidents)
     .order("created_at", { ascending: false })
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
@@ -217,32 +245,60 @@ async function searchIncidents(supabase: SB, tokens: string[]): Promise<Source[]
     }));
 }
 
-async function searchHandovers(supabase: SB, tokens: string[]): Promise<Source[]> {
+/**
+ * 인수인계 — 제목 컬럼이 없어 서비스에서 가져오고, 본문은 *_md 필드를 합친다.
+ * 필드가 14개로 나뉘어 있어 어느 항목에 적혔든 걸리게 하려면 합쳐서 훑어야 한다.
+ */
+async function searchHandovers(
+  supabase: SB,
+  tokens: string[],
+): Promise<Source[]> {
   const { data } = await supabase
     .from("handover_records")
-    .select("id, title, body_md, target_email")
+    .select(DOMAIN_SELECTS.handover_records)
     .order("created_at", { ascending: false })
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
-  type Row = {
+
+  type Row = Record<string, unknown> & {
     id: string;
-    title: string | null;
-    body_md: string | null;
-    target_email: string | null;
+    services?: {
+      university_name?: string | null;
+      service_name?: string | null;
+    } | null;
   };
-  const scored = (data as Row[]).map((r) => ({
+
+  const bodyOf = (r: Row) =>
+    Object.entries(r)
+      .filter(([k, v]) => k.endsWith("_md") && typeof v === "string" && v)
+      .map(([, v]) => v as string)
+      .join("\n");
+
+  const titleOf = (r: Row) => {
+    const u = r.services?.university_name ?? "";
+    const n = r.services?.service_name ?? "";
+    const t = [u, n].filter(Boolean).join(" — ");
+    return t || "(인수인계)";
+  };
+
+  const scored = (data as unknown as Row[]).map((r) => ({
     row: r,
-    score: scoreText([r.title, r.body_md].filter(Boolean).join(" "), tokens),
+    body: bodyOf(r),
+    title: titleOf(r),
   }));
   return scored
+    .map((x) => ({
+      ...x,
+      score: scoreText([x.title, x.body].join(" "), tokens),
+    }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, TOP_PER_DOMAIN)
     .map((x) => ({
       domain: "handover" as const,
       id: x.row.id,
-      title: x.row.title ?? "(인수인계)",
-      snippet: snippet(x.row.body_md),
+      title: x.title,
+      snippet: snippet(x.body),
       deepLink: `/dashboard/handover`,
     }));
 }
@@ -250,16 +306,14 @@ async function searchHandovers(supabase: SB, tokens: string[]): Promise<Source[]
 async function searchAiTips(supabase: SB, tokens: string[]): Promise<Source[]> {
   const { data } = await supabase
     .from("ai_tips")
-    .select(
-      "id, title, summary, reuse_prompt, ai_tool, category, tags",
-    )
+    .select(DOMAIN_SELECTS.ai_tips)
     .order("created_at", { ascending: false })
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
   type Row = {
     id: string;
     title: string | null;
-    summary: string | null;
+    summary_md: string | null;
     reuse_prompt: string | null;
     ai_tool: string | null;
     category: string | null;
@@ -268,7 +322,7 @@ async function searchAiTips(supabase: SB, tokens: string[]): Promise<Source[]> {
   const scored = (data as Row[]).map((r) => {
     const haystack = [
       r.title,
-      r.summary,
+      r.summary_md,
       r.reuse_prompt,
       r.ai_tool,
       r.category,
@@ -286,15 +340,18 @@ async function searchAiTips(supabase: SB, tokens: string[]): Promise<Source[]> {
       domain: "ai-tip" as const,
       id: x.row.id,
       title: x.row.title ?? "(TIP)",
-      snippet: snippet(x.row.summary ?? x.row.reuse_prompt),
+      snippet: snippet(x.row.summary_md ?? x.row.reuse_prompt),
       deepLink: `/dashboard/ai-tips`,
     }));
 }
 
-async function searchBackups(supabase: SB, tokens: string[]): Promise<Source[]> {
+async function searchBackups(
+  supabase: SB,
+  tokens: string[],
+): Promise<Source[]> {
   const { data } = await supabase
     .from("backup_requests")
-    .select("id, title, summary_md, substitute_name")
+    .select(DOMAIN_SELECTS.backup_requests)
     .order("created_at", { ascending: false })
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
@@ -324,12 +381,13 @@ async function searchBackups(supabase: SB, tokens: string[]): Promise<Source[]> 
     }));
 }
 
-async function searchContacts(supabase: SB, tokens: string[]): Promise<Source[]> {
+async function searchContacts(
+  supabase: SB,
+  tokens: string[],
+): Promise<Source[]> {
   const { data } = await supabase
     .from("contacts")
-    .select(
-      "id, customer_name, university_name, job_title, job_role, department_name",
-    )
+    .select(DOMAIN_SELECTS.contacts)
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
   type Row = {
@@ -370,12 +428,13 @@ async function searchContacts(supabase: SB, tokens: string[]): Promise<Source[]>
     }));
 }
 
-async function searchServices(supabase: SB, tokens: string[]): Promise<Source[]> {
+async function searchServices(
+  supabase: SB,
+  tokens: string[],
+): Promise<Source[]> {
   const { data } = await supabase
     .from("services")
-    .select(
-      "id, university_name, service_name, category, application_type, region",
-    )
+    .select(DOMAIN_SELECTS.services)
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
   type Row = {
