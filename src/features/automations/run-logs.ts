@@ -10,6 +10,7 @@ import {
   toWeeklyReportEntry,
   toClosingRunEntry,
   toBriefingEntry,
+  groupAiTipBatches,
   groupInsightsBatches,
   type JobRunLog,
 } from "./run-logs-normalize";
@@ -162,6 +163,24 @@ async function closingScrapeLog(jobId: string): Promise<JobRunLog> {
   };
 }
 
+/**
+ * AI TIP 후보 수집 — insights와 같은 방식(collected_at으로 배치 복원).
+ * 회사 PC가 돌리는 잡이라 서버에는 후보 행만 남는다.
+ */
+async function aiTipsLog(jobId: string): Promise<JobRunLog> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("ai_tip_candidates")
+    .select("collected_at, draft_title, repo_full_name, stars")
+    .order("collected_at", { ascending: false })
+    .limit(INSIGHTS_FETCH_ROWS);
+  return {
+    jobId,
+    kind: "ai-tips",
+    entries: groupAiTipBatches(data ?? [], LOG_LIMIT),
+  };
+}
+
 async function insightsLog(jobId: string): Promise<JobRunLog> {
   const admin = createAdminClient();
   const { data } = await admin
@@ -205,6 +224,7 @@ async function briefingLog(jobId: string): Promise<JobRunLog> {
 
 const LOG_RESOLVERS: Record<string, (jobId: string) => Promise<JobRunLog>> = {
   "insights-collect": insightsLog,
+  "ai-tips-collect": aiTipsLog,
   "receivables-mail-operator": mailOperatorLog,
   "receivables-mail-school": mailSchoolLog,
   "receivables-deposit-match": depositMatchLog,

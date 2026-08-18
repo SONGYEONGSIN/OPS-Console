@@ -12,6 +12,7 @@ import {
   type DepositMatchEntry,
   type DepositMismatchItem,
   type MailOperatorEntry,
+  type AiTipBatchEntry,
   type InsightsBatchEntry,
   type SmileEdiEntry,
   type ServiceNoticeEntry,
@@ -318,7 +319,27 @@ function WeeklyReportList({ entries }: { entries: WeeklyReportEntry[] }) {
                     : "—",
               },
               { term: "발송자", desc: e.sender ?? "—" },
-              { term: "파일", desc: e.fileName ?? "—" },
+              {
+                term: "파일",
+                // share_link 는 실행 때부터 저장돼 있었는데 화면이 안 썼다.
+                // 링크가 없으면 눌리는 것처럼 보이지 않게 그냥 글자로 둔다.
+                desc: e.fileName ? (
+                  e.shareLink ? (
+                    <a
+                      href={e.shareLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all text-vermilion underline-offset-2 hover:underline"
+                    >
+                      {e.fileName}
+                    </a>
+                  ) : (
+                    <span className="break-all">{e.fileName}</span>
+                  )
+                ) : (
+                  "—"
+                ),
+              },
               {
                 term: "Teams",
                 desc:
@@ -432,6 +453,37 @@ function InsightsList({ entries }: { entries: InsightsBatchEntry[] }) {
   );
 }
 
+/**
+ * AI TIP 후보 수집 — 인사이트 수집과 같은 모양.
+ * 전에는 "후보 5건 수집" 한 줄뿐이라 무엇을 담아왔는지 볼 수 없었다.
+ */
+function AiTipsList({ entries }: { entries: AiTipBatchEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.collectedAt)}</span>
+            <span className="text-[11px] text-muted">
+              후보 {e.candidateCount}건
+            </span>
+          </div>
+          {e.sampleTitles.length > 0 && (
+            <ul className="space-y-1 text-xs text-muted">
+              {e.sampleTitles.map((title, j) => (
+                <li key={j} className="truncate">
+                  ▸ {title}
+                </li>
+              ))}
+            </ul>
+          )}
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RunStatusBadge({ entry }: { entry: AutomationRunEntry }) {
   const label = entry.skipped ? "스킵" : entry.ok ? "성공" : "실패";
   return (
@@ -458,6 +510,7 @@ function entrySentAtList(log: JobRunLog): string[] {
     case "weekly-report":
       return log.entries.map((e) => e.ranAt);
     case "insights":
+    case "ai-tips":
       return log.entries.map((e) => e.collectedAt);
     case "briefing":
       return log.entries.map((e) => e.publishedAt);
@@ -494,6 +547,8 @@ function DetailEntries({
       return <WeeklyReportList entries={indices.map((i) => log.entries[i])} />;
     case "insights":
       return <InsightsList entries={indices.map((i) => log.entries[i])} />;
+    case "ai-tips":
+      return <AiTipsList entries={indices.map((i) => log.entries[i])} />;
     case "briefing":
       return <BriefingList entries={indices.map((i) => log.entries[i])} />;
     default:

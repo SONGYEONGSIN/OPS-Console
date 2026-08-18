@@ -514,3 +514,48 @@ describe("AutomationLogPanel", () => {
     expect(screen.getByText(/바이브코딩 입문/)).toBeInTheDocument();
   });
 });
+
+/**
+ * 파일명은 이미 보이는데 눌러도 아무 일이 없었다. share_link 는 실행 때부터
+ * 저장돼 화면 데이터까지 와 있었는데 쓰지 않았을 뿐이다.
+ */
+describe("본부차주보고 — 파일명에서 문서로", () => {
+  const base = {
+    ranAt: "2026-08-12T01:00:45Z",
+    status: "created" as const,
+    year: 2026,
+    month: 8,
+    week: 2,
+    fileName: "주간업무보고서_진학어플라이본부_2026_8월2주차.xlsx",
+    sender: "전성대 부장님",
+    teamsSent: true,
+    message: "차주 보고 생성",
+  };
+  const log = (shareLink: string | null): JobRunLog => ({
+    jobId: "weekly-report",
+    kind: "weekly-report",
+    entries: [{ ...base, shareLink }],
+  });
+
+  it("링크가 있으면 파일명을 눌러 문서로 간다", () => {
+    render(<AutomationLogPanel label="본부차주보고" loading={false} error={null} log={log("https://jinhaksa.sharepoint.com/:x:/s/a/IQD")} runs={[]} />);
+    const link = screen.getByRole("link", { name: base.fileName });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://jinhaksa.sharepoint.com/:x:/s/a/IQD",
+    );
+  });
+
+  it("SharePoint 문서라 새 탭으로 연다 — 자동화 화면을 잃지 않게", () => {
+    render(<AutomationLogPanel label="본부차주보고" loading={false} error={null} log={log("https://jinhaksa.sharepoint.com/:x:/s/a/IQD")} runs={[]} />);
+    const link = screen.getByRole("link", { name: base.fileName });
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.getAttribute("rel")).toContain("noopener");
+  });
+
+  it("링크가 없으면 파일명만 보여준다 — 눌리는 것처럼 보이면 안 된다", () => {
+    render(<AutomationLogPanel label="본부차주보고" loading={false} error={null} log={log(null)} runs={[]} />);
+    expect(screen.queryByRole("link", { name: base.fileName })).toBeNull();
+    expect(screen.getByText(base.fileName)).toBeInTheDocument();
+  });
+})

@@ -50,6 +50,13 @@ export type InsightsBatchEntry = {
   sampleTitles: string[];
 };
 
+export type AiTipBatchEntry = {
+  collectedAt: string;
+  candidateCount: number;
+  /** 별 많은 순 미리보기. 목록이 아니라 "무엇을 담아왔나"를 알리는 용도다. */
+  sampleTitles: string[];
+};
+
 export type BriefingEntry = {
   publishedAt: string;
   issueNo: number;
@@ -124,6 +131,7 @@ export type JobRunLog =
   | { jobId: string; kind: "deposit-match"; entries: DepositMatchEntry[] }
   | { jobId: string; kind: "mail-operator"; entries: MailOperatorEntry[] }
   | { jobId: string; kind: "insights"; entries: InsightsBatchEntry[] }
+  | { jobId: string; kind: "ai-tips"; entries: AiTipBatchEntry[] }
   | { jobId: string; kind: "smileedi"; entries: SmileEdiEntry[] }
   | { jobId: string; kind: "service-notice"; entries: ServiceNoticeEntry[] }
   | { jobId: string; kind: "notice-teams"; entries: NoticeTeamsEntry[] }
@@ -351,6 +359,50 @@ export function groupInsightsBatches(
         .slice(0, sampleSize)
         .map((t) => t.title);
       return { collectedAt: key, videoCount: titles.length, sampleTitles };
+    });
+}
+
+export type AiTipCandidateRow = {
+  collected_at: string;
+  draft_title: string | null;
+  repo_full_name: string;
+  stars: number | null;
+};
+
+/**
+ * AI TIP 후보를 수집 시각으로 묶는다 — insights와 같은 구조다.
+ *
+ * 둘 다 run 테이블이 없어 `collected_at`으로 배치를 복원한다. 전에는 실행
+ * 이력만 있어 "후보 5건 수집" 한 줄이 전부였고, 무엇을 담아왔는지 볼 수 없었다.
+ */
+export function groupAiTipBatches(
+  rows: AiTipCandidateRow[],
+  maxBatches: number,
+  sampleSize = 3,
+): AiTipBatchEntry[] {
+  const groups = new Map<string, { title: string; stars: number }[]>();
+  for (const r of rows) {
+    const list = groups.get(r.collected_at) ?? [];
+    // claude가 초안 제목을 못 만들었어도 무엇을 담았는지는 남아야 한다.
+    list.push({
+      title: r.draft_title?.trim() || r.repo_full_name,
+      stars: r.stars ?? -1,
+    });
+    groups.set(r.collected_at, list);
+  }
+  return Array.from(groups.keys())
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
+    .slice(0, maxBatches)
+    .map((key) => {
+      const list = groups.get(key) ?? [];
+      return {
+        collectedAt: key,
+        candidateCount: list.length,
+        sampleTitles: [...list]
+          .sort((a, b) => b.stars - a.stars)
+          .slice(0, sampleSize)
+          .map((x) => x.title),
+      };
     });
 }
 
