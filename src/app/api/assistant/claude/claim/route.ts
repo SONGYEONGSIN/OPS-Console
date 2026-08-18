@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildVaultPrompt,
+  type ChatTurn,
   collectSourcePaths,
   kstToday,
   type SdkToolUse,
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
     .update({ status: "running", claimed_at: new Date().toISOString() })
     .eq("id", pending[0].id)
     .eq("status", "pending")
-    .select("id, question, page_context, operator_email")
+    .select("id, question, page_context, operator_email, history")
     .maybeSingle();
   if (error) {
     return NextResponse.json(
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
     question: string;
     page_context: string | null;
     operator_email: string;
+    history: ChatTurn[] | null;
   };
   return NextResponse.json({
     ok: true,
@@ -112,6 +114,8 @@ export async function GET(request: NextRequest) {
         pageContext: row.page_context,
         // 폴러 PC의 시계를 믿지 않는다 — 어긋나면 "다음주"가 통째로 밀린다.
         today: kstToday(),
+        // 앞서 주고받은 것. 몇 턴을 실을지는 buildVaultPrompt가 자른다.
+        history: row.history ?? [],
       }),
     },
   });
