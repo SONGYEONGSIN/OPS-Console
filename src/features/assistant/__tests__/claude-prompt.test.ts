@@ -248,3 +248,27 @@ describe("buildVaultPrompt — 답변 형식", () => {
     expect(p).toMatch(/표는/);
   });
 });
+
+/**
+ * 2026-08-18 사용자 피드백 — 실제 답변을 보고 나온 것들.
+ *
+ * 1) 항목이 줄글로 붙어 있어 읽기 불편했다
+ *    "WA·WB·WC 문구는 학년도에 맞게 수정, PA·PB 미사용. WB는 검정고시…" (한 문단)
+ * 2) 인수인계처럼 양이 많은 자료는 요약만 주고 끝나 상세를 볼 길이 없었다
+ */
+describe("buildVaultPrompt — 읽기 편하게", () => {
+  const p = buildVaultPrompt({
+    question: "x",
+    pageContext: null,
+    today: "2026-08-18 (화)",
+  });
+
+  it("항목이 여럿이면 줄글 대신 불릿으로 끊으라고 지시한다", () => {
+    expect(p).toMatch(/불릿|줄글/);
+  });
+
+  it("양이 많으면 요약·전체·문서 중 어느 쪽을 볼지 묻게 한다", () => {
+    expect(p).toMatch(/요약/);
+    expect(p).toMatch(/전체/);
+  });
+});
