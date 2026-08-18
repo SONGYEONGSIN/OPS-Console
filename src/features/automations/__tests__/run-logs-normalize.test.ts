@@ -14,6 +14,7 @@ import {
   toClosingRunEntry,
   toBriefingEntry,
   groupInsightsBatches,
+  groupAiTipBatches,
 } from "../run-logs-normalize";
 
 describe("formatKrw", () => {
@@ -502,5 +503,68 @@ describe("toBriefingEntry (팀 브리핑 발행 이력)", () => {
       "https://ops.example.com",
     );
     expect(e.publishedAt).toBe("2026-07-24T04:35:01.786Z");
+  });
+});
+
+/**
+ * AI TIP 후보 수집은 실행 이력만 있고 상세가 없어 "후보 5건 수집" 한 줄이 전부였다.
+ * 인사이트 수집처럼 무엇을 담아왔는지 보여준다 — 둘 다 run 테이블이 없어
+ * collected_at 으로 배치를 복원하는 같은 구조다.
+ */
+describe("groupAiTipBatches", () => {
+  const row = (at: string, title: string, stars: number, repo = "o/r") => ({
+    collected_at: at,
+    draft_title: title,
+    repo_full_name: repo,
+    stars,
+  });
+
+  it("같은 시각에 담긴 것을 한 배치로 묶고 건수를 센다", () => {
+    const b = groupAiTipBatches(
+      [row("2026-08-17T00:04:23Z", "A", 10), row("2026-08-17T00:04:23Z", "B", 20)],
+      20,
+    );
+    expect(b).toHaveLength(1);
+    expect(b[0].candidateCount).toBe(2);
+  });
+
+  it("최신 배치가 먼저 온다", () => {
+    const b = groupAiTipBatches(
+      [row("2026-08-10T00:00:00Z", "old", 1), row("2026-08-17T00:00:00Z", "new", 1)],
+      20,
+    );
+    expect(b[0].collectedAt).toBe("2026-08-17T00:00:00Z");
+  });
+
+  it("별 많은 순으로 몇 개만 보여준다 — 목록이 아니라 미리보기다", () => {
+    const b = groupAiTipBatches(
+      [
+        row("2026-08-17T00:00:00Z", "적음", 5),
+        row("2026-08-17T00:00:00Z", "많음", 900),
+        row("2026-08-17T00:00:00Z", "중간", 100),
+        row("2026-08-17T00:00:00Z", "넷째", 1),
+      ],
+      20,
+    );
+    expect(b[0].sampleTitles).toEqual(["많음", "중간", "적음"]);
+  });
+
+  it("초안 제목이 없으면 리포 이름으로 보여준다 — claude가 실패해도 무엇을 담았는지는 남는다", () => {
+    const b = groupAiTipBatches(
+      [{ collected_at: "2026-08-17T00:00:00Z", draft_title: null, repo_full_name: "anthropics/claude-code", stars: 500 }],
+      20,
+    );
+    expect(b[0].sampleTitles).toEqual(["anthropics/claude-code"]);
+  });
+
+  it("배치 수를 제한한다", () => {
+    const rows = Array.from({ length: 5 }, (_, i) =>
+      row(`2026-08-1${i}T00:00:00Z`, `t${i}`, 1),
+    );
+    expect(groupAiTipBatches(rows, 2)).toHaveLength(2);
+  });
+
+  it("빈 입력은 빈 배열", () => {
+    expect(groupAiTipBatches([], 20)).toEqual([]);
   });
 });
