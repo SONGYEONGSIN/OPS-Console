@@ -7,7 +7,7 @@ import {
   getKnowledgeDoc,
 } from "@/features/knowledge/queries";
 import { groupByCategory } from "@/features/knowledge/shared";
-import { listOpenGaps } from "@/features/knowledge/gaps";
+import { listOpenGaps, listPendingProposals } from "@/features/knowledge/gaps";
 import { groupGaps } from "@/features/knowledge/gaps-shared";
 import { KnowledgeTree } from "./_components/KnowledgeTree";
 import { KnowledgeDocView } from "./_components/KnowledgeDoc";
@@ -38,7 +38,12 @@ export default async function KnowledgePage({
   const doc = selectedPath ? await getKnowledgeDoc(selectedPath) : null;
 
   // 문서를 안 골랐을 때만 필요하다 — 고른 상태에서 조회하면 헛일이다.
-  const gaps = doc ? [] : groupGaps(await listOpenGaps());
+  const [gaps, proposals] = doc
+    ? [[], []]
+    : await Promise.all([
+        listOpenGaps().then(groupGaps),
+        listPendingProposals(),
+      ]);
 
   return (
     <div className="flex flex-col">
@@ -63,7 +68,7 @@ export default async function KnowledgePage({
             <KnowledgeDocView doc={doc} allPaths={rows.map((r) => r.path)} />
           ) : (
             /* 빈 칸에 "좌측에서 선택하세요"만 두느니, 무엇을 더 써야 하는지를 보여준다 */
-            <KnowledgeGaps groups={gaps} />
+            <KnowledgeGaps groups={gaps} proposals={proposals} />
           )}
         </div>
       </section>

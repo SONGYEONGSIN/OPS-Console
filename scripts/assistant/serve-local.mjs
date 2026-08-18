@@ -26,6 +26,8 @@ import {
   resolveProposalPath,
   resolveProposalCategory,
   classifiedBy,
+  proposalFileName,
+  PROPOSAL_DIR,
 } from "./propose-lib.mjs";
 
 config({ path: ".env.local" });
@@ -362,6 +364,24 @@ const opsTools = createSdkMcpServer({
           ].join("\n");
           // 이미 있으면 실패한다 — 사람이 검토 중인 초안을 갈아엎지 않는다.
           await writeFile(path, front + body, { encoding: "utf8", flag: "wx" });
+
+          // 같은 대화의 빈틈이 이 초안을 가리키게 한다. 실패해도 초안 작성은
+          // 성공이므로 삼키지 않고 로그만 남긴다 — 여기서 던지면 이미 쓴
+          // 파일을 두고 "실패"라고 답하게 된다.
+          try {
+            const res = await fetchWithTimeout(`${BASE}/api/assistant/tools/gap`, {
+              method: "PATCH",
+              headers: { ...headers, "content-type": "application/json" },
+              body: JSON.stringify({
+                requestId: current.id,
+                proposalPath: `${PROPOSAL_DIR}/${proposalFileName(title)}`,
+              }),
+            });
+            if (!res.ok) console.error(`[assistant] 빈틈-초안 연결 실패: ${res.status}`);
+          } catch (e) {
+            console.error(`[assistant] 빈틈-초안 연결 실패: ${e.message}`);
+          }
+
           return {
             content: [
               {

@@ -24,7 +24,7 @@ const gapSchema = z.object({
   operatorEmail: z.string().optional(),
 });
 
-export async function POST(request: NextRequest) {
+function guard(request: NextRequest): NextResponse | null {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json(
@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
       { status: 401 },
     );
   }
+  return null;
+}
+
+export async function POST(request: NextRequest) {
+  const denied = guard(request);
+  if (denied) return denied;
 
   const parsed = gapSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
@@ -57,6 +63,49 @@ export async function POST(request: NextRequest) {
     request_id: parsed.data.requestId ?? null,
     operator_email: parsed.data.operatorEmail ?? null,
   });
+  if (error) {
+    return NextResponse.json(
+      { ok: false, error: error.message },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ ok: true });
+}
+
+const linkSchema = z.object({
+  requestId: z.string().uuid(),
+  // 초안만 가리킨다 — 본 위치 문서를 여기 넣으면 "검토 대기"로 잘못 뜬다.
+  proposalPath: z.string().startsWith("제안/"),
+});
+
+/**
+ * 초안이 생기면 **같은 대화**의 빈틈이 그걸 가리키게 한다.
+ *
+ * 제목으로는 못 잇는다 — '대학별 수시 인수인계' 빈틈과 '제안/부산대학교 수시
+ * 서비스 세팅.md' 초안은 이름이 안 겹친다. 둘을 잇는 열쇠는 대화(request_id)다.
+ *
+ * 실제로 그 둘이 동시에 존재하는데 화면은 "문서 없음"만 보여줬다 — 초안이
+ * 이미 검토를 기다리는 줄 모르면 사람이 같은 걸 또 쓴다.
+ */
+export async function PATCH(request: NextRequest) {
+  const denied = guard(request);
+  if (denied) return denied;
+
+  const parsed = linkSchema.safeParse(await request.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { ok: false, error: parsed.error.issues[0].message },
+      { status: 400 },
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("knowledge_gaps")
+    .update({ proposal_path: parsed.data.proposalPath })
+    .eq("request_id", parsed.data.requestId)
+    // 이미 닫은 빈틈은 건드리지 않는다 — 다시 열린 것처럼 보이면 안 된다.
+    .eq("status", "open");
   if (error) {
     return NextResponse.json(
       { ok: false, error: error.message },

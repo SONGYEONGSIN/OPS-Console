@@ -13,6 +13,8 @@ export type KnowledgeGapRow = {
   note: string | null;
   nearPaths: string[];
   question: string;
+  /** 같은 대화에서 만들어진 제안 초안 경로. 있으면 사람이 할 일은 '쓰기'가 아니라 '검토'다. */
+  proposalPath: string | null;
   createdAt: string;
 };
 
@@ -41,6 +43,8 @@ export type KnowledgeGapGroup = {
   /** shallow일 때 보강 대상 문서 */
   nearPaths: string[];
   notes: string[];
+  /** 이 주제로 이미 만들어진 초안 — 있으면 또 쓸 일이 아니다. */
+  proposalPath: string | null;
 };
 
 /**
@@ -72,7 +76,18 @@ export function groupGaps(rows: KnowledgeGapRow[]): KnowledgeGapGroup[] {
       if (r.note && !notes.includes(r.note)) notes.push(r.note);
     }
 
-    groups.push({ topic, kind, count: list.length, questions, nearPaths, notes });
+    // 초안은 주제당 하나면 충분하다 — 여러 개면 가장 최근(정렬상 앞) 것을 쓴다.
+    const proposalPath = list.find((r) => r.proposalPath)?.proposalPath ?? null;
+
+    groups.push({
+      topic,
+      kind,
+      count: list.length,
+      questions,
+      nearPaths,
+      notes,
+      proposalPath,
+    });
   }
 
   return groups.sort((a, b) => b.count - a.count);
