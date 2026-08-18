@@ -22,7 +22,10 @@ import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk"
 import { z } from "zod";
 // 경로 검증은 순수 함수로 빼 두고 테스트가 그 파일을 그대로 검사한다
 // (src/features/assistant/__tests__/propose.test.ts).
-import { resolveProposalPath } from "./propose-lib.mjs";
+import {
+  resolveProposalPath,
+  resolveProposalCategory,
+} from "./propose-lib.mjs";
 
 config({ path: ".env.local" });
 
@@ -308,9 +311,23 @@ const opsTools = createSdkMcpServer({
     ),
     tool(
       "propose_doc",
-      "지식망에 넣을 문서 초안을 `제안/` 폴더에 만든다. 본 위치에는 못 쓴다 — 사람이 검토해서 옮긴다. 내용을 지어내지 말고, 근거가 있는 것만 쓴다.",
+      "지식망에 넣을 문서 초안을 `제안/` 폴더에 만든다. 본 위치에는 못 쓴다 — 사람이 검토해서 옮긴다. 내용을 지어내지 말고, 근거가 있는 것만 쓴다. **분류는 시스템이 정하므로 사용자에게 묻지 않는다.**",
       {
         title: z.string().describe("문서 제목. 그대로 파일명이 된다"),
+        sourceDomain: z
+          .enum([
+            "handover",
+            "incident",
+            "service",
+            "contact",
+            "backup",
+            "ai-tip",
+            "knowledge",
+          ])
+          .optional()
+          .describe(
+            "이 문서의 근거가 된 운영 데이터 출처(search_ops/fetch_ops의 domain). 주면 분류를 시스템이 정한다 — 사용자에게 묻지 마라",
+          ),
         category: z
           .enum([
             "개념",
@@ -321,16 +338,19 @@ const opsTools = createSdkMcpServer({
             "엔티티",
             "프로젝트",
           ])
-          .describe("볼트 분류. 애매하면 사람에게 물어본다"),
+          .optional()
+          .describe("sourceDomain이 없을 때만 쓴다"),
         body: z.string().describe("마크다운 본문. frontmatter는 붙이지 않는다"),
       },
-      async ({ title, category, body }) => {
+      async ({ title, category, body, sourceDomain }) => {
         try {
           const path = resolveProposalPath(VAULT, title);
+          // 분류는 백단에서 정한다 — 모델이 매번 고르면 같은 종류가 흩어진다.
+          const resolved = resolveProposalCategory(sourceDomain ?? null, category ?? "");
           const front = [
             "---",
             `title: ${title}`,
-            `category: ${category}`,
+            `category: ${resolved}`,
             `updated: ${new Date().toISOString().slice(0, 10)}`,
             `owner: ${current.operator_email ?? ""}`,
             "related: []",
@@ -341,7 +361,10 @@ const opsTools = createSdkMcpServer({
           await writeFile(path, front + body, { encoding: "utf8", flag: "wx" });
           return {
             content: [
-              { type: "text", text: `제안/${title}.md 를 만들었습니다.` },
+              {
+                type: "text",
+                text: `제안/${title}.md 를 만들었습니다 (분류: ${resolved}).`,
+              },
             ],
           };
         } catch (e) {
