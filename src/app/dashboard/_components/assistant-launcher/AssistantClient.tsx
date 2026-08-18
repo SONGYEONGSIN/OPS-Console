@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation";
 import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
 
 /**
  * 서버 `features/assistant/search.ts`의 Source와 같은 모양을 여기 다시 적는다 —
@@ -538,7 +538,7 @@ function MessageCard({
               원시 HTML은 렌더하지 않는다(rehype-raw 미사용) — 답에 섞여도 실행 안 된다.
             */}
             <div className="chat-md text-sm leading-relaxed text-ink">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS}>
                 {message.content}
               </ReactMarkdown>
             </div>
