@@ -83,7 +83,15 @@ powershell -ExecutionPolicy Bypass -File scripts\assistant\register-serve-task.p
 
 작업 스케줄러에서 **`OPS-Console 어시스턴트 폴러`** 가 *실행 중*이면 된다.
 
-콘솔에서 직접 확인하려면:
+**로그는 레포 루트 `assistant-poller.log`에 쌓인다**(작업 스케줄러로 돌 때도 남는다). 최근 것만 보려면:
+
+```powershell
+Get-Content .\assistant-poller.log -Tail 20
+# 실시간으로 보려면
+Get-Content .\assistant-poller.log -Tail 20 -Wait
+```
+
+콘솔에서 직접 띄워 확인하려면:
 
 ```powershell
 cd <레포 경로>
@@ -118,9 +126,33 @@ curl.exe -s -H "Authorization: Bearer $s" https://ops-console-psi.vercel.app/api
 
 ---
 
-## 4. 옮긴 뒤 할 일
+## 4. 코드가 바뀌면 — 갱신 절차 (자주 하게 된다)
 
-맥에서 임시로 돌리던 폴러를 **끈다.** 둘이 동시에 돌아도 큐를 원자적으로 claim하므로 답이 두 번 나가지는 않지만, 어느 PC가 답했는지 알 수 없어져 문제 추적이 어려워진다.
+**작업 스케줄러는 죽은 프로세스만 되살린다. 코드를 따라가지는 않는다.**
+main에 폴러 관련 변경이 들어와도 이 PC는 옛 코드를 계속 돌린다 — 새 도구가 안 붙거나, 고친 버그가 그대로 남는다. 실제로 폴러가 몇 시간 낡은 코드로 돌던 적이 있다.
+
+```powershell
+cd <레포 경로>
+git pull
+npm ci                                            # 의존성이 바뀌었을 수 있다
+Restart-ScheduledTask -TaskName "OPS-Console 어시스턴트 폴러"
+```
+
+**언제 해야 하나** — 아래가 바뀌었을 때. 판단이 애매하면 그냥 한다(1분이면 끝난다).
+
+| 바뀐 것 | 왜 |
+|---|---|
+| `scripts/assistant/*` | 폴러 본체·도구. 이 PC에서 도는 코드 그대로다 |
+| `package.json` | 새 의존성이 없으면 SDK 호출이 깨진다 |
+| `src/features/assistant/*` · `src/app/api/assistant/*` | **재시작 불필요** — 서버(Vercel) 쪽이라 배포로 반영된다 |
+
+프롬프트·근거 추출은 서버에 있어(설계상) 그것만 고쳤다면 이 PC를 만질 필요가 없다. **폴러 파일이 바뀌었는지만 보면 된다.**
+
+갱신 뒤에는 3-1(하트비트)과 3-3(실제 질문)으로 한 번 확인한다.
+
+### 폴러를 두 곳에서 돌리지 않는다
+
+큐를 원자적으로 claim하므로 답이 두 번 나가지는 않지만, **어느 PC가 답했는지 알 수 없어져 문제 추적이 어려워진다.** 개발 중 임시로 다른 PC에서 띄웠다면 반드시 끈다.
 
 ---
 
@@ -128,13 +160,14 @@ curl.exe -s -H "Authorization: Bearer $s" https://ops-console-psi.vercel.app/api
 
 | 증상 | 원인 | 조치 |
 |---|---|---|
-| 15초 뒤 "회사 PC가 응답하지 않습니다" | 폴러가 안 돎 | 작업 스케줄러에서 상태 확인, 3-1로 직접 실행해 로그 확인 |
+| 15초 뒤 "회사 PC가 응답하지 않습니다" | 폴러가 안 돎 | 작업 스케줄러 상태 + `assistant-poller.log` 마지막 줄 확인 |
 | `claim 실패 N건째: fetch failed` | 네트워크 두절·PC 절전 | 복구되면 `서버 복구 (실패 N건 뒤)`가 찍힌다. 계속이면 3-2 확인 |
 | `unauthorized` | `CRON_SECRET` 불일치 | Vercel 환경변수와 맞춘다 |
 | `KNOWLEDGE_VAULT_PATH 없음/경로 부재` | 경로 오타·동기 안 됨 | 탐색기에서 실제 경로 확인, OneDrive 동기 상태 확인 |
 | 답에 "볼트에 없습니다"만 나옴 | 볼트에 그 문서가 없음 | 정상 동작이다. 일정·휴가는 문서가 아니라 도구로 답한다 |
 | "3분을 넘겨 중단했습니다" | 한 건이 3분을 넘김 | 질문을 좁혀 다시. 반복되면 로그의 도구 호출을 본다 |
 | 답이 안 오고 큐에 `running`으로 남음 | 폴러가 도중에 죽음 | 5분 뒤 서버가 자동으로 실패 처리한다. 조치 불필요 |
+| 답은 오는데 **새로 붙인 도구를 안 쓴다** | 폴러가 옛 코드로 돌고 있음 | §4 갱신. 이 증상은 에러가 안 나서 티가 잘 안 난다 |
 
 ---
 
