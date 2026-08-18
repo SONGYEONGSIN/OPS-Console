@@ -100,3 +100,14 @@ export function resolveProposalCategory(sourceDomain, modelCategory) {
   }
   return modelCategory;
 }
+
+/**
+ * 분류를 누가 정했나 — 문서 frontmatter에 남긴다.
+ *
+ * "운영자가 직접 10건을 쓴다"는 0단계 조건은 안 일어난다. 앞으로도 에이전트가 쓴다.
+ * 그러면 **8칸이 실제 지식을 담는지** 확인할 길이 사라지므로, 사람이 고른 것과
+ * 시스템이 정한 것을 구분해 남긴다. 이게 쌓여야 판정 건수를 셀 수 있다.
+ */
+export function classifiedBy(sourceDomain) {
+  return sourceDomain ? "시스템" : "사람";
+}

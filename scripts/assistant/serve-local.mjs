@@ -25,6 +25,7 @@ import { z } from "zod";
 import {
   resolveProposalPath,
   resolveProposalCategory,
+  classifiedBy,
 } from "./propose-lib.mjs";
 
 config({ path: ".env.local" });
@@ -353,6 +354,8 @@ const opsTools = createSdkMcpServer({
             `category: ${resolved}`,
             `updated: ${new Date().toISOString().slice(0, 10)}`,
             `owner: ${current.operator_email ?? ""}`,
+            // 분류를 누가 정했나 — 사람 판정이 몇 건인지 세려면 남아 있어야 한다.
+            `classified_by: ${classifiedBy(sourceDomain ?? null)}`,
             "related: []",
             "---",
             "",

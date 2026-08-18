@@ -4,6 +4,7 @@ import {
   CATEGORY_BY_DOMAIN,
   resolveProposalCategory,
   VAULT_CATEGORIES,
+  classifiedBy,
 } from "../../../../scripts/assistant/propose-lib.mjs";
 
 /**
@@ -53,5 +54,23 @@ describe("resolveProposalCategory", () => {
 
   it("볼트에 없는 분류는 거부한다", () => {
     expect(() => resolveProposalCategory(null, "아무거나")).toThrow(/분류/);
+  });
+});
+
+/**
+ * 판정 주체를 문서에 남긴다.
+ *
+ * "운영자가 직접 10건을 쓴다"는 0단계 조건은 안 일어난다 — 앞으로도 에이전트가
+ * 쓴다(2026-08-18 사용자 지적). 그러면 **8칸이 실제 지식을 담는지** 확인할 길이
+ * 사라진다. 그래서 사람이 고른 것과 시스템이 정한 것을 구분해 남긴다.
+ * 이게 쌓여야 "사람이 판정한 게 몇 건인가"를 셀 수 있다.
+ */
+describe("classifiedBy", () => {
+  it("출처 매핑으로 정하면 시스템이다", () => {
+    expect(classifiedBy("handover")).toBe("시스템");
+  });
+
+  it("출처가 없으면 사람이다 — 운영자에게 물어서 받은 값이다", () => {
+    expect(classifiedBy(null)).toBe("사람");
   });
 });
