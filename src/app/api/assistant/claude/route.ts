@@ -16,6 +16,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 const askSchema = z.object({
   question: z.string().trim().min(1).max(4000),
   pageContext: z.string().max(200).nullish(),
+  /**
+   * 같은 창에서 앞서 주고받은 것. 없으면 매 요청이 백지에서 시작해
+   * "엔티티로 해주세요" 같은 이어 말하기가 통하지 않는다.
+   * 프롬프트에 몇 턴을 실을지는 서버가 자른다(claude-prompt.ts).
+   */
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(20_000),
+      }),
+    )
+    .max(50)
+    .optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -42,6 +56,7 @@ export async function POST(request: NextRequest) {
       operator_email: me.email,
       question: parsed.data.question,
       page_context: parsed.data.pageContext ?? null,
+      history: parsed.data.history ?? [],
     })
     .select("id")
     .single();

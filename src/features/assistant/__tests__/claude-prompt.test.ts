@@ -4,6 +4,7 @@ import {
   kstToday,
   collectSourcePaths,
   type SdkToolUse,
+  type ChatTurn,
 } from "../claude-prompt";
 
 describe("kstToday", () => {
@@ -112,7 +113,10 @@ describe("collectSourcePaths", () => {
 
   it("Read한 파일을 볼트 기준 상대경로로 돌려준다", () => {
     const uses: SdkToolUse[] = [
-      { name: "Read", input: { file_path: `${VAULT}/개념/공문 시행번호 채번 규칙.md` } },
+      {
+        name: "Read",
+        input: { file_path: `${VAULT}/개념/공문 시행번호 채번 규칙.md` },
+      },
     ];
     expect(collectSourcePaths(uses, VAULT)).toEqual([
       "개념/공문 시행번호 채번 규칙.md",
@@ -154,5 +158,61 @@ describe("collectSourcePaths", () => {
 
   it("읽은 게 없으면 빈 배열", () => {
     expect(collectSourcePaths([], VAULT)).toEqual([]);
+  });
+});
+
+/**
+ * 대화 이어짐 — 매 요청이 백지에서 시작하면 "엔티티로 해주세요" 같은 이어 말하기가
+ * 통하지 않는다. 화면에는 주고받은 게 쌓여 보이는데 실제로는 독립 요청이라
+ * 사용자가 그 어긋남을 알아채기 어렵다(2026-08-18 사용자 지적).
+ *
+ * 빠른 답변(Gemini) 경로는 이미 history를 보내고 있었고, Claude 경로에만 빠져 있었다.
+ */
+describe("buildVaultPrompt — 이전 대화", () => {
+  const base = { pageContext: null, today: "2026-08-18 (화)" };
+
+  it("history가 없으면 그 섹션을 아예 넣지 않는다", () => {
+    const p = buildVaultPrompt({ ...base, question: "안녕" });
+    expect(p).not.toContain("이전 대화");
+  });
+
+  it("이전 문답을 순서대로 싣는다", () => {
+    const p = buildVaultPrompt({
+      ...base,
+      question: "엔티티로 해주세요",
+      history: [
+        { role: "user", content: "부산대 수시 인수인계 넣고 싶은데" },
+        { role: "assistant", content: "분류를 알려주세요" },
+      ],
+    });
+    expect(p).toContain("이전 대화");
+    const iUser = p.indexOf("부산대 수시 인수인계 넣고 싶은데");
+    const iAsst = p.indexOf("분류를 알려주세요");
+    expect(iUser).toBeGreaterThan(-1);
+    expect(iAsst).toBeGreaterThan(iUser);
+    // 이번 질문이 이전 대화보다 뒤에 와야 "지금 묻는 것"이 분명해진다.
+    expect(p.indexOf("엔티티로 해주세요")).toBeGreaterThan(iAsst);
+  });
+
+  it("최근 몇 턴만 싣는다 — 길어지면 답이 느려지고 비싸진다", () => {
+    const many: ChatTurn[] = Array.from({ length: 20 }, (_, i) => ({
+      role: i % 2 === 0 ? "user" : "assistant",
+      content: `발화${i}`,
+    }));
+    const p = buildVaultPrompt({ ...base, question: "지금", history: many });
+    expect(p).not.toContain("발화0");
+    expect(p).toContain("발화19");
+  });
+
+  it("긴 이전 답변은 잘라서 싣는다", () => {
+    // 답변에는 표가 들어가 1,000자를 쉽게 넘는다. 그대로 쌓으면 프롬프트가 터진다.
+    const long = "가".repeat(3000);
+    const p = buildVaultPrompt({
+      ...base,
+      question: "지금",
+      history: [{ role: "assistant", content: long }],
+    });
+    expect(p).not.toContain("가".repeat(3000));
+    expect(p).toContain("…");
   });
 });

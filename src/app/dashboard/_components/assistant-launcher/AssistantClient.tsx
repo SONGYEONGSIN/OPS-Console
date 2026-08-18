@@ -205,12 +205,15 @@ export function AssistantClient({ userName = "운영자" }: Props) {
    * Claude 모드 — 질문을 회사 PC 큐에 넣고 답이 적힐 때까지 폴링한다.
    * 답이 안 오는 이유가 두 가지(아직 도는 중 / PC가 꺼짐)라 구분해서 알린다.
    */
-  const sendToClaude = async (question: string) => {
+  const sendToClaude = async (question: string, history: ChatMessage[]) => {
     const enq = await fetch("/api/assistant/claude", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         question,
+        // 이게 없으면 매 요청이 백지에서 시작해 "엔티티로 해주세요" 같은
+        // 이어 말하기가 통하지 않는다. 몇 턴을 실을지는 서버가 자른다.
+        history: history.map((h) => ({ role: h.role, content: h.content })),
         ...(attachPage && pageContext
           ? { pageContext: `${pageContext.label} (${pageContext.path})` }
           : {}),
@@ -278,7 +281,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
     setPending(true);
     try {
       if (deep) {
-        await sendToClaude(question);
+        await sendToClaude(question, history);
         return;
       }
       const res = await fetch("/api/assistant/ask", {
