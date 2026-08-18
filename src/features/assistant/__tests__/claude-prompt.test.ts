@@ -99,6 +99,16 @@ describe("buildVaultPrompt", () => {
     expect(p).toMatch(/report_gap.*(하지|말)|새로 만들지/);
   });
 
+  it("마지막 메시지에 완결된 답을 쓰라고 지시한다 — '위 갭은 기록했습니다'만 남는 일이 있었다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+    });
+    expect(p).toMatch(/마지막|최종/);
+    expect(p).toMatch(/위[^\n]*(가리키|참조)|앞서 말한/);
+  });
+
   it("못 답한 건 report_gap으로 남기라고 지시한다 — 본문 문장으로만 있으면 기계가 못 읽는다", () => {
     const p = buildVaultPrompt({
       question: "x",

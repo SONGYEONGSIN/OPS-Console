@@ -392,7 +392,15 @@ let current = { id: null, question: "", operator_email: null };
 /** 볼트를 cwd로 Claude를 돌린다. 답과 쓴 도구를 그대로 돌려준다(해석은 서버가). */
 async function answerWithVault(prompt) {
   const uses = [];
-  let answer = "";
+  /**
+   * 텍스트 블록을 순서대로 모은다.
+   *
+   * m.result 는 **마지막 텍스트 블록만** 담는다 — 도구를 부르기 전에 쓴 답은
+   * 버려진다. 실제로 그래서 "위 갭은 기록해 두었습니다." 같은 15자짜리 답이
+   * 운영자에게 나갔다(2026-08-19, 5건). 앞에 있던 진짜 답이 통째로 사라진 것이다.
+   */
+  const texts = [];
+  let result = "";
   // 3분 상한은 abortController로 건다. run.interrupt()는 **도구가 응답을 안 준
   // 상태에서 부르면** SDK가 `[ede_diagnostic] ... stop_reason=tool_use` 라는
   // 진단 문자열을 던진다 — 운영자에게 그대로 보이면 아무 뜻이 없다.
@@ -430,9 +438,11 @@ async function answerWithVault(prompt) {
       if (m.type === "assistant") {
         for (const b of m.message.content ?? []) {
           if (b.type === "tool_use") uses.push({ name: b.name, input: b.input });
+          // 도구를 부르기 전에 나온 텍스트도 답의 일부다.
+          if (b.type === "text" && b.text.trim()) texts.push(b.text.trim());
         }
       }
-      if (m.type === "result") answer = m.result ?? "";
+      if (m.type === "result") result = m.result ?? "";
     }
   } catch (e) {
     // 사유를 사람 말로 바꿔 보고한다 — 화면에 그대로 뜨는 문장이다.
@@ -442,6 +452,9 @@ async function answerWithVault(prompt) {
     clearTimeout(timer);
   }
 
+  // 모은 것이 있으면 그걸 쓴다. result 는 보통 마지막 블록이라 texts 에 이미 들어
+  // 있어 중복되지 않는다. 아무 블록도 없었으면(도구만 쓰고 끝난 경우) result 로 받는다.
+  const answer = texts.length > 0 ? texts.join("\n\n") : result;
   return { answer, toolUses: uses };
 }
 
