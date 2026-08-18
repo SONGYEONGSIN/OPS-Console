@@ -15,7 +15,8 @@
 // 실행: node scripts/assistant/serve-local.mjs
 
 import { config } from "dotenv";
-import { existsSync } from "node:fs";
+import { existsSync, appendFileSync } from "node:fs";
+import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
@@ -24,6 +25,34 @@ import { z } from "zod";
 import { resolveProposalPath } from "./propose-lib.mjs";
 
 config({ path: ".env.local" });
+
+/**
+ * 로그를 파일에도 남긴다.
+ *
+ * 작업 스케줄러는 stdout을 버린다 — 그래서 폴러가 멈추거나 실패해도 **원인을 볼
+ * 방법이 없었고**, 2026-08-18에 그것 때문에 진단이 두 번 막혔다.
+ * cmd로 감싸 리다이렉트하는 방법은 따옴표 규칙이 까다로워 등록이 조용히 실패했다.
+ * 프로세스가 스스로 쓰면 실행 방식과 무관하게 남는다.
+ */
+const LOG_PATH =
+  process.env.ASSISTANT_LOG_PATH ??
+  join(process.cwd(), "assistant-poller.log");
+let logBroken = false;
+for (const level of ["log", "error"]) {
+  const orig = console[level].bind(console);
+  console[level] = (...args) => {
+    orig(...args);
+    if (logBroken) return;
+    try {
+      appendFileSync(LOG_PATH, `${args.join(" ")}\n`, "utf8");
+    } catch (e) {
+      // 로그를 못 써도 폴러는 계속 돈다 — 채팅이 통째로 멈추는 것보다 낫다.
+      // 다만 조용히 넘기지 않고 한 번은 알린다.
+      logBroken = true;
+      orig(`[assistant] 로그 파일 쓰기 실패 (${LOG_PATH}): ${e.message}`);
+    }
+  };
+}
 
 const BASE = (process.env.OPS_CONSOLE_BASE_URL ?? "").replace(/\/$/, "");
 const SECRET = process.env.CRON_SECRET;

@@ -120,5 +120,5 @@ public/newsletter/*
 # reprompt 실행 산출물 (설계 결과물은 docs/superpowers/specs/로 옮겨 커밋)
 .reprompt/
 
-# 어시스턴트 폴러 로그
+# 어시스턴트 폴러 로그 (폴러가 직접 append)
 assistant-poller.log

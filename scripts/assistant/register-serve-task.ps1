@@ -1,4 +1,4 @@
-# 어시스턴트 Claude 모드 폴러를 회사 PC에 등록 (관리자 PowerShell에서 1회 실행)
+﻿# 어시스턴트 Claude 모드 폴러를 회사 PC에 등록 (관리자 PowerShell에서 1회 실행)
 #
 # 다른 폴러(dev-control·moa-ratio)와 달리 **상주**다 — 채팅이라 5분 간격으로는 못 쓴다.
 # 그래서 "5분마다 실행"이 아니라 "로그온 시 시작 + 죽으면 재시작"으로 등록한다.
@@ -18,6 +18,9 @@ $taskName = "OPS-Console 어시스턴트 폴러"
 if (-not (Test-Path $node)) { throw "node.exe 없음: $node" }
 if (-not (Test-Path $script)) { throw "스크립트 없음: $script" }
 
+# 로그는 폴러가 스스로 파일에 쓴다(serve-local.mjs 상단) — 작업 스케줄러가 stdout을
+# 버리기 때문이다. cmd로 감싸 리다이렉트하는 방법도 시도했으나 따옴표 규칙이 까다로워
+# 등록은 되고 실행만 조용히 실패했다(2026-08-18). 프로세스가 직접 쓰는 쪽이 안전하다.
 $action = New-ScheduledTaskAction -Execute $node -Argument "`"$script`"" -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 # 상주 프로세스이므로 실행 시간 제한을 두지 않는다(기본 3일 제한에 걸리면 채팅이 죽는다).
