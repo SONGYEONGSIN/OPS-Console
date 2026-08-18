@@ -47,21 +47,54 @@ export type KnowledgeGapGroup = {
   proposalPath: string | null;
 };
 
+/** 같은 뜻인데 다르게 부른 꼬리말. 뒤에서만 뗀다 — '절차서 작성'까지 깎으면 안 된다. */
+const TOPIC_SUFFIX = /(절차|방법|안내|규칙|방식|하는\s*법)$/;
+
+/**
+ * 주제를 묶기 위한 열쇠.
+ *
+ * 문자열 완전일치로 묶었더니 실제로 흩어졌다(2026-08-19):
+ *   `휴가 신청 절차` / `휴가 등록 절차` / `휴가 등록`
+ *   `대학 담당자 전화·이메일` / `대학 담당자 연락처(전화·이메일)`
+ * 3회짜리가 1회 세 개로 보이면 '많이 물어본 순'이라는 요점이 무너진다.
+ *
+ * 뜻까지 맞춰주지는 않는다(그건 사람이나 모델의 일이다). **표기 차이만** 없앤다 —
+ * 괄호 보충, 구분자, 흔한 꼬리말. 과하게 깎으면 다른 주제가 합쳐지는데, 그건
+ * 흩어지는 것보다 나쁘다(우선순위를 거짓으로 부풀린다).
+ */
+export function normalizeTopic(topic: string): string {
+  let t = topic
+    .replace(/[（(][^）)]*[）)]/g, "") // 괄호 보충은 같은 주제의 부연이다
+    .replace(/[·・,、/]/g, " ") // 나열 구분자
+    .replace(/\s+/g, "")
+    .trim();
+  // 꼬리말은 한 번만 뗀다 — '등록 절차 방법' 같은 중첩은 실제로 안 나온다.
+  t = t.replace(TOPIC_SUFFIX, "");
+  return t;
+}
+
 /**
  * 주제별로 묶고 많이 물어본 순으로 정렬한다.
  *
  * 반복이 곧 우선순위다 — 한 번 물어본 것보다 세 번 물어본 것을 먼저 쓴다.
  */
 export function groupGaps(rows: KnowledgeGapRow[]): KnowledgeGapGroup[] {
+  // 열쇠는 정규화한 주제, 보여주는 이름은 사람이 쓴 표기 그대로.
   const byTopic = new Map<string, KnowledgeGapRow[]>();
   for (const r of rows) {
-    const list = byTopic.get(r.topic);
+    const key = normalizeTopic(r.topic);
+    const list = byTopic.get(key);
     if (list) list.push(r);
-    else byTopic.set(r.topic, [r]);
+    else byTopic.set(key, [r]);
   }
 
   const groups: KnowledgeGapGroup[] = [];
-  for (const [topic, list] of byTopic) {
+  for (const list of byTopic.values()) {
+    // 가장 많이 쓰인 표기를 대표로 — 모델이 지은 이름 중 사람 눈에 익은 쪽이다.
+    const nameCount = new Map<string, number>();
+    for (const r of list) nameCount.set(r.topic, (nameCount.get(r.topic) ?? 0) + 1);
+    const topic = [...nameCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
+
     // 구분이 섞이면 더 많이 나온 쪽을 따른다 — 모델이 매번 같게 고르지는 않는다.
     const kindCount = new Map<GapKind, number>();
     for (const r of list) kindCount.set(r.kind, (kindCount.get(r.kind) ?? 0) + 1);

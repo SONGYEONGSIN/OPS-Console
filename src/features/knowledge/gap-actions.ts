@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { GAP_DRAFT_MARKER } from "./gaps-types";
 
 /**
  * 지식망 빈틈 닫기.
@@ -83,7 +84,7 @@ export async function requestGapDraft(
     .join("\n");
 
   const question = [
-    `「${t}」를 업무 지식망에 넣을 문서 초안으로 만들어 주세요.`,
+    `「${t}」${GAP_DRAFT_MARKER}.`,
     "",
     "운영자들이 실제로 물었던 질문:",
     asked,

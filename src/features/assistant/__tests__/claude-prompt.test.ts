@@ -67,6 +67,38 @@ describe("buildVaultPrompt", () => {
     expect(without).not.toContain("지금 보고 있는 화면");
   });
 
+  it("이미 열린 빈틈 주제를 알려주고 재사용하라고 한다 — 낱말만 달라도 갈라진다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+      openTopics: ["대학 담당자 연락처", "휴가 등록"],
+    });
+    expect(p).toContain("대학 담당자 연락처");
+    expect(p).toContain("휴가 등록");
+    expect(p).toMatch(/같은 것이면|그대로 (쓰|사용)/);
+  });
+
+  it("열린 빈틈이 없으면 그 섹션을 통째로 뺀다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+      openTopics: [],
+    });
+    expect(p).not.toContain("이미 쌓인 빈틈 주제");
+  });
+
+  it("초안 요청을 거절할 땐 빈틈을 새로 만들지 말라고 한다 — 누를수록 목록이 늘었다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-16 (일)",
+      fromGapDraft: true,
+    });
+    expect(p).toMatch(/report_gap.*(하지|말)|새로 만들지/);
+  });
+
   it("못 답한 건 report_gap으로 남기라고 지시한다 — 본문 문장으로만 있으면 기계가 못 읽는다", () => {
     const p = buildVaultPrompt({
       question: "x",

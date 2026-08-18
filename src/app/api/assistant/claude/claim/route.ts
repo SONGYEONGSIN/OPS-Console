@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { GAP_DRAFT_MARKER } from "@/features/knowledge/gaps-types";
 import {
   buildVaultPrompt,
   type ChatTurn,
@@ -99,6 +100,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, request: null });
   }
 
+  // 열린 빈틈 주제를 프롬프트에 실어 같은 주제가 갈라지는 것을 막는다.
+  // 표기 정규화(gaps-shared)로는 '연락처' vs '전화·이메일'처럼 낱말이 다른
+  // 중복을 못 잡는데, 모델에게 기존 이름을 보여주면 그대로 쓴다.
+  const { data: gapRows } = await admin
+    .from("knowledge_gaps")
+    .select("topic")
+    .eq("status", "open")
+    .limit(200);
+  const openTopics = [
+    ...new Set(((gapRows ?? []) as { topic: string }[]).map((g) => g.topic)),
+  ];
+
   const row = claimed as {
     id: string;
     question: string;
@@ -111,6 +124,10 @@ export async function GET(request: NextRequest) {
     request: {
       ...row,
       prompt: buildVaultPrompt({
+        openTopics,
+        // 빈틈 화면의 '초안 요청'이 만든 문구인지 본다. 그 경로에서 거절하면
+        // 모델이 또 report_gap 을 불러 누를수록 목록이 늘었다.
+        fromGapDraft: row.question.includes(GAP_DRAFT_MARKER),
         question: row.question,
         pageContext: row.page_context,
         // 폴러 PC의 시계를 믿지 않는다 — 어긋나면 "다음주"가 통째로 밀린다.
