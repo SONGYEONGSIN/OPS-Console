@@ -16,8 +16,12 @@
 
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
+// 경로 검증은 순수 함수로 빼 두고 테스트가 그 파일을 그대로 검사한다
+// (src/features/assistant/__tests__/propose.test.ts).
+import { resolveProposalPath } from "./propose-lib.mjs";
 
 config({ path: ".env.local" });
 
@@ -37,6 +41,10 @@ const ALLOWED = [
   "Grep",
   "mcp__ops__schedule_range",
   "mcp__ops__report_gap",
+  "mcp__ops__search_ops",
+  // 볼트 쓰기는 이 도구로만 연다. Write·Edit는 아래 DISALLOWED에 그대로 둔다 —
+  // 범용 쓰기를 열면 문서 한 줄이 이 PC의 파일 시스템을 여는 경로가 된다.
+  "mcp__ops__propose_doc",
 ];
 const DISALLOWED = [
   "Bash",
@@ -185,6 +193,86 @@ const opsTools = createSdkMcpServer({
           };
         }
         return { content: [{ type: "text", text: "기록했습니다." }] };
+      },
+    ),
+    tool(
+      "search_ops",
+      "운영 데이터를 검색한다. 인수인계·사고·TIP·백업요청·연락처·서비스·지식망을 한 번에 훑는다. 볼트 문서에 없는 '실제로 무엇이 적혀 있나'는 이 도구로 확인한다.",
+      {
+        q: z.string().describe("검색어. 질문 그대로보다 핵심 낱말이 낫다"),
+      },
+      async ({ q }) => {
+        // 요청자를 서버가 확인한다 — 없는 사람·비활성·viewer는 403이다.
+        if (!current.operator_email) {
+          return {
+            content: [{ type: "text", text: "요청자 정보가 없어 검색할 수 없습니다." }],
+            isError: true,
+          };
+        }
+        const qs = new URLSearchParams({ q, as: current.operator_email });
+        const res = await fetchWithTimeout(
+          `${BASE}/api/assistant/tools/search?${qs}`,
+          { headers },
+        );
+        const body = await res.json();
+        if (!res.ok || !body.ok) {
+          return {
+            content: [
+              { type: "text", text: `검색 실패: ${body.error ?? res.status}` },
+            ],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text", text: JSON.stringify(body.sources) }],
+        };
+      },
+    ),
+    tool(
+      "propose_doc",
+      "지식망에 넣을 문서 초안을 `제안/` 폴더에 만든다. 본 위치에는 못 쓴다 — 사람이 검토해서 옮긴다. 내용을 지어내지 말고, 근거가 있는 것만 쓴다.",
+      {
+        title: z.string().describe("문서 제목. 그대로 파일명이 된다"),
+        category: z
+          .enum([
+            "개념",
+            "플레이북",
+            "규칙",
+            "결정",
+            "오류사례",
+            "엔티티",
+            "프로젝트",
+          ])
+          .describe("볼트 분류. 애매하면 사람에게 물어본다"),
+        body: z.string().describe("마크다운 본문. frontmatter는 붙이지 않는다"),
+      },
+      async ({ title, category, body }) => {
+        try {
+          const path = resolveProposalPath(VAULT, title);
+          const front = [
+            "---",
+            `title: ${title}`,
+            `category: ${category}`,
+            `updated: ${new Date().toISOString().slice(0, 10)}`,
+            `owner: ${current.operator_email ?? ""}`,
+            "related: []",
+            "---",
+            "",
+          ].join("\n");
+          // 이미 있으면 실패한다 — 사람이 검토 중인 초안을 갈아엎지 않는다.
+          await writeFile(path, front + body, { encoding: "utf8", flag: "wx" });
+          return {
+            content: [
+              { type: "text", text: `제안/${title}.md 를 만들었습니다.` },
+            ],
+          };
+        } catch (e) {
+          const msg =
+            e?.code === "EEXIST"
+              ? `제안/${title}.md 가 이미 있습니다. 다른 제목을 쓰거나 사람에게 확인하세요.`
+              : `초안 작성 실패: ${e?.message ?? e}`;
+          return { content: [{ type: "text", text: msg }], isError: true };
+        }
       },
     ),
   ],
