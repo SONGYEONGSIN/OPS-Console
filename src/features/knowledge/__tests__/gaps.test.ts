@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { listOpenGaps } = await import("../gaps");
+const { listOpenGaps, listPendingProposals } = await import("../gaps");
 
 describe("listOpenGaps", () => {
   beforeEach(() => {
@@ -74,5 +74,39 @@ describe("listOpenGaps", () => {
   it("조회 결과가 없으면 빈 배열", async () => {
     state.rows = null;
     expect(await listOpenGaps()).toEqual([]);
+  });
+});
+
+/**
+ * 검토 대기 중인 초안은 빈틈과 별개로 보여준다.
+ *
+ * 어느 빈틈에서 나왔는지는 대화(request_id)로만 알 수 있고, 그 기록이 없는
+ * 초안도 있다. 제목으로 짐작해 이어붙이면 틀린 연결이 생기므로, 짐작하지 않고
+ * "검토 대기 N건"으로 따로 세운다 — 사람이 또 쓰는 것만 막으면 된다.
+ */
+describe("listPendingProposals", () => {
+  beforeEach(() => {
+    state.rows = null;
+    state.filters = [];
+  });
+
+  it("제안 폴더 문서만 가져온다", async () => {
+    state.rows = [];
+    await listPendingProposals();
+    expect(state.filters).toContainEqual(["category", "제안"]);
+  });
+
+  it("경로와 제목을 돌려준다", async () => {
+    state.rows = [
+      { path: "제안/부산대학교 수시 서비스 세팅.md", title: "부산대학교 수시 서비스 세팅" },
+    ];
+    const [d] = await listPendingProposals();
+    expect(d.path).toBe("제안/부산대학교 수시 서비스 세팅.md");
+    expect(d.title).toBe("부산대학교 수시 서비스 세팅");
+  });
+
+  it("없으면 빈 배열", async () => {
+    state.rows = null;
+    expect(await listPendingProposals()).toEqual([]);
   });
 });

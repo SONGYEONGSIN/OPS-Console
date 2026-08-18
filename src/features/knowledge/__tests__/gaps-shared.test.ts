@@ -8,6 +8,7 @@ const row = (over: Partial<KnowledgeGapRow>): KnowledgeGapRow => ({
   note: null,
   nearPaths: [],
   question: "휴가 등록 어떻게해?",
+  proposalPath: null,
   createdAt: "2026-08-18T00:00:00Z",
   ...over,
 });
@@ -69,6 +70,18 @@ describe("groupGaps", () => {
 
   it("빈 입력은 빈 배열", () => {
     expect(groupGaps([])).toEqual([]);
+  });
+
+  it("초안이 있으면 주제에 달아준다 — 이미 검토 대기 중인 걸 모르면 또 쓴다", () => {
+    const g = groupGaps([
+      row({ id: "1" }),
+      row({ id: "2", proposalPath: "제안/부산대학교 수시 서비스 세팅.md" }),
+    ]);
+    expect(g[0].proposalPath).toBe("제안/부산대학교 수시 서비스 세팅.md");
+  });
+
+  it("초안이 없으면 null", () => {
+    expect(groupGaps([row({ id: "1" })])[0].proposalPath).toBeNull();
   });
 });
 
