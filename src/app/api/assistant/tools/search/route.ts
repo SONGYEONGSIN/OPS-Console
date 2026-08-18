@@ -2,8 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchDomainsWith } from "@/features/assistant/search";
-import { visibleDomains } from "@/features/assistant/domain-menu";
-import type { OperatorPermission } from "@/features/operators/schemas";
+import { authorizeToolRequest } from "@/features/assistant/tool-auth";
 
 /**
  * 어시스턴트 도구 — 운영 데이터 검색. `Authorization: Bearer ${CRON_SECRET}`.
@@ -61,29 +60,16 @@ export async function GET(request: NextRequest) {
     .eq("email", parsed.data.as)
     .maybeSingle();
 
-  if (!operator) {
-    return NextResponse.json(
-      { ok: false, error: "등록되지 않은 운영자입니다" },
-      { status: 403 },
-    );
-  }
-  const row = operator as { permission: string | null; status: string | null };
-  if (row.status !== "active") {
-    return NextResponse.json(
-      { ok: false, error: "활성 상태가 아닌 운영자입니다" },
-      { status: 403 },
-    );
-  }
-
-  const allowed = new Set(
-    visibleDomains((row.permission ?? null) as OperatorPermission | null),
+  const auth = authorizeToolRequest(
+    operator as { permission: string | null; status: string | null } | null,
   );
-  if (allowed.size === 0) {
+  if (!auth.ok) {
     return NextResponse.json(
-      { ok: false, error: "이 권한으로는 검색할 수 없습니다" },
-      { status: 403 },
+      { ok: false, error: auth.error },
+      { status: auth.status },
     );
   }
+  const allowed = auth.allowed;
 
   const sources = await searchDomainsWith(admin, { question: parsed.data.q });
   return NextResponse.json({

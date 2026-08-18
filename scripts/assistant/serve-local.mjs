@@ -42,6 +42,7 @@ const ALLOWED = [
   "mcp__ops__schedule_range",
   "mcp__ops__report_gap",
   "mcp__ops__search_ops",
+  "mcp__ops__fetch_ops",
   // 볼트 쓰기는 이 도구로만 연다. Write·Edit는 아래 DISALLOWED에 그대로 둔다 —
   // 범용 쓰기를 열면 문서 한 줄이 이 PC의 파일 시스템을 여는 경로가 된다.
   "mcp__ops__propose_doc",
@@ -226,6 +227,54 @@ const opsTools = createSdkMcpServer({
         return {
           content: [{ type: "text", text: JSON.stringify(body.sources) }],
         };
+      },
+    ),
+    tool(
+      "fetch_ops",
+      "search_ops로 찾은 레코드의 **전문**을 읽는다. 검색은 앞부분 발췌만 주므로, 내용을 문서로 옮기거나 자세히 답해야 하면 이 도구로 전체를 읽는다.",
+      {
+        domain: z
+          .enum([
+            "handover",
+            "incident",
+            "ai-tip",
+            "backup",
+            "contact",
+            "service",
+            "knowledge",
+          ])
+          .describe("search_ops 결과의 domain 값을 그대로"),
+        id: z.string().describe("search_ops 결과의 id 값을 그대로"),
+      },
+      async ({ domain, id }) => {
+        if (!current.operator_email) {
+          return {
+            content: [{ type: "text", text: "요청자 정보가 없어 읽을 수 없습니다." }],
+            isError: true,
+          };
+        }
+        const qs = new URLSearchParams({
+          domain,
+          id,
+          as: current.operator_email,
+        });
+        const res = await fetchWithTimeout(
+          `${BASE}/api/assistant/tools/fetch?${qs}`,
+          { headers },
+        );
+        const body = await res.json();
+        if (!res.ok || !body.ok) {
+          return {
+            content: [
+              { type: "text", text: `전문 조회 실패: ${body.error ?? res.status}` },
+            ],
+            isError: true,
+          };
+        }
+        const text = body.empty
+          ? `${body.title}: 본문이 비어 있습니다(작성되지 않음).`
+          : `# ${body.title}\n\n${body.body}`;
+        return { content: [{ type: "text", text }] };
       },
     ),
     tool(

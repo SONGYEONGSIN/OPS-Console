@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DOMAIN_SELECTS } from "../search";
+import { FETCH_CONFIG } from "../fetch-ops";
 
 /**
  * 검색이 조회하는 컬럼이 실제 스키마에 있는지 마이그레이션과 대조한다.
@@ -122,6 +123,39 @@ describe("검색 도메인 select — 실제 스키마와 대조", () => {
         expect(target, `조인 대상 ${e.table} 정의 없음`).toBeDefined();
         for (const col of e.columns) {
           expect(target, `${e.table}.${col} 없음`).toContain(col);
+        }
+      }
+    });
+  }
+});
+
+describe("전문 조회(fetch) 컬럼 — 실제 스키마와 대조", () => {
+  // search에서 겪은 그 버그(없는 컬럼 → 조용한 0건)가 fetch에서 되풀이되지 않게
+  // 같은 방식으로 막는다. 여기 컬럼이 틀리면 `data: null` → "내용 없음"이 된다.
+  for (const [domain, cfg] of Object.entries(FETCH_CONFIG)) {
+    it(`${domain}의 전문 컬럼이 전부 실재한다`, () => {
+      const known = schema.get(cfg.table);
+      expect(
+        known,
+        `${cfg.table} 정의를 마이그레이션에서 못 찾음`,
+      ).toBeDefined();
+
+      for (const col of [
+        cfg.idColumn,
+        ...cfg.titleFields,
+        ...cfg.bodyFields.map((f) => f.key),
+      ]) {
+        expect(known, `${cfg.table}.${col} 없음`).toContain(col);
+      }
+
+      if (cfg.embed) {
+        const { embeds } = parseSelect(cfg.embed);
+        for (const e of embeds) {
+          const target = schema.get(e.table);
+          expect(target, `조인 대상 ${e.table} 정의 없음`).toBeDefined();
+          for (const col of e.columns) {
+            expect(target, `${e.table}.${col} 없음`).toContain(col);
+          }
         }
       }
     });
