@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const state = {
   inserted: null as Record<string, unknown> | null,
-  updated: null as Record<string, unknown> | null,
-  filters: [] as [string, unknown][],
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -13,21 +11,12 @@ vi.mock("@/lib/supabase/admin", () => ({
         state.inserted = v;
         return Promise.resolve({ error: null });
       },
-      update: (v: Record<string, unknown>) => {
-        state.updated = v;
-        return chain;
-      },
-      eq: (c: string, val: unknown) => {
-        state.filters.push([c, val]);
-        return chain;
-      },
-      then: (r: (v: { error: null }) => unknown) => r({ error: null }),
     };
     return { from: () => chain };
   },
 }));
 
-const { POST, PATCH } = await import("../route");
+const { POST } = await import("../route");
 
 const post = (body: unknown, auth = "Bearer s3cret") =>
   new Request("http://x/api/assistant/tools/gap", {
@@ -47,8 +36,6 @@ const base = {
 describe("빈틈 기록 endpoint", () => {
   beforeEach(() => {
     state.inserted = null;
-    state.updated = null;
-    state.filters = [];
     process.env.CRON_SECRET = "s3cret";
   });
 
@@ -95,78 +82,5 @@ describe("빈틈 기록 endpoint", () => {
     expect(state.inserted?.request_id).toBe(
       "59cb3228-8174-4196-a2ad-1c1a13713148",
     );
-  });
-});
-
-const patch = (body: unknown, auth = "Bearer s3cret") =>
-  new Request("http://x/api/assistant/tools/gap", {
-    method: "PATCH",
-    headers: { authorization: auth },
-    body: JSON.stringify(body),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }) as any;
-
-/**
- * 초안이 생기면 같은 대화의 빈틈이 그걸 가리켜야 한다.
- * 제목으로는 못 잇는다 — '대학별 수시 인수인계' 빈틈과
- * '제안/부산대학교 수시 서비스 세팅.md' 초안은 이름이 안 겹친다.
- */
-describe("빈틈 ↔ 초안 연결", () => {
-  beforeEach(() => {
-    state.inserted = null;
-    state.updated = null;
-    state.filters = [];
-    process.env.CRON_SECRET = "s3cret";
-  });
-
-  it("CRON_SECRET이 틀리면 401", async () => {
-    const res = await PATCH(
-      patch(
-        { requestId: "59cb3228-8174-4196-a2ad-1c1a13713148", proposalPath: "제안/x.md" },
-        "Bearer no",
-      ),
-    );
-    expect(res.status).toBe(401);
-  });
-
-  it("같은 대화의 빈틈에 초안 경로를 적는다", async () => {
-    const res = await PATCH(
-      patch({
-        requestId: "59cb3228-8174-4196-a2ad-1c1a13713148",
-        proposalPath: "제안/부산대학교 수시 서비스 세팅.md",
-      }),
-    );
-    expect(res.status).toBe(200);
-    expect(state.updated?.proposal_path).toBe(
-      "제안/부산대학교 수시 서비스 세팅.md",
-    );
-    expect(state.filters).toContainEqual([
-      "request_id",
-      "59cb3228-8174-4196-a2ad-1c1a13713148",
-    ]);
-  });
-
-  it("이미 닫힌 빈틈은 건드리지 않는다 — 다시 열린 것처럼 보이면 안 된다", async () => {
-    await PATCH(
-      patch({
-        requestId: "59cb3228-8174-4196-a2ad-1c1a13713148",
-        proposalPath: "제안/x.md",
-      }),
-    );
-    expect(state.filters).toContainEqual(["status", "open"]);
-  });
-
-  it("requestId가 없으면 400", async () => {
-    expect((await PATCH(patch({ proposalPath: "제안/x.md" }))).status).toBe(400);
-  });
-
-  it("제안 폴더 밖 경로는 400 — 초안만 가리킨다", async () => {
-    const res = await PATCH(
-      patch({
-        requestId: "59cb3228-8174-4196-a2ad-1c1a13713148",
-        proposalPath: "규칙/x.md",
-      }),
-    );
-    expect(res.status).toBe(400);
   });
 });

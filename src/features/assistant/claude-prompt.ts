@@ -141,3 +141,37 @@ export function collectSourcePaths(
   }
   return out;
 }
+
+/** 볼트의 초안 폴더. 폴러의 `PROPOSAL_DIR`과 같아야 한다. */
+const PROPOSAL_DIR = "제안";
+/** 경로를 만들 수 있는 것 — 뭉개지 않고 버린다. */
+const PATH_LIKE = /[/\\]|\.\./;
+/** Windows에서 파일명에 못 쓰는 문자. 폴러의 규칙과 같아야 파일명이 맞는다. */
+const RESERVED_IN_FILENAME = /[:*?"<>|]/g;
+
+/**
+ * 보고에 실린 tool_use에서 초안 경로를 뽑는다.
+ *
+ * 폴러가 따로 알려줄 필요가 없다 — 이미 모든 tool_use를 보고에 담아 보내므로
+ * `propose_doc` 호출이 그 안에 있다. **서버에서 뽑으면 회사 PC를 안 만지고도
+ * 빈틈-초안 연결이 된다.**
+ *
+ * 파일명 규칙은 `scripts/assistant/propose-lib.mjs`의 `proposalFileName`과
+ * 같아야 한다 — 다르면 실제 파일과 다른 경로를 가리켜 링크가 깨진다.
+ */
+export function proposalPathFromToolUses(uses: SdkToolUse[]): string | null {
+  // 여러 번 불렸으면 마지막 것 — 앞의 것은 이름 충돌 등으로 실패했을 수 있다.
+  const last = [...uses]
+    .reverse()
+    .find((u) => u.name === "propose_doc" || u.name.endsWith("__propose_doc"));
+  if (!last) return null;
+
+  const title = last.input.title;
+  if (typeof title !== "string") return null;
+  // 경로 탈출은 폴러가 이미 던져서 파일이 안 생겼을 것이다. 여기서도 안 만든다.
+  if (PATH_LIKE.test(title)) return null;
+
+  const cleaned = title.replace(RESERVED_IN_FILENAME, "").trim();
+  if (!cleaned) return null;
+  return `${PROPOSAL_DIR}/${cleaned}.md`;
+}
