@@ -32,5 +32,5 @@ Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
     -Settings $settings -Description "어시스턴트 Claude 모드 — 질문 큐를 2초마다 claim해 볼트를 읽고 답한다" -Force
 
 Start-ScheduledTask -TaskName $taskName
-Write-Host "[등록 완료] $taskName — 로그온 시 자동 시작, 죽으면 1분 후 재시작"
+Write-Host "[OK] 등록 완료: $taskName (로그온 시 자동 시작, 죽으면 1분 후 재시작)"
 Write-Host "확인: 웹 어시스턴트에서 [Claude로 깊게] 켜고 질문 → 40초 내 답이 오면 정상"
