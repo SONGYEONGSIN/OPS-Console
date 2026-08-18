@@ -5,6 +5,7 @@ import {
   type ChatTurn,
   collectSourcePaths,
   kstToday,
+  proposalPathFromToolUses,
   type SdkToolUse,
 } from "@/features/assistant/claude-prompt";
 
@@ -163,5 +164,24 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  // 초안이 만들어졌으면 같은 대화의 빈틈이 그걸 가리키게 한다.
+  //
+  // 폴러가 따로 알려주지 않아도 된다 — 보고에 모든 tool_use가 실려 오므로
+  // propose_doc 호출이 그 안에 있다. 여기서 뽑으면 **회사 PC를 안 만지고도**
+  // 연결이 되고, 폴러에 판단을 두지 않는다는 원칙과도 맞는다.
+  const toolUses = Array.isArray(body.toolUses)
+    ? (body.toolUses as SdkToolUse[])
+    : [];
+  const proposalPath = proposalPathFromToolUses(toolUses);
+  if (proposalPath) {
+    await admin
+      .from("knowledge_gaps")
+      .update({ proposal_path: proposalPath })
+      .eq("request_id", id)
+      // 이미 닫은 빈틈은 건드리지 않는다 — 다시 열린 것처럼 보이면 안 된다.
+      .eq("status", "open");
+  }
+
   return NextResponse.json({ ok: true });
 }

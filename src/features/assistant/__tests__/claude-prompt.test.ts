@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildVaultPrompt,
+  proposalPathFromToolUses,
   kstToday,
   collectSourcePaths,
   type SdkToolUse,
@@ -307,5 +308,64 @@ describe("buildVaultPrompt — 분류 판정 유도", () => {
   it("어느 칸도 안 맞으면 gap으로 남기라고 지시한다", () => {
     // 이게 0단계가 원래 재려던 신호다 — 8칸이 안 맞는 지식이 얼마나 나오는가
     expect(p).toMatch(/안 맞|맞는 칸이 없/);
+  });
+});
+
+/**
+ * 초안 경로는 폴러가 따로 알려주지 않아도 된다 — 보고에 실린 tool_use 안에
+ * 이미 들어 있다. 서버에서 뽑으면 회사 PC를 안 만지고도 연결이 된다.
+ */
+describe("proposalPathFromToolUses", () => {
+  it("propose_doc 호출에서 초안 경로를 만든다", () => {
+    expect(
+      proposalPathFromToolUses([
+        { name: "Read", input: { file_path: "/v/개념/a.md" } },
+        { name: "mcp__ops__propose_doc", input: { title: "부산대학교 수시 서비스 세팅" } },
+      ]),
+    ).toBe("제안/부산대학교 수시 서비스 세팅.md");
+  });
+
+  it("접두사 없는 이름도 인식한다 — SDK가 이름을 어떻게 싣든 놓치지 않는다", () => {
+    expect(
+      proposalPathFromToolUses([{ name: "propose_doc", input: { title: "x" } }]),
+    ).toBe("제안/x.md");
+  });
+
+  it("여러 번 불렸으면 마지막 것 — 앞의 것은 실패했을 수 있다", () => {
+    expect(
+      proposalPathFromToolUses([
+        { name: "mcp__ops__propose_doc", input: { title: "첫째" } },
+        { name: "mcp__ops__propose_doc", input: { title: "둘째" } },
+      ]),
+    ).toBe("제안/둘째.md");
+  });
+
+  it("안 불렸으면 null", () => {
+    expect(
+      proposalPathFromToolUses([{ name: "Read", input: { file_path: "/v/a.md" } }]),
+    ).toBeNull();
+  });
+
+  it("제목에 경로가 섞이면 null — 조용히 뭉개서 엉뚱한 곳을 가리키지 않는다", () => {
+    expect(
+      proposalPathFromToolUses([
+        { name: "mcp__ops__propose_doc", input: { title: "../규칙/x" } },
+      ]),
+    ).toBeNull();
+  });
+
+  it("제목이 없거나 빈 호출은 null", () => {
+    expect(proposalPathFromToolUses([{ name: "propose_doc", input: {} }])).toBeNull();
+    expect(
+      proposalPathFromToolUses([{ name: "propose_doc", input: { title: "   " } }]),
+    ).toBeNull();
+  });
+
+  it("윈도우에서 못 쓰는 문자는 지운다 — 폴러가 만든 파일명과 같아야 한다", () => {
+    expect(
+      proposalPathFromToolUses([
+        { name: "propose_doc", input: { title: '조선대 "수시" 연락처' } },
+      ]),
+    ).toBe("제안/조선대 수시 연락처.md");
   });
 });

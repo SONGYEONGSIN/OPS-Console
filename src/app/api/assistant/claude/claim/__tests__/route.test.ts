@@ -151,3 +151,56 @@ describe("assistant claude claim endpoint", () => {
     expect(res.status).toBe(400);
   });
 });
+
+/**
+ * 초안이 만들어지면 같은 대화의 빈틈이 그걸 가리켜야 한다.
+ * 폴러가 따로 알려주지 않아도 된다 — 보고에 실린 tool_use에 이미 들어 있다.
+ */
+describe("보고에서 빈틈-초안 연결", () => {
+  beforeEach(() => {
+    state.pending = [];
+    state.claimed = null;
+    state.updates = [];
+    state.eqFilters = [];
+    state.ltFilters = [];
+    process.env.CRON_SECRET = "s3cret";
+  });
+
+  it("propose_doc이 있으면 그 대화의 빈틈에 초안 경로를 적는다", async () => {
+    await POST(
+      req({
+        method: "POST",
+        auth: "Bearer s3cret",
+        body: {
+          id: "r1",
+          ok: true,
+          answer: "초안을 만들었습니다",
+          vaultRoot: "/C/vault",
+          toolUses: [
+            { name: "mcp__ops__propose_doc", input: { title: "조선대 연락처" } },
+          ],
+        },
+      }),
+    );
+    const linked = state.updates.find((u) => u.proposal_path);
+    expect(linked?.proposal_path).toBe("제안/조선대 연락처.md");
+    expect(state.eqFilters).toContainEqual(["request_id", "r1"]);
+  });
+
+  it("초안이 없으면 빈틈을 건드리지 않는다", async () => {
+    await POST(
+      req({
+        method: "POST",
+        auth: "Bearer s3cret",
+        body: {
+          id: "r1",
+          ok: true,
+          answer: "답변",
+          vaultRoot: "/C/vault",
+          toolUses: [{ name: "Read", input: { file_path: "/C/vault/개념/a.md" } }],
+        },
+      }),
+    );
+    expect(state.updates.some((u) => u.proposal_path)).toBe(false);
+  });
+});
