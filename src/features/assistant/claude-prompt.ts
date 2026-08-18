@@ -61,12 +61,29 @@ export function buildVaultPrompt({
   pageContext,
   today,
   history = [],
+  openTopics = [],
+  fromGapDraft = false,
 }: {
   question: string;
   /** 질문 시점에 보고 있던 화면. 없으면 섹션을 통째로 뺀다. */
   pageContext: string | null;
   /** 오늘 날짜(KST). 없으면 "다음주"·"이번달"을 계산할 수 없다. */
   today: string;
+  /**
+   * 이미 열려 있는 빈틈 주제.
+   *
+   * 표기 정규화로는 `연락처` vs `전화·이메일`처럼 **낱말이 다른** 중복을 못 잡는다.
+   * 모델에게 기존 주제를 보여주고 같은 것이면 그대로 쓰게 하는 편이 정확하다 —
+   * 분류를 시스템이 정하는 것과 같은 원리다.
+   */
+  openTopics?: string[];
+  /**
+   * 빈틈 화면의 '초안 요청' 버튼에서 온 요청인가.
+   *
+   * 이 경로에서 근거가 없어 거절하면 모델이 또 report_gap 을 불러 **누를수록
+   * 목록이 늘었다.** 이미 그 빈틈은 있으므로 새로 만들 이유가 없다.
+   */
+  fromGapDraft?: boolean;
   /**
    * 같은 창에서 앞서 주고받은 것. 없으면 섹션을 통째로 뺀다.
    *
@@ -78,6 +95,19 @@ export function buildVaultPrompt({
 }): string {
   const page = pageContext ? `\n\n## 지금 보고 있는 화면\n${pageContext}` : "";
   const prior = renderHistory(history);
+
+  // 30개면 충분하다 — 그 이상은 프롬프트만 길어지고 모델이 훑지도 않는다.
+  const topics =
+    openTopics.length > 0
+      ? `\n\n## 이미 쌓인 빈틈 주제\n${openTopics
+          .slice(0, 30)
+          .map((t) => `- ${t}`)
+          .join("\n")}\n\nreport_gap 을 부를 때 **같은 것이면 위 주제명을 그대로 쓰세요.** 조금 다르게 지으면 같은 빈틈이 둘로 갈라져 "몇 번 물어봤나"가 어긋납니다.`
+      : "";
+
+  const gapDraftRule = fromGapDraft
+    ? "\n\n## 이 요청에 대해\n빈틈 화면의 '초안 요청'에서 온 요청입니다. **근거가 없어 초안을 못 만들더라도 report_gap 을 새로 만들지 마세요** — 그 빈틈은 이미 기록돼 있습니다. 무엇이 없어 못 썼는지 답으로만 알려주세요."
+    : "";
 
   return `당신은 진학어플라이 운영부의 업무 어시스턴트입니다. 지금 cwd는 운영부 **업무 지식망 볼트**(마크다운 문서 모음)입니다.
 
@@ -111,7 +141,7 @@ export function buildVaultPrompt({
    - \`missing\` — 그 주제의 문서가 볼트에 아예 없음
    - \`shallow\` — 문서는 있는데 물어본 층위가 없음. **근처까지 간 문서 경로를 \`nearPaths\`에 넣으세요.** 새 문서가 아니라 그 문서를 보강할 일입니다
    - \`tool\` — 문서로 답할 게 아니라 시스템 데이터가 필요함(도구가 없거나 부족)
-   \`topic\`은 **짧고 일반적으로** 쓰세요(예: "휴가 등록 절차"). 질문을 그대로 넣으면 같은 주제가 안 묶입니다. 충분히 답했으면 부르지 마세요.${page}${prior}
+   \`topic\`은 **짧고 일반적으로** 쓰세요(예: "휴가 등록 절차"). 질문을 그대로 넣으면 같은 주제가 안 묶입니다. 충분히 답했으면 부르지 마세요.${page}${topics}${gapDraftRule}${prior}
 
 ## 질문
 ${question}`;

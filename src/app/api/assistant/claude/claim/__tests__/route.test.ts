@@ -5,12 +5,13 @@ const state = {
   claimed: null as Record<string, unknown> | null,
   updates: [] as Record<string, unknown>[],
   eqFilters: [] as [string, unknown][],
+  gapTopics: [] as { topic: string }[],
   ltFilters: [] as [string, unknown][],
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
-    from: () => {
+    from: (table: string) => {
       const chain = {
         select: () => chain,
         eq: (col: string, val: unknown) => {
@@ -22,7 +23,11 @@ vi.mock("@/lib/supabase/admin", () => ({
           return chain;
         },
         order: () => chain,
-        limit: () => Promise.resolve({ data: state.pending }),
+        limit: () =>
+          Promise.resolve({
+            // 테이블마다 다른 걸 돌려준다 — 열린 빈틈 주제 조회가 섞이면 안 된다.
+            data: table === "knowledge_gaps" ? state.gapTopics : state.pending,
+          }),
         update: (patch: Record<string, unknown>) => {
           state.updates.push(patch);
           return chain;
@@ -202,5 +207,53 @@ describe("보고에서 빈틈-초안 연결", () => {
       }),
     );
     expect(state.updates.some((u) => u.proposal_path)).toBe(false);
+  });
+});
+
+/**
+ * 빈틈이 갈라지고 늘어나던 두 경로를 서버가 막는다.
+ */
+describe("빈틈 주제 재사용·소음 억제", () => {
+  beforeEach(() => {
+    state.pending = [];
+    state.claimed = null;
+    state.updates = [];
+    state.eqFilters = [];
+    state.ltFilters = [];
+    state.gapTopics = [];
+    process.env.CRON_SECRET = "s3cret";
+  });
+
+  it("이미 열린 빈틈 주제를 프롬프트에 실어 보낸다", async () => {
+    state.pending = [{ id: "r1" }];
+    state.claimed = { id: "r1", question: "조선대 연락처", page_context: null };
+    state.gapTopics = [{ topic: "대학 담당자 연락처" }];
+    const body = await (
+      await GET(req({ method: "GET", auth: "Bearer s3cret" }))
+    ).json();
+    expect(body.request.prompt).toContain("대학 담당자 연락처");
+  });
+
+  it("초안 요청에서 온 질문이면 빈틈을 새로 만들지 말라고 붙인다", async () => {
+    state.pending = [{ id: "r1" }];
+    state.claimed = {
+      id: "r1",
+      // requestGapDraft가 만드는 문구 — 이 경로를 서버가 알아본다.
+      question: "「휴가 등록」를 업무 지식망에 넣을 문서 초안으로 만들어 주세요.\n\n운영자들이 실제로 물었던 질문:\n- 휴가 어떻게",
+      page_context: null,
+    };
+    const body = await (
+      await GET(req({ method: "GET", auth: "Bearer s3cret" }))
+    ).json();
+    expect(body.request.prompt).toContain("초안 요청");
+  });
+
+  it("보통 질문에는 그 규칙을 안 붙인다", async () => {
+    state.pending = [{ id: "r1" }];
+    state.claimed = { id: "r1", question: "조선대 연락처 알려줘", page_context: null };
+    const body = await (
+      await GET(req({ method: "GET", auth: "Bearer s3cret" }))
+    ).json();
+    expect(body.request.prompt).not.toContain("초안 요청");
   });
 });
