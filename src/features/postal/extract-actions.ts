@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { appendSpend } from "@/features/petty-cash/actions";
 
 /**
  * 판독 요청과 확정.
@@ -75,6 +76,8 @@ export async function requestExtraction(
 export async function confirmReceipt(
   receiptId: string,
   rows: ConfirmRow[],
+  /** 영수증에서 읽은 접수일자(YYYY-MM-DD). 있으면 전도금 장부에도 한 줄 붙는다. */
+  meta: { acceptedAt?: string | null } = {},
 ): Promise<ActionResult> {
   const who = await requireWriter();
   if (!who.ok) return who;
@@ -111,6 +114,24 @@ export async function confirmReceipt(
     .from("postal_receipts")
     .update({ confirmed_at: new Date().toISOString() })
     .eq("id", receiptId);
+
+  // 전도금 장부에도 한 줄 — 손으로 옮겨 적던 일이다.
+  //
+  // 실패해도 확정은 살린다. postal_items 는 이미 저장됐고, 여기서 실패라고 하면
+  // 사람이 다시 확정을 눌러 중복 저장으로 이어진다. 장부는 화면에서 다시 맞출 수 있다.
+  const date = meta.acceptedAt?.slice(0, 10);
+  const amount = rows.reduce((a, r) => a + (r.fee ?? 0), 0);
+  if (date && amount > 0) {
+    const spent = await appendSpend({
+      date,
+      title: "우편물",
+      count: rows.length,
+      amount,
+    });
+    if (!spent.ok) {
+      console.error("[postal] 전도금 반영 실패:", spent.error);
+    }
+  }
 
   revalidatePath("/dashboard/postal");
   return { ok: true };
