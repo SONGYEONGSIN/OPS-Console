@@ -13,65 +13,26 @@ import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
-import { pendingNoteFor, STAGE_QUEUED } from "@/features/assistant/stage-label";
+import {
+  pendingNoteFor,
+  STAGE_QUEUED,
+  STAGE_STILL_QUEUED,
+} from "@/features/assistant/stage-label";
 import { PendingLine } from "./PendingLine";
-
-/**
- * 서버 `features/assistant/search.ts`의 Source와 같은 모양을 여기 다시 적는다 —
- * 그쪽은 server-only라 client가 import할 수 없다. **도메인을 추가할 때 양쪽을
- * 같이 고쳐야 한다**(안 고치면 라벨이 없어 배지가 빈칸으로 나온다).
- */
-type Source = {
-  domain:
-    | "knowledge"
-    | "incident"
-    | "handover"
-    | "ai-tip"
-    | "backup"
-    | "contact"
-    | "service";
-  id: string;
-  title: string;
-  snippet: string;
-  deepLink: string;
-};
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   /** 도는 동안 지금 무엇을 하고 있는지 (Claude 모드는 30초쯤 걸린다) */
   pendingNote?: string;
-  /** assistant 메시지에만 부착 */
-  sources?: Source[];
-  /** Claude 모드 근거 — 볼트 문서 경로. Source[]와 달리 파일이라 경로가 곧 식별자다. */
+  /** 근거 — 모델이 실제로 Read한 볼트 문서 경로. 원본이 파일이라 경로가 곧 식별자다. */
   vaultSources?: string[];
-  warning?: string;
   /** 진행 중 표시용 */
   pending?: boolean;
   /** 기다리기 시작한 시각(ms) — 경과 시간 표시에 쓴다 */
   pendingSince?: number;
   /** 메시지 발생 시각 (KST 표시) */
   ts?: string;
-};
-
-const DOMAIN_LABEL: Record<Source["domain"], string> = {
-  knowledge: "지식망",
-  incident: "사고",
-  handover: "인수인계",
-  "ai-tip": "TIP",
-  backup: "백업",
-  contact: "연락처",
-  service: "서비스",
-};
-
-const DOMAIN_TONE: Record<Source["domain"], string> = {
-  knowledge: "bg-vermilion/10 text-vermilion",
-  incident: "bg-vermilion/15 text-vermilion",
-  handover: "bg-sage/15 text-sage",
-  "ai-tip": "bg-situation-bg text-ink",
-  backup: "bg-situation-bg text-ink-soft",
-  contact: "bg-line-soft text-ink",
-  service: "bg-line-soft text-ink-soft",
 };
 
 /**
@@ -97,7 +58,7 @@ function formatTimeKst(iso: string): string {
 }
 
 /**
- * 단순 마크다운 → React nodes (Gemini가 자주 쓰는 형식만 가벼이 처리).
+ * 단순 마크다운 → React nodes (모델이 자주 쓰는 형식만 가벼이 처리).
  * 의존성 추가 없이 ** ** bold + `code` inline + - bullet 만.
  */
 
@@ -166,9 +127,6 @@ export function AssistantClient({ userName = "운영자" }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
-  // 기본이 Claude다 — 지식망 문서를 직접 읽은 답이 어시스턴트의 본체이고,
-  // 끄면 Gemini 즉답으로 간다(회사 PC가 꺼진 날 쓸 경로라 남겨둔다).
-  const [deep, setDeep] = useState(true);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // 새 메시지 추가 시 하단 자동 스크롤 (jsdom 환경에서 scrollIntoView 미구현 → guard)
@@ -265,9 +223,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       // 안 가져갔다는 건 사실이지만 **꺼진 건지 늦는 건지는 화면이 알 수 없다.**
       // 그러니 사실만 말하고 기다리는 건 계속한다. 끝내는 건 3분 제한 하나뿐이다.
       if (json.status === "pending" && elapsed > UNCLAIMED_MS) {
-        setPendingNote(
-          "회사 PC가 아직 가져가지 않았습니다 — 급하면 빠른 답변 모드로 물어보세요",
-        );
+        setPendingNote(STAGE_STILL_QUEUED);
       }
       if (elapsed > POLL_TIMEOUT_MS) {
         replaceLast({ content: "❌ 시간이 초과됐습니다 (3분)." });
@@ -298,55 +254,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
     setInput("");
     setPending(true);
     try {
-      if (deep) {
-        await sendToClaude(question, history);
-        return;
-      }
-      const res = await fetch("/api/assistant/ask", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          question,
-          history: history.map((h) => ({ role: h.role, content: h.content })),
-          ...(attachPage && pageContext ? { pageContext } : {}),
-        }),
-      });
-      const json = (await res.json()) as
-        | { ok: true; answer: string; sources: Source[]; warning?: string }
-        | { ok: false; error: string };
-      setMessages((prev) => {
-        const copy = [...prev];
-        const last = copy[copy.length - 1];
-        if (last && last.role === "assistant") {
-          const ts = last.ts ?? new Date().toISOString();
-          if (json.ok) {
-            copy[copy.length - 1] = {
-              role: "assistant",
-              content: json.answer,
-              sources: json.sources,
-              warning: json.warning,
-              ts,
-            };
-          } else {
-            copy[copy.length - 1] = {
-              role: "assistant",
-              content: `❌ ${json.error}`,
-              ts,
-            };
-          }
-        }
-        return copy;
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "network_error";
-      setMessages((prev) => {
-        const copy = [...prev];
-        copy[copy.length - 1] = {
-          role: "assistant",
-          content: `❌ ${msg}`,
-        };
-        return copy;
-      });
+      await sendToClaude(question, history);
     } finally {
       setPending(false);
     }
@@ -396,11 +304,6 @@ export function AssistantClient({ userName = "운영자" }: Props) {
           밑줄(vermilion) 텍스트. 좁은 패널에서 상자 두 개는 입력창보다 시끄럽다.
         */}
         <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
-          <ModeChip
-            active={deep}
-            onClick={() => setDeep((v) => !v)}
-            label={deep ? "Claude · 지식망 읽기" : "빠른 답변"}
-          />
           {/* 첨부할 화면 정보가 없으면 칩도 그리지 않는다 — 켜도 아무 일이 안 일어난다. */}
           {pageContext && (
             <ModeChip
@@ -412,7 +315,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
             />
           )}
           <span className="ml-auto pr-1 text-2xs text-muted">
-            {deep ? "문서를 직접 읽습니다 · 30초쯤" : "즉답 · 검색 요약"}
+            문서를 직접 읽습니다 · 30초쯤
           </span>
         </div>
 
@@ -556,9 +459,6 @@ function MessageCard({
                 {message.content}
               </ReactMarkdown>
             </div>
-            {message.warning && (
-              <p className="text-2xs text-muted">⚠️ {message.warning}</p>
-            )}
             {/*
               Claude 모드 근거 — 모델이 실제로 Read한 볼트 문서다. 제목이 아니라 경로가
               식별자라(원본이 파일) 열람 화면도 경로로 연다.
@@ -581,39 +481,6 @@ function MessageCard({
                     </span>
                   </Link>
                 ))}
-              </div>
-            )}
-            {message.sources && message.sources.length > 0 && (
-              <div className="space-y-1 border-t border-line-soft pt-2.5">
-                <p className="text-2xs font-medium uppercase tracking-[0.12em] text-muted">
-                  근거 {message.sources.length}건
-                </p>
-                <div className="space-y-1">
-                  {message.sources.map((s, i) => (
-                    <Link
-                      key={`${s.domain}-${s.id}-${i}`}
-                      href={s.deepLink}
-                      className="-mx-1.5 block px-1.5 py-1.5 transition-colors hover:bg-line-soft"
-                    >
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xs text-muted">[{i + 1}]</span>
-                        <span
-                          className={`inline-block px-1.5 py-0.5 text-2xs ${DOMAIN_TONE[s.domain]}`}
-                        >
-                          {DOMAIN_LABEL[s.domain]}
-                        </span>
-                        <span className="text-xs font-medium text-ink">
-                          {s.title}
-                        </span>
-                      </div>
-                      {s.snippet && (
-                        <p className="mt-1 text-2xs leading-relaxed text-ink-soft">
-                          {s.snippet}
-                        </p>
-                      )}
-                    </Link>
-                  ))}
-                </div>
               </div>
             )}
             <div className="flex items-center gap-3 pt-1 text-2xs text-muted">

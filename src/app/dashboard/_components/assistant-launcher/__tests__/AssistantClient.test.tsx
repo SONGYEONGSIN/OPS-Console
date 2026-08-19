@@ -9,30 +9,21 @@ vi.mock("next/navigation", () => ({
   usePathname: () => pathnameRef.current,
 }));
 
-/** 마지막 fetch 요청 body를 꺼낸다. */
-function lastRequestBody(): Record<string, unknown> {
-  const mock = vi.mocked(globalThis.fetch).mock;
-  const init = mock.calls[mock.calls.length - 1][1] as RequestInit;
-  return JSON.parse(init.body as string);
-}
-
 /**
- * 즉답(Gemini) 경로 확인용 — 기본이 Claude라 토글을 꺼야 그 경로로 간다.
- * 각 테스트에서 반복하지 않도록 렌더와 묶는다.
+ * 질문을 실어 보낸 POST 본문.
+ *
+ * 폴링 GET에는 body가 없어 "마지막 호출"로는 못 잡는다 — 빠른 답변(Gemini)을
+ * 걷어내고 모든 질문이 Claude 큐로 가면서 호출이 POST 1 + GET N 이 됐다.
  */
-function renderFastMode() {
-  const r = render(<AssistantClient />);
-  fireEvent.click(screen.getByRole("button", { name: /Claude|빠른 답변/ }));
-  return r;
+function askRequestBody(): Record<string, unknown> {
+  const calls = vi.mocked(globalThis.fetch).mock.calls;
+  const post = [...calls].reverse().find((c) => (c[1] as RequestInit)?.body);
+  return JSON.parse((post![1] as RequestInit).body as string);
 }
 
-function stubOk() {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({
-      json: async () => ({ ok: true, answer: "답변", sources: [] }),
-    }),
-  );
+/** 적재하자마자 완료를 돌려주는 기본 스텁. */
+function stubDone(answer = "답변", sources: string[] = []) {
+  stubClaude([{ ok: true, status: "done", answer, sources }]);
 }
 
 describe("AssistantClient (chat)", () => {
@@ -48,46 +39,31 @@ describe("AssistantClient (chat)", () => {
     expect(screen.getByRole("button", { name: "전송" })).toBeInTheDocument();
   });
 
-  it("질문 입력 + 전송 → user 메시지 + assistant 답변 + 근거 표시", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          ok: true,
-          answer: "샘플 답변",
-          sources: [
-            {
-              domain: "incident",
-              id: "inc-1",
-              title: "테스트 사고",
-              snippet: "...",
-              deepLink: "/dashboard/incidents",
-            },
-          ],
-        }),
-      }),
-    );
-    renderFastMode();
+  it("질문 입력 + 전송 → user 메시지 + assistant 답변 + 읽은 문서", async () => {
+    stubDone("샘플 답변", ["엔티티/부산대학교 수시 서비스 세팅.md"]);
+    render(<AssistantClient />);
     const ta = screen.getByLabelText("질문 입력") as HTMLTextAreaElement;
     fireEvent.change(ta, { target: { value: "테스트 질문" } });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
-    await waitFor(() => {
-      expect(screen.getByText("샘플 답변")).toBeInTheDocument();
-    });
-    // user 메시지
+    await waitFor(
+      () => expect(screen.getByText("샘플 답변")).toBeInTheDocument(),
+      { timeout: 8000 },
+    );
     expect(screen.getByText("테스트 질문")).toBeInTheDocument();
-    // 근거
-    expect(screen.getByText("테스트 사고")).toBeInTheDocument();
-  });
+    // 근거 — 모델이 실제로 읽은 볼트 문서. 확장자는 떼고 보여준다.
+    expect(
+      screen.getByText("엔티티/부산대학교 수시 서비스 세팅"),
+    ).toBeInTheDocument();
+  }, 12000);
 
-  it("ok:false 응답 → ❌ 메시지", async () => {
+  it("적재가 거부되면 ❌ 메시지", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         json: async () => ({ ok: false, error: "test error" }),
       }),
     );
-    renderFastMode();
+    render(<AssistantClient />);
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "x" },
     });
@@ -97,74 +73,42 @@ describe("AssistantClient (chat)", () => {
     });
   });
 
-  it("warning 포함 응답 → ⚠️ 표시", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({
-          ok: true,
-          answer: "잘 모르겠습니다",
-          sources: [],
-          warning: "검색 결과 없음",
-        }),
-      }),
-    );
-    renderFastMode();
-    fireEvent.change(screen.getByLabelText("질문 입력"), {
-      target: { value: "asdf" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "전송" }));
-    await waitFor(() => {
-      expect(screen.getByText(/검색 결과 없음/)).toBeInTheDocument();
-    });
-  });
-
   it("'대화 초기화' 버튼 → 메시지 비움", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        json: async () => ({ ok: true, answer: "답변", sources: [] }),
-      }),
-    );
-    renderFastMode();
+    stubDone();
+    render(<AssistantClient />);
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "x" },
     });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
-    await waitFor(() => {
-      expect(screen.getByText("답변")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("답변")).toBeInTheDocument(), {
+      timeout: 8000,
     });
     fireEvent.click(screen.getByRole("button", { name: "대화 초기화" }));
     expect(screen.queryByText("답변")).toBeNull();
     expect(screen.getByText(/다음주 휴가자/)).toBeInTheDocument();
-  });
+  }, 12000);
 
   it("multi-turn — 두 번째 질문 시 history 함께 전송", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      json: async () => ({ ok: true, answer: "답변", sources: [] }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderFastMode();
-    // 첫 질문
+    stubDone();
+    render(<AssistantClient />);
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "첫 질문" },
     });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
-    await waitFor(() => expect(screen.getByText("답변")).toBeInTheDocument());
-    // 두 번째 질문
+    await waitFor(() => expect(screen.getByText("답변")).toBeInTheDocument(), {
+      timeout: 8000,
+    });
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "두 번째 질문" },
     });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
     await waitFor(() => {
-      // 두 번째 호출의 body에 history (첫 질문/답변) 포함
-      const lastCall = fetchMock.mock.calls[1];
-      const body = JSON.parse(lastCall[1].body as string);
+      const body = askRequestBody();
       expect(body.question).toBe("두 번째 질문");
       expect(body.history).toHaveLength(2);
-      expect(body.history[0].content).toBe("첫 질문");
-    });
-  });
+      expect((body.history as { content: string }[])[0].content).toBe("첫 질문");
+    }, { timeout: 8000 });
+  }, 15000);
 });
 
 describe("AssistantClient — 현재 페이지 첨부", () => {
@@ -174,31 +118,29 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
   });
 
   it("사이드바에 있는 화면이면 첨부 칩이 켜진 채로 보인다", () => {
-    renderFastMode();
-    expect(
-      screen.getByRole("button", { name: /첨부/ }),
-    ).toHaveAttribute("aria-pressed", "true");
+    render(<AssistantClient />);
+    expect(screen.getByRole("button", { name: /첨부/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("켜져 있으면 질문에 pageContext를 실어 보낸다", async () => {
-    stubOk();
-    renderFastMode();
+    stubDone();
+    render(<AssistantClient />);
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "이 화면 뭐야" },
     });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
-    expect(lastRequestBody().pageContext).toEqual({
-      path: "/dashboard/incidents",
-      label: "사고보고",
-      pattern: "list",
-    });
+    // Claude 경로는 사람이 읽는 한 줄로 실어 보낸다 — 프롬프트에 그대로 들어간다.
+    expect(askRequestBody().pageContext).toBe("사고보고 (/dashboard/incidents)");
   });
 
   it("칩을 끄면 pageContext를 보내지 않는다", async () => {
-    stubOk();
-    renderFastMode();
+    stubDone();
+    render(<AssistantClient />);
     fireEvent.click(screen.getByRole("button", { name: /첨부/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "미수채권 얼마" },
@@ -206,13 +148,13 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
-    expect(lastRequestBody().pageContext).toBeUndefined();
+    expect(askRequestBody().pageContext).toBeUndefined();
   });
 
   it("사이드바에 없는 경로면 칩 자체를 그리지 않는다", () => {
     // 첨부할 화면 정보가 없는데 칩만 떠 있으면 켜도 아무 일이 안 일어난다.
     pathnameRef.current = "/dashboard/알수없는화면";
-    renderFastMode();
+    render(<AssistantClient />);
     expect(screen.queryByRole("button", { name: /첨부/ })).toBeNull();
   });
 });
@@ -295,10 +237,17 @@ describe("AssistantClient — Claude 모드", () => {
     pathnameRef.current = "/dashboard/incidents";
   });
 
-  it("기본이 Claude다 — 지식망 문서를 직접 읽은 답이 어시스턴트의 본체다", () => {
+  /**
+   * 모드 선택이 없다.
+   *
+   * 빠른 답변(Gemini)은 Claude 의 백업이 아니었다 — 볼트는 회사 PC 파일이라
+   * Vercel 에서 못 읽고, 그쪽은 Supabase 인덱스 발췌만 봤다. 같은 질문에 다른
+   * 답이 나오는 별개 기능이었고, 쓰였는지조차 이력이 없어 알 수 없었다.
+   */
+  it("모드 토글이 없다 — 지식망 읽기 한 갈래뿐이다", () => {
     render(<AssistantClient />);
-    const toggle = screen.getByRole("button", { name: /Claude|빠른 답변/ });
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: /빠른 답변/ })).toBeNull();
+    expect(screen.getByText(/문서를 직접 읽습니다/)).toBeInTheDocument();
   });
 
   it("Claude 모드로 보내면 큐에 적재하고 답을 폴링해 보여준다", async () => {
@@ -414,7 +363,7 @@ describe("AssistantClient — Claude 모드", () => {
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
 
     await waitFor(
-      () => expect(screen.getByText(/아직 가져가지 않았습니다/)).toBeInTheDocument(),
+      () => expect(screen.getByText(/응답이 없는 것 같아요/)).toBeInTheDocument(),
       { timeout: 20000 },
     );
     // 여전히 기다리는 중이어야 한다 — 실패로 끝내면 뒤늦은 답을 못 받는다
