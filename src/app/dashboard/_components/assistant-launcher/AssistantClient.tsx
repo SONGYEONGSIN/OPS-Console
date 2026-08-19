@@ -311,7 +311,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
               onClick={() => setAttachPage((v) => !v)}
               // 켜짐/꺼짐을 쓴다 — 이름만 있으면 지금 첨부되는지 알 수 없어
               // "이 기능이 작동하는 게 맞냐"는 물음이 나왔다.
-              label={`${pageContext.label} 첨부 ${attachPage ? "켜짐" : "꺼짐"}`}
+              label={`${pageContext.label} 페이지 첨부 ${attachPage ? "켜짐" : "꺼짐"}`}
             />
           )}
           <span className="ml-auto pr-1 text-2xs text-muted">

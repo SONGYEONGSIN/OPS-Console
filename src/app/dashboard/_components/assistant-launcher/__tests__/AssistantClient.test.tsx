@@ -119,10 +119,10 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
 
   it("사이드바에 있는 화면이면 첨부 칩이 켜진 채로 보인다", () => {
     render(<AssistantClient />);
-    expect(screen.getByRole("button", { name: /첨부/ })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    // 메뉴명만 있으면 무엇이 첨부되는지 모호하다 — "페이지"를 넣어 대상이 화면임을 밝힌다.
+    expect(
+      screen.getByRole("button", { name: "사고보고 페이지 첨부 켜짐" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("켜져 있으면 질문에 pageContext를 실어 보낸다", async () => {
