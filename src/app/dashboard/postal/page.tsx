@@ -7,6 +7,7 @@ import { fetchPettyCash } from "@/features/petty-cash/queries";
 import { PageTabs } from "@/components/common/PageTabs";
 import { PettyCashPanel } from "./_components/PettyCashPanel";
 import { PostalClient } from "./_components/PostalClient";
+import { POSTAL_TABS } from "./tabs";
 
 /**
  * 우편물 — 등기발송 영수증 보관.
@@ -15,11 +16,6 @@ import { PostalClient } from "./_components/PostalClient";
  * 2단계에서 판독을 붙였다 — 회사 PC 폴러가 영수증을 읽고, 사람이 검토해 확정한다.
  * 엑셀 자동 기록은 3단계.
  */
-const TABS = [
-  { key: "receipts", label: "우편물", href: "/dashboard/postal?tab=receipts" },
-  { key: "petty", label: "전도금", href: "/dashboard/postal?tab=petty" },
-] as const;
-
 export default async function PostalPage({
   searchParams,
 }: {
@@ -52,7 +48,7 @@ export default async function PostalPage({
         headline={config.headline}
         description={config.description}
       />
-      <PageTabs active={tab} tabs={TABS} />
+      <PageTabs active={tab} tabs={POSTAL_TABS} />
       <div className="p-5 lg:p-7">
         {tab === "petty" ? (
           <PettyCashPanel sheet={pettyCash} />

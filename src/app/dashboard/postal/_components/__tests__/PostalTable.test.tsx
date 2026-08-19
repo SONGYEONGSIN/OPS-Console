@@ -104,4 +104,31 @@ describe("PostalTable", () => {
     render(<PostalTable receipts={[]} extractStates={{}} />);
     expect(screen.getByText(/올린 영수증이 없습니다/)).toBeInTheDocument();
   });
+
+  // 한 건도 없을 때 문장 한 줄만 나와 화면이 다른 메뉴와 달라 보였다.
+  // 목록 화면은 비어 있어도 목록의 모양을 하고 있어야 한다.
+  describe("한 건도 없을 때도 목록의 모양을 지킨다", () => {
+    it("제목과 건수가 보인다", () => {
+      render(<PostalTable receipts={[]} extractStates={{}} />);
+      expect(screen.getByRole("heading", { name: "등기내역" })).toBeInTheDocument();
+      expect(screen.getByText("0건")).toBeInTheDocument();
+    });
+
+    it("검색창이 보인다 — 없다고 사라지면 다시 올린 뒤에야 나타난다", () => {
+      render(<PostalTable receipts={[]} extractStates={{}} />);
+      expect(screen.getByLabelText("우편물 검색")).toBeInTheDocument();
+    });
+
+    it("표 머리가 보인다 — 무엇이 들어올 자리인지 알 수 있어야 한다", () => {
+      render(<PostalTable receipts={[]} extractStates={{}} />);
+      expect(screen.getByRole("columnheader", { name: "올린 날" })).toBeInTheDocument();
+      expect(screen.getByRole("columnheader", { name: "금액" })).toBeInTheDocument();
+    });
+
+    it("빈 안내는 표 안에 있다", () => {
+      render(<PostalTable receipts={[]} extractStates={{}} />);
+      const cell = screen.getByText(/올린 영수증이 없습니다/).closest("td");
+      expect(cell).not.toBeNull();
+    });
+  });
 });
