@@ -1,6 +1,6 @@
 import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getJob } from "./registry";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getAutomationRunLog } from "./run-logs";
 import { shouldNotifyFailure, renderFailureHtml } from "./failure-notify";
 import { sendAutomationReport } from "./report-send";

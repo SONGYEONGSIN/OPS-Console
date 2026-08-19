@@ -6,6 +6,11 @@ import {
   dispatchRatioAudit,
   type RatioDispatchResult,
 } from "@/features/ratio-audit/dispatch";
+import { recordAutomationRun } from "@/features/automations/run-recorder";
+import {
+  automationJobIdFor,
+  buildRunMessage,
+} from "@/features/ratio-audit/run-message";
 
 /**
  * 경쟁률 세팅 점검 결과 인제스트 — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -95,6 +100,13 @@ export async function POST(request: Request) {
       .update({ notified: true })
       .eq("id", data.id);
   }
+
+  // 자동화 실행 로그에도 남긴다 — 이게 없어서 8/3 실행이 죽었는데도 화면엔
+  // 큐 적재의 "성공"만 떠 있었다. 회사 PC 잡은 이 보고가 유일한 창구다.
+  await recordAutomationRun(automationJobIdFor(input.kind), {
+    ok: true,
+    message: buildRunMessage(s, dispatch),
+  });
 
   return NextResponse.json({
     ok: true,

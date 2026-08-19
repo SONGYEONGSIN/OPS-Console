@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { RatioAuditKind } from "@/features/ratio-audit/schemas";
+import { recordAutomationRun } from "@/features/automations/run-recorder";
+import { automationJobIdFor } from "@/features/ratio-audit/run-message";
 
 /**
  * 경쟁률 세팅 점검 '로컬 수동 실행' 폴러 endpoint — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -87,6 +90,12 @@ export async function POST(request: NextRequest) {
     typeof body.message === "string" ? body.message.slice(0, 500) : null;
 
   const admin = createAdminClient();
+  const { data: row } = await admin
+    .from("ratio_audit_requests")
+    .select("kind")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await admin
     .from("ratio_audit_requests")
     .update({ status, finished_at: new Date().toISOString(), message })
@@ -97,5 +106,20 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  // 실패만 남긴다 — 성공은 결과 적재(ingest)가 이미 숫자까지 남겼다.
+  //
+  // 이 갈래가 없어서 8/3 실행이 트레이스백으로 죽었는데도 화면엔 큐 적재의
+  // "성공"만 떠 있었다(2026-08-19 확인). 회사 PC 잡은 이 보고가 유일한 창구다.
+  if (status === "failed") {
+    const kind = (row as { kind?: RatioAuditKind } | null)?.kind;
+    if (kind) {
+      await recordAutomationRun(automationJobIdFor(kind), {
+        ok: false,
+        message: message ?? "회사 PC 폴러 실행 실패",
+      });
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
