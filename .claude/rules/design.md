@@ -35,6 +35,14 @@ paths:
   - `/design-audit`가 주석 없는 arbitrary value 사용을 추적
 - 예외: `tailwind.config.ts`, `design-tokens.ts`, `globals.css`의 CSS 변수 정의부
 
+## 숫자 표기 — `tabular-nums`, `font-mono` 아님
+
+금액·건수·순번 같은 **숫자는 기본 폰트 + `tabular-nums`** 로 쓴다. 자릿수가 세로로 맞으면서 화면의 다른 글자와 같은 폰트를 유지한다. 이미 KpiCard(운영리포트)·성과·단가표·주간 브리핑이 그렇게 쓰고 있다.
+
+`font-mono` 는 **식별자·기계가 읽는 값** 에만 쓴다 — 등기번호, 파일 경로, 호출 명령어(`Skill("x")`), 커밋 해시. 사람이 한 글자씩 대조하는 값들이다.
+
+> 우편물 화면이 금액을 `font-mono` 로 그려 혼자 달라 보였다(2026-08-20). 규칙이 적혀 있지 않아 생긴 어긋남이라 여기 적는다.
+
 ## 공통 컴포넌트
 
 - 동일 UI 패턴이 3회 이상 반복되면 `src/components/common/`으로 추출

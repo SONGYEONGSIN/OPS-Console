@@ -96,7 +96,7 @@ export function ReceiptReview({
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.trackingNo} className="border-b border-line-soft">
-                <td className="px-1.5 py-1 font-mono text-muted">{r.daySeq}</td>
+                <td className="px-1.5 py-1 tabular-nums text-muted">{r.daySeq}</td>
                 <td className="px-1.5 py-1">
                   <Field
                     value={r.trackingNo}

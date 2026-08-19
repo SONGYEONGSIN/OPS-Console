@@ -225,10 +225,10 @@ function RowPair({
         <td className="px-3 py-2 text-xs text-muted">
           {extract.acceptedAt ?? "—"}
         </td>
-        <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+        <td className="px-3 py-2 text-xs tabular-nums text-ink-soft">
           {extract.rows.length > 0 ? `${extract.rows.length}건` : "—"}
         </td>
-        <td className="px-3 py-2 font-mono text-sm text-ink">
+        <td className="px-3 py-2 text-sm tabular-nums text-ink">
           {total > 0 ? won(total) : "—"}
         </td>
         <td className="px-3 py-2 text-sm">

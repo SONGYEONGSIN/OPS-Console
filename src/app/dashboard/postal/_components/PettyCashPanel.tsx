@@ -131,7 +131,7 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
                         전도금 청구 —{" "}
                         {e.before != null ? won(e.before) : "—"} 남은 상태에서 채움
                       </td>
-                      <td className="px-3 py-2 font-mono text-sm text-ink">
+                      <td className="px-3 py-2 text-sm tabular-nums text-ink">
                         {e.balance != null ? won(e.balance) : "—"}
                       </td>
                     </tr>
@@ -149,13 +149,13 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+                      <td className="px-3 py-2 text-xs tabular-nums text-ink-soft">
                         {e.count ?? "—"}
                       </td>
-                      <td className="px-3 py-2 font-mono text-sm text-ink">
+                      <td className="px-3 py-2 text-sm tabular-nums text-ink">
                         {e.amount != null ? won(e.amount) : "—"}
                       </td>
-                      <td className="px-3 py-2 font-mono text-sm text-muted">
+                      <td className="px-3 py-2 text-sm tabular-nums text-muted">
                         {e.balance != null ? won(e.balance) : "—"}
                       </td>
                     </tr>
