@@ -169,7 +169,12 @@ export function ReceiptReview({
           type="button"
           disabled={pending}
           onClick={() =>
-            run(() => confirmReceipt(receiptId, rows.map(toConfirmRow)))
+            run(() =>
+              confirmReceipt(receiptId, rows.map(toConfirmRow), {
+                // 접수일자가 전도금 장부에 적힐 날짜다.
+                acceptedAt: state.acceptedAt,
+              }),
+            )
           }
           className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
         >

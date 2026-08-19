@@ -10,6 +10,13 @@ const state = {
 };
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const { appendSpy } = vi.hoisted(() => ({ appendSpy: vi.fn() }));
+vi.mock("@/features/petty-cash/actions", () => ({
+  appendSpend: (...a: unknown[]) => {
+    appendSpy(...a);
+    return Promise.resolve({ ok: true });
+  },
+}));
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: () => Promise.resolve(state.me),
 }));
@@ -131,5 +138,46 @@ describe("confirmReceipt", () => {
   it("viewer는 확정할 수 없다", async () => {
     state.me = { email: "v@x.com", permission: "viewer" };
     expect((await confirmReceipt(RID, rows)).ok).toBe(false);
+  });
+});
+
+/**
+ * 확정하면 전도금 장부에도 한 줄이 붙는다 — 손으로 옮겨 적던 일이다.
+ * 다만 장부 쓰기가 실패해도 확정 자체는 살린다: postal_items 는 이미 저장됐고,
+ * 여기서 실패라고 하면 사람이 다시 확정을 눌러 중복 저장으로 이어진다.
+ */
+describe("confirmReceipt — 전도금 반영", () => {
+  const rows = [
+    { daySeq: 1, trackingNo: "A-1", fee: 4590, postalCode: "1", recipientOrg: "우석대", recipientName: "강", assignee: "김지현" },
+    { daySeq: 2, trackingNo: "A-2", fee: 4230, postalCode: "2", recipientOrg: "한림대", recipientName: "김", assignee: "김승현" },
+  ];
+
+  beforeEach(() => {
+    state.me = { email: "me@x.com", permission: "member" };
+    state.inserted = [];
+    state.updated = [];
+    state.deleted = 0;
+    appendSpy.mockClear();
+  });
+
+  it("건수와 요금 합을 장부에 넘긴다", async () => {
+    await confirmReceipt(RID, rows, { acceptedAt: "2026-08-20" });
+    expect(appendSpy).toHaveBeenCalledWith({
+      date: "2026-08-20",
+      title: "우편물",
+      count: 2,
+      amount: 8820,
+    });
+  });
+
+  it("접수일자가 없으면 장부에 쓰지 않는다 — 날짜 없는 줄은 장부를 망친다", async () => {
+    const r = await confirmReceipt(RID, rows, {});
+    expect(r.ok).toBe(true);
+    expect(appendSpy).not.toHaveBeenCalled();
+  });
+
+  it("요금이 다 비면 쓰지 않는다", async () => {
+    await confirmReceipt(RID, rows.map((r) => ({ ...r, fee: null })), { acceptedAt: "2026-08-20" });
+    expect(appendSpy).not.toHaveBeenCalled();
   });
 });

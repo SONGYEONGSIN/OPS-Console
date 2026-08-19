@@ -73,6 +73,8 @@ export type ExtractState = {
   status: "none" | "pending" | "running" | "done" | "failed";
   warnings: string[];
   message: string | null;
+  /** 영수증 접수일자 — 전도금 장부에 적을 날짜다. */
+  acceptedAt: string | null;
   /** done일 때만. 검토 표의 재료. */
   rows: ReviewRow[];
 };
@@ -112,11 +114,14 @@ export async function getExtractStates(
 
   for (const [receiptId, r] of latest) {
     const status = r.status as ExtractState["status"];
-    const result = r.result as { items?: ExtractedItem[] } | null;
+    const result = r.result as
+      | { items?: ExtractedItem[]; accepted_at?: string | null }
+      | null;
     out.set(receiptId, {
       status,
       warnings: (r.warnings as string[] | null) ?? [],
       message: (r.message as string | null) ?? null,
+      acceptedAt: result?.accepted_at ?? null,
       rows:
         status === "done" && result?.items
           ? buildReviewRows(result.items, { under, grad, alreadyOnThatDay: 0 })
