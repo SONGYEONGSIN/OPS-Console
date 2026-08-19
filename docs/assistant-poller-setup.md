@@ -126,6 +126,26 @@ curl.exe -s -H "Authorization: Bearer $s" https://ops-console-psi.vercel.app/api
 
 ---
 
+## 3-4. 우편물 판독 폴러 (별개 프로세스)
+
+회사 PC에는 폴러가 **둘** 돈다. 어시스턴트와 별개다 — 하나가 죽어도 다른 하나는 살아 있어야 한다.
+
+```powershell
+cd <레포 경로>
+powershell -ExecutionPolicy Bypass -File scripts\postal\register-extract-task.ps1
+```
+
+| | 어시스턴트 | 우편물 판독 |
+|---|---|---|
+| 작업 이름 | `OPS-Console 어시스턴트 폴러` | `OPS-Console 우편물 판독 폴러` |
+| 스크립트 | `scripts\assistant\serve-local.mjs` | `scripts\postal\extract-local.mjs` |
+| 로그 | `assistant-poller.log` | `postal-poller.log` |
+| 추가 env | `KNOWLEDGE_VAULT_PATH` | 없음 |
+
+확인: 우편물 화면에서 영수증 **[추출]** → 30초 내 표가 나오면 정상. 등록 전에는 눌러도 `pending`에 머문다.
+
+---
+
 ## 4. 코드가 바뀌면 — 갱신 절차 (자주 하게 된다)
 
 **작업 스케줄러는 죽은 프로세스만 되살린다. 코드를 따라가지는 않는다.**
@@ -136,13 +156,14 @@ cd <레포 경로>
 git pull
 npm ci                                            # 의존성이 바뀌었을 수 있다
 Restart-ScheduledTask -TaskName "OPS-Console 어시스턴트 폴러"
+Restart-ScheduledTask -TaskName "OPS-Console 우편물 판독 폴러"
 ```
 
 **언제 해야 하나** — 아래가 바뀌었을 때. 판단이 애매하면 그냥 한다(1분이면 끝난다).
 
 | 바뀐 것 | 왜 |
 |---|---|
-| `scripts/assistant/*` | 폴러 본체·도구. 이 PC에서 도는 코드 그대로다 |
+| `scripts/assistant/*` · `scripts/postal/*` | 폴러 본체·도구. 이 PC에서 도는 코드 그대로다 |
 | `package.json` | 새 의존성이 없으면 SDK 호출이 깨진다 |
 | `src/features/assistant/*` · `src/app/api/assistant/*` | **재시작 불필요** — 서버(Vercel) 쪽이라 배포로 반영된다 |
 
