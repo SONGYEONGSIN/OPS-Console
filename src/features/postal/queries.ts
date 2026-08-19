@@ -1,6 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { RECEIPT_BUCKET } from "./upload-guard";
+import { buildReviewRows, type ReviewRow, type ExtractedItem } from "./review-rows";
+import { loadAssigneeRows } from "./assignee-queries";
 
 /**
  * 영수증 목록 — 카드 격자에 그릴 것.
@@ -64,4 +66,62 @@ async function signedUrl(
     .from(RECEIPT_BUCKET)
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
   return data?.signedUrl ?? null;
+}
+
+/** 판독 상태 — 카드에 무엇을 보여줄지 가른다. */
+export type ExtractState = {
+  status: "none" | "pending" | "running" | "done" | "failed";
+  warnings: string[];
+  message: string | null;
+  /** done일 때만. 검토 표의 재료. */
+  rows: ReviewRow[];
+};
+
+/**
+ * 영수증별 판독 상태 + 검토 행.
+ *
+ * 담당자 조회를 위해 총괄장 두 시트를 읽는다 — 한 번 읽어 모든 영수증에 쓴다
+ * (영수증마다 읽으면 Graph 호출이 그만큼 늘어난다).
+ */
+export async function getExtractStates(
+  receiptIds: string[],
+): Promise<Map<string, ExtractState>> {
+  const out = new Map<string, ExtractState>();
+  if (receiptIds.length === 0) return out;
+
+  const admin = createAdminClient();
+  const { data: reqs } = await admin
+    .from("postal_extract_requests")
+    .select("receipt_id, status, result, warnings, message, requested_at")
+    .in("receipt_id", receiptIds)
+    .order("requested_at", { ascending: false });
+
+  // 영수증당 최신 1건만 본다 — 다시 판독하면 앞의 것은 의미가 없다.
+  const latest = new Map<string, Record<string, unknown>>();
+  for (const r of reqs ?? []) {
+    const key = r.receipt_id as string;
+    if (!latest.has(key)) latest.set(key, r);
+  }
+  if (latest.size === 0) return out;
+
+  // 판독이 끝난 게 하나라도 있을 때만 총괄장을 읽는다.
+  const needsAssignee = [...latest.values()].some((r) => r.status === "done");
+  const { under, grad } = needsAssignee
+    ? await loadAssigneeRows()
+    : { under: [], grad: [] };
+
+  for (const [receiptId, r] of latest) {
+    const status = r.status as ExtractState["status"];
+    const result = r.result as { items?: ExtractedItem[] } | null;
+    out.set(receiptId, {
+      status,
+      warnings: (r.warnings as string[] | null) ?? [],
+      message: (r.message as string | null) ?? null,
+      rows:
+        status === "done" && result?.items
+          ? buildReviewRows(result.items, { under, grad, alreadyOnThatDay: 0 })
+          : [],
+    });
+  }
+  return out;
 }
