@@ -164,14 +164,11 @@ GAS 미수채권 자동화는 4-PR 시리즈로 OPS-Console로 이전 완료 —
 
 메뉴가 아니라 **화면에 고정된 채팅 아이콘** → 표준 `InspectorPanel`이 열린다 (`_components/assistant-launcher/`).
 
-**두 모드가 있고 기본은 Claude다.**
+**갈래는 하나다** — **회사 PC**의 구독(Agent SDK)이 볼트 마크다운을 **직접 Read**하고 운영 데이터는 도구로 조회한다. 30~40초 걸린다.
 
-| 모드 | 실행 위치 | 무엇을 보나 | 지연 |
-|---|---|---|---|
-| **Claude · 지식망 읽기** (기본) | **회사 PC**의 구독(Agent SDK) | 볼트 마크다운을 **직접 Read** + 일정 조회 도구 | 30~40초 |
-| 빠른 답변 | Vercel (Gemini 2.5-flash) | Supabase 인덱스 검색 요약 7도메인 | 즉답 |
+빠른 답변(Gemini)이 있었으나 걷어냈다(2026-08-19). 백업이 아니었기 때문이다 — **볼트는 회사 PC의 파일이라 Vercel에서 못 읽는다.** 모델을 무엇으로 바꿔도 마찬가지고, 그쪽은 Supabase 인덱스 발췌만 봤다. 같은 질문에 다른 답이 나오는 별개 기능이었고 이력을 안 남겨 쓰였는지조차 알 수 없었다.
 
-자동 대체는 하지 않는다 — 조용히 넘기면 회사 PC가 며칠 죽어 있어도 모른다. 15초간 아무도 claim하지 않으면 화면에 "회사 PC가 응답하지 않습니다"로 드러낸다.
+회사 PC가 안 가져가도 **화면은 폴링을 멈추지 않는다.** 15초가 지나면 "에이전트를 계속 부르는 중 — 아직 응답이 없는 것 같아요"로 알리고 3분까지 기다린다. 예전엔 여기서 끊었는데, claim이 27초 걸린 요청의 답이 통째로 사라진 적이 있다.
 
 - **큐**: `assistant_requests` (본인 것만 RLS). 웹 창구 `/api/assistant/claude`(세션) ↔ 폴러 창구 `/api/assistant/claude/claim`(CRON_SECRET)
 - **폴러**: `scripts/assistant/serve-local.mjs` — 상주(2초 폴링). 셋업·문제해결은 `docs/assistant-poller-setup.md`

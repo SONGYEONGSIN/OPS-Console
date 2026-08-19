@@ -5,6 +5,7 @@ import {
   elapsedLabel,
   STAGE_START,
   STAGE_QUEUED,
+  STAGE_STILL_QUEUED,
   STAGE_COMPOSING,
 } from "../stage-label";
 
@@ -113,5 +114,27 @@ describe("elapsedLabel", () => {
   it("음수·0도 문장이 성립한다", () => {
     expect(elapsedLabel(0)).toBe("0초");
     expect(elapsedLabel(-5)).toBe("0초");
+  });
+});
+
+/**
+ * 오래 안 가져갈 때 뜨는 줄.
+ *
+ * 예전 문구는 "회사 PC가 응답하지 않습니다 … 빠른 답변 모드로 물어보세요"였다.
+ * 빠른 답변(Gemini)을 걷어내면서 갈 곳이 없어졌고, 무엇보다 **꺼진 건지 느린
+ * 건지 화면은 모른다** — 단정하지 않는 말투가 사실에도 맞다.
+ */
+describe("STAGE_STILL_QUEUED", () => {
+  it("계속 부르고 있다는 걸 먼저 말한다 — 멈춘 게 아니다", () => {
+    expect(STAGE_STILL_QUEUED).toContain("계속 부르는 중");
+  });
+
+  it("단정하지 않는다 — 꺼진 건지 느린 건지 모른다", () => {
+    expect(STAGE_STILL_QUEUED).toMatch(/같아요/);
+    expect(STAGE_STILL_QUEUED).not.toMatch(/꺼져|응답하지 않습니다/);
+  });
+
+  it("없어진 모드로 안내하지 않는다", () => {
+    expect(STAGE_STILL_QUEUED).not.toContain("빠른 답변");
   });
 });

@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * 도메인별 키워드 검색 → Gemini context용 top-N row 추출.
+ * 도메인별 키워드 검색 → 에이전트 `search_ops` 도구가 쓸 top-N row 추출.
  * MVP: 단순 token 매칭 + 점수. 추후 phase에서 임베딩으로 확장.
  */
 
@@ -110,13 +110,6 @@ export function knowledgeSource(r: KnowledgeRow): Source {
 
 type SearchInput = { question: string };
 
-/**
- * 모든 도메인을 병렬 검색하여 도메인별 top-3 source 합쳐 반환.
- * RLS로 권한 있는 row만 조회됨 (cookies 기반 supabase client).
- */
-export async function searchAllDomains(input: SearchInput): Promise<Source[]> {
-  return searchDomainsWith(await createClient(), input);
-}
 
 /**
  * 같은 검색을 **클라이언트를 받아서** 수행한다.
