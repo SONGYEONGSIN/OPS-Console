@@ -109,6 +109,15 @@ describe("buildVaultPrompt", () => {
     expect(p).toMatch(/위[^\n]*(가리키|참조)|앞서 말한/);
   });
 
+  it("휴가는 일정과 백업요청을 합쳐 보라고 지시한다 — 절반이 일정에 없다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-20 (목)",
+    });
+    expect(p).toMatch(/백업요청/);
+  });
+
   it("못 답한 건 report_gap으로 남기라고 지시한다 — 본문 문장으로만 있으면 기계가 못 읽는다", () => {
     const p = buildVaultPrompt({
       question: "x",

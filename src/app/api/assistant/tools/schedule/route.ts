@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduleTypeSchema } from "@/features/schedule/schemas";
+import { backupLeavesInRange } from "@/features/assistant/backup-leave";
 import { toKstEvent } from "@/features/assistant/schedule-format";
 
 /**
@@ -69,11 +70,34 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
+  // 휴가는 두 곳에 나뉘어 있다. 연차 백업요청 11건 중 6건이 schedule_events 에
+  // 없었다(2026-08-20 실측) — 사람이 일정 등록은 빠뜨려도 백업요청은 반드시
+  // 보내기 때문이다(대리자 인수인계). 일정만 주면 "이번주 휴가자"에서 절반을 놓친다.
+  //
+  // 회의·당직처럼 다른 종류를 물었을 때는 붙이지 않는다 — 물어본 것과 무관한
+  // 부재가 섞이면 답이 흐려진다.
+  const wantsLeave = !parsed.data.type || parsed.data.type === "leave";
+  const backupAbsences = wantsLeave
+    ? backupLeavesInRange(
+        ((
+          await admin
+            .from("backup_requests")
+            .select("title, created_at")
+            .order("created_at", { ascending: false })
+            .limit(MAX_ROWS)
+        ).data ?? []) as { title: string; created_at: string }[],
+        parsed.data.from,
+        parsed.data.to,
+        // 어디서 온 정보인지 밝힌다 — 일정에 등록된 것과 구분돼야 한다.
+      ).map((b) => ({ ...b, source: "backup_request" as const }))
+    : [];
+
   // KST로 확정해 넘긴다. UTC 원본을 주면 모델이 "표기 기준에 따라 다를 수 있다"고
   // 헤아리는 답을 낸다 — 마감 시각을 묻는 사람에게 그건 쓸모가 없다(2026-08-19).
   return NextResponse.json({
     ok: true,
     timezone: "Asia/Seoul",
     events: (data ?? []).map(toKstEvent),
+    backupAbsences,
   });
 }

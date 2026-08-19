@@ -88,7 +88,7 @@ export function PostalTable({
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-xl font-bold text-ink">올린 영수증</h3>
+          <h3 className="text-xl font-bold text-ink">등기내역</h3>
           <span className="text-muted" aria-hidden>
             ·
           </span>

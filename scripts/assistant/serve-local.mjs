@@ -153,7 +153,7 @@ const opsTools = createSdkMcpServer({
   tools: [
     tool(
       "schedule_range",
-      "운영부 일정을 기간으로 조회한다. 휴가·당직·회의·마감 등 '누가 언제 무엇을 하는지'는 볼트 문서가 아니라 이 도구로 확인한다.",
+      "운영부 일정을 기간으로 조회한다. 휴가·당직·회의·마감 등 '누가 언제 무엇을 하는지'는 볼트 문서가 아니라 이 도구로 확인한다. 응답의 backupAbsences 는 **일정에 등록되지 않은 부재**를 백업요청에서 찾은 것이다 — 휴가자를 물으면 events 의 leave 와 backupAbsences 를 **합쳐서** 답하고, 후자는 '백업요청 기준'이라고 밝힌다.",
       {
         from: z.string().describe("조회 시작일 YYYY-MM-DD"),
         to: z.string().describe("조회 종료일 YYYY-MM-DD (그날 포함)"),
