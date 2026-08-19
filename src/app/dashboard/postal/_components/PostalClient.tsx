@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { uploadReceipt } from "@/features/postal/actions";
-import type { ReceiptCard } from "@/features/postal/queries";
+import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
+import { ReceiptReview } from "./ReceiptReview";
 
 /**
  * 우편물 화면 — 영수증을 끌어다 놓고, 올린 것을 카드로 본다.
@@ -11,7 +12,13 @@ import type { ReceiptCard } from "@/features/postal/queries";
  * 이미지는 서버가 발급한 **짧은 만료 서명 URL**이다. 버킷이 비공개라 이 URL 없이는
  * 열리지 않는다 — 영수증에 수취인 실명과 카드 결제 정보가 찍혀 있기 때문이다.
  */
-export function PostalClient({ receipts }: { receipts: ReceiptCard[] }) {
+export function PostalClient({
+  receipts,
+  extractStates = {},
+}: {
+  receipts: ReceiptCard[];
+  extractStates?: Record<string, ExtractState>;
+}) {
   const [dragOver, setDragOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
@@ -86,7 +93,18 @@ export function PostalClient({ receipts }: { receipts: ReceiptCard[] }) {
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {receipts.map((r) => (
-            <ReceiptItem key={r.id} receipt={r} />
+            <ReceiptItem
+              key={r.id}
+              receipt={r}
+              extract={
+                extractStates[r.id] ?? {
+                  status: "none",
+                  warnings: [],
+                  message: null,
+                  rows: [],
+                }
+              }
+            />
           ))}
         </div>
       )}
@@ -94,7 +112,14 @@ export function PostalClient({ receipts }: { receipts: ReceiptCard[] }) {
   );
 }
 
-function ReceiptItem({ receipt }: { receipt: ReceiptCard }) {
+function ReceiptItem({
+  receipt,
+  extract,
+}: {
+  receipt: ReceiptCard;
+  extract: ExtractState;
+}) {
+  // 판독된 카드는 표가 6칸이라 4열 격자 안에서는 못 읽는다 — 그 줄만 전체 폭을 쓴다.
   const when = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     month: "2-digit",
@@ -104,7 +129,11 @@ function ReceiptItem({ receipt }: { receipt: ReceiptCard }) {
   }).format(new Date(receipt.createdAt));
 
   return (
-    <figure className="flex flex-col gap-2 border border-line bg-situation-bg p-3">
+    <figure
+      className={`flex flex-col gap-2 border border-line bg-situation-bg p-3 ${
+        extract.status === "done" ? "sm:col-span-2 lg:col-span-4" : ""
+      }`}
+    >
       {receipt.imageUrl ? (
         <a href={receipt.imageUrl} target="_blank" rel="noreferrer">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -122,8 +151,14 @@ function ReceiptItem({ receipt }: { receipt: ReceiptCard }) {
       )}
       <figcaption className="flex items-baseline justify-between text-2xs">
         <span className="text-ink">{receipt.uploadedBy}</span>
-        <span className="text-muted">{when}</span>
+        <span className="text-muted">
+          {receipt.confirmedAt ? "확정됨 · " : ""}
+          {when}
+        </span>
       </figcaption>
+
+      {/* 판독·검토 — 표가 카드보다 넓어 격자를 넘어간다. 확정 전까지 여기서만 고친다. */}
+      <ReceiptReview receiptId={receipt.id} state={extract} />
     </figure>
   );
 }
