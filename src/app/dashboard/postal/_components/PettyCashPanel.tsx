@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
+import { KpiCard, type KpiCardItem } from "@/components/common/KpiCard";
 import type { PettyCashSheet } from "@/features/petty-cash/parse";
 
 /**
@@ -49,47 +50,57 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
     );
   }
 
-  const low = sheet.balance != null && sheet.balance < LOW_BALANCE;
   const lastRefill = [...sheet.entries]
     .reverse()
     .find((e) => e.kind === "refill");
+  const lastRefillBalance =
+    lastRefill && lastRefill.kind === "refill" ? lastRefill.balance : null;
+
+  const low = sheet.balance != null && sheet.balance < LOW_BALANCE;
+
+  const cards: KpiCardItem[] = [
+    kpi("현재 잔액", sheet.balance ?? 0, "원"),
+    kpi("올해 사용", sheet.totalSpent, "원"),
+    kpi("사용 건수", spends.length, "건"),
+    kpi("마지막 청구", lastRefillBalance ?? 0, "원"),
+  ];
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="현재 잔액"
-          value={sheet.balance != null ? won(sheet.balance) : "—"}
-          tone={low ? "warn" : "strong"}
-          note={low ? "청구를 준비하세요" : undefined}
-        />
-        <StatCard label="올해 사용" value={won(sheet.totalSpent)} />
-        <StatCard label="사용 건수" value={`${spends.length}건`} />
-        <StatCard
-          label="마지막 청구"
-          value={
-            lastRefill && lastRefill.kind === "refill" && lastRefill.balance != null
-              ? won(lastRefill.balance)
-              : "—"
-          }
-          note={
-            lastRefill && lastRefill.kind === "refill" && lastRefill.before != null
-              ? `${won(lastRefill.before)} 남았을 때`
-              : undefined
-          }
-        />
+      {/* 상단 카드는 운영리포트가 표준이다 — KpiCard 를 그대로 쓴다.
+          비교 대상(직전 기간)이 없으므로 delta 는 전부 null 이고, 카드는
+          '비교 불가'로 그린다. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {cards.map((item) => (
+          <KpiCard key={item.label} item={item} />
+        ))}
       </div>
 
+      {/* 잔액 경고는 표 위에 — 카드가 '비교 불가'만 그려 눈에 안 띈다. */}
+      {low && (
+        <p className="border border-line-soft bg-situation-bg px-3 py-2 text-xs text-vermilion">
+          잔액이 {won(sheet.balance ?? 0)}입니다 — 전도금 청구를 준비하세요
+        </p>
+      )}
+
       <div className="flex flex-col gap-3">
-        <header className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-base font-semibold text-ink">사용 내역</h3>
-          <ListSearch
-            value={q}
-            onChange={setQ}
-            ariaLabel="전도금 검색"
-            placeholder="날짜 · 내용 · 금액"
-            className="w-full sm:w-72"
-          />
+        {/* 검색은 목록 위 별도 줄(다른 메뉴의 controlsRow 자리). 검색 앞에 제목을
+            붙이지 않는다 — 표준은 제목이 그 아래 헤더에 있다. */}
+        <ListSearch
+          value={q}
+          onChange={setQ}
+          ariaLabel="전도금 검색"
+          placeholder="날짜·내용·금액 검색"
+        />
+
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-xl font-bold text-ink">사용 내역</h3>
+            <span className="text-muted" aria-hidden>
+              ·
+            </span>
+            <span className="text-sm text-vermilion">{spends.length}건</span>
+          </div>
         </header>
 
         {visible.length === 0 ? (
@@ -159,33 +170,20 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
   );
 }
 
-/** 현황 카드 — 운영리포트 KPI와 같은 톤이되 증감이 없어 더 단순하다. */
-function StatCard({
-  label,
-  value,
-  note,
-  tone = "normal",
-}: {
-  label: string;
-  value: string;
-  note?: string;
-  tone?: "normal" | "strong" | "warn";
-}) {
-  const valueClass =
-    tone === "warn"
-      ? "text-vermilion"
-      : tone === "strong"
-        ? "text-ink"
-        : "text-ink-soft";
-  return (
-    <div className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4">
-      <span className="text-xs font-medium text-muted">{label}</span>
-      <span
-        className={`text-xl font-bold tabular-nums tracking-[-0.01em] ${valueClass}`}
-      >
-        {value}
-      </span>
-      {note && <span className="text-2xs text-muted">{note}</span>}
-    </div>
-  );
+/**
+ * KpiCard 가 요구하는 모양으로 감싼다.
+ *
+ * 전도금은 '직전 기간'이라는 게 없어 증감을 못 낸다 — delta 계열을 null 로 두면
+ * 카드가 '비교 불가'로 그린다(리포트에서 비교 대상이 없을 때와 같은 처리).
+ */
+function kpi(label: string, value: number, unit: string): KpiCardItem {
+  return {
+    label,
+    value,
+    unit,
+    prevValue: null,
+    delta: null,
+    deltaPct: null,
+    goodOnIncrease: true,
+  };
 }

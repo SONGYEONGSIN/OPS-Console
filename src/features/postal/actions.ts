@@ -9,6 +9,7 @@ import {
   receiptStoragePath,
   RECEIPT_BUCKET,
 } from "./upload-guard";
+import { requestExtraction } from "./extract-actions";
 
 /**
  * 등기발송 영수증 업로드.
@@ -76,6 +77,17 @@ export async function uploadReceipt(file: File): Promise<UploadResult> {
     return { ok: false, error: error?.message ?? "기록 실패" };
   }
 
+  const receiptId = (data as { id: string }).id;
+
+  // 올리자마자 판독을 건다. [추출]을 따로 누르게 하면 목록이 '판독 전'으로만 차고,
+  // 사람이 버튼을 누르러 다시 들어와야 한다.
+  //
+  // 실패해도 업로드는 성공이다 — 파일은 이미 저장됐고, 화면의 [추출]로 다시 걸 수 있다.
+  const queued = await requestExtraction(receiptId);
+  if (!queued.ok) {
+    console.error("[postal] 자동 판독 요청 실패:", queued.error);
+  }
+
   revalidatePath("/dashboard/postal");
-  return { ok: true, id: (data as { id: string }).id };
+  return { ok: true, id: receiptId };
 }

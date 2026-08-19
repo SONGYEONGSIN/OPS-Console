@@ -77,15 +77,23 @@ export function PostalTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-base font-semibold text-ink">올린 영수증</h3>
-        <ListSearch
-          value={q}
-          onChange={setQ}
-          ariaLabel="우편물 검색"
-          placeholder="올린 사람 · 날짜 · 등기번호 · 수취인"
-          className="w-full sm:w-80"
-        />
+      {/* 검색은 목록 위 별도 줄(다른 메뉴의 controlsRow 자리). 검색 앞에 제목을
+          붙이지 않는다 — 표준은 제목이 그 아래 헤더에 있다. */}
+      <ListSearch
+        value={q}
+        onChange={setQ}
+        ariaLabel="우편물 검색"
+        placeholder="올린 사람·날짜·등기번호·수취인 검색"
+      />
+
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-xl font-bold text-ink">올린 영수증</h3>
+          <span className="text-muted" aria-hidden>
+            ·
+          </span>
+          <span className="text-sm text-vermilion">{rows.length}건</span>
+        </div>
       </header>
 
       {rows.length === 0 ? (

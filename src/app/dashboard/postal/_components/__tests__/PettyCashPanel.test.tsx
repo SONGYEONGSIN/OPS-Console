@@ -48,17 +48,18 @@ describe("PettyCashPanel", () => {
   it("잔액이 적으면 눈에 띄게 한다 — 채워야 할 때를 놓치면 발송이 막힌다", () => {
     render(<PettyCashPanel sheet={{ ...SHEET, balance: 40000 }} />);
     // 카드 안에 안내가 붙고 값이 vermilion으로 바뀐다
-    expect(screen.getByText(/청구를 준비하세요/)).toBeInTheDocument();
-    expect(screen.getByText("40,000원").className).toContain("text-vermilion");
+    expect(screen.getByText(/전도금 청구를 준비하세요/)).toBeInTheDocument();
   });
 });
 
 describe("PettyCashPanel — 카드·제목·검색", () => {
-  it("현황을 카드로 보여준다 — 운영리포트처럼 숫자를 먼저 본다", () => {
-    render(<PettyCashPanel sheet={SHEET} />);
+  it("운영리포트 KpiCard를 그대로 쓴다 — 상단 카드의 표준이다", () => {
+    const { container } = render(<PettyCashPanel sheet={SHEET} />);
     ["현재 잔액", "올해 사용", "사용 건수", "마지막 청구"].forEach((label) =>
       expect(screen.getByText(label)).toBeInTheDocument(),
     );
+    // KpiCard 는 값을 text-2xl tabular-nums 로 그린다
+    expect(container.querySelector(".text-2xl.tabular-nums")).not.toBeNull();
   });
 
   it("사용 건수는 청구를 빼고 센다", () => {
@@ -68,11 +69,20 @@ describe("PettyCashPanel — 카드·제목·검색", () => {
     expect(card?.textContent).toContain("2");
   });
 
-  it("표에 제목이 있다 — 무슨 목록인지 알 수 없었다", () => {
+  it("목록 제목은 표준 형태다 — '제목 · N건'", () => {
     render(<PettyCashPanel sheet={SHEET} />);
-    expect(
-      screen.getByRole("heading", { name: "사용 내역" }),
-    ).toBeInTheDocument();
+    const h = screen.getByRole("heading", { name: "사용 내역" });
+    expect(h.className).toContain("text-xl");
+    // 건수는 vermilion 으로 옆에 붙는다(ListPattern 헤더와 같은 모양)
+    expect(h.parentElement?.textContent).toContain("2건");
+  });
+
+  it("검색은 제목과 떨어진 controlsRow 자리에 둔다 — 검색 앞에 제목을 붙이지 않는다", () => {
+    render(<PettyCashPanel sheet={SHEET} />);
+    const search = screen.getByLabelText("전도금 검색");
+    const heading = screen.getByRole("heading", { name: "사용 내역" });
+    // 같은 줄(부모)에 있으면 안 된다
+    expect(heading.parentElement?.contains(search)).toBe(false);
   });
 
   it("검색으로 거른다", () => {

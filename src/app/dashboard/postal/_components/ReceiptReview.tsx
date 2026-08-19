@@ -39,6 +39,8 @@ export function ReceiptReview({
   const patch = (i: number, part: Partial<ReviewRow>) =>
     setRows((prev) => prev.map((r, k) => (k === i ? { ...r, ...part } : r)));
 
+  // 업로드하면 판독이 자동으로 걸린다. 여기 버튼은 그게 실패했거나 큐가 밀렸을 때
+  // 다시 거는 용도다 — 평소에는 누를 일이 없다.
   if (state.status === "none" || state.status === "failed") {
     return (
       <div className="space-y-1.5">
@@ -51,7 +53,7 @@ export function ReceiptReview({
           onClick={() => run(() => requestExtraction(receiptId))}
           className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {state.status === "failed" ? "다시 추출" : "추출"}
+          다시 추출
         </button>
         {error && <p className="text-2xs text-vermilion">{error}</p>}
       </div>

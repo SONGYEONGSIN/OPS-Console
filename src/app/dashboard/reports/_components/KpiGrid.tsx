@@ -1,5 +1,5 @@
 import type { KpiItem } from "@/features/reports/schemas";
-import { KpiCard } from "./KpiCard";
+import { KpiCard } from "@/components/common/KpiCard";
 import { ServiceFlowCard } from "./ServiceFlowCard";
 import { ContractSheetCard } from "./ContractSheetCard";
 

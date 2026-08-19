@@ -49,15 +49,15 @@ describe("ReceiptReview", () => {
     extractSpy.mockClear();
   });
 
-  it("판독 전에는 '추출' 버튼만 보여준다", () => {
+  it("판독이 안 걸린 상태면 다시 걸 수 있다 — 업로드 시 자동으로 걸리지만 실패할 수 있다", () => {
     render(<ReceiptReview receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [] }} />);
-    expect(screen.getByRole("button", { name: "추출" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("추출을 누르면 판독을 요청한다", async () => {
+  it("다시 추출을 누르면 판독을 요청한다", async () => {
     render(<ReceiptReview receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [] }} />);
-    fireEvent.click(screen.getByRole("button", { name: "추출" }));
+    fireEvent.click(screen.getByRole("button", { name: "다시 추출" }));
     await waitFor(() => expect(extractSpy).toHaveBeenCalledWith(RID));
   });
 
