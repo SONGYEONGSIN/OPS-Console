@@ -11,6 +11,11 @@ export type PageMetaConfig = {
  * 미정의 slug는 dashboard/[slug]/page.tsx에서 sidebar label로 fallback.
  */
 export const PAGE_META: Record<string, PageMetaConfig> = {
+  postal: {
+    headline: { accent: "자료보관", title: "우편물" },
+    description:
+      "등기발송 영수증을 올려 보관하고, 등기번호·수취인을 발송 기록으로 남깁니다.",
+  },
   assignments: {
     headline: { accent: "서비스사이클", title: "총괄장" },
     description: "대학별 운영/개발 배정·업무분장·가격정책을 조회합니다.",
