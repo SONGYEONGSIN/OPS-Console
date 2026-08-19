@@ -10,6 +10,7 @@ import {
   RECEIPT_BUCKET,
 } from "./upload-guard";
 import { requestExtraction } from "./extract-actions";
+import { canDeleteReceipt } from "./delete-guard";
 
 /**
  * 등기발송 영수증 업로드.
@@ -86,6 +87,55 @@ export async function uploadReceipt(file: File): Promise<UploadResult> {
   const queued = await requestExtraction(receiptId);
   if (!queued.ok) {
     console.error("[postal] 자동 판독 요청 실패:", queued.error);
+  }
+
+  revalidatePath("/dashboard/postal");
+  return { ok: true, id: receiptId };
+}
+
+/**
+ * 잘못 올린 영수증을 지운다.
+ *
+ * `postal_items`·`postal_extract_requests` 는 FK cascade 로 함께 사라지지만
+ * **스토리지 파일은 따로 지워야 한다** — 안 지우면 아무도 못 여는 사진이 비공개
+ * 버킷에 쌓인다.
+ *
+ * 확정건은 막는다(`delete-guard.ts`). 판정을 여기 두지 않은 이유는 upload-guard 와
+ * 같다 — 액션 안에 묻으면 경우를 테스트할 수 없다.
+ */
+export async function deleteReceipt(receiptId: string): Promise<UploadResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: "로그인이 필요합니다" };
+
+  const admin = createAdminClient();
+  const { data: receipt } = await admin
+    .from("postal_receipts")
+    .select("id, storage_path, uploaded_by, confirmed_at")
+    .eq("id", receiptId)
+    .maybeSingle();
+  if (!receipt) return { ok: false, error: "영수증을 찾을 수 없습니다" };
+
+  const verdict = canDeleteReceipt(
+    { permission: me.permission, displayName: me.displayName },
+    { uploadedBy: receipt.uploaded_by, confirmedAt: receipt.confirmed_at },
+  );
+  if (!verdict.ok) return { ok: false, error: verdict.reason };
+
+  // 행을 먼저 지운다. 파일만 지우고 행이 남으면 목록에 열리지 않는 카드가 남는데,
+  // 그건 지금 고치려는 것보다 나쁘다(지울 수도, 열 수도 없다).
+  const { error } = await admin
+    .from("postal_receipts")
+    .delete()
+    .eq("id", receiptId);
+  if (error) return { ok: false, error: error.message };
+
+  const rm = await admin.storage
+    .from(RECEIPT_BUCKET)
+    .remove([receipt.storage_path]);
+  if (rm.error) {
+    // 행은 이미 사라져 화면에서는 지워졌다. 실패라고 하면 사람이 다시 누르는데
+    // 그때는 행이 없어 "찾을 수 없습니다"만 나온다 — 파일만 로그로 남긴다.
+    console.error("[postal] 파일 삭제 실패:", receipt.storage_path, rm.error);
   }
 
   revalidatePath("/dashboard/postal");

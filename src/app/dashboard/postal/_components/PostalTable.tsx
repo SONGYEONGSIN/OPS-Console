@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ModalShell } from "@/components/common/ModalShell";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
 import { ReceiptReview } from "./ReceiptReview";
+import { deleteReceipt } from "@/features/postal/actions";
 
 /**
  * 우편물 영수증 목록 — 운영리포트의 '저장된 리포트'와 같은 톤(thead + hover row).
@@ -110,6 +111,7 @@ export function PostalTable({
               <th className="px-3 py-2">등기</th>
               <th className="px-3 py-2">금액</th>
               <th className="px-3 py-2">상태</th>
+              <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
@@ -160,6 +162,43 @@ export function PostalTable({
  * 검토 표를 팝업에 넣지 않는다 — 고치면서 원본을 봐야 하는데 둘 다 팝업이면
  * 겹친다. 목록에서 펼쳐 두고 원본만 띄운다.
  */
+/**
+ * 잘못 올린 영수증 지우기.
+ *
+ * 행을 누르면 원본 팝업이 열리므로 클릭이 새어나가지 않게 막는다.
+ */
+function DeleteButton({ receipt }: { receipt: ReceiptCard }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (
+            !window.confirm(
+              "이 영수증을 삭제하시겠습니까? 판독 결과도 함께 사라지며 되돌릴 수 없습니다.",
+            )
+          ) {
+            return;
+          }
+          startTransition(async () => {
+            const r = await deleteReceipt(receipt.id);
+            if (!r.ok) setError(r.error);
+          });
+        }}
+        className="cursor-pointer border border-line-soft px-2 py-0.5 text-xs text-muted transition-colors hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {pending ? "삭제 중" : "삭제"}
+      </button>
+      {error && <p className="mt-1 text-2xs text-vermilion">{error}</p>}
+    </>
+  );
+}
+
 function RowPair({
   receipt,
   extract,
@@ -203,9 +242,13 @@ function RowPair({
             </span>
           )}
         </td>
+        <td className="px-3 py-2 text-right">
+          {/* 확정건에는 아예 안 보여준다 — 눌렀다가 거절당하는 것보다 낫다. */}
+          {!receipt.confirmedAt && <DeleteButton receipt={receipt} />}
+        </td>
       </tr>
       <tr>
-        <td colSpan={6} className="px-3 pb-4">
+        <td colSpan={7} className="px-3 pb-4">
           <ReceiptReview receiptId={receipt.id} state={extract} />
         </td>
       </tr>
