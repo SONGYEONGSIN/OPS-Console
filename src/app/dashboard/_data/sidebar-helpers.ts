@@ -128,6 +128,8 @@ export const ADMIN_ONLY_MENU_SLUGS = new Set([
   "outcomes",
   "work-assignment",
   "checklist",
+  // 개발 환경 설정이지 운영 업무가 아니다.
+  "tools",
 ]);
 
 /** 신규 member 생성 시 기본 allowed_menus — admin 전용 메뉴를 제외한 전체. */

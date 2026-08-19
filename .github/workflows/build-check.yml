@@ -40,6 +40,14 @@ jobs:
         # next-env.d.ts는 gitignore된 생성 파일 — fresh clone에서 typegen으로 재생성 후 검사
         run: npx next typegen && npx tsc --noEmit
 
+      - name: 도구 카탈로그 동기 확인
+        # catalog.generated.ts 는 .claude/ 를 훑어 만든 커밋된 생성물이다.
+        # 스킬을 더하고 재생성을 잊으면 화면이 조용히 낡는다 — 여기서 잡는다.
+        run: |
+          npm run tools:scan
+          git diff --exit-code src/features/dev-tools/catalog.generated.ts \
+            || { echo "::error::.claude/ 가 바뀌었습니다. 'npm run tools:scan' 후 커밋하세요"; exit 1; }
+
       - name: Vitest
         run: npm test
 
