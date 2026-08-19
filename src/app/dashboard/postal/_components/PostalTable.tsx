@@ -1,0 +1,206 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { ListSearch } from "@/components/common/ListSearch";
+import { ModalShell } from "@/components/common/ModalShell";
+import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
+import { ReceiptReview } from "./ReceiptReview";
+
+/**
+ * 우편물 영수증 목록 — 운영리포트의 '저장된 리포트'와 같은 톤(thead + hover row).
+ *
+ * 카드 격자였는데 여러 건을 훑기 어려웠다. 표로 바꾸고, 원본은 행을 눌러 팝업으로
+ * 본다 — 목록에 사진을 늘어놓으면 정작 등기번호·금액이 안 보인다.
+ */
+
+const EMPTY: ExtractState = {
+  status: "none",
+  warnings: [],
+  message: null,
+  acceptedAt: null,
+  rows: [],
+};
+
+const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
+
+function fmtDate(iso: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** 메일 주소를 그대로 두면 열이 넓어진다 — 앞부분만 보여준다. */
+const shortName = (email: string) => email.split("@")[0] ?? email;
+
+export function PostalTable({
+  receipts,
+  extractStates,
+}: {
+  receipts: ReceiptCard[];
+  extractStates: Record<string, ExtractState>;
+}) {
+  const [q, setQ] = useState("");
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const rows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return receipts
+      .map((r) => ({ receipt: r, extract: extractStates[r.id] ?? EMPTY }))
+      .filter(({ receipt, extract }) => {
+        if (!needle) return true;
+        // 사람이 들고 오는 번호가 등기번호라 그것도 찾을 수 있어야 한다.
+        const hay = [
+          receipt.uploadedBy,
+          receipt.createdAt,
+          extract.acceptedAt ?? "",
+          ...extract.rows.map((x) => `${x.trackingNo} ${x.recipientOrg ?? ""} ${x.recipientName ?? ""}`),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(needle);
+      });
+  }, [receipts, extractStates, q]);
+
+  const opened = receipts.find((r) => r.id === openId) ?? null;
+
+  if (receipts.length === 0) {
+    return (
+      <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
+        올린 영수증이 없습니다. 위 칸에 영수증을 끌어다 놓으세요.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <header className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-base font-semibold text-ink">올린 영수증</h3>
+        <ListSearch
+          value={q}
+          onChange={setQ}
+          ariaLabel="우편물 검색"
+          placeholder="올린 사람 · 날짜 · 등기번호 · 수취인"
+          className="w-full sm:w-80"
+        />
+      </header>
+
+      {rows.length === 0 ? (
+        <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
+          찾는 영수증이 없습니다.
+        </p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+              <th className="px-3 py-2">올린 날</th>
+              <th className="px-3 py-2">올린 사람</th>
+              <th className="px-3 py-2">판독</th>
+              <th className="px-3 py-2">등기</th>
+              <th className="px-3 py-2">금액</th>
+              <th className="px-3 py-2">상태</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ receipt, extract }) => {
+              const total = extract.rows.reduce((a, x) => a + (x.fee ?? 0), 0);
+              return (
+                <RowPair
+                  key={receipt.id}
+                  receipt={receipt}
+                  extract={extract}
+                  total={total}
+                  onOpen={() => setOpenId(receipt.id)}
+                />
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {opened && (
+        <ModalShell
+          title={`영수증 — ${fmtDate(opened.createdAt)}`}
+          onClose={() => setOpenId(null)}
+          size="a4"
+        >
+          {opened.imageUrl ? (
+            // 세로로 긴 영수증이라 폭에 맞추고 높이는 화면을 넘지 않게 자른다.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={opened.imageUrl}
+              alt={`영수증 원본 (${fmtDate(opened.createdAt)})`}
+              className="mx-auto max-h-[70vh] w-auto object-contain"
+            />
+          ) : (
+            <p className="py-10 text-center text-sm text-muted">
+              지금은 열 수 없습니다 — 화면을 새로 고치면 다시 열립니다
+            </p>
+          )}
+        </ModalShell>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 한 영수증 = 목록 행 + (판독됐으면) 그 아래 검토 표.
+ *
+ * 검토 표를 팝업에 넣지 않는다 — 고치면서 원본을 봐야 하는데 둘 다 팝업이면
+ * 겹친다. 목록에서 펼쳐 두고 원본만 띄운다.
+ */
+function RowPair({
+  receipt,
+  extract,
+  total,
+  onOpen,
+}: {
+  receipt: ReceiptCard;
+  extract: ExtractState;
+  total: number;
+  onOpen: () => void;
+}) {
+  return (
+    <>
+      <tr
+        onClick={onOpen}
+        className="cursor-pointer border-b border-line-soft hover:bg-line-soft"
+      >
+        <td className="px-3 py-2 text-sm text-ink-soft">
+          {fmtDate(receipt.createdAt)}
+        </td>
+        <td className="px-3 py-2 text-sm text-ink">
+          {shortName(receipt.uploadedBy)}
+        </td>
+        <td className="px-3 py-2 text-xs text-muted">
+          {extract.acceptedAt ?? "—"}
+        </td>
+        <td className="px-3 py-2 font-mono text-xs text-ink-soft">
+          {extract.rows.length > 0 ? `${extract.rows.length}건` : "—"}
+        </td>
+        <td className="px-3 py-2 font-mono text-sm text-ink">
+          {total > 0 ? won(total) : "—"}
+        </td>
+        <td className="px-3 py-2 text-sm">
+          {receipt.confirmedAt ? (
+            <span className="inline-block bg-vermilion/10 px-2 py-0.5 text-xs text-vermilion">
+              확정
+            </span>
+          ) : (
+            <span className="inline-block bg-line-soft px-2 py-0.5 text-xs text-muted">
+              {extract.status === "done" ? "검토 대기" : "판독 전"}
+            </span>
+          )}
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={6} className="px-3 pb-4">
+          <ReceiptReview receiptId={receipt.id} state={extract} />
+        </td>
+      </tr>
+    </>
+  );
+}
