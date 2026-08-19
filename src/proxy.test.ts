@@ -68,6 +68,11 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("미인증 + postal/extract(회사 PC 폴러)은 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(reqFor("/api/postal/extract"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("로그인 상태 + /login → /dashboard 리다이렉트", async () => {
     updateSession.mockResolvedValue({
       supabaseResponse: NextResponse.next(),
