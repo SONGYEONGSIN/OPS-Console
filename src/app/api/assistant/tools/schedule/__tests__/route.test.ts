@@ -2,12 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const state = {
   rows: [] as Record<string, unknown>[],
+  backups: [] as Record<string, unknown>[],
   filters: [] as [string, unknown, unknown?][],
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => {
-    const chain = {
+  createAdminClient: () => ({
+    from: (table: string) => {
+      const chain = {
       select: () => chain,
       gte: (c: string, v: unknown) => {
         state.filters.push(["gte", c, v]);
@@ -21,11 +23,16 @@ vi.mock("@/lib/supabase/admin", () => ({
         state.filters.push(["eq", c, v]);
         return chain;
       },
-      order: () => chain,
-      limit: () => Promise.resolve({ data: state.rows, error: null }),
-    };
-    return { from: () => chain };
-  },
+        order: () => chain,
+        limit: () =>
+          Promise.resolve({
+            data: table === "backup_requests" ? state.backups : state.rows,
+            error: null,
+          }),
+      };
+      return chain;
+    },
+  }),
 }));
 
 const { GET } = await import("../route");
@@ -39,6 +46,7 @@ const req = (qs: string, auth = "Bearer s3cret") =>
 describe("일정 조회 도구 endpoint", () => {
   beforeEach(() => {
     state.rows = [];
+    state.backups = [];
     state.filters = [];
     process.env.CRON_SECRET = "s3cret";
   });
@@ -89,5 +97,57 @@ describe("일정 조회 도구 endpoint", () => {
     expect((await GET(req("?from=2026-08-17&to=2026-08-23&type=휴가"))).status).toBe(
       400,
     );
+  });
+});
+
+/**
+ * 휴가가 두 곳에 나뉘어 있다 — 연차 백업요청 11건 중 6건이 일정에 없다.
+ * 일정만 보고 답하면 절반을 놓친다(임종우 연차가 그렇게 빠졌다).
+ */
+describe("일정 조회 — 백업요청의 부재도 함께", () => {
+  beforeEach(() => {
+    state.rows = [];
+    state.backups = [];
+    state.filters = [];
+    process.env.CRON_SECRET = "s3cret";
+  });
+
+  it("일정에 없는 연차를 백업요청에서 찾아 함께 준다", async () => {
+    state.backups = [
+      { title: "임종우 연차 백업요청(08.18~08.21)", created_at: "2026-06-22T00:00:00Z" },
+    ];
+    const body = await (await GET(req("?from=2026-08-17&to=2026-08-23"))).json();
+    expect(body.backupAbsences).toHaveLength(1);
+    expect(body.backupAbsences[0]).toMatchObject({
+      name: "임종우",
+      reason: "연차",
+      startYmd: "2026-08-18",
+    });
+  });
+
+  it("출처를 밝힌다 — 일정에 등록된 것과 구분돼야 한다", async () => {
+    state.backups = [
+      { title: "임종우 연차 백업요청(08.18~08.21)", created_at: "2026-06-22T00:00:00Z" },
+    ];
+    const body = await (await GET(req("?from=2026-08-17&to=2026-08-23"))).json();
+    expect(body.backupAbsences[0].source).toBe("backup_request");
+  });
+
+  it("범위 밖 백업요청은 빼준다", async () => {
+    state.backups = [
+      { title: "박시현 연차 백업요청(06.19~06.23)", created_at: "2026-06-18T00:00:00Z" },
+    ];
+    const body = await (await GET(req("?from=2026-08-17&to=2026-08-23"))).json();
+    expect(body.backupAbsences).toEqual([]);
+  });
+
+  it("type을 leave가 아닌 걸로 좁히면 백업요청은 안 붙인다 — 회의만 물었는데 휴가가 끼면 안 된다", async () => {
+    state.backups = [
+      { title: "임종우 연차 백업요청(08.18~08.21)", created_at: "2026-06-22T00:00:00Z" },
+    ];
+    const body = await (
+      await GET(req("?from=2026-08-17&to=2026-08-23&type=meeting"))
+    ).json();
+    expect(body.backupAbsences).toEqual([]);
   });
 });
