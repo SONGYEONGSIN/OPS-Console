@@ -8,6 +8,8 @@ const SIZE_CLASS = {
   md: "max-w-md",
   lg: "max-w-xl",
   xl: "max-w-2xl",
+  /** 영수증 원본처럼 세로로 긴 이미지용. xl로는 좁아 글씨가 안 읽힌다. */
+  a4: "max-w-3xl",
 } as const;
 
 type Props = {
