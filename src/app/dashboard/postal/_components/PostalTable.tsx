@@ -68,14 +68,6 @@ export function PostalTable({
 
   const opened = receipts.find((r) => r.id === openId) ?? null;
 
-  if (receipts.length === 0) {
-    return (
-      <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
-        올린 영수증이 없습니다. 위 칸에 영수증을 끌어다 놓으세요.
-      </p>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-3">
       {/* 검색은 목록 위 별도 줄(다른 메뉴의 controlsRow 자리). 검색 앞에 제목을
@@ -97,12 +89,7 @@ export function PostalTable({
         </div>
       </header>
 
-      {rows.length === 0 ? (
-        <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
-          찾는 영수증이 없습니다.
-        </p>
-      ) : (
-        <table className="w-full text-sm">
+      <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
               <th className="px-3 py-2">올린 날</th>
@@ -127,9 +114,22 @@ export function PostalTable({
                 />
               );
             })}
+            {rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="border-b border-line-soft px-3 py-10 text-sm text-muted"
+                >
+                  {/* 한 건도 없는 것과 검색에 안 걸린 것은 다른 말이다.
+                      전자는 무엇을 하면 되는지 알려주고, 후자는 검색어를 되짚게 한다. */}
+                  {receipts.length === 0
+                    ? "올린 영수증이 없습니다. 위 칸에 영수증을 끌어다 놓으세요."
+                    : "찾는 영수증이 없습니다."}
+                </td>
+              </tr>
+            )}
           </tbody>
-        </table>
-      )}
+      </table>
 
       {opened && (
         <ModalShell
