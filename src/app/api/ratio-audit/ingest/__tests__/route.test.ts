@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// 실행 기록은 자동화 레지스트리(모든 잡 모듈)를 끌어와 로딩이 느리다. 여기서
+// 검증할 건 인제스트지 기록이 아니므로 끊는다 — 기록 자체는 run-log.test.ts 가 본다.
+vi.mock("@/features/automations/run-recorder", () => ({
+  recordAutomationRun: () => Promise.resolve(),
+}));
+
+
 const insertResult = { data: { id: "run-1" }, error: null };
 const h = vi.hoisted(() => ({
   single: vi.fn(),
