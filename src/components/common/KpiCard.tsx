@@ -1,7 +1,14 @@
 import type { KpiItem } from "@/features/reports/schemas";
 
+/**
+ * 카드에 필요한 최소 모양. 운영리포트는 `KpiItem` 을 그대로 넘기고,
+ * 리포트가 아닌 화면(전도금 등)은 이 모양만 맞추면 된다 —
+ * `KpiItem.key` 는 리포트 전용 enum 이라 다른 화면이 쓸 수 없다.
+ */
+export type KpiCardItem = Omit<KpiItem, "key">;
+
 type Props = {
-  item: KpiItem;
+  item: KpiCardItem;
 };
 
 function formatValue(n: number): string {

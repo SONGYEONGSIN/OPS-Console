@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getReportByShareToken } from "@/features/reports/queries";
-import { KpiCard } from "@/app/dashboard/reports/_components/KpiCard";
+import { KpiCard } from "@/components/common/KpiCard";
 
 /**
  * 인증 없이 토큰으로 리포트 조회. proxy.ts PUBLIC_PATHS에 "/r" 등록됨.

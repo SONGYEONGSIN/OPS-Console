@@ -46,6 +46,14 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
+const { extractSpy } = vi.hoisted(() => ({ extractSpy: vi.fn() }));
+vi.mock("../extract-actions", () => ({
+  requestExtraction: (id: string) => {
+    extractSpy(id);
+    return Promise.resolve({ ok: true });
+  },
+}));
+
 const { uploadReceipt } = await import("../actions");
 
 const file = (name = "a.jpg", type = "image/jpeg", size = 1000) =>
@@ -110,5 +118,37 @@ describe("uploadReceipt", () => {
     const r = await uploadReceipt(file());
     expect(r.ok).toBe(false);
     expect(state.inserted).toHaveLength(0);
+  });
+});
+
+/**
+ * 올리자마자 판독이 시작돼야 한다 — [추출]을 따로 누르게 하면 목록이 '판독 전'
+ * 으로만 차고, 사람이 버튼을 누르러 다시 들어와야 한다.
+ */
+describe("uploadReceipt — 자동 판독", () => {
+  beforeEach(() => {
+    state.me = { email: "me@x.com", permission: "member" };
+    state.uploaded = [];
+    state.inserted = [];
+    state.removed = [];
+    state.uploadError = null;
+    extractSpy.mockClear();
+  });
+
+  it("업로드가 끝나면 그 영수증의 판독을 요청한다", async () => {
+    const r = await uploadReceipt(file());
+    expect(r.ok).toBe(true);
+    expect(extractSpy).toHaveBeenCalledWith("r1");
+  });
+
+  it("업로드가 실패하면 판독을 요청하지 않는다", async () => {
+    state.uploadError = "저장 실패";
+    await uploadReceipt(file());
+    expect(extractSpy).not.toHaveBeenCalled();
+  });
+
+  it("올릴 수 없는 파일이면 판독도 없다", async () => {
+    await uploadReceipt(file("x.pdf", "application/pdf"));
+    expect(extractSpy).not.toHaveBeenCalled();
   });
 });
