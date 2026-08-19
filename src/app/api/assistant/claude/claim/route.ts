@@ -9,6 +9,11 @@ import {
   proposalPathFromToolUses,
   type SdkToolUse,
 } from "@/features/assistant/claude-prompt";
+import {
+  stageLabel,
+  STAGE_START,
+  STAGE_COMPOSING,
+} from "@/features/assistant/stage-label";
 
 /**
  * 어시스턴트 Claude 모드 폴러 endpoint — `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -201,4 +206,75 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/** 한 줄 표시용이라 길 이유가 없다. 긴 문서 이름이 와도 화면을 밀지 않게 자른다. */
+const STAGE_MAX = 200;
+
+/**
+ * 진행 단계 보고 — 폴러가 도구를 부를 때마다 알린다.
+ *
+ * 답이 나오기까지 30~40초가 걸리는데 화면 문구가 고정이면 멈춘 것처럼 보인다.
+ * 무엇을 하는 중인지는 폴러만 알고 있으므로 여기로 흘려 화면이 읽게 한다.
+ *
+ * **문장은 서버가 만든다.** 폴러는 도구 이름(또는 도구 밖 구간이면 phase)만 보낸다 —
+ * 표현을 고칠 때마다 회사 PC를 만져야 한다면 문구는 영영 안 고쳐진다.
+ *
+ * 실패해도 폴러는 신경 쓰지 않는다(fire-and-forget) — 진행 표시 때문에 답이
+ * 늦어지면 주객이 뒤바뀐다.
+ */
+export async function PATCH(request: NextRequest) {
+  const g = guard(request);
+  if (typeof g !== "string") return g;
+
+  const body = (await request.json().catch(() => ({}))) as {
+    id?: unknown;
+    tool?: unknown;
+    phase?: unknown;
+  };
+  const id = typeof body.id === "string" ? body.id : null;
+  if (!id) {
+    return NextResponse.json({ ok: false, error: "id 누락" }, { status: 400 });
+  }
+
+  const stage = resolveStage(body);
+  if (!stage) {
+    return NextResponse.json(
+      { ok: false, error: "tool/phase 누락 또는 알 수 없는 값" },
+      { status: 400 },
+    );
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("assistant_requests")
+    .update({
+      stage: stage.slice(0, STAGE_MAX),
+      stage_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    // 이미 끝난 요청은 건드리지 않는다 — 늦게 도착한 단계가 답변 위에 떠서는 안 된다.
+    .eq("status", "running");
+  if (error) {
+    return NextResponse.json(
+      { ok: false, error: error.message },
+      { status: 500 },
+    );
+  }
+  return NextResponse.json({ ok: true });
+}
+
+/** 폴러가 보낸 것에서 화면 문장을 만든다. 모르는 값이면 null — 아무거나 넣지 않는다. */
+function resolveStage(body: { tool?: unknown; phase?: unknown }): string | null {
+  const tool = body.tool as { name?: unknown; input?: unknown } | undefined;
+  if (tool && typeof tool.name === "string") {
+    const input =
+      tool.input && typeof tool.input === "object"
+        ? (tool.input as Record<string, unknown>)
+        : {};
+    return stageLabel({ name: tool.name, input });
+  }
+  if (body.phase === "start") return STAGE_START;
+  if (body.phase === "composing") return STAGE_COMPOSING;
+  return null;
 }

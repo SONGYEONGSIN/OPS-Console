@@ -325,11 +325,17 @@ describe("AssistantClient — Claude 모드", () => {
     expect(screen.getByText(/공문 시행번호 채번 규칙/)).toBeInTheDocument();
   });
 
-  it("도는 동안 무엇을 하고 있는지 보여준다 — 30초를 '답변 중'만 보면 멈춘 줄 안다", async () => {
+  it("도는 동안 무엇을 하고 있는지 보여준다 — 폴러가 알려준 실제 단계다", async () => {
     stubClaude([
       { ok: true, status: "pending", answer: null, sources: [] },
-      { ok: true, status: "running", answer: null, sources: [] },
-      { ok: true, status: "running", answer: null, sources: [] },
+      { ok: true, status: "running", answer: null, sources: [], stage: null },
+      {
+        ok: true,
+        status: "running",
+        answer: null,
+        sources: [],
+        stage: "지식망 문서를 읽는 중 — 부산대학교 수시",
+      },
       { ok: true, status: "done", answer: "답", sources: [] },
     ]);
     render(<AssistantClient />);
@@ -338,16 +344,25 @@ describe("AssistantClient — Claude 모드", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
 
-    // claim 전 → 회사 PC로 보냈다는 것, claim 후 → 문서를 읽고 있다는 것
+    // claim 전 — 아직 아무것도 안 돈다. "실행 중"이라 하면 거짓이다.
     await waitFor(
-      () => expect(screen.getByText(/회사 PC로 보냈습니다/)).toBeInTheDocument(),
+      () => expect(screen.getByText(/에이전트를 부르는 중/)).toBeInTheDocument(),
       { timeout: 5000 },
     );
+    // claim 직후, 단계가 오기 전 — 잡혔다는 사실만 말한다
     await waitFor(
-      () => expect(screen.getByText(/지식망 문서를 읽는 중/)).toBeInTheDocument(),
+      () => expect(screen.getByText(/에이전트 실행 중/)).toBeInTheDocument(),
       { timeout: 8000 },
     );
-  }, 15000);
+    // 단계가 오면 무엇을 읽는 중인지까지 보여준다
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText(/지식망 문서를 읽는 중 — 부산대학교 수시/),
+        ).toBeInTheDocument(),
+      { timeout: 8000 },
+    );
+  }, 20000);
 
   it("아무도 안 가져가면 회사 PC가 꺼졌다고 말한다 — 조용히 도는 것처럼 보이면 안 된다", async () => {
     stubClaude([{ ok: true, status: "pending", answer: null, sources: [] }]);

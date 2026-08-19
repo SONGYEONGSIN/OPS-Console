@@ -13,6 +13,8 @@ import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
+import { pendingNoteFor, STAGE_QUEUED } from "@/features/assistant/stage-label";
+import { PendingLine } from "./PendingLine";
 
 /**
  * 서버 `features/assistant/search.ts`의 Source와 같은 모양을 여기 다시 적는다 —
@@ -46,6 +48,8 @@ type ChatMessage = {
   warning?: string;
   /** 진행 중 표시용 */
   pending?: boolean;
+  /** 기다리기 시작한 시각(ms) — 경과 시간 표시에 쓴다 */
+  pendingSince?: number;
   /** 메시지 발생 시각 (KST 표시) */
   ts?: string;
 };
@@ -138,6 +142,8 @@ const UNCLAIMED_MS = 15_000;
 type ClaudePoll = {
   ok: boolean;
   status?: string;
+  /** 폴러가 알려준 지금 하는 일. 서버가 문장으로 만들어 준다. */
+  stage?: string | null;
   answer?: string | null;
   sources?: string[];
   message?: string | null;
@@ -225,7 +231,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       return;
     }
 
-    setPendingNote("회사 PC로 보냈습니다…");
+    setPendingNote(STAGE_QUEUED);
 
     const startedAt = Date.now();
     for (;;) {
@@ -235,8 +241,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       const res = await fetch(`/api/assistant/claude?id=${enqJson.id}`);
       const json = (await res.json()) as ClaudePoll;
 
-      // claim되면 볼트를 읽기 시작한 것 — 여기서 대부분의 시간을 쓴다.
-      if (json.status === "running") setPendingNote("지식망 문서를 읽는 중…");
+      // 폴러가 알려준 실제 단계를 그대로 보여준다. 아직 안 왔으면 아는 사실만 말한다
+      // — 예전엔 claim만 되면 "문서를 읽는 중"이라 했는데 안 읽고 있을 수도 있었다.
+      setPendingNote(pendingNoteFor(json));
 
       if (json.status === "done") {
         replaceLast({
@@ -275,7 +282,13 @@ export function AssistantClient({ userName = "운영자" }: Props) {
     setMessages((prev) => [
       ...prev,
       { role: "user", content: question, ts: nowIso },
-      { role: "assistant", content: "", pending: true, ts: nowIso },
+      {
+        role: "assistant",
+        content: "",
+        pending: true,
+        pendingSince: Date.now(),
+        ts: nowIso,
+      },
     ]);
     setInput("");
     setPending(true);
@@ -522,16 +535,10 @@ function MessageCard({
       </div>
       <div className="space-y-2.5">
         {message.pending ? (
-          <div className="text-sm text-ink-soft">
-            <span className="inline-flex items-center gap-2">
-              <span className="inline-flex h-1.5 items-center gap-1">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:0ms]" />
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:150ms]" />
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:300ms]" />
-              </span>
-              {message.pendingNote ?? "답변 중…"}
-            </span>
-          </div>
+          <PendingLine
+            note={message.pendingNote ?? STAGE_QUEUED}
+            since={message.pendingSince}
+          />
         ) : (
           <>
             {/*

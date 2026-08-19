@@ -115,6 +115,31 @@ async function report(id, ok, { answer, toolUses, message }) {
   });
   if (!res.ok) throw new Error(`report ${res.status}`);
 }
+/**
+ * 지금 무엇을 하는 중인지 서버에 알린다.
+ *
+ * 화면 문구가 고정이면 30~40초 동안 멈춘 것처럼 보인다. 무엇을 하는 중인지는
+ * 여기서만 알 수 있으므로 도구를 부를 때마다 흘려준다.
+ *
+ * **문장은 서버가 만든다** — 여기서는 도구 이름만 보낸다. 표현을 고칠 때마다
+ * 회사 PC를 만져야 한다면 문구는 영영 안 고쳐진다.
+ *
+ * 실패해도 답변은 막지 않는다. 다만 조용히 넘기지는 않는다 — 진행 표시가 통째로
+ * 죽어 있어도 모르면 그게 다음 진단을 막는다.
+ */
+async function reportStage(id, payload) {
+  try {
+    const res = await fetchWithTimeout(endpoint, {
+      method: "PATCH",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ id, ...payload }),
+    });
+    if (!res.ok) console.error(`[assistant] 단계 보고 ${res.status}`);
+  } catch (e) {
+    console.error(`[assistant] 단계 보고 실패: ${e.message}`);
+  }
+}
+
 
 /**
  * 운영 데이터 조회 도구.
@@ -371,7 +396,7 @@ const opsTools = createSdkMcpServer({
 let current = { id: null, question: "", operator_email: null };
 
 /** 볼트를 cwd로 Claude를 돌린다. 답과 쓴 도구를 그대로 돌려준다(해석은 서버가). */
-async function answerWithVault(prompt) {
+async function answerWithVault(prompt, onStage) {
   const uses = [];
   /**
    * 텍스트 블록을 순서대로 모은다.
@@ -418,9 +443,17 @@ async function answerWithVault(prompt) {
     for await (const m of run) {
       if (m.type === "assistant") {
         for (const b of m.message.content ?? []) {
-          if (b.type === "tool_use") uses.push({ name: b.name, input: b.input });
+          if (b.type === "tool_use") {
+            uses.push({ name: b.name, input: b.input });
+            // 기다리지 않는다 — 진행 표시가 답을 늦추면 주객이 뒤바뀐다.
+            void onStage?.({ tool: { name: b.name, input: b.input } });
+          }
           // 도구를 부르기 전에 나온 텍스트도 답의 일부다.
-          if (b.type === "text" && b.text.trim()) texts.push(b.text.trim());
+          if (b.type === "text" && b.text.trim()) {
+            texts.push(b.text.trim());
+            // 도구를 쓴 뒤 나온 텍스트 = 답을 쓰기 시작했다는 뜻.
+            if (uses.length > 0) void onStage?.({ phase: "composing" });
+          }
         }
       }
       if (m.type === "result") result = m.result ?? "";
@@ -492,7 +525,12 @@ for (;;) {
   };
   const t0 = Date.now();
   try {
-    const { answer, toolUses } = await answerWithVault(req.prompt);
+    // claim 직후 = 에이전트가 막 돌기 시작한 시점. 이전 문구는 "보냈습니다"였는데
+    // 그때 이미 돌고 있었으므로 실제 상태와 어긋났다.
+    void reportStage(req.id, { phase: "start" });
+    const { answer, toolUses } = await answerWithVault(req.prompt, (p) =>
+      reportStage(req.id, p),
+    );
     if (!answer) throw new Error("빈 응답");
     await report(req.id, true, { answer, toolUses });
     const reads = toolUses.filter((u) => u.name === "Read").length;
