@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { RECEIPT_BUCKET } from "./actions";
+import { RECEIPT_BUCKET } from "./upload-guard";
 
 /**
  * 영수증 목록 — 카드 격자에 그릴 것.

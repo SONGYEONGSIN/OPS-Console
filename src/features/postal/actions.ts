@@ -4,7 +4,11 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertUploadable, receiptStoragePath } from "./upload-guard";
+import {
+  assertUploadable,
+  receiptStoragePath,
+  RECEIPT_BUCKET,
+} from "./upload-guard";
 
 /**
  * 등기발송 영수증 업로드.
@@ -15,8 +19,6 @@ import { assertUploadable, receiptStoragePath } from "./upload-guard";
  *
  * **결제 정보는 아예 적지 않는다.** 업무에 쓸 일이 없고, 칸이 없으면 실수로도 안 들어간다.
  */
-
-export const RECEIPT_BUCKET = "postal-receipts";
 
 export type UploadResult =
   { ok: true; id: string } | { ok: false; error: string };

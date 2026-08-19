@@ -7,6 +7,14 @@
  * 순수 함수로 둔 이유: 라우트 안에 묻으면 우회 시도를 테스트할 수 없다.
  */
 
+/**
+ * 저장 버킷. **비공개다** — 공개 URL이 없고 서버가 발급한 서명 URL로만 열린다.
+ *
+ * `actions.ts`가 아니라 여기 두는 이유: `"use server"` 파일은 async 함수만 export할
+ * 수 있어 상수를 내보내면 빌드가 깨진다(타입체크·린트는 못 잡는다).
+ */
+export const RECEIPT_BUCKET = "postal-receipts";
+
 /** 스마트폰으로 찍은 영수증 한 장. 이보다 크면 사진이 아니거나 잘못 올린 것이다. */
 export const MAX_RECEIPT_BYTES = 15 * 1024 * 1024;
 
