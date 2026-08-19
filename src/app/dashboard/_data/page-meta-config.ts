@@ -95,6 +95,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "운영 자동화를 파이프라인 네 단계로 묶어 봅니다. 무엇이 무엇을 위해 도는지 한눈에 봅니다.",
   },
+  tools: {
+    headline: { accent: "AI & 자동화", title: "도구" },
+    description:
+      "에이전트가 쓰는 스킬·훅·룰을 한곳에서 봅니다. 레포 .claude/ 를 그대로 읽으므로 파일이 곧 진실이고, 스킬은 여기서 끌 수 있습니다.",
+  },
   automations: {
     headline: { accent: "AI & 자동화", title: "자동화실행" },
     description:

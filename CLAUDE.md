@@ -122,6 +122,18 @@ E2E 운영 메모:
 후보 키는 두 소스 모두 `String(service_id)` — 저장된 요청을 되읽을 때 같은 규칙으로 만들어지므로
 (`backup-requests/queries.ts`) 접두사를 붙이면 기존 요청 편집이 깨진다.
 
+## /dashboard/tools — 도구 (admin only)
+
+에이전트가 쓰는 **스킬 53 · 에이전트 24 · 훅 28 · 룰 7** 을 한곳에서 본다. 사이드바 'AI & 자동화 > 에이전트' 바로 아래.
+
+목록은 DB가 아니라 레포 `.claude/` 를 훑어 만든 **커밋된 생성물**(`src/features/dev-tools/catalog.generated.ts`)이다. `npm run tools:scan` 으로 다시 만들고, `.claude/` 와 어긋나면 CI(build-check)가 잡는다. 빌드 시점 생성 + gitignore 로 두지 않는 이유는 fresh clone 에서 typecheck·test 가 깨지기 때문(`next-env.d.ts` 와 같은 문제).
+
+**MCP·플러그인은 없다** — 둘 다 `~/.claude.json`·`~/.claude/settings.json` 에 있어 git 에 안 들어오고 Vercel 은 홈 디렉터리를 못 읽는다. 보려면 스냅샷을 올리는 경로가 따로 필요하다.
+
+**끌 수 있는 건 스킬뿐이다.** 에이전트·훅·룰은 파일 존재가 곧 활성이라 끄려면 파일을 옮겨야 하고 그건 git 변경이다 — 그 종류에는 스위치를 안 보여준다.
+
+토글은 **바로 적용되지 않는다.** 실제 스위치는 각 PC의 `.claude/settings.local.json` 인데 gitignore 라 Vercel 이 만질 수 없다. 웹은 `dev_tool_toggles` 에 결정만 적고, 그 PC에서 `npm run tools:apply` 가 `permissions.deny` 의 `Skill(…)` 항목만 다시 쓴다(나머지 permissions·env·hooks 는 안 건드리고, 덮어쓰기 전 `.bak` 을 남긴다). 반영 시각은 `dev_tool_applies` 에 PC별로 남아 화면이 **'아직 반영 안 된 변경 N건'** 을 띄운다 — 이게 없으면 껐다고 믿은 채로 계속 돈다. 적용 후 Claude Code 재시작 필요.
+
 ## 자동화 잡 (automations registry)
 
 `/dashboard/automations` (admin only) + GitHub Actions cron. 등록: `src/features/automations/registry.ts` 1줄 + `jobs/{id}.ts` 1 모듈. cron 진입점은 `/api/automations/run` (Authorization: Bearer CRON_SECRET).

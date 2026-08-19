@@ -15,14 +15,14 @@ describe("에이전트 메뉴 등록", () => {
     expect(item?.label).toBe("에이전트");
   });
 
-  it("자동화실행 바로 위에 있다", () => {
+  it("도구 바로 위에 있다 — 에이전트가 쓰는 도구를 그 아래 둔다", () => {
     const group = sidebarSections
       .flatMap((s) => s.entries)
       .find((e) => e.kind === "group" && e.label === "AI & 자동화");
     expect(group).toBeDefined();
     const slugs =
       group && group.kind === "group" ? group.items.map((i) => i.slug) : [];
-    expect(slugs.indexOf("agents")).toBe(slugs.indexOf("automations") - 1);
+    expect(slugs.indexOf("agents")).toBe(slugs.indexOf("tools") - 1);
   });
 
   it("전원 열람이다 — adminOnly가 아니다", () => {

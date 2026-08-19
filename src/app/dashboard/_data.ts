@@ -387,6 +387,12 @@ export const sidebarSections: SbSection[] = [
           },
           {
             ico: "·",
+            label: "도구",
+            slug: "tools",
+            pattern: "list",
+          },
+          {
+            ico: "·",
             label: "자동화실행",
             slug: "automations",
             pattern: "list",
