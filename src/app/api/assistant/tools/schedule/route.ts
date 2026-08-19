@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduleTypeSchema } from "@/features/schedule/schemas";
+import { toKstEvent } from "@/features/assistant/schedule-format";
 
 /**
  * 어시스턴트 도구 — 일정 조회. `Authorization: Bearer ${CRON_SECRET}` 인증.
@@ -68,5 +69,11 @@ export async function GET(request: NextRequest) {
       { status: 500 },
     );
   }
-  return NextResponse.json({ ok: true, events: data ?? [] });
+  // KST로 확정해 넘긴다. UTC 원본을 주면 모델이 "표기 기준에 따라 다를 수 있다"고
+  // 헤아리는 답을 낸다 — 마감 시각을 묻는 사람에게 그건 쓸모가 없다(2026-08-19).
+  return NextResponse.json({
+    ok: true,
+    timezone: "Asia/Seoul",
+    events: (data ?? []).map(toKstEvent),
+  });
 }
