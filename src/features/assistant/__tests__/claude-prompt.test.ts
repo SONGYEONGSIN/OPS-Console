@@ -411,3 +411,26 @@ describe("proposalPathFromToolUses", () => {
     ).toBe("제안/조선대 수시 연락처.md");
   });
 });
+
+/**
+ * 시각은 KST로만 말한다.
+ *
+ * 도구가 UTC를 그대로 넘기던 때 답변이 "14:59+00:00로 저장돼 있어 표기 기준에 따라
+ * 달라질 수 있습니다"처럼 나왔다(2026-08-19). 도구는 이제 KST로 넘기지만, 프롬프트가
+ * 침묵하면 모델이 다시 시간대를 의심하는 문장을 붙일 수 있다.
+ */
+describe("buildVaultPrompt — 시간대", () => {
+  const p = buildVaultPrompt({
+    question: "x",
+    pageContext: null,
+    today: "2026-08-19 (수)",
+  });
+
+  it("모든 시각은 KST라고 못 박는다", () => {
+    expect(p).toMatch(/KST|한국 시간/);
+  });
+
+  it("시간대를 의심하는 단서를 붙이지 말라고 한다", () => {
+    expect(p).toMatch(/표기 기준|시간대를 의심|UTC/);
+  });
+});
