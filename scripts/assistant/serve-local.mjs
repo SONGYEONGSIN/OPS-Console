@@ -15,8 +15,7 @@
 // 실행: node scripts/assistant/serve-local.mjs
 
 import { config } from "dotenv";
-import { existsSync, appendFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
@@ -31,32 +30,14 @@ import {
 config({ path: ".env.local" });
 
 /**
- * 로그를 파일에도 남긴다.
+ * 로그는 작업 스케줄러가 파일로 넘긴다 —
+ *   cmd /c "node serve-local.mjs >> assistant-poller.log 2>&1"
  *
- * 작업 스케줄러는 stdout을 버린다 — 그래서 폴러가 멈추거나 실패해도 **원인을 볼
- * 방법이 없었고**, 2026-08-18에 그것 때문에 진단이 두 번 막혔다.
- * cmd로 감싸 리다이렉트하는 방법은 따옴표 규칙이 까다로워 등록이 조용히 실패했다.
- * 프로세스가 스스로 쓰면 실행 방식과 무관하게 남는다.
+ * 폴러가 스스로도 같은 파일에 쓰게 했다가 되돌렸다. cmd 가 그 파일을 쥐고 있어
+ * 쓰기가 **매번** EBUSY 로 튕겼고, 그 실패 메시지가 로그에 섞여 진단을 흐렸다
+ * (2026-08-19). 무엇보다 node 가 통째로 죽을 때 나오는 스택은 console 을 거치지
+ * 않으므로 리다이렉트만이 잡는다 — 폴러가 조용히 죽는 걸 보려고 만든 로그다.
  */
-const LOG_PATH =
-  process.env.ASSISTANT_LOG_PATH ??
-  join(process.cwd(), "assistant-poller.log");
-let logBroken = false;
-for (const level of ["log", "error"]) {
-  const orig = console[level].bind(console);
-  console[level] = (...args) => {
-    orig(...args);
-    if (logBroken) return;
-    try {
-      appendFileSync(LOG_PATH, `${args.join(" ")}\n`, "utf8");
-    } catch (e) {
-      // 로그를 못 써도 폴러는 계속 돈다 — 채팅이 통째로 멈추는 것보다 낫다.
-      // 다만 조용히 넘기지 않고 한 번은 알린다.
-      logBroken = true;
-      orig(`[assistant] 로그 파일 쓰기 실패 (${LOG_PATH}): ${e.message}`);
-    }
-  };
-}
 
 const BASE = (process.env.OPS_CONSOLE_BASE_URL ?? "").replace(/\/$/, "");
 const SECRET = process.env.CRON_SECRET;
