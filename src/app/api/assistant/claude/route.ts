@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("assistant_requests")
-    .select("id, status, answer, sources, message")
+    .select("id, status, answer, sources, message, stage")
     .eq("id", id)
     .eq("operator_email", me.email)
     .maybeSingle();

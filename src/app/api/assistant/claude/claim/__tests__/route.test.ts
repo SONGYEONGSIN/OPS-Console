@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { STAGE_START, STAGE_COMPOSING } from "@/features/assistant/stage-label";
 
 const state = {
   pending: [] as { id: string }[],
@@ -40,7 +41,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const { GET, POST } = await import("../route");
+const { GET, POST, PATCH } = await import("../route");
 
 const req = (init: { method: string; body?: unknown; auth?: string }) =>
   new Request("http://x/api/assistant/claude/claim", {
@@ -255,5 +256,102 @@ describe("빈틈 주제 재사용·소음 억제", () => {
       await GET(req({ method: "GET", auth: "Bearer s3cret" }))
     ).json();
     expect(body.request.prompt).not.toContain("초안 요청");
+  });
+});
+
+/**
+ * 진행 단계 보고(PATCH).
+ *
+ * 답이 나오기까지 30~40초가 걸리는데 그동안 화면 문구가 고정이라 멈춘 것처럼 보였다.
+ * 폴러가 도구를 부를 때마다 여기로 알리면 화면이 실제 진행을 보여줄 수 있다.
+ *
+ * **문장은 서버가 만든다.** 폴러는 도구 이름만 보낸다 — 표현을 고칠 때마다 회사 PC를
+ * 만져야 한다면 문구는 영영 안 고쳐진다(프롬프트를 서버에 둔 것과 같은 이유).
+ *
+ * 이 경로가 실패해도 답변은 막지 않는다 — 폴러가 fire-and-forget으로 보낸다.
+ */
+describe("진행 단계 보고", () => {
+  beforeEach(() => {
+    state.updates = [];
+    state.eqFilters = [];
+    process.env.CRON_SECRET = "s3cret";
+  });
+
+  it("CRON_SECRET이 틀리면 401 — 폴러 전용이다", async () => {
+    const res = await PATCH(
+      req({ method: "PATCH", auth: "Bearer wrong", body: { id: "r1", phase: "start" } }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("도구 이름을 받아 문장은 서버가 만든다", async () => {
+    const res = await PATCH(
+      req({
+        method: "PATCH",
+        auth: "Bearer s3cret",
+        body: {
+          id: "r1",
+          tool: { name: "Read", input: { file_path: "/볼트/엔티티/부산대학교 수시.md" } },
+        },
+      }),
+    );
+    expect(res.status).toBe(200);
+    const patch = state.updates[0];
+    // 폴러가 보낸 건 도구 이름뿐인데 화면 문장이 나와야 한다
+    expect(patch.stage).toContain("읽는 중");
+    expect(patch.stage).toContain("부산대학교 수시");
+    expect(typeof patch.stage_at).toBe("string");
+    expect(state.eqFilters).toContainEqual(["id", "r1"]);
+  });
+
+  it("도구 밖 구간은 phase로 받는다 — 시작과 마무리", async () => {
+    await PATCH(
+      req({ method: "PATCH", auth: "Bearer s3cret", body: { id: "r1", phase: "start" } }),
+    );
+    expect(state.updates[0].stage).toBe(STAGE_START);
+
+    state.updates = [];
+    await PATCH(
+      req({ method: "PATCH", auth: "Bearer s3cret", body: { id: "r1", phase: "composing" } }),
+    );
+    expect(state.updates[0].stage).toBe(STAGE_COMPOSING);
+  });
+
+  it("폴러가 보낸 문장은 쓰지 않는다 — 표현은 서버 것이다", async () => {
+    const res = await PATCH(
+      req({
+        method: "PATCH",
+        auth: "Bearer s3cret",
+        body: { id: "r1", stage: "폴러가 지어낸 문구" },
+      }),
+    );
+    // stage 만 온 요청은 받아들일 이유가 없다
+    expect(res.status).toBe(400);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it("끝난 요청은 건드리지 않는다 — 늦게 온 단계가 답변을 덮으면 안 된다", async () => {
+    await PATCH(
+      req({ method: "PATCH", auth: "Bearer s3cret", body: { id: "r1", phase: "start" } }),
+    );
+    expect(state.eqFilters).toContainEqual(["status", "running"]);
+  });
+
+  it("id가 없거나 알맹이가 없으면 400", async () => {
+    expect(
+      (await PATCH(req({ method: "PATCH", auth: "Bearer s3cret", body: { phase: "start" } })))
+        .status,
+    ).toBe(400);
+    expect(
+      (await PATCH(req({ method: "PATCH", auth: "Bearer s3cret", body: { id: "r1" } })))
+        .status,
+    ).toBe(400);
+  });
+
+  it("모르는 phase는 400 — 조용히 아무 문장이나 넣지 않는다", async () => {
+    const res = await PATCH(
+      req({ method: "PATCH", auth: "Bearer s3cret", body: { id: "r1", phase: "몰라" } }),
+    );
+    expect(res.status).toBe(400);
   });
 });
