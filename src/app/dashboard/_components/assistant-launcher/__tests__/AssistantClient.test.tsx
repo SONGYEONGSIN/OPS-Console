@@ -364,7 +364,48 @@ describe("AssistantClient — Claude 모드", () => {
     );
   }, 20000);
 
-  it("아무도 안 가져가면 회사 PC가 꺼졌다고 말한다 — 조용히 도는 것처럼 보이면 안 된다", async () => {
+  /**
+   * 늦게 가져가도 답을 버리지 않는다.
+   *
+   * 2026-08-19 실측: claim 이 27초 걸렸는데(Vercel 응답 지연으로 폴러의 요청이 한 번
+   * 끊기고 재시도) 화면은 15초에 폴링을 **멈췄다**. 그 뒤 도착한 343자짜리 답은
+   * 갈 곳이 없어 사라졌고, 사용자에겐 "회사 PC가 꺼졌다"는 **틀린 단정**만 남았다.
+   *
+   * 안 가져갔다는 건 사실이지만 왜인지는 화면이 알 수 없다 — 꺼진 건지 늦는 건지.
+   * 그러니 단정하지 말고 알리기만 하고, 기다리는 건 계속한다.
+   */
+  it("늦게 가져가도 답을 보여준다 — 15초에 멈추면 나온 답이 사라진다", async () => {
+    // 순번 시퀀스를 쓰면 앞 테스트에서 남은 폴링 루프가 이걸 갉아먹어
+    // 순서에 따라 통과해버린다(실측). 시간 기준이면 누가 몇 번 부르든 같다.
+    const t0 = Date.now();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (String(url).startsWith("/api/assistant/claude?")) {
+          const late = Date.now() - t0 > 20_000;
+          return Promise.resolve({
+            json: async () =>
+              late
+                ? { ok: true, status: "done", answer: "늦게 온 답", sources: [] }
+                : { ok: true, status: "pending", answer: null, sources: [] },
+          });
+        }
+        return Promise.resolve({ json: async () => ({ ok: true, id: "req-1" }) });
+      }),
+    );
+    render(<AssistantClient />);
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "조선대 연락처?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(
+      () => expect(screen.getByText(/늦게 온 답/)).toBeInTheDocument(),
+      { timeout: 30000 },
+    );
+  }, 35000);
+
+  it("오래 안 가져가면 알리되 꺼졌다고 단정하지 않는다", async () => {
     stubClaude([{ ok: true, status: "pending", answer: null, sources: [] }]);
     render(<AssistantClient />);
     fireEvent.change(screen.getByLabelText("질문 입력"), {
@@ -372,9 +413,12 @@ describe("AssistantClient — Claude 모드", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "전송" }));
 
-    await waitFor(() => expect(screen.getByText(/회사 PC/)).toBeInTheDocument(), {
-      timeout: 20000,
-    });
+    await waitFor(
+      () => expect(screen.getByText(/아직 가져가지 않았습니다/)).toBeInTheDocument(),
+      { timeout: 20000 },
+    );
+    // 여전히 기다리는 중이어야 한다 — 실패로 끝내면 뒤늦은 답을 못 받는다
+    expect(screen.queryByText(/❌/)).toBeNull();
   }, 25000);
 
   it("실패하면 사유를 보여준다", async () => {

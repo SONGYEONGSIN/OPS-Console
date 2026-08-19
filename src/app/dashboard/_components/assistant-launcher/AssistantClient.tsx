@@ -256,13 +256,18 @@ export function AssistantClient({ userName = "운영자" }: Props) {
         replaceLast({ content: `❌ ${json.message ?? "실행 실패"}` });
         return;
       }
-      // 아무도 안 가져갔다 = 폴러가 안 돈다. 도는 척하지 않고 말한다.
+      // 오래 안 가져가면 알린다 — 다만 **여기서 멈추지 않는다.**
+      //
+      // 예전엔 이 자리에서 "회사 PC가 꺼졌다"고 단정하고 폴링을 끝냈다. 그런데
+      // claim 이 27초 걸린 요청이 있었고(Vercel 응답 지연으로 폴러 요청이 한 번
+      // 끊기고 재시도), 그 뒤 도착한 343자짜리 답이 통째로 사라졌다(2026-08-19).
+      //
+      // 안 가져갔다는 건 사실이지만 **꺼진 건지 늦는 건지는 화면이 알 수 없다.**
+      // 그러니 사실만 말하고 기다리는 건 계속한다. 끝내는 건 3분 제한 하나뿐이다.
       if (json.status === "pending" && elapsed > UNCLAIMED_MS) {
-        replaceLast({
-          content:
-            "❌ 회사 PC가 응답하지 않습니다. Claude 모드는 회사 PC의 구독으로 도는데 폴러가 꺼져 있는 것 같습니다 — 빠른 답변 모드로 물어보세요.",
-        });
-        return;
+        setPendingNote(
+          "회사 PC가 아직 가져가지 않았습니다 — 급하면 빠른 답변 모드로 물어보세요",
+        );
       }
       if (elapsed > POLL_TIMEOUT_MS) {
         replaceLast({ content: "❌ 시간이 초과됐습니다 (3분)." });
