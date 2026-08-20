@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appendSpend } from "@/features/petty-cash/actions";
+import { appendToLedger } from "./ledger-append";
 
 /**
  * 판독 요청과 확정.
@@ -29,14 +30,16 @@ export type ConfirmRow = {
 };
 
 async function requireWriter(): Promise<
-  { ok: true; email: string } | { ok: false; error: string }
+  | { ok: true; email: string; name: string }
+  | { ok: false; error: string }
 > {
   const me = await getCurrentOperator();
   if (!me) return { ok: false, error: "로그인이 필요합니다" };
   if (me.permission === "viewer") {
     return { ok: false, error: "읽기 전용 권한입니다" };
   }
-  return { ok: true, email: me.email };
+  // 대장의 '확인' 칸은 사람 이름이다 — 메일 주소가 들어가면 다른 행과 어긋난다.
+  return { ok: true, email: me.email, name: me.displayName };
 }
 
 /** 영수증 판독을 회사 PC 폴러에 맡긴다. */
@@ -114,6 +117,27 @@ export async function confirmReceipt(
     .from("postal_receipts")
     .update({ confirmed_at: new Date().toISOString() })
     .eq("id", receiptId);
+
+  // 등기대장에도 옮겨 적는다 — 3단계. 여기까지 와야 손으로 칠 일이 없어진다.
+  //
+  // 실패해도 확정은 살린다. postal_items 는 이미 저장됐고, 여기서 실패라고 하면
+  // 사람이 다시 확정을 눌러 **중복 저장**으로 이어진다. 대장은 화면에서 다시 맞출
+  // 수 있고, 같은 등기번호는 appendToLedger 가 거절한다.
+  const sentOn = meta.acceptedAt?.slice(0, 10);
+  if (sentOn) {
+    const wrote = await appendToLedger(
+      rows.map((r) => ({
+        trackingNo: r.trackingNo.trim(),
+        recipientOrg: r.recipientOrg,
+        recipientName: r.recipientName,
+        assignee: r.assignee,
+      })),
+      { sentOn, confirmedBy: who.name },
+    );
+    if (!wrote.ok) {
+      console.error("[postal] 등기대장 반영 실패:", wrote.error);
+    }
+  }
 
   // 전도금 장부에도 한 줄 — 손으로 옮겨 적던 일이다.
   //
