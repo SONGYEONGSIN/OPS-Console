@@ -70,3 +70,65 @@ describe("LedgerTable", () => {
     expect(screen.getByText(/대장에 기록된 발송이 없습니다/)).toBeInTheDocument();
   });
 });
+
+/**
+ * 열이 날짜 묶음마다 어긋나던 것.
+ *
+ * 묶음마다 별도 `<table>` 을 그리면 브라우저가 표마다 열 너비를 따로 잰다. 그래서
+ * 8/19 묶음의 '수신자'와 8/14 묶음의 '수신자'가 다른 자리에서 시작했다(2026-08-20 실측).
+ *
+ * 표 하나에 날짜를 그룹 행으로 넣으면 모든 행이 같은 열을 공유한다.
+ */
+describe("LedgerTable — 열 정렬", () => {
+  const twoDays = [
+    line(),
+    line({ seq: 2, sentOn: "2026-08-14", recipientOrg: "공주대학교 천안공과대학", trackingNo: "…6941" }),
+  ];
+
+  it("표는 하나다 — 묶음마다 만들면 열 너비가 따로 계산된다", () => {
+    const { container } = render(
+      <LedgerTable rows={twoDays} receiptUrls={{ r1: "https://s/a.jpg" }} />,
+    );
+    expect(container.querySelectorAll("table")).toHaveLength(1);
+  });
+
+  it("머리글도 한 번만 그린다", () => {
+    const { container } = render(
+      <LedgerTable rows={twoDays} receiptUrls={{}} />,
+    );
+    expect(container.querySelectorAll("thead")).toHaveLength(1);
+    expect(screen.getAllByText("등기번호")).toHaveLength(1);
+  });
+
+  it("날짜는 표 안의 그룹 행으로 들어간다 — 요약도 함께", () => {
+    render(<LedgerTable rows={twoDays} receiptUrls={{}} />);
+    expect(screen.getByText("2026-08-18")).toBeInTheDocument();
+    expect(screen.getByText("2026-08-14")).toBeInTheDocument();
+    // 그룹 행이 표 밖이면 열이 다시 갈라진다
+    expect(screen.getByText("2026-08-18").closest("table")).not.toBeNull();
+  });
+});
+
+/**
+ * 표 제목.
+ *
+ * 대장으로 바꾸면서 제목이 작은 글씨로 바뀌어 **없어진 것처럼 보였다**(2026-08-20 지적).
+ * 이 레포의 목록 제목은 `text-xl font-bold` + 버밀리언 건수다 — 검토 대기 표가
+ * 바로 위에서 그 형식을 쓰고 있어 나란히 두면 어긋남이 드러난다.
+ */
+describe("LedgerTable — 제목", () => {
+  it("제목과 건수를 표준 형식으로 보여준다", () => {
+    render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    const title = screen.getByRole("heading", { name: "등기관리대장" });
+    expect(title.className).toMatch(/text-xl/);
+    expect(title.className).toMatch(/font-bold/);
+    expect(screen.getByText("1건").className).toMatch(/text-vermilion/);
+  });
+
+  it("어느 시트를 읽었는지 함께 적는다 — 내년이면 시트가 바뀐다", () => {
+    render(
+      <LedgerTable rows={[line()]} receiptUrls={{}} sheetName="2026년도 우편물발송(04월~)" />,
+    );
+    expect(screen.getByText(/2026년도 우편물발송/)).toBeInTheDocument();
+  });
+});

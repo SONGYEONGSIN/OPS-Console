@@ -104,21 +104,16 @@ export function PostalClient({
         대장 — 이 화면의 주인공. 예전에는 영수증 목록이 이 자리를 차지했고
         대장은 엑셀에만 있어, 발송이 제대로 기록됐는지 화면에서 볼 수 없었다.
       */}
-      <section className="space-y-2">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-sm font-medium text-ink">등기관리대장</h2>
-          <span className="text-2xs tabular-nums text-muted">
-            {ledger.rows.length}건
-          </span>
-          <span className="text-2xs text-muted">{ledger.sheetName}</span>
-        </div>
-        {ledger.error ? (
-          // 못 읽은 이유를 그대로 보여준다 — 빈 표는 "발송이 없다"로 읽힌다.
-          <p className="text-xs text-vermilion-deep">{ledger.error}</p>
-        ) : (
-          <LedgerTable rows={ledger.rows} receiptUrls={ledger.receiptUrls} />
-        )}
-      </section>
+      {ledger.error ? (
+        // 못 읽은 이유를 그대로 보여준다 — 빈 표는 "발송이 없다"로 읽힌다.
+        <p className="text-xs text-vermilion-deep">{ledger.error}</p>
+      ) : (
+        <LedgerTable
+          rows={ledger.rows}
+          receiptUrls={ledger.receiptUrls}
+          sheetName={ledger.sheetName}
+        />
+      )}
     </div>
   );
 }
