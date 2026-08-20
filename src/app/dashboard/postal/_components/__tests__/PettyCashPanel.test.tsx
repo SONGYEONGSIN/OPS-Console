@@ -120,6 +120,14 @@ describe("PettyCashPanel — 전도금대장 버튼", () => {
     expect(link).toHaveAttribute("href", "https://sp/petty.xlsx");
   });
 
+  // 이 자리 버튼은 배경을 갖는 게 표준이다. 전도금대장만 아웃라인이라
+  // 같은 '원본 엑셀 바로가기'가 등기내역 탭과 달라 보였다.
+  it("배경색이 있다 — 등기대장 버튼과 같은 모양이어야 한다", () => {
+    render(<PettyCashPanel sheet={SHEET} pettyCashUrl="https://sp/petty.xlsx" />);
+    const link = screen.getByRole("link", { name: "전도금대장" });
+    expect(link.className).toMatch(/bg-vermilion/);
+  });
+
   it("링크가 없으면 버튼을 안 그린다 — 깨진 링크를 누르게 하지 않는다", () => {
     render(<PettyCashPanel sheet={SHEET} />);
     expect(screen.queryByRole("link", { name: "전도금대장" })).toBeNull();

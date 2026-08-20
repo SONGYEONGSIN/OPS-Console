@@ -145,7 +145,7 @@ export function PettyCashPanel({
             아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
           */}
           {pettyCashUrl && (
-            <HeaderActionButton tone="outline" href={pettyCashUrl}>
+            <HeaderActionButton href={pettyCashUrl}>
               전도금대장
             </HeaderActionButton>
           )}

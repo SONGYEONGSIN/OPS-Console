@@ -13,25 +13,19 @@ import type { ReactNode } from "react";
  */
 
 /**
- * 클래스만 필요한 자리(ListPattern 인라인 버튼)를 위해 열어 둔다.
- * 새로 붙이는 버튼은 컴포넌트를 쓰는 편이 낫다 — 링크/새 탭 처리가 딸려 온다.
+ * **모양은 하나뿐이다.** 아웃라인 변형을 열어 뒀더니 전도금대장 하나가 배경
+ * 없는 버튼이 됐고, 같은 '원본 엑셀 바로가기'가 등기내역 탭과 달라 보였다
+ * (2026-08-20). 고를 수 있으면 언젠가 갈린다.
+ *
+ * 클래스만 필요한 자리(ListPattern 인라인 버튼)를 위해 내보낸다. 문자열을
+ * 따로 두면 그게 곧 두 번째 표준이 된다 — 이 컴포넌트가 생긴 이유가 그것이다.
+ * 새로 붙이는 버튼은 컴포넌트를 쓰는 편이 낫다(링크·새 탭 처리가 딸려 온다).
  */
 export const HEADER_ACTION_CLASS =
-  "cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion-deep";
-
-const BASE =
-  "cursor-pointer border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50";
-
-const TONE = {
-  /** 그 자리의 기본 액션. */
-  solid: "border-vermilion bg-vermilion text-cream hover:bg-vermilion-deep",
-  /** 보조 액션 — 솔리드가 둘이면 무엇이 주인지 흐려진다. */
-  outline: "border-line bg-transparent text-ink hover:bg-washi",
-} as const;
+  "cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion-deep disabled:opacity-50";
 
 type Props = {
   children: ReactNode;
-  tone?: keyof typeof TONE;
   /** 주면 링크(새 탭)로 그린다. 원본 엑셀 바로가기가 그렇다. */
   href?: string;
   onClick?: () => void;
@@ -41,13 +35,12 @@ type Props = {
 
 export function HeaderActionButton({
   children,
-  tone = "solid",
   href,
   onClick,
   disabled,
   title,
 }: Props) {
-  const className = `${BASE} ${TONE[tone]}`;
+  const className = HEADER_ACTION_CLASS;
 
   if (href) {
     return (

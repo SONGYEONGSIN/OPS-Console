@@ -23,11 +23,12 @@ describe("HeaderActionButton", () => {
     expect(screen.getByRole("button").className).toMatch(/bg-vermilion/);
   });
 
-  it("보조 액션은 아웃라인 — 솔리드가 둘이면 무엇이 주인지 흐려진다", () => {
-    render(<HeaderActionButton tone="outline">x</HeaderActionButton>);
-    const el = screen.getByRole("button");
-    expect(el.className).toMatch(/bg-transparent/);
-    expect(el.className).not.toMatch(/bg-vermilion\s/);
+  // 톤을 고를 수 있게 두니 한 곳이 배경 없는 버튼이 됐다(전도금대장). 같은
+  // '원본 엑셀 바로가기'가 탭마다 달라 보였다. 고를 수 없게 해서 못박는다 —
+  // tone 을 주면 이제 tsc 가 막는다.
+  it("링크로 그려도 배경이 있다 — 이 자리 버튼은 언제나 같은 모양이다", () => {
+    render(<HeaderActionButton href="https://x">엑셀</HeaderActionButton>);
+    expect(screen.getByRole("link").className).toMatch(/bg-vermilion/);
   });
 
   it("href를 주면 링크가 된다 — 새 탭으로 연다", () => {
