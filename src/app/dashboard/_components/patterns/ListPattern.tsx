@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorChrome } from "../inspector/InspectorChrome";
 import { InspectorListBody } from "../inspector/InspectorListBody";
@@ -955,7 +956,7 @@ export function ListPattern({
                     if (!inspector.editing) inspector.toggleEdit();
                     onInspectorChange?.(true);
                   }}
-                  className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
+                  className={HEADER_ACTION_CLASS}
                 >
                   {createLabel ??
                     (variant === "team" ? "+ 신규 계정" : "+ 새 글")}

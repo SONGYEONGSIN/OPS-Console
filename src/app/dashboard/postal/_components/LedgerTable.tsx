@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ModalShell } from "@/components/common/ModalShell";
@@ -20,10 +21,6 @@ import { filterLedger, groupByMonth } from "@/features/postal/ledger-filter";
  * **표는 하나다.** 묶음마다 `<table>`을 따로 그렸더니 브라우저가 표마다 열 너비를
  * 따로 재서 묶음끼리 열이 어긋났다. 날짜는 표 안의 그룹 행으로 넣는다.
  */
-
-/** 목록 헤더 액션 버튼 표준 — 미수채권 엑셀 바로가기와 같은 문자열. */
-const WORKBOOK_LINK_CLASS =
-  "cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep";
 
 const COLUMNS = [
   "순번",
@@ -131,14 +128,7 @@ export function LedgerTable({
           아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
         */}
         {ledgerUrl && (
-          <a
-            href={ledgerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={WORKBOOK_LINK_CLASS}
-          >
-            등기대장
-          </a>
+          <HeaderActionButton href={ledgerUrl}>등기대장</HeaderActionButton>
         )}
       </header>
 

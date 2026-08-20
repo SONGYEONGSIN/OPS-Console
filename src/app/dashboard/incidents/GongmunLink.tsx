@@ -1,12 +1,9 @@
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
+
 type Props = {
   /** 공문관리대장 SharePoint webUrl. null이면 버튼을 그리지 않는다. */
   url: string | null;
 };
-
-// 같은 헤더 줄의 생성 버튼(+ 사고 보고, ListPattern)과 같은 문자열 —
-// 두 액션의 형식을 맞춰 달라는 요청. 바꿀 때는 ListPattern 쪽과 함께 본다.
-const LINK_CLASS =
-  "cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep";
 
 /**
  * 공문관리대장 원본 바로가기 — 사고보고 칩 줄 오른쪽.
@@ -16,13 +13,6 @@ const LINK_CLASS =
 export function GongmunLink({ url }: Props) {
   if (!url) return null;
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={LINK_CLASS}
-    >
-      공문관리대장
-    </a>
+    <HeaderActionButton href={url}>공문관리대장</HeaderActionButton>
   );
 }

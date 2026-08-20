@@ -136,3 +136,25 @@ describe("PettyCashPanel — 인스펙터 겹침", () => {
     expect(root.className).toMatch(/pr-\[340px\]/);
   });
 });
+
+/**
+ * 헤더 액션 버튼 크기.
+ *
+ * `ListPattern` 의 생성 버튼(`+ 백업 요청` 등)이 기준이고 `px-3 py-1 text-xs
+ * font-medium` 이다. 전도금 탭 버튼만 한 치수 크게 만들어 다른 메뉴와 달라
+ * 보였다(2026-08-20 지적). 등기관리 탭의 `등기대장` 은 이미 표준이었다.
+ */
+describe("PettyCashPanel — 버튼 크기", () => {
+  it("두 버튼 모두 표준 치수다", () => {
+    render(<PettyCashPanel sheet={SHEET} pettyCashUrl="https://sp/p.xlsx" />);
+    for (const el of [
+      screen.getByRole("link", { name: "전도금대장" }),
+      screen.getByRole("button", { name: /사용내역 추가/ }),
+    ]) {
+      expect(el.className).toMatch(/px-3/);
+      expect(el.className).toMatch(/py-1(?!\.)/);
+      expect(el.className).toMatch(/text-xs/);
+      expect(el.className).toMatch(/font-medium/);
+    }
+  });
+});
