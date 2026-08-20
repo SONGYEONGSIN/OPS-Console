@@ -38,7 +38,7 @@ export function QuoteMailModal({
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-washi"
+            className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:border-ink hover:bg-ink hover:text-cream"
           >
             취소
           </button>

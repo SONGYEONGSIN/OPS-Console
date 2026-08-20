@@ -360,7 +360,7 @@ function InsBtn({
   return (
     <button
       type="button"
-      className={`cursor-pointer border bg-washi-raised px-3 py-2 text-[12px] font-medium text-ink hover:bg-washi max-md:flex-1 max-md:min-h-[var(--tap-min)] ${
+      className={`cursor-pointer border bg-washi-raised px-3 py-2 text-[12px] font-medium text-ink hover:bg-ink hover:text-cream max-md:flex-1 max-md:min-h-[var(--tap-min)] ${
         primary
           ? "col-span-2 border-vermilion-deep bg-vermilion text-cream hover:bg-vermilion-deep"
           : "border-line"

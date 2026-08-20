@@ -33,7 +33,7 @@ export function ProposalDelete({
             setError(null);
             setConfirming(true);
           }}
-          className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:bg-washi"
+          className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
         >
           초안 삭제
         </button>
@@ -78,7 +78,7 @@ export function ProposalDelete({
           type="button"
           disabled={pending}
           onClick={() => setConfirming(false)}
-          className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:bg-washi"
+          className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
         >
           취소
         </button>

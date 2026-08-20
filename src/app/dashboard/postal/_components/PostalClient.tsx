@@ -72,7 +72,7 @@ export function PostalClient({
         <p className="mt-1 text-2xs text-muted">
           사진 파일(JPG · PNG · HEIC) · 여러 장을 한 번에 놓아도 됩니다
         </p>
-        <label className="mt-3 inline-block cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:bg-washi">
+        <label className="mt-3 inline-block cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream">
           파일 선택
           <input
             type="file"

@@ -249,7 +249,7 @@ export function SendReceivablesMailButton({
               <button
                 type="button"
                 onClick={reset}
-                className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-xs text-ink hover:bg-washi"
+                className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-xs text-ink hover:border-ink hover:bg-ink hover:text-cream"
               >
                 닫기
               </button>
@@ -333,7 +333,7 @@ export function SendReceivablesMailButton({
                       className={`border px-3 py-1.5 text-xs ${
                         scope === "single"
                           ? "border-ink bg-ink font-semibold text-white"
-                          : "border-ink/20 bg-white text-ink hover:bg-washi-raised"
+                          : "border-ink/20 bg-white text-ink hover:bg-ink hover:text-cream"
                       }`}
                       data-testid="scope-single"
                     >
@@ -346,7 +346,7 @@ export function SendReceivablesMailButton({
                       className={`border px-3 py-1.5 text-xs ${
                         scope === "bundle"
                           ? "border-ink bg-ink font-semibold text-white"
-                          : "border-ink/20 bg-white text-ink hover:bg-washi-raised"
+                          : "border-ink/20 bg-white text-ink hover:bg-ink hover:text-cream"
                       }`}
                       data-testid="scope-bundle"
                     >

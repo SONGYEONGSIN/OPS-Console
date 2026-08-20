@@ -58,7 +58,7 @@ export function NewReportModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-washi"
+            className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream"
           >
             취소
           </button>
