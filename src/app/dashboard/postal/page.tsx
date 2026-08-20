@@ -8,6 +8,7 @@ import { PageTabs } from "@/components/common/PageTabs";
 import { PettyCashPanel } from "./_components/PettyCashPanel";
 import { PostalClient } from "./_components/PostalClient";
 import { loadLedgerView, EMPTY_LEDGER } from "@/features/postal/ledger-load";
+import { getPostalWorkbookLinks } from "@/features/postal/workbook-links";
 import { POSTAL_TABS } from "./tabs";
 
 /**
@@ -45,6 +46,8 @@ export default async function PostalPage({
     tab === "receipts"
       ? await loadLedgerView(Number(sp.year) || undefined)
       : EMPTY_LEDGER;
+  // 원본 엑셀 바로가기 — 실패해도 null로 와서 버튼만 안 뜬다(목록은 그대로).
+  const links = await getPostalWorkbookLinks();
   const config = resolvePageMeta(slug, meta, receipts.length);
 
   return (
@@ -58,12 +61,13 @@ export default async function PostalPage({
       <PageTabs active={tab} tabs={POSTAL_TABS} />
       <div className="p-5 lg:p-7">
         {tab === "petty" ? (
-          <PettyCashPanel sheet={pettyCash} />
+          <PettyCashPanel sheet={pettyCash} pettyCashUrl={links.pettyCashUrl} />
         ) : (
           <PostalClient
             receipts={receipts}
             extractStates={Object.fromEntries(extractStates)}
             ledger={ledger}
+            ledgerUrl={links.ledgerUrl}
           />
         )}
       </div>

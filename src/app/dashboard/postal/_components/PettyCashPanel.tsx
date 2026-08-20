@@ -18,7 +18,14 @@ const LOW_BALANCE = 100_000;
 
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
-export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
+export function PettyCashPanel({
+  sheet,
+  pettyCashUrl = null,
+}: {
+  sheet: PettyCashSheet | null;
+  /** 원본 엑셀 바로가기. 조회 실패면 null — 버튼을 아예 안 그린다. */
+  pettyCashUrl?: string | null;
+}) {
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -108,6 +115,21 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
             우편물은 영수증 판독으로 자동 기록되지만, 사무용품처럼 전도금으로 사는
             다른 것들은 넣을 길이 없어 엑셀을 직접 열어야 했다(2026-08-20).
           */}
+          <div className="flex items-center gap-2">
+          {/*
+            원본 엑셀 바로가기 — 미수채권과 같은 규칙. 조회에 실패하면 버튼을
+            아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
+          */}
+          {pettyCashUrl && (
+            <a
+              href={pettyCashUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-washi"
+            >
+              전도금대장
+            </a>
+          )}
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -115,6 +137,7 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
           >
             + 사용내역 추가
           </button>
+          </div>
         </header>
 
         {visible.length === 0 ? (

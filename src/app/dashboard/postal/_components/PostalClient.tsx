@@ -18,10 +18,13 @@ export function PostalClient({
   receipts,
   extractStates = {},
   ledger,
+  ledgerUrl = null,
 }: {
   receipts: ReceiptCard[];
   extractStates?: Record<string, ExtractState>;
   ledger: LedgerView;
+  /** 원본 엑셀 바로가기 — 조회 실패면 null. */
+  ledgerUrl?: string | null;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -111,6 +114,7 @@ export function PostalClient({
         <LedgerTable
           rows={ledger.rows}
           receiptUrls={ledger.receiptUrls}
+          ledgerUrl={ledgerUrl}
           years={ledger.years}
           year={ledger.year}
         />

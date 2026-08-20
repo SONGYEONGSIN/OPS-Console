@@ -285,3 +285,29 @@ describe("LedgerTable — 간격", () => {
     expect(header?.className).toMatch(/mb-4/);
   });
 });
+
+/**
+ * 원본 엑셀 바로가기.
+ *
+ * 미수채권 규칙을 따른다 — 조회에 실패하면 **버튼을 아예 안 그린다.**
+ * 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
+ */
+describe("LedgerTable — 등기대장 버튼", () => {
+  it("발송목록 줄 오른쪽에 등기대장이 있다", () => {
+    render(
+      <LedgerTable
+        rows={[line()]}
+        receiptUrls={{}}
+        ledgerUrl="https://sp/mail.xlsx"
+      />,
+    );
+    const link = screen.getByRole("link", { name: "등기대장" });
+    expect(link).toHaveAttribute("href", "https://sp/mail.xlsx");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("링크가 없으면 버튼을 안 그린다", () => {
+    render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    expect(screen.queryByRole("link", { name: "등기대장" })).toBeNull();
+  });
+});

@@ -110,3 +110,16 @@ describe("PettyCashPanel — 카드·제목·검색", () => {
     expect(screen.getByText(/찾는 내역이 없습니다/)).toBeInTheDocument();
   });
 });
+
+describe("PettyCashPanel — 전도금대장 버튼", () => {
+  it("사용내역 추가 왼쪽에 전도금대장이 있다", () => {
+    render(<PettyCashPanel sheet={SHEET} pettyCashUrl="https://sp/petty.xlsx" />);
+    const link = screen.getByRole("link", { name: "전도금대장" });
+    expect(link).toHaveAttribute("href", "https://sp/petty.xlsx");
+  });
+
+  it("링크가 없으면 버튼을 안 그린다 — 깨진 링크를 누르게 하지 않는다", () => {
+    render(<PettyCashPanel sheet={SHEET} />);
+    expect(screen.queryByRole("link", { name: "전도금대장" })).toBeNull();
+  });
+});
