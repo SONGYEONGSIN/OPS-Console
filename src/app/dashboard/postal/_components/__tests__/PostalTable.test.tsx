@@ -110,7 +110,7 @@ describe("PostalTable", () => {
   describe("한 건도 없을 때도 목록의 모양을 지킨다", () => {
     it("제목과 건수가 보인다", () => {
       render(<PostalTable receipts={[]} extractStates={{}} />);
-      expect(screen.getByRole("heading", { name: "등기내역" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "영수증" })).toBeInTheDocument();
       expect(screen.getByText("0건")).toBeInTheDocument();
     });
 

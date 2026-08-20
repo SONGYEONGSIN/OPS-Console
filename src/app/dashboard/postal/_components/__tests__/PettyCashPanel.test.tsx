@@ -4,6 +4,8 @@ import { PettyCashPanel } from "../PettyCashPanel";
 import type { PettyCashSheet } from "@/features/petty-cash/parse";
 
 vi.mock("@/features/petty-cash/actions", () => ({ appendSpend: vi.fn() }));
+// 사용내역 인스펙터가 라우터를 쓴다 — 열어보는 테스트라 필요하다.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 
 const SHEET: PettyCashSheet = {
   balance: 491660,
@@ -121,5 +123,16 @@ describe("PettyCashPanel — 전도금대장 버튼", () => {
   it("링크가 없으면 버튼을 안 그린다 — 깨진 링크를 누르게 하지 않는다", () => {
     render(<PettyCashPanel sheet={SHEET} />);
     expect(screen.queryByRole("link", { name: "전도금대장" })).toBeNull();
+  });
+});
+
+describe("PettyCashPanel — 인스펙터 겹침", () => {
+  it("열면 본문을 오른쪽으로 비켜 놓는다 — 패널이 fixed라 그냥 두면 덮는다", () => {
+    const { container } = render(<PettyCashPanel sheet={SHEET} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).not.toMatch(/pr-\[340px\]/);
+
+    fireEvent.click(screen.getByRole("button", { name: /사용내역 추가/ }));
+    expect(root.className).toMatch(/pr-\[340px\]/);
   });
 });
