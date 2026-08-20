@@ -1,5 +1,6 @@
 "use client";
 
+import { isoToKstLocal } from "@/features/posts/announce-time";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { statusBadgeTone } from "../badge-tone";
 
@@ -70,13 +71,18 @@ export function postStatusLabel(
 }
 
 /**
- * 공지일(announce_on, 'YYYY-MM-DD') → 작성일과 같은 표기('2026. 08. 31.').
- * null은 스키마상 '즉시 공지'를 뜻하므로 '즉시'로 보여준다.
+ * 공지 시각(announce_at, ISO) → '2026. 09. 07. 09:00' (KST).
+ *
+ * **시각까지 보여준다** — 아침 9시 예약과 자정 예약이 표에서 같아 보이면 정한
+ * 의미가 없다. null 은 '즉시 공지'다.
  */
-export function formatAnnounceOn(value?: string | null): string {
+export function formatAnnounceAt(value?: string | null): string {
   if (!value) return "즉시";
-  const [y, m, d] = value.split("-");
-  return y && m && d ? `${y}. ${m}. ${d}.` : value;
+  const local = isoToKstLocal(value);
+  if (!local) return "즉시";
+  const [date, time] = local.split("T");
+  const [y, m, d] = date.split("-");
+  return `${y}. ${m}. ${d}. ${time}`;
 }
 
 export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
@@ -136,7 +142,7 @@ export function PostTable({ variant, rows, selectedId, onSelect }: Props) {
               </td>
               {variant === "post-notice" && (
                 <td className="px-3 py-2 text-xs text-muted">
-                  {formatAnnounceOn(row.noticeAnnounceOn)}
+                  {formatAnnounceAt(row.noticeAnnounceAt)}
                 </td>
               )}
               {variant === "post-notice" && (

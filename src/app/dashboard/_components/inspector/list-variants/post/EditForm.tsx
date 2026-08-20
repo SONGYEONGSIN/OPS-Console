@@ -112,16 +112,21 @@ export function PostForm({
       {variant === "post-notice" && (
         <label className="block text-xs">
           <span className="mb-1 block text-muted">
-            공지일 (이 날짜에 Teams 공유 · 비우면 즉시)
+            공지 일시 (이 시각 이후 첫 실행에 Teams 공유 · 비우면 즉시)
           </span>
+          {/* 발송 잡이 30분 간격이라 정확히 그 시각은 아니다. 아래 안내로 드러낸다. */}
           <DateInput
-            aria-label="공지일"
-            value={row.noticeAnnounceOn ?? ""}
+            type="datetime-local"
+            aria-label="공지 일시"
+            value={row.noticeAnnounceAt ?? ""}
             onChange={(e) =>
-              setRow({ ...row, noticeAnnounceOn: e.target.value || null })
+              setRow({ ...row, noticeAnnounceAt: e.target.value || null })
             }
             className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
           />
+          <span className="mt-1 block text-2xs text-muted">
+            공유 점검이 30분마다 돌아, 정한 시각부터 30분 안에 나갑니다.
+          </span>
         </label>
       )}
       <div className="flex gap-2 pt-2">

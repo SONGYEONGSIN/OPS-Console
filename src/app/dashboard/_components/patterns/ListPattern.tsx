@@ -43,8 +43,8 @@ export type ListRow = {
   permission?: OperatorPermission;
   /** post 도메인 — 게시글 본문 */
   body?: string;
-  /** post-notice — 공지일(YYYY-MM-DD). 이 날짜에 Teams 1회 공유. null=즉시 */
-  noticeAnnounceOn?: string | null;
+  /** post-notice — 공지 시각(ISO). 이 시각 이후 첫 실행에 Teams 1회 공유. null=즉시 */
+  noticeAnnounceAt?: string | null;
   /** post-notice — Teams 공유 완료 시각(ISO). null=미발송 */
   noticeSharedAt?: string | null;
   /** post 도메인 — 등록자 (작성자). owner는 처리 담당자로 분리. */

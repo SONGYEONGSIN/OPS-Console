@@ -21,8 +21,8 @@ export const postRowSchema = z.object({
   author_id: z.string().uuid().nullable().optional(),
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema,
-  // 공지일(YYYY-MM-DD) — 이 날짜에 Teams 1회 공유. null = 작성 즉시. notice 전용.
-  announce_on: z.string().nullable().optional(),
+  // 공지 시각(ISO) — 이 시각 이후 첫 실행에 Teams 1회 공유. null = 작성 즉시. notice 전용.
+  announce_at: z.string().nullable().optional(),
   // Teams 공유 완료 시각(ISO). null = 미발송. notice 전용.
   notice_shared_at: z.string().nullable().optional(),
   created_at: z.string(),
@@ -32,9 +32,15 @@ export const postRowSchema = z.object({
 export type PostRow = z.infer<typeof postRowSchema>;
 
 // 공지일 입력 — YYYY-MM-DD 또는 null(즉시).
-const announceOnField = z
+/**
+ * 공지 시각 — 화면의 datetime-local 이 'YYYY-MM-DDTHH:mm' 을 준다.
+ *
+ * 초·시간대가 없는 값이라 서버가 KST 로 읽어 ISO 로 바꾼다. 브라우저에 맡기면
+ * 다른 시간대에서 연 창이 다른 시각으로 저장된다.
+ */
+const announceAtField = z
   .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "올바른 날짜가 아닙니다.")
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "올바른 날짜·시각이 아닙니다.")
   .nullable()
   .optional();
 
@@ -47,7 +53,7 @@ export const postCreateSchema = z.object({
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema.default("urgent"),
   slug: z.string().optional(),
-  announce_on: announceOnField,
+  announce_at: announceAtField,
 });
 
 export type PostCreate = z.infer<typeof postCreateSchema>;
@@ -57,7 +63,7 @@ export const postUpdateSchema = z.object({
   body: z.string().nullable().optional(),
   owner_label: z.string().nullable().optional(),
   status: postStatusSchema.optional(),
-  announce_on: announceOnField,
+  announce_at: announceAtField,
 });
 
 export type PostUpdate = z.infer<typeof postUpdateSchema>;

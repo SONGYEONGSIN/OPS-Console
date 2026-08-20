@@ -108,15 +108,22 @@ describe("runNoticeTeamsShare", () => {
     );
   });
 
-  it("공지일(announce_on)이 오늘 이하 또는 null인 건만 조회한다", async () => {
-    wireSelect([{ id: "n1", title: "t", body: "b", owner_label: "운영부" }]);
+  // 공지일에 시간이 붙었다. 날짜만 보면 09:00 로 잡아둔 공지가 그날 00:00 첫 실행에
+  // 나가버린다 — 잡이 30분 간격이라 시각 비교가 실제로 의미가 있다.
+  it("공지 시각이 지금 이하 또는 null인 건만 조회한다", async () => {
+    wireSelect([]);
     await runNoticeTeamsShare();
-    const today = new Date().toLocaleDateString("en-CA", {
-      timeZone: "Asia/Seoul",
-    });
-    expect(orArg.value).toContain("announce_on.is.null");
-    expect(orArg.value).toContain(`announce_on.lte.${today}`);
+    expect(orArg.value).toContain("announce_at.is.null");
+    expect(orArg.value).toMatch(/announce_at\.lte\.\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
   });
+
+  it("날짜가 아니라 시각으로 자른다 — 오늘 늦은 시각 예약은 아직 안 나간다", async () => {
+    wireSelect([]);
+    await runNoticeTeamsShare();
+    // 'YYYY-MM-DD' 만 넘기면 그날 예약이 전부 즉시 대상이 된다.
+    expect(orArg.value).not.toMatch(/announce_at\.lte\.\d{4}-\d{2}-\d{2}$/);
+  });
+
 
   it("미공유 공지 없으면 발송 없이 0건", async () => {
     wireSelect([]);
