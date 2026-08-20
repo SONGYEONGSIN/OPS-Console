@@ -63,6 +63,12 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toContain("/login");
   });
 
+  it("미인증 + assistant/bot(Teams 봇 창구)은 public → 리다이렉트 안 함", async () => {
+    // 봇 서버는 쿠키 세션이 없다. 인증은 라우트 안에서 CRON_SECRET 으로 한다.
+    const res = await proxy(reqFor("/api/assistant/bot"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("미인증 + assistant/tools/*(폴러 도구 창구)는 public → 리다이렉트 안 함", async () => {
     const res = await proxy(reqFor("/api/assistant/tools/schedule"));
     expect(res.headers.get("location")).toBeNull();
