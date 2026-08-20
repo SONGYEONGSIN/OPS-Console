@@ -21,6 +21,10 @@ import { filterLedger, groupByMonth } from "@/features/postal/ledger-filter";
  * 따로 재서 묶음끼리 열이 어긋났다. 날짜는 표 안의 그룹 행으로 넣는다.
  */
 
+/** 목록 헤더 액션 버튼 표준 — 미수채권 엑셀 바로가기와 같은 문자열. */
+const WORKBOOK_LINK_CLASS =
+  "cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep";
+
 const COLUMNS = [
   "순번",
   "발송일",
@@ -38,6 +42,7 @@ export function LedgerTable({
   receiptUrls,
   years = [],
   year,
+  ledgerUrl = null,
 }: {
   rows: LedgerLine[];
   /** 영수증 id → 서명 URL. 만료돼 없으면 버튼을 아예 만들지 않는다. */
@@ -45,6 +50,8 @@ export function LedgerTable({
   /** 고를 수 있는 연도 — 시트가 곧 연도라 시트 목록에서 온다. */
   years?: number[];
   year?: number;
+  /** 원본 엑셀 바로가기. 조회 실패면 null — 버튼을 아예 안 그린다. */
+  ledgerUrl?: string | null;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -119,6 +126,20 @@ export function LedgerTable({
             })}
           </span>
         </div>
+        {/*
+          원본 엑셀 바로가기 — 미수채권과 같은 규칙이다. 조회에 실패하면 버튼을
+          아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
+        */}
+        {ledgerUrl && (
+          <a
+            href={ledgerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={WORKBOOK_LINK_CLASS}
+          >
+            등기대장
+          </a>
+        )}
       </header>
 
       {filtered.length === 0 ? (
