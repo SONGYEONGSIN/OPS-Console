@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { DateInput } from "@/components/common/DateInput";
-import { ModalShell } from "@/components/common/ModalShell";
+import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { appendSpend } from "@/features/petty-cash/actions";
 
 /**
@@ -60,8 +60,11 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <ModalShell title="사용내역 추가" onClose={onClose}>
+    <InspectorPanel open onClose={onClose}>
       <div className="space-y-3">
+        <header className="flex items-baseline gap-2 border-b border-line pb-2">
+          <h3 className="text-base font-bold text-ink">사용내역 추가</h3>
+        </header>
         <Field label="날짜">
           <DateInput
             aria-label="날짜"
@@ -130,7 +133,7 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
-    </ModalShell>
+    </InspectorPanel>
   );
 }
 

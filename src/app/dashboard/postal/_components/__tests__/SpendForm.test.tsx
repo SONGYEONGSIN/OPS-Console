@@ -12,8 +12,15 @@ vi.mock("@/features/petty-cash/actions", () => ({
   },
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
-vi.mock("@/components/common/ModalShell", () => ({
-  ModalShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+// 표준 인스펙터를 그대로 쓴다 — 슬라이드인·ESC·외부 클릭 닫힘이 이미 들어 있다.
+vi.mock("../../../_components/inspector/InspectorPanel", () => ({
+  InspectorPanel: ({
+    open,
+    children,
+  }: {
+    open: boolean;
+    children: React.ReactNode;
+  }) => <div data-testid="inspector" data-open={open}>{children}</div>,
 }));
 
 const { SpendForm } = await import("../SpendForm");
@@ -90,5 +97,12 @@ describe("SpendForm", () => {
       expect(screen.getByText(/이미 장부에 있습니다/)).toBeInTheDocument(),
     );
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("SpendForm — 표준 인스펙터", () => {
+  it("모달이 아니라 인스펙터 패널로 연다", () => {
+    render(<SpendForm onClose={() => {}} />);
+    expect(screen.getByTestId("inspector")).toHaveAttribute("data-open", "true");
   });
 });

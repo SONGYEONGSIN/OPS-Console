@@ -125,7 +125,7 @@ describe("LedgerTable — 열 정렬", () => {
 describe("LedgerTable — 제목", () => {
   it("제목과 건수를 표준 형식으로 보여준다", () => {
     render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
-    const title = screen.getByRole("heading", { name: "등기관리대장" });
+    const title = screen.getByRole("heading", { name: "발송목록" });
     expect(title.className).toMatch(/text-xl/);
     expect(title.className).toMatch(/font-bold/);
     expect(screen.getByText("1건").className).toMatch(/text-vermilion/);
@@ -184,12 +184,12 @@ describe("LedgerTable — 목록 표준", () => {
 
   it("검색창이 있다 — 전도금 탭과 같은 자리", () => {
     render(<LedgerTable rows={many} receiptUrls={{}} />);
-    expect(screen.getByLabelText("등기내역 검색")).toBeInTheDocument();
+    expect(screen.getByLabelText("발송목록 검색")).toBeInTheDocument();
   });
 
   it("검색하면 걸러진다", () => {
     render(<LedgerTable rows={many} receiptUrls={{}} />);
-    fireEvent.change(screen.getByLabelText("등기내역 검색"), {
+    fireEvent.change(screen.getByLabelText("발송목록 검색"), {
       target: { value: "재능" },
     });
     expect(screen.getByText("재능대학교")).toBeInTheDocument();
@@ -199,7 +199,9 @@ describe("LedgerTable — 목록 표준", () => {
   it("월 단위로 묶는다 — 일자별로 갈리면 화면이 끝없이 길어진다", () => {
     render(<LedgerTable rows={many} receiptUrls={{}} />);
     expect(screen.getByText("2026-08")).toBeInTheDocument();
-    expect(screen.getByText("2026-07")).toBeInTheDocument();
+    // 한 페이지는 한 달이라 7월은 다음 장에 있다.
+    expect(screen.queryByText("2026-07")).toBeNull();
+    // 묶음 머리는 달까지만 — 날짜는 행에 따로 있다.
     expect(screen.queryByText("2026-08-18")).toBeNull();
   });
 
@@ -209,5 +211,77 @@ describe("LedgerTable — 목록 표준", () => {
     expect(cell.className).not.toMatch(/font-mono/);
     expect(cell.className).toMatch(/tabular-nums/);
     expect(container.querySelectorAll(".font-mono")).toHaveLength(0);
+  });
+});
+
+/**
+ * 다듬기 — 2026-08-20 지적 여섯 가지.
+ */
+describe("LedgerTable — 다듬기", () => {
+  const twoMonths = [
+    line({ seq: 1, sentOn: "2026-08-18", trackingNo: "a" }),
+    line({ seq: 2, sentOn: "2026-08-19", trackingNo: "b" }),
+    line({ seq: 1, sentOn: "2026-07-30", trackingNo: "c" }),
+  ];
+
+  it("제목은 '발송목록'이다", () => {
+    render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    expect(
+      screen.getByRole("heading", { name: "발송목록" }),
+    ).toBeInTheDocument();
+  });
+
+  it("연도는 최근 3개년만 — 11개가 늘어서면 고르기 어렵다", () => {
+    render(
+      <LedgerTable
+        rows={[line()]}
+        receiptUrls={{}}
+        years={[2026, 2025, 2024, 2023, 2022, 2021]}
+        year={2026}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /2026년/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2024년/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /2023년/ })).toBeNull();
+  });
+
+  it("연도 칩은 건수 옆에 붙는다 — 오른쪽 끝이 아니라", () => {
+    render(
+      <LedgerTable rows={[line()]} receiptUrls={{}} years={[2026]} year={2026} />,
+    );
+    const count = screen.getByText("1건");
+    const chip = screen.getByRole("button", { name: /2026년/ });
+    // 같은 묶음 안에 있어야 나란히 보인다
+    expect(count.parentElement?.contains(chip)).toBe(true);
+  });
+
+  it("한 페이지는 한 달이다 — 두 달이 한 화면에 겹치면 경계가 흐려진다", () => {
+    render(<LedgerTable rows={twoMonths} receiptUrls={{}} />);
+    expect(screen.getByText("2026-08")).toBeInTheDocument();
+    expect(screen.queryByText("2026-07")).toBeNull();
+  });
+
+  it("행마다 발송일이 보인다 — 한 달 안에서도 며칠인지 알아야 한다", () => {
+    render(<LedgerTable rows={twoMonths} receiptUrls={{}} />);
+    expect(screen.getByText("08-18")).toBeInTheDocument();
+    expect(screen.getByText("08-19")).toBeInTheDocument();
+  });
+});
+
+/**
+ * 검색과 제목 사이 간격.
+ *
+ * `ListPattern` 은 controlsRow 다음에 `section p-7` 을 두고 제목이 `mb-4` 를 쓴다 —
+ * 미수채권을 포함해 그 패턴을 쓰는 모든 목록이 같은 간격이다. 이 탭은 ListPattern 을
+ * 안 쓰고 손으로 짜서 그 값이 빠져 있었고, 그래서 붙어 보였다(2026-08-20).
+ */
+describe("LedgerTable — 간격", () => {
+  it("제목 위아래 간격이 표준값이다", () => {
+    render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    const header = screen.getByRole("heading", { name: "발송목록" })
+      .parentElement?.parentElement;
+    // 숫자를 단언한다 — 눈으로만 맞추면 다음에 또 어긋난다.
+    expect(header?.className).toMatch(/mt-7/);
+    expect(header?.className).toMatch(/mb-4/);
   });
 });
