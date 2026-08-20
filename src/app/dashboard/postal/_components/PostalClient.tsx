@@ -111,7 +111,8 @@ export function PostalClient({
         <LedgerTable
           rows={ledger.rows}
           receiptUrls={ledger.receiptUrls}
-          sheetName={ledger.sheetName}
+          years={ledger.years}
+          year={ledger.year}
         />
       )}
     </div>

@@ -22,13 +22,16 @@ const KST_YEAR = () =>
 
 export const EMPTY_LEDGER: LedgerView = {
   sheetName: "",
+  years: [],
+  year: 0,
   rows: [],
   receiptUrls: {},
   error: null,
 };
 
-export async function loadLedgerView(): Promise<LedgerView> {
-  const year = KST_YEAR();
+export async function loadLedgerView(requested?: number): Promise<LedgerView> {
+  // 고른 연도가 없으면 올해. 시트가 없는 연도를 고르면 읽기가 던져 이유가 뜬다.
+  const year = requested && requested > 2000 ? requested : KST_YEAR();
   try {
     const ledger = await readLedger(year);
     const ids = [
@@ -36,6 +39,8 @@ export async function loadLedgerView(): Promise<LedgerView> {
     ] as string[];
     return {
       sheetName: ledger.sheetName,
+      years: ledger.years,
+      year,
       rows: ledger.rows,
       receiptUrls: await signReceiptUrls(ids),
       error: null,
@@ -44,6 +49,7 @@ export async function loadLedgerView(): Promise<LedgerView> {
     return {
       ...EMPTY_LEDGER,
       sheetName: expectedSheetName(year),
+      year,
       error: `대장을 읽지 못했습니다 — ${e instanceof Error ? e.message : String(e)}`,
     };
   }
