@@ -229,7 +229,7 @@ export function ReportEditorWorkspace({
             aria-label="이전 페이지"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="cursor-pointer border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:bg-washi-raised disabled:opacity-40"
+            className="cursor-pointer border border-line bg-cream px-3 py-1.5 text-ink transition-opacity hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-40"
           >
             ← 이전
           </button>

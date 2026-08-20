@@ -20,7 +20,7 @@ export function AppBar() {
         aria-label="메뉴 열기"
         aria-controls="sidebar"
         onClick={open}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-line-soft bg-transparent text-ink hover:bg-washi-raised"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-line-soft bg-transparent text-ink hover:border-ink hover:bg-ink hover:text-cream"
       >
         <svg
           aria-hidden

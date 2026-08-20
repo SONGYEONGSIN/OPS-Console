@@ -198,7 +198,7 @@ export function OutcomeDetailEditor({
           href={`/dashboard/outcomes/${assignmentId}/print`}
           target="_blank"
           rel="noreferrer"
-          className="mt-3 block border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:bg-washi"
+          className="mt-3 block border border-line bg-transparent px-3 py-1.5 text-center text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream"
         >
           리포트(인쇄) 보기
         </a>
@@ -446,7 +446,7 @@ function RubricRow({
       <button
         type="submit"
         disabled={pending}
-        className="w-full border border-line bg-transparent px-2 py-1 text-xs text-ink hover:bg-washi disabled:opacity-50"
+        className="w-full border border-line bg-transparent px-2 py-1 text-xs text-ink hover:border-ink hover:bg-ink hover:text-cream disabled:opacity-50"
       >
         {existing ? "수정" : "저장"}
       </button>

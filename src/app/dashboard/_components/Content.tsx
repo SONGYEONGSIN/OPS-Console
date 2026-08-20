@@ -172,7 +172,7 @@ function ToolBtn({
       className={
         primary
           ? `${base} border-vermilion-deep bg-vermilion text-cream hover:bg-vermilion-deep`
-          : `${base} border-line-soft bg-washi-raised text-ink hover:border-line hover:bg-washi`
+          : `${base} border-line-soft bg-washi-raised text-ink hover:border-line hover:border-ink hover:bg-ink hover:text-cream`
       }
     >
       {children}

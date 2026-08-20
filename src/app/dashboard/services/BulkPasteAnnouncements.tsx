@@ -46,7 +46,7 @@ export function BulkPasteAnnouncements() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:bg-washi"
+        className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
       >
         + 발표 서비스 일괄등록
       </button>
@@ -61,7 +61,7 @@ export function BulkPasteAnnouncements() {
               <button
                 type="button"
                 onClick={close}
-                className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:bg-washi"
+                className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink hover:border-ink hover:bg-ink hover:text-cream"
               >
                 닫기
               </button>
