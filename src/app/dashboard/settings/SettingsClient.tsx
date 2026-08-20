@@ -3,8 +3,10 @@
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { EnvSnapshot } from "./_env";
 import { formatDbSnapshot, type DbSnapshot } from "./_db-shared";
+import type { PollerStatus } from "@/features/system-status/queries";
 
 export type SettingsSectionKey =
+  | "status"
   | "mail"
   | "integrations"
   | "build"
@@ -16,6 +18,7 @@ type Props = {
   section: SettingsSectionKey;
   env: EnvSnapshot;
   db: DbSnapshot;
+  pollers: PollerStatus[];
 };
 
 type SectionMeta = {
@@ -24,6 +27,9 @@ type SectionMeta = {
 };
 
 const SECTIONS: SectionMeta[] = [
+  // 고장 났을 때 먼저 여는 곳이라 맨 앞이다. 나머지 탭은 '설정값이 무엇인가'를
+  // 보여주지 '지금 되고 있나'는 안 본다.
+  { key: "status", label: "상태" },
   { key: "mail", label: "메일 설정" },
   { key: "integrations", label: "외부 연동" },
   { key: "build", label: "빌드 정보" },
@@ -31,7 +37,7 @@ const SECTIONS: SectionMeta[] = [
   { key: "db", label: "DB 정보" },
 ];
 
-export function SettingsClient({ title, section, env, db }: Props) {
+export function SettingsClient({ title, section, env, db, pollers }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -71,6 +77,7 @@ export function SettingsClient({ title, section, env, db }: Props) {
         </nav>
 
         <div className="flex flex-col gap-4 overflow-y-auto">
+          {section === "status" && <StatusPanel pollers={pollers} />}
           {section === "mail" && <MailPanel env={env} />}
           {section === "integrations" && <IntegrationsPanel env={env} />}
           {section === "build" && <BuildPanel env={env} />}
@@ -156,6 +163,71 @@ function MailPanel({ env }: { env: EnvSnapshot }) {
       <Row label="발송 임계 일수" value={env.mail.thresholdDays} tone="muted" />
       <Row label="회사명" value={env.mail.companyName} tone="muted" />
       <Row label="기본 URL" value={env.mail.baseUrl} tone="muted" />
+    </>
+  );
+}
+
+const VERDICT_LABEL = {
+  stopped: "멈춤",
+  working: "처리 중",
+  unknown: "알 수 없음",
+} as const;
+
+/**
+ * 회사 PC 폴러 상태.
+ *
+ * 어시스턴트가 12시간째 끊겨 있는데 화면 어디에도 안 나오던 것이 이 탭을 만든
+ * 이유다. 외부 연동 탭은 **환경 변수가 있는지만** 보는데, 폴러는 env 문제가
+ * 아니라 그 PC의 프로세스가 죽은 것이라 거기엔 잡히지 않는다.
+ */
+function StatusPanel({ pollers }: { pollers: PollerStatus[] }) {
+  const stopped = pollers.filter((p) => p.verdict === "stopped");
+
+  return (
+    <>
+      <PanelHeader
+        title="회사 PC 연결"
+        hint="큐에 쌓인 요청으로만 판정합니다 — 서버가 그 PC를 직접 찔러볼 수단이 없습니다."
+      />
+
+      {stopped.length > 0 ? (
+        <p className="border border-vermilion bg-vermilion/10 px-4 py-3 text-sm text-vermilion-deep">
+          멈춘 것으로 보이는 연결 {stopped.length}개 —{" "}
+          {stopped.map((p) => p.label).join(", ")}
+        </p>
+      ) : (
+        <p className="border border-line-soft bg-situation-bg px-4 py-3 text-sm text-muted">
+          밀려 있는 요청이 없습니다. 다만 요청이 없으면 가져갈 것도 없어,
+          이것만으로 전부 살아 있다고는 할 수 없습니다.
+        </p>
+      )}
+
+      <ul className="mt-4 flex flex-col">
+        {pollers.map((p) => (
+          <li
+            key={p.id}
+            className="flex flex-col gap-1 border-b border-line-soft py-3"
+          >
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-medium text-ink">{p.label}</span>
+              <span
+                className={`px-1.5 py-0.5 text-2xs ${
+                  p.verdict === "stopped"
+                    ? "bg-vermilion text-cream"
+                    : "bg-line-soft text-muted"
+                }`}
+              >
+                {VERDICT_LABEL[p.verdict]}
+              </span>
+            </div>
+            <p className="text-xs text-ink-soft">{p.detail}</p>
+            {/* 멈췄을 때만 조치를 띄운다 — 늘 보이면 읽히지 않는다. */}
+            {p.verdict === "stopped" && (
+              <p className="text-2xs text-muted">{p.hint}</p>
+            )}
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

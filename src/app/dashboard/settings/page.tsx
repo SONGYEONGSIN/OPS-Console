@@ -6,9 +6,11 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { SettingsClient } from "./SettingsClient";
 import { getEnvSnapshot } from "./_env";
 import { getDbSnapshot } from "./_db";
+import { loadPollerStatuses } from "@/features/system-status/queries";
 import type { SettingsSectionKey } from "./SettingsClient";
 
 const SECTION_KEYS: readonly SettingsSectionKey[] = [
+  "status",
   "mail",
   "integrations",
   "build",
@@ -20,7 +22,7 @@ function pickSection(raw: string | undefined): SettingsSectionKey {
   if (raw && (SECTION_KEYS as readonly string[]).includes(raw)) {
     return raw as SettingsSectionKey;
   }
-  return "mail";
+  return "status";
 }
 
 export default async function SettingsPage({
@@ -44,6 +46,7 @@ export default async function SettingsPage({
 
   const env = getEnvSnapshot();
   const db = await getDbSnapshot();
+  const pollers = await loadPollerStatuses();
   const config = resolvePageMeta(slug, meta);
   const header = (
     <PageHeader
@@ -58,7 +61,13 @@ export default async function SettingsPage({
   return (
     <div className="flex flex-col">
       {header}
-      <SettingsClient title={meta.label} section={section} env={env} db={db} />
+      <SettingsClient
+        title={meta.label}
+        section={section}
+        env={env}
+        db={db}
+        pollers={pollers}
+      />
     </div>
   );
 }
