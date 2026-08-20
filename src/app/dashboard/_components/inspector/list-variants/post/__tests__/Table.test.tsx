@@ -71,23 +71,37 @@ describe("PostTable — 공지일 컬럼(post-notice)", () => {
     expect(screen.getByText("공지일")).toBeInTheDocument();
   });
 
-  it("공지일이 있으면 작성일과 같은 형식으로 보여준다", () => {
+  // 시간이 붙었다. 09:00 예약과 자정 예약이 표에서 같아 보이면 정한 의미가 없다.
+  it("시각까지 보여준다 — 09:00 예약과 자정 예약이 구분돼야 한다", () => {
     render(
       <PostTable
         variant="post-notice"
-        rows={[noticeRow({ noticeAnnounceOn: "2026-08-31" })]}
+        rows={[noticeRow({ noticeAnnounceAt: "2026-09-07T00:00:00.000Z" })]}
         selectedId={null}
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.getByText("2026. 08. 31.")).toBeInTheDocument();
+    // 00:00 UTC = 09:00 KST
+    expect(screen.getByText(/2026\. 09\. 07\. 09:00/)).toBeInTheDocument();
   });
 
-  it("공지일이 없으면 '즉시' — 스키마상 null은 즉시 공지를 뜻한다", () => {
+  it("공지 일시가 있으면 작성일과 같은 형식 + 시각으로 보여준다", () => {
     render(
       <PostTable
         variant="post-notice"
-        rows={[noticeRow({ noticeAnnounceOn: null })]}
+        rows={[noticeRow({ noticeAnnounceAt: "2026-08-30T15:00:00.000Z" })]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("2026. 08. 31. 00:00")).toBeInTheDocument();
+  });
+
+  it("공지 일시가 없으면 '즉시' — 스키마상 null은 즉시 공지를 뜻한다", () => {
+    render(
+      <PostTable
+        variant="post-notice"
+        rows={[noticeRow({ noticeAnnounceAt: null })]}
         selectedId={null}
         onSelect={vi.fn()}
       />,
@@ -99,7 +113,7 @@ describe("PostTable — 공지일 컬럼(post-notice)", () => {
     render(
       <PostTable
         variant="post-feedback"
-        rows={[noticeRow({ noticeAnnounceOn: "2026-08-31" })]}
+        rows={[noticeRow({ noticeAnnounceAt: "2026-08-30T15:00:00.000Z" })]}
         selectedId={null}
         onSelect={vi.fn()}
       />,

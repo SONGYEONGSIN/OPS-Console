@@ -1,6 +1,6 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import { Section, DefList, Divider } from "../shared";
-import { formatAnnounceOn, postStatusLabel } from "./Table";
+import { formatAnnounceAt, postStatusLabel } from "./Table";
 import { statusBadgeTone } from "../badge-tone";
 
 export function PostView({
@@ -31,7 +31,7 @@ export function PostView({
               ? [
                   {
                     term: "공지일",
-                    desc: formatAnnounceOn(row.noticeAnnounceOn),
+                    desc: formatAnnounceAt(row.noticeAnnounceAt),
                   },
                 ]
               : []),

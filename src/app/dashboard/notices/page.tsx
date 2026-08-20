@@ -1,6 +1,7 @@
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
+import { kstLocalToIso, isoToKstLocal } from "@/features/posts/announce-time";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { getCurrentOperator } from "@/features/auth/queries";
@@ -65,7 +66,7 @@ export default async function NoticesPage({
         author_id: null,
         owner_label: ownerLabel,
         status: row.status as PostRow["status"],
-        announce_on: row.noticeAnnounceOn ?? null,
+        announce_at: kstLocalToIso(row.noticeAnnounceAt),
       });
       return result.ok ? { ok: true } : { ok: false, error: result.error };
     }
@@ -78,7 +79,7 @@ export default async function NoticesPage({
       body: row.body ?? null,
       owner_label: row.owner || null,
       status: row.status as PostRow["status"],
-      announce_on: row.noticeAnnounceOn ?? null,
+      announce_at: kstLocalToIso(row.noticeAnnounceAt),
     });
     return result.ok ? { ok: true } : { ok: false, error: result.error };
   }
@@ -111,7 +112,7 @@ function postToListRow(post: PostRow): ListRow {
     author: author?.name ?? post.author_email,
     owner: post.owner_label ?? "",
     status: post.status as ListRow["status"],
-    noticeAnnounceOn: post.announce_on ?? null,
+    noticeAnnounceAt: isoToKstLocal(post.announce_at),
     noticeSharedAt: post.notice_shared_at ?? null,
     meta: formatKstDate(post.created_at),
   };

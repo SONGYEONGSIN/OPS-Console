@@ -8,7 +8,7 @@ function baseRow(): ListRow {
 }
 
 describe("PostForm — 공지일(post-notice 전용)", () => {
-  it("post-notice 변형이면 공지일 입력이 있다", () => {
+  it("post-notice 변형이면 공지 일시 입력이 있다", () => {
     render(
       <PostForm
         row={baseRow()}
@@ -18,10 +18,10 @@ describe("PostForm — 공지일(post-notice 전용)", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByLabelText("공지일")).toBeInTheDocument();
+    expect(screen.getByLabelText("공지 일시")).toBeInTheDocument();
   });
 
-  it("post-feedback 변형이면 공지일 입력이 없다", () => {
+  it("post-feedback 변형이면 공지 일시 입력이 없다", () => {
     render(
       <PostForm
         row={baseRow()}
@@ -31,10 +31,10 @@ describe("PostForm — 공지일(post-notice 전용)", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.queryByLabelText("공지일")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("공지 일시")).not.toBeInTheDocument();
   });
 
-  it("공지일 입력 시 setRow(noticeAnnounceOn) 호출", () => {
+  it("공지 일시 입력 시 setRow(noticeAnnounceAt) 호출 — 시각까지 담긴다", () => {
     const setRow = vi.fn();
     render(
       <PostForm
@@ -45,11 +45,11 @@ describe("PostForm — 공지일(post-notice 전용)", () => {
         onCancel={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("공지일"), {
-      target: { value: "2026-07-01" },
+    fireEvent.change(screen.getByLabelText("공지 일시"), {
+      target: { value: "2026-07-01T09:00" },
     });
     expect(setRow).toHaveBeenCalledWith(
-      expect.objectContaining({ noticeAnnounceOn: "2026-07-01" }),
+      expect.objectContaining({ noticeAnnounceAt: "2026-07-01T09:00" }),
     );
   });
 });

@@ -17,22 +17,22 @@ function noticeRow(over: Partial<ListRow> = {}): ListRow {
 }
 
 describe("PostView — 공지일(post-notice)", () => {
-  it("공지일이 있으면 작성일과 같은 형식으로 보여준다", () => {
+  it("공지 일시가 있으면 작성일과 같은 형식 + 시각으로 보여준다", () => {
     render(
       <PostView
         variant="post-notice"
-        row={noticeRow({ noticeAnnounceOn: "2026-08-31" })}
+        row={noticeRow({ noticeAnnounceAt: "2026-08-31" })}
       />,
     );
     expect(screen.getByText("공지일")).toBeInTheDocument();
-    expect(screen.getByText("2026. 08. 31.")).toBeInTheDocument();
+    expect(screen.getByText("2026. 08. 31. 00:00")).toBeInTheDocument();
   });
 
   it("공지일이 없으면 '즉시' — 스키마상 null은 즉시 공지를 뜻한다", () => {
     render(
       <PostView
         variant="post-notice"
-        row={noticeRow({ noticeAnnounceOn: null })}
+        row={noticeRow({ noticeAnnounceAt: null })}
       />,
     );
     expect(screen.getByText("공지일")).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe("PostView — 공지일(post-notice)", () => {
     render(
       <PostView
         variant="post-feedback"
-        row={noticeRow({ noticeAnnounceOn: "2026-08-31" })}
+        row={noticeRow({ noticeAnnounceAt: "2026-08-31" })}
       />,
     );
     expect(screen.queryByText("공지일")).not.toBeInTheDocument();
