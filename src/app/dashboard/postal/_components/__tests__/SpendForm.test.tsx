@@ -106,3 +106,36 @@ describe("SpendForm — 표준 인스펙터", () => {
     expect(screen.getByTestId("inspector")).toHaveAttribute("data-open", "true");
   });
 });
+
+/**
+ * 인스펙터 안쪽도 표준을 따른다.
+ *
+ * 패널만 표준을 쓰고 내용은 제 나름대로 짜서 다른 메뉴와 달라 보였다(2026-08-20).
+ * 표준은 `InspectorChrome` 이 정한다 — `인스펙터 · …` 라벨, 굵은 제목, 밑줄 헤더.
+ * 저장/취소는 `flex-1` 로 나란히 채우고 저장이 잉크 배경이다.
+ */
+describe("SpendForm — 표준 인스펙터 구성", () => {
+  it("인스펙터 라벨과 밑줄 헤더가 있다", () => {
+    render(<SpendForm onClose={() => {}} />);
+    expect(screen.getByText(/인스펙터 ·/)).toBeInTheDocument();
+    const title = screen.getByRole("heading", { name: "사용내역 추가" });
+    expect(title.className).toMatch(/text-xl/);
+    expect(title.className).toMatch(/font-bold/);
+    expect(title.closest("header")?.className).toMatch(/border-b-2/);
+  });
+
+  it("저장·취소가 표준 형태다 — 나란히 채우고 저장이 잉크 배경", () => {
+    render(<SpendForm onClose={() => {}} />);
+    const save = screen.getByRole("button", { name: "저장" });
+    const cancel = screen.getByRole("button", { name: "취소" });
+    expect(save.className).toMatch(/flex-1/);
+    expect(save.className).toMatch(/bg-ink/);
+    expect(cancel.className).toMatch(/flex-1/);
+  });
+
+  it("필드 라벨이 표준 크기다 — 다른 폼과 나란히 놓아도 어긋나지 않는다", () => {
+    render(<SpendForm onClose={() => {}} />);
+    const label = screen.getByText("내용").closest("label");
+    expect(label?.className).toMatch(/text-xs/);
+  });
+});

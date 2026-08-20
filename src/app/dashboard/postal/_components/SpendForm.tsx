@@ -12,12 +12,16 @@ import { appendSpend } from "@/features/petty-cash/actions";
  * 우편물은 영수증 판독으로 자동 기록되지만, **사무용품처럼 전도금으로 사는 다른
  * 것들**은 넣을 길이 없어 엑셀을 직접 열어야 했다(2026-08-20).
  *
+ * 껍데기와 **안쪽 구성 모두** 인스펙터 표준을 따른다 — 처음엔 패널만 표준을 쓰고
+ * 내용은 나름대로 짜서 다른 메뉴와 달라 보였다. 표준은 `InspectorChrome`이 정한다:
+ * `인스펙터 · …` 라벨, 굵은 제목, 밑줄 헤더, `flex-1` 저장/취소.
+ *
  * 넣는 자리는 서버가 정한다 — 날짜순을 지켜야 잔액 수식이 맞고, 충전 행을
  * 넘어가면 구간별 합계가 어긋난다.
  */
 
 const FIELD =
-  "w-full border border-line-soft bg-field-bg px-3 py-2 text-sm text-ink focus:border-ink focus:bg-white focus:outline-none";
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white";
 
 export function SpendForm({ onClose }: { onClose: () => void }) {
   const [date, setDate] = useState("");
@@ -61,19 +65,40 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
 
   return (
     <InspectorPanel open onClose={onClose}>
-      <div className="space-y-3">
-        <header className="flex items-baseline gap-2 border-b border-line pb-2">
-          <h3 className="text-base font-bold text-ink">사용내역 추가</h3>
-        </header>
-        <Field label="날짜">
+      {/* InspectorChrome과 같은 머리 — 다른 메뉴 인스펙터와 나란히 놓아도 같아 보인다. */}
+      <header className="mb-6 border-b-2 border-ink pb-4">
+        <div className="space-y-1">
+          <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+            인스펙터 · 전도금
+          </p>
+          <h3 className="text-xl font-bold tracking-[-0.01em] text-ink">
+            사용내역 추가
+          </h3>
+          <p className="text-xs text-muted">
+            우편물 외에 전도금으로 쓴 것을 장부에 넣습니다.
+          </p>
+        </div>
+      </header>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        className="space-y-3"
+      >
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">날짜</span>
           <DateInput
             aria-label="날짜"
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className={FIELD}
           />
-        </Field>
-        <Field label="내용">
+        </label>
+
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">내용</span>
           <input
             aria-label="내용"
             value={title}
@@ -81,9 +106,11 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
             placeholder="사무용품"
             className={FIELD}
           />
-        </Field>
+        </label>
+
         <div className="grid grid-cols-2 gap-3">
-          <Field label="건수">
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">건수</span>
             <input
               aria-label="건수"
               inputMode="numeric"
@@ -91,8 +118,9 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
               onChange={(e) => setCount(e.target.value)}
               className={FIELD}
             />
-          </Field>
-          <Field label="금액">
+          </label>
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">금액</span>
             <input
               aria-label="금액"
               inputMode="numeric"
@@ -100,9 +128,11 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
               onChange={(e) => setAmount(e.target.value)}
               className={FIELD}
             />
-          </Field>
+          </label>
         </div>
-        <Field label="품목">
+
+        <label className="block text-xs">
+          <span className="mb-1 block text-muted">품목</span>
           <input
             aria-label="품목"
             value={item}
@@ -110,47 +140,29 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
             placeholder="A4용지"
             className={FIELD}
           />
-        </Field>
+        </label>
 
         {error && <p className="text-xs text-vermilion-deep">{error}</p>}
 
-        <div className="flex justify-end gap-2 pt-1">
+        <div className="flex gap-2 pt-1">
+          <button
+            type="submit"
+            disabled={pending}
+            className="flex-1 border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:opacity-60"
+          >
+            {pending ? "저장 중…" : "저장"}
+          </button>
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-washi"
+            className="flex-1 border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:bg-line-soft disabled:opacity-60"
           >
             취소
           </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={pending}
-            className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            {pending ? "저장 중…" : "저장"}
-          </button>
         </div>
-      </div>
+      </form>
     </InspectorPanel>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-2xs uppercase tracking-[0.08em] text-muted">
-        {label}
-      </span>
-      {children}
-    </label>
   );
 }
 
