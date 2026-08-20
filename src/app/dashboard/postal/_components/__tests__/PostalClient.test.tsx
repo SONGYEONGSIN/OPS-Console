@@ -11,12 +11,24 @@ vi.mock("@/features/postal/actions", () => ({
     );
   },
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
+// 대장 표가 연도 칩·페이지에 쓰려고 pathname/searchParams 도 읽는다.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: () => {}, push: () => {} }),
+  usePathname: () => "/dashboard/postal",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const { PostalClient } = await import("../PostalClient");
 
 /** 대장은 이 파일의 관심사가 아니다 — 빈 값으로 고정한다. */
-const EMPTY = { sheetName: "", rows: [], receiptUrls: {}, error: null };
+const EMPTY = {
+  sheetName: "",
+  years: [],
+  year: 2026,
+  rows: [],
+  receiptUrls: {},
+  error: null,
+};
 
 const card = (over: Record<string, unknown> = {}) => ({
   id: "r1",

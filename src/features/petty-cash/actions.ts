@@ -4,7 +4,13 @@ import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import { fetchPettyCash, currentSheetName } from "./queries";
-import { buildSpendRow, findDuplicate, nextRowAddress, type SpendInput } from "./append";
+import {
+  buildSpendRow,
+  findDuplicate,
+  findInsertRow,
+  balanceFormula,
+  type SpendInput,
+} from "./append";
 
 /**
  * 전도금 장부에 사용 한 줄을 붙인다.
@@ -57,30 +63,69 @@ export async function appendSpend(input: SpendInput): Promise<AppendResult> {
   const wsUrl = `${base}/worksheets('${encodeURIComponent(sheetName)}')`;
 
   // 어디에 쓸지는 지금 시트가 정한다 — 우리가 센 행 수를 믿으면 사람이 그새
-  // 한 줄 적었을 때 덮어쓴다.
-  const usedRes = await fetch(`${wsUrl}/usedRange(valuesOnly=true)?$select=rowCount`, {
+  // 한 줄 적었을 때 덮어쓴다. 값까지 받아야 날짜순 자리를 찾을 수 있다.
+  const usedRes = await fetch(`${wsUrl}/usedRange(valuesOnly=true)`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   if (!usedRes.ok) {
     return { ok: false, error: "장부 범위를 읽지 못했습니다" };
   }
-  const used = (await usedRes.json()) as { rowCount?: number };
-  const address = nextRowAddress(used.rowCount ?? 1);
+  const used = (await usedRes.json()) as { values?: unknown[][] };
+  const values = used.values ?? [];
+  // 헤더 + 최소 한 줄은 있어야 어디에 넣을지 정할 수 있다. 못 읽었는데 쓰면
+  // 1행(헤더)을 덮어쓴다.
+  if (values.length < 2) {
+    return { ok: false, error: "장부 내용을 읽지 못했습니다" };
+  }
+  const row = buildSpendRow(input);
+  // 날짜순 자리. 뒤늦게 넣는 건이 있어 맨 아래가 아닐 수 있다.
+  const target = findInsertRow(values, row[3]);
+  const address = `A${target.row}:H${target.row}`;
 
-  const row = buildSpendRow(input, sheet.balance);
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    "content-type": "application/json",
+  };
+
+  // 중간에 넣을 때는 먼저 한 줄을 밀어낸다. 엑셀이 아래 행들의 수식 참조를
+  // 함께 옮겨 주므로, 우리가 손대야 할 건 새로 생긴 빈 줄뿐이다.
+  if (target.shiftDown) {
+    const ins = await fetch(`${wsUrl}/range(address='${address}')/insert`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ shift: "Down" }),
+    });
+    if (!ins.ok) {
+      console.error("[petty-cash] insert 실패:", ins.status, await ins.text());
+      return { ok: false, error: "장부에 줄을 넣지 못했습니다" };
+    }
+  }
+
   const patch = await fetch(`${wsUrl}/range(address='${address}')`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
+    headers: authHeaders,
     body: JSON.stringify({ values: [row] }),
   });
   if (!patch.ok) {
     // 조용히 성공이라 하지 않는다 — 장부가 안 맞는데 맞는 줄 알면 더 나쁘다.
     console.error("[petty-cash] PATCH 실패:", patch.status, await patch.text());
     return { ok: false, error: "장부에 쓰지 못했습니다" };
+  }
+
+  // 잔액은 수식으로. 값으로 넣으면 그 행부터 자동 계산이 끊긴다.
+  const balance = await fetch(`${wsUrl}/range(address='C${target.row}')`, {
+    method: "PATCH",
+    headers: authHeaders,
+    body: JSON.stringify({ formulas: [[balanceFormula(target.row)]] }),
+  });
+  if (!balance.ok) {
+    // 줄은 들어갔는데 잔액만 빈 상태다 — 숨기지 않고 그대로 알린다.
+    console.error("[petty-cash] 잔액 수식 실패:", balance.status);
+    return {
+      ok: false,
+      error: "줄은 넣었지만 잔액 수식을 쓰지 못했습니다 — 엑셀에서 확인하세요",
+    };
   }
 
   revalidatePath("/dashboard/postal");

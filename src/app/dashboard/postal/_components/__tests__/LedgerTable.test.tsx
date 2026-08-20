@@ -3,6 +3,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { LedgerTable } from "../LedgerTable";
 import type { LedgerLine } from "@/features/postal/ledger";
 
+const pushed: string[] = [];
+const searchParams = { current: new URLSearchParams() };
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: (u: string) => pushed.push(u) }),
+  usePathname: () => "/dashboard/postal",
+  useSearchParams: () => searchParams.current,
+}));
+
 vi.mock("@/components/common/ModalShell", () => ({
   ModalShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -100,12 +108,10 @@ describe("LedgerTable — 열 정렬", () => {
     expect(screen.getAllByText("등기번호")).toHaveLength(1);
   });
 
-  it("날짜는 표 안의 그룹 행으로 들어간다 — 요약도 함께", () => {
+  it("묶음 머리는 표 안의 그룹 행으로 들어간다 — 표 밖이면 열이 다시 갈라진다", () => {
     render(<LedgerTable rows={twoDays} receiptUrls={{}} />);
-    expect(screen.getByText("2026-08-18")).toBeInTheDocument();
-    expect(screen.getByText("2026-08-14")).toBeInTheDocument();
-    // 그룹 행이 표 밖이면 열이 다시 갈라진다
-    expect(screen.getByText("2026-08-18").closest("table")).not.toBeNull();
+    // 같은 달이라 묶음은 하나다(월 단위).
+    expect(screen.getByText("2026-08").closest("table")).not.toBeNull();
   });
 });
 
@@ -125,10 +131,83 @@ describe("LedgerTable — 제목", () => {
     expect(screen.getByText("1건").className).toMatch(/text-vermilion/);
   });
 
-  it("어느 시트를 읽었는지 함께 적는다 — 내년이면 시트가 바뀐다", () => {
+  it("보고 있는 연도가 드러난다 — 내년이면 시트가 바뀐다", () => {
+    // 예전엔 제목 옆 회색 글씨로 시트명을 적었는데, 바꿀 수 있는 것으로 보이지
+    // 않았다. 이제 눌린 연도 칩이 그 역할을 한다.
     render(
-      <LedgerTable rows={[line()]} receiptUrls={{}} sheetName="2026년도 우편물발송(04월~)" />,
+      <LedgerTable rows={[line()]} receiptUrls={{}} years={[2026, 2025]} year={2026} />,
     );
-    expect(screen.getByText(/2026년도 우편물발송/)).toBeInTheDocument();
+    const chip = screen.getByRole("button", { name: /2026/ });
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(chip.className).toMatch(/font-bold/);
+  });
+});
+
+/**
+ * 목록 표준 — 연도 칩 · 검색 · 월 묶음 · 페이지.
+ *
+ * 266행이 일자별로 갈려 화면이 끝없이 길어졌고, 연도 표기는 제목 옆 회색 글씨라
+ * 바꿀 수 있는 것으로 보이지 않았다(2026-08-20 지적). 다른 목록과 같은 방식으로 맞춘다.
+ */
+describe("LedgerTable — 목록 표준", () => {
+  const many = Array.from({ length: 8 }, (_, i) =>
+    line({
+      seq: i + 1,
+      sentOn: i < 5 ? "2026-08-18" : "2026-07-30",
+      trackingNo: `11263-1102-70${80 + i}`,
+      recipientOrg: i === 7 ? "재능대학교" : "우석대학교",
+    }),
+  );
+
+  it("연도를 칩으로 고른다 — 제목 옆 회색 글씨가 아니라", () => {
+    render(
+      <LedgerTable
+        rows={many}
+        receiptUrls={{}}
+        years={[2026, 2025]}
+        year={2026}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /2026/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2025/ })).toBeInTheDocument();
+  });
+
+  it("고른 연도가 눌린 상태다", () => {
+    render(
+      <LedgerTable rows={many} receiptUrls={{}} years={[2026, 2025]} year={2026} />,
+    );
+    expect(screen.getByRole("button", { name: /2026/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("검색창이 있다 — 전도금 탭과 같은 자리", () => {
+    render(<LedgerTable rows={many} receiptUrls={{}} />);
+    expect(screen.getByLabelText("등기내역 검색")).toBeInTheDocument();
+  });
+
+  it("검색하면 걸러진다", () => {
+    render(<LedgerTable rows={many} receiptUrls={{}} />);
+    fireEvent.change(screen.getByLabelText("등기내역 검색"), {
+      target: { value: "재능" },
+    });
+    expect(screen.getByText("재능대학교")).toBeInTheDocument();
+    expect(screen.queryByText("우석대학교")).toBeNull();
+  });
+
+  it("월 단위로 묶는다 — 일자별로 갈리면 화면이 끝없이 길어진다", () => {
+    render(<LedgerTable rows={many} receiptUrls={{}} />);
+    expect(screen.getByText("2026-08")).toBeInTheDocument();
+    expect(screen.getByText("2026-07")).toBeInTheDocument();
+    expect(screen.queryByText("2026-08-18")).toBeNull();
+  });
+
+  it("등기번호는 mono가 아니다 — 화면의 다른 숫자와 같은 폰트를 쓴다", () => {
+    const { container } = render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    const cell = screen.getByText("11263-1102-7080");
+    expect(cell.className).not.toMatch(/font-mono/);
+    expect(cell.className).toMatch(/tabular-nums/);
+    expect(container.querySelectorAll(".font-mono")).toHaveLength(0);
   });
 });

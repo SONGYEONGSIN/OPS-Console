@@ -9,6 +9,9 @@ import type { LedgerLine } from "./ledger";
  */
 export type LedgerView = {
   sheetName: string;
+  /** 고를 수 있는 연도(최신순)와 지금 보고 있는 연도. */
+  years: number[];
+  year: number;
   rows: LedgerLine[];
   /** 영수증 id → 서명 URL. 만료된 것은 아예 없다. */
   receiptUrls: Record<string, string>;

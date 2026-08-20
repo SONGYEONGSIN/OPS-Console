@@ -1,6 +1,7 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ledgerYears } from "./ledger-filter";
 import {
   expectedSheetName,
   parseLedgerRows,
@@ -27,6 +28,8 @@ export type LedgerLine = LedgerRow & {
 export type Ledger = {
   sheetName: string;
   rows: LedgerLine[];
+  /** 대장이 있는 모든 연도 — 시트가 곧 연도라 여기서 뽑는다. */
+  years: number[];
 };
 
 export async function readLedger(year: number): Promise<Ledger> {
@@ -62,6 +65,7 @@ export async function readLedger(year: number): Promise<Ledger> {
   const byTracking = await receiptByTracking();
   return {
     sheetName: want,
+    years: ledgerYears((ws.value ?? []).map((w) => w.name)),
     rows: rows.map((r) => ({
       ...r,
       receiptId: r.trackingNo ? (byTracking.get(r.trackingNo) ?? null) : null,

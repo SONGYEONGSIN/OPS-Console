@@ -20,7 +20,7 @@ import { POSTAL_TABS } from "./tabs";
 export default async function PostalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; year?: string }>;
 }) {
   const slug = "postal";
   await requireMenu(slug);
@@ -42,7 +42,9 @@ export default async function PostalPage({
   // 대장이 이 탭의 주인공이다. 읽기가 실패해도 화면은 뜨게 하고 이유를 함께 넘긴다 —
   // 빈 표를 그리면 "발송이 없다"로 읽힌다.
   const ledger =
-    tab === "receipts" ? await loadLedgerView() : EMPTY_LEDGER;
+    tab === "receipts"
+      ? await loadLedgerView(Number(sp.year) || undefined)
+      : EMPTY_LEDGER;
   const config = resolvePageMeta(slug, meta, receipts.length);
 
   return (

@@ -1,42 +1,37 @@
 import { describe, it, expect } from "vitest";
-import { buildSpendRow, nextRowAddress, findDuplicate } from "../append";
+import {
+  buildSpendRow,
+  nextRowAddress,
+  findDuplicate,
+  balanceFormula,
+} from "../append";
 import type { PettyCashEntry } from "../parse";
 
 describe("buildSpendRow", () => {
-  it("잔액을 계산해 넣는다 — 장부라 그 자리에서 빼야 한다", () => {
-    const row = buildSpendRow(
-      { date: "2026-08-20", title: "우편물", count: 3, amount: 13290 },
-      500000,
-    );
+  it("잔액 자리는 비운다 — 값으로 넣으면 수식 체인이 끊긴다", () => {
+    const row = buildSpendRow({ date: "2026-08-20", title: "우편물", count: 3, amount: 13290 });
     // [전도금內, 청구전, 잔액, 날짜, 내용, 건수, 금액, 품목]
-    expect(row[2]).toBe(486710);
-    expect(row[3]).toBe("2026-08-20");
+    expect(row[2]).toBe("");
+    // 날짜는 일련번호 — 시트의 기존 행과 같은 형태여야 한다.
+    expect(row[3]).toBe(46254);
     expect(row[6]).toBe(13290);
   });
 
   it("청구 칸은 비워둔다 — 사용 행이다", () => {
-    const row = buildSpendRow(
-      { date: "2026-08-20", title: "우편물", count: 1, amount: 100 },
-      1000,
-    );
+    const row = buildSpendRow({ date: "2026-08-20", title: "우편물", count: 1, amount: 100 });
     expect(row[0]).toBe("");
     expect(row[1]).toBe("");
   });
 
   it("품목이 있으면 담는다", () => {
-    const row = buildSpendRow(
-      { date: "2026-08-20", title: "사무용품", count: 1, amount: 1600, item: "우편박스" },
-      1000,
-    );
+    const row = buildSpendRow({ date: "2026-08-20", title: "사무용품", count: 1, amount: 1600, item: "우편박스" });
     expect(row[7]).toBe("우편박스");
   });
 
-  it("잔액이 모자라면 음수라도 그대로 적는다 — 숨기면 채워야 할 때를 놓친다", () => {
-    const row = buildSpendRow(
-      { date: "2026-08-20", title: "우편물", count: 1, amount: 5000 },
-      3000,
-    );
-    expect(row[2]).toBe(-2000);
+  it("잔액 수식이 음수를 가리지 않는다 — 숨기면 채워야 할 때를 놓친다", () => {
+    // 잔액을 엑셀이 계산하게 됐으니, 우리가 할 일은 MAX·IF로 감싸지 않는 것뿐이다.
+    expect(balanceFormula(74)).toBe("=$C73-$G74");
+    expect(balanceFormula(74)).not.toMatch(/MAX|IF/i);
   });
 });
 
