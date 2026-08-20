@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { uploadReceipt } from "@/features/postal/actions";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
 import { PostalTable } from "./PostalTable";
+import { LedgerTable } from "./LedgerTable";
+import type { LedgerView } from "@/features/postal/ledger-view";
 
 /**
  * 우편물 화면 — 영수증을 끌어다 놓고, 올린 것을 표로 본다(원본은 행을 눌러 팝업).
@@ -15,9 +17,11 @@ import { PostalTable } from "./PostalTable";
 export function PostalClient({
   receipts,
   extractStates = {},
+  ledger,
 }: {
   receipts: ReceiptCard[];
   extractStates?: Record<string, ExtractState>;
+  ledger: LedgerView;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -88,7 +92,33 @@ export function PostalClient({
         </div>
       )}
 
-      <PostalTable receipts={receipts} extractStates={extractStates} />
+      {/*
+        검토 대기 — 올렸지만 아직 확정 안 된 영수증. **일감**이라 위에 둔다.
+        확정하면 여기서 사라지고 아래 대장에 행으로 남는다.
+      */}
+      {receipts.length > 0 && (
+        <PostalTable receipts={receipts} extractStates={extractStates} />
+      )}
+
+      {/*
+        대장 — 이 화면의 주인공. 예전에는 영수증 목록이 이 자리를 차지했고
+        대장은 엑셀에만 있어, 발송이 제대로 기록됐는지 화면에서 볼 수 없었다.
+      */}
+      <section className="space-y-2">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-sm font-medium text-ink">등기관리대장</h2>
+          <span className="text-2xs tabular-nums text-muted">
+            {ledger.rows.length}건
+          </span>
+          <span className="text-2xs text-muted">{ledger.sheetName}</span>
+        </div>
+        {ledger.error ? (
+          // 못 읽은 이유를 그대로 보여준다 — 빈 표는 "발송이 없다"로 읽힌다.
+          <p className="text-xs text-vermilion-deep">{ledger.error}</p>
+        ) : (
+          <LedgerTable rows={ledger.rows} receiptUrls={ledger.receiptUrls} />
+        )}
+      </section>
     </div>
   );
 }

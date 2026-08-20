@@ -130,3 +130,30 @@ export async function getExtractStates(
   }
   return out;
 }
+
+/**
+ * 영수증 id → 서명 URL. 대장 행에 증빙을 붙일 때 쓴다.
+ *
+ * 한 영수증에 등기가 여러 건 찍히므로 **id 단위로 한 번만** 발급한다 — 행마다
+ * 발급하면 같은 파일에 서명을 수십 번 만들게 된다.
+ */
+export async function signReceiptUrls(
+  receiptIds: string[],
+): Promise<Record<string, string>> {
+  if (receiptIds.length === 0) return {};
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("postal_receipts")
+    .select("id, storage_path")
+    .in("id", receiptIds);
+
+  const out: Record<string, string> = {};
+  for (const row of (data ?? []) as { id: string; storage_path: string }[]) {
+    const { data: signed } = await admin.storage
+      .from(RECEIPT_BUCKET)
+      .createSignedUrl(row.storage_path, SIGNED_URL_TTL_SECONDS);
+    // 실패한 것은 담지 않는다 — 없는 URL로 버튼을 만들면 눌러도 안 열린다.
+    if (signed?.signedUrl) out[row.id] = signed.signedUrl;
+  }
+  return out;
+}

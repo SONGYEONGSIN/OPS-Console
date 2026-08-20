@@ -7,6 +7,7 @@ import { fetchPettyCash } from "@/features/petty-cash/queries";
 import { PageTabs } from "@/components/common/PageTabs";
 import { PettyCashPanel } from "./_components/PettyCashPanel";
 import { PostalClient } from "./_components/PostalClient";
+import { loadLedgerView, EMPTY_LEDGER } from "@/features/postal/ledger-load";
 import { POSTAL_TABS } from "./tabs";
 
 /**
@@ -38,6 +39,10 @@ export default async function PostalPage({
       ? await getExtractStates(receipts.map((r) => r.id))
       : new Map();
   const pettyCash = tab === "petty" ? await fetchPettyCash() : null;
+  // 대장이 이 탭의 주인공이다. 읽기가 실패해도 화면은 뜨게 하고 이유를 함께 넘긴다 —
+  // 빈 표를 그리면 "발송이 없다"로 읽힌다.
+  const ledger =
+    tab === "receipts" ? await loadLedgerView() : EMPTY_LEDGER;
   const config = resolvePageMeta(slug, meta, receipts.length);
 
   return (
@@ -56,6 +61,7 @@ export default async function PostalPage({
           <PostalClient
             receipts={receipts}
             extractStates={Object.fromEntries(extractStates)}
+            ledger={ledger}
           />
         )}
       </div>
