@@ -8,6 +8,11 @@ import { ReceiptReview } from "./ReceiptReview";
 import { deleteReceipt } from "@/features/postal/actions";
 
 /**
+ * 올린 영수증 목록 — 확정한 것도 남는다(검토 대기만이 아니다).
+ *
+ * 탭이 '등기관리', 대장이 '발송목록'이 되면서 이 표만 '등기내역'으로 남아
+ * 무엇이 등기 내역인지 흐려졌다. 하는 일 그대로 '영수증'이라 부른다(2026-08-20).
+ *
  * 우편물 영수증 목록 — 운영리포트의 '저장된 리포트'와 같은 톤(thead + hover row).
  *
  * 카드 격자였는데 여러 건을 훑기 어려웠다. 표로 바꾸고, 원본은 행을 눌러 팝업으로
@@ -81,7 +86,7 @@ export function PostalTable({
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-xl font-bold text-ink">등기내역</h3>
+          <h3 className="text-xl font-bold text-ink">영수증</h3>
           <span className="text-muted" aria-hidden>
             ·
           </span>

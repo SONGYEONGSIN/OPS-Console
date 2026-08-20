@@ -29,6 +29,22 @@ export function PettyCashPanel({
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // 인스펙터에 보여줄 최근 사용 — 같은 걸 두 번 넣는 실수를 미리 막는다.
+  const recentSpends = useMemo(
+    () =>
+      [...(sheet?.entries ?? [])]
+        .filter((e) => e.kind === "spend")
+        .slice(-3)
+        .reverse()
+        .map((e) => ({
+          date: e.date,
+          title: e.title,
+          count: e.count ?? null,
+          amount: e.amount ?? 0,
+        })),
+    [sheet],
+  );
+
   const spends = useMemo(
     () => (sheet?.entries ?? []).filter((e) => e.kind === "spend"),
     [sheet],
@@ -75,7 +91,14 @@ export function PettyCashPanel({
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    // 인스펙터는 `fixed` 라 그냥 열면 본문을 덮는다. ListPattern 은 열릴 때
+    // `md:pr-[340px]` 로 본문을 비켜 놓는데, 이 탭은 그 패턴을 안 써서 처리가
+    // 없었다(2026-08-20). 같은 값·같은 전환으로 맞춘다.
+    <div
+      className={`flex flex-col gap-5 transition-[padding] duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] ${
+        adding ? "md:pr-[340px]" : ""
+      }`}
+    >
       {/* 상단 카드는 운영리포트가 표준이다 — KpiCard 를 그대로 쓴다.
           비교 대상(직전 기간)이 없으므로 delta 는 전부 null 이고, 카드는
           '비교 불가'로 그린다. */}
@@ -204,7 +227,13 @@ export function PettyCashPanel({
         )}
       </div>
 
-      {adding && <SpendForm onClose={() => setAdding(false)} />}
+      {adding && (
+        <SpendForm
+          onClose={() => setAdding(false)}
+          balance={sheet.balance}
+          recent={recentSpends}
+        />
+      )}
     </div>
   );
 }

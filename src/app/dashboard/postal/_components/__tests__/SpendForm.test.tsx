@@ -139,3 +139,53 @@ describe("SpendForm — 표준 인스펙터 구성", () => {
     expect(label?.className).toMatch(/text-xs/);
   });
 });
+
+/**
+ * 인스펙터가 열렸을 때 본문을 가리지 않는다 + 판단에 필요한 것을 함께 보여준다.
+ *
+ * 패널은 `fixed` 라 그냥 열면 뒤 화면을 덮는다. `ListPattern` 은 열릴 때 본문에
+ * `md:pr-[340px]` 을 줘서 비켜 놓는데, 이 탭은 그 패턴을 안 써서 처리가 없었다
+ * (2026-08-20 지적).
+ *
+ * 내용도 입력 칸만 있어 허전했다. 다른 인스펙터처럼 **판단 재료**를 같이 둔다 —
+ * 특히 최근 사용 내역은 같은 걸 두 번 넣는 실수를 서버가 거절하기 **전에** 막는다.
+ */
+describe("SpendForm — 내용 보강", () => {
+  const RECENT = [
+    { date: "2026-08-19", title: "우편물", count: 2, amount: 8340 },
+    { date: "2026-08-18", title: "우편물", count: 3, amount: 13290 },
+  ];
+
+  it("현재 잔액을 보여준다", () => {
+    render(<SpendForm onClose={() => {}} balance={491660} />);
+    expect(screen.getByText(/491,660원/)).toBeInTheDocument();
+  });
+
+  it("금액을 넣으면 남는 금액을 미리 보여준다 — 모자라는지 넣기 전에 안다", () => {
+    render(<SpendForm onClose={() => {}} balance={491660} />);
+    fireEvent.change(screen.getByLabelText("금액"), {
+      target: { value: "12000" },
+    });
+    expect(screen.getByText(/479,660원/)).toBeInTheDocument();
+  });
+
+  it("모자라면 드러낸다 — 숨기면 채워야 할 때를 놓친다", () => {
+    render(<SpendForm onClose={() => {}} balance={1000} />);
+    fireEvent.change(screen.getByLabelText("금액"), {
+      target: { value: "5000" },
+    });
+    expect(screen.getByText(/잔액을 넘습니다/)).toBeInTheDocument();
+  });
+
+  it("최근 사용을 보여준다 — 같은 걸 두 번 넣는 실수를 미리 막는다", () => {
+    render(<SpendForm onClose={() => {}} recent={RECENT} />);
+    expect(screen.getByText(/최근 사용/)).toBeInTheDocument();
+    expect(screen.getByText("2026-08-19")).toBeInTheDocument();
+    expect(screen.getByText(/8,340원/)).toBeInTheDocument();
+  });
+
+  it("날짜를 비우면 오늘로 들어간다고 알린다", () => {
+    render(<SpendForm onClose={() => {}} />);
+    expect(screen.getByText(/비우면 오늘/)).toBeInTheDocument();
+  });
+});
