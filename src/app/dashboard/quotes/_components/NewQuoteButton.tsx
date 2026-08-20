@@ -1,5 +1,6 @@
 "use client";
 
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createQuoteWithType } from "@/features/quotes/document-actions";
@@ -24,13 +25,9 @@ export function NewQuoteButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-vermilion-deep"
-      >
+      <HeaderActionButton onClick={() => setOpen(true)}>
         + 새 견적서
-      </button>
+      </HeaderActionButton>
       {open && (
         <ModalShell
           title="견적서 유형 선택"

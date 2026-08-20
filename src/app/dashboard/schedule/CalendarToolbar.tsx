@@ -1,5 +1,6 @@
 "use client";
 
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { MineScopeToggle } from "@/components/common/MineScopeToggle";
 
 type Props = {
@@ -60,13 +61,9 @@ export function CalendarToolbar({
       </div>
       <div className="flex items-center gap-2">
         {canWrite ? (
-          <button
-            type="button"
-            onClick={onNewEvent}
-            className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1 text-xs font-medium text-cream hover:bg-vermilion-deep"
-          >
+          <HeaderActionButton onClick={onNewEvent}>
             + 새 일정
-          </button>
+          </HeaderActionButton>
         ) : null}
         <div
           role="tablist"

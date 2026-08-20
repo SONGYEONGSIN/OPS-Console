@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListSearch } from "@/components/common/ListSearch";
 import { SpendForm } from "./SpendForm";
 import { KpiCard, type KpiCardItem } from "@/components/common/KpiCard";
@@ -144,22 +145,13 @@ export function PettyCashPanel({
             아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
           */}
           {pettyCashUrl && (
-            <a
-              href={pettyCashUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink transition-colors hover:bg-washi"
-            >
+            <HeaderActionButton tone="outline" href={pettyCashUrl}>
               전도금대장
-            </a>
+            </HeaderActionButton>
           )}
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream transition-opacity hover:opacity-90"
-          >
+          <HeaderActionButton onClick={() => setAdding(true)}>
             + 사용내역 추가
-          </button>
+          </HeaderActionButton>
           </div>
         </header>
 
