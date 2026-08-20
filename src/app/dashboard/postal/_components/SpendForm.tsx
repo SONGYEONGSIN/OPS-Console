@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { DateInput } from "@/components/common/DateInput";
 import { ModalShell } from "@/components/common/ModalShell";
 import { appendSpend } from "@/features/petty-cash/actions";
 
@@ -62,8 +63,7 @@ export function SpendForm({ onClose }: { onClose: () => void }) {
     <ModalShell title="사용내역 추가" onClose={onClose}>
       <div className="space-y-3">
         <Field label="날짜">
-          <input
-            type="date"
+          <DateInput
             aria-label="날짜"
             value={date}
             onChange={(e) => setDate(e.target.value)}
