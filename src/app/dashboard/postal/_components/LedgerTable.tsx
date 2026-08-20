@@ -6,11 +6,7 @@ import { ListSearch } from "@/components/common/ListSearch";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ModalShell } from "@/components/common/ModalShell";
 import type { LedgerLine } from "@/features/postal/ledger";
-import {
-  filterLedger,
-  groupByMonth,
-  LEDGER_PAGE_SIZE,
-} from "@/features/postal/ledger-filter";
+import { filterLedger, groupByMonth } from "@/features/postal/ledger-filter";
 
 /**
  * 등기관리대장 — 이 화면의 주인공.
@@ -27,6 +23,7 @@ import {
 
 const COLUMNS = [
   "순번",
+  "발송일",
   "수신처",
   "수신자",
   "담당자",
@@ -57,13 +54,12 @@ export function LedgerTable({
 
   const page = Math.max(1, Number(params.get("page") ?? 1));
   const filtered = useMemo(() => filterLedger(rows, q), [rows, q]);
-  // 페이지는 행 기준으로 끊는다 — 묶음 기준이면 페이지 길이가 들쭉날쭉해진다.
-  const pageRows = useMemo(
-    () =>
-      filtered.slice((page - 1) * LEDGER_PAGE_SIZE, page * LEDGER_PAGE_SIZE),
-    [filtered, page],
+  // **한 페이지 = 한 달.** 행 수로 끊으면 두 달이 한 화면에 겹쳐 경계가 흐려진다.
+  const allMonths = useMemo(() => groupByMonth(filtered), [filtered]);
+  const groups = useMemo(
+    () => allMonths.slice(page - 1, page),
+    [allMonths, page],
   );
-  const groups = useMemo(() => groupByMonth(pageRows), [pageRows]);
 
   function goYear(y: number) {
     const next = new URLSearchParams(params.toString());
@@ -77,22 +73,29 @@ export function LedgerTable({
       <ListSearch
         value={q}
         onChange={setQ}
-        ariaLabel="등기내역 검색"
+        ariaLabel="발송목록 검색"
         placeholder="수신처·수신자·담당자·등기번호 검색"
       />
 
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-xl font-bold text-ink">등기관리대장</h3>
+      {/*
+        검색과 제목 사이 간격은 ListPattern 표준을 따른다 — 그쪽은 controlsRow 다음에
+        `section p-7` 이 오고 제목이 `mb-4` 를 쓴다. 이 탭은 ListPattern 을 안 쓰고
+        손으로 짜서 그 값이 빠져 있었고, 그래서 붙어 보였다(2026-08-20).
+      */}
+      <header className="mb-4 mt-7 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <h3 className="text-xl font-bold text-ink">발송목록</h3>
           <span className="text-muted" aria-hidden>
             ·
           </span>
           <span className="text-sm text-vermilion">{filtered.length}건</span>
-        </div>
-        {/* 연도는 고를 수 있는 것이다 — 제목 옆 회색 글씨로 두면 표기로만 보인다. */}
-        {years.length > 0 && (
-          <div className="inline-flex">
-            {years.map((y) => {
+          {/*
+            연도는 고를 수 있는 것이다 — 회색 글씨로 두면 표기로만 보인다.
+            **최근 3개년만** 둔다. 시트가 2016년까지 있어 전부 늘어놓으면 11개가 되고,
+            그중 볼 일이 있는 건 앞의 몇 개뿐이다.
+          */}
+          <span className="inline-flex">
+            {years.slice(0, 3).map((y) => {
               const on = y === year;
               return (
                 <button
@@ -114,8 +117,8 @@ export function LedgerTable({
                 </button>
               );
             })}
-          </div>
-        )}
+          </span>
+        </div>
       </header>
 
       {filtered.length === 0 ? (
@@ -156,7 +159,8 @@ export function LedgerTable({
               </tbody>
             </table>
           </div>
-          <ListPagination total={filtered.length} pageSize={LEDGER_PAGE_SIZE} />
+          {/* 달 수만큼 페이지 — 한 장에 한 달 */}
+          <ListPagination total={allMonths.length} pageSize={1} />
         </>
       )}
 
@@ -212,6 +216,10 @@ function GroupRows({
             className="border-t border-line-soft transition-colors hover:bg-line-soft"
           >
             <td className="py-2 pr-3 tabular-nums text-muted">{r.seq ?? ""}</td>
+            {/* 한 페이지가 한 달이라, 며칠인지는 행에 있어야 안다. */}
+            <td className="py-2 pr-3 tabular-nums text-muted">
+              {r.sentOn.slice(5)}
+            </td>
             <td className="py-2 pr-3 text-ink">{r.recipientOrg}</td>
             <td className="py-2 pr-3 text-ink">{r.recipientName}</td>
             <td className="py-2 pr-3 text-ink-soft">{r.assignee}</td>

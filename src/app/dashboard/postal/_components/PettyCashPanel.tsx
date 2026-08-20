@@ -95,7 +95,8 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
           placeholder="날짜·내용·금액 검색"
         />
 
-        <header className="flex flex-wrap items-end justify-between gap-3">
+        {/* 간격은 ListPattern 표준(검색 → 28px → 제목 → 16px → 표). */}
+        <header className="mb-4 mt-7 flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-baseline gap-2">
             <h3 className="text-xl font-bold text-ink">사용 내역</h3>
             <span className="text-muted" aria-hidden>
