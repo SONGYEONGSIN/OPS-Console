@@ -14,6 +14,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  /api/assistant/claude/claim — 회사 PC 상주 폴러가 어시스턴트 질문을 claim/답 보고.
  *  /api/postal/extract — 회사 PC 폴러가 영수증 판독 요청을 claim/결과 보고.
  *  /api/assistant/tools — 폴러가 Claude에게 붙여준 도구가 호출(일정 조회 등).
+ *  /api/assistant/bot — 사내 Teams 봇 서버가 질문을 같은 큐에 적재/조회.
  *    접두사 매칭이라 이 아래 새 라우트는 자동으로 public이 된다 — 반드시
  *    라우트 안에서 CRON_SECRET을 검사할 것.
  *    (웹 창구 /api/assistant/claude 는 세션이 필요하므로 여기 넣지 않는다.)
@@ -38,6 +39,7 @@ const PUBLIC_PATHS = [
   "/api/dev-controls/analyze-request",
   "/api/assistant/claude/claim",
   "/api/assistant/tools",
+  "/api/assistant/bot",
   "/api/postal/extract",
   "/api/team-briefing",
   "/api/ratio-audit",
