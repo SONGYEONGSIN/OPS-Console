@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
+import { SpendForm } from "./SpendForm";
 import { KpiCard, type KpiCardItem } from "@/components/common/KpiCard";
 import type { PettyCashSheet } from "@/features/petty-cash/parse";
 
@@ -19,6 +20,7 @@ const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
   const [q, setQ] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const spends = useMemo(
     () => (sheet?.entries ?? []).filter((e) => e.kind === "spend"),
@@ -101,6 +103,17 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
             </span>
             <span className="text-sm text-vermilion">{spends.length}건</span>
           </div>
+          {/*
+            우편물은 영수증 판독으로 자동 기록되지만, 사무용품처럼 전도금으로 사는
+            다른 것들은 넣을 길이 없어 엑셀을 직접 열어야 했다(2026-08-20).
+          */}
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="cursor-pointer border border-vermilion bg-vermilion px-3 py-1.5 text-sm text-cream transition-opacity hover:opacity-90"
+          >
+            + 사용내역 추가
+          </button>
         </header>
 
         {visible.length === 0 ? (
@@ -166,6 +179,8 @@ export function PettyCashPanel({ sheet }: { sheet: PettyCashSheet | null }) {
           </div>
         )}
       </div>
+
+      {adding && <SpendForm onClose={() => setAdding(false)} />}
     </div>
   );
 }
