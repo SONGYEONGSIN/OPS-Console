@@ -594,6 +594,12 @@ export const FEATURE_INTROS: FeatureIntro[] = [
     title: "백업 요청 검색에 합격자통합관리 발표 서비스",
     desc: "백업 요청 서비스 검색에서 원서접수뿐 아니라 합격자통합관리시스템 발표 서비스도 함께 찾습니다. [원서]/[발표] 배지로 구분되고, 발표 서비스는 서비스목록에서 붙여넣기로 일괄등록해요.",
   },
+  {
+    // 메뉴가 아니라 화면에 고정된 채팅 아이콘이다 — 있는 그대로 적는다.
+    menu: "화면 오른쪽 아래 채팅 아이콘",
+    title: "운영부 상황실 어시스턴트",
+    desc: "화면 오른쪽 아래 채팅 아이콘을 누르면 열립니다. 업무 지식망 문서를 직접 읽고, 인수인계·사고·연락처 같은 실제 기록까지 뒤져서 답해요. \"부산대 수시 인수인계에 뭐라고 적혀 있어?\", \"다음주 휴가자 누구야?\"처럼 평소 말로 물어보시면 됩니다. 답이 30초쯤 걸리는 건 회사 PC가 문서를 하나씩 읽고 있어서예요 — 무엇을 읽는 중인지 화면에 그대로 나옵니다.",
+  },
 ];
 
 /**
@@ -613,7 +619,28 @@ const FEATURE_PINS: Record<number, string[]> = {
   3: ["경쟁률 세팅 점검 자동화", "백업 요청 검색에 합격자통합관리 발표 서비스"],
   /** 빈 배열 = 이번 호는 기능 소개 없음. 렌더러가 섹션 전체를 감춘다. */
   4: [],
+  5: ["운영부 상황실 어시스턴트"],
 };
+
+/**
+ * 호수별 커버 영상.
+ *
+ * 사진이 없는 주에는 커버가 통째로 비었다. 영상은 매주 바뀌므로 기능 소개 핀과 같은
+ * 방식으로 호수에 매단다 — 코드만 봐도 어느 호에 무엇을 실었는지 사람이 안다.
+ *
+ * 유튜브만 넣는다. 다른 곳 주소는 `toYouTubeEmbed` 가 null 을 주어 프레임이 안 뜬다.
+ * 지정 안 한 호는 비운다 — 지난 영상을 다시 틀면 새 소식처럼 보인다.
+ */
+const ISSUE_VIDEOS: Record<number, BriefingMedia> = {
+  5: {
+    src: "https://www.youtube.com/shorts/GNSy-p-gp78",
+    caption: "월요일 아침, 우리 모두의 생존 본능 ㄷㄷ",
+  },
+};
+
+export function pickIssueVideo(issueNo: number): BriefingMedia | undefined {
+  return ISSUE_VIDEOS[Math.max(1, Math.floor(issueNo))];
+}
 
 /** 호수(1부터)로 소개 항목을 순환 선택 (매 호 서로 다른 묶음). */
 export function pickFeatureIntros(
@@ -674,6 +701,13 @@ export function excludeSeenCelebrations<
 export type BriefingMedia = { src: string; caption?: string };
 export type BriefingImages = {
   cover?: BriefingMedia;
+  /**
+   * 커버 자리에 넣을 영상(유튜브). 사진이 없는 주에 쓴다.
+   *
+   * 링크로 걸면 뉴스레터를 떠나야 보므로 프레임으로 넣는다. `caption` 은 프레임
+   * 위에 붙는 한 줄이다 — 무엇을 보게 될지 알려주는 자리다.
+   */
+  video?: BriefingMedia;
   gallery?: BriefingMedia[];
   videos?: BriefingMedia[];
 };

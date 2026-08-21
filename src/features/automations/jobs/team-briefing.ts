@@ -24,6 +24,7 @@ import {
   excludeSeenImages,
   pickAlbum,
   pickFeatureIntros,
+  pickIssueVideo,
   pickSasiGoal,
   type BriefEvent,
   type BriefBackupRequest,
@@ -411,7 +412,12 @@ export async function buildBriefingData(): Promise<
     .from("team_briefings")
     .select("id", { count: "exact", head: true })
     .eq("status", "published");
-  const featureIntros = pickFeatureIntros((publishedCount ?? 0) + 1);
+  const issueNo = (publishedCount ?? 0) + 1;
+  const featureIntros = pickFeatureIntros(issueNo);
+
+  // 이번 호 커버 영상 — 사진이 있으면 사진이 이긴다(렌더러가 가른다).
+  const issueVideo = pickIssueVideo(issueNo);
+  if (issueVideo) images = { ...(images ?? {}), video: issueVideo };
 
   const payload: BriefingPayload = {
     dateLabel: `${todayYmd} (${kstWeekdayShort()})`,
