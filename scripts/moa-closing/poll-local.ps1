@@ -31,6 +31,11 @@ if (-not $secret -or -not $base) {
     exit 1
 }
 
+# 살아있음을 남긴다 — 이 스크립트는 5분마다 한 번 돌고 끝나므로 그 실행이 곧 심박이다.
+# 큐가 조용하면 이게 생사의 유일한 증거다(2026-08-20 어시스턴트 폴러가 12시간 죽어 있었다).
+. (Join-Path $PSScriptRoot "../lib/Heartbeat.ps1")
+Send-PollerHeartbeat -BaseUrl $base -Secret $secret -PollerId "closing-scrape"
+
 $headers = @{ Authorization = "Bearer $secret" }
 $uri = "$base/api/closing/scrape-request"
 
