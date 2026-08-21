@@ -2,6 +2,8 @@ import "server-only";
 import { getAutomationStatuses } from "../queries";
 import { getAutomationRunLog } from "../run-logs";
 import { buildDigest, renderDigestHtml, isSameKstDay } from "../digest";
+import { renderPollerSection } from "../digest-pollers";
+import { loadPollerStatuses } from "@/features/system-status/queries";
 import type { DigestInput } from "../digest";
 import { sendAutomationReport } from "../report-send";
 import type { AutomationRunResult } from "../types";
@@ -44,9 +46,35 @@ export async function runAutomationDigest(): Promise<AutomationRunResult> {
   const states = buildDigest(inputs, now);
   const failed = states.filter((s) => s.status === "failed").length;
   const stale = states.filter((s) => s.status === "stale").length;
-  const summary = `잡 ${states.length} · 실패 ${failed} · 미실행 ${stale}`;
+  // 회사 PC 폴러도 함께 본다 — 심박이 없으면 아무도 모른 채 하루가 간다.
+  //
+  // 실패해도 보고는 보낸다. 폴러 상태를 못 읽었다고 자동화 보고까지 막으면
+  // 더 큰 것을 놓친다.
+  let pollerHtml = "";
+  let pollerSummary = "";
+  try {
+    const pollers = await loadPollerStatuses(now);
+    pollerHtml = renderPollerSection(
+      pollers.map((p) => ({
+        id: p.id,
+        label: p.label,
+        verdict: p.verdict,
+        detail: p.detail,
+        hint: p.hint,
+      })),
+    );
+    const down = pollers.filter((p) => p.verdict === "stopped").length;
+    pollerSummary = ` · 폴러 멈춤 ${down}`;
+  } catch (e) {
+    console.error("[digest] 폴러 상태를 읽지 못했습니다:", e);
+    pollerSummary = " · 폴러 상태 조회 실패";
+  }
 
-  const send = await sendAutomationReport(renderDigestHtml(states, now));
+  const summary = `잡 ${states.length} · 실패 ${failed} · 미실행 ${stale}${pollerSummary}`;
+
+  const send = await sendAutomationReport(
+    renderDigestHtml(states, now) + pollerHtml,
+  );
   if (send.dryRun)
     return { ok: true, message: `${summary} (DRY RUN — 미발송)` };
   if (!send.sent)
