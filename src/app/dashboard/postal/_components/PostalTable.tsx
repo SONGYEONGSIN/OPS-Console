@@ -283,18 +283,24 @@ function RowPair({
           )}
         </td>
       </tr>
-      <tr>
-        {/* 위쪽 여백을 준다 — 영수증 행에 검토 표 머리가 바로 붙으면
-            어느 줄이 목록이고 어느 줄이 그 안쪽인지 구분이 안 된다. */}
-        <td colSpan={7} className="px-3 pt-4 pb-6">
-          <ReceiptReview
-            receiptId={receipt.id}
-            state={extract}
-            rows={reviewRows}
-            onRowsChange={setReviewRows}
-          />
-        </td>
-      </tr>
+      {/* 확정하면 검토 표를 접는다.
+          검토는 '고칠 것이 있나' 보는 자리다. 확정하면 그 일은 끝났고 내용은
+          등기대장 탭에 남는다. 그대로 펼쳐 두면 아직 할 일이 있는 것처럼 보이고,
+          고쳐도 아무 일이 안 일어나 사람을 헷갈리게 한다. */}
+      {!receipt.confirmedAt && (
+        <tr>
+          {/* 위쪽 여백을 준다 — 영수증 행에 검토 표 머리가 바로 붙으면
+              어느 줄이 목록이고 어느 줄이 그 안쪽인지 구분이 안 된다. */}
+          <td colSpan={7} className="px-3 pt-4 pb-6">
+            <ReceiptReview
+              receiptId={receipt.id}
+              state={extract}
+              rows={reviewRows}
+              onRowsChange={setReviewRows}
+            />
+            </td>
+        </tr>
+      )}
     </>
   );
 }
