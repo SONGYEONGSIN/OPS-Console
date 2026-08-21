@@ -7,6 +7,7 @@ import {
   sanitizeFlags,
   buildClaudePrompt,
   genHostFor,
+  GEN_FLAGS,
 } from "../../../../scripts/lib/dev-control-lib.mjs";
 
 describe("parseDevInfo", () => {
@@ -136,5 +137,32 @@ describe("genHostFor", () => {
   it("모르는 값이면 null — 엉뚱한 호스트에 물어보지 않는다", () => {
     expect(genHostFor("새로운접수")).toBeNull();
     expect(genHostFor(null)).toBeNull();
+  });
+});
+
+/**
+ * 원서(W) 말고 추가 페이지(P)도 있다.
+ *
+ * 원서GEN 화면에 `원서` 탭과 `[PA]자기소개서` 탭이 따로 있고, URL 이
+ * `...&GenFlag=PA` 다. 분석기가 W 계열만 훑어 **자기소개서 쪽 제어파일을 통째로
+ * 놓치고 있었다**(2026-08-21 연세대 UIC — PA 에 5개가 더 있었다).
+ *
+ * 서비스마다 추가 페이지 수가 달라 A~D 까지 훑는다. 없으면 빈 응답이라 그냥 넘어간다.
+ */
+describe("GEN_FLAGS", () => {
+  it("원서(W)와 추가 페이지(P)를 모두 훑는다", () => {
+    expect(GEN_FLAGS).toContain("WA");
+    expect(GEN_FLAGS).toContain("PA");
+  });
+
+  it("각 계열을 A~D까지 본다 — 추가 페이지가 여럿일 수 있다", () => {
+    for (const s of ["A", "B", "C", "D"]) {
+      expect(GEN_FLAGS, `W${s}`).toContain(`W${s}`);
+      expect(GEN_FLAGS, `P${s}`).toContain(`P${s}`);
+    }
+  });
+
+  it("W를 먼저 본다 — 원서가 본체다", () => {
+    expect(GEN_FLAGS.indexOf("WA")).toBeLessThan(GEN_FLAGS.indexOf("PA"));
   });
 });

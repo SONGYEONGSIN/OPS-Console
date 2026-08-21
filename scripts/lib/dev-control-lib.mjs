@@ -93,3 +93,15 @@ export function genHostFor(admissionType) {
   if (!admissionType) return null;
   return GEN_HOST_BY_ADMISSION[admissionType.trim()] ?? null;
 }
+
+/**
+ * 훑을 GenFlag — 원서(W)와 추가 페이지(P).
+ *
+ * 원서GEN 화면에 `원서` 탭과 `[PA]자기소개서` 탭이 따로 있고 URL 이 `&GenFlag=PA` 다.
+ * 분석기가 W 계열만 보고 있어 **자기소개서 쪽 제어파일을 통째로 놓쳤다**
+ * (2026-08-21 연세대 UIC — PA 에 5개가 더 있었다).
+ *
+ * 서비스마다 추가 페이지 수가 달라 A~D 까지 본다. 없으면 빈 응답이라 그냥 넘어간다 —
+ * 있는지 없는지는 물어봐야 알고, 안 물어보면 오늘처럼 조용히 빠진다.
+ */
+export const GEN_FLAGS = ["WA", "WB", "WC", "WD", "PA", "PB", "PC", "PD"];
