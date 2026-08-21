@@ -89,3 +89,42 @@ describe("parsePettyCashSheet", () => {
     expect(empty.balance).toBeNull();
   });
 });
+
+/**
+ * 날짜 칸이 엑셀 일련번호로 온다.
+ *
+ * 우편물 확정이 장부에 쓸 때 일련번호로 넣는다(날짜 서식 칸에 문자열을 넣으면
+ * 어긋난다). 그런데 읽는 쪽이 되돌리지 않아 화면에 `46255` 가 그대로 찍혔다
+ * (2026-08-22 실제). 쓰는 쪽과 읽는 쪽이 같은 규칙을 써야 한다.
+ */
+describe("날짜 — 엑셀 일련번호", () => {
+  const row = (date: string) => [
+    ["헤더"],
+    ["", "", "", date, "우편물", "13", "54630", "", "437030"],
+  ];
+
+  it("일련번호를 날짜로 되돌린다", () => {
+    // 46255 = 2026-08-21 (기준 1899-12-30)
+    const sheet = parsePettyCashSheet(row("46255"));
+    const spend = sheet.entries.find((e) => e.kind === "spend");
+    expect(spend && spend.kind === "spend" && spend.date).toBe("2026-08-21");
+  });
+
+  it("사람이 적은 문자열 날짜는 그대로 둔다 — 서식이 섞여 있다", () => {
+    const sheet = parsePettyCashSheet(row("2026-08-21"));
+    const spend = sheet.entries.find((e) => e.kind === "spend");
+    expect(spend && spend.kind === "spend" && spend.date).toBe("2026-08-21");
+  });
+
+  it("사람이 20260821 처럼 적어도 일련번호로 오해하지 않는다", () => {
+    // 일련번호로 읽으면 서기 57000년이 된다. 그럴 바엔 원문을 보여준다.
+    const sheet = parsePettyCashSheet(row("20260821"));
+    const spend = sheet.entries.find((e) => e.kind === "spend");
+    expect(spend && spend.kind === "spend" && spend.date).toBe("20260821");
+  });
+
+  it("날짜가 아닌 숫자 문자열까지 바꾸지 않는다 — 빈 칸은 여전히 빈 칸이다", () => {
+    const sheet = parsePettyCashSheet(row(""));
+    expect(sheet.entries.filter((e) => e.kind === "spend")).toHaveLength(0);
+  });
+});

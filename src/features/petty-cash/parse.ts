@@ -1,3 +1,4 @@
+import { excelSerialToIso } from "@/lib/excel-date";
 /**
  * 전도금 시트 파싱 — `08. 비용관리 > 전도금 > 2026년도 전도금 비용.xlsx`.
  *
@@ -56,13 +57,30 @@ export function parseAmount(raw: string | undefined): number | null {
   return Math.round(Number(cleaned));
 }
 
+/**
+ * 날짜 칸이 엑셀 일련번호로 오는 경우를 되돌린다.
+ *
+ * 우편물 확정이 장부에 쓸 때 일련번호로 넣는다 — 날짜 서식 칸에 문자열을 넣으면
+ * 어긋나기 때문이다(`petty-cash/append.ts`). 읽는 쪽이 되돌리지 않아 화면에
+ * `46255` 가 그대로 찍혔다(2026-08-22).
+ *
+ * **그럴듯한 연도일 때만 바꾼다.** 사람이 `20260821` 처럼 적어둔 칸을 일련번호로
+ * 읽으면 서기 57000년이 된다 — 그럴 바엔 원문을 그대로 보여준다.
+ */
+function normalizeDate(raw: string): string {
+  if (!/^\d+$/.test(raw)) return raw;
+  const iso = excelSerialToIso(Number(raw));
+  const year = Number(iso.slice(0, 4));
+  return year >= 2000 && year <= 2100 ? iso : raw;
+}
+
 export function parsePettyCashSheet(rows: string[][]): PettyCashSheet {
   const entries: PettyCashEntry[] = [];
 
   // 첫 행은 헤더. 데이터 행만 본다.
   for (const r of rows.slice(1)) {
     const label = (r[COL.refillLabel] ?? "").trim();
-    const date = (r[COL.date] ?? "").trim();
+    const date = normalizeDate((r[COL.date] ?? "").trim());
 
     if (label) {
       entries.push({

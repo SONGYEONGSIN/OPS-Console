@@ -187,3 +187,32 @@ describe("PostalTable — 확정·삭제 나란히", () => {
     expect(screen.queryByRole("button", { name: "확정" })).toBeNull();
   });
 });
+
+/**
+ * 확정하면 검토 표를 접는다.
+ *
+ * 검토 표는 '고칠 것이 있나' 보는 자리다. 확정하면 그 일은 끝났고, 확정된 내용은
+ * 등기대장 탭에 남는다. 그대로 펼쳐 두면 아직 할 일이 있는 것처럼 보이고,
+ * 고쳐도 아무 일이 일어나지 않아 사람을 헷갈리게 한다.
+ */
+describe("확정한 영수증", () => {
+  // ReceiptReview 는 이 파일에서 <div>리뷰</div> 로 모킹돼 있다.
+  const only = (id: string) => receipts.filter((r) => r.id === id);
+
+  it("검토 표를 접는다 — 할 일이 끝났다", () => {
+    render(<PostalTable receipts={only("r2")} extractStates={states} />);
+    expect(screen.queryByText("리뷰")).toBeNull();
+  });
+
+  it("요약은 그대로 남는다 — 무엇을 확정했는지는 보여야 한다", () => {
+    render(<PostalTable receipts={only("r2")} extractStates={states} />);
+    expect(screen.getByText("확정")).toBeInTheDocument();
+    // 금액은 이 행에만 있다 — '1건'은 헤더 개수와 겹친다.
+    expect(screen.getByText("4,590원")).toBeInTheDocument();
+  });
+
+  it("확정 전에는 검토 표가 펼쳐져 있다", () => {
+    render(<PostalTable receipts={only("r1")} extractStates={states} />);
+    expect(screen.getByText("리뷰")).toBeInTheDocument();
+  });
+});
