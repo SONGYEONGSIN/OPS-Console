@@ -18,7 +18,8 @@ const SRC = join(process.cwd(), "src");
  * **`ko-KR` 만 본다.** 12시간제 기본값은 한국어 로캘의 함정이고, `en-CA`(YYYY-MM-DD
  * 기계용 키)·`en-GB`(원래 24시간제)는 다른 목적으로 일부러 쓴다.
  */
-const DIRECT_WITH_HOUR = /new Intl\.DateTimeFormat\(\s*["']ko(-KR)?["'][^)]*?hour:/s;
+// `s` 플래그는 안 쓴다(tsconfig target 미만) — `[^)]` 가 이미 줄바꿈을 포함한다.
+const DIRECT_WITH_HOUR = /new Intl\.DateTimeFormat\(\s*["']ko(-KR)?["'][^)]*?hour:/;
 
 function toRelPosix(absPath: string): string {
   return relative(process.cwd(), absPath).split(sep).join("/");
@@ -62,6 +63,14 @@ describe("시각 표기 표준 — 24시간제", () => {
     expect(
       lacksExplicit24h(`kstFormat({ hour: "2-digit", minute: "2-digit" })`),
     ).toBe(false);
+  });
+
+  it("여러 줄로 흩어진 옵션도 잡는다 — 실제 코드가 그 모양이다", () => {
+    expect(
+      lacksExplicit24h(
+        `new Intl.DateTimeFormat("ko-KR", {\n  month: "2-digit",\n  hour: "2-digit",\n})`,
+      ),
+    ).toBe(true);
   });
 
   it("기계용 키(en-CA)는 막지 않는다 — 표기가 아니라 값이다", () => {
