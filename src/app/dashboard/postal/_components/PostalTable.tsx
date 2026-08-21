@@ -284,7 +284,9 @@ function RowPair({
         </td>
       </tr>
       <tr>
-        <td colSpan={7} className="px-3 pb-4">
+        {/* 위쪽 여백을 준다 — 영수증 행에 검토 표 머리가 바로 붙으면
+            어느 줄이 목록이고 어느 줄이 그 안쪽인지 구분이 안 된다. */}
+        <td colSpan={7} className="px-3 pt-4 pb-6">
           <ReceiptReview
             receiptId={receipt.id}
             state={extract}
