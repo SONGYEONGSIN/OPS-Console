@@ -52,6 +52,8 @@ export function judgePoller(
   /** 이 시간을 넘도록 안 가져가면 멈춘 것으로 본다. 폴러마다 다르다. */
   thresholdMinutes: number,
   now: Date,
+  /** 심박 임계. 폴러마다 주기가 달라 따로 받는다. */
+  staleMinutes: number = HEARTBEAT_STALE_MINUTES,
 ): Judgement {
   const pendingMin = sample.oldestPendingAt
     ? minutesSince(sample.oldestPendingAt, now)
@@ -89,7 +91,7 @@ export function judgePoller(
   // 폴러가 심박만 보내면서 일을 안 할 수 있고, 그때는 대기 건이 진실이다.
   if (sample.lastBeatAt) {
     const beatMin = minutesSince(sample.lastBeatAt, now);
-    if (beatMin <= HEARTBEAT_STALE_MINUTES) {
+    if (beatMin <= staleMinutes) {
       return {
         verdict: "working",
         detail: `살아 있습니다 — 심박 ${humanAgo(beatMin)}`,

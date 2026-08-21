@@ -83,7 +83,11 @@ export async function loadPollerStatuses(
         ...(await sampleQueue(p.table)),
         lastBeatAt: beats.get(p.id) ?? null,
       };
-      return { ...p, ...judgePoller(sample, p.thresholdMinutes, now), sample };
+      return {
+        ...p,
+        ...judgePoller(sample, p.thresholdMinutes, now, p.heartbeatStaleMinutes),
+        sample,
+      };
     }),
   );
 }

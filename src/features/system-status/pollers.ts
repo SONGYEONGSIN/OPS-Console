@@ -19,6 +19,14 @@ export type PollerDef = {
    * 이유는 오탐이 한 번 나면 화면 전체를 안 믿게 되기 때문이다.
    */
   thresholdMinutes: number;
+  /**
+   * 심박이 이만큼 끊기면 죽은 것으로 본다.
+   *
+   * 폴러마다 주기가 다르다 — 상주는 1분마다 보내지만 PowerShell 폴러는 **5분마다
+   * 한 번 돌고 끝나고** 그때 한 줄 남긴다. 상주 기준을 그대로 쓰면 정상인데도
+   * 늘 멈춤으로 뜬다. 주기의 세 배쯤 잡는다: 두 번 놓친 것까지는 일시적 문제다.
+   */
+  heartbeatStaleMinutes: number;
   /** 멈췄을 때 무엇을 해야 하는지. 상태만 알려주면 소용없다. */
   hint: string;
 };
@@ -30,6 +38,8 @@ export const POLLERS: readonly PollerDef[] = [
     table: "assistant_requests",
     // 상주(2초 폴링) — 화면이 3분까지 기다리므로 그 안에 드러나야 한다.
     thresholdMinutes: 2,
+    // 1분마다 보낸다 — 네 번을 놓치면 일시적 문제로 보기 어렵다.
+    heartbeatStaleMinutes: 5,
     hint: "회사 PC 작업 스케줄러의 'OPS-Console 어시스턴트 폴러'를 확인하세요 (docs/assistant-poller-setup.md)",
   },
   {
@@ -38,6 +48,8 @@ export const POLLERS: readonly PollerDef[] = [
     table: "postal_extract_requests",
     // 상주. 판독 자체가 30초쯤 걸려 여유를 둔다.
     thresholdMinutes: 5,
+    // 상주(3초 폴링). 1분마다 보낸다.
+    heartbeatStaleMinutes: 5,
     hint: "회사 PC의 'OPS-Console 우편물 판독 폴러'를 확인하세요",
   },
   {
@@ -46,6 +58,8 @@ export const POLLERS: readonly PollerDef[] = [
     table: "ratio_audit_requests",
     // 5분 간격 폴링 + Moa 로그인이 붙어 한 건이 길다.
     thresholdMinutes: 20,
+    // 5분마다 한 번 돌고 끝난다 — 그 실행이 곧 심박이다.
+    heartbeatStaleMinutes: 16,
     hint: "회사 PC의 scripts/moa-ratio/poll-local.ps1 등록 상태를 확인하세요",
   },
   {
@@ -53,6 +67,8 @@ export const POLLERS: readonly PollerDef[] = [
     label: "마감 스크래핑",
     table: "closing_scrape_requests",
     thresholdMinutes: 20,
+    // 5분마다 (OPS-Console-Closing-Poll).
+    heartbeatStaleMinutes: 16,
     hint: "회사 PC의 마감 스크래핑 폴러를 확인하세요",
   },
   {
@@ -61,6 +77,8 @@ export const POLLERS: readonly PollerDef[] = [
     table: "entertest_test_runs",
     // 실제 원서를 작성해 보는 잡이라 한 건이 길다.
     thresholdMinutes: 30,
+    // 5분마다 (OPS-EntertestPoller).
+    heartbeatStaleMinutes: 16,
     hint: "회사 PC의 원서 테스트 폴러를 확인하세요",
   },
   {
@@ -68,6 +86,8 @@ export const POLLERS: readonly PollerDef[] = [
     label: "개발탭 수동 분석",
     table: "dev_control_analyze_requests",
     thresholdMinutes: 20,
+    // 5분마다 (OPS-Console-DevControl-Poll).
+    heartbeatStaleMinutes: 16,
     hint: "회사 PC의 개발탭 분석 폴러를 확인하세요",
   },
 ];
