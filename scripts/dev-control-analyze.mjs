@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
-import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson, sanitizeFlags, genHostFor } from "./lib/dev-control-lib.mjs";
+import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson, sanitizeFlags, genHostFor, GEN_FLAGS } from "./lib/dev-control-lib.mjs";
 
 const env = Object.fromEntries(
   fs.readFileSync(new URL("../.env.local", import.meta.url), "utf8")
@@ -14,7 +14,6 @@ const env = Object.fromEntries(
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 // 로그인은 공통원서 쪽에서만 한다 — 반응형은 무인증으로도 읽힌다(2026-08-21 확인).
 const BASE = "https://generator.jinhakapply.com";
-const GEN_FLAGS = ["WA", "WB", "WC", "WD"];
 
 const jar = {};
 const save = (r) => { for (const c of r.headers.getSetCookie?.() ?? []) { const [p] = c.split(";"); const [k, v] = p.split("="); jar[k.trim()] = v; } };
