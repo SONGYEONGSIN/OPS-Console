@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import { useActionState, useState } from "react";
 import type { ViewProps } from "../types";
 import {
@@ -20,14 +21,12 @@ type Recipient = {
 /** ISO → KST 'YYYY.MM.DD HH:mm'. null/실패 시 빈 문자열. */
 function formatKstDateTime(iso: string | null | undefined): string {
   if (!iso) return "";
-  const p = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  const p = kstFormat({
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hourCycle: "h23",
   }).formatToParts(new Date(iso));
   const g = (t: string) => p.find((x) => x.type === t)?.value;
   const [y, m, d, hh, mi] = [

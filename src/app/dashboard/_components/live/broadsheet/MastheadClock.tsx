@@ -1,9 +1,9 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import { useEffect, useState } from "react";
 
-const KST_FMT = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
+const KST_FMT = kstFormat({
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
@@ -11,7 +11,6 @@ const KST_FMT = new Intl.DateTimeFormat("ko-KR", {
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-  hour12: false,
 });
 
 /** Vol. YYYY / MM · DD(요일) HH:MM:SS KST 형식 문자열 생성. */

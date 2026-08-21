@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import type { AutomationRunEntry } from "./types";
 
 /**
@@ -24,13 +25,11 @@ const KST = "Asia/Seoul";
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: KST,
+  return kstFormat({
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
   }).format(d);
 }
 

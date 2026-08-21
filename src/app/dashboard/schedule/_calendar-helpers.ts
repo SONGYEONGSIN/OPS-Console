@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import type {
   ScheduleEventRow,
   ScheduleType,
@@ -90,11 +91,9 @@ const YMD_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-const TIME_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
+const TIME_FORMATTER = kstFormat({
   hour: "2-digit",
   minute: "2-digit",
-  hour12: false,
 });
 
 export function toKstYmd(iso: string): string {

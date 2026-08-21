@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import Link from "next/link";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
@@ -48,14 +49,12 @@ export function BackupView({ row }: ViewProps) {
 
   // PR-6: 예약 시각 표시 — scheduled 상태일 때만 메타에 노출 (KST yyyy-mm-dd HH:mm)
   const scheduledLabel = row.scheduledAt
-    ? new Intl.DateTimeFormat("ko-KR", {
-        timeZone: "Asia/Seoul",
+    ? kstFormat({
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false,
       }).format(new Date(row.scheduledAt))
     : null;
 

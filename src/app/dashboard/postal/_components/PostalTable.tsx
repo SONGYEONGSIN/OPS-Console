@@ -1,10 +1,12 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import { useMemo, useState, useTransition } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ModalShell } from "@/components/common/ModalShell";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
 import { ReceiptReview, ConfirmButton } from "./ReceiptReview";
+import { formatAcceptedAt } from "@/features/postal/accepted-at";
 import type { ReviewRow } from "@/features/postal/review-rows";
 import { deleteReceipt } from "@/features/postal/actions";
 
@@ -31,8 +33,7 @@ const EMPTY: ExtractState = {
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 function fmtDate(iso: string): string {
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  return kstFormat({
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -107,7 +108,7 @@ export function PostalTable({
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
               <th className="px-3 py-2">올린 날</th>
               <th className="px-3 py-2">올린 사람</th>
-              <th className="px-3 py-2">판독</th>
+              <th className="px-3 py-2">접수일시</th>
               <th className="px-3 py-2">등기</th>
               <th className="px-3 py-2">금액</th>
               <th className="px-3 py-2">상태</th>
@@ -244,7 +245,7 @@ function RowPair({
           {shortName(receipt.uploadedBy)}
         </td>
         <td className="px-3 py-2 text-xs text-muted">
-          {extract.acceptedAt ?? "—"}
+          {formatAcceptedAt(extract.acceptedAt)}
         </td>
         <td className="px-3 py-2 text-xs tabular-nums text-ink-soft">
           {extract.rows.length > 0 ? `${extract.rows.length}건` : "—"}

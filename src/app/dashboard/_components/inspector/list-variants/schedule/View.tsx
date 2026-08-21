@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import type { ReactNode } from "react";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
@@ -32,12 +33,11 @@ const TZ = "Asia/Seoul";
 /** services 시즌과 동일 톤: 'YYYY. MM. DD. HH:MM' (allDay 시 시간 생략). */
 function formatDateTime(iso?: string | null, allDay?: boolean): string {
   if (!iso) return "-";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: TZ,
+  return kstFormat({
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    ...(allDay ? {} : { hour: "2-digit", minute: "2-digit", hour12: false }),
+    ...(allDay ? {} : { hour: "2-digit", minute: "2-digit", }),
   }).format(new Date(iso));
 }
 
