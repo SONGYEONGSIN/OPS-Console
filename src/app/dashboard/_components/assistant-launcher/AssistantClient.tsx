@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import {
   useState,
   useRef,
@@ -49,11 +50,9 @@ const EXAMPLES = [
 
 /** KST HH:mm 시간 포매팅 */
 function formatTimeKst(iso: string): string {
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  return kstFormat({
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
   }).format(new Date(iso));
 }
 

@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import "server-only";
 import { listIncidents } from "@/features/incidents/queries";
 import { listHandoverProgress } from "@/features/handover/progress-queries";
@@ -42,11 +43,9 @@ function isToday(iso: string): boolean {
 /** 간략 시각 — 오늘이면 HH:mm, 그 외엔 M.D */
 function hm(iso: string): string {
   if (isToday(iso)) {
-    return new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
+    return kstFormat({
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
     }).format(new Date(iso));
   }
   return new Intl.DateTimeFormat("ko-KR", {

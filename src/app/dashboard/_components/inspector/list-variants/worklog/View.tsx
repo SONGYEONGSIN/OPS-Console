@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import { Section, DefList, Divider } from "../shared";
 import type { ViewProps } from "../types";
 
@@ -12,14 +13,12 @@ const LEVEL_COLOR: Record<Level, string> = {
 
 function formatTs(iso?: string): string {
   if (!iso) return "-";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  return kstFormat({
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
   }).format(new Date(iso));
 }
 

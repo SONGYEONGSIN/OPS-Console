@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { BADGE_TONE } from "../badge-tone";
 
@@ -18,13 +19,11 @@ function formatMonthDay(iso?: string | null): string {
 /** 발송일시(ISO)를 KST 'MM-DD HH:mm'으로 포맷. 없으면 '—'. */
 function formatSendDateTime(iso?: string | null): string {
   if (!iso) return "—";
-  const parts = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  const parts = kstFormat({
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hourCycle: "h23",
   }).formatToParts(new Date(iso));
   const get = (t: string) => parts.find((p) => p.type === t)?.value;
   const mm = get("month");

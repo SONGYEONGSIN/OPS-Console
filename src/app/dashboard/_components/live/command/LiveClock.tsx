@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import { useEffect, useState } from "react";
 
 const DATE_FMT = new Intl.DateTimeFormat("ko-KR", {
@@ -10,12 +11,10 @@ const DATE_FMT = new Intl.DateTimeFormat("ko-KR", {
   weekday: "short",
 });
 
-const TIME_FMT = new Intl.DateTimeFormat("ko-KR", {
-  timeZone: "Asia/Seoul",
+const TIME_FMT = kstFormat({
   hour: "2-digit",
   minute: "2-digit",
   second: "2-digit",
-  hourCycle: "h23",
 });
 
 type Snapshot = {

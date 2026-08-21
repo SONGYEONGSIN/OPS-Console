@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import type { ListRow } from "../../../patterns/ListPattern";
 
 type Props = {
@@ -12,14 +13,12 @@ type Props = {
 
 function formatTime(iso?: string | null): string {
   if (!iso) return "-";
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  return kstFormat({
     year: "2-digit",
     month: "numeric",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
   }).format(new Date(iso));
 }
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { kstFormat } from "@/lib/kst-format";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentOperator } from "@/features/auth/queries";
@@ -75,7 +76,7 @@ export async function sendDataRequestAction(
     }
     return {
       ok: true,
-      message: `예약되었습니다 (${new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(when)})`,
+      message: `예약되었습니다 (${kstFormat({ month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", }).format(when)})`,
     };
   }
 

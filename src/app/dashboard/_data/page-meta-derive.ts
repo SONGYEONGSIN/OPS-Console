@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import type { PageMetaConfig } from "./page-meta-config";
 import { PAGE_META } from "./page-meta-config";
 import type { MetaItem } from "../_components/page-header/PageMeta";
@@ -61,13 +62,11 @@ export function resolvePageMeta(
  * - 날짜: 'YYYY-MM-DD'
  */
 function nowKR(): { shift: string; date: string } {
-  const fmt = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  const fmt = kstFormat({
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
-    hour12: false,
   });
   const parts = fmt.formatToParts(new Date());
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";

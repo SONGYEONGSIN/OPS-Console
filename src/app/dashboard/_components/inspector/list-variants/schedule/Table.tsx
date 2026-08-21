@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import type { ListRow } from "../../../patterns/ListPattern";
 
 type ScheduleType = NonNullable<ListRow["scheduleType"]>;
@@ -47,11 +48,9 @@ function formatScheduleRange(
     day: "numeric",
     weekday: "short",
   });
-  const timeFmt = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: tz,
+  const timeFmt = kstFormat({
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
   });
   const isoDate = (d: Date) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(d);

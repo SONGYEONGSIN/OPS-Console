@@ -1,5 +1,6 @@
 "use client";
 
+import { kstFormat } from "@/lib/kst-format";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ListSearch } from "@/components/common/ListSearch";
@@ -28,8 +29,7 @@ const kpi = (label: string, value: number, unit: string): KpiCardItem => ({
 });
 
 function fmtWhen(iso: string): string {
-  return new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
+  return kstFormat({
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

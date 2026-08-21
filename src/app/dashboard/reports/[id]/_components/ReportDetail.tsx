@@ -1,3 +1,4 @@
+import { kstFormat } from "@/lib/kst-format";
 import type { ReportRow } from "@/features/reports/schemas";
 import { KpiGrid } from "../../_components/KpiGrid";
 import { ShareControls } from "./ShareControls";
@@ -9,14 +10,12 @@ type Props = {
 
 function formatDateTime(iso: string): string {
   try {
-    return new Intl.DateTimeFormat("ko-KR", {
-      timeZone: "Asia/Seoul",
+    return kstFormat({
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
     }).format(new Date(iso));
   } catch {
     return iso.slice(0, 16);

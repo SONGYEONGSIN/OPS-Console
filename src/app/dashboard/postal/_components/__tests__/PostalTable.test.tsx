@@ -49,7 +49,7 @@ describe("PostalTable", () => {
   it("표로 보여준다 — 카드 격자로는 여러 건을 훑기 어렵다", () => {
     render(<PostalTable receipts={receipts} extractStates={states} />);
     expect(screen.getByRole("table")).toBeInTheDocument();
-    ["올린 날", "올린 사람", "판독", "등기", "금액", "상태"].forEach((h) =>
+    ["올린 날", "올린 사람", "접수일시", "등기", "금액", "상태"].forEach((h) =>
       expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument(),
     );
   });
