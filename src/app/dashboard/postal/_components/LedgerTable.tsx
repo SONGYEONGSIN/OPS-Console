@@ -145,7 +145,7 @@ export function LedgerTable({
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
                   {COLUMNS.map((c) => (
-                    <th key={c} className="py-2 pr-3 font-medium">
+                    <th key={c} className="px-3 py-2">
                       {c}
                     </th>
                   ))}
@@ -206,7 +206,7 @@ function GroupRows({
   return (
     <>
       <tr>
-        <td colSpan={COLUMNS.length} className="pb-1 pt-5">
+        <td colSpan={COLUMNS.length} className="px-3 pb-1 pt-5">
           <div className="flex items-baseline gap-3">
             <span className="text-sm font-medium text-ink">{month}</span>
             <span className="text-2xs tabular-nums text-muted">
@@ -226,19 +226,19 @@ function GroupRows({
             key={`${r.trackingNo}-${i}`}
             className="border-t border-line-soft transition-colors hover:bg-line-soft"
           >
-            <td className="py-2 pr-3 tabular-nums text-muted">{r.seq ?? ""}</td>
+            <td className="px-3 py-2 tabular-nums text-muted">{r.seq ?? ""}</td>
             {/* 한 페이지가 한 달이라, 며칠인지는 행에 있어야 안다. */}
-            <td className="py-2 pr-3 tabular-nums text-muted">
+            <td className="px-3 py-2 tabular-nums text-muted">
               {r.sentOn.slice(5)}
             </td>
-            <td className="py-2 pr-3 text-ink">{r.recipientOrg}</td>
-            <td className="py-2 pr-3 text-ink">{r.recipientName}</td>
-            <td className="py-2 pr-3 text-ink-soft">{r.assignee}</td>
-            <td className="py-2 pr-3 text-ink-soft">{r.confirmedBy}</td>
+            <td className="px-3 py-2 text-ink">{r.recipientOrg}</td>
+            <td className="px-3 py-2 text-ink">{r.recipientName}</td>
+            <td className="px-3 py-2 text-ink-soft">{r.assignee}</td>
+            <td className="px-3 py-2 text-ink-soft">{r.confirmedBy}</td>
             {/* 화면의 다른 숫자와 같은 폰트 + 자릿수 정렬 (design.md 숫자 표기) */}
-            <td className="py-2 pr-3 tabular-nums text-ink">{r.trackingNo}</td>
-            <td className="py-2 pr-3 text-muted">{r.note}</td>
-            <td className="py-2">
+            <td className="px-3 py-2 tabular-nums text-ink">{r.trackingNo}</td>
+            <td className="px-3 py-2 text-muted">{r.note}</td>
+            <td className="px-3 py-2">
               {url ? (
                 <button
                   type="button"
