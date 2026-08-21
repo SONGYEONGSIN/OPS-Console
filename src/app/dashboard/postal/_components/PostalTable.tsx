@@ -4,7 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ModalShell } from "@/components/common/ModalShell";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
-import { ReceiptReview } from "./ReceiptReview";
+import { ReceiptReview, ConfirmButton } from "./ReceiptReview";
+import type { ReviewRow } from "@/features/postal/review-rows";
 import { deleteReceipt } from "@/features/postal/actions";
 
 /**
@@ -221,6 +222,10 @@ function RowPair({
   total: number;
   onOpen: () => void;
 }) {
+  // 검토표에서 고친 값. 확정 버튼이 영수증 행에 있어(삭제와 나란히) 여기서 들고
+  // 검토표와 주고받는다 — 두 곳이 같은 값을 봐야 고친 대로 확정된다.
+  const [reviewRows, setReviewRows] = useState<ReviewRow[]>(extract.rows);
+
   return (
     <>
       <tr
@@ -254,13 +259,32 @@ function RowPair({
           )}
         </td>
         <td className="px-3 py-2 text-right">
-          {/* 확정건에는 아예 안 보여준다 — 눌렀다가 거절당하는 것보다 낫다. */}
-          {!receipt.confirmedAt && <DeleteButton receipt={receipt} />}
+          {/*
+            확정건에는 아예 안 보여준다 — 눌렀다가 거절당하는 것보다 낫다.
+            확정과 삭제는 같은 영수증에 대한 두 결정이라 나란히 둔다(2026-08-21).
+          */}
+          {!receipt.confirmedAt && (
+            <span className="inline-flex items-center gap-2">
+              {extract.status === "done" && (
+                <ConfirmButton
+                  receiptId={receipt.id}
+                  acceptedAt={extract.acceptedAt}
+                  rows={reviewRows}
+                />
+              )}
+              <DeleteButton receipt={receipt} />
+            </span>
+          )}
         </td>
       </tr>
       <tr>
         <td colSpan={7} className="px-3 pb-4">
-          <ReceiptReview receiptId={receipt.id} state={extract} />
+          <ReceiptReview
+            receiptId={receipt.id}
+            state={extract}
+            rows={reviewRows}
+            onRowsChange={setReviewRows}
+          />
         </td>
       </tr>
     </>
