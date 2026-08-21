@@ -6,6 +6,7 @@ import {
   groupClosingByDate,
   type BriefingPayload,
 } from "@/features/automations/jobs/team-briefing-build";
+import { toYouTubeEmbed } from "@/features/briefing/youtube-embed";
 import {
   WizardHatIcon,
   ScrollIcon,
@@ -54,6 +55,11 @@ export function BriefingNewsletter({
   const issueLabel = `#${String(issueNo).padStart(3, "0")}`;
   const hasCelebration = milestones.length > 0 || birthdays.length > 0;
 
+  // 유튜브가 아니면 null — 아무 주소나 프레임에 넣으면 남의 페이지를 우리 화면에 띄운다.
+  const videoEmbed = images?.video?.src
+    ? toYouTubeEmbed(images.video.src)
+    : null;
+
   return (
     <div className="text-nl-ink">
       {/* ── 제호 — 아래 페이지 전체 라인으로 본문과 구분 ── */}
@@ -84,6 +90,30 @@ export function BriefingNewsletter({
       </header>
 
       <article className="mx-auto max-w-[960px] px-5 pb-12 pt-9">
+        {/*
+          커버 영상 — 사진이 없는 주에 쓴다. 링크로 걸면 뉴스레터를 떠나야 보므로
+          프레임으로 넣어 그 자리에서 재생되게 한다(2026-08-21).
+          사진이 있으면 사진이 이긴다 — 둘이 같은 자리를 다투지 않는다.
+        */}
+        {!images?.cover && videoEmbed && (
+          <figure className="mb-9">
+            {images?.video?.caption && (
+              <figcaption className="mb-2 text-center text-[15px] font-medium">
+                {images.video.caption}
+              </figcaption>
+            )}
+            <div className="mx-auto aspect-[9/16] w-full max-w-[320px] overflow-hidden rounded-[13px]">
+              <iframe
+                src={videoEmbed}
+                title="이번 주 영상"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full border-0"
+              />
+            </div>
+          </figure>
+        )}
+
         {/* 커버 사진 */}
         {images?.cover && (
           <figure className="mb-9">

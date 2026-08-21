@@ -392,3 +392,68 @@ describe("대학가 소식 · 수시 준비 섹션", () => {
     expect(screen.queryByText("수시 준비")).not.toBeInTheDocument();
   });
 });
+
+/**
+ * 커버 자리에 영상을 넣는다.
+ *
+ * 사진이 없는 주에는 커버가 통째로 비었다. 링크로 걸면 뉴스레터를 떠나야 보므로
+ * **프레임으로 넣어 그 자리에서 재생**되게 한다(2026-08-21 요청).
+ */
+describe("BriefingNewsletter — 영상 커버", () => {
+  const withVideo: BriefingPayload = {
+    ...payload,
+    images: {
+      video: {
+        src: "https://www.youtube.com/shorts/GNSy-p-gp78",
+        caption: "월요일 아침, 우리 모두의 표정",
+      },
+    },
+  };
+
+  it("프레임으로 넣는다 — 링크가 아니라", () => {
+    render(<BriefingNewsletter issueNo={12} payload={withVideo} />);
+    const frame = screen.getByTitle(/영상/);
+    expect(frame.tagName).toBe("IFRAME");
+    expect(frame).toHaveAttribute(
+      "src",
+      "https://www.youtube.com/embed/GNSy-p-gp78",
+    );
+  });
+
+  it("썸네일 멘트를 프레임 위에 보여준다", () => {
+    render(<BriefingNewsletter issueNo={12} payload={withVideo} />);
+    expect(
+      screen.getByText("월요일 아침, 우리 모두의 표정"),
+    ).toBeInTheDocument();
+  });
+
+  it("유튜브가 아니면 프레임을 만들지 않는다 — 아무 주소나 띄우지 않는다", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={12}
+        payload={{
+          ...payload,
+          images: { video: { src: "https://evil.example.com/embed/x" } },
+        }}
+      />,
+    );
+    expect(screen.queryByTitle(/영상/)).toBeNull();
+  });
+
+  it("사진 커버가 있으면 사진을 쓴다 — 둘 다 있을 때 자리를 다투지 않는다", () => {
+    render(
+      <BriefingNewsletter
+        issueNo={12}
+        payload={{
+          ...payload,
+          images: {
+            cover: { src: "/a.jpg", caption: "사진" },
+            video: { src: "https://www.youtube.com/shorts/GNSy-p-gp78" },
+          },
+        }}
+      />,
+    );
+    expect(screen.getByAltText("사진")).toBeInTheDocument();
+    expect(screen.queryByTitle(/영상/)).toBeNull();
+  });
+});
