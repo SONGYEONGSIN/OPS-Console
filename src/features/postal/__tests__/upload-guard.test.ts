@@ -3,6 +3,7 @@ import {
   assertUploadable,
   receiptStoragePath,
   MAX_RECEIPT_BYTES,
+  SERVER_ACTION_BODY_LIMIT,
 } from "../upload-guard";
 
 /**
@@ -48,5 +49,38 @@ describe("receiptStoragePath", () => {
 
   it("모르는 확장자는 던진다 — 조용히 붙이면 무엇이 저장됐는지 알 수 없다", () => {
     expect(() => receiptStoragePath("2026-08-19", "abc", "a.exe")).toThrow();
+  });
+});
+
+/**
+ * 서버가 받는 크기와 화면이 막는 크기가 같아야 한다.
+ *
+ * Next 서버 액션은 본문 **기본 1MB** 다. 가드는 15MB 까지 통과시켰으니 스마트폰
+ * 사진(2~5MB)은 **가드를 지나 Next 에서 잘렸다.** 그 거절은 JSON 이 아니라 화면이
+ * 못 읽는 응답이라, 사용자에게는 아무 말도 안 나오고 콘솔에만
+ * `unexpected response` 가 찍혔다(2026-08-21).
+ *
+ * 둘이 어긋나면 **화면은 통과라 하고 서버는 거절하는** 구간이 생긴다.
+ */
+describe("업로드 상한", () => {
+  it("서버 액션 본문 상한보다 크지 않다", () => {
+    expect(MAX_RECEIPT_BYTES).toBeLessThanOrEqual(SERVER_ACTION_BODY_LIMIT);
+  });
+
+  it("스마트폰 사진은 통과한다 — 보통 2~5MB다", () => {
+    expect(() =>
+      assertUploadable("a.jpg", "image/jpeg", 5 * 1024 * 1024),
+    ).not.toThrow();
+  });
+
+  it("넘치면 사람이 읽을 말로 막는다 — 콘솔 오류가 아니라", () => {
+    let msg = "";
+    try {
+      assertUploadable("a.jpg", "image/jpeg", MAX_RECEIPT_BYTES + 1);
+    } catch (e) {
+      msg = e instanceof Error ? e.message : String(e);
+    }
+    expect(msg).toMatch(/MB/);
+    expect(msg).toMatch(/너무 큽니다/);
   });
 });

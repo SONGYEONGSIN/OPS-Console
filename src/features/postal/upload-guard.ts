@@ -15,8 +15,23 @@
  */
 export const RECEIPT_BUCKET = "postal-receipts";
 
-/** 스마트폰으로 찍은 영수증 한 장. 이보다 크면 사진이 아니거나 잘못 올린 것이다. */
-export const MAX_RECEIPT_BYTES = 15 * 1024 * 1024;
+/**
+ * 서버 액션이 받는 본문 상한 — `next.config.ts` 의 `serverActions.bodySizeLimit` 과
+ * **같은 값이어야 한다.**
+ *
+ * Next 기본은 1MB 다. 가드가 15MB 까지 통과시키고 있어서 스마트폰 사진(2~5MB)이
+ * **가드를 지나 Next 에서 잘렸다.** 그 거절은 JSON 이 아니라 화면이 못 읽는 응답이라
+ * 사용자에게는 아무 말도 안 나오고 콘솔에만 `unexpected response` 가 찍혔다
+ * (2026-08-21). 둘이 어긋나면 화면은 통과라 하고 서버는 거절하는 구간이 생긴다.
+ */
+export const SERVER_ACTION_BODY_LIMIT = 12 * 1024 * 1024;
+
+/**
+ * 스마트폰으로 찍은 영수증 한 장. 이보다 크면 사진이 아니거나 잘못 올린 것이다.
+ *
+ * 본문에는 파일 말고 폼 데이터도 실리므로 상한보다 조금 낮춰 잡는다.
+ */
+export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 
 /**
  * 받아들이는 형식. **SVG는 뺀다** — 이미지 취급이지만 스크립트를 품을 수 있어
