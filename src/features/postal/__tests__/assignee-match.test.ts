@@ -105,3 +105,95 @@ describe("matchAssignee", () => {
     expect(matchAssignee("", UNDER, GRAD).candidates).toEqual([]);
   });
 });
+
+/**
+ * 줄여 쓴 학교 이름도 찾는다.
+ *
+ * 규칙이 `{줄기}대학교` 하나뿐이라 **`덕성여대` → `덕성여자대학교`** 를 못 찾았다.
+ * 사람이 봉투에 쓰는 이름은 정식 명칭이 아니다(2026-08-21 실측).
+ *
+ * `대학교` 로 안 끝나는 곳도 있다 — `인천예술고등학교`. 그 학교는 시트에 있고
+ * 담당자 칸이 비어 있어 결과는 같지만, **못 찾은 것과 담당자가 없는 것은 다르다.**
+ */
+describe("matchAssignee — 줄임말", () => {
+  const under: AssigneeRow[] = [
+    { university: "덕성여자대학교", operator: "김은호" },
+    { university: "인천예술고등학교", operator: "" },
+    { university: "국립인천대학교", operator: "윤영호" },
+    { university: "홍익대학교", operator: "김슬기" },
+  ];
+
+  it("덕성여대 → 덕성여자대학교", () => {
+    expect(matchAssignee("덕성여대", under, []).assignee).toBe("김은호");
+  });
+
+  it("인천예술고 → 인천예술고등학교. 담당자 칸이 비어 있으면 비운다", () => {
+    const m = matchAssignee("인천예술고", under, []);
+    expect(m.candidates.map((c) => c.university)).toEqual(["인천예술고등학교"]);
+    // 찾았지만 담당자가 없다 — 못 찾은 것과 구분된다.
+    expect(m.assignee).toBeNull();
+  });
+
+  it("학교를 특정하지 않으면 비운다 — '교육대학원'은 어느 학교인지 모른다", () => {
+    expect(matchAssignee("교육대학원", under, []).candidates).toEqual([]);
+  });
+
+  it("정식 명칭도 그대로 찾는다", () => {
+    expect(matchAssignee("홍익대", under, []).assignee).toBe("김슬기");
+    expect(matchAssignee("인천대", under, []).assignee).toBe("윤영호");
+  });
+
+  it("캠퍼스가 갈리면 자동으로 안 채운다 — 틀린 사람에게 가면 안 된다", () => {
+    const two: AssigneeRow[] = [
+      { university: "건국대학교(서울)", operator: "김은호" },
+      { university: "건국대학교(글로컬)", operator: "다른사람" },
+    ];
+    const m = matchAssignee("건국대", two, []);
+    expect(m.candidates).toHaveLength(2);
+    expect(m.assignee).toBeNull();
+  });
+
+  it("줄임말이 여자대학교에만 걸린다 — 여자고등학교는 꼬리가 달라 안 섞인다", () => {
+    const rows: AssigneeRow[] = [
+      { university: "성신여자대학교", operator: "김은호" },
+      { university: "성신여자고등학교", operator: "다른사람" },
+    ];
+    expect(matchAssignee("성신여대", rows, []).assignee).toBe("김은호");
+  });
+
+  it("줄기를 넓히지 않는다 — 충남대가 충남도립대학교까지 걸리면 안 된다", () => {
+    const rows: AssigneeRow[] = [
+      { university: "충남대학교", operator: "김슬기" },
+      { university: "충남도립대학교", operator: "다른사람" },
+    ];
+    expect(matchAssignee("충남대", rows, []).assignee).toBe("김슬기");
+  });
+});
+
+/**
+ * 학교를 특정하지 않은 대학원은 김지나 담당이다.
+ *
+ * `교육대학원` 처럼 학교명 없이 오는 경우가 있다. 시트에서 찾을 길이 없어 비워
+ * 뒀는데, 실제로는 **담당자가 정해져 있다**(2026-08-21 지정).
+ */
+describe("matchAssignee — 학교 미상 대학원", () => {
+  const rows: AssigneeRow[] = [
+    { university: "덕성여자대학교", operator: "김은호" },
+  ];
+
+  it("교육대학원은 김지나", () => {
+    const m = matchAssignee("교육대학원", rows, []);
+    expect(m.assignee).toBe("김지나");
+  });
+
+  it("학교명이 붙어 있으면 그 학교를 따른다 — 기본값이 가리지 않는다", () => {
+    const grad: AssigneeRow[] = [
+      { university: "인천대학교", operator: "김지현" },
+    ];
+    expect(matchAssignee("인천대 대학원", rows, grad).assignee).toBe("김지현");
+  });
+
+  it("학교명이 있는데 시트에 없으면 비운다 — 기본값으로 때우지 않는다", () => {
+    expect(matchAssignee("없는대 대학원", rows, []).assignee).toBeNull();
+  });
+});

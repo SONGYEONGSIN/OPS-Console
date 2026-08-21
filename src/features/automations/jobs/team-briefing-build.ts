@@ -632,10 +632,8 @@ const FEATURE_PINS: Record<number, string[]> = {
  * 지정 안 한 호는 비운다 — 지난 영상을 다시 틀면 새 소식처럼 보인다.
  */
 const ISSUE_VIDEOS: Record<number, BriefingMedia> = {
-  5: {
-    src: "https://www.youtube.com/shorts/GNSy-p-gp78",
-    caption: "월요일 아침, 우리 모두의 생존 본능 ㄷㄷ",
-  },
+  // 멘트는 붙이지 않는다 — 영상 안에 이미 제목이 있어 두 번 읽게 된다(2026-08-21).
+  5: { src: "https://www.youtube.com/shorts/GNSy-p-gp78" },
 };
 
 export function pickIssueVideo(issueNo: number): BriefingMedia | undefined {

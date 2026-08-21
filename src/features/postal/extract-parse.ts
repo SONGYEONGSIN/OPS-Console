@@ -22,6 +22,11 @@ const extractionSchema = z.object({
   receipt_no: z.string().trim().nullable().catch(null),
   accepted_at: z.string().trim().nullable().catch(null),
   total_fee: z.number().int().nonnegative().nullable().catch(null),
+  /**
+   * 카드 승인금액. 개별 요금 합과 다를 수 있는데, **장부에 적을 것은 실제로 결제된
+   * 돈**이라 이쪽이 기준이다(2026-08-21 지정).
+   */
+  approved_amount: z.number().int().nonnegative().nullable().catch(null),
   item_count: z.number().int().nonnegative().nullable().catch(null),
   items: z.array(itemSchema).default([]),
 });
@@ -89,7 +94,19 @@ export function parseExtraction(raw: string): ParseResult {
     );
   }
 
-  return { ok: true, data: parsed.data, warnings };
+  // 승인금액이 있으면 그걸 총액으로 쓴다 — 실제로 결제된 돈이다.
+  // 어긋난 사실은 경고로 남긴다: 조용히 고르면 왜 다른지 아무도 안 본다.
+  const approved = parsed.data.approved_amount;
+  if (approved != null && parsed.data.total_fee != null && approved !== parsed.data.total_fee) {
+    warnings.push(
+      `승인금액과 총요금이 다릅니다 — 승인 ${approved.toLocaleString("ko-KR")}원 기준으로 적습니다 (총요금 ${parsed.data.total_fee.toLocaleString("ko-KR")}원)`,
+    );
+  }
+  const data = {
+    ...parsed.data,
+    total_fee: approved ?? parsed.data.total_fee,
+  };
+  return { ok: true, data, warnings };
 }
 
 /**

@@ -81,6 +81,29 @@ export function ReceiptReview({
         </ul>
       )}
 
+      {/*
+        확정은 삭제와 같은 높이에 둔다 — 검토표 맨 아래에 있어 화면에서 멀리
+        떨어져 보였다(2026-08-21). 같은 영수증에 대한 두 결정이다.
+      */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            run(() =>
+              confirmReceipt(receiptId, rows.map(toConfirmRow), {
+                // 접수일자가 전도금 장부에 적힐 날짜다.
+                acceptedAt: state.acceptedAt,
+              }),
+            )
+          }
+          className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          확정
+        </button>
+        {saved && <span className="text-2xs text-muted">저장했습니다</span>}
+        {error && <span className="text-2xs text-vermilion">{error}</span>}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -166,25 +189,6 @@ export function ReceiptReview({
         </table>
       </div>
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            run(() =>
-              confirmReceipt(receiptId, rows.map(toConfirmRow), {
-                // 접수일자가 전도금 장부에 적힐 날짜다.
-                acceptedAt: state.acceptedAt,
-              }),
-            )
-          }
-          className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          확정
-        </button>
-        {saved && <span className="text-2xs text-muted">저장했습니다</span>}
-        {error && <span className="text-2xs text-vermilion">{error}</span>}
-      </div>
     </div>
   );
 }

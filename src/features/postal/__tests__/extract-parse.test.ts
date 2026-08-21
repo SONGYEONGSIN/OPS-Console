@@ -117,3 +117,51 @@ describe("assignDaySeq", () => {
     expect(assignDaySeq([], 0)).toEqual([]);
   });
 });
+
+/**
+ * 개별 요금 합과 승인금액이 다를 때는 **승인금액**을 쓴다.
+ *
+ * 실제로 어긋나는 영수증이 있다(2026-08-21). 장부에 적을 것은 **실제로 결제된 돈**
+ * 이므로 승인금액이 기준이다. 개별 요금은 등기 한 건씩의 값이라 합이 다를 수 있다.
+ *
+ * 어긋난 사실 자체는 경고로 남긴다 — 조용히 고르면 왜 다른지 아무도 안 본다.
+ */
+describe("parseExtract — 승인금액", () => {
+  const base = {
+    is_receipt: true,
+    accepted_at: "2026-08-21 16:24",
+    receipt_no: "11127268",
+    item_count: 2,
+    items: [
+      { tracking_no: "11263-1102-7080", fee: 4590, postal_code: "55338", recipient: "우석대 강정화" },
+      { tracking_no: "11263-1102-7081", fee: 4230, postal_code: "24210", recipient: "한림성심대 김한솔" },
+    ],
+  };
+
+  it("승인금액이 있으면 그걸 총액으로 쓴다", () => {
+    const r = parseExtraction(
+      JSON.stringify({ ...base, total_fee: 8820, approved_amount: 8900 }),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.data.total_fee).toBe(8900);
+  });
+
+  it("어긋나면 경고로 남긴다 — 조용히 고르지 않는다", () => {
+    const r = parseExtraction(
+      JSON.stringify({ ...base, total_fee: 8820, approved_amount: 8900 }),
+    );
+    expect(r.ok && r.warnings.join(" ")).toMatch(/승인금액/);
+  });
+
+  it("승인금액이 없으면 총요금을 쓴다 — 예전과 같다", () => {
+    const r = parseExtraction(JSON.stringify({ ...base, total_fee: 8820 }));
+    expect(r.ok && r.data.total_fee).toBe(8820);
+  });
+
+  it("같으면 경고를 만들지 않는다", () => {
+    const r = parseExtraction(
+      JSON.stringify({ ...base, total_fee: 8820, approved_amount: 8820 }),
+    );
+    expect(r.ok && r.warnings.join(" ")).not.toMatch(/승인금액/);
+  });
+});

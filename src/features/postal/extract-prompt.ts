@@ -17,6 +17,7 @@ export function buildExtractPrompt(fileName: string): string {
   "receipt_no": "접수번호",
   "accepted_at": "접수일자 YYYY-MM-DD HH:mm",
   "total_fee": 합계금액숫자,
+  "approved_amount": 카드승인금액숫자,
   "item_count": 합계통수,
   "items": [
     {"tracking_no":"등기번호","fee":요금숫자,"postal_code":"우편번호","recipient_org":"수취인 소속","recipient_name":"수취인 이름"}
@@ -25,6 +26,7 @@ export function buildExtractPrompt(fileName: string): string {
 
 규칙:
 - **카드번호·승인번호·가맹점번호·카드사명은 절대 담지 마라.** 업무에 쓸 일이 없고, 담으면 안 되는 정보다.
+- "approved_amount" 는 **승인금액**(결제된 돈)이다. 개별 요금 합과 다를 수 있는데 그게 정상이다 — 보이는 대로 적어라. 없으면 null.
 - 수취인은 "우석대 강정화"처럼 **소속과 이름**이 붙어 있다. 마지막 낱말이 이름, 앞이 소속이다. 소속에 "대학원"이 적혀 있으면 그대로 살려라 — 담당자를 가르는 기준이다.
 - 요금·금액은 쉼표를 뺀 숫자로.
 - 등기번호는 보이는 형태(하이픈 포함) 그대로.

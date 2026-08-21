@@ -66,8 +66,12 @@ describe("listReceipts", () => {
     expect(state.signed[0].expires).toBe(SIGNED_URL_TTL_SECONDS);
   });
 
-  it("만료가 짧다 — 새어 나가도 오래 열리면 안 된다", () => {
-    expect(SIGNED_URL_TTL_SECONDS).toBeLessThanOrEqual(600);
+  it("검토하는 동안은 버티되, 하루를 넘기지 않는다", () => {
+    // 5분으로 시작했는데 목록을 열어둔 채 나중에 누르면 이미 죽어 있었다
+    // (2026-08-21). 한 번 앉아 검토하는 시간은 버텨야 한다.
+    expect(SIGNED_URL_TTL_SECONDS).toBeGreaterThanOrEqual(900);
+    // 그래도 새어 나간 링크가 오래 살아 있으면 안 된다.
+    expect(SIGNED_URL_TTL_SECONDS).toBeLessThanOrEqual(3600);
   });
 
   it("서명이 실패해도 목록은 낸다 — 카드가 통째로 사라지면 무엇이 안 보이는지 모른다", async () => {

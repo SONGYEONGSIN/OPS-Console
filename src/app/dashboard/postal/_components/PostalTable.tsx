@@ -71,7 +71,10 @@ export function PostalTable({
       });
   }, [receipts, extractStates, q]);
 
+  // 서명 만료로 이미지가 안 열린 경우. 다른 영수증을 열면 초기화된다.
+  const [brokenId, setBrokenId] = useState<string | null>(null);
   const opened = receipts.find((r) => r.id === openId) ?? null;
+  const imageBroken = brokenId !== null && brokenId === openId;
 
   return (
     <div className="flex flex-col gap-3">
@@ -142,13 +145,16 @@ export function PostalTable({
           onClose={() => setOpenId(null)}
           size="a4"
         >
-          {opened.imageUrl ? (
+          {opened.imageUrl && !imageBroken ? (
             // 세로로 긴 영수증이라 폭에 맞추고 높이는 화면을 넘지 않게 자른다.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={opened.imageUrl}
               alt={`영수증 원본 (${fmtDate(opened.createdAt)})`}
               className="mx-auto max-h-[70vh] w-auto object-contain"
+              // 서명 URL 은 5분이라 목록을 열어둔 채 나중에 누르면 죽는다.
+              // 그냥 두면 깨진 아이콘만 남아 무엇이 잘못됐는지 알 수 없다.
+              onError={() => setBrokenId(openId)}
             />
           ) : (
             <p className="py-10 text-center text-sm text-muted">

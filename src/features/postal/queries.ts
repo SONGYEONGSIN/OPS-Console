@@ -17,8 +17,12 @@ import { loadAssigneeRows } from "./assignee-queries";
  *
  * 화면을 열어 두고 잠깐 자리를 비우는 정도는 버텨야 하지만, 그 링크가 어딘가에
  * 복사돼도 오래 살아 있으면 안 된다. 목록을 새로 그리면 새 URL이 나온다.
+ *
+ * 5분으로 시작했는데 **목록을 열어둔 채 나중에 누르면 이미 죽어 있었다**
+ * (2026-08-21). 30분이면 한 번 앉아 검토하는 동안은 버틴다. 그래도 만료될 수 있어
+ * 화면이 깨진 아이콘 대신 이유를 보여준다.
  */
-export const SIGNED_URL_TTL_SECONDS = 300;
+export const SIGNED_URL_TTL_SECONDS = 1800;
 
 export type ReceiptCard = {
   id: string;
