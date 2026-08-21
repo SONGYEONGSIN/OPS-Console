@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildSpendNumberFormat,
   buildSpendRow,
   nextRowAddress,
   findDuplicate,
@@ -79,5 +80,33 @@ describe("findDuplicate", () => {
     expect(
       findDuplicate(entries, { date: "", title: "전도금청구", count: null, amount: 500000 }),
     ).toBe(false);
+  });
+});
+
+/**
+ * 날짜 칸에 서식을 함께 지정한다.
+ *
+ * 값만 일련번호로 넣으면 그 셀에 날짜 서식이 없어 **46255 로 보인다**(2026-08-22
+ * 실제 장부). 위 행들은 서식이 있어 2026-08-19 로 보이니 새 줄만 튄다.
+ * 값과 서식은 함께 가야 한다.
+ */
+describe("buildSpendNumberFormat", () => {
+  it("날짜 칸만 날짜 서식이다", () => {
+    const f = buildSpendNumberFormat();
+    expect(f[3]).toBe("yyyy-mm-dd");
+  });
+
+  it("나머지 칸은 건드리지 않는다 — 금액 서식은 시트가 정한 대로 둔다", () => {
+    const f = buildSpendNumberFormat();
+    for (const [i, v] of f.entries()) {
+      if (i !== 3) expect(v, `${i}번 칸`).toBe("General");
+    }
+  });
+
+  it("행과 칸 수가 같다 — 어긋나면 Graph 가 거절한다", () => {
+    expect(buildSpendNumberFormat()).toHaveLength(
+      buildSpendRow({ date: "2026-08-21", title: "우편물", count: 1, amount: 100 })
+        .length,
+    );
   });
 });

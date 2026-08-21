@@ -5,6 +5,7 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import { fetchPettyCash, currentSheetName } from "./queries";
 import {
+  buildSpendNumberFormat,
   buildSpendRow,
   findDuplicate,
   findInsertRow,
@@ -105,7 +106,11 @@ export async function appendSpend(input: SpendInput): Promise<AppendResult> {
   const patch = await fetch(`${wsUrl}/range(address='${address}')`, {
     method: "PATCH",
     headers: authHeaders,
-    body: JSON.stringify({ values: [row] }),
+    // 서식을 함께 보낸다 — 값만 보내면 날짜 칸이 46255 로 보인다.
+    body: JSON.stringify({
+      values: [row],
+      numberFormat: [buildSpendNumberFormat()],
+    }),
   });
   if (!patch.ok) {
     // 조용히 성공이라 하지 않는다 — 장부가 안 맞는데 맞는 줄 알면 더 나쁘다.
