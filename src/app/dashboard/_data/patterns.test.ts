@@ -4,7 +4,7 @@ import { findSidebarMeta } from "../_data";
 
 const ALL_SLUGS = [
   "my-todo", "schedule",
-  "handover", "data-requests", "incidents", "contacts", "backup", "vault",
+  "handover", "data-requests", "incidents", "contacts", "backup",
   "services", "contracts", "dev-test", "deploy", "closing", "settlement", "invoice", "receivables",
   "pims", "reception-admin", "internal-admin", "competition", "generator",
   "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
