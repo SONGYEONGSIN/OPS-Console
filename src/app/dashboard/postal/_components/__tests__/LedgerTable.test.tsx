@@ -329,3 +329,30 @@ describe("LedgerTable — 표 머리글", () => {
     expect(headRow?.className).toMatch(/text-left/);
   });
 });
+
+/**
+ * 머리글 칸(th)도 표준을 따른다.
+ *
+ * 지난번(#1058)에 `tr` 만 고치고 `th` 를 안 봐서 여전히 달라 보였다 —
+ * `font-medium` 이 붙어 굵기가 다르고, `px-3` 이 아니라 `pr-3` 이라 **왼쪽 여백이 없어**
+ * 아래 행과 세로가 어긋났다(2026-08-21).
+ *
+ * 표준은 `px-3 py-2` 하나뿐이다(전도금·AI TIP·자동화 전부).
+ */
+describe("LedgerTable — 머리글 칸", () => {
+  it("표준 여백을 쓰고 굵기를 더하지 않는다", () => {
+    const { container } = render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    const th = container.querySelector("thead th");
+    expect(th?.className).toMatch(/px-3/);
+    expect(th?.className).toMatch(/py-2/);
+    expect(th?.className).not.toMatch(/font-medium/);
+  });
+
+  it("본문 칸과 좌우 여백이 같다 — 다르면 세로가 어긋난다", () => {
+    const { container } = render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    const th = container.querySelector("thead th");
+    const td = container.querySelector("tbody td");
+    const pad = (c: string | undefined) => (c ?? "").match(/p[xlr]-\d+/g)?.sort();
+    expect(pad(th?.className)).toEqual(pad(td?.className));
+  });
+});
