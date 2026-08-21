@@ -17,6 +17,7 @@
 import { startHeartbeat } from "../lib/heartbeat.mjs";
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
+import { rename } from "node:fs/promises";
 import { writeFile } from "node:fs/promises";
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
@@ -27,6 +28,7 @@ import {
   resolveProposalCategory,
   classifiedBy,
 } from "./propose-lib.mjs";
+import { resolvePromotion } from "./promote-lib.mjs";
 
 config({ path: ".env.local" });
 
@@ -61,6 +63,7 @@ const ALLOWED = [
   // 볼트 쓰기는 이 도구로만 연다. Write·Edit는 아래 DISALLOWED에 그대로 둔다 —
   // 범용 쓰기를 열면 문서 한 줄이 이 PC의 파일 시스템을 여는 경로가 된다.
   "mcp__ops__propose_doc",
+  "mcp__ops__promote_doc",
 ];
 const DISALLOWED = [
   "Bash",
@@ -349,8 +352,14 @@ const opsTools = createSdkMcpServer({
           .optional()
           .describe("sourceDomain이 없을 때만 쓴다"),
         body: z.string().describe("마크다운 본문. frontmatter는 붙이지 않는다"),
+        replace: z
+          .boolean()
+          .optional()
+          .describe(
+            "같은 이름의 초안을 덮어쓴다. 사람이 '고쳐줘'라고 했을 때만 true — 남이 검토 중인 초안을 갈아엎지 않는다",
+          ),
       },
-      async ({ title, category, body, sourceDomain }) => {
+      async ({ title, category, body, sourceDomain, replace }) => {
         try {
           const path = resolveProposalPath(VAULT, title);
           // 분류는 백단에서 정한다 — 모델이 매번 고르면 같은 종류가 흩어진다.
@@ -367,8 +376,12 @@ const opsTools = createSdkMcpServer({
             "---",
             "",
           ].join("\n");
-          // 이미 있으면 실패한다 — 사람이 검토 중인 초안을 갈아엎지 않는다.
-          await writeFile(path, front + body, { encoding: "utf8", flag: "wx" });
+          // 기본은 실패다 — 사람이 검토 중인 초안을 갈아엎지 않는다.
+          // 고쳐달라고 한 경우만 덮는다(replace).
+          await writeFile(path, front + body, {
+            encoding: "utf8",
+            flag: replace ? "w" : "wx",
+          });
 
           return {
             content: [
@@ -384,6 +397,53 @@ const opsTools = createSdkMcpServer({
               ? `제안/${title}.md 가 이미 있습니다. 다른 제목을 쓰거나 사람에게 확인하세요.`
               : `초안 작성 실패: ${e?.message ?? e}`;
           return { content: [{ type: "text", text: msg }], isError: true };
+        }
+      },
+    ),
+    tool(
+      "promote_doc",
+      "검토를 마친 `제안/` 초안을 본 위치로 옮긴다. **사람이 내용을 보고 '옮겨줘'라고 했을 때만 부른다** — 초안을 만들자마자 이어서 부르지 마라. 본 위치에 같은 이름이 있으면 덮어쓰므로, 덮는다는 사실을 먼저 알리고 동의를 받는다.",
+      {
+        proposalPath: z
+          .string()
+          .describe("옮길 초안 경로. `제안/파일명.md` 형태여야 한다"),
+        category: z
+          .enum([
+            "개념",
+            "플레이북",
+            "규칙",
+            "결정",
+            "오류사례",
+            "엔티티",
+            "프로젝트",
+          ])
+          .describe("옮길 폴더. 초안 frontmatter의 category를 그대로 쓴다"),
+      },
+      async ({ proposalPath, category }) => {
+        try {
+          const { from, to, toRel } = resolvePromotion(
+            VAULT,
+            proposalPath,
+            category,
+          );
+          // 덮어쓰는지 먼저 안다 — 답에 그대로 적어 사람이 알아채게 한다.
+          const overwrote = existsSync(to);
+          await rename(from, to);
+          return {
+            content: [
+              {
+                type: "text",
+                text: overwrote
+                  ? `${toRel} 를 덮어썼습니다.`
+                  : `${toRel} 로 옮겼습니다.`,
+              },
+            ],
+          };
+        } catch (e) {
+          return {
+            content: [{ type: "text", text: `옮기지 못했습니다: ${e?.message ?? e}` }],
+            isError: true,
+          };
         }
       },
     ),
