@@ -84,7 +84,7 @@ export function ReceiptReview({
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-line text-left text-2xs uppercase tracking-[0.06em] text-muted">
+            <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
               <th className="px-1.5 py-1">순번</th>
               <th className="px-1.5 py-1">등기번호</th>
               <th className="px-1.5 py-1">요금</th>
