@@ -3,9 +3,14 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { PostalTable } from "../PostalTable";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
 
-vi.mock("../ReceiptReview", () => ({
-  ReceiptReview: () => <div>리뷰</div>,
-}));
+// 검토표는 이 파일의 관심사가 아니라 끊는다. 다만 **확정 버튼은 실물을 쓴다** —
+// 삭제와 나란한지 보려면 진짜 버튼이 그려져야 한다(2026-08-21).
+vi.mock("../ReceiptReview", async () => {
+  const actual = await vi.importActual<typeof import("../ReceiptReview")>(
+    "../ReceiptReview",
+  );
+  return { ...actual, ReceiptReview: () => <div>리뷰</div> };
+});
 
 const receipts: ReceiptCard[] = [
   {
@@ -146,5 +151,39 @@ describe("PostalTable — 만료된 영수증", () => {
     const img = screen.getByRole("img", { name: /영수증 원본/ });
     fireEvent.error(img);
     expect(screen.getByText(/다시 열/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * 확정과 삭제는 같은 칸에 나란히.
+ *
+ * 표 위로 올렸지만 **여전히 다음 줄**이라 삭제와 나란히가 아니었다(2026-08-21).
+ * 앞선 테스트가 "표보다 앞"만 봐서 그 상태로 통과했다 — 위치를 위아래로만 재면
+ * 옆으로 나란한지는 알 수 없다.
+ *
+ * 확정은 편집 중인 표의 값을 쓰므로 로직은 `ReceiptReview` 에 남기고, 버튼만
+ * 영수증 행에 그린다.
+ */
+describe("PostalTable — 확정·삭제 나란히", () => {
+  const pending: ReceiptCard = { ...receipts[0], id: "r3" };
+  const ready: Record<string, ExtractState> = { r3: states.r2 };
+
+  it("같은 칸(td) 안에 있다", () => {
+    render(<PostalTable receipts={[pending]} extractStates={ready} />);
+    const confirm = screen.getByRole("button", { name: "확정" });
+    const del = screen.getByRole("button", { name: /삭제/ });
+    expect(confirm.closest("td")).toBe(del.closest("td"));
+  });
+
+  it("확정이 삭제 왼쪽이다 — 주 동작이 먼저다", () => {
+    render(<PostalTable receipts={[pending]} extractStates={ready} />);
+    const cell = screen.getByRole("button", { name: "확정" }).closest("td")!;
+    const labels = [...cell.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels).toEqual(["확정", "삭제"]);
+  });
+
+  it("판독 전에는 확정이 없다 — 확정할 내용이 없다", () => {
+    render(<PostalTable receipts={[receipts[0]]} extractStates={states} />);
+    expect(screen.queryByRole("button", { name: "확정" })).toBeNull();
   });
 });
