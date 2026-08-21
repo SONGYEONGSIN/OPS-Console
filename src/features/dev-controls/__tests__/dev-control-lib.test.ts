@@ -6,6 +6,7 @@ import {
   sha256,
   sanitizeFlags,
   buildClaudePrompt,
+  genHostFor,
 } from "../../../../scripts/lib/dev-control-lib.mjs";
 
 describe("parseDevInfo", () => {
@@ -103,5 +104,37 @@ describe("sanitizeFlags", () => {
   it("정상 flag는 그대로 통과", () => {
     const flag = { key: "k1", label: "L1", snippet: "s", severity: "warn" };
     expect(sanitizeFlags([flag])).toEqual([flag]);
+  });
+});
+
+/**
+ * 접수구분이 호스트를 정한다.
+ *
+ * 공통원서는 `generator.jinhakapply.com`, 반응형원서는 `entergenerator...` 다.
+ * 분석기가 앞쪽만 알아서 반응형 서비스는 늘 빈 응답을 받았고, 화면에는 '미수집'으로만
+ * 떠 **분석이 실패한 것처럼 보였다**(2026-08-21 연세대 UIC).
+ *
+ * 창구 이름·요청 형식·응답 모양은 **둘이 같다** — 호스트만 고르면 된다.
+ * 두 곳에 다 물어볼 수도 있지만, `closing_services.admission_type` 에 값이 있으니
+ * 한 번만 부른다.
+ */
+describe("genHostFor", () => {
+  it("공통원서는 generator", () => {
+    expect(genHostFor("공통원서")).toBe("https://generator.jinhakapply.com");
+  });
+
+  it("반응형원서는 entergenerator", () => {
+    expect(genHostFor("반응형원서")).toBe(
+      "https://entergenerator.jinhakapply.com",
+    );
+  });
+
+  it("일반접수는 원서GEN 대상이 아니다 — null", () => {
+    expect(genHostFor("일반접수")).toBeNull();
+  });
+
+  it("모르는 값이면 null — 엉뚱한 호스트에 물어보지 않는다", () => {
+    expect(genHostFor("새로운접수")).toBeNull();
+    expect(genHostFor(null)).toBeNull();
   });
 });

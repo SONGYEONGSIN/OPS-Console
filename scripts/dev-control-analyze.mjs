@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
-import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson, sanitizeFlags } from "./lib/dev-control-lib.mjs";
+import { sha256, parseDevInfo, buildClaudePrompt, parseClaudeJson, sanitizeFlags, genHostFor } from "./lib/dev-control-lib.mjs";
 
 const env = Object.fromEntries(
   fs.readFileSync(new URL("../.env.local", import.meta.url), "utf8")
@@ -12,6 +12,7 @@ const env = Object.fromEntries(
     .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
 );
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+// 로그인은 공통원서 쪽에서만 한다 — 반응형은 무인증으로도 읽힌다(2026-08-21 확인).
 const BASE = "https://generator.jinhakapply.com";
 const GEN_FLAGS = ["WA", "WB", "WC", "WD"];
 
@@ -36,8 +37,8 @@ async function login() {
   if (r.status !== 302 || !jar.Generator) { console.error("[dev-control] 로그인 실패 — 중단(계정 잠금 방지)"); process.exit(1); }
 }
 
-async function fetchDevInfo(serviceId, genFlag) {
-  const r = await fetch(`${BASE}/_AU/Default.aspx/GetDevInfoByUnivServiceId`, {
+async function fetchDevInfo(serviceId, genFlag, host) {
+  const r = await fetch(`${host}/_AU/Default.aspx/GetDevInfoByUnivServiceId`, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8", Cookie: ck() },
     body: JSON.stringify({ UnivServiceID: String(serviceId), GenFlag: genFlag }),
@@ -83,12 +84,27 @@ const { data: services, error } = await sb.from("services")
 if (error) { console.error(error.message); process.exit(1); }
 const ids = argIds.length ? argIds : [...new Set(services.map((s) => s.service_id))];
 
+// 접수구분이 호스트를 정한다 — 공통원서와 반응형원서는 호스트만 다르다.
+const { data: admissions } = await sb.from("closing_services")
+  .select("service_id, admission_type").in("service_id", ids);
+const hostById = new Map(
+  (admissions ?? []).map((a) => [a.service_id, genHostFor(a.admission_type)]),
+);
+
 await login();
 let analyzed = 0, skipped = 0, failed = 0;
 const seen = new Set();
 for (const id of ids) {
+  const host = hostById.get(id);
+  if (!host) {
+    // 접수구분을 모르거나 원서GEN 대상이 아니다. 조용히 넘기면 '미수집'으로만 보여
+    // 분석이 실패한 줄 안다 — 이유를 남긴다.
+    console.log(`[dev-control] ${id} 건너뜀 — 원서GEN 대상이 아닙니다(접수구분 확인)`);
+    skipped++;
+    continue;
+  }
   for (const genFlag of GEN_FLAGS) {
-    const files = await fetchDevInfo(id, genFlag);
+    const files = await fetchDevInfo(id, genFlag, host);
     if (!files) continue;
     for (const f of files) {
       const seenKey = `${id}:${f.fileName}`;

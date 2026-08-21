@@ -70,3 +70,26 @@ export function parseClaudeJson(stdout) {
     throw new Error("claude 응답 형식 불일치");
   return obj;
 }
+
+/**
+ * 접수구분이 원서GEN 호스트를 정한다.
+ *
+ * 공통원서와 반응형원서는 **호스트만 다르다** — 창구 이름(`GetDevInfoByUnivServiceId`)도
+ * 요청 형식도 응답 모양도 같다. 분석기가 공통원서 쪽만 알고 있어서 반응형 서비스는
+ * 늘 빈 응답을 받았고, 화면에는 '미수집'으로만 떠 **분석이 실패한 것처럼 보였다**
+ * (2026-08-21 연세대 UIC).
+ *
+ * 두 곳에 다 물어볼 수도 있지만 `closing_services.admission_type` 에 값이 있으니
+ * 한 번만 부른다. 모르는 값이면 **null 을 준다** — 엉뚱한 호스트에 물어보면
+ * 빈 응답을 받고 또 '미수집'이 된다.
+ */
+const GEN_HOST_BY_ADMISSION = {
+  공통원서: "https://generator.jinhakapply.com",
+  반응형원서: "https://entergenerator.jinhakapply.com",
+  // 일반접수는 원서GEN으로 만들지 않는다 — 제어파일 자체가 없다.
+};
+
+export function genHostFor(admissionType) {
+  if (!admissionType) return null;
+  return GEN_HOST_BY_ADMISSION[admissionType.trim()] ?? null;
+}
