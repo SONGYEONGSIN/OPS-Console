@@ -18,7 +18,22 @@ export type PollerSample = {
   oldestRunningAt: string | null;
   lastClaimAt: string | null;
   lastRequestAt: string | null;
+  /**
+   * 폴러가 마지막으로 "살아있음"을 남긴 시각.
+   *
+   * 큐 기록만으로는 **요청이 없을 때** 조용한 폴러와 죽은 폴러를 구분할 수 없다.
+   * 심박을 안 보내는 폴러(PowerShell 쪽)는 null 이고, 그때는 예전처럼 unknown 이다.
+   */
+  lastBeatAt?: string | null;
 };
+
+/**
+ * 이만큼 소식이 없으면 죽은 것으로 본다.
+ *
+ * 폴러는 1분마다 보낸다. 5분이면 네 번을 놓친 것이라 일시적 네트워크 문제로 보기
+ * 어렵다 — 짧게 잡으면 오탐이 나고, 한 번 오탐이 나면 화면 전체를 안 믿게 된다.
+ */
+export const HEARTBEAT_STALE_MINUTES = 5;
 
 export type PollerVerdict = "stopped" | "working" | "unknown";
 
@@ -67,6 +82,24 @@ export function judgePoller(
       verdict: "working",
       detail: `${sample.pendingCount + sample.runningCount}건 처리 중입니다`,
       waitedMinutes: pendingMin ?? runningMin,
+    };
+  }
+
+  // 큐가 조용할 때는 심박이 유일한 증거다. 큐 증거(위)보다 약하게 두는 이유:
+  // 폴러가 심박만 보내면서 일을 안 할 수 있고, 그때는 대기 건이 진실이다.
+  if (sample.lastBeatAt) {
+    const beatMin = minutesSince(sample.lastBeatAt, now);
+    if (beatMin <= HEARTBEAT_STALE_MINUTES) {
+      return {
+        verdict: "working",
+        detail: `살아 있습니다 — 심박 ${humanAgo(beatMin)}`,
+        waitedMinutes: null,
+      };
+    }
+    return {
+      verdict: "stopped",
+      detail: `${humanAgo(beatMin)}부터 소식이 없습니다`,
+      waitedMinutes: beatMin,
     };
   }
 
