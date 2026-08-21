@@ -30,7 +30,10 @@ describe("buildReviewRows", () => {
 
   it("담당자가 유일하면 채운다", () => {
     const rows = buildReviewRows(items, { under: UNDER, grad: GRAD, alreadyOnThatDay: 0 });
-    expect(rows.find((r) => r.recipientOrg === "우석대")?.assignee).toBe("김지현");
+    // 등기번호로 찾는다 — 소속명은 정식 명칭으로 바뀌므로 그걸로 찾으면 흔들린다.
+    expect(
+      rows.find((r) => r.trackingNo === "11263-1102-7080")?.assignee,
+    ).toBe("김지현");
   });
 
   it("'대학원'이 붙으면 대학원 시트 담당자", () => {
@@ -62,5 +65,39 @@ describe("buildReviewRows", () => {
 
   it("빈 목록은 빈 배열", () => {
     expect(buildReviewRows([], { under: UNDER, grad: GRAD, alreadyOnThatDay: 0 })).toEqual([]);
+  });
+
+  // 봉투에 적힌 줄임말 대신 총괄장의 정식 명칭을 쓴다. 사람이 대장을 볼 때
+  // '창원대'와 '국립창원대학교'가 섞여 있으면 같은 학교인지 매번 되짚어야 한다.
+  it("후보가 하나면 정식 명칭으로 바꾼다", () => {
+    const rows = buildReviewRows(
+      [{ ...items[0], recipient_org: "창원대" }],
+      { under: UNDER, grad: GRAD, alreadyOnThatDay: 0 },
+    );
+    expect(rows[0].recipientOrg).toBe("국립창원대학교");
+  });
+
+  it("대학원 표시는 남긴다", () => {
+    const rows = buildReviewRows(
+      [{ ...items[0], recipient_org: "창원대 대학원" }],
+      { under: UNDER, grad: GRAD, alreadyOnThatDay: 0 },
+    );
+    expect(rows[0].recipientOrg).toBe("국립창원대학교 대학원");
+  });
+
+  it("후보가 여럿이면 원문 그대로 — 어느 캠퍼스인지 모른다", () => {
+    const rows = buildReviewRows(
+      [{ ...items[0], recipient_org: "건국대" }],
+      { under: UNDER, grad: GRAD, alreadyOnThatDay: 0 },
+    );
+    expect(rows[0].recipientOrg).toBe("건국대");
+  });
+
+  it("못 찾으면 원문 그대로 — 지어내지 않는다", () => {
+    const rows = buildReviewRows(
+      [{ ...items[0], recipient_org: "없는대" }],
+      { under: UNDER, grad: GRAD, alreadyOnThatDay: 0 },
+    );
+    expect(rows[0].recipientOrg).toBe("없는대");
   });
 });

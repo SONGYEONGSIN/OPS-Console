@@ -98,7 +98,11 @@ export function PostalTable({
         </div>
       </header>
 
-      <table className="w-full text-sm">
+      {/* 표가 좁은 화면보다 넓으면 가로로 밀어서 본다. ListPattern 이 변형표를
+          감싸주는 것과 같은 처리인데 이 표만 맨몸이라 모바일에서 잘렸다.
+          min-w-0 이 없으면 flex 자식이 내용 너비만큼 벌어져 스크롤이 안 생긴다. */}
+      <div className="min-w-0 overflow-x-auto">
+        <table className="w-full min-w-[46rem] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
               <th className="px-3 py-2">올린 날</th>
@@ -138,7 +142,8 @@ export function PostalTable({
               </tr>
             )}
           </tbody>
-      </table>
+        </table>
+      </div>
 
       {opened && (
         <ModalShell
