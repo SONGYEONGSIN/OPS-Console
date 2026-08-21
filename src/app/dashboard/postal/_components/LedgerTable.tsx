@@ -143,7 +143,7 @@ export function LedgerTable({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-2xs uppercase tracking-[0.08em] text-muted">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
                   {COLUMNS.map((c) => (
                     <th key={c} className="py-2 pr-3 font-medium">
                       {c}

@@ -311,3 +311,21 @@ describe("LedgerTable — 등기대장 버튼", () => {
     expect(screen.queryByRole("link", { name: "등기대장" })).toBeNull();
   });
 });
+
+/**
+ * 표 머리글은 레포 표준을 쓴다.
+ *
+ * 레포의 37곳이 `text-left text-xs uppercase tracking-[0.06em] text-muted` 를 쓰는데
+ * 발송목록만 한 치수 작게(`text-2xs`) 들어가 제목과 표 사이가 좁아 보였다
+ * (2026-08-21 지적). 표준을 찾지 않고 쓴 탓이다 — 헤더 버튼 때와 같은 실수다.
+ */
+describe("LedgerTable — 표 머리글", () => {
+  it("표준 치수를 쓴다", () => {
+    const { container } = render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
+    const headRow = container.querySelector("thead tr");
+    expect(headRow?.className).toMatch(/text-xs/);
+    expect(headRow?.className).not.toMatch(/text-2xs/);
+    expect(headRow?.className).toMatch(/tracking-\[0\.06em\]/);
+    expect(headRow?.className).toMatch(/text-left/);
+  });
+});
