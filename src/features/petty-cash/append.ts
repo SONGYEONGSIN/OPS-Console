@@ -48,6 +48,19 @@ export function buildSpendRow(input: SpendInput): SheetRow {
   ];
 }
 
+/**
+ * 새 줄의 셀 서식.
+ *
+ * 값만 일련번호로 넣으면 그 셀에 날짜 서식이 없어 **46255 로 보인다**(2026-08-22
+ * 실제 장부). 위 행들은 서식이 있어 `2026-08-19` 로 보이니 새 줄만 튄다.
+ * **값과 서식은 함께 가야 한다.**
+ *
+ * 날짜 칸 외에는 `General` 로 둔다 — 금액 서식은 시트가 정한 대로 두는 게 맞다.
+ */
+export function buildSpendNumberFormat(): string[] {
+  return ["General", "General", "General", "yyyy-mm-dd", "General", "General", "General", "General"];
+}
+
 /** 쓰인 마지막 행 다음 줄. 1행은 헤더라 최소 2행부터. */
 export function nextRowAddress(usedRowCount: number): string {
   const row = Math.max(2, usedRowCount + 1);

@@ -243,7 +243,9 @@ function GroupRows({
                 <button
                   type="button"
                   onClick={() => onOpen(url)}
-                  className="cursor-pointer border-none bg-transparent p-0 text-2xs text-vermilion underline-offset-2 hover:underline"
+                  // 표 안의 작은 버튼이라 헤더 액션(vermilion 솔리드)보다 조용해야
+                  // 한다. 호버는 레포 표준대로 검정 배경(design.md).
+                  className="cursor-pointer border border-line-soft px-2 py-0.5 text-2xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
                 >
                   영수증
                 </button>
