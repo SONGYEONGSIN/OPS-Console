@@ -12,6 +12,7 @@ import { groupGaps } from "@/features/knowledge/gaps-shared";
 import { KnowledgeTree } from "./_components/KnowledgeTree";
 import { KnowledgeDocView } from "./_components/KnowledgeDoc";
 import { KnowledgeGaps } from "./_components/KnowledgeGaps";
+import { FileDraftForm } from "./_components/FileDraftForm";
 
 /**
  * 업무 지식망 열람 — 좌측 트리 + 우측 문서. 읽기 전용이고 편집은 옵시디언이 한다.
@@ -68,7 +69,11 @@ export default async function KnowledgePage({
             <KnowledgeDocView doc={doc} allPaths={rows.map((r) => r.path)} />
           ) : (
             /* 빈 칸에 "좌측에서 선택하세요"만 두느니, 무엇을 더 써야 하는지를 보여준다 */
-            <KnowledgeGaps groups={gaps} proposals={proposals} />
+            <div className="flex flex-col gap-5">
+              {/* 무엇을 더 써야 하는지(빈틈) 옆에, 이미 있는 파일로 채우는 길을 둔다. */}
+              <FileDraftForm />
+              <KnowledgeGaps groups={gaps} proposals={proposals} />
+            </div>
           )}
         </div>
       </section>
