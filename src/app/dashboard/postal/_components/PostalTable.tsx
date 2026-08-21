@@ -244,10 +244,10 @@ function RowPair({
         <td className="px-3 py-2 text-sm text-ink">
           {shortName(receipt.uploadedBy)}
         </td>
-        <td className="px-3 py-2 text-xs text-muted">
+        <td className="px-3 py-2 text-sm text-ink-soft">
           {formatAcceptedAt(extract.acceptedAt)}
         </td>
-        <td className="px-3 py-2 text-xs tabular-nums text-ink-soft">
+        <td className="px-3 py-2 text-sm tabular-nums text-ink-soft">
           {extract.rows.length > 0 ? `${extract.rows.length}건` : "—"}
         </td>
         <td className="px-3 py-2 text-sm tabular-nums text-ink">
