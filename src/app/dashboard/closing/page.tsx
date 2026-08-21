@@ -1,25 +1,10 @@
-import { findSidebarMeta } from "../_data";
-import { resolvePageMeta } from "../_data/page-meta-derive";
-import { PageHeader } from "../_components/page-header/PageHeader";
-import { ListPattern } from "../_components/patterns/ListPattern";
-import type { ListRow } from "../_components/patterns/ListPattern";
-import { ListPagination } from "@/components/common/ListPagination";
-import { requireMenu } from "@/features/auth/menu-guard";
-import { getCurrentOperator } from "@/features/auth/queries";
-import {
-  listClosing,
-  listClosingCategories,
-  listClosingUniversityTypes,
-  listClosingMonths,
-} from "@/features/closing/queries";
-import { closingRowToListRow } from "./_row-mapper";
-import { ClosingStatusChips } from "./_StatusChips";
-import { ClosingControls } from "./ClosingControls";
+import { ClosingScreen } from "./_ClosingScreen";
 
 /**
- * /dashboard/closing — 서비스 마감 (Moa 스크래핑 적재, 읽기 전용).
- * services variant 재사용. 표준 toolbar: 검색·카테고리 셀렉트(controlsRow) + 마감여부 칩(inlineFilters).
- * 필터는 서버(listClosing)에서 적용 — search(q)·category·마감여부(status)·내 마감(operator_name).
+ * 서비스마감 — **마감이 지난** 서비스.
+ *
+ * 진행 중인 것은 배포·운영 메뉴가 맡는다. 전에는 한 화면에 섞어 두고 `진행중` 칩으로
+ * 갈랐는데, 두 일이 성격이 달라(운영 대상 vs 정산·회고 대상) 메뉴로 갈랐다.
  */
 export default async function ClosingPage({
   searchParams,
@@ -33,102 +18,7 @@ export default async function ClosingPage({
     month?: string;
   }>;
 }) {
-  const slug = "closing";
-  await requireMenu(slug);
-
-  const meta = findSidebarMeta(slug);
-  if (!meta) return null;
-  const pathname = `/dashboard/${slug}`;
-
-  const sp = await searchParams;
-  const me = await getCurrentOperator();
-
-  // 칩(status) → 마감여부(closedStatus) + 내 마감(operatorName) 매핑. 기본 '내 마감'.
-  const status =
-    sp.status === "open" || sp.status === "all" ? sp.status : "mine";
-  const closedStatus = status === "open" ? "open" : "all";
-  const operatorName = status === "mine" ? (me?.displayName ?? "") : undefined;
-
-  // 칩 카운트 — scope(status/mine) 무시, 검색·카테고리 등 다른 필터는 적용. count-only(pageSize:1).
-  const countFilter = {
-    search: sp.q,
-    category: sp.category,
-    universityType: sp.universityType,
-    month: sp.month,
-  } as const;
-
-  const [
-    { rows: closing, total },
-    categories,
-    universityTypes,
-    months,
-    allCount,
-    mineCount,
-    openCount,
-  ] = await Promise.all([
-    listClosing({
-      page: sp.page ? Number(sp.page) : 1,
-      pageSize: 30,
-      search: sp.q,
-      category: sp.category,
-      universityType: sp.universityType,
-      month: sp.month,
-      closedStatus,
-      operatorName,
-    }),
-    listClosingCategories(),
-    listClosingUniversityTypes(),
-    listClosingMonths(),
-    listClosing({ ...countFilter, closedStatus: "all", pageSize: 1 }).then(
-      (r) => r.total,
-    ),
-    listClosing({
-      ...countFilter,
-      closedStatus: "all",
-      operatorName: me?.displayName ?? "",
-      pageSize: 1,
-    }).then((r) => r.total),
-    listClosing({ ...countFilter, closedStatus: "open", pageSize: 1 }).then(
-      (r) => r.total,
-    ),
-  ]);
-  const counts = { all: allCount, mine: mineCount, open: openCount };
-  const rows: ListRow[] = closing.map(closingRowToListRow);
-  const config = resolvePageMeta(slug, meta, total);
-
-  const header = (
-    <div key="closing-header">
-      <PageHeader
-        pathname={pathname}
-        meta={config.meta}
-        headline={config.headline}
-        description={config.description}
-        autoRefresh
-      />
-    </div>
-  );
-
   return (
-    <ListPattern
-      title={meta.label}
-      data={{ rows }}
-      header={header}
-      variant="services"
-      canCreate={false}
-      readOnly
-      liveData
-      controlsRow={
-        <ClosingControls
-          key="closing-controls"
-          categories={categories}
-          universityTypes={universityTypes}
-          months={months}
-        />
-      }
-      inlineFilters={<ClosingStatusChips key="closing-scope" counts={counts} />}
-      footer={
-        <ListPagination key="closing-pagination" total={total} pageSize={30} />
-      }
-    />
+    <ClosingScreen slug="closing" scope="closed" searchParams={searchParams} />
   );
 }

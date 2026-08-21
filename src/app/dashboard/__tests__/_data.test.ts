@@ -5,7 +5,7 @@ const ALL_SLUGS = [
   // 개요
   "my-todo", "schedule",
   // 요청 · 자료
-  "handover", "data-requests", "incidents", "contacts", "backup", "vault",
+  "handover", "data-requests", "incidents", "contacts", "backup",
   // 서비스사이클
   "services", "contracts", "dev-test", "deploy", "closing", "settlement", "invoice", "receivables",
   // 프로젝트 (project 패턴)
