@@ -16,6 +16,27 @@ import { appendToLedger } from "./ledger-append";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * 대장 한 곳에 무슨 일이 있었나.
+ *
+ * 확정은 두 엑셀에 옮겨 적는데 **실패해도 확정 자체는 살린다**(다시 누르면 중복
+ * 기록이 되므로). 그래서 조용히 실패할 수 있는 자리라, 무슨 일이 있었는지 그대로
+ * 돌려준다 — 화면이 이걸 띄우지 않으면 사람은 엑셀을 열어봐야 안다.
+ */
+export type LedgerOutcome =
+  | { status: "written" }
+  | { status: "skipped"; reason: string }
+  | { status: "failed"; error: string };
+
+export type ConfirmOutcome = {
+  ledger: LedgerOutcome;
+  pettyCash: LedgerOutcome;
+};
+
+export type ConfirmResult =
+  | { ok: true; outcome: ConfirmOutcome }
+  | { ok: false; error: string };
+
 const uuid = z.string().uuid();
 
 /** 화면이 넘기는 검토 행. 담당자는 사람이 고른 최종값이다. */
@@ -81,7 +102,7 @@ export async function confirmReceipt(
   rows: ConfirmRow[],
   /** 영수증에서 읽은 접수일자(YYYY-MM-DD). 있으면 전도금 장부에도 한 줄 붙는다. */
   meta: { acceptedAt?: string | null } = {},
-): Promise<ActionResult> {
+): Promise<ConfirmResult> {
   const who = await requireWriter();
   if (!who.ok) return who;
   if (!uuid.safeParse(receiptId).success) {
@@ -124,6 +145,10 @@ export async function confirmReceipt(
   // 사람이 다시 확정을 눌러 **중복 저장**으로 이어진다. 대장은 화면에서 다시 맞출
   // 수 있고, 같은 등기번호는 appendToLedger 가 거절한다.
   const sentOn = meta.acceptedAt?.slice(0, 10);
+  let ledger: LedgerOutcome = {
+    status: "skipped",
+    reason: "접수일시를 읽지 못해 대장에 적을 날짜가 없습니다",
+  };
   if (sentOn) {
     const wrote = await appendToLedger(
       rows.map((r) => ({
@@ -134,9 +159,10 @@ export async function confirmReceipt(
       })),
       { sentOn, confirmedBy: who.name },
     );
-    if (!wrote.ok) {
-      console.error("[postal] 등기대장 반영 실패:", wrote.error);
-    }
+    ledger = wrote.ok
+      ? { status: "written" }
+      : { status: "failed", error: wrote.error ?? "알 수 없는 오류" };
+    if (!wrote.ok) console.error("[postal] 등기대장 반영 실패:", wrote.error);
   }
 
   // 전도금 장부에도 한 줄 — 손으로 옮겨 적던 일이다.
@@ -145,6 +171,12 @@ export async function confirmReceipt(
   // 사람이 다시 확정을 눌러 중복 저장으로 이어진다. 장부는 화면에서 다시 맞출 수 있다.
   const date = meta.acceptedAt?.slice(0, 10);
   const amount = rows.reduce((a, r) => a + (r.fee ?? 0), 0);
+  let pettyCash: LedgerOutcome = {
+    status: "skipped",
+    reason: !date
+      ? "접수일시를 읽지 못해 장부에 적을 날짜가 없습니다"
+      : "합계가 0원이라 적지 않았습니다",
+  };
   if (date && amount > 0) {
     const spent = await appendSpend({
       date,
@@ -152,11 +184,12 @@ export async function confirmReceipt(
       count: rows.length,
       amount,
     });
-    if (!spent.ok) {
-      console.error("[postal] 전도금 반영 실패:", spent.error);
-    }
+    pettyCash = spent.ok
+      ? { status: "written" }
+      : { status: "failed", error: spent.error ?? "알 수 없는 오류" };
+    if (!spent.ok) console.error("[postal] 전도금 반영 실패:", spent.error);
   }
 
   revalidatePath("/dashboard/postal");
-  return { ok: true };
+  return { ok: true, outcome: { ledger, pettyCash } };
 }

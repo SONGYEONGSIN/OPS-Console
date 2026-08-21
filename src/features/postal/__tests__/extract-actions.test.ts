@@ -10,11 +10,22 @@ const state = {
 };
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-const { appendSpy } = vi.hoisted(() => ({ appendSpy: vi.fn() }));
+const { appendSpy, ledgerSpy, results } = vi.hoisted(() => ({
+  appendSpy: vi.fn(),
+  ledgerSpy: vi.fn(),
+  // 테스트마다 성공/실패를 갈아끼운다.
+  results: { petty: { ok: true } as unknown, ledger: { ok: true } as unknown },
+}));
+vi.mock("../ledger-append", () => ({
+  appendToLedger: (...a: unknown[]) => {
+    ledgerSpy(...a);
+    return Promise.resolve(results.ledger);
+  },
+}));
 vi.mock("@/features/petty-cash/actions", () => ({
   appendSpend: (...a: unknown[]) => {
     appendSpy(...a);
-    return Promise.resolve({ ok: true });
+    return Promise.resolve(results.petty);
   },
 }));
 vi.mock("@/features/auth/queries", () => ({
@@ -179,5 +190,67 @@ describe("confirmReceipt — 전도금 반영", () => {
   it("요금이 다 비면 쓰지 않는다", async () => {
     await confirmReceipt(RID, rows.map((r) => ({ ...r, fee: null })), { acceptedAt: "2026-08-20" });
     expect(appendSpy).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 확정하면 두 대장에 옮겨 적는다. **실패해도 확정 자체는 살린다** — postal_items 는
+ * 이미 저장됐고 실패라고 하면 사람이 다시 눌러 중복 기록이 된다.
+ *
+ * 그래서 조용히 실패할 수 있는 자리다. 무슨 일이 있었는지 화면에 돌려준다.
+ */
+describe("confirmReceipt — 대장 반영 결과", () => {
+  const rows = [
+    {
+      daySeq: 1,
+      trackingNo: "A-1",
+      fee: 100,
+      postalCode: "12345",
+      recipientOrg: "우석대",
+      recipientName: "강정화",
+      assignee: "김지현",
+    },
+  ];
+
+  beforeEach(() => {
+    state.me = { email: "me@x.com", permission: "member" };
+    results.petty = { ok: true };
+    results.ledger = { ok: true };
+  });
+
+  const meta = { acceptedAt: "2026-08-21 15:44" };
+
+  it("둘 다 적히면 둘 다 written", async () => {
+    const r = await confirmReceipt(RID, rows, meta);
+    expect(r.ok && r.outcome.ledger.status).toBe("written");
+    expect(r.ok && r.outcome.pettyCash.status).toBe("written");
+  });
+
+  it("대장이 실패해도 확정은 성공이다 — 다시 누르면 중복이 된다", async () => {
+    results.ledger = { ok: false, error: "시트 잠김" };
+    const r = await confirmReceipt(RID, rows, meta);
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.outcome.ledger.status).toBe("failed");
+  });
+
+  it("실패 사유를 그대로 준다 — 무엇을 해야 할지는 사유에 있다", async () => {
+    results.petty = { ok: false, error: "잔액을 못 읽음" };
+    const r = await confirmReceipt(RID, rows, meta);
+    expect(
+      r.ok && r.outcome.pettyCash.status === "failed" && r.outcome.pettyCash.error,
+    ).toBe("잔액을 못 읽음");
+  });
+
+  it("접수일시를 못 읽었으면 건너뛴다 — 왜 안 갔는지 말해준다", async () => {
+    const r = await confirmReceipt(RID, rows, { acceptedAt: null });
+    expect(r.ok && r.outcome.ledger.status).toBe("skipped");
+    expect(r.ok && r.outcome.pettyCash.status).toBe("skipped");
+  });
+
+  it("금액이 0이면 전도금은 건너뛴다 — 장부에 0원 줄을 남기지 않는다", async () => {
+    const free = rows.map((x) => ({ ...x, fee: 0 }));
+    const r = await confirmReceipt(RID, free, meta);
+    expect(r.ok && r.outcome.pettyCash.status).toBe("skipped");
+    expect(r.ok && r.outcome.ledger.status).toBe("written");
   });
 });

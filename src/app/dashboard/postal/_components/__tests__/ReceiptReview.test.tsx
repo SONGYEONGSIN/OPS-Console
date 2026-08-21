@@ -1,16 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ReceiptReview } from "../ReceiptReview";
+import { ReceiptReview, ConfirmButton } from "../ReceiptReview";
 import type { ExtractState } from "@/features/postal/queries";
 
-const { confirmSpy, extractSpy } = vi.hoisted(() => ({
+const { confirmSpy, extractSpy, confirmResult } = vi.hoisted(() => ({
   confirmSpy: vi.fn(),
   extractSpy: vi.fn(),
+  // 테스트마다 대장 반영 결과를 갈아끼운다.
+  confirmResult: {
+    value: {
+      ok: true,
+      outcome: {
+        ledger: { status: "written" },
+        pettyCash: { status: "written" },
+      },
+    } as unknown,
+  },
 }));
 vi.mock("@/features/postal/extract-actions", () => ({
   confirmReceipt: (...a: unknown[]) => {
     confirmSpy(...a);
-    return Promise.resolve({ ok: true });
+    return Promise.resolve(confirmResult.value);
   },
   requestExtraction: (...a: unknown[]) => {
     extractSpy(...a);
@@ -112,5 +122,88 @@ describe("ReceiptReview", () => {
     render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ status: "failed", warnings: [], message: "영수증이 아닙니다", acceptedAt: null, rows: [] }} rows={[]} />);
     expect(screen.getByText(/영수증이 아닙니다/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
+  });
+});
+
+/**
+ * 대장 반영 결과를 화면에 띄운다.
+ *
+ * 확정은 두 엑셀에 옮겨 적는데 **실패해도 확정 자체는 성공**으로 끝난다(다시 누르면
+ * 중복 기록이 되므로). 그래서 화면이 말해주지 않으면 사람은 엑셀을 열어봐야 안다.
+ */
+describe("ConfirmButton — 대장 반영 결과", () => {
+  const OK = {
+    ok: true,
+    outcome: {
+      ledger: { status: "written" },
+      pettyCash: { status: "written" },
+    },
+  };
+
+  beforeEach(() => {
+    confirmResult.value = OK;
+  });
+
+  const press = async () => {
+    render(
+      <ConfirmButton receiptId={RID} acceptedAt="2026-08-21 15:44" rows={done.rows} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "확정" }));
+  };
+
+  it("둘 다 적히면 적혔다고 알린다", async () => {
+    await press();
+    await waitFor(() =>
+      expect(screen.getByText(/등기대장·전도금대장에 적었습니다/)).toBeInTheDocument(),
+    );
+  });
+
+  it("실패하면 어느 대장이 왜 안 됐는지 말한다", async () => {
+    confirmResult.value = {
+      ok: true,
+      outcome: {
+        ledger: { status: "failed", error: "시트 잠김" },
+        pettyCash: { status: "written" },
+      },
+    };
+    await press();
+    await waitFor(() =>
+      expect(screen.getByText(/등기대장.*시트 잠김/)).toBeInTheDocument(),
+    );
+  });
+
+  it("건너뛴 이유도 말한다 — 왜 안 갔는지 모르면 기다리게 된다", async () => {
+    confirmResult.value = {
+      ok: true,
+      outcome: {
+        ledger: { status: "skipped", reason: "접수일시를 읽지 못했습니다" },
+        pettyCash: { status: "skipped", reason: "접수일시를 읽지 못했습니다" },
+      },
+    };
+    await press();
+    // 대장마다 한 줄씩 — 어느 쪽이 안 갔는지 알아야 한다.
+    await waitFor(() =>
+      expect(
+        screen.getByText(/등기대장 — 접수일시를 읽지 못했습니다/),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByText(/전도금대장 — 접수일시를 읽지 못했습니다/),
+    ).toBeInTheDocument();
+  });
+
+  it("실패는 그냥 지나칠 수 없게 눈에 띄어야 한다", async () => {
+    confirmResult.value = {
+      ok: true,
+      outcome: {
+        ledger: { status: "failed", error: "시트 잠김" },
+        pettyCash: { status: "written" },
+      },
+    };
+    await press();
+    await waitFor(() => {
+      const el = screen.getByText(/시트 잠김/);
+      expect(el.className).toMatch(/vermilion/);
+    });
   });
 });

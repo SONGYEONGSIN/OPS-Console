@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import {
   confirmReceipt,
+  type ConfirmOutcome,
   requestExtraction,
   type ConfirmRow,
 } from "@/features/postal/extract-actions";
@@ -227,20 +228,23 @@ export function ConfirmButton({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<ConfirmOutcome | null>(null);
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex flex-wrap items-center gap-2">
       <button
         type="button"
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
             setError(null);
+            setOutcome(null);
             const r = await confirmReceipt(receiptId, rows.map(toConfirmRow), {
               // 접수일자가 전도금 장부에 적힐 날짜다.
               acceptedAt,
             });
             if (!r.ok) setError(r.error ?? "실패했습니다");
+            else setOutcome(r.outcome);
           })
         }
         className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
@@ -248,6 +252,53 @@ export function ConfirmButton({
         확정
       </button>
       {error && <span className="text-2xs text-vermilion">{error}</span>}
+      {outcome && <OutcomeNote outcome={outcome} />}
+    </span>
+  );
+}
+
+const LEDGER_LABEL = { ledger: "등기대장", pettyCash: "전도금대장" } as const;
+
+/**
+ * 확정이 두 대장에 무엇을 했는지 알린다.
+ *
+ * **확정은 대장이 실패해도 성공으로 끝난다**(다시 누르면 중복 기록이 되므로).
+ * 그래서 여기서 말해주지 않으면 사람은 엑셀을 열어봐야 알게 된다.
+ *
+ * 둘 다 적힌 흔한 경우는 한 줄로 줄인다 — 늘 길면 실패했을 때도 안 읽힌다.
+ */
+function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
+  const entries = [
+    ["ledger", outcome.ledger],
+    ["pettyCash", outcome.pettyCash],
+  ] as const;
+
+  if (entries.every(([, o]) => o.status === "written")) {
+    return (
+      <span className="text-2xs text-muted">
+        등기대장·전도금대장에 적었습니다.
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex flex-col gap-0.5">
+      {entries.map(([key, o]) => {
+        if (o.status === "written") return null;
+        const label = LEDGER_LABEL[key];
+        // 실패는 조치가 필요하고 건너뜀은 대개 정상이라 톤을 나눈다.
+        return (
+          <span
+            key={key}
+            className={`text-2xs ${
+              o.status === "failed" ? "text-vermilion" : "text-muted"
+            }`}
+          >
+            {label} —{" "}
+            {o.status === "failed" ? o.error : `${o.reason} (건너뜀)`}
+          </span>
+        );
+      })}
     </span>
   );
 }
