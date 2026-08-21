@@ -18,7 +18,9 @@ import { startHeartbeat } from "../lib/heartbeat.mjs";
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
 import { rename } from "node:fs/promises";
-import { writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { query, createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 // 경로 검증은 순수 함수로 빼 두고 테스트가 그 파일을 그대로 검사한다
@@ -194,6 +196,58 @@ const opsTools = createSdkMcpServer({
         return {
           content: [{ type: "text", text: JSON.stringify(body.events) }],
         };
+      },
+    ),
+    tool(
+      "read_file",
+      "Teams·SharePoint 에 올라온 파일(Word·PowerPoint·Excel·PDF)을 읽을 수 있게 내려받는다. **볼트 문서가 아닌 파일**을 지식망에 넣어달라는 요청에 쓴다. 돌려주는 경로를 Read 로 열어 내용을 확인하고, 파일에 있는 내용만 쓴다. 표가 많은 파일이면 요약하지 말고 어떤 표가 무엇을 담는지와 원본 링크를 적는다.",
+      {
+        url: z
+          .string()
+          .describe("SharePoint·Teams 파일 링크. 사용자가 붙여넣은 것을 그대로 넘긴다"),
+      },
+      async ({ url }) => {
+        const res = await fetchWithTimeout(
+          `${BASE}/api/assistant/tools/read-file`,
+          {
+            method: "POST",
+            headers: { ...headers, "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          },
+        );
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok || !body.ok) {
+          return {
+            content: [
+              { type: "text", text: `파일을 못 받았습니다: ${body.error ?? res.status}` },
+            ],
+            isError: true,
+          };
+        }
+
+        // 서버는 Graph 의 짧게 사는 주소만 준다 — 내려받기는 여기서 한다.
+        // 우편물 판독과 같은 구조다(파일은 임시 폴더에 두고 Read 로 연다).
+        try {
+          const file = await fetchWithTimeout(body.downloadUrl, {});
+          if (!file.ok) throw new Error(`내려받기 ${file.status}`);
+          const dir = await mkdtemp(join(tmpdir(), "ops-knowledge-"));
+          // 확장자를 pdf 로 둔다 — 서버가 어떤 형식이든 PDF 로 바꿔 준다.
+          const path = join(dir, "file.pdf");
+          await writeFile(path, Buffer.from(await file.arrayBuffer()));
+          return {
+            content: [
+              {
+                type: "text",
+                text: `${body.name} 을 내려받았습니다. Read 로 여세요: ${path}\n원본 링크: ${body.webUrl}`,
+              },
+            ],
+          };
+        } catch (e) {
+          return {
+            content: [{ type: "text", text: `내려받기 실패: ${e.message}` }],
+            isError: true,
+          };
+        }
       },
     ),
     tool(

@@ -109,6 +109,17 @@ describe("buildVaultPrompt", () => {
     expect(p).toMatch(/위[^\n]*(가리키|참조)|앞서 말한/);
   });
 
+  it("파일 링크는 read_file 로 읽으라고 지시한다", () => {
+    const p = buildVaultPrompt({
+      question: "x",
+      pageContext: null,
+      today: "2026-08-22 (금)",
+    });
+    expect(p).toContain("read_file");
+    // 표를 줄글로 옮기면 틀린 숫자가 지식이 된다.
+    expect(p).toMatch(/표가 많은 파일/);
+  });
+
   it("휴가는 일정과 백업요청을 합쳐 보라고 지시한다 — 절반이 일정에 없다", () => {
     const p = buildVaultPrompt({
       question: "x",
