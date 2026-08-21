@@ -10,6 +10,7 @@
 // 필요 env (.env.local): OPS_CONSOLE_BASE_URL · CRON_SECRET
 // 실행: node scripts/postal/extract-local.mjs
 
+import { startHeartbeat } from "../lib/heartbeat.mjs";
 import { config } from "dotenv";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -113,6 +114,9 @@ async function extract(req) {
 }
 
 console.log(`[postal] 폴링 시작 — ${endpoint} (${POLL_MS}ms)`);
+
+// 살아있음을 1분마다 남긴다 — 큐가 조용하면 이게 생사의 유일한 증거다.
+startHeartbeat({ baseUrl: BASE, secret: SECRET, pollerId: "postal-extract" });
 
 let lastBeat = 0;
 let failStreak = 0;

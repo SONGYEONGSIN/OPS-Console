@@ -54,13 +54,35 @@ async function sampleQueue(table: string): Promise<PollerSample> {
   };
 }
 
+/**
+ * 심박 — 폴러가 남긴 "살아있음". 한 번에 읽는다(행이 폴러 수만큼뿐이다).
+ *
+ * 큐가 조용할 때 생사를 가르는 유일한 증거다. 심박을 안 보내는 폴러는 여기 없고,
+ * 그때 판정은 예전처럼 unknown 이 된다 — 거짓 안심을 주지 않는다.
+ */
+async function loadHeartbeats(): Promise<Map<string, string>> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("poller_heartbeats")
+    .select("poller_id, beat_at");
+  const out = new Map<string, string>();
+  for (const r of (data ?? []) as { poller_id: string; beat_at: string }[]) {
+    out.set(r.poller_id, r.beat_at);
+  }
+  return out;
+}
+
 /** 폴러 전체 상태. 큐가 여섯 개뿐이라 한꺼번에 읽는다. */
 export async function loadPollerStatuses(
   now: Date = new Date(),
 ): Promise<PollerStatus[]> {
+  const beats = await loadHeartbeats();
   return Promise.all(
     POLLERS.map(async (p) => {
-      const sample = await sampleQueue(p.table);
+      const sample = {
+        ...(await sampleQueue(p.table)),
+        lastBeatAt: beats.get(p.id) ?? null,
+      };
       return { ...p, ...judgePoller(sample, p.thresholdMinutes, now), sample };
     }),
   );

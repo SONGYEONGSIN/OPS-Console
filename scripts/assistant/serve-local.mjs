@@ -14,6 +14,7 @@
 //   OPS_CONSOLE_BASE_URL · CRON_SECRET · KNOWLEDGE_VAULT_PATH
 // 실행: node scripts/assistant/serve-local.mjs
 
+import { startHeartbeat } from "../lib/heartbeat.mjs";
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
@@ -488,6 +489,9 @@ let lastBeat = 0;
 let failStreak = 0;
 
 console.log(`[assistant] 폴링 시작 — ${endpoint} (${POLL_MS}ms), 볼트: ${VAULT}`);
+
+// 살아있음을 1분마다 남긴다 — 큐가 조용하면 이게 생사의 유일한 증거다.
+startHeartbeat({ baseUrl: BASE, secret: SECRET, pollerId: "assistant" });
 
 // 상주 루프. claim 실패(네트워크·배포 중)로는 죽지 않는다 — 죽으면 채팅이 통째로 멈춘다.
 for (;;) {
