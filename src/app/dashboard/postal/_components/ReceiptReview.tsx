@@ -167,9 +167,6 @@ export function ReceiptReview({
                       width="w-20"
                     />
                   )}
-                  {r.basis === "graduate" && (
-                    <span className="ml-1 text-2xs text-muted">대학원</span>
-                  )}
                 </td>
               </tr>
             ))}
