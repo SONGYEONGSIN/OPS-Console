@@ -106,3 +106,43 @@ describe("ReceiptReview", () => {
     expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
   });
 });
+
+/**
+ * 확정 버튼은 검토표 위에 둔다.
+ *
+ * 표 13줄 아래에 있어 영수증 행의 삭제 버튼과 **화면에서 멀리 떨어져** 보였다
+ * (2026-08-21). 같은 영수증에 대한 두 결정이라 눈에 함께 들어와야 한다.
+ *
+ * 확정은 편집 중인 표의 값을 쓰므로 이 컴포넌트 안에 있어야 한다 — 위치만 옮긴다.
+ */
+describe("ReceiptReview — 확정 버튼 위치", () => {
+  const done: ExtractState = {
+    status: "done",
+    warnings: [],
+    message: null,
+    acceptedAt: "2026-08-19",
+    rows: [
+      {
+        daySeq: 1,
+        trackingNo: "11263-1102-7080",
+        fee: 4590,
+        postalCode: "55338",
+        recipientOrg: "우석대",
+        recipientName: "강정화",
+        basis: "undergraduate",
+        assignee: "김지현",
+        candidates: [],
+      },
+    ],
+  };
+
+  it("확정이 표보다 먼저 나온다", () => {
+    const { container } = render(<ReceiptReview receiptId="r1" state={done} />);
+    const confirm = screen.getByRole("button", { name: "확정" });
+    const table = container.querySelector("table")!;
+    // 문서 순서로 확정이 앞이어야 한다.
+    expect(
+      confirm.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});

@@ -132,3 +132,19 @@ describe("PostalTable", () => {
     });
   });
 });
+
+/**
+ * 서명이 만료된 이미지는 깨진 아이콘 대신 이유를 보여준다.
+ *
+ * 서명 URL 은 5분이라 목록을 열어둔 채 나중에 누르면 죽는다. 그때 브라우저가
+ * **깨진 이미지 아이콘**만 남겨, 사용자는 무엇이 잘못됐는지 모른다(2026-08-21).
+ */
+describe("PostalTable — 만료된 영수증", () => {
+  it("이미지가 안 열리면 이유를 보여준다", () => {
+    render(<PostalTable receipts={[receipts[0]]} extractStates={states} />);
+    fireEvent.click(screen.getByText("song"));
+    const img = screen.getByRole("img", { name: /영수증 원본/ });
+    fireEvent.error(img);
+    expect(screen.getByText(/다시 열/)).toBeInTheDocument();
+  });
+});

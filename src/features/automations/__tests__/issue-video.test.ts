@@ -15,8 +15,9 @@ describe("pickIssueVideo", () => {
     expect(toYouTubeEmbed(v!.src)).not.toBeNull();
   });
 
-  it("멘트가 붙어 있다 — 무엇을 보게 될지 알려주는 자리다", () => {
-    expect(pickIssueVideo(5)?.caption?.length ?? 0).toBeGreaterThan(0);
+  it("멘트는 붙이지 않는다 — 영상 안에 이미 제목이 있다", () => {
+    // 프레임 위에 한 줄 더 얹으면 같은 말을 두 번 읽게 된다(2026-08-21).
+    expect(pickIssueVideo(5)?.caption).toBeUndefined();
   });
 
   it("지정 안 한 호는 없음 — 지난 영상을 다시 틀지 않는다", () => {
