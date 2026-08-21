@@ -12,6 +12,16 @@ function gitSha(): string {
 }
 
 const nextConfig: NextConfig = {
+  experimental: {
+    /**
+     * 서버 액션 본문 상한 — 기본 1MB 는 영수증 사진에 모자란다.
+     *
+     * `features/postal/upload-guard.ts` 의 `SERVER_ACTION_BODY_LIMIT` 과 같은 값을
+     * 유지한다. 어긋나면 화면은 통과라 하고 서버가 거절해, 사용자에게 아무 말도
+     * 안 나온 채 콘솔 오류만 남는다(2026-08-21).
+     */
+    serverActions: { bodySizeLimit: "12mb" },
+  },
   env: {
     NEXT_PUBLIC_BUILD_VERSION: pkg.version,
     NEXT_PUBLIC_GIT_SHA: process.env.NEXT_PUBLIC_GIT_SHA ?? gitSha(),
