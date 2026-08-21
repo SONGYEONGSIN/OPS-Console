@@ -1,5 +1,6 @@
 import { assignDaySeq } from "./extract-parse";
 import { matchAssignee, type AssigneeRow } from "./assignee-match";
+import { officialOrgName } from "./official-org";
 
 /**
  * 판독 결과 → 검토 화면의 표 한 행.
@@ -47,7 +48,8 @@ export function buildReviewRows(
       trackingNo: it.tracking_no,
       fee: it.fee,
       postalCode: it.postal_code,
-      recipientOrg: it.recipient_org,
+      // 봉투의 줄임말 대신 총괄장의 정식 명칭. 못 좁히면 원문 그대로 둔다.
+      recipientOrg: officialOrgName(it.recipient_org ?? null, m.candidates),
       recipientName: it.recipient_name,
       basis: m.basis,
       assignee: m.assignee,
