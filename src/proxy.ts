@@ -13,6 +13,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  /api/dev-controls/analyze-request — 회사 PC 폴러가 개발탭 수동 분석 요청을 claim/완료 보고.
  *  /api/assistant/claude/claim — 회사 PC 상주 폴러가 어시스턴트 질문을 claim/답 보고.
  *  /api/postal/extract — 회사 PC 폴러가 영수증 판독 요청을 claim/결과 보고.
+ *  /api/pollers/heartbeat — 회사 PC 폴러들이 1분마다 '살아있음'을 남긴다.
  *  /api/assistant/tools — 폴러가 Claude에게 붙여준 도구가 호출(일정 조회 등).
  *  /api/assistant/bot — 사내 Teams 봇 서버가 질문을 같은 큐에 적재/조회.
  *    접두사 매칭이라 이 아래 새 라우트는 자동으로 public이 된다 — 반드시
@@ -41,6 +42,7 @@ const PUBLIC_PATHS = [
   "/api/assistant/tools",
   "/api/assistant/bot",
   "/api/postal/extract",
+  "/api/pollers/heartbeat",
   "/api/team-briefing",
   "/api/ratio-audit",
   /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
