@@ -41,7 +41,7 @@ describe("ClosingStatusChips", () => {
 
   it("배포·운영에서는 '내 서비스'다 — 마감한 게 아니라 맡고 있는 것이다", () => {
     path = "/dashboard/deploy";
-    render(<ClosingStatusChips counts={COUNTS} scope="open" />);
+    render(<ClosingStatusChips counts={COUNTS} scope="running" />);
     expect(screen.getByRole("button", { name: "내 서비스" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "내 마감" })).toBeNull();
   });
