@@ -476,6 +476,36 @@ export type ListRow = {
   dataRequestStatus?: "scheduled" | "sent" | null;
   /** data-request variant — 가장 이른 예약 시각(ISO). status='scheduled'일 때 */
   dataRequestScheduledAt?: string | null;
+  /** open-notice variant — 이 서비스 대학의 수신자 후보 (섹션이 첨부) */
+  openNoticeRecipients?: {
+    email: string;
+    name: string;
+    department: string | null;
+    universityName: string;
+  }[];
+  /** open-notice variant — 발신자(로그인 운영자) 표시용 */
+  openNoticeSender?: { email: string; name: string };
+  /** open-notice variant — 메일 상태 배지 (예약됨/발송됨). 이력 없으면 null */
+  openNoticeStatus?: "scheduled" | "sent" | null;
+  /** open-notice variant — 최근 발송일시(ISO, sent 상태). 이력 없으면 null */
+  openNoticeLastSentAt?: string | null;
+  /** open-notice variant — 가장 이른 예약 시각(ISO). status='scheduled'일 때 */
+  openNoticeScheduledAt?: string | null;
+  /**
+   * open-notice variant — 가장 최근 발송 실패 시각(ISO).
+   * 자동 발송이라 실패를 아무도 안 보고 있다 — 목록·인스펙터에 드러낸다.
+   */
+  openNoticeLastFailedAt?: string | null;
+  /**
+   * open-notice variant — 본인 담당 건인가(발송 가능 여부). 서버 action 이
+   * 같은 판정을 다시 하므로 이 값은 화면 표시용이다.
+   */
+  openNoticeCanSend?: boolean;
+  /**
+   * open-notice variant — 오픈 시각이 이미 지났는가. **서버가 판정한다** —
+   * 렌더 중 Date.now() 를 부르면 리렌더마다 값이 흔들린다.
+   */
+  openNoticeOpenPassed?: boolean;
   /** dev-test variant — 이 서비스의 entertest 실행 이력 (page가 service_id별 임베드) */
   entertestRuns?: EntertestRun[];
   /** dev-test variant — 등록된 테스트 대역 계정(로그인 운영자). 미등록이면 null */

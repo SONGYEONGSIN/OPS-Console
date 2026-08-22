@@ -139,6 +139,15 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         },
       },
       {
+        role: "오픈 예약",
+        agent: "open-notice-dispatcher",
+        source: {
+          kind: "outside",
+          path: "/api/open-notices/dispatch",
+          note: "예약된 오픈안내 발송 · 5분마다",
+        },
+      },
+      {
         role: "자료 예약",
         agent: "data-request-dispatcher",
         source: {

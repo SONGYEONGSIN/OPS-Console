@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 const TABS = [
   { key: "dev", label: "개발" },
   { key: "test", label: "테스트" },
+  { key: "open-notice", label: "오픈안내" },
 ] as const;
 
 export function DevTestTabs() {

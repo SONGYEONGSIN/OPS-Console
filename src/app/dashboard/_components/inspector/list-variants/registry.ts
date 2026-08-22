@@ -88,6 +88,9 @@ import { AssignmentsView } from "./assignments/View";
 import { ASSIGNMENTS_FILTERS } from "./assignments/filters";
 import { DataRequestTable } from "./data-request/Table";
 import { DataRequestView } from "./data-request/View";
+import { OpenNoticeView } from "./open-notice/View";
+import { OpenNoticeTable } from "./open-notice/Table";
+import { OPEN_NOTICE_FILTERS } from "./open-notice/filters";
 import { DevTestView } from "./dev-test/View";
 import { DevTestTable } from "./dev-test/Table";
 import { DevControlView } from "./dev-control/View";
@@ -318,6 +321,11 @@ export const variantRegistry = {
     View: DataRequestView,
     Table: DataRequestTable,
     Filters: DATA_REQUEST_FILTERS,
+  },
+  "open-notice": {
+    View: OpenNoticeView,
+    Table: OpenNoticeTable,
+    Filters: OPEN_NOTICE_FILTERS,
   },
   "dev-test": {
     View: DevTestView,

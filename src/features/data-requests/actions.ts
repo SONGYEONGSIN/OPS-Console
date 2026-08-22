@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendGraphMail } from "@/lib/microsoft/sendmail";
 import { buildReplyHtml } from "@/lib/mail-signature";
 import { sendDataRequestInputSchema, dataRequestCcSchema } from "./schemas";
-import { parseScheduledAtKst } from "./schedule-time";
+import { parseScheduledAtKst } from "@/features/mail-sends/schedule-time";
 
 export type DataRequestActionState = { ok: boolean; message: string } | undefined;
 

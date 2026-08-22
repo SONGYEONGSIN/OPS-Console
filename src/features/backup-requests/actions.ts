@@ -8,7 +8,7 @@ import {
   backupRequestUpdateSchema,
   type BackupRequestRow,
 } from "./schemas";
-import { parseScheduledAtKst } from "./schedule-time";
+import { parseScheduledAtKst } from "@/features/mail-sends/schedule-time";
 
 export type BackupRequestActionResult =
   | { ok: true; row: BackupRequestRow }
