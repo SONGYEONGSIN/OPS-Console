@@ -12,10 +12,17 @@
  * 메뉴를 가른 의미가 사라진다.
  */
 
-export type ClosingScope = "open" | "closed";
+/**
+ * 메뉴가 맡은 범위.
+ *
+ * `settlement` 은 목록 자체는 `closed` 와 같다 — 결제가 끝난 것. 다만 화면이
+ * 정산기한을 붙여 다르게 보여주므로 칩 이름이 다르다.
+ */
+export type ClosingScope = "open" | "closed" | "settlement";
 
 export type ScopeFilter = {
-  closedStatus: ClosingScope;
+  /** listClosing 이 받는 값 — scope 를 그대로 넘기지 않는다(settlement 는 closed 다). */
+  closedStatus: "open" | "closed";
   /** 본인 담당만 볼 때의 이름. 전체면 undefined. */
   operatorName: string | undefined;
 };
@@ -26,8 +33,8 @@ export function resolveScopeFilter(
   myName: string | null | undefined,
 ): ScopeFilter {
   return {
-    // 칩이 무엇이든 범위는 메뉴가 정한다.
-    closedStatus: scope,
+    // 칩이 무엇이든 범위는 메뉴가 정한다. 정산은 결제가 끝난 것을 본다.
+    closedStatus: scope === "open" ? "open" : "closed",
     // 기본은 '내 것' — 처음 열었을 때 남의 서비스가 잔뜩 나오면 쓸모가 없다.
     // 이름을 모르면 빈 문자열로 둔다(아무것도 안 걸림) — 남의 것을 보여주는 것보다 낫다.
     operatorName: chip === "all" ? undefined : (myName ?? ""),
@@ -36,10 +43,16 @@ export function resolveScopeFilter(
 
 export type ChipOption = { key: "all" | "mine"; label: string };
 
+const MINE_LABEL: Record<ClosingScope, string> = {
+  // 마감한 게 아니라 맡고 있는 것이라, 배포·운영에서는 '내 서비스'다.
+  open: "내 서비스",
+  closed: "내 마감",
+  settlement: "내 정산",
+};
+
 export function chipOptions(scope: ClosingScope): ChipOption[] {
   return [
     { key: "all", label: "전체" },
-    // 마감한 게 아니라 맡고 있는 것이라, 배포·운영에서는 '내 서비스'다.
-    { key: "mine", label: scope === "open" ? "내 서비스" : "내 마감" },
+    { key: "mine", label: MINE_LABEL[scope] },
   ];
 }
