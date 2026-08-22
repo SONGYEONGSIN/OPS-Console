@@ -61,7 +61,16 @@ function formatTimeKst(iso: string): string {
  * 의존성 추가 없이 ** ** bold + `code` inline + - bullet 만.
  */
 
-const ASSISTANT_NAME = "운영부 상황실 어시스턴트";
+/**
+ * 발화자 이름 — agent-org 조직도의 '조율' 자리가 곧 이 어시스턴트이고 이름이
+ * 명보다(`features/agent-org/registry.ts`). 그 이름이 조직도 화면에만 있고
+ * 정작 말을 거는 자리에는 없어서, 동료가 아니라 기능처럼 읽혔다.
+ */
+const ASSISTANT_NAME = "명보";
+
+/** 빈 상태 자기소개 — 누구이고 어떻게 답하는지. 소요 시간은 헤더가 이미 말한다. */
+const INTRO =
+  "안녕하세요, 운영부 상황실 명보입니다. 업무 지식망 문서와 운영 데이터를 직접 찾아 근거와 함께 답합니다. 모르면 모른다고 하고, 대신 실행할 일은 먼저 확인받습니다.";
 
 /** OPS Console 시스템 로고를 아바타로 사용 — ChromeBrand의 '>_' 모티프 차용. */
 function AssistantAvatar({
@@ -505,11 +514,11 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
         <AssistantAvatar size="sm" fontSize="text-base" />
         <div className="min-w-0">
           <p className="text-sm font-medium text-ink">{ASSISTANT_NAME}</p>
-          <p className="text-xs text-muted">
-            업무 지식망과 운영 데이터에서 찾아 답합니다.
-          </p>
+          <p className="text-xs text-muted">운영부 상황실 · 조율</p>
         </div>
       </div>
+      <p className="text-xs leading-relaxed text-ink">{INTRO}</p>
+      <p className="text-xs text-muted">이런 일을 시켜보세요</p>
       {/* 예시도 목록 항목형 — 상자 대신 호버(hover:bg-line-soft)로 누를 수 있음을 알린다 */}
       <ul className="-mx-1.5">
         {EXAMPLES.map((ex) => (
