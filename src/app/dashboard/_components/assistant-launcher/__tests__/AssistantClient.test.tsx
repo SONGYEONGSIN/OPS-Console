@@ -417,3 +417,25 @@ describe("AssistantClient — 첨부 칩 상태 표시", () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * 페르소나 — 어시스턴트는 agent-org 조직도의 '조율' 자리이고 이름이 명보다.
+ * 그 이름이 조직도 화면에만 있고 정작 대화 창구에는 없었다.
+ */
+describe("AssistantClient — 명보 페르소나", () => {
+  it("발화자 이름이 '명보'다", () => {
+    render(<AssistantClient />);
+    expect(screen.getAllByText("명보").length).toBeGreaterThan(0);
+  });
+
+  it("빈 상태에서 자기가 뭘 하는지 소개한다", () => {
+    render(<AssistantClient />);
+    expect(screen.getByText(/지식망/)).toBeInTheDocument();
+    expect(screen.getByText(/근거/)).toBeInTheDocument();
+  });
+
+  it("예시 앞에 시켜보라는 안내가 붙는다", () => {
+    render(<AssistantClient />);
+    expect(screen.getByText(/이런 일을 시켜보세요/)).toBeInTheDocument();
+  });
+});

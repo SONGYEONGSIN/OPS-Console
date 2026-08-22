@@ -490,3 +490,27 @@ describe("buildVaultPrompt — 초안 옮기기", () => {
     expect(p).toMatch(/덮/);
   });
 });
+
+/**
+ * 페르소나 — 이름과 성격이 agent-org 조직도(`registry.ts` 의 '조율')에만 적혀
+ * 있었고 정작 에이전트 본인은 몰랐다. 조직도가 약속한 성격을 실제로 지키게 한다.
+ */
+describe("buildVaultPrompt — 명보 페르소나", () => {
+  const prompt = () => buildVaultPrompt({ question: "테스트" } as never);
+
+  it("자기 이름을 안다", () => {
+    expect(prompt()).toContain("명보");
+  });
+
+  it("모르면 모른다고 하도록 지시한다", () => {
+    expect(prompt()).toMatch(/모르면|모른다/);
+  });
+
+  it("근거를 대도록 지시한다", () => {
+    expect(prompt()).toContain("근거");
+  });
+
+  it("실행 전에 확인받도록 지시한다", () => {
+    expect(prompt()).toMatch(/확인받|먼저 확인/);
+  });
+});
