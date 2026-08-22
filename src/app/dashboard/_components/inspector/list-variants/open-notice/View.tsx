@@ -47,16 +47,6 @@ export function OpenNoticeView({ row }: ViewProps) {
   // 서버가 판정한 값을 쓴다 — 렌더 중 Date.now() 는 리렌더마다 값이 흔들린다.
   const openPassed = row.openNoticeOpenPassed === true;
 
-  const defaults = buildDefaultOpenNoticeText({
-    operatorName: sender?.name ?? "",
-    universityName: row.universityName ?? "",
-    serviceName: row.serviceName ?? row.name,
-    serviceId: row.serviceIdNum ?? 0,
-    admissionType: row.applicationType,
-    writeStartAt: row.writeStartAt,
-    writeEndAt: row.writeEndAt,
-  });
-
   const [enableState, enableAction, enablePending] = useActionState<
     OpenNoticeActionState,
     FormData
@@ -68,6 +58,19 @@ export function OpenNoticeView({ row }: ViewProps) {
 
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState<Recipient[]>([]);
+  /** 경쟁률을 공개하지 않는 서비스가 적지 않아 기본은 꺼둔다 */
+  const [includeRatio, setIncludeRatio] = useState(false);
+
+  const defaults = buildDefaultOpenNoticeText({
+    operatorName: sender?.name ?? "",
+    universityName: row.universityName ?? "",
+    serviceName: row.serviceName ?? row.name,
+    serviceId: row.serviceIdNum ?? 0,
+    admissionType: row.applicationType,
+    writeStartAt: row.writeStartAt,
+    writeEndAt: row.writeEndAt,
+    includeRatio,
+  });
 
   const toRecipient = recipients.find((r) => r.email === toEmail);
   const state = enableState ?? disableState;
@@ -299,9 +302,23 @@ export function OpenNoticeView({ row }: ViewProps) {
         />
       </label>
 
+      <label className="flex items-center gap-2 text-xs text-ink">
+        <input
+          type="checkbox"
+          checked={includeRatio}
+          onChange={(e) => setIncludeRatio(e.target.checked)}
+          className="accent-vermilion"
+        />
+        경쟁률 공개 안내 포함
+        <span className="text-muted">— 켜면 본문이 다시 만들어집니다</span>
+      </label>
+
       <label className="block text-xs">
         <span className="mb-1 block text-muted">본문</span>
         <textarea
+          // 체크박스를 바꾸면 본문을 다시 만든다. 편집 중이던 내용은 사라지므로
+          // 체크박스를 본문 위에 둬서 '정하고 나서 고친다' 순서가 되게 했다.
+          key={includeRatio ? "with-ratio" : "no-ratio"}
           name="body"
           rows={20}
           defaultValue={defaults.body}

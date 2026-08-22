@@ -19,7 +19,11 @@ const RATIO_BASE = "https://addon.jinhakapply.com/RatioV1/RatioH";
  */
 const RATIO_SEQ = 1;
 
-const DIVIDER = "────────────────────────────────";
+/**
+ * 구분선. 짧게 둔다 — 32자였을 때 모바일 메일에서 화면 폭을 넘어 두 줄로
+ * 갈라졌다(긴 줄 + 짧은 꼬리). ■ 제목이 이미 구분 역할을 해서 선은 보조다.
+ */
+const DIVIDER = "────────────────";
 
 type PartMap = Record<string, string>;
 
@@ -93,6 +97,13 @@ export type OpenNoticeTemplateArgs = {
   admissionType: string | null | undefined;
   writeStartAt: string | null | undefined;
   writeEndAt: string | null | undefined;
+  /**
+   * 경쟁률 공개 줄을 넣을지. **기본 false.**
+   *
+   * 경쟁률을 공개하지 않는 서비스가 적지 않다(대학원·외국인·편입 등). 기본으로
+   * 넣으면 그 대학 담당자에게 404 링크를 보내게 된다. 운영자가 필요할 때 켠다.
+   */
+  includeRatio?: boolean;
 };
 
 /** 오픈안내 평문 기본값 (제목 + 본문). 운영자가 검토·편집 후 발송. */
@@ -108,6 +119,7 @@ export function buildDefaultOpenNoticeText(args: OpenNoticeTemplateArgs): {
     admissionType,
     writeStartAt,
     writeEndAt,
+    includeRatio = false,
   } = args;
 
   const subject = `[진학어플라이] ${universityName} ${serviceName} 인터넷 원서접수 오픈 안내`;
@@ -130,9 +142,11 @@ export function buildDefaultOpenNoticeText(args: OpenNoticeTemplateArgs): {
     "■ 접수기간 중 운영 안내",
     DIVIDER,
     `· 접수관리자  : ${ADMIN_URL}`,
-    "   └ 접수현황·경쟁률 실시간 조회",
-    `· 경쟁률 공개 : ${ratioUrl(serviceId)}`,
-    "   └ 지원자 경쟁률 실시간 조회",
+    // 경쟁률을 안 쓰는 서비스면 관리자 화면 설명에도 그 단어가 없어야 한다.
+    includeRatio ? "   └ 접수현황·경쟁률 실시간 조회" : "   └ 접수현황 실시간 조회",
+    ...(includeRatio
+      ? [`· 경쟁률 공개 : ${ratioUrl(serviceId)}`, "   └ 지원자 경쟁률 실시간 조회"]
+      : []),
     `· 지원자 문의 : 진학어플라이 고객센터 ${CALL_CENTER}`,
     "   └ 평일 09:00~18:00 (마감일 ~22:00 연장 운영)",
     "",

@@ -124,10 +124,10 @@ E2E 운영 메모:
 
 - **모집구분은 `service_name` 그대로** — 실데이터가 이미 "2027학년도 수시모집" 형태의 완성된 문장이라 가공하지 않는다. `category`(수시/정시…)나 `admission_type`(반응형원서/공통원서/일반접수)은 모집구분이 아니다
 - **접수주소**: 공통원서 → `apply.jinhakapply.com`, 그 외 → `enter.jinhakapply.com`. `entertest/target-url.ts`가 테스트 시스템에서 하는 분기와 같은 규칙이지만 **합치지 않는다** — 테스트 호스트가 바뀌어도 대학에 나가는 메일은 그대로여야 한다
-- **경쟁률**: `addon.jinhakapply.com/RatioV1/RatioH/Ratio{서비스ID}1.html`, 차수 1 고정. `closing_services`에 차수 컬럼이 없어 2차수는 운영자가 본문을 고친다
+- **경쟁률**: **기본으로 안 넣는다** — 목록 295건 중 59건(대학원·외국인·편입 등)이 경쟁률을 공개하지 않아, 기본으로 넣으면 그 대학 담당자에게 404 링크를 보내게 된다. 인스펙터 체크박스로 켠다. 끄면 경쟁률 줄과 함께 접수관리자 설명의 '경쟁률' 표현도 빠진다. URL은 `addon.jinhakapply.com/RatioV1/RatioH/Ratio{서비스ID}1.html`, 차수 1 고정(`closing_services`에 차수 컬럼이 없어 2차수는 운영자가 본문을 고친다)
 - **접수기간**: `write_start_at ~ write_end_at`. **종료 연도는 시작과 같은 해일 때만 생략한다** — 실데이터에 종료가 1년 뒤로 적힌 건이 7개 있어(건국대·경상국립대 등), 늘 생략하면 `2026.09.07 ~ 09.11`로 멀쩡해 보이고 1년 틀린 기간이 발송된다
 
-**본문 HTML은 `open-notices/mail-html.ts`가 만든다. `buildReplyHtml`을 쓰면 안 된다** — 그쪽은 `\n`→`<br>`만 하는데 HTML은 연속 공백을 1칸으로 접어서, 콜론을 세로로 맞춘 초안의 정렬이 무너진다. 에디터에서는 완벽하고 받은 편지함에서만 깨진다. 선두 공백과 2칸 이상 런만 `&nbsp;`로 바꾸고(단일 공백은 줄바꿈을 위해 남긴다), URL은 앵커로 감싼다. `white-space: pre-wrap`은 Outlook이 무시해서 쓰지 않는다.
+**본문 HTML은 `open-notices/mail-html.ts`가 만든다. `buildReplyHtml`을 쓰면 안 된다** — 그쪽은 `\n`→`<br>`만 하는데 HTML은 연속 공백을 1칸으로 접어서, 콜론을 세로로 맞춘 초안의 정렬이 무너진다. 에디터에서는 완벽하고 받은 편지함에서만 깨진다. 선두 공백과 2칸 이상 런만 `&nbsp;`로 바꾸고(단일 공백은 줄바꿈을 위해 남긴다), URL은 앵커로 감싼다. `white-space: pre-wrap`은 Outlook이 무시해서 쓰지 않는다. **구분선은 16자로 짧게 둔다** — 32자였을 때 모바일 메일에서 화면 폭을 넘어 두 줄로 갈라졌다.
 
 **설정은 본인 담당 건만**(admin은 전체). 탭이라 `requireMenu("dev-test")` 하나가 세 탭을 다 가드해서, 안 막으면 개발·테스트 권한자 전원이 남의 담당 대학에 메일을 걸 수 있다. 판정은 `closing_services.operator_name` vs `operators.name`이고 **서버 action이 폼을 믿지 않고 DB에서 다시 읽는다**(오픈 시각도 마찬가지). 목록은 전건 보이고 설정만 막는다.
 
