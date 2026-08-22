@@ -71,3 +71,26 @@ describe("서비스 목록 메뉴 카운트", () => {
     expect(closing.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+/**
+ * 개발·테스트도 `closing_services` 를 본다. 다만 마감여부로 안 가른다 —
+ * 테스트는 마감 전에도 마감 후에도 돌린다.
+ */
+describe("개발·테스트 카운트", () => {
+  beforeEach(() => {
+    calls.length = 0;
+  });
+
+  it("숫자가 있다 — 사이드바에서 혼자 비어 있었다", async () => {
+    const counts = await getMenuCounts("me@x.com");
+    expect([...counts.keys()]).toContain("dev-test");
+  });
+
+  it("마감여부로 안 자른다 — 테스트는 마감 전후 모두 돌린다", async () => {
+    await getMenuCounts("me@x.com");
+    const devTest = calls.filter(
+      (c) => c.table === "closing_services" && c.filters.length === 0,
+    );
+    expect(devTest.length).toBeGreaterThan(0);
+  });
+});
