@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { OpenNoticeView } from "../View";
 import type { ListRow } from "../../../../patterns/ListPattern";
 
@@ -98,6 +98,34 @@ describe("OpenNoticeView — 자동 발송 토글", () => {
     const { container } = render(<OpenNoticeView row={row()} />);
     const el = container.querySelector('input[name="serviceId"]') as HTMLInputElement;
     expect(el.value).toBe("1130058");
+  });
+});
+
+describe("OpenNoticeView — 경쟁률 선택", () => {
+  it("기본은 체크 해제 — 본문에 경쟁률 줄이 없다", () => {
+    render(<OpenNoticeView row={row()} />);
+    const cb = screen.getByLabelText(/경쟁률 공개 안내 포함/) as HTMLInputElement;
+    expect(cb.checked).toBe(false);
+    const body = screen.getByPlaceholderText("안내 내용을 입력하세요") as HTMLTextAreaElement;
+    expect(body.value).not.toContain("addon.jinhakapply.com");
+  });
+
+  it("체크하면 본문에 경쟁률 줄이 들어간다", () => {
+    render(<OpenNoticeView row={row()} />);
+    fireEvent.click(screen.getByLabelText(/경쟁률 공개 안내 포함/));
+    const body = screen.getByPlaceholderText("안내 내용을 입력하세요") as HTMLTextAreaElement;
+    expect(body.value).toContain(
+      "https://addon.jinhakapply.com/RatioV1/RatioH/Ratio11300581.html",
+    );
+  });
+
+  it("다시 해제하면 경쟁률 줄이 빠진다", () => {
+    render(<OpenNoticeView row={row()} />);
+    const cb = screen.getByLabelText(/경쟁률 공개 안내 포함/);
+    fireEvent.click(cb);
+    fireEvent.click(cb);
+    const body = screen.getByPlaceholderText("안내 내용을 입력하세요") as HTMLTextAreaElement;
+    expect(body.value).not.toContain("addon.jinhakapply.com");
   });
 });
 

@@ -103,15 +103,57 @@ describe("buildDefaultOpenNoticeText", () => {
     );
   });
 
-  it("본문에 운영 안내 세 칸이 들어간다", () => {
+  it("본문에 운영 안내가 들어간다", () => {
     const { body } = buildDefaultOpenNoticeText(args);
     expect(body).toContain("■ 접수기간 중 운영 안내");
     expect(body).toContain("· 접수관리자  : https://nadmin.jinhakapply.com/Login.aspx");
+    expect(body).toContain("· 지원자 문의 : 진학어플라이 고객센터 1544-7715");
+    expect(body).toContain("평일 09:00~18:00");
+  });
+
+  it("경쟁률이 꺼지면 접수관리자 설명에서도 '경쟁률' 이 빠진다", () => {
+    // 경쟁률을 안 쓰는 서비스면 관리자 화면 설명에도 그 단어가 없어야 한다.
+    const { body } = buildDefaultOpenNoticeText(args);
+    expect(body).toContain("   └ 접수현황 실시간 조회");
+    expect(body).not.toContain("경쟁률");
+  });
+
+  it("경쟁률이 켜지면 접수관리자 설명에 '경쟁률' 이 돌아온다", () => {
+    const { body } = buildDefaultOpenNoticeText({ ...args, includeRatio: true });
+    expect(body).toContain("   └ 접수현황·경쟁률 실시간 조회");
+  });
+
+  it("경쟁률 줄은 기본으로 빠진다", () => {
+    // 경쟁률을 공개하지 않는 서비스가 295건 중 59건이다. 기본으로 넣으면
+    // 그 대학 담당자에게 404 링크를 보내게 된다.
+    const { body } = buildDefaultOpenNoticeText(args);
+    expect(body).not.toContain("경쟁률 공개");
+    expect(body).not.toContain("addon.jinhakapply.com");
+    expect(body).not.toContain("지원자 경쟁률 실시간 조회");
+  });
+
+  it("includeRatio 를 켜면 경쟁률 줄이 들어간다", () => {
+    const { body } = buildDefaultOpenNoticeText({ ...args, includeRatio: true });
     expect(body).toContain(
       "· 경쟁률 공개 : https://addon.jinhakapply.com/RatioV1/RatioH/Ratio11300581.html",
     );
-    expect(body).toContain("· 지원자 문의 : 진학어플라이 고객센터 1544-7715");
-    expect(body).toContain("평일 09:00~18:00");
+    expect(body).toContain("지원자 경쟁률 실시간 조회");
+  });
+
+  it("경쟁률을 빼도 나머지 줄 순서는 그대로다", () => {
+    const { body } = buildDefaultOpenNoticeText(args);
+    const admin = body.indexOf("· 접수관리자");
+    const ask = body.indexOf("· 지원자 문의");
+    expect(admin).toBeGreaterThan(-1);
+    expect(ask).toBeGreaterThan(admin);
+  });
+
+  it("구분선은 좁은 화면에서 안 접히게 짧다", () => {
+    // 32자였을 때 모바일 메일에서 두 줄로 갈라졌다.
+    const { body } = buildDefaultOpenNoticeText(args);
+    const divider = body.split("\n").find((l) => l.startsWith("─"));
+    expect(divider).toBeDefined();
+    expect(divider!.length).toBeLessThanOrEqual(20);
   });
 
   it("모집구분은 service_name 을 가공 없이 쓴다", () => {
