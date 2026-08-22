@@ -21,6 +21,7 @@ import DevTestPage from "../page";
 import { ListPattern } from "../../_components/patterns/ListPattern";
 import { DevControlSection } from "../DevControlSection";
 import { OpenNoticeSection } from "../OpenNoticeSection";
+import { PageHeader } from "../../_components/page-header/PageHeader";
 
 type Node = { type?: unknown; props?: { children?: unknown } };
 
@@ -118,5 +119,29 @@ describe("DevTestPage — 탭별 섹션 분기", () => {
     expect(props.myName).toBe("송영신");
     expect(props.isAdmin).toBe(false);
     expect(props.services).toBeUndefined();
+  });
+});
+
+/**
+ * 헤더 건수는 탭이 둘일 때부터 이미 틀렸다 — resolvePageMeta 에 넘기던 total 이
+ * '테스트 탭에서 필터된 건수'라 개발 탭에서도 그 숫자가 떴다. 탭이 셋이 되며
+ * 3분의 2에서 틀리게 됐다.
+ *
+ * 본문 건수는 ScopeChips 가 '전체 (N)' 으로 이미 보여주므로 헤더는 중복이다.
+ * 헤더에서 빼서 역할을 가른다 — 헤더는 메뉴, 칩은 현재 필터.
+ */
+describe("DevTestPage — 헤더 건수", () => {
+  async function headerMeta(tab?: string) {
+    const tree = await DevTestPage({
+      searchParams: Promise.resolve(tab ? { tab } : {}),
+    });
+    const el = findByType(tree, PageHeader);
+    if (!el) throw new Error("PageHeader 를 찾지 못했습니다.");
+    return ((el.props ?? {}) as { meta?: { label: string }[] }).meta ?? [];
+  }
+
+  it("헤더에 '건' 항목을 넣지 않는다 (ScopeChips 가 맡는다)", async () => {
+    const meta = await headerMeta("test");
+    expect(meta.some((m) => m.label?.endsWith("건"))).toBe(false);
   });
 });

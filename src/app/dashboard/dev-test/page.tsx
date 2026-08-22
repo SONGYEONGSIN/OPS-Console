@@ -114,7 +114,10 @@ export default async function DevTestPage({
     entertestAccount: myAccount,
   }));
 
-  const config = resolvePageMeta(slug, meta, total);
+  // 건수를 넘기지 않는다 — total 은 '테스트 탭에서 필터된 수'라 탭이 셋인 지금
+  // 3분의 2에서 틀린다. 본문 건수는 ScopeChips 가 '전체 (N)' 으로 이미 보여주므로
+  // 헤더는 메뉴, 칩은 현재 필터로 역할을 가른다.
+  const config = resolvePageMeta(slug, meta);
 
   return (
     <>
