@@ -123,6 +123,9 @@ export async function getMenuCounts(
         .select("*", head)
         .gte("pay_end_at", new Date().toISOString()),
     ),
+    // 개발·테스트도 같은 표를 보되 마감여부로 안 가른다 — 테스트는 마감 전에도
+    // 후에도 돌린다(`listTestableServices` 가 전건을 읽는다).
+    countOf("dev-test", supabase.from("closing_services").select("*", head)),
     // 전형료 정산은 서비스마감과 같은 범위(결제 끝난 것)를 본다.
     countOf(
       "settlement",
