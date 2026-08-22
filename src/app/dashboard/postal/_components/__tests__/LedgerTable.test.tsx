@@ -276,12 +276,17 @@ describe("LedgerTable — 다듬기", () => {
  * 안 쓰고 손으로 짜서 그 값이 빠져 있었고, 그래서 붙어 보였다(2026-08-20).
  */
 describe("LedgerTable — 간격", () => {
-  it("제목 위아래 간격이 표준값이다", () => {
+  it("검색과 제목 사이가 표준 28px이다 — 부모 gap-3 + mt-4", () => {
     render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
     const header = screen.getByRole("heading", { name: "발송목록" })
       .parentElement?.parentElement;
     // 숫자를 단언한다 — 눈으로만 맞추면 다음에 또 어긋난다.
-    expect(header?.className).toMatch(/mt-7/);
+    //
+    // mt-7(28px)이 아니다: 부모가 `flex flex-col gap-3` 이라 12px 이 이미 붙어
+    // mt-7 이면 40px 이 된다. 표준은 ListPattern 의 `section p-7` = 28px 이므로
+    // 12 + 16(mt-4) 으로 맞춘다.
+    expect(header?.parentElement?.className).toMatch(/gap-3/);
+    expect(header?.className).toMatch(/mt-4/);
     expect(header?.className).toMatch(/mb-4/);
   });
 });

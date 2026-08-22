@@ -82,11 +82,14 @@ export function LedgerTable({
       />
 
       {/*
-        검색과 제목 사이 간격은 ListPattern 표준을 따른다 — 그쪽은 controlsRow 다음에
-        `section p-7` 이 오고 제목이 `mb-4` 를 쓴다. 이 탭은 ListPattern 을 안 쓰고
-        손으로 짜서 그 값이 빠져 있었고, 그래서 붙어 보였다(2026-08-20).
+        검색과 제목 사이 간격은 ListPattern 표준(28px)을 따른다 — 그쪽은 controlsRow
+        다음에 `section p-7` 이 온다.
+
+        여기서 `mt-7`(28px)이 아니라 `mt-4`(16px)인 이유: 부모가 `flex flex-col gap-3`
+        이라 12px 이 이미 붙는다. 둘을 더해 28px 이다. mt-7 로 두면 40px 이 돼
+        표준보다 넓었다(2026-08-22).
       */}
-      <header className="mb-4 mt-7 flex flex-wrap items-end justify-between gap-3">
+      <header className="mb-4 mt-4 flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-baseline gap-2">
           <h3 className="text-xl font-bold text-ink">발송목록</h3>
           <span className="text-muted" aria-hidden>
