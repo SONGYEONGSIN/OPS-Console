@@ -103,7 +103,34 @@ export async function getMenuCounts(
       supabase.from("onboarding_cohorts").select("*", head),
     ),
     countOf("services", supabase.from("services").select("*", head)),
-    countOf("closing", supabase.from("closing_services").select("*", head)),
+    // 사이드바 숫자는 그 메뉴를 눌렀을 때 나오는 건수여야 한다. 서비스마감을
+    // '마감된 것'으로, 배포·운영을 '진행중'으로 가른 뒤(#1076)에도 여기서는
+    // 전체(867)를 세고 있어 눌러보면 572 라 숫자가 거짓말을 했다.
+    //
+    // 기준은 `listClosing` 과 같은 결제마감(pay_end_at)이다 — 다른 걸 쓰면
+    // 또 갈린다.
+    countOf(
+      "closing",
+      supabase
+        .from("closing_services")
+        .select("*", head)
+        .lt("pay_end_at", new Date().toISOString()),
+    ),
+    countOf(
+      "deploy",
+      supabase
+        .from("closing_services")
+        .select("*", head)
+        .gte("pay_end_at", new Date().toISOString()),
+    ),
+    // 전형료 정산은 서비스마감과 같은 범위(결제 끝난 것)를 본다.
+    countOf(
+      "settlement",
+      supabase
+        .from("closing_services")
+        .select("*", head)
+        .lt("pay_end_at", new Date().toISOString()),
+    ),
     countOf("contacts", supabase.from("contacts").select("*", head)),
     countOf("backup", supabase.from("backup_requests").select("*", head)),
     countOf("incidents", supabase.from("incidents").select("*", head)),
