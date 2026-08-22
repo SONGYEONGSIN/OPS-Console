@@ -68,18 +68,23 @@ export default async function SettlementPage({
       />
       <div className="p-5 lg:p-7">
         <section>
+          {/* 칩은 제목 바로 옆이다 — ListPattern 표준(제목·건수·칩이 한 묶음).
+              justify-between 로 밀어내면 화면 반대편으로 가 무엇의 필터인지
+              읽히지 않는다. */}
           <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-            <div className="flex items-baseline gap-2">
-              <h3 className="text-xl font-bold text-ink">전형료 정산</h3>
-              <span className="text-muted" aria-hidden>
-                ·
-              </span>
-              <span className="text-sm text-vermilion">{total}건</span>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-xl font-bold text-ink">전형료 정산</h3>
+                <span className="text-muted" aria-hidden>
+                  ·
+                </span>
+                <span className="text-sm text-vermilion">{total}건</span>
+              </div>
+              <ClosingStatusChips
+                counts={{ all: allCount, mine: mineCount }}
+                scope="settlement"
+              />
             </div>
-            <ClosingStatusChips
-              counts={{ all: allCount, mine: mineCount }}
-              scope="settlement"
-            />
           </header>
           <SettlementTable rows={rows} />
           <div className="mt-4">
