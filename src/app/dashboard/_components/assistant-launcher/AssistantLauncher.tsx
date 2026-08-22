@@ -34,7 +34,7 @@ export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
       >
         {/* InspectorChrome은 ListRow(id·상태 뱃지)를 요구해 채팅에 맞지 않는다.
             가짜 row를 지어내지 않고 헤더 관례(eyebrow + 굵은 구분선)만 따른다. */}
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b-2 border-ink px-5 pb-4 pt-5">
+        <header className="shrink-0 border-b-2 border-ink px-5 pb-4 pt-5">
           <div>
             <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
               어시스턴트 · 사내 데이터 질의
@@ -43,16 +43,6 @@ export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
               무엇을 찾으시나요
             </h3>
           </div>
-          {/* 닫기는 헤더 우측 boxed × — ModalShell과 같은 자리·같은 모양.
-              전에는 런처가 닫기를 겸했는데, 그게 컴포저 위에 떠서 입력창을 덮었다. */}
-          <button
-            type="button"
-            aria-label="닫기"
-            onClick={close}
-            className="inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center border border-line bg-paper text-2xl leading-none text-ink-soft transition-colors hover:border-vermilion hover:text-vermilion"
-          >
-            ×
-          </button>
         </header>
         <div className="min-h-0 flex-1">
           <AssistantClient userName={userName} />
@@ -70,7 +60,8 @@ export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
         onClick={() => setOpen((v) => !v)}
         // 상태바가 bottom-[27px]까지 차지한다 — 그 위로 확실히 띄운다.
         // 열려 있으면 감춘다 — 이 자리가 패널 컴포저(입력창·전송) 위라 글자를 덮는다.
-        // 닫기는 헤더 ×가 맡는다.
+        // 닫기 버튼은 없앴다 — ESC·바깥 클릭으로 닫고, 그 방법은 컴포저
+        // placeholder 가 알려준다.
         className={`fixed bottom-14 right-6 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-ink text-cream shadow-offset transition-all hover:bg-vermilion ${
           open
             ? "pointer-events-none opacity-0"

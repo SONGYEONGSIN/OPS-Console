@@ -102,21 +102,19 @@ describe("AssistantLauncher", () => {
 });
 
 describe("AssistantLauncher — 닫기", () => {
-  it("열리면 헤더에 닫기 버튼이 생긴다 — 표준 인스펙터/모달과 같은 자리", () => {
+  it("헤더에 닫기 버튼을 두지 않는다 — 화면을 비운다", () => {
     render(<AssistantLauncher me={operator("member")} />);
-    expect(screen.queryByRole("button", { name: "닫기" })).toBeNull();
-
     clickLauncher(screen.getByRole("button", { name: "어시스턴트" }));
-    expect(screen.getByRole("button", { name: "닫기" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "닫기" })).toBeNull();
   });
 
-  it("닫기 버튼으로 패널이 닫힌다", () => {
+  it("ESC 로 패널이 닫힌다", () => {
     render(<AssistantLauncher me={operator("member")} />);
     const launcher = screen.getByRole("button", { name: "어시스턴트" });
     clickLauncher(launcher);
     expect(launcher).toHaveAttribute("aria-expanded", "true");
 
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(
       screen.getByRole("button", { name: "어시스턴트" }),
     ).toHaveAttribute("aria-expanded", "false");
@@ -136,7 +134,7 @@ describe("AssistantLauncher — 닫기", () => {
   it("닫으면 런처가 다시 보인다", () => {
     render(<AssistantLauncher me={operator("member")} />);
     clickLauncher(screen.getByRole("button", { name: "어시스턴트" }));
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    fireEvent.keyDown(document, { key: "Escape" });
     expect(
       screen.getByRole("button", { name: "어시스턴트" }).className,
     ).not.toContain("opacity-0");

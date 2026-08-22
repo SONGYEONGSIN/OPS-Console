@@ -67,18 +67,39 @@ function formatTimeKst(iso: string): string {
  * 명보다(`features/agent-org/registry.ts`). 그 이름이 조직도 화면에만 있고
  * 정작 말을 거는 자리에는 없어서, 동료가 아니라 기능처럼 읽혔다.
  */
-const ASSISTANT_NAME = "명보";
+const ASSISTANT_NAME = "명보 인턴";
+
+/**
+ * 시운전 표 — 무엇을 물으면 어디서 찾는지.
+ *
+ * 지어낸 샘플이 아니다. `features/assistant/search.ts` 가 실제로 조회하는 7개
+ * 테이블(knowledge_docs·incidents·handover_records·ai_tips·backup_requests·
+ * contacts·services)을 그대로 옮겼다. 그래야 "이런 것도 되나"를 묻지 않고 바로
+ * 시킬 수 있다. **도메인이 늘면 여기도 늘려야 한다** — 할 수 있는 걸 덜
+ * 보여주면 안 쓰인다.
+ *
+ * 2열인 이유는 패널이 460px 이라서다 — 3열은 글자가 접힌다.
+ */
+const CAPABILITIES: ReadonlyArray<[string, string]> = [
+  ["절차·규칙", "업무 지식망 문서"],
+  ["인수인계 내용", "인수인계 기록"],
+  ["사고 이력", "사고 기록"],
+  ["AI 활용법", "AI TIP 기록"],
+  ["백업 요청 현황", "백업요청 기록"],
+  ["대학 담당자", "대학 연락처"],
+  ["서비스 일정", "원서접수 서비스"],
+];
 
 /** 빈 상태 자기소개 — 누구이고 어떻게 답하는지. 소요 시간은 헤더가 이미 말한다. */
 const INTRO =
-  "안녕하세요, 운영부 상황실 명보입니다. 절차·규칙은 업무 지식망 문서에서, 일정·연락처·서비스 현황은 운영 데이터에서 직접 찾아옵니다. 결론을 먼저 말하고 어느 문서에서 나왔는지 뒤에 붙입니다. 모르면 모른다고 하고, 대신 실행할 일은 무엇을 어디에 하는지 말한 뒤 확인받고 합니다.";
+  "안녕하세요, 운영부 상황실 명보 인턴입니다. 절차·규칙은 업무 지식망 문서에서, 일정·연락처·서비스 현황은 운영 데이터에서 직접 찾아옵니다. 결론을 먼저 말하고 어느 문서에서 나왔는지 뒤에 붙입니다. 모르면 모른다고 하고, 대신 실행할 일은 무엇을 어디에 하는지 말한 뒤 확인받고 합니다.";
 
 /** OPS Console 시스템 로고를 아바타로 사용 — ChromeBrand의 '>_' 모티프 차용. */
 /** 빈 상태용 큰 얼굴. 배경 상자 없이 스프라이트만 둔다. */
 function AssistantAvatar({ kicking }: { kicking?: boolean }) {
   return (
     <span aria-hidden className="flex h-11 w-11 flex-shrink-0 items-center justify-center text-ink">
-      <MyeongboSprite kicking={kicking} />
+      <MyeongboSprite kicking={kicking} variant="detail" />
     </span>
   );
 }
@@ -333,7 +354,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="무엇을 찾으시나요? Enter로 전송 · Shift+Enter 줄바꿈"
+          placeholder="무엇을 찾으시나요? Enter로 전송 · Shift+Enter 줄바꿈 · ESC 닫기"
           rows={2}
           disabled={pending}
           maxLength={500}
@@ -516,10 +537,37 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
         <AssistantAvatar />
         <div className="min-w-0">
           <p className="text-sm font-medium text-ink">{ASSISTANT_NAME}</p>
-          <p className="text-xs text-muted">운영부 상황실 · 조율</p>
+          <p className="text-xs text-muted">운영부 상황실</p>
         </div>
       </div>
       <p className="text-xs leading-relaxed text-ink">{INTRO}</p>
+
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-ink">
+          시운전 — 무엇을 물으면 어디서 찾는가
+        </p>
+        <table className="-mx-3 w-[calc(100%+1.5rem)] border-collapse text-xs">
+          <thead>
+            <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+              <th className="px-3 py-2">묻는 것</th>
+              <th className="px-3 py-2">찾는 곳</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CAPABILITIES.map(([ask, where]) => (
+              <tr key={ask} className="border-b border-line-soft">
+                <td className="px-3 py-1.5 text-ink">{ask}</td>
+                <td className="px-3 py-1.5 text-ink-soft">{where}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-1.5 text-2xs leading-relaxed text-muted">
+          ※ 여기에 없는 건 지어내지 않고, 어디를 봐야 할지·누구에게 물어야 할지를
+          알려드립니다.
+        </p>
+      </div>
+
       <p className="text-xs text-muted">이런 일을 시켜보세요</p>
       {/* 예시도 목록 항목형 — 상자 대신 호버(hover:bg-line-soft)로 누를 수 있음을 알린다 */}
       <ul className="-mx-1.5">
