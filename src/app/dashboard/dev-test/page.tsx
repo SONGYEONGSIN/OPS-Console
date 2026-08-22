@@ -16,6 +16,7 @@ import type { EntertestRun } from "@/features/entertest/schemas";
 import { DevTestControls } from "./DevTestControls";
 import { DevTestTabs } from "./DevTestTabs";
 import { DevControlSection } from "./DevControlSection";
+import { OpenNoticeSection } from "./OpenNoticeSection";
 
 const PAGE_SIZE = 30;
 
@@ -125,7 +126,20 @@ export default async function DevTestPage({
         autoRefresh
       />
       <DevTestTabs />
-      {sp.tab !== "test" ? (
+      {sp.tab === "open-notice" ? (
+        <OpenNoticeSection
+          services={services}
+          q={sp.q}
+          page={sp.page}
+          category={sp.category}
+          universityType={sp.universityType}
+          admissionType={sp.admissionType}
+          mine={sp.mine}
+          myName={myName}
+          meEmail={me?.email ?? null}
+          isAdmin={me?.permission === "admin"}
+        />
+      ) : sp.tab !== "test" ? (
         <DevControlSection
           q={sp.q}
           page={sp.page}
