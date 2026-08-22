@@ -41,8 +41,15 @@ async function handle(): Promise<Response> {
   let failed = 0;
   let dispatchedDry = 0;
   let updateFailed = 0;
-  // 주의: claim 후 update 전에 프로세스가 죽으면 행이 'sending'에 멈춘다(다음 claim은 'scheduled'만 잡음).
-  // v1은 수동 복구(SET status='scheduled' WHERE status='sending'). updateFailed로 관찰 가능.
+  // 주의: claim 후 update 전에 프로세스가 죽으면 행이 'sending'에 멈춘다
+  // (다음 claim은 'scheduled'만 잡음). **자동 복구를 넣지 않는다** — 갇히는 경로가
+  // 둘인데 구분이 안 된다: (a) 발송 전에 죽음 → 되돌리는 게 맞음, (b) 발송은
+  // 성공했는데 update만 실패 → 되돌리면 대학에 두 번 간다. 실측상 아직 0건이다.
+  //
+  // 실제로 갇히면(updateFailed 카운트가 단서) 발송 여부를 Graph 보낸편지함으로
+  // 확인한 뒤 사람이 되돌린다:
+  //   update data_request_sends set status='scheduled'
+  //   where status='sending' and scheduled_at < now() - interval '1 hour';
   for (const row of rows) {
     let patch: Record<string, unknown>;
     if (dryRun) {

@@ -1,5 +1,7 @@
 -- 서비스 마감(closing) — Moa 서비스조회 엑셀 스크래핑으로 적재되는 마감 서비스 스냅샷.
--- 인제스트 API(/api/closing/ingest)가 격주 배치로 전체 대체(delete-all + insert)한다.
+-- 인제스트 API(/api/closing/ingest)가 신규 건만 누적한다 — service_id 충돌은 무시.
+-- (2026-08-22 정정: 원래 'delete-all + insert' 로 적혀 있었으나 구현은 upsert
+--  ignoreDuplicates 다. 이 문구를 믿고 FK 설계를 잘못 세운 사례가 있었다.)
 
 begin;
 
