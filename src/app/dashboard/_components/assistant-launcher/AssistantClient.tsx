@@ -42,10 +42,10 @@ type ChatMessage = {
  * 운영자가 "지식망에 쓰면 여기서 답이 나온다"를 알게 된다.
  */
 const EXAMPLES = [
-  "경위서 어떻게 보내지?",
-  "공문 시행번호는 어떻게 매겨져?",
-  "다음주 휴가자 누가 있어?",
-  "한양대 연락처 알려줘",
+  "경위서 보내는 절차 정리해줘",
+  "공문 시행번호 매기는 규칙 알려줘",
+  "다음주 휴가자 뽑아줘",
+  "한양대 담당자 연락처 찾아줘",
 ];
 
 /** KST HH:mm 시간 포매팅 */
@@ -70,23 +70,61 @@ const ASSISTANT_NAME = "명보";
 
 /** 빈 상태 자기소개 — 누구이고 어떻게 답하는지. 소요 시간은 헤더가 이미 말한다. */
 const INTRO =
-  "안녕하세요, 운영부 상황실 명보입니다. 업무 지식망 문서와 운영 데이터를 직접 찾아 근거와 함께 답합니다. 모르면 모른다고 하고, 대신 실행할 일은 먼저 확인받습니다.";
+  "안녕하세요, 운영부 상황실 명보입니다. 절차·규칙은 업무 지식망 문서에서, 일정·연락처·서비스 현황은 운영 데이터에서 직접 찾아옵니다. 결론을 먼저 말하고 어느 문서에서 나왔는지 뒤에 붙입니다. 모르면 모른다고 하고, 대신 실행할 일은 무엇을 어디에 하는지 말한 뒤 확인받고 합니다.";
 
 /** OPS Console 시스템 로고를 아바타로 사용 — ChromeBrand의 '>_' 모티프 차용. */
-function AssistantAvatar({
-  size,
-  fontSize,
-}: {
-  size: "sm" | "lg";
-  fontSize: string;
-}) {
-  const dim = size === "sm" ? "h-11 w-11" : "h-20 w-20";
+/**
+ * 명보 스프라이트 — 8×8 픽셀 도안. 헤드셋 쓴 관제 요원이다(상황실에서 듣고
+ * 조율하는 자리라서).
+ *
+ * 전에는 `>_` 터미널 글리프였는데 그건 사이드바 브랜드와 같은 결이라
+ * 어시스턴트만의 얼굴이 아니었다. `1` 이 칠할 칸이다.
+ */
+const SPRITE = [
+  "00111100",
+  "01111110",
+  "11011011",
+  "11111111",
+  "10111101",
+  "00100100",
+  "01111110",
+  "11000011",
+] as const;
+
+/**
+ * 픽셀 도안을 SVG rect 로 그린다.
+ *
+ * 이미지 파일 대신 SVG 인 이유는 44px·80px 두 크기에서 다 또렷해야 하기
+ * 때문이다. 색은 `currentColor` 라 부모의 Tailwind 토큰을 그대로 따른다 —
+ * hex 를 박으면 디자인 규칙 위반이고 다크 대응도 끊긴다.
+ */
+function MyeongboSprite() {
+  return (
+    <svg
+      data-myeongbo-sprite
+      viewBox="0 0 8 8"
+      className="h-1/2 w-1/2"
+      fill="currentColor"
+      shapeRendering="crispEdges"
+    >
+      {SPRITE.flatMap((row, y) =>
+        [...row].map((cell, x) =>
+          cell === "1" ? (
+            <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" />
+          ) : null,
+        ),
+      )}
+    </svg>
+  );
+}
+
+function AssistantAvatar() {
   return (
     <span
       aria-hidden
-      className={`flex flex-shrink-0 items-center justify-center border border-line bg-chrome-graphite font-mono font-bold leading-none tracking-[-0.05em] text-chrome-snow ${dim} ${fontSize}`}
+      className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-line bg-chrome-graphite text-chrome-snow"
     >
-      &gt;_
+      <MyeongboSprite />
     </span>
   );
 }
@@ -511,7 +549,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   return (
     <div className="space-y-4 py-6">
       <div className="flex items-center gap-3">
-        <AssistantAvatar size="sm" fontSize="text-base" />
+        <AssistantAvatar />
         <div className="min-w-0">
           <p className="text-sm font-medium text-ink">{ASSISTANT_NAME}</p>
           <p className="text-xs text-muted">운영부 상황실 · 조율</p>

@@ -429,13 +429,54 @@ describe("AssistantClient — 명보 페르소나", () => {
   });
 
   it("빈 상태에서 자기가 뭘 하는지 소개한다", () => {
+    // 특정 낱말이 아니라 '출처를 밝히겠다'는 약속이 있는지를 본다.
     render(<AssistantClient />);
-    expect(screen.getByText(/지식망/)).toBeInTheDocument();
-    expect(screen.getByText(/근거/)).toBeInTheDocument();
+    expect(screen.getAllByText(/지식망/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/문서|근거|출처/).length).toBeGreaterThan(0);
+  });
+
+  it("예시는 묻는 말이 아니라 시키는 말이다", () => {
+    // "시켜보세요" 라고 해놓고 예시가 질문형이면 말과 화면이 어긋난다.
+    render(<AssistantClient />);
+    const asks = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+    const orders = asks.filter((t) => /줘\s*$/.test(t.trim()));
+    expect(orders.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("답하는 순서를 미리 밝힌다 — 결론 먼저, 근거는 뒤에", () => {
+    render(<AssistantClient />);
+    expect(screen.getAllByText(/결론/).length).toBeGreaterThan(0);
   });
 
   it("예시 앞에 시켜보라는 안내가 붙는다", () => {
     render(<AssistantClient />);
     expect(screen.getByText(/이런 일을 시켜보세요/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * 캐릭터 — `>_` 터미널 글리프는 사이드바 브랜드와 같은 결이라 어시스턴트만의
+ * 얼굴이 아니었다. 8비트 스프라이트로 명보에게 얼굴을 준다.
+ */
+describe("AssistantAvatar — 명보 스프라이트", () => {
+  it("픽셀 블록을 SVG 로 그린다 — 두 크기에서 또렷해야 한다", () => {
+    const { container } = render(<AssistantClient />);
+    const svg = container.querySelector("svg[data-myeongbo-sprite]");
+    expect(svg).not.toBeNull();
+    expect(svg!.querySelectorAll("rect").length).toBeGreaterThan(10);
+  });
+
+  it("색을 하드코딩하지 않는다 — currentColor 로 토큰을 따른다", () => {
+    const { container } = render(<AssistantClient />);
+    const svg = container.querySelector("svg[data-myeongbo-sprite]")!;
+    expect(svg.getAttribute("fill")).toBe("currentColor");
+    expect(svg.outerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+
+  it("장식이라 스크린리더에서 숨긴다", () => {
+    const { container } = render(<AssistantClient />);
+    const host = container.querySelector("svg[data-myeongbo-sprite]")!
+      .closest("[aria-hidden]");
+    expect(host).not.toBeNull();
   });
 });
