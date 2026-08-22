@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { applyPhase } from "@/features/closing/phase";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
 import { getMyDataRequestServices } from "@/features/data-requests/queries";
@@ -103,36 +104,24 @@ export async function getMenuCounts(
       supabase.from("onboarding_cohorts").select("*", head),
     ),
     countOf("services", supabase.from("services").select("*", head)),
-    // 사이드바 숫자는 그 메뉴를 눌렀을 때 나오는 건수여야 한다. 서비스마감을
-    // '마감된 것'으로, 배포·운영을 '진행중'으로 가른 뒤(#1076)에도 여기서는
-    // 전체(867)를 세고 있어 눌러보면 572 라 숫자가 거짓말을 했다.
-    //
-    // 기준은 `listClosing` 과 같은 결제마감(pay_end_at)이다 — 다른 걸 쓰면
-    // 또 갈린다.
+    // 사이드바 숫자는 그 메뉴를 눌렀을 때 나오는 건수여야 한다. 메뉴가 생애주기로
+    // 넷으로 갈렸으므로(개발테스트=시작 전 / 배포운영=접수 중 / 서비스마감·정산=마감)
+    // 여기서도 같은 규칙(`closing/phase.ts`)을 쓴다. 다른 걸 쓰면 또 갈린다.
     countOf(
-      "closing",
-      supabase
-        .from("closing_services")
-        .select("*", head)
-        .lt("pay_end_at", new Date().toISOString()),
+      "dev-test",
+      applyPhase(supabase.from("closing_services").select("*", head), "upcoming"),
     ),
     countOf(
       "deploy",
-      supabase
-        .from("closing_services")
-        .select("*", head)
-        .gte("pay_end_at", new Date().toISOString()),
+      applyPhase(supabase.from("closing_services").select("*", head), "running"),
     ),
-    // 개발·테스트도 같은 표를 보되 마감여부로 안 가른다 — 테스트는 마감 전에도
-    // 후에도 돌린다(`listTestableServices` 가 전건을 읽는다).
-    countOf("dev-test", supabase.from("closing_services").select("*", head)),
-    // 전형료 정산은 서비스마감과 같은 범위(결제 끝난 것)를 본다.
+    countOf(
+      "closing",
+      applyPhase(supabase.from("closing_services").select("*", head), "closed"),
+    ),
     countOf(
       "settlement",
-      supabase
-        .from("closing_services")
-        .select("*", head)
-        .lt("pay_end_at", new Date().toISOString()),
+      applyPhase(supabase.from("closing_services").select("*", head), "closed"),
     ),
     countOf("contacts", supabase.from("contacts").select("*", head)),
     countOf("backup", supabase.from("backup_requests").select("*", head)),

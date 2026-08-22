@@ -50,7 +50,7 @@ export async function ClosingScreen({
   const me = await getCurrentOperator();
 
   // 마감여부는 메뉴가 정한다 — 칩은 '전체/내 것'만 고른다(scope.ts).
-  const { closedStatus, operatorName } = resolveScopeFilter(
+  const { phase, operatorName } = resolveScopeFilter(
     scope,
     sp.status ?? "mine",
     me?.displayName,
@@ -79,7 +79,7 @@ export async function ClosingScreen({
       category: sp.category,
       universityType: sp.universityType,
       month: sp.month,
-      closedStatus,
+      phase,
       operatorName,
     }),
     listClosingCategories(),
@@ -87,12 +87,12 @@ export async function ClosingScreen({
     listClosingMonths(),
     // 카운트도 이 메뉴 범위 안에서 센다 — '전체 867'처럼 범위 밖 숫자가 뜨면
     // 눌렀을 때 그만큼 안 나와 화면이 거짓말한다.
-    listClosing({ ...countFilter, closedStatus, pageSize: 1 }).then(
+    listClosing({ ...countFilter, phase, pageSize: 1 }).then(
       (r) => r.total,
     ),
     listClosing({
       ...countFilter,
-      closedStatus,
+      phase,
       operatorName: me?.displayName ?? "",
       pageSize: 1,
     }).then((r) => r.total),

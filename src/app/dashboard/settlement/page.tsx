@@ -38,18 +38,18 @@ export default async function SettlementPage({
       page: sp.page ? Number(sp.page) : 1,
       pageSize: 30,
       search: sp.q,
-      closedStatus: "closed",
+      phase: "closed",
       operatorName: mine ? (me?.displayName ?? "") : undefined,
     }),
     fetchSettlementDeadlines(),
     // 카운트는 정산 범위(결제 끝난 것) 안에서 센다 — 범위 밖 숫자가 뜨면
     // 눌렀을 때 그만큼 안 나와 화면이 거짓말한다.
-    listClosing({ search: sp.q, closedStatus: "closed", pageSize: 1 }).then(
+    listClosing({ search: sp.q, phase: "closed", pageSize: 1 }).then(
       (r) => r.total,
     ),
     listClosing({
       search: sp.q,
-      closedStatus: "closed",
+      phase: "closed",
       operatorName: me?.displayName ?? "",
       pageSize: 1,
     }).then((r) => r.total),

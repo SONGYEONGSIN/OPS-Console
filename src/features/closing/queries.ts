@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { closingServicesRowSchema, type ClosingRow } from "./schemas";
+import { applyPhase, type ServicePhase } from "./phase";
 import { monthRange } from "./derive";
 
 export type ClosingFilter = {
@@ -8,8 +9,15 @@ export type ClosingFilter = {
   region?: string;
   category?: string;
   universityType?: string;
-  /** 마감여부 — closed: 작성마감 지남 / open: 마감 전 / all: 전체. 미지정 시 전체. */
+  /** 마감여부 — closed: 결제마감 지남 / open: 마감 전 / all: 전체. 미지정 시 전체. */
   closedStatus?: "closed" | "open" | "all";
+  /**
+   * 생애주기 단계 — upcoming(시작 전) / running(접수 중) / closed(마감).
+   *
+   * `closedStatus` 는 두 갈래뿐이라 '시작 전'과 '접수 중'을 못 가른다. 메뉴가
+   * 셋으로 갈린 뒤로는 이쪽을 쓴다(`phase.ts`). 둘 다 주면 phase 가 이긴다.
+   */
+  phase?: ServicePhase;
   /** '내 마감' 칩 — operator_name 일치(현재 운영자 이름)로 본인 담당만. */
   operatorName?: string;
   /** 월별 필터 "YYYY-MM" — 해당 월에 오픈(write_start_at) 또는 마감(write_end_at)한 건. */
@@ -51,8 +59,10 @@ export async function listClosing(
   if (filter.operatorName)
     query = query.eq("operator_name", filter.operatorName);
 
+  // 단계 — 메뉴가 맡은 구간. closedStatus 보다 먼저 본다.
+  if (filter.phase) query = applyPhase(query, filter.phase);
   // 마감여부 — 결제마감(pay_end_at) 기준 현재 시각 비교
-  if (filter.closedStatus === "closed")
+  else if (filter.closedStatus === "closed")
     query = query.lt("pay_end_at", new Date().toISOString());
   else if (filter.closedStatus === "open")
     query = query.gte("pay_end_at", new Date().toISOString());

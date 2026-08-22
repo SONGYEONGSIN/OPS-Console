@@ -1,3 +1,4 @@
+import { phaseOf } from "@/features/closing/phase";
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { entertestRunSchema, type EntertestRun } from "./schemas";
@@ -34,7 +35,12 @@ export type TestableService = {
   pay_end_at: string | null;
 };
 
-/** 테스트 대상 서비스 목록 — closing_services(서비스 마감 실데이터) 라이트 컬럼 전체. */
+/**
+ * 테스트 대상 서비스 목록 — **아직 접수 시작 전인 것만**.
+ *
+ * 테스트는 열기 전에 하는 일이다. 접수 중인 건 배포·운영, 끝난 건 서비스마감이
+ * 맡는다(`closing/phase.ts`). 전건을 보여주면 지금 손댈 것이 무엇인지 묻힌다.
+ */
 export async function listTestableServices(): Promise<TestableService[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -44,7 +50,9 @@ export async function listTestableServices(): Promise<TestableService[]> {
     )
     .order("write_end_at", { ascending: false, nullsFirst: false });
   if (error || !data) return [];
-  return data as TestableService[];
+  // 쿼리로 거르지 않고 여기서 거른다 — phaseOf 와 같은 규칙을 쓰려는 것이다.
+  // 규칙이 두 벌이 되면 화면과 사이드바 숫자가 갈린다.
+  return (data as TestableService[]).filter((r) => phaseOf(r) === "upcoming");
 }
 
 /**
