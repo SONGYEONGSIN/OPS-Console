@@ -546,18 +546,18 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
         <p className="mb-1.5 text-xs font-medium text-ink">
           시운전 — 무엇을 물으면 어디서 찾는가
         </p>
-        <table className="w-full border-collapse text-xs">
+        <table className="-mx-3 w-[calc(100%+1.5rem)] border-collapse text-xs">
           <thead>
-            <tr className="border-b border-line text-left text-2xs uppercase tracking-[0.06em] text-muted">
-              <th className="py-1 pr-3 font-normal">묻는 것</th>
-              <th className="py-1 font-normal">찾는 곳</th>
+            <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+              <th className="px-3 py-2">묻는 것</th>
+              <th className="px-3 py-2">찾는 곳</th>
             </tr>
           </thead>
           <tbody>
             {CAPABILITIES.map(([ask, where]) => (
               <tr key={ask} className="border-b border-line-soft">
-                <td className="py-1 pr-3 text-ink">{ask}</td>
-                <td className="py-1 text-ink-soft">{where}</td>
+                <td className="px-3 py-1.5 text-ink">{ask}</td>
+                <td className="px-3 py-1.5 text-ink-soft">{where}</td>
               </tr>
             ))}
           </tbody>
