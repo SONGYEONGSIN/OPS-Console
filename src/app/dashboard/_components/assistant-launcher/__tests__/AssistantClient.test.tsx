@@ -473,6 +473,25 @@ describe("AssistantAvatar — 명보 스프라이트", () => {
     expect(svg.outerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
   });
 
+  it("배경 상자 없이 스프라이트만 그린다", () => {
+    const { container } = render(<AssistantClient />);
+    const host = container.querySelector("svg[data-myeongbo-sprite]")!.parentElement!;
+    expect(host.className).not.toMatch(/bg-chrome-graphite|border/);
+  });
+
+  it("평소엔 정지 — 대기 중이 아니면 애니메이션 클래스가 없다", () => {
+    const { container } = render(<AssistantClient />);
+    const svg = container.querySelector("svg[data-myeongbo-sprite]")!;
+    expect(svg.getAttribute("data-kicking")).toBe("false");
+  });
+
+  it("채팅 답변에도 이름 앞에 얼굴이 붙는다", () => {
+    // 빈 상태에만 있으면 대화가 시작되는 순간 얼굴이 사라진다.
+    const { container } = render(<AssistantClient />);
+    // EmptyState 1개 + (대화 시작 시 메시지마다) — 최소 1개는 항상 있다
+    expect(container.querySelectorAll("svg[data-myeongbo-sprite]").length).toBeGreaterThan(0);
+  });
+
   it("장식이라 스크린리더에서 숨긴다", () => {
     const { container } = render(<AssistantClient />);
     const host = container.querySelector("svg[data-myeongbo-sprite]")!

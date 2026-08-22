@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { elapsedLabel } from "@/features/assistant/stage-label";
+import { MyeongboSprite } from "./MyeongboSprite";
 
 /**
  * 답을 기다리는 동안 보이는 한 줄 — 지금 하는 일 + 경과 시간.
@@ -22,6 +23,8 @@ export function PendingLine({
   since?: number;
 }) {
   const [now, setNow] = useState(since ?? 0);
+  /** 공을 툭 차는 프레임 토글 — 기다리는 동안에만 돈다. */
+  const [kicking, setKicking] = useState(false);
 
   useEffect(() => {
     if (since === undefined) return;
@@ -29,13 +32,25 @@ export function PendingLine({
     return () => clearInterval(t);
   }, [since]);
 
+  useEffect(() => {
+    // 움직임을 꺼둔 사용자에겐 정지 프레임만 보여준다.
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    const t = setInterval(() => setKicking((k) => !k), 500);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div className="text-sm text-ink-soft">
       <span className="inline-flex items-center gap-2">
-        <span className="inline-flex h-1.5 items-center gap-1">
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:0ms]" />
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:150ms]" />
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-vermilion [animation-delay:300ms]" />
+        {/* 점 세 개 대신 명보가 공을 툭툭 찬다. 점은 무엇을 기다리는지 말해주지
+            않았고, 얼굴이 있으면 누가 일하고 있는지가 보인다. */}
+        <span aria-hidden className="inline-flex h-4 w-4 flex-shrink-0 text-vermilion">
+          <MyeongboSprite kicking={kicking} />
         </span>
         {note}
         {since !== undefined && (

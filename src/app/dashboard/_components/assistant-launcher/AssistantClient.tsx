@@ -1,6 +1,7 @@
 "use client";
 
 import { kstFormat } from "@/lib/kst-format";
+import { MyeongboSprite } from "./MyeongboSprite";
 import {
   useState,
   useRef,
@@ -73,58 +74,20 @@ const INTRO =
   "안녕하세요, 운영부 상황실 명보입니다. 절차·규칙은 업무 지식망 문서에서, 일정·연락처·서비스 현황은 운영 데이터에서 직접 찾아옵니다. 결론을 먼저 말하고 어느 문서에서 나왔는지 뒤에 붙입니다. 모르면 모른다고 하고, 대신 실행할 일은 무엇을 어디에 하는지 말한 뒤 확인받고 합니다.";
 
 /** OPS Console 시스템 로고를 아바타로 사용 — ChromeBrand의 '>_' 모티프 차용. */
-/**
- * 명보 스프라이트 — 8×8 픽셀 도안. 헤드셋 쓴 관제 요원이다(상황실에서 듣고
- * 조율하는 자리라서).
- *
- * 전에는 `>_` 터미널 글리프였는데 그건 사이드바 브랜드와 같은 결이라
- * 어시스턴트만의 얼굴이 아니었다. `1` 이 칠할 칸이다.
- */
-const SPRITE = [
-  "00111100",
-  "01111110",
-  "11011011",
-  "11111111",
-  "10111101",
-  "00100100",
-  "01111110",
-  "11000011",
-] as const;
-
-/**
- * 픽셀 도안을 SVG rect 로 그린다.
- *
- * 이미지 파일 대신 SVG 인 이유는 44px·80px 두 크기에서 다 또렷해야 하기
- * 때문이다. 색은 `currentColor` 라 부모의 Tailwind 토큰을 그대로 따른다 —
- * hex 를 박으면 디자인 규칙 위반이고 다크 대응도 끊긴다.
- */
-function MyeongboSprite() {
+/** 빈 상태용 큰 얼굴. 배경 상자 없이 스프라이트만 둔다. */
+function AssistantAvatar({ kicking }: { kicking?: boolean }) {
   return (
-    <svg
-      data-myeongbo-sprite
-      viewBox="0 0 8 8"
-      className="h-1/2 w-1/2"
-      fill="currentColor"
-      shapeRendering="crispEdges"
-    >
-      {SPRITE.flatMap((row, y) =>
-        [...row].map((cell, x) =>
-          cell === "1" ? (
-            <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" />
-          ) : null,
-        ),
-      )}
-    </svg>
+    <span aria-hidden className="flex h-11 w-11 flex-shrink-0 items-center justify-center text-ink">
+      <MyeongboSprite kicking={kicking} />
+    </span>
   );
 }
 
-function AssistantAvatar() {
+/** 채팅 줄 이름 앞에 붙는 작은 얼굴 — 답 본문 폭을 뺏지 않게 글자 높이로. */
+function AssistantNameMark({ kicking }: { kicking?: boolean }) {
   return (
-    <span
-      aria-hidden
-      className="flex h-11 w-11 flex-shrink-0 items-center justify-center border border-line bg-chrome-graphite text-chrome-snow"
-    >
-      <MyeongboSprite />
+    <span aria-hidden className="inline-flex h-[1.15em] w-[1.15em] flex-shrink-0 text-vermilion">
+      <MyeongboSprite kicking={kicking} />
     </span>
   );
 }
@@ -476,7 +439,8 @@ function MessageCard({
   // assistant — 답은 패널 폭을 다 쓴다. 아바타와 말풍선 테두리를 빼고 여백으로 나눈다.
   return (
     <div className="space-y-1.5">
-      <div className="flex items-baseline gap-1.5 text-2xs">
+      <div className="flex items-center gap-1.5 text-2xs">
+        <AssistantNameMark />
         <span className="font-medium text-vermilion">{ASSISTANT_NAME}</span>
         {message.ts && (
           <>

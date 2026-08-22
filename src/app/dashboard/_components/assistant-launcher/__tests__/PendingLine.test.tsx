@@ -40,3 +40,27 @@ describe("PendingLine", () => {
     expect(screen.getByText(/12초/)).toBeTruthy();
   });
 });
+
+/**
+ * 대기 중에만 캐릭터가 움직인다 — 30~40초 기다림이 이 제품의 약점이라
+ * 그때 살아 있다는 신호가 필요하다. 평소엔 정지라 읽기를 방해하지 않는다.
+ */
+describe("PendingLine — 명보가 공을 툭툭 찬다", () => {
+  it("대기 줄에 스프라이트가 있다", () => {
+    const { container } = render(<PendingLine note="읽는 중" since={Date.now()} />);
+    expect(container.querySelector("svg[data-myeongbo-sprite]")).not.toBeNull();
+  });
+
+  it("프레임이 번갈아 바뀐다", () => {
+    vi.useFakeTimers();
+    const { container } = render(<PendingLine note="읽는 중" since={Date.now()} />);
+    const read = () =>
+      container.querySelector("svg[data-myeongbo-sprite]")!.getAttribute("data-kicking");
+    const first = read();
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(read()).not.toBe(first);
+    vi.useRealTimers();
+  });
+});
