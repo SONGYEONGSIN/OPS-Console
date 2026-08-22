@@ -1,0 +1,27 @@
+name: open-notices-dispatch
+
+on:
+  # schedule 제거 — cron-job.org가 5분 주기로 dispatch를 호출(GitHub Actions schedule보다
+  # 안정적). 중복 호출 방지 위해 GitHub cron은 끄고 수동 트리거(workflow_dispatch)만 유지.
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  trigger:
+    name: POST /api/open-notices/dispatch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Trigger dispatch
+        env:
+          OPS_CONSOLE_BASE_URL: ${{ secrets.OPS_CONSOLE_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/open-notices-dispatch.mjs

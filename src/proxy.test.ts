@@ -31,6 +31,13 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("미인증 + open-notices dispatch는 public → 리다이렉트 안 함", async () => {
+    // 여기 빠지면 cron 호출이 307(로그인 리다이렉트)로 튕겨 예약 발송이
+    // 조용히 죽는다. 라우트 안에서 CRON_SECRET 을 검사하므로 공개해도 된다.
+    const res = await proxy(reqFor("/api/open-notices/dispatch"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("미인증 + automations/run(cron 진입점)은 public → 리다이렉트 안 함", async () => {
     const res = await proxy(
       reqFor("/api/automations/run?jobId=receivables-deposit-match"),

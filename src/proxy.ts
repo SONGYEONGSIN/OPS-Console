@@ -4,6 +4,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 /** 인증 없이 접근 가능한 라우트. 정확 일치 또는 prefix 매치.
  *  /api/data-requests/dispatch — pg_cron이 쿠키 세션 없이 호출. 라우트 내부에서
  *  /api/backup-requests/dispatch — 동일 (PR-6 예약 발송 cron 진입점)
+ *  /api/open-notices/dispatch — 동일 (오픈안내 예약 발송 cron 진입점)
  *  /api/automations/run — GitHub Actions / 외부 cron 진입점 (receivables 등 jobId 자동화).
  *  /api/closing/ingest — Moa 스크래퍼(GitHub Actions)가 마감 스냅샷을 적재.
  *  /api/closing/run-log — 스크래퍼가 실행 결과(success/skipped/failed)를 보고.
@@ -30,6 +31,7 @@ const PUBLIC_PATHS = [
   "/auth/callback",
   "/api/data-requests/dispatch",
   "/api/backup-requests/dispatch",
+  "/api/open-notices/dispatch",
   "/api/automations/run",
   "/api/closing/ingest",
   "/api/closing/run-log",
