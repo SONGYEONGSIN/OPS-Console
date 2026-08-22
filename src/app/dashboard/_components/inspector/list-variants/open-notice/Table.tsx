@@ -30,11 +30,10 @@ function formatSendDateTime(iso?: string | null): string {
 }
 
 /**
- * 접수가 이미 시작됐으면 true — 그 행은 고를 수 없다.
+ * 오픈 시각이 이미 지났으면 true — 그 행은 고를 수 없다.
  *
- * 목록이 아직 안 열린 건만 담아서 평소에는 한 행도 걸리지 않는다. 그래도 두는
- * 이유는 안전망이다 — 페이지를 열어둔 채 접수 시작 시각을 넘기는 경우, 그리고
- * 실데이터에 있는 날짜 이상 건.
+ * 목록에 접수 중인 건까지 담는 이유는 토글을 못 켠 채 오픈된 건이 사라지면
+ * 담당자가 누락을 알아챌 길이 없어서다. 보이되 손댈 수는 없게 둔다.
  */
 export function isWriteStartPast(
   iso: string | null | undefined,
@@ -44,17 +43,30 @@ export function isWriteStartPast(
   return new Date(iso).getTime() < now.getTime();
 }
 
-function StatusBadge({ status }: { status?: "scheduled" | "sent" | null }) {
+function StatusBadge({
+  status,
+  failedAt,
+}: {
+  status?: "scheduled" | "sent" | null;
+  failedAt?: string | null;
+}) {
   if (status === "scheduled")
     return (
       <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.idle}`}>
-        예약완료
+        자동 발송 켬
       </span>
     );
   if (status === "sent")
     return (
       <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.done}`}>
         발송완료
+      </span>
+    );
+  // 자동 발송이라 실패를 아무도 안 보고 있다. 성공 이력이 없을 때만 드러낸다.
+  if (failedAt)
+    return (
+      <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.attention}`}>
+        발송실패
       </span>
     );
   return <span className="text-ink-soft">—</span>;
@@ -84,7 +96,7 @@ export function OpenNoticeTable({ rows, selectedId, onSelect }: Props) {
         {rows.length === 0 ? (
           <tr>
             <td colSpan={6} className="px-3 py-6 text-center text-muted">
-              오픈 예정인 서비스가 없습니다.
+              대상 서비스가 없습니다.
             </td>
           </tr>
         ) : (
@@ -113,7 +125,10 @@ export function OpenNoticeTable({ rows, selectedId, onSelect }: Props) {
                   {formatMonthDay(row.writeStartAt)}
                 </td>
                 <td className="px-3 py-2">
-                  <StatusBadge status={row.openNoticeStatus} />
+                  <StatusBadge
+                    status={row.openNoticeStatus}
+                    failedAt={row.openNoticeLastFailedAt}
+                  />
                 </td>
                 <td className="px-3 py-2 tabular-nums text-ink-soft">
                   {formatSendDateTime(row.openNoticeLastSentAt)}

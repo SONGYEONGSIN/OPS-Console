@@ -14,6 +14,8 @@ export type MailSendStatusRow = {
   status: string | null;
   scheduled_at: string | null;
   sent_at: string | null;
+  /** 실패 시각의 출처 — 실패 행은 sent_at 이 비어 있다. 없으면 실패 시각 미상. */
+  created_at?: string | null;
 };
 
 /** 서비스별 메일 상태 — 인스펙터/목록 배지용 */
@@ -24,6 +26,12 @@ export type ServiceMailStatus = {
   scheduledAt: string | null;
   /** 가장 최근 발송 시각 (발송 이력 있으면) */
   lastSentAt: string | null;
+  /**
+   * 가장 최근 실패 시각. **`status` 에는 반영하지 않는다** — 'failed' 를
+   * status 에 넣으면 자료요청 배지 동작까지 같이 바뀐다. 읽는 쪽이 필요할 때만
+   * 본다(오픈안내는 자동 발송이라 실패가 조용히 묻히면 안 된다).
+   */
+  lastFailedAt: string | null;
 };
 
 /**
@@ -40,7 +48,12 @@ export function deriveStatusByService(
     const key = String(r.service_id);
     const cur =
       out[key] ??
-      ({ status: null, scheduledAt: null, lastSentAt: null } as ServiceMailStatus);
+      ({
+        status: null,
+        scheduledAt: null,
+        lastSentAt: null,
+        lastFailedAt: null,
+      } as ServiceMailStatus);
     if ((r.status === "scheduled" || r.status === "sending") && r.scheduled_at) {
       if (!cur.scheduledAt || r.scheduled_at < cur.scheduledAt) {
         cur.scheduledAt = r.scheduled_at; // 가장 이른 예약
@@ -49,6 +62,11 @@ export function deriveStatusByService(
     if (r.status === "sent" && r.sent_at) {
       if (!cur.lastSentAt || r.sent_at > cur.lastSentAt) {
         cur.lastSentAt = r.sent_at; // 가장 최근 발송
+      }
+    }
+    if (r.status === "failed" && r.created_at) {
+      if (!cur.lastFailedAt || r.created_at > cur.lastFailedAt) {
+        cur.lastFailedAt = r.created_at; // 가장 최근 실패
       }
     }
     out[key] = cur;

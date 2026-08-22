@@ -110,22 +110,30 @@ E2E 운영 메모:
 - `scripts/handover-mail-test.mjs` — `TARGET_EMAIL=` 환경 변수
 - `scripts/backup-request-mail-test.mjs` — `MODE=bulk|per-service` + `TARGET_EMAIL` + `TARGET_EMAIL_2`
 
-## 개발·테스트 오픈안내 탭 (대학 오픈 안내 메일)
+## 개발·테스트 오픈안내 탭 (대학 오픈 안내 메일 자동 발송)
 
-`/dashboard/dev-test?tab=open-notice` — 오픈 예정 서비스의 원서접수 페이지가 열렸다고 대학 담당자에게 알린다. 자료요청과 같은 구조(초안을 서버가 만들고 운영자가 검토·편집해 즉시/예약 발송)이고, **대상 목록만 다르다** — `listTestableServices()`가 주는 `phaseOf === "upcoming"` 건이다(테스트 탭과 같은 소스).
+`/dashboard/dev-test?tab=open-notice` — 원서접수 페이지가 열렸다고 대학 담당자에게 알린다. **담당 운영자가 서비스별로 토글을 켜두면 오픈 시각에 알아서 나간다.**
+
+**발송 시각을 사람이 입력하지 않는다.** 오픈 시각은 `closing_services.write_start_at` 에 이미 있어서, 다시 입력하게 하면 같은 값을 두 벌로 만드는 것이고 둘이 어긋나면 엉뚱한 시각에 나간다. 토글 ON = `open_notice_sends` 에 `status='scheduled'` + `scheduled_at = write_start_at` 행을 만드는 것이고, OFF = 그 대기 행을 지우는 것이다(이미 나간 이력은 남는다). 실제 발송은 dispatch 주기 때문에 오픈 시각 ±5분이다.
+
+자동이라 **수신자와 본문이 미리 확정돼 있어야** 한다 — 행 클릭 → 인스펙터에서 수신자 고르고 초안 확인 → 토글 ON. 내용을 고치려면 껐다 켠다.
+
+목록은 **오픈 예정 + 접수 중**(`phaseOf !== "closed"`)이다. 테스트 탭처럼 오픈 예정만 담으면 **토글을 못 켠 채 오픈된 건이 목록에서 사라져 영영 안내를 못 보낸다.** 오픈 시각이 지난 행은 보이되 비활성(클릭 무반응)이고, 인스펙터에서도 켤 수 없다. 결제까지 끝난 건은 이제 와서 안내할 이유가 없어 뺀다.
 
 초안에서 값을 만들어 넣는 칸은 넷이고 그중 둘이 조립 URL이다.
 
 - **모집구분은 `service_name` 그대로** — 실데이터가 이미 "2027학년도 수시모집" 형태의 완성된 문장이라 가공하지 않는다. `category`(수시/정시…)나 `admission_type`(반응형원서/공통원서/일반접수)은 모집구분이 아니다
 - **접수주소**: 공통원서 → `apply.jinhakapply.com`, 그 외 → `enter.jinhakapply.com`. `entertest/target-url.ts`가 테스트 시스템에서 하는 분기와 같은 규칙이지만 **합치지 않는다** — 테스트 호스트가 바뀌어도 대학에 나가는 메일은 그대로여야 한다
 - **경쟁률**: `addon.jinhakapply.com/RatioV1/RatioH/Ratio{서비스ID}1.html`, 차수 1 고정. `closing_services`에 차수 컬럼이 없어 2차수는 운영자가 본문을 고친다
-- **접수기간**: `write_start_at ~ write_end_at`(결제기간 아님). **종료 연도는 시작과 같은 해일 때만 생략한다** — 실데이터에 종료가 1년 뒤로 적힌 건이 7개 있어(건국대·경상국립대 등), 늘 생략하면 `2026.09.07 ~ 09.11`로 멀쩡해 보이고 1년 틀린 기간이 발송된다
+- **접수기간**: `write_start_at ~ write_end_at`. **종료 연도는 시작과 같은 해일 때만 생략한다** — 실데이터에 종료가 1년 뒤로 적힌 건이 7개 있어(건국대·경상국립대 등), 늘 생략하면 `2026.09.07 ~ 09.11`로 멀쩡해 보이고 1년 틀린 기간이 발송된다
 
-**본문 HTML은 `open-notices/mail-html.ts`가 만든다. `buildReplyHtml`을 쓰면 안 된다** — 그쪽은 `\n`→`<br>`만 하는데 HTML은 연속 공백을 1칸으로 접어서, 콜론을 세로로 맞춘 초안의 정렬이 무너진다. 에디터에서는 완벽하고 받은 편지함에서만 깨진다. 선두 공백과 2칸 이상 런만 `&nbsp;`로 바꾸고(단일 공백은 줄바꿈을 위해 남긴다), URL은 앵커로 감싼다. `white-space: pre-wrap`은 Outlook이 무시해서 쓰지 않는다. **즉시 발송과 예약 dispatch가 같은 변환기를 써야** 같은 초안이 두 모양으로 나가지 않는다.
+**본문 HTML은 `open-notices/mail-html.ts`가 만든다. `buildReplyHtml`을 쓰면 안 된다** — 그쪽은 `\n`→`<br>`만 하는데 HTML은 연속 공백을 1칸으로 접어서, 콜론을 세로로 맞춘 초안의 정렬이 무너진다. 에디터에서는 완벽하고 받은 편지함에서만 깨진다. 선두 공백과 2칸 이상 런만 `&nbsp;`로 바꾸고(단일 공백은 줄바꿈을 위해 남긴다), URL은 앵커로 감싼다. `white-space: pre-wrap`은 Outlook이 무시해서 쓰지 않는다.
 
-**발송은 본인 담당 건만**(admin은 전체). 탭이라 `requireMenu("dev-test")` 하나가 세 탭을 다 가드해서, 안 막으면 개발·테스트 권한자 전원이 남의 담당 대학에 메일을 보낼 수 있다. 판정은 `closing_services.operator_name` vs `operators.name`이고 **서버 action이 폼을 믿지 않고 DB에서 다시 읽는다**. 목록은 전건 보이고 발송만 막는다.
+**설정은 본인 담당 건만**(admin은 전체). 탭이라 `requireMenu("dev-test")` 하나가 세 탭을 다 가드해서, 안 막으면 개발·테스트 권한자 전원이 남의 담당 대학에 메일을 걸 수 있다. 판정은 `closing_services.operator_name` vs `operators.name`이고 **서버 action이 폼을 믿지 않고 DB에서 다시 읽는다**(오픈 시각도 마찬가지). 목록은 전건 보이고 설정만 막는다.
 
-이력은 `open_notice_sends`(`service_id`는 Moa 서비스ID **정수, FK 없음** — `closing_services`는 스크랩 미러라 FK를 걸면 이력 무결성이 스크래퍼에 묶인다). 예약분은 `/api/open-notices/dispatch`가 5분마다 쏜다 — **cron-job.org 등록이 필요하고, 안 하면 예약 발송이 조용히 죽는다**(즉시 발송은 정상).
+**자동이라 실패를 아무도 안 보고 있다** — dispatch 결과는 `automation_runs`에 안 남아 일일 보고에도 안 잡힌다(자료요청도 같은 사각지대). 그래서 실패는 목록 '발송실패' 배지와 인스펙터 문구로 드러낸다.
+
+이력은 `open_notice_sends`(`service_id`는 Moa 서비스ID **정수, FK 없음** — `closing_services`는 스크랩 미러라 FK를 걸면 이력 무결성이 스크래퍼에 묶인다). dispatch는 `/api/open-notices/dispatch` — **cron-job.org 등록이 필요하고, 안 하면 자동 발송이 통째로 죽는다.**
 
 설계 문서: `docs/superpowers/specs/2026-08-22-open-notice-mail-design.md`
 

@@ -1,9 +1,9 @@
 import { getRecipientsForUniversities } from "@/features/data-requests/queries";
 import {
   getOpenNoticeStatusByServiceIds,
+  listOpenNoticeServices,
   sortForOpenNotice,
 } from "@/features/open-notices/queries";
-import type { TestableService } from "@/features/entertest/queries";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -18,12 +18,6 @@ function distinct(values: (string | null)[]): string[] {
 }
 
 type Props = {
-  /**
-   * 오픈 예정 서비스 전건. **page 가 이미 부른 결과를 넘겨받는다** —
-   * 여기서 listTestableServices() 를 다시 부르면 한 요청에 3번 조회하게 된다
-   * (page + DevControlSection + 여기).
-   */
-  services: TestableService[];
   q?: string;
   page?: string;
   category?: string;
@@ -38,13 +32,12 @@ type Props = {
 };
 
 /**
- * 오픈안내 탭 — 오픈 예정(upcoming) 서비스 목록 + 인스펙터 발송 폼.
+ * 오픈안내 탭 — 오픈 예정 + 접수 중 서비스 목록 + 인스펙터 자동 발송 설정.
  *
- * 목록은 전건 보이고 **발송만** 본인 담당으로 막는다. 서버 action 이 같은
+ * 목록은 전건 보이고 **설정만** 본인 담당으로 막는다. 서버 action 이 같은
  * 판정을 다시 하므로 여기 값은 화면 표시용이다.
  */
 export async function OpenNoticeSection({
-  services,
   q,
   page,
   category,
@@ -55,6 +48,9 @@ export async function OpenNoticeSection({
   meEmail,
   isAdmin,
 }: Props) {
+  // 목록 범위가 테스트 탭과 달라(오픈 예정 + 접수 중) 자체 조회한다.
+  const services = await listOpenNoticeServices();
+
   // 필터 옵션은 전체 서비스 기준 distinct (다른 탭과 동일 규칙).
   const options = {
     categoryOptions: distinct(services.map((s) => s.category)),
@@ -98,6 +94,8 @@ export async function OpenNoticeSection({
     byUniv.set(r.universityName, arr);
   }
 
+  // 요청 시각 — 서버 컴포넌트라 요청당 한 번 읽는다.
+  const now = new Date().getTime();
   const rows: ListRow[] = paged.map((s) => {
     const status = statusByService[String(s.service_id)];
     return {
@@ -122,7 +120,9 @@ export async function OpenNoticeSection({
       openNoticeStatus: status?.status ?? null,
       openNoticeLastSentAt: status?.lastSentAt ?? null,
       openNoticeScheduledAt: status?.scheduledAt ?? null,
+      openNoticeLastFailedAt: status?.lastFailedAt ?? null,
       openNoticeCanSend: !!isAdmin || (!!myName && s.operator_name === myName),
+      openNoticeOpenPassed: !!s.write_start_at && Date.parse(s.write_start_at) < now,
     };
   });
 

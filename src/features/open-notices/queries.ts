@@ -1,10 +1,47 @@
 import "server-only";
+import { phaseOf } from "@/features/closing/phase";
 import {
   deriveStatusByService,
   type MailSendStatusRow,
   type ServiceMailStatus,
 } from "@/features/mail-sends/status";
+import type { TestableService } from "@/features/entertest/queries";
 import { createClient } from "@/lib/supabase/server";
+
+const SERVICE_COLUMNS =
+  "service_id, university_name, service_name, category, region, university_type, admission_type, operator_name, write_start_at, write_end_at, pay_start_at, pay_end_at";
+
+/**
+ * 오픈안내 목록에 담을 단계인가 (순수).
+ *
+ * 오픈 예정(`upcoming`) + 접수 중(`running`). 테스트 탭처럼 `upcoming` 만
+ * 담으면 **토글을 못 켠 채 오픈 시각이 지난 건이 목록에서 사라져 영영 안내를
+ * 못 보낸다.** 접수 중인 건은 목록에 남기되 비활성 행으로 보여준다.
+ *
+ * 결제까지 끝난 건(`closed`)은 뺀다 — 이제 와서 오픈 안내를 할 이유가 없다.
+ */
+export function isOpenNoticeTarget(
+  s: { write_start_at?: string | null; pay_end_at?: string | null },
+  now: Date = new Date(),
+): boolean {
+  return phaseOf(s, now) !== "closed";
+}
+
+/**
+ * 오픈안내 대상 서비스 목록.
+ *
+ * `listTestableServices()` 를 쓰지 않는 이유는 그쪽이 `upcoming` 만 주기
+ * 때문이다(테스트는 열기 전에 하는 일이라 그게 맞다). 여기는 범위가 다르다.
+ */
+export async function listOpenNoticeServices(): Promise<TestableService[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("closing_services")
+    .select(SERVICE_COLUMNS)
+    .order("write_start_at", { ascending: true, nullsFirst: false });
+  if (error || !data) return [];
+  return (data as TestableService[]).filter((r) => isOpenNoticeTarget(r));
+}
 
 /**
  * 오픈안내 목록 정렬 — 작성시작 오름차순, 값 없는 건은 뒤로 (순수).
@@ -38,7 +75,7 @@ export async function getOpenNoticeStatusByServiceIds(
   const supabase = await createClient();
   const { data } = await supabase
     .from("open_notice_sends")
-    .select("service_id, status, scheduled_at, sent_at")
+    .select("service_id, status, scheduled_at, sent_at, created_at")
     .in("service_id", serviceIds);
   return deriveStatusByService((data ?? []) as MailSendStatusRow[]);
 }
@@ -49,6 +86,8 @@ export type OpenNoticeService = {
   operatorName: string | null;
   universityName: string;
   serviceName: string;
+  /** 오픈 시각 — 자동 발송 예약 시각의 **유일한 출처**. 폼에서 받지 않는다. */
+  writeStartAt: string | null;
 };
 
 /**
@@ -65,7 +104,7 @@ export async function findOpenNoticeService(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("closing_services")
-    .select("service_id, operator_name, university_name, service_name")
+    .select("service_id, operator_name, university_name, service_name, write_start_at")
     .eq("service_id", serviceId)
     .maybeSingle();
   if (error || !data) return null;
@@ -74,11 +113,13 @@ export async function findOpenNoticeService(
     operator_name: string | null;
     university_name: string;
     service_name: string;
+    write_start_at: string | null;
   };
   return {
     serviceId: row.service_id,
     operatorName: row.operator_name,
     universityName: row.university_name,
     serviceName: row.service_name,
+    writeStartAt: row.write_start_at,
   };
 }

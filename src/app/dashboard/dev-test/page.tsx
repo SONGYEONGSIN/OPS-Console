@@ -128,7 +128,6 @@ export default async function DevTestPage({
       <DevTestTabs />
       {sp.tab === "open-notice" ? (
         <OpenNoticeSection
-          services={services}
           q={sp.q}
           page={sp.page}
           category={sp.category}

@@ -105,12 +105,18 @@ describe("DevTestPage — 탭별 섹션 분기", () => {
     expect(types).not.toContain(DevControlSection);
   });
 
-  it("오픈안내 섹션에 목록을 넘겨준다 (섹션이 다시 조회하지 않도록)", async () => {
+  it("오픈안내 섹션에 로그인 운영자 정보를 넘겨준다", async () => {
+    // 목록은 섹션이 자체 조회한다(테스트 탭과 범위가 다르다). page 는 권한
+    // 판정에 필요한 값만 넘긴다.
     const tree = await DevTestPage({
       searchParams: Promise.resolve({ tab: "open-notice" }),
     });
     const el = findByType(tree, OpenNoticeSection);
     expect(el).not.toBeNull();
-    expect((el!.props as Record<string, unknown>).services).toBeDefined();
+    const props = el!.props as Record<string, unknown>;
+    expect(props.meEmail).toBe("me@x.com");
+    expect(props.myName).toBe("송영신");
+    expect(props.isAdmin).toBe(false);
+    expect(props.services).toBeUndefined();
   });
 });

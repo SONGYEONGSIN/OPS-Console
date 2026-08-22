@@ -3,11 +3,11 @@
 import { useActionState, useState } from "react";
 import { kstFormat } from "@/lib/kst-format";
 import {
-  sendOpenNoticeAction,
+  enableOpenNoticeAutoSendAction,
+  disableOpenNoticeAutoSendAction,
   type OpenNoticeActionState,
 } from "@/features/open-notices/actions";
 import { buildDefaultOpenNoticeText } from "@/features/open-notices/mail-template";
-import { DateInput } from "@/components/common/DateInput";
 import type { ViewProps } from "../types";
 import { BADGE_TONE } from "../badge-tone";
 
@@ -41,6 +41,11 @@ export function OpenNoticeView({ row }: ViewProps) {
   const sender = row.openNoticeSender;
   const canSend = row.openNoticeCanSend !== false;
   const mailStatus = row.openNoticeStatus ?? null;
+  const autoSendOn = mailStatus === "scheduled";
+  const alreadySent = mailStatus === "sent";
+  const openAt = row.writeStartAt ?? null;
+  // 서버가 판정한 값을 쓴다 — 렌더 중 Date.now() 는 리렌더마다 값이 흔들린다.
+  const openPassed = row.openNoticeOpenPassed === true;
 
   const defaults = buildDefaultOpenNoticeText({
     operatorName: sender?.name ?? "",
@@ -52,20 +57,20 @@ export function OpenNoticeView({ row }: ViewProps) {
     writeEndAt: row.writeEndAt,
   });
 
-  const [state, formAction, pending] = useActionState<
+  const [enableState, enableAction, enablePending] = useActionState<
     OpenNoticeActionState,
     FormData
-  >(sendOpenNoticeAction, undefined);
+  >(enableOpenNoticeAutoSendAction, undefined);
+  const [disableState, disableAction, disablePending] = useActionState<
+    OpenNoticeActionState,
+    FormData
+  >(disableOpenNoticeAutoSendAction, undefined);
+
   const [toEmail, setToEmail] = useState("");
   const [cc, setCc] = useState<Recipient[]>([]);
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
-  /** 이미 보낸 건은 한 번 더 눌러야 나간다 (오픈안내는 1회성이다) */
-  const [confirmingResend, setConfirmingResend] = useState(false);
 
   const toRecipient = recipients.find((r) => r.email === toEmail);
-  const alreadySent = mailStatus === "sent";
-  const needsConfirm = alreadySent && !confirmingResend;
+  const state = enableState ?? disableState;
 
   const selectTo = (email: string) => {
     setCc((prev) => prev.filter((c) => c.email !== email));
@@ -85,9 +90,38 @@ export function OpenNoticeView({ row }: ViewProps) {
       <div className="space-y-3">
         <h2 className="text-lg font-medium text-ink">{heading}</h2>
         <p className="text-xs text-muted">
-          본인이 담당한 서비스만 발송할 수 있습니다. 담당 운영자는{" "}
+          본인이 담당한 서비스만 설정할 수 있습니다. 담당 운영자는{" "}
           {row.operatorName || "미지정"}입니다.
         </p>
+      </div>
+    );
+  }
+
+  // 오픈 시각이 지나면 자동 발송을 걸 자리가 없다. 목록에서도 비활성이지만
+  // 인스펙터에 남아 있을 수 있어(선택 후 시각 경과) 여기서도 막는다.
+  if (openPassed && !autoSendOn) {
+    return (
+      <div className="space-y-3">
+        <h2 className="text-lg font-medium text-ink">{heading}</h2>
+        {alreadySent ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.done}`}>
+              발송완료
+            </span>
+            {row.openNoticeLastSentAt ? (
+              <span className="text-muted">
+                {formatKstDateTime(row.openNoticeLastSentAt)} 발송
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-xs text-muted">
+            오픈 시각({formatKstDateTime(openAt)})이 지나 자동 발송을 켤 수 없습니다.
+            {row.openNoticeLastFailedAt
+              ? ` 마지막 발송이 ${formatKstDateTime(row.openNoticeLastFailedAt)}에 실패했습니다.`
+              : " 안내 메일이 나가지 않았습니다."}
+          </p>
+        )}
       </div>
     );
   }
@@ -104,22 +138,49 @@ export function OpenNoticeView({ row }: ViewProps) {
     );
   }
 
-  return (
-    <form action={formAction} className="space-y-3">
-      <h2 className="text-lg font-medium text-ink">{heading}</h2>
-
-      {mailStatus === "scheduled" ? (
+  // 자동 발송이 켜져 있으면 설정된 내용을 보여주고 끄기만 제공한다.
+  if (autoSendOn) {
+    return (
+      <div className="space-y-3">
+        <h2 className="text-lg font-medium text-ink">{heading}</h2>
         <div className="flex items-center gap-2 text-xs">
           <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.idle}`}>
-            예약완료
+            자동 발송 켬
           </span>
           {row.openNoticeScheduledAt ? (
             <span className="text-muted">
-              {formatKstDateTime(row.openNoticeScheduledAt)} 발송 예정
+              {formatKstDateTime(row.openNoticeScheduledAt)} 오픈 시각에 발송
             </span>
           ) : null}
         </div>
-      ) : alreadySent ? (
+        <p className="text-xs text-muted">
+          오픈 시각에 담당 수신자에게 자동으로 안내 메일이 나갑니다. 내용을 고치려면
+          껐다가 다시 켜세요.
+        </p>
+        {state ? (
+          <p className={`text-xs ${state.ok ? "text-ink" : "text-vermilion"}`}>
+            {state.message}
+          </p>
+        ) : null}
+        <form action={disableAction}>
+          <input type="hidden" name="serviceId" value={row.serviceIdNum ?? ""} />
+          <button
+            type="submit"
+            disabled={disablePending}
+            className="w-full cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-default disabled:opacity-50"
+          >
+            {disablePending ? "끄는 중…" : "자동 발송 끄기"}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <form action={enableAction} className="space-y-3">
+      <h2 className="text-lg font-medium text-ink">{heading}</h2>
+
+      {alreadySent ? (
         <div className="flex items-center gap-2 text-xs">
           <span className={`inline-block px-2 py-0.5 text-2xs ${BADGE_TONE.done}`}>
             발송완료
@@ -130,12 +191,23 @@ export function OpenNoticeView({ row }: ViewProps) {
             </span>
           ) : null}
         </div>
+      ) : row.openNoticeLastFailedAt ? (
+        <p className="text-xs text-vermilion">
+          {formatKstDateTime(row.openNoticeLastFailedAt)} 발송이 실패했습니다. 다시
+          켜면 오픈 시각에 재시도합니다.
+        </p>
       ) : null}
+
+      <div className="block text-xs">
+        <span className="mb-1 block text-muted">오픈 시각</span>
+        <div className="w-full border border-line bg-washi-raised px-2 py-1 tabular-nums text-ink">
+          {formatKstDateTime(openAt) || "미정"}
+        </div>
+      </div>
 
       <input type="hidden" name="serviceId" value={row.serviceIdNum ?? ""} />
       <input type="hidden" name="universityName" value={row.universityName ?? ""} />
       <input type="hidden" name="serviceName" value={row.serviceName ?? row.name} />
-      <input type="hidden" name="mode" value={sendMode} />
       <input type="hidden" name="toEmail" value={toEmail} />
       <input type="hidden" name="toName" value={toRecipient?.name ?? ""} />
       <input
@@ -244,74 +316,19 @@ export function OpenNoticeView({ row }: ViewProps) {
         </p>
       ) : null}
 
-      <div className="block text-xs" role="radiogroup" aria-label="발송 모드">
-        <span className="mb-1 block text-muted">발송 모드</span>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            aria-pressed={sendMode === "now"}
-            onClick={() => setSendMode("now")}
-            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
-              sendMode === "now"
-                ? "bg-ink text-cream"
-                : "bg-white text-ink hover:border-ink hover:bg-ink hover:text-cream"
-            }`}
-          >
-            지금 발송
-          </button>
-          <button
-            type="button"
-            aria-pressed={sendMode === "schedule"}
-            onClick={() => setSendMode("schedule")}
-            className={`flex-1 cursor-pointer border border-line px-3 py-1.5 text-xs ${
-              sendMode === "schedule"
-                ? "border-vermilion bg-vermilion text-cream"
-                : "bg-white text-ink hover:border-ink hover:bg-ink hover:text-cream"
-            }`}
-          >
-            예약 발송
-          </button>
-        </div>
-      </div>
-
-      {sendMode === "schedule" ? (
-        <label className="block text-xs">
-          <span className="mb-1 block text-muted">예약 시각 (KST)</span>
-          <DateInput
-            type="datetime-local"
-            name="scheduledAt"
-            aria-label="예약 시각"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            required
-            className={inputClass}
-          />
-        </label>
-      ) : null}
-
-      {needsConfirm ? (
-        <p className="text-xs text-vermilion">
-          이미 발송한 서비스입니다. 다시 보내려면 한 번 더 누르세요.
-        </p>
-      ) : null}
-
       <div className="flex gap-2 pt-2">
         <button
-          type={needsConfirm ? "button" : "submit"}
-          onClick={needsConfirm ? () => setConfirmingResend(true) : undefined}
-          disabled={pending || !toEmail || (sendMode === "schedule" && !scheduledAt)}
+          type="submit"
+          disabled={enablePending || !toEmail}
           className="flex-1 cursor-pointer border border-line bg-ink px-3 py-1.5 text-sm font-medium text-cream hover:bg-ink/90 disabled:cursor-default disabled:opacity-50"
         >
-          {pending ? "발송 중…" : needsConfirm ? "재발송 확인" : "발송"}
+          {enablePending ? "켜는 중…" : "자동 발송 켜기"}
         </button>
         <button
           type="button"
           onClick={() => {
             setToEmail("");
             setCc([]);
-            setScheduledAt("");
-            setSendMode("now");
-            setConfirmingResend(false);
           }}
           className="flex-1 cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream"
         >

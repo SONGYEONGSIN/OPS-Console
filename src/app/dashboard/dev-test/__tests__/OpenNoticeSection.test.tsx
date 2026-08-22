@@ -9,18 +9,20 @@ vi.mock("@/features/data-requests/queries", () => ({
 }));
 
 const getOpenNoticeStatusByServiceIds: Mock = vi.fn(async () => ({}));
+const listOpenNoticeServices: Mock = vi.fn(async () => []);
 vi.mock("@/features/open-notices/queries", async () => {
   const actual = await vi.importActual<
     typeof import("@/features/open-notices/queries")
   >("@/features/open-notices/queries");
   return {
     sortForOpenNotice: actual.sortForOpenNotice,
+    listOpenNoticeServices: (...a: unknown[]) => listOpenNoticeServices(...a),
     getOpenNoticeStatusByServiceIds: (...a: unknown[]) =>
       getOpenNoticeStatusByServiceIds(...a),
   };
 });
 
-/** 이 탭이 목록을 스스로 다시 조회하면 안 된다 (page 가 이미 부른다). */
+/** 오픈안내는 테스트 탭과 목록 범위가 달라 그 쿼리를 쓰면 안 된다. */
 const listTestableServices: Mock = vi.fn(async () => []);
 vi.mock("@/features/entertest/queries", () => ({
   listTestableServices: (...a: unknown[]) => listTestableServices(...a),
@@ -65,11 +67,12 @@ function svc(over: Record<string, unknown> = {}) {
 }
 
 async function propsOf(over: Record<string, unknown> = {}) {
+  const { services, ...rest } = { services: [svc()], ...over } as Record<string, unknown>;
+  listOpenNoticeServices.mockResolvedValue(services);
   const tree = await OpenNoticeSection({
-    services: [svc()],
     myName: "홍길동",
     meEmail: "me@op.com",
-    ...over,
+    ...rest,
   } as never);
   const el = findByType(tree, ListPattern);
   if (!el) throw new Error("ListPattern 을 찾지 못했습니다.");
@@ -86,15 +89,17 @@ describe("OpenNoticeSection", () => {
     vi.clearAllMocks();
     getRecipientsForUniversities.mockResolvedValue([]);
     getOpenNoticeStatusByServiceIds.mockResolvedValue({});
+    listOpenNoticeServices.mockResolvedValue([]);
   });
 
   it("open-notice variant 로 렌더한다", async () => {
     expect((await propsOf()).variant).toBe("open-notice");
   });
 
-  it("목록을 스스로 다시 조회하지 않는다 (props 로 받는다)", async () => {
+  it("테스트 탭 쿼리를 쓰지 않는다 — 목록 범위가 다르다", async () => {
     await propsOf();
     expect(listTestableServices).not.toHaveBeenCalled();
+    expect(listOpenNoticeServices).toHaveBeenCalled();
   });
 
   it("행 id 는 Moa 서비스ID, serviceIdNum 도 함께 넘긴다", async () => {
@@ -190,10 +195,24 @@ describe("OpenNoticeSection", () => {
         status: "sent",
         scheduledAt: null,
         lastSentAt: "2026-09-01T04:30:00Z",
+        lastFailedAt: null,
       },
     });
     const [row] = await rowsOf();
     expect(row.openNoticeStatus).toBe("sent");
     expect(row.openNoticeLastSentAt).toBe("2026-09-01T04:30:00Z");
+  });
+
+  it("실패 시각도 행에 붙인다 (자동 발송이라 드러나야 한다)", async () => {
+    getOpenNoticeStatusByServiceIds.mockResolvedValue({
+      "1130058": {
+        status: null,
+        scheduledAt: null,
+        lastSentAt: null,
+        lastFailedAt: "2026-09-01T04:30:00Z",
+      },
+    });
+    const [row] = await rowsOf();
+    expect(row.openNoticeLastFailedAt).toBe("2026-09-01T04:30:00Z");
   });
 });
