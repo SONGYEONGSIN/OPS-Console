@@ -2,6 +2,7 @@
 share: true
 status: 확정
 updated: 2026-08-22
+revision: 2 (예약 발송 → 자동 발송 토글)
 ---
 
 # 오픈안내 — 개발·테스트 세 번째 탭에서 대학에 오픈 안내 메일
@@ -25,7 +26,9 @@ updated: 2026-08-22
 
 ## 2. 무엇을 만드나
 
-`/dashboard/dev-test?tab=open-notice` — 준비중 서비스 목록. 행을 클릭하면 인스펙터에서 수신자를 고르고, 서버가 만든 초안을 검토·편집해서 즉시 또는 예약 발송한다. 발송 이력이 남고 목록에 '발송완료' 배지가 뜬다.
+`/dashboard/dev-test?tab=open-notice` — 오픈 예정 + 접수 중 서비스 목록. 행을 클릭하면 인스펙터에서 수신자를 고르고 초안을 확인한 뒤 **자동 발송 토글을 켠다.** 오픈 시각이 되면 알아서 나간다. 발송 이력이 남고 목록에 배지가 뜬다.
+
+> **개정 2** — 초안에서는 '지금 발송 / 예약 발송' 두 모드였다. **예약 시각을 사람이 입력하게 한 것이 실수였다** — 오픈 시각은 `write_start_at` 에 이미 있는데 다시 타이핑하게 만들었고, 같은 값이 두 벌이 되면 어긋난다. 토글로 바꾸면서 시각 입력과 '지금 발송'을 걷어냈다. 그에 딸려 목록 범위와 실패 노출도 바뀌었다(§4). 배관(dispatch·마이그레이션·HTML 변환기·초안 생성기·권한 판정)은 그대로다.
 
 ### 확정된 메일 초안
 
@@ -147,7 +150,9 @@ updated: 2026-08-22
 | 항목 | 결정 | 근거 |
 |---|---|---|
 | 발송 이력 | `open_notice_sends` 테이블 신설 | 발송완료 배지 + 중복 발송 판정 |
-| 예약 발송 | 지원 (지금/예약 2모드) | 자료요청과 동일 |
+| 발송 방식 | **자동 발송 토글 하나** | 오픈 시각은 `write_start_at` 에 이미 있다. 사람이 다시 입력하면 같은 값이 두 벌이 되고 어긋나면 엉뚱한 시각에 나간다. 토글 ON = `scheduled_at = write_start_at` 인 예약 행 생성, OFF = 대기 행 삭제(나간 이력은 남긴다) |
+| 지금 발송 | **없앤다** | 목록이 오픈 전 건이라 '오픈 전에 오픈됐다고 보내기'가 되어 메일 문구("오픈되었음을 안내")와 모순된다 |
+| 수신자·본문 확정 시점 | 토글 켤 때 | 자동으로 보내려면 누구에게 무엇을 보낼지 미리 정해져 있어야 한다. 고치려면 껐다 켠다 |
 | dispatch | **신규 라우트** `/api/open-notices/dispatch` | 선례 2개(data-requests·backup-requests)와 같은 모양. 기존 라우트 일반화는 claim RPC가 `returns setof public.data_request_sends`로 테이블에 묶여 있어 동적 SQL 표면을 만들고, 살아 있는 프로덕션 메일 경로의 blast radius를 키운다 |
 | `service_id` 타입 | `bigint`, FK 없음 | §3.1 |
 | 공용 모듈 추출 | `deriveStatusByService` · `parseScheduledAtKst`를 `features/mail-sends/`로 **이동** | 27줄이지만 "예약 우선, 발송 차선" 우선순위 규칙을 담고 있어 두 벌이 되면 배지가 조용히 갈린다. 기존 테스트 6개가 무변경을 증명한다. `+09:00` 오프셋은 한 벌만 존재해야 한다 — `lib/kst-format.ts:6-9`가 같은 교훈을 명문화했다: *"기억해야 지켜지는 규칙은 언젠가 안 지켜진다"*. **재export shim은 만들지 않는다** |
@@ -157,7 +162,8 @@ updated: 2026-08-22
 | 본문 URL 자동 링크 | 포함 | 안내 메일의 본체가 URL 3개다 |
 | 중복 발송 경고 | 포함 | 오픈안내는 1회성이라 중복이 바로 드러난다 |
 | Realtime 토스트 | **제외** | 범위 축소 |
-| 목록 범위 | **`upcoming` 275건만** | 메일 문구가 과거형("오픈되었음을 안내")이라 `running` 20건까지 넓히는 안을 검토했으나, `running`은 배포·운영 메뉴가 맡는다. CLAUDE.md 생애주기 원칙이 *"겹치면 안 된다 — 한 서비스가 두 메뉴에 나오면 어디서 처리해야 할지 모른다"*고 명시 |
+| 목록 범위 | **오픈 예정 + 접수 중** (`phaseOf !== "closed"`) | 개정 2에서 넓혔다. 오픈 예정만 담으면 **토글을 못 켠 채 오픈 시각이 지난 건이 목록에서 사라져 영영 안내를 못 보낸다.** CLAUDE.md 생애주기 원칙(겹침 금지)과 부딪히지만, 지난 행은 비활성이라 '처리 대상'이 아니라 '누락 표시'로 남는다. 결제까지 끝난 건은 이제 와서 안내할 이유가 없어 뺀다 |
+| 실패 노출 | 목록 '발송실패' 배지 + 인스펙터 문구 | 자동이라 아무도 안 보고 있다. dispatch 결과는 `automation_runs` 에 안 남아 일일 보고에도 안 잡힌다(자료요청도 같은 사각지대). Teams 알림까지는 이번 범위 밖 |
 | 지난 행 비활성화 | 자료요청과 동일하게 넣는다 | 아래 |
 
 ### 발송 권한을 판정하는 방법
@@ -182,6 +188,8 @@ updated: 2026-08-22
 
 planner는 "upcoming 전용이라 과거 행이 없으니 빼라"고 했으나, 채택하지 않는다. 비활성화는 **없어도 되는 코드가 아니라 값싼 방어**다.
 
+> **개정 2** — 목록에 접수 중인 건까지 담으면서 이 가드가 **실제로 동작하는 장치**가 됐다. 토글을 못 켠 채 오픈된 건이 여기 걸린다. 인스펙터에서도 같은 판정으로 막는다. 단 그 판정은 **서버가 한다** — 렌더 중 `Date.now()` 는 리렌더마다 값이 흔들리고 React 컴파일러 규칙도 막는다.
+
 ### 중복 발송 경고가 작동하는 방식
 
 `openNoticeStatus === "sent"`인 행에서 제출하면, 버튼이 바로 발송하지 않고 **한 번 더 눌러야 하는 확인 상태**로 바뀐다(마지막 발송 시각을 함께 보여준다). `window.confirm`은 쓰지 않는다 — 브라우저 모달은 이 하네스에서 다루기 어렵고, 인스펙터 안에서 해결되는 편이 일관된다. 서버는 막지 않는다: 재발송이 정당한 경우(수신자 오기입 후 재발송)가 있다.
@@ -194,7 +202,7 @@ planner는 "upcoming 전용이라 과거 행이 없으니 빼라"고 했으나, 
 
 | 파일 | 역할 |
 |---|---|
-| `features/mail-sends/status.ts` | 발송상태 파생(예약>발송). 키는 `String()` 정규화 |
+| `features/mail-sends/status.ts` | 발송상태 파생(예약>발송) + `lastFailedAt`. 키는 `String()` 정규화 |
 | `features/mail-sends/schedule-time.ts` | `parseScheduledAtKst` — KST 오프셋 단일 정의 |
 | `features/mail-sends/__tests__/status.test.ts` | 6케이스 (data-requests에서 이관) + number 키 1케이스 |
 | `features/mail-sends/__tests__/schedule-time.test.ts` | 오프셋 파싱 (이관) |
@@ -205,7 +213,7 @@ planner는 "upcoming 전용이라 과거 행이 없으니 빼라"고 했으나, 
 | `features/open-notices/schemas.ts` | zod 입력 (`serviceId: number` 필수) |
 | `features/open-notices/__tests__/schemas.test.ts` | 타입·mode·필수값 |
 | `features/open-notices/actions.ts` | `sendOpenNoticeAction` |
-| `features/open-notices/__tests__/actions.test.ts` | 예약/즉시/dry_run/실패/**권한 거부** |
+| `features/open-notices/__tests__/actions.test.ts` | 토글 on/off · 시각 출처 · **권한 거부** |
 | `features/open-notices/queries.ts` | 정렬 + 상태 조회 |
 | `features/open-notices/__tests__/queries.test.ts` | `sortForOpenNotice` |
 | `supabase/migrations/20260822_open_notice_sends_table.sql` | 테이블 + RLS + GRANT + status check |
@@ -216,7 +224,7 @@ planner는 "upcoming 전용이라 과거 행이 없으니 빼라"고 했으나, 
 | `.../list-variants/open-notice/__tests__/Table.test.tsx` | 배지 렌더 + 지난 행 비활성화 |
 | `.../list-variants/open-notice/__tests__/View.test.tsx` | 권한 가드 + 중복 경고 |
 | `app/dashboard/dev-test/OpenNoticeSection.tsx` | 탭 섹션 (서버 컴포넌트) |
-| `app/api/open-notices/dispatch/route.ts` | 예약 발송 cron 진입점 |
+| `app/api/open-notices/dispatch/route.ts` | 자동 발송 cron 진입점 |
 | `app/api/open-notices/dispatch/__tests__/route.test.ts` | 401/발송/dry_run/updateFailed |
 
 추가로 `scripts/open-notices-dispatch.mjs`, `.github/workflows/open-notices-dispatch.yml`.
@@ -264,16 +272,17 @@ T1 ─→ T6 (쿼리) ─→ T7 (variant) ─→ T8 (탭) ─→ T9 (dispatch+�
 | T2 | `feat(open-notice): 오픈안내 메일 초안 생성` | `formatApplyPeriod`·URL 2종·`buildDefaultOpenNoticeText` | 같은 해/연도교차/null/UTC경계 + URL 분기 |
 | T3 | `feat(open-notice): 평문 본문의 공백을 보존해 발송` | `mail-html.ts` — `&nbsp;` 변환 + URL 링크 | 들여쓰기 3칸 보존, 2칸 이상 런 보존, 1칸은 space 유지 |
 | T4 | `feat(open-notice): 발송 이력 테이블 + claim RPC` | 마이그 2개 | `\d`로 제약 확인 + 남의 행 안 보이는지 실조회 |
-| T5 | `feat(open-notice): 발송 server action` | schemas + actions | 예약/즉시/dry_run/실패/권한거부 4+1케이스 |
+| T5 | `feat(open-notice): 발송 server action` | schemas + actions | 권한거부 포함 (개정 2에서 토글 계약으로 교체) |
 | T6 | `feat(open-notice): 목록·상태 조회` | `sortForOpenNotice` + 상태 조회 | `write_start_at` 오름차순, null 뒤 |
 | T7 | `feat(open-notice): 인스펙터 variant 추가` | types/registry/ListRow/View/Table | `typecheck` 통과 + View 권한·중복경고 테스트 |
 | T8 | `feat(open-notice): dev-test 오픈안내 탭` | Tabs + Section + page 3갈래 | 세 탭이 각자 섹션 렌더 |
 | T9 | `feat(open-notice): 예약 발송 dispatch` | route/script/workflow/proxy/agent-org/CLAUDE.md | 잘못된 시크릿 POST → **401** (307이면 PUBLIC_PATHS 누락) |
+| T10 | `feat(open-notice): 예약 발송을 자동 발송 토글로 바꾼다` | schemas/actions/View/Table/Section/queries/CLAUDE.md | 시각을 폼이 아니라 DB 에서 읽는다 · 지난 건 비활성 · 실패 배지 |
 
 ### 태스크별 못박을 것
 
 - **T2** — `kstFormat({weekday:"short"})` + `formatToParts` 조합. `Intl.DateTimeFormat("ko-KR", …)` 직접 호출 금지(프로젝트 규칙, 12시간제로 샌다)
-- **T3** — `buildOpenNoticeHtml`이 즉시 발송(T5)과 예약 발송(T9) **두 경로에 모두** 들어가야 한다. 한쪽만 쓰면 예약분만 정렬이 무너진다
+- **T3** — `buildOpenNoticeHtml`은 dispatch(T9)가 쓴다. 개정 2 이후 즉시 발송 경로가 없어져 실제 사용처는 하나지만, action 쪽도 같은 변환기를 참조해 두 경로가 갈리지 않게 한다
 - **T5** — `createAdminClient()`로 insert (RLS에 INSERT 정책이 없어 `createClient()`면 조용히 실패). `revalidatePath("/dashboard/dev-test")` — data-requests 경로를 복사하면 배지가 영영 갱신 안 된다
 - **T7** — hidden input은 `row.serviceIdNum`. `isWriteStartPast` 비활성화를 **넣는다**(planner 의견과 반대 — §4 참조). 버튼 호버는 `hover:bg-ink hover:text-cream`(표준). data-request View는 `hover:bg-line-soft`를 쓰지만 **기존 것은 고치지 않는다**(surgical). `formatMonthDay`도 복사하지 말고 `kstFormat` 사용. 비활성화 테스트는 **행을 손으로 만들어** 검증한다 — 실데이터로는 재현되지 않는다
 - **T8** — `OpenNoticeSection`은 `services`를 **props로 받는다**. 내부에서 `listTestableServices()`를 다시 부르면 3중 호출이 된다(현재 page + DevControlSection 2중)
@@ -293,14 +302,14 @@ T1 ─→ T6 (쿼리) ─→ T7 (variant) ─→ T8 (탭) ─→ T9 (dispatch+�
 | R6 | 예약 행이 `sending`에 갇힘 | claim 후 update 전에 죽으면 다음 claim이 못 잡는다(수동 복구). **자료요청의 기존 설계 결함을 그대로 상속.** 다만 **실측상 한 번도 안 터졌다** — `data_request_sends` 26건(sent 23·dry_run 1·scheduled 2), `backup_request_mail_sends` 14건 전부 sent, 갇힌 행 0건. `updateFailed`로 관찰만 하고 복구 자동화는 미룬다 |
 | R7 | 경쟁률 URL이 죽은 링크일 수 있음 | 대학원·편입 등 경쟁률 미공개 서비스에도 URL이 박힌다. 운영자가 본문 편집으로 지울 수 있으므로 차단 요소는 아님 |
 | R8 | 테스트 더미가 목록에 섞임 | `진학대학교 결제사 테스트(KCP)`(9998783)가 upcoming에 있다. 기존 동작(테스트 탭도 동일) |
-| R9 | cron-job.org 미등록 시 예약 발송이 조용히 죽음 | §8 |
+| R9 | cron-job.org 미등록 시 **자동 발송이 통째로 죽음** | 개정 2 이후 수동 발송 경로가 없어 이 의존이 더 커졌다. §8 |
 
 ---
 
 ## 8. 배포 후 잔여 (사람이 해야 함)
 
 1. **마이그레이션 2개 적용**
-2. **cron-job.org에 `/api/open-notices/dispatch` 5분 주기 등록** — 실 트리거는 GitHub Actions가 아니라 cron-job.org다(`data-requests-dispatch.yml:4-5`가 cron을 제거하고 주석으로 명시). **머지 ≠ 동작.** 등록 전까지 예약 발송분은 조용히 안 나간다. 즉시 발송은 정상
+2. **cron-job.org에 `/api/open-notices/dispatch` 5분 주기 등록** — 실 트리거는 GitHub Actions가 아니라 cron-job.org다(`data-requests-dispatch.yml:4-5`가 cron을 제거하고 주석으로 명시). **머지 ≠ 동작.** 등록 전까지 토글을 켜도 메일이 안 나간다 — 개정 2에서 수동 발송을 없앴으므로 **대체 경로가 없다**
 3. 배포 후 잘못된 시크릿으로 POST해 **401**을 확인(307이면 PUBLIC_PATHS 누락)
 
 > dispatch 라우트류는 `automation_runs`에 안 남아서 **automation-digest의 미실행 감지에도 안 잡힌다** — data-requests도 같은 사각지대다. 이번 범위 밖이지만 알고 있어야 한다.
