@@ -94,3 +94,47 @@ describe("개발·테스트 카운트", () => {
     expect(devTest.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * 실데이터가 있는 메뉴는 숫자를 붙인다.
+ *
+ * **목업 자리표시자에는 안 붙인다** — 가짜 숫자가 진짜처럼 보이면 자료실 때와
+ * 같은 문제가 된다(없는 기능을 있는 줄 안다).
+ */
+describe("실데이터 메뉴 카운트", () => {
+  beforeEach(() => {
+    calls.length = 0;
+  });
+
+  it("우편물·지식망·리포트·체크리스트·성과에 숫자가 있다", async () => {
+    const counts = await getMenuCounts("me@x.com");
+    for (const slug of [
+      "postal",
+      "knowledge",
+      "reports",
+      "checklist",
+      "outcomes",
+    ]) {
+      expect([...counts.keys()], slug).toContain(slug);
+    }
+  });
+
+  it("각자 자기 표를 센다", async () => {
+    await getMenuCounts("me@x.com");
+    const tables = calls.map((c) => c.table);
+    for (const t of [
+      "postal_receipts",
+      "knowledge_docs",
+      "reports",
+      "checklist_rounds",
+      "performance_assignments",
+    ]) {
+      expect(tables, t).toContain(t);
+    }
+  });
+
+  it("대학배정은 안 센다 — 엑셀을 읽어야 해서 매 화면이 느려진다", async () => {
+    const counts = await getMenuCounts("me@x.com");
+    expect([...counts.keys()]).not.toContain("assignments");
+  });
+});

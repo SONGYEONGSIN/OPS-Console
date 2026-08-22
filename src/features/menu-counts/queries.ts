@@ -149,6 +149,16 @@ export async function getMenuCounts(
     countReceivables(),
     countDataRequests(currentUserEmail),
     countOf("worklog", supabase.from("worklog").select("*", head)),
+    // 실데이터가 있는 메뉴들. 목업 자리표시자(pims·competition 등)에는 안 붙인다 —
+    // 가짜 숫자가 진짜처럼 보이면 없는 기능을 있는 줄 안다(자료실 때와 같은 문제).
+    countOf("postal", supabase.from("postal_receipts").select("*", head)),
+    countOf("knowledge", supabase.from("knowledge_docs").select("*", head)),
+    countOf("reports", supabase.from("reports").select("*", head)),
+    countOf("checklist", supabase.from("checklist_rounds").select("*", head)),
+    countOf(
+      "outcomes",
+      supabase.from("performance_assignments").select("*", head),
+    ),
   ]);
 
   const map = new Map<string, number>();
