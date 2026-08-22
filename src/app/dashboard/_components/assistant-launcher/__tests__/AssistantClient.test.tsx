@@ -423,9 +423,27 @@ describe("AssistantClient — 첨부 칩 상태 표시", () => {
  * 그 이름이 조직도 화면에만 있고 정작 대화 창구에는 없었다.
  */
 describe("AssistantClient — 명보 페르소나", () => {
-  it("발화자 이름이 '명보'다", () => {
+  it("닫는 방법을 컴포저가 알려준다 — 헤더에 버튼이 없으니 ESC 를 모른다", () => {
     render(<AssistantClient />);
-    expect(screen.getAllByText("명보").length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText(/ESC 닫기/)).toBeInTheDocument();
+  });
+
+  it("화면 표시명은 '명보 인턴'이다", () => {
+    render(<AssistantClient />);
+    expect(screen.getAllByText("명보 인턴").length).toBeGreaterThan(0);
+  });
+
+  it("무엇을 어디서 찾는지 표로 보여준다", () => {
+    // 지어낸 샘플이 아니라 실제 검색 가능한 도메인이라야 한다.
+    render(<AssistantClient />);
+    expect(screen.getByText(/찾는 곳/)).toBeInTheDocument();
+    expect(screen.getAllByText(/업무 지식망/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/대학 연락처/)).toBeInTheDocument();
+  });
+
+  it("볼트에 없으면 어떻게 하는지 표 아래에 단서를 단다", () => {
+    render(<AssistantClient />);
+    expect(screen.getByText(/지어내지 않고/)).toBeInTheDocument();
   });
 
   it("빈 상태에서 자기가 뭘 하는지 소개한다", () => {
