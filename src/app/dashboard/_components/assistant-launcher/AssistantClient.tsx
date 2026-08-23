@@ -420,16 +420,21 @@ function ModeChip({
       aria-pressed={active}
       onClick={onClick}
       className={`relative cursor-pointer border-none bg-transparent px-2 py-1 text-2xs transition-colors ${
-        active ? "font-bold text-ink" : "text-muted hover:text-ink"
+        active ? "font-bold text-ink" : "text-ink-soft hover:text-ink"
       }`}
     >
       {label}
-      {active && (
-        <span
-          aria-hidden
-          className="absolute bottom-0.5 left-2 right-2 h-0.5 bg-vermilion"
-        />
-      )}
+      {/*
+        밑줄은 꺼져 있어도 그린다. 기본이 켜짐이던 때는 꺼진 모습을 볼 일이
+        없었는데, 기본을 끄고 나니 밑줄도 색도 없어 "칩이 사라졌다"로 읽혔다.
+        누를 수 있는 물건이라는 건 꺼져 있을 때도 보여야 한다.
+      */}
+      <span
+        aria-hidden
+        className={`absolute bottom-0.5 left-2 right-2 h-0.5 ${
+          active ? "bg-vermilion" : "bg-line"
+        }`}
+      />
     </button>
   );
 }
