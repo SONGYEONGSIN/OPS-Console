@@ -1,0 +1,139 @@
+# 계산서발행 — 정산완료를 쌓고 그 위에 발행을 얹는다
+
+작성 2026-08-24 · 상태 설계
+
+## 1. 무엇을
+
+계산서발행 메뉴(`/dashboard/invoice`)가 **전형료 정산이 끝난 건만** 받아 발행일·발행유형·청구금액을 기록한다. 그러려면 전형료정산이 먼저 "끝났다"를 기록해야 하므로, 두 메뉴를 함께 손댄다.
+
+```
+서비스마감 ──→ 전형료정산 ──→ 계산서발행 ──→ 미수채권
+ (결제 끝)     정산완료 체크    발행 기록      발행 후 미입금
+```
+
+## 2. 왜 지금 그대로는 안 되는가
+
+요청은 "계산서발행도 전형료 정산처럼 데이터가 쌓이면 된다"였다. 그런데 **정산 메뉴에는 쌓이는 게 거의 없다.**
+
+| 확인한 것 | 결과 |
+|---|---|
+| `settlement/actions.ts` 의 쓰기 | `setSettlementDeadline` 하나 — 대학별 기한뿐 |
+| `settlement_deadlines` 실제 행 수 | **0건** (2026-08-24 조회) |
+| 그래서 정산 화면 572건의 상태 | 기한 `미설정` · 정산 마감일 `—` · 남은 날 `—` |
+| 정산 완료를 기록하는 곳 | **없음** |
+
+정산 마감일을 가진 건이 하나도 없으므로, "마감일이 지난 것만"으로 계산서발행 목록을 만들면 **0건**이다. 게다가 마감일 경과와 정산 완료는 다른 뜻이다 — 기한을 넘겼는데 정산이 안 됐으면 그건 연체다. 둘을 같게 놓으면 계산서발행 목록이 "정산 끝난 건"이 아니라 "정산이 늦은 건"이 된다.
+
+그래서 **정산완료를 먼저 만든다.**
+
+## 3. 미수채권과 겹치지 않는다
+
+미수채권 대장은 SharePoint 엑셀이고 **회차별 시트**(2주 주기)에 `청구일자 · 매출구분 · 거래처명 · 거래내역 · 운영자 · 청구금액 · 학교담당자 · 메일발송일자 · 입금예정일 · 적요`를 담는다. 이미 **발행된 건의 미입금**만 본다.
+
+계산서발행이 잡아야 할 **"아직 발행 안 한 건"은 거기 없다.** 경계가 겹치지 않으므로 별도 저장소를 둔다.
+
+## 4. 결정
+
+| 항목 | 결정 | 근거 |
+|---|---|---|
+| 저장 구조 | **테이블 하나** `service_billing` | 두 단계가 서비스와 1:1이고 순서가 정해져 있어(정산→발행) 한 줄로 표현된다. 조인이 없고 권한 규칙도 같다 |
+| 키 | `service_id bigint` PK, **FK 없음** | `closing_services` 는 스크랩 미러라 FK 를 걸면 이력 무결성이 스크래퍼에 묶인다 (`open_notice_sends` 선례) |
+| 완료 후 목록 | **남고 완료 표시** | 사라지면 잘못 체크했을 때 되돌릴 길이 없다 (오픈안내에서 배운 것) |
+| 계산서발행 목록 범위 | `settled_at` 이 있는 건 | 사용자 확정 |
+| 발행 기록 항목 | 발행일 · 발행유형 · 청구금액 | 사용자 확정 |
+| 발행유형 선택지 | `학생부담 / 청구 / 영수` | `handover/payment-fields.ts` 의 `PAYMENT_INVOICE_FIELDS` 재사용. 두 곳이 갈라지면 어느 쪽이 맞는지 모른다 |
+| **청구금액 출처** | **Moa 내부관리자 정산 화면에서 가져온다** | 사용자 확정. 사람이 적는 값이 아니다 |
+| 권한 | 본인 담당만, admin 은 전체 | 돈이 얽힌 기록이라 남의 담당 건을 오해로 닫는 일을 막는다 |
+
+### 청구금액을 사람이 적게 두지 않는 이유
+
+처음엔 발행 화면에서 직접 입력하는 안을 냈다가 접었다. 미수채권 대장이 이미 `청구금액`을 갖고 있어 **두 값이 어긋나면 어느 쪽이 맞는지 알 수 없다.** Moa 라는 하나의 출처에서 끌어오면 그 문제가 생기지 않는다.
+
+## 5. 자료 구조
+
+```sql
+create table public.service_billing (
+  -- closing_services.service_id (Moa 서비스ID). FK 없음 — 위 결정 참조.
+  service_id bigint primary key,
+
+  -- 1단계: 전형료정산이 채운다
+  settled_at   timestamptz,
+  settled_by   text,
+  -- 3단계: Moa 에서 가져온다. 사람이 적지 않는다.
+  settled_amount bigint,
+  amount_synced_at timestamptz,
+
+  -- 2단계: 계산서발행이 채운다
+  issued_at   timestamptz,
+  issue_type  text check (issue_type in ('학생부담','청구','영수')),
+  issued_by   text,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+RLS 는 `settlement_deadlines` 와 같다 — **열람은 인증 사용자 공개**(운영부 공동 업무), **쓰기는 service_role 만**. 서버 action 이 `createAdminClient()` 로 쓴다.
+
+`issued_at` 이 있는데 `settled_at` 이 없는 행은 만들지 않는다. 발행은 정산완료 위에만 얹힌다.
+
+## 6. 단계
+
+### T1 — 전형료정산에 정산완료를 쌓는다
+
+- 마이그레이션: `service_billing` 생성
+- `features/settlement/completion.ts` — 순수 함수 (완료 여부 판정, 행 병합)
+- `features/settlement/actions.ts` 에 `setSettlementCompleted(serviceId, done)` 추가
+  - **폼을 믿지 않고 `closing_services` 를 DB 에서 다시 읽어** 담당자를 판정한다 (오픈안내 선례)
+- `SettlementTable` 에 완료 체크 열 추가. 완료된 행은 대학명·서비스명을 `text-muted` 로 낮추고 완료일을 `tabular-nums` 로 붙인다 (행을 숨기거나 취소선을 긋지 않는다 — 아직 발행이 남은 건이다)
+- 칩에 `미완료`(기본) / `전체` 추가. 기존 `내 정산 / 전체` 는 그대로 두고 **별도 그룹**이며 URL 파라미터도 따로 쓴다(`status` 는 담당, `done` 은 완료). 따라서 처음 열었을 때 보이는 것은 **내 담당 · 미완료**다
+
+이 단계만으로도 정산 메뉴가 처음으로 "무엇이 남았는지"를 말할 수 있게 된다.
+
+### T2 — 계산서발행 전용 페이지
+
+- `[slug]` 폴백의 **가짜 목록(`listMockRows`)을 걷어낸다** — 지금 `invoice` 는 목업이 진짜처럼 보이고 있다
+- `app/dashboard/invoice/page.tsx` + `InvoiceTable.tsx`
+- 목록 = `settled_at` 이 있는 건. 페이지네이션·검색은 정산과 같은 얼개
+- `features/invoice/` — `queries.ts` / `actions.ts` / `rows.ts`
+- `setInvoiceIssued(serviceId, {issuedAt, issueType})` — 권한 판정은 T1 과 같은 함수를 쓴다
+- 사이드바 숫자: 메뉴 범위(= 정산완료 건수)에 맞춘다. `menu-counts/queries.ts` 에 한 줄
+
+**청구금액 열은 이 단계에서 만들되 T3 전까지 `—` 로 비어 있다.** 값이 없는 것을 0 으로 보이게 하지 않는다.
+
+### T3 — Moa 정산 금액 연동
+
+`settled_amount` 를 채운다. **이 단계는 앞의 둘과 성격이 다르다.**
+
+Moa 스크랩은 제약이 무겁다 (`scripts/moa-closing/scrape.py` 에서 확인):
+
+- **회사 PC 에서만 동작** — Cloudflare 가 데이터센터 IP 를 막아 Vercel·GitHub Actions 에서 불가
+- **로그인에 SMS 본인확인** 이 붙는다
+- 받은 **엑셀이 암호화(CDFV2)** 돼 `msoffcrypto` 로 복호해야 한다
+- 폴러가 `closing_scrape_requests` pending 을 claim 하는 큐 구조
+
+그래서 T3 은 **회사 PC 폴러 경로를 하나 더 늘리는 일**이며, 별도 설계가 필요하다.
+
+**미확정**: Moa 의 어느 메뉴, 어느 표에서 정산 금액을 읽는지 아직 정해지지 않았다. 화면을 확인한 뒤 T3 설계를 시작한다.
+
+## 7. 화면
+
+정산·발행 모두 기존 표준을 따른다 — `ListPagination`, 칩은 제목 옆, 표 머리글은 `text-left text-xs uppercase tracking-[0.06em] text-muted` + `px-3 py-2`, 금액·날짜는 `tabular-nums`, 날짜는 `kstFormat`.
+
+완료·발행 표시는 색으로 가른다. 계약종료 컬럼에서 쓴 방식과 같다 — **값이 있는 것과 우리가 비워둔 것이 같아 보이면 안 된다.**
+
+## 8. 위험
+
+| 위험 | 대응 |
+|---|---|
+| 정산기한이 0건이라 정산 화면의 마감일 기능이 놀고 있다 | 이번 범위 밖. 다만 T1 이 완료 체크를 붙이면 기한 없이도 메뉴가 쓸모를 갖는다 |
+| 잘못 체크한 정산완료 | 목록에 남으므로 같은 자리에서 해제한다 |
+| `service_id` 가 스크랩에서 사라진 서비스 | `closing_services` 는 **신규만 누적**(`ignoreDuplicates`)이라 사라지지 않는다 |
+| T3 이 늦어져 금액이 계속 비어 있음 | `—` 로 비워 두고 0 으로 보이게 하지 않는다. 발행일·발행유형만으로도 T2 는 쓸모가 있다 |
+
+## 9. 여기서 다루지 않는 것
+
+- **정산기한(`settlement_deadlines`) 채우기** — 별개 운영 과제
+- **미수채권 대장과의 자동 대사** — 두 소스를 맞추는 일은 별도 설계
+- **발행 이력(되돌린 기록)** — 지금 요구가 없다. 현재 상태만 갖는다
+- **계산서 실제 발행(역발행 시스템 연동)** — 이 메뉴는 발행 사실을 기록할 뿐 발행하지 않는다

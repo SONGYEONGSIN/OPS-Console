@@ -5,35 +5,30 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listClosing } from "@/features/closing/queries";
 import {
-  fetchBillingStates,
-  fetchSettlementDeadlines,
+  fetchInvoiceStates,
   listSettledServiceIds,
-} from "@/features/settlement/queries";
-import { mergeBilling } from "@/features/settlement/completion";
-import { toSettlementRows } from "@/features/settlement/rows";
-import { SettlementDoneChips } from "./_DoneChips";
-import { SettlementTable } from "./SettlementTable";
+} from "@/features/invoice/queries";
+import { toInvoiceRows } from "@/features/invoice/rows";
+import { InvoiceTable } from "./InvoiceTable";
 import { ClosingStatusChips } from "../closing/_StatusChips";
 import { ListPagination } from "@/components/common/ListPagination";
 
 /**
- * 전형료 정산 — 결제가 끝난 서비스를 **정산 마감일** 기준으로 본다.
+ * 계산서발행 — **정산이 끝난 건**에 발행 기록을 남긴다.
  *
- * 목록 자체는 서비스마감과 같다(`listClosing` 이 이미 `pay_end_at` 으로 거른다).
- * 다른 점은 **대학별 정산기한을 붙여 마감일과 남은 날을 만든다**는 것이다 —
- * 그게 없으면 이 메뉴는 서비스마감의 사본일 뿐이다.
+ * 목록 범위가 이 메뉴의 존재 이유다. 서비스마감·전형료정산은 결제가 끝난 572건을
+ * 같이 보지만, 여기는 그중 **정산완료 표시가 된 것만** 본다. 정산 전 건이 섞이면
+ * 아직 청구하면 안 되는 대학에 계산서가 나간다.
+ *
+ * `service_billing` 과 `closing_services` 는 FK 가 없어(스크랩 미러) DB 조인을 못
+ * 건다. 그래서 정산완료 ID 를 먼저 받아 목록 쿼리에 넘긴다.
  */
-export default async function SettlementPage({
+export default async function InvoicePage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    page?: string;
-    status?: string;
-    q?: string;
-    done?: string;
-  }>;
+  searchParams: Promise<{ page?: string; status?: string; q?: string }>;
 }) {
-  const slug = "settlement";
+  const slug = "invoice";
   await requireMenu(slug);
 
   const meta = findSidebarMeta(slug);
@@ -41,44 +36,39 @@ export default async function SettlementPage({
 
   const sp = await searchParams;
   const me = await getCurrentOperator();
-  // 기본은 '내 정산' — 처음 열었을 때 남의 것이 잔뜩 나오면 쓸모가 없다.
+  // 기본은 '내 것' — 정산과 같은 어법이다.
   const mine = sp.status !== "all";
-  // 담당(status)과 완료(done)는 다른 축이라 파라미터를 따로 쓴다. 기본은 '미완료' —
-  // 정산 화면은 남은 일을 보는 곳이다.
-  const showAllDone = sp.done === "all";
 
-  // 완료된 건은 '미완료' 칩에서 빼야 하므로 먼저 ID 를 받는다.
   const settledIds = await listSettledServiceIds();
 
-  const [{ rows: services, total }, deadlines, allCount, mineCount] = await Promise.all([
+  const [{ rows: services, total }, allCount, mineCount] = await Promise.all([
     listClosing({
       page: sp.page ? Number(sp.page) : 1,
       pageSize: 30,
       search: sp.q,
       phase: "closed",
       operatorName: mine ? (me?.displayName ?? "") : undefined,
-      excludeServiceIds: showAllDone ? undefined : settledIds,
+      serviceIds: settledIds,
     }),
-    fetchSettlementDeadlines(),
-    // 카운트는 정산 범위(결제 끝난 것) 안에서 센다 — 범위 밖 숫자가 뜨면
-    // 눌렀을 때 그만큼 안 나와 화면이 거짓말한다.
+    // 카운트도 같은 범위(정산완료) 안에서 센다 — 범위 밖 숫자가 뜨면 눌렀을 때
+    // 그만큼 안 나와 화면이 거짓말한다.
     listClosing({
       search: sp.q,
       phase: "closed",
       pageSize: 1,
-      excludeServiceIds: showAllDone ? undefined : settledIds,
+      serviceIds: settledIds,
     }).then((r) => r.total),
     listClosing({
       search: sp.q,
       phase: "closed",
       operatorName: me?.displayName ?? "",
       pageSize: 1,
-      excludeServiceIds: showAllDone ? undefined : settledIds,
+      serviceIds: settledIds,
     }).then((r) => r.total),
   ]);
 
-  const billing = await fetchBillingStates(services.map((s) => s.service_id));
-  const rows = mergeBilling(toSettlementRows(services, deadlines), billing);
+  const states = await fetchInvoiceStates(services.map((s) => s.service_id));
+  const rows = toInvoiceRows(services, states);
   const config = resolvePageMeta(slug, meta, total);
 
   return (
@@ -91,13 +81,10 @@ export default async function SettlementPage({
       />
       <div className="p-5 lg:p-7">
         <section>
-          {/* 칩은 제목 바로 옆이다 — ListPattern 표준(제목·건수·칩이 한 묶음).
-              justify-between 로 밀어내면 화면 반대편으로 가 무엇의 필터인지
-              읽히지 않는다. */}
           <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <div className="flex items-baseline gap-2">
-                <h3 className="text-xl font-bold text-ink">전형료 정산</h3>
+                <h3 className="text-xl font-bold text-ink">계산서 발행</h3>
                 <span className="text-muted" aria-hidden>
                   ·
                 </span>
@@ -107,10 +94,9 @@ export default async function SettlementPage({
                 counts={{ all: allCount, mine: mineCount }}
                 scope="settlement"
               />
-              <SettlementDoneChips />
             </div>
           </header>
-          <SettlementTable rows={rows} />
+          <InvoiceTable rows={rows} />
           <div className="mt-4">
             <ListPagination total={total} pageSize={30} />
           </div>

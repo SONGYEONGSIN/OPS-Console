@@ -3,9 +3,16 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { kstFormat } from "@/lib/kst-format";
-import { setSettlementDeadline } from "@/features/settlement/actions";
+import {
+  setSettlementCompleted,
+  setSettlementDeadline,
+} from "@/features/settlement/actions";
 import { DEADLINE_DAYS } from "@/features/settlement/deadline";
+import type { BillingState } from "@/features/settlement/completion";
 import type { SettlementRow } from "@/features/settlement/rows";
+
+/** 정산·발행 상태가 붙은 정산 행. */
+export type SettlementTableRow = SettlementRow & BillingState;
 
 /**
  * 전형료 정산 목록.
@@ -20,7 +27,7 @@ import type { SettlementRow } from "@/features/settlement/rows";
 const fmtDate = (iso: string) =>
   kstFormat({ month: "2-digit", day: "2-digit" }).format(new Date(iso));
 
-export function SettlementTable({ rows }: { rows: SettlementRow[] }) {
+export function SettlementTable({ rows }: { rows: SettlementTableRow[] }) {
   if (rows.length === 0) {
     return (
       <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
@@ -34,6 +41,7 @@ export function SettlementTable({ rows }: { rows: SettlementRow[] }) {
       <table className="w-full min-w-[52rem] text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+            <th className="px-3 py-2">완료</th>
             <th className="px-3 py-2">대학명</th>
             <th className="px-3 py-2">서비스명</th>
             <th className="px-3 py-2">결제마감</th>
@@ -53,15 +61,52 @@ export function SettlementTable({ rows }: { rows: SettlementRow[] }) {
   );
 }
 
-function Row({ row }: { row: SettlementRow }) {
+function Row({ row }: { row: SettlementTableRow }) {
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  // 오류는 난 자리에 띄운다 — 체크박스 오류가 정산기한 칸 밑에 뜨면 무엇이
+  // 잘못됐는지 읽히지 않는다.
+  const [deadlineError, setDeadlineError] = useState<string | null>(null);
+  const [settleError, setSettleError] = useState<string | null>(null);
   const router = useRouter();
+  const settled = Boolean(row.settledAt);
 
   return (
     <tr className="border-b border-line-soft hover:bg-line-soft">
-      <td className="px-3 py-2 text-sm text-ink">{row.university_name}</td>
-      <td className="px-3 py-2 text-sm text-ink-soft">{row.service_name}</td>
+      <td className="px-3 py-2">
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            aria-label={`${row.university_name} ${row.service_name} 정산완료`}
+            checked={settled}
+            disabled={pending}
+            onChange={(e) => {
+              const next = e.target.checked;
+              setSettleError(null);
+              startTransition(async () => {
+                const r = await setSettlementCompleted(row.service_id, next);
+                if (r.ok) router.refresh();
+                else setSettleError(r.error);
+              });
+            }}
+            className="accent-vermilion"
+          />
+          {settled && row.settledAt && (
+            <span className="text-2xs tabular-nums text-muted">
+              {fmtDate(row.settledAt)}
+            </span>
+          )}
+        </label>
+        {settleError && (
+          <p className="mt-0.5 text-2xs text-vermilion">{settleError}</p>
+        )}
+      </td>
+      {/* 완료된 줄은 톤을 낮춘다. 숨기거나 취소선을 긋지 않는다 — 발행이 아직 남았다. */}
+      <td className={`px-3 py-2 text-sm ${settled ? "text-muted" : "text-ink"}`}>
+        {row.university_name}
+      </td>
+      <td className={`px-3 py-2 text-sm ${settled ? "text-muted" : "text-ink-soft"}`}>
+        {row.service_name}
+      </td>
       <td className="px-3 py-2 text-sm tabular-nums text-ink-soft">
         {row.pay_end_at ? fmtDate(row.pay_end_at) : "—"}
       </td>
@@ -72,11 +117,11 @@ function Row({ row }: { row: SettlementRow }) {
           value={row.deadlineDays ?? ""}
           onChange={(e) => {
             const days = Number(e.target.value);
-            setError(null);
+            setDeadlineError(null);
             startTransition(async () => {
               const r = await setSettlementDeadline(row.university_name, days);
               if (r.ok) router.refresh();
-              else setError(r.error);
+              else setDeadlineError(r.error);
             });
           }}
           className="border border-line-soft bg-field-bg px-1.5 py-0.5 text-xs text-ink outline-none transition-colors focus:border-ink focus:bg-white"
@@ -89,7 +134,9 @@ function Row({ row }: { row: SettlementRow }) {
             </option>
           ))}
         </select>
-        {error && <p className="mt-0.5 text-2xs text-vermilion">{error}</p>}
+        {deadlineError && (
+          <p className="mt-0.5 text-2xs text-vermilion">{deadlineError}</p>
+        )}
       </td>
       <td className="px-3 py-2 text-sm tabular-nums text-ink">
         {row.dueAt ? fmtDate(row.dueAt) : "—"}
