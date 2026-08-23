@@ -538,3 +538,42 @@ describe("AssistantClient — 열었을 때 스크롤 위치", () => {
     }
   });
 });
+
+/**
+ * 채팅 마크 크기 — em 으로 잡으면 그 줄이 text-2xs 라 11px 로 쪼그라든다.
+ * 12칸 도안이니 24px 면 칸당 정확히 2px 로 떨어져 가장 또렷하다.
+ */
+describe("AssistantNameMark — 크기", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    pathnameRef.current = "/dashboard/incidents";
+  });
+
+  it("글자 크기에 묶지 않고 24px 로 고정한다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) =>
+        String(url).startsWith("/api/assistant/claude?")
+          ? Promise.resolve({
+              json: async () => ({ ok: true, status: "done", answer: "답", sources: [] }),
+            })
+          : Promise.resolve({ json: async () => ({ ok: true, id: "r1" }) }),
+      ),
+    );
+    const { container } = render(<AssistantClient />);
+    fireEvent.change(screen.getByLabelText("질문 입력"), { target: { value: "q" } });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(
+      () => expect(screen.getAllByText("명보 인턴").length).toBeGreaterThan(0),
+      { timeout: 5000 },
+    );
+    // 대기 줄 스프라이트(h-4)와 섞이지 않게 이름 마크만 겨냥한다.
+    const marks = [...container.querySelectorAll("[data-name-mark]")];
+    expect(marks.length).toBeGreaterThan(0);
+    for (const m of marks) {
+      expect(m.className).toContain("h-6");
+      expect(m.className).not.toMatch(/h-\[1\.\d+em\]/);
+    }
+  }, 15000);
+});
