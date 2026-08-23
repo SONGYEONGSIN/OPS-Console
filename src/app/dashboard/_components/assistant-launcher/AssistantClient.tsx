@@ -149,7 +149,13 @@ type ClaudePoll = {
 
 export function AssistantClient({ userName = "운영자" }: Props) {
   const pathname = usePathname();
-  const [attachPage, setAttachPage] = useState(true);
+  /**
+   * 현재 화면을 질문에 붙일지. **기본은 꺼짐.**
+   *
+   * 켜둔 채로 두면 화면과 무관한 걸 물어도 그 페이지 정보가 딸려 가서, 답이
+   * 엉뚱한 쪽으로 끌린다. 붙일지는 묻는 사람이 정한다.
+   */
+  const [attachPage, setAttachPage] = useState(false);
 
   // 지금 열려 있는 화면 — 사이드바에 등록된 메뉴일 때만 붙인다.
   // 상세 경로(/dashboard/incident-reports/{id})도 첫 세그먼트로 메뉴를 찾는다.
