@@ -123,6 +123,15 @@ export async function getMenuCounts(
       "settlement",
       applyPhase(supabase.from("closing_services").select("*", head), "closed"),
     ),
+    // 계산서발행은 범위가 다르다 — 마감된 것 전부가 아니라 **정산완료된 것**만이다.
+    // 여기에 572 를 붙이면 눌렀을 때 그만큼 안 나와 화면이 거짓말한다.
+    countOf(
+      "invoice",
+      supabase
+        .from("service_billing")
+        .select("service_id", head)
+        .not("settled_at", "is", null),
+    ),
     countOf("contacts", supabase.from("contacts").select("*", head)),
     countOf("backup", supabase.from("backup_requests").select("*", head)),
     countOf("incidents", supabase.from("incidents").select("*", head)),
