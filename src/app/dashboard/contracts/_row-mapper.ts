@@ -12,6 +12,8 @@ export function contractsRowToListRow(r: ContractRow): ListRow {
     contractStatus: r.status,
     serviceActive: r.serviceActive,
     feeAmount: r.feeAmount,
+    contractEndMonth: r.endMonth,
+    contractEndKind: r.endKind,
     contractRaw: r.raw,
     contractsSheet: r.sheet,
     contractsCellOperator: r.cellAddress.operator,

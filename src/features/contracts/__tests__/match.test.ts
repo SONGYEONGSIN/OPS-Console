@@ -13,6 +13,8 @@ function row(over: Partial<ContractRow>): ContractRow {
     status: "계약완료",
     serviceActive: "Y",
     feeAmount: "1,100,000",
+    endMonth: "2027-02",
+    endKind: "assumed",
     cellAddress: {
       operator: null,
       status: null,
