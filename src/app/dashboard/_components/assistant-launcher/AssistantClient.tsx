@@ -161,6 +161,9 @@ export function AssistantClient({ userName = "운영자" }: Props) {
 
   // 새 메시지 추가 시 하단 자동 스크롤 (jsdom 환경에서 scrollIntoView 미구현 → guard)
   useEffect(() => {
+    // 대화 전에는 끌어내리지 않는다 — 빈 상태 맨 아래로 가면 소개와 얼굴이
+    // 잘려 나간다. 시운전 표가 들어가면서 화면 절반이 사라졌다.
+    if (messages.length === 0) return;
     const el = endRef.current;
     if (el && typeof el.scrollIntoView === "function") {
       el.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -354,7 +357,7 @@ export function AssistantClient({ userName = "운영자" }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="무엇을 찾으시나요? Enter로 전송 · Shift+Enter 줄바꿈 · ESC 닫기"
+          placeholder="무엇을 찾아드릴까요? Enter로 전송 · Shift+Enter 줄바꿈 · ESC 닫기"
           rows={2}
           disabled={pending}
           maxLength={500}
