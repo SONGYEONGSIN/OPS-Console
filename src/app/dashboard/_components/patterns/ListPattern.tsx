@@ -279,6 +279,10 @@ export type ListRow = {
   serviceActive?: string;
   /** contracts 도메인 — 수수료(VAT포함) display text */
   feeAmount?: string;
+  /** contracts 도메인 — 계약 종료월 표기 (`2027-07`) */
+  contractEndMonth?: string;
+  /** contracts 도메인 — 종료월 출처 (ledger / assumed / check / raw) */
+  contractEndKind?: string;
   /** contracts 도메인 — 시트별 전체 컬럼 (헤더 → 값). 인스펙터 raw view */
   contractRaw?: Record<string, string>;
   /** contacts 도메인 — 활성화 ("재직" | "타부서 이동") */

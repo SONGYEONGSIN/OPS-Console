@@ -51,6 +51,10 @@ export const contractRowSchema = z.object({
     serviceActive: z.string().nullable(),
     feeAmount: z.string().nullable(),
   }),
+  /** 계약 종료월 표기 (`2027-07`, 못 읽으면 대장 원문) — `period.ts` 참조 */
+  endMonth: z.string(),
+  /** 종료월의 출처 — 대장 기재 / 학년도 추정 / 확인필요 / 원문 */
+  endKind: z.enum(["ledger", "assumed", "check", "raw"]),
   /** 시트별 전체 컬럼 (헤더 → 값) — 인스펙터 raw view */
   raw: z.record(z.string(), z.string()),
 });

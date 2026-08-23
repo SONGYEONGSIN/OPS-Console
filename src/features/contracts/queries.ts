@@ -1,6 +1,7 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import { getWorkbookSession } from "@/lib/microsoft/workbook-session";
+import { resolveContractEnd } from "./period";
 import {
   CONTRACT_SHEETS,
   type ContractRow,
@@ -132,6 +133,15 @@ async function fetchSheet(
   const statusIdx = findColIdx(headers, ["계약진행현황", "진행상태"]);
   const serviceActiveIdx = findColIdx(headers, ["서비스여부"]);
   const feeIdx = findColIdx(headers, ["수수료(VAT포함)", "수수료"]);
+  // 종료월 재료. 4년제는 `기간`, 대학원은 `계약기간 (종료일 작성)` 로 어법이 다르고
+  // 전문대·초중고·기타 시트는 컬럼 자체가 없다(-1 → 빈 칸으로 다뤄진다).
+  const periodIdx = findColIdx(headers, [
+    "기간",
+    "계약기간(종료일작성)",
+    "계약기간",
+  ]);
+  // 기간이 비었을 때 학년도 종료월로 채워도 되는지 가르는 칸.
+  const multiYearIdx = findColIdx(headers, ["다년계약여부"]);
 
   const rows: ContractRow[] = [];
   for (let i = 0; i < dataRows.length; i++) {
@@ -149,6 +159,12 @@ async function fetchSheet(
       const h = headers[j].trim();
       if (h) raw[h] = String(row[j] ?? "").trim();
     }
+    const end = resolveContractEnd({
+      period: periodIdx >= 0 ? String(row[periodIdx] ?? "") : undefined,
+      multiYear:
+        multiYearIdx >= 0 ? String(row[multiYearIdx] ?? "") : undefined,
+    });
+
     rows.push({
       id: `${sheetName}-${excelRowNumber}`,
       sheet: sheetName,
@@ -163,6 +179,8 @@ async function fetchSheet(
           ? String(row[serviceActiveIdx] ?? "").trim()
           : "",
       feeAmount: feeIdx >= 0 ? String(row[feeIdx] ?? "").trim() : "",
+      endMonth: end.label,
+      endKind: end.kind,
       cellAddress: {
         operator: cellAddr(operatorIdx, excelRowNumber),
         status: cellAddr(statusIdx, excelRowNumber),
