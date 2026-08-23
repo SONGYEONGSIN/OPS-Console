@@ -517,3 +517,24 @@ describe("AssistantAvatar — 명보 스프라이트", () => {
     expect(host).not.toBeNull();
   });
 });
+
+/**
+ * 열자마자 하단으로 스크롤하면 소개와 얼굴이 잘려나간다.
+ *
+ * 자동 스크롤은 "새 답이 오면 따라가라"는 것이었는데, 첫 렌더에도 돌아서
+ * 빈 상태의 맨 아래(예시 마지막 줄)를 보여줬다. 소개가 짧던 때는 티가 안
+ * 났지만 시운전 표가 들어가면서 화면 절반이 사라졌다.
+ */
+describe("AssistantClient — 열었을 때 스크롤 위치", () => {
+  it("대화 전에는 아래로 끌어내리지 않는다", () => {
+    const spy = vi.fn();
+    const orig = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = spy;
+    try {
+      render(<AssistantClient />);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      Element.prototype.scrollIntoView = orig;
+    }
+  });
+});

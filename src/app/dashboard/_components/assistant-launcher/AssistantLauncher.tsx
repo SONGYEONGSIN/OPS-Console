@@ -37,10 +37,10 @@ export function AssistantLauncher({ me }: { me: CurrentOperator | null }) {
         <header className="shrink-0 border-b-2 border-ink px-5 pb-4 pt-5">
           <div>
             <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
-              어시스턴트 · 사내 데이터 질의
+              상황실 인턴 대기 중
             </p>
             <h3 className="text-xl font-bold tracking-[-0.01em] text-ink">
-              무엇을 찾으시나요
+              찾는 건 제가 다녀오겠습니다
             </h3>
           </div>
         </header>
