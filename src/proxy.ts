@@ -7,6 +7,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  /api/open-notices/dispatch — 동일 (오픈안내 예약 발송 cron 진입점)
  *  /api/automations/run — GitHub Actions / 외부 cron 진입점 (receivables 등 jobId 자동화).
  *  /api/closing/ingest — Moa 스크래퍼(GitHub Actions)가 마감 스냅샷을 적재.
+ *  /api/invoice/amounts — 회사 PC 폴러가 Moa 정산 금액을 적재(계산서 청구금액).
  *  /api/closing/run-log — 스크래퍼가 실행 결과(success/skipped/failed)를 보고.
  *  /api/closing/scrape-request — 회사 PC 폴러가 로컬 실행 요청을 claim/완료 보고.
  *  /api/entertest/test-request — 회사 PC 폴러가 테스트 실행 요청을 claim/완료 보고.
@@ -34,6 +35,7 @@ const PUBLIC_PATHS = [
   "/api/open-notices/dispatch",
   "/api/automations/run",
   "/api/closing/ingest",
+  "/api/invoice/amounts",
   "/api/closing/run-log",
   "/api/closing/scrape-request",
   "/api/ai-tips/candidates",

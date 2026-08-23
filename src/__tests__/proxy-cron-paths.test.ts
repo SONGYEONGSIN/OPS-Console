@@ -20,6 +20,7 @@ const CRON_ROUTES = [
   "/api/postal/extract",
   "/api/automations/run",
   "/api/closing/run-log",
+  "/api/invoice/amounts",
 ];
 
 describe("proxy — CRON_SECRET 창구", () => {
