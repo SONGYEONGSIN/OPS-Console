@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { closingServicesRowSchema, type ClosingRow } from "./schemas";
 import { applyPhase, type ServicePhase } from "./phase";
+import { applyServiceIdFilter } from "./id-filter";
 import { monthRange } from "./derive";
 
 export type ClosingFilter = {
@@ -22,6 +23,15 @@ export type ClosingFilter = {
   operatorName?: string;
   /** 월별 필터 "YYYY-MM" — 해당 월에 오픈(write_start_at) 또는 마감(write_end_at)한 건. */
   month?: string;
+  /**
+   * 이 서비스ID 들만. 계산서발행이 '정산완료된 것만' 을 고를 때 쓴다.
+   *
+   * 빈 배열은 **아무것도 없음**이다 — 필터 없음(undefined)과 다르다. 정산완료가
+   * 0건일 때 전체 목록이 쏟아지면 안 된다.
+   */
+  serviceIds?: readonly number[];
+  /** 이 서비스ID 들을 뺀다. 전형료정산의 '미완료' 칩이 완료된 건을 뺄 때 쓴다. */
+  excludeServiceIds?: readonly number[];
   page?: number;
   pageSize?: number;
 };
@@ -58,6 +68,8 @@ export async function listClosing(
     query = query.eq("university_type", filter.universityType);
   if (filter.operatorName)
     query = query.eq("operator_name", filter.operatorName);
+
+  query = applyServiceIdFilter(query, filter);
 
   // 단계 — 메뉴가 맡은 구간. closedStatus 보다 먼저 본다.
   if (filter.phase) query = applyPhase(query, filter.phase);

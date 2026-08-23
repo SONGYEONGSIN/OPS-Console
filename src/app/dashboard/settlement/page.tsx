@@ -4,8 +4,14 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listClosing } from "@/features/closing/queries";
-import { fetchSettlementDeadlines } from "@/features/settlement/queries";
+import {
+  fetchBillingStates,
+  fetchSettlementDeadlines,
+  listSettledServiceIds,
+} from "@/features/settlement/queries";
+import { mergeBilling } from "@/features/settlement/completion";
 import { toSettlementRows } from "@/features/settlement/rows";
+import { SettlementDoneChips } from "./_DoneChips";
 import { SettlementTable } from "./SettlementTable";
 import { ClosingStatusChips } from "../closing/_StatusChips";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -20,7 +26,12 @@ import { ListPagination } from "@/components/common/ListPagination";
 export default async function SettlementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; status?: string; q?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    status?: string;
+    q?: string;
+    done?: string;
+  }>;
 }) {
   const slug = "settlement";
   await requireMenu(slug);
@@ -32,6 +43,12 @@ export default async function SettlementPage({
   const me = await getCurrentOperator();
   // 기본은 '내 정산' — 처음 열었을 때 남의 것이 잔뜩 나오면 쓸모가 없다.
   const mine = sp.status !== "all";
+  // 담당(status)과 완료(done)는 다른 축이라 파라미터를 따로 쓴다. 기본은 '미완료' —
+  // 정산 화면은 남은 일을 보는 곳이다.
+  const showAllDone = sp.done === "all";
+
+  // 완료된 건은 '미완료' 칩에서 빼야 하므로 먼저 ID 를 받는다.
+  const settledIds = await listSettledServiceIds();
 
   const [{ rows: services, total }, deadlines, allCount, mineCount] = await Promise.all([
     listClosing({
@@ -40,22 +57,28 @@ export default async function SettlementPage({
       search: sp.q,
       phase: "closed",
       operatorName: mine ? (me?.displayName ?? "") : undefined,
+      excludeServiceIds: showAllDone ? undefined : settledIds,
     }),
     fetchSettlementDeadlines(),
     // 카운트는 정산 범위(결제 끝난 것) 안에서 센다 — 범위 밖 숫자가 뜨면
     // 눌렀을 때 그만큼 안 나와 화면이 거짓말한다.
-    listClosing({ search: sp.q, phase: "closed", pageSize: 1 }).then(
-      (r) => r.total,
-    ),
+    listClosing({
+      search: sp.q,
+      phase: "closed",
+      pageSize: 1,
+      excludeServiceIds: showAllDone ? undefined : settledIds,
+    }).then((r) => r.total),
     listClosing({
       search: sp.q,
       phase: "closed",
       operatorName: me?.displayName ?? "",
       pageSize: 1,
+      excludeServiceIds: showAllDone ? undefined : settledIds,
     }).then((r) => r.total),
   ]);
 
-  const rows = toSettlementRows(services, deadlines);
+  const billing = await fetchBillingStates(services.map((s) => s.service_id));
+  const rows = mergeBilling(toSettlementRows(services, deadlines), billing);
   const config = resolvePageMeta(slug, meta, total);
 
   return (
@@ -84,6 +107,7 @@ export default async function SettlementPage({
                 counts={{ all: allCount, mine: mineCount }}
                 scope="settlement"
               />
+              <SettlementDoneChips />
             </div>
           </header>
           <SettlementTable rows={rows} />
