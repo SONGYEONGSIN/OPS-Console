@@ -117,17 +117,30 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
     pathnameRef.current = "/dashboard/incidents";
   });
 
-  it("사이드바에 있는 화면이면 첨부 칩이 켜진 채로 보인다", () => {
+  it("첨부 칩은 꺼진 채로 시작한다 — 붙일지는 묻는 사람이 정한다", () => {
     render(<AssistantClient />);
     // 메뉴명만 있으면 무엇이 첨부되는지 모호하다 — "페이지"를 넣어 대상이 화면임을 밝힌다.
     expect(
-      screen.getByRole("button", { name: "사고보고 페이지 첨부 켜짐" }),
-    ).toHaveAttribute("aria-pressed", "true");
+      screen.getByRole("button", { name: "사고보고 페이지 첨부 꺼짐" }),
+    ).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("켜져 있으면 질문에 pageContext를 실어 보낸다", async () => {
+  it("꺼져 있으면 pageContext를 보내지 않는다", async () => {
     stubDone();
     render(<AssistantClient />);
+    fireEvent.change(screen.getByLabelText("질문 입력"), {
+      target: { value: "미수채권 얼마" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    expect(askRequestBody().pageContext).toBeUndefined();
+  });
+
+  it("칩을 켜면 질문에 pageContext를 실어 보낸다", async () => {
+    stubDone();
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /첨부/ }));
     fireEvent.change(screen.getByLabelText("질문 입력"), {
       target: { value: "이 화면 뭐야" },
     });
@@ -136,19 +149,6 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     // Claude 경로는 사람이 읽는 한 줄로 실어 보낸다 — 프롬프트에 그대로 들어간다.
     expect(askRequestBody().pageContext).toBe("사고보고 (/dashboard/incidents)");
-  });
-
-  it("칩을 끄면 pageContext를 보내지 않는다", async () => {
-    stubDone();
-    render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /첨부/ }));
-    fireEvent.change(screen.getByLabelText("질문 입력"), {
-      target: { value: "미수채권 얼마" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "전송" }));
-
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
-    expect(askRequestBody().pageContext).toBeUndefined();
   });
 
   it("사이드바에 없는 경로면 칩 자체를 그리지 않는다", () => {
@@ -395,18 +395,18 @@ describe("AssistantClient — 첨부 칩 상태 표시", () => {
     pathnameRef.current = "/dashboard/incidents";
   });
 
-  it("켜져 있으면 '켜짐'이라고 쓴다", () => {
+  it("꺼져 있으면 '꺼짐'이라고 쓴다", () => {
     render(<AssistantClient />);
     expect(
-      screen.getByRole("button", { name: /첨부 켜짐/ }),
+      screen.getByRole("button", { name: /첨부 꺼짐/ }),
     ).toBeInTheDocument();
   });
 
-  it("끄면 '꺼짐'으로 바뀐다", () => {
+  it("켜면 '켜짐'으로 바뀐다", () => {
     render(<AssistantClient />);
-    fireEvent.click(screen.getByRole("button", { name: /첨부 켜짐/ }));
+    fireEvent.click(screen.getByRole("button", { name: /첨부 꺼짐/ }));
     expect(
-      screen.getByRole("button", { name: /첨부 꺼짐/ }),
+      screen.getByRole("button", { name: /첨부 켜짐/ }),
     ).toBeInTheDocument();
   });
 
