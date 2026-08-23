@@ -419,19 +419,26 @@ describe("AssistantClient — 첨부 칩 상태 표시", () => {
     pathnameRef.current = "/dashboard/incidents";
   });
 
-  it("꺼진 상태에도 밑줄이 있다 — 누를 수 있는 물건으로 보여야 한다", () => {
-    // 기본이 켜짐이던 때는 꺼진 모습을 볼 일이 없었다. 기본을 끄고 나니
-    // text-muted + 밑줄 없음이라 "칩이 사라졌다"로 읽혔다.
-    const { container } = render(<AssistantClient />);
-    const chip = screen.getByRole("button", { name: /첨부 꺼짐/ });
-    expect(chip.querySelector("span[aria-hidden]")).not.toBeNull();
-    void container;
-  });
-
-  it("꺼진 라벨이 흐릿하지 않다", () => {
+  it("꺼진 상태에는 밑줄을 그리지 않는다 — 켜짐과 한눈에 갈려야 한다", () => {
+    // #1094 에서 꺼짐에도 회색 밑줄을 넣었었다. 칩이 안 보이던 원인을 시인성으로
+    // 오진한 결과였고, 진짜 원인(#1095 pageContext null)이 잡히자 불필요해졌다.
     render(<AssistantClient />);
     const chip = screen.getByRole("button", { name: /첨부 꺼짐/ });
-    expect(chip.className).not.toContain("text-muted");
+    expect(chip.querySelector("span[aria-hidden]")).toBeNull();
+  });
+
+  it("꺼진 라벨은 연한 회색이다", () => {
+    render(<AssistantClient />);
+    const chip = screen.getByRole("button", { name: /첨부 꺼짐/ });
+    expect(chip.className).toContain("text-muted");
+  });
+
+  it("켜면 밑줄이 생긴다", () => {
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /첨부 꺼짐/ }));
+    const chip = screen.getByRole("button", { name: /첨부 켜짐/ });
+    expect(chip.querySelector("span[aria-hidden]")).not.toBeNull();
+    expect(chip.className).toContain("font-bold");
   });
 
   it("꺼져 있으면 '꺼짐'이라고 쓴다", () => {
