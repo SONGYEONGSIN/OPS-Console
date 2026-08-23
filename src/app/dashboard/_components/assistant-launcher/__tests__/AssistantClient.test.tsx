@@ -151,9 +151,33 @@ describe("AssistantClient — 현재 페이지 첨부", () => {
     expect(askRequestBody().pageContext).toBe("사고보고 (/dashboard/incidents)");
   });
 
-  it("사이드바에 없는 경로면 칩 자체를 그리지 않는다", () => {
-    // 첨부할 화면 정보가 없는데 칩만 떠 있으면 켜도 아무 일이 안 일어난다.
-    pathnameRef.current = "/dashboard/알수없는화면";
+  it("대시보드 루트에서도 칩이 보인다", () => {
+    // 어시스턴트를 여는 가장 흔한 자리인데 slug 가 없어 칩이 통째로 안 떴다.
+    pathnameRef.current = "/dashboard";
+    render(<AssistantClient />);
+    expect(
+      screen.getByRole("button", { name: "대시보드 페이지 첨부 꺼짐" }),
+    ).toBeInTheDocument();
+  });
+
+  it("사이드바에 없는 경로면 경로라도 붙인다", async () => {
+    // 예전엔 칩 자체를 안 그렸다. 메뉴명이 없어도 '어느 화면에서 물었는지'는
+    // 쓸모가 있어서, 이름 대신 slug 를 쓰고 경로를 함께 보낸다.
+    stubDone();
+    pathnameRef.current = "/dashboard/incident-reports/abc";
+    render(<AssistantClient />);
+    fireEvent.click(screen.getByRole("button", { name: /첨부/ }));
+    fireEvent.change(screen.getByLabelText("질문 입력"), { target: { value: "q" } });
+    fireEvent.click(screen.getByRole("button", { name: "전송" }));
+
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+    expect(askRequestBody().pageContext).toBe(
+      "incident-reports (/dashboard/incident-reports/abc)",
+    );
+  });
+
+  it("대시보드 밖이면 칩을 그리지 않는다", () => {
+    pathnameRef.current = "/login";
     render(<AssistantClient />);
     expect(screen.queryByRole("button", { name: /첨부/ })).toBeNull();
   });

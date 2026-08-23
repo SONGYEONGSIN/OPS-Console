@@ -157,14 +157,21 @@ export function AssistantClient({ userName = "운영자" }: Props) {
    */
   const [attachPage, setAttachPage] = useState(false);
 
-  // 지금 열려 있는 화면 — 사이드바에 등록된 메뉴일 때만 붙인다.
-  // 상세 경로(/dashboard/incident-reports/{id})도 첫 세그먼트로 메뉴를 찾는다.
+  /**
+   * 지금 열려 있는 화면 — 대시보드 안이면 언제나 붙일 수 있다.
+   *
+   * 전에는 **사이드바에 등록된 메뉴일 때만** 만들었다. 그래서 `/dashboard`
+   * 루트(어시스턴트를 여는 가장 흔한 자리)와 미등록 slug(`incident-reports`)
+   * 에서는 칩이 통째로 안 떴다.
+   *
+   * 메뉴명이 없어도 '어느 화면에서 물었는지'는 쓸모가 있다 — 이름 대신 slug 를
+   * 쓰고 경로를 함께 보낸다. 상세 경로도 첫 세그먼트로 메뉴를 찾는다.
+   */
   const pageContext = useMemo(() => {
-    const slug = pathname?.split("/")[2];
-    if (!slug) return null;
-    const meta = findSidebarMeta(slug);
-    if (!meta) return null;
-    return { path: pathname, label: meta.label, pattern: meta.pattern };
+    if (!pathname || !pathname.startsWith("/dashboard")) return null;
+    const slug = pathname.split("/")[2];
+    const label = slug ? (findSidebarMeta(slug)?.label ?? slug) : "대시보드";
+    return { path: pathname, label };
   }, [pathname]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
