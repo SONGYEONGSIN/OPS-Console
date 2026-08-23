@@ -104,10 +104,16 @@ function AssistantAvatar({ kicking }: { kicking?: boolean }) {
   );
 }
 
-/** 채팅 줄 이름 앞에 붙는 작은 얼굴 — 답 본문 폭을 뺏지 않게 글자 높이로. */
+/**
+ * 채팅 줄 이름 앞에 붙는 얼굴.
+ *
+ * 크기를 글자에 묶지 않는다 — 이 줄이 `text-2xs` 라 `1.15em` 으로 잡았더니
+ * 11px 로 쪼그라들어 뭔지 안 보였다. 12칸 도안이니 **24px 면 칸당 정확히 2px**
+ * 로 떨어져 가장 또렷하다.
+ */
 function AssistantNameMark({ kicking }: { kicking?: boolean }) {
   return (
-    <span aria-hidden className="inline-flex h-[1.15em] w-[1.15em] flex-shrink-0 text-vermilion">
+    <span aria-hidden data-name-mark className="inline-flex h-6 w-6 flex-shrink-0 text-vermilion">
       <MyeongboSprite kicking={kicking} />
     </span>
   );
