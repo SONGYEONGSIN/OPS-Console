@@ -67,3 +67,24 @@ describe("ServicesView", () => {
     expect(operatorTerm).toBeInTheDocument();
   });
 });
+
+/**
+ * 숫자는 기본 폰트 + `tabular-nums` 다. `font-mono` 는 문자가 섞인 값 전용 —
+ * UUID·경로·명령어처럼 한 글자씩 눈으로 짚는 것들이다.
+ *
+ * 등기번호를 mono 에서 뺐을 때와 같은 판단이다(2026-08-20) — 자릿수 대조는
+ * `tabular-nums` 가 하고, 숫자만 다른 글꼴이면 그 칸이 혼자 튄다.
+ */
+describe("ServicesView — 숫자 표기", () => {
+  it("service_id 는 기본 폰트에 tabular-nums 다", () => {
+    render(<ServicesView row={baseRow} />);
+    const el = screen.getByText("1234567");
+    expect(el.className).toContain("tabular-nums");
+    expect(el.className).not.toContain("font-mono");
+  });
+
+  it("source 는 font-mono 를 유지한다 — 문자가 섞인 기계값이다", () => {
+    render(<ServicesView row={baseRow} />);
+    expect(screen.getByText("google_sheet_import").className).toContain("font-mono");
+  });
+});

@@ -126,7 +126,7 @@ export function ServicesForm({
               </span>
               {" · "}
               제안 시퀀스:{" "}
-              <span className="font-mono text-ink">
+              <span className="tabular-nums text-ink">
                 {String(selectedUniversity.nextSeq).padStart(3, "0")}
               </span>
             </span>

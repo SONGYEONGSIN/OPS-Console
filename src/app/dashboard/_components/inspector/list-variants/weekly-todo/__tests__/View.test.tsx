@@ -68,3 +68,19 @@ describe("WeeklyTodoView", () => {
     expect(screen.getByText("완료일")).toBeInTheDocument();
   });
 });
+
+/**
+ * 숫자는 기본 폰트 + `tabular-nums` 다. `font-mono` 는 문자가 섞인 값 전용 —
+ * UUID·경로·명령어처럼 한 글자씩 눈으로 짚는 것들이다.
+ *
+ * 등기번호를 mono 에서 뺐을 때와 같은 판단이다(2026-08-20) — 자릿수 대조는
+ * `tabular-nums` 가 하고, 숫자만 다른 글꼴이면 그 칸이 혼자 튄다.
+ */
+describe("WeeklyTodoView — 진행률 표기", () => {
+  it("진행률 숫자는 기본 폰트에 tabular-nums 다", () => {
+    render(<WeeklyTodoView row={makeRow()} />);
+    const el = screen.getByText(/^\d+%$/);
+    expect(el.className).toContain("tabular-nums");
+    expect(el.className).not.toContain("font-mono");
+  });
+});
