@@ -54,15 +54,33 @@ export function InspectorPanel({
   }, [open, onClose]);
 
   return (
-    <aside
-      ref={ref}
-      role="complementary"
-      aria-hidden={!open}
-      className={`fixed right-0 top-[74px] bottom-[27px] z-40 w-full bg-paper border-l border-line transition-transform duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] [box-shadow:var(--shadow-drawer-right)] md:top-[52px] md:bottom-[27px] ${widthClassName} ${
-        open ? "translate-x-0" : "translate-x-full"
-      }`}
-    >
-      <div className={bodyClassName}>{children}</div>
-    </aside>
+    <>
+      {/*
+        모바일 딤. 이 패널은 좁은 화면에서 폭을 다 쓰기 때문에 "바깥"이 위쪽
+        얇은 띠뿐이고, 딤이 없으면 그게 닫을 수 있는 곳으로 보이지 않는다 —
+        실제로 닫는 방법이 없다는 제보가 왔다(2026-08-25). 사이드바가 쓰는
+        방식 그대로다.
+
+        데스크톱은 패널이 본문 옆에 붙어 있어 가릴 이유가 없다(md:hidden).
+      */}
+      <div
+        data-testid="inspector-dim"
+        aria-hidden
+        onClick={onClose}
+        className={`fixed inset-0 z-[35] bg-ink/35 transition-opacity duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] md:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+      <aside
+        ref={ref}
+        role="complementary"
+        aria-hidden={!open}
+        className={`fixed right-0 top-[74px] bottom-[27px] z-40 w-full bg-paper border-l border-line transition-transform duration-[var(--drawer-ms)] ease-[var(--drawer-ease)] [box-shadow:var(--shadow-drawer-right)] md:top-[52px] md:bottom-[27px] ${widthClassName} ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className={bodyClassName}>{children}</div>
+      </aside>
+    </>
   );
 }
