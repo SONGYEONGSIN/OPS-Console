@@ -204,14 +204,17 @@ powershell -ExecutionPolicy Bypass -File scripts\lib\ensure-poller-restart.ps1
 
 바꾸기 전 작업 정의를 XML 로 백업하고, 경로를 마지막 줄에 찍는다.
 
-확인:
+확인 — **반복 간격이 아니라 다음 실행 시각을 본다**:
 
 ```powershell
 Get-ScheduledTask | Where-Object { $_.Actions.Arguments -match 'serve-local|extract-local' } |
-  ForEach-Object { $_.TaskName + ' 반복=' + ($_.Triggers.Repetition.Interval) }
+  ForEach-Object { $_.TaskName + ' 다음실행=' + (Get-ScheduledTaskInfo -TaskName $_.TaskName).NextRunTime }
 ```
 
-`반복=PT5M` 이 나오면 됐다. 5분마다 도는 PowerShell 폴러들에는 이미 있다.
+**다음실행에 시각이 찍혀야 한다.** 비어 있으면 반복 간격이 붙어 있어도 아무 일도 안 일어난다 —
+2026-08-24 에 `LogonTrigger` 에 반복을 붙였다가 그렇게 됐다. 로그온 트리거의 반복은
+**로그온 이벤트가 일어난 뒤에** 도는 것이라, 이미 로그온한 상태에서는 예약이 안 잡힌다.
+그래서 스크립트는 잘 도는 5분 폴러들과 같은 `TimeTrigger` 를 쓴다.
 
 ## 5. 문제가 생기면
 
