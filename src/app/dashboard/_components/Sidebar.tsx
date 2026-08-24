@@ -93,6 +93,7 @@ export function Sidebar({
                   count={entry.count}
                   slug={entry.slug}
                   pathname={pathname}
+                  onNavigate={onClose}
                 />
               );
             }
@@ -104,6 +105,7 @@ export function Sidebar({
                 open={openGroups.has(groupKey)}
                 onToggle={() => toggleGroup(groupKey)}
                 pathname={pathname}
+                onNavigate={onClose}
               />
             );
           })}
@@ -127,12 +129,15 @@ function ItemRow({
   count,
   slug,
   pathname,
+  onNavigate,
 }: {
   ico: string;
   label: string;
   count?: string;
   slug?: string;
   pathname: string;
+  /** 모바일 서랍 닫기. 데스크톱에서는 이미 닫힌 상태라 무해하다. */
+  onNavigate: () => void;
 }) {
   const isIndexItem = !slug && label === "실시간 현황";
   const isActive = slug
@@ -165,6 +170,9 @@ function ItemRow({
       <Link
         href={href}
         prefetch={false}
+        // 모바일 서랍은 눌러 이동하면 닫혀야 한다. 안 닫으면 새 화면 위에
+        // 서랍이 그대로 남아, 눌렀는데 아무 일도 안 일어난 것처럼 보인다.
+        onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
         data-tutorial-slug={slug}
         className={`${className} cursor-pointer`}
@@ -181,11 +189,13 @@ function GroupBlock({
   open,
   onToggle,
   pathname,
+  onNavigate,
 }: {
   group: SbGroup;
   open: boolean;
   onToggle: () => void;
   pathname: string;
+  onNavigate: () => void;
 }) {
   return (
     <div>
@@ -208,7 +218,12 @@ function GroupBlock({
       {open && (
         <div className="mb-1 ml-2 mt-0.5 border-l border-dashed border-line-soft">
           {group.items.map((it, ii) => (
-            <SubItemRow key={ii} item={it} pathname={pathname} />
+            <SubItemRow
+              key={ii}
+              item={it}
+              pathname={pathname}
+              onNavigate={onNavigate}
+            />
           ))}
         </div>
       )}
@@ -216,7 +231,15 @@ function GroupBlock({
   );
 }
 
-function SubItemRow({ item, pathname }: { item: SbItem; pathname: string }) {
+function SubItemRow({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: SbItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
   const isActive = !!item.slug && pathname === `/dashboard/${item.slug}`;
   const href = item.slug ? `/dashboard/${item.slug}` : null;
 
@@ -253,6 +276,9 @@ function SubItemRow({ item, pathname }: { item: SbItem; pathname: string }) {
       <Link
         href={href}
         prefetch={false}
+        // 모바일 서랍은 눌러 이동하면 닫혀야 한다. 안 닫으면 새 화면 위에
+        // 서랍이 그대로 남아, 눌렀는데 아무 일도 안 일어난 것처럼 보인다.
+        onClick={onNavigate}
         aria-current={isActive ? "page" : undefined}
         data-tutorial-slug={item.slug}
         className={`${className} cursor-pointer`}
@@ -329,7 +355,7 @@ export function DrawerCloseButton({
       type="button"
       aria-label={label}
       onClick={onClick}
-      className="absolute right-3 top-3 z-[2] hidden h-8 w-8 cursor-pointer items-center justify-center border border-line bg-paper text-2xl leading-none text-ink-soft transition-colors hover:border-vermilion hover:text-vermilion max-lg:inline-flex"
+      className="absolute right-2 top-2 z-[2] hidden h-10 w-10 cursor-pointer items-center justify-center border-none bg-transparent text-2xl leading-none text-muted transition-colors hover:text-vermilion max-lg:inline-flex"
     >
       ×
     </button>
