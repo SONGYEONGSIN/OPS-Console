@@ -8,6 +8,7 @@ import {
 } from "@/features/contacts/paste-parse";
 import { createContactsBulk } from "@/features/contacts/actions";
 import { ModalShell } from "@/components/common/ModalShell";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 
 type RunResult = {
   inserted: number;
@@ -51,13 +52,9 @@ export function BulkPasteContacts() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="cursor-pointer border border-ink bg-ink px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-ink-soft"
-      >
+      <HeaderActionButton onClick={() => setOpen(true)}>
         + 연락처 일괄등록
-      </button>
+      </HeaderActionButton>
 
       {open && (
         <ModalShell

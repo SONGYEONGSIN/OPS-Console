@@ -5,6 +5,7 @@ import { parsePastedAnnouncements } from "@/features/announcement-services/paste
 import { upsertAnnouncementServicesBulk } from "@/features/announcement-services/actions";
 import type { AnnouncementServiceInput } from "@/features/announcement-services/schemas";
 import { ModalShell } from "@/components/common/ModalShell";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 
 /**
  * 발표 서비스 일괄등록 — 연락처 일괄등록과 같은 붙여넣기 방식.
@@ -43,13 +44,9 @@ export function BulkPasteAnnouncements() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-      >
+      <HeaderActionButton onClick={() => setOpen(true)}>
         + 발표 서비스 일괄등록
-      </button>
+      </HeaderActionButton>
 
       {open && (
         <ModalShell

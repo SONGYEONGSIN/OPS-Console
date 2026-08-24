@@ -6,6 +6,7 @@ vi.mock("@/features/announcement-services/actions", () => ({
 }));
 
 import { BulkPasteAnnouncements } from "../BulkPasteAnnouncements";
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { upsertAnnouncementServicesBulk } from "@/features/announcement-services/actions";
 
 const HEADER =
@@ -77,5 +78,20 @@ describe("BulkPasteAnnouncements", () => {
     });
     fireEvent.click(screen.getByText("등록"));
     await screen.findByText("등록 권한이 없습니다.");
+  });
+});
+
+/**
+ * 목록 헤더 액션 버튼은 **모양이 하나뿐**이다 — vermilion 배경(`HEADER_ACTION_CLASS`).
+ *
+ * 이 슬롯이 한때 셋으로 갈려 있었다: 생성 버튼은 vermilion, 연락처 일괄등록은 잉크,
+ * 발표 서비스 일괄등록은 외곽선. 클래스 문자열을 손으로 적으면 그때마다 갈린다 —
+ * 그래서 컴포넌트를 쓴다(#1047 에서 같은 이유로 컴포넌트가 생겼다).
+ */
+describe("BulkPasteAnnouncements — 헤더 액션 버튼 표준", () => {
+  it("표준 클래스를 쓴다 — 손으로 적은 외곽선이 아니다", () => {
+    render(<BulkPasteAnnouncements />);
+    const btn = screen.getByText("+ 발표 서비스 일괄등록");
+    expect(btn.className).toBe(HEADER_ACTION_CLASS);
   });
 });
