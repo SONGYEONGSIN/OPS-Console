@@ -40,18 +40,38 @@ foreach ($t in $targets) {
   $xml = Export-ScheduledTask -TaskName $t.TaskName
   [IO.File]::WriteAllText((Join-Path $backupDir "$n.xml"), $xml, [Text.Encoding]::Unicode)
 
-  if ($xml -match '<Repetition>') {
-    Write-Output ("SKIP {0} — 이미 반복 트리거가 있습니다" -f $t.TaskName)
+  if ($xml -match '<TimeTrigger>') {
+    Write-Output ("SKIP {0} — 이미 시각 트리거가 있습니다" -f $t.TaskName)
     continue
   }
-  $rep = '<LogonTrigger><Repetition><Interval>PT5M</Interval>' +
-         '<StopAtDurationEnd>false</StopAtDurationEnd></Repetition></LogonTrigger>'
-  $new = $xml -replace '<LogonTrigger\s*/>', $rep
-  if ($new -eq $xml) {
-    Write-Output ("FAIL {0} — LogonTrigger 를 못 찾았습니다. 백업: {1}" -f $t.TaskName, $backupDir)
+
+  # **TimeTrigger 여야 한다.** LogonTrigger 에 Repetition 을 붙이면 '로그온 이벤트가
+  # 일어난 뒤' 반복하므로, 이미 로그온한 상태에서는 예약이 아예 안 잡힌다
+  # (2026-08-24 그렇게 붙였다가 NextRunTime 이 빈 채로 2시간 반 방치됐다).
+  # 잘 도는 5분 폴러들이 쓰는 구조를 그대로 따른다.
+  $start = (Get-Date).AddMinutes(-1).ToString("yyyy-MM-ddTHH:mm:ss")
+  $tt = '<TimeTrigger><StartBoundary>' + $start + '</StartBoundary>' +
+        '<Repetition><Interval>PT5M</Interval><Duration>P3650D</Duration>' +
+        '<StopAtDurationEnd>true</StopAtDurationEnd></Repetition></TimeTrigger>'
+  # 지난번 LogonTrigger 에 붙였던 반복은 걷어낸다 — 아무 일도 안 하면서 지저분하다.
+  $cleaned = $xml -replace '<LogonTrigger>\s*<Repetition>.*?</Repetition>\s*</LogonTrigger>', '<LogonTrigger />'
+  $new = $cleaned -replace '</Triggers>', ($tt + '</Triggers>')
+  if ($new -eq $cleaned) {
+    Write-Output ("FAIL {0} — Triggers 를 못 찾았습니다. 백업: {1}" -f $t.TaskName, $backupDir)
     continue
   }
   Register-ScheduledTask -TaskName $t.TaskName -Xml $new -User $env:USERNAME -Force | Out-Null
-  Write-Output ("OK   {0} — 5분 반복 추가" -f $t.TaskName)
+
+  # **설정이 들어갔는지가 아니라 예약이 잡혔는지를 본다.** 지난번엔 반복 간격이
+  # 붙은 것만 보고 됐다고 했는데, NextRunTime 이 비어 아무 일도 안 일어났다.
+  $next = (Get-ScheduledTaskInfo -TaskName $t.TaskName).NextRunTime
+  if ($next) {
+    Write-Output ("OK   {0} — 다음 실행 {1}" -f $t.TaskName, $next)
+  } else {
+    Write-Output ("FAIL {0} — 반복은 붙었지만 예약이 안 잡혔습니다. 백업: {1}" -f $t.TaskName, $backupDir)
+  }
+
+  # 재등록하면 돌던 프로세스가 멈춘다 — 바로 다시 띄운다.
+  Start-ScheduledTask -TaskName $t.TaskName
 }
 Write-Output ("백업: {0}" -f $backupDir)
