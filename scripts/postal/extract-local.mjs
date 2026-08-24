@@ -11,6 +11,7 @@
 // 실행: node scripts/postal/extract-local.mjs
 
 import { startHeartbeat } from "../lib/heartbeat.mjs";
+import { fetchWithTimeout } from "../lib/fetch-timeout.mjs";
 import { config } from "dotenv";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -42,9 +43,14 @@ const headers = { authorization: `Bearer ${SECRET}` };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const stamp = () => new Date().toLocaleTimeString("ko-KR", { hour12: false });
 
-/** 타임아웃 있는 fetch — 없으면 절전 복귀 때 영원히 매달린다(어시스턴트에서 겪었다). */
-const http = (url, init = {}) =>
-  fetch(url, { ...init, signal: AbortSignal.timeout(HTTP_TIMEOUT_MS) });
+/**
+ * 타임아웃 있는 fetch — 없으면 절전 복귀 때 영원히 매달린다(어시스턴트에서 겪었다).
+ *
+ * `AbortSignal.timeout()` 으로는 모자랐다. **그 타이머가 unref 라** 이벤트 루프를
+ * 안 잡아, 절전 중 좀비가 된 fetch 를 깨우지 못한 채 프로세스가 조용히 죽었다
+ * (2026-08-24 어시스턴트, exit 13).
+ */
+const http = (url, init = {}) => fetchWithTimeout(url, init, HTTP_TIMEOUT_MS);
 
 async function claim() {
   const res = await http(endpoint, { headers });
