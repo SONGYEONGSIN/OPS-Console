@@ -23,7 +23,7 @@ export function InspectorImprovementBody({
       <dl className="space-y-3 text-sm">
         <Row term="제목" desc={<span className="font-semibold">{improvement.title}</span>} />
         <Row term="PM" desc={<span>{improvement.pm}</span>} />
-        <Row term="기한" desc={<span className="font-mono">{improvement.due}</span>} />
+        <Row term="기한" desc={<span className="tabular-nums">{improvement.due}</span>} />
         <Row term="상태" desc={<span>{improvement.status}</span>} />
       </dl>
     );

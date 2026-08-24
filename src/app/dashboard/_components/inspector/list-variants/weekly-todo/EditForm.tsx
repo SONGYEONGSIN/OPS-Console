@@ -234,7 +234,7 @@ export function WeeklyTodoForm({ row, setRow, onSave, onCancel }: Props) {
             }
             className="flex-1 accent-vermilion"
           />
-          <span className="font-mono text-xs text-ink">
+          <span className="tabular-nums text-xs text-ink">
             {row.progress ?? 0}%
           </span>
         </div>

@@ -176,7 +176,7 @@ export function ProjectTaskForm({ row, setRow, onSave, onCancel }: Props) {
             disabled={(row.taskChecklist?.length ?? 0) > 0}
             className="flex-1 accent-indigo disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <span className="font-mono text-xs text-ink">
+          <span className="tabular-nums text-xs text-ink">
             {row.progress ?? 0}%
           </span>
         </div>

@@ -153,7 +153,7 @@ export function ProjectForm({ row, setRow, onSave, onCancel }: Props) {
               style={{ width: `${row.progress ?? 0}%` }}
             />
           </div>
-          <span className="font-mono text-xs text-ink">
+          <span className="tabular-nums text-xs text-ink">
             {row.progress ?? 0}%
           </span>
         </div>

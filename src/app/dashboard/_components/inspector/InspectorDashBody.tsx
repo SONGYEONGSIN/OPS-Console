@@ -18,7 +18,7 @@ export function InspectorDashBody({ widget, editing, onSave, onCancel }: Props) 
       <dl className="space-y-3 text-sm">
         <Row term="라벨" desc={<span className="font-semibold">{widget.label}</span>} />
         <Row term="값" desc={<span>{widget.value}</span>} />
-        <Row term="시각" desc={<span className="font-mono">{widget.time}</span>} />
+        <Row term="시각" desc={<span className="tabular-nums">{widget.time}</span>} />
         <Row term="톤" desc={<span>{widget.tone}</span>} />
       </dl>
     );

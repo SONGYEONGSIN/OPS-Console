@@ -36,7 +36,7 @@ export function ServicesView({ row }: ViewProps) {
             {
               term: "service_id",
               desc: (
-                <span className="font-mono">
+                <span className="tabular-nums">
                   {row.serviceIdNum != null ? String(row.serviceIdNum) : "-"}
                 </span>
               ),

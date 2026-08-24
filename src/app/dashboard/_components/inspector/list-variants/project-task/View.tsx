@@ -142,7 +142,7 @@ export function ProjectTaskView({ row }: ViewProps) {
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="font-mono text-xs text-ink">{progress}%</span>
+          <span className="tabular-nums text-xs text-ink">{progress}%</span>
         </div>
       </Section>
     </div>
