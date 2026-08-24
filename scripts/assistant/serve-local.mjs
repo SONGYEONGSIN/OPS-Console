@@ -15,6 +15,7 @@
 // 실행: node scripts/assistant/serve-local.mjs
 
 import { startHeartbeat } from "../lib/heartbeat.mjs";
+import { fetchWithTimeout as withFetchTimeout } from "../lib/fetch-timeout.mjs";
 import { config } from "dotenv";
 import { existsSync } from "node:fs";
 import { rename } from "node:fs/promises";
@@ -89,9 +90,15 @@ const TIMEOUT_MS = 180_000;
  */
 const HTTP_TIMEOUT_MS = 15_000;
 
-/** 타임아웃이 걸린 fetch. 실패는 그대로 던져 호출부의 백오프로 넘긴다. */
+/**
+ * 타임아웃이 걸린 fetch. 실패는 그대로 던져 호출부의 백오프로 넘긴다.
+ *
+ * 타임아웃 타이머가 **이벤트 루프를 잡아야** 한다 — `AbortSignal.timeout()` 은
+ * unref 되어 있어 절전 중 좀비가 된 fetch 를 깨울 것이 아무것도 없었다
+ * (2026-08-24, exit 13 으로 1시간 멈춤). 자세한 건 `lib/fetch-timeout.mjs`.
+ */
 async function fetchWithTimeout(url, init = {}) {
-  return fetch(url, { ...init, signal: AbortSignal.timeout(HTTP_TIMEOUT_MS) });
+  return withFetchTimeout(url, init, HTTP_TIMEOUT_MS);
 }
 
 if (!BASE || !SECRET) {

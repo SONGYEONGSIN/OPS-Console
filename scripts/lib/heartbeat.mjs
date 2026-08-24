@@ -1,4 +1,5 @@
 import { hostname } from "node:os";
+import { fetchWithTimeout } from "./fetch-timeout.mjs";
 
 /**
  * 폴러가 "살아있음"을 서버에 남긴다.
@@ -19,15 +20,16 @@ export function startHeartbeat({ baseUrl, secret, pollerId, log = console.error 
   let warned = false;
   const beat = async () => {
     try {
-      const res = await fetch(`${baseUrl}/api/pollers/heartbeat`, {
+      // 타임아웃 타이머가 이벤트 루프를 잡아야 한다 — `AbortSignal.timeout()` 은
+      // unref 라 절전 중 좀비가 된 fetch 를 깨우지 못한다(2026-08-24).
+      const res = await fetchWithTimeout(`${baseUrl}/api/pollers/heartbeat`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${secret}`,
           "content-type": "application/json",
         },
         body: JSON.stringify({ pollerId, machine: hostname() }),
-        signal: AbortSignal.timeout(10_000),
-      });
+      }, 10_000);
       if (!res.ok && !warned) {
         warned = true;
         log(`[heartbeat] ${pollerId} 실패 ${res.status} — 화면이 멈춘 것으로 볼 수 있습니다`);
