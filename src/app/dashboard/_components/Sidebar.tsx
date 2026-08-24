@@ -351,13 +351,18 @@ export function DrawerCloseButton({
   label: string;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="absolute right-2 top-2 z-[2] hidden h-10 w-10 cursor-pointer items-center justify-center border-none bg-transparent text-2xl leading-none text-muted transition-colors hover:text-vermilion max-lg:inline-flex"
-    >
-      ×
-    </button>
+    // **자기 자리를 갖는 행이다.** absolute 로 띄웠더니 사이드바 첫 섹션 헤더의
+    // 구분선 위에 그대로 얹혔다(2026-08-25). 행으로 두면 아래 내용이 그만큼
+    // 밀려나 겹칠 일이 없다.
+    <div className="hidden justify-end px-2 pb-1 max-lg:flex">
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className="flex h-10 w-10 cursor-pointer items-center justify-center border-none bg-transparent text-2xl leading-none text-muted transition-colors hover:text-vermilion"
+      >
+        ×
+      </button>
+    </div>
   );
 }

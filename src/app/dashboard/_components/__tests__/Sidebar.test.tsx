@@ -71,4 +71,14 @@ describe("Sidebar — 모바일 서랍 닫기", () => {
     expect(btn.className).not.toContain("border-line");
     expect(btn.className).not.toContain("bg-paper");
   });
+
+  it("닫기 버튼이 자기 자리를 갖는다 — 띄우면 아래 내용 위에 얹힌다", () => {
+    // absolute 로 뒀더니 첫 섹션 헤더의 구분선과 겹쳤다(2026-08-25).
+    render(<Sidebar sections={fixture} open={true} onClose={vi.fn()} />);
+    const btn = screen.getByLabelText("메뉴 닫기");
+    expect(btn.className).not.toContain("absolute");
+    const row = btn.parentElement;
+    expect(row?.className).toContain("max-lg:flex");
+    expect(row?.className).toContain("justify-end");
+  });
 });
