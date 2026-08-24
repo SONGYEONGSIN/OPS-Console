@@ -187,6 +187,32 @@ Restart-ScheduledTask -TaskName "OPS-Console 우편물 판독 폴러"
 
 ---
 
+## 4-1. 죽어도 5분 안에 살아나게 (한 번만)
+
+2026-08-24 어시스턴트 폴러가 절전 복귀 뒤 죽어 **1시간 방치**됐다. 작업에
+`RestartCount 999 / 1분` 이 걸려 있었는데도 안 살아났다 — Windows 의 "실패 시 다시
+시작"은 **프로세스가 스스로 종료한 경우에는 잘 듣지 않는다.**
+
+확실한 건 반복 트리거다. `MultipleInstances=IgnoreNew` 가 이미 걸려 있어
+**살아 있으면 새 인스턴스가 안 뜨고, 죽어 있을 때만 살아난다.**
+
+**관리자 PowerShell** 에서 한 번 실행한다(기존 작업 수정은 일반 권한으로 막힌다):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\lib\ensure-poller-restart.ps1
+```
+
+바꾸기 전 작업 정의를 XML 로 백업하고, 경로를 마지막 줄에 찍는다.
+
+확인:
+
+```powershell
+Get-ScheduledTask | Where-Object { $_.Actions.Arguments -match 'serve-local|extract-local' } |
+  ForEach-Object { $_.TaskName + ' 반복=' + ($_.Triggers.Repetition.Interval) }
+```
+
+`반복=PT5M` 이 나오면 됐다. 5분마다 도는 PowerShell 폴러들에는 이미 있다.
+
 ## 5. 문제가 생기면
 
 | 증상 | 원인 | 조치 |
