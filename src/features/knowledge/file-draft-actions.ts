@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toSharingToken } from "@/lib/microsoft/sharing-token";
+import { FILE_DRAFT_CONTEXT } from "./file-draft-shared";
 
 export type FileDraftResult =
   /** 진행을 지켜보려면 화면이 요청 id 를 알아야 한다 — 답이 여기로 돌아온다. */
@@ -56,13 +57,66 @@ export async function requestFileDraft(
     "표가 많은 파일이면 요약하지 말고 어떤 표가 무엇을 담는지와 원본 링크를 적으세요.",
   ].join("\n");
 
+  return enqueue(me.email, question);
+}
+
+/**
+ * 붙여넣은 본문으로 초안 만들기.
+ *
+ * 링크도 파일도 없는 지식이 있다 — 메일 본문, 회의에서 오간 말, 다른 시스템의
+ * 화면. `read_file` 을 거치지 않고 본문이 그대로 질문에 들어간다.
+ */
+export async function requestTextDraft(
+  text: string,
+  note: string,
+): Promise<FileDraftResult> {
+  const me = await getCurrentOperator();
+  if (!me) return { ok: false, error: "로그인이 필요합니다" };
+  if (me.permission === "viewer") {
+    return { ok: false, error: "읽기 전용 권한입니다" };
+  }
+
+  const body = text.trim();
+  if (!body) return { ok: false, error: "정리할 내용을 붙여넣으세요" };
+
+  const asked = note.trim();
+  const question = [
+    "아래 내용을 지식망에 넣을 초안으로 정리해 주세요.",
+    "",
+    "---",
+    body,
+    "---",
+    "",
+    asked
+      ? `요청: ${asked}`
+      : "요청: 이 내용의 요점을 지식망 문서로 정리해 주세요.",
+    "",
+    // 파일이 아니라 사람이 붙여넣은 글이라 출처가 문서로 남지 않는다. 그래서
+    // 넘겨받은 문장 밖으로 나가지 말라고 더 분명히 말한다.
+    "**위 내용에 있는 것만** 쓰세요. 지어내지 마세요. 모자라면 모자란 채로 두고 무엇이 빠졌는지 적으세요.",
+    "초안은 `제안/` 에 만들고, 본 위치로 옮기는 것은 사람이 합니다.",
+  ].join("\n");
+
+  return enqueue(me.email, question);
+}
+
+/**
+ * 큐에 넣고 화면이 지켜볼 수 있게 id 를 돌려준다.
+ *
+ * `page_context` 는 **어느 경로로 왔든 같아야 한다** — 지식망 화면이 이 표식으로
+ * 진행 중이던 요청을 찾아 이어받는다.
+ */
+async function enqueue(
+  operatorEmail: string,
+  question: string,
+): Promise<FileDraftResult> {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("assistant_requests")
     .insert({
-      operator_email: me.email,
+      operator_email: operatorEmail,
       question,
-      page_context: "지식망 — 파일로 초안",
+      page_context: FILE_DRAFT_CONTEXT,
     })
     .select("id")
     .single();
@@ -70,6 +124,6 @@ export async function requestFileDraft(
 
   revalidatePath("/dashboard/knowledge");
   // question 도 함께 돌려준다 — 되묻기에 답할 때 history 에 실어야 에이전트가
-  // 어느 파일 이야기였는지 안다. 화면이 프롬프트를 다시 조립하게 두지 않는다.
+  // 무슨 이야기였는지 안다. 화면이 프롬프트를 다시 조립하게 두지 않는다.
   return { ok: true, id: data.id, question };
 }

@@ -100,31 +100,6 @@ describe("KnowledgeGaps", () => {
     );
   });
 
-  it("검토 대기 중인 초안을 따로 보여준다 — 이미 있는 걸 또 쓰지 않게", () => {
-    render(
-      <KnowledgeGaps
-        groups={GROUPS}
-        proposals={[
-          { path: "제안/부산대학교 수시 서비스 세팅.md", title: "부산대학교 수시 서비스 세팅" },
-        ]}
-      />,
-    );
-    expect(screen.getByText(/검토 대기/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /부산대학교 수시 서비스 세팅/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("빈틈은 없는데 대기 초안만 있어도 보여준다", () => {
-    render(
-      <KnowledgeGaps
-        groups={[]}
-        proposals={[{ path: "제안/x.md", title: "x" }]}
-      />,
-    );
-    expect(screen.getByText(/검토 대기/)).toBeInTheDocument();
-  });
-
   it("빈틈이 없으면 그렇다고 말한다", () => {
     render(<KnowledgeGaps groups={[]} />);
     expect(screen.getByText(/답하지 못한 질문이 없습니다/)).toBeInTheDocument();

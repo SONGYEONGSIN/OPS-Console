@@ -13,8 +13,14 @@ import { parseKnowledgeDoc } from "./frontmatter";
  */
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
-/** 문서가 아니라 새 문서용 틀 — 인덱싱 대상이 아니다. */
-const SKIP_DIRS = new Set(["_templates"]);
+/**
+ * 인덱싱 대상이 아닌 폴더.
+ *
+ * `_templates` 는 문서가 아니라 새 문서용 틀이고, `첨부` 는 초안의 근거가 된
+ * 원본 파일(PDF·Word)이 쌓이는 자리다 — `.md` 가 없어 어차피 아무것도 안
+ * 잡히지만, 매 주기 큰 폴더를 훑을 이유가 없다.
+ */
+const SKIP_DIRS = new Set(["_templates", "첨부"]);
 
 export type IndexVaultResult = {
   ok: boolean;
