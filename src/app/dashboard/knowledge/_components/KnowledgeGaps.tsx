@@ -11,29 +11,22 @@ import {
   GAP_KIND_TONE,
   type KnowledgeGapGroup,
 } from "@/features/knowledge/gaps-shared";
-import type { PendingProposal } from "@/features/knowledge/gaps-types";
 
 /**
  * 어시스턴트가 답하지 못한 것 — 지식망에 무엇이 빠졌는지.
  *
- * 문서를 안 고른 상태의 오른쪽 칸에 둔다. "좌측에서 문서를 선택하세요"만 있던
- * 자리인데, 볼트에 무엇을 더 써야 하는지가 여기 있는 편이 낫다.
+ * 자기 탭을 쓴다. 예전엔 문서를 안 고른 상태의 오른쪽 칸에 초안 폼과 함께
+ * 쌓여 있었는데, 성격이 다른 것 셋이 세로로 붙어 무엇을 보러 온 화면인지
+ * 흐려졌다.
  *
  * 자동으로 문서를 쓰지는 않는다 — 검증 없이 쌓인 지식이 틀리면 그걸 근거로 답이
  * 나가고 그 답이 다시 쌓인다(설계 §8). 사람이 보고 쓰는 것이 이 화면의 전부다.
  */
-export function KnowledgeGaps({
-  groups,
-  proposals = [],
-}: {
-  groups: KnowledgeGapGroup[];
-  /** 검토 대기 중인 초안. 어느 빈틈 것인지는 짐작하지 않고 따로 세운다. */
-  proposals?: PendingProposal[];
-}) {
-  if (groups.length === 0 && proposals.length === 0) {
+export function KnowledgeGaps({ groups }: { groups: KnowledgeGapGroup[] }) {
+  if (groups.length === 0) {
     return (
       <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
-        어시스턴트가 답하지 못한 질문이 없습니다. 좌측에서 문서를 선택하세요.
+        어시스턴트가 답하지 못한 질문이 없습니다.
       </p>
     );
   }
@@ -51,28 +44,6 @@ export function KnowledgeGaps({
           많이 물어본 순입니다. 문서는 옵시디언에서 직접 쓰거나 고칩니다.
         </p>
       </div>
-
-      {proposals.length > 0 && (
-        <div className="space-y-1 border border-line-soft bg-situation-bg px-3.5 py-3">
-          <p className="text-2xs font-medium uppercase tracking-[0.12em] text-muted">
-            검토 대기 중인 초안 {proposals.length}건
-          </p>
-          <p className="text-2xs text-muted">
-            에이전트가 쓴 것입니다. 옵시디언에서 확인하고 맞는 분류로 옮기세요.
-          </p>
-          <div className="space-y-0.5 pt-0.5">
-            {proposals.map((p) => (
-              <Link
-                key={p.path}
-                href={`/dashboard/knowledge?doc=${encodeURIComponent(p.path)}`}
-                className="-mx-1.5 block px-1.5 py-1 text-xs text-ink transition-colors hover:bg-line-soft"
-              >
-                {p.title}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       <ul className="space-y-4">
         {groups.map((g) => (

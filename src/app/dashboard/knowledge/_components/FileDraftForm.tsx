@@ -1,32 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
-import { requestFileDraft } from "@/features/knowledge/file-draft-actions";
+import {
+  requestFileDraft,
+  requestTextDraft,
+} from "@/features/knowledge/file-draft-actions";
+import { getRunningFileDraft } from "@/features/knowledge/running-draft";
+import type { DraftSource } from "@/features/knowledge/file-draft-shared";
 import { pollAssistantRequest } from "@/features/assistant/poll-request";
 import { STAGE_QUEUED } from "@/features/assistant/stage-label";
 import { PendingLine } from "../../_components/assistant-launcher/PendingLine";
 
 /**
- * Teams·SharePoint 파일로 지식망 초안 만들기.
+ * 가진 재료로 지식망 초안 만들기.
  *
- * 파일 탐색 화면을 따로 두지 않고 **링크를 붙여넣게** 한다 — 채널 파일·채팅 파일·
- * 내 OneDrive 가 각각 다른 곳에 있어서, 어느 하나를 고르는 화면을 만들면 나머지는
- * 못 넣는다. Teams 에서 '링크 복사' 한 걸 그대로 받으면 전부 된다.
+ * 재료가 세 가지다. **링크**(Teams·SharePoint 에 이미 올라간 것), **파일**(내 PC 에
+ * 있는 것), **본문**(메일·회의에서 오간 말처럼 파일이 아예 없는 것). 링크 하나만
+ * 받던 때는 앞의 하나가 아니면 길이 없었다.
  *
- * **답이 돌아오는 자리가 여기다.** 예전에는 요청만 넣고 "30초쯤 뒤 제안/ 에 초안이
- * 생깁니다"를 띄운 뒤 끝냈다. 그런데 에이전트는 초안을 못 쓰겠으면 **되묻는다** —
- * 33쪽짜리 취업규칙에 "연도별 값을 넣을까요, 어느 칸에 넣을까요"를 물었고, 그 말이
- * 아무도 안 보는 DB 행에 갇혀 초안 없이 끝났다(2026-08-25). 되묻기는 좋은 질문이라
- * 막을 게 아니라, 답할 자리를 주는 게 맞다.
+ * 올린 파일은 **링크로 바꿔 같은 길로 보낸다** — 서버가 SharePoint 에 올리고
+ * 그 주소를 주면 그 뒤는 링크를 붙여넣었을 때와 완전히 같다. 읽는 경로를 두 벌로
+ * 만들지 않는다.
+ *
+ * **답이 돌아오는 자리가 여기다.** 요청만 넣고 끝내면 에이전트의 되묻기가 아무도
+ * 안 보는 DB 행에 갇힌다(2026-08-25 취업규칙 33쪽). 탭이 URL 이라 다른 탭에
+ * 다녀오면 이 컴포넌트가 죽으므로, 돌아왔을 때 도는 중이던 요청을 이어받는다.
  */
 
 type Turn = { role: "user" | "assistant"; content: string };
 
+const SOURCES: { key: DraftSource; label: string }[] = [
+  { key: "link", label: "링크" },
+  { key: "file", label: "파일 올리기" },
+  { key: "text", label: "직접 입력" },
+];
+
+const FIELD_CLASS =
+  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink outline-none transition-colors focus:border-ink focus:bg-white";
+
 export function FileDraftForm() {
+  const [source, setSource] = useState<DraftSource>("link");
   const [url, setUrl] = useState("");
+  const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
   /**
    * 요청부터 답까지 도는 중.
    *
@@ -35,9 +56,8 @@ export function FileDraftForm() {
    * '보내기'가 계속 잠겨 있었다.
    */
   const [busy, setBusy] = useState(false);
-  /** 적재 자체가 거부된 사유(링크 형식·권한). 큐에 들어가기 전 이야기다. */
+  /** 큐에 들어가기 전에 거부된 사유(링크 형식·권한·업로드 실패). */
   const [error, setError] = useState<string | null>(null);
-
   /** 도는 중이면 지금 하는 일, 아니면 null. */
   const [stage, setStage] = useState<string | null>(null);
   const [since, setSince] = useState<number | undefined>(undefined);
@@ -47,7 +67,7 @@ export function FileDraftForm() {
   /** 끝났지만 답이 아닌 것(시간 초과·실행 실패). 답 자리에 대신 놓는다. */
   const [ended, setEnded] = useState<string | null>(null);
 
-  /** 큐에 들어간 뒤부터는 어느 경로든 같다 — 지켜보고, 온 것을 그 자리에 놓는다. */
+  /** 큐에 들어간 뒤부터는 어느 재료로 왔든 같다 — 지켜보고, 온 것을 그 자리에 놓는다. */
   const watch = async (id: string, asked: Turn[]) => {
     setSince(Date.now());
     setStage(STAGE_QUEUED);
@@ -64,6 +84,50 @@ export function FileDraftForm() {
     );
   };
 
+  // 다른 탭에 다녀오면 이 컴포넌트가 죽는다. 도는 중이던 요청을 이어받지 않으면
+  // 답이 사라져, 되묻기를 아무도 못 보던 문제가 그대로 재발한다.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const r = await getRunningFileDraft();
+      if (!alive || !r) return;
+      setBusy(true);
+      try {
+        await watch(r.id, [{ role: "user", content: r.question }]);
+      } finally {
+        setBusy(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // 마운트에 한 번만 — 도는 중인 것을 붙잡는 게 목적이다.
+     
+  }, []);
+
+  /** 올린 파일을 SharePoint 주소로 바꿔 준다. 실패하면 사유를 그대로 올린다. */
+  const uploadToLink = async (f: File): Promise<string | null> => {
+    const form = new FormData();
+    form.set("file", f);
+    const res = await fetch("/api/knowledge/upload", {
+      method: "POST",
+      body: form,
+    });
+    const json = (await res.json()) as {
+      ok: boolean;
+      webUrl?: string;
+      error?: string;
+    };
+    if (!json.ok || !json.webUrl) {
+      setError(json.error ?? "업로드에 실패했습니다");
+      return null;
+    }
+    return json.webUrl;
+  };
+
+  const canSubmit =
+    source === "link" ? !!url.trim() : source === "text" ? !!text.trim() : !!file;
+
   const submit = () => {
     setError(null);
     setEnded(null);
@@ -71,15 +135,41 @@ export function FileDraftForm() {
     void (async () => {
       setBusy(true);
       try {
-        const r = await requestFileDraft(url, note);
+        if (source === "text") {
+          const r = await requestTextDraft(text, note);
+          if (!r.ok) {
+            setError(r.error);
+            return;
+          }
+          setText("");
+          setNote("");
+          await watch(r.id, [{ role: "user", content: r.question }]);
+          return;
+        }
+
+        // 파일은 올려서 링크로 바꾼 뒤, 링크와 완전히 같은 길로 간다.
+        let link = url;
+        if (source === "file") {
+          if (!file) return;
+          setStage(`파일을 올리는 중 — ${file.name}`);
+          setSince(Date.now());
+          const uploaded = await uploadToLink(file);
+          setStage(null);
+          if (!uploaded) return;
+          link = uploaded;
+        }
+
+        const r = await requestFileDraft(link, note);
         if (!r.ok) {
           // 고쳐서 다시 눌러야 하므로 링크는 그대로 둔다.
           setError(r.error);
           return;
         }
-        // 같은 파일을 두 번 넣기 쉬워 비운다.
+        // 같은 것을 두 번 넣기 쉬워 비운다.
         setUrl("");
         setNote("");
+        setFile(null);
+        if (fileRef.current) fileRef.current.value = "";
         await watch(r.id, [{ role: "user", content: r.question }]);
       } finally {
         setBusy(false);
@@ -88,11 +178,11 @@ export function FileDraftForm() {
   };
 
   const sendReply = () => {
-    const text = reply.trim();
-    if (!text) return;
+    const body = reply.trim();
+    if (!body) return;
     setReply("");
     setEnded(null);
-    const asked: Turn[] = [...turns, { role: "user", content: text }];
+    const asked: Turn[] = [...turns, { role: "user", content: body }];
     void (async () => {
       setBusy(true);
       try {
@@ -101,12 +191,16 @@ export function FileDraftForm() {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            question: text,
+            question: body,
             history: turns.map((t) => ({ role: t.role, content: t.content })),
             pageContext: "지식망 — 파일로 초안",
           }),
         });
-        const json = (await res.json()) as { ok: boolean; id?: string; error?: string };
+        const json = (await res.json()) as {
+          ok: boolean;
+          id?: string;
+          error?: string;
+        };
         if (!json.ok || !json.id) {
           setError(json.error ?? "요청 적재 실패");
           return;
@@ -119,44 +213,102 @@ export function FileDraftForm() {
     })();
   };
 
-  const answer = turns.at(-1)?.role === "assistant" ? turns.at(-1)!.content : null;
+  const answer =
+    turns.at(-1)?.role === "assistant" ? turns.at(-1)!.content : null;
 
   return (
     <section className="border border-line-soft bg-situation-bg p-4">
-      <h3 className="text-sm font-bold text-ink">파일로 초안 만들기</h3>
+      <h3 className="text-sm font-bold text-ink">초안 만들기</h3>
       <p className="mt-1 text-2xs text-muted">
-        Teams·SharePoint 의 Word·PPT·Excel·PDF 링크를 붙여넣으면 읽고 정리해{" "}
-        <code className="font-mono">제안/</code> 에 초안을 만듭니다. 본 위치로
-        옮기는 것은 사람이 확인한 뒤입니다.
+        가진 재료로 읽고 정리해 <code className="font-mono">제안/</code> 에 초안을
+        만듭니다. 본 위치로 옮기는 것은 사람이 확인한 뒤입니다.
       </p>
 
-      <label className="mt-3 block text-xs">
-        <span className="mb-1 block text-muted">파일 링크</span>
-        <input
-          aria-label="파일 링크"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="Teams 에서 '링크 복사' 한 주소"
-          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink outline-none transition-colors focus:border-ink focus:bg-white"
-        />
-      </label>
+      <div role="tablist" className="mt-3 flex gap-1 border-b border-line-soft">
+        {SOURCES.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            role="tab"
+            aria-selected={source === s.key}
+            onClick={() => {
+              setSource(s.key);
+              setError(null);
+            }}
+            className={`-mb-px cursor-pointer px-3 py-1.5 text-xs transition-colors ${
+              source === s.key
+                ? "border-b-2 border-vermilion font-semibold text-vermilion"
+                : "border-b-2 border-transparent text-ink-soft hover:text-ink"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {source === "link" && (
+        <label className="mt-3 block text-xs">
+          <span className="mb-1 block text-muted">파일 링크</span>
+          <input
+            aria-label="파일 링크"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="Teams 에서 '링크 복사' 한 주소"
+            className={FIELD_CLASS}
+          />
+          <span className="mt-1 block text-2xs text-muted">
+            Teams·SharePoint 의 Word·PPT·Excel·PDF
+          </span>
+        </label>
+      )}
+
+      {source === "file" && (
+        <label className="mt-3 block text-xs">
+          <span className="mb-1 block text-muted">올릴 파일</span>
+          <input
+            aria-label="올릴 파일"
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.rtf,.odt,.ods,.odp,.csv"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className={`${FIELD_CLASS} file:mr-2 file:cursor-pointer file:border-0 file:bg-transparent file:text-ink`}
+          />
+          <span className="mt-1 block text-2xs text-muted">
+            40MB 까지. 올린 파일은 팀 SharePoint 에 남아 초안의 근거가 됩니다.
+          </span>
+        </label>
+      )}
+
+      {source === "text" && (
+        <label className="mt-3 block text-xs">
+          <span className="mb-1 block text-muted">정리할 내용</span>
+          <textarea
+            aria-label="정리할 내용"
+            rows={6}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="메일 본문이나 회의에서 오간 내용을 그대로 붙여넣으세요"
+            className={`${FIELD_CLASS} resize-y`}
+          />
+        </label>
+      )}
 
       <label className="mt-2 block text-xs">
         <span className="mb-1 block text-muted">
-          무엇을 정리할지 (비우면 문서 전체 요점)
+          무엇을 정리할지 (비우면 전체 요점)
         </span>
         <input
           aria-label="무엇을 정리할지"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="예: 수수료 정산 규칙만"
-          className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink outline-none transition-colors focus:border-ink focus:bg-white"
+          className={FIELD_CLASS}
         />
       </label>
 
       <button
         type="button"
-        disabled={busy || !url.trim()}
+        disabled={busy || !canSubmit}
         onClick={submit}
         className="mt-3 cursor-pointer border border-line-soft px-2.5 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
       >
@@ -193,8 +345,8 @@ export function FileDraftForm() {
               rows={2}
               value={reply}
               onChange={(e) => setReply(e.target.value)}
-              placeholder='예: 1안, 규칙으로'
-              className="w-full resize-y border border-line-soft bg-field-bg px-2 py-1 text-ink outline-none transition-colors focus:border-ink focus:bg-white"
+              placeholder="예: 1안, 규칙으로"
+              className={`${FIELD_CLASS} resize-y`}
             />
           </label>
           <button
