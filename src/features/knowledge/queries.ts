@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { KnowledgeDocRow, KnowledgeDocFull } from "./shared";
+import { PROPOSAL_FOLDER } from "./frontmatter";
 
 /**
  * 업무 지식망 열람 — knowledge_docs 인덱스 조회(server 전용).
@@ -40,6 +41,10 @@ export async function listKnowledgeDocs(): Promise<KnowledgeDocRow[]> {
   const { data } = await supabase
     .from("knowledge_docs")
     .select("path,category,title,owner,updated,related,missing,category_mismatch")
+    // `제안/`은 사람이 아직 안 본 초안 칸이다. 초안의 category 는 **옮겨질 자리**라
+    // (frontmatter.ts) 분류로만 묶는 이 트리에 두면 승인된 지식 사이에 섞인다.
+    // 검토 대기 목록은 listPendingProposals 가 따로 세운다.
+    .not("path", "like", `${PROPOSAL_FOLDER}/%`)
     .order("category")
     .order("title");
   return ((data ?? []) as DbRow[]).map(toRow);
