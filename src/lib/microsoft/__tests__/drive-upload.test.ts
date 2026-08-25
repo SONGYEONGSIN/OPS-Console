@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../auth", () => ({ getGraphToken: vi.fn(async () => "tok") }));
 
-import { uploadFileToFolder, uploadLargeFileToFolder } from "../drive-upload";
+import {
+  uploadFileToFolder,
+  uploadLargeFileToFolder,
+  ensureFolder,
+} from "../drive-upload";
 
 beforeEach(() => vi.restoreAllMocks());
 
@@ -125,5 +129,71 @@ describe("uploadLargeFileToFolder", () => {
     await expect(
       uploadLargeFileToFolder("D", "F", "x.pdf", Buffer.from("ab")),
     ).rejects.toThrow();
+  });
+});
+
+/**
+ * 올릴 자리를 사람이 찾아 env 에 넣게 하면, 안 넣은 채로 기능이 죽는다.
+ * 이미 아는 폴더(볼트 루트) 밑에 필요할 때 만든다.
+ */
+describe("ensureFolder", () => {
+  it("이미 있으면 그 폴더를 쓴다 — 매번 만들지 않는다", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          value: [
+            { name: "규칙", id: "R", folder: { childCount: 3 } },
+            { name: "첨부", id: "A", folder: { childCount: 0 } },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    expect(await ensureFolder("D", "VAULT", "첨부")).toBe("A");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("없으면 만든다", async () => {
+    const calls: RequestInit[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation((async (
+      _url: string,
+      init: RequestInit,
+    ) => {
+      calls.push(init);
+      if (init?.method === "POST") {
+        return new Response(JSON.stringify({ id: "NEW" }), { status: 201 });
+      }
+      return new Response(JSON.stringify({ value: [] }), { status: 200 });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
+
+    expect(await ensureFolder("D", "VAULT", "첨부")).toBe("NEW");
+    const post = calls.find((c) => c.method === "POST")!;
+    expect(String(post.body)).toContain("첨부");
+    expect(String(post.body)).toContain("folder");
+  });
+
+  it("같은 이름의 파일은 폴더로 치지 않는다", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((async (
+      _url: string,
+      init: RequestInit,
+    ) => {
+      if (init?.method === "POST") {
+        return new Response(JSON.stringify({ id: "NEW" }), { status: 201 });
+      }
+      return new Response(
+        JSON.stringify({ value: [{ name: "첨부", id: "F", file: {} }] }),
+        { status: 200 },
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
+    expect(await ensureFolder("D", "VAULT", "첨부")).toBe("NEW");
+  });
+
+  it("조회가 실패하면 throw — 엉뚱한 자리에 올리지 않는다", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("nope", { status: 403 }),
+    );
+    await expect(ensureFolder("D", "VAULT", "첨부")).rejects.toThrow();
   });
 });

@@ -9,6 +9,8 @@ const state = {
     | { email: string; permission: string }
     | null,
   uploaded: null as { name: string; bytes: number } | null,
+  ensured: null as { parent: string; name: string } | null,
+  uploadedInto: null as string | null,
   throws: null as string | null,
 };
 
@@ -17,12 +19,17 @@ vi.mock("@/features/auth/queries", () => ({
 }));
 
 vi.mock("@/lib/microsoft/drive-upload", () => ({
+  ensureFolder: (_d: string, parent: string, name: string) => {
+    state.ensured = { parent, name };
+    return Promise.resolve("ATTACH");
+  },
   uploadLargeFileToFolder: (
     _drive: string,
-    _folder: string,
+    folder: string,
     name: string,
     content: Buffer,
   ) => {
+    state.uploadedInto = folder;
     if (state.throws) return Promise.reject(new Error(state.throws));
     state.uploaded = { name, bytes: content.length };
     return Promise.resolve({ itemId: "I", webUrl: `https://sp/${name}` });
@@ -52,9 +59,11 @@ describe("지식망 파일 업로드", () => {
   beforeEach(() => {
     state.me = { email: "song@jinhakapply.com", permission: "member" };
     state.uploaded = null;
+    state.ensured = null;
+    state.uploadedInto = null;
     state.throws = null;
     process.env.SHAREPOINT_DRIVE_ID = "DRIVE";
-    process.env.SHAREPOINT_KNOWLEDGE_UPLOAD_ITEM_ID = "FOLDER";
+    process.env.SHAREPOINT_KNOWLEDGE_FOLDER_ID = "VAULT";
   });
 
   it("올린 파일의 SharePoint 주소를 돌려준다", async () => {
@@ -79,14 +88,18 @@ describe("지식망 파일 업로드", () => {
     expect((await POST(post(pdf()))).status).toBe(403);
   });
 
-  it("업로드 폴더 설정이 없으면 503 으로 그 사실을 알린다", async () => {
-    // 조용히 실패하면 기능이 죽은 줄도 모르고 계속 쓴다.
-    delete process.env.SHAREPOINT_KNOWLEDGE_UPLOAD_ITEM_ID;
+  it("볼트 밑 '첨부' 폴더에 둔다 — 새 env 를 요구하지 않는다", async () => {
+    // 올릴 자리를 사람이 찾아 env 에 넣게 하면 안 넣은 채로 기능이 죽는다.
+    await POST(post(pdf()));
+    expect(state.ensured).toEqual({ parent: "VAULT", name: "첨부" });
+    expect(state.uploadedInto).toBe("ATTACH");
+  });
+
+  it("볼트 설정 자체가 없으면 503 으로 그 사실을 알린다", async () => {
+    delete process.env.SHAREPOINT_KNOWLEDGE_FOLDER_ID;
     const res = await POST(post(pdf()));
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toContain(
-      "SHAREPOINT_KNOWLEDGE_UPLOAD_ITEM_ID",
-    );
+    expect((await res.json()).error).toContain("SHAREPOINT_KNOWLEDGE_FOLDER_ID");
   });
 
   it("파일이 없으면 400", async () => {

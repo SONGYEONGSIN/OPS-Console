@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { uploadLargeFileToFolder } from "@/lib/microsoft/drive-upload";
+import {
+  ensureFolder,
+  uploadLargeFileToFolder,
+} from "@/lib/microsoft/drive-upload";
 
 /**
  * 내 PC 의 파일로 지식망 초안 만들기 — 올려서 **링크로 바꿔 준다.**
@@ -9,9 +12,17 @@ import { uploadLargeFileToFolder } from "@/lib/microsoft/drive-upload";
  * Teams 링크를 붙여넣었을 때와 똑같이 `read_file` 이 처리한다. 우리가 하는 일은
  * **사용자 대신 링크를 만들어 주는 것**뿐이다.
  *
- * 팀이 볼 수 있는 자리에 남는다는 점이 중요하다 — 초안의 근거가 된 원본을
- * 나중에 아무도 못 찾으면 그 지식은 확인할 수 없는 지식이 된다.
+ * 파일은 **볼트 밑 `첨부/` 에 둔다.** 올릴 자리를 사람이 찾아 env 에 넣게 하면
+ * 안 넣은 채로 기능이 죽는다 — 볼트 위치는 인덱서가 이미 알고 있으므로 그 밑에
+ * 필요할 때 폴더를 만든다. 인덱서는 `.md` 만 인덱싱하고 `첨부` 는 아예 건너뛴다.
+ *
+ * 볼트에 두는 게 맞는 이유: 초안의 근거가 된 원본을 나중에 아무도 못 찾으면 그
+ * 지식은 확인할 수 없는 지식이 된다. 옵시디언에서 초안을 검토하는 사람이 바로
+ * 옆에서 원본을 열 수 있어야 한다.
  */
+
+/** 원본 파일을 두는 볼트 안 폴더. `index-vault.ts` 의 SKIP_DIRS 와 같아야 한다. */
+const ATTACH_DIR = "첨부";
 
 /** `read_file` 이 받아 주는 상한과 맞춘다 — 여기서 통과하고 저기서 막히면 헛수고다. */
 const MAX_BYTES = 40 * 1024 * 1024;
@@ -53,15 +64,15 @@ export async function POST(request: NextRequest) {
   }
 
   const driveId = process.env.SHAREPOINT_DRIVE_ID;
-  const folderId = process.env.SHAREPOINT_KNOWLEDGE_UPLOAD_ITEM_ID;
-  if (!driveId || !folderId) {
+  const vaultId = process.env.SHAREPOINT_KNOWLEDGE_FOLDER_ID;
+  if (!driveId || !vaultId) {
     // 설정이 빠졌다는 걸 화면에 그대로 알린다 — 조용히 실패하면 기능이 죽은
     // 줄도 모르고 계속 쓴다(오픈안내 cron 등록 누락과 같은 사각지대).
     return NextResponse.json(
       {
         ok: false,
         error:
-          "업로드 폴더가 설정되지 않았습니다 (SHAREPOINT_KNOWLEDGE_UPLOAD_ITEM_ID). 링크 붙여넣기를 써 주세요.",
+          "볼트 위치가 설정되지 않았습니다 (SHAREPOINT_DRIVE_ID / SHAREPOINT_KNOWLEDGE_FOLDER_ID). 링크 붙여넣기를 써 주세요.",
       },
       { status: 503 },
     );
@@ -101,9 +112,10 @@ export async function POST(request: NextRequest) {
   const stamped = `${me.email.split("@")[0]}_${file.name}`;
 
   try {
+    const attachId = await ensureFolder(driveId, vaultId, ATTACH_DIR);
     const { webUrl } = await uploadLargeFileToFolder(
       driveId,
-      folderId,
+      attachId,
       stamped,
       Buffer.from(await file.arrayBuffer()),
     );
