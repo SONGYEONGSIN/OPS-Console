@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { PROPOSAL_FOLDER } from "./frontmatter";
 import type { KnowledgeGapRow, GapKind } from "./gaps-shared";
 import type { PendingProposal } from "./gaps-types";
 
@@ -45,7 +46,10 @@ export async function listPendingProposals(): Promise<PendingProposal[]> {
   const { data } = await supabase
     .from("knowledge_docs")
     .select("path, title")
-    .eq("category", "제안")
+    // **분류가 아니라 경로로 가른다.** 초안의 category 는 폴더가 아니라 옮겨질
+    // 자리라(frontmatter.ts), `category = '제안'` 으로 찾으면 propose_doc 이
+    // 분류를 적어 넣은 초안이 통째로 안 잡힌다 — propose_doc 은 늘 적는다.
+    .like("path", `${PROPOSAL_FOLDER}/%`)
     .order("path")
     // 검토 대기가 이만큼 쌓였다면 목록이 아니라 운영이 문제다.
     .limit(50);

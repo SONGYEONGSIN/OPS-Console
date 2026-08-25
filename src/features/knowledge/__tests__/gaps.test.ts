@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const state = {
   rows: null as Record<string, unknown>[] | null,
   filters: [] as [string, unknown][],
+  likes: [] as [string, unknown][],
 };
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -12,6 +13,10 @@ vi.mock("@/lib/supabase/server", () => ({
         select: () => chain,
         eq: (c: string, v: unknown) => {
           state.filters.push([c, v]);
+          return chain;
+        },
+        like: (c: string, v: unknown) => {
+          state.likes.push([c, v]);
           return chain;
         },
         order: () => chain,
@@ -28,6 +33,7 @@ describe("listOpenGaps", () => {
   beforeEach(() => {
     state.rows = null;
     state.filters = [];
+    state.likes = [];
   });
 
   it("아직 안 채운 것만 가져온다 — 이미 쓴 문서를 또 쓰라고 하면 안 된다", async () => {
@@ -88,12 +94,17 @@ describe("listPendingProposals", () => {
   beforeEach(() => {
     state.rows = null;
     state.filters = [];
+    state.likes = [];
   });
 
-  it("제안 폴더 문서만 가져온다", async () => {
+  it("제안 폴더 문서만 가져온다 — 분류가 아니라 경로로 가른다", async () => {
+    // 초안의 category 는 **옮겨질 자리**다(frontmatter.ts). 분류로 찾으면
+    // propose_doc 이 분류를 적어 넣은 초안이 통째로 안 잡힌다 — 실제로
+    // `제안/취업규칙 요점 (2026 개정).md` 가 category=규칙 으로 사라졌다.
     state.rows = [];
     await listPendingProposals();
-    expect(state.filters).toContainEqual(["category", "제안"]);
+    expect(state.likes).toContainEqual(["path", "제안/%"]);
+    expect(state.filters).not.toContainEqual(["category", "제안"]);
   });
 
   it("경로와 제목을 돌려준다", async () => {
