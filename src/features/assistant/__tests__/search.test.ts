@@ -4,6 +4,7 @@ import {
   scoreText,
   knowledgeSource,
   knowledgeHaystack,
+  searchDomainsWith,
   type Source,
   plainSnippet,
 } from "../search";
@@ -161,5 +162,34 @@ describe("plainSnippet", () => {
 
   it("빈 문자열은 그대로", () => {
     expect(plainSnippet("")).toBe("");
+  });
+});
+
+/**
+ * `제안/`은 사람이 아직 안 본 초안 칸이다. 에이전트가 자기가 쓴 초안을 근거로
+ * 인용하면 **자기 글을 자기가 승인**하는 것이고, `제안/`을 둔 이유가 사라진다
+ * (프롬프트가 promote_doc 에 대해 이미 같은 말을 한다).
+ */
+describe("searchDomainsWith — 지식망", () => {
+  it("검토 전 초안은 근거 후보에서 뺀다", async () => {
+    const nots: [string, string, unknown][] = [];
+    const fake = {
+      from: (table: string) => {
+        const chain: Record<string, unknown> = {
+          select: () => chain,
+          order: () => chain,
+          not: (c: string, op: string, v: unknown) => {
+            if (table === "knowledge_docs") nots.push([c, op, v]);
+            return chain;
+          },
+          limit: () => Promise.resolve({ data: [] }),
+        };
+        return chain;
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
+
+    await searchDomainsWith(fake, { question: "취업규칙 휴가 규정" });
+    expect(nots).toContainEqual(["path", "like", "제안/%"]);
   });
 });

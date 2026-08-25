@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { PROPOSAL_FOLDER } from "@/features/knowledge/frontmatter";
 
 /**
  * 도메인별 키워드 검색 → 에이전트 `search_ops` 도구가 쓸 top-N row 추출.
@@ -190,6 +191,11 @@ async function searchKnowledge(
   const { data } = await supabase
     .from("knowledge_docs")
     .select(DOMAIN_SELECTS.knowledge_docs)
+    // 검토 전 초안은 근거가 아니다. 에이전트가 자기가 쓴 초안을 인용하면
+    // **자기 글을 자기가 승인**하는 것이라 `제안/`을 둔 이유가 사라진다
+    // (프롬프트가 promote_doc 에 대해 이미 같은 말을 한다).
+    // cwd 가 볼트라 Read/Glob 로도 열리므로 프롬프트가 그쪽을 막는다 — 2중 방어.
+    .not("path", "like", `${PROPOSAL_FOLDER}/%`)
     .limit(FETCH_LIMIT_PER_DOMAIN);
   if (!data) return [];
   const scored = (data as KnowledgeRow[]).map((r) => ({
