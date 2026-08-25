@@ -13,8 +13,8 @@ vi.mock("@/lib/microsoft/auth", () => ({
 vi.stubGlobal(
   "fetch",
   vi.fn((url: string) => {
-    // PDF 변환 주소에도 /driveItem 이 들어 있다 — format=pdf 로 갈라야 한다.
-    if (!String(url).includes("format=pdf")) {
+    // 메타 조회와 내려받기 주소를 가른다 — 둘 다 /driveItem 이 들어 있다.
+    if (!String(url).includes("/content")) {
       return Promise.resolve({
         ok: state.itemStatus === 200,
         status: state.itemStatus,
@@ -22,7 +22,7 @@ vi.stubGlobal(
         text: () => Promise.resolve("err"),
       });
     }
-    // content?format=pdf 는 302 로 임시 주소를 준다.
+    // content 는 302 로 임시 주소를 준다.
     return Promise.resolve({
       status: state.pdfLocation ? 302 : 500,
       headers: { get: (h: string) => (h === "location" ? state.pdfLocation : null) },
@@ -47,6 +47,7 @@ const LINK = "https://tenant.sharepoint.com/sites/운영부/보고서.docx";
 
 describe("파일 읽기 도구", () => {
   beforeEach(() => {
+    vi.mocked(fetch).mockClear();
     process.env.CRON_SECRET = "s3cret";
     state.itemStatus = 200;
     state.pdfLocation = "https://dl.example/x.pdf";
@@ -87,6 +88,20 @@ describe("파일 읽기 도구", () => {
   it("PDF 변환 주소를 못 받으면 502 — 조용히 빈 값을 주지 않는다", async () => {
     state.pdfLocation = null;
     expect((await POST(post({ url: LINK }))).status).toBe(502);
+  });
+
+  it("이미 PDF면 변환을 시키지 않는다 — 변환 서비스가 PDF 입력을 406으로 거절한다", async () => {
+    state.item = {
+      name: "통합 규정집.pdf",
+      size: 6_234_909,
+      file: { mimeType: "application/pdf" },
+      webUrl: LINK,
+    };
+    const body = await (await POST(post({ url: LINK }))).json();
+    expect(body.ok).toBe(true);
+    expect(body.downloadUrl).toBe("https://dl.example/x.pdf");
+    const called = vi.mocked(fetch).mock.calls.map((c) => String(c[0]));
+    expect(called.some((u) => u.includes("format=pdf"))).toBe(false);
   });
 
   it("어떤 형식이었는지 알려준다 — 엑셀이면 요약이 약하다고 말해야 한다", async () => {

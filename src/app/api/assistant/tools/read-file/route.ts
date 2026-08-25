@@ -8,7 +8,8 @@ import { toSharingToken } from "@/lib/microsoft/sharing-token";
  *
  * 볼트는 마크다운이라 폴러가 그냥 `Read` 하면 되지만, Teams 에 올라온 파일은
  * Word·PPT·Excel·PDF 다. **Graph 가 PDF 로 변환해 준다**(`/content?format=pdf`) —
- * 네 형식이 한 경로로 처리되고, PDF 는 모델이 그대로 읽는다.
+ * 셋이 한 형식으로 모이고, PDF 는 모델이 그대로 읽는다. 원본이 이미 PDF 면 변환을
+ * 건너뛴다(아래).
  *
  * 파일을 여기서 통째로 실어 보내지 않는다. Graph 가 주는 **짧게 사는 임시 주소**만
  * 넘기고 내려받기는 폴러가 한다 — 우편물 영수증과 같은 구조다.
@@ -82,16 +83,27 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // PDF 변환은 302 로 임시 주소를 준다. 그 주소는 인증이 필요 없고 곧 만료된다.
-  const pdf = await fetch(`${GRAPH}/shares/${token}/driveItem/content?format=pdf`, {
-    headers: auth,
-    redirect: "manual",
-  });
-  const downloadUrl = pdf.headers.get("location");
+  // 이미 PDF 면 변환을 부탁하지 않는다 — 변환 서비스는 **PDF 를 입력으로 받지 않는다**.
+  // 거절이 302 다음에 온다: `?format=pdf` 는 임시 주소를 멀쩡히 내주고, 그 주소를 열면
+  // 406 `InputFormatNotSupported` 다. 여기서 성공으로 보이고 폴러에서 "내려받기 406" 으로
+  // 죽었다(2026-08-24 규정집 PDF). 원본을 그대로 준다 — 어차피 우리가 원하는 형식이다.
+  const isPdf = item.file?.mimeType === "application/pdf";
+
+  // 변환도 원본도 302 로 임시 주소를 준다. 그 주소는 인증이 필요 없고 곧 만료된다.
+  const content = await fetch(
+    `${GRAPH}/shares/${token}/driveItem/content${isPdf ? "" : "?format=pdf"}`,
+    { headers: auth, redirect: "manual" },
+  );
+  const downloadUrl = content.headers.get("location");
   if (!downloadUrl) {
     // 조용히 빈 값을 주지 않는다 — 모델이 빈 파일을 읽고 지어내면 더 나쁘다.
     return NextResponse.json(
-      { ok: false, error: "이 형식은 PDF로 바꿀 수 없습니다" },
+      {
+        ok: false,
+        error: isPdf
+          ? "파일을 내려받을 주소를 못 받았습니다"
+          : "이 형식은 PDF로 바꿀 수 없습니다",
+      },
       { status: 502 },
     );
   }
