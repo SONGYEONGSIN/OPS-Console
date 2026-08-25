@@ -15,11 +15,8 @@ import { findSidebarMeta } from "../../_data";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
-import {
-  pendingNoteFor,
-  STAGE_QUEUED,
-  STAGE_STILL_QUEUED,
-} from "@/features/assistant/stage-label";
+import { pollAssistantRequest } from "@/features/assistant/poll-request";
+import { STAGE_QUEUED } from "@/features/assistant/stage-label";
 import { PendingLine } from "./PendingLine";
 
 type ChatMessage = {
@@ -127,26 +124,6 @@ type Props = {
 
 
 /** Claude 모드 폴링 — 회사 PC가 답을 적을 때까지 기다린다. */
-const POLL_MS = 2000;
-/** 실측 30~45초. 3분이면 폴러가 물려 있는 것이다. */
-const POLL_TIMEOUT_MS = 180_000;
-/**
- * 이 시간 동안 pending에서 안 움직이면 아무도 claim하지 않은 것 = 회사 PC가 꺼졌다.
- * running으로 넘어갔다면 PC는 살아 있으니 이 판정을 하지 않는다.
- */
-const UNCLAIMED_MS = 15_000;
-
-type ClaudePoll = {
-  ok: boolean;
-  status?: string;
-  /** 폴러가 알려준 지금 하는 일. 서버가 문장으로 만들어 준다. */
-  stage?: string | null;
-  answer?: string | null;
-  sources?: string[];
-  message?: string | null;
-  error?: string;
-};
-
 export function AssistantClient({ userName = "운영자" }: Props) {
   const pathname = usePathname();
   /**
@@ -241,47 +218,16 @@ export function AssistantClient({ userName = "운영자" }: Props) {
       return;
     }
 
-    setPendingNote(STAGE_QUEUED);
-
-    const startedAt = Date.now();
-    for (;;) {
-      await new Promise((r) => setTimeout(r, POLL_MS));
-      const elapsed = Date.now() - startedAt;
-
-      const res = await fetch(`/api/assistant/claude?id=${enqJson.id}`);
-      const json = (await res.json()) as ClaudePoll;
-
-      // 폴러가 알려준 실제 단계를 그대로 보여준다. 아직 안 왔으면 아는 사실만 말한다
-      // — 예전엔 claim만 되면 "문서를 읽는 중"이라 했는데 안 읽고 있을 수도 있었다.
-      setPendingNote(pendingNoteFor(json));
-
-      if (json.status === "done") {
-        replaceLast({
-          content: json.answer ?? "",
-          vaultSources: json.sources ?? [],
-        });
-        return;
-      }
-      if (json.status === "failed") {
-        replaceLast({ content: `❌ ${json.message ?? "실행 실패"}` });
-        return;
-      }
-      // 오래 안 가져가면 알린다 — 다만 **여기서 멈추지 않는다.**
-      //
-      // 예전엔 이 자리에서 "회사 PC가 꺼졌다"고 단정하고 폴링을 끝냈다. 그런데
-      // claim 이 27초 걸린 요청이 있었고(Vercel 응답 지연으로 폴러 요청이 한 번
-      // 끊기고 재시도), 그 뒤 도착한 343자짜리 답이 통째로 사라졌다(2026-08-19).
-      //
-      // 안 가져갔다는 건 사실이지만 **꺼진 건지 늦는 건지는 화면이 알 수 없다.**
-      // 그러니 사실만 말하고 기다리는 건 계속한다. 끝내는 건 3분 제한 하나뿐이다.
-      if (json.status === "pending" && elapsed > UNCLAIMED_MS) {
-        setPendingNote(STAGE_STILL_QUEUED);
-      }
-      if (elapsed > POLL_TIMEOUT_MS) {
-        replaceLast({ content: "❌ 시간이 초과됐습니다 (3분)." });
-        return;
-      }
+    const outcome = await pollAssistantRequest(enqJson.id, setPendingNote);
+    if (outcome.kind === "done") {
+      replaceLast({ content: outcome.answer, vaultSources: outcome.sources });
+      return;
     }
+    if (outcome.kind === "failed") {
+      replaceLast({ content: `❌ ${outcome.message}` });
+      return;
+    }
+    replaceLast({ content: "❌ 시간이 초과됐습니다 (3분)." });
   };
 
   const send = async (text: string) => {

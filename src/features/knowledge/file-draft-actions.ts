@@ -5,7 +5,10 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toSharingToken } from "@/lib/microsoft/sharing-token";
 
-export type FileDraftResult = { ok: true } | { ok: false; error: string };
+export type FileDraftResult =
+  /** 진행을 지켜보려면 화면이 요청 id 를 알아야 한다 — 답이 여기로 돌아온다. */
+  | { ok: true; id: string; question: string }
+  | { ok: false; error: string };
 
 /**
  * Teams·SharePoint 파일로 지식망 초안을 만들어 달라고 요청한다.
@@ -54,13 +57,19 @@ export async function requestFileDraft(
   ].join("\n");
 
   const admin = createAdminClient();
-  const { error } = await admin.from("assistant_requests").insert({
-    operator_email: me.email,
-    question,
-    page_context: "지식망 — 파일로 초안",
-  });
+  const { data, error } = await admin
+    .from("assistant_requests")
+    .insert({
+      operator_email: me.email,
+      question,
+      page_context: "지식망 — 파일로 초안",
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, error: error.message };
 
   revalidatePath("/dashboard/knowledge");
-  return { ok: true };
+  // question 도 함께 돌려준다 — 되묻기에 답할 때 history 에 실어야 에이전트가
+  // 어느 파일 이야기였는지 안다. 화면이 프롬프트를 다시 조립하게 두지 않는다.
+  return { ok: true, id: data.id, question };
 }

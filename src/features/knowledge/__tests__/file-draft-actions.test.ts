@@ -17,7 +17,15 @@ vi.mock("@/lib/supabase/admin", () => ({
     from: () => ({
       insert: (v: Record<string, unknown>) => {
         state.inserted = v;
-        return Promise.resolve({ error: state.error });
+        return {
+          select: () => ({
+            single: () =>
+              Promise.resolve({
+                data: state.error ? null : { id: "req-1" },
+                error: state.error,
+              }),
+          }),
+        };
       },
     }),
   }),
@@ -32,6 +40,15 @@ describe("파일로 초안 요청", () => {
     state.me = { email: "me@x.com", permission: "member" };
     state.inserted = null;
     state.error = null;
+  });
+
+  it("요청 id를 돌려준다 — 화면이 진행을 지켜보려면 이게 있어야 한다", async () => {
+    const r = await requestFileDraft(LINK, "");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.id).toBe("req-1");
+    // 되묻기에 답하려면 앞서 무엇을 물었는지가 history 에 실려야 한다.
+    expect(r.question).toContain(LINK);
   });
 
   it("어시스턴트 큐에 넣는다 — 빈틈 초안과 같은 길이다", async () => {
