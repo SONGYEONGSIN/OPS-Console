@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { PROPOSAL_FOLDER } from "@/features/knowledge/frontmatter";
 import { applyPhase } from "@/features/closing/phase";
 import { listContracts } from "@/features/contracts/queries";
 import { fetchReceivablesSheet } from "@/features/receivables/queries";
@@ -150,7 +151,15 @@ export async function getMenuCounts(
     // 실데이터가 있는 메뉴들. 목업 자리표시자(pims·competition 등)에는 안 붙인다 —
     // 가짜 숫자가 진짜처럼 보이면 없는 기능을 있는 줄 안다(자료실 때와 같은 문제).
     countOf("postal", supabase.from("postal_receipts").select("*", head)),
-    countOf("knowledge", supabase.from("knowledge_docs").select("*", head)),
+    // 열람 목록에서 뺀 초안은 숫자에서도 뺀다 — 눌러서 나오는 건수와 어긋나면
+    // 숫자를 못 믿는다. 검토 대기 초안은 지식망 화면이 따로 세운다.
+    countOf(
+      "knowledge",
+      supabase
+        .from("knowledge_docs")
+        .select("*", head)
+        .not("path", "like", `${PROPOSAL_FOLDER}/%`),
+    ),
     countOf("reports", supabase.from("reports").select("*", head)),
     countOf("checklist", supabase.from("checklist_rounds").select("*", head)),
     countOf(

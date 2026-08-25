@@ -482,6 +482,17 @@ describe("buildVaultPrompt — 초안 옮기기", () => {
     expect(p).toMatch(/내용을 보여|무엇을 담았는지/);
   });
 
+  it("`제안/` 문서는 근거로 못 쓰게 한다 — 자기 글을 자기가 승인하는 셈이다", () => {
+    // DB 검색은 막았지만 cwd 가 볼트라 Read/Glob 로 `제안/` 을 그대로 연다.
+    // 문이 둘이므로 프롬프트가 나머지 하나를 막는다.
+    const p = buildVaultPrompt({
+      question: "취업규칙 어떻게 돼",
+      pageContext: null,
+      today: "2026-08-26 (수)",
+    });
+    expect(p).toContain("`제안/` 문서는 근거가 아닙니다");
+  });
+
   it("본 위치 문서를 고칠 때도 제안을 거치게 한다", () => {
     expect(p).toMatch(/고쳐달라|수정/);
   });

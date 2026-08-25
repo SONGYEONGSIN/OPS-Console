@@ -17,7 +17,10 @@ vi.mock("@/lib/supabase/server", () => ({
           eq: note("eq"),
           neq: () => chain,
           is: () => chain,
-          not: () => chain,
+          not: (c: string, op: string, v: unknown) => {
+            entry.filters.push(`not:${c} ${op} ${String(v)}`);
+            return chain;
+          },
           in: () => chain,
           gte: note("gte"),
           gt: note("gt"),
@@ -122,5 +125,22 @@ describe("실데이터 메뉴 카운트", () => {
   it("대학배정은 안 센다 — 엑셀을 읽어야 해서 매 화면이 느려진다", async () => {
     const counts = await getMenuCounts("me@x.com");
     expect([...counts.keys()]).not.toContain("assignments");
+  });
+});
+
+/**
+ * `제안/`은 사람이 아직 안 본 초안 칸이다. 열람 목록에서 뺐으면 사이드바 숫자도
+ * 같이 빠져야 한다 — 눌러서 나오는 건수와 숫자가 어긋나면 숫자를 못 믿는다.
+ */
+describe("지식망 건수", () => {
+  beforeEach(() => {
+    calls.length = 0;
+  });
+
+  it("검토 대기 초안은 안 센다 — 목록에 없는 걸 세면 숫자가 어긋난다", async () => {
+    await getMenuCounts("me@x.com");
+    const knowledge = calls.filter((c) => c.table === "knowledge_docs");
+    expect(knowledge).toHaveLength(1);
+    expect(knowledge[0].filters).toContain("not:path like 제안/%");
   });
 });
