@@ -124,3 +124,4 @@ public/newsletter/*
 # 어시스턴트 폴러 로그 (폴러가 직접 append)
 assistant-poller.log
 postal-poller.log
+teams-app/myeongbo.zip
