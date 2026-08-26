@@ -34,12 +34,18 @@ export async function POST(request: NextRequest) {
     serviceUrl,
   );
   if (!verified.ok) {
+    console.warn(`[teams] 검증 실패: ${verified.reason}`);
     return NextResponse.json({ ok: false, error: verified.reason }, { status: 401 });
   }
 
   const read = readActivity(body, appId);
-  // 나를 부르지 않은 말·들고남 알림 등 — 아무것도 하지 않는다.
-  if (!read.ok) return NextResponse.json({ ok: true, skipped: read.reason });
+  if (!read.ok) {
+    // **거절도 남긴다.** 조용히 200 만 돌려주던 때, 요청은 오는데 아무 일도 안 나는
+    // 상태가 되어 원인을 못 찾고 네 시간을 설정만 뒤졌다(2026-08-26).
+    // "왔지만 안 했다"는 "안 왔다"와 로그에서 구분돼야 한다.
+    console.warn(`[teams] 건너뜀: ${read.reason}`);
+    return NextResponse.json({ ok: true, skipped: read.reason });
+  }
 
   const reply = { serviceUrl: read.serviceUrl, conversationId: read.conversationId };
 
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
       ...reply,
       text: "운영부 명부에 없는 계정이라 답할 수 없습니다. 내부 기록을 다루는 자리라 명부에 있는 분만 쓸 수 있어요.",
     });
+    console.warn(`[teams] 명부 밖: ${email ?? read.aadObjectId}`);
     return NextResponse.json({ ok: true, skipped: "명부 밖" });
   }
 

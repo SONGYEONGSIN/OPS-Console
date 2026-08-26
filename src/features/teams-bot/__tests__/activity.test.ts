@@ -91,3 +91,68 @@ describe("readActivity", () => {
     expect(r.ok && r.question.length).toBeLessThanOrEqual(4000);
   });
 });
+
+/**
+ * 실제 Teams 가 보내는 모양 — 2026-08-26 라이브에서 드러났다.
+ *
+ * 설정을 네 시간 의심했는데 요청은 처음부터 오고 있었다. `POST 200` 이 찍히는 동안
+ * **파서가 전부 거절**하고 있었다. 두 가지를 몰랐다:
+ *
+ * 1. **개인 채팅에는 멘션이 없다** — 1:1 에서 `@명보` 를 쓰지 않는다
+ * 2. **멘션 id 에 `28:` 접두사가 붙는다** — App ID 와 직접 비교하면 안 맞는다
+ */
+describe("readActivity — 실제 Teams 모양", () => {
+  const APP_ID = "0024b39d-b624-4dbe-a1bf-4b72b22c94dd";
+
+  it("멘션 id 의 28: 접두사를 넘어 나를 알아본다", () => {
+    const r = readActivity(
+      {
+        ...base,
+        text: "<at>명보</at> 질문",
+        entities: [
+          {
+            type: "mention",
+            text: "<at>명보</at>",
+            mentioned: { id: `28:${APP_ID}`, name: "명보" },
+          },
+        ],
+      },
+      APP_ID,
+    );
+    expect(r.ok && r.question).toBe("질문");
+  });
+
+  it("개인 채팅은 멘션 없이 받는다 — 1:1 에서는 부를 이름이 없다", () => {
+    const r = readActivity(
+      {
+        ...base,
+        conversation: { id: "19:me", conversationType: "personal" },
+        text: "안녕",
+        entities: [],
+      },
+      APP_ID,
+    );
+    expect(r.ok && r.question).toBe("안녕");
+  });
+
+  it("그룹방에서는 여전히 멘션이 있어야 한다 — 모든 말에 답하지 않는다", () => {
+    const r = readActivity(
+      { ...base, text: "그냥 잡담", entities: [] },
+      APP_ID,
+    );
+    expect(r.ok).toBe(false);
+  });
+
+  it("팀 채널도 멘션이 있어야 한다", () => {
+    const r = readActivity(
+      {
+        ...base,
+        conversation: { id: "19:ch", conversationType: "channel" },
+        text: "잡담",
+        entities: [],
+      },
+      APP_ID,
+    );
+    expect(r.ok).toBe(false);
+  });
+});
