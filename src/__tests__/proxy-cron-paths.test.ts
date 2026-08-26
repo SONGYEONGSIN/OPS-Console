@@ -21,6 +21,9 @@ const CRON_ROUTES = [
   "/api/automations/run",
   "/api/closing/run-log",
   "/api/invoice/amounts",
+  // Teams 봇 — Bot Framework 가 부르는 자리라 세션이 없다.
+  "/api/teams/messages",
+  "/api/teams/flush",
 ];
 
 describe("proxy — CRON_SECRET 창구", () => {

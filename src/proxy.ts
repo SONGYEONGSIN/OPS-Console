@@ -36,6 +36,10 @@ const PUBLIC_PATHS = [
   "/api/automations/run",
   "/api/closing/ingest",
   "/api/invoice/amounts",
+  // Teams 봇 — Bot Framework 가 부르는 자리라 세션이 없다. 대신 라우트가 JWT 를
+  // 검증하고(messages), CRON_SECRET 을 본다(flush).
+  "/api/teams/messages",
+  "/api/teams/flush",
   "/api/closing/run-log",
   "/api/closing/scrape-request",
   "/api/ai-tips/candidates",

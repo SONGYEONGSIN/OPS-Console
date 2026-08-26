@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "0a63cfbf-fc4c-4a8c-83ba-f29bd33274a1",
+  "developer": {
+    "name": "진학사 어플라이사업본부 운영부",
+    "websiteUrl": "https://ops-console-psi.vercel.app",
+    "privacyUrl": "https://ops-console-psi.vercel.app/login",
+    "termsOfUseUrl": "https://ops-console-psi.vercel.app/login"
+  },
+  "name": {
+    "short": "명보",
+    "full": "운영부 상황실 어시스턴트 명보"
+  },
+  "description": {
+    "short": "업무 지식망과 운영 데이터에서 찾아 답합니다",
+    "full": "운영부 상황실 어시스턴트입니다. 업무 지식망 문서를 직접 읽고 인수인계·사고·연락처 같은 실제 기록까지 뒤져서 답합니다. 채팅방에서 @명보 로 부르면 됩니다. 답이 30초쯤 걸리는 건 문서를 하나씩 읽고 있어서예요. 운영부 명부에 있는 분만 쓸 수 있습니다."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#D8472B",
+  "bots": [
+    {
+      "botId": "0a63cfbf-fc4c-4a8c-83ba-f29bd33274a1",
+      "scopes": ["groupChat", "team"],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["ops-console-psi.vercel.app"]
+}
