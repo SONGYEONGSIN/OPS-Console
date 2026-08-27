@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { listMyChats, listChatMessages } from "@/lib/microsoft/teams";
 import { pickNewMessages, nextCursor } from "@/features/teams-bot/poll-plan";
 import { emailFromAadObjectId } from "@/features/teams-bot/resolve-email";
+import { allowedChats } from "@/features/teams-bot/chat-allow";
 
 /**
  * Teams 채팅을 훑어 **명보를 부른 말**을 큐에 넣는다. cron 이 1분마다 부른다.
@@ -41,7 +42,15 @@ export async function POST(request: NextRequest) {
   let queued = 0;
   let scanned = 0;
 
-  const chats = (await listMyChats(READER)).slice(0, MAX_CHATS);
+  // 허용한 방만 본다. 비어 있으면 아무 방도 열지 않는다 — 설정 누락이
+  // 전 채팅방 개방이 되는 쪽이 훨씬 나쁘다.
+  const chats = allowedChats(
+    (await listMyChats(READER)).slice(0, MAX_CHATS),
+    process.env.TEAMS_POLL_CHAT_IDS,
+  );
+  if (chats.length === 0) {
+    return NextResponse.json({ ok: true, chats: 0, note: "허용된 방 없음 (TEAMS_POLL_CHAT_IDS)" });
+  }
   for (const chat of chats) {
     // 커서가 없는 방은 **지금부터** 본다. 옛 대화에 뒤늦게 답하면 방이 어지러워진다.
     const { data: cursorRow } = await admin
