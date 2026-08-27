@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { MARKDOWN_REMARK_PLUGINS } from "@/components/common/markdown-plugins";
 import { PROPOSAL_FOLDER } from "@/features/knowledge/frontmatter";
+import { ProposalPromote } from "./ProposalPromote";
 import { ProposalDelete } from "./ProposalDelete";
 import { isStale, type KnowledgeDocFull } from "@/features/knowledge/shared";
 
@@ -61,7 +62,15 @@ export function KnowledgeDocView({
           에이전트가 만든 초안이 쌓이는데 치울 길이 화면에 없어서 열었다.
         */}
         {doc.path.startsWith(`${PROPOSAL_FOLDER}/`) && (
-          <ProposalDelete path={doc.path} title={doc.title} />
+          /* 옮기기가 왼쪽 — 검토의 정상 결말이고, 삭제는 그렇지 않은 쪽이다. */
+          <div className="flex flex-wrap items-start gap-2">
+            <ProposalPromote
+              path={doc.path}
+              title={doc.title}
+              category={doc.category}
+            />
+            <ProposalDelete path={doc.path} title={doc.title} />
+          </div>
         )}
 
         {doc.categoryMismatch && (

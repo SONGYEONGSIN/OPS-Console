@@ -8,8 +8,8 @@ import type { PendingProposal } from "@/features/knowledge/gaps-types";
  * **이미 있는데 아무도 안 본 것**이다. 한 칸에 두면 검토할 초안이 빈틈 목록
  * 아래로 밀려 닫혀 보인다.
  *
- * 옮기는 건 여기서 안 한다 — `제안/` 은 사람이 내용을 읽고 넘기는 관문이라,
- * 목록에서 버튼 한 번으로 넘어가면 그 관문이 사라진다.
+ * 옮기는 건 여기서 안 한다 — `제안/` 은 사람이 **내용을 읽고** 넘기는 관문이라,
+ * 목록에서 바로 넘기면 그 관문이 사라진다. 옮기기 버튼은 문서를 연 화면에 있다.
  */
 export function PendingProposals({
   proposals,
@@ -35,8 +35,8 @@ export function PendingProposals({
           아직 아무도 안 본 초안 {proposals.length}건
         </h2>
         <p className="text-xs text-muted">
-          에이전트가 쓴 것입니다. 눌러서 내용을 확인하고, 맞으면 옵시디언에서 본
-          위치로 옮기세요.
+          에이전트가 쓴 것입니다. 눌러서 내용을 확인하고, 맞으면 그 화면의{" "}
+          <b>지식망 옮기기</b> 로 본 위치에 넣으세요.
         </p>
       </div>
 
