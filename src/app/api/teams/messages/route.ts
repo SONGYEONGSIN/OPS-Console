@@ -4,7 +4,7 @@ import { readActivity } from "@/features/teams-bot/activity";
 import { emailFromAadObjectId } from "@/features/teams-bot/resolve-email";
 import { verifyBotToken } from "@/features/teams-bot/verify-token";
 import { postActivity } from "@/lib/microsoft/bot-framework";
-import { logActivity } from "@/features/worklog/log";
+
 
 /**
  * Teams 봇 메시징 엔드포인트.
@@ -36,15 +36,35 @@ export async function POST(request: NextRequest) {
   );
   if (!verified.ok) {
     console.warn(`[teams] 검증 실패: ${verified.reason}`);
-    await logActivity({ level: "WARN", domain: "teams-bot", action: "inbound", msg: `검증 실패: ${verified.reason}`.slice(0, 500) });
+    try {
+      await createAdminClient().from("worklog").insert({
+        level: "WARN", domain: "teams-bot", action: "inbound",
+        msg: `검증 실패: ${verified.reason}`.slice(0, 500),
+      });
+    } catch {}
     return NextResponse.json({ ok: false, error: verified.reason }, { status: 401 });
   }
 
   // **무슨 일이 있었는지 DB 에 남긴다.** 조용히 200 만 돌려주던 때 요청은 오는데
   // 아무 일도 안 나는 상태가 되어 네 시간을 설정만 뒤졌다(2026-08-26). Vercel 로그
   // 스트리밍은 대시보드에 찍힌 요청조차 못 잡아 믿을 수 없었다.
-  const note = (msg: string, metadata?: Record<string, unknown>) =>
-    logActivity({ level: "INFO", domain: "teams-bot", action: "inbound", msg, metadata: metadata ?? null });
+  //
+  // `logActivity` 를 쓰지 않는다 — 그쪽은 세션 쿠키로 사용자를 찾는데 봇 요청에는
+  // 쿠키가 없어 조용히 실패한다. 진단하려고 넣은 기록이 진단할 수 없는 이유로
+  // 사라지면 아무 소용이 없다(2026-08-26).
+  const note = async (msg: string, metadata?: Record<string, unknown>) => {
+    try {
+      await createAdminClient().from("worklog").insert({
+        level: "INFO",
+        domain: "teams-bot",
+        action: "inbound",
+        msg: msg.slice(0, 500),
+        metadata: metadata ?? null,
+      });
+    } catch {
+      // 기록 실패로 답변을 막지 않는다.
+    }
+  };
 
   const read = readActivity(body, appId);
   if (!read.ok) {
