@@ -43,17 +43,33 @@ describe("ProposalPromote", () => {
     result.value = { ok: true, toPath: "규칙/취업규칙 요점.md" };
   });
 
-  it("어디로 가는지 먼저 보여준다 — 누르고 나서 알면 늦다", () => {
+  it("버튼 옆에 목적지를 늘어놓지 않는다 — 삭제 버튼의 라벨처럼 보인다", () => {
+    // 확인 단계가 어디로 가는지 그대로 보여주므로 앞에서 또 말할 이유가 없다.
     render1();
     expect(screen.getByRole("button", { name: /지식망 옮기기/ })).toBeInTheDocument();
+    expect(screen.queryByText(/규칙\//)).not.toBeInTheDocument();
+  });
+
+  it("확인 단계에서 어디로 가는지 보여준다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /지식망 옮기기/ }));
     expect(screen.getByText(/규칙\//)).toBeInTheDocument();
   });
 
-  it("한 번 더 묻는다 — 본 위치는 여럿이 함께 쓰는 파일이다", () => {
+  it("표준 모달로 한 번 더 묻는다 — 본 위치는 여럿이 함께 쓰는 파일이다", () => {
     render1();
     fireEvent.click(screen.getByRole("button", { name: /지식망 옮기기/ }));
     expect(promoteSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "옮기기" })).toBeInTheDocument();
+  });
+
+  it("Esc 로 닫는다 — 표준 모달이 주는 동작을 그대로 쓴다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /지식망 옮기기/ }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(promoteSpy).not.toHaveBeenCalled();
   });
 
   it("확인하면 옮긴다", async () => {

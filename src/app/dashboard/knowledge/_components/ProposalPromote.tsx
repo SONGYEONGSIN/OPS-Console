@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ModalShell } from "@/components/common/ModalShell";
 import { promoteProposalDoc } from "@/features/knowledge/actions";
 import { CATEGORY_ORDER } from "@/features/knowledge/shared";
 
@@ -12,7 +13,11 @@ import { CATEGORY_ORDER } from "@/features/knowledge/shared";
  * 이 화면**이라, 옮기는 동작만 다른 창에 있으면 검토하러 온 사람이 매번 옮겨
  * 다녀야 했다. 폴러가 꺼져 있어도 되는 건 덤이다 — 서버가 Graph 로 직접 옮긴다.
  *
- * 되돌리기가 번거로우므로 한 번 더 묻는다. 본 위치는 여럿이 함께 쓰는 파일이다.
+ * 되돌리기가 번거로우므로 **표준 모달로** 한 번 더 묻는다. 본 위치는 여럿이 함께
+ * 쓰는 파일이다.
+ *
+ * 버튼 옆에 목적지를 늘어놓지 않는다 — `초안 삭제` 와 나란히 서면 그쪽 라벨처럼
+ * 보였고, 어차피 모달이 어디로 가는지 그대로 보여준다.
  */
 export function ProposalPromote({
   path,
@@ -44,72 +49,72 @@ export function ProposalPromote({
     );
   }
 
-  if (!confirming) {
-    return (
-      <div className="mt-3">
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setConfirming(true);
-          }}
-          className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-        >
-          지식망 옮기기
-        </button>
-        {/* 어디로 가는지 먼저 보여준다 — 누르고 나서 알면 늦다. */}
-        <span className="ml-2 font-mono text-2xs text-muted">
-          {category}/ 로
-        </span>
-        {error && <p className="mt-2 text-xs text-vermilion-deep">{error}</p>}
-      </div>
-    );
-  }
+  const move = () =>
+    startTransition(async () => {
+      const r = await promoteProposalDoc(path);
+      if (!r.ok) {
+        setError(r.error);
+        setConfirming(false);
+        return;
+      }
+      setConfirming(false);
+      // 지금 보던 경로는 이제 없다 — 새 자리로 보낸다.
+      router.push(`/dashboard/knowledge?doc=${encodeURIComponent(r.toPath)}`);
+      router.refresh();
+    });
 
   return (
-    <div className="mt-3 border border-line bg-situation-bg p-3">
-      <p className="text-xs text-ink">
-        <b>{title}</b> 을(를) <b>{category}</b> 로 옮깁니다.
-      </p>
-      <p className="mt-1 font-mono text-2xs text-muted">
-        {path} → {category}/
-      </p>
-      <p className="mt-1 text-2xs text-muted">
-        본 위치는 여럿이 함께 쓰는 자리입니다. 내용을 확인했는지 다시 한 번 보세요.
-      </p>
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => {
+          setError(null);
+          setConfirming(true);
+        }}
+        className="cursor-pointer border border-line bg-transparent px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+      >
+        지식망 옮기기
+      </button>
+      {error && <p className="mt-2 text-xs text-vermilion-deep">{error}</p>}
 
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              const r = await promoteProposalDoc(path);
-              if (!r.ok) {
-                setError(r.error);
-                setConfirming(false);
-                return;
-              }
-              // 지금 보던 경로는 이제 없다 — 새 자리로 보낸다.
-              router.push(
-                `/dashboard/knowledge?doc=${encodeURIComponent(r.toPath)}`,
-              );
-              router.refresh();
-            })
+      {confirming && (
+        <ModalShell
+          title="지식망으로 옮기기"
+          size="sm"
+          onClose={() => setConfirming(false)}
+          footer={
+            <>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => setConfirming(false)}
+                className="cursor-pointer border border-line-soft px-3 py-1 text-xs text-ink-soft transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={move}
+                className="cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {pending ? "옮기는 중…" : "옮기기"}
+              </button>
+            </>
           }
-          className="cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {pending ? "옮기는 중…" : "옮기기"}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => setConfirming(false)}
-          className="cursor-pointer border border-line-soft px-3 py-1 text-xs text-ink-soft transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          취소
-        </button>
-      </div>
+          <p className="text-xs text-ink">
+            <b>{title}</b> 을(를) <b>{category}</b> 로 옮깁니다.
+          </p>
+          <p className="mt-1 font-mono text-2xs text-muted">
+            {path} → {category}/
+          </p>
+          <p className="mt-2 text-2xs text-muted">
+            본 위치는 여럿이 함께 쓰는 자리입니다. 내용을 확인했는지 다시 한 번
+            보세요.
+          </p>
+        </ModalShell>
+      )}
     </div>
   );
 }
