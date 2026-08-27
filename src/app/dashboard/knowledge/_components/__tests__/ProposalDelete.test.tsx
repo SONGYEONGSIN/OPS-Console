@@ -27,6 +27,22 @@ describe("ProposalDelete", () => {
     expect(screen.queryByRole("button", { name: "삭제" })).toBeNull();
   });
 
+  it("표준 모달로 묻는다 — 옮기기와 확인 방식이 다르면 어색하다", () => {
+    render(<ProposalDelete path="제안/x.md" title="x" />);
+    fireEvent.click(screen.getByRole("button", { name: "초안 삭제" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("Esc 로 닫는다 — 표준 모달이 주는 동작을 그대로 쓴다", () => {
+    render(<ProposalDelete path="제안/x.md" title="x" />);
+    fireEvent.click(screen.getByRole("button", { name: "초안 삭제" }));
+    // 떠 있는 걸 먼저 확인해야 이 테스트가 뭔가를 검증한다.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+
   it("누르면 파일명을 보여주고 되돌릴 수 없다고 알린다", () => {
     render(<ProposalDelete path="제안/x.md" title="부산대 세팅" />);
     fireEvent.click(screen.getByRole("button", { name: "초안 삭제" }));
