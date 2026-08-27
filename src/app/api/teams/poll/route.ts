@@ -4,6 +4,7 @@ import { listMyChats, listChatMessages } from "@/lib/microsoft/teams";
 import { pickNewMessages, nextCursor } from "@/features/teams-bot/poll-plan";
 import { emailFromAadObjectId } from "@/features/teams-bot/resolve-email";
 import { allowedChats } from "@/features/teams-bot/chat-allow";
+import { deliverPending } from "@/features/teams-bot/deliver";
 
 /**
  * Teams 채팅을 훑어 **명보를 부른 말**을 큐에 넣는다. cron 이 1분마다 부른다.
@@ -109,8 +110,18 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // **읽고 나서 바로 내보낸다.** 별개 cron 으로 두면 대기가 두 번이라 답이
+  // 1분 이상 늦는다(2026-08-27). 여기서 나가는 건 이전 주기에 물어본 것들이다.
+  let delivered = { replied: 0, scanned: 0 };
+  try {
+    delivered = await deliverPending();
+  } catch (e) {
+    failed.push(`게시 실패: ${e instanceof Error ? e.message : e}`);
+  }
+
   return NextResponse.json({
     ok: failed.length === 0,
+    replied: delivered.replied,
     chats: chats.length,
     scanned,
     queued,
