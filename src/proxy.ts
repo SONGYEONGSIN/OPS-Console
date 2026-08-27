@@ -40,6 +40,7 @@ const PUBLIC_PATHS = [
   // 검증하고(messages), CRON_SECRET 을 본다(flush).
   "/api/teams/messages",
   "/api/teams/flush",
+  "/api/teams/poll",
   "/api/closing/run-log",
   "/api/closing/scrape-request",
   "/api/ai-tips/candidates",

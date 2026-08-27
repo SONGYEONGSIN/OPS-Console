@@ -1,0 +1,89 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { listMyChats, listChatMessages } from "@/lib/microsoft/teams";
+import { pickNewMessages, nextCursor } from "@/features/teams-bot/poll-plan";
+import { emailFromAadObjectId } from "@/features/teams-bot/resolve-email";
+
+/**
+ * Teams 채팅을 훑어 **명보를 부른 말**을 큐에 넣는다. cron 이 1분마다 부른다.
+ *
+ * 봇 등록(Bot Framework)이 끝내 동작하지 않아 Graph 폴링으로 왔다(2026-08-27).
+ * **사람 계정의 위임 토큰**으로 읽으므로 그 사람이 들어가 있는 방만 보인다.
+ *
+ * 답은 여기서 하지 않는다 — `/api/teams/flush` 가 회사 PC 에이전트의 답을 받아
+ * 그 방에 올린다. 읽는 일과 쓰는 일을 갈라 둬야 한쪽이 막혀도 다른 쪽이 산다.
+ */
+
+/** 채팅을 읽어 줄 사람. 이 사람이 들어가 있는 방만 명보를 부를 수 있다. */
+const READER = process.env.TEAMS_POLL_OPERATOR_EMAIL ?? "";
+
+/** 한 번에 볼 방 수. 밀려도 다음 차례가 이어 받는다. */
+const MAX_CHATS = 20;
+
+export async function POST(request: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+  if (!READER) {
+    return NextResponse.json(
+      { ok: false, error: "TEAMS_POLL_OPERATOR_EMAIL 미설정" },
+      { status: 500 },
+    );
+  }
+
+  const admin = createAdminClient();
+  let queued = 0;
+  let scanned = 0;
+
+  const chats = (await listMyChats(READER)).slice(0, MAX_CHATS);
+  for (const chat of chats) {
+    // 커서가 없는 방은 **지금부터** 본다. 옛 대화에 뒤늦게 답하면 방이 어지러워진다.
+    const { data: cursorRow } = await admin
+      .from("teams_chat_cursors")
+      .select("last_seen_at")
+      .eq("chat_id", chat.id)
+      .maybeSingle();
+    const cursor = (cursorRow as { last_seen_at: string } | null)?.last_seen_at ?? null;
+
+    let rows: unknown[] = [];
+    try {
+      rows = await listChatMessages({ operatorEmail: READER, chatId: chat.id });
+    } catch {
+      // 한 방이 막혀도 나머지는 본다 — 권한이 빠진 방이 섞여 있을 수 있다.
+      continue;
+    }
+    scanned += rows.length;
+
+    for (const called of pickNewMessages(rows, cursor)) {
+      const email = await emailFromAadObjectId(called.aadObjectId);
+      // 명부 밖이면 조용히 지나간다. 채팅방은 여럿이 보는 자리라 매번 거절을
+      // 적으면 그게 더 시끄럽다 — 부른 사람에게는 답이 없는 것으로 보인다.
+      if (!email) continue;
+      const { data: known } = await admin
+        .from("operators").select("email").eq("email", email).maybeSingle();
+      if (!known) continue;
+
+      const { error } = await admin.from("assistant_requests").insert({
+        operator_email: email,
+        question: called.question,
+        page_context: "Teams 채팅",
+        history: [],
+        teams_conversation_id: chat.id,
+        teams_source_message_id: called.messageId,
+      });
+      // 같은 메시지를 두 번 넣으면 unique 인덱스가 막는다 — 그건 정상이다.
+      if (!error) queued += 1;
+    }
+
+    const moved = nextCursor(rows, cursor ?? new Date().toISOString());
+    await admin.from("teams_chat_cursors").upsert({
+      chat_id: chat.id,
+      last_seen_at: moved,
+      topic: chat.topic ?? null,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  return NextResponse.json({ ok: true, chats: chats.length, scanned, queued });
+}

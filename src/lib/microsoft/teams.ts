@@ -114,3 +114,32 @@ export async function sendTeamsChatMessage(args: {
   }
   return (await res.json()) as { id: string };
 }
+
+/**
+ * 방의 최근 메시지 — Graph 폴링이 읽는 자리.
+ *
+ * 봇 등록이 막혀 사람 계정으로 채팅을 읽는다(2026-08-27). 그래서 **그 사람이
+ * 들어가 있는 방만** 보인다.
+ *
+ * 최신순으로 온다. 물어본 순서대로 처리하는 건 `poll-plan` 이 한다.
+ */
+export async function listChatMessages(args: {
+  operatorEmail: string;
+  chatId: string;
+  top?: number;
+}): Promise<unknown[]> {
+  const token = await getDelegatedGraphToken(args.operatorEmail, {
+    scope: TEAMS_SCOPE,
+  });
+  if (!token) throw new Error("Teams 위임 토큰 없음 (MS 재인증/동의 필요)");
+  const res = await fetch(
+    `${GRAPH}/chats/${encodeURIComponent(args.chatId)}/messages?$top=${args.top ?? 20}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) {
+    throw new Error(
+      `[teams] messages ${res.status}: ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+  return ((await res.json()) as { value?: unknown[] }).value ?? [];
+}

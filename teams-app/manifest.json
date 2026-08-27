@@ -1,8 +1,8 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
-  "version": "1.0.0",
-  "id": "0a63cfbf-fc4c-4a8c-83ba-f29bd33274a1",
+  "version": "1.0.3",
+  "id": "78191e07-2da2-42f1-a966-853278ec04de",
   "developer": {
     "name": "진학사 어플라이사업본부 운영부",
     "websiteUrl": "https://ops-console-psi.vercel.app",
@@ -24,12 +24,21 @@
   "accentColor": "#D8472B",
   "bots": [
     {
-      "botId": "0a63cfbf-fc4c-4a8c-83ba-f29bd33274a1",
-      "scopes": ["groupChat", "team"],
+      "botId": "0024b39d-b624-4dbe-a1bf-4b72b22c94dd",
+      "scopes": [
+        "personal",
+        "groupChat",
+        "team"
+      ],
       "supportsFiles": false,
       "isNotificationOnly": false
     }
   ],
-  "permissions": ["identity", "messageTeamMembers"],
-  "validDomains": ["ops-console-psi.vercel.app"]
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "ops-console-psi.vercel.app"
+  ]
 }
