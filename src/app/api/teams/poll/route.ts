@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   let queued = 0;
   let scanned = 0;
+  let skipped = 0;
+  // 적재 실패를 응답에 담는다 — 숫자만 보면 "왜 0인가"를 알 수 없다.
+  const failed: string[] = [];
 
   // 허용한 방만 본다. 비어 있으면 아무 방도 열지 않는다 — 설정 누락이
   // 전 채팅방 개방이 되는 쪽이 훨씬 나쁘다.
@@ -86,8 +89,15 @@ export async function POST(request: NextRequest) {
         teams_conversation_id: chat.id,
         teams_source_message_id: called.messageId,
       });
-      // 같은 메시지를 두 번 넣으면 unique 인덱스가 막는다 — 그건 정상이다.
-      if (!error) queued += 1;
+      if (!error) {
+        queued += 1;
+      } else if (error.code === "23505") {
+        // 같은 메시지를 두 번 넣으면 unique 인덱스가 막는다 — 그건 정상이다.
+        skipped += 1;
+      } else {
+        // **이건 정상이 아니다.** 조용히 넘기면 질문이 사라진 채 아무도 모른다.
+        failed.push(error.message.slice(0, 120));
+      }
     }
 
     const moved = nextCursor(rows, cursor ?? new Date().toISOString());
@@ -99,5 +109,13 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ ok: true, chats: chats.length, scanned, queued });
+  return NextResponse.json({
+    ok: failed.length === 0,
+    chats: chats.length,
+    scanned,
+    queued,
+    // 이미 처리한 건. 0 이 아니라고 놀랄 일이 아니다.
+    skipped,
+    ...(failed.length ? { failed } : {}),
+  });
 }
