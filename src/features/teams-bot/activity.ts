@@ -50,9 +50,22 @@ export function readActivity(raw: unknown, botId: string): ReadResult {
   const entities = Array.isArray(a.entities) ? (a.entities as Mention[]) : [];
   const mentions = entities.filter((e) => e?.type === "mention");
 
-  // 나를 부른 게 아니면 무시한다 — 채팅방의 모든 말에 답하지 않는다.
-  const calledMe = mentions.some((m) => m.mentioned?.id === botId);
-  if (!calledMe) return { ok: false, reason: "나를 부르지 않았습니다" };
+  // **개인 채팅에는 멘션이 없다** — 1:1 에서는 부를 이름이 없으니 그냥 말한다.
+  // 여기서 멘션을 요구했더니 개인 채팅의 모든 말이 조용히 거절됐다(2026-08-26).
+  const conversationType =
+    typeof conversation?.conversationType === "string" ? conversation.conversationType : "";
+  const isPersonal = conversationType === "personal";
+
+  // 멘션 id 는 `28:{App ID}` 로 온다 — App ID 와 직접 비교하면 영영 안 맞는다.
+  const calledMe = mentions.some((m) => {
+    const id = m.mentioned?.id ?? "";
+    return id === botId || id.endsWith(`:${botId}`);
+  });
+
+  // 여럿이 보는 자리에서는 불렀을 때만 답한다 — 모든 말에 끼어들지 않는다.
+  if (!isPersonal && !calledMe) {
+    return { ok: false, reason: "나를 부르지 않았습니다" };
+  }
 
   // 멘션 조각을 통째로 들어낸다. 내 것뿐 아니라 남의 멘션도 질문이 아니다.
   let text = typeof a.text === "string" ? a.text : "";

@@ -5,6 +5,7 @@ import { emailFromAadObjectId } from "@/features/teams-bot/resolve-email";
 import { verifyBotToken } from "@/features/teams-bot/verify-token";
 import { postActivity } from "@/lib/microsoft/bot-framework";
 
+
 /**
  * Teams 봇 메시징 엔드포인트.
  *
@@ -34,12 +35,50 @@ export async function POST(request: NextRequest) {
     serviceUrl,
   );
   if (!verified.ok) {
+    console.warn(`[teams] 검증 실패: ${verified.reason}`);
+    try {
+      await createAdminClient().from("worklog").insert({
+        level: "WARN", domain: "teams-bot", action: "inbound",
+        msg: `검증 실패: ${verified.reason}`.slice(0, 500),
+      });
+    } catch {}
     return NextResponse.json({ ok: false, error: verified.reason }, { status: 401 });
   }
 
+  // **무슨 일이 있었는지 DB 에 남긴다.** 조용히 200 만 돌려주던 때 요청은 오는데
+  // 아무 일도 안 나는 상태가 되어 네 시간을 설정만 뒤졌다(2026-08-26). Vercel 로그
+  // 스트리밍은 대시보드에 찍힌 요청조차 못 잡아 믿을 수 없었다.
+  //
+  // `logActivity` 를 쓰지 않는다 — 그쪽은 세션 쿠키로 사용자를 찾는데 봇 요청에는
+  // 쿠키가 없어 조용히 실패한다. 진단하려고 넣은 기록이 진단할 수 없는 이유로
+  // 사라지면 아무 소용이 없다(2026-08-26).
+  const note = async (msg: string, metadata?: Record<string, unknown>) => {
+    try {
+      await createAdminClient().from("worklog").insert({
+        level: "INFO",
+        domain: "teams-bot",
+        action: "inbound",
+        msg: msg.slice(0, 500),
+        metadata: metadata ?? null,
+      });
+    } catch {
+      // 기록 실패로 답변을 막지 않는다.
+    }
+  };
+
   const read = readActivity(body, appId);
-  // 나를 부르지 않은 말·들고남 알림 등 — 아무것도 하지 않는다.
-  if (!read.ok) return NextResponse.json({ ok: true, skipped: read.reason });
+  if (!read.ok) {
+    await note(`건너뜀: ${read.reason}`, {
+      conversationType: (body as { conversation?: { conversationType?: string } } | null)?.conversation?.conversationType ?? null,
+      hasEntities: Array.isArray((body as { entities?: unknown[] } | null)?.entities),
+      type: (body as { type?: string } | null)?.type ?? null,
+    });
+    // **거절도 남긴다.** 조용히 200 만 돌려주던 때, 요청은 오는데 아무 일도 안 나는
+    // 상태가 되어 원인을 못 찾고 네 시간을 설정만 뒤졌다(2026-08-26).
+    // "왔지만 안 했다"는 "안 왔다"와 로그에서 구분돼야 한다.
+    console.warn(`[teams] 건너뜀: ${read.reason}`);
+    return NextResponse.json({ ok: true, skipped: read.reason });
+  }
 
   const reply = { serviceUrl: read.serviceUrl, conversationId: read.conversationId };
 
@@ -52,10 +91,12 @@ export async function POST(request: NextRequest) {
 
   if (!known) {
     // 조용히 무시하면 봇이 죽은 줄 안다. 다만 왜 안 되는지만 짧게 적는다.
-    await postActivity({
+    const activityIdForDeny = await postActivity({
       ...reply,
       text: "운영부 명부에 없는 계정이라 답할 수 없습니다. 내부 기록을 다루는 자리라 명부에 있는 분만 쓸 수 있어요.",
     });
+    console.warn(`[teams] 명부 밖: ${email ?? read.aadObjectId}`);
+    await note("명부 밖", { email, aadObjectId: read.aadObjectId, posted: Boolean(activityIdForDeny) });
     return NextResponse.json({ ok: true, skipped: "명부 밖" });
   }
 
@@ -83,5 +124,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, error: error?.message ?? "적재 실패" });
   }
 
+  await note("적재", { email, activityId, posted: Boolean(activityId) });
   return NextResponse.json({ ok: true, id: (data as { id: string }).id });
 }
