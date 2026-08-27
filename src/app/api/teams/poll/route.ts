@@ -17,8 +17,13 @@ import { emailFromAadObjectId } from "@/features/teams-bot/resolve-email";
 /** 채팅을 읽어 줄 사람. 이 사람이 들어가 있는 방만 명보를 부를 수 있다. */
 const READER = process.env.TEAMS_POLL_OPERATOR_EMAIL ?? "";
 
-/** 한 번에 볼 방 수. 밀려도 다음 차례가 이어 받는다. */
-const MAX_CHATS = 20;
+/**
+ * 한 번에 볼 방 수.
+ *
+ * `listMyChats` 가 최대 50개를 준다. 여기서 더 줄이면 **뒤쪽 방이 조용히 빠져**
+ * 그 방에서 부른 사람은 영영 답을 못 받는다 — 왜 안 되는지 알 방법도 없다.
+ */
+const MAX_CHATS = 50;
 
 export async function POST(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
