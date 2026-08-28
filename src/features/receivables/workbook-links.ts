@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getGraphToken } from "@/lib/microsoft/auth";
+import { fetchWorkbookWebUrl } from "@/lib/microsoft/workbook-web-url";
 
 /**
  * 미수채권 화면에서 원본 엑셀로 바로 가기 위한 SharePoint webUrl 조회.
@@ -18,30 +19,6 @@ export type ReceivablesWorkbookLinks = {
   /** 수수료입금내역 — admin 전용 (노출 판단은 호출부) */
   depositUrl: string | null;
 };
-
-async function fetchWebUrl(
-  token: string,
-  driveId: string,
-  itemId: string,
-): Promise<string | null> {
-  const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}?$select=webUrl`;
-  try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) {
-      console.error(
-        `[receivables] webUrl 조회 실패 (item=${itemId}): ${res.status}`,
-      );
-      return null;
-    }
-    const json = (await res.json()) as { webUrl?: string };
-    return json.webUrl ?? null;
-  } catch (e) {
-    console.error(`[receivables] webUrl 조회 예외 (item=${itemId}):`, e);
-    return null;
-  }
-}
 
 export async function getReceivablesWorkbookLinks(): Promise<ReceivablesWorkbookLinks> {
   const driveId = process.env.SHAREPOINT_RECEIVABLES_DRIVE_ID;
@@ -62,8 +39,8 @@ export async function getReceivablesWorkbookLinks(): Promise<ReceivablesWorkbook
 
   // 한쪽이 실패해도 다른 쪽 버튼은 살린다.
   const [ledgerUrl, depositUrl] = await Promise.all([
-    ledgerItemId ? fetchWebUrl(token, driveId, ledgerItemId) : null,
-    depositItemId ? fetchWebUrl(token, driveId, depositItemId) : null,
+    fetchWorkbookWebUrl(token, driveId, ledgerItemId, "receivables"),
+    fetchWorkbookWebUrl(token, driveId, depositItemId, "receivables"),
   ]);
   return { ledgerUrl, depositUrl };
 }
