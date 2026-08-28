@@ -500,14 +500,10 @@ describe("pickFeatureIntros — 2호 앵커 순환", () => {
   });
 
   it("핀 없는 호는 그 다음 3건 — 이어서 진행", () => {
-    // 4호는 '소개 없음', 5호는 어시스턴트로 핀이 걸려 순환에서 빠졌다.
-    // 순환 검증은 핀이 없는 6호로 한다 — 카탈로그 끝을 넘어 앞으로 돈다.
-    const len = FEATURE_INTROS.length;
-    expect(pickFeatureIntros(6)).toEqual([
-      FEATURE_INTROS[len - 2],
-      FEATURE_INTROS[len - 1],
-      FEATURE_INTROS[0],
-    ]);
+    // 4·5·6호는 핀이 걸려 순환에서 빠졌다(소개 없음 / 어시스턴트 / 지식망).
+    // 순환 검증은 핀이 없는 7호로 한다.
+    // 카탈로그 끝을 넘어 앞으로 돌아온 자리다 — 길이가 바뀌어도 따라가게 slice 로 본다.
+    expect(pickFeatureIntros(7)).toEqual(FEATURE_INTROS.slice(0, 3));
   });
 
   it("카탈로그 끝을 넘어가면 앞으로 순환", () => {
@@ -746,12 +742,8 @@ describe("pickSasiGoal — 발행일이 속한 수시 주차", () => {
 
 describe("pickFeatureIntros — 호수별 핀", () => {
   it("핀 없는 호는 기존 순환을 그대로 쓴다", () => {
-    const len = FEATURE_INTROS.length;
-    expect(pickFeatureIntros(6)).toEqual([
-      FEATURE_INTROS[len - 2],
-      FEATURE_INTROS[len - 1],
-      FEATURE_INTROS[0],
-    ]);
+    // 카탈로그 끝을 넘어 앞으로 돌아온 자리다 — 길이가 바뀌어도 따라가게 slice 로 본다.
+    expect(pickFeatureIntros(7)).toEqual(FEATURE_INTROS.slice(0, 3));
   });
 
   it("핀이 있어도 count를 명시하면 그 개수만", () => {
