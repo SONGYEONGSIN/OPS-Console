@@ -95,7 +95,7 @@ describe("FileDraftForm", () => {
   describe("재료를 어디서 받는가", () => {
     it("세 칸을 탭으로 고른다 — 링크만 되던 걸 넓힌다", () => {
       render(<FileDraftForm />);
-      expect(screen.getByRole("tab", { name: "링크" })).toBeInTheDocument();
+      expect(screen.getByRole("tab", { name: "파일링크" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "파일 올리기" })).toBeInTheDocument();
       expect(screen.getByRole("tab", { name: "직접 입력" })).toBeInTheDocument();
     });
