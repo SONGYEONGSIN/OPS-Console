@@ -32,7 +32,7 @@ import { PendingLine } from "../../_components/assistant-launcher/PendingLine";
 type Turn = { role: "user" | "assistant"; content: string };
 
 const SOURCES: { key: DraftSource; label: string }[] = [
-  { key: "link", label: "링크" },
+  { key: "link", label: "파일링크" },
   { key: "file", label: "파일 올리기" },
   { key: "text", label: "직접 입력" },
 ];
