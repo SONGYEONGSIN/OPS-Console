@@ -224,10 +224,13 @@ export function FileDraftForm() {
     turns.at(-1)?.role === "assistant" ? turns.at(-1)!.content : null;
 
   return (
-    /* 형제 탭(검토 대기·빈틈)과 같은 에디토리얼 머리를 쓴다. 혼자 창백한 카드로
-       떠 있으면 무엇을 보러 온 화면인지 흐려진다. 폭은 묶는다 — 넓은 화면에서
-       입력창이 끝까지 늘어나면 어디서 어디까지가 한 칸인지 안 읽힌다. */
-    <section className="max-w-3xl space-y-4">
+    /* 형제 탭(검토 대기·빈틈)과 같은 에디토리얼 머리를 쓰고, 폭도 그들과 같이
+       칸을 다 쓴다.
+
+       한때 `max-w-3xl` 로 묶었다(읽기 폭). 그런데 넓은 화면에서 오른쪽 3분의 2가
+       통째로 비고 이 탭만 혼자 좁아 보였다 — 형제 탭은 전폭인데. 붙여넣는 값이
+       SharePoint 주소처럼 긴 것들이라 넓은 입력창이 오히려 맞다. */
+    <section className="space-y-4">
       <div className="space-y-1 border-b-2 border-ink pb-3">
         <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
           초안 만들기
