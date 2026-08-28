@@ -18,11 +18,11 @@ describe("PendingProposals", () => {
     render(
       <PendingProposals
         proposals={[
-          { path: "제안/취업규칙 요점.md", title: "취업규칙 요점" },
+          { path: "제안/취업규칙 요점.md", title: "취업규칙 요점", category: "규칙" },
         ]}
       />,
     );
-    const link = screen.getByRole("link", { name: "취업규칙 요점" });
+    const link = screen.getByRole("link", { name: /취업규칙 요점/ });
     expect(link).toHaveAttribute(
       "href",
       `/dashboard/knowledge?doc=${encodeURIComponent("제안/취업규칙 요점.md")}`,
@@ -33,8 +33,8 @@ describe("PendingProposals", () => {
     render(
       <PendingProposals
         proposals={[
-          { path: "제안/a.md", title: "a" },
-          { path: "제안/b.md", title: "b" },
+          { path: "제안/a.md", title: "a", category: "규칙" },
+          { path: "제안/b.md", title: "b", category: "개념" },
         ]}
       />,
     );
@@ -42,8 +42,19 @@ describe("PendingProposals", () => {
   });
 
   it("에이전트가 쓴 것이라고 밝힌다 — 사람이 쓴 문서와 같은 무게로 읽으면 안 된다", () => {
-    render(<PendingProposals proposals={[{ path: "제안/a.md", title: "a" }]} />);
+    render(<PendingProposals proposals={[{ path: "제안/a.md", title: "a", category: "규칙" }]} />);
     expect(screen.getByText(/에이전트가 쓴 것/)).toBeInTheDocument();
+  });
+
+  it("옮길 자리를 목록에서 보여준다 — 열어보기 전에 알아야 한다", () => {
+    render(
+      <PendingProposals
+        proposals={[
+          { path: "제안/취업규칙 요점.md", title: "취업규칙 요점", category: "규칙" },
+        ]}
+      />,
+    );
+    expect(screen.getByText("규칙")).toBeInTheDocument();
   });
 
   it("없으면 없다고 한다 — 빈 칸만 두지 않는다", () => {

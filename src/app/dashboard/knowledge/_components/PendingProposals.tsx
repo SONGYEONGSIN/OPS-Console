@@ -40,14 +40,20 @@ export function PendingProposals({
         </p>
       </div>
 
-      <ul className="space-y-0.5">
+      <ul className="border-t border-line-soft">
         {proposals.map((p) => (
-          <li key={p.path}>
+          <li key={p.path} className="border-b border-line-soft">
             <Link
               href={`/dashboard/knowledge?doc=${encodeURIComponent(p.path)}`}
-              className="-mx-1.5 block px-1.5 py-1.5 text-sm text-ink transition-colors hover:bg-line-soft"
+              className="flex items-baseline gap-2 px-1.5 py-2.5 transition-colors hover:bg-line-soft"
             >
-              {p.title}
+              {/* 옮길 자리를 목록에서 보여준다 — 열어보기 전에 알아야 어느 것부터
+                  볼지 정할 수 있다. 분류가 비어 있으면 옮기기 자체가 막히므로
+                  그것도 여기서 드러난다. */}
+              <span className="shrink-0 border border-line-soft px-1.5 py-0.5 text-2xs text-ink-soft">
+                {p.category || "분류 없음"}
+              </span>
+              <span className="min-w-0 text-sm text-ink">{p.title}</span>
             </Link>
           </li>
         ))}

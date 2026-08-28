@@ -107,13 +107,18 @@ describe("listPendingProposals", () => {
     expect(state.filters).not.toContainEqual(["category", "제안"]);
   });
 
-  it("경로와 제목을 돌려준다", async () => {
+  it("경로·제목과 함께 분류도 돌려준다 — 열어보기 전에 옮길 자리를 안다", async () => {
     state.rows = [
-      { path: "제안/부산대학교 수시 서비스 세팅.md", title: "부산대학교 수시 서비스 세팅" },
+      {
+        path: "제안/부산대학교 수시 서비스 세팅.md",
+        title: "부산대학교 수시 서비스 세팅",
+        category: "엔티티",
+      },
     ];
     const [d] = await listPendingProposals();
     expect(d.path).toBe("제안/부산대학교 수시 서비스 세팅.md");
     expect(d.title).toBe("부산대학교 수시 서비스 세팅");
+    expect(d.category).toBe("엔티티");
   });
 
   it("없으면 빈 배열", async () => {

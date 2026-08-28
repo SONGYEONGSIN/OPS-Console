@@ -37,8 +37,15 @@ const SOURCES: { key: DraftSource; label: string }[] = [
   { key: "text", label: "직접 입력" },
 ];
 
+/**
+ * 입력창.
+ *
+ * `bg-field-bg`(#fdfdfb) 를 쓰다가 바꿨다 — 이 카드가 `situation-bg`(같은 #fdfdfb)라
+ * 입력창이 카드에 그대로 녹아 **어디를 눌러야 하는지 안 보였다.** 검색창이 이미
+ * 쓰는 잉크 4% 틴트는 흰 종이에서도 카드 위에서도 자기 자리를 지킨다.
+ */
 const FIELD_CLASS =
-  "w-full border border-line-soft bg-field-bg px-2 py-1 text-ink outline-none transition-colors focus:border-ink focus:bg-white";
+  "w-full border border-line-soft bg-search-field-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-faint focus:border-ink focus:bg-white";
 
 export function FileDraftForm() {
   const [source, setSource] = useState<DraftSource>("link");
@@ -217,14 +224,24 @@ export function FileDraftForm() {
     turns.at(-1)?.role === "assistant" ? turns.at(-1)!.content : null;
 
   return (
-    <section className="border border-line-soft bg-situation-bg p-4">
-      <h3 className="text-sm font-bold text-ink">초안 만들기</h3>
-      <p className="mt-1 text-2xs text-muted">
-        가진 재료로 읽고 정리해 <code className="font-mono">제안/</code> 에 초안을
-        만듭니다. 본 위치로 옮기는 것은 사람이 확인한 뒤입니다.
-      </p>
+    /* 형제 탭(검토 대기·빈틈)과 같은 에디토리얼 머리를 쓴다. 혼자 창백한 카드로
+       떠 있으면 무엇을 보러 온 화면인지 흐려진다. 폭은 묶는다 — 넓은 화면에서
+       입력창이 끝까지 늘어나면 어디서 어디까지가 한 칸인지 안 읽힌다. */
+    <section className="max-w-3xl space-y-4">
+      <div className="space-y-1 border-b-2 border-ink pb-3">
+        <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+          초안 만들기
+        </p>
+        <h2 className="text-xl font-bold tracking-[-0.01em] text-ink">
+          가진 재료로 지식망 문서를 만듭니다
+        </h2>
+        <p className="text-xs text-muted">
+          읽고 정리해 <code className="font-mono">제안/</code> 에 초안을 만듭니다.
+          본 위치로 옮기는 것은 사람이 확인한 뒤입니다.
+        </p>
+      </div>
 
-      <div role="tablist" className="mt-3 flex gap-1 border-b border-line-soft">
+      <div role="tablist" className="flex gap-1 border-b border-line-soft">
         {SOURCES.map((s) => (
           <button
             key={s.key}
@@ -235,7 +252,7 @@ export function FileDraftForm() {
               setSource(s.key);
               setError(null);
             }}
-            className={`-mb-px cursor-pointer px-3 py-1.5 text-xs transition-colors ${
+            className={`-mb-px cursor-pointer px-4 py-2 text-sm transition-colors ${
               source === s.key
                 ? "border-b-2 border-vermilion font-semibold text-vermilion"
                 : "border-b-2 border-transparent text-ink-soft hover:text-ink"
@@ -247,8 +264,10 @@ export function FileDraftForm() {
       </div>
 
       {source === "link" && (
-        <label className="mt-3 block text-xs">
-          <span className="mb-1 block text-muted">파일 링크</span>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">
+            파일 링크
+          </span>
           <input
             aria-label="파일 링크"
             value={url}
@@ -256,15 +275,17 @@ export function FileDraftForm() {
             placeholder="Teams 에서 '링크 복사' 한 주소"
             className={FIELD_CLASS}
           />
-          <span className="mt-1 block text-2xs text-muted">
+          <span className="mt-1.5 block text-2xs text-muted">
             Teams·SharePoint 의 Word·PPT·Excel·PDF
           </span>
         </label>
       )}
 
       {source === "file" && (
-        <label className="mt-3 block text-xs">
-          <span className="mb-1 block text-muted">올릴 파일</span>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">
+            올릴 파일
+          </span>
           <input
             aria-label="올릴 파일"
             ref={fileRef}
@@ -273,15 +294,17 @@ export function FileDraftForm() {
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className={`${FIELD_CLASS} file:mr-2 file:cursor-pointer file:border-0 file:bg-transparent file:text-ink`}
           />
-          <span className="mt-1 block text-2xs text-muted">
+          <span className="mt-1.5 block text-2xs text-muted">
             40MB 까지. 올린 파일은 팀 SharePoint 에 남아 초안의 근거가 됩니다.
           </span>
         </label>
       )}
 
       {source === "text" && (
-        <label className="mt-3 block text-xs">
-          <span className="mb-1 block text-muted">정리할 내용</span>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">
+            정리할 내용
+          </span>
           <textarea
             aria-label="정리할 내용"
             rows={6}
@@ -293,9 +316,10 @@ export function FileDraftForm() {
         </label>
       )}
 
-      <label className="mt-2 block text-xs">
-        <span className="mb-1 block text-muted">
-          무엇을 정리할지 (비우면 전체 요점)
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-medium text-ink-soft">
+          무엇을 정리할지{" "}
+          <span className="font-normal text-muted">(비우면 전체 요점)</span>
         </span>
         <input
           aria-label="무엇을 정리할지"
@@ -310,36 +334,40 @@ export function FileDraftForm() {
         type="button"
         disabled={busy || !canSubmit}
         onClick={submit}
-        className="mt-3 cursor-pointer border border-line-soft px-2.5 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
+        className="cursor-pointer border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
       >
         {busy ? "요청 중" : "초안 요청"}
       </button>
 
-      {error && <p className="mt-2 text-2xs text-vermilion">{error}</p>}
+      {error && <p className="text-xs text-vermilion">{error}</p>}
 
       {stage && (
-        <div className="mt-3 border-t border-line-soft pt-3">
+        <div className="border-t border-line-soft pt-4">
           <PendingLine note={stage} since={since} />
         </div>
       )}
 
       {ended && !stage && (
-        <p className="mt-3 border-t border-line-soft pt-3 text-xs text-vermilion">
+        <p className="border-t border-line-soft pt-4 text-xs text-vermilion">
           {ended}
         </p>
       )}
 
       {answer && !stage && (
         <div className="mt-3 border-t border-line-soft pt-3">
-          <div className="prose-ops text-xs text-ink">
+          {/* chat-md — 어시스턴트 답변과 같은 마크다운 스킨. 전에 쓰던 `prose-ops` 는
+              CSS 에 없는 이름이라 제목·목록·표가 통째로 맨몸으로 나왔다. */}
+          <div className="chat-md text-sm text-ink">
             <ReactMarkdown remarkPlugins={MARKDOWN_REMARK_PLUGINS}>
               {answer}
             </ReactMarkdown>
           </div>
 
           {/* 되묻기에 답하는 자리. 이게 없으면 좋은 질문이 막다른 길이 된다. */}
-          <label className="mt-3 block text-xs">
-            <span className="mb-1 block text-muted">답하기</span>
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-xs font-medium text-ink-soft">
+              답하기
+            </span>
             <textarea
               aria-label="답하기"
               rows={2}
@@ -353,7 +381,7 @@ export function FileDraftForm() {
             type="button"
             disabled={busy || !reply.trim()}
             onClick={sendReply}
-            className="mt-2 cursor-pointer border border-line-soft px-2.5 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-2 cursor-pointer border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-40"
           >
             보내기
           </button>
