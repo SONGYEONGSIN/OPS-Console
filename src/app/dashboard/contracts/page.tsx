@@ -9,6 +9,8 @@ import { ContractsControls } from "./ContractsControls";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { listContracts } from "@/features/contracts/queries";
+import { getContractsWorkbookUrl } from "@/features/contracts/workbook-link";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { updateContractField } from "@/features/contracts/actions";
 import { contractsRowToListRow } from "./_row-mapper";
 import { contractSheetEnum } from "@/features/contracts/schemas";
@@ -34,6 +36,8 @@ export default async function ContractsPage({
 
   const sp = await searchParams;
   const me = await getCurrentOperator();
+  // 원본 엑셀 바로가기 — 실패해도 null 로 와서 버튼만 안 뜬다(목록은 그대로).
+  const workbookUrl = await getContractsWorkbookUrl();
 
   // 시트 필터: 유효값(4년제 / 전문대 / 초중고 / 대학원 / 기타)만 통과
   const sheetResult = contractSheetEnum.safeParse(sp.sheet);
@@ -154,6 +158,13 @@ export default async function ContractsPage({
       contractsServiceActiveOptions={serviceActiveOptions}
       inlineFilters={
         <ScopeChips key="contracts-scope" total={total} mineLabel="내 계약" />
+      }
+      extraActionsLeft={
+        workbookUrl ? (
+          <HeaderActionButton key="contracts-ledger" href={workbookUrl}>
+            계약관리대장
+          </HeaderActionButton>
+        ) : undefined
       }
       footer={
         <ListPagination

@@ -1,5 +1,6 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
+import { fetchWorkbookWebUrl } from "@/lib/microsoft/workbook-web-url";
 
 /**
  * 원본 엑셀 바로가기 — 등기대장 · 전도금대장.
@@ -20,31 +21,6 @@ export type PostalWorkbookLinks = {
 
 const NONE: PostalWorkbookLinks = { ledgerUrl: null, pettyCashUrl: null };
 
-async function fetchWebUrl(
-  token: string,
-  driveId: string,
-  itemId: string | undefined,
-): Promise<string | null> {
-  if (!itemId) return null;
-  try {
-    const res = await fetch(
-      `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}?$select=webUrl`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!res.ok) {
-      console.error(
-        `[postal] webUrl 조회 실패 (item=${itemId}): ${res.status}`,
-      );
-      return null;
-    }
-    const json = (await res.json()) as { webUrl?: string };
-    return json.webUrl ?? null;
-  } catch (e) {
-    console.error(`[postal] webUrl 조회 예외 (item=${itemId}):`, e);
-    return null;
-  }
-}
-
 export async function getPostalWorkbookLinks(): Promise<PostalWorkbookLinks> {
   const driveId = process.env.SHAREPOINT_DRIVE_ID;
   if (!driveId) {
@@ -61,8 +37,13 @@ export async function getPostalWorkbookLinks(): Promise<PostalWorkbookLinks> {
   }
 
   const [ledgerUrl, pettyCashUrl] = await Promise.all([
-    fetchWebUrl(token, driveId, process.env.SHAREPOINT_MAIL_ITEM_ID),
-    fetchWebUrl(token, driveId, process.env.SHAREPOINT_PETTY_CASH_ITEM_ID),
+    fetchWorkbookWebUrl(token, driveId, process.env.SHAREPOINT_MAIL_ITEM_ID, "postal"),
+    fetchWorkbookWebUrl(
+      token,
+      driveId,
+      process.env.SHAREPOINT_PETTY_CASH_ITEM_ID,
+      "postal",
+    ),
   ]);
   return { ledgerUrl, pettyCashUrl };
 }
