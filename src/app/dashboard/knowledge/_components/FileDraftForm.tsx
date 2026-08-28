@@ -52,6 +52,8 @@ export function FileDraftForm() {
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  /** 끌어다 놓는 중 — 놓아도 되는 자리라는 걸 보여준다. */
+  const [dragOver, setDragOver] = useState(false);
   const [note, setNote] = useState("");
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -285,22 +287,62 @@ export function FileDraftForm() {
       )}
 
       {source === "file" && (
-        <label className="block">
+        <div className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-soft">
             올릴 파일
           </span>
-          <input
-            aria-label="올릴 파일"
-            ref={fileRef}
-            type="file"
-            accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.rtf,.odt,.ods,.odp,.csv"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className={`${FIELD_CLASS} file:mr-2 file:cursor-pointer file:border-0 file:bg-transparent file:text-ink`}
-          />
+          {/* 끌어다 놓기 — 우편물 영수증 업로드와 같은 방식이다. 브라우저 기본
+              file input 은 '파일 선택 / 선택된 파일 없음' 이라 무엇을 하는 자리인지
+              말해주지 않고, 손에 든 파일을 그냥 던질 수도 없었다. */}
+          <div
+            data-testid="draft-dropzone"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const dropped = e.dataTransfer?.files?.[0];
+              if (dropped) {
+                setFile(dropped);
+                setError(null);
+              }
+            }}
+            className={`border border-dashed px-5 py-8 text-center transition-colors ${
+              dragOver
+                ? "border-vermilion bg-vermilion/10"
+                : "border-line bg-situation-bg"
+            }`}
+          >
+            <p className="text-sm text-ink">
+              {file ? file.name : "파일을 여기로 끌어다 놓으세요"}
+            </p>
+            <p className="mt-1 text-2xs text-muted">
+              {file
+                ? `${Math.max(1, Math.round(file.size / 1024))}KB · 다시 고르려면 아래에서 선택하세요`
+                : "Word · PPT · Excel · PDF, 40MB 까지"}
+            </p>
+            <label className="mt-3 inline-block cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream">
+              파일 선택
+              <input
+                aria-label="올릴 파일"
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.rtf,.odt,.ods,.odp,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null);
+                  setError(null);
+                }}
+              />
+            </label>
+          </div>
           <span className="mt-1.5 block text-2xs text-muted">
-            40MB 까지. 올린 파일은 팀 SharePoint 에 남아 초안의 근거가 됩니다.
+            올린 파일은 팀 SharePoint 에 남아 초안의 근거가 됩니다.
           </span>
-        </label>
+        </div>
       )}
 
       {source === "text" && (

@@ -119,6 +119,30 @@ describe("FileDraftForm", () => {
       expect(draftSpy).not.toHaveBeenCalled();
     });
 
+    it("끌어다 놓아도 받는다 — 우편물 영수증과 같은 방식", async () => {
+      render(<FileDraftForm />);
+      pickTab("파일 올리기");
+      const zone = screen.getByTestId("draft-dropzone");
+      const file = new File(["x"], "규정집.pdf", { type: "application/pdf" });
+      fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+      await waitFor(() => expect(screen.getByText(/규정집\.pdf/)).toBeInTheDocument());
+      submit();
+      await waitFor(() =>
+        expect(draftSpy).toHaveBeenCalledWith("https://sp/올린것.pdf", ""),
+      );
+    });
+
+    it("고른 파일 이름을 보여준다 — 무엇을 올릴 참인지 알아야 한다", async () => {
+      render(<FileDraftForm />);
+      pickTab("파일 올리기");
+      fireEvent.change(screen.getByLabelText("올릴 파일"), {
+        target: {
+          files: [new File(["x"], "취업규칙.pdf", { type: "application/pdf" })],
+        },
+      });
+      expect(await screen.findByText(/취업규칙\.pdf/)).toBeInTheDocument();
+    });
+
     it("올린 파일은 링크로 바꿔 같은 길로 보낸다 — 읽는 경로를 새로 안 만든다", async () => {
       render(<FileDraftForm />);
       pickTab("파일 올리기");
