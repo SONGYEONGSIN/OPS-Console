@@ -25,6 +25,12 @@
   --search-field-bg: rgba(21, 18, 12, 0.04);
   /* 기본 입력창(input/select/textarea) 배경 표준 — 운영리포트 카드(situation-bg)와 동일 톤, 포커스 시 흰색. 색 변경은 이 한 줄만 수정. */
   --field-bg: #fdfdfb;
+  /* 본문 음영 — 인라인 코드·코드 블록. 잉크 5% 틴트.
+     washi(#ede6d2)를 쓰다가 바꿨다(2026-08-28): 카키에 가까운 베이지라 흰 paper
+     위에서 노랗게 떴다. 본문 검정과 같은 계열이면 어느 배경에서도 안 뜬다. */
+  --tint-code: rgba(21, 18, 12, 0.05);
+  /* 표 헤더 — 코드보다 한 단계 진하게. 머리줄이 본문에 묻으면 표가 안 읽힌다. */
+  --tint-head: rgba(21, 18, 12, 0.06);
 
   /* 뉴스레터(/r/briefing) 전용 — 스티비 레퍼런스(dragonmamaclub) 충실 클론 팔레트.
      본 앱 브랜드(ink/vermilion)와 분리된 게스트 발행물 스킨. 다른 화면에서 사용 금지. */
@@ -133,6 +139,8 @@
   --color-line-soft: var(--line-soft);
   --color-search-field-bg: var(--search-field-bg);
   --color-field-bg: var(--field-bg);
+  --color-tint-code: var(--tint-code);
+  --color-tint-head: var(--tint-head);
   --color-nl-sky: var(--nl-sky);
   --color-nl-sky-soft: var(--nl-sky-soft);
   --color-nl-ivory: var(--nl-ivory);
@@ -712,12 +720,12 @@ button.bs-tl-ev .cal.cal-group,
 .knowledge-body code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.875em;
-  background: var(--washi);
+  background: var(--tint-code);
   border: 1px solid var(--line-soft);
   padding: 0.05rem 0.3rem;
 }
 .knowledge-body pre {
-  background: var(--washi);
+  background: var(--tint-code);
   border: 1px solid var(--line-soft);
   padding: 0.85rem 1rem;
   margin-bottom: 0.9rem;
@@ -752,7 +760,7 @@ button.bs-tl-ev .cal.cal-group,
   vertical-align: top;
 }
 .knowledge-body th {
-  background: var(--washi);
+  background: var(--tint-head);
   font-weight: 700;
 }
 .knowledge-body hr {
@@ -810,13 +818,13 @@ button.bs-tl-ev .cal.cal-group,
   border-bottom: 1px solid color-mix(in oklab, var(--vermilion) 40%, transparent);
 }
 .chat-md code {
-  background: var(--washi);
+  background: var(--tint-code);
   border: 1px solid var(--line-soft);
   padding: 0.05rem 0.3rem;
   font-size: 0.9em;
 }
 .chat-md pre {
-  background: var(--washi);
+  background: var(--tint-code);
   border: 1px solid var(--line-soft);
   padding: 0.6rem 0.75rem;
   margin: 0.5rem 0;
@@ -851,7 +859,7 @@ button.bs-tl-ev .cal.cal-group,
   vertical-align: top;
 }
 .chat-md th {
-  background: var(--washi);
+  background: var(--tint-head);
   font-weight: 700;
 }
 .chat-md hr {

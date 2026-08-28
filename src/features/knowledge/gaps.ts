@@ -45,7 +45,7 @@ export async function listPendingProposals(): Promise<PendingProposal[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("knowledge_docs")
-    .select("path, title")
+    .select("path, title, category")
     // **분류가 아니라 경로로 가른다.** 초안의 category 는 폴더가 아니라 옮겨질
     // 자리라(frontmatter.ts), `category = '제안'` 으로 찾으면 propose_doc 이
     // 분류를 적어 넣은 초안이 통째로 안 잡힌다 — propose_doc 은 늘 적는다.
@@ -57,5 +57,7 @@ export async function listPendingProposals(): Promise<PendingProposal[]> {
   return data.map((r) => ({
     path: r.path as string,
     title: r.title as string,
+    // 초안이 선언한 분류 = 옮겨질 자리. 목록에서 보여야 열어보기 전에 안다.
+    category: (r.category as string | null) ?? "",
   }));
 }

@@ -4,7 +4,12 @@
  * gaps.ts는 server-only라 client 컴포넌트가 타입만 쓰려 해도 import할 수 없다.
  * shared.ts / _db-shared.ts와 같은 갈래다.
  */
-export type PendingProposal = { path: string; title: string };
+export type PendingProposal = {
+  path: string;
+  title: string;
+  /** 초안이 선언한 분류 = 옮겨질 자리. 목록에서 보여야 열기 전에 안다. */
+  category: string;
+};
 
 /**
  * 빈틈 화면의 '초안 요청'이 만든 질문임을 알아보는 표식.
