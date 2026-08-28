@@ -76,9 +76,14 @@ $ErrorActionPreference = "Continue"
 try {
     # 무엇을 점검할지는 요청이 정한다 — 스케줄(세팅·문구) / 페이지(HTML 링크 상태)
     $env:RATIO_AUDIT_KIND = $kind
-    $output = & python "scripts\moa-ratio\audit.py" 2>&1
+    # **한 줄씩 바로 파일에 쓴다.** 끝나고 한꺼번에 쓰면 강제 종료됐을 때 아무것도
+    # 안 남는다 — 2026-08-28 작업 스케줄러 20분 제한에 잘려 로그에 시작 줄만 있었고,
+    # 어디까지 갔는지 알 길이 없어 진단이 통째로 막혔다.
+    $output = & python "scripts\moa-ratio\audit.py" 2>&1 | ForEach-Object {
+        $_ | Out-File -Append -Encoding utf8 $log
+        $_
+    }
     $code = $LASTEXITCODE
-    $output | Out-File -Append -Encoding utf8 $log
     $ok = ($code -eq 0)
     if ($ok) {
         $msg = "exit 0"

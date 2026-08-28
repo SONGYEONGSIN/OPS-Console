@@ -74,4 +74,31 @@ foreach ($t in $targets) {
   # 재등록하면 돌던 프로세스가 멈춘다 — 바로 다시 띄운다.
   Start-ScheduledTask -TaskName $t.TaskName
 }
+
+# --- 경쟁률 점검: 실행 시간 제한 ---
+#
+# 2026-08-28 이 점검이 3시간째 running 으로 고착됐다. 원인은 작업 스케줄러의
+# **20분 제한**이었다 — 정상 소요가 17분이라 아슬아슬하게 걸치다 넘어갔다.
+# 강제 종료라 python 출력이 통째로 사라져 로그에 시작 줄만 남았다.
+$ratio = Get-ScheduledTask | Where-Object {
+  $_.Actions.Arguments -match 'moa-ratio' -and $_.Actions.Arguments -match 'poll-local'
+}
+foreach ($t in $ratio) {
+  $limit = $t.Settings.ExecutionTimeLimit
+  if ($limit -eq 'PT1H') {
+    Write-Output ("SKIP {0} — 이미 1시간" -f $t.TaskName)
+    continue
+  }
+  $xml = Export-ScheduledTask -TaskName $t.TaskName
+  [IO.File]::WriteAllText((Join-Path $backupDir "ratio.xml"), $xml, [Text.Encoding]::Unicode)
+  $new = $xml -replace '<ExecutionTimeLimit>[^<]*</ExecutionTimeLimit>', '<ExecutionTimeLimit>PT1H</ExecutionTimeLimit>'
+  Register-ScheduledTask -TaskName $t.TaskName -Xml $new -User $env:USERNAME -Force | Out-Null
+  $now = (Get-ScheduledTask -TaskName $t.TaskName).Settings.ExecutionTimeLimit
+  if ($now -eq 'PT1H') {
+    Write-Output ("OK   {0} — 실행 시간 제한 {1} → PT1H" -f $t.TaskName, $limit)
+  } else {
+    Write-Output ("FAIL {0} — 아직 {1}. 백업: {2}" -f $t.TaskName, $now, $backupDir)
+  }
+}
+
 Write-Output ("백업: {0}" -f $backupDir)

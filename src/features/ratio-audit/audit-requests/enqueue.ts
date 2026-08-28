@@ -9,14 +9,20 @@ export const AUTOMATION_REQUESTER = "automation";
 
 /**
  * claim 후 이 시간이 지나도 완료 보고가 없는 running은 죽은 것으로 본다.
- * 폴러의 실행 제한이 20분(register-poll-task.ps1의 ExecutionTimeLimit)이라 여유를 뒀다.
+ *
+ * **폴러의 실행 제한보다 커야 한다.** 짧으면 정상 실행 중인 것을 죽었다고 보고 새
+ * 요청을 받아 둘이 겹쳐 돈다 — Moa 로그인을 타므로 동시 실행은 막아야 한다.
+ * 실행 제한은 1시간이다(`scripts/lib/ensure-poller-restart.ps1`). 정상 소요는 17분.
+ *
+ * 20분 제한이던 때 그 경계에 걸려 강제 종료된 적이 있다(2026-08-28). 제한을 늘리면
+ * **이 값도 같이 늘려야 한다** — 두 값은 묶여 있다.
  *
  * closing_scrape_requests에서 실제로 겪은 사고(2026-06-26, 폴러가 claim만 하고 죽어
  * running이 2주간 큐를 막음)와 동일한 위험을 이 큐도 그대로 안고 있다 — 회사 PC가
  * 꺼지거나 audit.py가 크래시하면 완료 보고가 영영 오지 않는다. 그래서 같은 안전장치를
  * 여기도 그대로 둔다.
  */
-export const STALE_RUNNING_MS = 30 * 60_000;
+export const STALE_RUNNING_MS = 70 * 60_000;
 
 type BlockingRow = {
   id: string;

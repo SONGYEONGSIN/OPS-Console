@@ -151,7 +151,8 @@ describe("enqueueLocalAuditRequest — stale running 자동 복구", () => {
   });
 
   it("stale 마감 실패 → 적재하지 않고 ok:false", async () => {
-    const staleAt = minutesAgo(60);
+    // 임계에 맞춰 잡는다 — 숫자를 박으면 임계를 바꿀 때 조용히 stale 이 아니게 된다.
+    const staleAt = minutesAgo(STALE_RUNNING_MS / 60_000 + 1);
     const { insert } = mockAdmin({
       existing: [{ id: "req-stale", status: "running", claimed_at: staleAt }],
       updateError: { message: "update boom" },
