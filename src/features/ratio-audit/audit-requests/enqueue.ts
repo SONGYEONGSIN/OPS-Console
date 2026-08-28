@@ -1,4 +1,5 @@
 import "server-only";
+import { QUEUED_MARK } from "@/features/automations/run-log-kind";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { RatioAuditKind } from "../schemas";
 
@@ -102,7 +103,8 @@ export async function enqueueLocalAuditRequest(
 
   return {
     ok: true,
-    message:
-      "로컬 실행을 요청했습니다. 회사 PC 폴러가 곧 실행합니다(최대 5분).",
+    // **접수 표식을 붙인다.** 이 줄이 `성공` 으로 찍혀 있어서 실제로 죽은 실행이
+    // 성공으로 보였다(2026-08-03·08-28). 결과는 폴러가 끝나며 따로 남긴다.
+    message: `${QUEUED_MARK} 회사 PC 폴러에 요청했습니다. 결과는 실행이 끝나면 따로 남습니다(약 17분).`,
   };
 }

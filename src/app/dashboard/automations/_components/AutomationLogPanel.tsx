@@ -6,6 +6,7 @@ import {
   Divider,
 } from "@/app/dashboard/_components/inspector/list-variants/shared";
 import { statusBadgeTone } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
+import { runLogKind, type RunLogKind } from "@/features/automations/run-log-kind";
 import {
   formatKrw,
   type JobRunLog,
@@ -484,8 +485,18 @@ function AiTipsList({ entries }: { entries: AiTipBatchEntry[] }) {
   );
 }
 
+/** 로그 종류 → 배지 글자. '접수'는 모르는 라벨이라 그레이로 떨어진다 — 맞는 톤이다. */
+const RUN_KIND_LABEL: Record<RunLogKind, string> = {
+  queued: "접수",
+  ok: "성공",
+  failed: "실패",
+  skipped: "스킵",
+};
+
 function RunStatusBadge({ entry }: { entry: AutomationRunEntry }) {
-  const label = entry.skipped ? "스킵" : entry.ok ? "성공" : "실패";
+  // **접수를 성공으로 찍지 않는다.** 회사 PC 잡은 큐 적재만 하고 끝나는데 그게
+  // '성공'으로 보여, 실제로 죽은 실행이 성공 세 줄로 나란히 있었다(2026-08-28).
+  const label = RUN_KIND_LABEL[runLogKind(entry)];
   return (
     <span className={`${BADGE_BOX} ${statusBadgeTone(label)}`}>{label}</span>
   );
