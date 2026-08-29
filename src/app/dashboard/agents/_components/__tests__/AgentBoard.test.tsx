@@ -94,10 +94,19 @@ describe("AgentBoard", () => {
     expect(stopped).toHaveTextContent("1");
   });
 
-  it("지표를 카드로 세운다 — 한 줄 텍스트는 넓은 화면에서 눌린다", () => {
+  it("요약은 한 판이다 — 카드 안에 카드면 위계가 없다", () => {
     render1();
-    // KpiCard 와 같은 시각 언어(테두리·배경 카드) 안에 있어야 한다.
-    expect(screen.getByTestId("kpi-stopped")).toHaveClass("border");
+    // 지표 넷이 각자 테두리를 갖지 않는다. 아래 에이전트 카드와 같은 층으로
+    // 보이면 무엇이 요약이고 무엇이 개체인지 읽히지 않는다.
+    expect(screen.getByTestId("kpi-stopped")).not.toHaveClass("border");
+    expect(screen.getByTestId("kpi-panel")).toHaveClass("border");
+  });
+
+  it("에이전트 수가 맨 앞이다 — 몇을 보고 있는지가 먼저다", () => {
+    render1();
+    const labels = [...screen.getByTestId("kpi-panel").querySelectorAll("[data-kpi]")]
+      .map((el) => el.getAttribute("data-kpi"));
+    expect(labels[0]).toBe("에이전트");
   });
 
   it("합계가 왜 그 숫자인지 밝힌다 — 못 세는 자리가 있다", () => {

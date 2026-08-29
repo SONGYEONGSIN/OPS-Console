@@ -42,7 +42,9 @@ export function AgentCard({
 }) {
   const stopped = verdict === "stopped";
   return (
-    <section className="flex flex-col gap-2 border border-line bg-situation-bg p-3.5">
+    /* 요약 판보다 옅은 테두리 — 위가 한 판이고 여기가 그 아래 개체들이라는 걸
+       선 굵기로 말한다. 둘이 같은 톤이면 두 층이 한 층으로 보인다. */
+    <section className="flex flex-col gap-2 border border-line-soft bg-situation-bg p-3.5">
       <div className="flex items-baseline gap-1.5">
         <span className="min-w-0 truncate font-mono text-xs text-ink">
           {member.agent}
