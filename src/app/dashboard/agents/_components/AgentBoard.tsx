@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AgentCard, type AgentCardMember } from "./AgentCard";
+import { AgentKpi } from "./AgentKpi";
 import type { AgentUsage } from "@/features/agent-org/usage";
 
 /**
@@ -40,14 +41,31 @@ export function AgentBoard({
     (n, m) => n + (usage[m.agent]?.today ?? 0),
     0,
   );
+  // 합계가 왜 그 숫자인지 밝힌다 — 실행 이력이 없는 자리는 못 센다.
+  const countable = members.filter((m) => usage[m.agent]?.today !== null && usage[m.agent] !== undefined).length;
+  const teamCount = teams.length;
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap gap-6 border-b-2 border-ink pb-3">
-        <Kpi label="도는 중" value={working} />
-        <Kpi label="멈춤" value={stopped} testId="kpi-stopped" alert={stopped > 0} />
-        <Kpi label="오늘 실행" value={todayTotal} />
-        <Kpi label="에이전트" value={members.length} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <AgentKpi
+          label="도는 중"
+          value={working}
+          note={`회사 PC 폴러 ${withPoller.length}개 기준`}
+        />
+        <AgentKpi
+          label="멈춤"
+          value={stopped}
+          note={stopped > 0 ? "확인 필요" : "이상 없음"}
+          alert={stopped > 0}
+          testId="kpi-stopped"
+        />
+        <AgentKpi
+          label="오늘 실행"
+          value={todayTotal}
+          note={`기록 있는 ${countable}개 기준`}
+        />
+        <AgentKpi label="에이전트" value={members.length} note={`팀 ${teamCount}`} />
       </div>
 
       <div className="flex flex-wrap items-center gap-1">
@@ -75,33 +93,6 @@ export function AgentBoard({
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-function Kpi({
-  label,
-  value,
-  alert,
-  testId,
-}: {
-  label: string;
-  value: number;
-  alert?: boolean;
-  testId?: string;
-}) {
-  return (
-    <div data-testid={testId} className="flex items-baseline gap-1.5">
-      <span className="text-2xs uppercase tracking-[0.12em] text-muted">
-        {label}
-      </span>
-      <span
-        className={`text-lg font-bold tabular-nums ${
-          alert ? "text-vermilion" : "text-ink"
-        }`}
-      >
-        {value}
-      </span>
     </div>
   );
 }
