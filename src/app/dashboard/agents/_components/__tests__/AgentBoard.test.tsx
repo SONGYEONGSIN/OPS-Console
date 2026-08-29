@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -8,9 +8,9 @@ vi.mock("next/link", () => ({
 }));
 
 import { AgentBoard } from "../AgentBoard";
-import type { AgentCardMember } from "../AgentCard";
+import type { AgentRow } from "../agent-row";
 
-const members: AgentCardMember[] = [
+const members: AgentRow[] = [
   {
     agent: "assistant-runner",
     role: "어시스턴트",
@@ -40,9 +40,13 @@ const members: AgentCardMember[] = [
 ];
 
 const usage = {
-  "assistant-runner": { daily: [1, 2, 12], today: 12 },
-  "ratio-poller": { daily: [0, 1, 1], today: 1 },
-  "trace-recorder": { daily: null, today: null },
+  "assistant-runner": {
+    daily: [1, 2, 12],
+    today: 12,
+    lastAt: "2026-08-30T10:00:00+09:00",
+  },
+  "ratio-poller": { daily: [0, 1, 1], today: 1, lastAt: null },
+  "trace-recorder": { daily: null, today: null, lastAt: null },
 };
 
 const render1 = (team?: string) =>
@@ -55,63 +59,104 @@ const render1 = (team?: string) =>
     />,
   );
 
-describe("AgentBoard", () => {
-  it("맨 위에 전체 상태를 요약한다 — 한 장으로 지금을 알아야 한다", () => {
-    render1();
-    expect(screen.getByText("도는 중")).toBeInTheDocument();
-    expect(screen.getByText("오늘 실행")).toBeInTheDocument();
-    // '멈춤'은 KPI 라벨과 카드 배지 양쪽에 나온다 — KPI 쪽을 짚는다.
-    expect(screen.getByTestId("kpi-stopped")).toHaveTextContent("멈춤");
-  });
-
-  it("오늘 실행은 셀 수 있는 것만 더한다", () => {
-    render1();
-    // 12 + 1 = 13. trace-recorder 는 기록이 없어 0으로 세지 않는다.
-    expect(screen.getByText("13")).toBeInTheDocument();
-  });
-
-  it("에이전트를 카드로 늘어놓는다", () => {
-    render1();
-    expect(screen.getByText("assistant-runner")).toBeInTheDocument();
-    expect(screen.getByText("ratio-poller")).toBeInTheDocument();
-  });
-
-  it("팀은 필터로만 남는다 — 묶음이 아니라 거르는 수단이다", () => {
-    render1("관측팀");
-    expect(screen.getByText("ratio-poller")).toBeInTheDocument();
-    expect(screen.queryByText("assistant-runner")).not.toBeInTheDocument();
-  });
-
-  it("팀 칩이 전체를 포함해 나온다", () => {
-    render1();
-    expect(screen.getByRole("link", { name: "전체" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /관측팀/ })).toBeInTheDocument();
-  });
-
-  it("멈춘 게 있으면 숫자로 드러낸다", () => {
-    render1();
-    const stopped = screen.getByTestId("kpi-stopped");
-    expect(stopped).toHaveTextContent("1");
-  });
-
+describe("AgentBoard — 요약", () => {
   it("요약은 한 판이다 — 카드 안에 카드면 위계가 없다", () => {
     render1();
-    // 지표 넷이 각자 테두리를 갖지 않는다. 아래 에이전트 카드와 같은 층으로
-    // 보이면 무엇이 요약이고 무엇이 개체인지 읽히지 않는다.
     expect(screen.getByTestId("kpi-stopped")).not.toHaveClass("border");
     expect(screen.getByTestId("kpi-panel")).toHaveClass("border");
   });
 
-  it("에이전트 수가 맨 앞이다 — 몇을 보고 있는지가 먼저다", () => {
+  it("에이전트 수가 맨 앞이다", () => {
     render1();
-    const labels = [...screen.getByTestId("kpi-panel").querySelectorAll("[data-kpi]")]
-      .map((el) => el.getAttribute("data-kpi"));
+    const labels = [
+      ...screen.getByTestId("kpi-panel").querySelectorAll("[data-kpi]"),
+    ].map((el) => el.getAttribute("data-kpi"));
     expect(labels[0]).toBe("에이전트");
   });
 
-  it("합계가 왜 그 숫자인지 밝힌다 — 못 세는 자리가 있다", () => {
+  it("오늘 실행은 셀 수 있는 것만 더한다", () => {
     render1();
-    // 3명 중 기록이 있는 건 2명뿐이다.
-    expect(screen.getByText(/기록 있는 2/)).toBeInTheDocument();
+    expect(screen.getByText("13")).toBeInTheDocument();
+  });
+});
+
+describe("AgentBoard — 목록", () => {
+  it("에이전트를 행으로 늘어놓는다", () => {
+    render1();
+    expect(
+      screen.getByRole("button", { name: /assistant-runner/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /ratio-poller/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("한 줄에서 맡은 일과 오늘 건수를 읽는다", () => {
+    render1();
+    const row = screen.getByRole("button", { name: /assistant-runner/ });
+    expect(row).toHaveTextContent("어시스턴트");
+    expect(row).toHaveTextContent("12");
+  });
+
+  /**
+   * '오늘 0건'만으로는 어제 돌았는지 한 달째 죽었는지 알 수 없다.
+   * 무엇부터 봐야 하는지를 마지막 실행이 정한다.
+   */
+  it("최근에 돈 적이 없으면 그렇다고 말한다", () => {
+    render1();
+    expect(
+      screen.getByRole("button", { name: /ratio-poller/ }),
+    ).toHaveTextContent("기록 없음");
+  });
+
+  it("팀은 필터로만 남는다", () => {
+    render1("관측팀");
+    expect(
+      screen.getByRole("button", { name: /ratio-poller/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /assistant-runner/ }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("AgentBoard — 인스펙터", () => {
+  it("처음에는 닫혀 있다", () => {
+    render1();
+    expect(screen.queryByTestId("agent-inspector")).not.toBeInTheDocument();
+  });
+
+  it("행을 누르면 그 에이전트가 열린다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    const panel = screen.getByTestId("agent-inspector");
+    expect(panel).toHaveTextContent("assistant-runner");
+  });
+
+  it("회사 PC 에서 도는 에이전트는 연결 상태를 보여준다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /ratio-poller/ }));
+    expect(screen.getByTestId("agent-inspector")).toHaveTextContent("멈춤");
+  });
+
+  it("회사 PC 와 무관한 에이전트에는 연결을 말하지 않는다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /trace-recorder/ }));
+    expect(screen.getByTestId("agent-inspector")).not.toHaveTextContent("연결");
+  });
+
+  it("사용량을 일별로 보여준다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    expect(screen.getByTestId("agent-inspector")).toHaveTextContent("최근 3일");
+  });
+
+  it("다른 행을 누르면 그쪽으로 바뀐다 — 닫았다 열 필요가 없다", () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("button", { name: /ratio-poller/ }));
+    expect(screen.getByTestId("agent-inspector")).toHaveTextContent(
+      "ratio-poller",
+    );
   });
 });

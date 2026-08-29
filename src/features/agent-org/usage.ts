@@ -21,6 +21,13 @@ export type AgentUsage = {
   daily: number[] | null;
   /** 오늘 건수. 셀 수 없으면 null. */
   today: number | null;
+  /**
+   * 최근 N일 안의 마지막 실행 시각(ISO). 그 안에 없으면 null.
+   *
+   * '오늘 0건'만으로는 어제 돌았는지 한 달째 죽었는지 알 수 없다 — 목록에서
+   * 무엇부터 봐야 하는지를 이 값이 정한다.
+   */
+  lastAt: string | null;
 };
 
 /** 며칠치를 볼지. 카드 막대가 읽히는 최소치가 7이다. */
@@ -82,11 +89,15 @@ export async function loadAgentUsage(
           : undefined;
     if (at === undefined) {
       // 셀 수 없는 자리 — 0 으로 그리면 '안 돌았다'로 읽힌다.
-      out[m.agent] = { daily: null, today: null };
+      out[m.agent] = { daily: null, today: null, lastAt: null };
       continue;
     }
     const daily = foldByKstDay(at, ymds);
-    out[m.agent] = { daily, today: daily[daily.length - 1] };
+    const lastAt = at.reduce<string | null>(
+      (max, iso) => (max === null || iso > max ? iso : max),
+      null,
+    );
+    out[m.agent] = { daily, today: daily[daily.length - 1], lastAt };
   }
   return out;
 }
