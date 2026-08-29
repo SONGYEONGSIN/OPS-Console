@@ -15,14 +15,16 @@ describe("에이전트 메뉴 등록", () => {
     expect(item?.label).toBe("에이전트");
   });
 
-  it("도구 바로 위에 있다 — 에이전트가 쓰는 도구를 그 아래 둔다", () => {
+  it("그룹 맨 앞이다 — 관제탑이 되었으니 나머지를 내려다보는 자리다", () => {
+    // 도구 바로 위(5번째)에 있었다. 화면이 정적 조직도일 때는 맞는 자리였지만,
+    // 이제 이 그룹 전체의 상태를 한 장으로 보여주므로 먼저 와야 한다.
     const group = sidebarSections
       .flatMap((s) => s.entries)
       .find((e) => e.kind === "group" && e.label === "AI & 자동화");
     expect(group).toBeDefined();
     const slugs =
       group && group.kind === "group" ? group.items.map((i) => i.slug) : [];
-    expect(slugs.indexOf("agents")).toBe(slugs.indexOf("tools") - 1);
+    expect(slugs[0]).toBe("agents");
   });
 
   it("전원 열람이다 — adminOnly가 아니다", () => {
