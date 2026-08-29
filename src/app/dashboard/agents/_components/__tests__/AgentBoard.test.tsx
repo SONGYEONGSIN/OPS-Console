@@ -93,4 +93,16 @@ describe("AgentBoard", () => {
     const stopped = screen.getByTestId("kpi-stopped");
     expect(stopped).toHaveTextContent("1");
   });
+
+  it("지표를 카드로 세운다 — 한 줄 텍스트는 넓은 화면에서 눌린다", () => {
+    render1();
+    // KpiCard 와 같은 시각 언어(테두리·배경 카드) 안에 있어야 한다.
+    expect(screen.getByTestId("kpi-stopped")).toHaveClass("border");
+  });
+
+  it("합계가 왜 그 숫자인지 밝힌다 — 못 세는 자리가 있다", () => {
+    render1();
+    // 3명 중 기록이 있는 건 2명뿐이다.
+    expect(screen.getByText(/기록 있는 2/)).toBeInTheDocument();
+  });
 });
