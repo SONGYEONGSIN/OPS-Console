@@ -50,6 +50,11 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         agent: "vault-indexer",
         source: { kind: "job", jobId: "knowledge-index" },
       },
+      {
+        role: "마감수집",
+        agent: "closing-poller",
+        source: { kind: "poller", pollerId: "closing-scrape" },
+      },
     ],
   },
   {
@@ -81,6 +86,18 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         role: "계약",
         agent: "contract-snapshotter",
         source: { kind: "job", jobId: "contract-completion-snapshot" },
+      },
+      {
+        role: "우편",
+        agent: "postal-reader",
+        llm: true,
+        source: { kind: "poller", pollerId: "postal-extract" },
+      },
+      {
+        role: "개발탭",
+        agent: "dev-analyzer",
+        llm: true,
+        source: { kind: "poller", pollerId: "dev-control" },
       },
     ],
   },
@@ -181,6 +198,16 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
           note: "실패 즉시 알림 · 중복 억제",
         },
       },
+      {
+        role: "경쟁률",
+        agent: "ratio-poller",
+        source: { kind: "poller", pollerId: "ratio-audit" },
+      },
+      {
+        role: "원서테스트",
+        agent: "entertest-runner",
+        source: { kind: "poller", pollerId: "entertest" },
+      },
       { role: "추적", agent: "trace-recorder", source: { kind: "planned" } },
     ],
   },
@@ -192,8 +219,18 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
       tagline: "감독 — 누구를 언제 넣을지 정한다",
     },
     traits: ["확인게이트", "권한분리", "모르면모른다", "대신실행"],
-    // 팀원 없이 직접 수행한다. 운영자 질문을 받아 어느 팀의 일인지 정하고
-    // 승인받아 대신 실행한다. 본체 설계는 2026-08-10-assistant-system-agent-design.md
-    members: [],
+    // 감독이 직접 뛴다. 운영자 질문을 받아 어느 팀의 일인지 정하고 승인받아 대신
+    // 실행한다. 본체 설계는 2026-08-10-assistant-system-agent-design.md
+    //
+    // 팀원을 비워 두었었는데, 그러면 **회사 PC 에서 실제로 도는 어시스턴트 폴러가
+    // 조직도 어디에도 없게 된다** — 생사도 사용량도 붙일 자리가 없었다.
+    members: [
+      {
+        role: "어시스턴트",
+        agent: "assistant-runner",
+        llm: true,
+        source: { kind: "poller", pollerId: "assistant" },
+      },
+    ],
   },
 ];

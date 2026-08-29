@@ -70,3 +70,45 @@ describe("resolveTeam", () => {
     expect(() => resolveTeam(broken, labels)).toThrow(/no-such-job/);
   });
 });
+
+/**
+ * 폴러 팀원도 화면 문구를 가져야 한다. 잡 라벨을 조직도에 복사하지 않듯,
+ * 폴러 라벨도 `POLLERS` 에서 가져온다 — 두 벌이 되면 갈라진다.
+ */
+describe("resolveTeam — 폴러 팀원", () => {
+  it("폴러 라벨을 문구로 쓴다", () => {
+    const team = {
+      id: "t",
+      name: "T",
+      leader: { name: "L", tagline: "" },
+      traits: [],
+      members: [
+        {
+          role: "어시스턴트",
+          agent: "assistant-runner",
+          source: { kind: "poller" as const, pollerId: "assistant" },
+        },
+      ],
+    };
+    const r = resolveTeam(team, new Map());
+    expect(r.members[0].detail).toContain("어시스턴트");
+    expect(r.members[0].planned).toBe(false);
+  });
+
+  it("없는 폴러를 가리키면 크게 실패한다 — 조용히 틀린 화면을 두지 않는다", () => {
+    const team = {
+      id: "t",
+      name: "T",
+      leader: { name: "L", tagline: "" },
+      traits: [],
+      members: [
+        {
+          role: "x",
+          agent: "x",
+          source: { kind: "poller" as const, pollerId: "없는폴러" },
+        },
+      ],
+    };
+    expect(() => resolveTeam(team, new Map())).toThrow(/폴러/);
+  });
+});
