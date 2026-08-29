@@ -75,9 +75,9 @@ export function AgentBoard({
   const current = members.find((m) => m.agent === selected) ?? null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col">
       {/* 지표는 각자 카드. 붙여 놓으면 한 덩어리로 읽혀 개별 값이 안 들어온다. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AgentKpi label="에이전트" value={members.length} note={`팀 ${teams.length}`} />
         <AgentKpi
           label="도는 중"
@@ -98,8 +98,16 @@ export function AgentBoard({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-line pb-2">
-        <h2 className="text-sm font-bold text-ink">에이전트 {shown.length}</h2>
+      {/* 다른 목록 메뉴(ListPattern)와 같은 규격 — text-xl 제목 + · + N건(vermilion),
+          header mb-4. 이 화면만 작으면 같은 성격의 화면이 달라 보인다. */}
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-xl font-bold text-ink">에이전트</h2>
+          <span className="text-muted" aria-hidden>
+            ·
+          </span>
+          <span className="text-sm text-vermilion">{shown.length}건</span>
+        </div>
         {/* 운영부 뉴스 키워드 칩과 같은 모양 — 활성 솔리드, 건수 괄호, 우측 정렬 */}
         <div
           role="group"
@@ -119,13 +127,13 @@ export function AgentBoard({
             </Chip>
           ))}
         </div>
-      </div>
+      </header>
 
       <div>
         {/* 머리글 — 숫자만 있고 무엇인지 없으면 못 읽는다. */}
         <div
           data-testid="agent-thead"
-          className="flex items-center gap-3 border-b border-line px-2 pb-1.5 text-2xs uppercase tracking-[0.1em] text-muted"
+          className="flex items-center gap-3 border-b border-line px-2 pb-2 text-xs font-medium text-muted"
         >
           <span data-col="팀" className="w-16 shrink-0">
             팀
