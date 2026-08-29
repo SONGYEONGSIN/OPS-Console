@@ -76,11 +76,8 @@ export function AgentBoard({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* 요약은 한 판. 넷이 각자 카드가 되면 아래 개체와 같은 층으로 보인다. */}
-      <div
-        data-testid="kpi-panel"
-        className="grid grid-cols-2 divide-line-soft border border-line bg-situation-bg lg:grid-cols-4 lg:divide-x"
-      >
+      {/* 지표는 각자 카드. 붙여 놓으면 한 덩어리로 읽혀 개별 값이 안 들어온다. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <AgentKpi label="에이전트" value={members.length} note={`팀 ${teams.length}`} />
         <AgentKpi
           label="도는 중"
@@ -101,22 +98,58 @@ export function AgentBoard({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-1">
-        <Chip href="/dashboard/agents" active={!team}>
-          전체
-        </Chip>
-        {teams.map((t) => (
-          <Chip
-            key={t}
-            href={`/dashboard/agents?team=${encodeURIComponent(t)}`}
-            active={team === t}
-          >
-            {t} {members.filter((m) => m.team === t).length}
+      <div className="flex flex-wrap items-center gap-3 border-b border-line pb-2">
+        <h2 className="text-sm font-bold text-ink">에이전트 {shown.length}</h2>
+        {/* 운영부 뉴스 키워드 칩과 같은 모양 — 활성 솔리드, 건수 괄호, 우측 정렬 */}
+        <div
+          role="group"
+          aria-label="팀 필터"
+          className="ml-auto flex flex-wrap items-center gap-1"
+        >
+          <Chip href="/dashboard/agents" active={!team}>
+            전체 ({members.length})
           </Chip>
-        ))}
+          {teams.map((t) => (
+            <Chip
+              key={t}
+              href={`/dashboard/agents?team=${encodeURIComponent(t)}`}
+              active={team === t}
+            >
+              {t} ({members.filter((m) => m.team === t).length})
+            </Chip>
+          ))}
+        </div>
       </div>
 
-      <div className="border-t border-line-soft">
+      <div>
+        {/* 머리글 — 숫자만 있고 무엇인지 없으면 못 읽는다. */}
+        <div
+          data-testid="agent-thead"
+          className="flex items-center gap-3 border-b border-line px-2 pb-1.5 text-2xs uppercase tracking-[0.1em] text-muted"
+        >
+          <span data-col="팀" className="w-16 shrink-0">
+            팀
+          </span>
+          <span data-col="맡은 일" className="min-w-0 flex-1">
+            맡은 일
+          </span>
+          <span data-col="상태" className="w-24 shrink-0">
+            상태
+          </span>
+          <span data-col="구동" className="w-20 shrink-0">
+            구동
+          </span>
+          <span data-col="오늘" className="w-14 shrink-0 text-right">
+            오늘
+          </span>
+          <span data-col="7일" className="w-20 shrink-0 text-right">
+            7일
+          </span>
+          <span data-col="마지막" className="w-20 shrink-0 text-right">
+            마지막
+          </span>
+        </div>
+
         {shown.map((m) => {
           const u = usage[m.agent];
           const verdict = m.pollerId ? verdicts[m.pollerId] : undefined;
@@ -127,11 +160,23 @@ export function AgentBoard({
               onClick={() => setSelected(m.agent)}
               className={`flex w-full items-center gap-3 border-b border-line-soft px-2 py-2.5 text-left transition-colors ${
                 selected === m.agent
-                  ? "border-vermilion bg-vermilion/10 text-vermilion"
+                  ? "border-vermilion bg-vermilion/10"
                   : "hover:bg-line-soft"
               }`}
             >
-              <span className="w-14 shrink-0 text-2xs">
+              <span className="w-16 shrink-0 truncate text-2xs text-muted">
+                {m.team}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs text-ink">
+                  {m.detail || m.role}
+                  {m.llm && <span className="ml-1 text-vermilion">✦</span>}
+                </span>
+                <span className="block truncate font-mono text-2xs text-muted">
+                  {m.agent}
+                </span>
+              </span>
+              <span className="w-24 shrink-0 text-2xs">
                 {m.planned ? (
                   <span className="text-muted">예정</span>
                 ) : verdict ? (
@@ -140,32 +185,34 @@ export function AgentBoard({
                       verdict === "stopped" ? "text-vermilion" : "text-ink-soft"
                     }
                   >
-                    {verdict === "stopped" ? "● 멈춤" : "● 처리 중"}
+                    {/* 도는 중인 것만 깜박인다 — 멈춤은 가만히 있어야 눈에 걸린다. */}
+                    <span
+                      aria-hidden
+                      className={
+                        verdict === "stopped" ? "" : "animate-pulse"
+                      }
+                    >
+                      ●
+                    </span>{" "}
+                    {verdict === "stopped" ? "멈춤" : "처리 중"}
                   </span>
                 ) : null}
               </span>
-              <span className="w-52 shrink-0 truncate font-mono text-xs text-ink">
-                {m.agent}
-                {m.llm && <span className="ml-1 text-vermilion">✦</span>}
+              <span className="w-20 shrink-0 text-2xs text-muted">
+                {m.driver}
               </span>
-              <span className="min-w-0 flex-1 truncate text-xs text-ink-soft">
-                {m.detail || m.role}
-              </span>
-              <span className="w-20 shrink-0 text-right text-xs tabular-nums text-ink">
+              <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink">
                 {u?.today === null || u === undefined ? (
                   <span className="text-2xs text-muted">—</span>
                 ) : (
                   u.today
                 )}
               </span>
-              <span className="w-24 shrink-0 text-right font-mono text-xs text-ink-soft">
+              <span className="w-20 shrink-0 text-right font-mono text-xs text-ink-soft">
                 {u?.daily ? spark(u.daily) : ""}
               </span>
               <span className="w-20 shrink-0 text-right text-2xs text-muted">
                 {lastLabel(u?.lastAt ?? null)}
-              </span>
-              <span className="w-16 shrink-0 text-right text-2xs text-muted">
-                {m.team}
               </span>
             </button>
           );
@@ -256,10 +303,10 @@ function Chip({
   return (
     <Link
       href={href}
-      className={`border px-2.5 py-1 text-xs transition-colors ${
+      className={`border px-3 py-1 text-xs transition-colors ${
         active
-          ? "border-vermilion bg-vermilion/10 text-vermilion"
-          : "border-line-soft text-ink-soft hover:bg-line-soft"
+          ? "border-vermilion bg-vermilion text-cream"
+          : "border-line bg-paper text-ink hover:bg-line-soft"
       }`}
     >
       {children}

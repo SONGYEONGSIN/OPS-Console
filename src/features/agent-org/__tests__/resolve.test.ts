@@ -112,3 +112,71 @@ describe("resolveTeam — 폴러 팀원", () => {
     expect(() => resolveTeam(team, new Map())).toThrow(/폴러/);
   });
 });
+
+/**
+ * '처리 중' 배지가 회사 PC 폴러에만 붙어서, 나머지가 죽은 것처럼 보였다.
+ * 생사라는 개념이 없는 것뿐인데. 무엇이 어떻게 도는지를 갈라 적는다.
+ */
+describe("resolveTeam — 구동 방식", () => {
+  const team = (member: AgentTeam["members"][number]): AgentTeam => ({
+    id: "t",
+    name: "T",
+    leader: { name: "L", tagline: "" },
+    traits: [],
+    members: [member],
+  });
+
+  it("회사 PC 폴러는 '요청 대기' — 큐를 보고 있다가 요청이 오면 돈다", () => {
+    const r = resolveTeam(
+      team({
+        role: "x",
+        agent: "a",
+        source: { kind: "poller", pollerId: "assistant" },
+      }),
+      new Map(),
+    );
+    expect(r.members[0].driver).toBe("요청 대기");
+  });
+
+  it("자동화 잡은 주기를 적는다 — cron 이 부를 때만 돈다", () => {
+    const r = resolveTeam(
+      team({
+        role: "x",
+        agent: "a",
+        source: { kind: "job", jobId: "knowledge-index" },
+      }),
+      buildJobLabels([{ id: "knowledge-index", label: "지식망 인덱싱" }]),
+      new Map([["knowledge-index", "hourly"]]),
+    );
+    expect(r.members[0].driver).toBe("주기 실행");
+  });
+
+  it("수동 잡은 그렇다고 적는다", () => {
+    const r = resolveTeam(
+      team({ role: "x", agent: "a", source: { kind: "job", jobId: "j" } }),
+      buildJobLabels([{ id: "j", label: "J" }]),
+      new Map([["j", "manual"]]),
+    );
+    expect(r.members[0].driver).toBe("수동 실행");
+  });
+
+  it("상시 동작은 '상시'", () => {
+    const r = resolveTeam(
+      team({
+        role: "x",
+        agent: "a",
+        source: { kind: "outside", path: "p", note: "n" },
+      }),
+      new Map(),
+    );
+    expect(r.members[0].driver).toBe("상시");
+  });
+
+  it("예정은 구동이 없다", () => {
+    const r = resolveTeam(
+      team({ role: "x", agent: "a", source: { kind: "planned" } }),
+      new Map(),
+    );
+    expect(r.members[0].driver).toBe("");
+  });
+});

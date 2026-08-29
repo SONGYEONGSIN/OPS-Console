@@ -11,4 +11,6 @@ export type AgentRow = {
   planned: boolean;
   /** 회사 PC 폴러면 그 id. 없으면 생사를 말하지 않는다. */
   pollerId?: string;
+  /** 무엇이 부르는가 — 요청 대기 / 주기 실행 / 수동 실행 / 상시. */
+  driver: string;
 };

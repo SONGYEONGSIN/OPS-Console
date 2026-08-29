@@ -1,5 +1,5 @@
 /**
- * 관제 지표 한 칸.
+ * 관제 지표 카드 한 장.
  *
  * 공용 `KpiCard` 를 쓰지 않는다 — 그쪽은 **기간 비교**용이라 증감이 없으면
  * "비교 불가"를 찍는다. 여기 지표는 지금 상태(도는 중·멈춤·오늘 실행)라 비교할
@@ -8,9 +8,9 @@
  *
  * 아래 줄에는 증감 대신 **그 숫자를 어떻게 읽어야 하는지**를 적는다.
  *
- * **자기 테두리를 갖지 않는다.** 넷이 각자 카드가 되면 아래 에이전트 카드와 같은
- * 층으로 보여, 무엇이 요약이고 무엇이 개체인지 읽히지 않는다. 요약은 한 판이고
- * 여기는 그 판을 나눈 한 칸이다.
+ * 한때 넷을 한 판에 붙였다 — 아래도 카드라 두 층이 한 층으로 보였기 때문이다.
+ * 아래가 표로 바뀌면서 그 이유가 사라졌고, 붙여 놓으면 한 덩어리로 읽혀 개별
+ * 값이 안 들어온다. 다시 각자 카드다.
  */
 export function AgentKpi({
   label,
@@ -31,7 +31,7 @@ export function AgentKpi({
     <div
       data-testid={testId}
       data-kpi={label}
-      className="flex flex-col gap-1 px-4 py-3"
+      className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4"
     >
       <div className="text-xs font-medium text-muted">{label}</div>
       <span
