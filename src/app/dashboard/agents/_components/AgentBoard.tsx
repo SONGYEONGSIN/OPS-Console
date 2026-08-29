@@ -47,7 +47,16 @@ export function AgentBoard({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* 요약은 한 판. 넷이 각자 카드가 되면 아래 개체 카드와 같은 층으로 보인다. */}
+      <div
+        data-testid="kpi-panel"
+        className="grid grid-cols-2 divide-line-soft border border-line bg-situation-bg lg:grid-cols-4 lg:divide-x"
+      >
+        <AgentKpi
+          label="에이전트"
+          value={members.length}
+          note={`팀 ${teamCount}`}
+        />
         <AgentKpi
           label="도는 중"
           value={working}
@@ -65,7 +74,6 @@ export function AgentBoard({
           value={todayTotal}
           note={`기록 있는 ${countable}개 기준`}
         />
-        <AgentKpi label="에이전트" value={members.length} note={`팀 ${teamCount}`} />
       </div>
 
       <div className="flex flex-wrap items-center gap-1">
