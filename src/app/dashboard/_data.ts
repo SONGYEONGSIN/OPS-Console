@@ -347,12 +347,6 @@ export const sidebarSections: SbSection[] = [
         items: [
           {
             ico: "·",
-            label: "에이전트",
-            slug: "agents",
-            pattern: "list",
-          },
-          {
-            ico: "·",
             label: "업무 지식망",
             count: "",
             slug: "knowledge",
@@ -377,6 +371,12 @@ export const sidebarSections: SbSection[] = [
             label: "TIP 공유",
             count: "",
             slug: "ai-tips",
+            pattern: "list",
+          },
+          {
+            ico: "·",
+            label: "에이전트",
+            slug: "agents",
             pattern: "list",
           },
           {
