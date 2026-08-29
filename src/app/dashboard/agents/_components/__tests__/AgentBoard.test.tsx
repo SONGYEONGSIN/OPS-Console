@@ -19,6 +19,7 @@ const members: AgentRow[] = [
     llm: true,
     planned: false,
     pollerId: "assistant",
+    driver: "요청 대기",
   },
   {
     agent: "ratio-poller",
@@ -28,6 +29,7 @@ const members: AgentRow[] = [
     llm: false,
     planned: false,
     pollerId: "ratio-audit",
+    driver: "요청 대기",
   },
   {
     agent: "trace-recorder",
@@ -36,6 +38,7 @@ const members: AgentRow[] = [
     detail: "",
     llm: false,
     planned: true,
+    driver: "",
   },
 ];
 
@@ -60,17 +63,16 @@ const render1 = (team?: string) =>
   );
 
 describe("AgentBoard — 요약", () => {
-  it("요약은 한 판이다 — 카드 안에 카드면 위계가 없다", () => {
+  it("지표는 각자 카드다 — 붙여 놓지 않는다", () => {
     render1();
-    expect(screen.getByTestId("kpi-stopped")).not.toHaveClass("border");
-    expect(screen.getByTestId("kpi-panel")).toHaveClass("border");
+    expect(screen.getByTestId("kpi-stopped")).toHaveClass("border");
   });
 
   it("에이전트 수가 맨 앞이다", () => {
     render1();
-    const labels = [
-      ...screen.getByTestId("kpi-panel").querySelectorAll("[data-kpi]"),
-    ].map((el) => el.getAttribute("data-kpi"));
+    const labels = [...document.querySelectorAll("[data-kpi]")].map((el) =>
+      el.getAttribute("data-kpi"),
+    );
     expect(labels[0]).toBe("에이전트");
   });
 
@@ -107,6 +109,42 @@ describe("AgentBoard — 목록", () => {
     expect(
       screen.getByRole("button", { name: /ratio-poller/ }),
     ).toHaveTextContent("기록 없음");
+  });
+
+  it("표 위에 제목을 둔다", () => {
+    render1();
+    expect(screen.getByRole("heading", { name: /에이전트/ })).toBeInTheDocument();
+  });
+
+  it("표에 머리글이 있다 — 숫자만 있고 무엇인지 없으면 못 읽는다", () => {
+    render1();
+    const head = screen.getByTestId("agent-thead");
+    for (const label of ["팀", "맡은 일", "상태", "오늘", "마지막"]) {
+      expect(head).toHaveTextContent(label);
+    }
+  });
+
+  it("팀 · 맡은 일 · 상태 순으로 읽는다", () => {
+    render1();
+    const cols = [
+      ...screen.getByTestId("agent-thead").querySelectorAll("[data-col]"),
+    ].map((el) => el.getAttribute("data-col"));
+    expect(cols.slice(0, 3)).toEqual(["팀", "맡은 일", "상태"]);
+  });
+
+  it("무엇이 부르는지 적는다 — 배지 없음을 이상으로 읽지 않게", () => {
+    render1();
+    expect(
+      screen.getByRole("button", { name: /assistant-runner/ }),
+    ).toHaveTextContent("요청 대기");
+  });
+
+  it("팀 필터는 운영부 뉴스와 같은 모양이다 — 우측 정렬 + 건수 괄호", () => {
+    render1();
+    const group = screen.getByRole("group", { name: "팀 필터" });
+    expect(group).toHaveClass("ml-auto");
+    expect(group).toHaveTextContent("전체 (3)");
+    expect(group).toHaveTextContent("관측팀 (2)");
   });
 
   it("팀은 필터로만 남는다", () => {

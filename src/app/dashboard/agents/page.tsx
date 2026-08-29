@@ -35,8 +35,11 @@ export default async function AgentsPage({
   const { team } = await searchParams;
 
   const labels = buildJobLabels(AUTOMATION_JOBS);
+  // 무엇이 부르는지(주기·수동)를 잡 레지스트리에서 가져온다 — 조직도에 복사하면
+  // 스케줄이 바뀔 때 두 벌이 갈라진다.
+  const cadences = new Map(AUTOMATION_JOBS.map((j) => [j.id, j.cadence]));
   const members: AgentRow[] = AGENT_TEAMS.flatMap((t) => {
-    const resolved = resolveTeam(t, labels);
+    const resolved = resolveTeam(t, labels, cadences);
     return resolved.members.map((m) => ({
       agent: m.agent,
       role: m.role,
@@ -45,6 +48,7 @@ export default async function AgentsPage({
       llm: m.llm,
       planned: m.planned,
       pollerId: m.pollerId,
+      driver: m.driver,
     }));
   });
 
