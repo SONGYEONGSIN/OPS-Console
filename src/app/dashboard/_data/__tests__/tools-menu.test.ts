@@ -13,13 +13,15 @@ describe("도구 메뉴 등록", () => {
     expect(item?.label).toBe("도구");
   });
 
-  it("에이전트 바로 아래다", () => {
+  it("자동화실행 바로 위다 — 에이전트가 쓰는 것들을 함께 둔다", () => {
+    // 예전엔 '에이전트 바로 아래'로 고정했었다. 에이전트가 그룹 맨 앞(관제탑)으로
+    // 올라가면서 그 인접성은 깨졌고, 대신 도구·자동화실행이 붙어 있으면 된다.
     const group = sidebarSections
       .flatMap((s) => s.entries)
       .find((e) => e.kind === "group" && e.label === "AI & 자동화");
     const slugs =
       group && group.kind === "group" ? group.items.map((i) => i.slug) : [];
-    expect(slugs.indexOf("tools")).toBe(slugs.indexOf("agents") + 1);
+    expect(slugs.indexOf("tools")).toBe(slugs.indexOf("automations") - 1);
   });
 
   it("admin만 본다 — 개발 환경 설정이지 운영 업무가 아니다", () => {
