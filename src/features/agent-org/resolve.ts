@@ -1,3 +1,4 @@
+import { POLLERS } from "@/features/system-status/pollers";
 import type { AgentTeam } from "./types";
 
 export type ResolvedMember = {
@@ -7,6 +8,8 @@ export type ResolvedMember = {
   /** 화면에 적을 한 줄. planned면 빈 문자열 */
   detail: string;
   planned: boolean;
+  /** 회사 PC 폴러면 그 id — 화면이 이걸로 생사 배지를 붙인다. */
+  pollerId?: string;
 };
 
 export type ResolvedTeam = {
@@ -42,6 +45,18 @@ export function resolveTeam(
       }
       if (m.source.kind === "outside") {
         return { ...base, detail: m.source.note, planned: false };
+      }
+      if (m.source.kind === "poller") {
+        // 콜백 안에서는 좁혀진 타입이 풀린다 — 먼저 꺼내 둔다.
+        const { pollerId } = m.source;
+        // 폴러 라벨도 원본에서 가져온다 — 조직도에 복사하면 두 벌이 되어 갈라진다.
+        const poller = POLLERS.find((p) => p.id === pollerId);
+        if (!poller) {
+          throw new Error(
+            `조직도가 없는 폴러를 가리킨다: ${m.agent} → ${pollerId}`,
+          );
+        }
+        return { ...base, detail: poller.label, planned: false, pollerId };
       }
       const label = labels.get(m.source.jobId);
       if (label === undefined) {

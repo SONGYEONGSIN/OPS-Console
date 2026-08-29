@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { AGENT_TEAMS } from "../registry";
 import { AUTOMATION_JOBS } from "@/features/automations/registry";
+import { POLLERS } from "@/features/system-status/pollers";
 
 /**
  * 조직도가 현실과 갈라지는 것을 막는다.
@@ -64,5 +65,31 @@ describe("에이전트 조직 레지스트리", () => {
         /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/,
       );
     }
+  });
+});
+
+/**
+ * 회사 PC 폴러도 에이전트다.
+ *
+ * 조직도가 자동화 잡만 담고 있어서, 회사 PC 에서 도는 여섯(어시스턴트·우편물 판독·
+ * 경쟁률·마감 스크래핑·원서 테스트·개발탭 분석)이 통째로 빠져 있었다. 심박과 생사
+ * 판정은 이미 있는데 **에이전트에 붙일 자리가 없었다.**
+ */
+describe("회사 PC 폴러 매핑", () => {
+  it("모든 pollerId 가 실재한다", () => {
+    const known = new Set(POLLERS.map((p) => p.id));
+    for (const m of allMembers) {
+      if (m.source.kind !== "poller") continue;
+      expect(known, `${m.agent} → ${m.source.pollerId}`).toContain(
+        m.source.pollerId,
+      );
+    }
+  });
+
+  it("폴러 하나가 정확히 한 에이전트에 붙는다 — 빠지면 상태를 못 보여준다", () => {
+    const mapped = allMembers
+      .filter((m) => m.source.kind === "poller")
+      .map((m) => (m.source as { pollerId: string }).pollerId);
+    expect([...mapped].sort()).toEqual([...POLLERS.map((p) => p.id)].sort());
   });
 });

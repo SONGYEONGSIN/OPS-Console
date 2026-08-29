@@ -8,6 +8,14 @@
  */
 export type AgentMemberSource =
   | { kind: "job"; jobId: string }
+  /**
+   * 회사 PC 에서 큐를 물고 도는 폴러.
+   *
+   * 자동화 잡이 아니라 조직도에서 통째로 빠져 있었다 — 심박(`poller_heartbeats`)과
+   * 생사 판정(`system-status/verdict.ts`)은 이미 있는데 **에이전트에 붙일 자리가
+   * 없었다.** 여기 붙어야 화면이 "이 에이전트가 지금 살아 있나"를 말할 수 있다.
+   */
+  | { kind: "poller"; pollerId: string }
   | { kind: "outside"; path: string; note: string }
   | { kind: "planned" };
 

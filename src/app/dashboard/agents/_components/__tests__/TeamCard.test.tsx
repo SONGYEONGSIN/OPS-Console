@@ -76,3 +76,54 @@ describe("TeamCard", () => {
     expect(screen.getByText("직접 수행")).toBeInTheDocument();
   });
 });
+
+/**
+ * 회사 PC 에서 도는 에이전트는 **살아 있는지**가 가장 먼저 알고 싶은 것이다.
+ * 심박과 판정은 이미 있었고 조직도에 붙일 자리만 없었다.
+ */
+describe("TeamCard — 회사 PC 연결", () => {
+  const withPoller: ResolvedTeam = {
+    ...team,
+    members: [
+      {
+        role: "어시스턴트",
+        agent: "assistant-runner",
+        llm: true,
+        detail: "어시스턴트",
+        planned: false,
+        pollerId: "assistant",
+      },
+    ],
+  };
+
+  it("멈춘 폴러는 그렇다고 말한다", () => {
+    render(
+      <TeamCard
+        team={withPoller}
+        pollerVerdicts={{ assistant: "stopped" }}
+      />,
+    );
+    expect(screen.getByText("멈춤")).toBeInTheDocument();
+  });
+
+  it("도는 폴러는 처리 중으로 보여준다", () => {
+    render(
+      <TeamCard
+        team={withPoller}
+        pollerVerdicts={{ assistant: "working" }}
+      />,
+    );
+    expect(screen.getByText("처리 중")).toBeInTheDocument();
+  });
+
+  it("판정이 없으면 배지를 안 붙인다 — 모르면서 정상이라 하지 않는다", () => {
+    render(<TeamCard team={withPoller} pollerVerdicts={{}} />);
+    expect(screen.queryByText("멈춤")).not.toBeInTheDocument();
+    expect(screen.queryByText("처리 중")).not.toBeInTheDocument();
+  });
+
+  it("폴러가 아닌 팀원에는 안 붙인다", () => {
+    render(<TeamCard team={team} pollerVerdicts={{ assistant: "stopped" }} />);
+    expect(screen.queryByText("멈춤")).not.toBeInTheDocument();
+  });
+});

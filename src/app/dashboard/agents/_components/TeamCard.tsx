@@ -16,7 +16,19 @@ function TraitChip({ label }: { label: string }) {
   );
 }
 
-export function TeamCard({ team }: { team: ResolvedTeam }) {
+export function TeamCard({
+  team,
+  pollerVerdicts = {},
+}: {
+  team: ResolvedTeam;
+  /**
+   * 폴러 id → 판정. 없는 키는 '모름'이고 배지를 안 붙인다.
+   *
+   * 판정 자체는 `system-status/verdict.ts` 가 큐 나이 → 심박 순으로 내린다.
+   * 화면이 다시 판정하지 않는다 — 두 벌이 되면 설정 화면과 답이 갈린다.
+   */
+  pollerVerdicts?: Record<string, string>;
+}) {
   return (
     <section className="flex flex-col gap-3 border border-line bg-situation-bg p-4">
       <div className="flex items-baseline justify-between gap-2">
@@ -53,6 +65,22 @@ export function TeamCard({ team }: { team: ResolvedTeam }) {
                         aria-label="LLM으로 판단합니다"
                       >
                         ✦
+                      </span>
+                    )}
+                    {m.pollerId && pollerVerdicts[m.pollerId] && (
+                      /* 회사 PC 에서 도는 에이전트는 살아 있는지가 먼저다.
+                         판정이 없으면 아무 말도 안 한다 — 모르면서 정상이라
+                         하지 않는 건 verdict.ts 의 'unknown' 과 같은 태도다. */
+                      <span
+                        className={`shrink-0 px-1.5 py-0.5 text-2xs ${
+                          pollerVerdicts[m.pollerId] === "stopped"
+                            ? "bg-vermilion/10 text-vermilion"
+                            : "bg-line-soft text-ink-soft"
+                        }`}
+                      >
+                        {pollerVerdicts[m.pollerId] === "stopped"
+                          ? "멈춤"
+                          : "처리 중"}
                       </span>
                     )}
                     {m.planned && (
