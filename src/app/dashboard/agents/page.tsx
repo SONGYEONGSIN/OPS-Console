@@ -8,7 +8,7 @@ import { buildJobLabels, resolveTeam } from "@/features/agent-org/resolve";
 import { loadAgentUsage } from "@/features/agent-org/usage";
 import { loadPollerStatuses } from "@/features/system-status/queries";
 import { AgentBoard } from "./_components/AgentBoard";
-import type { AgentCardMember } from "./_components/AgentCard";
+import type { AgentRow } from "./_components/agent-row";
 
 /**
  * 에이전트 관제탑.
@@ -35,7 +35,7 @@ export default async function AgentsPage({
   const { team } = await searchParams;
 
   const labels = buildJobLabels(AUTOMATION_JOBS);
-  const members: AgentCardMember[] = AGENT_TEAMS.flatMap((t) => {
+  const members: AgentRow[] = AGENT_TEAMS.flatMap((t) => {
     const resolved = resolveTeam(t, labels);
     return resolved.members.map((m) => ({
       agent: m.agent,
