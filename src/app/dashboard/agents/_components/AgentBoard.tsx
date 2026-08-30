@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { AgentKpi } from "./AgentKpi";
 import type { AgentRow } from "./agent-row";
 import type { AgentUsage } from "@/features/agent-org/usage";
+import { getAgentActivity } from "@/features/agent-org/activity";
+import type { ActivityItem } from "@/features/agent-org/activity-shape";
 import { kstFormat } from "@/lib/kst-format";
 
 /**
@@ -21,6 +23,15 @@ import { kstFormat } from "@/lib/kst-format";
 
 const timeFmt = kstFormat({ hour: "2-digit", minute: "2-digit" });
 const dateFmt = kstFormat({ month: "2-digit", day: "2-digit" });
+
+/** 결과 한 마디. '건너뜀'은 실패가 아니다 — 자동 실행이 꺼져 있었을 뿐이다. */
+const OUTCOME_LABEL: Record<string, string> = {
+  ok: "완료",
+  fail: "실패",
+  skip: "건너뜀",
+  running: "도는 중",
+  pending: "대기",
+};
 
 /** 막대 높이 — 값이 아니라 상대 크기만 보여준다. */
 const BARS = ["▁", "▂", "▃", "▄", "▅", "▆", "▇"];
@@ -54,6 +65,29 @@ export function AgentBoard({
   team?: string;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
+  /**
+   * 에이전트별 최근 활동. 인스펙터를 열 때만 가져오고, 한 번 받은 건 남겨 둔다 —
+   * 행을 오가며 볼 때 같은 것을 다시 부르지 않는다.
+   *
+   * effect 안에서 **동기 setState 를 하지 않는다**(react-hooks/set-state-in-effect).
+   * '읽는 중'은 상태를 비워서가 아니라 **캐시에 아직 없음**으로 판정한다.
+   */
+  const [activityByAgent, setActivityByAgent] = useState<
+    Record<string, ActivityItem[]>
+  >({});
+
+  useEffect(() => {
+    if (!selected || activityByAgent[selected]) return;
+    let alive = true;
+    void getAgentActivity(selected).then((items) => {
+      if (alive) setActivityByAgent((prev) => ({ ...prev, [selected]: items }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [selected, activityByAgent]);
+
+  const activity = selected ? (activityByAgent[selected] ?? null) : null;
 
   const teams = [...new Set(members.map((m) => m.team))];
   const shown = team ? members.filter((m) => m.team === team) : members;
@@ -256,6 +290,42 @@ export function AgentBoard({
                 </p>
               </Section>
             )}
+
+            <Section label="최근 활동">
+              {activity === null ? (
+                <p className="text-xs text-muted">읽는 중…</p>
+              ) : activity.length === 0 ? (
+                <p className="text-xs text-muted">
+                  최근 활동이 없습니다. 실행 이력이 남는 자리가 아니거나 아직 안
+                  돌았습니다.
+                </p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {activity.map((a, i) => (
+                    <li key={`${a.at}-${i}`} className="flex items-baseline gap-2">
+                      <span className="shrink-0 font-mono text-2xs text-muted">
+                        {timeFmt.format(new Date(a.at))}
+                      </span>
+                      <span
+                        className={`shrink-0 text-2xs ${
+                          a.outcome === "fail"
+                            ? "text-vermilion"
+                            : "text-ink-soft"
+                        }`}
+                      >
+                        {OUTCOME_LABEL[a.outcome]}
+                      </span>
+                      {/* 실패 사유는 요약하지 않는다 — 왜 안 됐는지가 조치다. */}
+                      {a.note && (
+                        <span className="min-w-0 break-all text-2xs text-muted">
+                          {a.note}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Section>
 
             <Section label="사용량">
               {usage[current.agent]?.daily ? (
