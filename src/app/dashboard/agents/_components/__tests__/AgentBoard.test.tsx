@@ -123,6 +123,16 @@ describe("AgentBoard — 목록", () => {
     expect(screen.getByText("3건")).toHaveClass("text-vermilion");
   });
 
+  it("표 머리글이 다른 표와 같은 규격이다 — uppercase · py-2 · px-3", () => {
+    render1();
+    const head = screen.getByTestId("agent-thead");
+    // 위쪽 패딩이 없어 제목에 붙어 보였다. 표준은 py-2 다.
+    expect(head).toHaveClass("py-2");
+    expect(head).toHaveClass("px-3");
+    expect(head).toHaveClass("uppercase");
+    expect(head).not.toHaveClass("font-medium");
+  });
+
   it("표에 머리글이 있다 — 숫자만 있고 무엇인지 없으면 못 읽는다", () => {
     render1();
     const head = screen.getByTestId("agent-thead");
