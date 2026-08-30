@@ -69,7 +69,8 @@ export default async function AgentsPage({
         description={config.description}
         autoRefresh
       />
-      <div className="p-5 lg:p-7">
+      {/* 다른 목록 메뉴(ListPattern)의 section 과 같은 p-7 */}
+      <div className="p-7">
         <AgentBoard
           members={members}
           verdicts={verdicts}

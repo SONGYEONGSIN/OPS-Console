@@ -111,9 +111,16 @@ describe("AgentBoard — 목록", () => {
     ).toHaveTextContent("기록 없음");
   });
 
-  it("표 위에 제목을 둔다", () => {
+  it("제목은 다른 목록 메뉴와 같은 규격이다 — text-xl font-bold", () => {
     render1();
-    expect(screen.getByRole("heading", { name: /에이전트/ })).toBeInTheDocument();
+    const h = screen.getByRole("heading", { name: "에이전트" });
+    expect(h).toHaveClass("text-xl");
+    expect(h).toHaveClass("font-bold");
+  });
+
+  it("건수는 제목 옆에 vermilion 으로 — ListPattern 과 같다", () => {
+    render1();
+    expect(screen.getByText("3건")).toHaveClass("text-vermilion");
   });
 
   it("표에 머리글이 있다 — 숫자만 있고 무엇인지 없으면 못 읽는다", () => {
