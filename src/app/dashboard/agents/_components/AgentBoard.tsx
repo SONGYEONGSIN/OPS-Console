@@ -237,9 +237,9 @@ export function AgentBoard({
                       : "hover:bg-line-soft"
                   }`}
                 >
-                  <td className="px-3 py-2.5 text-2xs text-muted">{m.team}</td>
+                  <td className="px-3 py-2.5 text-ink-soft">{m.team}</td>
                   <td className="px-3 py-2.5">
-                    <span className="block text-xs text-ink">
+                    <span className="block text-ink">
                       {m.detail || m.role}
                       {m.llm && <span className="ml-1 text-vermilion">✦</span>}
                     </span>
@@ -247,13 +247,13 @@ export function AgentBoard({
                       {m.agent}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-2xs">
-                    <span className="block text-muted">
+                  <td className="px-3 py-2.5">
+                    <span className="block text-ink-soft">
                       {m.planned ? "예정" : m.driver}
                     </span>
                     {verdict ? (
                       <span
-                        className={`block ${
+                        className={`block text-2xs ${
                           verdict === "stopped"
                             ? "text-vermilion"
                             : "text-ink-soft"
@@ -270,20 +270,20 @@ export function AgentBoard({
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-xs tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right tabular-nums text-ink">
                     {u?.today === null || u === undefined ? (
                       <span className="text-2xs text-muted">—</span>
                     ) : (
                       u.today
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-xs text-ink-soft">
+                  <td className="px-3 py-2.5 text-right font-mono text-ink-soft">
                     {u?.daily ? spark(u.daily) : ""}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-2xs text-muted">
+                  <td className="px-3 py-2.5 text-right text-ink-soft">
                     {lastLabel(u?.lastAt ?? null)}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-xs tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right tabular-nums text-ink">
                     {!m.llm ? "" : c ? `$${c.costUsd.toFixed(2)}` : "—"}
                   </td>
                 </tr>

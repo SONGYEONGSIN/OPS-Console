@@ -107,3 +107,28 @@ describe("AgentBoard — 표준 표", () => {
     expect(screen.getByRole("table").className).toMatch(/min-w-\[/);
   });
 });
+
+/**
+ * 표준 표 29개가 전부 `<table className="w-full text-sm">` 이고 칸은 그 크기를
+ * **물려받는다.** 작은 글씨(`text-2xs`)는 이름 밑 id 같은 **덧줄**에만 쓴다.
+ *
+ * 이 표는 칸 값 자체에까지 `text-2xs`·`text-xs` 를 박아, 같은 행 안에서 팀은
+ * 작고 건수는 크고 마지막은 또 작았다.
+ */
+describe("AgentBoard — 글자 크기·색", () => {
+  it("칸 값은 표의 크기를 물려받는다 — 칸마다 크기를 박지 않는다", () => {
+    render1();
+    const tds = [
+      ...screen.getByRole("row", { name: /assistant-runner/ }).querySelectorAll("td"),
+    ];
+    for (const td of tds) {
+      expect(td.className, td.textContent ?? "").not.toMatch(/text-(2xs|xs|base|lg)/);
+    }
+  });
+
+  it("덧줄만 작게 쓴다 — id 는 이름 밑에 붙는 줄이다", () => {
+    render1();
+    const id = screen.getByText("assistant-runner");
+    expect(id.className).toMatch(/text-2xs/);
+  });
+});
