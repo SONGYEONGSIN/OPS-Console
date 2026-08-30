@@ -296,12 +296,23 @@ export function AgentBoard({
       <InspectorPanel open={current !== null} onClose={() => setSelected(null)}>
         {current && (
           <div data-testid="agent-inspector" className="flex flex-col gap-6">
-            <div>
-              <p className="font-mono text-sm text-ink">{current.agent}</p>
-              <p className="mt-0.5 text-xs text-muted">
-                {current.detail || current.role} · {current.team}
+            {/* 다른 메뉴 인스펙터(InspectorChrome)와 같은 머리 — 눈썹 문구,
+                굵은 제목, 아래 굵은 구분선. 여기만 자체 머리라 제목이 본문
+                글씨만 하고 구분선이 없어 어디까지가 머리인지 안 보였다.
+                상태 뱃지·편집 토글은 안 붙인다 — 에이전트에는 그 개념이
+                없고, 흉내 내면 없는 상태를 있는 것처럼 그리게 된다. */}
+            <header className="border-b-2 border-ink pb-4">
+              <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+                인스펙터 · 에이전트
               </p>
-            </div>
+              <h3 className="mt-1 text-xl font-bold tracking-[-0.01em] text-ink">
+                {current.detail || current.role}
+              </h3>
+              <p className="mt-1 text-xs text-muted">
+                <span className="font-mono">{current.agent}</span> ·{" "}
+                {current.team}
+              </p>
+            </header>
 
             {/* 회사 PC 와 무관한 에이전트에는 연결을 말하지 않는다. */}
             {current.pollerId && verdicts[current.pollerId] && (
@@ -315,7 +326,7 @@ export function AgentBoard({
                 >
                   {verdicts[current.pollerId] === "stopped" ? "멈춤" : "처리 중"}
                 </p>
-                <p className="mt-0.5 text-2xs text-muted">
+                <p className="mt-0.5 text-xs text-muted">
                   회사 PC 폴러 · 판정은 시스템 상태 화면과 같은 기준입니다
                 </p>
               </Section>
@@ -333,11 +344,11 @@ export function AgentBoard({
                 <ul className="space-y-1.5">
                   {activity.map((a, i) => (
                     <li key={`${a.at}-${i}`} className="flex items-baseline gap-2">
-                      <span className="shrink-0 font-mono text-2xs text-muted">
+                      <span className="shrink-0 font-mono text-xs text-muted">
                         {timeFmt.format(new Date(a.at))}
                       </span>
                       <span
-                        className={`shrink-0 text-2xs ${
+                        className={`shrink-0 text-xs ${
                           a.outcome === "fail"
                             ? "text-vermilion"
                             : "text-ink-soft"
@@ -347,7 +358,7 @@ export function AgentBoard({
                       </span>
                       {/* 실패 사유는 요약하지 않는다 — 왜 안 됐는지가 조치다. */}
                       {a.note && (
-                        <span className="min-w-0 break-all text-2xs text-muted">
+                        <span className="min-w-0 break-all text-xs text-muted">
                           {a.note}
                         </span>
                       )}
@@ -363,12 +374,12 @@ export function AgentBoard({
                   <p className="font-mono text-lg text-ink">
                     {spark(usage[current.agent]!.daily!)}
                   </p>
-                  <p className="mt-1 text-2xs text-muted">
+                  <p className="mt-1 text-xs text-muted">
                     최근 {usage[current.agent]!.daily!.length}일 ·{" "}
                     {usage[current.agent]!.daily!.join(" · ")}
                   </p>
                   {/* 여기엔 원래 값이 있으니 높이가 상대값이라는 것만 덧붙인다. */}
-                  <p className="mt-1 text-2xs text-muted">
+                  <p className="mt-1 text-xs text-muted">
                     막대는 이 에이전트 최대값 기준입니다 — 다른 에이전트와 높이를
                     견주지 마세요.
                   </p>
@@ -437,7 +448,7 @@ export function AgentBoard({
                         },
                       ]}
                     />
-                    <p className="text-2xs text-muted">
+                    <p className="text-xs text-muted">
                       최근 7일 · 실행{" "}
                       <span className="tabular-nums">
                         {cost[current.agent]!.runs}
