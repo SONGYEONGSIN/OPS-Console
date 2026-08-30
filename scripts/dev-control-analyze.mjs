@@ -79,9 +79,12 @@ const mergeFlags = (prev, next) => {
 
 const argIds = process.argv.slice(2).map(Number).filter(Boolean);
 const { data: services, error } = await sb.from("services")
-  .select("service_id").not("service_id", "is", null);
+  .select("service_id, operator_name").not("service_id", "is", null);
 if (error) { console.error(error.message); process.exit(1); }
 const ids = argIds.length ? argIds : [...new Set(services.map((s) => s.service_id))];
+// 세팅 변경을 개인에 귀속하려면 담당자가 필요하다. 관측 시점 스냅샷이라
+// 담당이 바뀌어도 과거 이력은 그때 담당자로 남는다.
+const operatorById = new Map(services.map((s) => [s.service_id, s.operator_name ?? null]));
 
 // 접수구분이 호스트를 정한다 — 공통원서와 반응형원서는 호스트만 다르다.
 const { data: admissions } = await sb.from("closing_services")
@@ -123,12 +126,23 @@ for (const id of ids) {
         failed++;
         console.error(`[dev-control] 분석 실패 ${id}/${genFlag}/${f.kind}: ${e.message} — raw만 저장`);
       }
+      const observedAt = new Date().toISOString();
       const { error: upErr } = await sb.from("dev_control_analyses").upsert({
         service_id: id, gen_flag: genFlag, kind: f.kind, file_name: f.fileName, code_hash: hash,
-        raw_code: f.content, summary_md, flags, analyzed_at: new Date().toISOString(),
+        raw_code: f.content, summary_md, flags, analyzed_at: observedAt,
       }, { onConflict: "service_id,file_name" });
       if (upErr) { failed++; console.error(`[dev-control] upsert 실패: ${upErr.message}`); }
       else analyzed++;
+      // 여기까지 왔다는 건 해시가 달라졌다는 뜻 — 세팅이 바뀐 사건이다.
+      // upsert 는 최신 상태만 남기므로 사건 자체는 여기서 append 해야 남는다.
+      const { error: hisErr } = await sb.from("dev_control_setting_changes").insert({
+        service_id: id, file_name: f.fileName, gen_flag: genFlag, kind: f.kind,
+        code_hash: hash, prev_code_hash: prev?.code_hash ?? null,
+        operator_name: operatorById.get(id) ?? null, observed_at: observedAt,
+      });
+      // 이력이 안 남아도 분석은 계속한다. 다만 조용히 넘기면 성과가 비는 걸
+      // 아무도 모른다 — 실패를 소리 내어 센다.
+      if (hisErr) { failed++; console.error(`[dev-control] 이력 적재 실패 ${id}/${f.fileName}: ${hisErr.message}`); }
     }
   }
 }
