@@ -10,6 +10,9 @@ import { listAssignmentsForUser } from "@/features/performance/queries";
 import { createCycleWithAssignment } from "@/features/performance/actions";
 import { OPERATORS } from "@/features/auth/operators";
 import { AdminSummary } from "./_AdminSummary";
+import { OutcomesTabs } from "./OutcomesTabs";
+import { OrgGoalsSection } from "./OrgGoalsSection";
+import { listOrgGoals } from "@/features/performance/org-goals";
 import type { Step } from "@/features/performance/schemas";
 import { ListPagination } from "@/components/common/ListPagination";
 import { paginateRows } from "@/lib/list/paginate";
@@ -21,7 +24,7 @@ import { paginateRows } from "@/lib/list/paginate";
 export default async function OutcomesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; tab?: string }>;
 }) {
   const slug = "outcomes";
   await requireMenu(slug);
@@ -29,7 +32,7 @@ export default async function OutcomesPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
-  const { page } = await searchParams;
+  const { page, tab } = await searchParams;
 
   const me = await getCurrentOperator();
   const isAdmin = canEditOperators(me?.permission ?? null);
@@ -68,8 +71,22 @@ export default async function OutcomesPage({
           <AdminSummary stepCounts={stepCounts} teamSize={teamSize} />
         </div>
       ) : null}
+      <div className="pt-4">
+        <OutcomesTabs />
+      </div>
     </>
   );
+
+  // 조직 목표 탭 — 목록 자체가 다르므로 ListPattern 을 태우지 않는다.
+  if (tab === "org-goals") {
+    const goals = await listOrgGoals();
+    return (
+      <>
+        {header}
+        <OrgGoalsSection goals={goals} />
+      </>
+    );
+  }
 
   // 신규(+ 새 사이클): 팀원 선택 + 사이클명 → cycle+assignment 생성 (관리자=본인).
   // 기존 assignment 편집(목표/지표/루브릭)은 상세 페이지에서 처리.

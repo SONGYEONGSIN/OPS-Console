@@ -50,7 +50,7 @@ function periodOfCycle(cycle: {
 }
 
 /** source_key별 aggregator 실행 — 미매칭 소스는 null. */
-async function computeQuant(
+export async function computeQuant(
   supabase: Awaited<ReturnType<typeof createClient>>,
   sourceKey: string,
   evaluateeEmail: string,
