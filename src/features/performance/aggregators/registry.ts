@@ -51,6 +51,14 @@ export const AGGREGATOR_REGISTRY = {
     description:
       "기간 내 본인이 돌린 원서 테스트. 실패도 센다 — 깨진 걸 찾는 일이라 실패를 빼면 일을 많이 한 사람이 적게 한 것으로 보인다",
   },
+  "dev-control-changes": {
+    label: "원서접수 세팅 변경",
+    unit: "건",
+    kind: "count",
+    source: "dev_control_setting_changes",
+    description:
+      "기간 내 본인 담당 서비스의 GEN 세팅(WA/WB/PA/PB…) 변경 관측. 수집이 수동 실행이라 실행 사이의 여러 수정은 한 건으로 뭉친다 — '횟수'가 아니라 '관측'이다",
+  },
 } as const;
 
 export type AggregatorKey = keyof typeof AGGREGATOR_REGISTRY;

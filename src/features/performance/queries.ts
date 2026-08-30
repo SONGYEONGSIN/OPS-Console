@@ -23,6 +23,7 @@ import { aggregateIncidents } from "./aggregators/incidents";
 import { aggregateAiWork } from "./aggregators/ai-work";
 import { aggregateSavedHours } from "./aggregators/saved-hours";
 import { aggregateEntertest } from "./aggregators/entertest";
+import { aggregateDevControl } from "./aggregators/dev-control";
 import { aggregateAnnouncement } from "./aggregators/announcement";
 import {
   effectiveAchievement,
@@ -94,6 +95,16 @@ async function computeQuant(
       .select("operator_name, last_announce_at")
       .eq("operator_name", operatorName ?? "__none__");
     return aggregateAnnouncement(data ?? [], operatorName, period);
+  }
+  if (sourceKey === "dev-control-changes") {
+    // 이력이 services.operator_name 스냅샷을 들고 있어 이 갈래도 이름으로 맞춘다.
+    const operatorName =
+      OPERATORS.find((o) => o.email === evaluateeEmail)?.name ?? null;
+    const { data } = await supabase
+      .from("dev_control_setting_changes")
+      .select("operator_name, prev_code_hash, observed_at")
+      .eq("operator_name", operatorName ?? "__none__");
+    return aggregateDevControl(data ?? [], operatorName, period);
   }
   if (sourceKey === "entertest-runs") {
     const { data } = await supabase
