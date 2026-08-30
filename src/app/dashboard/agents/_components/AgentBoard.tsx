@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Section, DefList } from "../../_components/inspector/list-variants/shared";
+import {
+  Section,
+  DefList,
+  Divider,
+} from "../../_components/inspector/list-variants/shared";
+import { agentStatus } from "@/features/agent-org/agent-status";
 import type { AgentCost } from "@/features/agent-org/cost-fold";
 import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { AgentKpi } from "./AgentKpi";
@@ -302,16 +307,41 @@ export function AgentBoard({
                 상태 뱃지·편집 토글은 안 붙인다 — 에이전트에는 그 개념이
                 없고, 흉내 내면 없는 상태를 있는 것처럼 그리게 된다. */}
             <header className="border-b-2 border-ink pb-4">
-              <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
-                인스펙터 · 에이전트
-              </p>
-              <h3 className="mt-1 text-xl font-bold tracking-[-0.01em] text-ink">
-                {current.detail || current.role}
-              </h3>
-              <p className="mt-1 text-xs text-muted">
-                <span className="font-mono">{current.agent}</span> ·{" "}
-                {current.team}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+                    인스펙터 · 에이전트
+                  </p>
+                  <h3 className="mt-1 text-xl font-bold tracking-[-0.01em] text-ink">
+                    {current.detail || current.role}
+                  </h3>
+                  <p className="mt-1 text-xs text-muted">
+                    <span className="font-mono">{current.agent}</span> ·{" "}
+                    {current.team}
+                  </p>
+                </div>
+                {/* 아는 것만 적는다 — '가동'이라고 적어 놓고 한 달째 안 돈
+                    잡이면 뱃지가 사람을 속인다(agent-status.ts). */}
+                {(() => {
+                  const st = agentStatus({
+                    planned: current.planned,
+                    verdict: current.pollerId
+                      ? verdicts[current.pollerId]
+                      : undefined,
+                    lastAt: usage[current.agent]?.lastAt ?? null,
+                  });
+                  return (
+                    <div
+                      aria-hidden
+                      data-agent-status
+                      className={`flex h-12 w-12 flex-shrink-0 flex-col items-center justify-center rounded-full text-[10px] leading-tight text-cream ${st.ring}`}
+                    >
+                      <span className="text-base">★</span>
+                      <span>{st.label}</span>
+                    </div>
+                  );
+                })()}
+              </div>
             </header>
 
             {/* 회사 PC 와 무관한 에이전트에는 연결을 말하지 않는다. */}
@@ -331,6 +361,10 @@ export function AgentBoard({
                 </p>
               </Section>
             )}
+
+            {/* 구분선은 섹션 사이에만. 연결이 없는 잡에서 이게 그대로 남으면
+                머리의 굵은 선 바로 밑에 얇은 선이 겹쳐 두 줄로 보인다. */}
+            {current.pollerId && verdicts[current.pollerId] && <Divider />}
 
             <Section title="최근 활동">
               {activity === null ? (
@@ -368,6 +402,8 @@ export function AgentBoard({
               )}
             </Section>
 
+            <Divider />
+
             <Section title="사용량">
               {usage[current.agent]?.daily ? (
                 <>
@@ -396,6 +432,7 @@ export function AgentBoard({
 
             {/* 비 LLM 에는 토큰 이야기를 아예 안 한다 — 비용 개념이 없는데
                 '없음'이라고 적으면 못 센 것처럼 읽힌다. */}
+            {current.llm && <Divider />}
             {current.llm && (
               <Section title="토큰 · 비용">
                 {cost[current.agent] ? (
