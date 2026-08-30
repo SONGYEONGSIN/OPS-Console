@@ -147,7 +147,9 @@ describe("AgentBoard — 목록", () => {
     expect(head).toHaveClass("py-2");
     expect(head).toHaveClass("px-3");
     expect(head).toHaveClass("uppercase");
-    expect(head).not.toHaveClass("font-medium");
+    // 다른 표는 <th> 라 브라우저 기본 볼드가 붙는다(preflight 는 h1~h6 만
+    // 리셋한다). 여기는 div+span 이라 그 기본이 없어 혼자 얇았다.
+    expect(head).toHaveClass("font-bold");
   });
 
   /**

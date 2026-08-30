@@ -169,7 +169,10 @@ export function AgentBoard({
         {/* 머리글 — 숫자만 있고 무엇인지 없으면 못 읽는다. */}
         <div
           data-testid="agent-thead"
-          className="flex min-w-[820px] items-center gap-3 border-b border-line px-3 py-2 text-left text-xs uppercase tracking-[0.06em] text-muted"
+          /* font-bold 를 손으로 붙인다 — 다른 표는 <th> 라 브라우저 기본 볼드가
+             그대로 살아 있고(preflight 는 h1~h6 만 리셋한다), 여기는 div+span
+             이라 그 기본이 없어 혼자 얇았다. 클래스는 같은데 결과가 달랐다. */
+          className="flex min-w-[820px] items-center gap-3 border-b border-line px-3 py-2 font-bold text-left text-xs uppercase tracking-[0.06em] text-muted"
         >
           <span data-col="팀" className="w-16 shrink-0">
             팀
