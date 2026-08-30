@@ -11,6 +11,7 @@ import {
   GRADE_VALUES,
   GRADE_DESCRIPTION_PERFORMANCE,
   GRADE_DESCRIPTION_COMPETENCY,
+  metricCreateSchema,
 } from "../schemas";
 
 describe("performance schemas — enums", () => {
@@ -174,5 +175,46 @@ describe("reviewRowSchema — step/role/grade 매트릭스", () => {
         grade_performance: "X",
       }),
     ).toThrow();
+  });
+});
+
+/**
+ * 목표 기반 지표 — 목표값이 있어야 달성률을 계산할 수 있다.
+ * 없던 시절엔 사람이 달성률을 손으로 넣었다.
+ */
+describe("metricCreateSchema — 목표", () => {
+  const base = {
+    assignment_id: "11111111-1111-4111-8111-111111111111",
+    name: "지표",
+    weight: 20,
+  };
+
+  it("목표값·단위·방향을 받는다", () => {
+    const r = metricCreateSchema.safeParse({
+      ...base,
+      target_value: 30,
+      unit: "건",
+      lower_is_better: true,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("목표를 안 넣어도 된다 — 수동 지표는 목표 없이 쓰던 대로 둔다", () => {
+    expect(metricCreateSchema.safeParse(base).success).toBe(true);
+  });
+
+  /**
+   * 목표 0 은 나눌 수 없다. 화면에서 막지 않으면 달성률이 조용히 null 이 되고
+   * 그 지표는 영영 0점으로 남는다.
+   */
+  it("목표 0 은 거절한다 — 나눌 수 없다", () => {
+    const r = metricCreateSchema.safeParse({ ...base, target_value: 0 });
+    expect(r.success).toBe(false);
+  });
+
+  it("음수 목표도 거절한다", () => {
+    expect(
+      metricCreateSchema.safeParse({ ...base, target_value: -5 }).success,
+    ).toBe(false);
   });
 });
