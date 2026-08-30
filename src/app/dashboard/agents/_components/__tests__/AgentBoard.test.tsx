@@ -1,10 +1,27 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+const { activitySpy, activity } = vi.hoisted(() => ({
+  activitySpy: vi.fn(),
+  activity: {
+    value: [
+      { at: "2026-08-30T10:00:00+09:00", outcome: "ok", note: null },
+      { at: "2026-08-30T09:00:00+09:00", outcome: "fail", note: "Graph 500" },
+    ] as { at: string; outcome: string; note: string | null }[],
+  },
+}));
 
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
   ),
+}));
+
+vi.mock("@/features/agent-org/activity", () => ({
+  getAgentActivity: (agent: string) => {
+    activitySpy(agent);
+    return Promise.resolve(activity.value);
+  },
 }));
 
 import { AgentBoard } from "../AgentBoard";
@@ -225,5 +242,37 @@ describe("AgentBoard — 인스펙터", () => {
     expect(screen.getByTestId("agent-inspector")).toHaveTextContent(
       "ratio-poller",
     );
+  });
+});
+
+/**
+ * 요청의 2번 — "에이전트별 실시간 작동 로그". 지금까지 인스펙터엔 연결·사용량만
+ * 있었고 "무엇을 언제 했나"가 없었다.
+ */
+describe("AgentBoard — 활동 로그", () => {
+  it("행을 열면 그 에이전트의 활동을 가져온다", async () => {
+    activitySpy.mockClear();
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    await waitFor(() =>
+      expect(activitySpy).toHaveBeenCalledWith("assistant-runner"),
+    );
+  });
+
+  it("실패는 사유를 그대로 보여준다 — 요약하면 왜 안 됐는지 모른다", async () => {
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    expect(await screen.findByText(/Graph 500/)).toBeInTheDocument();
+  });
+
+  it("활동이 없으면 없다고 말한다 — 빈 칸만 두지 않는다", async () => {
+    activity.value = [];
+    render1();
+    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    expect(await screen.findByText(/최근 활동이 없습니다/)).toBeInTheDocument();
+    activity.value = [
+      { at: "2026-08-30T10:00:00+09:00", outcome: "ok", note: null },
+      { at: "2026-08-30T09:00:00+09:00", outcome: "fail", note: "Graph 500" },
+    ];
   });
 });
