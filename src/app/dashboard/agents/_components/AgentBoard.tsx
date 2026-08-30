@@ -193,8 +193,15 @@ export function AgentBoard({
               <th data-col="오늘" className="px-3 py-2 text-right">
                 오늘
               </th>
-              <th data-col="7일" className="px-3 py-2 text-right">
-                7일
+              {/* 막대는 그 에이전트 자기 최대값 기준이라(spark 의 n/max) 144건짜리와
+                  1건짜리의 가장 높은 막대가 같은 높이다. 머리글이 `7일` 뿐이면
+                  행끼리 비교하게 된다. */}
+              <th
+                data-col="7일"
+                title="최근 7일 일별 실행 건수. 막대 높이는 그 에이전트 자기 최대값 기준이라 행끼리 견주면 틀립니다."
+                className="px-3 py-2 text-right"
+              >
+                7일 추이
               </th>
               <th data-col="마지막" className="px-3 py-2 text-right">
                 마지막
@@ -341,6 +348,11 @@ export function AgentBoard({
                   <p className="mt-1 text-2xs text-muted">
                     최근 {usage[current.agent]!.daily!.length}일 ·{" "}
                     {usage[current.agent]!.daily!.join(" · ")}
+                  </p>
+                  {/* 여기엔 원래 값이 있으니 높이가 상대값이라는 것만 덧붙인다. */}
+                  <p className="mt-1 text-2xs text-muted">
+                    막대는 이 에이전트 최대값 기준입니다 — 다른 에이전트와 높이를
+                    견주지 마세요.
                   </p>
                   <p className="mt-2 text-xs text-ink-soft">
                     마지막 실행 {lastLabel(usage[current.agent]!.lastAt)}
