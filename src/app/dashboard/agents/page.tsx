@@ -5,6 +5,7 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { AUTOMATION_JOBS } from "@/features/automations/registry";
 import { AGENT_TEAMS } from "@/features/agent-org/registry";
 import { buildJobLabels, resolveTeam } from "@/features/agent-org/resolve";
+import { loadAgentCost } from "@/features/agent-org/cost";
 import { loadAgentUsage } from "@/features/agent-org/usage";
 import { loadPollerStatuses } from "@/features/system-status/queries";
 import { AgentBoard } from "./_components/AgentBoard";
@@ -52,9 +53,10 @@ export default async function AgentsPage({
     }));
   });
 
-  const [statuses, usage] = await Promise.all([
+  const [statuses, usage, cost] = await Promise.all([
     loadPollerStatuses(),
     loadAgentUsage(),
+    loadAgentCost(),
   ]);
   const verdicts = Object.fromEntries(statuses.map((s) => [s.id, s.verdict]));
 
@@ -75,6 +77,7 @@ export default async function AgentsPage({
           members={members}
           verdicts={verdicts}
           usage={usage}
+          cost={cost}
           team={team}
         />
       </div>
