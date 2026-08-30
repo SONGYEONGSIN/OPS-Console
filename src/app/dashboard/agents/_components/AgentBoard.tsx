@@ -133,7 +133,7 @@ export function AgentBoard({
         {/* 머리글 — 숫자만 있고 무엇인지 없으면 못 읽는다. */}
         <div
           data-testid="agent-thead"
-          className="flex items-center gap-3 border-b border-line px-3 py-2 text-xs uppercase tracking-[0.06em] text-muted"
+          className="flex items-center gap-3 border-b border-line px-3 py-2 text-left text-xs uppercase tracking-[0.06em] text-muted"
         >
           <span data-col="팀" className="w-16 shrink-0">
             팀
