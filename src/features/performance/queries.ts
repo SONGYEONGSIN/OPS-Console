@@ -23,6 +23,7 @@ import { aggregateIncidents } from "./aggregators/incidents";
 import { aggregateAiWork } from "./aggregators/ai-work";
 import { aggregateSavedHours } from "./aggregators/saved-hours";
 import { aggregateEntertest } from "./aggregators/entertest";
+import { aggregateAnnouncement } from "./aggregators/announcement";
 import {
   effectiveAchievement,
   type AchievementSource,
@@ -83,6 +84,16 @@ async function computeQuant(
       .select("author_email, saved_hours, created_at")
       .eq("author_email", evaluateeEmail);
     return aggregateSavedHours(data ?? [], evaluateeEmail, period);
+  }
+  if (sourceKey === "announcement-services") {
+    // 총괄장이 이름으로 배정하므로 이 갈래만 이름으로 맞춘다(마감과 같은 사정).
+    const operatorName =
+      OPERATORS.find((o) => o.email === evaluateeEmail)?.name ?? null;
+    const { data } = await supabase
+      .from("announcement_services")
+      .select("operator_name, last_announce_at")
+      .eq("operator_name", operatorName ?? "__none__");
+    return aggregateAnnouncement(data ?? [], operatorName, period);
   }
   if (sourceKey === "entertest-runs") {
     const { data } = await supabase

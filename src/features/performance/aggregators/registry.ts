@@ -35,6 +35,14 @@ export const AGGREGATOR_REGISTRY = {
     description:
       "기간 내 AI 결과물의 절감시간 합. 건수보다 '몇 시간을 아꼈나'가 성과에 가깝다",
   },
+  "announcement-services": {
+    label: "합격자발표 서비스",
+    unit: "건",
+    kind: "count",
+    source: "announcement_services",
+    description:
+      "기간 내 본인 담당 발표 건수. 담당은 총괄장에서 이름으로 맞춰 채운다 — 못 맞춘 대학은 '미매칭'으로 드러난다",
+  },
   "entertest-runs": {
     label: "원서 테스트 실행",
     unit: "건",
