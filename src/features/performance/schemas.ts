@@ -158,8 +158,14 @@ export const metricRowSchema = z.object({
   /** before/after 수동 입력 (시간절감·오류율 등) */
   before_value: z.number().nullable(),
   after_value: z.number().nullable(),
-  /** 달성률 0~100 (scoring 입력) */
+  /** 달성률 0~100 (scoring 입력). 목표값이 있으면 서버가 계산해 채운다. */
   achievement: z.number().min(0).max(100).nullable(),
+  /** 이 지표의 목표. 실적/목표로 달성률이 나온다. */
+  target_value: z.number().nullable(),
+  /** 건·시간·% 등. 숫자만 있으면 무엇을 세는지 모른다. */
+  unit: z.string().nullable(),
+  /** 줄이는 게 목표인 지표(사고 건수·처리 시간). */
+  lower_is_better: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -173,6 +179,13 @@ export const metricCreateSchema = z.object({
   before_value: z.number().nullable().optional(),
   after_value: z.number().nullable().optional(),
   achievement: z.number().min(0).max(100).nullable().optional(),
+  /**
+   * 목표값. **0 을 거절한다** — 나눌 수 없어서 달성률이 조용히 null 이 되고
+   * 그 지표는 영영 0점으로 남는다. 음수도 목표가 될 수 없다.
+   */
+  target_value: z.number().positive().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  lower_is_better: z.boolean().optional(),
 });
 export type MetricCreate = z.infer<typeof metricCreateSchema>;
 

@@ -83,6 +83,9 @@ export default async function OutcomeDetailPage({
           achievement: m.achievement,
           sourceKey: m.source_key,
           quant: m.quant,
+          target: m.target_value,
+          unit: m.unit,
+          effective: m.effective,
         }))}
         rubric={detail.rubric.map((r) => ({
           id: r.id,

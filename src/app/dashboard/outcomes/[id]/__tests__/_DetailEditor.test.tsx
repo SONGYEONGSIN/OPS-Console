@@ -50,3 +50,64 @@ describe("OutcomeDetailEditor", () => {
     expect(screen.getByText("A")).toBeInTheDocument();
   });
 });
+
+/**
+ * "목표 기반" — 지금까지 달성률은 사람이 손으로 넣는 값이었다. 목표를 등록하면
+ * 실적/목표로 저절로 나온다.
+ */
+describe("OutcomeDetailEditor — 목표 기반 달성률", () => {
+  const withTarget = {
+    ...baseProps,
+    metrics: [
+      {
+        id: "m1",
+        name: "지표A",
+        weight: 40,
+        achievement: 10,
+        sourceKey: "ai-work-hours",
+        quant: { value: 15, unit: "시간" },
+        effective: { value: 75, source: "auto" as const },
+        target: 20,
+        unit: "시간",
+      },
+      {
+        id: "m2",
+        name: "지표B",
+        weight: 40,
+        achievement: 50,
+        sourceKey: null,
+        quant: null,
+        effective: { value: 50, source: "manual" as const },
+        target: null,
+        unit: null,
+      },
+    ],
+  };
+
+  it("목표가 있으면 실적/목표를 함께 보여준다", () => {
+    render(<OutcomeDetailEditor {...withTarget} />);
+    expect(screen.getByText(/15\s*\/\s*20시간/)).toBeInTheDocument();
+  });
+
+  /**
+   * 계산값이 손입력을 덮는다. 손입력 10 이 남아 있어도 화면은 75 여야 한다 —
+   * 아니면 화면과 실제가 갈린다.
+   */
+  it("계산된 달성률을 쓴다 — 손입력을 덮는다", () => {
+    render(<OutcomeDetailEditor {...withTarget} />);
+    expect(screen.getByText(/달성률 75%/)).toBeInTheDocument();
+    expect(screen.queryByText(/달성률 10%/)).not.toBeInTheDocument();
+  });
+
+  it("자동인지 손입력인지 밝힌다 — 숫자만 보면 어디서 왔는지 모른다", () => {
+    render(<OutcomeDetailEditor {...withTarget} />);
+    expect(screen.getByText(/자동/)).toBeInTheDocument();
+    expect(screen.getByText(/직접 입력/)).toBeInTheDocument();
+  });
+
+  it("점수도 계산된 달성률로 낸다", () => {
+    render(<OutcomeDetailEditor {...withTarget} />);
+    // 40 × 75% = 30점
+    expect(screen.getByText("30점")).toBeInTheDocument();
+  });
+});

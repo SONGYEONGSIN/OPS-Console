@@ -23,14 +23,28 @@ import { aggregateIncidents } from "./aggregators/incidents";
 import { aggregateAiWork } from "./aggregators/ai-work";
 import { aggregateSavedHours } from "./aggregators/saved-hours";
 import { aggregateEntertest } from "./aggregators/entertest";
+import {
+  effectiveAchievement,
+  type AchievementSource,
+} from "./effective-achievement";
+import { academicYearRangeKST } from "@/features/closing/academic-year";
 
-/** 정량 집계 기간 — MVP는 현재 연도(1/1~12/31, KST). 사이클 날짜 도입 시 대체. */
-function currentYearPeriod(): Period {
-  const y = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-  }).format(new Date());
-  return { startYmd: `${y}-01-01`, endYmd: `${y}-12-31` };
+/**
+ * 정량 집계 기간.
+ *
+ * 사이클에 기간이 있으면 그것을 쓴다. 없으면 **학년도**(3/1~익년 2월말)로 떨어진다 —
+ * 연도(1/1~12/31)를 쓰던 때는 우리 성과 기간과 어긋나 3월 이전 실적이 섞였다.
+ */
+function periodOfCycle(cycle: {
+  period_start?: string | null;
+  period_end?: string | null;
+}): Period {
+  if (cycle.period_start && cycle.period_end) {
+    return { startYmd: cycle.period_start, endYmd: cycle.period_end };
+  }
+  // academicYearRangeKST 는 {start:{date,time}} 모양이다 — 날짜만 쓴다.
+  const r = academicYearRangeKST(new Date());
+  return { startYmd: r.start.date, endYmd: r.end.date };
 }
 
 /** source_key별 aggregator 실행 — 미매칭 소스는 null. */
@@ -93,7 +107,8 @@ export async function getQuantPreview(
     .maybeSingle();
   if (!aRow) return null;
   const email = (aRow as { evaluatee_email: string }).evaluatee_email;
-  return computeQuant(supabase, sourceKey, email, currentYearPeriod());
+  // 미리보기는 사이클을 모른다 — 학년도 기준으로 보여준다.
+  return computeQuant(supabase, sourceKey, email, periodOfCycle({}));
 }
 
 /** 본인이 evaluator OR evaluatee인 assignment + cycle 정보 조인.
@@ -108,7 +123,7 @@ export async function listAssignmentsForUser(): Promise<AssignmentWithCycle[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("performance_assignments")
-    .select("*, performance_cycles(name, status)")
+    .select("*, performance_cycles(name, status, period_start, period_end)")
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[listAssignmentsForUser]", error);
@@ -151,7 +166,11 @@ export async function listCycles(): Promise<CycleRow[]> {
 }
 
 /** 성과지표 + 정량 자동집계 값(있으면). */
-export type MetricWithQuant = MetricRow & { quant: MetricValue | null };
+export type MetricWithQuant = MetricRow & {
+  quant: MetricValue | null;
+  /** 화면·채점이 쓸 달성률 하나. 목표가 있으면 계산값, 없으면 손입력. */
+  effective: { value: number; source: AchievementSource };
+};
 
 /** assignment 1건 상세 — goals + plans + metrics(정량) + rubric + reviews(legacy). */
 export type AssignmentDetail = {
@@ -170,14 +189,20 @@ export async function getAssignmentDetail(
   const supabase = await createClient();
   const { data: aRow, error: aErr } = await supabase
     .from("performance_assignments")
-    .select("*, performance_cycles(name, status)")
+    .select("*, performance_cycles(name, status, period_start, period_end)")
     .eq("id", id)
     .maybeSingle();
   if (aErr || !aRow) return null;
   const assignment = assignmentRowSchema.safeParse(aRow);
   if (!assignment.success) return null;
   const cycleJoin = (aRow as Record<string, unknown>).performance_cycles as
-    | { name: string; status: "open" | "closed" }
+    | {
+        name: string;
+        status: "open" | "closed";
+        // 기간이 없는 옛 사이클이 있다 — 그때는 학년도로 떨어진다.
+        period_start: string | null;
+        period_end: string | null;
+      }
     | null;
   if (!cycleJoin) return null;
 
@@ -216,7 +241,7 @@ export async function getAssignmentDetail(
   }
 
   // 성과지표 + 정량 자동집계 (source_key 있는 지표만 aggregator 실행)
-  const period = currentYearPeriod();
+  const period = periodOfCycle(cycleJoin);
   const evaluateeEmail = assignment.data.evaluatee_email;
   const metrics: MetricWithQuant[] = [];
   for (const m of metricsRes.data ?? []) {
@@ -225,7 +250,14 @@ export async function getAssignmentDetail(
     const quant = p.data.source_key
       ? await computeQuant(supabase, p.data.source_key, evaluateeEmail, period)
       : null;
-    metrics.push({ ...p.data, quant });
+    // 목표가 있으면 실적/목표로 계산한다 — 손으로 넣던 값을 덮는다.
+    const effective = effectiveAchievement({
+      target: p.data.target_value,
+      actual: quant?.value ?? null,
+      manual: p.data.achievement,
+      lowerIsBetter: p.data.lower_is_better,
+    });
+    metrics.push({ ...p.data, quant, effective });
   }
   const rubric: RubricScoreRow[] = [];
   for (const r of rubricRes.data ?? []) {

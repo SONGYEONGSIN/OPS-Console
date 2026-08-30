@@ -34,6 +34,11 @@ type Metric = {
   name: string;
   weight: number;
   achievement: number | null;
+  /** 목표값. 있으면 실적/목표로 달성률이 계산된다. */
+  target?: number | null;
+  unit?: string | null;
+  /** 서버가 정한 달성률 하나 — 목표가 있으면 계산값, 없으면 손입력. */
+  effective?: { value: number; source: "auto" | "manual" | "none" };
   sourceKey: string | null;
   quant: QuantVal;
 };
@@ -75,7 +80,11 @@ export function OutcomeDetailEditor({
   const weightSum = metrics.reduce((s, m) => s + m.weight, 0);
   const weightsOk = isValidMetricWeights(metrics.map((m) => m.weight));
   const score = finalScore(
-    metrics.map((m) => ({ weight: m.weight, achievement: m.achievement ?? 0 })),
+    // 목표가 있으면 계산값이 손입력을 덮는다 — 화면과 점수가 갈리면 안 된다.
+    metrics.map((m) => ({
+      weight: m.weight,
+      achievement: m.effective?.value ?? m.achievement ?? 0,
+    })),
     rubric.map((r) => r.score),
   );
   const grade = scoreToGrade(score);
@@ -123,14 +132,25 @@ export function OutcomeDetailEditor({
                 <div className="min-w-0">
                   <p className="font-medium text-ink">{m.name}</p>
                   <p className="text-xs text-muted">
-                    가중치 {m.weight} · 달성률 {m.achievement ?? 0}%
-                    {m.quant
-                      ? ` · 정량 ${m.quant.value}${m.quant.unit}${m.quant.detail ? ` (${m.quant.detail})` : ""}`
-                      : ""}
+                    가중치 {m.weight} · 달성률{" "}
+                    {m.effective?.value ?? m.achievement ?? 0}%
+                    {/* 숫자만 보면 어디서 온 값인지 모른다. */}
+                    {m.effective?.source === "auto" && " (자동)"}
+                    {m.effective?.source === "manual" && " (직접 입력)"}
+                    {m.effective?.source === "none" && " (근거 없음)"}
+                    {/* 목표가 있으면 실적/목표를 그대로 보여준다. */}
+                    {m.quant && m.target != null
+                      ? ` · ${m.quant.value} / ${m.target}${m.unit ?? m.quant.unit}`
+                      : m.quant
+                        ? ` · 정량 ${m.quant.value}${m.quant.unit}${m.quant.detail ? ` (${m.quant.detail})` : ""}`
+                        : ""}
                   </p>
                 </div>
                 <span className="ml-3 shrink-0 text-sm font-bold tabular-nums text-ink">
-                  {Math.round((m.weight * (m.achievement ?? 0)) / 100)}점
+                  {Math.round(
+                    (m.weight * (m.effective?.value ?? m.achievement ?? 0)) / 100,
+                  )}
+                  점
                 </span>
               </li>
             ))}
@@ -280,6 +300,8 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
   const [weight, setWeight] = useState("");
   const [sourceKey, setSourceKey] = useState("");
   const [achievement, setAchievement] = useState("");
+  /** 목표값 — 넣으면 달성률을 서버가 실적/목표로 계산한다. */
+  const [target, setTarget] = useState("");
   const [preview, setPreview] = useState<QuantVal>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
@@ -308,12 +330,17 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
             weight: Number(weight),
             source_key: sourceKey || null,
             achievement: achievement === "" ? null : Number(achievement),
+            // 목표를 넣으면 달성률은 서버가 계산한다 — 손입력은 목표 없는
+            // 지표를 위해 남겨 둔다.
+            target_value: target === "" ? null : Number(target),
+            unit: preview?.unit ?? null,
           }),
         );
         setName("");
         setWeight("");
         setSourceKey("");
         setAchievement("");
+        setTarget("");
         setPreview(null);
       }}
     >
@@ -336,6 +363,16 @@ function MetricAdd({ assignmentId, pending, run }: AddProps) {
           placeholder="가중치"
           className="w-24 border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
           required
+        />
+        <input
+          aria-label="목표값"
+          type="number"
+          min={0}
+          step="any"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          placeholder="목표값"
+          className="w-24 border border-line-soft bg-field-bg px-2 py-1 text-sm text-ink focus:border-ink focus:bg-white"
         />
         <input
           aria-label="달성률"
