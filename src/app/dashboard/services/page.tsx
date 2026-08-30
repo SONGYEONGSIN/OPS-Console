@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import { BulkPasteAnnouncements } from "./BulkPasteAnnouncements";
+import { SyncAnnouncementOperators } from "./SyncAnnouncementOperators";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ServicesControls } from "./ServicesControls";
 import { servicesRowToListRow } from "./_row-mapper";
@@ -187,7 +188,16 @@ export default async function ServicesPage({
       variant="services"
       canCreate={canEdit}
       createLabel="+ 신규 서비스"
-      extraActionsLeft={canEdit ? <BulkPasteAnnouncements /> : undefined}
+      extraActionsLeft={
+        canEdit ? (
+          <>
+            {/* 담당자 맞추기는 총괄장(SharePoint)을 읽고 전 행을 갱신하므로
+                admin 만. 액션 쪽에서도 다시 막는다. */}
+            {me?.permission === "admin" && <SyncAnnouncementOperators />}
+            <BulkPasteAnnouncements />
+          </>
+        ) : undefined
+      }
       readOnly={!canEdit}
       currentUserName={me?.displayName ?? me?.email ?? ""}
       controlsRow={controlsRow}
