@@ -61,7 +61,9 @@ export default async function KnowledgePage({
   ]);
 
   return (
-    <div className="flex flex-col">
+    /* 셸이 주는 높이 안에 가둔다 — 그래야 아래 칸들이 각자 스크롤한다.
+       모바일은 한 줄로 떨어뜨리므로 높이를 안 건다(문서 흐름 그대로). */
+    <div className="flex flex-col md:h-full md:min-h-0">
       <PageHeader
         pathname={pathname}
         meta={config.meta}
@@ -75,12 +77,14 @@ export default async function KnowledgePage({
       />
 
       {tab === "docs" ? (
-        <section className="grid min-h-0 grid-cols-[280px_1fr] gap-6 p-7 max-md:grid-cols-1">
-          <div className="min-h-0 border-r border-line pr-4 max-md:border-r-0 max-md:pr-0">
+        <section className="grid grid-cols-[280px_1fr] gap-6 p-7 max-md:grid-cols-1 md:min-h-0 md:flex-1">
+          {/* 트리가 길어 sticky 로는 부족하다(화면보다 크면 붙어 있어도 잘린다).
+              칸 자체에 스크롤을 줘서 본문과 따로 움직이게 한다. */}
+          <div className="border-r border-line pr-4 max-md:border-r-0 max-md:pr-0 md:min-h-0 md:overflow-y-auto">
             <KnowledgeTree groups={groups} selected={selectedPath} />
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 md:min-h-0 md:overflow-y-auto">
             {rows.length === 0 ? (
               <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
                 아직 인덱싱된 문서가 없습니다. 자동화 페이지에서 <b>업무 지식망
@@ -97,7 +101,11 @@ export default async function KnowledgePage({
         </section>
       ) : (
         /* 나머지 칸은 트리가 필요 없다 — 긴 본문과 되묻기를 넓게 쓴다. */
-        <section className="min-w-0 p-7">
+        /* 한 칸짜리 탭도 높이 안에 들어왔으니 자기가 스크롤해야 한다. */
+        <section
+          data-testid="knowledge-panel"
+          className="min-w-0 p-7 md:min-h-0 md:flex-1 md:overflow-y-auto"
+        >
           {tab === "draft" ? (
             <FileDraftForm />
           ) : tab === "review" ? (
