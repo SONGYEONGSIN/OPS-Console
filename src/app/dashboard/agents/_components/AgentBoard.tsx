@@ -77,7 +77,7 @@ export function AgentBoard({
   return (
     <div className="flex flex-col">
       {/* 지표는 각자 카드. 붙여 놓으면 한 덩어리로 읽혀 개별 값이 안 들어온다. */}
-      <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-7 grid grid-cols-2 gap-3 md:grid-cols-4">
         <AgentKpi label="에이전트" value={members.length} note={`팀 ${teams.length}`} />
         <AgentKpi
           label="도는 중"
@@ -129,11 +129,13 @@ export function AgentBoard({
         </div>
       </header>
 
-      <div>
+      {/* 열이 일곱이라 좁은 화면에서 고정폭들이 눌려 깨졌다. 다른 목록 표와 같이
+          표만 가로 스크롤한다 — 페이지 전체가 밀리면 안 된다. */}
+      <div data-testid="agent-scroll" className="overflow-x-auto">
         {/* 머리글 — 숫자만 있고 무엇인지 없으면 못 읽는다. */}
         <div
           data-testid="agent-thead"
-          className="flex items-center gap-3 border-b border-line px-3 py-2 text-left text-xs uppercase tracking-[0.06em] text-muted"
+          className="flex min-w-[820px] items-center gap-3 border-b border-line px-3 py-2 text-left text-xs uppercase tracking-[0.06em] text-muted"
         >
           <span data-col="팀" className="w-16 shrink-0">
             팀
@@ -166,7 +168,7 @@ export function AgentBoard({
               key={m.agent}
               type="button"
               onClick={() => setSelected(m.agent)}
-              className={`flex w-full items-center gap-3 border-b border-line-soft px-3 py-2.5 text-left transition-colors ${
+              className={`flex w-full min-w-[820px] items-center gap-3 border-b border-line-soft px-3 py-2.5 text-left transition-colors ${
                 selected === m.agent
                   ? "border-vermilion bg-vermilion/10"
                   : "hover:bg-line-soft"
