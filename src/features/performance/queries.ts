@@ -21,6 +21,8 @@ import type { MetricValue, Period } from "./aggregators/types";
 import { aggregateClosing } from "./aggregators/closing";
 import { aggregateIncidents } from "./aggregators/incidents";
 import { aggregateAiWork } from "./aggregators/ai-work";
+import { aggregateSavedHours } from "./aggregators/saved-hours";
+import { aggregateEntertest } from "./aggregators/entertest";
 
 /** 정량 집계 기간 — MVP는 현재 연도(1/1~12/31, KST). 사이클 날짜 도입 시 대체. */
 function currentYearPeriod(): Period {
@@ -60,6 +62,20 @@ async function computeQuant(
       .select("author_email, created_at")
       .eq("author_email", evaluateeEmail);
     return aggregateAiWork(data ?? [], evaluateeEmail, period);
+  }
+  if (sourceKey === "ai-work-hours") {
+    const { data } = await supabase
+      .from("ai_work")
+      .select("author_email, saved_hours, created_at")
+      .eq("author_email", evaluateeEmail);
+    return aggregateSavedHours(data ?? [], evaluateeEmail, period);
+  }
+  if (sourceKey === "entertest-runs") {
+    const { data } = await supabase
+      .from("entertest_test_runs")
+      .select("requested_by, status, requested_at")
+      .eq("requested_by", evaluateeEmail);
+    return aggregateEntertest(data ?? [], evaluateeEmail, period);
   }
   return null;
 }

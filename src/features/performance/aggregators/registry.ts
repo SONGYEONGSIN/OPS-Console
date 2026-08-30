@@ -27,6 +27,22 @@ export const AGGREGATOR_REGISTRY = {
     source: "ai_work",
     description: "기간 내 AI 자동화 결과물 등록 수",
   },
+  "ai-work-hours": {
+    label: "AI 절감시간",
+    unit: "시간",
+    kind: "count",
+    source: "ai_work",
+    description:
+      "기간 내 AI 결과물의 절감시간 합. 건수보다 '몇 시간을 아꼈나'가 성과에 가깝다",
+  },
+  "entertest-runs": {
+    label: "원서 테스트 실행",
+    unit: "건",
+    kind: "count",
+    source: "entertest_test_runs",
+    description:
+      "기간 내 본인이 돌린 원서 테스트. 실패도 센다 — 깨진 걸 찾는 일이라 실패를 빼면 일을 많이 한 사람이 적게 한 것으로 보인다",
+  },
 } as const;
 
 export type AggregatorKey = keyof typeof AGGREGATOR_REGISTRY;
