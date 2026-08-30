@@ -120,11 +120,23 @@ async function claim() {
   return body.request ?? null;
 }
 
-async function report(id, ok, { answer, toolUses, message }) {
+async function report(id, ok, { answer, toolUses, message, usage, totalCostUsd, numTurns, model }) {
   const res = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: { ...headers, "content-type": "application/json" },
-    body: JSON.stringify({ id, ok, answer, toolUses, vaultRoot: VAULT, message }),
+    body: JSON.stringify({
+      id,
+      ok,
+      answer,
+      toolUses,
+      vaultRoot: VAULT,
+      message,
+      // 토큰·비용 — 서버가 숫자만 걸러 저장한다.
+      usage,
+      totalCostUsd,
+      numTurns,
+      model,
+    }),
   });
   if (!res.ok) throw new Error(`report ${res.status}`);
 }
@@ -529,6 +541,10 @@ async function answerWithVault(prompt, onStage) {
    */
   const texts = [];
   let result = "";
+  let usage = null;
+  let totalCostUsd = null;
+  let numTurns = null;
+  let model = null;
   // 3분 상한은 abortController로 건다. run.interrupt()는 **도구가 응답을 안 준
   // 상태에서 부르면** SDK가 `[ede_diagnostic] ... stop_reason=tool_use` 라는
   // 진단 문자열을 던진다 — 운영자에게 그대로 보이면 아무 뜻이 없다.
@@ -578,7 +594,15 @@ async function answerWithVault(prompt, onStage) {
           }
         }
       }
-      if (m.type === "result") result = m.result ?? "";
+      if (m.type === "result") {
+        result = m.result ?? "";
+        // SDK 가 여기에 실어 보내는데 그동안 버리고 있었다. 서버가 이걸로
+        // "이 에이전트가 얼마나 쓰는가"에 답한다.
+        usage = m.usage ?? null;
+        totalCostUsd = m.total_cost_usd ?? null;
+        numTurns = m.num_turns ?? null;
+        model = m.modelUsage ? Object.keys(m.modelUsage)[0] : null;
+      }
     }
   } catch (e) {
     // 사유를 사람 말로 바꿔 보고한다 — 화면에 그대로 뜨는 문장이다.
@@ -591,7 +615,7 @@ async function answerWithVault(prompt, onStage) {
   // 모은 것이 있으면 그걸 쓴다. result 는 보통 마지막 블록이라 texts 에 이미 들어
   // 있어 중복되지 않는다. 아무 블록도 없었으면(도구만 쓰고 끝난 경우) result 로 받는다.
   const answer = texts.length > 0 ? texts.join("\n\n") : result;
-  return { answer, toolUses: uses };
+  return { answer, toolUses: uses, usage, totalCostUsd, numTurns, model };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -653,11 +677,19 @@ for (;;) {
     // claim 직후 = 에이전트가 막 돌기 시작한 시점. 이전 문구는 "보냈습니다"였는데
     // 그때 이미 돌고 있었으므로 실제 상태와 어긋났다.
     void reportStage(req.id, { phase: "start" });
-    const { answer, toolUses } = await answerWithVault(req.prompt, (p) =>
+    const { answer, toolUses, usage, totalCostUsd, numTurns, model } =
+      await answerWithVault(req.prompt, (p) =>
       reportStage(req.id, p),
     );
     if (!answer) throw new Error("빈 응답");
-    await report(req.id, true, { answer, toolUses });
+    await report(req.id, true, {
+      answer,
+      toolUses,
+      usage,
+      totalCostUsd,
+      numTurns,
+      model,
+    });
     const reads = toolUses.filter((u) => u.name === "Read").length;
     console.log(
       `[assistant] 완료 ${req.id} — ${((Date.now() - t0) / 1000).toFixed(1)}초, 문서 ${reads}건 읽음`,

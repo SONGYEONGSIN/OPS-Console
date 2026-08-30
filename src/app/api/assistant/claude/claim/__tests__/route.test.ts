@@ -150,6 +150,72 @@ describe("assistant claude claim endpoint", () => {
     expect(state.updates[0].message).toBe("exit 1");
   });
 
+  /**
+   * 폴러는 Agent SDK 의 result 메시지에서 usage·total_cost_usd 를 **이미 받고
+   * 있었다.** `m.result` 만 꺼내 쓰고 나머지를 버렸을 뿐이다. 그래서 지금까지
+   * "에이전트가 얼마나 쓰는가"에 답할 수 없었다.
+   */
+  it("토큰·비용을 받아 적는다", async () => {
+    await POST(
+      req({
+        method: "POST",
+        auth: "Bearer s3cret",
+        body: {
+        id: "r1",
+        ok: true,
+        answer: "답",
+        usage: {
+          input_tokens: 1200,
+          output_tokens: 340,
+          cache_read_input_tokens: 88000,
+        },
+        totalCostUsd: 0.0412,
+        model: "claude-opus-5",
+        numTurns: 7,
+        },
+      }),
+    );
+    const patch = state.updates.at(-1)!;
+    expect(patch.input_tokens).toBe(1200);
+    expect(patch.output_tokens).toBe(340);
+    expect(patch.cache_read_tokens).toBe(88000);
+    expect(patch.cost_usd).toBe(0.0412);
+    expect(patch.model).toBe("claude-opus-5");
+    expect(patch.num_turns).toBe(7);
+  });
+
+  it("안 보내면 null 로 둔다 — 0 으로 적으면 공짜로 돈 것처럼 보인다", async () => {
+    await POST(
+      req({
+        method: "POST",
+        auth: "Bearer s3cret",
+        body: { id: "r1", ok: true, answer: "답" },
+      }),
+    );
+    const patch = state.updates.at(-1)!;
+    expect(patch.input_tokens).toBeNull();
+    expect(patch.cost_usd).toBeNull();
+  });
+
+  it("숫자가 아닌 값은 버린다 — 폴러가 무엇을 보내든 서버가 거른다", async () => {
+    await POST(
+      req({
+        method: "POST",
+        auth: "Bearer s3cret",
+        body: {
+        id: "r1",
+        ok: true,
+        answer: "답",
+        usage: { input_tokens: "많이" },
+        totalCostUsd: "비쌈",
+        },
+      }),
+    );
+    const patch = state.updates.at(-1)!;
+    expect(patch.input_tokens).toBeNull();
+    expect(patch.cost_usd).toBeNull();
+  });
+
   it("id가 없으면 400", async () => {
     const res = await POST(
       req({ method: "POST", auth: "Bearer s3cret", body: { ok: true } }),
