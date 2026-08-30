@@ -166,104 +166,106 @@ export function AgentBoard({
       {/* 열이 일곱이라 좁은 화면에서 고정폭들이 눌려 깨졌다. 다른 목록 표와 같이
           표만 가로 스크롤한다 — 페이지 전체가 밀리면 안 된다. */}
       <div data-testid="agent-scroll" className="overflow-x-auto">
-        {/* 머리글 — 숫자만 있고 무엇인지 없으면 못 읽는다. */}
-        <div
-          data-testid="agent-thead"
-          /* font-bold 를 손으로 붙인다 — 다른 표는 <th> 라 브라우저 기본 볼드가
-             그대로 살아 있고(preflight 는 h1~h6 만 리셋한다), 여기는 div+span
-             이라 그 기본이 없어 혼자 얇았다. 클래스는 같은데 결과가 달랐다. */
-          className="flex min-w-[820px] items-center gap-3 border-b border-line px-3 py-2 font-bold text-left text-xs uppercase tracking-[0.06em] text-muted"
-        >
-          <span data-col="팀" className="w-16 shrink-0">
-            팀
-          </span>
-          <span data-col="맡은 일" className="min-w-0 flex-1">
-            맡은 일
-          </span>
-          <span data-col="상태" className="w-24 shrink-0">
-            상태
-          </span>
-          <span data-col="구동" className="w-20 shrink-0">
-            구동
-          </span>
-          <span data-col="오늘" className="w-14 shrink-0 text-right">
-            오늘
-          </span>
-          <span data-col="7일" className="w-20 shrink-0 text-right">
-            7일
-          </span>
-          <span data-col="마지막" className="w-20 shrink-0 text-right">
-            마지막
-          </span>
-        </div>
-
-        {shown.map((m) => {
-          const u = usage[m.agent];
-          const verdict = m.pollerId ? verdicts[m.pollerId] : undefined;
-          return (
-            <button
-              key={m.agent}
-              type="button"
-              onClick={() => setSelected(m.agent)}
-              className={`flex w-full min-w-[820px] items-center gap-3 border-b border-line-soft px-3 py-2.5 text-left transition-colors ${
-                selected === m.agent
-                  ? "border-vermilion bg-vermilion/10"
-                  : "hover:bg-line-soft"
-              }`}
+        {/* 다른 목록과 같은 진짜 표다. div+flex 였을 때 `맡은 일` 이 flex-1 이라
+            남는 폭을 통째로 먹어, 넓은 화면에서 그 열과 옆 열 사이가 크게 비었다.
+            표는 남는 폭을 여러 열에 나눠 붙인다. */}
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            {/* <th> 는 브라우저 기본이 볼드다(preflight 는 h1~h6 만 리셋한다).
+                #1139 에서 손으로 font-bold 를 붙였던 건 여기가 div+span 이라
+                그 기본이 없었기 때문 — 진짜 표가 된 지금은 군더더기고,
+                table-head-cell-standard 가드가 그걸 막는다. */}
+            <tr
+              data-testid="agent-thead"
+              className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted"
             >
-              <span className="w-16 shrink-0 truncate text-2xs text-muted">
-                {m.team}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs text-ink">
-                  {m.detail || m.role}
-                  {m.llm && <span className="ml-1 text-vermilion">✦</span>}
-                </span>
-                <span className="block truncate font-mono text-2xs text-muted">
-                  {m.agent}
-                </span>
-              </span>
-              <span className="w-24 shrink-0 text-2xs">
-                {m.planned ? (
-                  <span className="text-muted">예정</span>
-                ) : verdict ? (
-                  <span
-                    className={
-                      verdict === "stopped" ? "text-vermilion" : "text-ink-soft"
-                    }
-                  >
-                    {/* 도는 중인 것만 깜박인다 — 멈춤은 가만히 있어야 눈에 걸린다. */}
-                    <span
-                      aria-hidden
-                      className={
-                        verdict === "stopped" ? "" : "animate-pulse"
-                      }
-                    >
-                      ●
-                    </span>{" "}
-                    {verdict === "stopped" ? "멈춤" : "처리 중"}
-                  </span>
-                ) : null}
-              </span>
-              <span className="w-20 shrink-0 text-2xs text-muted">
-                {m.driver}
-              </span>
-              <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink">
-                {u?.today === null || u === undefined ? (
-                  <span className="text-2xs text-muted">—</span>
-                ) : (
-                  u.today
-                )}
-              </span>
-              <span className="w-20 shrink-0 text-right font-mono text-xs text-ink-soft">
-                {u?.daily ? spark(u.daily) : ""}
-              </span>
-              <span className="w-20 shrink-0 text-right text-2xs text-muted">
-                {lastLabel(u?.lastAt ?? null)}
-              </span>
-            </button>
-          );
-        })}
+              <th data-col="팀" className="px-3 py-2">
+                팀
+              </th>
+              <th data-col="맡은 일" className="px-3 py-2">
+                맡은 일
+              </th>
+              {/* 구동 = 어떻게 도는가 + 지금 어떤가. 예전엔 '상태' 를 따로 뒀는데
+                  폴러에만 값이 있어 잡 20여 개는 영영 빈 칸이었다. */}
+              <th data-col="구동" className="px-3 py-2">
+                구동
+              </th>
+              <th data-col="오늘" className="px-3 py-2 text-right">
+                오늘
+              </th>
+              <th data-col="7일" className="px-3 py-2 text-right">
+                7일
+              </th>
+              <th data-col="마지막" className="px-3 py-2 text-right">
+                마지막
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((m) => {
+              const u = usage[m.agent];
+              const verdict = m.pollerId ? verdicts[m.pollerId] : undefined;
+              return (
+                <tr
+                  key={m.agent}
+                  onClick={() => setSelected(m.agent)}
+                  className={`cursor-pointer border-b border-line-soft transition-colors ${
+                    selected === m.agent
+                      ? "border-vermilion bg-vermilion/10"
+                      : "hover:bg-line-soft"
+                  }`}
+                >
+                  <td className="px-3 py-2.5 text-2xs text-muted">{m.team}</td>
+                  <td className="px-3 py-2.5">
+                    <span className="block text-xs text-ink">
+                      {m.detail || m.role}
+                      {m.llm && <span className="ml-1 text-vermilion">✦</span>}
+                    </span>
+                    <span className="block font-mono text-2xs text-muted">
+                      {m.agent}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-2xs">
+                    <span className="block text-muted">
+                      {m.planned ? "예정" : m.driver}
+                    </span>
+                    {verdict ? (
+                      <span
+                        className={`block ${
+                          verdict === "stopped"
+                            ? "text-vermilion"
+                            : "text-ink-soft"
+                        }`}
+                      >
+                        {/* 도는 중인 것만 깜박인다 — 멈춤은 가만히 있어야 눈에 걸린다. */}
+                        <span
+                          aria-hidden
+                          className={verdict === "stopped" ? "" : "animate-pulse"}
+                        >
+                          ●
+                        </span>{" "}
+                        {verdict === "stopped" ? "멈춤" : "처리 중"}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-xs tabular-nums text-ink">
+                    {u?.today === null || u === undefined ? (
+                      <span className="text-2xs text-muted">—</span>
+                    ) : (
+                      u.today
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-mono text-xs text-ink-soft">
+                    {u?.daily ? spark(u.daily) : ""}
+                  </td>
+                  <td className="px-3 py-2.5 text-right text-2xs text-muted">
+                    {lastLabel(u?.lastAt ?? null)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <InspectorPanel open={current !== null} onClose={() => setSelected(null)}>

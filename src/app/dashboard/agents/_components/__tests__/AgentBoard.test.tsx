@@ -103,16 +103,16 @@ describe("AgentBoard — 목록", () => {
   it("에이전트를 행으로 늘어놓는다", () => {
     render1();
     expect(
-      screen.getByRole("button", { name: /assistant-runner/ }),
+      screen.getByRole("row", { name: /assistant-runner/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /ratio-poller/ }),
+      screen.getByRole("row", { name: /ratio-poller/ }),
     ).toBeInTheDocument();
   });
 
   it("한 줄에서 맡은 일과 오늘 건수를 읽는다", () => {
     render1();
-    const row = screen.getByRole("button", { name: /assistant-runner/ });
+    const row = screen.getByRole("row", { name: /assistant-runner/ });
     expect(row).toHaveTextContent("어시스턴트");
     expect(row).toHaveTextContent("12");
   });
@@ -124,7 +124,7 @@ describe("AgentBoard — 목록", () => {
   it("최근에 돈 적이 없으면 그렇다고 말한다", () => {
     render1();
     expect(
-      screen.getByRole("button", { name: /ratio-poller/ }),
+      screen.getByRole("row", { name: /ratio-poller/ }),
     ).toHaveTextContent("기록 없음");
   });
 
@@ -143,13 +143,11 @@ describe("AgentBoard — 목록", () => {
   it("표 머리글이 다른 표와 같은 규격이다 — uppercase · py-2 · px-3", () => {
     render1();
     const head = screen.getByTestId("agent-thead");
-    // 위쪽 패딩이 없어 제목에 붙어 보였다. 표준은 py-2 다.
-    expect(head).toHaveClass("py-2");
-    expect(head).toHaveClass("px-3");
     expect(head).toHaveClass("uppercase");
-    // 다른 표는 <th> 라 브라우저 기본 볼드가 붙는다(preflight 는 h1~h6 만
-    // 리셋한다). 여기는 div+span 이라 그 기본이 없어 혼자 얇았다.
-    expect(head).toHaveClass("font-bold");
+    // 진짜 표가 된 뒤로 패딩은 <tr> 이 아니라 <th> 가 진다 — 다른 표와 같다.
+    const th = screen.getAllByRole("columnheader")[0];
+    expect(th).toHaveClass("py-2");
+    expect(th).toHaveClass("px-3");
   });
 
   /**
@@ -160,30 +158,30 @@ describe("AgentBoard — 목록", () => {
     render1();
     const scroller = screen.getByTestId("agent-scroll");
     expect(scroller).toHaveClass("overflow-x-auto");
-    // 최소 폭이 없으면 스크롤이 안 생기고 그냥 찌그러진다.
-    expect(screen.getByTestId("agent-thead").className).toMatch(/min-w-\[/);
+    // 최소 폭이 없으면 스크롤이 안 생기고 그냥 찌그러진다. 표에 건다.
+    expect(screen.getByRole("table").className).toMatch(/min-w-\[/);
   });
 
   it("표에 머리글이 있다 — 숫자만 있고 무엇인지 없으면 못 읽는다", () => {
     render1();
     const head = screen.getByTestId("agent-thead");
-    for (const label of ["팀", "맡은 일", "상태", "오늘", "마지막"]) {
+    for (const label of ["팀", "맡은 일", "구동", "오늘", "마지막"]) {
       expect(head).toHaveTextContent(label);
     }
   });
 
-  it("팀 · 맡은 일 · 상태 순으로 읽는다", () => {
+  it("팀 · 맡은 일 · 구동 순으로 읽는다", () => {
     render1();
     const cols = [
       ...screen.getByTestId("agent-thead").querySelectorAll("[data-col]"),
     ].map((el) => el.getAttribute("data-col"));
-    expect(cols.slice(0, 3)).toEqual(["팀", "맡은 일", "상태"]);
+    expect(cols.slice(0, 3)).toEqual(["팀", "맡은 일", "구동"]);
   });
 
   it("무엇이 부르는지 적는다 — 배지 없음을 이상으로 읽지 않게", () => {
     render1();
     expect(
-      screen.getByRole("button", { name: /assistant-runner/ }),
+      screen.getByRole("row", { name: /assistant-runner/ }),
     ).toHaveTextContent("요청 대기");
   });
 
@@ -198,10 +196,10 @@ describe("AgentBoard — 목록", () => {
   it("팀은 필터로만 남는다", () => {
     render1("관측팀");
     expect(
-      screen.getByRole("button", { name: /ratio-poller/ }),
+      screen.getByRole("row", { name: /ratio-poller/ }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /assistant-runner/ }),
+      screen.queryByRole("row", { name: /assistant-runner/ }),
     ).not.toBeInTheDocument();
   });
 });
@@ -214,33 +212,33 @@ describe("AgentBoard — 인스펙터", () => {
 
   it("행을 누르면 그 에이전트가 열린다", () => {
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("row", { name: /assistant-runner/ }));
     const panel = screen.getByTestId("agent-inspector");
     expect(panel).toHaveTextContent("assistant-runner");
   });
 
   it("회사 PC 에서 도는 에이전트는 연결 상태를 보여준다", () => {
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /ratio-poller/ }));
+    fireEvent.click(screen.getByRole("row", { name: /ratio-poller/ }));
     expect(screen.getByTestId("agent-inspector")).toHaveTextContent("멈춤");
   });
 
   it("회사 PC 와 무관한 에이전트에는 연결을 말하지 않는다", () => {
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /trace-recorder/ }));
+    fireEvent.click(screen.getByRole("row", { name: /trace-recorder/ }));
     expect(screen.getByTestId("agent-inspector")).not.toHaveTextContent("연결");
   });
 
   it("사용량을 일별로 보여준다", () => {
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("row", { name: /assistant-runner/ }));
     expect(screen.getByTestId("agent-inspector")).toHaveTextContent("최근 3일");
   });
 
   it("다른 행을 누르면 그쪽으로 바뀐다 — 닫았다 열 필요가 없다", () => {
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
-    fireEvent.click(screen.getByRole("button", { name: /ratio-poller/ }));
+    fireEvent.click(screen.getByRole("row", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("row", { name: /ratio-poller/ }));
     expect(screen.getByTestId("agent-inspector")).toHaveTextContent(
       "ratio-poller",
     );
@@ -255,7 +253,7 @@ describe("AgentBoard — 활동 로그", () => {
   it("행을 열면 그 에이전트의 활동을 가져온다", async () => {
     activitySpy.mockClear();
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("row", { name: /assistant-runner/ }));
     await waitFor(() =>
       expect(activitySpy).toHaveBeenCalledWith("assistant-runner"),
     );
@@ -263,14 +261,14 @@ describe("AgentBoard — 활동 로그", () => {
 
   it("실패는 사유를 그대로 보여준다 — 요약하면 왜 안 됐는지 모른다", async () => {
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("row", { name: /assistant-runner/ }));
     expect(await screen.findByText(/Graph 500/)).toBeInTheDocument();
   });
 
   it("활동이 없으면 없다고 말한다 — 빈 칸만 두지 않는다", async () => {
     activity.value = [];
     render1();
-    fireEvent.click(screen.getByRole("button", { name: /assistant-runner/ }));
+    fireEvent.click(screen.getByRole("row", { name: /assistant-runner/ }));
     expect(await screen.findByText(/최근 활동이 없습니다/)).toBeInTheDocument();
     activity.value = [
       { at: "2026-08-30T10:00:00+09:00", outcome: "ok", note: null },
