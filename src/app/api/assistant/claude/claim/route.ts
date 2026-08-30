@@ -158,11 +158,26 @@ export async function POST(request: NextRequest) {
     toolUses?: unknown;
     vaultRoot?: unknown;
     message?: unknown;
+    /** Agent SDK result 메시지의 usage. 폴러가 그대로 실어 보낸다. */
+    usage?: unknown;
+    totalCostUsd?: unknown;
+    model?: unknown;
+    numTurns?: unknown;
   };
   const id = typeof body.id === "string" ? body.id : null;
   if (!id) {
     return NextResponse.json({ ok: false, error: "id 누락" }, { status: 400 });
   }
+
+  /**
+   * 숫자가 아니면 버린다 — 폴러가 무엇을 보내든 서버가 거른다.
+   *
+   * **0 으로 채우지 않는다.** 안 보낸 것과 0 은 다르다 — 0 으로 적으면 공짜로
+   * 돈 것처럼 보이고 집계 평균이 조용히 내려간다.
+   */
+  const num = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? v : null;
+  const usage = (body.usage ?? {}) as Record<string, unknown>;
 
   const admin = createAdminClient();
   const { error } = await admin
@@ -178,6 +193,13 @@ export async function POST(request: NextRequest) {
       message:
         typeof body.message === "string" ? body.message.slice(0, 500) : null,
       finished_at: new Date().toISOString(),
+      // 폴러가 SDK 에서 받아 놓고 버리던 값들. 이게 있어야 '얼마나 쓰는가'에 답한다.
+      input_tokens: num(usage.input_tokens),
+      output_tokens: num(usage.output_tokens),
+      cache_read_tokens: num(usage.cache_read_input_tokens),
+      cost_usd: num(body.totalCostUsd),
+      model: typeof body.model === "string" ? body.model : null,
+      num_turns: num(body.numTurns),
     })
     .eq("id", id);
   if (error) {
