@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Section, DefList } from "../../_components/inspector/list-variants/shared";
+import type { AgentCost } from "@/features/agent-org/cost-fold";
 import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { AgentKpi } from "./AgentKpi";
 import type { AgentRow } from "./agent-row";
@@ -55,12 +57,15 @@ export function AgentBoard({
   members,
   verdicts,
   usage,
+  cost = {},
   team,
 }: {
   members: AgentRow[];
   /** 폴러 id → 판정. `system-status` 가 내린 것을 받아 적기만 한다. */
   verdicts: Record<string, string>;
   usage: Record<string, AgentUsage>;
+  /** 에이전트별 토큰·비용. 안 남는 곳은 null — 0 이 아니다. */
+  cost?: Record<string, AgentCost | null>;
   /** 고른 팀. 없으면 전체. */
   team?: string;
 }) {
@@ -206,11 +211,21 @@ export function AgentBoard({
               <th data-col="마지막" className="px-3 py-2 text-right">
                 마지막
               </th>
+              {/* 비 LLM 22개는 비용 개념 자체가 없다. 거기에 대시를 채우면
+                  '못 셌다'로 읽혀 노이즈가 된다 — 빈칸으로 둔다. */}
+              <th
+                data-col="비용"
+                title="최근 7일 합계(USD). LLM 을 쓰는 에이전트만 해당하고, 대시는 아직 토큰이 안 남는 곳입니다."
+                className="px-3 py-2 text-right"
+              >
+                비용
+              </th>
             </tr>
           </thead>
           <tbody>
             {shown.map((m) => {
               const u = usage[m.agent];
+              const c = cost[m.agent];
               const verdict = m.pollerId ? verdicts[m.pollerId] : undefined;
               return (
                 <tr
@@ -222,9 +237,9 @@ export function AgentBoard({
                       : "hover:bg-line-soft"
                   }`}
                 >
-                  <td className="px-3 py-2.5 text-2xs text-muted">{m.team}</td>
+                  <td className="px-3 py-2.5 text-ink-soft">{m.team}</td>
                   <td className="px-3 py-2.5">
-                    <span className="block text-xs text-ink">
+                    <span className="block text-ink">
                       {m.detail || m.role}
                       {m.llm && <span className="ml-1 text-vermilion">✦</span>}
                     </span>
@@ -232,13 +247,13 @@ export function AgentBoard({
                       {m.agent}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-2xs">
-                    <span className="block text-muted">
+                  <td className="px-3 py-2.5">
+                    <span className="block text-ink-soft">
                       {m.planned ? "예정" : m.driver}
                     </span>
                     {verdict ? (
                       <span
-                        className={`block ${
+                        className={`block text-2xs ${
                           verdict === "stopped"
                             ? "text-vermilion"
                             : "text-ink-soft"
@@ -255,18 +270,21 @@ export function AgentBoard({
                       </span>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-xs tabular-nums text-ink">
+                  <td className="px-3 py-2.5 text-right tabular-nums text-ink">
                     {u?.today === null || u === undefined ? (
                       <span className="text-2xs text-muted">—</span>
                     ) : (
                       u.today
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right font-mono text-xs text-ink-soft">
+                  <td className="px-3 py-2.5 text-right font-mono text-ink-soft">
                     {u?.daily ? spark(u.daily) : ""}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-2xs text-muted">
+                  <td className="px-3 py-2.5 text-right text-ink-soft">
                     {lastLabel(u?.lastAt ?? null)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-ink">
+                    {!m.llm ? "" : c ? `$${c.costUsd.toFixed(2)}` : "—"}
                   </td>
                 </tr>
               );
@@ -277,7 +295,7 @@ export function AgentBoard({
 
       <InspectorPanel open={current !== null} onClose={() => setSelected(null)}>
         {current && (
-          <div data-testid="agent-inspector" className="flex flex-col gap-4">
+          <div data-testid="agent-inspector" className="flex flex-col gap-6">
             <div>
               <p className="font-mono text-sm text-ink">{current.agent}</p>
               <p className="mt-0.5 text-xs text-muted">
@@ -287,7 +305,7 @@ export function AgentBoard({
 
             {/* 회사 PC 와 무관한 에이전트에는 연결을 말하지 않는다. */}
             {current.pollerId && verdicts[current.pollerId] && (
-              <Section label="연결">
+              <Section title="연결">
                 <p
                   className={`text-sm ${
                     verdicts[current.pollerId] === "stopped"
@@ -303,7 +321,7 @@ export function AgentBoard({
               </Section>
             )}
 
-            <Section label="최근 활동">
+            <Section title="최근 활동">
               {activity === null ? (
                 <p className="text-xs text-muted">읽는 중…</p>
               ) : activity.length === 0 ? (
@@ -339,7 +357,7 @@ export function AgentBoard({
               )}
             </Section>
 
-            <Section label="사용량">
+            <Section title="사용량">
               {usage[current.agent]?.daily ? (
                 <>
                   <p className="font-mono text-lg text-ink">
@@ -364,6 +382,85 @@ export function AgentBoard({
                 </p>
               )}
             </Section>
+
+            {/* 비 LLM 에는 토큰 이야기를 아예 안 한다 — 비용 개념이 없는데
+                '없음'이라고 적으면 못 센 것처럼 읽힌다. */}
+            {current.llm && (
+              <Section title="토큰 · 비용">
+                {cost[current.agent] ? (
+                  <>
+                    <DefList
+                      items={[
+                        {
+                          term: "입력",
+                          desc: (
+                            <span className="tabular-nums">
+                              {cost[current.agent]!.inputTokens.toLocaleString()}
+                            </span>
+                          ),
+                        },
+                        {
+                          term: "출력",
+                          desc: (
+                            <span className="tabular-nums">
+                              {cost[current.agent]!.outputTokens.toLocaleString()}
+                            </span>
+                          ),
+                        },
+                        {
+                          // 같은 볼트를 매번 읽으므로 캐시 적중이 비용의 대부분을
+                          // 좌우한다 — 합쳐 놓으면 왜 비싼지 못 본다.
+                          term: "캐시 읽기",
+                          desc: (
+                            <span className="tabular-nums">
+                              {cost[
+                                current.agent
+                              ]!.cacheReadTokens.toLocaleString()}
+                            </span>
+                          ),
+                        },
+                        {
+                          term: "비용",
+                          desc: (
+                            <span className="tabular-nums">
+                              ${cost[current.agent]!.costUsd.toFixed(2)}
+                            </span>
+                          ),
+                        },
+                        {
+                          term: "모델",
+                          desc: (
+                            <span className="font-mono text-xs">
+                              {cost[current.agent]!.model}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                    <p className="text-2xs text-muted">
+                      최근 7일 · 실행{" "}
+                      <span className="tabular-nums">
+                        {cost[current.agent]!.runs}
+                      </span>
+                      건 기준
+                    </p>
+                  </>
+                ) : current.agent in cost ? (
+                  /* 수집 경로는 있다 — 회사 PC 가 갱신되면 채워진다. */
+                  <p className="text-xs text-muted">
+                    토큰이 아직 안 쌓였습니다. 수집 경로는 열려 있으니 회사 PC
+                    폴러가 갱신되면 채워집니다.
+                  </p>
+                ) : (
+                  /* 남길 자리가 아예 없다 — 고칠 곳이 위와 다르다. */
+                  <p className="text-xs text-muted">
+                    토큰을 남길 자리가 없습니다. 이 에이전트는 회사 PC 에서
+                    claude CLI 를 부르는데 그쪽은 사용량을 돌려주지 않습니다 —
+                    이력 테이블에 컬럼을 만들고 스크립트가 적재해야 값이 생깁니다.
+                  </p>
+                )}
+              </Section>
+            )}
           </div>
         )}
       </InspectorPanel>
@@ -371,22 +468,6 @@ export function AgentBoard({
   );
 }
 
-function Section({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-t border-line-soft pt-3">
-      <p className="mb-1 text-2xs uppercase tracking-[0.12em] text-muted">
-        {label}
-      </p>
-      {children}
-    </div>
-  );
-}
 
 function Chip({
   href,
