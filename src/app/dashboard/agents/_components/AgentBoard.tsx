@@ -65,20 +65,29 @@ export function AgentBoard({
   team?: string;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
-  /** 고른 에이전트의 최근 활동. 인스펙터를 열 때만 가져온다. */
-  const [activity, setActivity] = useState<ActivityItem[] | null>(null);
+  /**
+   * 에이전트별 최근 활동. 인스펙터를 열 때만 가져오고, 한 번 받은 건 남겨 둔다 —
+   * 행을 오가며 볼 때 같은 것을 다시 부르지 않는다.
+   *
+   * effect 안에서 **동기 setState 를 하지 않는다**(react-hooks/set-state-in-effect).
+   * '읽는 중'은 상태를 비워서가 아니라 **캐시에 아직 없음**으로 판정한다.
+   */
+  const [activityByAgent, setActivityByAgent] = useState<
+    Record<string, ActivityItem[]>
+  >({});
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || activityByAgent[selected]) return;
     let alive = true;
-    setActivity(null);
     void getAgentActivity(selected).then((items) => {
-      if (alive) setActivity(items);
+      if (alive) setActivityByAgent((prev) => ({ ...prev, [selected]: items }));
     });
     return () => {
       alive = false;
     };
-  }, [selected]);
+  }, [selected, activityByAgent]);
+
+  const activity = selected ? (activityByAgent[selected] ?? null) : null;
 
   const teams = [...new Set(members.map((m) => m.team))];
   const shown = team ? members.filter((m) => m.team === team) : members;
