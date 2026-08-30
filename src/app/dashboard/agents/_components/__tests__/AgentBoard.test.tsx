@@ -133,6 +133,18 @@ describe("AgentBoard — 목록", () => {
     expect(head).not.toHaveClass("font-medium");
   });
 
+  /**
+   * 열이 일곱이라 좁은 화면에서 고정폭들이 눌려 깨졌다. 다른 목록 표와 같이
+   * **표만 가로 스크롤**한다 — 페이지 전체가 밀리면 안 된다.
+   */
+  it("좁은 화면에서는 표만 가로로 스크롤한다", () => {
+    render1();
+    const scroller = screen.getByTestId("agent-scroll");
+    expect(scroller).toHaveClass("overflow-x-auto");
+    // 최소 폭이 없으면 스크롤이 안 생기고 그냥 찌그러진다.
+    expect(screen.getByTestId("agent-thead").className).toMatch(/min-w-\[/);
+  });
+
   it("표에 머리글이 있다 — 숫자만 있고 무엇인지 없으면 못 읽는다", () => {
     render1();
     const head = screen.getByTestId("agent-thead");
