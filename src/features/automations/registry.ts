@@ -137,7 +137,7 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     label: "메일함 AI 초안 생성",
     description:
       "운영자 수신함을 수집하고 외부 고객 메일에 AI 회신 초안을 생성합니다.\n로컬 claude CLI(-p)를 쓰므로 서버리스가 아닌 회사 PC(Windows 작업 스케줄러)에서 실행됩니다.",
-    scheduleInfo: "회사 PC Windows 작업 스케줄러 (claude CLI)",
+    scheduleInfo: "회사 PC 작업 스케줄러 — 10분 간격, 08~20시 (claude CLI)",
     cadence: "hourly",
     cooldownMinutes: 0,
     localOnly: true,
