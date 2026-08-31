@@ -45,7 +45,10 @@ export function TipCandidatePanel({ candidates, onPromote, onHide }: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    // `mt-7`(28px) — ListPattern 은 표 바로 뒤에 footer 를 붙여 간격을 안 준다.
+    // 그래서 이 패널이 자기 위 간격을 스스로 확보한다. 없으면 앞 목록에 딱
+    // 붙어 어디까지가 그 표인지 안 보인다(2026-09-01).
+    <div className="mt-7 flex flex-col gap-3">
       {/*
         제목과 표 사이는 ListPattern 표준(28px). 부모가 `flex flex-col gap-3` 이라
         12px 이 이미 붙으므로 `mb-4`(16px)를 더해 28px 을 만든다. `mb-7` 로 두면
