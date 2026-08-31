@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { primaryModel } from "@/features/assistant/model-pick";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GAP_DRAFT_MARKER } from "@/features/knowledge/gaps-types";
 import {
@@ -161,7 +162,11 @@ export async function POST(request: NextRequest) {
     /** Agent SDK result 메시지의 usage. 폴러가 그대로 실어 보낸다. */
     usage?: unknown;
     totalCostUsd?: unknown;
-    model?: unknown;
+    /**
+     * 모델별 사용량. **대표는 서버가 고른다** — 폴러가 첫 키를 집었더니 haiku(2%)가
+     * opus(98%)를 밀어냈다(2026-08-31). 표현을 고칠 때 회사 PC 를 안 만지는 원칙.
+     */
+    modelUsage?: unknown;
     numTurns?: unknown;
   };
   const id = typeof body.id === "string" ? body.id : null;
@@ -198,7 +203,9 @@ export async function POST(request: NextRequest) {
       output_tokens: num(usage.output_tokens),
       cache_read_tokens: num(usage.cache_read_input_tokens),
       cost_usd: num(body.totalCostUsd),
-      model: typeof body.model === "string" ? body.model : null,
+      model: primaryModel(
+        body.modelUsage as Parameters<typeof primaryModel>[0],
+      ),
       num_turns: num(body.numTurns),
     })
     .eq("id", id);

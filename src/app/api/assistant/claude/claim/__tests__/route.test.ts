@@ -170,7 +170,11 @@ describe("assistant claude claim endpoint", () => {
           cache_read_input_tokens: 88000,
         },
         totalCostUsd: 0.0412,
-        model: "claude-opus-5",
+        // 폴러는 모델별 사용량을 통째로 보낸다 — 대표는 서버가 비용으로 고른다.
+        modelUsage: {
+          "claude-haiku-4-5-20251001": { costUSD: 0.005, canonicalModel: "claude-haiku-4-5" },
+          "claude-opus-5[1m]": { costUSD: 0.269, canonicalModel: "claude-opus-5" },
+        },
         numTurns: 7,
         },
       }),
