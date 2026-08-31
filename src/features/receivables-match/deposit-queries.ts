@@ -1,6 +1,39 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import type { DepositRow } from "./types";
+import { isTransient, RETRY_DELAYS_MS } from "./graph-retry";
+
+/**
+ * 마지막 실패 사유. 잡이 이걸 메시지에 실어 **"왜 실패했는지"** 를 남긴다.
+ *
+ * 2026-08-31 실패 문구가 "파일 이동/이름변경/권한"만 말해서, 실제로는 Graph 가 잠깐
+ * 흔들린 것인데 휴지통까지 뒤지게 만들었다. 상태 코드 하나면 바로 갈렸다.
+ */
+let lastFailure: string | null = null;
+
+export function lastDepositFailure(): string | null {
+  return lastFailure;
+}
+
+/**
+ * Graph 를 부르되 **일시 오류면 두 번 더** 해본다.
+ *
+ * 실패가 이어지면 사유(상태 코드 + 앞부분)를 남긴다 — 그게 다음 진단의 출발점이다.
+ */
+async function graphGet(url: string, headers: HeadersInit): Promise<Response | null> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { headers, cache: "no-store" });
+    if (res.ok) return res;
+    const body = (await res.text()).slice(0, 160);
+    if (!isTransient(res.status) || attempt >= RETRY_DELAYS_MS.length) {
+      lastFailure = `Graph ${res.status}${isTransient(res.status) ? " (재시도 후에도 실패)" : ""} — ${body}`;
+      console.error("[deposit] graph fail:", res.status, body);
+      return null;
+    }
+    console.warn(`[deposit] graph ${res.status} — ${RETRY_DELAYS_MS[attempt]}ms 뒤 재시도`);
+    await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+  }
+}
 
 /**
  * Graph usedRange 응답을 DepositRow[]로 변환. 헤더 키워드 매칭으로 컬럼 인덱스 추출.
@@ -71,10 +104,17 @@ export function parseDepositSheet(data: {
  * 입금 시트 fetch 실패 시 잡 메시지 — env 미설정과 "설정됐으나 fetch 실패"를 구분.
  * 후자는 파일 이동/이름변경/권한/Graph 응답 문제이므로 Vercel 로그를 봐야 한다.
  */
-export function depositFetchFailMessage(itemIdConfigured: boolean): string {
-  return itemIdConfigured
-    ? "SharePoint 입금내역 시트 fetch 실패 — SHAREPOINT_DEPOSIT_ITEM_ID는 설정됨. 파일 이동/이름변경/권한 또는 Graph 응답 확인 (Vercel 로그)."
-    : "SharePoint 입금내역 시트 fetch 실패 — SHAREPOINT_DEPOSIT_ITEM_ID 환경변수 미설정.";
+export function depositFetchFailMessage(
+  itemIdConfigured: boolean,
+  reason = lastDepositFailure(),
+): string {
+  if (!itemIdConfigured) {
+    return "SharePoint 입금내역 시트 fetch 실패 — SHAREPOINT_DEPOSIT_ITEM_ID 환경변수 미설정.";
+  }
+  // **사유를 앞에 둔다.** 그게 없으면 잠깐 흔들린 것도 "파일이 사라졌나" 로 읽힌다.
+  return reason
+    ? `SharePoint 입금내역 시트 fetch 실패 — ${reason}`
+    : "SharePoint 입금내역 시트 fetch 실패 — 사유 불명. Vercel 로그를 확인하세요.";
 }
 
 /**
@@ -106,27 +146,19 @@ export async function fetchDepositSheet(): Promise<DepositRow[] | null> {
   const headers = { Authorization: `Bearer ${token}` };
 
   // 첫 워크시트 이름
-  const wsRes = await fetch(`${base}/worksheets?$top=1&$select=name`, {
-    headers,
-    cache: "no-store",
-  });
-  if (!wsRes.ok) {
-    console.error("[deposit] worksheets fail:", wsRes.status, await wsRes.text());
-    return null;
-  }
+  lastFailure = null;
+  const wsRes = await graphGet(`${base}/worksheets?$top=1&$select=name`, headers);
+  if (!wsRes) return null;
   const wsJson = (await wsRes.json()) as { value?: { name: string }[] };
   const name = wsJson.value?.[0]?.name;
   if (!name) return [];
 
   const enc = encodeURIComponent(name);
-  const rangeRes = await fetch(
+  const rangeRes = await graphGet(
     `${base}/worksheets('${enc}')/usedRange?$select=values,text`,
-    { headers, cache: "no-store" },
+    headers,
   );
-  if (!rangeRes.ok) {
-    console.error("[deposit] usedRange fail:", rangeRes.status, await rangeRes.text());
-    return null;
-  }
+  if (!rangeRes) return null;
   const data = (await rangeRes.json()) as {
     values?: unknown[][];
     text?: string[][];
