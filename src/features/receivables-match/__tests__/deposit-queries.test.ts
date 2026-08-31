@@ -8,9 +8,11 @@ describe("depositFetchFailMessage", () => {
   it("item ID 미설정 → 'env 미설정' 안내", () => {
     expect(depositFetchFailMessage(false)).toContain("미설정");
   });
-  it("item ID 설정됨 → 'fetch 실패(파일/권한/Graph)' 안내", () => {
-    const msg = depositFetchFailMessage(true);
-    expect(msg).toContain("설정됨");
+  it("item ID 설정됨 → env 문제로 오해하게 하지 않는다", () => {
+    // 문구가 바뀌었다(2026-08-31): 이제 **왜 실패했는지**를 싣는다.
+    // 예전에는 "파일 이동/이름변경/권한"만 말해서 멀쩡한 파일을 찾아다니게 했다.
+    const msg = depositFetchFailMessage(true, "Graph 503 — 잠시 후 다시");
+    expect(msg).toContain("503");
     expect(msg).not.toContain("미설정");
   });
 });
