@@ -40,4 +40,11 @@ describe("TipCandidatePanel — 제목·표 간격", () => {
   it("mb-7 을 쓰지 않는다 — 부모 gap 과 겹쳐 40px 이 된다", () => {
     expect(panel().container.querySelector("header")?.className).not.toContain("mb-7");
   });
+  it("위 표와도 떨어진다 — 앞 목록에 붙어 보였다", () => {
+    // ListPattern 은 표 바로 뒤에 footer 를 붙인다(간격 없음). 그래서 이 패널이
+    // 자기 위 간격을 스스로 확보해야 한다(2026-09-01 재지적).
+    const header = panel().container.querySelector("header");
+    // 패널 바깥 div 가 위 간격을 갖는다 — header 의 부모다.
+    expect(header?.parentElement?.className).toContain("mt-7");
+  });
 });
