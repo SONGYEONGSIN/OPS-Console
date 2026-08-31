@@ -120,7 +120,7 @@ async function claim() {
   return body.request ?? null;
 }
 
-async function report(id, ok, { answer, toolUses, message, usage, totalCostUsd, numTurns, model }) {
+async function report(id, ok, { answer, toolUses, message, usage, totalCostUsd, numTurns, modelUsage }) {
   const res = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: { ...headers, "content-type": "application/json" },
@@ -135,7 +135,7 @@ async function report(id, ok, { answer, toolUses, message, usage, totalCostUsd, 
       usage,
       totalCostUsd,
       numTurns,
-      model,
+      modelUsage,
     }),
   });
   if (!res.ok) throw new Error(`report ${res.status}`);
@@ -544,7 +544,7 @@ async function answerWithVault(prompt, onStage) {
   let usage = null;
   let totalCostUsd = null;
   let numTurns = null;
-  let model = null;
+  let modelUsage = null;
   // 3분 상한은 abortController로 건다. run.interrupt()는 **도구가 응답을 안 준
   // 상태에서 부르면** SDK가 `[ede_diagnostic] ... stop_reason=tool_use` 라는
   // 진단 문자열을 던진다 — 운영자에게 그대로 보이면 아무 뜻이 없다.
@@ -601,7 +601,9 @@ async function answerWithVault(prompt, onStage) {
         usage = m.usage ?? null;
         totalCostUsd = m.total_cost_usd ?? null;
         numTurns = m.num_turns ?? null;
-        model = m.modelUsage ? Object.keys(m.modelUsage)[0] : null;
+        // **판정은 서버가 한다.** 여기서 첫 키를 집었더니 haiku(2%)가 대표로 뽑혀
+        // opus(98%)로 도는 걸 haiku 로 보이게 했다(2026-08-31). 통째로 넘긴다.
+        modelUsage = m.modelUsage ?? null;
       }
     }
   } catch (e) {
@@ -615,7 +617,7 @@ async function answerWithVault(prompt, onStage) {
   // 모은 것이 있으면 그걸 쓴다. result 는 보통 마지막 블록이라 texts 에 이미 들어
   // 있어 중복되지 않는다. 아무 블록도 없었으면(도구만 쓰고 끝난 경우) result 로 받는다.
   const answer = texts.length > 0 ? texts.join("\n\n") : result;
-  return { answer, toolUses: uses, usage, totalCostUsd, numTurns, model };
+  return { answer, toolUses: uses, usage, totalCostUsd, numTurns, modelUsage };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -677,7 +679,7 @@ for (;;) {
     // claim 직후 = 에이전트가 막 돌기 시작한 시점. 이전 문구는 "보냈습니다"였는데
     // 그때 이미 돌고 있었으므로 실제 상태와 어긋났다.
     void reportStage(req.id, { phase: "start" });
-    const { answer, toolUses, usage, totalCostUsd, numTurns, model } =
+    const { answer, toolUses, usage, totalCostUsd, numTurns, modelUsage } =
       await answerWithVault(req.prompt, (p) =>
       reportStage(req.id, p),
     );
@@ -688,7 +690,7 @@ for (;;) {
       usage,
       totalCostUsd,
       numTurns,
-      model,
+      modelUsage,
     });
     const reads = toolUses.filter((u) => u.name === "Read").length;
     console.log(
