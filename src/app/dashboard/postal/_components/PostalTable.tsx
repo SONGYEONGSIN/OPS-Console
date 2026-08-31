@@ -89,7 +89,11 @@ export function PostalTable({
         placeholder="올린 사람·날짜·등기번호·수취인 검색"
       />
 
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      {/*
+        제목과 표 사이는 ListPattern 표준(28px). 부모 `gap-3`(12px)에 `mb-4`(16px)를
+        더해 만든다 — `mb-7` 이면 40px 이 돼 넓다(2026-09-01 가드 추가).
+      */}
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <h3 className="text-xl font-bold text-ink">영수증</h3>
           <span className="text-muted" aria-hidden>

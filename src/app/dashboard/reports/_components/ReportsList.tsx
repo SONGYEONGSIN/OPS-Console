@@ -25,7 +25,11 @@ export function ReportsList({ reports }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <header className="flex items-baseline justify-between">
+      {/*
+        제목과 표 사이는 ListPattern 표준(28px). 부모 `gap-3`(12px)에 `mb-4`(16px)를
+        더해 만든다 — `mb-7` 이면 40px 이 돼 넓다(2026-09-01 가드 추가).
+      */}
+      <header className="mb-4 flex items-baseline justify-between">
         <h3 className="text-base font-semibold text-ink">저장된 리포트</h3>
         <NewReportButton />
       </header>

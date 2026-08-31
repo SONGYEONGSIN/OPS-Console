@@ -46,7 +46,12 @@ export function TipCandidatePanel({ candidates, onPromote, onHide }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <header className="flex items-baseline justify-between">
+      {/*
+        제목과 표 사이는 ListPattern 표준(28px). 부모가 `flex flex-col gap-3` 이라
+        12px 이 이미 붙으므로 `mb-4`(16px)를 더해 28px 을 만든다. `mb-7` 로 두면
+        40px 이 돼 표준보다 넓다 — 우편물 발송목록에서 같은 셈을 썼다(2026-09-01).
+      */}
+      <header className="mb-4 flex items-baseline justify-between">
         <h3 className="text-base font-semibold text-ink">수집된 TIP 후보</h3>
         <span className="text-xs text-muted">{candidates.length}건 검토 대기</span>
       </header>
