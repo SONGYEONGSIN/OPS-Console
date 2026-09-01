@@ -30,7 +30,7 @@ export function ReportsList({ reports }: Props) {
         더해 만든다 — `mb-7` 이면 40px 이 돼 넓다(2026-09-01 가드 추가).
       */}
       <header className="mb-4 flex items-baseline justify-between">
-        <h3 className="text-base font-semibold text-ink">저장된 리포트</h3>
+        <h3 className="text-xl font-bold text-ink">저장된 리포트</h3>
         <NewReportButton />
       </header>
 
