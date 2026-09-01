@@ -108,7 +108,9 @@ describe("buildDefaultOpenNoticeText", () => {
     expect(body).toContain("■ 접수기간 중 운영 안내");
     expect(body).toContain("· 접수관리자  : https://nadmin.jinhakapply.com/Login.aspx");
     expect(body).toContain("· 지원자 문의 : 진학어플라이 고객센터 1544-7715");
-    expect(body).toContain("평일 09:00~18:00");
+    // 요일마다 다르다 — 월 10시 시작, 금 17시 마감(2026-09-01 실제 안내문).
+    expect(body).toContain("월 10~18시");
+    expect(body).toContain("금 09~17시");
   });
 
   it("경쟁률이 꺼지면 접수관리자 설명에서도 '경쟁률' 이 빠진다", () => {
