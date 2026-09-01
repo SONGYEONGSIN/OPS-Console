@@ -55,7 +55,7 @@ export function TipCandidatePanel({ candidates, onPromote, onHide }: Props) {
         40px 이 돼 표준보다 넓다 — 우편물 발송목록에서 같은 셈을 썼다(2026-09-01).
       */}
       <header className="mb-4 flex items-baseline justify-between">
-        <h3 className="text-base font-semibold text-ink">수집된 TIP 후보</h3>
+        <h3 className="text-xl font-bold text-ink">수집된 TIP 후보</h3>
         <span className="text-xs text-muted">{candidates.length}건 검토 대기</span>
       </header>
 

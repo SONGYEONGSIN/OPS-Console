@@ -155,7 +155,7 @@ function SectionCard({ section }: { section: PricingSection }) {
     <article className="border border-line-soft bg-situation-bg">
       <header className="border-b border-line-soft bg-search-field-bg px-5 py-3">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-base font-bold text-ink">
+          <h3 className="text-xl font-bold text-ink">
             {section.title || "(섹션)"}
           </h3>
           {section.subtitle ? (
