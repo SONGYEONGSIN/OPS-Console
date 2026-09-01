@@ -48,11 +48,11 @@ export function TipCandidatePanel({ candidates, onPromote, onHide }: Props) {
     // `mt-7`(28px) — ListPattern 은 표 바로 뒤에 footer 를 붙여 간격을 안 준다.
     // 그래서 이 패널이 자기 위 간격을 스스로 확보한다. 없으면 앞 목록에 딱
     // 붙어 어디까지가 그 표인지 안 보인다(2026-09-01).
-    <div className="mt-7 flex flex-col gap-3">
+    <div className="mt-7 flex flex-col">
       {/*
-        제목과 표 사이는 ListPattern 표준(28px). 부모가 `flex flex-col gap-3` 이라
-        12px 이 이미 붙으므로 `mb-4`(16px)를 더해 28px 을 만든다. `mb-7` 로 두면
-        40px 이 돼 표준보다 넓다 — 우편물 발송목록에서 같은 셈을 썼다(2026-09-01).
+        제목과 표 사이는 **16px** — `ListPattern` 이 `section p-7` 안에서 `header mb-4`
+        하나만 두는 것과 같다. 부모에 `gap-3` 을 두면 12px 이 더해져 28px 이 되는데,
+        화면에 나란히 놓고 보니 표준보다 넓었다(2026-09-01). 주석이 아니라 실물이 기준.
       */}
       <header className="mb-4 flex items-baseline justify-between">
         <h3 className="text-xl font-bold text-ink">수집된 TIP 후보</h3>
