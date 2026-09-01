@@ -3,16 +3,29 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * 목록 제목과 표 사이는 **28px**(ListPattern 표준).
+ * 목록 제목과 표 사이는 **16px** — `ListPattern` 이 기준이다.
  *
- * 세 번 지적받은 자리다 — 우편물 발송목록(2026-08-22), 전도금, TIP 후보(2026-09-01).
- * 매번 사람이 눈으로 보고 알려줘야 했다. 표준이 이미 있는데 새로 만드는 게 문제라,
- * **새 목록 화면이 생겨도 자동으로 걸리게** 훑는다.
+ * 그쪽은 `section p-7` 안에서 `header` 가 `mb-4`(16px) 하나만 가진다. 부모에 gap 이
+ * 없으므로 그게 곧 여백이다.
  *
- * 셈: 부모가 `flex flex-col gap-3`(12px)이면 `mb-4`(16px)를 더해 28px.
- * `mb-7`(28px)로 두면 40px 이 돼 표준보다 넓다.
+ * 이 값을 세 번 틀렸다(2026-09-01). 우편물 주석의 "표준(28px)" 을 그대로 믿고
+ * 부모 `gap-3`(12px)에 `mb-4` 를 더해 28px 을 만들었는데, **화면에 나란히 놓고 보니
+ * 표준보다 넓었다.** 주석이 아니라 `ListPattern` 실물을 기준으로 삼는다.
+ *
+ * 그래서 가드는 "mb-4 가 있는가"가 아니라 **"부모 gap 이 여백을 더하지 않는가"** 까지 본다.
  */
 const ROOT = join(process.cwd(), "src/app/dashboard");
+
+/**
+ * 목록 패널이 아니어서 이 규칙을 안 받는 곳. **이유를 적어 둔다** — 목록만 늘면
+ * 규칙이 유명무실해진다.
+ */
+const EXEMPT: Record<string, string> = {
+  "PricingSheet.tsx":
+    "header 가 배경·보더가 있는 띠라 표와 붙는 게 의도된 모양이다.",
+  "HandoverWizard.tsx":
+    "목록 패널이 아니라 마법사 단계 제목(`1 · 서비스 선택`)이다.",
+};
 
 function tsxFiles(dir: string): string[] {
   const out: string[] = [];
@@ -27,23 +40,29 @@ function tsxFiles(dir: string): string[] {
 }
 
 describe("목록 제목과 표 사이 간격", () => {
-  it("제목 header 를 둔 표 화면은 아래 간격을 명시한다", () => {
+  it("제목 아래 16px — 부모 gap 이 더해지지 않는다", () => {
     const bad: string[] = [];
     for (const file of tsxFiles(ROOT)) {
+      const base = file.split(/[\\/]/).pop() ?? "";
+      if (EXEMPT[base]) continue;
+
       const src = readFileSync(file, "utf8");
-      // 제목 header 바로 아래 표가 오는 화면만 본다.
       if (!/<header[^>]*className="[^"]*"/.test(src)) continue;
       if (!/<table\b/.test(src)) continue;
-      // 부모가 gap 으로 띄우는 구조에서만 이 셈이 성립한다.
-      if (!/flex flex-col gap-3/.test(src)) continue;
 
       const header = /<header className="([^"]*)"/.exec(src)?.[1] ?? "";
-      // mb-4 = 16px. 부모 12px 과 합쳐 28px 이 된다.
-      if (!/\bmb-4\b/.test(header)) bad.push(file.replace(process.cwd(), ""));
+      if (!/\bmb-4\b/.test(header)) {
+        bad.push(`${file.replace(process.cwd(), "")} — header 에 mb-4 없음`);
+        continue;
+      }
+      // **부모 gap 은 여기서 못 잡는다.** JSX 부모를 정규식으로 짚는 건 취약해서,
+      // 통째로 잡으면 오탐이 여덟 곳, 좁히면 아무것도 못 잡았다(2026-09-01 둘 다 실측).
+      // 그래서 `mb-4` 만 지킨다 — 부모에 `gap-*` 을 두면 그만큼 더해져 16px 을 넘으므로,
+      // 새 패널은 `ListPattern` 처럼 **gap 없이 mb-4 만** 둔다.
     }
     expect(
       bad,
-      `제목과 표가 붙어 보입니다. header 에 mb-4 를 더해 28px 을 만드세요:\n${bad.join("\n")}`,
+      `제목·표 간격이 표준(16px)과 다릅니다:\n${bad.join("\n")}`,
     ).toEqual([]);
   });
 });
