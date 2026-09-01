@@ -8,9 +8,9 @@ import { kstFormat } from "@/lib/kst-format";
  */
 
 /** 접수관리자 로그인 — 접수구분과 무관하게 한 곳. */
+import { callCenterLines } from "./call-center";
+
 const ADMIN_URL = "https://nadmin.jinhakapply.com/Login.aspx";
-/** 고객센터 */
-const CALL_CENTER = "1544-7715";
 /** 경쟁률 HTML 이 놓이는 자리 (scripts/moa-ratio/audit.py 의 REAL 베이스와 같다) */
 const RATIO_BASE = "https://addon.jinhakapply.com/RatioV1/RatioH";
 /**
@@ -147,8 +147,8 @@ export function buildDefaultOpenNoticeText(args: OpenNoticeTemplateArgs): {
     ...(includeRatio
       ? [`· 경쟁률 공개 : ${ratioUrl(serviceId)}`, "   └ 지원자 경쟁률 실시간 조회"]
       : []),
-    `· 지원자 문의 : 진학어플라이 고객센터 ${CALL_CENTER}`,
-    "   └ 평일 09:00~18:00 (마감일 ~22:00 연장 운영)",
+    // 요일마다 다르고, 수시(9월)·정시(1월)에는 연장한다 — `call-center.ts` 참고.
+    ...callCenterLines(writeStartAt),
     "",
     "문의사항은 아래 연락처로 연락 주시기 바랍니다.",
     "감사합니다.",
