@@ -17,7 +17,8 @@
 사용 (레포 루트에서):
   python scripts/moa-settlement/discover.py
 
-환경변수는 `scrape.py` 와 같다 — MOA_USERNAME / MOA_PASSWORD / MAKE_SMS_CODE_URL.
+환경변수는 `scrape.py` 와 같다 — MOA_USERNAME / MOA_PASSWORD /
+MAKE_SMS_CODE_URL (+ 백업 MAKE_SMS_CODE_URL_2).
 로그인 흐름을 그대로 가져다 쓰므로 2FA 처리가 두 벌이 되지 않는다.
 
   HEADLESS_MODE=false            창을 띄워 눈으로 보며 확인 (권장)
@@ -104,16 +105,16 @@ def main() -> int:
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
 
-    from scrape import setup_driver, login_and_2fa  # noqa: E402
+    from scrape import setup_driver, login_and_2fa, sms_urls  # noqa: E402
 
     env = {
         "username": os.getenv("MOA_USERNAME", ""),
         "password": os.getenv("MOA_PASSWORD", ""),
-        "sms_url": os.getenv("MAKE_SMS_CODE_URL", ""),
+        "sms_urls": sms_urls(),
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "90")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
     }
-    missing = [k for k in ("username", "password", "sms_url") if not env[k]]
+    missing = [k for k in ("username", "password", "sms_urls") if not env[k]]
     if missing:
         print(f"[FAIL] 환경변수 누락: {missing}")
         return 1

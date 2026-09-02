@@ -210,6 +210,48 @@ def fetch_baseline_code(url: str, attempts: int = 3, interval_sec: int = 3) -> s
     )
 
 
+def sms_urls(env: dict | None = None) -> list[str]:
+    """웹훅 주소를 순서대로 모은다 — 주 + 백업.
+
+    make 계정을 둘 두고 **같은 문자함**을 두 경로로 읽는다(무료 한도 대비).
+    키 이름을 갈라야 한다 — 같은 이름을 두 줄 쓰면 뒤엣것이 앞엣것을 덮어써서
+    백업이 백업이 아니라 유일한 값이 된다.
+    """
+    src = os.environ if env is None else env
+    raw = [src.get("MAKE_SMS_CODE_URL", ""), src.get("MAKE_SMS_CODE_URL_2", "")]
+    return [u.strip() for u in raw if u and u.strip()]
+
+
+def pick_baseline(
+    urls: list[str], attempts: int = 3, interval_sec: int = 3
+) -> tuple[str, str | None]:
+    """살아 있는 웹훅을 고르고 그 baseline 을 함께 돌려준다.
+
+    **고른 URL 을 반드시 돌려주는 이유**: 호출부가 A 로 baseline 을 읽고 B 로
+    폴링하면, 두 make 시나리오의 동기화 시점이 달라 B 에 남아 있던 지난 SMS 가
+    baseline 과 달라 보인다 → 만료된 코드를 새 코드로 오인한다(2026-08-06 사고와
+    같은 형태). 고른 뒤에는 흐름 내내 그 URL 만 쓴다.
+
+    **본문에 코드가 없는 것은 죽은 게 아니다** — 첫 실행이라 문자가 없을 수
+    있다. 그때는 넘어가지 않고 그 URL 을 그대로 쓴다(baseline=None).
+
+    살아 있는 첫 URL 에서 끝내므로 **평소에는 GET 이 안 늘어난다** — 백업으로는
+    앞이 죽었을 때만 간다.
+    """
+    for url in urls:
+        for i in range(attempts):
+            body = _fetch_sms_body(url)
+            if body is not None:
+                return url, _extract_code(body)
+            if i < attempts - 1:
+                time.sleep(interval_sec)
+        print(f"[WARN] SMS 웹훅 응답 없음 — 다음 주소로 넘어갑니다")
+    raise RuntimeError(
+        f"SMS 웹훅 {len(urls)}곳 모두 응답 없음 — 중단(직전 코드 오인 방지). "
+        "MAKE_SMS_CODE_URL / MAKE_SMS_CODE_URL_2 확인 필요."
+    )
+
+
 def poll_fresh_sms_code(url: str, baseline: str | None, timeout_sec: int, interval_sec: int) -> str:
     """baseline-diff 폴링 — baseline과 달라진 새 코드를 반환. 타임아웃 시 raise."""
     deadline = time.monotonic() + timeout_sec
@@ -522,12 +564,14 @@ def login_and_2fa(driver, wait, env) -> None:
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_id"]).send_keys(env["username"])
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_pw"]).send_keys(env["password"])
 
-    baseline = fetch_baseline_code(env["sms_url"])  # 제출 전 baseline (못 읽으면 중단)
+    # 살아 있는 웹훅을 고르고 baseline 을 함께 받는다. **고른 URL 로만** 이어서
+    # 폴링한다 — 섞으면 다른 make 시나리오의 지난 SMS 를 새 코드로 오인한다.
+    sms_url, baseline = pick_baseline(env["sms_urls"])
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
     _wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
     code = poll_fresh_sms_code(
-        env["sms_url"], baseline, env["sms_timeout"], env["sms_interval"]
+        sms_url, baseline, env["sms_timeout"], env["sms_interval"]
     )
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, SELECTORS["sms_code_input"])))
     driver.find_element(By.CSS_SELECTOR, SELECTORS["sms_code_input"]).send_keys(code)
@@ -676,14 +720,14 @@ def main() -> int:
     env = {
         "username": os.getenv("MOA_USERNAME", ""),
         "password": os.getenv("MOA_PASSWORD", ""),
-        "sms_url": os.getenv("MAKE_SMS_CODE_URL", ""),
+        "sms_urls": sms_urls(),
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "90")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
         "wait_sec": int(os.getenv("MOA_WAIT_SEC", "40")),
         "base_url": base_url,
         "secret": secret,
     }
-    missing = [k for k in ("username", "password", "sms_url") if not env[k]]
+    missing = [k for k in ("username", "password", "sms_urls") if not env[k]]
     if not dry_run:
         missing += [k for k in ("base_url", "secret") if not env[k]]
     if missing:

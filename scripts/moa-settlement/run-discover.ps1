@@ -26,6 +26,13 @@ foreach ($k in @("MOA_USERNAME", "MOA_PASSWORD", "MAKE_SMS_CODE_URL")) {
     }
 }
 
+# 백업 웹훅은 없어도 된다 — 있으면 넘겨주고, 없으면 주 웹훅 하나로 돈다.
+# 안 넘기면 파이썬 쪽 sms_urls() 가 못 보고 이중화가 조용히 꺼진다.
+if (-not [Environment]::GetEnvironmentVariable("MAKE_SMS_CODE_URL_2")) {
+    $v2 = Get-DotEnv $envFile "MAKE_SMS_CODE_URL_2"
+    if ($v2) { Set-Item -Path "env:MAKE_SMS_CODE_URL_2" -Value $v2 }
+}
+
 # 창을 띄운다 — 디스커버리는 사람이 같이 보는 작업이다.
 if (-not $env:HEADLESS_MODE) { $env:HEADLESS_MODE = "false" }
 
