@@ -84,3 +84,37 @@ describe("parseDepositSheet — Graph usedRange 응답 → DepositRow[]", () => 
     ).toEqual([]);
   });
 });
+
+/**
+ * `text` 없이 `values` 만으로도 읽힌다.
+ *
+ * `usedRange?$select=values,text` 가 401KB·4.5초였고 Graph 가
+ * `MaxRequestDurationExceeded` 로 끊었다(2026-09-02 09:01·10:00). `valuesOnly` 는
+ * 186KB·3.0초다 — **절반 이상 가볍다.**
+ *
+ * 실측해 보니 거래일시가 이미 `2025-12-01 11:58:00` 문자열로 온다. `text` 는
+ * 같은 값을 한 번 더 실어 보내고 있었다.
+ */
+describe("parseDepositSheet — values 만으로", () => {
+  const values = [
+    ["No", "거래일시", "출금금액", "입금금액", "잔액", "거래내용"],
+    [1, "2025-12-01 11:58:00", 0, 250000, 259343723, "특정금전신탁이체"],
+    [2, "2025-12-02 09:10:00", 0, 330000, 259673723, "홍길동"],
+  ];
+
+  it("text 가 없어도 날짜를 읽는다", () => {
+    const rows = parseDepositSheet({ values });
+    expect(rows[0].date).toBe("2025-12-01 11:58:00");
+  });
+
+  it("금액과 내용도 그대로", () => {
+    const rows = parseDepositSheet({ values });
+    expect(rows[0].amount).toBe(250000);
+    expect(rows[1].content).toBe("홍길동");
+  });
+
+  it("text 가 함께 와도 같은 결과 — 옛 응답과 호환된다", () => {
+    const text = values.map((r) => r.map((c) => String(c ?? "")));
+    expect(parseDepositSheet({ values, text })).toEqual(parseDepositSheet({ values }));
+  });
+});

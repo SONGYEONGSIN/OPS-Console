@@ -154,8 +154,14 @@ export async function fetchDepositSheet(): Promise<DepositRow[] | null> {
   if (!name) return [];
 
   const enc = encodeURIComponent(name);
+  // **`valuesOnly` 로 받는다.** `values,text` 는 401KB·4.5초였고 Graph 가
+  // `MaxRequestDurationExceeded` 로 끊었다(2026-09-02). 이쪽은 186KB·3.0초다.
+  //
+  // `text` 를 빼도 되는 이유: 실측해 보니 거래일시가 이미 `2025-12-01 11:58:00`
+  // 문자열로 온다 — 같은 값을 한 번 더 싣고 있었다. `parseDepositSheet` 는
+  // `text` 가 없으면 `values` 로 물러서므로 그대로 읽힌다.
   const rangeRes = await graphGet(
-    `${base}/worksheets('${enc}')/usedRange?$select=values,text`,
+    `${base}/worksheets('${enc}')/usedRange(valuesOnly=true)?$select=values`,
     headers,
   );
   if (!rangeRes) return null;
