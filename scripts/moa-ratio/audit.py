@@ -134,7 +134,11 @@ def login_and_2fa(driver, wait, env) -> None:
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_pw"]).send_keys(env["password"])
 
     manual_file = env.get("manual_code_file", "")
-    baseline = None if manual_file else scrape.fetch_sms_code(env["sms_url"])
+    # 웹훅 이중화 — 살아 있는 것을 고르고 그 URL 로만 이어서 폴링한다.
+    # 섞으면 다른 make 시나리오의 지난 SMS 를 새 코드로 오인한다.
+    sms_url, baseline = ("", None)
+    if not manual_file:
+        sms_url, baseline = scrape.pick_baseline(env["sms_urls"])
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
     scrape._wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
@@ -142,7 +146,7 @@ def login_and_2fa(driver, wait, env) -> None:
         code = poll_manual_code(manual_file, MANUAL_CODE_TIMEOUT_SEC, MANUAL_CODE_INTERVAL_SEC)
     else:
         code = scrape.poll_fresh_sms_code(
-            env["sms_url"], baseline, env["sms_timeout"], env["sms_interval"]
+            sms_url, baseline, env["sms_timeout"], env["sms_interval"]
         )
     wait.until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, scrape.SELECTORS["sms_code_input"]))
@@ -523,7 +527,7 @@ def main() -> int:
     env = {
         "username": os.getenv("MOA_USERNAME", ""),
         "password": os.getenv("MOA_PASSWORD", ""),
-        "sms_url": os.getenv("MAKE_SMS_CODE_URL", ""),
+        "sms_urls": scrape.sms_urls(),
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "120")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
         "manual_code_file": os.getenv("MANUAL_CODE_FILE", ""),
@@ -532,7 +536,7 @@ def main() -> int:
     # 막힌다(scrape.py와 동일 근거) — 빈 값 제출 자체를 조기 차단한다.
     required = ["username", "password"]
     if not env["manual_code_file"]:
-        required.append("sms_url")  # 수동 코드 경로가 아니면 웹훅 URL 필수
+        required.append("sms_urls")  # 수동 코드 경로가 아니면 웹훅 URL 필수
     missing = [k for k in required if not env[k]]
     if missing:
         print(f"[FAIL] 환경변수 누락: {missing}")
