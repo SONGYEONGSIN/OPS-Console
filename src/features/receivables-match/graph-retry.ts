@@ -15,8 +15,12 @@ export function isTransient(status: number): boolean {
 }
 
 /**
- * 재시도 간격. 늘려 가며 두 번 더 해본다 — 흔들리는 쪽을 몰아붙이지 않는다.
+ * 재시도 간격. 늘려 가며 세 번 더 해본다 — 흔들리는 쪽을 몰아붙이지 않는다.
  *
- * 합쳐도 4초라 cron 주기(1시간)에 견줘 무시할 만하다. 다음 실행을 밀지 않는다.
+ * 1초·3초로는 모자랐다(2026-09-02). 504 의 실체가 `MaxRequestDurationExceeded`,
+ * 즉 **Graph 쪽이 무거운 요청을 처리하다 스스로 끊는 것**이라 몇 초로는 상태가
+ * 안 바뀐다. 요청 자체를 절반으로 줄이면서(`valuesOnly`) 간격도 함께 늘렸다.
+ *
+ * 합쳐도 23초라 cron 주기(1시간)에 견줘 무시할 만하다. 다음 실행을 밀지 않는다.
  */
-export const RETRY_DELAYS_MS = [1_000, 3_000];
+export const RETRY_DELAYS_MS = [2_000, 6_000, 15_000];
