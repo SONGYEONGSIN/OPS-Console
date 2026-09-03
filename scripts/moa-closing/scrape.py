@@ -68,6 +68,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
+
     NoAlertPresentException,
     TimeoutException,
     UnexpectedAlertPresentException,
@@ -132,6 +133,20 @@ EXCEL_COLUMN_MAP = {
 
 # Moa SMS 포맷 확인: "[Web발신][내부관리자] 본인확인 인증번호는 [123456] 입니다."
 # → 코드가 대괄호 안. \[(\d+)\]가 정확히 매치(다른 [한글] 브라켓은 숫자 아니라 불매치).
+# --- 콘솔 출력 인코딩 ---
+#
+# Windows 에서 `python` 을 그냥 부르면 stdout 이 cp949 라, 로그의 한글이 깨지거나
+# `—` 같은 글자에서 **UnicodeEncodeError 로 죽는다.** 2026-09-03 SMS 웹훅 이중화가
+# "다음 주소로 넘어갑니다" 를 찍다 그렇게 멈춰, 백업으로 넘어가기 직전에 끝났다.
+#
+# `errors="replace"` 를 함께 둔다 — 못 쓰는 글자가 있어도 로그 한 줄 때문에
+# 스크립트가 죽는 일은 없어야 한다.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass  # 파이프가 아닌 환경에서는 재설정이 없을 수 있다.
+
 SMS_CODE_PATTERN = re.compile(os.getenv("MOA_SMS_CODE_REGEX", r"\[(\d+)\]"))
 
 
