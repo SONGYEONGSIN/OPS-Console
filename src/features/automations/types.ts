@@ -2,6 +2,13 @@ export type AutomationRunResult = {
   ok: boolean;
   message: string;
   details?: Record<string, number>;
+  /**
+   * 이번엔 일부러 안 돌았다. 실패가 아니라 **안 한 것**이다.
+   *
+   * 화면 배지가 `스킵` 으로 뜨고 일일 보고의 실패 집계에도 안 들어간다.
+   * 이유는 `message` 에 적는다 — 안 도는 걸 보고 "왜?" 를 안 묻게.
+   */
+  skipped?: boolean;
 };
 
 /**
