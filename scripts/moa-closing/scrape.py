@@ -267,16 +267,40 @@ def pick_baseline(
     )
 
 
+def poll_intervals(
+    timeout_sec: int, fast_window_sec: int = 30, fast_sec: int = 5, slow_sec: int = 20
+) -> list[int]:
+    """폴링 간격 — **초반만 촘촘히** 본다.
+
+    3초 고정이면 180초에 60번 GET 한다. baseline 3회를 더해 실행당 63회,
+    하루 한 번만 돌아도 월 1,890 operations 다 — make 무료 한도(1,000)의 두 배라
+    2026-09-03 주 계정이 `Queue is full` 로 막혔다.
+
+    SMS 는 대개 5~15초에 온다. 그 구간만 5초로 보고 뒤는 20초로 늦춘다.
+    최악이어도 총 16회라 한 달 치가 한도 안에 든다. 빨리 오면 두세 번에 끝난다.
+    """
+    out: list[int] = []
+    elapsed = 0
+    while elapsed < timeout_sec:
+        step = fast_sec if elapsed < fast_window_sec else slow_sec
+        step = min(step, timeout_sec - elapsed)
+        if step <= 0:
+            break
+        out.append(step)
+        elapsed += step
+    return out or [min(fast_sec, timeout_sec)]
+
+
 def poll_fresh_sms_code(url: str, baseline: str | None, timeout_sec: int, interval_sec: int) -> str:
     """baseline-diff 폴링 — baseline과 달라진 새 코드를 반환. 타임아웃 시 raise."""
-    deadline = time.monotonic() + timeout_sec
-    while time.monotonic() < deadline:
+    # `interval_sec` 는 초반 간격으로만 쓴다 — 뒤는 늦춰 make 크레딧을 아낀다.
+    for step in poll_intervals(timeout_sec, fast_sec=interval_sec):
         code = fetch_sms_code(url)
         if code and code != baseline:
             masked = ("*" * (len(code) - 2) + code[-2:]) if len(code) > 2 else "**"
             print(f"[OK] 새 SMS 코드 수신 (…{masked})")
             return code
-        time.sleep(interval_sec)
+        time.sleep(step)
     raise RuntimeError(f"SMS 코드 폴링 타임아웃 ({timeout_sec}s) — baseline 미변경")
 
 
