@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const {
   fetchReceivablesSheetMock,
@@ -41,6 +41,10 @@ vi.mock("@/features/receivables-match/alias-queries", () => ({
 import { runReceivablesDepositMatch } from "../receivables-deposit-match";
 
 beforeEach(() => {
+  // **시각을 고정한다.** 09시에는 잡이 스스로 건너뛰므로(Graph 몰림 회피),
+  // 고정하지 않으면 그 시간대에 돌린 테스트가 통째로 깨진다(2026-09-03).
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-03T05:00:00Z")); // KST 14:00
   fetchReceivablesSheetMock.mockReset();
   fetchDepositSheetMock.mockReset();
   patchMatchResultMock.mockClear();
@@ -48,6 +52,10 @@ beforeEach(() => {
   adminInsertMock.mockClear();
   fetchMatchAliasesMock.mockReset();
   fetchMatchAliasesMock.mockResolvedValue({});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 });
 
 describe("runReceivablesDepositMatch", () => {
@@ -171,5 +179,19 @@ describe("runReceivablesDepositMatch", () => {
     // skip 메시지에 거래처명 + 금액 표시 (행번호 대신 가독성)
     expect(insertArg.payload.skips[0]).toContain("가천대");
     expect(insertArg.payload.skips[0]).toContain("100,000");
+  });
+
+  it("09시에는 건너뛴다 — 시트를 읽지도 않는다", async () => {
+    // Graph 가 몰리는 시각이라 아예 시작하지 않는다(2026-09-01~03 실패 37%).
+    vi.setSystemTime(new Date("2026-09-03T00:00:00Z")); // KST 09:00
+    const r = await runReceivablesDepositMatch();
+    expect(r.skipped).toBe(true);
+    expect(r.ok).toBe(true); // 실패가 아니라 안 한 것이다
+    expect(fetchReceivablesSheetMock).not.toHaveBeenCalled();
+  });
+
+  it("왜 안 도는지 메시지에 적는다", async () => {
+    vi.setSystemTime(new Date("2026-09-03T00:00:00Z"));
+    expect((await runReceivablesDepositMatch()).message).toContain("09시");
   });
 });

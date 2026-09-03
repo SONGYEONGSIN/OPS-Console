@@ -4,6 +4,7 @@ import {
   fetchDepositSheet,
   depositFetchFailMessage,
 } from "@/features/receivables-match/deposit-queries";
+import { isBusyHour } from "@/features/receivables-match/busy-hour";
 import { patchMatchResult } from "@/features/receivables-match/patch";
 import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
@@ -46,6 +47,18 @@ function sleep(ms: number): Promise<void> {
  */
 export async function runReceivablesDepositMatch(): Promise<AutomationRunResult> {
   const startedAt = new Date();
+
+  // 09시는 건너뛴다 — 그 시각에만 37%가 실패했다(2026-09-01~03). `closing-scrape`
+  // 가 합류해 Graph 가 몰리는 때다. 매시간 도는 잡이라 한 시간 걸러도 잃는 게 없다.
+  if (isBusyHour(startedAt)) {
+    return {
+      ok: true,
+      skipped: true,
+      message:
+        "09시는 건너뜁니다 — Moa 스크래핑과 겹쳐 Graph 가 몰리는 시각입니다. 다음 정시에 밀린 건까지 처리합니다.",
+    };
+  }
+
   const misuSheet = await fetchReceivablesSheet();
   if (!misuSheet) {
     return {

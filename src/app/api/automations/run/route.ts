@@ -80,6 +80,8 @@ export async function POST(request: NextRequest) {
     const result = await job.run();
     await recordAutomationRun(jobId, {
       ok: result.ok,
+      // 잡이 스스로 건너뛴 것도 남긴다 — 실패로 세면 일일 보고가 거짓을 말한다.
+      skipped: result.skipped,
       message: result.message,
       durationMs: Date.now() - startedMs,
     });
