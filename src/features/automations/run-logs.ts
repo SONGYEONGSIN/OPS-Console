@@ -9,6 +9,7 @@ import {
   toNoticeTeamsEntry,
   toWeeklyReportEntry,
   toClosingRunEntry,
+  toRatioAuditEntry,
   toBriefingEntry,
   groupAiTipBatches,
   groupInsightsBatches,
@@ -222,7 +223,30 @@ async function briefingLog(jobId: string): Promise<JobRunLog> {
   };
 }
 
+/**
+ * 경쟁률 점검 상세 — 세팅(schedule)과 페이지(page)가 **한 테이블을 나눠 쓴다.**
+ * `kind` 로 거르지 않으면 세팅 점검 화면에 페이지 점검 결과가 섞인다.
+ */
+function ratioAuditLog(kind: "schedule" | "page") {
+  return async (jobId: string): Promise<JobRunLog> => {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("ratio_audit_runs")
+      .select("ran_at, kind, status, notified, payload")
+      .eq("kind", kind)
+      .order("ran_at", { ascending: false })
+      .limit(LOG_LIMIT);
+    return {
+      jobId,
+      kind: "ratio-audit",
+      entries: (data ?? []).map(toRatioAuditEntry),
+    };
+  };
+}
+
 const LOG_RESOLVERS: Record<string, (jobId: string) => Promise<JobRunLog>> = {
+  "ratio-audit": ratioAuditLog("schedule"),
+  "ratio-page-check": ratioAuditLog("page"),
   "insights-collect": insightsLog,
   "ai-tips-collect": aiTipsLog,
   "receivables-mail-operator": mailOperatorLog,

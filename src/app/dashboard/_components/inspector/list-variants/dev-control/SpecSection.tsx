@@ -6,6 +6,7 @@ import {
   sendDevControlSpec,
   toggleDevControlSpecItem,
 } from "@/features/dev-control-specs/actions";
+import type { DevControlAnalyzeRequest } from "@/features/dev-controls/schemas";
 import type {
   DevControlSpec,
   DevControlSpecItem,
@@ -196,6 +197,7 @@ export function SpecSection({
   recipients,
   lastSend,
   hasAnalyses,
+  request,
 }: {
   serviceId?: number;
   spec?: DevControlSpec;
@@ -203,6 +205,11 @@ export function SpecSection({
   lastSend?: DevControlSpecSend;
   /** 분석이 없으면 명세를 만들 재료가 없다. */
   hasAnalyses: boolean;
+  /**
+   * 이 서비스의 최신 요청. **명세 요청일 때만 쓴다** — 같은 큐를 `kind` 로 나눠
+   * 쓰므로, 분석 요청을 명세 진행 상황으로 보여주면 엉뚱한 걸 기다리게 된다.
+   */
+  request?: DevControlAnalyzeRequest & { kind?: string };
 }) {
   const [isPending, startTransition] = useTransition();
   const [requested, setRequested] = useState(false);
@@ -212,6 +219,11 @@ export function SpecSection({
 
   const items = spec?.items ?? [];
   const includedCount = items.filter((i) => i.included).length;
+
+  const specRequest = request?.kind === "spec" ? request : undefined;
+  // 방금 눌렀으면 서버 반영 전이라도 대기로 본다 — 이중 클릭을 막는다.
+  const status = requested ? "pending" : specRequest?.status;
+  const busy = status === "pending" || status === "running";
 
   return (
     <section className="space-y-3 border-t border-line pt-4">
@@ -225,7 +237,7 @@ export function SpecSection({
         <div className="flex flex-col items-end gap-1">
           <button
             type="button"
-            disabled={!hasAnalyses || isPending || requested}
+            disabled={!hasAnalyses || isPending || busy}
             onClick={() => {
               setError(null);
               startTransition(async () => {
@@ -238,14 +250,23 @@ export function SpecSection({
           >
             {spec ? "다시 만들기" : "명세서 만들기"}
           </button>
-          {requested && (
+          {status === "pending" && (
             <span className="text-2xs text-muted">
-              요청했습니다 — 5분 이내에 만들어집니다
+              대기 중 — 회사 PC가 5분 이내에 가져갑니다
+            </span>
+          )}
+          {status === "running" && (
+            <span className="text-2xs text-muted">
+              만드는 중 — 코드가 많으면 15분까지 걸립니다
             </span>
           )}
         </div>
       </div>
 
+      {/* 이유 없이 실패만 알리면 손쓸 수 없다 — 폴러가 마지막 줄을 실어 보낸다. */}
+      {status === "failed" && specRequest?.message && (
+        <p className="text-2xs text-vermilion">실패: {specRequest.message}</p>
+      )}
       {error && <p className="text-2xs text-vermilion">{error}</p>}
 
       {!hasAnalyses && (

@@ -109,3 +109,54 @@ describe("SpecSection", () => {
     );
   });
 });
+
+/**
+ * 요청 상태가 화면에 보여야 한다.
+ *
+ * 안 보이면 눌러 놓고 **되고 있는지 알 수 없다** — 실제로 실패했는데 화면은
+ * 그대로였고, 사용자가 "작동 되고 있는건가"라고 물었다(2026-09-04).
+ */
+describe("SpecSection — 요청 상태", () => {
+  const req = (status: string, message?: string) => ({
+    id: "r1",
+    service_id: 9045010,
+    kind: "spec",
+    requested_by: "나",
+    status,
+    requested_at: "2026-09-04T08:00:00Z",
+    claimed_at: null,
+    finished_at: null,
+    message: message ?? null,
+  });
+
+  it("대기 중이면 알려준다", () => {
+    view({ request: req("pending") as never });
+    expect(screen.getByText(/대기/)).toBeInTheDocument();
+  });
+
+  it("진행 중이면 알려준다", () => {
+    view({ request: req("running") as never });
+    expect(screen.getByText(/만드는 중|진행/)).toBeInTheDocument();
+  });
+
+  it("대기·진행 중에는 다시 누를 수 없다", () => {
+    view({ request: req("running") as never });
+    expect(screen.getByRole("button", { name: /다시 만들기/ })).toBeDisabled();
+  });
+
+  it("실패하면 이유를 보여준다 — exit 1 만으로는 손쓸 수 없다", () => {
+    view({ request: req("failed", "spec exit 1 — ETIMEDOUT") as never });
+    expect(screen.getByText(/ETIMEDOUT/)).toBeInTheDocument();
+  });
+
+  it("실패했으면 다시 누를 수 있다", () => {
+    view({ request: req("failed", "오류") as never });
+    expect(screen.getByRole("button", { name: /다시 만들기/ })).toBeEnabled();
+  });
+
+  it("분석 요청 중일 때는 명세 상태로 오해하지 않는다", () => {
+    // 같은 큐를 kind 로 나눠 쓰므로, 분석 요청이 명세 '진행 중'으로 보이면 안 된다.
+    view({ request: { ...req("running"), kind: "analyze" } as never });
+    expect(screen.queryByText(/만드는 중/)).toBeNull();
+  });
+});

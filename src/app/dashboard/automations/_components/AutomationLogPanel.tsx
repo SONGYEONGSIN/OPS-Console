@@ -21,6 +21,7 @@ import {
   type ClosingRunEntry,
   type WeeklyReportEntry,
   type BriefingEntry,
+  type RatioAuditEntry,
 } from "@/features/automations/run-logs-normalize";
 import type { AutomationRunEntry } from "@/features/automations/types";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
@@ -405,6 +406,110 @@ function ClosingScrapeList({ entries }: { entries: ClosingRunEntry[] }) {
   );
 }
 
+/**
+ * 경쟁률 점검 상세 — 세팅 점검(이상 건)과 페이지 점검(링크오류)이 같은 모양을 쓴다.
+ *
+ * 이 잡만 상세가 없어 `검사 0건 · 링크오류 2건` 한 줄이 전부였다. **어느 대학인지
+ * 화면에서 알 길이 없어** 운영자가 손쓸 수 없었다(2026-09-04).
+ */
+function RatioAuditList({ entries }: { entries: RatioAuditEntry[] }) {
+  return (
+    <div className="space-y-5">
+      {entries.map((e, i) => (
+        <div key={i} className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-ink">{fmtTime(e.ranAt)}</span>
+            <span className="text-2xs text-muted">
+              {e.kind === "page" ? "페이지 점검" : "세팅 점검"}
+            </span>
+          </div>
+          <DefList
+            items={[
+              { term: "검사", desc: `${e.scannedCount}건` },
+              {
+                term: e.kind === "page" ? "링크오류" : "이상",
+                desc:
+                  e.kind === "page"
+                    ? `${e.linkErrors.length}건`
+                    : `${e.findings.length}건`,
+              },
+            ]}
+          />
+
+          {/* 링크오류 — 대학·차수·상태·담당자. 이 넷이 있어야 바로 고칠 수 있다. */}
+          {e.linkErrors.length > 0 && (
+            <ul className="space-y-1.5">
+              {e.linkErrors.map((le, k) => (
+                <li key={k} className="text-2xs leading-relaxed">
+                  <span className="text-ink">
+                    {le.universityName || `서비스 ${le.serviceId}`}
+                    {le.serviceName ? ` · ${le.serviceName}` : ""}
+                  </span>
+                  <span className="ml-1.5 text-vermilion tabular-nums">
+                    HTTP {le.status}
+                  </span>
+                  {le.operatorName && (
+                    <span className="ml-1.5 text-muted">{le.operatorName}</span>
+                  )}
+                  <a
+                    href={le.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="ml-1.5 break-all font-mono text-muted underline"
+                  >
+                    {le.url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* 이상 건 — 무엇이 어떻게 다른지까지 적는다. '이상 1건'만으로는 못 고친다. */}
+          {e.findings.length > 0 && (
+            <ul className="space-y-1.5">
+              {e.findings.map((f, k) => (
+                <li key={k} className="text-2xs leading-relaxed">
+                  <span className="text-ink">
+                    {f.universityName}
+                    {f.serviceName ? ` · ${f.serviceName}` : ""}
+                    <span className="ml-1 tabular-nums text-muted">
+                      {f.seq}차
+                    </span>
+                  </span>
+                  {f.operatorName && (
+                    <span className="ml-1.5 text-muted">{f.operatorName}</span>
+                  )}
+                  <ul className="mt-0.5 space-y-0.5 pl-3">
+                    {f.items.map((it, j) => (
+                      <li key={j} className="text-muted">
+                        <span className="text-vermilion">{it.found}</span>
+                        {" → "}
+                        <span className="text-ink">{it.expect}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* 건너뛴 건 — 조용히 빠지면 안 본 것을 본 줄 안다. */}
+          {e.skipped.length > 0 && (
+            <p className="text-2xs text-muted">
+              건너뜀 {e.skipped.length}건 —{" "}
+              {e.skipped
+                .map((sk) => `${sk.serviceId}(${sk.reason})`)
+                .join(", ")}
+            </p>
+          )}
+
+          {i < entries.length - 1 && <Divider />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BriefingList({ entries }: { entries: BriefingEntry[] }) {
   return (
     <div className="space-y-5">
@@ -519,6 +624,7 @@ function entrySentAtList(log: JobRunLog): string[] {
       return log.entries.map((e) => e.sharedAt);
     case "closing-scrape":
     case "weekly-report":
+    case "ratio-audit":
       return log.entries.map((e) => e.ranAt);
     case "insights":
     case "ai-tips":
@@ -562,6 +668,8 @@ function DetailEntries({
       return <AiTipsList entries={indices.map((i) => log.entries[i])} />;
     case "briefing":
       return <BriefingList entries={indices.map((i) => log.entries[i])} />;
+    case "ratio-audit":
+      return <RatioAuditList entries={indices.map((i) => log.entries[i])} />;
     default:
       return null;
   }

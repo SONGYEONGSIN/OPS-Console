@@ -127,6 +127,39 @@ export type WeeklyReportEntry = {
   message: string;
 };
 
+/**
+ * 경쟁률 점검 실행 1건 — 두 잡(세팅·페이지)이 같은 모양을 쓴다.
+ *
+ * 지금까지 이 잡만 상세가 없어 한 줄 요약만 떴다. **"링크오류 2건"이 어느
+ * 대학인지 화면에서 알 길이 없었다**(2026-09-04).
+ */
+export type RatioAuditEntry = {
+  ranAt: string;
+  kind: "schedule" | "page";
+  scannedCount: number;
+  status: string;
+  notified: boolean;
+  findings: {
+    serviceId: number;
+    /** 같은 서비스에 1차·2차가 따로 있어 차수가 필요하다. */
+    seq: number;
+    universityName: string;
+    serviceName: string;
+    operatorName: string;
+    items: { type: string; field: string; found: string; expect: string }[];
+  }[];
+  linkErrors: {
+    serviceId: number;
+    url: string;
+    status: number;
+    universityName: string;
+    serviceName: string;
+    operatorName: string;
+  }[];
+  /** 조용히 빠지면 안 본 것을 본 줄 안다. */
+  skipped: { serviceId: number; reason: string }[];
+};
+
 export type JobRunLog =
   | { jobId: string; kind: "deposit-match"; entries: DepositMatchEntry[] }
   | { jobId: string; kind: "mail-operator"; entries: MailOperatorEntry[] }
@@ -138,6 +171,7 @@ export type JobRunLog =
   | { jobId: string; kind: "closing-scrape"; entries: ClosingRunEntry[] }
   | { jobId: string; kind: "weekly-report"; entries: WeeklyReportEntry[] }
   | { jobId: string; kind: "briefing"; entries: BriefingEntry[] }
+  | { jobId: string; kind: "ratio-audit"; entries: RatioAuditEntry[] }
   | { jobId: string; kind: "none"; entries: [] };
 
 export function formatKrw(amount: number): string {
@@ -442,6 +476,35 @@ type ClosingRunRow = {
   service_count: number | null;
   message: string | null;
 };
+
+type RatioAuditRow = {
+  ran_at?: string | null;
+  kind?: string | null;
+  payload?: Record<string, unknown> | null;
+  status?: string | null;
+  notified?: boolean | null;
+};
+
+/**
+ * `ratio_audit_runs` 한 줄 → 화면용.
+ *
+ * payload 는 스크래퍼가 보낸 것이라 **비어 있거나 구버전일 수 있다** — 그 행 하나가
+ * 화면을 깨면 나머지 이력도 못 본다. 없는 건 빈 배열·0 으로 둔다.
+ */
+export function toRatioAuditEntry(row: RatioAuditRow): RatioAuditEntry {
+  const p = (row.payload ?? {}) as Record<string, unknown>;
+  const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  return {
+    ranAt: row.ran_at ?? "",
+    kind: row.kind === "page" ? "page" : "schedule",
+    scannedCount: typeof p.scannedCount === "number" ? p.scannedCount : 0,
+    status: row.status ?? "",
+    notified: row.notified === true,
+    findings: arr<RatioAuditEntry["findings"][number]>(p.findings),
+    linkErrors: arr<RatioAuditEntry["linkErrors"][number]>(p.linkErrors),
+    skipped: arr<RatioAuditEntry["skipped"][number]>(p.skipped),
+  };
+}
 
 export function toClosingRunEntry(row: ClosingRunRow): ClosingRunEntry {
   return {

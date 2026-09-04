@@ -190,47 +190,94 @@ function sortAnalyses(analyses: DevControlAnalysis[]): DevControlAnalysis[] {
   });
 }
 
+type Tab = "analysis" | "spec";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "analysis", label: "원서제어 분석" },
+  { key: "spec", label: "학교 안내 명세" },
+];
+
 /**
- * dev-control variant 인스펙터 View — 서비스별 원서제어 분석(A/AU) 섹션 렌더.
- * 요약(summary_md) + 플래그 체크/메모 + 원본 코드(details 접힘).
+ * 인스펙터 탭 바 — 페이지 탭(`PageTabs`)과 같은 결이되 URL 을 쓰지 않는다.
+ * 인스펙터는 행을 바꿔 가며 보는 자리라, 탭을 주소에 남기면 다른 행을 열 때도 따라온다.
+ */
+function InspectorTabs({
+  active,
+  onChange,
+}: {
+  active: Tab;
+  onChange: (t: Tab) => void;
+}) {
+  return (
+    <div role="tablist" className="flex gap-1 border-b border-line">
+      {TABS.map((t) => {
+        const isActive = active === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(t.key)}
+            className={`-mb-px cursor-pointer border-b-2 px-3 py-2 text-xs transition-colors ${
+              isActive
+                ? "border-vermilion font-bold text-ink"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * dev-control variant 인스펙터 View — 두 탭으로 나뉜다.
+ *
+ * **독자가 다르다.** 분석은 운영자가 확인할 것(요약·플래그·원본 코드)이고,
+ * 명세는 학교 담당자에게 나갈 문서다. 세로로 이었더니 분석 섹션이 여럿일 때
+ * 명세까지 한참 스크롤해야 닿았다(2026-09-04).
  */
 export function DevControlView({ row }: ViewProps) {
   const analyses = row.devControlAnalyses ?? [];
-
-  const header = (
-    <div className="flex items-start justify-between gap-3">
-      <h2 className="text-lg font-medium text-ink">
-        {row.universityName} · {row.serviceName ?? row.name}
-      </h2>
-      <AnalyzeRequestControl
-        serviceId={row.serviceIdNum}
-        request={row.devControlRequest}
-      />
-    </div>
-  );
-
-  if (analyses.length === 0) {
-    return (
-      <div className="space-y-3">
-        {header}
-        <p className="text-xs text-muted">수집된 원서제어 없음</p>
-      </div>
-    );
-  }
+  const [tab, setTab] = useState<Tab>("analysis");
 
   return (
-    <div className="space-y-6">
-      {header}
-      {sortAnalyses(analyses).map((analysis) => (
-        <DevControlSection key={analysis.id} analysis={analysis} />
-      ))}
-      <SpecSection
-        serviceId={row.serviceIdNum}
-        spec={row.devControlSpec}
-        recipients={row.devControlRecipients}
-        lastSend={row.devControlSpecSend}
-        hasAnalyses={analyses.length > 0}
-      />
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-lg font-medium text-ink">
+          {row.universityName} · {row.serviceName ?? row.name}
+        </h2>
+        <AnalyzeRequestControl
+          serviceId={row.serviceIdNum}
+          request={row.devControlRequest}
+        />
+      </div>
+
+      <InspectorTabs active={tab} onChange={setTab} />
+
+      {tab === "analysis" ? (
+        analyses.length === 0 ? (
+          <p className="text-xs text-muted">수집된 원서제어 없음</p>
+        ) : (
+          <div className="space-y-6">
+            {sortAnalyses(analyses).map((analysis) => (
+              <DevControlSection key={analysis.id} analysis={analysis} />
+            ))}
+          </div>
+        )
+      ) : (
+        <SpecSection
+          serviceId={row.serviceIdNum}
+          spec={row.devControlSpec}
+          recipients={row.devControlRecipients}
+          lastSend={row.devControlSpecSend}
+          hasAnalyses={analyses.length > 0}
+          request={row.devControlRequest}
+        />
+      )}
     </div>
   );
 }
