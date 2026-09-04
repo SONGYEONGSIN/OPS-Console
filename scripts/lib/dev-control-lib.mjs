@@ -43,6 +43,51 @@ export function buildClaudePrompt(kind, code) {
 }
 
 /**
+ * 학교 담당자용 명세 프롬프트.
+ *
+ * `buildClaudePrompt` 와 **정반대 목적**이다 — 그쪽은 운영자가 확인할 것만 뽑느라
+ * "제어 요약은 쓰지 말 것"이라고 못박는다. 이쪽은 걸려 있는 제어를 빠짐없이 쓰되,
+ * 코드를 모르는 사람이 읽을 수 있게 쓴다.
+ *
+ * A(운영자 관리)와 AU(개발자 관리)를 **한 문서로 합친다** — 학교는 '누가 관리하는
+ * 파일인가'가 아니라 '지원자에게 무엇이 걸리는가'를 묻는다.
+ *
+ * @param files `{ kind, code }[]` — 저장된 raw_code. 수집을 다시 하지 않는다.
+ */
+export function buildSpecPrompt(files) {
+  const blocks = files
+    .map((f) => ["[" + f.kind + "]", "```js", f.code, "```"].join("\n"))
+    .join("\n\n");
+  return [
+    "다음은 대입 원서접수 시스템의 원서제어 코드다.",
+    "이 서비스에 **지금 걸려 있는 제어**를 학교 담당자에게 안내할 명세서를 만든다.",
+    "",
+    "독자는 비개발자다 — 대학 입학처 담당자이지 개발자가 아니다.",
+    "지원자가 겪는 일로 서술하라. 코드가 어떻게 생겼는지는 관심 밖이다.",
+    "",
+    "금지:",
+    "- 파일명(A.js, AU.js)과 A/AU 구분을 드러내지 말 것. 학교는 누가 관리하는지 묻지 않는다.",
+    "- 함수명·변수명·코드 조각을 본문에 넣지 말 것.",
+    "- '검증 로직', '유효성 체크' 같은 개발 용어를 쓰지 말 것.",
+    "",
+    "예:",
+    "  ✗ chkBirth() 로 생년월일 형식을 검증한다",
+    "  ✓ 생년월일을 잘못 적으면 다음 단계로 넘어가지 않습니다",
+    "",
+    "지원자 접수에 영향을 주는 제어를 **빠짐없이** 담아라. 접수 기간·입력 제한·",
+    "결제·첨부파일·안내 문구·자격 제한 등 걸려 있는 것을 모두 항목으로 만든다.",
+    "",
+    "반드시 아래 JSON만 출력:",
+    '{"items":[{"key":"<분류>:<식별자>","title":"제어 이름 한 줄","body":"지원자가 겪는 일 1~3문장"}]}',
+    "",
+    "key 는 재생성해도 같은 제어면 동일해야 한다 — 분류:핵심어 형태로.",
+    "운영자가 항목을 빼 두면 그 결정을 key 로 이어받기 때문에, key 가 흔들리면 뺀 항목이 되살아난다.",
+    "",
+    blocks,
+  ].join("\n");
+}
+
+/**
  * claude -p가 생성한 flags가 스키마(devControlFlagSchema)를 벗어나는 경우를 방어한다.
  * - key/label 누락(빈 문자열/공백 포함)이면 해당 flag를 제거
  * - snippet 누락이면 빈 문자열 기본값
@@ -61,13 +106,34 @@ export function sanitizeFlags(flags) {
     }));
 }
 
+/** claude -p stdout에서 JSON 덩어리만 꺼낸다 (펜스/전후 텍스트 허용). */
+function extractJson(stdout) {
+  const fence = stdout.match(/```json\s*([\s\S]*?)```/);
+  const raw = fence
+    ? fence[1]
+    : stdout.slice(stdout.indexOf("{"), stdout.lastIndexOf("}") + 1);
+  return JSON.parse(raw);
+}
+
 /** claude -p stdout에서 JSON 추출 (펜스/전후 텍스트 허용). */
 export function parseClaudeJson(stdout) {
-  const fence = stdout.match(/```json\s*([\s\S]*?)```/);
-  const raw = fence ? fence[1] : stdout.slice(stdout.indexOf("{"), stdout.lastIndexOf("}") + 1);
-  const obj = JSON.parse(raw);
+  const obj = extractJson(stdout);
   if (typeof obj.summary_md !== "string" || !Array.isArray(obj.flags))
     throw new Error("claude 응답 형식 불일치");
+  return obj;
+}
+
+/**
+ * 명세 응답 파서.
+ *
+ * `parseClaudeJson` 을 같이 쓸 수 없다 — 그쪽은 분석 전용이라 `summary_md` 와
+ * `flags` 를 요구해서, 명세 응답을 넣으면 "형식 불일치"로 죽는다(실제로 겪었다).
+ * 응답 모양이 다르면 검사도 달라야 한다.
+ */
+export function parseSpecJson(stdout) {
+  const obj = extractJson(stdout);
+  if (!Array.isArray(obj.items))
+    throw new Error("claude 응답에 items 가 없습니다");
   return obj;
 }
 

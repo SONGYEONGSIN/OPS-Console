@@ -19,6 +19,14 @@ vi.mock("@/features/dev-controls/queries", () => ({
 vi.mock("@/features/dev-controls/requests-query", () => ({
   listLatestDevControlRequests: h.listLatestDevControlRequests,
 }));
+// 학교 안내용 명세(2026-09-04) — 이 테스트는 스코프 필터만 본다.
+vi.mock("@/features/dev-control-specs/queries", () => ({
+  listDevControlSpecs: async () => [],
+  listDevControlSpecSends: async () => ({}),
+}));
+vi.mock("@/features/data-requests/queries", () => ({
+  getRecipientsForUniversities: async () => [],
+}));
 vi.mock("../../_components/patterns/ListPattern", () => ({
   ListPattern: ({
     data,

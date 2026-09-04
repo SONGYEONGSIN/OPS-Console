@@ -1,5 +1,9 @@
 import type { ListRow } from "../_components/patterns/ListPattern";
 import type {
+  DevControlSpec,
+  DevControlSpecSend,
+} from "@/features/dev-control-specs/schemas";
+import type {
   DevControlAnalysis,
   DevControlAnalyzeRequest,
 } from "@/features/dev-controls/schemas";
@@ -24,6 +28,12 @@ export function buildDevControlRows(
   services: TestableService[],
   analyses: DevControlAnalysis[],
   requests: Map<number, DevControlAnalyzeRequest> = new Map(),
+  /** 서비스별 학교 안내용 명세서 (없으면 아직 안 만든 것) */
+  specs: Map<number, DevControlSpec> = new Map(),
+  /** 대학명 → 연락처. 명세 수신자 후보다 — 오픈안내와 같은 출처를 쓴다. */
+  recipientsByUniv: Map<string, ListRow["devControlRecipients"]> = new Map(),
+  /** 서비스별 최근 명세 발송 이력 */
+  specSends: Map<number, DevControlSpecSend> = new Map(),
 ): ListRow[] {
   const analysesByService = new Map<number, DevControlAnalysis[]>();
   for (const analysis of analyses) {
@@ -44,6 +54,9 @@ export function buildDevControlRows(
     applicationType: s.admission_type ?? "",
     devControlAnalyses: analysesByService.get(s.service_id) ?? [],
     devControlRequest: requests.get(s.service_id),
+    devControlSpec: specs.get(s.service_id),
+    devControlRecipients: recipientsByUniv.get(s.university_name) ?? [],
+    devControlSpecSend: specSends.get(s.service_id),
   }));
 
   return [...rows].sort((a, b) => {

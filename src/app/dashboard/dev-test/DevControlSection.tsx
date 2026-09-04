@@ -1,5 +1,10 @@
 import { listDevControlAnalyses } from "@/features/dev-controls/queries";
 import { listLatestDevControlRequests } from "@/features/dev-controls/requests-query";
+import {
+  listDevControlSpecs,
+  listDevControlSpecSends,
+} from "@/features/dev-control-specs/queries";
+import { getRecipientsForUniversities } from "@/features/data-requests/queries";
 import { listTestableServices } from "@/features/entertest/queries";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -41,11 +46,13 @@ export async function DevControlSection({
   mine: mineParam,
   myName,
 }: Props) {
-  const [services, analyses, requests] = await Promise.all([
+  const [services, analyses, requests, specs] = await Promise.all([
     listTestableServices(),
     listDevControlAnalyses(),
     listLatestDevControlRequests(),
+    listDevControlSpecs(),
   ]);
+  const specByService = new Map(specs.map((sp) => [sp.service_id, sp]));
 
   // 필터 옵션은 전체 서비스 기준 distinct (테스트 탭과 동일 규칙, 지역 제외).
   const options = {
@@ -64,7 +71,12 @@ export async function DevControlSection({
     return true;
   });
 
-  const rows = buildDevControlRows(filteredServices, analyses, requests);
+  const rows = buildDevControlRows(
+    filteredServices,
+    analyses,
+    requests,
+    specByService,
+  );
 
   const query = (q ?? "").trim().toLowerCase();
   const filtered = query
@@ -79,10 +91,30 @@ export async function DevControlSection({
   const pageNum = page ? Math.max(1, Number(page)) : 1;
   const paged = filtered.slice((pageNum - 1) * PAGE_SIZE, pageNum * PAGE_SIZE);
 
+  // 수신자·발송이력은 **이 페이지의 30건에 대해서만** 조회한다. 전건에 돌리면
+  // 수백 개 대학 연락처를 끌어와 행마다 RSC 로 직렬화하게 된다(오픈안내와 같은 이유).
+  const [recipients, sendByService] = await Promise.all([
+    getRecipientsForUniversities([
+      ...new Set(paged.map((r) => r.universityName ?? "")),
+    ]),
+    listDevControlSpecSends(paged.map((r) => r.serviceIdNum ?? 0)),
+  ]);
+  const byUniv = new Map<string, typeof recipients>();
+  for (const r of recipients) {
+    const arr = byUniv.get(r.universityName) ?? [];
+    arr.push(r);
+    byUniv.set(r.universityName, arr);
+  }
+  const pagedWithSpec = paged.map((r) => ({
+    ...r,
+    devControlRecipients: byUniv.get(r.universityName ?? "") ?? [],
+    devControlSpecSend: sendByService[String(r.serviceIdNum)],
+  }));
+
   return (
     <ListPattern
       title="개발 · 원서제어 분석"
-      data={{ rows: paged }}
+      data={{ rows: pagedWithSpec }}
       variant="dev-control"
       readOnly
       liveData
