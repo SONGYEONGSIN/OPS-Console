@@ -28,11 +28,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // 종류를 가려 집어갈 수 있다. 자택에서는 명세(spec)만 돌 수 있기 때문 —
+  // 원서GEN(generator·entergenerator)이 회사망 밖에서 TCP 차단이라 analyze 는
+  // 못 돈다. 필터가 없으면 자택 폴러가 analyze 까지 집어가 실패로 태운다.
+  // **파라미터가 없으면 종류를 안 가린다** — 회사 PC 폴러 동작은 그대로.
+  const kind = new URL(request.url).searchParams.get("kind");
+  if (kind !== null && kind !== "analyze" && kind !== "spec") {
+    return NextResponse.json(
+      { ok: false, error: `알 수 없는 kind: ${kind}` },
+      { status: 400 },
+    );
+  }
+
   const admin = createAdminClient();
-  const { data: pending } = await admin
+  let q = admin
     .from("dev_control_analyze_requests")
     .select("id")
-    .eq("status", "pending")
+    .eq("status", "pending");
+  if (kind) q = q.eq("kind", kind);
+  const { data: pending } = await q
     .order("requested_at", { ascending: true })
     .limit(1);
   if (!pending || pending.length === 0) {
