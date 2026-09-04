@@ -626,6 +626,8 @@ const FEATURE_PINS: Record<number, string[]> = {
   4: [],
   5: ["운영부 상황실 어시스턴트"],
   6: ["업무 지식망"],
+  /** 빈 배열 = 이번 호는 기능 소개 없음(2026-09-04 요청). */
+  7: [],
 };
 
 /**
@@ -641,6 +643,7 @@ const ISSUE_VIDEOS: Record<number, BriefingMedia> = {
   // 멘트는 붙이지 않는다 — 영상 안에 이미 제목이 있어 두 번 읽게 된다(2026-08-21).
   5: { src: "https://www.youtube.com/shorts/GNSy-p-gp78" },
   6: { src: "https://www.youtube.com/watch?v=qfcx1Dw6L1M" },
+  7: { src: "https://youtube.com/shorts/1pw7WcjeJ84?si=Qctx1WFhK1y30tdT" },
 };
 
 export function pickIssueVideo(issueNo: number): BriefingMedia | undefined {
