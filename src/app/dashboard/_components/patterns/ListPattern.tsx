@@ -18,6 +18,10 @@ import type {
   DevControlAnalysis,
   DevControlAnalyzeRequest,
 } from "@/features/dev-controls/schemas";
+import type {
+  DevControlSpec,
+  DevControlSpecSend,
+} from "@/features/dev-control-specs/schemas";
 import { type OperatorPermission } from "@/features/operators/schemas";
 
 export type ListRow = {
@@ -518,6 +522,17 @@ export type ListRow = {
   devControlAnalyses?: DevControlAnalysis[];
   /** dev-control variant — 이 서비스의 최신 수동 분석 요청 (배지·버튼 상태) */
   devControlRequest?: DevControlAnalyzeRequest;
+  /** dev-control variant — 학교 안내용 명세서 (없으면 아직 안 만든 것) */
+  devControlSpec?: DevControlSpec;
+  /** dev-control variant — 명세 수신자 후보 (이 서비스 대학의 연락처) */
+  devControlRecipients?: {
+    email: string;
+    name: string;
+    department: string | null;
+    universityName: string;
+  }[];
+  /** dev-control variant — 최근 명세 발송 이력 (없으면 아직 안 보낸 것) */
+  devControlSpecSend?: DevControlSpecSend;
   /** meetings variant — 회의 유형 (MEETING_TYPES). page가 meeting.type 매핑 */
   meetingType?: "regular" | "field" | "project" | "memo" | "urgent";
   /** meetings variant — 회의 제목 */

@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     .update({ status: "running", claimed_at: new Date().toISOString() })
     .eq("id", pending[0].id)
     .eq("status", "pending")
-    .select("id, service_id, requested_at, requested_by")
+    .select("id, service_id, kind, requested_at, requested_by")
     .maybeSingle();
   if (error) {
     return NextResponse.json(

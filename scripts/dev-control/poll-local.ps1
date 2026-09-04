@@ -48,17 +48,28 @@ if (-not $claim.request) {
 }
 $id = $claim.request.id
 $serviceId = $claim.request.service_id
-Write-Host "[poll] 요청 claim: $id (service $serviceId, by $($claim.request.requested_by))"
+# 종류를 안 주는 구버전 요청은 분석으로 본다.
+$kind = if ($claim.request.kind) { $claim.request.kind } else { "analyze" }
+Write-Host "[poll] 요청 claim: $id / $kind (service $serviceId, by $($claim.request.requested_by))"
 
-# --- 2) 해당 service_id만 분석 (dev-control-analyze.cmd와 동일 node 경로) ---
+# --- 2) 해당 service_id만 처리 (dev-control-analyze.cmd와 동일 node 경로) ---
+#
+# 무엇을 할지는 요청이 정한다:
+#   analyze — 원서GEN 로그인 + 수집 + 분석 (운영자가 확인할 것)
+#   spec    — 저장된 raw_code 로 학교 안내용 명세 (수집·로그인 없음)
+#
+# 새 폴러를 만들지 않고 여기서 가른다 — 회사 PC에 등록할 작업이 하나 더 늘면
+# 그게 곧 죽는 지점이다(등록 누락으로 자동화가 통째로 안 돈 적이 여러 번 있다).
+$script = if ($kind -eq "spec") { "scripts\dev-control-spec.mjs" } else { "scripts\dev-control-analyze.mjs" }
+
 $ok = $false
 $msg = ""
 try {
     $node = "C:\Program Files\nodejs\node.exe"
-    & $node (Join-Path $repo "scripts\dev-control-analyze.mjs") "$serviceId"
+    & $node (Join-Path $repo $script) "$serviceId"
     $code = $LASTEXITCODE
     $ok = ($code -eq 0)
-    $msg = "exit $code"
+    $msg = "$kind exit $code"
 } catch {
     $msg = "poller 예외: $($_.Exception.Message)"
 }

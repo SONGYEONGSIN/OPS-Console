@@ -11,6 +11,7 @@ import type {
   DevControlAnalyzeRequest,
   DevControlFlag,
 } from "@/features/dev-controls/schemas";
+import { SpecSection } from "./SpecSection";
 import type { ViewProps } from "../types";
 
 /** 원서제어 flag 1건 — 체크박스(단정 여부) + 메모 input. 변경 시 action 호출. */
@@ -223,6 +224,13 @@ export function DevControlView({ row }: ViewProps) {
       {sortAnalyses(analyses).map((analysis) => (
         <DevControlSection key={analysis.id} analysis={analysis} />
       ))}
+      <SpecSection
+        serviceId={row.serviceIdNum}
+        spec={row.devControlSpec}
+        recipients={row.devControlRecipients}
+        lastSend={row.devControlSpecSend}
+        hasAnalyses={analyses.length > 0}
+      />
     </div>
   );
 }

@@ -161,3 +161,71 @@ describe("buildDevControlRows", () => {
     expect(rows[1].devControlAnalyses?.[0].flags).toEqual(oldFlags);
   });
 });
+
+/**
+ * 명세서·수신자·발송이력이 행에 실려야 인스펙터가 보여줄 수 있다.
+ * (2026-09-04 학교 안내용 명세)
+ */
+describe("buildDevControlRows — 명세", () => {
+  const svc = [
+    {
+      service_id: 100,
+      university_name: "가대학교",
+      service_name: "수시",
+      operator_name: "김운영",
+      category: null,
+      university_type: null,
+      admission_type: null,
+    },
+  ] as never;
+
+  const spec = {
+    id: "s1",
+    service_id: 100,
+    items: [{ key: "a", title: "제목", body: "설명", included: true }],
+    source_analyzed_at: null,
+    generated_at: "2026-09-04T00:00:00Z",
+  };
+
+  it("명세서를 행에 붙인다", () => {
+    const rows = buildDevControlRows(
+      svc,
+      [],
+      new Map(),
+      new Map([[100, spec]]),
+    );
+    expect(rows[0].devControlSpec?.id).toBe("s1");
+  });
+
+  it("대학 연락처를 수신자 후보로 붙인다", () => {
+    const rows = buildDevControlRows(
+      svc,
+      [],
+      new Map(),
+      new Map(),
+      new Map([
+        [
+          "가대학교",
+          [
+            {
+              email: "a@a.kr",
+              name: "김담당",
+              department: "입학처",
+              universityName: "가대학교",
+            },
+          ],
+        ],
+      ]),
+    );
+    expect(rows[0].devControlRecipients?.[0].email).toBe("a@a.kr");
+  });
+
+  it("명세가 없는 서비스는 undefined — 남의 명세가 새면 안 된다", () => {
+    const rows = buildDevControlRows(svc, [], new Map(), new Map());
+    expect(rows[0].devControlSpec).toBeUndefined();
+  });
+
+  it("인자를 안 줘도 기존 호출이 그대로 동작한다", () => {
+    expect(() => buildDevControlRows(svc, [])).not.toThrow();
+  });
+});
