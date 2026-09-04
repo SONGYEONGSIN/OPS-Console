@@ -12,6 +12,10 @@ import {
   toggleSpecItemSchema,
 } from "./schemas";
 import { buildSpecMailHtml, buildSpecSubject } from "./mail-html";
+import {
+  buildSpecHtmlDocument,
+  specAttachmentName,
+} from "./html-document";
 
 type Result = { ok: boolean; error?: string };
 
@@ -126,8 +130,12 @@ export async function sendDevControlSpec(input: unknown): Promise<Result> {
     return { ok: false, error: "저장된 명세 형식이 올바르지 않습니다" };
 
   // 대학·서비스명도 DB 에서 읽는다 — 문서 머리글이 폼에 따라 흔들리면 안 된다.
+  //
+  // **목록과 같은 테이블을 봐야 한다.** 개발 탭은 `closing_services` 에서 오는데
+  // (`listTestableServices`) 여기서 `services` 를 보면 대학명을 못 찾아, 목록에는
+  // 멀쩡히 떠 있는 서비스가 발송만 막힌다(2026-09-04 실제로 겪었다).
   const { data: svc } = await admin
-    .from("services")
+    .from("closing_services")
     .select("university_name, service_name")
     .eq("service_id", serviceId)
     .maybeSingle();
@@ -142,13 +150,17 @@ export async function sendDevControlSpec(input: unknown): Promise<Result> {
     sourceAnalyzedAt: spec.source_analyzed_at,
   };
 
+  // 본문은 안내 몇 줄, 내용은 첨부 문서 — 68항목이면 본문이 23,734자가 된다.
   let html: string;
+  let document: string;
   try {
     html = buildSpecMailHtml(mailArgs);
+    document = buildSpecHtmlDocument(mailArgs);
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
   const subject = buildSpecSubject(mailArgs);
+  const attachmentName = specAttachmentName(mailArgs);
 
   const dryRun = (process.env.MAIL_DRY_RUN ?? "true").toLowerCase() === "true";
   const sentBy = me.displayName ?? me.email ?? null;
@@ -165,6 +177,13 @@ export async function sendDevControlSpec(input: unknown): Promise<Result> {
       cc,
       subject,
       html,
+      attachments: [
+        {
+          name: attachmentName,
+          contentBytes: Buffer.from(document, "utf-8").toString("base64"),
+          contentType: "text/html; charset=utf-8",
+        },
+      ],
     });
     status = result.ok ? "sent" : "failed";
     errorMessage = result.ok ? null : (result.error ?? "발송 실패");
@@ -177,7 +196,8 @@ export async function sendDevControlSpec(input: unknown): Promise<Result> {
     to_email: toEmail,
     cc,
     subject,
-    body_html: html,
+    // 보낸 **문서**를 남긴다 — 본문은 안내 몇 줄이라 나중에 봐도 알 게 없다.
+    body_html: document,
     status,
     error_message: errorMessage,
     sent_by: sentBy,

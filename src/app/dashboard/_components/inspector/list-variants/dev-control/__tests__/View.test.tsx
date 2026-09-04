@@ -202,3 +202,40 @@ describe("DevControlView", () => {
     expect(screen.getByText(/exit 1/)).toBeInTheDocument();
   });
 });
+
+/**
+ * 인스펙터 탭 — 원서제어 분석 / 학교 안내 명세.
+ *
+ * 명세를 분석 아래에 이어 붙였더니 분석 섹션이 여럿일 때 한참 스크롤해야 닿았다.
+ * **독자가 다른 두 화면**이라 세로로 잇지 않고 나눈다(2026-09-04).
+ */
+describe("DevControlView — 탭", () => {
+  const r = row({ serviceIdNum: 100, devControlAnalyses: [analysis()] });
+
+  it("두 탭이 있다", () => {
+    render(<DevControlView row={r} />);
+    expect(screen.getByRole("tab", { name: /원서제어 분석/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /학교 안내/ })).toBeInTheDocument();
+  });
+
+  it("기본은 분석 — 운영자가 늘 먼저 보는 화면이다", () => {
+    render(<DevControlView row={r} />);
+    expect(screen.getByRole("tab", { name: /원서제어 분석/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.queryByText("학교 안내용 명세")).toBeNull();
+  });
+
+  it("명세 탭을 누르면 명세가 보이고 분석은 숨는다", () => {
+    render(<DevControlView row={r} />);
+    fireEvent.click(screen.getByRole("tab", { name: /학교 안내/ }));
+    expect(screen.getByText(/뺄 항목은 체크를 끄세요/)).toBeInTheDocument();
+    expect(screen.queryByText("원본 코드")).toBeNull();
+  });
+
+  it("분석이 없어도 탭은 있다 — 명세로 갈 길이 막히면 안 된다", () => {
+    render(<DevControlView row={row({ serviceIdNum: 100 })} />);
+    expect(screen.getByRole("tab", { name: /학교 안내/ })).toBeInTheDocument();
+  });
+});

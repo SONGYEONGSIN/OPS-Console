@@ -32,14 +32,13 @@ export function buildSpecSubject(args: SpecMailArgs): string {
 }
 
 /**
- * 학교 담당자에게 보내는 명세 본문.
+ * 학교 담당자에게 보내는 **안내 메일 본문** — 내용은 첨부 문서에 있다.
  *
- * **`buildReplyHtml` 을 쓰지 않는다** — 그쪽은 `\n`→`<br>` 만 해서 연속 공백이
- * 접히고, 에디터에서는 멀쩡한데 받은 편지함에서만 정렬이 무너진다(오픈안내에서 겪었다).
- * 여기서는 항목을 블록으로 쌓으므로 그 문제가 아예 안 생긴다.
+ * 항목을 본문에 다 실었더니 실측 68항목이 23,734자였다(2026-09-04). 메일에서
+ * 스크롤로 읽을 분량이 아니고, 학교가 내부 회람하려면 파일이 편하다.
+ * 그래서 본문은 **무엇이 왔는지 알려주는 몇 줄**만 둔다.
  *
- * `included` 가 꺼진 항목은 **여기서 걸러진다.** 화면에는 남지만 메일에는 안 나간다 —
- * 학교로 나간 메일은 되돌릴 수 없어서, 거르는 자리를 한 곳으로 모은다.
+ * 첨부를 언급하지 않으면 빈 메일처럼 보이므로 반드시 적는다.
  */
 export function buildSpecMailHtml(args: SpecMailArgs): string {
   const included = args.items.filter((i) => i.included);
@@ -55,16 +54,6 @@ export function buildSpecMailHtml(args: SpecMailArgs): string {
       )
     : null;
 
-  const rows = included
-    .map(
-      (item, idx) =>
-        `<tr><td style="padding:14px 0;border-bottom:1px solid #eee;vertical-align:top">` +
-        `<div style="font-weight:700;font-size:15px;color:#1a1a1a">${idx + 1}. ${esc(item.title)}</div>` +
-        `<div style="margin-top:6px;font-size:14px;line-height:1.75;color:#444">${esc(item.body)}</div>` +
-        `</td></tr>`,
-    )
-    .join("");
-
   const head = args.serviceName
     ? `${esc(args.universityName)} ${esc(args.serviceName)}`
     : esc(args.universityName);
@@ -72,10 +61,10 @@ export function buildSpecMailHtml(args: SpecMailArgs): string {
   return [
     `<div style="font-family:'Malgun Gothic','맑은 고딕',sans-serif;max-width:640px;color:#1a1a1a">`,
     `<p style="font-size:15px;line-height:1.8">안녕하세요, ${BRAND}입니다.</p>`,
-    `<p style="font-size:15px;line-height:1.8">${head} 원서접수에 현재 적용되어 있는 제어를 안내드립니다.</p>`,
-    `<table style="width:100%;border-collapse:collapse;margin-top:18px">${rows}</table>`,
+    `<p style="font-size:15px;line-height:1.8">${head} 원서접수에 현재 적용되어 있는 제어를 정리해 첨부드립니다.</p>`,
+    `<p style="font-size:15px;line-height:1.8"><b>첨부 문서</b>에 총 <b>${included.length}건</b>이 담겨 있습니다. 지원자가 실제로 겪는 내용을 기준으로 적었습니다.</p>`,
     collected
-      ? `<p style="margin-top:20px;font-size:13px;color:#777">※ ${collected} 기준으로 확인한 내용입니다.</p>`
+      ? `<p style="margin-top:18px;font-size:13px;color:#777">※ ${collected} 기준으로 확인한 내용입니다.</p>`
       : "",
     `<p style="margin-top:6px;font-size:13px;color:#777">※ 변경이 필요하시면 담당 운영자에게 회신해 주세요.</p>`,
     `</div>`,

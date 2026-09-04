@@ -10,7 +10,7 @@ export async function listLatestDevControlRequests(): Promise<
   const { data, error } = await admin
     .from("dev_control_analyze_requests")
     .select(
-      "id, service_id, requested_by, status, requested_at, claimed_at, finished_at, message",
+      "id, service_id, kind, requested_by, status, requested_at, claimed_at, finished_at, message",
     )
     .order("requested_at", { ascending: false });
   if (error) throw new Error(`요청 조회 실패: ${error.message}`);

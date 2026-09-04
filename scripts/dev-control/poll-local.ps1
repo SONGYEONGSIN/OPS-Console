@@ -64,14 +64,31 @@ $script = if ($kind -eq "spec") { "scripts\dev-control-spec.mjs" } else { "scrip
 
 $ok = $false
 $msg = ""
+# python 폴러와 같은 이유로 실행 구간만 Continue 로 낮춘다 — stderr 한 줄에 터지면
+# 진짜 원인이 통째로 유실된다. 성패는 exit code 로 판단한다.
+$prev = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 try {
     $node = "C:\Program Files\nodejs\node.exe"
-    & $node (Join-Path $repo $script) "$serviceId"
+    $output = & $node (Join-Path $repo $script) "$serviceId" 2>&1 | ForEach-Object {
+        Write-Host $_
+        $_
+    }
     $code = $LASTEXITCODE
     $ok = ($code -eq 0)
-    $msg = "$kind exit $code"
+    if ($ok) {
+        $msg = "$kind exit 0"
+    } else {
+        # **이유 없이 'exit 1' 만 남으면 운영자가 손쓸 수 없다.** 마지막 줄에 원인이
+        # 들어 있다(2026-09-04 ETIMEDOUT 이 화면에 안 떠 원인 추적이 막혔다).
+        $tail = (($output | Select-Object -Last 2) -join " / ")
+        if ($tail.Length -gt 250) { $tail = $tail.Substring($tail.Length - 250) }
+        $msg = "$kind exit $code — $tail"
+    }
 } catch {
     $msg = "poller 예외: $($_.Exception.Message)"
+} finally {
+    $ErrorActionPreference = $prev
 }
 
 # --- 3) 완료 보고 ---

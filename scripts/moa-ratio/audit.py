@@ -330,6 +330,23 @@ def _print_intersection_diagnostics(
         print(f"[WARN] {label} 교집합 저조 — Moa ID 상위5 {moa_ids} / 대상 ID 상위5 {target_ids}")
 
 
+def scanned_count(kind: str, collected_count: int, page_checked: int) -> int:
+    """이번 실행에서 **실제로 본 건수**.
+
+    두 점검이 세는 대상이 다르다 — 세팅 점검은 상세를 열어 본 서비스 수,
+    페이지 점검은 링크를 눌러 본 수다. `collected` 는 세팅 점검이 claude 판정에
+    넣는 목록이라 페이지 점검에서는 끝까지 비어 있어서, 그걸 그대로 쓰면
+    **늘 '검사 0건'** 이 된다(2026-09-04 화면에서 링크오류 2건과 함께 떴다).
+
+    숫자가 서로 모순이면 로그를 못 믿으므로, 종류를 모르면 조용히 0을 주지 않고 던진다.
+    """
+    if kind == "schedule":
+        return collected_count
+    if kind == "page":
+        return page_checked
+    raise ValueError(f"알 수 없는 점검 종류: {kind}")
+
+
 def _save_collected_details(details: list[dict], out_dir: str) -> str:
     """상세 순회로 수집한 전체 항목(스케줄·문구·접수일정)을 진단용으로 저장한다.
 
@@ -552,6 +569,8 @@ def main() -> int:
     driver = scrape.setup_driver(tempfile.mkdtemp(prefix="moa-ratio-"), True)
     wait = WebDriverWait(driver, 40)
     findings, link_errors, skipped, collected = [], [], [], []
+    # 페이지 점검이 링크를 눌러 본 수 — collected 는 세팅 점검 전용이라 여기선 안 는다.
+    page_checked = 0
     try:
         login_and_2fa(driver, wait, env)
         driver.get(RATIO_SETTING_LIST_URL)
@@ -658,6 +677,7 @@ def main() -> int:
             _print_intersection_diagnostics(
                 "REAL", real_list_filtered, targets, len(real_rows)
             )
+            page_checked = len(real_rows)
             for row in real_rows:
                 sid = int(row["UnivServiceID"])
                 url = f"{HTML_BASE['REAL']}RatioH/Ratio{sid}{row['Seq']}.html"
@@ -680,12 +700,12 @@ def main() -> int:
 
     payload = {
         "kind": kind,
-        "scannedCount": len(collected),
+        "scannedCount": scanned_count(kind, len(collected), page_checked),
         "findings": findings,
         "linkErrors": link_errors,
         "skipped": skipped,
     }
-    print(f"[RESULT] 순회 {len(collected)} / 이상 {len(findings)} / "
+    print(f"[RESULT] 순회 {payload['scannedCount']} / 이상 {len(findings)} / "
           f"링크오류 {len(link_errors)} / 건너뜀 {len(skipped)}")
 
     # 인제스트 성패와 무관하게 항상 먼저 파일로 남긴다 — POST 실패 시 SMS 인증·순회를

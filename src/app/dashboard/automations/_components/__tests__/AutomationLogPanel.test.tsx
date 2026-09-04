@@ -559,3 +559,101 @@ describe("본부차주보고 — 파일명에서 문서로", () => {
     expect(screen.getByText(base.fileName)).toBeInTheDocument();
   });
 })
+
+/**
+ * 경쟁률 점검 상세 — 이 잡만 상세가 없어 한 줄 요약뿐이었다.
+ * "링크오류 2건"이 **어느 대학인지 알 수 없었다**(2026-09-04).
+ */
+describe("RatioAuditList", () => {
+  const pageLog = {
+    jobId: "ratio-page-check",
+    kind: "ratio-audit" as const,
+    entries: [
+      {
+        ranAt: "2026-09-04T08:17:01Z",
+        kind: "page" as const,
+        scannedCount: 48,
+        status: "ok",
+        notified: true,
+        findings: [],
+        linkErrors: [
+          {
+            serviceId: 5041044,
+            url: "https://addon.jinhakapply.com/RatioV1/RatioH/Ratio50410441.html",
+            status: 404,
+            universityName: "가대학교",
+            serviceName: "수시1차",
+            operatorName: "김운영",
+          },
+        ],
+        skipped: [],
+      },
+    ],
+  };
+
+  const scheduleLog = {
+    jobId: "ratio-audit",
+    kind: "ratio-audit" as const,
+    entries: [
+      {
+        ranAt: "2026-09-03T02:00:00Z",
+        kind: "schedule" as const,
+        scannedCount: 97,
+        status: "partial",
+        notified: true,
+        findings: [
+          {
+            serviceId: 1046110,
+            seq: 2,
+            universityName: "나대학교",
+            serviceName: "수시",
+            operatorName: "이운영",
+            items: [
+              { type: "year", field: "top", found: "2025학년도", expect: "2026학년도" },
+            ],
+          },
+        ],
+        linkErrors: [],
+        skipped: [{ serviceId: 111, reason: "상세 열기 실패" }],
+      },
+    ],
+  };
+
+  it("어느 대학이 링크오류인지 보여준다", () => {
+    render(<AutomationLogPanel label="페이지 점검" loading={false} error={null} runs={[]} log={pageLog as never} />);
+    expect(screen.getByText(/가대학교/)).toBeInTheDocument();
+    expect(screen.getByText(/수시1차/)).toBeInTheDocument();
+  });
+
+  it("HTTP 상태를 보여준다 — 404 와 500 은 대응이 다르다", () => {
+    render(<AutomationLogPanel label="페이지 점검" loading={false} error={null} runs={[]} log={pageLog as never} />);
+    expect(screen.getByText(/404/)).toBeInTheDocument();
+  });
+
+  it("담당자를 보여준다 — 누구에게 갔는지 알아야 한다", () => {
+    render(<AutomationLogPanel label="페이지 점검" loading={false} error={null} runs={[]} log={pageLog as never} />);
+    expect(screen.getByText(/김운영/)).toBeInTheDocument();
+  });
+
+  it("검사 건수를 보여준다", () => {
+    render(<AutomationLogPanel label="페이지 점검" loading={false} error={null} runs={[]} log={pageLog as never} />);
+    expect(screen.getByText(/48/)).toBeInTheDocument();
+  });
+
+  it("이상 건은 무엇이 어떻게 다른지 보여준다", () => {
+    render(<AutomationLogPanel label="세팅 점검" loading={false} error={null} runs={[]} log={scheduleLog as never} />);
+    expect(screen.getByText(/나대학교/)).toBeInTheDocument();
+    expect(screen.getByText(/2025학년도/)).toBeInTheDocument();
+    expect(screen.getByText(/2026학년도/)).toBeInTheDocument();
+  });
+
+  it("차수를 보여준다 — 같은 서비스에 1차·2차가 따로 있다", () => {
+    render(<AutomationLogPanel label="세팅 점검" loading={false} error={null} runs={[]} log={scheduleLog as never} />);
+    expect(screen.getByText(/2차/)).toBeInTheDocument();
+  });
+
+  it("건너뛴 건을 사유와 함께 보여준다", () => {
+    render(<AutomationLogPanel label="세팅 점검" loading={false} error={null} runs={[]} log={scheduleLog as never} />);
+    expect(screen.getByText(/상세 열기 실패/)).toBeInTheDocument();
+  });
+});

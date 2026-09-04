@@ -39,6 +39,12 @@ export type DevControlRequestStatus = "pending" | "running" | "done" | "failed";
 export type DevControlAnalyzeRequest = {
   id: string;
   service_id: number;
+  /**
+   * 무엇을 요청한 것인가 — 같은 큐를 나눠 쓴다.
+   * `analyze` 는 수집+분석(운영자용), `spec` 은 학교 안내용 명세.
+   * 종류를 안 주는 구버전 행이 있어 선택 필드다.
+   */
+  kind?: "analyze" | "spec";
   requested_by: string | null;
   status: DevControlRequestStatus;
   requested_at: string;
