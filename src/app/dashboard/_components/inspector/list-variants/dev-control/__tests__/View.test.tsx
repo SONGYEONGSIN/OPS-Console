@@ -239,3 +239,45 @@ describe("DevControlView — 탭", () => {
     expect(screen.getByRole("tab", { name: /학교 안내/ })).toBeInTheDocument();
   });
 });
+
+/**
+ * 탭 바와 `지금 분석` 버튼의 자리.
+ *
+ * `지금 분석` 은 **원서제어 분석에만 쓰는 버튼**이다. 머리에 두면 학교 명세
+ * 탭에서도 늘 떠 있어, 그 탭의 `명세서 만들기` 옆에서 무엇을 눌러야 하는지
+ * 헷갈린다. 자기 탭 안으로 넣는다.
+ *
+ * 탭은 좁은 인스펙터에서 왼쪽에 몰려 오른쪽이 비어 보였다 — 폭을 나눠 갖는다.
+ */
+describe("DevControlView — 탭 바와 분석 버튼", () => {
+  it("탭이 폭을 나눠 갖는다 — 왼쪽에 몰리지 않는다", () => {
+    render(<DevControlView row={row({ serviceIdNum: 1130058 })} />);
+    const tabs = screen.getAllByRole("tab");
+    for (const t of tabs) expect(t.className).toMatch(/flex-1/);
+  });
+
+  it("분석 탭에서는 지금 분석이 보인다", () => {
+    render(<DevControlView row={row({ serviceIdNum: 1130058 })} />);
+    expect(
+      screen.getByRole("button", { name: /지금 분석/ }),
+    ).toBeInTheDocument();
+  });
+
+  /** 명세 탭에는 `명세서 만들기` 가 따로 있다 — 둘이 같이 있으면 헷갈린다. */
+  it("명세 탭으로 옮기면 지금 분석이 사라진다", () => {
+    render(<DevControlView row={row({ serviceIdNum: 1130058 })} />);
+    fireEvent.click(screen.getByRole("tab", { name: /학교 안내 명세/ }));
+    expect(
+      screen.queryByRole("button", { name: /지금 분석/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  /** 제목 옆이 아니라 탭 아래여야 그 탭의 것임이 보인다. */
+  it("지금 분석이 탭 바 다음에 온다", () => {
+    render(<DevControlView row={row({ serviceIdNum: 1130058 })} />);
+    const tablist = screen.getByRole("tablist");
+    const btn = screen.getByRole("button", { name: /지금 분석/ });
+    // DOCUMENT_POSITION_FOLLOWING(4) — 탭 바보다 뒤에 있다.
+    expect(tablist.compareDocumentPosition(btn) & 4).toBeTruthy();
+  });
+});
