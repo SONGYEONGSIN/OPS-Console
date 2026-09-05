@@ -208,8 +208,9 @@ function InspectorTabs({
   active: Tab;
   onChange: (t: Tab) => void;
 }) {
+  // 좁은 인스펙터에서 왼쪽에 몰려 오른쪽이 비어 보였다 — 폭을 나눠 갖는다.
   return (
-    <div role="tablist" className="flex gap-1 border-b border-line">
+    <div role="tablist" className="flex border-b border-line">
       {TABS.map((t) => {
         const isActive = active === t.key;
         return (
@@ -219,7 +220,7 @@ function InspectorTabs({
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(t.key)}
-            className={`-mb-px cursor-pointer border-b-2 px-3 py-2 text-xs transition-colors ${
+            className={`-mb-px flex-1 cursor-pointer border-b-2 px-3 py-2 text-xs transition-colors ${
               isActive
                 ? "border-vermilion font-bold text-ink"
                 : "border-transparent text-muted hover:text-ink"
@@ -246,28 +247,33 @@ export function DevControlView({ row }: ViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg font-medium text-ink">
-          {row.universityName} · {row.serviceName ?? row.name}
-        </h2>
-        <AnalyzeRequestControl
-          serviceId={row.serviceIdNum}
-          request={row.devControlRequest}
-        />
-      </div>
+      <h2 className="text-lg font-medium text-ink">
+        {row.universityName} · {row.serviceName ?? row.name}
+      </h2>
 
       <InspectorTabs active={tab} onChange={setTab} />
 
       {tab === "analysis" ? (
-        analyses.length === 0 ? (
-          <p className="text-xs text-muted">수집된 원서제어 없음</p>
-        ) : (
-          <div className="space-y-6">
-            {sortAnalyses(analyses).map((analysis) => (
-              <DevControlSection key={analysis.id} analysis={analysis} />
-            ))}
+        <div className="space-y-4">
+          {/* '지금 분석' 은 이 탭에서만 쓰는 버튼이다. 머리에 두면 명세 탭에서도
+              늘 떠 있어 그 탭의 '명세서 만들기' 옆에서 무엇을 눌러야 하는지
+              헷갈린다. */}
+          <div className="flex justify-end">
+            <AnalyzeRequestControl
+              serviceId={row.serviceIdNum}
+              request={row.devControlRequest}
+            />
           </div>
-        )
+          {analyses.length === 0 ? (
+            <p className="text-xs text-muted">수집된 원서제어 없음</p>
+          ) : (
+            <div className="space-y-6">
+              {sortAnalyses(analyses).map((analysis) => (
+                <DevControlSection key={analysis.id} analysis={analysis} />
+              ))}
+            </div>
+          )}
+        </div>
       ) : (
         <SpecSection
           serviceId={row.serviceIdNum}
