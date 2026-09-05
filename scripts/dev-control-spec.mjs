@@ -103,10 +103,19 @@ if (error) {
   console.error(`[spec] 조회 실패: ${error.message}`);
   process.exit(1);
 }
-// 전형 이름은 코드에서 못 얻는다 — `SelTypeCode` 와 이름이 이어진 자리가
-// 코드에 없다(실측: 같은 줄에 있는 건 코드 1~18 나열 한 줄뿐). 이름표(desc)를
-// 전 호출에 넘겨 봤지만 이름은 안 살아나고 항목만 176→153 으로 줄었다.
-// **대조용 문서에서 틀린 전형 이름은 코드값보다 나쁘다** — 코드값으로 둔다.
+// 전형 이름표 — 코드에는 SelTypeCode 와 이름이 이어진 자리가 없다(실측: 같은
+// 줄에 있는 건 1~18 나열 한 줄뿐). 대학 자료에서 받아 둔 것을 전 호출에 넘긴다.
+// 없으면 코드값 그대로 나간다 — 지어낸 이름보다 낫다.
+const { data: atRows } = await sb
+  .from("dev_control_admission_types")
+  .select("sel_type_code, univ_code, name")
+  .eq("service_id", serviceId)
+  .order("sel_type_code");
+const admissionTypes = (atRows ?? []).map((r) => ({
+  selTypeCode: r.sel_type_code,
+  univCode: r.univ_code,
+  name: r.name,
+}));
 
 // 큰 파일부터 — 제어가 제일 많은 파일이 긴 활주로를 먼저 받는다.
 const files = bySizeDesc(
@@ -123,7 +132,9 @@ const sourceAnalyzedAt = files
   .filter(Boolean)
   .sort()[0];
 
-console.log(`[spec] ${serviceId} — 파일 ${files.length}건으로 명세 생성`);
+console.log(
+  `[spec] ${serviceId} — 파일 ${files.length}건 / 전형 이름표 ${admissionTypes.length}개로 명세 생성`,
+);
 
 /**
  * 파일 하나로 명세 항목을 뽑는다.
@@ -139,7 +150,10 @@ function specForFile(file) {
     CLAUDE_BIN,
     ["-p", "--disallowedTools", "Bash Edit Write NotebookEdit Task"],
     {
-      input: buildSpecPrompt([{ kind: file.kind, code: file.raw_code }]),
+      input: buildSpecPrompt(
+        [{ kind: file.kind, code: file.raw_code }],
+        admissionTypes,
+      ),
       encoding: "utf8",
       maxBuffer: 10 * 1024 * 1024,
       // 파일 하나라 예전(전체 87KB)보다 짧다. 그래도 넉넉히 준다.

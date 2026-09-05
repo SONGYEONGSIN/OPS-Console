@@ -57,8 +57,11 @@ export function buildClaudePrompt(kind, code) {
  * 파일인가'가 아니라 '우리 원서에 무엇이 걸려 있나'를 묻는다.
  *
  * @param files `{ kind, code }[]` — 저장된 raw_code. 수집을 다시 하지 않는다.
+ * @param admissionTypes `{ selTypeCode, univCode, name }[]` — 전형 이름표.
+ *   코드에는 SelTypeCode 와 이름이 이어진 자리가 없어(실측), 대학 자료에서
+ *   받아 넣는다. 없으면 코드값 그대로 쓴다 — 지어내는 것보다 낫다.
  */
-export function buildSpecPrompt(files) {
+export function buildSpecPrompt(files, admissionTypes = []) {
   const blocks = files
     .map((f) => ["[" + f.kind + "]", "```js", f.code, "```"].join("\n"))
     .join("\n\n");
@@ -99,6 +102,19 @@ export function buildSpecPrompt(files) {
     "반드시 아래 JSON만 출력:",
     '{"items":[{"key":"<전형 이름 또는 공통>:<식별자>","title":"제어 한 줄 (전형 이름 포함)","body":"조건 → 결과. 값·코드 목록 포함. 1~4문장"}]}',
     "",
+    ...(admissionTypes.length
+      ? [
+          "## 전형 이름표 (대학 자료에서 받은 정답)",
+          "",
+          "코드의 `SelTypeCode` 값이 어느 전형인지다. **이 이름을 그대로 써라.**",
+          "여기 없는 코드는 이름을 지어내지 말고 `전형 코드 N` 으로 둔다.",
+          "",
+          ...admissionTypes.map(
+            (t) => `- SelTypeCode ${t.selTypeCode} = ${t.name}`,
+          ),
+          "",
+        ]
+      : []),
     "key 는 재생성해도 같은 제어면 동일해야 한다.",
     "운영자가 항목을 빼 두면 그 결정을 key 로 이어받기 때문에, key 가 흔들리면 뺀 항목이 되살아난다.",
     "",
