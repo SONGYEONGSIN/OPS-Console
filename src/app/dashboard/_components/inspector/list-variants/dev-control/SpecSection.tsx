@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { PasteAdmissionTypes } from "@/app/dashboard/dev-test/PasteAdmissionTypes";
 import {
   requestDevControlSpec,
   sendDevControlSpec,
@@ -250,6 +251,10 @@ export function SpecSection({
           >
             {spec ? "다시 만들기" : "명세서 만들기"}
           </button>
+          {/* 전형 이름표가 없으면 명세서가 전형을 `전형 코드 5` 로만 부른다 —
+              코드에 SelTypeCode 와 이름이 이어진 자리가 없기 때문이다(실측).
+              대학 접수 현황 자료를 붙여넣어 채운다. */}
+          {serviceId ? <PasteAdmissionTypes serviceId={serviceId} /> : null}
           {status === "pending" && (
             <span className="text-2xs text-muted">
               대기 중 — 회사 PC가 5분 이내에 가져갑니다
