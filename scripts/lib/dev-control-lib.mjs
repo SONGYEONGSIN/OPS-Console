@@ -56,7 +56,7 @@ export function buildClaudePrompt(kind, code) {
  * A(운영자 관리)와 AU(개발자 관리)를 **한 문서로 합친다** — 학교는 '누가 관리하는
  * 파일인가'가 아니라 '우리 원서에 무엇이 걸려 있나'를 묻는다.
  *
- * @param files `{ kind, code }[]` — 저장된 raw_code 전부. 수집을 다시 하지 않는다.
+ * @param files `{ kind, code }[]` — 저장된 raw_code. 수집을 다시 하지 않는다.
  */
 export function buildSpecPrompt(files) {
   const blocks = files
@@ -190,3 +190,44 @@ export function genHostFor(admissionType) {
  * 있는지 없는지는 물어봐야 알고, 안 물어보면 오늘처럼 조용히 빠진다.
  */
 export const GEN_FLAGS = ["WA", "WB", "WC", "WD", "PA", "PB", "PC", "PD"];
+
+/**
+ * 파일별 산출을 하나로 합친다.
+ *
+ * **한 번에 다 넣으면 대부분이 사라진다** — 실측(service 1130058):
+ *   A.js 단독 18KB(JX.IF 44개) → 56항목
+ *   9파일 87KB(JX.IF 83개) 합쳐서 → 74항목
+ * 파일 하나가 56개를 내놓는데 아홉을 합치면 74개다. 뭉개진 것이다.
+ * 그래서 파일마다 따로 뽑고 여기서 합친다.
+ *
+ * 같은 제어가 두 파일에 걸쳐 있으면 **먼저 온 것**을 쓴다. 한 파일이 실패해도
+ * 나머지는 살린다 — 전부 버리면 아홉 번 중 한 번 실패에 문서가 통째로 없다.
+ */
+export function mergeFileItems(perFile) {
+  const seen = new Set();
+  const out = [];
+  for (const items of perFile ?? []) {
+    for (const it of items ?? []) {
+      const key = String(it?.key ?? "").trim();
+      // key 가 없으면 운영자의 '제외' 결정을 걸 수 없다 — 문서에 못 올린다.
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+    }
+  }
+  return out;
+}
+
+/**
+ * 큰 파일부터 — 명세 생성 순서.
+ *
+ * 실측: 가장 큰 파일(18,484자)이 per-file 제한에 두 번 걸려 죽었다. 그 파일이
+ * 단독으로 60항목을 내놓는 **제어가 제일 많은 파일**이라 빠지면 손실이 크다.
+ * 큰 것부터 시작하면 긴 활주로를 먼저 받고, 예산이 모자랄 때 빠지는 쪽이 작은
+ * 파일이 된다(작업 스케줄링의 LPT 와 같은 이유).
+ */
+export function bySizeDesc(files) {
+  return [...(files ?? [])].sort(
+    (a, b) => (b.raw_code?.length ?? 0) - (a.raw_code?.length ?? 0),
+  );
+}
