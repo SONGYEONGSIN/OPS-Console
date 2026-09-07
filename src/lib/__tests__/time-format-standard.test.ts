@@ -19,7 +19,8 @@ const SRC = join(process.cwd(), "src");
  * 기계용 키)·`en-GB`(원래 24시간제)는 다른 목적으로 일부러 쓴다.
  */
 // `s` 플래그는 안 쓴다(tsconfig target 미만) — `[^)]` 가 이미 줄바꿈을 포함한다.
-const DIRECT_WITH_HOUR = /new Intl\.DateTimeFormat\(\s*["']ko(-KR)?["'][^)]*?hour:/;
+const DIRECT_WITH_HOUR =
+  /new Intl\.DateTimeFormat\(\s*["']ko(-KR)?["'][^)]*?hour:/;
 
 function toRelPosix(absPath: string): string {
   return relative(process.cwd(), absPath).split(sep).join("/");
@@ -46,7 +47,9 @@ export function lacksExplicit24h(source: string): boolean {
 }
 
 describe("시각 표기 표준 — 24시간제", () => {
-  it("시각을 찍는 곳은 12시간제로 새지 않는다", () => {
+  // `src` 전체를 읽는다. 단독 3.6초인데 다른 파일과 함께 돌면 기본 5초를 넘겨
+  // **내용과 무관하게** 떨어졌다(2026-09-07 실측 5,360ms). 레포가 커질수록 잦아진다.
+  it("시각을 찍는 곳은 12시간제로 새지 않는다", { timeout: 30_000 }, () => {
     const offenders: string[] = [];
     for (const file of walk(SRC)) {
       const rel = toRelPosix(file);
@@ -83,7 +86,9 @@ describe("시각 표기 표준 — 24시간제", () => {
 
   it("시각을 안 찍으면 상관없다 — 날짜만 쓰는 곳까지 막지 않는다", () => {
     expect(
-      lacksExplicit24h(`new Intl.DateTimeFormat("ko-KR", { month: "2-digit" })`),
+      lacksExplicit24h(
+        `new Intl.DateTimeFormat("ko-KR", { month: "2-digit" })`,
+      ),
     ).toBe(false);
   });
 

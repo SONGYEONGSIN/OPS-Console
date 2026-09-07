@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const { activitySpy, activity } = vi.hoisted(() => ({
   activitySpy: vi.fn(),
@@ -274,5 +276,54 @@ describe("AgentBoard — 활동 로그", () => {
       { at: "2026-08-30T10:00:00+09:00", outcome: "ok", note: null },
       { at: "2026-08-30T09:00:00+09:00", outcome: "fail", note: "Graph 500" },
     ];
+  });
+});
+
+/**
+ * 인스펙터 시인성(2026-09-07 지적).
+ *
+ * - 최근 활동·사용량 시각이 화면마다 달랐다 — 자동화 실행 로그와 한 형식으로 맞춘다
+ * - `최근 7일 · 0 · 0 · 1 · …` 이 무엇인지 알 수 없었다 — 날짜·단위를 붙인다
+ * - 막대가 글자라 인스펙터 너비를 못 채웠다
+ */
+describe("AgentBoard 인스펙터 — 시인성", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/dashboard/agents/_components/AgentBoard.tsx"),
+    "utf8",
+  );
+
+  it("실행 이력 시각은 공통 형식을 쓴다", () => {
+    expect(src).toContain("kstDateTime");
+  });
+
+  it("최근 활동에 시:분만 찍던 포맷터를 안 쓴다", () => {
+    expect(src).not.toMatch(/timeFmt\.format\(new Date\(a\.at\)\)/);
+  });
+
+  it("사용량은 차트 컴포넌트를 쓴다 — 글자 막대가 아니다", () => {
+    expect(src).toContain("UsageChart");
+  });
+
+  it("인스펙터에서 값을 점으로 늘어놓지 않는다", () => {
+    expect(src).not.toContain('daily!.join(" · ")');
+  });
+});
+
+describe("AgentBoard — 읽기 편한 세부", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/dashboard/agents/_components/AgentBoard.tsx"),
+    "utf8",
+  );
+
+  it("실패 사유를 글자 단위로 자르지 않는다 — 한글이 아무 데서나 끊긴다", () => {
+    expect(src).not.toContain("break-all");
+    expect(src).toContain("break-words");
+  });
+
+  it("마지막 실행 칸도 자릿수를 맞춘다 — 세로로 늘어서는 값이다", () => {
+    // 표 칸을 직접 본다 — 머리글에서 세면 사이 거리가 늘 때마다 깨진다.
+    const cell = /<td className="([^"]*)">\s*\{lastLabel\(/.exec(src);
+    expect(cell, "마지막 실행 칸을 못 찾았습니다").toBeTruthy();
+    expect(cell![1]).toContain("tabular-nums");
   });
 });

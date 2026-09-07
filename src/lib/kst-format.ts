@@ -26,3 +26,31 @@ export function kstFormat(options: KstFormatOptions): Intl.DateTimeFormat {
     hour12: false,
   });
 }
+
+/** 실행 이력 시각 — 연·월·일·시·분. 초는 안 쓴다. */
+const RUN_TIME = kstFormat({
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * 실행 이력 시각 한 줄 — **화면 전체가 이 하나를 쓴다.**
+ *
+ * 자동화 실행 로그는 `2026. 9. 4. 오후 5:17:04`(12시간제·초까지), 에이전트
+ * 인스펙터는 `17:17`(날짜 없음)이었다. 같은 종류의 값인데 화면마다 달라
+ * 언제 것인지 견줄 수 없었다(2026-09-07 지적).
+ *
+ * 연도를 넣는 이유는 실행 이력이 해를 넘겨 쌓이기 때문이고, 초를 빼는 이유는
+ * 사람이 읽는 짐만 되기 때문이다.
+ *
+ * 값이 없거나 깨졌으면 대시를 준다 — 화면에 `Invalid Date` 를 흘리지 않는다.
+ */
+export function kstDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return RUN_TIME.format(d);
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { kstDateTime } from "@/lib/kst-format";
 import {
   DefList,
   Divider,
@@ -26,8 +27,15 @@ import {
 import type { AutomationRunEntry } from "@/features/automations/types";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
 
+/**
+ * 실행 시각 — **화면 전체가 같은 형식을 쓴다.**
+ *
+ * `toLocaleString("ko-KR")` 은 12시간제이고 시간대를 안 준다(설계 규칙이
+ * 금지한 호출이다). `2026. 9. 4. 오후 5:17:04` 로 찍혀 에이전트 화면의
+ * `17:17` 과 견줄 수 없었다(2026-09-07).
+ */
 function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleString("ko-KR");
+  return kstDateTime(iso);
 }
 
 /** ISO 시각을 KST(Asia/Seoul) 기준 YYYY-MM-DD로. cron은 보통 1일 1회라 날짜 키가 안전. */
