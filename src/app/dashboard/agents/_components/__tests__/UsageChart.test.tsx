@@ -73,3 +73,59 @@ describe("UsageChart", () => {
     expect(screen.getByTitle("9/7 · 3건")).toBeInTheDocument();
   });
 });
+
+/**
+ * 막대가 실제로 그려지는가.
+ *
+ * 처음 올린 것은 **막대가 아예 안 보였다**(2026-09-07). 줄에 `items-end` 를 줘서
+ * 각 칸의 높이가 `auto` 가 됐고, 그러면 자식의 `height: 50%` 는 해석할 기준이 없어
+ * 0 이 된다. 숫자와 날짜만 남았다.
+ *
+ * jsdom 은 배치를 계산하지 않아 픽셀 높이를 못 잰다 — 그래서 **높이가 풀리는
+ * 구조인지**를 본다. 이게 이 버그가 드러나는 유일한 자리다.
+ */
+describe("UsageChart — 막대 높이가 풀리는 구조", () => {
+  const daily = [0, 0, 1, 1, 0, 0, 3];
+  const today = new Date("2026-09-07T02:00:00Z");
+
+  function chart() {
+    return render(<UsageChart daily={daily} today={today} />).container;
+  }
+
+  it("줄이 칸 높이를 auto 로 만들지 않는다 — items-end 가 그랬다", () => {
+    const row = chart().querySelector("[data-usage-row]");
+    expect(row, "막대 줄을 못 찾았습니다").toBeTruthy();
+    expect(row!.className).not.toContain("items-end");
+  });
+
+  it("줄에 정해진 높이가 있다 — % 는 이걸 기준으로 푼다", () => {
+    expect(chart().querySelector("[data-usage-row]")!.className).toMatch(/\bh-\d+\b/);
+  });
+
+  it("막대가 놓이는 칸이 기준을 만든다 — relative + flex-1", () => {
+    const track = chart().querySelector("[data-usage-track]");
+    expect(track, "막대 칸을 못 찾았습니다").toBeTruthy();
+    expect(track!.className).toContain("relative");
+    expect(track!.className).toContain("flex-1");
+  });
+
+  it("막대가 그 칸 안에 바닥부터 선다", () => {
+    const bar = chart().querySelector("[data-usage-bar] [data-usage-fill]");
+    expect(bar, "막대를 못 찾았습니다").toBeTruthy();
+    expect(bar!.className).toContain("absolute");
+    expect(bar!.className).toContain("bottom-0");
+  });
+
+  it("값이 있는 날은 높이가 0 이 아니다", () => {
+    const fills = chart().querySelectorAll<HTMLElement>("[data-usage-fill]");
+    // 마지막 칸이 최대값(3)이라 100%.
+    expect(fills[6].style.height).toBe("100%");
+    // 1건짜리도 보이는 두께를 갖는다 — 33% 는 충분하다.
+    expect(parseFloat(fills[2].style.height)).toBeGreaterThan(10);
+  });
+
+  it("0 인 날은 바닥선만 — 없음과 안 잼을 구분한다", () => {
+    const fills = chart().querySelectorAll<HTMLElement>("[data-usage-fill]");
+    expect(parseFloat(fills[0].style.height)).toBeLessThan(5);
+  });
+});
