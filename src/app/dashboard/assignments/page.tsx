@@ -1,6 +1,8 @@
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
+import { getAssignmentsWorkbookUrl } from "@/features/assignments/workbook-link";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { PageTabs } from "@/components/common/PageTabs";
@@ -69,6 +71,10 @@ export default async function AssignmentsPage({
   const sp = await searchParams;
   const tab = sp.tab === "duties" || sp.tab === "pricing" ? sp.tab : "univ";
 
+  // 세 탭이 모두 이 파일의 사본이다 — 원본으로 가는 길을 제목 옆에 둔다.
+  // 실패해도 null 로 와서 버튼만 안 뜬다(목록은 그대로).
+  const workbookUrl = await getAssignmentsWorkbookUrl();
+
   // 헤더 건수는 탭/필터에 따라 달라지므로 호출 시점에 실제 값을 주입한다.
   const makeHeader = (count: number) => {
     const config = resolvePageMeta(slug, meta, count);
@@ -80,6 +86,11 @@ export default async function AssignmentsPage({
         headline={config.headline}
         description={config.description}
         autoRefresh
+        headlineAction={
+          workbookUrl ? (
+            <HeaderActionButton href={workbookUrl}>총괄장</HeaderActionButton>
+          ) : undefined
+        }
       />
     );
   };
