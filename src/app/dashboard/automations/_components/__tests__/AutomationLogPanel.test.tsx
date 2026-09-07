@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 vi.mock("@/features/receivables-match/apply-mismatch-action", () => ({
   applyMismatchAsMatch: vi.fn().mockResolvedValue({ ok: true, patched: true }),
@@ -655,5 +657,32 @@ describe("RatioAuditList", () => {
   it("건너뛴 건을 사유와 함께 보여준다", () => {
     render(<AutomationLogPanel label="세팅 점검" loading={false} error={null} runs={[]} log={scheduleLog as never} />);
     expect(screen.getByText(/상세 열기 실패/)).toBeInTheDocument();
+  });
+});
+
+/**
+ * 실행 시각은 공통 형식(`kstDateTime`)을 쓴다.
+ *
+ * `toLocaleString("ko-KR")` 은 **12시간제이고 시간대를 안 준다** — 설계 규칙이
+ * 금지한 호출이다(`.claude/rules/design.md`). 실제로 `2026. 9. 4. 오후 5:17:04`
+ * 로 찍혀 에이전트 화면과 견줄 수 없었다(2026-09-07).
+ */
+describe("실행 시각 형식", () => {
+  const src = readFileSync(
+    join(
+      process.cwd(),
+      "src/app/dashboard/automations/_components/AutomationLogPanel.tsx",
+    ),
+    "utf8",
+  );
+
+  it("공통 포맷터를 쓴다", () => {
+    expect(src).toContain("kstDateTime");
+  });
+
+  it("toLocaleString 을 직접 부르지 않는다", () => {
+    // 주석에는 남는다(왜 안 쓰는지를 적어 둔 자리다) — 실행되는 줄만 본다.
+    const code = src.replace(/^\s*\*.*$/gm, "");
+    expect(code).not.toContain('toLocaleString("ko-KR")');
   });
 });

@@ -57,6 +57,7 @@ describe("AgentBoard — 7일 추이 읽는 법", () => {
   it("인스펙터가 상대 높이임을 밝힌다", () => {
     render1();
     fireEvent.click(screen.getByRole("row", { name: /mail-ingestor/ }));
-    expect(screen.getByText(/다른 에이전트와 높이를 견주지/)).toBeInTheDocument();
+    // 문구는 UsageChart 로 옮겼다(2026-09-07) — 뜻은 그대로다.
+    expect(screen.getByText(/다른 에이전트와 견주지/)).toBeInTheDocument();
   });
 });

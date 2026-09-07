@@ -13,6 +13,8 @@ import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { AgentKpi } from "./AgentKpi";
 import type { AgentRow } from "./agent-row";
 import type { AgentUsage } from "@/features/agent-org/usage";
+import { kstDateTime } from "@/lib/kst-format";
+import { UsageChart } from "./UsageChart";
 import { getAgentActivity } from "@/features/agent-org/activity";
 import type { ActivityItem } from "@/features/agent-org/activity-shape";
 import { kstFormat } from "@/lib/kst-format";
@@ -285,7 +287,7 @@ export function AgentBoard({
                   <td className="px-3 py-2.5 text-right font-mono text-ink-soft">
                     {u?.daily ? spark(u.daily) : ""}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-ink-soft">
+                  <td className="px-3 py-2.5 text-right tabular-nums text-ink-soft">
                     {lastLabel(u?.lastAt ?? null)}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-ink">
@@ -378,8 +380,11 @@ export function AgentBoard({
                 <ul className="space-y-1.5">
                   {activity.map((a, i) => (
                     <li key={`${a.at}-${i}`} className="flex items-baseline gap-2">
-                      <span className="shrink-0 font-mono text-xs text-muted">
-                        {timeFmt.format(new Date(a.at))}
+                      {/* 자동화 실행 로그와 **같은 형식**이다. 전엔 여기만
+                          `17:17` 이라 언제 것인지 견줄 수 없었다. 숫자만이라
+                          tabular-nums 를 쓴다 — mono 는 식별자 전용이다. */}
+                      <span className="shrink-0 text-xs tabular-nums text-muted">
+                        {kstDateTime(a.at)}
                       </span>
                       <span
                         className={`shrink-0 text-xs ${
@@ -392,7 +397,7 @@ export function AgentBoard({
                       </span>
                       {/* 실패 사유는 요약하지 않는다 — 왜 안 됐는지가 조치다. */}
                       {a.note && (
-                        <span className="min-w-0 break-all text-xs text-muted">
+                        <span className="min-w-0 break-words text-xs text-muted">
                           {a.note}
                         </span>
                       )}
@@ -407,20 +412,12 @@ export function AgentBoard({
             <Section title="사용량">
               {usage[current.agent]?.daily ? (
                 <>
-                  <p className="font-mono text-lg text-ink">
-                    {spark(usage[current.agent]!.daily!)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    최근 {usage[current.agent]!.daily!.length}일 ·{" "}
-                    {usage[current.agent]!.daily!.join(" · ")}
-                  </p>
-                  {/* 여기엔 원래 값이 있으니 높이가 상대값이라는 것만 덧붙인다. */}
-                  <p className="mt-1 text-xs text-muted">
-                    막대는 이 에이전트 최대값 기준입니다 — 다른 에이전트와 높이를
-                    견주지 마세요.
-                  </p>
-                  <p className="mt-2 text-xs text-ink-soft">
-                    마지막 실행 {lastLabel(usage[current.agent]!.lastAt)}
+                  <UsageChart daily={usage[current.agent]!.daily!} />
+                  <p className="mt-3 text-xs text-ink-soft">
+                    마지막 실행{" "}
+                    <span className="tabular-nums">
+                      {kstDateTime(usage[current.agent]!.lastAt)}
+                    </span>
                   </p>
                 </>
               ) : (
