@@ -57,24 +57,40 @@ export function UsageChart({
 
   return (
     <div className="w-full">
-      <div className="flex h-20 items-end gap-1">
+      {/*
+        **칸이 줄의 높이를 물려받아야 막대의 `%` 가 풀린다.**
+
+        처음엔 줄에 `items-end` 를 줬는데, 그러면 각 칸의 높이가 `auto` 라
+        자식의 `height: 50%` 가 기준을 잃고 0 이 된다 — 숫자와 날짜만 남고
+        막대가 통째로 안 보였다(2026-09-07).
+
+        그래서 늘림(기본 stretch)으로 두고, 막대가 놓일 자리를 `relative flex-1`
+        로 만들어 그 안에 바닥부터 세운다.
+      */}
+      <div data-usage-row className="flex h-24 gap-1">
         {daily.map((n, i) => (
           <div
             key={i}
             data-usage-bar
             title={`${labels[i]} · ${n}건`}
-            className="flex flex-1 flex-col items-center justify-end gap-1"
+            className="flex flex-1 flex-col gap-1"
           >
-            <span className="text-2xs tabular-nums text-muted">{n}</span>
-            {/* 0 인 날도 자리를 남긴다 — 빠지면 날짜가 밀려 엉뚱한 날로 읽힌다.
-                바닥에 옅은 선을 남겨 '없음'과 '안 잼'을 구분한다. */}
-            <div
-              aria-hidden
-              style={{
-                height: max > 0 ? `${Math.max(2, (n / max) * 100)}%` : "2px",
-              }}
-              className={`w-full ${n > 0 ? "bg-vermilion" : "bg-line-soft"}`}
-            />
+            <span className="text-center text-2xs tabular-nums text-muted">
+              {n}
+            </span>
+            <div data-usage-track className="relative flex-1">
+              {/* 0 인 날도 바닥선을 남긴다 — '없음'과 '안 잼'은 다르다. */}
+              <div
+                aria-hidden
+                data-usage-fill
+                style={{
+                  height: max > 0 && n > 0 ? `${(n / max) * 100}%` : "2%",
+                }}
+                className={`absolute bottom-0 left-0 w-full ${
+                  n > 0 ? "bg-vermilion" : "bg-line-soft"
+                }`}
+              />
+            </div>
           </div>
         ))}
       </div>
