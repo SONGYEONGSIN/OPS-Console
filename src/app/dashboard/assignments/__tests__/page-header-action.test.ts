@@ -33,8 +33,17 @@ describe("총괄장 헤더 액션", () => {
     expect(src).toMatch(/HeaderActionButton[\s\S]{0,200}?총괄장/);
   });
 
-  it("제목 오른쪽 자리에 넣는다", () => {
-    expect(src).toContain("headlineAction");
+  it("목록 제목 줄(대학배정)에 넣는다 — 페이지 제목이 아니다", () => {
+    // 처음엔 페이지 제목(서비스사이클 — 총괄장) 옆에 뒀는데, 표를 보는 자리와
+    // 멀어 눈에 안 들어왔다(2026-09-09 지적).
+    expect(src).toContain("extraActions");
+    expect(src).not.toContain("headlineAction");
+  });
+
+  it("탭을 옮겨도 링크가 사라지지 않는다 — 업무분장·가격정책도 같은 파일이다", () => {
+    // 세 탭이 한 파일의 사본이라, 한 탭에서만 보이면 나머지에선 길이 끊긴다.
+    const uses = src.match(/sourceAction/g) ?? [];
+    expect(uses.length).toBeGreaterThanOrEqual(2);
   });
 
 

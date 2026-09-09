@@ -70,6 +70,21 @@ export default async function AssignmentsPage({
   const sp = await searchParams;
   const tab = sp.tab === "duties" || sp.tab === "pricing" ? sp.tab : "univ";
 
+  /**
+   * 원본 파일 버튼 — **목록 제목 줄** 오른쪽에 둔다.
+   *
+   * 처음엔 페이지 제목(`서비스사이클 — 총괄장`) 옆에 뒀는데, 표를 보는 자리와
+   * 멀어 눈에 안 들어왔다(2026-09-09 지적).
+   *
+   * 세 탭이 모두 이 한 파일의 사본이라 **탭마다 같은 자리에 둔다** — 한 탭에만
+   * 있으면 나머지에서 길이 끊긴다. 주소 해석은 `/source` 창구가 한다.
+   */
+  const sourceAction = (
+    <HeaderActionButton href="/dashboard/assignments/source">
+      총괄장
+    </HeaderActionButton>
+  );
+
   // 헤더 건수는 탭/필터에 따라 달라지므로 호출 시점에 실제 값을 주입한다.
   const makeHeader = (count: number) => {
     const config = resolvePageMeta(slug, meta, count);
@@ -81,14 +96,6 @@ export default async function AssignmentsPage({
         headline={config.headline}
         description={config.description}
         autoRefresh
-        // 버튼은 **늘 그린다.** 여기서 링크를 조회해 성공했을 때만 그렸더니,
-        // 조회가 실패하자 버튼이 통째로 사라져 '기능이 안 만들어진 것'처럼
-        // 보였다(2026-09-09). 주소 해석은 창구가 하고, 못 풀면 이유를 띄운다.
-        headlineAction={
-          <HeaderActionButton href="/dashboard/assignments/source">
-            총괄장
-          </HeaderActionButton>
-        }
       />
     );
   };
@@ -108,6 +115,8 @@ export default async function AssignmentsPage({
       <>
         {makeHeader(sheetRows)}
         <PageTabs active={tab} tabs={TABS} />
+        {/* 이 탭들은 목록 머리가 없다 — 같은 자리(우측 상단)를 만들어 준다. */}
+        <div className="flex justify-end px-7 pt-7">{sourceAction}</div>
         {body}
       </>
     );
@@ -190,6 +199,7 @@ export default async function AssignmentsPage({
         inlineFilters={
           <ScopeChips key="assignments-scope" total={total} mineLabel="내 배정" />
         }
+        extraActionsLeft={sourceAction}
         footer={
           <ListPagination
             key="assignments-pagination"

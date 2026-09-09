@@ -9,8 +9,6 @@ type Props = {
   description?: string;
   /** DB 연동 list 페이지에 자동 새로고침 카운트다운 노출 */
   autoRefresh?: boolean;
-  /** 제목 오른쪽 액션 — 원본 파일 바로가기 같은 것. */
-  headlineAction?: React.ReactNode;
 };
 
 /**
@@ -26,7 +24,6 @@ export function PageHeader({
   headline,
   description,
   autoRefresh = false,
-  headlineAction,
 }: Props) {
   // Fragment 대신 div wrap — RSC 직렬화 시 Fragment children이 array로 노출되어
   // React 19 "each child unique key" 경고. CrumbBar(washi)/ContentHead(cream) 둘 다
@@ -36,11 +33,7 @@ export function PageHeader({
       <CrumbBar pathname={pathname} />
       <header className="bg-paper px-9 pb-[18px] pt-6">
         <PageMeta items={meta} autoRefresh={autoRefresh} />
-        <PageHeadline
-          {...headline}
-          description={description}
-          action={headlineAction}
-        />
+        <PageHeadline {...headline} description={description} />
       </header>
     </div>
   );
