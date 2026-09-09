@@ -14,8 +14,15 @@ describe("총괄장 헤더 액션", () => {
     "utf8",
   );
 
-  it("목록과 같은 파일을 여는 링크를 가져온다", () => {
-    expect(src).toContain("getAssignmentsWorkbookUrl");
+  it("버튼을 늘 그린다 — 링크 조회 성공 여부에 매달지 않는다", () => {
+    // 전에는 조회에 실패하면 버튼이 통째로 사라져, 사용자에게는 '기능이 안
+    // 만들어진 것'과 구분되지 않았다(2026-09-09).
+    expect(src).not.toContain("getAssignmentsWorkbookUrl");
+    expect(src).not.toMatch(/workbookUrl\s*\?/);
+  });
+
+  it("원본 파일 창구로 보낸다", () => {
+    expect(src).toContain("/dashboard/assignments/source");
   });
 
   it("헤더 액션 표준 버튼을 쓴다 — 문자열을 새로 적지 않는다", () => {
@@ -30,7 +37,5 @@ describe("총괄장 헤더 액션", () => {
     expect(src).toContain("headlineAction");
   });
 
-  it("링크가 없으면 버튼을 안 그린다 — 깨진 링크를 누르게 하지 않는다", () => {
-    expect(src).toMatch(/workbookUrl\s*\?/);
-  });
+
 });
