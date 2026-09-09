@@ -2,7 +2,6 @@ import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
-import { getAssignmentsWorkbookUrl } from "@/features/assignments/workbook-link";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { PageTabs } from "@/components/common/PageTabs";
@@ -71,10 +70,6 @@ export default async function AssignmentsPage({
   const sp = await searchParams;
   const tab = sp.tab === "duties" || sp.tab === "pricing" ? sp.tab : "univ";
 
-  // 세 탭이 모두 이 파일의 사본이다 — 원본으로 가는 길을 제목 옆에 둔다.
-  // 실패해도 null 로 와서 버튼만 안 뜬다(목록은 그대로).
-  const workbookUrl = await getAssignmentsWorkbookUrl();
-
   // 헤더 건수는 탭/필터에 따라 달라지므로 호출 시점에 실제 값을 주입한다.
   const makeHeader = (count: number) => {
     const config = resolvePageMeta(slug, meta, count);
@@ -86,10 +81,13 @@ export default async function AssignmentsPage({
         headline={config.headline}
         description={config.description}
         autoRefresh
+        // 버튼은 **늘 그린다.** 여기서 링크를 조회해 성공했을 때만 그렸더니,
+        // 조회가 실패하자 버튼이 통째로 사라져 '기능이 안 만들어진 것'처럼
+        // 보였다(2026-09-09). 주소 해석은 창구가 하고, 못 풀면 이유를 띄운다.
         headlineAction={
-          workbookUrl ? (
-            <HeaderActionButton href={workbookUrl}>총괄장</HeaderActionButton>
-          ) : undefined
+          <HeaderActionButton href="/dashboard/assignments/source">
+            총괄장
+          </HeaderActionButton>
         }
       />
     );
