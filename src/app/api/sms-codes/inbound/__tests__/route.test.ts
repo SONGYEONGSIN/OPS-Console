@@ -71,13 +71,21 @@ describe("POST /api/sms-codes/inbound", () => {
     expect(state.inserts).toHaveLength(0);
   });
 
+  it("너무 긴 문자도 조용히 무시 — 400 이면 Tasker 가 그 개인 문자를 다시 보낸다", async () => {
+    const long = `인증번호는 [130753] 입니다 ${"x".repeat(2000)}`;
+    const res = await POST(req(long));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, stored: false });
+    expect(state.inserts).toHaveLength(0);
+  });
+
   it("응답에 본문을 에코하지 않는다 — 개인 문자가 로그에 남으면 안 된다", async () => {
     const personal = "저녁에 치킨 시킬까 인증번호 말고 그냥";
     const res = await POST(req(personal));
     expect(await res.text()).not.toContain("치킨");
   });
 
-  it("빈 본문은 400", async () => {
+  it("빈 본문은 400 — Tasker 설정이 잘못된 것이라 고쳐야 한다", async () => {
     expect((await POST(req(""))).status).toBe(400);
   });
 

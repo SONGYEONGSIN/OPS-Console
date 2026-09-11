@@ -6,6 +6,7 @@ revision: 2
 ---
 
 > rev 2 (2026-09-11 설계 리뷰): `pop_sms_code`가 빈 우편함에서도 리스를 반납하던 결함 수정 — 반납은 코드를 꺼냈을 때만. 함수 실행 권한을 service_role 로 좁힘. T1 검증 절차 갱신.
+> rev 3 (2026-09-11 코드 리뷰): 코드 추출은 `인증번호` **뒤에서** — 앞의 `[2026]`을 코드로 오인하던 결함. `pop`은 리스 보유자만. 2000자 초과는 400이 아니라 조용히 무시(Tasker 재시도 방지). rpc 계약 테스트 추가.
 
 # Moa 로그인 SMS 인증번호 — 자체 우편함
 
@@ -129,6 +130,7 @@ Moa 관리자 로그인은 2FA SMS를 요구한다. 자동화(서비스마감 �
 | RLS | enable + **정책 0개** + `revoke all from anon, authenticated` | `operator_ms_tokens` 선례. 인증번호는 화면에 그릴 일이 없다 — 읽는 주체는 서버뿐 |
 | 폰 비밀키 | `SMS_INGEST_SECRET` — `CRON_SECRET`과 **분리** | 폰은 분실·초기화되고 Tasker 설정은 평문이다. 분리해 두면 그때 이 창구만 교체하면 되고, 마감 인제스트·폴러·자동화 전부를 갈아치울 필요가 없다 |
 | 동시 소비 | 로그인 리스(§3.2 C안). TTL 180초 | 폴링 상한 90초 + 여유. 같은 consumer의 재획득은 통과시켜 재시도가 자기 리스에 막히지 않게 한다 |
+| pop 은 점유자만 | 리스 보유자가 아닌 소비자의 `pop`은 0행 | 409로 막힌 소비자가 그대로 `pop`을 부르면 남의 코드를 가져가고 리스는 남는다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다(코드 리뷰 지적) |
 | 리스 반납 | **코드를 실제로 꺼낸 `pop`에서만** 반납 + TTL 만료. **명시 release 없음** | 빈 우편함에 온 pop(폴링 첫 회)에서 반납하면 코드가 오기 전에 리스가 풀린다. 실패 경로만을 위한 호출을 더하지 않는다 — 로그인이 실패했으면 이미 사람이 볼 일이고, 최악의 대기는 3분이다 |
 | 폴백 결정 시점 | **제출 전 한 번.** 폴링 중 소스 전환 없음 | 90초 쓰고 다시 90초를 쓰면 그 사이 Moa 코드가 만료된다. 섞으면 안 된다는 교훈이 이미 두 번 났다(2026-08-06, 09-07) |
 | 폴링 간격 | 우편함은 **2초 고정** | 백오프는 make 크레딧을 아끼려고 만든 것이다(`test_poll_backoff.py`). 우편함에는 비용이 없으므로 촘촘히 본다 — 로그인이 지금보다 **빨라진다** |
@@ -233,6 +235,15 @@ declare
 begin
   delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
 
+  -- 점유자만 꺼낸다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다 —
+  -- 409 로 막힌 소비자가 그대로 pop 을 부르면 남의 코드를 가져가고 리스는 남는다.
+  if not exists (
+    select 1 from public.sms_code_lease l
+     where l.id = 1 and l.consumer = p_consumer
+  ) then
+    return;
+  end if;
+
   delete from public.sms_codes
    where sms_codes.id = (
      select s.id from public.sms_codes s order by s.received_at desc limit 1
@@ -277,8 +288,8 @@ Content-Type: text/plain; charset=utf-8
 | 상태 | 본문 | 언제 |
 |---|---|---|
 | 200 | `{"ok":true,"stored":true}` | 코드 추출 성공 → 저장 |
-| 200 | `{"ok":true,"stored":false}` | 인증문자가 아니다 → **조용히 무시**(Tasker가 재시도하지 않게 2xx) |
-| 400 | `{"ok":false,"error":"empty body"}` | 본문 없음/2000자 초과 |
+| 200 | `{"ok":true,"stored":false}` | 인증문자가 아니다 **또는 2000자 초과** → **조용히 무시**(Tasker가 재시도하지 않게 2xx). 초과를 400으로 주면 재시도할 때마다 그 개인 문자가 다시 온다 |
+| 400 | `{"ok":false,"error":"empty body"}` | 본문 없음 — Tasker 설정 오류라 고쳐야 할 것 |
 | 401 | `{"ok":false,"error":"unauthorized"}` | 키 불일치 |
 | 500 | `{"ok":false,"error":"SMS_INGEST_SECRET 미설정"}` / DB 오류 메시지 | |
 
@@ -318,13 +329,11 @@ export const smsConsumeSchema = z.object({
   action: z.enum(["reset", "pop"]),
   consumer: z.enum(SMS_CONSUMERS),
 });
-
-/** 폰이 보내는 문자 원문. 길이만 본다 — 판정은 extractSmsCode 가 한다. */
-export const smsInboundBodySchema = z.string().min(1).max(2000);
-
-/** 저장 직전 마지막 관문. DB check 제약과 같은 모양. */
-export const smsCodeSchema = z.string().regex(/^[0-9]{4,8}$/);
 ```
+
+폰 본문은 zod 를 거치지 않는다 — 문자열 하나에 길이 검사 둘(빈 본문 400 · 2000자 초과 무시)이라 라우트 상수로 충분하다. 코드 모양(`^[0-9]{4,8}$`)은 추출 정규식과 DB check 제약이 지킨다.
+
+`src/features/sms-codes/rpc.ts` — rpc 이름·인자 빌더(`claimArgs`/`popArgs`)·반환 컬럼 목록. **`rpc.test.ts` 가 마이그레이션 SQL 원문을 읽어 파라미터 이름·반환 컬럼과 대조한다** — 라우트 테스트는 mock 에 대고 단언하므로 이름이 어긋나도 초록인 채로 프로덕션에서 500 이 나기 때문이다.
 
 `src/features/sms-codes/extract-code.ts`
 
@@ -333,7 +342,7 @@ export const smsCodeSchema = z.string().regex(/^[0-9]{4,8}$/);
 export function extractSmsCode(body: string): string | null;
 ```
 
-규칙: `/인증\s*번호/`가 있고 `/\[([0-9]{4,8})\]/`가 매치할 때만 그 숫자. 그 밖은 `null`.
+규칙: `/인증\s*번호/`가 있고 그 **뒤에서** `/\[([0-9]{4,8})\]/`가 매치할 때만 그 숫자. 그 밖은 `null`. 뒤에서 찾는 이유: `[2026] 신년 이벤트 인증번호는 [130753] 입니다` 에서 첫 대괄호를 잡으면 `2026`을 저장한다 — 틀린 코드 제출은 캡차 잠금이다(코드 리뷰 지적).
 
 ### 5.5 `proxy.ts`
 
@@ -502,13 +511,15 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## 9. 영향 파일
 
-### 신규 (12)
+### 신규 (14)
 
 | 파일 | 역할 |
 |---|---|
 | `supabase/migrations/20260911_sms_code_inbox.sql` | 테이블 2 + 함수 2 + RLS/GRANT |
 | `src/features/sms-codes/schemas.ts` | zod + `SMS_CONSUMERS` |
 | `src/features/sms-codes/extract-code.ts` | 인증문자 판정 + 코드 추출 |
+| `src/features/sms-codes/rpc.ts` | rpc 이름·인자 빌더·반환 컬럼 |
+| `src/features/sms-codes/__tests__/rpc.test.ts` | 마이그레이션 SQL 시그니처 ↔ 라우트 인자 대조 |
 | `src/features/sms-codes/__tests__/extract-code.test.ts` | Moa 실문자 / 광고 / 전화번호 / 포맷 변형 |
 | `src/features/sms-codes/__tests__/schemas.test.ts` | consumer 오타 · action · 길이 |
 | `src/app/api/sms-codes/inbound/route.ts` | 폰 창구 |
@@ -532,7 +543,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `CLAUDE.md` | 'Moa 로그인 SMS 인증번호' 절 신설 |
 | `.claude/agent-memory/planner/…` | (문서 외) — 없음 |
 
-**합계 20파일**(신규 12 · 수정 8) → HARD-GATE **전체 설계 등급**. DB 스키마 변경 + 인증 경계 신설로 복잡도 보정도 걸린다. `git worktree` 격리 권장:
+**합계 22파일**(신규 14 · 수정 8) → HARD-GATE **전체 설계 등급**. DB 스키마 변경 + 인증 경계 신설로 복잡도 보정도 걸린다. `git worktree` 격리 권장:
 
 ```
 git worktree add ../OPS-Console-feat-sms-code-inbox feat/sms-code-inbox
@@ -566,6 +577,7 @@ T1(DB) ─┬─ T2(inbound) ─┬─ T4(proxy) ─ T5(배포·실검증) ─ T
   select * from pop_sms_code('closing');              -- 0행 (빈 우편함)
   select * from claim_sms_inbox('ratio-audit', 180);  -- f                  ← 빈 pop 은 반납하지 않는다
   insert into sms_codes (code) values ('123456');
+  select * from pop_sms_code('ratio-audit');          -- 0행               ← 비점유자는 꺼내지 못한다
   select * from pop_sms_code('closing');              -- 1행, 123456
   select * from pop_sms_code('closing');              -- 0행               ← 꺼내며 지웠다
   select * from claim_sms_inbox('ratio-audit', 180);  -- t                  ← 꺼냈으니 반납됐다

@@ -13,8 +13,11 @@ import { join } from "node:path";
  */
 const proxy = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
 
-/** 폴러·cron 이 부르는 창구. 세션이 없으므로 전부 공개 경로여야 한다. */
-const CRON_ROUTES = [
+/**
+ * 세션 없이 불리는 창구 — 폴러·cron(CRON_SECRET), Teams 봇(JWT), 폰 Tasker
+ * (SMS_INGEST_SECRET). 인증은 라우트 안에서 하므로 전부 공개 경로여야 한다.
+ */
+const SESSIONLESS_ROUTES = [
   "/api/pollers/heartbeat",
   "/api/assistant/claude/claim",
   "/api/postal/extract",
@@ -25,15 +28,14 @@ const CRON_ROUTES = [
   "/api/teams/messages",
   "/api/teams/flush",
   "/api/teams/poll",
-  // SMS 인증번호 우편함 — 스크래퍼가 비우고 꺼낸다(CRON_SECRET). 폰이 넣는
-  // inbound 는 SMS_INGEST_SECRET 이지만 세션이 없기는 마찬가지다.
+  // SMS 인증번호 우편함 — 스크래퍼(CRON_SECRET)와 폰(SMS_INGEST_SECRET).
   "/api/sms-codes/consume",
   "/api/sms-codes/inbound",
 ];
 
-describe("proxy — CRON_SECRET 창구", () => {
+describe("proxy — 세션 없는 창구", () => {
   it("전부 PUBLIC_PATHS 에 있다", () => {
-    const missing = CRON_ROUTES.filter((r) => !proxy.includes(`"${r}"`));
+    const missing = SESSIONLESS_ROUTES.filter((r) => !proxy.includes(`"${r}"`));
     expect(
       missing,
       `PUBLIC_PATHS 에 없으면 307로 /login 에 돌려보냅니다:\n${missing.join("\n")}`,

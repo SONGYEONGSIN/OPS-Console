@@ -76,6 +76,15 @@ declare
 begin
   delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
 
+  -- 점유자만 꺼낸다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다 —
+  -- 409 로 막힌 소비자가 그대로 pop 을 부르면 남의 코드를 가져가고 리스는 남는다.
+  if not exists (
+    select 1 from public.sms_code_lease l
+     where l.id = 1 and l.consumer = p_consumer
+  ) then
+    return;
+  end if;
+
   delete from public.sms_codes
    where sms_codes.id = (
      select s.id from public.sms_codes s order by s.received_at desc limit 1
@@ -111,6 +120,7 @@ commit;
 -- select * from pop_sms_code('closing');              -- 0행 (빈 우편함)
 -- select * from claim_sms_inbox('ratio-audit', 180);  -- f                  ← 빈 pop 은 반납하지 않는다
 -- insert into sms_codes (code) values ('123456');
+-- select * from pop_sms_code('ratio-audit');          -- 0행               ← 비점유자는 꺼내지 못한다
 -- select * from pop_sms_code('closing');              -- 1행, 123456
 -- select * from pop_sms_code('closing');              -- 0행               ← 꺼내며 지웠다
 -- select * from claim_sms_inbox('ratio-audit', 180);  -- t                  ← 꺼냈으니 반납됐다

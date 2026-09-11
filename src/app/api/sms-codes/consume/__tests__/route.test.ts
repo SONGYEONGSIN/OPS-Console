@@ -16,10 +16,13 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 const { POST } = await import("../route");
 
-const req = (body: unknown, auth = "Bearer s3cret") =>
+const req = (body: unknown, auth: string | null = "Bearer s3cret") =>
   new Request("http://x/api/sms-codes/consume", {
     method: "POST",
-    headers: { authorization: auth, "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...(auth ? { authorization: auth } : {}),
+    },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 
@@ -39,6 +42,19 @@ describe("POST /api/sms-codes/consume", () => {
       req({ action: "pop", consumer: "closing" }, "Bearer wrong"),
     );
     expect(res.status).toBe(401);
+    expect(state.calls).toHaveLength(0);
+  });
+
+  it("Authorization 헤더가 없어도 401", async () => {
+    const res = await POST(req({ action: "pop", consumer: "closing" }, null));
+    expect(res.status).toBe(401);
+    expect(state.calls).toHaveLength(0);
+  });
+
+  it("CRON_SECRET 미설정이면 500 — 열린 창구가 되면 안 된다", async () => {
+    delete process.env.CRON_SECRET;
+    const res = await POST(req({ action: "pop", consumer: "closing" }));
+    expect(res.status).toBe(500);
     expect(state.calls).toHaveLength(0);
   });
 
@@ -103,6 +119,13 @@ describe("POST /api/sms-codes/consume", () => {
     });
   });
 
+  it("reset — 함수가 행을 안 돌려주면 500. 점유 여부를 모른 채 진행하면 안 된다", async () => {
+    state.result = { data: null, error: null };
+    expect(
+      (await POST(req({ action: "reset", consumer: "closing" }))).status,
+    ).toBe(500);
+  });
+
   it("pop — 최신 1건을 꺼내 돌려준다", async () => {
     state.result = {
       data: [{ code: "130753", received_at: "2026-09-11T00:00:07Z" }],
@@ -122,6 +145,13 @@ describe("POST /api/sms-codes/consume", () => {
 
   it("pop — 아직 안 왔으면 200 code:null. 호출자가 계속 기다린다", async () => {
     state.result = { data: [], error: null };
+    const res = await POST(req({ action: "pop", consumer: "closing" }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, code: null });
+  });
+
+  it("pop — data 가 null 로 와도 빈 우편함으로 본다(code:null)", async () => {
+    state.result = { data: null, error: null };
     const res = await POST(req({ action: "pop", consumer: "closing" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, code: null });

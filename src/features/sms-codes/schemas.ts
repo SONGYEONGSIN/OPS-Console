@@ -15,9 +15,3 @@ export const smsConsumeSchema = z.object({
   action: z.enum(["reset", "pop"]),
   consumer: z.enum(SMS_CONSUMERS),
 });
-
-/** 폰이 보내는 문자 원문. 길이만 본다 — 판정은 extractSmsCode 가 한다. */
-export const smsInboundBodySchema = z.string().min(1).max(2000);
-
-/** 저장되는 값의 모양. DB check 제약(`^[0-9]{4,8}$`)과 같다. */
-export const smsCodeSchema = z.string().regex(/^[0-9]{4,8}$/);

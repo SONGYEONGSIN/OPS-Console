@@ -1,0 +1,53 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  CLAIM_ROW_COLUMNS,
+  CLAIM_RPC,
+  POP_ROW_COLUMNS,
+  POP_RPC,
+  claimArgs,
+  popArgs,
+} from "../rpc";
+
+/**
+ * 라우트 테스트는 rpc 이름·인자를 **mock 에 대고** 단언한다. 마이그레이션의 파라미터
+ * 이름이 하나만 달라도 테스트는 초록인 채로 프로덕션에서 500 이 나고, 스크래퍼는
+ * 조용히 make 로 폴백해 크레딧을 태운다. 그래서 SQL 원문을 읽어 대조한다
+ * (`operators/__tests__/team-single-source.test.ts` 와 같은 방식).
+ */
+const sql = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260911_sms_code_inbox.sql"),
+  "utf8",
+);
+
+function signature(fn: string): { params: string[]; columns: string[] } {
+  const m = new RegExp(
+    `create or replace function public\\.${fn}\\(([^)]*)\\)\\s*returns table \\(([^)]*)\\)`,
+    "i",
+  ).exec(sql);
+  if (!m) throw new Error(`${fn} 정의를 마이그레이션에서 찾지 못했습니다`);
+  const names = (list: string) =>
+    list.split(",").map((p) => p.trim().split(/\s+/)[0]);
+  return { params: names(m[1]), columns: names(m[2]) };
+}
+
+describe("RPC 계약 — 라우트가 보내는 것과 마이그레이션 시그니처가 같다", () => {
+  it("claim_sms_inbox 파라미터 이름·순서", () => {
+    expect(signature(CLAIM_RPC).params).toEqual(
+      Object.keys(claimArgs("closing", 180)),
+    );
+  });
+
+  it("claim_sms_inbox 반환 컬럼", () => {
+    expect(signature(CLAIM_RPC).columns).toEqual([...CLAIM_ROW_COLUMNS]);
+  });
+
+  it("pop_sms_code 파라미터 이름", () => {
+    expect(signature(POP_RPC).params).toEqual(Object.keys(popArgs("closing")));
+  });
+
+  it("pop_sms_code 반환 컬럼", () => {
+    expect(signature(POP_RPC).columns).toEqual([...POP_ROW_COLUMNS]);
+  });
+});
