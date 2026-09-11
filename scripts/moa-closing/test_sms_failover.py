@@ -76,12 +76,20 @@ class PickBaselineTest(unittest.TestCase):
         url, _ = scrape.pick_baseline(["A", "B"], attempts=1, interval_sec=0)
         self.assertNotEqual(url, "A")
 
-    def test_본문에_코드가_없어도_그_웹훅은_살아_있다(self):
-        """첫 실행이라 문자가 없는 것과 웹훅이 죽은 것은 다르다 — 넘어가지 않는다."""
+    def test_본문에_코드가_없으면_코드를_가진_쪽으로_간다(self):
+        """둘은 **같은 문자함**을 읽는다 — 한쪽만 코드를 갖고 있으면 그쪽이 최신이다.
+
+        전에는 응답만 오면 그 URL 로 정했다(2026-08-06 의 'A로 baseline, B로 폴링'
+        사고를 막으려던 규칙). 그 걱정은 여기서 안 생긴다 — 고른 URL 로 baseline 과
+        폴링을 **둘 다** 하기 때문이다.
+
+        오히려 baseline=None 이 위험하다. 아무 코드나 새것으로 보이기 때문이다.
+        코드를 가진 쪽을 고르면 그 위험이 준다(2026-09-09).
+        """
         self._stub({"A": "", "B": "인증번호 [999999]"})
-        url, baseline = scrape.pick_baseline(["A", "B"], interval_sec=0)
-        self.assertEqual(url, "A")
-        self.assertIsNone(baseline)
+        url, baseline = scrape.pick_baseline(["A", "B"], attempts=1, interval_sec=0)
+        self.assertEqual(url, "B")
+        self.assertEqual(baseline, "999999")
 
     def test_전부_죽으면_중단한다(self):
         self._stub({
@@ -98,6 +106,32 @@ class PickBaselineTest(unittest.TestCase):
         url, baseline = scrape.pick_baseline(["A"], interval_sec=0)
         self.assertEqual(url, "A")
         self.assertEqual(baseline, "111111")
+
+    def test_코드를_주는_쪽을_고른다(self):
+        """응답만 하고 **코드를 안 주는** 웹훅에 눌러앉지 않는다.
+
+        백업 시나리오가 망가져 `Accepted` 만 돌려주던 때(2026-09-07~08), 주 계정이
+        크레딧 소진으로 막혀 백업이 골라졌다. 본문이 오기만 하면 그 URL 로 정했고,
+        폴링은 3분을 다 쓰고 `baseline 미변경` 으로 죽었다 — 실패 문구가 '코드를
+        못 받았다'가 아니라 '안 바뀌었다'라 원인이 가려졌다.
+        """
+        self._stub({"A": "Accepted", "B": "인증번호 [123456]"})
+        url, baseline = scrape.pick_baseline(["A", "B"], attempts=1, interval_sec=0)
+        self.assertEqual(url, "B")
+        self.assertEqual(baseline, "123456")
+
+    def test_아무도_코드를_안_주면_응답한_첫_곳을_쓴다(self):
+        """첫 실행이라 문자가 아직 없을 수 있다 — 그건 고장이 아니다."""
+        self._stub({"A": "Accepted", "B": "Accepted"})
+        url, baseline = scrape.pick_baseline(["A", "B"], attempts=1, interval_sec=0)
+        self.assertEqual(url, "A")
+        self.assertIsNone(baseline)
+
+    def test_코드를_주면_뒤는_안_본다(self):
+        """A 가 코드를 주면 B 로 GET 을 보내지 않는다 — 요청을 늘리면 안 된다."""
+        self._stub({"A": "인증번호 [123456]", "B": "인증번호 [999999]"})
+        scrape.pick_baseline(["A", "B"], attempts=1, interval_sec=0)
+        self.assertNotIn("B", self.seen)
 
 
 class SmsUrlsFromEnvTest(unittest.TestCase):

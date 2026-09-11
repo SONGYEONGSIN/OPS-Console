@@ -247,20 +247,35 @@ def pick_baseline(
     baseline 과 달라 보인다 → 만료된 코드를 새 코드로 오인한다(2026-08-06 사고와
     같은 형태). 고른 뒤에는 흐름 내내 그 URL 만 쓴다.
 
-    **본문에 코드가 없는 것은 죽은 게 아니다** — 첫 실행이라 문자가 없을 수
-    있다. 그때는 넘어가지 않고 그 URL 을 그대로 쓴다(baseline=None).
+    **코드를 주는 쪽을 고른다.** 응답만 하고 코드가 없는 곳에 눌러앉으면 폴링이
+    3분을 다 쓰고 `baseline 미변경` 으로 죽는다 — 실패 문구가 '코드를 못 받았다'가
+    아니라 '안 바뀌었다'라 원인이 가려진다. 백업 시나리오가 망가져 `Accepted` 만
+    돌려주던 2026-09-07~08 이 그랬다.
 
-    살아 있는 첫 URL 에서 끝내므로 **평소에는 GET 이 안 늘어난다** — 백업으로는
-    앞이 죽었을 때만 간다.
+    **코드가 없는 것이 곧 고장은 아니다** — 첫 실행이라 문자가 없을 수 있다.
+    그래서 아무도 코드를 안 주면 응답한 첫 곳을 쓴다(baseline=None).
+
+    코드를 주는 첫 URL 에서 끝내므로 **평소에는 GET 이 안 늘어난다** — 뒤는
+    앞이 코드를 못 줄 때만 본다.
     """
+    first_alive: tuple[str, str | None] | None = None
     for url in urls:
         for i in range(attempts):
             body = _fetch_sms_body(url)
             if body is not None:
-                return url, _extract_code(body)
+                code = _extract_code(body)
+                if code is not None:
+                    return url, code
+                if first_alive is None:
+                    first_alive = (url, None)
+                print(f"[WARN] {url[-12:]} — 응답은 오는데 코드가 없습니다")
+                break
             if i < attempts - 1:
                 time.sleep(interval_sec)
-        print(f"[WARN] SMS 웹훅 응답 없음 — 다음 주소로 넘어갑니다")
+        else:
+            print(f"[WARN] SMS 웹훅 응답 없음 — 다음 주소로 넘어갑니다")
+    if first_alive is not None:
+        return first_alive
     raise RuntimeError(
         f"SMS 웹훅 {len(urls)}곳 모두 응답 없음 — 중단(직전 코드 오인 방지). "
         "MAKE_SMS_CODE_URL / MAKE_SMS_CODE_URL_2 확인 필요."
