@@ -98,6 +98,8 @@ __pycache__/
 
 # 로컬 스크래퍼 실행 로그 (작업 스케줄러)
 scripts/moa-closing/run-local.log
+# 경쟁률 폴러 로그 — stdout 전 줄이 쌓이므로 예외 문구가 그대로 들어간다. 추적하면 키가 새는 자리(보안 리뷰 H1)
+scripts/moa-ratio/poll-local.log
 
 # entertest 러너 로컬 산출물 (디스커버리 스냅샷/실행 로그/업로드 테스트 이미지)
 scripts/entertest/discovery/

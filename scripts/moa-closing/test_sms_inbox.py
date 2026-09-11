@@ -76,6 +76,20 @@ class ResetInbox(unittest.TestCase):
         with self.assertRaises(sms_inbox.InboxUnavailable):
             sms_inbox.reset_inbox("https://ops", "sec", "closing")
 
+    @mock.patch("sms_inbox.requests.post")
+    def test_예외_문구에_비밀키가_실리지_않는다(self, post):
+        # requests 는 헤더 값에 공백·줄바꿈이 섞이면 InvalidHeader 문구에 값을 그대로 담는다.
+        # 그 문구가 [WARN] 으로 stdout → git 추적 로그·run-log 로 흘러간다(보안 리뷰 H1).
+        secret = "s3cr3t-real-value-" + "x" * 46
+        post.side_effect = requests.exceptions.InvalidHeader(
+            f"Invalid leading whitespace in header value: 'Bearer {secret}\\n'"
+        )
+        with self.assertRaises(sms_inbox.InboxUnavailable) as ctx:
+            sms_inbox.reset_inbox("https://ops", secret, "closing")
+        self.assertNotIn(secret, str(ctx.exception))
+        self.assertNotIn(secret[:12], str(ctx.exception))
+        self.assertIn("InvalidHeader", str(ctx.exception))
+
 
 class PollInboxCode(unittest.TestCase):
     @mock.patch("sms_inbox.time.sleep")
@@ -112,6 +126,28 @@ class PollInboxCode(unittest.TestCase):
         self.assertIn("우편함", str(ctx.exception))
         self.assertIn("6s", str(ctx.exception))
         self.assertIn("Tasker", str(ctx.exception))
+
+    @mock.patch("sms_inbox.time.monotonic")
+    @mock.patch("sms_inbox.time.sleep")
+    @mock.patch("sms_inbox.requests.post")
+    def test_pop_이_계속_401이면_타임아웃_문구에_마지막_응답이_실린다(self, post, sleep, monotonic):
+        # JSON 본문이 있는 비200(키 회전·500)을 '문자 미도착'으로 오진하지 않는다(보안 리뷰 M2).
+        post.return_value = _resp(401, {"ok": False, "error": "unauthorized"})
+        monotonic.side_effect = [0, 0, 2, 4, 6, 8, 10]
+        with self.assertRaises(RuntimeError) as ctx:
+            sms_inbox.poll_inbox_code("https://ops", "sec", "closing", timeout_sec=4)
+        msg = str(ctx.exception)
+        self.assertIn("우편함", msg)
+        self.assertIn("401", msg)
+        self.assertIn("unauthorized", msg)
+
+    @mock.patch("sms_inbox.time.sleep")
+    @mock.patch("sms_inbox.requests.post")
+    def test_pop_409_의_holder_는_자기_이름이_아니다(self, post, sleep):
+        post.return_value = _resp(409, {"ok": False, "error": "lease-not-held"})
+        with self.assertRaises(sms_inbox.LeaseHeldError) as ctx:
+            sms_inbox.poll_inbox_code("https://ops", "sec", "closing", timeout_sec=30)
+        self.assertNotEqual(ctx.exception.holder, "closing")
 
     @mock.patch("sms_inbox.time.monotonic")
     @mock.patch("sms_inbox.time.sleep")
@@ -200,6 +236,18 @@ class PrepareSmsSource(unittest.TestCase):
         src = self.scrape.prepare_sms_source(env)
         self.assertEqual(src.kind, "make")
         reset.assert_not_called()
+
+    @mock.patch("scrape.requests.get")
+    @mock.patch("sms_inbox.reset_inbox")
+    def test_폴링_타임아웃이_리스_TTL_이상이면_제출_전에_막는다(self, reset, get):
+        # 리스가 폴링 중에 만료되면 pop 409 가 '남이 가져갔다'로 오진된다(보안 리뷰 L5).
+        # SMS 가 발송되기 전(prepare 단계)에 설정 오류로 세운다.
+        env = {**self.ENV, "sms_timeout": sms_inbox.INBOX_TTL_SEC}
+        with self.assertRaises(RuntimeError) as ctx:
+            self.scrape.prepare_sms_source(env)
+        self.assertIn("MOA_SMS_POLL_TIMEOUT_SEC", str(ctx.exception))
+        reset.assert_not_called()
+        get.assert_not_called()
 
     @mock.patch("scrape.pick_baseline", return_value=("https://make/A", None))
     @mock.patch("sms_inbox.reset_inbox")

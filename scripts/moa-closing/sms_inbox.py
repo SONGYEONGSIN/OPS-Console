@@ -67,7 +67,10 @@ def _consume(base_url: str, secret: str, action: str, consumer: str) -> tuple[in
             timeout=REQUEST_TIMEOUT_SEC,
         )
     except requests.RequestException as e:
-        raise InboxUnavailable(f"우편함 {action} 요청 실패: {e}") from e
+        # 예외 문구에 헤더 값이 실릴 수 있다(InvalidHeader 는 'Bearer …' 를 그대로 담는다).
+        # 이 문구는 [WARN] 으로 stdout → 폴러 로그·run-log 로 흘러가므로 키를 지운다.
+        detail = str(e).replace(secret, "***") if secret else str(e)
+        raise InboxUnavailable(f"우편함 {action} 요청 실패: {type(e).__name__}: {detail}") from e
     try:
         payload = res.json()
     except ValueError as e:
@@ -104,27 +107,36 @@ def poll_inbox_code(base_url: str, secret: str, consumer: str, timeout_sec: int)
     """
     started = time.monotonic()
     deadline = started + timeout_sec
+    last_error: str | None = None  # 타임아웃 문구에 싣는다 — 키 회전·500 을 폰 문제로 오진하지 않게
     while True:
         try:
             status, payload = _consume(base_url, secret, "pop", consumer)
         except InboxUnavailable as e:
-            print(f"[WARN] 우편함 pop 일시 오류 — 계속 기다립니다: {e}")
+            error = str(e)
         else:
             if status == 409:
                 raise LeaseHeldError(
-                    consumer,
+                    "(unknown)",
                     "?",
                     f"우편함 점유가 {consumer} 에게 없습니다 (pop 409) — 다른 스크래퍼가 "
                     "가져갔거나 리스가 만료됐습니다. 중단",
                 )
-            code = payload.get("code") if status == 200 and payload.get("ok") is True else None
-            if code:
-                waited = int(time.monotonic() - started)
-                print(f"[OK] 우편함에서 인증번호 수신 (…{mask_code(str(code))}, {waited}초 대기)")
-                return str(code)
+            if status == 200 and payload.get("ok") is True:
+                error = None
+                code = payload.get("code")
+                if code:
+                    waited = int(time.monotonic() - started)
+                    print(f"[OK] 우편함에서 인증번호 수신 (…{mask_code(str(code))}, {waited}초 대기)")
+                    return str(code)
+            else:
+                error = f"HTTP {status}: {payload.get('error', payload)}"
+        if error and error != last_error:
+            print(f"[WARN] 우편함 pop 오류 — 타임아웃까지 계속 봅니다: {error}")
+        last_error = error or last_error
         if time.monotonic() >= deadline:
+            tail = f" (마지막 오류: {last_error})" if last_error else ""
             raise RuntimeError(
                 f"우편함 대기 타임아웃 ({timeout_sec}s) — 문자가 도착하지 않았습니다. "
-                "폰 Tasker 확인 필요"
+                f"폰 Tasker 확인 필요{tail}"
             )
         time.sleep(INBOX_POLL_INTERVAL_SEC)
