@@ -8,8 +8,33 @@ import { extractSmsCode } from "@/features/sms-codes/extract-code";
  */
 const MAX_SMS_BODY_CHARS = 2000;
 
+/** 숫자만 남긴다 — `02-1234-5678` 과 `0212345678` 은 같은 번호다. */
+const digits = (s: string) => s.replace(/\D/g, "");
+
 /**
- * 폰(Tasker)이 문자 원문을 넣는 창구 — `Authorization: Bearer ${SMS_INGEST_SECRET}`.
+ * 허용 발신번호(`SMS_INGEST_SENDERS`, 쉼표 구분). 비어 있으면 창구가 **닫힌다** —
+ * '설정이 없으면 전부 통과'로 두면 설정 누락이 조용히 창구를 연다.
+ */
+function allowedSenders(): string[] {
+  return (process.env.SMS_INGEST_SENDERS ?? "")
+    .split(",")
+    .map(digits)
+    .filter(Boolean);
+}
+
+/**
+ * 발신번호 대조. 폰은 아무나 문자를 보낼 수 있는 수신함이라, 본문만 보면 운영자
+ * 폰 번호를 아는 사람이 Moa 문구를 흉내 내 **비밀키 없이** 가짜 코드를 넣을 수 있다
+ * (보안 리뷰 H1). 번호는 비교에만 쓰고 저장·응답 어디에도 남기지 않는다.
+ */
+function senderAllowed(request: Request, allowed: string[]): boolean {
+  const sender = digits(request.headers.get("x-sms-sender") ?? "");
+  return sender.length > 0 && allowed.includes(sender);
+}
+
+/**
+ * 폰(Tasker)이 문자 원문을 넣는 창구 — `Authorization: Bearer ${SMS_INGEST_SECRET}`
+ * + `X-Sms-Sender: <발신번호>`.
  *
  * 키를 `CRON_SECRET` 과 **분리**한 이유: 폰은 분실·초기화되고 Tasker 설정은 평문이다.
  * 그때 이 창구 하나만 갈면 되고, 마감 인제스트·폴러·자동화 전부를 갈 필요가 없다.
@@ -34,6 +59,17 @@ export async function POST(request: Request) {
       { ok: false, error: "unauthorized" },
       { status: 401 },
     );
+  }
+
+  const allowed = allowedSenders();
+  if (allowed.length === 0) {
+    return NextResponse.json(
+      { ok: false, error: "SMS_INGEST_SENDERS 미설정" },
+      { status: 500 },
+    );
+  }
+  if (!senderAllowed(request, allowed)) {
+    return NextResponse.json({ ok: true, stored: false });
   }
 
   const body = await request.text();

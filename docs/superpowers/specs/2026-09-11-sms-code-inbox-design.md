@@ -2,11 +2,12 @@
 share: true
 status: 설계
 updated: 2026-09-11
-revision: 2
+revision: 4
 ---
 
 > rev 2 (2026-09-11 설계 리뷰): `pop_sms_code`가 빈 우편함에서도 리스를 반납하던 결함 수정 — 반납은 코드를 꺼냈을 때만. 함수 실행 권한을 service_role 로 좁힘. T1 검증 절차 갱신.
 > rev 3 (2026-09-11 코드 리뷰): 코드 추출은 `인증번호` **뒤에서** — 앞의 `[2026]`을 코드로 오인하던 결함. `pop`은 리스 보유자만. 2000자 초과는 400이 아니라 조용히 무시(Tasker 재시도 방지). rpc 계약 테스트 추가.
+> rev 4 (2026-09-11 보안·DB 리뷰): **발신번호 대조**(`X-Sms-Sender` ↔ `SMS_INGEST_SENDERS`) — 폰 번호만 알면 비밀키 없이 가짜 코드를 넣을 수 있었다. 추출은 `인증번호` **바로 뒤**만(스팸 `[9999]` 차단). 비점유자 `pop`은 0행이 아니라 예외 → 409. 검증 SQL `polname` → `policyname`(Postgres 15·17 실행 검증).
 
 # Moa 로그인 SMS 인증번호 — 자체 우편함
 
@@ -130,7 +131,8 @@ Moa 관리자 로그인은 2FA SMS를 요구한다. 자동화(서비스마감 �
 | RLS | enable + **정책 0개** + `revoke all from anon, authenticated` | `operator_ms_tokens` 선례. 인증번호는 화면에 그릴 일이 없다 — 읽는 주체는 서버뿐 |
 | 폰 비밀키 | `SMS_INGEST_SECRET` — `CRON_SECRET`과 **분리** | 폰은 분실·초기화되고 Tasker 설정은 평문이다. 분리해 두면 그때 이 창구만 교체하면 되고, 마감 인제스트·폴러·자동화 전부를 갈아치울 필요가 없다 |
 | 동시 소비 | 로그인 리스(§3.2 C안). TTL 180초 | 폴링 상한 90초 + 여유. 같은 consumer의 재획득은 통과시켜 재시도가 자기 리스에 막히지 않게 한다 |
-| pop 은 점유자만 | 리스 보유자가 아닌 소비자의 `pop`은 0행 | 409로 막힌 소비자가 그대로 `pop`을 부르면 남의 코드를 가져가고 리스는 남는다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다(코드 리뷰 지적) |
+| pop 은 점유자만 | 리스 보유자가 아닌 소비자의 `pop`은 **예외**(`lock_not_available`) → 라우트 **409** | 409로 막힌 소비자가 그대로 `pop`을 부르면 남의 코드를 가져가고 리스는 남는다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다(코드 리뷰). 0행이 아니라 예외인 이유: 0행은 '아직 안 왔다'와 구분이 안 돼 90초를 태운다(DB 리뷰). 반납 뒤 재호출도 409 — 클라이언트는 코드를 받으면 멈춘다 |
+| 발신번호 대조 | 서버가 `X-Sms-Sender`를 `SMS_INGEST_SENDERS` 허용 목록과 **비교만** 한다(숫자만). 저장·에코 없음. 목록이 비면 **500으로 닫힌다** | 폰은 아무나 문자를 보낼 수 있는 수신함이다. 본문만 보면 운영자 폰 번호를 아는 사람이 Moa 문구를 흉내 내 **비밀키 없이** 가짜 코드를 넣고, 그 끝은 캡차 잠금이다(보안 리뷰 H1). '설정 없으면 전부 통과'는 설정 누락이 창구를 여는 자리라 두지 않는다 |
 | 리스 반납 | **코드를 실제로 꺼낸 `pop`에서만** 반납 + TTL 만료. **명시 release 없음** | 빈 우편함에 온 pop(폴링 첫 회)에서 반납하면 코드가 오기 전에 리스가 풀린다. 실패 경로만을 위한 호출을 더하지 않는다 — 로그인이 실패했으면 이미 사람이 볼 일이고, 최악의 대기는 3분이다 |
 | 폴백 결정 시점 | **제출 전 한 번.** 폴링 중 소스 전환 없음 | 90초 쓰고 다시 90초를 쓰면 그 사이 Moa 코드가 만료된다. 섞으면 안 된다는 교훈이 이미 두 번 났다(2026-08-06, 09-07) |
 | 폴링 간격 | 우편함은 **2초 고정** | 백오프는 make 크레딧을 아끼려고 만든 것이다(`test_poll_backoff.py`). 우편함에는 비용이 없으므로 촘촘히 본다 — 로그인이 지금보다 **빨라진다** |
@@ -232,17 +234,20 @@ as $$
 declare
   v_code     text;
   v_received timestamptz;
+  v_holder   text;
 begin
-  delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
-
   -- 점유자만 꺼낸다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다 —
   -- 409 로 막힌 소비자가 그대로 pop 을 부르면 남의 코드를 가져가고 리스는 남는다.
-  if not exists (
-    select 1 from public.sms_code_lease l
-     where l.id = 1 and l.consumer = p_consumer
-  ) then
-    return;
+  -- 0행이 아니라 예외인 이유: 0행은 '아직 안 왔다'와 구분이 안 돼 폴러가 90초를
+  -- 태우고 원인을 가리는 문구로 죽는다(2026-09-07 'baseline 미변경' 사고와 같은 꼴).
+  select l.consumer into v_holder from public.sms_code_lease l where l.id = 1;
+  if v_holder is distinct from p_consumer then
+    raise exception 'sms inbox lease not held by % (holder=%)',
+      p_consumer, coalesce(v_holder, '(none)')
+      using errcode = 'lock_not_available';
   end if;
+
+  delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
 
   delete from public.sms_codes
    where sms_codes.id = (
@@ -280,6 +285,7 @@ commit;
 ```
 POST /api/sms-codes/inbound
 Authorization: Bearer ${SMS_INGEST_SECRET}
+X-Sms-Sender: 0212345678            ← Tasker %SMSRF. 서버가 허용 목록과 비교만 한다
 Content-Type: text/plain; charset=utf-8
 
 [Web발신][내부관리자] 본인확인 인증번호는 [123456] 입니다.
@@ -289,9 +295,10 @@ Content-Type: text/plain; charset=utf-8
 |---|---|---|
 | 200 | `{"ok":true,"stored":true}` | 코드 추출 성공 → 저장 |
 | 200 | `{"ok":true,"stored":false}` | 인증문자가 아니다 **또는 2000자 초과** → **조용히 무시**(Tasker가 재시도하지 않게 2xx). 초과를 400으로 주면 재시도할 때마다 그 개인 문자가 다시 온다 |
+| 200 | `{"ok":true,"stored":false}` | 발신번호가 허용 목록에 없거나 헤더가 없다 → 조용히 무시. 번호는 저장·에코하지 않는다 |
 | 400 | `{"ok":false,"error":"empty body"}` | 본문 없음 — Tasker 설정 오류라 고쳐야 할 것 |
 | 401 | `{"ok":false,"error":"unauthorized"}` | 키 불일치 |
-| 500 | `{"ok":false,"error":"SMS_INGEST_SECRET 미설정"}` / DB 오류 메시지 | |
+| 500 | `{"ok":false,"error":"SMS_INGEST_SECRET 미설정"}` / `"SMS_INGEST_SENDERS 미설정"` / DB 오류 메시지 | 둘 중 하나라도 비면 창구는 닫힌다 |
 
 **본문은 응답에도 로그에도 싣지 않는다.** 오류 메시지에 원문을 에코하면 개인 문자가 Vercel 로그에 남는다.
 
@@ -314,6 +321,7 @@ Content-Type: application/json
 | reset | 409 | `{"ok":false,"error":"lease-held","holder":"ratio-audit","holderSince":"2026-09-11T09:00:12+09:00"}` |
 | pop | 200 | `{"ok":true,"code":"123456","receivedAt":"…"}` |
 | pop | 200 | `{"ok":true,"code":null}` — 아직 안 왔다. 호출자가 계속 기다린다 |
+| pop | 409 | `{"ok":false,"error":"lease-not-held"}` — 점유자가 아니다(반납 뒤 재호출 포함). 호출자는 멈춘다 |
 | 둘 다 | 400 | `{"ok":false,"error":"알 수 없는 consumer: closng"}` / zod 메시지 |
 | 둘 다 | 401 | `{"ok":false,"error":"unauthorized"}` |
 
@@ -342,7 +350,7 @@ export const smsConsumeSchema = z.object({
 export function extractSmsCode(body: string): string | null;
 ```
 
-규칙: `/인증\s*번호/`가 있고 그 **뒤에서** `/\[([0-9]{4,8})\]/`가 매치할 때만 그 숫자. 그 밖은 `null`. 뒤에서 찾는 이유: `[2026] 신년 이벤트 인증번호는 [130753] 입니다` 에서 첫 대괄호를 잡으면 `2026`을 저장한다 — 틀린 코드 제출은 캡차 잠금이다(코드 리뷰 지적).
+규칙: `/인증\s*번호[는은]?\s*\[([0-9]{4,8})\]/` — `인증번호` **바로 뒤**에 붙은 대괄호만. 그 밖은 `null`. 본문 아무 데나 있는 대괄호를 잡으면 두 방향으로 틀린다: `[2026] 신년 이벤트 인증번호는 [130753]`에서 `2026`을 저장하고(→ 캡차 잠금), `[광고] 인증번호 이벤트 [9999]` 같은 스팸이 코드로 앉는다(코드·보안 리뷰 지적).
 
 ### 5.5 `proxy.ts`
 
@@ -462,7 +470,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 | 어디 | 키 | 값 |
 |---|---|---|
-| Vercel (Production) | `SMS_INGEST_SECRET` | 위 64자 hex. **신규 1개뿐** |
+| Vercel (Production) | `SMS_INGEST_SECRET` | 위 64자 hex |
+| Vercel (Production) | `SMS_INGEST_SENDERS` | Moa 인증문자 **발신번호**(쉼표 구분 복수 가능, 숫자만 비교). 폰의 Moa 문자 대화에서 본다. **비어 있으면 창구가 500으로 닫힌다** |
 | 회사/집 PC `.env.local` | — | **추가 없음.** `CRON_SECRET`·`OPS_CONSOLE_BASE_URL`이 이미 있다 |
 | 폰 Tasker | — | URL + `SMS_INGEST_SECRET`을 직접 입력 |
 
@@ -474,16 +483,18 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 - **Profile**: Event → Phone → Received Text
   - Type: `Any`
-  - Sender: (비움)
-  - Content: `*인증번호*` — 1차 게이트. 개인 문자를 서버로 보내지 않는다
+  - Sender: **Moa 발신번호** — 1차 게이트. 개인 문자가 서버에 닿는 경로가 아예 없어진다
+  - Content: `*인증번호*` — 2차 게이트
 - **Task → Net → HTTP Request**
   - Method: `POST`
   - URL: `https://<OPS 도메인>/api/sms-codes/inbound`
   - Headers (줄바꿈 구분):
     ```
     Authorization:Bearer <SMS_INGEST_SECRET>
+    X-Sms-Sender:%SMSRF
     Content-Type:text/plain; charset=utf-8
     ```
+    `%SMSRF` 는 발신번호. 서버가 `SMS_INGEST_SENDERS` 와 숫자만 비교한다 — 3차 게이트
   - Body: `%SMSRB`  ← **원문 그대로. JSON 조립 금지**(§4)
   - Timeout: 30
 - 확인: 자기 폰으로 `인증번호는 [123456] 입니다` 문자를 보내고 → `pop`으로 `123456`이 나오는지 본다
@@ -502,7 +513,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | F6 | **make까지 죽음**(크레딧 소진 + 우편함 장애) | `SMS 웹훅 N곳 모두 응답 없음 — 중단` (기존 문구) | 없음. 실행 실패 |
 | F7 | **리스 점유 중**(마감 ↔ 경쟁률 동시) | `[FAIL] 다른 스크래퍼가 Moa 로그인 중입니다 (…)` | **중단.** 폴백하면 SMS 두 통이 섞여 캡차 위험이 되살아난다(§3.2). 경쟁률은 수동 트리거라 다시 누르면 된다 |
 | F8 | **폴러가 pop 전에 죽음**(PC 종료) | 리스가 남는다 | TTL 180초 후 자동 해제. 다음 실행이 막히는 최악 대기 3분 |
-| F9 | **`SMS_INGEST_SECRET` 유출**(폰 분실) | 우편함에 임의 코드가 들어온다 → 다음 로그인이 틀린 코드 제출 → **캡차 잠금** | Vercel에서 그 키만 교체 + Tasker 재입력. `CRON_SECRET`은 건드리지 않는다 — 분리의 값이 여기서 나온다 |
+| F9 | **`SMS_INGEST_SECRET` 유출**(폰 분실) | 우편함에 임의 코드가 들어온다 → 다음 로그인이 틀린 코드 제출 → **캡차 잠금**. 발신번호 헤더는 HTTP 요청자가 쓰는 값이라 키를 가진 자는 위조한다 — F13의 방어는 여기 안 통한다 | Vercel에서 그 키만 교체 + Tasker 재입력. `CRON_SECRET`은 건드리지 않는다 — 분리의 값이 여기서 나온다 |
+| F13 | **운영자 폰으로 Moa 문구를 흉내 낸 문자**(비밀키 불필요, 폰 번호만 알면 됨) | 드러나지 않는다 — Tasker Sender 필터에서 떨어지고, 통과해도 서버가 발신번호 불일치로 `stored:false` | 없음(정상). 발신번호 위조(spoofing)는 발신번호 사전등록제 때문에 국내에선 어렵다 |
 | F10 | **광고문자가 게이트를 통과** | 우편함에 숫자 1건 | 게이트 둘(Tasker 내용 필터 + `인증번호`+대괄호)을 모두 통과해야 하고, 비우기가 매 로그인 전에 지우므로 90초 창에 정확히 걸려야 한다 |
 | F11 | **`PUBLIC_PATHS` 누락** | 스크래퍼가 307을 받고 `reset`이 JSON 파싱에서 죽는다 | T4의 회귀 테스트 2개가 배포 전에 잡는다(§3.3) |
 | F12 | **RPC 스키마 캐시 미갱신** | `.rpc()` 404 → 우편함 준비 실패 → make로 폴백(조용히 크레딧을 태운다) | `notify pgrst`(§3.4) + run-log의 `(SMS: make)` 표기가 드러낸다 |
@@ -577,13 +589,14 @@ T1(DB) ─┬─ T2(inbound) ─┬─ T4(proxy) ─ T5(배포·실검증) ─ T
   select * from pop_sms_code('closing');              -- 0행 (빈 우편함)
   select * from claim_sms_inbox('ratio-audit', 180);  -- f                  ← 빈 pop 은 반납하지 않는다
   insert into sms_codes (code) values ('123456');
-  select * from pop_sms_code('ratio-audit');          -- 0행               ← 비점유자는 꺼내지 못한다
-  select * from pop_sms_code('closing');              -- 1행, 123456
-  select * from pop_sms_code('closing');              -- 0행               ← 꺼내며 지웠다
-  select * from claim_sms_inbox('ratio-audit', 180);  -- t                  ← 꺼냈으니 반납됐다
+  select * from pop_sms_code('ratio-audit');          -- ERROR lease not held ← 비점유자는 꺼내지 못한다
+  select * from pop_sms_code('closing');              -- 1행, 123456        ← 꺼내며 지우고 반납
+  select * from pop_sms_code('closing');              -- ERROR (holder=(none)) ← 반납 뒤 재호출
+  select * from claim_sms_inbox('ratio-audit', 180);  -- t                  ← 반납됐다
   delete from sms_code_lease;                         -- 정리
-  select polname from pg_policies where tablename like 'sms_code%';  -- 0건
+  select policyname from pg_policies where tablename like 'sms_code%';  -- 0건
   ```
+  **한 줄씩** 실행한다 — ERROR 가 나는 줄이 있어 한꺼번에 돌리면 거기서 멈춘다. `pg_policies` 뷰의 컬럼은 `polname`이 아니라 `policyname`이다(선례 `20260602c_operator_ms_tokens.sql:35`가 같은 오타 — 이 PR 범위 밖).
 - **의존**: 없음
 
 ### T2 — 코드 추출 + 폰 창구 (5분 × 2)
@@ -716,7 +729,7 @@ T1(DB) ─┬─ T2(inbound) ─┬─ T4(proxy) ─ T5(배포·실검증) ─ T
 
 ## 13. 열린 질문
 
-1. **Tasker 내용 필터를 `*인증번호*`로 두면 충분한가?** 발신번호(Moa 발신 번호)로 거르는 편이 더 좁지만, 그 번호를 확인하지 못했다. 번호를 알면 필터를 `Sender`로 옮기는 것이 낫다 — 개인 문자가 서버에 닿는 경로가 아예 없어진다.
+1. ~~Tasker 내용 필터를 `*인증번호*`로 두면 충분한가?~~ → **아니다. 발신번호가 필수가 됐다**(rev 4, 보안 리뷰 H1 — 폰 번호만 알면 비밀키 없이 가짜 코드를 넣는다). `SMS_INGEST_SENDERS`에 Moa 발신번호가 있어야 창구가 열린다. 번호는 폰의 Moa 인증문자 대화에서 본다. Tasker Sender 필터도 같은 번호로.
 2. **`SMS_INGEST_SECRET`을 Preview 환경에도 넣는가?** 폰은 Production 도메인만 부른다. Preview에 안 넣으면 Preview 배포에서 이 라우트가 500을 돌려주는데, 그게 문제인지(Preview에서 우편함을 시험할 일이 있는지) 확인이 필요하다.
 3. **`ratio-audit`의 `MANUAL_CODE_FILE` 경로를 남기는가?** make 큐 과적 때 만든 수동 입력 경로다. 우편함이 안정되면 존재 이유가 사라지지만, 그 판단은 한 달 뒤 make 제거와 함께 하는 편이 맞아 보인다.
 4. **집 PC에서도 스크랩을 돌리는가?** 돌린다면 `.env.local`의 `CRON_SECRET`/`OPS_CONSOLE_BASE_URL`이 그 PC에도 있어야 우편함을 쓴다(없으면 조용히 make로 간다 — R2의 표기로만 드러난다).

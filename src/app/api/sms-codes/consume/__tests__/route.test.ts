@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const state = {
   calls: [] as { fn: string; args: unknown }[],
-  result: { data: null as unknown, error: null as { message: string } | null },
+  result: {
+    data: null as unknown,
+    error: null as { message: string; code?: string } | null,
+  },
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -155,6 +158,19 @@ describe("POST /api/sms-codes/consume", () => {
     const res = await POST(req({ action: "pop", consumer: "closing" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, code: null });
+  });
+
+  it("pop — 점유자가 아니면 409 lease-not-held. 0행으로 주면 '아직 안 왔다'와 구분이 안 돼 90초를 태운다", async () => {
+    state.result = {
+      data: null,
+      error: {
+        message: "sms inbox lease not held by closing (holder=ratio-audit)",
+        code: "55P03",
+      },
+    };
+    const res = await POST(req({ action: "pop", consumer: "closing" }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ ok: false, error: "lease-not-held" });
   });
 
   it("DB 오류는 500 — 스크래퍼가 make 로 넘어갈 수 있게 실패를 드러낸다", async () => {

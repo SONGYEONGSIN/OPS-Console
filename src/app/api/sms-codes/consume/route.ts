@@ -16,6 +16,12 @@ import {
 type Admin = ReturnType<typeof createAdminClient>;
 
 /**
+ * `pop_sms_code` 가 점유자가 아닌 호출에 올리는 SQLSTATE(`lock_not_available`).
+ * 0행으로 주면 '아직 안 왔다'와 구분이 안 돼 폴러가 90초를 태운다 — 그래서 예외다.
+ */
+const LEASE_NOT_HELD = "55P03";
+
+/**
  * 비우기 + 로그인 점유. 한 호출인 이유는 순서가 아니라 **원자성**이다 — 점유를 못
  * 잡았는데 남의 코드를 지우면 상대가 굶는다. 남이 점유 중이면 **409**. 호출자는 이때
  * make 로 우회하지 않고 멈춘다(SMS 두 통이 섞이면 캡차 잠금).
@@ -43,9 +49,18 @@ async function handleReset(admin: Admin, consumer: SmsConsumer) {
   return NextResponse.json({ ok: true, cleared: row.cleared });
 }
 
-/** 최신 1건을 꺼내며 지운다. 아직 없으면 `code: null` — 호출자가 기다린다. */
+/**
+ * 최신 1건을 꺼내며 지운다. 아직 없으면 `code: null` — 호출자가 기다린다.
+ * 점유자가 아니면(반납 뒤 재호출 포함) **409** — 호출자는 멈춘다.
+ */
 async function handlePop(admin: Admin, consumer: SmsConsumer) {
   const { data, error } = await admin.rpc(POP_RPC, popArgs(consumer));
+  if (error?.code === LEASE_NOT_HELD) {
+    return NextResponse.json(
+      { ok: false, error: "lease-not-held" },
+      { status: 409 },
+    );
+  }
   if (error) {
     return NextResponse.json(
       { ok: false, error: error.message },

@@ -73,17 +73,20 @@ as $$
 declare
   v_code     text;
   v_received timestamptz;
+  v_holder   text;
 begin
-  delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
-
   -- 점유자만 꺼낸다. 리스는 '들어가지 마라'가 아니라 '꺼내지 마라'여야 한다 —
   -- 409 로 막힌 소비자가 그대로 pop 을 부르면 남의 코드를 가져가고 리스는 남는다.
-  if not exists (
-    select 1 from public.sms_code_lease l
-     where l.id = 1 and l.consumer = p_consumer
-  ) then
-    return;
+  -- 0행이 아니라 예외인 이유: 0행은 '아직 안 왔다'와 구분이 안 돼 폴러가 90초를
+  -- 태우고 원인을 가리는 문구로 죽는다(2026-09-07 'baseline 미변경' 사고와 같은 꼴).
+  select l.consumer into v_holder from public.sms_code_lease l where l.id = 1;
+  if v_holder is distinct from p_consumer then
+    raise exception 'sms inbox lease not held by % (holder=%)',
+      p_consumer, coalesce(v_holder, '(none)')
+      using errcode = 'lock_not_available';
   end if;
+
+  delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
 
   delete from public.sms_codes
    where sms_codes.id = (
@@ -113,16 +116,16 @@ notify pgrst, 'reload schema';
 
 commit;
 
--- 검증 (수동, SQL Editor):
+-- 검증 (수동, SQL Editor). **한 줄씩** 실행한다 — ERROR 가 나는 줄이 있어 한꺼번에 돌리면 거기서 멈춘다.
 -- select * from claim_sms_inbox('closing', 180);      -- t, closing, …, 0
 -- select * from claim_sms_inbox('ratio-audit', 180);  -- f, closing, …, 0   ← 점유가 막는다
 -- select * from claim_sms_inbox('closing', 180);      -- t                  ← 같은 소비자는 통과
 -- select * from pop_sms_code('closing');              -- 0행 (빈 우편함)
 -- select * from claim_sms_inbox('ratio-audit', 180);  -- f                  ← 빈 pop 은 반납하지 않는다
 -- insert into sms_codes (code) values ('123456');
--- select * from pop_sms_code('ratio-audit');          -- 0행               ← 비점유자는 꺼내지 못한다
--- select * from pop_sms_code('closing');              -- 1행, 123456
--- select * from pop_sms_code('closing');              -- 0행               ← 꺼내며 지웠다
--- select * from claim_sms_inbox('ratio-audit', 180);  -- t                  ← 꺼냈으니 반납됐다
+-- select * from pop_sms_code('ratio-audit');          -- ERROR lease not held ← 비점유자는 꺼내지 못한다
+-- select * from pop_sms_code('closing');              -- 1행, 123456        ← 꺼내며 지우고 반납
+-- select * from pop_sms_code('closing');              -- ERROR (holder=(none)) ← 반납 뒤 재호출
+-- select * from claim_sms_inbox('ratio-audit', 180);  -- t                  ← 반납됐다
 -- delete from sms_code_lease;                         -- 정리
--- select polname from pg_policies where tablename like 'sms_code%';  -- 0건
+-- select policyname from pg_policies where tablename like 'sms_code%';  -- 0건 (뷰 컬럼은 polname 이 아니라 policyname)

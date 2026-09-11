@@ -19,13 +19,21 @@ vi.mock("@/lib/supabase/admin", () => ({
 const { POST } = await import("../route");
 
 const MOA = "[Web발신][내부관리자] 본인확인 인증번호는 [130753] 입니다.";
+const MOA_SENDER = "0212345678";
 
-const req = (body: string, auth = "Bearer ph0ne") =>
+const req = (
+  body: string,
+  opts: { auth?: string; sender?: string | null } = {},
+) =>
   new Request("http://x/api/sms-codes/inbound", {
     method: "POST",
     headers: {
-      authorization: auth,
+      authorization: opts.auth ?? "Bearer ph0ne",
       "content-type": "text/plain; charset=utf-8",
+      // null 이면 헤더 자체를 뺀다
+      ...(opts.sender === null
+        ? {}
+        : { "x-sms-sender": opts.sender ?? MOA_SENDER }),
     },
     body,
   });
@@ -34,17 +42,18 @@ const req = (body: string, auth = "Bearer ph0ne") =>
  * 폰(Tasker)이 문자 원문을 넣는 창구.
  *
  * 개인 문자가 섞여 올 수 있으므로 **본문은 저장도, 응답 에코도 하지 않는다.**
- * 서버가 코드만 뽑아 넣는다.
+ * 서버가 코드만 뽑아 넣는다. 발신번호는 허용 목록과 **비교만** 하고 남기지 않는다.
  */
 describe("POST /api/sms-codes/inbound", () => {
   beforeEach(() => {
     state.inserts = [];
     state.insertError = null;
     process.env.SMS_INGEST_SECRET = "ph0ne";
+    process.env.SMS_INGEST_SENDERS = MOA_SENDER;
   });
 
   it("키가 틀리면 401 — 아무것도 저장하지 않는다", async () => {
-    const res = await POST(req(MOA, "Bearer wrong"));
+    const res = await POST(req(MOA, { auth: "Bearer wrong" }));
     expect(res.status).toBe(401);
     expect(state.inserts).toHaveLength(0);
   });
@@ -56,11 +65,37 @@ describe("POST /api/sms-codes/inbound", () => {
     expect(state.inserts).toHaveLength(0);
   });
 
-  it("인증문자면 코드만 저장한다 — 행에 본문이 없다", async () => {
+  it("인증문자면 코드만 저장한다 — 행에 본문도 발신번호도 없다", async () => {
     const res = await POST(req(MOA));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true, stored: true });
     expect(state.inserts).toEqual([{ code: "130753" }]);
+  });
+
+  it("SMS_INGEST_SENDERS 미설정이면 500 — 발신번호를 안 보면 폰 번호만 아는 사람이 가짜 코드를 넣는다", async () => {
+    delete process.env.SMS_INGEST_SENDERS;
+    const res = await POST(req(MOA));
+    expect(res.status).toBe(500);
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("허용되지 않은 발신번호면 조용히 무시 — 번호를 응답에 에코하지 않는다", async () => {
+    const res = await POST(req(MOA, { sender: "01099998888" }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, stored: false });
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("발신번호 헤더가 없으면 무시 — Tasker 설정이 빠진 것이지 인증문자가 아니다", async () => {
+    const res = await POST(req(MOA, { sender: null }));
+    expect(await res.json()).toEqual({ ok: true, stored: false });
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it("발신번호는 숫자만 비교 — 하이픈·공백·복수 등록을 흡수한다", async () => {
+    process.env.SMS_INGEST_SENDERS = "1588-0000, 02-1234-5678";
+    const res = await POST(req(MOA, { sender: "02 1234 5678" }));
+    expect(await res.json()).toEqual({ ok: true, stored: true });
   });
 
   it("인증문자가 아니면 조용히 무시 — 2xx 라야 Tasker 가 재시도하지 않는다", async () => {
