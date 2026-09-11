@@ -113,6 +113,10 @@ def main() -> int:
         "sms_urls": sms_urls(),
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "90")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
+        # 우편함 창구(없으면 make 웹훅으로 간다 — scrape.prepare_sms_source)
+        "base_url": os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/"),
+        "secret": os.getenv("CRON_SECRET", ""),
+        "sms_consumer": "settlement-discover",
     }
     missing = [k for k in ("username", "password", "sms_urls") if not env[k]]
     if missing:

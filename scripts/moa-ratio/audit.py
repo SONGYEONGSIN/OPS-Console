@@ -45,6 +45,7 @@ sys.path.insert(0, os.path.join(_REPO, "scripts", "moa-closing"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존 검증된 구현)
+import sms_inbox  # noqa: E402  (우편함 점유 — 수동 코드 경로에서도 잡는다)
 from judge import build_prompt, clean_text, filter_schedule_lines, parse_response, run_claude  # noqa: E402
 from listfilter import filter_by_start_date  # noqa: E402
 
@@ -119,6 +120,25 @@ def _accept_alert_if_present(driver) -> str | None:
         return None
 
 
+def _hold_inbox_lease(env: dict) -> None:
+    """수동 코드 경로에서도 우편함 점유만 잡는다(pop 은 하지 않는다).
+
+    사람이 인증번호를 받아 적더라도 Moa 문자는 똑같이 폰 → Tasker → 우편함으로 들어간다.
+    점유 없이 로그인하면 그 순간 폴링 중인 마감 스크래퍼가 그 코드를 '최신'으로 꺼내
+    틀린 코드를 제출한다. 다른 소비자가 점유 중이면(LeaseHeldError) 그대로 중단하고,
+    우편함 장애면 수동 입력이 곧 폴백이므로 경고만 남기고 진행한다.
+    """
+    base_url, secret, consumer = env.get("base_url"), env.get("secret"), env.get("sms_consumer")
+    if not (base_url and secret and consumer):
+        return
+    try:
+        cleared = sms_inbox.reset_inbox(base_url, secret, consumer)
+    except sms_inbox.InboxUnavailable as e:
+        print(f"[WARN] 우편함 점유 실패 — 수동 입력으로 계속합니다: {e}")
+        return
+    print(f"[INFO] 우편함 점유 (수동 코드 경로) — 비움 {cleared}건")
+
+
 def login_and_2fa(driver, wait, env) -> None:
     """Moa 로그인 + SMS 2FA. scrape.login_and_2fa와 동일 흐름을 이 스크립트 안에 풀어
     썼다(MANUAL_CODE_FILE 분기를 끼워 넣기 위함). #btnLogin 이중용도(1차 SMS발송 →
@@ -134,20 +154,20 @@ def login_and_2fa(driver, wait, env) -> None:
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_pw"]).send_keys(env["password"])
 
     manual_file = env.get("manual_code_file", "")
-    # 웹훅 이중화 — 살아 있는 것을 고르고 그 URL 로만 이어서 폴링한다.
-    # 섞으면 다른 make 시나리오의 지난 SMS 를 새 코드로 오인한다.
-    sms_url, baseline = ("", None)
-    if not manual_file:
-        sms_url, baseline = scrape.pick_baseline(env["sms_urls"])
+    # 제출 '전'에 소스를 하나 고른다 — 우편함(Supabase) 우선, make 웹훅 폴백. 제출 뒤에는
+    # 그 소스에서만 기다린다(섞으면 지난 SMS 를 새 코드로 오인한다). 수동 입력 경로는 그대로.
+    source = None
+    if manual_file:
+        _hold_inbox_lease(env)  # 수동 입력이라도 문자는 폰 → 우편함으로 들어간다
+    else:
+        source = scrape.prepare_sms_source(env)
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
     scrape._wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
     if manual_file:
         code = poll_manual_code(manual_file, MANUAL_CODE_TIMEOUT_SEC, MANUAL_CODE_INTERVAL_SEC)
     else:
-        code = scrape.poll_fresh_sms_code(
-            sms_url, baseline, env["sms_timeout"], env["sms_interval"]
-        )
+        code = scrape.await_sms_code(source, env)
     wait.until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, scrape.SELECTORS["sms_code_input"]))
     )
@@ -548,6 +568,10 @@ def main() -> int:
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "120")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
         "manual_code_file": os.getenv("MANUAL_CODE_FILE", ""),
+        # 우편함 창구 — 마감 스크래퍼와 같은 폰을 쓰므로 점유 이름으로 서로를 막는다.
+        "base_url": base_url,
+        "secret": secret,
+        "sms_consumer": "ratio-audit",
     }
     # 자격증명이 비면 Moa가 로그인 실패 후 캡차를 띄워 사람이 풀기 전까지 자동화가
     # 막힌다(scrape.py와 동일 근거) — 빈 값 제출 자체를 조기 차단한다.
