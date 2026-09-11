@@ -4,7 +4,7 @@
 설계: .claude/plans/20260607-moa-closing-scrape.md (Phase 2).
 
 흐름:
-  실행 주기 게이트(off주 exit 0) → Chrome 기동 → Moa 로그인 → SMS 2FA(baseline-diff 폴링)
+  실행 주기 게이트(off주 exit 0) → Chrome 기동 → Moa 로그인 → SMS 2FA(우편함 pop, make baseline-diff 폴백)
   → ServiceSearch 학년도 오픈일 범위 검색 → '엑셀저장' 다운로드 → 11컬럼 파싱
   → 작성마감 < 스크래핑시각 필터 → ISO8601(+09:00) 직렬화 → POST 인제스트.
 
@@ -62,6 +62,7 @@ except Exception:  # noqa: BLE001 — dotenv 미설치/파일 없음은 무시
     pass
 
 import requests
+import sms_inbox  # 같은 폴더 — 우편함(Supabase) 인증번호 클라이언트
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -312,11 +313,49 @@ def poll_fresh_sms_code(url: str, baseline: str | None, timeout_sec: int, interv
     for step in poll_intervals(timeout_sec, fast_sec=interval_sec):
         code = fetch_sms_code(url)
         if code and code != baseline:
-            masked = ("*" * (len(code) - 2) + code[-2:]) if len(code) > 2 else "**"
-            print(f"[OK] 새 SMS 코드 수신 (…{masked})")
+            print(f"[OK] 새 SMS 코드 수신 (…{sms_inbox.mask_code(code)})")
             return code
         time.sleep(step)
     raise RuntimeError(f"SMS 코드 폴링 타임아웃 ({timeout_sec}s) — baseline 미변경")
+
+
+def prepare_sms_source(env: dict) -> sms_inbox.SmsSource:
+    """로그인 제출 '전'에 인증번호 소스를 **하나** 고른다 — 우편함(Supabase) 우선, make 폴백.
+
+    순서가 '제출 전'인 이유: 우편함은 비우면서 점유하고, make 는 baseline 을 읽어야
+    새 문자를 가려낼 수 있다. 둘 다 문자가 오기 전에 끝나야 한다.
+
+    우편함이 살아 있으면 make 웹훅은 **한 번도 부르지 않는다** — 크레딧 0. 우편함 장애
+    (`InboxUnavailable`)만 make 로 넘어가고, 점유 충돌(`LeaseHeldError`)은 그대로
+    올린다 — 폴백하면 SMS 두 통이 한 폰에 겹쳐 서로의 코드를 가져간다(§3.2).
+    창구 키(base_url/secret/sms_consumer)가 없는 호출자는 바로 make 다(discover.py 호환).
+    """
+    base_url, secret, consumer = env.get("base_url"), env.get("secret"), env.get("sms_consumer")
+    if base_url and secret and consumer:
+        try:
+            cleared = sms_inbox.reset_inbox(base_url, secret, consumer)
+        except sms_inbox.InboxUnavailable as e:
+            print(f"[WARN] 우편함 준비 실패 — make 웹훅으로 넘어갑니다: {e}")
+        else:
+            print(f"[INFO] SMS 소스: 우편함 (Supabase) — 비움 {cleared}건")
+            return sms_inbox.SmsSource("inbox")
+    url, baseline = pick_baseline(env["sms_urls"])
+    print(f"[INFO] SMS 소스: make 웹훅 (…{url[-12:]})")
+    return sms_inbox.SmsSource("make", url, baseline)
+
+
+def await_sms_code(source: sms_inbox.SmsSource, env: dict) -> str:
+    """제출 '후' — 고른 소스에서만 기다린다. 섞으면 지난 문자를 새 코드로 오인한다."""
+    if source.kind == "inbox":
+        return sms_inbox.poll_inbox_code(
+            env["base_url"], env["secret"], env["sms_consumer"], env["sms_timeout"]
+        )
+    return poll_fresh_sms_code(source.url, source.baseline, env["sms_timeout"], env["sms_interval"])
+
+
+def sms_source_label(source: sms_inbox.SmsSource) -> str:
+    """실행 기록용 — 폴백이 조용히 일어나면 크레딧이 계속 타는데 아무도 모른다."""
+    return "우편함" if source.kind == "inbox" else "make"
 
 
 def post_ingest(base_url: str, secret: str, scraped_at: str, rows: list[dict]) -> None:
@@ -607,32 +646,30 @@ def _open_login_page(driver, wait, attempts: int = 3) -> None:
     )
 
 
-def login_and_2fa(driver, wait, env) -> None:
+def login_and_2fa(driver, wait, env) -> sms_inbox.SmsSource:
     """Moa 로그인 + SMS 2FA. #btnLogin 이중용도(1차 SMS발송 → 2차 인증확인).
 
-    SMS 신선도: 로그인 제출 '직전' baseline 코드 저장 → 제출 후 폴링하며
-    baseline과 달라지면 새 SMS로 간주(plan §결정1).
+    인증번호 소스는 제출 '전'에 하나 고른다(우편함 우선, make 폴백 — prepare_sms_source)
+    → 제출 후 그 소스에서만 기다린다(await_sms_code). 고른 소스를 돌려주므로
+    호출부가 실행 기록에 남길 수 있다.
     캡차(#secCaptcha)가 보이면 자동 해결 불가 → 즉시 abort(첫 시도 성공 필수).
     """
     _open_login_page(driver, wait)
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_id"]).send_keys(env["username"])
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_pw"]).send_keys(env["password"])
 
-    # 살아 있는 웹훅을 고르고 baseline 을 함께 받는다. **고른 URL 로만** 이어서
-    # 폴링한다 — 섞으면 다른 make 시나리오의 지난 SMS 를 새 코드로 오인한다.
-    sms_url, baseline = pick_baseline(env["sms_urls"])
+    source = prepare_sms_source(env)  # 제출 전: 우편함 비우기·점유 or make baseline
     driver.find_element(By.CSS_SELECTOR, SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
     _wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
-    code = poll_fresh_sms_code(
-        sms_url, baseline, env["sms_timeout"], env["sms_interval"]
-    )
+    code = await_sms_code(source, env)  # 제출 후: 고른 소스에서만 기다린다
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, SELECTORS["sms_code_input"])))
     driver.find_element(By.CSS_SELECTOR, SELECTORS["sms_code_input"]).send_keys(code)
     driver.find_element(By.CSS_SELECTOR, SELECTORS["sms_submit"]).click()  # 2차 → 인증확인
     time.sleep(2)
     _abort_if_captcha(driver)
     print("[OK] 로그인 + 2FA 완료")
+    return source
 
 
 def _abort_if_captcha(driver) -> None:
@@ -780,7 +817,9 @@ def main() -> int:
         "wait_sec": int(os.getenv("MOA_WAIT_SEC", "40")),
         "base_url": base_url,
         "secret": secret,
+        "sms_consumer": "closing",  # 우편함 점유 이름 — 서버 zod enum 과 같아야 한다
     }
+    # sms_urls 는 계속 필수다 — 우편함이 죽었을 때 폴백이 있는지 시작 전에 알아야 한다.
     missing = [k for k in ("username", "password", "sms_urls") if not env[k]]
     if not dry_run:
         missing += [k for k in ("base_url", "secret") if not env[k]]
@@ -799,7 +838,7 @@ def main() -> int:
     try:
         driver = setup_driver(download_dir, headless)
         try:
-            login_and_2fa(driver, WebDriverWait(driver, env["wait_sec"]), env)
+            source = login_and_2fa(driver, WebDriverWait(driver, env["wait_sec"]), env)
             path = search_and_download(
                 driver, WebDriverWait(driver, env["wait_sec"]), download_dir, ay
             )
@@ -814,13 +853,14 @@ def main() -> int:
         if dry_run:
             print("[DRY-RUN] 인제스트 미전송. 추출만 완료.")
             return 0
+        sms_note = f"(SMS: {sms_source_label(source)})"
         if not rows:
             print("[INFO] 마감 0건 — 인제스트 미전송(빈 배열 거부 정책).")
-            post_run_log(base_url, secret, "success", 0, "마감 0건 — 적재 없음")
+            post_run_log(base_url, secret, "success", 0, f"마감 0건 — 적재 없음 {sms_note}")
             return 0
 
         post_ingest(env["base_url"], env["secret"], scraped_at_dt.isoformat(), rows)
-        post_run_log(base_url, secret, "success", len(rows), f"적재 {len(rows)}건")
+        post_run_log(base_url, secret, "success", len(rows), f"적재 {len(rows)}건 {sms_note}")
         return 0
     except Exception as exc:  # noqa: BLE001 — 실패도 실행기록에 보고 후 재전파
         if not dry_run:

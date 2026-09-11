@@ -134,20 +134,18 @@ def login_and_2fa(driver, wait, env) -> None:
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_pw"]).send_keys(env["password"])
 
     manual_file = env.get("manual_code_file", "")
-    # 웹훅 이중화 — 살아 있는 것을 고르고 그 URL 로만 이어서 폴링한다.
-    # 섞으면 다른 make 시나리오의 지난 SMS 를 새 코드로 오인한다.
-    sms_url, baseline = ("", None)
+    # 제출 '전'에 소스를 하나 고른다 — 우편함(Supabase) 우선, make 웹훅 폴백. 제출 뒤에는
+    # 그 소스에서만 기다린다(섞으면 지난 SMS 를 새 코드로 오인한다). 수동 입력 경로는 그대로.
+    source = None
     if not manual_file:
-        sms_url, baseline = scrape.pick_baseline(env["sms_urls"])
+        source = scrape.prepare_sms_source(env)
     driver.find_element(By.CSS_SELECTOR, scrape.SELECTORS["login_submit"]).click()  # 1차 → SMS 발송
     scrape._wait_login_accepted(driver)  # 실패면 폴링 전에 중단 — 180초 오진 방지
 
     if manual_file:
         code = poll_manual_code(manual_file, MANUAL_CODE_TIMEOUT_SEC, MANUAL_CODE_INTERVAL_SEC)
     else:
-        code = scrape.poll_fresh_sms_code(
-            sms_url, baseline, env["sms_timeout"], env["sms_interval"]
-        )
+        code = scrape.await_sms_code(source, env)
     wait.until(
         EC.visibility_of_element_located((By.CSS_SELECTOR, scrape.SELECTORS["sms_code_input"]))
     )
@@ -548,6 +546,10 @@ def main() -> int:
         "sms_timeout": int(os.getenv("MOA_SMS_POLL_TIMEOUT_SEC", "120")),
         "sms_interval": int(os.getenv("MOA_SMS_POLL_INTERVAL_SEC", "3")),
         "manual_code_file": os.getenv("MANUAL_CODE_FILE", ""),
+        # 우편함 창구 — 마감 스크래퍼와 같은 폰을 쓰므로 점유 이름으로 서로를 막는다.
+        "base_url": base_url,
+        "secret": secret,
+        "sms_consumer": "ratio-audit",
     }
     # 자격증명이 비면 Moa가 로그인 실패 후 캡차를 띄워 사람이 풀기 전까지 자동화가
     # 막힌다(scrape.py와 동일 근거) — 빈 값 제출 자체를 조기 차단한다.

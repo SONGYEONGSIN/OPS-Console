@@ -151,5 +151,93 @@ class ModuleShape(unittest.TestCase):
         self.assertEqual((src.kind, src.url, src.baseline), ("inbox", "", None))
 
 
+class PrepareSmsSource(unittest.TestCase):
+    """scrape.prepare_sms_source — 제출 '전'에 소스를 하나 고른다 (설계 §6.2, T8)."""
+
+    ENV = {
+        "base_url": "https://ops",
+        "secret": "cron",
+        "sms_consumer": "closing",
+        "sms_urls": ["https://make/A", "https://make/B"],
+        "sms_timeout": 90,
+        "sms_interval": 3,
+    }
+
+    def setUp(self):
+        import scrape  # noqa: WPS433 — selenium 이 있는 모듈은 여기서만 부른다
+
+        self.scrape = scrape
+
+    @mock.patch("scrape.requests.get")
+    @mock.patch("sms_inbox.reset_inbox", return_value=0)
+    def test_우편함이_살아_있으면_make_를_한_번도_부르지_않는다(self, reset, get):
+        # 이 테스트가 이번 변경의 존재 이유다 — make 크레딧 0.
+        src = self.scrape.prepare_sms_source(dict(self.ENV))
+        self.assertEqual(src.kind, "inbox")
+        reset.assert_called_once_with("https://ops", "cron", "closing")
+        get.assert_not_called()
+
+    @mock.patch("scrape.requests.get")
+    @mock.patch("sms_inbox.reset_inbox", side_effect=sms_inbox.LeaseHeldError("ratio-audit", "09:00"))
+    def test_409면_중단하고_make_를_부르지_않는다(self, reset, get):
+        with self.assertRaises(RuntimeError) as ctx:
+            self.scrape.prepare_sms_source(dict(self.ENV))
+        self.assertIsInstance(ctx.exception, sms_inbox.LeaseHeldError)
+        get.assert_not_called()
+
+    @mock.patch("scrape.pick_baseline", return_value=("https://make/A", "111111"))
+    @mock.patch("sms_inbox.reset_inbox", side_effect=sms_inbox.InboxUnavailable("HTTP 500"))
+    def test_우편함_장애면_pick_baseline_으로_간다(self, reset, pick):
+        src = self.scrape.prepare_sms_source(dict(self.ENV))
+        self.assertEqual((src.kind, src.url, src.baseline), ("make", "https://make/A", "111111"))
+        pick.assert_called_once_with(["https://make/A", "https://make/B"])
+
+    @mock.patch("scrape.pick_baseline", return_value=("https://make/A", None))
+    @mock.patch("sms_inbox.reset_inbox")
+    def test_base_url_secret_이_없으면_우편함을_건드리지_않고_make(self, reset, pick):
+        # discover.py 처럼 창구 키가 없는 호출자 호환.
+        env = {k: v for k, v in self.ENV.items() if k not in ("base_url", "secret")}
+        src = self.scrape.prepare_sms_source(env)
+        self.assertEqual(src.kind, "make")
+        reset.assert_not_called()
+
+    @mock.patch("scrape.pick_baseline", return_value=("https://make/A", None))
+    @mock.patch("sms_inbox.reset_inbox")
+    def test_sms_consumer_가_없어도_make(self, reset, pick):
+        env = {k: v for k, v in self.ENV.items() if k != "sms_consumer"}
+        self.assertEqual(self.scrape.prepare_sms_source(env).kind, "make")
+        reset.assert_not_called()
+
+
+class AwaitSmsCode(unittest.TestCase):
+    ENV = PrepareSmsSource.ENV
+
+    def setUp(self):
+        import scrape
+
+        self.scrape = scrape
+
+    @mock.patch("scrape.poll_fresh_sms_code")
+    @mock.patch("sms_inbox.poll_inbox_code", return_value="130753")
+    def test_inbox_면_우편함만_본다(self, poll_inbox, poll_make):
+        code = self.scrape.await_sms_code(sms_inbox.SmsSource("inbox"), dict(self.ENV))
+        self.assertEqual(code, "130753")
+        poll_inbox.assert_called_once_with("https://ops", "cron", "closing", 90)
+        poll_make.assert_not_called()
+
+    @mock.patch("scrape.poll_fresh_sms_code", return_value="222222")
+    @mock.patch("sms_inbox.poll_inbox_code")
+    def test_make_면_기존_baseline_diff_폴링(self, poll_inbox, poll_make):
+        src = sms_inbox.SmsSource("make", "https://make/A", "111111")
+        self.assertEqual(self.scrape.await_sms_code(src, dict(self.ENV)), "222222")
+        poll_make.assert_called_once_with("https://make/A", "111111", 90, 3)
+        poll_inbox.assert_not_called()
+
+    def test_run_log_문구용_라벨(self):
+        # 폴백이 조용히 일어나면 크레딧이 계속 타는데 아무도 모른다 — 실행 기록에 남긴다.
+        self.assertEqual(self.scrape.sms_source_label(sms_inbox.SmsSource("inbox")), "우편함")
+        self.assertEqual(self.scrape.sms_source_label(sms_inbox.SmsSource("make", "u", None)), "make")
+
+
 if __name__ == "__main__":
     unittest.main()
