@@ -1,9 +1,11 @@
 ---
 share: true
-status: 설계
+status: 확정
 updated: 2026-09-11
-revision: 5
+revision: 6
 ---
+
+> rev 6 (2026-09-11 구현 완료): PR A(#1179) 배포·라이브 검증 10단계 통과, PR B 스크래퍼 전환. 실호출에서만 드러난 것 둘 — ① Supabase PostgREST 경로는 `safeupdate` 가 켜져 있어 함수 안의 WHERE 없는 DELETE 를 거부한다(`claim_sms_inbox` 전체 비우기 → `where true`; SQL Editor·Docker 검증은 통과했었다), ② `vercel env add` 를 stdin 으로 넣으면 끝의 줄바꿈이 값에 저장돼 전부 401(줄바꿈 없이 재등록 + redeploy). 우편함 클라이언트는 폴링 중 일시 오류를 타임아웃까지 견딘다(설계 §6.1 에 없던 결정 — 로그인 창 90초 안의 흔들림 하나로 문자를 버리지 않기 위해).
 
 > rev 2 (2026-09-11 설계 리뷰): `pop_sms_code`가 빈 우편함에서도 리스를 반납하던 결함 수정 — 반납은 코드를 꺼냈을 때만. 함수 실행 권한을 service_role 로 좁힘. T1 검증 절차 갱신.
 > rev 3 (2026-09-11 코드 리뷰): 코드 추출은 `인증번호` **뒤에서** — 앞의 `[2026]`을 코드로 오인하던 결함. `pop`은 리스 보유자만. 2000자 초과는 400이 아니라 조용히 무시(Tasker 재시도 방지). rpc 계약 테스트 추가.
