@@ -6,8 +6,10 @@ import {
   CLAIM_RPC,
   POP_ROW_COLUMNS,
   POP_RPC,
+  PUSH_RPC,
   claimArgs,
   popArgs,
+  pushArgs,
 } from "../rpc";
 
 /**
@@ -23,16 +25,20 @@ const sql = readFileSync(
 
 function signature(fn: string): { params: string[]; columns: string[] } {
   const m = new RegExp(
-    `create or replace function public\\.${fn}\\(([^)]*)\\)\\s*returns table \\(([^)]*)\\)`,
+    `create or replace function public\\.${fn}\\(([^)]*)\\)\\s*returns (table \\(([^)]*)\\)|\\w+)`,
     "i",
   ).exec(sql);
   if (!m) throw new Error(`${fn} 정의를 마이그레이션에서 찾지 못했습니다`);
   const names = (list: string) =>
     list.split(",").map((p) => p.trim().split(/\s+/)[0]);
-  return { params: names(m[1]), columns: names(m[2]) };
+  return { params: names(m[1]), columns: m[3] ? names(m[3]) : [] };
 }
 
 describe("RPC 계약 — 라우트가 보내는 것과 마이그레이션 시그니처가 같다", () => {
+  it("push_sms_code 파라미터 이름", () => {
+    expect(signature(PUSH_RPC).params).toEqual(Object.keys(pushArgs("130753")));
+  });
+
   it("claim_sms_inbox 파라미터 이름·순서", () => {
     expect(signature(CLAIM_RPC).params).toEqual(
       Object.keys(claimArgs("closing", 180)),

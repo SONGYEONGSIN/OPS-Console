@@ -3,6 +3,7 @@ import type { SmsConsumer } from "./schemas";
 /** 로그인 점유 TTL — 폴링 상한 90초 + 여유. 폴러가 pop 전에 죽어도 3분이면 풀린다. */
 export const INBOX_TTL_SEC = 180;
 
+export const PUSH_RPC = "push_sms_code";
 export const CLAIM_RPC = "claim_sms_inbox";
 export const POP_RPC = "pop_sms_code";
 
@@ -12,6 +13,9 @@ export const POP_RPC = "pop_sms_code";
  * 라우트 테스트는 mock 에 대고 단언하므로 이름이 하나만 어긋나도 초록인 채로
  * 프로덕션에서 500 이 난다. `rpc.test.ts` 가 SQL 원문과 대조한다.
  */
+export function pushArgs(code: string) {
+  return { p_code: code };
+}
 export function claimArgs(consumer: SmsConsumer, ttlSec = INBOX_TTL_SEC) {
   return { p_consumer: consumer, p_ttl_sec: ttlSec };
 }

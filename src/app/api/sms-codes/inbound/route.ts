@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractSmsCode } from "@/features/sms-codes/extract-code";
+import { PUSH_RPC, pushArgs } from "@/features/sms-codes/rpc";
+
+/** 이보다 짧은 키로는 열지 않는다 — `test` 같은 값이 설정된 채 배포되는 것을 막는다. */
+const MIN_SECRET_LENGTH = 32;
 
 /**
  * 이보다 길면 인증문자가 아니다(Moa 실문자는 40자 남짓). 400 으로 거절하지 않는
@@ -45,12 +49,13 @@ function senderAllowed(request: Request, allowed: string[]): boolean {
  * **본문은 저장도, 로그도, 응답 에코도 하지 않는다.** 개인 문자가 섞여 올 수 있다.
  * 서버가 코드만 뽑아 넣고, 인증문자가 아니면 2xx 로 조용히 버린다 — Tasker 가
  * 재시도하지 않게. 400 은 본문이 **비었을 때**뿐이다(Tasker 설정 오류 = 고칠 것).
+ * 넣기는 `push_sms_code` 가 맡는다 — 만료분을 지우고 최신 20행만 남긴다.
  */
 export async function POST(request: Request) {
   const secret = process.env.SMS_INGEST_SECRET;
-  if (!secret) {
+  if (!secret || secret.length < MIN_SECRET_LENGTH) {
     return NextResponse.json(
-      { ok: false, error: "SMS_INGEST_SECRET 미설정" },
+      { ok: false, error: "SMS_INGEST_SECRET 미설정 또는 32자 미만" },
       { status: 500 },
     );
   }
@@ -86,9 +91,7 @@ export async function POST(request: Request) {
   const code = extractSmsCode(body);
   if (!code) return NextResponse.json({ ok: true, stored: false });
 
-  const { error } = await createAdminClient()
-    .from("sms_codes")
-    .insert({ code });
+  const { error } = await createAdminClient().rpc(PUSH_RPC, pushArgs(code));
   if (error) {
     return NextResponse.json(
       { ok: false, error: error.message },

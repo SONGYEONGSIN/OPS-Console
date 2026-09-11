@@ -2,12 +2,13 @@
 share: true
 status: 설계
 updated: 2026-09-11
-revision: 4
+revision: 5
 ---
 
 > rev 2 (2026-09-11 설계 리뷰): `pop_sms_code`가 빈 우편함에서도 리스를 반납하던 결함 수정 — 반납은 코드를 꺼냈을 때만. 함수 실행 권한을 service_role 로 좁힘. T1 검증 절차 갱신.
 > rev 3 (2026-09-11 코드 리뷰): 코드 추출은 `인증번호` **뒤에서** — 앞의 `[2026]`을 코드로 오인하던 결함. `pop`은 리스 보유자만. 2000자 초과는 400이 아니라 조용히 무시(Tasker 재시도 방지). rpc 계약 테스트 추가.
 > rev 4 (2026-09-11 보안·DB 리뷰): **발신번호 대조**(`X-Sms-Sender` ↔ `SMS_INGEST_SENDERS`) — 폰 번호만 알면 비밀키 없이 가짜 코드를 넣을 수 있었다. 추출은 `인증번호` **바로 뒤**만(스팸 `[9999]` 차단). 비점유자 `pop`은 0행이 아니라 예외 → 409. 검증 SQL `polname` → `policyname`(Postgres 15·17 실행 검증).
+> rev 5 (2026-09-11 리뷰 잔여분): 넣기를 `push_sms_code` 로 — 만료 삭제 + **20행 캡**(inbound 가 만료를 안 지워 행이 무한히 자랄 수 있었다). `p_ttl_sec` null 방어, `set search_path`, 테이블 revoke 에 `public`, 폰 키 32자 하한. `consume` 키 분리(M2)는 보류하고 F14 에 기록.
 
 # Moa 로그인 SMS 인증번호 — 자체 우편함
 
@@ -188,16 +189,35 @@ create table if not exists public.sms_code_lease (
 alter table public.sms_codes       enable row level security;
 alter table public.sms_code_lease  enable row level security;
 -- 정책 0개 = 전면 거부. 읽는 주체는 서버(service_role)뿐이다.
-revoke all on public.sms_codes      from anon, authenticated;
-revoke all on public.sms_code_lease from anon, authenticated;
+revoke all on public.sms_codes      from public, anon, authenticated;
+revoke all on public.sms_code_lease from public, anon, authenticated;
 grant all on public.sms_codes       to service_role;
 grant all on public.sms_code_lease  to service_role;
+
+-- 폰이 넣는다. 넣으면서 만료분을 지우고 최신 20행만 남긴다 — 스크래퍼가 안 도는
+-- 주말이나 키 유출 시 행이 무한히 자라 프로젝트 전체가 읽기전용이 되는 것을 막는다
+-- (보안 리뷰 M1). 정상 문자는 항상 들어가고, 밀려나는 것은 이미 죽은 코드다.
+create or replace function public.push_sms_code(p_code text)
+returns void
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  delete from public.sms_codes where sms_codes.received_at < now() - interval '10 minutes';
+  insert into public.sms_codes (code) values (p_code);
+  delete from public.sms_codes
+   where sms_codes.id not in (
+     select s.id from public.sms_codes s order by s.received_at desc limit 20
+   );
+end;
+$$;
 
 -- 비우기 + 점유 획득. 한 호출로 묶는 이유: 점유를 못 잡았는데 남의 코드를 지우면
 -- 상대가 굶는다. 순서가 아니라 원자성이 필요하다.
 create or replace function public.claim_sms_inbox(p_consumer text, p_ttl_sec int)
 returns table (acquired boolean, holder text, holder_since timestamptz, cleared int)
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   v_ok boolean := false;
@@ -209,7 +229,8 @@ begin
     set consumer = excluded.consumer, acquired_at = excluded.acquired_at
     -- 같은 소비자의 재획득은 통과시킨다 — 재시도가 자기 리스에 막히면 안 된다.
     where l.consumer = excluded.consumer
-       or l.acquired_at < now() - make_interval(secs => p_ttl_sec)
+       -- null 이 오면 만료 경로가 영영 안 열린다 — 사람이 지울 때까지 전면 정지(DB 리뷰).
+       or l.acquired_at < now() - make_interval(secs => coalesce(p_ttl_sec, 180))
   returning true into v_ok;
 
   if v_ok is not true then
@@ -230,6 +251,7 @@ $$;
 create or replace function public.pop_sms_code(p_consumer text)
 returns table (code text, received_at timestamptz)
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   v_code     text;
@@ -267,8 +289,12 @@ $$;
 
 -- 함수는 기본이 PUBLIC 실행 가능이다. invoker 권한이라 anon 이 불러도 테이블에서
 -- 막히지만, 그 우연에 기대지 않는다 — 실행 권한도 service_role 로 좁힌다.
+-- ⚠️ revoke 는 **시그니처 단위**다. 나중에 인자를 추가하면 create or replace 가 아니라
+-- 새 오버로드가 되고, 그것은 다시 PUBLIC 실행 가능으로 태어난다 — 이 블록을 같이 고칠 것.
+revoke execute on function public.push_sms_code(text)         from public, anon, authenticated;
 revoke execute on function public.claim_sms_inbox(text, int) from public, anon, authenticated;
 revoke execute on function public.pop_sms_code(text)          from public, anon, authenticated;
+grant  execute on function public.push_sms_code(text)         to service_role;
 grant  execute on function public.claim_sms_inbox(text, int) to service_role;
 grant  execute on function public.pop_sms_code(text)          to service_role;
 
@@ -298,7 +324,7 @@ Content-Type: text/plain; charset=utf-8
 | 200 | `{"ok":true,"stored":false}` | 발신번호가 허용 목록에 없거나 헤더가 없다 → 조용히 무시. 번호는 저장·에코하지 않는다 |
 | 400 | `{"ok":false,"error":"empty body"}` | 본문 없음 — Tasker 설정 오류라 고쳐야 할 것 |
 | 401 | `{"ok":false,"error":"unauthorized"}` | 키 불일치 |
-| 500 | `{"ok":false,"error":"SMS_INGEST_SECRET 미설정"}` / `"SMS_INGEST_SENDERS 미설정"` / DB 오류 메시지 | 둘 중 하나라도 비면 창구는 닫힌다 |
+| 500 | `{"ok":false,"error":"SMS_INGEST_SECRET 미설정 또는 32자 미만"}` / `"SMS_INGEST_SENDERS 미설정"` / DB 오류 메시지 | 둘 중 하나라도 비면 창구는 닫힌다. 키가 32자 미만이어도 닫힌다 — `test` 같은 값으로 열리면 안 된다 |
 
 **본문은 응답에도 로그에도 싣지 않는다.** 오류 메시지에 원문을 에코하면 개인 문자가 Vercel 로그에 남는다.
 
@@ -341,7 +367,7 @@ export const smsConsumeSchema = z.object({
 
 폰 본문은 zod 를 거치지 않는다 — 문자열 하나에 길이 검사 둘(빈 본문 400 · 2000자 초과 무시)이라 라우트 상수로 충분하다. 코드 모양(`^[0-9]{4,8}$`)은 추출 정규식과 DB check 제약이 지킨다.
 
-`src/features/sms-codes/rpc.ts` — rpc 이름·인자 빌더(`claimArgs`/`popArgs`)·반환 컬럼 목록. **`rpc.test.ts` 가 마이그레이션 SQL 원문을 읽어 파라미터 이름·반환 컬럼과 대조한다** — 라우트 테스트는 mock 에 대고 단언하므로 이름이 어긋나도 초록인 채로 프로덕션에서 500 이 나기 때문이다.
+`src/features/sms-codes/rpc.ts` — rpc 이름·인자 빌더(`pushArgs`/`claimArgs`/`popArgs`)·반환 컬럼 목록. **`rpc.test.ts` 가 마이그레이션 SQL 원문을 읽어 파라미터 이름·반환 컬럼과 대조한다** — 라우트 테스트는 mock 에 대고 단언하므로 이름이 어긋나도 초록인 채로 프로덕션에서 500 이 나기 때문이다.
 
 `src/features/sms-codes/extract-code.ts`
 
@@ -470,7 +496,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 | 어디 | 키 | 값 |
 |---|---|---|
-| Vercel (Production) | `SMS_INGEST_SECRET` | 위 64자 hex |
+| Vercel (Production) | `SMS_INGEST_SECRET` | 위 64자 hex. **32자 미만이면 창구가 닫힌다** |
 | Vercel (Production) | `SMS_INGEST_SENDERS` | Moa 인증문자 **발신번호**(쉼표 구분 복수 가능, 숫자만 비교). 폰의 Moa 문자 대화에서 본다. **비어 있으면 창구가 500으로 닫힌다** |
 | 회사/집 PC `.env.local` | — | **추가 없음.** `CRON_SECRET`·`OPS_CONSOLE_BASE_URL`이 이미 있다 |
 | 폰 Tasker | — | URL + `SMS_INGEST_SECRET`을 직접 입력 |
@@ -515,6 +541,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | F8 | **폴러가 pop 전에 죽음**(PC 종료) | 리스가 남는다 | TTL 180초 후 자동 해제. 다음 실행이 막히는 최악 대기 3분 |
 | F9 | **`SMS_INGEST_SECRET` 유출**(폰 분실) | 우편함에 임의 코드가 들어온다 → 다음 로그인이 틀린 코드 제출 → **캡차 잠금**. 발신번호 헤더는 HTTP 요청자가 쓰는 값이라 키를 가진 자는 위조한다 — F13의 방어는 여기 안 통한다 | Vercel에서 그 키만 교체 + Tasker 재입력. `CRON_SECRET`은 건드리지 않는다 — 분리의 값이 여기서 나온다 |
 | F13 | **운영자 폰으로 Moa 문구를 흉내 낸 문자**(비밀키 불필요, 폰 번호만 알면 됨) | 드러나지 않는다 — Tasker Sender 필터에서 떨어지고, 통과해도 서버가 발신번호 불일치로 `stored:false` | 없음(정상). 발신번호 위조(spoofing)는 발신번호 사전등록제 때문에 국내에선 어렵다 |
+| F14 | **`CRON_SECRET` 유출** | 로그인 90초 창 안에서 `pop`을 부르면 코드를 읽고, `reset`을 반복하면 리스를 점거해 모든 스크래퍼가 409 | 키 교체. Moa 자격증명은 별도 env 라 코드만으로는 로그인 못 한다. `consume` 전용 키 분리는 **보류**(보안 리뷰 M2) — PC 2대 env 가 늘어 누락 시 조용히 make 로 새는 자리(R2)가 생기고, `CRON_SECRET` 은 이미 적재·폴러·자동화 전체를 쥔 키라 여기서 얻는 격리가 작다 |
 | F10 | **광고문자가 게이트를 통과** | 우편함에 숫자 1건 | 게이트 둘(Tasker 내용 필터 + `인증번호`+대괄호)을 모두 통과해야 하고, 비우기가 매 로그인 전에 지우므로 90초 창에 정확히 걸려야 한다 |
 | F11 | **`PUBLIC_PATHS` 누락** | 스크래퍼가 307을 받고 `reset`이 JSON 파싱에서 죽는다 | T4의 회귀 테스트 2개가 배포 전에 잡는다(§3.3) |
 | F12 | **RPC 스키마 캐시 미갱신** | `.rpc()` 404 → 우편함 준비 실패 → make로 폴백(조용히 크레딧을 태운다) | `notify pgrst`(§3.4) + run-log의 `(SMS: make)` 표기가 드러낸다 |
@@ -588,7 +615,7 @@ T1(DB) ─┬─ T2(inbound) ─┬─ T4(proxy) ─ T5(배포·실검증) ─ T
   select * from claim_sms_inbox('closing', 180);      -- t                  ← 같은 소비자는 통과
   select * from pop_sms_code('closing');              -- 0행 (빈 우편함)
   select * from claim_sms_inbox('ratio-audit', 180);  -- f                  ← 빈 pop 은 반납하지 않는다
-  insert into sms_codes (code) values ('123456');
+  select public.push_sms_code('123456');            -- 넣기 (만료 삭제 + 20행 캡 포함)
   select * from pop_sms_code('ratio-audit');          -- ERROR lease not held ← 비점유자는 꺼내지 못한다
   select * from pop_sms_code('closing');              -- 1행, 123456        ← 꺼내며 지우고 반납
   select * from pop_sms_code('closing');              -- ERROR (holder=(none)) ← 반납 뒤 재호출
@@ -612,7 +639,7 @@ T1(DB) ─┬─ T2(inbound) ─┬─ T4(proxy) ─ T5(배포·실검증) ─ T
   - route: 광고문자 → **200 `stored:false`** + insert 0회
   - route: 정상 → 200 `stored:true` + insert payload에 **`body`/`raw` 키가 없다**
   - route: 빈 본문 → 400
-- **구현**: `request.text()` → zod 길이 → `extractSmsCode` → `createAdminClient().from("sms_codes").insert({ code })`
+- **구현**: 키 길이·발신번호 대조 → `request.text()` → 길이 → `extractSmsCode` → `rpc("push_sms_code", { p_code })`(만료 삭제 + 20행 캡 포함)
 - **검증**: `npm test -- src/features/sms-codes src/app/api/sms-codes/inbound`
 - **의존**: 없음 (mock)
 
@@ -723,7 +750,7 @@ T1(DB) ─┬─ T2(inbound) ─┬─ T4(proxy) ─ T5(배포·실검증) ─ T
 | **폰 문자 원문 보관** | 저장하지 않는 것이 설계의 일부다 |
 | **다른 계정/다중 폰** | Moa 계정이 하나다. 우편함도 하나여야 리스가 성립한다 |
 | **applyprice 3개 복구** | 미추적 일회용 스크립트. 언급만 한다 |
-| **rate limiting** | 키 유출 시 결과는 로그인 실패(→캡차)이고 데이터 손실이 아니다. 상한을 두면 정상 문자를 떨어뜨릴 위험이 생긴다. 완화는 키 교체 |
+| **rate limiting** | 상한을 두면 정상 문자를 떨어뜨릴 위험이 생긴다. 대신 **출처 검증**(발신번호 대조)과 **행 캡**(`push_sms_code` 20행)으로 막는다 — "키 유출의 결과는 로그인 실패뿐"이라는 처음 근거는 틀렸다(디스크 소진 → 프로젝트 읽기전용, 보안 리뷰). 완화는 키 교체 |
 
 ---
 
