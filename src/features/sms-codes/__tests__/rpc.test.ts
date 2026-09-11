@@ -57,3 +57,27 @@ describe("RPC 계약 — 라우트가 보내는 것과 마이그레이션 시그
     expect(signature(POP_RPC).columns).toEqual([...POP_ROW_COLUMNS]);
   });
 });
+
+/**
+ * Supabase 의 PostgREST 경로(authenticator 롤)는 `safeupdate` 가 켜져 있어 WHERE 없는
+ * DELETE/UPDATE 를 `21000 DELETE requires a WHERE clause` 로 거부한다 — **함수 안이라도**
+ * 마찬가지다. SQL Editor(postgres 롤)와 Docker Postgres 에서는 통과해서 `.rpc()` 실호출에서만
+ * 드러났다(2026-09-11, claim_sms_inbox 의 전체 비우기). 주석은 벗기고 문장 단위로 본다.
+ */
+describe("safeupdate — WHERE 없는 DELETE/UPDATE 가 없다", () => {
+  const statements = sql
+    .replace(/--[^\n]*/g, "")
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  it("delete/update 문마다 where 절이 있다", () => {
+    const mutating = statements.filter(
+      (s) =>
+        /\bdelete\s+from\b/i.test(s) ||
+        /\bupdate\s+\S+\s+set\b/i.test(s.replace(/\bdo\s+update\b/gi, "")),
+    );
+    expect(mutating.length).toBeGreaterThan(0);
+    for (const s of mutating) expect(s, s).toMatch(/\bwhere\b/i);
+  });
+});

@@ -78,7 +78,10 @@ begin
     return;
   end if;
 
-  delete from public.sms_codes;
+  -- `where true` 는 장식이 아니다. Supabase 의 PostgREST 경로는 `safeupdate` 가 켜져 있어
+  -- WHERE 없는 DELETE 를 `21000 DELETE requires a WHERE clause` 로 거부한다 — 함수 안이라도.
+  -- SQL Editor 와 Docker 에서는 통과해서 `.rpc()` 실호출에서만 드러났다(2026-09-11).
+  delete from public.sms_codes where true;
   get diagnostics v_cleared = row_count;
   return query select true, p_consumer, now(), v_cleared;
 end;
