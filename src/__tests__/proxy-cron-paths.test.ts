@@ -25,6 +25,10 @@ const CRON_ROUTES = [
   "/api/teams/messages",
   "/api/teams/flush",
   "/api/teams/poll",
+  // SMS 인증번호 우편함 — 스크래퍼가 비우고 꺼낸다(CRON_SECRET). 폰이 넣는
+  // inbound 는 SMS_INGEST_SECRET 이지만 세션이 없기는 마찬가지다.
+  "/api/sms-codes/consume",
+  "/api/sms-codes/inbound",
 ];
 
 describe("proxy — CRON_SECRET 창구", () => {

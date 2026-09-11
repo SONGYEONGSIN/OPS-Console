@@ -1,0 +1,37 @@
+import { describe, it, expect } from "vitest";
+import { extractSmsCode } from "../extract-code";
+
+/**
+ * 폰이 보내는 것은 문자 **원문**이다. 인증문자인지, 코드가 무엇인지를 여기서 가른다.
+ * null 이면 인증문자가 아니다 — 저장하지 않는다.
+ */
+describe("extractSmsCode", () => {
+  it("Moa 실문자에서 코드를 뽑는다 — 앞의 [Web발신][내부관리자] 는 숫자가 아니다", () => {
+    expect(
+      extractSmsCode(
+        "[Web발신][내부관리자] 본인확인 인증번호는 [130753] 입니다.",
+      ),
+    ).toBe("130753");
+  });
+
+  it("'인증 번호' 처럼 띄어 써도 인증문자다", () => {
+    expect(extractSmsCode("인증 번호 [123456]")).toBe("123456");
+  });
+
+  it("인증번호 문구가 없으면 대괄호 숫자가 있어도 null — 광고의 [2026] 이 우편함에 앉으면 안 된다", () => {
+    expect(extractSmsCode("[Web발신] 2026 신년 할인 [2026]원")).toBeNull();
+  });
+
+  it("인증번호 문구가 있어도 대괄호 숫자가 없으면 null — 전화번호를 코드로 보지 않는다", () => {
+    expect(extractSmsCode("인증번호 문의 010-1234-5678")).toBeNull();
+  });
+
+  it("대괄호 안이 4~8자리 밖이면 null", () => {
+    expect(extractSmsCode("인증번호는 [123] 입니다")).toBeNull();
+    expect(extractSmsCode("인증번호는 [123456789] 입니다")).toBeNull();
+  });
+
+  it("빈 문자열은 null", () => {
+    expect(extractSmsCode("")).toBeNull();
+  });
+});

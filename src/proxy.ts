@@ -54,6 +54,11 @@ const PUBLIC_PATHS = [
   "/api/pollers/heartbeat",
   "/api/team-briefing",
   "/api/ratio-audit",
+  // SMS 인증번호 우편함. inbound 는 폰(Tasker)이 SMS_INGEST_SECRET 으로, consume 은
+  // 스크래퍼가 CRON_SECRET 으로 — 둘 다 라우트 안에서 검사한다. `/api/sms-codes` 로
+  // 뭉뚱그리지 않는다: 접두사 매칭이라 그 아래 새 라우트가 자동으로 공개된다.
+  "/api/sms-codes/inbound",
+  "/api/sms-codes/consume",
   /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
   "/r",
 ];

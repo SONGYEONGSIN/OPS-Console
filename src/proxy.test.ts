@@ -86,6 +86,17 @@ describe("proxy 미들웨어", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("미인증 + sms-codes/inbound(폰 Tasker)는 public → 리다이렉트 안 함", async () => {
+    // 폰은 세션이 없다. 인증은 라우트 안에서 SMS_INGEST_SECRET 으로 한다.
+    const res = await proxy(reqFor("/api/sms-codes/inbound"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("미인증 + sms-codes/consume(스크래퍼)은 public → 리다이렉트 안 함", async () => {
+    const res = await proxy(reqFor("/api/sms-codes/consume"));
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("로그인 상태 + /login → /dashboard 리다이렉트", async () => {
     updateSession.mockResolvedValue({
       supabaseResponse: NextResponse.next(),
