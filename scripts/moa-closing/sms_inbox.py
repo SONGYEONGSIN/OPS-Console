@@ -20,8 +20,12 @@ from typing import NamedTuple
 
 import requests
 
-INBOX_TTL_SEC = 180  # 로그인 점유 TTL — 폴링 상한 90초 + 여유. 서버 기본값과 같다
+INBOX_TTL_SEC = 180  # 로그인 점유 TTL — 서버 기본값과 같다
 INBOX_POLL_INTERVAL_SEC = 2  # 비용이 없으므로 촘촘히 본다
+# 폴링 상한. 리스 시계는 reset(제출 전)에 시작하고 로그인 응답 대기(≤15초)가 끼어들므로
+# TTL 끝까지 기다리면 마지막 구간은 리스 없이 pop 한다 — 그 창에 다른 소비자가 들어오면
+# 우편함을 비우고 이쪽 코드를 가져간다. env 가 더 크게 줘도 여기서 자른다.
+POLL_CAP_SEC = INBOX_TTL_SEC - 30
 CONSUME_PATH = "/api/sms-codes/consume"
 REQUEST_TIMEOUT_SEC = 10
 
@@ -105,8 +109,14 @@ def poll_inbox_code(base_url: str, secret: str, consumer: str, timeout_sec: int)
     흔들림 하나로 문자를 버리지 않는다. 타임아웃 문구는 다음 사람이 어디를 볼지
     알려줘야 한다(2026-09-07 'baseline 미변경' 이 원인을 가렸다).
     """
+    effective = min(timeout_sec, POLL_CAP_SEC)
+    if effective < timeout_sec:
+        print(
+            f"[WARN] 우편함 폴링 상한을 {timeout_sec}s → {effective}s 로 줄입니다 "
+            f"(리스 TTL {INBOX_TTL_SEC}s 안에서만 기다린다)"
+        )
     started = time.monotonic()
-    deadline = started + timeout_sec
+    deadline = started + effective
     last_error: str | None = None  # 타임아웃 문구에 싣는다 — 키 회전·500 을 폰 문제로 오진하지 않게
     while True:
         try:
@@ -118,8 +128,8 @@ def poll_inbox_code(base_url: str, secret: str, consumer: str, timeout_sec: int)
                 raise LeaseHeldError(
                     "(unknown)",
                     "?",
-                    f"우편함 점유가 {consumer} 에게 없습니다 (pop 409) — 다른 스크래퍼가 "
-                    "가져갔거나 리스가 만료됐습니다. 중단",
+                    f"우편함 점유가 {consumer} 에게 없습니다 (pop 409) — 리스가 만료됐거나"
+                    "(앞선 pop 응답 유실 포함) 다른 스크래퍼가 가져갔습니다. 중단",
                 )
             if status == 200 and payload.get("ok") is True:
                 error = None
@@ -135,8 +145,9 @@ def poll_inbox_code(base_url: str, secret: str, consumer: str, timeout_sec: int)
         last_error = error or last_error
         if time.monotonic() >= deadline:
             tail = f" (마지막 오류: {last_error})" if last_error else ""
+            capped = f", 요청 {timeout_sec}s 를 TTL 안으로 줄임" if effective < timeout_sec else ""
             raise RuntimeError(
-                f"우편함 대기 타임아웃 ({timeout_sec}s) — 문자가 도착하지 않았습니다. "
+                f"우편함 대기 타임아웃 ({effective}s{capped}) — 문자가 도착하지 않았습니다. "
                 f"폰 Tasker 확인 필요{tail}"
             )
         time.sleep(INBOX_POLL_INTERVAL_SEC)

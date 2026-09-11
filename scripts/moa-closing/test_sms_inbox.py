@@ -141,6 +141,35 @@ class PollInboxCode(unittest.TestCase):
         self.assertIn("401", msg)
         self.assertIn("unauthorized", msg)
 
+    @mock.patch("sms_inbox.time.monotonic")
+    @mock.patch("sms_inbox.time.sleep")
+    @mock.patch("sms_inbox.requests.post")
+    def test_타임아웃은_리스_TTL_안으로_잘린다(self, post, sleep, monotonic):
+        # 리스 시계는 reset(제출 전)에 시작하고 로그인 응답 대기(≤15초)가 끼어든다. 폴링이
+        # TTL 끝까지 가면 마지막 구간은 리스 없이 pop 한다 — 그 창에 다른 소비자가 들어오면
+        # 우편함을 비우고 이쪽 코드를 가져간다(코드 리뷰 HIGH). 180 을 넣어도 150 에서 끊는다.
+        post.return_value = _resp(200, {"ok": True, "code": None})
+        monotonic.side_effect = [0, 0, 60, 120, 149, 150, 151, 152]
+        with self.assertRaises(RuntimeError) as ctx:
+            sms_inbox.poll_inbox_code("https://ops", "sec", "closing", timeout_sec=180)
+        msg = str(ctx.exception)
+        self.assertIn("150s", msg)
+        self.assertIn("180", msg)
+        self.assertEqual(sms_inbox.POLL_CAP_SEC, sms_inbox.INBOX_TTL_SEC - 30)
+
+    @mock.patch("sms_inbox.time.sleep")
+    @mock.patch("sms_inbox.requests.post")
+    def test_수신_코드는_stdout_에_마스킹된다(self, post, sleep):
+        import contextlib
+        import io
+
+        post.return_value = _resp(200, {"ok": True, "code": "130753"})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            sms_inbox.poll_inbox_code("https://ops", "sec", "closing", timeout_sec=30)
+        self.assertIn("****53", buf.getvalue())
+        self.assertNotIn("130753", buf.getvalue())
+
     @mock.patch("sms_inbox.time.sleep")
     @mock.patch("sms_inbox.requests.post")
     def test_pop_409_의_holder_는_자기_이름이_아니다(self, post, sleep):
@@ -238,15 +267,13 @@ class PrepareSmsSource(unittest.TestCase):
         reset.assert_not_called()
 
     @mock.patch("scrape.requests.get")
-    @mock.patch("sms_inbox.reset_inbox")
-    def test_폴링_타임아웃이_리스_TTL_이상이면_제출_전에_막는다(self, reset, get):
-        # 리스가 폴링 중에 만료되면 pop 409 가 '남이 가져갔다'로 오진된다(보안 리뷰 L5).
-        # SMS 가 발송되기 전(prepare 단계)에 설정 오류로 세운다.
-        env = {**self.ENV, "sms_timeout": sms_inbox.INBOX_TTL_SEC}
-        with self.assertRaises(RuntimeError) as ctx:
-            self.scrape.prepare_sms_source(env)
-        self.assertIn("MOA_SMS_POLL_TIMEOUT_SEC", str(ctx.exception))
-        reset.assert_not_called()
+    @mock.patch("sms_inbox.reset_inbox", return_value=0)
+    def test_폴링_타임아웃이_TTL_이상이어도_우편함을_쓴다(self, reset, get):
+        # 이 PC .env.local 이 MOA_SMS_POLL_TIMEOUT_SEC=180 이다 — 설정 하나로 스크래퍼가
+        # 통째로 서면 안 된다. 잘라내는 것은 poll_inbox_code 의 몫(코드 리뷰 HIGH).
+        env = {**self.ENV, "sms_timeout": 180}
+        self.assertEqual(self.scrape.prepare_sms_source(env).kind, "inbox")
+        reset.assert_called_once()
         get.assert_not_called()
 
     @mock.patch("scrape.pick_baseline", return_value=("https://make/A", None))

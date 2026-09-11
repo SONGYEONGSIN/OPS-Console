@@ -332,13 +332,8 @@ def prepare_sms_source(env: dict) -> sms_inbox.SmsSource:
     """
     base_url, secret, consumer = env.get("base_url"), env.get("secret"), env.get("sms_consumer")
     if base_url and secret and consumer:
-        # 리스 TTL 보다 오래 기다리면 폴링 중에 리스가 만료돼 pop 409 가 '남이 가져갔다'로
-        # 오진된다. SMS 가 발송되기 전인 지금 설정 오류로 세운다.
-        if env["sms_timeout"] >= sms_inbox.INBOX_TTL_SEC:
-            raise RuntimeError(
-                f"MOA_SMS_POLL_TIMEOUT_SEC={env['sms_timeout']} 는 우편함 리스 TTL "
-                f"{sms_inbox.INBOX_TTL_SEC}s 보다 짧아야 합니다"
-            )
+        # 폴링 상한은 poll_inbox_code 가 리스 TTL 안으로 잘라낸다(POLL_CAP_SEC) — env 값 하나로
+        # 스크래퍼가 통째로 서지 않게.
         try:
             cleared = sms_inbox.reset_inbox(base_url, secret, consumer)
         except sms_inbox.InboxUnavailable as e:
