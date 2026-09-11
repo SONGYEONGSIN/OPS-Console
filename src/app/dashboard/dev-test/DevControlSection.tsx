@@ -9,8 +9,10 @@ import { listTestableServices } from "@/features/entertest/queries";
 import { ListPattern } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ScopeChips } from "@/components/common/ScopeChips";
+import { nextWeekRange, opensNextWeek } from "@/features/closing/next-week";
 import { buildDevControlRows } from "./dev-control-rows";
 import { DevControlSearch } from "./DevControlSearch";
+import { NextWeekChip } from "./NextWeekChip";
 
 const PAGE_SIZE = 30;
 
@@ -24,6 +26,8 @@ type Props = {
   mine?: string;
   /** 로그인 운영자 표시명 — services.operator_name과 비교. */
   myName?: string | null;
+  /** NextWeekChip searchParam 원본. "next"면 차주(월~일)에 여는 것만. */
+  week?: string;
 };
 
 /** null 제거 + 중복 제거 + 정렬한 distinct 옵션. */
@@ -45,6 +49,7 @@ export async function DevControlSection({
   admissionType,
   mine: mineParam,
   myName,
+  week,
 }: Props) {
   const [services, analyses, requests, specs] = await Promise.all([
     listTestableServices(),
@@ -63,8 +68,11 @@ export async function DevControlSection({
 
   // mine 기본 true(내 대학) — 테스트 탭과 동일 규칙, operator_name === 본인.
   const mine = mineParam !== "false";
+  const asOf = new Date();
+  const range = nextWeekRange(asOf);
   const filteredServices = services.filter((s) => {
     if (mine && myName && s.operator_name !== myName) return false;
+    if (week === "next" && !opensNextWeek(s.write_start_at, asOf)) return false;
     if (category && s.category !== category) return false;
     if (universityType && s.university_type !== universityType) return false;
     if (admissionType && s.admission_type !== admissionType) return false;
@@ -120,7 +128,14 @@ export async function DevControlSection({
       liveData
       controlsRow={<DevControlSearch {...options} />}
       inlineFilters={
-        <ScopeChips key="dev-control-scope" total={total} mineLabel="내 대학" />
+        <>
+          <ScopeChips
+            key="dev-control-scope"
+            total={total}
+            mineLabel="내 대학"
+          />
+          <NextWeekChip range={range} />
+        </>
       }
       footer={
         <ListPagination

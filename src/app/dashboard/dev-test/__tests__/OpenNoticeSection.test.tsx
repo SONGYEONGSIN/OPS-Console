@@ -67,7 +67,10 @@ function svc(over: Record<string, unknown> = {}) {
 }
 
 async function propsOf(over: Record<string, unknown> = {}) {
-  const { services, ...rest } = { services: [svc()], ...over } as Record<string, unknown>;
+  const { services, ...rest } = { services: [svc()], ...over } as Record<
+    string,
+    unknown
+  >;
   listOpenNoticeServices.mockResolvedValue(services);
   const tree = await OpenNoticeSection({
     myName: "홍길동",
@@ -138,14 +141,38 @@ describe("OpenNoticeSection", () => {
 
   it("내 대학 기본 필터 — operator_name 이 본인인 건만", async () => {
     const rows = await rowsOf({
-      services: [svc({ service_id: 1 }), svc({ service_id: 2, operator_name: "남" })],
+      services: [
+        svc({ service_id: 1 }),
+        svc({ service_id: 2, operator_name: "남" }),
+      ],
     });
     expect(rows.map((r) => r.serviceIdNum)).toEqual([1]);
   });
 
+  it("week=next 면 다음 주에 여는 것만 — 이미 접수 중인 건도 빠진다", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-11T10:00:00+09:00")); // 금
+    try {
+      const rows = await rowsOf({
+        services: [
+          svc({ service_id: 1, write_start_at: "2026-09-08T01:00:00Z" }), // 접수 중
+          svc({ service_id: 2, write_start_at: "2026-09-15T09:00:00+09:00" }), // 차주
+          svc({ service_id: 3, write_start_at: "2026-09-22T09:00:00+09:00" }), // 다다음주
+        ],
+        week: "next",
+      });
+      expect(rows.map((r) => r.serviceIdNum)).toEqual([2]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("mine=false 면 전체를 보여준다", async () => {
     const rows = await rowsOf({
-      services: [svc({ service_id: 1 }), svc({ service_id: 2, operator_name: "남" })],
+      services: [
+        svc({ service_id: 1 }),
+        svc({ service_id: 2, operator_name: "남" }),
+      ],
       mine: "false",
     });
     expect(rows).toHaveLength(2);
