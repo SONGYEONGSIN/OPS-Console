@@ -1,4 +1,5 @@
 import { findSidebarMeta } from "../_data";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { ListPattern } from "../_components/patterns/ListPattern";
@@ -21,8 +22,6 @@ import { incidentToListRow } from "./_row-mapper";
 import { toIncidentPayload } from "./_to-payload";
 import { PendingApprovalChip } from "./PendingApprovalChip";
 import { ApprovedReportChip } from "./ApprovedReportChip";
-import { GongmunLink } from "./GongmunLink";
-import { getGongmunLedgerUrl } from "@/lib/microsoft/gongmun-ledger";
 import {
   createIncident,
   updateIncident,
@@ -78,7 +77,6 @@ export default async function IncidentsPage({
   const canEdit = me?.permission === "admin" || me?.permission === "member";
 
   // 공문관리대장 원본 바로가기 — 실패해도 null로 와서 버튼만 안 뜬다(목록은 그대로).
-  const gongmunUrl = await getGongmunLedgerUrl();
 
   const defaultYear = currentAcademicYear();
   const selectedYear = params.year ? Number(params.year) : defaultYear;
@@ -204,7 +202,14 @@ export default async function IncidentsPage({
       canCreate={canEdit}
       createLabel="+ 사고 보고"
       extraActionsLeft={
-        <GongmunLink key="incidents-gongmun" url={gongmunUrl} />
+        /* 버튼은 늘 그린다. 주소는 창구가 클릭 시점에 푼다 — 미리 조회하면
+           실패가 버튼을 지워 '기능이 없는 것'과 구분되지 않는다. */
+        <HeaderActionButton
+          key="incidents-gongmun"
+          href="/dashboard/workbook/incidents-gongmun"
+        >
+          공문관리대장
+        </HeaderActionButton>
       }
       readOnly={!canEdit}
       currentUserPermission={me?.permission ?? null}

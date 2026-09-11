@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { useRouter } from "next/navigation";
 import { uploadReceipt } from "@/features/postal/actions";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
@@ -18,13 +19,10 @@ export function PostalClient({
   receipts,
   extractStates = {},
   ledger,
-  ledgerUrl = null,
 }: {
   receipts: ReceiptCard[];
   extractStates?: Record<string, ExtractState>;
   ledger: LedgerView;
-  /** 원본 엑셀 바로가기 — 조회 실패면 null. */
-  ledgerUrl?: string | null;
 }) {
   const [dragOver, setDragOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -109,12 +107,21 @@ export function PostalClient({
       */}
       {ledger.error ? (
         // 못 읽은 이유를 그대로 보여준다 — 빈 표는 "발송이 없다"로 읽힌다.
-        <p className="text-xs text-vermilion-deep">{ledger.error}</p>
+        //
+        // **버튼은 남긴다.** 대장을 못 읽은 순간이 바로 원본을 열어 봐야 할
+        // 때인데, 예전엔 표 컴포넌트를 통째로 안 그리며 버튼까지 사라졌다.
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <HeaderActionButton href="/dashboard/workbook/postal-ledger">
+              등기대장
+            </HeaderActionButton>
+          </div>
+          <p className="text-xs text-vermilion-deep">{ledger.error}</p>
+        </div>
       ) : (
         <LedgerTable
           rows={ledger.rows}
           receiptUrls={ledger.receiptUrls}
-          ledgerUrl={ledgerUrl}
           years={ledger.years}
           year={ledger.year}
         />

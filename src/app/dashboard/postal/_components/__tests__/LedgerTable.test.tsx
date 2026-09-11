@@ -303,17 +303,23 @@ describe("LedgerTable — 등기대장 버튼", () => {
       <LedgerTable
         rows={[line()]}
         receiptUrls={{}}
-        ledgerUrl="https://sp/mail.xlsx"
       />,
     );
     const link = screen.getByRole("link", { name: "등기대장" });
-    expect(link).toHaveAttribute("href", "https://sp/mail.xlsx");
+    expect(link).toHaveAttribute("href", "/dashboard/workbook/postal-ledger");
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("링크가 없으면 버튼을 안 그린다", () => {
+  /**
+   * 예전 계약은 "링크 조회 실패면 버튼을 안 그린다" 였다. 그게 '기능이 없는 것'과
+   * 구분되지 않아 뒤집었다(총괄장 2026-09-09 사고와 같은 형태).
+   */
+  it("버튼은 늘 있고 창구로 보낸다", () => {
     render(<LedgerTable rows={[line()]} receiptUrls={{}} />);
-    expect(screen.queryByRole("link", { name: "등기대장" })).toBeNull();
+    expect(screen.getByRole("link", { name: "등기대장" })).toHaveAttribute(
+      "href",
+      "/dashboard/workbook/postal-ledger",
+    );
   });
 });
 
