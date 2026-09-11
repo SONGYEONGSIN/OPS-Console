@@ -18,6 +18,8 @@ vi.mock("@/features/entertest/queries", () => ({
 }));
 
 import DevTestPage from "../page";
+import { NextWeekChip } from "../NextWeekChip";
+import { listTestableServices } from "@/features/entertest/queries";
 import { ListPattern } from "../../_components/patterns/ListPattern";
 import { DevControlSection } from "../DevControlSection";
 import { OpenNoticeSection } from "../OpenNoticeSection";
@@ -130,6 +132,62 @@ describe("DevTestPage — 탭별 섹션 분기", () => {
  * 본문 건수는 ScopeChips 가 '전체 (N)' 으로 이미 보여주므로 헤더는 중복이다.
  * 헤더에서 빼서 역할을 가른다 — 헤더는 메뉴, 칩은 현재 필터.
  */
+/**
+ * 차주오픈은 세 탭 공통이다 — 셋 다 '내 대학' 옆에 둔다. 한 탭만 거르면
+ * 탭을 옮길 때마다 같은 칩이 먹었다 안 먹었다 한다.
+ */
+describe("DevTestPage — 차주오픈 배선", () => {
+  it("개발·오픈안내 섹션에 week 를 넘긴다", async () => {
+    for (const [tab, Section] of [
+      [undefined, DevControlSection],
+      ["open-notice", OpenNoticeSection],
+    ] as const) {
+      const tree = await DevTestPage({
+        searchParams: Promise.resolve({
+          ...(tab ? { tab } : {}),
+          week: "next",
+        }),
+      });
+      const el = findByType(tree, Section);
+      expect((el!.props as Record<string, unknown>).week).toBe("next");
+    }
+  });
+
+  it("테스트 탭도 다음 주에 여는 것만 남기고, 칩을 내 대학 옆에 둔다", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-11T10:00:00+09:00")); // 금
+    try {
+      const base = {
+        university_name: "가대학교",
+        service_name: "수시",
+        category: null,
+        region: null,
+        university_type: null,
+        admission_type: null,
+        operator_name: "송영신",
+        write_end_at: null,
+        pay_start_at: null,
+        pay_end_at: null,
+      };
+      vi.mocked(listTestableServices).mockResolvedValueOnce([
+        { ...base, service_id: 1, write_start_at: "2026-09-17T09:00:00+09:00" },
+        { ...base, service_id: 2, write_start_at: "2026-09-24T09:00:00+09:00" },
+      ]);
+      const tree = await DevTestPage({
+        searchParams: Promise.resolve({ tab: "test", week: "next" }),
+      });
+      const props = (findByType(tree, ListPattern)?.props ?? {}) as {
+        data: { rows: { id: string }[] };
+        inlineFilters?: unknown;
+      };
+      expect(props.data.rows.map((r) => r.id)).toEqual(["1"]);
+      expect(findByType(props.inlineFilters, NextWeekChip)).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("DevTestPage — 헤더 건수", () => {
   async function headerMeta(tab?: string) {
     const tree = await DevTestPage({

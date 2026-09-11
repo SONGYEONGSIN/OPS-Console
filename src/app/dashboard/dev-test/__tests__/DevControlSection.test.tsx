@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import type { ListRow } from "../../_components/patterns/ListPattern";
@@ -54,6 +54,15 @@ vi.mock("@/components/common/ScopeChips", () => ({
     <div data-testid="scope-chips">{`${mineLabel}:${total}`}</div>
   ),
 }));
+vi.mock("../NextWeekChip", () => ({
+  NextWeekChip: ({
+    range,
+  }: {
+    range: { startYmd: string; endYmd: string };
+  }) => (
+    <div data-testid="next-week-chip">{`${range.startYmd}~${range.endYmd}`}</div>
+  ),
+}));
 
 import { DevControlSection } from "../DevControlSection";
 
@@ -76,8 +85,16 @@ function service(over: Partial<TestableService>): TestableService {
 }
 
 const services = [
-  service({ service_id: 1, university_name: "내대학교", operator_name: "홍길동" }),
-  service({ service_id: 2, university_name: "남대학교", operator_name: "김철수" }),
+  service({
+    service_id: 1,
+    university_name: "내대학교",
+    operator_name: "홍길동",
+  }),
+  service({
+    service_id: 2,
+    university_name: "남대학교",
+    operator_name: "김철수",
+  }),
 ];
 
 describe("DevControlSection — 스코프 필터", () => {
@@ -108,5 +125,75 @@ describe("DevControlSection — 스코프 필터", () => {
     render(await DevControlSection({ myName: null }));
     expect(screen.getByText("내대학교")).toBeInTheDocument();
     expect(screen.getByText("남대학교")).toBeInTheDocument();
+  });
+});
+
+describe("DevControlSection — 차주오픈", () => {
+  beforeEach(() => {
+    // Date 만 고정한다 — 타이머까지 가짜로 두면 서버 컴포넌트의 await 가 멈춘다.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-11T10:00:00+09:00")); // 금
+    h.listTestableServices.mockResolvedValue([
+      service({
+        service_id: 1,
+        university_name: "차주대학교",
+        operator_name: "홍길동",
+        write_start_at: "2026-09-14T09:00:00+09:00",
+      }),
+      service({
+        service_id: 2,
+        university_name: "다다음주대학교",
+        operator_name: "홍길동",
+        write_start_at: "2026-09-21T09:00:00+09:00",
+      }),
+      service({
+        service_id: 3,
+        university_name: "남의차주대학교",
+        operator_name: "김철수",
+        write_start_at: "2026-09-16T09:00:00+09:00",
+      }),
+    ]);
+    h.listDevControlAnalyses.mockResolvedValue([]);
+    h.listLatestDevControlRequests.mockResolvedValue(new Map());
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("week 가 없으면 거르지 않는다", async () => {
+    render(await DevControlSection({ myName: "홍길동" }));
+    expect(screen.getByText("차주대학교")).toBeInTheDocument();
+    expect(screen.getByText("다다음주대학교")).toBeInTheDocument();
+  });
+
+  it('week="next" 면 다음 주에 여는 것만 — 내 대학과 겹쳐 걸린다', async () => {
+    render(await DevControlSection({ myName: "홍길동", week: "next" }));
+    expect(screen.getByText("차주대학교")).toBeInTheDocument();
+    expect(screen.queryByText("다다음주대학교")).not.toBeInTheDocument();
+    expect(screen.queryByText("남의차주대학교")).not.toBeInTheDocument();
+    expect(screen.getByTestId("scope-chips")).toHaveTextContent("내 대학:1");
+  });
+
+  it("전체 + 차주오픈이면 남의 대학도 나온다", async () => {
+    render(
+      await DevControlSection({
+        myName: "홍길동",
+        mine: "false",
+        week: "next",
+      }),
+    );
+    expect(screen.getByText("차주대학교")).toBeInTheDocument();
+    expect(screen.getByText("남의차주대학교")).toBeInTheDocument();
+    expect(screen.queryByText("다다음주대학교")).not.toBeInTheDocument();
+  });
+
+  it("내 대학 칩 옆에 차주오픈 칩을 둔다 — 차주 범위를 넘긴다", async () => {
+    render(await DevControlSection({ myName: "홍길동" }));
+    expect(screen.getByTestId("inline-filters")).toContainElement(
+      screen.getByTestId("next-week-chip"),
+    );
+    expect(screen.getByTestId("next-week-chip")).toHaveTextContent(
+      "2026-09-14~2026-09-20",
+    );
   });
 });

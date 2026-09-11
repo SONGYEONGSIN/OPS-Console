@@ -8,7 +8,9 @@ import { ListPattern } from "../_components/patterns/ListPattern";
 import type { ListRow } from "../_components/patterns/ListPattern";
 import { ListPagination } from "@/components/common/ListPagination";
 import { ScopeChips } from "@/components/common/ScopeChips";
+import { nextWeekRange, opensNextWeek } from "@/features/closing/next-week";
 import { DevTestControls } from "./DevTestControls";
+import { NextWeekChip } from "./NextWeekChip";
 
 const PAGE_SIZE = 30;
 
@@ -29,6 +31,8 @@ type Props = {
   myName?: string | null;
   meEmail?: string | null;
   isAdmin?: boolean;
+  /** NextWeekChip searchParam 원본. "next"면 차주(월~일)에 여는 것만. */
+  week?: string;
 };
 
 /**
@@ -47,6 +51,7 @@ export async function OpenNoticeSection({
   myName,
   meEmail,
   isAdmin,
+  week,
 }: Props) {
   // 목록 범위가 테스트 탭과 달라(오픈 예정 + 접수 중) 자체 조회한다.
   const services = await listOpenNoticeServices();
@@ -59,9 +64,12 @@ export async function OpenNoticeSection({
   };
 
   const mine = mineParam !== "false";
+  const asOf = new Date();
+  const range = nextWeekRange(asOf);
   const query = (q ?? "").trim().toLowerCase();
   const filtered = services.filter((s) => {
     if (mine && myName && s.operator_name !== myName) return false;
+    if (week === "next" && !opensNextWeek(s.write_start_at, asOf)) return false;
     if (category && s.category !== category) return false;
     if (universityType && s.university_type !== universityType) return false;
     if (admissionType && s.admission_type !== admissionType) return false;
@@ -122,7 +130,8 @@ export async function OpenNoticeSection({
       openNoticeScheduledAt: status?.scheduledAt ?? null,
       openNoticeLastFailedAt: status?.lastFailedAt ?? null,
       openNoticeCanSend: !!isAdmin || (!!myName && s.operator_name === myName),
-      openNoticeOpenPassed: !!s.write_start_at && Date.parse(s.write_start_at) < now,
+      openNoticeOpenPassed:
+        !!s.write_start_at && Date.parse(s.write_start_at) < now,
     };
   });
 
@@ -135,7 +144,14 @@ export async function OpenNoticeSection({
       liveData
       controlsRow={<DevTestControls {...options} />}
       inlineFilters={
-        <ScopeChips key="open-notice-scope" total={total} mineLabel="내 대학" />
+        <>
+          <ScopeChips
+            key="open-notice-scope"
+            total={total}
+            mineLabel="내 대학"
+          />
+          <NextWeekChip range={range} />
+        </>
       }
       footer={
         <ListPagination

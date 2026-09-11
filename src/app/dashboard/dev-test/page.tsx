@@ -13,7 +13,9 @@ import {
   getMyEntertestAccount,
 } from "@/features/entertest/queries";
 import type { EntertestRun } from "@/features/entertest/schemas";
+import { nextWeekRange, opensNextWeek } from "@/features/closing/next-week";
 import { DevTestControls } from "./DevTestControls";
+import { NextWeekChip } from "./NextWeekChip";
 import { DevTestTabs } from "./DevTestTabs";
 import { DevControlSection } from "./DevControlSection";
 import { OpenNoticeSection } from "./OpenNoticeSection";
@@ -40,6 +42,7 @@ export default async function DevTestPage({
     universityType?: string;
     admissionType?: string;
     tab?: string;
+    week?: string;
   }>;
 }) {
   const slug = "dev-test";
@@ -66,9 +69,13 @@ export default async function DevTestPage({
   // searchParam 서버 필터. mine 기본 true(내 대학) — operator_name === 본인.
   const mine = sp.mine !== "false";
   const myName = me?.displayName ?? null;
+  const asOf = new Date();
+  const range = nextWeekRange(asOf);
   const q = (sp.q ?? "").trim().toLowerCase();
   const filtered = services.filter((s) => {
     if (mine && myName && s.operator_name !== myName) return false;
+    if (sp.week === "next" && !opensNextWeek(s.write_start_at, asOf))
+      return false;
     if (sp.category && s.category !== sp.category) return false;
     if (sp.universityType && s.university_type !== sp.universityType)
       return false;
@@ -140,6 +147,7 @@ export default async function DevTestPage({
           myName={myName}
           meEmail={me?.email ?? null}
           isAdmin={me?.permission === "admin"}
+          week={sp.week}
         />
       ) : sp.tab !== "test" ? (
         <DevControlSection
@@ -150,6 +158,7 @@ export default async function DevTestPage({
           admissionType={sp.admissionType}
           mine={sp.mine}
           myName={myName}
+          week={sp.week}
         />
       ) : (
         <ListPattern
@@ -162,11 +171,14 @@ export default async function DevTestPage({
           currentUserPermission={me?.permission ?? null}
           controlsRow={<DevTestControls {...options} />}
           inlineFilters={
-            <ScopeChips
-              key="dev-test-scope"
-              total={total}
-              mineLabel="내 대학"
-            />
+            <>
+              <ScopeChips
+                key="dev-test-scope"
+                total={total}
+                mineLabel="내 대학"
+              />
+              <NextWeekChip range={range} />
+            </>
           }
           footer={
             <ListPagination
