@@ -16,6 +16,7 @@ export type Variant =
   | "receivables"
   | "ai-work"
   | "ai-tips"
+  | "ai-tip-candidates"
   | "backup"
   | "services"
   | "contracts"

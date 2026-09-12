@@ -14,6 +14,8 @@ import { AiTipsView } from "./ai-tips/View";
 import { AiTipsForm } from "./ai-tips/EditForm";
 import { AiTipsTable } from "./ai-tips/Table";
 import { blankAiTipRow } from "./ai-tips/filters";
+import { AiTipCandidateView } from "./ai-tip-candidates/View";
+import { AiTipCandidateTable } from "./ai-tip-candidates/Table";
 import { TeamView } from "./team/View";
 import { TeamForm } from "./team/EditForm";
 import { TeamTable } from "./team/Table";
@@ -189,6 +191,14 @@ export const variantRegistry = {
     // chip 비활성 — ScopeChips(전체/내 TIP)로 토글
     Filters: [],
     blank: blankAiTipRow,
+  },
+  "ai-tip-candidates": {
+    View: AiTipCandidateView,
+    Table: AiTipCandidateTable,
+    // chip 비활성 — 상태(검토 대기/숨김/등록됨) 칩은 페이지 searchParam 을 쓰는
+    // CandidateScopeChips 가 담당한다. 여기에도 두면 같은 뜻의 칩이 두 줄이 된다.
+    Filters: [],
+    // EditForm·blank 없음 — 후보는 수집 잡이 적재하고, 화면은 등록·숨김만 결정한다.
   },
   team: {
     View: TeamView,
