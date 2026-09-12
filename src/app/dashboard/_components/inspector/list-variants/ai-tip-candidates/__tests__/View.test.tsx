@@ -213,3 +213,47 @@ describe("AiTipCandidateView — 등록·숨김·되돌리기", () => {
     expect(idSentTo(mockUnhide)).toBe(baseRow.id);
   });
 });
+
+/**
+ * 실패를 `alert()` 로 띄우면 누르는 순간 사라져, 무엇이 왜 막혔는지 다시 볼 수
+ * 없다. 구 후보 패널이 그랬다. 결과는 인스펙터에 남긴다.
+ */
+describe("AiTipCandidateView — 결과 표시", () => {
+  beforeEach(() => {
+    mockPromote.mockClear();
+    mockHide.mockClear();
+    mockUnhide.mockClear();
+  });
+
+  it("실패 메시지를 인스펙터에 남긴다 — 주의 색으로", async () => {
+    mockPromote.mockResolvedValueOnce({
+      ok: false,
+      message: "권한 없음 — TIP 등록 권한이 없습니다.",
+    });
+    render(<AiTipCandidateView row={baseRow} />);
+    fireEvent.click(screen.getByRole("button", { name: "TIP 등록" }));
+    const message = await screen.findByText(/권한 없음/);
+    expect(message.className).toContain("text-vermilion");
+  });
+
+  it("성공 메시지는 기본 글자색이다", async () => {
+    mockHide.mockResolvedValueOnce({ ok: true, message: "숨김으로 옮겼습니다." });
+    render(<AiTipCandidateView row={baseRow} />);
+    fireEvent.click(screen.getByRole("button", { name: "숨김" }));
+    const message = await screen.findByText("숨김으로 옮겼습니다.");
+    expect(message.className).toContain("text-ink");
+    expect(message.className).not.toContain("text-vermilion");
+  });
+
+  it("실패해도 alert 을 띄우지 않는다", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    mockUnhide.mockResolvedValueOnce({ ok: false, message: "되돌리지 못했습니다." });
+    render(
+      <AiTipCandidateView row={{ ...baseRow, tipCandidateStatus: "hidden" }} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "되돌리기" }));
+    await screen.findByText("되돌리지 못했습니다.");
+    expect(alertSpy).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+});
