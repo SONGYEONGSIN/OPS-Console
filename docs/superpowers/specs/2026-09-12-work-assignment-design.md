@@ -788,17 +788,18 @@ PR1(스키마) ─ PR2(운영자 칸) ─ PR3(이관·대조) ─ PR4(화면 교
 - **검증**: `npm test -- src/features/assignments/proposal`
 - **의존**: PR4 (원장 타입)
 
-### PR7 — 큐 + 회사 PC 폴러 + 잡 + 제안 탭 (16파일 · **전체 설계 상한 초과**)
+### PR7 — 큐 + 회사 PC 폴러 + 잡 + 제안 탭 (19파일 · **전체 설계 상한 초과**)
 
 **상한을 넘으므로 둘로 쪼갤 수 있다** — (7a) 큐·폴러·판정, (7b) 잡·제안 탭. 7a 만 머지해도 관리자 화면에서 수동 요청으로 판정을 돌려 볼 수 있으므로 쪼개는 편이 안전하다.
 
-- **파일**: 마이그레이션 1(큐), `propose-requests/enqueue.ts`, `api/assignments/propose-request/route.ts`, `scripts/assignments/{propose-local.mjs,register-propose-task.ps1}`, `proposal/{persist,report}.ts`, jobs 2, `registry.ts`, `actions.ts`, `ProposalPanel.tsx`, `page.tsx`, tests 3
+- **파일**: 마이그레이션 1(큐), `propose-requests/enqueue.ts`, `api/assignments/propose-request/route.ts`, `scripts/assignments/{propose-local.mjs,register-propose-task.ps1}`, `proposal/{persist,report}.ts`, jobs 2, `registry.ts`, `actions.ts`, `ProposalPanel.tsx`, `page.tsx`, **`proxy.ts` + 회귀 테스트 2건**, tests 3
 - **RED**:
   - claim 이 **원자적**이다 — `status='pending'` 조건부 UPDATE 로, 두 번 부르면 두 번째는 빈손이다(ratio-audit 선례)
   - **pending/running 이 있으면 새 적재를 막는다**(판정이 두 벌 돌아 배치가 겹치지 않게)
   - `STALE_RUNNING_MS` 초과 `running` 이 `failed` 로 넘어간다
   - rollover 가 **같은 학년도에 두 번째 요청을 만들지 않는다**(`skipped: true`) / 학년도 경계 전후로 판정이 갈린다(2026-02-28 vs 2026-03-01)
-  - `tenure_group` 최종 수정이 학년도 경계를 못 넘었으면 **3월 갱신 상기**가 보고에 들어간다
+  - 그룹 구성이 **직전 annual 배치의 `basis.groups` 와 같으면** 3월 갱신 상기가 보고에 들어간다(§6.4 — `operators.updated_at` 은 전화번호 한 칸에도 움직여 쓰지 않는다)
+  - 폴러 창구가 `PUBLIC_PATHS` 에 **먼저** 들어가 있어야 한다 — 테스트 목록에 경로를 먼저 넣어 실패를 보고 나서 가드를 고친다(sms 우편함 T4 와 같은 순서)
   - 폴러 응답이 게이트를 통과한 줄만 배치에 담기고 **탈락 건수와 어긴 게이트가 보고에 남는다**(F11)
   - `basis` 에 그룹 목표와 상한이 얼려 담긴다 / 적용 시 `prev_assignee` 불일치 행은 건너뛴다 / 반려가 원장을 건드리지 않는다 / 비-admin 적용 거부
   - 폴러 모듈이 **`strictMcpConfig`·`settingSources: []`·`disallowedTools` 를 넘긴다**(어시스턴트 선례 — 없으면 그 PC 의 메일·Teams·노션 MCP 에 닿는다)
