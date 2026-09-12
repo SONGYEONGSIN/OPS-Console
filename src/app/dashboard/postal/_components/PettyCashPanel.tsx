@@ -21,11 +21,8 @@ const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 export function PettyCashPanel({
   sheet,
-  pettyCashUrl = null,
 }: {
   sheet: PettyCashSheet | null;
-  /** 원본 엑셀 바로가기. 조회 실패면 null — 버튼을 아예 안 그린다. */
-  pettyCashUrl?: string | null;
 }) {
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
@@ -69,10 +66,20 @@ export function PettyCashPanel({
 
   if (!sheet) {
     // 빈 표로 두면 잔액이 0원인 줄 안다.
+    //
+    // **버튼은 남긴다.** 장부를 못 읽은 순간이 바로 원본을 열어 봐야 할 때인데,
+    // 예전엔 여기서 통째로 빠져나가며 버튼까지 같이 사라졌다.
     return (
-      <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
-        전도금 장부를 읽지 못했습니다. SharePoint 접근 설정을 확인해 주세요.
-      </p>
+      <div className="space-y-3">
+        <div className="flex justify-end">
+          <HeaderActionButton href="/dashboard/workbook/postal-petty-cash">
+            전도금대장
+          </HeaderActionButton>
+        </div>
+        <p className="border border-line-soft bg-situation-bg px-6 py-10 text-sm text-muted">
+          전도금 장부를 읽지 못했습니다. SharePoint 접근 설정을 확인해 주세요.
+        </p>
+      </div>
     );
   }
 
@@ -141,15 +148,10 @@ export function PettyCashPanel({
             다른 것들은 넣을 길이 없어 엑셀을 직접 열어야 했다(2026-08-20).
           */}
           <div className="flex items-center gap-2">
-          {/*
-            원본 엑셀 바로가기 — 미수채권과 같은 규칙. 조회에 실패하면 버튼을
-            아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
-          */}
-          {pettyCashUrl && (
-            <HeaderActionButton href={pettyCashUrl}>
-              전도금대장
-            </HeaderActionButton>
-          )}
+          {/* 버튼은 늘 그린다 — 주소는 창구가 클릭 시점에 푼다. */}
+          <HeaderActionButton href="/dashboard/workbook/postal-petty-cash">
+            전도금대장
+          </HeaderActionButton>
           <HeaderActionButton onClick={() => setAdding(true)}>
             + 사용내역 추가
           </HeaderActionButton>

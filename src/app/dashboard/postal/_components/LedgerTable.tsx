@@ -126,13 +126,11 @@ export function LedgerTable({
             })}
           </span>
         </div>
-        {/*
-          원본 엑셀 바로가기 — 미수채권과 같은 규칙이다. 조회에 실패하면 버튼을
-          아예 안 그린다: 깨진 링크를 누르게 하는 것보다 없는 편이 낫다.
-        */}
-        {ledgerUrl && (
-          <HeaderActionButton href={ledgerUrl}>등기대장</HeaderActionButton>
-        )}
+        {/* 버튼은 늘 그린다. 주소는 창구가 클릭 시점에 푼다 — 미리 조회하면
+            실패가 버튼을 지워 '기능이 없는 것'과 구분되지 않는다. */}
+        <HeaderActionButton href="/dashboard/workbook/postal-ledger">
+          등기대장
+        </HeaderActionButton>
       </header>
 
       {filtered.length === 0 ? (

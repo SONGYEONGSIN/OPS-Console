@@ -115,22 +115,30 @@ describe("PettyCashPanel — 카드·제목·검색", () => {
 
 describe("PettyCashPanel — 전도금대장 버튼", () => {
   it("사용내역 추가 왼쪽에 전도금대장이 있다", () => {
-    render(<PettyCashPanel sheet={SHEET} pettyCashUrl="https://sp/petty.xlsx" />);
+    render(<PettyCashPanel sheet={SHEET} />);
     const link = screen.getByRole("link", { name: "전도금대장" });
-    expect(link).toHaveAttribute("href", "https://sp/petty.xlsx");
+    expect(link).toHaveAttribute("href", "/dashboard/workbook/postal-petty-cash");
   });
 
   // 이 자리 버튼은 배경을 갖는 게 표준이다. 전도금대장만 아웃라인이라
   // 같은 '원본 엑셀 바로가기'가 등기내역 탭과 달라 보였다.
   it("배경색이 있다 — 등기대장 버튼과 같은 모양이어야 한다", () => {
-    render(<PettyCashPanel sheet={SHEET} pettyCashUrl="https://sp/petty.xlsx" />);
+    render(<PettyCashPanel sheet={SHEET} />);
     const link = screen.getByRole("link", { name: "전도금대장" });
     expect(link.className).toMatch(/bg-vermilion/);
   });
 
-  it("링크가 없으면 버튼을 안 그린다 — 깨진 링크를 누르게 하지 않는다", () => {
+  /**
+   * 예전 계약은 "링크 조회 실패면 버튼을 안 그린다" 였다. 그게 '기능이 없는 것'과
+   * 구분되지 않아 뒤집었다(총괄장 2026-09-09 사고와 같은 형태). 이제 버튼은 늘
+   * 있고 주소는 창구가 클릭 시점에 푼다.
+   */
+  it("버튼은 늘 있고 창구로 보낸다", () => {
     render(<PettyCashPanel sheet={SHEET} />);
-    expect(screen.queryByRole("link", { name: "전도금대장" })).toBeNull();
+    expect(screen.getByRole("link", { name: "전도금대장" })).toHaveAttribute(
+      "href",
+      "/dashboard/workbook/postal-petty-cash",
+    );
   });
 });
 
@@ -154,7 +162,7 @@ describe("PettyCashPanel — 인스펙터 겹침", () => {
  */
 describe("PettyCashPanel — 버튼 크기", () => {
   it("두 버튼 모두 표준 치수다", () => {
-    render(<PettyCashPanel sheet={SHEET} pettyCashUrl="https://sp/p.xlsx" />);
+    render(<PettyCashPanel sheet={SHEET} />);
     for (const el of [
       screen.getByRole("link", { name: "전도금대장" }),
       screen.getByRole("button", { name: /사용내역 추가/ }),

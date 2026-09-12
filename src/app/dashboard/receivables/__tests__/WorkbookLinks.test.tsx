@@ -3,86 +3,46 @@ import { render, screen } from "@testing-library/react";
 import { WorkbookLinks } from "../WorkbookLinks";
 
 /**
- * 목록 헤더 액션 버튼 표준 — ListPattern 생성 버튼(`+ 백업 요청` 등)과 같은 문자열.
+ * 원본 엑셀 바로가기 — 미수채권 칩 줄.
  *
- * 한때 이 슬롯이 셋으로 갈려 있었다 — 생성 버튼·인수인계 복사는 버밀리언, 연락처
- * 일괄등록은 잉크, 발표 서비스 일괄등록은 외곽선. 처음에 그 외곽선 하나를 표준으로
- * 골라 어긋났었다. 두 일괄등록은 `HeaderActionButton` 으로 맞췄다(2026-08-25).
+ * 예전엔 링크 조회에 실패한 항목을 **아예 안 그렸다.** 그러면 '기능이 없는 것'과
+ * 구분되지 않는다(총괄장에서 실제로 겪었다, 2026-09-09). 이제 버튼은 늘 있고
+ * 주소는 창구가 클릭 시점에 푼다.
  *
- * 인수인계 '복제' 는 아직 손으로 적혀 있고 치수가 다르다(`text-sm`·`hover:opacity-90`).
- * 드롭다운 토글이라 `aria-expanded` 가 필요해 컴포넌트에 prop 을 더해야 한다 — 별건.
+ * 다만 `isAdmin` 은 성격이 다르다 — 조회 실패로 **우연히** 사라지는 게 아니라
+ * 권한에 따라 **의도적으로** 안 보이는 것이다. 그래서 남긴다.
  */
-const STANDARD_CLASSES = [
-  "border",
-  "border-vermilion",
-  "bg-vermilion",
-  "px-3",
-  "py-1",
-  "text-xs",
-  "font-medium",
-  "text-cream",
-  "hover:bg-vermilion-deep",
-];
-
 describe("WorkbookLinks", () => {
-  it("헤더 액션 버튼 표준 클래스를 쓴다", () => {
-    render(
-      <WorkbookLinks
-        ledgerUrl="https://sp/ledger.xlsx"
-        depositUrl="https://sp/deposit.xlsx"
-        isAdmin
-      />,
-    );
-    for (const link of screen.getAllByRole("link")) {
-      const classes = link.className.split(/\s+/);
-      for (const c of STANDARD_CLASSES) {
-        expect(classes, `${link.textContent} 에 ${c} 없음`).toContain(c);
-      }
-    }
+  it("미수채권대장은 늘 보인다 — 조회 실패가 버튼을 지우지 않는다", () => {
+    render(<WorkbookLinks isAdmin={false} />);
+    expect(
+      screen.getByRole("link", { name: "미수채권대장" }),
+    ).toHaveAttribute("href", "/dashboard/workbook/receivables-ledger");
   });
 
-  it("미수채권대장 링크를 새 탭으로 연다", () => {
-    render(
-      <WorkbookLinks
-        ledgerUrl="https://sp/ledger.xlsx"
-        depositUrl={null}
-        isAdmin={false}
-      />,
-    );
-    const a = screen.getByRole("link", { name: "미수채권대장" });
-    expect(a).toHaveAttribute("href", "https://sp/ledger.xlsx");
-    expect(a).toHaveAttribute("target", "_blank");
-    expect(a).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  it("admin 은 수수료입금내역도 본다", () => {
+    render(<WorkbookLinks isAdmin />);
+    expect(
+      screen.getByRole("link", { name: "수수료입금내역" }),
+    ).toHaveAttribute("href", "/dashboard/workbook/receivables-deposit");
   });
 
-  it("수수료입금내역은 admin만 본다", () => {
-    render(
-      <WorkbookLinks
-        ledgerUrl={null}
-        depositUrl="https://sp/deposit.xlsx"
-        isAdmin={false}
-      />,
-    );
+  /** 미수채권 화면 자체는 member·viewer 도 들어온다 — 여기서 가려야 한다. */
+  it("admin 이 아니면 수수료입금내역은 안 보인다", () => {
+    render(<WorkbookLinks isAdmin={false} />);
     expect(
       screen.queryByRole("link", { name: "수수료입금내역" }),
     ).not.toBeInTheDocument();
   });
 
-  it("admin이면 수수료입금내역이 보인다", () => {
-    render(
-      <WorkbookLinks
-        ledgerUrl={null}
-        depositUrl="https://sp/deposit.xlsx"
-        isAdmin
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "수수료입금내역" }),
-    ).toHaveAttribute("href", "https://sp/deposit.xlsx");
-  });
-
-  it("링크가 없으면 그 버튼을 그리지 않는다 — 깨진 링크보다 없는 게 낫다", () => {
-    render(<WorkbookLinks ledgerUrl={null} depositUrl={null} isAdmin />);
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  /** 화면에서 가리는 건 '보이느냐'일 뿐이다 — 서버도 라우트에서 막는다. */
+  it("입금내역 주소는 창구를 거친다 — 원본 주소를 화면에 박지 않는다", () => {
+    render(<WorkbookLinks isAdmin />);
+    for (const name of ["수수료입금내역", "미수채권대장"]) {
+      expect(screen.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        expect.stringContaining("/dashboard/workbook/"),
+      );
+    }
   });
 });
