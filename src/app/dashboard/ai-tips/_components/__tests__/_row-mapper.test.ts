@@ -16,6 +16,8 @@ const candidate: AiTipCandidateRow = {
   draft_tags: ["cli", "agent"],
   draft_ai_tool: "claude",
   draft_category: "code",
+  // 백필 전 기존 행 모양 — 값은 null 이지만 칸 자체는 있어야 한다.
+  repo_synced_at: null,
 };
 
 describe("candidateToListRow", () => {
