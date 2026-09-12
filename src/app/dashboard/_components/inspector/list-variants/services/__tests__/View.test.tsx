@@ -59,6 +59,20 @@ describe("ServicesView", () => {
     expect(screen.queryByText("공동")).not.toBeInTheDocument();
   });
 
+  // 목록 표와 같은 규칙이다 — 둘 다 배지고 톤만 다르다. 뒤집은 근거는 Table.test.tsx.
+  it("단독여부 — 듀얼도 배지고, 색은 단독만 가진다", () => {
+    const { rerender } = render(
+      <ServicesView row={{ ...baseRow, solo: false }} />,
+    );
+    const dual = screen.getByText("듀얼");
+    expect(dual.className).toContain("inline-block");
+    expect(dual.className).toContain("bg-line-soft");
+    expect(dual.className).not.toContain("bg-vermilion");
+
+    rerender(<ServicesView row={{ ...baseRow, solo: true }} />);
+    expect(screen.getByText("단독").className).toContain("bg-vermilion");
+  });
+
   it("source 표시 (google_sheet_import / folio_create)", () => {
     render(<ServicesView row={baseRow} />);
     expect(screen.getByText(/google_sheet_import/)).toBeInTheDocument();
@@ -93,7 +107,9 @@ describe("ServicesView — 숫자 표기", () => {
 
   it("source 는 font-mono 를 유지한다 — 문자가 섞인 기계값이다", () => {
     render(<ServicesView row={baseRow} />);
-    expect(screen.getByText("google_sheet_import").className).toContain("font-mono");
+    expect(screen.getByText("google_sheet_import").className).toContain(
+      "font-mono",
+    );
   });
 });
 
