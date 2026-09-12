@@ -594,6 +594,20 @@ export type ListRow = {
   /** payment variant — 비용지급일 (읽기전용). 날짜는 startDateYmd 재사용. */
   paymentCategory?: string;
   paymentSheet?: string;
+  /** ai-tip-candidates — 후보 검토 상태. row.status(=active 고정)와 별개 축이다. */
+  tipCandidateStatus?: "pending" | "promoted" | "hidden";
+  /** ai-tip-candidates — `owner/repo` 형태 리포 전체 이름 */
+  tipCandidateRepoFullName?: string;
+  /** ai-tip-candidates — 리포 GitHub 주소 (표에서 새 탭으로 연다) */
+  tipCandidateRepoUrl?: string;
+  /** ai-tip-candidates — 리포 한 줄 설명. 원본이 비어 있을 수 있어 nullable */
+  tipCandidateRepoDescription?: string | null;
+  /** ai-tip-candidates — 별 수. 후보 선별 근거라 표에 노출한다 */
+  tipCandidateStars?: number;
+  /** ai-tip-candidates — 수집 시각 (ISO). 표시는 kstFormat */
+  tipCandidateCollectedAt?: string;
+  /** ai-tip-candidates — 등록·숨김 결정 권한. viewer 면 false */
+  tipCandidateCanDecide?: boolean;
 };
 
 export type ScheduleType = NonNullable<ListRow["scheduleType"]>;
