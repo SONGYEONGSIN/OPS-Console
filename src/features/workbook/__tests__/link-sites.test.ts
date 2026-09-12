@@ -50,6 +50,7 @@ describe("워크북 버튼이 화면에 있다", () => {
    */
   it("화면이 워크북 URL 을 미리 조회하지 않는다", () => {
     const banned = [
+      "getAssignmentsWorkbookUrl",
       "getContractsWorkbookUrl",
       "getReceivablesWorkbookLinks",
       "getPostalWorkbookLinks",

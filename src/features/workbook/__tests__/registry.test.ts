@@ -13,9 +13,12 @@ import { findSidebarMeta } from "@/app/dashboard/_data";
 describe("WORKBOOKS", () => {
   const keys = Object.keys(WORKBOOKS);
 
-  it("여섯 대장이 등록돼 있다", () => {
+  it("일곱 대장이 등록돼 있다", () => {
     expect(keys.sort()).toEqual(
       [
+        // 총괄장은 이 패턴의 출처(#1174~#1176)인데 자기 라우트로 남아 있었다.
+        // 표준이 둘이면 다음 사람이 어느 쪽을 고칠지 모른다 — 여기로 흡수한다.
+        "assignments-master",
         "contracts-ledger",
         "incidents-gongmun",
         "postal-ledger",
