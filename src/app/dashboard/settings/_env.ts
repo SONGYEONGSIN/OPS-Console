@@ -17,10 +17,15 @@ export type EnvSnapshot = {
     receivablesItemId: { configured: boolean; preview: string };
     depositItemId: { configured: boolean; preview: string };
     manualItemId: { configured: boolean; preview: string };
+    assignmentsItemId: { configured: boolean; preview: string };
+    mailItemId: { configured: boolean; preview: string };
+    pettyCashItemId: { configured: boolean; preview: string };
     gongmunItemId: { configured: boolean; preview: string };
     incidentReportFolderId: { configured: boolean; preview: string };
     knowledgeFolderId: { configured: boolean; preview: string };
     meetingsFolderId: { configured: boolean; preview: string };
+    paymentDriveId: { configured: boolean; preview: string };
+    paymentItemId: { configured: boolean; preview: string };
     smileediDriveId: { configured: boolean; preview: string };
     smileediItemId: { configured: boolean; preview: string };
   };
@@ -90,6 +95,18 @@ export function getEnvSnapshot(): EnvSnapshot {
         configured: Boolean(process.env.SHAREPOINT_MANUAL_ITEM_ID),
         preview: preview(process.env.SHAREPOINT_MANUAL_ITEM_ID),
       },
+      assignmentsItemId: {
+        configured: Boolean(process.env.SHAREPOINT_ASSIGNMENTS_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_ASSIGNMENTS_ITEM_ID),
+      },
+      mailItemId: {
+        configured: Boolean(process.env.SHAREPOINT_MAIL_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_MAIL_ITEM_ID),
+      },
+      pettyCashItemId: {
+        configured: Boolean(process.env.SHAREPOINT_PETTY_CASH_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_PETTY_CASH_ITEM_ID),
+      },
       gongmunItemId: {
         configured: Boolean(process.env.SHAREPOINT_GONGMUN_ITEM_ID),
         preview: preview(process.env.SHAREPOINT_GONGMUN_ITEM_ID),
@@ -107,6 +124,14 @@ export function getEnvSnapshot(): EnvSnapshot {
       meetingsFolderId: {
         configured: Boolean(process.env.SHAREPOINT_MEETINGS_FOLDER_ID),
         preview: preview(process.env.SHAREPOINT_MEETINGS_FOLDER_ID),
+      },
+      paymentDriveId: {
+        configured: Boolean(process.env.SHAREPOINT_PAYMENT_DRIVE_ID),
+        preview: preview(process.env.SHAREPOINT_PAYMENT_DRIVE_ID),
+      },
+      paymentItemId: {
+        configured: Boolean(process.env.SHAREPOINT_PAYMENT_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_PAYMENT_ITEM_ID),
       },
       smileediDriveId: {
         configured: Boolean(process.env.SHAREPOINT_SMILEEDI_DRIVE_ID),
