@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { ListRow } from "../../../../patterns/ListPattern";
 import { ServicesView } from "../View";
 
@@ -51,6 +53,12 @@ describe("ServicesView", () => {
     expect(screen.getByText("단독")).toBeInTheDocument();
   });
 
+  it("단독여부 — 단독이 아니면 '듀얼' 이다", () => {
+    render(<ServicesView row={{ ...baseRow, solo: false }} />);
+    expect(screen.getByText("듀얼")).toBeInTheDocument();
+    expect(screen.queryByText("공동")).not.toBeInTheDocument();
+  });
+
   it("source 표시 (google_sheet_import / folio_create)", () => {
     render(<ServicesView row={baseRow} />);
     expect(screen.getByText(/google_sheet_import/)).toBeInTheDocument();
@@ -86,5 +94,22 @@ describe("ServicesView — 숫자 표기", () => {
   it("source 는 font-mono 를 유지한다 — 문자가 섞인 기계값이다", () => {
     render(<ServicesView row={baseRow} />);
     expect(screen.getByText("google_sheet_import").className).toContain("font-mono");
+  });
+});
+
+/**
+ * `solo` 는 Moa 엑셀 '단독여부'(Y/N) 를 그대로 받은 boolean 이다 —
+ * Y 는 `단독`, N 은 `듀얼` 로 부른다. `공동` 은 쓰지 않는 말이라
+ * 화면에서 지웠고, 소스에 다시 들어오지 않는지 여기서 본다.
+ *
+ * (`공동작업자` 는 ai-work variant 의 무관한 단어다. 이 검사는 services
+ *  variant 의 두 파일만 읽으므로 그쪽을 잡지 않는다.)
+ */
+describe("services variant 소스 — '공동' 표기 잔존 금지", () => {
+  const DIR = "src/app/dashboard/_components/inspector/list-variants/services";
+
+  it.each(["View.tsx", "Table.tsx"])("%s 에 '공동' 이 없다", (file) => {
+    const src = readFileSync(join(process.cwd(), DIR, file), "utf8");
+    expect(src).not.toContain("공동");
   });
 });

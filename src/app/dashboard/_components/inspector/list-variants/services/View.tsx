@@ -72,7 +72,7 @@ export function ServicesView({ row }: ViewProps) {
                   단독
                 </span>
               ) : (
-                <span className="text-xs text-muted">공동</span>
+                <span className="text-xs text-muted">듀얼</span>
               ),
             },
           ]}
