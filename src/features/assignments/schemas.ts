@@ -1,18 +1,19 @@
-/** 대학배정 탭이 다루는 5개 서비스 종류 */
-export type ServiceKind =
-  | "원서접수"
-  | "대학원"
-  | "PIMS"
-  | "성적산출"
-  | "상담앱";
-
-export const SERVICE_KINDS: ServiceKind[] = [
+/**
+ * 대학배정 탭이 다루는 5개 서비스 종류.
+ *
+ * **배열이 원천이고 타입이 파생이다.** 배정 원장의 zod 어휘가 이 배열에서 나오므로
+ * (`ledger-schemas.ts`), 목록을 두 벌로 두면 같은 업무가 화면과 원장에서 다른
+ * 이름을 갖는다. 팀 값이 네 곳에 흩어져 한 사람이 조용히 사라진 적이 있다.
+ */
+export const SERVICE_KINDS = [
   "원서접수",
   "대학원",
   "PIMS",
   "성적산출",
   "상담앱",
-];
+] as const;
+
+export type ServiceKind = (typeof SERVICE_KINDS)[number];
 
 /** 한 시트의 한 행에서 추출한 단일 서비스 배정 (그리드 대표값) */
 export type AssignmentRecord = {

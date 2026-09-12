@@ -97,9 +97,9 @@ revision: 2
 
 입사일로 그룹 **순서**는 재현되지만 **경계는 사람 판단**이다(3그룹이 2019~2022로 폭이 넓다). 그래서 그룹은 계산하지 않고 저장한다.
 
-**재입사가 계산을 깬다.** 김슬기는 DB `hired_at`이 2026-06-22(재입사일)이고 하드코딩 배열은 2011-02-07(최초 입사)이다. 배정 근거는 **경력** 쪽이다. 20명 중 두 원천이 갈린 사람은 김슬기뿐이고, 이이화는 DB에만 있어 상세가 빈다.
+**재입사가 계산을 깬다.** 배정 대상 한 명은 DB `hired_at`이 최근이고 하드코딩 배열은 15년 전이다. 배정 근거는 **경력** 쪽이다. 20명 중 두 원천이 갈린 사람은 그 한 명뿐이고, 다른 한 명은 DB에만 있어 상세가 빈다.
 
-> **시드에서 밟게 되는 함정**: `20260509_operators_table.sql`의 김슬기 이메일은 `bluewhich87@jinhakapply.com`인데 `features/auth/operators.ts`는 `bluewhich87@jinhak.com`이다. 라이브 행은 그 뒤 편집됐다(`hired_at`이 시드와 다르다). **이메일로 시드하면 이 행을 놓친다** — 이름으로 시드하고 건수를 세어 확인한다(§5.2).
+> **시드에서 밟게 되는 함정**: `20260509_operators_table.sql`의 시드 이메일 도메인과 `features/auth/operators.ts`의 도메인이 배정 대상 한 명에게서 다르다. 라이브 행은 그 뒤 편집됐다(`hired_at`이 시드와 다르다). **이메일로 시드하면 이 행을 놓친다** — 이름으로 시드하고 건수를 세어 확인한다(§5.2).
 
 ### 3.4 배정 대상을 가리는 칸이 없다
 
@@ -258,15 +258,15 @@ alter table public.operators
   -- check 를 걸지 않는다 — 그룹이 하나 늘 때 마이그레이션을 잊으면 조직 화면
   -- 저장이 500 으로 죽는다. 값은 features/assignments/tenure.ts 의 as const + zod.
   add column if not exists tenure_group text,
-  -- 배정 근거가 되는 경력 시작일. hired_at 은 인사 사실(재입사일)이라 건드리지 않는다.
-  -- 김슬기: hired_at 2026-06-22(재입사) vs 경력 2011-02-07. 배정 근거는 경력 쪽이다.
+  -- 배정 근거가 되는 경력 시작일. hired_at 은 인사 사실이라 건드리지 않는다 —
+  -- 재입사자는 hired_at 이 최근이어서 연차를 그대로 쓰면 신입으로 읽힌다.
   add column if not exists career_start_at date;
 
 comment on column public.operators.career_start_at is
   '배정 근거용 경력 시작일. null 이면 hired_at 을 쓴다(단일 정의: features/assignments/tenure.ts careerStartOf).';
 
--- 시드 — **이름으로 한다.** 시드 SQL 의 김슬기 이메일(@jinhakapply.com)과 코드
--- (@jinhak.com)가 다르고 라이브 행은 그 뒤 편집됐다. 이메일로 시드하면 놓친다(§3.3).
+-- 시드 — **이름으로 한다.** 시드 대상 한 명은 시드 SQL 의 이메일 도메인과 코드의
+-- 도메인이 다르고 라이브 행은 그 뒤 편집됐다. 이메일로 시드하면 그 행을 놓친다(§3.3).
 -- ⚠️ PostgREST 경로에는 safeupdate 가 켜져 있다 — WHERE 없는 UPDATE/DELETE 는 거부된다.
 --    아래는 모두 WHERE 가 있다. 전체를 대상으로 해야 할 때는 `where true` 를 쓴다.
 update public.operators set assignable = true, tenure_group = '1-1'
@@ -286,16 +286,18 @@ update public.operators set assignable = true, tenure_group = '6'
 
 update public.operators set career_start_at = '2011-02-07' where name = '김슬기';
 
-commit;
-
+-- 새 컬럼은 스키마 캐시를 갱신하지 않으면 조회에 안 보인다.
+-- **commit 앞에 둔다** — 원장 마이그레이션과 문자 우편함 선례와 같은 자리다.
 notify pgrst, 'reload schema';
+
+commit;
 
 -- 검증 (수동):
 -- select count(*) from public.operators where assignable;                  -- 기대 15
 -- select tenure_group, count(*), string_agg(name, ',' order by name)
 --   from public.operators where assignable group by 1 order by 1;          -- 기대 7행 (2·2·2·2·2·2·3)
 -- select name, hired_at, career_start_at from public.operators
---  where career_start_at is not null;                                      -- 기대 김슬기 1행
+--  where career_start_at is not null;                                      -- 기대 1행
 -- 15 가 아니면 이름이 시드와 다른 행이 있다 — 그 행을 찾아 고친다(추측해 채우지 않는다).
 ```
 
@@ -614,6 +616,7 @@ r1:       |        | 재외 수시 정시 편입 외국인 백업 | (동일) | (
 | F11 | **에이전트 응답이 제약을 어긴다** | 그 줄이 배치에 담기지 않는다(G1~G7) | 보고에 '검산 탈락 N건'과 어긴 게이트를 적는다. 전부 탈락하면 제안 0건이고 **그 이유가 남는다** — 조용히 빈 배치가 되지 않는다 |
 | F12 | **회사 PC 폴러가 안 돈다** | 제안이 생기지 않는다 | 서버 잡은 계속 돌아 요청을 적재하므로 **pending 적체**로 드러난다. 폴러 하트비트 + 적체 건수를 관리자 보고에 싣는다 |
 | F13 | 에이전트 응답이 JSON 으로 파싱되지 않는다 | 판정 1회 실패 | 폴러가 `failed` 로 회신하고 `recordAutomationRun` 이 실패를 남긴다. 다음 날 요청이 다시 적재된다(F5 와 같은 구조) |
+| F14 | **관리자가 `operators.email` 을 바꾼다** | **드러나지 않는다** — FK `on update cascade` 가 원장을 따라 바꾸지만 server action 밖이라 `assignment_changes` 행이 안 남는다. `updated_at` 만 움직이고 `updated_by` 는 이전 편집자로 남아 거짓 귀속이 된다 | 이력의 `prev/next_assignee` 는 FK 없는 text 라 cascade 를 따라가지 않는다 → 그 이력으로 되돌리면 없는 주소를 써서 **23503 으로 죽는다.** FK 의미를 바꾸지 않는 이유는 배정이 사람을 따라가는 것이 맞기 때문이다. **되돌리기가 방어한다**(PR4) — 되돌릴 주소가 `operators` 에 없으면 원장에 쓰지 않고 `연결 안 됨` 으로 돌려준다. `on delete set null` 도 같은 구조로 이력 없이 미배정이 된다 |
 
 ---
 
@@ -748,7 +751,7 @@ PR1(스키마) ─ PR2(운영자 칸) ─ PR3(이관·대조) ─ PR4(화면 교
 ### PR2 — 운영자 칸 (8파일 · 간략 설계)
 
 - **파일**: `assignments/tenure.ts`, `operators/schemas.ts`, `operators/actions.ts`, `team/{View,EditForm}.tsx`, `ListPattern.tsx`, tests 2
-- **RED**: `careerStartOf({career_start_at:null, hired_at:'2016-07-27'})` → `'2016-07-27'` / 김슬기 값이 있으면 그것 / `TENURE_GROUPS` 정렬이 연차 순 / zod가 미등록 그룹 값을 거부 / admin이 아니면 저장 거부
+- **RED**: `careerStartOf({career_start_at:null, hired_at:'2016-07-27'})` → `'2016-07-27'` / 저장된 경력 시작일이 있으면 그것 / `TENURE_GROUPS` 정렬이 연차 순 / zod가 미등록 그룹 값을 거부 / admin이 아니면 저장 거부
 - **검증**: `npm test -- src/features/operators src/features/assignments` · 조직 화면에서 한 명을 켜고 그룹을 넣어 저장 1회
 - **의존**: PR1
 
@@ -763,7 +766,7 @@ PR1(스키마) ─ PR2(운영자 칸) ─ PR3(이관·대조) ─ PR4(화면 교
 ### PR4 — 화면 교체 (9파일 · 간략 설계)
 
 - **파일**: `page.tsx`, `_row-mapper.ts`, `assignments/{View,EditForm}.tsx`, `registry.ts`, `actions.ts`, `ListPattern.tsx`, tests 2
-- **RED**: 원장 행 → `ListRow`가 대학 한 행에 업무종류를 모은다 / `미배정`·`연결 안 됨`·`분할` 배지가 **텍스트가 아니라 클래스까지** 단언된다(텍스트만 보면 표준 위반이 초록 CI를 통과한다) / 비-admin의 `updateAssignment`가 거부된다 / 저장이 `assignment_changes` 1행을 남기고 **값이 같으면 안 남긴다**(check 제약과 같은 불변식) / `되돌리기`가 새 이력 행을 만든다(삭제하지 않는다)
+- **RED**: 원장 행 → `ListRow`가 대학 한 행에 업무종류를 모은다 / `미배정`·`연결 안 됨`·`분할` 배지가 **텍스트가 아니라 클래스까지** 단언된다(텍스트만 보면 표준 위반이 초록 CI를 통과한다) / 비-admin의 `updateAssignment`가 거부된다 / 저장이 `assignment_changes` 1행을 남기고 **값이 같으면 안 남긴다**(check 제약과 같은 불변식) / `되돌리기`가 새 이력 행을 만든다(삭제하지 않는다) / **되돌릴 주소가 `operators` 에 없으면**(이메일 변경으로 cascade 된 뒤) 원장에 쓰지 않고 `연결 안 됨` 으로 돌려준다 — 그냥 쓰면 FK 23503 이다(F14)
 - **검증**: `npm test` · `npm run typecheck` · `npm run lint` · 화면에서 한 칸 변경 → 이력 → 되돌리기 1회
 - **의존**: PR3
 
@@ -829,7 +832,7 @@ PR1(스키마) ─ PR2(운영자 칸) ─ PR3(이관·대조) ─ PR4(화면 교
 |---|---|---|---|
 | 1 | 마이그레이션 **3건** 실행 + 검증 SQL (원장·운영자 칸·판정 큐) | Supabase SQL Editor | 모든 조회가 42P01 |
 | 2 | `assignable` 15명 + 그룹 7개 입력 | 조직 화면(또는 시드 SQL) | 제안이 0건 (F3) |
-| 3 | 김슬기 `career_start_at` 확인 | 같음 | 연차 표시만 틀린다 (F10) |
+| 3 | 재입사자 `career_start_at` 확인 | 같음 | 연차 표시만 틀린다 (F10) |
 | 4 | 시트 → DB 이관 1회 실행 + 대조 0건 | 배정 화면 admin 버튼 | 화면이 빈다 |
 | 5 | **cron-job.org 2건 등록** — `POST /api/automations/run?jobId=assignment-year-rollover` (매일 08:30), `…?jobId=assignment-unassigned-sweep` (평일 10:30). `Authorization: Bearer ${CRON_SECRET}` | cron-job.org | **자동 생성·감지가 통째로 죽는다.** 미실행 감지는 등록된 잡만 본다 |
 | 6 | env `ASSIGNMENT_EXPORT_DRY_RUN` (첫 주 `true`) | Vercel Production | 첫 내보내기가 실파일에 쓴다 |
