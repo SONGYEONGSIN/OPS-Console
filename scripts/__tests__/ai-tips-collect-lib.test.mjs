@@ -30,7 +30,14 @@ describe("buildSearchQuery", () => {
 
 describe("pickNewRepos", () => {
   const items = [
-    { full_name: "a/one", html_url: "u1", stargazers_count: 300, description: "d1" },
+    {
+      full_name: "a/one",
+      html_url: "u1",
+      stargazers_count: 300,
+      description: "d1",
+      language: "TypeScript",
+      pushed_at: "2026-09-01T00:00:00Z",
+    },
     { full_name: "b/two", html_url: "u2", stargazers_count: 250, description: null },
     { full_name: "c/three", html_url: "u3", stargazers_count: 210, description: "d3" },
   ];
@@ -55,7 +62,15 @@ describe("pickNewRepos", () => {
       repo_url: "u1",
       stars: 300,
       repo_description: "d1",
+      repo_language: "TypeScript",
+      repo_pushed_at: "2026-09-01T00:00:00Z",
     });
+  });
+
+  it("주 언어가 없는 리포는 null 로 남긴다 — 키를 빼면 안 물어본 것과 같아진다", () => {
+    const out = pickNewRepos([items[1]], new Set(), 1)[0];
+    expect(out).toHaveProperty("repo_language", null);
+    expect(out).toHaveProperty("repo_pushed_at", null);
   });
 });
 
