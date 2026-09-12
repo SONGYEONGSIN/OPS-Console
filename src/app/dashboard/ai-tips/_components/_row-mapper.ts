@@ -38,6 +38,11 @@ export function candidateToListRow(
     tipCandidateRepoDescription: candidate.repo_description ?? null,
     tipCandidateStars: candidate.stars,
     tipCandidateCollectedAt: candidate.collected_at,
+    // 없는 값은 null 그대로 보낸다 — 빈 문자열로 바꾸면 화면이 '조회했는데 비었다'로
+    // 읽어 '안 물어봤다'와 구분이 사라진다.
+    tipCandidateRepoLanguage: candidate.repo_language ?? null,
+    tipCandidateRepoPushedAt: candidate.repo_pushed_at ?? null,
+    tipCandidateRepoSyncedAt: candidate.repo_synced_at,
     tipCandidateCanDecide: canDecide,
   };
 }

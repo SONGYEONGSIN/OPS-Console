@@ -606,6 +606,12 @@ export type ListRow = {
   tipCandidateStars?: number;
   /** ai-tip-candidates — 수집 시각 (ISO). 표시는 kstFormat */
   tipCandidateCollectedAt?: string;
+  /** ai-tip-candidates — 리포 주 언어. 조회했는데 없을 수 있어(문서 전용 리포) nullable */
+  tipCandidateRepoLanguage?: string | null;
+  /** ai-tip-candidates — 리포 마지막 푸시 시각 (ISO). 못 받았으면 null */
+  tipCandidateRepoPushedAt?: string | null;
+  /** ai-tip-candidates — 리포 메타를 마지막으로 물어본 시각 (ISO). null 이면 안 물어봤다 */
+  tipCandidateRepoSyncedAt?: string | null;
   /** ai-tip-candidates — 등록·숨김 결정 권한. viewer 면 false */
   tipCandidateCanDecide?: boolean;
 };
