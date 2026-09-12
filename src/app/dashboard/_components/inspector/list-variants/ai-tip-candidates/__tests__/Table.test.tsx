@@ -16,11 +16,15 @@ const baseRow: ListRow = {
   tipCandidateStars: 1234,
   // KST 로 9/1 09:30 — UTC 그대로 찍으면 8/31 로 하루 밀린다.
   tipCandidateCollectedAt: "2026-09-01T00:30:00.000Z",
+  tipCandidateRepoLanguage: "TypeScript",
+  // KST 로 9/5 — 수집일(9/1)과 다른 날로 둬야 두 날짜 칸이 섞이지 않는다.
+  tipCandidateRepoPushedAt: "2026-09-04T20:30:00.000Z",
+  tipCandidateRepoSyncedAt: "2026-09-12T00:30:00.000Z",
   tipCandidateCanDecide: true,
 };
 
 describe("AiTipCandidateTable", () => {
-  it("제목·리포지터리·별·수집일·검토 다섯 칸을 그린다", () => {
+  it("제목·리포지터리·언어·별·최근 업데이트·수집일·검토 일곱 칸을 그린다", () => {
     render(
       <AiTipCandidateTable
         rows={[baseRow]}
@@ -29,7 +33,82 @@ describe("AiTipCandidateTable", () => {
       />,
     );
     const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
-    expect(heads).toEqual(["제목", "리포지터리", "별", "수집일", "검토"]);
+    // 리포의 사실(리포지터리·언어·별·최근 업데이트) 다음에 우리 과정의 사실(수집일·검토).
+    expect(heads).toEqual([
+      "제목",
+      "리포지터리",
+      "언어",
+      "별",
+      "최근 업데이트",
+      "수집일",
+      "검토",
+    ]);
+  });
+
+  it("언어와 최근 업데이트를 그린다", () => {
+    render(
+      <AiTipCandidateTable
+        rows={[baseRow]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("TypeScript")).toBeInTheDocument();
+    // 푸시는 KST 9/5 — UTC 그대로면 9/4 로 하루 밀린다.
+    expect(screen.getByText(/2026\D+09\D+05/)).toBeInTheDocument();
+  });
+
+  it("조회 안 한 행은 언어·최근 업데이트를 '—' 로 둔다", () => {
+    render(
+      <AiTipCandidateTable
+        rows={[
+          {
+            ...baseRow,
+            tipCandidateRepoLanguage: null,
+            tipCandidateRepoPushedAt: null,
+            tipCandidateRepoSyncedAt: null,
+          },
+        ]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.queryByText("없음")).not.toBeInTheDocument();
+  });
+
+  it("주 언어가 없는 리포는 '없음' — 대시와 구분한다", () => {
+    render(
+      <AiTipCandidateTable
+        rows={[{ ...baseRow, tipCandidateRepoLanguage: null }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("없음")).toBeInTheDocument();
+  });
+
+  it("두 날짜 칸은 tabular-nums 로 찍는다 — 자릿수가 어긋나면 못 견준다", () => {
+    render(
+      <AiTipCandidateTable
+        rows={[baseRow]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    for (const re of [/2026\D+09\D+05/, /2026\D+09\D+01/]) {
+      expect(screen.getByText(re).className).toContain("tabular-nums");
+    }
+  });
+
+  it("0건 안내는 표 폭을 가득 채운다 — 일곱 칸이 됐다", () => {
+    render(
+      <AiTipCandidateTable rows={[]} selectedId={null} onSelect={vi.fn()} />,
+    );
+    expect(screen.getByText("수집된 후보 없음")).toHaveAttribute(
+      "colspan",
+      "7",
+    );
   });
 
   it("초안 제목이 없으면 그렇다고 표시한다 — 빈칸이면 왜 비었는지 모른다", () => {
