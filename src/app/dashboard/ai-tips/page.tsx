@@ -12,7 +12,7 @@ import {
   updateAiTip,
   deleteAiTip,
 } from "@/features/ai-tips/actions";
-import { listPendingCandidates } from "@/features/ai-tip-candidates/queries";
+import { listCandidates } from "@/features/ai-tip-candidates/queries";
 import {
   promoteCandidate,
   hideCandidate,
@@ -37,7 +37,10 @@ export default async function AiTipsPage({
   const sp = await searchParams;
   const me = await getCurrentOperator();
   const allTips = await listAiTips();
-  const candidates = await listPendingCandidates();
+  const allCandidates = await listCandidates();
+  // 서버는 전건을 주지만 지금 패널은 검토 대기만 다룰 수 있다 —
+  // 상태별 보기(다음 단계 화면 작업)가 붙으면 이 필터가 그 자리로 옮겨간다.
+  const candidates = allCandidates.filter((c) => c.status === "pending");
   const mine = sp.mine !== "false";
   const tips =
     mine && me?.email
@@ -113,7 +116,11 @@ export default async function AiTipsPage({
       onPersist={onPersist}
       footer={
         <>
-          <ListPagination key="ai-tips-pagination" total={total} pageSize={30} />
+          <ListPagination
+            key="ai-tips-pagination"
+            total={total}
+            pageSize={30}
+          />
           {/* 후보는 등록된 TIP 아래에 둔다. 위에 있으면 정작 본 목록을 밀어낸다. */}
           <TipCandidatePanel
             candidates={candidates}

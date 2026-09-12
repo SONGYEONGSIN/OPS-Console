@@ -5,11 +5,13 @@ const {
   mockCreateAiTip,
   mockCandidateSelect,
   mockUpdate,
+  mockUpdatePayload,
 } = vi.hoisted(() => ({
   mockGetCurrentOperator: vi.fn(),
   mockCreateAiTip: vi.fn(),
   mockCandidateSelect: vi.fn(),
   mockUpdate: vi.fn(),
+  mockUpdatePayload: vi.fn(),
 }));
 
 vi.mock("@/features/auth/queries", () => ({
@@ -21,12 +23,22 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: mockCandidateSelect }) }),
-      update: () => ({ eq: mockUpdate }),
+      update: (payload: Record<string, unknown>) => {
+        mockUpdatePayload(payload);
+        return { eq: mockUpdate };
+      },
     }),
   })),
 }));
 
-import { promoteCandidate, hideCandidate } from "../actions";
+import {
+  promoteCandidate,
+  hideCandidate,
+  unhideCandidate,
+  promoteCandidateAction,
+  hideCandidateAction,
+  unhideCandidateAction,
+} from "../actions";
 
 const candidate = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -145,5 +157,132 @@ describe("hideCandidate", () => {
       permission: "viewer",
     });
     expect((await hideCandidate(candidate.id)).ok).toBe(false);
+  });
+});
+describe("promoteCandidate — 상태 가드", () => {
+  it("이미 등록된 후보는 다시 등록하지 않는다 — 같은 TIP이 두 벌 생긴다", async () => {
+    mockCandidateSelect.mockResolvedValue({
+      data: { ...candidate, status: "promoted" },
+      error: null,
+    });
+    const res = await promoteCandidate(candidate.id);
+    expect(res.ok).toBe(false);
+    expect(mockCreateAiTip).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("숨긴 후보는 되돌리기 전에는 등록할 수 없다", async () => {
+    mockCandidateSelect.mockResolvedValue({
+      data: { ...candidate, status: "hidden" },
+      error: null,
+    });
+    const res = await promoteCandidate(candidate.id);
+    expect(res.ok).toBe(false);
+    expect(mockCreateAiTip).not.toHaveBeenCalled();
+  });
+});
+
+describe("hideCandidate — 존재·상태 가드", () => {
+  it("없는 후보를 숨기면 실패한다 — update만 하면 조용히 성공한다", async () => {
+    mockCandidateSelect.mockResolvedValue({ data: null, error: null });
+    const res = await hideCandidate(candidate.id);
+    expect(res.ok).toBe(false);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("등록된 후보는 숨길 수 없다 — TIP은 남는데 후보만 사라진다", async () => {
+    mockCandidateSelect.mockResolvedValue({
+      data: { ...candidate, status: "promoted" },
+      error: null,
+    });
+    const res = await hideCandidate(candidate.id);
+    expect(res.ok).toBe(false);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("unhideCandidate", () => {
+  const hidden = { ...candidate, status: "hidden" };
+
+  it("숨긴 후보를 검토 대기로 되돌린다 — 수집기가 재수집을 안 해 유일한 복구 경로다", async () => {
+    mockCandidateSelect.mockResolvedValue({ data: hidden, error: null });
+    const res = await unhideCandidate(candidate.id);
+    expect(res.ok).toBe(true);
+    expect(mockUpdatePayload).toHaveBeenCalledWith({ status: "pending" });
+  });
+
+  it("검토 대기 건은 되돌릴 대상이 아니다", async () => {
+    mockCandidateSelect.mockResolvedValue({ data: candidate, error: null });
+    expect((await unhideCandidate(candidate.id)).ok).toBe(false);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("등록된 후보는 되돌릴 수 없다", async () => {
+    mockCandidateSelect.mockResolvedValue({
+      data: { ...candidate, status: "promoted" },
+      error: null,
+    });
+    expect((await unhideCandidate(candidate.id)).ok).toBe(false);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("없는 후보면 실패한다", async () => {
+    mockCandidateSelect.mockResolvedValue({ data: null, error: null });
+    expect((await unhideCandidate(candidate.id)).ok).toBe(false);
+  });
+
+  it("viewer는 되돌릴 수 없다", async () => {
+    mockGetCurrentOperator.mockResolvedValue({
+      email: "v@x.com",
+      permission: "viewer",
+    });
+    mockCandidateSelect.mockResolvedValue({ data: hidden, error: null });
+    expect((await unhideCandidate(candidate.id)).ok).toBe(false);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("formData 래퍼", () => {
+  const form = (id?: string) => {
+    const fd = new FormData();
+    if (id !== undefined) fd.set("id", id);
+    return fd;
+  };
+
+  it("promoteCandidateAction — id가 없으면 실패 메시지를 돌려준다", async () => {
+    const res = await promoteCandidateAction(undefined, form());
+    expect(res.ok).toBe(false);
+    expect(res.message.length).toBeGreaterThan(0);
+    expect(mockCreateAiTip).not.toHaveBeenCalled();
+  });
+
+  it("promoteCandidateAction — 성공하면 ok와 안내 문구를 돌려준다", async () => {
+    const res = await promoteCandidateAction(undefined, form(candidate.id));
+    expect(res.ok).toBe(true);
+    expect(res.message.length).toBeGreaterThan(0);
+  });
+
+  it("hideCandidateAction — id가 없으면 실패 메시지를 돌려준다", async () => {
+    const res = await hideCandidateAction(undefined, form());
+    expect(res.ok).toBe(false);
+    expect(res.message.length).toBeGreaterThan(0);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("unhideCandidateAction — id가 없으면 실패 메시지를 돌려준다", async () => {
+    const res = await unhideCandidateAction(undefined, form());
+    expect(res.ok).toBe(false);
+    expect(res.message.length).toBeGreaterThan(0);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("unhideCandidateAction — 숨긴 후보를 되돌리고 안내 문구를 돌려준다", async () => {
+    mockCandidateSelect.mockResolvedValue({
+      data: { ...candidate, status: "hidden" },
+      error: null,
+    });
+    const res = await unhideCandidateAction(undefined, form(candidate.id));
+    expect(res.ok).toBe(true);
+    expect(mockUpdatePayload).toHaveBeenCalledWith({ status: "pending" });
   });
 });
