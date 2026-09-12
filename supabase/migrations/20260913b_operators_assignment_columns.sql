@@ -41,7 +41,9 @@ update public.operators set assignable = true, tenure_group = '6'
 update public.operators set career_start_at = '2011-02-07' where name = '김슬기';
 
 -- 새 컬럼은 스키마 캐시를 갱신하지 않으면 조회에 안 보인다.
--- **commit 앞에 둔다** — 원장 마이그레이션과 문자 우편함 선례와 같은 자리다.
+-- **commit 앞에 둔다.** 트랜잭션 안의 NOTIFY 는 커밋 시점에 전달되고 롤백하면
+-- 전달되지 않는다(LISTEN 으로 확인). 그래서 commit 앞에 두면 **실패한
+-- 마이그레이션이 reload 를 보내지 않는다** — 뒤에 두면 그 구분이 사라진다.
 notify pgrst, 'reload schema';
 
 commit;

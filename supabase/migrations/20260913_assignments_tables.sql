@@ -54,6 +54,11 @@ create table if not exists public.assignment_changes (
   work_kind       text not null,
   subtype         text not null default '',
   role            text not null,
+  -- **단위는 이메일이다**(`operators.email`). 원장은 담당자를 `assignee_email` +
+  -- `assignee_name` 두 칸으로 쪼개지만 이력은 한 칸이라, 어느 쪽인지 정해 두지
+  -- 않으면 PR3 가 이름을 넣고 §6.3 G1·G2 대조는 이메일로 읽는다. 이력은
+  -- append-only 고 지우는 경로가 없어 한 번 잘못 적재하면 백필뿐이다.
+  -- 이름 스냅샷은 원장의 `assignee_name` 에만 둔다(여기에 별도 칸을 두지 않는다).
   prev_assignee   text,                    -- null = 비어 있던 칸이 채워짐
   next_assignee   text,                    -- null = 있던 값이 비워짐
   source          text not null,           -- import|manual|proposal|revert
@@ -118,6 +123,7 @@ create table if not exists public.assignment_proposals (
   work_kind       text not null,
   subtype         text not null default '',
   role            text not null,
+  -- 이력과 같은 단위: **이메일**(`operators.email`).
   prev_assignee   text,                    -- 제안 시점의 확정값 (적용 전 경합 감지용)
   next_assignee   text not null,
   -- 사람이 읽는 근거 한 줄 + 기계가 읽는 점수. 근거 없는 제안은 적용 버튼을 못 얻는다.
@@ -131,6 +137,21 @@ create table if not exists public.assignment_proposals (
 
 create index if not exists assignment_proposals_batch_idx
   on public.assignment_proposals (batch_id, decision);
+
+-- 적용할 때 제안 한 줄마다 원장의 같은 칸을 자연키로 되찾아 경합을 본다(§6.3 G2).
+-- 이 인덱스가 없으면 그 조회가 Seq Scan 이다 — 5,720행 배치에서 한 건에 8.1ms,
+-- 배치 전체로는 사실상 quadratic 이 된다.
+create index if not exists assignment_proposals_cell_idx
+  on public.assignment_proposals
+     (academic_year, university_name, work_kind, subtype, role);
+
+-- 같은 학년도에 대기 중인 연간 배치는 하나뿐이다. §6.4 는 요청 큐에서 중복 적재를
+-- 막지만 rollover 의 판정 기준은 **이 테이블**이라("현재 학년도 annual 배치가
+-- 없으면"), cron 이 한 번 겹쳐 돌면 제안이 두 벌로 생긴다. 실제로 2건이 그대로
+-- 들어가는 것을 확인했다.
+create unique index if not exists assignment_proposal_batches_pending_annual_key
+  on public.assignment_proposal_batches (academic_year)
+  where kind = 'annual' and status = 'pending';
 
 -- ─────────────────────────────────────────────────────────────
 -- RLS · GRANT
@@ -157,17 +178,24 @@ create policy "assignment_changes_select"
   to authenticated
   using (true);
 
+-- ⚠️ `is_admin()` 을 **`(select ...)` 로 감싼다.** 맨 호출은 qual 에 컬럼 참조가
+--    없어도 Postgres 가 행마다 평가한다. 6,000행 프로브 실측:
+--      맨 호출      → `Filter: is_admin()`      · 696.6ms
+--      감싼 호출    → `InitPlan 1` · `Filter: $0` ·   0.3ms
+--    차단은 그대로다(양쪽 다 0행). 제안은 연간 배치 한 건이 286대학 × 20칸 =
+--    5,720행이라 관리자가 탭을 열 때마다 이 비용을 낸다. 레포의 다른 정책은 맨
+--    호출이지만 행이 수천이 되는 첫 테이블이 이것이다.
 drop policy if exists "assignment_proposals_admin_select" on public.assignment_proposals;
 create policy "assignment_proposals_admin_select"
   on public.assignment_proposals for select
   to authenticated
-  using (public.is_admin());
+  using ((select public.is_admin()));
 
 drop policy if exists "assignment_proposal_batches_admin_select" on public.assignment_proposal_batches;
 create policy "assignment_proposal_batches_admin_select"
   on public.assignment_proposal_batches for select
   to authenticated
-  using (public.is_admin());
+  using ((select public.is_admin()));
 
 -- Supabase 는 public 스키마의 새 테이블에 기본 권한을 깔아 준다 — 우리가 아무
 -- GRANT 를 안 써도 anon 이 테이블에 닿고, 그때 막아 주는 것은 RLS 하나뿐이다.
@@ -205,7 +233,7 @@ commit;
 --   values (2027, '테스트대', '원서접수', '수시', '기획');       -- ERROR 23514 ← role check
 -- insert into public.assignment_changes
 --   (academic_year, university_name, work_kind, role, prev_assignee, next_assignee, source)
---   values (2027, '테스트대', '원서접수', '운영', '김운영', '김운영', 'manual');
+--   values (2027, '테스트대', '원서접수', '운영', 'a@example.com', 'a@example.com', 'manual');
 --   -- ERROR 23514 ← 안 바뀐 것은 이력이 아니다
 -- delete from public.assignments where university_name = '테스트대';  -- 정리
 -- select tablename, policyname from pg_policies where tablename like 'assignment%';  -- 4건

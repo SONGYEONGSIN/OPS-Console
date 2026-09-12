@@ -424,17 +424,32 @@ describe("권한 경계", () => {
     );
   });
 
+  /**
+   * 읽기는 관리자 판정을 타고, **그 판정은 한 번만 불린다.**
+   *
+   * 맨 `using (public.is_admin())` 은 qual 에 컬럼 참조가 없어도 Postgres 가
+   * **행마다** 평가한다. 실측으로 5,720행에서 5,720회 · 250ms 였고,
+   * `(select public.is_admin())` 으로 감싸면 InitPlan 으로 올라가 1회 · 1.7ms 다.
+   * 차단 동작은 그대로다(비-admin 0행). 제안 테이블은 설계상 연간 배치 한 건이
+   * 286대학 × 20칸 = 5,720행이라, 관리자가 탭을 열 때마다 이 비용을 낸다.
+   *
+   * 레포의 다른 정책은 맨 호출이지만 **행이 수천이 되는 첫 테이블이 이것이다.**
+   */
   it.each(["assignment_proposals", "assignment_proposal_batches"])(
-    "%s 읽기가 관리자 판정을 탄다",
+    "%s 읽기가 관리자 판정을 타고 그 판정이 한 번만 불린다",
     (t) => {
       expect(sql).toMatch(
         new RegExp(
-          `on\\s+public\\.${t}\\s+for\\s+select[\\s\\S]{0,160}?using\\s*\\(\\s*public\\.is_admin\\(\\)`,
+          `on\\s+public\\.${t}\\s+for\\s+select[\\s\\S]{0,200}?using\\s*\\(\\s*\\(\\s*select\\s+public\\.is_admin\\(\\)`,
           "i",
         ),
       );
     },
   );
+
+  it("맨 is_admin() 을 쓰지 않는다 — 감싸지 않으면 행마다 불린다", () => {
+    expect(sql).not.toMatch(/using\s*\(\s*public\.is_admin\(\)/i);
+  });
 
   it("authenticated 에게 쓰기 권한을 주지 않는다", () => {
     expect(sql).not.toMatch(

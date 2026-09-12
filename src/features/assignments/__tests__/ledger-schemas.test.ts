@@ -139,10 +139,22 @@ describe("role — 정의상 둘뿐이다", () => {
  * 적이 있다 — 그때와 같은 종류의 사고다.
  */
 describe("업무종류 어휘 — SERVICE_KINDS 하나에서 나온다", () => {
-  it("ASSIGNMENT_WORK_KINDS 가 SERVICE_KINDS 와 같은 집합이다", () => {
-    expect([...ASSIGNMENT_WORK_KINDS].sort()).toEqual(
-      [...SERVICE_KINDS].sort(),
-    );
+  /**
+   * 같은 **배열 객체**여야 한다. 값만 대조하면 누군가 목록을 베껴 두 벌로 만들어도
+   * 통과한다 — 그게 막으려던 일이다. 어휘 변경 자체는 아래 리터럴 대조가 잡는다.
+   */
+  it("ASSIGNMENT_WORK_KINDS 는 SERVICE_KINDS 그 자체다 — 베낀 목록이 아니다", () => {
+    expect(ASSIGNMENT_WORK_KINDS).toBe(SERVICE_KINDS);
+  });
+
+  it("다섯 값이고 순서가 정해져 있다 — 어휘가 바뀌면 여기가 먼저 깨진다", () => {
+    expect([...ASSIGNMENT_WORK_KINDS]).toEqual([
+      "원서접수",
+      "대학원",
+      "PIMS",
+      "성적산출",
+      "상담앱",
+    ]);
   });
 
   it("zod 가 다섯 값을 통과시킨다", () => {
