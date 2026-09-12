@@ -3,6 +3,7 @@
 import type { ListRow } from "../../../patterns/ListPattern";
 import { statusBadgeTone } from "../badge-tone";
 import { kstFormat } from "@/lib/kst-format";
+import { repoLanguageCell } from "./format";
 
 type Props = {
   rows: ListRow[];
@@ -10,19 +11,26 @@ type Props = {
   onSelect: (row: ListRow) => void;
 };
 
-/** 수집일 — 날짜만. 시각까지는 후보를 훑는 데 짐만 된다. */
-const COLLECTED_DATE = kstFormat({
+/** 날짜만. 시각까지는 후보를 훑는 데 짐만 된다. */
+const YMD = kstFormat({
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
 });
 
-function formatCollectedAt(iso: string | undefined): string {
+/**
+ * 최근 업데이트·수집일 **두 칸이 같이 쓴다** — 나란히 붙어 있어 서식이 갈리면
+ * 어느 쪽이 더 최근인지 눈으로 못 견준다.
+ *
+ * 마지막 푸시가 없으면 언제나 `—` 다. 언어와 달리 '진짜 없음' 이 없다 —
+ * 모든 리포는 최소 한 번 푸시됐으므로, 비었다면 우리가 못 받은 것뿐이다.
+ */
+function formatYmd(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   // 화면에 `Invalid Date` 를 흘리지 않는다.
   if (Number.isNaN(d.getTime())) return "—";
-  return COLLECTED_DATE.format(d);
+  return YMD.format(d);
 }
 
 const REVIEW_LABEL: Record<
@@ -41,7 +49,9 @@ export function AiTipCandidateTable({ rows, selectedId, onSelect }: Props) {
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
           <th className="px-3 py-2">제목</th>
           <th className="px-3 py-2">리포지터리</th>
+          <th className="px-3 py-2">언어</th>
           <th className="px-3 py-2">별</th>
+          <th className="px-3 py-2">최근 업데이트</th>
           <th className="px-3 py-2">수집일</th>
           <th className="px-3 py-2">검토</th>
         </tr>
@@ -49,13 +59,17 @@ export function AiTipCandidateTable({ rows, selectedId, onSelect }: Props) {
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={5} className="px-3 py-6 text-center text-muted">
+            <td colSpan={7} className="px-3 py-6 text-center text-muted">
               수집된 후보 없음
             </td>
           </tr>
         ) : (
           rows.map((row) => {
             const review = row.tipCandidateStatus;
+            const language = repoLanguageCell(
+              row.tipCandidateRepoLanguage,
+              row.tipCandidateRepoSyncedAt,
+            );
             return (
               <tr
                 key={row.id}
@@ -104,12 +118,24 @@ export function AiTipCandidateTable({ rows, selectedId, onSelect }: Props) {
                     </p>
                   )}
                 </td>
+                {/* 못 받은 칸은 흐리게 — '없음'(물어봤는데 주 언어가 없다)과
+                    '—'(안 물어봤다)를 색으로도 갈라 둔다. */}
+                <td
+                  className={`px-3 py-2 text-xs ${
+                    language.known ? "text-ink-soft" : "text-muted"
+                  }`}
+                >
+                  {language.text}
+                </td>
                 {/* 별은 세는 값이라 tabular-nums — font-mono 는 식별자 전용. */}
                 <td className="px-3 py-2 text-xs tabular-nums text-ink-soft">
                   {row.tipCandidateStars ?? 0}
                 </td>
-                <td className="px-3 py-2 text-sm text-ink-soft">
-                  {formatCollectedAt(row.tipCandidateCollectedAt)}
+                <td className="px-3 py-2 text-sm tabular-nums text-ink-soft">
+                  {formatYmd(row.tipCandidateRepoPushedAt)}
+                </td>
+                <td className="px-3 py-2 text-sm tabular-nums text-ink-soft">
+                  {formatYmd(row.tipCandidateCollectedAt)}
                 </td>
                 <td className="px-3 py-2">
                   {review && (

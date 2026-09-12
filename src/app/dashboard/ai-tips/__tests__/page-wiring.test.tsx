@@ -70,6 +70,8 @@ function candidate(over: Partial<AiTipCandidateRow> = {}): AiTipCandidateRow {
     draft_category: "automation",
     status: "pending",
     collected_at: "2026-08-11T00:00:00Z",
+    // 백필 전 기존 행 모양 — 값은 null 이지만 칸 자체는 있어야 한다.
+    repo_synced_at: null,
     ...over,
   };
 }

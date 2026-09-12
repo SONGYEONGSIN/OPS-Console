@@ -28,6 +28,15 @@ const baseRow: ListRow = {
   tipCandidateCanDecide: true,
 };
 
+/** 백필된 행 — 리포 메타를 물어봐서 받은 상태. */
+const syncedRow: ListRow = {
+  ...baseRow,
+  tipCandidateRepoLanguage: "TypeScript",
+  // KST 로 9/5 — UTC 그대로 찍으면 9/4 로 하루 밀린다.
+  tipCandidateRepoPushedAt: "2026-09-04T20:30:00.000Z",
+  tipCandidateRepoSyncedAt: "2026-09-12T00:30:00.000Z",
+};
+
 describe("AiTipCandidateView — 상세", () => {
   it("초안 요약과 재사용 프롬프트를 보여준다", () => {
     render(<AiTipCandidateView row={baseRow} />);
@@ -95,10 +104,44 @@ describe("AiTipCandidateView — 상세", () => {
     expect(screen.getAllByText(/초안 없음/)).toHaveLength(4);
   });
 
-  it("DB 에 없는 칸을 만들지 않는다 — 언어·최근 업데이트·사용 시점", () => {
-    const { container } = render(<AiTipCandidateView row={baseRow} />);
+  it("언어·최근 업데이트를 항목으로 보여준다", () => {
+    render(<AiTipCandidateView row={syncedRow} />);
+    expect(screen.getByText("언어")).toBeInTheDocument();
+    expect(screen.getByText("TypeScript")).toBeInTheDocument();
+    expect(screen.getByText("최근 업데이트")).toBeInTheDocument();
+    expect(screen.getByText(/2026\D+09\D+05/)).toBeInTheDocument();
+  });
+
+  it("주 언어가 없는 리포는 '없음' — 대시로 두면 못 받은 것으로 읽힌다", () => {
+    render(
+      <AiTipCandidateView
+        row={{ ...syncedRow, tipCandidateRepoLanguage: null }}
+      />,
+    );
+    expect(screen.getByText("없음")).toBeInTheDocument();
+  });
+
+  it("조회시각이 있으면 별·언어·최근 업데이트를 한 줄로 묶는다 — 라벨 셋은 노이즈다", () => {
+    const { container } = render(<AiTipCandidateView row={syncedRow} />);
+    const line = screen.getByText(/별·언어·최근 업데이트/);
+    expect(line.textContent).toMatch(/2026\D+09\D+12\D*기준/);
+    expect(line.className).toContain("text-2xs");
+    expect(line.className).toContain("text-muted");
+    // 셋이 한 번의 fetch 를 공유하므로 별에만 따로 붙던 꼬리표는 걷는다.
+    expect(container.textContent ?? "").not.toContain("수집 시점 값");
+  });
+
+  it("조회 안 한 후보에는 왜 비었는지 적는다 — 빈칸은 고장으로 읽힌다", () => {
+    render(<AiTipCandidateView row={baseRow} />);
+    expect(screen.getByText(/수집 당시 저장하지 않았습니다/)).toBeInTheDocument();
+    // 물어본 적이 없으므로 '없음'이 아니라 대시다.
+    expect(screen.queryByText("없음")).not.toBeInTheDocument();
+  });
+
+  it("DB 에 없는 칸을 만들지 않는다 — 사용 시점·사용 방법", () => {
+    const { container } = render(<AiTipCandidateView row={syncedRow} />);
     const text = container.textContent ?? "";
-    for (const absent of ["언어", "최근 업데이트", "사용 시점", "사용 방법"]) {
+    for (const absent of ["사용 시점", "사용 방법"]) {
       expect(text).not.toContain(absent);
     }
   });

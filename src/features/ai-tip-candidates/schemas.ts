@@ -20,6 +20,10 @@ export const aiTipCandidateInsertSchema = z.object({
   draft_tags: z.array(z.string()).default([]),
   draft_ai_tool: z.string().nullable().optional(),
   draft_category: z.string().nullable().optional(),
+  // 수집기가 보내도 여기에 없으면 zod가 조용히 버린다(z.object는 모르는 키를
+  // 에러 없이 떨어뜨린다) — 수집은 "N건 적재 완료"를 찍고 칸만 비어 있게 된다.
+  repo_language: z.string().nullable().optional(),
+  repo_pushed_at: z.string().nullable().optional(),
 });
 
 export type AiTipCandidateInsert = z.infer<typeof aiTipCandidateInsertSchema>;
@@ -32,6 +36,9 @@ export const aiTipCandidateRowSchema = aiTipCandidateInsertSchema.extend({
   id: z.string().uuid(),
   status: candidateStatusSchema,
   collected_at: z.string(),
+  // optional이 아니다 — 마이그레이션 전 코드가 배포되면 이 칸이 없는 채로 파싱이
+  // 통과해 전건이 조용히 '안 물어봤다'로 보인다. 차라리 크게 실패시킨다.
+  repo_synced_at: z.string().nullable(),
 });
 
 export type AiTipCandidateRow = z.infer<typeof aiTipCandidateRowSchema>;

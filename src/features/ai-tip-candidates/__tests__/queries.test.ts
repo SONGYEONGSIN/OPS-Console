@@ -27,6 +27,10 @@ const base = {
   draft_ai_tool: "claude",
   draft_category: "automation",
   collected_at: "2026-08-11T00:00:00Z",
+  // 백필 전 기존 행 모양 — 컬럼은 있고 값은 null('안 물어봤다').
+  repo_language: null,
+  repo_pushed_at: null,
+  repo_synced_at: null,
 };
 
 const row = (id: string, status: string) => ({ ...base, id, status });

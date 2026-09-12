@@ -16,6 +16,9 @@ const candidate: AiTipCandidateRow = {
   draft_tags: ["cli", "agent"],
   draft_ai_tool: "claude",
   draft_category: "code",
+  repo_language: "TypeScript",
+  repo_pushed_at: "2026-09-05T00:30:00.000Z",
+  repo_synced_at: "2026-09-12T00:30:00.000Z",
 };
 
 describe("candidateToListRow", () => {
@@ -31,6 +34,28 @@ describe("candidateToListRow", () => {
     expect(row.tipCandidateRepoDescription).toBe("터미널에서 도는 코딩 에이전트");
     expect(row.tipCandidateStars).toBe(1234);
     expect(row.tipCandidateCollectedAt).toBe("2026-09-01T00:30:00.000Z");
+  });
+
+  it("언어·최근 업데이트·조회시각을 tipCandidate* 로 옮긴다", () => {
+    const row = candidateToListRow(candidate, true);
+    expect(row.tipCandidateRepoLanguage).toBe("TypeScript");
+    expect(row.tipCandidateRepoPushedAt).toBe("2026-09-05T00:30:00.000Z");
+    expect(row.tipCandidateRepoSyncedAt).toBe("2026-09-12T00:30:00.000Z");
+  });
+
+  it("조회 안 한 후보는 세 칸이 null 로 간다 — 빈 문자열로 바꾸면 조회한 것처럼 보인다", () => {
+    const row = candidateToListRow(
+      {
+        ...candidate,
+        repo_language: null,
+        repo_pushed_at: null,
+        repo_synced_at: null,
+      },
+      true,
+    );
+    expect(row.tipCandidateRepoLanguage).toBeNull();
+    expect(row.tipCandidateRepoPushedAt).toBeNull();
+    expect(row.tipCandidateRepoSyncedAt).toBeNull();
   });
 
   it("초안 필드는 ai-work 와 같은 칸을 쓴다 — 인스펙터가 이미 그 칸을 그린다", () => {

@@ -17,8 +17,11 @@ const validRow = {
   draft_tags: ["자동화"],
   draft_ai_tool: "claude",
   draft_category: "automation",
+  repo_language: "TypeScript",
+  repo_pushed_at: "2026-09-01T00:00:00Z",
   status: "pending",
   collected_at: "2026-08-11T00:00:00Z",
+  repo_synced_at: "2026-09-12T00:00:00Z",
 };
 
 describe("aiTipCandidateRowSchema", () => {
@@ -39,6 +42,13 @@ describe("aiTipCandidateRowSchema", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("row 는 repo_synced_at 을 가진다", () => {
+    // optional 로 두면 마이그레이션 전 배포에서 화면이 조용히 '안 물어봤다'로
+    // 보이며 돈다. 없으면 파싱을 깨뜨려 크게 실패시킨다.
+    const { repo_synced_at: _drop, ...withoutSynced } = validRow;
+    expect(aiTipCandidateRowSchema.safeParse(withoutSynced).success).toBe(false);
+  });
+
   it("정의되지 않은 status는 거부한다", () => {
     expect(
       aiTipCandidateRowSchema.safeParse({ ...validRow, status: "archived" })
@@ -56,6 +66,32 @@ describe("aiTipCandidateInsertSchema", () => {
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.draft_tags).toEqual([]);
+  });
+
+  it("언어·푸시시각을 통과시킨다 — 스키마에 없으면 zod 가 조용히 버린다", () => {
+    const parsed = aiTipCandidateInsertSchema.safeParse({
+      repo_full_name: "acme/agent-kit",
+      repo_url: "https://github.com/acme/agent-kit",
+      stars: 350,
+      repo_language: "TypeScript",
+      repo_pushed_at: "2026-09-01T00:00:00Z",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.repo_language).toBe("TypeScript");
+      expect(parsed.data.repo_pushed_at).toBe("2026-09-01T00:00:00Z");
+    }
+  });
+
+  it("주 언어가 없는 리포의 null 도 통과시킨다", () => {
+    const parsed = aiTipCandidateInsertSchema.safeParse({
+      repo_full_name: "acme/agent-kit",
+      repo_url: "https://github.com/acme/agent-kit",
+      stars: 350,
+      repo_language: null,
+      repo_pushed_at: null,
+    });
+    expect(parsed.success).toBe(true);
   });
 
   it("repo_full_name이 없으면 거부한다", () => {

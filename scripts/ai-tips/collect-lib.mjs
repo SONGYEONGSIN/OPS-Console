@@ -65,6 +65,12 @@ export function pickNewRepos(items, seenNames, limit) {
       repo_url: it.html_url,
       stars: it.stargazers_count ?? 0,
       repo_description: it.description ?? null,
+      // search/repositories는 리포 객체 전체를 주므로 이 둘은 이미 응답에 있다 —
+      // 버리면 나중에 리포당 GET 한 번을 다시 해야 한다.
+      // 키를 빼지 않고 null로 남기는 이유: 없는 키와 null은 화면에서 다른 뜻이다
+      // ('안 물어봤다' vs '주 언어가 없다'). repo_synced_at은 DB default가 채운다.
+      repo_language: it.language ?? null,
+      repo_pushed_at: it.pushed_at ?? null,
     });
     if (out.length >= limit) break;
   }
