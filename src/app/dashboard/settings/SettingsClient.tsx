@@ -295,6 +295,50 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint 운영 매뉴얼 폴더"
+        value={
+          <>
+            <Dot ok={env.sharepoint.manualItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.manualItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint 총괄장"
+        value={
+          <>
+            <Dot ok={env.sharepoint.assignmentsItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.assignmentsItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint 등기대장"
+        value={
+          <>
+            <Dot ok={env.sharepoint.mailItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.mailItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint 전도금대장"
+        value={
+          <>
+            <Dot ok={env.sharepoint.pettyCashItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.pettyCashItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="SharePoint 공문관리대장"
         value={
           <>
@@ -317,12 +361,45 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint 지식망 볼트 폴더"
+        value={
+          <>
+            <Dot ok={env.sharepoint.knowledgeFolderId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.knowledgeFolderId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="SharePoint 회의록 폴더"
         value={
           <>
             <Dot ok={env.sharepoint.meetingsFolderId.configured} />{" "}
             <span className="text-xs text-muted">
               {env.sharepoint.meetingsFolderId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint 결제일 드라이브"
+        value={
+          <>
+            <Dot ok={env.sharepoint.paymentDriveId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.paymentDriveId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint 결제일 시트"
+        value={
+          <>
+            <Dot ok={env.sharepoint.paymentItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.paymentItemId.preview}
             </span>
           </>
         }
