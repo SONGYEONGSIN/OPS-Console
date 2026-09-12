@@ -77,10 +77,10 @@ export default async function AssignmentsPage({
    * 멀어 눈에 안 들어왔다(2026-09-09 지적).
    *
    * 세 탭이 모두 이 한 파일의 사본이라 **탭마다 같은 자리에 둔다** — 한 탭에만
-   * 있으면 나머지에서 길이 끊긴다. 주소 해석은 `/source` 창구가 한다.
+   * 있으면 나머지에서 길이 끊긴다. 주소 해석은 워크북 창구가 한다.
    */
   const sourceAction = (
-    <HeaderActionButton href="/dashboard/assignments/source">
+    <HeaderActionButton href="/dashboard/workbook/assignments-master">
       총괄장
     </HeaderActionButton>
   );

@@ -23,6 +23,15 @@ export type WorkbookEntry = {
 };
 
 export const WORKBOOKS = {
+  // 배정·업무분장·가격정책 세 탭이 모두 이 한 파일의 사본이다 — 화면이 읽는 것과
+  // 같은 파일로 이어져야 고친 게 화면에 나타난다.
+  "assignments-master": {
+    menu: "assignments",
+    label: "총괄장",
+    driveEnv: "SHAREPOINT_DRIVE_ID",
+    itemEnv: "SHAREPOINT_ASSIGNMENTS_ITEM_ID",
+    adminOnly: false,
+  },
   "contracts-ledger": {
     menu: "contracts",
     label: "계약관리대장",
