@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { getEnvSnapshot } from "../_env";
+import { WORKBOOKS } from "@/features/workbook/registry";
 
 /**
  * SharePoint env 는 **읽는 곳 · 보여주는 곳 · 채워넣는 곳** 세 벌로 손유지된다.
@@ -50,6 +51,14 @@ function usedSharepointEnvNames(): string[] {
       names.add(m[1]);
     }
   }
+  // 워크북은 정규식에 안 걸린다 — resolve.ts 가 `process.env[entry.driveEnv]` 로
+  // 읽고 이름은 등록부에 문자열로만 있다. 그래서 등록부를 **읽어서** 더한다.
+  // 소스를 또 정규식으로 긁지 않는 건, 등록부 리터럴 표기가 바뀌면 조용히
+  // 0건이 되기 때문이다 — import 하면 그런 드리프트가 컴파일에서 드러난다.
+  for (const entry of Object.values(WORKBOOKS)) {
+    names.add(entry.driveEnv);
+    names.add(entry.itemEnv);
+  }
   return [...names].sort();
 }
 
@@ -68,6 +77,23 @@ describe("SharePoint env 드리프트 가드", () => {
     const names = usedSharepointEnvNames();
     expect(names).toContain("SHAREPOINT_DRIVE_ID");
     expect(names.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("워크북 등록부가 적어 둔 env 이름도 추출된다", () => {
+    // 이 가드를 만든 이유가 워크북인데, 정작 워크북만 못 본다:
+    // resolve.ts 가 `process.env[entry.driveEnv]` 로 **동적 접근**하고 이름은
+    // 등록부에 문자열 리터럴로만 있어 `process\.env\.X` 정규식에 안 걸린다.
+    // 지금은 다른 파일이 우연히 같은 이름을 직접 읽어 덮이지만, 그 파일이
+    // 정리되는 순간 워크북 env 가 조용히 세 곳 대조에서 빠진다.
+    const names = usedSharepointEnvNames();
+    for (const entry of Object.values(WORKBOOKS)) {
+      expect(names, `${entry.driveEnv} (${entry.label}) 가 안 잡힌다`).toContain(
+        entry.driveEnv,
+      );
+      expect(names, `${entry.itemEnv} (${entry.label}) 가 안 잡힌다`).toContain(
+        entry.itemEnv,
+      );
+    }
   });
 
   it("코드가 읽는 SHAREPOINT_* 는 전부 설정 스냅샷에 있다", () => {
