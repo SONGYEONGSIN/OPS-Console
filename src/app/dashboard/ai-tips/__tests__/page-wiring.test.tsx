@@ -33,6 +33,10 @@ import type { AiTipCandidateRow } from "@/features/ai-tip-candidates/schemas";
 
 type Node = { type?: unknown; props?: Record<string, unknown> };
 
+/**
+ * 엘리먼트 트리 탐색 — `children` 뿐 아니라 **모든 prop** 을 훑는다.
+ * 이 페이지는 머리말을 `header` prop 으로 넘기므로 children 만 보면 못 찾는다.
+ */
 function findByType(node: unknown, type: unknown): Node | null {
   if (Array.isArray(node)) {
     for (const child of node) {
@@ -44,7 +48,11 @@ function findByType(node: unknown, type: unknown): Node | null {
   if (!node || typeof node !== "object") return null;
   const el = node as Node;
   if (el.type === type) return el;
-  return findByType(el.props?.children, type);
+  for (const value of Object.values(el.props ?? {})) {
+    const found = findByType(value, type);
+    if (found) return found;
+  }
+  return null;
 }
 
 function candidate(over: Partial<AiTipCandidateRow> = {}): AiTipCandidateRow {
