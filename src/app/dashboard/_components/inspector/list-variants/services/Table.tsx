@@ -112,7 +112,9 @@ export function ServicesTable({ rows, selectedId, onSelect }: Props) {
                       단독
                     </span>
                   ) : (
-                    <span className="text-xs text-muted">듀얼</span>
+                    <span className="inline-block bg-line-soft px-2 py-0.5 text-xs text-muted">
+                      듀얼
+                    </span>
                   )}
                 </td>
               </tr>

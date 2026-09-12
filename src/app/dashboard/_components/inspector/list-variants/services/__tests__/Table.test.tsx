@@ -72,9 +72,17 @@ describe("ServicesTable", () => {
     expect(screen.getAllByText("단독").length).toBe(1);
   });
 
-  // 목록에서 눈에 띄어야 하는 쪽은 `단독` 이다. `듀얼` 이 배지가 되면
-  // 두 값이 같은 무게로 보여 그 대비가 사라진다 — 자리도 톤도 그대로 둔다.
-  it("듀얼은 배지가 아니다 — text-xs text-muted 그대로다", () => {
+  /**
+   * 둘 다 배지고, 무게는 색이 진다.
+   *
+   * 처음엔 `단독` 만 배지였다 — 그때는 그게 예외라 혼자 눈에 띄어야 했다.
+   * 2026-09-12 인제스트가 굳어 있던 `solo` 를 풀면서 전제가 뒤집혔다:
+   * 전체 933건 중 단독이 776건(83%)이고, 마감 전 241건은 단독 120 대 듀얼 121 이다.
+   * 83% 에 붙은 주황은 강조가 아니라 배경이고, 반반인 두 값을 한쪽만 배지로 두면
+   * 형태가 빈도를 거짓말한다. 구분값의 조용한 톤은 `BADGE_TONE.idle` 이고,
+   * 인스펙터의 접수구분이 이미 같은 모양을 쓴다.
+   */
+  it("듀얼도 배지다 — 단독과 같은 형태, 톤만 다르다", () => {
     render(
       <ServicesTable
         rows={[{ ...baseRow, solo: false }]}
@@ -83,9 +91,12 @@ describe("ServicesTable", () => {
       />,
     );
     const el = screen.getByText("듀얼");
+    expect(el.className).toContain("inline-block");
+    expect(el.className).toContain("px-2");
     expect(el.className).toContain("text-xs");
+    expect(el.className).toContain("bg-line-soft");
     expect(el.className).toContain("text-muted");
-    expect(el.className).not.toContain("bg-");
+    expect(el.className).not.toContain("bg-vermilion");
   });
 
   it("마감여부 — 작성마감 지난 행은 '마감' 배지, 진행 중인 행은 'D-N'", () => {
