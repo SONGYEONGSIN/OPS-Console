@@ -245,6 +245,18 @@ Moa 자동화(마감 스크랩·경쟁률 점검·정산 탐색)의 2FA 인증�
 - 사이드바: '분석 · AI > 분석 & 보고 > 업무 활동 로그' (slug `worklog`)
 - 테이블 RLS: read all (운영부 공개) / insert는 service_role (server only)
 
+## /dashboard/ai-tips — 등록된 TIP · TIP 후보 (탭 둘)
+
+주 1회 수집 잡(`ai-tips-collect`)이 GitHub 리포를 후보로 쌓고, 운영자가 후보 탭에서 등록하거나 숨긴다.
+
+**숨김은 되돌릴 수 있어야 한다.** 수집기가 `hidden` 리포를 재수집 제외 목록에 넣기 때문에(`scripts/ai-tips/collect-lib.mjs` `pickNewRepos`), 되돌리기가 없으면 잘못 누른 숨김이 곧 영구 삭제다. 그래서 숨김 칸이 화면에 있고 인스펙터에 `되돌리기`가 있으며, 숨김 버튼 옆에 되돌릴 수 있다고 적는다.
+
+**언어·최근 업데이트는 `ai_tip_candidates` 에 없다.** 칸을 만들어 `-` 로 채우면 값이 있는데 비어 보이는 것과 구분이 안 된다. **별은 수집 당시 스냅샷**이라 재수집으로 갱신되지 않아, 숫자 옆에 '수집 시점 값'을 함께 적는다.
+
+**상태 칩(검토 대기/숨김/등록됨)은 서버 `?scope` 파라미터**다. 공용 `ScopeChips` 는 `?mine` 2치 토글로 하드코딩돼 열 곳 넘게 쓰므로 3치를 밀어 넣지 않았다(`CandidateScopeChips`). 기본은 검토 대기이고 기본으로 돌아갈 땐 `scope` 를 지운다. 칩(클라이언트)과 목록(서버)은 `features/ai-tip-candidates/scope.ts` 한 함수로 같은 판정을 쓴다.
+
+후보는 **페이지가 한 번만 읽어** 섹션에 넘긴다 — 섹션이 따로 읽으면 헤더 건수와 목록이 다른 시점을 보게 된다. 권한 가드는 인스펙터 View 가 직접 한다(`ListPattern` 의 `readOnly` 는 편집 모드만 막는다).
+
 ## /dashboard/my-todo — services 기반 planner
 
 - **좌측 (read-only)**: `services.write_start_at` D-60 이내, `operator_email = me OR developer_email = me`. 우선순위 자동(D-7=높음/D-30=중간/그 외=낮음)

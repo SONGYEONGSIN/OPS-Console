@@ -7,6 +7,11 @@ describe("Variant union", () => {
     expect(v).toBe("backup");
   });
 
+  it("ai-tip-candidates variant 포함", () => {
+    const v: Variant = "ai-tip-candidates";
+    expect(v).toBe("ai-tip-candidates");
+  });
+
   it("기존 variant 호환 (ai-work)", () => {
     const v: Variant = "ai-work";
     expect(v).toBe("ai-work");
