@@ -60,6 +60,34 @@ describe("ServicesTable", () => {
     expect(screen.getAllByText("단독").length).toBe(2);
   });
 
+  it("듀얼 표기 — solo=false 행은 '듀얼', '단독'은 헤더 1건뿐", () => {
+    render(
+      <ServicesTable
+        rows={[{ ...baseRow, solo: false }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("듀얼")).toBeInTheDocument();
+    expect(screen.getAllByText("단독").length).toBe(1);
+  });
+
+  // 목록에서 눈에 띄어야 하는 쪽은 `단독` 이다. `듀얼` 이 배지가 되면
+  // 두 값이 같은 무게로 보여 그 대비가 사라진다 — 자리도 톤도 그대로 둔다.
+  it("듀얼은 배지가 아니다 — text-xs text-muted 그대로다", () => {
+    render(
+      <ServicesTable
+        rows={[{ ...baseRow, solo: false }]}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    const el = screen.getByText("듀얼");
+    expect(el.className).toContain("text-xs");
+    expect(el.className).toContain("text-muted");
+    expect(el.className).not.toContain("bg-");
+  });
+
   it("마감여부 — 작성마감 지난 행은 '마감' 배지, 진행 중인 행은 'D-N'", () => {
     render(
       <ServicesTable
