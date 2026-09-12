@@ -2,9 +2,10 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { CandidateStatus } from "@/features/ai-tip-candidates/schemas";
-
-/** 기본으로 보는 칸. 주소에 `scope` 가 없으면 이것이다. */
-const DEFAULT_SCOPE: CandidateStatus = "pending";
+import {
+  DEFAULT_CANDIDATE_SCOPE,
+  resolveCandidateScope,
+} from "@/features/ai-tip-candidates/scope";
 
 /** 화면 순서 — 할 일(검토 대기)이 먼저고, 지나간 것이 뒤다. */
 const CHIPS: { scope: CandidateStatus; label: string }[] = [
@@ -32,13 +33,12 @@ export function CandidateScopeChips({ counts }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const raw = params.get("scope");
-  const current: CandidateStatus =
-    CHIPS.find((c) => c.scope === raw)?.scope ?? DEFAULT_SCOPE;
+  // 목록(서버)과 같은 판정을 쓴다 — 각자 정하면 칩과 목록이 다른 칸을 가리킨다.
+  const current: CandidateStatus = resolveCandidateScope(params.get("scope"));
 
   function go(next: CandidateStatus) {
     const q = new URLSearchParams(params.toString());
-    if (next === DEFAULT_SCOPE) q.delete("scope");
+    if (next === DEFAULT_CANDIDATE_SCOPE) q.delete("scope");
     else q.set("scope", next);
     // 3쪽을 보던 중에 칸을 옮기면 그쪽엔 3쪽이 없어 빈 화면이 뜬다.
     q.delete("page");
