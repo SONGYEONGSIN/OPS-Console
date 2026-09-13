@@ -6,6 +6,7 @@ import {
   ASSIGNMENT_NATURAL_KEY,
   ASSIGNMENT_ROLES,
 } from "../ledger-schemas";
+import { TENURE_GROUPS } from "../tenure";
 
 /**
  * 코드 상수와 마이그레이션 원문을 대조한다.
@@ -246,6 +247,31 @@ describe("operators 배정 칸 계약", () => {
   it("시드가 이름으로 한다 — 이메일이 원천마다 갈려 있다", () => {
     expect(sql).toMatch(/where\s+name\s+in\s*\(/i);
     expect(sql).not.toMatch(/where\s+email\s+in\s*\(/i);
+  });
+
+  /**
+   * 시드가 넣는 그룹 값과 코드 상수는 같은 어휘여야 한다. 마이그레이션 주석이
+   * "값은 `features/assignments/tenure.ts` 의 as const + zod" 라고 선언하는데,
+   * 그걸 지키는 검사가 없으면 한쪽만 바뀐다.
+   *
+   * **위험은 비대칭이다.** DB 에만 있는 값이 생기면 zod 가 그 사람의 행을 거부해
+   * 조직 화면 저장이 막힌다. 반대(코드에만 있는 그룹)는 아무도 그 그룹에 없다는
+   * 뜻일 뿐이라 해롭지 않다 — 그래서 부분집합만 단언한다.
+   */
+  it("시드가 넣는 tenure_group 이 모두 TENURE_GROUPS 안에 있다", () => {
+    const seeded = [
+      ...new Set(
+        [...sql.matchAll(/tenure_group\s*=\s*'([^']+)'/gi)].map((m) => m[1]),
+      ),
+    ];
+    // 정규식이 하나도 못 잡아도 통과하는 일이 없게 — 조용한 0건이 이 레포의 함정이다.
+    expect(
+      seeded.length,
+      "시드에서 tenure_group 대입을 찾지 못했다",
+    ).toBeGreaterThan(0);
+    for (const value of seeded) {
+      expect([...TENURE_GROUPS], value).toContain(value);
+    }
   });
 });
 

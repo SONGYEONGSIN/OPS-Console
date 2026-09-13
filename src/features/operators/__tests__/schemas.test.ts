@@ -114,11 +114,8 @@ describe("operatorRowSchema allowed_menus", () => {
       allowed_menus: ["alerts", "services", "feedback"],
     });
     expect(r.success).toBe(true);
-    if (r.success) expect(r.data.allowed_menus).toEqual([
-      "alerts",
-      "services",
-      "feedback",
-    ]);
+    if (r.success)
+      expect(r.data.allowed_menus).toEqual(["alerts", "services", "feedback"]);
   });
 
   it("allowed_menus 빈 배열 통과", () => {
@@ -217,9 +214,9 @@ describe("operatorUpdateSchema allowed_menus", () => {
 
 describe("operatorUpdateSchema", () => {
   it("부분 update OK", () => {
-    expect(
-      operatorUpdateSchema.safeParse({ status: "inactive" }).success,
-    ).toBe(true);
+    expect(operatorUpdateSchema.safeParse({ status: "inactive" }).success).toBe(
+      true,
+    );
   });
 
   it("permission만 update OK", () => {
@@ -229,9 +226,9 @@ describe("operatorUpdateSchema", () => {
   });
 
   it("permission 잘못된 enum 거부", () => {
-    expect(
-      operatorUpdateSchema.safeParse({ permission: "BAD" }).success,
-    ).toBe(false);
+    expect(operatorUpdateSchema.safeParse({ permission: "BAD" }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -277,5 +274,118 @@ describe("operatorRoleSchema 확장", () => {
     expect(operatorRoleSchema.safeParse("팀장").success).toBe(true);
     expect(operatorRoleSchema.safeParse("TL").success).toBe(true);
     expect(operatorRoleSchema.safeParse("매니저").success).toBe(true);
+  });
+});
+
+describe("operatorRowSchema 배정 칸 셋", () => {
+  const baseRow = {
+    id: "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    email: "x@y.com",
+    name: "x",
+    team: "운영1팀",
+    role: "매니저",
+    emp_no: "1",
+    hired_at: "2024-01-01",
+    birth_date: "1990-01-01",
+    gender: "남",
+    division: "어플라이사업본부",
+    department: "운영부",
+    status: "active",
+    permission: "member",
+    leader: null,
+    created_at: "2026-05-09T00:00:00Z",
+    updated_at: "2026-05-09T00:00:00Z",
+  };
+
+  it("assignable=true 통과 + 노출", () => {
+    const r = operatorRowSchema.safeParse({ ...baseRow, assignable: true });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.assignable).toBe(true);
+  });
+
+  // DB default 가 false 다 — 새로 들어온 사람에게 대학이 저절로 배정되지 않는다.
+  it("assignable 누락 시 default false", () => {
+    const r = operatorRowSchema.safeParse(baseRow);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.assignable).toBe(false);
+  });
+
+  it("assignable 비-boolean 거부", () => {
+    expect(
+      operatorRowSchema.safeParse({ ...baseRow, assignable: "yes" }).success,
+    ).toBe(false);
+  });
+
+  it("tenure_group 등록값 통과 + 노출", () => {
+    const r = operatorRowSchema.safeParse({ ...baseRow, tenure_group: "3" });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.tenure_group).toBe("3");
+  });
+
+  it("tenure_group 미등록값 거부", () => {
+    expect(
+      operatorRowSchema.safeParse({ ...baseRow, tenure_group: "7" }).success,
+    ).toBe(false);
+  });
+
+  // 아직 그룹을 안 정한 사람이 있다 — 배분현황이 '그룹 미설정' 줄로 드러낸다(F4).
+  it("tenure_group null 통과", () => {
+    const r = operatorRowSchema.safeParse({ ...baseRow, tenure_group: null });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.tenure_group).toBeNull();
+  });
+
+  it("career_start_at 통과 + 노출", () => {
+    const r = operatorRowSchema.safeParse({
+      ...baseRow,
+      career_start_at: "2011-02-07",
+    });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.career_start_at).toBe("2011-02-07");
+  });
+
+  it("career_start_at null 통과 — null 이면 hired_at 을 쓴다", () => {
+    expect(
+      operatorRowSchema.safeParse({ ...baseRow, career_start_at: null })
+        .success,
+    ).toBe(true);
+  });
+});
+
+describe("operatorUpdateSchema 배정 칸 셋", () => {
+  it("assignable만 update OK + data 노출", () => {
+    const r = operatorUpdateSchema.safeParse({ assignable: true });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.assignable).toBe(true);
+  });
+
+  it("tenure_group만 update OK", () => {
+    expect(
+      operatorUpdateSchema.safeParse({ tenure_group: "1-2" }).success,
+    ).toBe(true);
+  });
+
+  it("tenure_group 미등록값 거부 — DB 에 check 가 없어 여기가 유일한 관문이다", () => {
+    expect(operatorUpdateSchema.safeParse({ tenure_group: "7" }).success).toBe(
+      false,
+    );
+  });
+
+  it("tenure_group null update OK — 그룹을 비울 수 있다", () => {
+    expect(operatorUpdateSchema.safeParse({ tenure_group: null }).success).toBe(
+      true,
+    );
+  });
+
+  it("career_start_at만 update OK", () => {
+    expect(
+      operatorUpdateSchema.safeParse({ career_start_at: "2011-02-07" }).success,
+    ).toBe(true);
+  });
+
+  it("assignable 비-boolean 거부", () => {
+    expect(operatorUpdateSchema.safeParse({ assignable: "yes" }).success).toBe(
+      false,
+    );
   });
 });

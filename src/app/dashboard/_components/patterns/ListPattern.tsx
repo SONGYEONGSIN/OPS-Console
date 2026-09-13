@@ -57,6 +57,12 @@ export type ListRow = {
   allowedMenus?: string[];
   /** team 도메인 — 팀 기반 자동 CC(백업요청 메일)에서 제외 */
   mailCcExcluded?: boolean;
+  /** team 도메인 — 업무배정 대상 여부. 파생하지 않고 사람이 켠다(설계 §3.4) */
+  assignable?: boolean;
+  /** team 도메인 — 연차 그룹 저장값('1-1'…'6'). 화면 라벨은 assignments/tenure.ts */
+  tenureGroup?: string | null;
+  /** team 도메인 — 배정 근거 경력 시작일(YYYY-MM-DD). null이면 hired_at을 쓴다 */
+  careerStartAt?: string | null;
   /** post 도메인 — 사람 친화 글번호 (예: 'FB-001'). 없으면 id(uuid) 단축 표시. */
   slug?: string;
   /** schedule 도메인 — 일정 분류 (shift/event/leave/training/application/pims/external_meeting/meeting). */
