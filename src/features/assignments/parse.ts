@@ -15,6 +15,19 @@ function colMatch(headerRow: string[], re: RegExp): number {
   return headerRow.findIndex((c) => re.test(c.trim()));
 }
 
+/**
+ * 파서가 읽는 학년도. **`02` 시트 헤더 문자열에 박혀 있고 시계에서 도출하지 않는다.**
+ *
+ * 원장에 넣을 학년도는 이 상수를 쓴다 — 이관이 `currentAcademicYear()` 를 넘기면
+ * 3월에 학년도가 넘어갈 때 2027 블록의 값을 2028 로 적재하는데, **대조는 양쪽이
+ * 같은 시트에서 나오므로 그대로 통과한다.** 조용히 한 해 틀린 원장이 남는다.
+ *
+ * 아래 정규식과 갈리면 `import.test.ts` 의 02 fixture 헤더가 이 상수로 만들어져
+ * 6건이 빨개진다 — 주석으로 적어 둔 결합은 썩지만 이건 안 썩는다.
+ * 시트에 다음 학년도 열이 생기면 이 상수와 아래 정규식을 함께 올린다.
+ */
+export const BAEJUNG_CURRENT_YEAR = 2027;
+
 const BLOCK_WIDTH = 6; // 블록당 sub-type 컬럼 수
 
 /** 02. 배정리스트 → 원서접수 AssignmentRecord[] (r1 헤더의 '수시' 기준 그리드 대표) */
@@ -56,8 +69,12 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const opSusiCol = repColOf("운영");
   const devSusiCol = repColOf("개발");
 
-  const op2027Block = blockCols.find((b) => b.year === "2027" && b.role === "운영");
-  const dev2027Block = blockCols.find((b) => b.year === "2027" && b.role === "개발");
+  const op2027Block = blockCols.find(
+    (b) => b.year === "2027" && b.role === "운영",
+  );
+  const dev2027Block = blockCols.find(
+    (b) => b.year === "2027" && b.role === "개발",
+  );
   const dev2027ColByLabel = new Map(
     (dev2027Block?.subtypes ?? []).map((st) => [st.label, st.col]),
   );
@@ -72,18 +89,21 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     for (const b of blockCols) {
       for (const st of b.subtypes) {
         const v = (row[st.col] ?? "").trim();
-        if (v) detail.push({ label: `${b.year} ${st.label} ${b.role}`, value: v });
+        if (v)
+          detail.push({ label: `${b.year} ${st.label} ${b.role}`, value: v });
       }
     }
     const operator = opSusiCol >= 0 ? (row[opSusiCol] ?? "").trim() : "";
     const developer = devSusiCol >= 0 ? (row[devSusiCol] ?? "").trim() : "";
 
-    const subtypes: { label: string; operator: string; developer: string }[] = [];
+    const subtypes: { label: string; operator: string; developer: string }[] =
+      [];
     for (const st of op2027Block?.subtypes ?? []) {
       const op = (row[st.col] ?? "").trim();
       const devCol = dev2027ColByLabel.get(st.label);
       const dev = devCol != null ? (row[devCol] ?? "").trim() : "";
-      if (op || dev) subtypes.push({ label: st.label, operator: op, developer: dev });
+      if (op || dev)
+        subtypes.push({ label: st.label, operator: op, developer: dev });
     }
 
     const universityType =
@@ -155,7 +175,9 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
 }
 
 /** AssignmentRecord[] → 대학명 기준 union 행 (가나다 정렬) */
-export function joinByUniversity(recs: AssignmentRecord[]): UnivAssignmentRow[] {
+export function joinByUniversity(
+  recs: AssignmentRecord[],
+): UnivAssignmentRow[] {
   const map = new Map<string, UnivAssignmentRow>();
   for (const r of recs) {
     let row = map.get(r.university);

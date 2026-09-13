@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseBaejungList, parsePims, parseSimpleSheet } from "../parse";
+import {
+  parseBaejungList,
+  parsePims,
+  parseSimpleSheet,
+  BAEJUNG_CURRENT_YEAR,
+} from "../parse";
 import type { AssignmentSheet } from "../schemas";
 import { toLedgerRows, normalizeUniversityName } from "../import";
 
@@ -24,8 +29,12 @@ function header0(): string[] {
   const r = blank();
   r[1] = "대분류";
   r[3] = "대학명";
-  r[12] = "2027학년도 운영자";
-  r[18] = "2027학년도 개발자";
+  // 헤더를 **상수로 만든다** — 파서의 정규식과 이 상수가 갈리면 여기서 빨개진다.
+  // 파서는 학년도를 시트 헤더 문자열에서 찾고 시계에서 도출하지 않는다. 이관이
+  // `currentAcademicYear()` 를 넘기면 3월에 학년도가 넘어갈 때 2027 블록의 값을
+  // 2028 로 적재하고, 대조는 양쪽이 같은 시트에서 나오므로 그대로 통과한다.
+  r[12] = `${BAEJUNG_CURRENT_YEAR}학년도 운영자`;
+  r[18] = `${BAEJUNG_CURRENT_YEAR}학년도 개발자`;
   r[24] = "2026학년도 운영자";
   r[30] = "2026학년도 개발자";
   return r;
