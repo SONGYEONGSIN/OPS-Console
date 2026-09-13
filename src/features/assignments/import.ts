@@ -194,3 +194,69 @@ export function toLedgerRows(
 
   return { rows: [...byKey.values()], issues };
 }
+
+/** 대조 결과. 건수뿐 아니라 **어느 칸인지**를 남긴다 — 건수만으로는 못 고친다. */
+export type ReconcileResult = {
+  universities: { sheet: number; ledger: number };
+  cells: { sheet: number; ledger: number };
+  /** 시트에 있고 원장에 없는 칸 (자연키). 이관이 일부만 들어간 경우. */
+  missingInLedger: string[];
+  /** 원장에 있고 시트에 없는 칸. 손으로 넣었거나 시트에서 지워진 경우. */
+  extraInLedger: string[];
+  /** 같은 칸에 이름이 다른 경우. 칸 자체는 양쪽에 있다. */
+  nameMismatch: { key: string; sheet: string; ledger: string }[];
+  /** 위 셋의 합. **0 이어야 화면을 교체한다**(설계 §9.1). */
+  mismatchCount: number;
+};
+
+/**
+ * 시트 ↔ 원장 대조. **화면 교체(PR4) 전의 안전장치다.**
+ *
+ * 이관이 조용히 일부만 들어가면 PR4 에서 배정이 사라진 것처럼 보인다. 그때
+ * 원인을 찾는 것보다 교체 전에 여기서 막는 것이 싸다. 그래서 설계가 "대조를
+ * 통과해야 한다" 로 못 박았고, 보는 것은 대학 수·칸 수·칸별 이름이다.
+ *
+ * 자연키로 대조하므로 행 순서에 걸리지 않는다. 학년도가 자연키에 있어 다른 해의
+ * 같은 칸은 다른 칸으로 센다.
+ */
+export function reconcile(
+  sheetRows: LedgerRowDraft[],
+  ledgerRows: LedgerRowDraft[],
+): ReconcileResult {
+  const sheetByKey = new Map(sheetRows.map((r) => [keyOf(r), r]));
+  const ledgerByKey = new Map(ledgerRows.map((r) => [keyOf(r), r]));
+
+  const missingInLedger: string[] = [];
+  const nameMismatch: ReconcileResult["nameMismatch"] = [];
+  for (const [key, sheetRow] of sheetByKey) {
+    const ledgerRow = ledgerByKey.get(key);
+    if (!ledgerRow) {
+      missingInLedger.push(key);
+      continue;
+    }
+    if (ledgerRow.assignee_name !== sheetRow.assignee_name) {
+      nameMismatch.push({
+        key,
+        sheet: sheetRow.assignee_name,
+        ledger: ledgerRow.assignee_name,
+      });
+    }
+  }
+
+  const extraInLedger = [...ledgerByKey.keys()].filter(
+    (key) => !sheetByKey.has(key),
+  );
+
+  const uniq = (rows: LedgerRowDraft[]) =>
+    new Set(rows.map((r) => r.university_name)).size;
+
+  return {
+    universities: { sheet: uniq(sheetRows), ledger: uniq(ledgerRows) },
+    cells: { sheet: sheetByKey.size, ledger: ledgerByKey.size },
+    missingInLedger: missingInLedger.sort(),
+    extraInLedger: extraInLedger.sort(),
+    nameMismatch,
+    mismatchCount:
+      missingInLedger.length + extraInLedger.length + nameMismatch.length,
+  };
+}
