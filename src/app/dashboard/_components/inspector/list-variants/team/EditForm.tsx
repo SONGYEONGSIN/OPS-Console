@@ -3,6 +3,7 @@ import type { EditFormProps } from "../types";
 import { OPERATORS, OPERATOR_TEAMS } from "@/features/auth/operators";
 import type { OperatorPermission } from "@/features/operators/schemas";
 import { sidebarSections, type SbItem } from "../../../../_data";
+import { DateInput } from "@/components/common/DateInput";
 import {
   TENURE_GROUPS,
   TENURE_GROUP_LABELS,
@@ -175,8 +176,7 @@ export function TeamForm({
               경력 시작일{" "}
               <span className="text-faint">(비우면 입사일 사용)</span>
             </span>
-            <input
-              type="date"
+            <DateInput
               aria-label="경력 시작일"
               value={row.careerStartAt ?? ""}
               onChange={(e) =>
