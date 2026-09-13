@@ -144,7 +144,12 @@ function plain(
   return out;
 }
 
-const keyOf = (r: LedgerRowDraft) =>
+/**
+ * 자연키 문자열. **대조와 이력 비교가 같은 키를 써야** 어긋나지 않는다 — 이관
+ * action 이 '이 칸의 이전 담당자' 를 찾을 때도 이 함수를 쓴다. 두 벌로 두면
+ * 한쪽만 컬럼이 늘어도 이력이 조용히 엉뚱한 칸에 붙는다.
+ */
+export const ledgerKeyOf = (r: LedgerRowDraft) =>
   [r.academic_year, r.university_name, r.work_kind, r.subtype, r.role].join(
     "|",
   );
@@ -180,7 +185,7 @@ export function toLedgerRows(
 
   const byKey = new Map<string, LedgerRowDraft>();
   for (const row of drafts) {
-    const key = keyOf(row);
+    const key = ledgerKeyOf(row);
     const seen = byKey.get(key);
     if (seen && seen.assignee_name !== row.assignee_name) {
       issues.push({
@@ -223,8 +228,8 @@ export function reconcile(
   sheetRows: LedgerRowDraft[],
   ledgerRows: LedgerRowDraft[],
 ): ReconcileResult {
-  const sheetByKey = new Map(sheetRows.map((r) => [keyOf(r), r]));
-  const ledgerByKey = new Map(ledgerRows.map((r) => [keyOf(r), r]));
+  const sheetByKey = new Map(sheetRows.map((r) => [ledgerKeyOf(r), r]));
+  const ledgerByKey = new Map(ledgerRows.map((r) => [ledgerKeyOf(r), r]));
 
   const missingInLedger: string[] = [];
   const nameMismatch: ReconcileResult["nameMismatch"] = [];

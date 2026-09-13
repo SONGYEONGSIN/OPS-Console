@@ -69,6 +69,22 @@ describe("listLedgerRows", () => {
     expect(reconcile(rows, rows).mismatchCount).toBe(0);
   });
 
+  it("이력 비교에 쓸 assignee_email 도 함께 준다", async () => {
+    // 이력의 단위는 이메일이다(마이그레이션 주석). 이름만 비교하면 운영자 메일이
+    // 바뀐 경우를 '안 바뀜' 으로 읽어 이력에 구멍이 난다.
+    h.range.mockResolvedValueOnce({
+      data: [dbRow({ assignee_email: "a@x.com" })],
+      error: null,
+    });
+
+    const rows = await listLedgerRows(2027);
+
+    expect(rows[0].assignee_email).toBe("a@x.com");
+    // 목이 반환값을 지어내므로 **select 에 컬럼이 들어갔는지까지** 본다 —
+    // 이 단언이 없으면 컬럼을 안 넣고도 초록이다.
+    expect(h.select.mock.calls[0][0]).toContain("assignee_email");
+  });
+
   it("university_type 이 비면 undefined 다 — null 은 시트 쪽 모양에 없다", async () => {
     h.range.mockResolvedValueOnce({
       data: [dbRow({ university_type: null })],

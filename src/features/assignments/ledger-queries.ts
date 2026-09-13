@@ -3,6 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import type { LedgerRowDraft } from "./import";
 import type { AssignmentRole, AssignmentWorkKind } from "./ledger-schemas";
 
+/**
+ * 원장 한 행 = 시트 쪽 초안 + **이메일**.
+ *
+ * 이력의 단위가 이메일이라(마이그레이션 주석) 이력 비교에 이 칸이 필요하다 —
+ * 이름만 비교하면 운영자 메일이 바뀐 경우를 '안 바뀜' 으로 읽는다. `LedgerRowDraft`
+ * 를 넓힌 모양이라 `reconcile` 에는 그대로 넘어간다.
+ */
+export type LedgerRow = LedgerRowDraft & { assignee_email: string | null };
+
 /** PostgREST Max-Rows cap. 한 번만 조회하면 뒤쪽 배정이 조용히 사라진다. */
 const CHUNK = 1000;
 const MAX_PAGES = 20;
@@ -21,15 +30,15 @@ const MAX_PAGES = 20;
  */
 export async function listLedgerRows(
   academicYear: number,
-): Promise<LedgerRowDraft[]> {
+): Promise<LedgerRow[]> {
   const supabase = await createClient();
-  const out: LedgerRowDraft[] = [];
+  const out: LedgerRow[] = [];
 
   for (let p = 0; p < MAX_PAGES; p++) {
     const { data, error } = await supabase
       .from("assignments")
       .select(
-        "academic_year, university_name, work_kind, subtype, role, assignee_name, university_type",
+        "academic_year, university_name, work_kind, subtype, role, assignee_email, assignee_name, university_type",
       )
       .eq("academic_year", academicYear)
       .range(p * CHUNK, p * CHUNK + CHUNK - 1);
@@ -46,6 +55,7 @@ export async function listLedgerRows(
         work_kind: r.work_kind as AssignmentWorkKind,
         subtype: (r.subtype as string | null) ?? "",
         role: r.role as AssignmentRole,
+        assignee_email: (r.assignee_email as string | null) ?? null,
         assignee_name: (r.assignee_name as string | null) ?? "",
         university_type: (r.university_type as string | null) ?? undefined,
       })),
