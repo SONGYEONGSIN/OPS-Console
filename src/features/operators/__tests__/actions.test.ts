@@ -5,7 +5,7 @@ const { mockGetCurrentOperator, mockUpdateChain, mockInsertChain } = vi.hoisted(
     mockGetCurrentOperator: vi.fn(),
     mockUpdateChain: vi.fn(),
     mockInsertChain: vi.fn(),
-  })
+  }),
 );
 
 vi.mock("@/features/auth/queries", () => ({
@@ -48,8 +48,16 @@ const adminMe = {
   permission: "admin" as const,
 };
 
-const memberMe = { ...adminMe, email: "member@example.com", permission: "member" as const };
-const viewerMe = { ...adminMe, email: "viewer@example.com", permission: "viewer" as const };
+const memberMe = {
+  ...adminMe,
+  email: "member@example.com",
+  permission: "member" as const,
+};
+const viewerMe = {
+  ...adminMe,
+  email: "viewer@example.com",
+  permission: "viewer" as const,
+};
 
 const validCreate = {
   email: "new@example.com",
@@ -174,5 +182,52 @@ describe("본인 강등 차단", () => {
       name: "이름만 변경",
     });
     expect(r.ok).toBe(true);
+  });
+});
+
+// 배정 대상 여부와 연차 그룹은 배정의 근거가 된다 — 아무나 켜면 배정이 흔들린다.
+describe("배정 칸 저장 권한", () => {
+  it("updateOperator — member가 tenure_group을 바꾸려 하면 차단", async () => {
+    mockGetCurrentOperator.mockResolvedValue(memberMe);
+    const r = await updateOperator("00000000-0000-0000-0000-000000000001", {
+      tenure_group: "3",
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/권한/);
+    expect(mockUpdateChain).not.toHaveBeenCalled();
+  });
+
+  it("updateOperator — viewer가 assignable을 켜려 하면 차단", async () => {
+    mockGetCurrentOperator.mockResolvedValue(viewerMe);
+    const r = await updateOperator("00000000-0000-0000-0000-000000000001", {
+      assignable: true,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/권한/);
+    expect(mockUpdateChain).not.toHaveBeenCalled();
+  });
+
+  it("updateOperator — admin은 배정 칸 셋을 저장한다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    mockUpdateChain.mockResolvedValue({
+      data: { id: "x", email: "other@example.com" },
+      error: null,
+    });
+    const r = await updateOperator("00000000-0000-0000-0000-000000000001", {
+      assignable: true,
+      tenure_group: "1-2",
+      career_start_at: "2011-02-07",
+    });
+    expect(r.ok).toBe(true);
+    expect(mockUpdateChain).toHaveBeenCalled();
+  });
+
+  it("updateOperator — 미등록 그룹은 admin이라도 거부된다", async () => {
+    mockGetCurrentOperator.mockResolvedValue(adminMe);
+    const r = await updateOperator("00000000-0000-0000-0000-000000000001", {
+      tenure_group: "7",
+    });
+    expect(r.ok).toBe(false);
+    expect(mockUpdateChain).not.toHaveBeenCalled();
   });
 });

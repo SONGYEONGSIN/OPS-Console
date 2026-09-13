@@ -3,6 +3,11 @@ import type { EditFormProps } from "../types";
 import { OPERATORS, OPERATOR_TEAMS } from "@/features/auth/operators";
 import type { OperatorPermission } from "@/features/operators/schemas";
 import { sidebarSections, type SbItem } from "../../../../_data";
+import { DateInput } from "@/components/common/DateInput";
+import {
+  TENURE_GROUPS,
+  TENURE_GROUP_LABELS,
+} from "@/features/assignments/tenure";
 
 export function TeamForm({
   row,
@@ -131,6 +136,57 @@ export function TeamForm({
           <span className="text-faint">(팀 메일 참조 미포함)</span>
         </span>
       </label>
+      {canEditPermission && (
+        <fieldset className="block text-xs">
+          <legend className="mb-1 block text-muted">업무배정</legend>
+          <label className="mb-2 flex items-center gap-1.5 text-ink">
+            <input
+              type="checkbox"
+              aria-label="업무배정 대상"
+              checked={row.assignable ?? false}
+              onChange={(e) => setRow({ ...row, assignable: e.target.checked })}
+              className="h-3.5 w-3.5"
+            />
+            <span>
+              업무배정 대상{" "}
+              <span className="text-faint">(끄면 제안에서 빠진다)</span>
+            </span>
+          </label>
+          <label className="mb-2 block">
+            <span className="mb-1 block text-muted">연차 그룹</span>
+            <select
+              aria-label="연차 그룹"
+              value={row.tenureGroup ?? ""}
+              onChange={(e) =>
+                setRow({ ...row, tenureGroup: e.target.value || null })
+              }
+              className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            >
+              <option value="">미설정</option>
+              {/* 옵션을 직접 적지 않는다 — 그룹이 늘 때 여기만 빠지면 그 사람을 편집할 때 그룹이 지워진다. */}
+              {TENURE_GROUPS.map((group) => (
+                <option key={group} value={group}>
+                  {TENURE_GROUP_LABELS[group]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-muted">
+              경력 시작일{" "}
+              <span className="text-faint">(비우면 입사일 사용)</span>
+            </span>
+            <DateInput
+              aria-label="경력 시작일"
+              value={row.careerStartAt ?? ""}
+              onChange={(e) =>
+                setRow({ ...row, careerStartAt: e.target.value || null })
+              }
+              className="w-full border border-line-soft bg-field-bg px-2 py-1 text-ink transition-colors focus:border-ink focus:bg-white"
+            />
+          </label>
+        </fieldset>
+      )}
       {canEditPermission && (
         <label className="block text-xs">
           <span className="mb-1 block text-muted">권한</span>

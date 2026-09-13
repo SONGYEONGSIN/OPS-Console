@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OPERATOR_TEAMS } from "@/features/auth/operators";
+import { tenureGroupSchema } from "@/features/assignments/tenure";
 
 export const operatorStatusSchema = z.enum([
   "active",
@@ -57,6 +58,12 @@ export const operatorRowSchema = z.object({
   permission: operatorPermissionSchema,
   allowed_menus: z.array(z.string()).default([]),
   mail_cc_excluded: z.boolean().default(false),
+  // 배정 대상 여부 — **파생하지 않는다.** 테스트 계정이 실 운영자와 구별되지 않아
+  // 어떤 규칙도 그것을 걸러내지 못한다(설계 §3.4). default false 라, 새로 들어온
+  // 사람에게 대학이 저절로 배정되는 일이 없다.
+  assignable: z.boolean().default(false),
+  tenure_group: tenureGroupSchema.nullable().optional(),
+  career_start_at: z.string().nullable().optional(),
   leader: z.string().nullable(),
   phone: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),
@@ -80,6 +87,9 @@ export const operatorUpdateSchema = z.object({
   permission: operatorPermissionSchema.optional(),
   allowed_menus: z.array(z.string()).optional(),
   mail_cc_excluded: z.boolean().optional(),
+  assignable: z.boolean().optional(),
+  tenure_group: tenureGroupSchema.nullable().optional(),
+  career_start_at: z.string().nullable().optional(),
   leader: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   deleted_reason: z.string().nullable().optional(),

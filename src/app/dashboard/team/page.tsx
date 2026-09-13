@@ -81,6 +81,9 @@ export default async function TeamPage({
       permission: row.permission,
       allowed_menus: row.allowedMenus,
       mail_cc_excluded: row.mailCcExcluded ?? false,
+      assignable: row.assignable ?? false,
+      tenure_group: row.tenureGroup ?? null,
+      career_start_at: row.careerStartAt ?? null,
       leader: row.leader ?? null,
       phone: row.operatorPhone ?? null,
       deleted_reason: isNowDeleted ? (row.deletedReason ?? null) : null,
@@ -117,6 +120,9 @@ function operatorToListRow(op: OperatorRow): ListRow {
     permission: op.permission,
     allowedMenus: op.allowed_menus,
     mailCcExcluded: op.mail_cc_excluded,
+    assignable: op.assignable,
+    tenureGroup: op.tenure_group ?? null,
+    careerStartAt: op.career_start_at ?? null,
   };
 }
 

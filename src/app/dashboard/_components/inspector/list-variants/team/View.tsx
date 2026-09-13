@@ -7,6 +7,7 @@ import {
   tenureYears,
 } from "@/features/auth/operators";
 import { PERMISSION_LABEL } from "@/features/operators/schemas";
+import { TENURE_GROUP_LABELS } from "@/features/assignments/tenure";
 import { Section, DefList, Divider } from "../shared";
 import { statusBadgeTone } from "../badge-tone";
 
@@ -75,6 +76,19 @@ export function TeamView({ row }: ViewProps) {
               },
               { term: "소속 팀", desc: row.owner },
               { term: "직급", desc: row.meta ?? "-" },
+              { term: "배정 대상", desc: row.assignable ? "예" : "아니오" },
+              {
+                term: "연차 그룹",
+                desc: row.tenureGroup
+                  ? (TENURE_GROUP_LABELS[
+                      row.tenureGroup as keyof typeof TENURE_GROUP_LABELS
+                    ] ?? row.tenureGroup)
+                  : "미설정",
+              },
+              {
+                term: "경력 시작일",
+                desc: row.careerStartAt ?? "미설정 (입사일 사용)",
+              },
               {
                 term: "자동 CC",
                 desc: row.mailCcExcluded
@@ -160,6 +174,28 @@ export function TeamView({ row }: ViewProps) {
               desc: row.mailCcExcluded ? "제외 (백업요청 참조 미포함)" : "포함",
             },
             { term: "SSO", desc: "Microsoft Entra · 14일 자동 갱신" },
+          ]}
+        />
+      </Section>
+
+      <Divider />
+
+      <Section title="업무배정">
+        <DefList
+          items={[
+            { term: "배정 대상", desc: row.assignable ? "예" : "아니오" },
+            {
+              term: "연차 그룹",
+              desc: row.tenureGroup
+                ? (TENURE_GROUP_LABELS[
+                    row.tenureGroup as keyof typeof TENURE_GROUP_LABELS
+                  ] ?? row.tenureGroup)
+                : "미설정",
+            },
+            {
+              term: "경력 시작일",
+              desc: row.careerStartAt ?? "미설정 (입사일 사용)",
+            },
           ]}
         />
       </Section>
