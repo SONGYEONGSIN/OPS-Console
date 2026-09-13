@@ -9,12 +9,16 @@ import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getCurrentOperator } from "@/features/auth/queries";
-import { fetchAssignmentSheet, SHEET_NAMES } from "@/features/assignments/queries";
+import {
+  fetchAssignmentSheet,
+  SHEET_NAMES,
+} from "@/features/assignments/queries";
 import {
   parseBaejungList,
   parseSimpleSheet,
   parsePims,
   joinByUniversity,
+  BAEJUNG_CURRENT_YEAR,
 } from "@/features/assignments/parse";
 import type { AssignmentRecord } from "@/features/assignments/schemas";
 import {
@@ -26,13 +30,22 @@ import { parsePricingSheet } from "@/features/assignments/pricing-parse";
 import { AssignmentControls } from "./_components/AssignmentControls";
 import { SheetGrid } from "./_components/SheetGrid";
 import { PricingSheet } from "./_components/PricingSheet";
+import { ImportAssignments } from "./ImportAssignments";
 
 const PAGE_SIZE = 30;
 
 const TABS = [
   { key: "univ", label: "대학배정", href: "/dashboard/assignments?tab=univ" },
-  { key: "duties", label: "업무분장", href: "/dashboard/assignments?tab=duties" },
-  { key: "pricing", label: "가격정책", href: "/dashboard/assignments?tab=pricing" },
+  {
+    key: "duties",
+    label: "업무분장",
+    href: "/dashboard/assignments?tab=duties",
+  },
+  {
+    key: "pricing",
+    label: "가격정책",
+    href: "/dashboard/assignments?tab=pricing",
+  },
 ] as const;
 
 function ErrorBox() {
@@ -43,8 +56,8 @@ function ErrorBox() {
           SharePoint 데이터를 불러올 수 없습니다
         </p>
         <p className="mt-2 text-xs text-muted">
-          환경변수 (AZURE_AD_* / SHAREPOINT_DRIVE_ID / SHAREPOINT_ASSIGNMENTS_ITEM_ID)
-          또는 Azure AD 앱 권한을 확인하세요.
+          환경변수 (AZURE_AD_* / SHAREPOINT_DRIVE_ID /
+          SHAREPOINT_ASSIGNMENTS_ITEM_ID) 또는 Azure AD 앱 권한을 확인하세요.
         </p>
       </div>
     </section>
@@ -106,11 +119,15 @@ export default async function AssignmentsPage({
     );
     const sheetRows = sheet ? Math.max(0, sheet.rowsText.length - 1) : 0;
     // pricing은 좌(원서접수)/우(PIMS) 분할 + 빈 행 기준 섹션 카드. duties는 SheetGrid 유지.
-    const body = sheet
-      ? tab === "pricing"
-        ? <PricingSheet parsed={parsePricingSheet(sheet)} />
-        : <SheetGrid sheet={sheet} />
-      : <ErrorBox />;
+    const body = sheet ? (
+      tab === "pricing" ? (
+        <PricingSheet parsed={parsePricingSheet(sheet)} />
+      ) : (
+        <SheetGrid sheet={sheet} />
+      )
+    ) : (
+      <ErrorBox />
+    );
     return (
       <>
         {makeHeader(sheetRows)}
@@ -144,14 +161,26 @@ export default async function AssignmentsPage({
   const recs: AssignmentRecord[] = [
     ...(baejung ? parseBaejungList(baejung) : []),
     ...(daehakwon
-      ? parseSimpleSheet(daehakwon, "대학원", { uni: /대학명/, op: /^운영자$/, dev: /^개발자$/ })
+      ? parseSimpleSheet(daehakwon, "대학원", {
+          uni: /대학명/,
+          op: /^운영자$/,
+          dev: /^개발자$/,
+        })
       : []),
     ...(pims ? parsePims(pims) : []),
     ...(sungjuk
-      ? parseSimpleSheet(sungjuk, "성적산출", { uni: /대학명/, op: /^운영자$/, dev: /^개발자$/ })
+      ? parseSimpleSheet(sungjuk, "성적산출", {
+          uni: /대학명/,
+          op: /^운영자$/,
+          dev: /^개발자$/,
+        })
       : []),
     ...(sangdam
-      ? parseSimpleSheet(sangdam, "상담앱", { uni: /학교명|대학명/, op: /^운영자$/, dev: /^개발자$/ })
+      ? parseSimpleSheet(sangdam, "상담앱", {
+          uni: /학교명|대학명/,
+          op: /^운영자$/,
+          dev: /^개발자$/,
+        })
       : []),
   ];
 
@@ -197,9 +226,26 @@ export default async function AssignmentsPage({
           />
         }
         inlineFilters={
-          <ScopeChips key="assignments-scope" total={total} mineLabel="내 배정" />
+          <ScopeChips
+            key="assignments-scope"
+            total={total}
+            mineLabel="내 배정"
+          />
         }
-        extraActionsLeft={sourceAction}
+        extraActionsLeft={
+          <>
+            {sourceAction}
+            {/*
+             * 이관은 **대학배정 탭에만** 둔다 — 업무분장·가격정책은 원장과 무관하다.
+             * admin 에게만 보이지만 **가림은 권한이 아니라서** action 이 다시 확인한다.
+             * 학년도는 `BAEJUNG_CURRENT_YEAR` 다. `currentAcademicYear()` 를 쓰면
+             * 3월에 파서가 읽는 블록과 갈려 한 해 틀린 원장이 조용히 남는다.
+             */}
+            {me?.permission === "admin" && (
+              <ImportAssignments academicYear={BAEJUNG_CURRENT_YEAR} />
+            )}
+          </>
+        }
         footer={
           <ListPagination
             key="assignments-pagination"
