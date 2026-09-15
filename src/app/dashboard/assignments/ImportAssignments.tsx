@@ -147,28 +147,46 @@ export function ImportAssignments({ academicYear }: { academicYear: number }) {
                 </div>
               )}
 
-              {result.unresolvedNames.length > 0 && (
+              {result.unresolvedOperatorNames.length > 0 && (
                 <div className="border border-line-soft bg-situation-bg p-3">
                   <p className="text-xs font-medium text-ink">
-                    이메일을 못 맞춘 이름{" "}
+                    이메일을 못 맞춘 운영자{" "}
                     <span className="tabular-nums">
-                      {result.unresolvedNames.length}
+                      {result.unresolvedOperatorNames.length}
                     </span>
                     개
                   </p>
                   <p className="mt-1 text-2xs text-muted">
                     운영자 명단에 없거나 같은 이름이 둘 이상입니다. 이름은
                     원장에 남았지만 담당자로는 안 잡히고 이력도 남지 않습니다 —
-                    운영자 이름을 시트와 맞춰 주세요.
+                    시트의 이름을 맞춰 주세요.
                   </p>
                   <ul className="mt-2 space-y-0.5">
-                    {result.unresolvedNames.map((n) => (
+                    {result.unresolvedOperatorNames.map((n) => (
                       <li key={n} className="text-xs text-ink-soft">
                         {n}
                       </li>
                     ))}
                   </ul>
                 </div>
+              )}
+
+              {/*
+                개발자는 **고칠 것이 아니다.** `operators` 는 운영부 명단이라
+                개발부가 없는 것이 정상이고, 이름을 나열하면 매번 같은 목록이
+                떠서 위 운영자 칸을 묻는다. 그래도 아주 감추지는 않는다 —
+                이 칸들이 이력·되돌리기 밖이라는 사실은 알아야 한다.
+              */}
+              {result.unresolvedDeveloperCount > 0 && (
+                <p className="text-2xs text-muted">
+                  개발자{" "}
+                  <span className="tabular-nums">
+                    {result.unresolvedDeveloperCount}
+                  </span>
+                  명은 이메일이 안 잡힙니다 — 정상입니다(운영자 명단에 개발부가
+                  없습니다). 이름은 원장에 남고, 이 칸들은 이력·되돌리기 대상이
+                  아닙니다.
+                </p>
               )}
 
               {result.issues.length > 0 && (

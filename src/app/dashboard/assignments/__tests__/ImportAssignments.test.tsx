@@ -29,7 +29,8 @@ const PASSING = {
   // 칸 수와 이력 줄 수를 **다른 값으로** 둔다 — 같게 두면 한 숫자를 두 번 그리는
   // 실수를 잡지 못하고, findByText 가 다중 매치로 던진다.
   history: 4200,
-  unresolvedNames: [],
+  unresolvedOperatorNames: [],
+  unresolvedDeveloperCount: 0,
   issues: [],
   reconcile: {
     universities: { sheet: 286, ledger: 286 },
@@ -95,12 +96,40 @@ describe("ImportAssignments", () => {
     expect(screen.getByText(/고려대학교/)).toBeInTheDocument();
   });
 
-  it("이름을 못 맞춘 칸을 이름으로 보여준다 — 숫자만 주면 다 된 줄 안다", async () => {
-    result.value = { ...PASSING, unresolvedNames: ["김없음", "이중복"] };
+  it("이름을 못 맞춘 운영자를 이름으로 보여준다 — 숫자만 주면 다 된 줄 안다", async () => {
+    result.value = {
+      ...PASSING,
+      unresolvedOperatorNames: ["김없음", "이중복"],
+    };
     render(<ImportAssignments academicYear={2027} />);
     fireEvent.click(screen.getByRole("button", { name: /원장 이관/ }));
     expect(await screen.findByText(/김없음/)).toBeInTheDocument();
     expect(screen.getByText(/이중복/)).toBeInTheDocument();
+  });
+
+  /**
+   * 라이브에서 27개가 떴는데 26개가 개발자였다(2026-09-15). 개발부는 `operators`
+   * 에 없는 게 정상이라 **고칠 것이 없는데 '맞춰 주세요' 를 붙여 놨었다.** 매번
+   * 같은 목록이 뜨면 진짜 신호가 묻힌다.
+   */
+  it("개발자 미매칭은 이름 목록이 아니라 한 줄 건수로 알린다 — 고칠 것이 아니다", async () => {
+    result.value = { ...PASSING, unresolvedDeveloperCount: 26 };
+    render(<ImportAssignments academicYear={2027} />);
+    fireEvent.click(screen.getByRole("button", { name: /원장 이관/ }));
+
+    expect(await screen.findByText(/개발자/)).toBeInTheDocument();
+    expect(screen.getByText("26")).toBeInTheDocument();
+    // 조치를 요구하는 문구가 붙으면 안 된다 — 고칠 것이 없다.
+    expect(screen.queryByText(/맞춰 주세요/)).toBeNull();
+  });
+
+  it("운영자 미매칭이 없으면 그 칸을 아예 안 그린다", async () => {
+    result.value = { ...PASSING, unresolvedDeveloperCount: 26 };
+    render(<ImportAssignments academicYear={2027} />);
+    fireEvent.click(screen.getByRole("button", { name: /원장 이관/ }));
+
+    await screen.findByText(/개발자/);
+    expect(screen.queryByText(/못 맞춘 운영자/)).toBeNull();
   });
 
   it("사람이 봐야 하는 자리를 대학 이름으로 보여준다", async () => {
