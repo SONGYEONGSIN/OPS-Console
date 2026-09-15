@@ -103,15 +103,14 @@ describe("ImportAssignments", () => {
     expect(screen.getByText(/이중복/)).toBeInTheDocument();
   });
 
-  it("파서가 보고한 모호함을 보여준다 — 추측해 채우지 않은 자리다", async () => {
+  it("사람이 봐야 하는 자리를 대학 이름으로 보여준다", async () => {
     result.value = {
       ...PASSING,
       issues: [
         {
-          kind: "pims-ambiguous",
+          kind: "duplicate-conflict",
           university: "연세대학교",
-          detail:
-            "FULL 과 환/충 이 같은 값으로 읽혀 FULL 배정 여부를 가릴 수 없다.",
+          detail: "PIMS · FULL · 운영 칸에 이름이 둘이다 — 뒤에 온 값을 쓴다.",
         },
       ],
     };

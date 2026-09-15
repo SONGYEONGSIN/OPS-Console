@@ -336,14 +336,18 @@ describe("importAssignments", () => {
       expect(r.reconcile.missingInLedger[0]).toContain("서울대학교");
     });
 
-    it("파서가 가린 PIMS 모호성을 함께 돌려준다", async () => {
+    it("같은 칸에 이름이 둘이면 이슈로 돌려준다", async () => {
+      // 요지는 **이슈가 action 결과까지 흘러가는가** 다. PIMS 의 '모호함' 은 파서가
+      // 두 칸(FULL·환충)을 따로 주게 되면서 사라졌고(2026-09-15), 남은 종류가 이것이다.
+      // 조용히 접으면 배정 하나가 말없이 없어진다.
       h.fetchSheet.mockImplementation(async (name: string) =>
         name === SHEET_NAMES.PIMS
           ? {
               ...PIMS_SHEET,
               rowsText: [
                 ["대학명", "운영자 FULL", "운영자 환/충"],
-                ["서울대학교", "가운영", "가운영"],
+                ["서울대학교", "가운영", ""],
+                ["서울대학교", "다른사람", ""],
               ],
             }
           : null,
@@ -352,7 +356,10 @@ describe("importAssignments", () => {
       const r = ok(await importAssignments(2027));
 
       expect(r.issues).toHaveLength(1);
-      expect(r.issues[0].kind).toBe("pims-ambiguous");
+      expect(r.issues[0].kind).toBe("duplicate-conflict");
+      expect(r.issues[0].university).toBe("서울대학교");
+      // 자연키가 같으니 원장 행은 하나다(뒤에 온 값을 쓴다).
+      expect(r.rows).toBe(1);
     });
   });
 

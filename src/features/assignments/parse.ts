@@ -147,7 +147,17 @@ export function parseSimpleSheet(
   return out;
 }
 
-/** 04. PIMS — 운영자 FULL(대표) + 운영자 환/충(detail). 개발자 없음. */
+/**
+ * 04. PIMS — 하위유형 **FULL·환충** 두 칸. 개발자는 없다.
+ *
+ * **두 칸은 독립된 배정이다**(사용자 확인 2026-09-15). 그래서 `subtypes` 로 따로
+ * 내보낸다 — `operator` 는 `full || hwan` 으로 접힌 그리드 대표값이라 **배정을 세는
+ * 쪽이 쓰면 한쪽이 조용히 사라진다.**
+ *
+ * `접수운영자` 칸은 읽지 않는다 — 02 배정리스트의 수시 담당자와 70/70 일치하는
+ * 사본이라(라이브 실측 2026-09-15, 대조군 `운영자 FULL` 은 43%) 원장에 넣으면 같은
+ * 배정이 두 벌이 된다. `前 운영자` 도 과거값이라 읽지 않는다.
+ */
 export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
   const rows = sheet.rowsText;
   if (rows.length < 2) return [];
@@ -164,12 +174,28 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
     if (university === "") continue;
     const full = (row[fullCol] ?? "").trim();
     const hwan = hwanCol >= 0 ? (row[hwanCol] ?? "").trim() : "";
-    const operator = full || hwan; // 이름만 표시 — FULL 없으면 환/충 이름으로 대체
+    // 그리드 폴백·검색용 대표값. FULL 이 비면 환/충 이름이 올라와 둘이 구분되지
+    // 않으므로 **배정의 단위로 쓰면 안 된다** — 그건 아래 subtypes 다.
+    const operator = full || hwan;
     const detail: AssignmentDetail[] = [];
     if (hwan) {
       detail.push({ label: "운영자 환/충", value: hwan });
     }
-    out.push({ university, service: "PIMS", operator, developer: "", detail });
+    // 라벨은 **`FULL`·`환충`** 고정이다 — 원장 자연키가 이 문자열로 들어가 있어,
+    // 시트 헤더를 따라 `환/충` 으로 적으면 다음 이관이 행을 새로 만들고 기존 행이
+    // 고아가 된다. 빈 칸은 항목을 만들지 않는다(없는 배정을 발명하지 않는다).
+    const subtypes = [
+      ...(full ? [{ label: "FULL", operator: full, developer: "" }] : []),
+      ...(hwan ? [{ label: "환충", operator: hwan, developer: "" }] : []),
+    ];
+    out.push({
+      university,
+      service: "PIMS",
+      operator,
+      developer: "",
+      detail,
+      subtypes,
+    });
   }
   return out;
 }
