@@ -16,7 +16,10 @@ function cell(idx: number, val: string, width = 36): string[] {
 }
 function mergeRows(...rows: string[][]): string[] {
   const out = Array(36).fill("");
-  for (const r of rows) r.forEach((v, i) => { if (v) out[i] = v; });
+  for (const r of rows)
+    r.forEach((v, i) => {
+      if (v) out[i] = v;
+    });
   return out;
 }
 
@@ -24,16 +27,50 @@ const sheet: AssignmentSheet = {
   worksheetName: "02. 배정리스트",
   rowsText: [
     // r0 블록 라벨: B(1)=대분류, D(3)=대학명, M(12)=2027학년도 운영자, S(18)=2027학년도 개발자, Y(24)=2026학년도 운영자, _(30)=2026학년도 개발자
-    mergeRows(cell(1, "대분류"), cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자"), cell(24, "2026학년도 운영자"), cell(30, "2026학년도 개발자")),
+    mergeRows(
+      cell(1, "대분류"),
+      cell(3, "대학명"),
+      cell(12, "2027학년도 운영자"),
+      cell(18, "2027학년도 개발자"),
+      cell(24, "2026학년도 운영자"),
+      cell(30, "2026학년도 개발자"),
+    ),
     // r1 sub-type (각 블록 재외/수시/정시/편입/외국인/백업)
     mergeRows(
-      cell(12, "재외"), cell(13, "수시"), cell(14, "정시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
-      cell(18, "재외"), cell(19, "수시"), cell(20, "정시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
-      cell(24, "재외"), cell(25, "수시"), cell(26, "정시"), cell(27, "편입"), cell(28, "외국인"), cell(29, "백업"),
-      cell(30, "재외"), cell(31, "수시"), cell(32, "정시"), cell(33, "편입"), cell(34, "외국인"), cell(35, "백업"),
+      cell(12, "재외"),
+      cell(13, "수시"),
+      cell(14, "정시"),
+      cell(15, "편입"),
+      cell(16, "외국인"),
+      cell(17, "백업"),
+      cell(18, "재외"),
+      cell(19, "수시"),
+      cell(20, "정시"),
+      cell(21, "편입"),
+      cell(22, "외국인"),
+      cell(23, "백업"),
+      cell(24, "재외"),
+      cell(25, "수시"),
+      cell(26, "정시"),
+      cell(27, "편입"),
+      cell(28, "외국인"),
+      cell(29, "백업"),
+      cell(30, "재외"),
+      cell(31, "수시"),
+      cell(32, "정시"),
+      cell(33, "편입"),
+      cell(34, "외국인"),
+      cell(35, "백업"),
     ),
     // r2 데이터: 전문대학 / 신성대학교, 2027 수시운영=N(13)=기자의, 2027 수시개발=T(19)=권용철, 2027 정시운영=O(14)=김슬기
-    mergeRows(cell(1, "전문대학"), cell(3, "신성대학교"), cell(13, "기자의"), cell(14, "김슬기"), cell(19, "권용철"), cell(25, "기존운영")),
+    mergeRows(
+      cell(1, "전문대학"),
+      cell(3, "신성대학교"),
+      cell(13, "기자의"),
+      cell(14, "김슬기"),
+      cell(19, "권용철"),
+      cell(25, "기존운영"),
+    ),
   ],
   rowCount: 3,
   columnCount: 36,
@@ -60,12 +97,17 @@ describe("parseBaejungList", () => {
     const recs = parseBaejungList(sheet);
     const labels = recs[0].detail.map((d) => d.label);
     expect(labels).toContain("2027 정시 운영");
-    expect(recs[0].detail.find((d) => d.label === "2027 정시 운영")?.value).toBe("김슬기");
+    expect(
+      recs[0].detail.find((d) => d.label === "2027 정시 운영")?.value,
+    ).toBe("김슬기");
     expect(labels).toContain("2026 수시 운영");
   });
 
   it("대학명 빈 행은 제외", () => {
-    const empty: AssignmentSheet = { ...sheet, rowsText: [...sheet.rowsText, Array(36).fill("")] };
+    const empty: AssignmentSheet = {
+      ...sheet,
+      rowsText: [...sheet.rowsText, Array(36).fill("")],
+    };
     expect(parseBaejungList(empty)).toHaveLength(1);
   });
 
@@ -73,22 +115,43 @@ describe("parseBaejungList", () => {
     const shifted: AssignmentSheet = {
       worksheetName: "02. 배정리스트",
       rowsText: [
-        mergeRows(cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자")),
+        mergeRows(
+          cell(3, "대학명"),
+          cell(12, "2027학년도 운영자"),
+          cell(18, "2027학년도 개발자"),
+        ),
         // 2027 운영 블록 r1: 수시를 offset 2 (col 14)에 배치 (재외/정시/수시/...)
         mergeRows(
-          cell(12, "재외"), cell(13, "정시"), cell(14, "수시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
-          cell(18, "재외"), cell(19, "정시"), cell(20, "수시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
+          cell(12, "재외"),
+          cell(13, "정시"),
+          cell(14, "수시"),
+          cell(15, "편입"),
+          cell(16, "외국인"),
+          cell(17, "백업"),
+          cell(18, "재외"),
+          cell(19, "정시"),
+          cell(20, "수시"),
+          cell(21, "편입"),
+          cell(22, "외국인"),
+          cell(23, "백업"),
         ),
         // 데이터: 수시 운영=col14="박수시", 정시 운영=col13="이정시", 수시 개발=col20="김개발"
-        mergeRows(cell(3, "테스트대"), cell(13, "이정시"), cell(14, "박수시"), cell(20, "김개발")),
+        mergeRows(
+          cell(3, "테스트대"),
+          cell(13, "이정시"),
+          cell(14, "박수시"),
+          cell(20, "김개발"),
+        ),
       ],
       rowCount: 3,
       columnCount: 36,
     };
     const recs = parseBaejungList(shifted);
-    expect(recs[0].operator).toBe("박수시");   // col14, r1="수시"
-    expect(recs[0].developer).toBe("김개발");  // col20, r1="수시"
-    expect(recs[0].detail.find((d) => d.label === "2027 정시 운영")?.value).toBe("이정시");
+    expect(recs[0].operator).toBe("박수시"); // col14, r1="수시"
+    expect(recs[0].developer).toBe("김개발"); // col20, r1="수시"
+    expect(
+      recs[0].detail.find((d) => d.label === "2027 정시 운영")?.value,
+    ).toBe("이정시");
   });
 });
 
@@ -104,68 +167,247 @@ function simpleSheet(headers: string[], dataRows: string[][]): AssignmentSheet {
 describe("parseSimpleSheet", () => {
   it("03.대학원 운영(H)/개발(I) 추출", () => {
     const s = simpleSheet(
-      ["No", "대학명", "UnivId", "서비스 구분", "서비스여부", "서비스 개수", "담당자 변경", "운영자", "개발자"],
-      [["1", "한국체육대학교", "1153", "대학원", "Y", "3", "변경 X", "기자의", "권용철"]],
+      [
+        "No",
+        "대학명",
+        "UnivId",
+        "서비스 구분",
+        "서비스여부",
+        "서비스 개수",
+        "담당자 변경",
+        "운영자",
+        "개발자",
+      ],
+      [
+        [
+          "1",
+          "한국체육대학교",
+          "1153",
+          "대학원",
+          "Y",
+          "3",
+          "변경 X",
+          "기자의",
+          "권용철",
+        ],
+      ],
     );
-    const recs = parseSimpleSheet(s, "대학원", { op: /^운영자$/, dev: /^개발자$/, uni: /대학명/ });
+    const recs = parseSimpleSheet(s, "대학원", {
+      op: /^운영자$/,
+      dev: /^개발자$/,
+      uni: /대학명/,
+    });
     expect(recs[0]).toMatchObject({
-      university: "한국체육대학교", service: "대학원", operator: "기자의", developer: "권용철",
+      university: "한국체육대학교",
+      service: "대학원",
+      operator: "기자의",
+      developer: "권용철",
     });
   });
 
   it("07.상담앱 학교명/운영(F)/개발(G)", () => {
     const s = simpleSheet(
-      ["UnivID", "학교명", "ServiceID", "접수운영", "영업자", "운영자", "개발자"],
+      [
+        "UnivID",
+        "학교명",
+        "ServiceID",
+        "접수운영",
+        "영업자",
+        "운영자",
+        "개발자",
+      ],
       [["1187", "신한대학교", "x", "김지현", "김은호", "기자의", "박형진"]],
     );
-    const recs = parseSimpleSheet(s, "상담앱", { op: /^운영자$/, dev: /^개발자$/, uni: /학교명|대학명/ });
-    expect(recs[0]).toMatchObject({ university: "신한대학교", operator: "기자의", developer: "박형진" });
+    const recs = parseSimpleSheet(s, "상담앱", {
+      op: /^운영자$/,
+      dev: /^개발자$/,
+      uni: /학교명|대학명/,
+    });
+    expect(recs[0]).toMatchObject({
+      university: "신한대학교",
+      operator: "기자의",
+      developer: "박형진",
+    });
   });
 });
 
 describe("parsePims", () => {
   it("운영자 FULL(G) 대표 + 개발자 없음 + 환/충 detail", () => {
     const s = simpleSheet(
-      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
-      [["1", "4년제", "서울", "서경대학교", "Full", "변경 X", "기자의", "임종우", "기존충원"]],
+      [
+        "No",
+        "대분류",
+        "지역",
+        "대학명",
+        "서비스구분",
+        "담당자 변경",
+        "운영자 FULL",
+        "접수운영자",
+        "운영자 환/충",
+      ],
+      [
+        [
+          "1",
+          "4년제",
+          "서울",
+          "서경대학교",
+          "Full",
+          "변경 X",
+          "기자의",
+          "임종우",
+          "기존충원",
+        ],
+      ],
     );
     const recs = parsePims(s);
     expect(recs[0]).toMatchObject({
-      university: "서경대학교", service: "PIMS", operator: "기자의", developer: "",
+      university: "서경대학교",
+      service: "PIMS",
+      operator: "기자의",
+      developer: "",
     });
-    expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe("기존충원");
+    expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe(
+      "기존충원",
+    );
   });
 
-  it("환/충만 있고 FULL 없는 행 → operator=환/충 이름(폴백), subtypes 미정의, detail에 환/충 포함", () => {
-    // 부산대학교 케이스: FULL(G) 비어있고 환/충(I)="박시현"
+  it("환/충만 있고 FULL 없는 행 → 환충 하나만. FULL 을 발명하지 않는다", () => {
+    // 부산대학교 케이스: FULL(G) 비어있고 환/충(I)="박시현".
+    // 라이브 실측(2026-09-15) 81곳 중 10곳이 이 모양이다.
     const s = simpleSheet(
-      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
-      [["1", "4년제", "부산", "부산대학교", "Full", "변경 X", "", "이수진", "박시현"]],
+      [
+        "No",
+        "대분류",
+        "지역",
+        "대학명",
+        "서비스구분",
+        "담당자 변경",
+        "운영자 FULL",
+        "접수운영자",
+        "운영자 환/충",
+      ],
+      [
+        [
+          "1",
+          "4년제",
+          "부산",
+          "부산대학교",
+          "Full",
+          "변경 X",
+          "",
+          "이수진",
+          "박시현",
+        ],
+      ],
     );
     const recs = parsePims(s);
-    expect(recs[0].operator).toBe("박시현"); // FULL 없으면 환/충 이름으로 대체
-    expect(recs[0].subtypes).toBeUndefined();
-    expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe("박시현");
+    expect(recs[0].subtypes).toEqual([
+      { label: "환충", operator: "박시현", developer: "" },
+    ]);
+    expect(recs[0].operator).toBe("박시현"); // 대표값은 그대로 — 그리드 폴백용
+    expect(recs[0].detail.find((d) => d.label === "운영자 환/충")?.value).toBe(
+      "박시현",
+    );
   });
 
-  it("FULL + 환/충 모두 있는 행 → operator=FULL 이름(우선), subtypes 미정의", () => {
+  it("FULL + 환/충 모두 있는 행 → 하위유형 둘. 접으면 한쪽이 사라진다", () => {
+    // 라이브에는 0건이지만 **불변식이 아니다.** operator 하나로 접으면 FULL 배정이
+    // 조용히 없어지고, 대조는 양쪽이 같은 시트에서 나오므로 그걸 못 잡는다.
     const s = simpleSheet(
-      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
-      [["1", "4년제", "서울", "서울대학교", "Full", "변경 X", "기자의", "박접수", "박시현"]],
+      [
+        "No",
+        "대분류",
+        "지역",
+        "대학명",
+        "서비스구분",
+        "담당자 변경",
+        "운영자 FULL",
+        "접수운영자",
+        "운영자 환/충",
+      ],
+      [
+        [
+          "1",
+          "4년제",
+          "서울",
+          "서울대학교",
+          "Full",
+          "변경 X",
+          "기자의",
+          "박접수",
+          "박시현",
+        ],
+      ],
     );
     const recs = parsePims(s);
-    expect(recs[0].operator).toBe("기자의"); // FULL 우선
-    expect(recs[0].subtypes).toBeUndefined();
+    expect(recs[0].subtypes).toEqual([
+      { label: "FULL", operator: "기자의", developer: "" },
+      { label: "환충", operator: "박시현", developer: "" },
+    ]);
+    expect(recs[0].operator).toBe("기자의"); // 대표값은 FULL 우선 — 그대로 둔다
   });
 
-  it("FULL만 있고 환/충 없는 행 → operator=FULL 이름, subtypes 미정의", () => {
+  it("FULL만 있고 환/충 없는 행 → FULL 하나만", () => {
     const s = simpleSheet(
-      ["No", "대분류", "지역", "대학명", "서비스구분", "담당자 변경", "운영자 FULL", "접수운영자", "운영자 환/충"],
-      [["1", "4년제", "서울", "연세대학교", "Full", "변경 X", "기자의", "임종우", ""]],
+      [
+        "No",
+        "대분류",
+        "지역",
+        "대학명",
+        "서비스구분",
+        "담당자 변경",
+        "운영자 FULL",
+        "접수운영자",
+        "운영자 환/충",
+      ],
+      [
+        [
+          "1",
+          "4년제",
+          "서울",
+          "연세대학교",
+          "Full",
+          "변경 X",
+          "기자의",
+          "임종우",
+          "",
+        ],
+      ],
     );
     const recs = parsePims(s);
+    expect(recs[0].subtypes).toEqual([
+      { label: "FULL", operator: "기자의", developer: "" },
+    ]);
     expect(recs[0].operator).toBe("기자의");
-    expect(recs[0].subtypes).toBeUndefined();
+  });
+
+  it("하위유형 라벨은 'FULL'·'환충' 이다 — 원장 자연키가 이 문자열로 들어가 있다", () => {
+    // 시트 헤더는 `운영자 환/충` 이지만 하위유형은 `환충` 이다. 헤더를 따라
+    // `환/충` 으로 적으면 자연키가 달라져 **다음 이관이 10행을 새로 만들고 기존
+    // 10행이 고아가 된다** (라이브 원장에 PIMS/FULL 71 · PIMS/환충 10 이 있다).
+    const s = simpleSheet(
+      ["대학명", "운영자 FULL", "접수운영자", "운영자 환/충"],
+      [["서울대학교", "가운영", "박접수", "나운영"]],
+    );
+    expect(parsePims(s)[0].subtypes?.map((x) => x.label)).toEqual([
+      "FULL",
+      "환충",
+    ]);
+  });
+
+  it("접수운영자 칸은 읽지 않는다 — 02 시트 수시 담당자의 사본이다", () => {
+    // 라이브 실측(2026-09-15): `접수운영자` 70건이 02 배정리스트의 수시 담당자와
+    // 70/70 일치했다(대조군 `운영자 FULL` 은 43%). 배정이 아니라 파생값이라,
+    // 원장에 넣으면 같은 배정이 두 벌이 된다.
+    const s = simpleSheet(
+      ["대학명", "운영자 FULL", "접수운영자", "운영자 환/충"],
+      [["서울대학교", "가운영", "박접수", ""]],
+    );
+    const recs = parsePims(s);
+    expect(recs[0].subtypes).toEqual([
+      { label: "FULL", operator: "가운영", developer: "" },
+    ]);
+    expect(JSON.stringify(recs[0])).not.toContain("박접수");
   });
 });
 
@@ -183,17 +425,34 @@ describe("parseBaejungList subtypes", () => {
       ),
       // r1: sub-type 라벨 (재외/수시/정시/편입/외국인/백업 순)
       mergeRows(
-        cell(12, "재외"), cell(13, "수시"), cell(14, "정시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
-        cell(18, "재외"), cell(19, "수시"), cell(20, "정시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
-        cell(24, "재외"), cell(25, "수시"), cell(26, "정시"), cell(27, "편입"), cell(28, "외국인"), cell(29, "백업"),
+        cell(12, "재외"),
+        cell(13, "수시"),
+        cell(14, "정시"),
+        cell(15, "편입"),
+        cell(16, "외국인"),
+        cell(17, "백업"),
+        cell(18, "재외"),
+        cell(19, "수시"),
+        cell(20, "정시"),
+        cell(21, "편입"),
+        cell(22, "외국인"),
+        cell(23, "백업"),
+        cell(24, "재외"),
+        cell(25, "수시"),
+        cell(26, "정시"),
+        cell(27, "편입"),
+        cell(28, "외국인"),
+        cell(29, "백업"),
       ),
       // r2: 한국대학교 데이터 — 2027 수시 운영(13)="A운영", 2027 정시 운영(14)="B운영",
       //   2027 수시 개발(19)="A개발", 2027 정시 개발(20)="B개발", 2026 수시 운영(25)="구운영"
       //   재외(12)는 빈 문자열 → subtypes에 포함 안 됨
       mergeRows(
         cell(3, "한국대학교"),
-        cell(13, "A운영"), cell(14, "B운영"),
-        cell(19, "A개발"), cell(20, "B개발"),
+        cell(13, "A운영"),
+        cell(14, "B운영"),
+        cell(19, "A개발"),
+        cell(20, "B개발"),
         cell(25, "구운영"),
       ),
     ],
@@ -230,10 +489,24 @@ describe("parseBaejungList subtypes", () => {
     const onlyOpSheet: AssignmentSheet = {
       worksheetName: "02. 배정리스트",
       rowsText: [
-        mergeRows(cell(3, "대학명"), cell(12, "2027학년도 운영자"), cell(18, "2027학년도 개발자")),
         mergeRows(
-          cell(12, "재외"), cell(13, "수시"), cell(14, "정시"), cell(15, "편입"), cell(16, "외국인"), cell(17, "백업"),
-          cell(18, "재외"), cell(19, "수시"), cell(20, "정시"), cell(21, "편입"), cell(22, "외국인"), cell(23, "백업"),
+          cell(3, "대학명"),
+          cell(12, "2027학년도 운영자"),
+          cell(18, "2027학년도 개발자"),
+        ),
+        mergeRows(
+          cell(12, "재외"),
+          cell(13, "수시"),
+          cell(14, "정시"),
+          cell(15, "편입"),
+          cell(16, "외국인"),
+          cell(17, "백업"),
+          cell(18, "재외"),
+          cell(19, "수시"),
+          cell(20, "정시"),
+          cell(21, "편입"),
+          cell(22, "외국인"),
+          cell(23, "백업"),
         ),
         // 운영 수시만 있고 개발 수시 없음
         mergeRows(cell(3, "테스트대"), cell(13, "X운영")),
@@ -259,9 +532,27 @@ describe("parseBaejungList subtypes", () => {
 
 describe("joinByUniversity", () => {
   const recs: AssignmentRecord[] = [
-    { university: "고려대학교", service: "원서접수", operator: "김슬기", developer: "박형진", detail: [] },
-    { university: "고려대학교", service: "대학원", operator: "기자의", developer: "권용철", detail: [] },
-    { university: "연세대학교", service: "PIMS", operator: "한효진", developer: "", detail: [] },
+    {
+      university: "고려대학교",
+      service: "원서접수",
+      operator: "김슬기",
+      developer: "박형진",
+      detail: [],
+    },
+    {
+      university: "고려대학교",
+      service: "대학원",
+      operator: "기자의",
+      developer: "권용철",
+      detail: [],
+    },
+    {
+      university: "연세대학교",
+      service: "PIMS",
+      operator: "한효진",
+      developer: "",
+      detail: [],
+    },
   ];
   it("대학명 기준으로 서비스 묶음 생성", () => {
     const rows = joinByUniversity(recs);

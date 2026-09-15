@@ -24,13 +24,22 @@ export type LedgerRowDraft = {
 
 /** 사람이 고쳐야 하는 것. **추측해 채우지 않고 보고한다**(설계 F1). */
 export type ImportIssue = {
-  kind: "pims-ambiguous" | "duplicate-conflict";
+  kind: "duplicate-conflict";
   university: string;
   detail: string;
 };
 
-/** PIMS 환/충 값이 `detail` 에 실려 오는 라벨 — `parsePims` 가 붙인다. */
-const PIMS_HWAN_LABEL = "운영자 환/충";
+/**
+ * 하위유형 칸이 배정의 단위인 업무. 나머지는 대표값 한 칸이 곧 배정이다.
+ *
+ * PIMS 가 여기 있는 이유: 시트의 `운영자 FULL` 과 `운영자 환/충` 은 **독립된
+ * 배정**이다(사용자 확인 2026-09-15). 파서의 `operator` 는 둘을 접은 값이라
+ * 그걸 쓰면 FULL 배정이 조용히 사라진다.
+ */
+const BY_SUBTYPE: ReadonlySet<AssignmentWorkKind> = new Set([
+  "원서접수",
+  "PIMS",
+]);
 
 /**
  * 대학명 정규화는 **공백 정리까지만** 한다.
@@ -65,13 +74,16 @@ function draft(
 }
 
 /**
- * 원서접수는 **하위유형별 칸**이 배정의 단위다(설계 §3.1).
+ * 하위유형별 칸이 배정의 단위인 업무(원서접수·PIMS) → 원장 행.
  *
- * `record.operator`/`developer` 는 그리드 대표값(2027 수시)이라 쓰지 않는다 —
- * 쓰면 수시 행이 두 벌 생긴다. `subtypes` 는 파서가 2027 블록만 담으므로
- * 2026 칸은 여기로 오지 않는다(이관 대상은 현재 학년도다).
+ * `record.operator`/`developer` 는 그리드 대표값이라 쓰지 않는다 — 원서접수는
+ * 수시 행이 두 벌 생기고, PIMS 는 `full || hwan` 으로 접힌 값이라 FULL 배정이
+ * 사라진다. 빈 칸은 파서가 항목 자체를 안 만든다.
+ *
+ * 원서접수의 `subtypes` 는 파서가 2027 블록만 담으므로 2026 칸은 여기로 오지
+ * 않는다(이관 대상은 현재 학년도다).
  */
-function reception(
+function bySubtype(
   academicYear: number,
   record: AssignmentRecord,
 ): LedgerRowDraft[] {
@@ -83,52 +95,6 @@ function reception(
       out.push(draft(academicYear, record, st.label, "개발", st.developer));
   }
   return out;
-}
-
-/**
- * PIMS 는 `FULL` / `환충` 두 하위유형이고 **개발자가 없다**(설계 §3.1).
- *
- * `parsePims` 가 `operator = full || hwan` 으로 두 칸을 하나로 접어 주므로
- * 역산이 필요하다. 라이브 실측(2026-09-13)에서 **두 칸이 동시에 채워진 행은
- * 0건**이라(FULL만 72 · 환충만 10) 역산이 무손실이다. 다만 그건 오늘 데이터의
- * 성질이지 불변식이 아니어서, 구분이 안 되는 경우는 **발명하지 않고 보고한다**.
- */
-function pims(
-  academicYear: number,
-  record: AssignmentRecord,
-): { rows: LedgerRowDraft[]; issues: ImportIssue[] } {
-  const hwan =
-    record.detail.find((d) => d.label === PIMS_HWAN_LABEL)?.value.trim() ?? "";
-  const operator = record.operator.trim();
-
-  if (!hwan) {
-    return {
-      rows: operator
-        ? [draft(academicYear, record, "FULL", "운영", operator)]
-        : [],
-      issues: [],
-    };
-  }
-
-  const rows = [draft(academicYear, record, "환충", "운영", hwan)];
-  if (!operator || operator === hwan) {
-    // operator 가 환충과 같다 — FULL 이 비어서 대체된 것인지, 둘이 같은 사람인지
-    // 파서 출력만으로는 갈리지 않는다. FULL 행을 만들면 없는 배정을 발명한다.
-    return {
-      rows,
-      issues: operator
-        ? [
-            {
-              kind: "pims-ambiguous",
-              university: record.university,
-              detail: `운영자 FULL 과 환/충 이 같은 값('${hwan}')으로 읽혀 FULL 배정 여부를 가릴 수 없다. FULL 행을 만들지 않았다.`,
-            },
-          ]
-        : [],
-    };
-  }
-  rows.push(draft(academicYear, record, "FULL", "운영", operator));
-  return { rows, issues: [] };
 }
 
 /** 하위유형이 없는 업무(대학원·성적산출·상담앱) — `subtype` 은 빈 문자열이다. */
@@ -172,12 +138,8 @@ export function toLedgerRows(
   const drafts: LedgerRowDraft[] = [];
 
   for (const record of records) {
-    if (record.service === "원서접수") {
-      drafts.push(...reception(academicYear, record));
-    } else if (record.service === "PIMS") {
-      const r = pims(academicYear, record);
-      drafts.push(...r.rows);
-      issues.push(...r.issues);
+    if (BY_SUBTYPE.has(record.service)) {
+      drafts.push(...bySubtype(academicYear, record));
     } else {
       drafts.push(...plain(academicYear, record));
     }

@@ -239,22 +239,32 @@ describe("toLedgerRows — PIMS(04)", () => {
     expect(rows.every((r) => r.role === "운영")).toBe(true);
   });
 
-  it("둘 다 같은 사람이면 모호하다고 보고한다 — 추측해 채우지 않는다", () => {
-    // 라이브 시트에는 두 칸이 동시에 채워진 행이 0건이다(2026-09-13 실측 72/10/0/0).
-    // 파서가 `operator = full || hwan` 으로 접어 주므로 그때는 FULL 이 비었는지
-    // 같은 사람인지 구분할 수 없다. 발명하지 말고 대조에 싣는다.
+  it("FULL 과 환충 둘 다 있으면 두 행이 된다", () => {
+    const { rows, issues } = toLedgerRows(
+      parsePims(
+        pimsSheet([{ uni: "서울대학교", full: "가운영", hwan: "나운영" }]),
+      ),
+      2027,
+    );
+    expect(
+      Object.fromEntries(rows.map((r) => [r.subtype, r.assignee_name])),
+    ).toEqual({ FULL: "가운영", 환충: "나운영" });
+    expect(issues).toEqual([]);
+  });
+
+  it("둘 다 같은 사람이어도 두 행이다 — 한 사람이 두 칸을 맡은 것이다", () => {
+    // 예전에는 `operator = full || hwan` 이 접은 값만 보여 '모호함' 으로 보고했다.
+    // 시트의 두 칸을 따로 읽으니 가릴 것이 없다(사용자 확인 2026-09-15).
+    // 라이브에는 이런 행이 0건이지만 **불변식이 아니고**, 접으면 FULL 이 조용히 사라진다.
     const { rows, issues } = toLedgerRows(
       parsePims(
         pimsSheet([{ uni: "서울대학교", full: "가운영", hwan: "가운영" }]),
       ),
       2027,
     );
-    expect(rows.map((r) => r.subtype)).toEqual(["환충"]);
-    expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({
-      kind: "pims-ambiguous",
-      university: "서울대학교",
-    });
+    expect(rows.map((r) => r.subtype).sort()).toEqual(["FULL", "환충"]);
+    expect(rows.every((r) => r.assignee_name === "가운영")).toBe(true);
+    expect(issues).toEqual([]);
   });
 });
 
