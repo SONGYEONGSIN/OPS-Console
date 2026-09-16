@@ -35,8 +35,14 @@ export type ImportAssignmentsResult =
       rows: number;
       /** 이력에 남긴 줄 수 */
       history: number;
-      /** 이메일을 못 찾았거나 둘 이상에 걸린 이름 */
-      unresolvedNames: string[];
+      /** **운영 칸**에서 이메일을 못 찾았거나 둘 이상에 걸린 이름 — 사람이 고칠 것 */
+      unresolvedOperatorNames: string[];
+      /**
+       * **개발 칸** 미매칭 인원 수. `operators` 는 운영부 명단이고 `team` check 가
+       * `운영1팀·운영2팀` 이라 개발부는 여기에 **없는 것이 정상**이다. 고칠 것이
+       * 아니므로 이름을 나열하지 않는다.
+       */
+      unresolvedDeveloperCount: number;
       issues: ImportIssue[];
       reconcile: ReconcileResult;
     };
@@ -101,10 +107,20 @@ function buildPayload(
   byName: Map<string, string | null>,
   actorEmail: string,
 ) {
-  const unresolved = new Set<string>();
+  // 미매칭을 **역할로 가른다.** 개발부는 `operators` 에 없는 것이 정상이라
+  // 고칠 것이 없다 — 라이브 실측에서 개발 칸 890개의 매칭이 **전부 0** 이었다
+  // (2026-09-15). 그걸 '고쳐야 할 이름' 으로 띄우면 매번 같은 26개가 떠서
+  // **진짜 신호(운영자 한 명이 빠지는 날)를 가린다.** 이 원장은 운영자 배정을
+  // 위한 것이다(사용자 확인 2026-09-15).
+  const unresolvedOperator = new Set<string>();
+  const unresolvedDeveloper = new Set<string>();
   const payload = sheetRows.map((r) => {
     const email = byName.get(r.assignee_name) ?? null;
-    if (!email) unresolved.add(r.assignee_name);
+    if (!email) {
+      const bucket =
+        r.role === "운영" ? unresolvedOperator : unresolvedDeveloper;
+      bucket.add(r.assignee_name);
+    }
     return {
       academic_year: r.academic_year,
       university_name: r.university_name,
@@ -117,7 +133,11 @@ function buildPayload(
       updated_by: actorEmail,
     };
   });
-  return { payload, unresolvedNames: [...unresolved] };
+  return {
+    payload,
+    unresolvedOperatorNames: [...unresolvedOperator],
+    unresolvedDeveloperCount: unresolvedDeveloper.size,
+  };
 }
 
 /**
@@ -204,11 +224,8 @@ export async function importAssignments(
     before.map((r) => [ledgerKeyOf(r), r.assignee_email]),
   );
 
-  const { payload, unresolvedNames } = buildPayload(
-    sheetRows,
-    byName,
-    me.email,
-  );
+  const { payload, unresolvedOperatorNames, unresolvedDeveloperCount } =
+    buildPayload(sheetRows, byName, me.email);
   for (let i = 0; i < payload.length; i += WRITE_CHUNK) {
     const { error } = await admin
       .from("assignments")
@@ -250,7 +267,8 @@ export async function importAssignments(
     ok: true,
     rows: payload.length,
     history: history.length,
-    unresolvedNames,
+    unresolvedOperatorNames,
+    unresolvedDeveloperCount,
     issues,
     reconcile: reconcile(sheetRows, after),
   };

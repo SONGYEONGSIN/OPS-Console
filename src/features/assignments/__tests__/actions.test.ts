@@ -209,7 +209,7 @@ describe("importAssignments", () => {
       }[];
       expect(row.assignee_email).toBeNull();
       expect(row.assignee_name).toBe("가운영");
-      expect(r.unresolvedNames).toEqual(["가운영"]);
+      expect(r.unresolvedOperatorNames).toEqual(["가운영"]);
     });
 
     it("이름이 둘 이상에 걸리면 맞추지 않는다 — 추측해 채우지 않는다", async () => {
@@ -227,7 +227,44 @@ describe("importAssignments", () => {
         assignee_email: string | null;
       }[];
       expect(row.assignee_email).toBeNull();
-      expect(r.unresolvedNames).toEqual(["가운영"]);
+      expect(r.unresolvedOperatorNames).toEqual(["가운영"]);
+    });
+
+    /**
+     * 라이브 실측(2026-09-15): 미매칭 27개 중 **26개가 개발자**였고, 개발 칸
+     * 890개의 매칭은 **전부 0** 이었다. 우연이 아니라 구조다 — `operators` 는
+     * 운영부 명단이고 `team` check 가 `운영1팀·운영2팀` 이라 개발부가 들어갈
+     * 자리가 없다.
+     *
+     * 그래서 개발자를 '고쳐야 할 이름' 으로 띄우면 **매번 같은 26개가 뜬다.**
+     * 항상 울리는 경고는 소음이고, 소음은 진짜 신호(운영자 한 명이 빠지는 날)를
+     * 가린다. 이 배정 원장은 운영자 배정을 위한 것이다(사용자 확인 2026-09-15).
+     */
+    it("개발 칸 미매칭은 운영자 목록에 안 섞는다 — 개발부가 operators 에 없는 건 정상이다", async () => {
+      h.fetchSheet.mockImplementation(async (name: string) =>
+        name === SHEET_NAMES.대학원 ? GRAD_SHEET : null,
+      );
+      h.selectOperators.mockResolvedValue({
+        data: [{ email: "b@x.com", name: "나운영" }],
+        error: null,
+      });
+
+      const r = ok(await importAssignments(2027));
+
+      expect(r.unresolvedOperatorNames).toEqual([]);
+      expect(r.unresolvedDeveloperCount).toBe(1);
+    });
+
+    it("운영 칸 미매칭은 개발자 건수에 안 섞인다 — 이쪽만 사람이 고칠 것이다", async () => {
+      h.fetchSheet.mockImplementation(async (name: string) =>
+        name === SHEET_NAMES.대학원 ? GRAD_SHEET : null,
+      );
+      h.selectOperators.mockResolvedValue({ data: [], error: null });
+
+      const r = ok(await importAssignments(2027));
+
+      expect(r.unresolvedOperatorNames).toEqual(["나운영"]);
+      expect(r.unresolvedDeveloperCount).toBe(1);
     });
 
     it("행이 많으면 나눠 넣는다 — 설계가 세는 한 해 물량이 5,720행이다", async () => {
