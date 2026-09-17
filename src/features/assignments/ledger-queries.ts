@@ -1,6 +1,5 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { LedgerRowDraft } from "./import";
 import type { AssignmentRole, AssignmentWorkKind } from "./ledger-schemas";
 
 /**
@@ -10,7 +9,8 @@ import type { AssignmentRole, AssignmentWorkKind } from "./ledger-schemas";
  * 이름만 비교하면 운영자 메일이 바뀐 경우를 '안 바뀜' 으로 읽는다. `LedgerRowDraft`
  * 를 넓힌 모양이라 `reconcile` 에는 그대로 넘어간다.
  */
-export type LedgerRow = LedgerRowDraft & { assignee_email: string | null };
+import type { LedgerRow } from "./import";
+export type { LedgerRow };
 
 /** PostgREST Max-Rows cap. 한 번만 조회하면 뒤쪽 배정이 조용히 사라진다. */
 const CHUNK = 1000;

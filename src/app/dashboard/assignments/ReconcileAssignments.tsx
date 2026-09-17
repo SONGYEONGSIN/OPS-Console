@@ -2,25 +2,22 @@
 
 import { useState } from "react";
 import {
-  importAssignments,
-  type ImportAssignmentsResult,
+  reconcileAssignments,
+  type ReconcileAssignmentsResult,
 } from "@/features/assignments/actions";
 import { ModalShell } from "@/components/common/ModalShell";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 
 /**
- * 총괄장 시트 → 배정 원장 이관. **화면 교체(PR4) 전에 한 번 도는 버튼**이다
- * (설계 §10 사람 체크리스트 4: "시트 → DB 이관 1회 실행 + 대조 0건").
+ * 총괄장 시트 ↔ 배정 원장 **대조**. 읽기만 하는 버튼이다.
  *
- * ⚠️ **상시 재가져오기 버튼이 아니다.** 설계 R1 은 "DB를 덮어쓰는 버튼은 원장을
- * 파일에 종속시킨다" 며 재가져오기를 비범위로 뒀다. 자연키 upsert 로 멱등인 것은
- * 부분 실패 후 **재시도**를 위한 것이고, 이관이 끝나면 원천은 DB 다. 이 버튼을
- * PR4 에서 걷을지 남길지는 머지 때 정한다.
+ * 여기 있던 이관(쓰기)은 걷었다(설계 §13 R1 · 사용자 결정 2026-09-15). 편집이 앱에서
+ * 일어나는데 이관은 자연키 upsert 라 **시트에 있는 모든 칸을 시트 값으로 되돌리고**,
+ * 그 덮어씀이 `assignment_changes` 에 정당한 변경으로 남아 사고로 구분되지 않는다.
+ * 남긴 쪽은 **갈림을 만들지 않으면서 갈림을 탐지한다** — 시트를 방치하기로 해도
+ * (열린 질문 3) 누가 고쳤다는 사실이 여기서 드러난다.
  *
- * 건수만 알리지 않는다 — 설계 §9.1 의 판정이 "대조 통과" 이고, 통과 못 했을 때
- * **어느 칸인지**가 곧 조치다. 이름을 못 맞춘 칸도 반드시 보여준다: 숫자만 주면
- * "다 됐다" 로 읽히는데 그 칸들은 담당자가 아무에게도 안 잡힌다
- * (`SyncAnnouncementOperators` 가 같은 것을 배웠다).
+ * 건수만 알리지 않는다 — 통과 못 했을 때 **어느 칸인지**가 곧 조치다.
  */
 const MAX_LISTED = 50;
 
@@ -48,15 +45,19 @@ function CellList({ title, keys }: { title: string; keys: string[] }) {
   );
 }
 
-export function ImportAssignments({ academicYear }: { academicYear: number }) {
+export function ReconcileAssignments({
+  academicYear,
+}: {
+  academicYear: number;
+}) {
   const [pending, setPending] = useState(false);
-  const [result, setResult] = useState<ImportAssignmentsResult | null>(null);
+  const [result, setResult] = useState<ReconcileAssignmentsResult | null>(null);
 
   const run = async () => {
     setPending(true);
     setResult(null);
     try {
-      setResult(await importAssignments(academicYear));
+      setResult(await reconcileAssignments(academicYear));
     } finally {
       setPending(false);
     }
@@ -65,12 +66,12 @@ export function ImportAssignments({ academicYear }: { academicYear: number }) {
   return (
     <>
       <HeaderActionButton onClick={run} disabled={pending}>
-        {pending ? "이관 중…" : "원장 이관"}
+        {pending ? "대조 중…" : "원장 대조"}
       </HeaderActionButton>
 
       {result && (
         <ModalShell
-          title={`총괄장 → 원장 이관 (${academicYear}학년도)`}
+          title={`총괄장 ↔ 원장 대조 (${academicYear}학년도)`}
           size="lg"
           onClose={() => setResult(null)}
           footer={
@@ -88,15 +89,11 @@ export function ImportAssignments({ academicYear }: { academicYear: number }) {
             <p className="text-xs text-vermilion">{result.error}</p>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm text-ink">
-                칸{" "}
-                <b className="tabular-nums">{result.rows.toLocaleString()}</b>
-                개를 원장에 넣고 이력{" "}
-                <b className="tabular-nums">
-                  {result.history.toLocaleString()}
-                </b>
-                줄을 남겼습니다.
-              </p>
+              {/* 양쪽을 나란히 둔다. 한쪽 숫자만 보면 어디가 모자란지 모른다. */}
+              <ul className="space-y-0.5 text-sm text-ink tabular-nums">
+                <li>{`시트 ${result.reconcile.universities.sheet.toLocaleString()}곳 · ${result.reconcile.cells.sheet.toLocaleString()}칸`}</li>
+                <li>{`원장 ${result.reconcile.universities.ledger.toLocaleString()}곳 · ${result.reconcile.cells.ledger.toLocaleString()}칸`}</li>
+              </ul>
 
               {result.reconcile.mismatchCount === 0 ? (
                 <p className="text-xs text-ink">
@@ -113,14 +110,15 @@ export function ImportAssignments({ academicYear }: { academicYear: number }) {
                     건
                   </p>
                   <p className="text-2xs text-muted">
-                    화면을 원장으로 바꾸기 전에 0건이어야 합니다(설계 §9.1).
+                    원장이 원천입니다 — 시트를 원장에 맞추거나, 배정 화면에서
+                    고치세요. 이 버튼은 원장을 바꾸지 않습니다.
                   </p>
                   <CellList
-                    title="시트에만 있는 칸 (이관 누락)"
+                    title="시트에만 있는 칸 (원장에 없음)"
                     keys={result.reconcile.missingInLedger}
                   />
                   <CellList
-                    title="원장에만 있는 칸 (손으로 넣었거나 시트에서 지워짐)"
+                    title="원장에만 있는 칸 (앱에서 넣었거나 시트에서 지워짐)"
                     keys={result.reconcile.extraInLedger}
                   />
                   {result.reconcile.nameMismatch.length > 0 && (
@@ -147,48 +145,6 @@ export function ImportAssignments({ academicYear }: { academicYear: number }) {
                 </div>
               )}
 
-              {result.unresolvedOperatorNames.length > 0 && (
-                <div className="border border-line-soft bg-situation-bg p-3">
-                  <p className="text-xs font-medium text-ink">
-                    이메일을 못 맞춘 운영자{" "}
-                    <span className="tabular-nums">
-                      {result.unresolvedOperatorNames.length}
-                    </span>
-                    개
-                  </p>
-                  <p className="mt-1 text-2xs text-muted">
-                    운영자 명단에 없거나 같은 이름이 둘 이상입니다. 이름은
-                    원장에 남았지만 담당자로는 안 잡히고 이력도 남지 않습니다 —
-                    시트의 이름을 맞춰 주세요.
-                  </p>
-                  <ul className="mt-2 space-y-0.5">
-                    {result.unresolvedOperatorNames.map((n) => (
-                      <li key={n} className="text-xs text-ink-soft">
-                        {n}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/*
-                개발자는 **고칠 것이 아니다.** `operators` 는 운영부 명단이라
-                개발부가 없는 것이 정상이고, 이름을 나열하면 매번 같은 목록이
-                떠서 위 운영자 칸을 묻는다. 그래도 아주 감추지는 않는다 —
-                이 칸들이 이력·되돌리기 밖이라는 사실은 알아야 한다.
-              */}
-              {result.unresolvedDeveloperCount > 0 && (
-                <p className="text-2xs text-muted">
-                  개발자{" "}
-                  <span className="tabular-nums">
-                    {result.unresolvedDeveloperCount}
-                  </span>
-                  명은 이메일이 안 잡힙니다 — 정상입니다(운영자 명단에 개발부가
-                  없습니다). 이름은 원장에 남고, 이 칸들은 이력·되돌리기 대상이
-                  아닙니다.
-                </p>
-              )}
-
               {result.issues.length > 0 && (
                 <div className="border border-line-soft bg-situation-bg p-3">
                   <p className="text-xs font-medium text-ink">
@@ -197,7 +153,7 @@ export function ImportAssignments({ academicYear }: { academicYear: number }) {
                     건
                   </p>
                   <p className="mt-1 text-2xs text-muted">
-                    시트만으로는 가릴 수 없어 배정을 만들지 않은 자리입니다.
+                    시트만으로는 가릴 수 없어 대조에서 한 칸으로 센 자리입니다.
                   </p>
                   <ul className="mt-2 space-y-1">
                     {result.issues.map((i, idx) => (

@@ -1,54 +1,33 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { fetchAssignmentSheet, SHEET_NAMES } from "./queries";
 import { parseBaejungList, parseSimpleSheet, parsePims } from "./parse";
 import type { AssignmentRecord } from "./schemas";
-import { ASSIGNMENT_NATURAL_KEY } from "./ledger-schemas";
 import {
   toLedgerRows,
   reconcile,
-  ledgerKeyOf,
   type ImportIssue,
-  type LedgerRowDraft,
   type ReconcileResult,
 } from "./import";
 import { listLedgerRows, type LedgerRow } from "./ledger-queries";
 
 /**
- * 총괄장 시트 → 배정 원장 이관. **화면 교체(PR4) 전에 한 번 돈다**(설계 §9.1).
+ * 총괄장 시트 ↔ 배정 원장 **대조**. 읽기만 한다.
  *
- * **admin client 로 쓴다** — 원장에는 쓰기 정책이 아예 없고 `service_role` 에만
- * `grant all` 이 있다. 읽기는 `using (true)` 라 세션 클라이언트로 한다.
+ * 원래 여기 있던 이관(쓰기)은 PR4 에서 걷었다(설계 §14). 편집이 앱에서 일어나기
+ * 시작하면 자연키 upsert 가 **시트에 있는 모든 칸을 시트 값으로 되돌리고**, 그
+ * 덮어씀이 `assignment_changes` 에 정당한 변경으로 남아 되돌릴 수도 사고로 구분할
+ * 수도 없게 된다. 게다가 쓰기 뒤에 견주면 방금 덮어쓴 원장과 시트를 비교하니
+ * **대조가 0건으로 통과한다** — 대조는 양쪽이 같은 원천에서 나오면 눈이 먼다.
  *
- * 자연키 upsert 라 **몇 번 돌려도 행이 늘지 않는다.** 끝에 쓴 뒤의 원장을 다시
- * 읽어 대조 결과를 함께 돌려준다 — 건수만 맞다고 끝내면 어느 칸이 어긋났는지
- * 알 수 없다.
+ * **admin 클라이언트를 만들지 않는 것이 곧 쓸 수 없다는 증거다.** 원장에는 쓰기
+ * 정책이 없고 `service_role` 에만 `grant all` 이 있어, 세션 클라이언트로는 문법이
+ * 맞아도 0행이 바뀐다. 시트를 방치해도(열린 질문 3) 갈림은 여기서 드러난다.
  */
-export type ImportAssignmentsResult =
+export type ReconcileAssignmentsResult =
   | { ok: false; error: string }
-  | {
-      ok: true;
-      /** 원장에 넣은 칸 수 */
-      rows: number;
-      /** 이력에 남긴 줄 수 */
-      history: number;
-      /** **운영 칸**에서 이메일을 못 찾았거나 둘 이상에 걸린 이름 — 사람이 고칠 것 */
-      unresolvedOperatorNames: string[];
-      /**
-       * **개발 칸** 미매칭 인원 수. `operators` 는 운영부 명단이고 `team` check 가
-       * `운영1팀·운영2팀` 이라 개발부는 여기에 **없는 것이 정상**이다. 고칠 것이
-       * 아니므로 이름을 나열하지 않는다.
-       */
-      unresolvedDeveloperCount: number;
-      issues: ImportIssue[];
-      reconcile: ReconcileResult;
-    };
-
-/** 한 번에 넣는 행 수. 설계가 세는 한 해 물량이 286대학 × 20칸 = 5,720행이다. */
-const WRITE_CHUNK = 500;
+  | { ok: true; issues: ImportIssue[]; reconcile: ReconcileResult };
 
 /** 하위유형 없는 시트(03·06)의 헤더 규칙. 07 상담앱만 대학명 칸이 다르다. */
 const SIMPLE_HEADERS = { uni: /대학명/, op: /^운영자$/, dev: /^개발자$/ };
@@ -58,7 +37,7 @@ const SIMPLE_HEADERS = { uni: /대학명/, op: /^운영자$/, dev: /^개발자$/
  *
  * ⚠️ 같은 파서 설정이 `app/dashboard/assignments/page.tsx` 와
  * `features/announcement-services/sync-operators.ts` 에도 있다 — 세 번째 복사다.
- * 헤더가 바뀌면 세 곳을 고쳐야 하니 단일 소스로 빼는 것이 맞지만, 이관 범위를
+ * 헤더가 바뀌면 세 곳을 고쳐야 하니 단일 소스로 빼는 것이 맞지만, 이 PR 범위를
  * 넘으므로 별도 PR 로 남긴다.
  */
 async function readSheets(): Promise<AssignmentRecord[] | null> {
@@ -86,97 +65,9 @@ async function readSheets(): Promise<AssignmentRecord[] | null> {
   ];
 }
 
-/**
- * 이름 → 이메일. **둘 이상에 걸리는 이름은 맞추지 않는다**(`null`).
- *
- * 하나를 골라 넣으면 틀린 사람에게 배정이 붙고, 그게 틀렸다는 것을 아무도 모른다.
- * 미매칭은 이름 스냅샷으로 드러나고 사람이 고친다(설계 F1·F2).
- */
-function emailByName(operators: { email: string; name: string }[]) {
-  const m = new Map<string, string | null>();
-  for (const op of operators) {
-    const name = op.name.trim();
-    if (!name) continue;
-    m.set(name, m.has(name) ? null : op.email);
-  }
-  return m;
-}
-
-function buildPayload(
-  sheetRows: LedgerRowDraft[],
-  byName: Map<string, string | null>,
-  actorEmail: string,
-) {
-  // 미매칭을 **역할로 가른다.** 개발부는 `operators` 에 없는 것이 정상이라
-  // 고칠 것이 없다 — 라이브 실측에서 개발 칸 890개의 매칭이 **전부 0** 이었다
-  // (2026-09-15). 그걸 '고쳐야 할 이름' 으로 띄우면 매번 같은 26개가 떠서
-  // **진짜 신호(운영자 한 명이 빠지는 날)를 가린다.** 이 원장은 운영자 배정을
-  // 위한 것이다(사용자 확인 2026-09-15).
-  const unresolvedOperator = new Set<string>();
-  const unresolvedDeveloper = new Set<string>();
-  const payload = sheetRows.map((r) => {
-    const email = byName.get(r.assignee_name) ?? null;
-    if (!email) {
-      const bucket =
-        r.role === "운영" ? unresolvedOperator : unresolvedDeveloper;
-      bucket.add(r.assignee_name);
-    }
-    return {
-      academic_year: r.academic_year,
-      university_name: r.university_name,
-      work_kind: r.work_kind,
-      subtype: r.subtype,
-      role: r.role,
-      assignee_email: email,
-      assignee_name: r.assignee_name,
-      university_type: r.university_type ?? null,
-      updated_by: actorEmail,
-    };
-  });
-  return {
-    payload,
-    unresolvedOperatorNames: [...unresolvedOperator],
-    unresolvedDeveloperCount: unresolvedDeveloper.size,
-  };
-}
-
-/**
- * 이력은 **바뀐 칸만**이고 **단위는 이메일**이다(마이그레이션 주석).
- *
- * 이메일을 못 맞춘 칸은 남기지 않는다 — `next_assignee` 가 null 이 되고 빈 칸이면
- * `prev` 도 null 이라 `assignment_changes_actual_change_chk` 가 23514 로 적재를
- * 통째로 죽인다. 이름 스냅샷은 원장의 `assignee_name` 에만 둔다.
- */
-function buildHistory(
-  sheetRows: LedgerRowDraft[],
-  byName: Map<string, string | null>,
-  prevByKey: Map<string, string | null>,
-  actorEmail: string,
-) {
-  const out = [];
-  for (const r of sheetRows) {
-    const next = byName.get(r.assignee_name) ?? null;
-    if (!next) continue;
-    const prev = prevByKey.get(ledgerKeyOf(r)) ?? null;
-    if (prev === next) continue;
-    out.push({
-      academic_year: r.academic_year,
-      university_name: r.university_name,
-      work_kind: r.work_kind,
-      subtype: r.subtype,
-      role: r.role,
-      prev_assignee: prev,
-      next_assignee: next,
-      source: "import",
-      actor_email: actorEmail,
-    });
-  }
-  return out;
-}
-
-export async function importAssignments(
+export async function reconcileAssignments(
   academicYear: number,
-): Promise<ImportAssignmentsResult> {
+): Promise<ReconcileAssignmentsResult> {
   const me = await getCurrentOperator();
   if (!me || me.permission !== "admin") {
     return { ok: false, error: "admin만 실행할 수 있습니다" };
@@ -186,7 +77,7 @@ export async function importAssignments(
     academicYear < 2000 ||
     academicYear > 9999
   ) {
-    // 학년도가 자연키에 있어, 이상한 값은 아무도 안 보는 섬을 만든다.
+    // 학년도가 자연키에 있어, 이상한 값은 아무도 안 보는 섬과 대조하게 된다.
     return { ok: false, error: `학년도가 이상합니다: ${academicYear}` };
   }
 
@@ -195,81 +86,18 @@ export async function importAssignments(
 
   const { rows: sheetRows, issues } = toLedgerRows(records, academicYear);
   if (sheetRows.length === 0) {
-    // 0건 성공으로 끝내면 '총괄장에 배정이 없다' 로 읽힌다.
+    // 0건 성공으로 끝내면 '시트와 원장이 같다' 로 읽힌다.
     return { ok: false, error: "총괄장에서 배정 칸을 찾지 못했습니다" };
   }
 
-  const admin = createAdminClient();
-  const { data: ops, error: opsErr } = await admin
-    .from("operators")
-    .select("email, name");
-  if (opsErr) {
-    return { ok: false, error: `운영자 조회 실패: ${opsErr.message}` };
-  }
-  const byName = emailByName(
-    (ops ?? []).map((o) => ({
-      email: o.email as string,
-      name: o.name as string,
-    })),
-  );
-
-  // 쓰기 **전** 상태를 먼저 읽는다 — 이력은 '무엇이 바뀌었나' 로 정해진다.
-  let before: LedgerRow[];
+  // 조회 실패를 빈 배열로 삼키지 않는다 — 삼키면 시트 전량이 '원장에 없음' 으로
+  // 나와, 사람은 멀쩡히 들어간 원장을 의심한다.
+  let ledger: LedgerRow[];
   try {
-    before = await listLedgerRows(academicYear);
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
-  const prevByKey = new Map(
-    before.map((r) => [ledgerKeyOf(r), r.assignee_email]),
-  );
-
-  const { payload, unresolvedOperatorNames, unresolvedDeveloperCount } =
-    buildPayload(sheetRows, byName, me.email);
-  for (let i = 0; i < payload.length; i += WRITE_CHUNK) {
-    const { error } = await admin
-      .from("assignments")
-      .upsert(payload.slice(i, i + WRITE_CHUNK), {
-        onConflict: ASSIGNMENT_NATURAL_KEY.join(","),
-      });
-    if (error) {
-      return { ok: false, error: `원장 쓰기 실패: ${error.message}` };
-    }
-  }
-
-  // 원장을 먼저 쓰고 이력을 뒤에 쓴다. PostgREST 는 호출 간 트랜잭션이 없어
-  // 한쪽만 들어갈 수 있는데, 원장이 진실이고 이력은 부속이다. 이력만 실패한
-  // 경우는 다시 돌려도 채워지지 않으므로(이전 상태가 이미 바뀌었다) 메시지로
-  // 구분해 알린다.
-  const history = buildHistory(sheetRows, byName, prevByKey, me.email);
-  for (let i = 0; i < history.length; i += WRITE_CHUNK) {
-    const { error } = await admin
-      .from("assignment_changes")
-      .insert(history.slice(i, i + WRITE_CHUNK));
-    if (error) {
-      return {
-        ok: false,
-        error: `원장은 들어갔지만 이력 적재가 실패했습니다: ${error.message}`,
-      };
-    }
-  }
-
-  let after: LedgerRow[];
-  try {
-    after = await listLedgerRows(academicYear);
+    ledger = await listLedgerRows(academicYear);
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 
-  revalidatePath("/dashboard/assignments");
-
-  return {
-    ok: true,
-    rows: payload.length,
-    history: history.length,
-    unresolvedOperatorNames,
-    unresolvedDeveloperCount,
-    issues,
-    reconcile: reconcile(sheetRows, after),
-  };
+  return { ok: true, issues, reconcile: reconcile(sheetRows, ledger) };
 }

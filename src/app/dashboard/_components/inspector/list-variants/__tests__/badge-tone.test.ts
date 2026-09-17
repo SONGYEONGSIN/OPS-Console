@@ -167,3 +167,30 @@ describe("경위서·회의록 상태 톤", () => {
     expect(MEETING_STATUS_TONE.sent).toBe(BADGE_TONE.done);
   });
 });
+
+/**
+ * **이 가드는 import 가 하드코딩이라 자동으로 안 잡는다.** 새 톤맵을 만들고 여기
+ * 등록하지 않으면 규칙이 집행되지 않은 채 CI 가 초록이다 — 그래서 톤맵을 추가하는
+ * 작업의 일부로 이 블록을 손으로 넣는다(업무배정, 2026-09-16).
+ */
+import { ASSIGNMENT_BADGE_TONE } from "../assignments/status";
+
+describe("업무배정 배지 톤", () => {
+  it("모든 값이 BADGE_TONE 중 하나다", () => {
+    const tones: string[] = Object.values(BADGE_TONE);
+    for (const [key, cls] of Object.entries(ASSIGNMENT_BADGE_TONE)) {
+      expect(tones, `${key}가 규칙 밖 색을 쓴다`).toContain(cls);
+    }
+  });
+
+  /**
+   * `미배정` 은 설계 F2 가 **정상으로 인정한 상태**라 주의 색을 주지 않는다.
+   * `분할` 도 사람이 이유가 있어 갈라놓은 것이다(44곳). 사람이 고쳐야 하는 것은
+   * `연결 안 됨` 하나뿐이고, 그것만 눈에 띄어야 나머지가 소음이 되지 않는다.
+   */
+  it("연결 안 됨만 주의색이고 미배정·분할은 대기색이다", () => {
+    expect(ASSIGNMENT_BADGE_TONE["연결 안 됨"]).toBe(BADGE_TONE.attention);
+    expect(ASSIGNMENT_BADGE_TONE["미배정"]).toBe(BADGE_TONE.idle);
+    expect(ASSIGNMENT_BADGE_TONE["분할"]).toBe(BADGE_TONE.idle);
+  });
+});
