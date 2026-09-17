@@ -3,6 +3,7 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListPattern } from "../_components/patterns/ListPattern";
+import type { ListRow } from "../_components/patterns/ListPattern";
 import { PageTabs } from "@/components/common/PageTabs";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -13,7 +14,13 @@ import {
   SHEET_NAMES,
 } from "@/features/assignments/queries";
 import { BAEJUNG_CURRENT_YEAR } from "@/features/assignments/parse";
-import { listLedgerRows } from "@/features/assignments/ledger-queries";
+import {
+  listLedgerRows,
+  listAssignmentChanges,
+} from "@/features/assignments/ledger-queries";
+import { updateAssignment, revertChange } from "@/features/assignments/actions";
+import { listOperators } from "@/features/operators/queries";
+import { assignmentCandidates } from "@/features/assignments/candidates";
 import {
   ledgerRowsToListRows,
   matchesLedgerQuery,
@@ -173,6 +180,67 @@ export default async function AssignmentsPage({
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  /**
+   * 이력은 **이 페이지에 뜬 대학만** 읽는다. 학년도 전체를 읽으면 편집이 쌓일수록
+   * 목록 한 장을 그리는 비용이 자라고, 한 대학의 세 줄을 보여주려고 수천 줄을
+   * 클라이언트로 보낸다.
+   *
+   * 명부는 **상태로 걸러내지 않는다.** 이력에 남은 주소를 이름으로 풀고 되돌리기
+   * 가능 여부를 판정하는 기준이 '`operators` 에 있는가' 이고(FK 가 그렇다), 여기서
+   * active 만 넘기면 서버 판정과 화면 판정이 갈린다.
+   */
+  const [changes, operators] = await Promise.all([
+    listAssignmentChanges(
+      BAEJUNG_CURRENT_YEAR,
+      paged.map((r) => r.name),
+    ),
+    listOperators(),
+  ]);
+  // 명부 전원 — 이력의 이메일을 이름으로 풀고, 되돌리기 가능 여부를 판정한다.
+  // 판정 기준이 'FK 가 받아주는가' = `operators` 에 있는가여서 여기서 좁히면 서버와 갈린다.
+  const assignmentOperators = operators.map((o) => ({
+    email: o.email,
+    name: o.name,
+  }));
+  // 후보는 active 만 — **다른 질문이다**(누구를 새로 배정할 수 있나 · 정책).
+  const candidates = assignmentCandidates(operators);
+
+  /**
+   * 저장 — **server action 이 폼을 믿지 않는다**(`updateAssignment` 가 이전값을 DB 에서
+   * 다시 읽는다). 여기서는 화면의 행을 그쪽 입력 모양으로 옮기기만 한다.
+   */
+  async function onPersist(
+    row: ListRow,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    // 학년도가 없으면 쓰지 않는다 — 기본값으로 메우면 다른 해에 조용히 쓴다.
+    if (!row.assignment) return { ok: false, error: "학년도를 알 수 없습니다" };
+    const cells = Object.entries(row.assignment.byService).flatMap(
+      ([kind, rec]) =>
+        (rec.cells ?? []).map((c) => ({
+          work_kind: kind,
+          subtype: c.subtype,
+          role: c.role,
+          assignee_email: c.email,
+          assignee_name: c.name,
+        })),
+    );
+    const r = await updateAssignment({
+      academic_year: row.assignment.academicYear,
+      university_name: row.name,
+      cells,
+    });
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
+  async function onRevert(
+    id: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    "use server";
+    const r = await revertChange(id);
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  }
+
   return (
     <>
       {makeHeader(total)}
@@ -186,6 +254,12 @@ export default async function AssignmentsPage({
          * 흐려진다 — 가림은 권한이 아니라서 저장 action 이 다시 확인한다(PR4b).
          */
         readOnly={me?.permission !== "admin"}
+        onPersist={onPersist}
+        assignmentChanges={changes}
+        assignmentOperators={assignmentOperators}
+        assignmentCandidates={candidates}
+        /* 되돌리기는 admin 만 — 이력 자체는 전원이 본다(총괄장이 오늘 그렇다). */
+        onRevertChange={me?.permission === "admin" ? onRevert : undefined}
         liveData
         controlsRow={
           <AssignmentControls

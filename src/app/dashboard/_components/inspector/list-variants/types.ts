@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { ListRow } from "../../patterns/ListPattern";
+import type { AssignmentChange } from "@/features/assignments/ledger-schemas";
 import type { OperatorPermission } from "@/features/operators/schemas";
 
 export type Variant =
@@ -47,6 +48,13 @@ export type ChecklistToggleInput = {
 
 export type ViewProps = {
   row: ListRow;
+  /** assignments variant — 이 대학의 변경 이력. 없으면 이력 섹션을 안 그린다. */
+  assignmentChanges?: AssignmentChange[];
+  /** assignments variant — 이메일 → 이름 풀이 + 되돌리기 가능 판정용 명부. */
+  assignmentOperators?: { email: string; name: string }[];
+  /** assignments variant — 이력 한 줄 되돌리기 (admin only). 없으면 버튼을 안 그린다. */
+  onRevertChange?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+
   currentUserPermission?: OperatorPermission | null;
   /** dev-test variant — 본인 요청 판별 (대기 요청 취소 노출). */
   currentUserEmail?: string | null;
@@ -137,4 +145,9 @@ export type EditFormProps = {
     fromServiceId: string,
     toServiceIds: string[],
   ) => Promise<{ ok: boolean; error?: string; copiedCount?: number }>;
+  /**
+   * assignments variant — 운영 칸 후보(**active 만**). 개발 칸은 자유 입력이라 쓰지 않는다.
+   * 이력의 이름 풀이·되돌리기 판정은 명부 전원을 보는 별개 목록이다(`ViewProps`).
+   */
+  assignmentCandidates?: { email: string; name: string }[];
 };

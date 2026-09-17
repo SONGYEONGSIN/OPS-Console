@@ -5,6 +5,7 @@ import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { InspectorPanel } from "../inspector/InspectorPanel";
 import { InspectorChrome } from "../inspector/InspectorChrome";
 import { InspectorListBody } from "../inspector/InspectorListBody";
+import type { AssignmentChange } from "@/features/assignments/ledger-schemas";
 import { useInspectorState } from "../inspector/useInspectorState";
 import { variantRegistry } from "../inspector/list-variants/registry";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
@@ -709,6 +710,14 @@ type Props = {
     row: ListRow,
     isNew: boolean,
   ) => Promise<{ ok: boolean; error?: string }>;
+  /** assignments variant — 목록에 뜬 대학들의 변경 이력. InspectorListBody로 전달. */
+  assignmentChanges?: AssignmentChange[];
+  /** assignments variant — 이력의 이메일 → 이름 풀이 + 되돌리기 판정용 명부(전원). */
+  assignmentOperators?: { email: string; name: string }[];
+  /** assignments variant — 운영 칸 후보(active 만). 편집 폼에만 쓴다. */
+  assignmentCandidates?: { email: string; name: string }[];
+  /** assignments variant — 이력 한 줄 되돌리기 (admin only). server action wrapper. */
+  onRevertChange?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** true면 신규/편집 등 변경 액션 hide (admin 외 사용자) */
   readOnly?: boolean;
   /** team variant — InspectorListBody 권한 select 노출 분기용 */
@@ -821,6 +830,10 @@ export function ListPattern({
   header,
   variant = "default",
   onPersist,
+  assignmentChanges,
+  assignmentOperators,
+  assignmentCandidates,
+  onRevertChange,
   readOnly = false,
   currentUserPermission = null,
   currentUserEmail = null,
@@ -1111,6 +1124,10 @@ export function ListPattern({
               contractsServiceActiveOptions={contractsServiceActiveOptions}
               handoverServiceCandidates={handoverServiceCandidates}
               onCopyHandover={onCopyHandover}
+              assignmentChanges={assignmentChanges}
+              assignmentOperators={assignmentOperators}
+              assignmentCandidates={assignmentCandidates}
+              onRevertChange={onRevertChange}
               onSave={async (next) => {
                 const wasNew =
                   !rows.some((r) => r.id === next.id) || next.id === "";

@@ -1,6 +1,11 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { AssignmentRole, AssignmentWorkKind } from "./ledger-schemas";
+import type {
+  AssignmentChange,
+  AssignmentChangeSource,
+  AssignmentRole,
+  AssignmentWorkKind,
+} from "./ledger-schemas";
 
 /**
  * 원장 한 행 = 시트 쪽 초안 + **이메일**.
@@ -63,4 +68,72 @@ export async function listLedgerRows(
     if (data.length < CHUNK) break;
   }
   return out;
+}
+
+/**
+ * 한 번에 읽는 이력 페이지 상한. **넘기면 던진다** — 상한에서 조용히 멈추면 오래된
+ * 이력이 사라진 것처럼 보이고, 그 자리에서 되돌리기를 누른 사람은 자기가 무엇을
+ * 되돌리는지 모른다. 30대학 × 20칸 × 편집 33번이면 닿는다.
+ */
+const HISTORY_MAX_PAGES = 20;
+
+/** 이력 조회 컬럼 — `id` 가 없으면 되돌리기가 무엇을 되돌릴지 가리킬 수 없다. */
+const CHANGE_COLUMNS =
+  "id, academic_year, university_name, work_kind, subtype, role, prev_assignee, next_assignee, source, actor_email, changed_at";
+
+/**
+ * 배정 변경 이력 — **인스펙터가 '이 칸이 왜 이 사람인가' 를 답하는 근거**다.
+ *
+ * **화면에 뜬 대학만 읽는다.** 학년도 전체를 읽으면 편집이 쌓일수록 목록 한 장을
+ * 그리는 비용이 자라고, 한 대학의 세 줄을 보여주려고 수천 줄을 클라이언트로 보낸다.
+ * 대학 목록이 비면 아예 조회하지 않는다 — 빈 `in` 은 전건 조회로 둔갑한다.
+ *
+ * 세션 클라이언트다. `assignment_changes_select` 가 `using (true)` 라 로그인한
+ * 사람 누구나 읽는다(오늘 총괄장이 전원 공개다). admin 클라이언트는 되돌리기
+ * 쓰기에만 쓴다.
+ */
+export async function listAssignmentChanges(
+  academicYear: number,
+  universityNames: readonly string[],
+): Promise<AssignmentChange[]> {
+  if (universityNames.length === 0) return [];
+
+  const supabase = await createClient();
+  const out: AssignmentChange[] = [];
+
+  for (let p = 0; p < HISTORY_MAX_PAGES; p++) {
+    const { data, error } = await supabase
+      .from("assignment_changes")
+      .select(CHANGE_COLUMNS)
+      .eq("academic_year", academicYear)
+      .in("university_name", [...universityNames])
+      // 최신 변경이 먼저다 — 되돌릴 대상은 맨 위 한 줄이다.
+      .order("changed_at", { ascending: false })
+      .range(p * CHUNK, p * CHUNK + CHUNK - 1);
+    if (error) {
+      throw new Error(`[assignments] 이력 조회 실패: ${error.message}`);
+    }
+    if (!data || data.length === 0) return out;
+    out.push(
+      ...data.map((r) => ({
+        id: r.id as string,
+        academic_year: r.academic_year as number,
+        university_name: r.university_name as string,
+        work_kind: r.work_kind as AssignmentWorkKind,
+        // 자연키를 되만들 때 `null` 과 `''` 이 갈린다 — 원장은 `not null default ''`.
+        subtype: (r.subtype as string | null) ?? "",
+        role: r.role as AssignmentRole,
+        prev_assignee: (r.prev_assignee as string | null) ?? null,
+        next_assignee: (r.next_assignee as string | null) ?? null,
+        source: r.source as AssignmentChangeSource,
+        actor_email: (r.actor_email as string | null) ?? null,
+        changed_at: r.changed_at as string,
+      })),
+    );
+    if (data.length < CHUNK) return out;
+  }
+
+  throw new Error(
+    `[assignments] 이력이 너무 많습니다 — ${universityNames.length}개 대학에서 ${HISTORY_MAX_PAGES * CHUNK}줄을 넘겼습니다. 조회 범위를 좁혀야 합니다.`,
+  );
 }

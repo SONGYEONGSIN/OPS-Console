@@ -1,5 +1,17 @@
+"use client";
+
+import { useState } from "react";
 import type { ListRow } from "../../../patterns/ListPattern";
 import { SERVICE_KINDS } from "@/features/assignments/schemas";
+import type {
+  AssignmentChange,
+  AssignmentChangeSource,
+} from "@/features/assignments/ledger-schemas";
+import {
+  latestPerCell,
+  revertBlockedReason,
+} from "@/features/assignments/revert";
+import { kstDateTime } from "@/lib/kst-format";
 import { ASSIGNMENT_BADGE_TONE } from "./status";
 
 type ServiceRec = NonNullable<ListRow["assignment"]>["byService"][string];
@@ -61,7 +73,131 @@ function CellList({ cells }: { cells: readonly Cell[] }) {
   );
 }
 
-export function AssignmentsView({ row }: { row: ListRow }) {
+/** 이력 한 줄이 어디서 왔나. 되돌리기도 하나의 출처다(삭제가 아니라 새 행). */
+const SOURCE_LABEL: Record<AssignmentChangeSource, string> = {
+  import: "이관",
+  manual: "수동",
+  proposal: "제안",
+  revert: "되돌림",
+};
+
+/**
+ * 변경 이력 — **"이 칸이 왜 이 사람인가" 에 답하는 자리**다.
+ *
+ * **표로 그리지 않는다.** 인스펙터는 340px 이라 자연키 5칸 + 방향 + 시각을 표로 놓으면
+ * 가로로 넘치고, 넘치면 가로 스크롤 안에서 되돌리기 버튼이 사라진다.
+ *
+ * 이력은 **이메일 단위**라 이름 스냅샷이 없다. 명부에 있으면 이름으로 풀고, 없으면
+ * 주소를 그대로 보여준다 — 그 주소가 사라진 것이 곧 되돌리기가 막히는 이유다(F14).
+ */
+function ChangeHistory({
+  changes,
+  operators,
+  onRevert,
+}: {
+  changes: readonly AssignmentChange[];
+  operators: readonly { email: string; name: string }[];
+  onRevert?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const nameByEmail = new Map(operators.map((o) => [o.email, o.name]));
+  const knownEmails = new Set(operators.map((o) => o.email));
+  const latestIds = latestPerCell(changes);
+  // 조회가 최신순으로 주지만 그 정렬에 화면을 얹지 않는다 — 한 줄만 바뀌어도
+  // 이력이 뒤집혀 보인다.
+  const sorted = [...changes].sort((a, b) =>
+    a.changed_at < b.changed_at ? 1 : a.changed_at > b.changed_at ? -1 : 0,
+  );
+
+  const who = (email: string | null) =>
+    email === null ? "미배정" : (nameByEmail.get(email) ?? email);
+
+  return (
+    <section>
+      <h3 className="mb-1.5 text-sm font-medium text-vermilion">변경 이력</h3>
+      {sorted.length === 0 ? (
+        <p className="text-xs text-muted">
+          아직 없습니다 — 배정을 고치면 여기에 한 줄씩 쌓입니다.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {sorted.map((c) => {
+            const reason = onRevert
+              ? revertBlockedReason(c, { latestIds, knownEmails })
+              : null;
+            return (
+              <li
+                key={c.id}
+                className="flex flex-col gap-0.5 border-b border-line-soft pb-1.5"
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs text-muted">
+                    {`${c.work_kind}${c.subtype ? ` · ${c.subtype}` : ""} · ${c.role}`}
+                  </span>
+                  <span className="text-2xs text-muted">
+                    {SOURCE_LABEL[c.source] ?? c.source}
+                  </span>
+                </div>
+                <p className="text-sm text-ink">
+                  {`${who(c.prev_assignee)} → ${who(c.next_assignee)}`}
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <time className="text-2xs text-muted tabular-nums">
+                    {kstDateTime(c.changed_at)}
+                  </time>
+                  {onRevert &&
+                    (reason ? (
+                      // 버튼만 사라지면 왜 못 되돌리는지 모른다.
+                      <span className="text-2xs text-muted">{reason}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={pendingId !== null}
+                        onClick={async () => {
+                          setPendingId(c.id);
+                          setError(null);
+                          try {
+                            const r = await onRevert(c.id);
+                            if (!r.ok)
+                              setError(r.error ?? "되돌리지 못했습니다");
+                          } finally {
+                            setPendingId(null);
+                          }
+                        }}
+                        className="cursor-pointer border border-line px-2 py-0.5 text-2xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+                      >
+                        되돌리기
+                      </button>
+                    ))}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {error && <p className="mt-1 text-xs text-vermilion">{error}</p>}
+    </section>
+  );
+}
+
+type Props = {
+  row: ListRow;
+  /** 이 대학의 변경 이력. **없으면 섹션 자체를 안 그린다** — 안 넘긴 화면에 빈 칸이 생긴다. */
+  assignmentChanges?: AssignmentChange[];
+  /** 이메일 → 이름 풀이용. 이력에는 이름 스냅샷이 없다. */
+  assignmentOperators?: { email: string; name: string }[];
+  /** 되돌리기(admin only). 없으면 버튼을 안 그린다 — 이력 자체는 전원 공개다. */
+  onRevertChange?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+};
+
+export function AssignmentsView({
+  row,
+  assignmentChanges,
+  assignmentOperators = [],
+  onRevertChange,
+}: Props) {
   const bs = row.assignment?.byService ?? {};
   const cells = Object.values(bs).flatMap((r) => r.cells ?? []);
   const hasDeveloperCell = cells.some((c) => c.role === "개발");
@@ -109,6 +245,13 @@ export function AssignmentsView({ row }: { row: ListRow }) {
           개발 칸은 이름만 둔다 — 개발자는 운영부 명부에 없어 메일이 붙지
           않는다.
         </p>
+      )}
+      {assignmentChanges && (
+        <ChangeHistory
+          changes={assignmentChanges}
+          operators={assignmentOperators}
+          onRevert={onRevertChange}
+        />
       )}
     </div>
   );

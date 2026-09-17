@@ -5,6 +5,8 @@ const h = vi.hoisted(() => ({
   select: vi.fn(),
   eq: vi.fn(),
   range: vi.fn(),
+  in: vi.fn(),
+  order: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -12,7 +14,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ from: h.from }),
 }));
 
-import { listLedgerRows } from "../ledger-queries";
+import { listLedgerRows, listAssignmentChanges } from "../ledger-queries";
 import { reconcile } from "../import";
 
 /**
@@ -134,5 +136,132 @@ describe("listLedgerRows", () => {
   it("빈 원장은 빈 배열이다 — 아직 이관 전인 것은 에러가 아니다", async () => {
     const rows = await listLedgerRows(2027);
     expect(rows).toEqual([]);
+  });
+});
+
+/**
+ * 이력 읽기 — **인스펙터가 '이 칸이 왜 이 사람인가' 를 답하는 근거**다.
+ *
+ * 화면에 뜬 대학만 읽는다. 학년도 전체를 읽으면 편집이 쌓일수록 목록 한 장을 그리는
+ * 비용이 자라고, 한 대학의 이력 세 줄을 보여주려고 수천 줄을 클라이언트로 보낸다.
+ *
+ * 정책이 `using (true)` 라 세션 클라이언트로 읽는다 — 이력은 전원 공개다(총괄장이
+ * 오늘 그렇다). 되돌리기 쓰기만 admin 클라이언트로 간다.
+ */
+function changeRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "11111111-1111-4111-8111-111111111111",
+    academic_year: 2027,
+    university_name: "서울대학교",
+    work_kind: "원서접수",
+    subtype: "수시",
+    role: "운영",
+    prev_assignee: null,
+    next_assignee: "a@x.com",
+    source: "import",
+    actor_email: "admin@x.com",
+    changed_at: "2026-09-15T01:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("listAssignmentChanges", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.from.mockReturnValue({ select: h.select });
+    h.select.mockReturnValue({ eq: h.eq });
+    h.eq.mockReturnValue({ in: h.in });
+    h.in.mockReturnValue({ order: h.order });
+    h.order.mockReturnValue({ range: h.range });
+    h.range.mockResolvedValue({ data: [], error: null });
+  });
+
+  it("대학 목록이 비면 조회하지 않는다 — 빈 in 은 전건 조회로 둔갑한다", async () => {
+    const rows = await listAssignmentChanges(2027, []);
+    expect(rows).toEqual([]);
+    expect(h.from).not.toHaveBeenCalled();
+  });
+
+  it("학년도와 대학 목록으로 거른다", async () => {
+    await listAssignmentChanges(2027, ["서울대학교", "고려대학교"]);
+    expect(h.from).toHaveBeenCalledWith("assignment_changes");
+    expect(h.eq).toHaveBeenCalledWith("academic_year", 2027);
+    expect(h.in).toHaveBeenCalledWith("university_name", [
+      "서울대학교",
+      "고려대학교",
+    ]);
+  });
+
+  it("최신 변경이 먼저다 — 되돌릴 대상은 맨 위 한 줄이다", async () => {
+    await listAssignmentChanges(2027, ["서울대학교"]);
+    expect(h.order).toHaveBeenCalledWith("changed_at", { ascending: false });
+  });
+
+  it("되돌리기에 필요한 칸을 다 가져온다", async () => {
+    h.range.mockResolvedValueOnce({ data: [changeRow()], error: null });
+
+    const rows = await listAssignmentChanges(2027, ["서울대학교"]);
+
+    expect(rows[0]).toEqual({
+      id: "11111111-1111-4111-8111-111111111111",
+      academic_year: 2027,
+      university_name: "서울대학교",
+      work_kind: "원서접수",
+      subtype: "수시",
+      role: "운영",
+      prev_assignee: null,
+      next_assignee: "a@x.com",
+      source: "import",
+      actor_email: "admin@x.com",
+      changed_at: "2026-09-15T01:00:00.000Z",
+    });
+    // 목이 반환값을 지어내므로 **select 에 컬럼이 들어갔는지까지** 본다. `id` 가
+    // 빠지면 되돌리기가 무엇을 되돌릴지 가리킬 수 없다.
+    for (const col of ["id", "prev_assignee", "next_assignee", "source"]) {
+      expect(h.select.mock.calls[0][0]).toContain(col);
+    }
+  });
+
+  it("subtype 이 null 이면 빈 문자열이다 — 자연키를 되만들 때 갈린다", async () => {
+    h.range.mockResolvedValueOnce({
+      data: [changeRow({ subtype: null })],
+      error: null,
+    });
+    const rows = await listAssignmentChanges(2027, ["서울대학교"]);
+    expect(rows[0].subtype).toBe("");
+  });
+
+  it("1000건 cap 을 넘겨도 전부 가져온다", async () => {
+    const full = Array.from({ length: 1000 }, () => changeRow());
+    h.range
+      .mockResolvedValueOnce({ data: full, error: null })
+      .mockResolvedValueOnce({ data: [changeRow()], error: null });
+
+    const rows = await listAssignmentChanges(2027, ["서울대학교"]);
+
+    expect(rows).toHaveLength(1001);
+    expect(h.range.mock.calls[0]).toEqual([0, 999]);
+    expect(h.range.mock.calls[1]).toEqual([1000, 1999]);
+  });
+
+  it("조회 실패는 던진다 — 빈 배열이면 '이력이 없다' 로 읽힌다", async () => {
+    h.range.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    await expect(
+      listAssignmentChanges(2027, ["서울대학교"]),
+    ).rejects.toThrow(/boom/);
+  });
+
+  /**
+   * **조용히 자르지 않는다.** 상한에서 멈추고 끝내면 오래된 이력이 사라진 것처럼
+   * 보이고, 그 자리에서 되돌리기를 누른 사람은 자기가 무엇을 되돌리는지 모른다.
+   */
+  it("페이지 상한을 넘기면 던진다", async () => {
+    h.range.mockResolvedValue({
+      data: Array.from({ length: 1000 }, () => changeRow()),
+      error: null,
+    });
+    await expect(
+      listAssignmentChanges(2027, ["서울대학교"]),
+    ).rejects.toThrow(/너무 많/);
   });
 });

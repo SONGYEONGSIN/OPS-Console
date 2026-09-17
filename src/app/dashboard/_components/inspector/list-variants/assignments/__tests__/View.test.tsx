@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import type { ListRow } from "../../../../patterns/ListPattern";
+import type { AssignmentChange } from "@/features/assignments/ledger-schemas";
+import { kstDateTime } from "@/lib/kst-format";
 import { AssignmentsView } from "../View";
 
 const makeRow = (overrides: Partial<ListRow> = {}): ListRow => ({
@@ -176,5 +178,200 @@ describe("AssignmentsView", () => {
     expect(serviceNames).not.toContain("대학원");
     expect(serviceNames).not.toContain("성적산출");
     expect(serviceNames).not.toContain("상담앱");
+  });
+});
+
+/**
+ * 이력 섹션 — **"이 칸이 왜 이 사람인가" 에 답하는 자리**다.
+ *
+ * 표로 그리지 않는다. 인스펙터는 340px 이라 5칸짜리 표는 가로로 넘치고, 넘치면
+ * 가로 스크롤 안에서 되돌리기 버튼이 사라진다.
+ *
+ * 되돌리기는 **최신 한 줄에만** 활성이다(`revertBlockedReason`). 서버도 같은 판정을
+ * 다시 하지만, 눌러 보고 나서야 "안 된다" 를 듣는 버튼은 고장으로 보인다.
+ */
+const CHANGE_OPS = [
+  { email: "a@x.com", name: "가운영" },
+  { email: "b@x.com", name: "나운영" },
+];
+
+const ISO_OLD = "2026-09-15T01:00:00.000Z";
+const ISO_NEW = "2026-09-16T01:00:00.000Z";
+
+const chg = (o: Partial<AssignmentChange> = {}): AssignmentChange => ({
+  id: "c-new",
+  academic_year: 2027,
+  university_name: "한양대학교",
+  work_kind: "PIMS",
+  subtype: "FULL",
+  role: "운영",
+  prev_assignee: "a@x.com",
+  next_assignee: "b@x.com",
+  source: "manual",
+  actor_email: "admin@x.com",
+  changed_at: ISO_NEW,
+  ...o,
+});
+
+describe("AssignmentsView — 변경 이력", () => {
+  it("이력 prop 이 없으면 섹션을 그리지 않는다", () => {
+    render(<AssignmentsView row={makeLedgerRow()} />);
+    expect(screen.queryByText("변경 이력")).toBeNull();
+  });
+
+  it("이력이 비면 없다고 한 줄 적는다", () => {
+    render(<AssignmentsView row={makeLedgerRow()} assignmentChanges={[]} />);
+    expect(screen.getByText("변경 이력")).toBeInTheDocument();
+    expect(screen.getByText(/아직 없습니다/)).toBeInTheDocument();
+  });
+
+  it("표로 그리지 않는다 — 인스펙터 폭에서 가로로 넘친다", () => {
+    render(
+      <AssignmentsView row={makeLedgerRow()} assignmentChanges={[chg()]} />,
+    );
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("바뀐 방향을 사람 이름으로 보여준다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg()]}
+        assignmentOperators={CHANGE_OPS}
+      />,
+    );
+    expect(screen.getByText(/가운영 → 나운영/)).toBeInTheDocument();
+  });
+
+  /**
+   * 이력은 이메일 단위이고 이름 스냅샷이 없다(마이그레이션 주석). 명부에서 사라진
+   * 주소는 이름을 찾을 수 없는데, 그게 곧 되돌리기가 막히는 이유다(F14) — 그 주소를
+   * 보여줘야 사람이 무슨 일인지 안다.
+   */
+  it("명부에 없는 주소는 그대로 보여준다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg({ prev_assignee: "사라진@x.com" })]}
+        assignmentOperators={CHANGE_OPS}
+      />,
+    );
+    expect(screen.getByText(/사라진@x.com → 나운영/)).toBeInTheDocument();
+  });
+
+  it("비어 있던 칸이 채워진 줄은 미배정에서 왔다고 보여준다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg({ prev_assignee: null, source: "import" })]}
+        assignmentOperators={CHANGE_OPS}
+      />,
+    );
+    expect(screen.getByText(/미배정 → 나운영/)).toBeInTheDocument();
+  });
+
+  it("언제·어느 칸·무엇으로 바뀐 것인지 함께 적는다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg()]}
+        assignmentOperators={CHANGE_OPS}
+      />,
+    );
+    expect(screen.getByText(kstDateTime(ISO_NEW))).toBeInTheDocument();
+    expect(screen.getByText(/PIMS · FULL · 운영/)).toBeInTheDocument();
+    expect(screen.getByText("수동")).toBeInTheDocument();
+  });
+
+  it("되돌리기는 그 칸의 최신 줄에만 활성이다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[
+          chg(),
+          chg({
+            id: "c-old",
+            changed_at: ISO_OLD,
+            prev_assignee: null,
+            next_assignee: "a@x.com",
+          }),
+        ]}
+        assignmentOperators={CHANGE_OPS}
+        onRevertChange={vi.fn()}
+      />,
+    );
+    const buttons = screen.getAllByRole("button", { name: "되돌리기" });
+    expect(buttons).toHaveLength(1);
+  });
+
+  it("막힌 줄은 이유를 적는다 — 버튼만 사라지면 왜인지 모른다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[
+          chg(),
+          chg({
+            id: "c-old",
+            changed_at: ISO_OLD,
+            prev_assignee: null,
+            next_assignee: "a@x.com",
+          }),
+        ]}
+        assignmentOperators={CHANGE_OPS}
+        onRevertChange={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/또 바뀌었습니다/)).toBeInTheDocument();
+  });
+
+  it("되돌리기를 누르면 그 이력 id 로 부른다", async () => {
+    const onRevertChange = vi.fn().mockResolvedValue({ ok: true });
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg()]}
+        assignmentOperators={CHANGE_OPS}
+        onRevertChange={onRevertChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "되돌리기" }));
+
+    await waitFor(() =>
+      expect(onRevertChange).toHaveBeenCalledWith("c-new"),
+    );
+  });
+
+  it("되돌리기가 실패하면 사유를 보여준다", async () => {
+    const onRevertChange = vi
+      .fn()
+      .mockResolvedValue({ ok: false, error: "연결 안 됨 — 주소가 없습니다" });
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg()]}
+        assignmentOperators={CHANGE_OPS}
+        onRevertChange={onRevertChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "되돌리기" }));
+
+    expect(
+      await screen.findByText(/연결 안 됨 — 주소가 없습니다/),
+    ).toBeInTheDocument();
+  });
+
+  it("되돌릴 권한이 없으면 버튼을 안 그린다 — 이력은 전원 공개다", () => {
+    render(
+      <AssignmentsView
+        row={makeLedgerRow()}
+        assignmentChanges={[chg()]}
+        assignmentOperators={CHANGE_OPS}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "되돌리기" })).toBeNull();
+    // 이력 자체는 보인다.
+    expect(screen.getByText(/가운영 → 나운영/)).toBeInTheDocument();
   });
 });
