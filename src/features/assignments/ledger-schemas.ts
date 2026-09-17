@@ -77,6 +77,27 @@ export const ASSIGNMENT_COLUMNS = [
   "updated_at",
 ] as const;
 
+/**
+ * 이력 한 줄 — 자연키 + 바뀐 것 + 누가·언제.
+ *
+ * **`ledger-queries.ts` 가 아니라 여기 둔다.** 그쪽은 `server-only` 라 인스펙터가
+ * 타입조차 가져갈 수 없는데, 이력을 그리는 것은 화면이다(`LedgerRow` 를 `import.ts`
+ * 에 둔 것과 같은 이유).
+ *
+ * `prev_assignee`/`next_assignee` 는 **이메일**이다. 이름 스냅샷은 원장에만 있어서,
+ * 화면이 사람 이름으로 보여주려면 `operators` 를 곁들여 풀어야 한다 — 그 사람이
+ * 지워졌으면 이름을 못 찾는데, 그건 이력이 이메일 단위라는 사실의 결과다.
+ */
+export type AssignmentChange = AssignmentNaturalKey & {
+  id: string;
+  prev_assignee: string | null;
+  next_assignee: string | null;
+  source: AssignmentChangeSource;
+  actor_email: string | null;
+  /** ISO 문자열. 화면에서 `kstFormat` 으로 찍는다. */
+  changed_at: string;
+};
+
 export const assignmentNaturalKeySchema = z.object({
   academic_year: z.number().int().min(2000).max(9999),
   university_name: z.string().trim().min(1),
@@ -96,3 +117,34 @@ export const assignmentNaturalKeySchema = z.object({
   role: z.enum(ASSIGNMENT_ROLES),
 });
 export type AssignmentNaturalKey = z.infer<typeof assignmentNaturalKeySchema>;
+
+/**
+ * 편집이 보내는 한 칸. 학년도·대학명은 묶음 쪽에 한 번만 있다 — 한 대학의 칸 여러
+ * 개를 한 번에 저장하므로 칸마다 되풀이하면 어긋날 자리가 생긴다.
+ *
+ * `assignee_email` 이 `null` 인 것은 **비우기**다(운영 칸) 또는 **개발 칸**이다.
+ * 둘을 가르는 것은 `role` 이고, 개발 칸은 이메일이 원래 없다 — `operators` 가
+ * 운영부 표라 개발자가 들어갈 자리가 없다.
+ */
+export const assignmentCellInputSchema = z.object({
+  work_kind: z.enum(ASSIGNMENT_WORK_KINDS),
+  subtype: z.string().trim(),
+  role: z.enum(ASSIGNMENT_ROLES),
+  assignee_email: z.string().trim().email().nullable(),
+  assignee_name: z.string().trim(),
+});
+export type AssignmentCellInput = z.infer<typeof assignmentCellInputSchema>;
+
+/**
+ * 편집 입력. **칸이 하나도 없으면 거부한다** — 배선 실수로 빈 배열이 오면
+ * '아무것도 안 바뀜' 과 구분이 안 되고, 그게 성공으로 보이면 아무도 못 알아챈다.
+ */
+export const assignmentUpdateSchema = z.object({
+  academic_year: z.number().int().min(2000).max(9999),
+  university_name: z.string().trim().min(1),
+  cells: z.array(assignmentCellInputSchema).min(1, "바꿀 칸이 없습니다"),
+});
+export type AssignmentUpdateInput = z.infer<typeof assignmentUpdateSchema>;
+
+/** 되돌릴 이력 한 줄의 id. 모양이 아니면 조회조차 하지 않는다. */
+export const assignmentChangeIdSchema = z.string().uuid();

@@ -87,6 +87,7 @@ import { HandoverTable } from "./handover/Table";
 import { WorklogView } from "./worklog/View";
 import { AssignmentsTable } from "./assignments/Table";
 import { AssignmentsView } from "./assignments/View";
+import { AssignmentsEditForm } from "./assignments/EditForm";
 import { ASSIGNMENTS_FILTERS } from "./assignments/filters";
 import { DataRequestTable } from "./data-request/Table";
 import { DataRequestView } from "./data-request/View";
@@ -320,6 +321,7 @@ export const variantRegistry = {
   },
   assignments: {
     View: AssignmentsView,
+    EditForm: AssignmentsEditForm,
     Table: AssignmentsTable,
     Filters: ASSIGNMENTS_FILTERS,
   },
