@@ -22,6 +22,15 @@ export type LedgerRowDraft = {
   university_type?: string;
 };
 
+/**
+ * 원장에서 읽어 온 한 행 — 초안 + 매칭된 이메일.
+ *
+ * **`ledger-queries.ts` 가 아니라 여기 둔다.** 그쪽은 `server-only` 라 화면 코드가
+ * 타입조차 가져갈 수 없는데, 원장 행을 `ListRow` 로 옮기는 매퍼는 화면 쪽에 있다.
+ * 두 벌로 적으면 한쪽만 컬럼이 늘어도 조용히 어긋난다.
+ */
+export type LedgerRow = LedgerRowDraft & { assignee_email: string | null };
+
 /** 사람이 고쳐야 하는 것. **추측해 채우지 않고 보고한다**(설계 F1). */
 export type ImportIssue = {
   kind: "duplicate-conflict";

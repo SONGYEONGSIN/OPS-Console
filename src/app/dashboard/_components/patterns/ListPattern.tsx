@@ -461,17 +461,35 @@ export type ListRow = {
   worklogTarget?: string | null;
   worklogTs?: string;
   worklogUser?: string;
-  /** assignments 도메인 — 대학배정 행 (서비스별 운영/개발 + 인스펙터 detail) */
+  /**
+   * assignments 도메인 — 대학배정 행. **원장(`assignments` 테이블)에서 온다**(PR4).
+   *
+   * `cells` 가 자연키 단위의 원본이고 `operator`/`developer`/`subtypes` 는 거기서
+   * 파생된 표시용이다. 순서를 뒤집어 대표값을 원본으로 삼으면 접힘이 되고, 접힌
+   * 값을 배정의 단위로 쓰는 실수가 #1193 이었다.
+   */
   assignment?: {
+    /** 자연키 1요소. 편집이 자연키를 되만들 때 쓴다. */
+    academicYear: number;
     byService: Record<
       string,
       {
+        /** 표시용 대표 — **빈 subtype 칸에서만** 온다. 없으면 빈 문자열이다. */
         operator: string;
         developer: string;
         detail: { label: string; value: string }[];
         subtypes?: { label: string; operator: string; developer: string }[];
+        /** 원본. 자연키 단위라 편집·배지가 여기에 붙는다. */
+        cells?: {
+          subtype: string;
+          role: "운영" | "개발";
+          name: string;
+          email: string | null;
+        }[];
       }
     >;
+    /** 대학 단위 판정(설계 §3.1 "갈린 44곳"). `features/assignments/badges.ts`. */
+    badges?: string[];
   };
   /** data-request variant — 이 서비스 대학의 수신자 후보 (page가 첨부) */
   dataRequestRecipients?: {

@@ -3,7 +3,6 @@ import { resolvePageMeta } from "../_data/page-meta-derive";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListPattern } from "../_components/patterns/ListPattern";
-import type { ListRow } from "../_components/patterns/ListPattern";
 import { PageTabs } from "@/components/common/PageTabs";
 import { ScopeChips } from "@/components/common/ScopeChips";
 import { ListPagination } from "@/components/common/ListPagination";
@@ -13,24 +12,18 @@ import {
   fetchAssignmentSheet,
   SHEET_NAMES,
 } from "@/features/assignments/queries";
+import { BAEJUNG_CURRENT_YEAR } from "@/features/assignments/parse";
+import { listLedgerRows } from "@/features/assignments/ledger-queries";
 import {
-  parseBaejungList,
-  parseSimpleSheet,
-  parsePims,
-  joinByUniversity,
-  BAEJUNG_CURRENT_YEAR,
-} from "@/features/assignments/parse";
-import type { AssignmentRecord } from "@/features/assignments/schemas";
-import {
-  univRowToListRow,
-  matchesAssignmentQuery,
-  isMyAssignment,
-} from "./_row-mapper";
+  ledgerRowsToListRows,
+  matchesLedgerQuery,
+  isMyLedgerAssignment,
+} from "./_ledger-mapper";
 import { parsePricingSheet } from "@/features/assignments/pricing-parse";
 import { AssignmentControls } from "./_components/AssignmentControls";
 import { SheetGrid } from "./_components/SheetGrid";
 import { PricingSheet } from "./_components/PricingSheet";
-import { ImportAssignments } from "./ImportAssignments";
+import { ReconcileAssignments } from "./ReconcileAssignments";
 
 const PAGE_SIZE = 30;
 
@@ -139,52 +132,22 @@ export default async function AssignmentsPage({
     );
   }
 
-  // 대학배정 탭 — 5시트 병렬 fetch
-  const [baejung, daehakwon, pims, sungjuk, sangdam] = await Promise.all([
-    fetchAssignmentSheet(SHEET_NAMES.배정리스트),
-    fetchAssignmentSheet(SHEET_NAMES.대학원),
-    fetchAssignmentSheet(SHEET_NAMES.PIMS),
-    fetchAssignmentSheet(SHEET_NAMES.성적산출),
-    fetchAssignmentSheet(SHEET_NAMES.상담앱),
-  ]);
-
-  if (!baejung && !daehakwon && !pims && !sungjuk && !sangdam) {
-    return (
-      <>
-        {makeHeader(0)}
-        <PageTabs active="univ" tabs={TABS} />
-        <ErrorBox />
-      </>
-    );
-  }
-
-  const recs: AssignmentRecord[] = [
-    ...(baejung ? parseBaejungList(baejung) : []),
-    ...(daehakwon
-      ? parseSimpleSheet(daehakwon, "대학원", {
-          uni: /대학명/,
-          op: /^운영자$/,
-          dev: /^개발자$/,
-        })
-      : []),
-    ...(pims ? parsePims(pims) : []),
-    ...(sungjuk
-      ? parseSimpleSheet(sungjuk, "성적산출", {
-          uni: /대학명/,
-          op: /^운영자$/,
-          dev: /^개발자$/,
-        })
-      : []),
-    ...(sangdam
-      ? parseSimpleSheet(sangdam, "상담앱", {
-          uni: /학교명|대학명/,
-          op: /^운영자$/,
-          dev: /^개발자$/,
-        })
-      : []),
-  ];
-
-  const allRows: ListRow[] = joinByUniversity(recs).map(univRowToListRow);
+  /**
+   * 대학배정 탭 — **원장이 원천이다**(PR4). 시트는 읽지 않는다.
+   *
+   * 시트에서 파생하면 앱에서 고친 배정이 다음 렌더에 사라지고, 두 원천이 갈렸는지는
+   * 아무도 모른다. 갈림은 읽기 전용 `대조` 버튼이 드러낸다(설계 §13 R1).
+   *
+   * 학년도는 `BAEJUNG_CURRENT_YEAR` — 이관이 쓴 자연키의 학년도와 같아야 한다.
+   * `currentAcademicYear()` 를 쓰면 3월에 한 해를 건너뛰어 목록이 통째로 빈다.
+   *
+   * 조회 실패는 `listLedgerRows` 가 던진다. 빈 배열로 삼키면 '배정이 없다' 로 읽혀
+   * 사람이 없는 원장을 찾아 나선다.
+   */
+  const me = await getCurrentOperator();
+  const allRows = ledgerRowsToListRows(
+    await listLedgerRows(BAEJUNG_CURRENT_YEAR),
+  );
 
   // 대분류(universityType) 옵션 — 데이터에서 unique 추출, 한글 정렬
   const universityTypeOptions = [
@@ -194,13 +157,14 @@ export default async function AssignmentsPage({
   ].sort((a, b) => a.localeCompare(b, "ko"));
 
   // 서버 필터: 검색(?q, 대학명·담당자 양방향) + 내 배정(?mine) + 대분류(?universityType)
-  const me = await getCurrentOperator();
   const term = (sp.q ?? "").trim();
   const mine = sp.mine !== "false";
   const univType = (sp.universityType ?? "").trim();
   const filtered = allRows.filter((r) => {
-    if (term && !matchesAssignmentQuery(r, term)) return false;
-    if (mine && !isMyAssignment(r, me?.displayName ?? "")) return false;
+    if (term && !matchesLedgerQuery(r, term)) return false;
+    // **내 배정의 단위는 이메일이다** — 이름 비교는 같은 이름이 하나 생기는 날
+    // 조용히 남의 배정을 보여준다. 원장에 이메일이 이미 있다.
+    if (mine && !isMyLedgerAssignment(r, me?.email ?? "")) return false;
     if (univType && r.universityType !== univType) return false;
     return true;
   });
@@ -217,7 +181,11 @@ export default async function AssignmentsPage({
         title="대학배정"
         data={{ rows: paged }}
         variant="assignments"
-        readOnly
+        /*
+         * **admin 만 편집한다.** 원장이 원천이 된 이상 아무나 고치면 되돌릴 근거가
+         * 흐려진다 — 가림은 권한이 아니라서 저장 action 이 다시 확인한다(PR4b).
+         */
+        readOnly={me?.permission !== "admin"}
         liveData
         controlsRow={
           <AssignmentControls
@@ -236,13 +204,13 @@ export default async function AssignmentsPage({
           <>
             {sourceAction}
             {/*
-             * 이관은 **대학배정 탭에만** 둔다 — 업무분장·가격정책은 원장과 무관하다.
+             * 대조는 **대학배정 탭에만** 둔다 — 업무분장·가격정책은 원장과 무관하다.
              * admin 에게만 보이지만 **가림은 권한이 아니라서** action 이 다시 확인한다.
-             * 학년도는 `BAEJUNG_CURRENT_YEAR` 다. `currentAcademicYear()` 를 쓰면
-             * 3월에 파서가 읽는 블록과 갈려 한 해 틀린 원장이 조용히 남는다.
+             * 학년도는 목록과 같은 `BAEJUNG_CURRENT_YEAR` 다 — 다른 해를 견주면
+             * 전 칸이 어긋난 것으로 나온다.
              */}
             {me?.permission === "admin" && (
-              <ImportAssignments academicYear={BAEJUNG_CURRENT_YEAR} />
+              <ReconcileAssignments academicYear={BAEJUNG_CURRENT_YEAR} />
             )}
           </>
         }

@@ -4,17 +4,14 @@ const h = vi.hoisted(() => ({
   getCurrentOperator: vi.fn(),
   fetchSheet: vi.fn(),
   listLedgerRows: vi.fn(),
-  from: vi.fn(),
-  selectOperators: vi.fn(),
-  upsert: vi.fn(),
-  insert: vi.fn(),
+  createAdminClient: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: h.revalidatePath }));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({ from: h.from }),
+  createAdminClient: h.createAdminClient,
 }));
 vi.mock("@/features/auth/queries", () => ({
   getCurrentOperator: h.getCurrentOperator,
@@ -26,13 +23,16 @@ vi.mock("../queries", async (importOriginal) => ({
   fetchAssignmentSheet: h.fetchSheet,
 }));
 
-import { importAssignments, type ImportAssignmentsResult } from "../actions";
+import {
+  reconcileAssignments,
+  type ReconcileAssignmentsResult,
+} from "../actions";
 import { SHEET_NAMES } from "../queries";
 
 /**
- * 이관 action 은 **조립과 판정**을 한다 — 파싱은 `parse.ts`, 행 변환은 `import.ts`,
- * 대조는 `reconcile` 이 각자 시험받았다. 여기서 보는 것은 그 사이를 잇는 배선이다:
- * 권한 · 시트 다섯 · 이름→이메일 · 자연키 upsert · 이력 · 쓴 뒤 대조.
+ * 대조 action 은 **읽고 견주기만** 한다 — 파싱은 `parse.ts`, 행 변환은 `import.ts`,
+ * 견주기는 `reconcile` 이 각자 시험받았다. 여기서 보는 것은 그 사이의 배선이다:
+ * 권한 · 시트 다섯 · 원장 읽기 · 결과 전달, 그리고 **아무것도 쓰지 않는다**.
  *
  * 파서는 목으로 바꾸지 않는다. 시트 이름과 파서가 어긋나는 배선 실수는 파서를
  * 가리면 안 보인다.
@@ -61,8 +61,8 @@ const GRAD_SHEET = {
   columnCount: 3,
 };
 
-/** PIMS 한 칸이 원장에 들어간 모양 — 이력 비교의 '이전 상태' 로 쓴다. */
-function ledgerCell(email: string | null, name: string) {
+/** PIMS 한 칸이 원장에 들어가 있는 모양. */
+function ledgerCell(name: string, email: string | null = "a@x.com") {
   return {
     academic_year: 2027,
     university_name: "서울대학교",
@@ -74,30 +74,38 @@ function ledgerCell(email: string | null, name: string) {
   };
 }
 
-function ok(r: ImportAssignmentsResult) {
+function ok(r: ReconcileAssignmentsResult) {
   if (!r.ok) throw new Error(`실패로 돌아왔다: ${r.error}`);
   return r;
 }
 
-describe("importAssignments", () => {
+describe("reconcileAssignments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.getCurrentOperator.mockResolvedValue(ADMIN);
     h.fetchSheet.mockImplementation(async (name: string) =>
       name === SHEET_NAMES.PIMS ? PIMS_SHEET : null,
     );
-    h.selectOperators.mockResolvedValue({
-      data: [{ email: "a@x.com", name: "가운영" }],
-      error: null,
+    h.listLedgerRows.mockResolvedValue([ledgerCell("가운영")]);
+  });
+
+  /**
+   * **이 세 건이 쓰기 철거의 증거다**(설계 §14 PR4).
+   *
+   * 원장에는 쓰기 정책이 아예 없고 `service_role` 에만 `grant all` 이 있다. 즉
+   * **admin 클라이언트를 안 쓰는 것이 곧 쓸 수 없다는 증거**다 — 세션 클라이언트로는
+   * 문법이 맞아도 0행이 바뀐다. 이관 버튼이 남아 있으면 클릭 한 번이 앱 편집 전부를
+   * 시트 값으로 되돌리고, 대조는 그걸 못 잡는다(쓰기 뒤에 견주니 0건으로 통과한다).
+   */
+  describe("읽기 전용", () => {
+    it("admin 클라이언트를 만들지 않는다", async () => {
+      await reconcileAssignments(2027);
+      expect(h.createAdminClient).not.toHaveBeenCalled();
     });
-    h.listLedgerRows.mockResolvedValue([]);
-    h.upsert.mockResolvedValue({ error: null });
-    h.insert.mockResolvedValue({ error: null });
-    h.from.mockImplementation((table: string) => {
-      if (table === "operators") return { select: h.selectOperators };
-      if (table === "assignments") return { upsert: h.upsert };
-      if (table === "assignment_changes") return { insert: h.insert };
-      throw new Error(`예상치 못한 테이블: ${table}`);
+
+    it("화면을 다시 그리지 않는다 — 바뀐 것이 없다", async () => {
+      await reconcileAssignments(2027);
+      expect(h.revalidatePath).not.toHaveBeenCalled();
     });
   });
 
@@ -108,31 +116,30 @@ describe("importAssignments", () => {
         permission: "member",
       });
 
-      const r = await importAssignments(2027);
+      const r = await reconcileAssignments(2027);
 
       expect(r.ok).toBe(false);
       expect(h.fetchSheet).not.toHaveBeenCalled();
-      expect(h.upsert).not.toHaveBeenCalled();
     });
 
     it("비로그인이면 아무것도 하지 않는다", async () => {
       h.getCurrentOperator.mockResolvedValue(null);
-      const r = await importAssignments(2027);
+      const r = await reconcileAssignments(2027);
       expect(r.ok).toBe(false);
-      expect(h.upsert).not.toHaveBeenCalled();
+      expect(h.fetchSheet).not.toHaveBeenCalled();
     });
 
-    it("학년도가 범위를 벗어나면 아무것도 쓰지 않는다", async () => {
-      // 자연키에 학년도가 있어, 이상한 값이 들어가면 아무도 안 보는 섬이 생긴다.
-      const r = await importAssignments(1999);
+    it("학년도가 범위를 벗어나면 조회하지 않는다", async () => {
+      // 학년도가 자연키에 있어, 이상한 값은 아무도 안 보는 섬과 대조된다.
+      const r = await reconcileAssignments(1999);
       expect(r.ok).toBe(false);
-      expect(h.upsert).not.toHaveBeenCalled();
+      expect(h.listLedgerRows).not.toHaveBeenCalled();
     });
   });
 
   describe("시트 읽기", () => {
     it("다섯 시트를 모두 읽는다", async () => {
-      await importAssignments(2027);
+      await reconcileAssignments(2027);
       const asked = h.fetchSheet.mock.calls.map((c) => c[0]);
       expect(asked).toEqual(
         expect.arrayContaining([
@@ -146,236 +153,71 @@ describe("importAssignments", () => {
     });
 
     it("시트를 하나도 못 읽으면 실패로 돌려준다", async () => {
-      // 0건 성공으로 끝내면 '총괄장에 배정이 없다' 로 읽힌다.
+      // 0건 성공으로 끝내면 '시트와 원장이 같다' 로 읽힌다.
       h.fetchSheet.mockResolvedValue(null);
-      const r = await importAssignments(2027);
+      const r = await reconcileAssignments(2027);
       expect(r.ok).toBe(false);
-      expect(h.upsert).not.toHaveBeenCalled();
     });
 
-    it("시트마다 맞는 파서로 간다 — PIMS 와 대학원이 각자 work_kind 로 들어간다", async () => {
+    it("시트마다 맞는 파서로 간다 — PIMS 와 대학원이 각자 work_kind 로 센다", async () => {
       h.fetchSheet.mockImplementation(async (name: string) => {
         if (name === SHEET_NAMES.PIMS) return PIMS_SHEET;
         if (name === SHEET_NAMES.대학원) return GRAD_SHEET;
         return null;
       });
+      h.listLedgerRows.mockResolvedValue([]);
 
-      await importAssignments(2027);
+      const r = ok(await reconcileAssignments(2027));
 
-      const payload = h.upsert.mock.calls[0][0] as { work_kind: string }[];
-      expect([...new Set(payload.map((r) => r.work_kind))].sort()).toEqual([
-        "PIMS",
-        "대학원",
-      ]);
-    });
-  });
-
-  describe("원장 쓰기", () => {
-    it("자연키로 upsert 한다 — 다시 돌려도 행이 늘지 않는다", async () => {
-      await importAssignments(2027);
-      expect(h.upsert.mock.calls[0][1]).toMatchObject({
-        onConflict: "academic_year,university_name,work_kind,subtype,role",
-      });
-    });
-
-    it("이름을 이메일로 바꿔 넣고 이름 스냅샷도 남긴다", async () => {
-      const r = ok(await importAssignments(2027));
-
-      expect(r.rows).toBe(1);
-      expect(h.upsert.mock.calls[0][0]).toEqual([
-        {
-          academic_year: 2027,
-          university_name: "서울대학교",
-          work_kind: "PIMS",
-          subtype: "FULL",
-          role: "운영",
-          assignee_email: "a@x.com",
-          assignee_name: "가운영",
-          university_type: null,
-          updated_by: "admin@x.com",
-        },
-      ]);
-    });
-
-    it("못 맞춘 이름은 이메일 없이 이름만 남기고 보고한다", async () => {
-      // F2: 미배정·미매칭은 설계가 정상으로 인정한 상태다. 이름 스냅샷은 남는다.
-      h.selectOperators.mockResolvedValue({ data: [], error: null });
-
-      const r = ok(await importAssignments(2027));
-
-      const [row] = h.upsert.mock.calls[0][0] as {
-        assignee_email: string | null;
-        assignee_name: string;
-      }[];
-      expect(row.assignee_email).toBeNull();
-      expect(row.assignee_name).toBe("가운영");
-      expect(r.unresolvedOperatorNames).toEqual(["가운영"]);
-    });
-
-    it("이름이 둘 이상에 걸리면 맞추지 않는다 — 추측해 채우지 않는다", async () => {
-      h.selectOperators.mockResolvedValue({
-        data: [
-          { email: "a@x.com", name: "가운영" },
-          { email: "b@x.com", name: "가운영" },
-        ],
-        error: null,
-      });
-
-      const r = ok(await importAssignments(2027));
-
-      const [row] = h.upsert.mock.calls[0][0] as {
-        assignee_email: string | null;
-      }[];
-      expect(row.assignee_email).toBeNull();
-      expect(r.unresolvedOperatorNames).toEqual(["가운영"]);
-    });
-
-    /**
-     * 라이브 실측(2026-09-15): 미매칭 27개 중 **26개가 개발자**였고, 개발 칸
-     * 890개의 매칭은 **전부 0** 이었다. 우연이 아니라 구조다 — `operators` 는
-     * 운영부 명단이고 `team` check 가 `운영1팀·운영2팀` 이라 개발부가 들어갈
-     * 자리가 없다.
-     *
-     * 그래서 개발자를 '고쳐야 할 이름' 으로 띄우면 **매번 같은 26개가 뜬다.**
-     * 항상 울리는 경고는 소음이고, 소음은 진짜 신호(운영자 한 명이 빠지는 날)를
-     * 가린다. 이 배정 원장은 운영자 배정을 위한 것이다(사용자 확인 2026-09-15).
-     */
-    it("개발 칸 미매칭은 운영자 목록에 안 섞는다 — 개발부가 operators 에 없는 건 정상이다", async () => {
-      h.fetchSheet.mockImplementation(async (name: string) =>
-        name === SHEET_NAMES.대학원 ? GRAD_SHEET : null,
-      );
-      h.selectOperators.mockResolvedValue({
-        data: [{ email: "b@x.com", name: "나운영" }],
-        error: null,
-      });
-
-      const r = ok(await importAssignments(2027));
-
-      expect(r.unresolvedOperatorNames).toEqual([]);
-      expect(r.unresolvedDeveloperCount).toBe(1);
-    });
-
-    it("운영 칸 미매칭은 개발자 건수에 안 섞인다 — 이쪽만 사람이 고칠 것이다", async () => {
-      h.fetchSheet.mockImplementation(async (name: string) =>
-        name === SHEET_NAMES.대학원 ? GRAD_SHEET : null,
-      );
-      h.selectOperators.mockResolvedValue({ data: [], error: null });
-
-      const r = ok(await importAssignments(2027));
-
-      expect(r.unresolvedOperatorNames).toEqual(["나운영"]);
-      expect(r.unresolvedDeveloperCount).toBe(1);
-    });
-
-    it("행이 많으면 나눠 넣는다 — 설계가 세는 한 해 물량이 5,720행이다", async () => {
-      const rows = Array.from({ length: 501 }, (_, i) => [
-        `대학${i + 1}`,
-        "가운영",
-        "",
-      ]);
-      h.fetchSheet.mockImplementation(async (name: string) =>
-        name === SHEET_NAMES.대학원
-          ? {
-              worksheetName: SHEET_NAMES.대학원,
-              rowsText: [["대학명", "운영자", "개발자"], ...rows],
-              rowCount: rows.length + 1,
-              columnCount: 3,
-            }
-          : null,
-      );
-
-      const r = ok(await importAssignments(2027));
-
-      expect(r.rows).toBe(501);
-      expect(h.upsert.mock.calls.length).toBeGreaterThan(1);
-    });
-
-    it("원장 쓰기가 실패하면 실패로 돌려준다", async () => {
-      // supabase-js 는 던지지 않는다. 삼키면 '이관 완료' 로 보고하고 끝난다.
-      h.upsert.mockResolvedValue({ error: { message: "boom" } });
-      const r = await importAssignments(2027);
-      expect(r.ok).toBe(false);
-      expect(h.insert).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("이력", () => {
-    it("빈 칸이 채워지면 prev=null 로 남긴다", async () => {
-      const r = ok(await importAssignments(2027));
-
-      expect(r.history).toBe(1);
-      expect(h.insert.mock.calls[0][0]).toEqual([
-        {
-          academic_year: 2027,
-          university_name: "서울대학교",
-          work_kind: "PIMS",
-          subtype: "FULL",
-          role: "운영",
-          prev_assignee: null,
-          next_assignee: "a@x.com",
-          source: "import",
-          actor_email: "admin@x.com",
-        },
-      ]);
-    });
-
-    it("담당자가 바뀌면 prev·next 를 이메일로 남긴다", async () => {
-      h.listLedgerRows.mockResolvedValue([ledgerCell("old@x.com", "옛운영")]);
-
-      ok(await importAssignments(2027));
-
-      expect(h.insert.mock.calls[0][0]).toMatchObject([
-        { prev_assignee: "old@x.com", next_assignee: "a@x.com" },
-      ]);
-    });
-
-    it("안 바뀐 칸은 이력에 남기지 않는다 — 다시 돌려도 이력이 늘지 않는다", async () => {
-      h.listLedgerRows.mockResolvedValue([ledgerCell("a@x.com", "가운영")]);
-
-      const r = ok(await importAssignments(2027));
-
-      expect(r.history).toBe(0);
-      expect(h.insert).not.toHaveBeenCalled();
-    });
-
-    it("이메일을 못 맞춘 칸은 이력에 남기지 않는다", async () => {
-      // prev=next=null 이 되어 `assignment_changes_actual_change_chk` 가 23514 로
-      // 트랜잭션을 통째로 죽인다. 이름만으로는 이력을 남길 수 없다.
-      h.selectOperators.mockResolvedValue({ data: [], error: null });
-
-      const r = ok(await importAssignments(2027));
-
-      expect(r.history).toBe(0);
-      expect(h.insert).not.toHaveBeenCalled();
+      // PIMS 운영 1 + 대학원 운영·개발 2 = 3칸
+      expect(r.reconcile.cells.sheet).toBe(3);
     });
   });
 
   describe("대조", () => {
-    it("쓴 뒤의 원장으로 대조한다", async () => {
-      // 쓰기 전 상태로 대조하면 방금 넣은 행이 전부 '원장에 없음' 으로 나온다.
-      h.listLedgerRows
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([ledgerCell("a@x.com", "가운영")]);
+    it("원장을 학년도로 읽어 견준다", async () => {
+      const r = ok(await reconcileAssignments(2027));
 
-      const r = ok(await importAssignments(2027));
-
-      expect(h.listLedgerRows).toHaveBeenCalledTimes(2);
+      expect(h.listLedgerRows).toHaveBeenCalledWith(2027);
       expect(r.reconcile.mismatchCount).toBe(0);
       expect(r.reconcile.cells).toEqual({ sheet: 1, ledger: 1 });
     });
 
-    it("이관이 일부만 들어가면 대조가 드러낸다", async () => {
+    it("원장에 없는 칸을 드러낸다", async () => {
       h.listLedgerRows.mockResolvedValue([]);
 
-      const r = ok(await importAssignments(2027));
+      const r = ok(await reconcileAssignments(2027));
 
       expect(r.reconcile.mismatchCount).toBe(1);
       expect(r.reconcile.missingInLedger[0]).toContain("서울대학교");
     });
 
+    it("같은 칸에 이름이 갈리면 어느 쪽이 무엇인지 알려준다", async () => {
+      // 갈림을 만들지 않으면서 갈림을 탐지하는 것이 이 버튼의 존재 이유다(§13 R1).
+      h.listLedgerRows.mockResolvedValue([ledgerCell("딴사람")]);
+
+      const r = ok(await reconcileAssignments(2027));
+
+      expect(r.reconcile.nameMismatch).toEqual([
+        {
+          key: "2027|서울대학교|PIMS|FULL|운영",
+          sheet: "가운영",
+          ledger: "딴사람",
+        },
+      ]);
+    });
+
+    it("원장 조회가 실패하면 실패로 돌려준다 — 조용한 0건은 거짓말이다", async () => {
+      // 삼키면 시트 전량을 '원장에 없음' 으로 세고, 사람은 멀쩡한 원장을 의심한다.
+      h.listLedgerRows.mockRejectedValue(new Error("원장 조회 실패: boom"));
+
+      const r = await reconcileAssignments(2027);
+
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.error).toContain("원장 조회 실패");
+    });
+
     it("같은 칸에 이름이 둘이면 이슈로 돌려준다", async () => {
-      // 요지는 **이슈가 action 결과까지 흘러가는가** 다. PIMS 의 '모호함' 은 파서가
-      // 두 칸(FULL·환충)을 따로 주게 되면서 사라졌고(2026-09-15), 남은 종류가 이것이다.
       // 조용히 접으면 배정 하나가 말없이 없어진다.
       h.fetchSheet.mockImplementation(async (name: string) =>
         name === SHEET_NAMES.PIMS
@@ -390,18 +232,11 @@ describe("importAssignments", () => {
           : null,
       );
 
-      const r = ok(await importAssignments(2027));
+      const r = ok(await reconcileAssignments(2027));
 
       expect(r.issues).toHaveLength(1);
       expect(r.issues[0].kind).toBe("duplicate-conflict");
       expect(r.issues[0].university).toBe("서울대학교");
-      // 자연키가 같으니 원장 행은 하나다(뒤에 온 값을 쓴다).
-      expect(r.rows).toBe(1);
     });
-  });
-
-  it("대학배정 화면을 다시 그린다", async () => {
-    await importAssignments(2027);
-    expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/assignments");
   });
 });

@@ -20,6 +20,25 @@ export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
 export const ASSIGNMENT_WORK_KINDS = SERVICE_KINDS;
 export type AssignmentWorkKind = (typeof ASSIGNMENT_WORK_KINDS)[number];
 
+/**
+ * 하위유형 표시 순서 — **설계 §3.1 이 적은 시트 열 순서**다.
+ *
+ * DB 조회 순서는 보장이 없어서 정해 두지 않으면 화면 줄 순서가 실행마다 바뀐다.
+ * 가나다순으로 두면 `재외/수시/정시` 가 뒤집혀 오늘 화면과 달라진다. 여기 없는
+ * 하위유형(시트가 자라면 생긴다)은 뒤에 가나다순으로 붙는다.
+ */
+export const ASSIGNMENT_SUBTYPE_ORDER = [
+  "재외",
+  "수시",
+  "정시",
+  "편입",
+  "외국인",
+  "백업",
+  "백업자",
+  "FULL",
+  "환충",
+] as const;
+
 /** 이력 한 줄이 어디서 왔나. 되돌리기도 하나의 출처다(삭제가 아니라 새 행). */
 export const ASSIGNMENT_CHANGE_SOURCES = [
   "import",
