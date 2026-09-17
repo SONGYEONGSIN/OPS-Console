@@ -4,6 +4,7 @@ import {
   TENURE_GROUP_LABELS,
   tenureGroupSchema,
   careerStartOf,
+  careerYearsAt,
 } from "../tenure";
 
 describe("careerStartOf", () => {
@@ -80,5 +81,21 @@ describe("tenureGroupSchema", () => {
 
   it("공백이 붙은 값을 거부한다", () => {
     expect(tenureGroupSchema.safeParse(" 1-1 ").success).toBe(false);
+  });
+});
+
+describe("careerYearsAt", () => {
+  it("경력 시작일부터 오늘까지의 햇수다", () => {
+    expect(careerYearsAt("2019-03-01", new Date("2026-09-01T00:00:00+09:00")))
+      .toBeCloseTo(7.5, 1);
+  });
+
+  it("오늘 시작했으면 0 이다", () => {
+    expect(careerYearsAt("2026-09-01", new Date("2026-09-01T00:00:00+09:00")))
+      .toBe(0);
+  });
+
+  it("날짜가 아니면 null 이다 — 화면에 NaN 을 흘리지 않는다", () => {
+    expect(careerYearsAt("", new Date("2026-09-01T00:00:00+09:00"))).toBeNull();
   });
 });
