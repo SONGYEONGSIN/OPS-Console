@@ -145,6 +145,9 @@ export type EditFormProps = {
     fromServiceId: string,
     toServiceIds: string[],
   ) => Promise<{ ok: boolean; error?: string; copiedCount?: number }>;
-  /** assignments variant — 운영 칸 후보. 개발 칸은 자유 입력이라 쓰지 않는다. */
-  assignmentOperators?: { email: string; name: string }[];
+  /**
+   * assignments variant — 운영 칸 후보(**active 만**). 개발 칸은 자유 입력이라 쓰지 않는다.
+   * 이력의 이름 풀이·되돌리기 판정은 명부 전원을 보는 별개 목록이다(`ViewProps`).
+   */
+  assignmentCandidates?: { email: string; name: string }[];
 };

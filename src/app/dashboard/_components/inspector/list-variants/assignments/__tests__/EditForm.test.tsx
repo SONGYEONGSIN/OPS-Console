@@ -50,15 +50,21 @@ const makeRow = (): ListRow => ({
  * `operators` 는 운영부 표라 개발자가 없고, 그래서 개발 칸 편집은 이력에 안 남는다
  * (사용자 결정 2026-09-17).
  */
-function Harness({ onSave = vi.fn() }: { onSave?: (r: ListRow) => void }) {
-  const [row, setRow] = useState<ListRow>(makeRow());
+function Harness({
+  onSave = vi.fn(),
+  initial,
+}: {
+  onSave?: (r: ListRow) => void;
+  initial?: ListRow;
+}) {
+  const [row, setRow] = useState<ListRow>(initial ?? makeRow());
   return (
     <AssignmentsEditForm
       row={row}
       setRow={setRow}
       onSave={onSave}
       onCancel={vi.fn()}
-      assignmentOperators={OPS}
+      assignmentCandidates={OPS}
     />
   );
 }
@@ -168,7 +174,7 @@ describe("AssignmentsEditForm", () => {
         setRow={vi.fn()}
         onSave={vi.fn()}
         onCancel={onCancel}
-        assignmentOperators={OPS}
+        assignmentCandidates={OPS}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
@@ -188,9 +194,98 @@ describe("AssignmentsEditForm", () => {
         setRow={vi.fn()}
         onSave={vi.fn()}
         onCancel={vi.fn()}
-        assignmentOperators={OPS}
+        assignmentCandidates={OPS}
       />,
     );
     expect(screen.getByText(/고칠 칸이 없습니다/)).toBeInTheDocument();
+  });
+
+  /**
+   * **후보에서 빠진 사람이 들고 있는 칸.** 비활성·삭제된 운영자가 원장에 칸을 들고
+   * 있을 수 있다. 후보에 없으면 select 값이 어느 옵션과도 안 맞아 `비움` 으로 보이고,
+   * 이름 힌트는 `email` 이 없을 때만 뜨므로 **이름까지 사라진다** — 고치려던 사람이
+   * 누가 있었는지 모르게 된다.
+   */
+  it("후보에 없는 현재 담당자는 후보에 남긴다", () => {
+    render(
+      <Harness
+        initial={{
+          id: "서울대학교",
+          name: "서울대학교",
+          status: "active",
+          owner: "",
+          assignment: {
+            academicYear: 2027,
+            byService: {
+              PIMS: {
+                operator: "",
+                developer: "",
+                detail: [],
+                cells: [
+                  {
+                    subtype: "FULL",
+                    role: "운영",
+                    name: "옛운영",
+                    email: "z@x.com",
+                  },
+                ],
+              },
+            },
+          },
+        }}
+      />,
+    );
+
+    const select = screen.getByLabelText(
+      "PIMS FULL 운영",
+    ) as HTMLSelectElement;
+    expect(select.value).toBe("z@x.com");
+    expect([...select.options].map((o) => o.textContent)).toContain(
+      "옛운영 (지금 담당)",
+    );
+  });
+
+  it("후보 밖 담당자를 다른 사람으로 바꿨다가 되돌려도 이름이 돌아온다", () => {
+    const onSave = vi.fn();
+    render(
+      <Harness
+        onSave={onSave}
+        initial={{
+          id: "서울대학교",
+          name: "서울대학교",
+          status: "active",
+          owner: "",
+          assignment: {
+            academicYear: 2027,
+            byService: {
+              PIMS: {
+                operator: "",
+                developer: "",
+                detail: [],
+                cells: [
+                  {
+                    subtype: "FULL",
+                    role: "운영",
+                    name: "옛운영",
+                    email: "z@x.com",
+                  },
+                ],
+              },
+            },
+          },
+        }}
+      />,
+    );
+
+    const select = screen.getByLabelText("PIMS FULL 운영");
+    fireEvent.change(select, { target: { value: "b@x.com" } });
+    fireEvent.change(select, { target: { value: "z@x.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+
+    const saved = onSave.mock.calls[0][0] as ListRow;
+    expect(cellsOf(saved, "PIMS")[0]).toMatchObject({
+      email: "z@x.com",
+      name: "옛운영",
+    });
   });
 });

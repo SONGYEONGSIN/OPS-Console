@@ -712,8 +712,10 @@ type Props = {
   ) => Promise<{ ok: boolean; error?: string }>;
   /** assignments variant — 목록에 뜬 대학들의 변경 이력. InspectorListBody로 전달. */
   assignmentChanges?: AssignmentChange[];
-  /** assignments variant — 운영 칸 후보 + 이력의 이메일 → 이름 풀이. */
+  /** assignments variant — 이력의 이메일 → 이름 풀이 + 되돌리기 판정용 명부(전원). */
   assignmentOperators?: { email: string; name: string }[];
+  /** assignments variant — 운영 칸 후보(active 만). 편집 폼에만 쓴다. */
+  assignmentCandidates?: { email: string; name: string }[];
   /** assignments variant — 이력 한 줄 되돌리기 (admin only). server action wrapper. */
   onRevertChange?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** true면 신규/편집 등 변경 액션 hide (admin 외 사용자) */
@@ -830,6 +832,7 @@ export function ListPattern({
   onPersist,
   assignmentChanges,
   assignmentOperators,
+  assignmentCandidates,
   onRevertChange,
   readOnly = false,
   currentUserPermission = null,
@@ -1123,6 +1126,7 @@ export function ListPattern({
               onCopyHandover={onCopyHandover}
               assignmentChanges={assignmentChanges}
               assignmentOperators={assignmentOperators}
+              assignmentCandidates={assignmentCandidates}
               onRevertChange={onRevertChange}
               onSave={async (next) => {
                 const wasNew =

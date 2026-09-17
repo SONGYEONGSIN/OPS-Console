@@ -20,6 +20,7 @@ import {
 } from "@/features/assignments/ledger-queries";
 import { updateAssignment, revertChange } from "@/features/assignments/actions";
 import { listOperators } from "@/features/operators/queries";
+import { assignmentCandidates } from "@/features/assignments/candidates";
 import {
   ledgerRowsToListRows,
   matchesLedgerQuery,
@@ -195,10 +196,14 @@ export default async function AssignmentsPage({
     ),
     listOperators(),
   ]);
+  // 명부 전원 — 이력의 이메일을 이름으로 풀고, 되돌리기 가능 여부를 판정한다.
+  // 판정 기준이 'FK 가 받아주는가' = `operators` 에 있는가여서 여기서 좁히면 서버와 갈린다.
   const assignmentOperators = operators.map((o) => ({
     email: o.email,
     name: o.name,
   }));
+  // 후보는 active 만 — **다른 질문이다**(누구를 새로 배정할 수 있나 · 정책).
+  const candidates = assignmentCandidates(operators);
 
   /**
    * 저장 — **server action 이 폼을 믿지 않는다**(`updateAssignment` 가 이전값을 DB 에서
@@ -252,6 +257,7 @@ export default async function AssignmentsPage({
         onPersist={onPersist}
         assignmentChanges={changes}
         assignmentOperators={assignmentOperators}
+        assignmentCandidates={candidates}
         /* 되돌리기는 admin 만 — 이력 자체는 전원이 본다(총괄장이 오늘 그렇다). */
         onRevertChange={me?.permission === "admin" ? onRevert : undefined}
         liveData
