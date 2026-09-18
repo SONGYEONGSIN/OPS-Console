@@ -41,3 +41,19 @@ export function careerStartOf(operator: {
 }): string {
   return operator.career_start_at ?? operator.hired_at;
 }
+
+/** 1년 = 365.25일. 윤년을 평균으로 녹인다 — 표에 소수 한 자리로 찍는 값이다. */
+const DAYS_PER_YEAR = 365.25;
+
+/**
+ * 경력 햇수 — 배분현황이 그룹 경계를 사람에게 설명하는 칸이다.
+ *
+ * 날짜가 아니면 **`null`** 이다. 0 으로 주면 신입과 구분이 안 되고, `NaN` 은
+ * 화면으로 샌다.
+ */
+export function careerYearsAt(start: string, now: Date): number | null {
+  const from = new Date(start);
+  if (Number.isNaN(from.getTime())) return null;
+  const days = (now.getTime() - from.getTime()) / 86_400_000;
+  return Math.max(0, days / DAYS_PER_YEAR);
+}

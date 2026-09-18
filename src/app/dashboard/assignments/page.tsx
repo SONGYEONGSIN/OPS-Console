@@ -21,6 +21,9 @@ import {
 import { updateAssignment, revertChange } from "@/features/assignments/actions";
 import { listOperators } from "@/features/operators/queries";
 import { assignmentCandidates } from "@/features/assignments/candidates";
+import { buildWorkload } from "@/features/assignments/workload";
+import { workloadWindows } from "@/features/assignments/workload-sources";
+import { loadWorkloadSources } from "@/features/assignments/workload-queries";
 import {
   ledgerRowsToListRows,
   matchesLedgerQuery,
@@ -31,6 +34,7 @@ import { AssignmentControls } from "./_components/AssignmentControls";
 import { SheetGrid } from "./_components/SheetGrid";
 import { PricingSheet } from "./_components/PricingSheet";
 import { ReconcileAssignments } from "./ReconcileAssignments";
+import { WorkloadTable } from "./WorkloadTable";
 
 const PAGE_SIZE = 30;
 
@@ -45,6 +49,11 @@ const TABS = [
     key: "pricing",
     label: "가격정책",
     href: "/dashboard/assignments?tab=pricing",
+  },
+  {
+    key: "workload",
+    label: "배분현황",
+    href: "/dashboard/assignments?tab=workload",
   },
 ] as const;
 
@@ -81,7 +90,20 @@ export default async function AssignmentsPage({
   if (!meta) return null;
   const pathname = `/dashboard/${slug}`;
   const sp = await searchParams;
-  const tab = sp.tab === "duties" || sp.tab === "pricing" ? sp.tab : "univ";
+  /**
+   * 배분현황은 **admin 전용**이다(설계 §9.5 · 사용자 결정 2026-09-17). 남의
+   * 업무량을 견주는 표라 열람과 편집을 가르는 것과 같은 선에 둔다. 권한이 없으면
+   * 탭이 아예 안 보이고, 주소로 들어와도 `univ` 로 떨어진다 — 탭 목록에서만 빼면
+   * 주소를 아는 사람에게는 열려 있는 것과 같다.
+   */
+  const me = await getCurrentOperator();
+  const isAdmin = me?.permission === "admin";
+  const requested =
+    sp.tab === "duties" || sp.tab === "pricing" || sp.tab === "workload"
+      ? sp.tab
+      : "univ";
+  const tab = requested === "workload" && !isAdmin ? "univ" : requested;
+  const tabs = isAdmin ? TABS : TABS.filter((t) => t.key !== "workload");
 
   /**
    * 원본 파일 버튼 — **목록 제목 줄** 오른쪽에 둔다.
@@ -131,10 +153,43 @@ export default async function AssignmentsPage({
     return (
       <>
         {makeHeader(sheetRows)}
-        <PageTabs active={tab} tabs={TABS} />
+        <PageTabs active={tab} tabs={tabs} />
         {/* 이 탭들은 목록 머리가 없다 — 같은 자리(우측 상단)를 만들어 준다. */}
         <div className="flex justify-end px-7 pt-7">{sourceAction}</div>
         {body}
+      </>
+    );
+  }
+
+  /**
+   * 배분현황 탭 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
+   *
+   * 원장은 대학배정 탭과 같은 학년도를 본다. 명부는 **활성 + 배정 대상**만 —
+   * 퇴사자가 0곳으로 끼면 그룹 평균이 아래로 끌려가 남은 사람이 전부 과부하로
+   * 보인다(`assignable` 은 `buildWorkload` 가 거른다).
+   */
+  if (tab === "workload") {
+    const now = new Date();
+    const [ledger, operators, sources] = await Promise.all([
+      listLedgerRows(BAEJUNG_CURRENT_YEAR),
+      listOperators(),
+      loadWorkloadSources(now),
+    ]);
+    const groups = buildWorkload({
+      operators: operators.filter((o) => o.status === "active"),
+      cells: ledger,
+      serviceCounts: sources.serviceCounts,
+      spans: sources.spans,
+      windows: workloadWindows(now),
+    });
+    const people = groups.reduce((n, g) => n + g.rows.length, 0);
+    return (
+      <>
+        {makeHeader(people)}
+        <PageTabs active={tab} tabs={tabs} />
+        <section className="p-7">
+          <WorkloadTable groups={groups} now={now} />
+        </section>
       </>
     );
   }
@@ -151,7 +206,6 @@ export default async function AssignmentsPage({
    * 조회 실패는 `listLedgerRows` 가 던진다. 빈 배열로 삼키면 '배정이 없다' 로 읽혀
    * 사람이 없는 원장을 찾아 나선다.
    */
-  const me = await getCurrentOperator();
   const allRows = ledgerRowsToListRows(
     await listLedgerRows(BAEJUNG_CURRENT_YEAR),
   );
@@ -244,7 +298,7 @@ export default async function AssignmentsPage({
   return (
     <>
       {makeHeader(total)}
-      <PageTabs active="univ" tabs={TABS} />
+      <PageTabs active="univ" tabs={tabs} />
       <ListPattern
         title="대학배정"
         data={{ rows: paged }}
