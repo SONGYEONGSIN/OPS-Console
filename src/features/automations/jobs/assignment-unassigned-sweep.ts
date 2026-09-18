@@ -1,4 +1,5 @@
 import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { BAEJUNG_CURRENT_YEAR } from "@/features/assignments/parse";
 import { listLedgerRows } from "@/features/assignments/ledger-queries";
 import {
@@ -27,7 +28,10 @@ import type { AutomationRunResult } from "../types";
 export async function runAssignmentUnassignedSweep(): Promise<AutomationRunResult> {
   let ledger;
   try {
-    ledger = await listLedgerRows(BAEJUNG_CURRENT_YEAR);
+    // **admin 클라이언트로 읽는다 — 잡에는 세션이 없다.** `assignments` 의 select
+    // 정책이 `to authenticated` 라, 세션 클라이언트로는 코드도 메시지도 빈 에러가
+    // 온다(실측 2026-09-18 — rollover 가 같은 이유로 프로덕션에서 500 이 났다).
+    ledger = await listLedgerRows(BAEJUNG_CURRENT_YEAR, createAdminClient());
   } catch (e) {
     // 조회 실패를 0건으로 읽으면 '미배정 없음' 이 매일 보고된다.
     return {

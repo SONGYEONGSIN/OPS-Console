@@ -17,6 +17,8 @@ vi.mock("@/features/assignments/propose-requests/enqueue", () => ({
   AUTOMATION_REQUESTER: "automation",
   enqueueProposeRequest: (...a: unknown[]) => enqueueProposeRequest(...a),
 }));
+const ADMIN = { __admin: true };
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ADMIN }));
 
 const { runAssignmentUnassignedSweep } =
   await import("../assignment-unassigned-sweep");
@@ -63,7 +65,20 @@ describe("runAssignmentUnassignedSweep", () => {
     // 잡이 시계에서 학년도를 도출하면 3월에 한 해를 건너뛰어, 화면엔 미배정 배지가
     // 떠 있는데 잡은 빈 원장을 보고 '미배정 없음' 을 보고한다.
     await runAssignmentUnassignedSweep();
-    expect(listLedgerRows).toHaveBeenCalledWith(BAEJUNG_CURRENT_YEAR);
+    expect(listLedgerRows).toHaveBeenCalledWith(BAEJUNG_CURRENT_YEAR, ADMIN);
+  });
+
+  it("**원장을 admin 클라이언트로 읽는다 — 잡에는 세션이 없다**", async () => {
+    /*
+     * 실측(2026-09-18 라이브): `assignments` 의 select 정책이 `to authenticated` 라,
+     * 세션 없는 클라이언트는 `count=null` 에 **코드도 메시지도 빈 에러**를 받는다.
+     * rollover 가 같은 이유로 프로덕션에서 500 이 났다.
+     */
+    await runAssignmentUnassignedSweep();
+    expect(listLedgerRows).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ __admin: true }),
+    );
   });
 
   it("시계에서 학년도를 도출하지 않는다", () => {

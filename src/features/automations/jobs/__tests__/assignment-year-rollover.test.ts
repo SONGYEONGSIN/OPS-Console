@@ -26,6 +26,8 @@ vi.mock("@/features/assignments/propose-requests/enqueue", () => ({
   AUTOMATION_REQUESTER: "automation",
   enqueueProposeRequest: (...a: unknown[]) => enqueueProposeRequest(...a),
 }));
+const ADMIN = { __admin: true };
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ADMIN }));
 
 const { runAssignmentYearRollover } =
   await import("../assignment-year-rollover");
@@ -61,6 +63,22 @@ describe("runAssignmentYearRollover", () => {
       "automation",
       expect.objectContaining({ academicYear: 2027, kind: "annual" }),
     );
+  });
+
+  it("**원장·명부를 admin 클라이언트로 읽는다 — 잡에는 세션이 없다**", async () => {
+    /*
+     * 실측(2026-09-18 라이브): `assignments`·`operators` 의 select 정책이 둘 다
+     * `to authenticated` 라, 세션 없는 클라이언트는 `count=null` 에 **코드도
+     * 메시지도 빈 에러**를 받는다. 그대로 두면 잡이 매일 500 으로 죽는다.
+     */
+    // 명부는 상기 문구를 만들 때만 읽는다 — 직전 배치가 있어야 그 경로로 간다.
+    latestAnnualBasis.mockResolvedValue({
+      previousYear: 2026,
+      previous: { "2": ["a@x.com"] },
+    });
+    await runAssignmentYearRollover(new Date("2026-09-18T00:00:00Z"));
+    expect(countLedgerRows).toHaveBeenCalledWith(2027, ADMIN);
+    expect(listOperators).toHaveBeenCalledWith(ADMIN);
   });
 
   it("이미 있으면 적재하지 않는다 — 같은 판정이 매일 돌지 않는다", async () => {
