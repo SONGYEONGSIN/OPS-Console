@@ -17,6 +17,17 @@ import type {
 import type { LedgerRow } from "./import";
 export type { LedgerRow };
 
+/**
+ * 조회에 쓰는 클라이언트. **세션 클라이언트와 service_role 클라이언트가 둘 다 온다** —
+ * 화면은 세션으로 읽고, 폴러 창구(CRON_SECRET)에는 쿠키가 없어 service_role 로 읽는다.
+ * 여기서 받지 않으면 그 자리가 같은 원장을 읽는 SQL 을 한 벌 더 쓰게 되고, 한쪽만
+ * 고쳐지는 날 화면과 판정이 다른 원장을 본다.
+ */
+export type AssignmentQueryClient = Pick<
+  Awaited<ReturnType<typeof createClient>>,
+  "from"
+>;
+
 /** PostgREST Max-Rows cap. 한 번만 조회하면 뒤쪽 배정이 조용히 사라진다. */
 const CHUNK = 1000;
 const MAX_PAGES = 20;
@@ -35,8 +46,9 @@ const MAX_PAGES = 20;
  */
 export async function listLedgerRows(
   academicYear: number,
+  client?: AssignmentQueryClient,
 ): Promise<LedgerRow[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const out: LedgerRow[] = [];
 
   for (let p = 0; p < MAX_PAGES; p++) {
