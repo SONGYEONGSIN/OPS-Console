@@ -88,6 +88,20 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         source: { kind: "job", jobId: "contract-completion-snapshot" },
       },
       {
+        /*
+         * 배정 요청을 만드는 쪽이다 — **판정 자체는 회사 PC 폴러가 한다**(설계 §6.4).
+         * 그래서 `llm` 이 아니다: 이 잡은 큐에 한 줄을 넣고 끝난다.
+         */
+        role: "학년도",
+        agent: "assignment-rollover",
+        source: { kind: "job", jobId: "assignment-year-rollover" },
+      },
+      {
+        role: "미배정",
+        agent: "unassigned-sweeper",
+        source: { kind: "job", jobId: "assignment-unassigned-sweep" },
+      },
+      {
         role: "우편",
         agent: "postal-reader",
         llm: true,
