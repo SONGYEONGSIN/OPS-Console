@@ -1,4 +1,5 @@
 import { TENURE_GROUPS, careerStartOf } from "./tenure";
+import { deviation } from "./proposal/objective";
 
 /**
  * 배분현황 집계 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
@@ -185,19 +186,10 @@ export function buildWorkload(input: {
     return {
       group,
       target,
-      rows: rows.map((r) => ({
-        ...r,
-        // §6.1 의 dev(op) — 두 축의 상대 편차 합. 목표가 0 이면 그 축은 0 이다
-        // (전원이 0곳이면 견줄 것이 없다).
-        deviation:
-          (target.universities === 0
-            ? 0
-            : Math.abs(r.universities - target.universities) /
-              target.universities) +
-          (target.density === 0
-            ? 0
-            : Math.abs(r.density - target.density) / target.density),
-      })),
+      // §6.1 의 dev(op). **산식은 `proposal/objective.ts` 하나뿐이다** — 두 벌이
+      // 되면 이 표와 게이트 G6 이 다른 점수를 매겨, 화면에서 통과로 보이는 배치가
+      // 서버에서 탈락한다.
+      rows: rows.map((r) => ({ ...r, deviation: deviation(r, target) })),
     };
   });
 }
