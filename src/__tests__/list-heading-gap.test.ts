@@ -25,6 +25,8 @@ const EXEMPT: Record<string, string> = {
     "header 가 배경·보더가 있는 띠라 표와 붙는 게 의도된 모양이다.",
   "HandoverWizard.tsx":
     "목록 패널이 아니라 마법사 단계 제목(`1 · 서비스 선택`)이다.",
+  "ProposalPanel.tsx":
+    "배치마다 카드 하나이고 header 가 `border-b` 띠다 — 표와 붙는 게 의도된 모양이라 mb-4 를 주면 띠의 아랫선과 표 사이가 벌어진다(PricingSheet 과 같은 사정).",
 };
 
 function tsxFiles(dir: string): string[] {

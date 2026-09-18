@@ -8,7 +8,7 @@ import {
 } from "../workload";
 import { TENURE_GROUP_LABELS, type TenureGroup } from "../tenure";
 import { ledgerHolders, type GateLedgerCell } from "./gate";
-import { ASSIGNMENT_LIMITS } from "./objective";
+import { ASSIGNMENT_LIMITS, EXCLUDED_WORK_KINDS } from "./objective";
 
 /**
  * 판정 입력표와 지시문 — **서버가 조립한다**(§6.3).
@@ -27,9 +27,6 @@ export type MoveCandidate = {
   work_kind: string;
   assignee_email: string;
 };
-
-/** 자동 배정 대상이 아닌 업무종류(결정 6). */
-const EXCLUDED_WORK_KINDS = new Set(["상담앱"]);
 
 const groupLabel = (group: string) =>
   TENURE_GROUP_LABELS[group as TenureGroup] ?? group;

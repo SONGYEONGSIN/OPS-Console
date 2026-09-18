@@ -33,8 +33,13 @@ import { parsePricingSheet } from "@/features/assignments/pricing-parse";
 import { AssignmentControls } from "./_components/AssignmentControls";
 import { SheetGrid } from "./_components/SheetGrid";
 import { PricingSheet } from "./_components/PricingSheet";
+import {
+  listProposalBatches,
+  listProposals,
+} from "@/features/assignments/proposal/queries";
 import { ReconcileAssignments } from "./ReconcileAssignments";
 import { WorkloadTable } from "./WorkloadTable";
+import { ProposalPanel } from "./ProposalPanel";
 
 const PAGE_SIZE = 30;
 
@@ -51,11 +56,22 @@ const TABS = [
     href: "/dashboard/assignments?tab=pricing",
   },
   {
+    key: "proposals",
+    label: "제안",
+    href: "/dashboard/assignments?tab=proposals",
+  },
+  {
     key: "workload",
     label: "배분현황",
     href: "/dashboard/assignments?tab=workload",
   },
 ] as const;
+
+/** admin 전용 탭 — 주소를 아는 사람에게도 열려 있으면 안 되므로 탭 목록과 함께 판정한다. */
+const ADMIN_TABS = new Set(["workload", "proposals"]);
+
+/** 제안 탭이 한 화면에 그리는 배치 수. 연간 배치 하나가 300줄이라 전부 읽지 않는다. */
+const PROPOSAL_BATCHES = 10;
 
 function ErrorBox() {
   return (
@@ -91,19 +107,22 @@ export default async function AssignmentsPage({
   const pathname = `/dashboard/${slug}`;
   const sp = await searchParams;
   /**
-   * 배분현황은 **admin 전용**이다(설계 §9.5 · 사용자 결정 2026-09-17). 남의
-   * 업무량을 견주는 표라 열람과 편집을 가르는 것과 같은 선에 둔다. 권한이 없으면
-   * 탭이 아예 안 보이고, 주소로 들어와도 `univ` 로 떨어진다 — 탭 목록에서만 빼면
-   * 주소를 아는 사람에게는 열려 있는 것과 같다.
+   * 배분현황·제안은 **admin 전용**이다(설계 §9.5 · 사용자 결정 2026-09-17). 남의
+   * 업무량을 견주고 원장을 바꾸는 자리라 열람과 편집을 가르는 것과 같은 선에 둔다.
+   * 권한이 없으면 탭이 아예 안 보이고, 주소로 들어와도 `univ` 로 떨어진다 — 탭
+   * 목록에서만 빼면 주소를 아는 사람에게는 열려 있는 것과 같다.
    */
   const me = await getCurrentOperator();
   const isAdmin = me?.permission === "admin";
   const requested =
-    sp.tab === "duties" || sp.tab === "pricing" || sp.tab === "workload"
+    sp.tab === "duties" ||
+    sp.tab === "pricing" ||
+    sp.tab === "workload" ||
+    sp.tab === "proposals"
       ? sp.tab
       : "univ";
-  const tab = requested === "workload" && !isAdmin ? "univ" : requested;
-  const tabs = isAdmin ? TABS : TABS.filter((t) => t.key !== "workload");
+  const tab = ADMIN_TABS.has(requested) && !isAdmin ? "univ" : requested;
+  const tabs = isAdmin ? TABS : TABS.filter((t) => !ADMIN_TABS.has(t.key));
 
   /**
    * 원본 파일 버튼 — **목록 제목 줄** 오른쪽에 둔다.
@@ -189,6 +208,39 @@ export default async function AssignmentsPage({
         <PageTabs active={tab} tabs={tabs} />
         <section className="p-7">
           <WorkloadTable groups={groups} now={now} />
+        </section>
+      </>
+    );
+  }
+
+  /**
+   * 제안 탭 — **관리자가 마지막 승인을 하는 자리**(설계 §9.3 · rev 2).
+   *
+   * 배치와 제안을 **페이지가 한 번에 읽어** 넘긴다. 패널이 배치마다 읽으면 화면 한
+   * 장에 조회가 열 번 나고, 머리 건수와 목록이 다른 시점을 본다.
+   *
+   * 명부는 이름을 붙이는 데만 쓴다 — 표에 메일 주소가 그대로 서면 사람이 한 줄씩
+   * 대조해야 한다. 상태로 좁히지 않는 이유는 퇴사자가 이전 담당자로 남아 있을 수
+   * 있어서다(좁히면 그 칸이 주소로 돌아간다).
+   */
+  if (tab === "proposals") {
+    const allBatches = await listProposalBatches();
+    const batches = allBatches.slice(0, PROPOSAL_BATCHES);
+    const [proposals, operators] = await Promise.all([
+      listProposals(batches.map((b) => b.id)),
+      listOperators(),
+    ]);
+    const names = Object.fromEntries(operators.map((o) => [o.email, o.name]));
+    return (
+      <>
+        {makeHeader(batches.length)}
+        <PageTabs active={tab} tabs={tabs} />
+        <section className="p-7">
+          <ProposalPanel
+            batches={batches}
+            proposals={proposals}
+            names={names}
+          />
         </section>
       </>
     );
