@@ -83,6 +83,33 @@ export async function listLedgerRows(
 }
 
 /**
+ * 그 학년도 원장 행 수. **행을 끌어오지 않고 센다**(head count).
+ *
+ * rollover 가 '이관이 끝났는가' 를 이것으로 본다 — 빈 원장으로 판정하면 제안 0건짜리
+ * 배치가 만들어지고, 그 순간 그 학년도의 annual 배치가 '있다' 가 되어 **진짜 배정은
+ * 영영 제안되지 않는다.**
+ *
+ * `count === null` 로 판별하는 이유는 supabase-js 가 없는 테이블에도 안 던지기
+ * 때문이다 — `!error` 만 보면 가짜 초록이 된다(드리프트 검사 선례).
+ */
+export async function countLedgerRows(
+  academicYear: number,
+  client?: AssignmentQueryClient,
+): Promise<number> {
+  const supabase = client ?? (await createClient());
+  const { count, error } = await supabase
+    .from("assignments")
+    .select("academic_year", { count: "exact", head: true })
+    .eq("academic_year", academicYear);
+  if (error || count === null) {
+    throw new Error(
+      `[assignments] 원장 건수 조회 실패: ${error?.message ?? "count 가 오지 않았습니다"}`,
+    );
+  }
+  return count;
+}
+
+/**
  * 한 번에 읽는 이력 페이지 상한. **넘기면 던진다** — 상한에서 조용히 멈추면 오래된
  * 이력이 사라진 것처럼 보이고, 그 자리에서 되돌리기를 누른 사람은 자기가 무엇을
  * 되돌리는지 모른다. 30대학 × 20칸 × 편집 33번이면 닿는다.

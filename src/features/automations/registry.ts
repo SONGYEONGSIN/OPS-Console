@@ -15,6 +15,8 @@ import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
 import { runTeamBriefing } from "./jobs/team-briefing";
 import { runContractCompletionSnapshot } from "./jobs/contract-completion-snapshot";
 import { runKnowledgeIndex } from "./jobs/knowledge-index";
+import { runAssignmentYearRollover } from "./jobs/assignment-year-rollover";
+import { runAssignmentUnassignedSweep } from "./jobs/assignment-unassigned-sweep";
 // 이 잡은 registry 전체를 훑어야 해서 queries → registry 순환이 생긴다. queries가
 // AUTOMATION_JOBS를 함수 안에서만 읽으므로 평가 순서와 무관하게 안전하다.
 import { runAutomationDigest } from "./jobs/automation-digest";
@@ -190,6 +192,26 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cadence: "hourly",
     cooldownMinutes: 5,
     run: runKnowledgeIndex,
+  },
+  {
+    id: "assignment-year-rollover",
+    label: "학년도 배정 요청",
+    description:
+      "새 학년도의 배정 제안을 만들도록 판정 요청을 적재합니다. 그 학년도 배치가 이미 있으면 건너뜁니다.\n판정은 회사 PC 폴러(Agent SDK)가 5분 내 가져가 수행하고, 결과는 배정 > 제안 탭에 배치로 쌓입니다 — 적용 전까지 원장은 바뀌지 않습니다.\n연 1회지만 매일 돌립니다: 3월 1일에 cron이 실패해도 다음 날 만들어지고, 미실행 감지가 정상 작동합니다.",
+    scheduleInfo: "매일 09:00 (cron-job.org)",
+    cadence: "daily",
+    cooldownMinutes: 60,
+    run: runAssignmentYearRollover,
+  },
+  {
+    id: "assignment-unassigned-sweep",
+    label: "배정 미배정 감지",
+    description:
+      "배정 원장에서 담당자가 없는 (대학 × 업무종류)를 찾아 단건 판정 요청을 적재합니다.\n이름은 있는데 메일 주소가 안 이어진 칸('연결 안 됨')은 요청하지 않고 건수만 보고합니다 — 고칠 것은 주소이지 배정이 아닙니다.\n한 번에 적재하는 요청 수에 상한이 있고, 남은 것은 다음 실행이 이어 갑니다.",
+    scheduleInfo: "평일 09:30 (cron-job.org)",
+    cadence: "weekday",
+    cooldownMinutes: 60,
+    run: runAssignmentUnassignedSweep,
   },
   {
     id: "automation-digest",

@@ -38,6 +38,15 @@ export type ProposedMove = {
 export const ASSIGNMENT_LIMITS = { perOperator: 3, perBatch: 15 } as const;
 
 /**
+ * 자동 배정 대상이 아닌 업무종류(결정 6) — 화면에는 보이되 제안을 만들지 않는다.
+ *
+ * **세 곳이 이 하나를 본다**: 후보 조립(`prompt`)·단건 판정(`single`)·미배정
+ * 감지(`unassigned`). 각자 적어 두면 한 곳만 빠뜨렸을 때 평일 잡이 매번 요청을
+ * 만들고 판정은 매번 '대상 아님' 으로 끝난다 — 큐만 돌고 아무 일도 안 일어난다.
+ */
+export const EXCLUDED_WORK_KINDS: ReadonlySet<string> = new Set(["상담앱"]);
+
+/**
  * §6.1 의 `dev(op)` — 두 축의 상대 편차 합.
  *
  * **`workload.ts` 가 이 함수를 쓴다.** 산식이 두 벌이 되면 배분현황 표와 게이트가

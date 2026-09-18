@@ -5,6 +5,8 @@ import { loadJudgeInput } from "@/features/assignments/proposal/judge-input";
 import { parseProposalResponse } from "@/features/assignments/proposal/parse-response";
 import { runGates } from "@/features/assignments/proposal/gate";
 import { persistProposalBatch } from "@/features/assignments/proposal/persist";
+import { proposalBatchHtml } from "@/features/assignments/proposal/report";
+import { sendAutomationReport } from "@/features/automations/report-send";
 
 /**
  * 배정 판정 폴러 창구(설계 §6.4) — `Authorization: Bearer ${CRON_SECRET}`.
@@ -242,6 +244,27 @@ export async function POST(request: NextRequest) {
       batchId: persisted.batchId,
       message: persisted.summary,
     });
+
+    /**
+     * **성공은 여기서만 사람에게 닿는다.** 판정은 잡이 아니라서(§6.4) 성공에
+     * `automation_runs` 줄이 안 생기고 일일 보고에도 안 잡힌다 — 이 메시지가 없으면
+     * 배치는 제안 탭 안에만 있고, 그 탭을 열어 볼 이유가 아무에게도 생기지 않는다.
+     *
+     * 발송 실패가 판정을 뒤집지는 않는다(`sendAutomationReport` 는 던지지 않는다).
+     */
+    await sendAutomationReport(
+      proposalBatchHtml({
+        academicYear: req.academic_year,
+        kind: req.kind,
+        proposals: persisted.proposals,
+        universities: new Set(gated.accepted.map((m) => m.university_name))
+          .size,
+        summary: persisted.summary,
+        batchId: persisted.batchId,
+        target: onlyOf(req),
+      }),
+    );
+
     return NextResponse.json({
       ok: true,
       batchId: persisted.batchId,

@@ -1,4 +1,5 @@
 import { workKey, type WorkloadOperator } from "../workload";
+import { EXCLUDED_WORK_KINDS } from "./objective";
 import { ledgerHolders, type GateLedgerCell } from "./gate";
 
 /**
@@ -19,9 +20,6 @@ export type SingleAssignment =
   | { kind: "ask" }
   /** 채우지 않고 보고한다. */
   | { kind: "unassigned"; reason: string };
-
-/** 상담앱은 자동 배정 대상이 아니다 — 화면에는 보이되 제안을 만들지 않는다(결정 6). */
-const EXCLUDED_WORK_KINDS = new Set(["상담앱"]);
 
 export function assignSingle(
   target: { university_name: string; work_kind: string },
