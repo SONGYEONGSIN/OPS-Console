@@ -31,6 +31,8 @@ const SESSIONLESS_ROUTES = [
   // SMS 인증번호 우편함 — 스크래퍼(CRON_SECRET)와 폰(SMS_INGEST_SECRET).
   "/api/sms-codes/consume",
   "/api/sms-codes/inbound",
+  // 배정 판정 큐 — 회사 PC 폴러가 claim 하고 결과를 회신한다(CRON_SECRET).
+  "/api/assignments/propose-request",
 ];
 
 describe("proxy — 세션 없는 창구", () => {

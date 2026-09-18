@@ -48,6 +48,8 @@ const PUBLIC_PATHS = [
   "/api/entertest/ingest",
   "/api/dev-controls/analyze-request",
   "/api/assistant/claude/claim",
+  // 배정 판정 큐 — 회사 PC 폴러가 claim 하고 결과를 회신한다(CRON_SECRET).
+  "/api/assignments/propose-request",
   "/api/assistant/tools",
   "/api/assistant/bot",
   "/api/postal/extract",

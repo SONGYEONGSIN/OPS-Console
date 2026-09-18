@@ -96,11 +96,29 @@ export function buildProposalPrompt(input: {
   serviceCounts: Readonly<Record<string, number>>;
   spans: readonly WorkloadSpan[];
   windows: WorkloadWindows;
+  /**
+   * 단건 판정 — 이 한 칸만 묻는다(§6.3). **후보를 좁히지 않으면** 관리자가 서비스
+   * 하나를 지목했는데 모델이 학년도 전체를 재배분해 온다. 지목한 칸이 단순 건이
+   * 아니면 후보가 비고, 그건 사람이 정할 일이라는 뜻이다(C4).
+   */
+  only?: { university_name: string; work_kind: string };
 }): { prompt: string; candidates: MoveCandidate[] } {
   const groups = buildWorkload({ ...input, cells: input.ledger });
-  const candidates = moveCandidates(input.ledger);
+  const all = moveCandidates(input.ledger);
+  const only = input.only;
+  const candidates = only
+    ? all.filter(
+        (c) =>
+          c.university_name === only.university_name &&
+          c.work_kind === only.work_kind,
+      )
+    : all;
 
-  const prompt = `운영부의 대학 배정을 **연차 그룹 안에서만** 고르게 다듬는 일을 맡았습니다.
+  const task = only
+    ? `**${only.university_name}의 ${only.work_kind} 이 한 칸**을 누가 맡아야 할지 고르는 일을 맡았습니다. 아래 후보 목록에 그 칸만 있고, 그 칸 말고는 아무것도 옮기지 마십시오.`
+    : "운영부의 대학 배정을 **연차 그룹 안에서만** 고르게 다듬는 일을 맡았습니다.";
+
+  const prompt = `${task}
 
 # 무엇을 보는가
 

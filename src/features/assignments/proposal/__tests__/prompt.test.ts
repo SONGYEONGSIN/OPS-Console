@@ -183,3 +183,45 @@ describe("buildProposalPrompt — 비밀값", () => {
     expect(prompt).not.toMatch(/SENTINEL_LEAK/);
   });
 });
+
+/**
+ * 단건 판정 — 관리자가 한 서비스를 지목했고 `assignSingle` 이 '판정 필요' 를 돌려준
+ * 경우다(§6.3). 같은 경로를 쓰되 **후보를 그 한 칸으로 좁힌다** — 안 좁히면 단건을
+ * 물었는데 모델이 학년도 전체를 재배분해 온다.
+ */
+describe("buildProposalPrompt — 단건", () => {
+  const only = { university_name: "가대", work_kind: "원서접수" };
+
+  it("후보가 그 한 칸뿐이다", () => {
+    const { candidates } = buildProposalPrompt(input({ only }));
+
+    expect(candidates).toEqual([
+      { university_name: "가대", work_kind: "원서접수", assignee_email: "a@x.com" },
+    ]);
+  });
+
+  it("지목한 칸이 단순 건이 아니면 후보가 빈다 — 갈린 건은 사람이 정한다", () => {
+    const { candidates } = buildProposalPrompt(
+      input({
+        only,
+        ledger: [
+          cell("가대", "a@x.com", "원서접수", "수시"),
+          cell("가대", "b@x.com", "원서접수", "정시"),
+        ],
+      }),
+    );
+
+    expect(candidates).toEqual([]);
+  });
+
+  it("무엇을 물었는지 프롬프트에 적는다", () => {
+    const { prompt } = buildProposalPrompt(input({ only }));
+
+    expect(prompt).toMatch(/가대.*원서접수/);
+    expect(prompt).toMatch(/한 칸|이 칸/);
+  });
+
+  it("지정이 없으면 전체 재배분이다 — 후보가 셋 다 남는다", () => {
+    expect(buildProposalPrompt(input()).candidates).toHaveLength(3);
+  });
+});

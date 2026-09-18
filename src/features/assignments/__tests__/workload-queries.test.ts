@@ -122,3 +122,26 @@ describe("loadWorkloadSources", () => {
     await expect(loadWorkloadSources(NOW)).rejects.toThrow(/발표 터짐/);
   });
 });
+
+describe("loadWorkloadSources — 클라이언트 주입", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.from.mockReturnValue({ select: h.select });
+    h.select.mockReturnValue({ gte: h.gte });
+    h.gte.mockReturnValue({ lte: h.lte });
+    h.lte.mockReturnValue({ range: h.range });
+    h.range.mockResolvedValue({ data: [], error: null });
+  });
+
+  it("넘긴 클라이언트를 쓴다 — 폴러 창구에는 세션이 없다", async () => {
+    const injected = { from: vi.fn(() => ({ select: h.select })) };
+
+    await loadWorkloadSources(
+      NOW,
+      injected as unknown as Parameters<typeof loadWorkloadSources>[1],
+    );
+
+    expect(injected.from).toHaveBeenCalledWith("closing_services");
+    expect(h.from).not.toHaveBeenCalled();
+  });
+});

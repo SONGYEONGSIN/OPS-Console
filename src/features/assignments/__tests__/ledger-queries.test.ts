@@ -14,7 +14,11 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ from: h.from }),
 }));
 
-import { listLedgerRows, listAssignmentChanges } from "../ledger-queries";
+import {
+  listLedgerRows,
+  listAssignmentChanges,
+  type AssignmentQueryClient,
+} from "../ledger-queries";
 import { reconcile } from "../import";
 
 /**
@@ -263,5 +267,33 @@ describe("listAssignmentChanges", () => {
     await expect(
       listAssignmentChanges(2027, ["서울대학교"]),
     ).rejects.toThrow(/너무 많/);
+  });
+});
+
+/**
+ * 폴러 창구(`/api/assignments/propose-request`)에는 **세션이 없다** — CRON_SECRET 으로
+ * 지키는 자리라 쿠키가 없고, 그래서 세션 클라이언트로는 한 줄도 못 읽는다.
+ *
+ * 그 자리에서 쓰려고 조회를 한 벌 더 쓰면(자동화 잡들이 그렇게 한다) 같은 원장을
+ * 읽는 SQL 이 두 곳에 생기고, 한쪽만 고쳐지는 날 화면과 판정이 다른 원장을 본다.
+ * 그래서 **클라이언트를 받는다.**
+ */
+describe("listLedgerRows — 클라이언트 주입", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.from.mockReturnValue({ select: h.select });
+    h.select.mockReturnValue({ eq: h.eq });
+    h.eq.mockReturnValue({ range: h.range });
+    h.range.mockResolvedValue({ data: [], error: null });
+  });
+
+  it("넘긴 클라이언트를 쓴다 — 세션 클라이언트를 만들지 않는다", async () => {
+    const injected = { from: vi.fn(() => ({ select: h.select })) };
+
+    // 목은 빌더 전체를 흉내내지 않는다 — 라우트 테스트들이 쓰는 같은 방식이다.
+    await listLedgerRows(2027, injected as unknown as AssignmentQueryClient);
+
+    expect(injected.from).toHaveBeenCalledWith("assignments");
+    expect(h.from).not.toHaveBeenCalled();
   });
 });

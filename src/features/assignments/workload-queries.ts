@@ -27,7 +27,9 @@ const MAX_PAGES = 20;
 const bound = (b: { date: string; time: string }) =>
   `${b.date}T${b.time}:00+09:00`;
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
+import type { AssignmentQueryClient } from "./ledger-queries";
+
+type Supabase = AssignmentQueryClient;
 
 /**
  * 한 테이블을 끝까지 읽는다. **조회 실패를 빈 배열로 삼키지 않는다** — 삼키면
@@ -60,14 +62,17 @@ async function pageAll<T>(
   return out;
 }
 
-export async function loadWorkloadSources(now: Date): Promise<{
+export async function loadWorkloadSources(
+  now: Date,
+  client?: AssignmentQueryClient,
+): Promise<{
   serviceCounts: Record<string, number>;
   spans: WorkloadSpan[];
 }> {
   const { start, end } = academicYearRangeKST(now);
   const from = bound(start);
   const to = bound(end);
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   // 접수는 **시작 시각**으로 자른다 — 학년도 안에 시작한 접수가 그 해의 물량이다.
   const closing = await pageAll<ClosingRow>(
