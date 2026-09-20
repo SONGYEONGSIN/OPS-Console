@@ -1,4 +1,5 @@
 import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { currentAcademicYear } from "@/lib/datetime";
 import { countLedgerRows } from "@/features/assignments/ledger-queries";
 import { listOperators } from "@/features/operators/queries";
@@ -51,7 +52,14 @@ export async function runAssignmentYearRollover(
      * 배치가 만들어지고, 그 순간 위의 `hasAnnualBatch` 가 참이 되어 **진짜 배정은
      * 영영 제안되지 않는다.** 총괄장 이관이 먼저다.
      */
-    const ledgerRows = await countLedgerRows(academicYear);
+    /**
+     * **admin 클라이언트로 읽는다 — 잡에는 세션이 없다.**
+     *
+     * `assignments`·`operators` 의 select 정책이 둘 다 `to authenticated` 라, 세션
+     * 클라이언트로는 `count=null` 에 **코드도 메시지도 빈 에러**가 온다(실측
+     * 2026-09-18 라이브 — 이 잡이 그대로 500 으로 죽었다).
+     */
+    const ledgerRows = await countLedgerRows(academicYear, createAdminClient());
     if (ledgerRows === 0) {
       return {
         ok: true,
@@ -96,7 +104,7 @@ async function reminderOf(academicYear: number, now: Date): Promise<string> {
   const { previousYear, previous } = await latestAnnualBasis(academicYear);
   if (previousYear === null) return "";
 
-  const operators = await listOperators();
+  const operators = await listOperators(createAdminClient());
   const groups = buildWorkload({
     operators: operators.filter((o) => o.status === "active"),
     cells: [],
