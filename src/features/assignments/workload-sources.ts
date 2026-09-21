@@ -1,4 +1,5 @@
 import { academicYearRangeKST } from "@/features/closing/academic-year";
+import { aliasOfUniversity } from "./university-aliases";
 import {
   workKey,
   type WorkloadCell,
@@ -103,6 +104,14 @@ export function canonicalUniversity(
   universityName: string,
   workKind: string,
 ): string {
+  /*
+   * **사람이 확인한 별칭이 규칙을 이긴다.** `한양대학교 대학원` 을 규칙만 태우면
+   * `한양대학교` 가 되는데 원장에는 그 이름이 없다(`(서울)`·`(ERICA)` 뿐) — 규칙이
+   * 먼저 돌면 27건이 계속 아무에게도 안 붙는다.
+   */
+  const alias = aliasOfUniversity(universityName, workKind);
+  if (alias !== null) return alias;
+
   if (workKind !== "대학원") return universityName;
   const stripped = universityName.replace(GRADUATE_SUFFIX, "").trim();
   // 떼면 아무것도 안 남는 이름(`대학원`)은 그대로 둔다 — 빈 키는 전부를 한 칸에 모은다.
@@ -142,7 +151,13 @@ export function buildServiceCounts(input: {
   }
   for (const r of input.announcement) {
     if (NON_WORKLOAD_UNIVERSITIES.has(r.university_name)) continue;
-    bump(workKey({ ...r, work_kind: "PIMS" }));
+    // 발표도 같은 함수로 옮긴다 — 원천마다 다른 길을 두면 한쪽만 고쳐진다.
+    bump(
+      workKey({
+        university_name: canonicalUniversity(r.university_name, "PIMS"),
+        work_kind: "PIMS",
+      }),
+    );
   }
   return counts;
 }
