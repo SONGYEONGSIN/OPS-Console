@@ -4,6 +4,7 @@ import {
   type TenureGroup,
 } from "@/features/assignments/tenure";
 import type { WorkloadGroup } from "@/features/assignments/workload";
+import type { UnmatchedVolume } from "@/features/assignments/workload-sources";
 
 /**
  * 배분현황 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
@@ -65,10 +66,12 @@ function YearBar({
   academicYear,
   years,
   isPast,
+  unmatched,
 }: {
   academicYear: number;
   years: readonly number[];
   isPast: boolean;
+  unmatched: UnmatchedVolume;
 }) {
   return (
     <header className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-2">
@@ -98,6 +101,19 @@ function YearBar({
           ? "건수 원천: 서비스목록(services) — 담당자도 그쪽 기록입니다. 연차 그룹은 오늘 값 하나뿐이라 지난 해에는 목표·편차를 내지 않습니다."
           : "건수 원천: 서비스마감(closing_services) · 담당자: 배정 원장"}
       </p>
+      {/*
+       * **안 붙은 건수를 조용히 빼지 않는다.** 표의 합만 보면 멀쩡해서, 마감 983건
+       * 중 231건(23.5%)이 어느 담당자에게도 안 붙어 있던 것을 아무도 못 봤다
+       * (실측 2026-09-21). 0 일 때는 안 띄운다 — 알릴 것이 없다.
+       */}
+      {unmatched.services > 0 && (
+        <p className="text-xs text-vermilion">
+          어느 담당자에게도 안 붙은 건수{" "}
+          <span className="tabular-nums">{unmatched.services}건</span> ·{" "}
+          <span className="tabular-nums">{unmatched.keys}곳</span> — 배정 시트에
+          없는 대학이거나 이름이 갈린 것입니다. 신규배정 탭에서 확인하세요.
+        </p>
+      )}
     </header>
   );
 }
@@ -198,17 +214,24 @@ export function WorkloadTable({
   academicYear,
   years,
   isPast,
+  unmatched,
 }: {
   groups: WorkloadGroup[];
   now: Date;
   academicYear: number;
   years: readonly number[];
   isPast: boolean;
+  unmatched: UnmatchedVolume;
 }) {
   if (groups.length === 0) {
     return (
       <>
-        <YearBar academicYear={academicYear} years={years} isPast={isPast} />
+        <YearBar
+          academicYear={academicYear}
+          years={years}
+          isPast={isPast}
+          unmatched={unmatched}
+        />
         <div className="border border-dashed border-line-soft bg-situation-bg p-8 text-center">
           <p className="text-sm text-muted">
             {isPast
@@ -222,7 +245,12 @@ export function WorkloadTable({
 
   return (
     <>
-      <YearBar academicYear={academicYear} years={years} isPast={isPast} />
+      <YearBar
+          academicYear={academicYear}
+          years={years}
+          isPast={isPast}
+          unmatched={unmatched}
+        />
       <div className="overflow-x-auto border border-line-soft bg-paper">
         <table className="w-full text-left text-sm tabular-nums">
           <thead>

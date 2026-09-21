@@ -70,6 +70,60 @@ export function workKindOfClosing(category: string | null): string {
 }
 
 /**
+ * 물량으로 세지 않는 대학.
+ *
+ * `진학대학교` 는 **테스트 대학**이다 — 2027학년도 마감 15건이 `엔터 결제 테스트`·
+ * `웹 모의해킹 테스트1/2`·`기획 테스트용` 이다(실측 2026-09-21). 원장에 없는 것이
+ * 맞고, 물량으로 세면 목표·편차가 있지도 않은 일로 부풀려진다.
+ */
+const NON_WORKLOAD_UNIVERSITIES: ReadonlySet<string> = new Set(["진학대학교"]);
+
+/**
+ * 마감의 대학명 끝에 붙은 **대학원 표기**. ` 대학원` · `(대학원)` · ` 경영전문대학원`
+ * 셋 다 같은 모양이라 하나로 잡는다.
+ *
+ * 괄호 안 캠퍼스(`동국대학교(서울) 대학원`)는 앞에 있어 안 걸린다 — 동국대는 서울과
+ * WISE 가 다른 담당이라 그걸 지우면 엉뚱한 사람에게 붙는다.
+ */
+const GRADUATE_SUFFIX = /[\s(]+[가-힣]*대학원\s*\)?$/;
+
+/**
+ * 건수를 붙일 때 쓰는 **대학 이름**.
+ *
+ * `category` 가 이미 `대학원 전기`·`대학원 후기` 라고 말하므로(→ `work_kind`), 마감의
+ * 이름 끝에 또 붙은 `대학원` 은 **중복된 정보**다. 별칭을 추측해 잇는 것이 아니라
+ * 겹친 것을 떼는 것이라, 설계 F1 이 막으려던 일과 다르다.
+ *
+ * **원장은 건드리지 않는다.** 배정리스트가 정본이고, 마감은 미러라 그쪽 표기를
+ * 원장 쪽으로 맞춘다. 이게 없으면 `성균관대학교 대학원` 32건이 원장
+ * `성균관대학교` 담당자에게 안 붙는다 — 실측으로 마감 983건 중 **231건(23.5%)** 이
+ * 아무에게도 안 붙어 있었고 그중 179건이 이 한 모양이었다.
+ */
+export function canonicalUniversity(
+  universityName: string,
+  workKind: string,
+): string {
+  if (workKind !== "대학원") return universityName;
+  const stripped = universityName.replace(GRADUATE_SUFFIX, "").trim();
+  // 떼면 아무것도 안 남는 이름(`대학원`)은 그대로 둔다 — 빈 키는 전부를 한 칸에 모은다.
+  return stripped === "" ? universityName : stripped;
+}
+
+/**
+ * 한 줄을 건수·구간·담당 칸이 쓰는 (대학, 업무종류) 로 옮긴다.
+ *
+ * **셋이 같은 답을 봐야 한다.** 한 곳만 정규화하면 키가 어긋나고, 그건 에러가 아니라
+ * '그 사람은 아무것도 안 맡았다' 로 화면에 나온다.
+ */
+function cellOf(row: { university_name: string; category: string | null }) {
+  const work_kind = workKindOfClosing(row.category);
+  return {
+    university_name: canonicalUniversity(row.university_name, work_kind),
+    work_kind,
+  };
+}
+
+/**
  * 건수 맵. **없는 조합에 0 을 넣지 않는다** — 키가 없어야 `buildWorkload` 가
  * '못 센 칸' 으로 세고, 성적산출 44곳·상담앱 25곳이 부하 0 으로 읽히지 않는다.
  */
@@ -83,12 +137,48 @@ export function buildServiceCounts(input: {
   };
 
   for (const r of input.closing) {
-    bump(workKey({ ...r, work_kind: workKindOfClosing(r.category) }));
+    if (NON_WORKLOAD_UNIVERSITIES.has(r.university_name)) continue;
+    bump(workKey(cellOf(r)));
   }
   for (const r of input.announcement) {
+    if (NON_WORKLOAD_UNIVERSITIES.has(r.university_name)) continue;
     bump(workKey({ ...r, work_kind: "PIMS" }));
   }
   return counts;
+}
+
+export type UnmatchedVolume = {
+  /** 안 붙은 서비스 건수. */
+  services: number;
+  /** 그 건수가 걸린 (대학 × 업무종류) 수. */
+  keys: number;
+};
+
+/**
+ * 어느 담당자에게도 **안 붙은** 건수.
+ *
+ * 지금까지 조용히 빠져 있었다 — 배분현황 줄의 합이 원천 건수보다 적은데 화면에
+ * 그 사실이 없어서, 물량의 23.5%가 사라진 것을 아무도 못 봤다(실측 2026-09-21).
+ * 0 이 아니면 이름이 갈렸거나 배정 시트에 없는 대학이라는 뜻이다.
+ *
+ * **주소가 없는 칸은 담당자가 아니다.** 이름만 있는 칸에 건수를 붙이면 그 건수가
+ * 누구의 부하인지 말할 수 없으면서 합계만 맞아 보인다.
+ */
+export function unmatchedVolume(
+  serviceCounts: Readonly<Record<string, number>>,
+  cells: readonly WorkloadCell[],
+): UnmatchedVolume {
+  const held = new Set(
+    cells.filter((c) => c.assignee_email !== null).map(workKey),
+  );
+  let services = 0;
+  let keys = 0;
+  for (const [key, n] of Object.entries(serviceCounts)) {
+    if (held.has(key)) continue;
+    services += n;
+    keys += 1;
+  }
+  return { services, keys };
 }
 
 /**
@@ -112,11 +202,14 @@ export function pastCells(rows: readonly PastServiceRow[]): WorkloadCell[] {
   for (const r of rows) {
     const email = (r.operator_email ?? "").trim();
     if (email === "") continue;
-    const cell: WorkloadCell = {
-      university_name: r.university_name,
-      work_kind: workKindOfClosing(r.category),
-      assignee_email: email,
-    };
+    if (NON_WORKLOAD_UNIVERSITIES.has(r.university_name)) continue;
+    /*
+     * **건수와 같은 이름으로 접는다.** 과거 학년도는 담당자도 건수도 `services`
+     * 한 표에서 나오는데, 한쪽만 정규화하면 담당자 키는 `충남대학교 대학원`,
+     * 건수 키는 `충남대학교` 가 되어 서로 안 만난다 — 화면에서는 그 사람이 그 해
+     * 아무것도 안 맡은 것처럼 보인다.
+     */
+    const cell: WorkloadCell = { ...cellOf(r), assignee_email: email };
     byKey.set(`${workKey(cell)}|${email}`, cell);
   }
   return [...byKey.values()];
@@ -129,13 +222,16 @@ export function pastCells(rows: readonly PastServiceRow[]): WorkloadCell[] {
  * 무엇인지 볼 곳이 없어 모니터링이 성립하지 않는다.
  */
 export function buildSpans(rows: readonly ClosingRow[]): WorkloadSpan[] {
-  return rows.map((r) => ({
-    university_name: r.university_name,
-    service_name: r.service_name,
-    work_kind: workKindOfClosing(r.category),
-    start: kstDay(r.write_start_at),
-    end: kstDay(r.write_end_at),
-  }));
+  return rows
+    .filter((r) => !NON_WORKLOAD_UNIVERSITIES.has(r.university_name))
+    .map((r) => ({
+      // 건수와 **같은 이름·같은 업무종류**로 옮긴다. 갈리면 표의 건수와 상세 목록이
+      // 서로 다른 대학을 가리키고, 둘 다 멀쩡해 보인다.
+      ...cellOf(r),
+      service_name: r.service_name,
+      start: kstDay(r.write_start_at),
+      end: kstDay(r.write_end_at),
+    }));
 }
 
 /** KST 요일(0=일). `en-US` 짧은 요일로 읽는다 — 로캘이 흔들리지 않는 값이다. */
