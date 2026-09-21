@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  hasAnnualBatch,
+  hasPendingAnnualBatch,
   latestAnnualBasis,
   listProposalBatches,
   listProposals,
@@ -38,26 +38,82 @@ function client(
   } as unknown as ProposalQueryClient;
 }
 
-describe("hasAnnualBatch", () => {
-  it("그 학년도의 annual 배치가 있으면 참이다", async () => {
-    const c = client({ data: { id: "b1" }, error: null });
-    await expect(hasAnnualBatch(2027, c)).resolves.toBe(true);
+/**
+ * `eq` 필터를 **실제로 적용하는** 배치 테이블 대역.
+ *
+ * 상태별 판정은 "무엇으로 좁혔나" 가 아니라 **어떤 행에 참이 되나** 로 고정해야
+ * 한다 — `eq` 호출만 들여다보면 2026-09-21 처럼 반려 행 하나가 학년도를 닫는 것을
+ * 못 잡는다.
+ */
+function batchTable(rows: Record<string, unknown>[]): ProposalQueryClient {
+  let matched = rows;
+  const chain: Record<string, unknown> = {
+    select: () => chain,
+    limit: () => chain,
+    eq: (column: string, value: unknown) => {
+      matched = matched.filter((r) => r[column] === value);
+      return chain;
+    },
+    maybeSingle: () =>
+      Promise.resolve({ data: matched[0] ?? null, error: null }),
+  };
+  return { from: () => chain } as unknown as ProposalQueryClient;
+}
+
+const batchRow = (status: string, academicYear = 2027, kind = "annual") => ({
+  id: `b-${status}`,
+  academic_year: academicYear,
+  kind,
+  status,
+});
+
+describe("hasPendingAnnualBatch", () => {
+  it("검토 대기 배치가 있으면 참이다", async () => {
+    const c = batchTable([batchRow("pending")]);
+    await expect(hasPendingAnnualBatch(2027, c)).resolves.toBe(true);
   });
 
-  it("없으면 거짓이다", async () => {
-    const c = client({ data: null, error: null });
-    await expect(hasAnnualBatch(2027, c)).resolves.toBe(false);
+  it("반려된 배치만 있으면 거짓이다 — 반려는 '올해는 됐다' 가 아니다", async () => {
+    /*
+     * 2026-09-21 실측: 2027 annual 배치를 반려하자 rollover 가 그 뒤로 매번
+     * `skipped` 였다. 반려는 **기본 선택지**인데(설계 R4·§9.3), 기본 선택지를
+     * 고르면 학년도가 영영 닫혔다.
+     */
+    const c = batchTable([batchRow("rejected")]);
+    await expect(hasPendingAnnualBatch(2027, c)).resolves.toBe(false);
+  });
+
+  it("적용된 배치만 있으면 거짓이다 — 결정이 끝난 배치는 막을 이유가 없다", async () => {
+    const c = batchTable([batchRow("applied")]);
+    await expect(hasPendingAnnualBatch(2027, c)).resolves.toBe(false);
+  });
+
+  it("배치가 아예 없으면 거짓이다", async () => {
+    await expect(hasPendingAnnualBatch(2027, batchTable([]))).resolves.toBe(
+      false,
+    );
+  });
+
+  it("다른 학년도·kind 의 대기 배치는 세지 않는다", async () => {
+    const c = batchTable([
+      batchRow("pending", 2026),
+      batchRow("pending", 2027, "single"),
+    ]);
+    await expect(hasPendingAnnualBatch(2027, c)).resolves.toBe(false);
   });
 
   it("조회가 실패하면 던진다 — '없다' 로 읽히면 배치가 두 벌 생긴다", async () => {
     // rollover 가 매일 돌므로, 실패를 '없다' 로 읽으면 매일 새 요청을 적재한다.
     const c = client({ data: null, error: { message: "boom" } });
-    await expect(hasAnnualBatch(2027, c)).rejects.toThrow(/boom/);
+    await expect(hasPendingAnnualBatch(2027, c)).rejects.toThrow(/boom/);
   });
 
-  it("학년도와 kind 로 좁힌다", async () => {
+  it("학년도·kind·status 로 좁힌다 — DB 의 부분 유니크와 같은 조건이다", async () => {
+    // `assignment_proposal_batches_pending_annual_key` 가 (academic_year)
+    // where kind='annual' and status='pending' 이다. 조회가 제약보다 넓으면
+    // 제약이 허용하는 재제안을 조회가 막는다.
     const seen: [Verb, unknown[]][] = [];
-    await hasAnnualBatch(
+    await hasPendingAnnualBatch(
       2027,
       client({ data: null, error: null }, (v, a) => seen.push([v, a])),
     );
@@ -66,6 +122,7 @@ describe("hasAnnualBatch", () => {
       expect.arrayContaining([
         ["academic_year", 2027],
         ["kind", "annual"],
+        ["status", "pending"],
       ]),
     );
   });

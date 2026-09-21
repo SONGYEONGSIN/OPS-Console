@@ -6,7 +6,7 @@ import { listOperators } from "@/features/operators/queries";
 import { buildWorkload } from "@/features/assignments/workload";
 import { workloadWindows } from "@/features/assignments/workload-sources";
 import {
-  hasAnnualBatch,
+  hasPendingAnnualBatch,
   latestAnnualBasis,
 } from "@/features/assignments/proposal/queries";
 import {
@@ -39,18 +39,21 @@ export async function runAssignmentYearRollover(
   const academicYear = currentAcademicYear(now);
 
   try {
-    if (await hasAnnualBatch(academicYear)) {
+    if (await hasPendingAnnualBatch(academicYear)) {
       return {
         ok: true,
         skipped: true,
-        message: `${academicYear}학년도 제안 배치가 이미 있습니다`,
+        message: `${academicYear}학년도 제안이 검토를 기다리고 있습니다 — 적용하거나 반려하면 다시 요청할 수 있습니다`,
       };
     }
 
     /**
      * **원장이 비어 있으면 시작하지 않는다.** 빈 원장으로 판정하면 제안 0건짜리
-     * 배치가 만들어지고, 그 순간 위의 `hasAnnualBatch` 가 참이 되어 **진짜 배정은
-     * 영영 제안되지 않는다.** 총괄장 이관이 먼저다.
+     * 배치가 만들어지고, 그 순간 위의 `hasPendingAnnualBatch` 가 참이 되어 **진짜
+     * 배정이 제안되지 않는다.** 총괄장 이관이 먼저다.
+     *
+     * (그 빈 배치를 반려하면 다시 요청할 수는 있다 — 가드가 `pending` 만 보므로.
+     * 그래도 여기서 막는 편이 낫다: 반려할 것을 만들게 하는 것은 일이다.)
      */
     /**
      * **admin 클라이언트로 읽는다 — 잡에는 세션이 없다.**

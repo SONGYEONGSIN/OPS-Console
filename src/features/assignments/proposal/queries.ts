@@ -58,12 +58,24 @@ const PROPOSAL_COLUMNS =
   "id, batch_id, academic_year, university_name, work_kind, subtype, role, prev_assignee, next_assignee, reason, decision, decided_at";
 
 /**
- * 그 학년도의 annual 배치가 이미 있는가 — rollover 의 `skipped` 판정.
+ * 그 학년도에 **검토 대기 중인** annual 배치가 있는가 — rollover 의 `skipped` 판정.
  *
- * **실패는 던진다.** rollover 가 매일 도는데 조회 실패를 '없다' 로 읽으면 매일 새
- * 요청을 적재하고, 폴러가 매일 같은 판정을 돌려 배치가 쌓인다.
+ * **`pending` 만 본다.** 가드의 목적은 "검토를 기다리는 배치가 있는데 또 만들지
+ * 않는다" 이지 "그 학년도는 한 번 제안하면 끝" 이 아니다. `rejected`·`applied` 는
+ * 결정이 끝난 상태라 새 제안을 막을 이유가 없다.
+ *
+ * 이 조건은 DB 제약 `assignment_proposal_batches_pending_annual_key`(pending 에만
+ * 걸린 partial unique)와 **같다** — 조회가 제약보다 넓으면 제약이 허용하는 일을
+ * 코드가 막는다.
+ *
+ * 2026-09-21 실제 사고: status 를 안 보던 시절, 관리자가 2027 배치를 **반려**하자
+ * 그 뒤 모든 실행이 `2027학년도 제안 배치가 이미 있습니다` 로 건너뛰었다. 설계가
+ * "반려가 기본 선택지" 라고 정한 선택지를 고르면 그 학년도가 영구히 닫혔다.
+ *
+ * **실패는 던진다.** 조회 실패를 '없다' 로 읽으면 요청을 다시 적재하고, 폴러가 같은
+ * 판정을 돌려 배치가 두 벌 생긴다.
  */
-export async function hasAnnualBatch(
+export async function hasPendingAnnualBatch(
   academicYear: number,
   client?: ProposalQueryClient,
 ): Promise<boolean> {
@@ -73,6 +85,7 @@ export async function hasAnnualBatch(
     .select("id")
     .eq("academic_year", academicYear)
     .eq("kind", "annual")
+    .eq("status", "pending")
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`제안 배치 조회 실패: ${error.message}`);
