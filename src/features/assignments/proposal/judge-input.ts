@@ -4,7 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { listLedgerRows } from "../ledger-queries";
 import { loadWorkloadSources } from "../workload-queries";
 import { workloadWindows } from "../workload-sources";
-import { buildWorkload, type WorkloadGroup, type WorkloadOperator } from "../workload";
+import {
+  buildWorkload,
+  type WorkloadGroup,
+  type WorkloadOperator,
+} from "../workload";
 import { buildProposalPrompt, type MoveCandidate } from "./prompt";
 import type { GateContext, GateLedgerCell } from "./gate";
 
@@ -92,7 +96,12 @@ export async function loadJudgeInput(
   const [operators, ledger, sources] = await Promise.all([
     loadAssignableOperators(),
     listLedgerRows(academicYear, admin),
-    loadWorkloadSources(now, admin),
+    /*
+     * **원장과 같은 학년도를 센다.** 예전엔 시계(`now`)로 창을 잡았는데, 원장은
+     * `academicYear` 로 읽으므로 3월에 학년도가 넘어가는 순간 둘이 갈린다 —
+     * 2027 원장에 2028 물량을 붙여 판정하고, 그 결과는 멀쩡해 보인다.
+     */
+    loadWorkloadSources(academicYear, admin),
   ]);
 
   const gateContext: GateContext = {

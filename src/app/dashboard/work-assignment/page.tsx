@@ -7,8 +7,15 @@ import { BAEJUNG_CURRENT_YEAR } from "@/features/assignments/parse";
 import { listLedgerRows } from "@/features/assignments/ledger-queries";
 import { listOperators } from "@/features/operators/queries";
 import { buildWorkload } from "@/features/assignments/workload";
-import { workloadWindows } from "@/features/assignments/workload-sources";
-import { loadWorkloadSources } from "@/features/assignments/workload-queries";
+import {
+  workloadWindows,
+  pastCells,
+} from "@/features/assignments/workload-sources";
+import {
+  loadWorkloadSources,
+  loadPastOperatorRows,
+  FROZEN_IMPORT_LAST_YEAR,
+} from "@/features/assignments/workload-queries";
 import {
   listProposalBatches,
   listProposals,
@@ -48,7 +55,7 @@ const PROPOSAL_BATCHES = 10;
 export default async function WorkAssignmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; year?: string }>;
 }) {
   const slug = "work-assignment";
   await requireMenu(slug);
@@ -107,22 +114,37 @@ export default async function WorkAssignmentPage({
   /**
    * 배분현황 — **§6.1 의 근거를 사람이 검산하는 자리**(선행 설계 §9.4).
    *
-   * 원장은 대학배정 탭과 같은 학년도를 본다. 명부는 **활성 + 배정 대상**만 —
-   * 퇴사자가 0곳으로 끼면 그룹 평균이 아래로 끌려가 남은 사람이 전부 과부하로
-   * 보인다(`assignable` 은 `buildWorkload` 가 거른다).
+   * 명부는 **활성 + 배정 대상**만 — 퇴사자가 0곳으로 끼면 그룹 평균이 아래로
+   * 끌려가 남은 사람이 전부 과부하로 보인다(`assignable` 은 `buildWorkload` 가
+   * 거른다).
+   *
+   * **학년도에 따라 두 칸이 동시에 바뀐다.** 건수만 바꾸고 담당자를 그대로 두면
+   * 과거 연도에서 전원이 0곳이 된다 — 원장에는 그 해 행이 없기 때문이다.
+   *
+   * | 학년도 | 담당자 | 건수·구간 | 목표·편차 |
+   * |---|---|---|---|
+   * | 현재 | `assignments` 원장 | `closing_services` | 낸다 |
+   * | 과거 | `services.operator_email` | `services` | **안 낸다** |
    */
   const now = new Date();
-  const [ledger, operators, sources] = await Promise.all([
-    listLedgerRows(BAEJUNG_CURRENT_YEAR),
+  const academicYear = parseYear(sp.year);
+  const isPast = academicYear <= FROZEN_IMPORT_LAST_YEAR;
+
+  const [cells, operators, sources] = await Promise.all([
+    isPast
+      ? loadPastOperatorRows(academicYear).then(pastCells)
+      : listLedgerRows(academicYear),
     listOperators(),
-    loadWorkloadSources(now),
+    loadWorkloadSources(academicYear),
   ]);
   const groups = buildWorkload({
     operators: operators.filter((o) => o.status === "active"),
-    cells: ledger,
+    cells,
     serviceCounts: sources.serviceCounts,
     spans: sources.spans,
     windows: workloadWindows(now),
+    // 오늘의 연차 그룹을 작년에 씌우면 그때 존재한 적 없는 목표가 나온다.
+    targets: !isPast,
   });
   const people = groups.reduce((n, g) => n + g.rows.length, 0);
 
@@ -131,8 +153,33 @@ export default async function WorkAssignmentPage({
       {makeHeader(people)}
       <PageTabs active={tab} tabs={TABS} />
       <section className="p-7">
-        <WorkloadTable groups={groups} now={now} />
+        <WorkloadTable
+          groups={groups}
+          now={now}
+          academicYear={academicYear}
+          years={YEAR_OPTIONS}
+          isPast={isPast}
+        />
       </section>
     </>
   );
+}
+
+/**
+ * 고를 수 있는 학년도. **원장이 있는 해(현재)와 서비스목록이 있는 해(과거)** 둘이다.
+ *
+ * 더 과거는 `services` 에 있긴 하지만(2025학년도 이전) 배정 대상 명부가 지금
+ * 구성이라 견줄 기준이 없어 열지 않았다 — 필요해지면 여기 한 줄이다.
+ */
+const YEAR_OPTIONS = [BAEJUNG_CURRENT_YEAR, FROZEN_IMPORT_LAST_YEAR] as const;
+
+/**
+ * `?year=`. **모르는 값은 기본값으로 떨어뜨린다** — 파싱 실패가 빈 표가 되면
+ * 사람이 '배정이 사라졌다' 로 읽는다.
+ */
+function parseYear(raw: string | undefined): number {
+  const n = Number(raw);
+  return YEAR_OPTIONS.includes(n as (typeof YEAR_OPTIONS)[number])
+    ? n
+    : BAEJUNG_CURRENT_YEAR;
 }

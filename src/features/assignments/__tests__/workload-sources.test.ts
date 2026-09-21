@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  pastCells,
   workKindOfClosing,
   buildServiceCounts,
   buildSpans,
@@ -158,5 +159,60 @@ describe("workloadWindows", () => {
 
   it("연은 학년도다 — 3/1 부터 익년 2월 말일까지", () => {
     expect(workloadWindows(NOW).year).toEqual(["2026-03-01", "2027-02-28"]);
+  });
+});
+
+/**
+ * 과거 학년도 담당 칸 — **원장에는 그 해 행이 없다.**
+ *
+ * `assignments` 는 2027학년도만 담고(1,858행), 2026학년도 담당자는
+ * `services.operator_email` 에 있다(실측 2026-09-21: 2,485/2,511 = 99.0% 채움,
+ * 배정 대상 15명 전원 연결). 건수 원천만 바꾸고 담당자를 안 바꾸면 **과거 연도
+ * 표에서 전원이 0곳**이 되고, 그건 화면에서 '그 해엔 아무도 안 맡았다' 로 읽힌다.
+ */
+describe("pastCells", () => {
+  const svc = (
+    university_name: string,
+    category: string | null,
+    operator_email: string | null,
+  ) => ({ university_name, category, operator_email });
+
+  it("담당자 메일이 있는 행만 칸이 된다", () => {
+    expect(
+      pastCells([
+        svc("가대", "수시", "a@x.com"),
+        svc("나대", "수시", null),
+        svc("다대", "수시", "   "),
+      ]),
+    ).toEqual([
+      { university_name: "가대", work_kind: "원서접수", assignee_email: "a@x.com" },
+    ]);
+  });
+
+  it("업무종류는 category 로 가른다 — 건수와 같은 규칙이어야 한다", () => {
+    // `workKey` 가 `대학|업무종류` 라, 여기서 다르게 가르면 그 사람의 건수가 0 이 된다.
+    const cells = pastCells([svc("가대", "대학원", "a@x.com")]);
+    expect(cells[0].work_kind).toBe("대학원");
+  });
+
+  it("같은 (대학 × 업무종류 × 사람)이 여러 서비스로 와도 한 칸이다", () => {
+    // 대학 수를 세는 단위가 **대학**이라, 접지 않으면 한 사람이 같은 대학을
+    // 여러 번 맡은 것처럼 보인다.
+    const cells = pastCells([
+      svc("가대", "수시", "a@x.com"),
+      svc("가대", "정시", "a@x.com"),
+      svc("가대", "추가", "a@x.com"),
+    ]);
+    expect(cells).toHaveLength(1);
+  });
+
+  it("같은 대학을 두 사람이 나눠 맡으면 두 칸이다", () => {
+    // 갈린 44곳(§3.1)이 여기서도 갈린 채로 와야 남의 건수가 안 붙는다.
+    const cells = pastCells([
+      svc("가대", "수시", "a@x.com"),
+      svc("가대", "대학원", "b@x.com"),
+    ]);
+    expect(cells).toHaveLength(2);
+    expect(cells.map((c) => c.work_kind).sort()).toEqual(["대학원", "원서접수"]);
   });
 });
