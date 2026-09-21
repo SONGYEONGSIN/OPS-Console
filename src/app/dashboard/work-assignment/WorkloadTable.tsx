@@ -23,18 +23,27 @@ import type { UnmatchedVolume } from "@/features/assignments/workload-sources";
  */
 const DEVIATION_THRESHOLD = 0.4;
 
+/**
+ * 아홉 칸. **그룹은 열이 아니다** — 머리행이 `2그룹 · 목표 …` 로 이미 말하는데 줄마다
+ * 또 적으면 같은 말이 두 번이고, 그만큼 견줄 숫자가 오른쪽으로 밀린다.
+ *
+ * 뒤 세 칸은 `주`·`월`·`연` 이었다. 한 글자로는 **무엇을 센 숫자인지 알 수 없어**,
+ * 숫자는 보이는데 뜻이 없었다.
+ */
 const COLUMNS = [
   "이름",
-  "그룹",
   "경력",
   "대학 수",
   "서비스 건수",
   "밀도",
   "목표 대비",
-  "주",
-  "월",
-  "연",
+  "이번 주",
+  "이번 달",
+  "올해",
 ] as const;
+
+/** 이름만 왼쪽이다. 나머지는 견주는 숫자라 오른쪽으로 맞춘다. */
+const LEFT_COLUMNS = 1;
 
 /** `toFixed` 만 쓰면 5.35 가 5.3 으로 내려간다(부동소수). 먼저 반올림한다. */
 const oneDecimal = (v: number) => (Math.round(v * 10) / 10).toFixed(1);
@@ -253,6 +262,18 @@ export function WorkloadTable({
         isPast={isPast}
         unmatched={unmatched}
       />
+      {/*
+        * **색이 무엇을 뜻하는지 화면이 말해야 한다.** 강조만 있고 범례가 없으면 그 줄이
+        * 왜 붉은지 물어볼 곳이 없고, 사람은 색을 '나쁨' 으로만 읽는다 — 임계를 넘었다는
+        * 것이지 옮겨야 한다는 뜻이 아니다(위 DEVIATION_THRESHOLD 주석).
+        */}
+      <p className="mb-2 text-xs text-muted">
+        붉은 줄은{" "}
+        <b className="font-medium text-vermilion-deep">
+          목표 대비 {Math.round(DEVIATION_THRESHOLD * 100)}% 이상
+        </b>{" "}
+        벗어난 사람입니다 — 눈길을 주는 선이고, 넘었다고 옮겨야 하는 것은 아닙니다.
+      </p>
       <div className="overflow-x-auto border border-line-soft bg-paper">
         <table className="w-full text-left text-sm tabular-nums">
           <thead>
@@ -261,7 +282,7 @@ export function WorkloadTable({
                 <th
                   key={c}
                   scope="col"
-                  className={`px-3 py-2 font-normal ${i === 0 || i === 1 ? "" : "text-right"}`}
+                  className={`px-3 py-2 font-normal ${i < LEFT_COLUMNS ? "" : "text-right"}`}
                 >
                   {c}
                 </th>
@@ -291,9 +312,6 @@ export function WorkloadTable({
                     }`}
                   >
                     <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
-                    <td className="px-3 py-2 text-muted">
-                      {groupLabel(g.group)}
-                    </td>
                     <td className="px-3 py-2 text-right">
                       {years === null ? "—" : `${oneDecimal(years)}년`}
                     </td>

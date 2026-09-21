@@ -77,7 +77,7 @@ describe("ProposalPanel", () => {
     expect(screen.getByText(/아직 적용되지 않았습니다/)).toBeInTheDocument();
   });
 
-  it("변경 줄에 대학·업무종류·하위유형·이전→제안·근거를 적는다", () => {
+  it("변경 줄에 대학·업무종류·하위유형·이전→제안을 적고, 근거는 그 아래에 둔다", () => {
     render(
       <ProposalPanel
         batches={[batch()]}
@@ -88,9 +88,81 @@ describe("ProposalPanel", () => {
     const row = screen.getByRole("row", { name: /가대학교/ });
     expect(within(row).getByText(/원서접수/)).toBeInTheDocument();
     expect(within(row).getByText(/수시/)).toBeInTheDocument();
+    // 근거는 같은 줄이 아니라 바로 아래 줄에 있다(폭을 다 쓰려고).
     expect(
-      within(row).getByText(/밀도가 그룹 평균보다 높습니다/),
+      screen.getByText(/밀도가 그룹 평균보다 높습니다/),
     ).toBeInTheDocument();
+  });
+
+  it("**같은 대학·업무종류·이동은 한 줄로 접는다** — 하위유형만 다른 것은 같은 이동이다", () => {
+    render(
+      <ProposalPanel
+        batches={[batch()]}
+        proposals={[
+          proposal({ id: "p1", subtype: "수시" }),
+          proposal({ id: "p2", subtype: "정시" }),
+        ]}
+        names={names}
+      />,
+    );
+
+    // 설계가 정한 이동 단위는 (대학 × 업무종류)다(rev 4). 하위유형마다 한 줄씩 세우면
+    // 이전→제안도 근거도 글자까지 같은 줄이 두 벌 생기고, 읽는 사람은 다른 줄인 줄 안다.
+    expect(screen.getAllByRole("row", { name: /가대학교/ })).toHaveLength(1);
+    const row = screen.getByRole("row", { name: /가대학교/ });
+    expect(within(row).getByText(/수시/)).toBeInTheDocument();
+    expect(within(row).getByText(/정시/)).toBeInTheDocument();
+  });
+
+  it("근거가 같으면 한 번만 적는다", () => {
+    render(
+      <ProposalPanel
+        batches={[batch()]}
+        proposals={[
+          proposal({ id: "p1", subtype: "수시" }),
+          proposal({ id: "p2", subtype: "정시" }),
+        ]}
+        names={names}
+      />,
+    );
+
+    expect(
+      screen.getAllByText(/밀도가 그룹 평균보다 높습니다/),
+    ).toHaveLength(1);
+  });
+
+  it("**근거는 데이터 칸을 밀지 않는다** — 제 줄을 준다", () => {
+    render(
+      <ProposalPanel
+        batches={[batch()]}
+        proposals={[proposal()]}
+        names={names}
+      />,
+    );
+
+    // 근거를 열로 두면 화면 절반을 먹어 `김슬기` 가 `김슬 / 기` 로 갈린다(실측 2026-09-21).
+    const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(heads).not.toContain("근거");
+
+    // 그래도 근거는 보여야 한다 — 옮기는 이유가 곧 판단 재료다.
+    const reason = screen.getByText(/밀도가 그룹 평균보다 높습니다/);
+    expect(reason.closest("tr")).not.toBe(
+      screen.getByRole("row", { name: /가대학교/ }),
+    );
+  });
+
+  it("이전과 제안을 한 칸에 둔다 — 화살표가 곧 이동이다", () => {
+    render(
+      <ProposalPanel
+        batches={[batch()]}
+        proposals={[proposal()]}
+        names={names}
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /가대학교/ });
+    // 이름·화살표·이름이 각각 다른 노드다(제안 쪽만 굵게). 줄 전체 텍스트로 본다.
+    expect(row.textContent?.replace(/\s+/g, "")).toContain("김가→이나");
   });
 
   it("주소가 아니라 이름으로 보여준다", () => {

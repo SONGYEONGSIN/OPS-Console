@@ -83,14 +83,15 @@ describe("WorkloadTable", () => {
     expect(head.textContent).toMatch(/4\.0/);
   });
 
-  it("한 줄에 열 칸이 다 있다", () => {
+  it("한 줄에 아홉 칸이 다 있다 — **그룹 칸은 없다**", () => {
     render(<WorkloadTable {...props()} groups={groups} />);
 
     const tr = screen.getByRole("row", { name: /가운영/ });
     const cells = within(tr).getAllByRole("cell");
+    // 그룹은 머리행이 이미 말한다(`2그룹 · 목표 …`). 줄마다 또 적으면 같은 말이
+    // 두 번이고, 그만큼 볼 것이 늘어 정작 견줄 숫자가 밀린다.
     expect(cells.map((c) => c.textContent)).toEqual([
       "가운영",
-      "2그룹",
       "7.5년",
       "17",
       "91",
@@ -100,6 +101,33 @@ describe("WorkloadTable", () => {
       "8",
       "40",
     ]);
+  });
+
+  it("진행 중 머리글이 무엇을 세는지 말한다 — `주`·`월`·`연` 만으로는 모른다", () => {
+    render(<WorkloadTable {...props()} groups={groups} />);
+
+    const heads = screen
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(heads).toContain("이번 주");
+    expect(heads).toContain("이번 달");
+    expect(heads).toContain("올해");
+    // 한 글자 머리글은 숫자만 남기고 뜻을 지운다.
+    expect(heads).not.toContain("주");
+    expect(heads).not.toContain("월");
+    expect(heads).not.toContain("연");
+  });
+
+  it("강조가 무엇인지 화면이 말한다 — 색만으로는 이유를 알 수 없다", () => {
+    render(
+      <WorkloadTable
+        {...props()}
+        groups={[{ ...groups[0], rows: [row({ deviation: 0.45 })] }]}
+        now={NOW}
+      />,
+    );
+
+    expect(screen.getByText(/목표 대비 40%/)).toBeTruthy();
   });
 
   it("편차가 임계를 넘으면 강조한다", () => {
@@ -165,10 +193,13 @@ describe("WorkloadTable", () => {
       />,
     );
 
+    // 자리를 숫자로 집으면 열이 하나 늘거나 줄 때마다 엉뚱한 칸을 본다(그룹 열을
+    // 걷었을 때 이 단언이 '2' 를 읽고 통과할 뻔했다). 머리글로 자리를 찾는다.
+    const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
     const cells = within(
       screen.getByRole("row", { name: /가운영/ }),
     ).getAllByRole("cell");
-    expect(cells[6].textContent).toBe("—");
+    expect(cells[heads.indexOf("목표 대비")].textContent).toBe("—");
   });
 
   it("아무도 없으면 빈 상태를 말한다", () => {
