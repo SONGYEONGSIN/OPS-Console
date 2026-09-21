@@ -49,16 +49,11 @@ beforeEach(() => {
 });
 
 describe("runAssignmentUnassignedSweep", () => {
-  it("주인 없는 칸을 단건 요청으로 적재한다", async () => {
+  it("주인 없는 칸을 건수로 알린다", async () => {
     listLedgerRows.mockResolvedValue([cell("가대", "원서접수", null)]);
     const r = await runAssignmentUnassignedSweep();
     expect(r.ok).toBe(true);
-    expect(enqueueProposeRequest).toHaveBeenCalledWith("automation", {
-      academicYear: BAEJUNG_CURRENT_YEAR,
-      kind: "single",
-      universityName: "가대",
-      workKind: "원서접수",
-    });
+    expect(r.message).toMatch(/미배정 1곳/);
   });
 
   it("**화면과 같은 학년도**를 훑는다", async () => {
@@ -117,59 +112,66 @@ describe("runAssignmentUnassignedSweep", () => {
     expect(r.message).toMatch(/1/);
   });
 
-  it("한 번에 상한까지만 적재하고 남은 수를 알린다", async () => {
-    const many = Array.from({ length: SWEEP_MAX_ENQUEUE + 3 }, (_, i) =>
-      cell(`대학${String(i).padStart(2, "0")}`, "원서접수", null),
-    );
-    listLedgerRows.mockResolvedValue(many);
-    const r = await runAssignmentUnassignedSweep();
-    expect(enqueueProposeRequest).toHaveBeenCalledTimes(SWEEP_MAX_ENQUEUE);
-    expect(r.message).toMatch(new RegExp(`${SWEEP_MAX_ENQUEUE + 3}`));
-  });
-
-  it("막힌 요청은 상한을 깎지 않는다 — 다음 실행이 이어 간다", async () => {
-    /*
-     * 이미 대기 중인 요청이 상한을 먹으면, 매 실행이 같은 앞자리에서 막혀
-     * 뒤쪽 대학은 영영 요청이 안 만들어진다.
-     */
-    const many = Array.from({ length: SWEEP_MAX_ENQUEUE + 3 }, (_, i) =>
-      cell(`대학${String(i).padStart(2, "0")}`, "원서접수", null),
-    );
-    listLedgerRows.mockResolvedValue(many);
-    enqueueProposeRequest.mockImplementation(
-      (_who: string, t: { universityName: string }) =>
-        Promise.resolve(
-          t.universityName < "대학03"
-            ? { ok: true, skipped: true, message: "이미 대기 중" }
-            : { ok: true, skipped: false, message: "적재" },
-        ),
-    );
-    await runAssignmentUnassignedSweep();
-    expect(enqueueProposeRequest).toHaveBeenCalledTimes(SWEEP_MAX_ENQUEUE + 3);
-  });
-
   it("원장 조회가 실패하면 실패로 끝난다 — 0건으로 읽지 않는다", async () => {
     listLedgerRows.mockRejectedValue(new Error("boom"));
     const r = await runAssignmentUnassignedSweep();
     expect(r.ok).toBe(false);
     expect(r.message).toMatch(/boom/);
   });
+});
 
-  it("적재 하나가 실패해도 나머지를 계속하고 실패로 보고한다", async () => {
+/**
+ * **프로세스는 버튼이다**(설계 2026-09-21 요구 8 · 사용자 2026-09-20).
+ *
+ * 2027학년도 배정은 이미 끝났고, 지금 필요한 것은 모니터링이다 — *"내가 신규 서비스에
+ * 대한 운영자 배정 요청이 없으면 굳이 제안해 줄 필요가 없음"*. 그래서 이 잡은 **감지와
+ * 보고만** 하고 요청은 사람이 화면에서 만든다.
+ *
+ * 적재를 남겨 두면 제안 탭이 **아무도 요청하지 않은 단건 배치**로 차고, `requested_by`
+ * 가 전부 `automation` 이라 누가 왜 만들었는지 사라진다.
+ */
+describe("runAssignmentUnassignedSweep — 감지·보고만 한다", () => {
+  it("미배정이 있어도 판정 요청을 적재하지 않는다", async () => {
     listLedgerRows.mockResolvedValue([
       cell("가대", "원서접수", null),
-      cell("나대", "원서접수", null),
+      cell("나대", "대학원", null),
     ]);
-    enqueueProposeRequest.mockImplementation(
-      (_w: string, t: { universityName: string }) =>
-        Promise.resolve(
-          t.universityName === "가대"
-            ? { ok: false, skipped: false, message: "적재 실패" }
-            : { ok: true, skipped: false, message: "적재" },
-        ),
-    );
     const r = await runAssignmentUnassignedSweep();
-    expect(enqueueProposeRequest).toHaveBeenCalledTimes(2);
-    expect(r.ok).toBe(false);
+    expect(enqueueProposeRequest).not.toHaveBeenCalled();
+    expect(r.ok).toBe(true);
+  });
+
+  it("미배정 건수를 그대로 보고한다 — 상한으로 깎지 않는다", async () => {
+    // 적재를 안 하므로 `SWEEP_MAX_ENQUEUE` 상한도, 그 상한이 만든 '다음 실행이
+    // 이어 간다' 도 함께 사라진다. 감지는 전건을 본다.
+    const many = Array.from({ length: SWEEP_MAX_ENQUEUE + 7 }, (_, i) =>
+      cell(`대학${String(i).padStart(2, "0")}`, "원서접수", null),
+    );
+    listLedgerRows.mockResolvedValue(many);
+    const r = await runAssignmentUnassignedSweep();
+    expect(r.message).toMatch(new RegExp(`${SWEEP_MAX_ENQUEUE + 7}`));
+    expect(r.message).not.toMatch(/적재|다음 실행/);
+  });
+
+  it("어디를 배정해야 하는지 화면으로 안내한다", async () => {
+    // 건수만 알리고 끝나면 '그래서 어디서 하나' 가 남는다.
+    listLedgerRows.mockResolvedValue([cell("가대", "원서접수", null)]);
+    const r = await runAssignmentUnassignedSweep();
+    expect(r.message).toMatch(/업무배정/);
+  });
+
+  it("적재 모듈을 아예 들여오지 않는다", () => {
+    /*
+     * 호출만 지우면 다음 사람이 '왜 안 쓰지' 하고 되살린다. import 가 없으면
+     * 되살리는 일이 의식적인 변경이 된다 — 원문으로 고정한다.
+     */
+    const src = readFileSync(
+      join(
+        process.cwd(),
+        "src/features/automations/jobs/assignment-unassigned-sweep.ts",
+      ),
+      "utf8",
+    ).replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(src).not.toMatch(/enqueueProposeRequest/);
   });
 });
