@@ -108,6 +108,22 @@ describe("canonicalUniversity", () => {
   it("떼면 아무것도 안 남는 이름은 그대로 둔다", () => {
     expect(canonicalUniversity("대학원", "대학원")).toBe("대학원");
   });
+
+  it("별칭이 접미사 규칙을 이긴다 — 규칙대로면 캠퍼스를 잃는다", () => {
+    /*
+     * `한양대학교 대학원` 을 규칙만 태우면 `한양대학교` 가 되는데, 원장에는 그
+     * 이름이 없다(`한양대학교(서울)` 과 `한양대학교(ERICA)` 뿐). 규칙이 먼저 돌면
+     * 27건이 계속 아무에게도 안 붙는다.
+     */
+    expect(canonicalUniversity("한양대학교 대학원", "대학원")).toBe(
+      "한양대학교(서울)",
+    );
+  });
+
+  it("발표 쪽 이름도 같은 함수가 옮긴다 — 원천마다 다른 길을 두지 않는다", () => {
+    expect(canonicalUniversity("세종대학교 대학원", "PIMS")).toBe("세종대학교");
+    expect(canonicalUniversity("한경대학교", "PIMS")).toBe("한경국립대학교");
+  });
 });
 
 describe("건수에서 빼는 대학", () => {

@@ -111,7 +111,9 @@ function YearBar({
           어느 담당자에게도 안 붙은 건수{" "}
           <span className="tabular-nums">{unmatched.services}건</span> ·{" "}
           <span className="tabular-nums">{unmatched.keys}곳</span> — 배정 시트에
-          없는 대학이거나 이름이 갈린 것입니다. 신규배정 탭에서 확인하세요.
+          그 대학의 해당 업무 칸이 없거나, 원천이 다른 이름으로 부르는 것입니다.
+          원서접수·대학원은 신규배정 탭에 서고, 발표(PIMS)는 배정 시트를 봐야
+          합니다.
         </p>
       )}
     </header>
@@ -246,11 +248,11 @@ export function WorkloadTable({
   return (
     <>
       <YearBar
-          academicYear={academicYear}
-          years={years}
-          isPast={isPast}
-          unmatched={unmatched}
-        />
+        academicYear={academicYear}
+        years={years}
+        isPast={isPast}
+        unmatched={unmatched}
+      />
       <div className="overflow-x-auto border border-line-soft bg-paper">
         <table className="w-full text-left text-sm tabular-nums">
           <thead>
