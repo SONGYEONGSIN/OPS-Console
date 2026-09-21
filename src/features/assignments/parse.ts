@@ -30,6 +30,24 @@ export const BAEJUNG_CURRENT_YEAR = 2027;
 
 const BLOCK_WIDTH = 6; // 블록당 sub-type 컬럼 수
 
+/**
+ * 블록의 여섯 번째 칸은 **백업자**다 — 배정이 아니라 공백 때 대신 볼 사람이다.
+ *
+ * `startsWith` 인 이유: 설계 문서는 `백업`, 라이브 시트는 `백업자` 다. 한쪽만
+ * 막으면 시트 문구가 바뀌는 날 백업자가 다시 배정으로 흘러 원장에 들어가는데,
+ * **그 오염은 조용하다** — 원장 행이 늘 뿐 어디서도 에러가 나지 않는다.
+ */
+const isBackupLabel = (label: string) => label.startsWith("백업");
+
+/** '담당자 변경' 칸. 네 배정 시트가 같은 헤더 문구를 쓴다. */
+const CHANGED_HEADER = /담당자\s*변경/;
+
+/** 헤더에 '담당자 변경' 이 있으면 그 칸 원문, 없으면 undefined. */
+function changedOf(row: string[], col: number): string | undefined {
+  if (col < 0) return undefined;
+  return (row[col] ?? "").trim() || undefined;
+}
+
 /** 02. 배정리스트 → 원서접수 AssignmentRecord[] (r1 헤더의 '수시' 기준 그리드 대표) */
 export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const rows = sheet.rowsText;
@@ -38,6 +56,7 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const r1 = rows[1];
   const uniCol = colExact(r0, "대학명");
   const typeCol = colExact(r0, "대분류");
+  const changedCol = colMatch(r0, CHANGED_HEADER);
   const op2027 = colMatch(r0, /2027.*운영자/);
   const dev2027 = colMatch(r0, /2027.*개발자/);
   const op2026 = colMatch(r0, /2026.*운영자/);
@@ -96,10 +115,17 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     const operator = opSusiCol >= 0 ? (row[opSusiCol] ?? "").trim() : "";
     const developer = devSusiCol >= 0 ? (row[devSusiCol] ?? "").trim() : "";
 
+    // **백업자는 여기서 갈라진다.** `detail` 에는 위 루프가 이미 담았으므로
+    // 인스펙터 표시는 그대로고, 원장으로 가는 `subtypes` 에서만 빠진다.
+    let backupOperator: string | undefined;
     const subtypes: { label: string; operator: string; developer: string }[] =
       [];
     for (const st of op2027Block?.subtypes ?? []) {
       const op = (row[st.col] ?? "").trim();
+      if (isBackupLabel(st.label)) {
+        if (op) backupOperator = op;
+        continue;
+      }
       const devCol = dev2027ColByLabel.get(st.label);
       const dev = devCol != null ? (row[devCol] ?? "").trim() : "";
       if (op || dev)
@@ -116,6 +142,8 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
       developer,
       detail,
       subtypes,
+      backupOperator,
+      assigneeChanged: changedOf(row, changedCol),
     });
   }
   return out;
@@ -133,6 +161,7 @@ export function parseSimpleSheet(
   const uniCol = colMatch(h, patterns.uni);
   const opCol = colMatch(h, patterns.op);
   const devCol = patterns.dev ? colMatch(h, patterns.dev) : -1;
+  const changedCol = colMatch(h, CHANGED_HEADER);
   if (uniCol < 0 || opCol < 0) return [];
 
   const out: AssignmentRecord[] = [];
@@ -142,7 +171,14 @@ export function parseSimpleSheet(
     if (university === "") continue;
     const operator = (row[opCol] ?? "").trim();
     const developer = devCol >= 0 ? (row[devCol] ?? "").trim() : "";
-    out.push({ university, service, operator, developer, detail: [] });
+    out.push({
+      university,
+      service,
+      operator,
+      developer,
+      detail: [],
+      assigneeChanged: changedOf(row, changedCol),
+    });
   }
   return out;
 }
@@ -165,6 +201,7 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
   const uniCol = colMatch(h, /대학명/);
   const fullCol = colMatch(h, /운영자\s*FULL/);
   const hwanCol = colMatch(h, /운영자\s*환|환\/?충/);
+  const changedCol = colMatch(h, CHANGED_HEADER);
   if (uniCol < 0 || fullCol < 0) return [];
 
   const out: AssignmentRecord[] = [];
@@ -195,6 +232,7 @@ export function parsePims(sheet: AssignmentSheet): AssignmentRecord[] {
       developer: "",
       detail,
       subtypes,
+      assigneeChanged: changedOf(row, changedCol),
     });
   }
   return out;

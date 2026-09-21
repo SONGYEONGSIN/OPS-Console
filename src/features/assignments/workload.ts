@@ -35,9 +35,11 @@ export type WorkloadCell = {
   assignee_email: string | null;
 };
 
-/** `services.write_start_at ~ write_end_at`. 주·월·연 진행을 겹침으로 센다. */
+/** `write_start_at ~ write_end_at`. 주·월·연 진행을 겹침으로 센다. */
 export type WorkloadSpan = {
   university_name: string;
+  /** 상세 리스트에 적는 이름. 집계에는 안 쓰지만 같은 조회에서 따라온다. */
+  service_name: string;
   work_kind: string;
   start: string;
   end: string;

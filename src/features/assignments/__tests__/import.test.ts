@@ -104,8 +104,11 @@ const ALL_SIX_DEV = {
   백업자: "바개발",
 } as const;
 
+/** 배정이 되는 다섯 — 여섯 번째 `백업자` 는 배정이 아니다(아래 테스트). */
+const ASSIGNED_SUBTYPES = SUBTYPES.filter((s) => s !== "백업자");
+
 describe("toLedgerRows — 원서접수(02. 배정리스트)", () => {
-  it("2027 운영/개발 × 6 하위유형이 12행이 된다", () => {
+  it("2027 운영/개발 × 5 하위유형이 10행이 된다", () => {
     const recs = parseBaejungList(
       sheet02([
         dataRow("서울대학교", {
@@ -117,22 +120,36 @@ describe("toLedgerRows — 원서접수(02. 배정리스트)", () => {
     );
     const { rows } = toLedgerRows(recs, 2027);
 
-    expect(rows).toHaveLength(12);
+    expect(rows).toHaveLength(10);
     expect(rows.every((r) => r.work_kind === "원서접수")).toBe(true);
     expect(rows.every((r) => r.academic_year === 2027)).toBe(true);
     expect([...new Set(rows.map((r) => r.subtype))].sort()).toEqual(
-      [...SUBTYPES].sort(),
+      [...ASSIGNED_SUBTYPES].sort(),
     );
-    expect(rows.filter((r) => r.role === "운영")).toHaveLength(6);
-    expect(rows.filter((r) => r.role === "개발")).toHaveLength(6);
+    expect(rows.filter((r) => r.role === "운영")).toHaveLength(5);
+    expect(rows.filter((r) => r.role === "개발")).toHaveLength(5);
   });
 
-  it("여섯 번째 하위유형은 시트 라벨 그대로 '백업자' 다", () => {
+  it("백업자 칸은 배정이 아니다 — 원장 행을 만들지 않는다", () => {
+    /*
+     * 시트 r1 의 여섯 번째 라벨은 설계 문서의 `백업` 이 아니라 **`백업자`** 다
+     * (2026-09-13 실측) — 라벨은 여전히 시트에서 가져온다. 바뀐 것은 그 칸을
+     * **어디로 보내는가**다.
+     *
+     * 백업자는 운영자 공백 때 대신 볼 사람이지 배정이 아니다. 하위유형으로
+     * 흘려보내면 `원서접수|백업자|운영` 이 정식 배정으로 원장에 들어가,
+     * 배분현황이 담당 부하로 세고 제안 판정이 옮길 대상으로 본다.
+     *
+     * 라이브 실측(2026-09-21): 2027 백업자 칸 **0행** · 2026 백업자 칸 22행.
+     * 지금은 비어 있어 드러나지 않을 뿐이고, 사람이 채우는 날 조용히 오염된다.
+     */
     const recs = parseBaejungList(
-      sheet02([dataRow("서울대학교", { op2027: { 백업자: "바운영" } })]),
+      sheet02([
+        dataRow("서울대학교", { op2027: { 수시: "나운영", 백업자: "바운영" } }),
+      ]),
     );
     const { rows } = toLedgerRows(recs, 2027);
-    expect(rows.map((r) => r.subtype)).toEqual(["백업자"]);
+    expect(rows.map((r) => r.subtype)).toEqual(["수시"]);
   });
 
   it("2026 칸은 이관하지 않는다 — 2027 만 넣는다", () => {

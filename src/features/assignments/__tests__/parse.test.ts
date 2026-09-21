@@ -568,3 +568,97 @@ describe("joinByUniversity", () => {
     expect(rows[1].university).toBe("연세대학교");
   });
 });
+
+/**
+ * 백업자와 '담당자 변경' — **배정 옆의 두 칸**(2026-09-21 라이브 실측).
+ *
+ * 02 시트 r1 의 여섯 번째 라벨은 `백업자` 이고 `[17]` 2027 칸은 0행, `[29]` 2026
+ * 칸은 22행이다. '담당자 변경' 은 네 시트에 모두 있고 `변경 O` 가 44건
+ * (02:29 · 03:3 · 04:5 · 06:7).
+ */
+describe("백업자 칸", () => {
+  /** 위 `sheet` 와 같은 모양이되 백업 라벨·값을 지정한다. */
+  const withBackup = (label: string, value: string): AssignmentSheet => ({
+    ...sheet,
+    rowsText: [
+      sheet.rowsText[0],
+      mergeRows(sheet.rowsText[1], cell(17, label), cell(29, label)),
+      mergeRows(sheet.rowsText[2], cell(17, value)),
+    ],
+  });
+
+  it.each(["백업자", "백업"])(
+    "'%s' 칸은 하위유형이 아니라 backupOperator 로 간다",
+    (label) => {
+      /*
+       * 배정으로 흘려보내면 `원서접수|백업자|운영` 이 원장에 정식 배정으로 들어가
+       * 배분현황이 부하로 세고 제안이 옮길 대상으로 본다. 두 표기를 다 고정하는
+       * 이유는 문서가 `백업`, 시트가 `백업자` 라서다 — 한쪽만 막으면 표기가
+       * 바뀌는 날 조용히 되돌아온다.
+       */
+      const recs = parseBaejungList(withBackup(label, "대타운영"));
+      expect(recs[0].subtypes?.map((s) => s.label)).not.toContain(label);
+      expect(recs[0].backupOperator).toBe("대타운영");
+    },
+  );
+
+  it("detail 에는 남는다 — 인스펙터에서 사라지면 안 된다", () => {
+    // 2026 백업자는 라이브에 22곳 있다. 배정에서 뺀다고 화면에서까지 지우면
+    // 작년에 누가 백업이었는지 볼 곳이 없어진다.
+    const recs = parseBaejungList(withBackup("백업자", "대타운영"));
+    expect(recs[0].detail.map((d) => d.label)).toContain("2027 백업자 운영");
+  });
+
+  it("빈 칸이면 backupOperator 가 없다", () => {
+    expect(parseBaejungList(sheet)[0].backupOperator).toBeUndefined();
+  });
+});
+
+describe("담당자 변경 칼럼", () => {
+  it("02. 배정리스트 — r0 '담당자 변경' 을 읽는다", () => {
+    const changed: AssignmentSheet = {
+      ...sheet,
+      rowsText: [
+        mergeRows(sheet.rowsText[0], cell(11, "담당자 변경\n(수시 기준)")),
+        sheet.rowsText[1],
+        mergeRows(sheet.rowsText[2], cell(11, "변경 O")),
+      ],
+    };
+    expect(parseBaejungList(changed)[0].assigneeChanged).toBe("변경 O");
+  });
+
+  it("02 — 칼럼이 없으면 없는 대로 둔다", () => {
+    expect(parseBaejungList(sheet)[0].assigneeChanged).toBeUndefined();
+  });
+
+  it("03·06 단일 헤더 시트 — '담당자 변경' 을 읽는다", () => {
+    const simple: AssignmentSheet = {
+      worksheetName: "03. 대학원",
+      rowsText: [
+        ["대학명", "담당자 변경", "운영자", "개발자"],
+        ["고려대학교", "변경 X", "기자의", "권용철"],
+      ],
+      rowCount: 2,
+      columnCount: 4,
+    };
+    const recs = parseSimpleSheet(simple, "대학원", {
+      uni: /대학명/,
+      op: /^운영자$/,
+      dev: /^개발자$/,
+    });
+    expect(recs[0].assigneeChanged).toBe("변경 X");
+  });
+
+  it("04. PIMS — '담당자 변경' 을 읽는다", () => {
+    const pims: AssignmentSheet = {
+      worksheetName: "04. PIMS",
+      rowsText: [
+        ["대학명", "담당자 변경", "운영자 FULL", "운영자 환/충"],
+        ["연세대학교", "변경 O", "한효진", ""],
+      ],
+      rowCount: 2,
+      columnCount: 4,
+    };
+    expect(parsePims(pims)[0].assigneeChanged).toBe("변경 O");
+  });
+});
