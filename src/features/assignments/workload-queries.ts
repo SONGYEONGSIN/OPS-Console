@@ -7,6 +7,7 @@ import {
   buildSpans,
   type AnnouncementRow,
   type ClosingRow,
+  type PastServiceRow,
 } from "./workload-sources";
 
 /**
@@ -111,50 +112,69 @@ async function loadWindow(
   };
 }
 
-/** 올해 — 살아 있는 마감 미러에서 읽는다. */
-export async function loadWorkloadSources(
-  now: Date,
-  client?: AssignmentQueryClient,
-): Promise<WorkloadSources> {
-  const { start, end } = academicYearRangeKST(now);
-  const supabase = client ?? (await createClient());
-  return loadWindow(
-    supabase,
-    "closing_services",
-    bound(start),
-    bound(end),
-    "마감",
+/**
+ * `services` 가 멈춘 학년도. 그 해까지는 **서비스목록**에, 그 다음부터는 **마감
+ * 미러**에 물량이 있다(실측 2026-09-21: 2026학년도 `services` 2,511건 ↔
+ * `closing_services` 2건 / 2027학년도 `services` 0건 ↔ `closing_services` 983건).
+ *
+ * **시계가 아니라 데이터의 사실이라 해가 넘어가도 안 움직인다.** `closing_services`
+ * 는 지우지 않고 누적하므로 2028학년도가 와도 2027은 거기 그대로 있다.
+ */
+export const FROZEN_IMPORT_LAST_YEAR = 2026;
+
+/**
+ * 학년도 Y 의 창 — **Y-1년 3/1 ~ Y년 2월 말일.**
+ *
+ * 경계를 여기서 다시 정의하지 않고 `academicYearRangeKST` 에 되물어 얻는다.
+ * 직접 만들면 윤년 2월 29일에서 갈리고(2028학년도), 마감 스크랩과 배분현황이
+ * 서로 다른 해를 보면서 둘 다 '올해' 라고 적는다.
+ *
+ * 그 학년도 **한가운데의 아무 날**을 넘긴다 — 6월 1일이면 3월 시작·2월 끝 어느
+ * 경계에도 안 걸린다.
+ */
+function rangeOfAcademicYear(academicYear: number) {
+  return academicYearRangeKST(
+    new Date(`${academicYear - 1}-06-01T00:00:00+09:00`),
   );
 }
 
-/**
- * 작년 — **`services`(서비스목록)에서 읽는다.** 실측 2026-09-21: 2026학년도가
- * `services` 2,511건/313곳인데 `closing_services` 에는 2건뿐이다. 마감 미러는
- * 스크랩을 시작한 뒤부터만 쌓여서, 작년을 거기서 세면 통째로 '줄었다' 가 된다.
- */
-export async function loadPreviousYearSources(
-  now: Date,
+/** 그 학년도의 물량이 어느 표에 있는가. */
+const tableOf = (academicYear: number) =>
+  academicYear <= FROZEN_IMPORT_LAST_YEAR
+    ? ({ table: "services", label: "서비스목록" } as const)
+    : ({ table: "closing_services", label: "마감" } as const);
+
+/** 한 학년도의 건수·구간. 표는 학년도가 고른다. */
+export async function loadWorkloadSources(
+  academicYear: number,
   client?: AssignmentQueryClient,
 ): Promise<WorkloadSources> {
-  const { start, end } = previousAcademicYearRange(now);
+  const { start, end } = rangeOfAcademicYear(academicYear);
+  const { table, label } = tableOf(academicYear);
   const supabase = client ?? (await createClient());
-  return loadWindow(
+  return loadWindow(supabase, table, bound(start), bound(end), label);
+}
+
+/**
+ * 과거 학년도의 **담당자** — `services.operator_email`.
+ *
+ * 원장(`assignments`)에는 그 해 행이 없다. 건수만 `services` 로 돌리고 담당자를
+ * 안 바꾸면 **전원이 0곳**이 되고, 화면에서 '그 해엔 아무도 안 맡았다' 로 읽힌다.
+ * 창은 건수와 **같은 함수**에서 얻는다 — 갈리면 둘이 다른 해를 본다.
+ */
+export async function loadPastOperatorRows(
+  academicYear: number,
+  client?: AssignmentQueryClient,
+): Promise<PastServiceRow[]> {
+  const { start, end } = rangeOfAcademicYear(academicYear);
+  const supabase = client ?? (await createClient());
+  return pageAll<PastServiceRow>(
     supabase,
     "services",
+    "university_name, category, operator_email",
+    "write_start_at",
     bound(start),
     bound(end),
-    "서비스목록",
+    "과거 담당자",
   );
-}
-
-/**
- * 직전 학년도 창. **3/1 의 하루 전**이 곧 그 해의 마지막 날이라, 경계를 여기서
- * 다시 정의하지 않고 `academicYearRangeKST` 에 되물어 얻는다 — 연도에서 1을 빼면
- * 윤년 2월 29일에서 갈린다.
- */
-function previousAcademicYearRange(now: Date) {
-  const { start } = academicYearRangeKST(now);
-  const dayBefore = new Date(`${start.date}T00:00:00+09:00`);
-  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
-  return academicYearRangeKST(dayBefore);
 }

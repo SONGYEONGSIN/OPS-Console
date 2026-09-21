@@ -87,7 +87,19 @@ describe("loadJudgeInput", () => {
     await loadJudgeInput(2027, NOW);
 
     expect(mockLedger).toHaveBeenCalledWith(2027, expect.anything());
-    expect(mockSources).toHaveBeenCalledWith(NOW, expect.anything());
+    expect(mockSources).toHaveBeenCalledWith(2027, expect.anything());
+  });
+
+  it("원장과 **같은 학년도**의 물량을 센다 — 시계로 잡지 않는다", async () => {
+    /*
+     * 예전엔 물량 창을 `now` 로 잡았다. 원장은 `academicYear` 로 읽으므로 3월에
+     * 학년도가 넘어가는 순간 둘이 갈려, 2027 원장에 2028 물량을 붙여 판정한다 —
+     * 그리고 그 결과는 어디서도 에러가 안 나 멀쩡해 보인다.
+     */
+    await loadJudgeInput(2026, NOW);
+
+    expect(mockSources).toHaveBeenCalledWith(2026, expect.anything());
+    expect(mockSources).not.toHaveBeenCalledWith(NOW, expect.anything());
   });
 
   it("활성 명부만 본다 — 퇴사자가 끼면 그룹 평균이 아래로 끌린다", async () => {

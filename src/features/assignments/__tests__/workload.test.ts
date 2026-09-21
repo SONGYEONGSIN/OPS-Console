@@ -400,3 +400,106 @@ describe("buildWorkload — 그룹이 비어 있는 모양", () => {
     expect(groups[0]).toMatchObject({ group: "그룹 미설정", target: null });
   });
 });
+
+/**
+ * 상세 리스트 — **'이번 주 3건' 에서 멈추면 모니터링이 아니다.**
+ *
+ * 사용자가 원한 것은 *"각 운영자별 주간/월별 통계 **및 상세 리스트**"* 다. 건수만
+ * 있으면 어느 대학의 무엇이 도는지 볼 곳이 없어 화면에서 다시 물어야 한다.
+ */
+describe("buildWorkload — 진행 상세", () => {
+  const spanOf = (
+    university_name: string,
+    service_name: string,
+    start: string,
+    end: string,
+  ) => ({ university_name, service_name, work_kind: "원서접수", start, end });
+
+  it("이번 달에 걸친 구간을 행에 싣는다", () => {
+    const groups = buildWorkload({
+      ...base,
+      spans: [spanOf("가대", "2027학년도 수시모집", "2026-09-15", "2026-09-16")],
+    });
+    expect(firstRow(groups).running).toEqual([
+      {
+        university_name: "가대",
+        service_name: "2027학년도 수시모집",
+        work_kind: "원서접수",
+        start: "2026-09-15",
+        end: "2026-09-16",
+        inWeek: true,
+      },
+    ]);
+  });
+
+  it("이번 주에 안 걸리면 inWeek 가 false 다 — 목록에는 남는다", () => {
+    // 달에는 있고 주에는 없는 것을 빼면 '이번 달 5건' 의 내역이 3건만 보인다.
+    const groups = buildWorkload({
+      ...base,
+      spans: [spanOf("가대", "정시", "2026-09-25", "2026-09-28")],
+    });
+    const running = firstRow(groups).running;
+    expect(running).toHaveLength(1);
+    expect(running[0].inWeek).toBe(false);
+  });
+
+  it("이번 달 밖은 싣지 않는다 — 연 단위 전건을 넘기지 않는다", () => {
+    const groups = buildWorkload({
+      ...base,
+      spans: [spanOf("가대", "먼 것", "2026-12-01", "2026-12-05")],
+    });
+    expect(firstRow(groups).running).toEqual([]);
+  });
+
+  it("남의 대학은 안 싣는다", () => {
+    const groups = buildWorkload({
+      ...base,
+      spans: [spanOf("남의대", "남의 것", "2026-09-15", "2026-09-16")],
+    });
+    expect(firstRow(groups).running).toEqual([]);
+  });
+
+  it("시작일 순으로 싣는다 — 사람이 위에서 아래로 읽는다", () => {
+    const groups = buildWorkload({
+      ...base,
+      spans: [
+        spanOf("가대", "나중", "2026-09-20", "2026-09-21"),
+        spanOf("가대", "먼저", "2026-09-02", "2026-09-03"),
+      ],
+    });
+    expect(firstRow(groups).running.map((r) => r.service_name)).toEqual([
+      "먼저",
+      "나중",
+    ]);
+  });
+});
+
+/**
+ * 과거 학년도에는 **목표를 내지 않는다.**
+ *
+ * `operators.tenure_group` 은 **오늘의 값 하나뿐**이다. 작년 숫자에 오늘 그룹을
+ * 씌우면 그때 존재한 적 없는 목표가 나오고, 그 목표 대비 편차는 그냥 틀린 숫자다.
+ * 그룹은 묶음 이름으로만 쓴다.
+ */
+describe("buildWorkload — targets:false", () => {
+  it("목표와 편차가 없다", () => {
+    const groups = buildWorkload({ ...base, targets: false });
+    expect(groups.every((g) => g.target === null)).toBe(true);
+    expect(groups.flatMap((g) => g.rows).every((r) => r.deviation === null)).toBe(
+      true,
+    );
+  });
+
+  it("그룹 묶음과 건수는 그대로다 — 표에서 사람을 빼지 않는다", () => {
+    const withTargets = buildWorkload(base);
+    const without = buildWorkload({ ...base, targets: false });
+    expect(without.map((g) => g.group)).toEqual(withTargets.map((g) => g.group));
+    expect(without.flatMap((g) => g.rows.map((r) => r.universities))).toEqual(
+      withTargets.flatMap((g) => g.rows.map((r) => r.universities)),
+    );
+  });
+
+  it("기본값은 목표를 낸다 — 올해 표가 조용히 편차를 잃지 않는다", () => {
+    expect(buildWorkload(base).some((g) => g.target !== null)).toBe(true);
+  });
+});

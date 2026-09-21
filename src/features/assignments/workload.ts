@@ -52,6 +52,21 @@ export type WorkloadWindows = {
   year: [string, string];
 };
 
+/**
+ * 이번 달에 도는 서비스 한 줄 — **'이번 주 3건' 에서 멈추면 모니터링이 아니다.**
+ *
+ * 주 창을 벗어난 것도 남긴다(`inWeek: false`). 빼면 '이번 달 5건' 의 내역이
+ * 3건만 보여 머리 숫자와 목록이 어긋난다.
+ */
+export type WorkloadRunning = {
+  university_name: string;
+  service_name: string;
+  work_kind: string;
+  start: string;
+  end: string;
+  inWeek: boolean;
+};
+
 export type WorkloadRow = {
   email: string;
   name: string;
@@ -71,6 +86,8 @@ export type WorkloadRow = {
   year: number;
   /** §6.1 의 `dev(op)`. 그룹 목표가 없으면 `null`. */
   deviation: number | null;
+  /** 이번 달에 도는 서비스 목록(시작일 순). `month` 의 내역이다. */
+  running: WorkloadRunning[];
 };
 
 export type WorkloadGroup = {
@@ -111,8 +128,17 @@ export function buildWorkload(input: {
   serviceCounts: Readonly<Record<string, number>>;
   spans: readonly WorkloadSpan[];
   windows: WorkloadWindows;
+  /**
+   * 그룹 목표·편차를 낼 것인가. **과거 학년도에는 `false`** 다.
+   *
+   * `operators.tenure_group` 은 오늘의 값 하나뿐이라, 작년 숫자에 오늘 그룹을
+   * 씌우면 그때 존재한 적 없는 목표가 나오고 그 목표 대비 편차는 틀린 숫자다.
+   * 그룹은 묶음 이름으로만 남는다.
+   */
+  targets?: boolean;
 }): WorkloadGroup[] {
   const { cells, serviceCounts, spans, windows } = input;
+  const targets = input.targets ?? true;
 
   // C1 — 배정 대상만 본다. 팀장·이사·테스트 계정이 섞이면 그룹 평균이 흔들린다.
   const operators = input.operators.filter((o) => o.assignable);
@@ -162,6 +188,19 @@ export function buildWorkload(input: {
       month: mine.filter((s) => overlaps(s, windows.month)).length,
       year: mine.filter((s) => overlaps(s, windows.year)).length,
       deviation: null,
+      // `month` 의 내역이다 — 머리 숫자와 같은 창을 써야 둘이 안 어긋난다.
+      // 연 단위 전건을 넘기지 않는 이유는 한 사람에 수백 줄이 붙기 때문이다.
+      running: mine
+        .filter((s) => overlaps(s, windows.month))
+        .map((s) => ({
+          university_name: s.university_name,
+          service_name: s.service_name,
+          work_kind: s.work_kind,
+          start: s.start,
+          end: s.end,
+          inWeek: overlaps(s, windows.week),
+        }))
+        .sort((a, b) => a.start.localeCompare(b.start)),
     };
   };
 
@@ -179,7 +218,7 @@ export function buildWorkload(input: {
 
   return groups.map((group) => {
     const rows = byGroup.get(group) ?? [];
-    if (group === UNSET_GROUP) return { group, target: null, rows };
+    if (!targets || group === UNSET_GROUP) return { group, target: null, rows };
 
     const target = {
       universities: mean(rows.map((r) => r.universities)),
