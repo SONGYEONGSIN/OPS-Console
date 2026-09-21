@@ -31,6 +31,7 @@ import { AssignmentControls } from "./_components/AssignmentControls";
 import { SheetGrid } from "./_components/SheetGrid";
 import { PricingSheet } from "./_components/PricingSheet";
 import { ReconcileAssignments } from "./ReconcileAssignments";
+import { ExportAssignments } from "./ExportAssignments";
 
 const PAGE_SIZE = 30;
 
@@ -294,7 +295,14 @@ export default async function AssignmentsPage({
              * 전 칸이 어긋난 것으로 나온다.
              */}
             {me?.permission === "admin" && (
-              <ReconcileAssignments academicYear={BAEJUNG_CURRENT_YEAR} />
+              <>
+                <ReconcileAssignments academicYear={BAEJUNG_CURRENT_YEAR} />
+                {/*
+                 * 내보내기는 대조 **오른쪽**이다 — 읽는 것을 먼저 보고 쓰는 것을
+                 * 나중에 누르는 순서가 화면에도 있어야 한다.
+                 */}
+                <ExportAssignments />
+              </>
             )}
           </>
         }
