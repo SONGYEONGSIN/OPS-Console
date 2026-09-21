@@ -40,21 +40,30 @@ import { ProposalPanel } from "./ProposalPanel";
  * 된다. `work-assignment` 는 `ADMIN_ONLY_MENU_SLUGS` 에 있으므로
  * `requireMenu` 하나가 그 판정을 한다.
  */
+/**
+ * 탭 이름과 **순서**는 사용자가 정한 것이다(2026-09-21).
+ *
+ * `제안` 은 무엇을 제안하는지 말하지 않아 열기 전에는 알 수 없었고, `배분` 은 나누는
+ * 행위인데 그 화면은 **나뉜 결과를 보는 자리**다. 그래서 `배정현황` · `3월배정` 이다.
+ *
+ * 순서는 일의 순서다 — 한 해 배정이 **3월에 통째로** 정해지고, 신규배정은 그 뒤에 들어온
+ * 것만 다룬다. 현황을 보고 → 전체를 정하고 → 그 뒤 것을 붙인다.
+ */
 const TABS = [
   {
     key: "workload",
-    label: "배분현황",
+    label: "배정현황",
     href: "/dashboard/work-assignment?tab=workload",
+  },
+  {
+    key: "proposals",
+    label: "3월배정",
+    href: "/dashboard/work-assignment?tab=proposals",
   },
   {
     key: "newcomers",
     label: "신규배정",
     href: "/dashboard/work-assignment?tab=newcomers",
-  },
-  {
-    key: "proposals",
-    label: "제안",
-    href: "/dashboard/work-assignment?tab=proposals",
   },
 ] as const;
 
@@ -123,7 +132,7 @@ export default async function WorkAssignmentPage({
   /**
    * 신규배정 — **주인 없는 서비스에 네 가지를 답하는 자리**(사용자 요구).
    *
-   * 원장과 물량 원천을 **배분현황과 같은 함수로** 읽는다. 여기서 따로 읽으면 같은
+   * 원장과 물량 원천을 **배정현황과 같은 함수로** 읽는다. 여기서 따로 읽으면 같은
    * 화면의 두 탭이 다른 원장을 보고, 한쪽에서 미배정인 칸이 다른 쪽에서는 아니다.
    *
    * **부하는 줄마다 다시 잰다.** `workloadWindows` 에 서비스 시작일을 넘겨 그 주·그
@@ -171,7 +180,7 @@ export default async function WorkAssignmentPage({
   }
 
   /**
-   * 배분현황 — **§6.1 의 근거를 사람이 검산하는 자리**(선행 설계 §9.4).
+   * 배정현황 — **§6.1 의 근거를 사람이 검산하는 자리**(선행 설계 §9.4).
    *
    * 명부는 **활성 + 배정 대상**만 — 퇴사자가 0곳으로 끼면 그룹 평균이 아래로
    * 끌려가 남은 사람이 전부 과부하로 보인다(`assignable` 은 `buildWorkload` 가
@@ -228,7 +237,7 @@ export default async function WorkAssignmentPage({
 }
 
 /**
- * `?tab=`. **모르는 값은 기본 탭으로** — 흐름이 모니터링이라 배분현황이 기본이다.
+ * `?tab=`. **모르는 값은 기본 탭으로** — 흐름이 모니터링이라 배정현황이 기본이다.
  *
  * 탭 이름을 여기서 다시 적지 않고 `TABS` 에서 찾는다. 두 벌이 되면 탭은 보이는데
  * 눌러도 기본 탭이 열리는, 아무도 원인을 못 찾는 화면이 된다.

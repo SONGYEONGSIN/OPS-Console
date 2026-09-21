@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { kstFormat } from "@/lib/kst-format";
 import {
   TENURE_GROUP_LABELS,
@@ -32,14 +33,63 @@ const kstDateTime = kstFormat({
   minute: "2-digit",
 });
 
-const COLUMNS = [
-  "대학",
-  "업무종류",
-  "하위유형",
-  "이전",
-  "제안",
-  "근거",
-] as const;
+/**
+ * 네 칸. **`근거` 는 열이 아니다** — 열로 두면 화면 절반을 먹어 나머지가 짜부라지고
+ * `김슬기` 가 `김슬 / 기` 로 갈렸다(실측 2026-09-21). 제 줄을 준다.
+ *
+ * `이전`·`제안` 도 한 칸이다 — 둘은 따로 읽는 값이 아니라 **하나의 이동**이고,
+ * 화살표가 그것을 말한다.
+ */
+const COLUMNS = ["대학", "업무종류", "하위유형", "이동"] as const;
+
+/**
+ * 이동 한 건 = **(대학 × 업무종류 × 이전 → 제안)**. 하위유형은 그 안에 모인다.
+ *
+ * 설계가 정한 이동 단위가 (대학 × 업무종류)인데(rev 4) 제안 **행**은 원장 한 줄이라
+ * 하위유형마다 하나다. 그대로 세우면 이전→제안도 근거도 **글자까지 같은 줄이 두 벌**
+ * 생기고, 읽는 사람은 다른 줄인 줄 안다 — 24건이 12건의 두 벌이었다.
+ *
+ * 순수 함수로 둬서 접는 규칙에 시험이 붙는다.
+ */
+export function foldMoves(
+  rows: ProposalRow[],
+): {
+  key: string;
+  university_name: string;
+  work_kind: string;
+  subtypes: string[];
+  prev_assignee: string | null;
+  next_assignee: string | null;
+  reason: string;
+}[] {
+  const out = new Map<string, ReturnType<typeof foldMoves>[number]>();
+  for (const r of rows) {
+    const key = [
+      r.university_name,
+      r.work_kind,
+      r.prev_assignee ?? "",
+      r.next_assignee ?? "",
+    ].join("|");
+    const hit = out.get(key);
+    if (!hit) {
+      out.set(key, {
+        key,
+        university_name: r.university_name,
+        work_kind: r.work_kind,
+        subtypes: r.subtype ? [r.subtype] : [],
+        prev_assignee: r.prev_assignee,
+        next_assignee: r.next_assignee,
+        reason: r.reason,
+      });
+      continue;
+    }
+    // 하위유형은 원장 순서를 따른다 — 여기서 다시 정렬하면 `수시 · 정시` 가 뒤집힌다.
+    if (r.subtype && !hit.subtypes.includes(r.subtype)) {
+      hit.subtypes.push(r.subtype);
+    }
+  }
+  return [...out.values()];
+}
 
 const STATUS_LABEL: Record<ProposalBatchRow["status"], string> = {
   pending: "검토 대기",
@@ -202,27 +252,41 @@ export function ProposalPanel({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((p) => (
-                      <tr key={p.id} className="border-b border-line-soft">
-                        <td className="px-3 py-2 font-medium text-ink">
-                          {p.university_name}
-                        </td>
-                        <td className="px-3 py-2 text-ink-soft">
-                          {p.work_kind}
-                        </td>
-                        <td className="px-3 py-2 text-muted">
-                          {p.subtype || "—"}
-                        </td>
-                        <td className="px-3 py-2 text-muted">
-                          {nameOf(p.prev_assignee, names)}
-                        </td>
-                        <td className="px-3 py-2 text-ink">
-                          {nameOf(p.next_assignee, names)}
-                        </td>
-                        <td className="px-3 py-2 text-2xs text-ink-soft">
-                          {p.reason}
-                        </td>
-                      </tr>
+                    {foldMoves(rows).map((m) => (
+                      <Fragment key={m.key}>
+                        <tr>
+                          <td className="whitespace-nowrap px-3 pt-2 font-medium text-ink">
+                            {m.university_name}
+                          </td>
+                          <td className="whitespace-nowrap px-3 pt-2 text-ink-soft">
+                            {m.work_kind}
+                          </td>
+                          <td className="px-3 pt-2 text-muted">
+                            {m.subtypes.length === 0
+                              ? "—"
+                              : m.subtypes.join(" · ")}
+                          </td>
+                          <td className="whitespace-nowrap px-3 pt-2 text-ink">
+                            {nameOf(m.prev_assignee, names)}
+                            <span className="px-1 text-muted">→</span>
+                            <b className="font-medium">
+                              {nameOf(m.next_assignee, names)}
+                            </b>
+                          </td>
+                        </tr>
+                        {/*
+                          * 근거는 제 줄에서 폭을 다 쓴다. 같은 이동의 하위유형들이 같은
+                          * 근거를 갖고 있어, 접은 뒤에는 한 번만 적힌다.
+                          */}
+                        <tr className="border-b border-line-soft">
+                          <td
+                            colSpan={COLUMNS.length}
+                            className="px-3 pb-2 text-2xs text-ink-soft"
+                          >
+                            {m.reason}
+                          </td>
+                        </tr>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

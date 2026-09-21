@@ -28,7 +28,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   "work-assignment": {
     headline: { accent: "관리", title: "업무배정" },
     description:
-      "운영자별 배분현황을 보고, 연간·신규 배정을 제안으로 만들어 승인합니다.",
+      "운영자별 배정현황을 보고, 3월 배정과 신규 배정을 만들어 승인합니다.",
   },
   outcomes: {
     headline: { accent: "분석 · AI", title: "성과리포트" },
