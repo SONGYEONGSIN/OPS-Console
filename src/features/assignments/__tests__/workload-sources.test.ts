@@ -2,9 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   pastCells,
   workKindOfClosing,
+  canonicalUniversity,
   buildServiceCounts,
   buildSpans,
   workloadWindows,
+  unmatchedVolume,
 } from "../workload-sources";
 
 /**
@@ -57,6 +59,116 @@ describe("workKindOfClosing", () => {
 
   it("구분이 비어도 원서접수로 센다 — 어디에도 안 세는 것보다 낫다", () => {
     expect(workKindOfClosing(null)).toBe("원서접수");
+  });
+});
+
+describe("canonicalUniversity", () => {
+  /**
+   * **`category` 가 이미 대학원이라고 말한다**(사용자, 2026-09-21). 그러니 마감의
+   * 대학명 끝에 붙은 `대학원` 은 **중복된 정보**다 — 별칭을 추측해 잇는 것이 아니라
+   * 겹친 것을 떼는 것이라, 설계 F1 이 막으려던 일과 다르다.
+   *
+   * 이게 없으면 `성균관대학교 대학원` 32건이 원장의 `성균관대학교` 담당자에게
+   * 안 붙는다. 실측으로 마감 983건 중 **231건(23.5%)** 이 아무에게도 안 붙어 있었고,
+   * 그중 179건이 이 한 모양이다.
+   */
+  it("대학원 업무에서는 이름 끝의 대학원 표기를 뗀다", () => {
+    expect(canonicalUniversity("성균관대학교 대학원", "대학원")).toBe(
+      "성균관대학교",
+    );
+  });
+
+  it("괄호로 적힌 것도 뗀다", () => {
+    expect(canonicalUniversity("가천대학교(대학원)", "대학원")).toBe(
+      "가천대학교",
+    );
+  });
+
+  it("앞에 말이 붙어도 뗀다 — 일반·경영전문 모두 그 대학의 대학원이다", () => {
+    expect(canonicalUniversity("서강대학교 경영전문대학원", "대학원")).toBe(
+      "서강대학교",
+    );
+    expect(canonicalUniversity("서강대학교 일반대학원", "대학원")).toBe(
+      "서강대학교",
+    );
+  });
+
+  it("괄호 안의 캠퍼스는 남긴다 — 동국대는 서울과 WISE 가 다른 담당이다", () => {
+    expect(canonicalUniversity("동국대학교(서울) 대학원", "대학원")).toBe(
+      "동국대학교(서울)",
+    );
+  });
+
+  it("원서접수 업무에서는 떼지 않는다 — 거기선 이름의 일부다", () => {
+    expect(canonicalUniversity("한국과학기술원 대학원", "원서접수")).toBe(
+      "한국과학기술원 대학원",
+    );
+  });
+
+  it("떼면 아무것도 안 남는 이름은 그대로 둔다", () => {
+    expect(canonicalUniversity("대학원", "대학원")).toBe("대학원");
+  });
+});
+
+describe("건수에서 빼는 대학", () => {
+  /**
+   * `진학대학교` 는 **테스트 대학**이다(실측: `엔터 결제 테스트`·`웹 모의해킹
+   * 테스트1/2`·`기획 테스트용`, 2027학년도 15건). 원장에 없는 것이 맞고, 물량으로
+   * 세면 목표·편차가 있지도 않은 일로 부풀려진다.
+   */
+  it("테스트 대학은 건수에서 뺀다", () => {
+    const counts = buildServiceCounts({
+      closing: [cs("진학대학교", "수시"), cs("가대", "수시")],
+      announcement: [],
+    });
+
+    expect(counts["진학대학교|원서접수"]).toBeUndefined();
+    expect(counts["가대|원서접수"]).toBe(1);
+  });
+
+  it("테스트 대학은 구간에서도 뺀다 — 건수와 구간이 갈리면 안 된다", () => {
+    expect(
+      buildSpans([cs("진학대학교", "수시"), cs("가대", "수시")]),
+    ).toHaveLength(1);
+  });
+});
+
+describe("unmatchedVolume", () => {
+  /**
+   * **어느 담당자에게도 안 붙은 건수.** 지금은 조용히 빠져 있어서, 배분현황의 합이
+   * 원천 건수보다 적은데 화면에 그 사실이 없다. 0 이 아니면 이름이 갈렸거나 시트에
+   * 없는 대학이라는 뜻이다.
+   */
+  it("담당자가 없는 키의 건수를 합한다", () => {
+    const n = unmatchedVolume({ "가대|원서접수": 4, "새대|원서접수": 3 }, [
+      {
+        university_name: "가대",
+        work_kind: "원서접수",
+        assignee_email: "a@x.com",
+      },
+    ]);
+
+    expect(n).toEqual({ services: 3, keys: 1 });
+  });
+
+  it("주소가 없는 칸은 담당자가 아니다 — 그 건수도 안 붙는다", () => {
+    const n = unmatchedVolume({ "가대|원서접수": 4 }, [
+      { university_name: "가대", work_kind: "원서접수", assignee_email: null },
+    ]);
+
+    expect(n).toEqual({ services: 4, keys: 1 });
+  });
+
+  it("전부 붙으면 0 이다", () => {
+    const n = unmatchedVolume({ "가대|원서접수": 4 }, [
+      {
+        university_name: "가대",
+        work_kind: "원서접수",
+        assignee_email: "a@x.com",
+      },
+    ]);
+
+    expect(n).toEqual({ services: 0, keys: 0 });
   });
 });
 
@@ -171,6 +283,40 @@ describe("workloadWindows", () => {
  * 표에서 전원이 0곳**이 되고, 그건 화면에서 '그 해엔 아무도 안 맡았다' 로 읽힌다.
  */
 describe("pastCells", () => {
+  it("건수와 **같은 이름**으로 접는다 — 갈리면 작년이 통째로 0 이 된다", () => {
+    /*
+     * 과거 학년도는 담당자도 건수도 `services` 한 표에서 나온다. 한쪽만 정규화하면
+     * 담당자 키는 `충남대학교 대학원`, 건수 키는 `충남대학교` 가 되어 서로 안 만나고,
+     * 화면에서는 **그 사람이 그 해 아무것도 안 맡은 것**처럼 보인다.
+     */
+    const cells = pastCells([
+      {
+        university_name: "충남대학교 대학원",
+        category: "대학원 전기",
+        operator_email: "a@x.com",
+      },
+    ]);
+    const counts = buildServiceCounts({
+      closing: [cs("충남대학교 대학원", "대학원 전기")],
+      announcement: [],
+    });
+
+    expect(cells[0].university_name).toBe("충남대학교");
+    expect(counts[`${cells[0].university_name}|${cells[0].work_kind}`]).toBe(1);
+  });
+
+  it("테스트 대학은 담당 칸도 만들지 않는다", () => {
+    expect(
+      pastCells([
+        {
+          university_name: "진학대학교",
+          category: "수시",
+          operator_email: "a@x.com",
+        },
+      ]),
+    ).toEqual([]);
+  });
+
   const svc = (
     university_name: string,
     category: string | null,

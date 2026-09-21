@@ -11,6 +11,7 @@ import {
   workloadWindows,
   pastCells,
   kstDay,
+  unmatchedVolume,
 } from "@/features/assignments/workload-sources";
 import { findNewcomers } from "@/features/assignments/newcomers";
 import { NewAssignmentPanel } from "./NewAssignmentPanel";
@@ -205,6 +206,8 @@ export default async function WorkAssignmentPage({
     targets: !isPast,
   });
   const people = groups.reduce((n, g) => n + g.rows.length, 0);
+  // 표에 안 들어간 건수 — 조용히 빼면 합만 보고 멀쩡하다고 읽는다.
+  const unmatched = unmatchedVolume(sources.serviceCounts, cells);
 
   return (
     <>
@@ -217,6 +220,7 @@ export default async function WorkAssignmentPage({
           academicYear={academicYear}
           years={YEAR_OPTIONS}
           isPast={isPast}
+          unmatched={unmatched}
         />
       </section>
     </>

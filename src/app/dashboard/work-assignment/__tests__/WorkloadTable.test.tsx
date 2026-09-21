@@ -47,6 +47,29 @@ const props = () => ({
   academicYear: 2027,
   years: [2027, 2026] as const,
   isPast: false,
+  unmatched: { services: 0, keys: 0 },
+});
+
+describe("안 붙은 건수", () => {
+  /**
+   * **조용히 빠지면 아무도 못 본다.** 실측(2026-09-21)에서 마감 983건 중 231건
+   * (23.5%)이 어느 담당자에게도 안 붙어 있었는데, 표의 합만 보면 멀쩡했다 —
+   * 원천 건수와 견줄 자리가 화면에 없었기 때문이다.
+   */
+  it("안 붙은 건수가 있으면 적고, 무엇을 하라고 말한다", () => {
+    render(
+      <WorkloadTable {...props()} unmatched={{ services: 52, keys: 10 }} />,
+    );
+
+    expect(screen.getByText(/52건/)).toBeTruthy();
+    expect(screen.getByText(/10곳/)).toBeTruthy();
+  });
+
+  it("전부 붙었으면 그 줄을 띄우지 않는다 — 0 은 알릴 것이 아니다", () => {
+    render(<WorkloadTable {...props()} />);
+
+    expect(screen.queryByText(/안 붙은/)).toBeNull();
+  });
 });
 
 describe("WorkloadTable", () => {
