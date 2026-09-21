@@ -562,9 +562,15 @@ describe("updateAssignment", () => {
     });
   });
 
-  it("바꿨으면 화면을 다시 그린다", async () => {
+  it("바꿨으면 두 화면을 다시 그린다 — 원장은 배분현황도 떠받친다", async () => {
+    /*
+     * 원장이 바뀌면 총괄장 대학배정과 업무배정 배분현황이 함께 낡는다. #1205 가
+     * 라우트를 나눈 뒤 옛 주소만 남아, 배정을 고쳐도 배분현황의 대학 수·건수가
+     * 예전 값으로 보인다 — 그 표가 판정의 근거라 조용히 어긋나면 잡을 길이 없다.
+     */
     await updateAssignment(input([SWAP]));
     expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/assignments");
+    expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/work-assignment");
   });
 });
 // ─────────────────────────────────────────────────────────────
@@ -770,8 +776,9 @@ describe("revertChange", () => {
     expect(h.insert).not.toHaveBeenCalled();
   });
 
-  it("되돌렸으면 화면을 다시 그린다", async () => {
+  it("되돌렸으면 두 화면을 다시 그린다", async () => {
     await revertChange(CHANGE_ID);
     expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/assignments");
+    expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/work-assignment");
   });
 });

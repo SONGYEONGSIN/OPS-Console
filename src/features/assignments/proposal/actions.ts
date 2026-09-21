@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { WORK_ASSIGNMENT_PATH } from "../paths";
+import {
+  enqueueProposeRequest,
+  type EnqueueProposeResult,
+} from "../propose-requests/enqueue";
 import { ASSIGNMENT_NATURAL_KEY } from "../ledger-schemas";
 import {
   planApply,
@@ -201,6 +206,7 @@ export async function applyProposalBatch(
   }
 
   revalidatePath("/dashboard/assignments");
+  revalidatePath(WORK_ASSIGNMENT_PATH);
   return {
     ok: true,
     applied: plan.apply.length,
@@ -242,5 +248,37 @@ export async function rejectProposalBatch(
   }
 
   revalidatePath("/dashboard/assignments");
+  revalidatePath(WORK_ASSIGNMENT_PATH);
   return { ok: true };
+}
+
+/**
+ * 단건 배정 요청 — 신규배정 탭의 `[배정 요청]`(설계 §6.3).
+ *
+ * **여기서 원장을 바꾸지 않는다.** 폴러에 판정을 시키고, 그 결과는 제안 탭에서
+ * 관리자가 다시 승인한다 — 3월 배정 이후의 흐름이 모니터링이라, 중간에 들어온
+ * 서비스 하나가 사람 손을 안 거치고 원장에 앉는 일은 없어야 한다.
+ *
+ * 화면이 admin 라우트 안에 있어도 **server action 에는 라우트 가드가 없다.** 주소만
+ * 알면 누구나 부를 수 있고, 적재된 요청은 폴러가 가져가 제안이 된다.
+ */
+export async function requestSingleProposal(target: {
+  academicYear: number;
+  universityName: string;
+  workKind: string;
+}): Promise<EnqueueProposeResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, skipped: false, message: auth.error };
+
+  const result = await enqueueProposeRequest(auth.email, {
+    academicYear: target.academicYear,
+    kind: "single",
+    universityName: target.universityName,
+    workKind: target.workKind,
+  });
+
+  // 누른 흔적이 안 보이면 또 누른다. 적재된 것만 다시 그린다 —
+  // '이미 대기 중' 은 화면이 이미 그 줄을 들고 있다는 뜻이다.
+  if (result.ok) revalidatePath(WORK_ASSIGNMENT_PATH);
+  return result;
 }

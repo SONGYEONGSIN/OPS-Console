@@ -15,6 +15,23 @@ export const SERVICE_KINDS = [
 
 export type ServiceKind = (typeof SERVICE_KINDS)[number];
 
+/**
+ * 업무종류 → 그 배정이 적히는 시트 탭.
+ *
+ * **중간에 들어오는 서비스의 첫 물음이 '어느 시트에 추가하나' 다.** 그 답이
+ * 업무종류에서 기계적으로 나오므로 사람이 외울 것이 아니라 여기 적는다.
+ *
+ * `queries.ts` 의 `SHEET_NAMES` 가 이 표에서 나온다 — 시트 이름을 두 벌로 적으면
+ * 한쪽만 바뀌는 날 엑셀은 멀쩡한데 화면이 없는 탭을 가리킨다.
+ */
+export const SERVICE_KIND_SHEETS: Record<ServiceKind, string> = {
+  원서접수: "02. 배정리스트",
+  대학원: "03. 대학원",
+  PIMS: "04. PIMS",
+  성적산출: "06. 성적산출",
+  상담앱: "07. 상담앱",
+};
+
 /** 한 시트의 한 행에서 추출한 단일 서비스 배정 (그리드 대표값) */
 export type AssignmentRecord = {
   university: string;

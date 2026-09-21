@@ -10,7 +10,10 @@ import { buildWorkload } from "@/features/assignments/workload";
 import {
   workloadWindows,
   pastCells,
+  kstDay,
 } from "@/features/assignments/workload-sources";
+import { findNewcomers } from "@/features/assignments/newcomers";
+import { NewAssignmentPanel } from "./NewAssignmentPanel";
 import {
   loadWorkloadSources,
   loadPastOperatorRows,
@@ -43,6 +46,11 @@ const TABS = [
     href: "/dashboard/work-assignment?tab=workload",
   },
   {
+    key: "newcomers",
+    label: "신규배정",
+    href: "/dashboard/work-assignment?tab=newcomers",
+  },
+  {
     key: "proposals",
     label: "제안",
     href: "/dashboard/work-assignment?tab=proposals",
@@ -62,7 +70,7 @@ export default async function WorkAssignmentPage({
   const meta = findSidebarMeta(slug);
   if (!meta) return null;
   const sp = await searchParams;
-  const tab = sp.tab === "proposals" ? "proposals" : "workload";
+  const tab = parseTab(sp.tab);
 
   const makeHeader = (count: number) => {
     const config = resolvePageMeta(slug, meta, count);
@@ -106,6 +114,56 @@ export default async function WorkAssignmentPage({
             proposals={proposals}
             names={names}
           />
+        </section>
+      </>
+    );
+  }
+
+  /**
+   * 신규배정 — **주인 없는 서비스에 네 가지를 답하는 자리**(사용자 요구).
+   *
+   * 원장과 물량 원천을 **배분현황과 같은 함수로** 읽는다. 여기서 따로 읽으면 같은
+   * 화면의 두 탭이 다른 원장을 보고, 한쪽에서 미배정인 칸이 다른 쪽에서는 아니다.
+   *
+   * **부하는 줄마다 다시 잰다.** `workloadWindows` 에 서비스 시작일을 넘겨 그 주·그
+   * 달의 창을 잡는다 — '지금 여유 있나' 를 보면 12월 서비스를 9월 부하로 판단한다.
+   * 줄이 한 자리 수라 순수 함수를 줄마다 한 번 도는 비용은 없는 셈이다.
+   *
+   * 현재 학년도만 본다. 과거 학년도에는 배정할 것이 없고, 원장에 그 해 행도 없다.
+   */
+  if (tab === "newcomers") {
+    const year = BAEJUNG_CURRENT_YEAR;
+    const [ledger, allOperators, sources] = await Promise.all([
+      listLedgerRows(year),
+      listOperators(),
+      loadWorkloadSources(year),
+    ]);
+    const operators = allOperators.filter((o) => o.status === "active");
+    const newcomers = findNewcomers({
+      ledger,
+      spans: sources.spans,
+      today: kstDay(new Date().toISOString()),
+    });
+    const rows = newcomers.map((r) => ({
+      ...r,
+      loadAtStart:
+        r.start === null
+          ? null
+          : buildWorkload({
+              operators,
+              cells: ledger,
+              serviceCounts: sources.serviceCounts,
+              spans: sources.spans,
+              windows: workloadWindows(new Date(`${r.start}T12:00:00+09:00`)),
+            }),
+    }));
+
+    return (
+      <>
+        {makeHeader(rows.length)}
+        <PageTabs active={tab} tabs={TABS} />
+        <section className="p-7">
+          <NewAssignmentPanel rows={rows} academicYear={year} />
         </section>
       </>
     );
@@ -163,6 +221,17 @@ export default async function WorkAssignmentPage({
       </section>
     </>
   );
+}
+
+/**
+ * `?tab=`. **모르는 값은 기본 탭으로** — 흐름이 모니터링이라 배분현황이 기본이다.
+ *
+ * 탭 이름을 여기서 다시 적지 않고 `TABS` 에서 찾는다. 두 벌이 되면 탭은 보이는데
+ * 눌러도 기본 탭이 열리는, 아무도 원인을 못 찾는 화면이 된다.
+ */
+function parseTab(raw: string | undefined): (typeof TABS)[number]["key"] {
+  const hit = TABS.find((t) => t.key === raw);
+  return hit ? hit.key : "workload";
 }
 
 /**

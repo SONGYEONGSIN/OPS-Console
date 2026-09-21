@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { getGraphToken } from "@/lib/microsoft/auth";
-import type { AssignmentSheet } from "./schemas";
+import { SERVICE_KIND_SHEETS, type AssignmentSheet } from "./schemas";
 
 /**
  * 배정 엑셀(SHAREPOINT_ASSIGNMENTS_ITEM_ID, 메인 드라이브)의 특정 워크시트
@@ -60,13 +60,18 @@ export const fetchAssignmentSheet = cache(
   },
 );
 
-/** 워크시트 이름 상수 (시트 탭 명과 정확히 일치) */
+/**
+ * 워크시트 이름 상수 (시트 탭 명과 정확히 일치).
+ *
+ * 배정 시트 다섯은 `SERVICE_KIND_SHEETS` 에서 온다 — 신규배정 화면이 '어느 시트에
+ * 추가하나' 를 업무종류로 답하므로, 여기 다시 적으면 같은 탭 이름이 두 벌이 된다.
+ */
 export const SHEET_NAMES = {
-  배정리스트: "02. 배정리스트",
-  대학원: "03. 대학원",
-  PIMS: "04. PIMS",
-  성적산출: "06. 성적산출",
-  상담앱: "07. 상담앱",
+  배정리스트: SERVICE_KIND_SHEETS.원서접수,
+  대학원: SERVICE_KIND_SHEETS.대학원,
+  PIMS: SERVICE_KIND_SHEETS.PIMS,
+  성적산출: SERVICE_KIND_SHEETS.성적산출,
+  상담앱: SERVICE_KIND_SHEETS.상담앱,
   업무분장: "(참고) 업무분장",
   가격정책: "(참고) 가격정책",
 } as const;

@@ -34,7 +34,11 @@ const KST_DAY = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-const kstDay = (iso: string) => KST_DAY.format(new Date(iso));
+/**
+ * KST 날짜 `YYYY-MM-DD`. 구간과 창을 **문자열로** 견주므로 오늘도 같은 형식이어야
+ * 한다 — 신규배정의 '아직 시작 전' 판정이 이 값을 쓴다.
+ */
+export const kstDay = (iso: string) => KST_DAY.format(new Date(iso));
 
 /** `closing_services`(올해) · `services`(작년) 공통으로 읽는 칸. */
 export type ClosingRow = {
