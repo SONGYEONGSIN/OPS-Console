@@ -106,7 +106,11 @@ describe("runAssignmentYearRollover", () => {
     hasPendingAnnualBatch.mockResolvedValue(true);
     const r = await runAssignmentYearRollover(new Date("2026-09-18T00:00:00Z"));
     expect(r.skipped).toBe(true);
-    expect(r.message).toMatch(/검토 대기/);
+    // 문구가 아니라 **두 가지 뜻**을 본다 — 왜 건너뛰었는지, 그리고 어떻게 푸는지.
+    // 뒤엣것이 없으면 사람은 '또 안 되네' 로 읽고 멈춘다(반려가 학년도를 닫던 시절의
+    // 메시지가 정확히 그랬다).
+    expect(r.message).toMatch(/검토/);
+    expect(r.message).toMatch(/반려/);
     expect(enqueueProposeRequest).not.toHaveBeenCalled();
   });
 
