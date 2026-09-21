@@ -84,18 +84,40 @@ export function findUnassignedKeys(
   );
 }
 
+/** 이름만 남은 칸. 이름을 함께 싣는 이유는 **고칠 사람이 누구인지**가 답이어서다. */
+export type UnlinkedKey = UnassignedKey & { assignee_name: string };
+
 /**
- * 이름은 있는데 주소가 없는 (대학 × 업무종류) 수 — 보고의 '닿지 않은 것' 절(§8).
+ * 이름은 있는데 주소가 없는 (대학 × 업무종류) — 보고의 '닿지 않은 것' 절(§8).
  *
- * 요청을 만들지 않는 대신 이 숫자로 드러낸다. 0 이 아니면 사람이 명부에서 이름을
- * 맞춰 줘야 하고, 그때까지 그 칸은 배정이 있는 것으로 취급된다.
+ * 요청을 만들지 않는 대신 이것으로 드러낸다. 비어 있지 않으면 사람이 명부에서
+ * 이름을 맞춰 줘야 하고, 그때까지 그 칸은 배정이 있는 것으로 취급된다.
  */
-export function unlinkedCount(ledger: readonly UnassignedLedgerCell[]): number {
-  let n = 0;
+export function findUnlinkedKeys(
+  ledger: readonly UnassignedLedgerCell[],
+): UnlinkedKey[] {
+  const out: UnlinkedKey[] = [];
   for (const cells of operationCellsByKey(ledger).values()) {
-    const linked = cells.some((c) => c.assignee_email !== null);
-    const named = cells.some((c) => c.assignee_name.trim() !== "");
-    if (!linked && named) n += 1;
+    if (cells.some((c) => c.assignee_email !== null)) continue;
+    const named = cells.find((c) => c.assignee_name.trim() !== "");
+    if (!named) continue;
+    out.push({
+      university_name: named.university_name,
+      work_kind: named.work_kind,
+      assignee_name: named.assignee_name.trim(),
+    });
   }
-  return n;
+  return out.sort(
+    (a, b) =>
+      a.university_name.localeCompare(b.university_name, "ko") ||
+      a.work_kind.localeCompare(b.work_kind, "ko"),
+  );
 }
+
+/**
+ * 그 수. **목록에서 센다** — 평일 보고의 숫자와 신규배정 탭의 줄 수가 갈리면
+ * 어느 쪽이 맞는지 사람이 알 길이 없다.
+ */
+export const unlinkedCount = (
+  ledger: readonly UnassignedLedgerCell[],
+): number => findUnlinkedKeys(ledger).length;

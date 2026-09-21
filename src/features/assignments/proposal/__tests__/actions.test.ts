@@ -211,9 +211,15 @@ describe("applyProposalBatch", () => {
     expect(r.ok === false && r.error).toMatch(/boom/);
   });
 
-  it("적용 후 목록을 다시 그린다", async () => {
+  it("적용 후 두 화면을 다시 그린다 — 제안 탭은 업무배정으로 옮겨 갔다", async () => {
+    /*
+     * 제안을 승인하면 원장이 바뀌므로 총괄장 대학배정도, 업무배정 배분현황·제안도
+     * 낡는다. #1205 가 라우트를 옮긴 뒤 옛 주소만 남아, **승인한 배치가 화면에서
+     * 그대로 pending 으로 보였다** — 새로고침해도 캐시가 그대로라 두 번 누른다.
+     */
     await applyProposalBatch("b1");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/assignments");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/work-assignment");
   });
 });
 
@@ -240,6 +246,11 @@ describe("rejectProposalBatch", () => {
     expect(batch.status).toBe("rejected");
     const props = wrote("assignment_proposals")[0].payload as Row;
     expect(props.decision).toBe("rejected");
+  });
+
+  it("반려 후에도 제안 탭을 다시 그린다", async () => {
+    await rejectProposalBatch("b1");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard/work-assignment");
   });
 
   it("이미 결정된 배치는 반려하지 않는다", async () => {

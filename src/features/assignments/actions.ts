@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentOperator } from "@/features/auth/queries";
+import { WORK_ASSIGNMENT_PATH } from "./paths";
 import { fetchAssignmentSheet, SHEET_NAMES } from "./queries";
 import {
   ASSIGNMENT_NATURAL_KEY,
@@ -282,6 +283,7 @@ export async function updateAssignment(
   }
 
   revalidatePath("/dashboard/assignments");
+  revalidatePath(WORK_ASSIGNMENT_PATH);
   return { ok: true, changed: payload.length, history: history.length };
 }
 
@@ -425,5 +427,6 @@ export async function revertChange(
   }
 
   revalidatePath("/dashboard/assignments");
+  revalidatePath(WORK_ASSIGNMENT_PATH);
   return { ok: true };
 }
