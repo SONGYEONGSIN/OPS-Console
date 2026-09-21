@@ -20,6 +20,16 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     headline: { accent: "서비스사이클", title: "총괄장" },
     description: "대학별 운영/개발 배정·업무분장·가격정책을 조회합니다.",
   },
+  /**
+   * `accent` 는 사이드바 상위 묶음 이름이다. `assignments` 가 그룹 라벨
+   * `서비스사이클` 을 쓰는 것과 달리 `work-assignment` 는 섹션 직속 항목이라
+   * 섹션 제목 `관리` 를 쓴다.
+   */
+  "work-assignment": {
+    headline: { accent: "관리", title: "업무배정" },
+    description:
+      "운영자별 배분현황을 보고, 연간·신규 배정을 제안으로 만들어 승인합니다.",
+  },
   outcomes: {
     headline: { accent: "분석 · AI", title: "성과리포트" },
     description:
