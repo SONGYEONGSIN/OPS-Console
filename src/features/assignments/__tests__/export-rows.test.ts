@@ -42,6 +42,21 @@ function subsOf(cols: ReturnType<typeof buildExportColumns>, top: string) {
   return out;
 }
 
+/**
+ * 블록 머리글은 **블록의 첫 칸에만** 있다(병합된 2줄 머리글 모양). 그래서 칸을
+ * 찾을 때는 블록 시작 + 하위유형 자리로 센다 — `top` 으로 직접 찾으면 첫 칸만 잡힌다.
+ */
+function at(
+  cols: ReturnType<typeof buildExportColumns>,
+  top: string,
+  sub: string,
+) {
+  const start = cols.findIndex((c) => c.top === top);
+  const offset = subsOf(cols, top).indexOf(sub);
+  expect(offset).toBeGreaterThanOrEqual(0);
+  return start + offset;
+}
+
 describe("buildExportColumns", () => {
   it("PIMS 는 FULL·환충 2칸이고 개발 열이 없다 — 원장에 PIMS 개발이 0건이다", () => {
     const cols = buildExportColumns([2027]);
@@ -142,18 +157,9 @@ describe("buildExportGrid", () => {
     expect(dataRows.map((r) => r[0])).toEqual(["고려대학교", "서울대학교"]);
 
     const seoul = dataRows[1];
-    const opSusi = cols.findIndex(
-      (c) => c.kind === "cell" && c.top === "2027 운영자" && c.sub === "수시",
-    );
-    const devSusi = cols.findIndex(
-      (c) => c.kind === "cell" && c.top === "2027 개발자" && c.sub === "수시",
-    );
-    const opJeongsi = cols.findIndex(
-      (c) => c.kind === "cell" && c.top === "2027 운영자" && c.sub === "정시",
-    );
-    expect(seoul[opSusi]).toBe("나운영");
-    expect(seoul[devSusi]).toBe("김개발");
-    expect(seoul[opJeongsi]).toBe("");
+    expect(seoul[at(cols, "2027 운영자", "수시")]).toBe("나운영");
+    expect(seoul[at(cols, "2027 개발자", "수시")]).toBe("김개발");
+    expect(seoul[at(cols, "2027 운영자", "정시")]).toBe("");
   });
 
   it("대분류를 싣는다", () => {
