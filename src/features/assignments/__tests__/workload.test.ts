@@ -171,7 +171,11 @@ describe("buildWorkload — 그룹 목표와 편차", () => {
         cell("나대", "b@x.com"),
         cell("다대", "b@x.com"),
       ],
-      serviceCounts: { "가대|원서접수": 6, "나대|원서접수": 2, "다대|원서접수": 2 },
+      serviceCounts: {
+        "가대|원서접수": 6,
+        "나대|원서접수": 2,
+        "다대|원서접수": 2,
+      },
     });
 
     // a: 1곳·6건·6.0 / b: 2곳·4건·2.0 → 평균 1.5곳·4.0
@@ -188,7 +192,11 @@ describe("buildWorkload — 그룹 목표와 편차", () => {
         cell("나대", "b@x.com"),
         cell("다대", "b@x.com"),
       ],
-      serviceCounts: { "가대|원서접수": 6, "나대|원서접수": 2, "다대|원서접수": 2 },
+      serviceCounts: {
+        "가대|원서접수": 6,
+        "나대|원서접수": 2,
+        "다대|원서접수": 2,
+      },
     });
 
     // a: |1-1.5|/1.5 + |6-4|/4 = 0.3333 + 0.5
@@ -214,6 +222,7 @@ describe("buildWorkload — 주·월·연 진행", () => {
   const spans = (...s: [string, string, string][]) =>
     s.map(([university_name, start, end]) => ({
       university_name,
+      service_name: `${university_name} 원서접수`,
       work_kind: "원서접수",
       start,
       end,
@@ -271,7 +280,11 @@ describe("buildWorkload — 갈린 대학", () => {
     ...base,
     operators: [op("a@x.com", "가운영", "2"), op("b@x.com", "나운영", "2")],
     cells: [
-      { university_name: "가대", work_kind: "원서접수", assignee_email: "a@x.com" },
+      {
+        university_name: "가대",
+        work_kind: "원서접수",
+        assignee_email: "a@x.com",
+      },
       { university_name: "가대", work_kind: "PIMS", assignee_email: "b@x.com" },
     ],
     serviceCounts: { "가대|원서접수": 4, "가대|PIMS": 40 },
@@ -295,6 +308,7 @@ describe("buildWorkload — 갈린 대학", () => {
       spans: [
         {
           university_name: "가대",
+          service_name: "가대 원서접수",
           work_kind: "원서접수",
           start: "2026-09-15",
           end: "2026-09-16",
@@ -346,9 +360,7 @@ describe("buildWorkload — 경력", () => {
   it("경력 시작일을 줄에 싣는다 — 그룹 경계가 왜 거기인지 보이게", () => {
     const groups = buildWorkload({
       ...base,
-      operators: [
-        { ...op("a@x.com", "가운영", "2"), hired_at: "2020-01-02" },
-      ],
+      operators: [{ ...op("a@x.com", "가운영", "2"), hired_at: "2020-01-02" }],
     });
 
     expect(firstRow(groups).careerStart).toBe("2020-01-02");

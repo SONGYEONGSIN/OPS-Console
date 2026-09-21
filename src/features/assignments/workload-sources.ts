@@ -4,11 +4,18 @@ import { workKey, type WorkloadSpan, type WorkloadWindows } from "./workload";
 /**
  * 건수 원천을 `대학|업무종류` 로 옮긴다 — 순수 함수다(설계 §6.2, PR5 에서 실측 정정).
  *
- * **원천은 `closing_services` 하나다.** §6.2 는 원서접수를 `services` 에서 센다고
- * 적었지만 그 표는 구글 시트 임포트가 2026-02-28 에서 멈춰 있어(2511행 전부
- * `google_sheet_import`) 지금 학년도 창에 **0건**이다. 그대로 쓰면 전원의 건수·
- * 밀도·주월연이 0 이 되고, 그건 '일이 없다' 로 읽힌다. 살아 있는 미러는
- * `closing_services` 이고 창 안 969건/286곳 — §6.2 가 적은 **286곳과 같다**.
+ * **원천은 학년도로 갈린다**(2026-09-21 라이브 실측):
+ *
+ *   2026학년도(작년)  `services` 2,511건/313곳  ↔ `closing_services`     2건/1곳
+ *   2027학년도(올해)  `services`     0건/0곳    ↔ `closing_services`   983건/286곳
+ *
+ * `services` 는 구글 시트 임포트가 2026-02-28 에서 멈춘 표이고(2511행 전부
+ * `google_sheet_import`), `closing_services` 는 살아 있는 마감 미러다. 그래서
+ * **올해는 마감, 작년은 서비스목록**에서 읽는다 — 한쪽만 읽으면 올해가 0 이 되거나
+ * 작년 비교가 통째로 불가능해지고, 둘 다 '일이 없다' 로 읽힌다.
+ *
+ * 두 표는 여기서 쓰는 칸(`university_name`·`service_name`·`category`·
+ * `write_start_at`·`write_end_at`)의 모양이 같아 한 타입으로 받는다.
  *
  * `operator_name` 은 여전히 안 본다(낡은 스냅샷, §1). 담당자는 원장에서 오고
  * 여기서는 **대학 이름으로만** 센다.
@@ -24,8 +31,11 @@ const KST_DAY = new Intl.DateTimeFormat("en-CA", {
 
 const kstDay = (iso: string) => KST_DAY.format(new Date(iso));
 
+/** `closing_services`(올해) · `services`(작년) 공통으로 읽는 칸. */
 export type ClosingRow = {
   university_name: string;
+  /** 상세 리스트에 적는 이름. 실데이터가 "2027학년도 수시모집" 형태의 완성 문장이다. */
+  service_name: string;
   category: string | null;
   write_start_at: string;
   write_end_at: string;
@@ -65,10 +75,16 @@ export function buildServiceCounts(input: {
   return counts;
 }
 
-/** 주·월·연 진행 구간. 창과 문자열로 견주므로 **KST 날짜**로 내린다. */
+/**
+ * 주·월·연 진행 구간. 창과 문자열로 견주므로 **KST 날짜**로 내린다.
+ *
+ * 서비스명을 함께 싣는다 — 배분현황이 '이번 주 3건' 에서 멈추면 어느 대학의
+ * 무엇인지 볼 곳이 없어 모니터링이 성립하지 않는다.
+ */
 export function buildSpans(rows: readonly ClosingRow[]): WorkloadSpan[] {
   return rows.map((r) => ({
     university_name: r.university_name,
+    service_name: r.service_name,
     work_kind: workKindOfClosing(r.category),
     start: kstDay(r.write_start_at),
     end: kstDay(r.write_end_at),

@@ -62,27 +62,35 @@ async function pageAll<T>(
   return out;
 }
 
-export async function loadWorkloadSources(
-  now: Date,
-  client?: AssignmentQueryClient,
-): Promise<{
+export type WorkloadSources = {
   serviceCounts: Record<string, number>;
   spans: WorkloadSpan[];
-}> {
-  const { start, end } = academicYearRangeKST(now);
-  const from = bound(start);
-  const to = bound(end);
-  const supabase = client ?? (await createClient());
+};
 
+/** 두 표에서 같은 칸을 읽는다 — 모양이 같아 하나의 select 문자열로 충분하다. */
+const SERVICE_COLUMNS =
+  "university_name, service_name, category, write_start_at, write_end_at";
+
+/**
+ * 한 학년도 창의 건수·구간. 표 이름을 **인자로 받는다** — 올해와 작년이 다른
+ * 표에 있어서고, 두 벌로 적으면 한쪽만 컬럼이 늘어도 조용히 어긋난다.
+ */
+async function loadWindow(
+  supabase: Supabase,
+  table: string,
+  from: string,
+  to: string,
+  label: string,
+): Promise<WorkloadSources> {
   // 접수는 **시작 시각**으로 자른다 — 학년도 안에 시작한 접수가 그 해의 물량이다.
   const closing = await pageAll<ClosingRow>(
     supabase,
-    "closing_services",
-    "university_name, category, write_start_at, write_end_at",
+    table,
+    SERVICE_COLUMNS,
     "write_start_at",
     from,
     to,
-    "마감",
+    label,
   );
   // 발표는 `last_announce_at` 이 서비스당 **가장 최근 한 칸**이라, 창 안에 아직
   // 발표가 없는 서비스는 여기서 안 잡힌다. 그 칸은 0 이 아니라 '못 셈' 으로
@@ -101,4 +109,52 @@ export async function loadWorkloadSources(
     serviceCounts: buildServiceCounts({ closing, announcement }),
     spans: buildSpans(closing),
   };
+}
+
+/** 올해 — 살아 있는 마감 미러에서 읽는다. */
+export async function loadWorkloadSources(
+  now: Date,
+  client?: AssignmentQueryClient,
+): Promise<WorkloadSources> {
+  const { start, end } = academicYearRangeKST(now);
+  const supabase = client ?? (await createClient());
+  return loadWindow(
+    supabase,
+    "closing_services",
+    bound(start),
+    bound(end),
+    "마감",
+  );
+}
+
+/**
+ * 작년 — **`services`(서비스목록)에서 읽는다.** 실측 2026-09-21: 2026학년도가
+ * `services` 2,511건/313곳인데 `closing_services` 에는 2건뿐이다. 마감 미러는
+ * 스크랩을 시작한 뒤부터만 쌓여서, 작년을 거기서 세면 통째로 '줄었다' 가 된다.
+ */
+export async function loadPreviousYearSources(
+  now: Date,
+  client?: AssignmentQueryClient,
+): Promise<WorkloadSources> {
+  const { start, end } = previousAcademicYearRange(now);
+  const supabase = client ?? (await createClient());
+  return loadWindow(
+    supabase,
+    "services",
+    bound(start),
+    bound(end),
+    "서비스목록",
+  );
+}
+
+/**
+ * 직전 학년도 창. **3/1 의 하루 전**이 곧 그 해의 마지막 날이라, 경계를 여기서
+ * 다시 정의하지 않고 `academicYearRangeKST` 에 되물어 얻는다 — 연도에서 1을 빼면
+ * 윤년 2월 29일에서 갈린다.
+ */
+function previousAcademicYearRange(now: Date) {
+  const { start } = academicYearRangeKST(now);
+  const dayBefore = new Date(`${start.date}T00:00:00+09:00`);
+  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+  return academicYearRangeKST(dayBefore);
 }

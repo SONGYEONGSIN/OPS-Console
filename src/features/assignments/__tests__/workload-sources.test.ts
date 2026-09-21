@@ -11,10 +11,14 @@ import {
  *
  * §6.2 는 원서접수 건수를 `services` 에서 센다고 적었는데, 그 표는 구글 시트
  * 임포트가 **2026-02-28 에서 멈춰 있다**(2511행 전부 `google_sheet_import`,
- * `write_start_at` 최대 2026-02-28). 지금 학년도 창으로 자르면 0건이라 전원의
- * 건수·밀도·주월연이 통째로 0 이 된다. 살아 있는 미러는 `closing_services`
- * 하나이고(창 안 969건/286곳 — §6.2 가 적은 286곳과 같다), 대학원은 그 안에
- * `category` 로 들어 있다. 그래서 **원천은 하나, 가르는 것은 category** 다.
+ * `write_start_at` 최대 2026-02-28). 올해 창으로 자르면 0건이라 전원의 건수·
+ * 밀도·주월연이 통째로 0 이 된다. 올해의 살아 있는 미러는 `closing_services`
+ * 하나이고(창 안 983건/286곳), 대학원은 그 안에 `category` 로 들어 있다.
+ * 그래서 **올해의 원천은 하나, 가르는 것은 category** 다.
+ *
+ * 거꾸로 **작년은 `services` 에서만 센다**(2026학년도 2,511건/313곳 vs
+ * `closing_services` 2건). 표를 고르는 것은 `workload-queries.ts` 의 일이고,
+ * 여기 순수 함수들은 두 표를 같은 모양으로 받는다.
  */
 const cs = (
   university_name: string,
@@ -23,6 +27,7 @@ const cs = (
   end = "2026-09-10T23:59:00+09:00",
 ) => ({
   university_name,
+  service_name: `${university_name} ${category ?? ""}`.trim(),
   category,
   write_start_at: start,
   write_end_at: end,
@@ -94,6 +99,7 @@ describe("buildSpans", () => {
     expect(buildSpans([cs("가대", "대학원")])).toEqual([
       {
         university_name: "가대",
+        service_name: "가대 대학원",
         work_kind: "대학원",
         start: "2026-09-01",
         end: "2026-09-10",
@@ -127,15 +133,15 @@ describe("workloadWindows", () => {
   });
 
   it("월요일 자정 직후도 그 주에 든다 — 앞주로 밀리지 않는다", () => {
-    expect(
-      workloadWindows(new Date("2026-09-14T00:05:00+09:00")).week,
-    ).toEqual(["2026-09-14", "2026-09-20"]);
+    expect(workloadWindows(new Date("2026-09-14T00:05:00+09:00")).week).toEqual(
+      ["2026-09-14", "2026-09-20"],
+    );
   });
 
   it("일요일은 그 주의 끝이다 — 다음 주로 넘어가지 않는다", () => {
-    expect(
-      workloadWindows(new Date("2026-09-20T23:50:00+09:00")).week,
-    ).toEqual(["2026-09-14", "2026-09-20"]);
+    expect(workloadWindows(new Date("2026-09-20T23:50:00+09:00")).week).toEqual(
+      ["2026-09-14", "2026-09-20"],
+    );
   });
 
   it("월은 1일부터 말일까지다", () => {
@@ -144,9 +150,10 @@ describe("workloadWindows", () => {
 
   it("KST 로 가른다 — UTC 자정은 한국에서 이미 다음 날이다", () => {
     // 2026-08-31T15:00Z 는 KST 9월 1일 자정이다. UTC 로 보면 8월이라 창이 통째로 밀린다.
-    expect(
-      workloadWindows(new Date("2026-08-31T15:00:00Z")).month,
-    ).toEqual(["2026-09-01", "2026-09-30"]);
+    expect(workloadWindows(new Date("2026-08-31T15:00:00Z")).month).toEqual([
+      "2026-09-01",
+      "2026-09-30",
+    ]);
   });
 
   it("연은 학년도다 — 3/1 부터 익년 2월 말일까지", () => {

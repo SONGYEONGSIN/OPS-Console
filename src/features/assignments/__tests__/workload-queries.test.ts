@@ -13,7 +13,10 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({ from: h.from }),
 }));
 
-import { loadWorkloadSources } from "../workload-queries";
+import {
+  loadWorkloadSources,
+  loadPreviousYearSources,
+} from "../workload-queries";
 
 /**
  * 건수·구간 조회. **학년도 창은 `academicYearRangeKST` 가 정한다** — 여기서 다시
@@ -84,6 +87,7 @@ describe("loadWorkloadSources", () => {
         data: [
           {
             university_name: "가대",
+            service_name: "2027학년도 수시모집",
             category: "수시",
             write_start_at: "2026-09-01T00:00:00+09:00",
             write_end_at: "2026-09-10T23:59:00+09:00",
@@ -100,11 +104,18 @@ describe("loadWorkloadSources", () => {
     expect(spans).toEqual([
       {
         university_name: "가대",
+        service_name: "2027학년도 수시모집",
         work_kind: "원서접수",
         start: "2026-09-01",
         end: "2026-09-10",
       },
     ]);
+  });
+
+  it("서비스명을 함께 읽는다 — 상세 리스트가 건수만으로는 못 선다", async () => {
+    // 배분현황이 '이번 주 3건' 에서 멈추면 어느 대학의 무엇인지 볼 곳이 없다.
+    await loadWorkloadSources(NOW);
+    expect(h.select.mock.calls[0][0]).toMatch(/service_name/);
   });
 
   it("조회가 실패하면 던진다 — 조용한 0건은 '일이 없다' 로 읽힌다", async () => {
@@ -120,6 +131,72 @@ describe("loadWorkloadSources", () => {
     ]);
 
     await expect(loadWorkloadSources(NOW)).rejects.toThrow(/발표 터짐/);
+  });
+});
+
+/**
+ * 작년 물량은 **다른 표에 있다**(2026-09-21 라이브 실측).
+ *
+ *   2026학년도  services 2,511건/313곳  ↔ closing_services     2건/1곳
+ *   2027학년도  services     0건/0곳    ↔ closing_services   983건/286곳
+ *
+ * `services` 는 2026-02-28 에서 멈춘 시트 임포트이고 `closing_services` 는 살아
+ * 있는 마감 미러다. 그래서 **올해는 마감, 작년은 서비스목록**이다 — 한쪽만 읽으면
+ * 작년 대비 비교가 구조적으로 불가능하다.
+ */
+describe("loadPreviousYearSources", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.from.mockReturnValue({ select: h.select });
+    h.select.mockReturnValue({ gte: h.gte });
+    h.gte.mockReturnValue({ lte: h.lte });
+    h.lte.mockReturnValue({ range: h.range });
+    h.range.mockResolvedValue({ data: [], error: null });
+  });
+
+  it("작년은 services 에서 읽는다 — closing_services 가 아니다", async () => {
+    await loadPreviousYearSources(NOW);
+
+    expect(h.from.mock.calls.map((c) => c[0])).toEqual([
+      "services",
+      "announcement_services",
+    ]);
+  });
+
+  it("직전 학년도 창으로 자른다 — 2025-03-01 ~ 2026-02-28", async () => {
+    /*
+     * 창은 `academicYearRangeKST` 에서 **파생**한다. 여기서 연도만 빼면 윤년
+     * 2월 29일에서 갈린다 — 3/1 의 하루 전이 곧 직전 학년도의 마지막 날이다.
+     */
+    await loadPreviousYearSources(NOW);
+
+    expect(h.gte).toHaveBeenCalledWith(
+      "write_start_at",
+      "2025-03-01T00:01:00+09:00",
+    );
+    expect(h.lte).toHaveBeenCalledWith(
+      "write_start_at",
+      "2026-02-28T23:59:00+09:00",
+    );
+  });
+
+  it("윤년 경계에서도 하루 전으로 넘어간다 (2028-03-01 → 2027-02-28)", async () => {
+    await loadPreviousYearSources(new Date("2028-05-01T12:00:00+09:00"));
+
+    expect(h.gte).toHaveBeenCalledWith(
+      "write_start_at",
+      "2027-03-01T00:01:00+09:00",
+    );
+    expect(h.lte).toHaveBeenCalledWith(
+      "write_start_at",
+      "2028-02-29T23:59:00+09:00",
+    );
+  });
+
+  it("조회가 실패하면 던진다 — 작년이 0건이면 '줄었다' 로 읽힌다", async () => {
+    respond([{ data: null, error: { message: "작년 터짐" } }]);
+
+    await expect(loadPreviousYearSources(NOW)).rejects.toThrow(/작년 터짐/);
   });
 });
 
