@@ -80,3 +80,48 @@ describe("관리 > 업무배정 라우트", () => {
     }
   });
 });
+
+/**
+ * **배정현황의 담당자는 모든 학년도에서 원장에서 온다**(사용자 결정 2026-09-22).
+ *
+ * 예전에는 과거 학년도만 `services.operator_email` 을 봤다. 그쪽은 2026-02-28 에
+ * 멈춘 시트 임포트라 **원장과 표기가 갈렸고**, 같은 사람이 두 사람으로 세어질 수
+ * 있었다. 전년도 담당자는 총괄장 시트가 이미 들고 있다(`前 운영자`) — 그걸 원장에
+ * 앉히면 두 해가 같은 원천을 본다.
+ *
+ * 원문으로 고정하는 이유: 어느 표에서 읽는지는 **렌더 테스트로 안 잡힌다.** 양쪽 다
+ * 사람 이름이 뜬 표로 보이고, 갈렸다는 것은 두 화면을 나란히 놓고 한 줄씩 대조할
+ * 때만 드러난다.
+ */
+describe("배정현황의 원천", () => {
+  it("과거 학년도도 원장에서 읽는다 — 서비스목록 우회로가 없다", () => {
+    const src = code(WORK_ASSIGNMENT);
+    expect(src).toMatch(/listLedgerRows\(academicYear\)/);
+    expect(src).not.toMatch(/loadPastOperatorRows|pastCells/);
+  });
+
+  it("우회로 함수 자체가 사라졌다 — 남으면 다음 사람이 다시 배선한다", () => {
+    expect(code("src/features/assignments/workload-queries.ts")).not.toMatch(
+      /export\s+async\s+function\s+loadPastOperatorRows/,
+    );
+    expect(code("src/features/assignments/workload-sources.ts")).not.toMatch(
+      /export\s+function\s+pastCells/,
+    );
+  });
+
+  it("원장이 빈 해는 적재 버튼을 띄운다 — 0 이 배정 없음으로 읽히면 안 된다", () => {
+    /*
+     * 원장으로 갈아탄 순간, 아직 적재하지 않은 해는 전원 0곳이 된다. 표만 두면
+     * '작년엔 아무도 안 맡았다' 로 읽힌다 — 비어 있다는 사실을 화면이 말해야 한다.
+     */
+    const src = code(WORK_ASSIGNMENT);
+    expect(src).toMatch(/ImportLedgerYear/);
+    expect(() =>
+      read("src/app/dashboard/work-assignment/ImportLedgerYear.tsx"),
+    ).not.toThrow();
+  });
+
+  it("과거 학년도에는 목표를 내지 않는다 — 오늘의 연차 그룹을 작년에 씌우면 안 된다", () => {
+    expect(code(WORK_ASSIGNMENT)).toMatch(/targets:\s*!isPast/);
+  });
+});

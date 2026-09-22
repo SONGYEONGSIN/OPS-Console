@@ -15,7 +15,6 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import {
   loadWorkloadSources,
-  loadPastOperatorRows,
   FROZEN_IMPORT_LAST_YEAR,
 } from "../workload-queries";
 
@@ -157,7 +156,6 @@ describe("loadWorkloadSources — 클라이언트 주입", () => {
   });
 });
 
-
 /**
  * **학년도가 표를 고른다.** `services` 는 2026-02-28 에서 멈춘 시트 임포트이고
  * `closing_services` 는 스크랩을 시작한 뒤부터 쌓이는 미러다 — 경계는 *시계*가
@@ -216,36 +214,3 @@ describe("loadWorkloadSources — 학년도로 표를 고른다", () => {
   });
 });
 
-/**
- * 과거 학년도 **담당자**도 `services` 에서 온다. 건수만 바꾸고 담당자를 안 바꾸면
- * 원장에 그 해 행이 없어 전원 0곳이 되고, 화면에서 '아무도 안 맡았다' 로 읽힌다.
- */
-describe("loadPastOperatorRows", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    h.from.mockReturnValue({ select: h.select });
-    h.select.mockReturnValue({ gte: h.gte });
-    h.gte.mockReturnValue({ lte: h.lte });
-    h.lte.mockReturnValue({ range: h.range });
-    h.range.mockResolvedValue({ data: [], error: null });
-  });
-
-  it("services 의 담당자 칸을 읽는다", async () => {
-    await loadPastOperatorRows(2026);
-    expect(h.from).toHaveBeenCalledWith("services");
-    expect(h.select.mock.calls[0][0]).toMatch(/operator_email/);
-  });
-
-  it("같은 학년도 창을 쓴다 — 건수와 담당자가 다른 해를 보면 안 된다", async () => {
-    await loadPastOperatorRows(2026);
-    expect(h.gte).toHaveBeenCalledWith(
-      "write_start_at",
-      "2025-03-01T00:01:00+09:00",
-    );
-  });
-
-  it("조회 실패를 빈 배열로 삼키지 않는다", async () => {
-    respond([{ data: null, error: { message: "담당자 터짐" } }]);
-    await expect(loadPastOperatorRows(2026)).rejects.toThrow(/담당자 터짐/);
-  });
-});

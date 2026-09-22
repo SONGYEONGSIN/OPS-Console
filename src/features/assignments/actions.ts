@@ -13,11 +13,13 @@ import {
   type AssignmentRole,
   type AssignmentWorkKind,
 } from "./ledger-schemas";
-import { parseBaejungList, parseSimpleSheet, parsePims } from "./parse";
+import { recordsFromSheets } from "./sheet-records";
 import type { AssignmentRecord } from "./schemas";
 import {
   toLedgerRows,
   reconcile,
+  linkAssignees,
+  ledgerKeyOf,
   type ImportIssue,
   type ReconcileResult,
 } from "./import";
@@ -40,18 +42,19 @@ export type ReconcileAssignmentsResult =
   | { ok: false; error: string }
   | { ok: true; issues: ImportIssue[]; reconcile: ReconcileResult };
 
-/** 하위유형 없는 시트(03·06)의 헤더 규칙. 07 상담앱만 대학명 칸이 다르다. */
-const SIMPLE_HEADERS = { uni: /대학명/, op: /^운영자$/, dev: /^개발자$/ };
-
 /**
- * 다섯 시트 → 레코드. 하나도 못 읽으면 `null` 이다.
+ * 다섯 시트 → 그 학년도 레코드. 하나도 못 읽으면 `null` 이다.
  *
- * ⚠️ 같은 파서 설정이 `app/dashboard/assignments/page.tsx` 와
- * `features/announcement-services/sync-operators.ts` 에도 있다 — 세 번째 복사다.
- * 헤더가 바뀌면 세 곳을 고쳐야 하니 단일 소스로 빼는 것이 맞지만, 이 PR 범위를
- * 넘으므로 별도 PR 로 남긴다.
+ * 어느 칸을 읽을지는 `sheet-records.ts` 가 정한다 — 시트가 올해와 전년도를 함께
+ * 들고 있어서(`前 운영자`), 학년도별 헤더 규칙이 두 곳에 있으면 한쪽만 고쳐지는 날
+ * **작년 자리에 올해 이름이 들어간다.**
+ *
+ * ⚠️ 비슷한 파서 설정이 `features/announcement-services/sync-operators.ts` 에도
+ * 있다(세 시트 · 올해 이름만). 합칠 수 있지만 이 PR 범위를 넘으므로 남긴다.
  */
-async function readSheets(): Promise<AssignmentRecord[] | null> {
+async function readSheets(
+  academicYear: number,
+): Promise<AssignmentRecord[] | null> {
   const [baejung, grad, pims, sungjuk, sangdam] = await Promise.all([
     fetchAssignmentSheet(SHEET_NAMES.배정리스트),
     fetchAssignmentSheet(SHEET_NAMES.대학원),
@@ -61,19 +64,28 @@ async function readSheets(): Promise<AssignmentRecord[] | null> {
   ]);
   if (!baejung && !grad && !pims && !sungjuk && !sangdam) return null;
 
-  return [
-    ...(baejung ? parseBaejungList(baejung) : []),
-    ...(grad ? parseSimpleSheet(grad, "대학원", SIMPLE_HEADERS) : []),
-    ...(pims ? parsePims(pims) : []),
-    ...(sungjuk ? parseSimpleSheet(sungjuk, "성적산출", SIMPLE_HEADERS) : []),
-    ...(sangdam
-      ? parseSimpleSheet(sangdam, "상담앱", {
-          uni: /학교명|대학명/,
-          op: /^운영자$/,
-          dev: /^개발자$/,
-        })
-      : []),
-  ];
+  return recordsFromSheets(
+    {
+      배정리스트: baejung,
+      대학원: grad,
+      PIMS: pims,
+      성적산출: sungjuk,
+      상담앱: sangdam,
+    },
+    academicYear,
+  );
+}
+
+/** 학년도 위생. 자연키에 학년도가 있어, 이상한 값은 아무도 안 보는 섬을 만든다. */
+function badYear(academicYear: number): string | null {
+  if (
+    !Number.isInteger(academicYear) ||
+    academicYear < 2000 ||
+    academicYear > 9999
+  ) {
+    return `학년도가 이상합니다: ${academicYear}`;
+  }
+  return null;
 }
 
 export async function reconcileAssignments(
@@ -83,16 +95,11 @@ export async function reconcileAssignments(
   if (!me || me.permission !== "admin") {
     return { ok: false, error: "admin만 실행할 수 있습니다" };
   }
-  if (
-    !Number.isInteger(academicYear) ||
-    academicYear < 2000 ||
-    academicYear > 9999
-  ) {
-    // 학년도가 자연키에 있어, 이상한 값은 아무도 안 보는 섬과 대조하게 된다.
-    return { ok: false, error: `학년도가 이상합니다: ${academicYear}` };
-  }
+  const yearError = badYear(academicYear);
+  if (yearError) return { ok: false, error: yearError };
 
-  const records = await readSheets();
+  // 그 학년도의 칸을 읽는다 — 시트가 올해와 전년도를 함께 들고 있다.
+  const records = await readSheets(academicYear);
   if (!records) return { ok: false, error: "총괄장을 읽지 못했습니다" };
 
   const { rows: sheetRows, issues } = toLedgerRows(records, academicYear);
@@ -111,6 +118,194 @@ export async function reconcileAssignments(
   }
 
   return { ok: true, issues, reconcile: reconcile(sheetRows, ledger) };
+}
+
+/**
+ * 이관 결과. **넣은 것과 건너뛴 것을 따로 센다** — 합만 보여주면 두 번째 실행이
+ * 성공인지 아무 일도 안 한 것인지 구분되지 않는다.
+ */
+export type ImportAssignmentsResult =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      /** 새로 만든 칸. */
+      inserted: number;
+      /** 이미 원장에 있어 **건드리지 않은** 칸. */
+      skipped: number;
+      /** 담당자 이메일이 붙은 칸. 나머지는 이름만 들어간다. */
+      linked: number;
+      /** 동명이인이라 잇지 못한 이름. 사람이 골라야 한다. */
+      ambiguousNames: string[];
+      issues: ImportIssue[];
+    };
+
+/** PostgREST 한 번에 밀 행 수. 통째로 밀면 요청 하나가 전량을 실패시킨다. */
+const WRITE_CHUNK = 500;
+
+const chunk = <T>(rows: readonly T[], size: number): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+};
+
+/**
+ * 총괄장 시트 → 배정 원장 **이관**. 시트에 있고 원장에 **없는** 칸만 만든다.
+ *
+ * 설계 §13 R1 은 재가져오기를 만들지 않기로 했다(사용자 결정 2026-09-15). 자연키
+ * upsert 가 **앱에서 고친 배정을 시트 값으로 되돌리고**, 그 덮어씀이 `assignment_changes`
+ * 에 정당한 변경으로 남아 되돌릴 수도 사고로 구분할 수도 없기 때문이다. 게다가 대조는
+ * 쓰기 뒤에 돌면 방금 덮어쓴 원장과 시트를 비교해 **0건으로 통과한다.**
+ *
+ * 그래서 이것은 재가져오기가 아니고, **그럴 수 없는 모양**이다:
+ * `ignoreDuplicates` 가 `ON CONFLICT DO NOTHING` 이라 이미 있는 칸은 DB 가 안 받는다.
+ * 조심해서 안 덮는 게 아니라 못 덮는다. 덕분에 셋이 따라온다 —
+ * 앱 편집이 안전하고(비운 칸도 되살지 않는다), 대조가 `nameMismatch` 로 갈림을 계속
+ * 드러내고, 반쯤 들어간 뒤 다시 눌러도 된다.
+ *
+ * 쓰는 것은 **전년도를 원장에 앉히기 위해서**다(사용자 결정 2026-09-22). 예전 화면은
+ * 과거 배분현황을 `services.operator_email` 로 우회했는데, 그건 2026-02-28 에 멈춘
+ * 시트 임포트라 원장 이름과 표기가 갈렸다. 전년도 칸은 시트에 이미 있다(`前 운영자`).
+ */
+export async function importAssignments(
+  academicYear: number,
+): Promise<ImportAssignmentsResult> {
+  const me = await getCurrentOperator();
+  if (!me || me.permission !== "admin") {
+    return { ok: false, error: "admin만 이관할 수 있습니다" };
+  }
+  const yearError = badYear(academicYear);
+  if (yearError) return { ok: false, error: yearError };
+
+  const records = await readSheets(academicYear);
+  if (!records) return { ok: false, error: "총괄장을 읽지 못했습니다" };
+
+  const { rows: sheetRows, issues } = toLedgerRows(records, academicYear);
+  if (sheetRows.length === 0) {
+    /*
+     * 0건 성공으로 끝내면 '이관할 게 없다' 로 읽힌다. 실제로는 시트에 그 학년도
+     * 칸이 없는 것이고(`sheet-records` 가 모르는 해는 빈 배열이다), 그건 버튼을
+     * 잘못 눌렀다는 뜻이다.
+     */
+    return {
+      ok: false,
+      error: `총괄장에서 ${academicYear}학년도 배정 칸을 찾지 못했습니다`,
+    };
+  }
+
+  /*
+   * 원장 조회 실패를 빈 배열로 삼키면 **이미 들어간 칸을 전부 다시 넣으려 한다.**
+   * `DO NOTHING` 이 막아 주기는 하지만 결과가 '새로 1,800건' 으로 보고되어,
+   * 사람은 일어나지 않은 일을 일어났다고 읽는다.
+   */
+  let ledger: LedgerRow[];
+  try {
+    ledger = await listLedgerRows(academicYear);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+  const have = new Set(ledger.map(ledgerKeyOf));
+  const fresh = sheetRows.filter((r) => !have.has(ledgerKeyOf(r)));
+  const skipped = sheetRows.length - fresh.length;
+
+  if (fresh.length === 0) {
+    return {
+      ok: true,
+      inserted: 0,
+      skipped,
+      linked: 0,
+      ambiguousNames: [],
+      issues,
+    };
+  }
+
+  const admin = createAdminClient();
+
+  /*
+   * **명부를 상태로 좁히지 않는다.** 작년 담당자는 이미 그만뒀을 수 있고, FK 가 보는
+   * 것은 `operators` 에 있는가뿐이다. active 만 읽으면 퇴사자가 맡았던 칸이 통째로
+   * 이름만 남아, 그 사람의 작년 부하가 화면에서 사라진다.
+   */
+  const { data: ops, error: opsErr } = await admin
+    .from("operators")
+    .select("email, name");
+  if (opsErr) {
+    // 삼키면 전량이 이름만으로 들어가고, 그 뒤엔 `DO NOTHING` 때문에 고칠 수 없다.
+    return { ok: false, error: `운영자 조회 실패: ${opsErr.message}` };
+  }
+  const { rows: linkedRows, ambiguousNames } = linkAssignees(
+    fresh,
+    (ops ?? []).map((o) => ({
+      email: o.email as string,
+      name: (o.name as string | null) ?? "",
+    })),
+  );
+
+  const payload = linkedRows.map((r) => ({
+    academic_year: r.academic_year,
+    university_name: r.university_name,
+    work_kind: r.work_kind,
+    subtype: r.subtype,
+    role: r.role,
+    assignee_email: r.assignee_email,
+    assignee_name: r.assignee_name,
+    university_type: r.university_type ?? null,
+    // 누른 사람이다. 'import' 같은 가짜 주소를 넣으면 나중에 물을 곳이 없다.
+    updated_by: me.email,
+  }));
+
+  for (const part of chunk(payload, WRITE_CHUNK)) {
+    const { error } = await admin
+      .from("assignments")
+      .upsert(part, {
+        onConflict: ASSIGNMENT_NATURAL_KEY.join(","),
+        // **이 한 줄이 재가져오기가 아니라는 보증이다**(위 설명).
+        ignoreDuplicates: true,
+      });
+    if (error) {
+      return { ok: false, error: `원장 쓰기 실패: ${error.message}` };
+    }
+  }
+
+  /**
+   * 이력은 **이메일이 붙은 칸만**이다. 이름만 있는 칸은 `prev=next=null` 이 되어
+   * `assignment_changes_actual_change_chk` 가 `23514` 로 적재를 통째로 죽인다.
+   *
+   * `prev_assignee` 는 null 이다 — 없던 칸이 생긴 것이라 이전 담당자가 없다.
+   * 2027 이관 행 966개가 이미 그 모양이고, 되돌리기가 그것을 받는다.
+   */
+  const history = payload
+    .filter((r) => r.assignee_email !== null)
+    .map((r) => ({
+      academic_year: r.academic_year,
+      university_name: r.university_name,
+      work_kind: r.work_kind,
+      subtype: r.subtype,
+      role: r.role,
+      prev_assignee: null,
+      next_assignee: r.assignee_email,
+      source: "import",
+      actor_email: me.email,
+    }));
+  for (const part of chunk(history, WRITE_CHUNK)) {
+    const { error } = await admin.from("assignment_changes").insert(part);
+    if (error) {
+      return {
+        ok: false,
+        error: `원장은 들어갔지만 이력 적재가 실패했습니다: ${error.message}`,
+      };
+    }
+  }
+
+  revalidatePath("/dashboard/assignments");
+  revalidatePath(WORK_ASSIGNMENT_PATH);
+  return {
+    ok: true,
+    inserted: payload.length,
+    skipped,
+    linked: history.length,
+    ambiguousNames,
+    issues,
+  };
 }
 
 /**

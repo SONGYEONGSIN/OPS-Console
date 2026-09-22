@@ -53,13 +53,6 @@ export type ClosingRow = {
 
 export type AnnouncementRow = { university_name: string };
 
-/** `services` 에서 과거 학년도 담당자를 만들 때 읽는 칸. */
-export type PastServiceRow = {
-  university_name: string;
-  category: string | null;
-  operator_email: string | null;
-};
-
 /**
  * `closing_services.category` → 업무종류. **목록이 아니라 포함 검사**다 —
  * 실측 구분이 `대학원`·`대학원 전기`·`대학원 후기`·`법학전문대학원 가나`·
@@ -194,40 +187,6 @@ export function unmatchedVolume(
     keys += 1;
   }
   return { services, keys };
-}
-
-/**
- * 과거 학년도 담당 칸 — **원장에는 그 해 행이 없다.**
- *
- * `assignments` 는 현재 학년도만 담고(2027학년도 1,858행), 2026학년도 담당자는
- * `services.operator_email` 에 있다(실측 2026-09-21: 2,485/2,511 = 99.0% 채움,
- * 배정 대상 15명 전원 연결). 건수 원천만 바꾸고 담당자를 안 바꾸면 **과거 연도
- * 표에서 전원이 0곳**이 되고, 그건 화면에서 '그 해엔 아무도 안 맡았다' 로 읽힌다.
- *
- * 업무종류를 `workKindOfClosing` 으로 가르는 것은 **건수와 같은 규칙을 써야**
- * 하기 때문이다 — 다르게 가르면 `workKey` 가 어긋나 그 사람의 건수가 0 이 된다.
- * 라이브 실측으로 `services.category` 도 같은 '대학원 포함' 규약을 쓴다(2026학년도
- * 740건 / 2027학년도 404건).
- *
- * 자연키로 접는다. 대학 수를 세는 단위가 **대학**이라, 안 접으면 한 사람이 같은
- * 대학을 여러 번 맡은 것처럼 보인다.
- */
-export function pastCells(rows: readonly PastServiceRow[]): WorkloadCell[] {
-  const byKey = new Map<string, WorkloadCell>();
-  for (const r of rows) {
-    const email = (r.operator_email ?? "").trim();
-    if (email === "") continue;
-    if (NON_WORKLOAD_UNIVERSITIES.has(r.university_name)) continue;
-    /*
-     * **건수와 같은 이름으로 접는다.** 과거 학년도는 담당자도 건수도 `services`
-     * 한 표에서 나오는데, 한쪽만 정규화하면 담당자 키는 `충남대학교 대학원`,
-     * 건수 키는 `충남대학교` 가 되어 서로 안 만난다 — 화면에서는 그 사람이 그 해
-     * 아무것도 안 맡은 것처럼 보인다.
-     */
-    const cell: WorkloadCell = { ...cellOf(r), assignee_email: email };
-    byKey.set(`${workKey(cell)}|${email}`, cell);
-  }
-  return [...byKey.values()];
 }
 
 /**

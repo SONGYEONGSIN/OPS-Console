@@ -9,15 +9,14 @@ import { listOperators } from "@/features/operators/queries";
 import { buildWorkload } from "@/features/assignments/workload";
 import {
   workloadWindows,
-  pastCells,
   kstDay,
   unmatchedVolume,
 } from "@/features/assignments/workload-sources";
 import { findNewcomers } from "@/features/assignments/newcomers";
 import { NewAssignmentPanel } from "./NewAssignmentPanel";
+import { ImportLedgerYear } from "./ImportLedgerYear";
 import {
   loadWorkloadSources,
-  loadPastOperatorRows,
   FROZEN_IMPORT_LAST_YEAR,
 } from "@/features/assignments/workload-queries";
 import {
@@ -186,22 +185,24 @@ export default async function WorkAssignmentPage({
    * 끌려가 남은 사람이 전부 과부하로 보인다(`assignable` 은 `buildWorkload` 가
    * 거른다).
    *
-   * **학년도에 따라 두 칸이 동시에 바뀐다.** 건수만 바꾸고 담당자를 그대로 두면
-   * 과거 연도에서 전원이 0곳이 된다 — 원장에는 그 해 행이 없기 때문이다.
+   * **담당자는 두 해 모두 원장에서 온다**(사용자 결정 2026-09-22). 과거 학년도만
+   * `services.operator_email` 을 보던 우회로를 걷었다 — 그쪽은 2026-02-28 에 멈춘
+   * 시트 임포트라 원장과 표기가 갈렸고, 같은 사람이 두 사람으로 세어질 수 있었다.
+   * 전년도 담당자는 총괄장이 이미 들고 있다(`前 운영자`).
+   *
+   * **건수는 갈린다** — 그건 표기가 아니라 다른 자료다(마감 vs 서비스목록).
    *
    * | 학년도 | 담당자 | 건수·구간 | 목표·편차 |
    * |---|---|---|---|
    * | 현재 | `assignments` 원장 | `closing_services` | 낸다 |
-   * | 과거 | `services.operator_email` | `services` | **안 낸다** |
+   * | 과거 | `assignments` 원장 | `services` | **안 낸다** |
    */
   const now = new Date();
   const academicYear = parseYear(sp.year);
   const isPast = academicYear <= FROZEN_IMPORT_LAST_YEAR;
 
   const [cells, operators, sources] = await Promise.all([
-    isPast
-      ? loadPastOperatorRows(academicYear).then(pastCells)
-      : listLedgerRows(academicYear),
+    listLedgerRows(academicYear),
     listOperators(),
     loadWorkloadSources(academicYear),
   ]);
@@ -222,6 +223,27 @@ export default async function WorkAssignmentPage({
     <>
       {makeHeader(people)}
       <PageTabs active={tab} tabs={TABS} />
+      {/*
+       * **원장이 빈 해는 그 사실을 말한다.** 표만 두면 전원 0곳이 '작년엔 아무도
+       * 안 맡았다' 로 읽힌다 — 실제로는 그 해 원장 행이 아직 없는 것이고, 총괄장
+       * 시트가 담당자를 들고 있다. 적재는 **누르는 사람이 한다**(admin 전용 화면).
+       */}
+      {cells.length === 0 && (
+        <section className="px-7 pt-7">
+          <div className="border border-line-soft bg-situation-bg p-4">
+            <p className="text-xs font-medium text-vermilion tabular-nums">
+              {academicYear}학년도 원장이 비어 있습니다
+            </p>
+            <p className="mt-1 text-2xs text-muted">
+              아래 표의 0은 배정이 없다는 뜻이 아니라 <b>원장에 그 해 행이 없다</b>
+              는 뜻입니다. 총괄장 시트가 그 해 담당자를 들고 있습니다.
+            </p>
+            <div className="mt-3">
+              <ImportLedgerYear academicYear={academicYear} />
+            </div>
+          </div>
+        </section>
+      )}
       <section className="p-7">
         <WorkloadTable
           groups={groups}

@@ -22,11 +22,23 @@ function colMatch(headerRow: string[], re: RegExp): number {
  * 3월에 학년도가 넘어갈 때 2027 블록의 값을 2028 로 적재하는데, **대조는 양쪽이
  * 같은 시트에서 나오므로 그대로 통과한다.** 조용히 한 해 틀린 원장이 남는다.
  *
- * 아래 정규식과 갈리면 `import.test.ts` 의 02 fixture 헤더가 이 상수로 만들어져
- * 6건이 빨개진다 — 주석으로 적어 둔 결합은 썩지만 이건 안 썩는다.
- * 시트에 다음 학년도 열이 생기면 이 상수와 아래 정규식을 함께 올린다.
+ * **헤더를 찾는 정규식이 이 상수에서 만들어진다.** 예전엔 `/2027.*운영자/` 가 따로
+ * 적혀 있어 상수와 갈릴 수 있었다 — 시트에 다음 학년도 열이 생기면 이 상수만 올린다.
  */
 export const BAEJUNG_CURRENT_YEAR = 2027;
+
+/**
+ * 시트가 **함께** 들고 있는 전년도 블록. `02` 는 `2026학년도 운영자` 열을 그대로
+ * 두고, `03`·`04`·`06` 은 `前 운영자` 칸에 같은 것을 담는다.
+ *
+ * 과거 학년도 배분현황의 담당자가 여기서 온다. 예전엔 `services.operator_email` 을
+ * 우회로로 썼는데 그건 2026-02-28 에 멈춘 시트 임포트라, 원장 이름과 표기가 갈리면
+ * 같은 사람이 두 사람으로 세어졌다 — 시트에서 읽으면 양쪽이 다 원장 이름이 된다.
+ */
+export const BAEJUNG_PREV_YEAR = 2026;
+
+/** 시트가 들고 있는 학년도 블록. 새 열이 생기면 위 두 상수를 올린다. */
+const BAEJUNG_YEARS = [BAEJUNG_CURRENT_YEAR, BAEJUNG_PREV_YEAR] as const;
 
 const BLOCK_WIDTH = 6; // 블록당 sub-type 컬럼 수
 
@@ -48,8 +60,17 @@ function changedOf(row: string[], col: number): string | undefined {
   return (row[col] ?? "").trim() || undefined;
 }
 
-/** 02. 배정리스트 → 원서접수 AssignmentRecord[] (r1 헤더의 '수시' 기준 그리드 대표) */
-export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
+/**
+ * 02. 배정리스트 → 원서접수 AssignmentRecord[] (r1 헤더의 '수시' 기준 그리드 대표)
+ *
+ * `year` 는 **원장으로 갈 블록**을 고른다. `detail` 은 시트에 있는 모든 학년도를
+ * 그대로 담아 인스펙터가 과거까지 보여주고, `operator`·`subtypes` 만 그 해의 것이다.
+ * 없는 학년도를 물으면 빈 배열이다 — 없는 열을 만들어 내지 않는다.
+ */
+export function parseBaejungList(
+  sheet: AssignmentSheet,
+  year: number = BAEJUNG_CURRENT_YEAR,
+): AssignmentRecord[] {
   const rows = sheet.rowsText;
   if (rows.length < 3) return [];
   const r0 = rows[0];
@@ -57,18 +78,12 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
   const uniCol = colExact(r0, "대학명");
   const typeCol = colExact(r0, "대분류");
   const changedCol = colMatch(r0, CHANGED_HEADER);
-  const op2027 = colMatch(r0, /2027.*운영자/);
-  const dev2027 = colMatch(r0, /2027.*개발자/);
-  const op2026 = colMatch(r0, /2026.*운영자/);
-  const dev2026 = colMatch(r0, /2026.*개발자/);
-  if (uniCol < 0 || op2027 < 0) return [];
 
-  const blocks: { year: string; role: string; start: number }[] = [
-    { year: "2027", role: "운영", start: op2027 },
-    { year: "2027", role: "개발", start: dev2027 },
-    { year: "2026", role: "운영", start: op2026 },
-    { year: "2026", role: "개발", start: dev2026 },
-  ].filter((b) => b.start >= 0);
+  const blocks: { year: number; role: string; start: number }[] =
+    BAEJUNG_YEARS.flatMap((y) => [
+      { year: y, role: "운영", start: colMatch(r0, new RegExp(`${y}.*운영자`)) },
+      { year: y, role: "개발", start: colMatch(r0, new RegExp(`${y}.*개발자`)) },
+    ]).filter((b) => b.start >= 0);
 
   // 각 블록의 sub-type 컬럼을 r1 라벨 기준으로 매핑. susiCol: '수시' 컬럼 (없으면 -1)
   const blockCols = blocks.map((b) => {
@@ -83,19 +98,14 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     }
     return { ...b, subtypes, susiCol };
   });
-  const repColOf = (role: string) =>
-    blockCols.find((b) => b.year === "2027" && b.role === role)?.susiCol ?? -1;
-  const opSusiCol = repColOf("운영");
-  const devSusiCol = repColOf("개발");
+  const opBlock = blockCols.find((b) => b.year === year && b.role === "운영");
+  const devBlock = blockCols.find((b) => b.year === year && b.role === "개발");
+  if (uniCol < 0 || !opBlock) return [];
 
-  const op2027Block = blockCols.find(
-    (b) => b.year === "2027" && b.role === "운영",
-  );
-  const dev2027Block = blockCols.find(
-    (b) => b.year === "2027" && b.role === "개발",
-  );
-  const dev2027ColByLabel = new Map(
-    (dev2027Block?.subtypes ?? []).map((st) => [st.label, st.col]),
+  const opSusiCol = opBlock.susiCol;
+  const devSusiCol = devBlock?.susiCol ?? -1;
+  const devColByLabel = new Map(
+    (devBlock?.subtypes ?? []).map((st) => [st.label, st.col]),
   );
 
   const out: AssignmentRecord[] = [];
@@ -120,13 +130,13 @@ export function parseBaejungList(sheet: AssignmentSheet): AssignmentRecord[] {
     let backupOperator: string | undefined;
     const subtypes: { label: string; operator: string; developer: string }[] =
       [];
-    for (const st of op2027Block?.subtypes ?? []) {
+    for (const st of opBlock.subtypes) {
       const op = (row[st.col] ?? "").trim();
       if (isBackupLabel(st.label)) {
         if (op) backupOperator = op;
         continue;
       }
-      const devCol = dev2027ColByLabel.get(st.label);
+      const devCol = devColByLabel.get(st.label);
       const dev = devCol != null ? (row[devCol] ?? "").trim() : "";
       if (op || dev)
         subtypes.push({ label: st.label, operator: op, developer: dev });
