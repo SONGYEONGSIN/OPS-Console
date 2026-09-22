@@ -7,6 +7,7 @@ vi.mock("@/features/assignments/actions", () => ({
 }));
 
 import { ImportLedgerYear } from "../ImportLedgerYear";
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 
 /**
  * 총괄장 → 원장 **적재** 버튼.
@@ -123,6 +124,19 @@ describe("ImportLedgerYear", () => {
 
     const msg = await screen.findByText(/찾지 못했습니다/);
     expect(msg.className).toMatch(/vermilion/);
+  });
+
+  it("표준 액션 버튼 모양이다 — 이 화면만 다른 버튼을 쓰지 않는다", () => {
+    /*
+     * 레포의 액션 버튼은 **모양이 하나뿐이다**(`HEADER_ACTION_CLASS`). 문자열을
+     * 새로 적는 순간 그게 두 번째 표준이 되고, 같은 일을 하는 버튼이 화면마다
+     * 달라 보인다(#1047·#1049 가 그렇게 갈렸다).
+     */
+    render(<ImportLedgerYear academicYear={2026} />);
+
+    expect(screen.getByRole("button", { name: /적재/ }).className).toBe(
+      HEADER_ACTION_CLASS,
+    );
   });
 
   it("덮어쓰지 않는다는 것을 화면이 말한다", async () => {
