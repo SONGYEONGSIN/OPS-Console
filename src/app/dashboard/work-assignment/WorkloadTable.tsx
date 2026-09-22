@@ -188,7 +188,12 @@ function RunningSection({
   return (
     <section className="mt-6">
       <header className="mb-4">
-        <h3 className="text-sm font-medium text-ink">이번 달 진행 상세</h3>
+        {/*
+         * 표 위 제목은 `text-xl font-bold` 다(`panel-heading-standard`). 작은 제목은
+         * 표를 끌어당겨 같은 여백도 좁아 보인다 — 운영리포트의 `저장된 리포트` 와
+         * 같은 자리, 같은 크기다.
+         */}
+        <h3 className="text-xl font-bold text-ink">이번 달 진행 상세</h3>
         <p className="mt-1 text-xs text-muted">
           이름을 펼치면 그 달에 도는 서비스가 보입니다. `이번 주` 는 월요일부터
           일요일까지와 겹치는 것입니다.
