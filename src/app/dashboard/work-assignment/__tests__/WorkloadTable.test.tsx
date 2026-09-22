@@ -327,6 +327,17 @@ describe("WorkloadTable — 학년도", () => {
     expect(screen.queryByRole("combobox")).toBeNull();
   });
 
+  it("어느 해를 보는지 머리가 적는다 — 셀렉트는 스크롤하면 사라진다", () => {
+    /*
+     * 조작줄에 학년도 셀렉트가 있어도 표가 적는다. 표를 내려 보는 동안 셀렉트가
+     * 화면 밖으로 나가고, 그 상태에서 2026 과 2027 의 화면은 숫자만 다르다 —
+     * 2,511 건과 983 건을 같은 해로 보면 **물량이 60% 줄었다**고 읽는다.
+     */
+    render(<WorkloadTable {...props()} academicYear={2026} />);
+
+    expect(screen.getByText(/2026학년도/)).toBeInTheDocument();
+  });
+
   it("현재 학년도는 서비스마감이 원천이라고 적는다", () => {
     render(<WorkloadTable {...props()} />);
     expect(screen.getByText(/서비스마감/)).toBeInTheDocument();

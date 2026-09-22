@@ -274,17 +274,17 @@ export function WorkloadTable({
 
   return (
     <>
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-xl font-bold text-ink">배정현황</h2>
-          <span className="text-muted" aria-hidden>
-            ·
-          </span>
-          <span className="text-sm text-vermilion tabular-nums">
-            {academicYear}학년도
-          </span>
-        </div>
-        <p className="text-xs text-muted">{sourceNote(isPast)}</p>
+      {/*
+       * 운영리포트의 절 머리 그대로다 — 제목 아래 **무엇을 보는 기간인지** 한 줄.
+       * 거기서는 기간 범위이고 여기서는 학년도다. 조작줄에 학년도 셀렉트가 있어도
+       * 적는 것은, 표를 내려 보는 동안 셀렉트가 화면 밖으로 나가기 때문이다 —
+       * 게다가 아래 원천 설명이 **그 해에 따라 갈린다**(지난 해는 서비스목록).
+       */}
+      <header className="mb-4">
+        <h2 className="text-xl font-bold text-ink">배정현황</h2>
+        <p className="mt-1 text-xs text-muted">
+          {academicYear}학년도 · {sourceNote(isPast)}
+        </p>
       </header>
 
       {/*
