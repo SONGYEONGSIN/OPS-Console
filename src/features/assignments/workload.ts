@@ -73,6 +73,14 @@ export type WorkloadRow = {
   /** `careerStartOf` 가 고른 날. 햇수로 바꾸는 것은 화면의 일이다. */
   careerStart: string;
   universities: number;
+  /**
+   * 담당 대학 이름(가나다순). **검색을 위해 든다** — 배정현황의 줄은 사람이라,
+   * 대학으로 찾으려면 그 줄이 어느 대학을 들고 있는지 알아야 한다.
+   *
+   * `running` 으로 대신할 수 없다: 그쪽은 **이번 달에 도는 것**뿐이라 12월 서비스만
+   * 있는 대학은 9월에 검색해도 안 나오고, 그게 '안 맡았다' 와 구분되지 않는다.
+   */
+  universityNames: string[];
   services: number;
   /** 대학당 서비스 수. 담당 대학이 없으면 0 이다 — 0 으로 나누지 않는다. */
   density: number;
@@ -97,6 +105,30 @@ export type WorkloadGroup = {
   target: { universities: number; density: number } | null;
   rows: WorkloadRow[];
 };
+
+/**
+ * 상단 KPI 의 값. **전원 기준이라 검색과 무관하다** — 검색으로 좁힌 줄로 내면
+ * 한 사람을 찾을 때 '배정 대상 1명' 이 되어, 요약이 요약을 그만둔다.
+ */
+export type WorkloadSummary = {
+  people: number;
+  /** **distinct** 대학. 실측 286곳 중 44곳이 업무종류별로 둘에게 갈려 있어, 사람별 대학 수를 더하면 그 44곳이 두 번 세어진다. */
+  universities: number;
+  /** 건수는 칸에 붙어 사람끼리 겹치지 않으므로 더한다. */
+  services: number;
+};
+
+export function summarizeWorkload(
+  groups: readonly WorkloadGroup[],
+): WorkloadSummary {
+  const rows = groups.flatMap((g) => g.rows);
+  const univs = new Set(rows.flatMap((r) => r.universityNames));
+  return {
+    people: rows.length,
+    universities: univs.size,
+    services: rows.reduce((sum, r) => sum + r.services, 0),
+  };
+}
 
 /** 그룹을 못 정한 사람들의 자리. 목표를 내지 않지만 **표에서 빼지는 않는다.** */
 export const UNSET_GROUP = "그룹 미설정";
@@ -181,6 +213,8 @@ export function buildWorkload(input: {
       name: o.name,
       careerStart: careerStartOf(o),
       universities,
+      // `universities` 와 같은 집합이다 — 두 값이 갈리면 어느 쪽이 사실인지 모른다.
+      universityNames: [...univs].sort((a, b) => a.localeCompare(b, "ko")),
       services,
       density: universities === 0 ? 0 : services / universities,
       uncounted: [...keys].filter((k) => serviceCounts[k] === undefined).length,
