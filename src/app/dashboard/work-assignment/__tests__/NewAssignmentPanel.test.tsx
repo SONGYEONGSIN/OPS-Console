@@ -26,6 +26,7 @@ const load = (week: number, month: number): WorkloadGroup[] => [
         name: "가운영",
         careerStart: "2019-03-01",
         universities: 17,
+        universityNames: ["가대학교"],
         services: 91,
         density: 5.35,
         uncounted: 0,

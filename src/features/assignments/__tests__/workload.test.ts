@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildWorkload } from "../workload";
+import { buildWorkload, summarizeWorkload } from "../workload";
 
 /**
  * 배분현황 — **§6.1 의 근거를 사람이 검산하는 자리**다.
@@ -41,6 +41,109 @@ const base = {
 /** 첫 그룹의 첫 줄 — 대부분의 단언이 여기를 본다. */
 const firstRow = (groups: ReturnType<typeof buildWorkload>) =>
   groups[0].rows[0];
+
+describe("summarizeWorkload", () => {
+  /**
+   * 상단 KPI 의 값. **전원 기준이라 검색과 무관하다** — 검색으로 좁힌 줄로 내면
+   * 한 사람을 찾을 때 '배정 대상 1명' 이 되어, 요약이 요약을 그만둔다.
+   */
+  const g = (...rows: ReturnType<typeof buildWorkload>[number]["rows"]) => ({
+    group: "2",
+    target: null,
+    rows,
+  });
+  const r = (name: string, univs: string[], services: number) => ({
+    email: `${name}@x.com`,
+    name,
+    careerStart: "2020-01-02",
+    universities: univs.length,
+    universityNames: univs,
+    services,
+    density: 0,
+    uncounted: 0,
+    week: 0,
+    month: 0,
+    year: 0,
+    deviation: null,
+    running: [],
+  });
+
+  it("사람 수는 그룹을 가로질러 센다", () => {
+    const out = summarizeWorkload([
+      g(r("가", ["가대"], 1)),
+      g(r("나", ["나대"], 2)),
+    ]);
+
+    expect(out.people).toBe(2);
+  });
+
+  it("대학은 distinct 다 — 한 대학을 업무종류별로 둘이 나눠 맡는다", () => {
+    /*
+     * 실측 286곳 중 44곳이 업무종류별로 갈려 있다. 사람별 대학 수를 더하면
+     * 그 44곳이 두 번 세어져 총량이 부풀고, 그 숫자는 어디에도 없는 값이다.
+     */
+    const out = summarizeWorkload([
+      g(r("가", ["같은대", "가대"], 1), r("나", ["같은대"], 1)),
+    ]);
+
+    expect(out.universities).toBe(2);
+  });
+
+  it("건수는 더한다 — 건수는 칸에 붙어 겹치지 않는다", () => {
+    const out = summarizeWorkload([g(r("가", ["가대"], 3), r("나", ["나대"], 4))]);
+
+    expect(out.services).toBe(7);
+  });
+
+  it("아무도 없으면 전부 0 이다", () => {
+    expect(summarizeWorkload([])).toEqual({
+      people: 0,
+      universities: 0,
+      services: 0,
+    });
+  });
+});
+
+describe("buildWorkload — 담당 대학 이름", () => {
+  /**
+   * 이름 목록은 **검색을 위해** 있다. 배정현황의 줄은 사람이라, 대학으로 찾으려면
+   * 그 줄이 어느 대학을 들고 있는지 알아야 한다.
+   *
+   * `running` 으로 대신할 수 없다 — 그쪽은 **이번 달에 도는 것**뿐이라, 12월
+   * 서비스만 맡은 대학은 9월에 검색해도 안 나온다. 그게 '안 맡았다' 와 화면에서
+   * 구분되지 않는다.
+   */
+  it("담당 대학 이름을 가나다순으로 함께 든다", () => {
+    const groups = buildWorkload({
+      ...base,
+      cells: [
+        cell("나대", "a@x.com"),
+        cell("가대", "a@x.com"),
+        cell("가대", "a@x.com", "PIMS"),
+      ],
+      serviceCounts: {},
+    });
+
+    expect(firstRow(groups).universityNames).toEqual(["가대", "나대"]);
+  });
+
+  it("대학 수와 같은 것을 센다 — 두 값이 갈리면 어느 쪽이 사실인지 모른다", () => {
+    const groups = buildWorkload({
+      ...base,
+      cells: [cell("가대", "a@x.com"), cell("가대", "a@x.com", "PIMS")],
+      serviceCounts: {},
+    });
+
+    const r = firstRow(groups);
+    expect(r.universityNames).toHaveLength(r.universities);
+  });
+
+  it("아무것도 안 맡았으면 빈 배열이다", () => {
+    const groups = buildWorkload({ ...base, cells: [] });
+
+    expect(firstRow(groups).universityNames).toEqual([]);
+  });
+});
 
 describe("buildWorkload — 대학 수·건수·밀도", () => {
   it("대학 수는 distinct 다 — 한 대학에서 칸을 여럿 맡아도 한 곳이다", () => {

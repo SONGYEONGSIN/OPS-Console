@@ -6,7 +6,11 @@ import { requireMenu } from "@/features/auth/menu-guard";
 import { BAEJUNG_CURRENT_YEAR } from "@/features/assignments/parse";
 import { listLedgerRows } from "@/features/assignments/ledger-queries";
 import { listOperators } from "@/features/operators/queries";
-import { buildWorkload } from "@/features/assignments/workload";
+import {
+  buildWorkload,
+  summarizeWorkload,
+} from "@/features/assignments/workload";
+import { filterWorkload } from "@/features/assignments/workload-search";
 import {
   workloadWindows,
   kstDay,
@@ -72,7 +76,7 @@ const PROPOSAL_BATCHES = 10;
 export default async function WorkAssignmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; year?: string }>;
+  searchParams: Promise<{ tab?: string; year?: string; q?: string }>;
 }) {
   const slug = "work-assignment";
   await requireMenu(slug);
@@ -215,22 +219,37 @@ export default async function WorkAssignmentPage({
     // 오늘의 연차 그룹을 작년에 씌우면 그때 존재한 적 없는 목표가 나온다.
     targets: !isPast,
   });
-  const people = groups.reduce((n, g) => n + g.rows.length, 0);
   // 표에 안 들어간 건수 — 조용히 빼면 합만 보고 멀쩡하다고 읽는다.
   const unmatched = unmatchedVolume(sources.serviceCounts, cells);
 
+  /*
+   * **요약은 전원으로, 표는 검색으로.** 순서가 중요하다 — 걸러낸 뒤에 요약하면
+   * 한 사람을 찾을 때 '배정 대상 1명 · 담당 대학 2곳' 이 되어 요약이 요약을
+   * 그만둔다. 목표·편차도 `buildWorkload` 가 전원으로 낸 값 그대로 실려 간다
+   * (`filterWorkload` 는 줄만 걸러낸다).
+   */
+  const summary = summarizeWorkload(groups);
+  const query = (sp.q ?? "").trim();
+  const shown = filterWorkload(groups, query);
+  const people = summary.people;
+
+  /*
+   * 골격은 **운영리포트를 옮겼다**(사용자 요구 2026-09-22): 페이지 머리 → 탭 →
+   * `flex h-full min-h-0 flex-col` 절 + 반응형 패딩. 표 안의 머리·카드·검색은
+   * `WorkloadTable` 이 그린다.
+   */
   return (
-    <>
+    <div className="flex flex-col">
       {makeHeader(people)}
       <PageTabs active={tab} tabs={TABS} />
-      {/*
-       * **원장이 빈 해는 그 사실을 말한다.** 표만 두면 전원 0곳이 '작년엔 아무도
-       * 안 맡았다' 로 읽힌다 — 실제로는 그 해 원장 행이 아직 없는 것이고, 총괄장
-       * 시트가 담당자를 들고 있다. 적재는 **누르는 사람이 한다**(admin 전용 화면).
-       */}
-      {cells.length === 0 && (
-        <section className="px-7 pt-7">
-          <div className="border border-line-soft bg-situation-bg p-4">
+      <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
+        {/*
+         * **원장이 빈 해는 그 사실을 말한다.** 표만 두면 전원 0곳이 '작년엔 아무도
+         * 안 맡았다' 로 읽힌다 — 실제로는 그 해 원장 행이 아직 없는 것이고, 총괄장
+         * 시트가 담당자를 들고 있다. 적재는 **누르는 사람이 한다**(admin 전용 화면).
+         */}
+        {cells.length === 0 && (
+          <div className="mb-4 border border-line-soft bg-situation-bg p-4">
             <p className="text-xs font-medium text-vermilion tabular-nums">
               {academicYear}학년도 원장이 비어 있습니다
             </p>
@@ -242,19 +261,19 @@ export default async function WorkAssignmentPage({
               <ImportLedgerYear academicYear={academicYear} />
             </div>
           </div>
-        </section>
-      )}
-      <section className="p-7">
+        )}
         <WorkloadTable
-          groups={groups}
+          groups={shown}
+          summary={summary}
           now={now}
           academicYear={academicYear}
           years={YEAR_OPTIONS}
           isPast={isPast}
           unmatched={unmatched}
+          query={query}
         />
       </section>
-    </>
+    </div>
   );
 }
 
