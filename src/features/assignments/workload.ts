@@ -114,19 +114,29 @@ export type WorkloadSummary = {
   people: number;
   /** **distinct** 대학. 실측 286곳 중 44곳이 업무종류별로 둘에게 갈려 있어, 사람별 대학 수를 더하면 그 44곳이 두 번 세어진다. */
   universities: number;
-  /** 건수는 칸에 붙어 사람끼리 겹치지 않으므로 더한다. */
+  /**
+   * 그 학년도 **원천 총량**. 사람별 건수를 더한 값이 아니다.
+   *
+   * 하위유형이 갈린 대학은 한 `대학|업무종류` 를 둘이 나눠 맡는데(수시는 A, 정시는
+   * B) 건수 키에는 하위유형이 없어 **양쪽 모두에게 전량이 붙는다**. 실측 2026-09-22:
+   * 그런 키가 36개라 사람별 합 1,307 이 원천 1,112 보다 210건 컸다.
+   *
+   * 총량이라 `안 붙음` 카드와 **분모가 같다** — 1,112 중 15건이 안 붙었다고 읽힌다.
+   * 사람별 합을 쓰면 두 카드가 서로 다른 모집단을 말한다.
+   */
   services: number;
 };
 
 export function summarizeWorkload(
   groups: readonly WorkloadGroup[],
+  serviceCounts: Readonly<Record<string, number>>,
 ): WorkloadSummary {
   const rows = groups.flatMap((g) => g.rows);
   const univs = new Set(rows.flatMap((r) => r.universityNames));
   return {
     people: rows.length,
     universities: univs.size,
-    services: rows.reduce((sum, r) => sum + r.services, 0),
+    services: Object.values(serviceCounts).reduce((sum, n) => sum + n, 0),
   };
 }
 

@@ -17,6 +17,7 @@ import {
   unmatchedVolume,
 } from "@/features/assignments/workload-sources";
 import { findNewcomers } from "@/features/assignments/newcomers";
+import { summarizeBySheet } from "@/features/assignments/sheet-summary";
 import { NewAssignmentPanel } from "./NewAssignmentPanel";
 import { ImportLedgerYear } from "./ImportLedgerYear";
 import { WorkloadControls } from "./WorkloadControls";
@@ -229,7 +230,16 @@ export default async function WorkAssignmentPage({
    * 그만둔다. 목표·편차도 `buildWorkload` 가 전원으로 낸 값 그대로 실려 간다
    * (`filterWorkload` 는 줄만 걸러낸다).
    */
-  const summary = summarizeWorkload(groups);
+  const summary = summarizeWorkload(groups, sources.serviceCounts);
+  /*
+   * 시트별 현황은 `groups` 로 못 낸다 — 줄이 사람이라 업무종류가 남아 있지 않다.
+   * 원장 칸을 다시 훑되 `buildWorkload` 와 **같은 배정 대상 기준**으로 센다.
+   */
+  const sheets = summarizeBySheet({
+    operators: operators.filter((o) => o.status === "active"),
+    cells,
+    serviceCounts: sources.serviceCounts,
+  });
   const query = (sp.q ?? "").trim();
   const shown = filterWorkload(groups, query);
   const people = summary.people;
@@ -270,6 +280,7 @@ export default async function WorkAssignmentPage({
         <WorkloadTable
           groups={shown}
           summary={summary}
+          sheets={sheets}
           now={now}
           academicYear={academicYear}
           isPast={isPast}

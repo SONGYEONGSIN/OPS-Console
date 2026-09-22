@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { WorkloadTable } from "../WorkloadTable";
 import type { WorkloadGroup } from "@/features/assignments/workload";
+import type { SheetSummaryRow } from "@/features/assignments/sheet-summary";
 
 /**
  * 배정현황 표 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
@@ -44,10 +45,23 @@ const groups: WorkloadGroup[] = [
 
 const NOW = new Date("2026-09-17T12:00:00+09:00");
 
+const sheets: SheetSummaryRow[] = [
+  {
+    kind: "원서접수",
+    sheet: "02. 배정리스트",
+    universities: 293,
+    services: 568,
+  },
+  { kind: "대학원", sheet: "03. 대학원", universities: 49, services: 411 },
+  { kind: "PIMS", sheet: "04. PIMS", universities: 81, services: 133 },
+  { kind: "성적산출", sheet: "06. 성적산출", universities: 44, services: null },
+];
+
 /** 현재 학년도 기본값. 학년도별 갈림은 아래 describe 가 따로 본다. */
 const props = () => ({
   groups,
   summary: { people: 22, universities: 286, services: 1101 },
+  sheets,
   now: NOW,
   academicYear: 2027,
   isPast: false,
@@ -62,15 +76,22 @@ const props = () => ({
  * 줄로 내면 한 사람을 찾을 때 '배정 대상 1명' 이 되어 요약이 요약을 그만둔다.
  */
 describe("WorkloadTable — 상단 카드", () => {
+  /**
+   * 카드 묶음으로 좁혀 본다.
+   *
+   * 시트별 현황이 붙으면서 `담당 대학`·`서비스 물량` 이 화면에 **두 번** 나온다 —
+   * 그 표가 이 카드 둘을 쪼갠 것이라 같은 말을 쓰는 것이 맞다. 예전에는 라벨이
+   * 유일하다는 데 기대 `getByText` 로 집었는데, 그건 화면이 자라면 깨지는 가정이다.
+   */
+  const cards = () => screen.getByRole("group", { name: /요약/ });
+
   it("네 장을 띄운다 — 사람·대학·건수·안 붙음", () => {
     render(
       <WorkloadTable {...props()} unmatched={{ services: 15, keys: 7 }} />,
     );
 
-    // 라벨이 열 머리글(`서비스 건수`)·상세 표(`서비스`)와 겹치지 않아야 한다 —
-    // 겹치면 `getByText` 가 여러 개를 찾아 무엇을 시험하는지 알 수 없다.
     for (const label of ["배정 대상", "담당 대학", "서비스 물량", "안 붙음"]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(within(cards()).getByText(label)).toBeInTheDocument();
     }
   });
 
@@ -84,15 +105,15 @@ describe("WorkloadTable — 상단 카드", () => {
     );
 
     // 표에는 한 줄만 남았지만 카드는 22명·286곳 그대로다.
-    expect(screen.getByText("22")).toBeInTheDocument();
-    expect(screen.getByText("286")).toBeInTheDocument();
+    expect(within(cards()).getByText("22")).toBeInTheDocument();
+    expect(within(cards()).getByText("286")).toBeInTheDocument();
   });
 
   it("안 붙음이 0 이면 카드가 그 사실을 말한다 — 카드를 빼면 자리가 흔들린다", () => {
     render(<WorkloadTable {...props()} />);
 
     // 라벨 자체가 `div` 라 `closest("div")` 는 자기 자신이다 — 카드는 그 부모다.
-    const card = screen.getByText("안 붙음").parentElement!;
+    const card = within(cards()).getByText("안 붙음").parentElement!;
     expect(card.textContent).toMatch(/0/);
   });
 });
@@ -280,7 +301,12 @@ describe("WorkloadTable", () => {
 
     // 자리를 숫자로 집으면 열이 하나 늘거나 줄 때마다 엉뚱한 칸을 본다(그룹 열을
     // 걷었을 때 이 단언이 '2' 를 읽고 통과할 뻔했다). 머리글로 자리를 찾는다.
-    const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    //
+    // **그 표 안에서** 찾는다 — 화면에 표가 둘(시트별 현황이 앞선다)이라, 전체에서
+    // 집으면 앞 표의 머리글 셋만큼 자리가 밀린다.
+    const heads = within(screen.getByRole("table", { name: /사람별/ }))
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
     const cells = within(
       screen.getByRole("row", { name: /가운영/ }),
     ).getAllByRole("cell");
@@ -336,6 +362,17 @@ describe("WorkloadTable — 학년도", () => {
     render(<WorkloadTable {...props()} academicYear={2026} />);
 
     expect(screen.getByText(/2026학년도/)).toBeInTheDocument();
+  });
+
+  it("카드 아래에 시트별 현황이 선다 — 295곳이 어느 시트의 것인지 말한다", () => {
+    /*
+     * 카드 하나로는 배정리스트 293곳과 성적산출 44곳이 한 덩어리로 보여, 어느
+     * 시트를 손봐야 하는지 화면에서 읽을 수 없었다(사용자 요구 2026-09-22).
+     */
+    render(<WorkloadTable {...props()} />);
+
+    const row = screen.getByRole("row", { name: /02\. 배정리스트/ });
+    expect(within(row).getByText("293")).toBeInTheDocument();
   });
 
   it("현재 학년도는 서비스마감이 원천이라고 적는다", () => {
