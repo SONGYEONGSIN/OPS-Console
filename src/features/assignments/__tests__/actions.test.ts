@@ -34,9 +34,12 @@ import {
   reconcileAssignments,
   updateAssignment,
   revertChange,
+  importAssignments,
   type ReconcileAssignmentsResult,
   type UpdateAssignmentResult,
+  type ImportAssignmentsResult,
 } from "../actions";
+import { BAEJUNG_CURRENT_YEAR, BAEJUNG_PREV_YEAR } from "../parse";
 import { SHEET_NAMES } from "../queries";
 
 /**
@@ -778,6 +781,366 @@ describe("revertChange", () => {
 
   it("되돌렸으면 두 화면을 다시 그린다", async () => {
     await revertChange(CHANGE_ID);
+    expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/assignments");
+    expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/work-assignment");
+  });
+});
+// ─────────────────────────────────────────────────────────────
+// 이관 — `importAssignments`
+// ─────────────────────────────────────────────────────────────
+
+/** 03. 대학원 — 올해 칸과 `前` 칸이 나란히 있다(라이브 실측 좌표). */
+function gradSheetWithPrev(rows: string[][]) {
+  return {
+    worksheetName: SHEET_NAMES.대학원,
+    rowsText: [
+      ["대학명", "운영자", "개발자", "前 운영자", "前 개발자"],
+      ...rows,
+    ],
+    rowCount: rows.length + 1,
+    columnCount: 5,
+  };
+}
+
+const PREV_GRAD = gradSheetWithPrev([
+  ["서울대학교", "올해운영", "올해개발", "작년운영", "작년개발"],
+]);
+
+const operatorsSelectAll = vi.fn();
+
+function okImport(r: ImportAssignmentsResult) {
+  if (!r.ok) throw new Error(`실패로 돌아왔다: ${r.error}`);
+  return r;
+}
+
+/** 원장에 쓴 payload 전부 — 나눠 쓰므로 호출을 합친다. */
+function written(): Record<string, unknown>[] {
+  return h.upsert.mock.calls.flatMap((c) => c[0] as Record<string, unknown>[]);
+}
+
+/** 이력에 쓴 행 전부. */
+function historyWritten(): Record<string, unknown>[] {
+  return h.insert.mock.calls.flatMap((c) => c[0] as Record<string, unknown>[]);
+}
+
+/** 원장 한 칸이 이미 들어가 있는 모양. */
+function existing(role: string, email: string | null, name: string) {
+  return {
+    academic_year: BAEJUNG_PREV_YEAR,
+    university_name: "서울대학교",
+    work_kind: "대학원" as const,
+    subtype: "",
+    role,
+    assignee_email: email,
+    assignee_name: name,
+  };
+}
+
+/**
+ * 이관 — **시트에 있고 원장에 없는 칸만 만든다.**
+ *
+ * 설계 §13 R1 이 재가져오기를 만들지 않기로 한 것은(사용자 결정 2026-09-15) 자연키
+ * upsert 가 **앱에서 고친 배정을 시트 값으로 되돌리고**, 그 덮어씀이 정당한 변경으로
+ * 이력에 남아 사고로 구분할 수 없기 때문이다. 게다가 대조가 쓰기 뒤에 돌면 방금
+ * 덮어쓴 원장과 시트를 비교해 0건으로 통과한다.
+ *
+ * 그래서 이 action 은 **덮어쓸 수 없는 모양**이다 — `ignoreDuplicates` 로 넣어
+ * `ON CONFLICT DO NOTHING` 이 된다. 조심해서 안 덮는 것이 아니라 DB 가 못 덮게 한다.
+ * 그 덕에 재실행도 안전하다: 반쯤 들어간 뒤 다시 눌러도 들어간 칸은 건드리지 않는다.
+ */
+describe("importAssignments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.getCurrentOperator.mockResolvedValue(ADMIN);
+    h.fetchSheet.mockImplementation(async (name: string) =>
+      name === SHEET_NAMES.대학원 ? PREV_GRAD : null,
+    );
+    h.listLedgerRows.mockResolvedValue([]);
+    h.createAdminClient.mockReturnValue({ from: h.adminFrom });
+    h.adminFrom.mockImplementation((table: string) => {
+      if (table === "assignments") return { upsert: h.upsert };
+      if (table === "operators") return { select: operatorsSelectAll };
+      if (table === "assignment_changes") return { insert: h.insert };
+      throw new Error(`예상치 못한 테이블: ${table}`);
+    });
+    operatorsSelectAll.mockResolvedValue({
+      data: [
+        { email: "last@x.com", name: "작년운영" },
+        { email: "dev@x.com", name: "작년개발" },
+      ],
+      error: null,
+    });
+    h.upsert.mockResolvedValue({ error: null });
+    h.insert.mockResolvedValue({ error: null });
+  });
+
+  describe("권한·입력", () => {
+    it("admin 이 아니면 시트도 읽지 않는다", async () => {
+      h.getCurrentOperator.mockResolvedValue({
+        ...ADMIN,
+        permission: "member",
+      });
+
+      const r = await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(r.ok).toBe(false);
+      expect(h.fetchSheet).not.toHaveBeenCalled();
+      expect(h.createAdminClient).not.toHaveBeenCalled();
+    });
+
+    it("비로그인이면 아무것도 쓰지 않는다", async () => {
+      h.getCurrentOperator.mockResolvedValue(null);
+
+      const r = await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(r.ok).toBe(false);
+      expect(h.upsert).not.toHaveBeenCalled();
+    });
+
+    it("학년도가 범위를 벗어나면 조회하지 않는다", async () => {
+      const r = await importAssignments(1999);
+
+      expect(r.ok).toBe(false);
+      expect(h.fetchSheet).not.toHaveBeenCalled();
+    });
+
+    it("시트에 없는 학년도는 쓰지 않는다 — 올해 칸을 그 해로 적재하면 안 된다", async () => {
+      /*
+       * 이 가드가 없으면 `2025` 가 올해 칸을 읽어 2025 로 들어간다. 자연키에 학년도가
+       * 있어 충돌도 안 나고, 대조는 양쪽이 같은 시트에서 나오니 통과한다.
+       */
+      const r = await importAssignments(2025);
+
+      expect(r.ok).toBe(false);
+      expect(h.upsert).not.toHaveBeenCalled();
+    });
+
+    it("시트를 하나도 못 읽으면 실패로 돌려준다", async () => {
+      h.fetchSheet.mockResolvedValue(null);
+
+      const r = await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(r.ok).toBe(false);
+      expect(h.upsert).not.toHaveBeenCalled();
+    });
+
+    it("원장 조회가 실패하면 쓰지 않는다 — 조용한 0건이면 전량을 다시 넣는다", async () => {
+      h.listLedgerRows.mockRejectedValue(new Error("원장 조회 실패: boom"));
+
+      const r = await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(r.ok).toBe(false);
+      expect(h.upsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("덮어쓰지 않는다", () => {
+    it("DB 가 못 덮게 넣는다 — `ignoreDuplicates` 가 곧 그 보증이다", async () => {
+      await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(h.upsert.mock.calls[0][1]).toMatchObject({
+        onConflict: "academic_year,university_name,work_kind,subtype,role",
+        ignoreDuplicates: true,
+      });
+    });
+
+    it("이미 원장에 있는 칸은 payload 에 넣지 않는다", async () => {
+      h.listLedgerRows.mockResolvedValue([
+        existing("운영", "someone@x.com", "손으로고친사람"),
+      ]);
+
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(r.skipped).toBe(1);
+      expect(r.inserted).toBe(1); // 개발 칸만 새로 들어간다
+      expect(written().map((w) => w.role)).toEqual(["개발"]);
+    });
+
+    it("앱에서 비운 칸을 되살리지 않는다", async () => {
+      /*
+       * 비우기는 행을 지우지 않고 이메일만 null 로 만든다(`updateAssignment`). 키가
+       * 남아 있으므로 이관이 건너뛴다 — 안 그러면 비운 칸이 시트 값으로 되살아난다.
+       */
+      h.listLedgerRows.mockResolvedValue([existing("운영", null, "")]);
+
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(written().map((w) => w.role)).not.toContain("운영");
+      expect(r.skipped).toBe(1);
+    });
+
+    it("넣을 것이 없으면 쓰지 않는다 — 두 번 눌러도 이력이 안 늘어난다", async () => {
+      h.listLedgerRows.mockResolvedValue([
+        existing("운영", "last@x.com", "작년운영"),
+        existing("개발", null, "작년개발"),
+      ]);
+
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(r.inserted).toBe(0);
+      expect(r.skipped).toBe(2);
+      expect(h.upsert).not.toHaveBeenCalled();
+      expect(h.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("적재", () => {
+    it("전년도 칸을 읽어 그 학년도로 넣는다 — 올해 이름이 섞이지 않는다", async () => {
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(r.inserted).toBe(2);
+      const rows = written();
+      expect(rows.every((w) => w.academic_year === BAEJUNG_PREV_YEAR)).toBe(
+        true,
+      );
+      expect(rows.map((w) => w.assignee_name).sort()).toEqual([
+        "작년개발",
+        "작년운영",
+      ]);
+    });
+
+    it("올해를 물으면 올해 칸을 넣는다 — 같은 버튼이 두 해를 다룬다", async () => {
+      const r = okImport(await importAssignments(BAEJUNG_CURRENT_YEAR));
+
+      expect(r.inserted).toBe(2);
+      expect(
+        written()
+          .map((w) => w.assignee_name)
+          .sort(),
+      ).toEqual(["올해개발", "올해운영"]);
+    });
+
+    it("이름을 명부의 이메일로 잇는다 — 이메일이 비면 화면이 배정을 못 센다", async () => {
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(written().find((w) => w.role === "운영")?.assignee_email).toBe(
+        "last@x.com",
+      );
+      expect(r.linked).toBe(2);
+    });
+
+    it("명부에 없는 이름은 이름만 넣는다 — FK 가 23503 으로 전량을 죽인다", async () => {
+      operatorsSelectAll.mockResolvedValue({ data: [], error: null });
+
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(written().every((w) => w.assignee_email === null)).toBe(true);
+      expect(r.linked).toBe(0);
+      expect(r.inserted).toBe(2);
+    });
+
+    it("동명이인은 잇지 않고 이름을 알려준다 — 고치는 방법이 다르다", async () => {
+      operatorsSelectAll.mockResolvedValue({
+        data: [
+          { email: "a1@x.com", name: "작년운영" },
+          { email: "a2@x.com", name: "작년운영" },
+        ],
+        error: null,
+      });
+
+      const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+      expect(r.ambiguousNames).toEqual(["작년운영"]);
+      expect(
+        written().find((w) => w.role === "운영")?.assignee_email,
+      ).toBeNull();
+    });
+
+    it("명부 조회가 실패하면 쓰지 않는다 — 전량이 이름만으로 들어간다", async () => {
+      operatorsSelectAll.mockResolvedValue({
+        data: null,
+        error: { message: "boom" },
+      });
+
+      const r = await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(r.ok).toBe(false);
+      expect(h.upsert).not.toHaveBeenCalled();
+    });
+
+    it("누른 사람이 `updated_by` 다", async () => {
+      await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(written().every((w) => w.updated_by === "admin@x.com")).toBe(true);
+    });
+  });
+
+  describe("이력", () => {
+    it("이메일이 붙은 칸만 남긴다 — prev 는 null 이고 출처는 `import` 다", async () => {
+      /*
+       * 라이브 원장의 2027 이관 행 966개가 전부 `prev=null`·`source=import` 다.
+       * 되돌리기가 그 모양을 이미 받는다(`revertChange` 테스트).
+       */
+      await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(historyWritten()).toEqual([
+        {
+          academic_year: BAEJUNG_PREV_YEAR,
+          university_name: "서울대학교",
+          work_kind: "대학원",
+          subtype: "",
+          role: "운영",
+          prev_assignee: null,
+          next_assignee: "last@x.com",
+          source: "import",
+          actor_email: "admin@x.com",
+        },
+        {
+          academic_year: BAEJUNG_PREV_YEAR,
+          university_name: "서울대학교",
+          work_kind: "대학원",
+          subtype: "",
+          role: "개발",
+          prev_assignee: null,
+          next_assignee: "dev@x.com",
+          source: "import",
+          actor_email: "admin@x.com",
+        },
+      ]);
+    });
+
+    it("이메일 없는 칸은 이력을 남기지 않는다 — prev=next=null 이 23514 다", async () => {
+      operatorsSelectAll.mockResolvedValue({ data: [], error: null });
+
+      await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(h.insert).not.toHaveBeenCalled();
+    });
+
+    it("원장 쓰기가 실패하면 이력을 적재하지 않는다", async () => {
+      h.upsert.mockResolvedValue({ error: { message: "boom" } });
+
+      const r = await importAssignments(BAEJUNG_PREV_YEAR);
+
+      expect(r.ok).toBe(false);
+      expect(h.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  it("많은 행은 나눠 쓴다 — 한 번에 밀면 요청이 통째로 실패한다", async () => {
+    const many = Array.from({ length: 400 }, (_, i) => [
+      `대학${i}`,
+      "",
+      "",
+      "작년운영",
+      "작년개발",
+    ]);
+    h.fetchSheet.mockImplementation(async (name: string) =>
+      name === SHEET_NAMES.대학원 ? gradSheetWithPrev(many) : null,
+    );
+
+    const r = okImport(await importAssignments(BAEJUNG_PREV_YEAR));
+
+    expect(r.inserted).toBe(800);
+    expect(h.upsert.mock.calls.length).toBeGreaterThan(1);
+    expect(
+      h.upsert.mock.calls.every((c) => (c[0] as unknown[]).length <= 500),
+    ).toBe(true);
+  });
+
+  it("넣었으면 두 화면을 다시 그린다 — 원장은 배분현황도 떠받친다", async () => {
+    await importAssignments(BAEJUNG_PREV_YEAR);
+
     expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/assignments");
     expect(h.revalidatePath).toHaveBeenCalledWith("/dashboard/work-assignment");
   });

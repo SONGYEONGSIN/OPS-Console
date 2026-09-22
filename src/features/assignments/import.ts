@@ -39,18 +39,6 @@ export type ImportIssue = {
 };
 
 /**
- * 하위유형 칸이 배정의 단위인 업무. 나머지는 대표값 한 칸이 곧 배정이다.
- *
- * PIMS 가 여기 있는 이유: 시트의 `운영자 FULL` 과 `운영자 환/충` 은 **독립된
- * 배정**이다(사용자 확인 2026-09-15). 파서의 `operator` 는 둘을 접은 값이라
- * 그걸 쓰면 FULL 배정이 조용히 사라진다.
- */
-const BY_SUBTYPE: ReadonlySet<AssignmentWorkKind> = new Set([
-  "원서접수",
-  "PIMS",
-]);
-
-/**
  * 대학명 정규화는 **공백 정리까지만** 한다.
  *
  * `서울대` 와 `서울대학교` 를 잇지 않는다 — 별칭을 추측해 이으면 틀린 대학에
@@ -89,8 +77,8 @@ function draft(
  * 수시 행이 두 벌 생기고, PIMS 는 `full || hwan` 으로 접힌 값이라 FULL 배정이
  * 사라진다. 빈 칸은 파서가 항목 자체를 안 만든다.
  *
- * 원서접수의 `subtypes` 는 파서가 2027 블록만 담으므로 2026 칸은 여기로 오지
- * 않는다(이관 대상은 현재 학년도다).
+ * 원서접수의 `subtypes` 에는 파서가 **부탁받은 학년도 블록만** 담는다 — 한 레코드에
+ * 두 해가 섞여 오지 않으므로, 여기서 학년도를 다시 가려낼 일이 없다.
  */
 function bySubtype(
   academicYear: number,
@@ -147,7 +135,19 @@ export function toLedgerRows(
   const drafts: LedgerRowDraft[] = [];
 
   for (const record of records) {
-    if (BY_SUBTYPE.has(record.service)) {
+    /*
+     * **하위유형 칸을 가진 레코드**는 칸마다 한 줄, 없는 레코드는 대표값 한 줄이다.
+     *
+     * 예전엔 업무종류로 갈랐다(`원서접수`·`PIMS` 는 하위유형). 그런데 전년도 PIMS 는
+     * `04` 시트의 `前 운영자` **한 칸**이라 하위유형이 없고, 업무종류로 가르면 빈
+     * `subtypes` 를 훑어 **0줄을 조용히 만든다** — 이관은 성공으로 끝나고 그 해
+     * 배분현황만 통째로 빈다.
+     *
+     * 레코드의 모양이 곧 시트의 모양이라 그걸 보고 가른다. 올해 결과는 바뀌지 않는다:
+     * `parseBaejungList`·`parsePims` 는 빈 배열이라도 `subtypes` 를 담고,
+     * `parseSimpleSheet` 는 담지 않는다.
+     */
+    if (record.subtypes) {
       drafts.push(...bySubtype(academicYear, record));
     } else {
       drafts.push(...plain(academicYear, record));
@@ -169,6 +169,48 @@ export function toLedgerRows(
   }
 
   return { rows: [...byKey.values()], issues };
+}
+
+/**
+ * 이름 스냅샷 → **이메일**. 이어지지 않은 이름은 그대로 남긴다.
+ *
+ * 이메일이 필요한 이유는 화면이 운영자를 이메일로 묶기 때문이다 — 이름만 있는 칸은
+ * 배분현황에서 **그 사람이 아무것도 안 맡은 것**으로 보인다. 그렇다고 추측해 이으면
+ * 틀린 사람에게 부하가 붙고 그게 틀렸다는 것을 아무도 모른다(설계 F1).
+ *
+ * 그래서 **정확히 한 사람일 때만** 잇는다. 동명이인은 이름만 남기고 이름을 돌려주며,
+ * 명부에 없는 이름도 이름만 남는다 — 둘 다 신규배정 탭의 '연결 안 됨' 줄로 드러나고
+ * 고치는 방법이 다르다(동명이인은 사람이 고르고, 없는 이름은 명부부터 본다).
+ *
+ * **명부를 상태로 좁히지 않는 것은 부르는 쪽의 책임이다.** 작년 담당자는 이미
+ * 그만뒀을 수 있고, FK 가 보는 것은 `operators` 에 있는가뿐이다. active 만 넘기면
+ * 퇴사자가 맡았던 칸이 통째로 이름만 남는다.
+ */
+export function linkAssignees(
+  drafts: readonly LedgerRowDraft[],
+  operators: readonly { email: string; name: string }[],
+): { rows: LedgerRow[]; ambiguousNames: string[] } {
+  const emailsByName = new Map<string, string[]>();
+  for (const o of operators) {
+    const name = o.name.trim();
+    // 빈 이름끼리 맞으면 **아무 배정도 아닌 행**이 그 계정에 붙는다.
+    if (name === "") continue;
+    const list = emailsByName.get(name);
+    if (list) list.push(o.email);
+    else emailsByName.set(name, [o.email]);
+  }
+
+  const ambiguous = new Set<string>();
+  const rows = drafts.map((d) => {
+    const found = emailsByName.get(d.assignee_name);
+    if (found && found.length > 1) ambiguous.add(d.assignee_name);
+    return {
+      ...d,
+      assignee_email: found && found.length === 1 ? found[0] : null,
+    };
+  });
+
+  return { rows, ambiguousNames: [...ambiguous].sort() };
 }
 
 /** 대조 결과. 건수뿐 아니라 **어느 칸인지**를 남긴다 — 건수만으로는 못 고친다. */

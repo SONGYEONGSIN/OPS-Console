@@ -4,6 +4,8 @@ import {
   parseSimpleSheet,
   parsePims,
   joinByUniversity,
+  BAEJUNG_CURRENT_YEAR,
+  BAEJUNG_PREV_YEAR,
 } from "../parse";
 import type { AssignmentSheet, AssignmentRecord } from "../schemas";
 
@@ -101,6 +103,51 @@ describe("parseBaejungList", () => {
       recs[0].detail.find((d) => d.label === "2027 정시 운영")?.value,
     ).toBe("김슬기");
     expect(labels).toContain("2026 수시 운영");
+  });
+
+  it("전년도 블록도 읽는다 — 시트에 前 배정이 함께 있다", () => {
+    /*
+     * 과거 학년도 배분현황의 담당자가 여기서 온다. 예전엔 `services.operator_email`
+     * 을 우회로로 썼는데, 그건 2026-02-28 에 멈춘 시트 임포트라 원장 이름과 표기가
+     * 갈렸다 — 시트에서 읽으면 양쪽이 다 원장 이름이 된다.
+     */
+    const recs = parseBaejungList(sheet, BAEJUNG_PREV_YEAR);
+
+    expect(recs).toHaveLength(1);
+    expect(recs[0].subtypes).toEqual([
+      { label: "수시", operator: "기존운영", developer: "" },
+    ]);
+  });
+
+  it("학년도를 안 주면 올해다 — 부르는 쪽이 바뀌지 않는다", () => {
+    expect(parseBaejungList(sheet)).toEqual(
+      parseBaejungList(sheet, BAEJUNG_CURRENT_YEAR),
+    );
+  });
+
+  it("전년도에도 백업자는 배정이 아니다 — 2026 블록엔 22행이 차 있다", () => {
+    /*
+     * 라이브 실측(2026-09-21): 2027 백업자 0행 · **2026 백업자 22행**. 전년도를
+     * 적재하는 순간 이 칸이 `원서접수|백업자|운영` 으로 원장에 들어가 그 사람의
+     * 부하를 부풀린다 — 2027 에서 안 드러난 것은 칸이 비어 있었기 때문이다.
+     */
+    const withBackup: AssignmentSheet = {
+      ...sheet,
+      rowsText: [
+        sheet.rowsText[0],
+        sheet.rowsText[1],
+        mergeRows(sheet.rowsText[2], cell(29, "백업사람")),
+      ],
+    };
+
+    const recs = parseBaejungList(withBackup, BAEJUNG_PREV_YEAR);
+
+    expect(recs[0].subtypes?.map((s) => s.label)).not.toContain("백업");
+    expect(recs[0].backupOperator).toBe("백업사람");
+  });
+
+  it("없는 학년도를 물으면 빈 배열이다 — 없는 열을 만들어 내지 않는다", () => {
+    expect(parseBaejungList(sheet, 2025)).toEqual([]);
   });
 
   it("대학명 빈 행은 제외", () => {

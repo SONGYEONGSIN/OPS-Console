@@ -4,9 +4,15 @@ import {
   parsePims,
   parseSimpleSheet,
   BAEJUNG_CURRENT_YEAR,
+  BAEJUNG_PREV_YEAR,
 } from "../parse";
 import type { AssignmentSheet } from "../schemas";
-import { toLedgerRows, normalizeUniversityName } from "../import";
+import {
+  toLedgerRows,
+  normalizeUniversityName,
+  linkAssignees,
+  type LedgerRowDraft,
+} from "../import";
 
 /**
  * fixture 는 **라이브 시트의 좌표를 그대로** 쓴다(2026-09-13 실측).
@@ -35,8 +41,8 @@ function header0(): string[] {
   // 2028 로 적재하고, 대조는 양쪽이 같은 시트에서 나오므로 그대로 통과한다.
   r[12] = `${BAEJUNG_CURRENT_YEAR}학년도 운영자`;
   r[18] = `${BAEJUNG_CURRENT_YEAR}학년도 개발자`;
-  r[24] = "2026학년도 운영자";
-  r[30] = "2026학년도 개발자";
+  r[24] = `${BAEJUNG_PREV_YEAR}학년도 운영자`;
+  r[30] = `${BAEJUNG_PREV_YEAR}학년도 개발자`;
   return r;
 }
 
@@ -322,6 +328,184 @@ describe("toLedgerRows — 하위유형 없는 업무(03·06·07)", () => {
     const { rows } = toLedgerRows(simple("상담앱", "가운영", ""), 2027);
     expect(rows).toHaveLength(1);
     expect(rows[0].role).toBe("운영");
+  });
+});
+
+describe("toLedgerRows — 전년도 배정(前 운영자)", () => {
+  /**
+   * `04` 의 전년도 칸은 **`前 운영자` 한 칸**이다 — FULL·환충으로 갈라져 있지 않다.
+   *
+   * 올해 칸을 함께 둔 시트로 시험한다. `前\s*운영자` 가 `운영자 FULL` 을 먼저
+   * 집으면 작년 자리에 올해 이름이 적재되는데, **그건 에러 없이 조용하다.**
+   */
+  function prevPimsSheet(prev: string) {
+    return {
+      worksheetName: "04. PIMS",
+      rowsText: [
+        ["대학명", "운영자 FULL", "운영자 환/충", "前 운영자"],
+        ["서울대학교", "올해풀", "올해환", prev],
+      ],
+      rowCount: 2,
+      columnCount: 4,
+    } satisfies AssignmentSheet;
+  }
+
+  const prevPims = (prev: string) =>
+    parseSimpleSheet(prevPimsSheet(prev), "PIMS", {
+      uni: /대학명/,
+      op: /前\s*운영자/,
+    });
+
+  it("하위유형 없는 PIMS 도 한 줄이 된다 — 업무종류로 가르면 0줄이 조용히 나온다", () => {
+    /*
+     * 예전 라우팅은 업무종류(`원서접수`·`PIMS`)로 갈랐다. 전년도 PIMS 는 하위유형이
+     * 없어서 빈 `subtypes` 를 훑고 **아무 행도 만들지 않는데, 이관은 성공으로 끝난다**
+     * — 화면의 작년 배분현황만 통째로 빈다.
+     */
+    const { rows } = toLedgerRows(prevPims("작년운영"), BAEJUNG_PREV_YEAR);
+
+    expect(rows).toEqual([
+      {
+        academic_year: BAEJUNG_PREV_YEAR,
+        university_name: "서울대학교",
+        work_kind: "PIMS",
+        subtype: "",
+        role: "운영",
+        assignee_name: "작년운영",
+        university_type: undefined,
+      },
+    ]);
+  });
+
+  it("올해 칸을 집지 않는다 — 같은 시트에 `운영자 FULL` 이 먼저 있다", () => {
+    const { rows } = toLedgerRows(prevPims("작년운영"), BAEJUNG_PREV_YEAR);
+
+    expect(rows.map((r) => r.assignee_name)).not.toContain("올해풀");
+  });
+
+  it("빈 칸은 행을 만들지 않는다 — 없는 배정을 발명하지 않는다", () => {
+    expect(toLedgerRows(prevPims(""), BAEJUNG_PREV_YEAR).rows).toEqual([]);
+  });
+
+  it("하위유형을 가진 레코드는 그대로 칸마다 한 줄이다 — 올해 결과가 안 바뀐다", () => {
+    const sheet = {
+      worksheetName: "04. PIMS",
+      rowsText: [
+        ["대학명", "운영자 FULL", "운영자 환/충"],
+        ["서울대학교", "올해풀", "올해환"],
+      ],
+      rowCount: 2,
+      columnCount: 3,
+    } satisfies AssignmentSheet;
+
+    const { rows } = toLedgerRows(parsePims(sheet), BAEJUNG_CURRENT_YEAR);
+
+    expect(rows.map((r) => [r.subtype, r.assignee_name])).toEqual([
+      ["FULL", "올해풀"],
+      ["환충", "올해환"],
+    ]);
+  });
+});
+
+describe("linkAssignees", () => {
+  /**
+   * 원장 행의 **이메일**을 이름으로 찾는다. 이름 스냅샷만으로는 화면이 배정을 못
+   * 센다 — 배분현황이 운영자를 이메일로 묶으므로, 이메일이 비면 그 사람은 아무것도
+   * 안 맡은 것으로 보인다.
+   */
+  const draft = (name: string): LedgerRowDraft => ({
+    academic_year: 2026,
+    university_name: "가대학교",
+    work_kind: "대학원",
+    subtype: "",
+    role: "운영",
+    assignee_name: name,
+  });
+
+  it("명부에 있는 이름은 이메일이 붙는다", () => {
+    const { rows } = linkAssignees(
+      [draft("가운영")],
+      [{ email: "ga@x.com", name: "가운영" }],
+    );
+
+    expect(rows[0].assignee_email).toBe("ga@x.com");
+    expect(rows[0].assignee_name).toBe("가운영");
+  });
+
+  it("같은 이름이 둘이면 잇지 않는다 — 추측하면 틀린 사람에게 부하가 붙는다", () => {
+    /*
+     * 설계 F1. 동명이인은 이름으로 가를 수 없고, 골라 이으면 그게 틀렸다는 것을
+     * 아무도 모른다. 이름만 남기면 화면이 '연결 안 됨' 으로 드러내고 사람이 고친다.
+     */
+    const { rows, ambiguousNames } = linkAssignees(
+      [draft("가운영")],
+      [
+        { email: "ga1@x.com", name: "가운영" },
+        { email: "ga2@x.com", name: "가운영" },
+      ],
+    );
+
+    expect(rows[0].assignee_email).toBeNull();
+    expect(rows[0].assignee_name).toBe("가운영");
+    expect(ambiguousNames).toEqual(["가운영"]);
+  });
+
+  it("명부에 없는 이름은 이름만 남는다 — FK 가 23503 으로 적재를 죽인다", () => {
+    const { rows, ambiguousNames } = linkAssignees(
+      [draft("없는사람")],
+      [{ email: "ga@x.com", name: "가운영" }],
+    );
+
+    expect(rows[0].assignee_email).toBeNull();
+    expect(rows[0].assignee_name).toBe("없는사람");
+    // 동명이인이 아니라 그냥 없는 것이다 — 고치는 방법이 다르다.
+    expect(ambiguousNames).toEqual([]);
+  });
+
+  it("같은 이름이 여러 줄에 있어도 보고는 한 번이다", () => {
+    const { ambiguousNames } = linkAssignees(
+      [draft("가운영"), draft("가운영"), draft("가운영")],
+      [
+        { email: "ga1@x.com", name: "가운영" },
+        { email: "ga2@x.com", name: "가운영" },
+      ],
+    );
+
+    expect(ambiguousNames).toEqual(["가운영"]);
+  });
+
+  it("명부 이름의 앞뒤 공백은 무시한다 — 엑셀에서 흔하다", () => {
+    const { rows } = linkAssignees(
+      [draft("가운영")],
+      [{ email: "ga@x.com", name: " 가운영 " }],
+    );
+
+    expect(rows[0].assignee_email).toBe("ga@x.com");
+  });
+
+  it("빈 이름은 명부의 빈 이름과 이어지지 않는다", () => {
+    /*
+     * `operators.name` 은 not null default '' 라 이름이 안 들어간 계정이 있을 수
+     * 있다. 빈 칸끼리 맞으면 **아무 배정도 아닌 행이 그 사람에게 붙는다.**
+     */
+    const { rows } = linkAssignees(
+      [draft("")],
+      [{ email: "nobody@x.com", name: "" }],
+    );
+
+    expect(rows[0].assignee_email).toBeNull();
+  });
+
+  it("행의 나머지 칸은 그대로 옮긴다", () => {
+    const { rows } = linkAssignees([draft("가운영")], []);
+
+    expect(rows[0]).toMatchObject({
+      academic_year: 2026,
+      university_name: "가대학교",
+      work_kind: "대학원",
+      subtype: "",
+      role: "운영",
+    });
   });
 });
 

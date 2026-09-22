@@ -7,7 +7,6 @@ import {
   buildSpans,
   type AnnouncementRow,
   type ClosingRow,
-  type PastServiceRow,
 } from "./workload-sources";
 
 /**
@@ -155,26 +154,3 @@ export async function loadWorkloadSources(
   return loadWindow(supabase, table, bound(start), bound(end), label);
 }
 
-/**
- * 과거 학년도의 **담당자** — `services.operator_email`.
- *
- * 원장(`assignments`)에는 그 해 행이 없다. 건수만 `services` 로 돌리고 담당자를
- * 안 바꾸면 **전원이 0곳**이 되고, 화면에서 '그 해엔 아무도 안 맡았다' 로 읽힌다.
- * 창은 건수와 **같은 함수**에서 얻는다 — 갈리면 둘이 다른 해를 본다.
- */
-export async function loadPastOperatorRows(
-  academicYear: number,
-  client?: AssignmentQueryClient,
-): Promise<PastServiceRow[]> {
-  const { start, end } = rangeOfAcademicYear(academicYear);
-  const supabase = client ?? (await createClient());
-  return pageAll<PastServiceRow>(
-    supabase,
-    "services",
-    "university_name, category, operator_email",
-    "write_start_at",
-    bound(start),
-    bound(end),
-    "과거 담당자",
-  );
-}
