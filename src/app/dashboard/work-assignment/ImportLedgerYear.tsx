@@ -5,6 +5,7 @@ import {
   importAssignments,
   type ImportAssignmentsResult,
 } from "@/features/assignments/actions";
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 
 /**
  * 총괄장 → 원장 **적재**. 그 학년도에 **없는 칸만** 만든다.
@@ -17,9 +18,6 @@ import {
  * 그래서 화면이 **넣은 것과 건드리지 않은 것을 따로** 보여준다. 합만 보여주면 두 번째
  * 실행이 성공인지 아무 일도 안 한 것인지 구분되지 않고, 사람은 덮였는지를 의심한다.
  */
-const BTN =
-  "cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-default disabled:opacity-50";
-
 export function ImportLedgerYear({ academicYear }: { academicYear: number }) {
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<ImportAssignmentsResult | null>(null);
@@ -36,7 +34,17 @@ export function ImportLedgerYear({ academicYear }: { academicYear: number }) {
 
   return (
     <div className="space-y-2">
-      <button type="button" onClick={run} disabled={pending} className={BTN}>
+      {/*
+       * **액션 버튼은 모양이 하나뿐이다.** 클래스 문자열을 새로 적는 순간 그게 두
+       * 번째 표준이 되고, 같은 일을 하는 버튼이 화면마다 달라 보인다(#1047·#1049).
+       * 컴포넌트가 아니라 클래스를 쓰는 것은 `pending` 라벨을 직접 갈기 때문이다.
+       */}
+      <button
+        type="button"
+        onClick={run}
+        disabled={pending}
+        className={HEADER_ACTION_CLASS}
+      >
         {pending ? "적재 중…" : `총괄장에서 ${academicYear}학년도 적재`}
       </button>
 

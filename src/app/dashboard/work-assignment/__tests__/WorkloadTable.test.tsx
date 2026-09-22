@@ -1,17 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-
-/*
- * 표가 검색창(client)을 품고 있어 라우터 컨텍스트가 필요하다. 검색창을 페이지로
- * 빼면 이 목이 필요 없지만, 그러면 **화면이 검색창을 잃어도 이 테스트가 통과한다** —
- * 머리에 무엇이 서는지는 표의 책임으로 둔다. 검색 동작은 `WorkloadControls` 가 본다.
- */
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/dashboard/work-assignment",
-  useSearchParams: () => new URLSearchParams(),
-}));
-
 import { WorkloadTable } from "../WorkloadTable";
 import type { WorkloadGroup } from "@/features/assignments/workload";
 
@@ -62,7 +50,6 @@ const props = () => ({
   summary: { people: 22, universities: 286, services: 1101 },
   now: NOW,
   academicYear: 2027,
-  years: [2027, 2026] as const,
   isPast: false,
   unmatched: { services: 0, keys: 0 },
   query: "",
@@ -327,16 +314,17 @@ describe("WorkloadTable", () => {
  * 멈춘 시트 임포트, `closing_services` 는 스크랩 시작 뒤부터 쌓이는 미러).
  */
 describe("WorkloadTable — 학년도", () => {
-  it("고를 수 있는 학년도를 모두 보여주고 지금 것을 표시한다", () => {
+  /**
+   * 학년도 고르기와 검색은 **조작줄로 옮겼다**(사용자 지적 2026-09-22) — 다른 목록
+   * 메뉴가 검색창·필터를 섹션 밖 한 줄에 두는데 이 화면만 섹션 머리에 끼워 넣어
+   * 자리가 달랐다. 표는 무엇을 보는지 말하기만 한다.
+   */
+  it("학년도 칩과 검색창을 표가 들지 않는다 — 조작줄이 든다", () => {
     render(<WorkloadTable {...props()} />);
-    expect(screen.getByRole("link", { name: /2026학년도/ })).toHaveAttribute(
-      "href",
-      expect.stringContaining("year=2026"),
-    );
-    // 현재 학년도는 링크가 아니라 현재 위치 표시다.
-    expect(
-      screen.queryByRole("link", { name: /2027학년도/ }),
-    ).not.toBeInTheDocument();
+
+    expect(screen.queryByRole("link", { name: /학년도/ })).toBeNull();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
   });
 
   it("현재 학년도는 서비스마감이 원천이라고 적는다", () => {

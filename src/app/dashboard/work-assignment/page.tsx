@@ -19,6 +19,7 @@ import {
 import { findNewcomers } from "@/features/assignments/newcomers";
 import { NewAssignmentPanel } from "./NewAssignmentPanel";
 import { ImportLedgerYear } from "./ImportLedgerYear";
+import { WorkloadControls } from "./WorkloadControls";
 import {
   loadWorkloadSources,
   FROZEN_IMPORT_LAST_YEAR,
@@ -234,15 +235,19 @@ export default async function WorkAssignmentPage({
   const people = summary.people;
 
   /*
-   * 골격은 **운영리포트를 옮겼다**(사용자 요구 2026-09-22): 페이지 머리 → 탭 →
-   * `flex h-full min-h-0 flex-col` 절 + 반응형 패딩. 표 안의 머리·카드·검색은
-   * `WorkloadTable` 이 그린다.
+   * 골격은 **운영리포트 + 목록 메뉴 공통**이다: 페이지 머리 → 탭 → **조작줄** →
+   * 섹션. 조작줄(검색·학년도)이 섹션 **밖**에 서는 것이 다른 목록 메뉴와 같은
+   * 자리다(`ListPattern` 의 `controlsRow`) — 처음엔 섹션 머리 오른쪽에 끼워 넣어
+   * 이 화면만 검색창 위치가 달랐다(지적 2026-09-22).
+   *
+   * 섹션 패딩이 `p-7` 인 것도 그래서다 — 조작줄이 `px-7` 이라 좌우가 맞아야 한다.
    */
   return (
     <div className="flex flex-col">
       {makeHeader(people)}
       <PageTabs active={tab} tabs={TABS} />
-      <section className="flex h-full min-h-0 flex-col p-5 md:p-6 lg:p-7">
+      <WorkloadControls years={YEAR_OPTIONS} />
+      <section className="flex h-full min-h-0 flex-col p-7">
         {/*
          * **원장이 빈 해는 그 사실을 말한다.** 표만 두면 전원 0곳이 '작년엔 아무도
          * 안 맡았다' 로 읽힌다 — 실제로는 그 해 원장 행이 아직 없는 것이고, 총괄장
@@ -267,7 +272,6 @@ export default async function WorkAssignmentPage({
           summary={summary}
           now={now}
           academicYear={academicYear}
-          years={YEAR_OPTIONS}
           isPast={isPast}
           unmatched={unmatched}
           query={query}

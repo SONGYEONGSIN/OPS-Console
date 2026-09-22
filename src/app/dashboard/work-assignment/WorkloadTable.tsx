@@ -9,7 +9,6 @@ import type {
   WorkloadSummary,
 } from "@/features/assignments/workload";
 import type { UnmatchedVolume } from "@/features/assignments/workload-sources";
-import { WorkloadControls } from "./WorkloadControls";
 
 /**
  * 배정현황 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
@@ -19,11 +18,15 @@ import { WorkloadControls } from "./WorkloadControls";
  * 표가 '고칠 것' 을 말하는 순간 잘못된 일을 부른다.
  *
  * 골격은 **운영리포트를 옮겼다**(사용자 요구 2026-09-22 — "한눈에 안 들어온다").
- * 머리(제목·원천·검색·학년도) → **KPI 카드 넷** → 표 → 상세. 예전에는 아홉 칸이
- * 숫자만 늘어서 있어 총량도 없고 견줄 기준도 눈에 안 들어왔다.
+ * 머리(제목·원천) → **KPI 카드 넷** → 표 → 상세. 예전에는 아홉 칸이 숫자만
+ * 늘어서 있어 총량도 없고 견줄 기준도 눈에 안 들어왔다.
+ *
+ * **검색창과 학년도는 이 컴포넌트가 들지 않는다** — 섹션 밖 조작줄(`WorkloadControls`)
+ * 이 든다. 처음엔 머리 오른쪽에 끼워 넣었는데 다른 목록 메뉴가 전부 섹션 밖 한 줄에
+ * 두고 있어 **이 화면만 자리가 달랐다**(지적 2026-09-22).
  *
  * 서버 컴포넌트다 — `now` 를 서버에서 받아 경력을 계산하므로 하이드레이션에서
- * 시각이 갈리지 않는다. 검색창만 클라이언트다.
+ * 시각이 갈리지 않는다.
  */
 
 /**
@@ -132,39 +135,6 @@ function TargetBar({ name, deviation }: { name: string; deviation: number }) {
         />
       </div>
     </div>
-  );
-}
-
-/** 학년도 칩. 지금 것은 링크가 아니라 현재 위치 표시다. */
-function YearChips({
-  academicYear,
-  years,
-}: {
-  academicYear: number;
-  years: readonly number[];
-}) {
-  return (
-    <nav aria-label="학년도" className="flex gap-1">
-      {years.map((y) =>
-        y === academicYear ? (
-          <span
-            key={y}
-            aria-current="page"
-            className="border border-vermilion bg-vermilion/10 px-3 py-1 text-xs text-vermilion tabular-nums"
-          >
-            {y}학년도
-          </span>
-        ) : (
-          <a
-            key={y}
-            href={`/dashboard/work-assignment?tab=workload&year=${y}`}
-            className="border border-line-soft px-3 py-1 text-xs text-muted tabular-nums hover:bg-line-soft"
-          >
-            {y}학년도
-          </a>
-        ),
-      )}
-    </nav>
   );
 }
 
@@ -285,7 +255,6 @@ export function WorkloadTable({
   summary,
   now,
   academicYear,
-  years,
   isPast,
   unmatched,
   query,
@@ -296,7 +265,6 @@ export function WorkloadTable({
   summary: WorkloadSummary;
   now: Date;
   academicYear: number;
-  years: readonly number[];
   isPast: boolean;
   unmatched: UnmatchedVolume;
   /** 지금 걸린 검색어. 빈 결과를 '아무도 없다' 와 가르는 데 쓴다. */
@@ -307,14 +275,16 @@ export function WorkloadTable({
   return (
     <>
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div className="flex items-baseline gap-2">
           <h2 className="text-xl font-bold text-ink">배정현황</h2>
-          <p className="mt-1 text-xs text-muted">{sourceNote(isPast)}</p>
+          <span className="text-muted" aria-hidden>
+            ·
+          </span>
+          <span className="text-sm text-vermilion tabular-nums">
+            {academicYear}학년도
+          </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <WorkloadControls />
-          <YearChips academicYear={academicYear} years={years} />
-        </div>
+        <p className="text-xs text-muted">{sourceNote(isPast)}</p>
       </header>
 
       {/*
