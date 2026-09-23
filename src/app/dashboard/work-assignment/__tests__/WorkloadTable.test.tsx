@@ -85,14 +85,27 @@ describe("WorkloadTable — 상단 카드", () => {
    */
   const cards = () => screen.getByRole("group", { name: /요약/ });
 
-  it("네 장을 띄운다 — 사람·대학·건수·안 붙음", () => {
+  it("세 장을 띄운다 — 사람·대학·건수", () => {
     render(
       <WorkloadTable {...props()} unmatched={{ services: 15, keys: 7 }} />,
     );
 
-    for (const label of ["배정 대상", "담당 대학", "서비스 물량", "안 붙음"]) {
+    for (const label of ["배정 대상", "담당 대학", "서비스 물량"]) {
       expect(within(cards()).getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it("안 붙음은 카드가 아니다 — 카드 아래 문구가 든다", () => {
+    /*
+     * 사용자 지시 2026-09-23. 숫자 하나뿐인 카드가 옆의 시트별 카드 높이에 맞춰
+     * 늘어나 속이 빈 채로 서 있었다. 값은 사라지지 않고 카드 묶음 아래 문구로 간다.
+     */
+    render(
+      <WorkloadTable {...props()} unmatched={{ services: 15, keys: 7 }} />,
+    );
+
+    expect(within(cards()).queryByText("안 붙음")).toBeNull();
+    expect(screen.getByText(/안 붙은 건수/)).toBeInTheDocument();
   });
 
   it("카드는 전원 기준이다 — 검색해도 안 움직인다", () => {
@@ -109,12 +122,14 @@ describe("WorkloadTable — 상단 카드", () => {
     expect(within(cards()).getByText("286")).toBeInTheDocument();
   });
 
-  it("안 붙음이 0 이면 카드가 그 사실을 말한다 — 카드를 빼면 자리가 흔들린다", () => {
+  it("안 붙음이 0 이어도 문구가 그 사실을 말한다 — 0 도 알릴 값이다", () => {
+    /*
+     * 카드를 걷었다고 0 까지 지우면 안 된다. '안 붙은 것이 없다' 와 '아직 안 세어
+     * 봤다' 가 화면에서 같아진다 — 231건이 사라진 것을 못 봤던 이유가 그것이다.
+     */
     render(<WorkloadTable {...props()} />);
 
-    // 라벨 자체가 `div` 라 `closest("div")` 는 자기 자신이다 — 카드는 그 부모다.
-    const card = within(cards()).getByText("안 붙음").parentElement!;
-    expect(card.textContent).toMatch(/0/);
+    expect(screen.getByText(/안 붙은 건수/).textContent).toMatch(/0건/);
   });
 });
 
