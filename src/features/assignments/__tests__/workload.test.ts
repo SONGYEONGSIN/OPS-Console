@@ -69,10 +69,10 @@ describe("summarizeWorkload", () => {
   });
 
   it("사람 수는 그룹을 가로질러 센다", () => {
-    const out = summarizeWorkload([
-      g(r("가", ["가대"], 1)),
-      g(r("나", ["나대"], 2)),
-    ]);
+    const out = summarizeWorkload(
+      [g(r("가", ["가대"], 1)), g(r("나", ["나대"], 2))],
+      {},
+    );
 
     expect(out.people).toBe(2);
   });
@@ -82,21 +82,43 @@ describe("summarizeWorkload", () => {
      * 실측 286곳 중 44곳이 업무종류별로 갈려 있다. 사람별 대학 수를 더하면
      * 그 44곳이 두 번 세어져 총량이 부풀고, 그 숫자는 어디에도 없는 값이다.
      */
-    const out = summarizeWorkload([
-      g(r("가", ["같은대", "가대"], 1), r("나", ["같은대"], 1)),
-    ]);
+    const out = summarizeWorkload(
+      [g(r("가", ["같은대", "가대"], 1), r("나", ["같은대"], 1))],
+      {},
+    );
 
     expect(out.universities).toBe(2);
   });
 
-  it("건수는 더한다 — 건수는 칸에 붙어 겹치지 않는다", () => {
-    const out = summarizeWorkload([g(r("가", ["가대"], 3), r("나", ["나대"], 4))]);
+  /**
+   * **건수는 원천 총량이다 — 사람별 건수를 더하면 안 된다.**
+   *
+   * 하위유형이 갈린 대학은 한 `대학|업무종류` 를 둘이 나눠 맡는데(수시는 A, 정시는
+   * B) 건수 키에는 하위유형이 없어 **양쪽 모두에게 전량이 붙는다**. 실측
+   * 2026-09-22: 그런 키가 36개라 사람별 합 1,307 이 원천 1,112 보다 210건 컸다.
+   *
+   * 총량으로 두면 `안 붙음` 카드와 **분모가 같아진다** — 1,112 중 15건이 안 붙었다고
+   * 읽힌다. 사람별 합을 쓰면 두 카드가 서로 다른 모집단을 말한다.
+   */
+  it("건수는 원천 총량이다 — 한 키를 둘이 들어도 한 번 센다", () => {
+    const counts = { "가대|원서접수": 5 };
+    const out = summarizeWorkload(
+      [g(r("가", ["가대"], 5), r("나", ["가대"], 5))],
+      counts,
+    );
+
+    expect(out.services).toBe(5);
+  });
+
+  it("안 붙은 건수도 총량에 든다 — 안 붙음 카드와 분모가 같아야 한다", () => {
+    const counts = { "가대|원서접수": 5, "안붙은대|PIMS": 2 };
+    const out = summarizeWorkload([g(r("가", ["가대"], 5))], counts);
 
     expect(out.services).toBe(7);
   });
 
   it("아무도 없으면 전부 0 이다", () => {
-    expect(summarizeWorkload([])).toEqual({
+    expect(summarizeWorkload([], {})).toEqual({
       people: 0,
       universities: 0,
       services: 0,

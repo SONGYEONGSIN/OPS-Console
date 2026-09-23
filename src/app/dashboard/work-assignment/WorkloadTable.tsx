@@ -9,6 +9,8 @@ import type {
   WorkloadSummary,
 } from "@/features/assignments/workload";
 import type { UnmatchedVolume } from "@/features/assignments/workload-sources";
+import type { SheetSummaryRow } from "@/features/assignments/sheet-summary";
+import { SheetSummary } from "./SheetSummary";
 
 /**
  * 배정현황 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
@@ -253,6 +255,7 @@ function RunningSection({
 export function WorkloadTable({
   groups,
   summary,
+  sheets,
   now,
   academicYear,
   isPast,
@@ -263,6 +266,8 @@ export function WorkloadTable({
   groups: WorkloadGroup[];
   /** **전원 기준** 총량 — 검색과 무관하다(`summarizeWorkload`). */
   summary: WorkloadSummary;
+  /** 시트별 담당 대학·건수. 카드 하나로는 어느 시트의 것인지 읽을 수 없었다. */
+  sheets: readonly SheetSummaryRow[];
   now: Date;
   academicYear: number;
   isPast: boolean;
@@ -294,7 +299,11 @@ export function WorkloadTable({
        * `안 붙음` 이 0 이어도 카드를 뺀 자리를 비우지 않는다 — 카드가 사라지면 넷이
        * 셋이 되어 자리가 흔들리고, 0 이라는 사실 자체가 알릴 값이다.
        */}
-      <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div
+        role="group"
+        aria-label="배정현황 요약"
+        className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4"
+      >
         <KpiCard item={kpi("배정 대상", summary.people, "명")} />
         <KpiCard item={kpi("담당 대학", summary.universities, "곳")} />
         <KpiCard item={kpi("서비스 물량", summary.services, "건")} />
@@ -316,6 +325,13 @@ export function WorkloadTable({
           합니다.
         </p>
       )}
+
+      {/*
+       * **카드 다음이 이 표다.** 카드가 총량을 주고, 이 표가 그 총량이 어느 시트에서
+       * 온 것인지 나눈다 — 배정리스트 293곳과 성적산출 44곳이 한 덩어리로 보이면
+       * 어느 시트를 손봐야 하는지 화면에서 읽을 수 없다(사용자 요구 2026-09-22).
+       */}
+      <SheetSummary rows={sheets} summary={summary} />
 
       {groups.length === 0 ? (
         <div className="border border-dashed border-line-soft bg-situation-bg p-8 text-center">
@@ -352,7 +368,10 @@ export function WorkloadTable({
             겹치는 서비스 수입니다.
           </p>
           <div className="overflow-x-auto border border-line-soft bg-paper">
-            <table className="w-full text-left text-sm tabular-nums">
+            <table
+              aria-label="사람별 배정현황"
+              className="w-full text-left text-sm tabular-nums"
+            >
               <thead>
                 <tr className="border-b border-line-soft text-xs text-muted">
                   {COLUMNS.map((c, i) => (
