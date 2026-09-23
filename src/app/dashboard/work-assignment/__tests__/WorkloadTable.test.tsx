@@ -95,28 +95,25 @@ describe("WorkloadTable — 상단 카드", () => {
     }
   });
 
-  it("카드 셋이 같은 높이로 늘어난다 — 한 장만 짧으면 줄이 어긋나 보인다", () => {
+  it("카드를 감싸지 않는다 — 감싸면 늘어남이 끊겨 한 장만 짧아진다", () => {
     /*
-     * 사용자 지적 2026-09-23. `col-span` 래퍼를 씌우는 순간 카드가 **그리드의 직계
-     * 자식이 아니게 되어** 늘어남이 거기서 끊겼다 — 래퍼만 늘고 카드는 제 내용
-     * 높이에 머문다. 래퍼를 다시 그리드로 만들어 안쪽까지 늘림을 잇는다.
+     * 사용자 지적 2026-09-23. `col-span` 을 주려고 카드를 `<div>` 로 감쌌더니, 카드가
+     * **묶음의 직계 자식이 아니게 되어 늘어남이 거기서 끊겼다** — 래퍼만 줄 높이만큼
+     * 늘고 카드는 제 내용 높이에 머물러 배정 대상 한 장만 짧게 섰다.
      *
-     * jsdom 은 배치를 계산하지 않아 높이를 잴 수 없다. 늘림을 잇는 장치가 **있는지**
-     * 를 붙잡는다 — 지우면 다시 한 장만 짧아진다.
+     * 칸 너비를 내용에 맞추면서 `col-span` 자체가 필요 없어졌다(카드도 내용 너비다).
+     * 래퍼를 걷는 것이 곧 고침이라, **감싸지 않았는지**를 붙잡는다 — jsdom 은 배치를
+     * 계산하지 않아 높이는 잴 수 없다.
      */
     render(<WorkloadTable {...props()} />);
 
     // `KpiCard` 는 공용 카드라 역할 이름이 없다 — 라벨에서 거슬러 올라간다.
-    const kpi = within(cards()).getByText("배정 대상").parentElement!
-      .parentElement!;
-    const univ = within(cards()).getByRole("group", { name: "담당 대학" })
-      .parentElement!;
-    const svc = within(cards()).getByRole("group", { name: "서비스 물량" })
-      .parentElement!;
+    const kpi = within(cards()).getByText("배정 대상").parentElement!;
+    const univ = within(cards()).getByRole("group", { name: "담당 대학" });
+    const svc = within(cards()).getByRole("group", { name: "서비스 물량" });
 
-    for (const wrapper of [kpi, univ, svc]) {
-      expect(wrapper.className).toMatch(/\bgrid\b/);
-      expect(wrapper.className).toMatch(/grid-rows-1/);
+    for (const card of [kpi, univ, svc]) {
+      expect(card.parentElement).toBe(cards());
     }
   });
 
