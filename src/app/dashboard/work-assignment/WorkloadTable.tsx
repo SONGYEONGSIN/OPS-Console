@@ -301,44 +301,38 @@ export function WorkloadTable({
        * 아래 문구로 갔고, **0 일 때도 적는다** — 0 을 지우면 '안 붙은 것이 없다' 와
        * '아직 안 세어 봤다' 가 화면에서 같아진다.
        */}
+      {/*
+       * **그리드가 아니라 줄이다.** 칸을 균등 분할하면 카드가 제 내용보다 훨씬 넓어져
+       * `06. 성적산출` 오른쪽이 통째로 빈다(지적 2026-09-23). 줄로 세우면 카드가
+       * 내용만큼만 차지한다.
+       *
+       * **카드를 감싸지 않는다.** `col-span` 을 주려고 감싸는 순간 카드가 묶음의 직계
+       * 자식이 아니게 되어 **늘어남이 거기서 끊겨**, 배정 대상 한 장만 짧게 섰다.
+       * 너비를 내용에 맞추면서 감쌀 이유 자체가 없어졌다 — 높이는 `items-stretch` 가
+       * 맞춘다.
+       *
+       * 좁은 화면에서는 세로로 쌓는다 — 셋을 가로로 욱여넣으면 시트 칸이 뭉개진다.
+       */}
       <div
         role="group"
         aria-label="배정현황 요약"
-        className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-5"
+        className="mb-2 flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap"
       >
-        {/*
-         * **다섯 칸이다** — 시트별 내역을 든 카드 둘이 두 칸씩 쓴다. 한 칸 안에
-         * 칸을 넷으로 쪼개면 `02. 배정리스트` 가 잘린다.
-         *
-         * 좁은 화면에서는 셋 다 한 줄씩 쓴다(`col-span-2`) — 한 칸짜리 카드가 혼자
-         * 남으면 그 옆이 빈 채로 줄이 바뀐다.
-         *
-         * **래퍼도 그리드여야 한다**(`grid grid-rows-1`). `col-span` 을 주려고 감싸는
-         * 순간 카드가 그리드의 직계 자식이 아니게 되어 **늘어남이 거기서 끊긴다** —
-         * 래퍼만 줄 높이만큼 늘고 카드는 제 내용 높이에 머물러, 배정 대상 한 장만
-         * 짧게 섰다(지적 2026-09-23).
-         */}
-        <div className="col-span-2 grid grid-rows-1 md:col-span-1">
-          <KpiCard item={kpi("배정 대상", summary.people, "명")} />
-        </div>
-        <div className="col-span-2 grid grid-rows-1">
-          <SheetBreakdownCard
-            label="담당 대학"
-            total={summary.universities}
-            unit="곳"
-            rows={sheets}
-            valueOf={(r) => r.universities}
-          />
-        </div>
-        <div className="col-span-2 grid grid-rows-1">
-          <SheetBreakdownCard
-            label="서비스 물량"
-            total={summary.services}
-            unit="건"
-            rows={sheets}
-            valueOf={(r) => r.services}
-          />
-        </div>
+        <KpiCard item={kpi("배정 대상", summary.people, "명")} />
+        <SheetBreakdownCard
+          label="담당 대학"
+          total={summary.universities}
+          unit="곳"
+          rows={sheets}
+          valueOf={(r) => r.universities}
+        />
+        <SheetBreakdownCard
+          label="서비스 물량"
+          total={summary.services}
+          unit="건"
+          rows={sheets}
+          valueOf={(r) => r.services}
+        />
       </div>
 
       {/*
