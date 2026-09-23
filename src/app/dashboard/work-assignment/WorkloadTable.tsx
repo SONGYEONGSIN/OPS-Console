@@ -293,27 +293,29 @@ export function WorkloadTable({
       </header>
 
       {/*
-       * 카드 넷은 **전원 기준**이다. 검색으로 좁힌 줄로 내면 한 사람을 찾을 때
+       * 카드 셋은 **전원 기준**이다. 검색으로 좁힌 줄로 내면 한 사람을 찾을 때
        * '배정 대상 1명' 이 되어 요약이 요약을 그만둔다.
        *
-       * `안 붙음` 이 0 이어도 카드를 뺀 자리를 비우지 않는다 — 카드가 사라지면 넷이
-       * 셋이 되어 자리가 흔들리고, 0 이라는 사실 자체가 알릴 값이다.
+       * **`안 붙음` 은 카드가 아니다**(사용자 지시 2026-09-23). 숫자 하나뿐인 카드가
+       * 옆의 시트별 카드 높이에 맞춰 늘어나 속이 빈 채로 서 있었다. 값은 카드 묶음
+       * 아래 문구로 갔고, **0 일 때도 적는다** — 0 을 지우면 '안 붙은 것이 없다' 와
+       * '아직 안 세어 봤다' 가 화면에서 같아진다.
        */}
       <div
         role="group"
         aria-label="배정현황 요약"
-        className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-6"
+        className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-5"
       >
         {/*
-         * **여섯 칸이다** — 시트별 내역을 든 카드 둘이 두 칸씩 쓴다. 넉 칸 안에
-         * 칸을 넷으로 쪼개면 한 칸이 50px 로 좁아져 `02. 배정리스트` 가 잘린다.
+         * **다섯 칸이다** — 시트별 내역을 든 카드 둘이 두 칸씩 쓴다. 한 칸 안에
+         * 칸을 넷으로 쪼개면 `02. 배정리스트` 가 잘린다.
          *
-         * 숫자 하나짜리 카드 둘을 앞에 세우는 것은 **모바일에서 구멍이 안 생기게**
-         * 하려는 것이다(두 칸 그리드에서 1+1 이 한 줄을 채운다). 넓은 카드가 먼저
-         * 오면 그 옆이 빈 채로 줄이 바뀐다.
+         * 좁은 화면에서는 셋 다 한 줄씩 쓴다(`col-span-2`) — 한 칸짜리 카드가 혼자
+         * 남으면 그 옆이 빈 채로 줄이 바뀐다.
          */}
-        <KpiCard item={kpi("배정 대상", summary.people, "명")} />
-        <KpiCard item={kpi("안 붙음", unmatched.services, "건", false)} />
+        <div className="col-span-2 md:col-span-1">
+          <KpiCard item={kpi("배정 대상", summary.people, "명")} />
+        </div>
         <div className="col-span-2">
           <SheetBreakdownCard
             label="담당 대학"
@@ -339,7 +341,7 @@ export function WorkloadTable({
        * 걸려 있어 담당 대학은 467곳 ↔ 295곳이다. 카드 안에는 적을 자리가 없어 여기서
        * 말한다 — 안 적으면 다음 사람이 둘 중 하나를 버그로 보고 '고친다'.
        */}
-      <p className="mb-8 text-xs text-muted">
+      <p className="mb-1 text-xs text-muted">
         담당 대학은 시트마다 따로 셉니다 — 한 대학이 여러 시트에 걸쳐 있어 칸을
         더하면 {summary.universities.toLocaleString("ko-KR")}곳보다 큽니다.
       </p>
@@ -347,16 +349,22 @@ export function WorkloadTable({
       {/*
        * **안 붙은 건수를 조용히 빼지 않는다.** 표의 합만 보면 멀쩡해서, 마감 983건
        * 중 231건(23.5%)이 어느 담당자에게도 안 붙어 있던 것을 아무도 못 봤다
-       * (실측 2026-09-21). 카드가 숫자를 들고, 이 줄은 무엇을 하라고 말한다.
+       * (실측 2026-09-21).
+       *
+       * 숫자를 **한 텍스트 노드에** 넣는다 — `<span>` 으로 쪼개면 사람이 읽는 문장은
+       * 같아 보여도 '안 붙은 건수' 로 그 문장을 집을 수 없다.
        */}
-      {unmatched.services > 0 && (
-        <p className="mb-2 text-xs text-vermilion">
-          어느 담당자에게도 안 붙은 건수{" "}
-          <span className="tabular-nums">{unmatched.services}건</span> ·{" "}
-          <span className="tabular-nums">{unmatched.keys}곳</span> — 배정 시트에
-          그 대학의 해당 업무 칸이 없거나, 원천이 다른 이름으로 부르는 것입니다.
-          원서접수·대학원은 신규배정 탭에 서고, 발표(PIMS)는 배정 시트를 봐야
-          합니다.
+      {unmatched.services > 0 ? (
+        <p className="mb-8 text-xs tabular-nums text-vermilion">
+          {`어느 담당자에게도 안 붙은 건수 ${unmatched.services}건 · ${unmatched.keys}곳`}{" "}
+          — 배정 시트에 그 대학의 해당 업무 칸이 없거나, 원천이 다른 이름으로 부르는
+          것입니다. 원서접수·대학원은 신규배정 탭에 서고, 발표(PIMS)는 배정 시트를
+          봐야 합니다.
+        </p>
+      ) : (
+        <p className="mb-8 text-xs tabular-nums text-muted">
+          {`어느 담당자에게도 안 붙은 건수 0건`} — 원천 건수가 모두 담당자에게
+          붙었습니다.
         </p>
       )}
 
