@@ -42,20 +42,27 @@ export function SheetBreakdownCard({
         </span>
         <span className="text-xs text-muted">{unit}</span>
       </div>
-      <div className="mt-2 flex gap-3 border-t border-line-soft pt-3">
+      {/*
+       * **칸은 내용 너비다** — `flex-1` 로 카드 폭을 나눠 쓰면 넉 칸이 멀찍이 벌어져
+       * 한 덩어리로 안 읽힌다(지적 2026-09-23). `mt-auto` 로 바닥에 붙여, 두 카드의
+       * 시트 줄이 같은 높이에 선다.
+       */}
+      <div className="mt-auto flex flex-wrap gap-5 border-t border-line-soft pt-3">
         {rows.map((r, i) => {
           const value = valueOf(r);
           return (
-            <div
-              key={r.kind}
-              data-sheet={r.sheet}
-              className="flex min-w-0 flex-1 gap-3"
-            >
+            <div key={r.kind} data-sheet={r.sheet} className="flex gap-5">
+              {/*
+               * 좁은 화면에서는 칸이 줄바꿈되는데, 그때 구분선이 **줄 맨 앞에 홀로**
+               * 남아 떠도는 세로줄로 보인다. 그 폭에서는 간격만으로 가른다.
+               */}
               {i > 0 ? (
-                <div className="w-px shrink-0 self-stretch bg-line-soft" />
+                <div className="hidden w-px shrink-0 self-stretch bg-line-soft sm:block" />
               ) : null}
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <div className="truncate text-2xs text-muted">{r.sheet}</div>
+              <div className="flex flex-col gap-0.5">
+                <div className="whitespace-nowrap text-2xs text-muted">
+                  {r.sheet}
+                </div>
                 {value === null ? (
                   /*
                    * **0 과 '못 셈' 을 같은 칸에 적지 않는다.** 성적산출 44곳은
