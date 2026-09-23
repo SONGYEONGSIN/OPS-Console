@@ -10,7 +10,7 @@ import type {
 } from "@/features/assignments/workload";
 import type { UnmatchedVolume } from "@/features/assignments/workload-sources";
 import type { SheetSummaryRow } from "@/features/assignments/sheet-summary";
-import { SheetSummary } from "./SheetSummary";
+import { SheetBreakdownCard } from "./SheetBreakdownCard";
 
 /**
  * 배정현황 — **§6.1 의 근거를 사람이 검산하는 자리**(설계 §9.4).
@@ -302,13 +302,47 @@ export function WorkloadTable({
       <div
         role="group"
         aria-label="배정현황 요약"
-        className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4"
+        className="mb-2 grid grid-cols-2 gap-3 md:grid-cols-6"
       >
+        {/*
+         * **여섯 칸이다** — 시트별 내역을 든 카드 둘이 두 칸씩 쓴다. 넉 칸 안에
+         * 칸을 넷으로 쪼개면 한 칸이 50px 로 좁아져 `02. 배정리스트` 가 잘린다.
+         *
+         * 숫자 하나짜리 카드 둘을 앞에 세우는 것은 **모바일에서 구멍이 안 생기게**
+         * 하려는 것이다(두 칸 그리드에서 1+1 이 한 줄을 채운다). 넓은 카드가 먼저
+         * 오면 그 옆이 빈 채로 줄이 바뀐다.
+         */}
         <KpiCard item={kpi("배정 대상", summary.people, "명")} />
-        <KpiCard item={kpi("담당 대학", summary.universities, "곳")} />
-        <KpiCard item={kpi("서비스 물량", summary.services, "건")} />
         <KpiCard item={kpi("안 붙음", unmatched.services, "건", false)} />
+        <div className="col-span-2">
+          <SheetBreakdownCard
+            label="담당 대학"
+            total={summary.universities}
+            unit="곳"
+            rows={sheets}
+            valueOf={(r) => r.universities}
+          />
+        </div>
+        <div className="col-span-2">
+          <SheetBreakdownCard
+            label="서비스 물량"
+            total={summary.services}
+            unit="건"
+            rows={sheets}
+            valueOf={(r) => r.services}
+          />
+        </div>
       </div>
+
+      {/*
+       * **칸의 합은 카드 머리보다 크다.** 한 대학이 원서접수·PIMS·성적산출에 동시에
+       * 걸려 있어 담당 대학은 467곳 ↔ 295곳이다. 카드 안에는 적을 자리가 없어 여기서
+       * 말한다 — 안 적으면 다음 사람이 둘 중 하나를 버그로 보고 '고친다'.
+       */}
+      <p className="mb-8 text-xs text-muted">
+        담당 대학은 시트마다 따로 셉니다 — 한 대학이 여러 시트에 걸쳐 있어 칸을
+        더하면 {summary.universities.toLocaleString("ko-KR")}곳보다 큽니다.
+      </p>
 
       {/*
        * **안 붙은 건수를 조용히 빼지 않는다.** 표의 합만 보면 멀쩡해서, 마감 983건
@@ -325,13 +359,6 @@ export function WorkloadTable({
           합니다.
         </p>
       )}
-
-      {/*
-       * **카드 다음이 이 표다.** 카드가 총량을 주고, 이 표가 그 총량이 어느 시트에서
-       * 온 것인지 나눈다 — 배정리스트 293곳과 성적산출 44곳이 한 덩어리로 보이면
-       * 어느 시트를 손봐야 하는지 화면에서 읽을 수 없다(사용자 요구 2026-09-22).
-       */}
-      <SheetSummary rows={sheets} summary={summary} />
 
       {groups.length === 0 ? (
         <div className="border border-dashed border-line-soft bg-situation-bg p-8 text-center">

@@ -364,15 +364,33 @@ describe("WorkloadTable — 학년도", () => {
     expect(screen.getByText(/2026학년도/)).toBeInTheDocument();
   });
 
-  it("카드 아래에 시트별 현황이 선다 — 295곳이 어느 시트의 것인지 말한다", () => {
+  it("담당 대학·서비스 물량 카드가 시트별로 갈라 적는다", () => {
     /*
      * 카드 하나로는 배정리스트 293곳과 성적산출 44곳이 한 덩어리로 보여, 어느
      * 시트를 손봐야 하는지 화면에서 읽을 수 없었다(사용자 요구 2026-09-22).
+     *
+     * 처음엔 카드 **아래** 따로 표를 뒀는데, 사용자가 운영리포트 `계약 체결` 카드를
+     * 가리키며 카드 **안에서** 나누라고 했다(2026-09-23) — 같은 숫자를 두 군데서
+     * 말하지도 않는다.
      */
     render(<WorkloadTable {...props()} />);
 
-    const row = screen.getByRole("row", { name: /02\. 배정리스트/ });
-    expect(within(row).getByText("293")).toBeInTheDocument();
+    const univ = screen.getByRole("group", { name: "담당 대학" });
+    expect(within(univ).getByText("293")).toBeInTheDocument();
+    expect(within(univ).getByText("02. 배정리스트")).toBeInTheDocument();
+
+    const svc = screen.getByRole("group", { name: "서비스 물량" });
+    expect(within(svc).getByText("568")).toBeInTheDocument();
+  });
+
+  it("칸의 합이 카드 머리보다 큰 이유를 적는다", () => {
+    /*
+     * 293+49+81+44 = 467 인데 머리는 286 이다. 한 대학이 여러 시트에 걸려 있어서고,
+     * 안 적으면 다음 사람이 둘 중 하나를 버그로 보고 '고친다'.
+     */
+    render(<WorkloadTable {...props()} />);
+
+    expect(screen.getByText(/여러 시트/)).toBeInTheDocument();
   });
 
   it("현재 학년도는 서비스마감이 원천이라고 적는다", () => {
