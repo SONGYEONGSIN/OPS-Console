@@ -302,21 +302,21 @@ export function WorkloadTable({
        * '아직 안 세어 봤다' 가 화면에서 같아진다.
        */}
       {/*
-       * **그리드가 아니라 줄이다.** 칸을 균등 분할하면 카드가 제 내용보다 훨씬 넓어져
-       * `06. 성적산출` 오른쪽이 통째로 빈다(지적 2026-09-23). 줄로 세우면 카드가
-       * 내용만큼만 차지한다.
+       * **`auto` 하나에 `1fr` 둘이다.** 셋을 균등 분할하면 시트 칸이 없는 배정 대상
+       * 카드가 제 내용보다 훨씬 넓어져 오른쪽이 빈다. 반대로 셋 다 내용 너비로 두면
+       * 이번엔 줄 오른쪽이 통째로 빈다(지적 2026-09-23, 두 번). 숫자 하나짜리 카드만
+       * 내용 너비로 두고, 시트 칸을 든 둘이 남는 폭을 나눠 갖는다.
        *
        * **카드를 감싸지 않는다.** `col-span` 을 주려고 감싸는 순간 카드가 묶음의 직계
        * 자식이 아니게 되어 **늘어남이 거기서 끊겨**, 배정 대상 한 장만 짧게 섰다.
-       * 너비를 내용에 맞추면서 감쌀 이유 자체가 없어졌다 — 높이는 `items-stretch` 가
-       * 맞춘다.
+       * 카드가 직계 자식이면 높이는 그리드가 알아서 맞춘다.
        *
        * 좁은 화면에서는 세로로 쌓는다 — 셋을 가로로 욱여넣으면 시트 칸이 뭉개진다.
        */}
       <div
         role="group"
         aria-label="배정현황 요약"
-        className="mb-2 flex flex-col items-stretch gap-3 md:flex-row md:flex-wrap"
+        className="mb-2 grid grid-cols-1 items-stretch gap-3 md:grid-cols-[auto_1fr_1fr]"
       >
         <KpiCard item={kpi("배정 대상", summary.people, "명")} />
         <SheetBreakdownCard
