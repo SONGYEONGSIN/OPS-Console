@@ -312,11 +312,16 @@ export function WorkloadTable({
          *
          * 좁은 화면에서는 셋 다 한 줄씩 쓴다(`col-span-2`) — 한 칸짜리 카드가 혼자
          * 남으면 그 옆이 빈 채로 줄이 바뀐다.
+         *
+         * **래퍼도 그리드여야 한다**(`grid grid-rows-1`). `col-span` 을 주려고 감싸는
+         * 순간 카드가 그리드의 직계 자식이 아니게 되어 **늘어남이 거기서 끊긴다** —
+         * 래퍼만 줄 높이만큼 늘고 카드는 제 내용 높이에 머물러, 배정 대상 한 장만
+         * 짧게 섰다(지적 2026-09-23).
          */}
-        <div className="col-span-2 md:col-span-1">
+        <div className="col-span-2 grid grid-rows-1 md:col-span-1">
           <KpiCard item={kpi("배정 대상", summary.people, "명")} />
         </div>
-        <div className="col-span-2">
+        <div className="col-span-2 grid grid-rows-1">
           <SheetBreakdownCard
             label="담당 대학"
             total={summary.universities}
@@ -325,7 +330,7 @@ export function WorkloadTable({
             valueOf={(r) => r.universities}
           />
         </div>
-        <div className="col-span-2">
+        <div className="col-span-2 grid grid-rows-1">
           <SheetBreakdownCard
             label="서비스 물량"
             total={summary.services}
