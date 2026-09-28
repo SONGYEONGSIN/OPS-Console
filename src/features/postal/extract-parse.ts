@@ -37,7 +37,10 @@ const regionsSchema = z
     receipt: boxSchema,
     /** 접수일자 **값** — 형광펜 */
     accepted_at: boxSchema,
-    /** 총요금 **값** — 형광펜 */
+    /**
+     * 총요금 **값** — 형광펜. 영수증에 찍힌 숫자라, 승인금액이 따로 있어 저장된
+     * `total_fee` 가 승인금액으로 바뀐 판독(parseExtraction)에서는 둘이 다를 수 있다.
+     */
     total_fee: boxSchema,
   })
   .nullable()

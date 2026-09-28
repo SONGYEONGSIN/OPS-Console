@@ -143,6 +143,21 @@ describe("parseExtraction — 위치(regions)", () => {
     expect(r.ok && r.data.regions?.accepted_at).toBeNull();
   });
 
+  it("위아래가 뒤집힌 상자도 버린다", () => {
+    const r = parse({ ...REGIONS, accepted_at: [0.37, 0.14, 0.56, 0.12] });
+    expect(r.ok && r.data.regions?.accepted_at).toBeNull();
+  });
+
+  it("폭이 0인 상자는 버린다 — 칠할 곳이 없다", () => {
+    const r = parse({ ...REGIONS, accepted_at: [0.37, 0.12, 0.37, 0.14] });
+    expect(r.ok && r.data.regions?.accepted_at).toBeNull();
+  });
+
+  it("음수 좌표는 버린다", () => {
+    const r = parse({ ...REGIONS, receipt: [-0.02, 0, 0.78, 1] });
+    expect(r.ok && r.data.regions?.receipt).toBeNull();
+  });
+
   it("숫자가 아닌 좌표는 버린다", () => {
     const r = parse({ ...REGIONS, accepted_at: ["0.37", "0.12", "0.56", "0.14"] });
     expect(r.ok && r.data.regions?.accepted_at).toBeNull();
