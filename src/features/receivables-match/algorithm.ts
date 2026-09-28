@@ -8,25 +8,10 @@ import type {
 import {
   collectUnpaidMisuByCustomer,
   collectUnpaidDepositsByCustomer,
+  isDateMatch,
 } from "./collect";
 import { isNameMatchStrong, similarity } from "./similarity";
 import { normalizeName, baseName, resolvesViaAlias } from "./normalize";
-
-/** isDateMatch: depDate >= billDate + 1일 */
-function addOneDay(iso: string): string {
-  if (!iso) return iso;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  d.setDate(d.getDate() + 1);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function isDateMatch(billDate: string, depDate: string): boolean {
-  if (!billDate || !depDate) return false;
-  return depDate >= addOneDay(billDate);
-}
 
 function sumAmounts<T extends { amount: number }>(list: T[]): number {
   return list.reduce((s, o) => s + o.amount, 0);

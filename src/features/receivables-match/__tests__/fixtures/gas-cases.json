@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "Google Apps Script `autoMatchDeposits` + 7 매칭 함수 (사용자 제공 코드)",
-    "purpose": "GAS 알고리즘 1:1 포팅 회귀 보호 — fixture 변경 시 GAS 원본 함수와 동기 필요",
+    "purpose": "GAS 알고리즘 1:1 포팅 회귀 보호 — fixture 변경 시 GAS 원본 함수와 동기 필요. 예외: 입금일 규칙은 2026-09-28 부터 청구일 당일 포함(GAS isDateMatch_ 는 +1일)",
     "categories": ["normalize", "isNameMatchStrong", "similarity", "collect", "algorithm"]
   },
   "normalize": [
@@ -95,16 +95,17 @@
       "expectedRows": [3]
     },
     {
-      "name": "입금 — billDate +1일 이후만 (isDateMatch_)",
+      "name": "입금 — 청구일 당일부터 (같은 날 입금 포함, 전날은 제외 — GAS isDateMatch_ 의 +1일에서 2026-09-28 변경)",
       "scenario": "collectUnpaidDepositsByCustomer",
       "deposits": [
         { "row": 2, "date": "2026-04-10", "amount": 100000, "content": "가천대", "matchedFlag": "" },
-        { "row": 3, "date": "2026-04-11", "amount": 50000, "content": "가천대", "matchedFlag": "" }
+        { "row": 3, "date": "2026-04-11", "amount": 50000, "content": "가천대", "matchedFlag": "" },
+        { "row": 4, "date": "2026-04-09", "amount": 70000, "content": "가천대", "matchedFlag": "" }
       ],
       "custName": "가천대",
       "billDate": "2026-04-10",
       "matchedDepRows": [],
-      "expectedRows": [3]
+      "expectedRows": [2, 3]
     },
     {
       "name": "입금 — 거래처명 강매칭 실패는 제외 (가천대 vs 동국대)",
@@ -120,7 +121,7 @@
   ],
   "algorithm": [
     {
-      "name": "단건 1:1 매칭 — 금액 동일 + 이름 강매칭 + 입금일 ≥ 청구일+1",
+      "name": "단건 1:1 매칭 — 금액 동일 + 이름 강매칭 + 입금일 ≥ 청구일(당일 포함)",
       "misu": [
         { "rowNumber": 5, "date": "2026-04-10", "customer": "가천대학교", "amount": 100000, "note": "" }
       ],
