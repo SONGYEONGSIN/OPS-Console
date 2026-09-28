@@ -24,19 +24,19 @@ function toIsoDate(raw: string): string {
   return formatIso(d);
 }
 
-/** ISO yyyy-MM-dd 문자열 + 1일. 입력이 빈 문자열이면 그대로 반환. */
-function addOneDay(iso: string): string {
-  if (!iso) return iso;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  d.setDate(d.getDate() + 1);
-  return formatIso(d);
-}
-
-/** depDate >= billDate + 1일 (GAS isDateMatch_) — yyyy-MM-dd lexicographic 비교. */
-function isDateMatch(billDate: string, depDate: string): boolean {
+/**
+ * 입금일 ≥ 청구일 — **당일 포함**. 청구일을 yyyy-MM-dd 로 맞춘 뒤 사전식 비교.
+ *
+ * GAS `isDateMatch_` 는 '청구일 + 1일' 이었다. 계산서 발행 당일 들어온 입금이 금액·이름이
+ * 다 맞는데도 빠졌고, 불일치 확인 요청에도 같은 조건이 걸려 매칭·불일치 어디에도 안 뜨는
+ * 조용한 누락이 됐다(2026-09-28 부산과학고등학교). 청구일보다 **먼저** 들어온 입금은
+ * 예전 청구의 대금이라 계속 제외한다.
+ *
+ * 단건(`algorithm.ts`)·합산 모두 이 함수 하나를 쓴다 — 두 벌이면 한쪽만 바뀐다.
+ */
+export function isDateMatch(billDate: string, depDate: string): boolean {
   if (!billDate || !depDate) return false;
-  return depDate >= addOneDay(billDate);
+  return depDate >= toIsoDate(billDate);
 }
 
 /**
@@ -68,7 +68,7 @@ export function collectUnpaidMisuByCustomer(
  * - matchedDepRows에 이미 있는 행 제외
  * - 미결제표시 != "처리완료"
  * - 거래내용 강매칭 통과
- * - billDate 지정 시 depDate >= billDate + 1일
+ * - billDate 지정 시 depDate >= billDate (당일 포함)
  */
 export function collectUnpaidDepositsByCustomer(
   deposits: DepositRow[],
