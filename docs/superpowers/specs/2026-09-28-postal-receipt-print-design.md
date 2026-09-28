@@ -2,7 +2,7 @@
 share: true
 status: 초안
 updated: 2026-09-28
-revision: 1
+revision: 2
 ---
 
 # 우편물 > 영수증 출력 — 전표에 붙일 A4 를 손 대신 만든다
@@ -70,7 +70,7 @@ revision: 1
 - 제목(`영수증`) 옆에 `HeaderActionButton` **[영수증 출력 (N)]**. 0장이면 비활성.
 - 30장 이하면 버튼 하나 → 새 탭. **30장 초과면** 그 자리에 [1~30장 PDF] [31~45장 PDF] … 처럼 접수일시 순으로 나눈 묶음 버튼을 놓는다.
 - 고른 것 중 형광펜 위치를 다 찾지 못한 장수를 버튼 옆에 적는다 — "3장 중 1장은 형광펜이 빠진 곳이 있습니다". 하나만 잡힌 영수증도 여기에 센다(잡힌 한 곳은 칠한다). **PDF 에는 안내 문구를 찍지 않는다** — 전표에 붙는 종이다.
-- `fetchExtractStates`(`features/postal/queries.ts`)가 영수증별 `hasRegions` 를 함께 돌려준다. 형광펜 두 상자(`accepted_at`·`total_fee`)가 다 있을 때만 참이다.
+- `getExtractStates`(`features/postal/queries.ts`)가 영수증별 `hasRegions` 를 함께 돌려준다. 형광펜 두 상자(`accepted_at`·`total_fee`)가 다 있을 때만 참이다.
 
 ### 5.3 PDF — `GET /api/postal/receipts/pdf?ids=…`
 
@@ -113,15 +113,26 @@ revision: 1
 - 수정 `src/features/postal/__tests__/extract-parse.test.ts`, `src/features/postal/__tests__/extract-prompt.test.ts`
 - 일회성 스크립트(커밋 안 함) — 기존 14장 재판독 요청
 
-**PR-2 — 출력 (약 10파일)**
+**PR-2 — PDF 라우트 (18파일, 서버만)**
+- 이동 `sharp` devDependencies → dependencies(`package.json`·`package-lock.json`) — 운영 런타임이 처음 쓴다
+- 신규 `src/features/postal/receipt-print/layout.ts` — 정렬·묶음 나누기·페이지당 3개·높이 맞춤·파일명(순수, 화면과 공용)
+- 신규 `src/features/postal/receipt-print/print-ids.ts` — 출력 주소 만들기·읽기(화면↔라우트 규약)
 - 신규 `src/features/postal/receipt-print/geometry.ts` — 잘라내기·형광펜 좌표 변환(순수)
-- 신규 `src/features/postal/receipt-print/layout.ts` — 정렬·묶음 나누기·페이지당 3개·높이 맞춤(순수)
 - 신규 `src/features/postal/receipt-print/render-image.ts` — sharp 처리(server-only)
+- 신규 `src/features/postal/receipt-print/sources.ts` — 영수증·최신 판독 읽기, 사진 받기(server-only)
+- 수정 `src/features/postal/extract-parse.ts` — 저장된 결과에서 위치 꺼내기(`readRegions`)
 - 신규 `src/lib/pdf/receipt-print-pdf.tsx` — react-pdf 문서
 - 신규 `src/app/api/postal/receipts/pdf/route.ts` — 가드·검증·조립
-- 수정 `src/features/postal/queries.ts` — `hasRegions`
-- 수정 `src/app/dashboard/postal/_components/PostalTable.tsx` — 체크박스·버튼·묶음
-- 테스트: geometry·layout·route·PostalTable
+- 테스트 각 1파일
+
+**PR-3 — 화면 (9파일)**
+- 수정 `src/features/postal/extract-parse.ts` — `hasHighlightRegions`
+- 수정 `src/features/postal/queries.ts` — `ExtractState.hasRegions`
+- 신규 `src/app/dashboard/postal/_components/ReceiptPrintBar.tsx` — 출력 버튼·묶음·안내
+- 수정 `src/app/dashboard/postal/_components/PostalTable.tsx` — 체크박스
+- 테스트: extract-parse·queries·ReceiptPrintBar·PostalTable, `ReceiptReview.test.tsx`(타입에 칸이 는 만큼 픽스처)
+
+출력을 서버와 화면 둘로 가른다(구현 계획에서 정함). 합치면 24파일이라 HARD-GATE 전체 설계 등급이 되고, **sharp 가 Vercel 에서 도는지를 화면보다 먼저 본다** — 운영 런타임에서 sharp 를 쓰는 첫 사례다.
 
 ---
 
@@ -129,7 +140,8 @@ revision: 1
 
 1. **PR-1 판독에 위치** → 머지·배포 → 14장 재판독 → 폴러 실제 모델의 좌표를 스파이크와 같은 방식으로 그려 확인한다. 함께 **재판독한 등기번호·요금이 확정된 등기 항목과 같은지** 대조한다 — 위치를 얹어서 판독이 나빠지지 않았는지 본다.
    - **좌표가 부정확하면 PR-2 전에 멈추고** 방식을 다시 정한다(OCR 엔진 또는 손 표시).
-2. **PR-2 출력** → 실데이터로 PDF 를 만들어 확인 → 머지 전에 그 PDF 를 사용자에게 보인다.
+2. **PR-2 PDF 라우트** → 실데이터로 PDF 를 만들어 머지 전에 사용자에게 보인다 → 머지·배포 → 운영에서 PDF 가 열리는지(= sharp 가 Vercel 에서 도는지) 확인한다. 안 열리면 되돌린다.
+3. **PR-3 화면** → 머지·배포 → 운영 목록에서 체크해 출력해 본다.
 
 ---
 
