@@ -17,6 +17,35 @@ const itemSchema = z.object({
   recipient_name: z.string().trim().nullable().catch(null),
 });
 
+/**
+ * 사진 속 위치 `[x0, y0, x1, y1]` — 사진 왼쪽 위가 0, 오른쪽 아래가 1 인 비율.
+ * 영수증 출력이 종이를 잘라내고 접수일자·총요금 값에 형광펜을 입히는 데 쓴다.
+ *
+ * **이상한 상자는 그 상자만 버린다**(범위 밖·뒤집힘·숫자 아님 → null). 형광펜보다
+ * 금액·등기번호가 중요해서 판독 전체를 실패시키지 않는다.
+ */
+const unit = z.number().min(0).max(1);
+const boxSchema = z
+  .tuple([unit, unit, unit, unit])
+  .refine(([x0, y0, x1, y1]) => x0 < x1 && y0 < y1)
+  .nullable()
+  .catch(null);
+
+const regionsSchema = z
+  .object({
+    /** 영수증 종이 전체 — 잘라내기 */
+    receipt: boxSchema,
+    /** 접수일자 **값** — 형광펜 */
+    accepted_at: boxSchema,
+    /** 총요금 **값** — 형광펜 */
+    total_fee: boxSchema,
+  })
+  .nullable()
+  .catch(null);
+
+export type Regions = NonNullable<z.infer<typeof regionsSchema>>;
+export type Box = NonNullable<Regions["receipt"]>;
+
 const extractionSchema = z.object({
   is_receipt: z.boolean(),
   receipt_no: z.string().trim().nullable().catch(null),
@@ -29,6 +58,8 @@ const extractionSchema = z.object({
   approved_amount: z.number().int().nonnegative().nullable().catch(null),
   item_count: z.number().int().nonnegative().nullable().catch(null),
   items: z.array(itemSchema).default([]),
+  /** 위치를 묻기 전 판독에는 없다 — null 로 싣는다. */
+  regions: regionsSchema,
 });
 
 export type Extraction = z.infer<typeof extractionSchema>;

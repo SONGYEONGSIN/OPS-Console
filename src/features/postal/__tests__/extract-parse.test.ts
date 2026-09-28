@@ -97,6 +97,74 @@ describe("parseExtraction", () => {
   });
 });
 
+/**
+ * 사진 속 위치 — 영수증 출력이 종이를 잘라내고 접수일자·총요금에 형광펜을 입힌다.
+ *
+ * 좌표는 사진 왼쪽 위가 0, 오른쪽 아래가 1 인 비율 `[x0, y0, x1, y1]`.
+ * **이상한 상자는 그 상자만 버린다** — 형광펜보다 금액·등기번호가 중요하다.
+ */
+describe("parseExtraction — 위치(regions)", () => {
+  const REGIONS = {
+    receipt: [0.18, 0, 0.78, 1],
+    accepted_at: [0.37, 0.12, 0.56, 0.14],
+    total_fee: [0.53, 0.59, 0.72, 0.61],
+  };
+  const parse = (regions: unknown) =>
+    parseExtraction(JSON.stringify({ ...GOOD, regions }));
+
+  it("세 상자를 그대로 싣는다", () => {
+    const r = parse(REGIONS);
+    expect(r.ok && r.data.regions).toEqual(REGIONS);
+  });
+
+  it("위치가 없으면 null — 위치를 묻기 전 판독과 같은 모양이다", () => {
+    const r = parseExtraction(JSON.stringify(GOOD));
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.data.regions).toBeNull();
+  });
+
+  it("범위를 벗어난 상자는 그 상자만 버린다 — 판독은 산다", () => {
+    const r = parse({ ...REGIONS, receipt: [0.18, 0, 1.2, 1] });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.data.regions?.receipt).toBeNull();
+      expect(r.data.regions?.accepted_at).toEqual(REGIONS.accepted_at);
+      expect(r.data.items).toHaveLength(3);
+    }
+  });
+
+  it("픽셀로 온 좌표도 범위 밖이라 버린다", () => {
+    const r = parse({ ...REGIONS, total_fee: [1602, 2380, 2177, 2460] });
+    expect(r.ok && r.data.regions?.total_fee).toBeNull();
+  });
+
+  it("뒤집힌 상자는 버린다", () => {
+    const r = parse({ ...REGIONS, accepted_at: [0.56, 0.12, 0.37, 0.14] });
+    expect(r.ok && r.data.regions?.accepted_at).toBeNull();
+  });
+
+  it("숫자가 아닌 좌표는 버린다", () => {
+    const r = parse({ ...REGIONS, accepted_at: ["0.37", "0.12", "0.56", "0.14"] });
+    expect(r.ok && r.data.regions?.accepted_at).toBeNull();
+  });
+
+  it("상자 하나만 오면 나머지는 null", () => {
+    const r = parse({ receipt: REGIONS.receipt });
+    expect(r.ok && r.data.regions).toEqual({
+      receipt: REGIONS.receipt,
+      accepted_at: null,
+      total_fee: null,
+    });
+  });
+
+  it("위치가 통째로 이상해도 판독은 산다 — 금액이 그대로다", () => {
+    const r = parse("잘 모르겠음");
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.data.regions).toBeNull();
+    expect(r.ok && r.data.total_fee).toBe(GOOD.total_fee);
+  });
+});
+
 describe("assignDaySeq", () => {
   it("등기번호 순으로 1부터 매기되, 돌려주는 순서는 입력 그대로다", () => {
     // 입력이 7082·7080·7081 이면 번호는 7080=1, 7081=2, 7082=3.
