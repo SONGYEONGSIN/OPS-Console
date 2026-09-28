@@ -30,4 +30,20 @@ describe("buildExtractPrompt", () => {
   it("JSON만 답하라고 한다", () => {
     expect(p).toMatch(/JSON/);
   });
+
+  it("영수증 종이·접수일자·총요금의 위치를 묻는다 — 출력이 자르고 형광펜을 입힌다", () => {
+    expect(p).toContain('"regions"');
+    expect(p).toContain('"receipt"');
+    expect(p).toMatch(/"accepted_at": \[/);
+    expect(p).toMatch(/"total_fee": \[/);
+  });
+
+  it("좌표는 0~1 비율이라고 못박는다 — 픽셀로 오면 스키마가 버린다", () => {
+    expect(p).toMatch(/비율/);
+    expect(p).toMatch(/픽셀/);
+  });
+
+  it("항목명이 아니라 값 자리를 짚게 한다 — 손 형광펜도 값에만 칠해져 있다", () => {
+    expect(p).toMatch(/항목명/);
+  });
 });
