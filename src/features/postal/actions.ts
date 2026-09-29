@@ -58,8 +58,9 @@ export async function uploadReceipt(file: File): Promise<UploadResult> {
   let photo: Buffer;
   try {
     photo = await uprightPhoto(Buffer.from(await file.arrayBuffer()));
-  } catch {
+  } catch (err) {
     // 머리는 JPEG 인데 픽셀을 못 푼다 — 판독·화면·출력 어디서도 못 쓰는 사진이다.
+    console.error("[postal] 사진 세우기 실패:", err);
     return {
       ok: false,
       error: "사진을 읽지 못했습니다 — 다시 찍어 올려 주세요",

@@ -152,10 +152,13 @@ describe("uploadReceipt — 사진 세우기", () => {
 
   it("세우다 실패하면 저장하지 않는다 — 깨진 사진은 판독·화면·출력 어디서도 못 쓴다", async () => {
     uprightSpy.mockRejectedValueOnce(new Error("corrupt"));
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = await uploadReceipt(file());
     expect(r).toEqual({ ok: false, error: "사진을 읽지 못했습니다 — 다시 찍어 올려 주세요" });
     expect(state.uploaded).toHaveLength(0);
     expect(state.inserted).toHaveLength(0);
+    expect(logged).toHaveBeenCalledWith("[postal] 사진 세우기 실패:", expect.any(Error));
+    logged.mockRestore();
   });
 });
 
