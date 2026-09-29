@@ -87,6 +87,7 @@ function Slot({ slot }: { slot: PrintSlot }) {
   const { widthMm, heightMm } = fitToSlot(slot.widthPx, slot.heightPx);
   // 파일 경로가 아니라 Buffer 로 넘긴다 — 경로 문자열로는 임베드되지 않는다(incident-report-pdf 와 같다).
   return (
+    // eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf Image는 alt 미지원
     <Image
       src={{ data: slot.jpeg, format: "jpg" }}
       style={{ width: pt(widthMm), height: pt(heightMm) }}
