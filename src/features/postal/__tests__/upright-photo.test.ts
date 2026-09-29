@@ -70,4 +70,17 @@ describe("uprightPhoto", () => {
     const unreadable = Buffer.from("not an image");
     expect(await uprightPhoto(unreadable)).toBe(unreadable);
   });
+
+  it("머리는 JPEG 인데 픽셀이 잘렸으면 던진다 — 바로 선 사진도", async () => {
+    // 잡음 400×400 은 앞부분(머리)이 온전한 채 뒤가 잘린다 — 작은 단색 JPEG 는 머리까지 잘린다.
+    const W = 400;
+    const raw = Buffer.alloc(W * W * 3);
+    for (let i = 0; i < raw.length; i++) raw[i] = (i * 7919) % 251;
+    const jpeg = await sharp(raw, { raw: { width: W, height: W, channels: 3 } })
+      .jpeg({ quality: 90 })
+      .toBuffer();
+    const cut = jpeg.subarray(0, Math.floor(jpeg.length * 0.6));
+    expect((await sharp(cut).metadata()).format).toBe("jpeg");
+    await expect(uprightPhoto(cut)).rejects.toThrow();
+  });
 });
