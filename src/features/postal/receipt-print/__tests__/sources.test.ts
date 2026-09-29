@@ -9,6 +9,7 @@ const state = {
   receiptsError: null as { message: string } | null,
   requestsError: null as { message: string } | null,
   files: {} as Record<string, Buffer>,
+  orderArgs: [] as unknown[],
 };
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -22,7 +23,10 @@ vi.mock("@/lib/supabase/admin", () => ({
       Object.assign(chain, {
         select: () => chain,
         in: () => chain,
-        order: () => chain,
+        order: (...args: unknown[]) => {
+          state.orderArgs = args;
+          return chain;
+        },
         then: (resolve: (v: unknown) => unknown) => resolve(result),
       });
       return chain;
@@ -30,14 +34,16 @@ vi.mock("@/lib/supabase/admin", () => ({
     storage: {
       from: () => ({
         download: (path: string) =>
-          Promise.resolve(
-            path in state.files
-              ? {
-                  data: new Blob([new Uint8Array(state.files[path])]),
-                  error: null,
-                }
-              : { data: null, error: { message: "Object not found" } },
-          ),
+          path === "끊김.jpg"
+            ? Promise.reject(new Error("socket hang up"))
+            : Promise.resolve(
+                path in state.files
+                  ? {
+                      data: new Blob([new Uint8Array(state.files[path])]),
+                      error: null,
+                    }
+                  : { data: null, error: { message: "Object not found" } },
+              ),
       }),
     },
   }),
@@ -87,6 +93,7 @@ describe("loadPrintSources", () => {
         regions: REGIONS,
       },
     ]);
+    expect(state.orderArgs).toEqual(["requested_at", { ascending: false }]);
   });
 
   it("판독이 없으면 접수일시·위치가 없다", async () => {
@@ -131,5 +138,9 @@ describe("downloadReceipt", () => {
   it("못 받으면 null — 그 칸에 사유를 적는다", async () => {
     state.files = {};
     expect(await downloadReceipt("없는.jpg")).toBeNull();
+  });
+
+  it("받다가 끊겨도 null — 한 장 때문에 PDF 전체가 실패하지 않는다", async () => {
+    expect(await downloadReceipt("끊김.jpg")).toBeNull();
   });
 });

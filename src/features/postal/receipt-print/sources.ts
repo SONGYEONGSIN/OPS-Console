@@ -72,13 +72,18 @@ function acceptedAtOf(result: unknown): string | null {
   return typeof result.accepted_at === "string" ? result.accepted_at : null;
 }
 
-/** 저장소에서 사진을 받는다. 실패하면 null — 그 칸에 사유를 적는다. */
+/** 저장소에서 사진을 받는다. 실패하면 null — 그 칸에 사유를 적는다. 받다가 끊겨도 던지지 않는다. */
 export async function downloadReceipt(
   storagePath: string,
 ): Promise<Buffer | null> {
-  const { data, error } = await createAdminClient()
-    .storage.from(RECEIPT_BUCKET)
-    .download(storagePath);
-  if (error || !data) return null;
-  return Buffer.from(await data.arrayBuffer());
+  try {
+    const { data, error } = await createAdminClient()
+      .storage.from(RECEIPT_BUCKET)
+      .download(storagePath);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  } catch {
+    // storage-js 는 요청 실패를 {error} 로 돌려주지만 본문 수신 중 끊김은 던진다.
+    return null;
+  }
 }
