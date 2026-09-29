@@ -7,6 +7,7 @@ const state = {
   receipts: [] as Record<string, unknown>[],
   requests: [] as Record<string, unknown>[],
   receiptsError: null as { message: string } | null,
+  requestsError: null as { message: string } | null,
   files: {} as Record<string, Buffer>,
 };
 
@@ -16,7 +17,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       const result =
         table === "postal_receipts"
           ? { data: state.receipts, error: state.receiptsError }
-          : { data: state.requests, error: null };
+          : { data: state.requests, error: state.requestsError };
       const chain: Record<string, unknown> = {};
       Object.assign(chain, {
         select: () => chain,
@@ -61,6 +62,7 @@ describe("loadPrintSources", () => {
     ];
     state.requests = [];
     state.receiptsError = null;
+    state.requestsError = null;
   });
 
   it("최신 판독의 접수일시와 위치를 싣는다 — 목록과 같은 규칙", async () => {
@@ -109,6 +111,13 @@ describe("loadPrintSources", () => {
     state.receiptsError = { message: "boom" };
     await expect(loadPrintSources(["r1"])).rejects.toThrow(
       /영수증을 읽지 못했습니다/,
+    );
+  });
+
+  it("판독 결과 조회가 실패하면 던진다 — 형광펜 없는 PDF 로 조용히 둔갑한다", async () => {
+    state.requestsError = { message: "boom" };
+    await expect(loadPrintSources(["r1"])).rejects.toThrow(
+      /판독 결과를 읽지 못했습니다/,
     );
   });
 });
