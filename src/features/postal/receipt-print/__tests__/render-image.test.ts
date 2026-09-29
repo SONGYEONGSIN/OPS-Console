@@ -48,6 +48,21 @@ describe("renderReceiptImage", () => {
     expect((await pixel(out.jpeg, 20, 20)).b).toBeGreaterThan(240);
   });
 
+  it("잘라낸 종이 기준으로 형광펜을 옮긴다 — 자르기와 형광펜을 함께", async () => {
+    // 종이 [0.2,0.1,0.8,0.9] → 잘라낸 영역 180,160 640×1680 → 465 폭(배율 465/640)
+    // 접수일자 300~500 × 400~440px, 여유 10 → 잘라낸 기준 110~330 × 230~290 → 가운데 (160, 189)
+    const out = await renderReceiptImage(await blank(1000, 2000), {
+      ...none,
+      receipt: [0.2, 0.1, 0.8, 0.9],
+      accepted_at: [0.3, 0.2, 0.5, 0.22],
+    });
+    const inside = await pixel(out.jpeg, 160, 189);
+    expect(inside.r).toBeGreaterThan(230);
+    expect(inside.b).toBeLessThan(160);
+    // 자르기를 무시하고 사진 전체 기준으로 칠했다면 (291, 305) 가 노랗다.
+    expect((await pixel(out.jpeg, 291, 305)).b).toBeGreaterThan(240);
+  });
+
   it("위치가 없으면 칠하지 않는다", async () => {
     const out = await renderReceiptImage(await blank(1000, 2000), null);
     expect((await pixel(out.jpeg, 209, 102)).b).toBeGreaterThan(240);
