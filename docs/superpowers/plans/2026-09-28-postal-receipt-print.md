@@ -4,32 +4,33 @@
 
 **Goal:** 우편물 > 영수증 목록에서 영수증을 체크하면 A4 한 장에 3개씩(접수일시 순, 접수일자·총요금 값에 형광펜) 놓인 PDF 가 새 탭으로 열린다 — 내부 전표 증빙을 손으로 붙이던 일을 없앤다.
 
-**Architecture:** 이미 도는 판독(회사 PC 폴러 + 서버가 만드는 프롬프트)이 값과 함께 사진 속 위치(`regions`)도 돌려주게 한다(PR-1). 서버 라우트가 그 위치로 사진을 잘라 형광펜을 입히고 react-pdf 로 조립한다(PR-2). 목록에는 체크박스와 출력 버튼만 더한다(PR-3). 순서·묶음 규칙은 화면과 라우트가 한 모듈(`receipt-print/layout.ts`)을 같이 쓴다. DB 스키마와 폴러는 바뀌지 않는다.
+**Architecture:** 이미 도는 판독(회사 PC 폴러 + 서버가 만드는 프롬프트)이 값과 함께 사진 속 위치(`regions`)도 돌려주게 한다(PR-1). 서버 라우트가 그 위치로 사진을 잘라 형광펜을 입히고 react-pdf 로 조립한다(PR-2). 목록에는 체크박스와 출력 버튼만 더한다(PR-3). 순서·묶음 규칙은 화면과 라우트가 한 모듈(`receipt-print/layout.ts`)을 같이 쓴다. DB 스키마와 폴러는 바뀌지 않는다. 판독 모델이 사진의 회전 정보를 무시하므로(스펙 §4.1) 업로드가 폰 사진을 픽셀째 세워 저장한다(PR-2, Task 17).
 
 **Tech Stack:** Next.js 16 App Router(route handler), TypeScript, zod 4, sharp 0.35(libvips 8.18), @react-pdf/renderer 4, Supabase(admin client, 비공개 버킷 `postal-receipts`), Vitest + Testing Library
 
-**Spec:** `docs/superpowers/specs/2026-09-28-postal-receipt-print-design.md` (revision 2)
+**Spec:** `docs/superpowers/specs/2026-09-28-postal-receipt-print-design.md` (revision 3)
 
 ## PR 과 멈출 지점
 
 | 순서 | 브랜치 | 내용 | 파일 |
 |---|---|---|---|
 | PR-1 | `feat/postal-receipt-print` (스펙 커밋 위, 이미 있음) | 판독에 위치 받기 + 설계·계획 문서 | 6 |
-| 🛑 | — (PR-1 머지·배포 후) | 14장 재판독 → 좌표·판독 품질 확인 → **사용자와 진행 결정** | 커밋 없음 |
-| PR-2 | `feat/postal-receipt-pdf` | PDF 라우트(서버만). 실데이터 PDF 를 머지 전에 보인다 | 18 |
+| 🛑 | — (PR-1 머지·배포 후) | 14장 재판독 → 좌표·판독 품질 확인 → **사용자와 진행 결정**. 머지 전 로컬 평가로 한 번 멈췄다 — 두 줄 폭·업로드 세우기로 정함(2026-09-29) | 커밋 없음 |
+| PR-2 | `feat/postal-receipt-pdf` | PDF 라우트(서버만) + 업로드 때 사진 세우기. 실데이터 PDF 를 머지 전에 보인다 | 22 |
 | PR-3 | `feat/postal-receipt-print-ui` | 체크박스·출력 버튼 | 9 |
 
-서버와 화면을 가른 이유는 스펙 §7 끝에 있다(합치면 24파일 → HARD-GATE 전체 설계 등급, sharp 가 Vercel 에서 도는지를 화면보다 먼저 본다).
+서버와 화면을 가른 이유는 스펙 §7 끝에 있다(합치면 28파일 → HARD-GATE 전체 설계 등급, sharp 가 Vercel 에서 도는지를 화면보다 먼저 본다).
 
 ## Global Constraints
 
 - **배치**: A4 세로, 여백 10mm, 칸 59mm × 3, 간격 6mm, **한 페이지 한 줄**. 머리글 없음, 아래 가운데 쪽번호만. **PDF 에 안내 문구를 찍지 않는다**(전표에 붙는 종이).
-- **형광펜**: `접수일자` 값과 `총요금` 값만(항목명 제외). 노랑 `#fff176` 곱하기 합성, 상자 높이 25% 여유, 둥근 모서리.
+- **형광펜**: `접수일자` 값과 `총요금` 값만(항목명 제외). 노랑 `#fff176` 곱하기 합성, 상자 높이 25% 여유, 둥근 모서리. **총요금은 상자 높이만큼 위로 넓혀 칠한다**(두 줄 폭 — 판독이 총요금을 0~1줄 아래로 짚는다, 스펙 §4.1). 여유는 원래 상자 높이 기준.
 - **한 PDF 30장**(`RECEIPT_PDF_BATCH`) — 화면의 묶음과 서버 상한이 **같은 상수**를 쓴다. 넘으면 화면이 접수일시 순으로 30장씩 나눈 버튼을 놓는다.
 - **순서**: 접수일시 오름차순, 판독 전이면 올린 시각(한국 시각). **대상**: 사진이 있는 영수증 전부(확정 여부 무관).
 - **가드**: 로그인(proxy) + `canViewMenu("postal", me)` — 페이지의 `requireMenu("postal")` 과 같은 함수를 쓴다.
 - 사진은 **한 장씩 순서대로** 처리한다(메모리). 못 읽은 사진은 그 칸에 사유 한 줄, 나머지는 정상 출력.
 - DB 마이그레이션·폴러(`scripts/postal/extract-local.mjs`) 수정 없음.
+- **사진 방향**: 판독 모델은 회전 정보(EXIF orientation)를 무시하고 저장된 픽셀을 본다(스펙 §4.1). 업로드가 회전 정보 붙은 JPEG 를 픽셀째 세워 저장하고(Task 17), 출력은 회전 정보가 남은 사진의 위치를 쓰지 않는다(Task 8).
 - 표시용 날짜·시각은 `kstFormat`. 정렬 키만 고정 +9시간(한국은 서머타임이 없다).
 - UI `.tsx` 는 Tailwind 토큰만(hex 금지). PDF 파일은 기존 `src/lib/pdf/*` 처럼 hex 를 쓴다.
 - 헤더 액션은 `HeaderActionButton`. 문장 속 숫자는 **한 텍스트 노드**로(쪼개면 테스트·검색이 그 문장을 못 집는다).
@@ -42,12 +43,12 @@
 
 ### 포매터 훅과 `splice.py`
 
-`.claude/settings.local.json` 의 PostToolUse 훅이 Edit/Write 마다 `prettier --write <파일>` 을 돈다. 아래 여섯 파일은 원래 prettier 비준수라 Edit 로 고치면 **무관한 줄까지 다시 쓴다**(실측: `extract-parse.ts` 1곳, `queries.ts` 2곳, `PostalTable.tsx` 2곳, `extract-parse.test.ts` 53줄, `PostalTable.test.tsx` 48줄, `ReceiptReview.test.tsx` 137줄. 줄끝 CRLF→LF 는 autocrlf 라 diff 에 안 뜬다).
+`.claude/settings.local.json` 의 PostToolUse 훅이 Edit/Write 마다 `prettier --write <파일>` 을 돈다. 아래 파일들은 원래 prettier 비준수라 Edit 로 고치면 **무관한 줄까지 다시 쓴다**(실측: `extract-parse.ts` 1곳, `queries.ts` 2곳, `PostalTable.tsx` 2곳, `extract-parse.test.ts` 53줄, `PostalTable.test.tsx` 48줄, `ReceiptReview.test.tsx` 137줄. 줄끝 CRLF→LF 는 autocrlf 라 diff 에 안 뜬다).
 
 | 파일 | 도구 |
 |---|---|
-| `src/features/postal/extract-parse.ts` · `src/features/postal/__tests__/extract-parse.test.ts` · `src/features/postal/queries.ts` · `src/app/dashboard/postal/_components/PostalTable.tsx` · `.../__tests__/PostalTable.test.tsx` · `.../__tests__/ReceiptReview.test.tsx` | `splice.py` |
-| 새 파일, `extract-prompt.ts`, `extract-prompt.test.ts`, `queries.test.ts`(준수) | Write / Edit |
+| `src/features/postal/extract-parse.ts` · `src/features/postal/__tests__/extract-parse.test.ts` · `src/features/postal/queries.ts` · `src/app/dashboard/postal/_components/PostalTable.tsx` · `.../__tests__/PostalTable.test.tsx` · `.../__tests__/ReceiptReview.test.tsx` · `src/features/postal/__tests__/actions.test.ts` | `splice.py` |
+| 새 파일, `extract-prompt.ts`, `extract-prompt.test.ts`, `queries.test.ts`, `actions.ts`(준수) | Write / Edit |
 
 `$SP/splice.py` — Edit 와 같이 정확히 맞는 문자열을 바꾸되 훅을 부르지 않는다:
 
@@ -81,13 +82,14 @@ print(f"바꿈 {found}곳: {target}")
 
 ## Review Focus
 
-스펙이 말하지 않았지만 쓰는 사람이 가장 먼저 부딪힐 것 다섯. 각 줄의 테스트를 그 코드를 가진 태스크에 넣었다.
+스펙이 말하지 않았지만 쓰는 사람이 가장 먼저 부딪힐 것 여섯(6번은 2026-09-29 추가). 각 줄의 테스트를 그 코드를 가진 태스크에 넣었다.
 
 1. **고른 영수증을 그사이 지웠다** — 남은 것만 찍고, 하나도 없으면 "영수증을 찾을 수 없습니다"(404). 한 장 때문에 PDF 전체가 실패하면 안 된다. → Task 11
 2. **판독 전·재판독 대기·실패한 영수증** — 형광펜 없이 사진째 들어가고, 올린 시각(한국 시각)으로 순서에 끼며, 화면 안내("N장 중 M장은 형광펜이 빠진 곳이 있습니다")에 센다. 자정 전후에 올린 사진이 UTC 날짜 때문에 하루 앞에 서면 안 된다. → Task 5, 9, 14
 3. **형광펜 상자가 종이 상자 밖**(모델이 두 상자를 따로 짚는다) — 잘라낸 영역 안에 든 만큼만 칠하고, 통째로 밖이면 안 칠한다. 오류로 멈추지 않는다. → Task 7
 4. **사진을 못 받거나 못 읽는다**(저장소 오류·HEIC·손상) — 그 칸에 사유 한 줄, 나머지는 정상. → Task 11
 5. **등기 20건이 넘는 아주 긴 영수증** — 페이지 높이에 맞춰 줄어 한 페이지 안에 든다. 넘치면 react-pdf 는 새 페이지를 만들지 않고 경고 한 줄만 남긴 채 **아래를 잘라 버린다**(실측) — 증빙이 잘린 채 전표에 붙는다. → Task 10
+6. **회전 정보가 붙은 폰 사진**(안드로이드 등) — 판독 모델은 누운 픽셀 기준으로 좌표를 준다. 업로드가 세워 저장하고, 그 전 사진이면 위치를 쓰지 않는다(엉뚱한 곳에 칠하지 않는다). → Task 8, 17
 
 ---
 
@@ -635,9 +637,10 @@ Expected: 영수증마다 한 줄. 확정 영수증은 `이전 … → 새 …` 
 
 - [ ] **Step 7: 🛑 사용자와 진행 결정**
 
-사용자에게 알린다: 파랑·빨강·초록 각각 몇 장이 맞았는지, 판독 대조(새 판독이 이전보다 나빠진 영수증이 있는지), 오버레이 2~3장. 기준:
-- 형광펜 두 상자가 14장 모두 맞고, 새 판독이 이전보다 나빠진 영수증이 없다 → PR-2 로 간다
-- 하나라도 빗나가거나 판독이 나빠졌다 → **여기서 멈추고** 그 사진을 보이며 사용자와 방식을 다시 정한다(OCR 엔진·손 표시 — 스펙 §8)
+사용자에게 알린다: 파랑·빨강·초록 각각 몇 장이 맞았는지, 판독 대조(새 판독이 이전보다 나빠진 영수증이 있는지), 오버레이 2~3장. 기준(2026-09-29 개정 — 머지 전 로컬 평가에서 총요금이 3/6 한 줄 아래로 와 한 번 멈췄고, 사용자가 두 줄 폭을 골랐다. 스펙 §4.1·§8):
+- 초록(종이)·파랑(접수일자)이 14장 모두 그 자리이고, 빨강(총요금)이 총요금 줄이거나 **한 줄 아래**(두 줄 폭이 덮는다)이며, 새 판독이 이전보다 나빠진 영수증이 없다 → PR-2 로 간다
+- 그 밖(빨강이 위로 빗나가거나 두 줄 이상 아래, 초록·파랑이 빗나감, 판독이 나빠짐) → **여기서 멈추고** 그 사진을 보이며 사용자와 방식을 다시 정한다(OCR 엔진·손 표시 — 스펙 §8)
+- 상자가 빠진(X) 영수증은 폴러 옵션을 그대로 쓴 로컬 판독으로 원문을 다시 받아 '모델이 안 줬다' 와 '스키마가 거부했다' 를 가른다 — 거부된 상자는 DB 에 흔적이 없다(PR-1 최종 리뷰 지적)
 
 ---
 
@@ -1101,7 +1104,7 @@ EOF
 
 **Interfaces:**
 - Consumes: `type Box` from `../extract-parse` (Task 1)
-- Produces: `type Rect = { left: number; top: number; width: number; height: number }`, `type Mark = Rect & { radius: number }`, `CROP_MARGIN = 0.02`, `MARK_PAD = 0.25`, `cropRect(box: Box | null, imgW: number, imgH: number): Rect`, `markRect(box: Box, crop: Rect, imgW: number, imgH: number, scale: number): Mark | null`
+- Produces: `type Rect = { left: number; top: number; width: number; height: number }`, `type Mark = Rect & { radius: number }`, `CROP_MARGIN = 0.02`, `MARK_PAD = 0.25`, `TOTAL_FEE_LINES_ABOVE = 1`, `cropRect(box: Box | null, imgW: number, imgH: number): Rect`, `markRect(box: Box, crop: Rect, imgW: number, imgH: number, scale: number, linesAbove = 0): Mark | null`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -1166,6 +1169,23 @@ describe("markRect — 형광펜 자리", () => {
     const outside = { left: 500, top: 0, width: 500, height: 2000 };
     expect(markRect([0.1, 0.1, 0.2, 0.12], outside, W, H, 1)).toBeNull();
   });
+
+  it("linesAbove 만큼 위로 더 덮는다 — 여유는 원래 상자 높이 기준(총요금 두 줄 폭)", () => {
+    // 200~240px(높이 40) → 한 줄 위 160, 여유 10 → 150~250
+    const m = markRect(box, FULL, W, H, 1, 1);
+    expect(m?.top).toBeCloseTo(150);
+    expect(m?.height).toBeCloseTo(100);
+    expect(m?.left).toBeCloseTo(290);
+    expect(m?.width).toBeCloseTo(220);
+    expect(m?.radius).toBeCloseTo(10);
+  });
+
+  it("위로 넓혀도 잘라낸 영역 위로는 안 나간다", () => {
+    // 20~60px → 한 줄 위 −20, 여유 10 → 0 에서 멈춘다. 아래는 60 + 10
+    const m = markRect([0.3, 0.01, 0.5, 0.03], FULL, W, H, 1, 1);
+    expect(m?.top).toBeCloseTo(0);
+    expect(m?.height).toBeCloseTo(70);
+  });
 });
 ```
 
@@ -1183,7 +1203,9 @@ import type { Box } from "../extract-parse";
 /**
  * 영수증 출력의 좌표 변환 — 판독이 준 비율 상자(0~1)를 픽셀로 옮긴다. 순수 함수.
  *
- * 상자는 **바로 세운 사진**(EXIF 방향 반영) 기준이다. 모델도 사람도 사진을 그렇게 본다.
+ * 상자는 저장된 사진의 **픽셀** 기준이다 — 판독 모델은 회전 정보(EXIF)를 무시하고 픽셀을 본다
+ * (스펙 §4.1). 업로드가 픽셀째 세워 저장하므로(upright-photo.ts) 픽셀 = 바로 선 사진이고,
+ * 회전 정보가 남은 옛 사진은 render-image 가 위치를 쓰지 않는다.
  */
 
 /** px 사각형 */
@@ -1195,6 +1217,13 @@ export type Mark = Rect & { radius: number };
 export const CROP_MARGIN = 0.02;
 /** 형광펜 여유 — 상자 높이의 25%. 손 형광펜처럼 글자보다 조금 넓게(스파이크 2026-09-28). */
 export const MARK_PAD = 0.25;
+/**
+ * 총요금 형광펜을 위로 넓히는 줄 수(상자 높이 단위). 판독 모델이 총요금 상자를 0~1줄
+ * **아래로** 짚는다 — 로컬 평가 6장 중 3장이 바로 아래 '수납요금' 줄, 오차는 전부 아래쪽이고
+ * 프롬프트로는 안 고쳐졌다(스펙 §4.1). 한 줄 위까지 칠하면 총요금 줄을 늘 덮는다 — 같은
+ * 금액이 적힌 옆 줄이 함께 칠해질 수 있다(사용자 선택 2026-09-29: 두 줄 폭).
+ */
+export const TOTAL_FEE_LINES_ABOVE = 1;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
@@ -1215,6 +1244,8 @@ export function cropRect(box: Box | null, imgW: number, imgH: number): Rect {
 
 /**
  * 형광펜 자리(출력 px). 원본 비율 상자 → 잘라낸 영역 기준 → 줄인 배율(scale).
+ * `linesAbove` 만큼(상자 높이 단위) 위를 더 덮는다 — 총요금은 `TOTAL_FEE_LINES_ABOVE`.
+ * 여유는 원래 상자 높이 기준이다.
  *
  * 잘라낸 영역 밖으로 나간 부분은 버리고, 통째로 밖이면 null(칠하지 않는다) —
  * 모델이 종이 상자와 값 상자를 따로 짚어 서로 어긋날 수 있다.
@@ -1225,11 +1256,13 @@ export function markRect(
   imgW: number,
   imgH: number,
   scale: number,
+  linesAbove = 0,
 ): Mark | null {
   const [x0, y0, x1, y1] = box;
-  const pad = (y1 - y0) * imgH * MARK_PAD;
+  const lineH = (y1 - y0) * imgH;
+  const pad = lineH * MARK_PAD;
   const left = Math.max(x0 * imgW - pad, crop.left);
-  const top = Math.max(y0 * imgH - pad, crop.top);
+  const top = Math.max(y0 * imgH - lineH * linesAbove - pad, crop.top);
   const right = Math.min(x1 * imgW + pad, crop.left + crop.width);
   const bottom = Math.min(y1 * imgH + pad, crop.top + crop.height);
   if (right <= left || bottom <= top) return null;
@@ -1246,7 +1279,7 @@ export function markRect(
 - [ ] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/features/postal/receipt-print/__tests__/geometry.test.ts --maxWorkers=2`
-Expected: 7 PASS.
+Expected: 9 PASS.
 
 - [ ] **Step 5: 커밋한다**
 
@@ -1257,7 +1290,8 @@ feat(postal): 영수증 잘라내기·형광펜 좌표 변환
 
 종이 상자 + 사방 2% 여유로 자르고(사진 경계에서 멈춤), 형광펜은 상자 높이
 25% 여유로 잘라낸 영역 기준 좌표에 옮긴다. 종이 밖으로 나간 형광펜은
-그만큼 버리고, 통째로 밖이면 칠하지 않는다.
+그만큼 버리고, 통째로 밖이면 칠하지 않는다. 총요금은 한 줄 위까지 넓혀
+칠할 수 있게 한다(판독이 0~1줄 아래로 짚는다 — 두 줄 폭).
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
@@ -1272,8 +1306,8 @@ EOF
 - Test: `src/features/postal/receipt-print/__tests__/render-image.test.ts`
 
 **Interfaces:**
-- Consumes: `cropRect`, `markRect`, `type Mark` (Task 7), `type Regions` (Task 1)
-- Produces: `SLOT_PX_WIDTH = 465`, `type RenderedImage = { jpeg: Buffer; widthPx: number; heightPx: number }`, `renderReceiptImage(input: Buffer, regions: Regions | null): Promise<RenderedImage>` — 읽을 수 없는 사진이면 **던진다**
+- Consumes: `cropRect`, `markRect`, `TOTAL_FEE_LINES_ABOVE`, `type Mark` (Task 7), `type Regions` (Task 1)
+- Produces: `SLOT_PX_WIDTH = 465`, `type RenderedImage = { jpeg: Buffer; widthPx: number; heightPx: number }`, `renderReceiptImage(input: Buffer, regions: Regions | null): Promise<RenderedImage>` — 읽을 수 없는 사진이면 **던진다**. 회전 정보가 남은 사진은 위치를 쓰지 않는다(세워서 통째로)
 
 - [ ] **Step 1: sharp 를 운영 의존성으로 옮긴다**
 
@@ -1343,6 +1377,35 @@ describe("renderReceiptImage", () => {
     expect((await pixel(out.jpeg, 209, 102)).b).toBeGreaterThan(240);
   });
 
+  it("총요금은 한 줄 위까지 칠한다 — 판독이 0~1줄 아래로 짚는다(두 줄 폭)", async () => {
+    const out = await renderReceiptImage(await blank(1000, 2000), {
+      ...none,
+      total_fee: [0.3, 0.5, 0.6, 0.52],
+    });
+    // 상자 1000~1040px(높이 40) → 한 줄 위 960, 여유 10 → 950~1050. 배율 0.465 → 442~488
+    // 452 는 넓힌 칸(원본 972) — 넓히지 않으면 흰색이다.
+    expect((await pixel(out.jpeg, 209, 452)).b).toBeLessThan(160);
+    expect((await pixel(out.jpeg, 209, 497)).b).toBeGreaterThan(240);
+  });
+
+  it("회전 정보가 남은 사진은 위치를 쓰지 않는다 — 판독 좌표가 누운 픽셀 기준이다", async () => {
+    const turned = await sharp({
+      create: { width: 200, height: 100, channels: 3, background: "#ffffff" },
+    })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+    const out = await renderReceiptImage(turned, {
+      receipt: [0.5, 0, 1, 1],
+      accepted_at: [0.1, 0.1, 0.9, 0.3],
+      total_fee: [0.1, 0.6, 0.9, 0.8],
+    });
+    // 자르지 않고(세운 크기 그대로) 칠하지 않는다.
+    expect([out.widthPx, out.heightPx]).toEqual([100, 200]);
+    const { channels } = await sharp(out.jpeg).stats();
+    expect(channels[2].min).toBeGreaterThan(240);
+  });
+
   it("EXIF 방향을 바로 세운다 — 좌표는 바로 세운 사진 기준이다", async () => {
     const turned = await sharp({
       create: { width: 200, height: 100, channels: 3, background: "#ffffff" },
@@ -1372,7 +1435,7 @@ Expected: FAIL — `Failed to resolve import "../render-image"`.
 import "server-only";
 import sharp from "sharp";
 import type { Regions } from "../extract-parse";
-import { cropRect, markRect, type Mark } from "./geometry";
+import { cropRect, markRect, TOTAL_FEE_LINES_ABOVE, type Mark } from "./geometry";
 
 /**
  * 칸 59mm 를 200dpi 로 — 465px. 스파이크(2026-09-28)는 150dpi 에서도 영수증 잔글씨가
@@ -1391,14 +1454,20 @@ export type RenderedImage = { jpeg: Buffer; widthPx: number; heightPx: number };
  *
  * 없는 상자만큼만 빠진다(종이 상자가 없으면 사진 전체, 형광펜 상자가 없으면 그 자리만
  * 안 칠함). 읽을 수 없는 사진(HEIC·손상)은 던진다 — 사유는 부르는 쪽이 칸에 적는다.
+ * 총요금은 한 줄 위까지 칠한다(`TOTAL_FEE_LINES_ABOVE`).
  */
 export async function renderReceiptImage(
   input: Buffer,
   regions: Regions | null,
 ): Promise<RenderedImage> {
-  // autoOrient = EXIF 방향을 반영한 크기. 좌표가 바로 세운 사진 기준이라 이걸 쓴다.
-  const { width: imgW, height: imgH } = (await sharp(input).metadata()).autoOrient;
-  const crop = cropRect(regions?.receipt ?? null, imgW, imgH);
+  const meta = await sharp(input).metadata();
+  // autoOrient = EXIF 방향을 반영한 크기. 출력은 세운 사진이라 이걸 쓴다.
+  const { width: imgW, height: imgH } = meta.autoOrient;
+  // 판독 모델은 회전 정보를 무시하고 저장된 픽셀을 보고 좌표를 준다(스펙 §4.1). 업로드가 사진을
+  // 세워 저장하므로(upright-photo.ts) 회전 정보가 남은 사진은 그 전에 올린 것뿐이다 —
+  // 좌표계가 달라 위치를 쓰지 않고 세워서 통째로 싣는다.
+  const trusted = meta.orientation && meta.orientation !== 1 ? null : regions;
+  const crop = cropRect(trusted?.receipt ?? null, imgW, imgH);
 
   // raw 로 받아 실제 출력 크기를 안다 — 형광펜 층이 그 크기와 정확히 같아야 얹힌다.
   const { data, info } = await sharp(input)
@@ -1409,9 +1478,12 @@ export async function renderReceiptImage(
     .toBuffer({ resolveWithObject: true });
   const scale = info.width / crop.width;
 
-  const marks = [regions?.accepted_at, regions?.total_fee]
-    .flatMap((box) => (box ? [markRect(box, crop, imgW, imgH, scale)] : []))
-    .filter((m): m is Mark => m !== null);
+  const marks = [
+    trusted?.accepted_at ? markRect(trusted.accepted_at, crop, imgW, imgH, scale) : null,
+    trusted?.total_fee
+      ? markRect(trusted.total_fee, crop, imgW, imgH, scale, TOTAL_FEE_LINES_ABOVE)
+      : null,
+  ].filter((m): m is Mark => m !== null);
 
   const base = sharp(data, {
     raw: { width: info.width, height: info.height, channels: info.channels },
@@ -1442,11 +1514,11 @@ async function markLayer(width: number, height: number, marks: Mark[]): Promise<
 - [ ] **Step 5: 통과를 확인한다**
 
 Run: `npx vitest run src/features/postal/receipt-print/__tests__/render-image.test.ts --maxWorkers=2`
-Expected: 6 PASS.
+Expected: 8 PASS.
 
 - [ ] **Step 6: 역검증 — EXIF 테스트가 실제로 잡는지**
 
-`render-image.ts` 의 `.autoOrient` 를 잠시 `(await sharp(input).metadata())` 의 `width`/`height`(방향 반영 전)로 바꿔 돌린다 → `EXIF 방향` 테스트가 FAIL(`bad extract area`)이어야 한다. 확인 뒤 원래대로 돌리고 다시 6 PASS. `git diff` 로 되돌린 것을 확인한다.
+`render-image.ts` 의 `.autoOrient` 를 잠시 `(await sharp(input).metadata())` 의 `width`/`height`(방향 반영 전)로 바꿔 돌린다 → `EXIF 방향` 테스트가 FAIL(`bad extract area`)이어야 한다. 이어서 총요금 줄의 `TOTAL_FEE_LINES_ABOVE` 인자를 빼고 돌린다 → `총요금은 한 줄 위까지` 가 FAIL 이어야 한다. 확인 뒤 원래대로 돌리고 다시 8 PASS. `git diff` 로 되돌린 것을 확인한다.
 
 - [ ] **Step 7: 커밋한다**
 
@@ -1456,8 +1528,10 @@ git commit -m "$(cat <<'EOF'
 feat(postal): 영수증 사진을 잘라 형광펜을 입힌다 — sharp 를 운영 의존성으로
 
 EXIF 방향을 바로잡고, 종이만 잘라 칸 폭(59mm·200dpi)으로 줄인 뒤 접수일자·
-총요금 자리에 노랑을 곱하기로 얹는다. 읽을 수 없는 사진은 던져 부르는 쪽이
-그 칸에 사유를 적게 한다. 운영 런타임이 처음 sharp 를 쓰므로 dependencies 로 옮긴다.
+총요금 자리에 노랑을 곱하기로 얹는다(총요금은 한 줄 위까지 — 두 줄 폭).
+회전 정보가 남은 사진은 판독 좌표계가 달라 위치를 쓰지 않는다. 읽을 수
+없는 사진은 던져 부르는 쪽이 그 칸에 사유를 적게 한다. 운영 런타임이
+처음 sharp 를 쓰므로 dependencies 로 옮긴다.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
@@ -2288,6 +2362,301 @@ EOF
 )"
 ```
 
+### Task 17: 업로드 때 사진을 바로 세운다 (실행 순서: Task 11 다음, Task 12 앞)
+
+2026-09-29 추가(스펙 revision 3 §5.5). 판독 모델은 회전 정보(EXIF orientation)를 무시하고 저장된 픽셀을 본다 — 탐침(2026-09-28)에서 옆으로 눕힌 사본(방향 6)은 크기와 상관없이 누운 좌표계로 왔고, 총요금 상자도 크게 빗나갔다. 저장 전에 픽셀을 세워 회전 정보를 없애면 판독 모델·검토 화면·PDF 가 같은 사진을 본다. sharp 는 Task 8 에서 운영 의존성으로 옮겼다. 번호가 17 인 것은 브리프 추출이 `Task 8a` 같은 번호를 `Task 8` 과 함께 읽기 때문이다.
+
+**Files:**
+- Create: `src/features/postal/upright-photo.ts`
+- Test: `src/features/postal/__tests__/upright-photo.test.ts`
+- Modify (Edit — prettier 준수): `src/features/postal/actions.ts`
+- Modify (splice.py — 비준수): `src/features/postal/__tests__/actions.test.ts`
+
+**Interfaces:**
+- Consumes: 없음(sharp — Task 8 에서 dependencies 로 옮김)
+- Produces: `uprightPhoto(input: Buffer): Promise<Buffer>` — 회전 정보가 1 이 아닌 JPEG 만 픽셀째 세워 다시 굽는다(품질 92, 메타데이터 없음). 그 밖(바로 선 JPEG·JPEG 아닌 사진·sharp 가 못 읽는 사진)은 **받은 그대로(같은 Buffer)**. 머리는 JPEG 인데 픽셀을 못 푸는 사진은 던진다 → `uploadReceipt` 가 `{ ok: false, error: "사진을 읽지 못했습니다 — 다시 찍어 올려 주세요" }` 로 바꾼다.
+
+- [ ] **Step 1: 실패하는 테스트를 쓴다 — 사진 세우기**
+
+`src/features/postal/__tests__/upright-photo.test.ts`:
+```ts
+// @vitest-environment node
+//
+// sharp 는 node 의 Buffer 를 받는다 — 기본 jsdom 환경에서 돌리지 않는다.
+import { describe, it, expect } from "vitest";
+import sharp from "sharp";
+import { uprightPhoto } from "../upright-photo";
+
+/** 왼쪽 절반이 검정인 200×100 JPEG. orientation 을 주면 그 회전 정보를 붙인다. */
+async function halfBlack(orientation?: number) {
+  const img = sharp({
+    create: { width: 200, height: 100, channels: 3, background: "#ffffff" },
+  })
+    .composite([
+      {
+        input: { create: { width: 100, height: 100, channels: 3, background: "#000000" } },
+        left: 0,
+        top: 0,
+      },
+    ])
+    .jpeg();
+  return (orientation ? img.withMetadata({ orientation }) : img).toBuffer();
+}
+
+/** (x, y) 의 밝기 — 첫 채널 */
+async function luma(jpeg: Buffer, x: number, y: number) {
+  const { data, info } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true });
+  return data[(y * info.width + x) * info.channels];
+}
+
+describe("uprightPhoto", () => {
+  it("회전 정보가 있는 JPEG 는 픽셀째 세우고 회전 정보를 없앤다", async () => {
+    const out = await uprightPhoto(await halfBlack(6));
+    const meta = await sharp(out).metadata();
+    expect([meta.width, meta.height]).toEqual([100, 200]);
+    expect(meta.orientation ?? 1).toBe(1);
+  });
+
+  it("보이던 모습 그대로 선다 — 방향 6 은 왼쪽이 위로 간다", async () => {
+    const out = await uprightPhoto(await halfBlack(6));
+    expect(await luma(out, 50, 40)).toBeLessThan(60);
+    expect(await luma(out, 50, 160)).toBeGreaterThan(200);
+  });
+
+  it("이미 바로 선 JPEG 는 다시 굽지 않는다 — 받은 그대로", async () => {
+    const plain = await halfBlack();
+    expect(await uprightPhoto(plain)).toBe(plain);
+    const one = await halfBlack(1);
+    expect(await uprightPhoto(one)).toBe(one);
+  });
+
+  it("JPEG 가 아니면 그대로 — PNG", async () => {
+    const png = await sharp({
+      create: { width: 20, height: 10, channels: 3, background: "#ffffff" },
+    })
+      .png()
+      .toBuffer();
+    expect(await uprightPhoto(png)).toBe(png);
+  });
+
+  it("sharp 가 못 읽는 사진(HEIC 등)은 그대로 — 업로드를 막지 않는다", async () => {
+    const unreadable = Buffer.from("not an image");
+    expect(await uprightPhoto(unreadable)).toBe(unreadable);
+  });
+});
+```
+
+- [ ] **Step 2: 실패하는 테스트를 쓴다 — 업로드가 세운 사진을 저장한다**
+
+`src/features/postal/__tests__/actions.test.ts` 를 splice.py 로 네 곳 고친다.
+
+① `t17-uploaded` — 저장된 내용을 볼 수 있게 한다.
+
+old:
+```ts
+  uploaded: [] as { bucket: string; path: string }[],
+```
+
+new:
+```ts
+  uploaded: [] as { bucket: string; path: string; body: unknown }[],
+```
+
+② `t17-upload-mock`
+
+old:
+```ts
+        upload: (path: string) => {
+          if (state.uploadError) {
+            return Promise.resolve({ error: { message: state.uploadError } });
+          }
+          state.uploaded.push({ bucket, path });
+          return Promise.resolve({ error: null });
+        },
+```
+
+new:
+```ts
+        upload: (path: string, body: unknown) => {
+          if (state.uploadError) {
+            return Promise.resolve({ error: { message: state.uploadError } });
+          }
+          state.uploaded.push({ bucket, path, body });
+          return Promise.resolve({ error: null });
+        },
+```
+
+③ `t17-mock` — 세우기를 가짜로 바꾼다. 기본은 받은 그대로라 기존 테스트는 그대로 돈다.
+
+old:
+```ts
+const { uploadReceipt } = await import("../actions");
+```
+
+new:
+```ts
+const { uprightSpy } = vi.hoisted(() => ({
+  uprightSpy: vi.fn((b: Buffer) => Promise.resolve(b)),
+}));
+vi.mock("../upright-photo", () => ({ uprightPhoto: (b: Buffer) => uprightSpy(b) }));
+
+const { uploadReceipt } = await import("../actions");
+```
+
+④ `t17-tests` — '자동 판독' 묶음 앞에 넣는다.
+
+old:
+```ts
+/**
+ * 올리자마자 판독이 시작돼야 한다 — [추출]을 따로 누르게 하면 목록이 '판독 전'
+```
+
+new:
+```ts
+/**
+ * 판독 모델은 회전 정보를 무시하고 저장된 픽셀을 본다 — 저장 전에 세워야 판독·검토
+ * 화면·PDF 가 같은 사진을 본다(upright-photo.ts).
+ */
+describe("uploadReceipt — 사진 세우기", () => {
+  beforeEach(() => {
+    state.me = { email: "a@b.com", displayName: "박수정", permission: "member" };
+    state.uploaded = [];
+    state.uploadError = null;
+    state.inserted = [];
+    state.removed = [];
+    uprightSpy.mockClear();
+  });
+
+  it("세운 사진을 저장한다 — 올린 파일 그대로가 아니다", async () => {
+    const upright = Buffer.from("upright");
+    uprightSpy.mockResolvedValueOnce(upright);
+    const r = await uploadReceipt(file());
+    expect(r.ok).toBe(true);
+    expect(uprightSpy).toHaveBeenCalledTimes(1);
+    expect(uprightSpy.mock.calls[0][0].length).toBe(1000);
+    expect(state.uploaded[0].body).toBe(upright);
+  });
+
+  it("세우다 실패하면 저장하지 않는다 — 깨진 사진은 판독·화면·출력 어디서도 못 쓴다", async () => {
+    uprightSpy.mockRejectedValueOnce(new Error("corrupt"));
+    const r = await uploadReceipt(file());
+    expect(r).toEqual({ ok: false, error: "사진을 읽지 못했습니다 — 다시 찍어 올려 주세요" });
+    expect(state.uploaded).toHaveLength(0);
+    expect(state.inserted).toHaveLength(0);
+  });
+});
+
+/**
+ * 올리자마자 판독이 시작돼야 한다 — [추출]을 따로 누르게 하면 목록이 '판독 전'
+```
+
+- [ ] **Step 3: 실패를 확인한다**
+
+Run: `npx vitest run src/features/postal/__tests__/upright-photo.test.ts src/features/postal/__tests__/actions.test.ts --maxWorkers=2`
+Expected: FAIL — `upright-photo.test.ts` 는 `Failed to resolve import "../upright-photo"`. `actions.test.ts` 는 새 2건만 FAIL(세우기가 안 불리고 올린 파일이 그대로 저장됨 / 실패해도 저장됨), 기존 9건은 PASS(아직 없는 모듈을 `vi.mock` 해도 vitest 는 돈다 — 확인함).
+
+- [ ] **Step 4: 구현한다**
+
+`src/features/postal/upright-photo.ts`(Write):
+```ts
+import "server-only";
+import sharp from "sharp";
+
+/**
+ * 폰 사진을 픽셀째 바로 세운다 — 회전 정보(EXIF orientation)가 붙은 JPEG 만.
+ *
+ * 판독 모델은 회전 정보를 무시하고 저장된 픽셀을 보고 좌표를 준다(스펙 §4.1 — 옆으로 눕힌
+ * 사본은 크기와 상관없이 누운 좌표계로 왔고, 총요금 상자도 크게 빗나갔다). 검토 화면·PDF 는
+ * 회전 정보대로 세워 보여 주므로, 저장 전에 픽셀을 세워 회전 정보를 없애면 셋이 같은 사진을 본다.
+ *
+ * 그 밖은 받은 그대로 돌려준다 — 다시 굽지 않는다(화질):
+ * - 이미 바로 선 JPEG(회전 정보 없음·1), JPEG 가 아닌 사진
+ * - sharp 가 못 읽는 사진(HEIC 등) — 업로드는 막지 않는다. 판독은 되고, 출력은 그 칸에 사유를 적는다
+ *
+ * 머리는 JPEG 인데 픽셀을 못 푸는 사진은 던진다 — 부르는 쪽이 업로드를 거절한다.
+ */
+export async function uprightPhoto(input: Buffer): Promise<Buffer> {
+  const meta = await sharp(input)
+    .metadata()
+    .catch(() => null);
+  if (!meta || meta.format !== "jpeg" || !meta.orientation || meta.orientation === 1) {
+    return input;
+  }
+  // rotate() 는 회전 정보대로 세운다. 출력에 메타데이터를 싣지 않아 회전 정보가 사라진다.
+  return sharp(input).rotate().jpeg({ quality: 92 }).toBuffer();
+}
+```
+
+`src/features/postal/actions.ts`(Edit 두 곳):
+
+old:
+```ts
+import { canDeleteReceipt } from "./delete-guard";
+```
+
+new:
+```ts
+import { canDeleteReceipt } from "./delete-guard";
+import { uprightPhoto } from "./upright-photo";
+```
+
+old:
+```ts
+  const admin = createAdminClient();
+  const buf = Buffer.from(await file.arrayBuffer());
+  const up = await admin.storage
+    .from(RECEIPT_BUCKET)
+    .upload(path, buf, { contentType: file.type, upsert: false });
+```
+
+new:
+```ts
+  const admin = createAdminClient();
+  // 판독 모델이 회전 정보를 무시하고 픽셀을 보므로 저장 전에 픽셀째 세운다(upright-photo.ts).
+  let photo: Buffer;
+  try {
+    photo = await uprightPhoto(Buffer.from(await file.arrayBuffer()));
+  } catch {
+    // 머리는 JPEG 인데 픽셀을 못 푼다 — 판독·화면·출력 어디서도 못 쓰는 사진이다.
+    return {
+      ok: false,
+      error: "사진을 읽지 못했습니다 — 다시 찍어 올려 주세요",
+    };
+  }
+  const up = await admin.storage
+    .from(RECEIPT_BUCKET)
+    .upload(path, photo, { contentType: file.type, upsert: false });
+```
+
+- [ ] **Step 5: 통과를 확인한다**
+
+Run: `npx vitest run src/features/postal/__tests__/upright-photo.test.ts src/features/postal/__tests__/actions.test.ts --maxWorkers=2`
+Expected: upright-photo 5 PASS, actions 11 PASS(기존 9 + 새 2).
+
+- [ ] **Step 6: 역검증 — 세우기 테스트가 실제로 잡는지**
+
+`upright-photo.ts` 의 `.rotate()` 를 잠시 빼고(`sharp(input).jpeg({ quality: 92 })`) 돌린다 → '회전 정보가 있는 JPEG 는 픽셀째 세우고'·'보이던 모습 그대로 선다' 가 FAIL(크기 200×100)이어야 한다. 되돌리고 다시 PASS. `git diff` 로 되돌린 것을 확인한다.
+
+- [ ] **Step 7: 커밋한다**
+
+```bash
+git add src/features/postal/upright-photo.ts src/features/postal/__tests__/upright-photo.test.ts src/features/postal/actions.ts src/features/postal/__tests__/actions.test.ts
+git diff --cached --stat
+git commit -m "$(cat <<'EOF'
+feat(postal): 업로드 때 폰 사진을 픽셀째 바로 세운다
+
+판독 모델은 회전 정보(EXIF orientation)를 무시하고 저장된 픽셀을 본다
+(2026-09-28 탐침). 회전 정보가 붙은 JPEG 는 저장 전에 세워 회전 정보를
+없애, 판독·검토 화면·PDF 가 같은 사진을 보게 한다. 바로 선 사진과 sharp 가
+못 읽는 사진(HEIC 등)은 그대로 두고, 머리만 JPEG 이고 픽셀이 깨진 사진은
+업로드를 거절한다.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+)"
+```
+`--stat` 의 지운 줄은 `actions.ts` 2 · `actions.test.ts` 3 이어야 한다. 더 많으면 재정렬이 섞인 것.
+
 ### Task 12: 실데이터 PDF 확인 · PR-2 올리기 · 운영 확인
 
 **Files:** 루트 `_diag-receipt-pdf.test.ts`(일회용 — 만들고 돌리고 **바로 지운다**)
@@ -2364,7 +2733,7 @@ Expected: `status 200 · 14장 · …ms`. `ERROR` 면 그 원문부터 읽는다
 
 - [ ] **Step 4: PDF 를 직접 본다**
 
-Read 도구로 `$SP/receipt-print/real.pdf` 를 연다(`pages: "1-5"`). 확인할 것: 한 페이지 3장, 접수일시 순, 형광펜이 접수일자·총요금 값에 있음, 글씨가 읽힘, 쪽번호, 잘린 영수증 없음.
+Read 도구로 `$SP/receipt-print/real.pdf` 를 연다(`pages: "1-5"`). 확인할 것: 한 페이지 3장, 접수일시 순, 형광펜이 접수일자 값과 총요금 값(한 줄 위까지 두 줄 폭)에 있음, 글씨가 읽힘, 쪽번호, 잘린 영수증 없음.
 
 - [ ] **Step 5: 푸시·PR**
 
@@ -2380,6 +2749,7 @@ gh pr create --title "feat(postal): 영수증 A4 출력 PDF 라우트 — 영수
 - 가드: 로그인(proxy) + 페이지와 같은 `canViewMenu("postal")`. ids 는 uuid 1~30(중복 제거)
 - 사진은 한 장씩: EXIF 방향 → 종이만 잘라내기(여유 2%) → 59mm·200dpi → 곱하기 형광펜. 못 받거나 못 읽은 사진은 그 칸에 사유, 나머지는 그대로
 - `sharp` 를 devDependencies → dependencies(운영 런타임이 처음 쓴다)
+- 업로드: 회전 정보가 붙은 JPEG 를 픽셀째 세워 저장 — 판독 모델이 회전 정보를 무시한다(스펙 §4.1·§5.5). 총요금 형광펜은 한 줄 위까지(두 줄 폭)
 - 화면(체크박스·버튼)은 PR-3. 이 PR 만으로는 메뉴에 변화가 없다
 
 ## 실측 (로컬, 실데이터 N장)
@@ -2387,8 +2757,8 @@ gh pr create --title "feat(postal): 영수증 A4 출력 PDF 라우트 — 영수
 - 메모리(rss): …MB
 
 ## Test plan
-- [x] layout 17 · print-ids 7 · geometry 7 · render-image 6 · sources 6 · readRegions 3 · PDF 4 · route 11 — RED 확인 후 GREEN
-- [x] 역검증: EXIF 방향(meta 크기로 바꾸면 FAIL), 긴 영수증(축소를 빼면 react-pdf 넘침 경고로 FAIL)
+- [x] layout 17 · print-ids 7 · geometry 9 · render-image 8 · sources 6 · readRegions 3 · PDF 4 · route 11 · upright-photo 5 · 업로드 +2 — RED 확인 후 GREEN
+- [x] 역검증: EXIF 방향(meta 크기로 바꾸면 FAIL), 총요금 두 줄 폭(인자를 빼면 FAIL), 사진 세우기(rotate 를 빼면 FAIL), 긴 영수증(축소를 빼면 react-pdf 넘침 경고로 FAIL)
 - [x] typecheck / lint / postal·pdf·표준 가드 테스트
 - [x] 실데이터 PDF 를 만들어 머지 전에 확인
 - [ ] 배포 후 운영에서 2장 PDF 가 열리는지(= sharp 가 Vercel 에서 도는지). 안 열리면 되돌린다
