@@ -21,7 +21,12 @@ export function buildExtractPrompt(fileName: string): string {
   "item_count": 합계통수,
   "items": [
     {"tracking_no":"등기번호","fee":요금숫자,"postal_code":"우편번호","recipient_org":"수취인 소속","recipient_name":"수취인 이름"}
-  ]
+  ],
+  "regions": {
+    "receipt": [x0, y0, x1, y1],
+    "accepted_at": [x0, y0, x1, y1],
+    "total_fee": [x0, y0, x1, y1]
+  }
 }
 
 규칙:
@@ -31,5 +36,10 @@ export function buildExtractPrompt(fileName: string): string {
 - 요금·금액은 쉼표를 뺀 숫자로.
 - 등기번호는 보이는 형태(하이픈 포함) 그대로.
 - **안 보이는 값은 지어내지 말고 null.** 흐릿해서 못 읽으면 그 항목만 null로 둔다.
+- "regions" 는 값이 아니라 **사진 속 위치**다. 사진 왼쪽 위가 0, 오른쪽 아래가 1 인 **비율**로 [왼쪽, 위, 오른쪽, 아래] 네 숫자를 적어라. 픽셀 수를 적지 마라.
+  - receipt: 영수증 종이 전체. 종이 밖 배경(책상 등)은 빼라.
+  - accepted_at: 접수일자의 **값**만(예: 2026-09-23 15:14). "접수일자 :" 같은 항목명은 넣지 마라.
+  - total_fee: 총요금의 **값**만(예: (즉납) 17,400원). 항목명은 넣지 마라.
+  - 찾지 못한 상자는 null.
 - 우체국 등기 영수증이 아니면 {"is_receipt": false} 만 답하라.`;
 }
