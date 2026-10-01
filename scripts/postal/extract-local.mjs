@@ -31,10 +31,11 @@ const HTTP_TIMEOUT_MS = 20_000;
  */
 const REPORT_TIMEOUT_MS = 60_000;
 /**
- * 한 장에 5분이면 이상 상황이다(실측 30초 안팎). 누운 사진에 등기가 많으면 3분 안팎이
- * 걸린다 — 3분에서 자르면 방향을 알기 전에 실패해 서버가 세울 기회가 없다(스펙 §4.2).
+ * 한 장에 10분이면 이상 상황이다(실측 30초 안팎). 누운 사진은 모델이 오래 생각한다 — 같은
+ * 사진이 92초에서 330초까지 갈렸다(2026-10-01). 5분에서 자르면 방향을 알기 전에 실패해
+ * 서버가 세울 기회가 없다(스펙 §4.2).
  */
-const TIMEOUT_MS = 300_000;
+const TIMEOUT_MS = 600_000;
 const HEARTBEAT_MS = 5 * 60 * 1000;
 
 // 영수증만 읽으면 되므로 도구를 최소로. MCP 격리는 어시스턴트와 같은 이유다 —
@@ -116,7 +117,7 @@ async function extract(req) {
         if (m.type === "result") result = m.result ?? "";
       }
     } catch (e) {
-      if (timedOut) throw new Error("5분을 넘겨 중단했습니다");
+      if (timedOut) throw new Error("10분을 넘겨 중단했습니다");
       throw e;
     } finally {
       clearTimeout(timer);

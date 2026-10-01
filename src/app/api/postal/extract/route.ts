@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildExtractPrompt } from "@/features/postal/extract-prompt";
-import { parseExtraction } from "@/features/postal/extract-parse";
-import { straightenSideways } from "@/features/postal/sideways-photo";
+import { parseExtraction, type ReceiptTop } from "@/features/postal/extract-parse";
+import { settleRotation, straightenSideways } from "@/features/postal/sideways-photo";
 
 /**
  * 영수증 판독 폴러 endpoint — `Authorization: Bearer ${CRON_SECRET}`.
@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
         finished_at: finishedAt,
       })
       .eq("id", id);
+    await settle(id, null);
     return NextResponse.json({ ok: true });
   }
 
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
       .from("postal_extract_requests")
       .update({ status: "failed", message: parsed.error, finished_at: finishedAt })
       .eq("id", id);
+    await settle(id, null);
     return NextResponse.json({ ok: true });
   }
 
@@ -145,8 +147,18 @@ export async function POST(request: NextRequest) {
 
   // 영수증이 누워 찍혔으면 세워 저장하고 한 번 더 판독한다(스펙 §5.6). 판독 결과는 위에서
   // 이미 저장했다 — 세우기는 던지지 않고, 실패해도 이 판독은 그대로 남는다.
-  const outcome = await straightenSideways(id, parsed.data.receipt_top);
-  // 누운 사진이었으면 무엇을 했는지 남긴다 — not-landscape 는 돌리지 않고 위치만 버린다.
+  await settle(id, parsed.data.receipt_top);
+  const outcome = await straightenSideways(id, parsed.data.receipt_top, parsed.data.regions);
+  // 누운 사진이었으면 무엇을 했는지 남긴다 — not-landscape·disagree 는 돌리지 않고 위치만 버린다.
   if (outcome !== "upright") console.warn("[postal] 누운 사진:", id, outcome);
   return NextResponse.json({ ok: true });
+}
+
+/**
+ * 자동 세우기가 건 재판독이면 그 결과로 회전을 확정하거나 되돌린다(스펙 §5.6) — 판독 결과를
+ * 저장한 **뒤에**. 실패한 재판독은 방향이 없어(null) 되돌린다. 아닌 요청은 조용히 지나간다.
+ */
+async function settle(id: string, top: ReceiptTop | null) {
+  const outcome = await settleRotation(id, top);
+  if (outcome !== "not-rotation") console.warn("[postal] 세운 사진 확인:", id, outcome);
 }
