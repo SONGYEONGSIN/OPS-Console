@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  */
 const state = {
   rotations: [] as { rotated_from: string }[],
+  rotationsError: null as { message: string } | null,
   removed: [] as string[],
   log: [] as string[],
 };
@@ -34,7 +35,10 @@ vi.mock("@/lib/supabase/admin", () => ({
           eq: () => chain,
           not: () => {
             state.log.push("read rotations");
-            return Promise.resolve({ data: state.rotations, error: null });
+            return Promise.resolve({
+              data: state.rotationsError ? null : state.rotations,
+              error: state.rotationsError,
+            });
           },
         };
         return chain;
@@ -70,6 +74,7 @@ const { deleteReceipt } = await import("../actions");
 describe("deleteReceipt — 세운 뒤 확인 전 옛 사진", () => {
   beforeEach(() => {
     state.rotations = [];
+    state.rotationsError = null;
     state.removed = [];
     state.log = [];
   });
@@ -84,5 +89,17 @@ describe("deleteReceipt — 세운 뒤 확인 전 옛 사진", () => {
   it("세운 적이 없으면 지금 사진만 지운다", async () => {
     expect(await deleteReceipt("r1")).toEqual({ ok: true, id: "r1" });
     expect(state.removed).toEqual(["2026-09-23/new.jpg"]);
+  });
+
+  it("옛 사진 경로를 못 읽으면 로그를 남긴다 — 남는 사진을 찾을 수 있게", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    state.rotationsError = { message: "db down" };
+    expect(await deleteReceipt("r1")).toEqual({ ok: true, id: "r1" });
+    expect(err).toHaveBeenCalledWith(
+      "[postal] 세운 뒤 옛 사진 경로 읽기 실패:",
+      "r1",
+      state.rotationsError,
+    );
+    err.mockRestore();
   });
 });

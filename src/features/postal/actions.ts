@@ -135,11 +135,15 @@ export async function deleteReceipt(receiptId: string): Promise<UploadResult> {
 
   // 누운 사진을 세운 뒤 재판독이 확인하기 전이면 옛 사진 경로가 판독 행에만 있다.
   // 행을 지우면 판독 행도 연쇄로 지워져 그 경로를 잃는다 — 먼저 읽어 함께 지운다.
-  const { data: rotations } = await admin
+  const { data: rotations, error: rotationsError } = await admin
     .from("postal_extract_requests")
     .select("rotated_from")
     .eq("receipt_id", receiptId)
     .not("rotated_from", "is", null);
+  if (rotationsError) {
+    // 지우기는 막지 않는다 — 지금 사진은 지우고, 남을 수 있는 옛 사진을 찾게 남긴다.
+    console.error("[postal] 세운 뒤 옛 사진 경로 읽기 실패:", receiptId, rotationsError);
+  }
   const paths = [
     receipt.storage_path,
     ...(rotations ?? []).map((r: { rotated_from: string }) => r.rotated_from),
