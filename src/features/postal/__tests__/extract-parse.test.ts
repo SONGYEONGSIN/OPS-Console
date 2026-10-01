@@ -202,6 +202,48 @@ describe("readRegions", () => {
     expect(r?.receipt).toBeNull();
     expect(r?.total_fee).toEqual(REGIONS.total_fee);
   });
+
+  it("누운 판독의 위치는 쓰지 않는다 — 누운 픽셀 기준이라 세운 사진에 안 맞는다", () => {
+    for (const top of ["right", "bottom", "left"]) {
+      expect(readRegions({ regions: REGIONS, receipt_top: top })).toBeNull();
+    }
+  });
+
+  it("바로 선 판독·방향을 묻기 전 판독·이상한 방향은 위치를 그대로 쓴다", () => {
+    expect(readRegions({ regions: REGIONS, receipt_top: "top" })).toEqual(REGIONS);
+    expect(readRegions({ regions: REGIONS })).toEqual(REGIONS);
+    expect(readRegions({ regions: REGIONS, receipt_top: "up" })).toEqual(REGIONS);
+  });
+});
+
+/**
+ * 영수증 맨 위가 사진의 어느 쪽인가 — 픽셀째 누운 사진을 서버가 세운다(sideways-photo.ts).
+ * 없거나 이상하면 null = 바로 선 것으로 본다.
+ */
+describe("parseExtraction — 방향(receipt_top)", () => {
+  const parse = (receipt_top: unknown) =>
+    parseExtraction(JSON.stringify({ ...GOOD, receipt_top }));
+
+  it("넷 중 하나면 그대로 싣는다", () => {
+    for (const top of ["top", "right", "bottom", "left"]) {
+      const r = parse(top);
+      expect(r.ok && r.data.receipt_top).toBe(top);
+    }
+  });
+
+  it("없으면 null — 방향을 묻기 전 판독과 같은 모양이다", () => {
+    const r = parseExtraction(JSON.stringify(GOOD));
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.data.receipt_top).toBeNull();
+  });
+
+  it("이상한 값은 null — 판독은 산다", () => {
+    for (const bad of ["up", "RIGHT", 90, true]) {
+      const r = parse(bad);
+      expect(r.ok).toBe(true);
+      expect(r.ok && r.data.receipt_top).toBeNull();
+    }
+  });
 });
 
 describe("assignDaySeq", () => {

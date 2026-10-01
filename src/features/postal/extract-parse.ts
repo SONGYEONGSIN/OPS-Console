@@ -50,11 +50,27 @@ export type Regions = NonNullable<z.infer<typeof regionsSchema>>;
 export type Box = NonNullable<Regions["receipt"]>;
 
 /**
+ * 영수증 맨 위(우체국 이름·주소 쪽)가 사진의 어느 쪽인가 — 픽셀째 누운 사진을 서버가 세우는 데
+ * 쓴다(`sideways-photo.ts`). 없거나 이상하면 null = 바로 선 것으로 본다(방향을 묻기 전 판독도).
+ */
+const receiptTopSchema = z
+  .enum(["top", "right", "bottom", "left"])
+  .nullable()
+  .catch(null);
+
+export type ReceiptTop = NonNullable<z.infer<typeof receiptTopSchema>>;
+
+/**
  * 저장된 판독 결과(jsonb)에서 위치를 꺼낸다 — 저장할 때와 **같은 스키마로 다시 거른다**.
  * 위치를 묻기 전 판독·판독 전·실패는 null.
+ *
+ * **누운 판독(right·bottom·left)도 null** — 좌표가 누운 픽셀 기준이라 서버가 세운 사진에 안
+ * 맞는다(스펙 §5.6). 세운 뒤 다시 판독한 결과의 위치를 쓴다. 출력과 목록이 이 한 곳을 거친다.
  */
 export function readRegions(result: unknown): Regions | null {
   if (!result || typeof result !== "object" || !("regions" in result)) return null;
+  const top = "receipt_top" in result ? receiptTopSchema.parse(result.receipt_top) : null;
+  if (top !== null && top !== "top") return null;
   return regionsSchema.parse(result.regions);
 }
 
@@ -70,6 +86,8 @@ const extractionSchema = z.object({
   approved_amount: z.number().int().nonnegative().nullable().catch(null),
   item_count: z.number().int().nonnegative().nullable().catch(null),
   items: z.array(itemSchema).default([]),
+  /** 방향을 묻기 전 판독에는 없다 — null 로 싣는다. */
+  receipt_top: receiptTopSchema,
   /** 위치를 묻기 전 판독에는 없다 — null 로 싣는다. */
   regions: regionsSchema,
 });
