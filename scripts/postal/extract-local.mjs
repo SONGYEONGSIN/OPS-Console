@@ -24,8 +24,17 @@ const BASE = (process.env.OPS_CONSOLE_BASE_URL ?? "").replace(/\/$/, "");
 const SECRET = process.env.CRON_SECRET;
 const POLL_MS = Number(process.env.POSTAL_POLL_MS ?? 3000);
 const HTTP_TIMEOUT_MS = 20_000;
-/** 한 장에 3분이면 이상 상황이다(실측 30초 안팎). */
-const TIMEOUT_MS = 180_000;
+/**
+ * 누운 사진이면 서버가 보고(POST) 안에서 사진을 세운다 — 받고·돌리고·올린다. 서버 제한
+ * (maxDuration)과 같은 60초를 기다린다. 20초에서 끊으면 이 폴러가 '실패'를 다시 보고해
+ * 멀쩡한 판독을 실패로 덮는다.
+ */
+const REPORT_TIMEOUT_MS = 60_000;
+/**
+ * 한 장에 5분이면 이상 상황이다(실측 30초 안팎). 누운 사진에 등기가 많으면 3분 안팎이
+ * 걸린다 — 3분에서 자르면 방향을 알기 전에 실패해 서버가 세울 기회가 없다(스펙 §4.2).
+ */
+const TIMEOUT_MS = 300_000;
 const HEARTBEAT_MS = 5 * 60 * 1000;
 
 // 영수증만 읽으면 되므로 도구를 최소로. MCP 격리는 어시스턴트와 같은 이유다 —
@@ -50,7 +59,7 @@ const stamp = () => new Date().toLocaleTimeString("ko-KR", { hour12: false });
  * 안 잡아, 절전 중 좀비가 된 fetch 를 깨우지 못한 채 프로세스가 조용히 죽었다
  * (2026-08-24 어시스턴트, exit 13).
  */
-const http = (url, init = {}) => fetchWithTimeout(url, init, HTTP_TIMEOUT_MS);
+const http = (url, init = {}, ms = HTTP_TIMEOUT_MS) => fetchWithTimeout(url, init, ms);
 
 async function claim() {
   const res = await http(endpoint, { headers });
@@ -63,7 +72,7 @@ async function report(id, ok, { raw, message }) {
     method: "POST",
     headers: { ...headers, "content-type": "application/json" },
     body: JSON.stringify({ id, ok, raw, message }),
-  });
+  }, REPORT_TIMEOUT_MS);
   if (!res.ok) throw new Error(`report ${res.status}`);
 }
 
@@ -107,7 +116,7 @@ async function extract(req) {
         if (m.type === "result") result = m.result ?? "";
       }
     } catch (e) {
-      if (timedOut) throw new Error("3분을 넘겨 중단했습니다");
+      if (timedOut) throw new Error("5분을 넘겨 중단했습니다");
       throw e;
     } finally {
       clearTimeout(timer);

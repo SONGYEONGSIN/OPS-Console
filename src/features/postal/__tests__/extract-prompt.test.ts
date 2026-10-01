@@ -46,4 +46,10 @@ describe("buildExtractPrompt", () => {
   it("항목명이 아니라 값 자리를 짚게 한다 — 손 형광펜도 값에만 칠해져 있다", () => {
     expect(p).toMatch(/항목명/);
   });
+
+  it("영수증 맨 위가 사진의 어느 쪽인지 묻는다 — 누운 사진을 서버가 세운다", () => {
+    expect(p).toContain('"receipt_top"');
+    // 넷을 한 줄에 — 규칙 줄이 답할 값을 다 적는다.
+    expect(p).toMatch(/"top".*"right".*"bottom".*"left"/);
+  });
 });

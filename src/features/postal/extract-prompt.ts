@@ -22,6 +22,7 @@ export function buildExtractPrompt(fileName: string): string {
   "items": [
     {"tracking_no":"등기번호","fee":요금숫자,"postal_code":"우편번호","recipient_org":"수취인 소속","recipient_name":"수취인 이름"}
   ],
+  "receipt_top": "top",
   "regions": {
     "receipt": [x0, y0, x1, y1],
     "accepted_at": [x0, y0, x1, y1],
@@ -41,5 +42,6 @@ export function buildExtractPrompt(fileName: string): string {
   - accepted_at: 접수일자의 **값**만(예: 2026-09-23 15:14). "접수일자 :" 같은 항목명은 넣지 마라.
   - total_fee: 총요금의 **값**만(예: (즉납) 17,400원). 항목명은 넣지 마라.
   - 찾지 못한 상자는 null.
+- "receipt_top" 은 영수증 맨 위(우체국 이름·주소가 적힌 쪽)가 사진의 어느 쪽을 향하는지다 — "top"(바로 섬)·"right"·"bottom"·"left" 중 하나. 영수증을 옆으로 눕히거나 거꾸로 찍었으면 그 방향을 적는다.
 - 우체국 등기 영수증이 아니면 {"is_receipt": false} 만 답하라.`;
 }
