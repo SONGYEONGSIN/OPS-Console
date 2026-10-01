@@ -4,11 +4,11 @@
 
 **Goal:** 우편물 > 영수증 목록에서 영수증을 체크하면 A4 한 장에 3개씩(접수일시 순, 접수일자·총요금 값에 형광펜) 놓인 PDF 가 새 탭으로 열린다 — 내부 전표 증빙을 손으로 붙이던 일을 없앤다.
 
-**Architecture:** 이미 도는 판독(회사 PC 폴러 + 서버가 만드는 프롬프트)이 값과 함께 사진 속 위치(`regions`)도 돌려주게 한다(PR-1). 서버 라우트가 그 위치로 사진을 잘라 형광펜을 입히고 react-pdf 로 조립한다(PR-2). 목록에는 체크박스와 출력 버튼만 더한다(PR-3). 순서·묶음 규칙은 화면과 라우트가 한 모듈(`receipt-print/layout.ts`)을 같이 쓴다. DB 스키마와 폴러는 바뀌지 않는다. 판독 모델이 사진의 회전 정보를 무시하므로(스펙 §4.1) 업로드가 폰 사진을 픽셀째 세워 저장한다(PR-2, Task 17).
+**Architecture:** 이미 도는 판독(회사 PC 폴러 + 서버가 만드는 프롬프트)이 값과 함께 사진 속 위치(`regions`)도 돌려주게 한다(PR-1). 서버 라우트가 그 위치로 사진을 잘라 형광펜을 입히고 react-pdf 로 조립한다(PR-2). 목록에는 체크박스와 출력 버튼만 더한다(PR-3). 순서·묶음 규칙은 화면과 라우트가 한 모듈(`receipt-print/layout.ts`)을 같이 쓴다. DB 스키마와 폴러는 바뀌지 않는다. 판독 모델이 사진의 회전 정보를 무시하므로(스펙 §4.1) 업로드가 폰 사진을 픽셀째 세워 저장한다(PR-2, Task 17). 픽셀째 누운 사진은 판독이 방향(`receipt_top`)을 알리고 서버가 세워 다시 판독한다(PR-2b, Task 18~20).
 
-**Tech Stack:** Next.js 16 App Router(route handler), TypeScript, zod 4, sharp 0.35(libvips 8.18), @react-pdf/renderer 4, Supabase(admin client, 비공개 버킷 `postal-receipts`), Vitest + Testing Library
+**Tech Stack:** Next.js 16 App Router(route handler), TypeScript, zod 4, sharp 0.34.5(next 16.2.4 와 같은 범위 — 0.35 는 Turbopack 이 libvips 를 함수에 싣지 않는다, PR-2 최종 리뷰), @react-pdf/renderer 4, Supabase(admin client, 비공개 버킷 `postal-receipts`), Vitest + Testing Library
 
-**Spec:** `docs/superpowers/specs/2026-09-28-postal-receipt-print-design.md` (revision 3)
+**Spec:** `docs/superpowers/specs/2026-09-28-postal-receipt-print-design.md` (revision 4)
 
 ## PR 과 멈출 지점
 
@@ -17,6 +17,7 @@
 | PR-1 | `feat/postal-receipt-print` (스펙 커밋 위, 이미 있음) | 판독에 위치 받기 + 설계·계획 문서 | 6 |
 | 🛑 | — (PR-1 머지·배포 후) | 14장 재판독 → 좌표·판독 품질 확인 → **사용자와 진행 결정**. 머지 전 로컬 평가로 한 번 멈췄다 — 두 줄 폭·업로드 세우기로 정함(2026-09-29) | 커밋 없음 |
 | PR-2 | `feat/postal-receipt-pdf` | PDF 라우트(서버만) + 업로드 때 사진 세우기. 실데이터 PDF 를 머지 전에 보인다 | 22 |
+| PR-2b | `feat/postal-sideways-receipt` | 누운 사진 — 판독이 방향을 알리고 서버가 세운다(Task 18~21). 설계(스펙 rev4 + 이 태스크들)가 첫 커밋 | 9 |
 | PR-3 | `feat/postal-receipt-print-ui` | 체크박스·출력 버튼 | 9 |
 
 서버와 화면을 가른 이유는 스펙 §7 끝에 있다(합치면 28파일 → HARD-GATE 전체 설계 등급, sharp 가 Vercel 에서 도는지를 화면보다 먼저 본다).
@@ -29,8 +30,8 @@
 - **순서**: 접수일시 오름차순, 판독 전이면 올린 시각(한국 시각). **대상**: 사진이 있는 영수증 전부(확정 여부 무관).
 - **가드**: 로그인(proxy) + `canViewMenu("postal", me)` — 페이지의 `requireMenu("postal")` 과 같은 함수를 쓴다.
 - 사진은 **한 장씩 순서대로** 처리한다(메모리). 못 읽은 사진은 그 칸에 사유 한 줄, 나머지는 정상 출력.
-- DB 마이그레이션·폴러(`scripts/postal/extract-local.mjs`) 수정 없음.
-- **사진 방향**: 판독 모델은 회전 정보(EXIF orientation)를 무시하고 저장된 픽셀을 본다(스펙 §4.1). 업로드가 회전 정보 붙은 JPEG 를 픽셀째 세워 저장하고(Task 17), 출력은 회전 정보가 남은 사진의 위치를 쓰지 않는다(Task 8).
+- DB 마이그레이션 없음. 폴러(`scripts/postal/extract-local.mjs`)는 PR-2b 의 시간 제한(판독 5분·보고 대기 60초)만 바꾼다.
+- **사진 방향**: 판독 모델은 회전 정보(EXIF orientation)를 무시하고 저장된 픽셀을 본다(스펙 §4.1). 업로드가 회전 정보 붙은 JPEG 를 픽셀째 세워 저장하고(Task 17), 출력은 회전 정보가 남은 사진의 위치를 쓰지 않는다(Task 8). 픽셀째 누운 사진은 판독의 `receipt_top` 으로 서버가 세우고 한 번 더 판독한다 — 누운 판독의 위치는 `readRegions` 가 쓰지 않는다(PR-2b, Task 18~20).
 - 표시용 날짜·시각은 `kstFormat`. 정렬 키만 고정 +9시간(한국은 서머타임이 없다).
 - UI `.tsx` 는 Tailwind 토큰만(hex 금지). PDF 파일은 기존 `src/lib/pdf/*` 처럼 hex 를 쓴다.
 - 헤더 액션은 `HeaderActionButton`. 문장 속 숫자는 **한 텍스트 노드**로(쪼개면 테스트·검색이 그 문장을 못 집는다).
@@ -47,7 +48,7 @@
 
 | 파일 | 도구 |
 |---|---|
-| `src/features/postal/extract-parse.ts` · `src/features/postal/__tests__/extract-parse.test.ts` · `src/features/postal/queries.ts` · `src/app/dashboard/postal/_components/PostalTable.tsx` · `.../__tests__/PostalTable.test.tsx` · `.../__tests__/ReceiptReview.test.tsx` · `src/features/postal/__tests__/actions.test.ts` | `splice.py` |
+| `src/features/postal/extract-parse.ts` · `src/features/postal/__tests__/extract-parse.test.ts` · `src/features/postal/queries.ts` · `src/app/dashboard/postal/_components/PostalTable.tsx` · `.../__tests__/PostalTable.test.tsx` · `.../__tests__/ReceiptReview.test.tsx` · `src/features/postal/__tests__/actions.test.ts` · `src/app/api/postal/extract/route.ts` · `src/app/api/postal/extract/__tests__/route.test.ts` · `scripts/postal/extract-local.mjs` | `splice.py` |
 | 새 파일, `extract-prompt.ts`, `extract-prompt.test.ts`, `queries.test.ts`, `actions.ts`(준수) | Write / Edit |
 
 `$SP/splice.py` — Edit 와 같이 정확히 맞는 문자열을 바꾸되 훅을 부르지 않는다:
@@ -82,7 +83,7 @@ print(f"바꿈 {found}곳: {target}")
 
 ## Review Focus
 
-스펙이 말하지 않았지만 쓰는 사람이 가장 먼저 부딪힐 것 여섯(6번은 2026-09-29 추가). 각 줄의 테스트를 그 코드를 가진 태스크에 넣었다.
+스펙이 말하지 않았지만 쓰는 사람이 가장 먼저 부딪힐 것 일곱(6번은 2026-09-29, 7번은 2026-10-01 추가). 각 줄의 테스트를 그 코드를 가진 태스크에 넣었다.
 
 1. **고른 영수증을 그사이 지웠다** — 남은 것만 찍고, 하나도 없으면 "영수증을 찾을 수 없습니다"(404). 한 장 때문에 PDF 전체가 실패하면 안 된다. → Task 11
 2. **판독 전·재판독 대기·실패한 영수증** — 형광펜 없이 사진째 들어가고, 올린 시각(한국 시각)으로 순서에 끼며, 화면 안내("N장 중 M장은 형광펜이 빠진 곳이 있습니다")에 센다. 자정 전후에 올린 사진이 UTC 날짜 때문에 하루 앞에 서면 안 된다. → Task 5, 9, 14
@@ -90,6 +91,7 @@ print(f"바꿈 {found}곳: {target}")
 4. **사진을 못 받거나 못 읽는다**(저장소 오류·HEIC·손상) — 그 칸에 사유 한 줄, 나머지는 정상. → Task 11
 5. **등기 20건이 넘는 아주 긴 영수증** — 페이지 높이에 맞춰 줄어 한 페이지 안에 든다. 넘치면 react-pdf 는 새 페이지를 만들지 않고 경고 한 줄만 남긴 채 **아래를 잘라 버린다**(실측) — 증빙이 잘린 채 전표에 붙는다. → Task 10
 6. **회전 정보가 붙은 폰 사진**(안드로이드 등) — 판독 모델은 누운 픽셀 기준으로 좌표를 준다. 업로드가 세워 저장하고, 그 전 사진이면 위치를 쓰지 않는다(엉뚱한 곳에 칠하지 않는다). → Task 8, 17
+7. **픽셀째 누운 사진**(옆으로 놓인 영수증을 폰을 가로로 들고 찍었다 — 회전 정보 없음) — 판독이 방향을 주면 서버가 세우고 한 번 더 판독한다. 세우기 전·실패하면 위치를 쓰지 않는다(엉뚱한 곳에 칠하지 않는다). 다시 판독이 또 누웠다고 해도 한 번만 돈다. 세로 사진에 '옆'이라고 하면 판독이 틀린 것으로 보고 돌리지 않는다. → Task 18, 19, 20
 
 ---
 
@@ -2798,6 +2800,1020 @@ db.from('postal_receipts').select('id').order('created_at').limit(2).then(({ dat
 사용자에게 그 주소를 로그인한 브라우저에서 열어 달라고 한다(로그인 세션이 필요하다). 확인할 것: PDF 가 열리고 형광펜이 있다.
 - 열리면 PR-3 로 간다
 - 500 이면 Vercel 로그(`npx vercel logs <배포 URL>` 또는 대시보드)에서 원문을 읽는다. sharp 로드 실패면 되돌리는 PR(`git revert <머지 SHA>`)을 만들고 **머지 승인을 받아** 되돌린 뒤 원인을 따로 본다
+
+---
+
+## PR-2b — 누운 사진
+
+시작 전: `git checkout main && git pull && git checkout -b feat/postal-sideways-receipt`. 설계(스펙 rev4 §4.2·§5.6 + 이 태스크들)가 이 브랜치의 첫 커밋이다.
+
+판독이 영수증 맨 위가 사진의 어느 쪽인지(`receipt_top`) 알려 주고, 누워 있으면 판독 보고(POST) 안에서 서버가 사진을 세워 새 경로에 저장한 뒤 한 번 더 판독을 건다. 누운 판독의 위치는 쓰지 않는다 — `readRegions` 한 곳에서 막는다(PDF·PR-3 목록이 다 거기를 거친다).
+
+### Task 18: 판독이 영수증 방향을 알린다
+
+**Files:**
+- Modify (Edit): `src/features/postal/extract-prompt.ts`
+- Test (Edit): `src/features/postal/__tests__/extract-prompt.test.ts`
+- Modify (splice): `src/features/postal/extract-parse.ts`
+- Test (splice): `src/features/postal/__tests__/extract-parse.test.ts`
+
+**Interfaces:**
+- Consumes: PR-1·PR-2 의 `regionsSchema`·`readRegions`(이 태스크가 고친다)
+- Produces: `type ReceiptTop = "top" | "right" | "bottom" | "left"`(extract-parse), `Extraction.receipt_top: ReceiptTop | null`, `readRegions(result)` 는 저장된 `receipt_top` 이 right·bottom·left 면 null
+
+- [ ] **Step 1: 프롬프트 실패 테스트**
+
+Edit — `src/features/postal/__tests__/extract-prompt.test.ts`.
+
+old:
+```ts
+  it("항목명이 아니라 값 자리를 짚게 한다 — 손 형광펜도 값에만 칠해져 있다", () => {
+    expect(p).toMatch(/항목명/);
+  });
+});
+```
+
+new:
+```ts
+  it("항목명이 아니라 값 자리를 짚게 한다 — 손 형광펜도 값에만 칠해져 있다", () => {
+    expect(p).toMatch(/항목명/);
+  });
+
+  it("영수증 맨 위가 사진의 어느 쪽인지 묻는다 — 누운 사진을 서버가 세운다", () => {
+    expect(p).toContain('"receipt_top"');
+    // 넷을 한 줄에 — 규칙 줄이 답할 값을 다 적는다.
+    expect(p).toMatch(/"top".*"right".*"bottom".*"left"/);
+  });
+});
+```
+
+Run: `npx vitest run src/features/postal/__tests__/extract-prompt.test.ts --maxWorkers=2`
+Expected: FAIL — 새 테스트 1건(`"receipt_top"` 이 없다), 나머지 9건 PASS.
+
+- [ ] **Step 2: 프롬프트가 방향을 묻는다**
+
+Edit — `src/features/postal/extract-prompt.ts`(템플릿 문자열 안). 넣는 두 줄은 PR-2b 전 탐침에서 5/5 를 맞힌 문구 그대로다(스펙 §4.2) — 고치지 않는다.
+
+old:
+```
+  ],
+  "regions": {
+```
+
+new:
+```
+  ],
+  "receipt_top": "top",
+  "regions": {
+```
+
+old:
+```
+- 우체국 등기 영수증이 아니면 {"is_receipt": false} 만 답하라.`;
+```
+
+new:
+```
+- "receipt_top" 은 영수증 맨 위(우체국 이름·주소가 적힌 쪽)가 사진의 어느 쪽을 향하는지다 — "top"(바로 섬)·"right"·"bottom"·"left" 중 하나. 영수증을 옆으로 눕히거나 거꾸로 찍었으면 그 방향을 적는다.
+- 우체국 등기 영수증이 아니면 {"is_receipt": false} 만 답하라.`;
+```
+
+Run: `npx vitest run src/features/postal/__tests__/extract-prompt.test.ts --maxWorkers=2`
+Expected: 10 PASS.
+
+- [ ] **Step 3: 방향 스키마·`readRegions` 실패 테스트**
+
+splice — `src/features/postal/__tests__/extract-parse.test.ts`.
+
+old (`t18-test-old.txt`):
+```ts
+  it("저장된 값도 다시 거른다 — 이상한 상자는 그 상자만 null", () => {
+    const r = readRegions({ regions: { ...REGIONS, receipt: [0.9, 0, 0.1, 1] } });
+    expect(r?.receipt).toBeNull();
+    expect(r?.total_fee).toEqual(REGIONS.total_fee);
+  });
+});
+```
+
+new (`t18-test-new.txt`):
+```ts
+  it("저장된 값도 다시 거른다 — 이상한 상자는 그 상자만 null", () => {
+    const r = readRegions({ regions: { ...REGIONS, receipt: [0.9, 0, 0.1, 1] } });
+    expect(r?.receipt).toBeNull();
+    expect(r?.total_fee).toEqual(REGIONS.total_fee);
+  });
+
+  it("누운 판독의 위치는 쓰지 않는다 — 누운 픽셀 기준이라 세운 사진에 안 맞는다", () => {
+    for (const top of ["right", "bottom", "left"]) {
+      expect(readRegions({ regions: REGIONS, receipt_top: top })).toBeNull();
+    }
+  });
+
+  it("바로 선 판독·방향을 묻기 전 판독·이상한 방향은 위치를 그대로 쓴다", () => {
+    expect(readRegions({ regions: REGIONS, receipt_top: "top" })).toEqual(REGIONS);
+    expect(readRegions({ regions: REGIONS })).toEqual(REGIONS);
+    expect(readRegions({ regions: REGIONS, receipt_top: "up" })).toEqual(REGIONS);
+  });
+});
+
+/**
+ * 영수증 맨 위가 사진의 어느 쪽인가 — 픽셀째 누운 사진을 서버가 세운다(sideways-photo.ts).
+ * 없거나 이상하면 null = 바로 선 것으로 본다.
+ */
+describe("parseExtraction — 방향(receipt_top)", () => {
+  const parse = (receipt_top: unknown) =>
+    parseExtraction(JSON.stringify({ ...GOOD, receipt_top }));
+
+  it("넷 중 하나면 그대로 싣는다", () => {
+    for (const top of ["top", "right", "bottom", "left"]) {
+      const r = parse(top);
+      expect(r.ok && r.data.receipt_top).toBe(top);
+    }
+  });
+
+  it("없으면 null — 방향을 묻기 전 판독과 같은 모양이다", () => {
+    const r = parseExtraction(JSON.stringify(GOOD));
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.data.receipt_top).toBeNull();
+  });
+
+  it("이상한 값은 null — 판독은 산다", () => {
+    for (const bad of ["up", "RIGHT", 90, true]) {
+      const r = parse(bad);
+      expect(r.ok).toBe(true);
+      expect(r.ok && r.data.receipt_top).toBeNull();
+    }
+  });
+});
+```
+
+Run: `npx vitest run src/features/postal/__tests__/extract-parse.test.ts --maxWorkers=2`
+Expected: FAIL — 새 5건 중 4건. '바로 선 판독·…그대로 쓴다' 는 지금도 통과한다(지켜야 할 기존 동작).
+
+- [ ] **Step 4: 방향 스키마와 `readRegions`**
+
+splice — `src/features/postal/extract-parse.ts`.
+
+old (`t18-read-old.txt`):
+```ts
+/**
+ * 저장된 판독 결과(jsonb)에서 위치를 꺼낸다 — 저장할 때와 **같은 스키마로 다시 거른다**.
+ * 위치를 묻기 전 판독·판독 전·실패는 null.
+ */
+export function readRegions(result: unknown): Regions | null {
+  if (!result || typeof result !== "object" || !("regions" in result)) return null;
+  return regionsSchema.parse(result.regions);
+}
+```
+
+new (`t18-read-new.txt`):
+```ts
+/**
+ * 영수증 맨 위(우체국 이름·주소 쪽)가 사진의 어느 쪽인가 — 픽셀째 누운 사진을 서버가 세우는 데
+ * 쓴다(`sideways-photo.ts`). 없거나 이상하면 null = 바로 선 것으로 본다(방향을 묻기 전 판독도).
+ */
+const receiptTopSchema = z
+  .enum(["top", "right", "bottom", "left"])
+  .nullable()
+  .catch(null);
+
+export type ReceiptTop = NonNullable<z.infer<typeof receiptTopSchema>>;
+
+/**
+ * 저장된 판독 결과(jsonb)에서 위치를 꺼낸다 — 저장할 때와 **같은 스키마로 다시 거른다**.
+ * 위치를 묻기 전 판독·판독 전·실패는 null.
+ *
+ * **누운 판독(right·bottom·left)도 null** — 좌표가 누운 픽셀 기준이라 서버가 세운 사진에 안
+ * 맞는다(스펙 §5.6). 세운 뒤 다시 판독한 결과의 위치를 쓴다. 출력과 목록이 이 한 곳을 거친다.
+ */
+export function readRegions(result: unknown): Regions | null {
+  if (!result || typeof result !== "object" || !("regions" in result)) return null;
+  const top = "receipt_top" in result ? receiptTopSchema.parse(result.receipt_top) : null;
+  if (top !== null && top !== "top") return null;
+  return regionsSchema.parse(result.regions);
+}
+```
+
+old (`t18-field-old.txt`):
+```ts
+  items: z.array(itemSchema).default([]),
+  /** 위치를 묻기 전 판독에는 없다 — null 로 싣는다. */
+  regions: regionsSchema,
+```
+
+new (`t18-field-new.txt`):
+```ts
+  items: z.array(itemSchema).default([]),
+  /** 방향을 묻기 전 판독에는 없다 — null 로 싣는다. */
+  receipt_top: receiptTopSchema,
+  /** 위치를 묻기 전 판독에는 없다 — null 로 싣는다. */
+  regions: regionsSchema,
+```
+
+Run: `npx vitest run src/features/postal/__tests__/extract-parse.test.ts src/features/postal/__tests__/extract-prompt.test.ts src/features/postal/receipt-print --maxWorkers=2`
+Expected: 전부 PASS — `receipt-print` 는 `readRegions` 를 쓰는 출력 쪽이다(바로 선 판독에서는 바뀌지 않아야 한다).
+
+- [ ] **Step 5: 타입 확인·커밋**
+
+```bash
+npm run typecheck
+git add src/features/postal/extract-prompt.ts src/features/postal/__tests__/extract-prompt.test.ts src/features/postal/extract-parse.ts src/features/postal/__tests__/extract-parse.test.ts
+git diff --cached --numstat
+git commit -m "$(cat <<'EOF'
+feat(postal): 판독이 영수증 방향(receipt_top)을 알린다
+
+누운 판독의 위치는 readRegions 가 쓰지 않는다 — 누운 픽셀 기준이다.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+)"
+```
+Expected: typecheck 0 errors. `--numstat` 은 4파일이고 **지운 줄은 모두 0**(넣기만 했다) — 0 이 아니면 포매터 재정렬이 섞인 것이니 되돌리고 splice 로 다시 한다.
+
+### Task 19: 누운 사진을 세워 저장하고 다시 판독을 건다
+
+**Files:**
+- Create: `src/features/postal/sideways-photo.ts`
+- Test: `src/features/postal/__tests__/sideways-photo.test.ts`
+
+**Interfaces:**
+- Consumes: `type ReceiptTop`(Task 18, `../extract-parse`), `downloadReceipt(storagePath: string): Promise<Buffer | null>`(`./receipt-print/sources` — 던지지 않고 못 받으면 null), `RECEIPT_BUCKET`·`receiptStoragePath(dateFolder, id, fileName)`(`./upload-guard`), `createAdminClient`(`@/lib/supabase/admin`)
+- Produces:
+  - `AUTO_ROTATE_REQUESTER = "auto-rotate"`
+  - `turnUpright(photo: Buffer, top: "right" | "bottom" | "left"): Promise<Buffer | null>`
+  - `straightenSideways(requestId: string, top: ReceiptTop | null): Promise<StraightenOutcome>` — **던지지 않는다**
+  - `type StraightenOutcome = "upright" | "already-rotated" | "not-landscape" | "rotated" | "failed"`
+
+- [ ] **Step 1: 실패 테스트**
+
+`src/features/postal/__tests__/sideways-photo.test.ts`:
+```ts
+// @vitest-environment node
+//
+// sharp 는 node 의 Buffer 를 받는다 — 기본 jsdom 환경에서 돌리지 않는다.
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import sharp from "sharp";
+
+const OLD = "2026-09-23/old.jpg";
+
+const state = {
+  request: null as Record<string, unknown> | null,
+  requestError: null as { message: string } | null,
+  requestReads: 0,
+  photos: {} as Record<string, Buffer>,
+  uploadError: null as { message: string } | null,
+  swapRows: [] as { id: string }[],
+  swapError: null as { message: string } | null,
+  removeError: null as { message: string } | null,
+  insertError: null as { message: string } | null,
+  /** 바깥에 남긴 일 — 순서까지 본다 */
+  log: [] as string[],
+  uploaded: {} as Record<string, { body: Buffer; contentType: unknown }>,
+  swapFilters: [] as string[],
+  inserted: [] as Record<string, unknown>[],
+};
+
+// 사진 받기는 출력과 같은 함수를 쓴다 — 여기서는 받은 셈 친다.
+vi.mock("../receipt-print/sources", () => ({
+  downloadReceipt: (path: string) => Promise.resolve(state.photos[path] ?? null),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: (table: string) =>
+      table === "postal_extract_requests" ? requestsTable() : receiptsTable(),
+    storage: {
+      from: () => ({
+        upload: (path: string, body: Buffer, opts: { contentType?: unknown }) => {
+          state.log.push(`upload ${path}`);
+          state.uploaded[path] = { body, contentType: opts.contentType };
+          return Promise.resolve({ error: state.uploadError });
+        },
+        remove: (paths: string[]) => {
+          state.log.push(`remove ${paths.join(",")}`);
+          return Promise.resolve({ error: state.removeError });
+        },
+      }),
+    },
+  }),
+}));
+
+/** 판독 요청 — 읽기(select→eq→maybeSingle)와 재판독 넣기(insert) */
+function requestsTable() {
+  return {
+    select: () => ({
+      eq: () => ({
+        maybeSingle: () => {
+          state.requestReads += 1;
+          return Promise.resolve({ data: state.request, error: state.requestError });
+        },
+      }),
+    }),
+    insert: (row: Record<string, unknown>) => {
+      state.log.push(`insert ${String(row.requested_by)}`);
+      state.inserted.push(row);
+      return Promise.resolve({ error: state.insertError });
+    },
+  };
+}
+
+/** 영수증의 경로 교체 — update→eq→eq→select */
+function receiptsTable() {
+  const chain = {
+    update: (patch: Record<string, unknown>) => {
+      state.log.push(`update ${String(patch.storage_path)}`);
+      return chain;
+    },
+    eq: (column: string, value: unknown) => {
+      state.swapFilters.push(`${column}=${String(value)}`);
+      return chain;
+    },
+    select: () => Promise.resolve({ data: state.swapRows, error: state.swapError }),
+  };
+  return chain;
+}
+
+const { straightenSideways, turnUpright, AUTO_ROTATE_REQUESTER } = await import(
+  "../sideways-photo"
+);
+
+const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+
+/** 흰 사진의 한쪽 끝에 검은 띠(폭 40px). 띠가 영수증 맨 위다 — band 는 띠가 있는 쪽. */
+async function photo(
+  width: number,
+  height: number,
+  band: "right" | "bottom" | "left",
+) {
+  const across = band === "bottom";
+  return sharp({ create: { width, height, channels: 3, background: "#ffffff" } })
+    .composite([
+      {
+        input: {
+          create: {
+            width: across ? width : 40,
+            height: across ? 40 : height,
+            channels: 3,
+            background: "#000000",
+          },
+        },
+        left: band === "right" ? width - 40 : 0,
+        top: band === "bottom" ? height - 40 : 0,
+      },
+    ])
+    .jpeg()
+    .toBuffer();
+}
+
+/** 크기와 위·아래 끝 가운데의 밝기. 세운 사진은 위가 검정(띠), 아래가 흰색이다. */
+async function look(jpeg: Buffer) {
+  const { data, info } = await sharp(jpeg)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const luma = (y: number) =>
+    data[(y * info.width + Math.floor(info.width / 2)) * info.channels];
+  const tone = (v: number) => (v < 60 ? "검정" : v > 200 ? "흰색" : "회색");
+  return {
+    size: `${info.width}×${info.height}`,
+    top: tone(luma(5)),
+    bottom: tone(luma(info.height - 5)),
+  };
+}
+
+const UPRIGHT = { size: "100×200", top: "검정", bottom: "흰색" };
+
+describe("turnUpright", () => {
+  it("맨 위가 오른쪽이면 반시계로 세운다 — 가로 사진이 세로가 된다", async () => {
+    const out = await turnUpright(await photo(200, 100, "right"), "right");
+    expect(out && (await look(out))).toEqual(UPRIGHT);
+  });
+
+  it("맨 위가 왼쪽이면 시계로 세운다", async () => {
+    const out = await turnUpright(await photo(200, 100, "left"), "left");
+    expect(out && (await look(out))).toEqual(UPRIGHT);
+  });
+
+  it("거꾸로 찍혔으면 뒤집는다 — 세로 사진도", async () => {
+    const out = await turnUpright(await photo(100, 200, "bottom"), "bottom");
+    expect(out && (await look(out))).toEqual(UPRIGHT);
+  });
+
+  it("세로 사진에 '옆'이면 돌리지 않는다 — 누운 긴 영수증은 가로 사진에 담긴다", async () => {
+    expect(await turnUpright(await photo(100, 200, "right"), "right")).toBeNull();
+    expect(await turnUpright(await photo(100, 200, "left"), "left")).toBeNull();
+  });
+});
+
+describe("straightenSideways", () => {
+  beforeEach(async () => {
+    state.request = {
+      receipt_id: "r1",
+      requested_by: "someone@example.test",
+      postal_receipts: { storage_path: OLD },
+    };
+    state.requestError = null;
+    state.requestReads = 0;
+    state.photos = { [OLD]: await photo(200, 100, "right") };
+    state.uploadError = null;
+    state.swapRows = [{ id: "r1" }];
+    state.swapError = null;
+    state.removeError = null;
+    state.insertError = null;
+    state.log = [];
+    state.uploaded = {};
+    state.swapFilters = [];
+    state.inserted = [];
+    errorLog.mockClear();
+  });
+
+  it("바로 섰으면 아무것도 안 한다 — 요청도 안 읽는다", async () => {
+    expect(await straightenSideways("q1", "top")).toBe("upright");
+    expect(await straightenSideways("q1", null)).toBe("upright");
+    expect(state.requestReads).toBe(0);
+    expect(state.log).toEqual([]);
+  });
+
+  it("세워 새 경로에 올리고 → 경로를 바꾸고 → 옛 사진을 지우고 → 한 번 더 판독한다", async () => {
+    expect(await straightenSideways("q1", "right")).toBe("rotated");
+    const [up] = Object.keys(state.uploaded);
+    // 같은 날짜 폴더에 새 이름 — 같은 경로에 덮으면 서명 URL·캐시가 옛 사진을 보여 준다.
+    expect(up).toMatch(/^2026-09-23\/[0-9a-f-]{36}\.jpg$/);
+    expect(state.log).toEqual([
+      `upload ${up}`,
+      `update ${up}`,
+      `remove ${OLD}`,
+      `insert ${AUTO_ROTATE_REQUESTER}`,
+    ]);
+    expect(state.uploaded[up].contentType).toBe("image/jpeg");
+    expect(await look(state.uploaded[up].body)).toEqual(UPRIGHT);
+    // 그사이 다른 사진으로 바뀌었으면 안 바꾼다 — 옛 경로까지 맞을 때만.
+    expect(state.swapFilters).toEqual(["id=r1", `storage_path=${OLD}`]);
+    expect(state.inserted).toEqual([
+      { receipt_id: "r1", requested_by: AUTO_ROTATE_REQUESTER },
+    ]);
+  });
+
+  it("자동 세우기가 건 재판독은 다시 세우지 않는다 — 한 번만", async () => {
+    state.request = { ...state.request, requested_by: AUTO_ROTATE_REQUESTER };
+    expect(await straightenSideways("q1", "right")).toBe("already-rotated");
+    expect(state.log).toEqual([]);
+  });
+
+  it("세로 사진에 '옆'이면 두고 아무것도 안 바꾼다", async () => {
+    state.photos = { [OLD]: await photo(100, 200, "right") };
+    expect(await straightenSideways("q1", "right")).toBe("not-landscape");
+    expect(state.log).toEqual([]);
+  });
+
+  it("요청이나 사진을 못 읽으면 failed — 아무것도 안 바꾼다", async () => {
+    state.requestError = { message: "db down" };
+    expect(await straightenSideways("q1", "right")).toBe("failed");
+    state.requestError = null;
+    state.photos = {};
+    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(state.log).toEqual([]);
+  });
+
+  it("올리기에 실패하면 failed — 경로는 그대로", async () => {
+    state.uploadError = { message: "quota" };
+    expect(await straightenSideways("q1", "right")).toBe("failed");
+    const [up] = Object.keys(state.uploaded);
+    expect(state.log).toEqual([`upload ${up}`]);
+  });
+
+  it("경로를 못 바꾸면(그사이 지움·오류) 새 사진을 지우고 옛 것을 둔다 — 재판독도 없다", async () => {
+    const breakSwap: Array<() => void> = [
+      () => {
+        state.swapRows = [];
+      },
+      () => {
+        state.swapRows = [{ id: "r1" }];
+        state.swapError = { message: "db down" };
+      },
+    ];
+    for (const arrange of breakSwap) {
+      state.log = [];
+      state.uploaded = {};
+      arrange();
+      expect(await straightenSideways("q1", "right")).toBe("failed");
+      const [up] = Object.keys(state.uploaded);
+      expect(state.log).toEqual([`upload ${up}`, `update ${up}`, `remove ${up}`]);
+    }
+  });
+
+  it("옛 사진 삭제 실패는 넘어간다 — 아무도 안 여는 파일이 남을 뿐이다", async () => {
+    state.removeError = { message: "not found" };
+    expect(await straightenSideways("q1", "right")).toBe("rotated");
+    expect(state.inserted).toHaveLength(1);
+  });
+
+  it("재판독 요청에 실패하면 failed — 사진은 이미 섰다", async () => {
+    state.insertError = { message: "db down" };
+    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(state.log.at(-1)).toBe(`insert ${AUTO_ROTATE_REQUESTER}`);
+  });
+
+  it("던지지 않는다 — 못 읽는 사진도 failed 로 끝나고 로그를 남긴다", async () => {
+    state.photos = { [OLD]: Buffer.from("not an image") };
+    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(errorLog).toHaveBeenCalled();
+    expect(state.log).toEqual([]);
+  });
+});
+```
+
+Run: `npx vitest run src/features/postal/__tests__/sideways-photo.test.ts --maxWorkers=2`
+Expected: FAIL — `../sideways-photo` 를 찾을 수 없다.
+
+- [ ] **Step 2: 구현**
+
+`src/features/postal/sideways-photo.ts`:
+```ts
+import "server-only";
+import { randomUUID } from "node:crypto";
+import sharp from "sharp";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { ReceiptTop } from "./extract-parse";
+import { downloadReceipt } from "./receipt-print/sources";
+import { RECEIPT_BUCKET, receiptStoragePath } from "./upload-guard";
+
+/** 자동 세우기가 건 재판독의 요청자. 이 판독은 다시 세우지 않는다 — 한 번만. */
+export const AUTO_ROTATE_REQUESTER = "auto-rotate";
+
+type SidewaysTop = Exclude<ReceiptTop, "top">;
+
+/** 영수증 맨 위가 향한 쪽 → 바로 세우는 각도. sharp `rotate` 는 시계 방향이다. */
+const TURN: Record<SidewaysTop, number> = { right: 270, bottom: 180, left: 90 };
+
+export type StraightenOutcome =
+  | "upright" // 바로 섰다 — 할 일 없음
+  | "already-rotated" // 자동 세우기가 건 재판독 — 또 돌리지 않는다
+  | "not-landscape" // 세로 사진에 right·left — 판독이 틀린 것으로 보고 둔다
+  | "rotated" // 세워 저장하고 재판독을 걸었다
+  | "failed"; // 어디선가 멈췄다 — 첫 판독은 남고 사진은 누운 채(위치는 안 쓰인다)
+
+type Admin = ReturnType<typeof createAdminClient>;
+
+/**
+ * 누운 사진을 세운다. 90° 돌림(right·left)은 **가로 사진에서만** — 누운 긴 영수증은 가로
+ * 사진에 담긴다. 세로 사진에 right·left 면 판독이 틀린 것으로 보고 null.
+ * 메타데이터를 싣지 않는다 — 회전 정보가 남지 않는다(업로드 세우기와 같다).
+ */
+export async function turnUpright(
+  photo: Buffer,
+  top: SidewaysTop,
+): Promise<Buffer | null> {
+  const { width = 0, height = 0 } = await sharp(photo).metadata();
+  if (top !== "bottom" && width <= height) return null;
+  return sharp(photo).rotate(TURN[top]).jpeg({ quality: 92 }).toBuffer();
+}
+
+/**
+ * 픽셀째 누운 영수증 사진을 세워 저장하고 한 번 더 판독을 건다(스펙 §5.6).
+ *
+ * 영수증을 옆으로 놓고 폰을 가로로 들고 찍으면 사진은 바로 서고(회전 정보 없음) 영수증만
+ * 눕는다 — 업로드의 `uprightPhoto` 는 회전 정보만 보므로 못 잡는다. 판독이 영수증 맨 위가
+ * 어느 쪽인지(`receipt_top`) 알려 주면, 판독 결과를 저장한 **뒤에** 여기서 세운다.
+ *
+ * **던지지 않는다** — 판독 결과는 이미 저장됐고, 어디서 멈춰도 사진이 누운 채 남을 뿐이다
+ * (`readRegions` 가 누운 판독의 위치를 쓰지 않는다).
+ */
+export async function straightenSideways(
+  requestId: string,
+  top: ReceiptTop | null,
+): Promise<StraightenOutcome> {
+  if (top === null || top === "top") return "upright";
+  try {
+    return await straighten(createAdminClient(), requestId, top);
+  } catch (err) {
+    return failed(requestId, "처리 중 예외", err);
+  }
+}
+
+async function straighten(
+  admin: Admin,
+  requestId: string,
+  top: SidewaysTop,
+): Promise<StraightenOutcome> {
+  const { data, error } = await admin
+    .from("postal_extract_requests")
+    .select("receipt_id, requested_by, postal_receipts(storage_path)")
+    .eq("id", requestId)
+    .maybeSingle();
+  if (error || !data) return failed(requestId, "요청 읽기", error);
+  const req = data as unknown as {
+    receipt_id: string;
+    requested_by: string;
+    postal_receipts: { storage_path: string } | null;
+  };
+  if (req.requested_by === AUTO_ROTATE_REQUESTER) return "already-rotated";
+
+  const oldPath = req.postal_receipts?.storage_path;
+  const photo = oldPath ? await downloadReceipt(oldPath) : null;
+  if (!oldPath || !photo) return failed(requestId, "사진 받기", null);
+
+  const upright = await turnUpright(photo, top);
+  if (!upright) return "not-landscape";
+
+  const replaced = await replacePhoto(admin, req.receipt_id, oldPath, upright);
+  if (replaced !== null) return failed(requestId, "사진 바꾸기", replaced);
+
+  const { error: queueError } = await admin
+    .from("postal_extract_requests")
+    .insert({ receipt_id: req.receipt_id, requested_by: AUTO_ROTATE_REQUESTER });
+  if (queueError) return failed(requestId, "재판독 요청", queueError);
+  return "rotated";
+}
+
+/**
+ * 세운 사진을 **새 경로**에 올리고 영수증의 경로를 바꾼 뒤 옛 사진을 지운다 — 같은 경로에
+ * 덮으면 서명 URL·캐시가 옛 사진을 보여 줄 수 있다. 경로를 못 바꾸면(그사이 지움 등) 새
+ * 사진을 지우고 옛 것을 둔다. 실패한 까닭을 돌려준다(성공이면 null).
+ */
+async function replacePhoto(
+  admin: Admin,
+  receiptId: string,
+  oldPath: string,
+  photo: Buffer,
+): Promise<string | null> {
+  const bucket = admin.storage.from(RECEIPT_BUCKET);
+  // 경로는 늘 `날짜/이름` 이다(receiptStoragePath) — 같은 날짜 폴더에 새 이름으로.
+  const folder = oldPath.slice(0, oldPath.lastIndexOf("/"));
+  const newPath = receiptStoragePath(folder, randomUUID(), "receipt.jpg");
+
+  const up = await bucket.upload(newPath, photo, {
+    contentType: "image/jpeg",
+    upsert: false,
+  });
+  if (up.error) return `올리기: ${up.error.message}`;
+
+  const { data, error } = await admin
+    .from("postal_receipts")
+    .update({ storage_path: newPath })
+    .eq("id", receiptId)
+    .eq("storage_path", oldPath)
+    .select("id");
+  if (error || !data || data.length === 0) {
+    await bucket.remove([newPath]);
+    return `경로 바꾸기: ${error?.message ?? "영수증이 없거나 사진이 바뀌었다"}`;
+  }
+
+  const removed = await bucket.remove([oldPath]);
+  // 옛 사진이 남아도 아무도 안 연다 — 로그만 남기고 넘어간다.
+  if (removed.error) {
+    console.error("[postal] 옛 사진 삭제 실패:", oldPath, removed.error);
+  }
+  return null;
+}
+
+function failed(requestId: string, step: string, err: unknown): StraightenOutcome {
+  console.error(`[postal] 누운 사진 세우기 실패 — ${step}:`, requestId, err);
+  return "failed";
+}
+```
+
+Run: `npx vitest run src/features/postal/__tests__/sideways-photo.test.ts --maxWorkers=2`
+Expected: 14 PASS(turnUpright 4 · straightenSideways 10).
+
+- [ ] **Step 3: 역검증(확인 뒤 되돌린다)**
+
+1. `TURN` 의 `right: 270` 과 `left: 90` 을 맞바꾼다 → '오른쪽이면 반시계로'·'왼쪽이면 시계로'·'세워 새 경로에…' 가 FAIL(띠가 아래로 간다).
+2. `if (req.requested_by === AUTO_ROTATE_REQUESTER) return "already-rotated";` 줄을 지운다 → '한 번만' 이 FAIL.
+
+둘 다 되돌리고 `git diff --stat` 이 Step 2 그대로인지 본다. 다시 돌려 14 PASS.
+
+- [ ] **Step 4: 타입·린트·커밋**
+
+```bash
+npm run typecheck
+npx eslint src/features/postal/sideways-photo.ts src/features/postal/__tests__/sideways-photo.test.ts
+git add src/features/postal/sideways-photo.ts src/features/postal/__tests__/sideways-photo.test.ts
+git commit -m "$(cat <<'EOF'
+feat(postal): 누운 영수증 사진을 세워 저장하고 다시 판독한다
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+)"
+```
+Expected: typecheck 0 errors, eslint 0/0.
+
+### Task 20: 판독 보고가 누운 사진을 세운다 · 폴러 시간 제한
+
+**Files:**
+- Modify (splice): `src/app/api/postal/extract/route.ts`
+- Test (splice): `src/app/api/postal/extract/__tests__/route.test.ts`
+- Modify (splice): `scripts/postal/extract-local.mjs`
+
+**Interfaces:**
+- Consumes: `straightenSideways(requestId: string, top: ReceiptTop | null): Promise<StraightenOutcome>`(Task 19 — 던지지 않는다), `parsed.data.receipt_top`(Task 18)
+- Produces: `POST /api/postal/extract` 가 `done` 저장 **뒤에** `straightenSideways(id, receipt_top)` 를 기다린다. 라우트 `maxDuration = 60`. 폴러 판독 제한 5분, 보고 대기 60초
+
+- [ ] **Step 1: 라우트 실패 테스트**
+
+splice — `src/app/api/postal/extract/__tests__/route.test.ts`.
+
+old (`t20-state-old.txt`):
+```ts
+const state = {
+  pending: [] as { id: string }[],
+  claimed: null as Record<string, unknown> | null,
+  updates: [] as Record<string, unknown>[],
+  signedUrl: "https://example.test/signed.jpg",
+};
+```
+
+new (`t20-state-new.txt`):
+```ts
+const state = {
+  pending: [] as { id: string }[],
+  claimed: null as Record<string, unknown> | null,
+  updates: [] as Record<string, unknown>[],
+  signedUrl: "https://example.test/signed.jpg",
+  /** 세우기에 넘긴 인자, 그리고 그때 판독 결과가 이미 저장됐었나 */
+  straightened: [] as { args: unknown[]; savedFirst: boolean }[],
+};
+
+// 누운 사진 세우기는 sideways-photo.test.ts 가 본다 — 여기서는 언제 무엇을 넘기는지만.
+vi.mock("@/features/postal/sideways-photo", () => ({
+  straightenSideways: (...args: unknown[]) => {
+    state.straightened.push({
+      args,
+      savedFirst: state.updates.some((u) => u.status === "done"),
+    });
+    return Promise.resolve("upright");
+  },
+}));
+```
+
+old (`t20-reset-old.txt`):
+```ts
+    state.updates = [];
+    process.env.CRON_SECRET = "s3cret";
+```
+
+new (`t20-reset-new.txt`):
+```ts
+    state.updates = [];
+    state.straightened = [];
+    process.env.CRON_SECRET = "s3cret";
+```
+
+old (`t20-tests-old.txt`):
+```ts
+  it("id가 없으면 400", async () => {
+    expect((await POST(req({ method: "POST", auth: "Bearer s3cret", body: { ok: true } }))).status).toBe(400);
+  });
+});
+```
+
+new (`t20-tests-new.txt`):
+```ts
+  it("id가 없으면 400", async () => {
+    expect((await POST(req({ method: "POST", auth: "Bearer s3cret", body: { ok: true } }))).status).toBe(400);
+  });
+
+  it("판독을 저장한 뒤 영수증 방향을 넘겨 누운 사진을 세운다 — 저장이 먼저다", async () => {
+    const sideways = {
+      is_receipt: true,
+      total_fee: 100,
+      items: [{ tracking_no: "A-1", fee: 100 }],
+      receipt_top: "right",
+    };
+    const res = await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify(sideways) } }),
+    );
+    expect(res.status).toBe(200);
+    expect(state.straightened).toEqual([{ args: ["q1", "right"], savedFirst: true }]);
+  });
+
+  it("판독이 실패하면 세우지 않는다 — 방향을 모른다", async () => {
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify({ is_receipt: false }) } }),
+    );
+    await POST(req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: false, message: "5분 초과" } }));
+    expect(state.straightened).toEqual([]);
+  });
+});
+```
+
+Run: `npx vitest run src/app/api/postal/extract/__tests__/route.test.ts --maxWorkers=2`
+Expected: FAIL — '저장한 뒤 … 세운다' 1건(`straightened` 가 비었다). '실패하면 세우지 않는다' 는 지금도 통과한다(지킬 계약).
+
+- [ ] **Step 2: 라우트가 저장 뒤에 세운다**
+
+splice — `src/app/api/postal/extract/route.ts`.
+
+old (`t20-import-old.txt`):
+```ts
+import { parseExtraction } from "@/features/postal/extract-parse";
+```
+
+new (`t20-import-new.txt`):
+```ts
+import { parseExtraction } from "@/features/postal/extract-parse";
+import { straightenSideways } from "@/features/postal/sideways-photo";
+```
+
+old (`t20-ttl-old.txt`):
+```ts
+/** 판독에 넉넉하고, 새 나가도 곧 죽는 길이. */
+const SIGNED_URL_TTL_SEC = 300;
+```
+
+new (`t20-ttl-new.txt`):
+```ts
+/** 판독에 넉넉하고, 새 나가도 곧 죽는 길이. */
+const SIGNED_URL_TTL_SEC = 300;
+
+/**
+ * 누운 사진이면 보고(POST) 안에서 받고·돌리고·올린다(sideways-photo.ts) — 기본 제한에
+ * 기대지 않는다. 폴러의 보고 대기도 같은 60초다.
+ */
+export const maxDuration = 60;
+```
+
+old (`t20-done-old.txt`):
+```ts
+      finished_at: finishedAt,
+    })
+    .eq("id", id);
+  return NextResponse.json({ ok: true });
+}
+```
+
+new (`t20-done-new.txt`):
+```ts
+      finished_at: finishedAt,
+    })
+    .eq("id", id);
+
+  // 영수증이 누워 찍혔으면 세워 저장하고 한 번 더 판독한다(스펙 §5.6). 판독 결과는 위에서
+  // 이미 저장했다 — 세우기는 던지지 않고, 실패해도 이 판독은 그대로 남는다.
+  await straightenSideways(id, parsed.data.receipt_top);
+  return NextResponse.json({ ok: true });
+}
+```
+
+Run: `npx vitest run src/app/api/postal/extract/__tests__/route.test.ts --maxWorkers=2`
+Expected: 9 PASS.
+
+역검증(확인 뒤 되돌린다): `await straightenSideways(…)` 줄을 `done` 저장(`await admin…update({ status: "done", …`) **앞**으로 옮기면 '저장이 먼저다' 가 FAIL(`savedFirst: false`). 되돌리고 9 PASS.
+
+- [ ] **Step 3: 라우트 커밋**
+
+```bash
+npm run typecheck
+git add src/app/api/postal/extract/route.ts src/app/api/postal/extract/__tests__/route.test.ts
+git diff --cached --numstat
+git commit -m "$(cat <<'EOF'
+feat(postal): 판독 보고가 누운 사진을 세운다
+
+판독 결과를 저장한 뒤 receipt_top 을 넘긴다. 세우기가 보고 안에서
+받고·돌리고·올리므로 maxDuration 60.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+)"
+```
+Expected: typecheck 0 errors. `--numstat` 의 지운 줄 모두 0.
+
+- [ ] **Step 4: 폴러 시간 제한**
+
+splice — `scripts/postal/extract-local.mjs`. 테스트가 없는 파일이다(상주 폴러) — 문법 확인과 머지 뒤 실제 판독(Task 21)으로 본다.
+
+old (`t20-timeout-old.txt`):
+```js
+const HTTP_TIMEOUT_MS = 20_000;
+/** 한 장에 3분이면 이상 상황이다(실측 30초 안팎). */
+const TIMEOUT_MS = 180_000;
+```
+
+new (`t20-timeout-new.txt`):
+```js
+const HTTP_TIMEOUT_MS = 20_000;
+/**
+ * 누운 사진이면 서버가 보고(POST) 안에서 사진을 세운다 — 받고·돌리고·올린다. 서버 제한
+ * (maxDuration)과 같은 60초를 기다린다. 20초에서 끊으면 이 폴러가 '실패'를 다시 보고해
+ * 멀쩡한 판독을 실패로 덮는다.
+ */
+const REPORT_TIMEOUT_MS = 60_000;
+/**
+ * 한 장에 5분이면 이상 상황이다(실측 30초 안팎). 누운 사진에 등기가 많으면 3분 안팎이
+ * 걸린다 — 3분에서 자르면 방향을 알기 전에 실패해 서버가 세울 기회가 없다(스펙 §4.2).
+ */
+const TIMEOUT_MS = 300_000;
+```
+
+old (`t20-http-old.txt`):
+```js
+const http = (url, init = {}) => fetchWithTimeout(url, init, HTTP_TIMEOUT_MS);
+```
+
+new (`t20-http-new.txt`):
+```js
+const http = (url, init = {}, ms = HTTP_TIMEOUT_MS) => fetchWithTimeout(url, init, ms);
+```
+
+old (`t20-report-old.txt`):
+```js
+    body: JSON.stringify({ id, ok, raw, message }),
+  });
+```
+
+new (`t20-report-new.txt`):
+```js
+    body: JSON.stringify({ id, ok, raw, message }),
+  }, REPORT_TIMEOUT_MS);
+```
+
+old (`t20-abort-old.txt`):
+```js
+      if (timedOut) throw new Error("3분을 넘겨 중단했습니다");
+```
+
+new (`t20-abort-new.txt`):
+```js
+      if (timedOut) throw new Error("5분을 넘겨 중단했습니다");
+```
+
+```bash
+node --check scripts/postal/extract-local.mjs
+npx eslint scripts/postal/extract-local.mjs
+git add scripts/postal/extract-local.mjs
+git diff --cached --numstat
+git commit -m "$(cat <<'EOF'
+chore(postal): 폴러 판독 제한 5분 · 보고 대기 60초
+
+누운 사진에 등기가 많으면 3분 안팎이 걸리고, 보고(POST)가 사진을
+세우느라 길어진다.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+)"
+```
+Expected: `node --check` 출력 없음(exit 0), eslint 0 errors. `--numstat` 은 1파일, 지운 줄 5(제한 상수 주석·값 2줄, `http` 정의 1줄, 보고 호출 끝 줄 1줄, 중단 문구 1줄) — 그보다 많으면 재정렬이 섞인 것.
+
+### Task 21: PR-2b 올리기 · 운영에서 #04 세우기 확인
+
+**Files:** 없음(컨트롤러 확인 단계). 실데이터 스크립트는 `$SP` 에만 두고 커밋하지 않는다.
+
+- [ ] **Step 1: 전체 검증**
+
+```bash
+npm run typecheck
+npm run lint
+npx vitest run src/features/postal src/app/api/postal src/app/dashboard/postal src/lib/pdf src/components/common --maxWorkers=2
+```
+Expected: 0 errors / 0 errors(새 경고 0) / 전부 PASS.
+
+- [ ] **Step 2: PR 올리기**
+
+```bash
+git push -u origin feat/postal-sideways-receipt
+gh pr create --title "feat(postal): 누운 영수증 사진을 서버가 세운다 — 영수증 출력 2b/3" --body-file "$SP/pr2b-body.md"
+```
+
+`$SP/pr2b-body.md` 는 Summary(판독이 방향 → 저장 뒤 세우기 → 재판독 한 번, readRegions 가 누운 판독 위치를 안 씀, 폴러 5분·60초, maxDuration 60) + Test plan(태스크별 테스트 수, 역검증, 머지 뒤 #04 확인·폴러 재시작 항목은 체크하지 않은 채) + 끝줄 `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+
+- [ ] **Step 3: 프리뷰에서 libvips 동봉 확인**
+
+CI(`gh pr checks <PR번호>`) pass 뒤 프리뷰 배포 id 로:
+```bash
+npx vercel inspect <프리뷰 dpl id> --format json > "$SP/inspect-pr2b.json"
+```
+`builds[].output[]` 에서 `api/postal/extract` 를 담은 함수의 크기가 PR-2 프리뷰(`$SP/inspect-pr2.json`) 대비 +16MB 안팎인지 본다(PR-2 에서 PDF·우편물 페이지 함수가 그만큼 컸다). 안 커졌으면 sharp 가 그 함수에서 못 뜬다 — **머지하지 않고** 원인을 본다(판독 창구 전체가 죽는다).
+
+- [ ] **Step 4: 🛑 머지 승인**
+
+사용자에게 PR 링크·검증 결과·번들 확인을 **한국어로** 보이고 머지 승인을 받는다. 승인 뒤:
+```bash
+gh pr merge <PR번호> --squash --delete-branch
+git checkout main && git pull
+```
+운영 배포 READY 뒤 운영 배포 id 로 같은 크기 확인을 한 번 더 한다.
+
+- [ ] **Step 5: 폴러 재시작**
+
+```bash
+powershell -NoProfile -Command "Restart-ScheduledTask -TaskName 'OPS-Console 우편물 판독 폴러'; Start-Sleep -Seconds 5; (Get-ScheduledTask -TaskName 'OPS-Console 우편물 판독 폴러').State"
+```
+Expected: `Running`. 작업 트리가 main(머지 반영)인 채로 재시작한다 — 스케줄러는 워킹트리를 실행한다.
+
+- [ ] **Step 6: #04 다시 판독 → 세워지는지**
+
+`$SP/sideways-04.mjs`(커밋 안 함, service_role): `created_at` 순 4번째 영수증(#04)에 판독 요청을 넣는다(`requested_by: "regions-backfill"` — `auto-rotate` 가 아니어야 세운다). 대기·진행 중 요청이 있으면 넣지 않는다. 그다음 2초마다 그 영수증의 요청들(상태·`receipt_top`·요청자)과 `storage_path` 를 찍는다 — 이름·등기번호는 찍지 않는다. 기대:
+1. 첫 요청 `done`, `receipt_top: right`
+2. `storage_path` 가 같은 날짜 폴더의 새 이름으로 바뀐다
+3. `auto-rotate` 요청이 생기고 `done`, `receipt_top: top`
+4. 새 사진이 세로(높이 > 폭)
+
+- [ ] **Step 7: 좌표와 PDF**
+
+새 사진에 재판독 상자를 그려(`$SP/verify-regions.mjs` 와 같은 방식) 눈으로 본다 — PR-1 합격 기준: 종이·접수일자 제자리, 총요금 그 줄~한 줄 아래. 그다음 Task 12 Step 2 와 같은 일회용 진단으로 14장 PDF 를 다시 만들어 #04 칸에 형광펜이 제자리인지 본다(진단 파일은 바로 지운다). 결과를 사용자에게 보인다.
+
+- [ ] **Step 8: 마무리**
+
+ledger 에 결과를 적고 `git checkout main && git pull`(이미 main 이면 pull 만).
 
 ---
 
