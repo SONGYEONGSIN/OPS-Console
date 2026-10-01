@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseExtraction, assignDaySeq } from "../extract-parse";
+import { parseExtraction, assignDaySeq, readRegions } from "../extract-parse";
 
 const GOOD = {
   is_receipt: true,
@@ -177,6 +177,30 @@ describe("parseExtraction — 위치(regions)", () => {
     expect(r.ok).toBe(true);
     expect(r.ok && r.data.regions).toBeNull();
     expect(r.ok && r.data.total_fee).toBe(GOOD.total_fee);
+  });
+});
+
+/** 저장된 판독(jsonb)에서 위치를 꺼낸다 — 영수증 출력과 목록이 쓴다. */
+describe("readRegions", () => {
+  const REGIONS = {
+    receipt: [0.18, 0, 0.78, 1],
+    accepted_at: [0.37, 0.12, 0.56, 0.14],
+    total_fee: [0.53, 0.59, 0.72, 0.61],
+  };
+
+  it("저장된 위치를 돌려준다", () => {
+    expect(readRegions({ items: [], regions: REGIONS })).toEqual(REGIONS);
+  });
+
+  it("위치를 묻기 전 판독·판독 전은 null", () => {
+    expect(readRegions({ items: [] })).toBeNull();
+    expect(readRegions(null)).toBeNull();
+  });
+
+  it("저장된 값도 다시 거른다 — 이상한 상자는 그 상자만 null", () => {
+    const r = readRegions({ regions: { ...REGIONS, receipt: [0.9, 0, 0.1, 1] } });
+    expect(r?.receipt).toBeNull();
+    expect(r?.total_fee).toEqual(REGIONS.total_fee);
   });
 });
 

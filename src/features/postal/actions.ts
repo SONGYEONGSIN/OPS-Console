@@ -11,6 +11,7 @@ import {
 } from "./upload-guard";
 import { requestExtraction } from "./extract-actions";
 import { canDeleteReceipt } from "./delete-guard";
+import { uprightPhoto } from "./upright-photo";
 
 /**
  * 등기발송 영수증 업로드.
@@ -53,10 +54,21 @@ export async function uploadReceipt(file: File): Promise<UploadResult> {
   }
 
   const admin = createAdminClient();
-  const buf = Buffer.from(await file.arrayBuffer());
+  // 판독 모델이 회전 정보를 무시하고 픽셀을 보므로 저장 전에 픽셀째 세운다(upright-photo.ts).
+  let photo: Buffer;
+  try {
+    photo = await uprightPhoto(Buffer.from(await file.arrayBuffer()));
+  } catch (err) {
+    // 머리는 JPEG 인데 픽셀을 못 푼다 — 판독·화면·출력 어디서도 못 쓰는 사진이다.
+    console.error("[postal] 사진 세우기 실패:", err);
+    return {
+      ok: false,
+      error: "사진을 읽지 못했습니다 — 다시 찍어 올려 주세요",
+    };
+  }
   const up = await admin.storage
     .from(RECEIPT_BUCKET)
-    .upload(path, buf, { contentType: file.type, upsert: false });
+    .upload(path, photo, { contentType: file.type, upsert: false });
   if (up.error) {
     // 파일이 없는데 카드만 남으면 열어도 아무것도 안 나온다.
     return { ok: false, error: `저장 실패: ${up.error.message}` };

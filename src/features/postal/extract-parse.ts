@@ -49,6 +49,15 @@ const regionsSchema = z
 export type Regions = NonNullable<z.infer<typeof regionsSchema>>;
 export type Box = NonNullable<Regions["receipt"]>;
 
+/**
+ * 저장된 판독 결과(jsonb)에서 위치를 꺼낸다 — 저장할 때와 **같은 스키마로 다시 거른다**.
+ * 위치를 묻기 전 판독·판독 전·실패는 null.
+ */
+export function readRegions(result: unknown): Regions | null {
+  if (!result || typeof result !== "object" || !("regions" in result)) return null;
+  return regionsSchema.parse(result.regions);
+}
+
 const extractionSchema = z.object({
   is_receipt: z.boolean(),
   receipt_no: z.string().trim().nullable().catch(null),
