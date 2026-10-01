@@ -133,6 +133,18 @@ export async function deleteReceipt(receiptId: string): Promise<UploadResult> {
   );
   if (!verdict.ok) return { ok: false, error: verdict.reason };
 
+  // 누운 사진을 세운 뒤 재판독이 확인하기 전이면 옛 사진 경로가 판독 행에만 있다.
+  // 행을 지우면 판독 행도 연쇄로 지워져 그 경로를 잃는다 — 먼저 읽어 함께 지운다.
+  const { data: rotations } = await admin
+    .from("postal_extract_requests")
+    .select("rotated_from")
+    .eq("receipt_id", receiptId)
+    .not("rotated_from", "is", null);
+  const paths = [
+    receipt.storage_path,
+    ...(rotations ?? []).map((r: { rotated_from: string }) => r.rotated_from),
+  ];
+
   // 행을 먼저 지운다. 파일만 지우고 행이 남으면 목록에 열리지 않는 카드가 남는데,
   // 그건 지금 고치려는 것보다 나쁘다(지울 수도, 열 수도 없다).
   const { error } = await admin
@@ -143,11 +155,11 @@ export async function deleteReceipt(receiptId: string): Promise<UploadResult> {
 
   const rm = await admin.storage
     .from(RECEIPT_BUCKET)
-    .remove([receipt.storage_path]);
+    .remove(paths);
   if (rm.error) {
     // 행은 이미 사라져 화면에서는 지워졌다. 실패라고 하면 사람이 다시 누르는데
     // 그때는 행이 없어 "찾을 수 없습니다"만 나온다 — 파일만 로그로 남긴다.
-    console.error("[postal] 파일 삭제 실패:", receipt.storage_path, rm.error);
+    console.error("[postal] 파일 삭제 실패:", paths, rm.error);
   }
 
   revalidatePath("/dashboard/postal");

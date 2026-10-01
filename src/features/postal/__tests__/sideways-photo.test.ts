@@ -16,6 +16,9 @@ const state = {
   swapError: null as { message: string } | null,
   removeError: null as { message: string } | null,
   insertError: null as { message: string } | null,
+  /** 회전 확정 자리 잡기(rotated_from 비우기)에 걸린 행 */
+  claimRows: [{ id: "q2" }] as { id: string }[],
+  claimFilters: [] as string[],
   /** 바깥에 남긴 일 — 순서까지 본다 */
   log: [] as string[],
   uploaded: {} as Record<string, { body: Buffer; contentType: unknown }>,
@@ -67,6 +70,17 @@ function requestsTable() {
         },
       }),
     }),
+    update: (patch: Record<string, unknown>) => {
+      state.log.push(`claim ${String(patch.rotated_from)}`);
+      const chain = {
+        eq: (column: string, value: unknown) => {
+          state.claimFilters.push(`${column}=${String(value)}`);
+          return chain;
+        },
+        select: () => Promise.resolve({ data: state.claimRows, error: null }),
+      };
+      return chain;
+    },
     insert: (row: Record<string, unknown>) => {
       state.log.push(`insert ${String(row.requested_by)}`);
       state.inserted.push(row);
@@ -345,24 +359,44 @@ describe("settleRotation — 세운 뒤의 재판독으로 확정하거나 되�
     state.removeError = null;
     state.log = [];
     state.swapFilters = [];
+    state.claimRows = [{ id: "q2" }];
+    state.claimFilters = [];
     errorLog.mockClear();
   });
 
   it("바로 섰다고 하면 옛 사진을 지운다", async () => {
     expect(await settleRotation("q2", "top")).toBe("confirmed");
-    expect(state.log).toEqual([`remove ${OLD}`]);
+    expect(state.log).toEqual(["claim null", `remove ${OLD}`]);
+    // 이 경로를 가진 그 행일 때만 — 자리를 먼저 잡는다.
+    expect(state.claimFilters).toEqual(["id=q2", `rotated_from=${OLD}`]);
+  });
+
+  it("한 번만 — 같은 보고가 두 번 와도(폴러 재보고) 이미 처리했으면 아무것도 안 한다", async () => {
+    state.claimRows = [];
+    expect(await settleRotation("q2", null)).toBe("not-rotation");
+    expect(state.log).toEqual(["claim null"]);
+  });
+
+  it("확정 때 옛 사진 삭제가 실패해도 confirmed — 경로를 로그에 남긴다", async () => {
+    state.removeError = { message: "storage down" };
+    expect(await settleRotation("q2", "top")).toBe("confirmed");
+    expect(errorLog).toHaveBeenCalledWith(
+      "[postal] 옛 사진 삭제 실패:",
+      OLD,
+      state.removeError,
+    );
   });
 
   it("또 누웠다고 하면 옛 사진으로 되돌리고 세운 사진을 지운다", async () => {
     expect(await settleRotation("q2", "left")).toBe("restored");
-    expect(state.log).toEqual([`update ${OLD}`, `remove ${NEW}`]);
+    expect(state.log).toEqual(["claim null", `update ${OLD}`, `remove ${NEW}`]);
     // 그사이 사진이 바뀌었으면 안 바꾼다 — 세운 경로일 때만.
     expect(state.swapFilters).toEqual(["id=r1", `storage_path=${NEW}`]);
   });
 
   it("재판독이 실패해도(null) 되돌린다 — 확인 못 한 회전은 남기지 않는다", async () => {
     expect(await settleRotation("q2", null)).toBe("restored");
-    expect(state.log).toEqual([`update ${OLD}`, `remove ${NEW}`]);
+    expect(state.log).toEqual(["claim null", `update ${OLD}`, `remove ${NEW}`]);
   });
 
   it("자동 세우기의 재판독이 아니면 아무것도 안 한다", async () => {
@@ -380,7 +414,9 @@ describe("settleRotation — 세운 뒤의 재판독으로 확정하거나 되�
   it("경로를 못 되돌리면 세운 사진을 지우지 않는다 — 영수증이 가리키는 사진이다", async () => {
     state.swapRows = [];
     expect(await settleRotation("q2", "left")).toBe("failed");
-    expect(state.log).toEqual([`update ${OLD}`]);
+    expect(state.log).toEqual(["claim null", `update ${OLD}`]);
+    // 자리를 잡아 rotated_from 이 비었다 — 옛 사진 경로는 로그로만 찾는다.
+    expect(String(errorLog.mock.calls.at(-1)?.[0])).toContain(OLD);
   });
 
   it("던지지 않는다 — 요청을 못 읽어도 failed", async () => {

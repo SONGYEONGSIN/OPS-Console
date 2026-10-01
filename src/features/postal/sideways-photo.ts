@@ -152,6 +152,17 @@ export async function settleRotation(
       return "not-rotation";
     }
 
+    // 한 번만 — 폴러는 성공 보고가 끊기면 실패를 다시 보고한다. 두 번 돌면 지운 옛 사진으로
+    // 되돌리고 세운 사진까지 지워 영수증 사진이 사라진다. 자리를 먼저 잡은 쪽만 진행한다.
+    const { data: claimed, error: claimError } = await admin
+      .from("postal_extract_requests")
+      .update({ rotated_from: null })
+      .eq("id", requestId)
+      .eq("rotated_from", oldPath)
+      .select("id");
+    if (claimError) return settleFailed(requestId, "자리 잡기", claimError);
+    if (!claimed || claimed.length === 0) return "not-rotation";
+
     if (top === "top") {
       const removed = await admin.storage
         .from(RECEIPT_BUCKET)
@@ -165,7 +176,7 @@ export async function settleRotation(
     const reason = await restorePhoto(admin, req.receipt_id, oldPath, newPath);
     return reason === null
       ? "restored"
-      : settleFailed(requestId, "되돌리기", reason);
+      : settleFailed(requestId, `되돌리기(옛 사진 ${oldPath})`, reason);
   } catch (err) {
     return settleFailed(requestId, "처리 중 예외", err);
   }

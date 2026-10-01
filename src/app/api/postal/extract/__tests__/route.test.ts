@@ -163,6 +163,14 @@ describe("영수증 판독 폴러 endpoint", () => {
     expect(state.settled).toEqual([{ args: ["q2", "top"], savedFirst: true }]);
   });
 
+  it("성공한 재판독이 방향을 안 주면 바로 선 것으로 확정한다 — 위치도 바로 선 것으로 쓰인다", async () => {
+    const reading = { is_receipt: true, total_fee: 100, items: [{ tracking_no: "A-1", fee: 100 }] };
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q2", ok: true, raw: JSON.stringify(reading) } }),
+    );
+    expect(state.settled).toEqual([{ args: ["q2", "top"], savedFirst: true }]);
+  });
+
   it("재판독이 실패해도 확정·되돌리기를 부른다(방향 없음) — 확인 못 한 회전은 되돌린다", async () => {
     await POST(req({ method: "POST", auth: "Bearer s3cret", body: { id: "q2", ok: false, message: "10분 초과" } }));
     await POST(

@@ -68,6 +68,22 @@ describe("topFromRegions — 접수일자에서 총요금으로 가는 쪽이 �
     ).toBeNull();
   });
 
+  it("1.5배가 경계다 — 1.49배는 모르고 1.5배는 방향", () => {
+    // 1000x1000 사진, 가로 100px 이동에 세로 149px·150px
+    const at = (dy: number) =>
+      topFromRegions(
+        {
+          receipt: null,
+          accepted_at: [0, 0, 0, 0],
+          total_fee: [0.1, dy, 0.1, dy],
+        },
+        1000,
+        1000,
+      );
+    expect(at(0.149)).toBeNull();
+    expect(at(0.15)).toBe("top");
+  });
+
   it("상자가 없으면 null", () => {
     expect(topFromRegions(null, 3024, 4032)).toBeNull();
     expect(
