@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildExtractPrompt } from "@/features/postal/extract-prompt";
 import { parseExtraction } from "@/features/postal/extract-parse";
+import { straightenSideways } from "@/features/postal/sideways-photo";
 
 /**
  * 영수증 판독 폴러 endpoint — `Authorization: Bearer ${CRON_SECRET}`.
@@ -15,6 +16,12 @@ import { parseExtraction } from "@/features/postal/extract-parse";
 const BUCKET = "postal-receipts";
 /** 판독에 넉넉하고, 새 나가도 곧 죽는 길이. */
 const SIGNED_URL_TTL_SEC = 300;
+
+/**
+ * 누운 사진이면 보고(POST) 안에서 받고·돌리고·올린다(sideways-photo.ts) — 기본 제한에
+ * 기대지 않는다. 폴러의 보고 대기도 같은 60초다.
+ */
+export const maxDuration = 60;
 
 function guard(request: NextRequest): NextResponse | null {
   const secret = process.env.CRON_SECRET;
@@ -135,5 +142,9 @@ export async function POST(request: NextRequest) {
       finished_at: finishedAt,
     })
     .eq("id", id);
+
+  // 영수증이 누워 찍혔으면 세워 저장하고 한 번 더 판독한다(스펙 §5.6). 판독 결과는 위에서
+  // 이미 저장했다 — 세우기는 던지지 않고, 실패해도 이 판독은 그대로 남는다.
+  await straightenSideways(id, parsed.data.receipt_top);
   return NextResponse.json({ ok: true });
 }

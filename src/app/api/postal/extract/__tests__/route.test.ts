@@ -5,7 +5,20 @@ const state = {
   claimed: null as Record<string, unknown> | null,
   updates: [] as Record<string, unknown>[],
   signedUrl: "https://example.test/signed.jpg",
+  /** 세우기에 넘긴 인자, 그리고 그때 판독 결과가 이미 저장됐었나 */
+  straightened: [] as { args: unknown[]; savedFirst: boolean }[],
 };
+
+// 누운 사진 세우기는 sideways-photo.test.ts 가 본다 — 여기서는 언제 무엇을 넘기는지만.
+vi.mock("@/features/postal/sideways-photo", () => ({
+  straightenSideways: (...args: unknown[]) => {
+    state.straightened.push({
+      args,
+      savedFirst: state.updates.some((u) => u.status === "done"),
+    });
+    return Promise.resolve("upright");
+  },
+}));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
@@ -48,6 +61,7 @@ describe("영수증 판독 폴러 endpoint", () => {
     state.pending = [];
     state.claimed = null;
     state.updates = [];
+    state.straightened = [];
     process.env.CRON_SECRET = "s3cret";
   });
 
@@ -108,5 +122,27 @@ describe("영수증 판독 폴러 endpoint", () => {
 
   it("id가 없으면 400", async () => {
     expect((await POST(req({ method: "POST", auth: "Bearer s3cret", body: { ok: true } }))).status).toBe(400);
+  });
+
+  it("판독을 저장한 뒤 영수증 방향을 넘겨 누운 사진을 세운다 — 저장이 먼저다", async () => {
+    const sideways = {
+      is_receipt: true,
+      total_fee: 100,
+      items: [{ tracking_no: "A-1", fee: 100 }],
+      receipt_top: "right",
+    };
+    const res = await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify(sideways) } }),
+    );
+    expect(res.status).toBe(200);
+    expect(state.straightened).toEqual([{ args: ["q1", "right"], savedFirst: true }]);
+  });
+
+  it("판독이 실패하면 세우지 않는다 — 방향을 모른다", async () => {
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify({ is_receipt: false }) } }),
+    );
+    await POST(req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: false, message: "5분 초과" } }));
+    expect(state.straightened).toEqual([]);
   });
 });
