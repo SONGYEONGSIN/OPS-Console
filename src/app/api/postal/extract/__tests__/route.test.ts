@@ -9,6 +9,9 @@ const state = {
   straightened: [] as { args: unknown[]; savedFirst: boolean }[],
   /** 세우기가 돌려줄 결과 */
   outcome: "upright",
+  /** 세운 뒤 재판독으로 확정·되돌리기에 넘긴 인자, 그때 결과가 저장됐었나 */
+  settled: [] as { args: unknown[]; savedFirst: boolean }[],
+  settle: "not-rotation",
 };
 
 // 누운 사진 세우기는 sideways-photo.test.ts 가 본다 — 여기서는 언제 무엇을 넘기는지만.
@@ -19,6 +22,13 @@ vi.mock("@/features/postal/sideways-photo", () => ({
       savedFirst: state.updates.some((u) => u.status === "done"),
     });
     return Promise.resolve(state.outcome);
+  },
+  settleRotation: (...args: unknown[]) => {
+    state.settled.push({
+      args,
+      savedFirst: state.updates.some((u) => u.status === "done" || u.status === "failed"),
+    });
+    return Promise.resolve(state.settle);
   },
 }));
 
@@ -65,6 +75,8 @@ describe("영수증 판독 폴러 endpoint", () => {
     state.updates = [];
     state.straightened = [];
     state.outcome = "upright";
+    state.settled = [];
+    state.settle = "not-rotation";
     process.env.CRON_SECRET = "s3cret";
   });
 
@@ -133,12 +145,49 @@ describe("영수증 판독 폴러 endpoint", () => {
       total_fee: 100,
       items: [{ tracking_no: "A-1", fee: 100 }],
       receipt_top: "right",
+      regions: { receipt: null, accepted_at: [0.75, 0.4, 0.8, 0.6], total_fee: [0.3, 0.5, 0.35, 0.7] },
     };
     const res = await POST(
       req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify(sideways) } }),
     );
     expect(res.status).toBe(200);
-    expect(state.straightened).toEqual([{ args: ["q1", "right"], savedFirst: true }]);
+    // 상자도 넘긴다 — 판독의 방향과 상자로 잰 방향이 맞을 때만 돌린다.
+    expect(state.straightened).toEqual([{ args: ["q1", "right", sideways.regions], savedFirst: true }]);
+  });
+
+  it("세운 뒤의 재판독이면 그 방향으로 회전을 확정하거나 되돌린다 — 저장이 먼저다", async () => {
+    const reading = { is_receipt: true, total_fee: 100, items: [{ tracking_no: "A-1", fee: 100 }], receipt_top: "top" };
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q2", ok: true, raw: JSON.stringify(reading) } }),
+    );
+    expect(state.settled).toEqual([{ args: ["q2", "top"], savedFirst: true }]);
+  });
+
+  it("성공한 재판독이 방향을 안 주면 바로 선 것으로 확정한다 — 위치도 바로 선 것으로 쓰인다", async () => {
+    const reading = { is_receipt: true, total_fee: 100, items: [{ tracking_no: "A-1", fee: 100 }] };
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q2", ok: true, raw: JSON.stringify(reading) } }),
+    );
+    expect(state.settled).toEqual([{ args: ["q2", "top"], savedFirst: true }]);
+  });
+
+  it("재판독이 실패해도 확정·되돌리기를 부른다(방향 없음) — 확인 못 한 회전은 되돌린다", async () => {
+    await POST(req({ method: "POST", auth: "Bearer s3cret", body: { id: "q2", ok: false, message: "10분 초과" } }));
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q3", ok: true, raw: JSON.stringify({ is_receipt: false }) } }),
+    );
+    expect(state.settled).toEqual([
+      { args: ["q2", null], savedFirst: true },
+      { args: ["q3", null], savedFirst: true },
+    ]);
+  });
+
+  it("회전을 확정하거나 되돌렸으면 로그로 남긴다", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    state.settle = "restored";
+    await POST(req({ method: "POST", auth: "Bearer s3cret", body: { id: "q2", ok: false, message: "x" } }));
+    expect(warn).toHaveBeenCalledWith("[postal] 세운 사진 확인:", "q2", "restored");
+    warn.mockRestore();
   });
 
   it("판독이 실패하면 세우지 않는다 — 방향을 모른다", async () => {

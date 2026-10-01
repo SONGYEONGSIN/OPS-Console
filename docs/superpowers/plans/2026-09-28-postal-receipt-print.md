@@ -18,6 +18,7 @@
 | 🛑 | — (PR-1 머지·배포 후) | 14장 재판독 → 좌표·판독 품질 확인 → **사용자와 진행 결정**. 머지 전 로컬 평가로 한 번 멈췄다 — 두 줄 폭·업로드 세우기로 정함(2026-09-29) | 커밋 없음 |
 | PR-2 | `feat/postal-receipt-pdf` | PDF 라우트(서버만) + 업로드 때 사진 세우기. 실데이터 PDF 를 머지 전에 보인다 | 22 |
 | PR-2b | `feat/postal-sideways-receipt` | 누운 사진 — 판독이 방향을 알리고 서버가 세운다(Task 18~21). 설계(스펙 rev4 + 이 태스크들)가 첫 커밋 | 9 |
+| PR-2c | `feat/postal-sideways-safe` | 누운 사진 보강 — 두 근거·되돌리기·10분(스펙 §5.7). 사용자 승인 2026-10-01, 이 세션에서 직접 구현(TDD) + 리뷰 1회 | 11 |
 | PR-3 | `feat/postal-receipt-print-ui` | 체크박스·출력 버튼 | 9 |
 
 서버와 화면을 가른 이유는 스펙 §7 끝에 있다(합치면 28파일 → HARD-GATE 전체 설계 등급, sharp 가 Vercel 에서 도는지를 화면보다 먼저 본다).
@@ -3814,6 +3815,19 @@ Expected: `Running`. 작업 트리가 main(머지 반영)인 채로 재시작한
 - [ ] **Step 8: 마무리**
 
 ledger 에 결과를 적고 `git checkout main && git pull`(이미 main 이면 pull 만).
+
+---
+
+## PR-2c — 누운 사진 보강 (스펙 §5.7)
+
+작은 보강이라 태스크를 쪼개지 않고 한 브랜치에서 TDD 로 했다. 마이그레이션이 있어 **머지 전에 사용자가 SQL Editor 에서 적용**하고 service_role 로 칼럼을 확인한다.
+
+- `features/postal/receipt-direction.ts` `topFromRegions(regions, width, height)` + 테스트 6(바로 섬·거꾸로·시계·반시계·1.5배 미만·상자 없음)
+- `features/postal/sideways-photo.ts` — `straightenSideways(id, top, regions)` 가 두 근거가 다르면 `disagree`, 세운 뒤 옛 사진을 남기고 재판독 행에 `rotated_from`, 재판독 요청 실패면 되돌림. `settleRotation(id, top|null)` → `confirmed`·`restored`·`not-rotation`·`failed`(던지지 않음)
+- `app/api/postal/extract/route.ts` — 실패 보고·파싱 실패·완료 세 출구 모두 결과 저장 **뒤에** `settleRotation`, 완료면 이어서 `straightenSideways(…, regions)`
+- `scripts/postal/extract-local.mjs` — 판독 제한 600초, 중단 문구 '10분'
+- `supabase/migrations/20261001_postal_extract_rotated_from.sql`
+- 머지 뒤: 폴러 재시작(문서의 `Restart-ScheduledTask` 는 없다 — node PID 를 명령줄 확인 뒤 `Stop-Process` → `Start-ScheduledTask`) → #04 다시 판독 → PR-2b Task 21 Step 7 과 같이 확인
 
 ---
 

@@ -16,6 +16,9 @@ const state = {
   swapError: null as { message: string } | null,
   removeError: null as { message: string } | null,
   insertError: null as { message: string } | null,
+  /** 회전 확정 자리 잡기(rotated_from 비우기)에 걸린 행 */
+  claimRows: [{ id: "q2" }] as { id: string }[],
+  claimFilters: [] as string[],
   /** 바깥에 남긴 일 — 순서까지 본다 */
   log: [] as string[],
   uploaded: {} as Record<string, { body: Buffer; contentType: unknown }>,
@@ -67,6 +70,17 @@ function requestsTable() {
         },
       }),
     }),
+    update: (patch: Record<string, unknown>) => {
+      state.log.push(`claim ${String(patch.rotated_from)}`);
+      const chain = {
+        eq: (column: string, value: unknown) => {
+          state.claimFilters.push(`${column}=${String(value)}`);
+          return chain;
+        },
+        select: () => Promise.resolve({ data: state.claimRows, error: null }),
+      };
+      return chain;
+    },
     insert: (row: Record<string, unknown>) => {
       state.log.push(`insert ${String(row.requested_by)}`);
       state.inserted.push(row);
@@ -92,8 +106,19 @@ function receiptsTable() {
   return chain;
 }
 
-const { straightenSideways, turnUpright, AUTO_ROTATE_REQUESTER } =
-  await import("../sideways-photo");
+const {
+  straightenSideways,
+  settleRotation,
+  turnUpright,
+  AUTO_ROTATE_REQUESTER,
+} = await import("../sideways-photo");
+
+/** 200x100 사진에서 접수일자(오른쪽)→총요금(왼쪽) — 영수증 맨 위가 오른쪽이라는 두 번째 근거 */
+const RIGHT = {
+  receipt: null,
+  accepted_at: [0.75, 0.4, 0.8, 0.6] as [number, number, number, number],
+  total_fee: [0.3, 0.5, 0.35, 0.7] as [number, number, number, number],
+};
 
 const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -189,56 +214,75 @@ describe("straightenSideways", () => {
   });
 
   it("바로 섰으면 아무것도 안 한다 — 요청도 안 읽는다", async () => {
-    expect(await straightenSideways("q1", "top")).toBe("upright");
-    expect(await straightenSideways("q1", null)).toBe("upright");
+    expect(await straightenSideways("q1", "top", RIGHT)).toBe("upright");
+    expect(await straightenSideways("q1", null, RIGHT)).toBe("upright");
     expect(state.requestReads).toBe(0);
     expect(state.log).toEqual([]);
   });
 
-  it("세워 새 경로에 올리고 → 경로를 바꾸고 → 옛 사진을 지우고 → 한 번 더 판독한다", async () => {
-    expect(await straightenSideways("q1", "right")).toBe("rotated");
+  it("세워 새 경로에 올리고 → 경로를 바꾸고 → 옛 사진은 남긴 채 한 번 더 판독한다", async () => {
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("rotated");
     const [up] = Object.keys(state.uploaded);
     // 같은 날짜 폴더에 새 이름 — 같은 경로에 덮으면 서명 URL·캐시가 옛 사진을 보여 준다.
     expect(up).toMatch(/^2026-09-23\/[0-9a-f-]{36}\.jpg$/);
     expect(state.log).toEqual([
       `upload ${up}`,
       `update ${up}`,
-      `remove ${OLD}`,
       `insert ${AUTO_ROTATE_REQUESTER}`,
     ]);
     expect(state.uploaded[up].contentType).toBe("image/jpeg");
     expect(await look(state.uploaded[up].body)).toEqual(UPRIGHT);
     // 그사이 다른 사진으로 바뀌었으면 안 바꾼다 — 옛 경로까지 맞을 때만.
     expect(state.swapFilters).toEqual(["id=r1", `storage_path=${OLD}`]);
+    // 재판독이 바로 섰다고 확인할 때까지 옛 사진을 들고 있다 — 틀렸으면 되돌린다.
     expect(state.inserted).toEqual([
-      { receipt_id: "r1", requested_by: AUTO_ROTATE_REQUESTER },
+      {
+        receipt_id: "r1",
+        requested_by: AUTO_ROTATE_REQUESTER,
+        rotated_from: OLD,
+      },
     ]);
+  });
+
+  it("상자 방향이 판독의 방향과 다르면 돌리지 않는다 — 두 근거가 맞을 때만", async () => {
+    const LEFT = {
+      ...RIGHT,
+      accepted_at: RIGHT.total_fee,
+      total_fee: RIGHT.accepted_at,
+    };
+    expect(await straightenSideways("q1", "right", LEFT)).toBe("disagree");
+    expect(await straightenSideways("q1", "right", null)).toBe("disagree");
+    expect(state.log).toEqual([]);
   });
 
   it("자동 세우기가 건 재판독은 다시 세우지 않는다 — 한 번만", async () => {
     state.request = { ...state.request, requested_by: AUTO_ROTATE_REQUESTER };
-    expect(await straightenSideways("q1", "right")).toBe("already-rotated");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe(
+      "already-rotated",
+    );
     expect(state.log).toEqual([]);
   });
 
   it("세로 사진에 '옆'이면 두고 아무것도 안 바꾼다", async () => {
     state.photos = { [OLD]: await photo(100, 200, "right") };
-    expect(await straightenSideways("q1", "right")).toBe("not-landscape");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe(
+      "not-landscape",
+    );
     expect(state.log).toEqual([]);
   });
 
   it("요청이나 사진을 못 읽으면 failed — 아무것도 안 바꾼다", async () => {
     state.requestError = { message: "db down" };
-    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
     state.requestError = null;
     state.photos = {};
-    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
     expect(state.log).toEqual([]);
   });
 
   it("올리기에 실패하면 failed — 경로는 그대로", async () => {
     state.uploadError = { message: "quota" };
-    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
     const [up] = Object.keys(state.uploaded);
     expect(state.log).toEqual([`upload ${up}`]);
   });
@@ -257,7 +301,7 @@ describe("straightenSideways", () => {
       state.log = [];
       state.uploaded = {};
       arrange();
-      expect(await straightenSideways("q1", "right")).toBe("failed");
+      expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
       const [up] = Object.keys(state.uploaded);
       expect(state.log).toEqual([
         `upload ${up}`,
@@ -270,7 +314,7 @@ describe("straightenSideways", () => {
   it("세운 사진도 못 지우면 그 경로를 로그에 남긴다 — 사본을 찾을 수 있게", async () => {
     state.swapRows = [];
     state.removeError = { message: "storage down" };
-    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
     const [up] = Object.keys(state.uploaded);
     expect(errorLog).toHaveBeenCalledWith(
       "[postal] 세운 사진 지우기 실패:",
@@ -279,22 +323,105 @@ describe("straightenSideways", () => {
     );
   });
 
-  it("옛 사진 삭제 실패는 넘어간다 — 아무도 안 여는 파일이 남을 뿐이다", async () => {
-    state.removeError = { message: "not found" };
-    expect(await straightenSideways("q1", "right")).toBe("rotated");
-    expect(state.inserted).toHaveLength(1);
-  });
-
-  it("재판독 요청에 실패하면 failed — 사진은 이미 섰다", async () => {
+  it("재판독 요청에 실패하면 되돌린다 — 확인할 길이 없는 회전은 남기지 않는다", async () => {
     state.insertError = { message: "db down" };
-    expect(await straightenSideways("q1", "right")).toBe("failed");
-    expect(state.log.at(-1)).toBe(`insert ${AUTO_ROTATE_REQUESTER}`);
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
+    const [up] = Object.keys(state.uploaded);
+    expect(state.log).toEqual([
+      `upload ${up}`,
+      `update ${up}`,
+      `insert ${AUTO_ROTATE_REQUESTER}`,
+      `update ${OLD}`,
+      `remove ${up}`,
+    ]);
   });
 
   it("던지지 않는다 — 못 읽는 사진도 failed 로 끝나고 로그를 남긴다", async () => {
     state.photos = { [OLD]: Buffer.from("not an image") };
-    expect(await straightenSideways("q1", "right")).toBe("failed");
+    expect(await straightenSideways("q1", "right", RIGHT)).toBe("failed");
     expect(errorLog).toHaveBeenCalled();
     expect(state.log).toEqual([]);
+  });
+});
+
+describe("settleRotation — 세운 뒤의 재판독으로 확정하거나 되돌린다", () => {
+  const NEW = "2026-09-23/new.jpg";
+  beforeEach(() => {
+    state.request = {
+      receipt_id: "r1",
+      requested_by: AUTO_ROTATE_REQUESTER,
+      rotated_from: OLD,
+      postal_receipts: { storage_path: NEW },
+    };
+    state.requestError = null;
+    state.swapRows = [{ id: "r1" }];
+    state.swapError = null;
+    state.removeError = null;
+    state.log = [];
+    state.swapFilters = [];
+    state.claimRows = [{ id: "q2" }];
+    state.claimFilters = [];
+    errorLog.mockClear();
+  });
+
+  it("바로 섰다고 하면 옛 사진을 지운다", async () => {
+    expect(await settleRotation("q2", "top")).toBe("confirmed");
+    expect(state.log).toEqual(["claim null", `remove ${OLD}`]);
+    // 이 경로를 가진 그 행일 때만 — 자리를 먼저 잡는다.
+    expect(state.claimFilters).toEqual(["id=q2", `rotated_from=${OLD}`]);
+  });
+
+  it("한 번만 — 같은 보고가 두 번 와도(폴러 재보고) 이미 처리했으면 아무것도 안 한다", async () => {
+    state.claimRows = [];
+    expect(await settleRotation("q2", null)).toBe("not-rotation");
+    expect(state.log).toEqual(["claim null"]);
+  });
+
+  it("확정 때 옛 사진 삭제가 실패해도 confirmed — 경로를 로그에 남긴다", async () => {
+    state.removeError = { message: "storage down" };
+    expect(await settleRotation("q2", "top")).toBe("confirmed");
+    expect(errorLog).toHaveBeenCalledWith(
+      "[postal] 옛 사진 삭제 실패:",
+      OLD,
+      state.removeError,
+    );
+  });
+
+  it("또 누웠다고 하면 옛 사진으로 되돌리고 세운 사진을 지운다", async () => {
+    expect(await settleRotation("q2", "left")).toBe("restored");
+    expect(state.log).toEqual(["claim null", `update ${OLD}`, `remove ${NEW}`]);
+    // 그사이 사진이 바뀌었으면 안 바꾼다 — 세운 경로일 때만.
+    expect(state.swapFilters).toEqual(["id=r1", `storage_path=${NEW}`]);
+  });
+
+  it("재판독이 실패해도(null) 되돌린다 — 확인 못 한 회전은 남기지 않는다", async () => {
+    expect(await settleRotation("q2", null)).toBe("restored");
+    expect(state.log).toEqual(["claim null", `update ${OLD}`, `remove ${NEW}`]);
+  });
+
+  it("자동 세우기의 재판독이 아니면 아무것도 안 한다", async () => {
+    state.request = { ...state.request, requested_by: "someone@example.test" };
+    expect(await settleRotation("q2", "left")).toBe("not-rotation");
+    state.request = {
+      ...state.request,
+      requested_by: AUTO_ROTATE_REQUESTER,
+      rotated_from: null,
+    };
+    expect(await settleRotation("q2", "left")).toBe("not-rotation");
+    expect(state.log).toEqual([]);
+  });
+
+  it("경로를 못 되돌리면 세운 사진을 지우지 않는다 — 영수증이 가리키는 사진이다", async () => {
+    state.swapRows = [];
+    expect(await settleRotation("q2", "left")).toBe("failed");
+    expect(state.log).toEqual(["claim null", `update ${OLD}`]);
+    // 자리를 잡아 rotated_from 이 비었다 — 옛 사진 경로는 로그로만 찾는다.
+    expect(String(errorLog.mock.calls.at(-1)?.[0])).toContain(OLD);
+  });
+
+  it("던지지 않는다 — 요청을 못 읽어도 failed", async () => {
+    state.requestError = { message: "db down" };
+    expect(await settleRotation("q2", "top")).toBe("failed");
+    expect(errorLog).toHaveBeenCalled();
   });
 });
