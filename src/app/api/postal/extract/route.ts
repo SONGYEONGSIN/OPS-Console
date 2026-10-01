@@ -145,6 +145,8 @@ export async function POST(request: NextRequest) {
 
   // 영수증이 누워 찍혔으면 세워 저장하고 한 번 더 판독한다(스펙 §5.6). 판독 결과는 위에서
   // 이미 저장했다 — 세우기는 던지지 않고, 실패해도 이 판독은 그대로 남는다.
-  await straightenSideways(id, parsed.data.receipt_top);
+  const outcome = await straightenSideways(id, parsed.data.receipt_top);
+  // 누운 사진이었으면 무엇을 했는지 남긴다 — not-landscape 는 돌리지 않고 위치만 버린다.
+  if (outcome !== "upright") console.warn("[postal] 누운 사진:", id, outcome);
   return NextResponse.json({ ok: true });
 }

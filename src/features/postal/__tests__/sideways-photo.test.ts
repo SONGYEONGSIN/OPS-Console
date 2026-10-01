@@ -267,6 +267,18 @@ describe("straightenSideways", () => {
     }
   });
 
+  it("세운 사진도 못 지우면 그 경로를 로그에 남긴다 — 사본을 찾을 수 있게", async () => {
+    state.swapRows = [];
+    state.removeError = { message: "storage down" };
+    expect(await straightenSideways("q1", "right")).toBe("failed");
+    const [up] = Object.keys(state.uploaded);
+    expect(errorLog).toHaveBeenCalledWith(
+      "[postal] 세운 사진 지우기 실패:",
+      up,
+      state.removeError,
+    );
+  });
+
   it("옛 사진 삭제 실패는 넘어간다 — 아무도 안 여는 파일이 남을 뿐이다", async () => {
     state.removeError = { message: "not found" };
     expect(await straightenSideways("q1", "right")).toBe("rotated");

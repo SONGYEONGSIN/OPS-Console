@@ -7,6 +7,8 @@ const state = {
   signedUrl: "https://example.test/signed.jpg",
   /** 세우기에 넘긴 인자, 그리고 그때 판독 결과가 이미 저장됐었나 */
   straightened: [] as { args: unknown[]; savedFirst: boolean }[],
+  /** 세우기가 돌려줄 결과 */
+  outcome: "upright",
 };
 
 // 누운 사진 세우기는 sideways-photo.test.ts 가 본다 — 여기서는 언제 무엇을 넘기는지만.
@@ -16,7 +18,7 @@ vi.mock("@/features/postal/sideways-photo", () => ({
       args,
       savedFirst: state.updates.some((u) => u.status === "done"),
     });
-    return Promise.resolve("upright");
+    return Promise.resolve(state.outcome);
   },
 }));
 
@@ -62,6 +64,7 @@ describe("영수증 판독 폴러 endpoint", () => {
     state.claimed = null;
     state.updates = [];
     state.straightened = [];
+    state.outcome = "upright";
     process.env.CRON_SECRET = "s3cret";
   });
 
@@ -144,5 +147,22 @@ describe("영수증 판독 폴러 endpoint", () => {
     );
     await POST(req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: false, message: "5분 초과" } }));
     expect(state.straightened).toEqual([]);
+  });
+
+  it("누운 사진이었으면 무엇을 했는지 로그로 남긴다 — 바로 선 판독은 조용하다", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const reading = { is_receipt: true, total_fee: 100, items: [{ tracking_no: "A-1", fee: 100 }] };
+    state.outcome = "not-landscape";
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify({ ...reading, receipt_top: "right" }) } }),
+    );
+    expect(warn).toHaveBeenCalledWith("[postal] 누운 사진:", "q1", "not-landscape");
+    warn.mockClear();
+    state.outcome = "upright";
+    await POST(
+      req({ method: "POST", auth: "Bearer s3cret", body: { id: "q1", ok: true, raw: JSON.stringify({ ...reading, receipt_top: "top" }) } }),
+    );
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

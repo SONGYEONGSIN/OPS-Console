@@ -19,7 +19,7 @@ export type StraightenOutcome =
   | "already-rotated" // 자동 세우기가 건 재판독 — 또 돌리지 않는다
   | "not-landscape" // 세로 사진에 right·left — 판독이 틀린 것으로 보고 둔다
   | "rotated" // 세워 저장하고 재판독을 걸었다
-  | "failed"; // 어디선가 멈췄다 — 첫 판독은 남고 사진은 누운 채(위치는 안 쓰인다)
+  | "failed"; // 어디선가 멈췄다 — 첫 판독은 남고 위치는 안 쓰인다. 재판독 요청만 실패했으면 사진은 이미 섰다
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -44,8 +44,9 @@ export async function turnUpright(
  * 눕는다 — 업로드의 `uprightPhoto` 는 회전 정보만 보므로 못 잡는다. 판독이 영수증 맨 위가
  * 어느 쪽인지(`receipt_top`) 알려 주면, 판독 결과를 저장한 **뒤에** 여기서 세운다.
  *
- * **던지지 않는다** — 판독 결과는 이미 저장됐고, 어디서 멈춰도 사진이 누운 채 남을 뿐이다
- * (`readRegions` 가 누운 판독의 위치를 쓰지 않는다).
+ * **던지지 않는다** — 판독 결과는 이미 저장됐고, 어디서 멈춰도 그 판독의 위치가 안 쓰일 뿐이다
+ * (`readRegions` 가 누운 판독의 위치를 쓰지 않는다). 사진은 대개 누운 채 남고, 재판독 요청만
+ * 실패했으면 이미 서 있다.
  */
 export async function straightenSideways(
   requestId: string,
@@ -126,7 +127,11 @@ async function replacePhoto(
     .eq("storage_path", oldPath)
     .select("id");
   if (error || !data || data.length === 0) {
-    await bucket.remove([newPath]);
+    const cleanup = await bucket.remove([newPath]);
+    // 못 지우면 아무도 안 여는 사본이 남는다(수취인·카드 정보가 찍힌 사진) — 찾을 수 있게 경로를 남긴다.
+    if (cleanup.error) {
+      console.error("[postal] 세운 사진 지우기 실패:", newPath, cleanup.error);
+    }
     return `경로 바꾸기: ${error?.message ?? "영수증이 없거나 사진이 바뀌었다"}`;
   }
 
