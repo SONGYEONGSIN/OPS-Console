@@ -30,6 +30,7 @@ const EMPTY: ExtractState = {
   acceptedAt: null,
   rows: [],
   hasRegions: false,
+  requestedAt: null,
 };
 
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
@@ -150,7 +151,9 @@ export function PostalTable({
               const total = extract.rows.reduce((a, x) => a + (x.fee ?? 0), 0);
               return (
                 <RowPair
-                  key={receipt.id}
+                  // 다시 판독하면 새 값으로 갈아끼운다(옛 값이 확정되면 장부가 틀린다).
+                  // 같은 판독이면 키가 같아 새로고침에도 고친 값이 남는다.
+                  key={`${receipt.id}:${extract.requestedAt ?? ""}`}
                   receipt={receipt}
                   extract={extract}
                   total={total}
@@ -280,7 +283,7 @@ function RowPair({
             type="checkbox"
             checked={picked}
             onChange={onTogglePick}
-            aria-label={`${fmtDate(receipt.createdAt)} 영수증 출력에 넣기`}
+            aria-label={`${fmtDate(receipt.createdAt)} ${shortName(receipt.uploadedBy)} 영수증 출력에 넣기`}
             className="accent-vermilion"
           />
         </td>

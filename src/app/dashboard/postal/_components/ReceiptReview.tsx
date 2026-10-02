@@ -81,7 +81,7 @@ export function ReceiptReview({
         // 위치 없이 끝난 판독 — 출력하면 형광펜이 빠진다. 값 검토는 계속 할 수 있다.
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-2xs text-vermilion">
-            형광펜 자리를 찾지 못했습니다 — 출력하면 이 영수증은 형광펜 없이 실립니다.
+            형광펜 자리를 다 찾지 못했습니다 — 출력하면 못 찾은 자리는 형광펜 없이 실립니다.
           </p>
           <ReextractButton
             pending={pending}

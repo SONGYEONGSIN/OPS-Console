@@ -84,6 +84,8 @@ export type ExtractState = {
   rows: ReviewRow[];
   /** 형광펜 두 자리(접수일자·총요금)를 다 찾았나 — 영수증 출력 안내가 센다. */
   hasRegions: boolean;
+  /** 이 값이 어느 판독에서 왔나 — 새 판독이 오면 검토 값을 갈아끼우는 열쇠다. */
+  requestedAt: string | null;
 };
 
 /**
@@ -134,6 +136,7 @@ export async function getExtractStates(
           ? buildReviewRows(result.items, { under, grad, alreadyOnThatDay: 0 })
           : [],
       hasRegions: hasHighlightRegions(readRegions(r.result)),
+      requestedAt: (r.requested_at as string | null) ?? null,
     });
   }
   return out;

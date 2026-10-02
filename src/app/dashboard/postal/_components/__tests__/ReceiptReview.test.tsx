@@ -36,6 +36,7 @@ const done: ExtractState = {
   message: null,
   acceptedAt: "2026-08-18",
   hasRegions: false,
+  requestedAt: null,
   rows: [
     {
       daySeq: 1, trackingNo: "11263-1102-7080", fee: 4590, postalCode: "55338",
@@ -61,19 +62,19 @@ describe("ReceiptReview", () => {
   });
 
   it("판독이 안 걸린 상태면 다시 걸 수 있다 — 업로드 시 자동으로 걸리지만 실패할 수 있다", () => {
-    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false }} />);
+    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false, requestedAt: null }} />);
     expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("다시 추출을 누르면 판독을 요청한다", async () => {
-    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false }} />);
+    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false, requestedAt: null }} />);
     fireEvent.click(screen.getByRole("button", { name: "다시 추출" }));
     await waitFor(() => expect(extractSpy).toHaveBeenCalledWith(RID));
   });
 
   it("도는 중이면 그렇다고 알린다 — 30초쯤 걸린다", () => {
-    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "running", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false }} />);
+    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "running", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false, requestedAt: null }} />);
     expect(screen.getByText(/읽는 중/)).toBeInTheDocument();
   });
 
@@ -86,7 +87,7 @@ describe("ReceiptReview", () => {
   it("판독은 됐는데 형광펜 자리가 없으면 안내하고 다시 추출할 수 있다", async () => {
     render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ ...done, hasRegions: false }} rows={done.rows} />);
     expect(
-      screen.getByText("형광펜 자리를 찾지 못했습니다 — 출력하면 이 영수증은 형광펜 없이 실립니다."),
+      screen.getByText("형광펜 자리를 다 찾지 못했습니다 — 출력하면 못 찾은 자리는 형광펜 없이 실립니다."),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "다시 추출" }));
     await waitFor(() => expect(extractSpy).toHaveBeenCalledWith(RID));
@@ -94,7 +95,7 @@ describe("ReceiptReview", () => {
 
   it("형광펜 자리가 있으면 안내도 버튼도 없다", () => {
     render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ ...done, hasRegions: true }} rows={done.rows} />);
-    expect(screen.queryByText(/형광펜 자리를 찾지 못했습니다/)).toBeNull();
+    expect(screen.queryByText(/형광펜 자리를 다 찾지 못했습니다/)).toBeNull();
     expect(screen.queryByRole("button", { name: "다시 추출" })).toBeNull();
   });
 
@@ -141,7 +142,7 @@ describe("ReceiptReview", () => {
   });
 
   it("실패하면 사유를 보여주고 다시 시도할 수 있다", () => {
-    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ status: "failed", warnings: [], message: "영수증이 아닙니다", acceptedAt: null, rows: [], hasRegions: false }} rows={[]} />);
+    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ status: "failed", warnings: [], message: "영수증이 아닙니다", acceptedAt: null, rows: [], hasRegions: false, requestedAt: null }} rows={[]} />);
     expect(screen.getByText(/영수증이 아닙니다/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
   });

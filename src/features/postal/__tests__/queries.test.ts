@@ -143,3 +143,29 @@ describe("getExtractStates — hasRegions", () => {
     expect((await getExtractStates(["r1"])).get("r1")?.hasRegions).toBe(false);
   });
 });
+
+/**
+ * 어느 판독인가 — 검토 값이 새 판독으로 갈리는 열쇠다.
+ * 최신 요청의 시각이 아니면 다시 판독해도 화면이 옛 값을 붙든다.
+ */
+describe("getExtractStates — requestedAt", () => {
+  const req = (requestedAt: string, status: string) => ({
+    receipt_id: "r1",
+    status,
+    warnings: [],
+    message: null,
+    requested_at: requestedAt,
+    result: { items: [] },
+  });
+
+  it("최신 요청의 requested_at 을 싣는다", async () => {
+    // 쿼리가 requested_at 내림차순이라 최신이 앞이다.
+    state.requests = [
+      req("2026-09-30T02:00:00Z", "done"),
+      req("2026-09-30T01:00:00Z", "done"),
+    ];
+    expect((await getExtractStates(["r1"])).get("r1")?.requestedAt).toBe(
+      "2026-09-30T02:00:00Z",
+    );
+  });
+});
