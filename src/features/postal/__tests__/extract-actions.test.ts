@@ -6,6 +6,8 @@ const state = {
   updated: [] as Record<string, unknown>[],
   filters: [] as [string, unknown][],
   existing: null as Record<string, unknown> | null,
+  // requestExtraction 이 먼저 읽는 영수증 행. null 이면 없는 영수증.
+  receipt: { confirmed_at: null } as Record<string, unknown> | null,
   deleted: 0,
 };
 
@@ -55,7 +57,7 @@ vi.mock("@/lib/supabase/admin", () => ({
         in: () => chain,
         order: () => chain,
         limit: () => Promise.resolve({ data: state.existing ? [state.existing] : [] }),
-        maybeSingle: () => Promise.resolve({ data: state.existing, error: null }),
+        maybeSingle: () => Promise.resolve({ data: state.receipt, error: null }),
         single: () => Promise.resolve({ data: { id: "new" }, error: null }),
         then: (r: (v: { error: null }) => unknown) => r({ error: null }),
       };
@@ -73,6 +75,7 @@ describe("requestExtraction", () => {
     state.me = { email: "me@x.com", permission: "member" };
     state.inserted = [];
     state.existing = null;
+    state.receipt = { confirmed_at: null };
     state.filters = [];
   });
 
@@ -99,6 +102,23 @@ describe("requestExtraction", () => {
 
   it("영수증 id가 아니면 거부한다", async () => {
     expect((await requestExtraction("not-a-uuid")).ok).toBe(false);
+  });
+
+  it("확정한 영수증은 다시 읽지 않는다 — 전도금 장부에 이미 기록됐다", async () => {
+    state.receipt = { confirmed_at: "2026-09-30T01:00:00Z" };
+    const r = await requestExtraction(RID);
+    expect(r).toEqual({
+      ok: false,
+      error: "확정한 영수증은 다시 읽지 않습니다 (전도금 장부에 기록됨)",
+    });
+    expect(state.inserted).toHaveLength(0);
+  });
+
+  it("없는 영수증이면 거부하고 넣지 않는다", async () => {
+    state.receipt = null;
+    const r = await requestExtraction(RID);
+    expect(r).toEqual({ ok: false, error: "영수증을 찾을 수 없습니다" });
+    expect(state.inserted).toHaveLength(0);
   });
 });
 

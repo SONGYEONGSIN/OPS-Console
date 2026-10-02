@@ -74,6 +74,22 @@ export async function requestExtraction(
   }
 
   const admin = createAdminClient();
+  // 확정한 영수증은 이미 전도금 장부에 기록됐다 — 다시 읽어 값이 바뀌면 장부와
+  // 어긋난다. 화면이 확정건에 버튼을 안 그려도 액션이 화면을 믿지 않는다.
+  const { data: receipt, error: receiptError } = await admin
+    .from("postal_receipts")
+    .select("confirmed_at")
+    .eq("id", receiptId)
+    .maybeSingle();
+  if (receiptError) return { ok: false, error: receiptError.message };
+  if (!receipt) return { ok: false, error: "영수증을 찾을 수 없습니다" };
+  if (receipt.confirmed_at) {
+    return {
+      ok: false,
+      error: "확정한 영수증은 다시 읽지 않습니다 (전도금 장부에 기록됨)",
+    };
+  }
+
   // 이미 돌고 있으면 또 넣지 않는다 — 같은 영수증을 두 번 읽을 이유가 없고,
   // 폴러가 한 건씩 처리하므로 줄만 길어진다.
   const { data: live } = await admin

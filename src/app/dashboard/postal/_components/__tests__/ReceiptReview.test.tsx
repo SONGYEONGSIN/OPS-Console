@@ -83,6 +83,27 @@ describe("ReceiptReview", () => {
     expect(screen.getByDisplayValue("11263-1102-7080")).toBeInTheDocument();
   });
 
+  it("판독은 됐는데 형광펜 자리가 없으면 안내하고 다시 추출할 수 있다", async () => {
+    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ ...done, hasRegions: false }} rows={done.rows} />);
+    expect(
+      screen.getByText("형광펜 자리를 찾지 못했습니다 — 출력하면 이 영수증은 형광펜 없이 실립니다."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "다시 추출" }));
+    await waitFor(() => expect(extractSpy).toHaveBeenCalledWith(RID));
+  });
+
+  it("형광펜 자리가 있으면 안내도 버튼도 없다", () => {
+    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ ...done, hasRegions: true }} rows={done.rows} />);
+    expect(screen.queryByText(/형광펜 자리를 찾지 못했습니다/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "다시 추출" })).toBeNull();
+  });
+
+  it("형광펜 안내가 있어도 검토 표는 그대로 보인다", () => {
+    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ ...done, hasRegions: false }} rows={done.rows} />);
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("11263-1102-7080")).toBeInTheDocument();
+  });
+
   it("담당자가 유일하면 채워져 있다", () => {
     render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={done} rows={done.rows} />);
     expect(screen.getByDisplayValue("김지현")).toBeInTheDocument();
