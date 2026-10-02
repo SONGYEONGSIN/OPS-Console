@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { RECEIPT_BUCKET } from "./upload-guard";
+import { hasHighlightRegions, readRegions } from "./extract-parse";
 import { buildReviewRows, type ReviewRow, type ExtractedItem } from "./review-rows";
 import { loadAssigneeRows } from "./assignee-queries";
 
@@ -81,6 +82,10 @@ export type ExtractState = {
   acceptedAt: string | null;
   /** done일 때만. 검토 표의 재료. */
   rows: ReviewRow[];
+  /** 형광펜 두 자리(접수일자·총요금)를 다 찾았나 — 영수증 출력 안내가 센다. */
+  hasRegions: boolean;
+  /** 이 값이 어느 판독에서 왔나 — 새 판독이 오면 검토 값을 갈아끼우는 열쇠다. */
+  requestedAt: string | null;
 };
 
 /**
@@ -130,6 +135,8 @@ export async function getExtractStates(
         status === "done" && result?.items
           ? buildReviewRows(result.items, { under, grad, alreadyOnThatDay: 0 })
           : [],
+      hasRegions: hasHighlightRegions(readRegions(r.result)),
+      requestedAt: (r.requested_at as string | null) ?? null,
     });
   }
   return out;

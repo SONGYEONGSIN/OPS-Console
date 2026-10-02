@@ -58,14 +58,10 @@ export function ReceiptReview({
         {state.message && (
           <p className="text-2xs text-vermilion">{state.message}</p>
         )}
-        <button
-          type="button"
-          disabled={pending}
+        <ReextractButton
+          pending={pending}
           onClick={() => run(() => requestExtraction(receiptId))}
-          className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          다시 추출
-        </button>
+        />
         {error && <p className="text-2xs text-vermilion">{error}</p>}
       </div>
     );
@@ -81,6 +77,19 @@ export function ReceiptReview({
 
   return (
     <div className="space-y-2">
+      {!state.hasRegions && (
+        // 위치 없이 끝난 판독 — 출력하면 형광펜이 빠진다. 값 검토는 계속 할 수 있다.
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-2xs text-vermilion">
+            형광펜 자리를 다 찾지 못했습니다 — 출력하면 못 찾은 자리는 형광펜 없이 실립니다.
+          </p>
+          <ReextractButton
+            pending={pending}
+            onClick={() => run(() => requestExtraction(receiptId))}
+          />
+        </div>
+      )}
+      {error && <p className="text-2xs text-vermilion">{error}</p>}
       {state.warnings.length > 0 && (
         // 개별 요금 합 != 총요금 같은 것. 사람이 표를 보기 전에 알린다.
         <ul className="space-y-0.5 border border-line-soft bg-situation-bg px-2.5 py-1.5">
@@ -175,6 +184,26 @@ export function ReceiptReview({
       </div>
 
     </div>
+  );
+}
+
+/** 없음·실패 화면과 '형광펜 자리 없음' 안내가 같은 버튼을 쓴다. */
+function ReextractButton({
+  pending,
+  onClick,
+}: {
+  pending: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={onClick}
+      className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      다시 추출
+    </button>
   );
 }
 

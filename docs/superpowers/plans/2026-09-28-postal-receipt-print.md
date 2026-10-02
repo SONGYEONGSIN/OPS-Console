@@ -3836,6 +3836,8 @@ ledger 에 결과를 적고 `git checkout main && git pull`(이미 main 이면 p
 시작 전: `git checkout main && git pull && git checkout -b feat/postal-receipt-print-ui`
 
 > **시작 전에 정할 것 (PR-2b 최종 리뷰 Important 1, 2026-10-01)**: 검토 화면(`ReceiptReview.tsx`)의 [다시 추출]은 판독 상태가 없음·실패일 때만 보인다. 누운 사진 세우기가 실패하거나(받기·올리기·경로 교체·재판독 요청), 재판독이 또 누웠다고 하거나, 세로 사진이라 안 돌렸으면 **최신 판독이 done 인데 위치가 없다** — 출력 안내는 '형광펜이 빠진 곳이 있습니다'로 세지만 사람이 고칠 버튼이 없다(스펙 §6 은 '틀리면 다시 추출'). 위치가 없는 done 판독(`!hasHighlightRegions(readRegions(…))`)에도 [다시 추출]을 보일지, 확정된 영수증까지 줄지를 사용자와 정하고 Task 14·15 에 넣는다.
+>
+> **결정 (사용자 2026-10-02, 추천안 1)**: 위치가 없는 done 판독에도 [다시 추출]을 보인다. **확정 전 영수증만** — 확정하면 전도금 장부에 한 줄이 들어가 다시 읽으면 화면 값과 장부가 어긋날 수 있다(확정건 삭제를 막는 것과 같은 이유). 검토 화면은 이미 확정 전 영수증에만 그려지므로 화면 조건은 위치 유무만 더하고, 서버 `requestExtraction` 이 확정건을 거절한다. → **Task 15b**
 
 ### Task 13: 목록이 형광펜 준비 여부를 안다
 
@@ -4590,6 +4592,29 @@ EOF
 )"
 ```
 
+### Task 15b: 위치가 없는 판독도 다시 추출 (확정 전만)
+
+**Files:**
+- Modify (splice): `src/app/dashboard/postal/_components/ReceiptReview.tsx`
+- Test (splice): `src/app/dashboard/postal/_components/__tests__/ReceiptReview.test.tsx`
+- Modify (splice): `src/features/postal/extract-actions.ts` — `requestExtraction`
+- Test (splice): `src/features/postal/__tests__/extract-actions.test.ts`
+
+세 파일 모두 prettier 비준수 → **Edit 금지, `$SP/splice.py` 만** (Global Constraints 표).
+
+**Interfaces:**
+- Consumes: `ExtractState.hasRegions: boolean` (Task 13)
+- Produces: 없음(화면·액션 동작만)
+
+**요구:**
+1. `ReceiptReview` 의 판독 완료(done) 화면에서 `state.hasRegions === false` 면 경고 목록 위에 한 줄 안내 + [다시 추출] 버튼을 보인다. 문구: `형광펜 자리를 찾지 못했습니다 — 출력하면 이 영수증은 형광펜 없이 실립니다.` 버튼은 지금 없음·실패 화면의 [다시 추출]과 **같은 모양·같은 동작**(`run(() => requestExtraction(receiptId))`, 같은 className) — 버튼 JSX 를 이 파일 안 작은 함수 컴포넌트(`ReextractButton`)로 뽑아 두 곳이 같이 쓴다. 표·경고는 그대로 아래에 보인다(값 검토는 계속 할 수 있어야 한다). `hasRegions` 가 true 면 안내·버튼 없음.
+2. `requestExtraction` 이 확정한 영수증(`postal_receipts.confirmed_at` 이 있음)을 거절한다: `{ ok: false, error: "확정한 영수증은 다시 읽지 않습니다 (전도금 장부에 기록됨)" }`. 영수증이 없으면 `"영수증을 찾을 수 없습니다"`. 확인 순서: 권한 → uuid → **영수증 조회(확정 여부)** → 진행 중 요청 → insert. 화면은 이미 확정건에 검토를 안 그리지만, 액션은 화면을 믿지 않는다.
+
+- [ ] **Step 1: 실패 테스트** — ReceiptReview: (a) done + `hasRegions:false` 면 안내 문구와 [다시 추출]이 보이고, 누르면 `requestExtraction(receiptId)` 가 불린다 (b) done + `hasRegions:true` 면 [다시 추출]이 없다 (c) 안내가 있어도 검토 표(등기번호 칸)는 그대로 보인다. extract-actions: (d) 확정한 영수증이면 거절하고 insert 하지 않는다 (e) 확정 전이면 지금처럼 넣는다(기존 테스트가 그대로 통과해야 한다 — 픽스처에 영수증 조회 결과를 더한다). 돌려서 새 테스트만 FAIL 인지 본다.
+- [ ] **Step 2: 구현** — 위 요구대로. 다른 줄은 건드리지 않는다.
+- [ ] **Step 3: 통과** — `npx vitest run src/app/dashboard/postal src/features/postal/__tests__/extract-actions.test.ts --maxWorkers=2` 전부 PASS, `npx eslint` 두 소스·두 테스트 0, `git diff --stat` 4파일.
+- [ ] **Step 4: 커밋** — `feat(postal): 형광펜 자리가 없는 판독도 다시 추출한다 — 확정 전만`
+
 ### Task 16: PR-3 올리기 · 운영 확인
 
 - [ ] **Step 1: 전체 검증**
@@ -4598,9 +4623,9 @@ EOF
 npm run typecheck
 npm run lint
 npx vitest run src/features/postal src/app/api/postal src/app/dashboard/postal src/lib/pdf src/components/common --maxWorkers=2
-git diff --stat main...HEAD   # 9파일
+git diff --stat main...HEAD   # 12파일 안팎(Task 15b 로 +3)
 ```
-Expected: 0 / 0 / 전부 PASS, 9파일.
+Expected: 0 / 0 / 전부 PASS, 12파일 안팎.
 
 - [ ] **Step 2: 푸시·PR**
 

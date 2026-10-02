@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseExtraction, assignDaySeq, readRegions } from "../extract-parse";
+import {
+  parseExtraction,
+  assignDaySeq,
+  readRegions,
+  hasHighlightRegions,
+} from "../extract-parse";
 
 const GOOD = {
   is_receipt: true,
@@ -243,6 +248,20 @@ describe("parseExtraction — 방향(receipt_top)", () => {
       expect(r.ok).toBe(true);
       expect(r.ok && r.data.receipt_top).toBeNull();
     }
+  });
+});
+
+/** 형광펜 두 자리를 다 찾았나 — 목록의 출력 안내("N장 중 M장은…")가 센다. */
+describe("hasHighlightRegions", () => {
+  const box: [number, number, number, number] = [0.1, 0.1, 0.2, 0.2];
+
+  it("접수일자·총요금이 다 있으면 참 — 종이 상자는 안 본다", () => {
+    expect(hasHighlightRegions({ receipt: null, accepted_at: box, total_fee: box })).toBe(true);
+  });
+
+  it("하나라도 없으면 거짓", () => {
+    expect(hasHighlightRegions({ receipt: box, accepted_at: box, total_fee: null })).toBe(false);
+    expect(hasHighlightRegions(null)).toBe(false);
   });
 });
 

@@ -74,6 +74,11 @@ export function readRegions(result: unknown): Regions | null {
   return regionsSchema.parse(result.regions);
 }
 
+/** 형광펜 두 자리(접수일자·총요금)를 다 찾았나. 종이 상자는 보지 않는다 — 없으면 사진 전체를 쓸 뿐이다. */
+export function hasHighlightRegions(regions: Regions | null): boolean {
+  return Boolean(regions?.accepted_at && regions.total_fee);
+}
+
 const extractionSchema = z.object({
   is_receipt: z.boolean(),
   receipt_no: z.string().trim().nullable().catch(null),

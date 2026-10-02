@@ -9,7 +9,30 @@ vi.mock("../ReceiptReview", async () => {
   const actual = await vi.importActual<typeof import("../ReceiptReview")>(
     "../ReceiptReview",
   );
-  return { ...actual, ReceiptReview: () => <div>리뷰</div> };
+  return {
+    ...actual,
+    ReceiptReview: ({
+      rows,
+      onRowsChange,
+    }: {
+      rows: { trackingNo: string }[];
+      onRowsChange: (r: { trackingNo: string }[]) => void;
+    }) => (
+      <div>
+        리뷰
+        <span data-testid="review-rows">
+          {rows.map((r) => r.trackingNo).join(",")}
+        </span>
+        <button
+          onClick={() =>
+            onRowsChange(rows.map((r) => ({ ...r, trackingNo: "EDITED" })))
+          }
+        >
+          고침
+        </button>
+      </div>
+    ),
+  };
 });
 
 const receipts: ReceiptCard[] = [
@@ -30,9 +53,9 @@ const receipts: ReceiptCard[] = [
 ];
 
 const states: Record<string, ExtractState> = {
-  r1: { status: "none", warnings: [], message: null, acceptedAt: null, rows: [] },
+  r1: { status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false, requestedAt: null },
   r2: {
-    status: "done", warnings: [], message: null, acceptedAt: "2026-08-19",
+    status: "done", warnings: [], message: null, acceptedAt: "2026-08-19", hasRegions: true, requestedAt: "2026-08-19T00:00:00Z",
     rows: [
       {
         daySeq: 1, trackingNo: "11263-1102-7080", fee: 4590, postalCode: "55338",
@@ -139,6 +162,62 @@ describe("PostalTable", () => {
 });
 
 /**
+ * 영수증 출력 — 내부 전표에 붙일 A4 PDF.
+ *
+ * 행을 누르면 원본 팝업이 열리므로 체크 칸의 클릭은 새지 않아야 한다.
+ */
+describe("PostalTable — 영수증 출력", () => {
+  const boxes = () => screen.getAllByRole("checkbox");
+
+  it("표 머리에 선택 칸이 있다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    expect(screen.getByRole("columnheader", { name: "선택" })).toBeInTheDocument();
+  });
+
+  it("고른 것이 없으면 출력 버튼이 꺼져 있다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    expect(screen.getByRole("button", { name: "영수증 출력 (0)" })).toBeDisabled();
+  });
+
+  it("체크하면 고른 영수증으로 PDF 주소를 만든다 — 접수일시 순", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    // 표 순서(r1, r2)와 반대로 누른다. r1 은 판독 전이라 올린 시각(한국 08-18 10:00)으로,
+    // r2 는 접수일자(08-19)로 선다.
+    fireEvent.click(boxes()[1]);
+    fireEvent.click(boxes()[0]);
+    expect(screen.getByRole("link", { name: "영수증 출력 (2)" })).toHaveAttribute(
+      "href",
+      "/api/postal/receipts/pdf?ids=r1,r2",
+    );
+  });
+
+  it("체크해도 원본 팝업이 열리지 않는다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    fireEvent.click(boxes()[0]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("다시 누르면 빠진다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    fireEvent.click(boxes()[0]);
+    fireEvent.click(boxes()[0]);
+    expect(screen.getByRole("button", { name: "영수증 출력 (0)" })).toBeDisabled();
+  });
+
+  it("형광펜 자리를 다 못 찾은 장수를 알린다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    fireEvent.click(boxes()[0]);
+    fireEvent.click(boxes()[1]);
+    expect(screen.getByText("2장 중 1장은 형광펜이 빠진 곳이 있습니다")).toBeInTheDocument();
+  });
+
+  it("체크 칸은 표준 강조색이다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    expect(boxes()[0]).toHaveClass("accent-vermilion");
+  });
+});
+
+/**
  * 서명이 만료된 이미지는 깨진 아이콘 대신 이유를 보여준다.
  *
  * 서명 URL 은 5분이라 목록을 열어둔 채 나중에 누르면 죽는다. 그때 브라우저가
@@ -214,5 +293,71 @@ describe("확정한 영수증", () => {
   it("확정 전에는 검토 표가 펼쳐져 있다", () => {
     render(<PostalTable receipts={only("r1")} extractStates={states} />);
     expect(screen.getByText("리뷰")).toBeInTheDocument();
+  });
+});
+
+/**
+ * 다시 판독하면 검토 값이 새 판독으로 갈린다.
+ *
+ * 검토 행은 처음 한 번만 판독에서 복사해 들고 있어, 갈아끼우지 않으면 [확정]이
+ * 옛 판독의 값을 전도금 장부에 쓴다. 같은 판독이면 고친 값은 새로고침을 넘어 남는다.
+ */
+describe("판독이 바뀌면 검토 값도 바뀐다", () => {
+  const reading = (requestedAt: string, trackingNo: string): ExtractState => ({
+    ...states.r2,
+    requestedAt,
+    rows: [{ ...states.r2.rows[0], trackingNo }],
+  });
+  const r1 = receipts.filter((r) => r.id === "r1");
+  const withState = (s: ExtractState) => ({ r1: s });
+
+  it("새 판독의 값으로 바뀌고 옛 값은 사라진다", () => {
+    const { rerender } = render(
+      <PostalTable
+        receipts={r1}
+        extractStates={withState(reading("2026-09-30T01:00:00Z", "AAA-1"))}
+      />,
+    );
+    expect(screen.getByTestId("review-rows").textContent).toBe("AAA-1");
+    rerender(
+      <PostalTable
+        receipts={r1}
+        extractStates={withState(reading("2026-09-30T02:00:00Z", "BBB-2"))}
+      />,
+    );
+    expect(screen.getByTestId("review-rows").textContent).toBe("BBB-2");
+    expect(screen.queryByText("AAA-1")).toBeNull();
+  });
+
+  it("같은 판독이면 고친 값이 새로고침을 넘어 남는다", () => {
+    const same = reading("2026-09-30T01:00:00Z", "AAA-1");
+    const { rerender } = render(
+      <PostalTable receipts={r1} extractStates={withState(same)} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "고침" }));
+    expect(screen.getByTestId("review-rows").textContent).toBe("EDITED");
+    rerender(
+      <PostalTable
+        receipts={r1}
+        extractStates={withState({ ...same, rows: [...same.rows] })}
+      />,
+    );
+    expect(screen.getByTestId("review-rows").textContent).toBe("EDITED");
+  });
+});
+
+describe("출력 체크박스", () => {
+  it("라벨이 올린 사람까지 담아 같은 시각의 영수증끼리 갈린다", () => {
+    const twins: ReceiptCard[] = [
+      { ...receipts[0], id: "a", uploadedBy: "song@x.com" },
+      { ...receipts[0], id: "b", uploadedBy: "kim@x.com" },
+    ];
+    render(<PostalTable receipts={twins} extractStates={{}} />);
+    expect(
+      screen.getByRole("checkbox", { name: /song 영수증 출력에 넣기$/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /kim 영수증 출력에 넣기$/ }),
+    ).toBeInTheDocument();
   });
 });
