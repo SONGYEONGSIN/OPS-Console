@@ -35,6 +35,7 @@ const done: ExtractState = {
   warnings: [],
   message: null,
   acceptedAt: "2026-08-18",
+  hasRegions: false,
   rows: [
     {
       daySeq: 1, trackingNo: "11263-1102-7080", fee: 4590, postalCode: "55338",
@@ -60,19 +61,19 @@ describe("ReceiptReview", () => {
   });
 
   it("판독이 안 걸린 상태면 다시 걸 수 있다 — 업로드 시 자동으로 걸리지만 실패할 수 있다", () => {
-    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [] }} />);
+    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false }} />);
     expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("다시 추출을 누르면 판독을 요청한다", async () => {
-    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [] }} />);
+    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false }} />);
     fireEvent.click(screen.getByRole("button", { name: "다시 추출" }));
     await waitFor(() => expect(extractSpy).toHaveBeenCalledWith(RID));
   });
 
   it("도는 중이면 그렇다고 알린다 — 30초쯤 걸린다", () => {
-    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "running", warnings: [], message: null, acceptedAt: null, rows: [] }} />);
+    render(<ReceiptReview rows={[]} onRowsChange={() => {}} receiptId={RID} state={{ status: "running", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false }} />);
     expect(screen.getByText(/읽는 중/)).toBeInTheDocument();
   });
 
@@ -119,7 +120,7 @@ describe("ReceiptReview", () => {
   });
 
   it("실패하면 사유를 보여주고 다시 시도할 수 있다", () => {
-    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ status: "failed", warnings: [], message: "영수증이 아닙니다", acceptedAt: null, rows: [] }} rows={[]} />);
+    render(<ReceiptReview onRowsChange={() => {}} receiptId={RID} state={{ status: "failed", warnings: [], message: "영수증이 아닙니다", acceptedAt: null, rows: [], hasRegions: false }} rows={[]} />);
     expect(screen.getByText(/영수증이 아닙니다/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 추출" })).toBeInTheDocument();
   });

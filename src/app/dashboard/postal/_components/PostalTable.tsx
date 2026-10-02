@@ -28,6 +28,7 @@ const EMPTY: ExtractState = {
   message: null,
   acceptedAt: null,
   rows: [],
+  hasRegions: false,
 };
 
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;

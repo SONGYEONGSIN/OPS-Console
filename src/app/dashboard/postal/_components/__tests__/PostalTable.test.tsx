@@ -30,9 +30,9 @@ const receipts: ReceiptCard[] = [
 ];
 
 const states: Record<string, ExtractState> = {
-  r1: { status: "none", warnings: [], message: null, acceptedAt: null, rows: [] },
+  r1: { status: "none", warnings: [], message: null, acceptedAt: null, rows: [], hasRegions: false },
   r2: {
-    status: "done", warnings: [], message: null, acceptedAt: "2026-08-19",
+    status: "done", warnings: [], message: null, acceptedAt: "2026-08-19", hasRegions: true,
     rows: [
       {
         daySeq: 1, trackingNo: "11263-1102-7080", fee: 4590, postalCode: "55338",
