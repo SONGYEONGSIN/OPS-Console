@@ -139,6 +139,62 @@ describe("PostalTable", () => {
 });
 
 /**
+ * 영수증 출력 — 내부 전표에 붙일 A4 PDF.
+ *
+ * 행을 누르면 원본 팝업이 열리므로 체크 칸의 클릭은 새지 않아야 한다.
+ */
+describe("PostalTable — 영수증 출력", () => {
+  const boxes = () => screen.getAllByRole("checkbox");
+
+  it("표 머리에 선택 칸이 있다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    expect(screen.getByRole("columnheader", { name: "선택" })).toBeInTheDocument();
+  });
+
+  it("고른 것이 없으면 출력 버튼이 꺼져 있다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    expect(screen.getByRole("button", { name: "영수증 출력 (0)" })).toBeDisabled();
+  });
+
+  it("체크하면 고른 영수증으로 PDF 주소를 만든다 — 접수일시 순", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    // 표 순서(r1, r2)와 반대로 누른다. r1 은 판독 전이라 올린 시각(한국 08-18 10:00)으로,
+    // r2 는 접수일자(08-19)로 선다.
+    fireEvent.click(boxes()[1]);
+    fireEvent.click(boxes()[0]);
+    expect(screen.getByRole("link", { name: "영수증 출력 (2)" })).toHaveAttribute(
+      "href",
+      "/api/postal/receipts/pdf?ids=r1,r2",
+    );
+  });
+
+  it("체크해도 원본 팝업이 열리지 않는다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    fireEvent.click(boxes()[0]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("다시 누르면 빠진다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    fireEvent.click(boxes()[0]);
+    fireEvent.click(boxes()[0]);
+    expect(screen.getByRole("button", { name: "영수증 출력 (0)" })).toBeDisabled();
+  });
+
+  it("형광펜 자리를 다 못 찾은 장수를 알린다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    fireEvent.click(boxes()[0]);
+    fireEvent.click(boxes()[1]);
+    expect(screen.getByText("2장 중 1장은 형광펜이 빠진 곳이 있습니다")).toBeInTheDocument();
+  });
+
+  it("체크 칸은 표준 강조색이다", () => {
+    render(<PostalTable receipts={receipts} extractStates={states} />);
+    expect(boxes()[0]).toHaveClass("accent-vermilion");
+  });
+});
+
+/**
  * 서명이 만료된 이미지는 깨진 아이콘 대신 이유를 보여준다.
  *
  * 서명 URL 은 5분이라 목록을 열어둔 채 나중에 누르면 죽는다. 그때 브라우저가

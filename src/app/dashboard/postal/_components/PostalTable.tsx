@@ -9,6 +9,7 @@ import { ReceiptReview, ConfirmButton } from "./ReceiptReview";
 import { formatAcceptedAt } from "@/features/postal/accepted-at";
 import type { ReviewRow } from "@/features/postal/review-rows";
 import { deleteReceipt } from "@/features/postal/actions";
+import { ReceiptPrintBar, type PrintPick } from "./ReceiptPrintBar";
 
 /**
  * 올린 영수증 목록 — 확정한 것도 남는다(검토 대기만이 아니다).
@@ -54,6 +55,26 @@ export function PostalTable({
 }) {
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  // 출력에 넣을 영수증. 검색으로 가려져도 남는다 — 버튼의 장수(N)에 드러난다.
+  const [picked, setPicked] = useState<ReadonlySet<string>>(() => new Set());
+  const togglePick = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const picks: PrintPick[] = receipts
+    .filter((r) => picked.has(r.id))
+    .map((r) => {
+      const s = extractStates[r.id] ?? EMPTY;
+      return {
+        id: r.id,
+        createdAt: r.createdAt,
+        acceptedAt: s.acceptedAt,
+        hasRegions: s.hasRegions,
+      };
+    });
 
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -102,6 +123,7 @@ export function PostalTable({
           </span>
           <span className="text-sm text-vermilion">{rows.length}건</span>
         </div>
+        <ReceiptPrintBar picks={picks} />
       </header>
 
       {/* 표가 좁은 화면보다 넓으면 가로로 밀어서 본다. ListPattern 이 변형표를
@@ -111,6 +133,9 @@ export function PostalTable({
         <table className="w-full min-w-[46rem] text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+              <th className="w-8 px-3 py-2">
+                <span className="sr-only">선택</span>
+              </th>
               <th className="px-3 py-2">올린 날</th>
               <th className="px-3 py-2">올린 사람</th>
               <th className="px-3 py-2">접수일시</th>
@@ -129,6 +154,8 @@ export function PostalTable({
                   receipt={receipt}
                   extract={extract}
                   total={total}
+                  picked={picked.has(receipt.id)}
+                  onTogglePick={() => togglePick(receipt.id)}
                   onOpen={() => setOpenId(receipt.id)}
                 />
               );
@@ -136,7 +163,7 @@ export function PostalTable({
             {rows.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="border-b border-line-soft px-3 py-10 text-sm text-muted"
                 >
                   {/* 한 건도 없는 것과 검색에 안 걸린 것은 다른 말이다.
@@ -226,11 +253,15 @@ function RowPair({
   receipt,
   extract,
   total,
+  picked,
+  onTogglePick,
   onOpen,
 }: {
   receipt: ReceiptCard;
   extract: ExtractState;
   total: number;
+  picked: boolean;
+  onTogglePick: () => void;
   onOpen: () => void;
 }) {
   // 검토표에서 고친 값. 확정 버튼이 영수증 행에 있어(삭제와 나란히) 여기서 들고
@@ -243,6 +274,16 @@ function RowPair({
         onClick={onOpen}
         className="cursor-pointer border-b border-line-soft hover:bg-line-soft"
       >
+        {/* 행을 누르면 원본 팝업이 열린다 — 체크 칸의 클릭은 새지 않게 막는다. */}
+        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={picked}
+            onChange={onTogglePick}
+            aria-label={`${fmtDate(receipt.createdAt)} 영수증 출력에 넣기`}
+            className="accent-vermilion"
+          />
+        </td>
         <td className="px-3 py-2 text-sm text-ink-soft">
           {fmtDate(receipt.createdAt)}
         </td>
@@ -296,7 +337,7 @@ function RowPair({
         <tr>
           {/* 위쪽 여백을 준다 — 영수증 행에 검토 표 머리가 바로 붙으면
               어느 줄이 목록이고 어느 줄이 그 안쪽인지 구분이 안 된다. */}
-          <td colSpan={7} className="px-3 pt-4 pb-6">
+          <td colSpan={8} className="px-3 pt-4 pb-6">
             <ReceiptReview
               receiptId={receipt.id}
               state={extract}
