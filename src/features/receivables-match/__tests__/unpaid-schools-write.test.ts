@@ -278,4 +278,53 @@ describe("writeUnpaidSchools 서식 복사", () => {
       expect(w.url).not.toMatch(/address='[M-T]\d/);
     }
   });
+
+  it("서식 단계가 실패하면 V4 내용을 비워 다음 실행이 다시 쓰게 한다", async () => {
+    route({ "PATCH V4/format/font": fail(500) as Reply });
+    const res = await writeUnpaidSchools(["가대학"], "입금");
+    const clear = find("POST", "address='V4')/clear");
+    expect(clear?.body).toEqual({ applyTo: "Contents" });
+    expect(res.ok).toBe(false);
+    expect(res.ok === false && res.errorMessage).toContain("500");
+    expect(res.ok === false && res.errorMessage).toContain("V4 비움");
+  });
+
+  it("V4 비우기까지 실패하면 두 사유를 함께 돌려준다", async () => {
+    route({
+      "PATCH V4/format/font": fail(500) as Reply,
+      "POST V4/clear": fail(503) as Reply,
+    });
+    const res = await writeUnpaidSchools(["가대학"], "입금");
+    expect(res.ok).toBe(false);
+    expect(res.ok === false && res.errorMessage).toContain("500");
+    expect(res.ok === false && res.errorMessage).toContain("V4 비우기 실패");
+    expect(res.ok === false && res.errorMessage).toContain("503");
+  });
+
+  it.each([
+    ["null", { color: null }],
+    ["누락", {}],
+    ["소문자 흰색", { color: "#ffffff" }],
+  ])("M4 채우기 색이 %s 이면 V4 채우기를 clear 한다", async (_name, body) => {
+    route({ "GET M4/format/fill": json(body) });
+    await writeUnpaidSchools(["가대학"], "입금");
+    expect(find("POST", "address='V4')/format/fill/clear")).toBeDefined();
+    expect(find("PATCH", "address='V4')/format/fill")).toBeUndefined();
+  });
+
+  it("M4 글꼴 GET 이 실패하면 ok:false", async () => {
+    route({ "GET M4/format/font": fail(500) as Reply });
+    const res = await writeUnpaidSchools(["가대학"], "입금");
+    expect(res.ok).toBe(false);
+    expect(res.ok === false && res.errorMessage).toContain("format V4 font GET");
+  });
+
+  it("복사할 속성이 전부 null 이면 그 PATCH 는 보내지 않는다", async () => {
+    route({
+      "GET M4/format": json({ horizontalAlignment: null, verticalAlignment: null }),
+    });
+    const res = await writeUnpaidSchools(["가대학"], "입금");
+    expect(res).toEqual({ ok: true, written: true });
+    expect(find("PATCH", "address='V4')/format")).toBeUndefined();
+  });
 });

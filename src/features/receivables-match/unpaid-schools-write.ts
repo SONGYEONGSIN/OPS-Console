@@ -67,6 +67,7 @@ async function copyProps(
   const getRes = await call(from, { method: "GET" });
   if (!getRes.ok) return await failure(`${label} GET`, getRes);
   const props = pickDefined((await getRes.json()) as Record<string, unknown>, keys);
+  if (Object.keys(props).length === 0) return null;
   const patchRes = await call(to, {
     method: "PATCH",
     headers: JSON_HEADERS,
@@ -118,13 +119,68 @@ async function copyFormat(
   );
 }
 
+/** 현재 V열을 읽어 이미 같은 목록이면 true. 읽기 실패는 Failure. */
+async function readIsUnchanged(
+  call: Call,
+  url: string,
+  next: readonly string[],
+): Promise<Failure | boolean> {
+  const readRes = await call(url, { method: "GET" });
+  if (!readRes.ok) return await failure(`GET ${CLEAR_RANGE}`, readRes);
+  const current = ((await readRes.json()) as { values?: unknown }).values;
+  return isSameLayout(current, next);
+}
+
+/** V열 내용을 지우고 제목+이름을 쓴다. 실패하면 사유. */
+async function clearAndWrite(
+  call: Call,
+  clearUrl: string,
+  writeUrl: string,
+  writeRange: string,
+  values: string[][],
+): Promise<Failure | null> {
+  const clearRes = await call(`${clearUrl}/clear`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ applyTo: "Contents" }),
+  });
+  if (!clearRes.ok) return await failure(`clear ${CLEAR_RANGE}`, clearRes);
+  const writeRes = await call(writeUrl, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ values }),
+  });
+  return writeRes.ok ? null : await failure(`PATCH ${writeRange}`, writeRes);
+}
+
+/**
+ * 서식 복사가 실패하면 V4 를 비운다. 값만 남기면 다음 실행이 "목록이 같다"며 건너뛰어
+ * 서식이 영영 돌아오지 않는다 — 비워 두면 다음 실행이 값과 서식을 다시 쓴다.
+ */
+async function copyFormatOrReset(
+  call: Call,
+  driveId: string,
+  itemId: string,
+  sheet: string,
+): Promise<Failure | null> {
+  const failed = await copyFormat(call, driveId, itemId, sheet);
+  if (!failed) return null;
+  const res = await call(`${rangeUrl(driveId, itemId, sheet, `V${TITLE_ROW}`)}/clear`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ applyTo: "Contents" }),
+  });
+  const note = res.ok ? "V4 비움" : `V4 비우기 실패 (${(await failure("clear V4", res)).errorMessage})`;
+  return { ok: false, errorMessage: `${failed.errorMessage} · ${note}` };
+}
+
 /**
  * 입금내역관리대장 V열에 미수 학교 목록을 쓴다 — V4=제목, V5~=학교 한 줄씩(V1~V3 은 비움).
  *
  * 현재 V열을 먼저 읽어 같은 목록이면 쓰지 않는다 — 매시간 다시 쓰면 목록이 그대로여도
  * 버전 기록이 쌓이고 같이 편집 중인 사람 화면에 갱신이 밀려 들어간다.
  * 다르면 contents clear → values PATCH → 서식 복사 순서다. 서식은 검색 표(M4/M5)에서 읽어
- * V열에만 입히고 M~T 와 다른 열은 쓰지 않는다. 서식 단계가 실패해도 값은 이미 썼으니 되돌리지 않는다.
+ * V열에만 입히고 M~T 와 다른 열은 쓰지 않는다. 서식 단계가 실패하면 값은 두되 V4 를 비워 다음 실행이 다시 쓰게 한다.
  * Graph 는 실패를 던지지 않고 응답으로 주므로 status 를 보고, 던지는 경우(세션·토큰)는 잡아서
  * ok:false 로 돌려준다 — 매칭 결과를 막지 않고 호출 쪽이 errors 에 싣는다.
  */
@@ -137,8 +193,7 @@ export async function writeUnpaidSchools(
   if (!driveId || !itemId) {
     return {
       ok: false,
-      errorMessage:
-        "SHAREPOINT_RECEIVABLES_DRIVE_ID / SHAREPOINT_DEPOSIT_ITEM_ID 누락",
+      errorMessage: "SHAREPOINT_RECEIVABLES_DRIVE_ID / SHAREPOINT_DEPOSIT_ITEM_ID 누락",
     };
   }
 
@@ -149,38 +204,17 @@ export async function writeUnpaidSchools(
       await getWorkbookSession(driveId, itemId),
       await getGraphToken(),
     );
+    const at = (range: string) => rangeUrl(driveId, itemId, depositSheetName, range);
     const writeRange = `V${TITLE_ROW}:V${TITLE_ROW + schools.length}`;
     const values = [[`미수 학교 (${schools.length}곳)`], ...schools.map((s) => [s])];
 
-    const readRes = await call(rangeUrl(driveId, itemId, depositSheetName, CLEAR_RANGE), {
-      method: "GET",
-    });
-    if (!readRes.ok) return await failure(`GET ${CLEAR_RANGE}`, readRes);
-    const current = ((await readRes.json()) as { values?: unknown }).values;
-    if (isSameLayout(current, values.map((row) => row[0]))) {
-      return { ok: true, written: false };
-    }
+    const unchanged = await readIsUnchanged(call, at(CLEAR_RANGE), values.map((row) => row[0]));
+    if (typeof unchanged !== "boolean") return unchanged;
+    if (unchanged) return { ok: true, written: false };
 
-    const clearRes = await call(
-      `${rangeUrl(driveId, itemId, depositSheetName, CLEAR_RANGE)}/clear`,
-      {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ applyTo: "Contents" }),
-      },
-    );
-    if (!clearRes.ok) return await failure(`clear ${CLEAR_RANGE}`, clearRes);
-
-    const writeRes = await call(
-      rangeUrl(driveId, itemId, depositSheetName, writeRange),
-      {
-        method: "PATCH",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ values }),
-      },
-    );
-    if (!writeRes.ok) return await failure(`PATCH ${writeRange}`, writeRes);
-    return (await copyFormat(call, driveId, itemId, depositSheetName)) ?? { ok: true, written: true };
+    const writeFailed = await clearAndWrite(call, at(CLEAR_RANGE), at(writeRange), writeRange, values);
+    if (writeFailed) return writeFailed;
+    return (await copyFormatOrReset(call, driveId, itemId, depositSheetName)) ?? { ok: true, written: true };
   } catch (e) {
     return {
       ok: false,
