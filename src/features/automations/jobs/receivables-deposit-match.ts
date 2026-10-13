@@ -42,14 +42,15 @@ async function syncUnpaidSchools(
   misuSheet: ReceivablesSheet,
   successfulPatches: readonly MatchPair[],
   dryRun: boolean,
-): Promise<{ count: number; error?: string }> {
+): Promise<{ count: number; written: boolean; error?: string }> {
   const matchedRows = new Set(successfulPatches.flatMap((p) => p.misuRows));
   const schools = listUnpaidSchools(misuSheet, matchedRows);
-  if (dryRun) return { count: schools.length };
+  if (dryRun) return { count: schools.length, written: false };
   const res = await writeUnpaidSchools(schools, DEPOSIT_SHEET_NAME_FALLBACK);
+  // 매시간 같은 목록을 다시 쓰면 버전 기록이 쌓이고 같이 편집 중인 사람에게 갱신이 밀려 들어간다.
   return res.ok
-    ? { count: schools.length }
-    : { count: schools.length, error: res.errorMessage };
+    ? { count: schools.length, written: res.written }
+    : { count: schools.length, written: false, error: res.errorMessage };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -165,6 +166,7 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
         errors,
         skips,
         unpaidSchools: unpaid.count,
+        unpaidSchoolsWritten: unpaid.written,
       },
       notes: dryRun ? "DRY RUN — PATCH 호출 없음" : null,
     },
@@ -183,6 +185,7 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
       unmatchedMisu: result.unmatchedMisu.length,
       unmatchedDep: result.unmatchedDep.length,
       unpaidSchools: unpaid.count,
+      unpaidSchoolsWritten: unpaid.written,
     },
   };
 }

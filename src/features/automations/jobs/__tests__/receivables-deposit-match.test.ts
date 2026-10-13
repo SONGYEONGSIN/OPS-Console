@@ -15,7 +15,7 @@ const {
   sendMismatchReportMock: vi.fn().mockResolvedValue({ ok: true, count: 0 }),
   adminInsertMock: vi.fn().mockResolvedValue({ error: null }),
   fetchMatchAliasesMock: vi.fn().mockResolvedValue({}),
-  writeUnpaidSchoolsMock: vi.fn().mockResolvedValue({ ok: true }),
+  writeUnpaidSchoolsMock: vi.fn().mockResolvedValue({ ok: true, written: true }),
 }));
 
 vi.mock("@/features/receivables/queries", () => ({
@@ -58,7 +58,7 @@ beforeEach(() => {
   fetchMatchAliasesMock.mockReset();
   fetchMatchAliasesMock.mockResolvedValue({});
   writeUnpaidSchoolsMock.mockReset();
-  writeUnpaidSchoolsMock.mockResolvedValue({ ok: true });
+  writeUnpaidSchoolsMock.mockResolvedValue({ ok: true, written: true });
 
 afterEach(() => {
   vi.useRealTimers();
@@ -238,6 +238,7 @@ describe("runReceivablesDepositMatch", () => {
       expect(result.details?.unpaidSchools).toBe(1);
       const insertArg = adminInsertMock.mock.calls[0][0][0];
       expect(insertArg.payload.unpaidSchools).toBe(1);
+      expect(result.details?.unpaidSchoolsWritten).toBe(false);
     });
 
     it("live 이면 방금 매칭된 학교를 뺀 목록을 쓴다", async () => {
@@ -246,8 +247,24 @@ describe("runReceivablesDepositMatch", () => {
       const result = await runReceivablesDepositMatch();
       expect(writeUnpaidSchoolsMock).toHaveBeenCalledTimes(1);
       expect(writeUnpaidSchoolsMock.mock.calls[0][0]).toEqual(["나대학"]);
+      expect(writeUnpaidSchoolsMock.mock.calls[0][1]).toBe("수수료입금내역조회");
       expect(result.ok).toBe(true);
       expect(result.message).toMatch(/ · 미수 학교 1곳$/);
+      expect(result.details?.unpaidSchoolsWritten).toBe(true);
+      const insertArg = adminInsertMock.mock.calls[0][0][0];
+      expect(insertArg.payload.unpaidSchoolsWritten).toBe(true);
+    });
+
+    it("목록이 그대로라 쓰지 않았으면 이력에 written=false 로 남는다", async () => {
+      process.env.MAIL_MATCH_DRY_RUN = "false";
+      arrangeTwoSchools();
+      writeUnpaidSchoolsMock.mockResolvedValue({ ok: true, written: false });
+      const result = await runReceivablesDepositMatch();
+      expect(result.ok).toBe(true);
+      expect(result.details?.unpaidSchools).toBe(1);
+      expect(result.details?.unpaidSchoolsWritten).toBe(false);
+      const insertArg = adminInsertMock.mock.calls[0][0][0];
+      expect(insertArg.payload.unpaidSchoolsWritten).toBe(false);
     });
 
     it("V열 쓰기가 실패해도 매칭 결과는 그대로고 errors 에 드러난다", async () => {
