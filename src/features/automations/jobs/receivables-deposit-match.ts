@@ -1,5 +1,8 @@
 import "server-only";
-import { fetchReceivablesSheet } from "@/features/receivables/queries";
+import {
+  fetchReceivablesSheet,
+  type ReceivablesSheet,
+} from "@/features/receivables/queries";
 import {
   fetchDepositSheet,
   depositFetchFailMessage,
@@ -10,6 +13,8 @@ import { sendMismatchReport } from "@/features/receivables-match/mismatch-mail";
 import { runMatch } from "@/features/receivables-match/algorithm";
 import { fetchMatchAliases } from "@/features/receivables-match/alias-queries";
 import { toMisuRows } from "@/features/receivables-match/misu-rows";
+import { listUnpaidSchools } from "@/features/receivables-match/unpaid-schools";
+import { writeUnpaidSchools } from "@/features/receivables-match/unpaid-schools-write";
 import {
   enrichMatchedForLog,
   formatKrw,
@@ -27,6 +32,26 @@ function readDryRun(): boolean {
 
 const MISU_SHEET_NAME_FALLBACK = "미수채권";
 const DEPOSIT_SHEET_NAME_FALLBACK = "수수료입금내역조회";
+
+/**
+ * 입금내역 대장 V열에 현재 미수 학교 목록을 띄운다 — 운영자가 어느 학교를 검색할지 바로 보도록.
+ * 방금 매칭 PATCH 가 성공한 미수 행은 빼고 계산한다(시트를 다시 읽으면 Graph 호출·실패 지점이 는다).
+ * 쓰기 실패는 매칭을 되돌리지 않는다 — 호출 쪽이 errors 에 실어 이력·알림에 드러낸다.
+ */
+async function syncUnpaidSchools(
+  misuSheet: ReceivablesSheet,
+  successfulPatches: readonly MatchPair[],
+  dryRun: boolean,
+): Promise<{ count: number; written: boolean; error?: string }> {
+  const matchedRows = new Set(successfulPatches.flatMap((p) => p.misuRows));
+  const schools = listUnpaidSchools(misuSheet, matchedRows);
+  if (dryRun) return { count: schools.length, written: false };
+  const res = await writeUnpaidSchools(schools, DEPOSIT_SHEET_NAME_FALLBACK);
+  // 매시간 같은 목록을 다시 쓰면 버전 기록이 쌓이고 같이 편집 중인 사람에게 갱신이 밀려 들어간다.
+  return res.ok
+    ? { count: schools.length, written: res.written }
+    : { count: schools.length, written: false, error: res.errorMessage };
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -119,6 +144,9 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
     errors.push(`mismatch mail: ${mismatchRes.errorMessage}`);
   }
 
+  const unpaid = await syncUnpaidSchools(misuSheet, successfulPatches, dryRun);
+  if (unpaid.error) errors.push(`미수 학교 목록(V열): ${unpaid.error}`);
+
   const finishedAt = new Date();
 
   // 이력 적재
@@ -137,6 +165,8 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
         mismatches: result.mismatches,
         errors,
         skips,
+        unpaidSchools: unpaid.count,
+        unpaidSchoolsWritten: unpaid.written,
       },
       notes: dryRun ? "DRY RUN — PATCH 호출 없음" : null,
     },
@@ -147,13 +177,15 @@ export async function runReceivablesDepositMatch(): Promise<AutomationRunResult>
   return {
     ok: errors.length === 0,
     message:
-      `${tag} 매칭 ${result.matched.length} · 불일치 ${result.mismatches.length} · 에러 ${errors.length}${skipTag}`.trim(),
+      `${tag} 매칭 ${result.matched.length} · 불일치 ${result.mismatches.length} · 에러 ${errors.length}${skipTag} · 미수 학교 ${unpaid.count}곳`.trim(),
     details: {
       matched: result.matched.length,
       mismatches: result.mismatches.length,
       errors: errors.length,
       unmatchedMisu: result.unmatchedMisu.length,
       unmatchedDep: result.unmatchedDep.length,
+      unpaidSchools: unpaid.count,
+      unpaidSchoolsWritten: unpaid.written,
     },
   };
 }

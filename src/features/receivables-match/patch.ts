@@ -23,7 +23,7 @@ const RETRY_STATUSES = new Set([408, 503, 504]);
  * 유실되면 J열만 빠진 반쪽 기록이 남는다(2026-08-04). `receivables/sheet-write.ts`가
  * 쓰는 것과 동일한 패턴이다.
  */
-function createWorkbookCaller(
+export function createWorkbookCaller(
   driveId: string,
   itemId: string,
   initialSession: string,
@@ -53,7 +53,7 @@ function createWorkbookCaller(
   };
 }
 
-function rangeUrl(
+export function rangeUrl(
   driveId: string,
   itemId: string,
   sheetName: string,

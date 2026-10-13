@@ -1,7 +1,7 @@
 export type AutomationRunResult = {
   ok: boolean;
   message: string;
-  details?: Record<string, number>;
+  details?: Record<string, number | boolean>;
   /**
    * 이번엔 일부러 안 돌았다. 실패가 아니라 **안 한 것**이다.
    *
