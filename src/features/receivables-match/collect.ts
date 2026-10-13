@@ -17,7 +17,7 @@ function formatIso(d: Date): string {
  * 미래로 판정된다 — 날짜 비교 전에 반드시 이 함수를 거친다.
  * 파싱 실패 시 원본 반환 (비교 불가한 값을 임의 날짜로 바꾸지 않는다).
  */
-function toIsoDate(raw: string): string {
+export function toIsoDate(raw: string): string {
   if (!raw) return raw;
   const d = new Date(raw);
   if (isNaN(d.getTime())) return raw;
