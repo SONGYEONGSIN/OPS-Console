@@ -26,6 +26,17 @@ function makeRow(overrides: Partial<ListRow> = {}): ListRow {
   };
 }
 
+// 머리글과 같은 열 번호의 데이터 칸. getAllByText("-") 로 찾으면 독려메일 발송일자
+// 칸의 "-" 로도 통과하므로, 확인하려는 칸을 열 이름으로 집는다.
+function cellUnder(row: HTMLElement, header: string): HTMLElement {
+  const heads = screen.getAllByRole("columnheader").map((h) => h.textContent);
+  const cells = within(row).getAllByRole("cell");
+  const i = heads.indexOf(header);
+  expect(i).toBeGreaterThanOrEqual(0);
+  expect(cells).toHaveLength(heads.length);
+  return cells[i];
+}
+
 describe("ReceivablesTable — 경과일수 / 학교 담당자 이메일 칼럼", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -84,7 +95,7 @@ describe("ReceivablesTable — 경과일수 / 학교 담당자 이메일 칼럼"
       />,
     );
     const row = screen.getByRole("row", { name: /서울고등학교/ });
-    expect(within(row).getAllByText("-").length).toBeGreaterThan(0);
+    expect(cellUnder(row, "경과일수").textContent).toBe("-");
   });
 
   it("학교 담당자 이메일 없음 — '-'", () => {
@@ -104,7 +115,7 @@ describe("ReceivablesTable — 경과일수 / 학교 담당자 이메일 칼럼"
       />,
     );
     const row = screen.getByRole("row", { name: /서울고등학교/ });
-    expect(within(row).getAllByText("-").length).toBeGreaterThan(0);
+    expect(cellUnder(row, "학교 담당자 이메일").textContent).toBe("-");
   });
 
   it("빈 목록 colSpan — 데이터 없음", () => {

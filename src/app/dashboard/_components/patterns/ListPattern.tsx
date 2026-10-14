@@ -174,6 +174,8 @@ export type ListRow = {
     schoolOwnerHeaderIdx?: number;
     /** 학교담당자 이메일 현재 텍스트 */
     schoolOwner?: string;
+    /** 독려메일 발송일자(대장 '메일발송일자' 칸) 표시 텍스트 */
+    mailSentDate?: string;
     /** 워크시트 이름 (PATCH URL) */
     worksheetName?: string;
   };
