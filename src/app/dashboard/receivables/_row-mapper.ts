@@ -2,6 +2,7 @@ import type { ListRow } from "../_components/patterns/ListPattern";
 import type { ReceivablesSheet } from "@/features/receivables/queries";
 import { isPaidReceivableRow } from "@/features/receivables/paid-row";
 import { isReceivablesDataCells } from "@/features/receivables/sheet-row";
+import { findMailSentDateCol } from "@/features/receivables/mail-grouping";
 
 /** 시트 헤더에서 도메인 컬럼 위치 찾기 (한국어 키워드 매칭) */
 export function pickReceivablesColumns(headers: string[]): {
@@ -14,6 +15,7 @@ export function pickReceivablesColumns(headers: string[]): {
   remarks: number;
   dueDate: number;
   schoolOwner: number;
+  mailSentDate: number;
 } {
   const find = (regex: RegExp) => headers.findIndex((h) => regex.test(h));
   const schoolOwner = find(/^학교\s*담당자?$|^학교\s*담당\s*이메일$/);
@@ -29,6 +31,7 @@ export function pickReceivablesColumns(headers: string[]): {
     remarks: find(/적요|비고|메모|피드백/),
     dueDate: find(/입금예정일|예정일/),
     schoolOwner,
+    mailSentDate: findMailSentDateCol(headers),
   };
 }
 
@@ -95,6 +98,7 @@ export function receivablesToListRow(
         cols.schoolOwner >= 0 ? cols.schoolOwner : undefined,
       schoolOwner:
         cols.schoolOwner >= 0 ? (textRow[cols.schoolOwner] ?? "") : "",
+      mailSentDate: get(cols.mailSentDate),
       worksheetName: sheet.worksheetName,
     },
   };
