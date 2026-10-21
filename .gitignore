@@ -98,6 +98,7 @@ __pycache__/
 
 # 로컬 스크래퍼 실행 로그 (작업 스케줄러)
 scripts/moa-closing/run-local.log
+scripts/moa-closing/chromedriver.log
 # 경쟁률 폴러 로그 — stdout 전 줄이 쌓이므로 예외 문구가 그대로 들어간다. 추적하면 키가 새는 자리(보안 리뷰 H1)
 scripts/moa-ratio/poll-local.log
 

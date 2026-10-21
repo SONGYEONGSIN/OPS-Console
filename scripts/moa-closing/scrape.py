@@ -65,12 +65,14 @@ import requests
 import sms_inbox  # 같은 폴더 — 우편함(Supabase) 인증번호 클라이언트
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
 
     NoAlertPresentException,
+    SessionNotCreatedException,
     TimeoutException,
     UnexpectedAlertPresentException,
 )
@@ -516,6 +518,42 @@ def _find_chrome_binary() -> str | None:
     return env_bin or None
 
 
+# 크롬 시작 재시도 — 회사 PC 부하 중 `Chrome instance exited` 한 번에 실행 전체가 끝났다(2026-10-21).
+# setup_driver 는 Moa 로그인·SMS 단계 전에 불리므로 이 단계만 다시 해도 SMS 점유와 무관하다.
+# chromedriver 로그는 한 실행 안에서 이어 쓰고(첫 시도 실패 원인을 보존) 실행 시작 때만 비운다.
+DRIVER_START_ATTEMPTS = 2
+DRIVER_RETRY_WAIT_SEC = 15
+CHROMEDRIVER_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chromedriver.log")
+
+
+def _start_plain_chrome(opts):
+    """plain selenium 크롬 생성 — SessionNotCreatedException 만 한 번 더 시도한다."""
+    try:
+        open(CHROMEDRIVER_LOG, "w", encoding="utf-8").close()
+    except OSError as e:
+        print(f"[WARN] chromedriver 로그 초기화 실패 — 그대로 이어 씁니다: {e}")
+    for attempt in range(1, DRIVER_START_ATTEMPTS + 1):
+        # 경로 문자열을 넘기면 Chromium Service 가 --log-path 로 바꾸는데, 그쪽은 시도마다 덮어쓸
+        # 수 있다 — 파일 객체(append)로 넘겨 첫 시도 로그를 둘째 시도가 지우지 못하게 한다.
+        log = open(CHROMEDRIVER_LOG, "a", encoding="utf-8")
+        service = Service(log_output=log, service_args=["--verbose"])
+        try:
+            return webdriver.Chrome(options=opts, service=service)
+        except Exception as e:
+            log.close()
+            if not isinstance(e, SessionNotCreatedException):
+                raise
+            if attempt >= DRIVER_START_ATTEMPTS:
+                print(f"[ERROR] 크롬 시작 실패 — chromedriver 로그: {CHROMEDRIVER_LOG}")
+                raise
+            print(
+                f"[WARN] 크롬 시작 실패({attempt}/{DRIVER_START_ATTEMPTS}) — "
+                f"{DRIVER_RETRY_WAIT_SEC}초 뒤 다시 시도합니다 "
+                f"(chromedriver 로그: {CHROMEDRIVER_LOG}): {e}"
+            )
+            time.sleep(DRIVER_RETRY_WAIT_SEC)
+
+
 def setup_driver(download_dir: str, headless: bool):
     """Chrome 드라이버 — 기본은 plain selenium. CLOSING_USE_UC=true면 undetected-chromedriver.
 
@@ -557,7 +595,7 @@ def setup_driver(download_dir: str, headless: bool):
         opts.add_experimental_option("prefs", prefs)
         if chrome_bin:
             opts.binary_location = chrome_bin
-        driver = webdriver.Chrome(options=opts)
+        driver = _start_plain_chrome(opts)
 
     # 다운로드 경로 CDP 재지정(일부 환경에서 prefs 무시).
     try:
