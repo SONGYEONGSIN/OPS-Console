@@ -65,12 +65,14 @@ import requests
 import sms_inbox  # 같은 폴더 — 우편함(Supabase) 인증번호 클라이언트
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
 
     NoAlertPresentException,
+    SessionNotCreatedException,
     TimeoutException,
     UnexpectedAlertPresentException,
 )
@@ -516,6 +518,40 @@ def _find_chrome_binary() -> str | None:
     return env_bin or None
 
 
+# 크롬 시작 재시도 — 회사 PC 부하 중 `Chrome instance exited` 한 번에 실행 전체가 끝났다(2026-10-21).
+# setup_driver 는 Moa 로그인·SMS 단계 전에 불리므로 이 단계만 다시 해도 SMS 점유와 무관하다.
+# chromedriver 로그는 일부러 안 남긴다 — 명령 로그에 send_keys 로 보낸 비밀번호·SMS 코드가 평문으로 남는다.
+DRIVER_START_ATTEMPTS = 2
+DRIVER_RETRY_WAIT_SEC = 15
+
+
+def _stop_service(service) -> None:
+    """실패한 시도의 chromedriver 프로세스 정리 — stop() 오류가 원래 예외를 가리지 않게 삼킨다."""
+    try:
+        service.stop()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _start_plain_chrome(opts):
+    """plain selenium 크롬 생성 — SessionNotCreatedException 만 한 번 더 시도한다."""
+    for attempt in range(1, DRIVER_START_ATTEMPTS + 1):
+        service = Service()
+        try:
+            return webdriver.Chrome(options=opts, service=service)
+        except Exception as e:
+            _stop_service(service)
+            if not isinstance(e, SessionNotCreatedException):
+                raise
+            if attempt >= DRIVER_START_ATTEMPTS:
+                raise
+            print(
+                f"[WARN] 크롬 시작 실패({attempt}/{DRIVER_START_ATTEMPTS}) — "
+                f"{DRIVER_RETRY_WAIT_SEC}초 뒤 다시 시도합니다: {e}"
+            )
+            time.sleep(DRIVER_RETRY_WAIT_SEC)
+
+
 def setup_driver(download_dir: str, headless: bool):
     """Chrome 드라이버 — 기본은 plain selenium. CLOSING_USE_UC=true면 undetected-chromedriver.
 
@@ -557,7 +593,7 @@ def setup_driver(download_dir: str, headless: bool):
         opts.add_experimental_option("prefs", prefs)
         if chrome_bin:
             opts.binary_location = chrome_bin
-        driver = webdriver.Chrome(options=opts)
+        driver = _start_plain_chrome(opts)
 
     # 다운로드 경로 CDP 재지정(일부 환경에서 prefs 무시).
     try:
