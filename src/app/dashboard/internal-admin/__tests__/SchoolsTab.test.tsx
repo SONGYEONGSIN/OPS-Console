@@ -11,7 +11,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { parseSmsSender } from "@/features/sms-sender/parse";
-import { rawSource } from "@/features/sms-sender/__tests__/fixtures";
+import {
+  rawSource,
+  schoolRow,
+  SCHOOL_HEADER,
+} from "@/features/sms-sender/__tests__/fixtures";
 import {
   gubunCards,
   schoolDetail,
@@ -54,11 +58,36 @@ describe("SchoolsTab", () => {
   });
 
   it("구분 카드 — 숫자 한 줄, 누르면 ?gubun", () => {
-    renderTab();
+    const base = rawSource();
+    const counted = parseSmsSender(
+      rawSource({
+        sheets: {
+          ...base.sheets,
+          schools: [
+            SCHOOL_HEADER,
+            schoolRow(1, "가나대학교", {
+              "등록 회선": 3,
+              "서류 미비": 1,
+              확인: "확인 필요",
+            }),
+            schoolRow(2, "다라대학교", { "등록 회선": 2 }),
+            schoolRow(3, "마바전문대학", { 구분: "전문대학" }),
+          ],
+        },
+      }),
+    );
+    render(
+      <SchoolsTab
+        cards={gubunCards(counted.schools)}
+        schools={counted.schools}
+        filters={noFilters}
+        detail={null}
+      />,
+    );
     const card = screen.getByRole("button", { name: /4년제/ });
     expect(within(card).getByText("2곳")).toBeInTheDocument();
     expect(
-      within(card).getByText("회선 4 · 서류 미비 0 · 확인 0"),
+      within(card).getByText("회선 5 · 서류 미비 1 · 확인 1"),
     ).toBeInTheDocument();
     fireEvent.click(card);
     expect(lastQuery().get("gubun")).toBe("4년제");
