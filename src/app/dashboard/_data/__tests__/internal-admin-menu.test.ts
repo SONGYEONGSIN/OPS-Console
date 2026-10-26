@@ -7,6 +7,7 @@ import {
   DESIGNATED_ONLY_MENU_SLUGS,
   getDefaultMemberMenus,
 } from "../sidebar-helpers";
+import { PAGE_META } from "../page-meta-config";
 
 /** 주석을 지우고 대조한다 — 주석 처리된 정의를 살아 있는 코드로 읽지 않으려고. */
 const code = (p: string) =>
@@ -37,6 +38,12 @@ describe("내부관리자 메뉴 — 지정자 전용", () => {
 
   it("신규 member 기본 메뉴에 들어가지 않는다", () => {
     expect(getDefaultMemberMenus()).not.toContain("internal-admin");
+  });
+
+  it("페이지 메타가 있다 — 없으면 사이드바 라벨 fallback 으로 떨어진다", () => {
+    expect(PAGE_META["internal-admin"]).toMatchObject({
+      headline: { accent: "프로젝트", title: "내부관리자" },
+    });
   });
 
   it("기존 부여를 걷는 마이그레이션이 있다", () => {
