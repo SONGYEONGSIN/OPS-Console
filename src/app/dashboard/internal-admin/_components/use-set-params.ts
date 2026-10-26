@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Patch = Record<string, string | null>;
@@ -37,10 +37,21 @@ export function useDebouncedSearch(
   const setParams = useSetParams();
   const current = params.get(key) ?? "";
   const [value, setValue] = useState(current);
+  // 이 훅이 마지막으로 주소에 올린 값 — 이것과 다른 값으로 주소가 바뀌면 바깥(뒤로 가기·다른 컨트롤)이다.
+  const pushed = useRef(current);
+
+  useEffect(() => {
+    if (current === pushed.current) return;
+    pushed.current = current;
+    setValue(current);
+  }, [current]);
 
   useEffect(() => {
     if (value === current) return;
-    const id = setTimeout(() => setParams({ [key]: value || null }), delayMs);
+    const id = setTimeout(() => {
+      pushed.current = value;
+      setParams({ [key]: value || null });
+    }, delayMs);
     return () => clearTimeout(id);
   }, [value, current, key, delayMs, setParams]);
 

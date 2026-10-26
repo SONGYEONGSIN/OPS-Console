@@ -83,4 +83,16 @@ describe("useDebouncedSearch", () => {
     });
     expect(lastQuery().get("q")).toBeNull();
   });
+
+  it("주소가 바깥에서 바뀌면 검색창이 따라가고 다시 올리지 않는다", () => {
+    params = new URLSearchParams("q=서울");
+    const { result, rerender } = renderHook(() => useDebouncedSearch("q"));
+    params = new URLSearchParams("");
+    rerender();
+    expect(result.current[0]).toBe("");
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(push).not.toHaveBeenCalled();
+  });
 });
