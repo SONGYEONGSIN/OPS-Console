@@ -1,12 +1,20 @@
+import { canonicalSchoolName } from "./aliases";
 import { DOC_KINDS, HIDDEN_SHEETS } from "./types";
 import type {
   CheckItem,
   Completeness,
   DocKind,
   DocStatus,
+  DriveFile,
   HiddenSheetKey,
+  PdfCopy,
+  RawPdf,
+  RawSource,
+  School,
   SchoolRow,
   SenderNumber,
+  SmsSenderData,
+  Stage,
 } from "./types";
 
 export class SheetShapeError extends Error {
@@ -195,4 +203,141 @@ export function parseChecks(
     basis: text(r[c["근거"]]),
     todo: text(r[c["할 일"]]),
   }));
+}
+
+export function pickLatestWorkbook(files: readonly DriveFile[]): {
+  latest: DriveFile | null;
+  offRuleFiles: string[];
+} {
+  const dated: { file: DriveFile; stamp: string }[] = [];
+  const offRuleFiles: string[] = [];
+  for (const file of files) {
+    if (!/\.xlsm$/i.test(file.name)) continue;
+    const m = /_(\d{6})\.xlsm$/.exec(file.name);
+    if (m) dated.push({ file, stamp: m[1] });
+    else offRuleFiles.push(file.name);
+  }
+  dated.sort(
+    (a, b) =>
+      b.stamp.localeCompare(a.stamp) ||
+      b.file.lastModifiedDateTime.localeCompare(a.file.lastModifiedDateTime),
+  );
+  return { latest: dated[0]?.file ?? null, offRuleFiles };
+}
+
+const PDF_NAME = /^\((.+)\) SMS 발신용 대학 전화번호 등록 서류\.pdf$/i;
+
+export function pdfSchoolName(fileName: string): string | null {
+  return PDF_NAME.exec(fileName)?.[1] ?? null;
+}
+
+export function stageOf(folder: string): { stage: Stage; sub: string | null } {
+  const parts = folder.split("/").filter(Boolean);
+  if (parts[0] === "완료" && parts[1] === "제출완료") {
+    const sub = parts.slice(2).join("/");
+    return { stage: "제출완료", sub: sub || null };
+  }
+  if (parts[0] === "완료" && parts[1] === "검토완료")
+    return { stage: "검토완료", sub: null };
+  if (parts[0] === "진행 중") return { stage: "진행 중", sub: null };
+  return { stage: "기타", sub: null };
+}
+
+const STAGE_RANK: Record<Stage, number> = {
+  제출완료: 3,
+  검토완료: 2,
+  "진행 중": 1,
+  기타: 0,
+};
+
+function toPdfCopy(p: RawPdf): PdfCopy {
+  return {
+    fileName: p.name,
+    folder: p.folder,
+    ...stageOf(p.folder),
+    webUrl: p.webUrl,
+    lastModifiedDateTime: p.lastModifiedDateTime,
+  };
+}
+
+const byRankThenRecent = (a: PdfCopy, b: PdfCopy) =>
+  STAGE_RANK[b.stage] - STAGE_RANK[a.stage] ||
+  b.lastModifiedDateTime.localeCompare(a.lastModifiedDateTime);
+
+/** 확인 항목 첫 줄 → 학교 No. 그 이름의 학교가 정확히 한 행일 때만 잇는다. */
+function schoolNoOfTarget(
+  target: string,
+  byName: Map<string, SchoolRow[]>,
+): number | null {
+  const first = target.split("\n")[0].trim();
+  const only = (name: string) => {
+    const hits = byName.get(name);
+    return hits?.length === 1 ? hits[0].no : null;
+  };
+  if (byName.has(first)) return only(first);
+  return only(first.replace(/\s+\([^)]*\)$/, ""));
+}
+
+function parseCriteria(values: unknown[][] | null): string[][] | null {
+  if (values === null) return null;
+  const rows = values.map((r) => {
+    const cells = r.map((c) => String(c ?? ""));
+    while (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
+    return cells;
+  });
+  return rows.filter((r) => r.length > 0);
+}
+
+export function parseSmsSender(raw: RawSource): SmsSenderData {
+  const schoolRows = parseSchools(raw.sheets.schools);
+  const docs = parseDocs(raw.sheets.docs);
+
+  const byName = new Map<string, SchoolRow[]>();
+  for (const s of schoolRows)
+    byName.set(s.name, [...(byName.get(s.name) ?? []), s]);
+
+  const copiesByNo = new Map<number, PdfCopy[]>();
+  const unmatchedPdfs: string[] = [];
+  for (const p of raw.pdfs) {
+    if (!/\.pdf$/i.test(p.name)) continue;
+    const name = pdfSchoolName(p.name);
+    const targets = name ? byName.get(canonicalSchoolName(name)) : undefined;
+    if (!targets) {
+      unmatchedPdfs.push(p.name);
+      continue;
+    }
+    for (const t of targets)
+      copiesByNo.set(t.no, [...(copiesByNo.get(t.no) ?? []), toPdfCopy(p)]);
+  }
+
+  const schools: School[] = schoolRows.map((s) => ({
+    ...s,
+    docs: docs.get(s.no) ?? null,
+    pdfs: [...(copiesByNo.get(s.no) ?? [])].sort(byRankThenRecent),
+  }));
+
+  const noByNameGubun = new Map<string, number>();
+  for (const s of schoolRows) {
+    const key = `${s.name}|${s.gubun}`;
+    if (!noByNameGubun.has(key)) noByNameGubun.set(key, s.no);
+  }
+  const numbers: SenderNumber[] = parseNumbers(raw.sheets.numbers).map((n) => ({
+    ...n,
+    schoolNo: noByNameGubun.get(`${n.school}|${n.gubun}`) ?? null,
+  }));
+  const checks: CheckItem[] = parseChecks(raw.sheets.checks).map((c) => ({
+    ...c,
+    schoolNo: schoolNoOfTarget(c.target, byName),
+  }));
+
+  return {
+    workbook: raw.workbook,
+    fetchedAt: raw.fetchedAt,
+    offRuleFiles: raw.offRuleFiles,
+    schools,
+    numbers,
+    checks,
+    unmatchedPdfs,
+    criteria: parseCriteria(raw.criteria),
+  };
 }
