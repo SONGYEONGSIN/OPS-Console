@@ -6,7 +6,11 @@ import type {
   SmsSenderData,
 } from "./types";
 
-type Params = Record<string, string | undefined>;
+export type SearchParams = Record<string, string | string[] | undefined>;
+
+export function firstParam(v: string | string[] | undefined): string {
+  return (Array.isArray(v) ? v[0] : v) ?? "";
+}
 
 export type SchoolFilters = {
   q: string;
@@ -58,20 +62,20 @@ const isKnownGubun = (g: string) =>
   (GUBUN_ORDER as readonly string[]).includes(g);
 const squash = (s: string) => s.replace(/\s+/g, "");
 
-function positiveInt(value: string | undefined): number | null {
-  const n = Number(value?.trim());
+function positiveInt(value: string): number | null {
+  const n = Number(value.trim() || NaN);
   return Number.isInteger(n) && n >= 1 ? n : null;
 }
 
-export function parseSchoolFilters(sp: Params): SchoolFilters {
-  const docs = (sp.docs ?? "").trim();
+export function parseSchoolFilters(sp: SearchParams): SchoolFilters {
+  const docs = firstParam(sp.docs).trim();
   return {
-    q: (sp.q ?? "").trim(),
-    gubun: (sp.gubun ?? "").trim(),
-    stage: (sp.stage ?? "").trim(),
+    q: firstParam(sp.q).trim(),
+    gubun: firstParam(sp.gubun).trim(),
+    stage: firstParam(sp.stage).trim(),
     docs: DOCS_VALUES.includes(docs) ? (docs as Completeness) : "",
-    checkOnly: sp.check === "1",
-    school: positiveInt(sp.school),
+    checkOnly: firstParam(sp.check) === "1",
+    school: positiveInt(firstParam(sp.school)),
   };
 }
 
@@ -136,12 +140,12 @@ export function schoolDetail(
   };
 }
 
-export function parseNumberFilters(sp: Params): NumberFilters {
+export function parseNumberFilters(sp: SearchParams): NumberFilters {
   return {
-    q: (sp.q ?? "").trim(),
-    status: (sp.status ?? "").trim(),
-    gubun: (sp.gubun ?? "").trim(),
-    page: positiveInt(sp.page) ?? 1,
+    q: firstParam(sp.q).trim(),
+    status: firstParam(sp.status).trim(),
+    gubun: firstParam(sp.gubun).trim(),
+    page: positiveInt(firstParam(sp.page)) ?? 1,
   };
 }
 

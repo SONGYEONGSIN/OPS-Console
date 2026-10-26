@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NUMBER_STATUS_ORDER,
   filterChecks,
+  firstParam,
   filterNumbers,
   filterSchools,
   gubunCards,
@@ -70,6 +71,22 @@ describe("parseSchoolFilters", () => {
       parseSchoolFilters({ docs: "아무거나", school: "abc" }),
     ).toMatchObject({ docs: "", school: null });
     expect(parseSchoolFilters({})).toEqual(noFilter);
+  });
+});
+
+describe("배열 파라미터", () => {
+  it("첫 값으로 읽는다", () => {
+    expect(parseSchoolFilters({ q: ["가나", "다라"], school: ["3", "4"] })).toMatchObject({ q: "가나", school: 3 });
+    expect(parseNumberFilters({ page: ["2", "9"] }).page).toBe(2);
+    expect(firstParam(undefined)).toBe("");
+    expect(firstParam([])).toBe("");
+  });
+
+  it("school·page 경계값", () => {
+    expect(parseNumberFilters({ page: "999" }).page).toBe(999);
+    for (const [v, want] of [["1.5", null], ["-3", null], [" 3 ", 3], ["3abc", null]] as const) {
+      expect(parseSchoolFilters({ school: v }).school).toBe(want);
+    }
   });
 });
 
