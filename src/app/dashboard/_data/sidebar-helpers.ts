@@ -132,9 +132,17 @@ export const ADMIN_ONLY_MENU_SLUGS = new Set([
   "tools",
 ]);
 
-/** 신규 member 생성 시 기본 allowed_menus — admin 전용 메뉴를 제외한 전체. */
+/**
+ * 지정자 전용 메뉴 slug 집합 — admin 과, `allowed_menus` 에 slug 가 들어 있는 운영자만 본다.
+ * 부여는 DB 에서 직접 한다(화면 없음). 기본 메뉴에는 넣지 않는다.
+ */
+export const DESIGNATED_ONLY_MENU_SLUGS = new Set(["internal-admin"]);
+
+/** 신규 member 생성 시 기본 allowed_menus — admin 전용·지정자 전용 메뉴를 제외한 전체. */
 export function getDefaultMemberMenus(): string[] {
-  return getAllMenuSlugs().filter((s) => !ADMIN_ONLY_MENU_SLUGS.has(s));
+  return getAllMenuSlugs().filter(
+    (s) => !ADMIN_ONLY_MENU_SLUGS.has(s) && !DESIGNATED_ONLY_MENU_SLUGS.has(s),
+  );
 }
 
 /**

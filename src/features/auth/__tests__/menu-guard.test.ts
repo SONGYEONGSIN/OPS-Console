@@ -66,6 +66,20 @@ describe("requireMenu", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/dashboard");
   });
 
+  it("지정자 전용 메뉴는 slug 없는 member 를 /dashboard 로 돌려보낸다", async () => {
+    mockGetCurrentOperator.mockResolvedValue({
+      email: "m@x.com",
+      displayName: "m",
+      role: "매니저",
+      team: "운영1팀",
+      operator: null,
+      permission: "member",
+      allowedMenus: ["services"],
+    });
+    await expect(requireMenu("internal-admin")).rejects.toThrow("REDIRECT_CALLED");
+    expect(mockRedirect).toHaveBeenCalledWith("/dashboard");
+  });
+
   it("비로그인(null) → /login으로 redirect", async () => {
     mockGetCurrentOperator.mockResolvedValue(null);
     await expect(requireMenu("alerts")).rejects.toThrow("REDIRECT_CALLED");

@@ -30,6 +30,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "운영자별 배정현황을 보고, 3월 배정과 신규 배정을 만들어 승인합니다.",
   },
+  "internal-admin": {
+    headline: { accent: "프로젝트", title: "내부관리자" },
+    description:
+      "SMS 발신번호 사전등록 현황을 학교·발신번호·확인 필요 항목으로 찾아봅니다.",
+  },
   outcomes: {
     headline: { accent: "분석 · AI", title: "성과리포트" },
     description:

@@ -149,6 +149,33 @@ describe("canViewMenu", () => {
   });
 });
 
+describe("canViewMenu — 지정자 전용(internal-admin)", () => {
+  const withMenus = (menus: string[]) => ({ ...ME_MEMBER, allowedMenus: menus });
+  it("admin 은 allowedMenus 가 비어도 true", () => {
+    expect(canViewMenu("internal-admin", ME_ADMIN)).toBe(true);
+  });
+  it("member 는 slug 가 없으면 false", () => {
+    expect(canViewMenu("internal-admin", withMenus([]))).toBe(false);
+    expect(canViewMenu("internal-admin", ME_MEMBER)).toBe(false);
+  });
+  it("member·viewer 는 slug 가 있으면 true", () => {
+    expect(canViewMenu("internal-admin", withMenus(["internal-admin"]))).toBe(true);
+    expect(
+      canViewMenu("internal-admin", {
+        ...withMenus(["internal-admin"]),
+        permission: "viewer" as const,
+      }),
+    ).toBe(true);
+  });
+  it("집합 밖 메뉴는 allowedMenus 와 무관", () => {
+    expect(canViewMenu("services", withMenus([]))).toBe(true);
+    expect(canViewMenu("services", withMenus(["internal-admin"]))).toBe(true);
+  });
+  it("allowedMenus 가 admin 전용 메뉴를 열지 않는다", () => {
+    expect(canViewMenu("settings", withMenus(["settings"]))).toBe(false);
+  });
+});
+
 describe("filterSidebarSections", () => {
   // sections에 adminOnly 표시된 항목은 admin만 / 그 외(슬러그 있어도 비-adminOnly)는
   // member도 통과. 빈 group hide 검증을 위해 그룹 내 모든 item을 adminOnly로 표시.
@@ -279,5 +306,27 @@ describe("canEditOperators", () => {
 
   it("null → false", () => {
     expect(canEditOperators(null)).toBe(false);
+  });
+});
+
+describe("filterSidebarSections — 지정자 전용", () => {
+  const sections: SbSection[] = [
+    {
+      title: "그룹",
+      entries: [
+        { kind: "item", ico: "·", label: "내부관리자", slug: "internal-admin" },
+      ],
+    },
+  ];
+  it("지정되지 않은 member → 항목 제거", () => {
+    const result = filterSidebarSections(sections, ME_MEMBER);
+    expect(result[0].entries).toHaveLength(0);
+  });
+  it("지정된 member → 유지", () => {
+    const result = filterSidebarSections(sections, {
+      ...ME_MEMBER,
+      allowedMenus: ["internal-admin"],
+    });
+    expect(result[0].entries).toHaveLength(1);
   });
 });
