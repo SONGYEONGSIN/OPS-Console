@@ -87,8 +87,8 @@ function readTable(
   }
   const noAt = index["No"];
   const rows = values.slice(1).filter((r) => {
-    const v = r[noAt];
-    return v !== "" && v !== null && v !== undefined;
+    const v = text(r[noAt]);
+    return v !== "" && Number.isFinite(Number(v));
   });
   return { index, rows };
 }
@@ -212,6 +212,7 @@ export function pickLatestWorkbook(files: readonly DriveFile[]): {
   const dated: { file: DriveFile; stamp: string }[] = [];
   const offRuleFiles: string[] = [];
   for (const file of files) {
+    if (file.name.startsWith("~$")) continue;
     if (!/\.xlsm$/i.test(file.name)) continue;
     const m = /_(\d{6})\.xlsm$/.exec(file.name);
     if (m) dated.push({ file, stamp: m[1] });

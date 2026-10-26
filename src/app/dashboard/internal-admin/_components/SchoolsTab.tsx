@@ -12,6 +12,7 @@ import {
 } from "@/features/sms-sender/filters";
 import { useDebouncedSearch, useSetParams } from "./use-set-params";
 import { SchoolInspector } from "./SchoolInspector";
+import { markClass, markGlyph } from "./doc-mark";
 
 const DOCS_OPTIONS = ["완비", "미비", "확인 안 됨"] as const;
 const TH = "px-3 py-2 font-normal";
@@ -58,15 +59,14 @@ function DocDots({ docs }: { docs: School["docs"] }) {
     <span className="inline-flex gap-1">
       {DOC_KINDS.map((k) => {
         const mark = docs.marks[k];
-        const cls =
-          mark === "O"
-            ? "text-ink"
-            : mark === "✕"
-              ? "text-vermilion"
-              : "text-muted";
         return (
-          <span key={k} aria-label={`${k} ${mark || "없음"}`} className={cls}>
-            {mark === "O" || mark === "✕" ? mark : mark ? "대" : "·"}
+          <span
+            key={k}
+            aria-label={`${k} ${mark || "없음"}`}
+            title={mark || undefined}
+            className={markClass(mark)}
+          >
+            {markGlyph(mark)}
           </span>
         );
       })}

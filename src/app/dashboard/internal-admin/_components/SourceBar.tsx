@@ -50,8 +50,13 @@ export function SourceBar({
   function refresh() {
     setError(null);
     startTransition(async () => {
-      const result = await refreshSmsSenderCache();
-      if (!result.ok) setError(result.error);
+      // 던진 채로 두면 React 19 가 오류 경계로 올려 페이지 전체가 오류 화면이 된다.
+      try {
+        const result = await refreshSmsSenderCache();
+        if (!result.ok) setError(result.error);
+      } catch {
+        setError("새로고침에 실패했습니다. 잠시 뒤 다시 시도하세요.");
+      }
     });
   }
 

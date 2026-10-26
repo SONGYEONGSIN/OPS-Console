@@ -10,6 +10,21 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => params,
 }));
 
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} data-next-link="" {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
 import type { CheckItem } from "@/features/sms-sender/types";
 import { ChecksTab } from "../_components/ChecksTab";
 
@@ -58,6 +73,8 @@ describe("ChecksTab", () => {
       "href",
       "/dashboard/internal-admin?tab=schools&school=1",
     );
+    expect(link).toHaveAttribute("data-next-link");
+    expect(link.className).toContain("underline");
     const cell = link.closest("td")!;
     expect(within(cell).getByText("02-0000-0001").className).toContain(
       "whitespace-pre-line",

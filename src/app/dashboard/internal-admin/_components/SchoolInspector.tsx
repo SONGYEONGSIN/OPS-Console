@@ -1,15 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { kstFormat } from "@/lib/kst-format";
 import { DOC_KINDS } from "@/features/sms-sender/types";
 import { stageLabel, type SchoolDetail } from "@/features/sms-sender/filters";
+import { markClass, markGlyph } from "./doc-mark";
 
 const NUMBER_LIMIT = 10;
 const DATE = kstFormat({ year: "numeric", month: "2-digit", day: "2-digit" });
-
-const markClass = (mark: string) =>
-  mark === "O" ? "text-ink" : mark === "✕" ? "text-vermilion" : "text-muted";
 
 function Section({
   title,
@@ -50,7 +49,13 @@ function Body({ detail }: { detail: SchoolDetail }) {
                 return (
                   <li key={k} className="flex justify-between">
                     <span>{k}</span>
-                    <span className={markClass(mark)}>{mark || "·"}</span>
+                    <span
+                      aria-label={`${k} ${mark || "없음"}`}
+                      title={mark || undefined}
+                      className={markClass(mark)}
+                    >
+                      {markGlyph(mark)}
+                    </span>
                   </li>
                 );
               })}
@@ -102,12 +107,12 @@ function Body({ detail }: { detail: SchoolDetail }) {
           ))}
         </ul>
         {numbers.length > NUMBER_LIMIT && (
-          <a
+          <Link
             href={moreHref}
             className="mt-2 inline-block text-sm text-ink underline"
           >
             발신번호 탭에서 전체 보기 ({numbers.length})
-          </a>
+          </Link>
         )}
       </Section>
 

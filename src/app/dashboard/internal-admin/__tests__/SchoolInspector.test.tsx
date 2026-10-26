@@ -1,6 +1,21 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} data-next-link="" {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
 import { parseSmsSender } from "@/features/sms-sender/parse";
 import {
   rawSource,
@@ -74,6 +89,8 @@ describe("SchoolInspector", () => {
       "href",
       `/dashboard/internal-admin?tab=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}`,
     );
+    expect(link).toHaveAttribute("data-next-link");
+    expect(link.className).toContain("underline");
   });
 
   it("확인 항목 — 없으면 문구", () => {
@@ -98,6 +115,27 @@ describe("SchoolInspector", () => {
     render(<SchoolInspector detail={detail} onClose={() => {}} />);
     expect(screen.getByText("번호 확인")).toBeInTheDocument();
     expect(screen.getByText(/할 일/)).toBeInTheDocument();
+  });
+
+  it("서류 표시 — '대체' 만 대, 모르는 표시는 ? (원문은 라벨·title)", () => {
+    const d = detailOf();
+    const docs = d.school.docs!;
+    const detail: SchoolDetail = {
+      ...d,
+      school: {
+        ...d.school,
+        docs: {
+          ...docs,
+          marks: { ...docs.marks, 법인인감: "대체", 위임장: "X", 신분증: "×" },
+        },
+      },
+    };
+    render(<SchoolInspector detail={detail} onClose={() => {}} />);
+    expect(screen.getByLabelText("법인인감 대체")).toHaveTextContent(/^대$/);
+    expect(screen.getByLabelText("위임장 X")).toHaveTextContent(/^\?$/);
+    const cross = screen.getByLabelText("신분증 ×");
+    expect(cross).toHaveTextContent(/^\?$/);
+    expect(cross).toHaveAttribute("title", "×");
   });
 
   it("PDF·서류 줄이 없을 때", () => {

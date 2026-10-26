@@ -22,6 +22,8 @@ export class SourceFetchError extends Error {
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
 const MAX_DEPTH = 4;
+/** nextLink 를 끝없이 주는 응답에 갇히지 않게 — 200건씩이라 1만 건이다. */
+const MAX_PAGES = 50;
 
 type DriveItem = DriveFile & { folder?: unknown; file?: unknown };
 
@@ -35,7 +37,7 @@ export function usedRangeUrl(
   itemId: string,
   sheet: string,
 ): string {
-  return `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets('${encodeURIComponent(sheet)}')/usedRange(valuesOnly=true)?$select=values`;
+  return `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets('${encodeURIComponent(sheet.replace(/'/g, "''"))}')/usedRange(valuesOnly=true)?$select=values`;
 }
 
 async function graphGet(url: string, token: string): Promise<Response> {
@@ -53,7 +55,11 @@ async function listChildren(
 ): Promise<DriveItem[]> {
   const items: DriveItem[] = [];
   let url: string | undefined = childrenUrl(driveId, path);
-  while (url) {
+  for (let page = 0; url; page++) {
+    if (page >= MAX_PAGES) {
+      console.error(`[sms-sender] list page cap: ${label}`, path);
+      throw new SourceFetchError(`${label} 목록이 너무 깁니다.`);
+    }
     const res = await graphGet(url, token);
     if (!res.ok) {
       console.error(`[sms-sender] list fail: ${label}`, res.status, path);
@@ -64,7 +70,13 @@ async function listChildren(
       "@odata.nextLink"?: string;
     };
     items.push(...(body.value ?? []));
-    url = body["@odata.nextLink"];
+    const next = body["@odata.nextLink"];
+    // 토큰을 실어 보내므로 Graph 밖 주소는 따라가지 않는다.
+    if (next && !next.startsWith(`${GRAPH}/`)) {
+      console.error(`[sms-sender] foreign nextLink: ${label}`, path);
+      throw new SourceFetchError(`${label} 목록의 다음 쪽 주소가 올바르지 않습니다.`);
+    }
+    url = next;
   }
   return items;
 }

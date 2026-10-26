@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ListSelect } from "@/components/common/ListSelect";
 import type { CheckItem } from "@/features/sms-sender/types";
 import { useSetParams } from "./use-set-params";
@@ -14,12 +15,12 @@ function Target({ item }: { item: CheckItem }) {
   const [first, ...rest] = item.target.split("\n");
   return (
     <>
-      <a
+      <Link
         href={`/dashboard/internal-admin?tab=schools&school=${item.schoolNo}`}
         className="underline"
       >
         {first}
-      </a>
+      </Link>
       {rest.length > 0 && <div className={TEXT}>{rest.join("\n")}</div>}
     </>
   );

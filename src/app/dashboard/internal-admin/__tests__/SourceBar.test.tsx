@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { Component, type ReactNode } from "react";
 
 const refresh = vi.fn();
 vi.mock("@/features/sms-sender/actions", () => ({
@@ -7,6 +8,16 @@ vi.mock("@/features/sms-sender/actions", () => ({
 }));
 
 import { SourceBar, SourceError } from "../_components/SourceBar";
+
+class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? <p>경계에 걸림</p> : this.props.children;
+  }
+}
 
 const base = {
   fileName: "SMS 발신번호 사전등록 현황_261017.xlsm",
@@ -35,6 +46,23 @@ describe("SourceBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("권한 없음 — 관리자만")).toBeInTheDocument();
+  });
+
+  it("action 이 던져도 페이지는 살아 있고 같은 자리에 실패 문구", async () => {
+    refresh.mockRejectedValue(new Error("network down"));
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <Boundary>
+        <SourceBar {...base} />
+      </Boundary>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "새로고침" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "새로고침에 실패했습니다. 잠시 뒤 다시 시도하세요.",
+    );
+    expect(screen.queryByText("경계에 걸림")).toBeNull();
+    expect(screen.getByRole("button", { name: "새로고침" })).toBeEnabled();
+    quiet.mockRestore();
   });
 
   it("성공하면 오류 문구가 없다", async () => {

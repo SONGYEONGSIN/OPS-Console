@@ -89,6 +89,15 @@ describe("parseSchools", () => {
       parseSchools([SCHOOL_HEADER, blank, schoolRow(1, "가나대학교")]),
     ).toHaveLength(1);
   });
+  it("No 가 공백뿐이거나 숫자가 아닌 줄(합계)도 건너뛴다", () => {
+    const out = parseSchools([
+      SCHOOL_HEADER,
+      schoolRow(1, "가나대학교"),
+      schoolRow(0, "", { No: "  " }),
+      schoolRow(0, "", { No: "합계" }),
+    ]);
+    expect(out.map((s) => s.no)).toEqual([1]);
+  });
   it("필수 열이 없으면 시트·열을 담은 오류", () => {
     const head = SCHOOL_HEADER.map((h) => (h === "학교명" ? "대학명" : h));
     expect(() => parseSchools([head])).toThrow(
@@ -226,6 +235,13 @@ describe("pickLatestWorkbook", () => {
     expect(r.offRuleFiles).toEqual([
       "SMS 발신번호 사전등록 현황_261017(수정).xlsm",
     ]);
+  });
+  it("엑셀 잠금 파일(~$)은 더 새것이어도 고르지 않는다", () => {
+    const r = pickLatestWorkbook([
+      f("~$SMS 발신번호 사전등록 현황_261017.xlsm", "2026-10-26T00:00:00Z"),
+      f("SMS 발신번호 사전등록 현황_261017.xlsm"),
+    ]);
+    expect(r.latest?.name).toBe("SMS 발신번호 사전등록 현황_261017.xlsm");
   });
   it("규칙에 맞는 파일이 없으면 null", () => {
     const r = pickLatestWorkbook([f("메모.xlsm"), f("a.pdf")]);

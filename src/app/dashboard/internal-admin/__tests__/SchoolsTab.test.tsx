@@ -104,6 +104,24 @@ describe("SchoolsTab", () => {
     expect(lastQuery().get("gubun")).toBeNull();
   });
 
+  it("서류 점 — '대체' 만 대, 모르는 표시는 ? (원문은 라벨·title)", () => {
+    const [first, ...rest] = data.schools;
+    const odd = {
+      ...first,
+      docs: {
+        ...first.docs!,
+        marks: { ...first.docs!.marks, 법인인감: "대체", 위임장: "X", 신분증: "×" },
+      },
+    };
+    renderTab({}, [odd, ...rest]);
+    const row = screen.getByText("가나대학교").closest("tr")!;
+    expect(within(row).getByLabelText("법인인감 대체")).toHaveTextContent(/^대$/);
+    expect(within(row).getByLabelText("위임장 X")).toHaveTextContent(/^\?$/);
+    const cross = within(row).getByLabelText("신분증 ×");
+    expect(cross).toHaveTextContent(/^\?$/);
+    expect(cross).toHaveAttribute("title", "×");
+  });
+
   it("표 — 단계·회선·서류 점·PDF", () => {
     renderTab();
     const row = screen.getByText("가나대학교").closest("tr")!;

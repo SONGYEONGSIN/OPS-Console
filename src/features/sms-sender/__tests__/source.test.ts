@@ -31,14 +31,18 @@ const json = (body: unknown, status = 200) =>
     text: async () => "raw-body",
   }) as Response;
 
+const NEXT = "https://graph.microsoft.com/v1.0/__next/page2";
+
 type Routes = {
   children: Record<string, unknown>;
   sheets?: Record<string, Response>;
 };
 
 function installFetch(routes: Routes) {
-  const fn = vi.fn(async (input: string) => {
-    if (input.startsWith("https://next.invalid/")) {
+  let calls = 0;
+  const fn = vi.fn(async (input: string, _init?: RequestInit) => {
+    if (++calls > 1000) throw new Error("runaway fetch loop");
+    if (input.startsWith(NEXT)) {
       return json(routes.children["__next"]);
     }
     const url = decodeURIComponent(input);
@@ -66,7 +70,7 @@ const fullTree = (): Routes["children"] => ({
   },
   [DOCS_FOLDER]: {
     value: [folder("완료"), folder("진행 중")],
-    "@odata.nextLink": "https://next.invalid/page2",
+    "@odata.nextLink": NEXT,
   },
   __next: { value: [file("루트.pdf")] },
   [`${DOCS_FOLDER}/완료`]: { value: [folder("제출완료"), folder("검토완료")] },
@@ -95,6 +99,11 @@ describe("url builders", () => {
   it("usedRangeUrl 은 시트 이름을 인코딩하고 valuesOnly", () => {
     expect(usedRangeUrl("d1", "i1", "_번호")).toContain(
       `worksheets('${encodeURIComponent("_번호")}')/usedRange(valuesOnly=true)`,
+    );
+  });
+  it("usedRangeUrl 은 시트 이름의 작은따옴표를 겹친다 (OData 리터럴)", () => {
+    expect(usedRangeUrl("d1", "i1", "a'b")).toContain(
+      `worksheets('${encodeURIComponent("a''b")}')`,
     );
   });
 });
@@ -127,6 +136,46 @@ describe("fetchSmsSenderSource", () => {
     ]);
     expect(raw.criteria).not.toBeNull();
     expect(raw.fetchedAt).toMatch(/^\d{4}-\d\d-\d\dT/);
+  });
+
+  it("모든 Graph 호출은 no-store + Bearer 토큰", async () => {
+    const fn = installFetch({ children: fullTree() });
+    await fetchSmsSenderSource();
+    expect(fn.mock.calls.length).toBeGreaterThan(0);
+    for (const [, init] of fn.mock.calls) {
+      expect(init).toEqual(
+        expect.objectContaining({
+          cache: "no-store",
+          headers: { Authorization: "Bearer test-token" },
+        }),
+      );
+    }
+  });
+
+  it("Graph 밖 nextLink 는 따라가지 않는다 — 토큰도 안 보낸다", async () => {
+    const tree = fullTree();
+    tree[DOCS_FOLDER] = {
+      value: [],
+      "@odata.nextLink": "https://evil.invalid/page2",
+    };
+    const fn = installFetch({ children: tree });
+    const err = await fetchSmsSenderSource().catch((e: Error) => e);
+    expect(err).toBeInstanceOf(SourceFetchError);
+    expect((err as Error).message).not.toMatch(/evil|https?:/);
+    expect(
+      fn.mock.calls.some(([u]) => String(u).includes("evil.invalid")),
+    ).toBe(false);
+  });
+
+  it("nextLink 가 끝나지 않으면 쪽 수 상한에서 멈춘다", async () => {
+    const tree = fullTree();
+    tree.__next = { value: [], "@odata.nextLink": NEXT };
+    const fn = installFetch({ children: tree });
+    const err = await fetchSmsSenderSource().catch((e: Error) => e);
+    expect(err).toBeInstanceOf(SourceFetchError);
+    expect((err as Error).message).not.toMatch(/https?:/);
+    const pages = fn.mock.calls.filter(([u]) => String(u).startsWith(NEXT));
+    expect(pages.length).toBeLessThan(100);
   });
 
   it("05 시트 404 는 criteria null — 실패 아님", async () => {
