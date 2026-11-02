@@ -103,8 +103,9 @@ export async function POST(request: Request) {
 
   // 자동화 실행 로그에도 남긴다 — 이게 없어서 8/3 실행이 죽었는데도 화면엔
   // 큐 적재의 "성공"만 떠 있었다. 회사 PC 잡은 이 보고가 유일한 창구다.
+  // 판정을 못 한 건이 있으면 실패다 — ok:true 면 66건이 비어도 '성공'으로 남는다.
   await recordAutomationRun(automationJobIdFor(input.kind), {
-    ok: true,
+    ok: s.judgeFailedCount === 0,
     message: buildRunMessage(s, dispatch),
   });
 

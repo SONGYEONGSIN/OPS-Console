@@ -654,6 +654,26 @@ describe("RatioAuditList", () => {
     expect(screen.getByText(/2차/)).toBeInTheDocument();
   });
 
+  it("같은 사유의 판정 실패는 한 줄로 묶어 건수와 함께 보여준다", () => {
+    const reason = "판정 실패: claude 실패(1): 내부 또는 외부 명령";
+    const log = {
+      ...scheduleLog,
+      entries: [
+        {
+          ...scheduleLog.entries[0],
+          skipped: Array.from({ length: 66 }, (_, i) => ({
+            serviceId: 1000 + i,
+            reason,
+          })),
+        },
+      ],
+    };
+    render(<AutomationLogPanel label="세팅 점검" loading={false} error={null} runs={[]} log={log as never} />);
+    expect(screen.getAllByText(/내부 또는 외부 명령/)).toHaveLength(1);
+    expect(screen.getByText(/판정 못 함 66건/)).toBeInTheDocument();
+    expect(screen.getByText(/외 61건/)).toBeInTheDocument();
+  });
+
   it("건너뛴 건을 사유와 함께 보여준다", () => {
     render(<AutomationLogPanel label="세팅 점검" loading={false} error={null} runs={[]} log={scheduleLog as never} />);
     expect(screen.getByText(/상세 열기 실패/)).toBeInTheDocument();

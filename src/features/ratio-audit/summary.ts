@@ -4,6 +4,7 @@ import type {
   RatioFindingItem,
   RatioLinkError,
 } from "./schemas";
+import { skippedStage } from "./skipped";
 
 /**
  * 점검 결과 집계 + Teams 메시지 HTML 조립 (순수 함수).
@@ -30,12 +31,16 @@ export function summarizeRatioAudit(input: RatioAuditIngest): {
   scannedCount: number;
   findingCount: number;
   linkErrorCount: number;
+  /** 판정 단계에서 빠진 건 — 이 건수만큼은 '이상 없음'이 아니라 '모름'이다. */
+  judgeFailedCount: number;
   status: "ok" | "partial";
 } {
   return {
     scannedCount: input.scannedCount,
     findingCount: input.findings.length,
     linkErrorCount: input.linkErrors.length,
+    judgeFailedCount: input.skipped.filter((k) => skippedStage(k) === "judge")
+      .length,
     status: input.skipped.length > 0 ? "partial" : "ok",
   };
 }

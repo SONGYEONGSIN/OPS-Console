@@ -25,6 +25,10 @@ import {
   type RatioAuditEntry,
 } from "@/features/automations/run-logs-normalize";
 import type { AutomationRunEntry } from "@/features/automations/types";
+import {
+  groupSkipped,
+  skippedGroupText,
+} from "@/features/ratio-audit/skipped";
 import { applyMismatchAsMatch } from "@/features/receivables-match/apply-mismatch-action";
 
 /**
@@ -501,15 +505,12 @@ function RatioAuditList({ entries }: { entries: RatioAuditEntry[] }) {
             </ul>
           )}
 
-          {/* 건너뛴 건 — 조용히 빠지면 안 본 것을 본 줄 안다. */}
-          {e.skipped.length > 0 && (
-            <p className="text-2xs text-muted">
-              건너뜀 {e.skipped.length}건 —{" "}
-              {e.skipped
-                .map((sk) => `${sk.serviceId}(${sk.reason})`)
-                .join(", ")}
+          {/* 건너뛴 건 — 조용히 빠지면 안 본 것을 본 줄 안다. 같은 사유는 한 줄로 묶는다. */}
+          {groupSkipped(e.skipped).map((g, k) => (
+            <p key={k} className="text-2xs text-muted">
+              {skippedGroupText(g)}
             </p>
-          )}
+          ))}
 
           {i < entries.length - 1 && <Divider />}
         </div>

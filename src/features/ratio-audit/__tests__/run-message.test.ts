@@ -27,6 +27,7 @@ describe("buildRunMessage", () => {
     scannedCount: 241,
     findingCount: 3,
     linkErrorCount: 0,
+    judgeFailedCount: 0,
     status: "ok" as const,
   };
 
@@ -91,5 +92,59 @@ describe("buildRunMessage", () => {
     expect(m).not.toContain("담당미상");
     expect(m).not.toContain("예외제외");
     expect(m).not.toContain("발송실패");
+  });
+
+  describe("판정 실패", () => {
+    const none = {
+      sent: 0,
+      failed: [],
+      unassignedCount: 0,
+      excludedCount: 0,
+      adminNotified: false,
+    };
+
+    it("'판정 못 함 N건'을 맨 앞에 둔다", () => {
+      const m = buildRunMessage(
+        { ...base, scannedCount: 116, findingCount: 0, judgeFailedCount: 66, status: "partial" },
+        none,
+      );
+      expect(m.startsWith("판정 못 함 66건")).toBe(true);
+    });
+
+    it("이상 0건이어도 '이상 없음'이라 쓰지 않고 판정된 수 기준임을 밝힌다", () => {
+      const m = buildRunMessage(
+        { ...base, scannedCount: 116, findingCount: 0, judgeFailedCount: 66, status: "partial" },
+        none,
+      );
+      expect(m).not.toContain("이상 없음");
+      expect(m).toContain("이상 0건(판정된 50건 기준)");
+    });
+
+    it("판정된 수는 음수가 되지 않는다", () => {
+      const m = buildRunMessage(
+        { ...base, scannedCount: 3, findingCount: 0, judgeFailedCount: 9, status: "partial" },
+        none,
+      );
+      expect(m).toContain("판정된 0건 기준");
+    });
+
+    it("이상이 있어도 판정 못 함은 맨 앞이다", () => {
+      const m = buildRunMessage(
+        { ...base, scannedCount: 116, findingCount: 2, judgeFailedCount: 10, status: "partial" },
+        none,
+      );
+      expect(m.startsWith("판정 못 함 10건")).toBe(true);
+      expect(m).toContain("이상 2건");
+    });
+
+    it("수집 단계 건너뜀만 있으면 기존 문구를 유지한다", () => {
+      const m = buildRunMessage(
+        { ...base, findingCount: 0, judgeFailedCount: 0, status: "partial" },
+        none,
+      );
+      expect(m).toContain("이상 없음");
+      expect(m).toContain("일부 건너뜀");
+      expect(m).not.toContain("판정 못 함");
+    });
   });
 });
