@@ -199,3 +199,30 @@ def judge_with_retry(
             print(f"[WARN] 배치 판정 실패, {wait}초 후 재시도: {e}")
             sleep(wait)
     return parse_response(call(prompt))
+
+
+class BatchJudge:
+    """배치 판정 + 지속 장애 차단.
+
+    업데이트 창이 아니라 claude 가 계속 죽어 있으면 배치마다 90초씩 대기가 쌓여(12배치 약
+    18분) 실행 제한에 걸린다. 한 배치가 재시도를 다 쓰고도 실패하면 뒤 배치는 대기 없이
+    1회만 시도하고, 한 번이라도 성공하면 창이 끝난 것이니 원래 대기로 돌아간다.
+    """
+
+    def __init__(self, *, call=run_claude, sleep=time.sleep, waits=RETRY_WAITS_SEC):
+        self._call = call
+        self._sleep = sleep
+        self._waits = waits
+        self._exhausted = False
+
+    def judge(self, prompt: str) -> dict[tuple[int, int], list[dict]]:
+        waits = () if self._exhausted else self._waits
+        try:
+            verdict = judge_with_retry(
+                prompt, call=self._call, sleep=self._sleep, waits=waits
+            )
+        except Exception:
+            self._exhausted = True
+            raise
+        self._exhausted = False
+        return verdict

@@ -33,14 +33,19 @@ export function summarizeRatioAudit(input: RatioAuditIngest): {
   linkErrorCount: number;
   /** 판정 단계에서 빠진 건 — 이 건수만큼은 '이상 없음'이 아니라 '모름'이다. */
   judgeFailedCount: number;
+  /** 수집 단계에서 빠진 건 — 판정 실패와 같은 사실을 두 번 말하지 않으려 따로 센다. */
+  collectSkippedCount: number;
   status: "ok" | "partial";
 } {
+  const judgeFailedCount = input.skipped.filter(
+    (k) => skippedStage(k) === "judge",
+  ).length;
   return {
     scannedCount: input.scannedCount,
     findingCount: input.findings.length,
     linkErrorCount: input.linkErrors.length,
-    judgeFailedCount: input.skipped.filter((k) => skippedStage(k) === "judge")
-      .length,
+    judgeFailedCount,
+    collectSkippedCount: input.skipped.length - judgeFailedCount,
     status: input.skipped.length > 0 ? "partial" : "ok",
   };
 }

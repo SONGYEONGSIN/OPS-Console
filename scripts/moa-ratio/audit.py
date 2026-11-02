@@ -46,7 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존 검증된 구현)
 import sms_inbox  # noqa: E402  (우편함 점유 — 수동 코드 경로에서도 잡는다)
-from judge import build_prompt, clean_text, filter_schedule_lines, judge_with_retry  # noqa: E402
+from judge import build_prompt, clean_text, filter_schedule_lines, BatchJudge  # noqa: E402
 from listfilter import filter_by_start_date  # noqa: E402
 
 MOA_BASE = "https://moa.jinhakapply.com"
@@ -648,13 +648,14 @@ def main() -> int:
             _warn_empty_apply_period(collected)
             _warn_schedule_line_anomalies(collected)
 
+            batch_judge = BatchJudge()
             for start in range(0, len(collected), BATCH_SIZE):
                 batch = collected[start : start + BATCH_SIZE]
                 prompt = build_prompt(batch)
                 if start == 0:
                     _save_first_batch_prompt(prompt, dump_dir)
                 try:
-                    verdict = judge_with_retry(prompt)
+                    verdict = batch_judge.judge(prompt)
                 except Exception as e:  # noqa: BLE001 — 재시도를 다 쓰면 배치 skip
                     for svc in batch:
                         skipped.append({"serviceId": svc["service_id"],

@@ -28,6 +28,7 @@ describe("buildRunMessage", () => {
     findingCount: 3,
     linkErrorCount: 0,
     judgeFailedCount: 0,
+    collectSkippedCount: 0,
     status: "ok" as const,
   };
 
@@ -78,7 +79,7 @@ describe("buildRunMessage", () => {
 
   it("건너뛴 게 있으면 partial임을 드러낸다", () => {
     const m = buildRunMessage(
-      { ...base, status: "partial" },
+      { ...base, collectSkippedCount: 2, status: "partial" },
       { sent: 0, failed: [], unassignedCount: 0, excludedCount: 0, adminNotified: false },
     );
     expect(m).toContain("일부 건너뜀");
@@ -137,9 +138,27 @@ describe("buildRunMessage", () => {
       expect(m).toContain("이상 2건");
     });
 
+    it("판정 실패만 있으면 '일부 건너뜀'을 덧붙이지 않는다 — 같은 사실을 두 번 말한다", () => {
+      const m = buildRunMessage(
+        { ...base, scannedCount: 116, findingCount: 0, judgeFailedCount: 66, collectSkippedCount: 0, status: "partial" },
+        none,
+      );
+      expect(m).toContain("판정 못 함 66건");
+      expect(m).not.toContain("일부 건너뜀");
+    });
+
+    it("판정 실패와 수집 건너뜀이 같이 있으면 둘 다 말한다", () => {
+      const m = buildRunMessage(
+        { ...base, scannedCount: 116, findingCount: 0, judgeFailedCount: 10, collectSkippedCount: 3, status: "partial" },
+        none,
+      );
+      expect(m).toContain("판정 못 함 10건");
+      expect(m).toContain("일부 건너뜀");
+    });
+
     it("수집 단계 건너뜀만 있으면 기존 문구를 유지한다", () => {
       const m = buildRunMessage(
-        { ...base, findingCount: 0, judgeFailedCount: 0, status: "partial" },
+        { ...base, findingCount: 0, judgeFailedCount: 0, collectSkippedCount: 3, status: "partial" },
         none,
       );
       expect(m).toContain("이상 없음");

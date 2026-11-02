@@ -88,6 +88,7 @@ describe("summarizeRatioAudit", () => {
       findingCount: 2,
       linkErrorCount: 1,
       judgeFailedCount: 0,
+      collectSkippedCount: 0,
       status: "ok",
     });
   });
@@ -111,6 +112,7 @@ describe("summarizeRatioAudit", () => {
       ],
     });
     expect(s.judgeFailedCount).toBe(2);
+    expect(s.collectSkippedCount).toBe(1);
     expect(s.status).toBe("partial");
   });
 

@@ -309,5 +309,52 @@ class JudgeWithRetryTest(unittest.TestCase):
         self.assertEqual(sleeps, [30, 60])
 
 
+class BatchJudgeTest(unittest.TestCase):
+    """지속 장애에서 배치마다 90초씩 쌓이지 않게 — 한 배치가 재시도를 다 쓰고도 실패하면
+    뒤 배치는 1회만 시도하고, 한 번 성공하면 원래 대기로 돌아간다(업데이트 창이 끝난 경우)."""
+
+    GOOD = '{"results":[]}'
+
+    def _judge(self, outcomes):
+        calls, sleeps = [], []
+
+        def call(prompt):
+            calls.append(prompt)
+            outcome = outcomes[len(calls) - 1]
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+        return judge.BatchJudge(call=call, sleep=sleeps.append), calls, sleeps
+
+    def test_later_batches_get_single_try_after_one_exhausts_retries(self):
+        fail = RuntimeError("claude 실패(1)")
+        # 배치1: 3회 모두 실패 / 배치2: 1회만 시도(실패) / 배치3: 1회 시도(성공)
+        bj, calls, sleeps = self._judge([fail, fail, fail, fail, self.GOOD])
+        with self.assertRaises(RuntimeError):
+            bj.judge("b1")
+        with self.assertRaises(RuntimeError):
+            bj.judge("b2")
+        self.assertEqual(bj.judge("b3"), {})
+        self.assertEqual(calls, ["b1", "b1", "b1", "b2", "b3"])
+        self.assertEqual(sleeps, [30, 60])
+
+    def test_success_restores_full_waits(self):
+        fail = RuntimeError("x")
+        # 배치1 소진 → 배치2 단발 성공(복구) → 배치3 은 다시 대기하며 재시도
+        bj, calls, sleeps = self._judge([fail, fail, fail, self.GOOD, fail, self.GOOD])
+        with self.assertRaises(RuntimeError):
+            bj.judge("b1")
+        bj.judge("b2")
+        bj.judge("b3")
+        self.assertEqual(sleeps, [30, 60, 30])
+
+    def test_healthy_run_never_sleeps(self):
+        bj, calls, sleeps = self._judge([self.GOOD, self.GOOD])
+        bj.judge("b1")
+        bj.judge("b2")
+        self.assertEqual(sleeps, [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -61,7 +61,8 @@ export function buildRunMessage(
   if (dispatch.excludedCount > 0) {
     parts.push(`예외제외 ${dispatch.excludedCount}건`);
   }
-  if (summary.status === "partial") {
+  // 판정 실패는 맨 앞 '판정 못 함'이 이미 말했다 — 수집 단계 건너뜀이 있을 때만 붙인다.
+  if (summary.collectSkippedCount > 0) {
     parts.push("일부 건너뜀");
   }
 
