@@ -46,7 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존 검증된 구현)
 import sms_inbox  # noqa: E402  (우편함 점유 — 수동 코드 경로에서도 잡는다)
-from judge import build_prompt, clean_text, filter_schedule_lines, parse_response, run_claude  # noqa: E402
+from judge import build_prompt, clean_text, filter_schedule_lines, BatchJudge  # noqa: E402
 from listfilter import filter_by_start_date  # noqa: E402
 
 MOA_BASE = "https://moa.jinhakapply.com"
@@ -622,7 +622,7 @@ def main() -> int:
                     consecutive_skips = 0
                 except Exception as e:  # noqa: BLE001 — 1건 실패로 전체를 죽이지 않는다
                     reason = f"{type(e).__name__}: {e}"[:200]
-                    skipped.append({"serviceId": sid, "reason": reason})
+                    skipped.append({"serviceId": sid, "reason": reason, "stage": "collect"})
                     consecutive_skips += 1
                     # 사유를 결과 파일에만 남기면 실행 로그로는 왜 건너뛰었는지 알 수 없다.
                     print(f"[WARN] serviceId={sid} 상세 수집 실패, 건너뜀: {reason}")
@@ -638,6 +638,7 @@ def main() -> int:
                             skipped.append({
                                 "serviceId": int(r["UnivServiceID"]),
                                 "reason": f"연속 skip {consecutive_skips}건으로 순회 중단 — 미시도",
+                                "stage": "collect",
                             })
                         break
                 if i % 20 == 0:
@@ -647,22 +648,20 @@ def main() -> int:
             _warn_empty_apply_period(collected)
             _warn_schedule_line_anomalies(collected)
 
+            batch_judge = BatchJudge()
             for start in range(0, len(collected), BATCH_SIZE):
                 batch = collected[start : start + BATCH_SIZE]
                 prompt = build_prompt(batch)
                 if start == 0:
                     _save_first_batch_prompt(prompt, dump_dir)
                 try:
-                    verdict = parse_response(run_claude(prompt))
-                except Exception as e:  # noqa: BLE001 — 1회 재시도 후 배치 skip
-                    print(f"[WARN] 배치 판정 실패, 재시도: {e}")
-                    try:
-                        verdict = parse_response(run_claude(prompt))
-                    except Exception as e2:  # noqa: BLE001
-                        for svc in batch:
-                            skipped.append({"serviceId": svc["service_id"],
-                                            "reason": f"판정 실패: {e2}"[:200]})
-                        continue
+                    verdict = batch_judge.judge(prompt)
+                except Exception as e:  # noqa: BLE001 — 재시도를 다 쓰면 배치 skip
+                    for svc in batch:
+                        skipped.append({"serviceId": svc["service_id"],
+                                        "reason": f"판정 실패: {e}"[:200],
+                                        "stage": "judge"})
+                    continue
                 for svc in batch:
                     items = list(verdict.get((svc["service_id"], svc["seq"]), []))
                     missing_item = _missing_schedule_item(svc)

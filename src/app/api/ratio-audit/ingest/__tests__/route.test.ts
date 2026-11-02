@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // 실행 기록은 자동화 레지스트리(모든 잡 모듈)를 끌어와 로딩이 느리다. 여기서
 // 검증할 건 인제스트지 기록이 아니므로 끊는다 — 기록 자체는 run-log.test.ts 가 본다.
 vi.mock("@/features/automations/run-recorder", () => ({
-  recordAutomationRun: () => Promise.resolve(),
+  recordAutomationRun: (...args: unknown[]) => h.recordAutomationRun(...args),
 }));
 
 
@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   eq: vi.fn(),
   from: vi.fn(),
   dispatchRatioAudit: vi.fn(),
+  recordAutomationRun: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -74,6 +75,7 @@ describe("POST /api/ratio-audit/ingest", () => {
     h.update.mockReturnValue({ eq: h.eq });
     h.from.mockReturnValue({ insert: h.insert, update: h.update });
     h.dispatchRatioAudit.mockResolvedValue(dispatched());
+    h.recordAutomationRun.mockResolvedValue(undefined);
   });
 
   it("secret 불일치면 401", async () => {
@@ -106,6 +108,42 @@ describe("POST /api/ratio-audit/ingest", () => {
     const { POST } = await import("../route");
     await POST(postReq(payload({ skipped: [{ serviceId: 9, reason: "진입 실패" }] })));
     expect(h.insert.mock.calls[0][0].status).toBe("partial");
+  });
+
+  it("판정 실패가 있으면 실행 기록을 실패(ok:false)로 남긴다", async () => {
+    const { POST } = await import("../route");
+    await POST(
+      postReq(
+        payload({
+          skipped: [{ serviceId: 9, reason: "판정 실패: x", stage: "judge" }],
+        }),
+      ),
+    );
+    expect(h.recordAutomationRun).toHaveBeenCalledTimes(1);
+    const [jobId, result] = h.recordAutomationRun.mock.calls[0];
+    expect(jobId).toBe("ratio-audit");
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("판정 못 함 1건");
+  });
+
+  it("옛 payload(stage 없음)의 판정 실패도 실패로 남긴다", async () => {
+    const { POST } = await import("../route");
+    await POST(
+      postReq(payload({ skipped: [{ serviceId: 9, reason: "판정 실패: x" }] })),
+    );
+    expect(h.recordAutomationRun.mock.calls[0][1].ok).toBe(false);
+  });
+
+  it("수집 단계 건너뜀만 있으면 성공으로 남긴다", async () => {
+    const { POST } = await import("../route");
+    await POST(
+      postReq(
+        payload({
+          skipped: [{ serviceId: 9, reason: "진입 실패", stage: "collect" }],
+        }),
+      ),
+    );
+    expect(h.recordAutomationRun.mock.calls[0][1].ok).toBe(true);
   });
 
   it("담당자 발송 결과를 응답에 담고 notified=true 로 갱신", async () => {

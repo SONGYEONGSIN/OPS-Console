@@ -57,6 +57,11 @@ export const ratioLinkErrorSchema = z.object({
 export const ratioSkippedSchema = z.object({
   serviceId: z.number().int().positive(),
   reason: z.string().min(1),
+  /**
+   * 어느 단계에서 빠졌나. 옛 payload·구버전 스크립트에는 없어서 optional —
+   * 없을 때의 판정은 `skippedStage`(skipped.ts) 한 곳이 맡는다.
+   */
+  stage: z.enum(["collect", "judge"]).optional(),
 });
 
 /**

@@ -30,10 +30,22 @@ export function buildRunMessage(
 ): string {
   const parts = [`검사 ${summary.scannedCount}건`];
 
+  // 판정을 못 한 건은 '이상 없음'이 아니라 '모름'이다. 2026-09-04 에 116건 중 66건을
+  // 판정 못 했는데 "이상 없음"으로 적혀 성공으로 보였다 — 맨 앞에 두고, 이상 0건이면
+  // 몇 건을 보고 한 말인지 밝힌다.
+  const judged = Math.max(0, summary.scannedCount - summary.judgeFailedCount);
+  if (summary.judgeFailedCount > 0) {
+    parts.unshift(`판정 못 함 ${summary.judgeFailedCount}건`);
+  }
+
   // 이상 0건도 명시한다 — 빈 줄이면 안 돈 것과 구분이 안 된다.
-  parts.push(
-    summary.findingCount > 0 ? `이상 ${summary.findingCount}건` : "이상 없음",
-  );
+  if (summary.findingCount > 0) {
+    parts.push(`이상 ${summary.findingCount}건`);
+  } else if (summary.judgeFailedCount > 0) {
+    parts.push(`이상 0건(판정된 ${judged}건 기준)`);
+  } else {
+    parts.push("이상 없음");
+  }
   if (summary.linkErrorCount > 0) {
     parts.push(`링크오류 ${summary.linkErrorCount}건`);
   }
@@ -49,7 +61,8 @@ export function buildRunMessage(
   if (dispatch.excludedCount > 0) {
     parts.push(`예외제외 ${dispatch.excludedCount}건`);
   }
-  if (summary.status === "partial") {
+  // 판정 실패는 맨 앞 '판정 못 함'이 이미 말했다 — 수집 단계 건너뜀이 있을 때만 붙인다.
+  if (summary.collectSkippedCount > 0) {
     parts.push("일부 건너뜀");
   }
 

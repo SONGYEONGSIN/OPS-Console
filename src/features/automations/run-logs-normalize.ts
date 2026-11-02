@@ -157,7 +157,7 @@ export type RatioAuditEntry = {
     operatorName: string;
   }[];
   /** 조용히 빠지면 안 본 것을 본 줄 안다. */
-  skipped: { serviceId: number; reason: string }[];
+  skipped: { serviceId: number; reason: string; stage?: "collect" | "judge" }[];
 };
 
 export type JobRunLog =

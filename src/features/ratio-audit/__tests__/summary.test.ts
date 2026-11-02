@@ -87,6 +87,8 @@ describe("summarizeRatioAudit", () => {
       scannedCount: 231,
       findingCount: 2,
       linkErrorCount: 1,
+      judgeFailedCount: 0,
+      collectSkippedCount: 0,
       status: "ok",
     });
   });
@@ -97,6 +99,32 @@ describe("summarizeRatioAudit", () => {
       skipped: [{ serviceId: 9, reason: "진입 실패" }],
     });
     expect(s.status).toBe("partial");
+    expect(s.judgeFailedCount).toBe(0);
+  });
+
+  it("stage=judge 인 건너뜀을 판정 실패로 센다", () => {
+    const s = summarizeRatioAudit({
+      ...base,
+      skipped: [
+        { serviceId: 1, reason: "판정 실패: x", stage: "judge" },
+        { serviceId: 2, reason: "판정 실패: x", stage: "judge" },
+        { serviceId: 3, reason: "진입 실패", stage: "collect" },
+      ],
+    });
+    expect(s.judgeFailedCount).toBe(2);
+    expect(s.collectSkippedCount).toBe(1);
+    expect(s.status).toBe("partial");
+  });
+
+  it("stage 없는 옛 payload 는 reason 접두 '판정 실패'로 센다", () => {
+    const s = summarizeRatioAudit({
+      ...base,
+      skipped: [
+        { serviceId: 1, reason: "판정 실패: claude 실패(1)" },
+        { serviceId: 2, reason: "진입 실패" },
+      ],
+    });
+    expect(s.judgeFailedCount).toBe(1);
   });
 });
 

@@ -13,12 +13,17 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 
 VALID_TYPES = {"year", "schedule"}
 VALID_FIELDS = {"pre_open", "top"}
 
 # Windows 는 확장자 없는 셸 스크립트를 spawn 하지 못한다(dev-control-analyze.mjs 선례).
 CLAUDE_BIN = "claude.cmd" if sys.platform == "win32" else "claude"
+
+# 배치 판정 재시도 전 대기(초). Claude Code 자동 업데이트가 claude.exe 를 갈아 끼우는 동안
+# 호출이 전부 실패한다 — 즉시 재시도하면 같은 창 안이라 같이 죽는다(2026-09-04: 116건 중 66건).
+RETRY_WAITS_SEC = (30, 60)
 
 
 def clean_text(raw: str) -> str:
@@ -139,6 +144,18 @@ def parse_response(raw: str) -> dict[tuple[int, int], list[dict]]:
     return out
 
 
+def _decode_stderr(raw: bytes) -> str:
+    """stderr 는 UTF-8 로 먼저 엄격하게 읽고, 안 되면 cp949.
+
+    claude 자신은 UTF-8 로 쓰지만 `claude.cmd` 를 셸로 부르면 cmd.exe 가 현재 코드페이지
+    (cp949)로 "'…'은(는) 내부 또는 외부 명령…" 을 쓴다. 한 가지로 고정하면 한쪽이 깨진다.
+    """
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("cp949", errors="replace")
+
+
 def run_claude(prompt: str) -> str:
     """claude -p 호출 — 프롬프트는 stdin, 도구 차단, cwd 는 리포 밖.
 
@@ -147,18 +164,65 @@ def run_claude(prompt: str) -> str:
     """
     proc = subprocess.run(
         [CLAUDE_BIN, "-p", "--disallowedTools", "Bash Edit Write NotebookEdit Task"],
-        input=prompt,
-        capture_output=True,
-        text=True,
         # 로케일에 맡기면 스케줄러/폴러 환경(cp949)에서 프롬프트의 em dash 한 글자에
         # UnicodeEncodeError가 나 배치 판정이 통째로 실패한다(2026-08-03 재현).
-        # 판정 대상이 한국어 문구이므로 응답 디코딩도 함께 고정한다.
-        encoding="utf-8",
-        errors="replace",
+        # 그래서 텍스트 모드를 끄고 stdin 을 UTF-8 bytes 로 직접 만든다.
+        # 출력도 bytes 로 받아 직접 디코딩한다(stderr 는 cp949 일 수 있다).
+        input=prompt.encode("utf-8"),
+        capture_output=True,
         timeout=300,
         cwd=tempfile.gettempdir(),
         shell=(sys.platform == "win32"),
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"claude 실패({proc.returncode}): {proc.stderr[:300]}")
-    return proc.stdout
+        raise RuntimeError(
+            f"claude 실패({proc.returncode}): {_decode_stderr(proc.stderr)[:300]}"
+        )
+    return proc.stdout.decode("utf-8", errors="replace")
+
+
+def judge_with_retry(
+    prompt: str,
+    *,
+    call=run_claude,
+    sleep=time.sleep,
+    waits=RETRY_WAITS_SEC,
+) -> dict[tuple[int, int], list[dict]]:
+    """배치 판정 — 실패하면 잠깐 기다렸다 다시 시도하고, 끝내 안 되면 마지막 예외를 던진다.
+
+    응답 형식 오류(parse_response)도 재시도 대상이다. call/sleep 은 테스트에서 가짜를 넣는다.
+    """
+    for wait in waits:
+        try:
+            return parse_response(call(prompt))
+        except Exception as e:  # noqa: BLE001 — 아래에서 대기 후 재시도
+            print(f"[WARN] 배치 판정 실패, {wait}초 후 재시도: {e}")
+            sleep(wait)
+    return parse_response(call(prompt))
+
+
+class BatchJudge:
+    """배치 판정 + 지속 장애 차단.
+
+    업데이트 창이 아니라 claude 가 계속 죽어 있으면 배치마다 90초씩 대기가 쌓여(12배치 약
+    18분) 실행 제한에 걸린다. 한 배치가 재시도를 다 쓰고도 실패하면 뒤 배치는 대기 없이
+    1회만 시도하고, 한 번이라도 성공하면 창이 끝난 것이니 원래 대기로 돌아간다.
+    """
+
+    def __init__(self, *, call=run_claude, sleep=time.sleep, waits=RETRY_WAITS_SEC):
+        self._call = call
+        self._sleep = sleep
+        self._waits = waits
+        self._exhausted = False
+
+    def judge(self, prompt: str) -> dict[tuple[int, int], list[dict]]:
+        waits = () if self._exhausted else self._waits
+        try:
+            verdict = judge_with_retry(
+                prompt, call=self._call, sleep=self._sleep, waits=waits
+            )
+        except Exception:
+            self._exhausted = True
+            raise
+        self._exhausted = False
+        return verdict

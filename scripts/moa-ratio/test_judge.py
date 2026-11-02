@@ -188,32 +188,173 @@ class ParseTest(unittest.TestCase):
 
 
 
+def _fake_run_factory(captured, *, returncode=0, stdout=b'{"results":[]}', stderr=b""):
+    def fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured.update(kwargs)
+
+        class R:
+            pass
+
+        r = R()
+        r.returncode = returncode
+        r.stdout = stdout
+        r.stderr = stderr
+        return r
+
+    return fake_run
+
+
 class RunClaudeEncodingTest(unittest.TestCase):
-    """stdin/stdout 인코딩 고정 — 로케일(cp949)에 맡기면 프롬프트의 em dash 한 글자에
-    판정이 통째로 실패한다(2026-08-03 재현: 6배치 전부 실패 → 52건 건너뜀)."""
+    """stdin/stdout/stderr 인코딩 고정 — 로케일(cp949)에 맡기면 프롬프트의 em dash 한 글자에
+    판정이 통째로 실패한다(2026-08-03 재현: 6배치 전부 실패 → 52건 건너뜀).
 
-    def test_utf8_is_pinned_for_subprocess(self):
+    stderr 는 cmd.exe 가 쓰는 것이라 cp949 일 수 있다(2026-09-04: claude.exe 교체 중
+    "내부 또는 외부 명령…" 문장이 utf-8 로 읽혀 깨졌다). bytes 로 받아 직접 디코딩한다."""
+
+    def _run(self, **fake):
         captured = {}
-
-        def fake_run(cmd, **kwargs):
-            captured.update(kwargs)
-
-            class R:
-                returncode = 0
-                stdout = '{"results":[]}'
-                stderr = ""
-
-            return R()
-
         original = judge.subprocess.run
-        judge.subprocess.run = fake_run
+        judge.subprocess.run = _fake_run_factory(captured, **fake)
         try:
-            judge.run_claude("판정 프롬프트 — em dash 포함")
+            return captured, judge.run_claude("판정 프롬프트 — em dash 포함")
         finally:
             judge.subprocess.run = original
 
-        self.assertEqual(captured.get("encoding"), "utf-8")
-        self.assertEqual(captured.get("errors"), "replace")
+    def test_prompt_is_sent_to_stdin_as_utf8_bytes(self):
+        captured, _ = self._run()
+        self.assertEqual(captured.get("input"), "판정 프롬프트 — em dash 포함".encode("utf-8"))
+        # text 모드가 켜져 있으면 input 을 로케일로 인코딩한다 — bytes 로 받아야 한다.
+        self.assertFalse(captured.get("text"))
+        self.assertIsNone(captured.get("encoding"))
+
+    def test_stdout_is_decoded_as_utf8(self):
+        _, out = self._run(stdout='{"results":[],"메모":"한글 — 대시"}'.encode("utf-8"))
+        self.assertIn("한글 — 대시", out)
+
+    def test_cp949_stderr_keeps_korean_in_error(self):
+        msg = "'C:\\x\\claude.exe'은(는) 내부 또는 외부 명령, 실행할 수 있는 프로그램이 아닙니다.".encode("cp949")
+        original = judge.subprocess.run
+        judge.subprocess.run = _fake_run_factory({}, returncode=1, stdout=b"", stderr=msg)
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                judge.run_claude("p")
+        finally:
+            judge.subprocess.run = original
+        self.assertIn("내부 또는 외부 명령", str(ctx.exception))
+        self.assertIn("claude 실패(1)", str(ctx.exception))
+
+    def test_utf8_stderr_is_still_read_as_utf8(self):
+        original = judge.subprocess.run
+        judge.subprocess.run = _fake_run_factory(
+            {}, returncode=2, stdout=b"", stderr="인증 만료 — 다시 로그인".encode("utf-8")
+        )
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                judge.run_claude("p")
+        finally:
+            judge.subprocess.run = original
+        self.assertIn("인증 만료 — 다시 로그인", str(ctx.exception))
+
+
+class JudgeWithRetryTest(unittest.TestCase):
+    """업데이트 중인 claude.exe 는 몇 초~수십 초 못 부른다 — 즉시 재시도는 같이 실패한다."""
+
+    GOOD = '{"results":[]}'
+
+    def _call(self, outcomes):
+        calls = []
+
+        def call(prompt):
+            calls.append(prompt)
+            outcome = outcomes[len(calls) - 1]
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+        return call, calls
+
+    def test_first_try_success_never_sleeps(self):
+        call, calls = self._call([self.GOOD])
+        sleeps = []
+        out = judge.judge_with_retry("p", call=call, sleep=sleeps.append)
+        self.assertEqual(out, {})
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sleeps, [])
+
+    def test_retries_after_wait_then_succeeds(self):
+        call, calls = self._call([RuntimeError("claude 실패(1)"), self.GOOD])
+        sleeps = []
+        out = judge.judge_with_retry("p", call=call, sleep=sleeps.append)
+        self.assertEqual(out, {})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(sleeps, [30])
+
+    def test_unparsable_response_is_retried_too(self):
+        call, _ = self._call(["JSON 아님", self.GOOD])
+        sleeps = []
+        out = judge.judge_with_retry("p", call=call, sleep=sleeps.append)
+        self.assertEqual(out, {})
+        self.assertEqual(sleeps, [30])
+
+    def test_raises_last_error_after_all_attempts(self):
+        call, calls = self._call(
+            [RuntimeError("첫째"), RuntimeError("둘째"), RuntimeError("셋째")]
+        )
+        sleeps = []
+        with self.assertRaises(RuntimeError) as ctx:
+            judge.judge_with_retry("p", call=call, sleep=sleeps.append)
+        self.assertEqual(str(ctx.exception), "셋째")
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(sleeps, [30, 60])
+
+
+class BatchJudgeTest(unittest.TestCase):
+    """지속 장애에서 배치마다 90초씩 쌓이지 않게 — 한 배치가 재시도를 다 쓰고도 실패하면
+    뒤 배치는 1회만 시도하고, 한 번 성공하면 원래 대기로 돌아간다(업데이트 창이 끝난 경우)."""
+
+    GOOD = '{"results":[]}'
+
+    def _judge(self, outcomes):
+        calls, sleeps = [], []
+
+        def call(prompt):
+            calls.append(prompt)
+            outcome = outcomes[len(calls) - 1]
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+
+        return judge.BatchJudge(call=call, sleep=sleeps.append), calls, sleeps
+
+    def test_later_batches_get_single_try_after_one_exhausts_retries(self):
+        fail = RuntimeError("claude 실패(1)")
+        # 배치1: 3회 모두 실패 / 배치2: 1회만 시도(실패) / 배치3: 1회 시도(성공)
+        bj, calls, sleeps = self._judge([fail, fail, fail, fail, self.GOOD])
+        with self.assertRaises(RuntimeError):
+            bj.judge("b1")
+        with self.assertRaises(RuntimeError):
+            bj.judge("b2")
+        self.assertEqual(bj.judge("b3"), {})
+        self.assertEqual(calls, ["b1", "b1", "b1", "b2", "b3"])
+        self.assertEqual(sleeps, [30, 60])
+
+    def test_success_restores_full_waits(self):
+        fail = RuntimeError("x")
+        # 배치1 소진 → 배치2 단발 성공(복구) → 배치3 은 다시 대기하며 재시도
+        bj, calls, sleeps = self._judge([fail, fail, fail, self.GOOD, fail, self.GOOD])
+        with self.assertRaises(RuntimeError):
+            bj.judge("b1")
+        bj.judge("b2")
+        bj.judge("b3")
+        self.assertEqual(sleeps, [30, 60, 30])
+
+    def test_healthy_run_never_sleeps(self):
+        bj, calls, sleeps = self._judge([self.GOOD, self.GOOD])
+        bj.judge("b1")
+        bj.judge("b2")
+        self.assertEqual(sleeps, [])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
