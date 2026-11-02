@@ -600,6 +600,14 @@ describe("buildAdminRatioAuditHtml — 판정 실패", () => {
     expect(out).not.toContain("건너뜀");
   });
 
+  it("전량 판정 실패면 '판정된 0건 중'이 아니라 판정된 건이 없다고 적는다", () => {
+    const out = rendered(
+      buildRatioAuditHtml({ ...base, scannedCount: 3, skipped: judgeSkips(3) }),
+    );
+    expect(out).toContain("판정이 이뤄진 건이 없습니다.");
+    expect(out).not.toContain("판정된 0건 중");
+  });
+
   it("수집 단계 건너뜀만 있으면 기존 문구 그대로다", () => {
     const html = buildRatioAuditHtml({
       ...base,
