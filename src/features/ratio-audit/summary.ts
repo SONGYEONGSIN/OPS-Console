@@ -4,7 +4,7 @@ import type {
   RatioFindingItem,
   RatioLinkError,
 } from "./schemas";
-import { skippedStage } from "./skipped";
+import { groupSkipped, skippedStage } from "./skipped";
 
 /**
  * 점검 결과 집계 + Teams 메시지 HTML 조립 (순수 함수).
@@ -138,6 +138,32 @@ function noFindingText(scannedCount: number): string {
   return scannedCount === 0
     ? "<p>점검이 이뤄지지 않았습니다 — 순회 대상 0건.</p>"
     : "<p>이상 없음.</p>";
+}
+
+/**
+ * 판정 못 한 건이 있으면 '이상 없음'이 아니라 몇 건을 보고 한 말인지 밝힌다.
+ * 판정된 건이 하나도 없으면 '0건 중 이상 없음'이 아니라 그 사실을 적는다.
+ */
+function judgedNoFindingText(judgedCount: number): string {
+  return judgedCount === 0
+    ? "<p>판정이 이뤄진 건이 없습니다.</p>"
+    : `<p>판정된 ${judgedCount}건 중 이상 없음.</p>`;
+}
+
+/** 판정 실패 단락 — 대표 사유는 가장 큰 묶음, 나머지는 종류 수로 줄인다. */
+function judgeFailedBlock(input: RatioAuditIngest, failedCount: number): string {
+  if (failedCount === 0) return "";
+  const groups = groupSkipped(input.skipped).filter((g) => g.stage === "judge");
+  const top = groups.reduce((a, b) =>
+    b.serviceIds.length > a.serviceIds.length ? b : a,
+  );
+  const rest = groups.length - 1;
+  const reason =
+    `사유: ${escapeHtml(top.reason)}` + (rest > 0 ? ` 외 사유 ${rest}종` : "");
+  return (
+    `<p><b>판정 못 함 ${failedCount}건 — 이 건들은 이상 여부를 모릅니다. ` +
+    `다시 실행해 주세요.</b><br>${reason}</p>`
+  );
 }
 
 const BRAND_PREFIX = "<b>[운영부 상황실]</b>";
@@ -344,16 +370,22 @@ export function buildAdminRatioAuditHtml(args: {
         .join(", ") +
       `</p>`
     : "";
-  const skipped = args.input.skipped.length
-    ? `<p>건너뜀 ${args.input.skipped.length}건</p>`
+  // 판정 실패는 위 단락이 이미 말했다 — 수집 단계 건너뜀만 센다.
+  const skipped = s.collectSkippedCount
+    ? `<p>건너뜀 ${s.collectSkippedCount}건</p>`
     : "";
+  const judgeFailed = judgeFailedBlock(args.input, s.judgeFailedCount);
   const noFinding =
     s.findingCount === 0 && s.linkErrorCount === 0
-      ? noFindingText(s.scannedCount)
+      ? s.judgeFailedCount > 0
+        ? judgedNoFindingText(
+            Math.max(0, s.scannedCount - s.judgeFailedCount),
+          )
+        : noFindingText(s.scannedCount)
       : "";
 
   return (
-    `${header}${dispatch}${unassigned}${noFinding}${links}${skipped}` +
+    `${header}${judgeFailed}${dispatch}${unassigned}${noFinding}${links}${skipped}` +
     footerHtml()
   );
 }

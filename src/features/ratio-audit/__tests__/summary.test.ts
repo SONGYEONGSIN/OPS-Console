@@ -564,3 +564,129 @@ describe("페이지 점검(링크 404) 메시지", () => {
     expect(html).toContain("<th>담당</th>");
   });
 });
+
+describe("buildAdminRatioAuditHtml — 판정 실패", () => {
+  const judgeSkips = (count: number, reason = "판정 실패: claude 응답 없음") =>
+    Array.from({ length: count }, (_, i) => ({
+      serviceId: 1000 + i,
+      reason,
+      stage: "judge" as const,
+    }));
+
+  // 2026-09-04: 116건 중 66건이 판정 실패였는데 '이상 없음'으로 적혔다.
+  const sept4: RatioAuditIngest = {
+    ...base,
+    scannedCount: 116,
+    skipped: judgeSkips(66),
+  };
+
+  it("판정 실패가 있으면 헤더 바로 다음에 '판정 못 함 N건'을 눈에 띄게 적는다", () => {
+    const html = buildRatioAuditHtml(sept4);
+    expect(html).toContain(
+      "<b>판정 못 함 66건 — 이 건들은 이상 여부를 모릅니다. 다시 실행해 주세요.</b>",
+    );
+    const header = html.indexOf("순회 116");
+    expect(header).toBeGreaterThanOrEqual(0);
+    expect(html.indexOf("판정 못 함 66건")).toBeGreaterThan(header);
+    expect(html.indexOf("판정 못 함 66건")).toBeLessThan(html.indexOf("개인 채팅 발송"));
+    expect(rendered(html)).toContain("판정 실패: claude 응답 없음");
+  });
+
+  it("이상 0건이어도 '이상 없음.'이 아니라 판정된 수 기준으로 적고, 건너뜀 줄은 없다", () => {
+    const out = rendered(buildRatioAuditHtml(sept4));
+    expect(out).toContain("판정된 50건 중 이상 없음");
+    expect(out).not.toContain("이상 없음.\n");
+    expect(out).not.toMatch(/(^|\n)이상 없음\./);
+    expect(out).not.toContain("건너뜀");
+  });
+
+  it("수집 단계 건너뜀만 있으면 기존 문구 그대로다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      skipped: [{ serviceId: 9, reason: "진입 실패", stage: "collect" }],
+    });
+    expect(html).toContain("<p>이상 없음.</p>");
+    expect(html).toContain("건너뜀 1건");
+    expect(html).not.toContain("판정 못 함");
+  });
+
+  it("둘 다 있으면 건너뜀은 수집 건수만 센다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      scannedCount: 20,
+      skipped: [
+        ...judgeSkips(3),
+        { serviceId: 9, reason: "진입 실패", stage: "collect" },
+        { serviceId: 10, reason: "진입 실패", stage: "collect" },
+      ],
+    });
+    expect(html).toContain("판정 못 함 3건");
+    expect(html).toContain("건너뜀 2건");
+    expect(html).not.toContain("건너뜀 5건");
+    expect(rendered(html)).toContain("판정된 17건 중 이상 없음");
+  });
+
+  it("stage 없는 옛 형태의 '판정 실패: …' 사유도 판정 실패로 본다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      scannedCount: 10,
+      skipped: [{ serviceId: 1, reason: "판정 실패: 타임아웃" }],
+    });
+    expect(html).toContain("판정 못 함 1건");
+    expect(html).not.toContain("건너뜀");
+  });
+
+  it("묶음이 여럿이면 가장 큰 사유 하나와 '외 사유 N종'을 적는다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      scannedCount: 30,
+      skipped: [
+        ...judgeSkips(1, "판정 실패: 작은 사유"),
+        ...judgeSkips(5, "판정 실패: 큰 사유"),
+        ...judgeSkips(2, "판정 실패: 중간 사유"),
+      ],
+    });
+    expect(html).toContain("판정 실패: 큰 사유");
+    expect(html).not.toContain("작은 사유");
+    expect(html).not.toContain("중간 사유");
+    expect(html).toContain("외 사유 2종");
+  });
+
+  it("사유는 HTML 이스케이프한다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      scannedCount: 5,
+      skipped: judgeSkips(1, "판정 실패: <script>&</script>"),
+    });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;&amp;&lt;/script&gt;");
+  });
+
+  it("이상이 있으면 noFinding 문구 없이 이상 표와 판정 못 함을 함께 낸다", () => {
+    const html = buildRatioAuditHtml({
+      ...base,
+      scannedCount: 10,
+      findings: [finding(1, "가대")],
+      skipped: judgeSkips(2),
+    });
+    expect(html).toContain("판정 못 함 2건");
+    expect(rendered(html)).not.toContain("이상 없음");
+  });
+
+  it("판정 실패가 없으면 판정 못 함 단락이 없다", () => {
+    const html = buildRatioAuditHtml(base);
+    expect(html).not.toContain("판정 못 함");
+    expect(html).toContain("<p>이상 없음.</p>");
+  });
+
+  it("페이지 점검(판정 없음)은 동작이 그대로다", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, kind: "page", scannedCount: 40 },
+      unassigned: [],
+      sentCount: 0,
+      failed: [],
+    });
+    expect(html).toContain("<p>이상 없음.</p>");
+    expect(html).not.toContain("판정");
+  });
+});
