@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { NoticeKind, NoticeRow, Recovery } from "./types";
+import { STALE_SENDING_MINUTES, type NoticeKind, type NoticeRow, type Recovery } from "./types";
 
 const TABLE = "sms_sender_request_notices";
 const ERROR_MAX = 500;
@@ -45,20 +45,21 @@ export async function updateLastStatus(
   }
 }
 
-// 여전히 sending 인 칸만 되돌린다 — 그 사이 다른 실행이 끝냈으면 건드리지 않는다.
+// 여전히 sending 이고 잡은 지 STALE 분이 지난 칸만 되돌린다 — 겹친 다른 실행이
+// 방금 새로 잡은 칸(claimed_at 이 최근)을 낡은 판정으로 덮어쓰지 않도록.
 export async function applyRecoveries(
   db: SupabaseClient,
   recoveries: Recovery[],
+  now: Date,
 ): Promise<void> {
+  const cutoff = new Date(now.getTime() - STALE_SENDING_MINUTES * 60_000).toISOString();
   for (const r of recoveries) {
     const { error } = await db
       .from(TABLE)
-      .update({
-        [`${r.kind}_state`]: r.state,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ [`${r.kind}_state`]: r.state, updated_at: now.toISOString() })
       .eq("item_id", r.item_id)
-      .eq(`${r.kind}_state`, "sending");
+      .eq(`${r.kind}_state`, "sending")
+      .lt(`${r.kind}_claimed_at`, cutoff);
     assertOk(error, "잡힌 칸 회수 실패");
   }
 }
@@ -97,7 +98,7 @@ export async function finishNotice(
     error?: string;
     now: Date;
   },
-): Promise<void> {
+): Promise<boolean> {
   const sentLike = result.state === "sent" || result.state === "dry_run";
   const payload: Record<string, unknown> = {
     [`${kind}_state`]: result.state,
@@ -106,14 +107,17 @@ export async function finishNotice(
   if (sentLike) {
     payload[`${kind}_sent_at`] = result.now.toISOString();
     payload[`${kind}_message_id`] = result.messageId ?? null;
+    payload[`${kind}_error`] = null;
   }
   if (result.error !== undefined) {
     payload[`${kind}_error`] = result.error.slice(0, ERROR_MAX);
   }
-  const { error } = await db
+  const { data, error } = await db
     .from(TABLE)
     .update(payload)
     .eq("item_id", itemId)
-    .eq(`${kind}_state`, "sending");
+    .eq(`${kind}_state`, "sending")
+    .select("item_id");
   assertOk(error, "알림 결과 기록 실패");
+  return (data ?? []).length === 1;
 }

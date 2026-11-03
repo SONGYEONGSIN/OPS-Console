@@ -62,41 +62,26 @@ const row: NoticeRow = {
 };
 
 describe("마이그레이션", () => {
+  const body = (/create table[^(]*\(([\s\S]*)\)\s*;/i.exec(sql)?.[1] ?? "").replace(/\s+/g, " ");
   it("테이블·PK·RLS, 정책 없음", () => {
-    expect(sql).toContain(
-      "create table if not exists public.sms_sender_request_notices",
-    );
-    expect(sql).toContain("item_id text primary key");
+    expect(sql).toContain("create table if not exists public.sms_sender_request_notices");
+    expect(body).toContain("item_id text primary key");
     expect(sql).toContain("enable row level security");
     expect(sql).not.toMatch(/create policy/i);
   });
-  it("상태 check 에 6개 값, kind 별 컬럼", () => {
-    for (const v of [
-      "pending",
-      "sending",
-      "sent",
-      "dry_run",
-      "seeded",
-      "failed",
-    ]) {
-      expect(sql).toContain(`'${v}'`);
-    }
+  it("kind 별 상태 check 전체 목록과 컬럼", () => {
     for (const k of ["new", "done"]) {
-      for (const c of [
-        "state",
-        "attempts",
-        "claimed_at",
-        "sent_at",
-        "message_id",
-        "error",
-      ]) {
-        expect(sql).toContain(`${k}_${c} `);
+      expect(body).toContain(
+        `check (${k}_state in ('pending','sending','sent','dry_run','seeded','failed'))`,
+      );
+      for (const c of ["state", "attempts", "claimed_at", "sent_at", "message_id", "error"]) {
+        expect(body).toContain(`${k}_${c} `);
       }
     }
   });
   it("신청자 정보 컬럼이 없다", () => {
-    expect(sql).not.toMatch(/applicant/i);
-    expect(sql).not.toMatch(/email/i);
+    expect(body).not.toMatch(/applicant/i);
+    expect(body).not.toMatch(/email/i);
   });
 });
 
@@ -149,7 +134,12 @@ describe("updateLastStatus", () => {
 describe("applyRecoveries", () => {
   it("여전히 sending 인 칸만 갱신", async () => {
     const { db, calls } = dbWith({});
-    await applyRecoveries(db, [{ item_id: "1", kind: "new", state: "failed" }]);
+    const now = new Date("2026-11-03T01:00:00Z");
+    await applyRecoveries(db, [{ item_id: "1", kind: "new", state: "failed" }], now);
+    expect(calls.filter((c) => c.method === "lt").map((c) => c.args)).toContainEqual([
+      "new_claimed_at",
+      "2026-11-03T00:30:00.000Z",
+    ]);
     expect(eqs(calls)).toContainEqual(["item_id", "1"]);
     expect(eqs(calls)).toContainEqual(["new_state", "sending"]);
     expect(updatePayload(calls)).toEqual(
@@ -166,6 +156,8 @@ describe("claimNotice", () => {
     expect(eqs(calls)).toContainEqual(["item_id", "1"]);
     expect(eqs(calls)).toContainEqual(["done_state", "pending"]);
     expect(eqs(calls)).toContainEqual(["done_attempts", 2]);
+    const m = calls.map((c) => c.method);
+    expect(m.indexOf("select")).toBeGreaterThan(m.indexOf("update"));
     expect(updatePayload(calls)).toMatchObject({
       done_state: "sending",
       done_attempts: 3,
@@ -184,17 +176,25 @@ describe("claimNotice", () => {
 
 describe("finishNotice", () => {
   const now = new Date("2026-11-03T00:00:00Z");
+  it("0행이면 false (잡힌 칸을 잃음)", async () => {
+    const { db } = dbWith({ data: [] });
+    await expect(finishNotice(db, "1", "new", { state: "sent", now })).resolves.toBe(false);
+  });
   it("sent 이면 sent_at·message_id", async () => {
-    const { db, calls } = dbWith({});
-    await finishNotice(db, "1", "new", { state: "sent", messageId: "m", now });
+    const { db, calls } = dbWith({ data: [{ item_id: "1" }] });
+    const ok = await finishNotice(db, "1", "new", { state: "sent", messageId: "m", now });
+    expect(ok).toBe(true);
+    const m = calls.map((c) => c.method);
+    expect(m.indexOf("select")).toBeGreaterThan(m.indexOf("update"));
     expect(updatePayload(calls)).toMatchObject({
+      new_error: null,
       new_state: "sent",
       new_sent_at: now.toISOString(),
       new_message_id: "m",
     });
   });
   it("오류는 500자로 자르고 sending 칸만 갱신", async () => {
-    const { db, calls } = dbWith({});
+    const { db, calls } = dbWith({ data: [{ item_id: "1" }] });
     await finishNotice(db, "1", "done", {
       state: "failed",
       error: "e".repeat(900),
