@@ -11,12 +11,19 @@ import { parsePettyCashSheet, type PettyCashSheet } from "./parse";
  * 고치기 때문에, 복제해 두면 어느 쪽이 맞는지 알 수 없게 된다.
  */
 
-/** KST 기준 올해. 시트 이름이 곧 연도다. */
+/**
+ * KST 기준 회계연도. 시트가 4월에 시작해 이듬해 3월에 끝나므로(`2025` 시트가
+ * 2026-03-26 까지) 1~3월은 전년도 시트다 — 달력 연도로 고르면 없는 시트를 찾는다.
+ */
 export function currentSheetName(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year: "numeric",
-  }).format(now);
+    month: "numeric",
+  }).formatToParts(now);
+  const year = Number(parts.find((p) => p.type === "year")?.value);
+  const month = Number(parts.find((p) => p.type === "month")?.value);
+  return String(month >= 4 ? year : year - 1);
 }
 
 export const fetchPettyCash = cache(async function fetchPettyCash(

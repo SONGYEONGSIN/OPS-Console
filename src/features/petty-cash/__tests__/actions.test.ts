@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const state = {
   me: null as { email: string; permission: string } | null,
-  sheet: null as { entries: unknown[]; balance: number | null; totalSpent: number } | null,
+  sheet: null as {
+    entries: unknown[];
+    balance: number | null;
+    totalSpent: number;
+    balanceCell?: { row: number; text: string } | null;
+  } | null,
   patched: [] as { url: string; body: unknown }[],
   inserted: [] as string[],
   // 헤더 + 충전 + 사용 두 줄. 실제 시트 모양을 줄여 옮긴 것.
@@ -110,6 +115,23 @@ describe("appendSpend", () => {
   it("잔액을 못 읽어도 쓰지 않는다", async () => {
     state.sheet = { entries: [], balance: null, totalSpent: 0 };
     expect((await appendSpend(SPEND)).ok).toBe(false);
+    expect(state.patched).toHaveLength(0);
+  });
+
+  // 2026-10-21 사람이 C97 을 비운 뒤 2주 동안 '현재 잔액을 읽지 못했습니다' 만 떴다.
+  // 어느 칸인지 말했다면 그날 고쳤다.
+  it("잔액을 못 읽으면 어느 칸이 비었는지 말한다 — 그래야 엑셀에서 고친다", async () => {
+    state.sheet = {
+      entries: [],
+      balance: null,
+      totalSpent: 0,
+      balanceCell: { row: 97, text: "" },
+    };
+    const r = await appendSpend(SPEND);
+    expect(r).toEqual({
+      ok: false,
+      error: "현재 잔액을 읽지 못했습니다 — '2026' 시트 97행 잔액(C) 칸이 비어 있습니다",
+    });
     expect(state.patched).toHaveLength(0);
   });
 

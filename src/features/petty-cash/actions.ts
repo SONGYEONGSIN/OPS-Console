@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import { fetchPettyCash, currentSheetName } from "./queries";
+import { unreadableBalanceMessage } from "./parse";
 import {
   buildSpendNumberFormat,
   buildSpendRow,
@@ -40,11 +41,17 @@ export async function appendSpend(input: SpendInput): Promise<AppendResult> {
     return { ok: false, error: "전도금 장부 설정이 없습니다" };
   }
 
-  // 잔액을 모르면 계산이 틀린다 — 못 읽으면 아예 쓰지 않는다.
-  const sheet = await fetchPettyCash();
+  // 잔액을 모르면 계산이 틀린다 — 못 읽으면 아예 쓰지 않는다. 읽는 시트와 쓰는
+  // 시트가 같아야 하므로 이름을 한 번만 정한다.
+  const sheetName = currentSheetName();
+  const sheet = await fetchPettyCash(sheetName);
   if (!sheet) return { ok: false, error: "전도금 장부를 읽지 못했습니다" };
   if (sheet.balance == null) {
-    return { ok: false, error: "현재 잔액을 읽지 못했습니다" };
+    // 어느 칸인지 말한다 — 그래야 사람이 엑셀에서 고친다.
+    return {
+      ok: false,
+      error: unreadableBalanceMessage(sheetName, sheet.balanceCell),
+    };
   }
 
   // 같은 건이 이미 있으면 쓰지 않는다 — 두 번 확정해도 장부는 한 줄이어야 한다.
@@ -59,7 +66,6 @@ export async function appendSpend(input: SpendInput): Promise<AppendResult> {
     return { ok: false, error: "Graph 인증에 실패했습니다" };
   }
 
-  const sheetName = currentSheetName();
   const base = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook`;
   const wsUrl = `${base}/worksheets('${encodeURIComponent(sheetName)}')`;
 

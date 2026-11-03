@@ -42,7 +42,7 @@ describe("우편물 원본 엑셀 버튼", () => {
   });
 
   it("전도금 장부를 못 읽어도 전도금대장 버튼은 남는다", () => {
-    render(<PettyCashPanel sheet={null} />);
+    render(<PettyCashPanel sheetName="2026" sheet={null} />);
     expect(screen.getByRole("link", { name: "전도금대장" })).toHaveAttribute(
       "href",
       "/dashboard/workbook/postal-petty-cash",

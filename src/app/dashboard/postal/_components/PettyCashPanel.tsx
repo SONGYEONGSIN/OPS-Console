@@ -5,7 +5,10 @@ import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListSearch } from "@/components/common/ListSearch";
 import { SpendForm } from "./SpendForm";
 import { KpiCard, type KpiCardItem } from "@/components/common/KpiCard";
-import type { PettyCashSheet } from "@/features/petty-cash/parse";
+import {
+  unreadableBalanceMessage,
+  type PettyCashSheet,
+} from "@/features/petty-cash/parse";
 
 /**
  * 전도금 장부 — `2026년도 전도금 비용.xlsx` 를 읽어 보여준다.
@@ -20,8 +23,11 @@ const LOW_BALANCE = 100_000;
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 export function PettyCashPanel({
+  sheetName,
   sheet,
 }: {
+  /** 읽은 시트 이름 — 잔액을 못 읽었을 때 어느 시트인지 말하려고 받는다. */
+  sheetName: string;
   sheet: PettyCashSheet | null;
 }) {
   const [q, setQ] = useState("");
@@ -89,10 +95,12 @@ export function PettyCashPanel({
   const lastRefillBalance =
     lastRefill && lastRefill.kind === "refill" ? lastRefill.balance : null;
 
-  const low = sheet.balance != null && sheet.balance < LOW_BALANCE;
+  const balance = sheet.balance;
+  const low = balance != null && balance < LOW_BALANCE;
 
+  // 못 읽은 잔액은 KpiCard 에 넣지 않는다 — 숫자만 그리는 카드라 0원이 된다.
   const cards: KpiCardItem[] = [
-    kpi("현재 잔액", sheet.balance ?? 0, "원"),
+    ...(balance != null ? [kpi("현재 잔액", balance, "원")] : []),
     kpi("올해 사용", sheet.totalSpent, "원"),
     kpi("사용 건수", spends.length, "건"),
     kpi("마지막 청구", lastRefillBalance ?? 0, "원"),
@@ -111,15 +119,24 @@ export function PettyCashPanel({
           비교 대상(직전 기간)이 없으므로 delta 는 전부 null 이고, 카드는
           '비교 불가'로 그린다. */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {balance == null && <UnreadableKpiCard label="현재 잔액" />}
         {cards.map((item) => (
           <KpiCard key={item.label} item={item} />
         ))}
       </div>
 
+      {/* 잔액을 못 읽으면 확정·사용내역 추가가 전부 거절된다(appendSpend 가드).
+          2026-10-21 부터 2주 동안 '현재 잔액 0원' 만 보여 아무도 몰랐다 — 늘 띄운다. */}
+      {balance == null && (
+        <p className="border border-line-soft bg-situation-bg px-3 py-2 text-xs text-vermilion">
+          {`${unreadableBalanceMessage(sheetName, sheet.balanceCell)}. 이 상태에서는 확정·사용내역 추가가 대장에 적히지 않습니다. 엑셀에서 잔액 칸을 고쳐 주세요.`}
+        </p>
+      )}
+
       {/* 잔액 경고는 표 위에 — 카드가 '비교 불가'만 그려 눈에 안 띈다. */}
       {low && (
         <p className="border border-line-soft bg-situation-bg px-3 py-2 text-xs text-vermilion">
-          잔액이 {won(sheet.balance ?? 0)}입니다 — 전도금 청구를 준비하세요
+          잔액이 {won(balance)}입니다 — 전도금 청구를 준비하세요
         </p>
       )}
 
@@ -229,6 +246,21 @@ export function PettyCashPanel({
           recent={recentSpends}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * 못 읽은 값 카드 — KpiCard 와 같은 틀에 숫자 대신 '읽지 못함' 을 넣는다.
+ *
+ * KpiCard 는 숫자만 그린다. 거기에 0 을 넣으면 '돈이 없다' 로 읽히지 '장부가 깨졌다' 로
+ * 읽히지 않는다. 단위(원)도 붙이지 않는다.
+ */
+function UnreadableKpiCard({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4">
+      <div className="text-xs font-medium text-muted">{label}</div>
+      <span className="text-2xl font-bold text-vermilion">읽지 못함</span>
     </div>
   );
 }

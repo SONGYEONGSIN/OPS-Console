@@ -292,6 +292,10 @@ const LEDGER_LABEL = { ledger: "등기대장", pettyCash: "전도금대장" } as
  * 그래서 여기서 말해주지 않으면 사람은 엑셀을 열어봐야 알게 된다.
  *
  * 둘 다 적힌 흔한 경우는 한 줄로 줄인다 — 늘 길면 실패했을 때도 안 읽힌다.
+ *
+ * **전도금 실패는 작은 글씨로 두지 않는다.** 2026-10-21 부터 2주 동안 확정마다 전도금
+ * 쓰기가 거절됐는데 신호가 버튼 옆 작은 빨간 글씨뿐이라 아무도 몰랐다. 확정은 이미
+ * 끝났으니 사람이 직접 넣어야 하고, 그 할 일까지 한 줄을 차지하는 경고로 말한다.
  */
 function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
   const entries = [
@@ -307,10 +311,24 @@ function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
     );
   }
 
+  const pettyFailed = outcome.pettyCash.status === "failed";
+
   return (
-    <span className="flex flex-col gap-0.5">
+    <span className={`flex flex-col gap-0.5 ${pettyFailed ? "basis-full" : ""}`}>
       {entries.map(([key, o]) => {
         if (o.status === "written") return null;
+        if (key === "pettyCash" && o.status === "failed") {
+          return (
+            <span
+              key={key}
+              role="alert"
+              className="block basis-full border border-line-soft bg-situation-bg px-3 py-2 text-xs text-vermilion"
+            >
+              <span className="block">{`전도금 대장에 적히지 않았습니다: ${o.error}`}</span>
+              <span className="block">전도금 탭 [사용내역 추가]로 직접 넣어 주세요.</span>
+            </span>
+          );
+        }
         const label = LEDGER_LABEL[key];
         // 실패는 조치가 필요하고 건너뜀은 대개 정상이라 톤을 나눈다.
         return (

@@ -230,3 +230,75 @@ describe("ConfirmButton — 대장 반영 결과", () => {
     });
   });
 });
+
+/**
+ * 전도금 대장 실패는 버튼 옆 작은 글씨로 두지 않는다.
+ *
+ * 2026-10-21 이후 2주 동안 확정마다 전도금 쓰기가 거절됐는데, 신호는 버튼 옆에 잠깐 뜬
+ * 작은 빨간 글씨뿐이라 아무도 몰랐다. 확정은 성공으로 끝나니 사람이 직접 넣어야 한다.
+ */
+describe("ConfirmButton — 전도금 대장 실패 안내", () => {
+  const REASON = "현재 잔액을 읽지 못했습니다 — '2026' 시트 97행 잔액(C) 칸이 비어 있습니다";
+
+  const press = async () => {
+    render(
+      <ConfirmButton receiptId={RID} acceptedAt="2026-08-21 15:44" rows={done.rows} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "확정" }));
+  };
+
+  beforeEach(() => {
+    confirmResult.value = {
+      ok: true,
+      outcome: {
+        ledger: { status: "written" },
+        pettyCash: { status: "failed", error: REASON },
+      },
+    };
+  });
+
+  it("사유와 할 일을 함께 말한다", async () => {
+    await press();
+    const note = await screen.findByRole("alert");
+    expect(note.textContent).toContain(`전도금 대장에 적히지 않았습니다: ${REASON}`);
+    expect(note.textContent).toContain("전도금 탭 [사용내역 추가]로 직접 넣어 주세요.");
+  });
+
+  it("작은 인라인 글씨가 아니라 한 줄을 차지하는 경고 블록이다", async () => {
+    await press();
+    const note = await screen.findByRole("alert");
+    const cls = note.className.split(/\s+/);
+    for (const c of ["block", "basis-full", "border", "border-line-soft", "bg-situation-bg", "text-vermilion"]) {
+      expect(cls).toContain(c);
+    }
+    expect(cls).not.toContain("text-2xs");
+  });
+
+  it("등기대장 결과 표시는 그대로다 — 실패면 작은 줄로 함께 남는다", async () => {
+    confirmResult.value = {
+      ok: true,
+      outcome: {
+        ledger: { status: "failed", error: "시트 잠김" },
+        pettyCash: { status: "failed", error: REASON },
+      },
+    };
+    await press();
+    const ledger = await screen.findByText(/등기대장 — 시트 잠김/);
+    expect(ledger.className).toMatch(/text-2xs/);
+    expect(ledger.className).toMatch(/vermilion/);
+    expect(screen.getByRole("alert").textContent).toContain(REASON);
+  });
+
+  it("전도금이 건너뜀이면 경고 블록을 띄우지 않는다 — 대개 정상이다", async () => {
+    confirmResult.value = {
+      ok: true,
+      outcome: {
+        ledger: { status: "written" },
+        pettyCash: { status: "skipped", reason: "합계가 0원이라 적지 않았습니다" },
+      },
+    };
+    await press();
+    await screen.findByText(/전도금대장 — 합계가 0원이라 적지 않았습니다/);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
