@@ -32,13 +32,14 @@ export async function insertNoticeRows(
 export async function updateLastStatus(
   db: SupabaseClient,
   updates: { item_id: string; last_status: string }[],
+  now: Date,
 ): Promise<void> {
   for (const u of updates) {
     const { error } = await db
       .from(TABLE)
       .update({
         last_status: u.last_status,
-        updated_at: new Date().toISOString(),
+        updated_at: now.toISOString(),
       })
       .eq("item_id", u.item_id);
     assertOk(error, "마지막 상태 갱신 실패");

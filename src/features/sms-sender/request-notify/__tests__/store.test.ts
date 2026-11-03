@@ -119,14 +119,22 @@ describe("insertNoticeRows", () => {
 describe("updateLastStatus", () => {
   it("item_id 조건으로 갱신", async () => {
     const { db, calls } = dbWith({});
-    await updateLastStatus(db, [{ item_id: "1", last_status: "완료" }]);
+    const now = new Date("2026-11-03T01:00:00Z");
+    await updateLastStatus(db, [{ item_id: "1", last_status: "완료" }], now);
     expect(eqs(calls)).toContainEqual(["item_id", "1"]);
-    expect(updatePayload(calls)).toMatchObject({ last_status: "완료" });
+    expect(updatePayload(calls)).toMatchObject({
+      last_status: "완료",
+      updated_at: "2026-11-03T01:00:00.000Z",
+    });
   });
   it("error 면 throw", async () => {
     const { db } = dbWith({ error: { message: "u" } });
     await expect(
-      updateLastStatus(db, [{ item_id: "1", last_status: "완료" }]),
+      updateLastStatus(
+        db,
+        [{ item_id: "1", last_status: "완료" }],
+        new Date("2026-11-03T01:00:00Z"),
+      ),
     ).rejects.toThrow("u");
   });
 });

@@ -40,9 +40,26 @@ type Config = {
   manager: string;
   dryRun: boolean;
 };
-type Outcome = "newSent" | "doneSent" | "failed" | "skipped";
+type Outcome =
+  | { kind: "newSent" | "doneSent" | "skipped" }
+  | { kind: "failed"; code: string };
 type FetchedItems = { data: Awaited<ReturnType<typeof fetchRequestItems>> };
-type Tally = { newSent: number; doneSent: number; failed: number };
+type Tally = {
+  newSent: number;
+  doneSent: number;
+  failed: number;
+  codes: string[];
+};
+
+const NO_APPLICANT_CODE = "신청자 메일 없음";
+const CLAIM_LOST_CODE = "claim_lost";
+const UNKNOWN_CODE = "send_failed";
+
+// sendGraphMail 의 error 는 `코드: 응답본문` 형식 — 본문(주소가 섞일 수 있다)은 버리고 코드만 쓴다.
+function errorCode(error: string): string {
+  const m = /^([a-z][a-z0-9_]{0,31}):/.exec(error);
+  return m ? m[1] : UNKNOWN_CODE;
+}
 
 function readConfig(): { config: Config } | { missing: string[] } {
   const missing = ENV_NAMES.filter((n) => !process.env[n]);
@@ -70,7 +87,12 @@ async function fetchItems(
 }
 
 function successOutcome(kind: DueNotice["kind"]): Outcome {
-  return kind === "new" ? "newSent" : "doneSent";
+  return { kind: kind === "new" ? "newSent" : "doneSent" };
+}
+
+function failed(id: string, code: string): Outcome {
+  console.error(`[sms-request-notify] item ${id} failed: ${code}`);
+  return { kind: "failed", code };
 }
 
 async function deliver(
@@ -82,19 +104,19 @@ async function deliver(
   const id = due.item.id;
   if (due.kind === "done" && due.item.applicantEmail === null) {
     if (!(await claimNotice(db, id, due.kind, due.attempts, now)))
-      return "skipped";
+      return { kind: "skipped" };
     await finishNotice(db, id, due.kind, {
       state: "failed",
-      error: "신청자 메일 없음",
+      error: NO_APPLICANT_CODE,
       now,
     });
-    return "failed";
+    return failed(id, NO_APPLICANT_CODE);
   }
   if (!(await claimNotice(db, id, due.kind, due.attempts, now)))
-    return "skipped";
+    return { kind: "skipped" };
   if (config.dryRun) {
     const ok = await finishNotice(db, id, due.kind, { state: "dry_run", now });
-    return ok ? successOutcome(due.kind) : "failed";
+    return ok ? successOutcome(due.kind) : failed(id, CLAIM_LOST_CODE);
   }
   const { subject, html } = buildRequestMail(due.kind, due.item);
   const toEmail =
@@ -111,11 +133,12 @@ async function deliver(
       messageId: res.messageId,
       now,
     });
-    return ok ? successOutcome(due.kind) : "failed";
+    return ok ? successOutcome(due.kind) : failed(id, CLAIM_LOST_CODE);
   }
+  const code = errorCode(res.error);
   const state = due.attempts + 1 >= MAX_ATTEMPTS ? "failed" : "pending";
-  await finishNotice(db, id, due.kind, { state, error: res.error, now });
-  return "failed";
+  await finishNotice(db, id, due.kind, { state, error: code, now });
+  return failed(id, code);
 }
 
 async function deliverAll(
@@ -124,11 +147,18 @@ async function deliverAll(
   config: Config,
   now: Date,
 ): Promise<Tally> {
-  let tally: Tally = { newSent: 0, doneSent: 0, failed: 0 };
+  let tally: Tally = { newSent: 0, doneSent: 0, failed: 0, codes: [] };
   for (const due of dues) {
     const outcome = await deliver(db, due, config, now);
-    if (outcome !== "skipped")
-      tally = { ...tally, [outcome]: tally[outcome] + 1 };
+    if (outcome.kind === "skipped") continue;
+    if (outcome.kind === "failed") {
+      const codes = tally.codes.includes(outcome.code)
+        ? tally.codes
+        : [...tally.codes, outcome.code];
+      tally = { ...tally, failed: tally.failed + 1, codes };
+    } else {
+      tally = { ...tally, [outcome.kind]: tally[outcome.kind] + 1 };
+    }
   }
   return tally;
 }
@@ -143,12 +173,20 @@ function summarize(
   const base = quiet
     ? `변화 없음 (${items}행)`
     : `신규 ${tally.newSent}건 알림 · 완료 ${tally.doneSent}건 알림` +
-      (tally.failed > 0 ? ` · 실패 ${tally.failed}건` : "") +
+      (tally.failed > 0
+        ? ` · 실패 ${tally.failed}건 (${tally.codes.join(", ")})`
+        : "") +
       (malformed > 0 ? ` · 형식이 맞지 않는 행 ${malformed}건` : "");
   return {
     ok: tally.failed === 0 && malformed === 0,
     message: dryRun ? `[DRY-RUN] ${base}` : base,
-    details: { items, ...tally, malformed },
+    details: {
+      items,
+      newSent: tally.newSent,
+      doneSent: tally.doneSent,
+      failed: tally.failed,
+      malformed,
+    },
   };
 }
 
@@ -161,15 +199,19 @@ async function runWithItems(
   const rows = await loadNoticeRows(db);
   if (rows.length === 0) {
     await insertNoticeRows(db, seedRows(items.items));
+    const { malformed } = items;
     return {
-      ok: true,
-      message: `처음 실행 — 기존 ${items.items.length}행 적재, 발송 없음`,
+      ok: malformed === 0,
+      message:
+        `처음 실행 — 기존 ${items.items.length}행 적재, 발송 없음` +
+        (malformed > 0 ? ` · 형식이 맞지 않는 행 ${malformed}건` : ""),
+      details: { items: items.items.length, malformed },
     };
   }
   const plan = reconcile(items.items, rows, now);
   await applyRecoveries(db, plan.recoveries, now);
   await insertNoticeRows(db, plan.inserts);
-  await updateLastStatus(db, plan.statusUpdates);
+  await updateLastStatus(db, plan.statusUpdates, now);
   const tally = await deliverAll(db, plan.due, config, now);
   return summarize(tally, items.items.length, items.malformed, config.dryRun);
 }

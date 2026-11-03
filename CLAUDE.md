@@ -239,6 +239,8 @@ E2E 운영 메모:
 | `automation-digest` | 매일 11:00 (cron-job.org) | 그날 전체 잡의 실행 결과 + **미실행 감지**를 본인 Teams 노트 채팅으로 보고 | `automation_runs` |
 | `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]). 처음 실행은 적재만 | `sms_sender_request_notices` |
 
+`sms-sender-request-notify` 필요 env: `SHAREPOINT_SMS_REQUEST_SITE_ID` / `SHAREPOINT_SMS_REQUEST_LIST_ID` / `SMS_SENDER_REQUEST_MANAGER_EMAIL`.
+
 `sms-sender-request-notify` 에서 `failed` 로 굳은 알림 재발송은 그 행의 `{new|done}_state='pending', {new|done}_attempts=0` 으로 되돌린다(화면 없음).
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.

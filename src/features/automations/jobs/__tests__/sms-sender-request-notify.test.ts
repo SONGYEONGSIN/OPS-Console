@@ -114,6 +114,52 @@ describe("runSmsSenderRequestNotify", () => {
     expect(sent).not.toHaveBeenCalled();
   });
 
+  it("seed 실행에서도 malformed 가 있으면 ok:false, 메시지에 건수", async () => {
+    s.loadNoticeRows.mockResolvedValue([]);
+    listReturns([item()], 3);
+    const r = await runSmsSenderRequestNotify();
+    expect(r.ok).toBe(false);
+    expect(r.message).toBe(
+      "처음 실행 — 기존 1행 적재, 발송 없음 · 형식이 맞지 않는 행 3건",
+    );
+    expect(r.details?.malformed).toBe(3);
+  });
+
+  it("발송 실패 사유 코드만 메시지에 싣고 본문은 싣지 않는다", async () => {
+    sent.mockResolvedValue({
+      ok: false,
+      error: "graph_403: ErrorAccessDenied body-text",
+    });
+    listReturns([item()]);
+    const r = await runSmsSenderRequestNotify();
+    expect(r.message).toContain("실패 1건 (graph_403)");
+    expect(r.message).not.toContain("body-text");
+    expect(s.finishNotice).toHaveBeenCalledWith(
+      expect.anything(),
+      "1",
+      "new",
+      expect.objectContaining({ error: "graph_403" }),
+    );
+  });
+
+  it("실패 코드는 중복 없이 쉼표로 잇는다", async () => {
+    sent
+      .mockResolvedValueOnce({ ok: false, error: "graph_403: a" })
+      .mockResolvedValueOnce({ ok: false, error: "graph_403: b" })
+      .mockResolvedValueOnce({ ok: false, error: "rate_limited: c" });
+    s.loadNoticeRows.mockResolvedValue([row({ item_id: "other" })]);
+    listReturns([item({ id: "1" }), item({ id: "2" }), item({ id: "3" })]);
+    const r = await runSmsSenderRequestNotify();
+    expect(r.message).toContain("실패 3건 (graph_403, rate_limited)");
+  });
+
+  it("finishNotice 가 false 면 claim_lost 코드", async () => {
+    s.finishNotice.mockResolvedValue(false);
+    listReturns([item()]);
+    const r = await runSmsSenderRequestNotify();
+    expect(r.message).toContain("(claim_lost)");
+  });
+
   it("새 행 → 매니저 메일함에서 매니저에게", async () => {
     listReturns([item()]);
     const r = await runSmsSenderRequestNotify();
@@ -162,6 +208,7 @@ describe("runSmsSenderRequestNotify", () => {
       "done",
       expect.objectContaining({ state: "failed", error: "신청자 메일 없음" }),
     );
+    expect(r.message).toContain("(신청자 메일 없음)");
     expect(r.ok).toBe(false);
     expect(r.details?.failed).toBe(1);
   });
