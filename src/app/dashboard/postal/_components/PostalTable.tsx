@@ -5,7 +5,8 @@ import { useMemo, useState, useTransition } from "react";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ModalShell } from "@/components/common/ModalShell";
 import type { ReceiptCard, ExtractState } from "@/features/postal/queries";
-import { ReceiptReview, ConfirmButton } from "./ReceiptReview";
+import { ReceiptReview, ConfirmButton, OutcomeNote } from "./ReceiptReview";
+import type { ConfirmOutcome } from "@/features/postal/extract-actions";
 import { formatAcceptedAt } from "@/features/postal/accepted-at";
 import type { ReviewRow } from "@/features/postal/review-rows";
 import { deleteReceipt } from "@/features/postal/actions";
@@ -270,6 +271,13 @@ function RowPair({
   // 검토표에서 고친 값. 확정 버튼이 영수증 행에 있어(삭제와 나란히) 여기서 들고
   // 검토표와 주고받는다 — 두 곳이 같은 값을 봐야 고친 대로 확정된다.
   const [reviewRows, setReviewRows] = useState<ReviewRow[]>(extract.rows);
+  // 확정 결과. 확정 버튼은 확정되면 사라지므로 행이 들고 있는다 — 버튼이 들고 있으면
+  // 서버가 확정된 행으로 다시 그리는 순간 결과도 같이 지워진다(2026-10-21~11-03).
+  const [outcome, setOutcome] = useState<ConfirmOutcome | null>(null);
+  const needsNotice =
+    outcome != null &&
+    (outcome.ledger.status !== "written" ||
+      outcome.pettyCash.status !== "written");
 
   return (
     <>
@@ -325,6 +333,7 @@ function RowPair({
                   receiptId={receipt.id}
                   acceptedAt={extract.acceptedAt}
                   rows={reviewRows}
+                  onOutcome={setOutcome}
                 />
               )}
               <DeleteButton receipt={receipt} />
@@ -332,6 +341,25 @@ function RowPair({
           )}
         </td>
       </tr>
+      {/* 대장에 안 적힌 것이 있으면 표 너비 한 줄로 남긴다 — 확정 여부와 상관없이.
+          둘 다 적혔으면 '확정' 배지가 이미 말하므로 줄을 만들지 않는다. */}
+      {needsNotice && (
+        <tr className="border-b border-line-soft">
+          <td colSpan={8} className="px-3 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <OutcomeNote outcome={outcome} />
+              <button
+                type="button"
+                aria-label="확정 결과 닫기"
+                onClick={() => setOutcome(null)}
+                className="shrink-0 cursor-pointer border border-line-soft px-2 py-0.5 text-xs text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
+              >
+                닫기
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
       {/* 확정하면 검토 표를 접는다.
           검토는 '고칠 것이 있나' 보는 자리다. 확정하면 그 일은 끝났고 내용은
           등기대장 탭에 남는다. 그대로 펼쳐 두면 아직 할 일이 있는 것처럼 보이고,

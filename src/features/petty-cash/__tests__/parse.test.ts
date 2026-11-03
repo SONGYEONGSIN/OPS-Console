@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePettyCashSheet, parseAmount } from "../parse";
+import { parsePettyCashSheet, parseAmount, unreadableBalanceMessage } from "../parse";
 
 /** 실제 시트에서 가져온 모양 — 쉼표·공백이 섞여 있고 숫자만 있는 것도 있다. */
 const SHEET = [
@@ -126,5 +126,67 @@ describe("날짜 — 엑셀 일련번호", () => {
   it("날짜가 아닌 숫자 문자열까지 바꾸지 않는다 — 빈 칸은 여전히 빈 칸이다", () => {
     const sheet = parsePettyCashSheet(row(""));
     expect(sheet.entries.filter((e) => e.kind === "spend")).toHaveLength(0);
+  });
+});
+
+/**
+ * 현재 잔액을 어느 칸에서 읽었는지 — 못 읽었을 때 어디를 고칠지 말하려면 필요하다.
+ *
+ * 2026-10-21 사람이 청구 행을 끼워 넣으며 맨 아래 사용 행의 잔액(C) 칸이 비었고,
+ * 그 뒤 2주 동안 '현재 잔액을 읽지 못했습니다' 만 반복됐다. 어느 칸인지 말했다면
+ * 그날 고쳤다.
+ */
+describe("balanceCell — 현재 잔액을 읽은 칸", () => {
+  it("맨 아래 항목의 시트 행 번호와 C열 원문이다 — 헤더가 1행이다", () => {
+    const p = parsePettyCashSheet(SHEET);
+    expect(p.balanceCell).toEqual({ row: 7, text: " 151,020 " });
+  });
+
+  it("맨 아래 행 잔액이 비면 그 행을 가리킨다", () => {
+    const broken = parsePettyCashSheet([
+      ...SHEET,
+      ["", "", "", "2026-10-21", "우편물", "1", "4350", ""],
+    ]);
+    expect(broken.balance).toBeNull();
+    expect(broken.balanceCell).toEqual({ row: 8, text: "" });
+  });
+
+  it("빈 줄은 행 번호를 밀지 않는다 — 빈 줄 아래 항목도 제 행을 가리킨다", () => {
+    const p = parsePettyCashSheet([
+      SHEET[0],
+      ["", "", "", "", "", "", "", ""],
+      ["", "", " 496,080 ", "2026-03-27", "우편물", "1", " 3,920 ", ""],
+    ]);
+    expect(p.balanceCell?.row).toBe(3);
+  });
+
+  it("항목이 없으면 칸도 없다", () => {
+    expect(parsePettyCashSheet([]).balanceCell).toBeNull();
+  });
+});
+
+describe("unreadableBalanceMessage — 어디가 비었는지 말한다", () => {
+  it("빈 칸이면 시트·행·열을 짚는다", () => {
+    expect(unreadableBalanceMessage("2026", { row: 97, text: "" })).toBe(
+      "현재 잔액을 읽지 못했습니다 — '2026' 시트 97행 잔액(C) 칸이 비어 있습니다",
+    );
+  });
+
+  it("공백뿐이어도 빈 칸이다", () => {
+    expect(unreadableBalanceMessage("2026", { row: 97, text: "  " })).toMatch(
+      /97행 잔액\(C\) 칸이 비어 있습니다$/,
+    );
+  });
+
+  it("숫자가 아니면 그 값을 보여준다 — 행을 지우면 #REF! 가 된다", () => {
+    expect(unreadableBalanceMessage("2026", { row: 97, text: "#REF!" })).toBe(
+      "현재 잔액을 읽지 못했습니다 — '2026' 시트 97행 잔액(C) 칸이 숫자가 아닙니다(#REF!)",
+    );
+  });
+
+  it("항목이 없으면 그렇다고 말한다", () => {
+    expect(unreadableBalanceMessage("2026", null)).toBe(
+      "현재 잔액을 읽지 못했습니다 — '2026' 시트에 장부 행이 없습니다",
+    );
   });
 });
