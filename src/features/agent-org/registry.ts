@@ -145,6 +145,11 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         source: { kind: "job", jobId: "service-notice-mail" },
       },
       {
+        role: "SMS 신청",
+        agent: "sms-request-notifier",
+        source: { kind: "job", jobId: "sms-sender-request-notify" },
+      },
+      {
         role: "공지",
         agent: "notice-broadcaster",
         source: { kind: "job", jobId: "notice-teams-share" },

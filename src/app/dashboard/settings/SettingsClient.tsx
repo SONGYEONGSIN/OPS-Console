@@ -427,6 +427,28 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint SMS 신청 사이트"
+        value={
+          <>
+            <Dot ok={env.sharepoint.smsRequestSiteId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.smsRequestSiteId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
+        label="SharePoint SMS 신청 목록"
+        value={
+          <>
+            <Dot ok={env.sharepoint.smsRequestListId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.smsRequestListId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="Azure AD 테넌트"
         value={
           <>

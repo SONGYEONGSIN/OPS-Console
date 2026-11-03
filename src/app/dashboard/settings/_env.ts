@@ -28,6 +28,8 @@ export type EnvSnapshot = {
     paymentItemId: { configured: boolean; preview: string };
     smileediDriveId: { configured: boolean; preview: string };
     smileediItemId: { configured: boolean; preview: string };
+    smsRequestSiteId: { configured: boolean; preview: string };
+    smsRequestListId: { configured: boolean; preview: string };
   };
   azure: {
     tenantId: { configured: boolean; preview: string };
@@ -140,6 +142,14 @@ export function getEnvSnapshot(): EnvSnapshot {
       smileediItemId: {
         configured: Boolean(process.env.SHAREPOINT_SMILEEDI_ITEM_ID),
         preview: preview(process.env.SHAREPOINT_SMILEEDI_ITEM_ID),
+      },
+      smsRequestSiteId: {
+        configured: Boolean(process.env.SHAREPOINT_SMS_REQUEST_SITE_ID),
+        preview: preview(process.env.SHAREPOINT_SMS_REQUEST_SITE_ID),
+      },
+      smsRequestListId: {
+        configured: Boolean(process.env.SHAREPOINT_SMS_REQUEST_LIST_ID),
+        preview: preview(process.env.SHAREPOINT_SMS_REQUEST_LIST_ID),
       },
     },
     azure: {

@@ -15,6 +15,7 @@ import { runNoticeTeamsShare } from "./jobs/notice-teams-share";
 import { runTeamBriefing } from "./jobs/team-briefing";
 import { runContractCompletionSnapshot } from "./jobs/contract-completion-snapshot";
 import { runKnowledgeIndex } from "./jobs/knowledge-index";
+import { runSmsSenderRequestNotify } from "./jobs/sms-sender-request-notify";
 import { runAssignmentYearRollover } from "./jobs/assignment-year-rollover";
 import { runAssignmentUnassignedSweep } from "./jobs/assignment-unassigned-sweep";
 // 이 잡은 registry 전체를 훑어야 해서 queries → registry 순환이 생긴다. queries가
@@ -192,6 +193,18 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cadence: "hourly",
     cooldownMinutes: 5,
     run: runKnowledgeIndex,
+  },
+  {
+    id: "sms-sender-request-notify",
+    label: "SMS 발신번호 신청 알림",
+    description:
+      "Teams 목록 'SMS 발신번호 사전등록 신청'을 훑어 새 행은 담당 매니저에게, '완료'로 바뀐 행은 신청자에게 [내부관리자] 메일로 알립니다.\n보내는 메일함은 담당 매니저이고, 새 신청의 받는 사람도 담당 매니저입니다.\n처음 실행은 지금 있는 행을 적재만 하고 메일은 보내지 않습니다.",
+    // 5분마다 — cadence 는 hourly 로 둔다(5분 값이 없다). knowledge-index 와 같은 이유로
+    // 미실행 판정이 실제 주기보다 느슨해질 뿐이라 오탐이 안 난다.
+    scheduleInfo: "5분마다 (cron-job.org)",
+    cadence: "hourly",
+    cooldownMinutes: 1,
+    run: runSmsSenderRequestNotify,
   },
   {
     id: "assignment-year-rollover",
