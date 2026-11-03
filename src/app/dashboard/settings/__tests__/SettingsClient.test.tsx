@@ -39,6 +39,8 @@ const env: EnvSnapshot = {
     paymentItemId: { configured: false, preview: "" },
     smileediDriveId: { configured: false, preview: "" },
     smileediItemId: { configured: false, preview: "" },
+    smsRequestSiteId: { configured: false, preview: "" },
+    smsRequestListId: { configured: false, preview: "" },
   },
   azure: {
     tenantId: { configured: true, preview: "" },
