@@ -11,13 +11,21 @@ import { describe, expect, it } from "vitest";
  * **주석을 지우고 대조한다.** 안 지우면 *왜 그렇게 안 했는지* 적은 주석이 금지
  * 패턴에 걸려, 설명을 지워야 초록이 되는 테스트가 된다.
  */
-const SRC = readFileSync(resolve(__dirname, "../page.tsx"), "utf8")
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .replace(/(^|[^:])\/\/.*$/gm, "$1");
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+const SRC = stripComments(
+  readFileSync(resolve(__dirname, "../page.tsx"), "utf8"),
+);
+const TABS_SRC = stripComments(
+  readFileSync(resolve(__dirname, "../tabs.ts"), "utf8"),
+);
 
-/** `TABS` 배열 안의 `key`/`label` 쌍을 선언 순서대로. */
+/** `SUB_VIEWS` 배열 안의 `key`/`label` 쌍을 선언 순서대로. */
 function declaredTabs(): { key: string; label: string }[] {
-  const block = SRC.slice(SRC.indexOf("const TABS = ["));
+  const block = TABS_SRC.slice(TABS_SRC.indexOf("export const SUB_VIEWS = ["));
   const body = block.slice(0, block.indexOf("] as const;"));
   const out: { key: string; label: string }[] = [];
   const re = /key:\s*"([^"]+)"[\s\S]*?label:\s*"([^"]+)"/g;
@@ -27,7 +35,7 @@ function declaredTabs(): { key: string; label: string }[] {
 }
 
 describe("내부관리자 페이지", () => {
-  it("탭 이름·순서 — 추가 제출은 없다", () => {
+  it("서브 탭 이름·순서 — 추가 제출은 없다", () => {
     expect(declaredTabs()).toEqual([
       { key: "overview", label: "개요" },
       { key: "schools", label: "학교" },
@@ -37,8 +45,15 @@ describe("내부관리자 페이지", () => {
     expect(SRC).not.toContain("추가 제출");
   });
 
-  it("기본 탭은 학교", () =>
-    expect(SRC).toMatch(/return hit \? hit\.key : "schools"/));
+  it("기본 뷰는 학교", () =>
+    expect(TABS_SRC).toMatch(/DEFAULT_VIEW: View = "schools"/));
+
+  it("메인 탭 한 줄 + 서브 탭 한 줄, 해석은 resolveView 하나", () => {
+    expect(SRC).toMatch(/<PageTabs active=\{main\} tabs=\{MAIN_TABS\}/);
+    expect(SRC).toMatch(/<PageTabs[^>]*size="sm"[^>]*tabs=\{SUB_VIEWS\}/);
+    expect(SRC).toMatch(/resolveView\(/);
+    expect(SRC).not.toMatch(/const TABS = \[/);
+  });
 
   it('가드는 requireMenu("internal-admin") 하나', () => {
     expect(SRC).toMatch(/const slug = "internal-admin"/);

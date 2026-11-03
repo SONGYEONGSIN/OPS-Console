@@ -87,7 +87,7 @@ describe("SchoolInspector", () => {
     });
     expect(link).toHaveAttribute(
       "href",
-      `/dashboard/internal-admin?tab=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}`,
+      `/dashboard/internal-admin?tab=sms&view=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}`,
     );
     expect(link).toHaveAttribute("data-next-link");
     expect(link.className).toContain("underline");
