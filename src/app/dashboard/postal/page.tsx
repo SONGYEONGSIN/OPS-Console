@@ -4,8 +4,8 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { listReceipts, getExtractStates } from "@/features/postal/queries";
 import {
-  currentSheetName,
   fetchPettyCash,
+  resolvePettyCashSheetName,
 } from "@/features/petty-cash/queries";
 import { PageTabs } from "@/components/common/PageTabs";
 import { PettyCashPanel } from "./_components/PettyCashPanel";
@@ -42,8 +42,11 @@ export default async function PostalPage({
       ? await getExtractStates(receipts.map((r) => r.id))
       : new Map();
   // 시트 이름을 한 번만 정한다 — 읽은 시트와 화면이 말하는 시트가 같아야 한다.
-  const pettySheetName = currentSheetName();
-  const pettyCash = tab === "petty" ? await fetchPettyCash(pettySheetName) : null;
+  // 못 정하면 장부를 못 읽은 것으로 보여준다(패널의 '읽지 못했습니다').
+  const pettySheet =
+    tab === "petty" ? await resolvePettyCashSheetName() : null;
+  const pettySheetName = pettySheet?.ok ? pettySheet.name : "";
+  const pettyCash = pettySheetName ? await fetchPettyCash(pettySheetName) : null;
   // 대장이 이 탭의 주인공이다. 읽기가 실패해도 화면은 뜨게 하고 이유를 함께 넘긴다 —
   // 빈 표를 그리면 "발송이 없다"로 읽힌다.
   const ledger =

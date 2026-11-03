@@ -242,19 +242,24 @@ function Field({
  *
  * 삭제와 같은 칸에 나란히 두려고 검토표에서 뽑아냈다. 누르는 값은 검토표에서
  * 고친 행이므로 `rows` 를 그대로 받는다(2026-08-21).
+ *
+ * **결과는 버튼이 들고 있지 않는다.** 확정되면 서버가 같은 응답에서 화면을 다시 그리고,
+ * 이 버튼은 확정 전에만 그려지므로 결과도 같이 사라진다 — 2026-10-21 부터 2주 동안
+ * 전도금 실패가 잠깐 떴다 사라진 이유다. `onOutcome` 으로 영수증 행에 넘긴다.
  */
 export function ConfirmButton({
   receiptId,
   acceptedAt,
   rows,
+  onOutcome,
 }: {
   receiptId: string;
   acceptedAt: string | null;
   rows: ReviewRow[];
+  onOutcome: (outcome: ConfirmOutcome) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [outcome, setOutcome] = useState<ConfirmOutcome | null>(null);
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
@@ -264,13 +269,12 @@ export function ConfirmButton({
         onClick={() =>
           startTransition(async () => {
             setError(null);
-            setOutcome(null);
             const r = await confirmReceipt(receiptId, rows.map(toConfirmRow), {
               // 접수일자가 전도금 장부에 적힐 날짜다.
               acceptedAt,
             });
             if (!r.ok) setError(r.error ?? "실패했습니다");
-            else setOutcome(r.outcome);
+            else onOutcome(r.outcome);
           })
         }
         className="cursor-pointer bg-ink px-2.5 py-1 text-xs text-cream transition-colors hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-40"
@@ -278,7 +282,6 @@ export function ConfirmButton({
         확정
       </button>
       {error && <span className="text-2xs text-vermilion">{error}</span>}
-      {outcome && <OutcomeNote outcome={outcome} />}
     </span>
   );
 }
@@ -295,9 +298,9 @@ const LEDGER_LABEL = { ledger: "등기대장", pettyCash: "전도금대장" } as
  *
  * **전도금 실패는 작은 글씨로 두지 않는다.** 2026-10-21 부터 2주 동안 확정마다 전도금
  * 쓰기가 거절됐는데 신호가 버튼 옆 작은 빨간 글씨뿐이라 아무도 몰랐다. 확정은 이미
- * 끝났으니 사람이 직접 넣어야 하고, 그 할 일까지 한 줄을 차지하는 경고로 말한다.
+ * 끝났으니 사람이 직접 넣어야 하고, 그 할 일까지 경고 블록으로 말한다.
  */
-function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
+export function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
   const entries = [
     ["ledger", outcome.ledger],
     ["pettyCash", outcome.pettyCash],
@@ -311,10 +314,8 @@ function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
     );
   }
 
-  const pettyFailed = outcome.pettyCash.status === "failed";
-
   return (
-    <span className={`flex flex-col gap-0.5 ${pettyFailed ? "basis-full" : ""}`}>
+    <span className="flex flex-col gap-0.5">
       {entries.map(([key, o]) => {
         if (o.status === "written") return null;
         if (key === "pettyCash" && o.status === "failed") {
@@ -322,7 +323,7 @@ function OutcomeNote({ outcome }: { outcome: ConfirmOutcome }) {
             <span
               key={key}
               role="alert"
-              className="block basis-full border border-line-soft bg-situation-bg px-3 py-2 text-xs text-vermilion"
+              className="block border border-line-soft bg-situation-bg px-3 py-2 text-xs text-vermilion"
             >
               <span className="block">{`전도금 대장에 적히지 않았습니다: ${o.error}`}</span>
               <span className="block">전도금 탭 [사용내역 추가]로 직접 넣어 주세요.</span>

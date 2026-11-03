@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { getGraphToken } from "@/lib/microsoft/auth";
-import { fetchPettyCash, currentSheetName } from "./queries";
+import { fetchPettyCash, resolvePettyCashSheetName } from "./queries";
 import { unreadableBalanceMessage } from "./parse";
 import {
   buildSpendNumberFormat,
@@ -42,8 +42,10 @@ export async function appendSpend(input: SpendInput): Promise<AppendResult> {
   }
 
   // 잔액을 모르면 계산이 틀린다 — 못 읽으면 아예 쓰지 않는다. 읽는 시트와 쓰는
-  // 시트가 같아야 하므로 이름을 한 번만 정한다.
-  const sheetName = currentSheetName();
+  // 시트가 같아야 하므로 이름을 한 번만 정한다. 못 정하면 어디에 쓸지 모른다.
+  const resolved = await resolvePettyCashSheetName();
+  if (!resolved.ok) return { ok: false, error: resolved.error };
+  const sheetName = resolved.name;
   const sheet = await fetchPettyCash(sheetName);
   if (!sheet) return { ok: false, error: "전도금 장부를 읽지 못했습니다" };
   if (sheet.balance == null) {

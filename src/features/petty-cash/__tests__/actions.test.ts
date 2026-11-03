@@ -18,6 +18,9 @@ const state = {
     ["", "", 482790, 46252, "우편물", 3, 13290, ""],
   ] as unknown[][],
   patchOk: true,
+  resolved: { ok: true, name: "2026" } as { ok: true; name: string } | { ok: false; error: string },
+  fetchedSheet: [] as string[],
+  urls: [] as string[],
 };
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -26,11 +29,15 @@ vi.mock("@/features/auth/queries", () => ({
 }));
 vi.mock("@/lib/microsoft/auth", () => ({ getGraphToken: () => Promise.resolve("tok") }));
 vi.mock("../queries", () => ({
-  fetchPettyCash: () => Promise.resolve(state.sheet),
-  currentSheetName: () => "2026",
+  fetchPettyCash: (name: string) => {
+    state.fetchedSheet.push(name);
+    return Promise.resolve(state.sheet);
+  },
+  resolvePettyCashSheetName: () => Promise.resolve(state.resolved),
 }));
 
 vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+  state.urls.push(String(url));
   if (init?.method === "PATCH") {
     state.patched.push({ url, body: JSON.parse(String(init.body)) });
     return { ok: state.patchOk, status: state.patchOk ? 200 : 500, text: async () => "err" };
@@ -55,6 +62,9 @@ describe("appendSpend", () => {
     state.patched = [];
     state.inserted = [];
     state.patchOk = true;
+    state.resolved = { ok: true, name: "2026" };
+    state.fetchedSheet = [];
+    state.urls = [];
     process.env.SHAREPOINT_DRIVE_ID = "d";
     process.env.SHAREPOINT_PETTY_CASH_ITEM_ID = "i";
   });
@@ -132,6 +142,27 @@ describe("appendSpend", () => {
       ok: false,
       error: "현재 잔액을 읽지 못했습니다 — '2026' 시트 97행 잔액(C) 칸이 비어 있습니다",
     });
+    expect(state.patched).toHaveLength(0);
+  });
+
+  // 시트는 사람이 3월 하순에 넘긴다 — 날짜로 정하면 닫힌 시트에 쓴다. 있는 시트를 고르고,
+  // 읽은 시트와 쓰는 시트가 같아야 한다.
+  it("고른 시트 하나로 읽고 쓴다", async () => {
+    state.resolved = { ok: true, name: "2025" };
+    expect((await appendSpend(SPEND)).ok).toBe(true);
+    expect(state.fetchedSheet).toEqual(["2025"]);
+    const writes = state.urls.filter((u) => u.includes("/worksheets("));
+    expect(writes.length).toBeGreaterThan(0);
+    for (const u of writes) expect(u).toContain("worksheets('2025')");
+  });
+
+  it("시트를 못 고르면 쓰지 않고 이유를 말한다", async () => {
+    state.resolved = { ok: false, error: "전도금 장부의 시트 목록을 읽지 못했습니다" };
+    expect(await appendSpend(SPEND)).toEqual({
+      ok: false,
+      error: "전도금 장부의 시트 목록을 읽지 못했습니다",
+    });
+    expect(state.fetchedSheet).toHaveLength(0);
     expect(state.patched).toHaveLength(0);
   });
 

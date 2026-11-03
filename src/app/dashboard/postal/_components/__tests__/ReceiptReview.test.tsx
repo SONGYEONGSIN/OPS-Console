@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useState } from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ReceiptReview, ConfirmButton } from "../ReceiptReview";
+import { ReceiptReview, ConfirmButton, OutcomeNote } from "../ReceiptReview";
 import type { ExtractState } from "@/features/postal/queries";
+import type { ConfirmOutcome } from "@/features/postal/extract-actions";
 
 const { confirmSpy, extractSpy, confirmResult } = vi.hoisted(() => ({
   confirmSpy: vi.fn(),
@@ -29,6 +31,25 @@ vi.mock("@/features/postal/extract-actions", () => ({
 }));
 
 const RID = "ab3599d5-e6a8-4631-9342-8338ca4e4ad5";
+
+/**
+ * 확정 결과는 버튼이 아니라 영수증 행(PostalTable RowPair)이 들고 있다 — 확정되면
+ * 버튼이 사라지기 때문이다. 여기서는 그 자리를 흉내 낸다.
+ */
+function ConfirmWithNote({ rows }: { rows: ExtractState["rows"] }) {
+  const [outcome, setOutcome] = useState<ConfirmOutcome | null>(null);
+  return (
+    <>
+      <ConfirmButton
+        receiptId={RID}
+        acceptedAt="2026-08-21 15:44"
+        rows={rows}
+        onOutcome={setOutcome}
+      />
+      {outcome && <OutcomeNote outcome={outcome} />}
+    </>
+  );
+}
 
 const done: ExtractState = {
   status: "done",
@@ -168,9 +189,7 @@ describe("ConfirmButton — 대장 반영 결과", () => {
   });
 
   const press = async () => {
-    render(
-      <ConfirmButton receiptId={RID} acceptedAt="2026-08-21 15:44" rows={done.rows} />,
-    );
+    render(<ConfirmWithNote rows={done.rows} />);
     fireEvent.click(screen.getByRole("button", { name: "확정" }));
   };
 
@@ -241,9 +260,7 @@ describe("ConfirmButton — 전도금 대장 실패 안내", () => {
   const REASON = "현재 잔액을 읽지 못했습니다 — '2026' 시트 97행 잔액(C) 칸이 비어 있습니다";
 
   const press = async () => {
-    render(
-      <ConfirmButton receiptId={RID} acceptedAt="2026-08-21 15:44" rows={done.rows} />,
-    );
+    render(<ConfirmWithNote rows={done.rows} />);
     fireEvent.click(screen.getByRole("button", { name: "확정" }));
   };
 
@@ -268,7 +285,7 @@ describe("ConfirmButton — 전도금 대장 실패 안내", () => {
     await press();
     const note = await screen.findByRole("alert");
     const cls = note.className.split(/\s+/);
-    for (const c of ["block", "basis-full", "border", "border-line-soft", "bg-situation-bg", "text-vermilion"]) {
+    for (const c of ["block", "border", "border-line-soft", "bg-situation-bg", "text-vermilion"]) {
       expect(cls).toContain(c);
     }
     expect(cls).not.toContain("text-2xs");
