@@ -8,6 +8,8 @@ const tabs = [
   { key: "pricing", label: "가격정책", href: "/dashboard/assignments?tab=pricing" },
 ];
 
+const tokens = (el: HTMLElement) => el.className.split(/\s+/);
+
 describe("PageTabs", () => {
   it("모든 탭 라벨을 href 링크로 렌더", () => {
     render(<PageTabs active="univ" tabs={tabs} />);
@@ -44,7 +46,9 @@ describe("PageTabs", () => {
     expect(idle.className).toContain("text-ink-soft");
     expect(idle.className).toContain("border-transparent");
     expect(active.className).not.toContain("text-xs");
-    expect(active.parentElement!.className).toContain("border-line");
+    const bar = tokens(active.parentElement!);
+    expect(bar).toContain("border-line");
+    expect(bar).not.toContain("border-line-soft");
   });
 
   it('size="sm" — 메인보다 작고 가벼운 서브 탭 (칩 아님)', () => {
@@ -63,7 +67,10 @@ describe("PageTabs", () => {
     expect(active.className).not.toContain("bg-");
     expect(idle.className).toContain("text-ink-soft");
     expect(idle.className).toContain("border-transparent");
-    expect(active.parentElement!.className).toContain("border-b");
+    const bar = tokens(active.parentElement!);
+    expect(bar).toContain("border-b");
+    expect(bar).toContain("border-line-soft");
+    expect(bar).not.toContain("border-line");
     expect(active).toHaveAttribute("aria-current", "page");
   });
 });

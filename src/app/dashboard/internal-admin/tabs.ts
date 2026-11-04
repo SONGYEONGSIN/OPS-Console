@@ -30,8 +30,7 @@ export const DEFAULT_VIEW: View = "schools";
 
 /** 화면 안 링크용 — 쿼리는 호출한 쪽이 `&q=…` 식으로 덧붙인다. */
 export function viewHref(view: View): string {
-  const hit = SUB_VIEWS.find((v) => v.key === view);
-  return hit ? hit.href : SUB_VIEWS[1].href;
+  return SUB_VIEWS.find((v) => v.key === view)!.href;
 }
 
 function findView(raw: string): View | null {
