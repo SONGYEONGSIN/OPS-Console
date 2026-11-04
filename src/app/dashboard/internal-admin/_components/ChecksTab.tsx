@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ListSelect } from "@/components/common/ListSelect";
 import type { CheckItem } from "@/features/sms-sender/types";
+import { viewHref } from "../tabs";
 import { useSetParams } from "./use-set-params";
 
 const TH = "px-3 py-2 font-normal";
@@ -16,7 +17,7 @@ function Target({ item }: { item: CheckItem }) {
   return (
     <>
       <Link
-        href={`/dashboard/internal-admin?tab=schools&school=${item.schoolNo}`}
+        href={`${viewHref("schools")}&school=${item.schoolNo}`}
         className="underline"
       >
         {first}

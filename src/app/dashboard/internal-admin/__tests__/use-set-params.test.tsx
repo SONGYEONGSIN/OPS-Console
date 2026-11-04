@@ -32,6 +32,16 @@ describe("useSetParams", () => {
     expect(push.mock.calls[0][0]).toMatch(/^\/dashboard\/internal-admin\?/);
   });
 
+  it("view 는 필터를 바꿔도 남는다", () => {
+    params = new URLSearchParams("tab=sms&view=numbers&page=3");
+    const { result } = renderHook(() => useSetParams());
+    act(() => result.current({ gubun: "4년제" }));
+    const q = lastQuery();
+    expect(q.get("tab")).toBe("sms");
+    expect(q.get("view")).toBe("numbers");
+    expect(q.get("page")).toBeNull();
+  });
+
   it("null 은 지우고 page patch 는 남긴다", () => {
     const { result } = renderHook(() => useSetParams());
     act(() => result.current({ q: null, page: "2" }));

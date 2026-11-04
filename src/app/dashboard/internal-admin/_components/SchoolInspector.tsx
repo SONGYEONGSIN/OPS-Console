@@ -5,6 +5,7 @@ import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { kstFormat } from "@/lib/kst-format";
 import { DOC_KINDS } from "@/features/sms-sender/types";
 import { stageLabel, type SchoolDetail } from "@/features/sms-sender/filters";
+import { viewHref } from "../tabs";
 import { markClass, markGlyph } from "./doc-mark";
 
 const NUMBER_LIMIT = 10;
@@ -31,7 +32,7 @@ function Body({ detail }: { detail: SchoolDetail }) {
   const { school, numbers, checks } = detail;
   const docs = school.docs;
   const shown = numbers.slice(0, NUMBER_LIMIT);
-  const moreHref = `/dashboard/internal-admin?tab=numbers&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}`;
+  const moreHref = `${viewHref("numbers")}&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}`;
   return (
     <>
       <h2 className="text-lg font-bold text-ink">{school.name}</h2>

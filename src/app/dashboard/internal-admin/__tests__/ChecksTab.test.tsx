@@ -71,7 +71,7 @@ describe("ChecksTab", () => {
     const link = screen.getByRole("link", { name: "가나대학교" });
     expect(link).toHaveAttribute(
       "href",
-      "/dashboard/internal-admin?tab=schools&school=1",
+      "/dashboard/internal-admin?tab=sms&view=schools&school=1",
     );
     expect(link).toHaveAttribute("data-next-link");
     expect(link.className).toContain("underline");
