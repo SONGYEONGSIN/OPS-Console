@@ -102,7 +102,7 @@ describe("SchoolsTab", () => {
     );
   });
 
-  it("구분 카드 — 운영리포트 '서비스' 카드처럼 한 장, 구분마다 칸 하나", () => {
+  it("구분 카드 — 구분마다 따로 선 카드, 좁으면 두 칸·넓으면 한 줄", () => {
     const base = rawSource();
     const counted = parseSmsSender(
       rawSource({
@@ -131,69 +131,85 @@ describe("SchoolsTab", () => {
         ctx={ctxOf(counted)}
       />,
     );
-    // 카드는 한 장 — 제목 '구분', 운영리포트 카드 면.
+    // 바깥 상자는 없다 — 묶음은 격자일 뿐, 면은 카드마다.
     const group = screen.getByRole("group", { name: "구분" });
-    for (const c of [
-      "flex",
-      "flex-col",
-      "gap-1",
-      "border",
-      "border-line-soft",
-      "bg-situation-bg",
-      "p-4",
-    ]) {
-      expect(group.className.split(/\s+/)).toContain(c);
+    const groupCls = group.className.split(/\s+/);
+    for (const c of ["grid", "grid-cols-2", "gap-3", "@3xl:grid-cols-4"]) {
+      expect(groupCls).toContain(c);
     }
-    const title = within(group).getByText("구분");
-    expect(title.className).toBe("text-xs font-medium text-muted");
+    for (const c of ["border", "bg-situation-bg", "p-4"]) {
+      expect(groupCls).not.toContain(c);
+    }
+    // 폭은 뷰포트가 아니라 컨테이너(사이드바·인스펙터가 줄인다)가 정한다.
+    expect(group.parentElement!.className.split(/\s+/)).toContain("@container");
+    expect(group.querySelectorAll("div.w-px")).toHaveLength(0);
 
-    // 칸은 구분 순서 그대로, 모두 같은 카드 안.
-    const cols = within(group).getAllByRole("button");
-    expect(cols.map((b) => b.querySelector("div")!.textContent)).toEqual(
+    // 카드는 구분 순서 그대로, 한 장씩 표면 표준.
+    const cards = within(group).getAllByRole("button");
+    expect(cards.map((b) => b.querySelector("div")!.textContent)).toEqual(
       gubunCards(counted.schools).map((c) => c.gubun),
     );
+    expect(cards.every((b) => b.parentElement === group)).toBe(true);
+    for (const b of cards) {
+      for (const c of [
+        "border",
+        "border-line-soft",
+        "bg-situation-bg",
+        "p-4",
+      ]) {
+        expect(b.className.split(/\s+/)).toContain(c);
+      }
+    }
     const card = within(group).getByRole("button", { name: /4년제/ });
-    expect(card.className).toContain("flex-1");
     const label = within(card).getByText("4년제");
-    expect(label.className).toContain("text-2xs");
     expect(label.className).toContain("text-muted");
     const value = within(card).getByText("2");
     for (const c of ["text-2xl", "font-bold", "tabular-nums", "text-ink"]) {
       expect(value.className).toContain(c);
     }
     const unit = within(card).getByText("곳");
-    expect(unit.className).toContain("text-2xs");
     expect(unit.className).toContain("text-muted");
-    // 증감 줄 자리에 회선·서류 미비·확인 — 칸 안에.
     const stats = within(card).getByText("회선 5 · 서류 미비 1 · 확인 1");
     for (const c of ["text-xs", "text-muted", "tabular-nums"]) {
       expect(stats.className).toContain(c);
     }
     expect(within(group).queryByText("비교 불가")).toBeNull();
 
-    // 칸 사이 세로 구분선 — 줄바꿈은 뷰포트가 아니라 카드 폭(사이드바·인스펙터가 줄인다)이
-    // 정하므로 컨테이너 쿼리로 숨긴다. 다섯 칸이 한 줄에 다 들어가는 폭부터 보인다.
-    const row = cols[0].parentElement!.parentElement!;
-    expect(row.parentElement!.className.split(/\s+/)).toContain("@container");
-    for (const c of ["flex-wrap", "@3xl:flex-nowrap"]) {
-      expect(row.className.split(/\s+/)).toContain(c);
-    }
-    const dividers = group.querySelectorAll("div.w-px");
-    expect(dividers).toHaveLength(cols.length - 1);
-    for (const d of dividers) {
-      for (const c of [
-        "hidden",
-        "@3xl:block",
-        "self-stretch",
-        "bg-line-soft",
-      ]) {
-        expect(d.className.split(/\s+/)).toContain(c);
-      }
-      expect(d.className).not.toContain("sm:block");
-    }
-
     fireEvent.click(card);
     expect(lastQuery().get("gubun")).toBe("4년제");
+  });
+
+  it("기타 구분이 있으면 카드 다섯 장 — 넓으면 다섯 칸 한 줄", () => {
+    const base = rawSource();
+    const withOther = parseSmsSender(
+      rawSource({
+        sheets: {
+          ...base.sheets,
+          schools: [
+            SCHOOL_HEADER,
+            schoolRow(1, "가나대학교"),
+            schoolRow(2, "다라학교", { 구분: "해외" }),
+          ],
+        },
+      }),
+    );
+    const cards = gubunCards(withOther.schools);
+    expect(cards).toHaveLength(5);
+    render(
+      <SchoolsTab
+        cards={cards}
+        schools={withOther.schools}
+        total={withOther.schools.length}
+        scopeTotal={withOther.schools.length}
+        filters={noFilters}
+        ctx={ctxOf(withOther)}
+      />,
+    );
+    const group = screen.getByRole("group", { name: "구분" });
+    expect(within(group).getAllByRole("button")).toHaveLength(5);
+    const cls = group.className.split(/\s+/);
+    expect(cls).toContain("@3xl:grid-cols-5");
+    expect(cls).not.toContain("@3xl:grid-cols-4");
   });
 
   it("회선·서류 미비·확인도 곳 수처럼 천 단위로 끊는다", () => {
@@ -228,12 +244,16 @@ describe("SchoolsTab", () => {
     ).toBeInTheDocument();
   });
 
-  it("칸은 면(面) — 목록 호버·선택 표준, 링 없음, 다시 누르면 해제", () => {
+  it("카드는 면(面) — 목록 호버·선택 표준, 링 없음, 다시 누르면 해제", () => {
     params = new URLSearchParams("tab=schools&gubun=4년제");
     renderTab({ gubun: "4년제" });
     const card = screen.getByRole("button", { name: /4년제/ });
     expect(card).toHaveAttribute("aria-pressed", "true");
-    expect(card.className).toContain("bg-vermilion/10");
+    const onCls = card.className.split(/\s+/);
+    expect(onCls).toContain("border-vermilion");
+    expect(onCls).toContain("bg-vermilion/10");
+    expect(onCls).not.toContain("border-line-soft");
+    expect(onCls).not.toContain("bg-situation-bg");
     expect(card.className).not.toContain("ring");
     expect(card.className).not.toContain("hover:bg-ink");
     expect(within(card).getByText("4년제").className).toContain(
@@ -242,6 +262,8 @@ describe("SchoolsTab", () => {
     const other = screen.getByRole("button", { name: /전문대학/ });
     expect(other).toHaveAttribute("aria-pressed", "false");
     expect(other.className).toContain("hover:bg-line-soft");
+    expect(other.className.split(/\s+/)).toContain("border-line-soft");
+    expect(other.className).not.toContain("border-vermilion");
     expect(other.className).not.toContain("bg-vermilion/10");
     expect(other.className).not.toContain("ring");
     expect(within(other).getByText("전문대학").className).not.toContain(
@@ -251,43 +273,80 @@ describe("SchoolsTab", () => {
     expect(lastQuery().get("gubun")).toBeNull();
   });
 
-  it("서류 점 — '대체' 만 대, 모르는 표시는 ? (원문은 라벨·title)", () => {
-    const [first, ...rest] = data.schools;
-    const odd = {
-      ...first,
-      docs: {
-        ...first.docs!,
-        marks: {
-          ...first.docs!.marks,
-          법인인감: "대체",
-          위임장: "X",
-          신분증: "×",
+  describe("서류 칸 — 점 대신 요약", () => {
+    const withMarks = (marks: Record<string, string>) => {
+      const [first, ...rest] = data.schools;
+      return [
+        {
+          ...first,
+          docs: { ...first.docs!, marks: { ...first.docs!.marks, ...marks } },
         },
-      },
+        ...rest,
+      ];
     };
-    renderTab({}, [odd, ...rest]);
-    const row = screen.getByText("가나대학교").closest("tr")!;
-    expect(within(row).getByLabelText("법인인감 대체")).toHaveTextContent(
-      /^대$/,
-    );
-    expect(within(row).getByLabelText("위임장 X")).toHaveTextContent(/^\?$/);
-    const cross = within(row).getByLabelText("신분증 ×");
-    expect(cross).toHaveTextContent(/^\?$/);
-    expect(cross).toHaveAttribute("title", "×");
+    const firstRow = () => screen.getByText("가나대학교").closest("tr")!;
+
+    it("미제출이 있으면 'N/8 · 서류 미제출' — 건수는 ink, 미제출은 vermilion", () => {
+      renderTab();
+      const row = firstRow();
+      const count = within(row).getByText("7/8");
+      for (const c of ["tabular-nums", "text-ink"]) {
+        expect(count.className).toContain(c);
+      }
+      const miss = within(row).getByText("신분증 미제출");
+      expect(miss.className).toContain("text-vermilion");
+      // 점(O·✕ 글자)은 더 없다.
+      expect(within(row).queryByLabelText("신청서 O")).toBeNull();
+      expect(within(row).queryByText("✕")).toBeNull();
+    });
+
+    it("미제출이 셋 이상이면 앞 둘 + '외 N', 전체는 title", () => {
+      renderTab(
+        {},
+        withMarks({ 위임장: "✕", 법인인감: "✕", 신분증: "✕", 신청서: "✕" }),
+      );
+      const row = firstRow();
+      expect(within(row).getByText("4/8").className).toContain("tabular-nums");
+      const miss = within(row).getByText("신청서·위임장 외 2 미제출");
+      expect(miss.className).toContain("text-vermilion");
+      expect(miss).toHaveAttribute(
+        "title",
+        "신청서·위임장·법인인감·신분증 미제출",
+      );
+    });
+
+    it("미제출 없이 빈 칸·모르는 표시만 있으면 '표시 없음 N' (muted)", () => {
+      renderTab({}, withMarks({ 신분증: "O", 위임장: "", 법인인감: "X" }));
+      const row = firstRow();
+      expect(within(row).getByText("6/8").className).toContain("text-ink");
+      const rest = within(row).getByText(/표시 없음 2$/);
+      expect(rest.className).toContain("text-muted");
+      expect(rest.className).not.toContain("text-vermilion");
+    });
+
+    it("전부 제출('대체' 포함)이면 '완비 8/8'", () => {
+      renderTab({}, withMarks({ 신분증: "대체" }));
+      const full = within(firstRow()).getByText("완비 8/8");
+      for (const c of ["tabular-nums", "text-ink"]) {
+        expect(full.className).toContain(c);
+      }
+      expect(within(firstRow()).queryByText(/미제출/)).toBeNull();
+    });
+
+    it("_서류 줄이 없으면 '확인 안 됨' (muted)", () => {
+      const [first, ...rest] = data.schools;
+      renderTab({}, [{ ...first, docs: null }, ...rest]);
+      const none = within(firstRow()).getByText("확인 안 됨");
+      expect(none.className).toContain("text-muted");
+    });
   });
 
-  it("표 — 단계·회선·서류 점·PDF", () => {
+  it("표 — 단계·회선·서류 요약·PDF", () => {
     renderTab();
     const row = screen.getByText("가나대학교").closest("tr")!;
     expect(within(row).getByText("접수")).toBeInTheDocument();
     expect(within(row).getByText("2").className).toContain("tabular-nums");
-    expect(within(row).getByLabelText("신청서 O")).toBeInTheDocument();
-    expect(within(row).getByLabelText("신분증 ✕")).toBeInTheDocument();
-    expect(
-      within(row).getAllByLabelText(
-        /^(신청서|위임장|이용증명원|사업자등록증|법인인감|재직증명서|신분증|위탁계약서) /,
-      ),
-    ).toHaveLength(8);
+    expect(within(row).getByText("7/8")).toBeInTheDocument();
     const link = within(row).getByRole("link", { name: /PDF/ });
     expect(link).toHaveAttribute("href", data.schools[0].pdfs[0].webUrl);
     expect(link).toHaveAttribute("target", "_blank");

@@ -6,23 +6,36 @@ import { kstFormat } from "@/lib/kst-format";
 import { DOC_KINDS } from "@/features/sms-sender/types";
 import { stageLabel, type SchoolDetail } from "@/features/sms-sender/filters";
 import { viewHref } from "../tabs";
-import { markClass, markGlyph } from "./doc-mark";
+import { docTally, markLabel } from "./doc-mark";
 
 const NUMBER_LIMIT = 10;
 const DATE = kstFormat({ year: "numeric", month: "2-digit", day: "2-digit" });
 
+/**
+ * 섹션마다 상자 — 제목만으로 나누면 네 묶음이 한 덩어리로 흘러 읽혔다.
+ * 제목 오른쪽 건수는 상자를 펼쳐 세지 않아도 되게 한다.
+ */
 function Section({
   title,
+  count,
   children,
 }: {
   title: string;
+  count?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-5">
-      <h4 className="mb-2 text-xs uppercase tracking-[0.06em] text-muted">
-        {title}
-      </h4>
+    <section className="border border-line-soft bg-situation-bg p-4">
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <h4 className="text-xs uppercase tracking-[0.06em] text-muted">
+          {title}
+        </h4>
+        {count !== undefined && (
+          <span data-count="" className="text-xs tabular-nums text-ink">
+            {count}
+          </span>
+        )}
+      </div>
       {children}
     </section>
   );
@@ -31,6 +44,7 @@ function Section({
 function Body({ detail }: { detail: SchoolDetail }) {
   const { school, numbers, checks } = detail;
   const docs = school.docs;
+  const tally = docs ? docTally(docs) : null;
   const shown = numbers.slice(0, NUMBER_LIMIT);
   const moreHref = `${viewHref("numbers")}&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}`;
   return (
@@ -53,99 +67,111 @@ function Body({ detail }: { detail: SchoolDetail }) {
         </div>
       </header>
 
-      <Section title="제출 서류">
-        {docs ? (
-          <>
-            <ul className="space-y-1 text-sm">
-              {DOC_KINDS.map((k) => {
-                const mark = docs.marks[k];
-                return (
-                  <li key={k} className="flex justify-between">
-                    <span>{k}</span>
-                    <span
-                      aria-label={`${k} ${mark || "없음"}`}
-                      title={mark || undefined}
-                      className={markClass(mark)}
-                    >
-                      {markGlyph(mark)}
-                    </span>
-                  </li>
-                );
-              })}
+      <div className="space-y-3">
+        <Section
+          title="제출 서류"
+          count={tally ? `${tally.submitted}/${tally.total}` : undefined}
+        >
+          {docs ? (
+            <>
+              <ul className="space-y-1 text-sm">
+                {DOC_KINDS.map((k) => {
+                  const mark = docs.marks[k];
+                  const label = markLabel(mark);
+                  return (
+                    <li key={k} className="flex items-center justify-between">
+                      <span>{k}</span>
+                      <span
+                        aria-label={`${k} ${label.aria}`}
+                        title={mark || undefined}
+                        className={label.className}
+                      >
+                        {label.text}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {docs.missing && (
+                <p className="mt-2 text-sm text-vermilion">
+                  미제출: {docs.missing}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted">
+              _서류 시트에 이 학교 줄이 없습니다
+            </p>
+          )}
+        </Section>
+
+        <Section title="통합 PDF">
+          {school.pdfs.length === 0 ? (
+            <p className="text-sm text-muted">통합 PDF 없음</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {school.pdfs.map((p) => (
+                <li key={p.webUrl}>
+                  <a
+                    href={p.webUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-ink underline"
+                  >
+                    통합 PDF 열기 · {p.sub ?? p.stage}
+                  </a>
+                  <div className="text-xs tabular-nums text-muted">
+                    {DATE.format(new Date(p.lastModifiedDateTime))}
+                  </div>
+                </li>
+              ))}
             </ul>
-            {docs.missing && (
-              <p className="mt-2 text-sm text-vermilion">
-                미제출: {docs.missing}
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-muted">
-            _서류 시트에 이 학교 줄이 없습니다
-          </p>
-        )}
-      </Section>
+          )}
+        </Section>
 
-      <Section title="통합 PDF">
-        {school.pdfs.length === 0 ? (
-          <p className="text-sm text-muted">통합 PDF 없음</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {school.pdfs.map((p) => (
-              <li key={p.webUrl}>
-                <a
-                  href={p.webUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-ink underline"
-                >
-                  통합 PDF 열기 · {p.sub ?? p.stage}
-                </a>
-                <div className="text-xs tabular-nums text-muted">
-                  {DATE.format(new Date(p.lastModifiedDateTime))}
-                </div>
+        <Section
+          title="발신번호"
+          count={numbers.length.toLocaleString("ko-KR")}
+        >
+          <ul className="space-y-1 text-sm">
+            {shown.map((n) => (
+              <li key={n.no} className="flex justify-between gap-2">
+                <span className="tabular-nums">{n.number}</span>
+                <span className="text-muted">{n.status}</span>
               </li>
             ))}
           </ul>
-        )}
-      </Section>
+          {numbers.length > NUMBER_LIMIT && (
+            <Link
+              href={moreHref}
+              className="mt-2 inline-block text-sm text-ink underline"
+            >
+              발신번호 탭에서 전체 보기 ({numbers.length})
+            </Link>
+          )}
+        </Section>
 
-      <Section title="발신번호">
-        <ul className="space-y-1 text-sm">
-          {shown.map((n) => (
-            <li key={n.no} className="flex justify-between gap-2">
-              <span className="tabular-nums">{n.number}</span>
-              <span className="text-muted">{n.status}</span>
-            </li>
-          ))}
-        </ul>
-        {numbers.length > NUMBER_LIMIT && (
-          <Link
-            href={moreHref}
-            className="mt-2 inline-block text-sm text-ink underline"
-          >
-            발신번호 탭에서 전체 보기 ({numbers.length})
-          </Link>
-        )}
-      </Section>
-
-      <Section title="확인 필요">
-        {checks.length === 0 ? (
-          <p className="text-sm text-muted">
-            이 학교의 확인 필요 항목이 없습니다
-          </p>
-        ) : (
-          <ul className="space-y-3 text-sm">
-            {checks.map((c) => (
-              <li key={c.no}>
-                <div className="font-bold">{c.kind}</div>
-                <div>{c.content}</div>
-                <div className="text-muted">할 일: {c.todo}</div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+        <Section
+          title="확인 필요"
+          count={checks.length.toLocaleString("ko-KR")}
+        >
+          {checks.length === 0 ? (
+            <p className="text-sm text-muted">
+              이 학교의 확인 필요 항목이 없습니다
+            </p>
+          ) : (
+            <ul className="space-y-3 text-sm">
+              {checks.map((c) => (
+                <li key={c.no}>
+                  <div className="font-bold">{c.kind}</div>
+                  <div>{c.content}</div>
+                  <div className="text-muted">할 일: {c.todo}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      </div>
     </>
   );
 }
