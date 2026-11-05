@@ -112,8 +112,6 @@ export default async function InternalAdminPage({
       <SourceBar
         fileName={data.workbook.name}
         fetchedAt={data.fetchedAt}
-        offRuleFiles={data.offRuleFiles}
-        unmatchedPdfs={data.unmatchedPdfs}
         criteria={data.criteria}
       />
       <section className="p-7">{renderView(view, data, sp)}</section>

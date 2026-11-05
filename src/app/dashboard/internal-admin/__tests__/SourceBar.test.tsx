@@ -22,8 +22,6 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 const base = {
   fileName: "SMS 발신번호 사전등록 현황_261017.xlsm",
   fetchedAt: "2026-10-26T00:05:00Z",
-  offRuleFiles: [] as string[],
-  unmatchedPdfs: [] as string[],
   criteria: null as string[][] | null,
 };
 
@@ -94,17 +92,6 @@ describe("SourceBar", () => {
       "title",
       "05. 제출 서류 기준 시트를 찾지 못했습니다",
     );
-  });
-
-  it("원천 경고는 있을 때만", () => {
-    const { rerender } = render(<SourceBar {...base} />);
-    expect(screen.queryByText(/규칙 밖 파일/)).toBeNull();
-    expect(screen.queryByText(/이름 미대조 PDF/)).toBeNull();
-    rerender(
-      <SourceBar {...base} offRuleFiles={["a.txt"]} unmatchedPdfs={["x.pdf", "y.pdf"]} />,
-    );
-    expect(screen.getByText("규칙 밖 파일 1개")).toBeInTheDocument();
-    expect(screen.getByText("이름 미대조 PDF 2개")).toBeInTheDocument();
   });
 
   it("버튼은 버튼 호버 표준", () => {

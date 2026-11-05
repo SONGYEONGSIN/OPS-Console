@@ -13,31 +13,13 @@ const HHMM = kstFormat({ hour: "2-digit", minute: "2-digit" });
 type Props = {
   fileName: string;
   fetchedAt: string;
-  offRuleFiles: string[];
-  unmatchedPdfs: string[];
   criteria: string[][] | null;
 };
-
-function Warning({ label, files }: { label: string; files: string[] }) {
-  if (files.length === 0) return null;
-  return (
-    <details className="text-sm text-muted">
-      <summary className="cursor-pointer">{label}</summary>
-      <ul className="mt-1 pl-4">
-        {files.map((f) => (
-          <li key={f}>{f}</li>
-        ))}
-      </ul>
-    </details>
-  );
-}
 
 /** 데이터 탭 공통 — 어느 파일을 몇 시에 읽었는지, 새로고침, 서류 기준. */
 export function SourceBar({
   fileName,
   fetchedAt,
-  offRuleFiles,
-  unmatchedPdfs,
   criteria,
 }: Props) {
   const [pending, startTransition] = useTransition();
@@ -84,11 +66,6 @@ export function SourceBar({
       >
         서류 기준
       </button>
-      <Warning label={`규칙 밖 파일 ${offRuleFiles.length}개`} files={offRuleFiles} />
-      <Warning
-        label={`이름 미대조 PDF ${unmatchedPdfs.length}개`}
-        files={unmatchedPdfs}
-      />
       {error && (
         <span role="alert" className="text-sm text-vermilion">
           {error}

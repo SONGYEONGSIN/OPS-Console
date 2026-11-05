@@ -52,6 +52,8 @@ export type SchoolRow = {
   docSummary: string;
   needsCheck: boolean;
   note: string;
+  /** `담당자` 열(선택). 열이 없거나 빈 칸·'-' 면 null — '내 대학' 판정에 쓴다. */
+  manager: string | null;
 };
 export type DocStatus = {
   sejongStatus: string;
@@ -91,13 +93,15 @@ export type CheckItem = {
   todo: string;
   schoolNo: number | null;
 };
+/**
+ * checks: `_확인` 시트 행 + 파일 유형(이름 미대조 PDF·규칙 밖 xlsm). 파일 유형은
+ * 학교가 없다(schoolNo null).
+ */
 export type SmsSenderData = {
   workbook: DriveFile;
   fetchedAt: string;
-  offRuleFiles: string[];
   schools: School[];
   numbers: SenderNumber[];
   checks: CheckItem[];
-  unmatchedPdfs: string[];
   criteria: string[][] | null;
 };
