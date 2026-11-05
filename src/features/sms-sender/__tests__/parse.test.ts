@@ -503,4 +503,12 @@ describe("parseSmsSender", () => {
     );
     expect(d.criteria).toEqual([["제목"], ["No", "서류", "1"]]);
   });
+  it("05 시트 — 칸 안 줄바꿈은 \\n 하나로, 줄 끝 공백·끝 빈 줄은 지운다", () => {
+    const d = parseSmsSender(
+      rawSource({
+        criteria: [["1", "재직증명서  \r\n사업자등록증\r원본\n\n", "  "]],
+      }),
+    );
+    expect(d.criteria).toEqual([["1", "재직증명서\n사업자등록증\n원본"]]);
+  });
 });
