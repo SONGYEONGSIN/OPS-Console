@@ -28,6 +28,9 @@ import {
 import { schoolDetail, type SchoolDetail } from "@/features/sms-sender/filters";
 import { SchoolInspector } from "../_components/SchoolInspector";
 
+/** 클래스는 토큰 단위로 본다 — 부분 문자열이면 `text-ink` 가 `text-ink-soft` 에도 맞는다. */
+const cls = (el: Element) => el.className.split(/\s+/);
+
 const detailOf = (over: Parameters<typeof rawSource>[0] = {}, no = 1) => {
   const d = schoolDetail(parseSmsSender(rawSource(over)), no);
   if (!d) throw new Error("detail 없음");
@@ -84,7 +87,7 @@ describe("SchoolInspector", () => {
     const shown = screen.getAllByText(/^02-0000-\d{4}$/);
     expect(shown).toHaveLength(10);
     for (const n of shown) {
-      expect(n.className).toContain("tabular-nums");
+      expect(cls(n)).toContain("tabular-nums");
       expect(n.className).not.toContain("font-mono");
     }
     const link = screen.getByRole("link", {
@@ -96,7 +99,7 @@ describe("SchoolInspector", () => {
       `/dashboard/internal-admin?tab=sms&view=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}`,
     );
     expect(link).toHaveAttribute("data-next-link");
-    expect(link.className).toContain("underline");
+    expect(cls(link)).toContain("underline");
   });
 
   it("확인 항목 — 없으면 문구", () => {
@@ -144,7 +147,7 @@ describe("SchoolInspector", () => {
     render(<SchoolInspector detail={detail} onClose={() => {}} />);
     const ok = screen.getByLabelText("신청서 제출");
     expect(ok).toHaveTextContent(/^제출$/);
-    expect(ok.className).toContain("text-ink");
+    expect(cls(ok)).toContain("text-ink");
     const miss = screen.getByLabelText("신분증 미제출");
     expect(miss).toHaveTextContent(/^미제출$/);
     for (const c of [
@@ -158,14 +161,14 @@ describe("SchoolInspector", () => {
     }
     const sub = screen.getByLabelText("법인인감 대체 인정");
     expect(sub).toHaveTextContent(/^대체 인정$/);
-    expect(sub.className).toContain("text-muted");
+    expect(cls(sub)).toContain("text-muted");
     // 모르는 표시를 대체·제출로 뒤집지 않는다 — 원문을 그대로 보인다.
     const odd = screen.getByLabelText("위임장 알 수 없음(X)");
     expect(odd).toHaveTextContent(/^알 수 없음\(X\)$/);
-    expect(odd.className).toContain("text-muted");
+    expect(cls(odd)).toContain("text-muted");
     const blank = screen.getByLabelText("재직증명서 표시 없음");
     expect(blank).toHaveTextContent(/^-$/);
-    expect(blank.className).toContain("text-muted");
+    expect(cls(blank)).toContain("text-muted");
     // O·✕ 글자는 더 없다.
     expect(screen.queryByText("O")).toBeNull();
     expect(screen.queryByText("✕")).toBeNull();
@@ -214,10 +217,10 @@ describe("SchoolInspector", () => {
     const countOf = (s: HTMLElement) => s.querySelector("[data-count]");
     const docs = countOf(sections[0])!;
     expect(docs).toHaveTextContent(/^7\/8$/);
-    expect(docs.className).toContain("tabular-nums");
+    expect(cls(docs)).toContain("tabular-nums");
     expect(countOf(sections[1])).toBeNull();
     expect(countOf(sections[2])).toHaveTextContent(/^3$/);
-    expect(countOf(sections[2])!.className).toContain("tabular-nums");
+    expect(cls(countOf(sections[2])!)).toContain("tabular-nums");
     expect(countOf(sections[3])).toHaveTextContent(/^1$/);
   });
 
@@ -247,13 +250,13 @@ describe("SchoolInspector", () => {
   it("머리는 표준 인스펙터 머리 — 눈썹 문구·text-xl 제목·굵은 아랫선", () => {
     render(<SchoolInspector detail={detailOf()} onClose={() => {}} />);
     const title = screen.getByRole("heading", { name: "가나대학교", level: 3 });
-    expect(title.className).toContain("text-xl");
-    expect(title.className).toContain("font-bold");
+    expect(cls(title)).toContain("text-xl");
+    expect(cls(title)).toContain("font-bold");
     const header = title.closest("header")!;
-    expect(header.className).toContain("border-b-2");
-    expect(header.className).toContain("border-ink");
+    expect(cls(header)).toContain("border-b-2");
+    expect(cls(header)).toContain("border-ink");
     const eyebrow = screen.getByText("인스펙터 · 학교");
-    expect(eyebrow.className).toContain("text-vermilion");
+    expect(cls(eyebrow)).toContain("text-vermilion");
     expect(header.contains(eyebrow)).toBe(true);
     expect(header.textContent).toContain("4년제");
   });

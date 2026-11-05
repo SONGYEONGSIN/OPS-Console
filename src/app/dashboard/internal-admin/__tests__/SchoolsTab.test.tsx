@@ -25,7 +25,11 @@ import {
   STAGE_OPTIONS,
   type SchoolFilters,
 } from "@/features/sms-sender/filters";
-import type { SmsSenderData } from "@/features/sms-sender/types";
+import {
+  DOC_KINDS,
+  type Completeness,
+  type SmsSenderData,
+} from "@/features/sms-sender/types";
 import { SchoolsTab } from "../_components/SchoolsTab";
 import type { ListContext } from "../_components/SmsListShell";
 
@@ -42,6 +46,8 @@ const noFilters: SchoolFilters = {
   checkOnly: false,
   page: 1,
 };
+/** 클래스는 토큰 단위로 본다 — 부분 문자열이면 `text-ink` 가 `text-ink-soft` 에도 맞는다. */
+const cls = (el: Element) => el.className.split(/\s+/);
 const lastQuery = () =>
   new URLSearchParams(push.mock.calls.at(-1)![0].split("?")[1]);
 
@@ -78,7 +84,7 @@ describe("SchoolsTab", () => {
   it("검색·단계·서류·확인 필요만이 한 줄(검색줄)", () => {
     renderTab();
     const row = screen.getByLabelText("검색").closest<HTMLElement>("div.px-7")!;
-    expect(row.className).toContain("pt-3");
+    expect(cls(row)).toContain("pt-3");
     expect(within(row).getByLabelText("단계 필터")).toBeInTheDocument();
     expect(within(row).getByLabelText("서류 필터")).toBeInTheDocument();
     expect(within(row).getByLabelText("확인 필요만")).toBeInTheDocument();
@@ -162,16 +168,16 @@ describe("SchoolsTab", () => {
     }
     const card = within(group).getByRole("button", { name: /4년제/ });
     const label = within(card).getByText("4년제");
-    expect(label.className).toContain("text-muted");
+    expect(cls(label)).toContain("text-muted");
     const value = within(card).getByText("2");
     for (const c of ["text-2xl", "font-bold", "tabular-nums", "text-ink"]) {
-      expect(value.className).toContain(c);
+      expect(cls(value)).toContain(c);
     }
     const unit = within(card).getByText("곳");
-    expect(unit.className).toContain("text-muted");
+    expect(cls(unit)).toContain("text-muted");
     const stats = within(card).getByText("회선 5 · 서류 미비 1 · 확인 1");
     for (const c of ["text-xs", "text-muted", "tabular-nums"]) {
-      expect(stats.className).toContain(c);
+      expect(cls(stats)).toContain(c);
     }
     expect(within(group).queryByText("비교 불가")).toBeNull();
 
@@ -207,9 +213,13 @@ describe("SchoolsTab", () => {
     );
     const group = screen.getByRole("group", { name: "구분" });
     expect(within(group).getAllByRole("button")).toHaveLength(5);
-    const cls = group.className.split(/\s+/);
-    expect(cls).toContain("@3xl:grid-cols-5");
-    expect(cls).not.toContain("@3xl:grid-cols-4");
+    const gridCls = group.className.split(/\s+/);
+    expect(gridCls).toContain("@3xl:grid-cols-5");
+    expect(gridCls).not.toContain("@3xl:grid-cols-4");
+    // 두 칸일 때 홀수 번째 마지막 카드(기타)는 두 칸을 다 쓴다 — 빈 칸 옆에 홀로 남지 않게.
+    // 한 줄이 되면 다시 한 칸.
+    expect(gridCls).toContain("[&>*:last-child:nth-child(odd)]:col-span-2");
+    expect(gridCls).toContain("@3xl:[&>*:last-child:nth-child(odd)]:col-span-1");
   });
 
   it("회선·서류 미비·확인도 곳 수처럼 천 단위로 끊는다", () => {
@@ -256,12 +266,12 @@ describe("SchoolsTab", () => {
     expect(onCls).not.toContain("bg-situation-bg");
     expect(card.className).not.toContain("ring");
     expect(card.className).not.toContain("hover:bg-ink");
-    expect(within(card).getByText("4년제").className).toContain(
+    expect(cls(within(card).getByText("4년제"))).toContain(
       "text-vermilion",
     );
     const other = screen.getByRole("button", { name: /전문대학/ });
     expect(other).toHaveAttribute("aria-pressed", "false");
-    expect(other.className).toContain("hover:bg-line-soft");
+    expect(cls(other)).toContain("hover:bg-line-soft");
     expect(other.className.split(/\s+/)).toContain("border-line-soft");
     expect(other.className).not.toContain("border-vermilion");
     expect(other.className).not.toContain("bg-vermilion/10");
@@ -273,28 +283,43 @@ describe("SchoolsTab", () => {
     expect(lastQuery().get("gubun")).toBeNull();
   });
 
-  describe("서류 칸 — 점 대신 요약", () => {
-    const withMarks = (marks: Record<string, string>) => {
+  /*
+   * 앞말은 서류 필터와 같은 원천(제출 상태 → completeness)을 따르고, 표시 집계는 뒤에
+   * 붙는 세부다. 둘을 다른 원천에서 읽으면 '미비' 로 거른 줄이 '완비 8/8' 로 읽힌다.
+   */
+  describe("서류 칸 — 앞말은 제출 상태, 집계는 세부", () => {
+    const withDocs = (
+      marks: Record<string, string>,
+      completeness?: Completeness,
+    ) => {
       const [first, ...rest] = data.schools;
+      const docs = first.docs!;
       return [
         {
           ...first,
-          docs: { ...first.docs!, marks: { ...first.docs!.marks, ...marks } },
+          docs: {
+            ...docs,
+            marks: { ...docs.marks, ...marks },
+            completeness: completeness ?? docs.completeness,
+          },
         },
         ...rest,
       ];
     };
+    const allMarks = (mark: string) =>
+      Object.fromEntries(DOC_KINDS.map((k) => [k, mark]));
     const firstRow = () => screen.getByText("가나대학교").closest("tr")!;
 
-    it("미제출이 있으면 'N/8 · 서류 미제출' — 건수는 ink, 미제출은 vermilion", () => {
+    it("미비 + ✕ 있음 → 'N/8 · 서류 미제출' — 건수는 ink, 미제출은 vermilion", () => {
       renderTab();
       const row = firstRow();
       const count = within(row).getByText("7/8");
       for (const c of ["tabular-nums", "text-ink"]) {
-        expect(count.className).toContain(c);
+        expect(cls(count)).toContain(c);
       }
-      const miss = within(row).getByText("신분증 미제출");
-      expect(miss.className).toContain("text-vermilion");
+      expect(cls(within(row).getByText("신분증 미제출"))).toContain(
+        "text-vermilion",
+      );
       // 점(O·✕ 글자)은 더 없다.
       expect(within(row).queryByLabelText("신청서 O")).toBeNull();
       expect(within(row).queryByText("✕")).toBeNull();
@@ -303,41 +328,52 @@ describe("SchoolsTab", () => {
     it("미제출이 셋 이상이면 앞 둘 + '외 N', 전체는 title", () => {
       renderTab(
         {},
-        withMarks({ 위임장: "✕", 법인인감: "✕", 신분증: "✕", 신청서: "✕" }),
+        withDocs({ 위임장: "✕", 법인인감: "✕", 신분증: "✕", 신청서: "✕" }),
       );
       const row = firstRow();
-      expect(within(row).getByText("4/8").className).toContain("tabular-nums");
+      expect(cls(within(row).getByText("4/8"))).toContain("tabular-nums");
       const miss = within(row).getByText("신청서·위임장 외 2 미제출");
-      expect(miss.className).toContain("text-vermilion");
+      expect(cls(miss)).toContain("text-vermilion");
       expect(miss).toHaveAttribute(
         "title",
         "신청서·위임장·법인인감·신분증 미제출",
       );
     });
 
-    it("미제출 없이 빈 칸·모르는 표시만 있으면 '표시 없음 N' (muted)", () => {
-      renderTab({}, withMarks({ 신분증: "O", 위임장: "", 법인인감: "X" }));
+    it("표시는 다 O 인데 제출 상태가 미비 → '8/8 · 미비' (vermilion), 완비라 하지 않는다", () => {
+      renderTab({}, withDocs(allMarks("O"), "미비"));
       const row = firstRow();
-      expect(within(row).getByText("6/8").className).toContain("text-ink");
-      const rest = within(row).getByText(/표시 없음 2$/);
-      expect(rest.className).toContain("text-muted");
-      expect(rest.className).not.toContain("text-vermilion");
+      expect(cls(within(row).getByText("8/8"))).toContain("tabular-nums");
+      expect(cls(within(row).getByText("미비"))).toContain("text-vermilion");
+      expect(within(row).queryByText(/완비/)).toBeNull();
     });
 
-    it("전부 제출('대체' 포함)이면 '완비 8/8'", () => {
-      renderTab({}, withMarks({ 신분증: "대체" }));
-      const full = within(firstRow()).getByText("완비 8/8");
+    it("제출 상태가 완비면 표시 하나가 비어도 '완비 7/8'", () => {
+      renderTab({}, withDocs({ 신분증: "" }, "완비"));
+      const full = within(firstRow()).getByText("완비 7/8");
       for (const c of ["tabular-nums", "text-ink"]) {
-        expect(full.className).toContain(c);
+        expect(cls(full)).toContain(c);
       }
-      expect(within(firstRow()).queryByText(/미제출/)).toBeNull();
+      expect(within(firstRow()).queryByText(/미제출|미비/)).toBeNull();
+    });
+
+    it("완비 + 전부 제출('대체' 포함) → '완비 8/8'", () => {
+      renderTab({}, withDocs({ 신분증: "대체" }, "완비"));
+      expect(within(firstRow()).getByText("완비 8/8")).toBeInTheDocument();
+    });
+
+    it("제출 상태가 확인 안 됨이면 '확인 안 됨' (muted)", () => {
+      renderTab({}, withDocs(allMarks(""), "확인 안 됨"));
+      const row = firstRow();
+      expect(cls(within(row).getByText("확인 안 됨"))).toContain("text-muted");
+      expect(within(row).queryByText(/\/8/)).toBeNull();
     });
 
     it("_서류 줄이 없으면 '확인 안 됨' (muted)", () => {
       const [first, ...rest] = data.schools;
       renderTab({}, [{ ...first, docs: null }, ...rest]);
       const none = within(firstRow()).getByText("확인 안 됨");
-      expect(none.className).toContain("text-muted");
+      expect(cls(none)).toContain("text-muted");
     });
   });
 
@@ -345,7 +381,7 @@ describe("SchoolsTab", () => {
     renderTab();
     const row = screen.getByText("가나대학교").closest("tr")!;
     expect(within(row).getByText("접수")).toBeInTheDocument();
-    expect(within(row).getByText("2").className).toContain("tabular-nums");
+    expect(cls(within(row).getByText("2"))).toContain("tabular-nums");
     expect(within(row).getByText("7/8")).toBeInTheDocument();
     const link = within(row).getByRole("link", { name: /PDF/ });
     expect(link).toHaveAttribute("href", data.schools[0].pdfs[0].webUrl);
@@ -360,14 +396,14 @@ describe("SchoolsTab", () => {
     params = new URLSearchParams("tab=schools&school=1");
     renderTab();
     const selected = screen.getByRole("row", { name: /가나대학교/ });
-    expect(selected.className).toContain("hover:bg-line-soft");
+    expect(cls(selected)).toContain("hover:bg-line-soft");
     expect(selected).toHaveAttribute("aria-selected", "true");
-    expect(selected.className).toContain("border-vermilion");
-    expect(selected.className).toContain("bg-vermilion/10");
-    expect(selected.className).toContain("text-vermilion");
+    expect(cls(selected)).toContain("border-vermilion");
+    expect(cls(selected)).toContain("bg-vermilion/10");
+    expect(cls(selected)).toContain("text-vermilion");
     const other = screen.getByText("다라대학교").closest("tr")!;
     expect(other).toHaveAttribute("aria-selected", "false");
-    expect(other.className).toContain("border-line-soft");
+    expect(cls(other)).toContain("border-line-soft");
   });
 
   it("행 클릭 → 서버 왕복 없이 바로 인스펙터", () => {

@@ -21,6 +21,9 @@ const WIDE_COLS: Record<number, string> = {
   4: "@3xl:grid-cols-4",
   5: "@3xl:grid-cols-5",
 };
+/** 두 칸일 때 홀로 남는 마지막 카드(기타)는 두 칸을 다 쓴다 — 옆이 빈 채로 줄이 바뀌지 않게. */
+const ODD_LAST_SPAN =
+  "[&>*:last-child:nth-child(odd)]:col-span-2 @3xl:[&>*:last-child:nth-child(odd)]:col-span-1";
 
 /**
  * 구분 카드 — 구분마다 따로 선 카드(사용자 지시 2026-11-05). 한 장에 칸을 세로선으로
@@ -44,7 +47,7 @@ function GubunCards({
       <div
         role="group"
         aria-label="구분"
-        className={`grid grid-cols-2 gap-3 ${WIDE_COLS[cards.length] ?? WIDE_COLS[4]}`}
+        className={`grid grid-cols-2 gap-3 ${ODD_LAST_SPAN} ${WIDE_COLS[cards.length] ?? WIDE_COLS[4]}`}
       >
         {cards.map((c) => {
           const on = c.gubun === selected;
@@ -90,11 +93,17 @@ const MISSING_SHOWN = 2;
 /**
  * 서류 칸 — 여덟 개 점(O·✕)은 무엇이 빠졌는지 세어 봐야 알았다. 몇 종을 냈는지와
  * 빠진 서류 이름을 바로 적는다. 숫자는 한 텍스트 노드에 둔다.
+ *
+ * 앞말(완비·미비·확인 안 됨)은 서류 필터와 같은 원천인 제출 상태(`completeness`)를
+ * 따르고, 표시 집계는 그 뒤의 세부다. 집계로 앞말을 정하면 '미비' 로 거른 줄이
+ * '완비 8/8' 로 읽힌다.
  */
 function DocSummary({ docs }: { docs: School["docs"] }) {
-  if (!docs) return <span className="text-muted">확인 안 됨</span>;
-  const { submitted, total, missing, unknown } = docTally(docs);
-  if (missing.length === 0 && unknown === 0) {
+  if (!docs || docs.completeness === "확인 안 됨") {
+    return <span className="text-muted">확인 안 됨</span>;
+  }
+  const { submitted, total, missing } = docTally(docs);
+  if (docs.completeness === "완비") {
     return (
       <span className="tabular-nums text-ink">{`완비 ${submitted}/${total}`}</span>
     );
@@ -103,18 +112,13 @@ function DocSummary({ docs }: { docs: School["docs"] }) {
   return (
     <span className="whitespace-nowrap">
       <span className="tabular-nums text-ink">{`${submitted}/${total}`}</span>
+      <span className="text-muted"> · </span>
       {missing.length > 0 ? (
-        <>
-          <span className="text-muted"> · </span>
-          <span
-            title={`${missing.join("·")} 미제출`}
-            className="text-vermilion"
-          >
-            {`${missing.slice(0, MISSING_SHOWN).join("·")}${rest > 0 ? ` 외 ${rest}` : ""} 미제출`}
-          </span>
-        </>
+        <span title={`${missing.join("·")} 미제출`} className="text-vermilion">
+          {`${missing.slice(0, MISSING_SHOWN).join("·")}${rest > 0 ? ` 외 ${rest}` : ""} 미제출`}
+        </span>
       ) : (
-        <span className="tabular-nums text-muted">{` · 표시 없음 ${unknown}`}</span>
+        <span className="text-vermilion">미비</span>
       )}
     </span>
   );
