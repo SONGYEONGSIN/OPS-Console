@@ -90,10 +90,10 @@ describe("SchoolInspector", () => {
     const link = screen.getByRole("link", {
       name: "발신번호 탭에서 전체 보기 (12)",
     });
-    // 내 대학이 기본이라 mine=false 를 붙인다 — 남의 학교 인스펙터에서 눌러도 빈 목록이 아니다.
+    // 기본이 전체라 mine 을 안 붙인다 — 남의 학교 인스펙터에서 눌러도 빈 목록이 아니다.
     expect(link).toHaveAttribute(
       "href",
-      `/dashboard/internal-admin?tab=sms&view=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}&mine=false`,
+      `/dashboard/internal-admin?tab=sms&view=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}`,
     );
     expect(link).toHaveAttribute("data-next-link");
     expect(link.className).toContain("underline");

@@ -86,7 +86,11 @@ export function SmsListShell({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-1">
-                <ScopeChips total={scopeTotal} mineLabel="내 대학" />
+                <ScopeChips
+                  total={scopeTotal}
+                  mineLabel="내 대학"
+                  defaultMine={false}
+                />
               </div>
             </div>
             <SourceBar {...ctx.source} />

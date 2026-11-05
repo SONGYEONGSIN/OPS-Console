@@ -360,11 +360,11 @@ describe("내 대학 범위", () => {
     return parseSmsSender(raw);
   };
 
-  it("?mine 이 없으면 내 대학, mine=false 만 전체", () => {
-    expect(parseMine({})).toBe(true);
+  it("?mine 이 없으면 전체, mine=true 만 내 대학", () => {
+    expect(parseMine({})).toBe(false);
     expect(parseMine({ mine: "true" })).toBe(true);
+    expect(parseMine({ mine: ["true"] })).toBe(true);
     expect(parseMine({ mine: "false" })).toBe(false);
-    expect(parseMine({ mine: ["false"] })).toBe(false);
   });
 
   it("담당자 == 이름 — 공백을 지우고 비교", () => {

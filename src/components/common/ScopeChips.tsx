@@ -7,6 +7,11 @@ type Props = {
   total: number;
   /** mine 칩 라벨 (도메인별 — "내 서비스" / "내 계약" / "내 백업 요청") */
   mineLabel: string;
+  /**
+   * `?mine` 이 없을 때 어느 칩인가. 기본 true(내 것) — `mine=false` 가 전체.
+   * false 면 반대로 없을 때 전체이고 `mine=true` 가 내 것이다.
+   */
+  defaultMine?: boolean;
 };
 
 /**
@@ -15,20 +20,26 @@ type Props = {
  * URL `?mine=` 갱신으로 mutual exclusive. 도메인 page.tsx에서 mine=true 시
  * 서버 또는 클라이언트 filter 처리 (operator === me 비교 등).
  *
+ * 기본 칩(`defaultMine`)을 고르면 `mine` 을 지우고, 반대 칩은 `mine=false`
+ * (기본 내 것) / `mine=true`(기본 전체)를 적는다. 칩이 바뀌면 `page` 는 지운다.
+ * 서버 쪽 판정도 같은 기본값을 써야 칩과 목록이 어긋나지 않는다.
+ *
  * 사용 예 (services / contracts / 향후 도메인 동일):
  *   <ScopeChips total={total} mineLabel="내 서비스" />
  *   <ScopeChips total={total} mineLabel="내 계약" />
+ *   <ScopeChips total={total} mineLabel="내 대학" defaultMine={false} />
  */
-export function ScopeChips({ total, mineLabel }: Props) {
+export function ScopeChips({ total, mineLabel, defaultMine = true }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const mine = params.get("mine") !== "false";
+  const raw = params.get("mine");
+  const mine = defaultMine ? raw !== "false" : raw === "true";
 
   function go(nextMine: boolean) {
     const next = new URLSearchParams(params.toString());
-    if (nextMine) next.delete("mine");
-    else next.set("mine", "false");
+    if (nextMine === defaultMine) next.delete("mine");
+    else next.set("mine", String(nextMine));
     next.delete("page");
     router.push(`${pathname}?${next.toString()}`);
   }
