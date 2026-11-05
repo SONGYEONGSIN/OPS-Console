@@ -18,7 +18,6 @@ export type SchoolFilters = {
   stage: string;
   docs: Completeness | "";
   checkOnly: boolean;
-  school: number | null;
   page: number;
 };
 export type GubunCard = {
@@ -74,6 +73,11 @@ function positiveInt(value: string): number | null {
   return Number.isInteger(n) && n >= 1 ? n : null;
 }
 
+/** `?school=` 한 칸 — 인스펙터 딥링크. 1 이상 정수가 아니면 null. */
+export function parseSchoolNo(raw: string): number | null {
+  return positiveInt(raw);
+}
+
 export function parseSchoolFilters(sp: SearchParams): SchoolFilters {
   const docs = firstParam(sp.docs).trim();
   return {
@@ -82,7 +86,6 @@ export function parseSchoolFilters(sp: SearchParams): SchoolFilters {
     stage: firstParam(sp.stage).trim(),
     docs: DOCS_VALUES.includes(docs) ? (docs as Completeness) : "",
     checkOnly: firstParam(sp.check) === "1",
-    school: positiveInt(firstParam(sp.school)),
     page: positiveInt(firstParam(sp.page)) ?? 1,
   };
 }

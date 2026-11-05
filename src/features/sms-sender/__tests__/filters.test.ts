@@ -17,6 +17,7 @@ import {
   pageSlice,
   parseNumberFilters,
   parseSchoolFilters,
+  parseSchoolNo,
   schoolDetail,
   stageLabel,
   type SchoolFilters,
@@ -51,7 +52,6 @@ const noFilter: SchoolFilters = {
   stage: "",
   docs: "",
   checkOnly: false,
-  school: null,
   page: 1,
 };
 
@@ -64,7 +64,6 @@ describe("parseSchoolFilters", () => {
         stage: "PIMS",
         docs: "미비",
         check: "1",
-        school: "3",
       }),
     ).toEqual({
       q: "가나",
@@ -72,13 +71,12 @@ describe("parseSchoolFilters", () => {
       stage: "PIMS",
       docs: "미비",
       checkOnly: true,
-      school: 3,
       page: 1,
     });
     expect(parseSchoolFilters({ page: "2" }).page).toBe(2);
     expect(
-      parseSchoolFilters({ docs: "아무거나", school: "abc" }),
-    ).toMatchObject({ docs: "", school: null });
+      parseSchoolFilters({ docs: "아무거나" }),
+    ).toMatchObject({ docs: "" });
     expect(parseSchoolFilters({})).toEqual(noFilter);
   });
 });
@@ -86,8 +84,8 @@ describe("parseSchoolFilters", () => {
 describe("배열 파라미터", () => {
   it("첫 값으로 읽는다", () => {
     expect(
-      parseSchoolFilters({ q: ["가나", "다라"], school: ["3", "4"] }),
-    ).toMatchObject({ q: "가나", school: 3 });
+      parseSchoolFilters({ q: ["가나", "다라"], page: ["3", "4"] }),
+    ).toMatchObject({ q: "가나", page: 3 });
     expect(parseNumberFilters({ page: ["2", "9"] }).page).toBe(2);
     expect(firstParam(undefined)).toBe("");
     expect(firstParam([])).toBe("");
@@ -101,7 +99,7 @@ describe("배열 파라미터", () => {
       [" 3 ", 3],
       ["3abc", null],
     ] as const) {
-      expect(parseSchoolFilters({ school: v }).school).toBe(want);
+      expect(parseSchoolNo(v)).toBe(want);
     }
   });
 });

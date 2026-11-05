@@ -101,11 +101,29 @@ describe("SourceBar", () => {
     expect(cls).toContain("hover:text-cream");
     expect(cls).toContain("hover:border-ink");
   });
+
+  it("표 머리 오른쪽 보조 버튼 — 헤더 액션과 같은 치수, vermilion 은 아니다", () => {
+    const { container } = render(<SourceBar {...base} />);
+    for (const name of ["새로고침", "서류 기준"]) {
+      const cls = screen.getByRole("button", { name }).className;
+      expect(cls).toContain("border-line");
+      expect(cls).toContain("px-3");
+      expect(cls).toContain("py-1");
+      expect(cls).toContain("text-xs");
+      expect(cls).not.toContain("bg-vermilion");
+    }
+    // 검색줄 자리(px-7 pt-3)가 아니라 머리 안에 들어간다.
+    const root = container.firstElementChild!;
+    expect(root.className).not.toContain("px-7");
+    expect(root.className).not.toContain("pt-3");
+  });
 });
 
 describe("SourceError", () => {
   it("alert 로 문구를", () => {
-    render(<SourceError message="‘_학교’ 시트에서 ‘대학명’ 열을 찾지 못했습니다." />);
+    render(
+      <SourceError message="‘_학교’ 시트에서 ‘대학명’ 열을 찾지 못했습니다." />,
+    );
     expect(screen.getByRole("alert")).toHaveTextContent("‘_학교’ 시트에서");
   });
 });

@@ -37,11 +37,9 @@ describe("내부관리자 페이지", () => {
     expect(SRC).not.toMatch(/const TABS = \[/);
   });
 
-  it("개요 뷰는 Graph 읽기(getSmsSenderData 호출)보다 먼저 반환한다", () => {
-    const overview = SRC.indexOf('if (view === "overview")');
-    const read = SRC.indexOf("getSmsSenderData()");
-    expect(overview).toBeGreaterThan(-1);
-    expect(read).toBeGreaterThan(overview);
+  it("개요(견본) 뷰는 없다 — 가짜 데이터·ProjectPattern 을 안 쓴다", () => {
+    expect(SRC).not.toMatch(/overview/);
+    expect(SRC).not.toMatch(/ProjectPattern|getPatternMockData/);
   });
 
   it('가드는 requireMenu("internal-admin") 하나', () => {
