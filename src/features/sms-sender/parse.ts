@@ -341,13 +341,25 @@ function withFileChecks(
   files: FileCheck[],
 ): CheckItem[] {
   const start = sheetChecks.reduce((max, c) => Math.max(max, c.no), 0);
-  return [...sheetChecks, ...files.map((f, i) => ({ ...f, no: start + i + 1 }))];
+  return [
+    ...sheetChecks,
+    ...files.map((f, i) => ({ ...f, no: start + i + 1 })),
+  ];
+}
+
+/** 엑셀 칸 안 줄바꿈(Alt+Enter)은 `\r\n`·`\r` 로도 온다 — 화면이 보이도록 `\n` 하나로. */
+function criteriaCell(c: unknown): string {
+  return String(c ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/^\n+/, "")
+    .trimEnd();
 }
 
 function parseCriteria(values: unknown[][] | null): string[][] | null {
   if (values === null) return null;
   const rows = values.map((r) => {
-    const cells = r.map((c) => String(c ?? ""));
+    const cells = r.map(criteriaCell);
     while (cells.length > 0 && cells[cells.length - 1] === "") cells.pop();
     return cells;
   });

@@ -53,4 +53,43 @@ describe("ScopeChips", () => {
     expect(arg).not.toContain("mine=false");
     expect(arg).not.toContain("mine=true");
   });
+
+  describe("defaultMine={false} — 기본이 전체", () => {
+    it("param 없으면 전체 칩 active", () => {
+      render(<ScopeChips total={7} mineLabel="내 대학" defaultMine={false} />);
+      expect(screen.getByRole("button", { name: "전체" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "내 대학" })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    });
+
+    it("mine=true 면 내것 칩 active", () => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams("mine=true"));
+      render(<ScopeChips total={7} mineLabel="내 대학" defaultMine={false} />);
+      expect(screen.getByRole("button", { name: "내 대학" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    it("내것 클릭 → mine=true, page 지움", () => {
+      useSearchParamsMock.mockReturnValue(new URLSearchParams("q=a&page=3"));
+      render(<ScopeChips total={7} mineLabel="내 대학" defaultMine={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "내 대학" }));
+      expect(push).toHaveBeenCalledWith("/dashboard/services?q=a&mine=true");
+    });
+
+    it("mine=true 에서 전체 클릭 → mine 제거, page 지움", () => {
+      useSearchParamsMock.mockReturnValue(
+        new URLSearchParams("mine=true&q=a&page=2"),
+      );
+      render(<ScopeChips total={7} mineLabel="내 대학" defaultMine={false} />);
+      fireEvent.click(screen.getByRole("button", { name: "전체" }));
+      expect(push).toHaveBeenCalledWith("/dashboard/services?q=a");
+    });
+  });
 });

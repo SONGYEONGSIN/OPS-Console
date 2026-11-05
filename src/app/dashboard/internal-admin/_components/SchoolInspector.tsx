@@ -32,9 +32,7 @@ function Body({ detail }: { detail: SchoolDetail }) {
   const { school, numbers, checks } = detail;
   const docs = school.docs;
   const shown = numbers.slice(0, NUMBER_LIMIT);
-  // 목록은 '내 대학' 이 기본이라 mine=false 를 붙인다 — 남의 학교 인스펙터에서 눌러도
-  // 빈 목록이 뜨지 않는다. 검색어·구분으로 이미 이 학교만 남는다.
-  const moreHref = `${viewHref("numbers")}&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}&mine=false`;
+  const moreHref = `${viewHref("numbers")}&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}`;
   return (
     <>
       {/* InspectorChrome 과 같은 머리 — 눈썹 문구, 굵은 제목, 굵은 아랫선.

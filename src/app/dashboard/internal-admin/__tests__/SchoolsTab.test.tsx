@@ -102,7 +102,7 @@ describe("SchoolsTab", () => {
     );
   });
 
-  it("구분 카드 — 공통 KpiCard, 누르면 ?gubun", () => {
+  it("구분 카드 — 운영리포트 '서비스' 카드처럼 한 장, 구분마다 칸 하나", () => {
     const base = rawSource();
     const counted = parseSmsSender(
       rawSource({
@@ -131,28 +131,122 @@ describe("SchoolsTab", () => {
         ctx={ctxOf(counted)}
       />,
     );
-    const card = screen.getByRole("button", { name: /4년제/ });
+    // 카드는 한 장 — 제목 '구분', 운영리포트 카드 면.
+    const group = screen.getByRole("group", { name: "구분" });
+    for (const c of [
+      "flex",
+      "flex-col",
+      "gap-1",
+      "border",
+      "border-line-soft",
+      "bg-situation-bg",
+      "p-4",
+    ]) {
+      expect(group.className.split(/\s+/)).toContain(c);
+    }
+    const title = within(group).getByText("구분");
+    expect(title.className).toBe("text-xs font-medium text-muted");
+
+    // 칸은 구분 순서 그대로, 모두 같은 카드 안.
+    const cols = within(group).getAllByRole("button");
+    expect(cols.map((b) => b.querySelector("div")!.textContent)).toEqual(
+      gubunCards(counted.schools).map((c) => c.gubun),
+    );
+    const card = within(group).getByRole("button", { name: /4년제/ });
+    expect(card.className).toContain("flex-1");
+    const label = within(card).getByText("4년제");
+    expect(label.className).toContain("text-2xs");
+    expect(label.className).toContain("text-muted");
     const value = within(card).getByText("2");
-    expect(value.className).toContain("text-2xl");
-    expect(value.className).toContain("tabular-nums");
-    expect(within(card).getByText("곳")).toBeInTheDocument();
-    expect(value.closest("div.border")!.className).toContain("bg-situation-bg");
-    expect(
-      within(card).getByText("회선 5 · 서류 미비 1 · 확인 1"),
-    ).toBeInTheDocument();
+    for (const c of ["text-2xl", "font-bold", "tabular-nums", "text-ink"]) {
+      expect(value.className).toContain(c);
+    }
+    const unit = within(card).getByText("곳");
+    expect(unit.className).toContain("text-2xs");
+    expect(unit.className).toContain("text-muted");
+    // 증감 줄 자리에 회선·서류 미비·확인 — 칸 안에.
+    const stats = within(card).getByText("회선 5 · 서류 미비 1 · 확인 1");
+    for (const c of ["text-xs", "text-muted", "tabular-nums"]) {
+      expect(stats.className).toContain(c);
+    }
+    expect(within(group).queryByText("비교 불가")).toBeNull();
+
+    // 칸 사이 세로 구분선 — 줄바꿈은 뷰포트가 아니라 카드 폭(사이드바·인스펙터가 줄인다)이
+    // 정하므로 컨테이너 쿼리로 숨긴다. 다섯 칸이 한 줄에 다 들어가는 폭부터 보인다.
+    const row = cols[0].parentElement!.parentElement!;
+    expect(row.parentElement!.className.split(/\s+/)).toContain("@container");
+    for (const c of ["flex-wrap", "@3xl:flex-nowrap"]) {
+      expect(row.className.split(/\s+/)).toContain(c);
+    }
+    const dividers = group.querySelectorAll("div.w-px");
+    expect(dividers).toHaveLength(cols.length - 1);
+    for (const d of dividers) {
+      for (const c of [
+        "hidden",
+        "@3xl:block",
+        "self-stretch",
+        "bg-line-soft",
+      ]) {
+        expect(d.className.split(/\s+/)).toContain(c);
+      }
+      expect(d.className).not.toContain("sm:block");
+    }
+
     fireEvent.click(card);
     expect(lastQuery().get("gubun")).toBe("4년제");
   });
 
-  it("선택된 카드는 aria-pressed + vermilion 테두리, 다시 누르면 해제", () => {
+  it("회선·서류 미비·확인도 곳 수처럼 천 단위로 끊는다", () => {
+    const base = rawSource();
+    const big = parseSmsSender(
+      rawSource({
+        sheets: {
+          ...base.sheets,
+          schools: [
+            SCHOOL_HEADER,
+            schoolRow(1, "가나대학교", {
+              "등록 회선": 1234,
+              "서류 미비": 1500,
+            }),
+          ],
+        },
+      }),
+    );
+    render(
+      <SchoolsTab
+        cards={gubunCards(big.schools)}
+        schools={big.schools}
+        total={1}
+        scopeTotal={1}
+        filters={noFilters}
+        ctx={ctxOf(big)}
+      />,
+    );
+    const card = screen.getByRole("button", { name: /4년제/ });
+    expect(
+      within(card).getByText(/^회선 1,234 · 서류 미비 1,500 · 확인 \d+$/),
+    ).toBeInTheDocument();
+  });
+
+  it("칸은 면(面) — 목록 호버·선택 표준, 링 없음, 다시 누르면 해제", () => {
     params = new URLSearchParams("tab=schools&gubun=4년제");
     renderTab({ gubun: "4년제" });
     const card = screen.getByRole("button", { name: /4년제/ });
     expect(card).toHaveAttribute("aria-pressed", "true");
-    expect(card.className).toContain("ring-vermilion");
+    expect(card.className).toContain("bg-vermilion/10");
+    expect(card.className).not.toContain("ring");
+    expect(card.className).not.toContain("hover:bg-ink");
+    expect(within(card).getByText("4년제").className).toContain(
+      "text-vermilion",
+    );
     const other = screen.getByRole("button", { name: /전문대학/ });
     expect(other).toHaveAttribute("aria-pressed", "false");
-    expect(other.className).not.toContain("ring-vermilion");
+    expect(other.className).toContain("hover:bg-line-soft");
+    expect(other.className).not.toContain("bg-vermilion/10");
+    expect(other.className).not.toContain("ring");
+    expect(within(other).getByText("전문대학").className).not.toContain(
+      "text-vermilion",
+    );
     fireEvent.click(card);
     expect(lastQuery().get("gubun")).toBeNull();
   });
@@ -276,7 +370,10 @@ describe("SchoolsTab", () => {
     ).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Escape" });
     expect(
-      new URL(String(replace.mock.calls.at(-1)![2]), "http://x").searchParams.has("school"),
+      new URL(
+        String(replace.mock.calls.at(-1)![2]),
+        "http://x",
+      ).searchParams.has("school"),
     ).toBe(false);
     replace.mockRestore();
   });

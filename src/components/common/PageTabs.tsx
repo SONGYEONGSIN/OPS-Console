@@ -16,12 +16,14 @@ export type PageTab = { key: string; label: string; href: string };
  *     ...
  *   ]} />
  *
- * `size="sm"` — 메인 탭 아래 서브 탭 한 줄. 글자·패딩만 줄이고 밑줄 규칙은 같다.
+ * `size="sm"` — 메인 탭 아래 서브 탭 한 줄. 글자·가로 패딩만 줄이고 밑줄 규칙은 같다.
  * 칩이 아니다(칩은 같은 목록의 필터). 기본 모양은 바뀌지 않는다.
+ * 메인 탭 줄과 `mt-3` 띄우고 세로 패딩은 메인과 같은 `py-2` 다 — `py-1.5` 로 메인 바로
+ * 밑에 붙여 두니 납작하게 끼어 보였다(사용자 지시 2026-11-05).
  */
 const SIZE_CLASS = {
   md: { bar: "border-line", tab: "px-4 py-2 text-sm" },
-  sm: { bar: "border-line-soft", tab: "px-3 py-1.5 text-xs" },
+  sm: { bar: "mt-3 border-line-soft", tab: "px-3 py-2 text-xs" },
 } as const;
 
 export function PageTabs({

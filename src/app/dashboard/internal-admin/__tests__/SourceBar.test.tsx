@@ -7,6 +7,7 @@ vi.mock("@/features/sms-sender/actions", () => ({
   refreshSmsSenderCache: () => refresh(),
 }));
 
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { SourceBar, SourceError } from "../_components/SourceBar";
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -94,23 +95,15 @@ describe("SourceBar", () => {
     );
   });
 
-  it("버튼은 버튼 호버 표준", () => {
-    render(<SourceBar {...base} />);
-    const cls = screen.getByRole("button", { name: "새로고침" }).className;
-    expect(cls).toContain("hover:bg-ink");
-    expect(cls).toContain("hover:text-cream");
-    expect(cls).toContain("hover:border-ink");
-  });
-
-  it("표 머리 오른쪽 보조 버튼 — 헤더 액션과 같은 치수, vermilion 은 아니다", () => {
+  it("두 버튼 모두 헤더 액션 표준 클래스 그대로 (vermilion + cream)", () => {
     const { container } = render(<SourceBar {...base} />);
     for (const name of ["새로고침", "서류 기준"]) {
       const cls = screen.getByRole("button", { name }).className;
-      expect(cls).toContain("border-line");
-      expect(cls).toContain("px-3");
-      expect(cls).toContain("py-1");
-      expect(cls).toContain("text-xs");
-      expect(cls).not.toContain("bg-vermilion");
+      expect(cls).toBe(HEADER_ACTION_CLASS);
+      expect(cls).toContain("bg-vermilion");
+      expect(cls).toContain("text-cream");
+      expect(cls).toContain("disabled:opacity-50");
+      expect(cls).not.toContain("border-line ");
     }
     // 검색줄 자리(px-7 pt-3)가 아니라 머리 안에 들어간다.
     const root = container.firstElementChild!;

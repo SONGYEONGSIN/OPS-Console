@@ -49,15 +49,18 @@ describe("PageTabs", () => {
     const bar = tokens(active.parentElement!);
     expect(bar).toContain("border-line");
     expect(bar).not.toContain("border-line-soft");
+    expect(bar).not.toContain("mt-3");
   });
 
   it('size="sm" — 메인보다 작고 가벼운 서브 탭 (칩 아님)', () => {
     render(<PageTabs active="univ" tabs={tabs} size="sm" />);
     const active = screen.getByRole("link", { name: "대학배정" });
     const idle = screen.getByRole("link", { name: "업무분장" });
-    for (const c of ["text-xs", "px-3", "py-1.5", "-mb-px"]) {
-      expect(active.className).toContain(c);
+    for (const c of ["text-xs", "px-3", "py-2", "-mb-px"]) {
+      expect(tokens(active)).toContain(c);
     }
+    // 메인 탭 바로 밑에 붙어 납작해 보였다(사용자 지시 2026-11-05).
+    expect(tokens(active)).not.toContain("py-1.5");
     for (const c of ["border-b-2", "border-vermilion", "text-vermilion"]) {
       expect(active.className).toContain(c);
     }
@@ -71,6 +74,8 @@ describe("PageTabs", () => {
     expect(bar).toContain("border-b");
     expect(bar).toContain("border-line-soft");
     expect(bar).not.toContain("border-line");
+    // 메인 탭 줄과 띄운다.
+    expect(bar).toContain("mt-3");
     expect(active).toHaveAttribute("aria-current", "page");
   });
 });

@@ -90,9 +90,12 @@ export function parseSchoolFilters(sp: SearchParams): SchoolFilters {
   };
 }
 
-/** 다른 목록과 같다 — `?mine` 이 없으면 내 대학, `mine=false` 만 전체. */
+/**
+ * 다른 목록과 반대로 기본이 전체다(사용자 지시 2026-11-05) — `mine=true` 만 내 대학.
+ * 칩(`ScopeChips defaultMine={false}`)과 같은 기본값이어야 칩과 목록이 어긋나지 않는다.
+ */
 export function parseMine(sp: SearchParams): boolean {
-  return firstParam(sp.mine) !== "false";
+  return firstParam(sp.mine) === "true";
 }
 
 /**
