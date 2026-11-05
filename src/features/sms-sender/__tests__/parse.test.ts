@@ -511,4 +511,10 @@ describe("parseSmsSender", () => {
     );
     expect(d.criteria).toEqual([["1", "재직증명서\n사업자등록증\n원본"]]);
   });
+  it("05 시트 — 칸 머리의 빈 줄도 지운다(pre-line 이 그대로 보인다)", () => {
+    const d = parseSmsSender(
+      rawSource({ criteria: [["1", "\r\n\n  \n재직증명서\n원본"]] }),
+    );
+    expect(d.criteria).toEqual([["1", "재직증명서\n원본"]]);
+  });
 });

@@ -171,17 +171,61 @@ describe("SchoolsTab", () => {
     }
     expect(within(group).queryByText("비교 불가")).toBeNull();
 
-    // 칸 사이 세로 구분선 — 좁은 화면(줄바꿈)에서는 숨긴다.
+    // 칸 사이 세로 구분선 — 줄바꿈은 뷰포트가 아니라 카드 폭(사이드바·인스펙터가 줄인다)이
+    // 정하므로 컨테이너 쿼리로 숨긴다. 다섯 칸이 한 줄에 다 들어가는 폭부터 보인다.
+    const row = cols[0].parentElement!.parentElement!;
+    expect(row.parentElement!.className.split(/\s+/)).toContain("@container");
+    for (const c of ["flex-wrap", "@3xl:flex-nowrap"]) {
+      expect(row.className.split(/\s+/)).toContain(c);
+    }
     const dividers = group.querySelectorAll("div.w-px");
     expect(dividers).toHaveLength(cols.length - 1);
     for (const d of dividers) {
-      for (const c of ["hidden", "sm:block", "self-stretch", "bg-line-soft"]) {
+      for (const c of [
+        "hidden",
+        "@3xl:block",
+        "self-stretch",
+        "bg-line-soft",
+      ]) {
         expect(d.className.split(/\s+/)).toContain(c);
       }
+      expect(d.className).not.toContain("sm:block");
     }
 
     fireEvent.click(card);
     expect(lastQuery().get("gubun")).toBe("4년제");
+  });
+
+  it("회선·서류 미비·확인도 곳 수처럼 천 단위로 끊는다", () => {
+    const base = rawSource();
+    const big = parseSmsSender(
+      rawSource({
+        sheets: {
+          ...base.sheets,
+          schools: [
+            SCHOOL_HEADER,
+            schoolRow(1, "가나대학교", {
+              "등록 회선": 1234,
+              "서류 미비": 1500,
+            }),
+          ],
+        },
+      }),
+    );
+    render(
+      <SchoolsTab
+        cards={gubunCards(big.schools)}
+        schools={big.schools}
+        total={1}
+        scopeTotal={1}
+        filters={noFilters}
+        ctx={ctxOf(big)}
+      />,
+    );
+    const card = screen.getByRole("button", { name: /4년제/ });
+    expect(
+      within(card).getByText(/^회선 1,234 · 서류 미비 1,500 · 확인 \d+$/),
+    ).toBeInTheDocument();
   });
 
   it("칸은 면(面) — 목록 호버·선택 표준, 링 없음, 다시 누르면 해제", () => {
@@ -326,7 +370,10 @@ describe("SchoolsTab", () => {
     ).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Escape" });
     expect(
-      new URL(String(replace.mock.calls.at(-1)![2]), "http://x").searchParams.has("school"),
+      new URL(
+        String(replace.mock.calls.at(-1)![2]),
+        "http://x",
+      ).searchParams.has("school"),
     ).toBe(false);
     replace.mockRestore();
   });

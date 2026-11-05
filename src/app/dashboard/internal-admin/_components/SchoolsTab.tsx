@@ -41,47 +41,52 @@ function GubunCards({
         className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4"
       >
         <div className="text-xs font-medium text-muted">구분</div>
-        <div className="flex flex-wrap gap-3">
-          {cards.map((c, i) => {
-            const on = c.gubun === selected;
-            return (
-              /*
-               * `flex-1`(basis 0)만 두면 폰에서 줄바꿈 대신 다섯 칸이 짓눌린다 —
-               * basis 를 줘서 좁으면 다음 줄로 넘어가게 한다. 구분선은 그때 줄 맨 앞에
-               * 홀로 남으므로 그 폭에서는 숨긴다(`SheetBreakdownCard` 와 같은 규칙).
-               */
-              <div key={c.gubun} className="flex grow basis-32 gap-3">
-                {i > 0 ? (
-                  <div className="hidden w-px shrink-0 self-stretch bg-line-soft sm:block" />
-                ) : null}
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => setParams({ gubun: on ? null : c.gubun })}
-                  className={`flex flex-1 cursor-pointer flex-col gap-0.5 px-2 py-1 text-left transition-colors ${
-                    on ? "bg-vermilion/10" : "hover:bg-line-soft"
-                  }`}
-                >
-                  <div
-                    className={`whitespace-nowrap text-2xs ${
-                      on ? "text-vermilion" : "text-muted"
+        <div className="@container">
+          <div className="flex flex-wrap gap-3 @3xl:flex-nowrap">
+            {cards.map((c, i) => {
+              const on = c.gubun === selected;
+              return (
+                /*
+                 * `flex-1`(basis 0)만 두면 폰에서 줄바꿈 대신 다섯 칸이 짓눌린다 —
+                 * basis 를 줘서 좁으면 다음 줄로 넘어가게 한다. 구분선은 그때 줄 맨 앞에
+                 * 홀로 남으므로 그 폭에서는 숨긴다. 줄바꿈은 뷰포트가 아니라 카드 폭이
+                 * 정한다(사이드바·인스펙터가 줄인다) — 그래서 `sm:` 이 아니라 컨테이너 쿼리다.
+                 * 다섯 칸은 5×128 + 칸 사이 4×(gap 12 + 구분선 1 + gap 12) = 740px,
+                 * `@3xl`(48rem = 768px) 부터 한 줄에 다 들어가 구분선을 보이고 줄바꿈을 끈다.
+                 */
+                <div key={c.gubun} className="flex grow basis-32 gap-3">
+                  {i > 0 ? (
+                    <div className="hidden w-px shrink-0 self-stretch bg-line-soft @3xl:block" />
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setParams({ gubun: on ? null : c.gubun })}
+                    className={`flex flex-1 cursor-pointer flex-col gap-0.5 px-2 py-1 text-left transition-colors ${
+                      on ? "bg-vermilion/10" : "hover:bg-line-soft"
                     }`}
                   >
-                    {c.gubun}
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold tabular-nums text-ink">
-                      {c.schools.toLocaleString("ko-KR")}
-                    </span>
-                    <span className="text-2xs text-muted">곳</span>
-                  </div>
-                  <div className="text-xs tabular-nums text-muted">
-                    {`회선 ${c.lines} · 서류 미비 ${c.deficient} · 확인 ${c.checks}`}
-                  </div>
-                </button>
-              </div>
-            );
-          })}
+                    <div
+                      className={`whitespace-nowrap text-2xs ${
+                        on ? "text-vermilion" : "text-muted"
+                      }`}
+                    >
+                      {c.gubun}
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold tabular-nums text-ink">
+                        {c.schools.toLocaleString("ko-KR")}
+                      </span>
+                      <span className="text-2xs text-muted">곳</span>
+                    </div>
+                    <div className="text-xs tabular-nums text-muted">
+                      {`회선 ${c.lines.toLocaleString("ko-KR")} · 서류 미비 ${c.deficient.toLocaleString("ko-KR")} · 확인 ${c.checks.toLocaleString("ko-KR")}`}
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

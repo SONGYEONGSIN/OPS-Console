@@ -352,6 +352,7 @@ function criteriaCell(c: unknown): string {
   return String(c ?? "")
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t]+$/gm, "")
+    .replace(/^\n+/, "")
     .trimEnd();
 }
 

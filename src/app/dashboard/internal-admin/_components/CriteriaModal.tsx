@@ -4,7 +4,8 @@ import { ModalShell } from "@/components/common/ModalShell";
 
 type Props = { rows: string[][]; onClose: () => void };
 
-const LONG_TOKEN = /\S{30,}/;
+// ASCII 만 — `\S` 는 공백 없이 쉼표로 이은 한글 목록도 잡아 낱말 중간에서 끊게 한다.
+const LONG_TOKEN = /[\x21-\x7e]{30,}/;
 
 function cellClass(cell: string): string {
   const base = "whitespace-pre-line break-keep px-3 py-2 align-top";

@@ -44,6 +44,16 @@ describe("CriteriaModal", () => {
     expect(cell.className).toContain("whitespace-pre-line");
   });
 
+  it("공백 없는 긴 한글 칸(쉼표로 이은 서류 목록)은 낱말 중간에서 안 끊는다", () => {
+    const list =
+      "재직증명서,사업자등록증,통장사본,신분증사본,인감증명서,위임장";
+    expect(list.length).toBeGreaterThanOrEqual(30);
+    render(<CriteriaModal rows={[["1", list]]} onClose={vi.fn()} />);
+    expect(screen.getByText(list).className).not.toContain(
+      "[overflow-wrap:anywhere]",
+    );
+  });
+
   it("칸이 모자란 줄은 마지막 칸이 남은 열을 채운다", () => {
     render(
       <CriteriaModal
