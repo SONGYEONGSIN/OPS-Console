@@ -4,6 +4,7 @@ import {
   type DocKind,
   type DocStatus,
 } from "@/features/sms-sender/types";
+import { BADGE_TONE } from "@/app/dashboard/_components/inspector/list-variants/badge-tone";
 import { docTally, markLabel } from "../_components/doc-mark";
 
 const docsOf = (over: Partial<Record<DocKind, string>> = {}): DocStatus => ({
@@ -50,40 +51,41 @@ describe("docTally", () => {
 });
 
 describe("markLabel", () => {
-  it("O → 제출 (ink)", () => {
+  /** 실행 로그 '성공' 배지와 같은 상자 — 색만 뜻에 따라 바뀐다. */
+  const BOX = ["inline-block", "px-2", "py-0.5", "text-[11px]"];
+  const tokens = (m: string) => markLabel(m).className.split(/\s+/);
+  const expectBadge = (m: string, tone: string) => {
+    for (const c of [...BOX, ...tone.split(" ")]) expect(tokens(m)).toContain(c);
+  };
+
+  it("O → 제출 (채운 ink 배지)", () => {
     expect(markLabel("O")).toMatchObject({ text: "제출", aria: "제출" });
-    expect(markLabel("O").className).toContain("text-ink");
+    expectBadge("O", BADGE_TONE.done);
   });
 
-  it("✕ → 미제출 칩 (vermilion 테두리)", () => {
-    const l = markLabel("✕");
-    expect(l.text).toBe("미제출");
-    for (const c of [
-      "border",
-      "border-vermilion",
-      "px-1.5",
-      "text-xs",
-      "text-vermilion",
-    ]) {
-      expect(l.className.split(/\s+/)).toContain(c);
-    }
+  it("✕ → 미제출 (봐야 할 것 배지)", () => {
+    expect(markLabel("✕")).toMatchObject({ text: "미제출", aria: "미제출" });
+    expectBadge("✕", BADGE_TONE.attention);
   });
 
-  it("대체 → 대체 인정 (muted)", () => {
+  it("대체 → 대체 인정 (대기 배지)", () => {
     expect(markLabel("대체").text).toBe("대체 인정");
-    expect(markLabel("대체").className).toContain("text-muted");
+    expectBadge("대체", BADGE_TONE.idle);
   });
 
-  it("빈 칸 → '-' , 읽을 때는 '표시 없음'", () => {
+  it("빈 칸 → '-' 글자만, 배지가 아니다 — 읽을 때는 '표시 없음'", () => {
     expect(markLabel("")).toMatchObject({ text: "-", aria: "표시 없음" });
-    expect(markLabel("").className).toContain("text-muted");
+    expect(tokens("")).toContain("text-muted");
+    expect(tokens("")).not.toContain("inline-block");
+    expect(tokens("").some((c) => c.startsWith("bg-"))).toBe(false);
   });
 
-  it("모르는 표시는 대체·제출로 바꾸지 않고 원문을 보인다", () => {
+  it("모르는 표시는 대체·제출로 바꾸지 않고 원문을 보인다 (대기 배지)", () => {
     for (const m of ["X", "×", "제출?"]) {
       const l = markLabel(m);
       expect(l.text).toBe(`알 수 없음(${m})`);
-      expect(l.className).toContain("text-muted");
+      expect(l.aria).toBe(`알 수 없음(${m})`);
+      expectBadge(m, BADGE_TONE.idle);
     }
   });
 });

@@ -6,14 +6,17 @@ import { kstFormat } from "@/lib/kst-format";
 import { DOC_KINDS } from "@/features/sms-sender/types";
 import { stageLabel, type SchoolDetail } from "@/features/sms-sender/filters";
 import { viewHref } from "../tabs";
-import { docTally, markLabel } from "./doc-mark";
+import { Divider } from "../../_components/inspector/list-variants/shared";
+import { BADGE_BOX, docTally, markLabel } from "./doc-mark";
+import { numberStatusTone } from "./number-status";
 
 const NUMBER_LIMIT = 10;
 const DATE = kstFormat({ year: "numeric", month: "2-digit", day: "2-digit" });
 
 /**
- * 섹션마다 상자 — 제목만으로 나누면 네 묶음이 한 덩어리로 흘러 읽혔다.
- * 제목 오른쪽 건수는 상자를 펼쳐 세지 않아도 되게 한다.
+ * 섹션은 상자 대신 ink 가로줄로 나눈다 — 자동화 실행 로그 인스펙터와 같은 모양.
+ * 제목만으로 나누면 네 묶음이 한 덩어리로 흘러 읽혀서 줄을 긋는다.
+ * 제목 오른쪽 건수는 줄을 하나하나 세지 않아도 되게 한다.
  */
 function Section({
   title,
@@ -25,7 +28,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border border-line-soft bg-situation-bg p-4">
+    <section>
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h4 className="text-xs uppercase tracking-[0.06em] text-muted">
           {title}
@@ -67,7 +70,7 @@ function Body({ detail }: { detail: SchoolDetail }) {
         </div>
       </header>
 
-      <div className="space-y-3">
+      <div className="space-y-5">
         <Section
           title="제출 서류"
           count={tally ? `${tally.submitted}/${tally.total}` : undefined}
@@ -105,6 +108,8 @@ function Body({ detail }: { detail: SchoolDetail }) {
           )}
         </Section>
 
+        <Divider />
+
         <Section title="통합 PDF">
           {school.pdfs.length === 0 ? (
             <p className="text-sm text-muted">통합 PDF 없음</p>
@@ -129,15 +134,22 @@ function Body({ detail }: { detail: SchoolDetail }) {
           )}
         </Section>
 
+        <Divider />
+
         <Section
           title="발신번호"
           count={numbers.length.toLocaleString("ko-KR")}
         >
           <ul className="space-y-1 text-sm">
             {shown.map((n) => (
-              <li key={n.no} className="flex justify-between gap-2">
+              <li
+                key={n.no}
+                className="flex items-center justify-between gap-2"
+              >
                 <span className="tabular-nums">{n.number}</span>
-                <span className="text-muted">{n.status}</span>
+                <span className={`${BADGE_BOX} ${numberStatusTone(n.status)}`}>
+                  {n.status}
+                </span>
               </li>
             ))}
           </ul>
@@ -150,6 +162,8 @@ function Body({ detail }: { detail: SchoolDetail }) {
             </Link>
           )}
         </Section>
+
+        <Divider />
 
         <Section
           title="확인 필요"
