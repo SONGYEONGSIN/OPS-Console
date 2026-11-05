@@ -59,7 +59,7 @@ const num = (v: unknown): number => {
 
 type Table = { index: Record<string, number>; rows: unknown[][] };
 
-/** optional 열은 없어도 된다 — index 에 안 들어갈 뿐이다. 두 개면 필수와 같이 오류. */
+/** optional 열은 없어도 된다 — index 에 안 들어갈 뿐이다. 두 개여도 오류가 아니라 첫 번째를 쓴다(필수는 오류). */
 function readTable(
   key: HiddenSheetKey,
   values: unknown[][],
@@ -80,7 +80,7 @@ function readTable(
         sheet,
         name,
       );
-    if (hits.length > 1)
+    if (hits.length > 1 && !optional.includes(name))
       throw new SheetShapeError(
         `‘${sheet}’ 시트에 ‘${name}’ 열이 두 개 있습니다.`,
         sheet,

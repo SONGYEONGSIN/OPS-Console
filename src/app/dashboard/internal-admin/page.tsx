@@ -20,7 +20,7 @@ import {
   parseMine,
   parseNumberFilters,
   parseSchoolFilters,
-  scopeByschoolNo,
+  scopeBySchoolNo,
   scopeSchools,
 } from "@/features/sms-sender/filters";
 import type { SearchParams } from "@/features/sms-sender/filters";
@@ -125,7 +125,7 @@ function renderView(
   if (view === "numbers") {
     const filters = parseNumberFilters(sp);
     const matched = filterNumbers(data.numbers, filters);
-    const rows = scopeByschoolNo(matched, scope);
+    const rows = scopeBySchoolNo(matched, scope);
     return (
       <NumbersTab
         rows={pageSlice(rows, filters.page, LIST_PAGE_SIZE)}
@@ -147,7 +147,7 @@ function renderView(
   if (view === "checks") {
     const filters = parseCheckFilters(sp);
     const matched = filterChecks(data.checks, filters);
-    const rows = scopeByschoolNo(matched, scope);
+    const rows = scopeBySchoolNo(matched, scope);
     return (
       <ChecksTab
         rows={pageSlice(rows, filters.page, LIST_PAGE_SIZE)}

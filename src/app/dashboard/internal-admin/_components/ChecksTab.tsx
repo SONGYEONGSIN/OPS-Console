@@ -1,34 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ListSelect } from "@/components/common/ListSelect";
 import type { CheckFilters } from "@/features/sms-sender/filters";
 import type { CheckItem } from "@/features/sms-sender/types";
-import { viewHref } from "../tabs";
 import { useDebouncedSearch, useSetParams } from "./use-set-params";
 import { SmsListShell, rowProps, type ListContext } from "./SmsListShell";
 
 const TEXT = "whitespace-pre-line";
 const HEADS = ["유형", "대상", "내용", "근거", "할 일"];
 
+/** 대상은 글자다 — 행을 누르면 그 학교 인스펙터가 제자리에서 열린다. */
 function Target({ item }: { item: CheckItem }) {
-  if (item.schoolNo == null) {
-    return <span className={TEXT}>{item.target}</span>;
-  }
-  const [first, ...rest] = item.target.split("\n");
-  return (
-    <>
-      <Link
-        href={`${viewHref("schools")}&school=${item.schoolNo}`}
-        onClick={(e) => e.stopPropagation()}
-        className="underline"
-      >
-        {first}
-      </Link>
-      {rest.length > 0 && <div className={TEXT}>{rest.join("\n")}</div>}
-    </>
-  );
+  return <span className={TEXT}>{item.target}</span>;
 }
 
 function CheckControls({

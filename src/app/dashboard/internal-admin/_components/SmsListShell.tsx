@@ -72,6 +72,8 @@ export function SmsListShell({
           {controls}
         </div>
         <section className="p-7">
+          {/* 머리와 표가 다른 파일이라 레포 전역 가드(list-heading-gap·panel-heading-standard)가
+              이 머리를 못 본다 — 같은 표준을 __tests__/SmsListShell.test.tsx 가 단언한다. */}
           <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <div className="flex items-baseline gap-2">
@@ -125,10 +127,10 @@ export function rowProps({
   const tone = selected
     ? "border-vermilion bg-vermilion/10 text-vermilion"
     : "border-line-soft";
-  const base = `border-b hover:bg-line-soft ${tone} ${extra}`.trim();
+  const base = `border-b ${tone} ${extra}`.trim();
   if (!onSelect) return { className: base };
   return {
-    className: `cursor-pointer ${base}`,
+    className: `cursor-pointer hover:bg-line-soft ${base}`,
     "aria-selected": selected,
     tabIndex: 0,
     onClick: onSelect,

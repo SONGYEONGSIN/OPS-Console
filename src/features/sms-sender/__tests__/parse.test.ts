@@ -133,6 +133,14 @@ describe("parseSchools", () => {
       expect((e as SheetShapeError).column).toBe("학교명");
     }
   });
+  it("선택 열(담당자)이 둘이어도 오류가 아니다 — 첫 번째를 쓴다", () => {
+    const head = SCHOOL_HEADER.map((h, i) => (i === 14 ? "담당자" : h));
+    const row = schoolRow(1, "가나대학교").map((v, i) =>
+      i === 14 ? "[다른 담당자]" : v,
+    );
+    const out = parseSchools([head, row]);
+    expect(out[0].manager).toBe("[담당자]");
+  });
   it("빈 시트는 오류", () =>
     expect(() => parseSchools([])).toThrow("‘_학교’ 시트가 비어 있습니다."));
   it("같은 열 이름이 둘이면 오류", () => {

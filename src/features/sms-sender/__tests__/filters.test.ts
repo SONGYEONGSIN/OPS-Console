@@ -6,7 +6,7 @@ import {
   mySchoolNos,
   parseCheckFilters,
   parseMine,
-  scopeByschoolNo,
+  scopeBySchoolNo,
   scopeSchools,
   firstParam,
   filterNumbers,
@@ -390,9 +390,9 @@ describe("내 대학 범위", () => {
       { ...d.checks[0], no: 2, schoolNo: 2 },
       { ...d.checks[0], no: 3, schoolNo: null },
     ];
-    expect(scopeByschoolNo(checks, mine).map((c) => c.no)).toEqual([1]);
-    expect(scopeByschoolNo(checks, null).map((c) => c.no)).toEqual([1, 2, 3]);
-    expect(scopeByschoolNo(d.numbers, mine).map((n) => n.schoolNo)).toEqual([
+    expect(scopeBySchoolNo(checks, mine).map((c) => c.no)).toEqual([1]);
+    expect(scopeBySchoolNo(checks, null).map((c) => c.no)).toEqual([1, 2, 3]);
+    expect(scopeBySchoolNo(d.numbers, mine).map((n) => n.schoolNo)).toEqual([
       1,
     ]);
   });

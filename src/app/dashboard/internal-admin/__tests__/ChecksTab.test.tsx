@@ -118,20 +118,13 @@ describe("ChecksTab", () => {
     expect(lastQuery().get("q")).toBe("가나");
   });
 
-  it("학교로 이어지는 대상은 링크", () => {
+  it("학교가 있는 대상도 링크가 아니라 텍스트 — 행을 눌러 그 자리에서 연다", () => {
     renderTab([item(1)]);
-    const link = screen.getByRole("link", { name: "가나대학교" });
-    expect(link).toHaveAttribute(
-      "href",
-      "/dashboard/internal-admin?tab=sms&view=schools&school=1",
-    );
-    expect(link).toHaveAttribute("data-next-link");
-    expect(link.className).toContain("underline");
-    const cell = link.closest("td")!;
-    expect(within(cell).getByText("02-0000-0001").className).toContain(
-      "whitespace-pre-line",
-    );
-    expect(link.textContent).not.toContain("02-0000-0001");
+    expect(screen.queryByRole("link")).toBeNull();
+    const target = screen.getByText(/가나대학교/);
+    expect(target.closest("a")).toBeNull();
+    expect(target.className).toContain("whitespace-pre-line");
+    expect(target.textContent).toBe("가나대학교\n02-0000-0001");
   });
 
   it("이어지지 않는 대상은 줄바꿈 보존 텍스트", () => {

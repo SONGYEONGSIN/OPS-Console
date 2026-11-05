@@ -10,7 +10,7 @@ import { parseSchoolNo } from "@/features/sms-sender/filters";
  * 예전엔 행을 누르면 `router.push(?school=)` 로 서버를 한 번 다녀와야 열렸다.
  * 지금은 상태로 바로 열고 주소는 `history.replaceState` 로만 맞춘다 — Next 가 그
  * 호출을 `useSearchParams` 에 반영하므로 서버 요청이 없다. 주소에 남기는 이유는
- * 딥링크(`?school=No`)와 새로고침이다. 다른 탭의 링크도 이 주소로 연다.
+ * 딥링크(`?school=No`)와 새로고침이다.
  *
  * 바깥에서 주소가 바뀌면(링크·뒤로 가기) 그 값으로 다시 맞춘다.
  */

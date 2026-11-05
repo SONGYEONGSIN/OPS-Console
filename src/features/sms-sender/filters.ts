@@ -119,7 +119,7 @@ export function scopeSchools(
 }
 
 /** 발신번호·확인 항목은 그 학교를 따라간다. 학교가 없는 행은 전체에서만 보인다. */
-export function scopeByschoolNo<T extends { schoolNo: number | null }>(
+export function scopeBySchoolNo<T extends { schoolNo: number | null }>(
   rows: readonly T[],
   nos: ReadonlySet<number> | null,
 ): T[] {

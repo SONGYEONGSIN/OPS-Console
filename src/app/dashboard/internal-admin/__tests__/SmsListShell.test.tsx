@@ -16,7 +16,11 @@ vi.mock("@/features/sms-sender/actions", () => ({
 
 import { parseSmsSender } from "@/features/sms-sender/parse";
 import { rawSource } from "@/features/sms-sender/__tests__/fixtures";
-import { SmsListShell, type ListContext } from "../_components/SmsListShell";
+import {
+  SmsListShell,
+  rowProps,
+  type ListContext,
+} from "../_components/SmsListShell";
 
 const data = parseSmsSender(rawSource());
 const ctx: ListContext = {
@@ -165,5 +169,15 @@ describe("SmsListShell — 목록 표준 골격", () => {
     expect(screen.queryByRole("complementary", { hidden: false })).toBeNull();
     const body = container.querySelector("section")!.parentElement!;
     expect(body.className).not.toContain("md:pr-[340px]");
+  });
+
+  it("누를 수 없는 행(onSelect null)은 호버·커서·초점을 주지 않는다", () => {
+    const off = rowProps({ selected: false, onSelect: null });
+    expect(off.className).not.toContain("hover:bg-line-soft");
+    expect(off.className).not.toContain("cursor-pointer");
+    expect(off).not.toHaveProperty("onClick");
+    const on = rowProps({ selected: false, onSelect: () => {} });
+    expect(on.className).toContain("hover:bg-line-soft");
+    expect(on.className).toContain("cursor-pointer");
   });
 });
