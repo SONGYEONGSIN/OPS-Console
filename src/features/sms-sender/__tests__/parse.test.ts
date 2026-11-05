@@ -24,6 +24,10 @@ import {
   schoolRow,
 } from "./fixtures";
 
+const FILE_KINDS = ["파일 이름 미대조", "규칙 밖 파일"];
+const fileChecks = (d: ReturnType<typeof parseSmsSender>) =>
+  d.checks.filter((c) => FILE_KINDS.includes(c.kind));
+
 const insertAt = (row: unknown[], i: number, v: unknown) => [
   ...row.slice(0, i),
   v,
@@ -54,11 +58,30 @@ describe("parseSchools", () => {
     docSummary: "1종 미제출 (신분증)",
     needsCheck: false,
     note: "",
+    manager: "[담당자]",
   };
-  it("헤더 이름으로 읽는다 — 고를 값·담당자는 없다", () => {
+  it("헤더 이름으로 읽는다 — 고를 값은 없다", () => {
     expect(parseSchools([SCHOOL_HEADER, schoolRow(1, "가나대학교")])).toEqual([
       expected,
     ]);
+  });
+  it("담당자는 선택 열 — 없으면 null, 오류가 아니다", () => {
+    const at = SCHOOL_HEADER.indexOf("담당자");
+    const drop = (r: unknown[]) => [...r.slice(0, at), ...r.slice(at + 1)];
+    const out = parseSchools([
+      drop(SCHOOL_HEADER),
+      drop(schoolRow(1, "가나대학교")),
+    ]);
+    expect(out).toEqual([{ ...expected, manager: null }]);
+  });
+  it("담당자 빈 칸·'-' 는 null, 앞뒤 공백은 지운다", () => {
+    const out = parseSchools([
+      SCHOOL_HEADER,
+      schoolRow(1, "가나대학교", { 담당자: "" }),
+      schoolRow(2, "다라대학교", { 담당자: "-" }),
+      schoolRow(3, "마바대학교", { 담당자: " [담당자] " }),
+    ]);
+    expect(out.map((s) => s.manager)).toEqual([null, null, "[담당자]"]);
   });
   it("열이 끼어도 같은 값", () => {
     const out = parseSchools([
@@ -109,6 +132,14 @@ describe("parseSchools", () => {
       expect(e).toBeInstanceOf(SheetShapeError);
       expect((e as SheetShapeError).column).toBe("학교명");
     }
+  });
+  it("선택 열(담당자)이 둘이어도 오류가 아니다 — 첫 번째를 쓴다", () => {
+    const head = SCHOOL_HEADER.map((h, i) => (i === 14 ? "담당자" : h));
+    const row = schoolRow(1, "가나대학교").map((v, i) =>
+      i === 14 ? "[다른 담당자]" : v,
+    );
+    const out = parseSchools([head, row]);
+    expect(out[0].manager).toBe("[담당자]");
   });
   it("빈 시트는 오류", () =>
     expect(() => parseSchools([])).toThrow("‘_학교’ 시트가 비어 있습니다."));
@@ -341,9 +372,9 @@ describe("parseSmsSender", () => {
       }),
     );
     expect(d.schools[0].pdfs).toHaveLength(1);
-    expect(d.unmatchedPdfs).toEqual([]);
+    expect(fileChecks(d)).toEqual([]);
   });
-  it("맞는 학교가 없는 PDF·규칙 밖 이름은 이름 미대조", () => {
+  it("맞는 학교가 없는 PDF·규칙 밖 이름은 확인 필요 '파일 이름 미대조' — 학교 없음", () => {
     const d = parseSmsSender(
       rawSource({
         pdfs: [
@@ -353,10 +384,39 @@ describe("parseSmsSender", () => {
         ],
       }),
     );
-    expect(d.unmatchedPdfs).toEqual([
-      "(다른대학교) SMS 발신용 대학 전화번호 등록 서류.pdf",
-      "메모.pdf",
+    const rows = fileChecks(d);
+    expect(rows.map((c) => [c.kind, c.target, c.schoolNo])).toEqual([
+      [
+        "파일 이름 미대조",
+        "(다른대학교) SMS 발신용 대학 전화번호 등록 서류.pdf",
+        null,
+      ],
+      ["파일 이름 미대조", "메모.pdf", null],
     ]);
+    expect(rows[0].content).toContain("학교");
+    expect(rows[1].content).toContain("규칙");
+    expect(rows.every((c) => c.todo !== "")).toBe(true);
+  });
+  it("규칙 밖 xlsm 은 확인 필요 '규칙 밖 파일' — 학교 없음", () => {
+    const d = parseSmsSender(
+      rawSource({ offRuleFiles: ["SMS 발신번호 사전등록 현황(수정).xlsm"] }),
+    );
+    const rows = fileChecks(d);
+    expect(rows.map((c) => [c.kind, c.target, c.schoolNo])).toEqual([
+      ["규칙 밖 파일", "SMS 발신번호 사전등록 현황(수정).xlsm", null],
+    ]);
+    expect(rows[0].content).toContain("_YYMMDD");
+  });
+  it("파일 확인 항목의 No 는 _확인 행과 겹치지 않는다", () => {
+    const d = parseSmsSender(
+      rawSource({
+        offRuleFiles: ["a.xlsm"],
+        pdfs: [pdf("진행 중", "다른대학교")],
+      }),
+    );
+    const nos = d.checks.map((c) => c.no);
+    expect(new Set(nos).size).toBe(nos.length);
+    expect(d.checks.slice(0, 1).map((c) => c.kind)).toEqual(["번호 확인"]);
   });
   it("PDF 가 없는 학교는 pdfs []", () => {
     const d = parseSmsSender(rawSource({ pdfs: [] }));
@@ -371,7 +431,7 @@ describe("parseSmsSender", () => {
     );
     expect(d.schools.find((s) => s.no === 52)!.pdfs).toHaveLength(1);
     expect(d.schools.find((s) => s.no === 91)!.pdfs).toHaveLength(1);
-    expect(d.unmatchedPdfs).toEqual([]);
+    expect(fileChecks(d)).toEqual([]);
   });
   it("_서류 는 No 로 붙는다 — 같은 이름 두 행", () => {
     const d = parseSmsSender(rawSource({ sheets: eulji }));

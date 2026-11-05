@@ -15,8 +15,8 @@ export const MAIN_TABS = [
   { key: "sms", label: "SMS 발신번호 등록", href: `${BASE}?tab=sms` },
 ] as const satisfies readonly PageTab[];
 
+/** 개요(견본)는 지웠다 — SMS 자료와 무관한 가짜 데이터였다. 옛 주소는 기본 뷰로 간다. */
 export const SUB_VIEWS = [
-  { key: "overview", label: "개요", href: `${BASE}?tab=sms&view=overview` },
   { key: "schools", label: "학교", href: `${BASE}?tab=sms&view=schools` },
   { key: "numbers", label: "발신번호", href: `${BASE}?tab=sms&view=numbers` },
   { key: "checks", label: "확인 필요", href: `${BASE}?tab=sms&view=checks` },

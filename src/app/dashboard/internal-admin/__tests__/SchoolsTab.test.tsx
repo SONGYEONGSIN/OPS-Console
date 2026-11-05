@@ -10,6 +10,10 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => params,
 }));
 
+vi.mock("@/features/sms-sender/actions", () => ({
+  refreshSmsSenderCache: vi.fn(),
+}));
+
 import { parseSmsSender } from "@/features/sms-sender/parse";
 import {
   rawSource,
@@ -18,20 +22,25 @@ import {
 } from "@/features/sms-sender/__tests__/fixtures";
 import {
   gubunCards,
-  schoolDetail,
   STAGE_OPTIONS,
   type SchoolFilters,
 } from "@/features/sms-sender/filters";
+import type { SmsSenderData } from "@/features/sms-sender/types";
 import { SchoolsTab } from "../_components/SchoolsTab";
+import type { ListContext } from "../_components/SmsListShell";
 
 const data = parseSmsSender(rawSource());
+const ctxOf = (d: SmsSenderData): ListContext => ({
+  source: { fileName: d.workbook.name, fetchedAt: d.fetchedAt, criteria: null },
+  lookup: { schools: d.schools, numbers: d.numbers, checks: d.checks },
+});
 const noFilters: SchoolFilters = {
   q: "",
   gubun: "",
   stage: "",
   docs: "",
   checkOnly: false,
-  school: null,
+  page: 1,
 };
 const lastQuery = () =>
   new URLSearchParams(push.mock.calls.at(-1)![0].split("?")[1]);
@@ -39,17 +48,17 @@ const lastQuery = () =>
 const renderTab = (
   filters: Partial<SchoolFilters> = {},
   schools = data.schools,
-) => {
-  const f = { ...noFilters, ...filters };
-  return render(
+) =>
+  render(
     <SchoolsTab
       cards={gubunCards(data.schools)}
       schools={schools}
-      filters={f}
-      detail={schoolDetail(data, f.school)}
+      total={schools.length}
+      scopeTotal={data.schools.length}
+      filters={{ ...noFilters, ...filters }}
+      ctx={ctxOf(data)}
     />,
   );
-};
 
 describe("SchoolsTab", () => {
   beforeEach(() => {
@@ -57,7 +66,43 @@ describe("SchoolsTab", () => {
     params = new URLSearchParams("tab=schools");
   });
 
-  it("구분 카드 — 숫자 한 줄, 누르면 ?gubun", () => {
+  it("머리 — 학교 · N곳, 내 대학 칩", () => {
+    renderTab();
+    const heading = screen.getByRole("heading", { name: "학교", level: 2 });
+    expect(
+      within(heading.closest("header")!).getByText("3곳"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "내 대학" })).toBeInTheDocument();
+  });
+
+  it("검색·단계·서류·확인 필요만이 한 줄(검색줄)", () => {
+    renderTab();
+    const row = screen.getByLabelText("검색").closest<HTMLElement>("div.px-7")!;
+    expect(row.className).toContain("pt-3");
+    expect(within(row).getByLabelText("단계 필터")).toBeInTheDocument();
+    expect(within(row).getByLabelText("서류 필터")).toBeInTheDocument();
+    expect(within(row).getByLabelText("확인 필요만")).toBeInTheDocument();
+  });
+
+  it("머리글 칸은 표준 치수 그대로", () => {
+    renderTab();
+    const heads = screen.getAllByRole("columnheader");
+    expect(heads.map((h) => h.textContent)).toEqual([
+      "학교명",
+      "구분",
+      "단계",
+      "회선",
+      "서류",
+      "확인",
+      "PDF",
+    ]);
+    for (const h of heads) expect(h.className).toBe("px-3 py-2");
+    expect(heads[0].closest("tr")!.className).toBe(
+      "border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted",
+    );
+  });
+
+  it("구분 카드 — 공통 KpiCard, 누르면 ?gubun", () => {
     const base = rawSource();
     const counted = parseSmsSender(
       rawSource({
@@ -80,12 +125,18 @@ describe("SchoolsTab", () => {
       <SchoolsTab
         cards={gubunCards(counted.schools)}
         schools={counted.schools}
+        total={counted.schools.length}
+        scopeTotal={counted.schools.length}
         filters={noFilters}
-        detail={null}
+        ctx={ctxOf(counted)}
       />,
     );
     const card = screen.getByRole("button", { name: /4년제/ });
-    expect(within(card).getByText("2곳")).toBeInTheDocument();
+    const value = within(card).getByText("2");
+    expect(value.className).toContain("text-2xl");
+    expect(value.className).toContain("tabular-nums");
+    expect(within(card).getByText("곳")).toBeInTheDocument();
+    expect(value.closest("div.border")!.className).toContain("bg-situation-bg");
     expect(
       within(card).getByText("회선 5 · 서류 미비 1 · 확인 1"),
     ).toBeInTheDocument();
@@ -93,13 +144,15 @@ describe("SchoolsTab", () => {
     expect(lastQuery().get("gubun")).toBe("4년제");
   });
 
-  it("선택된 카드는 aria-pressed + vermilion, 다시 누르면 해제", () => {
+  it("선택된 카드는 aria-pressed + vermilion 테두리, 다시 누르면 해제", () => {
     params = new URLSearchParams("tab=schools&gubun=4년제");
     renderTab({ gubun: "4년제" });
     const card = screen.getByRole("button", { name: /4년제/ });
     expect(card).toHaveAttribute("aria-pressed", "true");
-    expect(card.className).toContain("border-vermilion");
-    expect(card.className).toContain("bg-vermilion/10");
+    expect(card.className).toContain("ring-vermilion");
+    const other = screen.getByRole("button", { name: /전문대학/ });
+    expect(other).toHaveAttribute("aria-pressed", "false");
+    expect(other.className).not.toContain("ring-vermilion");
     fireEvent.click(card);
     expect(lastQuery().get("gubun")).toBeNull();
   });
@@ -110,12 +163,19 @@ describe("SchoolsTab", () => {
       ...first,
       docs: {
         ...first.docs!,
-        marks: { ...first.docs!.marks, 법인인감: "대체", 위임장: "X", 신분증: "×" },
+        marks: {
+          ...first.docs!.marks,
+          법인인감: "대체",
+          위임장: "X",
+          신분증: "×",
+        },
       },
     };
     renderTab({}, [odd, ...rest]);
     const row = screen.getByText("가나대학교").closest("tr")!;
-    expect(within(row).getByLabelText("법인인감 대체")).toHaveTextContent(/^대$/);
+    expect(within(row).getByLabelText("법인인감 대체")).toHaveTextContent(
+      /^대$/,
+    );
     expect(within(row).getByLabelText("위임장 X")).toHaveTextContent(/^\?$/);
     const cross = within(row).getByLabelText("신분증 ×");
     expect(cross).toHaveTextContent(/^\?$/);
@@ -144,19 +204,29 @@ describe("SchoolsTab", () => {
   });
 
   it("행 호버·선택 표준", () => {
-    renderTab({ school: 1 });
+    params = new URLSearchParams("tab=schools&school=1");
+    renderTab();
     const selected = screen.getByRole("row", { name: /가나대학교/ });
     expect(selected.className).toContain("hover:bg-line-soft");
     expect(selected).toHaveAttribute("aria-selected", "true");
+    expect(selected.className).toContain("border-vermilion");
     expect(selected.className).toContain("bg-vermilion/10");
+    expect(selected.className).toContain("text-vermilion");
     const other = screen.getByText("다라대학교").closest("tr")!;
     expect(other).toHaveAttribute("aria-selected", "false");
+    expect(other.className).toContain("border-line-soft");
   });
 
-  it("행 클릭 → ?school=No", () => {
+  it("행 클릭 → 서버 왕복 없이 바로 인스펙터", () => {
+    const replace = vi.spyOn(window.history, "replaceState");
     renderTab();
     fireEvent.click(screen.getByText("다라대학교"));
-    expect(lastQuery().get("school")).toBe("2");
+    expect(
+      screen.getByRole("heading", { name: "다라대학교" }),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+    expect(String(replace.mock.calls.at(-1)![2])).toContain("school=2");
+    replace.mockRestore();
   });
 
   it("필터 — 단계·서류 select, 확인 필요만", () => {
@@ -176,6 +246,15 @@ describe("SchoolsTab", () => {
     expect(lastQuery().get("check")).toBe("1");
   });
 
+  it("필터가 바뀌면 page 를 지운다", () => {
+    params = new URLSearchParams("tab=schools&page=2");
+    renderTab({ page: 2 });
+    fireEvent.change(screen.getByLabelText("단계 필터"), {
+      target: { value: "접수" },
+    });
+    expect(lastQuery().get("page")).toBeNull();
+  });
+
   it("확인 필요만 해제 → check 제거", () => {
     params = new URLSearchParams("tab=schools&check=1");
     renderTab({ checkOnly: true });
@@ -188,13 +267,17 @@ describe("SchoolsTab", () => {
     expect(screen.getByText("조건에 맞는 학교가 없습니다")).toBeInTheDocument();
   });
 
-  it("detail 이 있으면 인스펙터가 열리고 닫으면 ?school 을 지운다", () => {
+  it("?school 딥링크면 인스펙터가 열리고 닫으면 ?school 을 지운다", () => {
+    const replace = vi.spyOn(window.history, "replaceState");
     params = new URLSearchParams("tab=schools&school=1");
-    renderTab({ school: 1 });
+    renderTab();
     expect(
       screen.getByRole("heading", { name: "가나대학교" }),
     ).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(lastQuery().get("school")).toBeNull();
+    expect(
+      new URL(String(replace.mock.calls.at(-1)![2]), "http://x").searchParams.has("school"),
+    ).toBe(false);
+    replace.mockRestore();
   });
 });

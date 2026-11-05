@@ -18,7 +18,7 @@ export type SchoolFilters = {
   stage: string;
   docs: Completeness | "";
   checkOnly: boolean;
-  school: number | null;
+  page: number;
 };
 export type GubunCard = {
   gubun: string;
@@ -38,6 +38,11 @@ export type NumberFilters = {
   gubun: string;
   page: number;
 };
+export type CheckFilters = {
+  q: string;
+  kind: string;
+  page: number;
+};
 
 export const GUBUN_ORDER = ["4년제", "전문대학", "대학원", "초중고"] as const;
 export const STAGE_OPTIONS = [
@@ -53,7 +58,8 @@ export const NUMBER_STATUS_ORDER = [
   "추가 등록",
   "서류 미비",
 ] as const;
-export const NUMBERS_PAGE_SIZE = 50;
+/** 학교·발신번호·확인 필요 공통 쪽 크기. */
+export const LIST_PAGE_SIZE = 50;
 
 const OTHER_GUBUN = "기타";
 const DOCS_VALUES: readonly string[] = ["완비", "미비", "확인 안 됨"];
@@ -67,6 +73,11 @@ function positiveInt(value: string): number | null {
   return Number.isInteger(n) && n >= 1 ? n : null;
 }
 
+/** `?school=` 한 칸 — 인스펙터 딥링크. 1 이상 정수가 아니면 null. */
+export function parseSchoolNo(raw: string): number | null {
+  return positiveInt(raw);
+}
+
 export function parseSchoolFilters(sp: SearchParams): SchoolFilters {
   const docs = firstParam(sp.docs).trim();
   return {
@@ -75,8 +86,46 @@ export function parseSchoolFilters(sp: SearchParams): SchoolFilters {
     stage: firstParam(sp.stage).trim(),
     docs: DOCS_VALUES.includes(docs) ? (docs as Completeness) : "",
     checkOnly: firstParam(sp.check) === "1",
-    school: positiveInt(firstParam(sp.school)),
+    page: positiveInt(firstParam(sp.page)) ?? 1,
   };
+}
+
+/** 다른 목록과 같다 — `?mine` 이 없으면 내 대학, `mine=false` 만 전체. */
+export function parseMine(sp: SearchParams): boolean {
+  return firstParam(sp.mine) !== "false";
+}
+
+/**
+ * `_학교` 담당자 == 로그인 운영자 이름(공백 제거 후)인 학교 No.
+ * 빈 이름은 아무 학교도 아니다 — 담당자가 없는 학교(null)에 붙으면 안 된다.
+ */
+export function mySchoolNos(
+  schools: readonly School[],
+  displayName: string,
+): Set<number> {
+  const me = squash(displayName);
+  if (!me || me === "-") return new Set();
+  return new Set(
+    schools.filter((s) => s.manager && squash(s.manager) === me).map((s) => s.no),
+  );
+}
+
+/** nos 가 null 이면 전체. */
+export function scopeSchools(
+  schools: readonly School[],
+  nos: ReadonlySet<number> | null,
+): School[] {
+  return nos ? schools.filter((s) => nos.has(s.no)) : [...schools];
+}
+
+/** 발신번호·확인 항목은 그 학교를 따라간다. 학교가 없는 행은 전체에서만 보인다. */
+export function scopeBySchoolNo<T extends { schoolNo: number | null }>(
+  rows: readonly T[],
+  nos: ReadonlySet<number> | null,
+): T[] {
+  return nos
+    ? rows.filter((r) => r.schoolNo !== null && nos.has(r.schoolNo))
+    : [...rows];
 }
 
 export function stageLabel(s: School): string {
@@ -126,8 +175,10 @@ export function gubunCards(schools: readonly School[]): GubunCard[] {
   return others.length > 0 ? [...cards, card(OTHER_GUBUN, others)] : cards;
 }
 
+export type DetailSource = Pick<SmsSenderData, "schools" | "numbers" | "checks">;
+
 export function schoolDetail(
-  data: SmsSenderData,
+  data: DetailSource,
   no: number | null,
 ): SchoolDetail | null {
   if (no === null) return null;
@@ -179,11 +230,27 @@ export function pageSlice<T>(
   return rows.slice((p - 1) * size, p * size);
 }
 
+export function parseCheckFilters(sp: SearchParams): CheckFilters {
+  return {
+    q: firstParam(sp.q).trim(),
+    kind: firstParam(sp.type).trim(),
+    page: positiveInt(firstParam(sp.page)) ?? 1,
+  };
+}
+
+function matchesCheckQuery(c: CheckItem, q: string): boolean {
+  const t = squash(q);
+  if (!t) return true;
+  return squash([c.target, c.content, c.basis, c.todo].join(" ")).includes(t);
+}
+
 export function filterChecks(
   rows: readonly CheckItem[],
-  kind: string,
+  f: CheckFilters,
 ): CheckItem[] {
-  return kind ? rows.filter((c) => c.kind === kind) : [...rows];
+  return rows.filter(
+    (c) => (!f.kind || c.kind === f.kind) && matchesCheckQuery(c, f.q),
+  );
 }
 
 export function orderedOptions(

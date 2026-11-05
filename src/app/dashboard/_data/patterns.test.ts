@@ -15,7 +15,7 @@ const ALL_SLUGS = [
 ];
 
 const PROJECT_SLUGS = [
-  "pims", "reception-admin", "internal-admin", "competition", "generator",
+  "pims", "reception-admin", "competition", "generator",
   "revenue", "jh-cash", "k12", "kcue", "referral", "guarantee", "performance",
 ];
 

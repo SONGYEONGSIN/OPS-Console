@@ -81,13 +81,19 @@ describe("SchoolInspector", () => {
       sheets: { ...base.sheets, numbers: [NUMBER_HEADER, ...rows] },
     });
     render(<SchoolInspector detail={detail} onClose={() => {}} />);
-    expect(screen.getAllByText(/^02-0000-\d{4}$/)).toHaveLength(10);
+    const shown = screen.getAllByText(/^02-0000-\d{4}$/);
+    expect(shown).toHaveLength(10);
+    for (const n of shown) {
+      expect(n.className).toContain("tabular-nums");
+      expect(n.className).not.toContain("font-mono");
+    }
     const link = screen.getByRole("link", {
       name: "발신번호 탭에서 전체 보기 (12)",
     });
+    // 내 대학이 기본이라 mine=false 를 붙인다 — 남의 학교 인스펙터에서 눌러도 빈 목록이 아니다.
     expect(link).toHaveAttribute(
       "href",
-      `/dashboard/internal-admin?tab=sms&view=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}`,
+      `/dashboard/internal-admin?tab=sms&view=numbers&q=${encodeURIComponent("가나대학교")}&gubun=${encodeURIComponent("4년제")}&mine=false`,
     );
     expect(link).toHaveAttribute("data-next-link");
     expect(link.className).toContain("underline");
@@ -153,12 +159,25 @@ describe("SchoolInspector", () => {
     expect(screen.queryByRole("heading")).toBeNull();
   });
 
-  it("닫기 → onClose (Escape, 닫기 버튼)", () => {
+  it("닫기 → onClose (Escape) — 다른 인스펙터처럼 자체 닫기 버튼은 없다", () => {
     const onClose = vi.fn();
     render(<SchoolInspector detail={detailOf()} onClose={onClose} />);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("button", { name: "닫기" })).toBeNull();
+  });
+
+  it("머리는 표준 인스펙터 머리 — 눈썹 문구·text-xl 제목·굵은 아랫선", () => {
+    render(<SchoolInspector detail={detailOf()} onClose={() => {}} />);
+    const title = screen.getByRole("heading", { name: "가나대학교", level: 3 });
+    expect(title.className).toContain("text-xl");
+    expect(title.className).toContain("font-bold");
+    const header = title.closest("header")!;
+    expect(header.className).toContain("border-b-2");
+    expect(header.className).toContain("border-ink");
+    const eyebrow = screen.getByText("인스펙터 · 학교");
+    expect(eyebrow.className).toContain("text-vermilion");
+    expect(header.contains(eyebrow)).toBe(true);
+    expect(header.textContent).toContain("4년제");
   });
 });

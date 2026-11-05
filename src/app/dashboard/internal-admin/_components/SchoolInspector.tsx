@@ -20,9 +20,9 @@ function Section({
 }) {
   return (
     <section className="mt-5">
-      <h3 className="mb-2 text-xs uppercase tracking-[0.06em] text-muted">
+      <h4 className="mb-2 text-xs uppercase tracking-[0.06em] text-muted">
         {title}
-      </h3>
+      </h4>
       {children}
     </section>
   );
@@ -32,14 +32,28 @@ function Body({ detail }: { detail: SchoolDetail }) {
   const { school, numbers, checks } = detail;
   const docs = school.docs;
   const shown = numbers.slice(0, NUMBER_LIMIT);
-  const moreHref = `${viewHref("numbers")}&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}`;
+  // 목록은 '내 대학' 이 기본이라 mine=false 를 붙인다 — 남의 학교 인스펙터에서 눌러도
+  // 빈 목록이 뜨지 않는다. 검색어·구분으로 이미 이 학교만 남는다.
+  const moreHref = `${viewHref("numbers")}&q=${encodeURIComponent(school.name)}&gubun=${encodeURIComponent(school.gubun)}&mine=false`;
   return (
     <>
-      <h2 className="text-lg font-bold text-ink">{school.name}</h2>
-      <p className="mt-1 text-sm text-muted">
-        {school.gubun} · {stageLabel(school)} ·{" "}
-        <span className="tabular-nums">회선 {school.lines}</span>
-      </p>
+      {/* InspectorChrome 과 같은 머리 — 눈썹 문구, 굵은 제목, 굵은 아랫선.
+          상태 뱃지·편집 토글은 안 붙인다: 읽기 전용이고 학교에 그 상태가 없다
+          (에이전트·전도금 인스펙터와 같은 판단). */}
+      <header className="mb-6 border-b-2 border-ink pb-4">
+        <div className="space-y-1">
+          <p className="text-2xs uppercase tracking-[0.18em] text-vermilion">
+            인스펙터 · 학교
+          </p>
+          <h3 className="text-xl font-bold tracking-[-0.01em] text-ink">
+            {school.name}
+          </h3>
+          <p className="text-xs text-muted">
+            {school.gubun} · {stageLabel(school)} ·{" "}
+            <span className="tabular-nums">회선 {school.lines}</span>
+          </p>
+        </div>
+      </header>
 
       <Section title="제출 서류">
         {docs ? (
@@ -102,7 +116,7 @@ function Body({ detail }: { detail: SchoolDetail }) {
         <ul className="space-y-1 text-sm">
           {shown.map((n) => (
             <li key={n.no} className="flex justify-between gap-2">
-              <span className="font-mono">{n.number}</span>
+              <span className="tabular-nums">{n.number}</span>
               <span className="text-muted">{n.status}</span>
             </li>
           ))}
@@ -147,18 +161,7 @@ export function SchoolInspector({
 }) {
   return (
     <InspectorPanel open={detail !== null} onClose={onClose}>
-      {detail && (
-        <>
-          <button
-            type="button"
-            onClick={onClose}
-            className="float-right border border-line px-2 py-1 text-xs transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-          >
-            닫기
-          </button>
-          <Body detail={detail} />
-        </>
-      )}
+      {detail && <Body detail={detail} />}
     </InspectorPanel>
   );
 }

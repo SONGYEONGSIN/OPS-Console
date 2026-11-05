@@ -5,41 +5,27 @@ import { kstFormat } from "@/lib/kst-format";
 import { refreshSmsSenderCache } from "@/features/sms-sender/actions";
 import { CriteriaModal } from "./CriteriaModal";
 
+/**
+ * 표 머리 오른쪽 보조 버튼 — 헤더 액션(`HeaderActionButton`)과 같은 치수에 테두리만.
+ * vermilion 은 '새로 만들기' 같은 주 액션 자리라 여기 쓰지 않는다(서비스목록의
+ * 발표 서비스 담당자 맞추기 버튼과 같은 모양).
+ */
 const BUTTON_CLASS =
-  "border border-line px-3 py-1 text-sm transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-ink";
+  "cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-ink";
 
 const HHMM = kstFormat({ hour: "2-digit", minute: "2-digit" });
 
-type Props = {
+export type SourceInfo = {
   fileName: string;
   fetchedAt: string;
-  offRuleFiles: string[];
-  unmatchedPdfs: string[];
   criteria: string[][] | null;
 };
 
-function Warning({ label, files }: { label: string; files: string[] }) {
-  if (files.length === 0) return null;
-  return (
-    <details className="text-sm text-muted">
-      <summary className="cursor-pointer">{label}</summary>
-      <ul className="mt-1 pl-4">
-        {files.map((f) => (
-          <li key={f}>{f}</li>
-        ))}
-      </ul>
-    </details>
-  );
-}
-
-/** 데이터 탭 공통 — 어느 파일을 몇 시에 읽었는지, 새로고침, 서류 기준. */
-export function SourceBar({
-  fileName,
-  fetchedAt,
-  offRuleFiles,
-  unmatchedPdfs,
-  criteria,
-}: Props) {
+/**
+ * 목록 머리 오른쪽 — 어느 파일을 몇 시에 읽었는지, 새로고침, 서류 기준.
+ * 예전엔 표 위 검색줄 자리를 통째로 차지했다.
+ */
+export function SourceBar({ fileName, fetchedAt, criteria }: SourceInfo) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showCriteria, setShowCriteria] = useState(false);
@@ -61,8 +47,8 @@ export function SourceBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-7 pt-3">
-      <span className="text-sm tabular-nums text-ink-soft">{label}</span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs tabular-nums text-ink-soft">{label}</span>
       <button
         type="button"
         className={BUTTON_CLASS}
@@ -84,13 +70,8 @@ export function SourceBar({
       >
         서류 기준
       </button>
-      <Warning label={`규칙 밖 파일 ${offRuleFiles.length}개`} files={offRuleFiles} />
-      <Warning
-        label={`이름 미대조 PDF ${unmatchedPdfs.length}개`}
-        files={unmatchedPdfs}
-      />
       {error && (
-        <span role="alert" className="text-sm text-vermilion">
+        <span role="alert" className="text-xs text-vermilion">
           {error}
         </span>
       )}

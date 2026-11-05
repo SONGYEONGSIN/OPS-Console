@@ -193,15 +193,6 @@ const projectMap: Record<string, ProjectMockData> = {
       { title: "권한 등급 재정의", pm: "김민수", due: "2026-Q3", status: "wait" },
     ],
   }),
-  "internal-admin": makeProject({
-    manager: "이지훈",
-    team: "운영2팀",
-    quarterTarget: "2026 Q2 · 55%",
-    serviceCount: "6건",
-    improvements: [
-      { title: "관리자 UI 개편", pm: "이지훈", due: "2026-06-01", status: "run" },
-    ],
-  }),
   competition: makeProject({
     manager: "정수아",
     team: "운영2팀",

@@ -1,5 +1,5 @@
 import { canonicalSchoolName } from "./aliases";
-import { DOC_KINDS, HIDDEN_SHEETS } from "./types";
+import { DOCS_FOLDER, DOC_KINDS, HIDDEN_SHEETS, SMS_ROOT_PATH } from "./types";
 import type {
   CheckItem,
   Completeness,
@@ -59,25 +59,28 @@ const num = (v: unknown): number => {
 
 type Table = { index: Record<string, number>; rows: unknown[][] };
 
+/** optional 열은 없어도 된다 — index 에 안 들어갈 뿐이다. 두 개여도 오류가 아니라 첫 번째를 쓴다(필수는 오류). */
 function readTable(
   key: HiddenSheetKey,
   values: unknown[][],
   required: readonly string[],
+  optional: readonly string[] = [],
 ): Table {
   const sheet = HIDDEN_SHEETS[key];
   if (values.length === 0)
     throw new SheetShapeError(`‘${sheet}’ 시트가 비어 있습니다.`, sheet, "");
   const heads = values[0].map(normalizeHeader);
   const index: Record<string, number> = {};
-  for (const name of required) {
+  for (const name of [...required, ...optional]) {
     const hits = heads.flatMap((h, i) => (h === name ? [i] : []));
+    if (hits.length === 0 && optional.includes(name)) continue;
     if (hits.length === 0)
       throw new SheetShapeError(
         `‘${sheet}’ 시트에서 ‘${name}’ 열을 찾지 못했습니다.`,
         sheet,
         name,
       );
-    if (hits.length > 1)
+    if (hits.length > 1 && !optional.includes(name))
       throw new SheetShapeError(
         `‘${sheet}’ 시트에 ‘${name}’ 열이 두 개 있습니다.`,
         sheet,
@@ -108,6 +111,11 @@ const SCHOOL_COLUMNS = [
   "확인",
   "비고",
 ] as const;
+/**
+ * 없어도 되는 열. 담당자는 '내 대학' 칩에만 쓰여서, 열이 빠진 파일 하나로 화면 전체를
+ * 오류로 만들 이유가 없다.
+ */
+const SCHOOL_OPTIONAL_COLUMNS = ["담당자"] as const;
 const DOC_COLUMNS = [
   "No",
   "학교명",
@@ -128,8 +136,20 @@ const NUMBER_COLUMNS = [
 ] as const;
 const CHECK_COLUMNS = ["No", "유형", "대상", "내용", "근거", "할 일"] as const;
 
+/** 빈 칸·'-' 는 담당자 없음. */
+function managerOf(v: unknown): string | null {
+  const t = text(v);
+  return t === "" || t === "-" ? null : t;
+}
+
 export function parseSchools(values: unknown[][]): SchoolRow[] {
-  const { index: c, rows } = readTable("schools", values, SCHOOL_COLUMNS);
+  const { index: c, rows } = readTable(
+    "schools",
+    values,
+    SCHOOL_COLUMNS,
+    SCHOOL_OPTIONAL_COLUMNS,
+  );
+  const managerAt = c["담당자"];
   return rows.map((r) => ({
     no: num(r[c["No"]]),
     name: text(r[c["학교명"]]),
@@ -144,6 +164,7 @@ export function parseSchools(values: unknown[][]): SchoolRow[] {
     docSummary: text(r[c["제출 서류"]]),
     needsCheck: text(r[c["확인"]]) === "확인 필요",
     note: text(r[c["비고"]]),
+    manager: managerAt === undefined ? null : managerOf(r[managerAt]),
   }));
 }
 
@@ -279,6 +300,50 @@ function schoolNoOfTarget(
   return only(first.replace(/\s+\([^)]*\)$/, ""));
 }
 
+export const FILE_CHECK_KINDS = {
+  unmatchedPdf: "파일 이름 미대조",
+  offRule: "규칙 밖 파일",
+} as const;
+
+type FileCheck = Omit<CheckItem, "no">;
+
+/** 학교를 못 찾은 PDF — 이름이 규칙과 다른 것과 규칙엔 맞는데 학교가 없는 것을 갈라 적는다. */
+function unmatchedPdfCheck(p: RawPdf): FileCheck {
+  const ruled = pdfSchoolName(p.name) !== null;
+  return {
+    kind: FILE_CHECK_KINDS.unmatchedPdf,
+    target: p.name,
+    content: ruled
+      ? "파일 이름의 학교명과 같은 학교가 _학교 시트에 없습니다"
+      : "파일 이름이 규칙 ‘(학교명) SMS 발신용 대학 전화번호 등록 서류.pdf’ 과 다릅니다",
+    basis: [DOCS_FOLDER, p.folder].filter(Boolean).join("/"),
+    todo: ruled
+      ? "파일 이름의 학교명을 _학교 시트 학교명과 맞추세요"
+      : "파일 이름을 규칙에 맞춰 고치세요",
+    schoolNo: null,
+  };
+}
+
+function offRuleCheck(name: string): FileCheck {
+  return {
+    kind: FILE_CHECK_KINDS.offRule,
+    target: name,
+    content: "이름 끝에 _YYMMDD 가 없어 현황 파일로 고르지 않았습니다",
+    basis: SMS_ROOT_PATH,
+    todo: "현황 파일이면 이름 끝을 _YYMMDD.xlsm 으로 바꾸세요",
+    schoolNo: null,
+  };
+}
+
+/** 파일 유형 항목은 시트 행 뒤에 붙고, No 는 시트의 가장 큰 No 다음부터 — React key 가 겹치지 않게. */
+function withFileChecks(
+  sheetChecks: CheckItem[],
+  files: FileCheck[],
+): CheckItem[] {
+  const start = sheetChecks.reduce((max, c) => Math.max(max, c.no), 0);
+  return [...sheetChecks, ...files.map((f, i) => ({ ...f, no: start + i + 1 }))];
+}
+
 function parseCriteria(values: unknown[][] | null): string[][] | null {
   if (values === null) return null;
   const rows = values.map((r) => {
@@ -298,13 +363,13 @@ export function parseSmsSender(raw: RawSource): SmsSenderData {
     byName.set(s.name, [...(byName.get(s.name) ?? []), s]);
 
   const copiesByNo = new Map<number, PdfCopy[]>();
-  const unmatchedPdfs: string[] = [];
+  const unmatchedPdfs: RawPdf[] = [];
   for (const p of raw.pdfs) {
     if (!/\.pdf$/i.test(p.name)) continue;
     const name = pdfSchoolName(p.name);
     const targets = name ? byName.get(canonicalSchoolName(name)) : undefined;
     if (!targets) {
-      unmatchedPdfs.push(p.name);
+      unmatchedPdfs.push(p);
       continue;
     }
     for (const t of targets)
@@ -326,19 +391,21 @@ export function parseSmsSender(raw: RawSource): SmsSenderData {
     ...n,
     schoolNo: noByNameGubun.get(`${n.school}|${n.gubun}`) ?? null,
   }));
-  const checks: CheckItem[] = parseChecks(raw.sheets.checks).map((c) => ({
+  const sheetChecks: CheckItem[] = parseChecks(raw.sheets.checks).map((c) => ({
     ...c,
     schoolNo: schoolNoOfTarget(c.target, byName),
   }));
+  const checks = withFileChecks(sheetChecks, [
+    ...unmatchedPdfs.map(unmatchedPdfCheck),
+    ...raw.offRuleFiles.map(offRuleCheck),
+  ]);
 
   return {
     workbook: raw.workbook,
     fetchedAt: raw.fetchedAt,
-    offRuleFiles: raw.offRuleFiles,
     schools,
     numbers,
     checks,
-    unmatchedPdfs,
     criteria: parseCriteria(raw.criteria),
   };
 }
