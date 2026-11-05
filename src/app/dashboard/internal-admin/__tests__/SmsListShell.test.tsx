@@ -14,6 +14,7 @@ vi.mock("@/features/sms-sender/actions", () => ({
   refreshSmsSenderCache: vi.fn(),
 }));
 
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { parseSmsSender } from "@/features/sms-sender/parse";
 import { rawSource } from "@/features/sms-sender/__tests__/fixtures";
 import {
@@ -109,12 +110,11 @@ describe("SmsListShell — 목록 표준 골격", () => {
     expect(
       within(header).getByText("현황 파일 _261017.xlsm · 기준 09:05"),
     ).toBeInTheDocument();
-    expect(
-      within(header).getByRole("button", { name: "새로고침" }),
-    ).toBeInTheDocument();
-    expect(
-      within(header).getByRole("button", { name: "서류 기준" }),
-    ).toBeInTheDocument();
+    for (const name of ["새로고침", "서류 기준"]) {
+      expect(within(header).getByRole("button", { name }).className).toBe(
+        HEADER_ACTION_CLASS,
+      );
+    }
   });
 
   it("표는 overflow-x-auto 안, 0건이면 빈 문구", () => {

@@ -1,17 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { kstFormat } from "@/lib/kst-format";
 import { refreshSmsSenderCache } from "@/features/sms-sender/actions";
 import { CriteriaModal } from "./CriteriaModal";
-
-/**
- * 표 머리 오른쪽 보조 버튼 — 헤더 액션(`HeaderActionButton`)과 같은 치수에 테두리만.
- * vermilion 은 '새로 만들기' 같은 주 액션 자리라 여기 쓰지 않는다(서비스목록의
- * 발표 서비스 담당자 맞추기 버튼과 같은 모양).
- */
-const BUTTON_CLASS =
-  "cursor-pointer border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-ink";
 
 const HHMM = kstFormat({ hour: "2-digit", minute: "2-digit" });
 
@@ -49,17 +42,11 @@ export function SourceBar({ fileName, fetchedAt, criteria }: SourceInfo) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs tabular-nums text-ink-soft">{label}</span>
-      <button
-        type="button"
-        className={BUTTON_CLASS}
-        disabled={pending}
-        onClick={refresh}
-      >
+      {/* 목록 제목 오른쪽 액션 자리라 헤더 액션 표준 하나뿐이다(사용자 지시 2026-11-05). */}
+      <HeaderActionButton disabled={pending} onClick={refresh}>
         새로고침
-      </button>
-      <button
-        type="button"
-        className={BUTTON_CLASS}
+      </HeaderActionButton>
+      <HeaderActionButton
         disabled={criteria === null}
         title={
           criteria === null
@@ -69,7 +56,7 @@ export function SourceBar({ fileName, fetchedAt, criteria }: SourceInfo) {
         onClick={() => setShowCriteria(true)}
       >
         서류 기준
-      </button>
+      </HeaderActionButton>
       {error && (
         <span role="alert" className="text-xs text-vermilion">
           {error}
