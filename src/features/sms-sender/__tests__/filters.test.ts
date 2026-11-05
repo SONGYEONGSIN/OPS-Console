@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  LIST_PAGE_SIZE,
   NUMBER_STATUS_ORDER,
   filterChecks,
+  mySchoolNos,
+  parseCheckFilters,
+  parseMine,
+  scopeByschoolNo,
+  scopeSchools,
   firstParam,
   filterNumbers,
   filterSchools,
@@ -46,6 +52,7 @@ const noFilter: SchoolFilters = {
   docs: "",
   checkOnly: false,
   school: null,
+  page: 1,
 };
 
 describe("parseSchoolFilters", () => {
@@ -66,7 +73,9 @@ describe("parseSchoolFilters", () => {
       docs: "미비",
       checkOnly: true,
       school: 3,
+      page: 1,
     });
+    expect(parseSchoolFilters({ page: "2" }).page).toBe(2);
     expect(
       parseSchoolFilters({ docs: "아무거나", school: "abc" }),
     ).toMatchObject({ docs: "", school: null });
@@ -76,7 +85,9 @@ describe("parseSchoolFilters", () => {
 
 describe("배열 파라미터", () => {
   it("첫 값으로 읽는다", () => {
-    expect(parseSchoolFilters({ q: ["가나", "다라"], school: ["3", "4"] })).toMatchObject({ q: "가나", school: 3 });
+    expect(
+      parseSchoolFilters({ q: ["가나", "다라"], school: ["3", "4"] }),
+    ).toMatchObject({ q: "가나", school: 3 });
     expect(parseNumberFilters({ page: ["2", "9"] }).page).toBe(2);
     expect(firstParam(undefined)).toBe("");
     expect(firstParam([])).toBe("");
@@ -84,7 +95,12 @@ describe("배열 파라미터", () => {
 
   it("school·page 경계값", () => {
     expect(parseNumberFilters({ page: "999" }).page).toBe(999);
-    for (const [v, want] of [["1.5", null], ["-3", null], [" 3 ", 3], ["3abc", null]] as const) {
+    for (const [v, want] of [
+      ["1.5", null],
+      ["-3", null],
+      [" 3 ", 3],
+      ["3abc", null],
+    ] as const) {
       expect(parseSchoolFilters({ school: v }).school).toBe(want);
     }
   });
@@ -294,14 +310,94 @@ describe("orderedOptions", () => {
   });
 });
 
-describe("filterChecks", () => {
+describe("filterChecks / parseCheckFilters", () => {
+  const noCheckFilter = { q: "", kind: "", page: 1 };
   it("유형", () => {
     const c = data().checks[0];
     const rows = [
       { ...c, kind: "번호 확인" },
       { ...c, kind: "서류 확인" },
     ];
-    expect(filterChecks(rows, "서류 확인")).toHaveLength(1);
-    expect(filterChecks(rows, "")).toHaveLength(2);
+    expect(
+      filterChecks(rows, { ...noCheckFilter, kind: "서류 확인" }),
+    ).toHaveLength(1);
+    expect(filterChecks(rows, noCheckFilter)).toHaveLength(2);
   });
+  it("검색은 대상·내용·근거·할 일, 공백 무시", () => {
+    const c = data().checks[0];
+    const rows = [
+      { ...c, no: 1, target: "가나대학교\n02-0000-0001", content: "번호 다름" },
+      {
+        ...c,
+        no: 2,
+        target: "메모.pdf",
+        content: "규칙과 다름",
+        todo: "이름 고치기",
+      },
+    ];
+    const f = (q: string) =>
+      filterChecks(rows, { ...noCheckFilter, q }).map((r) => r.no);
+    expect(f("가나 대학")).toEqual([1]);
+    expect(f("규칙")).toEqual([2]);
+    expect(f("이름고치기")).toEqual([2]);
+    expect(f("")).toEqual([1, 2]);
+  });
+  it("파라미터 — type·q·page", () => {
+    expect(
+      parseCheckFilters({ type: " 번호 확인 ", q: " a ", page: "2" }),
+    ).toEqual({ kind: "번호 확인", q: "a", page: 2 });
+    expect(parseCheckFilters({})).toEqual(noCheckFilter);
+  });
+});
+
+describe("내 대학 범위", () => {
+  const schools = () => {
+    const raw = rawSource();
+    raw.sheets.schools = [
+      SCHOOL_HEADER,
+      schoolRow(1, "가나대학교", { 담당자: "[담당자]" }),
+      schoolRow(2, "다라대학교", { 담당자: "[다른 담당자]" }),
+      schoolRow(3, "마바전문대학", { 구분: "전문대학", 담당자: "-" }),
+    ];
+    return parseSmsSender(raw);
+  };
+
+  it("?mine 이 없으면 내 대학, mine=false 만 전체", () => {
+    expect(parseMine({})).toBe(true);
+    expect(parseMine({ mine: "true" })).toBe(true);
+    expect(parseMine({ mine: "false" })).toBe(false);
+    expect(parseMine({ mine: ["false"] })).toBe(false);
+  });
+
+  it("담당자 == 이름 — 공백을 지우고 비교", () => {
+    const d = schools();
+    expect([...mySchoolNos(d.schools, "[담당자]")]).toEqual([1]);
+    expect([...mySchoolNos(d.schools, " [ 담당자 ] ")]).toEqual([1]);
+    expect([...mySchoolNos(d.schools, "없는 사람")]).toEqual([]);
+  });
+
+  it("빈 이름은 아무 학교도 아니다 — 담당자 없는 학교에 붙지 않는다", () => {
+    const d = schools();
+    expect([...mySchoolNos(d.schools, "")]).toEqual([]);
+    expect([...mySchoolNos(d.schools, "-")]).toEqual([]);
+  });
+
+  it("학교·번호·확인을 같은 학교 집합으로 거른다, null 집합은 전체", () => {
+    const d = schools();
+    const mine = mySchoolNos(d.schools, "[담당자]");
+    expect(scopeSchools(d.schools, mine).map((s) => s.no)).toEqual([1]);
+    expect(scopeSchools(d.schools, null)).toHaveLength(3);
+    const checks = [
+      { ...d.checks[0], no: 1, schoolNo: 1 },
+      { ...d.checks[0], no: 2, schoolNo: 2 },
+      { ...d.checks[0], no: 3, schoolNo: null },
+    ];
+    expect(scopeByschoolNo(checks, mine).map((c) => c.no)).toEqual([1]);
+    expect(scopeByschoolNo(checks, null).map((c) => c.no)).toEqual([1, 2, 3]);
+    expect(scopeByschoolNo(d.numbers, mine).map((n) => n.schoolNo)).toEqual([
+      1,
+    ]);
+  });
+
+  it("쪽 크기는 세 화면 공통 50", () => expect(LIST_PAGE_SIZE).toBe(50));
 });

@@ -32,6 +32,7 @@ const noFilters: SchoolFilters = {
   docs: "",
   checkOnly: false,
   school: null,
+  page: 1,
 };
 const lastQuery = () =>
   new URLSearchParams(push.mock.calls.at(-1)![0].split("?")[1]);

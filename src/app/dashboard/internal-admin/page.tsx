@@ -10,7 +10,7 @@ import { getSmsSenderData } from "@/features/sms-sender/queries";
 import {
   GUBUN_ORDER,
   NUMBER_STATUS_ORDER,
-  NUMBERS_PAGE_SIZE,
+  LIST_PAGE_SIZE,
   filterChecks,
   filterNumbers,
   filterSchools,
@@ -127,7 +127,7 @@ function renderView(view: DataView, data: SmsSenderData, sp: SearchParams) {
     const rows = filterNumbers(data.numbers, filters);
     return (
       <NumbersTab
-        rows={pageSlice(rows, filters.page, NUMBERS_PAGE_SIZE)}
+        rows={pageSlice(rows, filters.page, LIST_PAGE_SIZE)}
         total={rows.length}
         filters={filters}
         statusOptions={orderedOptions(
@@ -145,7 +145,7 @@ function renderView(view: DataView, data: SmsSenderData, sp: SearchParams) {
     const kind = firstParam(sp.type);
     return (
       <ChecksTab
-        rows={filterChecks(data.checks, kind)}
+        rows={filterChecks(data.checks, { q: "", kind, page: 1 })}
         total={data.checks.length}
         kind={kind}
         kindOptions={orderedOptions(

@@ -4,7 +4,7 @@ import { ListPagination } from "@/components/common/ListPagination";
 import { ListSearch } from "@/components/common/ListSearch";
 import { ListSelect } from "@/components/common/ListSelect";
 import {
-  NUMBERS_PAGE_SIZE,
+  LIST_PAGE_SIZE,
   type NumberFilters,
 } from "@/features/sms-sender/filters";
 import type { SenderNumber } from "@/features/sms-sender/types";
@@ -95,7 +95,7 @@ export function NumbersTab({
           </tbody>
         </table>
       )}
-      <ListPagination total={total} pageSize={NUMBERS_PAGE_SIZE} />
+      <ListPagination total={total} pageSize={LIST_PAGE_SIZE} />
     </div>
   );
 }
