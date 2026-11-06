@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { kstFormat } from "@/lib/kst-format";
 import { refreshSmsSenderCache } from "@/features/sms-sender/actions";
+import type { StatusRefreshView } from "@/features/sms-sender/status-refresh/contract";
 import { CriteriaModal } from "./CriteriaModal";
+import { StatusRefreshControls } from "./StatusRefreshControls";
 
 const HHMM = kstFormat({ hour: "2-digit", minute: "2-digit" });
 
@@ -12,13 +14,20 @@ export type SourceInfo = {
   fileName: string;
   fetchedAt: string;
   criteria: string[][] | null;
+  /** 현황 최신화 버튼·이력. 없으면 그 버튼들을 그리지 않는다. */
+  refresh?: StatusRefreshView;
 };
 
 /**
  * 목록 머리 오른쪽 — 어느 파일을 몇 시에 읽었는지, 새로고침, 서류 기준.
  * 예전엔 표 위 검색줄 자리를 통째로 차지했다.
  */
-export function SourceBar({ fileName, fetchedAt, criteria }: SourceInfo) {
+export function SourceBar({
+  fileName,
+  fetchedAt,
+  criteria,
+  refresh: refreshView,
+}: SourceInfo) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showCriteria, setShowCriteria] = useState(false);
@@ -42,6 +51,7 @@ export function SourceBar({ fileName, fetchedAt, criteria }: SourceInfo) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs tabular-nums text-ink-soft">{label}</span>
+      {refreshView && <StatusRefreshControls view={refreshView} />}
       {/* 목록 제목 오른쪽 액션 자리라 헤더 액션 표준 하나뿐이다(사용자 지시 2026-11-05). */}
       <HeaderActionButton disabled={pending} onClick={refresh}>
         새로고침

@@ -90,4 +90,14 @@ export const POLLERS: readonly PollerDef[] = [
     heartbeatStaleMinutes: 16,
     hint: "회사 PC의 개발탭 분석 폴러를 확인하세요",
   },
+  {
+    id: "sms-status-refresh",
+    label: "SMS 현황 최신화",
+    table: "sms_status_refresh_requests",
+    // 5분 간격 폴링 + Moa 로그인이 붙어 한 건이 길다.
+    thresholdMinutes: 20,
+    // 5분마다 한 번 돌고 끝난다 — 그 실행이 곧 심박이다.
+    heartbeatStaleMinutes: 16,
+    hint: "회사 PC의 scripts/sms-status-refresh/poll-local.ps1 등록 상태를 확인하세요 (로그온 세션 필요)",
+  },
 ];

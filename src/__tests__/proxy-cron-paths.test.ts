@@ -33,6 +33,8 @@ const SESSIONLESS_ROUTES = [
   "/api/sms-codes/inbound",
   // 배정 판정 큐 — 회사 PC 폴러가 claim 하고 결과를 회신한다(CRON_SECRET).
   "/api/assignments/propose-request",
+  // SMS 현황 최신화 큐 — 회사 PC 폴러가 claim 하고 결과를 보고한다(CRON_SECRET).
+  "/api/sms-status-refresh/request",
 ];
 
 describe("proxy — 세션 없는 창구", () => {

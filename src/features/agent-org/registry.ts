@@ -55,6 +55,16 @@ export const AGENT_TEAMS: readonly AgentTeam[] = [
         agent: "closing-poller",
         source: { kind: "poller", pollerId: "closing-scrape" },
       },
+      {
+        role: "SMS 현황",
+        agent: "sms-status-refresher",
+        source: { kind: "job", jobId: "sms-status-refresh" },
+      },
+      {
+        role: "SMS 현황수집",
+        agent: "sms-status-poller",
+        source: { kind: "poller", pollerId: "sms-status-refresh" },
+      },
     ],
   },
   {

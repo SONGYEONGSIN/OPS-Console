@@ -238,6 +238,7 @@ E2E 운영 메모:
 | `ratio-page-check` | 수동 실행 — 같은 폴러가 수행 (cron 미등록) | **REAL 서버** 경쟁률 HTML 링크 상태(404 등)를 점검해 담당 운영자 개인 채팅으로 알립니다. 대상은 `StartDate ≥ 올해 9월 1일` — 수시 경쟁률이 열리는 9월부터 대상이 생깁니다 | `ratio_audit_requests` + `ratio_audit_runs` (kind=page) |
 | `automation-digest` | 매일 11:00 (cron-job.org) | 그날 전체 잡의 실행 결과 + **미실행 감지**를 본인 Teams 노트 채팅으로 보고 | `automation_runs` |
 | `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]) + 제출 서류 폴더 새 파일·교체 → 담당 매니저 묶음 메일(본인 업로드 제외). 처음 실행은 적재만 | `sms_sender_request_notices` · `sms_sender_doc_upload_notices` |
+| `sms-status-refresh` | 수동 — 내부관리자 '현황 최신화' 버튼 또는 자동화 페이지, 회사 PC 폴러(`scripts/sms-status-refresh/poll-local.ps1`) | Moa 발신번호 목록 수집 → Teams 저장 (+PR-2b: 06·07 갱신) | `sms_status_refresh_requests` + `automation_runs` |
 
 `sms-sender-request-notify` 필요 env: `SHAREPOINT_SMS_REQUEST_SITE_ID` / `SHAREPOINT_SMS_REQUEST_LIST_ID` / `SMS_SENDER_REQUEST_MANAGER_EMAIL` (업로드 알림은 `SHAREPOINT_DRIVE_ID` 도).
 
@@ -275,7 +276,7 @@ Moa 자동화(마감 스크랩·경쟁률 점검·정산 탐색)의 2FA 인증�
 - **문자 본문은 저장하지 않는다.** 서버가 `인증번호` **바로 뒤**의 `[숫자]` 만 뽑아 넣는다(앞의 `[2026]`·스팸 `[9999]` 차단). 발신번호(`X-Sms-Sender`)가 `SMS_INGEST_SENDERS` 에 없으면 2xx 로 조용히 버린다 — 운영자 폰 번호만 알면 비밀키 없이 가짜 코드를 넣을 수 있었다. 폰 키 `SMS_INGEST_SECRET`(32자 이상)은 `CRON_SECRET` 과 **분리** — 폰을 잃으면 그 키만 간다.
 - **로그인 점유(리스)** `sms_code_lease` 한 줄(TTL 180초). 스크래퍼는 제출 전에 `reset`(비우기+점유), 제출 후 `pop`(꺼내며 삭제·반납). **폴링은 TTL−30초(150초)에서 잘린다**(`sms_inbox.POLL_CAP_SEC`) — 리스 시계가 `reset`에서 시작하고 로그인 응답 대기가 끼어들어, env 값(이 PC는 180)대로 끝까지 기다리면 마지막 구간은 리스 없이 `pop` 한다. `audit.py`의 수동 코드 경로(`MANUAL_CODE_FILE`)도 `reset`으로 점유만 잡는다 — 사람이 받아 적어도 문자는 우편함에 들어간다. 다른 소비자가 점유 중이면 409 — **폴백하지 않고 중단한다.** 폴백하면 SMS 두 통이 한 폰에 겹쳐 서로의 코드를 가져가고, 틀린 코드 제출은 캡차 잠금으로 자동화 전체를 세운다. 비점유자의 `pop` 도 409(0행이면 '아직 안 왔다'와 구분이 안 된다).
 - 소스는 **제출 전에 하나** 고른다(`scrape.prepare_sms_source`): 우편함이 살아 있으면 make GET **0회**, 장애(`InboxUnavailable`)일 때만 make `pick_baseline`. 고른 뒤에는 그 소스만 본다(`await_sms_code`). run-log 에 `(SMS: 우편함|make)` 가 남아 **조용한 폴백이 일일 보고에 드러난다** — 이게 없으면 크레딧이 다시 타는데 아무도 모른다.
-- 소비자 이름은 `closing` / `ratio-audit` / `settlement-discover` 셋뿐(`features/sms-codes/schemas.ts` zod enum ↔ python env `sms_consumer`). 오타는 400 — 리스가 이름으로 갈리므로 오타 하나가 점유를 무력화한다.
+- 소비자 이름은 `closing` / `ratio-audit` / `settlement-discover` / `sms-status-refresh` 넷뿐(`features/sms-codes/schemas.ts` zod enum ↔ python env `sms_consumer`). 오타는 400 — 리스가 이름으로 갈리므로 오타 하나가 점유를 무력화한다.
 - **실호출에서만 드러난 것 둘**: Supabase PostgREST 경로는 `safeupdate` 가 켜져 있어 plpgsql 안의 WHERE 없는 DELETE 를 `21000` 으로 거부한다(SQL Editor·Docker 는 통과) → 전체 삭제는 `where true`, `rpc.test.ts` 가 마이그레이션 원문을 대조한다. `vercel env add` 를 stdin 으로 넣으면 끝 줄바꿈이 값에 저장돼 전부 401 — 줄바꿈 없이 넣고 `env pull` 로 대조, 값 변경은 redeploy 가 있어야 반영된다.
 - Tasker 프로필: Received Text(Sender = Moa 발신번호, Content `*인증번호*`) → HTTP POST `text/plain` **원문 그대로**(JSON 조립 금지 — 따옴표·줄바꿈에 깨진다) + `X-Sms-Sender:%SMSRF`. **make 프로필은 지우지 않는다**(폴백).
 

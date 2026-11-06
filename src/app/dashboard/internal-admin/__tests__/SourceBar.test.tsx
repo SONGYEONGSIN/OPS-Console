@@ -95,6 +95,31 @@ describe("SourceBar", () => {
     );
   });
 
+  it("최신화 버튼은 라벨 다음, 새로고침 앞", () => {
+    render(
+      <SourceBar
+        {...base}
+        refresh={{
+          canRequest: true,
+          active: null,
+          history: [],
+          loadError: null,
+        }}
+      />,
+    );
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "현황 최신화",
+      "최신화 이력",
+      "새로고침",
+      "서류 기준",
+    ]);
+  });
+
+  it("refresh 가 없으면 최신화 버튼이 없다", () => {
+    render(<SourceBar {...base} />);
+    expect(screen.queryByRole("button", { name: "최신화 이력" })).toBeNull();
+  });
+
   it("두 버튼 모두 헤더 액션 표준 클래스 그대로 (vermilion + cream)", () => {
     const { container } = render(<SourceBar {...base} />);
     for (const name of ["새로고침", "서류 기준"]) {
