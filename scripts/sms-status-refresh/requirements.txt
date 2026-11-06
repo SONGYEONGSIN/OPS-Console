@@ -1,0 +1,6 @@
+# SMS 현황 최신화 폴러(refresh.py) 필수 패키지 — Moa 로그인은 scripts/moa-closing 의 scrape.py 를 그대로 쓴다
+selenium>=4.20
+requests>=2.31
+python-dotenv>=1.0
+openpyxl>=3.1
+oletools>=0.60
