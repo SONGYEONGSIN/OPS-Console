@@ -11,7 +11,9 @@ import {
   childrenUrl,
   usedRangeUrl,
   fetchSmsSenderSource,
+  fetchDocFiles,
   SourceFetchError,
+  UPLOAD_CHILD_SELECT,
 } from "../source";
 
 const file = (name: string) => ({
@@ -216,5 +218,109 @@ describe("fetchSmsSenderSource", () => {
     expect((err as Error).message).not.toMatch(
       /test-token|raw-body|d1|graph\.microsoft/,
     );
+  });
+});
+
+describe("fetchDocFiles", () => {
+  beforeEach(() => {
+    process.env.SHAREPOINT_DRIVE_ID = "d1";
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("기본 childrenUrl 에는 createdBy 가 없다", () => {
+    const u = childrenUrl("d1", SMS_ROOT_PATH);
+    expect(u).toContain(
+      "$select=id,name,webUrl,size,lastModifiedDateTime,folder,file",
+    );
+    expect(u).not.toContain("createdBy");
+  });
+
+  it("fetchDocFiles 의 children 호출은 createdBy,lastModifiedBy 를 select 한다", async () => {
+    const fn = installFetch({ children: fullTree() });
+    await fetchDocFiles();
+    const childCalls = fn.mock.calls
+      .map(([u]) => String(u))
+      .filter((u) => u.includes(":/children"));
+    expect(childCalls.length).toBeGreaterThan(0);
+    for (const u of childCalls) {
+      expect(u).toContain(`$select=${UPLOAD_CHILD_SELECT}`);
+    }
+    expect(UPLOAD_CHILD_SELECT).toContain("createdBy,lastModifiedBy");
+    expect(UPLOAD_CHILD_SELECT).toContain("file");
+  });
+
+  it("fetchDocFiles 는 PDF 가 아닌 파일도 담는다", async () => {
+    installFetch({ children: fullTree() });
+    const files = await fetchDocFiles();
+    expect(files.map((f) => `${f.folder}|${f.name}`).sort()).toEqual([
+      "|루트.pdf",
+      "완료/검토완료|b.pdf",
+      "완료/제출완료/접수+PIMS|a.pdf",
+      "완료/제출완료/접수+PIMS|memo.txt",
+      "진행 중|c.pdf",
+    ]);
+  });
+
+  it("해시·올린 사람 메일을 옮긴다", async () => {
+    installFetch({
+      children: {
+        [DOCS_FOLDER]: {
+          value: [
+            {
+              ...file("x.pdf"),
+              file: { hashes: { quickXorHash: "h1" } },
+              createdBy: { user: { email: " Up@Example.Test " } },
+              lastModifiedBy: { user: { email: "Mod@Example.Test" } },
+            },
+            file("y.xlsx"),
+          ],
+        },
+      },
+    });
+    const files = await fetchDocFiles();
+    expect(files).toEqual([
+      {
+        id: "id-x.pdf",
+        name: "x.pdf",
+        folder: "",
+        webUrl: "https://example.invalid/x.pdf",
+        hash: "h1",
+        createdByEmail: "up@example.test",
+        modifiedByEmail: "mod@example.test",
+      },
+      {
+        id: "id-y.xlsx",
+        name: "y.xlsx",
+        folder: "",
+        webUrl: "https://example.invalid/y.xlsx",
+        hash: null,
+        createdByEmail: null,
+        modifiedByEmail: null,
+      },
+    ]);
+  });
+
+  it("SHAREPOINT_DRIVE_ID 없으면 SourceFetchError, Graph 를 안 부른다", async () => {
+    delete process.env.SHAREPOINT_DRIVE_ID;
+    const fn = installFetch({ children: fullTree() });
+    await expect(fetchDocFiles()).rejects.toBeInstanceOf(SourceFetchError);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("Graph 밖 nextLink 는 따라가지 않는다", async () => {
+    const tree = fullTree();
+    tree[DOCS_FOLDER] = {
+      value: [],
+      "@odata.nextLink": "https://evil.invalid/page2",
+    };
+    const fn = installFetch({ children: tree });
+    await expect(fetchDocFiles()).rejects.toBeInstanceOf(SourceFetchError);
+    expect(
+      fn.mock.calls.some(([u]) => String(u).includes("evil.invalid")),
+    ).toBe(false);
   });
 });

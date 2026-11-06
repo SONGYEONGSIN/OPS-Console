@@ -30,6 +30,16 @@ export type DriveFile = {
 };
 /** DOCS_FOLDER 아래 상대 경로, 예 "완료/제출완료/접수+PIMS" */
 export type RawPdf = DriveFile & { folder: string };
+/** 제출 서류 폴더의 파일 하나(PDF 외 포함). folder 는 DOCS_FOLDER 아래 상대 경로, "" = 최상위. 메일 주소는 trim·소문자. */
+export type RawDocFile = {
+  id: string;
+  name: string;
+  folder: string;
+  webUrl: string | null;
+  hash: string | null;
+  createdByEmail: string | null;
+  modifiedByEmail: string | null;
+};
 export type RawSource = {
   workbook: DriveFile;
   offRuleFiles: string[];
