@@ -5,6 +5,7 @@ ps1 은 이 파일을 바이트 그대로 보내므로, 여기서 ASCII 로 써 
 """
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -24,6 +25,7 @@ class RefreshMainTest(unittest.TestCase):
         self._env = mock.patch.dict(os.environ, env)
         self._env.start()
         os.environ.pop("SMS_STATUS_REFRESH_DRY_RUN", None)
+        os.environ.pop("CLOSING_DUMP_DIR", None)
         self.seen: list[Context] = []
 
     def tearDown(self):
@@ -109,6 +111,26 @@ class RefreshMainTest(unittest.TestCase):
         self.assertFalse(self.seen[0].dry_run)
         self.assertEqual(self.seen[0].request_id, "req-1")
         self.assertEqual(self.seen[0].work_dir, self.tmp)
+
+    def test_실패_덤프는_작업_폴더로(self):
+        # scrape._dump_page 기본값은 현재 폴더(= 스케줄러가 돌리는 원래 폴더의 레포 루트)다.
+        with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
+            refresh.main(self._argv())
+        self.assertEqual(os.environ["CLOSING_DUMP_DIR"], str(self.tmp))
+
+    def test_실패_덤프_폴더를_이미_정했으면_그대로(self):
+        with mock.patch.dict(os.environ, {"CLOSING_DUMP_DIR": "D:/dumps"}):
+            with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
+                refresh.main(self._argv())
+            self.assertEqual(os.environ["CLOSING_DUMP_DIR"], "D:/dumps")
+
+    def test_dotenv_가_없으면_2(self):
+        # 계속 돌면 계정 env 가 비어 'Moa 로그인 실패' 로 잘못 보인다.
+        with mock.patch.dict(sys.modules, {"dotenv": None}):
+            with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
+                self.assertEqual(refresh.main(self._argv()), 2)
+        self.assertEqual(self.seen, [])
+        self.assertFalse(self.out.exists())
 
     def test_env_파일을_덮어쓰지_않고_읽는다(self):
         envf = self.tmp / "x.env"

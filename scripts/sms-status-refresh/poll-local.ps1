@@ -58,6 +58,25 @@ function Send-Result([byte[]]$bytes) {
         -Body $bytes -TimeoutSec 60 | Out-Null
 }
 
+# Invoke-RestMethod 예외에서 HTTP 상태. 응답이 없으면(시간 초과·연결 실패) 0.
+function Get-HttpStatus($err) {
+    $resp = $err.Exception.Response
+    if ($null -eq $resp) { return 0 }
+    try { return [int]$resp.StatusCode } catch { return 0 }
+}
+
+# 실패 보고에 실을 마지막 세 줄 — 예외 원문·주소·셀 값이 섞이지 않게 [태그] 와 예외 이름만 남긴다.
+# refresh.py 는 단계 결과를 [STEP:단계:상태:코드] 태그로 찍는다.
+function Get-SafeTail([object[]]$lines) {
+    $picked = @($lines | Select-Object -Last 3 | ForEach-Object {
+        $s = "$_"
+        if ($s -match '^\s*(\[[^\]\s]{1,60}\])') { $matches[1] }
+        elseif ($s -match '^\s*([A-Za-z_][\w.]*(Error|Exception|Exit|Interrupt))\b') { $matches[1] }
+        else { "-" }
+    })
+    return ($picked -join " / ")
+}
+
 # --- 1) pending claim ---
 $claim = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers -TimeoutSec 30
 if (-not $claim.request) {
@@ -85,7 +104,7 @@ $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 "=== $ts 시작 (요청 $id) ===" | Out-File -Append -Encoding utf8 $log
 
 $code = -1
-$tail = ""
+$output = @()
 # python 이 stderr 에 한 줄이라도 쓰면 Stop 이 그 줄에서 터져 트레이스백이 사라진다
 # (moa-ratio 2026-08-03). 실행 구간만 Continue 로 낮추고 성패는 exit code 로 본다.
 # python 은 UTF-8 로 쓰므로(-X utf8) 콘솔 해석도 UTF-8 로 맞춘다 — 아니면 로그 한글이 CP949 로 깨진다.
@@ -107,17 +126,17 @@ try {
         $line
     }
     $code = $LASTEXITCODE
-    $tail = (($output | Select-Object -Last 3) -join " / ")
-    if ($tail.Length -gt 300) { $tail = $tail.Substring($tail.Length - 300) }
 } catch {
-    $tail = "poller 예외: $($_.Exception.GetType().Name)"
+    $output = @("[poll:exception:$($_.Exception.GetType().Name)]")
 } finally {
     [Console]::OutputEncoding = $prevOut
     $ErrorActionPreference = $prevPref
 }
 
 # --- 4) 완료 보고 ---
-$minimal = Get-MinimalBody $id "exit $code — $tail"
+# 서버 404 = 진행 중인 이 요청이 없다(이미 보고됐거나 40분 지나 마감됨) — 다시 보내도 또 404 라 그만둔다.
+# 그 밖의 실패(400·5xx·시간 초과)는 최소 본문으로 한 번 더 — running 이 40분 큐를 막지 않게.
+$minimal = Get-MinimalBody $id "exit $code — $(Get-SafeTail $output)"
 $reported = $false
 if ($code -eq 0 -and (Test-Path $bodyPath)) {
     try {
@@ -125,9 +144,14 @@ if ($code -eq 0 -and (Test-Path $bodyPath)) {
         $reported = $true
         $msg = "결과 보고"
     } catch {
-        # 서버가 본문을 거절(400 등)하면 최소 본문으로 한 번 더 — running 이 40분 큐를 막지 않게.
-        $msg = "결과 보고 실패($($_.Exception.GetType().Name)) — 최소 본문으로 다시"
-        $minimal = Get-MinimalBody $id "결과 본문 보고 실패 — exit $code"
+        $status = Get-HttpStatus $_
+        if ($status -eq 404) {
+            $reported = $true
+            $msg = "서버에 진행 중인 이 요청이 없음(404) — 이미 보고됐거나 마감됨, 다시 보내지 않음"
+        } else {
+            $msg = "결과 보고 실패(HTTP $status) — 최소 본문으로 다시"
+            $minimal = Get-MinimalBody $id "결과 본문 보고 실패(HTTP $status) — exit $code"
+        }
     }
 } else {
     $msg = "결과 파일 없음(exit $code) — 최소 본문으로 보고"
@@ -137,7 +161,13 @@ if (-not $reported) {
         Send-Result $minimal
         $reported = $true
     } catch {
-        $msg = "$msg / 최소 본문 보고도 실패: $($_.Exception.GetType().Name)"
+        $status = Get-HttpStatus $_
+        if ($status -eq 404) {
+            $reported = $true
+            $msg = "$msg / 404 — 이미 보고됐거나 마감됨"
+        } else {
+            $msg = "$msg / 최소 본문 보고도 실패(HTTP $status)"
+        }
     }
 }
 

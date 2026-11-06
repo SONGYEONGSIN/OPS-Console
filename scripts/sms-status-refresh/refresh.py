@@ -40,14 +40,19 @@ REGISTERED: dict[str, Step] = {
 }
 
 
-def _load_env() -> None:
+def _load_env() -> bool:
+    """env 파일을 읽는다(이미 있는 값은 안 덮는다). python-dotenv 가 없으면 False.
+
+    없는 채로 돌면 Moa 계정 env 가 비어 'Moa 로그인 실패' 로 잘못 보인다 — 인자 오류처럼 2 로 끝낸다.
+    """
     env_file = os.getenv("SMS_STATUS_REFRESH_ENV_FILE") or str(_REPO_ROOT / ".env.local")
     try:
         from dotenv import load_dotenv
     except ImportError:
-        print("[WARN] python-dotenv 없음 — env 파일을 읽지 않습니다")
-        return
+        print("[FAIL] python-dotenv 없음 — pip install -r scripts/sms-status-refresh/requirements.txt")
+        return False
     load_dotenv(env_file, override=False)
+    return True
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
@@ -83,7 +88,11 @@ def _read_watermarks(path: str | None) -> dict[str, str] | None:
 
 def main(argv: list[str]) -> int:
     args = _parse_args(argv)
-    _load_env()
+    # 로그인 실패 덤프(scrape._dump_page, 기본 현재 폴더)가 레포 루트 — 스케줄러가 돌리는 원래 폴더 —
+    # 에 fail-login.* 을 남기지 않게 요청 작업 폴더로 보낸다. 이미 정했으면(.env.local 포함) 그대로.
+    os.environ.setdefault("CLOSING_DUMP_DIR", args.work_dir)
+    if not _load_env():
+        return 2
     steps = _pick_steps(args.steps)
     watermarks = _read_watermarks(args.watermarks)
     if steps is None or watermarks is None:
@@ -98,7 +107,8 @@ def main(argv: list[str]) -> int:
     )
     results = run_steps(steps, ctx)
     for r in results:
-        print(f"[{r.status.upper()}] {r.step} {r.error_code or ''}".rstrip())
+        # 폴러는 실패 보고에 [태그] 만 싣는다 — 단계·상태·코드를 태그 안에 둔다.
+        print(f"[STEP:{r.step}:{r.status}:{r.error_code or '-'}]")
 
     body = build_body(args.request_id, results)
     out = Path(args.out)

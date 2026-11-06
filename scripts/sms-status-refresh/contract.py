@@ -22,7 +22,7 @@ SMS_CONSUMER = "sms-status-refresh"
 # 첫 실행 기준점 = 2026-10-17 00:00 KST. 단계별 watermark 가 아직 없을 때 여기서부터 본다.
 FIRST_WATERMARK = "2026-10-16T15:00:00Z"
 
-FAILURE_CODES = ("lease_busy", "login_failed", "moa_empty", "moa_shape_changed", "source_missing", "source_shape", "excel_failed", "verify_failed", "changed", "locked", "after_check", "dependency_failed", "unknown")
+FAILURE_CODES = ("lease_busy", "login_failed", "moa_empty", "moa_shape_changed", "moa_incomplete", "source_missing", "source_shape", "excel_failed", "verify_failed", "changed", "locked", "after_check", "dependency_failed", "unknown")
 
 # PR-2b 가 "workbook" 을, PR-3·4 가 "mail"·"pdf" 를 더한다.
 STEP_IDS = ("moa",)

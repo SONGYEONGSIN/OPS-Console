@@ -4,6 +4,9 @@
 주석 줄('#' 로 시작)은 지운 뒤 대조한다 — 주석에만 남은 규칙은 규칙이 아니다.
 """
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -46,8 +49,59 @@ class TestPollLocal(unittest.TestCase):
         self.assertIn("SMS_STATUS_REFRESH_KEEP_WORK", self.poll)
         self.assertIn("Remove-Item", self.poll)
 
+    def test_404_는_다시_보내지_않는다(self):
+        # 서버가 404 = 진행 중인 그 요청이 없다(이미 보고됐거나 마감됨). 다시 보내도 또 404 다.
+        self.assertIn("-eq 404", self.poll)
+        self.assertIn("Get-HttpStatus", self.poll)
+
+    def test_최소_본문의_tail_은_정리한_것만(self):
+        self.assertIn("Get-SafeTail", self.poll)
+        self.assertRegex(self.poll, r'Get-MinimalBody \$id "exit \$code — \$\(Get-SafeTail')
+
     def test_로그에_요청자_메일을_남기지_않는다(self):
         self.assertNotIn("requested_by", self.poll)
+
+
+def function_text(source: str, name: str) -> str:
+    """'function 이름' 줄부터 맨 앞 칸의 '}' 줄까지."""
+    lines = source.splitlines()
+    start = next(i for i, l in enumerate(lines) if l.startswith(f"function {name}"))
+    end = next(i for i in range(start, len(lines)) if lines[i] == "}")
+    return "\n".join(lines[start : end + 1])
+
+
+@unittest.skipUnless(shutil.which("powershell"), "Windows PowerShell 없음")
+class TestSafeTail(unittest.TestCase):
+    """Get-SafeTail 만 떼어 Windows PowerShell 5.1 로 돌린다(네트워크·등록 없음)."""
+
+    def run_tail(self, lines: list[str]) -> str:
+        fn = function_text((HERE / "poll-local.ps1").read_text(encoding="utf-8-sig"), "Get-SafeTail")
+        arr = ", ".join("'" + l.replace("'", "''") + "'" for l in lines)
+        script = f"[Console]::OutputEncoding = [Text.Encoding]::UTF8\n{fn}\nGet-SafeTail @({arr})"
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "t.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            out = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                capture_output=True, timeout=60,
+            )
+        self.assertEqual(out.returncode, 0, out.stderr.decode("utf-8", "replace"))
+        return out.stdout.decode("utf-8").strip()
+
+    def test_태그와_예외_이름만_남는다(self):
+        got = self.run_tail([
+            "[DUMP:login] url=https://moa.example/User/Login?x=1 title='점검'",
+            "[STEP:moa:failed:login_failed]",
+            "RuntimeError: 로그인 실패 — 010-0000-0001",
+            '  File "C:\\x\\scrape.py", line 3',
+        ])
+        self.assertEqual(got, "[STEP:moa:failed:login_failed] / RuntimeError / -")
+        self.assertNotIn("http", got)
+        self.assertNotIn("010", got)
+
+    def test_마지막_세_줄만(self):
+        got = self.run_tail(["[A]", "[B]", "[C]", "[D]"])
+        self.assertEqual(got, "[B] / [C] / [D]")
 
 
 class TestRegister(unittest.TestCase):

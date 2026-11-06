@@ -18,17 +18,14 @@ from __future__ import annotations
 import io
 import os
 import re
-import sys
-import tempfile
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "moa-closing"))
-
-from contract import SMS_CONSUMER, Context, StepFailure, StepResult  # noqa: E402
-from graph import MOA_DIR, XLSX, Graph, GraphError  # noqa: E402
+# scripts/moa-closing(scrape·sms_inbox)은 sys.path 에 있어야 한다 — refresh.py·테스트가 넣는다.
+from contract import SMS_CONSUMER, Context, StepFailure, StepResult
+from graph import MOA_DIR, XLSX, DriveItem, Graph, GraphError
 
 MOA_URL = "https://moa.jinhakapply.com/Message/CallBack"
 MOA_COLS = ["UnivServiceID", "대학명", "모집시기", "모집년도", "CallBack", "파일", "등록일자", "등록상태"]
@@ -36,43 +33,60 @@ DROP = {"수정"}  # 버튼 열 — 값이 비어 있어야 한다
 WIDTH = {"UnivServiceID": 14, "대학명": 26, "모집시기": 14, "모집년도": 10, "CallBack": 16, "파일": 40, "등록일자": 12, "등록상태": 10}
 KST = timezone(timedelta(hours=9))
 
-# 검색 칸 셋을 비운다(= 전체). 칸이 없으면 건너뛴다.
-CLEAR_JS = (
-    "['txtServiceID','txtUnivServiceID','txtServiceType'].forEach(function(id){"
-    "var e=document.getElementById(id); if(e) e.value='';});"
-)
+# 검색 전에 지금 표에 표시를 달고 행을 비운 뒤 검색 칸 셋을 비운다(= 전체).
+# 표시가 없어졌거나(쪽을 새로 그림) 행이 다시 생겨야(표를 새로 채움) 검색 결과로 본다 —
+# 아니면 검색 전 첫 화면을 두 번 읽고 '안정됐다'며 그것을 저장한다.
+# 표가 없으면(로그인 화면으로 튕김) null.
+PREP_JS = r"""
+var t=document.querySelector('table.tbl.type1'); if(!t) return null;
+t.setAttribute('data-srr-stale','1');
+[].forEach.call(t.querySelectorAll('tbody tr'),function(tr){tr.parentNode.removeChild(tr);});
+['txtServiceID','txtUnivServiceID','txtServiceType'].forEach(function(id){
+  var e=document.getElementById(id); if(e) e.value='';});
+return true;
+"""
 SEARCH_JS = "Search();"
 ROWS_JS = r"""
 var t=document.querySelector('table.tbl.type1'); if(!t) return null;
 var h=[].map.call(t.querySelectorAll('th'),x=>x.innerText.trim());
 var r=[].map.call(t.querySelectorAll('tbody tr'),tr=>[].map.call(tr.querySelectorAll('td'),td=>td.innerText.trim().replace(/\n/g,' | ')));
-return [h,r];
+return [h,r,t.hasAttribute('data-srr-stale')];
 """
+PREV_MIN_RATIO = 0.5  # 지난 파일 행 수의 이 비율 미만이면 덜 읽은 것으로 본다
+_A1_ROWS = re.compile(r"(\d+)행\s*$")
+_PREV_NAME = re.compile(r"^Moa 등록 리스트_\d{6}(?:_\d+)?\.xlsx$")
+
+
+def _is_search_result(got) -> bool:
+    """검색 뒤 새로 그려진 표인가 — 표시가 사라졌거나 비운 행이 다시 찼다."""
+    return got is not None and (not got[2] or len(got[1]) > 0)
 
 
 def collect_callback_rows(
-    driver, *, sleep: Callable[[float], None] = time.sleep, settle_sec: float = 5, tries: int = 6
+    driver, *, sleep: Callable[[float], None] = time.sleep, settle_sec: float = 5, tries: int = 8
 ) -> tuple[list[str], list[list[str]]]:
-    """빈 조건으로 검색해 표를 읽는다. 행 수가 두 번 연속 같으면 다 그려진 것으로 본다.
+    """빈 조건으로 검색해 표를 읽는다. 검색 결과 표의 행 수가 두 번 연속 같아야 끝이다.
 
-    표가 없으면(로그인 화면으로 튕김 등) `([], [])` — clean_table 이 moa_empty 로 바꾼다.
+    검색 전에 표가 없으면(로그인 화면으로 튕김 등) `([], [])` — clean_table 이 moa_empty 로 바꾼다.
+    끝까지 안정되지 않으면 **부분 표를 돌려주지 않고** `moa_incomplete` 로 실패한다.
     """
     driver.get(MOA_URL)
     sleep(settle_sec)
-    driver.execute_script(CLEAR_JS)
+    if driver.execute_script(PREP_JS) is None:
+        return [], []
     driver.execute_script(SEARCH_JS)
     prev = None
     for _ in range(tries):
         sleep(settle_sec)
         got = driver.execute_script(ROWS_JS)
-        if got is not None and prev is not None and len(got[1]) == len(prev[1]):
-            prev = got
-            break
+        if not _is_search_result(got):
+            prev = None
+            continue
+        if prev is not None and len(got[1]) == len(prev[1]):
+            head, rows = got[0], got[1]
+            return [str(h) for h in head], [[str(c) for c in r] for r in rows]
         prev = got
-    if prev is None:
-        return [], []
-    head, rows = prev
-    return [str(h) for h in head], [[str(c) for c in r] for r in rows]
+    raise StepFailure("moa_incomplete", "검색 결과가 끝까지 그려지지 않음")
 
 
 def clean_table(header: list[str], rows: list[list[str]]) -> list[list[str]]:
@@ -145,13 +159,17 @@ def _moa_env() -> dict:
 
 
 def _login(env: dict):
-    """드라이버를 띄워 로그인한다 → (driver, SMS 소스 라벨). 로그인 실패면 드라이버를 닫고 올린다."""
+    """드라이버를 띄워 로그인한다 → (driver, SMS 소스 라벨). 로그인 실패면 드라이버를 닫고 올린다.
+
+    내려받기 폴더는 env["download_dir"](요청 작업 폴더 밑 — 폴러가 끝나면 지운다).
+    """
     from selenium.webdriver.support.ui import WebDriverWait
 
     from scrape import login_and_2fa, setup_driver, sms_source_label, sms_urls
 
     headless = os.getenv("HEADLESS_MODE", "true").lower() == "true"
-    driver = setup_driver(tempfile.mkdtemp(prefix="moa-callback-"), headless)
+    Path(env["download_dir"]).mkdir(parents=True, exist_ok=True)
+    driver = setup_driver(env["download_dir"], headless)
     try:
         wait = WebDriverWait(driver, int(os.getenv("MOA_WAIT_SEC", "40")))
         source = login_and_2fa(driver, wait, {**env, "sms_urls": sms_urls()})
@@ -170,6 +188,40 @@ def _quit(driver) -> None:
 
 def _graph_failure(e: GraphError) -> StepFailure:
     return StepFailure("source_missing" if e.status == 404 else "unknown", f"GraphError {e.status}")
+
+
+def _prev_rows(graph, items: list[DriveItem]) -> int | None:
+    """가장 최근 Moa 등록 리스트의 행 수(A1 '…N행'). 없거나 못 읽으면 None — 비교를 건너뛴다."""
+    prev = sorted(
+        (i for i in items if _PREV_NAME.match(i.name)), key=lambda i: (i.last_modified, i.name)
+    )
+    if not prev:
+        return None
+    data = graph.download(prev[-1].id)
+    try:
+        from openpyxl import load_workbook
+
+        wb = load_workbook(io.BytesIO(data), read_only=True)
+        m = _A1_ROWS.search(str(wb.worksheets[0]["A1"].value or ""))
+    except Exception as e:  # noqa: BLE001 — 지난 파일이 깨졌다고 이번 수집을 막지 않는다
+        print(f"[WARN] 지난 Moa 목록을 못 읽어 행 수 비교를 건너뜀: {type(e).__name__}")
+        return None
+    return int(m.group(1)) if m else None
+
+
+def _check_against_prev(n: int, prev: int | None) -> None:
+    if prev is not None and n < prev * PREV_MIN_RATIO:
+        raise StepFailure("moa_incomplete", f"지난 파일 {prev}행 → {n}행")
+
+
+def _teams_state(graph_factory):
+    """Graph 연결 + Moa 폴더 목록 + 지난 파일 행 수 — 전부 로그인 전에 끝낸다."""
+    try:
+        graph = graph_factory()
+        items = [i for i in graph.children(MOA_DIR) if i.is_file]
+        return graph, [i.name for i in items], _prev_rows(graph, items)
+    except GraphError as e:
+        raise _graph_failure(e) from None
 
 
 def _login_or_fail(login, env: dict):
@@ -197,19 +249,18 @@ def run_moa_step(
         raise StepFailure("login_failed", "MOA 계정 env 누락")
 
     # Teams 쪽을 먼저 본다 — 인증 문자를 보낸 뒤에 저장할 곳이 없다는 걸 알면 문자 한 통이 헛된다.
-    try:
-        graph = graph_factory()
-        existing = [i.name for i in graph.children(MOA_DIR) if i.is_file]
-    except GraphError as e:
-        raise _graph_failure(e) from None
+    graph, existing, prev = _teams_state(graph_factory)
 
-    driver, source_label = _login_or_fail(login, env)
+    driver, source_label = _login_or_fail(
+        login, {**env, "download_dir": str(ctx.work_dir / "moa-download")}
+    )
     try:
         header, raw = collect_callback_rows(driver, sleep=sleep)
     finally:
         _quit(driver)
 
     rows = clean_table(header, raw)
+    _check_against_prev(len(rows), prev)
     at = now()
     name = next_moa_name(existing, at.date())
     data = build_moa_xlsx(rows, at)  # 시험 실행도 만든다 — 만드는 데서 깨지는지까지 본다

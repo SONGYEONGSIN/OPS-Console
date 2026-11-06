@@ -24,6 +24,9 @@ from graph import MOA_DIR, XLSX, DriveItem  # noqa: E402
 from moa_collect import (  # noqa: E402
     MOA_COLS,
     MOA_URL,
+    PREP_JS,
+    ROWS_JS,
+    SEARCH_JS,
     build_moa_xlsx,
     clean_table,
     collect_callback_rows,
@@ -43,9 +46,20 @@ def row(sid: str, phone: str = "010-0000-0001", univ: str = "테스트대학교A
 ROWS = [row("9001001"), row("9001002", "010-0000-0002"), row("9002001", "010-0000-0003", "테스트대학교B")]
 
 
+STALE = "stale"  # 검색 전 표가 아직 그대로(표시만 달린 채 비워진 상태)
+PRE = [RAW_HEAD, [row(f"90{i:05d}") for i in range(20)]]  # 검색 전 첫 화면 20행
+
+
 class FakeDriver:
-    def __init__(self, table):
-        self.table = table  # [header, rows] | None
+    """Moa 화면 흉내. 검색 전 표(pre)가 있고, Search() 뒤에는 reads 를 차례로 보여 준다(마지막은 반복).
+
+    reads 원소: [header, rows] = 새로 그려진 표 · STALE = 아직 검색 전 표 · None = 표 없음(쪽 이동 중).
+    """
+
+    def __init__(self, table=None, *, reads=None, pre=PRE):
+        self.pre = pre
+        self.reads = list(reads) if reads is not None else [table]
+        self.searched = False
         self.scripts: list[str] = []
         self.urls: list[str] = []
         self.quits = 0
@@ -54,12 +68,27 @@ class FakeDriver:
     def get(self, url):
         self.urls.append(url)
 
+    def _read(self):
+        state = self.reads.pop(0) if len(self.reads) > 1 else self.reads[0]
+        if state is None:
+            return None
+        if state == STALE:
+            return [self.pre[0], [], True]
+        return [state[0], state[1], False]
+
     def execute_script(self, script, *args):
         self.scripts.append(script)
-        if "table.tbl.type1" in script:
+        if script == PREP_JS:
+            return None if self.pre is None else True
+        if script == SEARCH_JS:
+            self.searched = True
+            return None
+        if script == ROWS_JS:
             if self.fail_on_rows:
                 raise RuntimeError("010-0000-0001")
-            return self.table
+            if not self.searched:
+                return None if self.pre is None else [*self.pre, False]
+            return self._read()
         return None
 
     def quit(self):
@@ -67,12 +96,20 @@ class FakeDriver:
 
 
 class FakeGraph:
-    def __init__(self, names=()):
-        self.names = list(names)
+    """files: [(이름, 수정 시각, 내용 bytes | None)]. 내용이 None 이면 3행짜리 지난 파일."""
+
+    def __init__(self, names=(), files=None):
+        self.files = list(files) if files is not None else [(n, "2026-11-06T00:00:00Z", None) for n in names]
         self.puts: list[tuple] = []
+        self.downloads: list[str] = []
 
     def children(self, path):
-        return [DriveItem(str(i), n, "e", "", True) for i, n in enumerate(self.names)]
+        return [DriveItem(str(i), n, "e", t, True) for i, (n, t, _b) in enumerate(self.files)]
+
+    def download(self, item_id):
+        self.downloads.append(item_id)
+        data = self.files[int(item_id)][2]
+        return data if data is not None else build_moa_xlsx(clean_table(RAW_HEAD, ROWS), NOW)
 
     def put_new(self, folder, name, data, content_type):
         self.puts.append((folder, name, data, content_type))
@@ -84,9 +121,12 @@ def ctx(dry_run=False) -> Context:
 
 
 class TestCollect(unittest.TestCase):
+    def collect(self, drv, tries=6):
+        return collect_callback_rows(drv, sleep=lambda _s: None, tries=tries)
+
     def test_빈_조건_Search_만_부르고_수정_함수는_안_부른다(self):
         drv = FakeDriver([RAW_HEAD, ROWS])
-        head, rows = collect_callback_rows(drv, sleep=lambda _s: None)
+        head, rows = self.collect(drv)
         joined = "\n".join(drv.scripts)
         self.assertIn("Search();", joined)
         self.assertNotIn("SetCallBackUpdate", joined)
@@ -97,8 +137,36 @@ class TestCollect(unittest.TestCase):
 
     def test_표가_없으면_빈_값(self):
         # 세션 만료로 로그인 화면이 떠 있으면 표 자체가 없다.
-        drv = FakeDriver(None)
-        self.assertEqual(collect_callback_rows(drv, sleep=lambda _s: None), ([], []))
+        drv = FakeDriver(None, pre=None)
+        self.assertEqual(self.collect(drv), ([], []))
+        self.assertNotIn(SEARCH_JS, drv.scripts)
+
+    def test_검색_전에_표를_비우고_표시를_단다(self):
+        # 표시가 없으면 검색 전 화면을 두 번 읽고 '안정됐다'며 그 20행을 저장한다.
+        drv = FakeDriver([RAW_HEAD, ROWS])
+        self.collect(drv)
+        self.assertLess(drv.scripts.index(PREP_JS), drv.scripts.index(SEARCH_JS))
+        self.assertIn("data-srr-stale", PREP_JS)
+
+    def test_검색_전_화면이_그대로면_실패(self):
+        # Search() 가 아무것도 안 바꾸면(스크립트 오류 등) 검색 전 20행을 저장하면 안 된다.
+        drv = FakeDriver(reads=[STALE])
+        with self.assertRaises(StepFailure) as cm:
+            self.collect(drv)
+        self.assertEqual(cm.exception.code, "moa_incomplete")
+
+    def test_검색_전_20행_뒤_진짜_결과(self):
+        big = [row(f"9{i:06d}") for i in range(887)]
+        drv = FakeDriver(reads=[STALE, STALE, None, [RAW_HEAD, big], [RAW_HEAD, big]])
+        head, rows = self.collect(drv)
+        self.assertEqual(len(rows), 887)
+
+    def test_행이_계속_늘면_실패_부분_표를_돌려주지_않는다(self):
+        growing = [[RAW_HEAD, [row(f"9{i:06d}") for i in range(n)]] for n in range(20, 900, 50)]
+        drv = FakeDriver(reads=growing)
+        with self.assertRaises(StepFailure) as cm:
+            self.collect(drv, tries=6)
+        self.assertEqual(cm.exception.code, "moa_incomplete")
 
 
 class TestCleanTable(unittest.TestCase):
@@ -210,6 +278,39 @@ class TestRunStep(unittest.TestCase):
         self.assertTrue(data.startswith(b"PK"))
         self.assertEqual(seen_env[0]["sms_consumer"], "sms-status-refresh")
         self.assertEqual(drv.quits, 1)
+
+    def test_지난_파일의_절반_미만이면_저장_안_함(self):
+        # 지난번 10행 → 이번 3행: 화면을 덜 읽은 것일 가능성이 크다. 저장하면 06 이 '세종만'으로 바뀐다.
+        prev = build_moa_xlsx([[f"90{i:05d}", "테스트대학교A", "수시", "2027", "010-0000-0001", "", "2026-10-01", "등록완료"] for i in range(10)], NOW)
+        graph = FakeGraph(files=[
+            ("Moa 등록 리스트_261104.xlsx", "2026-11-04T00:00:00Z", prev),
+            ("Moa 등록 리스트_261101.xlsx", "2026-11-01T00:00:00Z", b"broken"),
+        ])
+        r, graph, _ = self._run(FakeDriver([RAW_HEAD, ROWS]), graph)
+        self.assertEqual((r.status, r.error_code), ("failed", "moa_incomplete"))
+        self.assertEqual(r.detail, "지난 파일 10행 → 3행")
+        self.assertEqual(graph.downloads, ["0"])  # 가장 최근 것만 본다
+        self.assertEqual(graph.puts, [])
+
+    def test_지난_파일과_비슷하면_올린다(self):
+        prev = build_moa_xlsx([[f"90{i:05d}", "테스트대학교A", "수시", "2027", "010-0000-0001", "", "2026-10-01", "등록완료"] for i in range(5)], NOW)
+        graph = FakeGraph(files=[("Moa 등록 리스트_261104.xlsx", "2026-11-04T00:00:00Z", prev)])
+        r, graph, _ = self._run(FakeDriver([RAW_HEAD, ROWS]), graph)
+        self.assertEqual(r.status, "ok")
+        self.assertEqual(len(graph.puts), 1)
+
+    def test_지난_파일을_못_읽으면_비교를_건너뛴다(self):
+        graph = FakeGraph(files=[
+            ("Moa 등록 리스트_261104.xlsx", "2026-11-04T00:00:00Z", b"broken"),
+            ("메모.xlsx", "2026-11-05T00:00:00Z", b"x"),
+        ])
+        r, graph, _ = self._run(FakeDriver([RAW_HEAD, ROWS]), graph)
+        self.assertEqual(r.status, "ok")
+        self.assertEqual(graph.downloads, ["0"])  # 이름 규칙에 맞는 것만
+
+    def test_내려받기_폴더는_작업_폴더(self):
+        _r, _g, seen_env = self._run(FakeDriver([RAW_HEAD, ROWS]))
+        self.assertEqual(seen_env[0]["download_dir"], str(Path(".") / "moa-download"))
 
     def test_빈_표는_moa_empty_저장_안_함(self):
         drv = FakeDriver([RAW_HEAD, []])
