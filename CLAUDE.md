@@ -237,11 +237,11 @@ E2E 운영 메모:
 | `ratio-audit` | 수동 실행 — 회사 PC 폴러가 수행 (cron 미등록) | **TEST 서버** 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 오설정을 담당 운영자 Teams 개인 채팅으로 알립니다. 자동화 페이지 [실행]은 `ratio_audit_requests`에 pending만 적재하고, 회사 PC 폴러(`scripts/moa-ratio/poll-local.ps1`)가 5분 내 claim해 `audit.py`를 실행 | `ratio_audit_requests` + `ratio_audit_runs` (kind=schedule) |
 | `ratio-page-check` | 수동 실행 — 같은 폴러가 수행 (cron 미등록) | **REAL 서버** 경쟁률 HTML 링크 상태(404 등)를 점검해 담당 운영자 개인 채팅으로 알립니다. 대상은 `StartDate ≥ 올해 9월 1일` — 수시 경쟁률이 열리는 9월부터 대상이 생깁니다 | `ratio_audit_requests` + `ratio_audit_runs` (kind=page) |
 | `automation-digest` | 매일 11:00 (cron-job.org) | 그날 전체 잡의 실행 결과 + **미실행 감지**를 본인 Teams 노트 채팅으로 보고 | `automation_runs` |
-| `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]). 처음 실행은 적재만 | `sms_sender_request_notices` |
+| `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]) + 제출 서류 폴더 새 파일·교체 → 담당 매니저 묶음 메일(본인 업로드 제외). 처음 실행은 적재만 | `sms_sender_request_notices` · `sms_sender_doc_upload_notices` |
 
-`sms-sender-request-notify` 필요 env: `SHAREPOINT_SMS_REQUEST_SITE_ID` / `SHAREPOINT_SMS_REQUEST_LIST_ID` / `SMS_SENDER_REQUEST_MANAGER_EMAIL`.
+`sms-sender-request-notify` 필요 env: `SHAREPOINT_SMS_REQUEST_SITE_ID` / `SHAREPOINT_SMS_REQUEST_LIST_ID` / `SMS_SENDER_REQUEST_MANAGER_EMAIL` (업로드 알림은 `SHAREPOINT_DRIVE_ID` 도).
 
-`sms-sender-request-notify` 에서 `failed` 로 굳은 알림 재발송은 그 행의 `{new|done}_state='pending', {new|done}_attempts=0` 으로 되돌린다(화면 없음).
+`sms-sender-request-notify` 에서 `failed` 로 굳은 알림 재발송은 그 행의 `{new|done}_state='pending', {new|done}_attempts=0` 으로 되돌린다(화면 없음). 업로드 알림의 failed 는 `state='pending', attempts=0`.
 
 `MAIL_DRY_RUN` / `MAIL_MATCH_DRY_RUN` = `true` 시 외부 호출 없이 이력만 적재. 운영 전환 시 false.
 

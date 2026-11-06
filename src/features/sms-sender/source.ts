@@ -8,6 +8,7 @@ import {
   SMS_ROOT_PATH,
   type DriveFile,
   type HiddenSheetKey,
+  type RawDocFile,
   type RawPdf,
   type RawSource,
 } from "./types";
@@ -25,11 +26,25 @@ const MAX_DEPTH = 4;
 /** nextLink 를 끝없이 주는 응답에 갇히지 않게 — 200건씩이라 1만 건이다. */
 const MAX_PAGES = 50;
 
-type DriveItem = DriveFile & { folder?: unknown; file?: unknown };
+type IdentitySet = { user?: { email?: string | null } | null } | null;
+type DriveItem = DriveFile & {
+  folder?: unknown;
+  file?: { hashes?: { quickXorHash?: string | null } | null } | null;
+  createdBy?: IdentitySet;
+  lastModifiedBy?: IdentitySet;
+};
 
-export function childrenUrl(driveId: string, path: string): string {
+const CHILD_SELECT = "id,name,webUrl,size,lastModifiedDateTime,folder,file";
+/** 업로드 알림용 — 화면이 받는 필드에 올린 사람만 더한다. 해시는 file facet(file.hashes.quickXorHash)에 온다. */
+export const UPLOAD_CHILD_SELECT = `${CHILD_SELECT},createdBy,lastModifiedBy`;
+
+export function childrenUrl(
+  driveId: string,
+  path: string,
+  select: string = CHILD_SELECT,
+): string {
   const encoded = path.split("/").map(encodeURIComponent).join("/");
-  return `${GRAPH}/drives/${driveId}/root:/${encoded}:/children?$top=200&$select=id,name,webUrl,size,lastModifiedDateTime,folder,file`;
+  return `${GRAPH}/drives/${driveId}/root:/${encoded}:/children?$top=200&$select=${select}`;
 }
 
 export function usedRangeUrl(
@@ -52,9 +67,10 @@ async function listChildren(
   path: string,
   token: string,
   label: string,
+  select: string = CHILD_SELECT,
 ): Promise<DriveItem[]> {
   const items: DriveItem[] = [];
-  let url: string | undefined = childrenUrl(driveId, path);
+  let url: string | undefined = childrenUrl(driveId, path, select);
   for (let page = 0; url; page++) {
     if (page >= MAX_PAGES) {
       console.error(`[sms-sender] list page cap: ${label}`, path);
@@ -89,6 +105,45 @@ const toDriveFile = (i: DriveItem): DriveFile => ({
   lastModifiedDateTime: i.lastModifiedDateTime,
 });
 
+type DocEntry = { item: DriveItem; rel: string };
+
+/** 제출 서류 폴더를 재귀로 훑어 파일만(확장자 무관) 모은다. */
+async function walkDocs(
+  driveId: string,
+  token: string,
+  path: string,
+  rel: string,
+  depth: number,
+  select: string,
+): Promise<DocEntry[]> {
+  const items = await listChildren(
+    driveId,
+    path,
+    token,
+    "제출 서류 폴더",
+    select,
+  );
+  const files: DocEntry[] = items
+    .filter((i) => i.file)
+    .map((item) => ({ item, rel }));
+  if (depth >= MAX_DEPTH) return files;
+  const nested = await Promise.all(
+    items
+      .filter((i) => i.folder)
+      .map((i) =>
+        walkDocs(
+          driveId,
+          token,
+          `${path}/${i.name}`,
+          rel ? `${rel}/${i.name}` : i.name,
+          depth + 1,
+          select,
+        ),
+      ),
+  );
+  return [...files, ...nested.flat()];
+}
+
 async function walkPdfs(
   driveId: string,
   token: string,
@@ -96,26 +151,33 @@ async function walkPdfs(
   rel: string,
   depth: number,
 ): Promise<RawPdf[]> {
-  const items = await listChildren(driveId, path, token, "제출 서류 폴더");
-  const pdfs: RawPdf[] = items
-    .filter((i) => i.file && /\.pdf$/i.test(i.name))
-    .map((i) => ({ ...toDriveFile(i), folder: rel }));
-  if (depth >= MAX_DEPTH) return pdfs;
-  const nested = await Promise.all(
-    items
-      .filter((i) => i.folder)
-      .map((i) =>
-        walkPdfs(
-          driveId,
-          token,
-          `${path}/${i.name}`,
-          rel ? `${rel}/${i.name}` : i.name,
-          depth + 1,
-        ),
-      ),
+  const entries = await walkDocs(
+    driveId,
+    token,
+    path,
+    rel,
+    depth,
+    CHILD_SELECT,
   );
-  return [...pdfs, ...nested.flat()];
+  return entries
+    .filter(({ item }) => /\.pdf$/i.test(item.name))
+    .map(({ item, rel: folder }) => ({ ...toDriveFile(item), folder }));
 }
+
+const normEmail = (who: IdentitySet | undefined): string | null => {
+  const email = who?.user?.email?.trim().toLowerCase();
+  return email ? email : null;
+};
+
+const toRawDocFile = ({ item, rel }: DocEntry): RawDocFile => ({
+  id: item.id,
+  name: item.name,
+  folder: rel,
+  webUrl: item.webUrl ?? null,
+  hash: item.file?.hashes?.quickXorHash ?? null,
+  createdByEmail: normEmail(item.createdBy),
+  modifiedByEmail: normEmail(item.lastModifiedBy),
+});
 
 async function readSheet(
   driveId: string,
@@ -134,7 +196,7 @@ async function readSheet(
   return body.values ?? [];
 }
 
-export async function fetchSmsSenderSource(): Promise<RawSource> {
+async function connectGraph(): Promise<{ driveId: string; token: string }> {
   const driveId = process.env.SHAREPOINT_DRIVE_ID;
   if (!driveId) {
     console.error("[sms-sender] SHAREPOINT_DRIVE_ID 누락");
@@ -148,6 +210,25 @@ export async function fetchSmsSenderSource(): Promise<RawSource> {
     console.error("[sms-sender] graph token error:", e);
     throw new SourceFetchError("Microsoft 인증에 실패했습니다.");
   }
+  return { driveId, token };
+}
+
+/** 업로드 알림용 — 제출 서류 폴더 아래 모든 파일(PDF 외 포함)과 해시·올린 사람. */
+export async function fetchDocFiles(): Promise<RawDocFile[]> {
+  const { driveId, token } = await connectGraph();
+  const entries = await walkDocs(
+    driveId,
+    token,
+    `${SMS_ROOT_PATH}/${DOCS_FOLDER}`,
+    "",
+    0,
+    UPLOAD_CHILD_SELECT,
+  );
+  return entries.map(toRawDocFile);
+}
+
+export async function fetchSmsSenderSource(): Promise<RawSource> {
+  const { driveId, token } = await connectGraph();
 
   const rootItems = await listChildren(
     driveId,
