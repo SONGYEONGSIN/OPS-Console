@@ -4,12 +4,17 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { enqueueStatusRefresh, STALE_RUNNING_MS } from "../enqueue";
+import {
+  enqueueStatusRefresh,
+  isStaleRunning,
+  STALE_RUNNING_MS,
+} from "../enqueue";
 
 const NOW = new Date("2026-11-07T10:00:00+09:00");
 const minutesAgo = (m: number) =>
   new Date(NOW.getTime() - m * 60_000).toISOString();
 const BUSY = "이미 대기/진행 중인 최신화가 있습니다. 끝나면 다시 누르세요.";
+const FAILED = "최신화 요청을 처리하지 못했습니다. 잠시 뒤 다시 시도하세요.";
 
 type Existing = {
   id: string;
@@ -124,32 +129,58 @@ describe("enqueueStatusRefresh", () => {
     expect(r).toEqual({ ok: false, message: BUSY });
   });
 
-  it("그 밖의 insert 오류는 ok:false", async () => {
-    mockAdmin({
-      existing: [],
-      insertError: { message: "boom", code: "XX000" },
-    });
+  // DB 원문은 화면에 내보내지 않는다 — 값이 섞일 수 있다. 서버 로그에도 코드만.
+  const RAW = "Key (requested_by)=(op-a) boom";
+
+  it("그 밖의 insert 오류는 고정 문구, 원문은 화면·로그에 없다", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockAdmin({ existing: [], insertError: { message: RAW, code: "XX000" } });
     const r = await enqueueStatusRefresh("op-a", NOW);
-    expect(r.ok).toBe(false);
-    expect(r.message).not.toBe(BUSY);
+    expect(r).toEqual({ ok: false, message: FAILED });
+    expect(log).toHaveBeenCalled();
+    expect(JSON.stringify(log.mock.calls)).not.toContain(RAW);
+    log.mockRestore();
   });
 
-  it("조회 오류는 ok:false", async () => {
-    const { insert } = mockAdmin({ selectError: { message: "down" } });
+  it("조회 오류는 고정 문구", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { insert } = mockAdmin({ selectError: { message: RAW } });
     const r = await enqueueStatusRefresh("op-a", NOW);
-    expect(r.ok).toBe(false);
+    expect(r).toEqual({ ok: false, message: FAILED });
+    expect(JSON.stringify(log.mock.calls)).not.toContain(RAW);
     expect(insert).not.toHaveBeenCalled();
+    log.mockRestore();
   });
 
-  it("마감 오류는 ok:false, 적재 안 함", async () => {
+  it("마감 오류는 고정 문구, 적재 안 함", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const { insert } = mockAdmin({
       existing: [
         { id: "req-1", status: "running", claimed_at: minutesAgo(90) },
       ],
-      updateError: { message: "down" },
+      updateError: { message: RAW },
     });
     const r = await enqueueStatusRefresh("op-a", NOW);
-    expect(r.ok).toBe(false);
+    expect(r).toEqual({ ok: false, message: FAILED });
+    expect(JSON.stringify(log.mock.calls)).not.toContain(RAW);
     expect(insert).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+});
+
+describe("isStaleRunning", () => {
+  it("claim 후 40분이 넘은 running 만", () => {
+    expect(
+      isStaleRunning({ status: "running", claimed_at: minutesAgo(41) }, NOW),
+    ).toBe(true);
+    expect(
+      isStaleRunning({ status: "running", claimed_at: minutesAgo(39) }, NOW),
+    ).toBe(false);
+    expect(
+      isStaleRunning({ status: "pending", claimed_at: minutesAgo(90) }, NOW),
+    ).toBe(false);
+    expect(isStaleRunning({ status: "running", claimed_at: null }, NOW)).toBe(
+      false,
+    );
   });
 });

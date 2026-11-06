@@ -19,11 +19,16 @@ const row = (over: Partial<RequestRow>): RequestRow => ({
   requested_at: "2026-11-07T01:02:00Z",
   requested_by: "op-a",
   status: "done",
+  claimed_at: "2026-11-07T01:03:00Z",
   finished_at: "2026-11-07T01:12:00Z",
   message: null,
   result: null,
   ...over,
 });
+
+const NOW = new Date("2026-11-07T12:00:00+09:00");
+const minutesAgo = (m: number) =>
+  new Date(NOW.getTime() - m * 60_000).toISOString();
 
 const step = (step: string, status: string, code: string | null = null) => ({
   step,
@@ -189,16 +194,49 @@ describe("getStatusRefreshView", () => {
           status: "running",
           requested_at: "2026-11-07T03:00:00Z",
           finished_at: null,
+          claimed_at: minutesAgo(10),
         }),
         row({ id: "r2", status: "failed" }),
       ],
     });
-    const view = await getStatusRefreshView(me({}));
+    const view = await getStatusRefreshView(me({}), NOW);
     expect(view.active).toEqual({
       status: "running",
       requestedAt: "2026-11-07T03:00:00Z",
     });
     expect(view.history.map((h) => h.id)).toEqual(["r3", "r2"]);
     expect(view.history[1].requester).toBe("알 수 없음");
+  });
+
+  // 죽은 running 이 버튼을 영영 잠그면 안 된다 — 마감은 적재(버튼)에서만 일어난다.
+  it("claim 후 41분 지난 running 은 active 가 아니다", async () => {
+    const { select } = mockAdmin({
+      data: [
+        row({
+          id: "r3",
+          status: "running",
+          finished_at: null,
+          claimed_at: minutesAgo(41),
+        }),
+      ],
+    });
+    const view = await getStatusRefreshView(me({}), NOW);
+    expect(String(select.mock.calls[0])).toContain("claimed_at");
+    expect(view.active).toBeNull();
+    expect(view.history.map((h) => h.id)).toEqual(["r3"]);
+  });
+
+  it("claim 후 39분 running 은 아직 active", async () => {
+    mockAdmin({
+      data: [
+        row({
+          status: "running",
+          finished_at: null,
+          claimed_at: minutesAgo(39),
+        }),
+      ],
+    });
+    const view = await getStatusRefreshView(me({}), NOW);
+    expect(view.active?.status).toBe("running");
   });
 });

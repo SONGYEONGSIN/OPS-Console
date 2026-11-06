@@ -10,7 +10,7 @@ import {
   stepLabel,
   type StatusRefreshView,
 } from "./contract";
-import { STATUS_REFRESH_AUTOMATION_REQUESTER } from "./enqueue";
+import { isStaleRunning, STATUS_REFRESH_AUTOMATION_REQUESTER } from "./enqueue";
 import { canRequestStatusRefresh } from "./permission";
 
 const TABLE = "sms_status_refresh_requests";
@@ -22,6 +22,7 @@ export type RequestRow = {
   requested_at: string;
   requested_by: string;
   status: RequestStatus;
+  claimed_at: string | null;
   finished_at: string | null;
   message: string | null;
   result: unknown;
@@ -77,9 +78,17 @@ export function toHistoryItem(
   };
 }
 
-/** 내부관리자 화면 — 버튼 권한 + 최근 5건 이력. requireMenu 를 통과한 서버만 부른다. */
+/**
+ * 내부관리자 화면 — 버튼 권한 + 최근 5건 이력. requireMenu 를 통과한 서버만 부른다.
+ *
+ * claim 후 40분 넘게 보고가 없는 running 은 '진행 중'으로 치지 않는다 — 버튼이 다시 서고,
+ * 누르면 적재가 그 행을 마감한 뒤 새로 넣는다. 안 그러면 죽은 행이 버튼을 영영 잠근다.
+ *
+ * @param now stale 판정 기준 시각 (테스트 결정성을 위해 주입)
+ */
 export async function getStatusRefreshView(
   me: CurrentOperator,
+  now: Date = new Date(),
 ): Promise<StatusRefreshView> {
   const canRequest = canRequestStatusRefresh(
     me,
@@ -88,7 +97,7 @@ export async function getStatusRefreshView(
   const { data, error } = await createAdminClient()
     .from(TABLE)
     .select(
-      "id, requested_at, requested_by, status, finished_at, message, result",
+      "id, requested_at, requested_by, status, claimed_at, finished_at, message, result",
     )
     .order("requested_at", { ascending: false })
     .limit(HISTORY_LIMIT);
@@ -98,7 +107,9 @@ export async function getStatusRefreshView(
 
   const rows = (data ?? []) as RequestRow[];
   const activeRow = rows.find(
-    (r) => r.status === "pending" || r.status === "running",
+    (r) =>
+      r.status === "pending" ||
+      (r.status === "running" && !isStaleRunning(r, now)),
   );
   return {
     canRequest,

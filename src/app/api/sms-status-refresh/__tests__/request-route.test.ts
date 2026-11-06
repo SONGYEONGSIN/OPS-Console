@@ -25,6 +25,8 @@ import { GET, POST } from "../request/route";
 
 const ID = "00000000-0000-4000-8000-000000000001";
 const URL = "http://localhost/api/sms-status-refresh/request";
+/** 완료 보고 update 가 고친 행 — `.select("id").maybeSingle()` 결과. */
+const MATCHED: Result = { data: { id: ID } };
 
 function next(): Result {
   const r = state.queue.shift() ?? {};
@@ -36,7 +38,7 @@ function builder() {
   const b: Record<string, unknown> = {
     then: (resolve: (v: unknown) => unknown) => resolve(next()),
   };
-  for (const m of ["select", "eq", "not", "order", "limit", "update"]) {
+  for (const m of ["select", "eq", "in", "not", "order", "limit", "update"]) {
     b[m] = (...args: unknown[]) => {
       state.calls.push({ method: m, args });
       return b;
@@ -190,6 +192,7 @@ describe("/api/sms-status-refresh/request", () => {
       steps: [{ ...okStep("mail"), watermark: "2026-11-07T01:00:00Z" }],
       changes: ["새 번호 2건"],
     };
+    state.queue = [MATCHED];
     const res = await POST(post({ id: ID, ok: true, result }, "s3cr3t"));
     expect(res.status).toBe(200);
     expect(callsOf("update")).toEqual([
@@ -204,6 +207,8 @@ describe("/api/sms-status-refresh/request", () => {
       ],
     ]);
     expect(eqsAfterUpdate()).toEqual([["id", ID]]);
+    // 늦게 온 결과(40분 자동 마감 뒤)는 받는다 — 그래서 failed 도 허용.
+    expect(callsOf("in")).toEqual([["status", ["running", "failed"]]]);
     expect(recordAutomationRun).toHaveBeenCalledWith("sms-status-refresh", {
       ok: true,
       message: "mail 성공",
@@ -212,6 +217,7 @@ describe("/api/sms-status-refresh/request", () => {
 
   it("Moa 단계만 ok 면 실행 기록은 'Moa 수집 성공'", async () => {
     const result = { version: 1, steps: [okStep("moa")], changes: [] };
+    state.queue = [MATCHED];
     await POST(post({ id: ID, ok: true, result }, "s3cr3t"));
     expect(recordAutomationRun).toHaveBeenCalledWith("sms-status-refresh", {
       ok: true,
@@ -221,6 +227,7 @@ describe("/api/sms-status-refresh/request", () => {
 
   it("결과 없는 실패(폴러가 죽음) → failed, 실행 기록에 tail 을 싣지 않는다", async () => {
     const tail = "exit 1 — Traceback 010-0000-0001";
+    state.queue = [MATCHED];
     await POST(post({ id: ID, ok: false, message: tail }, "s3cr3t"));
     expect(callsOf("update")).toEqual([
       [
@@ -254,6 +261,7 @@ describe("/api/sms-status-refresh/request", () => {
         },
       ],
     };
+    state.queue = [MATCHED];
     const res = await POST(post({ id: ID, ok: false, result }, "s3cr3t"));
     expect(res.status).toBe(200);
     const [[patch]] = callsOf("update") as [[Record<string, unknown>]];
@@ -266,9 +274,27 @@ describe("/api/sms-status-refresh/request", () => {
   });
 
   it("보고 때 화면 캐시를 비운다", async () => {
+    state.queue = [MATCHED];
     await POST(post({ id: ID, ok: false }, "s3cr3t"));
     expect(__resetSmsSenderCache).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/internal-admin");
+  });
+
+  // 모르는 id · 중복 보고 · claim 안 된 pending 은 아무 행도 안 바뀐다 — 성공처럼 기록하지 않는다.
+  it("고친 행이 없으면 404, 실행 기록·캐시 무효화 없음", async () => {
+    state.queue = [{ data: null }];
+    const res = await POST(post({ id: ID, ok: true }, "s3cr3t"));
+    expect(res.status).toBe(404);
+    expect(recordAutomationRun).not.toHaveBeenCalled();
+    expect(__resetSmsSenderCache).not.toHaveBeenCalled();
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("GET pending 조회 오류는 500, claim 안 함", async () => {
+    state.queue = [{ error: { message: "down" } }];
+    const res = await GET(get("s3cr3t"));
+    expect(res.status).toBe(500);
+    expect(callsOf("update")).toEqual([]);
   });
 
   it("저장이 실패하면 500, 실행 기록을 남기지 않는다", async () => {

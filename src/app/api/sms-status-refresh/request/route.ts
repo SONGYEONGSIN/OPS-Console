@@ -115,7 +115,9 @@ export async function POST(request: NextRequest) {
   const summary = runMessage(body);
 
   const admin = createAdminClient();
-  const { error } = await admin
+  // claim 된(running) 행만 마감한다. failed 도 받는 이유: 40분 자동 마감 뒤에 늦게 온
+  // 결과가 버려지지 않게. 모르는 id·이미 done 인 중복 보고·claim 안 된 pending 은 0행이다.
+  const { data: updated, error } = await admin
     .from(TABLE)
     .update({
       status,
@@ -124,8 +126,18 @@ export async function POST(request: NextRequest) {
       result: body.result ?? null,
       watermarks: body.result ? advancedWatermarks(body.result) : {},
     })
-    .eq("id", body.id);
+    .eq("id", body.id)
+    .in("status", ["running", "failed"])
+    .select("id")
+    .maybeSingle();
   if (error) return serverError(error.message);
+  // 0행을 성공처럼 기록하면 일일 보고에 없는 실행이 생긴다.
+  if (!updated) {
+    return NextResponse.json(
+      { ok: false, error: "마감할 요청이 없습니다" },
+      { status: 404 },
+    );
+  }
 
   // 회사 PC 잡은 이 보고가 서버로 오는 유일한 창구다 — 여기서 남겨야 일일 보고에 잡힌다.
   // 메시지는 단계·성패·코드만(번호가 섞일 수 있는 summary·tail 은 싣지 않는다).

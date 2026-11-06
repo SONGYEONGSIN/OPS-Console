@@ -61,6 +61,30 @@ describe("StatusRefreshControls", () => {
     ).toBeDisabled();
   });
 
+  it("이력에 죽은 running 이 있어도 active 가 비었으면 버튼이 다시 선다 — 눌러서 마감·재적재", () => {
+    render(
+      <StatusRefreshControls
+        view={view({
+          active: null,
+          history: [
+            {
+              id: "r1",
+              requestedAt: "2026-11-07T01:00:00Z",
+              finishedAt: null,
+              requester: "자동화",
+              status: "running",
+              steps: [],
+              changes: [],
+              note: null,
+            },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "현황 최신화" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "최신화 진행 중" })).toBeNull();
+  });
+
   it("확인을 취소하면 요청하지 않는다", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<StatusRefreshControls view={view()} />);

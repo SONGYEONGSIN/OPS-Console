@@ -34,7 +34,7 @@ const STATUS_TONE: Record<RequestStatus, string> = {
   failed: "text-vermilion",
 };
 
-const STEP_LABEL: Record<
+const STEP_STATUS_LABEL: Record<
   RefreshHistoryItem["steps"][number]["status"],
   string
 > = { ok: "성공", failed: "실패", skipped: "건너뜀" };
@@ -74,7 +74,7 @@ function HistoryEntry({ item }: { item: RefreshHistoryItem }) {
                   s.status === "ok" ? "text-ink-soft" : "text-vermilion"
                 }
               >
-                {STEP_LABEL[s.status]}
+                {STEP_STATUS_LABEL[s.status]}
               </span>
               {s.summary && (
                 <span className="ml-2 text-ink-soft">{s.summary}</span>

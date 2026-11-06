@@ -79,6 +79,46 @@ describe("RefreshHistoryModal", () => {
     expect(screen.getByText("건너뜀")).toBeInTheDocument();
   });
 
+  // 텍스트만 보면 표준 위반(실패가 회색, 시각이 비례폭)이 초록으로 통과한다.
+  it("모양 — 실패는 vermilion, 성공은 아님, 시각은 tabular-nums", () => {
+    render(
+      <RefreshHistoryModal
+        items={[item()]}
+        loadError={null}
+        onClose={vi.fn()}
+      />,
+    );
+    const failed = screen.getAllByText("실패");
+    expect(failed).toHaveLength(2);
+    for (const el of failed) {
+      expect(el.classList.contains("text-vermilion")).toBe(true);
+    }
+    expect(screen.getByText("성공").classList.contains("text-vermilion")).toBe(
+      false,
+    );
+    expect(
+      screen
+        .getByText("누가 현황 파일을 열어 두었습니다. 닫고 다시 누르세요.")
+        .classList.contains("text-vermilion"),
+    ).toBe(true);
+    const time = screen.getByText("11.07 10:02");
+    expect(time.classList.contains("tabular-nums")).toBe(true);
+    expect(time.classList.contains("font-mono")).toBe(false);
+  });
+
+  it("모양 — 완료는 vermilion 이 아니다", () => {
+    render(
+      <RefreshHistoryModal
+        items={[item({ status: "done", steps: [] })]}
+        loadError={null}
+        onClose={vi.fn()}
+      />,
+    );
+    const done = screen.getByText("완료");
+    expect(done.classList.contains("text-vermilion")).toBe(false);
+    expect(done.classList.contains("text-ink")).toBe(true);
+  });
+
   it("바뀐 점 줄을 그대로", () => {
     render(
       <RefreshHistoryModal

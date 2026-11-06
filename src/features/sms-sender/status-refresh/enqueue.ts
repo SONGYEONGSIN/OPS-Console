@@ -32,8 +32,30 @@ type BlockingRow = {
   claimed_at: string | null;
 };
 
-/** 폴러가 claim 한 뒤 죽어버린 요청인가 — claimed_at 기준. */
-function isStaleRunning(row: BlockingRow, now: Date): boolean {
+/**
+ * DB 오류는 고정 문구로만 보인다 — 원문에는 값이 섞일 수 있다(예: 유니크 위반의 Key 값).
+ * 서버 로그에도 어느 단계에서 났는지와 오류 코드만 남긴다.
+ */
+const FAILED_MESSAGE =
+  "최신화 요청을 처리하지 못했습니다. 잠시 뒤 다시 시도하세요.";
+
+function failed(stage: string, error: { code?: string }): EnqueueResult {
+  console.error(
+    `[sms-status-refresh] enqueue ${stage} fail`,
+    error.code ?? "no-code",
+  );
+  return { ok: false, message: FAILED_MESSAGE };
+}
+
+/**
+ * 폴러가 claim 한 뒤 죽어버린 요청인가 — claimed_at 기준.
+ * 화면(history.ts)도 같은 판정으로 죽은 running 을 '진행 중'에서 뺀다 — 안 빼면 버튼이
+ * 잠긴 채라 마감(이 파일의 적재 경로)에 영영 닿지 못한다.
+ */
+export function isStaleRunning(
+  row: Pick<BlockingRow, "claimed_at"> & { status: string },
+  now: Date,
+): boolean {
   if (row.status !== "running" || !row.claimed_at) return false;
   const claimedMs = new Date(row.claimed_at).getTime();
   if (Number.isNaN(claimedMs)) return false;
@@ -60,7 +82,7 @@ export async function enqueueStatusRefresh(
     .select("id, status, claimed_at")
     .in("status", ["pending", "running"])
     .limit(1);
-  if (selErr) return { ok: false, message: selErr.message };
+  if (selErr) return failed("select", selErr);
 
   const blocking = (existing ?? [])[0] as BlockingRow | undefined;
   if (blocking) {
@@ -77,7 +99,7 @@ export async function enqueueStatusRefresh(
       })
       .eq("id", blocking.id)
       .eq("status", "running");
-    if (updErr) return { ok: false, message: updErr.message };
+    if (updErr) return failed("stale-close", updErr);
   }
 
   const { error } = await admin
@@ -87,7 +109,7 @@ export async function enqueueStatusRefresh(
     if (error.code === UNIQUE_VIOLATION) {
       return { ok: false, message: BUSY_MESSAGE };
     }
-    return { ok: false, message: error.message };
+    return failed("insert", error);
   }
 
   return { ok: true, message: QUEUED_MESSAGE };
