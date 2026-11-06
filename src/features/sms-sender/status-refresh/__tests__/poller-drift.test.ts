@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FAILURE_COPY, STEP_LABEL } from "../contract";
+import { SMS_ROOT_PATH } from "../../types";
 
 /**
  * 회사 PC(Python)와 서버(TS)가 같은 이름을 쓰는지 원문으로 대조한다.
@@ -30,5 +31,14 @@ describe("폴러 계약 드리프트", () => {
     const ids = tupleOf("STEP_IDS");
     expect(ids.length).toBeGreaterThan(0);
     expect(ids.filter((id) => !(id in STEP_LABEL))).toEqual([]);
+  });
+
+  it("현황 폴더 경로가 화면과 같다", () => {
+    const graph = readFileSync(
+      join(process.cwd(), "scripts/sms-status-refresh/graph.py"),
+      "utf8",
+    );
+    const m = /^SMS_ROOT = "([^"]+)"/m.exec(graph);
+    expect(m?.[1]).toBe(SMS_ROOT_PATH);
   });
 });
