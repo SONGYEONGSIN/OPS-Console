@@ -7,6 +7,8 @@ import {
   fetchRequestItems,
 } from "@/features/sms-sender/request-notify/list-source";
 import { buildRequestMail } from "@/features/sms-sender/request-notify/mail";
+import { mailErrorCode } from "@/features/sms-sender/mail-error-code";
+import { runDocUploadStep } from "@/features/sms-sender/upload-notify/step";
 import {
   reconcile,
   seedRows,
@@ -53,13 +55,6 @@ type Tally = {
 
 const NO_APPLICANT_CODE = "신청자 메일 없음";
 const CLAIM_LOST_CODE = "claim_lost";
-const UNKNOWN_CODE = "send_failed";
-
-// sendGraphMail 의 error 는 `코드: 응답본문` 형식 — 본문(주소가 섞일 수 있다)은 버리고 코드만 쓴다.
-function errorCode(error: string): string {
-  const m = /^([a-z][a-z0-9_]{0,31}):/.exec(error);
-  return m ? m[1] : UNKNOWN_CODE;
-}
 
 function readConfig(): { config: Config } | { missing: string[] } {
   const missing = ENV_NAMES.filter((n) => !process.env[n]);
@@ -135,7 +130,7 @@ async function deliver(
     });
     return ok ? successOutcome(due.kind) : failed(id, CLAIM_LOST_CODE);
   }
-  const code = errorCode(res.error);
+  const code = mailErrorCode(res.error);
   const state = due.attempts + 1 >= MAX_ATTEMPTS ? "failed" : "pending";
   await finishNotice(db, id, due.kind, { state, error: code, now });
   return failed(id, code);
@@ -167,7 +162,6 @@ function summarize(
   tally: Tally,
   items: number,
   malformed: number,
-  dryRun: boolean,
 ): AutomationRunResult {
   const quiet = tally.newSent + tally.doneSent + tally.failed + malformed === 0;
   const base = quiet
@@ -179,7 +173,7 @@ function summarize(
       (malformed > 0 ? ` · 형식이 맞지 않는 행 ${malformed}건` : "");
   return {
     ok: tally.failed === 0 && malformed === 0,
-    message: dryRun ? `[DRY-RUN] ${base}` : base,
+    message: base,
     details: {
       items,
       newSent: tally.newSent,
@@ -213,15 +207,15 @@ async function runWithItems(
   await insertNoticeRows(db, plan.inserts);
   await updateLastStatus(db, plan.statusUpdates, now);
   const tally = await deliverAll(db, plan.due, config, now);
-  return summarize(tally, items.items.length, items.malformed, config.dryRun);
+  return summarize(tally, items.items.length, items.malformed);
 }
 
 /**
- * AutomationJob.run — Teams 목록 'SMS 발신번호 사전등록 신청'을 훑어
+ * 신청 단계 — Teams 목록 'SMS 발신번호 사전등록 신청'을 훑어
  * 새 행은 담당 매니저에게, '완료' 전환은 신청자에게 메일을 보낸다.
  * 첫 실행은 기존 행을 적재만 한다. 메시지·details 에는 주소·이름을 싣지 않는다.
  */
-export async function runSmsSenderRequestNotify(): Promise<AutomationRunResult> {
+export async function runRequestStep(): Promise<AutomationRunResult> {
   const cfg = readConfig();
   if ("missing" in cfg) {
     return { ok: false, message: `환경변수 없음: ${cfg.missing.join(", ")}` };
@@ -234,4 +228,43 @@ export async function runSmsSenderRequestNotify(): Promise<AutomationRunResult> 
     console.error("[sms-request-notify] run error:", e);
     return { ok: false, message: DB_FAILED };
   }
+}
+
+export function combineSteps(
+  request: AutomationRunResult,
+  upload: AutomationRunResult,
+  dryRun: boolean,
+): AutomationRunResult {
+  return {
+    ok: request.ok && upload.ok,
+    message: `${dryRun ? "[DRY-RUN] " : ""}신청: ${request.message} / 업로드: ${upload.message}`,
+    details: { ...request.details, ...upload.details },
+  };
+}
+
+// 한 단계가 던져도 다른 단계는 돈다 — 원문(주소가 섞일 수 있다)은 로그로만.
+async function guarded(
+  step: () => Promise<AutomationRunResult>,
+  failMessage: string,
+): Promise<AutomationRunResult> {
+  try {
+    return await step();
+  } catch (e) {
+    console.error(`[sms-request-notify] ${failMessage}:`, e);
+    return { ok: false, message: failMessage };
+  }
+}
+
+/**
+ * AutomationJob.run — 신청 단계(신청 목록 메일) 다음에 업로드 단계(제출 서류 폴더의
+ * 새 파일·PDF 교체를 담당 매니저에게 묶음 메일)를 차례로 돌리고, 결과를 한 줄로 합친다.
+ * 서로의 실패가 서로를 막지 않는다.
+ * 업로드 단계의 '담당자 본인 업로드 제외'는 올린 사람 메일로 판정하는데, 앱·스크립트가
+ * 올린 파일은 메일이 없어 본인이 아닌 것으로 보고 알린다(Teams 로 사람이 올리면 메일이 있다).
+ */
+export async function runSmsSenderRequestNotify(): Promise<AutomationRunResult> {
+  const request = await guarded(runRequestStep, "신청 단계 오류");
+  const upload = await guarded(runDocUploadStep, "업로드 단계 오류");
+  const dryRun = (process.env.MAIL_DRY_RUN ?? "").toLowerCase() === "true";
+  return combineSteps(request, upload, dryRun);
 }
