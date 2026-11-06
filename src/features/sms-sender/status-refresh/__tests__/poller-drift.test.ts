@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FAILURE_COPY, STEP_LABEL } from "../contract";
 import { SMS_ROOT_PATH } from "../../types";
+import { SMS_CONSUMERS } from "@/features/sms-codes/schemas";
 
 /**
  * 회사 PC(Python)와 서버(TS)가 같은 이름을 쓰는지 원문으로 대조한다.
@@ -40,5 +41,12 @@ describe("폴러 계약 드리프트", () => {
     );
     const m = /^SMS_ROOT = "([^"]+)"/m.exec(graph);
     expect(m?.[1]).toBe(SMS_ROOT_PATH);
+  });
+
+  it("Python 소비자 이름이 서버 enum 에 있다", () => {
+    // 없으면 우편함이 400 으로 거절하고, 폴러는 그걸 '우편함 장애'로 읽어 make 로 넘어간다.
+    const m = /^SMS_CONSUMER = "([^"]+)"/m.exec(py);
+    expect(m).not.toBeNull();
+    expect(SMS_CONSUMERS as readonly string[]).toContain(m![1]);
   });
 });

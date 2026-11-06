@@ -8,6 +8,7 @@ export const SMS_CONSUMERS = [
   "closing",
   "ratio-audit",
   "settlement-discover",
+  "sms-status-refresh",
 ] as const;
 export type SmsConsumer = (typeof SMS_CONSUMERS)[number];
 

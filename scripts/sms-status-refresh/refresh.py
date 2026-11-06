@@ -32,9 +32,12 @@ for _p in (_HERE.parent / "moa-closing", _HERE):
         sys.path.insert(0, str(_p))
 
 from contract import STEP_IDS, Context, Step, build_body, run_steps  # noqa: E402
+from moa_collect import run_moa_step  # noqa: E402
 
-# 단계 id → Step. Moa·Graph 모듈은 단계 함수 안에서 늦게 import 한다(테스트가 selenium 없이 돈다).
-REGISTERED: dict[str, Step] = {}
+# 단계 id → Step. selenium·Moa 로그인 모듈은 단계 함수 안에서 늦게 import 한다(테스트가 브라우저 없이 돈다).
+REGISTERED: dict[str, Step] = {
+    "moa": Step("moa", run_moa_step),
+}
 
 
 def _load_env() -> None:

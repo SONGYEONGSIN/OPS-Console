@@ -27,11 +27,12 @@ describe("smsConsumeSchema — 스크래퍼 창구 입력", () => {
     ).toBe(false);
   });
 
-  it("소비자 셋 — 마감·경쟁률·정산 탐색", () => {
+  it("소비자 넷 — 마감·경쟁률·정산 탐색·현황 최신화", () => {
     expect([...SMS_CONSUMERS]).toEqual([
       "closing",
       "ratio-audit",
       "settlement-discover",
+      "sms-status-refresh",
     ]);
   });
 });
