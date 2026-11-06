@@ -11,7 +11,7 @@ describe("회사 PC 폴러 목록", () => {
     expect(a?.table).toBe("assistant_requests");
   });
 
-  it("여섯 개 큐를 모두 본다", () => {
+  it("일곱 개 큐를 모두 본다", () => {
     expect(POLLERS.map((p) => p.table).sort()).toEqual(
       [
         "assistant_requests",
@@ -20,6 +20,7 @@ describe("회사 PC 폴러 목록", () => {
         "entertest_test_runs",
         "postal_extract_requests",
         "ratio_audit_requests",
+        "sms_status_refresh_requests",
       ].sort(),
     );
   });

@@ -16,6 +16,7 @@ import { runTeamBriefing } from "./jobs/team-briefing";
 import { runContractCompletionSnapshot } from "./jobs/contract-completion-snapshot";
 import { runKnowledgeIndex } from "./jobs/knowledge-index";
 import { runSmsSenderRequestNotify } from "./jobs/sms-sender-request-notify";
+import { runSmsStatusRefresh } from "./jobs/sms-status-refresh";
 import { runAssignmentYearRollover } from "./jobs/assignment-year-rollover";
 import { runAssignmentUnassignedSweep } from "./jobs/assignment-unassigned-sweep";
 // 이 잡은 registry 전체를 훑어야 해서 queries → registry 순환이 생긴다. queries가
@@ -205,6 +206,17 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cadence: "hourly",
     cooldownMinutes: 1,
     run: runSmsSenderRequestNotify,
+  },
+  {
+    id: "sms-status-refresh",
+    label: "SMS 현황 최신화",
+    description:
+      "Moa 발신번호 목록을 수집해 Teams '02. Moa 등록 리스트'에 저장합니다.\n회사 PC 폴러가 직접 실행합니다 — Moa 로그인(인증 문자)이 필요해 웹에서 실행 불가.\n여기서 '실행'을 누르면 로컬 실행 요청만 적재되고, 회사 PC 폴러가 5분 내 처리합니다. 내부관리자 화면의 '현황 최신화' 버튼과 같은 큐입니다.\n누를 때마다 Moa 인증 문자가 1통 갑니다.",
+    scheduleInfo: "수동 실행 — 회사 PC 폴러가 수행 (cron 미등록)",
+    cadence: "manual",
+    cooldownMinutes: 30,
+    manualOnly: true,
+    run: runSmsStatusRefresh,
   },
   {
     id: "assignment-year-rollover",

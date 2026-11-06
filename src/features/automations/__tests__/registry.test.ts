@@ -32,6 +32,12 @@ describe("automation registry", () => {
     expect(typeof job?.run).toBe("function");
   });
 
+  it("sms-status-refresh 는 수동 전용", () => {
+    const j = getJob("sms-status-refresh");
+    expect(j?.cadence).toBe("manual");
+    expect(j?.manualOnly).toBe(true);
+  });
+
   it("모든 잡은 고유 id를 가진다", () => {
     const ids = AUTOMATION_JOBS.map((j) => j.id);
     expect(new Set(ids).size).toBe(ids.length);

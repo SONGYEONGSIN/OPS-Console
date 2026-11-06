@@ -15,6 +15,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  /api/dev-controls/analyze-request — 회사 PC 폴러가 개발탭 수동 분석 요청을 claim/완료 보고.
  *  /api/assistant/claude/claim — 회사 PC 상주 폴러가 어시스턴트 질문을 claim/답 보고.
  *  /api/postal/extract — 회사 PC 폴러가 영수증 판독 요청을 claim/결과 보고.
+ *  /api/sms-status-refresh/request — 회사 PC 폴러가 SMS 현황 최신화 요청을 claim/결과 보고.
  *  /api/pollers/heartbeat — 회사 PC 폴러들이 1분마다 '살아있음'을 남긴다.
  *  /api/assistant/tools — 폴러가 Claude에게 붙여준 도구가 호출(일정 조회 등).
  *  /api/assistant/bot — 사내 Teams 봇 서버가 질문을 같은 큐에 적재/조회.
@@ -61,6 +62,8 @@ const PUBLIC_PATHS = [
   // 뭉뚱그리지 않는다: 접두사 매칭이라 그 아래 새 라우트가 자동으로 공개된다.
   "/api/sms-codes/inbound",
   "/api/sms-codes/consume",
+  // SMS 현황 최신화 큐 — 정확한 경로로 둔다(접두사 매칭이라 상위로 묶으면 새 라우트가 공개된다).
+  "/api/sms-status-refresh/request",
   /** 분석보고서 외부 공유 — share_token 으로 접근. 토큰 검증은 라우트 내부에서. */
   "/r",
 ];
