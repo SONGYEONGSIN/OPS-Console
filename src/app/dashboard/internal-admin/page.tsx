@@ -4,6 +4,8 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { getSmsSenderData } from "@/features/sms-sender/queries";
+import { getStatusRefreshView } from "@/features/sms-sender/status-refresh/history";
+import type { StatusRefreshView } from "@/features/sms-sender/status-refresh/contract";
 import {
   GUBUN_ORDER,
   LIST_PAGE_SIZE,
@@ -93,12 +95,13 @@ export default async function InternalAdminPage({
   const scope = parseMine(sp)
     ? mySchoolNos(data.schools, me.displayName)
     : null;
+  const refresh = await getStatusRefreshView(me);
 
   return (
     <div className="flex flex-col">
       {header}
       {tabs}
-      {renderView(view, data, sp, scope)}
+      {renderView(view, data, sp, scope, refresh)}
     </div>
   );
 }
@@ -108,12 +111,14 @@ function renderView(
   data: SmsSenderData,
   sp: SearchParams,
   scope: Set<number> | null,
+  refresh: StatusRefreshView,
 ) {
   const ctx: ListContext = {
     source: {
       fileName: data.workbook.name,
       fetchedAt: data.fetchedAt,
       criteria: data.criteria,
+      refresh,
     },
     lookup: {
       schools: data.schools,
