@@ -30,6 +30,7 @@ const row = (over: Partial<UploadRow> = {}): UploadRow => ({
   state: "sent",
   attempts: 1,
   claimed_at: null,
+  first_seen_at: "2026-11-01T00:00:00Z",
   ...over,
 });
 
@@ -147,6 +148,7 @@ describe("reconcileUploads — 교체", () => {
         content_hash: "h2",
         change_kind: "replaced",
         state: "pending",
+        prevState: "sent",
       },
     ]);
     expect(plan.due).toEqual([{ file: f, kind: "replaced", attempts: 0 }]);
@@ -182,6 +184,24 @@ describe("reconcileUploads — 교체", () => {
       state: "pending",
     });
     expect(plan.due).toEqual([{ file: f, kind: "new", attempts: 0 }]);
+  });
+  it("아직 안 나간 남의 새 파일을 담당자가 고쳐도 알림은 그대로 나간다", () => {
+    const f = file({
+      hash: "h2",
+      createdByEmail: OTHER,
+      modifiedByEmail: MANAGER,
+    });
+    const plan = run(
+      [f],
+      [row({ state: "pending", attempts: 1, change_kind: "new" })],
+    );
+    expect(plan.rearms[0]).toMatchObject({
+      state: "pending",
+      change_kind: "new",
+      prevState: "pending",
+    });
+    expect(plan.due).toEqual([{ file: f, kind: "new", attempts: 0 }]);
+    expect(plan.skippedSelf).toBe(0);
   });
   it("해시만 같고 폴더가 바뀌면(이동) 아무 일도 없다", () => {
     const plan = run([file({ folder: "완료/제출완료" })], [row()]);
@@ -247,6 +267,39 @@ describe("reconcileUploads — 해시 null", () => {
     );
     expect(plan.fills).toHaveLength(1);
     expect(plan.due).toEqual([{ file: f, kind: "new", attempts: 0 }]);
+  });
+});
+
+describe("reconcileUploads — due 순서", () => {
+  it("앞 실행에서 넘어온 행이 처음 본 순으로 먼저, 이번에 생긴 것은 목록 순으로 뒤에", () => {
+    const fresh = file({ id: "fresh" });
+    const replaced = file({ id: "rep", hash: "h2" });
+    const newer = file({ id: "newer" });
+    const older = file({ id: "older" });
+    const plan = run(
+      [fresh, replaced, newer, older],
+      [
+        row({ item_id: "rep" }),
+        row({
+          item_id: "newer",
+          state: "pending",
+          attempts: 1,
+          first_seen_at: "2026-11-05T00:00:00Z",
+        }),
+        row({
+          item_id: "older",
+          state: "pending",
+          attempts: 1,
+          first_seen_at: "2026-11-02T00:00:00Z",
+        }),
+      ],
+    );
+    expect(plan.due.map((d) => d.file.id)).toEqual([
+      "older",
+      "newer",
+      "fresh",
+      "rep",
+    ]);
   });
 });
 

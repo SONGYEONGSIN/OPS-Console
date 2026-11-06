@@ -16,6 +16,7 @@ vi.mock("@/features/sms-sender/source", async () => {
 vi.mock("@/features/sms-sender/upload-notify/store", () => ({
   loadUploadRows: vi.fn(),
   insertUploadRows: vi.fn(),
+  seedUploads: vi.fn(),
   rearmUploads: vi.fn(),
   fillHashes: vi.fn(),
   updateHashes: vi.fn(),
@@ -53,6 +54,7 @@ const row = (over: Partial<UploadRow> = {}): UploadRow => ({
   state: "sent",
   attempts: 1,
   claimed_at: null,
+  first_seen_at: "2026-11-01T00:00:00Z",
   ...over,
 });
 
@@ -101,9 +103,10 @@ describe("runDocUploadStep", () => {
     const r = await runDocUploadStep();
     expect(r.ok).toBe(true);
     expect(r.message).toBe("처음 실행 — 기존 파일 3개 적재, 발송 없음");
-    expect(s.insertUploadRows).toHaveBeenCalledTimes(1);
+    expect(s.seedUploads).toHaveBeenCalledTimes(1);
+    expect(s.insertUploadRows).not.toHaveBeenCalled();
     expect(
-      s.insertUploadRows.mock.calls[0]?.[1].every((x) => x.state === "seeded"),
+      s.seedUploads.mock.calls[0]?.[1].every((x) => x.state === "seeded"),
     ).toBe(true);
     expect(sent).not.toHaveBeenCalled();
   });
@@ -143,6 +146,31 @@ describe("runDocUploadStep", () => {
     expect(s.recoverUploads.mock.calls[0]?.[1]).toEqual([
       { item_id: "stale", state: "failed" },
     ]);
+  });
+
+  it("한 실행에 100건까지만 잡아 보내고, 앞 실행에서 넘어온 행을 먼저, 나머지는 다음 실행으로", async () => {
+    const fresh = Array.from({ length: 104 }, (_, i) =>
+      file({ id: `n${String(i).padStart(3, "0")}` }),
+    );
+    files.mockResolvedValue([...fresh, file({ id: "carried" })]);
+    s.loadUploadRows.mockResolvedValue([
+      OTHER_ROW,
+      row({ item_id: "carried", state: "pending", attempts: 1 }),
+    ]);
+    const r = await runDocUploadStep();
+    expect(s.claimUpload).toHaveBeenCalledTimes(100);
+    expect(s.claimUpload.mock.calls[0]?.[1]).toBe("carried");
+    expect(sent.mock.calls[0]?.[0].subject).toBe(
+      "[내부관리자] 학교별 제출 서류 100건 업로드",
+    );
+    const finished = s.finishUploads.mock.calls[0]?.[1] ?? [];
+    expect(finished).toHaveLength(100);
+    expect(finished).not.toContain("n099");
+    expect(r).toMatchObject({
+      ok: true,
+      message: "새 파일 100건 · 교체 0건 알림 · 다음 실행으로 미룬 5건",
+      details: { uploadDeferred: 5 },
+    });
   });
 
   it("새 파일 2·교체 1 → 메일 1통, 제목 3건, 보내는 메일함=받는 사람=담당자", async () => {

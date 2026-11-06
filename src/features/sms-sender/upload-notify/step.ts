@@ -22,6 +22,7 @@ import {
   loadUploadRows,
   rearmUploads,
   recoverUploads,
+  seedUploads,
   updateHashes,
 } from "./store";
 
@@ -32,6 +33,8 @@ const ENV_NAMES = [
 const LIST_FAILED = "제출 서류 폴더를 읽지 못했습니다.";
 const DB_FAILED = "제출 서류 업로드 알림 기록 처리 중 오류가 발생했습니다.";
 const CLAIM_LOST_CODE = "claim_lost";
+/** 한 실행에 잡아 보내는 상한 — 메일 크기와 결과 기록 요청을 묶어 둔다. 나머지는 다음 실행에. */
+const MAX_PER_RUN = 100;
 
 type Config = { manager: string; dryRun: boolean };
 type Batch = {
@@ -39,8 +42,15 @@ type Batch = {
   replacedSent: number;
   failed: number;
   codes: string[];
+  deferred: number;
 };
-const NO_BATCH: Batch = { newSent: 0, replacedSent: 0, failed: 0, codes: [] };
+const NO_BATCH: Batch = {
+  newSent: 0,
+  replacedSent: 0,
+  failed: 0,
+  codes: [],
+  deferred: 0,
+};
 
 function readConfig(): { config: Config } | { missing: string[] } {
   const missing = ENV_NAMES.filter((n) => !process.env[n]);
@@ -72,6 +82,7 @@ function tallySent(claimed: DueUpload[], done: string[]): Batch {
   const lost = claimed.length - ok.length;
   if (lost > 0) console.error(`[sms-upload-notify] ${lost} rows lost claim`);
   return {
+    ...NO_BATCH,
     newSent: ok.filter((d) => d.kind === "new").length,
     replacedSent: ok.filter((d) => d.kind === "replaced").length,
     failed: lost,
@@ -83,22 +94,36 @@ async function claimAll(
   db: SupabaseClient,
   due: DueUpload[],
   now: Date,
-): Promise<DueUpload[]> {
+): Promise<{ claimed: DueUpload[]; deferred: number }> {
   const claimed: DueUpload[] = [];
+  let tried = 0;
   for (const d of due) {
+    if (claimed.length >= MAX_PER_RUN) break;
+    tried += 1;
     if (await claimUpload(db, d.file.id, d.attempts, now)) claimed.push(d);
   }
-  return claimed;
+  return { claimed, deferred: due.length - tried };
 }
 
-// 잡은 행만 메일 한 통에 묶는다. 실패하면 횟수가 다 찬 행은 failed, 나머지는 다음 실행으로.
+// 잡은 행만 메일 한 통에 묶는다(오래 기다린 것부터 MAX_PER_RUN 건). 남은 것은 pending 그대로 다음 실행에.
 async function deliverBatch(
   db: SupabaseClient,
   due: DueUpload[],
   config: Config,
   now: Date,
 ): Promise<Batch> {
-  const claimed = await claimAll(db, due, now);
+  const { claimed, deferred } = await claimAll(db, due, now);
+  const batch = await sendClaimed(db, claimed, config, now);
+  return { ...batch, deferred };
+}
+
+// 실패하면 횟수가 다 찬 행은 failed, 나머지는 다음 실행으로.
+async function sendClaimed(
+  db: SupabaseClient,
+  claimed: DueUpload[],
+  config: Config,
+  now: Date,
+): Promise<Batch> {
   if (claimed.length === 0) return NO_BATCH;
   const ids = claimed.map((d) => d.file.id);
   if (config.dryRun) {
@@ -139,14 +164,15 @@ function summarizeUploads(
   skippedSelf: number,
 ): AutomationRunResult {
   const sent = batch.newSent + batch.replacedSent;
-  const quiet = sent + batch.failed + skippedSelf === 0;
+  const quiet = sent + batch.failed + batch.deferred + skippedSelf === 0;
   const message = quiet
     ? `변화 없음 (파일 ${files}개)`
     : `새 파일 ${batch.newSent}건 · 교체 ${batch.replacedSent}건 알림` +
       (skippedSelf > 0 ? ` · 담당자 본인 업로드 ${skippedSelf}건 제외` : "") +
       (batch.failed > 0
         ? ` · 실패 ${batch.failed}건 (${[...new Set(batch.codes)].join(", ")})`
-        : "");
+        : "") +
+      (batch.deferred > 0 ? ` · 다음 실행으로 미룬 ${batch.deferred}건` : "");
   return {
     ok: batch.failed === 0,
     message,
@@ -156,6 +182,7 @@ function summarizeUploads(
       uploadReplaced: batch.replacedSent,
       uploadSkippedSelf: skippedSelf,
       uploadFailed: batch.failed,
+      uploadDeferred: batch.deferred,
     },
   };
 }
@@ -180,7 +207,7 @@ async function runWithFiles(
   const now = new Date();
   const rows = await loadUploadRows(db);
   if (rows.length === 0) {
-    await insertUploadRows(db, seedUploadRows(files));
+    await seedUploads(db, seedUploadRows(files));
     return {
       ok: true,
       message: `처음 실행 — 기존 파일 ${files.length}개 적재, 발송 없음`,

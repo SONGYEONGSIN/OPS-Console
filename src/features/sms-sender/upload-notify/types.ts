@@ -22,12 +22,14 @@ export type UploadRow = {
   state: UploadState;
   attempts: number;
   claimed_at: string | null;
+  first_seen_at: string;
 };
 
-export type UploadInsert = Omit<UploadRow, "claimed_at">;
+export type UploadInsert = Omit<UploadRow, "claimed_at" | "first_seen_at">;
 
-/** 교체(PDF 의 해시가 바뀜) — 같은 행을 다시 알림 대기로 되돌린다. prevHash 가 맞을 때만. */
+/** 교체(PDF 의 해시가 바뀜) — 같은 행을 다시 알림 대기로 되돌린다. prevHash·prevState 가 스냅샷 그대로일 때만. */
 export type Rearm = {
+  prevState: UploadState;
   item_id: string;
   prevHash: string;
   name: string;

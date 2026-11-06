@@ -14,9 +14,11 @@ const ERROR_MAX = 500;
 /** Supabase 기본 select 한도 — 이만큼 차면 다음 쪽이 있을 수 있다. */
 const PAGE = 1000;
 const INSERT_CHUNK = 500;
+/** `.in(...)` 은 URL 에 실린다 — id 가 많으면 주소 길이를 넘어 결과 기록이 통째로 실패한다. */
+const FINISH_CHUNK = 100;
 
 const COLUMNS =
-  "item_id,name,folder_path,web_url,content_hash,change_kind,state,attempts,claimed_at";
+  "item_id,name,folder_path,web_url,content_hash,change_kind,state,attempts,claimed_at,first_seen_at";
 
 // supabase-js 는 오류를 던지지 않는다 — 확인해서 던진다.
 function assertOk(error: { message: string } | null, what: string): void {
@@ -54,8 +56,21 @@ export async function insertUploadRows(
   }
 }
 
-// 이전 해시가 그대로이고 지금 보내는 중이 아닐 때만 다시 무장한다 —
-// 겹친 실행이 이미 바꾼 행이나 발송 중인 행을 덮어쓰지 않도록.
+// 첫 실행 적재는 나누지 않는다 — 둘째 묶음이 실패하면 다음 실행이 '첫 실행'이 아니게 되어
+// 적재 못 한 기존 파일을 전부 새 파일로 알린다.
+export async function seedUploads(
+  db: SupabaseClient,
+  rows: UploadInsert[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const { error } = await db
+    .from(TABLE)
+    .upsert(rows, { onConflict: "item_id", ignoreDuplicates: true });
+  assertOk(error, "업로드 알림 첫 적재 실패");
+}
+
+// 이전 해시·상태가 스냅샷 그대로이고 지금 보내는 중이 아닐 때만 다시 무장한다 —
+// 겹친 실행이 이미 바꾼 행이나 발송 중인 행을 덮어쓰지 않도록. 0행이면 다음 실행이 다시 본다.
 export async function rearmUploads(
   db: SupabaseClient,
   rearms: Rearm[],
@@ -78,6 +93,7 @@ export async function rearmUploads(
       })
       .eq("item_id", r.item_id)
       .eq("content_hash", r.prevHash)
+      .eq("state", r.prevState)
       .neq("state", "sending");
     assertOk(error, "교체 알림 무장 실패");
   }
@@ -184,12 +200,16 @@ export async function finishUploads(
       ? { error: result.error.slice(0, ERROR_MAX) }
       : {}),
   };
-  const { data, error } = await db
-    .from(TABLE)
-    .update(payload)
-    .in("item_id", itemIds)
-    .eq("state", "sending")
-    .select("item_id");
-  assertOk(error, "업로드 알림 결과 기록 실패");
-  return ((data ?? []) as { item_id: string }[]).map((r) => r.item_id);
+  const done: string[] = [];
+  for (let i = 0; i < itemIds.length; i += FINISH_CHUNK) {
+    const { data, error } = await db
+      .from(TABLE)
+      .update(payload)
+      .in("item_id", itemIds.slice(i, i + FINISH_CHUNK))
+      .eq("state", "sending")
+      .select("item_id");
+    assertOk(error, "업로드 알림 결과 기록 실패");
+    done.push(...((data ?? []) as { item_id: string }[]).map((r) => r.item_id));
+  }
+  return done;
 }

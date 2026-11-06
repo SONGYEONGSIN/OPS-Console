@@ -10,6 +10,7 @@ import {
   loadUploadRows,
   rearmUploads,
   recoverUploads,
+  seedUploads,
   updateHashes,
 } from "../store";
 import type { Rearm, UploadInsert } from "../types";
@@ -137,6 +138,30 @@ describe("loadUploadRows", () => {
   });
 });
 
+describe("seedUploads", () => {
+  it("첫 실행 적재는 나누지 않고 upsert 한 번 — 중간 실패로 반쯤 적재되지 않게", async () => {
+    const { db, calls } = dbWith({});
+    const rows = Array.from({ length: 1001 }, (_, i) => insert(`s${i}`));
+    await seedUploads(db, rows);
+    const upserts = argsOf(calls, "upsert");
+    expect(upserts).toHaveLength(1);
+    expect((upserts[0]?.[0] as unknown[]).length).toBe(1001);
+    expect(upserts[0]?.[1]).toEqual({
+      onConflict: "item_id",
+      ignoreDuplicates: true,
+    });
+  });
+  it("빈 배열이면 호출하지 않는다", async () => {
+    const { db, calls } = dbWith({});
+    await seedUploads(db, []);
+    expect(calls).toEqual([]);
+  });
+  it("error 면 던진다", async () => {
+    const { db } = dbWith({ error: { message: "s" } });
+    await expect(seedUploads(db, [insert("1")])).rejects.toThrow("s");
+  });
+});
+
 describe("insertUploadRows", () => {
   it("빈 배열이면 호출하지 않는다", async () => {
     const { db, calls } = dbWith({});
@@ -172,12 +197,15 @@ describe("rearmUploads", () => {
     content_hash: "new",
     change_kind: "replaced",
     state: "pending",
+    prevState: "sent",
   };
   it("rearmUploads 조건", async () => {
     const { db, calls } = dbWith({});
     await rearmUploads(db, [rearm], now);
     expect(argsOf(calls, "eq")).toContainEqual(["item_id", "1"]);
     expect(argsOf(calls, "eq")).toContainEqual(["content_hash", "old"]);
+    // 스냅샷의 상태 그대로일 때만 — 겹친 실행이 그새 옮긴 행은 다음 실행으로.
+    expect(argsOf(calls, "eq")).toContainEqual(["state", "sent"]);
     expect(argsOf(calls, "neq")).toContainEqual(["state", "sending"]);
     expect(updatePayload(calls)).toMatchObject({
       content_hash: "new",
@@ -189,6 +217,7 @@ describe("rearmUploads", () => {
       updated_at: now.toISOString(),
     });
     expect(updatePayload(calls)).not.toHaveProperty("prevHash");
+    expect(updatePayload(calls)).not.toHaveProperty("prevState");
   });
   it("error 면 던진다", async () => {
     const { db } = dbWith({ error: { message: "r" } });
@@ -293,6 +322,19 @@ describe("finishUploads", () => {
     expect(argsOf(calls, "eq")).toContainEqual(["state", "sending"]);
     const m = calls.map((c) => c.method);
     expect(m.indexOf("select")).toBeGreaterThan(m.indexOf("update"));
+  });
+  it("id 는 100개씩 나눠 갱신하고 돌려받은 id 를 합친다 (URL 길이)", async () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `id${i}`);
+    const { db, calls, from } = dbSeq([
+      { data: [{ item_id: "id0" }] },
+      { data: [{ item_id: "id100" }, { item_id: "id101" }] },
+      { data: [{ item_id: "id249" }] },
+    ]);
+    const done = await finishUploads(db, ids, { state: "sent", now });
+    expect(from).toHaveBeenCalledTimes(3);
+    const ins = argsOf(calls, "in").map((a) => (a[1] as string[]).length);
+    expect(ins).toEqual([100, 100, 50]);
+    expect(done).toEqual(["id0", "id100", "id101", "id249"]);
   });
   it("빈 ids 는 db 를 안 부른다", async () => {
     const { db, from } = dbWith({});

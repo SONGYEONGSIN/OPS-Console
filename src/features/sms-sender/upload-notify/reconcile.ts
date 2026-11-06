@@ -101,13 +101,15 @@ function decideReplaced(
   hash: string,
   manager: string,
 ): Decision {
-  const self = isManager(file.modifiedByEmail, manager);
-  // 아직 안 나간 새 파일 소식은 새 파일로 남긴다 — 담당자는 '교체' 전에 '새 파일'도 못 받았다.
-  const kind: ChangeKind =
-    row.state === "pending" ? row.change_kind : "replaced";
+  // 아직 안 나간 알림(남이 올린 새 파일 등)은 담당자가 그 뒤 고쳐도 그대로 나간다 —
+  // 담당자는 그 소식을 아직 못 받았다. 새 파일 소식은 '교체'가 아니라 새 파일로 남긴다.
+  const unsent = row.state === "pending";
+  const self = !unsent && isManager(file.modifiedByEmail, manager);
+  const kind: ChangeKind = unsent ? row.change_kind : "replaced";
   const rearm: Rearm = {
     ...baseRow(file),
     prevHash,
+    prevState: row.state,
     content_hash: hash,
     change_kind: kind,
     state: self ? "skipped_self" : "pending",
@@ -153,6 +155,33 @@ const pick = <K extends keyof Decision>(
     d[key] === undefined ? [] : [d[key] as NonNullable<Decision[K]>],
   );
 
+type Judged = { decision: Decision; carriedSince: string | null };
+
+// 앞 실행에서 넘어온 알림(대기·회수)이 먼저, 처음 본 순으로. 이번에 생긴 것(새 파일·교체)은
+// 목록 순으로 뒤에 — 한 실행에 보내는 건수에 상한이 있어 오래 기다린 것부터 나가게.
+function oldestFirst(judged: Judged[]): DueUpload[] {
+  const withDue = judged.filter((j) => j.decision.due !== undefined);
+  const carried = withDue
+    .filter((j) => j.carriedSince !== null)
+    .sort((a, b) => (a.carriedSince ?? "").localeCompare(b.carriedSince ?? ""));
+  const fresh = withDue.filter((j) => j.carriedSince === null);
+  return [...carried, ...fresh].map((j) => j.decision.due as DueUpload);
+}
+
+function judge(
+  file: RawDocFile,
+  row: UploadRow | undefined,
+  manager: string,
+  now: Date,
+): Judged {
+  if (!row) return { decision: decideNew(file, manager), carriedSince: null };
+  const decision = decideExisting(file, row, manager, now);
+  return {
+    decision,
+    carriedSince: decision.rearm === undefined ? row.first_seen_at : null,
+  };
+}
+
 /** 목록에 있는 파일만 본다 — DB 에만 있는 행(지워진 파일)은 건드리지 않는다. */
 export function reconcileUploads(
   files: RawDocFile[],
@@ -161,19 +190,17 @@ export function reconcileUploads(
   now: Date,
 ): UploadPlan {
   const byId = new Map(rows.map((r) => [r.item_id, r]));
-  const decisions = files.map((file) => {
-    const row = byId.get(file.id);
-    return row
-      ? decideExisting(file, row, manager, now)
-      : decideNew(file, manager);
-  });
+  const judged = files.map((file) =>
+    judge(file, byId.get(file.id), manager, now),
+  );
+  const decisions = judged.map((j) => j.decision);
   return {
     inserts: pick(decisions, "insert"),
     rearms: pick(decisions, "rearm"),
     fills: pick(decisions, "fill"),
     hashUpdates: pick(decisions, "hashUpdate"),
     recoveries: pick(decisions, "recovery"),
-    due: pick(decisions, "due"),
+    due: oldestFirst(judged),
     skippedSelf: decisions.filter((d) => d.self === true).length,
   };
 }
