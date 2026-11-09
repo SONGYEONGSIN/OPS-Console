@@ -25,19 +25,19 @@ const manual = (over: Partial<ResolvedManual> = {}): ResolvedManual => ({
   ...over,
 });
 
+const ACTIVE = new Set(["원서접수", "정산"]);
+const planOf = (ms: ResolvedManual[]) => buildReviewPlan(ms, ACTIVE);
+
 describe("buildReviewPlan", () => {
   it("진행 중이 아닌 행은 뺀다", () => {
-    const plan = buildReviewPlan([
-      manual(),
-      manual({ active: false, docName: "x" }),
-    ]);
+    const plan = planOf([manual(), manual({ active: false, docName: "x" })]);
     expect(plan.manualCount).toBe(1);
     expect(plan.recipients).toHaveLength(1);
     expect(plan.recipients[0].items).toHaveLength(1);
   });
 
   it("담당자가 둘이면 둘 다에게 간다", () => {
-    const plan = buildReviewPlan([
+    const plan = planOf([
       manual({ recipients: [A, B], owners: ["담당자A", "담당자B"] }),
     ]);
     expect(plan.recipients.map((r) => r.name)).toEqual(["담당자A", "담당자B"]);
@@ -45,7 +45,7 @@ describe("buildReviewPlan", () => {
   });
 
   it("메일 대소문자가 달라도 한 사람으로 묶는다", () => {
-    const plan = buildReviewPlan([
+    const plan = planOf([
       manual(),
       manual({
         docName: "A02. 매뉴얼.docx",
@@ -58,7 +58,7 @@ describe("buildReviewPlan", () => {
   });
 
   it("업무 → 문서명 순으로 정렬한다", () => {
-    const plan = buildReviewPlan([
+    const plan = planOf([
       manual({ task: "정산", docName: "D01.docx" }),
       manual({ task: "원서접수", docName: "A02.docx" }),
       manual({ task: "원서접수", docName: "A01.docx" }),
@@ -71,7 +71,7 @@ describe("buildReviewPlan", () => {
   });
 
   it("파일 없는 행은 링크 없이 담당자에게 가고 연결 안 됨에도 오른다", () => {
-    const plan = buildReviewPlan([manual({ file: null })]);
+    const plan = planOf([manual({ file: null })]);
     expect(plan.recipients[0].items[0]).toEqual({
       task: "원서접수",
       docName: "A01. 매뉴얼.docx",
@@ -84,7 +84,7 @@ describe("buildReviewPlan", () => {
   });
 
   it("담당자 칸이 비거나 일부를 못 찾으면 미확인으로 모은다", () => {
-    const plan = buildReviewPlan([
+    const plan = planOf([
       manual({
         owners: [],
         ownerText: "",
@@ -101,6 +101,27 @@ describe("buildReviewPlan", () => {
     expect(plan.unresolvedOwners).toEqual([
       { task: "원서접수", docName: "빈칸.docx", ownerText: "(빈칸)" },
       { task: "원서접수", docName: "A01. 매뉴얼.docx", ownerText: "담당자B" },
+    ]);
+  });
+
+  it("진행 중인데 대장에 한 행도 없는 업무를 모은다", () => {
+    const plan = buildReviewPlan(
+      [manual()],
+      new Set(["원서접수", "새이름업무"]),
+    );
+    expect(plan.missingTasks).toEqual(["새이름업무"]);
+    expect(
+      buildReviewPlan([manual()], new Set(["원서접수"])).missingTasks,
+    ).toEqual([]);
+  });
+
+  it("문서명은 있는데 업무 칸이 빈 행을 모은다", () => {
+    const plan = planOf([
+      manual(),
+      manual({ task: "", docName: "Z09. 업무 빈칸.docx", active: false }),
+    ]);
+    expect(plan.untasked).toEqual([
+      { task: "", docName: "Z09. 업무 빈칸.docx", ownerText: "담당자A" },
     ]);
   });
 });

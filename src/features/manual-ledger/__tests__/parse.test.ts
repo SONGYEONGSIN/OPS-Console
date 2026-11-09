@@ -114,7 +114,29 @@ describe("parseLedgerSheet", () => {
       ["업무", "문서명", "담당자", "최종 수정"],
       ["원서접수", "a.docx", "담당자A", 45678],
     ];
-    expect(parseLedgerSheet(values)[0].lastModified).toBe("45678");
+    expect(parseLedgerSheet(values)[0].lastModified).toBe("2025.01.21");
+  });
+
+  it("엑셀 일련번호는 1899-12-30 기준 날짜로 바꾼다", () => {
+    const serial = 45678;
+    const expected = new Date(Date.UTC(1899, 11, 30) + serial * 86_400_000)
+      .toISOString()
+      .slice(0, 10)
+      .replace(/-/g, ".");
+    expect(expected).toBe("2025.01.21");
+    const values = [
+      ["업무", "문서명", "담당자", "최종 수정"],
+      ["원서접수", "a.docx", "담당자A", serial],
+    ];
+    expect(parseLedgerSheet(values)[0].lastModified).toBe(expected);
+  });
+
+  it("일련번호 범위 밖 숫자는 문자열 그대로", () => {
+    const values = [
+      ["업무", "문서명", "담당자", "최종 수정"],
+      ["원서접수", "a.docx", "담당자A", 12345],
+    ];
+    expect(parseLedgerSheet(values)[0].lastModified).toBe("12345");
   });
 });
 
@@ -158,6 +180,17 @@ describe("parseActiveTasks", () => {
     const values = scheduleValues.map((r) =>
       r[0] === "▪ 진행 중" ? ["▪ 진행중 (10)", "", "", "", ""] : r,
     );
+    expect(parseActiveTasks(values)).toEqual(new Set(["원서접수", "정산"]));
+  });
+
+  it("데이터 행의 비고 칸에 ▪ 가 있어도 구역이 바뀌지 않는다", () => {
+    const values: unknown[][] = [
+      ["구분", "업무", "담당자", "3월", "비고"],
+      ["▪ 진행 중", "", "", "", ""],
+      ["A", "원서접수", "담당자A", "●", "▪ 진행하지 않는 사업에서 옮김"],
+      ["메모", "", "", "", "▪ 이관 예정"],
+      ["D", "정산", "담당자A", "●", ""],
+    ];
     expect(parseActiveTasks(values)).toEqual(new Set(["원서접수", "정산"]));
   });
 

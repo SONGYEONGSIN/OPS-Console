@@ -52,6 +52,25 @@ export function splitOwners(cell: string): string[] {
   return [...new Set(names)];
 }
 
+/** 엑셀 날짜 일련번호로 볼 범위(1954~2119년) — 그 밖의 숫자는 날짜가 아니다. */
+const SERIAL_MIN = 20000;
+const SERIAL_MAX = 80000;
+const SERIAL_EPOCH_MS = Date.UTC(1899, 11, 30);
+const DAY_MS = 86_400_000;
+
+/**
+ * `최종 수정` 칸 — 지금은 문자열이지만 칸이 날짜형으로 바뀌면 usedRange 가 일련번호를
+ * 준다. 그 경우만 `YYYY.MM.DD` 로 바꾸고, 나머지는 칸 값 그대로 둔다.
+ */
+function lastModifiedText(row: unknown[], col: number | undefined): string {
+  const v = col === undefined ? undefined : row[col];
+  if (typeof v === "number" && v >= SERIAL_MIN && v <= SERIAL_MAX) {
+    const d = new Date(SERIAL_EPOCH_MS + Math.floor(v) * DAY_MS);
+    return d.toISOString().slice(0, 10).replace(/-/g, ".");
+  }
+  return cellText(v);
+}
+
 /**
  * `2. 매뉴얼 대장` → 행 목록. 머리행을 이름으로 찾는다.
  * 필수 열을 못 찾으면 **빈 결과가 아니라 실패**다 — 빈 결과는 '보낼 것 없음' 으로 조용히 끝난다.
@@ -69,7 +88,7 @@ export function parseLedgerSheet(values: unknown[][]): LedgerRow[] {
     .map((row): LedgerRow => {
       const ownerText = at(row, c.get("담당자"));
       const code = at(row, c.get("코드"));
-      const lastModified = at(row, c.get("최종수정"));
+      const lastModified = lastModifiedText(row, c.get("최종수정"));
       return {
         code: code || null,
         task: at(row, c.get("업무")),
@@ -84,10 +103,18 @@ export function parseLedgerSheet(values: unknown[][]): LedgerRow[] {
 
 type Section = "active" | "inactive";
 
-/** 구역 머리행(`▪ …`)이면 그 구역, 아니면 null. 모르는 구역은 진행 중으로 보지 않는다. */
-function sectionOf(row: unknown[]): Section | null {
-  const mark = row.map(cellText).find((t) => t.startsWith(SECTION_MARK));
-  if (mark === undefined) return null;
+/**
+ * 구역 머리행(`▪ …`)이면 그 구역, 아니면 null. 모르는 구역은 진행 중으로 보지 않는다.
+ * 머리행은 **업무 칸이 비고 첫 비어 있지 않은 칸이 `▪` 로 시작하는 행**뿐이다 —
+ * 데이터 행 비고 칸의 `▪` 가 구역을 바꾸면 그 뒤 업무가 통째로 빠진다.
+ */
+function sectionOf(
+  row: unknown[],
+  taskCol: number | undefined,
+): Section | null {
+  if (at(row, taskCol) !== "") return null;
+  const mark = row.map(cellText).find((t) => t !== "");
+  if (mark === undefined || !mark.startsWith(SECTION_MARK)) return null;
   const key = mark.replace(/\s+/g, "");
   if (key.includes("진행하지")) return "inactive";
   if (key.includes("이관") || key.includes("중단")) return "inactive";
@@ -110,7 +137,7 @@ export function parseActiveTasks(values: unknown[][]): Set<string> {
   let section: Section | null = null;
   let sawActive = false;
   for (const row of values.slice(header.index + 1)) {
-    const next = sectionOf(row);
+    const next = sectionOf(row, taskCol);
     if (next) {
       section = next;
       sawActive = sawActive || next === "active";

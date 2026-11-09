@@ -76,6 +76,8 @@ const summary = (over: Partial<ReviewSummary> = {}): ReviewSummary => ({
   manualCount: 37,
   unresolvedOwners: [],
   unlinked: [],
+  missingTasks: [],
+  untasked: [],
   ...over,
 });
 
@@ -102,6 +104,29 @@ describe("buildSummaryMail", () => {
     expect(html).toContain("담당자 미확인 0건");
     expect(html).toContain("파일 연결 안 됨 0건");
     expect(html).toContain("없음");
+  });
+
+  it("대장에 없는 진행 업무·업무 칸 빈 문서도 0건이어도 적는다", () => {
+    const { html } = buildSummaryMail(summary(), H1);
+    expect(html).toContain("진행 중인데 대장에 없는 업무 0건");
+    expect(html).toContain("업무 칸이 빈 문서 0건");
+  });
+
+  it("대장에 없는 진행 업무·업무 칸 빈 문서를 목록으로 적는다", () => {
+    const { html } = buildSummaryMail(
+      summary({
+        missingTasks: ["새이름업무"],
+        untasked: [
+          { task: "", docName: "Z09. 업무 빈칸.docx", ownerText: "담당자C" },
+        ],
+      }),
+      H1,
+    );
+    expect(html).toContain("진행 중인데 대장에 없는 업무 1건");
+    expect(html).toContain("새이름업무");
+    expect(html).toContain("업무 칸이 빈 문서 1건");
+    expect(html).toContain("Z09. 업무 빈칸.docx");
+    expect(everyTagHasFont(html)).toBe(true);
   });
 
   it("목록이 있으면 표로 적는다", () => {

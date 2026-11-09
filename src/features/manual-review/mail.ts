@@ -78,7 +78,28 @@ export type ReviewSummary = {
   manualCount: number;
   unresolvedOwners: ReviewIssue[];
   unlinked: ReviewIssue[];
+  missingTasks: string[];
+  untasked: ReviewIssue[];
 };
+
+function taskSection(title: string, tasks: string[]): string {
+  const head = p(`${title} ${tasks.length}건`, HEAD_STYLE);
+  if (tasks.length === 0) return `${head}\n${p("없음")}`;
+  return `${head}\n${table(
+    ["업무"],
+    tasks.map((t) => [escapeHtml(t)]),
+  )}`;
+}
+
+function untaskedSection(title: string, issues: ReviewIssue[]): string {
+  const head = p(`${title} ${issues.length}건`, HEAD_STYLE);
+  if (issues.length === 0) return `${head}\n${p("없음")}`;
+  const rows = issues.map((i) => [
+    escapeHtml(i.docName),
+    escapeHtml(i.ownerText),
+  ]);
+  return `${head}\n${table(["문서명", "담당자"], rows)}`;
+}
 
 /** 0건이어도 섹션을 지우지 않는다 — '없다' 와 '안 세어 봤다' 가 화면에서 같아진다. */
 function issueSection(title: string, issues: ReviewIssue[]): string {
@@ -113,6 +134,8 @@ export function buildSummaryMail(
       ...pending,
       issueSection("담당자 미확인", s.unresolvedOwners),
       issueSection("파일 연결 안 됨", s.unlinked),
+      taskSection("진행 중인데 대장에 없는 업무", s.missingTasks),
+      untaskedSection("업무 칸이 빈 문서", s.untasked),
       p(NOTICE, NOTICE_STYLE),
     ].join("\n"),
   );

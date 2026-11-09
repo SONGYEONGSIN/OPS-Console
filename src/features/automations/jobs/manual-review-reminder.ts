@@ -13,7 +13,11 @@ import {
   MANUAL_SOURCE_ENV,
   fetchManualSource,
 } from "@/features/manual-ledger/source";
-import { reviewHalfFor, type ReviewHalf } from "@/features/manual-review/half";
+import {
+  isMarchFirst,
+  reviewHalfFor,
+  type ReviewHalf,
+} from "@/features/manual-review/half";
 import {
   buildReviewMail,
   buildSummaryMail,
@@ -56,13 +60,19 @@ const NO_TALLY: Tally = {
   codes: [],
 };
 
+// 형식이 틀린 값이 섞이면(null) 빠진 것과 같이 실패로 끝낸다 — 조용히 한 명을 빼지 않는다.
+function adminProblems(admins: string[] | null): string[] {
+  if (admins === null) return [`${ADMIN_ENV}(형식 오류)`];
+  return admins.length === 0 ? [ADMIN_ENV] : [];
+}
+
 function readConfig(): { config: Config } | { missing: string[] } {
   const admins = parseAdminEmails(process.env[ADMIN_ENV]);
   const missing = [
     ...MANUAL_SOURCE_ENV.filter((n) => !process.env[n]),
-    ...(admins.length === 0 ? [ADMIN_ENV] : []),
+    ...adminProblems(admins),
   ];
-  if (missing.length > 0) return { missing };
+  if (missing.length > 0 || admins === null) return { missing };
   const dryRun = (process.env.MAIL_DRY_RUN ?? "").toLowerCase() === "true";
   return { config: { admins, dryRun } };
 }
@@ -161,6 +171,8 @@ function toSummary(plan: ReviewPlan, rem: Tally): ReviewSummary {
     manualCount: plan.manualCount,
     unresolvedOwners: plan.unresolvedOwners,
     unlinked: plan.unlinked,
+    missingTasks: plan.missingTasks,
+    untasked: plan.untasked,
   };
 }
 
@@ -177,7 +189,8 @@ function summarize(
     `${dryRun ? "[DRY-RUN] " : ""}${half.label} 담당자 ${plan.recipients.length}명 — ` +
     `보냄 ${rem.sent + rem.dryRun} / 실패 ${rem.failed}${failedNote} / 이미 보냄 ${rem.skipped}` +
     ` · 관리자 요약 ${sum.sent + sum.dryRun}${sum.failed > 0 ? ` (실패 ${sum.failed})` : ""}` +
-    ` · 담당자 미확인 ${plan.unresolvedOwners.length}건 · 연결 안 됨 ${plan.unlinked.length}건`;
+    ` · 담당자 미확인 ${plan.unresolvedOwners.length}건 · 연결 안 됨 ${plan.unlinked.length}건` +
+    ` · 대장에 없는 진행 업무 ${plan.missingTasks.length}건 · 업무 칸 빈 문서 ${plan.untasked.length}건`;
   return {
     ok: rem.failed + sum.failed === 0,
     message,
@@ -190,6 +203,8 @@ function summarize(
       manuals: plan.manualCount,
       unresolved: plan.unresolvedOwners.length,
       unlinked: plan.unlinked.length,
+      missingTasks: plan.missingTasks.length,
+      untasked: plan.untasked.length,
       summarySent: sum.sent + sum.dryRun,
       summaryFailed: sum.failed,
     },
@@ -205,7 +220,10 @@ async function runForHalf(
     fetchManualSource(),
     loadOperatorDirectory(db),
   ]);
-  const plan = buildReviewPlan(resolveLedger(source, operators));
+  const plan = buildReviewPlan(
+    resolveLedger(source, operators),
+    source.activeTasks,
+  );
   const ctx: Ctx = {
     db,
     half,
@@ -237,7 +255,12 @@ export async function runManualReviewReminder(
   if (!half) {
     return { ok: true, skipped: true, message: "3월·8월이 아님 — 발송 안 함" };
   }
-  if (!canSendOn(now, await fetchKoreanHolidays())) {
+  const holidays = await fetchKoreanHolidays();
+  // 피드가 실패하면 빈 목록이 온다 — 3월 첫 호출이 삼일절에 나가지 않게 그날만은 직접 막는다.
+  if (holidays.length === 0 && isMarchFirst(now)) {
+    return { ok: true, skipped: true, message: "삼일절 — 발송 안 함" };
+  }
+  if (!canSendOn(now, holidays)) {
     return { ok: true, skipped: true, message: "주말·공휴일 — 발송 안 함" };
   }
   try {

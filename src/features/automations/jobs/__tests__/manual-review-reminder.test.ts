@@ -128,6 +128,20 @@ describe("보내는 날이 아니면 건너뛴다", () => {
     expect(r).toMatchObject({ ok: true, skipped: true });
     expect(source).not.toHaveBeenCalled();
   });
+
+  it("공휴일 목록을 못 받아도(빈 목록) 3월 1일은 스킵", async () => {
+    vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+    const r = await runManualReviewReminder(new Date("2027-03-01T01:00:00Z"));
+    expect(r).toMatchObject({ ok: true, skipped: true });
+    expect(source).not.toHaveBeenCalled();
+  });
+
+  it("공휴일 목록이 비어도 3월 2일은 보낸다", async () => {
+    vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+    const r = await runManualReviewReminder(new Date("2027-03-02T01:00:00Z"));
+    expect(r.skipped).toBeFalsy();
+    expect(source).toHaveBeenCalled();
+  });
 });
 
 describe("설정·원천", () => {
@@ -137,6 +151,31 @@ describe("설정·원천", () => {
     expect(r.ok).toBe(false);
     expect(r.message).toContain("MANUAL_EDIT_ADMIN_EMAILS");
     expect(source).not.toHaveBeenCalled();
+  });
+
+  it("관리자 메일 중 하나라도 형식이 틀리면 실패", async () => {
+    vi.stubEnv("MANUAL_EDIT_ADMIN_EMAILS", `${ADM1},not-mail`);
+    const r = await runManualReviewReminder(SEND_DAY);
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain("MANUAL_EDIT_ADMIN_EMAILS");
+    expect(source).not.toHaveBeenCalled();
+    noPii(r);
+  });
+
+  it("대장에 없는 진행 업무·업무 칸 빈 문서를 요약과 details 에 싣는다", async () => {
+    source.mockResolvedValue({
+      ...fixture(),
+      ledger: [
+        ...fixture().ledger,
+        { ...fixture().ledger[0], task: "", docName: "Z09. 업무 빈칸.docx" },
+      ],
+      activeTasks: new Set(["원서접수", "새이름업무"]),
+    });
+    const r = await runManualReviewReminder(SEND_DAY);
+    expect(mailsTo(ADM1)[0].html).toContain("진행 중인데 대장에 없는 업무 1건");
+    expect(mailsTo(ADM1)[0].html).toContain("업무 칸이 빈 문서 1건");
+    expect(r.details).toMatchObject({ missingTasks: 1, untasked: 1 });
+    noPii(r);
   });
 
   it("원천 읽기 실패는 그 메시지로 실패하고 아무것도 안 보낸다", async () => {

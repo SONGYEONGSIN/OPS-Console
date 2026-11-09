@@ -22,6 +22,10 @@ export type ReviewPlan = {
   manualCount: number;
   unresolvedOwners: ReviewIssue[];
   unlinked: ReviewIssue[];
+  /** 연간 일정 '진행 중' 인데 대장에 한 행도 없는 업무 — 이름이 갈리면 그 업무 매뉴얼이 통째로 빠진다. */
+  missingTasks: string[];
+  /** 문서명은 있는데 업무 칸이 빈 대장 행 — 어느 구역인지 몰라 알림에서 빠진다. */
+  untasked: ReviewIssue[];
 };
 
 const EMPTY_OWNER = "(빈칸)";
@@ -74,9 +78,19 @@ function groupByRecipient(manuals: ResolvedManual[]): ReviewRecipient[] {
  * 링크 없이 보내고, 담당자를 못 찾은 행·파일을 못 찾은 행은 관리자 요약으로 올린다
  * — 어느 쪽도 조용히 빠지지 않게.
  */
-export function buildReviewPlan(manuals: ResolvedManual[]): ReviewPlan {
+export function buildReviewPlan(
+  manuals: ResolvedManual[],
+  activeTasks: ReadonlySet<string>,
+): ReviewPlan {
   const active = manuals.filter((m) => m.active);
+  const ledgerTasks = new Set(manuals.map((m) => m.task));
   return {
+    missingTasks: [...activeTasks]
+      .filter((t) => !ledgerTasks.has(t))
+      .sort((a, b) => a.localeCompare(b, "ko")),
+    untasked: manuals
+      .filter((m) => m.task === "" && m.docName !== "")
+      .map((m) => ({ task: "", docName: m.docName, ownerText: m.ownerText })),
     recipients: groupByRecipient(active),
     manualCount: active.length,
     unresolvedOwners: active.flatMap((m) => {

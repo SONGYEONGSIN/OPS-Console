@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { reviewHalfFor } from "../half";
+import { isMarchFirst, reviewHalfFor } from "../half";
+
+describe("isMarchFirst", () => {
+  it("KST 3월 1일이면 true", () => {
+    expect(isMarchFirst(new Date("2027-02-28T15:00:00Z"))).toBe(true);
+    expect(isMarchFirst(new Date("2027-03-01T01:00:00Z"))).toBe(true);
+  });
+
+  it("KST 3월 2일·다른 달 1일은 false", () => {
+    expect(isMarchFirst(new Date("2027-03-01T15:00:00Z"))).toBe(false);
+    expect(isMarchFirst(new Date("2026-08-01T01:00:00Z"))).toBe(false);
+  });
+});
 
 describe("reviewHalfFor", () => {
   it("8월은 그해 1·2분기(4~9월)", () => {
