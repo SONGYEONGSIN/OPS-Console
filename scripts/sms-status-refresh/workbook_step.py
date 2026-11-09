@@ -21,6 +21,7 @@ import time
 from pathlib import Path
 from typing import Callable, Sequence
 
+import requests
 from openpyxl import load_workbook
 
 from compare import (
@@ -71,7 +72,7 @@ def _kill_own_excel(pid_file: Path) -> None:
     """excel_apply.ps1 이 적어 둔 PID 하나만 끝낸다 — 사용자가 연 다른 Excel 은 건드리지 않는다."""
     try:
         pid = pid_file.read_text(encoding="ascii").strip()
-    except OSError:
+    except (OSError, ValueError):  # 없음·ASCII 아님(UnicodeDecodeError)
         return
     if pid.isdigit() and int(pid) > 0:
         subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
@@ -110,6 +111,8 @@ def _fetch_workbook(graph, work_dir: Path) -> tuple[DriveItem, str, dict[str, in
     if wb is None:
         raise StepFailure("source_missing", "현황 파일 없음")
     etag = graph.item(wb.id).etag  # 내려받기보다 먼저
+    if not etag:
+        raise StepFailure("unknown", "eTag 없음")  # 이대로면 If-Match 없는 덮어쓰기가 된다
     data = graph.download(wb.id)
     (work_dir / "before.xlsm").write_bytes(data)
     (work_dir / "work.xlsm").write_bytes(data)
@@ -171,6 +174,8 @@ def _apply_and_verify(work_dir: Path, sheets: list[dict], apply, restore, verify
     except ImportError:
         # '매크로가 바뀌었다' 로 읽히지 않게 따로 적는다
         raise StepFailure("verify_failed", "oletools 없음") from None
+    if not checks:
+        raise StepFailure("verify_failed", "검사 0건")  # 0/0 을 통과로 읽지 않는다
     failed = failed_labels(checks)
     if failed:
         raise StepFailure("verify_failed", f"{len(failed)}/{len(checks)} 실패: " + SEP.join(failed))
@@ -182,7 +187,13 @@ def _upload(graph, item_id: str, data: bytes, etag: str) -> None:
     try:
         if graph.item(item_id).etag != etag:
             raise StepFailure("changed", "올리기 직전 eTag 다름")
-        graph.put_if_match(item_id, data, etag, XLSM)
+        if not etag:
+            raise StepFailure("unknown", "eTag 없음")
+        try:
+            graph.put_if_match(item_id, data, etag, XLSM)
+        except (requests.Timeout, requests.ConnectionError) as e:
+            # 응답을 못 받았을 뿐 서버는 받았을 수 있다
+            raise StepFailure("unknown", f"업로드 여부 불명 {type(e).__name__}") from None
     except UploadRejected as e:
         raise StepFailure(e.code) from None
     except GraphError as e:
@@ -209,7 +220,17 @@ def _confirm_after(graph, item_id: str, expected: dict[str, int], sleep: Callabl
         sleep(AFTER_WAIT_S)
         bad = _mismatched(graph, item_id, expected)
     if bad:
-        raise StepFailure("after_check", "올린 뒤 행 수 다름: " + SEP.join(bad))
+        raise StepFailure("after_check", "업로드됨 · 행 수 다름: " + SEP.join(bad))
+
+
+def _confirm_uploaded(graph, item_id: str, expected: dict[str, int], sleep: Callable[[float], None]) -> None:
+    """올린 뒤 확인. 어떤 실패든 '이미 올라갔다' 는 사실을 잃지 않게 after_check 로 끝낸다."""
+    try:
+        _confirm_after(graph, item_id, expected, sleep)
+    except StepFailure:
+        raise
+    except Exception as e:  # noqa: BLE001 — 올린 뒤라 unknown 으로 두면 '안 올라갔다' 로 읽힌다
+        raise StepFailure("after_check", f"업로드됨 · 확인 중 오류 {type(e).__name__}") from None
 
 
 # ---------------------------------------------------------------- 결과
@@ -256,9 +277,11 @@ def run_workbook_step(
         return StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 올리지 않음(시험 실행)",
                           counts=_counts(sheets, n, False))
 
-    _upload(graph, wb.id, (work_dir / "work.xlsm").read_bytes(), etag)
-    expected = {**app_rows, **{sd["sheet"]: sd["firstDataRow"] - 1 + len(sd["rows"]) for sd in sheets}}
-    _confirm_after(graph, wb.id, expected, sleep)
+    # 결과는 올리기 전에 만들어 둔다 — 올린 뒤에는 확인 말고 아무것도 실패할 수 없게
     names = f"세종 {sources['sejong'].name} · Moa {sources['moa'].name} · PIMS {sources['pims'].name}"
-    return StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 업로드 완료 ({names}){_stale_tail(ctx)}",
+    done = StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 업로드 완료 ({names}){_stale_tail(ctx)}",
                       counts=_counts(sheets, n, True), changes=_changes(sheets, prev))
+    expected = {**app_rows, **{sd["sheet"]: sd["firstDataRow"] - 1 + len(sd["rows"]) for sd in sheets}}
+    _upload(graph, wb.id, (work_dir / "work.xlsm").read_bytes(), etag)
+    _confirm_uploaded(graph, wb.id, expected, sleep)
+    return done

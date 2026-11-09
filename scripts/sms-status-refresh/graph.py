@@ -153,6 +153,9 @@ class Graph:
 
     def put_if_match(self, item_id: str, data: bytes, etag: str, content_type: str) -> DriveItem:
         """처음 기록한 eTag 일 때만 바꾼다. 412 → changed, 423 → locked."""
+        # 빈 If-Match(None 이면 requests 가 헤더를 빼 버린다)는 조건 없는 덮어쓰기다 — 보내지 않는다
+        if not (etag or "").strip():
+            raise ValueError("eTag 없음")
         r = self._http.put(
             f"{self._drive()}/items/{item_id}/content",
             headers=self._headers({"Content-Type": content_type, "If-Match": etag}),

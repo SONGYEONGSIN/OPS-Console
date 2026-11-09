@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import requests
+
 import refresh
 import workbook_step
 from contract import STEP_IDS, Context, Step, StepResult, run_steps
@@ -46,7 +48,7 @@ def honest_rows() -> dict[str, int]:
 class FakeGraph:
     """호출 순서를 calls 에 남긴다. item 의 eTag 는 etags 를 차례로(마지막 값 반복)."""
 
-    def __init__(self, *, etags=("e1",), put_error=None, rows_after=None, missing=()):
+    def __init__(self, *, etags=("e1",), put_error=None, rows_after=None, missing=(), after_error=None):
         self.calls: list[tuple] = []
         self.files = {
             SMS_ROOT: [("wb", WB_NAME, workbook_bytes())],
@@ -59,6 +61,7 @@ class FakeGraph:
         self._etags = list(etags)
         self.put_error = put_error
         self.rows_after = rows_after or honest_rows()
+        self.after_error = after_error
         self.puts: list[tuple] = []
 
     def _find(self, item_id):
@@ -81,6 +84,8 @@ class FakeGraph:
         self.calls.append(("rows", item_id, sheet))
         if not self.puts:
             return APP_ROWS
+        if self.after_error is not None:
+            raise self.after_error
         return self.rows_after[sheet]
 
     def put_if_match(self, item_id, data, etag, content_type):
@@ -140,6 +145,36 @@ class RunStepTest(unittest.TestCase):
         self.assertEqual((r.status, r.error_code, r.detail), ("failed", "verify_failed", "oletools 없음"))
         self.assertEqual(g.puts, [])
 
+    def test_검사가_0건이면_올리지_않는다(self):
+        r, g = self._run(verify=lambda *_a: [])
+        self.assertEqual((r.status, r.error_code, r.detail), ("failed", "verify_failed", "검사 0건"))
+        self.assertEqual(g.puts, [])
+
+    def test_eTag_가_비면_내려받지도_올리지도_않는다(self):
+        for etag in ("", None):
+            r, g = self._run(FakeGraph(etags=(etag,)))
+            self.assertEqual((r.status, r.error_code, r.detail), ("failed", "unknown", "eTag 없음"))
+            self.assertEqual([c for c in g.calls if c[0] in ("download", "put")], [], repr(etag))
+
+    def test_업로드_직전에도_빈_eTag_를_막는다(self):
+        for etag in ("", None):
+            g = FakeGraph(etags=(etag,))
+            with self.assertRaises(workbook_step.StepFailure) as cm:
+                workbook_step._upload(g, "wb", b"x", etag)
+            self.assertEqual((cm.exception.code, cm.exception.detail), ("unknown", "eTag 없음"))
+            self.assertEqual(g.puts, [])
+
+    def test_PUT_이_타임아웃이면_업로드_여부_불명(self):
+        for err, name in ((requests.Timeout(), "Timeout"), (requests.ConnectionError(), "ConnectionError")):
+            r, _g = self._run(FakeGraph(put_error=err))
+            self.assertEqual((r.status, r.error_code, r.detail), ("failed", "unknown", f"업로드 여부 불명 {name}"))
+
+    def test_올린_뒤_확인_중_오류도_업로드됨이라고_적는다(self):
+        r, g = self._run(FakeGraph(after_error=TimeoutError()))
+        self.assertEqual((r.status, r.error_code), ("failed", "after_check"))
+        self.assertEqual(r.detail, "업로드됨 · 확인 중 오류 TimeoutError")
+        self.assertEqual(len(g.puts), 1)
+
     def test_올리기_직전_eTag_가_바뀌면_PUT_없이_changed(self):
         r, g = self._run(FakeGraph(etags=("e1", "e2")))
         self.assertEqual((r.status, r.error_code), ("failed", "changed"))
@@ -168,6 +203,7 @@ class RunStepTest(unittest.TestCase):
         rows = {**honest_rows(), "_번호": APP_ROWS + 1}
         r, g = self._run(FakeGraph(rows_after=rows))
         self.assertEqual((r.status, r.error_code), ("failed", "after_check"))
+        self.assertEqual(r.detail, "업로드됨 · 행 수 다름: _번호")
         self.assertEqual(self.sleeps, [10, 10, 10])
         self.assertEqual(len(g.puts), 1)
 
@@ -298,6 +334,19 @@ class ApplyExcelTest(unittest.TestCase):
         err, run = self._call(fake_run)
         self.assertEqual(err.code, "excel_failed")
         self.assertEqual(run.call_args_list[1].args[0], ["taskkill", "/F", "/PID", "4321"])
+
+    def test_PidFile_이_비었거나_숫자가_아니면_taskkill_을_부르지_않는다(self):
+        for content in (b"", b"abc", b"\xff\xfe", None):
+            def fake_run(cmd, content=content, **_kw):
+                if cmd[0] == "taskkill":
+                    return self.done(0)
+                if content is not None:
+                    self.pid.write_bytes(content)
+                raise subprocess.TimeoutExpired(cmd, 5)
+
+            err, run = self._call(fake_run)
+            self.assertEqual(err.code, "excel_failed", repr(content))
+            self.assertEqual([c.args[0][0] for c in run.call_args_list], [run.call_args_list[0].args[0][0]])
 
 
 class WiringTest(unittest.TestCase):
