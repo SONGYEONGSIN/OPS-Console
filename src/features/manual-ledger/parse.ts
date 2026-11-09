@@ -8,8 +8,25 @@ export class ManualSourceError extends Error {
   }
 }
 
-export const LEDGER_SHEET = "2. 매뉴얼 대장";
-export const SCHEDULE_SHEET = "1. 연간 일정";
+/** 시트는 번호를 뗀 이름으로 찾는다 — 앞에 시트가 끼면 번호가 밀린다(2026-11-10 실측). */
+export const LEDGER_SHEET_BASE = "매뉴얼 대장";
+export const SCHEDULE_SHEET_BASE = "연간 일정";
+
+const SHEET_NUMBER_PREFIX = /^\s*\d+\s*\.\s*/;
+const sheetBaseName = (name: string): string =>
+  name.normalize("NFC").replace(SHEET_NUMBER_PREFIX, "").trim();
+
+/** 시트 이름 목록에서 번호 접두를 뗀 이름이 base 와 같은 시트를 정확히 하나 고른다. */
+export function pickSheetName(names: string[], base: string): string {
+  const want = base.normalize("NFC").trim();
+  const hits = names.filter((n) => sheetBaseName(n) === want);
+  if (hits.length !== 1) {
+    throw new ManualSourceError(
+      `'${base}' 시트를 찾지 못했습니다 (후보 ${hits.length}개, 시트: ${names.join(" | ")})`,
+    );
+  }
+  return hits[0];
+}
 
 const LEDGER_REQUIRED = ["업무", "문서명", "담당자"] as const;
 const SCHEDULE_REQUIRED = ["업무", "담당자"] as const;

@@ -9,6 +9,7 @@ import {
   fetchManualSource,
   folderChildrenUrl,
   sheetValuesUrl,
+  worksheetsUrl,
 } from "../source";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -41,15 +42,33 @@ const children = [
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status });
 
-type Routes = { ledger?: Response; schedule?: Response; children?: Response[] };
+const SHEET_NAMES = [
+  "0. 한눈 요약",
+  "1. 관리 가이드",
+  "2. 연간 일정",
+  "3. 매뉴얼 대장",
+  "4. 기타(책갈피 설정)",
+];
+
+type Routes = {
+  ledger?: Response;
+  schedule?: Response;
+  children?: Response[];
+  sheets?: Response;
+};
 
 function stubFetch(routes: Routes = {}) {
   const pages = [...(routes.children ?? [json({ value: children })])];
   const fetchMock = vi.fn(async (url: string) => {
-    if (url.includes(encodeURIComponent("2. 매뉴얼 대장"))) {
+    if (url.includes("/workbook/worksheets?")) {
+      return (
+        routes.sheets ?? json({ value: SHEET_NAMES.map((name) => ({ name })) })
+      );
+    }
+    if (url.includes(encodeURIComponent("3. 매뉴얼 대장"))) {
       return routes.ledger ?? json({ values: ledger });
     }
-    if (url.includes(encodeURIComponent("1. 연간 일정"))) {
+    if (url.includes(encodeURIComponent("2. 연간 일정"))) {
       return routes.schedule ?? json({ values: schedule });
     }
     return pages.shift() ?? json({ value: [] });
@@ -117,9 +136,33 @@ describe("fetchManualSource", () => {
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls).toContain(folderChildrenUrl("drive1", "folderX"));
     expect(urls).toContain(
-      sheetValuesUrl("drive1", "ledgerX", "2. 매뉴얼 대장"),
+      sheetValuesUrl("drive1", "ledgerX", "3. 매뉴얼 대장"),
     );
-    expect(urls).toContain(sheetValuesUrl("drive1", "ledgerX", "1. 연간 일정"));
+    expect(urls).toContain(sheetValuesUrl("drive1", "ledgerX", "2. 연간 일정"));
+  });
+
+  it("시트 목록을 먼저 읽고 고른 이름으로 usedRange 를 부른다", async () => {
+    const fetchMock = stubFetch();
+    await fetchManualSource();
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    expect(urls[0]).toBe(worksheetsUrl("drive1", "ledgerX"));
+    expect(urls[0]).toBe(
+      `${GRAPH}/drives/drive1/items/ledgerX/workbook/worksheets?$select=name`,
+    );
+  });
+
+  it("시트 목록 읽기 실패는 ManualSourceError 로 끝난다", async () => {
+    stubFetch({ sheets: new Response("x", { status: 404 }) });
+    await expect(fetchManualSource()).rejects.toThrow(
+      "시트 목록 읽기 실패 (404)",
+    );
+  });
+
+  it("대장 시트가 없으면 실패한다", async () => {
+    stubFetch({
+      sheets: json({ value: [{ name: "2. 연간 일정" }] }),
+    });
+    await expect(fetchManualSource()).rejects.toThrow(ManualSourceError);
   });
 
   it("다음 쪽(Graph 주소)을 따라가 합친다", async () => {

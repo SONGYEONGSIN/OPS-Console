@@ -1,11 +1,12 @@
 import "server-only";
 import { getGraphToken } from "@/lib/microsoft/auth";
 import {
-  LEDGER_SHEET,
+  LEDGER_SHEET_BASE,
   ManualSourceError,
-  SCHEDULE_SHEET,
+  SCHEDULE_SHEET_BASE,
   parseActiveTasks,
   parseLedgerSheet,
+  pickSheetName,
 } from "./parse";
 import type { ManualFolderFile, ManualSource } from "./types";
 
@@ -37,6 +38,10 @@ export function folderChildrenUrl(driveId: string, folderId: string): string {
   return `${GRAPH}/drives/${driveId}/items/${folderId}/children?$top=200&$select=${CHILD_SELECT}`;
 }
 
+export function worksheetsUrl(driveId: string, itemId: string): string {
+  return `${GRAPH}/drives/${driveId}/items/${itemId}/workbook/worksheets?$select=name`;
+}
+
 export function sheetValuesUrl(
   driveId: string,
   itemId: string,
@@ -65,6 +70,17 @@ async function readSheet(
   }
   const body = (await res.json()) as { values?: unknown[][] };
   return body.values ?? [];
+}
+
+/** 구성표의 시트 이름 목록. */
+async function listSheetNames(url: string, token: string): Promise<string[]> {
+  const res = await graphGet(url, token);
+  if (!res.ok) {
+    console.error("[manual-ledger] sheet list fail", res.status);
+    throw new ManualSourceError(`시트 목록 읽기 실패 (${res.status})`);
+  }
+  const body = (await res.json()) as { value?: { name?: string }[] };
+  return (body.value ?? []).flatMap((s) => (s.name ? [s.name] : []));
 }
 
 const toFile = (c: GraphChild): ManualFolderFile => ({
@@ -135,14 +151,17 @@ async function connect(): Promise<{
 /** 대장·연간 일정·매뉴얼 폴더를 한 번에 읽는다. GET 만 부른다. */
 export async function fetchManualSource(): Promise<ManualSource> {
   const { driveId, folderId, ledgerId, token } = await connect();
+  const names = await listSheetNames(worksheetsUrl(driveId, ledgerId), token);
+  const ledgerSheet = pickSheetName(names, LEDGER_SHEET_BASE);
+  const scheduleSheet = pickSheetName(names, SCHEDULE_SHEET_BASE);
   const [ledgerValues, scheduleValues, files] = await Promise.all([
     readSheet(
-      sheetValuesUrl(driveId, ledgerId, LEDGER_SHEET),
+      sheetValuesUrl(driveId, ledgerId, ledgerSheet),
       token,
       "매뉴얼 대장",
     ),
     readSheet(
-      sheetValuesUrl(driveId, ledgerId, SCHEDULE_SHEET),
+      sheetValuesUrl(driveId, ledgerId, scheduleSheet),
       token,
       "연간 일정",
     ),

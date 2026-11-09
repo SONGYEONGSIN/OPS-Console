@@ -3,6 +3,7 @@ import {
   ManualSourceError,
   parseActiveTasks,
   parseLedgerSheet,
+  pickSheetName,
   splitOwners,
 } from "../parse";
 
@@ -202,5 +203,49 @@ describe("parseActiveTasks", () => {
   it("머리행(업무·담당자)이 없으면 실패다", () => {
     const values = scheduleValues.filter((r) => r[0] !== "구분");
     expect(() => parseActiveTasks(values)).toThrow(ManualSourceError);
+  });
+});
+
+describe("pickSheetName", () => {
+  const names = [
+    "0. 한눈 요약",
+    "1. 관리 가이드",
+    "2. 연간 일정",
+    "3. 매뉴얼 대장",
+  ];
+
+  it("번호를 뗀 이름이 같은 시트를 고른다", () => {
+    expect(pickSheetName(names, "매뉴얼 대장")).toBe("3. 매뉴얼 대장");
+    expect(pickSheetName(names, "연간 일정")).toBe("2. 연간 일정");
+  });
+
+  it("번호 없는 이름·번호 뒤 공백 없는 이름도 찾는다", () => {
+    expect(pickSheetName(["매뉴얼 대장"], "매뉴얼 대장")).toBe("매뉴얼 대장");
+    expect(pickSheetName(["3.매뉴얼 대장"], "매뉴얼 대장")).toBe(
+      "3.매뉴얼 대장",
+    );
+  });
+
+  it("분해된 한글(NFD)도 같은 이름으로 본다", () => {
+    const nfd = "3. 매뉴얼 대장".normalize("NFD");
+    expect(pickSheetName([nfd], "매뉴얼 대장")).toBe(nfd);
+  });
+
+  it("다른 이름은 고르지 않는다", () => {
+    expect(() =>
+      pickSheetName(["3. 매뉴얼 대장(구)", "2. 연간 일정"], "매뉴얼 대장"),
+    ).toThrow(ManualSourceError);
+  });
+
+  it("0개면 실패하고 기준 이름을 말한다", () => {
+    expect(() => pickSheetName(["1. 관리 가이드"], "매뉴얼 대장")).toThrow(
+      /매뉴얼 대장/,
+    );
+  });
+
+  it("2개 이상이면 실패한다", () => {
+    expect(() =>
+      pickSheetName(["2. 매뉴얼 대장", "3. 매뉴얼 대장"], "매뉴얼 대장"),
+    ).toThrow(ManualSourceError);
   });
 });
