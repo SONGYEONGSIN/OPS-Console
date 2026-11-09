@@ -28,6 +28,7 @@ const env: EnvSnapshot = {
     receivablesItemId: { configured: false, preview: "" },
     depositItemId: { configured: false, preview: "" },
     manualItemId: { configured: false, preview: "" },
+    manualLedgerItemId: { configured: false, preview: "" },
     assignmentsItemId: { configured: false, preview: "" },
     mailItemId: { configured: false, preview: "" },
     pettyCashItemId: { configured: false, preview: "" },
