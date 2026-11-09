@@ -44,15 +44,18 @@ STATUS_KEYS = {"등록완료": "done", "등록대기": "wait", "등록불가": "
 
 # 조회 전에 지금 표에 표시를 달고 행을 비운다 → 처리상태를 전체('')로 → 대학ID 칸을 비운다.
 # 표시가 없어졌거나(표를 새로 그림) 행이 다시 생겨야 조회 결과로 본다 — 아니면 조회 전 화면을
-# 두 번 읽고 '안정됐다'며 그것을 저장한다. 표가 없으면(로그인 화면으로 튕김) null.
+# 두 번 읽고 '안정됐다'며 그것을 저장한다.
+# 반환: 표가 없으면(로그인 화면으로 튕김) null · 처리상태 칸이나 전체('') 옵션이 없으면 false
+# (표는 건드리지 않는다) · 바꿨으면 true.
 PREP_JS = r"""
 var t=document.querySelector('table.type1'); if(!t) return null;
-var sel=document.getElementById('ProcessType'); if(!sel) return null;
+var sel=document.getElementById('ProcessType');
+if(!sel||![].some.call(sel.options,function(o){return o.value==='';})) return false;
 t.setAttribute('data-srr-stale','1');
 [].forEach.call(t.tBodies.length?t.tBodies[0].rows:[],function(tr){tr.parentNode.removeChild(tr);});
 sel.value='';
 var u=document.getElementById('SearchUniv'); if(u) u.value='';
-return sel.value==='';
+return true;
 """
 SEARCH_JS = "getPhoneNumberList(1);"
 # 버튼 칸(수정)은 innerText 가 비면 value 를 읽는다. 마지막 값 = 화면이 들고 있는 원본 건수(없으면 null).
@@ -83,8 +86,12 @@ def collect_pims_rows(
     """
     driver.get(PIMS_URL)
     sleep(settle_sec)
-    if driver.execute_script(PREP_JS) is None:
+    prepared = driver.execute_script(PREP_JS)
+    if prepared is None:
         return [], [], 0
+    if prepared is not True:
+        # 전체로 못 바꾸면 대기(W)만 읽는다 — 빈 표와 구분해 화면 구조 변경으로 알린다.
+        raise StepFailure("pims_shape_changed", "처리상태 칸")
     driver.execute_script(SEARCH_JS)
     prev = None
     for _ in range(tries):

@@ -161,6 +161,7 @@ class TestRunStep(unittest.TestCase):
             (FakeDriver(None, has_table=False), "pims_empty"),
             (FakeDriver(([*RAW_HEAD[:2], "번호", *RAW_HEAD[3:]], ROWS, 3)), "pims_shape_changed"),
             (FakeDriver((RAW_HEAD, ROWS, 513)), "pims_incomplete"),
+            (FakeDriver((RAW_HEAD, ROWS, 3), has_select=False), "pims_shape_changed"),
         ]
         for drv, code in cases:
             r, graph, _ = self._run(drv)

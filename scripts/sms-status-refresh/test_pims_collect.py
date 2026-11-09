@@ -53,9 +53,10 @@ class FakeDriver:
     reads 원소: (header, rows, all_count) = 새로 그려진 표 · STALE · None = 표 없음(쪽 이동 중).
     """
 
-    def __init__(self, table=None, *, reads=None, has_table=True):
+    def __init__(self, table=None, *, reads=None, has_table=True, has_select=True):
         self.reads = list(reads) if reads is not None else [table]
         self.has_table = has_table
+        self.has_select = has_select  # 처리상태 칸(전체 옵션 포함)이 있는가
         self.scripts: list[str] = []
         self.urls: list[str] = []
         self.events: list[str] = []
@@ -82,6 +83,8 @@ class FakeDriver:
             self.events.append("prep")
             if not self.has_table:
                 return None
+            if not self.has_select:
+                return False
             self.all_selected = True
             return True
         if script == SEARCH_JS:
@@ -180,6 +183,18 @@ class TestCollect(unittest.TestCase):
         with self.assertRaises(StepFailure) as cm:
             self.collect(drv, tries=6)
         self.assertEqual(cm.exception.code, "pims_incomplete")
+
+    def test_처리상태_칸이_없으면_pims_shape_changed(self):
+        # 화면 구조가 바뀌어 전체로 못 바꾸면 대기(W)만 읽는다 — 빈 표와 구분해 알린다.
+        drv = FakeDriver((RAW_HEAD, ROWS, 3), has_select=False)
+        with self.assertRaises(StepFailure) as cm:
+            self.collect(drv)
+        self.assertEqual((cm.exception.code, cm.exception.detail), ("pims_shape_changed", "처리상태 칸"))
+        self.assertNotIn("search", drv.events)
+
+    def test_PREP_JS_는_전체_옵션이_실제로_있는지_본다(self):
+        self.assertIn("sel.options", PREP_JS)
+        self.assertLess(PREP_JS.index("sel.options"), PREP_JS.index("data-srr-stale"))  # 표를 건드리기 전에
 
     def test_표가_없으면_빈_값(self):
         # 세션 만료로 로그인 화면이 떠 있으면 표 자체가 없다.
