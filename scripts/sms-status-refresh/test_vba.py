@@ -1,5 +1,6 @@
 """vba.py — 매크로 파트 바이트 복원과 모듈 소스 해시."""
 import builtins
+import io
 import tempfile
 import unittest
 import zipfile
@@ -12,6 +13,16 @@ from contract import StepFailure
 
 SHEETS = {"03. 번호 목록": [["번호"], ["010-0000-0001"]], "_학교": [["테스트대학교A"]]}
 ORIGINAL = b"original-vba-project-bytes" * 40
+
+
+def _with_stored(data: bytes) -> bytes:
+    """압축하지 않은(STORED) 파트 하나를 더 끼운다 — 복원 뒤에도 STORED 여야 한다."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(data)) as src, zipfile.ZipFile(out, "w") as dst:
+        for info in src.infolist():
+            dst.writestr(info, src.read(info.filename), compress_type=info.compress_type)
+        dst.writestr("customXml/item1.xml", b"<stored/>" * 20, compress_type=zipfile.ZIP_STORED)
+    return out.getvalue()
 
 
 def _parts(path: Path) -> dict[str, tuple[bytes, int]]:
@@ -42,15 +53,19 @@ class VbaPartTest(unittest.TestCase):
 
     def test_원본_바이트로_되돌리고_다른_파트는_그대로(self):
         before = self._write("before.xlsm", fixtures.make_xlsm_like(SHEETS, ORIGINAL))
-        after = self._write("after.xlsm", fixtures.make_xlsm_like(SHEETS, b"short"))
+        after = self._write("after.xlsm", _with_stored(fixtures.make_xlsm_like(SHEETS, b"short")))
         old = _parts(after)
 
-        sizes = vba.restore_vba(before, after)
+        with mock.patch("vba.tempfile.mkstemp", wraps=tempfile.mkstemp) as mk:
+            sizes = vba.restore_vba(before, after)
+
+        self.assertEqual(Path(mk.call_args.kwargs["dir"]).resolve(), after.resolve().parent)
 
         new = _parts(after)
         self.assertEqual(sizes, (len(b"short"), len(ORIGINAL)))
         self.assertEqual(new["xl/vbaProject.bin"][0], ORIGINAL)
         self.assertEqual(list(new), list(old))  # 파트 순서·목록 그대로
+        self.assertEqual(new["customXml/item1.xml"], (b"<stored/>" * 20, zipfile.ZIP_STORED))
         for name, (data, ctype) in old.items():
             if name != "xl/vbaProject.bin":
                 self.assertEqual(new[name], (data, ctype), name)

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import shutil
 import tempfile
 import zipfile
 from pathlib import Path
@@ -35,7 +34,8 @@ def vba_part(path: Path) -> tuple[str, bytes] | None:
 def restore_vba(before: Path, after: Path) -> tuple[int, int]:
     """after 의 매크로 파트를 before 의 원본 바이트로 바꾼다. (바꾸기 전 크기, 바꾼 뒤 크기).
 
-    같은 폴더 임시 파일에 다 쓴 뒤 옮긴다 — 중간에 실패하면 after 는 그대로다.
+    같은 폴더 임시 파일에 다 쓴 뒤 os.replace 로 바꿔 끼운다(같은 볼륨이라 Windows 에서도 원자적).
+    중간에 실패하면 after 는 그대로다.
     """
     original = vba_part(before)
     if original is None:
@@ -55,7 +55,7 @@ def restore_vba(before: Path, after: Path) -> tuple[int, int]:
         except BaseException:
             os.unlink(tmp)
             raise
-    shutil.move(tmp, after)
+    os.replace(tmp, after)
     return old_size, len(data)
 
 

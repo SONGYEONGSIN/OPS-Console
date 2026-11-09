@@ -31,6 +31,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from vba import vba_module_hashes, vba_part
 
+LABEL_TARGETS = "대상 시트 지정"
 LABEL_SHEETS = "시트 목록(이름·숨김·순서)"
 LABEL_VBA_EXISTS = "vbaProject.bin 존재"
 LABEL_VBA_HASH = "vbaProject.bin 바이트 sha256 동일"
@@ -86,9 +87,15 @@ def sheet_meta(ws) -> dict:
 
 
 def names_of(wb) -> dict[str, tuple]:
-    out = {n: (d.attr_text, d.localSheetId, d.hidden) for n, d in wb.defined_names.items()}
+    """이름 → (참조, 범위 시트 이름, 숨김). localSheetId 는 번호 대신 그 시트 이름으로 푼다 —
+    07 이 처음 끼어드는 실행에서 뒤 시트 번호가 밀려 거짓 실패가 나지 않게."""
+    def scope(lid):
+        return wb.sheetnames[lid] if isinstance(lid, int) and 0 <= lid < len(wb.sheetnames) else lid
+
+    out = {n: (d.attr_text, scope(d.localSheetId), d.hidden) for n, d in wb.defined_names.items()}
     for ws in wb.worksheets:
-        out.update({f"{ws.title}!{n}": (d.attr_text, d.localSheetId, d.hidden) for n, d in ws.defined_names.items()})
+        out.update({f"{ws.title}!{n}": (d.attr_text, scope(d.localSheetId), d.hidden)
+                    for n, d in ws.defined_names.items()})
     return out
 
 
@@ -288,7 +295,9 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
     awb = load_workbook(after, keep_vba=True)
     try:
         targets = {sd["sheet"] for sd in sheets}
-        checks = [_check_sheet_list(bwb, awb, sheets)]
+        # 대상이 비면 9번 검사가 통째로 빠진 채 통과한다 — 빈 목록은 그 자체로 실패
+        checks = [Check(LABEL_TARGETS, bool(sheets), f"{len(sheets)}장"),
+                  _check_sheet_list(bwb, awb, sheets)]
         checks += _check_vba(before, after, module_hashes)
         checks += _check_names(before, after, bwb, awb, targets)
         checks += _check_untouched(bwb, awb, targets)

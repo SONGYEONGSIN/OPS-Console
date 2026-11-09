@@ -8,7 +8,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from openpyxl.formatting.rule import CellIsRule
 from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.datavalidation import DataValidation
+
+from openpyxl import load_workbook
 
 import compare
 import fixtures
@@ -102,7 +106,55 @@ class VerifyTest(unittest.TestCase):
     def test_06_07_교체는_시트_목록이_그대로여야(self):
         checks = self._verify(self._write("after.xlsm", after_sheets()))
         self.assertEqual(self._failed(checks), [])
-        self.assertEqual(len(checks), 8 + 9 * 2)
+        self.assertEqual(len(checks), 9 + 9 * 2)
+
+    def test_대상_시트가_비면_실패(self):
+        checks = self._verify(self._write("after.xlsm", base_sheets(), {compare.SHEET: 1, compare.PIMS_SHEET: 0}),
+                              sheets=())
+        self.assertEqual(self._failed(checks), [verify.LABEL_TARGETS])
+
+    def _with(self, name, extra, sheets=None):
+        """기본 모양에 extra(wb) 를 더 얹은 작업 사본."""
+        def setup(wb):
+            with_view({compare.SHEET: 2, compare.PIMS_SHEET: 1})(wb)
+            extra(wb)
+        p = self.dir / name
+        p.write_bytes(fixtures.make_xlsm_like(sheets or after_sheets(), VBA, setup=setup))
+        return p
+
+    def test_대상_외_시트_값_타입이_바뀌면_실패(self):
+        changed = after_sheets(_학교=[["테스트대학교A", "=A1"], ["테스트대학교B", "9001"]])
+        checks = self._verify(self._write("after.xlsm", changed))
+        self.assertEqual(self._failed(checks), [verify.LABEL_CELLS])
+
+    def test_대상_외_틀_고정이_바뀌면_실패(self):
+        p = self._with("after.xlsm", lambda wb: setattr(wb["05. 제출 서류 기준"], "freeze_panes", "A2"))
+        self.assertEqual(self._failed(self._verify(p)), [verify.LABEL_META])
+
+    def test_대상_외_조건부_서식이_바뀌면_실패(self):
+        def cf(wb):
+            wb["05. 제출 서류 기준"].conditional_formatting.add(
+                "A1:A2", CellIsRule(operator="equal", formula=['"X"']))
+        self.assertEqual(self._failed(self._verify(self._with("after.xlsm", cf))), [verify.LABEL_META])
+
+    def test_대상_외_유효성이_바뀌면_실패(self):
+        def dv(wb):
+            v = DataValidation(type="list", formula1='"가,나"')
+            v.add("A2")
+            wb["05. 제출 서류 기준"].add_data_validation(v)
+        self.assertEqual(self._failed(self._verify(self._with("after.xlsm", dv))), [verify.LABEL_META])
+
+    def test_시트_범위_이름은_번호가_밀려도_같다(self):
+        def local(wb):
+            wb["_학교"].defined_names.add(DefinedName("고를값_로컬", attr_text="'_학교'!$A$1:$A$2"))
+        s = base_sheets()
+        del s[compare.PIMS_SHEET]
+        p = self.dir / "before.xlsm"
+        p.write_bytes(fixtures.make_xlsm_like(s, VBA, setup=lambda wb: (with_view({compare.SHEET: 1})(wb), local(wb))))
+        self.before = p
+        checks = self._verify(self._with("after.xlsm", local))
+        self.assertEqual(self._failed(checks), [])
+        self.assertIn("_학교!고를값_로컬", verify.names_of(load_workbook(p)))
 
     def test_시트_순서가_바뀌면_실패(self):
         s = after_sheets()
@@ -164,6 +216,21 @@ class VerifyTest(unittest.TestCase):
         extra = MOA["rows"] + [[None, None, None, None, None, None, None, None, None, "남은 칸"]]
         checks = self._verify(self._write("after.xlsm", after_sheets(**{compare.SHEET: layout(MOA, extra)})))
         self.assertIn(f"{compare.SHEET}: 데이터 = 생성 데이터(셀 단위)", self._failed(checks))
+
+    def test_데이터_중간_빈_행은_불일치(self):
+        gap = [MOA["rows"][0], [None] * 10, MOA["rows"][1]]
+        checks = self._verify(self._write("after.xlsm", after_sheets(**{compare.SHEET: layout(MOA, gap)})))
+        self.assertIn(f"{compare.SHEET}: 데이터 = 생성 데이터(셀 단위)", self._failed(checks))
+
+    def test_헤더_너비_밖_남은_칸을_잡는다(self):
+        wide = [list(MOA["rows"][0]) + ["남은 칸"], MOA["rows"][1]]
+        checks = self._verify(self._write("after.xlsm", after_sheets(**{compare.SHEET: layout(MOA, wide)})))
+        self.assertEqual(self._failed(checks), [f"{compare.SHEET}: 데이터 = 생성 데이터(셀 단위)"])
+
+        rows = layout(MOA)
+        rows[7] = rows[7] + ["남은 머리글"]
+        checks = self._verify(self._write("after2.xlsm", after_sheets(**{compare.SHEET: rows})))
+        self.assertEqual(self._failed(checks), [f"{compare.SHEET}: 헤더(8행)"])
 
     def test_발신번호가_숫자면_실패(self):
         rows = [list(MOA["rows"][0]), list(MOA["rows"][1])]
