@@ -124,4 +124,12 @@ describe("buildReviewPlan", () => {
       { task: "", docName: "Z09. 업무 빈칸.docx", ownerText: "담당자A" },
     ]);
   });
+
+  it("업무 칸이 빈 행은 '대장에 있는 업무'로 치지 않는다", () => {
+    const plan = buildReviewPlan(
+      [manual({ task: "", docName: "Z09.docx", active: false })],
+      new Set([""]),
+    );
+    expect(plan.missingTasks).toEqual([""]);
+  });
 });

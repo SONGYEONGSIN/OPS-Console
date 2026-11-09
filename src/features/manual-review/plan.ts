@@ -83,7 +83,9 @@ export function buildReviewPlan(
   activeTasks: ReadonlySet<string>,
 ): ReviewPlan {
   const active = manuals.filter((m) => m.active);
-  const ledgerTasks = new Set(manuals.map((m) => m.task));
+  const ledgerTasks = new Set(
+    manuals.map((m) => m.task).filter((t) => t !== ""),
+  );
   return {
     missingTasks: [...activeTasks]
       .filter((t) => !ledgerTasks.has(t))

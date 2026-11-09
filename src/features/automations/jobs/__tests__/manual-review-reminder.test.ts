@@ -90,7 +90,9 @@ beforeEach(() => {
   vi.stubEnv("SHAREPOINT_MANUAL_LEDGER_ITEM_ID", "ledgerX");
   vi.stubEnv("MANUAL_EDIT_ADMIN_EMAILS", `${ADM1},${ADM2}`);
   vi.stubEnv("MAIL_DRY_RUN", "");
-  vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+  vi.mocked(fetchKoreanHolidays).mockResolvedValue([
+    { date: "2026-01-01", title: "신정" },
+  ]);
   source.mockResolvedValue(fixture());
   vi.mocked(loadOperatorDirectory).mockResolvedValue([
     { name: "담당자A", email: "a@example.test", status: "active" },
@@ -129,15 +131,41 @@ describe("보내는 날이 아니면 건너뛴다", () => {
     expect(source).not.toHaveBeenCalled();
   });
 
-  it("공휴일 목록을 못 받아도(빈 목록) 3월 1일은 스킵", async () => {
+  it("3월 공휴일 정보가 비면 3월 2일(대체공휴일)에도 보내지 않고 실패로 알린다", async () => {
     vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
-    const r = await runManualReviewReminder(new Date("2027-03-01T01:00:00Z"));
-    expect(r).toMatchObject({ ok: true, skipped: true });
+    const r = await runManualReviewReminder(new Date("2026-03-02T01:00:00Z"));
+    expect(r).toMatchObject({
+      ok: false,
+      message:
+        "공휴일 정보를 못 읽어 오늘은 보내지 않았습니다 — 내일 다시 시도",
+    });
+    expect(r.skipped).toBeFalsy();
     expect(source).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+    noPii(r);
   });
 
-  it("공휴일 목록이 비어도 3월 2일은 보낸다", async () => {
+  it("8월 첫 영업일에 공휴일 정보가 비면 실패 — 발송 0", async () => {
     vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+    const r = await runManualReviewReminder(new Date("2026-08-03T01:00:00Z"));
+    expect(r).toMatchObject({ ok: false });
+    expect(r.skipped).toBeFalsy();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("공휴일 정보가 비어도 주말은 실패가 아니라 스킵", async () => {
+    vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+    const r = await runManualReviewReminder(new Date("2026-08-01T01:00:00Z"));
+    expect(r).toMatchObject({ ok: true, skipped: true });
+  });
+
+  it("7월에 공휴일 정보가 비어도 스킵 — 피드를 보지 않는다", async () => {
+    vi.mocked(fetchKoreanHolidays).mockResolvedValue([]);
+    const r = await runManualReviewReminder(new Date("2026-07-06T01:00:00Z"));
+    expect(r).toMatchObject({ ok: true, skipped: true });
+  });
+
+  it("공휴일 정보가 있으면 3월 2일은 보낸다", async () => {
     const r = await runManualReviewReminder(new Date("2027-03-02T01:00:00Z"));
     expect(r.skipped).toBeFalsy();
     expect(source).toHaveBeenCalled();

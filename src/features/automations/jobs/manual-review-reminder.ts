@@ -13,11 +13,7 @@ import {
   MANUAL_SOURCE_ENV,
   fetchManualSource,
 } from "@/features/manual-ledger/source";
-import {
-  isMarchFirst,
-  reviewHalfFor,
-  type ReviewHalf,
-} from "@/features/manual-review/half";
+import { reviewHalfFor, type ReviewHalf } from "@/features/manual-review/half";
 import {
   buildReviewMail,
   buildSummaryMail,
@@ -36,6 +32,8 @@ import {
 import type { AutomationRunResult } from "../types";
 
 const ADMIN_ENV = "MANUAL_EDIT_ADMIN_EMAILS";
+const NO_HOLIDAY_FEED =
+  "공휴일 정보를 못 읽어 오늘은 보내지 않았습니다 — 내일 다시 시도";
 const RUN_FAILED = "매뉴얼 점검 안내 처리 중 오류가 발생했습니다.";
 
 type Config = { admins: string[]; dryRun: boolean };
@@ -256,9 +254,14 @@ export async function runManualReviewReminder(
     return { ok: true, skipped: true, message: "3월·8월이 아님 — 발송 안 함" };
   }
   const holidays = await fetchKoreanHolidays();
-  // 피드가 실패하면 빈 목록이 온다 — 3월 첫 호출이 삼일절에 나가지 않게 그날만은 직접 막는다.
-  if (holidays.length === 0 && isMarchFirst(now)) {
-    return { ok: true, skipped: true, message: "삼일절 — 발송 안 함" };
+  if (holidays.length === 0) {
+    // 피드가 비면 대체공휴일(3월 1일이 주말인 해의 3월 2일 등)을 가려낼 수 없다.
+    // 주말은 피드 없이도 알 수 있으니 스킵, 평일이면 실패로 남겨 일일 보고가 드러내게 한다
+    // (skipped 는 보고에 안 걸려 피드가 계속 비면 반기 알림이 통째로 안 나간다).
+    if (!canSendOn(now, [])) {
+      return { ok: true, skipped: true, message: "주말·공휴일 — 발송 안 함" };
+    }
+    return { ok: false, message: NO_HOLIDAY_FEED };
   }
   if (!canSendOn(now, holidays)) {
     return { ok: true, skipped: true, message: "주말·공휴일 — 발송 안 함" };
