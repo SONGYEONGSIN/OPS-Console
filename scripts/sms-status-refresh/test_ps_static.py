@@ -120,10 +120,42 @@ class TestRegister(unittest.TestCase):
         self.assertIn("scripts\\sms-status-refresh\\poll-local.ps1", self.reg)
 
 
+class TestExcelApply(unittest.TestCase):
+    """excel_apply.ps1 — Excel 을 띄워 볼 수 없으니(실 파일을 만진다) 지켜야 할 줄을 원문으로 본다."""
+    xl = code_of("excel_apply.ps1")
+
+    def test_COM_안전_설정(self):
+        # 매크로 강제 비활성(3)·경고 끔·이벤트 끔 — 현황 파일의 매크로가 열리는 순간 돌면 안 된다.
+        self.assertIn("AutomationSecurity = 3", self.xl)
+        self.assertIn("DisplayAlerts = $false", self.xl)
+        self.assertIn("EnableEvents = $false", self.xl)
+
+    def test_시트를_지우지_않고_같은_자리에서_비운다(self):
+        # 시트를 지웠다 만들면 다른 시트·이름 정의가 가리키던 참조가 #REF! 로 끊긴다.
+        self.assertNotIn(".Delete(", self.xl)
+        self.assertIn("$ws.AutoFilterMode = $false", self.xl)
+        self.assertIn("$ws.Cells.Clear()", self.xl)
+        self.assertIn("$ws.Rows.RowHeight = $ws.StandardHeight", self.xl)
+
+    def test_자기_PID_를_남긴다(self):
+        # COM 으로 뜬 Excel 은 pwsh 의 자식이 아니라 Python 이 시간 초과 때 이 파일의 PID 만 죽인다.
+        self.assertRegex(self.xl, r"\[Parameter\(Mandatory = \$true\)\]\[string\]\$PidFile")
+        self.assertRegex(self.xl, r"Set-Content[^\n]*\$PidFile|Out-File[^\n]*\$PidFile")
+        self.assertIn("-notcontains", self.xl)  # 먼저 떠 있던 Excel 은 뺀다
+        self.assertNotRegex(self.xl, r"Stop-Process[^\n]*-Name|Get-Process EXCEL[^\n]*Stop-Process")
+
+    def test_저장은_한_번(self):
+        self.assertEqual(self.xl.count("$wb.Save()"), 1)
+        self.assertNotIn("SaveAs", self.xl)
+        # 실패하면 저장 없이 닫고 다시 던진다.
+        self.assertIn("$wb.Close($false)", self.xl)
+        self.assertRegex(self.xl, r"(?m)^\s*throw\s*$")
+
+
 class TestEncoding(unittest.TestCase):
     def test_ps1_은_BOM_있는_UTF8(self):
         # 이 PC 의 Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 문자열이 깨진다.
-        for name in ("poll-local.ps1", "register-poll-task.ps1"):
+        for name in ("poll-local.ps1", "register-poll-task.ps1", "excel_apply.ps1"):
             self.assertTrue((HERE / name).read_bytes().startswith(b"\xef\xbb\xbf"), name)
 
 
