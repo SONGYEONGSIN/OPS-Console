@@ -141,8 +141,19 @@ class TestExcelApply(unittest.TestCase):
         # COM 으로 뜬 Excel 은 pwsh 의 자식이 아니라 Python 이 시간 초과 때 이 파일의 PID 만 죽인다.
         self.assertRegex(self.xl, r"\[Parameter\(Mandatory = \$true\)\]\[string\]\$PidFile")
         self.assertRegex(self.xl, r"Set-Content[^\n]*\$PidFile|Out-File[^\n]*\$PidFile")
-        self.assertIn("-notcontains", self.xl)  # 먼저 떠 있던 Excel 은 뺀다
-        self.assertNotRegex(self.xl, r"Stop-Process[^\n]*-Name|Get-Process EXCEL[^\n]*Stop-Process")
+        # PID 는 기동 전후 프로세스 차이가 아니라 이 COM 인스턴스의 창 핸들에서 직접 얻는다 —
+        # 그 사이 사용자가 Excel 을 열면 사용자 Excel 이 PidFile 에 적혀 강제 종료 대상이 된다.
+        self.assertIn("GetWindowThreadProcessId", self.xl)
+        self.assertIn("$xl.Hwnd", self.xl)
+        self.assertNotRegex(self.xl, r"Get-Process\s+(-Name\s+)?EXCEL")
+        self.assertNotRegex(self.xl, r"-notcontains\s+\$_\.Id|\$_\.Id\s+-notin")
+        self.assertNotIn("$before", self.xl)
+        self.assertNotRegex(self.xl, r"Stop-Process[^\n]*-Name")
+        self.assertEqual(self.xl.count("Stop-Process"), 1)
+        self.assertIn("$xlPid", self.xl)
+
+    def test_열_너비도_비운다(self):
+        self.assertIn("$ws.Columns.ColumnWidth = $ws.StandardWidth", self.xl)
 
     def test_저장은_한_번(self):
         self.assertEqual(self.xl.count("$wb.Save()"), 1)

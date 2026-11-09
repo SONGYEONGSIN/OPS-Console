@@ -10,8 +10,9 @@
   없으면 afterSheet 바로 뒤에 새로 만든다. 시트 순서와 다른 시트를 가리키는 참조가 그대로 남는다.
 - 매크로는 강제 비활성(AutomationSecurity=3), 화면·경고·이벤트 끔. 같은 이름·같은 형식(xlsm, 52)으로 저장한다.
 - 저장은 모든 시트를 쓴 뒤 한 번. 중간에 실패하면 저장하지 않고 닫은 뒤 다시 던진다(파일은 그대로).
-- 이 스크립트가 띄운 EXCEL 프로세스만 정리한다. 그 PID 를 PidFile 에 적어 둔다 — COM 으로 뜬 Excel 은
-  pwsh 의 자식이 아니라서, 시간 초과로 pwsh 를 죽인 Python 이 이 파일의 PID 만 골라 끝낸다.
+- 이 스크립트가 띄운 EXCEL 프로세스만 정리한다. 그 PID 는 COM 인스턴스의 창 핸들(Application.Hwnd)에서 직접
+  얻어 PidFile 에 적어 둔다 — 기동 전후 프로세스 목록을 비교하면 그 사이 사용자가 연 Excel 이 섞일 수 있다.
+  COM 으로 뜬 Excel 은 pwsh 의 자식이 아니라서, 시간 초과로 pwsh 를 죽인 Python 이 이 파일의 PID 만 골라 끝낸다.
 - 모양은 「03. 번호 목록」에서 읽어 맞춘다(제목 1행·안내 2~3행·헤더 8행·데이터 9행~, 행 높이·글꼴·테두리).
 - 마지막 출력 줄: 성공이면 "excel cleanup: …", 실패면 "FAILED at line N: …" (정리 뒤에 적는다).
 #>
@@ -56,11 +57,12 @@ function Get-TargetSheet($wb, $sd) {
   return $ws
 }
 
-# 같은 자리에서 비운다: 필터 해제 → 값·서식·병합 전부 Clear → 행 높이를 기본으로
+# 같은 자리에서 비운다: 필터 해제 → 값·서식·병합 전부 Clear → 행 높이·열 너비를 기본으로
 function Clear-SheetInPlace($ws) {
   $ws.AutoFilterMode = $false
   $ws.Cells.Clear()
   $ws.Rows.RowHeight = $ws.StandardHeight
+  $ws.Columns.ColumnWidth = $ws.StandardWidth
 }
 
 # 시트 바탕 글꼴 + 1~3행 제목·안내 — 03 의 A1~A3 서식과 행 높이
@@ -181,15 +183,22 @@ function Set-SheetView($xl, $ws, $sd) {
   [void]$ws.Range('A1').Select()
 }
 
-$before = @(Get-Process EXCEL -ErrorAction SilentlyContinue | ForEach-Object Id)
+# 이 COM 인스턴스의 창 핸들 → 프로세스 ID. 목록 비교와 달리 다른 Excel 이 섞일 수 없다
+Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint p);'
 $xl = New-Object -ComObject Excel.Application
-$mine = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object { $before -notcontains $_.Id } | ForEach-Object Id)
+$xlPid = [uint32]0
+[void][W.U]::GetWindowThreadProcessId([IntPtr]$xl.Hwnd, [ref]$xlPid)
+if ($xlPid -eq 0) {
+  # 자기 프로세스를 못 알아내면 PidFile 이 비어 시간 초과 때 정리할 수 없다 — 아무것도 열지 않고 멈춘다
+  $xl.Quit()
+  [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($xl)
+  throw 'EXCEL 창 핸들에서 프로세스 ID 를 얻지 못했다 — 멈춤'
+}
 $wb = $null; $src = $null; $failure = $null
 $applied = @()
 try {
   # 띄우자마자 자기 PID 부터 남긴다 — 이후 어디서 멈추든 Python 이 이 PID 만 정리할 수 있게
-  Set-Content -LiteralPath $PidFile -Value ($mine -join "`n") -Encoding ascii
-  if ($mine.Count -eq 0) { throw '새로 뜬 EXCEL 프로세스를 찾지 못했다 — 멈춤' }
+  Set-Content -LiteralPath $PidFile -Value ([string]$xlPid) -Encoding ascii
   $xl.AutomationSecurity = 3
   $xl.Visible = $false
   $xl.DisplayAlerts = $false
@@ -227,15 +236,17 @@ catch {
 }
 finally {
   foreach ($o in $src, $wb) { if ($null -ne $o) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($o) } }
-  # 새로 뜬 프로세스를 확인한 경우에만 끈다 — 못 찾았다면 사용자가 쓰던 Excel 에 붙은 것일 수 있다
-  if ($mine.Count -gt 0) { $xl.Quit() }
+  $xl.Quit()
   [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($xl)
   $xl = $null
   [GC]::Collect(); [GC]::WaitForPendingFinalizers(); [GC]::Collect()
-  foreach ($p in $mine) {
-    for ($t = 0; $t -lt 15 -and (Get-Process -Id $p -ErrorAction SilentlyContinue); $t++) { Start-Sleep -Seconds 1 }
-    if (Get-Process -Id $p -ErrorAction SilentlyContinue) { Write-Output "own EXCEL $p did not exit in 15s — stopping it"; Stop-Process -Id $p -Force }
+  # 15초 기다려도 자기 EXCEL 이 안 끝났을 때만, 그 PID 하나를 — 아직 EXCEL 이 맞을 때 — 끈다
+  for ($t = 0; $t -lt 15 -and (Get-Process -Id $xlPid -ErrorAction SilentlyContinue); $t++) { Start-Sleep -Seconds 1 }
+  $left = Get-Process -Id $xlPid -ErrorAction SilentlyContinue
+  if ($null -ne $left -and $left.ProcessName -eq 'EXCEL') {
+    Write-Output "own EXCEL $xlPid did not exit in 15s — stopping it"
+    Stop-Process -Id $xlPid -Force
   }
-  Write-Output ("excel cleanup: own=" + ($mine -join ',') + " pre-existing=" + $before.Count)
+  Write-Output ("excel cleanup: own=" + $xlPid)
   if ($null -ne $failure) { Write-Output $failure }
 }
