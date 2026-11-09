@@ -177,6 +177,14 @@ class TestPimsCollectSource(unittest.TestCase):
         self.assertIn("getPhoneNumberList(1);", text)
 
 
+class TestNoXlsmSave(unittest.TestCase):
+    """xlsm 을 openpyxl 로 다시 저장하지 않는다 — 쓰기는 Excel COM, 매크로는 zip 파트 교체뿐."""
+
+    def test_xlsm_재저장_금지(self):
+        for f in ("workbook_step.py", "verify.py", "vba.py", "compare.py"):
+            self.assertNotRegex(code_of(f), r"\.save\(", f)
+
+
 class TestEncoding(unittest.TestCase):
     def test_ps1_은_BOM_있는_UTF8(self):
         # 이 PC 의 Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 문자열이 깨진다.

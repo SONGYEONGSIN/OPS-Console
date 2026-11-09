@@ -67,10 +67,11 @@ class RefreshMainTest(unittest.TestCase):
         self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa"])
 
     def test_기본은_STEP_IDS_전부(self):
-        steps = {"moa": self._step("moa"), "pims": self._step("pims"), "other": self._step("other")}
+        steps = {"moa": self._step("moa"), "pims": self._step("pims"),
+                 "workbook": self._step("workbook"), "other": self._step("other")}
         with mock.patch.dict(refresh.REGISTERED, steps, clear=True):
             self.assertEqual(refresh.main(self._argv()), 0)
-        self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa", "pims"])
+        self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa", "pims", "workbook"])
 
     def test_모르는_단계는_2(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
