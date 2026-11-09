@@ -113,6 +113,14 @@ class TestGraph(unittest.TestCase):
                 Graph("drv", "tok", http=http).put_if_match("7", b"y", "etag-1", XLSX)
             self.assertEqual(cm.exception.code, code)
 
+    def test_빈_eTag_면_보내지_않는다(self):
+        # 빈 If-Match(또는 None 이라 헤더가 빠진 요청)는 조건 없는 덮어쓰기가 된다
+        for etag in ("", None, "  "):
+            http = FakeHttp(FakeResponse(200, item_json("7")))
+            with self.assertRaises(ValueError):
+                Graph("drv", "tok", http=http).put_if_match("7", b"y", etag, XLSX)
+            self.assertEqual(http.calls, [], repr(etag))
+
     def test_If_Match_그_밖의_실패는_GraphError(self):
         http = FakeHttp(FakeResponse(500))
         with self.assertRaises(GraphError) as cm:
@@ -134,6 +142,12 @@ class TestGraph(unittest.TestCase):
         self.assertIn("/items/5/workbook/worksheets('", url)
         self.assertIn("usedRange(valuesOnly=true)?$select=rowCount", url)
         self.assertNotIn(" ", url)
+
+    def test_used_range_rows_는_30초에_끊는다(self):
+        http = mock.MagicMock()
+        http.get.return_value = FakeResponse(200, {"rowCount": 1})
+        Graph("drv", "tok", http=http).used_range_rows("5", "_학교")
+        self.assertEqual(http.get.call_args.kwargs["timeout"], 30)
 
     def test_읽기_실패는_GraphError(self):
         http = FakeHttp(FakeResponse(404))

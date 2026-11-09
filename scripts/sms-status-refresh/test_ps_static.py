@@ -49,6 +49,18 @@ class TestPollLocal(unittest.TestCase):
         self.assertIn("SMS_STATUS_REFRESH_KEEP_WORK", self.poll)
         self.assertIn("Remove-Item", self.poll)
 
+    def test_작업_폴더_삭제_실패는_로그에_남는다(self):
+        # 번호가 든 xlsm 이 TEMP 에 조용히 남지 않게 — 실패를 삼키지 않는다
+        self.assertNotRegex(self.poll, r"Remove-Item[^\n]*SilentlyContinue")
+        self.assertIn("작업 폴더 삭제 실패", self.poll)
+        self.assertIn("Exception.GetType().Name", self.poll)
+
+    def test_시작_때_하루_지난_작업_폴더를_지운다(self):
+        sweep = self.poll.index("AddHours(-24)")
+        self.assertLess(sweep, self.poll.index("$claim = Invoke-RestMethod"))
+        self.assertIn('Join-Path $env:TEMP "sms-status-refresh"', self.poll)
+        self.assertIn("-Directory", self.poll)
+
     def test_404_는_다시_보내지_않는다(self):
         # 서버가 404 = 진행 중인 그 요청이 없다(이미 보고됐거나 마감됨). 다시 보내도 또 404 다.
         self.assertIn("-eq 404", self.poll)
@@ -120,10 +132,75 @@ class TestRegister(unittest.TestCase):
         self.assertIn("scripts\\sms-status-refresh\\poll-local.ps1", self.reg)
 
 
+class TestExcelApply(unittest.TestCase):
+    """excel_apply.ps1 — Excel 을 띄워 볼 수 없으니(실 파일을 만진다) 지켜야 할 줄을 원문으로 본다."""
+    xl = code_of("excel_apply.ps1")
+
+    def test_COM_안전_설정(self):
+        # 매크로 강제 비활성(3)·경고 끔·이벤트 끔 — 현황 파일의 매크로가 열리는 순간 돌면 안 된다.
+        self.assertIn("AutomationSecurity = 3", self.xl)
+        self.assertIn("DisplayAlerts = $false", self.xl)
+        self.assertIn("EnableEvents = $false", self.xl)
+
+    def test_시트를_지우지_않고_같은_자리에서_비운다(self):
+        # 시트를 지웠다 만들면 다른 시트·이름 정의가 가리키던 참조가 #REF! 로 끊긴다.
+        self.assertNotIn(".Delete(", self.xl)
+        self.assertIn("$ws.AutoFilterMode = $false", self.xl)
+        self.assertIn("$ws.Cells.Clear()", self.xl)
+        self.assertIn("$ws.Rows.RowHeight = $ws.StandardHeight", self.xl)
+
+    def test_자기_PID_를_남긴다(self):
+        # COM 으로 뜬 Excel 은 pwsh 의 자식이 아니라 Python 이 시간 초과 때 이 파일의 PID 만 죽인다.
+        self.assertRegex(self.xl, r"\[Parameter\(Mandatory = \$true\)\]\[string\]\$PidFile")
+        self.assertRegex(self.xl, r"Set-Content[^\n]*\$PidFile|Out-File[^\n]*\$PidFile")
+        # PID 는 기동 전후 프로세스 차이가 아니라 이 COM 인스턴스의 창 핸들에서 직접 얻는다 —
+        # 그 사이 사용자가 Excel 을 열면 사용자 Excel 이 PidFile 에 적혀 강제 종료 대상이 된다.
+        self.assertIn("GetWindowThreadProcessId", self.xl)
+        self.assertIn("$xl.Hwnd", self.xl)
+        self.assertNotRegex(self.xl, r"Get-Process\s+(-Name\s+)?EXCEL")
+        self.assertNotRegex(self.xl, r"-notcontains\s+\$_\.Id|\$_\.Id\s+-notin")
+        self.assertNotIn("$before", self.xl)
+        self.assertNotRegex(self.xl, r"Stop-Process[^\n]*-Name")
+        self.assertEqual(self.xl.count("Stop-Process"), 1)
+        self.assertIn("$xlPid", self.xl)
+
+    def test_열_너비도_비운다(self):
+        self.assertIn("$ws.Columns.ColumnWidth = $ws.StandardWidth", self.xl)
+
+    def test_저장은_한_번(self):
+        self.assertEqual(self.xl.count("$wb.Save()"), 1)
+        self.assertNotIn("SaveAs", self.xl)
+        # 실패하면 저장 없이 닫고 다시 던진다.
+        self.assertIn("$wb.Close($false)", self.xl)
+        self.assertRegex(self.xl, r"(?m)^\s*throw\s*$")
+
+
+class TestPimsCollectSource(unittest.TestCase):
+    """pims_collect.py — 화면의 상태를 바꾸는 함수는 이름조차 코드·주석에 없어야 한다."""
+
+    def test_수정_함수_이름이_없다(self):
+        # 주석 포함 원문 대조 — 금지를 적을 때는 다른 말('승인·반려 함수')로 쓴다.
+        text = (HERE / "pims_collect.py").read_text(encoding="utf-8")
+        for banned in ("updateStatus", "rejectPhone"):
+            self.assertNotIn(banned, text)
+
+    def test_조회_함수만_부른다(self):
+        text = (HERE / "pims_collect.py").read_text(encoding="utf-8")
+        self.assertIn("getPhoneNumberList(1);", text)
+
+
+class TestNoXlsmSave(unittest.TestCase):
+    """xlsm 을 openpyxl 로 다시 저장하지 않는다 — 쓰기는 Excel COM, 매크로는 zip 파트 교체뿐."""
+
+    def test_xlsm_재저장_금지(self):
+        for f in ("workbook_step.py", "verify.py", "vba.py", "compare.py"):
+            self.assertNotRegex(code_of(f), r"\.save\(", f)
+
+
 class TestEncoding(unittest.TestCase):
     def test_ps1_은_BOM_있는_UTF8(self):
         # 이 PC 의 Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 문자열이 깨진다.
-        for name in ("poll-local.ps1", "register-poll-task.ps1"):
+        for name in ("poll-local.ps1", "register-poll-task.ps1", "excel_apply.ps1"):
             self.assertTrue((HERE / name).read_bytes().startswith(b"\xef\xbb\xbf"), name)
 
 

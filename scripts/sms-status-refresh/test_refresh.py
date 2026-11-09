@@ -52,7 +52,7 @@ class RefreshMainTest(unittest.TestCase):
 
     def test_본문_파일은_ASCII_바이트뿐(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa", "한글 요약 · 저장")}, clear=True):
-            self.assertEqual(refresh.main(self._argv()), 0)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa")), 0)
         raw = self.out.read_bytes()
         self.assertTrue(raw.isascii())
         body = json.loads(raw)
@@ -67,10 +67,11 @@ class RefreshMainTest(unittest.TestCase):
         self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa"])
 
     def test_기본은_STEP_IDS_전부(self):
-        steps = {"moa": self._step("moa"), "other": self._step("other")}
+        steps = {"moa": self._step("moa"), "pims": self._step("pims"),
+                 "workbook": self._step("workbook"), "other": self._step("other")}
         with mock.patch.dict(refresh.REGISTERED, steps, clear=True):
             self.assertEqual(refresh.main(self._argv()), 0)
-        self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa"])
+        self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa", "pims", "workbook"])
 
     def test_모르는_단계는_2(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
@@ -81,7 +82,7 @@ class RefreshMainTest(unittest.TestCase):
         wm = self.tmp / "watermarks.json"
         wm.write_bytes(b"\xef\xbb\xbf" + json.dumps({"mail": "2026-11-01T00:00:00Z"}).encode())
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            self.assertEqual(refresh.main(self._argv("--watermarks", str(wm))), 0)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa", "--watermarks", str(wm))), 0)
         self.assertEqual(self.seen[0].watermarks, {"mail": "2026-11-01T00:00:00Z"})
 
     def test_watermarks_가_null_이면_빈_값(self):
@@ -89,25 +90,25 @@ class RefreshMainTest(unittest.TestCase):
         wm = self.tmp / "watermarks.json"
         wm.write_text("null", encoding="utf-8")
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            self.assertEqual(refresh.main(self._argv("--watermarks", str(wm))), 0)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa", "--watermarks", str(wm))), 0)
         self.assertEqual(self.seen[0].watermarks, {})
 
     def test_watermarks_가_객체가_아니면_2(self):
         wm = self.tmp / "watermarks.json"
         wm.write_text("[1, 2]", encoding="utf-8")
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            self.assertEqual(refresh.main(self._argv("--watermarks", str(wm))), 2)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa", "--watermarks", str(wm))), 2)
 
     def test_dry_run_env(self):
         steps = {"moa": self._step("moa")}
         with mock.patch.dict(os.environ, {"SMS_STATUS_REFRESH_DRY_RUN": "true"}):
             with mock.patch.dict(refresh.REGISTERED, steps, clear=True):
-                refresh.main(self._argv())
+                refresh.main(self._argv("--steps", "moa"))
         self.assertTrue(self.seen[0].dry_run)
 
     def test_dry_run_기본은_꺼짐(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            refresh.main(self._argv())
+            refresh.main(self._argv("--steps", "moa"))
         self.assertFalse(self.seen[0].dry_run)
         self.assertEqual(self.seen[0].request_id, "req-1")
         self.assertEqual(self.seen[0].work_dir, self.tmp)
@@ -115,20 +116,20 @@ class RefreshMainTest(unittest.TestCase):
     def test_실패_덤프는_작업_폴더로(self):
         # scrape._dump_page 기본값은 현재 폴더(= 스케줄러가 돌리는 원래 폴더의 레포 루트)다.
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            refresh.main(self._argv())
+            refresh.main(self._argv("--steps", "moa"))
         self.assertEqual(os.environ["CLOSING_DUMP_DIR"], str(self.tmp))
 
     def test_실패_덤프_폴더를_이미_정했으면_그대로(self):
         with mock.patch.dict(os.environ, {"CLOSING_DUMP_DIR": "D:/dumps"}):
             with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-                refresh.main(self._argv())
+                refresh.main(self._argv("--steps", "moa"))
             self.assertEqual(os.environ["CLOSING_DUMP_DIR"], "D:/dumps")
 
     def test_dotenv_가_없으면_2(self):
         # 계속 돌면 계정 env 가 비어 'Moa 로그인 실패' 로 잘못 보인다.
         with mock.patch.dict(sys.modules, {"dotenv": None}):
             with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-                self.assertEqual(refresh.main(self._argv()), 2)
+                self.assertEqual(refresh.main(self._argv("--steps", "moa")), 2)
         self.assertEqual(self.seen, [])
         self.assertFalse(self.out.exists())
 
@@ -137,7 +138,7 @@ class RefreshMainTest(unittest.TestCase):
         envf.write_text("SRR_TEST_A=from-file\nSRR_TEST_B=from-file\n", encoding="utf-8")
         with mock.patch.dict(os.environ, {"SMS_STATUS_REFRESH_ENV_FILE": str(envf), "SRR_TEST_A": "pre"}):
             with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-                refresh.main(self._argv())
+                refresh.main(self._argv("--steps", "moa"))
             self.assertEqual(os.environ["SRR_TEST_A"], "pre")
             self.assertEqual(os.environ["SRR_TEST_B"], "from-file")
 

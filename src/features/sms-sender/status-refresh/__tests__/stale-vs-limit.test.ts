@@ -31,4 +31,15 @@ describe("STALE 임계 vs 실행 제한", () => {
   it("실행 제한은 정상 소요(약 10분)의 두 배 이상", () => {
     expect(limitMin()).toBeGreaterThanOrEqual(20);
   });
+
+  // 폴러 실행 예산(refresh.py)은 실행 제한보다 짧아야 끊기기 전에 보고·정리를 한다.
+  it("실행 예산이 실행 제한보다 짧다", () => {
+    const refresh = readFileSync(
+      join(process.cwd(), "scripts/sms-status-refresh/refresh.py"),
+      "utf8",
+    );
+    const m = /^RUN_BUDGET_S = (\d+) \* 60\b/m.exec(refresh);
+    expect(m).not.toBeNull();
+    expect(Number(m![1])).toBeLessThan(limitMin());
+  });
 });

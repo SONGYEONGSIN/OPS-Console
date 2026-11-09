@@ -43,6 +43,31 @@ if (-not $secret -or -not $base) {
 . (Join-Path $PSScriptRoot "../lib/Heartbeat.ps1")
 Send-PollerHeartbeat -BaseUrl $base -Secret $secret -PollerId "sms-status-refresh"
 
+$log = Join-Path $repo "scripts\sms-status-refresh\poll-local.log"
+$workRoot = Join-Path $env:TEMP "sms-status-refresh"
+
+# 작업 폴더(번호가 든 xlsm·목록)를 지운다. 실패는 삼키지 않고 경로와 예외 이름만 로그에 남긴다.
+function Remove-WorkDir([string]$path) {
+    try {
+        Remove-Item -Recurse -Force -Path $path
+    } catch {
+        "[poll] 작업 폴더 삭제 실패: $path ($($_.Exception.GetType().Name))" | Out-File -Append -Encoding utf8 $log
+    }
+}
+
+# 지난 실행이 남긴 작업 폴더 — 하루 지난 것은 지운다(남김 설정으로 둔 진단용 폴더도 하루 뒤엔 지운다).
+# 실행 제한이 30분이라 하루 지난 폴더를 쓰는 실행은 없다.
+if (Test-Path $workRoot) {
+    $cutoff = (Get-Date).AddHours(-24)
+    try {
+        $old = @(Get-ChildItem -Path $workRoot -Directory | Where-Object { $_.LastWriteTime -lt $cutoff })
+    } catch {
+        $old = @()
+        "[poll] 작업 폴더 삭제 실패: $workRoot 목록 읽기 ($($_.Exception.GetType().Name))" | Out-File -Append -Encoding utf8 $log
+    }
+    foreach ($dir in $old) { Remove-WorkDir $dir.FullName }
+}
+
 $headers = @{ Authorization = "Bearer $secret" }
 $uri = "$base/api/sms-status-refresh/request"
 $jsonType = "application/json; charset=utf-8"
@@ -87,7 +112,7 @@ $id = [string]$claim.request.id
 Write-Host "[poll] 요청 claim: $id"
 
 # --- 2) 작업 폴더 + 기준 시각 ---
-$work = Join-Path $env:TEMP "sms-status-refresh\$id"
+$work = Join-Path $workRoot $id
 New-Item -ItemType Directory -Force -Path $work | Out-Null
 $wmPath = Join-Path $work "watermarks.json"
 $bodyPath = Join-Path $work "body.json"
@@ -99,7 +124,6 @@ if ($null -ne $claim.request.watermarks) {
 [IO.File]::WriteAllText($wmPath, $wmJson, [Text.Encoding]::UTF8)
 
 # --- 3) refresh.py 실행 ---
-$log = Join-Path $repo "scripts\sms-status-refresh\poll-local.log"
 $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 "=== $ts 시작 (요청 $id) ===" | Out-File -Append -Encoding utf8 $log
 
@@ -179,7 +203,7 @@ Write-Host "[poll] $msg (reported=$reported)"
 $keep = $env:SMS_STATUS_REFRESH_KEEP_WORK
 if (-not $keep) { $keep = Get-DotEnv $envPath "SMS_STATUS_REFRESH_KEEP_WORK" }
 if ($keep -ne "true") {
-    Remove-Item -Recurse -Force -Path $work -ErrorAction SilentlyContinue
+    Remove-WorkDir $work
 }
 
 if (-not $reported) { exit 1 }
