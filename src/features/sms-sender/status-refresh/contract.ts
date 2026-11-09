@@ -12,6 +12,7 @@ import { z } from "zod";
 
 export const STEP_LABEL: Record<string, string> = {
   moa: "Moa 수집",
+  pims: "PIMS 수집",
   workbook: "현황 파일",
 };
 
@@ -31,6 +32,14 @@ export const FAILURE_COPY: Record<string, string> = {
     "Moa 발신번호 화면의 열이 바뀌어 저장하지 않았습니다. 관리자에게 알려 주세요.",
   moa_incomplete:
     "Moa 발신번호 목록을 끝까지 읽지 못했거나 지난번보다 절반 넘게 줄어 저장하지 않았습니다. 잠시 뒤 다시 누르고, 또 그러면 관리자에게 알려 주세요.",
+  pims_login_failed:
+    "PIMS 모니터링 로그인에 실패했습니다(아이디·비밀번호는 Moa 와 같습니다). 관리자에게 알려 주세요.",
+  pims_empty:
+    "PIMS SMS 번호관리 화면이 비어 있어 저장하지 않았습니다. 잠시 뒤 다시 누르세요.",
+  pims_shape_changed:
+    "PIMS SMS 번호관리 화면의 열이 바뀌어 저장하지 않았습니다. 관리자에게 알려 주세요.",
+  pims_incomplete:
+    "PIMS 발신번호 목록을 끝까지 읽지 못했거나(처리상태 전체 조회 실패 포함) 지난번보다 절반 넘게 줄어 저장하지 않았습니다. 잠시 뒤 다시 누르고, 또 그러면 관리자에게 알려 주세요.",
   source_missing:
     "Teams 에서 현황 파일이나 세종·Moa·PIMS 등록 리스트를 찾지 못했습니다. 폴더를 확인하세요.",
   source_shape:

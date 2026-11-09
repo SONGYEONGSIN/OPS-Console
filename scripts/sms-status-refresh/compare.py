@@ -54,13 +54,16 @@ def text(v) -> str:
 
 
 def ymd(v) -> str:
-    """datetime 이든 'YYYY.MM.DD' 문자열이든 'YYYY-MM-DD' 텍스트로. 못 읽으면 원문."""
+    """datetime 이든 'YYYY.MM.DD' 문자열이든 'YYYY-MM-DD' 텍스트로. 못 읽으면 원문.
+
+    'YYYY-MM-DD HH:MM[:SS]' 처럼 시각이 붙은 문자열은 날짜만 남긴다(PIMS 모니터링 화면 형식).
+    """
     if v is None:
         return ""
     if isinstance(v, (dt.datetime, dt.date)):
         return v.strftime("%Y-%m-%d")
     s = str(v).strip()
-    m = re.fullmatch(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})\.?", s)
+    m = re.fullmatch(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})\.?(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?", s)
     return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}" if m else s
 
 

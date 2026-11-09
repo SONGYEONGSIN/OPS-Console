@@ -163,6 +163,20 @@ class TestExcelApply(unittest.TestCase):
         self.assertRegex(self.xl, r"(?m)^\s*throw\s*$")
 
 
+class TestPimsCollectSource(unittest.TestCase):
+    """pims_collect.py — 화면의 상태를 바꾸는 함수는 이름조차 코드·주석에 없어야 한다."""
+
+    def test_수정_함수_이름이_없다(self):
+        # 주석 포함 원문 대조 — 금지를 적을 때는 다른 말('승인·반려 함수')로 쓴다.
+        text = (HERE / "pims_collect.py").read_text(encoding="utf-8")
+        for banned in ("updateStatus", "rejectPhone"):
+            self.assertNotIn(banned, text)
+
+    def test_조회_함수만_부른다(self):
+        text = (HERE / "pims_collect.py").read_text(encoding="utf-8")
+        self.assertIn("getPhoneNumberList(1);", text)
+
+
 class TestEncoding(unittest.TestCase):
     def test_ps1_은_BOM_있는_UTF8(self):
         # 이 PC 의 Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 문자열이 깨진다.

@@ -33,10 +33,12 @@ for _p in (_HERE.parent / "moa-closing", _HERE):
 
 from contract import STEP_IDS, Context, Step, build_body, run_steps  # noqa: E402
 from moa_collect import run_moa_step  # noqa: E402
+from pims_collect import run_pims_step  # noqa: E402
 
 # 단계 id → Step. selenium·Moa 로그인 모듈은 단계 함수 안에서 늦게 import 한다(테스트가 브라우저 없이 돈다).
 REGISTERED: dict[str, Step] = {
     "moa": Step("moa", run_moa_step),
+    "pims": Step("pims", run_pims_step),  # needs 없음 — Moa 가 실패해도 돈다
 }
 
 

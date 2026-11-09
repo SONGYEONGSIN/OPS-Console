@@ -52,7 +52,7 @@ class RefreshMainTest(unittest.TestCase):
 
     def test_본문_파일은_ASCII_바이트뿐(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa", "한글 요약 · 저장")}, clear=True):
-            self.assertEqual(refresh.main(self._argv()), 0)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa")), 0)
         raw = self.out.read_bytes()
         self.assertTrue(raw.isascii())
         body = json.loads(raw)
@@ -67,10 +67,10 @@ class RefreshMainTest(unittest.TestCase):
         self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa"])
 
     def test_기본은_STEP_IDS_전부(self):
-        steps = {"moa": self._step("moa"), "other": self._step("other")}
+        steps = {"moa": self._step("moa"), "pims": self._step("pims"), "other": self._step("other")}
         with mock.patch.dict(refresh.REGISTERED, steps, clear=True):
             self.assertEqual(refresh.main(self._argv()), 0)
-        self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa"])
+        self.assertEqual([s["step"] for s in self._body()["result"]["steps"]], ["moa", "pims"])
 
     def test_모르는_단계는_2(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
@@ -81,7 +81,7 @@ class RefreshMainTest(unittest.TestCase):
         wm = self.tmp / "watermarks.json"
         wm.write_bytes(b"\xef\xbb\xbf" + json.dumps({"mail": "2026-11-01T00:00:00Z"}).encode())
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            self.assertEqual(refresh.main(self._argv("--watermarks", str(wm))), 0)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa", "--watermarks", str(wm))), 0)
         self.assertEqual(self.seen[0].watermarks, {"mail": "2026-11-01T00:00:00Z"})
 
     def test_watermarks_가_null_이면_빈_값(self):
@@ -89,7 +89,7 @@ class RefreshMainTest(unittest.TestCase):
         wm = self.tmp / "watermarks.json"
         wm.write_text("null", encoding="utf-8")
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            self.assertEqual(refresh.main(self._argv("--watermarks", str(wm))), 0)
+            self.assertEqual(refresh.main(self._argv("--steps", "moa", "--watermarks", str(wm))), 0)
         self.assertEqual(self.seen[0].watermarks, {})
 
     def test_watermarks_가_객체가_아니면_2(self):
@@ -102,12 +102,12 @@ class RefreshMainTest(unittest.TestCase):
         steps = {"moa": self._step("moa")}
         with mock.patch.dict(os.environ, {"SMS_STATUS_REFRESH_DRY_RUN": "true"}):
             with mock.patch.dict(refresh.REGISTERED, steps, clear=True):
-                refresh.main(self._argv())
+                refresh.main(self._argv("--steps", "moa"))
         self.assertTrue(self.seen[0].dry_run)
 
     def test_dry_run_기본은_꺼짐(self):
         with mock.patch.dict(refresh.REGISTERED, {"moa": self._step("moa")}, clear=True):
-            refresh.main(self._argv())
+            refresh.main(self._argv("--steps", "moa"))
         self.assertFalse(self.seen[0].dry_run)
         self.assertEqual(self.seen[0].request_id, "req-1")
         self.assertEqual(self.seen[0].work_dir, self.tmp)

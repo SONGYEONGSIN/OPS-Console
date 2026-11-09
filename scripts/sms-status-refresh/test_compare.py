@@ -234,6 +234,20 @@ class DeltaTest(unittest.TestCase):
                     self.assertNotIn(cell, line)
 
 
+class YmdTest(unittest.TestCase):
+    def test_시각이_붙은_문자열은_날짜만(self):
+        # PIMS 모니터링 화면의 등록일자는 'YYYY-MM-DD HH:MM:SS' 로 온다.
+        self.assertEqual(compare.ymd("2026-11-04 10:20:30"), "2026-11-04")
+        self.assertEqual(compare.ymd("2026-11-04 10:20"), "2026-11-04")
+
+    def test_기존_입력은_그대로(self):
+        self.assertEqual(compare.ymd(datetime(2026, 11, 4, 9, 5)), "2026-11-04")
+        self.assertEqual(compare.ymd("2026.1.5"), "2026-01-05")
+        self.assertEqual(compare.ymd("2026-11-04"), "2026-11-04")
+        self.assertEqual(compare.ymd(None), "")
+        self.assertEqual(compare.ymd("대표번호"), "대표번호")
+
+
 class SourceHygieneTest(unittest.TestCase):
     def test_compare_는_저장하지_않고_출력하지_않는다(self):
         with io.open(compare.__file__, encoding="utf-8") as f:
