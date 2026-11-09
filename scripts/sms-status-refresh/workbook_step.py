@@ -59,6 +59,10 @@ TARGETS = ("06. Moa 대조", "07. PIMS 대조")
 AFTER_RETRIES = 3  # 올린 뒤 행 수가 다르면 다시 보는 횟수
 AFTER_WAIT_S = 10  # Graph 통합 문서 읽기가 새 버전을 늦게 보는 것을 기다린다
 
+EXCEL_MAX_S = 600  # Excel 한 번의 상한
+EXCEL_MIN_S = 300  # 실행 마감까지 이보다 적게 남으면 Excel 을 띄우지 않는다
+EXCEL_RESERVE_S = 120  # Excel 이 끊긴 뒤 정리·보고에 남기는 몫
+
 _SCRIPT = Path(__file__).resolve().parent / "excel_apply.ps1"
 _FAILED_LINE = re.compile(r"FAILED at line \d+")
 
@@ -75,11 +79,26 @@ def _kill_own_excel(pid_file: Path) -> None:
     except (OSError, ValueError):  # 없음·ASCII 아님(UnicodeDecodeError)
         return
     if pid.isdigit() and int(pid) > 0:
-        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, check=False)
+        # PID 가 그 사이 다른 프로그램에 재사용됐어도 Excel 이 아니면 끝내지 않는다
+        subprocess.run(["taskkill", "/F", "/PID", pid, "/FI", "IMAGENAME eq EXCEL.EXE"],
+                       capture_output=True, check=False)
 
 
-def apply_excel(workbook: Path, data: Path, pid_file: Path, timeout_s: int = 900) -> None:
+def excel_timeout(deadline: float | None, now: float) -> int:
+    """실행 마감 안에서 Excel 에 줄 시간. 너무 적게 남았으면 띄우지 않고 excel_failed."""
+    if deadline is None:
+        return EXCEL_MAX_S
+    remaining = deadline - now
+    if remaining < EXCEL_MIN_S:
+        raise StepFailure("excel_failed", "시간 부족")
+    return int(min(EXCEL_MAX_S, remaining - EXCEL_RESERVE_S))
+
+
+def apply_excel(workbook: Path, data: Path, pid_file: Path, timeout_s: int | None = None, *,
+                deadline: float | None = None, clock: Callable[[], float] = time.monotonic) -> None:
     """excel_apply.ps1 로 작업 사본에 06·07 을 쓴다. 실패·시간 초과는 excel_failed."""
+    if timeout_s is None:
+        timeout_s = excel_timeout(deadline, clock())
     pwsh = shutil.which("pwsh")
     if not pwsh:
         raise StepFailure("excel_failed", "pwsh 없음")
@@ -192,8 +211,8 @@ def _upload(graph, item_id: str, data: bytes, etag: str) -> None:
         try:
             graph.put_if_match(item_id, data, etag, XLSM)
         except (requests.Timeout, requests.ConnectionError) as e:
-            # 응답을 못 받았을 뿐 서버는 받았을 수 있다
-            raise StepFailure("unknown", f"업로드 여부 불명 {type(e).__name__}") from None
+            # 응답을 못 받았을 뿐 서버는 받았을 수 있다 — '안 올라갔다' 로 읽히지 않게 따로 적는다
+            raise StepFailure("upload_unknown", type(e).__name__) from None
     except UploadRejected as e:
         raise StepFailure(e.code) from None
     except GraphError as e:
@@ -245,6 +264,15 @@ def _changes(sheets: list[dict], prev: dict[str, dict[str, int]]) -> tuple[str, 
                             sd["order"]) for sd in sheets)
 
 
+def _etag_tail(graph, item_id: str, etag: str) -> str:
+    """시험 실행 끝의 eTag 재확인 — 우리 쪽 읽기(통합 문서 API)가 eTag 를 올리면 실운영은 매번 changed 다."""
+    try:
+        same = graph.item(item_id).etag == etag
+    except GraphError as e:
+        raise _graph_failure(e) from None
+    return " · eTag 유지" if same else " · eTag 변경됨(업로드였다면 changed)"
+
+
 def _stale_tail(ctx: Context) -> str:
     tail = ""
     for sid, label in (("moa", "Moa"), ("pims", "PIMS")):
@@ -257,13 +285,15 @@ def run_workbook_step(
     ctx: Context,
     *,
     graph_factory=Graph.from_env,
-    apply=apply_excel,
+    apply=None,
     restore=restore_vba,
     verify=verify_workbook,
     sleep: Callable[[float], None] = time.sleep,
 ) -> StepResult:
     work_dir = ctx.work_dir
     work_dir.mkdir(parents=True, exist_ok=True)
+    # 기본은 실행 마감을 Excel 타임아웃에 넘긴다. 부를 때 찾아야 테스트가 apply_excel 을 바꿔 끼울 수 있다
+    apply = apply or (lambda wb_path, data, pid: apply_excel(wb_path, data, pid, deadline=ctx.deadline))
     try:
         graph = graph_factory()
         wb, etag, app_rows = _fetch_workbook(graph, work_dir)
@@ -274,7 +304,8 @@ def run_workbook_step(
     prev = read_result_counts(work_dir / "before.xlsm", sheets)
     n = len(_apply_and_verify(work_dir, sheets, apply, restore, verify))
     if ctx.dry_run:
-        return StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 올리지 않음(시험 실행)",
+        tail = _etag_tail(graph, wb.id, etag)  # PUT 은 안 한다 — eTag 만 다시 본다
+        return StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 올리지 않음(시험 실행){tail}",
                           counts=_counts(sheets, n, False))
 
     # 결과는 올리기 전에 만들어 둔다 — 올린 뒤에는 확인 말고 아무것도 실패할 수 없게

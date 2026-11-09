@@ -51,6 +51,8 @@ export const FAILURE_COPY: Record<string, string> = {
   changed:
     "그 사이 누가 현황 파일을 저장했습니다. 다시 누르면 새 파일로 처음부터 합니다.",
   locked: "누가 현황 파일을 열어 두었습니다. 닫고 다시 누르세요.",
+  upload_unknown:
+    "현황 파일 업로드 응답을 받지 못했습니다. 올라갔을 수 있으니 Teams 에서 파일 버전 기록을 확인하고, 관리자에게 알려 주세요.",
   after_check:
     "현황 파일은 이미 올라갔지만, 다시 읽은 행 수가 맞지 않습니다. 관리자에게 알려 주세요.",
   dependency_failed: "앞 단계가 실패해 이 단계를 건너뛰었습니다.",

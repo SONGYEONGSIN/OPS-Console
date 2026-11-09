@@ -134,7 +134,7 @@ class Graph:
             f"{self._drive()}/items/{item_id}/workbook/worksheets('{q}')"
             "/usedRange(valuesOnly=true)?$select=rowCount"
         )
-        return int(self._get(url, "사용 범위", timeout=120).json()["rowCount"])
+        return int(self._get(url, "사용 범위", timeout=30).json()["rowCount"])
 
     # ── 쓰기 ──
 

@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 # `python -I` 는 스크립트 폴더를 sys.path 에 넣지 않는다 — 자기 폴더와 Moa 로그인 모듈 폴더를 직접 넣는다.
@@ -35,6 +36,10 @@ from contract import STEP_IDS, Context, Step, build_body, run_steps  # noqa: E40
 from moa_collect import run_moa_step  # noqa: E402
 from pims_collect import run_pims_step  # noqa: E402
 from workbook_step import run_workbook_step  # noqa: E402
+
+# 실행 전체 예산 — 작업 스케줄러 실행 제한(30분, register-poll-task.ps1)보다 5분 짧게 둔다.
+# 남는 5분이 결과 보고·작업 폴더 정리 몫이다. 두 값은 stale-vs-limit.test.ts·test_run_budget.py 가 묶는다.
+RUN_BUDGET_S = 25 * 60
 
 # 단계 id → Step. selenium·Moa 로그인 모듈은 단계 함수 안에서 늦게 import 한다(테스트가 브라우저 없이 돈다).
 REGISTERED: dict[str, Step] = {
@@ -93,6 +98,7 @@ def _read_watermarks(path: str | None) -> dict[str, str] | None:
 
 def main(argv: list[str]) -> int:
     args = _parse_args(argv)
+    started = time.monotonic()  # 인자·env 읽기도 예산에 넣는다
     # 로그인 실패 덤프(scrape._dump_page, 기본 현재 폴더)가 레포 루트 — 스케줄러가 돌리는 원래 폴더 —
     # 에 fail-login.* 을 남기지 않게 요청 작업 폴더로 보낸다. 이미 정했으면(.env.local 포함) 그대로.
     os.environ.setdefault("CLOSING_DUMP_DIR", args.work_dir)
@@ -109,6 +115,7 @@ def main(argv: list[str]) -> int:
         dry_run=os.getenv("SMS_STATUS_REFRESH_DRY_RUN", "").lower() == "true",
         work_dir=Path(args.work_dir),
         results={},
+        deadline=started + RUN_BUDGET_S,
     )
     results = run_steps(steps, ctx)
     for r in results:

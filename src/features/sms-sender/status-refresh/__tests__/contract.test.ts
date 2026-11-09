@@ -101,6 +101,12 @@ describe("현황 최신화 결과 계약", () => {
     );
   });
 
+  it("업로드 응답을 못 받으면 올라갔을 수 있다고 알린다", () => {
+    expect(failureCopy("upload_unknown")).toBe(
+      "현황 파일 업로드 응답을 받지 못했습니다. 올라갔을 수 있으니 Teams 에서 파일 버전 기록을 확인하고, 관리자에게 알려 주세요.",
+    );
+  });
+
   it("PIMS 수집 단계는 라벨과 실패 문구가 있다", () => {
     expect(stepLabel("pims")).toBe("PIMS 수집");
     for (const code of [

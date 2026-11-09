@@ -49,6 +49,18 @@ class TestPollLocal(unittest.TestCase):
         self.assertIn("SMS_STATUS_REFRESH_KEEP_WORK", self.poll)
         self.assertIn("Remove-Item", self.poll)
 
+    def test_작업_폴더_삭제_실패는_로그에_남는다(self):
+        # 번호가 든 xlsm 이 TEMP 에 조용히 남지 않게 — 실패를 삼키지 않는다
+        self.assertNotRegex(self.poll, r"Remove-Item[^\n]*SilentlyContinue")
+        self.assertIn("작업 폴더 삭제 실패", self.poll)
+        self.assertIn("Exception.GetType().Name", self.poll)
+
+    def test_시작_때_하루_지난_작업_폴더를_지운다(self):
+        sweep = self.poll.index("AddHours(-24)")
+        self.assertLess(sweep, self.poll.index("$claim = Invoke-RestMethod"))
+        self.assertIn('Join-Path $env:TEMP "sms-status-refresh"', self.poll)
+        self.assertIn("-Directory", self.poll)
+
     def test_404_는_다시_보내지_않는다(self):
         # 서버가 404 = 진행 중인 그 요청이 없다(이미 보고됐거나 마감됨). 다시 보내도 또 404 다.
         self.assertIn("-eq 404", self.poll)

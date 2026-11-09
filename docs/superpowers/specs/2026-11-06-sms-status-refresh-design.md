@@ -1,5 +1,7 @@
 # SMS 발신번호 현황 파일 최신화 + 제출 서류 업로드 알림 — 설계
 
+> 2026-11-09 사용자 요청으로 PIMS 수집 추가(§6.2 ② PIMS).
+
 작성 2026-11-06. 사전 조사: 세션 scratchpad `status-refresh-recon.md`(읽기 전용 조사, 개인정보 없음).
 
 ## 1. 왜
@@ -36,7 +38,6 @@
 **비목표**
 - 현황 파일을 생성 스크립트로 통째로 다시 만드는 것. 사람이 28판까지 고친 파일이라 손 수정이 지워진다.
 - 메일 내용을 현황 파일에 **자동으로** 써 넣는 것. 요약은 후보일 뿐, 반영은 사람이 한다.
-- PIMS 목록 자동 수집. 출처 화면이 확인되지 않았다 — Teams `03. PIMS 등록 리스트` 의 최신 파일을 그대로 쓴다.
 - 전체 PDF 재판정.
 
 **실패로 볼 것 (돌아가도 실패)**
@@ -100,6 +101,13 @@
 - SMS 우편함 소비자 이름 `sms-status-refresh` 를 `features/sms-codes/schemas.ts` 와 python env 양쪽에 추가. 리스가 점유 중이면(409) **폴백 없이 이 단계만 실패**로 적는다(마감·경쟁률 점검과 동시에 못 돈다). run-log 에 `(SMS: 우편함|make)`.
 - 화면 `https://moa.jinhakapply.com/Message/CallBack`, 빈 조건 `Search()`, `table.tbl.type1` 전체(페이지네이션 없음). `SetCallBackUpdate` 는 절대 부르지 않는다(수정 함수).
 - Teams `02. Moa 등록 리스트/Moa 등록 리스트_YYMMDD.xlsx` 로 저장(모든 칸 텍스트, 1행 추출 정보, 2행 헤더 — 11-04 파일과 같은 모양). 같은 날 두 번째면 이름에 `_2`.
+
+**② PIMS** (`scripts/sms-status-refresh/pims_collect.py`)
+- 사이트 PIMS 모니터링(`monitoringv2.jinhakapply.com`), 화면 「SMS 번호관리」(`PhoneManagement.aspx`). 처리상태를 **전체**로 바꿔 목록 전부를 읽는다.
+- Teams `03. PIMS 등록 리스트/PIMS 등록 리스트_YYMMDD.xlsx` 로 저장(새 파일만, 같은 날 두 번째면 `_2`).
+- 문자 인증 없음 — SMS 우편함 리스를 잡지 않는다. 계정은 Moa 와 같다(`MOA_USERNAME`/`MOA_PASSWORD`).
+- 표 행 수 = 화면이 들고 있는 원본 건수일 때만 저장한다(다르면 `pims_incomplete` — 전체로 안 바뀌어 대기만 그려진 경우).
+- 승인·반려처럼 **상태를 바꾸는 호출은 금지** — 조회 하나만 부른다.
 
 **③ 제출 서류 PDF 증분 판정**
 - 지난 성공 실행 이후 새로 생기거나 `lastModifiedDateTime` 이 바뀐 PDF 만.

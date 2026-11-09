@@ -143,6 +143,12 @@ class TestGraph(unittest.TestCase):
         self.assertIn("usedRange(valuesOnly=true)?$select=rowCount", url)
         self.assertNotIn(" ", url)
 
+    def test_used_range_rows_는_30초에_끊는다(self):
+        http = mock.MagicMock()
+        http.get.return_value = FakeResponse(200, {"rowCount": 1})
+        Graph("drv", "tok", http=http).used_range_rows("5", "_학교")
+        self.assertEqual(http.get.call_args.kwargs["timeout"], 30)
+
     def test_읽기_실패는_GraphError(self):
         http = FakeHttp(FakeResponse(404))
         with self.assertRaises(GraphError) as cm:

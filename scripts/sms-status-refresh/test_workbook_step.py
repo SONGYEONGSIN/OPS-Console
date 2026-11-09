@@ -167,7 +167,7 @@ class RunStepTest(unittest.TestCase):
     def test_PUT_이_타임아웃이면_업로드_여부_불명(self):
         for err, name in ((requests.Timeout(), "Timeout"), (requests.ConnectionError(), "ConnectionError")):
             r, _g = self._run(FakeGraph(put_error=err))
-            self.assertEqual((r.status, r.error_code, r.detail), ("failed", "unknown", f"업로드 여부 불명 {name}"))
+            self.assertEqual((r.status, r.error_code, r.detail), ("failed", "upload_unknown", name))
 
     def test_올린_뒤_확인_중_오류도_업로드됨이라고_적는다(self):
         r, g = self._run(FakeGraph(after_error=TimeoutError()))
@@ -195,9 +195,15 @@ class RunStepTest(unittest.TestCase):
     def test_dry_run_은_올리지_않는다(self):
         r, g = self._run(dry_run=True)
         self.assertEqual(r.status, "ok", r.detail)
-        self.assertEqual(r.summary, "06·07 갱신 · 검사 3/3 통과 · 올리지 않음(시험 실행)")
+        self.assertEqual(r.summary, "06·07 갱신 · 검사 3/3 통과 · 올리지 않음(시험 실행) · eTag 유지")
         self.assertEqual(g.puts, [])
         self.assertEqual(r.counts["uploaded"], 0)
+
+    def test_dry_run_은_우리_읽기가_eTag_를_바꿨는지_적는다(self):
+        r, g = self._run(FakeGraph(etags=("e1", "e2")), dry_run=True)
+        self.assertEqual(r.status, "ok", r.detail)
+        self.assertTrue(r.summary.endswith(" · eTag 변경됨(업로드였다면 changed)"), r.summary)
+        self.assertEqual(g.puts, [])
 
     def test_올린_뒤_행_수가_다르면_after_check(self):
         rows = {**honest_rows(), "_번호": APP_ROWS + 1}
@@ -333,7 +339,7 @@ class ApplyExcelTest(unittest.TestCase):
 
         err, run = self._call(fake_run)
         self.assertEqual(err.code, "excel_failed")
-        self.assertEqual(run.call_args_list[1].args[0], ["taskkill", "/F", "/PID", "4321"])
+        self.assertEqual(run.call_args_list[1].args[0], ["taskkill", "/F", "/PID", "4321", "/FI", "IMAGENAME eq EXCEL.EXE"])
 
     def test_PidFile_이_비었거나_숫자가_아니면_taskkill_을_부르지_않는다(self):
         for content in (b"", b"abc", b"\xff\xfe", None):
