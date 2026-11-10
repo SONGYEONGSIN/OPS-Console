@@ -97,6 +97,7 @@ export async function runAutomationAction(
   await recordAutomationRun(jobId, {
     ok: result.ok,
     message: result.message,
+    skipped: result.skipped,
     durationMs: Date.now() - startedMs,
   });
   revalidatePath("/dashboard/automations");

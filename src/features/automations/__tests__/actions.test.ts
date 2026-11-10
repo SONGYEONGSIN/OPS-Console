@@ -107,6 +107,17 @@ describe("runAutomationAction", () => {
     expect(r?.ok).toBe(true);
   });
 
+  it("run 이 skipped 를 돌려주면 실행 이력에 skipped 로 넘긴다", async () => {
+    const run = vi.fn(async () => ({ ok: false, skipped: true, message: "조건 필요" }));
+    mockGetJob.mockReturnValue(fakeJob(run));
+    mockCooldown.mockReturnValue(0);
+    await runAutomationAction(undefined, fd("insights-collect"));
+    expect(recordRunMock).toHaveBeenCalledWith(
+      "insights-collect",
+      expect.objectContaining({ ok: false, skipped: true }),
+    );
+  });
+
   it("localOnly 잡이면 수동 실행 거부 + run 미호출", async () => {
     const run = vi.fn();
     mockGetJob.mockReturnValue({ ...fakeJob(run), localOnly: true });

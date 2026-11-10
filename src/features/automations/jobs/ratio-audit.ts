@@ -11,5 +11,6 @@ import type { AutomationRunResult } from "../types";
  * cron 미등록 — 수동 실행 전용이며, 실제 점검은 회사 PC 폴러(poll-local.ps1)가 맡는다.
  */
 export async function runRatioAudit(): Promise<AutomationRunResult> {
-  return { ok: false, message: RATIO_RUN_NEEDS_CONDITIONS };
+  // ok:false 는 route 의 상태 코드용, skipped 는 '일부러 안 돌았다'라 실패 알림·보고에서 뺀다.
+  return { ok: false, skipped: true, message: RATIO_RUN_NEEDS_CONDITIONS };
 }
