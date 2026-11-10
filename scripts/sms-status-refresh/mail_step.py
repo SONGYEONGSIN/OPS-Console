@@ -21,12 +21,14 @@ import os
 import re
 import time
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 from typing import Callable
 
 import requests
 
+# 06·07 이 세종 리스트를 고르는 이름 규칙(pick_latest_dated) — 한 곳에서만 정한다
+from compare import _DATED
 from contract import FIRST_WATERMARK, Context, StepFailure, StepResult
 from graph import SEJONG_DIR, XLSX, Graph, GraphError
 from sms_mailbox import ACCESS_DENIED, FOLDER_MISSING, Mailbox, MailboxError, Message
@@ -48,12 +50,19 @@ _ENV_CONTACT = "SMS_STATUS_SEJONG_CONTACT_FOLDER"
 
 @dataclass(frozen=True)
 class Tally:
+    """건수만. skipped 는 총계이고 skipped_* 는 이유별(경로 문자 이름은 총계에만 든다).
+    undated = 이번에 저장한(시험 실행은 저장할) 것 중 workbook 이 못 고르는 이름."""
+
     saved: int = 0
     existing: int = 0
     skipped: int = 0
+    skipped_size: int = 0
+    skipped_inline: int = 0
+    skipped_item: int = 0
+    undated: int = 0
 
     def plus(self, other: "Tally") -> "Tally":
-        return Tally(self.saved + other.saved, self.existing + other.existing, self.skipped + other.skipped)
+        return Tally(**{f.name: getattr(self, f.name) + getattr(other, f.name) for f in fields(Tally)})
 
 
 def _ts(iso: str) -> datetime:
@@ -61,16 +70,30 @@ def _ts(iso: str) -> datetime:
 
 
 def _verdict(att) -> tuple[str, str]:
-    """(판정, 저장 이름). 판정은 ignore(발번 리스트 아님) · skip · save.
+    """(판정, 저장 이름). 판정은 ignore(발번 리스트 아님) · skip_item · skip_inline · skip_size · skip_name · save.
 
     Mac 에서 보낸 메일은 이름이 NFD 라 정규식에 안 걸린다 — NFC 로 맞춰 보고 그 이름으로 저장한다.
     """
     name = unicodedata.normalize("NFC", att.name or "").strip()
     if not LIST_NAME.search(name):
         return "ignore", name
-    if not att.is_file or att.inline or att.size > MAX_BYTES or _BAD_NAME.search(name):
-        return "skip", name
+    if not att.is_file:
+        return "skip_item", name
+    if att.inline:
+        return "skip_inline", name
+    if att.size > MAX_BYTES:
+        return "skip_size", name
+    if _BAD_NAME.search(name):
+        return "skip_name", name
     return "save", name
+
+
+_SKIP_TALLY = {
+    "skip_item": Tally(skipped=1, skipped_item=1),
+    "skip_inline": Tally(skipped=1, skipped_inline=1),
+    "skip_size": Tally(skipped=1, skipped_size=1),
+    "skip_name": Tally(skipped=1),
+}
 
 
 def _content_type(name: str) -> str:
@@ -95,12 +118,13 @@ def _handle_message(mb, graph, mid: str, existing: frozenset[str] | None) -> Tal
         verdict, name = _verdict(att)
         if verdict == "ignore":
             continue
-        if verdict == "skip":
-            tally = tally.plus(Tally(skipped=1))
+        if verdict in _SKIP_TALLY:
+            tally = tally.plus(_SKIP_TALLY[verdict])
             continue
         data = mb.attachment_bytes(mid, att.id)  # 시험 실행도 내려받는다 — 읽기 권한까지 본다
         new = _save(graph, name, data) if existing is None else name not in existing
-        tally = tally.plus(Tally(saved=1) if new else Tally(existing=1))
+        undated = 0 if _DATED.search(name) else 1
+        tally = tally.plus(Tally(saved=1, undated=undated) if new else Tally(existing=1))
     return tally
 
 
@@ -166,6 +190,9 @@ def _summary(done: list[Message], t: Tally, rest: list[Message], dry_run: bool) 
     text = f"메일 {len(done)}통 · 저장 {t.saved} · 이미 있음 {t.existing} · 건너뜀 {t.skipped}"
     if rest:
         text += f" · 남은 {len(rest)}통은 다음 실행"
+    if t.undated:
+        # 이 파일들은 workbook 이 고르지 않는다 — 06·07 비교에 안 쓰인다는 신호
+        text += f" · 날짜 이름 아님 {t.undated}"
     if dry_run:
         text += " · 저장 안 함(시험 실행)"
     return text
@@ -199,8 +226,8 @@ def run_mail_step(
         STEP,
         "ok",
         _summary(done, tally, rest, ctx.dry_run),
-        counts={"messages": len(done), "saved": tally.saved, "existing": tally.existing,
-                "skipped": tally.skipped, "remaining": len(rest)},
+        counts={"messages": len(done), **{f.name: getattr(tally, f.name) for f in fields(Tally)},
+                "remaining": len(rest)},
         # 시험 실행은 전진하지 않는다 — 이전 값을 그대로 다시 낸다
         watermark=since if ctx.dry_run else next_watermark(since, done, rest),
     )

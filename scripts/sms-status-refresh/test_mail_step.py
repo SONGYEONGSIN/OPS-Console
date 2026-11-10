@@ -15,6 +15,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import requests
+
 import mail_step
 import refresh
 from contract import FIRST_WATERMARK, Context, Step, StepResult, run_steps
@@ -145,7 +147,7 @@ class MailStepTest(unittest.TestCase):
         self.assertEqual(r.status, "ok", r.detail)
         self.assertEqual(teams.puts, [(SEJONG_DIR, LIST_NAME, b"m1/a1", XLSX),
                                       (SEJONG_DIR, "발번 리스트_딱4MB.xlsx", b"m1/a6", XLSX)])
-        self.assertEqual(r.summary, "메일 1통 · 저장 2 · 이미 있음 0 · 건너뜀 3")
+        self.assertEqual(r.summary, "메일 1통 · 저장 2 · 이미 있음 0 · 건너뜀 3 · 날짜 이름 아님 1")
         # 큰 첨부·인라인·항목 첨부·관계없는 첨부는 내려받지도 않는다
         self.assertEqual([c[2] for c in mb.calls if c[0] == "bytes"], ["a1", "a6"])
         self.assertEqual(self.made, [("tok", "box-a")])
@@ -303,6 +305,56 @@ class MailStepTest(unittest.TestCase):
             self.assertEqual(r.detail, f"MailboxError {err.status}")
             self.assertIsNone(r.watermark)
             self.assertEqual(teams.puts, [])
+
+    def test_네트워크_예외는_mail_failed_클래스_이름만(self):
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, fail={"messages_since": requests.Timeout()})
+        r, _mb, teams = self._run(mb)
+        self.assertEqual((r.status, r.error_code, r.detail), ("failed", "mail_failed", "Timeout"))
+        self.assertIsNone(r.watermark)
+        self.assertEqual(teams.puts, [])
+
+    def test_시험_실행의_Teams_목록_실패는_mail_failed(self):
+        # 삼키면 '저장 N' 을 이미 있는 것까지 세어 거짓으로 보고한다
+        class BrokenTeams(FakeTeams):
+            def children(self, path):
+                raise GraphError(503, "목록")
+
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": [att("a1", LIST_NAME)]})
+        r, _mb, _t = self._run(mb, BrokenTeams(), dry_run=True)
+        self.assertEqual((r.status, r.error_code, r.detail), ("failed", "mail_failed", "Teams 목록 GraphError 503"))
+        self.assertIsNone(r.watermark)
+
+    def test_건너뜀_이유는_건수로만(self):
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": [
+            att("a1", "발번 리스트_큰.xlsx", size=5 * MB),
+            att("a2", "발번 리스트_큰2.xlsx", size=5 * MB),
+            att("a3", "발번 리스트.png", inline=True),
+            att("a4", "발번 리스트 전달", is_file=False),
+            att("a5", "발번 리스트?.xlsx"),
+        ]})
+        r, _mb, _t = self._run(mb)
+        self.assertEqual(r.summary, "메일 1통 · 저장 0 · 이미 있음 0 · 건너뜀 5")
+        self.assertEqual((r.counts["skipped"], r.counts["skipped_size"], r.counts["skipped_inline"],
+                          r.counts["skipped_item"]), (5, 2, 1, 1))
+
+    def test_날짜_이름이_아닌_저장은_따로_센다(self):
+        # workbook 은 이름 끝 YYMMDD(_n).xlsx 만 고른다 — 아니면 06·07 비교에 안 쓰인다
+        names = [LIST_NAME, "발번 리스트_261110_2.xlsx", "발번 리스트.xlsx", "발번 리스트_261110.xls"]
+        atts_ = [att(f"a{i}", n) for i, n in enumerate(names)]
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": atts_})
+        r, _mb, teams = self._run(mb)
+        self.assertEqual(len(teams.puts), 4)
+        self.assertEqual(r.summary, "메일 1통 · 저장 4 · 이미 있음 0 · 건너뜀 0 · 날짜 이름 아님 2")
+        self.assertEqual(r.counts["undated"], 2)
+
+        # 이미 있는 것은 이번에 저장한 게 아니라 세지 않는다. 시험 실행은 저장할 것을 센다
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": atts_})
+        r, _mb, _t = self._run(mb, FakeTeams(existing=["발번 리스트.xlsx"]), dry_run=True)
+        self.assertEqual(r.summary, "메일 1통 · 저장 3 · 이미 있음 1 · 건너뜀 0 · 날짜 이름 아님 1"
+                                    " · 저장 안 함(시험 실행)")
+
+        r, _mb, _t = self._run(FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": [att("a1", LIST_NAME)]}))
+        self.assertNotIn("날짜 이름 아님", r.summary)
 
     def test_NFD_이름도_찾고_NFC_로_저장한다(self):
         nfd = unicodedata.normalize("NFD", LIST_NAME)
