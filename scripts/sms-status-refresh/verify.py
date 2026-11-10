@@ -140,7 +140,7 @@ def expected_sheet_list(before: list[tuple[str, str]], sheets: Sequence[dict]) -
         titles = [t for t, _ in out]
         if sd["sheet"] in titles:
             continue
-        if sd["afterSheet"] not in titles:
+        if sd.get("afterSheet") not in titles:  # 숨김 표(kind=table)엔 afterSheet 가 없다 — 없던 시트면 실패
             return None
         out.insert(titles.index(sd["afterSheet"]) + 1, (sd["sheet"], "visible"))
     return out
@@ -289,11 +289,19 @@ def _check_target(ws, sd: dict) -> list[Check]:
 
 # ---------------------------------------------------------------- 진입점
 def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
-                    module_hashes: Callable[[Path], dict[str, str]] = vba_module_hashes) -> list[Check]:
-    """원본(before)과 매크로를 복원한 작업 사본(after)을 대조한 검사 목록. 하나라도 ok=False 면 올리지 않는다."""
+                    module_hashes: Callable[[Path], dict[str, str]] = vba_module_hashes,
+                    baseline: Path | None = None) -> list[Check]:
+    """원본(before)과 매크로를 복원한 작업 사본(after)을 대조한 검사 목록. 하나라도 ok=False 면 올리지 않는다.
+
+    sheets 의 `kind` 가 `table` 이면 숨김 시트 검사(verify_table), 없으면 06·07 대조 시트 검사다.
+    baseline 은 기준 판정 열의 주인을 가릴 기준 판(현황 파일 첫 버전) — `_수정` 이 있으면 보지 않는다.
+    """
+    import verify_table  # verify_table 이 이 모듈의 Check·cell_repr 를 쓴다 — 순환 import 를 피해 여기서
+
     bwb = load_workbook(before, keep_vba=True)
     awb = load_workbook(after, keep_vba=True)
     try:
+        owners = verify_table.Owners.load(bwb, baseline) if any(sd.get("kind") == "table" for sd in sheets) else None
         targets = {sd["sheet"] for sd in sheets}
         # 대상이 비면 9번 검사가 통째로 빠진 채 통과한다 — 빈 목록은 그 자체로 실패
         checks = [Check(LABEL_TARGETS, bool(sheets), f"{len(sheets)}장"),
@@ -302,7 +310,9 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
         checks += _check_names(before, after, bwb, awb, targets)
         checks += _check_untouched(bwb, awb, targets)
         for sd in sheets:
-            if sd["sheet"] in awb.sheetnames and isinstance(awb[sd["sheet"]], Worksheet):
+            if sd.get("kind") == "table":
+                checks += verify_table.check_table(bwb, awb, sd, owners)
+            elif sd["sheet"] in awb.sheetnames and isinstance(awb[sd["sheet"]], Worksheet):
                 checks += _check_target(awb[sd["sheet"]], sd)
             else:
                 checks.append(Check(f"{sd['sheet']}: 시트 있음", False))
