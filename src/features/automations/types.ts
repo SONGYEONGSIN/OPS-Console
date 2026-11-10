@@ -41,6 +41,8 @@ export type AutomationJob = {
    * cron이 없어 잡이 통째로 죽는다. 토글 자체를 없애 그 상태를 만들 수 없게 한다.
    */
   manualOnly?: boolean;
+  /** [지금 실행]이 바로 실행하지 않고 띄울 조건 창. 없으면 일반 실행. */
+  conditionForm?: "ratio-audit";
 };
 
 /** automation_runs 1행의 표시용 형태 — 실행 이력 패널/하이브리드 로그 공용. */
@@ -73,4 +75,6 @@ export type AutomationStatus = {
   localOnly: boolean;
   /** 수동 전용(cron 없음) 여부 — UI가 자동 실행 토글을 숨기고 실행 버튼만 남긴다. */
   manualOnly?: boolean;
+  /** [지금 실행]이 바로 실행하지 않고 띄울 조건 창. 없으면 일반 실행. */
+  conditionForm?: "ratio-audit";
 };
