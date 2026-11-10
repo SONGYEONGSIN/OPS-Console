@@ -70,9 +70,20 @@ export const ratioSkippedSchema = z.object({
  */
 export const ratioAuditKindSchema = z.enum(["schedule", "page"]);
 
+/**
+ * 실행 조건 — 대상 API 응답의 `condition` 을 폴러가 그대로 되돌려 보낸다.
+ * 결과 메시지가 '어떤 조건으로 돌렸는지'를 한 줄로 말하게 하는 용도.
+ */
+export const ratioRunConditionSchema = z.object({
+  requestId: z.string().uuid(),
+  line: z.string().min(1).max(200),
+});
+
 export const ratioAuditIngestSchema = z.object({
   // 종류를 안 보내는 구버전 스크래퍼는 스케줄 점검으로 본다.
   kind: ratioAuditKindSchema.default("schedule"),
+  // 옛 payload(조건 없음) 호환 — 없으면 메시지에 조건 줄을 붙이지 않는다.
+  condition: ratioRunConditionSchema.optional(),
   scannedCount: z.number().int().nonnegative(),
   findings: z.array(ratioFindingSchema),
   linkErrors: z.array(ratioLinkErrorSchema),
@@ -84,4 +95,5 @@ export type RatioFinding = z.infer<typeof ratioFindingSchema>;
 export type RatioLinkError = z.infer<typeof ratioLinkErrorSchema>;
 export type RatioSkipped = z.infer<typeof ratioSkippedSchema>;
 export type RatioAuditIngest = z.infer<typeof ratioAuditIngestSchema>;
+export type RatioRunCondition = z.infer<typeof ratioRunConditionSchema>;
 export type RatioAuditKind = z.infer<typeof ratioAuditKindSchema>;

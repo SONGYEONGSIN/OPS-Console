@@ -192,3 +192,42 @@ describe("점검 종류(kind)", () => {
     expect(parsed.linkErrors[0].operatorName).toBe("");
   });
 });
+
+describe("실행 조건(condition)", () => {
+  const ID = "6f1c1f3e-2b7a-4c1e-9a55-3d2f0b8e4a11";
+  const LINE = "조건: 2년제 · 수시 · 접수 마감 전 — 대상 3건";
+
+  it("condition 은 선택 — 없어도 통과", () => {
+    const parsed = ratioAuditIngestSchema.safeParse(valid);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.condition).toBeUndefined();
+  });
+
+  it("condition 은 요청 id(uuid)와 한 줄", () => {
+    const ok = ratioAuditIngestSchema.safeParse({
+      ...valid,
+      condition: { requestId: ID, line: LINE },
+    });
+    expect(ok.success).toBe(true);
+    if (ok.success) expect(ok.data.condition).toEqual({ requestId: ID, line: LINE });
+
+    expect(
+      ratioAuditIngestSchema.safeParse({
+        ...valid,
+        condition: { requestId: "x", line: LINE },
+      }).success,
+    ).toBe(false);
+    expect(
+      ratioAuditIngestSchema.safeParse({
+        ...valid,
+        condition: { requestId: ID, line: "가".repeat(201) },
+      }).success,
+    ).toBe(false);
+    expect(
+      ratioAuditIngestSchema.safeParse({
+        ...valid,
+        condition: { requestId: ID, line: "" },
+      }).success,
+    ).toBe(false);
+  });
+});

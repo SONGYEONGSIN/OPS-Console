@@ -341,6 +341,10 @@ export function buildAdminRatioAuditHtml(args: {
   const header =
     `<p>${title} — ` +
     `순회 ${s.scannedCount} / 이상 ${s.findingCount} / 링크오류 ${s.linkErrorCount}</p>`;
+  // 이상이 0건이어도 어떤 조건으로 돌렸는지 보이도록 제목 바로 아래에 둔다.
+  const conditionHtml = args.input.condition
+    ? `<p>${escapeHtml(args.input.condition.line)}</p>`
+    : "";
 
   const failedText = args.failed.length
     ? ` · 발송 실패 ${args.failed.length}명 — ` +
@@ -385,7 +389,7 @@ export function buildAdminRatioAuditHtml(args: {
       : "";
 
   return (
-    `${header}${judgeFailed}${dispatch}${unassigned}${noFinding}${links}${skipped}` +
+    `${header}${conditionHtml}${judgeFailed}${dispatch}${unassigned}${noFinding}${links}${skipped}` +
     footerHtml()
   );
 }

@@ -698,3 +698,43 @@ describe("buildAdminRatioAuditHtml — 판정 실패", () => {
     expect(html).not.toContain("판정");
   });
 });
+
+describe("buildAdminRatioAuditHtml — 실행 조건 줄", () => {
+  const ID = "6f1c1f3e-2b7a-4c1e-9a55-3d2f0b8e4a11";
+  const LINE = "조건: 2년제 · 수시 · 접수 마감 전 — 대상 3건";
+
+  it("관리자 메시지 제목 바로 아래에 조건 한 줄", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, condition: { requestId: ID, line: LINE } },
+      unassigned: [],
+      sentCount: 0,
+      failed: [],
+    });
+    const head = html.indexOf("경쟁률 세팅 점검 — 순회");
+    const cond = html.indexOf(`<p>${LINE}</p>`);
+    expect(head).toBeGreaterThanOrEqual(0);
+    expect(cond).toBeGreaterThan(head);
+    expect(cond).toBeLessThan(html.indexOf("개인 채팅 발송"));
+  });
+
+  it("조건 줄도 이스케이프", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: { ...base, condition: { requestId: ID, line: "조건: <b>" } },
+      unassigned: [],
+      sentCount: 0,
+      failed: [],
+    });
+    expect(html).toContain("&lt;b&gt;");
+    expect(html).not.toContain("조건: <b>");
+  });
+
+  it("조건이 없으면 지금 모양 그대로", () => {
+    const html = buildAdminRatioAuditHtml({
+      input: base,
+      unassigned: [],
+      sentCount: 0,
+      failed: [],
+    });
+    expect(html).not.toContain("조건:");
+  });
+});
