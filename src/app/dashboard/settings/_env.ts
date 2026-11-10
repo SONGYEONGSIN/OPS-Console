@@ -17,6 +17,7 @@ export type EnvSnapshot = {
     receivablesItemId: { configured: boolean; preview: string };
     depositItemId: { configured: boolean; preview: string };
     manualItemId: { configured: boolean; preview: string };
+    manualLedgerItemId: { configured: boolean; preview: string };
     assignmentsItemId: { configured: boolean; preview: string };
     mailItemId: { configured: boolean; preview: string };
     pettyCashItemId: { configured: boolean; preview: string };
@@ -96,6 +97,10 @@ export function getEnvSnapshot(): EnvSnapshot {
       manualItemId: {
         configured: Boolean(process.env.SHAREPOINT_MANUAL_ITEM_ID),
         preview: preview(process.env.SHAREPOINT_MANUAL_ITEM_ID),
+      },
+      manualLedgerItemId: {
+        configured: Boolean(process.env.SHAREPOINT_MANUAL_LEDGER_ITEM_ID),
+        preview: preview(process.env.SHAREPOINT_MANUAL_LEDGER_ITEM_ID),
       },
       assignmentsItemId: {
         configured: Boolean(process.env.SHAREPOINT_ASSIGNMENTS_ITEM_ID),

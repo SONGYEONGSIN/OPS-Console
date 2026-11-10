@@ -306,6 +306,17 @@ function IntegrationsPanel({ env }: { env: EnvSnapshot }) {
         }
       />
       <Row
+        label="SharePoint 매뉴얼 구성표 파일"
+        value={
+          <>
+            <Dot ok={env.sharepoint.manualLedgerItemId.configured} />{" "}
+            <span className="text-xs text-muted">
+              {env.sharepoint.manualLedgerItemId.preview}
+            </span>
+          </>
+        }
+      />
+      <Row
         label="SharePoint 총괄장"
         value={
           <>

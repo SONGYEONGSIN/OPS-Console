@@ -16,6 +16,13 @@ describe("automation registry", () => {
     expect(typeof job?.run).toBe("function");
   });
 
+  it("manual-review-reminder 는 월 단위 서버리스 잡", () => {
+    const j = getJob("manual-review-reminder");
+    expect(j?.cadence).toBe("monthly");
+    expect(j?.localOnly).toBeFalsy();
+    expect(j?.manualOnly).toBeFalsy();
+  });
+
   it("mailbox-ingest는 localOnly 잡이고 run은 안내 메시지(ok:false)를 반환한다", async () => {
     const job = getJob("mailbox-ingest");
     expect(job).toBeDefined();

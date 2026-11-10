@@ -5,6 +5,7 @@ import { runReceivablesMailOperator } from "./jobs/receivables-mail-operator";
 import { runReceivablesMailSchool } from "./jobs/receivables-mail-school";
 import { runReceivablesDepositMatch } from "./jobs/receivables-deposit-match";
 import { runServiceNoticeMail } from "./jobs/service-notice-mail";
+import { runManualReviewReminder } from "./jobs/manual-review-reminder";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
@@ -73,6 +74,17 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     cadence: "monthly",
     cooldownMinutes: 60,
     run: runServiceNoticeMail,
+  },
+  {
+    id: "manual-review-reminder",
+    label: "매뉴얼 반기 점검 알림",
+    description:
+      "매뉴얼 대장에서 진행 중 업무의 매뉴얼을 담당자별로 묶어, 담당자 본인 메일함에서 본인에게 반기마다 한 번 점검 안내를 보냅니다.\n8월은 1·2분기(4~9월), 3월은 3·4분기(10~3월) 몫이고, 그 달 영업일이 아니면 건너뜁니다.\n관리자에게는 반기마다 한 번 발송 결과와 담당자 미확인·파일 연결 안 됨 목록을 보냅니다.",
+    // 반기 cron 두 번은 monthly 미실행 임계(840h)에 걸린다 — 매일 부르고 다른 날은 스킵으로 남긴다.
+    scheduleInfo: "매일 10:00 호출 — 3월·8월 영업일만 발송 (cron-job.org)",
+    cadence: "monthly",
+    cooldownMinutes: 60,
+    run: runManualReviewReminder,
   },
   {
     id: "weekly-report-rollover",
