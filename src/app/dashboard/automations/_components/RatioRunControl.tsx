@@ -19,7 +19,7 @@ import {
 } from "./run-control-shared";
 
 const CANCEL_CLASS =
-  "cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream";
+  "cursor-pointer border border-line bg-transparent px-3 py-1.5 text-sm text-ink hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50";
 const SUBMIT_CLASS =
   "cursor-pointer border border-vermilion bg-vermilion px-4 py-1.5 text-sm font-medium text-cream transition-colors hover:border-ink hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -93,14 +93,23 @@ function RatioRunDialog({
   const [recruit, setRecruit] = useState<string[]>([]);
   const cooling = status.cooldownRemainingMinutes > 0;
   const ready = univ.length > 0 && recruit.length > 0;
+  // 요청 중에 닫으면 뒤늦게 온 실패가 어디에도 안 보인다 — Esc·바깥 클릭·×·취소 모두 막는다
+  const close = () => {
+    if (!pending) onClose();
+  };
 
   return (
     <ModalShell
       title={`${status.label} — 실행 조건`}
-      onClose={onClose}
+      onClose={close}
       footer={
         <>
-          <button type="button" onClick={onClose} className={CANCEL_CLASS}>
+          <button
+            type="button"
+            onClick={close}
+            disabled={pending}
+            className={CANCEL_CLASS}
+          >
             취소
           </button>
           <button

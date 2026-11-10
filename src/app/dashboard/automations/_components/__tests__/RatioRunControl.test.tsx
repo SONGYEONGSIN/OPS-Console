@@ -9,7 +9,7 @@ vi.mock("@/features/automations/actions", () => ({
 
 import type { AutomationStatus } from "@/features/automations/types";
 import { RatioRunControl } from "../RatioRunControl";
-import { RUN_NOW_CLASS } from "../run-control-shared";
+import { RUN_COOLDOWN_CLASS, RUN_NOW_CLASS } from "../run-control-shared";
 
 const ratio: AutomationStatus = {
   id: "ratio-audit",
@@ -164,6 +164,41 @@ describe("RatioRunControl", () => {
     expect(await screen.findByRole("button", { name: "요청 중…" })).toBeDisabled();
     finish({ ok: true, message: "끝" });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("보내는 중에는 Esc·×·취소로 닫히지 않는다", async () => {
+    let finish: (value: { ok: boolean; message: string }) => void = () => {};
+    runRatio.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    open();
+    fireEvent.click(checkbox("4년제"));
+    fireEvent.click(checkbox("수시"));
+    fireEvent.click(runButton());
+    await screen.findByRole("button", { name: "요청 중…" });
+    expect(screen.getByRole("button", { name: "취소" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "취소" }).className).toMatch(
+      /disabled:opacity-50/,
+    );
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    finish({ ok: true, message: "끝" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("쿨다운 트리거는 쿨다운 클래스", () => {
+    render(
+      <RatioRunControl
+        status={{ ...ratio, cooldownRemainingMinutes: 12 }}
+        isAdmin
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "쿨다운 12분 — 강제 실행" }).className,
+    ).toBe(RUN_COOLDOWN_CLASS);
   });
 
   it("닫았다 다시 열면 빈 상태", () => {
