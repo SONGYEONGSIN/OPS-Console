@@ -6,8 +6,10 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enqueueLocalAuditRequest, STALE_RUNNING_MS } from "../enqueue";
+import type { RatioAuditFilters } from "../../run-filters";
 
 const NOW = new Date("2026-08-02T10:00:00+09:00");
+const F: RatioAuditFilters = { univ: ["2년제"], recruit: ["수시"] };
 const minutesAgo = (m: number) =>
   new Date(NOW.getTime() - m * 60_000).toISOString();
 
@@ -59,7 +61,7 @@ describe("enqueueLocalAuditRequest — 기본 적재", () => {
   it("선점 행이 없으면 requested_by와 함께 1건 적재", async () => {
     const { from, insert } = mockAdmin({ existing: [] });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(true);
     expect(from).toHaveBeenCalledWith("ratio_audit_requests");
@@ -67,19 +69,21 @@ describe("enqueueLocalAuditRequest — 기본 적재", () => {
       requested_by: "admin@x.com",
       status: "pending",
       kind: "schedule",
+      filters: F,
     });
   });
 
   it("cron 호출도 세션 없이 적재된다 (requested_by='automation')", async () => {
     const { insert } = mockAdmin({ existing: [] });
 
-    const r = await enqueueLocalAuditRequest("automation", NOW);
+    const r = await enqueueLocalAuditRequest("automation", NOW, "schedule", F);
 
     expect(r.ok).toBe(true);
     expect(insert).toHaveBeenCalledWith({
       requested_by: "automation",
       status: "pending",
       kind: "schedule",
+      filters: F,
     });
   });
 });
@@ -90,7 +94,7 @@ describe("enqueueLocalAuditRequest — 중복 차단", () => {
       existing: [{ id: "req-1", status: "pending", claimed_at: null }],
     });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
     expect(r.message).toMatch(/대기|진행/);
@@ -105,7 +109,7 @@ describe("enqueueLocalAuditRequest — 중복 차단", () => {
       ],
     });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
     expect(insert).not.toHaveBeenCalled();
@@ -117,7 +121,7 @@ describe("enqueueLocalAuditRequest — 중복 차단", () => {
       existing: [{ id: "req-1", status: "running", claimed_at: null }],
     });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
     expect(insert).not.toHaveBeenCalled();
@@ -131,7 +135,7 @@ describe("enqueueLocalAuditRequest — stale running 자동 복구", () => {
       existing: [{ id: "req-stale", status: "running", claimed_at: staleAt }],
     });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(true);
     // 기존 행 마감 — 여전히 running일 때만(경합 방지)
@@ -147,6 +151,7 @@ describe("enqueueLocalAuditRequest — stale running 자동 복구", () => {
       requested_by: "admin@x.com",
       status: "pending",
       kind: "schedule",
+      filters: F,
     });
   });
 
@@ -158,7 +163,7 @@ describe("enqueueLocalAuditRequest — stale running 자동 복구", () => {
       updateError: { message: "update boom" },
     });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
     expect(r.message).toContain("update boom");
@@ -174,7 +179,7 @@ describe("enqueueLocalAuditRequest — 오류 전달", () => {
   it("선점 행 조회 실패 → ok:false + 원인 메시지", async () => {
     const { insert } = mockAdmin({ selectError: { message: "select boom" } });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
     expect(r.message).toContain("select boom");
@@ -184,7 +189,7 @@ describe("enqueueLocalAuditRequest — 오류 전달", () => {
   it("insert 실패 → ok:false + 원인 메시지", async () => {
     mockAdmin({ existing: [], insertError: { message: "insert boom" } });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW);
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
     expect(r.message).toContain("insert boom");
@@ -195,13 +200,30 @@ describe("enqueueLocalAuditRequest — 점검 종류", () => {
   it("페이지 점검 요청은 kind=page로 적재한다", async () => {
     const { insert } = mockAdmin({ existing: [] });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "page");
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "page", F);
 
     expect(r.ok).toBe(true);
     expect(insert).toHaveBeenCalledWith({
       requested_by: "admin@x.com",
       status: "pending",
       kind: "page",
+      filters: F,
+    });
+  });
+
+  it("조건을 요청 행에 싣는다 — 폴러는 id 만 넘기고 대상 API 가 이 칸을 읽는다", async () => {
+    const { insert } = mockAdmin({ existing: [] });
+
+    await enqueueLocalAuditRequest("automation", NOW, "page", {
+      univ: ["4년제", "2년제"],
+      recruit: ["정시"],
+    });
+
+    expect(insert).toHaveBeenCalledWith({
+      requested_by: "automation",
+      status: "pending",
+      kind: "page",
+      filters: { univ: ["4년제", "2년제"], recruit: ["정시"] },
     });
   });
 
@@ -210,7 +232,7 @@ describe("enqueueLocalAuditRequest — 점검 종류", () => {
       existing: [{ id: "r1", status: "pending", claimed_at: null }],
     });
 
-    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "page");
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "page", F);
 
     expect(r.ok).toBe(false);
     expect(insert).not.toHaveBeenCalled();

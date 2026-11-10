@@ -2,6 +2,7 @@ import "server-only";
 import { QUEUED_MARK } from "@/features/automations/run-log-kind";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { RatioAuditKind } from "../schemas";
+import type { RatioAuditFilters } from "../run-filters";
 
 export type EnqueueResult = { ok: boolean; message: string };
 
@@ -58,11 +59,13 @@ function isStaleRunning(row: BlockingRow, now: Date): boolean {
  *
  * @param now stale 판정 기준 시각 (테스트 결정성을 위해 주입)
  * @param kind 점검 종류 — schedule(세팅·문구) / page(HTML 링크 상태)
+ * @param filters 실행 조건 — 대상 API 가 요청 id 로 읽는다
  */
 export async function enqueueLocalAuditRequest(
   requestedBy: string,
-  now: Date = new Date(),
-  kind: RatioAuditKind = "schedule",
+  now: Date,
+  kind: RatioAuditKind,
+  filters: RatioAuditFilters,
 ): Promise<EnqueueResult> {
   const admin = createAdminClient();
 
@@ -98,7 +101,7 @@ export async function enqueueLocalAuditRequest(
 
   const { error } = await admin
     .from("ratio_audit_requests")
-    .insert({ requested_by: requestedBy, status: "pending", kind });
+    .insert({ requested_by: requestedBy, status: "pending", kind, filters });
   if (error) return { ok: false, message: error.message };
 
   return {
