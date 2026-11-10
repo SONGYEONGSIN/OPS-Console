@@ -5,6 +5,7 @@ vi.mock("@/features/automations/actions", () => ({
   getJobRunLogAction: vi.fn(),
   runAutomationAction: vi.fn(),
   setAutomationEnabledAction: vi.fn(),
+  runRatioAuditAction: vi.fn(),
 }));
 
 import { AutomationHub } from "../AutomationHub";
@@ -216,5 +217,39 @@ describe("AutomationHub — 비admin 게이트", () => {
     expect(alertSpy).toHaveBeenCalledWith("관리자만 실행 가능합니다.");
     expect(setAutomationEnabledAction).not.toHaveBeenCalled();
     alertSpy.mockRestore();
+  });
+});
+
+describe("AutomationHub — 경쟁률 점검 조건 창", () => {
+  const ratio: AutomationStatus = {
+    ...base,
+    id: "ratio-audit",
+    label: "경쟁률 세팅 점검",
+    manualOnly: true,
+    conditionForm: "ratio-audit",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("경쟁률 두 잡은 지금 실행이 조건 창을 연다 — 일반 실행 액션을 부르지 않는다", () => {
+    render(<AutomationHub statuses={[ratio]} />);
+    fireEvent.click(screen.getByRole("button", { name: "지금 실행" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(runAutomationAction).not.toHaveBeenCalled();
+  });
+
+  it("다른 잡은 일반 실행 그대로 — 창이 뜨지 않는다", () => {
+    render(<AutomationHub statuses={[base]} />);
+    fireEvent.click(screen.getByRole("button", { name: "지금 실행" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("두 지금 실행 버튼의 모양이 같다", () => {
+    render(<AutomationHub statuses={[base, ratio]} />);
+    const [a, b] = screen.getAllByRole("button", { name: "지금 실행" });
+    expect(a.className).toBe(b.className);
+    expect(a.className).toContain("bg-vermilion");
   });
 });
