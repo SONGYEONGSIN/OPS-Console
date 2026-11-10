@@ -40,6 +40,8 @@ FOLDER_DEPTH = 2
 MAX_MESSAGES = 50
 BUDGET_S = 120
 MAX_BYTES = 4 * 1024 * 1024  # 단순 업로드(put_new) 상한
+# SharePoint 가 그 첨부를 받지 않는 결정적 거절 — 다시 해도 같아서 단계를 세우지 않고 첨부만 건너뛴다
+_REJECTED_STATUS = frozenset({400, 413, 415})
 
 LIST_NAME = re.compile(r"발번\s*리스트")
 # SharePoint 가 이름에 못 쓰는 글자 — `/` 는 put_new 경로에서 하위 폴더가 되어 버린다
@@ -59,6 +61,7 @@ class Tally:
     skipped_size: int = 0
     skipped_inline: int = 0
     skipped_item: int = 0
+    skipped_rejected: int = 0
     undated: int = 0
 
     def plus(self, other: "Tally") -> "Tally":
@@ -100,15 +103,17 @@ def _content_type(name: str) -> str:
     return XLSX if name.lower().endswith(".xlsx") else "application/octet-stream"
 
 
-def _save(graph, name: str, data: bytes) -> bool:
-    """새로 저장했으면 True, 같은 이름이 이미 있으면(409) False."""
+def _save(graph, name: str, data: bytes) -> str:
+    """'saved' · 'existing'(409) · 'rejected'(결정적 4xx — 다시 해도 같다)."""
     try:
         graph.put_new(SEJONG_DIR, name, data, _content_type(name))
     except GraphError as e:
         if e.status == 409:
-            return False
+            return "existing"
+        if e.status in _REJECTED_STATUS:
+            return "rejected"
         raise StepFailure("mail_failed", f"Teams 저장 GraphError {e.status}") from None
-    return True
+    return "saved"
 
 
 def _handle_message(mb, graph, mid: str, existing: frozenset[str] | None) -> Tally:
@@ -122,9 +127,15 @@ def _handle_message(mb, graph, mid: str, existing: frozenset[str] | None) -> Tal
             tally = tally.plus(_SKIP_TALLY[verdict])
             continue
         data = mb.attachment_bytes(mid, att.id)  # 시험 실행도 내려받는다 — 읽기 권한까지 본다
-        new = _save(graph, name, data) if existing is None else name not in existing
+        if existing is None:
+            outcome = _save(graph, name, data)
+        else:
+            outcome = "existing" if name in existing else "saved"
+        if outcome == "rejected":
+            tally = tally.plus(Tally(skipped=1, skipped_rejected=1))
+            continue
         undated = 0 if _DATED.search(name) else 1
-        tally = tally.plus(Tally(saved=1, undated=undated) if new else Tally(existing=1))
+        tally = tally.plus(Tally(saved=1, undated=undated) if outcome == "saved" else Tally(existing=1))
     return tally
 
 
@@ -177,6 +188,8 @@ def _connect(graph_factory):
     except GraphError as e:
         code = "mail_config" if e.status == 0 else "mail_failed"  # 0 = Graph env 누락
         raise StepFailure(code, f"GraphError {e.status}") from None
+    except requests.RequestException as e:  # 토큰 요청 중 네트워크 끊김
+        raise StepFailure("mail_failed", type(e).__name__) from None
 
 
 def _existing_names(graph) -> frozenset[str]:

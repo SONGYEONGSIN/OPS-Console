@@ -221,6 +221,44 @@ class MailStepTest(unittest.TestCase):
         self.assertIsNone(r.watermark)
         self.assertIsNone(r.to_json()["watermark"])
 
+    def test_거절된_첨부는_건너뛰고_계속한다(self):
+        # 결정적 4xx 는 매번 같은 메일에서 멈추는 포이즌 메일이 된다 — 첨부 단위로 건너뛴다
+        class RejectOne(FakeTeams):
+            def put_new(self, folder, name, data, content_type):
+                if name == "발번 리스트_거절.xlsx":
+                    raise GraphError(400, "새 파일 올리기")
+                return super().put_new(folder, name, data, content_type)
+
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]},
+                         atts={"m1": [att("a1", "발번 리스트_거절.xlsx"), att("a2", LIST_NAME)]})
+        r, _mb, teams = self._run(mb, RejectOne())
+        self.assertEqual(r.status, "ok", r.detail)
+        self.assertEqual([p[1] for p in teams.puts], [LIST_NAME])
+        self.assertEqual(r.summary, "메일 1통 · 저장 1 · 이미 있음 0 · 건너뜀 1")
+        self.assertEqual((r.counts["skipped"], r.counts["skipped_rejected"], r.counts["saved"]), (1, 1, 1))
+        self.assertEqual(r.watermark, "2026-11-02T00:01:00Z")
+
+    def test_결정적_4xx_세_가지는_모두_건너뜀(self):
+        for status in (400, 413, 415):
+            mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": [att("a1", LIST_NAME)]})
+            r, _mb, _t = self._run(mb, FakeTeams(put_error=GraphError(status, "새 파일 올리기")))
+            self.assertEqual((r.status, r.counts["skipped_rejected"]), ("ok", 1), status)
+
+    def test_429_는_단계_실패(self):
+        mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]}, atts={"m1": [att("a1", LIST_NAME)]})
+        r, _mb, _t = self._run(mb, FakeTeams(put_error=GraphError(429, "새 파일 올리기")))
+        self.assertEqual((r.status, r.error_code, r.detail), ("failed", "mail_failed", "Teams 저장 GraphError 429"))
+        self.assertIsNone(r.watermark)
+
+    def test_토큰_요청의_네트워크_예외는_mail_failed(self):
+        def boom():
+            raise requests.ConnectionError()
+
+        step = Step("mail", lambda c: run_mail_step(c, graph_factory=boom, mailbox_factory=None,
+                                                    clock=lambda: 0.0))
+        r = run_steps([step], Context("r", {}, False, mock.MagicMock(), {}))[0]
+        self.assertEqual((r.status, r.error_code, r.detail), ("failed", "mail_failed", "ConnectionError"))
+
     def test_결과에_메일_원문_없음(self):
         secret = "비밀-세종 발번 리스트_담당자이름.xlsx"
         mb = FakeMailbox(messages={"f-sj": [msg("m1", 1)]},
