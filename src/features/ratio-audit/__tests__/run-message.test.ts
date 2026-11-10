@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { automationJobIdFor, buildRunMessage } from "../run-message";
+import {
+  RATIO_AUDIT_JOB_IDS,
+  automationJobIdFor,
+  buildRunMessage,
+  ratioKindOfJob,
+} from "../run-message";
 
 /**
  * 점검 결과를 자동화 실행 로그에 남긴다.
@@ -15,6 +20,10 @@ describe("automationJobIdFor", () => {
   it("세팅 점검과 페이지 점검은 다른 잡이다", () => {
     expect(automationJobIdFor("schedule")).toBe("ratio-audit");
     expect(automationJobIdFor("page")).toBe("ratio-page-check");
+  });
+
+  it("잡 id ↔ 점검 종류는 서로 되돌아온다", () => {
+    for (const id of RATIO_AUDIT_JOB_IDS) expect(automationJobIdFor(ratioKindOfJob(id))).toBe(id);
   });
 
   it("모르는 종류면 던진다 — 엉뚱한 잡에 기록하면 그 잡이 도는 줄 안다", () => {
