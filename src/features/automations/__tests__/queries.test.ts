@@ -11,7 +11,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 
-import { computeCooldownRemaining, getJobEnabled } from "../queries";
+import {
+  computeCooldownRemaining,
+  getAutomationStatuses,
+  getJobEnabled,
+} from "../queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const mockAdmin = createAdminClient as unknown as Mock;
@@ -59,5 +63,42 @@ describe("computeCooldownRemaining", () => {
   it("정확히 쿨다운 경계는 0", () => {
     const last = new Date("2026-05-21T11:00:00Z").toISOString(); // 정확히 60분 전
     expect(computeCooldownRemaining(last, 60, now)).toBe(0);
+  });
+});
+
+describe("getAutomationStatuses — 조건 창 표식", () => {
+  // 어떤 체인 호출이든 자기 자신을 돌려주고, await 하면 빈 결과를 내는 가짜 쿼리 빌더
+  function emptyQuery(): unknown {
+    const result = { data: [], error: null, count: 0 };
+    const handler: ProxyHandler<object> = {
+      get(_t, prop) {
+        if (prop === "then") {
+          return (resolve: (v: unknown) => unknown) => resolve(result);
+        }
+        if (prop === "maybeSingle" || prop === "single") {
+          return async () => ({ data: null, error: null });
+        }
+        return () => proxy;
+      },
+    };
+    const proxy: unknown = new Proxy({}, handler);
+    return proxy;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAdmin.mockReturnValue({ from: () => emptyQuery() });
+  });
+
+  it("경쟁률 두 잡만 conditionForm 을 status 로 넘긴다", async () => {
+    const statuses = await getAutomationStatuses();
+    const withForm = statuses
+      .filter((s) => s.conditionForm)
+      .map((s) => s.id)
+      .sort();
+    expect(withForm).toEqual(["ratio-audit", "ratio-page-check"]);
+    expect(statuses.find((s) => s.id === "ratio-audit")?.conditionForm).toBe(
+      "ratio-audit",
+    );
   });
 });

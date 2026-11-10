@@ -234,8 +234,8 @@ E2E 운영 메모:
 | `receivables-mail-operator` | 평일 10:00 (KST) | 운영자별 미수채권 본인 메일 알림 | `receivables_operator_mail_sends` |
 | `receivables-deposit-match` | 매시간 | 미수 ↔ 입금내역 자동 매칭 (단건/N:1/N:M) + K/J열 PATCH + mismatch admin 알림 | `receivables_match_runs` (jsonb payload) |
 | `team-briefing` | 매주 금 10:00 — **회사 PC Windows 작업 스케줄러** (`scripts/team-briefing/publish-local.mjs`) | 주간 브리핑 **초안 생성까지만**(스티비풍 `/r/briefing/[token]`, claude -p 스토리+근속 기념일) + 본인 Teams 채팅으로 미리보기 알림. **그룹채팅 티저는 자동화 페이지 [발행] 확정 시에만 발송**. 서버 API: `/api/team-briefing/draft·stage` (CRON_SECRET), 발행은 admin server action. registry 잡(수동 실행)도 초안 생성 — **Vercel cron 스케줄은 제거 필수** | `team_briefings`(status draft/published) + `automation_runs` |
-| `ratio-audit` | 수동 실행 — 회사 PC 폴러가 수행 (cron 미등록) | **TEST 서버** 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 오설정을 담당 운영자 Teams 개인 채팅으로 알립니다. 자동화 페이지 [실행]은 `ratio_audit_requests`에 pending만 적재하고, 회사 PC 폴러(`scripts/moa-ratio/poll-local.ps1`)가 5분 내 claim해 `audit.py`를 실행 | `ratio_audit_requests` + `ratio_audit_runs` (kind=schedule) |
-| `ratio-page-check` | 수동 실행 — 같은 폴러가 수행 (cron 미등록) | **REAL 서버** 경쟁률 HTML 링크 상태(404 등)를 점검해 담당 운영자 개인 채팅으로 알립니다. 대상은 `StartDate ≥ 올해 9월 1일` — 수시 경쟁률이 열리는 9월부터 대상이 생깁니다 | `ratio_audit_requests` + `ratio_audit_runs` (kind=page) |
+| `ratio-audit` | 수동 실행 — [지금 실행] 조건 창(대학구분·모집구분, 기간은 접수 마감 전 고정) → 회사 PC 폴러가 수행 (cron 미등록) | **TEST 서버** 경쟁률 세팅(스케줄·안내 문구·접수일정)을 대조해 오설정을 담당 운영자 Teams 개인 채팅으로 알립니다. 자동화 페이지 [실행]은 `ratio_audit_requests`에 pending만 적재하고, 회사 PC 폴러(`scripts/moa-ratio/poll-local.ps1`)가 5분 내 claim해 `audit.py`를 실행. 대상은 고른 조건 × 접수 마감 전(closing_services.write_end_at ≥ 지금) | `ratio_audit_requests` + `ratio_audit_runs` (kind=schedule) |
+| `ratio-page-check` | 수동 실행 — [지금 실행] 조건 창(대학구분·모집구분, 기간은 접수 마감 전 고정) → 같은 폴러가 수행 (cron 미등록) | **REAL 서버** 경쟁률 HTML 링크 상태(404 등)를 점검해 담당 운영자 개인 채팅으로 알립니다. 대상은 세팅 점검과 같은 조건 창으로 고른다(접수 마감 전) | `ratio_audit_requests` + `ratio_audit_runs` (kind=page) |
 | `automation-digest` | 매일 11:00 (cron-job.org) | 그날 전체 잡의 실행 결과 + **미실행 감지**를 본인 Teams 노트 채팅으로 보고 | `automation_runs` |
 | `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]) + 제출 서류 폴더 새 파일·교체 → 담당 매니저 묶음 메일(본인 업로드 제외). 처음 실행은 적재만 | `sms_sender_request_notices` · `sms_sender_doc_upload_notices` |
 | `sms-status-refresh` | 수동 — 내부관리자 '현황 최신화' 버튼 또는 자동화 페이지, 회사 PC 폴러(`scripts/sms-status-refresh/poll-local.ps1`) | Moa(원서접수)·PIMS 모니터링 발신번호 목록 수집 → Teams 저장 → 현황 파일 06·07 갱신(검사 통과 시 If-Match 업로드) | `sms_status_refresh_requests` + `automation_runs` |
@@ -261,6 +261,8 @@ E2E 운영 메모:
 `AUTOMATION_REPORT_DRY_RUN=true` 시 발송 없이 판정만.
 
 경쟁률 점검은 **두 잡으로 나뉜다** — 세팅 점검(TEST, 스케줄·문구 대조 + claude 판정)과 페이지 점검(REAL, HTML 링크 상태). 같은 큐(`ratio_audit_requests.kind`)를 쓰고 폴러가 `RATIO_AUDIT_KIND`로 `audit.py` 동작을 고른다. 둘 다 Moa 로그인을 타므로 **동시 실행은 막는다**(pending/running 1건 정책, kind 무관). 필요 env: `RATIO_AUDIT_DRY_RUN`/`TEAMS_RATIO_AUDIT_SENDER`. 상세: `docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md`
+
+**[지금 실행]은 바로 적재하지 않고 조건 창을 띄운다** — 대학구분(4년제 / 2년제=`2년제`·`전문대`)·모집구분(수시=정확히 `수시`, 정시=`정시`로 시작하는 값 전부)을 각각 하나 이상 골라야 실행되고, 기간은 접수 마감 전으로 고정이다. 조건은 요청 행(`ratio_audit_requests.filters`)에만 적고 폴러는 **요청 id 만** 넘긴다 — 대상은 서버(`/api/ratio-audit/targets?requestId=`)가 고른다(PS 5.1 이 한글 조건을 깨뜨리지 않게). Moa 목록 시작일 필터(올해 9월 1일)는 없앴다 — 1~2월에 12월 시작 정시를 빼던 결함. 대상이 0건이면 적재하지 않는다(Moa 인증 문자 없음). 관리자 메시지 머리와 실행 로그 끝에 `조건: … — 대상 N건` 이 붙는다. 두 잡의 `run()` 은 적재하지 않는다(조건 없는 요청 금지). 그 거절은 실패가 아니라 **스킵**(`skipped: true`)으로 기록한다 — 실패로 남기면 첫 실패 Teams 알림이 오발되고 그 뒤 진짜 실패 알림이 '직전도 실패'로 억제된다. 설계: `docs/superpowers/specs/2026-11-10-ratio-audit-run-filters-design.md`
 
 **예외**(`ratio_audit_exceptions`): '설정은 다르지만 합의된 정상'을 발송에서 뺀다(연세대 서울 수시 1차 — 접수 마감 17시, 마감 후 18시 공개는 내부 수동 진행 합의). `(service_id, seq)` 단위이며 seq null이면 전 차수. 판정 결과(payload)에는 그대로 남기고 **발송에서만** 제외하고, 관리자 메시지에 '예외 N건 제외'로 드러낸다. 등록은 DB 직접(관리 화면 없음).
 

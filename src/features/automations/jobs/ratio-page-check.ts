@@ -1,24 +1,16 @@
 import "server-only";
-import {
-  enqueueLocalAuditRequest,
-  AUTOMATION_REQUESTER,
-} from "@/features/ratio-audit/audit-requests/enqueue";
+import { RATIO_RUN_NEEDS_CONDITIONS } from "@/features/ratio-audit/run-filters";
 import type { AutomationRunResult } from "../types";
 
 /**
- * AutomationJob.run — 경쟁률 페이지 점검 요청 (로컬 폴러 큐 적재).
+ * AutomationJob.run — 경쟁률 페이지 점검 (REAL 서버).
  *
- * 세팅 점검(runRatioAudit)과 같은 큐를 쓰되 kind=page로 적재한다. 폴러가 이 값을 보고
- * REAL 서버 목록 → 경쟁률 HTML 링크 상태만 확인한다(TEST 서버 상세 순회·claude 판정 없음).
+ * 조건 없는 요청을 만들지 않는다 — 일반 실행 액션·cron route 가 이 함수를 부른다.
+ * 실행은 조건 창(runRatioAuditAction)에서만 한다.
  *
- * 링크 확인만 하면 되는데도 Moa 로그인이 필요하다 — REAL 목록 자체가 로그인 뒤에만
- * 나온다. 그래서 세팅 점검과 동시에 돌릴 수 없고(세션 충돌), 큐도 하나만 쓴다.
+ * cron 미등록 — 수동 실행 전용이며, 링크 상태 확인은 회사 PC 폴러가 kind=page 로 맡는다.
  */
 export async function runRatioPageCheck(): Promise<AutomationRunResult> {
-  const result = await enqueueLocalAuditRequest(
-    AUTOMATION_REQUESTER,
-    new Date(),
-    "page",
-  );
-  return { ok: result.ok, message: result.message };
+  // ok:false 는 route 의 상태 코드용, skipped 는 '일부러 안 돌았다'라 실패 알림·보고에서 뺀다.
+  return { ok: false, skipped: true, message: RATIO_RUN_NEEDS_CONDITIONS };
 }

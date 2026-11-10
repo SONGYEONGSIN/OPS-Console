@@ -24,9 +24,21 @@ export function automationJobIdFor(kind: RatioAuditKind): string {
   throw new Error(`알 수 없는 점검 종류: ${kind}`);
 }
 
+/** 경쟁률 점검 자동화 잡 id — 조건 창을 띄우는 잡이 이 둘뿐이다. */
+export const RATIO_AUDIT_JOB_IDS = ["ratio-audit", "ratio-page-check"] as const;
+export type RatioAuditJobId = (typeof RATIO_AUDIT_JOB_IDS)[number];
+
+/** 잡 id → 점검 종류. automationJobIdFor 의 역방향이라 한 곳에서 짝을 맞춘다. */
+export function ratioKindOfJob(jobId: RatioAuditJobId): RatioAuditKind {
+  if (jobId === "ratio-audit") return "schedule";
+  if (jobId === "ratio-page-check") return "page";
+  throw new Error(`알 수 없는 점검 잡: ${jobId}`);
+}
+
 export function buildRunMessage(
   summary: RatioAuditSummary,
   dispatch: RatioDispatchResult,
+  condition?: string,
 ): string {
   const parts = [`검사 ${summary.scannedCount}건`];
 
@@ -66,5 +78,8 @@ export function buildRunMessage(
     parts.push("일부 건너뜀");
   }
 
-  return parts.join(" · ");
+  // 조건은 끝에 붙인다 — 앞쪽에는 접두가 올 수 있고, 조건 없는 옛 payload 는 그대로다.
+  // 이상 0건이면 관리자 메시지가 없어 이 로그가 조건을 볼 유일한 자리다.
+  const message = parts.join(" · ");
+  return condition ? `${message} (${condition})` : message;
 }

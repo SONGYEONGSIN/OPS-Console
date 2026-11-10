@@ -1,23 +1,16 @@
 import "server-only";
-import {
-  enqueueLocalAuditRequest,
-  AUTOMATION_REQUESTER,
-} from "@/features/ratio-audit/audit-requests/enqueue";
+import { RATIO_RUN_NEEDS_CONDITIONS } from "@/features/ratio-audit/run-filters";
 import type { AutomationRunResult } from "../types";
 
 /**
- * AutomationJob.run — 경쟁률 세팅 점검 요청 (로컬 폴러 큐 적재).
+ * AutomationJob.run — 경쟁률 세팅 점검 (TEST 서버).
  *
- * audit.py는 Selenium(브라우저) + Moa 로그인 + 로컬 claude -p 판정이 필요해 Vercel
- * 서버에서 실행할 수 없다 — closing-scrape와 동일한 제약이다. 실제 점검은 회사 PC의
- * 폴러(poll-local.ps1)가 수행하므로, 본 잡은 ratio_audit_requests에 pending 1건을
- * 적재하기만 한다. 폴러가 5분 내 claim해 audit.py를 실행하고, 결과는 스크립트가
- * /api/ratio-audit/ingest로 보고한다.
+ * 조건 없는 요청을 만들지 않는다 — 일반 실행 액션·cron route 가 이 함수를 부른다.
+ * 실행은 조건 창(runRatioAuditAction)에서만 한다.
  *
- * cron 미등록 — 이 잡은 자동화 페이지의 수동 실행 전용이다. 판정 정확도가 안정되기
- * 전까지는 사람이 버튼을 눌러 트리거한다(design §14).
+ * cron 미등록 — 수동 실행 전용이며, 실제 점검은 회사 PC 폴러(poll-local.ps1)가 맡는다.
  */
 export async function runRatioAudit(): Promise<AutomationRunResult> {
-  const result = await enqueueLocalAuditRequest(AUTOMATION_REQUESTER);
-  return { ok: result.ok, message: result.message };
+  // ok:false 는 route 의 상태 코드용, skipped 는 '일부러 안 돌았다'라 실패 알림·보고에서 뺀다.
+  return { ok: false, skipped: true, message: RATIO_RUN_NEEDS_CONDITIONS };
 }

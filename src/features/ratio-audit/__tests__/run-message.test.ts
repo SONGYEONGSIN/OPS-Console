@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { automationJobIdFor, buildRunMessage } from "../run-message";
+import {
+  RATIO_AUDIT_JOB_IDS,
+  automationJobIdFor,
+  buildRunMessage,
+  ratioKindOfJob,
+} from "../run-message";
 
 /**
  * 점검 결과를 자동화 실행 로그에 남긴다.
@@ -15,6 +20,10 @@ describe("automationJobIdFor", () => {
   it("세팅 점검과 페이지 점검은 다른 잡이다", () => {
     expect(automationJobIdFor("schedule")).toBe("ratio-audit");
     expect(automationJobIdFor("page")).toBe("ratio-page-check");
+  });
+
+  it("잡 id ↔ 점검 종류는 서로 되돌아온다", () => {
+    for (const id of RATIO_AUDIT_JOB_IDS) expect(automationJobIdFor(ratioKindOfJob(id))).toBe(id);
   });
 
   it("모르는 종류면 던진다 — 엉뚱한 잡에 기록하면 그 잡이 도는 줄 안다", () => {
@@ -93,6 +102,29 @@ describe("buildRunMessage", () => {
     expect(m).not.toContain("담당미상");
     expect(m).not.toContain("예외제외");
     expect(m).not.toContain("발송실패");
+  });
+
+  describe("실행 조건", () => {
+    const quiet = {
+      sent: 0,
+      failed: [],
+      unassignedCount: 0,
+      excludedCount: 0,
+      adminNotified: false,
+    };
+    const line = "조건: 2년제 · 수시 · 접수 마감 전 — 대상 3건";
+
+    it("조건이 있으면 끝에 괄호로", () => {
+      expect(
+        buildRunMessage({ ...base, scannedCount: 3, findingCount: 0 }, quiet, line),
+      ).toBe(`검사 3건 · 이상 없음 · 발송 0명 (${line})`);
+    });
+
+    it("조건이 없으면 지금 문장 그대로", () => {
+      expect(
+        buildRunMessage({ ...base, scannedCount: 3, findingCount: 0 }, quiet),
+      ).toBe("검사 3건 · 이상 없음 · 발송 0명");
+    });
   });
 
   describe("판정 실패", () => {

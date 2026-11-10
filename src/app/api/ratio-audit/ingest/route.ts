@@ -106,7 +106,7 @@ export async function POST(request: Request) {
   // 판정을 못 한 건이 있으면 실패다 — ok:true 면 66건이 비어도 '성공'으로 남는다.
   await recordAutomationRun(automationJobIdFor(input.kind), {
     ok: s.judgeFailedCount === 0,
-    message: buildRunMessage(s, dispatch),
+    message: buildRunMessage(s, dispatch, input.condition?.line),
   });
 
   return NextResponse.json({

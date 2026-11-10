@@ -4,11 +4,12 @@
 설계: docs/superpowers/specs/2026-08-02-moa-ratio-setting-audit-design.md
 
 흐름:
-  대상 로딩(GET /api/ratio-audit/targets) → Moa 로그인(scrape.py 내부 부품 재사용)
-  → POST /Ratio/GetRatioList(TEST) 전체 목록 → listfilter.py 시작일 필터(9월 1일
-  이후) → 대상 교집합
+  대상 로딩(서버가 실행 조건·접수 마감 전으로 고른 집합, 요청 id 로 조회)
+  → 대상 0건이면 로그인 없이 빈 결과 보고
+  → Moa 로그인(scrape.py 내부 부품 재사용)
+  → POST /Ratio/GetRatioList(TEST) 전체 목록 → 대상 교집합
   → GET /Ratio/RatioSetting/{id}?Seq&Server=TEST 순회로 스케줄·문구·접수일정 추출
-  → judge.py 배치 판정 → REAL 목록(동일 시작일 필터)으로 html 링크 404 점검
+  → judge.py 배치 판정 → REAL 전체 목록과 대상 교집합으로 html 링크 404 점검
   → POST /api/ratio-audit/ingest
 
 읽기 전용. 저장·배포 버튼을 누르지 않는다.
@@ -47,7 +48,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scrape  # noqa: E402  (로그인 부품/드라이버 재사용 — 기존 검증된 구현)
 import sms_inbox  # noqa: E402  (우편함 점유 — 수동 코드 경로에서도 잡는다)
 from judge import build_prompt, clean_text, filter_schedule_lines, BatchJudge  # noqa: E402
-from listfilter import filter_by_start_date  # noqa: E402
 
 MOA_BASE = "https://moa.jinhakapply.com"
 RATIO_SETTING_LIST_URL = f"{MOA_BASE}/Ratio/RatioSetting"
@@ -186,16 +186,40 @@ def login_and_2fa(driver, wait, env) -> None:
     print("[OK] 로그인 + 2FA 완료")
 
 
-def fetch_targets(base_url: str, secret: str) -> dict[int, dict]:
-    res = requests.get(
+REQUEST_ID_ENV = "RATIO_AUDIT_REQUEST_ID"
+
+
+class TargetsUnavailable(RuntimeError):
+    """서버가 대상을 주지 않았다 — 조건 없는 요청·없는 요청·서버 오류. 로그인 전에 멈춘다."""
+
+
+def _targets_error_detail(res) -> str:
+    """오류 응답에서 ASCII code 와 이유를 뽑는다. JSON 이 아니면 본문 앞 200자."""
+    try:
+        body = res.json()
+    except ValueError:
+        return res.text[:200]
+    if not isinstance(body, dict):
+        return res.text[:200]
+    return f"{body.get('code', '')}: {body.get('error', '')}"
+
+
+def fetch_targets(
+    base_url: str, secret: str, request_id: str, http=requests
+) -> tuple[dict[int, dict], dict]:
+    """요청 id 로 서버가 고른 점검 대상과 실행 조건(condition)을 받는다."""
+    res = http.get(
         f"{base_url}/api/ratio-audit/targets",
+        params={"requestId": request_id},
         headers={"Authorization": f"Bearer {secret}"},
         timeout=30,
     )
-    res.raise_for_status()
-    rows = res.json()["targets"]
-    print(f"[OK] 점검 대상 {len(rows)}건")
-    return {int(r["serviceId"]): r for r in rows}
+    if not 200 <= res.status_code < 300:
+        raise TargetsUnavailable(f"targets {res.status_code} {_targets_error_detail(res)}")
+    body = res.json()
+    condition = body["condition"]
+    print(f"[OK] {condition['line']}")
+    return {int(r["serviceId"]): r for r in body["targets"]}, condition
 
 
 def _dump_page(driver, out_dir: str, label: str) -> None:
@@ -545,6 +569,45 @@ def _missing_schedule_item(svc: dict) -> dict | None:
     }
 
 
+def build_payload(
+    kind: str, scanned: int, findings: list, link_errors: list, skipped: list, condition: dict
+) -> dict:
+    """인제스트 본문 — 서버가 준 실행 조건을 그대로 실어 결과가 '어떤 조건이었는지' 말하게 한다."""
+    return {
+        "kind": kind,
+        "scannedCount": scanned,
+        "findings": findings,
+        "linkErrors": link_errors,
+        "skipped": skipped,
+        "condition": condition,
+    }
+
+
+def _report(payload: dict, out: str, dry_run: bool, base_url: str, secret: str) -> int:
+    """결과를 파일로 남기고(항상) DRY RUN 이 아니면 인제스트로 보낸다."""
+    print(f"[RESULT] 순회 {payload['scannedCount']} / 이상 {len(payload['findings'])} / "
+          f"링크오류 {len(payload['linkErrors'])} / 건너뜀 {len(payload['skipped'])}")
+
+    # 인제스트 성패와 무관하게 항상 먼저 파일로 남긴다 — POST 실패 시 SMS 인증·순회를
+    # 다시 타지 않고 이 파일로 복구할 수 있게 경로를 stdout에 남긴다.
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=1)
+    print(f"[INFO] 결과 저장: {out}")
+
+    if dry_run:
+        print("[DRY RUN] 인제스트 생략")
+        return 0
+
+    res = requests.post(
+        f"{base_url}/api/ratio-audit/ingest",
+        headers={"Authorization": f"Bearer {secret}"},
+        json=payload,
+        timeout=60,
+    )
+    print(f"[OK] 인제스트 {res.status_code} {res.text[:200]}")
+    return 0 if res.ok else 1
+
+
 def main() -> int:
     dry_run = os.getenv("RATIO_AUDIT_DRY_RUN", "").lower() == "true"
     # 점검 종류 — 자동화 페이지 버튼이 둘로 나뉘어 있다.
@@ -555,6 +618,10 @@ def main() -> int:
         print(f"[FAIL] RATIO_AUDIT_KIND 값 오류: {kind!r} (schedule|page)")
         return 1
     print(f"[INFO] 점검 종류: {kind}")
+    request_id = os.getenv(REQUEST_ID_ENV, "").strip()
+    if not request_id:
+        print("[FAIL] RATIO_AUDIT_REQUEST_ID missing — 실행 조건은 요청이 정합니다(폴러가 넣습니다)")
+        return 1
     base_url = os.getenv("OPS_CONSOLE_BASE_URL", "").rstrip("/")
     secret = os.getenv("CRON_SECRET", "")
     if not secret or not base_url:
@@ -588,7 +655,14 @@ def main() -> int:
     out = os.getenv("OUT_JSON", os.path.join(tempfile.gettempdir(), "ratio-audit.json"))
     dump_dir = os.path.dirname(out) or tempfile.gettempdir()
 
-    targets = fetch_targets(base_url, secret)
+    try:
+        targets, condition = fetch_targets(base_url, secret, request_id)
+    except TargetsUnavailable as e:
+        print(f"[FAIL] {e}")
+        return 1
+    if not targets:
+        print("[INFO] 대상 0건 — Moa 로그인 없이 빈 결과를 보고합니다")
+        return _report(build_payload(kind, 0, [], [], [], condition), out, dry_run, base_url, secret)
 
     driver = scrape.setup_driver(tempfile.mkdtemp(prefix="moa-ratio-"), True)
     wait = WebDriverWait(driver, 40)
@@ -602,13 +676,8 @@ def main() -> int:
         if kind == "schedule":
             test_list_raw = fetch_ratio_list(driver, wait, "TEST", dump_dir)
             _save_raw_list(test_list_raw, dump_dir, "TEST")
-            test_list_filtered = filter_by_start_date(test_list_raw)
-            print(
-                f"[INFO] TEST 목록 {len(test_list_raw)}건 → "
-                f"시작일 필터 후 {len(test_list_filtered)}건"
-            )
-            test_rows = [r for r in test_list_filtered if int(r["UnivServiceID"]) in targets]
-            _print_intersection_diagnostics("TEST", test_list_filtered, targets, len(test_rows))
+            test_rows = [r for r in test_list_raw if int(r["UnivServiceID"]) in targets]
+            _print_intersection_diagnostics("TEST", test_list_raw, targets, len(test_rows))
             print(f"[OK] 교집합 {len(test_rows)}건 순회 시작")
 
             consecutive_skips = 0
@@ -689,16 +758,11 @@ def main() -> int:
             driver.get(RATIO_SETTING_LIST_URL)
             real_list_raw = fetch_ratio_list(driver, wait, "REAL", dump_dir)
             _save_raw_list(real_list_raw, dump_dir, "REAL")
-            real_list_filtered = filter_by_start_date(real_list_raw)
-            print(
-                f"[INFO] REAL 목록 {len(real_list_raw)}건 → "
-                f"시작일 필터 후 {len(real_list_filtered)}건"
-            )
             real_rows = [
-                r for r in real_list_filtered if int(r["UnivServiceID"]) in targets
+                r for r in real_list_raw if int(r["UnivServiceID"]) in targets
             ]
             _print_intersection_diagnostics(
-                "REAL", real_list_filtered, targets, len(real_rows)
+                "REAL", real_list_raw, targets, len(real_rows)
             )
             page_checked = len(real_rows)
             for row in real_rows:
@@ -721,35 +785,11 @@ def main() -> int:
     finally:
         driver.quit()
 
-    payload = {
-        "kind": kind,
-        "scannedCount": scanned_count(kind, len(collected), page_checked),
-        "findings": findings,
-        "linkErrors": link_errors,
-        "skipped": skipped,
-    }
-    print(f"[RESULT] 순회 {payload['scannedCount']} / 이상 {len(findings)} / "
-          f"링크오류 {len(link_errors)} / 건너뜀 {len(skipped)}")
-
-    # 인제스트 성패와 무관하게 항상 먼저 파일로 남긴다 — POST 실패 시 SMS 인증·순회를
-    # 다시 타지 않고 이 파일로 복구할 수 있게 경로를 stdout에 남긴다. (out은 main
-    # 상단에서 dump_dir과 함께 이미 계산됨)
-    with open(out, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=1)
-    print(f"[INFO] 결과 저장: {out}")
-
-    if dry_run:
-        print("[DRY RUN] 인제스트 생략")
-        return 0
-
-    res = requests.post(
-        f"{base_url}/api/ratio-audit/ingest",
-        headers={"Authorization": f"Bearer {secret}"},
-        json=payload,
-        timeout=60,
+    payload = build_payload(
+        kind, scanned_count(kind, len(collected), page_checked),
+        findings, link_errors, skipped, condition,
     )
-    print(f"[OK] 인제스트 {res.status_code} {res.text[:200]}")
-    return 0 if res.ok else 1
+    return _report(payload, out, dry_run, base_url, secret)
 
 
 if __name__ == "__main__":

@@ -45,6 +45,22 @@ describe("automation registry", () => {
     expect(j?.manualOnly).toBe(true);
   });
 
+  it("조건 창은 경쟁률 두 잡만", () => {
+    expect(
+      AUTOMATION_JOBS.filter((j) => j.conditionForm)
+        .map((j) => j.id)
+        .sort(),
+    ).toEqual(["ratio-audit", "ratio-page-check"]);
+    expect(getJob("ratio-audit")?.conditionForm).toBe("ratio-audit");
+    expect(getJob("ratio-page-check")?.conditionForm).toBe("ratio-audit");
+  });
+
+  it("설명이 조건 창을 말한다", () => {
+    for (const id of ["ratio-audit", "ratio-page-check"]) {
+      expect(getJob(id)?.description).toContain("실행 조건 창");
+    }
+  });
+
   it("모든 잡은 고유 id를 가진다", () => {
     const ids = AUTOMATION_JOBS.map((j) => j.id);
     expect(new Set(ids).size).toBe(ids.length);

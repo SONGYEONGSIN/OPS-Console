@@ -15,8 +15,12 @@ import type {
 import type { JobRunLog } from "@/features/automations/run-logs-normalize";
 import { InspectorPanel } from "@/app/dashboard/_components/inspector/InspectorPanel";
 import { AutomationLogPanel } from "./AutomationLogPanel";
-
-const ADMIN_ONLY_MSG = "관리자만 실행 가능합니다.";
+import { RatioRunControl } from "./RatioRunControl";
+import {
+  ADMIN_ONLY_MSG,
+  RUN_COOLDOWN_CLASS,
+  RUN_NOW_CLASS,
+} from "./run-control-shared";
 
 export function AutomationHub({
   statuses,
@@ -164,6 +168,8 @@ function AutomationRow({
           <DraftControl draft={status.pendingDraft} isAdmin={isAdmin} />
         ) : status.localOnly ? (
           <span className="text-xs text-muted">—</span>
+        ) : status.conditionForm === "ratio-audit" ? (
+          <RatioRunControl status={status} isAdmin={isAdmin} />
         ) : (
           <RunControl status={status} isAdmin={isAdmin} />
         )}
@@ -329,7 +335,7 @@ function RunControl({
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex w-fit items-center border border-vermilion bg-vermilion cursor-pointer px-3 py-1 text-xs font-medium text-cream transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={RUN_NOW_CLASS}
           >
             {pending ? "실행 중…" : "지금 실행"}
           </button>
@@ -343,7 +349,7 @@ function RunControl({
               }
               setArmedAgainst({ state });
             }}
-            className="inline-flex w-fit items-center border border-vermilion bg-transparent cursor-pointer px-3 py-1 text-xs font-medium text-vermilion transition-opacity hover:opacity-90"
+            className={RUN_COOLDOWN_CLASS}
           >
             쿨다운 {status.cooldownRemainingMinutes}분 — 강제 실행
           </button>
