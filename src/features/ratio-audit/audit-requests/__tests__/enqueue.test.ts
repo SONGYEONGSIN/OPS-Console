@@ -97,6 +97,7 @@ describe("enqueueLocalAuditRequest — 중복 차단", () => {
     const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
+    expect(r.busy).toBe(true);
     expect(r.message).toMatch(/대기|진행/);
     expect(insert).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
@@ -112,6 +113,7 @@ describe("enqueueLocalAuditRequest — 중복 차단", () => {
     const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
+    expect(r.busy).toBe(true);
     expect(insert).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
@@ -124,7 +126,17 @@ describe("enqueueLocalAuditRequest — 중복 차단", () => {
     const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
 
     expect(r.ok).toBe(false);
+    expect(r.busy).toBe(true);
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("DB 오류로 거절되면 busy 가 아니다 — 점유 거절과 구분", async () => {
+    mockAdmin({ selectError: { message: "db down" } });
+
+    const r = await enqueueLocalAuditRequest("admin@x.com", NOW, "schedule", F);
+
+    expect(r.ok).toBe(false);
+    expect(r.busy).toBeUndefined();
   });
 });
 

@@ -210,23 +210,33 @@ describe("runRatioAuditAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard/automations");
   });
 
-  it("대기 중 요청이 있어 적재 실패면 그대로 실패로 기록", async () => {
+  it("큐 점유 거절은 기록하지 않고 메시지만 돌려준다", async () => {
     vi.mocked(listRatioAuditTargets).mockResolvedValue([T1]);
     vi.mocked(enqueueLocalAuditRequest).mockResolvedValue({
       ok: false,
-      message: "이미 대기 중인 요청이 있습니다.",
+      busy: true,
+      message: "이미 대기/진행 중인 점검이 있습니다.",
     });
     const r = await runRatioAuditAction(undefined, fd(OK_FORM));
     expect(r).toEqual({
       ok: false,
-      message: "이미 대기 중인 요청이 있습니다.",
+      message: "이미 대기/진행 중인 점검이 있습니다.",
     });
+    expect(recordRunMock).not.toHaveBeenCalled();
+  });
+
+  it("DB 오류로 적재 실패면 실패로 기록", async () => {
+    vi.mocked(listRatioAuditTargets).mockResolvedValue([T1]);
+    vi.mocked(enqueueLocalAuditRequest).mockResolvedValue({
+      ok: false,
+      message: "connection refused",
+    });
+    const r = await runRatioAuditAction(undefined, fd(OK_FORM));
+    expect(r).toEqual({ ok: false, message: "connection refused" });
+    expect(recordRunMock).toHaveBeenCalledTimes(1);
     expect(recordRunMock).toHaveBeenCalledWith(
       "ratio-audit",
-      expect.objectContaining({
-        ok: false,
-        message: "이미 대기 중인 요청이 있습니다.",
-      }),
+      expect.objectContaining({ ok: false, message: "connection refused" }),
     );
   });
 

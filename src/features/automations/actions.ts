@@ -145,7 +145,8 @@ async function queueRatioAudit(
   filters: RatioAuditFilters,
 ): Promise<AutomationRunResult> {
   const startedMs = Date.now();
-  // 같은 시각으로 세고 적재해야 폴러가 읽는 대상과 화면의 건수가 어긋나지 않는다
+  // 접수 줄의 건수는 이 시각 기준이다. 폴러는 대상을 받는 시점(new Date())에 다시 세므로
+  // 폴러 결과의 건수는 접수 줄과 다를 수 있다 — now 는 적재의 stale 판정에도 쓰인다
   const now = new Date();
 
   let targets: RatioAuditTarget[];
@@ -170,6 +171,8 @@ async function queueRatioAudit(
     ratioKindOfJob(jobId),
     filters,
   );
+  // 큐 점유 거절은 실패가 아니다 — 기록하면 실패 알림 오발과 직전 실패 억제가 걸린다
+  if (r.busy) return { ok: false, message: r.message };
   // 접두(QUEUED_MARK)가 맨 앞에 있어야 하므로 조건 줄은 끝에 붙인다
   const message = r.ok
     ? `${r.message} ${conditionLine(filters, targets.length)}`

@@ -66,9 +66,10 @@ export async function GET(request: Request) {
       },
     });
   } catch (e) {
-    return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
-      { status: 500 },
+    return fail(
+      500,
+      "server_error",
+      e instanceof Error ? e.message : String(e),
     );
   }
 }

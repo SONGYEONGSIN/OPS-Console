@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { RatioAuditKind } from "../schemas";
 import type { RatioAuditFilters } from "../run-filters";
 
-export type EnqueueResult = { ok: boolean; message: string };
+/** busy: 큐 점유로 거절됨(실패가 아니라 거절) — DB 오류 등 진짜 적재 실패와 가르는 판별자 */
+export type EnqueueResult = { ok: boolean; message: string; busy?: true };
 
 /** 자동화(cron) 경로에는 세션이 없다. requested_by가 not null이라 값이 필요하다. */
 export const AUTOMATION_REQUESTER = "automation";
@@ -81,6 +82,7 @@ export async function enqueueLocalAuditRequest(
     if (!isStaleRunning(blocking, now)) {
       return {
         ok: false,
+        busy: true,
         message:
           "이미 대기/진행 중인 점검이 있습니다. 회사 PC 폴러 처리를 기다려 주세요.",
       };

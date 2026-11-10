@@ -128,6 +128,7 @@ describe("GET /api/ratio-audit/targets", () => {
     expect(res.status).toBe(500);
     const json = await res.json();
     expect(json.ok).toBe(false);
+    expect(json.code).toBe("server_error");
     expect(listRatioAuditTargets).not.toHaveBeenCalled();
   });
 });
