@@ -16,6 +16,7 @@ import requests
 GRAPH = "https://graph.microsoft.com/v1.0"
 PAGE_SIZE = 50
 FOLDER_PAGE_SIZE = 100
+MAX_PAGES = 200  # 쪽 넘김 상한 — 50통씩이면 만 통, 정상 실행은 한두 쪽
 
 # MailboxError.code — mail_step 이 mail_access_denied / mail_folder_missing / mail_failed 로 옮긴다.
 ACCESS_DENIED = "access_denied"
@@ -84,14 +85,23 @@ class Mailbox:
         raise MailboxError(code, r.status_code, what)
 
     def _pages(self, url: str, what: str) -> list[dict]:
-        """`@odata.nextLink` 를 끝까지 따라가며 value 를 모은다."""
+        """`@odata.nextLink` 를 끝까지 따라가며 value 를 모은다.
+
+        같은 주소가 되풀이되거나 쪽 수가 MAX_PAGES 를 넘으면 FAILED 로 멈춘다 —
+        끝나지 않는 응답이 스케줄러 제한 시간까지 붙잡지 못하게.
+        """
         rows: list[dict] = []
+        seen: set[str] = set()
         nxt: str | None = url
         while nxt:
+            if nxt in seen or len(seen) >= MAX_PAGES:
+                # 주소에는 폴더·메일 id 가 섞이므로 메시지에 싣지 않는다
+                raise MailboxError(FAILED, 0, f"{what} 쪽 넘김 중단")
+            seen.add(nxt)
             j = self._get(nxt, what).json()
-            rows = [*rows, *j.get("value", [])]
+            rows.extend(j.get("value", []))
             nxt = j.get("@odata.nextLink")
-        return rows
+        return list(rows)
 
     def _child_folder_ids(self, parent: str, name: str | None = None) -> list[str]:
         # URLSearchParams 식 인코딩은 `$` 를 깨므로 OData 키는 글자 그대로 둔다.

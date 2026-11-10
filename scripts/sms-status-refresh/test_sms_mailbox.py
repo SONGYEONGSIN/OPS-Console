@@ -1,4 +1,4 @@
-"""mailbox.py — Graph 메일함 읽기의 모양만 본다. 실제 네트워크는 부르지 않는다(FakeHttp).
+"""sms_mailbox.py — Graph 메일함 읽기의 모양만 본다. 실제 네트워크는 부르지 않는다(FakeHttp).
 
 폴더 이름의 작은따옴표를 두 번 쓰지 않으면 필터가 깨지고, 다음 쪽을 안 읽으면 메일이
 조용히 누락된다 — 둘 다 에러 없이 '메일 없음' 으로 보인다.
@@ -6,7 +6,8 @@
 import unittest
 import urllib.parse
 
-from mailbox import Attachment, Mailbox, MailboxError, Message
+import sms_mailbox
+from sms_mailbox import Attachment, Mailbox, MailboxError, Message
 
 
 class FakeResponse:
@@ -156,6 +157,33 @@ class TestAttachments(unittest.TestCase):
         mb, http = mailbox(FakeResponse(200, content=b"PK\x03\x04"))
         self.assertEqual(mb.attachment_bytes("m1", "a/1"), b"PK\x03\x04")
         self.assertTrue(http.calls[0][1].endswith("/messages/m1/attachments/a%2F1/$value"))
+
+
+class TestPaging(unittest.TestCase):
+    def test_같은_nextLink_가_되풀이되면_멈춘다(self):
+        page = {"value": [], "@odata.nextLink": "https://next/loop"}
+        mb, http = mailbox(*(FakeResponse(200, page) for _ in range(5)))
+        with self.assertRaises(MailboxError) as cm:
+            mb.messages_since("f", "2026-10-31T00:00:00Z")
+        self.assertEqual(cm.exception.code, "failed")
+        self.assertNotIn("loop", str(cm.exception))
+        self.assertLessEqual(len(http.calls), 3)
+
+    def test_쪽_수_상한을_넘으면_멈춘다(self):
+        n = 5
+        responses = [
+            FakeResponse(200, {"value": [], "@odata.nextLink": f"https://next/{i}"}) for i in range(n + 3)
+        ]
+        mb, http = mailbox(*responses)
+        original = sms_mailbox.MAX_PAGES
+        sms_mailbox.MAX_PAGES = n
+        try:
+            with self.assertRaises(MailboxError) as cm:
+                mb.messages_since("f", "2026-10-31T00:00:00Z")
+        finally:
+            sms_mailbox.MAX_PAGES = original
+        self.assertEqual(cm.exception.code, "failed")
+        self.assertEqual(len(http.calls), n)
 
 
 class TestErrors(unittest.TestCase):
