@@ -13,6 +13,38 @@ export type RatioAuditTarget = {
   operatorName: string;
 };
 
+// PostgREST 기본 상한(1000행)에 걸려 일부가 오류 없이 빠지지 않도록 페이지로 끝까지 읽는다
+const PAGE = 1000;
+
+type ClosingRow = {
+  service_id: number;
+  university_name: string | null;
+  service_name: string | null;
+  operator_name: string | null;
+  university_type: string | null;
+  category: string | null;
+};
+
+async function readOpenClosingRows(now: Date): Promise<ClosingRow[]> {
+  const admin = createAdminClient();
+  const rows: ClosingRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin
+      .from("closing_services")
+      .select(
+        "service_id, university_name, service_name, operator_name, university_type, category",
+      )
+      .gte("write_end_at", now.toISOString())
+      .order("service_id")
+      .range(from, from + PAGE - 1);
+    if (error)
+      throw new Error(`[ratio-audit] 대상 조회 실패: ${error.message}`);
+    const page = (data ?? []) as ClosingRow[];
+    rows.push(...page);
+    if (page.length < PAGE) return rows;
+  }
+}
+
 /**
  * 점검 대상 = 실행 조건(대학구분·모집구분) × 접수 마감 전인 closing_services 서비스.
  * 기간은 DB 에서(write_end_at ≥ now), 대학구분·모집구분은 matchesRatioAuditFilters 로 거른다.
@@ -25,28 +57,13 @@ export async function listRatioAuditTargets(
   filters: RatioAuditFilters,
   now: Date,
 ): Promise<RatioAuditTarget[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("closing_services")
-    .select(
-      "service_id, university_name, service_name, operator_name, university_type, category",
-    )
-    .gte("write_end_at", now.toISOString());
-  if (error) throw new Error(`[ratio-audit] 대상 조회 실패: ${error.message}`);
-  return (data ?? [])
-    .filter((r) =>
-      matchesRatioAuditFilters(
-        {
-          university_type: r.university_type as string | null,
-          category: r.category as string | null,
-        },
-        filters,
-      ),
-    )
+  const rows = await readOpenClosingRows(now);
+  return rows
+    .filter((r) => matchesRatioAuditFilters(r, filters))
     .map((r) => ({
-      serviceId: r.service_id as number,
-      universityName: (r.university_name as string | null) ?? "",
-      serviceName: (r.service_name as string | null) ?? "",
-      operatorName: (r.operator_name as string | null) ?? "",
+      serviceId: r.service_id,
+      universityName: r.university_name ?? "",
+      serviceName: r.service_name ?? "",
+      operatorName: r.operator_name ?? "",
     }));
 }
