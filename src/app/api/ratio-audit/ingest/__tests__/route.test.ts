@@ -191,6 +191,41 @@ describe("POST /api/ratio-audit/ingest", () => {
     expect(h.update).not.toHaveBeenCalled();
   });
 
+  describe("실행 조건", () => {
+    const condition = {
+      requestId: "0b0c1d2e-3f40-4a51-8b62-73849a5b6c7d",
+      line: "조건: 2년제 · 수시 · 접수 마감 전 — 대상 3건",
+    };
+
+    it("실행 로그에 조건을 싣는다 — 이상 0건이면 관리자 메시지가 없어 여기가 유일한 자리", async () => {
+      const { POST } = await import("../route");
+      await POST(postReq(payload({ findings: [], condition })));
+      const [, result] = h.recordAutomationRun.mock.calls[0];
+      expect(result.message.endsWith(`(${condition.line})`)).toBe(true);
+    });
+
+    it("payload 에 condition 이 그대로 남는다", async () => {
+      const { POST } = await import("../route");
+      await POST(postReq(payload({ condition })));
+      expect(h.insert.mock.calls[0][0].payload.condition).toEqual(condition);
+    });
+
+    it("조건 없는 옛 payload 는 실행 로그에 조건 줄이 없다", async () => {
+      const { POST } = await import("../route");
+      await POST(postReq(payload()));
+      expect(h.recordAutomationRun.mock.calls[0][1].message).not.toContain("조건:");
+    });
+
+    it("condition 형식이 틀리면 400", async () => {
+      const { POST } = await import("../route");
+      const res = await POST(
+        postReq(payload({ condition: { requestId: "x", line: "조건" } })),
+      );
+      expect(res.status).toBe(400);
+      expect(h.insert).not.toHaveBeenCalled();
+    });
+  });
+
   it("CRON_SECRET 미설정이면 500이고 적재하지 않는다", async () => {
     process.env.CRON_SECRET = "";
     const { POST } = await import("../route");

@@ -95,6 +95,29 @@ describe("buildRunMessage", () => {
     expect(m).not.toContain("발송실패");
   });
 
+  describe("실행 조건", () => {
+    const quiet = {
+      sent: 0,
+      failed: [],
+      unassignedCount: 0,
+      excludedCount: 0,
+      adminNotified: false,
+    };
+    const line = "조건: 2년제 · 수시 · 접수 마감 전 — 대상 3건";
+
+    it("조건이 있으면 끝에 괄호로", () => {
+      expect(
+        buildRunMessage({ ...base, scannedCount: 3, findingCount: 0 }, quiet, line),
+      ).toBe(`검사 3건 · 이상 없음 · 발송 0명 (${line})`);
+    });
+
+    it("조건이 없으면 지금 문장 그대로", () => {
+      expect(
+        buildRunMessage({ ...base, scannedCount: 3, findingCount: 0 }, quiet),
+      ).toBe("검사 3건 · 이상 없음 · 발송 0명");
+    });
+  });
+
   describe("판정 실패", () => {
     const none = {
       sent: 0,
