@@ -76,6 +76,9 @@ $ErrorActionPreference = "Continue"
 try {
     # 무엇을 점검할지는 요청이 정한다 — 스케줄(세팅·문구) / 페이지(HTML 링크 상태)
     $env:RATIO_AUDIT_KIND = $kind
+    # 무엇을(대학구분·모집구분) 볼지는 서버가 이 요청 id 로 정한다 — 조건 값은 여기를 지나가지 않는다.
+    # PowerShell 5.1 은 charset 없는 JSON 응답의 한글을 깨뜨리므로 ASCII 인 id 만 넘긴다.
+    $env:RATIO_AUDIT_REQUEST_ID = $id
     # **한 줄씩 바로 파일에 쓴다.** 끝나고 한꺼번에 쓰면 강제 종료됐을 때 아무것도
     # 안 남는다 — 2026-08-28 작업 스케줄러 20분 제한에 잘려 로그에 시작 줄만 있었고,
     # 어디까지 갔는지 알 길이 없어 진단이 통째로 막혔다.
