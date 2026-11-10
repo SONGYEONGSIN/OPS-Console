@@ -7,6 +7,7 @@
 
 가짜 값만 쓴다(학교 `테스트대학교A`, 번호 `010-0000-0001`, 담당자 자리 `op-a`).
 """
+from openpyxl.formatting.formatting import ConditionalFormattingList
 from openpyxl.formatting.rule import FormulaRule
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
@@ -80,32 +81,48 @@ def _hidden(wb, name, hid, heads, records, picks, b0):
     return hs, pick_name
 
 
-def _view(wb, name, hid, heads, n, pick_name, b0, b1, rules):
+def view_body(ws, hid, heads, n, count_col, rules=()):
+    """보이는 장에서 행 수에 매인 부분 — `/ N건`·순번·INDEX 수식(9행~)·조건부 서식(결정 1)."""
     k, last = len(heads), n + 1
-    ws = wb.create_sheet(name)
-    ws.cell(row=1, column=1, value="SMS 발신번호 사전등록 현황: " + name.split(". ", 1)[-1])
-    ws.cell(row=6, column=b0 - 1, value="🔍 검색")
-    ws.merge_cells(start_row=6, start_column=b0, end_row=6, end_column=b1)
-    ws.cell(row=6, column=b1 + 1, value=f'="검색 결과 "&COUNT(\'{hid}\'!$P$2:$P${last})&" / {n}건"')
-    dv = DataValidation(type="list", formula1=f"={pick_name}", allow_blank=True, showErrorMessage=False)
-    ws.add_data_validation(dv)
-    dv.add(f"{get_column_letter(b0)}6")
+    ws.cell(row=6, column=count_col, value=f'="검색 결과 "&COUNT(\'{hid}\'!$P$2:$P${last})&" / {n}건"')
     idx = get_column_letter(k + 2)  # 순번(숨김) 열 — 데이터 열 다음 한 칸 띄고
-    for j, (h, *_rest) in enumerate(heads, start=1):
-        ws.cell(row=8, column=j, value=h)
-    ws.column_dimensions[idx].hidden = True
     for i in range(n):
         rr = DATA_FIRST + i
         ws[f"{idx}{rr}"] = f"=IFERROR(SMALL('{hid}'!$P$2:$P${last},{i + 1}),\"\")"
         for j in range(1, k + 1):
             col = get_column_letter(j)
             ws.cell(row=rr, column=j, value=f'=IF(${idx}{rr}="","",INDEX(\'{hid}\'!{col}$2:{col}${last},${idx}{rr})&"")')
-    ws.freeze_panes = f"A{DATA_FIRST}"
+    ws.conditional_formatting = ConditionalFormattingList()
     end = DATA_FIRST + n - 1
     for head, tmpl in rules:
         col = get_column_letter([h for h, *_ in heads].index(head) + 1)
         ws.conditional_formatting.add(f"{col}{DATA_FIRST}:{col}{end}",
                                       FormulaRule(formula=[tmpl.format(c=col, r=DATA_FIRST)], font=Font(bold=True)))
+
+
+def resize_view(wb, name, hid, heads, n, rules=(), span=None):
+    """작업 사본의 보이는 장을 n 행에 맞춘다 — 9행부터 비우고 다시 쓴다(COM 이 하는 일)."""
+    ws = wb[name]
+    for row in ws.iter_rows(min_row=DATA_FIRST):
+        for c in row:
+            c.value = None
+    b1 = (span or box_span([w for _h, w, *_ in heads]))[1]
+    view_body(ws, hid, heads, n, b1 + 1, rules)
+
+
+def _view(wb, name, hid, heads, n, pick_name, b0, b1, rules):
+    ws = wb.create_sheet(name)
+    ws.cell(row=1, column=1, value="SMS 발신번호 사전등록 현황: " + name.split(". ", 1)[-1])
+    ws.cell(row=6, column=b0 - 1, value="🔍 검색")
+    ws.merge_cells(start_row=6, start_column=b0, end_row=6, end_column=b1)
+    dv = DataValidation(type="list", formula1=f"={pick_name}", allow_blank=True, showErrorMessage=False)
+    ws.add_data_validation(dv)
+    dv.add(f"{get_column_letter(b0)}6")
+    for j, (h, *_rest) in enumerate(heads, start=1):
+        ws.cell(row=8, column=j, value=h)
+    ws.column_dimensions[get_column_letter(len(heads) + 2)].hidden = True
+    view_body(ws, hid, heads, n, b1 + 1, rules)
+    ws.freeze_panes = f"A{DATA_FIRST}"
     return ws
 
 

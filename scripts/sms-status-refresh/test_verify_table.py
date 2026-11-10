@@ -18,10 +18,12 @@ import fixtures_status as fs
 import test_verify as tv
 import verify
 import verify_table as vt
+import verify_view as vv
 
 A, B, C = "테스트대학교A", "테스트대학교B", "테스트대학교C"
 VIEWS = {"_학교": ("01. 학교별 현황", fs.SCHOOL_HEADS), "_서류": ("02. 서류별 현황", fs.DOC_HEADS),
          "_번호": ("03. 번호 목록", fs.NUMBER_HEADS)}
+RULES = {"_번호": [("상태", '{c}{r}="미비"')]}  # 보기 시트 조건부 서식 — 03 만
 
 
 def num(no, name, number, state, docs="", note="", kind="4년제"):
@@ -84,8 +86,7 @@ def build(path: Path, *, nums=None, schs=None, dcs=None, moa_rows=None, mutate=N
             wb[title].auto_filter.ref = f"A8:J{8 + max(n, 0)}"
         for hid, recs in (("_학교", schs), ("_서류", dcs), ("_번호", nums)):
             name, heads = VIEWS[hid]
-            rules = [("상태", '{c}{r}="미비"')] if hid == "_번호" else []
-            fs.search_sheet(wb, name, hid, heads, recs, fs.picks_of(recs), rules=rules)
+            fs.search_sheet(wb, name, hid, heads, recs, fs.picks_of(recs), rules=RULES.get(hid, ()))
         hs = wb["_서류"]
         hs.cell(1, fs.PDF_COL).value = "PDF 주소"
         for i, d in enumerate(dcs, start=2):
@@ -104,6 +105,17 @@ def payload(before: Path, after: Path, sheet: str, added=(), removed=(), **overr
            "textColumns": ["D"] if sheet == "_번호" else [], "rows": [list(r) for r in at.rows],
            "added": list(added), "removed": list(removed)}
     return {**out, **override}
+
+
+def resize(wb, hid, n):
+    """보기 시트를 숨김 표 n 행에 맞춘다(COM 이 하는 일)."""
+    name, heads = VIEWS[hid]
+    fs.resize_view(wb, name, hid, heads, n, RULES.get(hid, ()))
+
+
+def view_payload(after: Path, hid: str, **override) -> dict:
+    rows = len(vt.read_table(load_workbook(after), hid).rows)
+    return {"kind": "view", "sheet": VIEWS[hid][0], "source": hid, "rows": rows, "sourceNote": None, **override}
 
 
 def changed_numbers():
@@ -136,15 +148,18 @@ class VerifyTableTest(unittest.TestCase):
 
     def _after(self, name="after.xlsm", nums=None, schs=None, dcs=None, extra=None) -> Path:
         def mutate(wb):
-            rewrite(wb, "_번호", nums or numbers())
-            rewrite(wb, "_학교", schs or schools())
-            rewrite(wb, "_서류", dcs or docs())
+            for hid, recs in (("_번호", nums or numbers()), ("_학교", schs or schools()), ("_서류", dcs or docs())):
+                rewrite(wb, hid, recs)
+                resize(wb, hid, len(recs))
             if extra is not None:
                 extra(wb)
         return build(self.dir / name, mutate=mutate)
 
     def _tables(self, after, **per_sheet):
-        return [payload(self.before, after, s, **per_sheet.get(s, {})) for s in ("_번호", "_학교", "_서류")]
+        hids = ("_번호", "_학교", "_서류")
+        # 보기 시트 검사는 뒤에 붙인다 — tables[0..2] 가 숨김 표인 채로 남게
+        return [payload(self.before, after, s, **per_sheet.get(s, {})) for s in hids] + \
+            [view_payload(after, s) for s in hids]
 
     def _verify(self, after, tables=None, baseline="default"):
         sheets = [tv.MOA, tv.PIMS] + (self._tables(after) if tables is None else tables)
@@ -162,7 +177,7 @@ class VerifyTableTest(unittest.TestCase):
         after = self._after(nums=changed_numbers(), schs=schs, dcs=dcs)
         checks = self._verify(after, self._tables(after, _번호={"added": ["01000000010"]}))
         self.assertEqual(self._failed(checks), [])
-        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE)
+        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 1 + 3 * vv.CHECKS_PER_VIEW)
 
     def test_06_07_만이면_27개_그대로(self):
         after = build(self.dir / "after.xlsm")

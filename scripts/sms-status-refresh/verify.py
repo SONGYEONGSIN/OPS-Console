@@ -140,6 +140,9 @@ def expected_sheet_list(before: list[tuple[str, str]], sheets: Sequence[dict]) -
         titles = [t for t, _ in out]
         if sd["sheet"] in titles:
             continue
+        if sd.get("kind") == "meta":  # `_수정` 은 숨김·맨 끝(결정 7)
+            out.append((sd["sheet"], "hidden"))
+            continue
         if sd.get("afterSheet") not in titles:  # 숨김 표(kind=table)엔 afterSheet 가 없다 — 없던 시트면 실패
             return None
         out.insert(titles.index(sd["afterSheet"]) + 1, (sd["sheet"], "visible"))
@@ -297,6 +300,7 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
     baseline 은 기준 판정 열의 주인을 가릴 기준 판(현황 파일 첫 버전) — `_수정` 이 있으면 보지 않는다.
     """
     import verify_table  # verify_table 이 이 모듈의 Check·cell_repr 를 쓴다 — 순환 import 를 피해 여기서
+    import verify_view  # 보기 시트·요약·`_수정` (kind view·summary·meta) — 같은 이유로 여기서
 
     bwb = load_workbook(before, keep_vba=True)
     awb = load_workbook(after, keep_vba=True)
@@ -311,9 +315,12 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
         checks += _check_untouched(bwb, awb, targets)
         if owners is not None:
             checks.append(owners.check())  # `_수정` 키 칸 타입 — 숨김 표가 있을 때만(06·07 만이면 27개 그대로)
+            checks.append(verify_view.check_views_cover(sheets))
         for sd in sheets:
             if sd.get("kind") == "table":
                 checks += verify_table.check_table(bwb, awb, sd, owners)
+            elif sd.get("kind") in verify_view.CHECKERS:
+                checks += verify_view.CHECKERS[sd["kind"]](bwb, awb, sd)
             elif sd["sheet"] in awb.sheetnames and isinstance(awb[sd["sheet"]], Worksheet):
                 checks += _check_target(awb[sd["sheet"]], sd)
             else:
