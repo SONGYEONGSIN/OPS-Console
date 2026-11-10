@@ -120,6 +120,20 @@ describe("현황 최신화 결과 계약", () => {
     }
   });
 
+  it("메일 첨부 단계는 라벨과 할 일 문구가 있다", () => {
+    expect(stepLabel("mail")).toBe("메일 첨부");
+    for (const code of [
+      "mail_config",
+      "mail_folder_missing",
+      "mail_access_denied",
+      "mail_failed",
+    ]) {
+      expect(failureCopy(code)).not.toBe(FAILURE_COPY.unknown);
+      expect(failureCopy(code)).toContain("메일");
+    }
+    expect(failureCopy("mail_access_denied")).toContain("Mail.Read");
+  });
+
   it("실행 메시지는 단계·성패·코드만 — summary·message 원문을 싣지 않는다", () => {
     expect(
       runMessage({

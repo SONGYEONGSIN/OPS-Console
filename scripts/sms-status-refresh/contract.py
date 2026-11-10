@@ -22,10 +22,10 @@ SMS_CONSUMER = "sms-status-refresh"
 # 첫 실행 기준점 = 2026-10-17 00:00 KST. 단계별 watermark 가 아직 없을 때 여기서부터 본다.
 FIRST_WATERMARK = "2026-10-16T15:00:00Z"
 
-FAILURE_CODES = ("lease_busy", "login_failed", "moa_empty", "moa_shape_changed", "moa_incomplete", "pims_login_failed", "pims_empty", "pims_shape_changed", "pims_incomplete", "source_missing", "source_shape", "excel_failed", "verify_failed", "changed", "locked", "upload_unknown", "after_check", "dependency_failed", "unknown")
+FAILURE_CODES = ("mail_config", "mail_folder_missing", "mail_access_denied", "mail_failed", "lease_busy", "login_failed", "moa_empty", "moa_shape_changed", "moa_incomplete", "pims_login_failed", "pims_empty", "pims_shape_changed", "pims_incomplete", "source_missing", "source_shape", "excel_failed", "verify_failed", "changed", "locked", "upload_unknown", "after_check", "dependency_failed", "unknown")
 
-# PR-3·4 가 "mail"·"pdf" 를 더한다.
-STEP_IDS = ("moa", "pims", "workbook")
+# PR-4 가 "pdf" 를 더한다. mail 이 맨 앞이어야 같은 실행의 06·07 이 새 세종 리스트를 쓴다.
+STEP_IDS = ("mail", "moa", "pims", "workbook")
 
 TEXT_LIMIT = 300  # 서버 zod 의 summary·detail·changes 한 줄 상한
 CHANGES_LIMIT = 200  # 서버 zod 의 changes 줄 수 상한

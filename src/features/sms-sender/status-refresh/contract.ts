@@ -11,6 +11,7 @@ import { z } from "zod";
  */
 
 export const STEP_LABEL: Record<string, string> = {
+  mail: "메일 첨부",
   moa: "Moa 수집",
   pims: "PIMS 수집",
   workbook: "현황 파일",
@@ -22,6 +23,14 @@ export function stepLabel(id: string): string {
 
 /** 실패 코드 → 사람이 할 일. Python 은 코드만 보내고 문구는 여기 한 곳에서 정한다. */
 export const FAILURE_COPY: Record<string, string> = {
+  mail_config:
+    "회사 PC 에 세종 메일함 설정(SMS_STATUS_MAILBOX_UPN·SMS_STATUS_SEJONG_CONTACT_FOLDER 또는 Azure 앱 값)이 비어 있어 메일을 확인하지 못했습니다. 관리자에게 알려 주세요.",
+  mail_folder_missing:
+    "세종 메일 폴더(받은 편지함의 01. 결제사/세종텔레콤 또는 02.운영부/운영2팀 아래 담당자 폴더)를 찾지 못했습니다. 폴더 이름이 바뀌었거나 옮겨졌는지 확인하고 관리자에게 알려 주세요.",
+  mail_access_denied:
+    "메일함을 읽을 권한이 없습니다. Azure 앱에 Mail.Read(Application) 권한과 관리자 동의가 있는지 확인하세요.",
+  mail_failed:
+    "세종 메일을 읽거나 발번 리스트를 Teams 에 저장하지 못했습니다. 잠시 뒤 다시 누르고, 또 그러면 관리자에게 알려 주세요.",
   lease_busy:
     "다른 Moa 자동화(마감 스크랩·경쟁률 점검)가 로그인 중이라 Moa 수집을 건너뛰었습니다. 몇 분 뒤 다시 누르세요.",
   login_failed:

@@ -275,6 +275,8 @@ def _etag_tail(graph, item_id: str, etag: str) -> str:
 
 def _stale_tail(ctx: Context) -> str:
     tail = ""
+    if getattr(ctx.results.get("mail"), "status", None) != "ok":
+        tail += " · 새 세종 메일은 확인 못 함"
     for sid, label in (("moa", "Moa"), ("pims", "PIMS")):
         if getattr(ctx.results.get(sid), "status", None) != "ok":
             tail += f" · {label} 는 지난 자료"
