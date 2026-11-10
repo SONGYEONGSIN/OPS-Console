@@ -24,6 +24,8 @@ A, B, C = "테스트대학교A", "테스트대학교B", "테스트대학교C"
 VIEWS = {"_학교": ("01. 학교별 현황", fs.SCHOOL_HEADS), "_서류": ("02. 서류별 현황", fs.DOC_HEADS),
          "_번호": ("03. 번호 목록", fs.NUMBER_HEADS)}
 RULES = {"_번호": [("상태", '{c}{r}="미비"')]}  # 보기 시트 조건부 서식 — 03 만
+SUMMARY = "00. 요약"
+SUMMARY_ROWS = [["SMS 발신번호 사전등록 현황: 요약"]]  # 숨김 표 payload 가 있으면 요약 검사가 하나 있어야 한다
 
 
 def num(no, name, number, state, docs="", note="", kind="4년제"):
@@ -87,6 +89,8 @@ def build(path: Path, *, nums=None, schs=None, dcs=None, moa_rows=None, mutate=N
         for hid, recs in (("_학교", schs), ("_서류", dcs), ("_번호", nums)):
             name, heads = VIEWS[hid]
             fs.search_sheet(wb, name, hid, heads, recs, fs.picks_of(recs), rules=RULES.get(hid, ()))
+        for row in SUMMARY_ROWS:
+            (wb[SUMMARY] if SUMMARY in wb.sheetnames else wb.create_sheet(SUMMARY, 0)).append(row)
         hs = wb["_서류"]
         hs.cell(1, fs.PDF_COL).value = "PDF 주소"
         for i, d in enumerate(dcs, start=2):
@@ -159,7 +163,8 @@ class VerifyTableTest(unittest.TestCase):
         hids = ("_번호", "_학교", "_서류")
         # 보기 시트 검사는 뒤에 붙인다 — tables[0..2] 가 숨김 표인 채로 남게
         return [payload(self.before, after, s, **per_sheet.get(s, {})) for s in hids] + \
-            [view_payload(after, s) for s in hids]
+            [view_payload(after, s) for s in hids] + \
+            [{"kind": "summary", "sheet": SUMMARY, "rows": SUMMARY_ROWS, "links": {}}]
 
     def _verify(self, after, tables=None, baseline="default"):
         sheets = [tv.MOA, tv.PIMS] + (self._tables(after) if tables is None else tables)
@@ -177,7 +182,8 @@ class VerifyTableTest(unittest.TestCase):
         after = self._after(nums=changed_numbers(), schs=schs, dcs=dcs)
         checks = self._verify(after, self._tables(after, _번호={"added": ["01000000010"]}))
         self.assertEqual(self._failed(checks), [])
-        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 1 + 3 * vv.CHECKS_PER_VIEW)
+        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 2 + 3 * vv.CHECKS_PER_VIEW
+                         + vv.CHECKS_PER_SUMMARY)
 
     def test_06_07_만이면_27개_그대로(self):
         after = build(self.dir / "after.xlsm")

@@ -315,7 +315,7 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
         checks += _check_untouched(bwb, awb, targets)
         if owners is not None:
             checks.append(owners.check())  # `_수정` 키 칸 타입 — 숨김 표가 있을 때만(06·07 만이면 27개 그대로)
-            checks.append(verify_view.check_views_cover(sheets))
+            checks += verify_view.check_coverage(sheets)
         for sd in sheets:
             if sd.get("kind") == "table":
                 checks += verify_table.check_table(bwb, awb, sd, owners)

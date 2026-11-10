@@ -6,7 +6,7 @@
 
 payload `kind` 셋 — 필드 정의는 task-2-report.md:
 - view    {sheet, source, rows, sourceNote}
-- summary {sheet, rows, links, searchCells}
+- summary {sheet, rows, links}  — 링크 허용 대상은 원본 요약의 링크 대상에서
 - meta    {sheet, rows}
 
 detail 에는 건수·시트·셀 주소만 — 셀 값은 싣지 않는다. 통합 문서는 verify 가 읽기 전용으로 연 것을 받는다.
@@ -36,12 +36,13 @@ L_CF = "조건부 서식 범위 = 새 행 수"
 L_TOP = "머리(1~8행)·틀 고정·병합·유효성 그대로"
 CHECKS_PER_VIEW = 6
 L_VIEWS = "숨김 표마다 보기 시트 검사 있음"  # 통합 문서에 하나(숨김 표 payload 가 있을 때)
+L_SUMMARY_ONE = "요약 검사 정확히 1개"  # 같은 자리
 
 L_SUM_KNOWN = "요약 시트 있음"
 L_SUM_DATA = "값 = 생성 데이터(1행~)"
 L_SUM_FORMULA = "수식 0"
 L_SUM_LINKS = "링크 = 생성 데이터"
-L_SUM_TARGET = "링크는 보기 검색 칸·0 칸엔 링크 없음"
+L_SUM_TARGET = "링크 대상은 원본 요약에 있던 곳·0 칸엔 링크 없음"
 L_SUM_META = "병합·틀 고정·조건부 서식·유효성 그대로"
 CHECKS_PER_SUMMARY = 5
 
@@ -59,6 +60,7 @@ _END = re.compile(r"(\$2:\$?[A-Z]{1,3}\$)\d+")
 _SMALL = re.compile(r"SMALL\(([^()]*?),(\d+)\)")  # 순번 열의 k(행마다 1씩 는다)
 _REL = re.compile(r"(?<![A-Za-z0-9_$])(\$?[A-Z]{1,3})(\d+)(?![\d(!])")  # 행이 상대인 참조(`$P9`)
 _COUNT = re.compile(r" / (\d+)건")
+_NOTE = re.compile(rf"A([1-{HEAD_LAST}])")  # sourceNote 로 허용하는 주소
 
 
 def _formula(v) -> str | None:
@@ -146,7 +148,10 @@ def _view_cf(sd, bws, aws, n: int) -> Check:
 
 
 def _view_top(sd, bws, aws, acells: dict, bcells: dict) -> Check:
-    note = coordinate_to_tuple(sd["sourceNote"]) if sd.get("sourceNote") else None
+    # 기준 자료 칸은 A열 1~8행만 면제한다 — 그 밖 주소(검색 칸·열 머리글)를 면제하면 그 칸 변경이 통과한다
+    raw = sd.get("sourceNote")
+    m = _NOTE.fullmatch(raw) if isinstance(raw, str) else None
+    note = (int(m[1]), 1) if m else None
     skip = {k for k, v in bcells.items() if _COUNT.search(_formula(v) or "")} | {note}
 
     def top(cells):
@@ -154,7 +159,8 @@ def _view_top(sd, bws, aws, acells: dict, bcells: dict) -> Check:
 
     diff = sum(1 for k in set(top(bcells)) | set(top(acells)) if top(bcells).get(k) != top(acells).get(k))
     nv = acells.get(note) if note else None
-    note_ok = note is None or (nv is not None and nv[0] == "str" and bool(nv[1].strip()) and _formula(nv) is None)
+    note_ok = (raw is None and note is None) or (
+        nv is not None and nv[0] == "str" and bool(nv[1].strip()) and _formula(nv) is None)
     mb, ma = sheet_meta(bws), sheet_meta(aws)
     keys = [k for k in mb if mb[k] != ma.get(k)]
     detail = f"머리 칸 불일치 {diff}" + (f", {'·'.join(keys)}" if keys else "") + ("" if note_ok else ", 기준 자료 칸 텍스트 아님")
@@ -179,13 +185,18 @@ def check_view(bwb, awb, sd: dict) -> list[Check]:
             _view_tail(sd, acells, n), _view_cf(sd, bws, aws, n), _view_top(sd, bws, aws, acells, bcells)]
 
 
-def check_views_cover(sheets: Sequence[dict]) -> Check:
-    """숨김 표를 다시 쓰면 그 보기 시트도 검사에 들어와야 한다 — 빠지면 옛 범위가 '대상 외 그대로' 로 통과한다."""
+def check_coverage(sheets: Sequence[dict]) -> list[Check]:
+    """숨김 표를 다시 쓰면 그 보기 시트·요약도 검사에 들어와야 한다 — 빠지면 옛 값이 '대상 외 그대로' 로 통과한다.
+
+    요약은 매 실행 다시 쓰므로(결정 8) 정확히 하나. `_수정` 은 이을 행이 없으면 안 바뀌므로 필수가 아니다.
+    """
     tables = [sd["sheet"] for sd in sheets if sd.get("kind") == "table"]
     seen = {sd.get("source") for sd in sheets if sd.get("kind") == "view"}
     missing = [t for t in tables if t not in seen]
-    return Check(L_VIEWS, not missing, f"숨김 표 {len(tables)}, 보기 검사 없음 {len(missing)}"
-                 + (f" — {', '.join(missing)}" if missing else ""))
+    summaries = sum(1 for sd in sheets if sd.get("kind") == "summary")
+    return [Check(L_VIEWS, not missing, f"숨김 표 {len(tables)}, 보기 검사 없음 {len(missing)}"
+                  + (f" — {', '.join(missing)}" if missing else "")),
+            Check(L_SUMMARY_ONE, summaries == 1, f"{summaries}개")]
 
 
 # ---------------------------------------------------------------- 00. 요약
@@ -210,8 +221,9 @@ def check_summary(bwb, awb, sd: dict) -> list[Check]:
     diff = sorted(k for k in set(acells) | set(expected) if acells.get(k) != expected.get(k))
     formulas = sum(1 for v in acells.values() if _formula(v))
     links, want = _links(aws), dict(sd.get("links", {}))
-    search = {s: set(cs) for s, cs in dict(sd.get("searchCells", {})).items() if s in awb.sheetnames}
-    off = [c for c, loc in links.items() if loc.rpartition("!")[2] not in search.get(loc.rpartition("!")[0], ())]
+    # 허용 대상 = 원본 요약의 링크 대상 — payload 가 주면 생성 쪽 실수를 스스로 인증한다
+    allowed = set(_links(bws).values())
+    off = [c for c, loc in links.items() if loc not in allowed]
     zero = [c for c in links if acells.get(coordinate_to_tuple(c)) in (None, ("num", 0))]
     mb, ma = sheet_meta(bws), sheet_meta(aws)
     keys = [k for k in mb if mb[k] != ma.get(k)]
@@ -221,7 +233,7 @@ def check_summary(bwb, awb, sd: dict) -> list[Check]:
         Check(label(name, L_SUM_FORMULA), formulas == 0, f"{formulas}"),
         Check(label(name, L_SUM_LINKS), links == want,
               f"링크 {len(links)} / 생성 {len(want)}, 어긋남 {len(set(links.items()) ^ set(want.items()))}"),
-        Check(label(name, L_SUM_TARGET), not off and not zero, f"검색 칸 아님 {len(off)}, 0·빈 칸 링크 {len(zero)}"),
+        Check(label(name, L_SUM_TARGET), not off and not zero, f"원본에 없던 대상 {len(off)}, 0·빈 칸 링크 {len(zero)}"),
         Check(label(name, L_SUM_META), not keys, "·".join(keys)),
     ]
 

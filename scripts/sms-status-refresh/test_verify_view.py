@@ -23,16 +23,15 @@ import verify_view as vv
 SUMMARY = "00. 요약"
 V1, V3 = "01. 학교별 현황", "03. 번호 목록"
 D = "테스트대학교D"
-SEARCH = {V1: ["G6"], "02. 서류별 현황": ["G6"], V3: ["D6"]}
 CHECK_HEADS = [("No", 6, "C", "no"), ("유형", 10, "C", "kind"), ("대상", 20, "L", "name"), ("내용", 30, "L", "note")]
 EDIT = ["기계", "_학교", tt.A, "확인", "확인함"]
 
 
 def summary(sejong=3, missing=0):
-    """요약 값(1행~)과 링크 — 0 칸엔 링크가 없다(결정 8)."""
+    """요약 값(1행~)과 링크 — 0 칸엔 링크가 없다(결정 8). 원본 링크 대상은 01 G6·03 D6 두 곳."""
     rows = [["SMS 발신번호 사전등록 현황: 요약"], ["▪ 기준 자료: 테스트 자료"], [],
-            [f"■ 등록 현황 · {sejong}곳"], ["4년제", sejong - 1, "전문대학", 1], ["서류 미비", missing]]
-    links = {"B5": f"{V1}!G6", "D5": f"{V1}!G6"}
+            [f"■ 등록 현황 · {sejong}곳"], ["4년제", sejong - 1, "전문대학", 1], ["서류 미비", missing, "번호", 5]]
+    links = {"B5": f"{V1}!G6", "D5": f"{V1}!G6", "D6": f"{V3}!D6"}
     return rows, ({**links, "B6": f"{V3}!D6"} if missing else links)
 
 
@@ -96,12 +95,13 @@ class VerifyViewTest(unittest.TestCase):
                 extra(wb)
         return tt.build(self.dir / name, mutate=mutate)
 
-    def _sheets(self, after, tables=None, sm=None, meta=None, views=True):
+    def _sheets(self, after, tables=None, sm=None, meta=None, views=True, view=None):
+        """view 는 {숨김 표: view payload 덮어쓸 필드}."""
         hids = ("_번호", "_학교", "_서류")
         out = [tt.payload(self.before, after, s, **(tables or {}).get(s, {})) for s in hids]
-        out += [tt.view_payload(after, s) for s in hids] if views else []
+        out += [tt.view_payload(after, s, **(view or {}).get(s, {})) for s in hids] if views else []
         rows, links = sm or summary()
-        out.append({"kind": "summary", "sheet": SUMMARY, "rows": rows, "links": links, "searchCells": SEARCH})
+        out.append({"kind": "summary", "sheet": SUMMARY, "rows": rows, "links": links})
         if meta is not None:
             out.append({"kind": "meta", "sheet": vt.META_SHEET, "rows": [r + ["", "2026-11-10"] for r in meta]})
         return out
@@ -122,7 +122,7 @@ class VerifyViewTest(unittest.TestCase):
         after = self._grown(sm=sm, edits=[EDIT])
         failed, checks = self._failed(after, tables=self._ADDED, sm=sm, meta=[EDIT])
         self.assertEqual(failed, [])
-        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 1 + 3 * vv.CHECKS_PER_VIEW
+        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 2 + 3 * vv.CHECKS_PER_VIEW
                          + vv.CHECKS_PER_SUMMARY + vv.CHECKS_PER_META)
 
     def test_뷰가_옛_범위를_보면_실패(self):
@@ -177,9 +177,11 @@ class VerifyViewTest(unittest.TestCase):
         zero = summary()[0], {**summary()[1], "B6": f"{V3}!D6"}  # 0 칸에 링크
         self.assertEqual(self._failed(self._after("after-zero.xlsm", sm=zero), sm=zero)[0],
                          [vt.label(SUMMARY, vv.L_SUM_TARGET)])
-        elsewhere = summary()[0], {**summary()[1], "B5": f"{V1}!A9"}  # 검색 칸이 아닌 곳
-        self.assertEqual(self._failed(self._after("after-else.xlsm", sm=elsewhere), sm=elsewhere)[0],
-                         [vt.label(SUMMARY, vv.L_SUM_TARGET)])
+        # 허용 대상 = 원본 요약의 링크 대상(01 G6·03 D6). 02 G6 은 검색 칸이어도 원본에 없던 대상이다
+        for tag, loc in (("A9", f"{V1}!A9"), ("02", "02. 서류별 현황!G6")):
+            elsewhere = summary()[0], {**summary()[1], "B5": loc}
+            self.assertEqual(self._failed(self._after(f"after-else-{tag}.xlsm", sm=elsewhere), sm=elsewhere)[0],
+                             [vt.label(SUMMARY, vv.L_SUM_TARGET)], tag)
         failed, checks = self._failed(self._after("after-num.xlsm"), sm=summary(sejong=4))
         self.assertEqual(failed, [vt.label(SUMMARY, vv.L_SUM_DATA)])
         dumped = json.dumps([c.__dict__ for c in checks], ensure_ascii=False)
@@ -210,6 +212,56 @@ class VerifyViewTest(unittest.TestCase):
     def test_숨김_표에_보기_검사가_없으면_실패(self):
         after = self._after()
         self.assertEqual(self._failed(after, views=False)[0], [vv.L_VIEWS])
+
+    def test_요약_검사는_정확히_하나(self):
+        after = self._after()
+        full = self._sheets(after)
+        others = [s for s in full if s["kind"] != "summary"]
+        summaries = [s for s in full if s["kind"] == "summary"]
+        self.assertEqual(self._failed(after, sheets=others)[0], [vv.L_SUMMARY_ONE])
+        self.assertEqual(self._failed(after, sheets=full + summaries)[0], [vv.L_SUMMARY_ONE])
+
+    def _view_failed(self, name, extra=None, **view):
+        after = self._after(name, extra=extra)
+        return self._failed(after, view={"_번호": view} if view else None)[0]
+
+    def test_보기_머리·틀_고정이_바뀌면_실패(self):
+        top = [vt.label(V3, vv.L_TOP)]
+        self.assertEqual(self._view_failed("h.xlsm", lambda wb: setattr(wb[V3]["A1"], "value", "다른 제목")), top)
+        self.assertEqual(self._view_failed("f.xlsm", lambda wb: setattr(wb[V3], "freeze_panes", "A8")), top)
+
+    def test_기준_자료_칸은_A열_1_8행의_텍스트만(self):
+        top = [vt.label(V3, vv.L_TOP)]
+
+        def note(v):
+            return lambda wb: setattr(wb[V3]["A4"], "value", v)
+        self.assertEqual(self._view_failed("n-ok.xlsm", note("▪ 기준 자료: 새 자료"), sourceNote="A4"), [])
+        self.assertEqual(self._view_failed("n-f.xlsm", note("=1"), sourceNote="A4"), top)
+        self.assertEqual(self._view_failed("n-0.xlsm", sourceNote="A4"), top)  # 빈 칸
+        # A열 1~8행 밖은 면제하지 않는다 — 검색 칸·열 머리글을 기준 자료 칸이라고 우겨 바꾸는 것을 막는다
+        for coord in ("G6", "A9"):
+            self.assertEqual(self._view_failed(f"n-{coord}.xlsm", sourceNote=coord), top, coord)
+
+    def test_건수_칸이_옮겨지면_실패(self):
+        def move(wb):
+            c = count_cell(wb[V3])
+            wb[V3].cell(c.row, c.column + 1).value, c.value = c.value, None
+        self.assertEqual(self._view_failed("m.xlsm", move), [vt.label(V3, x) for x in (vv.L_COUNT, vv.L_TOP)])
+
+    def test_보기_payload_행_수가_다르면_실패(self):
+        self.assertEqual(self._view_failed("r.xlsm", rows=6), [vt.label(V3, vv.L_RANGE)])
+
+    def test_요약_수식·모양이_바뀌면_실패(self):
+        rows, links = summary()
+        sm = ([*rows, ["=1+1"]], links)
+        self.assertEqual(self._failed(self._after("s-f.xlsm", sm=sm), sm=sm)[0], [vt.label(SUMMARY, vv.L_SUM_FORMULA)])
+        frozen = self._after("s-m.xlsm", extra=lambda wb: setattr(wb[SUMMARY], "freeze_panes", "A3"))
+        self.assertEqual(self._failed(frozen)[0], [vt.label(SUMMARY, vv.L_SUM_META)])
+
+    def test__수정_머리글이_바뀌면_실패(self):
+        after = self._after("e-h.xlsm", edits=[EDIT],
+                            extra=lambda wb: setattr(wb[vt.META_SHEET]["F1"], "value", "메모"))
+        self.assertEqual(self._failed(after, meta=[EDIT])[0], [vt.label(vt.META_SHEET, vv.L_META_HEADER)])
 
 
 if __name__ == "__main__":
