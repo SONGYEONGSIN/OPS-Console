@@ -22,6 +22,7 @@ NAME_FIX = {"한양대학교": "한양대학교(서울)"}
 MIN_DIGITS = 8
 _SPACE = re.compile(r"\s+")
 _NOT_DIGIT = re.compile(r"\D")
+_NUMBER_LIKE = re.compile(r"[\d\-\s]+")  # 숫자·하이픈·공백뿐 — `1588-0000(대표)` 류는 원문 키
 
 
 def _text(v) -> str:
@@ -35,9 +36,9 @@ def school_key(name) -> str:
 
 
 def number_digits(raw) -> str | None:
-    """번호 숫자 — `~`(범위)가 있거나 8자리 미만이면 None."""
+    """번호 숫자 — 숫자·하이픈·공백 말고 다른 글자(`~` 범위 포함)가 있거나 8자리 미만이면 None."""
     s = _text(raw)
-    if "~" in s:
+    if not _NUMBER_LIKE.fullmatch(s):
         return None
     d = _NOT_DIGIT.sub("", s)
     return d if len(d) >= MIN_DIGITS else None

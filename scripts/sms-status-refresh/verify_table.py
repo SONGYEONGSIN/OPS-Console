@@ -61,9 +61,12 @@ L_U = "U(고를 값)부터 오른쪽 그대로"
 L_META = "틀 고정·병합·조건부 서식·유효성 그대로"
 L_PERSON = "사람 칸 = 같은 키의 원본"
 L_NOTE = "비고는 덧붙이기만"
-L_LOST = "빠진 행의 메모 = removed"
-L_KEYS = "새·빠진 키 = 생성 데이터"
+L_KEYS = "새·빠진 키 = 생성 데이터"  # 빠진 행의 메모 건수는 detail 로만 — 독립 검사는 PR-3b T10 의 lostMemos
+L_NEW = "새 행의 사람 칸은 빈칸"
+L_EDITS = f"{META_SHEET} 키 칸 전부 텍스트"  # 표마다가 아니라 통합 문서에 하나(숨김 표 payload 가 있을 때)
 CHECKS_PER_TABLE = 9
+NEW_ROW_FILLED = ("No",)  # 결정 2 — 새 학교는 끝에 같은 No. 키 열(학교명·구분)도 채워진다
+NEW_ROW_ALLOWED = {("_서류", "제출 상태"): "서류 확인 안 됨"}
 
 
 def label(sheet: str, name: str) -> str:
@@ -133,28 +136,35 @@ def keyed(spec: Spec, tables) -> list[dict[str, int]]:
 
 
 # ---------------------------------------------------------------- 기준 판정 열의 주인
-def _read_edits(ws) -> tuple[dict, set]:
-    """`_수정` → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}). 머리글이 다르면 둘 다 빈 것(전부 사람)."""
+def _read_edits(ws) -> tuple[dict, set, int]:
+    """`_수정` → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}, 텍스트 아닌 키 칸 수).
+
+    계약: T8 은 키·값 칸을 텍스트 서식(@)으로 쓴다 — 아니면 Excel 이 `01000000001` 을 숫자로 바꿔 키가
+    안 맞고, 그 칸은 조용히 사람 칸이 된다. 그래서 텍스트 아닌 키 칸은 세어 실패로 드러낸다.
+    머리글이 다르면 둘 다 빈 것(전부 사람).
+    """
     rows = list(ws.iter_rows(values_only=True))
     head = [_text(h).strip() for h in rows[0]] if rows else []
     if any(h not in head for h in META_HEADER[:5]):
-        return {}, set()
+        return {}, set(), 0
     ix = {h: head.index(h) for h in META_HEADER[:5]}
-    machine, people = {}, set()
+    machine, people, not_text = {}, set(), 0
     for r in rows[1:]:
+        key = r[ix["키"]] if ix["키"] < len(r) else None
+        not_text += not _blank(key) and not isinstance(key, str)
         get = {h: _text(r[i]) if i < len(r) else "" for h, i in ix.items()}
         where = (get["시트"], get["키"], get["열"])
         if get["구분"] == HUMAN:
             people.add(where)
         elif get["구분"] == MACHINE:
             machine[where] = get["값"]
-    return machine, people
+    return machine, people, not_text
 
 
 class Owners:
     """기준 판정 열 칸의 주인(결정 5). `_수정` 이 있으면 그 기록, 없으면 기준 판, 둘 다 없으면 전부 사람."""
 
-    def __init__(self, edits: tuple[dict, set] | None = None, baseline: dict[str, Table] | None = None):
+    def __init__(self, edits: tuple[dict, set, int] | None = None, baseline: dict[str, Table] | None = None):
         self._edits = edits
         self._baseline = baseline or {}
 
@@ -167,10 +177,17 @@ class Owners:
         wb = load_workbook(baseline)  # 읽기만 — 시트 목록은 안 본다(첫 판엔 06·07 이 없다)
         return cls(baseline={s: read_table(wb, s) for s, sp in SPECS.items() if sp.judged and s in wb.sheetnames})
 
+    def check(self) -> Check:
+        """`_수정` 키 칸 타입 — 없으면 통과."""
+        if self._edits is None:
+            return Check(L_EDITS, True, f"{META_SHEET} 없음")
+        bad = self._edits[2]
+        return Check(L_EDITS, bad == 0, f"텍스트 아님 {bad}")
+
     def human_fn(self, sheet: str, spec: Spec, bt: Table, bkeys: dict[str, int]) -> Callable[[str, str, object], bool]:
         """(원본 키, 열 이름, 원본 값) → 사람 칸인가."""
         if self._edits is not None:
-            machine, people = self._edits
+            machine, people, _bad = self._edits
             return lambda k, col, v: (sheet, k, col) in people or machine.get((sheet, k, col)) != _text(v)
         base = self._baseline.get(sheet)
         if base is None:
@@ -197,6 +214,13 @@ def _roles(header, spec: Spec) -> list[str]:
 
 def _col_name(header, i: int) -> str:
     return base_name(header[i]) or f"{COLUMNS[i]}열"
+
+
+def _col_label(spec: Spec, header, i: int) -> str:
+    """detail 용 — 규칙에 있는 열 이름만 그대로, 모르는 열은 머리글 원문 대신 열 문자."""
+    name = base_name(header[i])
+    known = spec.sejong + spec.judged + KEY_NAMES[spec.key] + NEW_ROW_FILLED
+    return name if name in known else f"{COLUMNS[i]}열"
 
 
 def _guarded(role: str, name: str, human, k: str, v) -> bool:
@@ -279,7 +303,7 @@ def _check_person(x: _Ctx) -> Check:
         for i, role in enumerate(x.roles):
             name = _col_name(x.bt.header, i)
             if _guarded(role, name, x.human, k, b[i]) and not _same(b[i], a[i]):
-                bad[name] += 1
+                bad[_col_label(x.spec, x.bt.header, i)] += 1
     n = sum(bad.values())
     return x.check(L_PERSON, n == 0, f"키 공통 {len(common)}, 불일치 {n}칸" + (f" — {_names(list(bad))}" if n else ""))
 
@@ -295,24 +319,32 @@ def _check_note(x: _Ctx) -> Check:
     return x.check(L_NOTE, bad == 0, f"키 공통 {len(common)}, 덧붙이기 아님 {bad}")
 
 
-def _check_lost(x: _Ctx, sd: dict) -> Check:
-    declared = set(sd.get("removed", []))
-    memo, lost = 0, 0
-    for k in x.bkeys.keys() - x.akeys.keys():
-        b = x.bt.rows[x.bkeys[k]]
-        if any(_is_memo(role, _col_name(x.bt.header, i), x.human, k, b[i]) for i, role in enumerate(x.roles)):
-            memo += 1
-            lost += k not in declared
-    return x.check(L_LOST, lost == 0, f"빠진 행 중 메모 있음 {memo}, removed 에 없음 {lost}")
-
-
 def _check_keys(x: _Ctx, sd: dict) -> Check:
     added, removed = x.akeys.keys() - x.bkeys.keys(), x.bkeys.keys() - x.akeys.keys()
     want_a, want_r = set(sd.get("added", [])), set(sd.get("removed", []))
     stay_bad = x.spec.rows_stay and bool(removed)
+    memo = sum(1 for k in removed if any(_is_memo(role, _col_name(x.bt.header, i), x.human, k, x.bt.rows[x.bkeys[k]][i])
+                                         for i, role in enumerate(x.roles)))
     detail = (f"새 {len(added)} / 데이터 {len(want_a)}, 빠짐 {len(removed)} / 데이터 {len(want_r)}"
-              + (", 행을 빼지 않는 시트" if stay_bad else ""))
+              + f" (빠진 행 중 메모 있음 {memo})" + (", 행을 빼지 않는 시트" if stay_bad else ""))
     return x.check(L_KEYS, added == want_a and removed == want_r and not stay_bad, detail)
+
+
+def _check_new(x: _Ctx) -> Check:
+    """결정 2 — 새 행(새 키)의 사람 칸은 빈칸. No·키 열과 `_서류` 제출 상태 `서류 확인 안 됨` 만 예외."""
+    filled = NEW_ROW_FILLED + KEY_NAMES[x.spec.key]
+    added = sorted(x.akeys.keys() - x.bkeys.keys())
+    bad: collections.Counter[str] = collections.Counter()
+    for k in added:
+        a = x.at.rows[x.akeys[k]]
+        for i, role in enumerate(x.roles):
+            name = _col_name(x.bt.header, i)
+            if role != "person" or name in filled or _blank(a[i]):
+                continue
+            if NEW_ROW_ALLOWED.get((x.sheet, name)) != a[i]:
+                bad[_col_label(x.spec, x.bt.header, i)] += 1
+    n = sum(bad.values())
+    return x.check(L_NEW, n == 0, f"새 행 {len(added)}, 채워진 사람 칸 {n}" + (f" — {_names(list(bad))}" if n else ""))
 
 
 def check_table(bwb, awb, sd: dict, owners: Owners | None) -> list[Check]:
@@ -328,4 +360,4 @@ def check_table(bwb, awb, sd: dict, owners: Owners | None) -> list[Check]:
     x = _Ctx(sheet, spec, bt, at, _roles(bt.header, spec), bkeys, akeys, human)
     return [_check_header(x), _check_data(x, sd), _check_text(x, sd), _check_u(x, bws, aws),
             x.check(L_META, sheet_meta(bws) == sheet_meta(aws), "숨김·틀 고정·병합·조건부 서식·유효성·필터"),
-            _check_person(x), _check_note(x), _check_lost(x, sd), _check_keys(x, sd)]
+            _check_person(x), _check_note(x), _check_keys(x, sd), _check_new(x)]

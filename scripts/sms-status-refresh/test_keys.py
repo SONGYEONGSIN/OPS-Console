@@ -46,6 +46,23 @@ class NumberKeysTest(unittest.TestCase):
         self.assertEqual(before, ["01000000001"])
         self.assertEqual(after, ["01000000001"])
 
+    def test_뒤_쪽에서만_두_번이어도_원문_키(self):
+        before, after = keys.number_keys(
+            [("테스트대학교A", "010-0000-0009")],
+            [("테스트대학교A", "010-0000-0009"), ("테스트대학교C", "010-0000-0009")])
+        self.assertEqual(before, ["테스트대학교A|010-0000-0009"])
+        self.assertEqual(after, ["테스트대학교A|010-0000-0009", "테스트대학교C|010-0000-0009"])
+        before, after = keys.school_keys([("테스트대학교A", "4년제")],
+                                         [("테스트대학교A", "4년제"), ("테스트대학교A", "대학원")])
+        self.assertEqual(before, ["테스트대학교A+4년제"])
+        self.assertEqual(after, ["테스트대학교A+4년제", "테스트대학교A+대학원"])
+
+    def test_글자가_섞인_번호는_원문_키(self):
+        (got,) = keys.number_keys([("테스트대학교A", "1588-0000(대표)"), ("테스트대학교B", "02-0000-0000 내선")])
+        self.assertEqual(got, ["테스트대학교A|1588-0000(대표)", "테스트대학교B|02-0000-0000 내선"])
+        self.assertEqual(keys.number_digits(" 010 0000-0001 "), "01000000001")
+        self.assertEqual(keys.number_digits(1000000001), "1000000001")
+
     def test_원문_키도_겹치면_차례_번호(self):
         (got,) = keys.number_keys([("테스트대학교A", "대표번호"), ("테스트대학교A", "대표번호")])
         self.assertEqual(got, ["테스트대학교A|대표번호", "테스트대학교A|대표번호#2"])

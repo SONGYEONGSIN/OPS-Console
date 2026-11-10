@@ -309,6 +309,8 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
         checks += _check_vba(before, after, module_hashes)
         checks += _check_names(before, after, bwb, awb, targets)
         checks += _check_untouched(bwb, awb, targets)
+        if owners is not None:
+            checks.append(owners.check())  # `_수정` 키 칸 타입 — 숨김 표가 있을 때만(06·07 만이면 27개 그대로)
         for sd in sheets:
             if sd.get("kind") == "table":
                 checks += verify_table.check_table(bwb, awb, sd, owners)

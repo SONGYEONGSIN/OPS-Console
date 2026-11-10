@@ -113,6 +113,17 @@ def changed_numbers():
     return rows + [num(6, B, "010-0000-0010", "추가", kind="전문대학")]
 
 
+def edits_sheet(rows):
+    """숨김·맨 끝 `_수정` 시트를 붙이는 mutate — rows 는 [구분, 시트, 키, 열, 값]."""
+    def add(wb):
+        ws = wb.create_sheet(vt.META_SHEET)
+        ws.sheet_state = "hidden"
+        ws.append(list(vt.META_HEADER))
+        for r in rows:
+            ws.append(list(r) + ["", "2026-11-10"])
+    return add
+
+
 class VerifyTableTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -151,7 +162,7 @@ class VerifyTableTest(unittest.TestCase):
         after = self._after(nums=changed_numbers(), schs=schs, dcs=dcs)
         checks = self._verify(after, self._tables(after, _번호={"added": ["01000000010"]}))
         self.assertEqual(self._failed(checks), [])
-        self.assertEqual(len(checks), 27 + 3 * vt.CHECKS_PER_TABLE)
+        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE)
 
     def test_06_07_만이면_27개_그대로(self):
         after = build(self.dir / "after.xlsm")
@@ -164,7 +175,7 @@ class VerifyTableTest(unittest.TestCase):
         rows[0], rows[1] = {**rows[0], "owner": "op-b"}, {**rows[1], "owner": "op-a"}
         checks = self._verify(self._after(schs=rows))
         self.assertEqual(self._failed(checks), [vt.label("_학교", vt.L_PERSON)])
-        self.assertIn("담당자", checks[vt.label("_학교", vt.L_PERSON)].detail)
+        self.assertIn("F열", checks[vt.label("_학교", vt.L_PERSON)].detail)  # 모르는 열은 열 문자로
 
     def test_사람_판정_칸_변경_실패(self):
         rows = schools()
@@ -200,9 +211,9 @@ class VerifyTableTest(unittest.TestCase):
         self.baseline = build(self.dir / "baseline-memo.xlsm", nums=base_rows, moa_rows=tv.OLD_MOA)
         rows = [r for r in numbers() if r["num"] != "010-0000-0002"]
         after = self._after(nums=rows)
-        failed = self._failed(self._verify(after))
-        self.assertIn(vt.label("_번호", vt.L_LOST), failed)
-        self.assertIn(vt.label("_번호", vt.L_KEYS), failed)
+        checks = self._verify(after)
+        self.assertEqual(self._failed(checks), [vt.label("_번호", vt.L_KEYS)])
+        self.assertIn("메모 있음 1", checks[vt.label("_번호", vt.L_KEYS)].detail)
         ok = self._verify(after, self._tables(after, _번호={"removed": ["01000000002"]}))
         self.assertEqual(self._failed(ok), [])
 
@@ -229,27 +240,75 @@ class VerifyTableTest(unittest.TestCase):
         rows[0], rows[1] = {**rows[0], "pdf": "pdf-token-b"}, {**rows[1], "pdf": "pdf-token-a"}
         checks = self._verify(self._after(dcs=rows))
         self.assertEqual(self._failed(checks), [vt.label("_서류", vt.L_PERSON)])
-        self.assertIn("PDF 주소", checks[vt.label("_서류", vt.L_PERSON)].detail)
+        self.assertIn("R열", checks[vt.label("_서류", vt.L_PERSON)].detail)
         rows = docs()
         rows[0] = {**rows[0], "pdf": None}
         checks = self._verify(self._after("after2.xlsm", dcs=rows))
         self.assertEqual(self._failed(checks), [vt.label("_서류", vt.L_PERSON)])
 
+    def _with_edits(self, tag, rows, schs):
+        """원본·작업 사본 모두 같은 `_수정`(rows) — 작업 사본은 `_학교` 를 schs 로 다시 쓴다."""
+        self.before = build(self.dir / f"before-{tag}.xlsm", moa_rows=tv.OLD_MOA, mutate=edits_sheet(rows))
+        return self._after(f"after-{tag}.xlsm", schs=schs, extra=edits_sheet(rows))
+
     def test_수정_시트로_판정한다(self):
-        def edits(kind):
-            def add(wb):
-                ws = wb.create_sheet(vt.META_SHEET)
-                ws.sheet_state = "hidden"
-                ws.append(list(vt.META_HEADER))
-                ws.append([kind, "_학교", A, "확인", "확인함", "", "2026-11-10"])
-            return add
         rows = schools()
         rows[0] = {**rows[0], "check": ""}
-        for kind, expected in (("기계", []), ("사람", [vt.label("_학교", vt.L_PERSON)])):
-            self.before = build(self.dir / f"before-{kind}.xlsm", moa_rows=tv.OLD_MOA, mutate=edits(kind))
-            after = self._after(f"after-{kind}.xlsm", schs=rows, extra=edits(kind))
+        machine, human = ["기계", "_학교", A, "확인", "확인함"], ["사람", "_학교", A, "확인", "확인함"]
+        cases = (("기계", [machine], []), ("사람", [human], [vt.label("_학교", vt.L_PERSON)]),
+                 # 한번 사람이면 기계 값과 같아도 계속 사람
+                 ("둘다", [machine, human], [vt.label("_학교", vt.L_PERSON)]))
+        for tag, meta, expected in cases:
+            after = self._with_edits(tag, meta, rows)
             # `_수정` 이 있으면 기준 판은 보지 않는다 — 기준 판은 None 이어도 같다
-            self.assertEqual(self._failed(self._verify(after, baseline=None)), expected, kind)
+            self.assertEqual(self._failed(self._verify(after, baseline=None)), expected, tag)
+
+    def test_수정_키가_텍스트가_아니면_실패(self):
+        # Excel 이 텍스트 서식 아닌 칸의 01000000001 을 숫자로 바꾼 꼴 — 조용히 못 잇지 않고 드러낸다
+        after = self._with_edits("int", [["기계", "_번호", 1000000001, "비고", "메모 X"]], schools())
+        checks = self._verify(after, baseline=None)
+        self.assertEqual(self._failed(checks), [vt.L_EDITS])
+        self.assertIn("텍스트 아님 1", checks[vt.L_EDITS].detail)
+
+    def test_기준에_없는_행의_판정_칸은_사람(self):
+        rows = schools()
+        rows[0] = {**rows[0], "check": ""}
+        no_row = build(self.dir / "baseline-no-row.xlsm", schs=schools()[1:], moa_rows=tv.OLD_MOA)
+        no_col = build(self.dir / "baseline-no-col.xlsm", moa_rows=tv.OLD_MOA,
+                       mutate=lambda wb: setattr(wb["_학교"].cell(1, 13), "value", "다른 열"))
+        for tag, base in (("행", no_row), ("열", no_col)):
+            checks = self._verify(self._after(f"after-{tag}.xlsm", schs=rows), baseline=base)
+            self.assertEqual(self._failed(checks), [vt.label("_학교", vt.L_PERSON)], tag)
+
+    def test_숨김_시트_모양이_바뀌면_실패(self):
+        after = self._after(extra=lambda wb: setattr(wb["_학교"], "freeze_panes", "A2"))
+        self.assertEqual(self._failed(self._verify(after)), [vt.label("_학교", vt.L_META)])
+
+    def test_payload_새_키가_다르면_실패(self):
+        after = self._after()
+        tables = self._tables(after, _번호={"added": ["01000000099"]})
+        self.assertEqual(self._failed(self._verify(after, tables)), [vt.label("_번호", vt.L_KEYS)])
+
+    def test_사람_칸_타입이_바뀌면_실패(self):
+        for tag, before_v, after_v in (("앞자리0", "0101", 101), ("숫자모양", "101", 101)):
+            rows = schools()
+            rows[0] = {**rows[0], "apply": before_v}
+            self.before = build(self.dir / f"before-{tag}.xlsm", schs=rows, moa_rows=tv.OLD_MOA)
+            changed = [{**rows[0], "apply": after_v}] + rows[1:]
+            checks = self._verify(self._after(f"after-{tag}.xlsm", schs=changed))
+            self.assertEqual(self._failed(checks), [vt.label("_학교", vt.L_PERSON)], tag)
+
+    def test_새_행의_사람_칸은_빈칸(self):
+        d = {**school(4, "테스트대학교D", "", 1), "apply": "", "pims": ""}
+        new_doc = {"no": 4, "name": "테스트대학교D", "kind": "4년제", "lines": 1, "state": "등록",
+                   "status": "서류 확인 안 됨", "pdf": None, "tags": ["4년제"]}
+        after = self._after(schs=schools() + [d], dcs=docs() + [new_doc])
+        added = {"_학교": {"added": ["테스트대학교D"]}, "_서류": {"added": ["테스트대학교D"]}}
+        self.assertEqual(self._failed(self._verify(after, self._tables(after, **added))), [])
+        bad = self._after("after2.xlsm", schs=schools() + [{**d, "owner": "op-d"}],
+                          dcs=docs() + [{**new_doc, "status": "일부 제출"}])
+        failed = self._failed(self._verify(bad, self._tables(bad, **added)))
+        self.assertEqual(failed, [vt.label("_학교", vt.L_NEW), vt.label("_서류", vt.L_NEW)])
 
     def test_생성_데이터와_다르면_실패(self):
         after = self._after()
@@ -283,7 +342,7 @@ class VerifyTableTest(unittest.TestCase):
                                         module_hashes=tv.same_hashes, baseline=None)
         dumped = json.dumps([c.__dict__ for c in checks], ensure_ascii=False)
         self.assertGreaterEqual(len(verify.failed_labels(checks)), 4)
-        for value in ("테스트대학교", "010-0000", "0100000", "1000000001", "op-", "메모 X", "pdf-token"):
+        for value in ("테스트대학교", "010-0000", "0100000", "1000000001", "op-", "메모 X", "pdf-token", "PDF 주소"):
             self.assertNotIn(value, dumped)
 
 
