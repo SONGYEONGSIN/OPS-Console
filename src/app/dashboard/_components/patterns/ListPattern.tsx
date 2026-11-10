@@ -7,6 +7,7 @@ import { InspectorChrome } from "../inspector/InspectorChrome";
 import { InspectorListBody } from "../inspector/InspectorListBody";
 import type { AssignmentChange } from "@/features/assignments/ledger-schemas";
 import { useInspectorState } from "../inspector/useInspectorState";
+import { inspectorLayoutFor } from "../inspector/inspector-layout";
 import { variantRegistry } from "../inspector/list-variants/registry";
 import { applyMyTodoFilter } from "../inspector/list-variants/my-todo/filters";
 import { applyWeeklyTodoFilter } from "../inspector/list-variants/weekly-todo/filters";
@@ -985,7 +986,9 @@ export function ListPattern({
     );
   }
 
-  const drawerPadding = inspector.selected !== null ? "md:pr-[340px]" : "";
+  // 인스펙터 폭과 목록 여백은 한 쌍으로 고른다 (편집 중에만 넓히는 variant 대응)
+  const layout = inspectorLayoutFor(variant, inspector.editing && !readOnly);
+  const drawerPadding = inspector.selected !== null ? layout.gutter : "";
   return (
     <>
       <div
@@ -1085,6 +1088,7 @@ export function ListPattern({
       </div>
       <InspectorPanel
         open={inspector.selected !== null}
+        widthClassName={layout.panel}
         onClose={() => {
           inspector.close();
           onInspectorChange?.(false);
