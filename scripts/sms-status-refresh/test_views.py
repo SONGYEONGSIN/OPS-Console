@@ -56,6 +56,19 @@ def link_summary(cells):
     return mutate
 
 
+MIXED = "'_학교'!$B$2:$B$6", "$U$2:$U$6", "'_번호'!$B$2:$B$6"  # 다른 시트 접두 · 접두 없음 · 숨김 접두(끝 = 5행+1)
+
+
+def mixed_ranges(wb):
+    """03 에 세 범위를 함께 넣는다 — `/ N건` 수식 뒤에 붙이고, 행 수식은 L 열 하나. 숨김(`_번호`) 끝만 움직여야 한다."""
+    other, bare, own = MIXED
+    ws = wb[V3]
+    c = next(c for row in ws.iter_rows(max_row=8) for c in row if isinstance(c.value, str) and "건\"" in c.value)
+    c.value += f'&IF(COUNTA({other})+COUNTA({bare})+COUNTA({own})>0,"","")'
+    for r in range(fs.DATA_FIRST, fs.DATA_FIRST + len(tt.numbers())):
+        ws[f"L{r}"] = f'=IF($J{r}="","",COUNTIF({other},INDEX({own},$J{r}))+COUNTA({bare}))'
+
+
 def chain(*fns):
     def mutate(wb):
         for fn in fns:
@@ -185,6 +198,19 @@ class ViewsTest(unittest.TestCase):
             wb[V3]["A7"] = count_of(wb[V3]).value
         for i, fn in enumerate((wrong_n, gone, twice)):
             self._shape(self._path(f"count-{i}.xlsm", mutate=fn), V3)
+
+    def test_고정_범위는_안_움직이고_숨김_범위만_따라간다(self):
+        p = view_payload(load_workbook(self._path(mutate=mixed_ranges)), V3, "_번호", 4, NOTE)
+        other, bare, own = MIXED
+        moved = own.replace("$B$6", "$B$5")
+        self.assertEqual(p["countFormula"], '="검색 결과 "&COUNT(\'_번호\'!$P$2:$P$5)&" / 4건"'
+                         f'&IF(COUNTA({other})+COUNTA({bare})+COUNTA({moved})>0,"","")')
+        self.assertEqual(p["rowFormulas"][-1][11], f'=IF($J12="","",COUNTIF({other},INDEX({moved},$J12))+COUNTA({bare}))')
+
+    def test_새_행_수가_1_미만이면_view_shape(self):
+        path = self._path()
+        for n in (0, -1):
+            self.assertIn("새 행 수", self._shape(path, V3, n).detail, n)
 
     def test_짝이_아니면_view_shape(self):
         with self.assertRaises(StepFailure) as cm:

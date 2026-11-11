@@ -120,6 +120,8 @@ def view_payload(wb, view: str, hidden: str, n: int, note_text: str) -> dict:
         raise _fail(view, "허용 목록 밖")
     if view not in wb.sheetnames or hidden not in wb.sheetnames:
         raise _fail(view, "시트 없음")
+    if n < 1:  # 0행 보기를 쓰면 다음 실행이 '행 수식 없음' 으로 그 보기를 영영 못 고친다
+        raise _fail(view, f"새 행 수 {n} — 1 이상이어야 함")
     old = len(read_table(wb, hidden).rows)
     templates = view_templates(wb, view, hidden)
     ws = wb[view]
