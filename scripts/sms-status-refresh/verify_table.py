@@ -33,7 +33,7 @@ REWRITTEN = ("P", "T")
 NOTE, NOTE_SEP, REMOVABLE_NOTE = "비고", " / ", "번호 없음"
 META_SHEET = "_수정"
 META_HEADER = ("구분", "시트", "키", "열", "값", "사유", "기록일")
-HUMAN, MACHINE = "사람", "기계"
+HUMAN, MACHINE, LOST = "사람", "기계", "못 옮김"
 _SHOWN = 5  # detail 에 적는 열 이름 수 상한
 
 
@@ -241,6 +241,13 @@ def _is_memo(role: str, name: str, human, k: str, v) -> bool:
     return not _blank(v) and (role == "person" or (role == "judged" and human(k, name, v)))
 
 
+def removed_memo_rows(header, row_roles, human, bt_rows, bkeys: dict[str, int], akeys: dict[str, int]) -> int:
+    """원본에 있고 작업 사본에 없는 키 중 사람 칸에 값이 있던 행 수 — L_KEYS 의 detail 과 verify_memos(lostMemos)가 같이 쓴다."""
+    return sum(1 for k in bkeys.keys() - akeys.keys()
+               if any(_is_memo(role, _col_name(header, i), human, k, bt_rows[bkeys[k]][i])
+                      for i, role in enumerate(row_roles)))
+
+
 def _note_kept(before, after) -> bool:
     """after 가 before 에 덧붙인 것인가 — `번호 없음` 조각만 지울 수 있다."""
     def parts(v):
@@ -332,8 +339,7 @@ def _check_keys(x: _Ctx, sd: dict) -> Check:
     added, removed = x.akeys.keys() - x.bkeys.keys(), x.bkeys.keys() - x.akeys.keys()
     want_a, want_r = set(sd.get("added", [])), set(sd.get("removed", []))
     stay_bad = x.spec.rows_stay and bool(removed)
-    memo = sum(1 for k in removed if any(_is_memo(role, _col_name(x.bt.header, i), x.human, k, x.bt.rows[x.bkeys[k]][i])
-                                         for i, role in enumerate(x.roles)))
+    memo = removed_memo_rows(x.bt.header, x.roles, x.human, x.bt.rows, x.bkeys, x.akeys)
     detail = (f"새 {len(added)} / 데이터 {len(want_a)}, 빠짐 {len(removed)} / 데이터 {len(want_r)}"
               + f" (빠진 행 중 메모 있음 {memo})" + (", 행을 빼지 않는 시트" if stay_bad else ""))
     return x.check(L_KEYS, added == want_a and removed == want_r and not stay_bad, detail)

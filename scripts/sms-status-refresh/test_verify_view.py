@@ -17,6 +17,7 @@ import fixtures_status as fs
 import test_verify as tv
 import test_verify_table as tt
 import verify
+import verify_memos as vm
 import verify_table as vt
 import verify_view as vv
 
@@ -25,6 +26,7 @@ V1, V3 = "01. 학교별 현황", "03. 번호 목록"
 D = "테스트대학교D"
 CHECK_HEADS = [("No", 6, "C", "no"), ("유형", 10, "C", "kind"), ("대상", 20, "L", "name"), ("내용", 30, "L", "note")]
 EDIT = ["기계", "_학교", tt.A, "확인", "확인함"]
+MERGED = ["A1:I1"]  # 요약 병합 — payload `merged` 가 정본이다(T14 가 데이터에 맞춰 만든다)
 
 
 def summary(sejong=3, missing=0):
@@ -35,8 +37,18 @@ def summary(sejong=3, missing=0):
     return rows, ({**links, "B6": f"{V3}!D6"} if missing else links)
 
 
-def write_summary(wb, rows, links):
-    """`00. 요약` 을 맨 앞에 만들거나 비우고 다시 쓴다 — 값만 + 시트 안 링크."""
+def tips_of(links):
+    """링크 칸마다 툴팁 — 칸 주소만 담은 가짜 문구."""
+    return {coord: f"tip {coord}" for coord in links}
+
+
+def summary_fields(links, **override):
+    """summary payload 의 병합·툴팁·스타일 — 정상 모양."""
+    return {"merged": list(MERGED), "tips": tips_of(links), "styles": {"A1": "title"}, **override}
+
+
+def write_summary(wb, rows, links, tips=None):
+    """`00. 요약` 을 맨 앞에 만들거나 비우고 다시 쓴다 — 값만 + 시트 안 링크(+ 툴팁)."""
     ws = wb[SUMMARY] if SUMMARY in wb.sheetnames else wb.create_sheet(SUMMARY, 0)
     for row in ws.iter_rows():
         for c in row:
@@ -45,9 +57,10 @@ def write_summary(wb, rows, links):
     for r, row in enumerate(rows, start=1):
         for c, v in enumerate(row, start=1):
             ws.cell(r, c).value = v
+    tips = tips_of(links) if tips is None else tips
     for coord, loc in links.items():
         sheet, cell = loc.split("!")
-        ws[coord].hyperlink = Hyperlink(ref=coord, location=f"'{sheet}'!{cell}")
+        ws[coord].hyperlink = Hyperlink(ref=coord, location=f"'{sheet}'!{cell}", tooltip=tips.get(coord))
     if "A1:I1" not in {str(m) for m in ws.merged_cells.ranges}:
         ws.merge_cells("A1:I1")
 
@@ -79,8 +92,9 @@ class VerifyViewTest(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def _after(self, name="after.xlsm", nums=None, schs=None, dcs=None, keep=(), sm=None, edits=None, extra=None):
-        """keep 의 숨김 표는 보기 시트를 맞추지 않는다(옛 범위 그대로)."""
+    def _after(self, name="after.xlsm", nums=None, schs=None, dcs=None, keep=(), sm=None, edits=None, extra=None,
+               tips=None):
+        """keep 의 숨김 표는 보기 시트를 맞추지 않는다(옛 범위 그대로). tips 는 시트에 쓸 툴팁(기본 = 정상)."""
         def mutate(wb):
             base(wb)
             for hid, recs in (("_번호", nums or tt.numbers()), ("_학교", schs or tt.schools()),
@@ -88,23 +102,24 @@ class VerifyViewTest(unittest.TestCase):
                 tt.rewrite(wb, hid, recs)
                 if hid not in keep:
                     tt.resize(wb, hid, len(recs))
-            write_summary(wb, *(sm or summary()))
+            write_summary(wb, *(sm or summary()), tips=tips)
             if edits is not None:
                 tt.edits_sheet(edits)(wb)
             if extra is not None:
                 extra(wb)
         return tt.build(self.dir / name, mutate=mutate)
 
-    def _sheets(self, after, tables=None, sm=None, meta=None, views=True, view=None):
-        """view 는 {숨김 표: view payload 덮어쓸 필드}."""
+    def _sheets(self, after, tables=None, sm=None, meta=None, views=True, view=None, fields=None, more=()):
+        """view 는 {숨김 표: view payload 덮어쓸 필드}, fields 는 summary payload 에 덮어쓸 필드, more 는 덧붙일 payload."""
         hids = ("_번호", "_학교", "_서류")
         out = [tt.payload(self.before, after, s, **(tables or {}).get(s, {})) for s in hids]
         out += [tt.view_payload(after, s, **(view or {}).get(s, {})) for s in hids] if views else []
         rows, links = sm or summary()
-        out.append({"kind": "summary", "sheet": SUMMARY, "rows": rows, "links": links})
+        out.append({"kind": "summary", "sheet": SUMMARY, "rows": rows, "links": links,
+                    **{**summary_fields(links), **(fields or {})}})
         if meta is not None:
             out.append({"kind": "meta", "sheet": vt.META_SHEET, "rows": [r + ["", "2026-11-10"] for r in meta]})
-        return out
+        return out + list(more)
 
     def _failed(self, after, sheets=None, **kw):
         checks = verify.verify_workbook(self.before, after, [tv.MOA, tv.PIMS] + (sheets or self._sheets(after, **kw)),
@@ -122,8 +137,8 @@ class VerifyViewTest(unittest.TestCase):
         after = self._grown(sm=sm, edits=[EDIT])
         failed, checks = self._failed(after, tables=self._ADDED, sm=sm, meta=[EDIT])
         self.assertEqual(failed, [])
-        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 2 + 3 * vv.CHECKS_PER_VIEW
-                         + vv.CHECKS_PER_SUMMARY + vv.CHECKS_PER_META)
+        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 3 * vm.CHECKS_PER_LOST + 2
+                         + 3 * vv.CHECKS_PER_VIEW + vv.CHECKS_PER_SUMMARY + vv.CHECKS_PER_META)
 
     def test_뷰가_옛_범위를_보면_실패(self):
         # 01 을 안 맞추면 새 학교가 보기 화면에서 안 보인다 — 참조 범위·/ N건·행 수식이 모두 잡는다
@@ -262,6 +277,101 @@ class VerifyViewTest(unittest.TestCase):
         after = self._after("e-h.xlsm", edits=[EDIT],
                             extra=lambda wb: setattr(wb[vt.META_SHEET]["F1"], "value", "메모"))
         self.assertEqual(self._failed(after, meta=[EDIT])[0], [vt.label(vt.META_SHEET, vv.L_META_HEADER)])
+
+    # ---- 요약 payload 계약: merged·tips·styles (T14 가 이대로 만든다)
+    @staticmethod
+    def _merge(rng):
+        return lambda wb: wb[SUMMARY].merge_cells(rng)
+
+    def _without(self, after, field, replace=None):
+        """summary payload 에서 field 를 빼거나(replace=None) 바꾼 sheets."""
+        sheets = self._sheets(after)
+        i = next(i for i, s in enumerate(sheets) if s["kind"] == "summary")
+        rest = {k: v for k, v in sheets[i].items() if k != field}
+        sheets[i] = rest if replace is None else {**rest, field: replace}
+        return sheets
+
+    def test_요약_병합은_payload_merged_와_비교(self):
+        # 원본 요약 병합은 A1:I1 하나 — 데이터가 늘어 병합이 하나 더 생겨도 payload 가 같으면 통과
+        two = ["A1:I1", "A2:I2"]
+        after = self._after(extra=self._merge("A2:I2"))
+        self.assertEqual(self._failed(after, fields={"merged": two})[0], [])
+        self.assertEqual(self._failed(after, fields={"merged": two[::-1]})[0], [])  # 순서는 보지 않는다
+        # 시트에는 둘, payload 에는 하나 → 어긋남
+        self.assertEqual(self._failed(after, fields={"merged": MERGED})[0], [vt.label(SUMMARY, vv.L_SUM_META)])
+        # 시트에는 하나, payload 에는 둘
+        self.assertEqual(self._failed(self._after("m1.xlsm"), fields={"merged": two})[0],
+                         [vt.label(SUMMARY, vv.L_SUM_META)])
+
+    def test_merged_빠지면_실패(self):
+        label = [vt.label(SUMMARY, vv.L_SUM_META)]
+        for tag, merged in (("없음", None), ("문자열", "A1:I1"), ("범위아님", ["A1:I1", "병합"])):
+            after = self._after(f"mg-{tag}.xlsm")
+            self.assertEqual(self._failed(after, sheets=self._without(after, "merged", merged))[0], label, tag)
+
+    def test_병합_말고_틀_고정은_여전히_원본과_같아야(self):
+        two = {"merged": ["A1:I1", "A2:I2"]}
+        frozen = self._after("mf.xlsm", extra=lambda wb: (wb[SUMMARY].merge_cells("A2:I2"),
+                                                          setattr(wb[SUMMARY], "freeze_panes", "A3")))
+        self.assertEqual(self._failed(frozen, fields=two)[0], [vt.label(SUMMARY, vv.L_SUM_META)])
+
+    def test_링크_칸_tip_빠지면_실패(self):
+        label = [vt.label(SUMMARY, vv.L_SUM_TIPS)]
+        tips = tips_of(summary()[1])
+        # payload 에서 한 칸이 빠졌다
+        self.assertEqual(self._failed(self._after(), fields={"tips": {k: v for k, v in tips.items() if k != "D6"}})[0],
+                         label)
+        # 시트의 하이퍼링크에 툴팁이 없다
+        bare = self._after("tip-bare.xlsm", tips={k: v for k, v in tips.items() if k != "D6"})
+        self.assertEqual(self._failed(bare)[0], label)
+        # 툴팁 문구가 다르다
+        self.assertEqual(self._failed(self._after("tip-diff.xlsm"), fields={"tips": {**tips, "B5": "다른 문구"}})[0],
+                         label)
+        # 빈 문자열은 툴팁이 아니다
+        empty = {**tips, "B5": ""}
+        self.assertEqual(self._failed(self._after("tip-empty.xlsm", tips=empty), fields={"tips": empty})[0], label)
+        # 사전이 아니다
+        self.assertEqual(self._failed(self._after("tip-list.xlsm"), fields={"tips": []})[0], label)
+
+    def test_링크_없는_칸_tip_은_실패(self):
+        tips = {**tips_of(summary()[1]), "C3": "링크가 없는 칸"}
+        self.assertEqual(self._failed(self._after(), fields={"tips": tips})[0], [vt.label(SUMMARY, vv.L_SUM_TIPS)])
+
+    def test_tip_문구는_결과에_싣지_않는다(self):
+        tips = {**tips_of(summary()[1]), "B5": "비밀 툴팁 문구"}
+        _failed, checks = self._failed(self._after(), fields={"tips": tips})
+        self.assertNotIn("툴팁 문구", json.dumps([c.__dict__ for c in checks], ensure_ascii=False))
+
+    def test_styles_는_사전인지만_본다(self):
+        label = [vt.label(SUMMARY, vv.L_SUM_STYLES)]
+        after = self._after()
+        self.assertEqual(self._failed(after, fields={"styles": {"Z99": "아무 키", "A1": {"bold": True}}})[0], [])
+        self.assertEqual(self._failed(after, fields={"styles": {}})[0], [])
+        self.assertEqual(self._failed(after, fields={"styles": ["title"]})[0], label)
+        self.assertEqual(self._failed(after, sheets=self._without(after, "styles"))[0], label)
+
+    # ---- 시트 허용 목록 (sheet_names.VIEW_OF·SUMMARY_SHEET)
+    def test_허용_목록_밖_보기_시트는_실패(self):
+        after = self._after()
+        outside = {"kind": "view", "sheet": "04. 확인 필요", "source": "_확인", "rows": 1, "sourceNote": None}
+        self.assertEqual(self._failed(after, more=[outside])[0], [vt.label("04. 확인 필요", vv.L_VIEW_KNOWN)])
+        # 이름은 허용 목록에 있어도 짝이 다른 숨김 표를 보면 안 된다
+        swapped = {**outside, "sheet": V1, "source": "_서류"}
+        self.assertEqual(self._failed(after, more=[swapped])[0], [vt.label(V1, vv.L_VIEW_KNOWN)])
+
+    def test_허용_짝이_아닌_보기_payload_는_숨김_표의_보기_검사가_아니다(self):
+        # 03 의 view payload 가 엉뚱한 이름으로 들어오면 `_번호` 의 보기 검사는 없는 것이다
+        failed, _ = self._failed(self._after(), view={"_번호": {"sheet": "04. 확인 필요"}})
+        self.assertIn(vv.L_VIEWS, failed)
+
+    def test_허용_목록_밖_요약_시트는_실패(self):
+        after = self._after()
+        rows, links = summary()
+        outside = {"kind": "summary", "sheet": "04. 확인 필요", "rows": rows, "links": links, **summary_fields(links)}
+        self.assertEqual(self._failed(after, more=[outside])[0], [vt.label("04. 확인 필요", vv.L_SUM_KNOWN)])
+        # 요약은 정확히 하나 — 허용 이름만 센다
+        only_outside = [s for s in self._sheets(after) if s["kind"] != "summary"] + [outside]
+        self.assertIn(vv.L_SUMMARY_ONE, self._failed(after, sheets=only_outside)[0])
 
 
 if __name__ == "__main__":
