@@ -139,7 +139,7 @@ def keyed(spec: Spec, tables) -> list[dict[str, int]]:
 def edit_rows(ws) -> list[tuple] | None:
     """`_수정` 2행부터 — 칸을 META_HEADER 순서(구분·시트·키·열·값·사유·기록일)로 다시 놓은 원본 값(없는 칸 None).
 
-    머리글에 구분~값 다섯이 없으면 None. 검사(`_read_edits`)와 PR-3b 계산(`sheet_table.read_edits`)이 같이 쓰는
+    머리글에 구분~값 다섯이 없으면 None. 검사(`Owners.load`)와 PR-3b 계산(`sheet_table.read_edits`)이 같이 쓰는
     파서다 — 두 벌이면 한쪽만 고쳐져 검사와 계산이 다른 주인을 본다.
     """
     rows = list(ws.iter_rows(values_only=True))
@@ -150,14 +150,14 @@ def edit_rows(ws) -> list[tuple] | None:
     return [tuple(r[i] if i is not None and i < len(r) else None for i in ix) for r in rows[1:]]
 
 
-def _read_edits(ws) -> tuple[dict, set, int]:
-    """`_수정` → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}, 텍스트 아닌 키 칸 수).
+def edits_index(rows) -> tuple[dict, set, int]:
+    """`_수정` 기록 행 → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}, 텍스트 아닌 키 칸 수).
 
+    rows 는 META_HEADER 순서 — 검사는 `edit_rows` 의 원본 값, 계산(edits.Ownership)은 `sheet_table.read_edits`
+    의 str 을 넘긴다. 분류는 여기 하나뿐이다(두 벌이면 검사 '사람'·계산 '기계' 로 갈려 매번 verify_failed).
     계약: T8 은 키·값 칸을 텍스트 서식(@)으로 쓴다 — 아니면 Excel 이 `01000000001` 을 숫자로 바꿔 키가
-    안 맞고, 그 칸은 조용히 사람 칸이 된다. 그래서 텍스트 아닌 키 칸은 세어 실패로 드러낸다.
-    머리글이 다르면 둘 다 빈 것(전부 사람).
+    안 맞는다. 그래서 텍스트 아닌 키 칸은 세어 실패로 드러낸다. None(머리글이 다름)이면 둘 다 빈 것(전부 사람).
     """
-    rows = edit_rows(ws)
     machine, people, not_text = {}, set(), 0
     for kind, sheet, key, col, value, *_rest in rows or []:
         not_text += not _blank(key) and not isinstance(key, str)
@@ -179,7 +179,7 @@ class Owners:
     @classmethod
     def load(cls, bwb, baseline: Path | None) -> "Owners":
         if META_SHEET in bwb.sheetnames:
-            return cls(edits=_read_edits(bwb[META_SHEET]))
+            return cls(edits=edits_index(edit_rows(bwb[META_SHEET])))
         if baseline is None:
             return cls()
         wb = load_workbook(baseline)  # 읽기만 — 시트 목록은 안 본다(첫 판엔 06·07 이 없다)
