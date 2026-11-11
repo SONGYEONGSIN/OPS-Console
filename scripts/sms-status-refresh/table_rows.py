@@ -12,7 +12,7 @@ import re
 from typing import Iterable, Sequence
 
 from formula_template import Template, render
-from verify_table import COLUMNS, WIDTH, Table
+from verify_table import COLUMNS, WIDTH, Table, base_name
 
 P_INDEX = COLUMNS.index("P")
 T_INDEX = COLUMNS.index("T")
@@ -40,6 +40,11 @@ def carried_rows(table: Table) -> list[list]:
 def blank_row(values: dict[int, object]) -> list:
     """새 행 뼈대 — 준 칸만 채우고 나머지(사람 칸)는 빈칸."""
     return [values.get(i, "") for i in range(WIDTH)]
+
+
+def named(t: Table, row: Sequence) -> dict[str, object]:
+    """행 → {열 이름(괄호 꼬리를 뗀 머리글): 값} — 머리글 없는 칸은 뺀다."""
+    return {base_name(h): v for h, v in zip(t.header, row) if base_name(h)}
 
 
 def replace(row: Sequence, values: dict[int, object]) -> list:

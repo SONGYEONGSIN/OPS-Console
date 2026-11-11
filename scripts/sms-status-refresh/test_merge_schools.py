@@ -125,6 +125,36 @@ class MergeSchoolsTest(unittest.TestCase):
         self.assertEqual(m.vanished, {"_학교": (C,), "_서류": (C,)})
         self.assertEqual(m.added, {"_학교": (), "_서류": ()})
 
+    def test_빠진_학교는_판정_열도_원본_그대로(self):
+        # 판정 칸을 기계로 만든다(기준 판 = 원본) — 기본 Ownership() 은 전부 사람이라 다시 계산 여부를 못 가린다
+        own = edits.Ownership.from_baseline({"_학교": table("_학교", tvt.schools())})
+        school, docs, m = run([x for x in base_lines() if x["name"] != C], own=own)
+        for hid, before, got in (("_학교", school, m.school_rows[2]), ("_서류", docs, m.doc_rows[2])):
+            sejong = {col(hid, n) for n in vt.SPECS[hid].sejong}
+            for i, (b, a) in enumerate(zip(before.rows[2], got)):
+                if i not in sejong | {15, 19}:
+                    self.assertEqual(blank(b), a, f"{hid} {vt.COLUMNS[i]}")
+        self.assertEqual(m.decisions.kept, ())  # 판정을 건너뛰었다 — 사람 칸으로 둔 것도 아니다
+
+    def test_비고_덧붙이기는_멱등(self):
+        for tag, memo in (("세미콜론", "x; y"), ("슬래시", "x / y")):
+            lines = base_lines()
+            lines[0], lines[1] = {**lines[0], "memo": "p"}, {**lines[1], "memo": memo}
+            groups = group_schools(lines)
+            school, docs = table("_학교", tvt.schools()), table("_서류", tvt.docs())
+            own = edits.Ownership.from_baseline({"_학교": school})
+            runs = []
+            for _ in range(3):
+                m = ms.merge_schools(school, docs, groups, (), own)
+                runs.append(m.school_rows)
+                meta = edits.meta_rows(None, m.decisions.changes, own, today="2026-11-11")
+                own = edits.Ownership.from_meta(meta)
+                school = vt.Table(school.header, tuple(map(tuple, m.school_rows)), U_LAST)
+                docs = vt.Table(docs.header, tuple(map(tuple, m.doc_rows)), U_LAST)
+            self.assertNotEqual(runs[0][0][col("_학교", "비고")], "", tag)
+            self.assertEqual(runs[0], runs[1], tag)
+            self.assertEqual(runs[1], runs[2], tag)
+
     def test_사람이_고친_확인은_그대로(self):
         base = tvt.schools()
         base[0] = {**base[0], "check": ""}  # 기준 판엔 비어 있었다 → 원본 '확인함' 은 사람이 쓴 것

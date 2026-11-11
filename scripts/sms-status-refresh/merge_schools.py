@@ -5,7 +5,8 @@
   원본 행은 손대지 않고(P 만 다시 찍는다) 새 행도 만들지 않으며 decisions.ambiguous 에 남긴다.
 - 새 학교: 끝에 붙이고 No 는 원본 최대 No 다음부터. 사람 칸은 빈칸 — 단 `_서류` 제출 상태는 `서류 확인 안 됨`
   (verify_table `_check_new` 계약). 신청서·위임장 등 서류 표시와 미제출 서류도 빈칸이다.
-- 세종에서 빠진 학교: 행을 남기고 세종 열만 0·`-`·`번호 없음`(사용자 결정). 판정 열은 같은 규칙으로 다시 계산한다.
+- 세종에서 빠진 학교: 행을 남기고 세종 열만 0·`-`·`번호 없음`(사용자 결정). 판정 열(제출 서류·확인·비고)과
+  사람 칸은 원본 그대로, T 만 그 행의 최종 값으로 다시 만든다. `_서류` 도 세종 열과 T 만 바뀐다.
 - 판정 열(`_학교` 제출 서류·확인·비고): `own.owner(…)` 가 사람이면 원본 값 그대로(decisions.kept), 기계면 다시 계산.
   `_서류` 는 판정 열이 없다(verify_table.SPECS).
 - P 는 원본 P 열 템플릿(check_shape)으로 행마다 다시 찍고, T 는 그 행의 최종 값으로 만든다. U 는 안 건드린다.
@@ -21,8 +22,8 @@ from keys import school_keys
 from school_rows import (NO_DOC_CHECK, doc_brief, doc_sejong, doc_tags, issue_names, school_check, school_note,
                          school_sejong, school_tags)
 from sheet_table import check_shape
-from table_rows import (T_INDEX, ambiguous, base_key, blank_row, carried_rows, is_blank, next_no, replace, tag_cell,
-                        with_formulas)
+from table_rows import (T_INDEX, ambiguous, base_key, blank_row, carried_rows, is_blank, named, next_no, replace,
+                        tag_cell, with_formulas)
 from verify_table import HUMAN, SPECS, WIDTH, Table, base_name, keyed
 
 SCHOOL, DOCS = "_학교", "_서류"
@@ -92,10 +93,6 @@ def _plan(t: Table, groups: Mapping, new_values: dict[int, object]) -> _Plan:
     return _Plan(rows, lines, vanished, held)
 
 
-def _named(t: Table, row) -> dict[str, object]:
-    return {base_name(h): v for h, v in zip(t.header, row) if base_name(h)}
-
-
 def _set(t: Table, row, values: Mapping[str, object]) -> list:
     return replace(row, {t.col(n): v for n, v in values.items()})
 
@@ -119,7 +116,7 @@ def _merge_docs(docs: Table, groups: Mapping) -> tuple[_Plan, list[list]]:
     for row, xs in zip(plan.rows, plan.lines):
         if xs is not None:
             row = _set(docs, row, doc_sejong(xs))
-            row = replace(row, {T_INDEX: tag_cell(doc_tags(_named(docs, row)))})
+            row = replace(row, {T_INDEX: tag_cell(doc_tags(named(docs, row)))})
         rows.append(row)
     return plan, rows
 
@@ -130,13 +127,13 @@ def _doc_of(school: Table, srows, docs: Table, drows) -> list[dict | None]:
         return [None] * len(srows)
     sk, dk = school_keys(_pairs(school, srows), _pairs(docs, drows))
     amb = ambiguous(sk, dk)
-    by = {k: _named(docs, r) for k, r in zip(dk, drows) if base_key(k) not in amb}
+    by = {k: named(docs, r) for k, r in zip(dk, drows) if base_key(k) not in amb}
     return [None if base_key(k) in amb else by.get(k) for k in sk]
 
 
 def _judged(school: Table, row, xs, doc, issues: set[str]) -> dict[str, object]:
     """판정 열 다시 계산 값. 제출 서류는 `_서류` 행이 없으면 뺀다(그대로 둔다)."""
-    v = _named(school, row)
+    v = named(school, row)
     out = {"확인": school_check(v.get("학교명"), xs, issues), "비고": school_note(v.get("비고"), xs)}
     return out if doc is None else {"제출 서류": doc_brief(doc.get(STATUS), doc), **out}
 
@@ -151,7 +148,7 @@ def _school_row(school: Table, own: Ownership, i: int, row, xs, doc, issues, key
             kept.append(name)
         elif name in computed:
             row = replace(row, {c: computed[name]})
-    row = replace(row, {T_INDEX: tag_cell(school_tags(_named(school, row)))})
+    row = replace(row, {T_INDEX: tag_cell(school_tags(named(school, row)))})
     return row, kept, doc is None
 
 
@@ -160,9 +157,14 @@ def _merge_school(school: Table, groups, docs: Table, drows, issues, own: Owners
     inv, added, vanished = _summary(SCHOOL, school, plan, plan.rows)
     bound = own.bind(SCHOOL, school, {k: i for i, k in inv.items()})
     rows, kept, no_doc = [], [], []
+    gone = set(plan.vanished)
     for i, (row, xs, doc) in enumerate(zip(plan.rows, plan.lines, _doc_of(school, plan.rows, docs, drows))):
         if xs is None:
             rows.append(row)
+            continue
+        if i in gone:  # 세종에서 빠진 학교 — 세종 열만 0·`-`, 판정 열은 원본 그대로(결정 2)
+            row = _set(school, row, school_sejong(xs))
+            rows.append(replace(row, {T_INDEX: tag_cell(school_tags(named(school, row)))}))
             continue
         row, names, missing = _school_row(school, bound, i, row, xs, doc, issues, inv.get(i))
         rows.append(row)

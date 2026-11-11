@@ -94,7 +94,8 @@ def school_note(cur, lines: Sequence[Mapping]) -> str:
     frags = sorted({x["memo"] for x in lines if x["memo"]} | {x["text"] for x in lines if x["text"]})
     frags = frags or ([] if nums else [NO_NUMBER])
     have = _pieces(head)
-    return append_only(head, _MEMO_SEP.join(f for f in frags if f not in have), NOTE_SEP)
+    # 메모 안에 구분자가 있어도 그 하위 조각이 이미 다 있으면 있는 것으로 본다 — 둘째 실행에 다시 붙지 않게(멱등)
+    return append_only(head, _MEMO_SEP.join(f for f in frags if not _pieces(f) <= have), NOTE_SEP)
 
 
 def _has(v) -> bool:

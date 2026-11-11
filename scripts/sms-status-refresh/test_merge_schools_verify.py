@@ -82,7 +82,8 @@ class MergeSchoolsVerifyTest(unittest.TestCase):
             for name in (vt.L_PERSON, vt.L_NEW, vt.L_KEYS, vt.L_NOTE, vt.L_DATA):
                 self.assertIn(vt.label(hid, name), labels)
         # 사람 칸 보존 · 새 학교 사람 칸 · 키 일치를 계산 쪽에서도 확인
-        self.assertEqual(tm.cells(m.school_rows, "_학교", "확인"), ["확인함", "확인 필요", "확인 필요", ""])
+        # C 는 세종에서 빠졌다 — 판정 열은 원본("") 그대로
+        self.assertEqual(tm.cells(m.school_rows, "_학교", "확인"), ["확인함", "확인 필요", "", ""])
         self.assertEqual(m.added, {"_학교": (tm.D,), "_서류": (tm.D,)})
         self.assertEqual(m.vanished, {"_학교": (tvt.C,), "_서류": (tvt.C,)})
         awb = load_workbook(after)
