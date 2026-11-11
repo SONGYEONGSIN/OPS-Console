@@ -241,11 +241,22 @@ def _is_memo(role: str, name: str, human, k: str, v) -> bool:
     return not _blank(v) and (role == "person" or (role == "judged" and human(k, name, v)))
 
 
+def removed_memo_cells(header, row_roles, human, bt_rows, bkeys: dict[str, int],
+                       akeys: dict[str, int]) -> set[tuple[str, str, str]]:
+    """원본에 있고 작업 사본에 없는 키의 사람 칸 중 값이 있던 칸 {(키, 열 이름, 원본 값 문자열)}.
+
+    열 이름은 `_수정` 이 쓰는 표기(괄호 꼬리를 뗀 머리글, 이름이 없으면 `I열`). L_KEYS 의 detail 과
+    verify_memos(lostMemos)가 같이 쓴다 — 두 곳이 다르게 세면 한쪽만 통과하는 날이 온다.
+    """
+    return {(k, _col_name(header, i), _text(bt_rows[bkeys[k]][i]))
+            for k in bkeys.keys() - akeys.keys()
+            for i, role in enumerate(row_roles)
+            if _is_memo(role, _col_name(header, i), human, k, bt_rows[bkeys[k]][i])}
+
+
 def removed_memo_rows(header, row_roles, human, bt_rows, bkeys: dict[str, int], akeys: dict[str, int]) -> int:
-    """원본에 있고 작업 사본에 없는 키 중 사람 칸에 값이 있던 행 수 — L_KEYS 의 detail 과 verify_memos(lostMemos)가 같이 쓴다."""
-    return sum(1 for k in bkeys.keys() - akeys.keys()
-               if any(_is_memo(role, _col_name(header, i), human, k, bt_rows[bkeys[k]][i])
-                      for i, role in enumerate(row_roles)))
+    """빠진 키 중 메모 칸이 하나라도 있던 행 수."""
+    return len({k for k, _c, _v in removed_memo_cells(header, row_roles, human, bt_rows, bkeys, akeys)})
 
 
 def _note_kept(before, after) -> bool:
