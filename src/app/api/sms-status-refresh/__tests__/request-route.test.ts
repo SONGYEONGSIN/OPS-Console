@@ -200,7 +200,7 @@ describe("/api/sms-status-refresh/request", () => {
         {
           status: "done",
           finished_at: expect.any(String),
-          message: "mail 성공",
+          message: "메일 첨부 성공",
           result,
           watermarks: { mail: "2026-11-07T01:00:00Z" },
         },
@@ -211,7 +211,7 @@ describe("/api/sms-status-refresh/request", () => {
     expect(callsOf("in")).toEqual([["status", ["running", "failed"]]]);
     expect(recordAutomationRun).toHaveBeenCalledWith("sms-status-refresh", {
       ok: true,
-      message: "mail 성공",
+      message: "메일 첨부 성공",
     });
   });
 
