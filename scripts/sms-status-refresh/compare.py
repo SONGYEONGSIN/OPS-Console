@@ -114,7 +114,7 @@ def _padded(r: Sequence, n: int) -> tuple:
     return tuple(r) + (None,) * max(0, n - len(r))
 
 
-def _check_header(rows: list[tuple], idx: int, expected: list[str], what: str) -> None:
+def check_header(rows: list[tuple], idx: int, expected: list[str], what: str) -> None:
     got = [text(v) for v in _padded(rows[idx], len(expected))[: len(expected)]] if len(rows) > idx else None
     if got != expected:
         raise StepFailure("source_shape", f"{what} {idx + 1}행 머리글이 예상과 다름")
@@ -123,7 +123,7 @@ def _check_header(rows: list[tuple], idx: int, expected: list[str], what: str) -
 def load_moa(data: bytes) -> tuple[list[dict], str]:
     """수집 단계가 만든 Moa 목록(1행 추출 안내, 2행 머리글) → (행 목록, 추출일 'YYYY-MM-DD')."""
     rows = _rows(data, "Moa")
-    _check_header(rows, 1, MOA_COLS, "Moa")
+    check_header(rows, 1, MOA_COLS, "Moa")
     extracted = re.search(r"\d{4}-\d{2}-\d{2}", text(_padded(rows[0], 1)[0]))
     n = len(MOA_COLS)
     recs = [dict(zip(MOA_COLS, (text(v) for v in _padded(r, n)[:n])))
@@ -147,7 +147,7 @@ def exclusion_reason(raw) -> str:
 def load_sejong(data: bytes) -> tuple[list[dict], list[dict]]:
     """세종 발번 리스트 → (대조에 쓸 행, 대조 제외 행)."""
     rows = _rows(data, "세종")
-    _check_header(rows, 0, SEJONG_COLS, "세종")
+    check_header(rows, 0, SEJONG_COLS, "세종")
     valid, excluded = [], []
     for raw_row in rows[1:]:
         r = _padded(raw_row, 5)
@@ -165,7 +165,7 @@ def load_sejong(data: bytes) -> tuple[list[dict], list[dict]]:
 def load_pims(data: bytes) -> list[dict]:
     """PIMS 등록 리스트 → 행 목록. 상태·UnivID 는 그대로 가져온다."""
     rows = _rows(data, "PIMS")
-    _check_header(rows, 0, PIMS_COLS, "PIMS")
+    check_header(rows, 0, PIMS_COLS, "PIMS")
     recs = []
     for raw_row in rows[1:]:
         r = _padded(raw_row, 6)
