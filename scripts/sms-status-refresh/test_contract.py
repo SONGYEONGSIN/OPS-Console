@@ -142,7 +142,9 @@ class TestConstants(unittest.TestCase):
     def test_상수(self):
         self.assertEqual(SMS_CONSUMER, "sms-status-refresh")
         self.assertEqual(FIRST_WATERMARK, "2026-10-16T15:00:00Z")
-        self.assertEqual(STEP_IDS, ("moa", "pims", "workbook"))
+        self.assertEqual(STEP_IDS, ("mail", "moa", "pims", "workbook"))
+        for code in ("mail_config", "mail_folder_missing", "mail_access_denied", "mail_failed"):
+            self.assertIn(code, FAILURE_CODES)
         self.assertIn("dependency_failed", FAILURE_CODES)
         self.assertIn("unknown", FAILURE_CODES)
         for code in ("pims_login_failed", "pims_empty", "pims_shape_changed", "pims_incomplete"):

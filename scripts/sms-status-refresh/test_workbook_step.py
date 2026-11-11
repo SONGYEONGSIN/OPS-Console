@@ -112,7 +112,7 @@ class RunStepTest(unittest.TestCase):
     def _run(self, graph=None, *, checks=None, dry_run=False, results=None, verify=None):
         graph = graph or FakeGraph()
         ok = StepResult("x", "ok", "끝")
-        results = {"moa": ok, "pims": ok} if results is None else results
+        results = {"mail": ok, "moa": ok, "pims": ok} if results is None else results
 
         def fake_apply(wb, data, pid):
             self.applied.append((wb, data, pid))
@@ -245,6 +245,15 @@ class RunStepTest(unittest.TestCase):
         self.assertTrue(r.summary.endswith(" · PIMS 는 지난 자료"), r.summary)
         self.assertNotIn("Moa 는 지난 자료", r.summary)
 
+    def test_메일_단계가_실패해도_돈다_새_세종_메일은_확인_못_함이라고_적는다(self):
+        ok = StepResult("x", "ok", "끝")
+        failed = StepResult("mail", "failed", "실패", error_code="mail_access_denied")
+        r, _g = self._run(results={"mail": failed, "moa": ok, "pims": ok})
+        self.assertEqual(r.status, "ok", r.detail)
+        self.assertTrue(r.summary.endswith(" · 새 세종 메일은 확인 못 함"), r.summary)
+        r, _g = self._run(results={"mail": failed, "moa": failed, "pims": ok})
+        self.assertTrue(r.summary.endswith(" · 새 세종 메일은 확인 못 함 · Moa 는 지난 자료"), r.summary)
+
     def test_세종_목록이_없으면_source_missing(self):
         r, g = self._run(FakeGraph(missing=(SEJONG_DIR,)))
         self.assertEqual((r.status, r.error_code), ("failed", "source_missing"))
@@ -357,8 +366,8 @@ class ApplyExcelTest(unittest.TestCase):
 
 class WiringTest(unittest.TestCase):
     def test_단계_등록(self):
-        self.assertEqual(STEP_IDS, ("moa", "pims", "workbook"))
-        self.assertEqual(list(refresh.REGISTERED), ["moa", "pims", "workbook"])
+        self.assertEqual(STEP_IDS, ("mail", "moa", "pims", "workbook"))
+        self.assertEqual(list(refresh.REGISTERED), ["mail", "moa", "pims", "workbook"])
         self.assertEqual(refresh.REGISTERED["workbook"].needs, ())  # Moa·PIMS 가 실패해도 돈다
         self.assertIs(refresh.REGISTERED["workbook"].run, run_workbook_step)
 
