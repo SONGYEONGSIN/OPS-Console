@@ -136,6 +136,20 @@ def keyed(spec: Spec, tables) -> list[dict[str, int]]:
 
 
 # ---------------------------------------------------------------- 기준 판정 열의 주인
+def edit_rows(ws) -> list[tuple] | None:
+    """`_수정` 2행부터 — 칸을 META_HEADER 순서(구분·시트·키·열·값·사유·기록일)로 다시 놓은 원본 값(없는 칸 None).
+
+    머리글에 구분~값 다섯이 없으면 None. 검사(`_read_edits`)와 PR-3b 계산(`sheet_table.read_edits`)이 같이 쓰는
+    파서다 — 두 벌이면 한쪽만 고쳐져 검사와 계산이 다른 주인을 본다.
+    """
+    rows = list(ws.iter_rows(values_only=True))
+    head = [_text(h).strip() for h in rows[0]] if rows else []
+    if any(h not in head for h in META_HEADER[:5]):
+        return None
+    ix = [head.index(h) if h in head else None for h in META_HEADER]
+    return [tuple(r[i] if i is not None and i < len(r) else None for i in ix) for r in rows[1:]]
+
+
 def _read_edits(ws) -> tuple[dict, set, int]:
     """`_수정` → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}, 텍스트 아닌 키 칸 수).
 
@@ -143,21 +157,15 @@ def _read_edits(ws) -> tuple[dict, set, int]:
     안 맞고, 그 칸은 조용히 사람 칸이 된다. 그래서 텍스트 아닌 키 칸은 세어 실패로 드러낸다.
     머리글이 다르면 둘 다 빈 것(전부 사람).
     """
-    rows = list(ws.iter_rows(values_only=True))
-    head = [_text(h).strip() for h in rows[0]] if rows else []
-    if any(h not in head for h in META_HEADER[:5]):
-        return {}, set(), 0
-    ix = {h: head.index(h) for h in META_HEADER[:5]}
+    rows = edit_rows(ws)
     machine, people, not_text = {}, set(), 0
-    for r in rows[1:]:
-        key = r[ix["키"]] if ix["키"] < len(r) else None
+    for kind, sheet, key, col, value, *_rest in rows or []:
         not_text += not _blank(key) and not isinstance(key, str)
-        get = {h: _text(r[i]) if i < len(r) else "" for h, i in ix.items()}
-        where = (get["시트"], get["키"], get["열"])
-        if get["구분"] == HUMAN:
+        where = (_text(sheet), _text(key), _text(col))
+        if _text(kind) == HUMAN:
             people.add(where)
-        elif get["구분"] == MACHINE:
-            machine[where] = get["값"]
+        elif _text(kind) == MACHINE:
+            machine[where] = _text(value)
     return machine, people, not_text
 
 
@@ -203,7 +211,8 @@ class Owners:
 
 
 # ---------------------------------------------------------------- 칸 역할
-def _roles(header, spec: Spec) -> list[str]:
+def roles(header, spec: Spec) -> list[str]:
+    """칸마다 rewritten(P·T) | sejong | judged | person — sheet_table.check_shape 도 같은 판정을 쓴다."""
     out = []
     for i, h in enumerate(header):
         name = base_name(h)
@@ -357,7 +366,7 @@ def check_table(bwb, awb, sd: dict, owners: Owners | None) -> list[Check]:
     bt, at = read_table(bwb, sheet), read_table(awb, sheet)
     bkeys, akeys = keyed(spec, [bt, at])
     human = (owners or Owners()).human_fn(sheet, spec, bt, bkeys)
-    x = _Ctx(sheet, spec, bt, at, _roles(bt.header, spec), bkeys, akeys, human)
+    x = _Ctx(sheet, spec, bt, at, roles(bt.header, spec), bkeys, akeys, human)
     return [_check_header(x), _check_data(x, sd), _check_text(x, sd), _check_u(x, bws, aws),
             x.check(L_META, sheet_meta(bws) == sheet_meta(aws), "숨김·틀 고정·병합·조건부 서식·유효성·필터"),
             _check_person(x), _check_note(x), _check_keys(x, sd), _check_new(x)]

@@ -21,7 +21,7 @@ import verify_table as vt
 import verify_view as vv
 
 A, B, C = "테스트대학교A", "테스트대학교B", "테스트대학교C"
-VIEWS = {"_학교": ("01. 학교별 현황", fs.SCHOOL_HEADS), "_서류": ("02. 서류별 현황", fs.DOC_HEADS),
+VIEWS = {"_학교": ("01. 학교별 현황", fs.SCHOOL_HEADS), "_서류": ("02. 학교별 제출 서류", fs.DOC_HEADS),
          "_번호": ("03. 번호 목록", fs.NUMBER_HEADS)}
 RULES = {"_번호": [("상태", '{c}{r}="미비"')]}  # 보기 시트 조건부 서식 — 03 만
 SUMMARY = "00. 요약"

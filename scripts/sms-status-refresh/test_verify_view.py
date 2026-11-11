@@ -178,7 +178,7 @@ class VerifyViewTest(unittest.TestCase):
         self.assertEqual(self._failed(self._after("after-zero.xlsm", sm=zero), sm=zero)[0],
                          [vt.label(SUMMARY, vv.L_SUM_TARGET)])
         # 허용 대상 = 원본 요약의 링크 대상(01 G6·03 D6). 02 G6 은 검색 칸이어도 원본에 없던 대상이다
-        for tag, loc in (("A9", f"{V1}!A9"), ("02", "02. 서류별 현황!G6")):
+        for tag, loc in (("A9", f"{V1}!A9"), ("02", "02. 학교별 제출 서류!G6")):
             elsewhere = summary()[0], {**summary()[1], "B5": loc}
             self.assertEqual(self._failed(self._after(f"after-else-{tag}.xlsm", sm=elsewhere), sm=elsewhere)[0],
                              [vt.label(SUMMARY, vv.L_SUM_TARGET)], tag)
