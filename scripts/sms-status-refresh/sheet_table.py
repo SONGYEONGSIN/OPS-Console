@@ -72,7 +72,7 @@ def read_edits(wb) -> list[tuple[str, ...]] | None:
     return rows
 
 
-def _view_templates(wb, view: str, hidden: str) -> dict[str, Template]:
+def view_templates(wb, view: str, hidden: str) -> dict[str, Template]:
     n = len(read_table(wb, hidden).rows)
     cells = {r: {get_column_letter(c): v for c, v in enumerate(vals, start=1) if v not in (None, "")}
              for r, vals in enumerate(wb[view].iter_rows(min_row=FIRST, max_row=FIRST + n - 1, values_only=True),
@@ -99,4 +99,4 @@ def check_targets(wb) -> dict[str, dict[str, Template]]:
     missing = [s for s in need if s not in wb.sheetnames]
     if missing:
         raise StepFailure("view_shape", f"시트 없음 {len(missing)} — {', '.join(missing)}")
-    return {view: _view_templates(wb, view, hidden) for view, hidden in VIEW_OF.items()}
+    return {view: view_templates(wb, view, hidden) for view, hidden in VIEW_OF.items()}

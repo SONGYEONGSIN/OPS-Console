@@ -217,7 +217,7 @@ def _loc(h) -> str:
     return f"{sheet.strip(chr(39)).replace(chr(39) * 2, chr(39))}!{cell.replace('$', '')}"
 
 
-def _links(ws) -> dict[str, str]:
+def sheet_links(ws) -> dict[str, str]:
     return {c.coordinate: _loc(c.hyperlink) for row in ws.iter_rows() for c in row if c.hyperlink is not None}
 
 
@@ -268,9 +268,9 @@ def check_summary(bwb, awb, sd: dict) -> list[Check]:
                 for c, v in enumerate(row, start=1) if v not in (None, "")}
     diff = sorted(k for k in set(acells) | set(expected) if acells.get(k) != expected.get(k))
     formulas = sum(1 for v in acells.values() if _formula(v))
-    links, want = _links(aws), dict(sd.get("links", {}))
+    links, want = sheet_links(aws), dict(sd.get("links", {}))
     # 허용 대상 = 원본 요약의 링크 대상 — payload 가 주면 생성 쪽 실수를 스스로 인증한다
-    allowed = set(_links(bws).values())
+    allowed = set(sheet_links(bws).values())
     off = [c for c, loc in links.items() if loc not in allowed]
     zero = [c for c in links if acells.get(coordinate_to_tuple(c)) in (None, ("num", 0))]
     first = f", 첫 {get_column_letter(diff[0][1])}{diff[0][0]}" if diff else ""
