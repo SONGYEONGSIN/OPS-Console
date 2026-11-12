@@ -324,6 +324,19 @@ class TestPsParse(unittest.TestCase):
                 self.assertEqual(self.parse_errors(exe, name).splitlines()[:1], ["0"], f"{exe} {name}")
 
 
+class TestIndexPrecedence(unittest.TestCase):
+    """PowerShell 은 쉼표가 +/- 보다 먼저 묶인다 — `$a[$r + 1, $c]` 는 `$r + (1, $c)` 가 된다. 괄호가 있어야 한다."""
+
+    LEADING = re.compile(r"\[\s*\$\w+\s*[-+]\s*[^,\]\(\)]+,")  # [$r + 1, $c]
+    TRAILING = re.compile(r",\s*\$\w+\s*[-+]\s*[^,\]\(\)]+\]")  # [$r, $c + 1]
+
+    def test_인덱스_산술식은_괄호로_감싼다(self):
+        for name in WRITE_PS:
+            code = ps_code(name)
+            self.assertIsNone(self.LEADING.search(code), f"{name}: 쉼표 앞 산술식에 괄호 없음")
+            self.assertIsNone(self.TRAILING.search(code), f"{name}: 쉼표 뒤 산술식에 괄호 없음")
+
+
 class TestNoXlsmSave(unittest.TestCase):
     """xlsm 을 openpyxl 로 다시 저장하지 않는다 — 쓰기는 Excel COM, 매크로는 zip 파트 교체뿐."""
 

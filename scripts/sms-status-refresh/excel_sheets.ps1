@@ -206,7 +206,7 @@ function Write-MetaSheet($wb, $sd) {
     $cells = @($rows[$r])
     for ($c = 0; $c -lt $MetaWidth; $c++) {
       $s = [string]$cells[$c]
-      if ($s -eq '') { $vals[$r + 1, $c] = $null } else { $vals[$r + 1, $c] = $s }
+      if ($s -eq '') { $vals[($r + 1), $c] = $null } else { $vals[($r + 1), $c] = $s }
     }
   }
   Set-ComProp $ws.Range($ws.Cells(1, 1), $ws.Cells($m, $MetaWidth)) 'Value2' $vals
