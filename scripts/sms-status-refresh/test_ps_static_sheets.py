@@ -90,6 +90,19 @@ class TestExcelSheets(unittest.TestCase):
         for name in ("excel_sheets.ps1", "excel_view.ps1"):
             self.assertIn("Set-NumberFormat", self.code[name], name)
 
+    def test_한_칸_Value2_는_형이_박힌_대입이거나_InvokeMember(self):
+        # pwsh 7 의 COM 바인더는 프로세스에서 처음 형 없는 값으로 넣은 Value2 의 형을 기억해, 다른 형(문자열 뒤 숫자)을
+        # 다른 줄에서 넣어도 InvalidCastException 을 낸다(T15b 실측 — 요약 9행 B열). `[string]`·`[double]` 이 박힌 식이나
+        # InvokeMember 는 된다 — 그래서 형이 그때그때 다른 값은 Set-Value2 로만 넣는다.
+        for name, src in self.code.items():
+            for rhs in re.findall(r"\.Value2\s*=\s*([^;\r\n}]+)", src):
+                rhs = rhs.strip()
+                self.assertRegex(rhs, r"^(\[string\]|\[double\]|'|\()", f"{name}: {rhs}")
+        fn = function_text(self.code["excel_sheets.ps1"], "Set-Value2")
+        self.assertIn("InvokeMember('Value2'", fn)
+        self.assertIn("Set-Value2", function_text(self.code["excel_summary.ps1"], "Write-SummaryValues"))
+        self.assertIn("Set-Value2", function_text(self.code["excel_summary.ps1"], "Add-SummaryLinks"))
+
     def test_메타는_A_G_전부_서식부터(self):
         fn = function_text(self.code["excel_sheets.ps1"], "Write-MetaSheet")
         self.assertLess(fn.index(".NumberFormat = '@'"), fn.index("Set-RangeProperty"))

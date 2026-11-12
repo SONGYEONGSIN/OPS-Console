@@ -30,6 +30,12 @@ function Set-NumberFormat($range, [string]$fmt) {
   [void]$range.GetType().InvokeMember('NumberFormat', [System.Reflection.BindingFlags]::SetProperty, $null, $range, @($fmt))
 }
 
+# pwsh 7 의 COM 바인더는 처음 형 없는 값으로 넣은 Value2 의 형을 프로세스 내내 기억해, 다른 형(문자열 뒤 숫자)을
+# 다른 줄에서 넣어도 InvalidCastException 을 낸다(T15b 실측). 형이 그때그때 다른 한 칸 값은 여기로만 넣는다
+function Set-Value2($range, $value) {
+  [void]$range.GetType().InvokeMember('Value2', [System.Reflection.BindingFlags]::SetProperty, $null, $range, @(,$value))
+}
+
 function Get-ColumnLetter([int]$c) { return [string][char](64 + $c) }
 
 # 칸 종류: 't' 문자열 · 'n' 숫자 · '' 빈 칸. bool·객체는 JSON 으로 운반할 수 없는 칸이라 멈춘다

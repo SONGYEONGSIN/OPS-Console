@@ -92,7 +92,7 @@ function Write-SummaryValues($ws, $rows) {
       if ($k -eq '') { continue }
       $cell = $ws.Cells($r + 1, $c + 1)
       if ($k -eq 't') { $cell.NumberFormat = '@' }
-      $cell.Value2 = ConvertTo-CellValue $cells[$c]
+      Set-Value2 $cell (ConvertTo-CellValue $cells[$c])
     }
   }
 }
@@ -107,7 +107,7 @@ function Add-SummaryLinks($ws, $sd) {
     $anchor = $ws.Range($p.Name)
     $keep = $anchor.Value2
     [void]$ws.Hyperlinks.Add($anchor, '', $sub, $tip)
-    $anchor.Value2 = $keep   # 표시 글자로 값이 글자가 되지 않게 숫자로 되돌린다
+    Set-Value2 $anchor $keep   # 표시 글자로 값이 글자가 되지 않게 숫자로 되돌린다
   }
 }
 
