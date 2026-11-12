@@ -6,7 +6,10 @@
 2. 세종·Moa·PIMS 의 그 시점 최신 목록으로 06·07 을 계산한다(앞 단계가 실패해도 지난 목록으로 돈다).
 3. Excel COM 으로 작업 사본에 쓰고 → 매크로 바이트 복원 → 검사. **하나라도 실패면 올리지 않는다.**
 4. 올리기 직전 eTag 를 다시 보고, 같을 때만 처음 eTag 로 If-Match 업로드.
-5. 올린 뒤 행 수로 확인한다 — 앱 시트(_학교 등)는 그대로, 06·07 은 쓴 만큼.
+5. 올린 뒤 행 수로 확인한다 — `_확인` 은 그대로, 숨김 표 셋은 max(머리글 + 새 행, U 끝), 06·07 은 쓴 만큼.
+
+PR-3b 몫(숨김 표 셋·01~03 보기·00. 요약·`_수정`)은 body_step 이 만들고 여기서는 06·07 뒤에 붙이기만 한다.
+06·07 건수·바뀐 점·기대 행 계산에는 06·07 payload 만 넘긴다(새 kind 에는 order·counts 가 없다).
 
 xlsm 은 openpyxl 로 **읽기만** 한다. 작업 파일(번호가 든 xlsm·data.json)은 ctx.work_dir 안에만 둔다.
 결과에는 건수·시트 이름·파일 이름만 싣는다 — 번호·학교 이름·예외 메시지는 싣지 않는다.
@@ -48,20 +51,22 @@ from graph import (
     GraphError,
     UploadRejected,
 )
+from body_step import build_body, fetch_baseline, kst_today
 from vba import restore_vba
 from verify import failed_labels, verify_workbook
 
 STEP = "workbook"
 # 앱이 관리하는 시트 — 06·07 을 다시 써도 행 수가 그대로여야 한다
 APP_SHEETS = ("_학교", "_서류", "_번호", "_확인")
+DONE = "06·07·숨김 표·보기·요약 갱신"  # 결과 summary 머리
 TARGETS = ("06. Moa 대조", "07. PIMS 대조")
 
 AFTER_RETRIES = 3  # 올린 뒤 행 수가 다르면 다시 보는 횟수
 AFTER_WAIT_S = 10  # Graph 통합 문서 읽기가 새 버전을 늦게 보는 것을 기다린다
 
 EXCEL_MAX_S = 600  # Excel 한 번의 상한
-EXCEL_MIN_S = 300  # 실행 마감까지 이보다 적게 남으면 Excel 을 띄우지 않는다
-EXCEL_RESERVE_S = 120  # Excel 이 끊긴 뒤 정리·보고에 남기는 몫
+EXCEL_MIN_S = 420  # 실행 마감까지 이보다 적게 남으면 Excel 을 띄우지 않는다
+EXCEL_RESERVE_S = 300  # Excel 이 끊긴 뒤 정리·보고에 남기는 몫
 
 _SCRIPT = Path(__file__).resolve().parent / "excel_apply.ps1"
 _FAILED_LINE = re.compile(r"FAILED at line \d+")
@@ -153,9 +158,9 @@ def pick_sources(graph) -> dict[str, DriveItem]:
             "pims": _latest(graph, PIMS_DIR, "PIMS")}
 
 
-def build_sheet_payloads(graph, sources: dict[str, DriveItem]) -> list[dict]:
-    """excel_apply.ps1 에 넘길 시트 목록. 지금은 06·07 둘 — PR-3 이 앱 시트·요약을 같은 목록에 더한다."""
-    sej_valid, sej_excl = load_sejong(graph.download(sources["sejong"].id))
+def build_sheet_payloads(graph, sources: dict[str, DriveItem], sejong_data: bytes) -> list[dict]:
+    """06·07 payload 둘. 세종 바이트는 부르는 쪽이 한 번 받아 body_step 과 함께 쓴다."""
+    sej_valid, sej_excl = load_sejong(sejong_data)
     moa, extracted = load_moa(graph.download(sources["moa"].id))
     pims = load_pims(graph.download(sources["pims"].id))
     sejong_label = Path(sources["sejong"].name).stem
@@ -181,7 +186,7 @@ def read_result_counts(path: Path, sheets: Sequence[dict]) -> dict[str, dict[str
 
 
 # ---------------------------------------------------------------- 쓰기 · 검사
-def _apply_and_verify(work_dir: Path, sheets: list[dict], apply, restore, verify) -> list:
+def _apply_and_verify(work_dir: Path, sheets: list[dict], apply, restore, verify, baseline: Path | None) -> list:
     """작업 사본에 쓰고 매크로를 되돌린 뒤 검사한다. 하나라도 실패면 verify_failed — 올리지 않는다."""
     before, work = work_dir / "before.xlsm", work_dir / "work.xlsm"
     data = work_dir / "data.json"
@@ -189,7 +194,7 @@ def _apply_and_verify(work_dir: Path, sheets: list[dict], apply, restore, verify
     apply(work, data, work_dir / "excel.pid")
     restore(before, work)
     try:
-        checks = verify(before, work, sheets)
+        checks = verify(before, work, sheets, baseline=baseline)
     except ImportError:
         # '매크로가 바뀌었다' 로 읽히지 않게 따로 적는다
         raise StepFailure("verify_failed", "oletools 없음") from None
@@ -291,6 +296,7 @@ def run_workbook_step(
     restore=restore_vba,
     verify=verify_workbook,
     sleep: Callable[[float], None] = time.sleep,
+    today: Callable[[], str] = kst_today,
 ) -> StepResult:
     work_dir = ctx.work_dir
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -300,21 +306,26 @@ def run_workbook_step(
         graph = graph_factory()
         wb, etag, app_rows = _fetch_workbook(graph, work_dir)
         sources = pick_sources(graph)
-        sheets = build_sheet_payloads(graph, sources)
+        sejong = graph.download(sources["sejong"].id)  # 06·07 과 숨김 표가 같은 바이트를 쓴다(한 번만 받는다)
+        sheets = build_sheet_payloads(graph, sources, sejong)
     except GraphError as e:
         raise _graph_failure(e) from None
-    prev = read_result_counts(work_dir / "before.xlsm", sheets)
-    n = len(_apply_and_verify(work_dir, sheets, apply, restore, verify))
+    before = work_dir / "before.xlsm"
+    body = build_body(before, sejong, sources["sejong"].name, today(),
+                      lambda: fetch_baseline(graph, wb.id, work_dir, before))
+    prev = read_result_counts(before, sheets)
+    n = len(_apply_and_verify(work_dir, [*sheets, *body.sheets], apply, restore, verify, body.baseline))
     if ctx.dry_run:
         tail = _etag_tail(graph, wb.id, etag)  # PUT 은 안 한다 — eTag 만 다시 본다
-        return StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 올리지 않음(시험 실행){tail}",
-                          counts=_counts(sheets, n, False))
+        return StepResult(STEP, "ok", f"{DONE} · 검사 {n}/{n} 통과 · 올리지 않음(시험 실행){tail}",
+                          counts=_counts(sheets, n, False), changes=_changes(sheets, prev) + body.changes)
 
     # 결과는 올리기 전에 만들어 둔다 — 올린 뒤에는 확인 말고 아무것도 실패할 수 없게
     names = f"세종 {sources['sejong'].name} · Moa {sources['moa'].name} · PIMS {sources['pims'].name}"
-    done = StepResult(STEP, "ok", f"06·07 갱신 · 검사 {n}/{n} 통과 · 업로드 완료 ({names}){_stale_tail(ctx)}",
-                      counts=_counts(sheets, n, True), changes=_changes(sheets, prev))
-    expected = {**app_rows, **{sd["sheet"]: sd["firstDataRow"] - 1 + len(sd["rows"]) for sd in sheets}}
+    done = StepResult(STEP, "ok", f"{DONE} · 검사 {n}/{n} 통과 · 업로드 완료 ({names}){_stale_tail(ctx)}",
+                      counts=_counts(sheets, n, True), changes=_changes(sheets, prev) + body.changes)
+    expected = {**app_rows, **body.after_rows,
+                **{sd["sheet"]: sd["firstDataRow"] - 1 + len(sd["rows"]) for sd in sheets}}
     _upload(graph, wb.id, (work_dir / "work.xlsm").read_bytes(), etag)
     _confirm_uploaded(graph, wb.id, expected, sleep)
     return done

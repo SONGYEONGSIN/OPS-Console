@@ -469,8 +469,12 @@ class TestNoXlsmSave(unittest.TestCase):
     """xlsm 을 openpyxl 로 다시 저장하지 않는다 — 쓰기는 Excel COM, 매크로는 zip 파트 교체뿐."""
 
     def test_xlsm_재저장_금지(self):
-        for f in ("workbook_step.py", "verify.py", "vba.py", "compare.py"):
+        for f in ("workbook_step.py", "body_step.py", "verify.py", "vba.py", "compare.py", "sheet_table.py", "views.py",
+                  "summary_sheet.py", "merge_schools.py", "merge_numbers.py", "sejong.py", "edits.py"):
             self.assertNotRegex(code_of(f), r"\.save\(", f)
+        # PowerShell 은 메서드 이름 대소문자를 안 가린다 — 시트 쓰기 ps1 셋은 `.save(`·`.SaveAs(` 도 막는다
+        for f in SHEET_PS:
+            self.assertNotRegex(ps_code(f), r"(?i)\.save(as)?\(", f)
 
 
 class TestEncoding(unittest.TestCase):

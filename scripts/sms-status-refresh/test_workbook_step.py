@@ -1,26 +1,24 @@
-"""workbook_step — 현황 파일 06·07 갱신 · 검사 · If-Match 업로드 · 올린 뒤 확인.
+"""workbook_step — 현황 파일 06·07·숨김 표·보기·요약 갱신 · 검사 · If-Match 업로드 · 올린 뒤 확인.
 
 Graph·Excel·매크로 복원·검사는 전부 가짜다. 실제 현황 파일·Teams 는 만지지 않는다.
 번호·학교는 가짜(test_compare 의 fixture)뿐이다.
 """
 import json
 import re
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
 import requests
 
 import refresh
 import workbook_step
 from contract import STEP_IDS, Context, Step, StepResult, run_steps
-from fixtures import make_xlsm_like
-from graph import MOA_DIR, PIMS_DIR, SEJONG_DIR, SMS_ROOT, XLSM, DriveItem, UploadRejected
+from graph import MOA_DIR, PIMS_DIR, SEJONG_DIR, SMS_ROOT, XLSM, DriveItem, FileVersion, GraphError, UploadRejected
+from test_body_step import status_workbook
 from test_compare import moa_bytes, moa_sheet, pims_bytes, pims_sheet, sejong_bytes
 from verify import Check
-from workbook_step import APP_SHEETS, TARGETS, apply_excel, run_workbook_step
+from workbook_step import APP_SHEETS, DONE, TARGETS, run_workbook_step
 
 WB_NAME = "SMS 발신번호 사전등록 현황_261107.xlsm"
 SEJONG_NAME = "세종 등록 리스트_261107.xlsx"
@@ -29,17 +27,20 @@ PIMS_NAME = "PIMS 등록 리스트_261108.xlsx"
 APP_ROWS = 5
 
 
-def workbook_bytes() -> bytes:
-    """기존 06 만 있는 현황 파일 흉내 — 데이터 9행부터 Moa만 1 · 양쪽 1."""
-    filler = [["."] for _ in range(7)]
-    moa06 = [*filler, ["No", "결과", "발신번호"],
-             [1, "Moa만", "010-0000-0099"], [2, "양쪽", "010-0000-0001"]]
-    return make_xlsm_like({"03. 번호 목록": [["."]], "06. Moa 대조": moa06}, b"VBA")
+VERSIONS = (FileVersion("3.0", "2026-11-03T00:00:00Z"), FileVersion("1.0", "2026-10-17T00:00:00Z"))
+# 픽스처 숨김 표의 올린 뒤 행 — 세종 6줄(A·E·F·B·C·D)이라 `_학교`·`_서류` 3→6행, `_번호` 5→6행, + 머리글
+HIDDEN_AFTER = {"_학교": 7, "_서류": 7, "_번호": 7}
+
+
+def workbook_bytes(meta=None) -> bytes:
+    """현황 파일 흉내 — 06(Moa만 1 · 양쪽 1)·07(빈) + 요약·01~03 보기·숨김 3장·`_확인`(meta 면 `_수정`)."""
+    with tempfile.TemporaryDirectory() as d:
+        return status_workbook(Path(d) / "wb.xlsm", meta=meta).read_bytes()
 
 
 def honest_rows() -> dict[str, int]:
     """올린 뒤 Graph 가 돌려줄 정상 행 수."""
-    rows = {s: APP_ROWS for s in APP_SHEETS}
+    rows = {s: APP_ROWS for s in APP_SHEETS} | HIDDEN_AFTER
     rows["06. Moa 대조"] = 8 + len(moa_sheet()["rows"])
     rows["07. PIMS 대조"] = 8 + len(pims_sheet()["rows"])
     return rows
@@ -48,10 +49,12 @@ def honest_rows() -> dict[str, int]:
 class FakeGraph:
     """호출 순서를 calls 에 남긴다. item 의 eTag 는 etags 를 차례로(마지막 값 반복)."""
 
-    def __init__(self, *, etags=("e1",), put_error=None, rows_after=None, missing=(), after_error=None):
+    def __init__(self, *, etags=("e1",), put_error=None, rows_after=None, missing=(), after_error=None,
+                 versions=VERSIONS, versions_error=None, meta=None):
         self.calls: list[tuple] = []
+        self._versions, self.versions_error = list(versions), versions_error
         self.files = {
-            SMS_ROOT: [("wb", WB_NAME, workbook_bytes())],
+            SMS_ROOT: [("wb", WB_NAME, workbook_bytes(meta))],
             SEJONG_DIR: [("sj", SEJONG_NAME, sejong_bytes())],
             MOA_DIR: [("mo", MOA_NAME, moa_bytes())],
             PIMS_DIR: [("pi", PIMS_NAME, pims_bytes())],
@@ -80,6 +83,16 @@ class FakeGraph:
         self.calls.append(("download", item_id))
         return self._find(item_id)[2]
 
+    def versions(self, item_id):
+        self.calls.append(("versions", item_id))
+        if self.versions_error is not None:
+            raise self.versions_error
+        return list(self._versions)
+
+    def download_version(self, item_id, version_id):
+        self.calls.append(("download_version", item_id, version_id))
+        return self._find(item_id)[2]  # 첫 판 = 지금 파일과 같은 바이트
+
     def used_range_rows(self, item_id, sheet):
         self.calls.append(("rows", item_id, sheet))
         if not self.puts:
@@ -105,6 +118,7 @@ class RunStepTest(unittest.TestCase):
         self.work = Path(self._tmp.name)
         self.applied: list[tuple] = []
         self.sleeps: list[float] = []
+        self.baselines: list = []
 
     def tearDown(self):
         self._tmp.cleanup()
@@ -122,11 +136,46 @@ class RunStepTest(unittest.TestCase):
             graph_factory=lambda: graph,
             apply=fake_apply,
             restore=lambda before, after: (0, 0),
-            verify=verify or (lambda before, after, sheets: list(checks or OK_CHECKS)),
+            verify=verify or self._fake_verify(checks),
             sleep=self.sleeps.append,
         ))
         ctx = Context("req-1", {}, dry_run, self.work, results)
         return run_steps([step], ctx)[0], graph
+
+    def _fake_verify(self, checks):
+        def verify(before, after, sheets, baseline=None):
+            self.baselines.append(baseline)
+            return list(checks or OK_CHECKS)
+        return verify
+
+    def test_첫_실행은_기준_파일을_받는다(self):
+        r, g = self._run()
+        self.assertEqual(r.status, "ok", r.detail)
+        self.assertIn(("download_version", "wb", "1.0"), g.calls)  # 가장 오래된 판
+        self.assertEqual(self.baselines, [self.work / "baseline.xlsm"])
+
+    def test_수정_시트가_있으면_기준_파일을_받지_않는다(self):
+        r, g = self._run(FakeGraph(meta=[]))
+        self.assertEqual(r.status, "ok", r.detail)
+        self.assertEqual([c for c in g.calls if c[0] in ("versions", "download_version")], [])
+        self.assertEqual(self.baselines, [None])
+
+    def test_버전이_하나뿐이면_지금_파일이_기준_파일(self):
+        r, g = self._run(FakeGraph(versions=VERSIONS[1:]))
+        self.assertEqual(r.status, "ok", r.detail)
+        self.assertEqual([c for c in g.calls if c[0] == "download_version"], [])
+        self.assertEqual(self.baselines, [self.work / "before.xlsm"])
+
+    def test_기준_파일이_없으면_baseline_missing(self):
+        r, g = self._run(FakeGraph(versions_error=GraphError(403)))
+        self.assertEqual((r.status, r.error_code), ("failed", "baseline_missing"))
+        self.assertEqual((self.applied, g.puts), ([], []))
+
+    def test_올린_뒤_기대_행은_새_행_수(self):
+        r, _g = self._run()  # 숨김 표는 원본 행 수(APP_ROWS)가 아니라 HIDDEN_AFTER 여야 통과
+        self.assertEqual(r.status, "ok", r.detail)
+        r, _g = self._run(FakeGraph(rows_after={**honest_rows(), "_번호": APP_ROWS}))
+        self.assertEqual((r.status, r.detail), ("failed", "업로드됨 · 행 수 다름: _번호"))
 
     def test_eTag_를_먼저_읽는다(self):
         _r, g = self._run()
@@ -138,7 +187,7 @@ class RunStepTest(unittest.TestCase):
         self.assertEqual([c for c in g.calls if c[0] == "put"], [])
 
     def test_oletools_가_없으면_verify_failed_따로_적는다(self):
-        def no_oletools(*_a):
+        def no_oletools(*_a, **_kw):
             raise ImportError("oletools")
 
         r, g = self._run(verify=no_oletools)
@@ -146,7 +195,7 @@ class RunStepTest(unittest.TestCase):
         self.assertEqual(g.puts, [])
 
     def test_검사가_0건이면_올리지_않는다(self):
-        r, g = self._run(verify=lambda *_a: [])
+        r, g = self._run(verify=lambda *_a, **_kw: [])
         self.assertEqual((r.status, r.error_code, r.detail), ("failed", "verify_failed", "검사 0건"))
         self.assertEqual(g.puts, [])
 
@@ -195,7 +244,7 @@ class RunStepTest(unittest.TestCase):
     def test_dry_run_은_올리지_않는다(self):
         r, g = self._run(dry_run=True)
         self.assertEqual(r.status, "ok", r.detail)
-        self.assertEqual(r.summary, "06·07 갱신 · 검사 3/3 통과 · 올리지 않음(시험 실행) · eTag 유지")
+        self.assertEqual(r.summary, f"{DONE} · 검사 3/3 통과 · 올리지 않음(시험 실행) · eTag 유지")
         self.assertEqual(g.puts, [])
         self.assertEqual(r.counts["uploaded"], 0)
 
@@ -206,7 +255,7 @@ class RunStepTest(unittest.TestCase):
         self.assertEqual(g.puts, [])
 
     def test_올린_뒤_행_수가_다르면_after_check(self):
-        rows = {**honest_rows(), "_번호": APP_ROWS + 1}
+        rows = {**honest_rows(), "_번호": HIDDEN_AFTER["_번호"] + 1}
         r, g = self._run(FakeGraph(rows_after=rows))
         self.assertEqual((r.status, r.error_code), ("failed", "after_check"))
         self.assertEqual(r.detail, "업로드됨 · 행 수 다름: _번호")
@@ -222,7 +271,7 @@ class RunStepTest(unittest.TestCase):
 
     def test_업로드_완료_요약과_건수(self):
         r, _g = self._run()
-        self.assertEqual(r.summary, f"06·07 갱신 · 검사 3/3 통과 · 업로드 완료 "
+        self.assertEqual(r.summary, f"{DONE} · 검사 3/3 통과 · 업로드 완료 "
                                     f"(세종 {SEJONG_NAME} · Moa {MOA_NAME} · PIMS {PIMS_NAME})")
         self.assertEqual(set(r.counts), {"moa_both", "moa_sejong_only", "moa_only", "moa_excluded",
                                          "pims_both", "pims_sejong_only", "pims_only", "pims_excluded",
@@ -266,11 +315,12 @@ class RunStepTest(unittest.TestCase):
 
     def test_바뀐_점은_건수만(self):
         r, _g = self._run()
-        self.assertEqual(len(r.changes), 2)
+        self.assertEqual(r.changes[2:], ("_학교: 3→6행 · 새 3 · 빠짐 0", "_서류: 3→6행 · 새 3 · 빠짐 0",
+                                         "_번호: 5→6행 · 새 3 · 빠짐 2", "요약 링크 못 건 칸 2"))
         self.assertTrue(r.changes[0].startswith("06. Moa 대조: Moa만 1→"), r.changes[0])
         self.assertIn("양쪽 1→", r.changes[0])
         self.assertTrue(r.changes[1].startswith("07. PIMS 대조: PIMS만 0→"), r.changes[1])  # 07 이 없던 파일
-        for line in r.changes:
+        for line in r.changes[:2]:
             self.assertIn("→", line)
             self.assertNotIn("010-0000", line)
 
@@ -289,79 +339,9 @@ class RunStepTest(unittest.TestCase):
         self.assertEqual(wb, self.work / "work.xlsm")
         self.assertTrue((self.work / "before.xlsm").exists())
         sheets = json.loads(data.read_text(encoding="utf-8"))["sheets"]
-        self.assertEqual([s["sheet"] for s in sheets], list(TARGETS))
-
-
-class ApplyExcelTest(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self.dir = Path(self._tmp.name)
-        self.wb, self.data, self.pid = self.dir / "work.xlsm", self.dir / "data.json", self.dir / "excel.pid"
-
-    def tearDown(self):
-        self._tmp.cleanup()
-
-    def _call(self, run_side_effect, which="C:/pwsh.exe"):
-        with mock.patch.object(workbook_step.shutil, "which", return_value=which), \
-             mock.patch.object(workbook_step.subprocess, "run", side_effect=run_side_effect) as run:
-            try:
-                apply_excel(self.wb, self.data, self.pid, timeout_s=5)
-                return None, run
-            except workbook_step.StepFailure as e:
-                return e, run
-
-    @staticmethod
-    def done(code, out=""):
-        return subprocess.CompletedProcess([], code, stdout=out, stderr="")
-
-    def test_성공(self):
-        err, run = self._call([self.done(0, "applied: 06=1\nexcel cleanup: ok\n")])
-        self.assertIsNone(err)
-        cmd = run.call_args.args[0]
-        self.assertEqual(cmd[0], "C:/pwsh.exe")
-        self.assertTrue(cmd[cmd.index("-File") + 1].endswith("excel_apply.ps1"))
-        for flag, val in (("-Workbook", self.wb), ("-Data", self.data), ("-PidFile", self.pid)):
-            self.assertEqual(cmd[cmd.index(flag) + 1], str(val))
-
-    def test_pwsh_가_없으면_excel_failed(self):
-        err, run = self._call([], which=None)
-        self.assertEqual((err.code, err.detail), ("excel_failed", "pwsh 없음"))
-        run.assert_not_called()
-
-    def test_실패하면_FAILED_줄만(self):
-        err, _run = self._call([self.done(1, "applied: \nFAILED at line 42: $ws.Cells(1,1)\n")])
-        self.assertEqual((err.code, err.detail), ("excel_failed", "FAILED at line 42"))
-
-    def test_FAILED_줄이_없으면_종료_코드(self):
-        err, _run = self._call([self.done(1, "무언가 던짐\n")])
-        self.assertEqual((err.code, err.detail), ("excel_failed", "exit 1"))
-
-    def test_시간_초과면_자기_Excel_만_정리한다(self):
-        self.pid.write_text("999", encoding="ascii")  # 지난 실행이 남긴 PID — 지워져야 한다
-
-        def fake_run(cmd, **_kw):
-            if cmd[0] == "taskkill":
-                return self.done(0)
-            self.assertFalse(self.pid.exists())
-            self.pid.write_text("4321", encoding="ascii")  # ps1 이 Excel PID 를 적은 뒤 멈춤
-            raise subprocess.TimeoutExpired(cmd, 5)
-
-        err, run = self._call(fake_run)
-        self.assertEqual(err.code, "excel_failed")
-        self.assertEqual(run.call_args_list[1].args[0], ["taskkill", "/F", "/PID", "4321", "/FI", "IMAGENAME eq EXCEL.EXE"])
-
-    def test_PidFile_이_비었거나_숫자가_아니면_taskkill_을_부르지_않는다(self):
-        for content in (b"", b"abc", b"\xff\xfe", None):
-            def fake_run(cmd, content=content, **_kw):
-                if cmd[0] == "taskkill":
-                    return self.done(0)
-                if content is not None:
-                    self.pid.write_bytes(content)
-                raise subprocess.TimeoutExpired(cmd, 5)
-
-            err, run = self._call(fake_run)
-            self.assertEqual(err.code, "excel_failed", repr(content))
-            self.assertEqual([c.args[0][0] for c in run.call_args_list], [run.call_args_list[0].args[0][0]])
+        self.assertEqual([s["sheet"] for s in sheets],
+                         [*TARGETS, "_학교", "_서류", "_번호", "01. 학교별 현황", "02. 학교별 제출 서류", "03. 번호 목록",
+                          "00. 요약", "_수정"])
 
 
 class WiringTest(unittest.TestCase):

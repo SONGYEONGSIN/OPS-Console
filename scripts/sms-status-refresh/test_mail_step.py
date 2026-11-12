@@ -412,7 +412,7 @@ def _workbook(ctx, graph):
     from workbook_step import run_workbook_step
 
     return run_workbook_step(ctx, graph_factory=lambda: graph, apply=lambda *_a: None,
-                             restore=lambda *_a: (0, 0), verify=lambda *_a: list(OK_CHECKS),
+                             restore=lambda *_a: (0, 0), verify=lambda *_a, **_kw: list(OK_CHECKS),
                              sleep=lambda _s: None)
 
 

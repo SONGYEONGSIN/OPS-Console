@@ -57,6 +57,13 @@ class DriveItem:
     is_file: bool
 
 
+@dataclass(frozen=True)
+class FileVersion:
+    """SharePoint 버전 기록 한 판 — 기준 판(현황 파일의 가장 오래된 판, 결정 5)을 고를 때 쓴다."""
+    id: str
+    last_modified: str
+
+
 def _item(j: dict) -> DriveItem:
     return DriveItem(
         id=j["id"],
@@ -126,6 +133,20 @@ class Graph:
 
     def download(self, item_id: str) -> bytes:
         return self._get(f"{self._drive()}/items/{item_id}/content", "내려받기", timeout=180).content
+
+    def versions(self, item_id: str) -> list[FileVersion]:
+        """버전 기록 전부(Graph 는 새 판부터 준다). 다음 쪽까지 따라간다."""
+        url: str | None = f"{self._drive()}/items/{item_id}/versions"
+        out: list[FileVersion] = []
+        while url:
+            j = self._get(url, "버전 목록").json()
+            out = [*out, *(FileVersion(x["id"], x.get("lastModifiedDateTime", "")) for x in j.get("value", []))]
+            url = j.get("@odata.nextLink")
+        return out
+
+    def download_version(self, item_id: str, version_id: str) -> bytes:
+        vid = urllib.parse.quote(version_id, safe=".")
+        return self._get(f"{self._drive()}/items/{item_id}/versions/{vid}/content", "판 내려받기", timeout=180).content
 
     def used_range_rows(self, item_id: str, sheet: str) -> int:
         # 시트 지정 형식은 화면(source.ts usedRangeUrl)과 같다 — 작은따옴표는 두 번.
