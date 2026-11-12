@@ -175,6 +175,208 @@ class TestExcelApply(unittest.TestCase):
         self.assertRegex(self.xl, r"(?m)^\s*throw\s*$")
 
 
+SHEET_PS = ("excel_sheets.ps1", "excel_view.ps1", "excel_summary.ps1")  # PR-3b 시트 쓰기(dot-source)
+WRITE_PS = ("excel_apply.ps1", *SHEET_PS)
+
+
+def ps_code(name: str) -> str:
+    """블록 주석(<# … #>)과 '#' 줄을 지운 원문 — 머리 설명에 적힌 금지어가 대조에 걸리지 않게."""
+    text = re.sub(r"<#.*?#>", "", (HERE / name).read_text(encoding="utf-8-sig"), flags=re.S)
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+
+
+def functions_text(source: str, *names: str) -> str:
+    return "\n".join(function_text(source, n) for n in names)
+
+
+class TestExcelSheets(unittest.TestCase):
+    """excel_sheets.ps1·excel_view.ps1·excel_summary.ps1 — 실제 Excel 은 T15 에서. 여기서는 지킬 줄을 원문으로 본다."""
+    @classmethod
+    def setUpClass(cls):
+        cls.code = {n: ps_code(n) for n in WRITE_PS}
+        cls.sheets = "\n".join(cls.code[n] for n in SHEET_PS)
+
+    def test_Delete_Insert_Copy_Save_없음(self):
+        # 지우기·끼우기는 참조를 끊고, Copy 는 조건부 서식까지 복제하며, 중간 저장은 반쯤 쓴 파일을 남긴다.
+        for name, src in self.code.items():
+            for banned in (".Delete(", ".Insert(", ".Copy(", ".Cut(", "PasteSpecial", "SaveAs"):
+                self.assertNotIn(banned, src, f"{name}: {banned}")
+        self.assertNotRegex(self.sheets, r"\.Save\(")
+        self.assertEqual(self.code["excel_apply.ps1"].count(".Save("), 1)
+
+    def test_표는_U_를_안_쓴다(self):
+        # U(고를 값)는 이름 정의 `고를값_*` 와 P 수식 `$U$2:$U$N` 이 박고 있다 — 쓰는 열은 A~T 스무 칸뿐.
+        self.assertRegex(self.code["excel_sheets.ps1"], r"(?m)^\$TableWidth = 20\b")
+        fn = functions_text(self.code["excel_sheets.ps1"], "Write-TableSheet", "Set-TableFormats", "Set-TableValues")
+        self.assertNotRegex(fn, r"['\"]U\$?\d*['\"]|\bU\$?\d+\b|\bU:U\b|\b21\b")
+        self.assertIn("$TableWidth", fn)
+        self.assertRegex(fn, r"\$TableWidth\)\)\.ClearContents\(\)")  # 남는 행도 A~T 만 비운다
+
+    def test_계산_모드를_안_바꾼다(self):
+        for name, src in self.code.items():
+            self.assertNotRegex(src, r"Calculation\s*=", name)
+
+    def test_PS7_전용_문법이_없다(self):
+        # 회사 PC 폴러는 Windows PowerShell 5.1 — `??`·`?.`·삼항은 거기서 구문 오류다.
+        for name, src in self.code.items():
+            self.assertNotRegex(src, r"\?\?|\?\.|\)\s+\?\s+\S+\s+:\s", name)
+
+    def test_kind_로_갈라_dot_source(self):
+        xl = self.code["excel_apply.ps1"]
+        self.assertRegex(xl, r"(?m)^\. \(Join-Path \$PSScriptRoot 'excel_sheets\.ps1'\)")
+        self.assertIn("'compare'", xl)
+        self.assertIn("Invoke-SheetPayload", xl)
+        self.assertIn("Assert-SheetPayload", xl)  # Excel 을 띄우기 전에 payload 부터 본다
+        for fn in ("Write-TableSheet", "Write-ViewSheet", "Write-MetaSheet", "Write-SummarySheet"):
+            self.assertRegex(self.sheets, rf"(?m)^function {fn}\b")
+
+    def test_표_문자열_칸은_서식부터_P_는_Formula(self):
+        fn = function_text(self.code["excel_sheets.ps1"], "Write-TableSheet")
+        self.assertLess(fn.index("Set-TableFormats"), fn.index("Set-TableValues"))
+        vals = function_text(self.code["excel_sheets.ps1"], "Set-TableValues")
+        self.assertIn("'Formula'", vals)
+        fmts = function_text(self.code["excel_sheets.ps1"], "Set-TableFormats")
+        self.assertIn("'@'", fmts)
+        self.assertIn("'General'", fmts)
+
+    def test_메타는_A_G_전부_서식부터(self):
+        fn = function_text(self.code["excel_sheets.ps1"], "Write-MetaSheet")
+        self.assertLess(fn.index(".NumberFormat = '@'"), fn.index("Set-RangeProperty"))
+        self.assertIn("$MetaWidth", fn)  # A~G 일곱 칸 전부 — 키·값만이 아니라 기록일도
+        self.assertIn(".Visible = 0", fn)  # xlSheetHidden — veryHidden(2) 이 아니다
+        self.assertNotIn(".Visible = 2", fn)
+        self.assertIn("Worksheets.Add(", self.code["excel_sheets.ps1"])
+
+    def test_뷰_서식은_칸별_속성으로(self):
+        src = self.code["excel_view.ps1"]
+        self.assertIn("ModifyAppliesToRange(", src)
+        self.assertIn("Address($false, $false)", src)
+        self.assertIn("'Formula'", function_text(src, "Write-ViewSheet"))
+
+    def test_요약은_지우고_값_병합_링크_서식_순서(self):
+        src = self.code["excel_summary.ps1"]
+        fn = function_text(src, "Write-SummarySheet")
+        order = ["ClearHyperlinks()", "UnMerge()", "Cells.Clear()", "Write-SummaryValues", ".Merge()",
+                 "Add-SummaryLinks", "Set-SummaryStyles", "Set-SummaryLayout"]
+        self.assertEqual([fn.index(s) for s in order], sorted(fn.index(s) for s in order))
+
+    def test_요약_링크는_ScreenTip_을_넘긴다(self):
+        fn = function_text(self.code["excel_summary.ps1"], "Add-SummaryLinks")
+        self.assertRegex(fn, r"Hyperlinks\.Add\(\$anchor, '', \$sub, \$tip\)")
+
+    def test_요약_행_높이_열_너비는_payload_에서(self):
+        # summary_layout.ROW_HEIGHT·COL_WIDTHS 가 하나뿐인 원천 — ps1 에 같은 표를 두지 않는다.
+        src = self.code["excel_summary.ps1"]
+        for v in ("35.1", "20.1", "30.0"):
+            self.assertNotIn(v, src)
+        for field in (".rowHeights", ".colWidths", ".gridlines"):
+            self.assertIn(field, src)
+
+    def test_요약_스타일_키는_summary_layout_과_같다(self):
+        from summary_layout import STYLE_KEYS
+        fn = function_text(self.code["excel_summary.ps1"], "Set-SummaryStyle")
+        self.assertEqual(sorted(re.findall(r"(?m)^\s+'([a-z-]+)'\s+\{", fn)), sorted(STYLE_KEYS))
+        self.assertIn("default", fn)
+
+
+@unittest.skipUnless(shutil.which("powershell"), "Windows PowerShell 없음")
+class TestExcelSheetsBehaviour(unittest.TestCase):
+    """excel_sheets.ps1 을 dot-source 해(함수 정의뿐 — Excel 을 띄우지 않는다) 순수 함수·가짜 COM 으로 돌린다."""
+
+    def run_ps(self, body: str) -> str:
+        script = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8\n$ErrorActionPreference = 'Stop'\n"
+                  f". '{HERE / 'excel_sheets.ps1'}'\n{FAKE_CF}\n{body}")
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "t.ps1"
+            path.write_text(script, encoding="utf-8-sig")
+            out = subprocess.run(
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(path)],
+                capture_output=True, timeout=60,
+            )
+        self.assertEqual(out.returncode, 0, out.stderr.decode("utf-8", "replace"))
+        return out.stdout.decode("utf-8").strip()
+
+    def test_CF_주소는_달러_쉼표_공백_순서를_정규화(self):
+        got = self.run_ps("ConvertTo-RangeKey '$G$9:$G$13,$E$9:$E$13'; ConvertTo-RangeKey 'E9:E13 G9:G13';"
+                          "ConvertTo-RangeKey 'e9:e9'; ConvertTo-ComAddress 'E9:E12  G9:G12'")
+        self.assertEqual(got.splitlines(), ["E9:E13,G9:G13", "E9:E13,G9:G13", "E9", "E9:E12,G9:G12"])
+
+    def test_같은_범위_규칙은_규칙마다_바꾼다(self):
+        got = self.run_ps("$ws = New-FakeSheet @('$E$9:$E$13', '$E$9:$E$13', '$A$9:$H$13')\n"
+                          "Update-ViewCf $ws @([pscustomobject]@{range='E9:E13'; newRange='E9:E12'})\n"
+                          "($ws.Rules | ForEach-Object { $_.Addr }) -join ' / '")
+        self.assertEqual(got.splitlines(), ["2", "E9:E12 / E9:E12 / $A$9:$H$13"])
+
+    def test_범위가_안_맞으면_throw(self):
+        got = self.run_ps("$ws = New-FakeSheet @('$E$9:$E$14')\n"
+                          "try { Update-ViewCf $ws @([pscustomobject]@{range='E9:E13'; newRange='E9:E12'}); 'no' }"
+                          " catch { 'threw' }")
+        self.assertEqual(got, "threw")
+
+    def test_바꾼_수가_다르면_throw(self):
+        # ModifyAppliesToRange 가 조용히 안 먹은 경우 — 다시 세어 보고 멈춘다
+        got = self.run_ps("$ws = New-FakeSheet @('$E$9:$E$13') -Stuck\n"
+                          "try { Update-ViewCf $ws @([pscustomobject]@{range='E9:E13'; newRange='E9:E12'}); 'no' }"
+                          " catch { 'threw' }")
+        self.assertEqual(got, "threw")
+
+    def test_칸_종류와_서식_구간(self):
+        got = self.run_ps("(@('x', 3, '', [decimal]1.5, '=1') | ForEach-Object { Get-CellKind $_ }) -join ','\n"
+                          "$runs = Get-FormatRuns @('t','t','','n','n','t'); (@(foreach ($x in $runs) { $x -join '-' })) -join ' '\n"
+                          "try { Get-CellKind $true; 'no' } catch { 'threw' }")
+        self.assertEqual(got.splitlines(), ["t,n,,n,t", "0-1-t 3-4-n 5-5-t", "threw"])
+
+    def test_payload_검사는_Excel_전에_거른다(self):
+        got = self.run_ps(
+            "$ok = [pscustomobject]@{kind='table'; sheet='_학교'; beforeRows=1; columns=@(" +
+            ",".join(f"'{chr(65 + i)}'" for i in range(20)) +
+            "); textColumns=@('B'); rows=@(,@(1,'테스트대학교A','','','','','','','','','','','','','','=1','','','',''))}\n"
+            "Assert-SheetPayload $ok; 'ok'\n"
+            "$u = $ok.PSObject.Copy(); $u.columns = @($ok.columns + 'U')\n"
+            "try { Assert-SheetPayload $u; 'no' } catch { 'threw-u' }\n"
+            "$k = [pscustomobject]@{kind='chart'; sheet='x'}\n"
+            "try { Assert-SheetPayload $k; 'no' } catch { 'threw-kind' }")
+        self.assertEqual(got.splitlines(), ["ok", "threw-u", "threw-kind"])
+
+
+# 가짜 COM — 시트.Cells.FormatConditions(Count·Item) → 규칙.AppliesTo.Address(a, b)·ModifyAppliesToRange(rng)
+FAKE_CF = r"""
+function New-FakeSheet([string[]]$addrs, [switch]$Stuck) {
+  $rules = @(foreach ($a in $addrs) {
+    $fc = [pscustomobject]@{ Addr = $a; Stuck = [bool]$Stuck }
+    $ap = [pscustomobject]@{ Owner = $fc }
+    $ap | Add-Member ScriptMethod Address { param($r, $c) $this.Owner.Addr }
+    $fc | Add-Member NoteProperty AppliesTo $ap
+    $fc | Add-Member ScriptMethod ModifyAppliesToRange { param($rng) if (-not $this.Stuck) { $this.Addr = $rng.Addr } }
+    $fc
+  })
+  $fcs = [pscustomobject]@{ List = $rules }
+  $fcs | Add-Member ScriptProperty Count { $this.List.Count }
+  $fcs | Add-Member ScriptMethod Item { param($i) $this.List[$i - 1] }
+  $ws = [pscustomobject]@{ Rules = $rules; Cells = [pscustomobject]@{ FormatConditions = $fcs } }
+  $ws | Add-Member ScriptMethod Range { param($a) [pscustomobject]@{ Addr = $a } }
+  $ws
+}
+"""
+
+
+@unittest.skipUnless(shutil.which("powershell"), "Windows PowerShell 없음")
+class TestPsParse(unittest.TestCase):
+    """구문 검사만(ParseFile) — 실행하지 않는다. 5.1(회사 PC 폴러)과 7(pwsh, 있으면) 둘 다."""
+
+    def parse_errors(self, exe: str, name: str) -> str:
+        cmd = ("$e = $null; [void][System.Management.Automation.Language.Parser]::ParseFile("
+               f"'{HERE / name}', [ref]$null, [ref]$e); $e.Count; $e | ForEach-Object {{ $_.Message }}")
+        out = subprocess.run([exe, "-NoProfile", "-Command", cmd], capture_output=True, timeout=60)
+        return out.stdout.decode("utf-8", "replace").strip()
+
+    def test_구문_오류_0(self):
+        exes = ["powershell"] + (["pwsh"] if shutil.which("pwsh") else [])
+        for exe in exes:
+            for name in WRITE_PS:
+                self.assertEqual(self.parse_errors(exe, name).splitlines()[:1], ["0"], f"{exe} {name}")
+
+
 class TestPimsCollectSource(unittest.TestCase):
     """pims_collect.py — 화면의 상태를 바꾸는 함수는 이름조차 코드·주석에 없어야 한다."""
 
@@ -200,7 +402,7 @@ class TestNoXlsmSave(unittest.TestCase):
 class TestEncoding(unittest.TestCase):
     def test_ps1_은_BOM_있는_UTF8(self):
         # 이 PC 의 Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 문자열이 깨진다.
-        for name in ("poll-local.ps1", "register-poll-task.ps1", "excel_apply.ps1"):
+        for name in ("poll-local.ps1", "register-poll-task.ps1", "excel_apply.ps1", *SHEET_PS):
             self.assertTrue((HERE / name).read_bytes().startswith(b"\xef\xbb\xbf"), name)
 
 

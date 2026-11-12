@@ -11,7 +11,8 @@
 대상을 거절한다). 0 인 칸에는 링크가 없다.
 
 payload: {kind:"summary", sheet, rows, links:{칸:"시트!셀"}, merged:[...], tips:{칸:툴팁}, styles:{칸:스타일 키},
-warnings:[...]} — 스타일 키·행 높이·열 너비는 `summary_layout` 머리 설명.
+warnings:[...], layout:{rowHeights, colWidths, gridlines}} — 스타일 키·행 높이·열 너비는 `summary_layout` 머리 설명.
+verify 는 layout 을 보지 않는다(COM 서식용).
 """
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ from number_rows import doc_tag
 from school_rows import CHECK, DOC_COLS, STATES, doc_category, reg_category
 from sejong import NO_NUMBER
 from sheet_names import ISSUE_VIEW, SUMMARY_SHEET, VIEW_OF
-from summary_layout import GAP, Row, assemble, line, note, section, title
+from summary_layout import GAP, Row, assemble, line, note, section, sheet_layout, title
 from table_rows import is_blank, named, text
 from verify_table import Table
 
@@ -196,4 +197,5 @@ def summary_payload(schools: Table, docs: Table, numbers: Table, issues: Sequenc
     rows = (title(TITLE, NOTES, base_text) + [GAP] + _registration(sch, num) + _lines_docs(sch, num)
             + _services(sch, chk) + _registration_docs(chk) + _per_doc(chk) + _issues(iss))
     targets, tried = _targets(search, link_targets)
-    return {"kind": "summary", "sheet": SUMMARY_SHEET, **assemble(rows, targets, tried)}
+    body = assemble(rows, targets, tried)
+    return {"kind": "summary", "sheet": SUMMARY_SHEET, **body, "layout": sheet_layout(len(body["rows"]), body["styles"])}

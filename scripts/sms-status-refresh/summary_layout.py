@@ -79,6 +79,13 @@ def note(text: str) -> Row:
     return Row((Cell(text, "foot"),))
 
 
+def sheet_layout(n_rows: int, styles: Mapping[str, str]) -> dict:
+    """COM 이 읽는 행 높이·열 너비·눈금선 — 행 높이는 그 행 A열 스타일로(없으면 None = 기본 높이).
+    ps1 에 같은 표를 두지 않으려고 payload 에 싣는다(이 모듈의 ROW_HEIGHT·COL_WIDTHS 가 원천)."""
+    return {"rowHeights": [ROW_HEIGHT.get(styles.get(f"A{r}")) for r in range(1, n_rows + 1)],
+            "colWidths": list(COL_WIDTHS), "gridlines": False}
+
+
 def assemble(rows: Sequence[Row], targets: Mapping[str, str | None], tried: Mapping[str, str | None]) -> dict:
     """줄 목록 → {rows, links, merged, tips, styles, warnings}.
 

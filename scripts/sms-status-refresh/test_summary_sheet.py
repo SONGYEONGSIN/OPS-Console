@@ -18,7 +18,7 @@ import verify_view as vv
 from number_rows import number_tags
 from school_rows import DOC_COLS, doc_tags, school_tags
 from sheet_names import ISSUE_VIEW, SUMMARY_SHEET
-from summary_layout import STYLE_KEYS
+from summary_layout import COL_WIDTHS, ROW_HEIGHT, STYLE_KEYS
 from table_rows import P_INDEX, T_INDEX, named, tag_cell
 
 V1, V2, V3, V4 = "01. 학교별 현황", "02. 학교별 제출 서류", "03. 번호 목록", ISSUE_VIEW
@@ -169,6 +169,18 @@ class TestLayout(unittest.TestCase):
         self.assertEqual(p["styles"]["A24"], "foot")
         self.assertEqual(p["styles"]["C52"], "list")
         self.assertTrue(set(p["styles"].values()) <= set(STYLE_KEYS))
+
+    def test_layout_은_행_높이_열_너비_눈금선을_싣는다(self):
+        # COM(Write-SummarySheet)이 읽는다 — summary_layout 의 표가 하나뿐인 원천이다
+        p = payload()
+        lay = p["layout"]
+        self.assertEqual(len(lay["rowHeights"]), len(p["rows"]))
+        self.assertEqual(lay["rowHeights"],
+                         [ROW_HEIGHT.get(p["styles"].get(f"A{r}")) for r in range(1, len(p["rows"]) + 1)])
+        self.assertEqual((lay["rowHeights"][0], lay["rowHeights"][5], lay["rowHeights"][6], lay["rowHeights"][7]),
+                         (35.1, None, 24.0, 30.0))  # 제목·빈 줄·섹션·머리말
+        self.assertEqual(lay["colWidths"], list(COL_WIDTHS))
+        self.assertIs(lay["gridlines"], False)
 
 
 class TestLinks(unittest.TestCase):
