@@ -107,12 +107,18 @@ def value(p, coord):
 class TestBaseLine(unittest.TestCase):
     def test_이름에_날짜가_있으면_작성일을_넣는다(self):
         self.assertEqual(ss.base_line("진학 발번리스트_261015.xlsx", "2026-11-12"),
-                         "▪ 기준 자료: 세종 「진학 발번리스트_261015.xlsx」 (2025-09 이후 등록한 번호만 있음), "
+                         "▪ 기준 자료: 세종 「진학 발번리스트_261015」 (2025-09 이후 등록한 번호만 있음), "
                          "2026-10-15 작성, 2026-11-12 갱신")
 
     def test_날짜가_없으면_작성일_구간을_뺀다(self):
         self.assertEqual(ss.base_line("발번리스트.xlsx", "2026-11-12"),
-                         "▪ 기준 자료: 세종 「발번리스트.xlsx」 (2025-09 이후 등록한 번호만 있음), 2026-11-12 갱신")
+                         "▪ 기준 자료: 세종 「발번리스트」 (2025-09 이후 등록한 번호만 있음), 2026-11-12 갱신")
+
+    def test_확장자는_떼고_넣는다(self):
+        line = ss.base_line("리스트_261110.xlsx", "2026-11-12")
+        self.assertIn("「리스트_261110」", line)
+        self.assertIn("2026-11-10 작성", line)
+        self.assertIn("「리스트_261110」", ss.base_line("리스트_261110.xlsm", "2026-11-12"))
 
     def test_밑줄_없이_붙은_날짜도_읽는다(self):
         self.assertIn("2026-10-02 작성, 2026-11-12 갱신", ss.base_line("리스트261002", "2026-11-12"))
@@ -213,6 +219,14 @@ class TestLinks(unittest.TestCase):
         gone = payload(link_targets=LINKS - {f"{V4}!D6"})
         self.assertFalse(any(loc.startswith(V4) for loc in gone["links"].values()))
         self.assertIn(V4, gone["warnings"][0])
+
+    def test_search_에_없는_시트의_원본_대상이_둘이면_링크_없이_warnings(self):
+        p = payload(link_targets=LINKS | {f"{V4}!E6"})
+        self.assertFalse(any(loc.startswith(V4) for loc in p["links"].values()))
+        self.assertEqual(value(p, "B52"), 1)
+        self.assertEqual(p["styles"]["B52"], "cell")
+        self.assertEqual(len(p["warnings"]), 1)
+        self.assertTrue(p["warnings"][0].startswith(f"{V4}: "))
 
 
 class TestVerify(unittest.TestCase):

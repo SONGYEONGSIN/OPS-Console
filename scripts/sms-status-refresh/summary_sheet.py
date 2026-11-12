@@ -40,19 +40,21 @@ NOTES = ("파란 수를 누르면 해당 시트로 이동해 그 항목만 보�
          "일괄 등록은 2025-09 세종 일괄 등록분, 추가 등록은 그 뒤 추가분, 서류 미비는 세종이 서류 보완을 요청한 번호",
          "제출 서류는 팀즈 「03. 학교별 제출 서류」 PDF를 쪽마다 확인한 결과 (2026-10-15 세종 기준 대학 서류 8종)")
 _DAY = re.compile(r"(?<!\d)(\d{6})(?!\d)")
+_EXT = re.compile(r"\.[A-Za-z0-9]+$")  # 마지막 `.확장자` — 출처 문구에는 확장자가 없다
 _BASE = "▪ 기준 자료: 세종 「{name}」 (2025-09 이후 등록한 번호만 있음), "
 
 
 def base_line(sejong_name: str, today_kst: str) -> str:
-    """기준 자료 줄(00 A5·01~03 A4) — 작성일 = 이름의 YYMMDD(마지막 것), 날짜가 아니면 작성일 구간을 뺀다."""
-    made = None
-    for m in reversed(_DAY.findall(sejong_name)):
+    """기준 자료 줄(00 A5·01~03 A4) — 「」 안은 확장자를 뗀 이름. 작성일 = 이름의 YYMMDD(마지막 것),
+    날짜가 아니면 작성일 구간을 뺀다."""
+    name, made = _EXT.sub("", sejong_name), None
+    for m in reversed(_DAY.findall(name)):
         try:
             made = dt.datetime.strptime(m, "%y%m%d").strftime("%Y-%m-%d")
             break
         except ValueError:
             continue
-    return _BASE.format(name=sejong_name) + (f"{made} 작성, " if made else "") + f"{today_kst} 갱신"
+    return _BASE.format(name=name) + (f"{made} 작성, " if made else "") + f"{today_kst} 갱신"
 
 
 # ---------------------------------------------------------------- 어댑터 (A~T 행 → 출처 dict)
