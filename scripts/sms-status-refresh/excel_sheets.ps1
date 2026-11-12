@@ -24,6 +24,12 @@ function Set-RangeProperty($range, [string]$name, [object[,]]$values) {
   [void]$range.GetType().InvokeMember($name, [System.Reflection.BindingFlags]::SetProperty, $null, $range, @(,$values))
 }
 
+# 한글 Excel 은 pwsh 의 속성 대입 `.NumberFormat = 'General'` 을 0x800A03EC 로 거부한다('@'·'0' 은 받는다, T15b 실측).
+# InvokeMember(문화권 null)로 넣은 'General' 만 받는다 — 'General' 이 들어갈 수 있는 서식은 여기로만 건다
+function Set-NumberFormat($range, [string]$fmt) {
+  [void]$range.GetType().InvokeMember('NumberFormat', [System.Reflection.BindingFlags]::SetProperty, $null, $range, @($fmt))
+}
+
 function Get-ColumnLetter([int]$c) { return [string][char](64 + $c) }
 
 # 칸 종류: 't' 문자열 · 'n' 숫자 · '' 빈 칸. bool·객체는 JSON 으로 운반할 수 없는 칸이라 멈춘다
@@ -124,7 +130,7 @@ function Set-TableFormats($ws, $rows, $textColumns) {
     foreach ($run in $runs) {
       $fmt = '@'
       if ($run[2] -eq 'n') { $fmt = 'General' }
-      $ws.Range($ws.Cells($TableFirstRow + $run[0], $c), $ws.Cells($TableFirstRow + $run[1], $c)).NumberFormat = $fmt
+      Set-NumberFormat $ws.Range($ws.Cells($TableFirstRow + $run[0], $c), $ws.Cells($TableFirstRow + $run[1], $c)) $fmt
     }
   }
 }
@@ -144,7 +150,7 @@ function Set-TableValues($ws, $rows) {
   $last = $TableFirstRow + $n - 1
   Set-RangeProperty $ws.Range($ws.Cells($TableFirstRow, 1), $ws.Cells($last, $TableWidth)) 'Value2' $vals
   $p = $ws.Range($ws.Cells($TableFirstRow, $PCol), $ws.Cells($last, $PCol))
-  $p.NumberFormat = 'General'
+  Set-NumberFormat $p 'General'
   Set-RangeProperty $p 'Formula' $forms
   Assert-HasFormula $p "$($ws.Name) P열"
 }

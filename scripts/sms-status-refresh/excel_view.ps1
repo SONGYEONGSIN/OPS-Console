@@ -90,7 +90,7 @@ function Write-ViewFormulas($ws, $formulas, [string]$sheet) {
   $width = @($formulas[0]).Count
   $newLast = $ViewFirstRow + $n - 1
   $cols = Get-FormulaColumns $formulas
-  foreach ($c in $cols) { $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)).NumberFormat = 'General' }
+  foreach ($c in $cols) { Set-NumberFormat $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)) 'General' }
   $arr = New-Object 'object[,]' $n, $width
   for ($r = 0; $r -lt $n; $r++) {
     $cells = @($formulas[$r])
@@ -104,7 +104,7 @@ function Write-ViewFormulas($ws, $formulas, [string]$sheet) {
 
 function Write-CountFormula($ws, [string]$cell, [string]$formula, [string]$sheet) {
   $c = $ws.Range($cell)
-  $c.NumberFormat = 'General'
+  Set-NumberFormat $c 'General'
   $c.Formula = $formula
   Assert-HasFormula $c "$sheet $cell"
 }

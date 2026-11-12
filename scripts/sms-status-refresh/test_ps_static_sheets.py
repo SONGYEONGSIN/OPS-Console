@@ -77,6 +77,19 @@ class TestExcelSheets(unittest.TestCase):
         self.assertIn("'@'", fmts)
         self.assertIn("'General'", fmts)
 
+    def test_General_은_속성_대입이_아니라_InvokeMember_로(self):
+        # 한글 Excel 은 pwsh 의 속성 대입 `.NumberFormat = 'General'` 을 0x800A03EC 로 거부한다(T15b 실측 — '@'·'0' 은 된다).
+        # InvokeMember(문화권 null)로 넣은 'General' 만 받는다 — 변수로 넘기는 대입도 'General' 이 섞일 수 있어 막는다.
+        for name, src in self.code.items():
+            for rhs in re.findall(r"\.NumberFormat\s*=\s*([^;\r\n}]+)", src):
+                rhs = rhs.strip()
+                self.assertNotIn("General", rhs, f"{name}: {rhs}")
+                self.assertFalse(rhs.startswith("$") and rhs != "$s.NumberFormat", f"{name}: {rhs}")
+        fn = function_text(self.code["excel_sheets.ps1"], "Set-NumberFormat")
+        self.assertIn("InvokeMember('NumberFormat'", fn)
+        for name in ("excel_sheets.ps1", "excel_view.ps1"):
+            self.assertIn("Set-NumberFormat", self.code[name], name)
+
     def test_메타는_A_G_전부_서식부터(self):
         fn = function_text(self.code["excel_sheets.ps1"], "Write-MetaSheet")
         self.assertLess(fn.index(".NumberFormat = '@'"), fn.index("Set-RangeProperty"))
@@ -278,6 +291,7 @@ function New-FakeRange($ws, $a, $b) {
 }
 # 가짜에는 InvokeMember 가 없다 — 같은 이름의 속성에 그대로 대입한다
 function Set-RangeProperty($range, [string]$name, $values) { $range.$name = $values }
+function Set-NumberFormat($range, [string]$fmt) { $range.NumberFormat = $fmt }
 """
 
 
