@@ -11,7 +11,6 @@ workbook_step 이 06·07 payload 뒤에 이 목록을 붙여 한 번의 Excel CO
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -36,7 +35,7 @@ from views import view_payload
 SCHOOL, DOCS, NUMBERS = "_학교", "_서류", "_번호"
 HIDDEN = (SCHOOL, DOCS, NUMBERS)
 KST = timezone(timedelta(hours=9))
-_DROPPED = re.compile(r"(\d+)칸$")  # summary_layout.assemble 경고 끝 '값만 씀 N칸'
+NOW_AS_BASELINE = "기준 판: 지금 파일(버전 기록 1개)"
 
 
 @dataclass(frozen=True)
@@ -52,8 +51,11 @@ def kst_today() -> str:
 
 
 # ---------------------------------------------------------------- 기준 판
-def fetch_baseline(graph, item_id: str, work_dir: Path, before: Path) -> Path:
-    """현황 파일의 가장 오래된 판 → 경로. 판이 하나뿐이면 before 그대로. 못 받으면 baseline_missing."""
+def fetch_baseline(graph, item_id: str, work_dir: Path, before: Path) -> tuple[Path, str]:
+    """현황 파일의 가장 오래된 판 → (경로, 바뀐 점 한 줄). 판이 하나뿐이면 before 그대로. 못 받으면 baseline_missing.
+
+    시각(lastModifiedDateTime)이 없는 판은 고를 근거가 없어 후보에서 뺀다 — 후보가 없으면 baseline_missing.
+    """
     try:
         versions = graph.versions(item_id)
     except GraphError as e:
@@ -61,41 +63,53 @@ def fetch_baseline(graph, item_id: str, work_dir: Path, before: Path) -> Path:
     if not versions:
         raise StepFailure("baseline_missing", "버전 기록 없음")
     if len(versions) == 1:
-        return before
+        return before, NOW_AS_BASELINE
     # Graph 는 새 판부터 준다 — 시각이 같으면 목록 뒤쪽이 더 오래된 판
-    oldest = min(enumerate(versions), key=lambda iv: (iv[1].last_modified, -iv[0]))[1]
+    dated = [(i, v) for i, v in enumerate(versions) if v.last_modified]
+    if not dated:
+        raise StepFailure("baseline_missing", f"버전 시각 없음 {len(versions)}")
+    oldest = min(dated, key=lambda iv: (iv[1].last_modified, -iv[0]))[1]
     try:
         data = graph.download_version(item_id, oldest.id)
     except GraphError as e:
         raise StepFailure("baseline_missing", f"첫 판 내려받기 GraphError {e.status}") from None
     path = work_dir / "baseline.xlsm"
     path.write_bytes(data)
-    return path
+    return path, f"기준 판: 버전 {oldest.id} ({oldest.last_modified[:10]})"
 
 
-def _ownership(old, baseline_fn: Callable[[], Path]) -> tuple[Ownership, Path | None]:
+def _ownership(old, baseline_fn: Callable[[], tuple[Path, str]]) -> tuple[Ownership, Path | None, str | None]:
     if old is not None:
-        return Ownership.from_meta(old), None
-    path = baseline_fn()
+        return Ownership.from_meta(old), None, None
+    path, line = baseline_fn()
     bwb = load_workbook(path)
     missing = [s for s in HIDDEN if s not in bwb.sheetnames]
     if missing:
         raise StepFailure("baseline_missing", f"기준 판에 숨김 표 없음 {len(missing)} — {', '.join(missing)}")
-    return Ownership.from_baseline({s: read_table(bwb, s) for s in HIDDEN}), path
+    return Ownership.from_baseline({s: read_table(bwb, s) for s in HIDDEN}), path, line
 
 
 # ---------------------------------------------------------------- 결과 줄
-def change_lines(tables: Sequence[dict], new_meta: Sequence[Sequence], warnings: Sequence[str]) -> tuple[str, ...]:
-    """숨김 표마다 `_번호: 592→599행 · 새 7 · 빠짐 0`, 이번 `못 옮김` 이 있으면 한 줄, 요약 못 건 칸이 있으면 한 줄."""
-    out = [f"{p['sheet']}: {p['beforeRows']}→{len(p['rows'])}행 · 새 {len(p['added'])} · 빠짐 {len(p['removed'])}"
-           for p in tables]
+def change_lines(tables: Sequence[dict], new_meta: Sequence[Sequence], *, gone: Mapping[str, int] | None = None,
+                 dropped: int = 0, sejong: Sequence[str] = (), baseline: str | None = None) -> tuple[str, ...]:
+    """바뀐 점 — 건수만.
+
+    - 숨김 표마다 `_번호: 592→599행 · 새 7 · 빠짐 0`. 빠짐은 gone(시트 → 수, `_학교`·`_서류` 는 세종에서 빠진 학교)
+      이 있으면 그것, 없으면 payload removed 수
+    - new_meta(이번에 이은 `_수정` 행만)에 `못 옮김` 이 있으면 한 줄 · 요약 링크 못 건 칸이 있으면 한 줄
+    - 세종 경고(sejong.load_sejong_lines 문구, 0 인 종류는 이미 빠져 있다)가 있으면 한 줄 · 기준 판을 받았으면 한 줄
+    """
+    gone = gone or {}
+    out = [f"{p['sheet']}: {p['beforeRows']}→{len(p['rows'])}행 · 새 {len(p['added'])} · "
+           f"빠짐 {gone.get(p['sheet'], len(p['removed']))}" for p in tables]
     lost = sum(1 for r in new_meta if r[0] == LOST)
     if lost:
         out.append(f"옮기지 못한 메모 {lost}건 — _수정 '못 옮김'")
-    dropped = sum(int(m.group(1)) for w in warnings if (m := _DROPPED.search(w)))
-    if warnings:
+    if dropped:
         out.append(f"요약 링크 못 건 칸 {dropped}")
-    return tuple(out)
+    if sejong:
+        out.append("세종 경고: " + " · ".join(sejong))
+    return tuple(out + ([baseline] if baseline else []))
 
 
 def after_rows(tables: Mapping[str, Table], payloads: Sequence[dict]) -> dict[str, int]:
@@ -109,7 +123,7 @@ def _merged(t: Table, rows) -> Table:
 
 
 def _tables(lines, issues, own: Ownership, tables: Mapping[str, Table]):
-    """merge_schools → merge_numbers → (table payload 셋, 합친 표, 이번 변경 목록)."""
+    """merge_schools → merge_numbers → (table payload 셋, 합친 표, 이번 변경 목록, 세종에서 빠진 학교 수)."""
     sm = merge_schools(tables[SCHOOL], tables[DOCS], group_schools(lines), issues, own)
     merged = {SCHOOL: _merged(tables[SCHOOL], sm.school_rows), DOCS: _merged(tables[DOCS], sm.doc_rows)}
     nm = merge_numbers(tables[NUMBERS], lines, merged[SCHOOL], merged[DOCS], own)
@@ -117,20 +131,21 @@ def _tables(lines, issues, own: Ownership, tables: Mapping[str, Table]):
     payloads = [table_payload(SCHOOL, tables[SCHOOL], sm.school_rows, sm.added[SCHOOL]),
                 table_payload(DOCS, tables[DOCS], sm.doc_rows, sm.added[DOCS]),
                 table_payload(NUMBERS, tables[NUMBERS], nm.rows, nm.added, nm.removed)]
-    return payloads, merged, (*sm.decisions.changes, *nm.decisions.changes)
+    gone = {s: len(sm.vanished[s]) for s in (SCHOOL, DOCS)}
+    return payloads, merged, (*sm.decisions.changes, *nm.decisions.changes), gone
 
 
 def build_body(before: Path, sejong_data: bytes, sejong_name: str, today: str,
-               baseline_fn: Callable[[], Path]) -> Body:
+               baseline_fn: Callable[[], tuple[Path, str]]) -> Body:
     """원본 현황 파일(before) + 세종 리스트 바이트 → PR-3b payload·바뀐 점·기대 행·기준 판."""
     wb = load_workbook(before)
     check_targets(wb)  # 보기 모양이 다르면 기준 판을 받기 전에 멈춘다
     old = read_edits(wb)
-    own, baseline = _ownership(old, baseline_fn)
+    own, baseline, baseline_line = _ownership(old, baseline_fn)
     tables = {s: read_table(wb, s) for s in HIDDEN}
-    lines, _warnings = load_sejong_lines(sejong_data)
+    lines, sejong_warnings = load_sejong_lines(sejong_data)
     issues = read_issues(wb)
-    payloads, merged, changes = _tables(lines, issues, own, tables)
+    payloads, merged, changes, gone = _tables(lines, issues, own, tables)
     note = base_line(sejong_name, today)  # 01~03 A4 와 00 A5 가 같은 문자열
     views = [view_payload(wb, view, hid, len(merged[hid].rows), note) for view, hid in VIEW_OF.items()]
     search = {p["sheet"]: p["searchCell"] for p in views}
@@ -139,5 +154,6 @@ def build_body(before: Path, sejong_data: bytes, sejong_name: str, today: str,
     rows = meta_rows(old, changes, own, today=today)
     meta = {"kind": "meta", "sheet": META_SHEET, "header": list(META_HEADER), "rows": [list(r) for r in rows]}
     return Body([*payloads, *views, summary, meta],
-                change_lines(payloads, rows[len(old or ()):], summary.get("warnings", [])),
+                change_lines(payloads, rows[len(old or ()):], gone=gone, dropped=summary["droppedLinks"],
+                             sejong=sejong_warnings, baseline=baseline_line),
                 after_rows(tables, payloads), baseline)

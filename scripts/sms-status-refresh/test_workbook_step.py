@@ -316,7 +316,8 @@ class RunStepTest(unittest.TestCase):
     def test_바뀐_점은_건수만(self):
         r, _g = self._run()
         self.assertEqual(r.changes[2:], ("_학교: 3→6행 · 새 3 · 빠짐 0", "_서류: 3→6행 · 새 3 · 빠짐 0",
-                                         "_번호: 5→6행 · 새 3 · 빠짐 2", "요약 링크 못 건 칸 2"))
+                                         "_번호: 5→6행 · 새 3 · 빠짐 2", "요약 링크 못 건 칸 2",
+                                         "세종 경고: 모르는 바탕색 4줄", "기준 판: 버전 1.0 (2026-10-17)"))
         self.assertTrue(r.changes[0].startswith("06. Moa 대조: Moa만 1→"), r.changes[0])
         self.assertIn("양쪽 1→", r.changes[0])
         self.assertTrue(r.changes[1].startswith("07. PIMS 대조: PIMS만 0→"), r.changes[1])  # 07 이 없던 파일

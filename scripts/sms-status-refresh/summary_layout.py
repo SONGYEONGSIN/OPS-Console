@@ -111,4 +111,4 @@ def assemble(rows: Sequence[Row], targets: Mapping[str, str | None], tried: Mapp
     warnings = [f"{s}: 링크 대상 {tried.get(s) or '(검색 칸 모름)'} 이 원본 요약 링크에 없어 값만 씀 {n}칸"
                 for s, n in dropped.items()]
     return {"rows": out_rows, "links": links, "merged": merged, "tips": tips, "styles": styles,
-            "warnings": warnings}
+            "warnings": warnings, "droppedLinks": sum(dropped.values())}  # 링크 못 건 칸 수(바뀐 점용, verify 는 안 봄)
