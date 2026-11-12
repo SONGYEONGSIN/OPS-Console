@@ -113,10 +113,15 @@ def school_tags(v: Mapping[str, object]) -> list[str]:
     return combos(kind, tags + svc + check) + ([owner] if owner else [])
 
 
+def reg_category(state) -> str:
+    """세종 등록 상태 칸 → 분류(번호 없음·서류 미비 회선 있음·등록 완료) — 태그와 요약이 같이 쓴다."""
+    s = text(state)
+    return NO_NUMBER if s == NO_NUMBER else REG_BAD if s.startswith(BAD) else REG_OK
+
+
 def doc_tags(v: Mapping[str, object]) -> list[str]:
     """`_서류` 태그 — v 는 {열 이름: 최종 값}."""
     cat = doc_category(v.get("제출 상태"))
-    reg_text = text(v.get("세종 등록 상태"))
-    reg = NO_NUMBER if reg_text == NO_NUMBER else REG_BAD if reg_text.startswith(BAD) else REG_OK
+    reg = reg_category(v.get("세종 등록 상태"))
     missing = [c + " 미제출" for c in missing_docs(v)]
     return combos(text(v.get("구분")), [cat, reg, f"{reg} · {cat}"] + missing)

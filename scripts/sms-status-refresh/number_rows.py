@@ -56,7 +56,7 @@ def number_note(cur, x: Mapping) -> str:
     return append_only(head, NOTE_SEP.join(frags), NOTE_SEP)
 
 
-def _doc_tag(v) -> str:
+def doc_tag(v) -> str:
     s = text(v)
     return NEEDS_FIX if s.startswith(FIX_HEAD) else s
 
@@ -64,6 +64,6 @@ def _doc_tag(v) -> str:
 def number_tags(v: Mapping[str, object]) -> list[str]:
     """`_번호` 태그 — v 는 {열 이름: 최종 값}. 출처: 등록 회선이면 `등록 회선`·제출 서류 분류, 그리고 상태."""
     state = text(v.get("상태"))
-    doc = _doc_tag(v.get("제출 서류"))
+    doc = doc_tag(v.get("제출 서류"))
     tags = ([REGISTERED] + ([doc, f"{REGISTERED} · {doc}"] if doc else [])) if state != NO_NUMBER else []
     return combos(text(v.get("구분")), tags + [state])
