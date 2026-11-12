@@ -1,9 +1,10 @@
 ﻿<#
 01~03 보기 시트를 숨김 표 n 행에 맞춘다 — excel_sheets.ps1 이 dot-source 한다(정의뿐).
 
-payload(views.py): {kind:view, sheet, source, rows:n, sourceNote:"A4", noteText, countCell, countFormula,
+payload(views.py): {kind:view, sheet, source, rows:n, oldRows, sourceNote:"A4", noteText, countCell, countFormula,
                     rowFormulas:[[…]] (9~n+8행), cf:[{range, newRange}] (openpyxl sqref, 공백 구분)}
-- 9~n+8행에 rowFormulas 를 Formula 로. 새로 생긴 행의 서식은 9행에서 칸별 속성으로 옮긴다
+- 옛 끝 = 8 + oldRows(시트의 End(xlUp) 와 대조만). 9~n+8행 수식 열은 General → Formula → HasFormula 확인.
+  rowFormulas 를 Formula 로. 새로 생긴 행의 서식은 9행에서 칸별 속성으로 옮긴다
   (Copy 는 조건부 서식까지 복제해 CF 묶음 수가 늘어난다). n+9행부터 옛 끝까지는 ClearContents.
 - CF: cf[].range 와 AppliesTo.Address(False, False) 를 `$`·쉼표·공백·순서를 지운 키로 맞춰 규칙마다
   ModifyAppliesToRange(newRange). 같은 범위에 규칙이 여럿이면 전부 바꾸고, 다시 세어 수가 다르면 멈춘다.
@@ -53,43 +54,59 @@ function Update-ViewCf($ws, $cf) {
     if ($old -eq $new) { $atNew -= $hits.Count }
     [void]$plan.Add([pscustomobject]@{ Old = $old; New = $new; Com = (ConvertTo-ComAddress ([string]$e.newRange)); Hits = $hits; AtNew = $atNew })
   }
-  $changed = 0; $expected = 0
+  $changed = 0
   foreach ($p in $plan) {
-    $expected += $p.Hits.Count
     foreach ($fc in $p.Hits) {
       if ($p.Old -ne $p.New) { [void]$fc.ModifyAppliesToRange($ws.Range($p.Com)) }
       $changed++
     }
   }
+  # 판정은 다시 세기 — ModifyAppliesToRange 가 조용히 안 먹은 것도 여기서 드러난다
   foreach ($p in $plan) {
     $now = (Get-CfAt $ws $p.New).Count
     if ($now -ne $p.Hits.Count + $p.AtNew) { throw "조건부 서식 바꾼 수 다름: $($p.New) 기대 $($p.Hits.Count + $p.AtNew) / 실제 $now" }
   }
-  if ($changed -ne $expected) { throw "조건부 서식 바꾼 수 다름: 기대 $expected / 실제 $changed" }
   return $changed
 }
 
-# 옛 데이터 끝 행 = 수식이 있는 첫 열의 마지막 칸(수식이 빈 글자를 내도 End 는 칸으로 본다), 8 이상
-function Get-ViewOldLast($ws, $formulas) {
+# 수식이 있어야 할 열 번호(1부터) — rowFormulas 첫 행에서 '=' 로 시작하는 칸
+function Get-FormulaColumns($formulas) {
   $row0 = @($formulas[0])
-  for ($j = 0; $j -lt $row0.Count; $j++) {
-    if ([string]$row0[$j] -ne '') {
-      $end = $ws.Cells($ws.Rows.Count, $j + 1).End($XlUp).Row
-      return [Math]::Max($end, $ViewFirstRow - 1)
-    }
-  }
-  throw "행 수식이 전부 빈 칸"
+  return ,@(for ($j = 0; $j -lt $row0.Count; $j++) { if (([string]$row0[$j]).StartsWith('=')) { $j + 1 } })
 }
 
-# cf 의 9행 시작 범위 끝(= 8 + 옛 행 수)과 시트에서 잰 옛 끝이 같아야 한다 — 다르면 각주 등 규칙 밖 칸이 있다
-function Assert-ViewOldLast($cf, [int]$oldLast) {
-  foreach ($e in @($cf)) {
-    foreach ($part in (([string]$e.range) -split '\s+')) {
-      if ($part -match '^\$?[A-Z]+\$?9:\$?[A-Z]+\$?(\d+)$' -and [int]$Matches[1] -ne $oldLast) {
-        throw "보기 옛 끝 $oldLast 행 ≠ 조건부 서식 끝 $($Matches[1]) 행"
-      }
-    }
+# 옛 끝 = 8 + 옛 숨김 표 행 수(payload). 수식 첫 열의 End(xlUp) 와 대조만 — 다르면 각주 등 규칙 밖 칸이 있다
+function Get-ViewOldLast($ws, $formulas, [int]$oldRows) {
+  $oldLast = $ViewFirstRow - 1 + $oldRows
+  $cols = Get-FormulaColumns $formulas
+  $end = [Math]::Max($ws.Cells($ws.Rows.Count, $cols[0]).End($XlUp).Row, $ViewFirstRow - 1)
+  if ($end -ne $oldLast) { throw "보기 옛 끝 $oldLast 행(8 + 옛 $oldRows) ≠ 시트 마지막 수식 $end 행" }
+  return $oldLast
+}
+
+# 9~n+8행 수식 — 수식 열마다 General 을 먼저(기존 행·줄었다 다시 는 꼬리 행이 '@' 여도) → Formula → 열마다 HasFormula
+function Write-ViewFormulas($ws, $formulas, [string]$sheet) {
+  $n = $formulas.Count
+  $width = @($formulas[0]).Count
+  $newLast = $ViewFirstRow + $n - 1
+  $cols = Get-FormulaColumns $formulas
+  foreach ($c in $cols) { $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)).NumberFormat = 'General' }
+  $arr = New-Object 'object[,]' $n, $width
+  for ($r = 0; $r -lt $n; $r++) {
+    $cells = @($formulas[$r])
+    for ($c = 0; $c -lt $width; $c++) { $arr[$r, $c] = [string]$cells[$c] }
   }
+  Set-RangeProperty $ws.Range($ws.Cells($ViewFirstRow, 1), $ws.Cells($newLast, $width)) 'Formula' $arr
+  foreach ($c in $cols) {
+    Assert-HasFormula $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)) "$sheet $(Get-ColumnLetter $c)열"
+  }
+}
+
+function Write-CountFormula($ws, [string]$cell, [string]$formula, [string]$sheet) {
+  $c = $ws.Range($cell)
+  $c.NumberFormat = 'General'
+  $c.Formula = $formula
+  Assert-HasFormula $c "$sheet $cell"
 }
 
 function Copy-Border($from, $to) {
@@ -125,6 +142,8 @@ function Assert-ViewPayload($sd) {
   $n = [int]$sd.rows
   $f = @($sd.rowFormulas)
   if ($n -lt 1 -or $f.Count -ne $n) { throw "$($sd.sheet): rowFormulas $($f.Count) ≠ rows $n" }
+  if ($null -eq $sd.oldRows -or [int]$sd.oldRows -lt 1) { throw "$($sd.sheet): oldRows(옛 숨김 표 행 수) 없음" }
+  if ((Get-FormulaColumns $f).Count -eq 0) { throw "$($sd.sheet): 행 수식이 없다" }
   $w = @($f[0]).Count
   foreach ($row in $f) { if (@($row).Count -ne $w -or $w -lt 1) { throw "$($sd.sheet): 행 수식 칸 수가 다름" } }
   if (-not ([string]$sd.countFormula).StartsWith('=')) { throw "$($sd.sheet): countFormula 가 수식 아님" }
@@ -137,23 +156,17 @@ function Write-ViewSheet($wb, $sd) {
   $n = [int]$sd.rows
   $formulas = @($sd.rowFormulas)
   $width = @($formulas[0]).Count
-  $oldLast = Get-ViewOldLast $ws $formulas
-  Assert-ViewOldLast $sd.cf $oldLast
+  $oldLast = Get-ViewOldLast $ws $formulas ([int]$sd.oldRows)
   $newLast = $ViewFirstRow + $n - 1
-  $arr = New-Object 'object[,]' $n, $width
-  for ($r = 0; $r -lt $n; $r++) {
-    $cells = @($formulas[$r])
-    for ($c = 0; $c -lt $width; $c++) { $arr[$r, $c] = [string]$cells[$c] }
-  }
-  # 수식 먼저, 서식은 그 뒤 — 9행이 '@' 여도 이미 들어간 수식은 글자가 되지 않는다
-  Set-RangeProperty $ws.Range($ws.Cells($ViewFirstRow, 1), $ws.Cells($newLast, $width)) 'Formula' $arr
+  # 수식 먼저(General → Formula → HasFormula), 새 행 서식은 그 뒤 — 들어간 수식은 서식이 바뀌어도 글자가 되지 않는다
+  Write-ViewFormulas $ws $formulas ([string]$sd.sheet)
   Copy-RowFormat $ws ($oldLast + 1) $newLast $width
   if ($oldLast -gt $newLast) {
     $u = $ws.UsedRange
     $lastCol = [Math]::Max($width, $u.Column + $u.Columns.Count - 1)
     [void]$ws.Range($ws.Cells($newLast + 1, 1), $ws.Cells($oldLast, $lastCol)).ClearContents()
   }
-  $ws.Range([string]$sd.countCell).Formula = [string]$sd.countFormula
+  Write-CountFormula $ws ([string]$sd.countCell) ([string]$sd.countFormula) ([string]$sd.sheet)
   $ws.Range([string]$sd.sourceNote).Value2 = [string]$sd.noteText
   $moved = Update-ViewCf $ws $sd.cf
   return ("{0}={1} cf={2}" -f $sd.sheet, $n, $moved)

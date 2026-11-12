@@ -251,12 +251,16 @@ class TestExcelSheets(unittest.TestCase):
         src = self.code["excel_view.ps1"]
         self.assertIn("ModifyAppliesToRange(", src)
         self.assertIn("Address($false, $false)", src)
-        self.assertIn("'Formula'", function_text(src, "Write-ViewSheet"))
+        fn = function_text(src, "Write-ViewSheet")
+        # 수식(General → Formula → HasFormula) 다음에 새 행 서식 — 순서가 바뀌면 '@' 가 수식을 글자로 만든다
+        order = ["Write-ViewFormulas", "Copy-RowFormat", "Write-CountFormula", "Update-ViewCf"]
+        self.assertEqual([fn.index(s) for s in order], sorted(fn.index(s) for s in order))
+        self.assertIn("$sd.oldRows", fn)  # 옛 끝은 payload 의 옛 행 수로(End(xlUp) 는 대조만)
 
     def test_요약은_지우고_값_병합_링크_서식_순서(self):
         src = self.code["excel_summary.ps1"]
         fn = function_text(src, "Write-SummarySheet")
-        order = ["ClearHyperlinks()", "UnMerge()", "Cells.Clear()", "Write-SummaryValues", ".Merge()",
+        order = ["Assert-SummaryClearable", "ClearHyperlinks()", "UnMerge()", "Cells.Clear()", "Write-SummaryValues", ".Merge()",
                  "Add-SummaryLinks", "Set-SummaryStyles", "Set-SummaryLayout"]
         self.assertEqual([fn.index(s) for s in order], sorted(fn.index(s) for s in order))
 
@@ -335,8 +339,47 @@ class TestExcelSheetsBehaviour(unittest.TestCase):
             "$u = $ok.PSObject.Copy(); $u.columns = @($ok.columns + 'U')\n"
             "try { Assert-SheetPayload $u; 'no' } catch { 'threw-u' }\n"
             "$k = [pscustomobject]@{kind='chart'; sheet='x'}\n"
-            "try { Assert-SheetPayload $k; 'no' } catch { 'threw-kind' }")
-        self.assertEqual(got.splitlines(), ["ok", "threw-u", "threw-kind"])
+            "try { Assert-SheetPayload $k; 'no' } catch { 'threw-kind' }\n"
+            "$v = [pscustomobject]@{kind='view'; sheet='v'; rows=1; rowFormulas=@(,@('=1')); countCell='L6';"
+            " countFormula='=1'; sourceNote='A4'; noteText='n'; cf=@()}\n"
+            "try { Assert-SheetPayload $v; 'no' } catch { 'threw-old' }\n"
+            "$v | Add-Member NoteProperty oldRows 3; Assert-SheetPayload $v; 'ok-view'")
+        self.assertEqual(got.splitlines(), ["ok", "threw-u", "threw-kind", "threw-old", "ok-view"])
+
+    # ---- 수식 칸: General 을 먼저 걸고 쓴 뒤 HasFormula 를 다시 본다(verify 는 수식과 '=' 글자를 못 가른다)
+    TABLE_ROW = "@(,@(1,'a','','','','','','','','','','','','','','=1','','','',''))"
+
+    def test_표_P_는_General_후_Formula_후_확인(self):
+        got = self.run_ps(f"$ws = New-FakeGrid '@'\nSet-TableValues $ws {self.TABLE_ROW}\n$ws.Log -join ' '")
+        log = got.split()
+        self.assertLess(log.index("fmt:c16-16:General"), log.index("formula:c16-16"))
+
+    def test_표_P_가_글자로_굳으면_throw(self):
+        got = self.run_ps(f"$ws = New-FakeGrid -Stuck\ntry {{ Set-TableValues $ws {self.TABLE_ROW}; 'no' }}"
+                          " catch { $_.Exception.Message }")
+        self.assertIn("P", got)
+        self.assertIn("HasFormula", got)
+
+    def test_보기_수식_열은_General_후_Formula_후_확인(self):
+        got = self.run_ps("$ws = New-FakeGrid '@'\n"
+                          "Write-ViewFormulas $ws @(@('=a','','=b'), @('=a','','=b')) '01'\n$ws.Log -join ' '")
+        log = got.split()
+        self.assertEqual([x for x in log if x.startswith("fmt:")], ["fmt:c1-1:General", "fmt:c3-3:General"])
+        self.assertLess(log.index("fmt:c3-3:General"), log.index("formula:c1-3"))
+
+    def test_보기_수식이_글자로_굳으면_시트와_열을_적고_throw(self):
+        got = self.run_ps("$ws = New-FakeGrid -Stuck\n"
+                          "try { Write-ViewFormulas $ws @(,@('=a','','=b')) '01. 학교별 현황'; 'no' }"
+                          " catch { $_.Exception.Message }")
+        self.assertIn("01. 학교별 현황", got)
+        self.assertIn("A열", got)
+
+    def test_건수_칸도_General_후_확인(self):
+        ok = self.run_ps("$ws = New-FakeGrid '@'\nWrite-CountFormula $ws 'L6' '=1' '01'\n$ws.Log -join ' '")
+        self.assertEqual(ok.split(), ["fmt:L6:General", "formula:L6"])
+        bad = self.run_ps("$ws = New-FakeGrid -Stuck\ntry { Write-CountFormula $ws 'L6' '=1' '01'; 'no' }"
+                          " catch { 'threw' }")
+        self.assertEqual(bad, "threw")
 
 
 # 가짜 COM — 시트.Cells.FormatConditions(Count·Item) → 규칙.AppliesTo.Address(a, b)·ModifyAppliesToRange(rng)
@@ -357,6 +400,37 @@ function New-FakeSheet([string[]]$addrs, [switch]$Stuck) {
   $ws | Add-Member ScriptMethod Range { param($a) [pscustomobject]@{ Addr = $a } }
   $ws
 }
+
+# 가짜 칸 격자 — 열마다 NumberFormat 을 기억하고, Formula 를 넣는 순간의 서식이 '@' 면(또는 -Stuck) 그 열은
+# HasFormula 가 거짓(Excel 이 수식을 글자로 굳히는 동작). 대입 순서는 Log 에 'fmt:열:값'·'formula:열' 로 남는다.
+function New-FakeGrid([string]$Init = 'General', [switch]$Stuck) {
+  $ws = [pscustomobject]@{ Log = (New-Object System.Collections.ArrayList); Init = $Init; Stuck = [bool]$Stuck
+                           Fmt = @{}; Has = @{} }
+  $ws | Add-Member ScriptMethod Cells { param($r, $c) [pscustomobject]@{ R = $r; C = $c } }
+  $ws | Add-Member ScriptMethod Range { param($a, $b) New-FakeRange $this $a $b }
+  $ws
+}
+function New-FakeRange($ws, $a, $b) {
+  if ($a -is [string]) { $keys = @($a); $name = $a }
+  else { $keys = @($a.C..$b.C | ForEach-Object { "c$_" }); $name = "c$($a.C)-$($b.C)" }
+  $rg = [pscustomobject]@{ Ws = $ws; Keys = $keys; Name = $name }
+  $rg | Add-Member ScriptProperty NumberFormat { '' } {
+    param($v); foreach ($k in $this.Keys) { $this.Ws.Fmt[$k] = $v }; [void]$this.Ws.Log.Add("fmt:$($this.Name):$v") }
+  $rg | Add-Member ScriptProperty Formula { '' } {
+    param($v)
+    foreach ($k in $this.Keys) {
+      $f = $this.Ws.Fmt[$k]; if ($null -eq $f) { $f = $this.Ws.Init }
+      $this.Ws.Has[$k] = (-not $this.Ws.Stuck) -and ($f -ne '@')
+    }
+    [void]$this.Ws.Log.Add("formula:$($this.Name)") }
+  $rg | Add-Member ScriptProperty Value2 { $null } { param($v); [void]$this.Ws.Log.Add("value:$($this.Name)") }
+  $rg | Add-Member ScriptProperty HasFormula {
+    $vals = @($this.Keys | ForEach-Object { [bool]$this.Ws.Has[$_] })
+    if (-not ($vals -contains $false)) { $true } elseif (-not ($vals -contains $true)) { $false } else { $null } }
+  $rg
+}
+# 가짜에는 InvokeMember 가 없다 — 같은 이름의 속성에 그대로 대입한다
+function Set-RangeProperty($range, [string]$name, $values) { $range.$name = $values }
 """
 
 

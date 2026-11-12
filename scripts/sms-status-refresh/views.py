@@ -115,6 +115,7 @@ def view_payload(wb, view: str, hidden: str, n: int, note_text: str) -> dict:
     """보기 시트 하나를 숨김 표 n 행에 맞출 payload(Ruling 8). view·hidden = sheet_names.VIEW_OF 의 짝.
 
     note_text 는 T12 `summary_sheet.base_line` 이 조립한 기준 자료 줄 — 받은 그대로 noteText 에 싣는다.
+    oldRows = 원본 숨김 표 행 수 — COM 이 보기 옛 끝(8 + oldRows)을 이것으로 잰다(verify 는 이 필드를 안 본다).
     """
     if VIEW_OF.get(view) != hidden:
         raise _fail(view, "허용 목록 밖")
@@ -126,7 +127,7 @@ def view_payload(wb, view: str, hidden: str, n: int, note_text: str) -> dict:
     templates = view_templates(wb, view, hidden)
     ws = wb[view]
     coord, formula = _count(ws, view, hidden, old, n)
-    return {"kind": "view", "sheet": view, "source": hidden, "rows": n, "sourceNote": SOURCE_NOTE,
+    return {"kind": "view", "sheet": view, "source": hidden, "rows": n, "oldRows": old, "sourceNote": SOURCE_NOTE,
             "noteText": note_text, "countCell": coord, "countFormula": formula,
             "rowFormulas": _row_formulas(templates, n), "cf": _cf_moves(ws, view, old, n),
             "searchCell": _search_cell(wb, view, hidden, old)}

@@ -134,6 +134,7 @@ class ViewsTest(unittest.TestCase):
         self.assertEqual(p["rowFormulas"], self._rows_by_resize(path, V1, "_학교", fs.SCHOOL_HEADS, 102, 16))
         self.assertEqual(p["cf"], [])  # 01 에는 조건부 서식이 없다
         self.assertEqual(p["searchCell"], "F6")
+        self.assertEqual(p["oldRows"], 101)  # 옛 숨김 표 행 수 — COM 이 옛 끝(8+옛)을 이것으로 잰다
 
     def test_줄면_수식도_준다(self):
         path = self._path()  # `_번호` 5행
@@ -145,6 +146,7 @@ class ViewsTest(unittest.TestCase):
         self.assertEqual(p["rowFormulas"], self._rows_by_resize(path, V3, "_번호", fs.NUMBER_HEADS, 4, 10,
                                                                 tt.RULES["_번호"]))
         self.assertEqual(p["cf"], [{"range": "E9:E13", "newRange": "E9:E12"}])
+        self.assertEqual(p["oldRows"], 5)
 
     def test_추가_열도_따라간다(self):
         path = self._path(mutate=add_pdf_column)

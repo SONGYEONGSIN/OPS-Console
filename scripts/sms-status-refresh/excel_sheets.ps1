@@ -104,13 +104,20 @@ function Invoke-SheetPayload($xl, $wb, $sd) {
 }
 
 # ---------------------------------------------------------------- table
-# 칸 종류별 서식 — textColumns 열은 통째로 '@', P 는 General(수식이 글자로 남지 않게), 나머지는 칸 종류 구간마다
+# 수식을 쓴 범위가 전부 수식인가 — '@' 칸에 들어간 수식은 글자로 굳고, verify(openpyxl)는 수식과 '=' 글자를
+# 가르지 못한다. 여기서만 막을 수 있다. HasFormula 는 섞이면 $null, 없으면 $false
+function Assert-HasFormula($range, [string]$what) {
+  $has = $range.HasFormula
+  if ($has -ne $true) { throw "$what — 수식이 글자로 들어감(HasFormula=$has)" }
+}
+
+# 칸 종류별 서식 — textColumns 열은 통째로 '@', 나머지는 칸 종류 구간마다. P 는 Set-TableValues 가 수식 직전에 General
 function Set-TableFormats($ws, $rows, $textColumns) {
   $text = @($textColumns | ForEach-Object { [string]$_ })
   $last = $TableFirstRow + $rows.Count - 1
   for ($c = 1; $c -le $TableWidth; $c++) {
+    if ($c -eq $PCol) { continue }
     $whole = $ws.Range($ws.Cells($TableFirstRow, $c), $ws.Cells($last, $c))
-    if ($c -eq $PCol) { $whole.NumberFormat = 'General'; continue }
     if ($text -contains (Get-ColumnLetter $c)) { $whole.NumberFormat = '@'; continue }
     $kinds = [string[]]@(foreach ($r in $rows) { Get-CellKind @($r)[$c - 1] })
     $runs = Get-FormatRuns $kinds
@@ -122,7 +129,7 @@ function Set-TableFormats($ws, $rows, $textColumns) {
   }
 }
 
-# 값은 한 덩어리 Value2(P 자리는 비움), P 는 Formula 로 따로
+# 값은 한 덩어리 Value2(P 자리는 비움), P 는 General → Formula → HasFormula 확인
 function Set-TableValues($ws, $rows) {
   $n = $rows.Count
   $vals = New-Object 'object[,]' $n, $TableWidth
@@ -136,7 +143,10 @@ function Set-TableValues($ws, $rows) {
   }
   $last = $TableFirstRow + $n - 1
   Set-RangeProperty $ws.Range($ws.Cells($TableFirstRow, 1), $ws.Cells($last, $TableWidth)) 'Value2' $vals
-  Set-RangeProperty $ws.Range($ws.Cells($TableFirstRow, $PCol), $ws.Cells($last, $PCol)) 'Formula' $forms
+  $p = $ws.Range($ws.Cells($TableFirstRow, $PCol), $ws.Cells($last, $PCol))
+  $p.NumberFormat = 'General'
+  Set-RangeProperty $p 'Formula' $forms
+  Assert-HasFormula $p "$($ws.Name) P열"
 }
 
 function Write-TableSheet($wb, $sd) {
