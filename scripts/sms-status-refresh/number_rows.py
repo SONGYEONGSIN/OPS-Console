@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from edits import append_only
-from school_rows import _pieces, doc_category, fmt_day, missing_docs
+from school_rows import pieces, doc_category, fmt_day, missing_docs
 from sejong import NO_NUMBER
 from table_rows import combos, text
 from verify_table import NOTE_SEP, REMOVABLE_NOTE
@@ -51,8 +51,8 @@ def number_note(cur, x: Mapping) -> str:
     """비고 — 번호가 있으면 `번호 없음` 조각만 지우고, 출처 memo 조각 중 없는 것만 ` / ` 로 덧붙인다."""
     parts = text(cur).split(NOTE_SEP)
     head = NOTE_SEP.join(p for p in parts if p.strip() != REMOVABLE_NOTE) if registered(x) else text(cur)
-    have = _pieces(head)
-    frags = [m for m in (x["memo"], x["check"]) if m and not _pieces(m) <= have]
+    have = pieces(head)
+    frags = [m for m in (x["memo"], x["check"]) if m and not pieces(m) <= have]
     return append_only(head, NOTE_SEP.join(frags), NOTE_SEP)
 
 

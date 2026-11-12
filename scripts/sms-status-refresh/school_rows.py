@@ -82,7 +82,7 @@ def school_check(name, lines: Sequence[Mapping], issues: set[str]) -> str:
     return CHECK if school_key(name) in issues or flagged else ""
 
 
-def _pieces(v) -> set[str]:
+def pieces(v) -> set[str]:
     return {p.strip() for part in text(v).split(NOTE_SEP) for p in part.split(_MEMO_SEP) if p.strip()}
 
 
@@ -93,9 +93,9 @@ def school_note(cur, lines: Sequence[Mapping]) -> str:
     head = NOTE_SEP.join(p for p in parts if p.strip() != REMOVABLE_NOTE) if nums else text(cur)
     frags = sorted({x["memo"] for x in lines if x["memo"]} | {x["text"] for x in lines if x["text"]})
     frags = frags or ([] if nums else [NO_NUMBER])
-    have = _pieces(head)
+    have = pieces(head)
     # 메모 안에 구분자가 있어도 그 하위 조각이 이미 다 있으면 있는 것으로 본다 — 둘째 실행에 다시 붙지 않게(멱등)
-    return append_only(head, _MEMO_SEP.join(f for f in frags if not _pieces(f) <= have), NOTE_SEP)
+    return append_only(head, _MEMO_SEP.join(f for f in frags if not pieces(f) <= have), NOTE_SEP)
 
 
 def _has(v) -> bool:

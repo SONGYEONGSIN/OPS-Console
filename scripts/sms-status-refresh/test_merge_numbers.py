@@ -95,6 +95,21 @@ class MergeNumbersTest(unittest.TestCase):
         self.assertEqual(set(m.added), set(ka) - set(kb))
         self.assertEqual(set(m.removed), set(kb) - set(ka))
 
+    def test_옮긴_메모는_사유가_다르다(self):
+        recs = tvt.numbers()
+        recs[4] = {**recs[4], "note": "공유 메모"}
+        lines = num_lines()[:3] + [tm.line(C, "01000000009"), tm.line(A, "010 0000 0009", "추가 등록")]
+        _n, m = run(lines, numbers=numbers_table(recs, extra={4: "s-a"}))
+        meta = edits.meta_rows(None, m.decisions.changes, edits.Ownership(), today=DAY)
+        reasons = {(r[2], r[3]): r[5] for r in meta if r[0] == vt.LOST}
+        # 옮긴 비고만 사유가 다르고 구분은 `못 옮김` 그대로, 옮기지 못한 S열은 기본 사유
+        self.assertEqual(reasons[(K_SHARED_A, "비고")], edits.MOVED_NOTE)
+        self.assertEqual(reasons[(K_SHARED_A, "S열")], edits.REASON[vt.LOST])
+        # 못 옮긴 비고(짝이 없는 빠진 번호)는 기존 사유 그대로
+        _n2, m2 = run([x for x in num_lines() if x["num"] != "010-0000-0002"], numbers=numbers_table())
+        meta2 = edits.meta_rows(None, m2.decisions.changes, edits.Ownership(), today=DAY)
+        self.assertEqual({r[5] for r in meta2 if r[0] == vt.LOST}, {edits.REASON[vt.LOST]})
+
     def test_공유_번호는_학교별로(self):
         lines = num_lines() + [tm.line(A, "010-0000-0003", "추가 등록")]  # B 의 번호를 A 도 쓴다
         numbers, m = run(lines, numbers=numbers_table(extra={3: "s-c", 4: "s-a"}))

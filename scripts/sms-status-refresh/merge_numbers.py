@@ -174,5 +174,5 @@ def merge_numbers(numbers: Table, lines: Sequence[Mapping], schools: Table, docs
     rows = with_formulas(rows, template)
     added = tuple(k for k, _j in sorted(akeys.items(), key=lambda kv: kv[1]) if k not in bkeys)
     removed = tuple(k for k, _i in sorted(bkeys.items(), key=lambda kv: kv[1]) if k not in akeys)
-    decisions = Decisions(tuple(kept), (Change(SHEET, numbers, rows),), moved, amb, tuple(no_doc))
+    decisions = Decisions(tuple(kept), (Change(SHEET, numbers, rows, moved),), moved, amb, tuple(no_doc))
     return NumberMerge(rows, added, removed, _orphans(x, bkeys, akeys), decisions)

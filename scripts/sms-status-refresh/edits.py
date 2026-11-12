@@ -17,10 +17,11 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence
 
-from verify_table import (HUMAN, LOST, MACHINE, META_HEADER, SPECS, Owners, Table, _col_name, _text, edits_index,
-                          keyed, removed_memo_cells, roles)
+from verify_table import (HUMAN, LOST, MACHINE, META_HEADER, NOTE, SPECS, Owners, Table, _col_name, _text,
+                          edits_index, keyed, removed_memo_cells, roles)
 
 REASON = {MACHINE: "다시 계산", HUMAN: "사람이 고친 칸", LOST: "키가 빠져 옮기지 못함"}
+MOVED_NOTE = "새 번호 행 비고로 옮김"  # 사유 칸만 다르다 — 구분은 그대로 `못 옮김` (verify 는 사유 칸을 안 읽는다)
 _DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 Judge = Callable[[str, str, object], bool]  # (원본 키, 열 이름, 원본 값) → 사람 칸인가
 
@@ -74,10 +75,11 @@ class Change:
     sheet: str  # 숨김 표 — SPECS 에 있는 것
     before: Table  # 원본 표(verify_table.read_table)
     rows: Sequence[Sequence]  # 이번에 쓸 A~T 행 = table payload rows(원본 머리글 순서)
+    moved: tuple[tuple[str, str], ...] = ()  # 비고를 새 키 행으로 옮긴 (원본 키, 새 키) — 그 비고의 사유만 달라진다
 
 
-def _row(kind: str, sheet: str, key: str, col: str, value, today: str) -> tuple[str, ...]:
-    return (kind, sheet, key, col, _text(value), REASON[kind], today)
+def _row(kind: str, sheet: str, key: str, col: str, value, today: str, reason: str = "") -> tuple[str, ...]:
+    return (kind, sheet, key, col, _text(value), reason or REASON[kind], today)
 
 
 def _judged_rows(ch: Change, own: Ownership, bkeys: dict, after: Table, today: str) -> list[tuple[str, ...]]:
@@ -99,7 +101,8 @@ def _lost_rows(ch: Change, own: Ownership, bkeys: dict, akeys: dict, today: str)
     names = [_col_name(header, i) for i in range(len(header))]
     cells = removed_memo_cells(header, roles(header, spec), lambda k, c, v: own.owner(ch.sheet, k, c, v) == HUMAN,
                                ch.before.rows, bkeys, akeys)
-    return [_row(LOST, ch.sheet, k, col, v, today)
+    moved = {k for k, _new in ch.moved}
+    return [_row(LOST, ch.sheet, k, col, v, today, MOVED_NOTE if col == NOTE and k in moved else "")
             for k, col, v in sorted(cells, key=lambda c: (bkeys[c[0]], names.index(c[1])))]
 
 
