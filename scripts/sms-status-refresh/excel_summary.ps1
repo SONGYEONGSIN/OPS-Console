@@ -23,26 +23,29 @@ function ConvertTo-OleColor([string]$argb) {
 
 # 출처 layout.font(size, bold, color, link)
 function Set-SumFont($c, [double]$size, [bool]$bold, [string]$color, [bool]$link) {
-  $c.Font.Name = $SumFont; $c.Font.Size = $size; $c.Font.Bold = $bold
-  $c.Font.Color = ConvertTo-OleColor $color
-  if ($link) { $c.Font.Underline = 2 } else { $c.Font.Underline = -4142 }
+  $f = $c.Font
+  Set-ComProp $f 'Name' ([string]$SumFont); Set-ComProp $f 'Size' ([double]$size); Set-ComProp $f 'Bold' ([bool]$bold)
+  Set-ComProp $f 'Color' ([double](ConvertTo-OleColor $color))
+  if ($link) { Set-ComProp $f 'Underline' ([int]2) } else { Set-ComProp $f 'Underline' ([int]-4142) }
 }
 
 # 출처 CEN(가운데·가운데·줄바꿈) / LEFT(왼쪽·가운데·들여쓰기 1·줄바꿈)
 function Set-SumAlign($c, [string]$how) {
-  $c.VerticalAlignment = -4108; $c.WrapText = $true
-  if ($how -eq 'l') { $c.HorizontalAlignment = -4131; $c.IndentLevel = 1 } else { $c.HorizontalAlignment = -4108 }
+  Set-ComProp $c 'VerticalAlignment' ([int]-4108); Set-ComProp $c 'WrapText' ([bool]$true)
+  if ($how -eq 'l') { Set-ComProp $c 'HorizontalAlignment' ([int]-4131); Set-ComProp $c 'IndentLevel' ([int]1) }
+  else { Set-ComProp $c 'HorizontalAlignment' ([int]-4108) }
 }
 
 # 가는 실선 한 변 (8 위 · 9 아래)
 function Set-SumEdge($c, [int]$edge, [string]$color) {
-  $b = $c.Borders($edge); $b.LineStyle = 1; $b.Weight = 2; $b.Color = ConvertTo-OleColor $color
+  $b = $c.Borders($edge)
+  Set-ComProp $b 'LineStyle' ([int]1); Set-ComProp $b 'Weight' ([int]2); Set-ComProp $b 'Color' ([double](ConvertTo-OleColor $color))
 }
 
 # 출처 TOT_B(위 검은 선) + TOTAL(회색 바탕)
 function Set-SumTotal($c) {
   Set-SumEdge $c 8 $SumBlack
-  $c.Interior.Pattern = 1; $c.Interior.Color = ConvertTo-OleColor $SumTotal
+  Set-ComProp $c.Interior 'Pattern' ([int]1); Set-ComProp $c.Interior 'Color' ([double](ConvertTo-OleColor $SumTotal))
 }
 
 function Set-SummaryStyle($c, [string]$key) {
@@ -91,8 +94,8 @@ function Write-SummaryValues($ws, $rows) {
       $k = Get-CellKind $cells[$c]
       if ($k -eq '') { continue }
       $cell = $ws.Cells($r + 1, $c + 1)
-      if ($k -eq 't') { $cell.NumberFormat = '@' }
-      Set-Value2 $cell (ConvertTo-CellValue $cells[$c])
+      if ($k -eq 't') { Set-ComProp $cell 'NumberFormat' '@' }
+      Set-ComProp $cell 'Value2' (ConvertTo-CellValue $cells[$c])   # [string]·[double] 은 ConvertTo-CellValue 가 박는다
     }
   }
 }
@@ -107,7 +110,7 @@ function Add-SummaryLinks($ws, $sd) {
     $anchor = $ws.Range($p.Name)
     $keep = $anchor.Value2
     [void]$ws.Hyperlinks.Add($anchor, '', $sub, $tip)
-    Set-Value2 $anchor $keep   # 표시 글자로 값이 글자가 되지 않게 숫자로 되돌린다
+    Set-ComProp $anchor 'Value2' $keep   # 읽은 값 그대로(글자·숫자) — 표시 글자로 값이 글자가 되지 않게 숫자로 되돌린다
   }
 }
 
@@ -124,13 +127,13 @@ function Set-SummaryStyles($ws, $sd) {
 }
 
 function Set-SummaryLayout($xl, $ws, $layout) {
-  $ws.Rows.RowHeight = $ws.StandardHeight
+  Set-ComProp $ws.Rows 'RowHeight' ([double]$ws.StandardHeight)
   $h = @($layout.rowHeights)
-  for ($r = 0; $r -lt $h.Count; $r++) { if ($null -ne $h[$r]) { $ws.Rows($r + 1).RowHeight = [double]$h[$r] } }
+  for ($r = 0; $r -lt $h.Count; $r++) { if ($null -ne $h[$r]) { Set-ComProp $ws.Rows($r + 1) 'RowHeight' ([double]$h[$r]) } }
   $w = @($layout.colWidths)
-  for ($c = 0; $c -lt $w.Count; $c++) { $ws.Columns($c + 1).ColumnWidth = [double]$w[$c] }
+  for ($c = 0; $c -lt $w.Count; $c++) { Set-ComProp $ws.Columns($c + 1) 'ColumnWidth' ([double]$w[$c]) }
   [void]$ws.Activate()
-  $xl.ActiveWindow.DisplayGridlines = [bool]$layout.gridlines
+  Set-ComProp $xl.ActiveWindow 'DisplayGridlines' ([bool]$layout.gridlines)
 }
 
 function Write-SummarySheet($xl, $wb, $sd) {

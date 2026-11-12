@@ -77,38 +77,38 @@ class TestExcelSheets(unittest.TestCase):
         self.assertIn("'@'", fmts)
         self.assertIn("'General'", fmts)
 
-    def test_General_은_속성_대입이_아니라_InvokeMember_로(self):
-        # 한글 Excel 은 pwsh 의 속성 대입 `.NumberFormat = 'General'` 을 0x800A03EC 로 거부한다(T15b 실측 — '@'·'0' 은 된다).
-        # InvokeMember(문화권 null)로 넣은 'General' 만 받는다 — 변수로 넘기는 대입도 'General' 이 섞일 수 있어 막는다.
-        for name, src in self.code.items():
-            for rhs in re.findall(r"\.NumberFormat\s*=\s*([^;\r\n}]+)", src):
-                rhs = rhs.strip()
-                self.assertNotIn("General", rhs, f"{name}: {rhs}")
-                self.assertFalse(rhs.startswith("$") and rhs != "$s.NumberFormat", f"{name}: {rhs}")
-        fn = function_text(self.code["excel_sheets.ps1"], "Set-NumberFormat")
-        self.assertIn("InvokeMember('NumberFormat'", fn)
-        for name in ("excel_sheets.ps1", "excel_view.ps1"):
-            self.assertIn("Set-NumberFormat", self.code[name], name)
+    def test_COM_속성은_형을_박은_헬퍼로만(self):
+        # pwsh 7.5 의 COM 바인더는 프로세스에서 처음 넣은 값의 형을 속성마다 기억해, 다른 형을 다른 줄에서 넣어도
+        # InvalidCastException 을 낸다(T15b 실측 — Value2 문자열 뒤 숫자, Font.Color Double 뒤 Int32). 한글 Excel 은
+        # 속성 대입 `.NumberFormat = 'General'` 도 거부한다(0x800A03EC). InvokeMember 로 넣으면 둘 다 된다 —
+        # 새 ps1 셋에는 `.속성 = 값` 직접 대입이 한 줄도 없어야 하고, 대입은 Set-ComProp 한 곳의 InvokeMember 뿐이다.
+        for name in SHEET_PS:
+            hits = re.findall(r"\.\w+(?:\([^()]*\))?\s*=(?!=)\s*\S", self.code[name])
+            self.assertEqual(hits, [], name)
+        self.assertEqual(self.sheets.count("InvokeMember("), 1)
+        fn = function_text(self.code["excel_sheets.ps1"], "Set-ComProp")
+        self.assertIn("InvokeMember($name, [System.Reflection.BindingFlags]::SetProperty", fn)
+        # 형 없는 인자로 받은 object[,] 는 PSObject 로 싸여 와서 Excel 이 0x800A03EC 로 거부한다(T15b 실측, _학교 A2:T102) —
+        # 감싼 것을 벗겨 넘긴다(옛 Set-RangeProperty 는 [object[,]] 형 인자라 저절로 벗겨졌다)
+        self.assertLess(fn.index("PSObject.BaseObject"), fn.index("InvokeMember("))
+        for old in ("Set-RangeProperty", "Set-NumberFormat", "Set-Value2"):
+            self.assertNotIn(old, self.sheets, old)
 
-    def test_한_칸_Value2_는_형이_박힌_대입이거나_InvokeMember(self):
-        # pwsh 7 의 COM 바인더는 프로세스에서 처음 형 없는 값으로 넣은 Value2 의 형을 기억해, 다른 형(문자열 뒤 숫자)을
-        # 다른 줄에서 넣어도 InvalidCastException 을 낸다(T15b 실측 — 요약 9행 B열). `[string]`·`[double]` 이 박힌 식이나
-        # InvokeMember 는 된다 — 그래서 형이 그때그때 다른 값은 Set-Value2 로만 넣는다.
-        for name, src in self.code.items():
-            for rhs in re.findall(r"\.Value2\s*=\s*([^;\r\n}]+)", src):
-                rhs = rhs.strip()
-                self.assertRegex(rhs, r"^(\[string\]|\[double\]|'|\()", f"{name}: {rhs}")
-        fn = function_text(self.code["excel_sheets.ps1"], "Set-Value2")
-        self.assertIn("InvokeMember('Value2'", fn)
-        self.assertIn("Set-Value2", function_text(self.code["excel_summary.ps1"], "Write-SummaryValues"))
-        self.assertIn("Set-Value2", function_text(self.code["excel_summary.ps1"], "Add-SummaryLinks"))
+    def test_COM_속성_검사는_직접_대입을_잡는다(self):
+        # 변이 — 직접 대입 한 줄을 되살리면 위 검사가 잡아야 한다(정규식이 헐거워져 늘 초록이 되지 않게)
+        pat = r"\.\w+(?:\([^()]*\))?\s*=(?!=)\s*\S"
+        for line in ("$c.Font.Color = $s.Font.Color", "$b.LineStyle = 1", "$ws.Rows(3).RowHeight = 12",
+                     "$whole.NumberFormat = '@'", "$xl.ActiveWindow.DisplayGridlines = $false"):
+            self.assertRegex(line, pat, line)
+        for line in ("$x = $a.B", "if ($a.B -eq 1) { }", "$h[$k] = $true", "Set-ComProp $c 'Value2' ([double]1)"):
+            self.assertNotRegex(line, pat, line)
 
     def test_메타는_A_G_전부_서식부터(self):
         fn = function_text(self.code["excel_sheets.ps1"], "Write-MetaSheet")
-        self.assertLess(fn.index(".NumberFormat = '@'"), fn.index("Set-RangeProperty"))
+        self.assertLess(fn.index("Set-ComProp $all 'NumberFormat' '@'"), fn.index("'Value2'"))
         self.assertIn("$MetaWidth", fn)  # A~G 일곱 칸 전부 — 키·값만이 아니라 기록일도
-        self.assertIn(".Visible = 0", fn)  # xlSheetHidden — veryHidden(2) 이 아니다
-        self.assertNotIn(".Visible = 2", fn)
+        self.assertIn("Set-ComProp $ws 'Visible' ([int]0)", fn)  # xlSheetHidden — veryHidden(2) 이 아니다
+        self.assertNotIn("([int]2)", fn)
         self.assertIn("Worksheets.Add(", self.code["excel_sheets.ps1"])
 
     def test_있는_수정_시트가_맨_끝이_아니면_끝으로_옮긴다(self):
@@ -303,8 +303,7 @@ function New-FakeRange($ws, $a, $b) {
   $rg
 }
 # 가짜에는 InvokeMember 가 없다 — 같은 이름의 속성에 그대로 대입한다
-function Set-RangeProperty($range, [string]$name, $values) { $range.$name = $values }
-function Set-NumberFormat($range, [string]$fmt) { $range.NumberFormat = $fmt }
+function Set-ComProp($obj, [string]$name, $value) { $obj.$name = $value }
 """
 
 

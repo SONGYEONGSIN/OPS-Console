@@ -90,13 +90,13 @@ function Write-ViewFormulas($ws, $formulas, [string]$sheet) {
   $width = @($formulas[0]).Count
   $newLast = $ViewFirstRow + $n - 1
   $cols = Get-FormulaColumns $formulas
-  foreach ($c in $cols) { Set-NumberFormat $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)) 'General' }
+  foreach ($c in $cols) { Set-ComProp $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)) 'NumberFormat' 'General' }
   $arr = New-Object 'object[,]' $n, $width
   for ($r = 0; $r -lt $n; $r++) {
     $cells = @($formulas[$r])
     for ($c = 0; $c -lt $width; $c++) { $arr[$r, $c] = [string]$cells[$c] }
   }
-  Set-RangeProperty $ws.Range($ws.Cells($ViewFirstRow, 1), $ws.Cells($newLast, $width)) 'Formula' $arr
+  Set-ComProp $ws.Range($ws.Cells($ViewFirstRow, 1), $ws.Cells($newLast, $width)) 'Formula' $arr
   foreach ($c in $cols) {
     Assert-HasFormula $ws.Range($ws.Cells($ViewFirstRow, $c), $ws.Cells($newLast, $c)) "$sheet $(Get-ColumnLetter $c)열"
   }
@@ -104,24 +104,28 @@ function Write-ViewFormulas($ws, $formulas, [string]$sheet) {
 
 function Write-CountFormula($ws, [string]$cell, [string]$formula, [string]$sheet) {
   $c = $ws.Range($cell)
-  Set-NumberFormat $c 'General'
-  $c.Formula = $formula
+  Set-ComProp $c 'NumberFormat' 'General'
+  Set-ComProp $c 'Formula' ([string]$formula)
   Assert-HasFormula $c "$sheet $cell"
 }
 
 function Copy-Border($from, $to) {
-  if ($from.LineStyle -eq $XlNone) { $to.LineStyle = $XlNone; return }
-  $to.LineStyle = $from.LineStyle; $to.Weight = $from.Weight; $to.Color = $from.Color
+  if ($from.LineStyle -eq $XlNone) { Set-ComProp $to 'LineStyle' ([int]$XlNone); return }
+  Set-ComProp $to 'LineStyle' ([int]$from.LineStyle); Set-ComProp $to 'Weight' ([int]$from.Weight)
+  Set-ComProp $to 'Color' ([double]$from.Color)
 }
 
 function Copy-CellFormat($s, $t, [bool]$multi) {
-  $t.NumberFormat = $s.NumberFormat
-  $t.Font.Name = $s.Font.Name; $t.Font.Size = $s.Font.Size; $t.Font.Bold = $s.Font.Bold
-  $t.Font.Italic = $s.Font.Italic; $t.Font.Color = $s.Font.Color; $t.Font.Underline = $s.Font.Underline
-  $t.HorizontalAlignment = $s.HorizontalAlignment; $t.VerticalAlignment = $s.VerticalAlignment; $t.WrapText = $s.WrapText
-  if ($s.IndentLevel -gt 0) { $t.IndentLevel = $s.IndentLevel }
-  if ($s.Interior.Pattern -eq $XlNone) { $t.Interior.Pattern = $XlNone }
-  else { $t.Interior.Pattern = $s.Interior.Pattern; $t.Interior.Color = $s.Interior.Color }
+  # 서식 복사는 Local 끼리 — pwsh 로 읽은 NumberFormat 은 'G/표준' 처럼 지역화돼 있어 InvokeMember 로 넣으면 오류 없이 엉뚱한 서식이 된다
+  Set-ComProp $t 'NumberFormatLocal' ([string]$s.NumberFormatLocal)
+  $sf = $s.Font; $tf = $t.Font
+  Set-ComProp $tf 'Name' ([string]$sf.Name); Set-ComProp $tf 'Size' ([double]$sf.Size); Set-ComProp $tf 'Bold' ([bool]$sf.Bold)
+  Set-ComProp $tf 'Italic' ([bool]$sf.Italic); Set-ComProp $tf 'Color' ([double]$sf.Color); Set-ComProp $tf 'Underline' ([int]$sf.Underline)
+  Set-ComProp $t 'HorizontalAlignment' ([int]$s.HorizontalAlignment); Set-ComProp $t 'VerticalAlignment' ([int]$s.VerticalAlignment)
+  Set-ComProp $t 'WrapText' ([bool]$s.WrapText)
+  if ($s.IndentLevel -gt 0) { Set-ComProp $t 'IndentLevel' ([int]$s.IndentLevel) }
+  if ($s.Interior.Pattern -eq $XlNone) { Set-ComProp $t.Interior 'Pattern' ([int]$XlNone) }
+  else { Set-ComProp $t.Interior 'Pattern' ([int]$s.Interior.Pattern); Set-ComProp $t.Interior 'Color' ([double]$s.Interior.Color) }
   Copy-Border $s.Borders(7) $t.Borders(7)     # 왼쪽
   Copy-Border $s.Borders(10) $t.Borders(10)   # 오른쪽
   Copy-Border $s.Borders(9) $t.Borders(9)     # 아래
@@ -131,7 +135,7 @@ function Copy-CellFormat($s, $t, [bool]$multi) {
 # 새 행(from~to)에 9행 서식 — 열마다 한 번에
 function Copy-RowFormat($ws, [int]$from, [int]$to, [int]$width) {
   if ($to -lt $from) { return }
-  $ws.Range("$($from):$($to)").RowHeight = $ws.Rows($ViewFirstRow).RowHeight
+  Set-ComProp $ws.Range("$($from):$($to)") 'RowHeight' ([double]$ws.Rows($ViewFirstRow).RowHeight)
   for ($c = 1; $c -le $width; $c++) {
     $t = $ws.Range($ws.Cells($from, $c), $ws.Cells($to, $c))
     Copy-CellFormat $ws.Cells($ViewFirstRow, $c) $t ($to -gt $from)
@@ -167,7 +171,7 @@ function Write-ViewSheet($wb, $sd) {
     [void]$ws.Range($ws.Cells($newLast + 1, 1), $ws.Cells($oldLast, $lastCol)).ClearContents()
   }
   Write-CountFormula $ws ([string]$sd.countCell) ([string]$sd.countFormula) ([string]$sd.sheet)
-  $ws.Range([string]$sd.sourceNote).Value2 = [string]$sd.noteText
+  Set-ComProp $ws.Range([string]$sd.sourceNote) 'Value2' ([string]$sd.noteText)
   $moved = Update-ViewCf $ws $sd.cf
   return ("{0}={1} cf={2}" -f $sd.sheet, $n, $moved)
 }

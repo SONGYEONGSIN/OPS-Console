@@ -19,21 +19,16 @@ $TableFirstRow = 2
 $PCol = 16            # P — 검색 일치 순번 수식
 $MetaWidth = 7        # A~G = 구분·시트·키·열·값·사유·기록일
 
-# pwsh 7 의 COM 바인더는 Range 에 object[,] 를 바로 못 넣는다 — InvokeMember 로 넣는다(5.1 도 같은 길)
-function Set-RangeProperty($range, [string]$name, [object[,]]$values) {
-  [void]$range.GetType().InvokeMember($name, [System.Reflection.BindingFlags]::SetProperty, $null, $range, @(,$values))
-}
-
-# 한글 Excel 은 pwsh 의 속성 대입 `.NumberFormat = 'General'` 을 0x800A03EC 로 거부한다('@'·'0' 은 받는다, T15b 실측).
-# InvokeMember(문화권 null)로 넣은 'General' 만 받는다 — 'General' 이 들어갈 수 있는 서식은 여기로만 건다
-function Set-NumberFormat($range, [string]$fmt) {
-  [void]$range.GetType().InvokeMember('NumberFormat', [System.Reflection.BindingFlags]::SetProperty, $null, $range, @($fmt))
-}
-
-# pwsh 7 의 COM 바인더는 처음 형 없는 값으로 넣은 Value2 의 형을 프로세스 내내 기억해, 다른 형(문자열 뒤 숫자)을
-# 다른 줄에서 넣어도 InvalidCastException 을 낸다(T15b 실측). 형이 그때그때 다른 한 칸 값은 여기로만 넣는다
-function Set-Value2($range, $value) {
-  [void]$range.GetType().InvokeMember('Value2', [System.Reflection.BindingFlags]::SetProperty, $null, $range, @(,$value))
+# COM 속성 대입은 전부 여기로 — `.속성 = 값` 직접 대입을 쓰지 않는다(T15b 실측 두 가지):
+#  1) pwsh 7.5 의 COM 바인더는 처음 넣은 값의 형을 속성마다 프로세스 내내 기억해, 다른 형을 다른 줄에서 넣어도
+#     InvalidCastException 을 낸다(Value2 문자열 뒤 숫자, Font.Color 를 06·07 이 Double 로 넣은 뒤 Int32)
+#  2) 한글 Excel 은 속성 대입 `.NumberFormat = 'General'` 을 0x800A03EC 로 거부한다('@'·'0' 은 받는다)
+# InvokeMember(문화권 null)는 둘 다 없다. 값의 형은 부르는 쪽이 박아 넘긴다 — [string]·[double]·[int]·[bool].
+# object[,] 덩어리(Value2·Formula)도 같은 길이다(pwsh 7 바인더는 Range 에 object[,] 를 바로 못 넣는다).
+# 형 없는 인자로 받은 object[,] 는 PSObject 로 싸여 와서 Excel 이 0x800A03EC 로 거부한다 — 벗겨서 넘긴다
+function Set-ComProp($obj, [string]$name, $value) {
+  if ($null -ne $value) { $value = $value.PSObject.BaseObject }
+  [void]$obj.GetType().InvokeMember($name, [System.Reflection.BindingFlags]::SetProperty, $null, $obj, @(,$value))
 }
 
 function Get-ColumnLetter([int]$c) { return [string][char](64 + $c) }
@@ -130,13 +125,13 @@ function Set-TableFormats($ws, $rows, $textColumns) {
   for ($c = 1; $c -le $TableWidth; $c++) {
     if ($c -eq $PCol) { continue }
     $whole = $ws.Range($ws.Cells($TableFirstRow, $c), $ws.Cells($last, $c))
-    if ($text -contains (Get-ColumnLetter $c)) { $whole.NumberFormat = '@'; continue }
+    if ($text -contains (Get-ColumnLetter $c)) { Set-ComProp $whole 'NumberFormat' '@'; continue }
     $kinds = [string[]]@(foreach ($r in $rows) { Get-CellKind @($r)[$c - 1] })
     $runs = Get-FormatRuns $kinds
     foreach ($run in $runs) {
       $fmt = '@'
       if ($run[2] -eq 'n') { $fmt = 'General' }
-      Set-NumberFormat $ws.Range($ws.Cells($TableFirstRow + $run[0], $c), $ws.Cells($TableFirstRow + $run[1], $c)) $fmt
+      Set-ComProp $ws.Range($ws.Cells($TableFirstRow + $run[0], $c), $ws.Cells($TableFirstRow + $run[1], $c)) 'NumberFormat' ([string]$fmt)
     }
   }
 }
@@ -154,10 +149,10 @@ function Set-TableValues($ws, $rows) {
     }
   }
   $last = $TableFirstRow + $n - 1
-  Set-RangeProperty $ws.Range($ws.Cells($TableFirstRow, 1), $ws.Cells($last, $TableWidth)) 'Value2' $vals
+  Set-ComProp $ws.Range($ws.Cells($TableFirstRow, 1), $ws.Cells($last, $TableWidth)) 'Value2' $vals
   $p = $ws.Range($ws.Cells($TableFirstRow, $PCol), $ws.Cells($last, $PCol))
-  Set-NumberFormat $p 'General'
-  Set-RangeProperty $p 'Formula' $forms
+  Set-ComProp $p 'NumberFormat' 'General'
+  Set-ComProp $p 'Formula' $forms
   Assert-HasFormula $p "$($ws.Name) P열"
 }
 
@@ -191,20 +186,20 @@ function Get-MetaSheet($wb, [string]$name) {
     }
   }
   $ws = $wb.Worksheets.Add([Type]::Missing, $wb.Sheets.Item($wb.Sheets.Count))
-  $ws.Name = $name
+  Set-ComProp $ws 'Name' ([string]$name)
   return $ws
 }
 
 function Write-MetaSheet($wb, $sd) {
   $ws = Get-MetaSheet $wb ([string]$sd.sheet)
-  $ws.Visible = 0
+  Set-ComProp $ws 'Visible' ([int]0)
   $header = @($sd.header)
   $rows = @($sd.rows)
   $m = $rows.Count + 1
   $old = Get-UsedLastRow $ws
   # 값보다 먼저 A~G 전부 텍스트 — 키·값·기록일이 숫자·날짜로 바뀌면 다음 실행의 str 비교가 갈린다
   $all = $ws.Range($ws.Cells(1, 1), $ws.Cells([Math]::Max($m, $old), $MetaWidth))
-  $all.NumberFormat = '@'
+  Set-ComProp $all 'NumberFormat' '@'
   $vals = New-Object 'object[,]' $m, $MetaWidth
   for ($c = 0; $c -lt $MetaWidth; $c++) { $vals[0, $c] = [string]$header[$c] }
   for ($r = 0; $r -lt $rows.Count; $r++) {
@@ -214,7 +209,7 @@ function Write-MetaSheet($wb, $sd) {
       if ($s -eq '') { $vals[$r + 1, $c] = $null } else { $vals[$r + 1, $c] = $s }
     }
   }
-  Set-RangeProperty $ws.Range($ws.Cells(1, 1), $ws.Cells($m, $MetaWidth)) 'Value2' $vals
+  Set-ComProp $ws.Range($ws.Cells(1, 1), $ws.Cells($m, $MetaWidth)) 'Value2' $vals
   if ($old -gt $m) { [void]$ws.Range($ws.Cells($m + 1, 1), $ws.Cells($old, $MetaWidth)).ClearContents() }
   return ("{0}={1}" -f $sd.sheet, $rows.Count)
 }
