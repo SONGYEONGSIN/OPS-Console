@@ -91,12 +91,15 @@ def _ownership(old, baseline_fn: Callable[[], tuple[Path, str]]) -> tuple[Owners
 
 # ---------------------------------------------------------------- 결과 줄
 def change_lines(tables: Sequence[dict], new_meta: Sequence[Sequence], *, gone: Mapping[str, int] | None = None,
-                 dropped: int = 0, sejong: Sequence[str] = (), baseline: str | None = None) -> tuple[str, ...]:
+                 dropped: int = 0, unlinked: int = 0, no_doc: int = 0, sejong: Sequence[str] = (),
+                 baseline: str | None = None) -> tuple[str, ...]:
     """바뀐 점 — 건수만.
 
     - 숨김 표마다 `_번호: 592→599행 · 새 7 · 빠짐 0`. 빠짐은 gone(시트 → 수, `_학교`·`_서류` 는 세종에서 빠진 학교)
       이 있으면 그것, 없으면 payload removed 수
     - new_meta(이번에 이은 `_수정` 행만)에 `못 옮김` 이 있으면 한 줄 · 요약 링크 못 건 칸이 있으면 한 줄
+    - 세종과 잇지 못한 학교(unlinked)·`_서류` 행을 못 찾은 키(no_doc)가 있으면 한 줄 — 0 인 항목은 뺀다.
+      이 학교는 세종 열이 옛 값으로 남는데 검사는 통과해서, 줄이 없으면 아무도 모른다. 건수만 싣는다
     - 세종 경고(sejong.load_sejong_lines 문구, 0 인 종류는 이미 빠져 있다)가 있으면 한 줄 · 기준 판을 받았으면 한 줄
     """
     gone = gone or {}
@@ -107,6 +110,9 @@ def change_lines(tables: Sequence[dict], new_meta: Sequence[Sequence], *, gone: 
         out.append(f"옮기지 못한 메모 {lost}건 — _수정 '못 옮김'")
     if dropped:
         out.append(f"요약 링크 못 건 칸 {dropped}")
+    stuck = [f"{label} {n}곳" for label, n in (("세종과 잇지 못한 학교", unlinked), ("서류 행 없음", no_doc)) if n]
+    if stuck:
+        out.append(" · ".join(stuck))
     if sejong:
         out.append("세종 경고: " + " · ".join(sejong))
     return tuple(out + ([baseline] if baseline else []))
@@ -123,7 +129,8 @@ def _merged(t: Table, rows) -> Table:
 
 
 def _tables(lines, issues, own: Ownership, tables: Mapping[str, Table]):
-    """merge_schools → merge_numbers → (table payload 셋, 합친 표, 이번 변경 목록, 세종에서 빠진 학교 수)."""
+    """merge_schools → merge_numbers → (table payload 셋, 합친 표, 이번 변경 목록, 세종에서 빠진 학교 수,
+    세종과 잇지 못한 학교 수, 서류 행 없는 키 수)."""
     sm = merge_schools(tables[SCHOOL], tables[DOCS], group_schools(lines), issues, own)
     merged = {SCHOOL: _merged(tables[SCHOOL], sm.school_rows), DOCS: _merged(tables[DOCS], sm.doc_rows)}
     nm = merge_numbers(tables[NUMBERS], lines, merged[SCHOOL], merged[DOCS], own)
@@ -132,7 +139,9 @@ def _tables(lines, issues, own: Ownership, tables: Mapping[str, Table]):
                 table_payload(DOCS, tables[DOCS], sm.doc_rows, sm.added[DOCS]),
                 table_payload(NUMBERS, tables[NUMBERS], nm.rows, nm.added, nm.removed)]
     gone = {s: len(sm.vanished[s]) for s in (SCHOOL, DOCS)}
-    return payloads, merged, (*sm.decisions.changes, *nm.decisions.changes), gone
+    unlinked = len({key for _sheet, key in sm.decisions.ambiguous})  # `_학교`·`_서류` 에 같이 오른 학교는 한 곳
+    no_doc = len(sm.decisions.no_doc) + len(nm.decisions.no_doc)
+    return payloads, merged, (*sm.decisions.changes, *nm.decisions.changes), gone, unlinked, no_doc
 
 
 def build_body(before: Path, sejong_data: bytes, sejong_name: str, today: str,
@@ -145,7 +154,7 @@ def build_body(before: Path, sejong_data: bytes, sejong_name: str, today: str,
     tables = {s: read_table(wb, s) for s in HIDDEN}
     lines, sejong_warnings = load_sejong_lines(sejong_data)
     issues = read_issues(wb)
-    payloads, merged, changes, gone = _tables(lines, issues, own, tables)
+    payloads, merged, changes, gone, unlinked, no_doc = _tables(lines, issues, own, tables)
     note = base_line(sejong_name, today)  # 01~03 A4 와 00 A5 가 같은 문자열
     views = [view_payload(wb, view, hid, len(merged[hid].rows), note) for view, hid in VIEW_OF.items()]
     search = {p["sheet"]: p["searchCell"] for p in views}
@@ -155,5 +164,6 @@ def build_body(before: Path, sejong_data: bytes, sejong_name: str, today: str,
     meta = {"kind": "meta", "sheet": META_SHEET, "header": list(META_HEADER), "rows": [list(r) for r in rows]}
     return Body([*payloads, *views, summary, meta],
                 change_lines(payloads, rows[len(old or ()):], gone=gone, dropped=summary["droppedLinks"],
+                             unlinked=unlinked, no_doc=no_doc,
                              sejong=sejong_warnings, baseline=baseline_line),
                 after_rows(tables, payloads), baseline)

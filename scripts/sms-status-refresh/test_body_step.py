@@ -31,12 +31,12 @@ def add_issues(wb):
     ws.append([1, "유형01", "테스트대학교B", "x"])
 
 
-def status_workbook(path: Path, *, meta=None, links=True, schs=None) -> Path:
+def status_workbook(path: Path, *, meta=None, links=True, schs=None, dcs=None) -> Path:
     """현황 파일 흉내 — 06·07 + 00 요약(보기 링크) + 01~03 보기 + 숨김 3장 + `_확인`(+ meta 가 있으면 `_수정`)."""
     fns = [add_issues] + ([link_summary(SEARCH_LINKS)] if links else [])
     if meta is not None:
         fns.append(tt.edits_sheet(meta))
-    return tt.build(path, moa_rows=MOA_ROWS, schs=schs, mutate=chain(*fns))
+    return tt.build(path, moa_rows=MOA_ROWS, schs=schs, dcs=dcs, mutate=chain(*fns))
 
 
 class FakeVersions:
@@ -129,6 +129,20 @@ class LinesTest(unittest.TestCase):
         self.assertEqual(got, ("세종 경고: 모르는 바탕색 1줄 · 대학명·번호 칸 바탕색이 다른 줄 1줄",))
         self.assertNotIn("테스트대학교", got[0])
 
+    def test_잇지_못한_학교와_서류_행_없음은_건수만_한_줄(self):
+        tables = [{"sheet": "_학교", "beforeRows": 3, "rows": [[]] * 3, "added": [], "removed": []}]
+        got = change_lines(tables, [], unlinked=2, no_doc=4)
+        self.assertEqual(got, ("_학교: 3→3행 · 새 0 · 빠짐 0", "세종과 잇지 못한 학교 2곳 · 서류 행 없음 4곳"))
+        # 0 인 항목은 뺀다 — 키 값·학교 이름은 싣지 않는다
+        self.assertEqual(change_lines([], [], unlinked=2), ("세종과 잇지 못한 학교 2곳",))
+        self.assertEqual(change_lines([], [], no_doc=1), ("서류 행 없음 1곳",))
+
+    def test_잇지_못한_것이_없으면_그_줄이_없다(self):
+        tables = [{"sheet": "_학교", "beforeRows": 3, "rows": [[]] * 3, "added": [], "removed": []}]
+        got = change_lines(tables, [], unlinked=0, no_doc=0)
+        self.assertEqual(got, ("_학교: 3→3행 · 새 0 · 빠짐 0",))
+        self.assertEqual(change_lines(tables, []), got)
+
     def test_올린_뒤_기대_행은_새_행_수(self):
         # 머리글 1행 + 새 행 수 — U(고를 값)가 더 길면 U 끝(값만 세는 사용 범위라 서식만 남은 행은 안 센다)
         tables = {"_번호": Table((), ((1,),) * 5, 3), "_학교": Table((), ((1,),) * 2, 9)}
@@ -189,6 +203,16 @@ class BuildBodyTest(unittest.TestCase):
         new_lost = sum(1 for r in rows[1:] if r[0] == LOST)
         lines = [c for c in body.changes if c.startswith("옮기지 못한")]
         self.assertEqual(lines, [f"옮기지 못한 메모 {new_lost}건 — _수정 '못 옮김'"] if new_lost else [])
+
+    def test_이름과_구분이_겹친_학교는_바뀐_점에_건수로_나온다(self):
+        # build_body 가 병합 결정을 change_lines 로 넘기는 배선 — 같은 입력 픽스처로는 이 연결이 안 보인다
+        dup = "테스트대학교X"
+        schs = tt.schools() + [tt.school(4, dup, "op-x", 5), tt.school(5, dup, "op-y", 5)]
+        dcs = tt.docs() + [tt.doc(4, dup, None), tt.doc(5, dup, None)]
+        body = self._build(status_workbook(self.dir / "before.xlsm", schs=schs, dcs=dcs))
+        lines = [c for c in body.changes if c.startswith("세종과 잇지 못한 학교")]
+        self.assertEqual(lines, ["세종과 잇지 못한 학교 1곳"], body.changes)
+        self.assertNotIn(dup, " ".join(body.changes))
 
     def test_기준_판에_숨김_표가_없으면_baseline_missing(self):
         before = status_workbook(self.dir / "before.xlsm")

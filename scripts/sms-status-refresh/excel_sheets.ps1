@@ -170,9 +170,14 @@ function Get-UsedLastRow($ws) {
   return $u.Row + $u.Rows.Count - 1
 }
 
-# 있으면 그대로, 없으면 맨 끝 시트 뒤에 만든다
+# 있으면 맨 끝으로(verify 가 맨 끝을 요구한다), 없으면 맨 끝 시트 뒤에 만든다
 function Get-MetaSheet($wb, [string]$name) {
-  foreach ($s in $wb.Worksheets) { if ($s.Name -eq $name) { return $s } }
+  foreach ($s in $wb.Worksheets) {
+    if ($s.Name -eq $name) {
+      if ($s.Index -ne $wb.Sheets.Count) { [void]$s.Move([Type]::Missing, $wb.Sheets.Item($wb.Sheets.Count)) }
+      return $s
+    }
+  }
   $ws = $wb.Worksheets.Add([Type]::Missing, $wb.Sheets.Item($wb.Sheets.Count))
   $ws.Name = $name
   return $ws
