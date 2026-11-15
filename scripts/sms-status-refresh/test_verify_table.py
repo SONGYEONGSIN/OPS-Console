@@ -17,11 +17,12 @@ import fixtures
 import fixtures_status as fs
 import test_verify as tv
 import verify
+import verify_memos as vm
 import verify_table as vt
 import verify_view as vv
 
 A, B, C = "테스트대학교A", "테스트대학교B", "테스트대학교C"
-VIEWS = {"_학교": ("01. 학교별 현황", fs.SCHOOL_HEADS), "_서류": ("02. 서류별 현황", fs.DOC_HEADS),
+VIEWS = {"_학교": ("01. 학교별 현황", fs.SCHOOL_HEADS), "_서류": ("02. 학교별 제출 서류", fs.DOC_HEADS),
          "_번호": ("03. 번호 목록", fs.NUMBER_HEADS)}
 RULES = {"_번호": [("상태", '{c}{r}="미비"')]}  # 보기 시트 조건부 서식 — 03 만
 SUMMARY = "00. 요약"
@@ -164,7 +165,7 @@ class VerifyTableTest(unittest.TestCase):
         # 보기 시트 검사는 뒤에 붙인다 — tables[0..2] 가 숨김 표인 채로 남게
         return [payload(self.before, after, s, **per_sheet.get(s, {})) for s in hids] + \
             [view_payload(after, s) for s in hids] + \
-            [{"kind": "summary", "sheet": SUMMARY, "rows": SUMMARY_ROWS, "links": {}}]
+            [{"kind": "summary", "sheet": SUMMARY, "rows": SUMMARY_ROWS, "links": {}, "merged": [], "tips": {}, "styles": {}}]
 
     def _verify(self, after, tables=None, baseline="default"):
         sheets = [tv.MOA, tv.PIMS] + (self._tables(after) if tables is None else tables)
@@ -182,8 +183,8 @@ class VerifyTableTest(unittest.TestCase):
         after = self._after(nums=changed_numbers(), schs=schs, dcs=dcs)
         checks = self._verify(after, self._tables(after, _번호={"added": ["01000000010"]}))
         self.assertEqual(self._failed(checks), [])
-        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 2 + 3 * vv.CHECKS_PER_VIEW
-                         + vv.CHECKS_PER_SUMMARY)
+        self.assertEqual(len(checks), 27 + 1 + 3 * vt.CHECKS_PER_TABLE + 3 * vm.CHECKS_PER_LOST + 2
+                         + 3 * vv.CHECKS_PER_VIEW + vv.CHECKS_PER_SUMMARY)
 
     def test_06_07_만이면_27개_그대로(self):
         after = build(self.dir / "after.xlsm")
@@ -233,10 +234,12 @@ class VerifyTableTest(unittest.TestCase):
         rows = [r for r in numbers() if r["num"] != "010-0000-0002"]
         after = self._after(nums=rows)
         checks = self._verify(after)
-        self.assertEqual(self._failed(checks), [vt.label("_번호", vt.L_KEYS)])
+        lost = vt.label("_번호", vm.L_LOST_MEMOS)  # 메모 있는 행이 빠졌는데 `_수정` '못 옮김' 행이 없다
+        self.assertEqual(self._failed(checks), [vt.label("_번호", vt.L_KEYS), lost])
         self.assertIn("메모 있음 1", checks[vt.label("_번호", vt.L_KEYS)].detail)
-        ok = self._verify(after, self._tables(after, _번호={"removed": ["01000000002"]}))
-        self.assertEqual(self._failed(ok), [])
+        # 키 증감만 맞춰서는 못 넘는다 — `못 옮김` 행까지 맞춘 통과 사례는 test_verify_memos
+        again = self._verify(after, self._tables(after, _번호={"removed": ["01000000002"]}))
+        self.assertEqual(self._failed(again), [lost])
 
     def test_메모_없는_행이_빠지면_키_증감만_본다(self):
         rows = [r for r in numbers() if r["num"] != "010-0000-0003"]
@@ -248,7 +251,8 @@ class VerifyTableTest(unittest.TestCase):
     def test_학교_시트는_행이_빠지면_실패(self):
         after = self._after(schs=schools()[:2])
         checks = self._verify(after, self._tables(after, _학교={"removed": [C]}))
-        self.assertEqual(self._failed(checks), [vt.label("_학교", vt.L_KEYS)])
+        # 빠진 C 는 담당자 칸(사람 칸)이 있어 못 옮김 행도 따라온다
+        self.assertEqual(self._failed(checks), [vt.label("_학교", vt.L_KEYS), vt.label("_학교", vm.L_LOST_MEMOS)])
 
     def test_U_가_바뀌면_실패(self):
         after = self._after(extra=lambda wb: setattr(wb["_번호"].cell(2, 21), "value", "다른 값"))

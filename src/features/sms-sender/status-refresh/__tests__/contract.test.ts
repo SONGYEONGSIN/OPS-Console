@@ -120,6 +120,17 @@ describe("현황 최신화 결과 계약", () => {
     }
   });
 
+  it("새_실패_코드_문구", () => {
+    // PR-3b 현황 파일 본체 — 기준 판 없음·숨김 시트 모양·보기 시트 모양
+    for (const code of ["baseline_missing", "sheet_shape", "view_shape"]) {
+      expect(failureCopy(code)).not.toBe(FAILURE_COPY.unknown);
+      expect(failureCopy(code)).toContain("현황 파일은 그대로입니다");
+    }
+    expect(failureCopy("baseline_missing")).toContain("버전 기록");
+    expect(failureCopy("sheet_shape")).toContain("숨김 시트");
+    expect(failureCopy("view_shape")).toContain("보기 시트");
+  });
+
   it("메일 첨부 단계는 라벨과 할 일 문구가 있다", () => {
     expect(stepLabel("mail")).toBe("메일 첨부");
     for (const code of [

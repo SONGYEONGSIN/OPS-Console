@@ -33,7 +33,7 @@ REWRITTEN = ("P", "T")
 NOTE, NOTE_SEP, REMOVABLE_NOTE = "비고", " / ", "번호 없음"
 META_SHEET = "_수정"
 META_HEADER = ("구분", "시트", "키", "열", "값", "사유", "기록일")
-HUMAN, MACHINE = "사람", "기계"
+HUMAN, MACHINE, LOST = "사람", "기계", "못 옮김"
 _SHOWN = 5  # detail 에 적는 열 이름 수 상한
 
 
@@ -136,28 +136,36 @@ def keyed(spec: Spec, tables) -> list[dict[str, int]]:
 
 
 # ---------------------------------------------------------------- 기준 판정 열의 주인
-def _read_edits(ws) -> tuple[dict, set, int]:
-    """`_수정` → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}, 텍스트 아닌 키 칸 수).
+def edit_rows(ws) -> list[tuple] | None:
+    """`_수정` 2행부터 — 칸을 META_HEADER 순서(구분·시트·키·열·값·사유·기록일)로 다시 놓은 원본 값(없는 칸 None).
 
-    계약: T8 은 키·값 칸을 텍스트 서식(@)으로 쓴다 — 아니면 Excel 이 `01000000001` 을 숫자로 바꿔 키가
-    안 맞고, 그 칸은 조용히 사람 칸이 된다. 그래서 텍스트 아닌 키 칸은 세어 실패로 드러낸다.
-    머리글이 다르면 둘 다 빈 것(전부 사람).
+    머리글에 구분~값 다섯이 없으면 None. 검사(`Owners.load`)와 PR-3b 계산(`sheet_table.read_edits`)이 같이 쓰는
+    파서다 — 두 벌이면 한쪽만 고쳐져 검사와 계산이 다른 주인을 본다.
     """
     rows = list(ws.iter_rows(values_only=True))
     head = [_text(h).strip() for h in rows[0]] if rows else []
     if any(h not in head for h in META_HEADER[:5]):
-        return {}, set(), 0
-    ix = {h: head.index(h) for h in META_HEADER[:5]}
+        return None
+    ix = [head.index(h) if h in head else None for h in META_HEADER]
+    return [tuple(r[i] if i is not None and i < len(r) else None for i in ix) for r in rows[1:]]
+
+
+def edits_index(rows) -> tuple[dict, set, int]:
+    """`_수정` 기록 행 → ({(시트, 키, 열): 기계 값}, {사람으로 굳은 (시트, 키, 열)}, 텍스트 아닌 키 칸 수).
+
+    rows 는 META_HEADER 순서 — 검사는 `edit_rows` 의 원본 값, 계산(edits.Ownership)은 `sheet_table.read_edits`
+    의 str 을 넘긴다. 분류는 여기 하나뿐이다(두 벌이면 검사 '사람'·계산 '기계' 로 갈려 매번 verify_failed).
+    계약: T8 은 키·값 칸을 텍스트 서식(@)으로 쓴다 — 아니면 Excel 이 `01000000001` 을 숫자로 바꿔 키가
+    안 맞는다. 그래서 텍스트 아닌 키 칸은 세어 실패로 드러낸다. None(머리글이 다름)이면 둘 다 빈 것(전부 사람).
+    """
     machine, people, not_text = {}, set(), 0
-    for r in rows[1:]:
-        key = r[ix["키"]] if ix["키"] < len(r) else None
+    for kind, sheet, key, col, value, *_rest in rows or []:
         not_text += not _blank(key) and not isinstance(key, str)
-        get = {h: _text(r[i]) if i < len(r) else "" for h, i in ix.items()}
-        where = (get["시트"], get["키"], get["열"])
-        if get["구분"] == HUMAN:
+        where = (_text(sheet), _text(key), _text(col))
+        if _text(kind) == HUMAN:
             people.add(where)
-        elif get["구분"] == MACHINE:
-            machine[where] = get["값"]
+        elif _text(kind) == MACHINE:
+            machine[where] = _text(value)
     return machine, people, not_text
 
 
@@ -171,7 +179,7 @@ class Owners:
     @classmethod
     def load(cls, bwb, baseline: Path | None) -> "Owners":
         if META_SHEET in bwb.sheetnames:
-            return cls(edits=_read_edits(bwb[META_SHEET]))
+            return cls(edits=edits_index(edit_rows(bwb[META_SHEET])))
         if baseline is None:
             return cls()
         wb = load_workbook(baseline)  # 읽기만 — 시트 목록은 안 본다(첫 판엔 06·07 이 없다)
@@ -203,7 +211,8 @@ class Owners:
 
 
 # ---------------------------------------------------------------- 칸 역할
-def _roles(header, spec: Spec) -> list[str]:
+def roles(header, spec: Spec) -> list[str]:
+    """칸마다 rewritten(P·T) | sejong | judged | person — sheet_table.check_shape 도 같은 판정을 쓴다."""
     out = []
     for i, h in enumerate(header):
         name = base_name(h)
@@ -230,6 +239,24 @@ def _guarded(role: str, name: str, human, k: str, v) -> bool:
 
 def _is_memo(role: str, name: str, human, k: str, v) -> bool:
     return not _blank(v) and (role == "person" or (role == "judged" and human(k, name, v)))
+
+
+def removed_memo_cells(header, row_roles, human, bt_rows, bkeys: dict[str, int],
+                       akeys: dict[str, int]) -> set[tuple[str, str, str]]:
+    """원본에 있고 작업 사본에 없는 키의 사람 칸 중 값이 있던 칸 {(키, 열 이름, 원본 값 문자열)}.
+
+    열 이름은 `_수정` 이 쓰는 표기(괄호 꼬리를 뗀 머리글, 이름이 없으면 `I열`). L_KEYS 의 detail 과
+    verify_memos(lostMemos)가 같이 쓴다 — 두 곳이 다르게 세면 한쪽만 통과하는 날이 온다.
+    """
+    return {(k, _col_name(header, i), _text(bt_rows[bkeys[k]][i]))
+            for k in bkeys.keys() - akeys.keys()
+            for i, role in enumerate(row_roles)
+            if _is_memo(role, _col_name(header, i), human, k, bt_rows[bkeys[k]][i])}
+
+
+def removed_memo_rows(header, row_roles, human, bt_rows, bkeys: dict[str, int], akeys: dict[str, int]) -> int:
+    """빠진 키 중 메모 칸이 하나라도 있던 행 수."""
+    return len({k for k, _c, _v in removed_memo_cells(header, row_roles, human, bt_rows, bkeys, akeys)})
 
 
 def _note_kept(before, after) -> bool:
@@ -323,8 +350,7 @@ def _check_keys(x: _Ctx, sd: dict) -> Check:
     added, removed = x.akeys.keys() - x.bkeys.keys(), x.bkeys.keys() - x.akeys.keys()
     want_a, want_r = set(sd.get("added", [])), set(sd.get("removed", []))
     stay_bad = x.spec.rows_stay and bool(removed)
-    memo = sum(1 for k in removed if any(_is_memo(role, _col_name(x.bt.header, i), x.human, k, x.bt.rows[x.bkeys[k]][i])
-                                         for i, role in enumerate(x.roles)))
+    memo = removed_memo_rows(x.bt.header, x.roles, x.human, x.bt.rows, x.bkeys, x.akeys)
     detail = (f"새 {len(added)} / 데이터 {len(want_a)}, 빠짐 {len(removed)} / 데이터 {len(want_r)}"
               + f" (빠진 행 중 메모 있음 {memo})" + (", 행을 빼지 않는 시트" if stay_bad else ""))
     return x.check(L_KEYS, added == want_a and removed == want_r and not stay_bad, detail)
@@ -357,7 +383,7 @@ def check_table(bwb, awb, sd: dict, owners: Owners | None) -> list[Check]:
     bt, at = read_table(bwb, sheet), read_table(awb, sheet)
     bkeys, akeys = keyed(spec, [bt, at])
     human = (owners or Owners()).human_fn(sheet, spec, bt, bkeys)
-    x = _Ctx(sheet, spec, bt, at, _roles(bt.header, spec), bkeys, akeys, human)
+    x = _Ctx(sheet, spec, bt, at, roles(bt.header, spec), bkeys, akeys, human)
     return [_check_header(x), _check_data(x, sd), _check_text(x, sd), _check_u(x, bws, aws),
             x.check(L_META, sheet_meta(bws) == sheet_meta(aws), "숨김·틀 고정·병합·조건부 서식·유효성·필터"),
             _check_person(x), _check_note(x), _check_keys(x, sd), _check_new(x)]

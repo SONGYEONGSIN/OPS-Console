@@ -300,6 +300,7 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
     baseline 은 기준 판정 열의 주인을 가릴 기준 판(현황 파일 첫 버전) — `_수정` 이 있으면 보지 않는다.
     """
     import verify_table  # verify_table 이 이 모듈의 Check·cell_repr 를 쓴다 — 순환 import 를 피해 여기서
+    import verify_memos  # 옮기지 못한 메모 — 같은 이유로 여기서
     import verify_view  # 보기 시트·요약·`_수정` (kind view·summary·meta) — 같은 이유로 여기서
 
     bwb = load_workbook(before, keep_vba=True)
@@ -325,6 +326,8 @@ def verify_workbook(before: Path, after: Path, sheets: Sequence[dict], *,
                 checks += _check_target(awb[sd["sheet"]], sd)
             else:
                 checks.append(Check(f"{sd['sheet']}: 시트 있음", False))
+        if owners is not None:  # 옮기지 못한 메모 — 숨김 표 payload 마다 하나(meta payload 의 `못 옮김` 행과 대조)
+            checks += verify_memos.check_lost_memos(bwb, awb, sheets, owners)
         return checks
     finally:
         # keep_vba 가 메모리에 연 zip — 닫지 않으면 GC 때 '닫힌 파일' 경고가 난다

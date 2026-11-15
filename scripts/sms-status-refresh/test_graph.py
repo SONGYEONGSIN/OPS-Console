@@ -11,6 +11,7 @@ from graph import (
     SMS_ROOT,
     XLSX,
     DriveItem,
+    FileVersion,
     Graph,
     GraphError,
     UploadRejected,
@@ -154,6 +155,28 @@ class TestGraph(unittest.TestCase):
         with self.assertRaises(GraphError) as cm:
             Graph("drv", "tok", http=http).children(MOA_DIR)
         self.assertEqual(cm.exception.status, 404)
+
+    def test_versions_는_다음_쪽까지_판_id_와_시각(self):
+        http = FakeHttp(
+            FakeResponse(200, {"value": [{"id": "3.0", "lastModifiedDateTime": "2026-11-03T00:00:00Z"}],
+                               "@odata.nextLink": "https://next/v2"}),
+            FakeResponse(200, {"value": [{"id": "1.0", "lastModifiedDateTime": "2026-10-17T00:00:00Z"}]}),
+        )
+        got = Graph("drv", "tok", http=http).versions("7")
+        self.assertEqual(got, [FileVersion("3.0", "2026-11-03T00:00:00Z"), FileVersion("1.0", "2026-10-17T00:00:00Z")])
+        self.assertTrue(http.calls[0][1].endswith("/drives/drv/items/7/versions"))
+        self.assertEqual(http.calls[1][1], "https://next/v2")
+
+    def test_download_version_은_그_판의_내용(self):
+        http = FakeHttp(FakeResponse(200, content=b"first"))
+        self.assertEqual(Graph("drv", "tok", http=http).download_version("7", "1.0"), b"first")
+        self.assertTrue(http.calls[0][1].endswith("/drives/drv/items/7/versions/1.0/content"))
+
+    def test_버전_호출_실패는_GraphError(self):
+        for call in (lambda g: g.versions("7"), lambda g: g.download_version("7", "1.0")):
+            with self.assertRaises(GraphError) as cm:
+                call(Graph("drv", "tok", http=FakeHttp(FakeResponse(403))))
+            self.assertEqual(cm.exception.status, 403)
 
 
 class TestFromEnv(unittest.TestCase):

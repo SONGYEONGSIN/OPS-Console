@@ -14,6 +14,8 @@
   얻어 PidFile 에 적어 둔다 — 기동 전후 프로세스 목록을 비교하면 그 사이 사용자가 연 Excel 이 섞일 수 있다.
   COM 으로 뜬 Excel 은 pwsh 의 자식이 아니라서, 시간 초과로 pwsh 를 죽인 Python 이 이 파일의 PID 만 골라 끝낸다.
 - 모양은 「03. 번호 목록」에서 읽어 맞춘다(제목 1행·안내 2~3행·헤더 8행·데이터 9행~, 행 높이·글꼴·테두리).
+- payload kind 가 table·view·summary·meta 면 excel_sheets.ps1(dot-source)이 쓴다 — 같은 열린 통합 문서, 같은 한 번의 저장.
+  Calculation 은 바꾸지 않는다.
 - 마지막 출력 줄: 성공이면 "excel cleanup: …", 실패면 "FAILED at line N: …" (정리 뒤에 적는다).
 #>
 param(
@@ -23,6 +25,9 @@ param(
   [string]$StyleSheet = '03. 번호 목록'
 )
 $ErrorActionPreference = 'Stop'
+# kind 가 table·view·summary·meta 인 시트(PR-3b)는 excel_sheets.ps1 이 쓴다. kind 가 없거나 compare 면 아래 06·07 경로
+. (Join-Path $PSScriptRoot 'excel_sheets.ps1')
+function Test-ComparePayload($sd) { return ($null -eq $sd.kind) -or ([string]$sd.kind -eq 'compare') }
 $d = Get-Content -LiteralPath $Data -Raw -Encoding utf8 | ConvertFrom-Json
 $sheets = @($d.sheets)
 
@@ -37,6 +42,7 @@ $colSpec = [ordered]@{
 # Excel 을 띄우기 전에 데이터부터 본다 — 모르는 헤더나 빈 입력이면 파일을 열지도 않는다
 if ($sheets.Count -eq 0) { throw '시트 데이터가 없다' }
 foreach ($sd in $sheets) {
+  if (-not (Test-ComparePayload $sd)) { Assert-SheetPayload $sd; continue }
   foreach ($k in $sd.header) { if (-not $colSpec.Contains($k)) { throw "열 정의에 없는 헤더: $k" } }
 }
 $xlCenter = -4108; $xlLeft = -4131; $xlEdgeLeft = 7; $xlEdgeTop = 8; $xlEdgeBottom = 9; $xlEdgeRight = 10
@@ -210,6 +216,7 @@ try {
   $src = $wb.Worksheets.Item($StyleSheet)
 
   foreach ($sd in $sheets) {
+    if (-not (Test-ComparePayload $sd)) { $applied += (Invoke-SheetPayload $xl $wb $sd); continue }
     $ws = Get-TargetSheet $wb $sd
     try {
       Clear-SheetInPlace $ws

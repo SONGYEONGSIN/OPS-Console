@@ -69,14 +69,15 @@ class ExcelTimeoutTest(unittest.TestCase):
         self.assertEqual(self._timeout_for(None), 600)
         self.assertEqual(self._timeout_for(10_000.0), 600)
 
-    def test_마감이_가까우면_남은_시간에서_120초를_뺀다(self):
-        self.assertEqual(self._timeout_for(500.0), 380)
+    def test_마감이_가까우면_남은_시간에서_300초를_뺀다(self):
+        self.assertEqual(self._timeout_for(800.0), 500)
+        self.assertEqual(self._timeout_for(500.0), 200)
 
-    def test_300초_미만이면_Excel_을_띄우지_않는다(self):
+    def test_420초_미만이면_Excel_을_띄우지_않는다(self):
         with mock.patch.object(workbook_step.shutil, "which", return_value="C:/pwsh.exe"), \
              mock.patch.object(workbook_step.subprocess, "run") as run:
             with self.assertRaises(workbook_step.StepFailure) as cm:
-                apply_excel(*self.args, deadline=299.0, clock=lambda: 0.0)
+                apply_excel(*self.args, deadline=419.0, clock=lambda: 0.0)
         self.assertEqual((cm.exception.code, cm.exception.detail), ("excel_failed", "시간 부족"))
         run.assert_not_called()
 
@@ -85,7 +86,7 @@ class ExcelTimeoutTest(unittest.TestCase):
              mock.patch.object(workbook_step, "apply_excel") as fake_apply:
             step = Step("workbook", lambda c: run_workbook_step(
                 c, graph_factory=FakeGraph, restore=lambda b, a: (0, 0),
-                verify=lambda b, a, s: list(OK_CHECKS), sleep=lambda _s: None))
+                verify=lambda b, a, s, baseline=None: list(OK_CHECKS), sleep=lambda _s: None))
             ok = StepResult("x", "ok", "끝")
             ctx = Context("r", {}, True, Path(tmp), {"moa": ok, "pims": ok}, deadline=1234.0)
             r = run_steps([step], ctx)[0]

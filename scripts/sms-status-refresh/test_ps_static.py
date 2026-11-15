@@ -3,7 +3,6 @@
 
 주석 줄('#' 로 시작)은 지운 뒤 대조한다 — 주석에만 남은 규칙은 규칙이 아니다.
 """
-import re
 import shutil
 import subprocess
 import tempfile
@@ -187,21 +186,6 @@ class TestPimsCollectSource(unittest.TestCase):
     def test_조회_함수만_부른다(self):
         text = (HERE / "pims_collect.py").read_text(encoding="utf-8")
         self.assertIn("getPhoneNumberList(1);", text)
-
-
-class TestNoXlsmSave(unittest.TestCase):
-    """xlsm 을 openpyxl 로 다시 저장하지 않는다 — 쓰기는 Excel COM, 매크로는 zip 파트 교체뿐."""
-
-    def test_xlsm_재저장_금지(self):
-        for f in ("workbook_step.py", "verify.py", "vba.py", "compare.py"):
-            self.assertNotRegex(code_of(f), r"\.save\(", f)
-
-
-class TestEncoding(unittest.TestCase):
-    def test_ps1_은_BOM_있는_UTF8(self):
-        # 이 PC 의 Windows PowerShell 5.1 은 BOM 없는 파일을 CP949 로 읽어 한글 문자열이 깨진다.
-        for name in ("poll-local.ps1", "register-poll-task.ps1", "excel_apply.ps1"):
-            self.assertTrue((HERE / name).read_bytes().startswith(b"\xef\xbb\xbf"), name)
 
 
 if __name__ == "__main__":

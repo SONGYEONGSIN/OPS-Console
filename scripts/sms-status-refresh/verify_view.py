@@ -4,9 +4,9 @@
 `$2:$N`·CF·`/ N건`·뷰 행에 박혀 있다). 옛 범위를 보면 새 학교가 보기 화면에서 안 보이고, 줄었을 때 남은
 수식이 빈 줄을 센다. `00. 요약` 은 출처 배치로 다시 쓴 값·링크(결정 8), `_수정` 은 숨김·맨 끝·이어 쓰기(결정 7).
 
-payload `kind` 셋 — 필드 정의는 task-2-report.md:
-- view    {sheet, source, rows, sourceNote}
-- summary {sheet, rows, links}  — 링크 허용 대상은 원본 요약의 링크 대상에서
+payload `kind` 셋 — 필드 정의는 task-2-report.md, 요약의 병합·툴팁·스타일은 task-6b-report.md:
+- view    {sheet, source, rows, sourceNote}  — (sheet, source) 는 sheet_names.VIEW_OF 의 짝이어야 한다
+- summary {sheet, rows, links, merged, tips, styles}  — sheet 는 SUMMARY_SHEET, 링크 허용 대상은 원본 요약의 링크 대상에서
 - meta    {sheet, rows}
 
 detail 에는 건수·시트·셀 주소만 — 셀 값은 싣지 않는다. 통합 문서는 verify 가 읽기 전용으로 연 것을 받는다.
@@ -19,32 +19,38 @@ from typing import Sequence
 
 from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.utils.cell import coordinate_to_tuple
+from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.worksheet import Worksheet
 
+from sheet_names import SUMMARY_SHEET, VIEW_OF
 from verify import Check, cell_repr, sheet_cells, sheet_meta
 from verify_table import META_HEADER, META_SHEET, label, read_table
 
 HEAD_LAST = 8  # 보기 시트 머리(제목·기준 자료·검색 칸·열 이름) 마지막 행
 FIRST = 9  # 보기 시트 첫 데이터 행 — 숨김 표 n 행이면 9~n+8행
 
-L_VIEW_KNOWN = "보기 시트·숨김 표 있음"
+L_VIEW_KNOWN = "허용 목록의 보기 시트·숨김 표 있음"
 L_RANGE = "숨김 표 참조 범위 = 새 행 수"
 L_COUNT = "'/ N건' = 새 행 수"
 L_ROWS = "행 수식 = 9행부터 새 행 수만큼"
+L_ROWS_FMT = "행 서식(선·글꼴·높이) = 원본 9행"
 L_TAIL = "데이터 뒤 빈 줄(남은 수식 없음)"
+L_TAIL_FMT = "데이터 뒤 빈 줄(남은 선·높이 없음)"
 L_CF = "조건부 서식 범위 = 새 행 수"
 L_TOP = "머리(1~8행)·틀 고정·병합·유효성 그대로"
-CHECKS_PER_VIEW = 6
+CHECKS_PER_VIEW = 8
 L_VIEWS = "숨김 표마다 보기 시트 검사 있음"  # 통합 문서에 하나(숨김 표 payload 가 있을 때)
 L_SUMMARY_ONE = "요약 검사 정확히 1개"  # 같은 자리
 
-L_SUM_KNOWN = "요약 시트 있음"
+L_SUM_KNOWN = "허용 목록의 요약 시트 있음"
 L_SUM_DATA = "값 = 생성 데이터(1행~)"
 L_SUM_FORMULA = "수식 0"
 L_SUM_LINKS = "링크 = 생성 데이터"
 L_SUM_TARGET = "링크 대상은 원본 요약에 있던 곳·0 칸엔 링크 없음"
-L_SUM_META = "병합·틀 고정·조건부 서식·유효성 그대로"
-CHECKS_PER_SUMMARY = 5
+L_SUM_META = "병합 = 생성 데이터·틀 고정·조건부 서식·유효성 그대로"
+L_SUM_TIPS = "링크 칸 툴팁 = 생성 데이터"
+L_SUM_STYLES = "styles 는 사전(내용은 안 봄)"
+CHECKS_PER_SUMMARY = 7
 
 L_META_PLACE = "숨김·맨 끝 시트"
 L_META_HEADER = "머리글(1행)"
@@ -127,6 +133,52 @@ def _view_tail(sd, acells: dict, n: int) -> Check:
                  f"{FIRST + n}행부터 남은 칸 {len(left)}" + (f", 첫 {left[0]}행" if left else ""))
 
 
+# ---- 서식 — 값 검사(L_ROWS·L_TAIL)는 선·높이를 못 본다. 줄었을 때 남은 선은 표가 새 끝에서 닫히지 않게 한다(D1)
+def _height(ws, r: int) -> float:
+    h = ws.row_dimensions[r].height
+    return float(ws.sheet_format.defaultRowHeight if h is None else h)
+
+
+def _line_below(ws, r: int, c: int):
+    """행 r 아래 선 — Excel 은 행 사이 선을 위 행의 아래 선으로도, 아래 행의 위 선으로도 적는다. 보이는 선은 하나다."""
+    return _side(ws, r, c, "bottom") or _side(ws, r + 1, c, "top")
+
+
+def _side(ws, r: int, c: int, name: str):
+    side = getattr(ws.cell(r, c).border, name)  # 읽어 온 테두리는 면이 None 일 수 있다
+    return side.style if side is not None else None
+
+
+def _fmt(ws, r: int, c: int) -> tuple:
+    font = ws.cell(r, c).font
+    return _side(ws, r, c, "left"), _side(ws, r, c, "right"), _line_below(ws, r, c), font.name, font.sz
+
+
+def _view_rows_fmt(sd, bws, aws, width: int, n: int) -> Check:
+    """9~n+8행의 선(왼쪽·오른쪽·아래)·글꼴·높이 = 원본 9행. 위 선은 앞 행의 아래 선으로 본다 — 마지막 줄 아래 선이 닫는 선."""
+    def shape(ws, r):
+        return [_fmt(ws, r, c) for c in range(1, width + 1)], _height(ws, r)
+    tmpl = shape(bws, FIRST)
+    bad = [r for r in range(FIRST, FIRST + n) if shape(aws, r) != tmpl]
+    detail = f"행 {n}·{width}칸, 어긋난 행 {len(bad)}" + (f", 첫 {bad[0]}행" if bad else "")
+    return Check(label(sd["sheet"], L_ROWS_FMT), width > 0 and not bad, detail)
+
+
+def _view_tail_fmt(sd, aws, width: int, n: int, old: int) -> Check:
+    """줄었으면 n+9행~옛 끝(8 + 원본 숨김 표 행 수)에 선(왼쪽·오른쪽·아래)이 없고 높이가 기본."""
+    tail = range(FIRST + n, FIRST + old)
+    std = float(aws.sheet_format.defaultRowHeight)
+
+    def dressed(r):
+        return abs(_height(aws, r) - std) > 0.01 or any(
+            _side(aws, r, c, "left") or _side(aws, r, c, "right") or _line_below(aws, r, c)
+            for c in range(1, width + 1))
+    bad = [r for r in tail if dressed(r)]
+    span = f"{tail.start}~{tail.stop - 1}행" if tail else "줄지 않음"
+    return Check(label(sd["sheet"], L_TAIL_FMT), not bad,
+                 f"{span}, 선·높이 남은 행 {len(bad)}" + (f", 첫 {bad[0]}행" if bad else ""))
+
+
 def _canon(rg: str, last: int | None = None) -> str:
     c0, r0, c1, r1 = range_boundaries(rg)
     r1 = last if last is not None and r0 == FIRST else r1  # 9행에서 시작하는 범위만 새 끝으로 늘인다
@@ -171,29 +223,40 @@ def _sheet_ok(wb, name) -> bool:
     return isinstance(name, str) and name in wb.sheetnames and isinstance(wb[name], Worksheet)
 
 
+def _allowed_view(sd: dict) -> bool:
+    name = sd.get("sheet")
+    return isinstance(name, str) and VIEW_OF.get(name) == sd.get("source")
+
+
 def check_view(bwb, awb, sd: dict) -> list[Check]:
     """보기 시트 하나 — 숨김 표(source)의 작업 사본 행 수 n 을 따라갔는가."""
     name, source = sd.get("sheet"), sd.get("source")
+    if not _allowed_view(sd):  # payload 가 주는 대로 믿지 않는다 — 04 를 view 로 넣으면 대상 외 검사에서 빠진다
+        return [Check(label(str(name), L_VIEW_KNOWN), False, "허용 목록 밖")]
     if not all(_sheet_ok(wb, s) for wb in (bwb, awb) for s in (name, source)):
-        return [Check(label(str(name), L_VIEW_KNOWN), False)]
+        return [Check(label(str(name), L_VIEW_KNOWN), False, "시트 없음")]
     n = len(read_table(awb, source).rows)
     bws, aws = bwb[name], awb[name]
     bcells, acells = sheet_cells(bws), sheet_cells(aws)
     bf = {k: f for k, v in bcells.items() if (f := _formula(v))}
     af = {k: f for k, v in acells.items() if (f := _formula(v))}
+    # 서식 검사의 폭 = 원본 9행의 수식 폭, 옛 끝 = 원본 숨김 표 행 수(payload oldRows 를 믿지 않는다)
+    width = max((c for r, c in bcells if r == FIRST), default=0)
+    old = len(read_table(bwb, source).rows)
     return [_view_range(sd, af, source, n), _view_count(sd, af, bf, source, n), _view_rows(sd, acells, bcells, n),
-            _view_tail(sd, acells, n), _view_cf(sd, bws, aws, n), _view_top(sd, bws, aws, acells, bcells)]
+            _view_rows_fmt(sd, bws, aws, width, n), _view_tail(sd, acells, n), _view_tail_fmt(sd, aws, width, n, old),
+            _view_cf(sd, bws, aws, n), _view_top(sd, bws, aws, acells, bcells)]
 
 
 def check_coverage(sheets: Sequence[dict]) -> list[Check]:
     """숨김 표를 다시 쓰면 그 보기 시트·요약도 검사에 들어와야 한다 — 빠지면 옛 값이 '대상 외 그대로' 로 통과한다.
 
-    요약은 매 실행 다시 쓰므로(결정 8) 정확히 하나. `_수정` 은 이을 행이 없으면 안 바뀌므로 필수가 아니다.
+    요약은 매 실행 다시 쓰므로(결정 8) 정확히 하나(허용 이름만 센다). `_수정` 은 이을 행이 없으면 안 바뀌므로 필수가 아니다.
     """
     tables = [sd["sheet"] for sd in sheets if sd.get("kind") == "table"]
-    seen = {sd.get("source") for sd in sheets if sd.get("kind") == "view"}
+    seen = {sd.get("source") for sd in sheets if sd.get("kind") == "view" and _allowed_view(sd)}
     missing = [t for t in tables if t not in seen]
-    summaries = sum(1 for sd in sheets if sd.get("kind") == "summary")
+    summaries = sum(1 for sd in sheets if sd.get("kind") == "summary" and sd.get("sheet") == SUMMARY_SHEET)
     return [Check(L_VIEWS, not missing, f"숨김 표 {len(tables)}, 보기 검사 없음 {len(missing)}"
                   + (f" — {', '.join(missing)}" if missing else "")),
             Check(L_SUMMARY_ONE, summaries == 1, f"{summaries}개")]
@@ -206,27 +269,62 @@ def _loc(h) -> str:
     return f"{sheet.strip(chr(39)).replace(chr(39) * 2, chr(39))}!{cell.replace('$', '')}"
 
 
-def _links(ws) -> dict[str, str]:
+def sheet_links(ws) -> dict[str, str]:
     return {c.coordinate: _loc(c.hyperlink) for row in ws.iter_rows() for c in row if c.hyperlink is not None}
+
+
+def _tooltips(ws) -> dict[str, str | None]:
+    return {c.coordinate: c.hyperlink.tooltip for row in ws.iter_rows() for c in row if c.hyperlink is not None}
+
+
+def _ranges(raw) -> set[str] | None:
+    """병합 범위 목록 → 정규화한 집합. 목록이 아니거나 범위 아닌 문자열이 있으면 None."""
+    if not isinstance(raw, list) or not all(isinstance(m, str) for m in raw):
+        return None
+    try:
+        return {CellRange(m).coord for m in raw}
+    except ValueError:
+        return None
+
+
+def _sum_tips(name: str, aws, sd: dict) -> Check:
+    """tips = 링크 칸마다 정확히 하나, 실제 하이퍼링크 ScreenTip 과 같다. 링크 자체의 일치는 L_SUM_LINKS 가 본다."""
+    tips, want = sd.get("tips"), dict(sd.get("links", {}))
+    if not isinstance(tips, dict):
+        return Check(label(name, L_SUM_TIPS), False, "tips 가 사전 아님")
+    cells_ok = set(tips) == set(want) and all(isinstance(t, str) and t.strip() for t in tips.values())
+    actual = _tooltips(aws)
+    differ = [c for c in want if c in actual and actual[c] != tips.get(c)]
+    return Check(label(name, L_SUM_TIPS), cells_ok and not differ,
+                 f"링크 {len(want)} / 툴팁 {len(tips)}, 칸 어긋남 {len(set(tips) ^ set(want))}, 문구 어긋남 {len(differ)}")
+
+
+def _sum_meta(name: str, bws, aws, sd: dict) -> Check:
+    """병합은 payload `merged` 와, 틀 고정·조건부 서식·유효성은 원본과 같다."""
+    want, got = _ranges(sd.get("merged")), {m.coord for m in aws.merged_cells.ranges}
+    mb, ma = sheet_meta(bws), sheet_meta(aws)
+    keys = [k for k in mb if k != "merged" and mb[k] != ma.get(k)]
+    detail = ("merged 가 목록 아님" if want is None else f"병합 시트 {len(got)} / 생성 {len(want)}, 어긋남 {len(got ^ want)}")
+    return Check(label(name, L_SUM_META), want == got and not keys, detail + (f", {'·'.join(keys)}" if keys else ""))
 
 
 def check_summary(bwb, awb, sd: dict) -> list[Check]:
     name = sd.get("sheet")
+    if name != SUMMARY_SHEET:
+        return [Check(label(str(name), L_SUM_KNOWN), False, "허용 목록 밖")]
     if not (_sheet_ok(bwb, name) and _sheet_ok(awb, name)):
-        return [Check(label(str(name), L_SUM_KNOWN), False)]
+        return [Check(label(name, L_SUM_KNOWN), False, "시트 없음")]
     bws, aws = bwb[name], awb[name]
     acells = {k: v for k, v in sheet_cells(aws).items() if not _blank(v)}
     expected = {(r, c): cell_repr(v) for r, row in enumerate(sd.get("rows", []), start=1)
                 for c, v in enumerate(row, start=1) if v not in (None, "")}
     diff = sorted(k for k in set(acells) | set(expected) if acells.get(k) != expected.get(k))
     formulas = sum(1 for v in acells.values() if _formula(v))
-    links, want = _links(aws), dict(sd.get("links", {}))
+    links, want = sheet_links(aws), dict(sd.get("links", {}))
     # 허용 대상 = 원본 요약의 링크 대상 — payload 가 주면 생성 쪽 실수를 스스로 인증한다
-    allowed = set(_links(bws).values())
+    allowed = set(sheet_links(bws).values())
     off = [c for c, loc in links.items() if loc not in allowed]
     zero = [c for c in links if acells.get(coordinate_to_tuple(c)) in (None, ("num", 0))]
-    mb, ma = sheet_meta(bws), sheet_meta(aws)
-    keys = [k for k in mb if mb[k] != ma.get(k)]
     first = f", 첫 {get_column_letter(diff[0][1])}{diff[0][0]}" if diff else ""
     return [
         Check(label(name, L_SUM_DATA), not diff, f"칸 {len(acells)} / 생성 {len(expected)}, 어긋남 {len(diff)}{first}"),
@@ -234,12 +332,14 @@ def check_summary(bwb, awb, sd: dict) -> list[Check]:
         Check(label(name, L_SUM_LINKS), links == want,
               f"링크 {len(links)} / 생성 {len(want)}, 어긋남 {len(set(links.items()) ^ set(want.items()))}"),
         Check(label(name, L_SUM_TARGET), not off and not zero, f"원본에 없던 대상 {len(off)}, 0·빈 칸 링크 {len(zero)}"),
-        Check(label(name, L_SUM_META), not keys, "·".join(keys)),
+        _sum_tips(name, aws, sd),
+        Check(label(name, L_SUM_STYLES), isinstance(sd.get("styles"), dict), "서식은 사람 눈으로 본다"),
+        _sum_meta(name, bws, aws, sd),
     ]
 
 
 # ---------------------------------------------------------------- _수정
-def _meta_rows(ws) -> list[tuple]:
+def meta_rows(ws) -> list[tuple]:
     last, width = ws.max_row, len(META_HEADER)  # 크기는 읽기 전에 잰다
     rows = [tuple(r) for r in ws.iter_rows(min_row=1, max_row=last, max_col=width, values_only=True)]
     while rows and all(v in (None, "") for v in rows[-1]):
@@ -260,9 +360,9 @@ def check_meta(bwb, awb, sd: dict) -> list[Check]:
     if name != META_SHEET or not _sheet_ok(awb, name):
         return [Check(label(META_SHEET, L_META_PLACE), False, "시트 없음")]
     aws = awb[name]
-    rows = _meta_rows(aws)
+    rows = meta_rows(aws)
     data = rows[1:]
-    old = _meta_rows(bwb[name])[1:] if _sheet_ok(bwb, name) else []
+    old = meta_rows(bwb[name])[1:] if _sheet_ok(bwb, name) else []
     not_text = sum(1 for r in data for i in META_TEXT_COLS if r[i] not in (None, "") and not isinstance(r[i], str))
     return [
         Check(label(name, L_META_PLACE), awb.sheetnames[-1] == name and aws.sheet_state == "hidden",
