@@ -130,6 +130,19 @@ class TestExcelSheets(unittest.TestCase):
         self.assertEqual([fn.index(s) for s in order], sorted(fn.index(s) for s in order))
         self.assertIn("$sd.oldRows", fn)  # 옛 끝은 payload 의 옛 행 수로(End(xlUp) 는 대조만)
 
+    def test_뷰가_줄면_남는_행의_선·높이도_지운다(self):
+        # D1 — ClearContents 만 하면 남는 행에 아래 선·24pt 가 남아 표가 새 마지막 줄에서 닫히지 않는다.
+        # ClearFormats 는 아직 옛 CF 범위 안인 그 행을 갈라 뒤의 Update-ViewCf 가 옛 키를 못 찾는다 — 쓰지 않는다
+        src = self.code["excel_view.ps1"]
+        self.assertNotIn("ClearFormats", src)
+        fn = function_text(src, "Write-ViewSheet")
+        order = ["ClearContents()", "Clear-ViewTail", "Update-ViewCf"]
+        self.assertEqual([fn.index(s) for s in order], sorted(fn.index(s) for s in order))
+        self.assertRegex(fn, r"if \(\$oldLast -gt \$newLast\) \{[^}]*Clear-ViewTail \$ws \(\$newLast \+ 1\) \$oldLast")
+        tail = function_text(src, "Clear-ViewTail")
+        self.assertRegex(tail, r"Set-ComProp \$tail\.Borders\(\$i\) 'LineStyle' \(\[int\]\$XlNone\)")
+        self.assertIn("'RowHeight' ([double]$ws.StandardHeight)", tail)
+
     def test_요약은_지우고_값_병합_링크_서식_순서(self):
         src = self.code["excel_summary.ps1"]
         fn = function_text(src, "Write-SummarySheet")
@@ -254,6 +267,24 @@ class TestExcelSheetsBehaviour(unittest.TestCase):
                           " catch { 'threw' }")
         self.assertEqual(bad, "threw")
 
+    # ---- 줄어든 뷰의 남는 행: 선은 왼쪽·아래·오른쪽·칸 사이·행 사이를 없음으로, 높이는 기본으로(D1)
+    def test_남는_행은_선을_지우고_높이를_되돌리고_새_끝은_닫는다(self):
+        got = self.run_ps("$ws = New-FakeTail\nClear-ViewTail $ws 107 109 3 106\n$ws.Log -join ' '").split()
+        rng = "r107c1-r109c3"
+        self.assertEqual(sorted(x for x in got if x.startswith(f"line:{rng}/")),
+                         sorted(f"line:{rng}/b{i}:-4142" for i in (7, 9, 10, 11, 12)))
+        # 위 선(8)은 새 마지막 줄(106행)의 아래 선과 같은 선이다 — 지우면 표가 열린 채 끝난다
+        self.assertNotIn(f"line:{rng}/b8:-4142", got)
+        self.assertIn("height:rows107:109:16.5", got)
+        # 새 마지막 줄의 아래 선은 9행에서 다시 박는다(칸마다)
+        self.assertEqual([x for x in got if x.startswith("line:r106")], [f"line:r106c{c}/b9:1" for c in (1, 2, 3)])
+        self.assertLess(got.index("height:rows107:109:16.5"), got.index("line:r106c1/b9:1"))
+
+    def test_남는_행이_하나면_행_사이_선은_안_건드린다(self):
+        got = self.run_ps("$ws = New-FakeTail\nClear-ViewTail $ws 99 99 3 98\n$ws.Log -join ' '").split()
+        self.assertEqual(sorted(x for x in got if x.startswith("line:r99c1-r99c3/")),
+                         sorted(f"line:r99c1-r99c3/b{i}:-4142" for i in (7, 9, 10, 11)))
+
 
 # 가짜 COM — 시트.Cells.FormatConditions(Count·Item) → 규칙.AppliesTo.Address(a, b)·ModifyAppliesToRange(rng)
 FAKE_CF = r"""
@@ -301,6 +332,28 @@ function New-FakeRange($ws, $a, $b) {
     $vals = @($this.Keys | ForEach-Object { [bool]$this.Ws.Has[$_] })
     if (-not ($vals -contains $false)) { $true } elseif (-not ($vals -contains $true)) { $false } else { $null } }
   $rg
+}
+# 가짜 꼬리 — Cells(r, c)·Range(칸, 칸)·Range('a:b') 가 Borders(i)·RowHeight 를 주고, 대입은 Log 에
+# 'line:이름/b번호:값'·'height:이름:값' 으로 남는다. 읽으면 선은 실선(1)·가는 굵기(2)·검정(0)
+function New-FakeTail {
+  $ws = [pscustomobject]@{ Log = (New-Object System.Collections.ArrayList); StandardHeight = 16.5 }
+  $ws | Add-Member ScriptMethod Cells { param($r, $c) New-FakeFmt $this "r$($r)c$($c)" }
+  $ws | Add-Member ScriptMethod Range {
+    param($a, $b) if ($a -is [string]) { New-FakeFmt $this "rows$a" } else { New-FakeFmt $this "$($a.Name)-$($b.Name)" } }
+  $ws
+}
+function New-FakeFmt($ws, [string]$name) {
+  $o = [pscustomobject]@{ Ws = $ws; Name = $name }
+  $o | Add-Member ScriptMethod Borders { param($i) New-FakeLine $this.Ws "$($this.Name)/b$i" }
+  $o | Add-Member ScriptProperty RowHeight { 24 } { param($v); [void]$this.Ws.Log.Add("height:$($this.Name):$v") }
+  $o
+}
+function New-FakeLine($ws, [string]$name) {
+  $b = [pscustomobject]@{ Ws = $ws; Name = $name }
+  $b | Add-Member ScriptProperty LineStyle { 1 } { param($v); [void]$this.Ws.Log.Add("line:$($this.Name):$v") }
+  $b | Add-Member ScriptProperty Weight { 2 } { param($v); [void]$this.Ws.Log.Add("weight:$($this.Name):$v") }
+  $b | Add-Member ScriptProperty Color { 0 } { param($v); [void]$this.Ws.Log.Add("color:$($this.Name):$v") }
+  $b
 }
 # 가짜에는 InvokeMember 가 없다 — 같은 이름의 속성에 그대로 대입한다
 function Set-ComProp($obj, [string]$name, $value) { $obj.$name = $value }

@@ -5,7 +5,8 @@ payload(views.py): {kind:view, sheet, source, rows:n, oldRows, sourceNote:"A4", 
                     rowFormulas:[[…]] (9~n+8행), cf:[{range, newRange}] (openpyxl sqref, 공백 구분)}
 - 옛 끝 = 8 + oldRows(시트의 End(xlUp) 와 대조만). 9~n+8행 수식 열은 General → Formula → HasFormula 확인.
   rowFormulas 를 Formula 로. 새로 생긴 행의 서식은 9행에서 칸별 속성으로 옮긴다
-  (Copy 는 조건부 서식까지 복제해 CF 묶음 수가 늘어난다). n+9행부터 옛 끝까지는 ClearContents.
+  (Copy 는 조건부 서식까지 복제해 CF 묶음 수가 늘어난다). n+9행부터 옛 끝까지는 ClearContents 뒤 선(위 선 빼고)을
+  없음으로, 높이를 기본으로(Clear-ViewTail — ClearFormats 는 CF 를 갈라 쓰지 않는다).
 - CF: cf[].range 와 AppliesTo.Address(False, False) 를 `$`·쉼표·공백·순서를 지운 키로 맞춰 규칙마다
   ModifyAppliesToRange(newRange). 같은 범위에 규칙이 여럿이면 전부 바꾸고, 다시 세어 수가 다르면 멈춘다.
 #>
@@ -142,6 +143,20 @@ function Copy-RowFormat($ws, [int]$from, [int]$to, [int]$width) {
   }
 }
 
+# 줄면 남는 행(from~to) — 내용 다음에 선·높이도 지운다. 그대로 두면 빈 줄에 선이 그어진 채 남아 표가 새 끝에서
+# 닫히지 않는다(D1). 위 선(8)은 건드리지 않는다: Excel 은 그 선을 새 마지막 줄의 아래 선과 같은 선으로 본다.
+# ClearFormats 는 쓰지 않는다 — 아직 옛 CF 범위 안인 이 행을 갈라 뒤의 Update-ViewCf 가 옛 키를 못 찾는다
+function Clear-ViewTail($ws, [int]$from, [int]$to, [int]$width, [int]$newLast) {
+  $tail = $ws.Range($ws.Cells($from, 1), $ws.Cells($to, $width))
+  $sides = @(7, 9, 10)                 # 왼쪽·아래·오른쪽
+  if ($width -gt 1) { $sides += 11 }   # 칸 사이
+  if ($to -gt $from) { $sides += 12 }  # 행 사이
+  foreach ($i in $sides) { Set-ComProp $tail.Borders($i) 'LineStyle' ([int]$XlNone) }
+  Set-ComProp $ws.Range("$($from):$($to)") 'RowHeight' ([double]$ws.StandardHeight)
+  # 새 마지막 줄의 아래 선은 9행 것으로 다시 — 남는 행을 지운 일이 닫는 선을 건드리지 않게
+  for ($c = 1; $c -le $width; $c++) { Copy-Border $ws.Cells($ViewFirstRow, $c).Borders(9) $ws.Cells($newLast, $c).Borders(9) }
+}
+
 function Assert-ViewPayload($sd) {
   $n = [int]$sd.rows
   $f = @($sd.rowFormulas)
@@ -169,6 +184,7 @@ function Write-ViewSheet($wb, $sd) {
     $u = $ws.UsedRange
     $lastCol = [Math]::Max($width, $u.Column + $u.Columns.Count - 1)
     [void]$ws.Range($ws.Cells($newLast + 1, 1), $ws.Cells($oldLast, $lastCol)).ClearContents()
+    Clear-ViewTail $ws ($newLast + 1) $oldLast $width $newLast
   }
   Write-CountFormula $ws ([string]$sd.countCell) ([string]$sd.countFormula) ([string]$sd.sheet)
   Set-ComProp $ws.Range([string]$sd.sourceNote) 'Value2' ([string]$sd.noteText)

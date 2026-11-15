@@ -1,5 +1,5 @@
 """현황 파일 단계 끝에서 끝까지 — 가짜 Graph(현황 파일·버전 기록·세종·Moa·PIMS) + 가짜 COM(payload 를 openpyxl 로
-적용) + 진짜 매크로 복원·진짜 검사(verify_workbook 90개). Excel·Teams 는 만지지 않는다. 값은 전부 가짜다.
+적용) + 진짜 매크로 복원·진짜 검사(verify_workbook 96개). Excel·Teams 는 만지지 않는다. 값은 전부 가짜다.
 
 가짜 COM 은 excel_apply.ps1 이 payload 로 할 일만 흉내 낸다 — 06·07 은 8행 머리글·9행부터 데이터·틀 고정·필터,
 숨김 표는 2행부터 A~T(U 그대로), 보기는 test_views.apply_view, 요약은 지우고 값·병합·링크(툴팁), `_수정` 은 숨김·맨 끝.
@@ -139,7 +139,7 @@ class WorkbookEndToEndTest(unittest.TestCase):
             work = d / "work"
             r, seen = self._run(graph, work)
             self.assertEqual(verify.failed_labels(seen[0]) if seen else ["검사 안 돎"], [], r.detail)
-            self.assertEqual((r.status, r.counts["checks"]), ("ok", 90), r.detail)
+            self.assertEqual((r.status, r.counts["checks"]), ("ok", 96), r.detail)
             wb = load_workbook(work / "work.xlsm")
             school = wb["_학교"]
             head = [c.value for c in school[1]]
@@ -148,13 +148,13 @@ class WorkbookEndToEndTest(unittest.TestCase):
             meta = [tuple(r[:5]) for r in wb["_수정"].iter_rows(min_row=2, values_only=True)]
             self.assertIn(("사람", "_학교", tt.A, "확인", HUMAN_CHECK), meta)
 
-    def test_현황_파일_단계를_끝까지_돌면_검사_90개가_통과한다(self):
+    def test_현황_파일_단계를_끝까지_돌면_검사_96개가_통과한다(self):
         graph = FakeGraph()
         with tempfile.TemporaryDirectory() as tmp:
             r, seen = self._run(graph, Path(tmp))
         self.assertEqual(verify.failed_labels(seen[0]) if seen else ["검사 안 돎"], [], r.detail)
-        self.assertEqual((r.status, r.counts["checks"], r.counts["uploaded"]), ("ok", 90, 1), r.detail)
-        self.assertTrue(r.summary.startswith(f"{DONE} · 검사 90/90 통과 · 업로드 완료 "), r.summary)
+        self.assertEqual((r.status, r.counts["checks"], r.counts["uploaded"]), ("ok", 96, 1), r.detail)
+        self.assertTrue(r.summary.startswith(f"{DONE} · 검사 96/96 통과 · 업로드 완료 "), r.summary)
         self.assertEqual(r.changes[2:], ("_학교: 3→6행 · 새 3 · 빠짐 0", "_서류: 3→6행 · 새 3 · 빠짐 0",
                                          "_번호: 5→6행 · 새 3 · 빠짐 2", "요약 링크 못 건 칸 2",
                                          "세종 경고: 모르는 바탕색 4줄", "기준 판: 버전 1.0 (2026-10-17)"))

@@ -33,10 +33,12 @@ L_VIEW_KNOWN = "허용 목록의 보기 시트·숨김 표 있음"
 L_RANGE = "숨김 표 참조 범위 = 새 행 수"
 L_COUNT = "'/ N건' = 새 행 수"
 L_ROWS = "행 수식 = 9행부터 새 행 수만큼"
+L_ROWS_FMT = "행 서식(선·글꼴·높이) = 원본 9행"
 L_TAIL = "데이터 뒤 빈 줄(남은 수식 없음)"
+L_TAIL_FMT = "데이터 뒤 빈 줄(남은 선·높이 없음)"
 L_CF = "조건부 서식 범위 = 새 행 수"
 L_TOP = "머리(1~8행)·틀 고정·병합·유효성 그대로"
-CHECKS_PER_VIEW = 6
+CHECKS_PER_VIEW = 8
 L_VIEWS = "숨김 표마다 보기 시트 검사 있음"  # 통합 문서에 하나(숨김 표 payload 가 있을 때)
 L_SUMMARY_ONE = "요약 검사 정확히 1개"  # 같은 자리
 
@@ -131,6 +133,52 @@ def _view_tail(sd, acells: dict, n: int) -> Check:
                  f"{FIRST + n}행부터 남은 칸 {len(left)}" + (f", 첫 {left[0]}행" if left else ""))
 
 
+# ---- 서식 — 값 검사(L_ROWS·L_TAIL)는 선·높이를 못 본다. 줄었을 때 남은 선은 표가 새 끝에서 닫히지 않게 한다(D1)
+def _height(ws, r: int) -> float:
+    h = ws.row_dimensions[r].height
+    return float(ws.sheet_format.defaultRowHeight if h is None else h)
+
+
+def _line_below(ws, r: int, c: int):
+    """행 r 아래 선 — Excel 은 행 사이 선을 위 행의 아래 선으로도, 아래 행의 위 선으로도 적는다. 보이는 선은 하나다."""
+    return _side(ws, r, c, "bottom") or _side(ws, r + 1, c, "top")
+
+
+def _side(ws, r: int, c: int, name: str):
+    side = getattr(ws.cell(r, c).border, name)  # 읽어 온 테두리는 면이 None 일 수 있다
+    return side.style if side is not None else None
+
+
+def _fmt(ws, r: int, c: int) -> tuple:
+    font = ws.cell(r, c).font
+    return _side(ws, r, c, "left"), _side(ws, r, c, "right"), _line_below(ws, r, c), font.name, font.sz
+
+
+def _view_rows_fmt(sd, bws, aws, width: int, n: int) -> Check:
+    """9~n+8행의 선(왼쪽·오른쪽·아래)·글꼴·높이 = 원본 9행. 위 선은 앞 행의 아래 선으로 본다 — 마지막 줄 아래 선이 닫는 선."""
+    def shape(ws, r):
+        return [_fmt(ws, r, c) for c in range(1, width + 1)], _height(ws, r)
+    tmpl = shape(bws, FIRST)
+    bad = [r for r in range(FIRST, FIRST + n) if shape(aws, r) != tmpl]
+    detail = f"행 {n}·{width}칸, 어긋난 행 {len(bad)}" + (f", 첫 {bad[0]}행" if bad else "")
+    return Check(label(sd["sheet"], L_ROWS_FMT), width > 0 and not bad, detail)
+
+
+def _view_tail_fmt(sd, aws, width: int, n: int, old: int) -> Check:
+    """줄었으면 n+9행~옛 끝(8 + 원본 숨김 표 행 수)에 선(왼쪽·오른쪽·아래)이 없고 높이가 기본."""
+    tail = range(FIRST + n, FIRST + old)
+    std = float(aws.sheet_format.defaultRowHeight)
+
+    def dressed(r):
+        return abs(_height(aws, r) - std) > 0.01 or any(
+            _side(aws, r, c, "left") or _side(aws, r, c, "right") or _line_below(aws, r, c)
+            for c in range(1, width + 1))
+    bad = [r for r in tail if dressed(r)]
+    span = f"{tail.start}~{tail.stop - 1}행" if tail else "줄지 않음"
+    return Check(label(sd["sheet"], L_TAIL_FMT), not bad,
+                 f"{span}, 선·높이 남은 행 {len(bad)}" + (f", 첫 {bad[0]}행" if bad else ""))
+
+
 def _canon(rg: str, last: int | None = None) -> str:
     c0, r0, c1, r1 = range_boundaries(rg)
     r1 = last if last is not None and r0 == FIRST else r1  # 9행에서 시작하는 범위만 새 끝으로 늘인다
@@ -192,8 +240,12 @@ def check_view(bwb, awb, sd: dict) -> list[Check]:
     bcells, acells = sheet_cells(bws), sheet_cells(aws)
     bf = {k: f for k, v in bcells.items() if (f := _formula(v))}
     af = {k: f for k, v in acells.items() if (f := _formula(v))}
+    # 서식 검사의 폭 = 원본 9행의 수식 폭, 옛 끝 = 원본 숨김 표 행 수(payload oldRows 를 믿지 않는다)
+    width = max((c for r, c in bcells if r == FIRST), default=0)
+    old = len(read_table(bwb, source).rows)
     return [_view_range(sd, af, source, n), _view_count(sd, af, bf, source, n), _view_rows(sd, acells, bcells, n),
-            _view_tail(sd, acells, n), _view_cf(sd, bws, aws, n), _view_top(sd, bws, aws, acells, bcells)]
+            _view_rows_fmt(sd, bws, aws, width, n), _view_tail(sd, acells, n), _view_tail_fmt(sd, aws, width, n, old),
+            _view_cf(sd, bws, aws, n), _view_top(sd, bws, aws, acells, bcells)]
 
 
 def check_coverage(sheets: Sequence[dict]) -> list[Check]:

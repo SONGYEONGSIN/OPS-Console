@@ -11,6 +11,7 @@ from pathlib import Path
 
 from openpyxl.formatting.formatting import ConditionalFormattingList
 from openpyxl.cell.cell import MergedCell
+from openpyxl.styles import Border, Font, Side
 from openpyxl.worksheet.hyperlink import Hyperlink
 
 import fixtures_status as fs
@@ -81,6 +82,29 @@ def school_d():
 def count_cell(ws):
     return next(c for row in ws.iter_rows(max_row=8) for c in row
                 if isinstance(c.value, str) and c.value.startswith("=") and "건\"" in c.value)
+
+
+THIN = Side(style="thin")
+V3_WIDTH = len(fs.NUMBER_HEADS) + 2  # 03 의 행 수식 폭 — 데이터 열 + 빈 칸 + 숨김 순번(J)
+
+
+def dress(first, last, width=V3_WIDTH, border=None):
+    """03 의 first~last 행에 원본 01~03 의 9행 꼴 — 아래 thin 만·NanumGothic 10·높이 24(T15c 실측)."""
+    def edit(wb):
+        ws = wb[V3]
+        for r in range(first, last + 1):
+            ws.row_dimensions[r].height = 24
+            for c in range(1, width + 1):
+                ws.cell(r, c).border = border or Border(bottom=THIN)
+                ws.cell(r, c).font = Font(name="NanumGothic", size=10)
+    return edit
+
+
+def both(*edits):
+    def edit(wb):
+        for e in edits:
+            e(wb)
+    return edit
 
 
 class VerifyViewTest(unittest.TestCase):
@@ -183,6 +207,65 @@ class VerifyViewTest(unittest.TestCase):
         failed, checks = self._failed(left, tables=gone)
         self.assertEqual(failed, [vt.label(V3, vv.L_TAIL)])
         self.assertIn("13행", {c.label: c for c in checks}[vt.label(V3, vv.L_TAIL)].detail)
+
+    def _dressed_before(self):
+        """원본 03 의 9~13행(5건)에 실측 9행 꼴을 입힌다."""
+        self.before = tt.build(self.dir / "before-dressed.xlsm", moa_rows=tv.OLD_MOA, mutate=both(base, dress(9, 13)))
+
+    def test_줄면_남은_행의_선·높이가_없어야(self):
+        # D1 — 실측 01 이 101→98 로 줄면 ClearContents 만 해서 107~109행에 아래 선·24pt 가 남고 표가 106행에서
+        # 닫히지 않는다. 값만 보는 L_TAIL 은 통과한다. 여기서는 03 을 5→3 으로 줄여 남는 행 둘(12·13행)이 같은 꼴이다
+        self._dressed_before()
+        nums = [r for r in tt.numbers() if r["num"] not in ("010-0000-0002", "010-0000-0003")]
+        gone = {"_번호": {"removed": ["01000000002", "01000000003"]}}
+        cleared = self._after("after-cleared.xlsm", nums=nums, extra=dress(9, 11))
+        self.assertEqual(self._failed(cleared, tables=gone)[0], [])
+        # 지금 동작(ClearContents 만) — 서식이 옛 끝 13행까지 남는다
+        left = self._after("after-left-fmt.xlsm", nums=nums, extra=dress(9, 13))
+        failed, checks = self._failed(left, tables=gone)
+        self.assertEqual(failed, [vt.label(V3, vv.L_TAIL_FMT)])
+        self.assertIn("첫 12행", {c.label: c for c in checks}[vt.label(V3, vv.L_TAIL_FMT)].detail)
+
+        def tall(wb):
+            wb[V3].row_dimensions[13].height = 24
+        high = self._after("after-left-height.xlsm", nums=nums, extra=both(dress(9, 11), tall))
+        self.assertEqual(self._failed(high, tables=gone)[0], [vt.label(V3, vv.L_TAIL_FMT)])
+
+    def test_줄어도_새_마지막_줄은_닫는_선을_지킨다(self):
+        # 남는 행의 선을 지우다 새 마지막 줄(11행)의 아래 선까지 지우면 표가 열린 채 끝난다 — 몸통 서식 검사가 잡는다
+        self._dressed_before()
+        nums = [r for r in tt.numbers() if r["num"] not in ("010-0000-0002", "010-0000-0003")]
+        gone = {"_번호": {"removed": ["01000000002", "01000000003"]}}
+
+        def open_end(wb):
+            for c in range(1, V3_WIDTH + 1):
+                wb[V3].cell(11, c).border = Border()
+        after = self._after("after-open.xlsm", nums=nums, extra=both(dress(9, 11), open_end))
+        failed, checks = self._failed(after, tables=gone)
+        self.assertEqual(failed, [vt.label(V3, vv.L_ROWS_FMT)])
+        self.assertIn("첫 11행", {c.label: c for c in checks}[vt.label(V3, vv.L_ROWS_FMT)].detail)
+
+    def test_늘면_새_행도_9행_서식(self):
+        # D2 — 새 행(14행)의 서식은 COM 이 9행에서 옮긴다. 빠진 선·다른 글꼴·다른 높이는 몸통 서식 검사가 잡는다
+        self._dressed_before()
+        self.assertEqual(self._failed(self._grown(extra=dress(9, 14)), tables=self._ADDED)[0], [])
+        # Excel 은 행 사이 선을 아래 행의 위 선으로도 적는다(xlInsideHorizontal) — 보이는 선이 같으면 통과
+        inside = both(dress(9, 9), dress(10, 14, border=Border(top=THIN, bottom=THIN)))
+        self.assertEqual(self._failed(self._grown("after-inside.xlsm", extra=inside), tables=self._ADDED)[0], [])
+
+        def no_line(wb):
+            wb[V3]["C14"].border = Border()
+
+        def other_font(wb):
+            wb[V3]["B14"].font = Font(name="맑은 고딕", size=11)
+
+        def short(wb):
+            wb[V3].row_dimensions[14].height = None
+        for tag, edit in (("선", no_line), ("글꼴", other_font), ("높이", short)):
+            after = self._grown(f"after-body-{tag}.xlsm", extra=both(dress(9, 14), edit))
+            failed, checks = self._failed(after, tables=self._ADDED)
+            self.assertEqual(failed, [vt.label(V3, vv.L_ROWS_FMT)], tag)
+            self.assertIn("첫 14행", {c.label: c for c in checks}[vt.label(V3, vv.L_ROWS_FMT)].detail, tag)
 
     def test_요약_링크가_빠지면_실패(self):
         sm = summary(missing=1)

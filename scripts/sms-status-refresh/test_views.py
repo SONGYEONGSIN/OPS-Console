@@ -248,7 +248,7 @@ class ViewsTest(unittest.TestCase):
                                               {"_번호": {"added": ["01000000010"]}, "_학교": {"added": [d]},
                                                "_서류": {"added": [d]}})
         self.assertEqual(failed, [])
-        self.assertEqual(sum(1 for lb in labels if lb.split(": ", 1)[0] in VIEW_OF), 3 * 6)
+        self.assertEqual(sum(1 for lb in labels if lb.split(": ", 1)[0] in VIEW_OF), 3 * 8)
 
     def test_적용하면_verify_보기_검사를_통과한다_줄_때(self):
         nums = [r for r in tt.numbers() if r["num"] != "010-0000-0003"]
