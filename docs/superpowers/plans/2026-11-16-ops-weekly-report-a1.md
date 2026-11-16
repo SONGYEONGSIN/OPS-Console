@@ -25,7 +25,7 @@
 - 페이지 가드는 `requireMenu("ops-weekly")` 하나다(admin 전용·지정자 전용 집합에 넣지 않는다). server action은 폼을 믿지 않는다. 주·보고서·담당·당번을 admin client로 **DB에서 다시 읽고** 판정한다.
 - RLS: 12개 테이블 전부 enable한다. `revoke all … from public, anon, authenticated` → `grant select … to authenticated` → `grant all … to service_role`. 열람 정책은 `using (true)`이고, `settings`·`recipients`만 `using ((select public.is_admin()))`(감싼 호출). 쓰기 정책은 없다.
 - 마이그레이션은 사용자가 머지 전에 적용한다. 실행자는 SQL 파일과 검증 스크립트만 만들고 **적용하지 않는다**.
-- 그림 붙여넣기는 프로젝트·TF에서만 된다. 5MB 이하 png/jpeg/gif/webp, 공개 버킷 `ops-weekly`. 저장 전에 `sanitizeNoteHtml(html, prefix)`로 정화한다.
+- 그림 붙여넣기는 프로젝트·TF에서만 된다. 5MB 이하 png/jpeg/gif/webp, **비공개** 버킷 `ops-weekly`(사용자 결정 2026-11-16 — 로그인한 사람만 본다). DB 의 메모 HTML 에는 공개 URL 이 아니라 **객체 경로**만 남기고(`<img data-ops-path="<path>">`, src 없음), 서버가 화면에 내보낼 때 1시간짜리 서명 URL(`createSignedUrls`)로 바꿔 `src` 를 채운다. 저장 전에 `sanitizeNoteHtml(html, prefix)`로 정화한다 — 이 프로젝트 Supabase 의 `ops-weekly` 서명 URL(`…/storage/v1/object/sign/ops-weekly/<path>?token=…`)인 `src` 는 `data-ops-path="<path>"` 로 바꾸고(편집기 `RichNote` 는 손대지 않는다 — 붙여넣기 직후엔 서명 URL 이 src 에 들어가 있다), 그 보고서의 경로 접두사 밖 경로와 그 밖의 모든 `src`(외부 URL 등)는 지운다.
 - list-variants 레지스트리는 건드리지 않는다. 이 페이지는 목록+인스펙터가 아니라 탭형 작성 화면이다.
 - 커밋은 Conventional 접두사 + 한국어 메시지로 쓰고, 세션의 attribution 줄로 끝낸다. 테스트 픽스처에 실명·실메일을 넣지 않는다(`운영자A`, `a@example.com`처럼 쓴다).
 - 검증은 `npx vitest run <디렉터리들> --maxWorkers=1`로만 한다(돌리기 전에 `find <디렉터리들> -name "*.test.ts*" | wc -l`로 세어 50개 미만인지 본다). 그 밖에 `npm run typecheck`, `npx eslint <바꾼 파일들>`을 쓴다. `next build`·dev 서버·전체 테스트는 **금지**다.
@@ -155,8 +155,8 @@ it("프로젝트 시드 = SEED_PROJECT_NAMES 15개", () => {
   for (const n of SEED_PROJECT_NAMES) expect(sql).toContain(`('${n}'`);
   expect(SEED_PROJECT_NAMES).toHaveLength(15);
 });
-it("공개 버킷 + settings 단일 행 + 스키마 캐시 갱신", () => {
-  expect(sql).toContain(`insert into storage.buckets (id, name, public) values ('${OPS_WEEKLY_BUCKET}', '${OPS_WEEKLY_BUCKET}', true)`);
+it("비공개 버킷 + settings 단일 행 + 스키마 캐시 갱신", () => {
+  expect(sql).toContain(`insert into storage.buckets (id, name, public) values ('${OPS_WEEKLY_BUCKET}', '${OPS_WEEKLY_BUCKET}', false)`);
   expect(sql).toContain("insert into public.ops_weekly_settings (id) values (true) on conflict (id) do nothing");
   expect(sql).toContain("notify pgrst, 'reload schema'");
 });
@@ -187,7 +187,7 @@ Expected: FAIL. 마이그레이션 파일과 `constants.ts`가 없어서 ENOENT 
 | `ops_weekly_dev_status` | `service_id integer primary key` (Moa service_id, FK 없음. `closing_services`는 스크랩 미러다) · `stage text not null check (stage in ('dev','test'))` · `raw_label text` · `collected_at timestamptz not null` |
 
 인덱스: `ops_weekly_reports (week_id)`, `ops_weekly_project_entries (project_id)`, `ops_weekly_manual_items (report_id)`, `ops_weekly_project_owners (operator_email)`.
-정책: 위 10개 테이블은 `create policy "<table>_select" on public.<table> for select to authenticated using (true)`, settings·recipients는 감싼 `is_admin()`을 쓴다(각각 `drop policy if exists` 선행). 시드: `insert into public.ops_weekly_projects (name, kind, sort_order) values ('PIMS','project',10), …, ('유의사항','project',150) on conflict (name) do nothing`(10 간격). 버킷: `… on conflict (id) do update set public = true` + `create policy "ops_weekly_objects_service_only" on storage.objects for all to service_role using (bucket_id = 'ops-weekly') with check (bucket_id = 'ops-weekly')`.
+정책: 위 10개 테이블은 `create policy "<table>_select" on public.<table> for select to authenticated using (true)`, settings·recipients는 감싼 `is_admin()`을 쓴다(각각 `drop policy if exists` 선행). 시드: `insert into public.ops_weekly_projects (name, kind, sort_order) values ('PIMS','project',10), …, ('유의사항','project',150) on conflict (name) do nothing`(10 간격). 버킷: `… on conflict (id) do update set public = false` + `create policy "ops_weekly_objects_service_only" on storage.objects for all to service_role using (bucket_id = 'ops-weekly') with check (bucket_id = 'ops-weekly')`.
 
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS (7 tests).
 
@@ -757,7 +757,7 @@ it("listPendingWriters — 보고서 행이 없는 사람도 미제출", async (
   - `addManualItem(input: unknown): Promise<ActionResult & { id?: string }>`
   - `removeManualItem(input: { reportId: string; itemId: string })`: 그 보고서의 항목인지 `.eq("report_id")`로 함께 조건을 건다
   - `saveProjectEntry(input: unknown)`: `ops_weekly_project_owners`에 (projectId, report.operator_email)이 있어야 한다. 없으면 `담당 항목이 아닙니다.`
-  - `uploadWeeklyImage(input: { reportId: string; dataUrl: string }): Promise<{ ok: true; url: string } | { ok: false; error: string }>`: fill-actions의 `IMAGE_RE`·5MB 규칙. 보고서 주인의 활성 프로젝트 담당이 하나도 없으면 `그림은 프로젝트·TF에만 붙일 수 있습니다.` 경로는 `${week.week_start}/${reportId}/${randomUUID()}.${ext}`, 버킷은 `ops-weekly`.
+  - `uploadWeeklyImage(input: { reportId: string; dataUrl: string }): Promise<{ ok: true; url: string } | { ok: false; error: string }>`: fill-actions의 `IMAGE_RE`·5MB 규칙. `url` 은 공개 URL 이 아니라 **1시간 서명 URL**(`createSignedUrl`) — 버킷이 비공개다(Global Constraints). 보고서 주인의 활성 프로젝트 담당이 하나도 없으면 `그림은 프로젝트·TF에만 붙일 수 있습니다.` 경로는 `${week.week_start}/${reportId}/${randomUUID()}.${ext}`, 버킷은 `ops-weekly`.
   - `markTabChecked(input: { reportId: string; area: Area })`: `checked_tabs`에 area가 없으면 더한다(배열을 새로 만든다)
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다** (`open-notices/__tests__/actions.test.ts`처럼 `next/cache`·`@/lib/supabase/admin`·`@/features/auth/queries`를 모킹한다)
