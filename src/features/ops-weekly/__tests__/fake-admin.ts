@@ -16,6 +16,8 @@
  * 미지원: or · gte · lte 같은 범위 필터(체인 목을 쓴다), unique 제약 검사.
  * spies: 쓰기 spy 는 첫 인자로 테이블 이름을 받는다 — `spies.insert("t", rows)`.
  *        spy 는 쓰기 적용 **전에** 불린다 — mockImplementationOnce 로 '그 사이 다른 요청이 행을 만든' 경쟁을 흉내낸다.
+ * storage: `storage.from(bucket).copy(from, to)` 만 — `spies.copy(bucket, from, to)` 가 응답한다(기본 성공).
+ *          실패는 `spies.copy.mockResolvedValueOnce({ data: null, error })`.
  * failTable(name, message, code?): 그 테이블의 모든 응답이 `{ data: null, error }` 가 된다.
  * failNextWrite(name, message, code?): 그 테이블의 다음 쓰기 한 번만 error 로 응답한다(읽기는 정상).
  * rows(name): 살아 있는 행 배열.
@@ -71,6 +73,10 @@ export function fakeAdmin(tables: Record<string, Row[]>) {
     update: vi.fn() as Mock,
     delete: vi.fn() as Mock,
     rpc: vi.fn().mockResolvedValue({ data: null, error: null }) as Mock,
+    copy: vi.fn(async (_bucket: string, _from: string, to: string) => ({
+      data: { path: to },
+      error: null,
+    })) as Mock,
   };
 
   const rows = (name: string): Row[] => {
@@ -231,7 +237,15 @@ export function fakeAdmin(tables: Record<string, Row[]>) {
   }
 
   return {
-    client: { from, rpc: (...a: unknown[]) => spies.rpc(...a) },
+    client: {
+      from,
+      rpc: (...a: unknown[]) => spies.rpc(...a),
+      storage: {
+        from: (bucket: string) => ({
+          copy: (src: string, dst: string) => spies.copy(bucket, src, dst),
+        }),
+      },
+    },
     spies,
     rows,
     failTable(name: string, message: string, code?: string) {

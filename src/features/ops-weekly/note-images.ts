@@ -88,6 +88,47 @@ export function collectNoteImagePaths(htmls: readonly string[]): string[] {
   return [...new Set(paths)];
 }
 
+/** 경로의 `<week_start>/<reportId>/` 다음 부분 — 다른 보고서 경로로 옮길 때 이름을 그대로 쓴다. */
+const restOf = (path: string): string => path.split("/").slice(2).join("/");
+
+async function copyOne(from: string, to: string): Promise<boolean> {
+  try {
+    const { error } = await createAdminClient()
+      .storage.from(OPS_WEEKLY_BUCKET)
+      .copy(from, to);
+    return error === null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 다른 보고서의 HTML(지난주 차주 미리 채우기)이 가리키는 그림을 `toPrefix` 경로로 복사하고 경로를 바꾼다.
+ * 저장할 때 그 보고서 경로 밖 그림은 지워지므로, 복사하지 못한 그림은 여기서 뺀다 — 보이다가
+ * 첫 저장에서 조용히 사라지는 참조를 남기지 않는다. 던지지 않는다(보고서 생성을 막지 않는다).
+ */
+export async function copyNoteImages(
+  htmls: readonly string[],
+  toPrefix: string,
+): Promise<string[]> {
+  const paths = collectNoteImagePaths(htmls);
+  if (paths.length === 0) return [...htmls];
+  const moved = new Map<string, string>();
+  await Promise.all(
+    paths.map(async (from) => {
+      const to = from.startsWith(toPrefix) ? from : `${toPrefix}${restOf(from)}`;
+      if (!isOwnPath(to, toPrefix)) return;
+      if (to === from || (await copyOne(from, to))) moved.set(from, to);
+    }),
+  );
+  return htmls.map((h) =>
+    h.replace(STORED_IMG_RE, (_m, path: string, rest: string) => {
+      const to = moved.get(path);
+      return to === undefined ? "" : `<img data-ops-path="${to}"${rest}>`;
+    }),
+  );
+}
+
 const escapeAttr = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 

@@ -13,6 +13,7 @@ import {
 } from "./constants";
 import { normEmail } from "./email";
 import type { ItemOverride, ManualItem, ProjectEntryView } from "./merge";
+import { copyNoteImages, opsWeeklyImagePrefix } from "./note-images";
 import { prefillEntry } from "./prefill";
 import type { WriterCandidate } from "./roster";
 import { reportRowSchema, type ReportRow } from "./schemas";
@@ -140,10 +141,17 @@ async function fillMissingEntries(
   const missing = active.filter((id) => !have.has(id));
   if (missing.length === 0) return;
   const prev = await lastWeekEntries(weekStart, report.operator_email, missing);
-  const rows = missing.map((projectId) => ({
+  const filled = missing.map((id) => prefillEntry(prev.get(id) ?? null));
+  // 지난주 그림은 지난주 보고서 경로에 있어 첫 저장에서 지워진다 — 이 보고서 경로로 복사한다.
+  const thisWeek = await copyNoteImages(
+    filled.map((e) => e.this_week),
+    opsWeeklyImagePrefix(weekStart, report.id),
+  );
+  const rows = missing.map((projectId, i) => ({
     report_id: report.id,
     project_id: projectId,
-    ...prefillEntry(prev.get(projectId) ?? null),
+    ...filled[i],
+    this_week: thisWeek[i],
   }));
   const res = await createAdminClient()
     .from("ops_weekly_project_entries")
