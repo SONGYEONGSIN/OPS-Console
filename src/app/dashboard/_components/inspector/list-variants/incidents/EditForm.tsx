@@ -356,7 +356,7 @@ export function IncidentEditForm({
           value={department}
           disabled
           title="담당부서는 본인 조직(team) 기준으로 자동 설정됩니다."
-          className="w-full cursor-not-allowed border border-line-soft bg-washi px-2 py-1 text-ink-muted"
+          className="w-full cursor-not-allowed border border-line-soft bg-field-bg px-2 py-1 text-ink-muted"
         >
           {DEPARTMENT_OPTIONS.map((v) => (
             <option key={v} value={v}>

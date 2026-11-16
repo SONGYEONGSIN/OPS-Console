@@ -55,4 +55,44 @@ describe("HandlingRowsEditor", () => {
     fireEvent.click(screen.getByLabelText("처리 행 삭제 1"));
     expect(onChange).toHaveBeenCalledWith([{ time: "c", content: "d" }]);
   });
+  it("시간·내용 칸은 표준 입력창 음영(bg-field-bg, border-line-soft)이다", () => {
+    render(
+      <HandlingRowsEditor
+        rows={[{ time: "", content: "" }]}
+        onChange={vi.fn()}
+      />,
+    );
+    for (const label of ["처리 시간 1", "처리 내용 1"]) {
+      const el = screen.getByLabelText(label);
+      expect(el.className).toContain("bg-field-bg");
+      expect(el.className).toContain("border-line-soft");
+      expect(el.className).not.toContain("bg-cream");
+    }
+  });
+
+  it("내용 칸 높이가 scrollHeight를 따라간다", () => {
+    const spy = vi
+      .spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get")
+      .mockReturnValue(88);
+    const { rerender } = render(
+      <HandlingRowsEditor
+        rows={[{ time: "", content: "줄1" }]}
+        onChange={vi.fn()}
+      />,
+    );
+    const content = screen.getByLabelText("처리 내용 1") as HTMLTextAreaElement;
+    expect(content.style.height).toBe("88px");
+    spy.mockReturnValue(132);
+    fireEvent.change(content, { target: { value: "줄1\n줄2\n줄3" } });
+    expect(content.style.height).toBe("132px");
+    spy.mockReturnValue(60);
+    rerender(
+      <HandlingRowsEditor
+        rows={[{ time: "", content: "줄" }]}
+        onChange={vi.fn()}
+      />,
+    );
+    expect(content.style.height).toBe("60px");
+    spy.mockRestore();
+  });
 });
