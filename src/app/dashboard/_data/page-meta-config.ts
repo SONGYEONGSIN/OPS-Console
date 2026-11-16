@@ -110,6 +110,11 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
     description:
       "운영 자동화를 파이프라인 네 단계로 묶어 봅니다. 무엇이 무엇을 위해 도는지 한눈에 봅니다.",
   },
+  "ops-weekly": {
+    headline: { accent: "분석 · 보고", title: "주간업무보고" },
+    description:
+      "운영1·2팀 주간 업무를 미리 채워진 화면에서 확인·제출하고, 당번이 모아 보고합니다.",
+  },
   tools: {
     headline: { accent: "AI & 자동화", title: "도구" },
     description:

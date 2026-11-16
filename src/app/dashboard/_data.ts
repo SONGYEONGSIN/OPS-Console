@@ -338,6 +338,12 @@ export const sidebarSections: SbSection[] = [
             pattern: "list",
             adminOnly: true,
           },
+          {
+            ico: "·",
+            label: "주간업무보고",
+            slug: "ops-weekly",
+            pattern: "list",
+          },
         ],
       },
       {

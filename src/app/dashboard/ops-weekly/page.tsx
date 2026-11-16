@@ -1,0 +1,156 @@
+import Link from "next/link";
+import { PageTabs } from "@/components/common/PageTabs";
+import { requireMenu } from "@/features/auth/menu-guard";
+import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
+import { normEmail } from "@/features/ops-weekly/email";
+import { shiftWeek } from "@/features/ops-weekly/week";
+import { PageHeader } from "../_components/page-header/PageHeader";
+import { findSidebarMeta } from "../_data";
+import { resolvePageMeta } from "../_data/page-meta-derive";
+import { WeekHeader } from "./_components/WeekHeader";
+import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
+import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
+import { buildTabs, opsWeeklyHref, type OpsTab } from "./_params";
+
+const EMPTY_ROSTER =
+  "작성 대상 명단이 비어 있습니다 — 관리자 설정을 확인하세요";
+const TAB_TITLE: Record<OpsTab, string> = {
+  application: "원서접수",
+  pims: "PIMS",
+  project: "프로젝트",
+  tf: "TF",
+  leave: "휴가·외근",
+  status: "제출 현황",
+  settings: "설정",
+};
+// 명단이 비어도 열어야 하는 탭 — 명단을 고칠 자리가 설정 탭이다.
+const OPEN_WITHOUT_ROSTER: ReadonlySet<OpsTab> = new Set([
+  "status",
+  "settings",
+]);
+
+type Week = Extract<OpsWeeklyView, { kind: "week" }>;
+
+/** 구분(개발/테스트)이 안 된 건수 — 뺀 건은 세지 않는다. */
+function unknownCountOf(v: Week): number {
+  const list = v.snapshot?.application.unknown ?? [];
+  const overrides = v.detail?.overrides;
+  return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
+}
+
+function dutyNameOf(v: Week): string | null {
+  const email = v.week.duty_email;
+  if (email === null) return null;
+  return v.writers.find((w) => w.email === normEmail(email))?.name ?? email;
+}
+
+function WeekBody({ view }: { view: Week }) {
+  const { tab, viewed } = view;
+  if (viewed === null && !OPEN_WITHOUT_ROSTER.has(tab)) {
+    return <p className="p-5 text-sm text-muted lg:p-7">{EMPTY_ROSTER}</p>;
+  }
+  // 탭 본문은 Task 12~15 가 채운다.
+  return (
+    <section
+      data-tab={tab}
+      aria-label={TAB_TITLE[tab]}
+      className="p-5 text-sm text-muted lg:p-7"
+    >
+      {TAB_TITLE[tab]}
+    </section>
+  );
+}
+
+function WeekView({ view }: { view: Week }) {
+  const { week, weekRef, tab, viewed, report, actor } = view;
+  const op =
+    viewed !== null && viewed.email !== actor.email ? viewed.email : null;
+  const weekStart = week.week_start;
+  return (
+    <>
+      <WeekHeader
+        weekRef={weekRef}
+        week={week}
+        viewedName={viewed?.name ?? null}
+        writers={view.writers.map((w) => ({ email: w.email, name: w.name }))}
+        viewedEmail={viewed?.email ?? null}
+        submittedCount={view.submittedCount}
+        writerCount={view.writers.length}
+        dutyName={dutyNameOf(view)}
+        canSubmit={view.canSubmit}
+        reportStatus={report?.status ?? null}
+        submittedAt={report?.submitted_at ?? null}
+        reportId={report?.id ?? null}
+        prevOpen={view.prevOpen}
+        prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
+        nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
+        tab={tab}
+      />
+      {viewed === null ? (
+        <p className="px-7 pt-4 text-sm text-muted">{EMPTY_ROSTER}</p>
+      ) : view.kpis !== null ? (
+        <WeeklyKpiRow kpis={view.kpis} unknownCount={unknownCountOf(view)} />
+      ) : null}
+      <div className="pt-4">
+        <PageTabs
+          active={tab}
+          size="md"
+          tabs={buildTabs({
+            weekStart,
+            op,
+            isAdmin: actor.isAdmin,
+            checked: report?.checked_tabs ?? [],
+          })}
+        />
+      </div>
+      <WeekBody view={view} />
+    </>
+  );
+}
+
+function NoWeek({ weekStart }: { weekStart: string }) {
+  return (
+    <div className="flex flex-col gap-2 p-5 text-sm text-ink lg:p-7">
+      <p>이 주의 보고서가 아직 열리지 않았습니다</p>
+      <div className="flex gap-3 text-xs">
+        <Link
+          href={opsWeeklyHref(shiftWeek(weekStart, -1), "application", null)}
+          className="underline"
+        >
+          ‹ 이전 주
+        </Link>
+        <Link href="/dashboard/ops-weekly" className="underline">
+          이번 주로
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default async function OpsWeeklyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string; tab?: string; op?: string }>;
+}) {
+  const me = await requireMenu(OPS_WEEKLY_SLUG);
+  const meta = findSidebarMeta(OPS_WEEKLY_SLUG);
+  if (!meta) return null;
+  const sp = await searchParams;
+  const view = await loadOpsWeeklyPage(me, sp, new Date());
+  const config = resolvePageMeta(OPS_WEEKLY_SLUG, meta);
+  return (
+    <>
+      <PageHeader
+        pathname={`/dashboard/${OPS_WEEKLY_SLUG}`}
+        meta={config.meta}
+        headline={config.headline}
+        description={config.description}
+      />
+      {view.kind === "no-week" ? (
+        <NoWeek weekStart={view.weekStart} />
+      ) : (
+        <WeekView view={view} />
+      )}
+    </>
+  );
+}
