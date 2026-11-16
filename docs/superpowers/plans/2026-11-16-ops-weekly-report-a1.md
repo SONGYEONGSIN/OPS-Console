@@ -23,9 +23,13 @@
 - 개발/테스트 구분이 없으면 **`구분 미확인`**으로 보여 준다. 0으로 숨기지 않는다. 담당자가 안 맞은 건수는 **0일 때도** 한 줄로 적는다.
 - 날짜·시각은 `kstFormat`(`@/lib/kst-format`)으로 찍는다. 색은 토큰 클래스만 쓴다. 버튼 호버는 `hover:bg-ink hover:text-cream`(보더가 있으면 `hover:border-ink`도), 행 호버는 `hover:bg-line-soft`, 헤더 액션은 `HeaderActionButton`, 숫자는 `tabular-nums`, 입력창은 `border-line-soft bg-field-bg focus:border-ink focus:bg-white`.
 - 페이지 가드는 `requireMenu("ops-weekly")` 하나다(admin 전용·지정자 전용 집합에 넣지 않는다). server action은 폼을 믿지 않는다. 주·보고서·담당·당번을 admin client로 **DB에서 다시 읽고** 판정한다.
+- **admin 의 역할은 설정·당번 변경이다**(spec §4.6). 남의 보고서는 그 주를 **[정정]으로 다시 연 경우에만**(`reopened_at` 이 있는 open 주) 고칠 수 있다. 평소 열린 주에서 남의 보고서를 고치는 사람은 본인과 당번뿐이다(Task 3 `canEditReport`).
+- 제출은 `draft`·`returned` 보고서만 된다. 이미 `submitted` 인 보고서의 재제출은 거절한다 — 스냅샷을 다시 굳히고 `all-submitted` 를 또 내면 A2 알림이 중복된다(spec 반목표: 알림 폭탄).
 - RLS: 12개 테이블 전부 enable한다. `revoke all … from public, anon, authenticated` → `grant select … to authenticated` → `grant all … to service_role`. 열람 정책은 `using (true)`이고, `settings`·`recipients`만 `using ((select public.is_admin()))`(감싼 호출). 쓰기 정책은 없다.
 - 마이그레이션은 사용자가 머지 전에 적용한다. 실행자는 SQL 파일과 검증 스크립트만 만들고 **적용하지 않는다**.
-- 그림 붙여넣기는 프로젝트·TF에서만 된다. 5MB 이하 png/jpeg/gif/webp, **비공개** 버킷 `ops-weekly`(사용자 결정 2026-11-16 — 로그인한 사람만 본다). DB 의 메모 HTML 에는 공개 URL 이 아니라 **객체 경로**만 남기고(`<img data-ops-path="<path>">`, src 없음), 서버가 화면에 내보낼 때 1시간짜리 서명 URL(`createSignedUrls`)로 바꿔 `src` 를 채운다. 저장 전에 `sanitizeNoteHtml(html, prefix)`로 정화한다 — 이 프로젝트 Supabase 의 `ops-weekly` 서명 URL(`…/storage/v1/object/sign/ops-weekly/<path>?token=…`)인 `src` 는 `data-ops-path="<path>"` 로 바꾸고(편집기 `RichNote` 는 손대지 않는다 — 붙여넣기 직후엔 서명 URL 이 src 에 들어가 있다), 그 보고서의 경로 접두사 밖 경로와 그 밖의 모든 `src`(외부 URL 등)는 지운다.
+- 그림 붙여넣기는 프로젝트·TF에서만 된다. 5MB 이하 png/jpeg/gif/webp(`OPS_WEEKLY_IMAGE_RE`·`MAX_IMAGE_BYTES`, Task 1 — checklist `fill-actions.ts` 규칙의 복제다. 그쪽은 `"use server"` 파일이라 함수 아닌 export 를 못 하고 소비처가 둘뿐이라 추출하지 않는다), **비공개** 버킷 `ops-weekly`(사용자 결정 2026-11-16 — 로그인한 사람만 본다). DB 의 메모 HTML 에는 공개 URL 이 아니라 **객체 경로**만 남기고(`<img data-ops-path="<path>" alt="첨부 이미지">`, src 없음), 서버가 화면에 내보낼 때 1시간짜리 서명 URL(`createSignedUrls`)로 바꿔 `src` 를 채운다. 두 방향 모두 `src/features/ops-weekly/note-images.ts` 한 파일이 한다(Task 8).
+  - **저장**: `toStoredNoteHtml(html, pathPrefix)` — 이 프로젝트 Supabase 의 `ops-weekly` 서명 URL(`…/storage/v1/object/sign/ops-weekly/<path>?token=…`)인 `src` 는 `data-ops-path="<path>"` 로 바꾸고(편집기 `RichNote` 는 손대지 않는다 — 붙여넣기 직후엔 서명 URL 이 src 에 들어가 있다), 그 보고서의 경로 접두사(`opsWeeklyImagePrefix(week_start, reportId)` = `<week_start>/<reportId>/`) 밖 경로와 그 밖의 모든 `src`(외부 URL, 같은 버킷의 public URL 포함)는 지운다. 나머지 정화는 `sanitizeNoteHtml`(checklist, **고치지 않는다**)에 맡긴다.
+  - **읽기**: `signProjectEntries(entries)` — 화면에 내보내는 프로젝트 entry HTML 전부의 경로를 모아 `createSignedUrls` 한 번으로 서명하고 `src` 를 채운다(Task 11 `_load`, Task 14 모아보기). 객체가 없어 서명이 안 된 경로는 `<img>` 대신 `[그림 없음]` 글자로 바꾼다.
 - list-variants 레지스트리는 건드리지 않는다. 이 페이지는 목록+인스펙터가 아니라 탭형 작성 화면이다.
 - 커밋은 Conventional 접두사 + 한국어 메시지로 쓰고, 세션의 attribution 줄로 끝낸다. 테스트 픽스처에 실명·실메일을 넣지 않는다(`운영자A`, `a@example.com`처럼 쓴다).
 - 검증은 `npx vitest run <디렉터리들> --maxWorkers=1`로만 한다(돌리기 전에 `find <디렉터리들> -name "*.test.ts*" | wc -l`로 세어 50개 미만인지 본다). 그 밖에 `npm run typecheck`, `npx eslint <바꾼 파일들>`을 쓴다. `next build`·dev 서버·전체 테스트는 **금지**다.
@@ -35,7 +39,7 @@
 
 1. **명단 조회가 실패하거나 0명일 때** [최종 보고]가 '전원 제출'로 켜지면 안 된다. `listOperators`는 에러를 `[]`로 삼킨다. 그래서 작성자 조회는 따로 만들고 에러가 나면 던진다(Task 7). `checkFinalize`는 빈 명단을 `empty-roster`로 막는다(Task 3).
 2. **주 경계 시각**: 일 23:59 KST와 월 00:00 KST, 월·해를 넘는 주(6/29→7월 1주차, 12/28→12월 5주차)에서 라벨·창이 본부와 같아야 한다(Task 2).
-3. **열어 둔 낡은 화면에서 보내는 요청**: [최종 보고] 뒤에 들어온 저장이나 [최종 보고] 두 번 클릭은 DB 상태로 거절해야 하고, 전환은 한 번만 일어나야 한다(Task 8·9).
+3. **열어 둔 낡은 화면에서 보내는 요청**: [최종 보고] 뒤에 들어온 저장이나 [최종 보고]·[제출완료] 두 번 클릭은 DB 상태로 거절해야 하고, 전환은 한 번만 일어나야 한다(Task 8·9 — 제출도 조건부 update 다).
 4. **같은 휴가가 두 원천에 있을 때**: 종일 일정의 UTC 자정 저장, 담당자 칸 없이 제목에 이름만 있는 팀 공용 일정, 반차·여러 주에 걸친 휴가도 한 줄로 합쳐야 하고 백업자가 있는 쪽을 남긴다(Task 5).
 5. **이름 불일치**: 담당자명이 null이거나, 앞뒤 공백이 있거나, 퇴사자 이름이면 조용히 빠지지 않고 '안 붙음'으로 세어야 한다. 지난주에 수집된 개발 구분은 `구분 미확인`으로 다뤄야 한다(Task 4·5).
 
@@ -63,7 +67,7 @@ Expected: `Junction`. 그다음 워크트리에서 `npx next typegen`을 실행�
 ## File Structure
 
 ```
-supabase/migrations/20261116_ops_weekly.sql          테이블 12 + RLS + 버킷 + 시드
+supabase/migrations/20261116_ops_weekly.sql          테이블 12 + RLS + 버킷 + 시드 + 순번 교체 함수
 scripts/ops-weekly-verify.mjs                         적용 후 service_role/anon 검증(사용자가 실행)
 src/features/ops-weekly/
   constants.ts        SLUG·AREAS·PROJECT_STAGES·SEED_PROJECT_NAMES·버킷·경로 (단일 소스)
@@ -82,6 +86,7 @@ src/features/ops-weekly/
   auto-queries.ts     loadAutoSnapshot / listDevStatuses
   settings-queries.ts loadSettingsBundle
   guard.ts            authorizeReportEdit / authorizeWeek (DB 재판정)
+  note-images.ts      그림 경로 저장(서명 URL→data-ops-path)·읽기(경로→서명 URL) (server-only)
   events.ts           OpsWeeklyEvent · OPS_WEEKLY_HOOKS(빈 배열) · emitOpsWeeklyEvent
   actions.ts          작성 action (메모·빼기·직접 추가·프로젝트·그림·탭 확인)
   workflow-actions.ts 제출·다시 작성·주요 요약·최종 보고·정정
@@ -89,7 +94,7 @@ src/features/ops-weekly/
   __tests__/…
 src/app/dashboard/ops-weekly/
   page.tsx  _params.ts  _load.ts
-  _components/ WeekHeader · WeeklyKpiRow · AreaNotes · AutoGroupSection · ManualItemForm ·
+  _components/ WeekHeader · WeeklyKpiRow · AreaNotes · OverrideControls · AutoGroupSection · ManualItemForm ·
                ApplicationTab · PimsTab · LeaveTab · ProjectTab · StatusTab · SettingsTab(+패널 4)
   __tests__/…
 src/app/dashboard/_data.ts                 (메뉴 1항목)
@@ -115,10 +120,13 @@ CLAUDE.md                                  (기능 절 1개)
   - `AREA_LABEL: Record<Area,string>` = 원서접수 / PIMS / 프로젝트 / TF / 휴가·외근
   - `PROJECT_STAGES = ["기획","요구분석","설계","개발","테스트","배포","운영","보류"] as const`, `type ProjectStage`
   - `PROJECT_KINDS = ["project","tf"] as const`, `type ProjectKind`
-  - `REPORT_STATUSES = ["draft","submitted","returned"] as const`, `WEEK_STATUSES = ["open","reported"] as const`
+  - `REPORT_STATUSES = ["draft","submitted","returned"] as const`, `type ReportStatus = (typeof REPORT_STATUSES)[number]`
+  - `WEEK_STATUSES = ["open","reported"] as const`, `type WeekStatus = (typeof WEEK_STATUSES)[number]` — 두 상태 타입의 **단일 소스**다. Task 3·7·11·14 는 여기서 import 하고 리터럴 유니온을 다시 쓰지 않는다
   - `WRITER_TEAMS = ["운영1팀","운영2팀"] as const`, `EXCLUDED_WRITER_ROLES = ["부장","팀장"] as const`
   - `SEED_PROJECT_NAMES` = `["PIMS","접수관리자","내부관리자","경쟁률","생성툴","매출 분석","정산 · 진학캐쉬","초중고","인증","대교협 연계","추천인 검증","보증보험","실적증명","계약서","유의사항"] as const` (사이드바 '프로젝트' 13 + 계약서·유의사항)
-  - `OPS_WEEKLY_BUCKET = "ops-weekly"`, `MAX_IMAGE_BYTES = 5 * 1024 * 1024`
+  - `OPS_WEEKLY_BUCKET = "ops-weekly"`, `MAX_IMAGE_BYTES = 5 * 1024 * 1024`, `OPS_WEEKLY_SIGNED_URL_TTL_SEC = 3600`
+  - `OPS_WEEKLY_IMAGE_RE = /^data:(image\/(png|jpe?g|gif|webp));base64,([A-Za-z0-9+/=]+)$/` — 위에 주석 한 줄: `// features/checklist/fill-actions.ts 의 IMAGE_RE 복제. 그쪽은 "use server" 라 비함수 export 불가, 소비처 2곳(<3)이라 추출하지 않는다.`
+- Produces (SQL 함수): `public.ops_weekly_replace_rotation(emails text[]) returns void` — 순번표 전체 교체(Task 10이 rpc로 부른다)
 
 - [ ] **Step 1: 실패하는 계약 테스트를 쓴다** (`sms-sender/status-refresh/__tests__/migration.test.ts`처럼 주석을 먼저 지우고 공백을 접는다. 칸 단언은 해당 `create table … ( … );` 본문 안에서만 한다)
 
@@ -160,6 +168,16 @@ it("비공개 버킷 + settings 단일 행 + 스키마 캐시 갱신", () => {
   expect(sql).toContain("insert into public.ops_weekly_settings (id) values (true) on conflict (id) do nothing");
   expect(sql).toContain("notify pgrst, 'reload schema'");
 });
+it("순번 교체 함수 — 전체 삭제는 where true, 실행은 service_role 만", () => {
+  const fn = fnBody("ops_weekly_replace_rotation"); // `create or replace function public.ops_weekly_replace_rotation(` ~ 다음 `$$;` 까지
+  expect(sql).toContain("create or replace function public.ops_weekly_replace_rotation(emails text[])");
+  expect(fn).toContain("delete from public.ops_weekly_duty_rotation where true");
+  expect(fn).toContain("insert into public.ops_weekly_duty_rotation (position, operator_email)");
+  expect(fn).toContain("with ordinality");
+  expect(fn).not.toMatch(/security definer/);
+  expect(sql).toMatch(/revoke execute on function public\.ops_weekly_replace_rotation\(text\[\]\)\s+from public, anon, authenticated/);
+  expect(sql).toMatch(/grant\s+execute on function public\.ops_weekly_replace_rotation\(text\[\]\)\s+to service_role/);
+});
 ```
 
 - [ ] **Step 2: 실패를 확인한다**
@@ -189,12 +207,34 @@ Expected: FAIL. 마이그레이션 파일과 `constants.ts`가 없어서 ENOENT 
 인덱스: `ops_weekly_reports (week_id)`, `ops_weekly_project_entries (project_id)`, `ops_weekly_manual_items (report_id)`, `ops_weekly_project_owners (operator_email)`.
 정책: 위 10개 테이블은 `create policy "<table>_select" on public.<table> for select to authenticated using (true)`, settings·recipients는 감싼 `is_admin()`을 쓴다(각각 `drop policy if exists` 선행). 시드: `insert into public.ops_weekly_projects (name, kind, sort_order) values ('PIMS','project',10), …, ('유의사항','project',150) on conflict (name) do nothing`(10 간격). 버킷: `… on conflict (id) do update set public = false` + `create policy "ops_weekly_objects_service_only" on storage.objects for all to service_role using (bucket_id = 'ops-weekly') with check (bucket_id = 'ops-weekly')`.
 
-- [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS (7 tests).
+순번 교체 함수(`20260911_sms_code_inbox.sql`의 함수 모양을 따른다):
+
+```sql
+-- 순번표 전체 교체. 지우기와 넣기를 한 호출(=한 트랜잭션)로 묶어, 중간에 실패해도 순번표가 빈 채로 남지 않는다.
+-- `where true` 는 장식이 아니다 — Supabase PostgREST 경로는 safeupdate 가 켜져 있어
+-- plpgsql 안의 WHERE 없는 DELETE 를 21000 으로 거부한다(SQL Editor 에선 통과해서 못 본다).
+-- security definer 가 아니다: 부르는 쪽이 service_role 이고 테이블 권한(grant all)이 이미 있다.
+create or replace function public.ops_weekly_replace_rotation(emails text[])
+returns void
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  delete from public.ops_weekly_duty_rotation where true;
+  insert into public.ops_weekly_duty_rotation (position, operator_email)
+  select (t.ord - 1)::int, t.e from unnest(emails) with ordinality as t(e, ord);
+end;
+$$;
+revoke execute on function public.ops_weekly_replace_rotation(text[]) from public, anon, authenticated;
+grant  execute on function public.ops_weekly_replace_rotation(text[]) to service_role;
+```
+
+- [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS (8 tests).
 
 - [ ] **Step 5: `scripts/ops-weekly-verify.mjs`를 쓴다** (`scripts/verify-schedule-types-migration.mjs`처럼 `.env.local`을 읽는다. 실행은 사용자가 마이그레이션을 적용한 뒤에 한다)
 
-  - service_role: 테이블 12개 각각 `select('*', { count: 'exact', head: true })` → **`count !== null`**이어야 ✓다(없는 테이블도 `error: null`로 조용히 0건이 나올 수 있어 count로 판별한다). `ops_weekly_settings` count가 1인지, `ops_weekly_projects`의 이름 집합이 `SEED_PROJECT_NAMES`와 같은지(15개), `storage.getBucket('ops-weekly')`가 `public: true`인지 본다.
-  - anon key: `ops_weekly_weeks`에 insert하면 `error`가 있어야 한다. `ops_weekly_recipients` select는 행이 0이어야 한다.
+  - service_role: 테이블 12개 각각 `select('*', { count: 'exact', head: true })` → **`count !== null`**이어야 ✓다(없는 테이블도 `error: null`로 조용히 0건이 나올 수 있어 count로 판별한다). `ops_weekly_settings` count가 1인지, `ops_weekly_projects`의 이름 집합이 `SEED_PROJECT_NAMES`와 같은지(15개), `storage.getBucket('ops-weekly')`가 **`public: false`**인지(비공개 버킷 결정, 마이그레이션 계약 테스트와 같은 값) 본다. 순번 교체 함수는 service_role 로 **부르지 않는다**(순번표를 실제로 갈아엎는다) — 아래 anon 확인으로 대신한다.
+  - anon key: `ops_weekly_weeks`에 insert하면 `error`가 있어야 한다. `ops_weekly_recipients` select는 행이 0이어야 한다. `rpc('ops_weekly_replace_rotation', { emails: [] })`는 `error`가 있어야 한다(anon 실행 금지). `error.code`도 같은 줄에 찍는다(`42501` 기대 — PostgREST 가 권한 없는 함수를 어떻게 알리는지는 적용 뒤 실측으로 확인한다).
   - 항목마다 `✓/✗` 한 줄을 찍고, 하나라도 실패하면 `process.exit(1)`.
   - 이 단계는 실행하지 않는다. 계약 테스트와 `node --check scripts/ops-weekly-verify.mjs`(문법 확인)만 한다.
 
@@ -301,22 +341,24 @@ it("defaultWeekStart", () => {
 
 **Files:**
 - Create: `src/features/ops-weekly/roster.ts`, `src/features/ops-weekly/permissions.ts`
-- Test: `src/features/ops-weekly/__tests__/roster.test.ts`, `src/features/ops-weekly/__tests__/permissions.test.ts`
+- Test: `src/features/ops-weekly/__tests__/roster.test.ts`, `src/features/ops-weekly/__tests__/recipient-warning.test.ts`, `src/features/ops-weekly/__tests__/permissions.test.ts`
 
 **Interfaces:**
-- Consumes: `weeksBetween`, `floorMod`(Task 2 / rollover-logic), `canViewMenu`(`@/features/auth/permission`), `WRITER_TEAMS`·`EXCLUDED_WRITER_ROLES`·`OPS_WEEKLY_SLUG`(Task 1)
+- Consumes: `weeksBetween`, `floorMod`(Task 2 / rollover-logic), `canViewMenu`(`@/features/auth/permission`), `OperatorPermission`(`@/features/operators/schemas`), `WRITER_TEAMS`·`EXCLUDED_WRITER_ROLES`·`OPS_WEEKLY_SLUG`·`ReportStatus`·`WeekStatus`(Task 1)
 - Produces (`roster.ts`):
   - `type WriterCandidate = { email: string; name: string; team: string; role: string; status: string }`
   - `writerRoster(rows: readonly WriterCandidate[], excludedEmails: readonly string[]): WriterCandidate[]`(입력 순서를 지키고, `name`은 trim한다)
   - `dutyForWeek(weekStart: string, rotation: readonly string[], anchorWeekStart: string | null): string | null` = `rotation[floorMod(weeksBetween(anchor, weekStart), n)]`. 빈 목록이거나 anchor가 없으면 null.
   - `type RecipientWarning = "not-operator" | "inactive" | "no-menu"`
   - `RECIPIENT_WARNING_LABEL: Record<RecipientWarning,string>` = 운영자 명단에 없음 / 비활성 계정 / 메뉴 권한 없음
-  - `recipientWarning(op: { email: string; status: string; permission: OperatorPermission | null; allowed_menus: string[] } | null): RecipientWarning | null`. `canViewMenu(OPS_WEEKLY_SLUG, {email, operator: null, displayName: "", role: "", team: null, permission, allowedMenus})`로 판정한다.
+  - `type RecipientOperator = { email: string; status: string; permission: OperatorPermission | null; allowed_menus: string[] }` — `operators` 행의 그 칸 그대로다(Task 10이 이 모양으로 읽는다)
+  - `recipientWarning(op: RecipientOperator | null): RecipientWarning | null`. 판정 순서는 null → `not-operator`, `status !== "active"` → `inactive`, `!canViewMenu(OPS_WEEKLY_SLUG, { email, operator: null, displayName: "", role: "", team: null, permission: op.permission, allowedMenus: op.allowed_menus })` → `no-menu`, 그 외 null. **실제 행의 `permission`·`allowed_menus` 를 그대로 넘긴다** — 미리 계산한 값이나 상수를 넘기지 않는다.
+  - **`no-menu` 가 언제 켜지는가(실측, `src/features/auth/permission.ts`)**: `canViewMenu` 는 admin 이면 true, slug 가 `ADMIN_ONLY_MENU_SLUGS` 면 false, `DESIGNATED_ONLY_MENU_SLUGS` 면 `allowedMenus.includes(slug)`, **그 외는 true 이고 `allowedMenus` 를 보지 않는다**. `ops-weekly` 는 두 집합 어디에도 넣지 않으므로(Global Constraints) **지금 정책에서 `no-menu` 는 나지 않는다** — member·viewer 가 `allowed_menus: []` 여도 볼 수 있다. 경고는 그 정책이 바뀌는 날(주간보고를 지정자 전용으로 돌리는 등) 저절로 켜지도록 `canViewMenu` 를 거친다. 그래서 테스트는 ① 지금 정책에서 제한 계정이 경고를 받지 **않는** 것(경고 과다 방지)과 ② 집합을 모킹해 `no-menu` 가 실제로 켜지는 것을 둘 다 단언한다(`recipient-warning.test.ts`).
 - Produces (`permissions.ts`):
   - `type Actor = { email: string; isAdmin: boolean }`
-  - `type WeekState = { status: "open" | "reported"; dutyEmail: string | null }`
-  - `canEditReport(actor: Actor, week: WeekState, ownerEmail: string): boolean`: open ∧ (본인 ∨ 당번 ∨ admin)
-  - `canSubmitReport(actor: Actor, week: WeekState, ownerEmail: string, isWriter: boolean): boolean`: open ∧ 본인 ∧ 작성 대상(제출은 본인만)
+  - `type WeekState = { status: WeekStatus; dutyEmail: string | null; reopenedAt: string | null }`(`WeekRow` → `WeekState` 변환은 Task 7 `weekStateOf`)
+  - `canEditReport(actor: Actor, week: WeekState, ownerEmail: string): boolean`: open ∧ (본인 ∨ 당번 ∨ (admin ∧ `reopenedAt !== null`)). admin 은 [정정]으로 다시 연 주에서만 남의 보고서를 고친다(spec §4.6 — 평소 admin 은 설정·당번 변경만)
+  - `canSubmitReport(actor: Actor, week: WeekState, ownerEmail: string, isWriter: boolean, reportStatus: ReportStatus): boolean`: open ∧ 본인 ∧ 작성 대상 ∧ `reportStatus ∈ {draft, returned}`(제출은 본인만, 이미 낸 것은 다시 못 낸다)
   - `canReturnReport(actor: Actor, week: WeekState, reportStatus: ReportStatus): boolean`: open ∧ (당번 ∨ admin) ∧ submitted
   - `canEditDutySummary(actor: Actor, week: WeekState): boolean`: open ∧ (당번 ∨ admin)
   - `type FinalizeCheck = { ok: true } | { ok: false; reason: "forbidden" | "locked" | "empty-roster" | "pending"; pending: string[] }`
@@ -346,23 +388,59 @@ it("dutyForWeek — anchor 주 = 첫 사람, 그 뒤로 돌고, anchor 이전도
   expect(dutyForWeek("2026-11-16", [], "2026-11-16")).toBeNull();
   expect(dutyForWeek("2026-11-16", rot, null)).toBeNull();
 });
-it("recipientWarning", () => {
+// op(over) = { email: "r@x", status: "active", permission: "member", allowed_menus: [], ...over }
+it("recipientWarning — 없음·비활성", () => {
   expect(recipientWarning(null)).toBe("not-operator");
   expect(recipientWarning(op({ status: "inactive" }))).toBe("inactive");
-  expect(recipientWarning(op({ status: "active", permission: "member" }))).toBeNull();
+  expect(recipientWarning(op({ status: "suspended", permission: "admin" }))).toBe("inactive"); // 비활성이 먼저다
+});
+it("recipientWarning — 지금 정책에선 allowed_menus 가 비어도 경고하지 않는다(경고 과다 방지)", () => {
+  expect(recipientWarning(op({ permission: "member", allowed_menus: [] }))).toBeNull();
+  expect(recipientWarning(op({ permission: "viewer", allowed_menus: ["receivables"] }))).toBeNull();
+  expect(recipientWarning(op({ permission: null, allowed_menus: [] }))).toBeNull();
+});
+// recipient-warning.test.ts — 정책 집합을 모킹해 no-menu 가 실제로 켜지는지 본다(파일을 따로 둬 roster.test.ts 의 실제 정책 단언과 섞이지 않게)
+vi.mock("@/app/dashboard/_data/sidebar-helpers", async (orig) => ({
+  ...(await orig<typeof import("@/app/dashboard/_data/sidebar-helpers")>()),
+  DESIGNATED_ONLY_MENU_SLUGS: new Set(["internal-admin", "ops-weekly"]),
+}));
+it("지정자 전용이 되면 — allowed_menus 에 없는 member 는 no-menu, 있으면 통과, admin 은 통과", () => {
+  expect(recipientWarning(op({ permission: "member", allowed_menus: ["receivables"] }))).toBe("no-menu");
+  expect(recipientWarning(op({ permission: "member", allowed_menus: ["ops-weekly"] }))).toBeNull();
+  expect(recipientWarning(op({ permission: "admin", allowed_menus: [] }))).toBeNull();
 });
 // permissions.test.ts
-const open = { status: "open", dutyEmail: "d@x" } as const;
-const locked = { status: "reported", dutyEmail: "d@x" } as const;
-it("편집 — 본인·당번·admin, 잠긴 주는 아무도", () => {
+const open = { status: "open", dutyEmail: "d@x", reopenedAt: null } as const;
+const reopened = { status: "open", dutyEmail: "d@x", reopenedAt: "2026-11-20T01:00:00Z" } as const;
+const locked = { status: "reported", dutyEmail: "d@x", reopenedAt: null } as const;
+it("편집 — 본인·당번, 잠긴 주는 아무도", () => {
   expect(canEditReport({ email: "a@x", isAdmin: false }, open, "a@x")).toBe(true);
   expect(canEditReport({ email: "d@x", isAdmin: false }, open, "a@x")).toBe(true);
   expect(canEditReport({ email: "z@x", isAdmin: false }, open, "a@x")).toBe(false);
   expect(canEditReport({ email: "z@x", isAdmin: true }, locked, "a@x")).toBe(false);
 });
+it("admin 은 정정으로 다시 연 주에만 남의 보고서를 고친다", () => {
+  expect(canEditReport({ email: "z@x", isAdmin: true }, open, "a@x")).toBe(false);
+  expect(canEditReport({ email: "z@x", isAdmin: true }, reopened, "a@x")).toBe(true);
+  expect(canEditReport({ email: "z@x", isAdmin: false }, reopened, "a@x")).toBe(false);
+});
 it("제출은 본인만 — 당번도 대리 제출 못 한다", () => {
-  expect(canSubmitReport({ email: "d@x", isAdmin: false }, open, "a@x", true)).toBe(false);
-  expect(canSubmitReport({ email: "a@x", isAdmin: false }, open, "a@x", false)).toBe(false);
+  expect(canSubmitReport({ email: "d@x", isAdmin: false }, open, "a@x", true, "draft")).toBe(false);
+  expect(canSubmitReport({ email: "a@x", isAdmin: false }, open, "a@x", false, "draft")).toBe(false);
+});
+it("제출은 draft·returned 만 — 이미 낸 것은 다시 못 낸다, 잠긴 주도 못 낸다", () => {
+  const a = { email: "a@x", isAdmin: false };
+  expect(canSubmitReport(a, open, "a@x", true, "draft")).toBe(true);
+  expect(canSubmitReport(a, open, "a@x", true, "returned")).toBe(true);
+  expect(canSubmitReport(a, open, "a@x", true, "submitted")).toBe(false);
+  expect(canSubmitReport(a, locked, "a@x", true, "draft")).toBe(false);
+});
+it("다시 작성·주요 요약 — 당번·admin, 열린 주, 다시 작성은 submitted 만", () => {
+  expect(canReturnReport({ email: "d@x", isAdmin: false }, open, "submitted")).toBe(true);
+  expect(canReturnReport({ email: "d@x", isAdmin: false }, open, "draft")).toBe(false);
+  expect(canReturnReport({ email: "a@x", isAdmin: false }, open, "submitted")).toBe(false);
+  expect(canEditDutySummary({ email: "z@x", isAdmin: true }, open)).toBe(true);
+  expect(canEditDutySummary({ email: "d@x", isAdmin: false }, locked)).toBe(false);
 });
 it("최종 보고 — 빈 명단은 전원 제출이 아니다", () => {
   expect(checkFinalize({ email: "d@x", isAdmin: false }, open, [], new Set())).toEqual(
@@ -385,8 +463,8 @@ it("정정은 admin · 보고된 주만", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/features/ops-weekly --maxWorkers=1` → 새 파일 2개 FAIL.
-- [ ] **Step 3: 위 시그니처대로 구현한다.** `pending` 순서는 `rosterEmails` 순서를 따른다.
+- [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/features/ops-weekly --maxWorkers=1` → 새 파일 3개 FAIL.
+- [ ] **Step 3: 위 시그니처대로 구현한다.** `pending` 순서는 `rosterEmails` 순서를 따른다. `recipient-warning.test.ts` 의 모킹은 `sidebar-helpers` 의 다른 export 를 그대로 두고 집합 하나만 바꾼다 — `canViewMenu` 를 모킹하지 않는다(그러면 판정 경로를 안 탄다).
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "feat: 주간업무보고 작성 명단·당번 순번·권한 판정"`
 
@@ -488,7 +566,7 @@ it("미리 여는 다음 주는 그 주 월 00:00 기준으로 계산한다", ()
   - `type BackupLeaveLite = { id: string; leave_type: string | null; leave_start_date: string | null; leave_end_date: string | null; substitute_name: string }`(호출부가 `requester_email = 본인`으로 이미 거른 행이다)
   - `type ScheduleLeaveLite = { id: string; type: "leave" | "external_meeting" | "training"; title: string; start_at: string; end_at: string | null; assignee_email: string | null }`
   - `type LeaveFamily = "leave" | "field" | "training"`
-  - `type LeaveItem = { key: string; family: LeaveFamily; kindLabel: string; startYmd: string; endYmd: string; substituteName: string | null; sources: ("backup" | "schedule")[]; needsBackup: boolean }`
+  - `type LeaveItem = AutoItem & { family: LeaveFamily; kindLabel: string; startYmd: string; endYmd: string; substituteName: string | null; sources: ("backup" | "schedule")[]; needsBackup: boolean }` — **`AutoItem` 계약을 지킨다**(spec §4: 자동 목록 영역은 건마다 특이사항·빼기·직접 추가). 그래야 Task 6 `applyOverrides` 를 그대로 거치고 Task 12 `LeaveTab` 이 건 메모·[빼기]를 단다. 칸 채우기: `title = kindLabel`, `subtitle = substituteName ? \`백업 ${substituteName}\` : "백업 없음"`, `at = null`(휴가는 날짜 단위라 시각이 없다 — 기간은 `startYmd`·`endYmd` 가 든다)
   - `buildLeaveItems(args: { backups: readonly BackupLeaveLite[]; schedules: readonly ScheduleLeaveLite[]; operatorEmail: string; operatorName: string; weekStart: string }): LeaveItem[]`
 
 알고리즘(시그니처만으로는 정해지지 않는 부분):
@@ -504,7 +582,7 @@ kindLabel(schedule) = { leave: "휴가", external_meeting: "외근", training: "
 
 1. backup 행: 시작일이 null이면 버린다. end = leave_end_date ?? leave_start_date.
    창과 안 겹치면 버린다.
-   → item(key `leave:br:{id}`, sources ["backup"], substituteName, needsBackup false)
+   → item(key `leave:br:{id}`, sources ["backup"], substituteName, needsBackup false, title/subtitle/at 은 위 규칙)
 2. schedule 행: 본인 것만 남긴다 = assignee_email === operatorEmail
                 ∨ (assignee_email == null ∧ title.includes(operatorName.trim()))   // 팀 공용 일정은 제목에 이름을 쓴다(달력 규칙)
    start = kstYmd(start_at), end = end_at ? kstYmd(end_at) : start(달력과 같이 종료일 포함).
@@ -541,7 +619,8 @@ it("같은 휴가가 두 원천에 있으면 백업요청 한 줄로 합친다 �
   const items = buildLeaveItems({ ...args,
     backups: [b("b1", "연차", "2026-11-18", "2026-11-19", "백업자")],
     schedules: [s("s1", "leave", "운영2팀-운영자A-연차", "2026-11-17T15:00:00Z", "2026-11-18T15:00:00Z", null)] });
-  expect(items).toEqual([expect.objectContaining({ key: "leave:br:b1", sources: ["backup", "schedule"], substituteName: "백업자", needsBackup: false })]);
+  expect(items).toEqual([expect.objectContaining({ key: "leave:br:b1", sources: ["backup", "schedule"], substituteName: "백업자", needsBackup: false,
+    title: "연차", subtitle: "백업 백업자", at: null })]);   // AutoItem 계약
 });
 it("가족이 다르면 합치지 않는다 — 휴가와 외근", () => {
   const items = buildLeaveItems({ ...args,
@@ -552,7 +631,7 @@ it("가족이 다르면 합치지 않는다 — 휴가와 외근", () => {
 it("일정에만 있는 휴가는 백업요청 만들기 대상", () => {
   const [it0] = buildLeaveItems({ ...args, backups: [],
     schedules: [s("s3", "leave", "휴가", "2026-11-26T00:00:00Z", null, "a@x")] });
-  expect(it0).toMatchObject({ needsBackup: true, kindLabel: "휴가", startYmd: "2026-11-26" });
+  expect(it0).toMatchObject({ needsBackup: true, kindLabel: "휴가", startYmd: "2026-11-26", title: "휴가", subtitle: "백업 없음", at: null });
 });
 it("여러 주에 걸친 휴가는 들고, 시작일 없는 백업요청과 남의 일정은 뺀다", () => {
   const items = buildLeaveItems({ ...args,
@@ -586,20 +665,21 @@ it("반차 날짜 하나짜리도 든다", () => {
   - `type ItemOverride = { item_key: string; note: string; excluded: boolean }`
   - `type ManualItem = { id: string; area: AutoArea; group_key: string | null; title: string; note: string; period_start: string | null; period_end: string | null; leave_kind: string | null }`
   - `APPLICATION_GROUP_KEYS = ["dev","test","opening","running","closing","other"] as const`(`other` = 원서접수 외 서비스), `PIMS_GROUP_KEYS = ["thisWeek","nextWeek"] as const`
-  - `autoSnapshotSchema` (zod) / `type AutoSnapshot = { version: 1; computedAt: string; application: ApplicationGroups; pims: PimsGroups; leave: LeaveItem[]; unmatched: { application: number; pims: number } }`
-  - `type ViewItem = AutoItem & { note: string; excluded: boolean }`
-  - `applyOverrides(items: readonly AutoItem[], overrides: ReadonlyMap<string, ItemOverride>): ViewItem[]`(뺀 건도 돌려준다. 화면이 '되살리기'를 보여야 하기 때문이다)
+  - `autoSnapshotSchema` (zod) / `type AutoSnapshot = { version: 1; computedAt: string; application: ApplicationGroups; pims: PimsGroups; leave: LeaveItem[]; unmatched: { application: number; pims: number } }`(leave 항목 스키마는 `AutoItem` 칸 `title`·`subtitle`·`at` 을 함께 검사한다 — Task 5 의 `LeaveItem = AutoItem & …`)
+  - `type ViewItem<T extends AutoItem = AutoItem> = T & { note: string; excluded: boolean }`
+  - `applyOverrides<T extends AutoItem>(items: readonly T[], overrides: ReadonlyMap<string, ItemOverride>): ViewItem<T>[]`(뺀 건도 돌려준다. 화면이 '되살리기'를 보여야 하기 때문이다). 제네릭이라 `LeaveItem[]` 을 넣으면 `ViewItem<LeaveItem>[]` 이 나온다 — 휴가 탭이 기간·백업 칸을 잃지 않는다
   - `type WeeklyKpis = { dev: number | null; test: number | null; opening: number; running: number; closing: number; pims: number }`
   - `computeKpis(snap: AutoSnapshot, overrides: ReadonlyMap<string, ItemOverride>, manual: readonly ManualItem[]): WeeklyKpis`. 뺀 건은 빼고 같은 묶음의 직접 추가 건은 더한다. `dev`/`test`는 `!snap.application.devStatusCollected`이고 그 묶음에 직접 추가 건도 없으면 `null`이다. `pims` = 금주 + 차주.
   - `type ProjectEntryView = { projectId: string; projectName: string; kind: ProjectKind; sortOrder: number; operatorEmail: string; operatorName: string; stage: ProjectStage | null; thisWeek: string; nextWeek: string }`
-  - `groupEntriesByProject(entries: readonly ProjectEntryView[]): { projectId: string; projectName: string; kind: ProjectKind; owners: ProjectEntryView[] }[]`(sortOrder 순, 그 안은 운영자명 순)
+  - `type ProjectGroup = { projectId: string; projectName: string; kind: ProjectKind; owners: ProjectEntryView[] }`
+  - `groupEntriesByProject(entries: readonly ProjectEntryView[]): ProjectGroup[]`(sortOrder 순, 그 안은 운영자명 순)
 - Produces (`auto-queries.ts`, `import "server-only"`, admin client, 에러가 나면 `throw new Error(\`[ops-weekly] <label>: ${error.message}\`)`):
   - `listDevStatuses(serviceIds: readonly number[]): Promise<DevStatusRow[]>`(빈 입력이면 조회 없이 `[]`)
   - `loadAutoSnapshot(args: { weekStart: string; operatorEmail: string; operatorName: string; writerNames: ReadonlySet<string>; now: Date }): Promise<AutoSnapshot>`
     - closing: `closing_services` select(`ClosingLite` 칸) `.or("pay_end_at.is.null,pay_end_at.gte.<startInstant ISO>")`
-    - pims: `announcement_services` select(`PimsLite` 칸) `.gte("last_announce_at", weekWindows(weekStart).startInstant).lte("last_announce_at", weekWindows(shiftWeek(weekStart, 1)).endInstant)`
+    - pims: `announcement_services` select(`PimsLite` 칸) `.gte("last_announce_at", weekWindows(weekStart).startInstant.toISOString()).lte("last_announce_at", weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString())` — **`Date` 를 그대로 넘기지 않는다**: supabase-js 는 필터 값을 `String()` 으로 붙여 `Mon Nov 16 2026 …` 꼴이 되고 PostgREST 가 그 시각을 못 읽는다
     - backups: `backup_requests` select(`id, leave_type, leave_start_date, leave_end_date, substitute_name`) `.eq("requester_email", operatorEmail).lte("leave_start_date", nextWeek.endYmd)`(겹침 판정은 builder가 한다)
-    - schedules: `schedule_events` select(`ScheduleLeaveLite` 칸) `.in("type", ["leave","external_meeting","training"]).lte("start_at", 창 끝).or("end_at.is.null,end_at.gte.<창 시작>")`(본인 판정은 builder가 한다)
+    - schedules: `schedule_events` select(`ScheduleLeaveLite` 칸) `.in("type", ["leave","external_meeting","training"]).lte("start_at", 창 끝 ISO).or("end_at.is.null,end_at.gte.<창 시작 ISO>")`(본인 판정은 builder가 한다. 시각 필터 값은 전부 `toISOString()` 문자열이다)
     - dev: closing 행 중 upcoming 후보의 service_id로 `listDevStatuses` → `freshDevStages`
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
@@ -627,10 +707,21 @@ it("프로젝트를 항목 → 담당자로 묶는다", () => {
   const g = groupEntriesByProject([e("p2", 20, "운영자B"), e("p1", 10, "운영자B"), e("p1", 10, "운영자A")]);
   expect(g.map((x) => [x.projectId, x.owners.map((o) => o.operatorName)])).toEqual([["p1", ["운영자A", "운영자B"]], ["p2", ["운영자B"]]]);
 });
+it("빼기는 휴가 항목에도 걸린다 — 제네릭이라 기간 칸이 남는다", () => {
+  const [v] = applyOverrides([leaveItem("leave:br:b1", { startYmd: "2026-11-18" })],
+    new Map([["leave:br:b1", { item_key: "leave:br:b1", note: "오전만", excluded: false }]]));
+  expect([v.key, v.note, v.excluded, v.startYmd]).toEqual(["leave:br:b1", "오전만", false, "2026-11-18"]);
+});
 // auto-queries.test.ts — createAdminClient 를 테이블별 응답으로 모킹
 it("조회 에러는 던진다 — 빈 목록으로 삼키지 않는다", async () => {
   mockTable("closing_services", { data: null, error: { message: "boom" } });
   await expect(loadAutoSnapshot(ARGS)).rejects.toThrow("[ops-weekly] closing_services: boom");
+});
+it("PIMS 조회 창은 ISO 문자열로 넘긴다 — Date 객체가 아니다", async () => {
+  mockTables({ closing_services: [], announcement_services: [], backup_requests: [], schedule_events: [], ops_weekly_dev_status: [] });
+  await loadAutoSnapshot(ARGS); // ARGS.weekStart = "2026-11-16"
+  expect(gteSpy).toHaveBeenCalledWith("last_announce_at", "2026-11-15T15:00:00.000Z");
+  expect(lteSpy).toHaveBeenCalledWith("last_announce_at", "2026-11-29T14:59:59.999Z");
 });
 it("원천 넷을 묶어 스냅샷을 만든다", async () => {
   mockTables({ closing_services: [CL_OPENING], announcement_services: [PIMS_THIS], backup_requests: [], schedule_events: [], ops_weekly_dev_status: [] });
@@ -656,13 +747,16 @@ it("listDevStatuses([]) 는 조회하지 않는다", async () => {
 
 **Files:**
 - Create: `src/features/ops-weekly/schemas.ts`, `src/features/ops-weekly/prefill.ts`, `src/features/ops-weekly/week-queries.ts`, `src/features/ops-weekly/report-queries.ts`
+- Create (테스트 도우미, `*.test.ts` 가 아니다): `src/features/ops-weekly/__tests__/fake-admin.ts`
 - Test: `src/features/ops-weekly/__tests__/prefill.test.ts`, `src/features/ops-weekly/__tests__/week-queries.test.ts`, `src/features/ops-weekly/__tests__/report-queries.test.ts`
 
 **Interfaces:**
-- Consumes: `weekRefFromStart`·`canCreateWeek`·`weekOf`·`shiftWeek`(Task 2), `writerRoster`·`dutyForWeek`(Task 3), `ManualItem`·`ItemOverride`·`ProjectEntryView`·`autoSnapshotSchema`(Task 6)
+- Consumes: `weekRefFromStart`·`canCreateWeek`·`weekOf`·`shiftWeek`(Task 2), `writerRoster`·`dutyForWeek`·`WeekState`(Task 3), `ManualItem`·`ItemOverride`·`ProjectEntryView`·`autoSnapshotSchema`(Task 6), `ReportStatus`·`WeekStatus`·`REPORT_STATUSES`·`WEEK_STATUSES`(Task 1)
 - Produces (`schemas.ts`, DB 행):
-  - `weekRowSchema` / `type WeekRow = { id; week_start; label_year; label_month; label_week; duty_email: string | null; summary_this; summary_next; status: "open" | "reported"; reported_at; reported_by; reopened_at; reopened_by }`
-  - `reportRowSchema` / `type ReportRow = { id; week_id; operator_email; status: ReportStatus; submitted_at; returned_at; returned_by; return_reason; snapshot: AutoSnapshot | null; checked_tabs: Area[] }`
+  - `weekRowSchema` / `type WeekRow = { id; week_start; label_year; label_month; label_week; duty_email: string | null; summary_this; summary_next; status: WeekStatus; reported_at; reported_by; reopened_at: string | null; reopened_by }`(`status` 는 `z.enum(WEEK_STATUSES)`)
+  - `reportRowSchema` / `type ReportRow = { id; week_id; operator_email; status: ReportStatus; submitted_at; returned_at; returned_by; return_reason; snapshot: AutoSnapshot | null; checked_tabs: Area[] }`(`status` 는 `z.enum(REPORT_STATUSES)`)
+  - `weekStateOf(row: WeekRow): WeekState` = `{ status: row.status, dutyEmail: row.duty_email, reopenedAt: row.reopened_at }` — `WeekRow` 를 권한 판정에 넘기는 **유일한** 변환이다. Task 8 guard·Task 9·Task 11 `_load` 가 이것만 쓴다(필드를 손으로 옮기다 `reopenedAt` 을 빠뜨리면 admin 정정 편집이 조용히 막힌다)
+- Produces (`__tests__/fake-admin.ts`, Task 8~10 테스트도 쓴다): `fakeAdmin(tables: Record<string, Record<string, unknown>[]>): { client; spies: { upsert: Mock; insert: Mock; update: Mock; delete: Mock; rpc: Mock }; failTable(name: string, message: string): void }`(`failTable` 뒤로 그 테이블의 모든 응답은 `{ data: null, error: { message } }`, `rpc` 는 기본 `{ data: null, error: null }` 이고 `spies.rpc.mockResolvedValueOnce` 로 바꾼다). **테이블별 행 배열을 들고 `.eq(col, v)`·`.in(col, vs)` 를 실제로 적용해 거른다** — 테이블 단위로 같은 응답을 돌려주는 목으로는 '이번 주 보고서 entries' 와 '지난주 보고서 entries' 를 구분할 수 없어서 미리 채우기 테스트가 성립하지 않는다. `select`·`maybeSingle`·`single`·`order`·`upsert(row, { onConflict, ignoreDuplicates })`(충돌 키가 같은 행이 있으면 건너뛴다)·`insert`(`id` 가 없으면 `"<table>-<n>"` 을 채워 넣는다)·`update().eq()…select()` 를 지원하고, 쓰기 spy 는 첫 인자로 테이블 이름을 받는다(`spies.insert("ops_weekly_project_entries", rows)` 꼴로 기록). 주입은 `vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => db.client }))`. `.or()`·`.gte()` 같은 범위 필터는 지원하지 않는다(Task 6 은 체인 목을 쓴다)
 - Produces (`prefill.ts`): `prefillEntry(prev: { stage: ProjectStage | null; next_week: string } | null): { stage: ProjectStage | null; this_week: string; next_week: string }`. 단계는 그대로 가져오고, **금주 ← 지난주 차주**, 차주는 빈칸이다.
 - Produces (`week-queries.ts`, server-only, admin client, 에러가 나면 던진다):
   - `getWeek(weekStart: string): Promise<WeekRow | null>`
@@ -688,45 +782,78 @@ it("prefillEntry — 단계 유지, 금주 ← 지난주 차주, 차주 빈칸",
   expect(prefillEntry({ stage: "개발", next_week: "QA 착수" })).toEqual({ stage: "개발", this_week: "QA 착수", next_week: "" });
   expect(prefillEntry(null)).toEqual({ stage: null, this_week: "", next_week: "" });
 });
+it("weekStateOf — reopened_at 까지 옮긴다", () => {
+  expect(weekStateOf({ ...WEEK_1116, status: "open", duty_email: "d@x", reopened_at: "2026-11-20T01:00:00Z" }))
+    .toEqual({ status: "open", dutyEmail: "d@x", reopenedAt: "2026-11-20T01:00:00Z" });
+});
+// 아래는 fakeAdmin(테이블별 행 + eq/in 실제 필터). 에러 응답은 fakeAdmin 의 failTable(name, message) 로 넣는다.
+// WEEK_1109 = { id: "w0", week_start: "2026-11-09", status: "reported", … }, WEEK_1116 = { id: "w1", week_start: "2026-11-16", status: "open", … }
 it("listWriters — 조회 에러를 던진다(빈 명단으로 최종 보고가 켜지지 않게)", async () => {
-  mockTable("operators", { data: null, error: { message: "x" } });
+  const db = fakeAdmin({ operators: [] }); db.failTable("operators", "x");
   await expect(listWriters()).rejects.toThrow("[ops-weekly] operators: x");
 });
 it("listWriters — settings 제외 목록을 반영한다", async () => {
-  mockTables({ operators: [W1, W2_TEST], ops_weekly_settings: [{ excluded_writer_emails: [W2_TEST.email] }] });
+  fakeAdmin({ operators: [W1, W2_TEST], ops_weekly_settings: [{ id: true, excluded_writer_emails: [W2_TEST.email] }] });
   expect((await listWriters()).map((w) => w.email)).toEqual([W1.email]);
 });
 it("ensureWeek — 이번 주는 만들고 라벨·당번을 채운다", async () => {
-  mockTables({ ops_weekly_weeks: [], ops_weekly_duty_rotation: [{ position: 0, operator_email: "a@x" }],
-               ops_weekly_settings: [{ rotation_anchor_week: "2026-11-16", excluded_writer_emails: [] }] });
-  await ensureWeek("2026-11-16", new Date("2026-11-18T01:00:00Z"));
-  expect(upsertSpy).toHaveBeenCalledWith(
+  const db = fakeAdmin({ ops_weekly_weeks: [], ops_weekly_duty_rotation: [{ position: 0, operator_email: "a@x" }],
+    ops_weekly_settings: [{ id: true, rotation_anchor_week: "2026-11-16", excluded_writer_emails: [] }] });
+  const w = await ensureWeek("2026-11-16", new Date("2026-11-18T01:00:00Z"));
+  expect(db.spies.upsert).toHaveBeenCalledWith("ops_weekly_weeks",
     expect.objectContaining({ week_start: "2026-11-16", label_year: 2026, label_month: 11, label_week: 3, duty_email: "a@x" }),
     { onConflict: "week_start", ignoreDuplicates: true });
+  expect(w?.week_start).toBe("2026-11-16");                               // upsert 뒤 다시 읽은 행
 });
 it("ensureWeek — 이번 주가 보고 전이면 다음 주는 만들지 않는다", async () => {
-  mockTables({ ops_weekly_weeks: [{ ...WEEK_1116, status: "open" }] });
+  const db = fakeAdmin({ ops_weekly_weeks: [WEEK_1116] });               // 2026-11-23 행은 없다 → week_start 필터로 null
   expect(await ensureWeek("2026-11-23", new Date("2026-11-18T01:00:00Z"))).toBeNull();
-  expect(upsertSpy).not.toHaveBeenCalled();
+  expect(db.spies.upsert).not.toHaveBeenCalled();
+});
+it("ensureWeek — 이번 주가 보고됐으면 다음 주를 만든다", async () => {
+  const db = fakeAdmin({ ops_weekly_weeks: [{ ...WEEK_1116, status: "reported" }], ops_weekly_duty_rotation: [], ops_weekly_settings: [{ id: true, rotation_anchor_week: null, excluded_writer_emails: [] }] });
+  expect((await ensureWeek("2026-11-23", new Date("2026-11-18T01:00:00Z")))?.week_start).toBe("2026-11-23");
+  expect(db.spies.upsert).toHaveBeenCalledWith("ops_weekly_weeks", expect.objectContaining({ week_start: "2026-11-23", duty_email: null }), expect.anything());
 });
 it("ensureWeek — 월요일이 아닌 값은 null", async () => {
+  fakeAdmin({});
   expect(await ensureWeek("2026-11-17")).toBeNull();
 });
-it("ensureReport — 맡은 활성 프로젝트 entry 를 지난주 값으로 채운다", async () => {
-  mockTables({ ops_weekly_reports: [REPORT], ops_weekly_project_owners: [{ project_id: "p1" }, { project_id: "p2" }],
-    ops_weekly_projects: [{ id: "p1", active: true }, { id: "p2", active: false }],
-    ops_weekly_project_entries: [], /* 지난주 */ prevEntries: [{ project_id: "p1", stage: "설계", next_week: "개발 착수" }] });
-  await ensureReport("w1", "a@x");
-  expect(entryInsertSpy).toHaveBeenCalledWith([{ report_id: REPORT.id, project_id: "p1", stage: "설계", this_week: "개발 착수", next_week: "" }]);
+const ENSURE_TABLES = () => ({
+  ops_weekly_weeks: [WEEK_1109, WEEK_1116],
+  ops_weekly_reports: [{ id: "r0", week_id: "w0", operator_email: "a@x", status: "submitted", snapshot: null, checked_tabs: [] }],
+  ops_weekly_project_owners: [{ project_id: "p1", operator_email: "a@x" }, { project_id: "p2", operator_email: "a@x" }, { project_id: "p3", operator_email: "b@x" }],
+  ops_weekly_projects: [{ id: "p1", active: true }, { id: "p2", active: false }, { id: "p3", active: true }],
+  ops_weekly_project_entries: [{ id: "e0", report_id: "r0", project_id: "p1", stage: "설계", this_week: "", next_week: "개발 착수" }],
+});
+it("ensureReport — 맡은 활성 프로젝트만, 지난주 같은 (프로젝트, 운영자) 값으로 채운다", async () => {
+  const db = fakeAdmin(ENSURE_TABLES());
+  const rep = await ensureReport("w1", "a@x");                            // w1 → getWeekById → getWeek(2026-11-09)=w0 → r0 → e0
+  expect(rep).toMatchObject({ week_id: "w1", operator_email: "a@x", status: "draft" });
+  expect(db.spies.insert).toHaveBeenCalledWith("ops_weekly_project_entries",
+    [{ report_id: rep.id, project_id: "p1", stage: "설계", this_week: "개발 착수", next_week: "" }]);   // p2 비활성·p3 남의 것 제외
+});
+it("ensureReport — 두 번 불러도 entry 는 한 번만 넣는다(멱등)", async () => {
+  const db = fakeAdmin(ENSURE_TABLES());
+  await ensureReport("w1", "a@x"); await ensureReport("w1", "a@x");
+  expect(db.spies.insert.mock.calls.filter(([t]) => t === "ops_weekly_project_entries")).toHaveLength(1);
+});
+it("ensureReport — 지난주 주 행이 없으면 빈 값으로 채운다", async () => {
+  const db = fakeAdmin({ ...ENSURE_TABLES(), ops_weekly_weeks: [WEEK_1116] });
+  const rep = await ensureReport("w1", "a@x");
+  expect(db.spies.insert).toHaveBeenCalledWith("ops_weekly_project_entries",
+    [{ report_id: rep.id, project_id: "p1", stage: null, this_week: "", next_week: "" }]);
 });
 it("listPendingWriters — 보고서 행이 없는 사람도 미제출", async () => {
-  mockWriters([W1, W3]); mockTable("ops_weekly_reports", [{ operator_email: W1.email, status: "submitted" }]);
+  fakeAdmin({ operators: [W1, W3], ops_weekly_settings: [{ id: true, excluded_writer_emails: [] }],
+    ops_weekly_reports: [{ id: "r1", week_id: "w1", operator_email: W1.email, status: "submitted" },
+                         { id: "rx", week_id: "w0", operator_email: W3.email, status: "submitted" }] });   // 다른 주 제출은 안 친다
   expect((await listPendingWriters("w1")).map((w) => w.email)).toEqual([W3.email]);
 });
 ```
 
 - [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/features/ops-weekly --maxWorkers=1` → 새 파일 3개 FAIL.
-- [ ] **Step 3: 구현한다.** 지난주 entry 조회는 `getWeek(shiftWeek(weekStart, -1))` → 그 주의 본인 보고서 → entries 순서다. 지난주가 없으면 `prefillEntry(null)`. `snapshot`은 `autoSnapshotSchema.nullable()`로 파싱하고, 실패하면 `null`로 둔다(살아 있는 계산으로 돌아간다). 이것은 스키마 버전이 바뀐 옛 행에 대한 의도된 규칙이므로 주석으로 이유를 남긴다.
+- [ ] **Step 3: 구현한다.** `fake-admin.ts` 를 먼저 쓰고(위 계약), 조회 함수는 그 도우미가 지원하는 필터(`eq`·`in`)만으로 짠다. 지난주 entry 조회는 `getWeek(shiftWeek(weekStart, -1))` → 그 주의 본인 보고서 → entries 순서다. 지난주가 없으면 `prefillEntry(null)`. `snapshot`은 `autoSnapshotSchema.nullable()`로 파싱하고, 실패하면 `null`로 둔다(살아 있는 계산으로 돌아간다). 이것은 스키마 버전이 바뀐 옛 행에 대한 의도된 규칙이므로 주석으로 이유를 남긴다.
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "feat: 주간업무보고 주·보고서 늦은 생성과 지난주 값 미리 채우기"`
 
@@ -736,33 +863,101 @@ it("listPendingWriters — 보고서 행이 없는 사람도 미제출", async (
 
 **Files:**
 - Modify: `src/features/ops-weekly/schemas.ts`(입력 스키마 추가)
-- Create: `src/features/ops-weekly/guard.ts`, `src/features/ops-weekly/actions.ts`
-- Test: `src/features/ops-weekly/__tests__/actions.test.ts`
+- Create: `src/features/ops-weekly/note-images.ts`, `src/features/ops-weekly/guard.ts`, `src/features/ops-weekly/actions.ts`
+- Test: `src/features/ops-weekly/__tests__/note-images.test.ts`, `src/features/ops-weekly/__tests__/actions.test.ts`
 
 **Interfaces:**
-- Consumes: `getCurrentOperator`(`@/features/auth/queries`), `canEditReport`(Task 3), `getWeekById`(Task 7), `sanitizeNoteHtml`(`@/features/checklist/note-html`), `createAdminClient`
+- Consumes: `getCurrentOperator`(`@/features/auth/queries`), `canEditReport`(Task 3), `getWeekById`·`weekStateOf`·`fakeAdmin`(Task 7), `sanitizeNoteHtml`(`@/features/checklist/note-html`, 고치지 않는다), `createAdminClient`, `OPS_WEEKLY_BUCKET`·`OPS_WEEKLY_SIGNED_URL_TTL_SEC`·`OPS_WEEKLY_IMAGE_RE`·`MAX_IMAGE_BYTES`(Task 1), `ProjectEntryView`(Task 6)
+- Produces (`note-images.ts`, `import "server-only"` — 그림 경로의 저장·읽기 두 방향이 이 파일 하나에 있다):
+  - `opsWeeklyImagePrefix(weekStart: string, reportId: string): string` = `` `${weekStart}/${reportId}/` `` — **객체 경로 접두사**다(URL 이 아니다). 업로드 경로와 저장 시 허용 범위가 같은 함수에서 나온다
+  - `opsWeeklySignedUrlPrefix(): string` = `` `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/sign/${OPS_WEEKLY_BUCKET}/` ``
+  - `toStoredNoteHtml(html: string, pathPrefix: string, signedPrefix: string = opsWeeklySignedUrlPrefix()): string` — 저장용. 알고리즘(시그니처로 안 정해지는 부분):
+
+    ```text
+    0. 입력의 · 을 먼저 지운다(자리표시자 위조 방지)
+    1. 각 <img …> 태그에서 경로를 찾는다:
+         src 가 signedPrefix 로 시작하면 → src 에서 signedPrefix 뒤 ~ '?' 앞
+         아니면 data-ops-path="…" 가 있으면 → 그 값            (읽기 때 채운 src+data-ops-path 를 그대로 다시 저장하는 경우)
+       경로가 /^[0-9A-Za-z_.\/-]+$/ 이고 '..' 이 없고 pathPrefix 로 시작하면 → "{n}" 자리표시자로 바꾸고 경로·숫자 width 를 기억
+       그 밖(외부 URL, 같은 버킷 public URL, 남의 보고서 경로, 경로 없음) → 태그를 지운다
+    2. sanitizeNoteHtml(s, "") — 접두사가 빈 문자열이라 남은 <img> 는 전부 지워지고, 자리표시자는 <>&" 가 없어 이스케이프를 통과한다
+    3. 자리표시자 → <img data-ops-path="{path}" alt="첨부 이미지"[ width="{w}"]>
+    ```
+  - `collectNoteImagePaths(htmls: readonly string[]): string[]` — `data-ops-path` 값을 처음 나온 순서로, 중복 없이
+  - `fillNoteImageSrc(html: string, signed: ReadonlyMap<string, string>): string` — `toStoredNoteHtml` 이 만든 모양(`<img data-ops-path="[0-9A-Za-z_./-]+" …>`)만 잡는다. `<img data-ops-path="p" …>` 를 `<img src="{signed.get(p)}" data-ops-path="p" alt="첨부 이미지"[ width]>` 로, map 에 없으면 태그를 `[그림 없음]` 글자로 바꾼다
+  - `signNoteImages(htmls: readonly string[]): Promise<string[]>` — 경로를 모아 `createAdminClient().storage.from(OPS_WEEKLY_BUCKET).createSignedUrls(paths, OPS_WEEKLY_SIGNED_URL_TTL_SEC)` **한 번**(경로가 없으면 부르지 않는다). 항목별 `error` 가 있는 경로는 map 에서 빠진다(→ `[그림 없음]`). 호출 전체의 `error` 는 `throw new Error(\`[ops-weekly] storage sign: ${error.message}\`)` — 조용히 그림을 다 지우지 않는다. 입력과 같은 순서로 돌려준다
+  - `signProjectEntries(entries: readonly ProjectEntryView[]): Promise<ProjectEntryView[]>` — 모든 entry 의 `thisWeek`·`nextWeek` 를 한 번의 `signNoteImages` 로 채운 **새 배열**(입력을 바꾸지 않는다). Task 11 `_load`·Task 14 모아보기가 쓴다
 - Produces (`schemas.ts`, 입력):
   - `areaNoteInputSchema = { reportId: uuid, area: enum(AREAS), thisWeek: string.max(4000), nextWeek: string.max(4000) }`
   - `itemOverrideInputSchema = { reportId, itemKey: string.regex(/^(closing|pims|leave:(br|se)):[\w-]+$/), area: enum(AUTO_AREAS), note?: max(1000), excluded?: boolean }`
   - `manualItemInputSchema = { reportId, area: enum(AUTO_AREAS), groupKey: string | null, title: string.trim().min(1).max(200), note?: max(1000), periodStart?: ymd | null, periodEnd?: ymd | null, leaveKind?: max(20) | null }`. application이면 `groupKey ∈ APPLICATION_GROUP_KEYS`, pims면 `∈ PIMS_GROUP_KEYS`, leave면 `periodStart`가 필수다(`superRefine`).
-  - `projectEntryInputSchema = { reportId, projectId: uuid, stage: enum(PROJECT_STAGES) | null, thisWeek: string, nextWeek: string }`. HTML은 **정화한 뒤** `max(50_000)`로 검사한다(fill-actions처럼 base64 이미지를 먼저 지운다).
+  - `projectEntryInputSchema = { reportId, projectId: uuid, stage: enum(PROJECT_STAGES) | null, thisWeek: string, nextWeek: string }`. HTML은 **`toStoredNoteHtml` 로 정화한 뒤** `max(50_000)`로 검사한다(fill-actions처럼 base64 이미지를 먼저 지운다 — `toStoredNoteHtml` 1단계에서 `data:` src 는 경로가 아니라 지워진다).
 - Produces (`guard.ts`):
   - `type EditContext = { actor: Actor; report: ReportRow; week: WeekRow }`
-  - `authorizeReportEdit(reportId: string): Promise<{ ok: true; ctx: EditContext } | { ok: false; error: string }>`: me → 보고서 행 → 주 행을 **DB에서** 읽고 `canEditReport`로 판정한다.
-  - 문구(그대로 쓴다): `로그인이 필요합니다.` / `보고서를 찾을 수 없습니다.` / `보고가 끝난 주입니다. 관리자에게 정정을 요청하세요.` / `본인 보고서만 수정할 수 있습니다.`
-  - `opsWeeklyImagePrefix(): string` = `${NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ops-weekly/`
+  - `authorizeReportEdit(reportId: string): Promise<{ ok: true; ctx: EditContext } | { ok: false; error: string }>`: me → 보고서 행 → 주 행을 **DB에서** 읽고 `canEditReport(actor, weekStateOf(week), report.operator_email)`로 판정한다.
+  - 문구(그대로 쓴다): `로그인이 필요합니다.` / `보고서를 찾을 수 없습니다.` / `보고가 끝난 주입니다. 관리자에게 정정을 요청하세요.` / `본인 보고서만 수정할 수 있습니다.`(admin 이 정정 전 주에서 남의 보고서를 고치려 할 때도 이 문구다)
 - Produces (`actions.ts`, `"use server"`, 모두 `Promise<ActionResult>`, `type ActionResult = { ok: true } | { ok: false; error: string }`, 성공하면 `revalidatePath(OPS_WEEKLY_PATH)`):
   - `saveAreaNote(input: unknown)`: `ops_weekly_area_notes` upsert(onConflict `report_id,area`)
   - `saveItemOverride(input: unknown)`: `ops_weekly_item_overrides` upsert(onConflict `report_id,item_key`)
   - `addManualItem(input: unknown): Promise<ActionResult & { id?: string }>`
   - `removeManualItem(input: { reportId: string; itemId: string })`: 그 보고서의 항목인지 `.eq("report_id")`로 함께 조건을 건다
-  - `saveProjectEntry(input: unknown)`: `ops_weekly_project_owners`에 (projectId, report.operator_email)이 있어야 한다. 없으면 `담당 항목이 아닙니다.`
-  - `uploadWeeklyImage(input: { reportId: string; dataUrl: string }): Promise<{ ok: true; url: string } | { ok: false; error: string }>`: fill-actions의 `IMAGE_RE`·5MB 규칙. `url` 은 공개 URL 이 아니라 **1시간 서명 URL**(`createSignedUrl`) — 버킷이 비공개다(Global Constraints). 보고서 주인의 활성 프로젝트 담당이 하나도 없으면 `그림은 프로젝트·TF에만 붙일 수 있습니다.` 경로는 `${week.week_start}/${reportId}/${randomUUID()}.${ext}`, 버킷은 `ops-weekly`.
+  - `saveProjectEntry(input: unknown)`: `ops_weekly_project_owners`에 (projectId, report.operator_email)이 있어야 한다. 없으면 `담당 항목이 아닙니다.` 금주·차주 HTML 은 `toStoredNoteHtml(html, opsWeeklyImagePrefix(week.week_start, report.id))` 를 거쳐 저장한다(서명 URL → `data-ops-path`, 그 보고서 밖 경로·외부 src 제거)
+  - `uploadWeeklyImage(input: { reportId: string; dataUrl: string }): Promise<{ ok: true; url: string } | { ok: false; error: string }>`: `OPS_WEEKLY_IMAGE_RE`·`MAX_IMAGE_BYTES`(Task 1, fill-actions 규칙 복제)로 검사한다 — 형식이 아니면 `이미지 형식이 아닙니다.`, 0바이트이거나 5MB 초과면 `이미지 크기가 유효하지 않습니다(5MB 이하).`(fill-actions 와 같은 문구). `url` 은 공개 URL 이 아니라 **1시간 서명 URL**(`createSignedUrl(path, OPS_WEEKLY_SIGNED_URL_TTL_SEC)`) — 버킷이 비공개다. 이 URL 은 편집기 안에서만 산다: 저장할 때 `toStoredNoteHtml` 이 경로로 되돌린다. 보고서 주인의 활성 프로젝트 담당이 하나도 없으면 `그림은 프로젝트·TF에만 붙일 수 있습니다.` 경로는 `${opsWeeklyImagePrefix(week.week_start, reportId)}${randomUUID()}.${ext}`, 버킷은 `OPS_WEEKLY_BUCKET`, `upsert: false`.
   - `markTabChecked(input: { reportId: string; area: Area })`: `checked_tabs`에 area가 없으면 더한다(배열을 새로 만든다)
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다** (`open-notices/__tests__/actions.test.ts`처럼 `next/cache`·`@/lib/supabase/admin`·`@/features/auth/queries`를 모킹한다)
 
 ```ts
+// note-images.test.ts — SP = "https://sb.test/storage/v1/object/sign/ops-weekly/", PFX = "2026-11-16/r1/"
+it("우리 버킷 서명 URL → data-ops-path(토큰·src 제거, 숫자 width 유지)", () => {
+  expect(toStoredNoteHtml(`<p>a</p><img src="${SP}2026-11-16/r1/x.png?token=abc" width="320">`, PFX, SP))
+    .toBe('<p>a</p><img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지" width="320">');
+});
+it("남의 보고서 경로는 지운다", () => {
+  expect(toStoredNoteHtml(`<p>a</p><img src="${SP}2026-11-16/r2/x.png?token=abc">`, PFX, SP)).toBe("<p>a</p>");
+  expect(toStoredNoteHtml('<p>a</p><img data-ops-path="2026-11-16/r1/../r2/x.png">', PFX, SP)).toBe("<p>a</p>");
+});
+it("외부 src·같은 버킷 public URL·data: 는 지운다", () => {
+  expect(toStoredNoteHtml('<p>a</p><img src="https://evil/x.png">', PFX, SP)).toBe("<p>a</p>");
+  expect(toStoredNoteHtml('<p>a</p><img src="https://sb.test/storage/v1/object/public/ops-weekly/2026-11-16/r1/x.png">', PFX, SP)).toBe("<p>a</p>");
+  expect(toStoredNoteHtml('<p>a</p><img src="data:image/png;base64,AAAA">', PFX, SP)).toBe("<p>a</p>");
+});
+it("읽기 때 채운 src+data-ops-path 를 다시 저장하면 경로 하나로 돌아온다(왕복)", () => {
+  const filled = fillNoteImageSrc('<img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">', new Map([["2026-11-16/r1/x.png", `${SP}2026-11-16/r1/x.png?token=t2`]]));
+  expect(toStoredNoteHtml(filled, PFX, SP)).toBe('<img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">');
+});
+it("자리표시자 문자를 써 넣어도 그림이 생기지 않는다", () => {
+  expect(toStoredNoteHtml("<p>0</p>", PFX, SP)).toBe("<p>0</p>");
+});
+it("fillNoteImageSrc — 경로 → 서명 URL, 없는 경로는 [그림 없음]", () => {
+  expect(fillNoteImageSrc('<img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지"><img data-ops-path="2026-11-16/r1/gone.png" alt="첨부 이미지">',
+    new Map([["2026-11-16/r1/x.png", "https://signed/1"]])))
+    .toBe('<img src="https://signed/1" data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">[그림 없음]');
+});
+it("signNoteImages — createSignedUrls 한 번, 항목 에러는 [그림 없음]", async () => {
+  createSignedUrls.mockResolvedValueOnce({ error: null, data: [
+    { path: "2026-11-16/r1/x.png", signedUrl: "https://signed/1", error: null },
+    { path: "2026-11-16/r1/gone.png", signedUrl: "", error: "Object not found" } ] });
+  const out = await signNoteImages(['<img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">', '<p>b</p><img data-ops-path="2026-11-16/r1/gone.png" alt="첨부 이미지">']);
+  expect(createSignedUrls).toHaveBeenCalledTimes(1);
+  expect(createSignedUrls).toHaveBeenCalledWith(["2026-11-16/r1/x.png", "2026-11-16/r1/gone.png"], 3600);
+  expect(out).toEqual(['<img src="https://signed/1" data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">', "<p>b</p>[그림 없음]"]);
+});
+it("signNoteImages — 그림이 없으면 부르지 않고, 호출 에러는 던진다", async () => {
+  expect(await signNoteImages(["<p>a</p>"])).toEqual(["<p>a</p>"]);
+  expect(createSignedUrls).not.toHaveBeenCalled();
+  createSignedUrls.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+  await expect(signNoteImages(['<img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">'])).rejects.toThrow("[ops-weekly] storage sign: boom");
+});
+it("signProjectEntries — 새 배열, 입력은 그대로", async () => {
+  createSignedUrls.mockResolvedValueOnce({ error: null, data: [{ path: "2026-11-16/r1/x.png", signedUrl: "https://signed/1", error: null }] });
+  const src = [pev({ thisWeek: '<img data-ops-path="2026-11-16/r1/x.png" alt="첨부 이미지">', nextWeek: "<p>n</p>" })];
+  const out = await signProjectEntries(src);
+  expect(out[0].thisWeek).toContain('src="https://signed/1"');
+  expect(out[0].nextWeek).toBe("<p>n</p>");
+  expect(src[0].thisWeek).not.toContain("src=");
+});
+// actions.test.ts
 it("잠긴 주에 들어온 저장은 거절한다 — 화면이 낡았어도", async () => {
   me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "reported" });
   expect(await saveAreaNote({ reportId: R, area: "application", thisWeek: "x", nextWeek: "" }))
@@ -773,6 +968,12 @@ it("남의 보고서는 당번만 고친다", async () => {
   me("z@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open", duty_email: "d@x" });
   expect(await saveAreaNote(NOTE)).toEqual({ ok: false, error: "본인 보고서만 수정할 수 있습니다." });
   me("d@x");
+  expect(await saveAreaNote(NOTE)).toEqual({ ok: true });
+});
+it("admin 은 정정으로 다시 연 주에서만 남의 보고서를 고친다", async () => {
+  me("z@x", true); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open", duty_email: "d@x", reopened_at: null });
+  expect(await saveAreaNote(NOTE)).toEqual({ ok: false, error: "본인 보고서만 수정할 수 있습니다." });
+  dbWeek({ status: "open", duty_email: "d@x", reopened_at: "2026-11-20T01:00:00Z" });
   expect(await saveAreaNote(NOTE)).toEqual({ ok: true });
 });
 it("빼기는 그 주 보고서에만 기록한다", async () => {
@@ -787,27 +988,51 @@ it("직접 추가 — 원서접수는 묶음 키가 필요하고, 휴가는 시�
   expect((await addManualItem({ reportId: R, area: "leave", groupKey: null, title: "연차" })).ok).toBe(false);
   expect((await addManualItem({ reportId: R, area: "application", groupKey: "other", title: "공공접수 안내" })).ok).toBe(true);
 });
-it("프로젝트 HTML 은 정화한다 — 외부 이미지·스크립트 제거", async () => {
-  me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open" }); dbOwner("p1", "a@x");
+it("프로젝트 HTML 은 정화한다 — 외부 이미지·스크립트 제거, 서명 URL 은 경로로", async () => {
+  // env NEXT_PUBLIC_SUPABASE_URL = "https://sb.test", dbReport id = R, week_start = "2026-11-16"
+  me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open", week_start: "2026-11-16" }); dbOwner("p1", "a@x");
   await saveProjectEntry({ reportId: R, projectId: P1, stage: "개발",
-    thisWeek: '<p>ok</p><script>x</script><img src="https://evil/x.png">', nextWeek: "" });
-  expect(updateSpy.mock.calls[0][0].this_week).toBe("<p>ok</p>");
+    thisWeek: `<p>ok</p><script>x</script><img src="https://evil/x.png"><img src="https://sb.test/storage/v1/object/sign/ops-weekly/2026-11-16/${R}/a.png?token=t">`,
+    nextWeek: "" });
+  expect(updateSpy.mock.calls[0][0].this_week).toBe(`<p>ok</p><img data-ops-path="2026-11-16/${R}/a.png" alt="첨부 이미지">`);
 });
 it("맡지 않은 프로젝트는 쓸 수 없다", async () => {
   me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open" });
   expect(await saveProjectEntry({ reportId: R, projectId: P1, stage: null, thisWeek: "", nextWeek: "" }))
     .toEqual({ ok: false, error: "담당 항목이 아닙니다." });
 });
-it("그림 — 5MB 초과·이미지 아님 거절, 프로젝트 담당이 없으면 거절", async () => {
+// pngOf(n) = `data:image/png;base64,${Buffer.alloc(n).toString("base64")}` — 디코드하면 정확히 n 바이트
+it("그림 — 이미지 아님 거절", async () => {
+  me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open" }); dbOwner("p1", "a@x");
+  expect(await uploadWeeklyImage({ reportId: R, dataUrl: "data:text/plain;base64,AA==" }))
+    .toEqual({ ok: false, error: "이미지 형식이 아닙니다." });
+});
+it("그림 — 5MB 경계: 5,242,880 바이트는 받고 5,242,881 은 거절", async () => {
+  me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open" }); dbOwner("p1", "a@x");
+  expect(await uploadWeeklyImage({ reportId: R, dataUrl: pngOf(5 * 1024 * 1024 + 1) }))
+    .toEqual({ ok: false, error: "이미지 크기가 유효하지 않습니다(5MB 이하)." });
+  expect(uploadSpy).not.toHaveBeenCalled();
+  expect((await uploadWeeklyImage({ reportId: R, dataUrl: pngOf(5 * 1024 * 1024) })).ok).toBe(true);
+});
+it("그림 — 성공하면 그 보고서 접두사 아래에 올리고 1시간 서명 URL 을 돌려준다", async () => {
+  me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open", week_start: "2026-11-16" }); dbOwner("p1", "a@x");
+  signedUrlReturns("https://signed/up");
+  expect(await uploadWeeklyImage({ reportId: R, dataUrl: pngOf(10) })).toEqual({ ok: true, url: "https://signed/up" });
+  const [path, , opts] = uploadSpy.mock.calls[0];
+  expect(path).toMatch(new RegExp(`^2026-11-16/${R}/[0-9a-f-]{36}\\.png$`));   // = opsWeeklyImagePrefix("2026-11-16", R) + uuid
+  expect(opts).toEqual({ contentType: "image/png", upsert: false });
+  expect(createSignedUrlSpy).toHaveBeenCalledWith(path, 3600);
+  expect(storageFromSpy).toHaveBeenCalledWith("ops-weekly");
+});
+it("그림 — 프로젝트 담당이 없으면 거절", async () => {
   me("a@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open" });
-  expect((await uploadWeeklyImage({ reportId: R, dataUrl: "data:text/plain;base64,AA==" })).ok).toBe(false);
-  expect(await uploadWeeklyImage({ reportId: R, dataUrl: PNG_1PX }))
+  expect(await uploadWeeklyImage({ reportId: R, dataUrl: pngOf(10) }))
     .toEqual({ ok: false, error: "그림은 프로젝트·TF에만 붙일 수 있습니다." });
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/features/ops-weekly --maxWorkers=1` → `actions.test.ts` FAIL.
-- [ ] **Step 3: 구현한다.** zod 에러 메시지는 `parsed.error.issues[0].message`로 꺼낸다. 모든 쓰기에 `updated_by: actor.email`을 넣는다.
+- [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/features/ops-weekly --maxWorkers=1` → `note-images.test.ts`·`actions.test.ts` FAIL.
+- [ ] **Step 3: 구현한다.** `note-images.ts` 를 먼저 쓴다(`actions.ts` 가 그것을 쓴다). zod 에러 메시지는 `parsed.error.issues[0].message`로 꺼낸다. 모든 쓰기에 `updated_by: actor.email`을 넣는다.
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "feat: 주간업무보고 작성 action — DB 재판정·HTML 정화"`
 
@@ -820,7 +1045,7 @@ it("그림 — 5MB 초과·이미지 아님 거절, 프로젝트 담당이 없�
 - Test: `src/features/ops-weekly/__tests__/events.test.ts`, `src/features/ops-weekly/__tests__/workflow-actions.test.ts`, `src/features/ops-weekly/__tests__/no-outbound.test.ts`
 
 **Interfaces:**
-- Consumes: `canSubmitReport`·`canReturnReport`·`canEditDutySummary`·`checkFinalize`·`canReopenWeek`(Task 3), `shiftWeek`(Task 2), `listWriters`·`ensureWeek`·`getWeekById`·`listReports`·`listPendingWriters`(Task 7), `loadAutoSnapshot`(Task 6), `ActionResult`·`authorizeReportEdit`(Task 8)
+- Consumes: `canSubmitReport`·`canReturnReport`·`canEditDutySummary`·`checkFinalize`·`canReopenWeek`(Task 3), `shiftWeek`(Task 2), `listWriters`·`ensureWeek`·`getWeekById`·`listReports`·`listPendingWriters`·`weekStateOf`(Task 7), `loadAutoSnapshot`(Task 6), `ActionResult`(Task 8)
 - Produces (`events.ts`, **A2·A3가 훅을 등록하는 자리**):
 
 ```ts
@@ -836,7 +1061,7 @@ export async function emitOpsWeeklyEvent(event: OpsWeeklyEvent, hooks?: readonly
 
   훅마다 따로 try/catch해서 결과를 모은다. 한 훅이 실패해도 다른 훅과 action은 계속 간다(spec §6.3: 저장 실패가 보고를 막지 않는다). 실패를 화면에 남기는 일은 A3이 한다.
 - Produces (`workflow-actions.ts`, `"use server"`, 모두 `Promise<ActionResult>`):
-  - `submitReport(input: { reportId: string })`: `canSubmitReport`(작성 대상 여부는 `listWriters`로 확인). `loadAutoSnapshot`으로 스냅샷을 저장하고 `status='submitted'`, `submitted_at=now`로 바꾼 뒤 `listPendingWriters`가 비면 `all-submitted`를 낸다.
+  - `submitReport(input: { reportId: string })`: me·보고서·주를 DB에서 읽고 `canSubmitReport(actor, weekStateOf(week), report.operator_email, isWriter, report.status)`(작성 대상 여부는 `listWriters`로 확인). 거절 문구는 이 순서로 고른다 — 주가 reported면 locked 문구, `report.status === "submitted"`면 `이미 제출한 보고서입니다.`, 본인이 아니면 `본인 보고서만 제출할 수 있습니다.`, 작성 대상이 아니면 `작성 대상이 아닙니다.` 통과하면 `loadAutoSnapshot`으로 스냅샷을 만들고 **조건부 전환** `.update({ status: "submitted", submitted_at, snapshot, updated_by }).eq("id", reportId).in("status", ["draft", "returned"]).select("id")` — **0행이면** `이미 제출한 보고서입니다.`(두 번 클릭·두 탭에서 동시에 눌러도 전환과 `all-submitted` 는 한 번이다). 1행이 바뀌었을 때만 `listPendingWriters`가 비면 `all-submitted`를 낸다.
   - `returnReport(input: { reportId: string; reason?: string })`: `canReturnReport`. `status='returned'`, `snapshot=null`(다시 살아 있는 계산으로 돌아간다), `returned_at/by`, `return_reason`. `report-returned`를 낸다.
   - `saveDutySummary(input: { weekId: string; thisWeek: string; nextWeek: string })`: `canEditDutySummary`, 각 4000자 이하
   - `finalizeWeek(input: { weekId: string })`: `checkFinalize`(명단 = `listWriters`, 제출 = `listReports`에서 submitted). 전환은 `.update({status:'reported', reported_at, reported_by}).eq("id", weekId).eq("status", "open").select("id")`로 하고, **0행이면** `이미 보고된 주입니다.`(두 번 클릭해도 한 번만 바뀐다). 성공하면 `week-reported`를 `correction: week.reopened_at !== null`로 내고, `ensureWeek(shiftWeek(week_start, 1))`로 다음 주를 연다.
@@ -854,22 +1079,47 @@ it("한 훅이 던져도 나머지는 돈다", async () => {
   expect(out).toEqual([{ name: "bad", ok: false, error: "x" }, { name: "good", ok: true }]);
   expect(ok).toHaveBeenCalledWith(EV);
 });
-// no-outbound.test.ts — 소스 원문 가드
+// no-outbound.test.ts — 소스 원문 가드. 두 폴더 모두 .ts 와 .tsx 를 다 본다(app 폴더의 _load.ts·_params.ts·_format.ts 도)
+const GUARDED = ["src/features/ops-weekly/**/*.ts", "src/features/ops-weekly/**/*.tsx",
+                 "src/app/dashboard/ops-weekly/**/*.ts", "src/app/dashboard/ops-weekly/**/*.tsx"];
 it("ops-weekly 는 메일·Teams·Graph 를 import 하지 않는다", () => {
-  for (const f of globSync(["src/features/ops-weekly/**/*.ts", "src/app/dashboard/ops-weekly/**/*.tsx"]))
-    expect(readFileSync(f, "utf8"), f).not.toMatch(/@\/lib\/microsoft/);
+  const files = globSync(GUARDED);
+  expect(files.filter((f) => f.replaceAll("\\", "/").startsWith("src/features/ops-weekly/")).length).toBeGreaterThan(0); // glob 이 헛돌면 가짜 초록
+  for (const f of files) expect(readFileSync(f, "utf8"), f).not.toMatch(/@\/lib\/microsoft/);
 });
 // workflow-actions.test.ts
 it("제출은 스냅샷을 굳히고, 마지막 제출이면 all-submitted 를 낸다", async () => {
   me("a@x"); dbReport({ operator_email: "a@x", status: "draft" }); dbWeek({ status: "open" });
-  writers(["a@x"]); snapshotReturns(SNAP); pendingAfter([]);
+  writers(["a@x"]); snapshotReturns(SNAP); pendingAfter([]); conditionalUpdateReturns([{ id: R }]);
   expect(await submitReport({ reportId: R })).toEqual({ ok: true });
   expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({ status: "submitted", snapshot: SNAP }));
   expect(emitSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "all-submitted" }));
 });
 it("당번은 남의 보고서를 제출할 수 없다", async () => {
   me("d@x"); dbReport({ operator_email: "a@x" }); dbWeek({ status: "open", duty_email: "d@x" });
-  expect((await submitReport({ reportId: R })).ok).toBe(false);
+  expect(await submitReport({ reportId: R })).toEqual({ ok: false, error: "본인 보고서만 제출할 수 있습니다." });
+});
+it("이미 제출한 보고서는 다시 못 낸다 — 스냅샷도 이벤트도 없다", async () => {
+  me("a@x"); dbReport({ operator_email: "a@x", status: "submitted" }); dbWeek({ status: "open" }); writers(["a@x"]);
+  expect(await submitReport({ reportId: R })).toEqual({ ok: false, error: "이미 제출한 보고서입니다." });
+  expect(snapshotSpy).not.toHaveBeenCalled();
+  expect(updateSpy).not.toHaveBeenCalled();
+  expect(emitSpy).not.toHaveBeenCalled();
+});
+it("다시 작성 요청받은 보고서는 다시 낼 수 있다", async () => {
+  me("a@x"); dbReport({ operator_email: "a@x", status: "returned" }); dbWeek({ status: "open" });
+  writers(["a@x"]); snapshotReturns(SNAP); pendingAfter([]); conditionalUpdateReturns([{ id: R }]);
+  expect(await submitReport({ reportId: R })).toEqual({ ok: true });
+});
+it("두 번 클릭 — 조건부 전환이 두 번째에 0행이면 거절, all-submitted 는 1회", async () => {
+  me("a@x"); dbReport({ operator_email: "a@x", status: "draft" }); dbWeek({ status: "open" });
+  writers(["a@x"]); snapshotReturns(SNAP); pendingAfter([]);
+  conditionalUpdateReturns([{ id: R }]);
+  await submitReport({ reportId: R });
+  conditionalUpdateReturns([]);                                            // 낡은 화면: 읽을 땐 draft 였지만 이미 바뀌었다
+  expect(await submitReport({ reportId: R })).toEqual({ ok: false, error: "이미 제출한 보고서입니다." });
+  expect(emitSpy.mock.calls.filter(([e]) => e.type === "all-submitted")).toHaveLength(1);
+  expect(conditionalInSpy).toHaveBeenCalledWith("status", ["draft", "returned"]);
 });
 it("다시 작성 — 스냅샷을 비우고 report-returned", async () => {
   me("d@x"); dbReport({ operator_email: "a@x", status: "submitted" }); dbWeek({ status: "open", duty_email: "d@x" });
@@ -905,7 +1155,7 @@ it("정정은 admin 만", async () => {
 ```
 
 - [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/features/ops-weekly --maxWorkers=1` → 새 파일 3개 FAIL.
-- [ ] **Step 3: 구현한다.** `no-outbound.test.ts`의 glob은 `node:fs`의 `globSync`(Node 22+)를 쓴다. 쓸 수 없는 Node 버전이면 `readdirSync({recursive:true})`로 바꾼다.
+- [ ] **Step 3: 구현한다.** `no-outbound.test.ts`의 glob은 `node:fs`의 `globSync`(Node 22+, 이 PC 22.20)를 쓴다. 이 시점엔 app 폴더가 아직 없어 features 쪽만 걸리고, Task 11 부터 app 폴더의 `.ts`·`.tsx` 가 저절로 들어온다.
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌린다. Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "feat: 주간업무보고 제출·다시작성·최종보고·정정과 이벤트 훅"`
 
@@ -919,15 +1169,15 @@ it("정정은 admin 만", async () => {
 - Test: `src/features/ops-weekly/__tests__/settings-actions.test.ts`, `src/features/ops-weekly/__tests__/settings-queries.test.ts`
 
 **Interfaces:**
-- Consumes: `recipientWarning`·`writerRoster`·`canManageSettings`(Task 3), `weekRefFromStart`(Task 2), `listWriters`(Task 7)
+- Consumes: `recipientWarning`·`RecipientOperator`·`writerRoster`·`canManageSettings`(Task 3), `weekRefFromStart`(Task 2), `listWriters`·`getWeekById`·`fakeAdmin`(Task 7), SQL 함수 `ops_weekly_replace_rotation(emails text[])`(Task 1)
 - Produces (`settings-queries.ts`):
   - `type SettingsBundle = { recipients: { email: string; name: string | null; warning: RecipientWarning | null }[]; rotation: string[]; anchorWeekStart: string | null; excludedWriterEmails: string[]; writerCandidates: WriterCandidate[]; projects: { id: string; name: string; kind: ProjectKind; sortOrder: number; active: boolean; owners: string[] }[] }`
-  - `loadSettingsBundle(): Promise<SettingsBundle>`: 받는 사람 경고는 `operators`의 `email,name,status,permission,allowed_menus`로 계산한다. `writerCandidates`는 제외를 반영하기 **전** 목록이다(제외 체크박스용).
+  - `loadSettingsBundle(): Promise<SettingsBundle>`: 받는 사람 경고는 `operators`의 `email,name,status,permission,allowed_menus`를 읽어 **그 행을 `RecipientOperator` 로 그대로** `recipientWarning`에 넣어 계산한다(행이 없으면 null → `not-operator`). `addRecipient` 도 같은 조회·같은 함수를 쓴다 — 경고를 만드는 길은 하나다. `writerCandidates`는 제외를 반영하기 **전** 목록이다(제외 체크박스용).
   - `listRecipients(): Promise<string[]>`: **A2가 [최종 보고] 메일 수신자로 쓴다.**
 - Produces (`settings-actions.ts`, `"use server"`, admin이 아니면 `관리자만 설정할 수 있습니다.`):
   - `addRecipient(input: { email: string }): Promise<ActionResult & { warning?: RecipientWarning | null }>`: 저장은 하고 경고를 돌려준다(spec: 경고만 하고 권한 부여는 기존 운영자 관리로 한다)
   - `removeRecipient(input: { email: string })`
-  - `saveRotation(input: { emails: string[]; anchorWeekStart: string | null })`: 모두 `listWriters()` 명단 안이어야 하고 중복이 없어야 하며, anchor는 월요일이어야 한다. 순번표는 delete-all 뒤 position 0..n-1로 다시 넣는다. 이미 만들어진 주의 `duty_email`은 바꾸지 않는다.
+  - `saveRotation(input: { emails: string[]; anchorWeekStart: string | null })`: 모두 `listWriters()` 명단 안이어야 하고 중복이 없어야 하며, anchor는 월요일이어야 한다. 순번표 교체는 **`admin.rpc("ops_weekly_replace_rotation", { emails })` 한 번**이다(Task 1 SQL 함수 — 지우기·넣기가 한 트랜잭션이고, 함수 안 전체 삭제가 `where true` 라 PostgREST safeupdate 21000 에 안 걸린다). 클라이언트에서 `.delete()` 를 부르지 않는다(WHERE 없는 delete 는 safeupdate 가 거부하고, 지우기·넣기 사이에 실패하면 순번표가 빈 채로 남는다). rpc 에러면 `순번표를 저장하지 못했습니다.` 그다음 `ops_weekly_settings` 의 `rotation_anchor_week`·`updated_by` 를 `.update(…).eq("id", true)` 로 쓴다. 이미 만들어진 주의 `duty_email`은 바꾸지 않는다.
   - `saveExcludedWriters(input: { emails: string[] })`
   - `upsertProject(input: { id?: string; name: string; kind: ProjectKind; sortOrder: number; active: boolean })`: 이름 trim 1~50자, 중복 이름은 `이미 있는 항목 이름입니다.`
   - `setProjectOwners(input: { projectId: string; emails: string[] })`: 작성 대상 안의 이메일만 받는다
@@ -936,6 +1186,8 @@ it("정정은 admin 만", async () => {
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
+// beforeEach: db = fakeAdmin({ operators: [], ops_weekly_settings: [{ id: true, excluded_writer_emails: [], rotation_anchor_week: null }], … })
+// me(email, isAdmin) 는 getCurrentOperator 모킹, writers(emails)·operatorRow·dbWeek 는 db 의 테이블에 행을 넣는다
 it("admin 이 아니면 모두 거절", async () => {
   me("a@x", false);
   for (const r of [await addRecipient({ email: "r@x" }), await saveRotation({ emails: [], anchorWeekStart: null })])
@@ -950,8 +1202,17 @@ it("순번표 — 명단 밖·중복·월요일 아닌 anchor 거절", async () 
   expect((await saveRotation({ emails: ["a@x", "q@x"], anchorWeekStart: "2026-11-16" })).ok).toBe(false);
   expect((await saveRotation({ emails: ["a@x", "a@x"], anchorWeekStart: "2026-11-16" })).ok).toBe(false);
   expect((await saveRotation({ emails: ["a@x"], anchorWeekStart: "2026-11-17" })).ok).toBe(false);
+  expect(db.spies.rpc).not.toHaveBeenCalled();                            // 거절된 셋은 순번표를 건드리지 않는다
   expect(await saveRotation({ emails: ["b@x", "a@x"], anchorWeekStart: "2026-11-16" })).toEqual({ ok: true });
-  expect(rotationInsertSpy).toHaveBeenCalledWith([{ position: 0, operator_email: "b@x" }, { position: 1, operator_email: "a@x" }]);
+  expect(db.spies.rpc).toHaveBeenCalledWith("ops_weekly_replace_rotation", { emails: ["b@x", "a@x"] });
+  expect(db.spies.update).toHaveBeenCalledWith("ops_weekly_settings", expect.objectContaining({ rotation_anchor_week: "2026-11-16" }));
+  expect(db.spies.delete).not.toHaveBeenCalled();                          // 클라이언트 쪽 delete-all 이 없다
+});
+it("순번표 — rpc 에러면 저장 실패를 알리고 기준 주도 쓰지 않는다", async () => {
+  me("z@x", true); writers(["a@x"]);
+  db.spies.rpc.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+  expect(await saveRotation({ emails: ["a@x"], anchorWeekStart: "2026-11-16" })).toEqual({ ok: false, error: "순번표를 저장하지 못했습니다." });
+  expect(db.spies.update).not.toHaveBeenCalledWith("ops_weekly_settings", expect.anything());
 });
 it("주별 당번 — 보고된 주는 못 바꾼다", async () => {
   me("z@x", true); writers(["a@x"]); dbWeek({ status: "reported" });
@@ -960,6 +1221,13 @@ it("주별 당번 — 보고된 주는 못 바꾼다", async () => {
 it("loadSettingsBundle — 운영자 명단에 없는 받는 사람은 not-operator", async () => {
   tables({ ops_weekly_recipients: [{ email: "out@x" }], operators: [] });
   expect((await loadSettingsBundle()).recipients[0].warning).toBe("not-operator");
+});
+it("loadSettingsBundle — 실제 행의 permission·allowed_menus 로 판정한다(제한 계정도 지금 정책에선 경고 없음)", async () => {
+  tables({ ops_weekly_recipients: [{ email: "r@x" }, { email: "s@x" }],
+    operators: [{ email: "r@x", name: "부서장A", status: "active", permission: "viewer", allowed_menus: [] },
+                { email: "s@x", name: "부서장B", status: "inactive", permission: "member", allowed_menus: ["ops-weekly"] }] });
+  expect((await loadSettingsBundle()).recipients.map((r) => [r.email, r.name, r.warning]))
+    .toEqual([["r@x", "부서장A", null], ["s@x", "부서장B", "inactive"]]);
 });
 ```
 
@@ -980,7 +1248,7 @@ it("loadSettingsBundle — 운영자 명단에 없는 받는 사람은 not-opera
 - Test: `src/app/dashboard/_data/__tests__/ops-weekly-menu.test.ts`, `src/app/dashboard/ops-weekly/__tests__/params.test.ts`, `src/app/dashboard/ops-weekly/__tests__/format.test.ts`, `src/app/dashboard/ops-weekly/__tests__/WeekHeader.test.tsx`, `src/app/dashboard/ops-weekly/__tests__/WeeklyKpiRow.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 2·3·6·7의 조회·판정, `requireMenu`, `PageHeader`·`resolvePageMeta`·`findSidebarMeta`, `PageTabs`, `HeaderActionButton`, `kstFormat`
+- Consumes: Task 2·3·6·7의 조회·판정(`weekStateOf` 포함), `signProjectEntries`(Task 8), `SettingsBundle`(Task 10), `FinalizeCheck`(Task 3), `ProjectGroup`(Task 6), `ReportStatus`(Task 1), `requireMenu`, `PageHeader`·`resolvePageMeta`·`findSidebarMeta`, `PageTabs`, `HeaderActionButton`, `kstFormat`, `ADMIN_ONLY_MENU_SLUGS`·`DESIGNATED_ONLY_MENU_SLUGS`(`@/app/dashboard/_data/sidebar-helpers`, 메뉴 테스트용)
 - Produces:
   - 메뉴 항목 `{ ico: "·", label: "주간업무보고", slug: "ops-weekly", pattern: "list" }`(adminOnly 없음)
   - `PAGE_META["ops-weekly"] = { headline: { accent: "분석 · 보고", title: "주간업무보고" }, description: "운영1·2팀 주간 업무를 미리 채워진 화면에서 확인·제출하고, 당번이 모아 보고합니다." }`
@@ -991,11 +1259,27 @@ it("loadSettingsBundle — 운영자 명단에 없는 받는 사람은 not-opera
     2. `weekStart = parseWeekParam(sp.week) ?? defaultWeekStart(now, calRow?.status === "reported")`
     3. `week = ensureWeek(weekStart, now)`. null이면 `{ kind: "no-week" }`
     4. `writers = listWriters()`. 보는 대상 = `sp.op`(명단 안일 때) → 본인(작성 대상일 때) → `writers[0]`
-    5. 주가 open이면 `ensureReport(week.id, viewed)`, 아니면 `listReports`에서 찾는다
-    6. `snapshot = report.snapshot ?? loadAutoSnapshot(...)`, `detail = loadReportDetail`, `kpis = computeKpis`
+    5. 보는 대상이 없으면(명단 0명) 6·8 을 건너뛰고 `viewed`·`report`·`snapshot`·`detail`·`kpis` 를 null 로 둔다. 있으면: 주가 open이면 `ensureReport(week.id, viewed)`, 아니면 `listReports`에서 찾는다
+    6. `snapshot = report.snapshot ?? loadAutoSnapshot(...)`, `detail = loadReportDetail` 뒤 **`detail.projects = signProjectEntries(detail.projects)`**(새 객체로 — 그림 `src` 를 1시간 서명 URL 로 채운다. 편집기 `initialHtml` 과 읽기 전용 화면이 둘 다 이 값을 쓴다), `kpis = computeKpis`
     7. `prevOpen = weekStart === cal && getWeek(shiftWeek(cal, -1))?.status === "open"`
-    8. `submittedCount`·`writerCount`, `canEdit`·`canSubmit`
-  - `type OpsWeeklyView = { kind: "no-week"; weekStart: string } | { kind: "week"; week: WeekRow; weekRef: WeekRef; tab: OpsTab; viewed: WriterCandidate | null; writers: WriterCandidate[]; report: ReportRow | null; snapshot: AutoSnapshot; detail: ReportDetail | null; kpis: WeeklyKpis; submittedCount: number; prevOpen: boolean; canEdit: boolean; canSubmit: boolean; actor: Actor }`
+    8. `submittedCount`·`writerCount`, `ws = weekStateOf(week)`, `canEdit = canEditReport(actor, ws, viewed.email)`, `canSubmit = canSubmitReport(actor, ws, viewed.email, isWriter(actor.email), report.status)`
+    9. 탭별 추가 칸(`reports`·`projectGroups`·`finalize`·`bundle`)은 이 Task 에서는 전부 `null` 로 채운다. Task 14 가 status 탭일 때, Task 15 가 settings 탭일 때 채운다 — **타입은 여기서 완성하고** 뒤 Task 는 값만 넣는다
+  - `type OpsWeeklyView` — **이 Task 에서 완전히 정의한다**(Task 14·15 가 타입을 고치지 않는다):
+
+    ```ts
+    type OpsWeeklyView =
+      | { kind: "no-week"; weekStart: string }
+      | { kind: "week"; week: WeekRow; weekRef: WeekRef; tab: OpsTab; actor: Actor;
+          writers: WriterCandidate[]; viewed: WriterCandidate | null;     // 명단 0명이면 null
+          report: ReportRow | null; snapshot: AutoSnapshot | null;        // viewed 가 null 이면 둘 다 null(스냅샷을 만들 사람이 없다)
+          detail: ReportDetail | null; kpis: WeeklyKpis | null;           // 같은 조건으로 null. detail.projects 는 서명된 HTML
+          submittedCount: number; prevOpen: boolean; canEdit: boolean; canSubmit: boolean;
+          reports: ReportRow[] | null;          // status 탭에서만 (Task 14)
+          projectGroups: ProjectGroup[] | null; // status 탭에서만, 서명된 HTML (Task 14)
+          finalize: FinalizeCheck | null;       // status 탭에서만 (Task 14)
+          bundle: SettingsBundle | null };      // settings 탭에서만 (Task 15)
+    ```
+  - `page.tsx` 는 `viewed === null` 이면 KPI·탭 본문 대신 `작성 대상 명단이 비어 있습니다 — 관리자 설정을 확인하세요` 한 줄을 그린다(제출 현황·설정 탭은 그대로 연다 — 명단을 고칠 자리가 설정 탭이다)
   - `WeekHeader` props(`ref`는 React가 따로 다루는 이름이라 쓰지 않는다): `{ weekRef: WeekRef; week: WeekRow; viewedName: string | null; writers: { email: string; name: string }[]; viewedEmail: string | null; submittedCount: number; writerCount: number; dutyName: string | null; canSubmit: boolean; reportStatus: ReportStatus | null; reportId: string | null; prevOpen: boolean; prevHref: string; nextHref: string }`. 렌더링 내용은 다음과 같다.
     - 한 줄에 `{label} · {rangeLabel}`, 작성자(`ListSelect`로 운영자 바꾸기 → `?op=`), `제출 {n}/{m}`(tabular-nums), `당번 {이름 | '미지정'}`
     - `canSubmit`이면 `HeaderActionButton` **[제출완료]** → `submitReport`. 이미 submitted면 버튼 대신 `제출함 {formatMdHm(submitted_at)}`
@@ -1066,7 +1350,7 @@ it("카드 6개 라벨 순서 + 수집 전은 '구분 미확인'(0 아님)", () 
 ```
 
 - [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/app/dashboard/_data src/app/dashboard/ops-weekly --maxWorkers=1`(먼저 세어 본다). Expected: 새 파일 5개 FAIL.
-- [ ] **Step 3: 구현한다.** `page.tsx`는 `requireMenu(OPS_WEEKLY_SLUG)` → `loadOpsWeeklyPage` → `PageHeader` + `WeekHeader` + `WeeklyKpiRow` + `PageTabs`(size md) + 탭 본문 자리를 그린다. 탭 본문은 Task 12~15가 채우고, 이 단계에서는 탭 이름만 있는 빈 섹션을 둔다. `no-week`이면 `이 주의 보고서가 아직 열리지 않았습니다` + 주 이동 링크.
+- [ ] **Step 3: 구현한다.** `page.tsx`는 `requireMenu(OPS_WEEKLY_SLUG)` → `loadOpsWeeklyPage` → `PageHeader` + `WeekHeader` + `WeeklyKpiRow`(`kpis` 가 null 이면 그리지 않는다) + `PageTabs`(size md) + 탭 본문 자리를 그린다. 탭 본문은 Task 12~15가 채우고, 이 단계에서는 탭 이름만 있는 빈 섹션을 둔다. `no-week`이면 `이 주의 보고서가 아직 열리지 않았습니다` + 주 이동 링크.
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령을 돌리고, 레포 가드를 위해 `npx vitest run src/components/common src/lib/__tests__ --maxWorkers=1`도 돌린다(버튼 호버·헤더 액션·시각 표기 표준). Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "feat: 주간업무보고 메뉴·머리줄·건수 카드·탭 골격"`
 
@@ -1075,22 +1359,24 @@ it("카드 6개 라벨 순서 + 수집 전은 '구분 미확인'(0 아님)", () 
 ### Task 12: 원서접수 · PIMS · 휴가/외근 탭
 
 **Files:**
-- Create: `src/app/dashboard/ops-weekly/_components/AreaNotes.tsx`, `AutoGroupSection.tsx`, `ManualItemForm.tsx`, `ApplicationTab.tsx`, `PimsTab.tsx`, `LeaveTab.tsx`
+- Create: `src/app/dashboard/ops-weekly/_components/AreaNotes.tsx`, `OverrideControls.tsx`, `AutoGroupSection.tsx`, `ManualItemForm.tsx`, `ApplicationTab.tsx`, `PimsTab.tsx`, `LeaveTab.tsx`
 - Modify: `src/app/dashboard/ops-weekly/page.tsx`(탭 본문 연결)
+- Create (테스트 도우미): `src/app/dashboard/ops-weekly/__tests__/heading-order.ts`
 - Test: `src/app/dashboard/ops-weekly/__tests__/ApplicationTab.test.tsx`, `PimsTab.test.tsx`, `LeaveTab.test.tsx`, `AutoGroupSection.test.tsx`
 
 **Interfaces:**
-- Consumes: `applyOverrides`·`ViewItem`·`ManualItem`(Task 6), `saveAreaNote`·`saveItemOverride`·`addManualItem`·`removeManualItem`·`markTabChecked`(Task 8), `AREA_LABEL`
+- Consumes: `applyOverrides`·`ViewItem`·`ManualItem`(Task 6), `LeaveItem`(Task 5), `saveAreaNote`·`saveItemOverride`·`addManualItem`·`removeManualItem`·`markTabChecked`(Task 8), `AREA_LABEL`
 - Produces:
   - `AreaNotes` `{ reportId: string | null; area: Area; thisWeek: string; nextWeek: string; editable: boolean }`: `영역 특이사항` 제목 아래 금주/차주 textarea 두 개. blur하면 저장한다. 편집 불가면 글로만 보여 준다. 탭 아래에 **[이 탭 확인]** 버튼(`markTabChecked`)이 있다.
-  - `AutoGroupSection` `{ title: string; items: ViewItem[]; manual: ManualItem[]; reportId: string | null; area: AutoArea; groupKey: string | null; editable: boolean; emptyText: string }`: 행마다 대학명·서비스명·시각(`formatMdHm`), 건 메모 입력(blur 저장), **[빼기]**/**[되살리기]** 버튼. 뺀 행은 `line-through text-muted`. 직접 추가 건에는 `직접 추가` 배지와 [삭제]. 행 호버는 `hover:bg-line-soft`. 묶음 끝에 `ManualItemForm`.
+  - `OverrideControls` `{ reportId: string | null; itemKey: string; area: AutoArea; note: string; excluded: boolean; editable: boolean }`: 건 메모 입력(blur → `saveItemOverride({ reportId, itemKey, area, note })`)과 **[빼기]**/**[되살리기]**(→ `saveItemOverride({ reportId, itemKey, area, excluded })`). 편집 불가면 메모를 글로만 보여 주고 버튼이 없다. `AutoGroupSection` 과 `LeaveTab` 이 같이 쓴다(건별 메모·빼기를 두 벌 만들지 않는다)
+  - `AutoGroupSection` `{ title: string; items: ViewItem[]; manual: ManualItem[]; reportId: string | null; area: AutoArea; groupKey: string | null; editable: boolean; emptyText: string }`: 묶음 제목은 `<h3>`. 행마다 대학명·서비스명·시각(`at` 이 있으면 `formatMdHm`), `OverrideControls`. 뺀 행은 `line-through text-muted`. 직접 추가 건에는 `직접 추가` 배지와 [삭제]. 행 호버는 `hover:bg-line-soft`. 묶음 끝에 `ManualItemForm`.
   - `ManualItemForm` `{ reportId; area; groupKey; leave?: boolean }`: 제목(필수)·메모, leave면 시작일/종료일(`DateInput`)·구분(LEAVE_TYPE_VALUES 셀렉트) → `addManualItem`
   - `ApplicationTab` `{ snapshot: AutoSnapshot; detail: ReportDetail; reportId: string | null; editable: boolean }`: 묶음 순서는 **개발 중 · 테스트 중 · 차주 오픈 예정 · 운영 중 · 차주 마감 예정 · 원서접수 외 서비스(직접 추가만)**.
     - `devStatusCollected`가 false면 개발/테스트 두 묶음 대신 한 줄을 적는다: `개발/테스트 구분 미확인 — 작업 통계가 아직 수집되지 않았습니다 (시작 전 서비스 {unknown.length}건)`
     - 수집됐는데 미확인 건이 있으면 `구분 미확인 {n}건` 묶음을 접어서 보여 준다.
     - 탭 머리에 안 붙음 한 줄: `담당자가 맞지 않아 아무에게도 안 붙은 서비스 {n}건`, n > 0이면 ` — 서비스 마감 메뉴에서 담당자 이름을 확인하세요`를 붙인다. 숫자와 문장은 **한 텍스트 노드**에 넣는다.
   - `PimsTab`: 금주 발표 / 차주 발표 두 묶음. 안 붙음 줄 `담당자가 맞지 않아 아무에게도 안 붙은 발표 서비스 {n}건`, n > 0이면 ` — 발표 서비스 담당자 맞추기를 다시 확인하세요`.
-  - `LeaveTab`: 행마다 `kindLabel` · 기간(`formatMdDow` 두 개를 `~`로 잇고, 하루면 하나) · `백업 {이름}` 또는 `백업 없음`. `needsBackup`이면 **[백업요청 만들기]** → `/dashboard/backup` 링크(버튼 호버 표준). 출처 배지는 `백업요청`/`일정`.
+  - `LeaveTab` `{ snapshot: AutoSnapshot; detail: ReportDetail; reportId: string | null; editable: boolean }`: **다른 자동 목록과 같이 건마다 특이사항·빼기·직접 추가가 있다**(spec §4). 행은 `applyOverrides(snapshot.leave, detail.overrides)` → `ViewItem<LeaveItem>[]`. 행마다 `kindLabel` · 기간(`formatMdDow` 두 개를 `~`로 잇고, 하루면 하나) · `백업 {이름}` 또는 `백업 없음`(= `subtitle`) · 출처 배지(`백업요청`/`일정`) · `OverrideControls`(area `"leave"`). 뺀 행은 `line-through text-muted`. `needsBackup`이면 **[백업요청 만들기]** → `/dashboard/backup` 링크(버튼 호버 표준, 뺀 행에는 없다). 아래에 `detail.manual` 중 area `leave` 건(`직접 추가` 배지·기간·구분·[삭제] → `removeManualItem`)과 `ManualItemForm leave`, 그 아래 `AreaNotes`(area `"leave"`).
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다** (action 모듈은 모킹한다)
 
@@ -1108,10 +1394,16 @@ it("안 붙음이 있으면 한 문장으로 조치까지", () => {
   render(<ApplicationTab snapshot={snap({ unmatchedApplication: 4 })} detail={EMPTY} reportId="r" editable />);
   expect(screen.getByText("담당자가 맞지 않아 아무에게도 안 붙은 서비스 4건 — 서비스 마감 메뉴에서 담당자 이름을 확인하세요")).toBeInTheDocument();
 });
+// __tests__/heading-order.ts(테스트 도우미, ApplicationTab·PimsTab·ProjectTab 셋이 쓴다)
+// inOrder(names) — 제목을 **이름으로** 찾고(getByRole("heading", { name })) 문서 순서만 비교한다.
+// 레벨·전체 제목 목록으로 단언하지 않는다: AreaNotes 의 '영역 특이사항' 같은 다른 제목이 끼어도 깨지지 않게.
+export const inOrder = (names: string[]) => {
+  const hs = names.map((name) => screen.getByRole("heading", { name }));
+  hs.slice(1).forEach((h, i) => expect(hs[i].compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy());
+};
 it("묶음 순서", () => {
   render(<ApplicationTab snapshot={snap({ devStatusCollected: true })} detail={EMPTY} reportId="r" editable />);
-  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent))
-    .toEqual(["개발 중", "테스트 중", "차주 오픈 예정", "운영 중", "차주 마감 예정", "원서접수 외 서비스"]);
+  inOrder(["개발 중", "테스트 중", "차주 오픈 예정", "운영 중", "차주 마감 예정", "원서접수 외 서비스"]);
 });
 it("[빼기] 는 그 건만 그 주 보고서에서 뺀다", async () => {
   render(<AutoGroupSection {...group([item("closing:1")])} editable />);
@@ -1127,9 +1419,22 @@ it("일정에만 있는 휴가에 [백업요청 만들기]", () => {
   render(<LeaveTab snapshot={snap({ leave: [leaveItem({ needsBackup: true })] })} detail={EMPTY} reportId="r" editable />);
   expect(screen.getByRole("link", { name: "백업요청 만들기" })).toHaveAttribute("href", "/dashboard/backup");
 });
+it("휴가도 건마다 [빼기] — 그 주 보고서에만", async () => {
+  render(<LeaveTab snapshot={snap({ leave: [leaveItem({ key: "leave:br:b1" })] })} detail={EMPTY} reportId="r" editable />);
+  fireEvent.click(screen.getByRole("button", { name: "빼기" }));
+  await waitFor(() => expect(saveItemOverride).toHaveBeenCalledWith({ reportId: "r", itemKey: "leave:br:b1", area: "leave", excluded: true }));
+});
+it("휴가 건 메모와 뺀 표시를 보여 주고, 직접 추가 건은 배지와 함께", () => {
+  render(<LeaveTab snapshot={snap({ leave: [leaveItem({ key: "leave:br:b1" })] })}
+    detail={{ ...EMPTY, overrides: new Map([["leave:br:b1", { item_key: "leave:br:b1", note: "오전만", excluded: true }]]),
+              manual: [manualLeave({ title: "외부 교육", period_start: "2026-11-25" })] }} reportId="r" editable />);
+  expect(screen.getByDisplayValue("오전만")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "되살리기" })).toBeInTheDocument();
+  expect(screen.getByText("외부 교육").closest("li")).toHaveTextContent("직접 추가");
+});
 it("PIMS 금주/차주 두 묶음", () => {
   render(<PimsTab snapshot={snap({ pimsThis: ["pims:1"], pimsNext: [] })} detail={EMPTY} reportId="r" editable />);
-  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["금주 발표", "차주 발표"]);
+  inOrder(["금주 발표", "차주 발표"]);
 });
 ```
 
@@ -1148,11 +1453,12 @@ it("PIMS 금주/차주 두 묶음", () => {
 - Test: `src/app/dashboard/ops-weekly/__tests__/ProjectTab.test.tsx`
 
 **Interfaces:**
-- Consumes: `RichNote`(`@/app/r/checklist/[token]/_components/RichNote`, 그대로 import하고 옮기지 않는다), `saveProjectEntry`·`uploadWeeklyImage`(Task 8), `PROJECT_STAGES`, `ProjectEntryView`
+- Consumes: `RichNote`(`@/app/r/checklist/[token]/_components/RichNote`, 그대로 import하고 옮기지 않는다), `saveProjectEntry`·`uploadWeeklyImage`(Task 8), `PROJECT_STAGES`, `ProjectEntryView`, `inOrder`(Task 12 `__tests__/heading-order.ts`)
 - Produces: `ProjectTab` `{ kind: ProjectKind; entries: ProjectEntryView[]; reportId: string | null; editable: boolean; notes: { thisWeek: string; nextWeek: string } }`
+  - `entries` 의 `thisWeek`·`nextWeek` 는 **`_load` 가 `signProjectEntries` 로 이미 서명한 HTML** 이다(`<img src="<서명 URL>" data-ops-path="…">`, Task 11). 이 컴포넌트는 서명하지 않고 받은 그대로 `RichNote initialHtml` 과 읽기 전용 렌더에 쓴다. 편집 후 저장되는 HTML 에 서명 URL 이 섞여 있어도 서버 `toStoredNoteHtml` 이 경로로 되돌린다(Task 8)
   - `kind`로 거른 본인 entry를 `sortOrder` 순으로, 카드마다 항목명 · `진행 단계` 셀렉트(8개 + `단계 미선택`) · 금주/차주 `RichNote`(`onPasteImage = (d) => uploadWeeklyImage({reportId, dataUrl: d}).then(r => r.ok ? r.url : null)`)
   - 셀렉트를 바꾸거나 RichNote가 저장되면 `saveProjectEntry`로 그 entry 전체(stage·금주·차주)를 보낸다
-  - 편집 불가면 단계를 글로 보여 주고, 금주/차주는 저장된(서버에서 정화된) HTML을 `dangerouslySetInnerHTML`로 그린다
+  - 편집 불가면 단계를 글로 보여 주고, 금주/차주는 저장된(서버에서 정화되고 `_load` 가 서명한) HTML을 `dangerouslySetInnerHTML`로 그린다
   - entry가 없으면 `맡은 프로젝트가 없습니다`(kind=tf면 `맡은 TF가 없습니다`) + `관리자 설정에서 담당자를 지정합니다`
   - 아래에 `AreaNotes`(area = kind === "tf" ? "tf" : "project")
 
@@ -1161,7 +1467,8 @@ it("PIMS 금주/차주 두 묶음", () => {
 ```ts
 it("TF 탭에는 TF 만, 정렬 순서대로", () => {
   render(<ProjectTab kind="tf" entries={[entry("p", "project", 10), entry("t2", "tf", 30), entry("t1", "tf", 20)]} reportId="r" editable notes={N} />);
-  expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual(["t1", "t2"]);
+  inOrder(["t1", "t2"]);                                                   // heading-order.ts (Task 12)
+  expect(screen.queryByRole("heading", { name: "p" })).toBeNull();
 });
 it("진행 단계 셀렉트는 8개 고정 순서 + 미선택", () => {
   render(<ProjectTab kind="project" entries={[entry("p", "project", 10)]} reportId="r" editable notes={N} />);
@@ -1182,6 +1489,11 @@ it("편집 불가면 셀렉트 없이 단계를 글로", () => {
   expect(screen.queryByLabelText("진행 단계")).toBeNull();
   expect(screen.getByText("배포")).toBeInTheDocument();
 });
+it("읽기 전용 — 서명된 그림이 src 그대로 보인다", () => {
+  render(<ProjectTab kind="project" reportId="r" editable={false} notes={N}
+    entries={[entry("p", "project", 10, { thisWeek: '<p>a</p><img src="https://signed/1" data-ops-path="2026-11-16/r/x.png" alt="첨부 이미지">' })]} />);
+  expect(screen.getByAltText("첨부 이미지")).toHaveAttribute("src", "https://signed/1");
+});
 ```
 
 - [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/app/dashboard/ops-weekly --maxWorkers=1` → `ProjectTab.test.tsx` FAIL.
@@ -1195,12 +1507,13 @@ it("편집 불가면 셀렉트 없이 단계를 글로", () => {
 
 **Files:**
 - Create: `src/app/dashboard/ops-weekly/_components/StatusTab.tsx`
-- Modify: `src/app/dashboard/ops-weekly/_load.ts`(status 탭이면 `listReports`·`listProjectEntriesForWeek`를 더 읽는다), `page.tsx`
+- Modify: `src/app/dashboard/ops-weekly/_load.ts`(status 탭이면 `listReports`·`listProjectEntriesForWeek`를 더 읽어 `OpsWeeklyView` 의 `reports`·`projectGroups`·`finalize` 를 채운다 — 타입은 Task 11 에서 이미 완성됐다), `page.tsx`
 - Test: `src/app/dashboard/ops-weekly/__tests__/StatusTab.test.tsx`
 
 **Interfaces:**
-- Consumes: `checkFinalize`·`canReturnReport`·`canEditDutySummary`·`canReopenWeek`(Task 3), `returnReport`·`saveDutySummary`·`finalizeWeek`·`reopenWeek`(Task 9), `setWeekDuty`(Task 10), `groupEntriesByProject`(Task 6)
-- Produces: `StatusTab` `{ week: WeekRow; actor: Actor; writers: WriterCandidate[]; reports: ReportRow[]; projectGroups: ReturnType<typeof groupEntriesByProject>; finalize: FinalizeCheck }`
+- Consumes: `checkFinalize`·`canReturnReport`·`canEditDutySummary`·`canReopenWeek`(Task 3), `returnReport`·`saveDutySummary`·`finalizeWeek`·`reopenWeek`(Task 9), `setWeekDuty`(Task 10), `groupEntriesByProject`·`ProjectGroup`(Task 6), `signProjectEntries`(Task 8), `weekStateOf`(Task 7)
+- Produces: `StatusTab` `{ week: WeekRow; actor: Actor; writers: WriterCandidate[]; reports: ReportRow[]; projectGroups: ProjectGroup[]; finalize: FinalizeCheck }`
+  - `_load`: `projectGroups = groupEntriesByProject(await signProjectEntries(await listProjectEntriesForWeek(week.id)))` — 모아보기의 그림도 서명된 `src` 로 나간다
   - **제출 현황 표**(`table-head` 표준 칸 클래스): 이름 · 팀 · 상태(`제출` / `미제출` / `다시 작성 요청`) · 제출 시각(`formatMdHm`) · [보기](`?week=&tab=application&op=`) · [다시 작성](`canReturnReport`일 때만 → 사유 입력 후 `returnReport`)
   - **주요(운영부 전체)** 금주/차주 textarea(`canEditDutySummary`일 때만 편집 가능 → `saveDutySummary`)
   - **프로젝트·TF 모아보기**: 항목 → 담당자별 단계·금주·차주(읽기 전용, 프로젝트 먼저 그다음 TF)
@@ -1244,7 +1557,7 @@ it("프로젝트 모아보기 — 항목 아래 담당자별", () => {
 ```
 
 - [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/app/dashboard/ops-weekly --maxWorkers=1` → `StatusTab.test.tsx` FAIL.
-- [ ] **Step 3: 구현한다.** `_load.ts`에서 status 탭이면 `finalize = checkFinalize(actor, week, writers.map(e), submittedSet)`을 계산해 넘긴다.
+- [ ] **Step 3: 구현한다.** `_load.ts`에서 status 탭이면 `finalize = checkFinalize(actor, weekStateOf(week), writers.map(e), submittedSet)`을 계산해 넘긴다. `page.tsx` 는 `view.reports`·`view.projectGroups`·`view.finalize` 가 null 이 아닐 때만 `StatusTab` 을 그린다.
 - [ ] **Step 4: 통과를 확인한다.** 같은 명령 + `npx vitest run src/components/common src/lib/__tests__ --maxWorkers=1`. Expected: PASS.
 - [ ] **Step 5: Commit** — `git commit -m "feat: 주간업무보고 제출 현황·당번 화면 — 다시작성·최종보고·정정"`
 
@@ -1254,7 +1567,7 @@ it("프로젝트 모아보기 — 항목 아래 담당자별", () => {
 
 **Files:**
 - Create: `src/app/dashboard/ops-weekly/_components/SettingsTab.tsx`, `RecipientsPanel.tsx`, `RotationPanel.tsx`, `WriterExclusionPanel.tsx`, `ProjectCatalogPanel.tsx`
-- Modify: `src/app/dashboard/ops-weekly/_load.ts`(settings 탭이면 `loadSettingsBundle`), `page.tsx`, `CLAUDE.md`(기능 절 1개)
+- Modify: `src/app/dashboard/ops-weekly/_load.ts`(settings 탭이면 `loadSettingsBundle` 로 `OpsWeeklyView.bundle` 을 채운다 — 타입은 Task 11), `page.tsx`, `CLAUDE.md`(기능 절 1개)
 - Test: `src/app/dashboard/ops-weekly/__tests__/SettingsTab.test.tsx`
 
 **Interfaces:**
@@ -1269,6 +1582,7 @@ it("프로젝트 모아보기 — 항목 아래 담당자별", () => {
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
+// 이 테스트는 배지 렌더만 본다. no-menu 가 실제로 켜지는 조건은 Task 3 recipient-warning.test.ts, 실제 행으로 계산하는 것은 Task 10 이 단언한다
 it("메뉴 권한 없는 받는 사람에 경고 배지", () => {
   render(<SettingsTab bundle={bundle({ recipients: [{ email: "r@x", name: "부서장A", warning: "no-menu" }] })} />);
   expect(within(screen.getByRole("region", { name: "받는 사람" })).getByText("메뉴 권한 없음")).toBeInTheDocument();
@@ -1292,7 +1606,7 @@ it("작성 제외 체크 → 저장", async () => {
 ```
 
 - [ ] **Step 2: 실패를 확인한다.** `npx vitest run src/app/dashboard/ops-weekly --maxWorkers=1` → `SettingsTab.test.tsx` FAIL.
-- [ ] **Step 3: 구현하고, `CLAUDE.md`에 `## /dashboard/ops-weekly — 운영부 주간업무보고` 절을 더한다**(20줄 안쪽). 담을 내용:
+- [ ] **Step 3: 구현하고, `CLAUDE.md`에 `## /dashboard/ops-weekly — 운영부 주간업무보고` 절을 더한다**(25줄 안쪽). 담을 내용:
   - slug와 그것을 고른 이유(잡 id `weekly-report`)
   - 작성 대상 규칙과 영구 제외 목록
   - 본부 기준 주차와 월~일 데이터 창
@@ -1300,7 +1614,10 @@ it("작성 제외 체크 → 저장", async () => {
   - 제출 때 스냅샷으로 굳히는 이유
   - `emitOpsWeeklyEvent` 훅이 A2·A3의 자리라는 것
   - `ops_weekly_dev_status`가 A4의 자리이고 비어 있으면 `구분 미확인`
-  - 그림 버킷
+  - 그림 버킷(비공개 — DB 엔 `data-ops-path` 경로만, 화면에 낼 때 `signProjectEntries` 로 1시간 서명. 두 방향 모두 `note-images.ts`)
+  - 받는 사람 `no-menu` 경고는 `canViewMenu` 를 거치므로 지금 정책(주간보고가 admin 전용·지정자 전용이 아님)에선 나지 않는다는 것
+  - 순번표 교체는 SQL 함수 `ops_weekly_replace_rotation`(safeupdate `where true`)
+  - admin 은 정정으로 연 주에서만 남의 보고서를 고친다
   - 설계·계획 문서 경로
 - [ ] **Step 4: 전체 검증** — 각 명령의 출력을 읽고 숫자를 적는다
 
@@ -1329,5 +1646,5 @@ Expected: vitest 0 failed, typecheck exit 0, eslint 0 problems. `next build`·de
 ## Later PRs (A1이 넘겨주는 인터페이스)
 
 - **A2 — 발송**: 자동화 잡 셋을 둔다 — `ops-weekly-request`(수 10:00), `ops-weekly-remind`(목 12:00·17:00), 그리고 이벤트 훅 `ops-weekly-mail`(`OPS_WEEKLY_HOOKS`에 등록). 쓰는 것: `ensureWeek(weekStart)`, `weekOf(now)`, `listWriters()`, `listPendingWriters(weekId)`, `listRecipients()`, `getWeekById`, `OPS_WEEKLY_PATH`, 이벤트 `all-submitted`(당번에게) · `report-returned`(그 운영자에게) · `week-reported`(`correction === true`면 메일을 생략한다). Teams '운영부 마법사' chat id는 새 env로 받는다. `…_DRY_RUN`, `recordAutomationRun`, cron-job.org 등록 체크리스트가 들어간다.
-- **A3 — 엑셀·워드 저장**: `week-reported` 훅 `ops-weekly-files`가 `listReports(weekId)`(스냅샷 포함) · `loadReportDetail` · `listProjectEntriesForWeek` · `groupEntriesByProject` · `weekRefFromStart(week_start)`(파일명 `운영부 주간업무보고_ YYYY년 M월 N주차.docx`)로 팀별 엑셀(Graph workbook API, 새 시트·범위만)과 워드 한 장을 저장한다. 훅 실패(`HookOutcome`)를 당번 화면에 남길 저장 칸을 A3이 더한다. 정정 뒤 재보고(`correction: true`)에도 다시 저장한다.
+- **A3 — 엑셀·워드 저장**: `week-reported` 훅 `ops-weekly-files`가 `listReports(weekId)`(스냅샷 포함) · `loadReportDetail` · `listProjectEntriesForWeek` · `groupEntriesByProject` · `weekRefFromStart(week_start)`(파일명 `운영부 주간업무보고_ YYYY년 M월 N주차.docx`)로 팀별 엑셀(Graph workbook API, 새 시트·범위만)과 워드 한 장을 저장한다. 훅 실패(`HookOutcome`)를 당번 화면에 남길 저장 칸을 A3이 더한다. 프로젝트 HTML 의 그림은 `src` 없는 `<img data-ops-path>` 로 저장돼 있으므로(비공개 버킷), 워드에 넣으려면 `collectNoteImagePaths` 로 경로를 모아 service_role 로 내려받아 박는다 — 서명 URL 은 1시간 뒤 죽으므로 파일에 링크로 남기지 않는다. 정정 뒤 재보고(`correction: true`)에도 다시 저장한다.
 - **A4 — Moa 작업 통계 수집**: `scripts/moa-closing/`의 로그인 1회에 WorkStatistics 수집을 얹어 `ops_weekly_dev_status (service_id, stage 'dev'|'test', raw_label, collected_at)`에 upsert한다. 주간보고는 `listDevStatuses` + `freshDevStages`(그 주 월 00:00 KST 이후 수집분만)로 읽기만 한다. 화면 구조는 승인받은 1회 로그인으로 먼저 확인한다.
