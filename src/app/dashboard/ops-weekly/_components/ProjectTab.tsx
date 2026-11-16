@@ -36,7 +36,7 @@ function isStage(v: string): v is ProjectStage {
   return (PROJECT_STAGES as readonly string[]).includes(v);
 }
 
-function ReadOnlyHtml({ label, html }: { label: string; html: string }) {
+export function ReadOnlyHtml({ label, html }: { label: string; html: string }) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs font-medium text-muted">{label}</span>

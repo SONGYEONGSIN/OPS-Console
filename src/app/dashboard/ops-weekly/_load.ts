@@ -5,6 +5,7 @@ import { loadAutoSnapshot } from "@/features/ops-weekly/auto-queries";
 import { normEmail } from "@/features/ops-weekly/email";
 import {
   computeKpis,
+  groupEntriesByProject,
   type AutoSnapshot,
   type ProjectGroup,
   type WeeklyKpis,
@@ -13,11 +14,13 @@ import { signProjectEntries } from "@/features/ops-weekly/note-images";
 import {
   canEditReport,
   canSubmitReport,
+  checkFinalize,
   type Actor,
   type FinalizeCheck,
 } from "@/features/ops-weekly/permissions";
 import {
   ensureReport,
+  listProjectEntriesForWeek,
   listReports,
   loadReportDetail,
   type ReportDetail,
@@ -143,6 +146,43 @@ async function loadViewedData(args: {
   };
 }
 
+type StatusData = {
+  projectGroups: ProjectGroup[];
+  finalize: FinalizeCheck;
+};
+
+/** 제출 현황 탭 전용 — 모아보기(서명된 그림)와 [최종 보고] 가능 여부. */
+async function loadStatusData(args: {
+  week: WeekRow;
+  actor: Actor;
+  writers: readonly WriterCandidate[];
+  reports: readonly ReportRow[];
+}): Promise<StatusData> {
+  const { week, actor, writers, reports } = args;
+  const base = weekStateOf(week);
+  const state = {
+    ...base,
+    dutyEmail: base.dutyEmail === null ? null : normEmail(base.dutyEmail),
+  };
+  const submitted = new Set(
+    reports
+      .filter((r) => r.status === "submitted")
+      .map((r) => normEmail(r.operator_email)),
+  );
+  const entries = await signProjectEntries(
+    await listProjectEntriesForWeek(week.id),
+  );
+  return {
+    projectGroups: groupEntriesByProject(entries),
+    finalize: checkFinalize(
+      actor,
+      state,
+      writers.map((w) => w.email),
+      submitted,
+    ),
+  };
+}
+
 /** 제출 분자·분모와 편집·제출 권한. 당번 이메일도 정규화한 키로 비교한다. */
 function derive(args: {
   week: WeekRow;
@@ -206,11 +246,16 @@ export async function loadOpsWeeklyPage(
       ? await loadViewedData({ week, viewed, report, writers, now })
       : null;
   const flags = derive({ week, actor, writers, viewed, report, reports });
+  const tab = parseTab(sp.tab, actor.isAdmin);
+  const status =
+    tab === "status"
+      ? await loadStatusData({ week, actor, writers, reports })
+      : null;
   return {
     kind: "week",
     week,
     weekRef,
-    tab: parseTab(sp.tab, actor.isAdmin),
+    tab,
     actor,
     writers,
     viewed,
@@ -222,9 +267,9 @@ export async function loadOpsWeeklyPage(
     prevOpen:
       weekStart === cal &&
       (await getWeek(shiftWeek(cal, -1)))?.status === "open",
-    reports: null,
-    projectGroups: null,
-    finalize: null,
+    reports: status === null ? null : reports,
+    projectGroups: status?.projectGroups ?? null,
+    finalize: status?.finalize ?? null,
     bundle: null,
   };
 }

@@ -11,6 +11,7 @@ import { ApplicationTab } from "./_components/ApplicationTab";
 import { LeaveTab } from "./_components/LeaveTab";
 import { PimsTab } from "./_components/PimsTab";
 import { ProjectTab } from "./_components/ProjectTab";
+import { StatusTab } from "./_components/StatusTab";
 import { WeekHeader } from "./_components/WeekHeader";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
@@ -55,6 +56,31 @@ function WeekBody({ view }: { view: Week }) {
     return <p className="p-5 text-sm text-muted lg:p-7">{EMPTY_ROSTER}</p>;
   }
   const { snapshot, detail, report } = view;
+  if (
+    tab === "status" &&
+    view.reports !== null &&
+    view.projectGroups !== null &&
+    view.finalize !== null
+  ) {
+    // 입력 중이던 요약·사유가 다른 주·보고서로 넘어가지 않게 같은 키 규칙을 쓴다.
+    const key = bodyKeyOf({
+      reportId: report?.id ?? null,
+      weekStart: view.week.week_start,
+      op: viewed?.email ?? "",
+      tab,
+    });
+    return (
+      <StatusTab
+        key={key}
+        week={view.week}
+        actor={view.actor}
+        writers={view.writers}
+        reports={view.reports}
+        projectGroups={view.projectGroups}
+        finalize={view.finalize}
+      />
+    );
+  }
   if (snapshot !== null && detail !== null) {
     // 쿼리만 바뀌어도 입력 중이던 글이 다른 보고서로 넘어가지 않게 보고서 단위로 다시 만든다.
     const key = bodyKeyOf({
@@ -85,7 +111,7 @@ function WeekBody({ view }: { view: Week }) {
       );
     }
   }
-  // 제출 현황·설정 탭 본문은 Task 14~15 가 채운다.
+  // 설정 탭 본문은 Task 15 가 채운다.
   return (
     <section
       data-tab={tab}
