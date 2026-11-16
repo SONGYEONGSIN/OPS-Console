@@ -63,7 +63,7 @@ function sorted(items: AutoItem[]): AutoItem[] {
   });
 }
 
-function sameName(a: string | null, b: string): boolean {
+export function sameName(a: string | null, b: string): boolean {
   return a !== null && a.trim() === b.trim();
 }
 
