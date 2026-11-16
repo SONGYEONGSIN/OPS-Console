@@ -1,7 +1,17 @@
 // 주간업무보고 DB 행 스키마 — 마이그레이션 컬럼과 같다. 권한 판정용 변환은 `weekStateOf` 하나다.
 import { z } from "zod";
-import { AREAS, REPORT_STATUSES, WEEK_STATUSES } from "./constants";
-import { autoSnapshotSchema } from "./merge";
+import {
+  AREAS,
+  AUTO_AREAS,
+  PROJECT_STAGES,
+  REPORT_STATUSES,
+  WEEK_STATUSES,
+} from "./constants";
+import {
+  APPLICATION_GROUP_KEYS,
+  autoSnapshotSchema,
+  PIMS_GROUP_KEYS,
+} from "./merge";
 import type { WeekState } from "./permissions";
 
 export const weekRowSchema = z.object({
@@ -49,3 +59,88 @@ export function weekStateOf(row: WeekRow): WeekState {
     reopenedAt: row.reopened_at,
   };
 }
+
+// ── 작성 입력 — server action 이 폼 값을 그대로 믿지 않도록 경계에서 검사한다 ──
+
+const reportIdSchema = z.uuid("보고서 id 가 올바르지 않습니다.");
+const ymdSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "날짜 형식이 올바르지 않습니다.");
+
+export const areaNoteInputSchema = z.object({
+  reportId: reportIdSchema,
+  area: z.enum(AREAS, "영역이 올바르지 않습니다."),
+  thisWeek: z.string().max(4000, "금주 메모는 4,000자 이하입니다."),
+  nextWeek: z.string().max(4000, "차주 메모는 4,000자 이하입니다."),
+});
+
+export const itemOverrideInputSchema = z.object({
+  reportId: reportIdSchema,
+  itemKey: z
+    .string()
+    .regex(
+      /^(closing|pims|leave:(br|se)):[\w-]+$/,
+      "항목 키가 올바르지 않습니다.",
+    ),
+  area: z.enum(AUTO_AREAS, "영역이 올바르지 않습니다."),
+  note: z.string().max(1000, "메모는 1,000자 이하입니다.").optional(),
+  excluded: z.boolean().optional(),
+});
+
+const inKeys = (keys: readonly string[], key: string | null): boolean =>
+  key !== null && keys.includes(key);
+
+export const manualItemInputSchema = z
+  .object({
+    reportId: reportIdSchema,
+    area: z.enum(AUTO_AREAS, "영역이 올바르지 않습니다."),
+    groupKey: z.string().nullable(),
+    title: z
+      .string()
+      .trim()
+      .min(1, "제목을 입력하세요.")
+      .max(200, "제목은 200자 이하입니다."),
+    note: z.string().max(1000, "메모는 1,000자 이하입니다.").optional(),
+    periodStart: ymdSchema.nullable().optional(),
+    periodEnd: ymdSchema.nullable().optional(),
+    leaveKind: z.string().max(20, "구분은 20자 이하입니다.").nullable().optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.area === "application" && !inKeys(APPLICATION_GROUP_KEYS, v.groupKey)) {
+      ctx.addIssue({ code: "custom", path: ["groupKey"], message: "묶음을 고르세요." });
+    }
+    if (v.area === "pims" && !inKeys(PIMS_GROUP_KEYS, v.groupKey)) {
+      ctx.addIssue({ code: "custom", path: ["groupKey"], message: "묶음을 고르세요." });
+    }
+    if (v.area === "leave" && !v.periodStart) {
+      ctx.addIssue({ code: "custom", path: ["periodStart"], message: "시작일을 입력하세요." });
+    }
+  });
+
+/** 금주·차주 HTML 은 `toStoredNoteHtml` 로 정화한 **뒤** `storedProjectHtmlSchema` 로 길이를 본다. */
+export const projectEntryInputSchema = z.object({
+  reportId: reportIdSchema,
+  projectId: z.uuid("프로젝트 id 가 올바르지 않습니다."),
+  stage: z.enum(PROJECT_STAGES, "진행 단계가 올바르지 않습니다.").nullable(),
+  thisWeek: z.string(),
+  nextWeek: z.string(),
+});
+
+export const storedProjectHtmlSchema = z
+  .string()
+  .max(50_000, "내용이 너무 깁니다(50,000자 이하).");
+
+export const manualItemRefInputSchema = z.object({
+  reportId: reportIdSchema,
+  itemId: z.uuid("항목 id 가 올바르지 않습니다."),
+});
+
+export const tabCheckInputSchema = z.object({
+  reportId: reportIdSchema,
+  area: z.enum(AREAS, "영역이 올바르지 않습니다."),
+});
+
+export const imageUploadInputSchema = z.object({
+  reportId: reportIdSchema,
+  dataUrl: z.string(),
+});

@@ -64,7 +64,10 @@ async function readReport(
   return row === null ? null : reportRowSchema.parse(row);
 }
 
-async function activeOwnedProjectIds(operatorEmail: string): Promise<string[]> {
+/** 그 운영자가 맡은 활성 프로젝트·TF id. 그림 업로드 자격(Task 8)도 이것으로 본다. */
+export async function activeOwnedProjectIds(
+  operatorEmail: string,
+): Promise<string[]> {
   const db = createAdminClient();
   const owned = rowsOf<{ project_id: string }>(
     "ops_weekly_project_owners",
