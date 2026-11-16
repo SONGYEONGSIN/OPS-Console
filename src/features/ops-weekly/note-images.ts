@@ -116,7 +116,9 @@ export async function copyNoteImages(
   const moved = new Map<string, string>();
   await Promise.all(
     paths.map(async (from) => {
-      const to = from.startsWith(toPrefix) ? from : `${toPrefix}${restOf(from)}`;
+      const to = from.startsWith(toPrefix)
+        ? from
+        : `${toPrefix}${restOf(from)}`;
       if (!isOwnPath(to, toPrefix)) return;
       if (to === from || (await copyOne(from, to))) moved.set(from, to);
     }),
