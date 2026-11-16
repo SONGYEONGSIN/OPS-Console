@@ -184,6 +184,24 @@ describe("WeekHeader", () => {
     expect(screen.queryByText(/제출에 실패/)).toBeNull();
   });
 
+  it("제출은 끝났지만 안내는 새로고침으로 제출 상태 props 가 와도 사라지지 않는다", async () => {
+    const msg = "제출은 끝났지만 전원 제출 확인에 실패했습니다: x";
+    submitReport.mockResolvedValue({ ok: false, error: msg });
+    const { rerender } = render(<WeekHeader {...base} canSubmit />);
+    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    rerender(
+      <WeekHeader
+        {...base}
+        canSubmit={false}
+        reportStatus="submitted"
+        submittedAt="2026-11-19T08:05:00Z"
+      />,
+    );
+    expect(screen.getByText("제출함 11/19 17:05")).toBeInTheDocument();
+    expect(screen.getByText(msg)).toBeInTheDocument();
+  });
+
   it("진짜 제출 실패도 새로고침해 낡은 화면을 바로잡는다", async () => {
     submitReport.mockResolvedValue({
       ok: false,

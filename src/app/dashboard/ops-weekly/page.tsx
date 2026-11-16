@@ -86,9 +86,7 @@ function WeekView({ view }: { view: Week }) {
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
         tab={tab}
       />
-      {viewed === null ? (
-        <p className="px-7 pt-4 text-sm text-muted">{EMPTY_ROSTER}</p>
-      ) : view.kpis !== null ? (
+      {viewed !== null && view.kpis !== null ? (
         <WeeklyKpiRow kpis={view.kpis} unknownCount={unknownCountOf(view)} />
       ) : null}
       <div className="pt-4">

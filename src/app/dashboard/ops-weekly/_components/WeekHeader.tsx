@@ -54,20 +54,27 @@ function SubmitSlot(props: Props) {
     });
   }
 
+  const notice = message !== null ? <Notice message={message} /> : null;
   if (canSubmit) {
     return (
       <>
         <HeaderActionButton onClick={submit} disabled={pending}>
           제출완료
         </HeaderActionButton>
-        {message !== null ? <Notice message={message} /> : null}
+        {notice}
       </>
     );
   }
+  // 제출이 커밋된 뒤의 후속 실패 안내는 새로고침으로 제출 상태가 되어도 남긴다.
   if (reportStatus === "submitted" && submittedAt) {
-    return <span>{`제출함 ${formatMdHm(submittedAt)}`}</span>;
+    return (
+      <>
+        <span>{`제출함 ${formatMdHm(submittedAt)}`}</span>
+        {notice}
+      </>
+    );
   }
-  return message !== null ? <Notice message={message} /> : null;
+  return notice;
 }
 
 function Notice({ message }: { message: string }) {
