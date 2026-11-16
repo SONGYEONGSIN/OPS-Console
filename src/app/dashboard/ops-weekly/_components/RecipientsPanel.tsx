@@ -6,8 +6,8 @@ import { normEmail } from "@/features/ops-weekly/email";
 import {
   RECIPIENT_WARNING_LABEL,
   type RecipientWarning,
-  type WriterCandidate,
-} from "@/features/ops-weekly/roster";
+} from "@/features/ops-weekly/recipient-warning";
+import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import {
   addRecipient,
   removeRecipient,

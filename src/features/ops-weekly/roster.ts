@@ -8,6 +8,7 @@ import {
   OPS_WEEKLY_SLUG,
   WRITER_TEAMS,
 } from "./constants";
+import type { RecipientWarning } from "./recipient-warning";
 import { weeksBetween } from "./week";
 
 export type WriterCandidate = {
@@ -48,13 +49,10 @@ export function dutyForWeek(
   ];
 }
 
-export type RecipientWarning = "not-operator" | "inactive" | "no-menu";
-
-export const RECIPIENT_WARNING_LABEL: Record<RecipientWarning, string> = {
-  "not-operator": "운영자 명단에 없음",
-  inactive: "비활성 계정",
-  "no-menu": "메뉴 권한 없음",
-};
+export {
+  RECIPIENT_WARNING_LABEL,
+  type RecipientWarning,
+} from "./recipient-warning";
 
 export type RecipientOperator = {
   email: string;
