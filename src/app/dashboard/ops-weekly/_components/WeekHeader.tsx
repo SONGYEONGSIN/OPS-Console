@@ -110,7 +110,7 @@ export function WeekHeader(props: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-2 px-7 pt-4 text-sm text-ink">
+    <div className="flex flex-col gap-2 px-5 pt-4 lg:px-7 text-sm text-ink">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Link href={props.prevHref} aria-label="이전 주" className={NAV_LINK}>
           ‹
@@ -122,6 +122,7 @@ export function WeekHeader(props: Props) {
         {writers.length > 0 ? (
           <ListSelect
             ariaLabel="작성자"
+            className="max-w-full"
             value={viewedName}
             onChange={pickWriter}
             options={writers.map((w) => w.name)}

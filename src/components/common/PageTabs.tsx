@@ -18,6 +18,8 @@ export type PageTab = { key: string; label: string; href: string };
  *
  * `size="sm"` — 메인 탭 아래 서브 탭 한 줄. 글자·가로 패딩만 줄이고 밑줄 규칙은 같다.
  * 칩이 아니다(칩은 같은 목록의 필터). 기본 모양은 바뀌지 않는다.
+ * 좁은 화면에서는 탭 줄만 가로로 스크롤한다(`overflow-x-auto`). 스크롤 박스가 `-mb-px` 로
+ * 겹친 밑줄 1px 를 잘라내므로 `pb-px` 로 그만큼 자리를 준다.
  * 메인 탭 줄과 `mt-3` 띄우고 세로 패딩은 메인과 같은 `py-2` 다 — `py-1.5` 로 메인 바로
  * 밑에 붙여 두니 납작하게 끼어 보였다(사용자 지시 2026-11-05).
  */
@@ -38,7 +40,7 @@ export function PageTabs({
   const sz = SIZE_CLASS[size];
   return (
     <div className="px-7">
-      <div className={`flex gap-1 border-b ${sz.bar}`}>
+      <div className={`flex gap-1 overflow-x-auto border-b pb-px ${sz.bar}`}>
         {tabs.map((t) => {
           const isActive = active === t.key;
           return (
@@ -46,7 +48,7 @@ export function PageTabs({
               key={t.key}
               href={t.href}
               aria-current={isActive ? "page" : undefined}
-              className={`-mb-px ${sz.tab} ${
+              className={`-mb-px shrink-0 whitespace-nowrap ${sz.tab} ${
                 isActive
                   ? "border-b-2 border-vermilion font-semibold text-vermilion"
                   : "border-b-2 border-transparent text-ink-soft hover:text-ink"

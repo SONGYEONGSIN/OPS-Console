@@ -78,4 +78,13 @@ describe("PageTabs", () => {
     expect(bar).toContain("mt-3");
     expect(active).toHaveAttribute("aria-current", "page");
   });
+
+  it("좁은 화면에서는 가로 스크롤, 탭은 줄어들지 않는다", () => {
+    render(<PageTabs active="univ" tabs={tabs} />);
+    const link = screen.getByRole("link", { name: "대학배정" });
+    expect(tokens(link.parentElement!)).toContain("overflow-x-auto");
+    for (const c of ["whitespace-nowrap", "shrink-0"]) {
+      expect(tokens(link)).toContain(c);
+    }
+  });
 });

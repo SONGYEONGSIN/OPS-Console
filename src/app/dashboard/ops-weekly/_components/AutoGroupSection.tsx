@@ -36,8 +36,8 @@ function AutoRow(props: {
           item.excluded ? "text-muted line-through" : "text-ink"
         }`}
       >
-        <span className="font-medium">{item.title}</span>
-        <span>{item.subtitle}</span>
+        <span className="min-w-0 break-words font-medium">{item.title}</span>
+        <span className="min-w-0 break-words">{item.subtitle}</span>
         {item.at ? (
           <span className="text-xs tabular-nums text-muted">
             {formatMdHm(item.at)}

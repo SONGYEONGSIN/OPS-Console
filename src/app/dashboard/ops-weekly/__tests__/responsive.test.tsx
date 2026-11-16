@@ -1,0 +1,137 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+vi.mock("@/features/ops-weekly/settings-actions", () => ({
+  addRecipient: vi.fn(),
+  removeRecipient: vi.fn(),
+  saveRotation: vi.fn(),
+  upsertProject: vi.fn(),
+  setProjectOwners: vi.fn(),
+}));
+
+import { SubmissionTable } from "../_components/SubmissionTable";
+import { ProjectCatalogPanel } from "../_components/ProjectCatalogPanel";
+import { RotationPanel } from "../_components/RotationPanel";
+import { RecipientsPanel } from "../_components/RecipientsPanel";
+import { ProjectOverview } from "../_components/ProjectOverview";
+import { WeeklyKpiRow } from "../_components/WeeklyKpiRow";
+import type { WeekRow } from "@/features/ops-weekly/schemas";
+
+afterEach(cleanup);
+
+const writer = {
+  email: "a@x",
+  name: "운영자A",
+  team: "운영1팀",
+  role: "사원",
+  status: "active",
+};
+
+const tokens = (el: Element) => el.className.split(/\s+/);
+
+describe("주간업무보고 반응형 — 모양 단언", () => {
+  it("제출 표는 가로 스크롤 래퍼 안에 있다", () => {
+    render(
+      <SubmissionTable
+        week={{ id: "w1", week_start: "2026-11-16" } as WeekRow}
+        writers={[writer]}
+        reports={[]}
+        canReturn={() => false}
+        onReturn={vi.fn()}
+      />,
+    );
+    const table = screen.getByRole("table");
+    expect(tokens(table.parentElement as Element)).toContain("overflow-x-auto");
+    expect(tokens(table).some((c) => c.startsWith("min-w-"))).toBe(true);
+  });
+
+  it("프로젝트 목록 표는 가로 스크롤 래퍼 안에 있다", () => {
+    render(
+      <ProjectCatalogPanel
+        projects={[]}
+        writers={[writer]}
+        candidates={[writer]}
+      />,
+    );
+    const table = screen.getByRole("table");
+    expect(tokens(table.parentElement as Element)).toContain("overflow-x-auto");
+    expect(tokens(table).some((c) => c.startsWith("min-w-"))).toBe(true);
+  });
+
+  it("KPI 6열은 xl 부터 (lg 는 사이드바·인스펙터로 좁다)", () => {
+    render(
+      <WeeklyKpiRow
+        kpis={{ dev: 1, test: 1, opening: 1, running: 1, closing: 1, pims: 1 }}
+      />,
+    );
+    const grid = screen.getAllByTestId("weekly-kpi-label")[0].closest(".grid");
+    const t = tokens(grid as Element);
+    expect(t).toContain("xl:grid-cols-6");
+    expect(t).not.toContain("lg:grid-cols-6");
+    expect(t).toContain("px-5");
+    expect(t).toContain("lg:px-7");
+  });
+
+  it("당번 순번 행은 줄바꿈된다", () => {
+    render(
+      <RotationPanel
+        rotation={["a@x"]}
+        anchorWeekStart={null}
+        writers={[writer]}
+      />,
+    );
+    const row = screen.getByText("운영자A").closest("li") as Element;
+    expect(tokens(row)).toContain("flex-wrap");
+    expect(tokens(screen.getByText("운영자A"))).toContain("break-words");
+  });
+
+  it("받는 사람 행은 줄바꿈된다", () => {
+    render(
+      <RecipientsPanel
+        recipients={[{ email: "a@x", name: "운영자A", warning: null }] as never}
+        candidates={[writer]}
+      />,
+    );
+    const row = screen.getByText("운영자A").closest("li") as Element;
+    expect(tokens(row)).toContain("flex-wrap");
+    expect(tokens(screen.getByText("a@x"))).toContain("break-words");
+  });
+  it("프로젝트 모아보기의 담당자 줄은 줄바꿈되고 긴 이름이 넘치지 않는다", () => {
+    render(
+      <ProjectOverview
+        groups={[
+          {
+            projectId: "p1",
+            projectName: "프로젝트",
+            kind: "project",
+            owners: [
+              {
+                operatorEmail: "a@x",
+                operatorName: "운영자A",
+                stage: null,
+                thisWeek: "",
+                nextWeek: "",
+              },
+            ],
+          } as never,
+        ]}
+      />,
+    );
+    const name = screen.getByTestId("owner-name");
+    expect(tokens(name)).toContain("break-words");
+    expect(tokens(name.parentElement as Element)).toContain("flex-wrap");
+  });
+
+  it("받는 사람 선택·이메일 입력은 컨테이너 폭을 넘지 않는다", () => {
+    render(<RecipientsPanel recipients={[]} candidates={[writer]} />);
+    expect(tokens(screen.getByLabelText("받는 사람 운영자 선택"))).toContain(
+      "max-w-full",
+    );
+    expect(tokens(screen.getByLabelText("받는 사람 이메일"))).toContain(
+      "max-w-full",
+    );
+  });
+});

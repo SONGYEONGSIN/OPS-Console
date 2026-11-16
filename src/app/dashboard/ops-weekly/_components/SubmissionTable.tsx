@@ -30,58 +30,65 @@ export function SubmissionTable(props: Props) {
   const { week, writers, reports, canReturn, onReturn } = props;
   const byEmail = new Map(reports.map((r) => [normEmail(r.operator_email), r]));
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-          <th className="px-3 py-2">이름</th>
-          <th className="px-3 py-2">팀</th>
-          <th className="px-3 py-2">상태</th>
-          <th className="px-3 py-2">제출 시각</th>
-          <th className="px-3 py-2">보기</th>
-          <th className="px-3 py-2">작업</th>
-        </tr>
-      </thead>
-      <tbody>
-        {writers.map((w) => {
-          const report = byEmail.get(normEmail(w.email));
-          return (
-            <tr
-              key={w.email}
-              className="border-b border-line-soft text-ink hover:bg-line-soft"
-            >
-              <td className={TD}>{w.name}</td>
-              <td className={TD}>{w.team}</td>
-              <td className={TD}>{statusLabel(report)}</td>
-              <td className={`${TD} tabular-nums`}>
-                {report?.status === "submitted" && report.submitted_at
-                  ? formatMdHm(report.submitted_at)
-                  : "—"}
-              </td>
-              <td className={TD}>
-                <Link
-                  href={opsWeeklyHref(week.week_start, "application", w.email)}
-                  className="underline"
-                >
-                  보기
-                </Link>
-              </td>
-              <td className={TD}>
-                {report !== undefined && canReturn(report) ? (
-                  <button
-                    type="button"
-                    className={BTN_CLASS}
-                    onClick={() => {
-                      onReturn(report, w.name);
-                    }}
+    // 일회성: 6열이 좁은 화면에서 찌그러지지 않는 최소 폭
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[34rem] text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
+            <th className="px-3 py-2">이름</th>
+            <th className="px-3 py-2">팀</th>
+            <th className="px-3 py-2">상태</th>
+            <th className="px-3 py-2">제출 시각</th>
+            <th className="px-3 py-2">보기</th>
+            <th className="px-3 py-2">작업</th>
+          </tr>
+        </thead>
+        <tbody>
+          {writers.map((w) => {
+            const report = byEmail.get(normEmail(w.email));
+            return (
+              <tr
+                key={w.email}
+                className="border-b border-line-soft text-ink hover:bg-line-soft"
+              >
+                <td className={TD}>{w.name}</td>
+                <td className={TD}>{w.team}</td>
+                <td className={TD}>{statusLabel(report)}</td>
+                <td className={`${TD} tabular-nums`}>
+                  {report?.status === "submitted" && report.submitted_at
+                    ? formatMdHm(report.submitted_at)
+                    : "—"}
+                </td>
+                <td className={TD}>
+                  <Link
+                    href={opsWeeklyHref(
+                      week.week_start,
+                      "application",
+                      w.email,
+                    )}
+                    className="underline"
                   >
-                    다시 작성
-                  </button>
-                ) : null}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                    보기
+                  </Link>
+                </td>
+                <td className={TD}>
+                  {report !== undefined && canReturn(report) ? (
+                    <button
+                      type="button"
+                      className={BTN_CLASS}
+                      onClick={() => {
+                        onReturn(report, w.name);
+                      }}
+                    >
+                      다시 작성
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

@@ -30,7 +30,7 @@ export function ManualRow(props: {
         {item.leave_kind ? (
           <span className="text-xs text-muted">{item.leave_kind}</span>
         ) : null}
-        <span className="font-medium">{item.title}</span>
+        <span className="min-w-0 break-words font-medium">{item.title}</span>
         {period ? (
           <span className="text-xs tabular-nums text-muted">{period}</span>
         ) : null}
@@ -47,7 +47,9 @@ export function ManualRow(props: {
           </button>
         ) : null}
       </div>
-      {item.note ? <p className="text-xs text-muted">{item.note}</p> : null}
+      {item.note ? (
+        <p className="break-words text-xs text-muted">{item.note}</p>
+      ) : null}
       {error ? <p className={ERROR_CLASS}>{error}</p> : null}
     </li>
   );

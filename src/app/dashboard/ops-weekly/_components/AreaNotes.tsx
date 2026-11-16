@@ -72,7 +72,7 @@ export function AreaNotes(props: Props) {
             </label>
           </div>
           {note.error ? <p className={ERROR_CLASS}>{note.error}</p> : null}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled={check.pending}

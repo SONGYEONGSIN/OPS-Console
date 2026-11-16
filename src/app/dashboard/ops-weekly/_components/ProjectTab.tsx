@@ -45,7 +45,7 @@ export function ReadOnlyHtml({ label, html }: { label: string; html: string }) {
       ) : (
         // 서버(toStoredNoteHtml)에서 정화되고 _load 가 서명한 HTML 만 들어온다.
         <div
-          className="text-sm text-ink [&_img]:my-1 [&_img]:max-w-full"
+          className="break-words text-sm text-ink [&_img]:my-1 [&_img]:max-w-full"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}
