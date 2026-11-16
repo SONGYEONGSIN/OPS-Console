@@ -17,6 +17,9 @@ import {
   splitSentences,
   buildDraftPrompt,
   buildIngestRunMessage,
+  isGraphTransientError,
+  tryCollectMailbox,
+  isRunFailed,
 } from "../mailbox-ingest.mjs";
 
 describe("buildIngestRunMessage — automation_runs 이력 메시지", () => {
@@ -488,6 +491,155 @@ describe("graphGetWithRetry — 429 백오프 재시도", () => {
     // 최초 1회 + 재시도 2회 = 3
     expect(spy).toHaveBeenCalledTimes(3);
     vi.useRealTimers();
+  });
+});
+
+describe("graphGetWithRetry — 5xx 재시도", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  const res5 = (status, retryAfter = null) => ({
+    ok: false,
+    status,
+    headers: { get: (h) => (h === "Retry-After" ? retryAfter : null) },
+  });
+  const ok200 = { ok: true, status: 200, headers: { get: () => null } };
+
+  it("503 → 200: 1회 재시도 후 성공", async () => {
+    vi.useFakeTimers();
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(res5(503))
+      .mockResolvedValueOnce(ok200);
+    const p = graphGetWithRetry("https://graph/x", "tok");
+    await vi.runAllTimersAsync();
+    const res = await p;
+    expect(res.status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("502·504·500 연속도 재시도 후 성공", async () => {
+    vi.useFakeTimers();
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(res5(502))
+      .mockResolvedValueOnce(res5(504))
+      .mockResolvedValueOnce(res5(500))
+      .mockResolvedValueOnce(ok200);
+    const p = graphGetWithRetry("https://graph/x", "tok");
+    await vi.runAllTimersAsync();
+    expect((await p).status).toBe(200);
+    expect(spy).toHaveBeenCalledTimes(4);
+  });
+
+  it("5xx 계속 → 재시도 3회 후 마지막 5xx 응답 반환(총 4회)", async () => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(res5(503));
+    const p = graphGetWithRetry("https://graph/x", "tok");
+    await vi.runAllTimersAsync();
+    expect((await p).status).toBe(503);
+    expect(spy).toHaveBeenCalledTimes(4);
+  });
+
+  it("404 등은 재시도하지 않는다", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(res5(404));
+    const res = await graphGetWithRetry("https://graph/x", "tok");
+    expect(res.status).toBe(404);
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("5xx 기본 대기는 지수 백오프 2s → 4s → 8s", async () => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(res5(502));
+    const p = graphGetWithRetry("https://graph/x", "tok");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(spy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(spy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(spy).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(spy).toHaveBeenCalledTimes(4);
+    await p;
+  });
+
+  it("503 Retry-After(초) 우선", async () => {
+    vi.useFakeTimers();
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(res5(503, "5"))
+      .mockResolvedValueOnce(ok200);
+    const p = graphGetWithRetry("https://graph/x", "tok");
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(spy).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect((await p).status).toBe(200);
+  });
+});
+
+describe("메일함 단위 격리 — Graph 일시 오류", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("isGraphTransientError: Graph 5xx/429 메시지만 true", () => {
+    expect(isGraphTransientError(new Error("inbox folder 503 {}"))).toBe(true);
+    expect(isGraphTransientError(new Error("childFolders AAA 502 x"))).toBe(true);
+    expect(isGraphTransientError(new Error("folder AAA 429 x"))).toBe(true);
+    expect(isGraphTransientError(new Error("inbox folder 404 x"))).toBe(false);
+    expect(isGraphTransientError(new Error("claude CLI exited 503"))).toBe(false);
+    expect(isGraphTransientError(new Error("settings: boom"))).toBe(false);
+  });
+
+  it("isRunFailed: 전부 건너뛴 경우에만 실패", () => {
+    expect(isRunFailed(0, 2)).toBe(false);
+    expect(isRunFailed(1, 2)).toBe(false);
+    expect(isRunFailed(2, 2)).toBe(true);
+    expect(isRunFailed(0, 0)).toBe(false);
+  });
+
+  it("buildIngestRunMessage: 건너뜀 N은 있을 때만 덧붙인다", () => {
+    expect(buildIngestRunMessage(1, 1, "m", 0)).toBe(
+      "수집 1건 · 초안 1건 생성 · 모델 m",
+    );
+    expect(buildIngestRunMessage(1, 1, "m", 2)).toBe(
+      "수집 1건 · 초안 1건 생성 · 모델 m · 메일함 건너뜀 2",
+    );
+  });
+
+  it("첫 메일함 inbox 503 지속 → 건너뛰고 두 번째 메일함은 수집", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const bad = url.includes("bad%40example.com");
+      if (bad) return { ok: false, status: 503, headers: { get: () => null }, text: async () => "unavailable" };
+      if (url.endsWith("/mailFolders/inbox")) return { ok: true, status: 200, json: async () => ({ id: "IN" }) };
+      if (url.includes("/childFolders")) return { ok: true, status: 200, json: async () => ({ value: [] }) };
+      return { ok: true, status: 200, json: async () => ({ value: [{ id: "m1" }] }) };
+    });
+
+    const p1 = tryCollectMailbox("tok", "bad@example.com", "2026-01-01T00:00:00Z");
+    await vi.runAllTimersAsync();
+    const r1 = await p1;
+    const r2 = await tryCollectMailbox("tok", "good@example.com", "2026-01-01T00:00:00Z");
+
+    expect(r1.skipped).toBe(true);
+    expect(r1.messages).toEqual([]);
+    expect(r2.skipped).toBe(false);
+    expect(r2.messages).toEqual([{ id: "m1" }]);
+  });
+
+  it("Graph 오류가 아닌 에러는 그대로 throw", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    await expect(
+      tryCollectMailbox("tok", "x@example.com", "2026-01-01T00:00:00Z"),
+    ).rejects.toThrow("network down");
   });
 });
 
