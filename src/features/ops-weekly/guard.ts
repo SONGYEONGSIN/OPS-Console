@@ -10,10 +10,10 @@ import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { OPS_WEEKLY_SLUG } from "./constants";
 import { normEmail } from "./email";
-import { canEditReport, type Actor, type WeekState } from "./permissions";
+import { canEditReport, type Actor } from "./permissions";
 import {
   reportRowSchema,
-  weekStateOf,
+  normalizedWeekStateOf,
   type ReportRow,
   type WeekRow,
 } from "./schemas";
@@ -36,15 +36,6 @@ async function readReportById(reportId: string): Promise<ReportRow | null> {
   return row === null ? null : reportRowSchema.parse(row);
 }
 
-/** 당번 이메일도 정규화한 키로 비교한다. */
-function normalizedState(week: WeekRow): WeekState {
-  const state = weekStateOf(week);
-  return {
-    ...state,
-    dutyEmail: state.dutyEmail === null ? null : normEmail(state.dutyEmail),
-  };
-}
-
 export async function authorizeReportEdit(reportId: string): Promise<EditAuth> {
   const me = await getCurrentOperator();
   if (!me) return { ok: false, error: "로그인이 필요합니다." };
@@ -63,7 +54,7 @@ export async function authorizeReportEdit(reportId: string): Promise<EditAuth> {
   const week = await getWeekById(report.week_id);
   if (week === null) return { ok: false, error: NOT_FOUND };
 
-  const state = normalizedState(week);
+  const state = normalizedWeekStateOf(week);
   if (canEditReport(actor, state, normEmail(report.operator_email))) {
     return { ok: true, ctx: { actor, report, week } };
   }

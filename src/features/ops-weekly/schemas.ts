@@ -1,5 +1,6 @@
 // 주간업무보고 DB 행 스키마 — 마이그레이션 컬럼과 같다. 권한 판정용 변환은 `weekStateOf` 하나다.
 import { z } from "zod";
+import { normEmail } from "./email";
 import {
   AREAS,
   AUTO_AREAS,
@@ -58,6 +59,15 @@ export function weekStateOf(row: WeekRow): WeekState {
     status: row.status,
     dutyEmail: row.duty_email,
     reopenedAt: row.reopened_at,
+  };
+}
+
+/** 권한 판정에는 당번 이메일도 정규화한 키로 넘긴다 — 읽는 쪽마다 따로 하지 않는다. */
+export function normalizedWeekStateOf(row: WeekRow): WeekState {
+  const state = weekStateOf(row);
+  return {
+    ...state,
+    dutyEmail: state.dutyEmail === null ? null : normEmail(state.dutyEmail),
   };
 }
 

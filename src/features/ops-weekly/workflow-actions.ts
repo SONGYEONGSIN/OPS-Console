@@ -24,12 +24,11 @@ import {
   checkFinalize,
   type Actor,
   type FinalizeCheck,
-  type WeekState,
 } from "./permissions";
 import { listPendingWriters, listReports } from "./report-queries";
 import {
   reportRowSchema,
-  weekStateOf,
+  normalizedWeekStateOf,
   type ReportRow,
   type WeekRow,
 } from "./schemas";
@@ -74,14 +73,7 @@ async function currentActor(): Promise<Actor | Fail> {
   return { email: normEmail(me.email), isAdmin: me.permission === "admin" };
 }
 
-/** 당번 이메일도 정규화한 키로 비교한다. */
-function stateOf(week: WeekRow): WeekState {
-  const s = weekStateOf(week);
-  return {
-    ...s,
-    dutyEmail: s.dutyEmail === null ? null : normEmail(s.dutyEmail),
-  };
-}
+const stateOf = normalizedWeekStateOf;
 
 const changedRows = (data: unknown): number =>
   ((data as unknown[] | null) ?? []).length;

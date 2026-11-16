@@ -27,7 +27,7 @@ import {
 } from "@/features/ops-weekly/report-queries";
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import {
-  weekStateOf,
+  normalizedWeekStateOf,
   type ReportRow,
   type WeekRow,
 } from "@/features/ops-weekly/schemas";
@@ -159,11 +159,7 @@ async function loadStatusData(args: {
   reports: readonly ReportRow[];
 }): Promise<StatusData> {
   const { week, actor, writers, reports } = args;
-  const base = weekStateOf(week);
-  const state = {
-    ...base,
-    dutyEmail: base.dutyEmail === null ? null : normEmail(base.dutyEmail),
-  };
+  const state = normalizedWeekStateOf(week);
   const submitted = new Set(
     reports
       .filter((r) => r.status === "submitted")
@@ -194,11 +190,7 @@ function derive(args: {
 }) {
   const { week, actor, writers, viewed, report, reports } = args;
   const writerEmails = new Set(writers.map((w) => w.email));
-  const base = weekStateOf(week);
-  const state = {
-    ...base,
-    dutyEmail: base.dutyEmail === null ? null : normEmail(base.dutyEmail),
-  };
+  const state = normalizedWeekStateOf(week);
   return {
     submittedCount: reports.filter(
       (r) =>

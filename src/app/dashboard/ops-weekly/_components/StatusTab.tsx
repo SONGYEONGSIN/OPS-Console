@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListSelect } from "@/components/common/ListSelect";
 import { ModalShell } from "@/components/common/ModalShell";
@@ -17,7 +17,7 @@ import {
 } from "@/features/ops-weekly/permissions";
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import {
-  weekStateOf,
+  normalizedWeekStateOf,
   type ReportRow,
   type WeekRow,
 } from "@/features/ops-weekly/schemas";
@@ -31,7 +31,7 @@ import { DutySummary } from "./DutySummary";
 import { ProjectOverview } from "./ProjectOverview";
 import { SubmissionTable } from "./SubmissionTable";
 import { BTN_CLASS, FIELD_CLASS } from "./styles";
-import { SAVE_FAILED } from "./use-save";
+import { useSave } from "./use-save";
 
 type Props = {
   week: WeekRow;
@@ -52,20 +52,17 @@ const LOCKED_TEXT = "이미 보고된 주입니다";
 /** 결과와 상관없이 서버 상태가 바뀌었을 수 있어 늘 새로 읽는다(보고 커밋 뒤 후속 실패 포함). */
 function useWorkflow() {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
+  const save = useSave();
   function run(fn: () => Promise<ActionResult>) {
-    startTransition(async () => {
+    save.run(async () => {
       try {
-        const res = await fn();
-        setMessage(res.ok ? null : res.error);
-      } catch {
-        setMessage(SAVE_FAILED);
+        return await fn();
+      } finally {
+        router.refresh();
       }
-      router.refresh();
     });
   }
-  return { pending, message, run };
+  return { pending: save.pending, message: save.error, run };
 }
 
 function whyDisabled(
@@ -201,7 +198,7 @@ export function StatusTab(props: Props) {
   const { week, actor, writers, reports, projectGroups, finalize } = props;
   const wf = useWorkflow();
   const [dialog, setDialog] = useState<Dialog>(null);
-  const state = weekStateOf(week);
+  const state = normalizedWeekStateOf(week);
   const names = new Map(writers.map((w) => [normEmail(w.email), w.name]));
   const open = week.status === "open";
 

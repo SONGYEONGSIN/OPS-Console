@@ -17,7 +17,6 @@ type Props = {
   onReturn: (report: ReportRow, name: string) => void;
 };
 
-const TH = "px-3 py-2";
 const TD = "px-3 py-2";
 
 function statusLabel(report: ReportRow | undefined): string {
@@ -34,12 +33,12 @@ export function SubmissionTable(props: Props) {
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-line text-left text-xs uppercase tracking-[0.06em] text-muted">
-          <th className={TH}>이름</th>
-          <th className={TH}>팀</th>
-          <th className={TH}>상태</th>
-          <th className={TH}>제출 시각</th>
-          <th className={TH}>보기</th>
-          <th className={TH}>작업</th>
+          <th className="px-3 py-2">이름</th>
+          <th className="px-3 py-2">팀</th>
+          <th className="px-3 py-2">상태</th>
+          <th className="px-3 py-2">제출 시각</th>
+          <th className="px-3 py-2">보기</th>
+          <th className="px-3 py-2">작업</th>
         </tr>
       </thead>
       <tbody>

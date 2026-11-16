@@ -184,6 +184,20 @@ describe("StatusTab", () => {
     ).toBeNull();
   });
 
+  it("당번 이메일이 대문자여도 당번으로 본다 — 다시 작성·주요 편집", () => {
+    render(
+      <StatusTab
+        {...base}
+        week={{ ...WEEK, duty_email: "D@x" }}
+        reports={[rep("a@x", "submitted")]}
+      />,
+    );
+    expect(
+      within(row("운영자A")).getByRole("button", { name: "다시 작성" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("금주")).toBeInTheDocument();
+  });
+
   it("[다시 작성] 은 당번이 아니면 안 보인다", () => {
     render(
       <StatusTab
