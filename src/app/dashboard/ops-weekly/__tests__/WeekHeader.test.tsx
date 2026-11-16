@@ -214,4 +214,15 @@ describe("WeekHeader", () => {
       "이미 제출한 보고서입니다.",
     );
   });
+
+  it("제출 action 이 던져도 페이지를 날리지 않고 안내 + 새로고침", async () => {
+    submitReport.mockRejectedValue(new Error("명단 조회 실패"));
+    render(<WeekHeader {...base} canSubmit />);
+    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "제출하지 못했습니다 — 잠시 후 다시 시도하세요",
+    );
+    expect(screen.queryByText(/명단 조회 실패/)).toBeNull();
+  });
 });

@@ -113,10 +113,11 @@ check(
   rec.error ? `code=${rec.error.code} ${rec.error.message}` : `rows=${(rec.data ?? []).length}`,
 );
 
+// 권한 거부(42501)만 통과다 — 함수가 아예 없어도(PGRST202) 에러는 나므로 '에러가 있다'로 보면 누락이 초록이 된다.
 const rpc = await anon.rpc("ops_weekly_replace_rotation", { emails: [] });
 check(
-  !!rpc.error,
-  "anon rpc ops_weekly_replace_rotation 거절",
+  rpc.error?.code === "42501",
+  "anon rpc ops_weekly_replace_rotation 권한 거부(42501)",
   rpc.error ? `code=${rpc.error.code} ${rpc.error.message}` : "에러 없음",
 );
 

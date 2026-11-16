@@ -34,6 +34,8 @@ type Props = {
 
 // 제출이 이미 커밋된 뒤의 후속 실패(전원 제출 확인 등) 문구의 머리말 — 실패로 포장하지 않는다.
 const COMMITTED_PREFIX = "제출은 끝났지만";
+// action 이 던졌을 때(명단·원천 조회 실패 등) — 에러 경계로 올라가 페이지가 날아가지 않게 받는다.
+const SUBMIT_FAILED = "제출하지 못했습니다 — 잠시 후 다시 시도하세요";
 
 const NAV_LINK =
   "border border-line-soft px-2 py-0.5 text-xs text-ink-soft hover:border-ink hover:bg-ink hover:text-cream";
@@ -47,10 +49,15 @@ function SubmitSlot(props: Props) {
   function submit() {
     if (reportId === null) return;
     startTransition(async () => {
-      const res = await submitReport({ reportId });
-      setMessage(res.ok ? null : res.error);
-      // 성공이든 실패든 서버 상태가 바뀌었을 수 있다(제출 뒤 후속 실패 포함).
-      router.refresh();
+      try {
+        const res = await submitReport({ reportId });
+        setMessage(res.ok ? null : res.error);
+      } catch {
+        setMessage(SUBMIT_FAILED);
+      } finally {
+        // 성공이든 실패든 서버 상태가 바뀌었을 수 있다(제출 뒤 후속 실패 포함).
+        router.refresh();
+      }
     });
   }
 
