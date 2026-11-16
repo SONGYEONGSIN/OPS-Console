@@ -46,21 +46,25 @@ const CLAUDE_BIN =
   env.CLAUDE_BIN || (process.platform === "win32" ? "claude.cmd" : "claude");
 const LLM_MODEL = env.MAILBOX_LLM_MODEL ?? "claude"; // model_used 라벨 · 이력 표기용
 
-// Graph GET + 429(ApplicationThrottled) 백오프 재시도.
-// Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦다.
-// Retry-After 헤더(초) 우선, 없으면 기본 2초. 최대 3회 재시도.
+// Graph GET + 429(ApplicationThrottled)·5xx(500/502/503/504) 백오프 재시도.
+// Microsoft Graph는 메일박스당 동시 요청 ~4개로 제한하므로 429가 잦고, 일시 5xx도 드물지 않다.
+// Retry-After 헤더(초) 우선, 없으면 429는 기본 2초, 5xx는 지수 백오프(2s·4s·8s). 최대 3회 재시도.
+const RETRYABLE_5XX = new Set([500, 502, 503, 504]);
 export async function graphGetWithRetry(url, token, maxRetries = 3, extraHeaders = {}) {
   let attempt = 0;
   while (true) {
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, ...extraHeaders },
     });
-    if (res.status !== 429) return res;
+    const is5xx = RETRYABLE_5XX.has(res.status);
+    if (res.status !== 429 && !is5xx) return res;
     if (attempt >= maxRetries) return res; // 호출부에서 !res.ok 처리(throw/skip)
     const retryAfter = Number(res.headers.get("Retry-After"));
     const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
       ? retryAfter * 1000
-      : 2000;
+      : is5xx
+        ? 2000 * 2 ** attempt
+        : 2000;
     await new Promise((r) => setTimeout(r, waitMs));
     attempt++;
   }
@@ -169,6 +173,47 @@ export async function collectInboxFolderIds(token, ownerEmail) {
   }
 
   return ids;
+}
+
+// Graph 일시 오류(429/5xx) 판정 — 위 fetch 함수들이 던지는 메시지 형식
+// (`inbox folder 503 …`, `childFolders <id> 503 …`, `folder <id> 503 …`, `inbox 503 …`)만 본다.
+const GRAPH_TRANSIENT_RE =
+  /^(?:inbox folder|inbox|childFolders \S+|folder \S+) (?:429|500|502|503|504)\b/;
+export function isGraphTransientError(e) {
+  return GRAPH_TRANSIENT_RE.test(e instanceof Error ? e.message : String(e));
+}
+
+// 한 메일함의 Graph 수집(폴더 탐색 + 폴더별 메시지). Graph 일시 오류면 그 메일함만
+// skipped로 돌려주고(호출부가 다음 메일함 계속), 그 외 에러는 그대로 throw.
+export async function tryCollectMailbox(token, ownerEmail, since) {
+  try {
+    const folderIds = await collectInboxFolderIds(token, ownerEmail);
+    // 폴더별 메시지는 순차 fetch — 메일박스당 동시 요청 한도(~4) 초과 시
+    // 429 ApplicationThrottled로 잡이 죽으므로 한 번에 하나씩 처리한다.
+    // graphGetWithRetry로 3회 재시도 후에도 429면 그 폴더만 건너뛰고 잡은 계속.
+    const messages = [];
+    for (const fid of folderIds) {
+      try {
+        messages.push(...(await fetchFolderMessages(token, ownerEmail, fid, since)));
+      } catch (e) {
+        if (/429/.test(e.message)) {
+          console.warn(`folder skip (429 throttled): ${ownerEmail} ${fid}`);
+          continue;
+        }
+        throw e;
+      }
+    }
+    return { skipped: false, messages };
+  } catch (e) {
+    if (!isGraphTransientError(e)) throw e;
+    console.warn(`mailbox skip (graph error): ${ownerEmail} — ${e.message.slice(0, 200)}`);
+    return { skipped: true, messages: [] };
+  }
+}
+
+// 모든 메일함이 건너뛰어졌을 때만 실패로 본다(일부만이면 나머지는 정상 처리됨).
+export function isRunFailed(skipped, total) {
+  return total > 0 && skipped >= total;
 }
 
 // 사내 도메인 — 이 메일함은 외부 고객(대학 담당자) 회신 초안 전용이므로
@@ -357,8 +402,9 @@ function generateDraft(message, operatorName) {
 }
 
 // automation_runs 이력 메시지 — 자동화 메뉴에서 "수집/초안 몇 건, 모델 무엇"을 보여준다. (순수)
-export function buildIngestRunMessage(ingested, drafted, model) {
-  return `수집 ${ingested}건 · 초안 ${drafted}건 생성 · 모델 ${model}`;
+export function buildIngestRunMessage(ingested, drafted, model, skipped = 0) {
+  const base = `수집 ${ingested}건 · 초안 ${drafted}건 생성 · 모델 ${model}`;
+  return skipped > 0 ? `${base} · 메일함 건너뜀 ${skipped}` : base;
 }
 
 async function main() {
@@ -396,6 +442,7 @@ async function main() {
 
   let ingested = 0;
   let drafted = 0;
+  let skippedMailboxes = 0;
 
   for (const s of settings) {
     // 최초(last_synced_at null) 운영자는 과거 메일 폭주 방지를 위해 최근 24h만 처리
@@ -412,23 +459,15 @@ async function main() {
     const operatorName = op?.name ?? null;
 
     // 받은편지함 + 모든 하위 폴더 재귀 수집. graph_message_id unique라 폴더 중복 안전.
-    const folderIds = await collectInboxFolderIds(token, s.owner_email);
-
-    // 폴더별 메시지는 순차 fetch — 메일박스당 동시 요청 한도(~4) 초과 시
-    // 429 ApplicationThrottled로 잡이 죽으므로 한 번에 하나씩 처리한다.
-    // graphGetWithRetry로 3회 재시도 후에도 429면 그 폴더만 건너뛰고 잡은 계속.
-    const inbox = [];
-    for (const fid of folderIds) {
-      try {
-        const msgs = await fetchFolderMessages(token, s.owner_email, fid, since);
-        inbox.push(...msgs);
-      } catch (e) {
-        if (/\b429\b/.test(e.message)) {
-          console.warn(`folder skip (429 throttled): ${s.owner_email} ${fid}`);
-          continue;
-        }
-        throw e;
-      }
+    // Graph 일시 오류(5xx/429)면 이 메일함만 건너뛰고(last_synced_at 갱신 안 함) 다음으로.
+    const { skipped, messages: inbox } = await tryCollectMailbox(
+      token,
+      s.owner_email,
+      since,
+    );
+    if (skipped) {
+      skippedMailboxes++;
+      continue;
     }
 
     for (const m of inbox) {
@@ -512,9 +551,9 @@ async function main() {
     try {
       await supabase.from("automation_runs").insert({
         job_id: "mailbox-ingest",
-        ok: true,
+        ok: !isRunFailed(skippedMailboxes, settings.length),
         skipped: false,
-        message: buildIngestRunMessage(ingested, drafted, LLM_MODEL),
+        message: buildIngestRunMessage(ingested, drafted, LLM_MODEL, skippedMailboxes),
         duration_ms: Date.now() - startedMs,
       });
     } catch (e) {
