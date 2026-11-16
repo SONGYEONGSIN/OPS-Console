@@ -1,10 +1,47 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import type { HandlingRow } from "@/features/incident-reports/schemas";
 import { DateInput } from "@/components/common/DateInput";
 
 const cellClass =
-  "border border-line bg-cream px-2 py-1 text-ink focus:border-vermilion focus:bg-situation-bg focus:outline-none";
+  "border border-line-soft bg-field-bg px-2 py-1 text-ink focus:border-ink focus:bg-white focus:outline-none";
+
+/** 내용 칸 — 줄 수에 맞춰 높이를 늘이고 줄인다(rows=2가 최소). */
+function ContentTextarea({
+  value,
+  onValueChange,
+  ariaLabel,
+}: {
+  value: string;
+  onValueChange: (v: string) => void;
+  ariaLabel: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const fit = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  // 값이 밖에서 바뀌는 경우(초기 로드·행 삭제로 값이 밀림)도 맞춘다.
+  useLayoutEffect(() => {
+    if (ref.current) fit(ref.current);
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      aria-label={ariaLabel}
+      value={value}
+      rows={2}
+      maxLength={2000}
+      placeholder="내용 (엔터로 줄바꿈)"
+      onChange={(e) => {
+        fit(e.target);
+        onValueChange(e.target.value);
+      }}
+      className={`${cellClass} min-w-0 flex-1 resize-none overflow-hidden`}
+    />
+  );
+}
 
 /**
  * 처리(시간/내용) 행 편집기 — 경위서·사고보고 공용.
@@ -42,14 +79,10 @@ export function HandlingRowsEditor({
               onChange={(e) => updateRow(i, { time: e.target.value })}
               className={`${cellClass} w-36 flex-none cursor-pointer`}
             />
-            <textarea
-              aria-label={`처리 내용 ${i + 1}`}
+            <ContentTextarea
+              ariaLabel={`처리 내용 ${i + 1}`}
               value={r.content}
-              rows={2}
-              maxLength={2000}
-              placeholder="내용 (엔터로 줄바꿈)"
-              onChange={(e) => updateRow(i, { content: e.target.value })}
-              className={`${cellClass} min-w-0 flex-1`}
+              onValueChange={(v) => updateRow(i, { content: v })}
             />
             <button
               type="button"
