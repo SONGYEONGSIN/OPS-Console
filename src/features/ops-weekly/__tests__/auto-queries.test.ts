@@ -12,10 +12,14 @@ const fromSpy: Mock = vi.fn();
 const gteSpy: Mock = vi.fn();
 const lteSpy: Mock = vi.fn();
 const orSpy: Mock = vi.fn();
+const orderSpy: Mock = vi.fn();
+// PostgREST Max-Rows — range 없이 읽으면 앞 1000행만 온다(실제 서버와 같은 절단).
+const MAX_ROWS = 1000;
 
-/** 모든 체인 메서드가 자기 자신을 돌려주고, await 하면 그 테이블 응답이 나온다. */
+/** 모든 체인 메서드가 자기 자신을 돌려주고, await 하면 그 테이블 응답(range 구간)이 나온다. */
 function chain(table: string) {
   const self: Record<string, unknown> = {};
+  let range: [number, number] = [0, MAX_ROWS - 1];
   const passthrough =
     (spy?: Mock) =>
     (...a: unknown[]) => {
@@ -28,8 +32,16 @@ function chain(table: string) {
   self.gte = passthrough(gteSpy);
   self.lte = passthrough(lteSpy);
   self.or = passthrough(orSpy);
-  self.then = (resolve: (v: TableResponse) => unknown) =>
-    resolve(responses.get(table) ?? { data: [], error: null });
+  self.order = passthrough(orderSpy);
+  self.range = (from: number, to: number) => {
+    range = [from, Math.min(to, from + MAX_ROWS - 1)];
+    return self;
+  };
+  self.then = (resolve: (v: TableResponse) => unknown) => {
+    const res = responses.get(table) ?? { data: [], error: null };
+    const data = res.data?.slice(range[0], range[1] + 1) ?? null;
+    return resolve({ ...res, data });
+  };
   return self;
 }
 
@@ -191,6 +203,36 @@ describe("loadAutoSnapshot", () => {
     expect(fromSpy).toHaveBeenCalledWith("ops_weekly_dev_status");
     expect(s.application.dev.map((i) => i.key)).toEqual(["closing:1"]);
     expect(s.application.devStatusCollected).toBe(true);
+  });
+});
+
+describe("loadAutoSnapshot — closing_services 페이징", () => {
+  const filler = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      ...CL_OPENING,
+      service_id: 10_000 + i,
+      operator_name: "다른팀",
+    }));
+  const others = {
+    announcement_services: [],
+    backup_requests: [],
+    schedule_events: [],
+    ops_weekly_dev_status: [],
+  };
+
+  it("1000행을 넘어도 끝까지 읽는다 — 셋째 쪽의 본인 서비스가 빠지지 않는다", async () => {
+    const rows = [...filler(2300), CL_OPENING, ...filler(44)];
+    mockTables({ ...others, closing_services: rows });
+    const s = await loadAutoSnapshot(ARGS);
+    expect(s.application.opening.map((i) => i.key)).toEqual(["closing:1"]);
+    expect(orderSpy).toHaveBeenCalledWith("service_id", { ascending: true });
+  });
+
+  it("쪽 상한을 다 채우면 던진다 — 잘린 목록을 조용히 쓰지 않는다", async () => {
+    mockTables({ ...others, closing_services: filler(20_000) });
+    await expect(loadAutoSnapshot(ARGS)).rejects.toThrow(
+      "[ops-weekly] closing_services",
+    );
   });
 });
 

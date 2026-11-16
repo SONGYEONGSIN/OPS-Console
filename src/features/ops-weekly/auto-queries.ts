@@ -49,6 +49,36 @@ function rowsOf<T>(label: string, res: QueryResult): T[] {
   return res.data as T[];
 }
 
+/** PostgREST Max-Rows — 한 번만 읽으면 1000행에서 조용히 잘린다. */
+const CHUNK = 1000;
+const MAX_PAGES = 20;
+
+/**
+ * 결제 마감 전 마감 서비스 전부. '시작 전' 묶음은 시작일 상한이 없어 쿼리를 좁힐 수 없고
+ * `closing_services` 는 지우지 않는 미러라 1000행을 넘는다 — 쪽으로 끝까지 읽는다.
+ * 쪽 상한을 다 채우면 던진다(잘린 목록이 본인 서비스 누락·안 붙음 과소집계로 굳는다).
+ */
+async function listOpenClosing(
+  db: ReturnType<typeof createAdminClient>,
+  startIso: string,
+): Promise<ClosingLite[]> {
+  const out: ClosingLite[] = [];
+  for (let p = 0; p < MAX_PAGES; p++) {
+    const res = await db
+      .from("closing_services")
+      .select(CLOSING_COLUMNS)
+      .or(`pay_end_at.is.null,pay_end_at.gte.${startIso}`)
+      .order("service_id", { ascending: true })
+      .range(p * CHUNK, p * CHUNK + CHUNK - 1);
+    const page = rowsOf<ClosingLite>("closing_services", res);
+    out.push(...page);
+    if (page.length < CHUNK) return out;
+  }
+  throw new Error(
+    `[ops-weekly] closing_services: ${MAX_PAGES * CHUNK}행을 넘어 끝까지 읽지 못했다`,
+  );
+}
+
 export async function listDevStatuses(
   serviceIds: readonly number[],
 ): Promise<DevStatusRow[]> {
@@ -76,11 +106,8 @@ export async function loadAutoSnapshot(args: {
   const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
   const db = createAdminClient();
 
-  const [closingRes, pimsRes, backupRes, scheduleRes] = await Promise.all([
-    db
-      .from("closing_services")
-      .select(CLOSING_COLUMNS)
-      .or(`pay_end_at.is.null,pay_end_at.gte.${startIso}`),
+  const [closing, pimsRes, backupRes, scheduleRes] = await Promise.all([
+    listOpenClosing(db, startIso),
     db
       .from("announcement_services")
       .select(PIMS_COLUMNS)
@@ -98,7 +125,6 @@ export async function loadAutoSnapshot(args: {
       .lte("start_at", endIso)
       .or(`end_at.is.null,end_at.gte.${startIso}`),
   ]);
-  const closing = rowsOf<ClosingLite>("closing_services", closingRes);
   const pims = rowsOf<PimsLite>("announcement_services", pimsRes);
   const backups = rowsOf<BackupLeaveLite>("backup_requests", backupRes);
   const schedules = rowsOf<ScheduleLeaveLite>(
