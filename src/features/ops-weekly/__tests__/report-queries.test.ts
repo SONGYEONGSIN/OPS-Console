@@ -197,6 +197,17 @@ describe("ensureReport", () => {
     );
   });
 
+  it("대소문자가 달라도 보고서 행은 하나다(저장은 소문자)", async () => {
+    db = fakeAdmin(ENSURE_TABLES());
+    const a = await ensureReport("w1", " A@Example.com ");
+    const b = await ensureReport("w1", "a@example.com");
+    expect(b.id).toBe(a.id);
+    expect(a.operator_email).toBe("a@example.com");
+    expect(
+      db.rows("ops_weekly_reports").filter((r) => r.week_id === "w1"),
+    ).toHaveLength(1);
+  });
+
   it("주 행이 없으면 던진다", async () => {
     db = fakeAdmin({ ops_weekly_weeks: [] });
     await expect(ensureReport("ghost", "a@x")).rejects.toThrow("[ops-weekly]");
@@ -247,6 +258,16 @@ describe("listReports / listPendingWriters", () => {
 
   it("보고서 행이 없는 사람도 미제출, 다른 주 제출은 안 친다", async () => {
     db = fakeAdmin(tables());
+    expect((await listPendingWriters("w1")).map((w) => w.email)).toEqual([
+      W3.email,
+    ]);
+  });
+
+  it("operators.email 이 대문자 섞여 있어도 제출한 사람은 미제출이 아니다", async () => {
+    db = fakeAdmin({
+      ...tables(),
+      operators: [{ ...W1, email: "W1@Example.com" }, W3],
+    });
     expect((await listPendingWriters("w1")).map((w) => w.email)).toEqual([
       W3.email,
     ]);

@@ -23,6 +23,7 @@ import {
   countUnmatchedPims,
   type PimsLite,
 } from "./auto-lists/pims";
+import { normEmail } from "./email";
 import { freshDevStages, type DevStatusRow } from "./dev-status";
 import type { AutoSnapshot } from "./merge";
 import { referenceInstant, shiftWeek, weekWindows } from "./week";
@@ -68,7 +69,7 @@ export async function loadAutoSnapshot(args: {
 }): Promise<AutoSnapshot> {
   const { weekStart, now } = args;
   const operatorName = args.operatorName.trim();
-  const operatorEmail = args.operatorEmail.trim().toLowerCase();
+  const operatorEmail = normEmail(args.operatorEmail);
   const writerNames = new Set([...args.writerNames].map((n) => n.trim()));
   const win = weekWindows(weekStart);
   const startIso = win.startInstant.toISOString();
@@ -105,7 +106,7 @@ export async function loadAutoSnapshot(args: {
     scheduleRes,
   ).map((s) => ({
     ...s,
-    assignee_email: s.assignee_email?.trim().toLowerCase() ?? null,
+    assignee_email: s.assignee_email ? normEmail(s.assignee_email) : null,
   }));
 
   const ref = referenceInstant(weekStart, now);

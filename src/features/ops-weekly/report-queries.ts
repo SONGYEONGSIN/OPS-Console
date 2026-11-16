@@ -11,6 +11,7 @@ import {
   type ProjectKind,
   type ProjectStage,
 } from "./constants";
+import { normEmail } from "./email";
 import type { ItemOverride, ManualItem, ProjectEntryView } from "./merge";
 import { prefillEntry } from "./prefill";
 import type { WriterCandidate } from "./roster";
@@ -52,11 +53,12 @@ async function readReport(
   weekId: string,
   operatorEmail: string,
 ): Promise<ReportRow | null> {
+  const email = normEmail(operatorEmail);
   const res = await createAdminClient()
     .from("ops_weekly_reports")
     .select("*")
     .eq("week_id", weekId)
-    .eq("operator_email", operatorEmail)
+    .eq("operator_email", email)
     .maybeSingle();
   const row = rowOf<unknown>("ops_weekly_reports", res);
   return row === null ? null : reportRowSchema.parse(row);
@@ -69,7 +71,7 @@ async function activeOwnedProjectIds(operatorEmail: string): Promise<string[]> {
     await db
       .from("ops_weekly_project_owners")
       .select("project_id")
-      .eq("operator_email", operatorEmail),
+      .eq("operator_email", normEmail(operatorEmail)),
   ).map((r) => r.project_id);
   if (owned.length === 0) return [];
   return rowsOf<{ id: string }>(
@@ -108,7 +110,7 @@ async function lastWeekEntries(
       .from("ops_weekly_reports")
       .select("id")
       .eq("week_id", prevWeek.id)
-      .eq("operator_email", operatorEmail)
+      .eq("operator_email", normEmail(operatorEmail))
       .maybeSingle(),
   );
   if (prevReport === null) return new Map();
@@ -154,8 +156,9 @@ async function fillMissingEntries(
  */
 export async function ensureReport(
   weekId: string,
-  operatorEmail: string,
+  rawEmail: string,
 ): Promise<ReportRow> {
+  const operatorEmail = normEmail(rawEmail);
   const week = await getWeekById(weekId);
   if (week === null)
     throw new Error(`[ops-weekly] 주를 찾을 수 없다: ${weekId}`);
@@ -200,8 +203,8 @@ export async function listPendingWriters(
     .eq("week_id", weekId)
     .eq("status", "submitted");
   const submitted = new Set(
-    rowsOf<{ operator_email: string }>("ops_weekly_reports", res).map(
-      (r) => r.operator_email,
+    rowsOf<{ operator_email: string }>("ops_weekly_reports", res).map((r) =>
+      normEmail(r.operator_email),
     ),
   );
   return writers.filter((w) => !submitted.has(w.email));
@@ -222,12 +225,12 @@ async function viewsOf(
         .in("id", [...new Set(entries.map((e) => e.project_id))]),
     ).map((p) => [p.id, p]),
   );
-  const emails = [...new Set(emailByReport.values())];
+  // 대소문자가 다른 operators.email 도 잡도록 필터 없이 읽어 정규화 키로 맞춘다(명단 규모가 작다).
   const names = new Map(
     rowsOf<{ email: string; name: string }>(
       "operators",
-      await db.from("operators").select("email, name").in("email", emails),
-    ).map((o) => [o.email, o.name.trim()]),
+      await db.from("operators").select("email, name"),
+    ).map((o) => [normEmail(o.email), o.name.trim()]),
   );
   return entries
     .flatMap((e): ProjectEntryView[] => {
@@ -241,7 +244,7 @@ async function viewsOf(
           kind: project.kind,
           sortOrder: project.sort_order,
           operatorEmail: email,
-          operatorName: names.get(email) ?? email,
+          operatorName: names.get(normEmail(email)) ?? email,
           stage: e.stage,
           thisWeek: e.this_week,
           nextWeek: e.next_week,

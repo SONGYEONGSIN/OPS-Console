@@ -9,6 +9,7 @@ import "server-only";
  */
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WRITER_TEAMS } from "./constants";
+import { normEmail } from "./email";
 import { dutyForWeek, writerRoster, type WriterCandidate } from "./roster";
 import { weekRowSchema, type WeekRow } from "./schemas";
 import { canCreateWeek, weekOf, weekRefFromStart } from "./week";
@@ -86,9 +87,13 @@ export async function listWriters(): Promise<WriterCandidate[]> {
     .select("email, name, team, role, status")
     .in("team", [...WRITER_TEAMS])
     .eq("status", "active");
-  const rows = rowsOf<WriterCandidate>("operators", res);
+  // 이메일은 여기서 한 번 소문자로 맞춘다 — 이후 보고서 키(operator_email)와 같은 값이 된다.
+  const rows = rowsOf<WriterCandidate>("operators", res).map((r) => ({
+    ...r,
+    email: normEmail(r.email),
+  }));
   const settings = await loadSettings();
-  return writerRoster(rows, settings.excluded_writer_emails);
+  return writerRoster(rows, settings.excluded_writer_emails.map(normEmail));
 }
 
 async function dutyFor(weekStart: string): Promise<string | null> {

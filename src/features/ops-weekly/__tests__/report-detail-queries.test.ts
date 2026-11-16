@@ -151,6 +151,16 @@ describe("loadReportDetail / listProjectEntriesForWeek", () => {
     ]);
   });
 
+  it("viewsOf — 대소문자가 다른 operators.email 도 이름으로 보인다", async () => {
+    const t = detailTables();
+    db = fakeAdmin({
+      ...t,
+      operators: [{ ...W1, email: "W1@EXAMPLE.com" }, t.operators[1]],
+    });
+    const list = await listProjectEntriesForWeek("w1");
+    expect(list.map((e) => e.operatorName)).toEqual(["운영자C", "운영자A"]);
+  });
+
   it("listProjectEntriesForWeek — 보고서가 없으면 빈 배열", async () => {
     db = fakeAdmin({});
     expect(await listProjectEntriesForWeek("w1")).toEqual([]);
