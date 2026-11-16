@@ -7,6 +7,9 @@ import { shiftWeek } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
+import { ApplicationTab } from "./_components/ApplicationTab";
+import { LeaveTab } from "./_components/LeaveTab";
+import { PimsTab } from "./_components/PimsTab";
 import { WeekHeader } from "./_components/WeekHeader";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
@@ -49,7 +52,19 @@ function WeekBody({ view }: { view: Week }) {
   if (viewed === null && !OPEN_WITHOUT_ROSTER.has(tab)) {
     return <p className="p-5 text-sm text-muted lg:p-7">{EMPTY_ROSTER}</p>;
   }
-  // 탭 본문은 Task 12~15 가 채운다.
+  const { snapshot, detail, report } = view;
+  if (snapshot !== null && detail !== null) {
+    const props = {
+      snapshot,
+      detail,
+      reportId: report?.id ?? null,
+      editable: view.canEdit && report !== null,
+    };
+    if (tab === "application") return <ApplicationTab {...props} />;
+    if (tab === "pims") return <PimsTab {...props} />;
+    if (tab === "leave") return <LeaveTab {...props} />;
+  }
+  // 프로젝트·TF·제출 현황·설정 탭 본문은 Task 13~15 가 채운다.
   return (
     <section
       data-tab={tab}
