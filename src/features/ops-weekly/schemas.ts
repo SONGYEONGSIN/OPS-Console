@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   AREAS,
   AUTO_AREAS,
+  PROJECT_KINDS,
   PROJECT_STAGES,
   REPORT_STATUSES,
   WEEK_STATUSES,
@@ -143,4 +144,46 @@ export const tabCheckInputSchema = z.object({
 export const imageUploadInputSchema = z.object({
   reportId: reportIdSchema,
   dataUrl: z.string(),
+});
+
+// ── 관리자 설정 입력 ──
+
+const emailSchema = z
+  .string()
+  .trim()
+  .max(254, "이메일이 너무 깁니다.")
+  .pipe(z.email("이메일 형식이 올바르지 않습니다."))
+  .transform((v) => v.toLowerCase());
+
+export const emailInputSchema = z.object({ email: emailSchema });
+
+export const rotationInputSchema = z.object({
+  emails: z.array(emailSchema).max(100, "순번표가 너무 깁니다."),
+  anchorWeekStart: ymdSchema.nullable(),
+});
+
+export const excludedWritersInputSchema = z.object({
+  emails: z.array(emailSchema).max(200, "제외 목록이 너무 깁니다."),
+});
+
+export const projectInputSchema = z.object({
+  id: z.uuid("프로젝트 id 가 올바르지 않습니다.").optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "이름을 입력하세요.")
+    .max(50, "이름은 50자 이하입니다."),
+  kind: z.enum(PROJECT_KINDS, "구분이 올바르지 않습니다."),
+  sortOrder: z.number().int("정렬 순서는 정수입니다.").min(0).max(10_000),
+  active: z.boolean(),
+});
+
+export const projectOwnersInputSchema = z.object({
+  projectId: z.uuid("프로젝트 id 가 올바르지 않습니다."),
+  emails: z.array(emailSchema).max(100, "담당자가 너무 많습니다."),
+});
+
+export const weekDutyInputSchema = z.object({
+  weekId: z.uuid("주 id 가 올바르지 않습니다."),
+  dutyEmail: emailSchema,
 });
