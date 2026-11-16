@@ -25,7 +25,11 @@ export function SettingsTab({ bundle }: { bundle: SettingsBundle }) {
         candidates={bundle.writerCandidates}
         excluded={bundle.excludedWriterEmails}
       />
-      <ProjectCatalogPanel projects={bundle.projects} writers={writers} />
+      <ProjectCatalogPanel
+        projects={bundle.projects}
+        writers={writers}
+        candidates={bundle.writerCandidates}
+      />
     </section>
   );
 }

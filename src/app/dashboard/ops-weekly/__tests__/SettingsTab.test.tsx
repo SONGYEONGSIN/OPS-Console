@@ -118,7 +118,9 @@ describe("SettingsTab", () => {
       />,
     );
     const region = screen.getByRole("region", { name: "당번 순번" });
-    const row = within(region).getByText("운영자B").closest("li") as HTMLElement;
+    const row = within(region)
+      .getByText("운영자B")
+      .closest("li") as HTMLElement;
     fireEvent.click(within(row).getByRole("button", { name: "위로" }));
     fireEvent.click(screen.getByRole("button", { name: "순번 저장" }));
     await waitFor(() =>
@@ -140,7 +142,9 @@ describe("SettingsTab", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "순번 저장" }));
     expect(saveRotation).not.toHaveBeenCalled();
-    expect(screen.getByText("기준 주는 월요일이어야 합니다.")).toBeInTheDocument();
+    expect(
+      screen.getByText("기준 주는 월요일이어야 합니다."),
+    ).toBeInTheDocument();
   });
 
   it("프로젝트 목록에 시드 15개와 구분이 보인다", () => {
@@ -158,9 +162,7 @@ describe("SettingsTab", () => {
   });
 
   it("프로젝트 저장 → upsertProject 후 담당자 저장", async () => {
-    render(
-      <SettingsTab bundle={bundle({ projects: [proj("PIMS", 0)] })} />,
-    );
+    render(<SettingsTab bundle={bundle({ projects: [proj("PIMS", 0)] })} />);
     fireEvent.click(screen.getByLabelText("PIMS 담당 운영자A"));
     fireEvent.click(screen.getByRole("button", { name: "PIMS 저장" }));
     await waitFor(() =>
@@ -176,6 +178,43 @@ describe("SettingsTab", () => {
       sortOrder: 0,
       active: true,
     });
+  });
+
+  it("명단 밖 기존 담당자는 체크된 채 보이고, 풀면 빠진 채 저장된다", async () => {
+    render(
+      <SettingsTab
+        bundle={bundle({
+          projects: [{ ...proj("PIMS", 0), owners: ["x@x"] }],
+        })}
+      />,
+    );
+    const box = screen.getByLabelText("PIMS 담당 x@x (작성 명단 밖)");
+    expect(box).toBeChecked();
+    fireEvent.click(box);
+    fireEvent.click(screen.getByRole("button", { name: "PIMS 저장" }));
+    await waitFor(() =>
+      expect(setProjectOwners).toHaveBeenCalledWith({
+        projectId: "p0",
+        emails: [],
+      }),
+    );
+  });
+
+  it("새 항목 저장이 성공하면 초안 행이 사라진다", async () => {
+    render(<SettingsTab bundle={bundle()} />);
+    const region = screen.getByRole("region", { name: "프로젝트·TF 목록" });
+    fireEvent.click(
+      within(region).getByRole("button", { name: "+ 항목 추가" }),
+    );
+    expect(within(region).getAllByRole("row")).toHaveLength(2);
+    fireEvent.change(within(region).getByLabelText("새 항목 이름"), {
+      target: { value: "신규" },
+    });
+    fireEvent.click(within(region).getByRole("button", { name: "신규 저장" }));
+    await waitFor(() => expect(upsertProject).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(within(region).getAllByRole("row")).toHaveLength(1),
+    );
   });
 
   it("작성 제외 체크 → 저장", async () => {

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ProjectKind } from "@/features/ops-weekly/constants";
+import { normEmail } from "@/features/ops-weekly/email";
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
 import {
   setProjectOwners,
@@ -32,11 +33,23 @@ function blankOf(order: number): Draft {
 function ProjectRow(props: {
   initial: Draft;
   writers: readonly WriterCandidate[];
+  names: ReadonlyMap<string, string>;
+  onCreated?: () => void;
 }) {
-  const { initial, writers } = props;
+  const { initial, writers, names, onCreated } = props;
   const save = useSettingsSave();
   const [d, setD] = useState<Draft>(initial);
   const label = d.name === "" ? "새 항목" : d.name;
+  // 제외·퇴사로 명단에서 빠진 기존 담당자 — 체크박스가 없으면 풀 수 없어 저장이 계속 거절된다.
+  const listed = new Set(writers.map((w) => normEmail(w.email)));
+  const outside = d.owners.filter((o) => !listed.has(normEmail(o)));
+  const toggleOwner = (email: string, on: boolean) => {
+    patch({
+      owners: on
+        ? [...d.owners, email]
+        : d.owners.filter((x) => normEmail(x) !== normEmail(email)),
+    });
+  };
   const patch = (p: Partial<Draft>) => {
     setD({ ...d, ...p });
   };
@@ -51,7 +64,11 @@ function ProjectRow(props: {
         active: d.active,
       });
       // 새 항목은 id 가 생긴 뒤(새로 읽은 뒤)에야 담당자를 붙일 수 있다.
-      if (!res.ok || d.id === undefined) return res;
+      if (!res.ok) return res;
+      if (d.id === undefined) {
+        onCreated?.();
+        return res;
+      }
       return setProjectOwners({ projectId: d.id, emails: d.owners });
     });
   }
@@ -114,16 +131,31 @@ function ProjectRow(props: {
                   aria-label={`${label} 담당 ${w.name}`}
                   checked={d.owners.includes(w.email)}
                   onChange={(e) => {
-                    patch({
-                      owners: e.target.checked
-                        ? [...d.owners, w.email]
-                        : d.owners.filter((x) => x !== w.email),
-                    });
+                    toggleOwner(w.email, e.target.checked);
                   }}
                 />
                 {w.name}
               </label>
             ))}
+            {outside.map((o) => {
+              const text = `${names.get(normEmail(o)) ?? o} (작성 명단 밖)`;
+              return (
+                <label
+                  key={o}
+                  className="flex items-center gap-1 text-xs text-muted"
+                >
+                  <input
+                    type="checkbox"
+                    aria-label={`${label} 담당 ${text}`}
+                    checked
+                    onChange={(e) => {
+                      toggleOwner(o, e.target.checked);
+                    }}
+                  />
+                  {text}
+                </label>
+              );
+            })}
           </div>
         )}
       </td>
@@ -150,8 +182,11 @@ function ProjectRow(props: {
 export function ProjectCatalogPanel(props: {
   projects: SettingsBundle["projects"];
   writers: readonly WriterCandidate[];
+  /** 제외된 사람까지 포함한 이름 조회용 */
+  candidates: readonly WriterCandidate[];
 }) {
-  const { projects, writers } = props;
+  const { projects, writers, candidates } = props;
+  const names = new Map(candidates.map((c) => [normEmail(c.email), c.name]));
   const [drafts, setDrafts] = useState<number[]>([]);
   const nextOrder = projects.reduce((m, p) => Math.max(m, p.sortOrder), 0) + 1;
   return (
@@ -170,13 +205,22 @@ export function ProjectCatalogPanel(props: {
         </thead>
         <tbody>
           {projects.map((p) => (
-            <ProjectRow key={p.id} initial={p} writers={writers} />
+            <ProjectRow
+              key={p.id}
+              initial={p}
+              writers={writers}
+              names={names}
+            />
           ))}
           {drafts.map((k) => (
             <ProjectRow
               key={`new-${k}`}
               initial={blankOf(nextOrder + k)}
               writers={writers}
+              names={names}
+              onCreated={() => {
+                setDrafts((cur) => cur.filter((x) => x !== k));
+              }}
             />
           ))}
         </tbody>
