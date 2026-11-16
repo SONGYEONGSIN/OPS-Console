@@ -212,6 +212,30 @@ E2E 운영 메모:
 
 설계 문서: `docs/superpowers/specs/2026-09-21-work-assignment-menu-design.md`
 
+## /dashboard/ops-weekly — 운영부 주간업무보고
+
+운영자가 매주 자기 보고서를 쓰고, 당번이 모아 [최종 보고] 한다. 이번 A1 은 **작성·제출·최종 보고·관리자 설정**까지이고 발송(A2)·엑셀/워드 저장(A3)·Moa 통계(A4)는 뒤 PR 이다.
+
+**slug 는 `ops-weekly`** 다 — 이미 자동화 잡 id `weekly-report`(본부 차주보고)가 있어 같은 이름을 쓰면 두 기능이 한 이름으로 섞인다.
+
+**작성 대상은 운영1·2팀 활성 운영자에서 부장·팀장을 뺀 명단**이다. 거기에 관리자 설정의 **영구 제외 목록**(테스트 계정 등)을 더 뺀다. 그 주만 빼는 기능은 없다 — 휴가인 사람은 미리 작성한다.
+
+**주차는 본부 기준(목요일이 속한 달·주)** 이고 자동 데이터 창은 그 주 월~일이다. 주는 **직전 주 보고가 끝나면 즉시, 늦어도 월 00:00 에** 열리며 cron 이 아니라 **접근할 때 만든다**(`ensureWeek`).
+
+**제출하면 자동 항목을 스냅샷으로 굳힌다.** 안 굳히면 제출한 뒤 원천(마감·계약 시트)이 바뀔 때 이미 낸 보고서 숫자가 조용히 달라진다.
+
+**확장 자리 둘.** `emitOpsWeeklyEvent` 의 `OPS_WEEKLY_HOOKS` 는 A2·A3 이 훅을 등록할 자리다(`all-submitted`·`report-returned`·`week-reported`). `ops_weekly_dev_status` 는 A4 가 채울 자리이고, 비어 있으면 개발/테스트 구분은 `구분 미확인` 이다.
+
+**그림은 비공개 버킷이다.** DB 엔 `<img data-ops-path>` 경로만 저장하고 화면에 낼 때 `signProjectEntries` 로 1시간 서명 URL 을 채운다. 두 방향 모두 `note-images.ts` 한 곳을 거친다.
+
+**받는 사람 `no-menu` 경고는 `canViewMenu` 를 거친다.** 주간보고가 admin 전용·지정자 전용이 아닌 지금 정책에서는 나지 않는다. 정책이 바뀌는 날을 위한 경고다.
+
+**순번표 교체는 SQL 함수 `ops_weekly_replace_rotation`** 이 한다(PostgREST safeupdate 가 WHERE 없는 delete 를 거부하므로 `where true`, 한 트랜잭션). 이미 열린 주의 당번은 안 바뀐다.
+
+**admin 은 정정으로 연 주에서만 남의 보고서를 고친다.** 보고가 끝난 주는 잠긴다.
+
+설계: `docs/superpowers/specs/2026-11-16-ops-weekly-report-design.md` · 계획: `docs/superpowers/plans/2026-11-16-ops-weekly-report-a1.md`
+
 ## /dashboard/tools — 도구 (admin only)
 
 에이전트가 쓰는 **스킬 53 · 에이전트 24 · 훅 28 · 룰 7** 을 한곳에서 본다. 사이드바 'AI & 자동화 > 에이전트' 바로 아래.

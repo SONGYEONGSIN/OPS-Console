@@ -11,6 +11,7 @@ import { ApplicationTab } from "./_components/ApplicationTab";
 import { LeaveTab } from "./_components/LeaveTab";
 import { PimsTab } from "./_components/PimsTab";
 import { ProjectTab } from "./_components/ProjectTab";
+import { SettingsTab } from "./_components/SettingsTab";
 import { StatusTab } from "./_components/StatusTab";
 import { WeekHeader } from "./_components/WeekHeader";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
@@ -81,6 +82,15 @@ function WeekBody({ view }: { view: Week }) {
       />
     );
   }
+  if (tab === "settings" && view.bundle !== null) {
+    const key = bodyKeyOf({
+      reportId: report?.id ?? null,
+      weekStart: view.week.week_start,
+      op: viewed?.email ?? "",
+      tab,
+    });
+    return <SettingsTab key={key} bundle={view.bundle} />;
+  }
   if (snapshot !== null && detail !== null) {
     // 쿼리만 바뀌어도 입력 중이던 글이 다른 보고서로 넘어가지 않게 보고서 단위로 다시 만든다.
     const key = bodyKeyOf({
@@ -111,7 +121,6 @@ function WeekBody({ view }: { view: Week }) {
       );
     }
   }
-  // 설정 탭 본문은 Task 15 가 채운다.
   return (
     <section
       data-tab={tab}

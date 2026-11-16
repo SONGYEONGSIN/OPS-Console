@@ -31,7 +31,10 @@ import {
   type ReportRow,
   type WeekRow,
 } from "@/features/ops-weekly/schemas";
-import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
+import {
+  loadSettingsBundle,
+  type SettingsBundle,
+} from "@/features/ops-weekly/settings-queries";
 import {
   defaultWeekStart,
   shiftWeek,
@@ -243,6 +246,9 @@ export async function loadOpsWeeklyPage(
     tab === "status"
       ? await loadStatusData({ week, actor, writers, reports })
       : null;
+  // 설정 번들은 관리자의 설정 탭에서만 읽는다(parseTab 이 비관리자의 settings 를 돌려보낸다).
+  const bundle =
+    tab === "settings" && actor.isAdmin ? await loadSettingsBundle() : null;
   return {
     kind: "week",
     week,
@@ -262,6 +268,6 @@ export async function loadOpsWeeklyPage(
     reports: status === null ? null : reports,
     projectGroups: status?.projectGroups ?? null,
     finalize: status?.finalize ?? null,
-    bundle: null,
+    bundle,
   };
 }
