@@ -196,7 +196,7 @@ export async function tryCollectMailbox(token, ownerEmail, since) {
       try {
         messages.push(...(await fetchFolderMessages(token, ownerEmail, fid, since)));
       } catch (e) {
-        if (/429/.test(e.message)) {
+        if (/\b429\b/.test(e.message)) {
           console.warn(`folder skip (429 throttled): ${ownerEmail} ${fid}`);
           continue;
         }
