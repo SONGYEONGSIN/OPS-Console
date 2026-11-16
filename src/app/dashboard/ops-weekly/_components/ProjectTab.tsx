@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RichNote } from "@/app/r/checklist/[token]/_components/RichNote";
 import {
   saveProjectEntry,
@@ -14,7 +14,7 @@ import {
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
 import { AreaNotes } from "./AreaNotes";
 import { ERROR_CLASS, FIELD_CLASS } from "./styles";
-import { useSave } from "./use-save";
+import { SAVE_FAILED, useSave } from "./use-save";
 
 type Props = {
   kind: ProjectKind;
@@ -22,6 +22,12 @@ type Props = {
   reportId: string | null;
   editable: boolean;
   notes: { thisWeek: string; nextWeek: string };
+};
+
+type EntryDraft = {
+  stage: ProjectStage | null;
+  thisWeek: string;
+  nextWeek: string;
 };
 
 const NO_STAGE = "단계 미선택";
@@ -50,21 +56,17 @@ function ReadOnlyHtml({ label, html }: { label: string; html: string }) {
 function EditNote(props: {
   label: string;
   initialHtml: string;
-  reportId: string;
   onSave: (html: string) => void;
+  onPasteImage: (dataUrl: string) => Promise<string | null>;
 }) {
-  const { label, initialHtml, reportId, onSave } = props;
+  const { label, initialHtml, onSave, onPasteImage } = props;
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs font-medium text-muted">{label}</span>
       <RichNote
         initialHtml={initialHtml}
         onSave={onSave}
-        onPasteImage={(dataUrl) =>
-          uploadWeeklyImage({ reportId, dataUrl }).then((r) =>
-            r.ok ? r.url : null,
-          )
-        }
+        onPasteImage={onPasteImage}
       />
     </div>
   );
@@ -77,23 +79,34 @@ function EntryCard(props: {
 }) {
   const { entry, reportId, editable } = props;
   const [stage, setStage] = useState<ProjectStage | null>(entry.stage);
-  const [thisWeek, setThis] = useState(entry.thisWeek);
-  const [nextWeek, setNext] = useState(entry.nextWeek);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  // 업로드 중에 바뀐 값이 오래된 클로저로 덮이지 않게 최신 값은 ref 에 둔다.
+  const latest = useRef<EntryDraft>({
+    stage: entry.stage,
+    thisWeek: entry.thisWeek,
+    nextWeek: entry.nextWeek,
+  });
   const save = useSave();
 
-  function persist(next: {
-    stage: ProjectStage | null;
-    thisWeek: string;
-    nextWeek: string;
-  }) {
+  function persist(patch: Partial<EntryDraft>) {
+    latest.current = { ...latest.current, ...patch };
     if (reportId === null) return;
+    const payload = latest.current;
     save.run(() =>
-      saveProjectEntry({
-        reportId,
-        projectId: entry.projectId,
-        ...next,
-      }),
+      saveProjectEntry({ reportId, projectId: entry.projectId, ...payload }),
     );
+  }
+
+  async function uploadImage(dataUrl: string): Promise<string | null> {
+    if (reportId === null) return null;
+    try {
+      const r = await uploadWeeklyImage({ reportId, dataUrl });
+      setUploadError(r.ok ? null : r.error);
+      return r.ok ? r.url : null;
+    } catch {
+      setUploadError(SAVE_FAILED);
+      return null;
+    }
   }
 
   return (
@@ -108,7 +121,7 @@ function EntryCard(props: {
               onChange={(e) => {
                 const next = isStage(e.target.value) ? e.target.value : null;
                 setStage(next);
-                persist({ stage: next, thisWeek, nextWeek });
+                persist({ stage: next });
               }}
               className={FIELD_CLASS}
             >
@@ -129,19 +142,17 @@ function EntryCard(props: {
           <EditNote
             label="금주"
             initialHtml={entry.thisWeek}
-            reportId={reportId}
+            onPasteImage={uploadImage}
             onSave={(html) => {
-              setThis(html);
-              persist({ stage, thisWeek: html, nextWeek });
+              persist({ thisWeek: html });
             }}
           />
           <EditNote
             label="차주"
             initialHtml={entry.nextWeek}
-            reportId={reportId}
+            onPasteImage={uploadImage}
             onSave={(html) => {
-              setNext(html);
-              persist({ stage, thisWeek, nextWeek: html });
+              persist({ nextWeek: html });
             }}
           />
         </div>
@@ -151,7 +162,9 @@ function EntryCard(props: {
           <ReadOnlyHtml label="차주" html={entry.nextWeek} />
         </div>
       )}
-      {save.error ? <p className={ERROR_CLASS}>{save.error}</p> : null}
+      {(save.error ?? uploadError) ? (
+        <p className={ERROR_CLASS}>{save.error ?? uploadError}</p>
+      ) : null}
     </article>
   );
 }

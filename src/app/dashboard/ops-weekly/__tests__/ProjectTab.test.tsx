@@ -163,4 +163,58 @@ describe("ProjectTab", () => {
       "https://signed/1",
     );
   });
+
+  function pasteImage() {
+    const file = new File(["x"], "a.png", { type: "image/png" });
+    fireEvent.paste(screen.getAllByRole("textbox")[0], {
+      clipboardData: {
+        items: [{ type: "image/png", getAsFile: () => file }],
+      },
+    });
+  }
+
+  it("업로드 중에 단계를 바꿔도 그림 저장이 새 단계를 싣는다", async () => {
+    let resolveUpload: (v: { ok: true; url: string }) => void = () => {};
+    uploadWeeklyImage.mockReturnValue(
+      new Promise((r) => {
+        resolveUpload = r;
+      }),
+    );
+    render(
+      <ProjectTab
+        kind="project"
+        entries={[entry("p", "project", 10)]}
+        reportId="r"
+        editable
+        notes={N}
+      />,
+    );
+    pasteImage();
+    await waitFor(() => expect(uploadWeeklyImage).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText("진행 단계"), {
+      target: { value: "개발" },
+    });
+    saveProjectEntry.mockClear();
+    resolveUpload({ ok: true, url: "https://signed/new" });
+    await waitFor(() => expect(saveProjectEntry).toHaveBeenCalled());
+    expect(saveProjectEntry.mock.calls[0][0]).toMatchObject({
+      stage: "개발",
+      nextWeek: "",
+    });
+  });
+
+  it("업로드가 던지면 카드 아래에 오류를 보인다", async () => {
+    uploadWeeklyImage.mockRejectedValue(new Error("net"));
+    render(
+      <ProjectTab
+        kind="project"
+        entries={[entry("p", "project", 10)]}
+        reportId="r"
+        editable
+        notes={N}
+      />,
+    );
+    pasteImage();
+    expect(await screen.findByText(/저장하지 못했습니다/)).toBeInTheDocument();
+  });
 });

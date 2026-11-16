@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/features/ops-weekly/actions";
 
-const SAVE_FAILED = "저장하지 못했습니다 — 잠시 후 다시 시도하세요";
+export const SAVE_FAILED = "저장하지 못했습니다 — 잠시 후 다시 시도하세요";
 
 /** action 호출 + 실패 문구. 호출한 자리 아래에 error 를 보여 준다. */
 export function useSave() {
