@@ -42,8 +42,7 @@ function LeaveRow(props: {
           item.excluded ? "text-muted line-through" : "text-ink"
         }`}
       >
-        <span className="font-medium">{item.title}</span>
-        <span>{item.kindLabel}</span>
+        <span className="font-medium">{item.kindLabel}</span>
         <span className="text-xs tabular-nums">{periodOf(item)}</span>
         <span className="text-xs">{item.subtitle}</span>
         {item.sources.map((s) => (

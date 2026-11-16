@@ -12,6 +12,7 @@ import { LeaveTab } from "./_components/LeaveTab";
 import { PimsTab } from "./_components/PimsTab";
 import { WeekHeader } from "./_components/WeekHeader";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
+import { bodyKeyOf } from "./_body-key";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
 import { buildTabs, opsWeeklyHref, type OpsTab } from "./_params";
 
@@ -54,15 +55,22 @@ function WeekBody({ view }: { view: Week }) {
   }
   const { snapshot, detail, report } = view;
   if (snapshot !== null && detail !== null) {
+    // 쿼리만 바뀌어도 입력 중이던 글이 다른 보고서로 넘어가지 않게 보고서 단위로 다시 만든다.
+    const key = bodyKeyOf({
+      reportId: report?.id ?? null,
+      weekStart: view.week.week_start,
+      op: viewed?.email ?? "",
+      tab,
+    });
     const props = {
       snapshot,
       detail,
       reportId: report?.id ?? null,
       editable: view.canEdit && report !== null,
     };
-    if (tab === "application") return <ApplicationTab {...props} />;
-    if (tab === "pims") return <PimsTab {...props} />;
-    if (tab === "leave") return <LeaveTab {...props} />;
+    if (tab === "application") return <ApplicationTab key={key} {...props} />;
+    if (tab === "pims") return <PimsTab key={key} {...props} />;
+    if (tab === "leave") return <LeaveTab key={key} {...props} />;
   }
   // 프로젝트·TF·제출 현황·설정 탭 본문은 Task 13~15 가 채운다.
   return (

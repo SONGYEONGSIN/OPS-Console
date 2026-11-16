@@ -115,4 +115,42 @@ describe("LeaveTab", () => {
     expect(screen.getByText("11/18(수)")).toBeInTheDocument();
     expect(screen.getByText("11/18(수) ~ 11/20(금)")).toBeInTheDocument();
   });
+
+  it("종류 라벨은 한 줄에 한 번만", () => {
+    render(
+      <LeaveTab
+        snapshot={snap({
+          leave: [
+            leaveItem({
+              key: "k",
+              title: "연차",
+              kindLabel: "연차",
+              subtitle: "백업 운영자B",
+            }),
+          ],
+        })}
+        detail={EMPTY}
+        reportId="r"
+        editable
+      />,
+    );
+    const li = screen.getByText("백업 운영자B").closest("li");
+    expect(li?.textContent?.match(/연차/g)).toHaveLength(1);
+  });
+
+  it("action 이 던져도 화면은 죽지 않고 행 아래에 문구를 보여 준다", async () => {
+    saveItemOverride.mockRejectedValue(new Error("db down"));
+    render(
+      <LeaveTab
+        snapshot={snap({ leave: [leaveItem()] })}
+        detail={EMPTY}
+        reportId="r"
+        editable
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "빼기" }));
+    expect(
+      await screen.findByText("저장하지 못했습니다 — 잠시 후 다시 시도하세요"),
+    ).toBeInTheDocument();
+  });
 });
