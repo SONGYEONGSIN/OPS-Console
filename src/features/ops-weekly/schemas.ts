@@ -128,13 +128,18 @@ export const manualItemInputSchema = z
     }
   });
 
+// 정화 전 상한 — 정화 정규식이 입력 길이에 비례해 돌아, 상한이 없으면 한 요청이 CPU 를 오래 붙잡는다.
+const rawProjectHtmlSchema = z
+  .string()
+  .max(200_000, "내용이 너무 깁니다(200,000자 이하).");
+
 /** 금주·차주 HTML 은 `toStoredNoteHtml` 로 정화한 **뒤** `storedProjectHtmlSchema` 로 길이를 본다. */
 export const projectEntryInputSchema = z.object({
   reportId: reportIdSchema,
   projectId: z.uuid("프로젝트 id 가 올바르지 않습니다."),
   stage: z.enum(PROJECT_STAGES, "진행 단계가 올바르지 않습니다.").nullable(),
-  thisWeek: z.string(),
-  nextWeek: z.string(),
+  thisWeek: rawProjectHtmlSchema,
+  nextWeek: rawProjectHtmlSchema,
 });
 
 export const storedProjectHtmlSchema = z

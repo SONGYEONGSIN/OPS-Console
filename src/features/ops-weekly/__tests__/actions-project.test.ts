@@ -98,6 +98,30 @@ describe("saveProjectEntry", () => {
     expect(state.db.spies.update).not.toHaveBeenCalled();
   });
 
+  it("정화 전 입력이 200,000자를 넘으면 정화하지 않고 거절한다", async () => {
+    seed({}, {}, owner());
+    // 정화하면 빈 문자열이 되는 입력 — 정화 후 길이 검사로는 못 막는다.
+    const junk = '<img src="https://evil/x.png">'.repeat(7_000);
+    expect(junk.length).toBeGreaterThan(200_000);
+    for (const [thisWeek, nextWeek] of [
+      [junk, ""],
+      ["", junk],
+    ]) {
+      const r = await saveProjectEntry({
+        reportId: R,
+        projectId: P1,
+        stage: null,
+        thisWeek,
+        nextWeek,
+      });
+      expect(r).toEqual({
+        ok: false,
+        error: "내용이 너무 깁니다(200,000자 이하).",
+      });
+    }
+    expect(state.db.spies.update).not.toHaveBeenCalled();
+  });
+
   it("base64 그림은 길이 검사 전에 지워진다", async () => {
     seed({}, {}, owner());
     const r = await saveProjectEntry({

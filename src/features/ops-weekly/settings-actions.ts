@@ -106,6 +106,9 @@ export async function saveRotation(input: {
   if (new Set(emails).size !== emails.length) {
     return failOf("순번표에 같은 사람이 두 번 있습니다.");
   }
+  if (emails.length > 0 && anchorWeekStart === null) {
+    return failOf("순번표가 있으면 기준 주를 정하세요.");
+  }
   if (anchorWeekStart !== null && weekRefFromStart(anchorWeekStart) === null) {
     return failOf("기준 주는 월요일이어야 합니다.");
   }

@@ -68,6 +68,52 @@ describe("ops_weekly 마이그레이션", () => {
     }
   });
 
+  it("테이블 목록은 마이그레이션에서 센다 — 12라는 숫자를 믿지 않는다", () => {
+    const created = sql.match(
+      /create table if not exists public\.ops_weekly_\w+ \(/g,
+    );
+    expect(created).toHaveLength(TABLES.length);
+    expect(TABLES).toHaveLength(12);
+  });
+
+  it("authenticated 는 테이블마다 select 권한과 열람 정책 하나뿐이다", () => {
+    for (const t of TABLES) {
+      expect(sql).toContain(`grant select on public.${t} to authenticated;`);
+      expect(sql).toContain(
+        `create policy "${t}_select" on public.${t} for select to authenticated using (`,
+      );
+    }
+    const grants = [
+      ...sql.matchAll(
+        /grant ([a-z, ]+?) on public\.ops_weekly_\w+ to authenticated/g,
+      ),
+    ].map((m) => m[1]);
+    expect(grants).toHaveLength(TABLES.length);
+    expect(new Set(grants)).toEqual(new Set(["select"]));
+  });
+
+  it("쓰기 정책은 없다 — public 테이블 정책은 전부 for select", () => {
+    const kinds = [
+      ...sql.matchAll(
+        /create policy "[^"]+" on public\.ops_weekly_\w+ for (\w+)/g,
+      ),
+    ].map((m) => m[1]);
+    expect(kinds).toHaveLength(TABLES.length);
+    expect(new Set(kinds)).toEqual(new Set(["select"]));
+    expect(sql).not.toMatch(
+      /for (insert|update|delete|all) to (authenticated|anon|public)/,
+    );
+  });
+
+  it("버킷 객체 정책은 service_role 전용 하나", () => {
+    expect(sql).toContain(
+      `create policy "ops_weekly_objects_service_only" on storage.objects for all to service_role using (bucket_id = '${OPS_WEEKLY_BUCKET}') with check (bucket_id = '${OPS_WEEKLY_BUCKET}')`,
+    );
+    expect(
+      sql.match(/create policy "[^"]+" on storage\.objects/g),
+    ).toHaveLength(1);
+  });
+
   it("진행 단계 check 가 PROJECT_STAGES 와 같은 순서", () => {
     const list = PROJECT_STAGES.map((s) => `'${s}'`).join(",");
     expect(body("ops_weekly_project_entries")).toContain(

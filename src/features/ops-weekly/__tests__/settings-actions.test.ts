@@ -173,6 +173,18 @@ describe("순번표", () => {
     expect(state.db.spies.rpc).not.toHaveBeenCalled();
   });
 
+  it("순번표가 있는데 기준 주가 없으면 거절한다 — 모든 주 당번이 조용히 비지 않게", async () => {
+    me("z@example.com", true);
+    writers(["a@example.com"]);
+    expect(
+      await saveRotation({ emails: ["a@example.com"], anchorWeekStart: null }),
+    ).toEqual({ ok: false, error: "순번표가 있으면 기준 주를 정하세요." });
+    expect(state.db.spies.rpc).not.toHaveBeenCalled();
+    expect(await saveRotation({ emails: [], anchorWeekStart: null })).toEqual({
+      ok: true,
+    });
+  });
+
   it("rpc 한 번으로 교체하고 기준 주를 쓴다 — 클라이언트 delete 없음", async () => {
     me("z@example.com", true);
     writers(["a@example.com", "b@example.com"]);
