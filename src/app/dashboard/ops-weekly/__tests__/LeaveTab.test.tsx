@@ -32,6 +32,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -46,6 +47,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "빼기" }));
@@ -77,6 +79,7 @@ describe("LeaveTab", () => {
         }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(screen.getByText("오전만")).toBeInTheDocument();
@@ -110,6 +113,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable={false}
+        freezeNotice={false}
       />,
     );
     expect(screen.getByText("11/18(수)")).toBeInTheDocument();
@@ -132,6 +136,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     const li = screen.getByText("백업 운영자B").closest("li");
@@ -146,6 +151,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "빼기" }));
@@ -160,6 +166,7 @@ describe("LeaveTab", () => {
         detail={{ ...EMPTY, manual: [manualLeave()] }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     const h = screen.getByRole("heading", { name: "휴가·외근" });

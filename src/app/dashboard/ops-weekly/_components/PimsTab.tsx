@@ -11,7 +11,7 @@ type Props = {
   detail: ReportDetail;
   reportId: string | null;
   editable: boolean;
-  freezeNotice?: boolean;
+  freezeNotice: boolean;
 };
 
 const GROUPS = [
@@ -25,7 +25,7 @@ export function PimsTab({
   detail,
   reportId,
   editable,
-  freezeNotice = false,
+  freezeNotice,
 }: Props) {
   const unmatched = snapshot.unmatched.pims;
   const view = (list: AutoItem[]) => applyOverrides(list, detail.overrides);

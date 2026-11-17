@@ -23,6 +23,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -41,6 +42,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -55,6 +57,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -71,6 +74,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -85,6 +89,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     inOrder([
@@ -127,6 +132,7 @@ describe("ApplicationTab", () => {
         }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     const h = screen.getByRole("heading", { name: "원서접수" });
@@ -139,7 +145,13 @@ describe("ApplicationTab", () => {
 
   it("묶음 목록은 큰 절 사이 간격 안에 든다(gap-7 / 묶음 gap-6)", () => {
     const { container } = render(
-      <ApplicationTab snapshot={snap()} detail={EMPTY} reportId="r" editable />,
+      <ApplicationTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
     );
     const root = container.firstElementChild as Element;
     expect(root.className).toContain("gap-7");
@@ -170,6 +182,7 @@ describe("ApplicationTab", () => {
         }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(screen.getByText("자동 0건 · 직접 0건")).toBeInTheDocument();

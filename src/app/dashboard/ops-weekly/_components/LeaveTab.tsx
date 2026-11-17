@@ -20,7 +20,7 @@ type Props = {
   detail: ReportDetail;
   reportId: string | null;
   editable: boolean;
-  freezeNotice?: boolean;
+  freezeNotice: boolean;
 };
 
 const SOURCE_LABEL = { backup: "백업요청", schedule: "일정" } as const;
@@ -76,7 +76,7 @@ export function LeaveTab({
   detail,
   reportId,
   editable,
-  freezeNotice = false,
+  freezeNotice,
 }: Props) {
   const rows = applyOverrides(snapshot.leave, detail.overrides);
   const manual = detail.manual.filter((m) => m.area === "leave");

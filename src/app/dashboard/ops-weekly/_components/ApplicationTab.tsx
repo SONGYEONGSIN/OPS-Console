@@ -11,7 +11,7 @@ type Props = {
   detail: ReportDetail;
   reportId: string | null;
   editable: boolean;
-  freezeNotice?: boolean;
+  freezeNotice: boolean;
 };
 
 type GroupKey = "dev" | "test" | "opening" | "running" | "closing";
@@ -31,7 +31,7 @@ export function ApplicationTab({
   detail,
   reportId,
   editable,
-  freezeNotice = false,
+  freezeNotice,
 }: Props) {
   const app = snapshot.application;
   const unmatched = snapshot.unmatched.application;
