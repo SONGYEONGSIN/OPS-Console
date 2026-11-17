@@ -13,6 +13,7 @@ import { PimsTab } from "./_components/PimsTab";
 import { ProjectTab } from "./_components/ProjectTab";
 import { SettingsTab } from "./_components/SettingsTab";
 import { StatusTab } from "./_components/StatusTab";
+import { PendingSavesProvider } from "./_components/pending-saves";
 import { WeekHeader } from "./_components/WeekHeader";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
@@ -21,6 +22,8 @@ import { buildTabs, opsWeeklyHref, type OpsTab } from "./_params";
 
 const EMPTY_ROSTER =
   "작성 대상 명단이 비어 있습니다 — 관리자 설정을 확인하세요";
+const BOX_CLASS =
+  "flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm text-ink";
 const TAB_TITLE: Record<OpsTab, string> = {
   application: "원서접수",
   pims: "PIMS",
@@ -54,7 +57,21 @@ function dutyNameOf(v: Week): string | null {
 function WeekBody({ view }: { view: Week }) {
   const { tab, viewed } = view;
   if (viewed === null && !OPEN_WITHOUT_ROSTER.has(tab)) {
-    return <p className="p-5 text-sm text-muted lg:p-7">{EMPTY_ROSTER}</p>;
+    return (
+      <div className="p-5 lg:p-7">
+        <div className={BOX_CLASS}>
+          <p>{EMPTY_ROSTER}</p>
+          {view.actor.isAdmin ? (
+            <Link
+              href={opsWeeklyHref(view.week.week_start, "settings", null)}
+              className="text-xs underline"
+            >
+              설정 열기
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    );
   }
   const { snapshot, detail, report } = view;
   if (
@@ -79,6 +96,7 @@ function WeekBody({ view }: { view: Week }) {
         reports={view.reports}
         projectGroups={view.projectGroups}
         finalize={view.finalize}
+        submittedCount={view.submittedCount}
       />
     );
   }
@@ -117,6 +135,11 @@ function WeekBody({ view }: { view: Week }) {
           reportId={props.reportId}
           editable={props.editable}
           notes={detail.notes[tab]}
+          settingsHref={
+            view.actor.isAdmin
+              ? opsWeeklyHref(view.week.week_start, "settings", null)
+              : undefined
+          }
         />
       );
     }
@@ -138,7 +161,7 @@ function WeekView({ view }: { view: Week }) {
     viewed !== null && viewed.email !== actor.email ? viewed.email : null;
   const weekStart = week.week_start;
   return (
-    <>
+    <PendingSavesProvider>
       <WeekHeader
         weekRef={weekRef}
         week={week}
@@ -152,13 +175,18 @@ function WeekView({ view }: { view: Week }) {
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}
         reportId={report?.id ?? null}
+        returnReason={report?.return_reason ?? null}
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
         tab={tab}
       />
       {viewed !== null && view.kpis !== null ? (
-        <WeeklyKpiRow kpis={view.kpis} unknownCount={unknownCountOf(view)} />
+        <WeeklyKpiRow
+          kpis={view.kpis}
+          ownerName={viewed.name}
+          unknownCount={unknownCountOf(view)}
+        />
       ) : null}
       <div className="pt-4">
         <PageTabs
@@ -174,24 +202,26 @@ function WeekView({ view }: { view: Week }) {
         />
       </div>
       <WeekBody view={view} />
-    </>
+    </PendingSavesProvider>
   );
 }
 
 function NoWeek({ weekStart }: { weekStart: string }) {
   return (
-    <div className="flex flex-col gap-2 p-5 text-sm text-ink lg:p-7">
-      <p>이 주의 보고서가 아직 열리지 않았습니다</p>
-      <div className="flex flex-wrap gap-3 text-xs">
-        <Link
-          href={opsWeeklyHref(shiftWeek(weekStart, -1), "application", null)}
-          className="underline"
-        >
-          ‹ 이전 주
-        </Link>
-        <Link href="/dashboard/ops-weekly" className="underline">
-          이번 주로
-        </Link>
+    <div className="p-5 lg:p-7">
+      <div className={BOX_CLASS}>
+        <p>이 주의 보고서가 아직 열리지 않았습니다</p>
+        <div className="flex flex-wrap gap-3 text-xs">
+          <Link
+            href={opsWeeklyHref(shiftWeek(weekStart, -1), "application", null)}
+            className="underline"
+          >
+            ‹ 이전 주
+          </Link>
+          <Link href="/dashboard/ops-weekly" className="underline">
+            이번 주로
+          </Link>
+        </div>
       </div>
     </div>
   );

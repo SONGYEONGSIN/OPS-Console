@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { saveDutySummary } from "@/features/ops-weekly/workflow-actions";
+import { SaveStatus } from "./SaveStatus";
 import { ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { useSave } from "./use-save";
 
@@ -38,8 +39,17 @@ export function DutySummary(props: Props) {
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-sm font-bold text-ink">주요 (운영부 전체)</h3>
+    <section className="flex flex-col gap-3 border-t border-line pt-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-xl font-bold text-ink">주요 (운영부 전체)</h2>
+        {editable ? (
+          <SaveStatus
+            pending={save.pending}
+            error={save.error}
+            savedAt={save.savedAt}
+          />
+        ) : null}
+      </div>
       {editable ? (
         <div className="grid gap-3 md:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-medium text-muted">

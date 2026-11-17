@@ -43,7 +43,7 @@ export function RecipientsPanel({ recipients, candidates }: Props) {
 
   return (
     <section aria-label="받는 사람" className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-ink">받는 사람</h2>
+      <h2 className="text-xl font-bold text-ink">받는 사람</h2>
       <ul className="flex flex-col gap-1">
         {recipients.map((r) => (
           <li

@@ -27,6 +27,7 @@ import {
   reopenWeek,
   returnReport,
 } from "@/features/ops-weekly/workflow-actions";
+import { opsWeeklyHref } from "../_params";
 import { DutySummary } from "./DutySummary";
 import { ProjectOverview } from "./ProjectOverview";
 import { SubmissionTable } from "./SubmissionTable";
@@ -40,6 +41,8 @@ type Props = {
   reports: ReportRow[];
   projectGroups: ProjectGroup[];
   finalize: FinalizeCheck;
+  /** 머리줄의 제출 수와 같은 값 — 같은 사실을 두 번 세지 않는다 */
+  submittedCount: number;
 };
 
 type Dialog =
@@ -181,7 +184,7 @@ function FinalizeBar(props: {
 }) {
   const { finalize, names } = props;
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="flex flex-col items-end gap-1">
       <HeaderActionButton
         onClick={props.onClick}
         disabled={!finalize.ok || props.pending}
@@ -189,7 +192,9 @@ function FinalizeBar(props: {
         최종 보고
       </HeaderActionButton>
       {finalize.ok ? null : (
-        <p className="text-xs text-ink-soft">{whyDisabled(finalize, names)}</p>
+        <p className="max-w-xs text-right text-xs text-ink-soft">
+          {whyDisabled(finalize, names)}
+        </p>
       )}
     </div>
   );
@@ -203,50 +208,78 @@ export function StatusTab(props: Props) {
   const names = new Map(writers.map((w) => [normEmail(w.email), w.name]));
   const open = week.status === "open";
 
+  const canReopen = canReopenWeek(actor, state);
+  const canPickDuty = actor.isAdmin && open;
   return (
-    <section data-tab="status" className="flex flex-col gap-6 p-5 lg:p-7">
-      {wf.message !== null ? (
-        <p role="status" className="text-xs text-ink-soft">
-          {wf.message}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-3">
-        {open ? (
-          <FinalizeBar
-            finalize={finalize}
-            names={names}
-            pending={wf.pending}
-            onClick={() => {
-              setDialog({ kind: "finalize" });
-            }}
-          />
-        ) : null}
-        {canReopenWeek(actor, state) ? (
-          <button
-            type="button"
-            className={BTN_CLASS}
-            disabled={wf.pending}
-            onClick={() => {
-              wf.run(() => reopenWeek({ weekId: week.id }));
-            }}
-          >
-            정정
-          </button>
-        ) : null}
-        {actor.isAdmin && open ? (
-          <DutyPicker
-            week={week}
-            writers={writers}
-            onPick={(email) => {
-              wf.run(() => setWeekDuty({ weekId: week.id, dutyEmail: email }));
-            }}
-          />
+    <section data-tab="status" className="flex flex-col gap-7 p-5 lg:p-7">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <h2 className="text-xl font-bold text-ink">제출 현황</h2>
+              <span className="text-xl font-bold tabular-nums text-muted">
+                {`${props.submittedCount}/${writers.length}명`}
+              </span>
+            </div>
+            {canPickDuty || canReopen ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+                {canPickDuty ? (
+                  <>
+                    <span>당번</span>
+                    <DutyPicker
+                      week={week}
+                      writers={writers}
+                      onPick={(email) => {
+                        wf.run(() =>
+                          setWeekDuty({ weekId: week.id, dutyEmail: email }),
+                        );
+                      }}
+                    />
+                  </>
+                ) : null}
+                {canReopen ? (
+                  <button
+                    type="button"
+                    className={BTN_CLASS}
+                    disabled={wf.pending}
+                    onClick={() => {
+                      wf.run(() => reopenWeek({ weekId: week.id }));
+                    }}
+                  >
+                    정정
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          {open ? (
+            <div className="ml-auto">
+              <FinalizeBar
+                finalize={finalize}
+                names={names}
+                pending={wf.pending}
+                onClick={() => {
+                  setDialog({ kind: "finalize" });
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+        {wf.message !== null ? (
+          <p role="status" className="text-xs text-ink-soft">
+            {wf.message}
+          </p>
         ) : null}
       </div>
       <SubmissionTable
         week={week}
         writers={writers}
         reports={reports}
+        settingsHref={
+          actor.isAdmin
+            ? opsWeeklyHref(week.week_start, "settings", null)
+            : undefined
+        }
         canReturn={(r) => canReturnReport(actor, state, r.status)}
         onReturn={(report, name) => {
           setDialog({ kind: "return", report, name });

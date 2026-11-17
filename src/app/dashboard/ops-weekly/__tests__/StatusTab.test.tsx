@@ -28,6 +28,7 @@ vi.mock("@/features/ops-weekly/settings-actions", () => ({
 }));
 
 import { StatusTab } from "../_components/StatusTab";
+import { inOrder } from "./heading-order";
 import type { ReportRow, WeekRow } from "@/features/ops-weekly/schemas";
 import type {
   ProjectEntryView,
@@ -91,6 +92,7 @@ const base = {
   reports: [] as ReportRow[],
   projectGroups: [] as ProjectGroup[],
   finalize: ok,
+  submittedCount: 0,
 };
 const row = (name: string) => {
   const tr = screen.getByText(name).closest("tr");
@@ -357,5 +359,126 @@ describe("StatusTab", () => {
       .getAllByRole("region")
       .map((r) => r.getAttribute("aria-label"));
     expect(names.indexOf("PRJ-1")).toBeLessThan(names.indexOf("TF-1"));
+  });
+
+  describe("가독성", () => {
+    const tokens = (el: Element) => el.className.split(/\s+/);
+    const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
+
+    it("절 머리 — h2 + 제출 수, 최종 보고는 같은 행 오른쪽", () => {
+      render(<StatusTab {...base} submittedCount={1} />);
+      const h = screen.getByRole("heading", { name: "제출 현황" });
+      expect(tokens(h)).toContain("text-xl");
+      expect(tokens(h)).toContain("font-bold");
+      expect(screen.getByText("1/2명")).toBeInTheDocument();
+      const button = screen.getByRole("button", { name: "최종 보고" });
+      const bar = button.parentElement as Element;
+      expect(tokens(bar)).toContain("items-end");
+      let row: Element | null = bar;
+      while (row && !tokens(row).includes("justify-between"))
+        row = row.parentElement;
+      expect(row).not.toBeNull();
+      expect(row?.contains(h)).toBe(true);
+      expect(h.compareDocumentPosition(button) & FOLLOWING).toBeTruthy();
+    });
+
+    it("비활성 사유는 버튼 바로 아래 오른쪽 정렬", () => {
+      render(
+        <StatusTab
+          {...base}
+          finalize={{ ok: false, reason: "pending", pending: ["b@x"] }}
+        />,
+      );
+      const button = screen.getByRole("button", { name: "최종 보고" });
+      const why = screen.getByText("미제출: 운영자B");
+      expect(button.nextElementSibling).toBe(why);
+      expect(tokens(why)).toContain("text-right");
+    });
+
+    it("실패 메시지는 절 머리 뒤 표 앞에 있다", async () => {
+      finalizeWeek.mockResolvedValue({ ok: false, error: "보고 실패" });
+      render(<StatusTab {...base} />);
+      fireEvent.click(screen.getByRole("button", { name: "최종 보고" }));
+      fireEvent.click(screen.getByRole("button", { name: "보고하기" }));
+      const msg = await screen.findByText("보고 실패");
+      const h = screen.getByRole("heading", { name: "제출 현황" });
+      expect(h.compareDocumentPosition(msg) & FOLLOWING).toBeTruthy();
+      expect(
+        msg.compareDocumentPosition(screen.getByRole("table")) & FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("제목 순서 — 제출 현황 > 주요 > 모아보기, 모두 h2", () => {
+      render(<StatusTab {...base} />);
+      const names = ["제출 현황", "주요 (운영부 전체)", "프로젝트·TF 모아보기"];
+      inOrder(names);
+      for (const name of names)
+        expect(screen.getByRole("heading", { name }).tagName).toBe("H2");
+    });
+
+    it("프로젝트 모아보기의 항목 제목은 h3 로 한 단계 올라간다", () => {
+      render(
+        <StatusTab
+          {...base}
+          projectGroups={[
+            {
+              projectId: "p1",
+              projectName: "통합원서",
+              kind: "project",
+              owners: [pe("운영자A")],
+            } as unknown as ProjectGroup,
+          ]}
+        />,
+      );
+      expect(screen.getByRole("heading", { name: /통합원서/ }).tagName).toBe(
+        "H3",
+      );
+    });
+
+    it("명단이 비면 표 대신 빈 상태 상자", () => {
+      render(
+        <StatusTab
+          {...base}
+          writers={[]}
+          finalize={{ ok: false, reason: "empty-roster", pending: [] }}
+        />,
+      );
+      expect(screen.queryByRole("table")).toBeNull();
+      const box = screen.getByText("작성 대상 명단이 비어 있습니다")
+        .parentElement as Element;
+      expect(tokens(box)).toContain("bg-situation-bg");
+    });
+
+    it("상태 칸 색 — 미제출 muted / 다시 작성 vermilion / 제출 ink", () => {
+      render(
+        <StatusTab
+          {...base}
+          writers={[wa, wb, wc]}
+          reports={[rep("a@x", "submitted"), rep("b@x", "returned")]}
+        />,
+      );
+      const cell = (name: string, text: string) =>
+        within(row(name)).getByText(text);
+      expect(tokens(cell("운영자A", "제출"))).toContain("text-ink");
+      expect(tokens(cell("운영자B", "다시 작성 요청"))).toContain(
+        "text-vermilion",
+      );
+      expect(tokens(cell("운영자C", "미제출"))).toContain("text-muted");
+    });
+
+    it("admin 에게만 명단 빈 상자에 설정 링크", () => {
+      const admin = { email: "d@x", isAdmin: true };
+      render(
+        <StatusTab
+          {...base}
+          actor={admin}
+          writers={[]}
+          finalize={{ ok: false, reason: "empty-roster", pending: [] }}
+        />,
+      );
+      expect(
+        screen.getByRole("link", { name: "설정 열기" }),
+      ).toBeInTheDocument();
+    });
   });
 });

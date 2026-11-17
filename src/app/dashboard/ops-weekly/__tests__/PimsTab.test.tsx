@@ -25,7 +25,11 @@ describe("PimsTab", () => {
         editable
       />,
     );
-    inOrder(["금주 발표", "차주 발표"]);
+    inOrder(["PIMS", "금주 발표", "차주 발표", "영역 특이사항"]);
+    expect(screen.getByText("자동 1건 · 직접 0건")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "PIMS" }).className).toContain(
+      "text-xl",
+    );
   });
 
   it("안 붙음 줄 — 0건도 적고 조치는 n>0 일 때만", () => {

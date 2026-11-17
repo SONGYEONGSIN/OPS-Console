@@ -13,10 +13,18 @@ type Props = {
   area: AutoArea;
   groupKey: string | null;
   leave?: boolean;
+  /** 주면 [닫기] 와 Esc 로 폼을 접을 수 있다 */
+  onClose?: () => void;
 };
 
 /** 직접 추가 — 제목 필수. 휴가/외근이면 기간·구분이 붙는다. */
-export function ManualItemForm({ reportId, area, groupKey, leave }: Props) {
+export function ManualItemForm({
+  reportId,
+  area,
+  groupKey,
+  leave,
+  onClose,
+}: Props) {
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [start, setStart] = useState("");
@@ -48,7 +56,12 @@ export function ManualItemForm({ reportId, area, groupKey, leave }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-2 pt-2">
+    <div
+      className="flex flex-col gap-2 pt-3"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose?.();
+      }}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="text"
@@ -57,6 +70,7 @@ export function ManualItemForm({ reportId, area, groupKey, leave }: Props) {
           value={title}
           maxLength={200}
           onChange={(e) => setTitle(e.target.value)}
+          autoFocus={onClose !== undefined}
           className={`${FIELD_CLASS} min-w-48 flex-1`}
         />
         <input
@@ -105,6 +119,11 @@ export function ManualItemForm({ reportId, area, groupKey, leave }: Props) {
         >
           추가
         </button>
+        {onClose ? (
+          <button type="button" className={BTN_CLASS} onClick={onClose}>
+            닫기
+          </button>
+        ) : null}
       </div>
       {error ? <p className={ERROR_CLASS}>{error}</p> : null}
     </div>

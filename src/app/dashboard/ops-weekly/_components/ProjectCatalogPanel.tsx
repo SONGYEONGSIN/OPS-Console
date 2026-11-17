@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import type { ProjectKind } from "@/features/ops-weekly/constants";
 import { normEmail } from "@/features/ops-weekly/email";
 import type { WriterCandidate } from "@/features/ops-weekly/roster";
@@ -191,7 +192,16 @@ export function ProjectCatalogPanel(props: {
   const nextOrder = projects.reduce((m, p) => Math.max(m, p.sortOrder), 0) + 1;
   return (
     <section aria-label="프로젝트·TF 목록" className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-ink">프로젝트·TF 목록</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-ink">프로젝트·TF 목록</h2>
+        <HeaderActionButton
+          onClick={() => {
+            setDrafts([...drafts, drafts.length]);
+          }}
+        >
+          + 항목 추가
+        </HeaderActionButton>
+      </div>
       {/* 일회성: 입력·선택 칸이 든 행이 찌그러지지 않는 최소 폭 */}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] text-sm">
@@ -227,17 +237,6 @@ export function ProjectCatalogPanel(props: {
             ))}
           </tbody>
         </table>
-      </div>
-      <div>
-        <button
-          type="button"
-          className={BTN_CLASS}
-          onClick={() => {
-            setDrafts([...drafts, drafts.length]);
-          }}
-        >
-          + 항목 추가
-        </button>
       </div>
     </section>
   );

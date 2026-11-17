@@ -6,6 +6,7 @@ describe("WeeklyKpiRow", () => {
   it("카드 6개 라벨 순서 + 수집 전은 '구분 미확인'(0 아님)", () => {
     render(
       <WeeklyKpiRow
+        ownerName="홍길동"
         kpis={{
           dev: null,
           test: null,
@@ -33,6 +34,7 @@ describe("WeeklyKpiRow", () => {
   it("일부만 수집됐으면 개발·테스트 숫자 옆에 '구분 미확인 N건'을 적는다", () => {
     render(
       <WeeklyKpiRow
+        ownerName="홍길동"
         kpis={{ dev: 3, test: 1, opening: 2, running: 5, closing: 1, pims: 0 }}
         unknownCount={4}
       />,
@@ -43,10 +45,44 @@ describe("WeeklyKpiRow", () => {
   it("미확인이 0건이면 문구를 안 띄운다", () => {
     render(
       <WeeklyKpiRow
+        ownerName="홍길동"
         kpis={{ dev: 3, test: 1, opening: 2, running: 5, closing: 1, pims: 0 }}
         unknownCount={0}
       />,
     );
     expect(screen.queryByText(/구분 미확인/)).toBeNull();
+  });
+
+  it("누구의 숫자인지 캡션으로 밝힌다", () => {
+    render(
+      <WeeklyKpiRow
+        ownerName="홍길동"
+        kpis={{ dev: 1, test: 1, opening: 1, running: 1, closing: 1, pims: 1 }}
+      />,
+    );
+    const caption = screen.getByText(/^홍길동의 이번 주/);
+    const t = caption.className.split(/\s+/);
+    expect(t).toContain("text-xs");
+    expect(t).toContain("text-muted");
+    expect(caption).toHaveTextContent("항목 간 중복 집계될 수 있습니다");
+  });
+
+  it("숫자 뒤 단위 '건'은 muted, 값이 없는 카드에는 단위가 없다", () => {
+    render(
+      <WeeklyKpiRow
+        ownerName="홍길동"
+        kpis={{
+          dev: null,
+          test: null,
+          opening: 2,
+          running: 5,
+          closing: 1,
+          pims: 0,
+        }}
+      />,
+    );
+    const units = screen.getAllByText("건");
+    expect(units).toHaveLength(4);
+    expect(units[0].className.split(/\s+/)).toContain("text-muted");
   });
 });

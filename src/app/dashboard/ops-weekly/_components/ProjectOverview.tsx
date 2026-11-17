@@ -13,23 +13,25 @@ function projectsFirst(groups: readonly ProjectGroup[]): ProjectGroup[] {
 
 export function ProjectOverview({ groups }: { groups: ProjectGroup[] }) {
   return (
-    <section className="flex flex-col gap-3">
-      <h3 className="text-sm font-bold text-ink">프로젝트·TF 모아보기</h3>
+    <section className="flex flex-col gap-3 border-t border-line pt-6">
+      <h2 className="text-xl font-bold text-ink">프로젝트·TF 모아보기</h2>
       {groups.length === 0 ? (
-        <p className="text-sm text-muted">작성된 항목이 없습니다</p>
+        <div className="border border-line-soft bg-situation-bg px-4 py-6 text-sm text-ink">
+          <p>작성된 항목이 없습니다</p>
+        </div>
       ) : (
         projectsFirst(groups).map((g) => (
           <section
             key={g.projectId}
             aria-label={g.projectName}
-            className="flex flex-col gap-3 border border-line-soft p-4"
+            className="flex flex-col gap-3 border border-line-soft bg-situation-bg p-4"
           >
-            <h4 className="text-sm font-bold text-ink">
+            <h3 className="text-sm font-bold text-ink">
               {g.projectName}
               <span className="ml-2 text-xs font-normal text-muted">
                 {g.kind === "tf" ? "TF" : "프로젝트"}
               </span>
-            </h4>
+            </h3>
             {g.owners.map((o) => (
               <div
                 key={o.operatorEmail}

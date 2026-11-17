@@ -3,7 +3,7 @@
 import { removeManualItem } from "@/features/ops-weekly/actions";
 import type { ManualItem } from "@/features/ops-weekly/merge";
 import { formatMdDow } from "../_format";
-import { BADGE_CLASS, BTN_CLASS, ERROR_CLASS } from "./styles";
+import { BADGE_CLASS, ERROR_CLASS, ROW_BTN_CLASS } from "./styles";
 import { useSave } from "./use-save";
 
 function periodOf(m: ManualItem): string | null {
@@ -24,7 +24,7 @@ export function ManualRow(props: {
   const { pending, error, run } = useSave();
   const period = periodOf(item);
   return (
-    <li className="flex flex-col gap-1 px-2 py-2 hover:bg-line-soft">
+    <li className="group -mx-2 flex flex-col gap-1 px-2 py-2 hover:bg-line-soft">
       <div className="flex flex-wrap items-center gap-2 text-sm text-ink">
         <span className={BADGE_CLASS}>직접 추가</span>
         {item.leave_kind ? (
@@ -38,7 +38,7 @@ export function ManualRow(props: {
           <button
             type="button"
             disabled={pending}
-            className={`${BTN_CLASS} ml-auto`}
+            className={`${ROW_BTN_CLASS} ml-auto transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100`}
             onClick={() =>
               run(() => removeManualItem({ reportId, itemId: item.id }))
             }
