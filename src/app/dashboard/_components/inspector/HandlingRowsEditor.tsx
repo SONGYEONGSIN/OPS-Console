@@ -59,7 +59,7 @@ export function HandlingRowsEditor({
   const updateRow = (i: number, patch: Partial<HandlingRow>) =>
     onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   const addRow = () => onChange([...rows, { time: "", content: "" }]);
-  const removeRow = (i: number) => onChange(rows.filter((_, idx) => idx !== i));
+  const removeLastRow = () => onChange(rows.slice(0, -1));
 
   return (
     <div className="text-xs">
@@ -67,7 +67,7 @@ export function HandlingRowsEditor({
       <div className="space-y-1.5">
         {rows.length === 0 && (
           <p className="text-2xs text-muted">
-            아래 ‘+ 처리 행 추가’로 시간/내용 행을 추가하세요.
+            아래 ‘+ 행 추가’로 시간/내용 행을 추가하세요.
           </p>
         )}
         {rows.map((r, i) => (
@@ -84,25 +84,24 @@ export function HandlingRowsEditor({
               value={r.content}
               onValueChange={(v) => updateRow(i, { content: v })}
             />
-            <button
-              type="button"
-              aria-label={`처리 행 삭제 ${i + 1}`}
-              title="행 삭제"
-              onClick={() => removeRow(i)}
-              className="flex-none cursor-pointer self-start border border-line bg-transparent px-2 py-1 text-muted transition-colors hover:border-ink hover:bg-ink hover:text-cream"
-            >
-              ✕
-            </button>
           </div>
         ))}
       </div>
-      <div className="mt-1.5 flex justify-end">
+      <div className="mt-1.5 flex justify-end gap-1.5">
         <button
           type="button"
           onClick={addRow}
           className="cursor-pointer border border-vermilion bg-transparent px-2.5 py-1 text-2xs font-medium text-vermilion hover:bg-vermilion hover:text-cream"
         >
-          + 처리 행 추가
+          + 행 추가
+        </button>
+        <button
+          type="button"
+          onClick={removeLastRow}
+          disabled={rows.length === 0}
+          className="cursor-pointer border border-line bg-transparent px-2.5 py-1 text-2xs font-medium text-ink transition-colors hover:border-ink hover:bg-ink hover:text-cream disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-line disabled:hover:bg-transparent disabled:hover:text-ink"
+        >
+          − 행 삭제
         </button>
       </div>
     </div>

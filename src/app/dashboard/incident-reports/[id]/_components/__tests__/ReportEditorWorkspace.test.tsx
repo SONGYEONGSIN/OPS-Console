@@ -191,7 +191,7 @@ describe("ReportEditorWorkspace", () => {
   it("처리 행을 추가·입력하면 2페이지 표에 반영되고 저장에 포함된다", async () => {
     mockUpdate.mockResolvedValue({ ok: true });
     render(<ReportEditorWorkspace report={report} />);
-    fireEvent.click(screen.getByRole("button", { name: "+ 처리 행 추가" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ 행 추가" }));
     fireEvent.change(screen.getByLabelText("처리 시간 1"), {
       target: { value: "2026-09-27T14:27" },
     });
