@@ -3,6 +3,7 @@ import { applyOverrides, type AutoSnapshot } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { AreaNotes } from "./AreaNotes";
 import { AutoGroupSection } from "./AutoGroupSection";
+import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { TabHeading } from "./TabHeading";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   detail: ReportDetail;
   reportId: string | null;
   editable: boolean;
+  freezeNotice?: boolean;
 };
 
 type GroupKey = "dev" | "test" | "opening" | "running" | "closing";
@@ -29,6 +31,7 @@ export function ApplicationTab({
   detail,
   reportId,
   editable,
+  freezeNotice = false,
 }: Props) {
   const app = snapshot.application;
   const unmatched = snapshot.unmatched.application;
@@ -71,6 +74,7 @@ export function ApplicationTab({
         title="원서접수"
         summary={`자동 ${autoCount}건 · 직접 ${manualCount}건`}
       >
+        {freezeNotice ? <AutoFreezeNotice /> : null}
         <p className="text-sm text-muted">
           {`담당자가 맞지 않아 아무에게도 안 붙은 서비스 ${unmatched}건${
             unmatched > 0

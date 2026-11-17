@@ -54,3 +54,35 @@ describe("PimsTab", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("PimsTab — 굳는 시점 안내", () => {
+  it("제출 후 최종 보고 전이면 자동 묶음 위에 굳는 시점을 알린다", () => {
+    render(
+      <PimsTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r1"
+        editable={false}
+        freezeNotice
+      />,
+    );
+    const note = screen.getByText("자동 항목은 최종 보고 때 굳습니다");
+    const firstGroup = screen.getAllByRole("heading", { level: 3 })[0];
+    expect(
+      note.compareDocumentPosition(firstGroup) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+  it("freezeNotice 가 false 면 없다", () => {
+    render(
+      <PimsTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r1"
+        editable={false}
+        freezeNotice={false}
+      />,
+    );
+    expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
+  });
+});

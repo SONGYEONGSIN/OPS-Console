@@ -122,6 +122,7 @@ function WeekBody({ view }: { view: Week }) {
       detail,
       reportId: report?.id ?? null,
       editable: view.canEdit && report !== null,
+      freezeNotice: view.freezeNotice,
     };
     if (tab === "application") return <ApplicationTab key={key} {...props} />;
     if (tab === "pims") return <PimsTab key={key} {...props} />;

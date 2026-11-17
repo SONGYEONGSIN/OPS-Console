@@ -58,7 +58,11 @@ vi.mock("@/features/ops-weekly/settings-queries", () => ({
   loadSettingsBundle: async () => null,
 }));
 
-import { loadOpsWeeklyPage, type OpsWeeklyView } from "../_load";
+import {
+  freezeNoticeOf,
+  loadOpsWeeklyPage,
+  type OpsWeeklyView,
+} from "../_load";
 
 const ME: CurrentOperator = {
   email: "a@x",
@@ -119,5 +123,41 @@ describe("loadOpsWeeklyPage — 자동 항목 읽는 규칙", () => {
     const v = await loadOpsWeeklyPage(ME, {}, NOW);
     expect(m.loadAutoSnapshot).not.toHaveBeenCalled();
     expect(kindOf(v).snapshot).toBe(SNAP);
+  });
+});
+
+describe("freezeNoticeOf", () => {
+  const SNAP = snap();
+  it.each([
+    [
+      "open·submitted·스냅샷 없음",
+      { status: "open" },
+      { status: "submitted", snapshot: null },
+      true,
+    ],
+    ["작성 중", { status: "open" }, { status: "draft", snapshot: null }, false],
+    [
+      "굳음(정정 주)",
+      { status: "open" },
+      { status: "submitted", snapshot: SNAP },
+      false,
+    ],
+    [
+      "보고된 주",
+      { status: "reported" },
+      { status: "submitted", snapshot: null },
+      false,
+    ],
+    ["보고서 없음", { status: "open" }, null, false],
+  ] as const)("%s", (_, w, r, want) => {
+    expect(freezeNoticeOf(w, r)).toBe(want);
+  });
+
+  it("loadOpsWeeklyPage 가 그대로 싣는다", async () => {
+    m.report = reportOf({ status: "submitted", snapshot: null });
+    m.loadAutoSnapshot.mockResolvedValue(snap());
+    expect(kindOf(await loadOpsWeeklyPage(ME, {}, NOW)).freezeNotice).toBe(
+      true,
+    );
   });
 });
