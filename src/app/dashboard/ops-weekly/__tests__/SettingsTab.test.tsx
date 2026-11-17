@@ -27,6 +27,7 @@ vi.mock("@/features/ops-weekly/settings-actions", () => ({
   setProjectOwners: (...a: unknown[]) => setProjectOwners(...a),
 }));
 
+import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { SettingsTab } from "../_components/SettingsTab";
 import { SEED_PROJECT_NAMES } from "@/features/ops-weekly/constants";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
@@ -231,5 +232,36 @@ describe("SettingsTab", () => {
     await waitFor(() =>
       expect(saveExcludedWriters).toHaveBeenCalledWith({ emails: [wt.email] }),
     );
+  });
+
+  it("패널 제목은 모두 h2 text-xl font-bold", () => {
+    render(<SettingsTab bundle={bundle()} />);
+    for (const name of [
+      "받는 사람",
+      "당번 순번",
+      "작성 제외",
+      "프로젝트·TF 목록",
+    ]) {
+      const t = screen.getByRole("heading", { name }).className.split(/\s+/);
+      expect(t).toContain("text-xl");
+      expect(t).toContain("font-bold");
+    }
+  });
+
+  it("+ 항목 추가는 제목 오른쪽 표준 헤더 액션이고 표보다 앞이다", () => {
+    render(<SettingsTab bundle={bundle()} />);
+    const region = screen.getByRole("region", { name: "프로젝트·TF 목록" });
+    const add = within(region).getByRole("button", { name: "+ 항목 추가" });
+    expect(add.className).toContain(HEADER_ACTION_CLASS);
+    const h = within(region).getByRole("heading", {
+      name: "프로젝트·TF 목록",
+    });
+    const table = within(region).getByRole("table");
+    expect(
+      h.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      add.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

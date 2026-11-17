@@ -3,8 +3,17 @@
 import { useState } from "react";
 import { markTabChecked, saveAreaNote } from "@/features/ops-weekly/actions";
 import type { Area } from "@/features/ops-weekly/constants";
+import { SaveStatus } from "./SaveStatus";
 import { BTN_CLASS, ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { useSave } from "./use-save";
+
+const AREA_LABEL: Record<Area, string> = {
+  application: "원서접수",
+  pims: "PIMS",
+  project: "프로젝트",
+  tf: "TF",
+  leave: "휴가·외근",
+};
 
 type Props = {
   reportId: string | null;
@@ -28,12 +37,19 @@ export function AreaNotes(props: Props) {
   const { reportId, area, thisWeek, nextWeek, editable } = props;
   const [thisDraft, setThis] = useState(thisWeek);
   const [nextDraft, setNext] = useState(nextWeek);
-  const note = useSave();
+  const note = useSave({
+    track: {
+      key: `note:${reportId ?? ""}:${area}`,
+      label: `${AREA_LABEL[area]} 영역 특이사항`,
+    },
+  });
   const check = useSave();
 
   function save() {
     if (reportId === null) return;
-    if (thisDraft === thisWeek && nextDraft === nextWeek) return;
+    // 실패가 남아 있으면 같은 값이라도 저장해 기록을 푼다.
+    if (thisDraft === thisWeek && nextDraft === nextWeek && note.error === null)
+      return;
     note.run(() =>
       saveAreaNote({
         reportId,
@@ -45,8 +61,17 @@ export function AreaNotes(props: Props) {
   }
 
   return (
-    <section className="flex flex-col gap-3 border-t border-line-soft pt-4">
-      <h3 className="text-sm font-bold text-ink">영역 특이사항</h3>
+    <section className="flex flex-col gap-3 border-t border-line pt-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-bold text-ink">영역 특이사항</h3>
+        {editable && reportId !== null ? (
+          <SaveStatus
+            pending={note.pending}
+            error={note.error}
+            savedAt={note.savedAt}
+          />
+        ) : null}
+      </div>
       {editable && reportId !== null ? (
         <>
           <div className="grid gap-3 md:grid-cols-2">
@@ -71,7 +96,11 @@ export function AreaNotes(props: Props) {
               />
             </label>
           </div>
-          {note.error ? <p className={ERROR_CLASS}>{note.error}</p> : null}
+          {note.error ? (
+            <p role="alert" className={ERROR_CLASS}>
+              {note.error}
+            </p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -83,6 +112,9 @@ export function AreaNotes(props: Props) {
             >
               이 탭 확인
             </button>
+            <span className="text-xs text-muted">
+              확인하면 탭 옆에 확인 표시가 남습니다
+            </span>
             {check.error ? <p className={ERROR_CLASS}>{check.error}</p> : null}
           </div>
         </>

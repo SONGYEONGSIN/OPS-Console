@@ -11,7 +11,7 @@ vi.mock("@/features/ops-weekly/actions", () => ({
 
 import { ApplicationTab } from "../_components/ApplicationTab";
 import { inOrder } from "./heading-order";
-import { EMPTY, snap } from "./tab-fixtures";
+import { EMPTY, item, snap } from "./tab-fixtures";
 
 afterEach(cleanup);
 
@@ -88,12 +88,90 @@ describe("ApplicationTab", () => {
       />,
     );
     inOrder([
+      "원서접수",
       "개발 중",
       "테스트 중",
       "차주 오픈 예정",
       "운영 중",
       "차주 마감 예정",
       "원서접수 외 서비스",
+      "영역 특이사항",
     ]);
+  });
+
+  it("탭 제목은 h2 크기이고 건수는 제목 밖에 자동·직접으로 나눠 적는다", () => {
+    const base = snap({ devStatusCollected: true });
+    render(
+      <ApplicationTab
+        snapshot={{
+          ...base,
+          application: {
+            ...base.application,
+            running: [item("a"), item("b")],
+          },
+        }}
+        detail={{
+          ...EMPTY,
+          manual: [
+            {
+              id: "m1",
+              area: "application",
+              group_key: "running",
+              title: "수동",
+              note: "",
+              period_start: null,
+              period_end: null,
+              leave_kind: null,
+            },
+          ],
+        }}
+        reportId="r"
+        editable
+      />,
+    );
+    const h = screen.getByRole("heading", { name: "원서접수" });
+    expect(h.className).toContain("text-xl");
+    expect(h.className).toContain("font-bold");
+    const count = screen.getByText("자동 2건 · 직접 1건");
+    expect(count.className).toContain("tabular-nums");
+    expect(h.contains(count)).toBe(false);
+  });
+
+  it("묶음 목록은 큰 절 사이 간격 안에 든다(gap-7 / 묶음 gap-6)", () => {
+    const { container } = render(
+      <ApplicationTab snapshot={snap()} detail={EMPTY} reportId="r" editable />,
+    );
+    const root = container.firstElementChild as Element;
+    expect(root.className).toContain("gap-7");
+    const first = screen
+      .getByRole("heading", { name: "개발 중" })
+      .closest("section")?.parentElement as Element;
+    expect(first.className).toContain("gap-6");
+  });
+
+  it("구분이 수집되지 않아 안 보이는 개발 묶음의 직접 추가 건은 세지 않는다", () => {
+    render(
+      <ApplicationTab
+        snapshot={snap({ devStatusCollected: false })}
+        detail={{
+          ...EMPTY,
+          manual: [
+            {
+              id: "m1",
+              area: "application",
+              group_key: "dev",
+              title: "숨은 건",
+              note: "",
+              period_start: null,
+              period_end: null,
+              leave_kind: null,
+            },
+          ],
+        }}
+        reportId="r"
+        editable
+      />,
+    );
+    expect(screen.getByText("자동 0건 · 직접 0건")).toBeInTheDocument();
   });
 });

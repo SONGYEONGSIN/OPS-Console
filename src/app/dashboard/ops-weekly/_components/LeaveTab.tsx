@@ -8,10 +8,11 @@ import {
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { formatMdDow } from "../_format";
 import { AreaNotes } from "./AreaNotes";
-import { ManualItemForm } from "./ManualItemForm";
+import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
-import { BADGE_CLASS, BTN_CLASS } from "./styles";
+import { TabHeading } from "./TabHeading";
+import { BADGE_CLASS, ROW_BTN_CLASS } from "./styles";
 
 type Props = {
   snapshot: AutoSnapshot;
@@ -36,11 +37,15 @@ function LeaveRow(props: {
 }) {
   const { item, reportId, editable } = props;
   return (
-    <li className="flex flex-col gap-1 px-2 py-2 hover:bg-line-soft">
-      <div
-        className={`flex flex-wrap items-center gap-2 text-sm ${
-          item.excluded ? "text-muted line-through" : "text-ink"
-        }`}
+    <li className="group -mx-2 flex flex-col gap-1 px-2 py-2 hover:bg-line-soft">
+      <OverrideControls
+        reportId={reportId}
+        itemKey={item.key}
+        label={`${item.title} 휴가·외근 메모`}
+        area="leave"
+        note={item.note}
+        excluded={item.excluded}
+        editable={editable}
       >
         <span className="font-medium">{item.kindLabel}</span>
         <span className="text-xs tabular-nums">{periodOf(item)}</span>
@@ -53,20 +58,12 @@ function LeaveRow(props: {
         {item.needsBackup && !item.excluded ? (
           <Link
             href="/dashboard/backup"
-            className={`${BTN_CLASS} ml-auto no-underline`}
+            className={`${ROW_BTN_CLASS} inline-flex items-center no-underline`}
           >
             백업요청 만들기
           </Link>
         ) : null}
-      </div>
-      <OverrideControls
-        reportId={reportId}
-        itemKey={item.key}
-        area="leave"
-        note={item.note}
-        excluded={item.excluded}
-        editable={editable}
-      />
+      </OverrideControls>
     </li>
   );
 }
@@ -76,15 +73,26 @@ export function LeaveTab({ snapshot, detail, reportId, editable }: Props) {
   const rows = applyOverrides(snapshot.leave, detail.overrides);
   const manual = detail.manual.filter((m) => m.area === "leave");
   return (
-    <div className="flex flex-col gap-4 p-5 lg:p-7">
-      <section className="flex flex-col gap-1 border border-line-soft p-3">
-        <h3 className="text-sm font-bold text-ink">휴가·외근 일정</h3>
+    <div className="flex flex-col gap-7 p-5 lg:p-7">
+      <TabHeading
+        title="휴가·외근"
+        summary={`자동 ${rows.length}건 · 직접 ${manual.length}건`}
+      />
+      <GroupShell
+        title="휴가·외근 일정"
+        count={rows.length + manual.length}
+        add={
+          editable && reportId !== null
+            ? { reportId, area: "leave", groupKey: null, leave: true }
+            : null
+        }
+      >
         {rows.length + manual.length === 0 ? (
-          <p className="px-2 py-2 text-sm text-muted">
+          <p className="py-2 text-sm text-muted">
             이 주의 휴가·외근이 없습니다
           </p>
         ) : (
-          <ul className="flex flex-col">
+          <ul className="flex flex-col divide-y divide-line-soft">
             {rows.map((r) => (
               <LeaveRow
                 key={r.key}
@@ -103,15 +111,7 @@ export function LeaveTab({ snapshot, detail, reportId, editable }: Props) {
             ))}
           </ul>
         )}
-        {editable && reportId !== null ? (
-          <ManualItemForm
-            reportId={reportId}
-            area="leave"
-            groupKey={null}
-            leave
-          />
-        ) : null}
-      </section>
+      </GroupShell>
       <AreaNotes
         reportId={reportId}
         area="leave"

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { RichNote } from "@/app/r/checklist/[token]/_components/RichNote";
 import {
@@ -13,6 +14,9 @@ import {
 } from "@/features/ops-weekly/constants";
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
 import { AreaNotes } from "./AreaNotes";
+import { usePendingSaves } from "./pending-saves";
+import { SaveStatus } from "./SaveStatus";
+import { TabHeading } from "./TabHeading";
 import { ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { SAVE_FAILED, useSave } from "./use-save";
 
@@ -22,6 +26,8 @@ type Props = {
   reportId: string | null;
   editable: boolean;
   notes: { thisWeek: string; nextWeek: string };
+  /** 관리자에게만 준다 — 빈 상태 안내에 설정 링크를 붙인다 */
+  settingsHref?: string;
 };
 
 type EntryDraft = {
@@ -88,7 +94,13 @@ function EntryCard(props: {
     thisWeek: entry.thisWeek,
     nextWeek: entry.nextWeek,
   });
-  const save = useSave();
+  const registry = usePendingSaves();
+  const save = useSave({
+    track: {
+      key: `project:${reportId ?? ""}:${entry.projectId}`,
+      label: `${entry.projectName} 내용`,
+    },
+  });
 
   function persist(patch: Partial<EntryDraft>) {
     latest.current = { ...latest.current, ...patch };
@@ -99,42 +111,64 @@ function EntryCard(props: {
     );
   }
 
-  async function uploadImage(dataUrl: string): Promise<string | null> {
-    if (reportId === null) return null;
+  async function doUpload(
+    id: string,
+    dataUrl: string,
+  ): Promise<{ url: string | null; error: string | null }> {
     try {
-      const r = await uploadWeeklyImage({ reportId, dataUrl });
-      setUploadError(r.ok ? null : r.error);
-      return r.ok ? r.url : null;
+      const r = await uploadWeeklyImage({ reportId: id, dataUrl });
+      return r.ok ? { url: r.url, error: null } : { url: null, error: r.error };
     } catch {
-      setUploadError(SAVE_FAILED);
-      return null;
+      return { url: null, error: SAVE_FAILED };
     }
   }
 
+  // 업로드도 저장의 일부다 — 끝난 뒤에 이어지는 저장 전에 제출이 앞지르지 못하게 등록한다.
+  async function uploadImage(dataUrl: string): Promise<string | null> {
+    if (reportId === null) return null;
+    const work = doUpload(reportId, dataUrl);
+    registry?.track(
+      `upload:${reportId}:${entry.projectId}`,
+      `${entry.projectName} 이미지 업로드`,
+      // 기다리게만 한다 — 업로드가 실패하면 저장 안 된 내용이 없으므로 실패로 기록하지 않는다.
+      work.then(() => null),
+    );
+    const r = await work;
+    setUploadError(r.error);
+    return r.url;
+  }
+
   return (
-    <article className="flex flex-col gap-3 border border-line-soft p-4">
+    <article className="flex flex-col gap-3 border border-line-soft bg-situation-bg p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-ink">{entry.projectName}</h3>
         {editable && reportId !== null ? (
-          <label className="flex items-center gap-2 text-xs font-medium text-muted">
-            진행 단계
-            <select
-              value={stage ?? ""}
-              onChange={(e) => {
-                const next = isStage(e.target.value) ? e.target.value : null;
-                setStage(next);
-                persist({ stage: next });
-              }}
-              className={FIELD_CLASS}
-            >
-              <option value="">{NO_STAGE}</option>
-              {PROJECT_STAGES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <SaveStatus
+              pending={save.pending}
+              error={save.error}
+              savedAt={save.savedAt}
+            />
+            <label className="flex items-center gap-2 text-xs font-medium text-muted">
+              진행 단계
+              <select
+                value={stage ?? ""}
+                onChange={(e) => {
+                  const next = isStage(e.target.value) ? e.target.value : null;
+                  setStage(next);
+                  persist({ stage: next });
+                }}
+                className={FIELD_CLASS}
+              >
+                <option value="">{NO_STAGE}</option>
+                {PROJECT_STAGES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         ) : (
           <span className="text-xs text-muted">{entry.stage ?? "—"}</span>
         )}
@@ -165,37 +199,50 @@ function EntryCard(props: {
         </div>
       )}
       {(save.error ?? uploadError) ? (
-        <p className={ERROR_CLASS}>{save.error ?? uploadError}</p>
+        <p role="alert" className={ERROR_CLASS}>
+          {save.error ?? uploadError}
+        </p>
       ) : null}
     </article>
   );
 }
 
 export function ProjectTab(props: Props) {
-  const { kind, entries, reportId, editable, notes } = props;
+  const { kind, entries, reportId, editable, notes, settingsHref } = props;
   const mine = entries
     .filter((e) => e.kind === kind)
     .sort((a, b) => a.sortOrder - b.sortOrder);
   const emptyText =
     kind === "tf" ? "맡은 TF가 없습니다" : "맡은 프로젝트가 없습니다";
   return (
-    <section data-tab={kind} className="flex flex-col gap-4 p-5 lg:p-7">
+    <section data-tab={kind} className="flex flex-col gap-7 p-5 lg:p-7">
+      <TabHeading
+        title={kind === "tf" ? "TF" : "프로젝트"}
+        summary={`${mine.length}건`}
+      />
       {mine.length === 0 ? (
-        <div className="flex flex-col gap-1 text-sm">
+        <div className="flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm">
           <p className="text-ink">{emptyText}</p>
           <p className="text-xs text-muted">
             관리자 설정에서 담당자를 지정합니다
           </p>
+          {settingsHref ? (
+            <Link href={settingsHref} className="text-xs underline">
+              설정 열기
+            </Link>
+          ) : null}
         </div>
       ) : (
-        mine.map((e) => (
-          <EntryCard
-            key={e.projectId}
-            entry={e}
-            reportId={reportId}
-            editable={editable}
-          />
-        ))
+        <div className="flex flex-col gap-4">
+          {mine.map((e) => (
+            <EntryCard
+              key={e.projectId}
+              entry={e}
+              reportId={reportId}
+              editable={editable}
+            />
+          ))}
+        </div>
       )}
       <AreaNotes
         reportId={reportId}

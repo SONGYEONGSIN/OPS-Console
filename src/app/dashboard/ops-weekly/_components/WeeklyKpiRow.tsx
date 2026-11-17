@@ -17,39 +17,52 @@ const STAGE_KEYS: ReadonlySet<keyof WeeklyKpis> = new Set(["dev", "test"]);
  */
 export function WeeklyKpiRow({
   kpis,
+  ownerName,
   unknownCount = 0,
 }: {
   kpis: WeeklyKpis;
+  /** 이 숫자가 누구의 보고서 것인지 — 제출 현황·설정 탭에서도 카드가 남아 있어 밝혀야 한다 */
+  ownerName: string;
   unknownCount?: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 px-5 pt-4 md:grid-cols-3 lg:px-7 xl:grid-cols-6">
-      {CARDS.map(({ key, label }) => {
-        const value = kpis[key];
-        return (
-          <div
-            key={key}
-            className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4"
-          >
+    <>
+      <p className="px-5 pt-4 text-xs text-muted lg:px-7">
+        {`${ownerName}의 이번 주 · 항목 간 중복 집계될 수 있습니다`}
+      </p>
+      <div className="grid grid-cols-2 gap-3 px-5 pt-2 md:grid-cols-3 lg:px-7 xl:grid-cols-6">
+        {CARDS.map(({ key, label }) => {
+          const value = kpis[key];
+          return (
             <div
-              data-testid="weekly-kpi-label"
-              className="text-xs font-medium text-muted"
+              key={key}
+              className="flex flex-col gap-1 border border-line-soft bg-situation-bg p-4"
             >
-              {label}
-            </div>
-            {value === null ? (
-              <div className="text-sm font-medium text-muted">구분 미확인</div>
-            ) : (
-              <div className="text-2xl font-bold tabular-nums text-ink">
-                {value.toLocaleString("ko-KR")}
+              <div
+                data-testid="weekly-kpi-label"
+                className="text-xs font-medium text-muted"
+              >
+                {label}
               </div>
-            )}
-            {value !== null && STAGE_KEYS.has(key) && unknownCount > 0 ? (
-              <div className="text-xs text-muted">{`구분 미확인 ${unknownCount}건`}</div>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
+              {value === null ? (
+                <div className="text-sm font-medium text-muted">
+                  구분 미확인
+                </div>
+              ) : (
+                <div className="text-2xl font-bold tabular-nums text-ink">
+                  {value.toLocaleString("ko-KR")}
+                  <span className="ml-0.5 text-sm font-medium text-muted">
+                    건
+                  </span>
+                </div>
+              )}
+              {value !== null && STAGE_KEYS.has(key) && unknownCount > 0 ? (
+                <div className="text-xs text-muted">{`구분 미확인 ${unknownCount}건`}</div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

@@ -53,7 +53,7 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
 
   return (
     <section aria-label="당번 순번" className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-ink">당번 순번</h2>
+      <h2 className="text-xl font-bold text-ink">당번 순번</h2>
       <ol className="flex flex-col gap-1">
         {emails.map((e, i) => (
           <li key={e} className="flex flex-wrap items-center gap-2 text-sm">
@@ -115,6 +115,12 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
             }}
           />
         </label>
+      </div>
+      <p className="text-xs text-muted">
+        기준 주에 첫 사람이 당번이고 매주 다음 사람으로 넘어갑니다. 이미 열린
+        주의 당번은 바뀌지 않습니다.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           className={BTN_CLASS}
@@ -123,16 +129,12 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
         >
           순번 저장
         </button>
+        {localError !== null || save.error !== null ? (
+          <p role="alert" className={ERROR_CLASS}>
+            {localError ?? save.error}
+          </p>
+        ) : null}
       </div>
-      <p className="text-xs text-muted">
-        기준 주에 첫 사람이 당번이고 매주 다음 사람으로 넘어갑니다. 이미 열린
-        주의 당번은 바뀌지 않습니다.
-      </p>
-      {localError !== null || save.error !== null ? (
-        <p role="alert" className={ERROR_CLASS}>
-          {localError ?? save.error}
-        </p>
-      ) : null}
     </section>
   );
 }

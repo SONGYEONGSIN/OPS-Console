@@ -37,6 +37,8 @@ const group = (items: ViewItem[]) => ({
   emptyText: "없음",
 });
 
+const tokens = (el: Element) => el.className.split(/\s+/);
+
 beforeEach(() => {
   cleanup();
   saveItemOverride.mockReset().mockResolvedValue({ ok: true });
@@ -74,6 +76,7 @@ describe("AutoGroupSection", () => {
 
   it("메모는 blur 할 때 저장한다", async () => {
     render(<AutoGroupSection {...group([view("closing:1")])} editable />);
+    fireEvent.click(screen.getByRole("button", { name: "메모" }));
     const box = screen.getByLabelText("건 메모");
     fireEvent.change(box, { target: { value: "일정 변경" } });
     fireEvent.blur(box);
@@ -131,5 +134,100 @@ describe("AutoGroupSection", () => {
   it("비면 emptyText", () => {
     render(<AutoGroupSection {...group([])} editable={false} />);
     expect(screen.getByText("없음")).toBeInTheDocument();
+  });
+
+  it("직접 추가는 접혀 있다가 누르면 열리고 닫기로 접힌다", () => {
+    render(<AutoGroupSection {...group([])} editable />);
+    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
+    const open = screen.getByRole("button", { name: "+ 직접 추가" });
+    expect(open).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(open);
+    expect(screen.getByLabelText("직접 추가 제목")).toHaveFocus();
+    expect(open).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
+    expect(open).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("Esc 로도 직접 추가 폼을 닫는다", () => {
+    render(<AutoGroupSection {...group([])} editable />);
+    fireEvent.click(screen.getByRole("button", { name: "+ 직접 추가" }));
+    fireEvent.keyDown(screen.getByLabelText("직접 추가 제목"), {
+      key: "Escape",
+    });
+    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
+  });
+
+  it("묶음은 상자가 아니라 제목 밑줄 + 행 구분선이다", () => {
+    const { container } = render(
+      <AutoGroupSection {...group([view("closing:1")])} editable />,
+    );
+    expect(tokens(container.querySelector("section") as Element)).not.toContain(
+      "border",
+    );
+    const head = screen.getByRole("heading", { name: "운영 중" })
+      .parentElement as Element;
+    expect(tokens(head)).toContain("border-b");
+    expect(tokens(head)).toContain("border-line");
+    const ul = container.querySelector("ul") as Element;
+    expect(tokens(ul)).toContain("divide-y");
+    expect(tokens(ul)).toContain("divide-line-soft");
+  });
+
+  it("빈 묶음은 상자 없이 muted 한 줄이고 목록이 없다", () => {
+    const { container } = render(
+      <AutoGroupSection {...group([])} editable={false} />,
+    );
+    const t = tokens(screen.getByText("없음"));
+    expect(t).toContain("text-sm");
+    expect(t).toContain("text-muted");
+    expect(container.querySelector("ul")).toBeNull();
+  });
+
+  it("제목 옆에 자동+직접 건수가 숫자 정렬로 붙는다", () => {
+    const manual = [
+      {
+        id: "m1",
+        area: "application" as const,
+        group_key: "running",
+        title: "수동",
+        note: "",
+        period_start: null,
+        period_end: null,
+        leave_kind: null,
+      },
+    ];
+    render(
+      <AutoGroupSection
+        {...group([view("closing:1")])}
+        manual={manual}
+        editable
+      />,
+    );
+    expect(tokens(screen.getByText("2건"))).toContain("tabular-nums");
+  });
+
+  it("접힌 묶음(구분 미확인)은 닫힌 채이고 추가 버튼이 없다", () => {
+    const { container } = render(
+      <AutoGroupSection
+        {...group([view("closing:1")])}
+        title="구분 미확인 1건"
+        collapsed
+        allowAdd={false}
+        editable
+      />,
+    );
+    expect(container.querySelector("details")).not.toHaveAttribute("open");
+    expect(screen.queryByRole("button", { name: "+ 직접 추가" })).toBeNull();
+  });
+
+  it("행 호버 면과 액션이 키보드로 닿는다 — 액션은 같은 li 안", () => {
+    render(<AutoGroupSection {...group([view("closing:1")])} editable />);
+    const li = screen.getByText("가대학교").closest("li") as Element;
+    expect(tokens(li)).toContain("group");
+    expect(tokens(li)).toContain("hover:bg-line-soft");
+    expect(li.contains(screen.getByRole("button", { name: "빼기" }))).toBe(
+      true,
+    );
   });
 });

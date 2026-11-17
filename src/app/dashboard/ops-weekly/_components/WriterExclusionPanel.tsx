@@ -23,7 +23,7 @@ export function WriterExclusionPanel({ candidates, excluded }: Props) {
   }
   return (
     <section aria-label="작성 제외" className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-ink">작성 제외</h2>
+      <h2 className="text-xl font-bold text-ink">작성 제외</h2>
       <p className="text-xs text-muted">
         체크한 사람은 작성 대상에서 영구 제외됩니다(테스트 계정 등). 그 주만
         빼는 기능은 없습니다 — 휴가인 사람은 미리 작성합니다.
@@ -45,7 +45,7 @@ export function WriterExclusionPanel({ candidates, excluded }: Props) {
           </li>
         ))}
       </ul>
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           className={BTN_CLASS}
@@ -56,12 +56,12 @@ export function WriterExclusionPanel({ candidates, excluded }: Props) {
         >
           제외 저장
         </button>
+        {save.error !== null ? (
+          <p role="alert" className={ERROR_CLASS}>
+            {save.error}
+          </p>
+        ) : null}
       </div>
-      {save.error !== null ? (
-        <p role="alert" className={ERROR_CLASS}>
-          {save.error}
-        </p>
-      ) : null}
     </section>
   );
 }

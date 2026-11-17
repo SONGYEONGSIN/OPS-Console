@@ -7,6 +7,7 @@ const MD_HM = kstFormat({
   hour: "2-digit",
   minute: "2-digit",
 });
+const HM = kstFormat({ hour: "2-digit", minute: "2-digit" });
 const MD_DOW = kstFormat({
   month: "numeric",
   day: "numeric",
@@ -33,4 +34,12 @@ export function formatMdDow(ymd: string): string {
   if (Number.isNaN(d.getTime())) return "—";
   const p = partsOf(MD_DOW, d);
   return `${p.month}/${p.day}(${p.weekday})`;
+}
+
+/** `HH:mm` — KST 24시간제. 저장 시각 표시용. */
+export function formatHm(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const p = partsOf(HM, d);
+  return `${p.hour === "24" ? "00" : p.hour}:${p.minute}`;
 }

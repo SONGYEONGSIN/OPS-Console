@@ -217,4 +217,84 @@ describe("ProjectTab", () => {
     pasteImage();
     expect(await screen.findByText(/저장하지 못했습니다/)).toBeInTheDocument();
   });
+
+  describe("가독성", () => {
+    const tokens = (el: Element) => el.className.split(/\s+/);
+
+    it("탭 제목(h2)과 건수가 맨 위에 온다", () => {
+      render(
+        <ProjectTab
+          kind="project"
+          entries={[entry("p1", "project", 1), entry("p2", "project", 2)]}
+          reportId="r"
+          editable
+          notes={N}
+        />,
+      );
+      const h = screen.getByRole("heading", { name: "프로젝트" });
+      expect(tokens(h)).toContain("text-xl");
+      expect(tokens(h)).toContain("font-bold");
+      expect(screen.getByText("2건")).toBeInTheDocument();
+      inOrder(["프로젝트", "p1", "p2", "영역 특이사항"]);
+    });
+
+    it("카드는 표면 표준(bg-situation-bg)이다", () => {
+      const { container } = render(
+        <ProjectTab
+          kind="project"
+          entries={[entry("p1", "project", 1)]}
+          reportId="r"
+          editable
+          notes={N}
+        />,
+      );
+      expect(tokens(container.querySelector("article") as Element)).toContain(
+        "bg-situation-bg",
+      );
+    });
+
+    it("비었을 때는 상자 + admin 에게만 설정 링크", () => {
+      const { rerender } = render(
+        <ProjectTab kind="tf" entries={[]} reportId="r" editable notes={N} />,
+      );
+      const box = screen.getByText("맡은 TF가 없습니다")
+        .parentElement as Element;
+      expect(tokens(box)).toContain("bg-situation-bg");
+      expect(tokens(box)).toContain("border-line-soft");
+      expect(screen.queryByRole("link", { name: "설정 열기" })).toBeNull();
+      rerender(
+        <ProjectTab
+          kind="tf"
+          entries={[]}
+          reportId="r"
+          editable
+          notes={N}
+          settingsHref="/dashboard/ops-weekly?tab=settings"
+        />,
+      );
+      expect(screen.getByRole("link", { name: "설정 열기" })).toHaveAttribute(
+        "href",
+        "/dashboard/ops-weekly?tab=settings",
+      );
+    });
+
+    it("카드 머리에 저장 상태가 뜬다", async () => {
+      const { container } = render(
+        <ProjectTab
+          kind="project"
+          entries={[entry("p1", "project", 1)]}
+          reportId="r"
+          editable
+          notes={N}
+        />,
+      );
+      fireEvent.change(screen.getByLabelText("진행 단계"), {
+        target: { value: "개발" },
+      });
+      const card = container.querySelector("article") as HTMLElement;
+      expect(
+        await within(card).findByText(/^저장됨 \d{2}:\d{2}$/),
+      ).toBeInTheDocument();
+    });
+  });
 });

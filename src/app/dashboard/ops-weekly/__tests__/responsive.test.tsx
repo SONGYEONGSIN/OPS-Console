@@ -66,6 +66,7 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
   it("KPI 6열은 xl 부터 (lg 는 사이드바·인스펙터로 좁다)", () => {
     render(
       <WeeklyKpiRow
+        ownerName="홍길동"
         kpis={{ dev: 1, test: 1, opening: 1, running: 1, closing: 1, pims: 1 }}
       />,
     );
@@ -75,6 +76,27 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(t).not.toContain("lg:grid-cols-6");
     expect(t).toContain("px-5");
     expect(t).toContain("lg:px-7");
+    // 캡션이 위에 붙으면서 그리드 위 여백이 줄었다 — 캡션도 같은 좌우 여백
+    expect(t).toContain("pt-2");
+    const caption = screen.getByText(/^홍길동의 이번 주/);
+    expect(tokens(caption)).toContain("px-5");
+    expect(tokens(caption)).toContain("lg:px-7");
+  });
+
+  it("제출 표는 명단이 비면 표 대신 빈 상태 상자", () => {
+    render(
+      <SubmissionTable
+        week={{ id: "w1", week_start: "2026-11-16" } as WeekRow}
+        writers={[]}
+        reports={[]}
+        canReturn={() => false}
+        onReturn={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("table")).toBeNull();
+    const box = screen.getByText("작성 대상 명단이 비어 있습니다")
+      .parentElement as Element;
+    expect(tokens(box)).toContain("bg-situation-bg");
   });
 
   it("당번 순번 행은 줄바꿈된다", () => {

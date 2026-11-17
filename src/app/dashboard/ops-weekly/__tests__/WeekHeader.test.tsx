@@ -225,4 +225,78 @@ describe("WeekHeader", () => {
     );
     expect(screen.queryByText(/명단 조회 실패/)).toBeNull();
   });
+  describe("가독성 — 머리줄 모양", () => {
+    const tokens = (el: Element) => el.className.split(/\s+/);
+    const climb = (el: Element, token: string): Element | null => {
+      for (let n: Element | null = el; n; n = n.parentElement) {
+        if (tokens(n).includes(token)) return n;
+      }
+      return null;
+    };
+
+    it("정보는 왼쪽 · 액션은 오른쪽 묶음, 그 부모 행이 양 끝 정렬", () => {
+      render(<WeekHeader {...base} canSubmit />);
+      const button = screen.getByRole("button", { name: "제출완료" });
+      const right = climb(button, "justify-end");
+      expect(right).not.toBeNull();
+      expect(tokens(right?.parentElement as Element)).toContain(
+        "justify-between",
+      );
+      expect(right?.contains(screen.getByLabelText("작성자"))).toBe(false);
+    });
+
+    it("제출 실패 메시지는 머리 행 밖 아래 줄에서 vermilion 으로", async () => {
+      submitReport.mockResolvedValue({ ok: false, error: "이미 제출함" });
+      render(<WeekHeader {...base} canSubmit />);
+      const button = screen.getByRole("button", { name: "제출완료" });
+      fireEvent.click(button);
+      const alert = await screen.findByRole("alert");
+      expect(tokens(alert)).toContain("text-vermilion");
+      expect(alert.parentElement).not.toBe(button.parentElement);
+      expect(climb(button, "justify-end")?.contains(alert)).toBe(false);
+      expect(
+        button.compareDocumentPosition(alert) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
+      const { rerender } = render(<WeekHeader {...base} />);
+      expect(screen.getByText("작성 중")).toBeInTheDocument();
+      rerender(
+        <WeekHeader
+          {...base}
+          reportStatus="submitted"
+          submittedAt="2026-11-19T08:05:00Z"
+        />,
+      );
+      expect(tokens(screen.getByText("제출함 11/19 17:05"))).toContain(
+        "tabular-nums",
+      );
+      rerender(<WeekHeader {...base} reportStatus="returned" />);
+      const badge = screen.getByText("다시 작성 요청");
+      expect(tokens(badge)).toContain("border-vermilion");
+      expect(tokens(badge)).toContain("text-vermilion");
+    });
+
+    it("다시 작성 사유를 메시지 줄에 보여 준다", () => {
+      render(
+        <WeekHeader
+          {...base}
+          reportStatus="returned"
+          returnReason="사진 누락"
+        />,
+      );
+      expect(
+        screen.getByText("다시 작성 요청 — 사진 누락"),
+      ).toBeInTheDocument();
+    });
+
+    it("주 이동 링크는 터치 폭 36px 이상", () => {
+      render(<WeekHeader {...base} />);
+      const t = tokens(screen.getByRole("link", { name: "이전 주" }));
+      expect(t).toContain("min-h-9");
+      expect(t).toContain("min-w-9");
+    });
+  });
 });
