@@ -54,6 +54,7 @@ describe("buildApplicationGroups", () => {
       rows,
       operatorName: "운영자A",
       devStages: new Map(),
+      devStatusCollected: false,
       weekStart: "2026-11-16",
       now: NOW,
     });
@@ -72,6 +73,7 @@ describe("buildApplicationGroups", () => {
       rows,
       operatorName: "운영자A",
       devStages: fresh,
+      devStatusCollected: true,
       weekStart: "2026-11-16",
       now: NOW,
     });
@@ -79,11 +81,36 @@ describe("buildApplicationGroups", () => {
     expect(keys(g.unknown)).toEqual(["closing:2", "closing:1"]);
     expect(g.devStatusCollected).toBe(true);
   });
+  it("수집 여부는 넘겨받은 값이다 — 본인 구분이 0건이어도 그 주에 수집됐으면 수집됨", () => {
+    const g = buildApplicationGroups({
+      rows,
+      operatorName: "시작전없음",
+      devStages: new Map(),
+      devStatusCollected: true,
+      weekStart: "2026-11-16",
+      now: NOW,
+    });
+    expect(g.devStatusCollected).toBe(true);
+    expect(g.dev).toEqual([]);
+    expect(g.unknown).toEqual([]);
+  });
+  it("구분 행이 있어도 넘겨받은 값이 false 면 수집 안 됨", () => {
+    const g = buildApplicationGroups({
+      rows,
+      operatorName: "운영자A",
+      devStages: new Map([[4, "test" as const]]),
+      devStatusCollected: false,
+      weekStart: "2026-11-16",
+      now: NOW,
+    });
+    expect(g.devStatusCollected).toBe(false);
+  });
   it("미리 여는 다음 주는 그 주 월 00:00 기준으로 계산한다", () => {
     const g = buildApplicationGroups({
       rows,
       operatorName: "운영자A",
       devStages: new Map(),
+      devStatusCollected: false,
       weekStart: "2026-11-23",
       now: new Date("2026-11-19T01:00:00Z"),
     });
@@ -100,6 +127,7 @@ describe("buildApplicationGroups", () => {
       ],
       operatorName: "운영자A",
       devStages: new Map(),
+      devStatusCollected: false,
       weekStart: "2026-11-16",
       now: NOW,
     });

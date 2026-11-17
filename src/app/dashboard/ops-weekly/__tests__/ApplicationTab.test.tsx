@@ -28,7 +28,7 @@ describe("ApplicationTab", () => {
     );
     expect(
       screen.getByText(
-        "개발/테스트 구분 미확인 — 작업 통계가 아직 수집되지 않았습니다 (시작 전 서비스 3건)",
+        "개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 3건)",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "개발 중" })).toBeNull();
@@ -186,6 +186,36 @@ describe("ApplicationTab", () => {
       />,
     );
     expect(screen.getByText("자동 0건 · 직접 0건")).toBeInTheDocument();
+  });
+
+  it("수집된 주에 시작 전 서비스가 0건이면 미수집 문구 없이 직접 추가 건이 보인다", () => {
+    render(
+      <ApplicationTab
+        snapshot={snap({ devStatusCollected: true, unknown: 0 })}
+        detail={{
+          ...EMPTY,
+          manual: [
+            {
+              id: "m1",
+              area: "application",
+              group_key: "dev",
+              title: "직접 넣은 개발 건",
+              note: "",
+              period_start: null,
+              period_end: null,
+              leave_kind: null,
+            },
+          ],
+        }}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    expect(screen.queryByText(/아직 수집되지 않았습니다/)).toBeNull();
+    expect(screen.getByRole("heading", { name: "개발 중" })).toBeInTheDocument();
+    expect(screen.getByText("직접 넣은 개발 건")).toBeInTheDocument();
+    expect(screen.getByText("자동 0건 · 직접 1건")).toBeInTheDocument();
   });
 });
 

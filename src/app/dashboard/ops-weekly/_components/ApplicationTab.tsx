@@ -98,7 +98,7 @@ export function ApplicationTab({
           </>
         ) : (
           <p className="text-sm text-muted">
-            {`개발/테스트 구분 미확인 — 작업 통계가 아직 수집되지 않았습니다 (시작 전 서비스 ${app.unknown.length}건)`}
+            {`개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 ${app.unknown.length}건)`}
           </p>
         )}
         {AFTER.map((g) => section(g.key, g.title, app[g.key]))}
