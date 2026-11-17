@@ -50,10 +50,27 @@ else {
 # Stop인 채로 `*>>` 리다이렉트를 쓰면 python이 stderr로 '경고 한 줄'만 뱉어도 PowerShell이
 # 이를 종료 오류로 승격시켜 스크립트가 그 자리에서 죽는다(마감 래퍼 2026-08-12 사고와 같다).
 # 실패 판정은 종료 코드로 한다.
+# python 은 UTF-8 로 쓰므로(-X utf8) 콘솔 해석도 UTF-8 로 맞춘다 — 아니면 로그 한글이 CP949 로 깨진다
+# (sms-status-refresh/poll-local.ps1 선례). 끝나면 되돌린다.
+$prevOut = [Console]::OutputEncoding
+try {
+    [Console]::OutputEncoding = [Text.Encoding]::UTF8
+}
+catch {
+    # 콘솔이 없는 세션이면 못 바꾼다 — 로그 한글만 깨질 뿐 실행은 계속한다.
+    "콘솔 인코딩 변경 실패 — 로그 한글이 깨질 수 있음" | Out-File -Append -Encoding utf8 $log
+}
 $ErrorActionPreference = "Continue"
 python -I -X utf8 -u "scripts\moa-dev-status\collect.py" *>> $log
 # python 자체를 못 찾으면 $LASTEXITCODE가 안 잡히므로 실패로 본다.
 $code = if ($null -eq $LASTEXITCODE) { 1 } else { $LASTEXITCODE }
+try {
+    [Console]::OutputEncoding = $prevOut
+}
+catch {
+    # 바꾸지 못했던 세션이면 되돌릴 것도 없다.
+    $null = $_
+}
 $ErrorActionPreference = "Stop"
 
 $end = Get-Date -Format "yyyy-MM-dd HH:mm:ss"

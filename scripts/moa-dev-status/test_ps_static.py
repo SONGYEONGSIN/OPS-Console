@@ -42,6 +42,21 @@ class TestRunLocal(unittest.TestCase):
         self.assertIn("run-local.log", self.ps)
         self.assertIn("exit $code", self.ps)
 
+    def test_python_출력은_UTF8_로_해석하고_되돌린다(self):
+        # python 은 -X utf8 로 쓰는데 PS 5.1 은 네이티브 출력을 [Console]::OutputEncoding(CP949)로 읽는다 —
+        # 안 맞추면 run-local.log 의 [FAIL]·트레이스백 한글이 깨진다(sms-status-refresh/poll-local.ps1 선례).
+        call = self.ps.index(r'python -I -X utf8 -u "scripts\moa-dev-status\collect.py"')
+        save = self.ps.index("$prevOut = [Console]::OutputEncoding")
+        set_ = self.ps.index("[Console]::OutputEncoding = [Text.Encoding]::UTF8")
+        restore = self.ps.index("[Console]::OutputEncoding = $prevOut")
+        self.assertLess(save, set_)
+        self.assertLess(set_, call)
+        self.assertLess(call, restore)
+        # 콘솔이 없는 세션이면 바꾸기가 던진다 — 실행을 막지 않게 try/catch 안에서 한다.
+        before = self.ps[save:set_]
+        self.assertIn("try", before)
+        self.assertIn("catch", self.ps[set_:call])
+
 
 class TestRegister(unittest.TestCase):
     ps = code_of("register-task.ps1")
