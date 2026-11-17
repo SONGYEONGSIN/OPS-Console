@@ -12,10 +12,10 @@ import { canViewMenu } from "@/features/auth/permission";
 import { getCurrentOperator } from "@/features/auth/queries";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ActionResult } from "./actions";
-import { loadAutoSnapshot } from "./auto-queries";
 import { OPS_WEEKLY_PATH, OPS_WEEKLY_SLUG } from "./constants";
 import { normEmail } from "./email";
 import { emitOpsWeeklyEvent } from "./events";
+import { freezeWeekSnapshots } from "./freeze";
 import {
   canEditDutySummary,
   canReopenWeek,
@@ -26,6 +26,7 @@ import {
   type FinalizeCheck,
 } from "./permissions";
 import { listPendingWriters, listReports } from "./report-queries";
+import type { WriterCandidate } from "./roster";
 import {
   reportRowSchema,
   normalizedWeekStateOf,
@@ -163,20 +164,12 @@ export async function submitReport(input: {
   if (!allowed || self === undefined) {
     return failOf(submitRejection(ctx, self !== undefined));
   }
-  const now = new Date();
-  const snapshot = await loadAutoSnapshot({
-    weekStart: week.week_start,
-    operatorEmail: ownerEmail,
-    operatorName: self.name,
-    writerNames: new Set(writers.map((w) => w.name)),
-    now,
-  });
+  // 자동 항목은 여기서 굳히지 않는다 — 당번의 [최종 보고] 때 전원 것을 한꺼번에 굳힌다(freeze.ts).
   const res = await createAdminClient()
     .from("ops_weekly_reports")
     .update({
       status: "submitted",
-      submitted_at: now.toISOString(),
-      snapshot,
+      submitted_at: new Date().toISOString(),
       updated_by: actor.email,
     })
     .eq("id", report.id)
@@ -205,7 +198,6 @@ export async function returnReport(input: {
     .from("ops_weekly_reports")
     .update({
       status: "returned",
-      snapshot: null,
       returned_at: new Date().toISOString(),
       returned_by: actor.email,
       return_reason: reason,
@@ -280,6 +272,30 @@ async function openNextWeek(weekStart: string): Promise<void> {
   }
 }
 
+const submittedEmails = (reports: readonly ReportRow[]): Set<string> =>
+  new Set(
+    reports
+      .filter((r) => r.status === "submitted")
+      .map((r) => normEmail(r.operator_email)),
+  );
+
+/** 전원 자동 항목을 굳힌다 —실패면 주를 바꾸지 않고 당번에게 알린다(다시 누르면 처음부터). */
+async function freezeOrFail(
+  week: WeekRow,
+  writers: readonly WriterCandidate[],
+  reports: readonly ReportRow[],
+): Promise<Fail | null> {
+  try {
+    await freezeWeekSnapshots({ week, writers, reports, now: new Date() });
+    return null;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return failOf(
+      `자동 항목을 굳히지 못해 최종 보고를 멈췄습니다. 다시 눌러 주세요: ${msg}`,
+    );
+  }
+}
+
 export async function finalizeWeek(input: {
   weekId: string;
 }): Promise<ActionResult> {
@@ -288,21 +304,20 @@ export async function finalizeWeek(input: {
   const { actor, week } = ctx;
   // 명단·제출 조회 실패는 던진다 — 빈 명단으로 [최종 보고]가 켜지지 않는다.
   const writers = await listWriters();
-  const submitted = new Set(
-    (await listReports(week.id))
-      .filter((r) => r.status === "submitted")
-      .map((r) => normEmail(r.operator_email)),
-  );
+  const reports = await listReports(week.id);
   const check = checkFinalize(
     actor,
     stateOf(week),
     writers.map((w) => w.email),
-    submitted,
+    submittedEmails(reports),
   );
   if (!check.ok) {
     const names = new Map(writers.map((w) => [w.email, w.name]));
     return failOf(finalizeRejection(check, names));
   }
+  // 스냅샷을 먼저 다 쓴다 — week-reported 훅(A3)이 listReports 로 굳은 값을 읽는다.
+  const frozen = await freezeOrFail(week, writers, reports);
+  if (frozen !== null) return frozen;
   const res = await createAdminClient()
     .from("ops_weekly_weeks")
     .update({

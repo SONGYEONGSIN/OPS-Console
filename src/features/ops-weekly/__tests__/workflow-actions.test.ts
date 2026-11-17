@@ -32,8 +32,12 @@ import {
 } from "../workflow-actions";
 import { me, R, resetFixture, seed, state, W } from "./actions-fixture";
 import type { Row } from "./fake-admin";
+import { snap } from "@/app/dashboard/ops-weekly/__tests__/tab-fixtures";
 
-const SNAP = { version: 1, marker: "snap" };
+const R2 = "66666666-6666-4666-8666-666666666666";
+/** 최종 보고 때 새로 만든 값 / 그 전에 굳어 있던 값 — 스키마에 맞아야 null 로 안 읽힌다. */
+const SNAP = snap();
+const OLD = snap({ unknown: 1 });
 const LOCKED = "보고가 끝난 주입니다. 관리자에게 정정을 요청하세요.";
 const ALREADY = "이미 제출한 보고서입니다.";
 
@@ -86,13 +90,15 @@ beforeEach(() => {
 });
 
 describe("submitReport", () => {
-  it("제출은 스냅샷을 굳히고, 마지막 제출이면 all-submitted 를 낸다", async () => {
+  it("제출은 스냅샷을 쓰지 않는다 — 자동 항목은 최종 보고 때 굳는다", async () => {
     me("a@x");
     setup({ writers: [op("a@x", "운영자A")] });
     expect(await submitReport({ reportId: R })).toEqual({ ok: true });
     expect(updates("ops_weekly_reports")[0][1]).toEqual(
-      expect.objectContaining({ status: "submitted", snapshot: SNAP }),
+      expect.objectContaining({ status: "submitted" }),
     );
+    expect(updates("ops_weekly_reports")[0][1]).not.toHaveProperty("snapshot");
+    expect(snapshotSpy).not.toHaveBeenCalled();
     expect(emitSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: "all-submitted", weekId: W }),
     );
@@ -193,7 +199,7 @@ describe("submitReport", () => {
 });
 
 describe("returnReport", () => {
-  it("다시 작성 — 스냅샷을 비우고 report-returned", async () => {
+  it("다시 작성 — 스냅샷은 두고 report-returned", async () => {
     me("d@x");
     setup({
       report: { status: "submitted", snapshot: SNAP },
@@ -205,11 +211,11 @@ describe("returnReport", () => {
     expect(updates("ops_weekly_reports")[0][1]).toEqual(
       expect.objectContaining({
         status: "returned",
-        snapshot: null,
         return_reason: "건수 확인",
         returned_by: "d@x",
       }),
     );
+    expect(updates("ops_weekly_reports")[0][1]).not.toHaveProperty("snapshot");
     expect(emitSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "report-returned",
@@ -228,6 +234,18 @@ describe("returnReport", () => {
       error: "당번 또는 관리자만 할 수 있습니다.",
     });
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it("다시 작성 요청은 굳은 스냅샷을 지우지 않는다(정정 주 포함)", async () => {
+    me("d@x");
+    setup({
+      week: { duty_email: "d@x", reopened_at: "2026-11-20T01:00:00Z" },
+      report: { status: "submitted", snapshot: OLD },
+      writers: [op("a@x", "운영자A")],
+    });
+    expect((await returnReport({ reportId: R })).ok).toBe(true);
+    expect(updates("ops_weekly_reports")[0][1]).not.toHaveProperty("snapshot");
+    expect(state.db.rows("ops_weekly_reports")[0].snapshot).toEqual(OLD);
   });
 
   it("제출 전 보고서는 다시 작성 요청할 수 없다", async () => {
@@ -382,6 +400,131 @@ describe("finalizeWeek", () => {
     allSubmitted();
     ensureWeekSpy.mockRejectedValue(new Error("x"));
     expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+  });
+});
+
+describe("finalizeWeek — 자동 항목 굳히기", () => {
+  /** 두 사람 다 제출한 주. a 는 R, b 는 R2. */
+  const twoSubmitted = (opts: { week?: Row; a?: Row; b?: Row } = {}) => {
+    me("d@x");
+    setup({
+      week: { duty_email: "d@x", ...opts.week },
+      report: { status: "submitted", ...opts.a },
+      writers: [op("a@x", "운영자A"), op("b@x", "운영자B")],
+      extraReports: [
+        seedReport({
+          id: R2,
+          operator_email: "b@x",
+          status: "submitted",
+          ...opts.b,
+        }),
+      ],
+    });
+  };
+  const snapWrites = () =>
+    updates("ops_weekly_reports").filter(([, p]) => "snapshot" in p);
+  const snapshotOf = (id: string) =>
+    state.db.rows("ops_weekly_reports").find((r) => r.id === id)?.snapshot;
+
+  it("최종 보고는 전원 스냅샷을 쓴 뒤에 week-reported 를 낸다", async () => {
+    twoSubmitted();
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapWrites()).toHaveLength(2);
+    expect(snapshotSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weekStart: "2026-11-16",
+        operatorEmail: "b@x",
+        operatorName: "운영자B",
+        writerNames: new Set(["운영자A", "운영자B"]),
+      }),
+    );
+    const { calls, invocationCallOrder } = state.db.spies.update.mock;
+    const lastSnapWrite = Math.max(
+      ...calls.flatMap(([t], i) =>
+        t === "ops_weekly_reports" ? [invocationCallOrder[i]] : [],
+      ),
+    );
+    expect(emitSpy.mock.invocationCallOrder[0]).toBeGreaterThan(lastSnapWrite);
+    expect(emitSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "week-reported", correction: false }),
+    );
+  });
+
+  it("굳히기는 사람이 쓴 게 아니다 — updated_by 를 바꾸지 않는다", async () => {
+    twoSubmitted();
+    await finalizeWeek({ weekId: W });
+    snapWrites().forEach(([, p]) => expect(p).toEqual({ snapshot: SNAP }));
+  });
+
+  it("한 사람이라도 굳히기에 실패하면 주는 open 이고 이벤트가 없다 — 다시 누르면 처음부터", async () => {
+    snapshotSpy
+      .mockResolvedValueOnce(SNAP)
+      .mockRejectedValueOnce(new Error("closing 조회 실패"));
+    twoSubmitted();
+    const r = await finalizeWeek({ weekId: W });
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.error).toBe(
+      "자동 항목을 굳히지 못해 최종 보고를 멈췄습니다. 다시 눌러 주세요: closing 조회 실패",
+    );
+    expect(updates("ops_weekly_weeks")).toHaveLength(0);
+    expect(emitSpy).not.toHaveBeenCalled();
+    expect(updates("ops_weekly_reports")).toHaveLength(0); // 다 만든 뒤에만 쓴다
+    expect(state.db.rows("ops_weekly_weeks")[0].status).toBe("open");
+
+    snapshotSpy.mockResolvedValue(SNAP);
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapWrites()).toHaveLength(2);
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("스냅샷 저장이 실패해도 보고하지 않는다", async () => {
+    twoSubmitted();
+    state.db.failNextWrite("ops_weekly_reports", "write down");
+    const r = await finalizeWeek({ weekId: W });
+    expect(r.ok === false && r.error).toMatch(
+      /^자동 항목을 굳히지 못해 최종 보고를 멈췄습니다.*write down/,
+    );
+    expect(updates("ops_weekly_weeks")).toHaveLength(0);
+    expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it("첫 최종 보고는 제출 때 굳은 옛 스냅샷도 덮어 쓴다", async () => {
+    twoSubmitted({ a: { snapshot: OLD } });
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapWrites()).toHaveLength(2);
+    expect(snapshotOf(R)).toEqual(SNAP);
+    expect(snapshotOf(R2)).toEqual(SNAP);
+  });
+
+  it("정정 뒤 재보고는 굳은 값을 두고 빈 것만 채운다", async () => {
+    twoSubmitted({
+      week: { reopened_at: "2026-11-20T01:00:00Z" },
+      a: { snapshot: OLD },
+    });
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapshotSpy).toHaveBeenCalledTimes(1);
+    expect(snapWrites()).toHaveLength(1);
+    expect(snapshotOf(R)).toEqual(OLD);
+    expect(snapshotOf(R2)).toEqual(SNAP);
+    expect(emitSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "week-reported", correction: true }),
+    );
+  });
+
+  it("작성 대상 명단에 없는 사람의 보고서는 굳히지 않는다", async () => {
+    me("d@x");
+    setup({
+      week: { duty_email: "d@x" },
+      report: { status: "submitted" },
+      writers: [op("a@x", "운영자A")],
+      extraReports: [
+        seedReport({ id: R2, operator_email: "gone@x", status: "submitted" }),
+      ],
+    });
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapshotOf(R)).toEqual(SNAP);
+    expect(snapshotOf(R2)).toBeNull();
+    expect(snapshotSpy).toHaveBeenCalledTimes(1);
   });
 });
 
