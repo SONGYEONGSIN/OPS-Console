@@ -60,6 +60,43 @@ class ParseWorkStatusTest(unittest.TestCase):
         self.assertIn("<caption>", html)
         self.assertEqual(parse_work_status(html), [(1000001, "2026-11-10 14:00:00")])
 
+    def test_닫히지_않은_첫_행은_행_하나만_돌려주지_않는다(self):
+        html = page([row("1000001").replace("</tr>", ""), row("1000002")])
+        self.assertCode(html, "row_shape")
+
+    def test_표_중간에서_잘린_응답은_실패(self):
+        full = page([row("1000001"), row("1000002")])
+        for marker in ("</tbody>", "1000002"):
+            cut = full[: full.index(marker)]
+            with self.assertRaises(DevStatusFailure) as cm:
+                parse_work_status(cut)
+            self.assertEqual(cm.exception.code, "table_missing")
+            self.assertIn("표가 닫히지 않았다", cm.exception.reason)
+
+    def test_td_block_클래스에_다른_토큰이_있어도_통과(self):
+        html = page([row().replace('class="td_block"', 'class="x td_block y"')])
+        self.assertEqual(parse_work_status(html), [(1000001, "2026-11-10 14:00:00")])
+
+    def test_속성_순서가_달라도_통과(self):
+        html = page([row()]).replace(
+            '<table summary="작업진행현황">', '<table class="t" id="a" summary="작업진행현황">'
+        )
+        self.assertEqual(parse_work_status(html), [(1000001, "2026-11-10 14:00:00")])
+
+    def test_nbsp와_공백이_ID와_테스트오픈_둘레에_있어도_통과(self):
+        html = page([row("&nbsp;1000001&nbsp;", "&nbsp; 2026-11-10 14:00:00 &nbsp;")])
+        self.assertEqual(parse_work_status(html), [(1000001, "2026-11-10 14:00:00")])
+
+    def test_담당자_칸_안의_중첩_표_이름은_새지_않는다(self):
+        nested = row().replace(
+            f"<td>{NAME}</td>", f"<td><table><tr><td>{NAME}</td></tr></table></td>"
+        )
+        self.assertNotIn(NAME, repr(parse_work_status(page([nested]))))
+        bad = nested.replace("<td>-</td></tr>", "</tr>")
+        with self.assertRaises(DevStatusFailure) as cm:
+            parse_work_status(page([bad]))
+        self.assertNotIn(NAME, str(cm.exception))
+
     def test_표_없음(self):
         self.assertCode(page([row()], table=False), "table_missing")
 

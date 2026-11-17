@@ -38,6 +38,7 @@ class _TableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.found = False
+        self.closed = False  # 대상 표의 </table> 을 봤는가
         self.header: list[str] = []
         # 행마다 칸 텍스트 목록(담당자 칸은 빈 문자열) + 첫 칸 정보
         self.rows: list[dict] = []
@@ -48,6 +49,15 @@ class _TableParser(HTMLParser):
         self._in_th = False
         self._th: list[str] = []
         self._span_depth = 0  # 첫 칸의 첫 span 안일 때 1
+
+    def _abandon_open_row(self) -> None:
+        # 닫히지 않은 행은 버리지 않고 표시해 두었다가 검증에서 실패시킨다
+        if self._row is not None and self._row["cells"]:
+            self._row["unclosed"] = True
+            self.rows.append(self._row)
+        self._row = None
+        self._cell = None
+        self._cell_index = -1
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -61,6 +71,7 @@ class _TableParser(HTMLParser):
         if self._depth != 1:
             return
         if tag == "tr":
+            self._abandon_open_row()
             self._row = {"cells": [], "block": False, "span": None, "span_done": False}
         elif tag == "th":
             self._in_th, self._th = True, []
@@ -80,6 +91,9 @@ class _TableParser(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "table":
+            if self._depth == 1:
+                self._abandon_open_row()
+                self.closed = True
             if self._depth > 0:
                 self._depth -= 1
             return
@@ -117,6 +131,8 @@ def parse_work_status(html: str) -> list[tuple[int, str]]:
     p.close()
     if not p.found:
         raise DevStatusFailure("table_missing", f'table[summary="{_TABLE_SUMMARY}"] 이 없다')
+    if not p.closed:
+        raise DevStatusFailure("table_missing", "표가 닫히지 않았다")
     if tuple(_nospace(h) for h in p.header) != tuple(_nospace(h) for h in EXPECTED_HEADER):
         raise DevStatusFailure("header_changed", f"머리글 {len(p.header)}칸이 기대와 다르다")
     rows = p.rows
@@ -126,6 +142,8 @@ def parse_work_status(html: str) -> list[tuple[int, str]]:
     out: list[tuple[int, str]] = []
     seen: set[int] = set()
     for n, r in enumerate(rows, start=1):
+        if r.get("unclosed"):
+            raise DevStatusFailure("row_shape", f"행 {n}: tr 이 닫히지 않았다")
         if len(r["cells"]) != 8:
             raise DevStatusFailure("row_shape", f"행 {n}: 칸 수가 {len(r['cells'])}이다(8이어야 한다)")
         if not r["block"]:
