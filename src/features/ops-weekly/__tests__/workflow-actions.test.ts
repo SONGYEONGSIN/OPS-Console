@@ -350,10 +350,13 @@ describe("finalizeWeek", () => {
     });
   });
 
-  it("낡은 화면 — 조건부 전환이 0행이면 이미 보고된 주, 이벤트 없음", async () => {
+  it("낡은 화면 — 굳힌 뒤 주 전환 직전에 다른 요청이 보고했다면 0행: 이미 보고된 주, 이벤트 없음", async () => {
     allSubmitted();
-    state.db.spies.update.mockImplementationOnce(() => {
-      state.db.rows("ops_weekly_weeks")[0].status = "reported";
+    // 주 전환 update 에서만 경쟁을 흉내낸다(스냅샷 쓰기는 그대로 둔다).
+    state.db.spies.update.mockImplementation((table: string) => {
+      if (table === "ops_weekly_weeks") {
+        state.db.rows("ops_weekly_weeks")[0].status = "reported";
+      }
     });
     expect(await finalizeWeek({ weekId: W })).toEqual({
       ok: false,
@@ -445,6 +448,8 @@ describe("finalizeWeek — 자동 항목 굳히기", () => {
       ),
     );
     expect(emitSpy.mock.invocationCallOrder[0]).toBeGreaterThan(lastSnapWrite);
+    const weekFlip = calls.findIndex(([t]) => t === "ops_weekly_weeks");
+    expect(invocationCallOrder[weekFlip]).toBeGreaterThan(lastSnapWrite);
     expect(emitSpy).toHaveBeenCalledWith(
       expect.objectContaining({ type: "week-reported", correction: false }),
     );
@@ -486,6 +491,49 @@ describe("finalizeWeek — 자동 항목 굳히기", () => {
     );
     expect(updates("ops_weekly_weeks")).toHaveLength(0);
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it("일반 주 — 한 장 쓰고 두 번째에서 실패하면 open·이벤트 없음, 다시 누르면 전원을 새 시각으로 다시 굳힌다", async () => {
+    twoSubmitted();
+    let reportWrites = 0;
+    state.db.spies.update.mockImplementation((table: string) => {
+      if (table !== "ops_weekly_reports") return;
+      reportWrites += 1;
+      if (reportWrites === 2) {
+        state.db.failNextWrite("ops_weekly_reports", "write down");
+      }
+    });
+    const r = await finalizeWeek({ weekId: W });
+    expect(r.ok === false && r.error).toMatch(
+      /^자동 항목을 굳히지 못해 최종 보고를 멈췄습니다.*write down/,
+    );
+    expect(snapshotOf(R)).toEqual(SNAP);
+    expect(snapshotOf(R2)).toBeNull();
+    expect(state.db.rows("ops_weekly_weeks")[0].status).toBe("open");
+    expect(emitSpy).not.toHaveBeenCalled();
+
+    const LATER = { ...snap(), computedAt: "2026-11-20T02:00:00.000Z" };
+    snapshotSpy.mockResolvedValue(LATER);
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapshotOf(R)).toEqual(LATER);
+    expect(snapshotOf(R2)).toEqual(LATER);
+    expect(state.db.rows("ops_weekly_weeks")[0].status).toBe("reported");
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("정정 주 — 그 사이 다른 요청이 굳혀 0행이면 오류가 아니고 그 값을 둔다", async () => {
+    twoSubmitted({ week: { reopened_at: "2026-11-20T01:00:00Z" } });
+    const OTHER = snap({ unknown: 3 });
+    // 우리가 읽을 땐 비어 있었지만, 쓰기 직전에 다른 [최종 보고] 가 R 을 굳혔다.
+    state.db.spies.update.mockImplementationOnce(() => {
+      state.db.rows("ops_weekly_reports")[0].snapshot = OTHER;
+    });
+    expect(await finalizeWeek({ weekId: W })).toEqual({ ok: true });
+    expect(snapshotOf(R)).toEqual(OTHER);
+    expect(snapshotOf(R2)).toEqual(SNAP);
+    expect(emitSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "week-reported", correction: true }),
+    );
   });
 
   it("첫 최종 보고는 제출 때 굳은 옛 스냅샷도 덮어 쓴다", async () => {

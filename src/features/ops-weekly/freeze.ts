@@ -35,23 +35,30 @@ function targetsOf(
   });
 }
 
-/** `updated_by` 는 바꾸지 않는다 — 사람이 쓴 게 아니다. */
+/**
+ * `updated_by` 는 바꾸지 않는다 — 사람이 쓴 게 아니다. 쓴 행이 있으면 true.
+ * 정정 주는 비어 있을 때만 쓴다(`is null`) — 동시에 누른 다른 [최종 보고] 가 방금 굳힌 값을 덮지 않는다.
+ * 그때 0행은 '이미 누가 굳혔다' 이므로 오류가 아니다. 일반 주는 전원을 덮어 쓴다(제출 때 굳은 옛 값 포함).
+ */
 async function writeSnapshot(
   reportId: string,
   snapshot: AutoSnapshot,
-): Promise<void> {
-  const res = await createAdminClient()
+  correction: boolean,
+): Promise<boolean> {
+  const base = createAdminClient()
     .from("ops_weekly_reports")
     .update({ snapshot })
-    .eq("id", reportId)
-    .select("id");
+    .eq("id", reportId);
+  const res = await (correction ? base.is("snapshot", null) : base).select(
+    "id",
+  );
   if (res.error) throw new Error(`스냅샷 저장 실패: ${res.error.message}`);
-  if (((res.data as unknown[] | null) ?? []).length === 0) {
-    throw new Error(`스냅샷을 쓸 보고서를 찾지 못했습니다(${reportId}).`);
-  }
+  if (((res.data as unknown[] | null) ?? []).length > 0) return true;
+  if (correction) return false;
+  throw new Error(`스냅샷을 쓸 보고서를 찾지 못했습니다(${reportId}).`);
 }
 
-/** 굳힌 보고서 수를 돌려준다. */
+/** 이번 호출이 굳힌 보고서 수를 돌려준다(정정 주에서 다른 요청이 먼저 굳힌 것은 세지 않는다). */
 export async function freezeWeekSnapshots(args: {
   week: WeekRow;
   writers: readonly WriterCandidate[];
@@ -72,8 +79,10 @@ export async function freezeWeekSnapshots(args: {
       }),
     ),
   );
+  const correction = week.reopened_at !== null;
+  let written = 0;
   for (const [i, { report }] of targets.entries()) {
-    await writeSnapshot(report.id, snapshots[i]);
+    if (await writeSnapshot(report.id, snapshots[i], correction)) written += 1;
   }
-  return targets.length;
+  return written;
 }
