@@ -71,4 +71,29 @@ describe("DashboardShell", () => {
     // unmount 후 body.overflow 누수 없음
     expect(document.body.style.overflow).toBe("");
   });
+
+  it("1023px 이하는 한 단 그리드 — 사이드바가 서랍이라 빈 열을 남기지 않는다", () => {
+    const { container } = render(
+      <DashboardShell
+        appBar={null}
+        chrome={null}
+        statusBar={null}
+        sections={[]}
+        me={null}
+      >
+        <div />
+      </DashboardShell>
+    );
+    const shell = container.querySelector(".dashboard-shell") as HTMLElement;
+    const row = shell.querySelector("[data-tutorial='content']")!
+      .parentElement as HTMLElement;
+    const cols = row.className.split(/\s+/);
+    expect(cols).toContain("max-lg:grid-cols-1");
+    expect(cols).not.toContain("max-md:grid-cols-1");
+    // 1024~1279 와 1280 이상은 그대로
+    expect(cols).toContain("grid-cols-[240px_1fr]");
+    expect(cols).toContain("max-[1279px]:grid-cols-[200px_1fr]");
+    expect(shell.className).toContain("max-lg:h-auto");
+    expect(shell.className).toContain("max-lg:grid-rows-");
+  });
 });

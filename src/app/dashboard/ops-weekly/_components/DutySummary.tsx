@@ -14,7 +14,7 @@ type Props = {
 
 function ReadOnly({ label, text }: { label: string; text: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs font-medium text-muted">{label}</span>
       <p className="whitespace-pre-wrap break-words text-sm text-ink">
         {text || "—"}

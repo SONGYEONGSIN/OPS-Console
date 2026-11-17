@@ -22,7 +22,7 @@ export function OverrideControls(props: Props) {
   const { pending, error, run } = useSave();
 
   if (!editable || reportId === null) {
-    return note ? <p className="text-xs text-muted">{note}</p> : null;
+    return note ? <p className="break-words text-xs text-muted">{note}</p> : null;
   }
   return (
     <div className="flex flex-col gap-1">

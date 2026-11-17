@@ -16,6 +16,8 @@ import { SubmissionTable } from "../_components/SubmissionTable";
 import { ProjectCatalogPanel } from "../_components/ProjectCatalogPanel";
 import { RotationPanel } from "../_components/RotationPanel";
 import { RecipientsPanel } from "../_components/RecipientsPanel";
+import { ReadOnlyHtml } from "../_components/ProjectTab";
+import { OverrideControls } from "../_components/OverrideControls";
 import { ProjectOverview } from "../_components/ProjectOverview";
 import { WeeklyKpiRow } from "../_components/WeeklyKpiRow";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
@@ -133,5 +135,29 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     expect(tokens(screen.getByLabelText("받는 사람 이메일"))).toContain(
       "max-w-full",
     );
+  });
+  it("읽기 전용 HTML 은 긴 URL 을 어디서든 줄바꿈하고 표는 가로 스크롤한다", () => {
+    const { container } = render(
+      <ReadOnlyHtml label="금주" html="<p>https://example.com/very/long</p>" />,
+    );
+    const root = container.firstElementChild as Element;
+    expect(tokens(root)).toContain("min-w-0");
+    const body = root.querySelector("div") as Element;
+    expect(tokens(body)).toContain("overflow-x-auto");
+    expect(tokens(body)).toContain("[overflow-wrap:anywhere]");
+  });
+
+  it("읽기 전용 건 메모는 줄바꿈된다", () => {
+    render(
+      <OverrideControls
+        reportId={null}
+        itemKey="k"
+        area="application"
+        note="긴메모"
+        excluded={false}
+        editable={false}
+      />,
+    );
+    expect(tokens(screen.getByText("긴메모"))).toContain("break-words");
   });
 });

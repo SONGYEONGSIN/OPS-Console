@@ -54,8 +54,8 @@ export function DashboardShell({
 
   // topBar(상단 타이틀 띠)가 없으면 26px 행을 비워두지 않도록 행 구성을 줄인다.
   const rowsClass = topBar
-    ? "grid-rows-[26px_52px_1fr_26px] max-md:grid-rows-[26px_48px_1fr]"
-    : "grid-rows-[52px_1fr_26px] max-md:grid-rows-[48px_1fr]";
+    ? "grid-rows-[26px_52px_1fr_26px] max-lg:grid-rows-[26px_48px_1fr]"
+    : "grid-rows-[52px_1fr_26px] max-lg:grid-rows-[48px_1fr]";
 
   return (
     <OpenTabsProvider>
@@ -64,12 +64,12 @@ export function DashboardShell({
       <TutorialTour />
       <SidebarToggleProvider open={openSidebar}>
         <div
-          className={`dashboard-shell relative z-10 grid h-screen ${rowsClass} max-md:h-auto max-md:min-h-screen`}
+          className={`dashboard-shell relative z-10 grid h-screen ${rowsClass} max-lg:h-auto max-lg:min-h-screen`}
         >
           {topBar}
           {appBar}
           {chrome}
-          <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-md:grid-cols-1">
+          <div className="grid grid-cols-[240px_1fr] overflow-hidden max-[1279px]:grid-cols-[200px_1fr] max-lg:grid-cols-1">
             <Sidebar
               sections={sections}
               open={sidebarOpen}

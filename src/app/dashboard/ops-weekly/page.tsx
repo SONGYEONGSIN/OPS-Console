@@ -164,6 +164,7 @@ function WeekView({ view }: { view: Week }) {
         <PageTabs
           active={tab}
           size="md"
+          className="px-5 lg:px-7"
           tabs={buildTabs({
             weekStart,
             op,

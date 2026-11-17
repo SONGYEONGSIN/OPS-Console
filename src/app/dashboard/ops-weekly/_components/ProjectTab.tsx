@@ -38,14 +38,16 @@ function isStage(v: string): v is ProjectStage {
 
 export function ReadOnlyHtml({ label, html }: { label: string; html: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs font-medium text-muted">{label}</span>
       {html === "" ? (
         <p className="text-sm text-ink">—</p>
       ) : (
         // 서버(toStoredNoteHtml)에서 정화되고 _load 가 서명한 HTML 만 들어온다.
+        // 일회성: 공백 없는 긴 URL 은 어디서든 줄바꿈(anywhere 는 min-content 도 줄인다),
+        // 붙여넣은 표는 칸을 넘지 않고 가로 스크롤 — 토큰·break-words 로는 못 한다.
         <div
-          className="break-words text-sm text-ink [&_img]:my-1 [&_img]:max-w-full"
+          className="overflow-x-auto text-sm text-ink [overflow-wrap:anywhere] [&_img]:my-1 [&_img]:max-w-full"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       )}
@@ -61,7 +63,7 @@ function EditNote(props: {
 }) {
   const { label, initialHtml, onSave, onPasteImage } = props;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs font-medium text-muted">{label}</span>
       <RichNote
         initialHtml={initialHtml}

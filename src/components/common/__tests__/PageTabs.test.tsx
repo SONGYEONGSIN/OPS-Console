@@ -37,7 +37,7 @@ describe("PageTabs", () => {
     render(<PageTabs active="univ" tabs={tabs} />);
     const active = screen.getByRole("link", { name: "대학배정" });
     const idle = screen.getByRole("link", { name: "업무분장" });
-    for (const c of ["-mb-px", "px-4", "py-2", "text-sm"]) {
+    for (const c of ["px-4", "py-2", "text-sm"]) {
       expect(active.className).toContain(c);
     }
     for (const c of ["border-vermilion", "font-semibold", "text-vermilion"]) {
@@ -46,7 +46,7 @@ describe("PageTabs", () => {
     expect(idle.className).toContain("text-ink-soft");
     expect(idle.className).toContain("border-transparent");
     expect(active.className).not.toContain("text-xs");
-    const bar = tokens(active.parentElement!);
+    const bar = tokens(active.parentElement!.parentElement!);
     expect(bar).toContain("border-line");
     expect(bar).not.toContain("border-line-soft");
     expect(bar).not.toContain("mt-3");
@@ -56,7 +56,7 @@ describe("PageTabs", () => {
     render(<PageTabs active="univ" tabs={tabs} size="sm" />);
     const active = screen.getByRole("link", { name: "대학배정" });
     const idle = screen.getByRole("link", { name: "업무분장" });
-    for (const c of ["text-xs", "px-3", "py-2", "-mb-px"]) {
+    for (const c of ["text-xs", "px-3", "py-2"]) {
       expect(tokens(active)).toContain(c);
     }
     // 메인 탭 바로 밑에 붙어 납작해 보였다(사용자 지시 2026-11-05).
@@ -70,7 +70,7 @@ describe("PageTabs", () => {
     expect(active.className).not.toContain("bg-");
     expect(idle.className).toContain("text-ink-soft");
     expect(idle.className).toContain("border-transparent");
-    const bar = tokens(active.parentElement!);
+    const bar = tokens(active.parentElement!.parentElement!);
     expect(bar).toContain("border-b");
     expect(bar).toContain("border-line-soft");
     expect(bar).not.toContain("border-line");
@@ -82,9 +82,28 @@ describe("PageTabs", () => {
   it("좁은 화면에서는 가로 스크롤, 탭은 줄어들지 않는다", () => {
     render(<PageTabs active="univ" tabs={tabs} />);
     const link = screen.getByRole("link", { name: "대학배정" });
-    expect(tokens(link.parentElement!)).toContain("overflow-x-auto");
+    const row = link.parentElement!;
+    // 회색 줄은 래퍼가, 겹침(-mb-px)과 스크롤은 줄이 맡는다 — 데스크톱 모양은 그대로.
+    expect(tokens(row.parentElement!)).toContain("border-b");
+    expect(tokens(row)).toContain("overflow-x-auto");
+    expect(tokens(row)).toContain("-mb-px");
+    expect(tokens(link)).not.toContain("-mb-px");
     for (const c of ["whitespace-nowrap", "shrink-0"]) {
       expect(tokens(link)).toContain(c);
     }
+  });
+
+  it("바깥 패딩은 기본 px-7, className 으로 바꾼다", () => {
+    const { container, rerender } = render(
+      <PageTabs active="univ" tabs={tabs} />,
+    );
+    expect(tokens(container.firstElementChild as HTMLElement)).toContain(
+      "px-7",
+    );
+    rerender(<PageTabs active="univ" tabs={tabs} className="px-5 lg:px-7" />);
+    const outer = tokens(container.firstElementChild as HTMLElement);
+    expect(outer).toContain("px-5");
+    expect(outer).toContain("lg:px-7");
+    expect(outer).not.toContain("px-7 ");
   });
 });
