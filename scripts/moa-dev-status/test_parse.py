@@ -27,10 +27,16 @@ def row(sid="1000001", test_open="2026-11-10 14:00:00", cells=8, span=True):
     return "<tr>" + first + "".join(rest[: cells - 1]) + "</tr>"
 
 
+# 실제 페이지는 두 머리글 안에 <br /> 가 있다("개발<br />요청", "테스트<br />오픈")
+REAL_BR = {"개발 요청": "개발<br />요청", "테스트 오픈": "테스트<br />오픈"}
+
+
 def page(rows, header=EXPECTED_HEADER, table=True):
-    ths = "".join(f"<th>{h}</th>" for h in header)
+    ths = " ".join(f"<th>{REAL_BR.get(h, h)}</th>" for h in header)
     body = (
-        f'<table summary="작업진행현황"><thead><tr>{ths}</tr></thead>'
+        '<table summary="작업진행현황"><caption>작업진행현황</caption>'
+        '<colgroup><col /><col /><col /><col /><col /><col /><col /><col /></colgroup>'
+        f"<thead><tr>{ths}</tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
     )
     return f"<html><body>{body if table else '<p>로그인</p>'}</body></html>"
@@ -47,6 +53,12 @@ class ParseWorkStatusTest(unittest.TestCase):
             page([row("1000001", "2026-11-10 14:00:00"), row("1000002", "-")])
         )
         self.assertEqual(got, [(1000001, "2026-11-10 14:00:00"), (1000002, "-")])
+
+    def test_실제_머리글_br과_caption과_colgroup이_있어도_통과한다(self):
+        html = page([row()])
+        self.assertIn("개발<br />요청", html)
+        self.assertIn("<caption>", html)
+        self.assertEqual(parse_work_status(html), [(1000001, "2026-11-10 14:00:00")])
 
     def test_표_없음(self):
         self.assertCode(page([row()], table=False), "table_missing")

@@ -29,6 +29,11 @@ def _squash(text: str) -> str:
     return " ".join(text.split())
 
 
+def _nospace(text: str) -> str:
+    # 실제 머리글은 <br /> 로 줄이 바뀐다("개발<br />요청") — 공백을 전부 지우고 비교한다
+    return re.sub(r"\s+", "", text)
+
+
 class _TableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -112,7 +117,7 @@ def parse_work_status(html: str) -> list[tuple[int, str]]:
     p.close()
     if not p.found:
         raise DevStatusFailure("table_missing", f'table[summary="{_TABLE_SUMMARY}"] 이 없다')
-    if tuple(p.header) != EXPECTED_HEADER:
+    if tuple(_nospace(h) for h in p.header) != tuple(_nospace(h) for h in EXPECTED_HEADER):
         raise DevStatusFailure("header_changed", f"머리글 {len(p.header)}칸이 기대와 다르다")
     rows = p.rows
     if all(len(r["cells"]) == 1 and NO_RESULT_TEXT in r["cells"][0] for r in rows):
