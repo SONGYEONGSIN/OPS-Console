@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AutoArea } from "@/features/ops-weekly/constants";
 import { saveItemOverride } from "@/features/ops-weekly/actions";
-import { ERROR_CLASS, FIELD_CLASS, ROW_BTN_CLASS } from "./styles";
+import {
+  ERROR_CLASS,
+  FIELD_CLASS,
+  ROW_BTN_CLASS,
+  ROW_REVEAL_CLASS,
+} from "./styles";
 import { useSave } from "./use-save";
 
 type Props = {
@@ -13,13 +18,11 @@ type Props = {
   note: string;
   excluded: boolean;
   editable: boolean;
+  /** 저장 실패를 알릴 때 쓰는 이름 — 어느 행인지 */
+  label?: string;
   /** 행 1줄의 정보(제목·부제·시각 등) — 액션 묶음이 이 줄 오른쪽 끝에 붙는다. */
   children?: ReactNode;
 };
-
-// lg 이상에서는 호버·포커스 때만 드러난다(Tab 으로 닿으면 focus-within 이 연다). 그 아래는 늘 보인다.
-const REVEAL =
-  "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100";
 
 /**
  * 행 1줄(정보 + 액션) 아래에 건별 메모를 글로 보여 준다. 메모는 [메모]를 눌러야 입력칸이 된다.
@@ -27,13 +30,21 @@ const REVEAL =
  */
 export function OverrideControls(props: Props) {
   const { reportId, itemKey, area, note, excluded, editable, children } = props;
+  const label = props.label ?? "건 메모";
   const [shown, setShown] = useState(note);
+  // 서버가 확인한 마지막 값 — 실패한 글을 같은 글로 다시 저장할 수 있게 shown 과 따로 둔다.
+  const [confirmed, setConfirmed] = useState(note);
   const [draft, setDraft] = useState(note);
   const [editing, setEditing] = useState(false);
   // Enter·Esc 로 닫힌 뒤 따라오는 blur 가 다시 저장하지 않게 한다.
   const closed = useRef(true);
   const input = useRef<HTMLInputElement>(null);
-  const { pending, error, run } = useSave({ track: true });
+  const memo = useSave({
+    track: { key: `item:${reportId ?? ""}:${itemKey}:note`, label },
+  });
+  const toggle = useSave();
+  const pending = memo.pending || toggle.pending;
+  const error = memo.error ?? toggle.error;
 
   useEffect(() => {
     if (editing) input.current?.focus();
@@ -55,8 +66,8 @@ export function OverrideControls(props: Props) {
     if (reportId === null) return null;
     return (
       <div
-        className={`ml-auto flex items-center gap-1 transition-opacity ${
-          excluded ? "" : REVEAL
+        className={`ml-auto flex items-center gap-1 ${
+          excluded ? "" : ROW_REVEAL_CLASS
         }`}
       >
         <button type="button" className={ROW_BTN_CLASS} onClick={startEdit}>
@@ -67,7 +78,7 @@ export function OverrideControls(props: Props) {
           disabled={pending}
           className={ROW_BTN_CLASS}
           onClick={() =>
-            run(() =>
+            toggle.run(() =>
               saveItemOverride({
                 reportId,
                 itemKey,
@@ -99,9 +110,22 @@ export function OverrideControls(props: Props) {
     if (closed.current || reportId === null) return;
     closed.current = true;
     setEditing(false);
-    if (draft === shown) return;
+    if (draft === confirmed) {
+      setShown(draft);
+      return;
+    }
     setShown(draft);
-    run(() => saveItemOverride({ reportId, itemKey, area, note: draft }));
+    const saved = draft;
+    memo.run(async () => {
+      const res = await saveItemOverride({
+        reportId,
+        itemKey,
+        area,
+        note: saved,
+      });
+      if (res.ok) setConfirmed(saved);
+      return res;
+    });
   }
 
   if (!editable || reportId === null) {

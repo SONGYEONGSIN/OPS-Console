@@ -148,4 +148,30 @@ describe("ApplicationTab", () => {
       .closest("section")?.parentElement as Element;
     expect(first.className).toContain("gap-6");
   });
+
+  it("구분이 수집되지 않아 안 보이는 개발 묶음의 직접 추가 건은 세지 않는다", () => {
+    render(
+      <ApplicationTab
+        snapshot={snap({ devStatusCollected: false })}
+        detail={{
+          ...EMPTY,
+          manual: [
+            {
+              id: "m1",
+              area: "application",
+              group_key: "dev",
+              title: "숨은 건",
+              note: "",
+              period_start: null,
+              period_end: null,
+              leave_kind: null,
+            },
+          ],
+        }}
+        reportId="r"
+        editable
+      />,
+    );
+    expect(screen.getByText("자동 0건 · 직접 0건")).toBeInTheDocument();
+  });
 });

@@ -401,6 +401,8 @@ describe("StatusTab", () => {
       fireEvent.click(screen.getByRole("button", { name: "최종 보고" }));
       fireEvent.click(screen.getByRole("button", { name: "보고하기" }));
       const msg = await screen.findByText("보고 실패");
+      expect(msg.getAttribute("role")).toBe("alert");
+      expect(tokens(msg)).toContain("text-vermilion");
       const h = screen.getByRole("heading", { name: "제출 현황" });
       expect(h.compareDocumentPosition(msg) & FOLLOWING).toBeTruthy();
       expect(

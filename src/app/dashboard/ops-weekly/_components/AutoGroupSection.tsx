@@ -34,6 +34,7 @@ function AutoRow(props: {
       <OverrideControls
         reportId={reportId}
         itemKey={item.key}
+        label={`${item.title} 메모`}
         area={area}
         note={item.note}
         excluded={item.excluded}

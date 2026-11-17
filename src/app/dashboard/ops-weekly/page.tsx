@@ -161,7 +161,7 @@ function WeekView({ view }: { view: Week }) {
     viewed !== null && viewed.email !== actor.email ? viewed.email : null;
   const weekStart = week.week_start;
   return (
-    <PendingSavesProvider>
+    <PendingSavesProvider key={report?.id ?? week.id}>
       <WeekHeader
         weekRef={weekRef}
         week={week}

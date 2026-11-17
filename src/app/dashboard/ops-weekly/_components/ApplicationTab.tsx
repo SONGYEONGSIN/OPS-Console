@@ -39,8 +39,11 @@ export function ApplicationTab({
     app.closing,
   ];
   const autoCount = shownLists.reduce((n, l) => n + l.length, 0);
+  // 구분이 수집되지 않은 주에는 개발·테스트 묶음이 안 보이므로 그 묶음의 직접 추가 건도 세지 않는다.
+  const hiddenGroups = app.devStatusCollected ? [] : ["dev", "test"];
   const manualCount = detail.manual.filter(
-    (m) => m.area === "application",
+    (m) =>
+      m.area === "application" && !hiddenGroups.includes(m.group_key ?? ""),
   ).length;
   const section = (
     key: string,

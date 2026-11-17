@@ -7,6 +7,14 @@ import { SaveStatus } from "./SaveStatus";
 import { BTN_CLASS, ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { useSave } from "./use-save";
 
+const AREA_LABEL: Record<Area, string> = {
+  application: "원서접수",
+  pims: "PIMS",
+  project: "프로젝트",
+  tf: "TF",
+  leave: "휴가·외근",
+};
+
 type Props = {
   reportId: string | null;
   area: Area;
@@ -29,7 +37,12 @@ export function AreaNotes(props: Props) {
   const { reportId, area, thisWeek, nextWeek, editable } = props;
   const [thisDraft, setThis] = useState(thisWeek);
   const [nextDraft, setNext] = useState(nextWeek);
-  const note = useSave({ track: true });
+  const note = useSave({
+    track: {
+      key: `note:${reportId ?? ""}:${area}`,
+      label: `${AREA_LABEL[area]} 영역 특이사항`,
+    },
+  });
   const check = useSave();
 
   function save() {

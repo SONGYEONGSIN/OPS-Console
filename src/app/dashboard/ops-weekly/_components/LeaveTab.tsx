@@ -41,6 +41,7 @@ function LeaveRow(props: {
       <OverrideControls
         reportId={reportId}
         itemKey={item.key}
+        label={`${item.title} 휴가·외근 메모`}
         area="leave"
         note={item.note}
         excluded={item.excluded}
@@ -57,7 +58,7 @@ function LeaveRow(props: {
         {item.needsBackup && !item.excluded ? (
           <Link
             href="/dashboard/backup"
-            className={`${ROW_BTN_CLASS} no-underline`}
+            className={`${ROW_BTN_CLASS} inline-flex items-center no-underline`}
           >
             백업요청 만들기
           </Link>

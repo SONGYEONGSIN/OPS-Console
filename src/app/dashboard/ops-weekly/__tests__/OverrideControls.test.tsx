@@ -99,9 +99,11 @@ describe("OverrideControls 메모는 상시 입력칸이 아니다", () => {
     const actions = screen.getByRole("button", { name: "빼기" })
       .parentElement as Element;
     const t = tokens(actions);
-    expect(t).toContain("lg:opacity-0");
-    expect(t).toContain("lg:group-hover:opacity-100");
-    expect(t).toContain("lg:group-focus-within:opacity-100");
+    // 호버 없는 큰 화면(태블릿 가로)에서는 숨기지 않는다 - 고정밀 포인터에서만
+    expect(t).toContain("lg:pointer-fine:opacity-0");
+    expect(t).toContain("lg:pointer-fine:group-hover:opacity-100");
+    expect(t).toContain("lg:pointer-fine:group-focus-within:opacity-100");
+    expect(t).not.toContain("lg:opacity-0");
     expect(t).not.toContain("opacity-0");
     expect(actions.contains(screen.getByRole("button", { name: "메모" }))).toBe(
       true,
@@ -112,7 +114,7 @@ describe("OverrideControls 메모는 상시 입력칸이 아니다", () => {
     mount({ excluded: true });
     const actions = screen.getByRole("button", { name: "되살리기" })
       .parentElement as Element;
-    expect(tokens(actions)).not.toContain("lg:opacity-0");
+    expect(tokens(actions)).not.toContain("lg:pointer-fine:opacity-0");
   });
 
   it("제목 줄은 뺀 행이면 취소선이고 메모 줄은 그 밖에 있다", () => {
@@ -121,5 +123,22 @@ describe("OverrideControls 메모는 상시 입력칸이 아니다", () => {
       "line-through",
     );
     expect(screen.getByText("메모글").className).not.toContain("line-through");
+  });
+
+  it("실패한 메모를 같은 글로 다시 저장할 수 있다", async () => {
+    saveItemOverride
+      .mockResolvedValueOnce({ ok: false, error: "실패" })
+      .mockResolvedValue({ ok: true });
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "메모" }));
+    fireEvent.change(screen.getByLabelText("건 메모"), {
+      target: { value: "메모1" },
+    });
+    fireEvent.blur(screen.getByLabelText("건 메모"));
+    await screen.findByText("실패");
+    fireEvent.click(screen.getByRole("button", { name: "메모 고치기" }));
+    fireEvent.blur(screen.getByLabelText("건 메모"));
+    await waitFor(() => expect(saveItemOverride).toHaveBeenCalledTimes(2));
+    expect(saveItemOverride.mock.calls[1][0]).toMatchObject({ note: "메모1" });
   });
 });

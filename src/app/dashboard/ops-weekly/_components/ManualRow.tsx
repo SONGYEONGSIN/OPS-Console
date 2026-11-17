@@ -3,7 +3,12 @@
 import { removeManualItem } from "@/features/ops-weekly/actions";
 import type { ManualItem } from "@/features/ops-weekly/merge";
 import { formatMdDow } from "../_format";
-import { BADGE_CLASS, ERROR_CLASS, ROW_BTN_CLASS } from "./styles";
+import {
+  BADGE_CLASS,
+  ERROR_CLASS,
+  ROW_BTN_CLASS,
+  ROW_REVEAL_CLASS,
+} from "./styles";
 import { useSave } from "./use-save";
 
 function periodOf(m: ManualItem): string | null {
@@ -38,7 +43,7 @@ export function ManualRow(props: {
           <button
             type="button"
             disabled={pending}
-            className={`${ROW_BTN_CLASS} ml-auto transition-opacity lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100`}
+            className={`${ROW_BTN_CLASS} ml-auto ${ROW_REVEAL_CLASS}`}
             onClick={() =>
               run(() => removeManualItem({ reportId, itemId: item.id }))
             }

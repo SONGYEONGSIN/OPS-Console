@@ -14,6 +14,7 @@ import {
 } from "@/features/ops-weekly/constants";
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
 import { AreaNotes } from "./AreaNotes";
+import { usePendingSaves } from "./pending-saves";
 import { SaveStatus } from "./SaveStatus";
 import { TabHeading } from "./TabHeading";
 import { ERROR_CLASS, FIELD_CLASS } from "./styles";
@@ -93,7 +94,13 @@ function EntryCard(props: {
     thisWeek: entry.thisWeek,
     nextWeek: entry.nextWeek,
   });
-  const save = useSave({ track: true });
+  const registry = usePendingSaves();
+  const save = useSave({
+    track: {
+      key: `project:${reportId ?? ""}:${entry.projectId}`,
+      label: `${entry.projectName} 내용`,
+    },
+  });
 
   function persist(patch: Partial<EntryDraft>) {
     latest.current = { ...latest.current, ...patch };
@@ -104,16 +111,30 @@ function EntryCard(props: {
     );
   }
 
+  async function doUpload(
+    id: string,
+    dataUrl: string,
+  ): Promise<{ url: string | null; error: string | null }> {
+    try {
+      const r = await uploadWeeklyImage({ reportId: id, dataUrl });
+      return r.ok ? { url: r.url, error: null } : { url: null, error: r.error };
+    } catch {
+      return { url: null, error: SAVE_FAILED };
+    }
+  }
+
+  // 업로드도 저장의 일부다 — 끝난 뒤에 이어지는 저장 전에 제출이 앞지르지 못하게 등록한다.
   async function uploadImage(dataUrl: string): Promise<string | null> {
     if (reportId === null) return null;
-    try {
-      const r = await uploadWeeklyImage({ reportId, dataUrl });
-      setUploadError(r.ok ? null : r.error);
-      return r.ok ? r.url : null;
-    } catch {
-      setUploadError(SAVE_FAILED);
-      return null;
-    }
+    const work = doUpload(reportId, dataUrl);
+    registry?.track(
+      `upload:${reportId}:${entry.projectId}`,
+      `${entry.projectName} 이미지 업로드`,
+      work.then((r) => r.error),
+    );
+    const r = await work;
+    setUploadError(r.error);
+    return r.url;
   }
 
   return (
@@ -124,7 +145,7 @@ function EntryCard(props: {
           <div className="flex flex-wrap items-center gap-3">
             <SaveStatus
               pending={save.pending}
-              error={save.error ?? uploadError}
+              error={save.error}
               savedAt={save.savedAt}
             />
             <label className="flex items-center gap-2 text-xs font-medium text-muted">

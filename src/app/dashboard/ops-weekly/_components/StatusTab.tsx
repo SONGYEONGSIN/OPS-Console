@@ -266,7 +266,7 @@ export function StatusTab(props: Props) {
           ) : null}
         </div>
         {wf.message !== null ? (
-          <p role="status" className="text-xs text-ink-soft">
+          <p role="alert" className="text-xs text-vermilion">
             {wf.message}
           </p>
         ) : null}
