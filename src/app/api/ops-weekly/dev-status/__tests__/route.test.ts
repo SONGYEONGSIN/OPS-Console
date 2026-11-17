@@ -66,6 +66,13 @@ describe("/api/ops-weekly/dev-status", () => {
     expect(upsertSpy).not.toHaveBeenCalled();
   });
 
+  it("빈 본문 {} 은 400 JSON ok:false — 수집기 사전 확인(collect.py preflight)이 이 응답을 본다", async () => {
+    const res = await POST(req({ secret: "s3cr3t", body: {} }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).ok).toBe(false);
+    expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
   it("upsert 한 번 — 서버 시각·원문·판정", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-18T00:30:00Z"));

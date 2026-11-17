@@ -2,7 +2,7 @@
 """주간보고 개발 구분 수집기 — Moa 작업진행현황 → OPS-Console /api/ops-weekly/dev-status.
 
 회사 PC 작업 스케줄러(`OPS-Console-Ops-Weekly-Dev-Status`, 수요일 09:30)가 부른다.
-흐름: env 확인 → Moa 로그인(409 면 기다렸다 최대 3회) → 페이지 안에서 $.ajax 조회
+흐름: env 확인 → 서버 준비 확인(dry-run 은 건너뜀) → Moa 로그인(409 면 기다렸다 최대 3회) → 페이지 안에서 $.ajax 조회
 → 직렬화 확인 → 파싱(칸 모양이 다르면 아무것도 안 보낸다) → 인제스트 → 실행 기록.
 
 응답 HTML 에는 운영자·개발자 이름이 들어 있다 — 출력·저장하지 않는다. 로그인 뒤의
@@ -212,6 +212,31 @@ def _auth(secret: str) -> dict:
     return {"Authorization": f"Bearer {secret}"}
 
 
+def preflight(base_url: str, secret: str, *, http=requests) -> None:
+    """로그인 전 서버 준비 확인 — 빈 본문에 400 JSON {ok:false} 면 라우트·인증이 살아 있다(같은 배포의 소비자 이름도).
+
+    배포 전에 돌면 옛 서버가 새 소비자 이름을 400 으로 거절해 make 로 넘어가 문자를 쓰고,
+    인제스트·실행 기록도 307 이라 아무 데도 안 남는다. 그 전에 멈춘다.
+    """
+    try:
+        resp = http.post(
+            f"{base_url.rstrip('/')}/api/ops-weekly/dev-status",
+            json={},
+            headers=_auth(secret),
+            timeout=30,
+            allow_redirects=False,
+        )
+    except requests.RequestException as e:
+        raise DevStatusFailure("server_not_ready", type(e).__name__) from None
+    status = resp.status_code
+    try:
+        data = resp.json() if status == 400 else None
+    except ValueError:
+        data = None
+    if not (isinstance(data, dict) and data.get("ok") is False):
+        raise DevStatusFailure("server_not_ready", f"HTTP {status}")
+
+
 def post_ingest(base_url: str, secret: str, rows: list[tuple[int, str]], *, http=requests) -> dict:
     """한 번에 보낸다. 리다이렉트(PUBLIC_PATHS 누락 → /login HTML)를 성공으로 읽지 않게 ok 를 본다."""
     try:
@@ -287,6 +312,11 @@ def run(
         missing += [k for k in ("base_url", "secret") if not env.get(k)]
     if missing:
         return fail("env_missing", f"환경변수 누락 {missing}")
+    if not dry_run:
+        try:
+            preflight(base_url, secret, http=http)
+        except DevStatusFailure as e:
+            return fail(e.code, e.reason)
 
     start, end = collect_range(now)
     print(f"[INFO] 범위 {start} ~ {end}")

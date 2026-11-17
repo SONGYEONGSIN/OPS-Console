@@ -124,22 +124,38 @@ class Post:
         self.json = kwargs.get("json")
 
 
+PREFLIGHT_OK = FakeResp(400, {"ok": False, "error": "Required"})
+
+
 class FakeHttp:
-    def __init__(self, ingest=None, run_log=None):
+    """/dev-status 에 빈 본문 {} 이면 사전 확인, rows 가 있으면 인제스트, /run-log 는 실행 기록."""
+
+    def __init__(self, ingest=None, run_log=None, preflight=None):
         self.ingest = ingest or FakeResp(200, {"ok": True, "received": 1, "dev": 0, "test": 1})
         self.run_log = run_log or FakeResp(200, {"ok": True})
+        self.preflight = preflight or PREFLIGHT_OK
         self.posts = []
 
     def post(self, url, **kwargs):
         self.posts.append(Post(url, kwargs))
-        if isinstance(self.run_log, Exception) and url.endswith("/run-log"):
-            raise self.run_log
-        if isinstance(self.ingest, Exception) and not url.endswith("/run-log"):
-            raise self.ingest
-        return self.run_log if url.endswith("/run-log") else self.ingest
+        if url.endswith("/run-log"):
+            out = self.run_log
+        elif kwargs.get("json") == {}:
+            out = self.preflight
+        else:
+            out = self.ingest
+        if isinstance(out, Exception):
+            raise out
+        return out
 
     def run_log_bodies(self):
         return [p.json for p in self.posts if p.url.endswith("/run-log")]
+
+    def preflight_posts(self):
+        return [p for p in self.posts if p.url.endswith("/dev-status") and p.json == {}]
+
+    def ingest_posts(self):
+        return [p for p in self.posts if p.url.endswith("/dev-status") and p.json != {}]
 
 
 class Base(unittest.TestCase):
@@ -425,7 +441,7 @@ class RunTest(Base):
     def test_실패면_인제스트_안_하고_재실행_명령을_붙인다(self):
         rc, http, _, drv, _ = self._run(page([row(cells=7)]))
         self.assertEqual(rc, 1)
-        self.assertEqual([c.url for c in http.posts if c.url.endswith("/dev-status")], [])
+        self.assertEqual(http.ingest_posts(), [])
         msg = http.run_log_bodies()[-1]["message"]
         self.assertTrue(msg.startswith("row_shape: "))
         self.assertIn(RERUN, msg)
@@ -443,7 +459,7 @@ class RunTest(Base):
         rc, http, out, drv, _ = self._run(page([row("1000001"), row("1000002", "-")]), http=http)
         self.assertEqual(rc, 0)
         self.assertEqual(
-            http.posts[0].json["rows"],
+            http.ingest_posts()[0].json["rows"],
             [{"service_id": 1000001, "test_open": "2026-11-10 14:00:00"},
              {"service_id": 1000002, "test_open": "-"}],
         )
@@ -509,6 +525,79 @@ class RunTest(Base):
         self.assertNotIn(NAME, msg)
         self.assertNotIn(NAME, out.getvalue())
         self.assertEqual(drv.quit_calls, 1)
+
+
+class PreflightTest(Base):
+    """배포 전에 돌면 옛 서버가 새 소비자 이름을 400 으로 거절해 make 로 넘어가 문자를 쓴다 — 로그인 전에 멈춘다."""
+
+    def _run(self, http, *, dry_run=False):
+        drv = FakeDriver()
+        login = FakeLogin([(drv, "우편함")])
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = run(
+                ENV, now=NOW, dry_run=dry_run, login=login,
+                fetch=lambda d, s, e, w: page([row("1000001")]), http=http, sleep=lambda s: None,
+            )
+        return rc, login
+
+    def test_사전확인_307이면_로그인하지_않고_실패(self):
+        http = FakeHttp(preflight=FakeResp(307, None, bad_json=True))
+        rc, login = self._run(http)
+        self.assertEqual(rc, 1)
+        self.assertEqual(login.calls, 0)
+        self.assertEqual(http.ingest_posts(), [])
+        msg = http.run_log_bodies()[-1]["message"]
+        self.assertTrue(msg.startswith("server_not_ready: HTTP 307 — 재실행: "))
+
+    def test_사전확인_400_JSON_ok_false_가_아니면_전부_실패(self):
+        cases = [
+            FakeResp(404, bad_json=True),
+            FakeResp(401, {"ok": False, "error": "unauthorized"}),
+            FakeResp(500, {"ok": False, "error": "x"}),
+            FakeResp(400, bad_json=True),
+            FakeResp(400, {"ok": True}),
+            FakeResp(200, {"ok": True}),
+        ]
+        for resp in cases:
+            with self.subTest(status=resp.status_code, payload=resp._payload):
+                http = FakeHttp(preflight=resp)
+                rc, login = self._run(http)
+                self.assertEqual(rc, 1)
+                self.assertEqual(login.calls, 0)
+                self.assertTrue(
+                    http.run_log_bodies()[-1]["message"].startswith(
+                        f"server_not_ready: HTTP {resp.status_code} — "
+                    )
+                )
+
+    def test_사전확인_네트워크_오류는_타입만(self):
+        http = FakeHttp(preflight=requests.exceptions.ConnectionError(f"down {NAME}"))
+        rc, login = self._run(http)
+        self.assertEqual(rc, 1)
+        self.assertEqual(login.calls, 0)
+        msg = http.run_log_bodies()[-1]["message"]
+        self.assertTrue(msg.startswith("server_not_ready: ConnectionError — "))
+        self.assertNotIn(NAME, msg)
+
+    def test_사전확인_400_JSON_이면_진행(self):
+        http = FakeHttp()
+        rc, login = self._run(http)
+        self.assertEqual(rc, 0)
+        self.assertEqual(login.calls, 1)
+        pre = http.preflight_posts()
+        self.assertEqual(len(pre), 1)
+        self.assertIs(http.posts[0], pre[0])  # 로그인보다 먼저, 첫 호출
+        self.assertTrue(pre[0].url.endswith("/api/ops-weekly/dev-status"))
+        self.assertEqual(pre[0].kwargs["headers"]["Authorization"], "Bearer s3cret")
+        self.assertIs(pre[0].kwargs["allow_redirects"], False)
+        self.assertEqual(len(http.ingest_posts()), 1)
+
+    def test_dry_run은_사전확인을_건너뛴다(self):
+        http = FakeHttp(preflight=FakeResp(307, None, bad_json=True))
+        rc, login = self._run(http, dry_run=True)
+        self.assertEqual(rc, 0)
+        self.assertEqual(login.calls, 1)
+        self.assertEqual(http.posts, [])
 
 
 if __name__ == "__main__":
