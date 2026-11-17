@@ -264,6 +264,9 @@ E2E 운영 메모:
 | `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]) + 제출 서류 폴더 새 파일·교체 → 담당 매니저 묶음 메일(본인 업로드 제외). 처음 실행은 적재만 | `sms_sender_request_notices` · `sms_sender_doc_upload_notices` |
 | `sms-status-refresh` | 수동 — 내부관리자 '현황 최신화' 버튼 또는 자동화 페이지, 회사 PC 폴러(`scripts/sms-status-refresh/poll-local.ps1`) | Moa(원서접수)·PIMS 모니터링 발신번호 목록 수집 → Teams 저장 → 현황 파일 06·07 갱신(검사 통과 시 If-Match 업로드). +PR-3a: 세종 메일 발번 리스트 첨부를 세종 등록 리스트 폴더에 자동 저장(단계 mail → moa → pims → workbook, env SMS_STATUS_MAILBOX_UPN·SMS_STATUS_SEJONG_CONTACT_FOLDER) +PR-3b: 숨김 시트(_학교·_서류·_번호)·01~03 보기·00. 요약을 사람 칸 보존하며 갱신, 손댄 칸은 _수정 기록 | `sms_status_refresh_requests` + `automation_runs` |
 | `manual-review-reminder` | 매일 10:00 호출 (cron-job.org) — **3월·8월 영업일만 발송**, 다른 날은 스킵 | `2. 매뉴얼 대장` 중 연간 일정 '진행 중' 업무의 매뉴얼을 담당자 본인 메일함→본인에게 반기 1회(8월=4~9월, 3월=10~3월) + 관리자 요약 반기 1회(담당자 미확인·파일 연결 안 됨). 실패분만 그 달 영업일마다 재시도. env `SHAREPOINT_MANUAL_LEDGER_ITEM_ID`·`MANUAL_EDIT_ADMIN_EMAILS`. 시트는 번호를 뗀 이름으로 찾는다(번호가 밀려 404 — 2026-11-10 실측) | `manual_review_reminders` |
+| `ops-weekly-dev-status` | 매주 수 09:30 — 회사 PC 작업 스케줄러(`scripts/moa-dev-status/run-local.ps1`) | Moa 작업진행현황의 테스트 오픈 칸 → 시작 전 서비스의 개발/테스트 구분(주간보고 원서접수 탭) | `ops_weekly_dev_status` + `automation_runs` |
+
+**localOnly 라 화면 토글이 없으니 `automation_settings` 행을 SQL 로 켜야 일일 보고가 미실행을 잡는다**(같은 구멍이 `ai-tips-collect` 에도 있다 — 언급만).
 
 `sms-sender-request-notify` 필요 env: `SHAREPOINT_SMS_REQUEST_SITE_ID` / `SHAREPOINT_SMS_REQUEST_LIST_ID` / `SMS_SENDER_REQUEST_MANAGER_EMAIL` (업로드 알림은 `SHAREPOINT_DRIVE_ID` 도).
 

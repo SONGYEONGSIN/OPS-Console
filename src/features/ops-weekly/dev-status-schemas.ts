@@ -30,3 +30,8 @@ export const devStatusIngestSchema = z
   });
 
 export type DevStatusIngest = z.infer<typeof devStatusIngestSchema>;
+
+export const devStatusRunLogSchema = z.object({
+  status: z.enum(["success", "failed"]),
+  message: z.string().max(1000),
+});

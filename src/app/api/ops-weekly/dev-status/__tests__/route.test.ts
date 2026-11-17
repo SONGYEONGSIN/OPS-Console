@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const { mockCreateAdminClient, fromSpy, upsertSpy } = vi.hoisted(() => ({
   mockCreateAdminClient: vi.fn(),
@@ -37,6 +37,10 @@ describe("/api/ops-weekly/dev-status", () => {
     upsertSpy.mockResolvedValue({ error: null });
     fromSpy.mockReturnValue({ upsert: upsertSpy });
     mockCreateAdminClient.mockReturnValue({ from: fromSpy });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("CRON_SECRET 미설정이면 500", async () => {
@@ -82,7 +86,6 @@ describe("/api/ops-weekly/dev-status", () => {
       ],
       { onConflict: "service_id" },
     );
-    vi.useRealTimers();
   });
 
   it("supabase error 면 500", async () => {

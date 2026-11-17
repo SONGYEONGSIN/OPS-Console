@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { devStatusIngestSchema } from "../dev-status-schemas";
+import { devStatusIngestSchema, devStatusRunLogSchema } from "../dev-status-schemas";
 
 const row = (id: number, t = "-") => ({ service_id: id, test_open: t });
 
@@ -34,4 +34,23 @@ describe("devStatusIngestSchema", () => {
     expect(r.success).toBe(false);
     if (!r.success) expect(r.error.issues[0]?.message).toBe("service_id 중복: 7");
   });
+});
+
+describe("devStatusRunLogSchema", () => {
+  it("success·failed 와 1,000자 이하 메시지를 받는다", () => {
+    expect(
+      devStatusRunLogSchema.safeParse({ status: "success", message: "x".repeat(1000) }).success,
+    ).toBe(true);
+    expect(
+      devStatusRunLogSchema.safeParse({ status: "failed", message: "" }).success,
+    ).toBe(true);
+  });
+
+  it.each([
+    ["skipped", { status: "skipped", message: "" }],
+    ["1,001자", { status: "failed", message: "x".repeat(1001) }],
+    ["메시지 없음", { status: "success" }],
+  ])("거절: %s", (_, body) =>
+    expect(devStatusRunLogSchema.safeParse(body).success).toBe(false),
+  );
 });
