@@ -18,6 +18,9 @@ export type PageTab = { key: string; label: string; href: string };
  *
  * `size="sm"` — 메인 탭 아래 서브 탭 한 줄. 글자·가로 패딩만 줄이고 밑줄 규칙은 같다.
  * 칩이 아니다(칩은 같은 목록의 필터). 기본 모양은 바뀌지 않는다.
+ * 좁은 화면에서는 탭 줄만 가로로 스크롤한다. 밑줄을 회색 줄에 겹치는 `-mb-px` 는 탭이
+ * 아니라 스크롤 줄에 둔다 — 스크롤 박스는 자기 안쪽 밖을 잘라내므로, 탭에 두면 겹친 1px 가
+ * 잘린다. 회색 줄(`border-b`)은 그 바깥 래퍼가 그린다.
  * 메인 탭 줄과 `mt-3` 띄우고 세로 패딩은 메인과 같은 `py-2` 다 — `py-1.5` 로 메인 바로
  * 밑에 붙여 두니 납작하게 끼어 보였다(사용자 지시 2026-11-05).
  */
@@ -30,32 +33,37 @@ export function PageTabs({
   tabs,
   active,
   size = "md",
+  className = "px-7",
 }: {
   tabs: readonly PageTab[];
   active: string;
   size?: "md" | "sm";
+  /** 바깥 좌우 패딩 — 페이지 본문 패딩과 맞출 때 쓴다(기본 `px-7`). */
+  className?: string;
 }) {
   const sz = SIZE_CLASS[size];
   return (
-    <div className="px-7">
-      <div className={`flex gap-1 border-b ${sz.bar}`}>
-        {tabs.map((t) => {
-          const isActive = active === t.key;
-          return (
-            <Link
-              key={t.key}
-              href={t.href}
-              aria-current={isActive ? "page" : undefined}
-              className={`-mb-px ${sz.tab} ${
-                isActive
-                  ? "border-b-2 border-vermilion font-semibold text-vermilion"
-                  : "border-b-2 border-transparent text-ink-soft hover:text-ink"
-              }`}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
+    <div className={className}>
+      <div className={`border-b ${sz.bar}`}>
+        <div className="-mb-px flex gap-1 overflow-x-auto">
+          {tabs.map((t) => {
+            const isActive = active === t.key;
+            return (
+              <Link
+                key={t.key}
+                href={t.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`shrink-0 whitespace-nowrap ${sz.tab} ${
+                  isActive
+                    ? "border-b-2 border-vermilion font-semibold text-vermilion"
+                    : "border-b-2 border-transparent text-ink-soft hover:text-ink"
+                }`}
+              >
+                {t.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

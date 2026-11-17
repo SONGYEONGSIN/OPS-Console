@@ -4,7 +4,7 @@ import { LiveClock } from "./LiveClock";
 import { useSidebarToggle } from "./sidebar-toggle-context";
 
 /**
- * AppBar — 모바일(≤767px) 전용 상단 바.
+ * AppBar — 모바일·태블릿(≤1023px) 전용 상단 바.
  * 좌: 햄버거(사이드바 드로어 트리거) / 중앙: OPS Console / 우: LiveClock.
  */
 export function AppBar() {
@@ -13,7 +13,7 @@ export function AppBar() {
   return (
     <header
       role="banner"
-      className="relative z-30 hidden h-12 items-center gap-2 border-b border-line bg-paper px-3 max-md:flex"
+      className="relative z-30 hidden h-12 items-center gap-2 border-b border-line bg-paper px-3 max-lg:flex"
     >
       <button
         type="button"

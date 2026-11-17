@@ -23,7 +23,7 @@ export function Chrome({ operator, alerts, sections }: Props) {
     <div
       role="banner"
       data-tutorial="topbar"
-      className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1.4fr_1fr] items-center border-y-2 border-chrome-graphite bg-paper px-[18px] md:grid"
+      className="relative z-[100] hidden h-[52px] grid-cols-[1fr_1.4fr_1fr] items-center border-y-2 border-chrome-graphite bg-paper px-[18px] lg:grid"
     >
       <div className="justify-self-start">
         <ChromeBrand />

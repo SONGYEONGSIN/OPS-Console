@@ -23,7 +23,7 @@ export function WeeklyKpiRow({
   unknownCount?: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 px-7 pt-4 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 px-5 pt-4 md:grid-cols-3 lg:px-7 xl:grid-cols-6">
       {CARDS.map(({ key, label }) => {
         const value = kpis[key];
         return (

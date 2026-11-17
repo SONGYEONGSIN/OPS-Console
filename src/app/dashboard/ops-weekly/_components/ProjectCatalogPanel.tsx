@@ -192,39 +192,42 @@ export function ProjectCatalogPanel(props: {
   return (
     <section aria-label="프로젝트·TF 목록" className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold text-ink">프로젝트·TF 목록</h2>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs text-muted">
-            <th className="pr-2 font-normal">항목명</th>
-            <th className="pr-2 font-normal">구분</th>
-            <th className="pr-2 font-normal">순서</th>
-            <th className="pr-2 font-normal">사용</th>
-            <th className="pr-2 font-normal">담당자</th>
-            <th className="font-normal" />
-          </tr>
-        </thead>
-        <tbody>
-          {projects.map((p) => (
-            <ProjectRow
-              key={p.id}
-              initial={p}
-              writers={writers}
-              names={names}
-            />
-          ))}
-          {drafts.map((k) => (
-            <ProjectRow
-              key={`new-${k}`}
-              initial={blankOf(nextOrder + k)}
-              writers={writers}
-              names={names}
-              onCreated={() => {
-                setDrafts((cur) => cur.filter((x) => x !== k));
-              }}
-            />
-          ))}
-        </tbody>
-      </table>
+      {/* 일회성: 입력·선택 칸이 든 행이 찌그러지지 않는 최소 폭 */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[40rem] text-sm">
+          <thead>
+            <tr className="text-left text-xs text-muted">
+              <th className="pr-2 font-normal">항목명</th>
+              <th className="pr-2 font-normal">구분</th>
+              <th className="pr-2 font-normal">순서</th>
+              <th className="pr-2 font-normal">사용</th>
+              <th className="pr-2 font-normal">담당자</th>
+              <th className="font-normal" />
+            </tr>
+          </thead>
+          <tbody>
+            {projects.map((p) => (
+              <ProjectRow
+                key={p.id}
+                initial={p}
+                writers={writers}
+                names={names}
+              />
+            ))}
+            {drafts.map((k) => (
+              <ProjectRow
+                key={`new-${k}`}
+                initial={blankOf(nextOrder + k)}
+                writers={writers}
+                names={names}
+                onCreated={() => {
+                  setDrafts((cur) => cur.filter((x) => x !== k));
+                }}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
       <div>
         <button
           type="button"

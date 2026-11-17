@@ -56,9 +56,11 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
       <h2 className="text-sm font-semibold text-ink">당번 순번</h2>
       <ol className="flex flex-col gap-1">
         {emails.map((e, i) => (
-          <li key={e} className="flex items-center gap-2 text-sm">
+          <li key={e} className="flex flex-wrap items-center gap-2 text-sm">
             <span className="w-5 text-xs text-muted tabular-nums">{i + 1}</span>
-            <span className="text-ink">{nameOf.get(e) ?? e}</span>
+            <span className="min-w-0 flex-1 break-words text-ink">
+              {nameOf.get(e) ?? e}
+            </span>
             <button
               type="button"
               className={BTN_CLASS}
@@ -101,6 +103,7 @@ export function RotationPanel({ rotation, anchorWeekStart, writers }: Props) {
           options={addable.map(labelOf)}
           placeholder="순번에 추가"
           ariaLabel="순번에 추가"
+          className="max-w-full"
         />
         <label className="flex items-center gap-2 text-xs text-muted">
           기준 주(월요일)

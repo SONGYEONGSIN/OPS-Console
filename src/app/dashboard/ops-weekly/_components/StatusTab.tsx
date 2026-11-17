@@ -161,6 +161,7 @@ function DutyPicker(props: {
   return (
     <ListSelect
       ariaLabel="당번"
+      className="max-w-full"
       placeholder="당번 미지정"
       value={value}
       options={writers.map((w) => w.name)}

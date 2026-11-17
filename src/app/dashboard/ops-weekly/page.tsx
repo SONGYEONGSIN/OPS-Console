@@ -164,6 +164,7 @@ function WeekView({ view }: { view: Week }) {
         <PageTabs
           active={tab}
           size="md"
+          className="px-5 lg:px-7"
           tabs={buildTabs({
             weekStart,
             op,
@@ -181,7 +182,7 @@ function NoWeek({ weekStart }: { weekStart: string }) {
   return (
     <div className="flex flex-col gap-2 p-5 text-sm text-ink lg:p-7">
       <p>이 주의 보고서가 아직 열리지 않았습니다</p>
-      <div className="flex gap-3 text-xs">
+      <div className="flex flex-wrap gap-3 text-xs">
         <Link
           href={opsWeeklyHref(shiftWeek(weekStart, -1), "application", null)}
           className="underline"

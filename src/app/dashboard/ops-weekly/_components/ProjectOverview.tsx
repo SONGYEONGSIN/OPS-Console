@@ -35,8 +35,11 @@ export function ProjectOverview({ groups }: { groups: ProjectGroup[] }) {
                 key={o.operatorEmail}
                 className="flex flex-col gap-2 border-t border-line-soft pt-3"
               >
-                <div className="flex items-center gap-2 text-sm">
-                  <span data-testid="owner-name" className="font-medium">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span
+                    data-testid="owner-name"
+                    className="min-w-0 break-words font-medium"
+                  >
                     {o.operatorName}
                   </span>
                   <span className="text-xs text-muted">{o.stage ?? "—"}</span>

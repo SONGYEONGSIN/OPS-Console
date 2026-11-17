@@ -44,7 +44,7 @@ function LeaveRow(props: {
       >
         <span className="font-medium">{item.kindLabel}</span>
         <span className="text-xs tabular-nums">{periodOf(item)}</span>
-        <span className="text-xs">{item.subtitle}</span>
+        <span className="min-w-0 break-words text-xs">{item.subtitle}</span>
         {item.sources.map((s) => (
           <span key={s} className={BADGE_CLASS}>
             {SOURCE_LABEL[s]}

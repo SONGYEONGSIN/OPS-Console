@@ -21,6 +21,17 @@ describe("AppBar", () => {
     expect(openSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("1023px 이하(모바일·태블릿)에서 보인다 — 서랍 메뉴 열기 버튼이 있어야 한다", () => {
+    render(
+      <SidebarToggleProvider open={() => {}}>
+        <AppBar />
+      </SidebarToggleProvider>,
+    );
+    const bar = screen.getByRole("banner").className.split(/\s+/);
+    expect(bar).toContain("max-lg:flex");
+    expect(bar).not.toContain("max-md:flex");
+  });
+
   it("OPS Console 라벨 + LiveClock 슬롯 노출", () => {
     render(
       <SidebarToggleProvider open={() => {}}>

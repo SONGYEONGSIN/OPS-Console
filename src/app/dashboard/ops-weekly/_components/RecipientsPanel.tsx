@@ -46,9 +46,16 @@ export function RecipientsPanel({ recipients, candidates }: Props) {
       <h2 className="text-sm font-semibold text-ink">받는 사람</h2>
       <ul className="flex flex-col gap-1">
         {recipients.map((r) => (
-          <li key={r.email} className="flex items-center gap-2 text-sm">
-            <span className="text-ink">{r.name ?? r.email}</span>
-            <span className="text-xs text-muted">{r.email}</span>
+          <li
+            key={r.email}
+            className="flex flex-wrap items-center gap-2 text-sm"
+          >
+            <span className="min-w-0 break-words text-ink">
+              {r.name ?? r.email}
+            </span>
+            <span className="min-w-0 break-words text-xs text-muted">
+              {r.email}
+            </span>
             {r.warning !== null ? (
               <span className={BADGE_CLASS}>
                 {RECIPIENT_WARNING_LABEL[r.warning]}
@@ -78,10 +85,11 @@ export function RecipientsPanel({ recipients, candidates }: Props) {
           options={candidates.map(labelOf)}
           placeholder="운영자에서 고르기"
           ariaLabel="받는 사람 운영자 선택"
+          className="max-w-full"
         />
         <input
           aria-label="받는 사람 이메일"
-          className={FIELD_CLASS}
+          className={`${FIELD_CLASS} max-w-full`}
           value={email}
           placeholder="이메일 직접 입력"
           onChange={(e) => {
