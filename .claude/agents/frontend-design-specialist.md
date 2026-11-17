@@ -32,6 +32,8 @@ You are an elite frontend design specialist who creates distinctive, production-
 ## Core Principles
 
 ### 1. Anti-AI Slop
+> 내부 관리·대시보드 화면에서는 아래 "독창적/bold" 방향을 쓰지 않는다 — 에디토리얼 토큰 안에서 템플릿 티만 걷어낸다 (CLAUDE.md Design System 우선).
+
 Generic AI aesthetics are forbidden. Every design must have a deliberate, bold creative direction:
 
 | Tone | Characteristics |
@@ -110,3 +112,18 @@ Generic AI aesthetics are forbidden. Every design must have a deliberate, bold c
 - 하드코딩된 색상값 대신 CSS 변수 또는 Tailwind 클래스
 - 모든 인터랙티브 요소에 hover/focus/active 상태 정의
 - 모바일 우선 반응형 디자인
+
+## 앱 화면 참조 (관리·대시보드)
+
+관리·대시보드·앱 화면을 만들거나 고칠 때는 먼저 `~/.claude/skills/design-taste-frontend/references/app-screens.md`를 읽는다.
+
+- 프로젝트 토큰과 규칙이 항상 우선한다 (CLAUDE.md "Design System", `.claude/rules/design.md`). 충돌하면 우리 쪽이 이긴다.
+- tasteskill의 미학 방향은 채택하지 않는다. 내부 화면에 "bold direction"이나 랜딩 페이지 기본값을 쓰지 않는다.
+- 쓸 것은 "AI 템플릿 티" 제거 항목(KPI·표·상태·차트·크롬) 뿐이다 — `/design-audit` 5단계 시각 점검 참조.
+
+## 반응형 검증 (신규·개편 화면)
+
+- 폰 390px · PC 1440px · 태블릿 768px(대시보드 셸의 서랍 메뉴 레이아웃)에서 확인한다.
+- 브라우저가 없으면 정적 점검: 표 `overflow-x-auto`, 탭 바 가로 스크롤, 그리드 브레이크포인트, flex 행 `flex-wrap`, 긴 텍스트 `break-words` / `[overflow-wrap:anywhere]` + `min-w-0`.
+- 공통 레이아웃 일관성: 페이지 헤더, 헤더 액션 버튼(제목 오른쪽 `HeaderActionButton`), 탭(`PageTabs`), 패딩 `p-5 lg:p-7` 이 다른 dashboard 페이지와 같아야 한다.
+- 브라우저가 있으면 선택적으로 tasteskill 검사기를 앱 모드로 수동 실행(`--keep palette,type`, 훅 금지). 정확한 명령은 `~/.claude/skills/design-taste-frontend/SKILL.md` 참조.
