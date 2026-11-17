@@ -32,6 +32,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -46,6 +47,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "빼기" }));
@@ -77,6 +79,7 @@ describe("LeaveTab", () => {
         }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(screen.getByText("오전만")).toBeInTheDocument();
@@ -110,6 +113,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable={false}
+        freezeNotice={false}
       />,
     );
     expect(screen.getByText("11/18(수)")).toBeInTheDocument();
@@ -132,6 +136,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     const li = screen.getByText("백업 운영자B").closest("li");
@@ -146,6 +151,7 @@ describe("LeaveTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "빼기" }));
@@ -160,6 +166,7 @@ describe("LeaveTab", () => {
         detail={{ ...EMPTY, manual: [manualLeave()] }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     const h = screen.getByRole("heading", { name: "휴가·외근" });
@@ -170,5 +177,37 @@ describe("LeaveTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "+ 직접 추가" }));
     expect(screen.getByLabelText("직접 추가 제목")).toBeInTheDocument();
     expect(screen.getByLabelText("시작일")).toBeInTheDocument();
+  });
+});
+
+describe("LeaveTab — 굳는 시점 안내", () => {
+  it("제출 후 최종 보고 전이면 자동 묶음 위에 굳는 시점을 알린다", () => {
+    render(
+      <LeaveTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r1"
+        editable={false}
+        freezeNotice
+      />,
+    );
+    const note = screen.getByText("자동 항목은 최종 보고 때 굳습니다");
+    const firstGroup = screen.getAllByRole("heading", { level: 3 })[0];
+    expect(
+      note.compareDocumentPosition(firstGroup) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+  it("freezeNotice 가 false 면 없다", () => {
+    render(
+      <LeaveTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r1"
+        editable={false}
+        freezeNotice={false}
+      />,
+    );
+    expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
   });
 });

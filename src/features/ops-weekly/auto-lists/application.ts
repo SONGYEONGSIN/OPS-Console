@@ -71,6 +71,8 @@ export function buildApplicationGroups(args: {
   rows: readonly ClosingLite[];
   operatorName: string;
   devStages: ReadonlyMap<number, DevStage>;
+  /** 그 주에 수집이 돌았는가 — 전역 사실이다. 본인 구분 건수로 추론하면 시작 전 0건인 사람이 늘 '수집 안 됨' 이 된다. */
+  devStatusCollected: boolean;
   weekStart: string;
   now: Date;
 }): ApplicationGroups {
@@ -82,7 +84,7 @@ export function buildApplicationGroups(args: {
     opening: [],
     running: [],
     closing: [],
-    devStatusCollected: args.devStages.size > 0,
+    devStatusCollected: args.devStatusCollected,
   };
   for (const row of args.rows) {
     if (!sameName(row.operator_name, args.operatorName)) continue;

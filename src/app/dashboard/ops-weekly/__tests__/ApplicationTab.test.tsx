@@ -23,11 +23,12 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
       screen.getByText(
-        "개발/테스트 구분 미확인 — 작업 통계가 아직 수집되지 않았습니다 (시작 전 서비스 3건)",
+        "개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 3건)",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "개발 중" })).toBeNull();
@@ -41,6 +42,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -55,6 +57,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -71,6 +74,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(
@@ -85,6 +89,7 @@ describe("ApplicationTab", () => {
         detail={EMPTY}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     inOrder([
@@ -127,6 +132,7 @@ describe("ApplicationTab", () => {
         }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     const h = screen.getByRole("heading", { name: "원서접수" });
@@ -139,7 +145,13 @@ describe("ApplicationTab", () => {
 
   it("묶음 목록은 큰 절 사이 간격 안에 든다(gap-7 / 묶음 gap-6)", () => {
     const { container } = render(
-      <ApplicationTab snapshot={snap()} detail={EMPTY} reportId="r" editable />,
+      <ApplicationTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
     );
     const root = container.firstElementChild as Element;
     expect(root.className).toContain("gap-7");
@@ -170,8 +182,71 @@ describe("ApplicationTab", () => {
         }}
         reportId="r"
         editable
+        freezeNotice={false}
       />,
     );
     expect(screen.getByText("자동 0건 · 직접 0건")).toBeInTheDocument();
+  });
+
+  it("수집된 주에 시작 전 서비스가 0건이면 미수집 문구 없이 직접 추가 건이 보인다", () => {
+    render(
+      <ApplicationTab
+        snapshot={snap({ devStatusCollected: true, unknown: 0 })}
+        detail={{
+          ...EMPTY,
+          manual: [
+            {
+              id: "m1",
+              area: "application",
+              group_key: "dev",
+              title: "직접 넣은 개발 건",
+              note: "",
+              period_start: null,
+              period_end: null,
+              leave_kind: null,
+            },
+          ],
+        }}
+        reportId="r"
+        editable
+        freezeNotice={false}
+      />,
+    );
+    expect(screen.queryByText(/아직 수집되지 않았습니다/)).toBeNull();
+    expect(screen.getByRole("heading", { name: "개발 중" })).toBeInTheDocument();
+    expect(screen.getByText("직접 넣은 개발 건")).toBeInTheDocument();
+    expect(screen.getByText("자동 0건 · 직접 1건")).toBeInTheDocument();
+  });
+});
+
+describe("ApplicationTab — 굳는 시점 안내", () => {
+  it("제출 후 최종 보고 전이면 자동 묶음 위에 굳는 시점을 알린다", () => {
+    render(
+      <ApplicationTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r1"
+        editable={false}
+        freezeNotice
+      />,
+    );
+    const note = screen.getByText("자동 항목은 최종 보고 때 굳습니다");
+    const firstGroup = screen.getAllByRole("heading", { level: 3 })[0];
+    expect(
+      note.compareDocumentPosition(firstGroup) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+  it("freezeNotice 가 false 면 없다", () => {
+    render(
+      <ApplicationTab
+        snapshot={snap()}
+        detail={EMPTY}
+        reportId="r1"
+        editable={false}
+        freezeNotice={false}
+      />,
+    );
+    expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
   });
 });

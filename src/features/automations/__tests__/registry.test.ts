@@ -66,6 +66,21 @@ describe("automation registry", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("ops-weekly-dev-status 는 수요일 로컬 전용 weekly 잡", async () => {
+    const job = getJob("ops-weekly-dev-status");
+    expect(job).toMatchObject({
+      label: "주간보고 개발 구분 수집",
+      scheduleInfo: "매주 수요일 09:30 (회사 PC 로컬 예약 작업)",
+      cadence: "weekly",
+      localOnly: true,
+      cooldownMinutes: 60,
+    });
+    expect(await job!.run()).toEqual({
+      ok: false,
+      message: "로컬 전용 — 회사 PC 작업 스케줄러가 실행합니다.",
+    });
+  });
+
   it("없는 id는 undefined", () => {
     expect(getJob("nope")).toBeUndefined();
   });

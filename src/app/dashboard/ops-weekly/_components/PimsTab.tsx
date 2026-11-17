@@ -3,6 +3,7 @@ import { applyOverrides, type AutoSnapshot } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { AreaNotes } from "./AreaNotes";
 import { AutoGroupSection } from "./AutoGroupSection";
+import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { TabHeading } from "./TabHeading";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   detail: ReportDetail;
   reportId: string | null;
   editable: boolean;
+  freezeNotice: boolean;
 };
 
 const GROUPS = [
@@ -18,7 +20,13 @@ const GROUPS = [
 ] as const;
 
 /** PIMS 탭 — 금주 발표 / 차주 발표. */
-export function PimsTab({ snapshot, detail, reportId, editable }: Props) {
+export function PimsTab({
+  snapshot,
+  detail,
+  reportId,
+  editable,
+  freezeNotice,
+}: Props) {
   const unmatched = snapshot.unmatched.pims;
   const view = (list: AutoItem[]) => applyOverrides(list, detail.overrides);
   return (
@@ -29,6 +37,7 @@ export function PimsTab({ snapshot, detail, reportId, editable }: Props) {
           detail.manual.filter((m) => m.area === "pims").length
         }건`}
       >
+        {freezeNotice ? <AutoFreezeNotice /> : null}
         <p className="text-sm text-muted">
           {`담당자가 맞지 않아 아무에게도 안 붙은 발표 서비스 ${unmatched}건${
             unmatched > 0

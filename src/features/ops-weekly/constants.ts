@@ -2,6 +2,7 @@
 
 export const OPS_WEEKLY_SLUG = "ops-weekly";
 export const OPS_WEEKLY_PATH = "/dashboard/ops-weekly";
+export const OPS_WEEKLY_DEV_STATUS_JOB_ID = "ops-weekly-dev-status";
 
 export const AREAS = ["application", "pims", "project", "tf", "leave"] as const;
 export type Area = (typeof AREAS)[number];

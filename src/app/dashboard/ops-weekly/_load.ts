@@ -68,6 +68,8 @@ export type OpsWeeklyView =
       kpis: WeeklyKpis | null;
       submittedCount: number;
       prevOpen: boolean;
+      /** 제출했지만 [최종 보고] 전 — 자동 항목이 아직 살아 있는 값이다 */
+      freezeNotice: boolean;
       canEdit: boolean;
       canSubmit: boolean;
       /** status 탭에서만 (Task 14) */
@@ -94,6 +96,18 @@ function pickViewed(
     writers.find((w) => w.email === actor.email) ??
     writers[0] ??
     null
+  );
+}
+
+/** 자동 항목이 아직 굳지 않은 제출 보고서인가 — 안내 한 줄을 보일 조건. */
+export function freezeNoticeOf(
+  week: Pick<WeekRow, "status">,
+  report: Pick<ReportRow, "status" | "snapshot"> | null,
+): boolean {
+  return (
+    week.status === "open" &&
+    report?.status === "submitted" &&
+    report.snapshot === null
   );
 }
 
@@ -259,6 +273,7 @@ export async function loadOpsWeeklyPage(
     viewed,
     report,
     snapshot: data?.snapshot ?? null,
+    freezeNotice: freezeNoticeOf(week, report),
     detail: data?.detail ?? null,
     kpis: data?.kpis ?? null,
     ...flags,

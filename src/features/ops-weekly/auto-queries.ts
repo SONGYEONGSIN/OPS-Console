@@ -90,6 +90,24 @@ export async function listDevStatuses(
   return rowsOf<DevStatusRow>("ops_weekly_dev_status", res);
 }
 
+/**
+ * 그 주(월 00:00 KST 이후)에 구분 수집이 한 번이라도 돌았는가 — 사람과 무관한 전역 사실.
+ * 기준은 `freshDevStages` 와 같은 `collected_at ≥ 주 시작`. 에러는 던진다('수집 안 됨' 으로 삼키지 않는다).
+ */
+async function devStatusCollectedSince(
+  db: ReturnType<typeof createAdminClient>,
+  startIso: string,
+): Promise<boolean> {
+  const res = await db
+    .from("ops_weekly_dev_status")
+    .select("service_id")
+    .gte("collected_at", startIso)
+    .limit(1);
+  return (
+    rowsOf<{ service_id: number }>("ops_weekly_dev_status", res).length > 0
+  );
+}
+
 export async function loadAutoSnapshot(args: {
   weekStart: string;
   operatorEmail: string;
@@ -106,25 +124,27 @@ export async function loadAutoSnapshot(args: {
   const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
   const db = createAdminClient();
 
-  const [closing, pimsRes, backupRes, scheduleRes] = await Promise.all([
-    listOpenClosing(db, startIso),
-    db
-      .from("announcement_services")
-      .select(PIMS_COLUMNS)
-      .gte("last_announce_at", startIso)
-      .lte("last_announce_at", endIso),
-    db
-      .from("backup_requests")
-      .select(BACKUP_COLUMNS)
-      .eq("requester_email", operatorEmail)
-      .lte("leave_start_date", win.nextWeek.endYmd),
-    db
-      .from("schedule_events")
-      .select(SCHEDULE_COLUMNS)
-      .in("type", ["leave", "external_meeting", "training"])
-      .lte("start_at", endIso)
-      .or(`end_at.is.null,end_at.gte.${startIso}`),
-  ]);
+  const [closing, devStatusCollected, pimsRes, backupRes, scheduleRes] =
+    await Promise.all([
+      listOpenClosing(db, startIso),
+      devStatusCollectedSince(db, startIso),
+      db
+        .from("announcement_services")
+        .select(PIMS_COLUMNS)
+        .gte("last_announce_at", startIso)
+        .lte("last_announce_at", endIso),
+      db
+        .from("backup_requests")
+        .select(BACKUP_COLUMNS)
+        .eq("requester_email", operatorEmail)
+        .lte("leave_start_date", win.nextWeek.endYmd),
+      db
+        .from("schedule_events")
+        .select(SCHEDULE_COLUMNS)
+        .in("type", ["leave", "external_meeting", "training"])
+        .lte("start_at", endIso)
+        .or(`end_at.is.null,end_at.gte.${startIso}`),
+    ]);
   const pims = rowsOf<PimsLite>("announcement_services", pimsRes);
   const backups = rowsOf<BackupLeaveLite>("backup_requests", backupRes);
   const schedules = rowsOf<ScheduleLeaveLite>(
@@ -155,6 +175,7 @@ export async function loadAutoSnapshot(args: {
       rows: closing,
       operatorName,
       devStages,
+      devStatusCollected,
       weekStart,
       now,
     }),

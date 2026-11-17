@@ -13,6 +13,7 @@ const gteSpy: Mock = vi.fn();
 const lteSpy: Mock = vi.fn();
 const orSpy: Mock = vi.fn();
 const orderSpy: Mock = vi.fn();
+const limitSpy: Mock = vi.fn();
 // PostgREST Max-Rows — range 없이 읽으면 앞 1000행만 온다(실제 서버와 같은 절단).
 const MAX_ROWS = 1000;
 
@@ -33,6 +34,7 @@ function chain(table: string) {
   self.lte = passthrough(lteSpy);
   self.or = passthrough(orSpy);
   self.order = passthrough(orderSpy);
+  self.limit = passthrough(limitSpy);
   self.range = (from: number, to: number) => {
     range = [from, Math.min(to, from + MAX_ROWS - 1)];
     return self;
@@ -203,6 +205,57 @@ describe("loadAutoSnapshot", () => {
     expect(fromSpy).toHaveBeenCalledWith("ops_weekly_dev_status");
     expect(s.application.dev.map((i) => i.key)).toEqual(["closing:1"]);
     expect(s.application.devStatusCollected).toBe(true);
+  });
+
+  it("수집 여부는 전역으로 잰다 — 시작 전 서비스가 0건이어도 이번 주 수집이 있으면 수집됨", async () => {
+    mockTables({
+      closing_services: [CL_OPENING],
+      announcement_services: [],
+      backup_requests: [],
+      schedule_events: [],
+      ops_weekly_dev_status: [
+        {
+          service_id: 777,
+          stage: "test",
+          collected_at: "2026-11-18T00:30:00.000Z",
+        },
+      ],
+    });
+    const s = await loadAutoSnapshot({ ...ARGS, operatorName: "시작전없음" });
+    expect(s.application.devStatusCollected).toBe(true);
+    expect(gteSpy).toHaveBeenCalledWith(
+      "collected_at",
+      "2026-11-15T15:00:00.000Z",
+    );
+    expect(limitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("이번 주 수집 행이 없으면 수집 안 됨", async () => {
+    mockTables({
+      closing_services: [CL_OPENING],
+      announcement_services: [],
+      backup_requests: [],
+      schedule_events: [],
+      ops_weekly_dev_status: [],
+    });
+    const s = await loadAutoSnapshot(ARGS);
+    expect(s.application.devStatusCollected).toBe(false);
+  });
+
+  it("수집 여부 조회 에러는 던진다 — '수집 안 됨' 으로 삼키지 않는다", async () => {
+    mockTables({
+      closing_services: [],
+      announcement_services: [],
+      backup_requests: [],
+      schedule_events: [],
+    });
+    responses.set("ops_weekly_dev_status", {
+      data: null,
+      error: { message: "down" },
+    });
+    await expect(loadAutoSnapshot(ARGS)).rejects.toThrow(
+      "[ops-weekly] ops_weekly_dev_status: down",
+    );
   });
 });
 

@@ -11,6 +11,7 @@ import { AreaNotes } from "./AreaNotes";
 import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
+import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { TabHeading } from "./TabHeading";
 import { BADGE_CLASS, ROW_BTN_CLASS } from "./styles";
 
@@ -19,6 +20,7 @@ type Props = {
   detail: ReportDetail;
   reportId: string | null;
   editable: boolean;
+  freezeNotice: boolean;
 };
 
 const SOURCE_LABEL = { backup: "백업요청", schedule: "일정" } as const;
@@ -69,7 +71,13 @@ function LeaveRow(props: {
 }
 
 /** 휴가·외근 탭 — 자동 목록도 건마다 메모·빼기가 있고 직접 추가할 수 있다. */
-export function LeaveTab({ snapshot, detail, reportId, editable }: Props) {
+export function LeaveTab({
+  snapshot,
+  detail,
+  reportId,
+  editable,
+  freezeNotice,
+}: Props) {
   const rows = applyOverrides(snapshot.leave, detail.overrides);
   const manual = detail.manual.filter((m) => m.area === "leave");
   return (
@@ -77,7 +85,9 @@ export function LeaveTab({ snapshot, detail, reportId, editable }: Props) {
       <TabHeading
         title="휴가·외근"
         summary={`자동 ${rows.length}건 · 직접 ${manual.length}건`}
-      />
+      >
+        {freezeNotice ? <AutoFreezeNotice /> : null}
+      </TabHeading>
       <GroupShell
         title="휴가·외근 일정"
         count={rows.length + manual.length}

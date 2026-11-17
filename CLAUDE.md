@@ -214,7 +214,7 @@ E2E 운영 메모:
 
 ## /dashboard/ops-weekly — 운영부 주간업무보고
 
-운영자가 매주 자기 보고서를 쓰고, 당번이 모아 [최종 보고] 한다. 이번 A1 은 **작성·제출·최종 보고·관리자 설정**까지이고 발송(A2)·엑셀/워드 저장(A3)·Moa 통계(A4)는 뒤 PR 이다.
+운영자가 매주 자기 보고서를 쓰고, 당번이 모아 [최종 보고] 한다. A1 은 **작성·제출·최종 보고·관리자 설정**, A4 는 **작업진행현황 개발/테스트 구분 수집**이다. 발송(A2)·엑셀/워드 저장(A3)은 뒤 PR 이다.
 
 **slug 는 `ops-weekly`** 다 — 이미 자동화 잡 id `weekly-report`(본부 차주보고)가 있어 같은 이름을 쓰면 두 기능이 한 이름으로 섞인다.
 
@@ -222,9 +222,9 @@ E2E 운영 메모:
 
 **주차는 본부 기준(목요일이 속한 달·주)** 이고 자동 데이터 창은 그 주 월~일이다. 주는 **직전 주 보고가 끝나면 즉시, 늦어도 월 00:00 에** 열리며 cron 이 아니라 **접근할 때 만든다**(`ensureWeek`).
 
-**제출하면 자동 항목을 스냅샷으로 굳힌다.** 안 굳히면 제출한 뒤 원천(마감·계약 시트)이 바뀔 때 이미 낸 보고서 숫자가 조용히 달라진다.
+**자동 항목은 당번의 [최종 보고] 때 전원 것을 한꺼번에 굳힌다**(`freeze.ts`). 제출 때 고정되는 것은 손으로 쓴 내용뿐이고, 제출했어도 최종 보고 전까지 자동 항목은 열 때마다 새로 계산한다. 제출 때 굳히면 수요일 수집 전에 낸 보고서가 `구분 미확인` 으로 굳고, 같은 주 보고서끼리 기준 시각이 갈린다. **굳히기가 하나라도 실패하면 보고하지 않는다** — 앞선 보고서는 이미 굳었을 수 있지만, 주는 open 으로 남고 `week-reported` 도 안 나간다. 다시 누르면 전원을 다시 굳힌다(일반 주. 정정 주는 비어 있는 것만 채운다). **정정 뒤 다시 보고해도 굳은 값은 그대로다** — 비어 있는 스냅샷만 채우고, 다시 작성 요청도 스냅샷을 지우지 않는다.
 
-**확장 자리 둘.** `emitOpsWeeklyEvent` 의 `OPS_WEEKLY_HOOKS` 는 A2·A3 이 훅을 등록할 자리다(`all-submitted`·`report-returned`·`week-reported`). `ops_weekly_dev_status` 는 A4 가 채울 자리이고, 비어 있으면 개발/테스트 구분은 `구분 미확인` 이다.
+**확장 자리 둘.** `emitOpsWeeklyEvent` 의 `OPS_WEEKLY_HOOKS` 는 A2·A3 이 훅을 등록할 자리다(`all-submitted`·`report-returned`·`week-reported`). `ops_weekly_dev_status` 는 A4 가 수요일 09:30 회사 PC 작업으로 채운다. 비어 있으면 개발/테스트 구분은 `구분 미확인` 이다.
 
 **그림은 비공개 버킷이다.** DB 엔 `<img data-ops-path>` 경로만 저장하고 화면에 낼 때 `signProjectEntries` 로 1시간 서명 URL 을 채운다. 두 방향 모두 `note-images.ts` 한 곳을 거친다.
 
@@ -264,6 +264,9 @@ E2E 운영 메모:
 | `sms-sender-request-notify` | 5분마다 (cron-job.org) | Teams 목록 'SMS 발신번호 사전등록 신청'의 새 행 → 담당 매니저, '완료' 전환 → 신청자에게 메일([내부관리자]) + 제출 서류 폴더 새 파일·교체 → 담당 매니저 묶음 메일(본인 업로드 제외). 처음 실행은 적재만 | `sms_sender_request_notices` · `sms_sender_doc_upload_notices` |
 | `sms-status-refresh` | 수동 — 내부관리자 '현황 최신화' 버튼 또는 자동화 페이지, 회사 PC 폴러(`scripts/sms-status-refresh/poll-local.ps1`) | Moa(원서접수)·PIMS 모니터링 발신번호 목록 수집 → Teams 저장 → 현황 파일 06·07 갱신(검사 통과 시 If-Match 업로드). +PR-3a: 세종 메일 발번 리스트 첨부를 세종 등록 리스트 폴더에 자동 저장(단계 mail → moa → pims → workbook, env SMS_STATUS_MAILBOX_UPN·SMS_STATUS_SEJONG_CONTACT_FOLDER) +PR-3b: 숨김 시트(_학교·_서류·_번호)·01~03 보기·00. 요약을 사람 칸 보존하며 갱신, 손댄 칸은 _수정 기록 | `sms_status_refresh_requests` + `automation_runs` |
 | `manual-review-reminder` | 매일 10:00 호출 (cron-job.org) — **3월·8월 영업일만 발송**, 다른 날은 스킵 | `2. 매뉴얼 대장` 중 연간 일정 '진행 중' 업무의 매뉴얼을 담당자 본인 메일함→본인에게 반기 1회(8월=4~9월, 3월=10~3월) + 관리자 요약 반기 1회(담당자 미확인·파일 연결 안 됨). 실패분만 그 달 영업일마다 재시도. env `SHAREPOINT_MANUAL_LEDGER_ITEM_ID`·`MANUAL_EDIT_ADMIN_EMAILS`. 시트는 번호를 뗀 이름으로 찾는다(번호가 밀려 404 — 2026-11-10 실측) | `manual_review_reminders` |
+| `ops-weekly-dev-status` | 매주 수 09:30 — 회사 PC 작업 스케줄러(`scripts/moa-dev-status/run-local.ps1`) | Moa 작업진행현황의 테스트 오픈 칸 → 시작 전 서비스의 개발/테스트 구분(주간보고 원서접수 탭) | `ops_weekly_dev_status` + `automation_runs` |
+
+**localOnly 라 화면 토글이 없으니 `automation_settings` 행을 SQL 로 켜야 일일 보고가 미실행을 잡는다**(같은 구멍이 `ai-tips-collect` 에도 있다 — 언급만).
 
 `sms-sender-request-notify` 필요 env: `SHAREPOINT_SMS_REQUEST_SITE_ID` / `SHAREPOINT_SMS_REQUEST_LIST_ID` / `SMS_SENDER_REQUEST_MANAGER_EMAIL` (업로드 알림은 `SHAREPOINT_DRIVE_ID` 도).
 
@@ -298,12 +301,12 @@ GAS 미수채권 자동화는 4-PR 시리즈로 OPS-Console로 이전 완료 —
 
 ## Moa 로그인 SMS 인증번호 우편함
 
-Moa 자동화(마감 스크랩·경쟁률 점검·정산 탐색)의 2FA 인증번호는 **폰(Tasker) → `/api/sms-codes/inbound` → Supabase `sms_codes` → 스크래퍼 `/api/sms-codes/consume`** 로 흐른다. make 웹훅은 **폴백으로만** 남는다 — 무료 크레딧이 소진되면 `Queue is full` 로 Moa 자동화 전체가 섰다(2026-09-03).
+Moa 자동화(마감 스크랩·경쟁률 점검·정산 탐색·현황 최신화·주간보고 개발 구분 수집)의 2FA 인증번호는 **폰(Tasker) → `/api/sms-codes/inbound` → Supabase `sms_codes` → 스크래퍼 `/api/sms-codes/consume`** 로 흐른다. make 웹훅은 **폴백으로만** 남는다 — 무료 크레딧이 소진되면 `Queue is full` 로 Moa 자동화 전체가 섰다(2026-09-03).
 
 - **문자 본문은 저장하지 않는다.** 서버가 `인증번호` **바로 뒤**의 `[숫자]` 만 뽑아 넣는다(앞의 `[2026]`·스팸 `[9999]` 차단). 발신번호(`X-Sms-Sender`)가 `SMS_INGEST_SENDERS` 에 없으면 2xx 로 조용히 버린다 — 운영자 폰 번호만 알면 비밀키 없이 가짜 코드를 넣을 수 있었다. 폰 키 `SMS_INGEST_SECRET`(32자 이상)은 `CRON_SECRET` 과 **분리** — 폰을 잃으면 그 키만 간다.
 - **로그인 점유(리스)** `sms_code_lease` 한 줄(TTL 180초). 스크래퍼는 제출 전에 `reset`(비우기+점유), 제출 후 `pop`(꺼내며 삭제·반납). **폴링은 TTL−30초(150초)에서 잘린다**(`sms_inbox.POLL_CAP_SEC`) — 리스 시계가 `reset`에서 시작하고 로그인 응답 대기가 끼어들어, env 값(이 PC는 180)대로 끝까지 기다리면 마지막 구간은 리스 없이 `pop` 한다. `audit.py`의 수동 코드 경로(`MANUAL_CODE_FILE`)도 `reset`으로 점유만 잡는다 — 사람이 받아 적어도 문자는 우편함에 들어간다. 다른 소비자가 점유 중이면 409 — **폴백하지 않고 중단한다.** 폴백하면 SMS 두 통이 한 폰에 겹쳐 서로의 코드를 가져가고, 틀린 코드 제출은 캡차 잠금으로 자동화 전체를 세운다. 비점유자의 `pop` 도 409(0행이면 '아직 안 왔다'와 구분이 안 된다).
 - 소스는 **제출 전에 하나** 고른다(`scrape.prepare_sms_source`): 우편함이 살아 있으면 make GET **0회**, 장애(`InboxUnavailable`)일 때만 make `pick_baseline`. 고른 뒤에는 그 소스만 본다(`await_sms_code`). run-log 에 `(SMS: 우편함|make)` 가 남아 **조용한 폴백이 일일 보고에 드러난다** — 이게 없으면 크레딧이 다시 타는데 아무도 모른다.
-- 소비자 이름은 `closing` / `ratio-audit` / `settlement-discover` / `sms-status-refresh` 넷뿐(`features/sms-codes/schemas.ts` zod enum ↔ python env `sms_consumer`). 오타는 400 — 리스가 이름으로 갈리므로 오타 하나가 점유를 무력화한다.
+- 소비자 이름은 `closing` / `ratio-audit` / `settlement-discover` / `sms-status-refresh` / `ops-weekly-dev-status` 다섯뿐(`features/sms-codes/schemas.ts` zod enum ↔ python env `sms_consumer`). 오타는 400 — 리스가 이름으로 갈리므로 오타 하나가 점유를 무력화한다.
 - **실호출에서만 드러난 것 둘**: Supabase PostgREST 경로는 `safeupdate` 가 켜져 있어 plpgsql 안의 WHERE 없는 DELETE 를 `21000` 으로 거부한다(SQL Editor·Docker 는 통과) → 전체 삭제는 `where true`, `rpc.test.ts` 가 마이그레이션 원문을 대조한다. `vercel env add` 를 stdin 으로 넣으면 끝 줄바꿈이 값에 저장돼 전부 401 — 줄바꿈 없이 넣고 `env pull` 로 대조, 값 변경은 redeploy 가 있어야 반영된다.
 - Tasker 프로필: Received Text(Sender = Moa 발신번호, Content `*인증번호*`) → HTTP POST `text/plain` **원문 그대로**(JSON 조립 금지 — 따옴표·줄바꿈에 깨진다) + `X-Sms-Sender:%SMSRF`. **make 프로필은 지우지 않는다**(폴백).
 

@@ -19,6 +19,7 @@ import { RecipientsPanel } from "../_components/RecipientsPanel";
 import { ReadOnlyHtml } from "../_components/ProjectTab";
 import { OverrideControls } from "../_components/OverrideControls";
 import { ProjectOverview } from "../_components/ProjectOverview";
+import { AutoFreezeNotice } from "../_components/AutoFreezeNotice";
 import { WeeklyKpiRow } from "../_components/WeeklyKpiRow";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
 
@@ -181,5 +182,16 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
       />,
     );
     expect(tokens(screen.getByText("긴메모"))).toContain("break-words");
+  });
+
+  it("굳는 시점 안내는 좁은 폭에서 줄바꿈된다", () => {
+    render(<AutoFreezeNotice />);
+    const el = screen.getByText("자동 항목은 최종 보고 때 굳습니다");
+    for (const c of ["whitespace-nowrap", "truncate"]) {
+      expect(tokens(el)).not.toContain(c);
+    }
+    expect(tokens(el).some((c) => /^(w|min-w)-\[/.test(c))).toBe(false);
+    expect(tokens(el)).toContain("text-muted");
+    expect(tokens(el)).not.toContain("text-vermilion");
   });
 });

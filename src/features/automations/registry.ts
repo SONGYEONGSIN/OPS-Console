@@ -9,6 +9,7 @@ import { runManualReviewReminder } from "./jobs/manual-review-reminder";
 import { runWeeklyReportRollover } from "./jobs/weekly-report";
 import { runSmileEdiMail } from "./jobs/smileedi-mail";
 import { runClosingScrape } from "./jobs/closing-scrape";
+import { OPS_WEEKLY_DEV_STATUS_JOB_ID } from "@/features/ops-weekly/constants";
 import { runRatioAudit } from "./jobs/ratio-audit";
 import { runRatioPageCheck } from "./jobs/ratio-page-check";
 import { runNewsCollect } from "./jobs/news-collect";
@@ -279,6 +280,20 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
     description:
       "GitHub에서 최근 뜨는 자동화·AI 리포를 수집해 claude로 TIP 초안까지 만들어 후보로 쌓습니다.\nTIP 페이지의 후보 탭에서 확인하고 등록합니다.",
     scheduleInfo: "매주 월 09:00 — 회사 PC Windows 작업 스케줄러 (claude CLI)",
+    cadence: "weekly",
+    cooldownMinutes: 60,
+    localOnly: true,
+    run: async () => ({
+      ok: false,
+      message: "로컬 전용 — 회사 PC 작업 스케줄러가 실행합니다.",
+    }),
+  },
+  {
+    id: OPS_WEEKLY_DEV_STATUS_JOB_ID,
+    label: "주간보고 개발 구분 수집",
+    description:
+      "Moa 작업진행현황의 테스트 오픈 칸을 읽어 시작 전 서비스의 개발/테스트 구분을 모읍니다.\n주간업무보고 원서접수 탭에서 쓰입니다.",
+    scheduleInfo: "매주 수요일 09:30 (회사 PC 로컬 예약 작업)",
     cadence: "weekly",
     cooldownMinutes: 60,
     localOnly: true,
