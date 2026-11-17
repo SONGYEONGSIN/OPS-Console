@@ -329,17 +329,70 @@ describe("제출완료 x 자동 저장", () => {
       );
     });
 
-    it("업로드가 실패하면 제출하지 않는다", async () => {
-      uploadWeeklyImage.mockResolvedValue({ ok: false, error: "너무 큼" });
+    it("업로드가 실패해도 기다린 뒤 제출을 막지 않는다(저장 안 된 내용이 없다)", async () => {
+      const d = deferred<{ ok: false; error: string }>();
+      uploadWeeklyImage.mockReturnValue(d.promise);
       mountProject();
       pasteImage();
       await waitFor(() => expect(uploadWeeklyImage).toHaveBeenCalled());
       fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
-      await waitFor(() =>
-        expect(blockedWith("제출하지 않았습니다")).toBe(true),
-      );
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
       expect(submitReport).not.toHaveBeenCalled();
+      await act(async () => {
+        d.resolve({ ok: false, error: "너무 큼" });
+      });
+      await waitFor(() => expect(submitReport).toHaveBeenCalledTimes(1));
+      expect(blockedWith("제출하지 않았습니다")).toBe(false);
     });
+  });
+
+  it("실패한 뒤 글을 서버 값으로 되돌려도 실패가 남아 제출을 막지 않는다", async () => {
+    saveAreaNote.mockResolvedValue({ ok: false, error: "저장 실패" });
+    render(<Screen />);
+    typeThenBlur("임시");
+    await screen.findByText("저장 안 됨");
+    saveAreaNote.mockResolvedValue({ ok: true });
+    typeThenBlur("");
+    await screen.findByText(/^저장됨/);
+    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
+    await waitFor(() => expect(submitReport).toHaveBeenCalledTimes(1));
+  });
+
+  it("실패한 건 메모를 서버 값으로 되돌려도 제출을 막지 않는다", async () => {
+    saveItemOverride
+      .mockResolvedValueOnce({ ok: false, error: "실패" })
+      .mockResolvedValue({ ok: true });
+    render(
+      <PendingSavesProvider>
+        <WeekHeader {...header} />
+        <OverrideControls
+          reportId="r1"
+          itemKey="k"
+          area="application"
+          note=""
+          excluded={false}
+          editable
+        >
+          <span>대학</span>
+        </OverrideControls>
+      </PendingSavesProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "메모" }));
+    fireEvent.change(screen.getByLabelText("건 메모"), {
+      target: { value: "메모1" },
+    });
+    fireEvent.blur(screen.getByLabelText("건 메모"));
+    await screen.findByText("실패");
+    fireEvent.click(screen.getByRole("button", { name: "메모 고치기" }));
+    fireEvent.change(screen.getByLabelText("건 메모"), {
+      target: { value: "" },
+    });
+    fireEvent.blur(screen.getByLabelText("건 메모"));
+    await waitFor(() => expect(saveItemOverride).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
+    await waitFor(() => expect(submitReport).toHaveBeenCalledTimes(1));
   });
 
   it("저장을 기다리는 동안 이유를 보여 준다", async () => {

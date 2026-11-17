@@ -47,7 +47,9 @@ export function AreaNotes(props: Props) {
 
   function save() {
     if (reportId === null) return;
-    if (thisDraft === thisWeek && nextDraft === nextWeek) return;
+    // 실패가 남아 있으면 같은 값이라도 저장해 기록을 푼다.
+    if (thisDraft === thisWeek && nextDraft === nextWeek && note.error === null)
+      return;
     note.run(() =>
       saveAreaNote({
         reportId,

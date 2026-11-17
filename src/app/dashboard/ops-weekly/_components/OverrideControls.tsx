@@ -110,7 +110,7 @@ export function OverrideControls(props: Props) {
     if (closed.current || reportId === null) return;
     closed.current = true;
     setEditing(false);
-    if (draft === confirmed) {
+    if (draft === confirmed && memo.error === null) {
       setShown(draft);
       return;
     }

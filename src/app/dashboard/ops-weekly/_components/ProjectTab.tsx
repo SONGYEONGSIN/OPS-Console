@@ -130,7 +130,8 @@ function EntryCard(props: {
     registry?.track(
       `upload:${reportId}:${entry.projectId}`,
       `${entry.projectName} 이미지 업로드`,
-      work.then((r) => r.error),
+      // 기다리게만 한다 — 업로드가 실패하면 저장 안 된 내용이 없으므로 실패로 기록하지 않는다.
+      work.then(() => null),
     );
     const r = await work;
     setUploadError(r.error);
