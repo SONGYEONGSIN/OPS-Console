@@ -23,6 +23,8 @@ const SESSIONLESS_ROUTES = [
   "/api/postal/extract",
   "/api/automations/run",
   "/api/closing/run-log",
+  // 주간보고 개발 구분 — 회사 PC 수집기가 인제스트·실행 기록을 보낸다(CRON_SECRET). /run-log 는 접두사로 함께 열린다.
+  "/api/ops-weekly/dev-status",
   "/api/invoice/amounts",
   // Teams 봇 — Bot Framework 가 부르는 자리라 세션이 없다.
   "/api/teams/messages",

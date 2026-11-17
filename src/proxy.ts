@@ -43,6 +43,7 @@ const PUBLIC_PATHS = [
   "/api/teams/flush",
   "/api/teams/poll",
   "/api/closing/run-log",
+  "/api/ops-weekly/dev-status",
   "/api/closing/scrape-request",
   "/api/ai-tips/candidates",
   "/api/entertest/test-request",

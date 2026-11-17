@@ -13,6 +13,11 @@ export type DevStatusRow = {
   collected_at: string;
 };
 
+/** 테스트 오픈 칸이 '-' 면 아직 개발, 검증된 일시가 있으면 테스트 단계다. */
+export function stageFromTestOpen(raw: string): DevStage {
+  return raw === "-" ? "dev" : "test";
+}
+
 export function freshDevStages(
   rows: readonly DevStatusRow[],
   weekStart: string,
