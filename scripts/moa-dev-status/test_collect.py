@@ -6,6 +6,9 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import requests
+from selenium.common.exceptions import TimeoutException, WebDriverException
+
 # `python -I` 는 스크립트 폴더를 넣지 않는다 — 자기 폴더와 Moa 로그인 모듈 폴더를 직접 넣는다.
 _HERE = Path(__file__).resolve().parent
 for _p in (_HERE.parent / "moa-closing", _HERE):
@@ -52,8 +55,10 @@ RERUN = "Start-ScheduledTask -TaskName 'OPS-Console-Ops-Weekly-Dev-Status'"
 
 
 class FakeDriver:
-    def __init__(self, serialized=OK_SERIAL, ajax=None):
+    def __init__(self, serialized=OK_SERIAL, ajax=None, get_error=None, ajax_error=None):
         self.serialized = serialized
+        self.get_error = get_error
+        self.ajax_error = ajax_error
         self.ajax = ajax if ajax is not None else {"status": 200, "body": page([row()])}
         self.visited = []
         self.fill_args = None
@@ -63,6 +68,8 @@ class FakeDriver:
 
     def get(self, url):
         self.visited.append(url)
+        if self.get_error:
+            raise self.get_error
 
     def execute_script(self, js, *args):
         if js == FILL_JS:
@@ -77,6 +84,8 @@ class FakeDriver:
 
     def execute_async_script(self, js, *args):
         self.async_calls.append(js)
+        if self.ajax_error:
+            raise self.ajax_error
         return self.ajax
 
     def quit(self):
@@ -125,6 +134,8 @@ class FakeHttp:
         self.posts.append(Post(url, kwargs))
         if isinstance(self.run_log, Exception) and url.endswith("/run-log"):
             raise self.run_log
+        if isinstance(self.ingest, Exception) and not url.endswith("/run-log"):
+            raise self.ingest
         return self.run_log if url.endswith("/run-log") else self.ingest
 
     def run_log_bodies(self):
@@ -190,7 +201,7 @@ class SerializedTest(Base):
     def test_직렬화_담당자_남음(self):
         self.assertCode(
             lambda: check_serialized(
-                "Manager=kim&Developer=&CategoryName=&a=2026-03-01&b=2027-05-17", S, E
+                "Manager=kim&Developer=&CategoryName=&ApplyFromTime=2026-03-01&ApplyToTime=2027-05-17", S, E
             ),
             "form_not_set",
         )
@@ -198,14 +209,14 @@ class SerializedTest(Base):
     def test_직렬화_수시_남음(self):
         self.assertCode(
             lambda: check_serialized(
-                f"Manager=&Developer=&CategoryName=%EC%88%98%EC%8B%9C&a={S}&b={E}", S, E
+                f"Manager=&Developer=&CategoryName=%EC%88%98%EC%8B%9C&ApplyFromTime={S}&ApplyToTime={E}", S, E
             ),
             "form_not_set",
         )
 
     def test_직렬화_키_없음(self):
         self.assertCode(
-            lambda: check_serialized(f"Developer=&CategoryName=&a={S}&b={E}", S, E),
+            lambda: check_serialized(f"Developer=&CategoryName=&ApplyFromTime={S}&ApplyToTime={E}", S, E),
             "form_not_set",
         )
 
@@ -219,7 +230,7 @@ class SerializedTest(Base):
 
     def test_직렬화_이유에_값을_싣지_않는다(self):
         err = self.assertCode(
-            lambda: check_serialized(f"Manager=kim&Developer=&CategoryName=&a={S}&b={E}", S, E),
+            lambda: check_serialized(f"Manager=kim&Developer=&CategoryName=&ApplyFromTime={S}&ApplyToTime={E}", S, E),
             "form_not_set",
         )
         self.assertIn("Manager", err.reason)
@@ -227,6 +238,34 @@ class SerializedTest(Base):
 
     def test_직렬화_정상(self):
         check_serialized(OK_SERIAL, S, E)
+
+    def test_직렬화_실제_모양은_통과(self):
+        # 정찰 본문의 키 모양(UnivServiceID 두 번, 토큰) — 토큰 값은 자리값
+        check_serialized(
+            f"Manager=&Developer=&ApplyFromTime={S}&ApplyToTime={E}&UnivServiceID=&UnivServiceID="
+            "&ServiceType=&CategoryName=&__RequestVerificationToken=tok",
+            S, E,
+        )
+
+    def test_직렬화_날짜는_키로_본다(self):
+        err = self.assertCode(  # 값은 다 있지만 칸이 뒤바뀜
+            lambda: check_serialized(
+                f"Manager=&Developer=&CategoryName=&ApplyFromTime={E}&ApplyToTime={S}", S, E
+            ),
+            "form_not_set",
+        )
+        self.assertEqual(err.reason, "ApplyFromTime 값이 다름")
+        self.assertNotIn(S, err.reason)
+        self.assertNotIn(E, err.reason)
+
+    def test_직렬화_종료일_키_없음(self):
+        err = self.assertCode(
+            lambda: check_serialized(
+                f"Manager=&Developer=&CategoryName=&ApplyFromTime={S}&To={E}", S, E
+            ),
+            "form_not_set",
+        )
+        self.assertEqual(err.reason, "ApplyToTime 키 없음")
 
 
 class FetchTest(Base):
@@ -257,10 +296,20 @@ class FetchTest(Base):
             self.assertIn(el, FILL_JS)
 
     def test_조회_직렬화_실패면_ajax_를_안_부른다(self):
-        drv = FakeDriver(serialized=f"Manager=kim&Developer=&CategoryName=&a={S}&b={E}")
+        drv = FakeDriver(serialized=f"Manager=kim&Developer=&CategoryName=&ApplyFromTime={S}&ApplyToTime={E}")
         with self.assertRaises(DevStatusFailure):
             fetch_work_status(drv, S, E, 1)
         self.assertEqual(drv.async_calls, [])
+
+    def test_조회_스크립트_타임아웃은_fetch_failed_타입만(self):
+        drv = FakeDriver(ajax_error=TimeoutException(f"script timeout {NAME}"))
+        err = self.assertCode(lambda: fetch_work_status(drv, S, E, 1), "fetch_failed")
+        self.assertEqual(err.reason, "TimeoutException")
+
+    def test_조회_WebDriver_오류는_fetch_failed_타입만(self):
+        drv = FakeDriver(get_error=WebDriverException(f"chrome gone {NAME}"))
+        err = self.assertCode(lambda: fetch_work_status(drv, S, E, 1), "fetch_failed")
+        self.assertEqual(err.reason, "WebDriverException")
 
     def test_조회_403(self):
         drv = FakeDriver(ajax={"status": 403, "body": ""})
@@ -275,16 +324,19 @@ class LoginRetryTest(Base):
         login = FakeLogin(
             [LeaseHeldError("closing", "t"), LeaseHeldError("closing", "t"), (drv, "우편함")]
         )
-        self.assertEqual(login_with_retry(ENV, login=login, sleep=sleeps.append), (drv, "우편함"))
+        with contextlib.redirect_stdout(io.StringIO()):
+            got = login_with_retry(ENV, login=login, sleep=sleeps.append)
+        self.assertEqual(got, (drv, "우편함"))
         self.assertEqual(sleeps, [240, 240])
         self.assertEqual(login.calls, 3)
 
     def test_재시도_세번_모두_409(self):
         sleeps = []
         login = FakeLogin([LeaseHeldError("closing", "t")] * 3)
-        err = self.assertCode(
-            lambda: login_with_retry(ENV, login=login, sleep=sleeps.append), "lease_busy"
-        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            err = self.assertCode(
+                lambda: login_with_retry(ENV, login=login, sleep=sleeps.append), "lease_busy"
+            )
         self.assertIn("closing", err.reason)
         self.assertEqual(login.calls, 3)
         self.assertEqual(sleeps, [240, 240])
@@ -315,6 +367,14 @@ class IngestTest(Base):
         )
         self.assertEqual(err.reason, "HTTP 200")
 
+    def test_인제스트_네트워크_오류는_ingest_failed_타입만(self):
+        http = FakeHttp(ingest=requests.exceptions.ConnectTimeout(f"timeout {NAME}"))
+        err = self.assertCode(
+            lambda: post_ingest("https://ops.test", "s", [(1000001, "-")], http=http),
+            "ingest_failed",
+        )
+        self.assertEqual(err.reason, "ConnectTimeout")
+
     def test_인제스트_ok_가_아니면_실패(self):
         http = FakeHttp(ingest=FakeResp(200, {"ok": False, "error": "x"}))
         self.assertCode(lambda: post_ingest("https://ops.test", "s", [(1000001, "-")], http=http),
@@ -332,7 +392,8 @@ class IngestTest(Base):
 
     def test_run_log_는_예외를_삼키고_1000자로_자른다(self):
         http = FakeHttp(run_log=ConnectionError("down"))
-        post_run_log("https://ops.test", "s", "failed", "가" * 1500, http=http)
+        with contextlib.redirect_stdout(io.StringIO()):
+            post_run_log("https://ops.test", "s", "failed", "가" * 1500, http=http)
         self.assertEqual(len(http.run_log_bodies()[0]["message"]), 1000)
         self.assertEqual(http.run_log_bodies()[0]["status"], "failed")
         self.assertTrue(http.posts[0].url.endswith("/api/ops-weekly/dev-status/run-log"))
@@ -407,6 +468,30 @@ class RunTest(Base):
         msg = http.run_log_bodies()[-1]["message"]
         self.assertTrue(msg.startswith("env_missing: "))
         self.assertIn("username", msg)
+
+    def test_조회_타임아웃은_단계_코드로_기록(self):
+        s, e = collect_range(NOW)  # 직렬화 확인을 통과해 ajax 까지 가야 한다
+        drv = FakeDriver(
+            serialized=f"Manager=&Developer=&CategoryName=&ApplyFromTime={s}&ApplyToTime={e}",
+            ajax_error=TimeoutException("t"),
+        )
+        http = FakeHttp()
+        with contextlib.redirect_stdout(io.StringIO()):
+            rc = run(ENV, now=NOW, dry_run=False, login=FakeLogin([(drv, "우편함")]),
+                     http=http, sleep=lambda s: None)
+        self.assertEqual(rc, 1)
+        self.assertTrue(
+            http.run_log_bodies()[-1]["message"].startswith("fetch_failed: TimeoutException — 재실행: ")
+        )
+        self.assertEqual(drv.quit_calls, 1)
+
+    def test_인제스트_네트워크_오류는_단계_코드로_기록(self):
+        http = FakeHttp(ingest=requests.exceptions.ConnectionError("down"))
+        rc, http, _, _, _ = self._run(page([row()]), http=http)
+        self.assertEqual(rc, 1)
+        self.assertTrue(
+            http.run_log_bodies()[-1]["message"].startswith("ingest_failed: ConnectionError — 재실행: ")
+        )
 
     def test_로그인_뒤_예상_밖_예외는_타입_이름만(self):
         drv = FakeDriver()

@@ -111,8 +111,7 @@ def build_env(environ: Mapping[str, str]) -> dict:
 def check_serialized(serialized: str, start: str, end: str) -> None:
     """보내기 전 폼 확인 — 값 넣기가 조용히 실패하면 기본값(본인·수시)으로 15행만 온다.
 
-    날짜는 키 이름이 아니라 값으로 본다(어느 칸이든 시작일·종료일 값이 있어야 한다).
-    이유에는 키 이름만 싣는다.
+    날짜 키 이름은 정찰로 확인했다(ApplyFromTime·ApplyToTime). 이유에는 키 이름만 싣는다.
     """
     qs = parse_qs(serialized, keep_blank_values=True)
     for key in _BLANK_KEYS:
@@ -120,11 +119,11 @@ def check_serialized(serialized: str, start: str, end: str) -> None:
             raise DevStatusFailure("form_not_set", f"{key} 키 없음")
         if any(v != "" for v in qs[key]):
             raise DevStatusFailure("form_not_set", f"{key} 값이 남아 있음")
-    values = {v for vs in qs.values() for v in vs}
-    if start not in values:
-        raise DevStatusFailure("form_not_set", "시작일 값 없음")
-    if end not in values:
-        raise DevStatusFailure("form_not_set", "종료일 값 없음")
+    for key, want in (("ApplyFromTime", start), ("ApplyToTime", end)):
+        if key not in qs:
+            raise DevStatusFailure("form_not_set", f"{key} 키 없음")
+        if qs[key] != [want]:
+            raise DevStatusFailure("form_not_set", f"{key} 값이 다름")
 
 
 def _wait_form(driver, wait_sec: int) -> None:
@@ -135,14 +134,26 @@ def _wait_form(driver, wait_sec: int) -> None:
         time.sleep(0.5)
 
 
-def fetch_work_status(driver, start: str, end: str, wait_sec: int) -> str:
-    """로그인한 페이지 안에서 작업진행현황을 조회해 본문 HTML 을 돌려준다(브라우저 밖 POST 는 IIS 403)."""
+def _query(driver, start: str, end: str, wait_sec: int):
     driver.get(WORK_STATUS_URL)
     _wait_form(driver, wait_sec)
     driver.execute_script(FILL_JS, start, end)
     check_serialized(driver.execute_script(SERIALIZE_JS) or "", start, end)
     driver.set_script_timeout(SCRIPT_TIMEOUT_SEC)
-    got = driver.execute_async_script(AJAX_JS) or {}
+    return driver.execute_async_script(AJAX_JS) or {}
+
+
+def fetch_work_status(driver, start: str, end: str, wait_sec: int) -> str:
+    """로그인한 페이지 안에서 작업진행현황을 조회해 본문 HTML 을 돌려준다(브라우저 밖 POST 는 IIS 403).
+
+    selenium 오류(스크립트 타임아웃 포함)는 fetch_failed 로 — 메시지는 싣지 않는다.
+    """
+    from selenium.common.exceptions import WebDriverException
+
+    try:
+        got = _query(driver, start, end, wait_sec)
+    except WebDriverException as e:
+        raise DevStatusFailure("fetch_failed", type(e).__name__) from None
     status = got.get("status")
     if status != 200:
         raise DevStatusFailure("fetch_failed", f"HTTP {status}")
@@ -203,13 +214,16 @@ def _auth(secret: str) -> dict:
 
 def post_ingest(base_url: str, secret: str, rows: list[tuple[int, str]], *, http=requests) -> dict:
     """한 번에 보낸다. 리다이렉트(PUBLIC_PATHS 누락 → /login HTML)를 성공으로 읽지 않게 ok 를 본다."""
-    resp = http.post(
-        f"{base_url.rstrip('/')}/api/ops-weekly/dev-status",
-        json={"rows": [{"service_id": sid, "test_open": t} for sid, t in rows]},
-        headers=_auth(secret),
-        timeout=30,
-        allow_redirects=False,
-    )
+    try:
+        resp = http.post(
+            f"{base_url.rstrip('/')}/api/ops-weekly/dev-status",
+            json={"rows": [{"service_id": sid, "test_open": t} for sid, t in rows]},
+            headers=_auth(secret),
+            timeout=30,
+            allow_redirects=False,
+        )
+    except requests.RequestException as e:
+        raise DevStatusFailure("ingest_failed", type(e).__name__) from None
     status = resp.status_code
     if status != 200:
         raise DevStatusFailure("ingest_failed", f"HTTP {status}")
