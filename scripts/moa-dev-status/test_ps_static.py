@@ -27,11 +27,16 @@ class TestRunLocal(unittest.TestCase):
         self.assertRegex(self.ps, r"Start-Sleep -Seconds 30")
         self.assertRegex(self.ps, r"AddMinutes\(25\)")
 
+    def test_대기_시작과_종료를_로그에_남긴다(self):
+        self.assertIn("대기 시작", self.ps)
+        self.assertIn("마감 스크랩 종료 확인", self.ps)
+        self.assertIn("TotalMinutes", self.ps)
+
     def test_작업을_못_찾으면_진행하고_로그에_남긴다(self):
         self.assertIn("-ErrorAction SilentlyContinue", self.ps)
 
     def test_인터프리터_와_종료코드(self):
-        self.assertIn('python -I -X utf8 -u "scripts\moa-dev-status\collect.py"', self.ps)
+        self.assertIn(r'python -I -X utf8 -u "scripts\moa-dev-status\collect.py"', self.ps)
         self.assertIn('$ErrorActionPreference = "Continue"', self.ps)
         self.assertIn("$LASTEXITCODE", self.ps)
         self.assertIn("run-local.log", self.ps)

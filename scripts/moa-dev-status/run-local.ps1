@@ -25,14 +25,24 @@ if ($null -eq $closing) {
     "마감 스크랩 작업을 찾지 못해 기다리지 않고 진행" | Out-File -Append -Encoding utf8 $log
 }
 else {
-    $deadline = (Get-Date).AddMinutes(25)
+    $waited = $false
+    $waitStart = Get-Date
+    $deadline = $waitStart.AddMinutes(25)
+    if ($closing.State -eq 'Running') {
+        "마감 스크랩 실행 중 — 끝날 때까지 대기 시작" | Out-File -Append -Encoding utf8 $log
+    }
     while ($closing.State -eq 'Running' -and (Get-Date) -lt $deadline) {
+        $waited = $true
         Start-Sleep -Seconds 30
         $closing = Get-ScheduledTask -TaskName 'OPS-Console-Closing-Scrape' -ErrorAction SilentlyContinue
         if ($null -eq $closing) { break }
     }
     if ($null -ne $closing -and $closing.State -eq 'Running') {
         "마감 스크랩이 25분이 지나도 실행 중 — 기다림을 멈추고 진행" | Out-File -Append -Encoding utf8 $log
+    }
+    elseif ($waited) {
+        $mins = [math]::Round(((Get-Date) - $waitStart).TotalMinutes, 1)
+        "마감 스크랩 종료 확인 — 대기 ${mins}분 후 진행" | Out-File -Append -Encoding utf8 $log
     }
 }
 
