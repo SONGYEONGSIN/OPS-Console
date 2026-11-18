@@ -75,6 +75,9 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
     const t = tokens(grid as Element);
     expect(t).toContain("xl:grid-cols-6");
     expect(t).not.toContain("lg:grid-cols-6");
+    // 한 칸 5장 + 합친 카드 2칸 = 6칸 — 2열·3열·6열 모두 고아 없이 채워진다
+    expect(t).toContain("grid-cols-2");
+    expect(t).toContain("md:grid-cols-3");
     expect(t).toContain("px-5");
     expect(t).toContain("lg:px-7");
     // 캡션이 위에 붙으면서 그리드 위 여백이 줄었다 — 캡션도 같은 좌우 여백
