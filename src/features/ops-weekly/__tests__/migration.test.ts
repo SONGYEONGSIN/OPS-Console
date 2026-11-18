@@ -7,15 +7,17 @@ import {
   PROJECT_STAGES,
   SEED_PROJECT_NAMES,
 } from "../constants";
+import { DEV_STAGES } from "../dev-status";
 
 // 주석을 먼저 지운다 — 정의를 주석 처리하고도 초록이면 대조가 아니다.
-const sql = readFileSync(
-  join(process.cwd(), "supabase/migrations/20261116_ops_weekly.sql"),
-  "utf8",
-)
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .replace(/--.*$/gm, "")
-  .replace(/\s+/g, " ");
+function migration(file: string): string {
+  return readFileSync(join(process.cwd(), "supabase/migrations", file), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/--.*$/gm, "")
+    .replace(/\s+/g, " ");
+}
+
+const sql = migration("20261116_ops_weekly.sql");
 
 // 칸 단언은 해당 테이블 정의 안에서만 본다.
 function body(table: string): string {
@@ -180,5 +182,32 @@ describe("ops_weekly 마이그레이션", () => {
     expect(sql).toMatch(
       /grant\s+execute on function public\.ops_weekly_replace_rotation\(text\[\]\)\s+to service_role/,
     );
+  });
+});
+
+describe("ops_weekly_dev_status 구분 check — deployed 추가", () => {
+  const deployed = migration("20261118_ops_weekly_dev_status_deployed.sql");
+  // 원본은 이름 없는 칸 check 라 Postgres 기본 이름(<표>_<칸>_check)을 받았다.
+  const NAME = "ops_weekly_dev_status_stage_check";
+
+  it("원본 check 는 이름 없는 칸 check 다 — 그래서 기본 이름을 지운다", () => {
+    expect(body("ops_weekly_dev_status")).toContain(
+      "stage text not null check (stage in ('dev','test'))",
+    );
+  });
+
+  it("drop if exists 뒤에 같은 이름으로 DEV_STAGES 를 다시 건다", () => {
+    const list = DEV_STAGES.map((s) => `'${s}'`).join(",");
+    const drop = `alter table public.ops_weekly_dev_status drop constraint if exists ${NAME};`;
+    const add = `alter table public.ops_weekly_dev_status add constraint ${NAME} check (stage in (${list}));`;
+    expect(deployed).toContain(drop);
+    expect(deployed).toContain(add);
+    expect(deployed.indexOf(drop)).toBeLessThan(deployed.indexOf(add));
+    expect(list).toBe("'dev','test','deployed'");
+  });
+
+  it("check 만 바꾼다 — 칸을 더하지 않는다", () => {
+    expect(deployed).not.toMatch(/add column/i);
+    expect(deployed.match(/alter table/g)).toHaveLength(2);
   });
 });

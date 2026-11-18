@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { devStatusIngestSchema } from "@/features/ops-weekly/dev-status-schemas";
-import { stageFromTestOpen } from "@/features/ops-weekly/dev-status";
+import { stageFromMoa, type DevStage } from "@/features/ops-weekly/dev-status";
 
 /**
  * 주간보고 개발 구분 인제스트 — `Authorization: Bearer ${CRON_SECRET}` 인증.
  *
- * 회사 PC 수집기가 Moa 에서 읽은 서비스별 '테스트 오픈' 칸을 보낸다.
+ * 회사 PC 수집기가 Moa 에서 읽은 서비스별 '테스트 오픈'·'리얼배포' 칸을 보낸다.
+ * - raw_label 은 테스트 오픈 원문이다. 리얼배포 원문은 저장하지 않는다(구분 deployed 로만 남는다).
  * - 지우지 않는 upsert: 이번에 안 온 서비스의 이전 행은 그대로 둔다(미확인 판정은 리더가 collected_at 으로 한다).
  * - collected_at 은 서버 시각이다 — PC 시계를 믿지 않는다.
  */
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   const collectedAt = new Date().toISOString();
   const rows = parsed.data.rows.map((r) => ({
     service_id: r.service_id,
-    stage: stageFromTestOpen(r.test_open),
+    stage: stageFromMoa(r),
     raw_label: r.test_open,
     collected_at: collectedAt,
   }));
@@ -64,11 +65,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const dev = rows.filter((r) => r.stage === "dev").length;
+  const count = (stage: DevStage) =>
+    rows.filter((r) => r.stage === stage).length;
   return NextResponse.json({
     ok: true,
     received: rows.length,
-    dev,
-    test: rows.length - dev,
+    dev: count("dev"),
+    test: count("test"),
+    deployed: count("deployed"),
   });
 }

@@ -4,7 +4,8 @@
  */
 import { weekWindows } from "./week";
 
-export const DEV_STAGES = ["dev", "test"] as const;
+// deployed = 리얼배포가 끝났는데 접수가 아직 시작 전. 개발·테스트 어느 묶음에도 넣지 않는다.
+export const DEV_STAGES = ["dev", "test", "deployed"] as const;
 export type DevStage = (typeof DEV_STAGES)[number];
 
 export type DevStatusRow = {
@@ -13,9 +14,16 @@ export type DevStatusRow = {
   collected_at: string;
 };
 
-/** 테스트 오픈 칸이 '-' 면 아직 개발, 검증된 일시가 있으면 테스트 단계다. */
-export function stageFromTestOpen(raw: string): DevStage {
-  return raw === "-" ? "dev" : "test";
+/**
+ * Moa 작업진행현황의 두 칸으로 가른다. 리얼배포 일시가 있으면 테스트 오픈과 무관하게 deployed,
+ * 아니면 테스트 오픈이 '-' 면 아직 개발, 검증된 일시가 있으면 테스트 단계다.
+ */
+export function stageFromMoa(row: {
+  test_open: string;
+  real_deploy: string;
+}): DevStage {
+  if (row.real_deploy !== "-") return "deployed";
+  return row.test_open === "-" ? "dev" : "test";
 }
 
 export function freshDevStages(

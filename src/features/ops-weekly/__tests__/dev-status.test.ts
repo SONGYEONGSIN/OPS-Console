@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEV_STAGES, freshDevStages, stageFromTestOpen } from "../dev-status";
+import { DEV_STAGES, freshDevStages, stageFromMoa } from "../dev-status";
 
 describe("freshDevStages", () => {
   it("그 주에 수집된 구분만 남긴다", () => {
@@ -25,14 +25,27 @@ describe("freshDevStages", () => {
       ).size,
     ).toBe(1);
   });
-  it("구분은 dev·test 둘", () => {
-    expect([...DEV_STAGES]).toEqual(["dev", "test"]);
+  it("구분은 dev·test·deployed 셋", () => {
+    expect([...DEV_STAGES]).toEqual(["dev", "test", "deployed"]);
+  });
+  it("deployed 도 그 주에 수집됐으면 남는다", () => {
+    const m = freshDevStages(
+      [{ service_id: 5, stage: "deployed", collected_at: "2026-11-16T00:00:00Z" }],
+      "2026-11-16",
+    );
+    expect(m.get(5)).toBe("deployed");
   });
 });
 
-describe("stageFromTestOpen", () => {
-  it("테스트 오픈이 '-' 면 dev, 일시면 test", () => {
-    expect(stageFromTestOpen("-")).toBe("dev");
-    expect(stageFromTestOpen("2026-11-10 14:00:00")).toBe("test");
+describe("stageFromMoa", () => {
+  const T = "2026-11-10 14:00:00";
+  const R = "2026-11-12 09:00:00";
+  it("리얼배포가 '-' 면 테스트 오픈으로 가른다 — '-' 면 dev, 일시면 test", () => {
+    expect(stageFromMoa({ test_open: "-", real_deploy: "-" })).toBe("dev");
+    expect(stageFromMoa({ test_open: T, real_deploy: "-" })).toBe("test");
+  });
+  it("리얼배포 일시가 있으면 테스트 오픈과 무관하게 deployed", () => {
+    expect(stageFromMoa({ test_open: T, real_deploy: R })).toBe("deployed");
+    expect(stageFromMoa({ test_open: "-", real_deploy: R })).toBe("deployed");
   });
 });

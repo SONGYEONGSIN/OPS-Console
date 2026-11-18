@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const DEV_STATUS_MAX_ROWS = 5000;
+// 테스트 오픈·리얼배포 칸 모두 이 모양이다
 export const TEST_OPEN_RE = /^(-|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})$/;
 
 export const devStatusIngestSchema = z
@@ -10,6 +11,7 @@ export const devStatusIngestSchema = z
         z.object({
           service_id: z.number().int().positive(),
           test_open: z.string().regex(TEST_OPEN_RE),
+          real_deploy: z.string().regex(TEST_OPEN_RE),
         }),
       )
       .min(1)

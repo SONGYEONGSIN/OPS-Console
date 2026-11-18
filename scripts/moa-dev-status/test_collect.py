@@ -29,6 +29,7 @@ from collect import (  # noqa: E402
     post_ingest,
     post_run_log,
     run,
+    stage_counts,
     success_message,
 )
 from parse import DevStatusFailure  # noqa: E402
@@ -131,7 +132,9 @@ class FakeHttp:
     """/dev-status 에 빈 본문 {} 이면 사전 확인, rows 가 있으면 인제스트, /run-log 는 실행 기록."""
 
     def __init__(self, ingest=None, run_log=None, preflight=None):
-        self.ingest = ingest or FakeResp(200, {"ok": True, "received": 1, "dev": 0, "test": 1})
+        self.ingest = ingest or FakeResp(
+            200, {"ok": True, "received": 1, "dev": 0, "test": 1, "deployed": 0}
+        )
         self.run_log = run_log or FakeResp(200, {"ok": True})
         self.preflight = preflight or PREFLIGHT_OK
         self.posts = []
@@ -371,14 +374,14 @@ class LoginRetryTest(Base):
 class IngestTest(Base):
     def test_인제스트_리다이렉트는_실패(self):
         http = FakeHttp(ingest=FakeResp(307, None))
-        self.assertCode(lambda: post_ingest("https://ops.test", "s", [(1000001, "-")], http=http),
+        self.assertCode(lambda: post_ingest("https://ops.test", "s", [(1000001, "-", "-")], http=http),
                         "ingest_failed")
         self.assertIs(http.posts[0].kwargs["allow_redirects"], False)
 
     def test_인제스트_200_HTML은_실패(self):
         http = FakeHttp(ingest=FakeResp(200, bad_json=True))
         err = self.assertCode(
-            lambda: post_ingest("https://ops.test", "s", [(1000001, "-")], http=http),
+            lambda: post_ingest("https://ops.test", "s", [(1000001, "-", "-")], http=http),
             "ingest_failed",
         )
         self.assertEqual(err.reason, "HTTP 200")
@@ -386,23 +389,34 @@ class IngestTest(Base):
     def test_인제스트_네트워크_오류는_ingest_failed_타입만(self):
         http = FakeHttp(ingest=requests.exceptions.ConnectTimeout(f"timeout {NAME}"))
         err = self.assertCode(
-            lambda: post_ingest("https://ops.test", "s", [(1000001, "-")], http=http),
+            lambda: post_ingest("https://ops.test", "s", [(1000001, "-", "-")], http=http),
             "ingest_failed",
         )
         self.assertEqual(err.reason, "ConnectTimeout")
 
     def test_인제스트_ok_가_아니면_실패(self):
         http = FakeHttp(ingest=FakeResp(200, {"ok": False, "error": "x"}))
-        self.assertCode(lambda: post_ingest("https://ops.test", "s", [(1000001, "-")], http=http),
+        self.assertCode(lambda: post_ingest("https://ops.test", "s", [(1000001, "-", "-")], http=http),
                         "ingest_failed")
+
+    def test_인제스트_본문_리얼배포(self):
+        http = FakeHttp()
+        post_ingest("https://ops.test", "s", [(1000001, "-", "2026-11-12 09:00:00")], http=http)
+        self.assertEqual(
+            http.posts[0].json,
+            {"rows": [{"service_id": 1000001, "test_open": "-",
+                       "real_deploy": "2026-11-12 09:00:00"}]},
+        )
 
     def test_인제스트_본문(self):
         http = FakeHttp()
-        resp = post_ingest("https://ops.test", "s3cret", [(1000001, "-")], http=http)
+        resp = post_ingest("https://ops.test", "s3cret", [(1000001, "-", "-")], http=http)
         self.assertTrue(resp["ok"])
         p = http.posts[0]
         self.assertTrue(p.url.endswith("/api/ops-weekly/dev-status"))
-        self.assertEqual(p.json, {"rows": [{"service_id": 1000001, "test_open": "-"}]})
+        self.assertEqual(
+            p.json, {"rows": [{"service_id": 1000001, "test_open": "-", "real_deploy": "-"}]}
+        )
         self.assertEqual(p.kwargs["headers"]["Authorization"], "Bearer s3cret")
         self.assertEqual(p.kwargs["timeout"], 30)
 
@@ -416,12 +430,23 @@ class IngestTest(Base):
 
 
 class MessageTest(Base):
+    def test_구분_건수는_리얼배포가_테스트오픈보다_먼저다(self):
+        rows = [
+            (1, "-", "-"),
+            (2, "2026-11-10 14:00:00", "-"),
+            (3, "2026-11-10 14:00:00", "2026-11-12 09:00:00"),
+            (4, "-", "2026-11-12 09:00:00"),
+        ]
+        self.assertEqual(stage_counts(rows), {"test": 1, "dev": 1, "deployed": 2})
+
     def test_성공_문구(self):
         self.assertEqual(
             success_message(
-                {"ok": True, "received": 1463, "dev": 158, "test": 1305}, S, E, "우편함"
+                {"ok": True, "received": 1463, "dev": 158, "test": 1205, "deployed": 100},
+                S, E, "우편함",
             ),
-            "수집 1,463건 — 테스트 1,305 · 개발 158 · 범위 2026-03-01~2027-05-17 (SMS: 우편함)",
+            "수집 1,463건 — 테스트 1,205 · 개발 158 · 배포 100 "
+            "· 범위 2026-03-01~2027-05-17 (SMS: 우편함)",
         )
 
 
@@ -455,18 +480,29 @@ class RunTest(Base):
             self.assertNotIn(NAME, json.dumps([p.json for p in http.posts], ensure_ascii=False))
 
     def test_성공이면_인제스트_뒤_성공_기록(self):
-        http = FakeHttp(ingest=FakeResp(200, {"ok": True, "received": 2, "dev": 1, "test": 1}))
-        rc, http, out, drv, _ = self._run(page([row("1000001"), row("1000002", "-")]), http=http)
+        http = FakeHttp(ingest=FakeResp(
+            200, {"ok": True, "received": 3, "dev": 1, "test": 1, "deployed": 1}
+        ))
+        html = page([
+            row("1000001"),
+            row("1000002", "-"),
+            row("1000003", real_deploy="2026-11-12 09:00:00"),
+        ])
+        rc, http, out, drv, _ = self._run(html, http=http)
         self.assertEqual(rc, 0)
         self.assertEqual(
             http.ingest_posts()[0].json["rows"],
-            [{"service_id": 1000001, "test_open": "2026-11-10 14:00:00"},
-             {"service_id": 1000002, "test_open": "-"}],
+            [{"service_id": 1000001, "test_open": "2026-11-10 14:00:00", "real_deploy": "-"},
+             {"service_id": 1000002, "test_open": "-", "real_deploy": "-"},
+             {"service_id": 1000003, "test_open": "2026-11-10 14:00:00",
+              "real_deploy": "2026-11-12 09:00:00"}],
         )
+        self.assertIn("(테스트 1 · 개발 1 · 배포 1)", out)
         self.assertEqual(
             http.run_log_bodies(),
             [{"status": "success",
-              "message": "수집 2건 — 테스트 1 · 개발 1 · 범위 2026-03-01~2027-05-18 (SMS: 우편함)"}],
+              "message": "수집 3건 — 테스트 1 · 개발 1 · 배포 1 "
+                         "· 범위 2026-03-01~2027-05-18 (SMS: 우편함)"}],
         )
         self.assertEqual(drv.quit_calls, 1)
 

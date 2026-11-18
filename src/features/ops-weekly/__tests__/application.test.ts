@@ -81,6 +81,50 @@ describe("buildApplicationGroups", () => {
     expect(keys(g.unknown)).toEqual(["closing:2", "closing:1"]);
     expect(g.devStatusCollected).toBe(true);
   });
+  it("리얼배포 끝난 시작 전 서비스는 개발·테스트·미확인 어디에도 없고, 오픈 주면 차주 오픈 예정에 든다", () => {
+    const fresh = freshDevStages(
+      [
+        { service_id: 1, stage: "deployed", collected_at: "2026-11-16T00:00:00Z" },
+        { service_id: 4, stage: "deployed", collected_at: "2026-11-16T00:00:00Z" },
+        { service_id: 2, stage: "test", collected_at: "2026-11-16T00:00:00Z" },
+      ],
+      "2026-11-16",
+    );
+    const g = buildApplicationGroups({
+      rows,
+      operatorName: "운영자A",
+      devStages: fresh,
+      devStatusCollected: true,
+      weekStart: "2026-11-16",
+      now: NOW,
+    });
+    const staged = [...keys(g.dev), ...keys(g.test), ...keys(g.unknown)];
+    expect(staged).not.toContain("closing:1");
+    expect(staged).not.toContain("closing:4");
+    expect(keys(g.opening)).toEqual(["closing:2", "closing:1"]);
+    expect(keys(g.test)).toEqual(["closing:2"]);
+    expect(g.dev).toEqual([]);
+    expect(g.unknown).toEqual([]);
+    expect(keys(g.running)).toEqual(["closing:3", "closing:7"]);
+    expect(keys(g.closing)).toEqual(["closing:3"]);
+  });
+  it("dev·test 구분은 그대로 간다", () => {
+    const g = buildApplicationGroups({
+      rows,
+      operatorName: "운영자A",
+      devStages: new Map([
+        [1, "dev" as const],
+        [2, "test" as const],
+        [4, "deployed" as const],
+      ]),
+      devStatusCollected: true,
+      weekStart: "2026-11-16",
+      now: NOW,
+    });
+    expect(keys(g.dev)).toEqual(["closing:1"]);
+    expect(keys(g.test)).toEqual(["closing:2"]);
+    expect(g.unknown).toEqual([]);
+  });
   it("수집 여부는 넘겨받은 값이다 — 본인 구분이 0건이어도 그 주에 수집됐으면 수집됨", () => {
     const g = buildApplicationGroups({
       rows,

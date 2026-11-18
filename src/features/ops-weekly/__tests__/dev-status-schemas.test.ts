@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { devStatusIngestSchema, devStatusRunLogSchema } from "../dev-status-schemas";
 
-const row = (id: number, t = "-") => ({ service_id: id, test_open: t });
+const row = (id: number, t = "-", r = "-") => ({
+  service_id: id,
+  test_open: t,
+  real_deploy: r,
+});
 
 describe("devStatusIngestSchema", () => {
   it.each([
@@ -9,7 +13,10 @@ describe("devStatusIngestSchema", () => {
     ["날짜만", { rows: [row(1000001, "2026-11-10")] }],
     ["글자", { rows: [row(1000001, "개발중")] }],
     ["0", { rows: [row(0)] }],
-    ["문자 id", { rows: [{ service_id: "1000001", test_open: "-" }] }],
+    ["문자 id", { rows: [{ service_id: "1000001", test_open: "-", real_deploy: "-" }] }],
+    ["리얼배포 날짜만", { rows: [row(1000001, "-", "2026-11-12")] }],
+    ["리얼배포 글자", { rows: [row(1000001, "-", "배포완료")] }],
+    ["리얼배포 없음", { rows: [{ service_id: 1000001, test_open: "-" }] }],
     ["중복", { rows: [row(1000001), row(1000001)] }],
     [
       "5,001행",
@@ -18,6 +25,14 @@ describe("devStatusIngestSchema", () => {
   ])("거절: %s", (_, body) =>
     expect(devStatusIngestSchema.safeParse(body).success).toBe(false),
   );
+
+  it("리얼배포 일시를 받는다", () => {
+    expect(
+      devStatusIngestSchema.safeParse({
+        rows: [row(1000001, "2026-11-10 14:00:00", "2026-11-12 09:00:00")],
+      }).success,
+    ).toBe(true);
+  });
 
   it("5,000행은 받는다", () => {
     expect(
