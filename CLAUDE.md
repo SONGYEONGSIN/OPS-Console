@@ -224,7 +224,7 @@ E2E 운영 메모:
 
 **자동 항목은 당번의 [최종 보고] 때 전원 것을 한꺼번에 굳힌다**(`freeze.ts`). 제출 때 고정되는 것은 손으로 쓴 내용뿐이고, 제출했어도 최종 보고 전까지 자동 항목은 열 때마다 새로 계산한다. 제출 때 굳히면 수요일 수집 전에 낸 보고서가 `구분 미확인` 으로 굳고, 같은 주 보고서끼리 기준 시각이 갈린다. **굳히기가 하나라도 실패하면 보고하지 않는다** — 앞선 보고서는 이미 굳었을 수 있지만, 주는 open 으로 남고 `week-reported` 도 안 나간다. 다시 누르면 전원을 다시 굳힌다(일반 주. 정정 주는 비어 있는 것만 채운다). **정정 뒤 다시 보고해도 굳은 값은 그대로다** — 비어 있는 스냅샷만 채우고, 다시 작성 요청도 스냅샷을 지우지 않는다.
 
-**확장 자리 둘.** `emitOpsWeeklyEvent` 의 `OPS_WEEKLY_HOOKS` 는 A2·A3 이 훅을 등록할 자리다(`all-submitted`·`report-returned`·`week-reported`). `ops_weekly_dev_status` 는 A4 가 수요일 09:30 회사 PC 작업으로 채운다. 비어 있으면 개발/테스트 구분은 `구분 미확인` 이다.
+**확장 자리 둘.** `emitOpsWeeklyEvent` 의 `OPS_WEEKLY_HOOKS` 는 A2·A3 이 훅을 등록할 자리다(`all-submitted`·`report-returned`·`week-reported`). `ops_weekly_dev_status` 는 A4 가 수요일 09:30 회사 PC 작업으로 채운다. 구분은 셋이다 — `dev`(테스트 오픈 `-`) · `test`(테스트 오픈 일시) · `deployed`(리얼배포 일시, 테스트 오픈과 무관). `deployed` 인 시작 전 서비스는 개발·테스트·미확인 어디에도 넣지 않고, 오픈 주가 오면 접수기간으로 차주 오픈 예정에 든다. 비어 있으면 개발/테스트 구분은 `구분 미확인` 이다.
 
 **그림은 비공개 버킷이다.** DB 엔 `<img data-ops-path>` 경로만 저장하고 화면에 낼 때 `signProjectEntries` 로 1시간 서명 URL 을 채운다. 두 방향 모두 `note-images.ts` 한 곳을 거친다.
 

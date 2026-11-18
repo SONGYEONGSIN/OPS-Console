@@ -7,15 +7,17 @@ import {
   PROJECT_STAGES,
   SEED_PROJECT_NAMES,
 } from "../constants";
+import { DEV_STAGES } from "../dev-status";
 
 // 주석을 먼저 지운다 — 정의를 주석 처리하고도 초록이면 대조가 아니다.
-const sql = readFileSync(
-  join(process.cwd(), "supabase/migrations/20261116_ops_weekly.sql"),
-  "utf8",
-)
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .replace(/--.*$/gm, "")
-  .replace(/\s+/g, " ");
+function migration(file: string): string {
+  return readFileSync(join(process.cwd(), "supabase/migrations", file), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/--.*$/gm, "")
+    .replace(/\s+/g, " ");
+}
+
+const sql = migration("20261116_ops_weekly.sql");
 
 // 칸 단언은 해당 테이블 정의 안에서만 본다.
 function body(table: string): string {
@@ -180,5 +182,46 @@ describe("ops_weekly 마이그레이션", () => {
     expect(sql).toMatch(
       /grant\s+execute on function public\.ops_weekly_replace_rotation\(text\[\]\)\s+to service_role/,
     );
+  });
+});
+
+describe("ops_weekly_dev_status 구분 check — deployed 추가", () => {
+  const deployed = migration("20261118_ops_weekly_dev_status_deployed.sql");
+  const NAME = "ops_weekly_dev_status_stage_check";
+  const TABLE = "public.ops_weekly_dev_status";
+
+  it("원본 check 는 이름 없는 칸 check 다 — 그래서 이름을 짐작하지 않는다", () => {
+    expect(body("ops_weekly_dev_status")).toContain(
+      "stage text not null check (stage in ('dev','test'))",
+    );
+    expect(deployed).not.toContain("drop constraint if exists");
+  });
+
+  it("stage 를 보는 check 를 이름과 무관하게 pg_constraint 에서 찾아 모두 지운다", () => {
+    expect(deployed.trim()).toMatch(/^do \$\$ /);
+    expect(deployed).toContain(
+      `from pg_constraint where conrelid = '${TABLE}'::regclass and contype = 'c' and pg_get_constraintdef(oid) ilike '%stage%' loop`,
+    );
+    expect(deployed).toContain(
+      `execute format('alter table ${TABLE} drop constraint %I', r.conname);`,
+    );
+  });
+
+  it("루프 뒤에 같은 이름으로 DEV_STAGES 를 다시 건다 — 블록 안이라 한 번에 바뀐다", () => {
+    const list = DEV_STAGES.map((s) => `'${s}'`).join(",");
+    expect(list).toBe("'dev','test','deployed'");
+    const add = `alter table ${TABLE} add constraint ${NAME} check (stage in (${list}));`;
+    const endLoop = deployed.indexOf("end loop;");
+    const addAt = deployed.indexOf(add);
+    const endBlock = deployed.indexOf("end $$;");
+    expect(endLoop).toBeGreaterThan(-1);
+    expect(addAt).toBeGreaterThan(endLoop);
+    expect(endBlock).toBeGreaterThan(addAt);
+    expect(deployed.trim().endsWith("end $$;")).toBe(true);
+  });
+
+  it("check 만 바꾼다 — 칸을 더하지 않는다", () => {
+    expect(deployed).not.toMatch(/add column/i);
+    expect(deployed.match(/add constraint/g)).toHaveLength(1);
   });
 });

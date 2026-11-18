@@ -12,7 +12,11 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 import { POST } from "../route";
 
-const row = (id: number, t = "-") => ({ service_id: id, test_open: t });
+const row = (id: number, t = "-", r = "-") => ({
+  service_id: id,
+  test_open: t,
+  real_deploy: r,
+});
 
 function req(opts: { secret?: string; body?: unknown; raw?: string } = {}) {
   return new Request("http://localhost/api/ops-weekly/dev-status", {
@@ -83,13 +87,55 @@ describe("/api/ops-weekly/dev-status", () => {
       }),
     );
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, received: 2, dev: 1, test: 1 });
+    expect(await res.json()).toEqual({
+      ok: true,
+      received: 2,
+      dev: 1,
+      test: 1,
+      deployed: 0,
+    });
     expect(fromSpy.mock.calls.map(([t]) => t)).toEqual(["ops_weekly_dev_status"]);
     expect(upsertSpy).toHaveBeenCalledTimes(1);
     expect(upsertSpy).toHaveBeenCalledWith(
       [
         { service_id: 1000001, stage: "dev", raw_label: "-", collected_at: "2026-11-18T00:30:00.000Z" },
         { service_id: 1000002, stage: "test", raw_label: "2026-11-10 14:00:00", collected_at: "2026-11-18T00:30:00.000Z" },
+      ],
+      { onConflict: "service_id" },
+    );
+  });
+
+  it("리얼배포 일시가 있으면 deployed — raw_label 은 테스트 오픈 원문 그대로", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-18T00:30:00Z"));
+    const res = await POST(
+      req({
+        secret: "s3cr3t",
+        body: {
+          rows: [
+            row(1000001, "-"),
+            row(1000002, "2026-11-10 14:00:00"),
+            row(1000003, "2026-11-10 14:00:00", "2026-11-12 09:00:00"),
+            row(1000004, "-", "2026-11-13 10:30:00"),
+          ],
+        },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      ok: true,
+      received: 4,
+      dev: 1,
+      test: 1,
+      deployed: 2,
+    });
+    const at = "2026-11-18T00:30:00.000Z";
+    expect(upsertSpy).toHaveBeenCalledWith(
+      [
+        { service_id: 1000001, stage: "dev", raw_label: "-", collected_at: at },
+        { service_id: 1000002, stage: "test", raw_label: "2026-11-10 14:00:00", collected_at: at },
+        { service_id: 1000003, stage: "deployed", raw_label: "2026-11-10 14:00:00", collected_at: at },
+        { service_id: 1000004, stage: "deployed", raw_label: "-", collected_at: at },
       ],
       { onConflict: "service_id" },
     );

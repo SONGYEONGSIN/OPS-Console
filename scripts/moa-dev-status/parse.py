@@ -14,7 +14,8 @@ NO_RESULT_TEXT = "검색 결과가 존재하지 않습니다."
 
 _TABLE_SUMMARY = "작업진행현황"
 _ID_RE = re.compile(r"^\d{7}$")
-_TEST_OPEN_RE = re.compile(r"^(-|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})$")
+# 테스트 오픈(7번째)·리얼배포(8번째) 칸 — 둘 다 '-' 아니면 초까지 있는 일시다
+_STAMP_RE = re.compile(r"^(-|\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})$")
 _MANAGER_CELL = 1  # 0부터: 2번째 칸
 
 
@@ -125,7 +126,8 @@ class _TableParser(HTMLParser):
                 self._row["span"] += data
 
 
-def parse_work_status(html: str) -> list[tuple[int, str]]:
+def parse_work_status(html: str) -> list[tuple[int, str, str]]:
+    """(서비스ID, 테스트 오픈 원문, 리얼배포 원문) 목록."""
     p = _TableParser()
     p.feed(html)
     p.close()
@@ -139,7 +141,7 @@ def parse_work_status(html: str) -> list[tuple[int, str]]:
     if all(len(r["cells"]) == 1 and NO_RESULT_TEXT in r["cells"][0] for r in rows):
         raise DevStatusFailure("empty", "행이 없거나 검색 결과가 없다")
 
-    out: list[tuple[int, str]] = []
+    out: list[tuple[int, str, str]] = []
     seen: set[int] = set()
     for n, r in enumerate(rows, start=1):
         if r.get("unclosed"):
@@ -151,12 +153,14 @@ def parse_work_status(html: str) -> list[tuple[int, str]]:
         sid = (r["span"] or "").strip()
         if not _ID_RE.match(sid):
             raise DevStatusFailure("row_shape", f"행 {n}: 서비스ID span 이 7자리 숫자가 아니다")
-        test_open = r["cells"][6]
-        if not _TEST_OPEN_RE.match(test_open):
+        test_open, real_deploy = r["cells"][6], r["cells"][7]
+        if not _STAMP_RE.match(test_open):
             raise DevStatusFailure("row_shape", f"행 {n}: 테스트 오픈 칸이 '-' 도 일시도 아니다")
+        if not _STAMP_RE.match(real_deploy):
+            raise DevStatusFailure("row_shape", f"행 {n}: 리얼배포 칸이 '-' 도 일시도 아니다")
         service_id = int(sid)
         if service_id in seen:
             raise DevStatusFailure("duplicate_id", f"행 {n}: 서비스ID {service_id} 가 중복이다")
         seen.add(service_id)
-        out.append((service_id, test_open))
+        out.append((service_id, test_open, real_deploy))
     return out

@@ -91,7 +91,10 @@ export function buildApplicationGroups(args: {
     const phase = phaseOf(row, ref);
     if (phase === "upcoming") {
       const stage = args.devStages.get(row.service_id);
-      out[stage ?? "unknown"].push(toItem(row, row.write_start_at));
+      // 리얼배포가 끝났으면 개발도 테스트도 미확인도 아니다 — 오픈 주가 오면 차주 오픈 예정에 든다.
+      if (stage !== "deployed") {
+        out[stage ?? "unknown"].push(toItem(row, row.write_start_at));
+      }
     }
     if (opensNextWeek(row.write_start_at, ref)) {
       out.opening.push(toItem(row, row.write_start_at));

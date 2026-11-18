@@ -237,12 +237,25 @@ def preflight(base_url: str, secret: str, *, http=requests) -> None:
         raise DevStatusFailure("server_not_ready", f"HTTP {status}")
 
 
-def post_ingest(base_url: str, secret: str, rows: list[tuple[int, str]], *, http=requests) -> dict:
+def stage_counts(rows: list[tuple[int, str, str]]) -> dict[str, int]:
+    """서버 판정과 같은 규칙 — 리얼배포가 있으면 배포, 아니면 테스트 오픈이 있으면 테스트, 둘 다 없으면 개발."""
+    deployed = sum(1 for _, _, r in rows if r != "-")
+    test = sum(1 for _, t, r in rows if r == "-" and t != "-")
+    return {"test": test, "dev": len(rows) - deployed - test, "deployed": deployed}
+
+
+def post_ingest(
+    base_url: str, secret: str, rows: list[tuple[int, str, str]], *, http=requests
+) -> dict:
     """한 번에 보낸다. 리다이렉트(PUBLIC_PATHS 누락 → /login HTML)를 성공으로 읽지 않게 ok 를 본다."""
     try:
         resp = http.post(
             f"{base_url.rstrip('/')}/api/ops-weekly/dev-status",
-            json={"rows": [{"service_id": sid, "test_open": t} for sid, t in rows]},
+            json={
+                "rows": [
+                    {"service_id": sid, "test_open": t, "real_deploy": r} for sid, t, r in rows
+                ]
+            },
             headers=_auth(secret),
             timeout=30,
             allow_redirects=False,
@@ -280,7 +293,7 @@ def post_run_log(base_url: str, secret: str, status: str, message: str, *, http=
 def success_message(resp: dict, start: str, end: str, sms_label: str) -> str:
     return (
         f"수집 {resp['received']:,}건 — 테스트 {resp['test']:,} · 개발 {resp['dev']:,} "
-        f"· 범위 {start}~{end} (SMS: {sms_label})"
+        f"· 배포 {resp['deployed']:,} · 범위 {start}~{end} (SMS: {sms_label})"
     )
 
 
@@ -328,8 +341,11 @@ def run(
             _quit(driver)
         rows = parse_work_status(html)
         del html
-        n_dev = sum(1 for _, t in rows if t == "-")
-        print(f"[INFO] 행 {len(rows):,}건 (테스트 {len(rows) - n_dev:,} · 개발 {n_dev:,})")
+        n = stage_counts(rows)
+        print(
+            f"[INFO] 행 {len(rows):,}건 "
+            f"(테스트 {n['test']:,} · 개발 {n['dev']:,} · 배포 {n['deployed']:,})"
+        )
         if dry_run:
             print("[DRY-RUN] 인제스트·실행 기록 미전송")
             return 0
