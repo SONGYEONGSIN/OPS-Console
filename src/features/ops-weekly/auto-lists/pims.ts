@@ -55,20 +55,24 @@ export function buildPimsGroups(args: {
   };
 }
 
-/** 금주·차주 창에 드는데 담당이 명단에 안 붙는 행 수. 담당 null·공백·퇴사자도 센다. */
-export function countUnmatchedPims(args: {
+/** 금주·차주 창에 드는데 담당이 명단에 안 붙는 행. 담당 null·공백·퇴사자도 센다. 개수는 이 목록의 길이다. */
+export function listUnmatchedPims(args: {
   rows: readonly PimsLite[];
   writerNames: ReadonlySet<string>;
   weekStart: string;
-}): number {
+}): PimsLite[] {
   const { thisWeek, nextWeek } = weekWindows(args.weekStart);
-  let n = 0;
-  for (const row of args.rows) {
+  return args.rows.filter((row) => {
     const ymd = announceYmd(row.last_announce_at);
-    if (ymd === null) continue;
-    if (!ymdInRange(ymd, thisWeek) && !ymdInRange(ymd, nextWeek)) continue;
+    if (ymd === null) return false;
+    if (!ymdInRange(ymd, thisWeek) && !ymdInRange(ymd, nextWeek)) return false;
     const name = row.operator_name?.trim() ?? "";
-    if (name === "" || !args.writerNames.has(name)) n += 1;
-  }
-  return n;
+    return name === "" || !args.writerNames.has(name);
+  });
+}
+
+export function countUnmatchedPims(
+  args: Parameters<typeof listUnmatchedPims>[0],
+): number {
+  return listUnmatchedPims(args).length;
 }

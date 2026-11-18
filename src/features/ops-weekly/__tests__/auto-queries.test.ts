@@ -56,7 +56,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-import { listDevStatuses, loadAutoSnapshot } from "../auto-queries";
+import {
+  listDevStatuses,
+  loadAutoSnapshot,
+  loadUnmatchedServices,
+} from "../auto-queries";
 
 const ok = (data: unknown[]): TableResponse => ({ data, error: null });
 
@@ -302,6 +306,64 @@ describe("listDevStatuses", () => {
     });
     await expect(listDevStatuses([1])).rejects.toThrow(
       "[ops-weekly] ops_weekly_dev_status: nope",
+    );
+  });
+});
+
+describe("loadUnmatchedServices", () => {
+  const args = {
+    weekStart: "2026-11-16",
+    writerNames: new Set(["운영자A"]),
+    now: new Date("2026-11-17T01:00:00.000Z"),
+  };
+
+  it("명단 밖 담당자의 서비스·발표를 행 그대로 돌려준다", async () => {
+    mockTables({
+      closing_services: [
+        CL_OPENING,
+        { ...CL_OPENING, service_id: 2, operator_name: "퇴사자" },
+      ],
+      announcement_services: [
+        PIMS_THIS,
+        { ...PIMS_THIS, service_id: 10, operator_name: null },
+      ],
+    });
+    const r = await loadUnmatchedServices(args);
+    expect(r.application.map((x) => [x.service_id, x.operator_name])).toEqual([
+      [2, "퇴사자"],
+    ]);
+    expect(r.pims.map((x) => x.service_id)).toEqual([10]);
+  });
+
+  it("개수와 같은 원천이다 — 스냅샷의 안 붙음 수와 목록 길이가 같다", async () => {
+    mockTables({
+      closing_services: [
+        { ...CL_OPENING, service_id: 2, operator_name: "퇴사자" },
+      ],
+      announcement_services: [{ ...PIMS_THIS, operator_name: null }],
+      backup_requests: [],
+      schedule_events: [],
+      ops_weekly_dev_status: [],
+    });
+    const list = await loadUnmatchedServices(args);
+    const snap = await loadAutoSnapshot({
+      ...args,
+      operatorEmail: "a@example.com",
+      operatorName: "운영자A",
+    });
+    expect(snap.unmatched).toEqual({
+      application: list.application.length,
+      pims: list.pims.length,
+    });
+  });
+
+  it("조회 에러는 던진다", async () => {
+    responses.set("closing_services", {
+      data: null,
+      error: { message: "boom" },
+    });
+    await expect(loadUnmatchedServices(args)).rejects.toThrow(
+      "[ops-weekly] closing_services: boom",
     );
   });
 });

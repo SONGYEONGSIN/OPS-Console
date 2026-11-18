@@ -115,23 +115,27 @@ export function buildApplicationGroups(args: {
   };
 }
 
-/** 다섯 묶음 중 어딘가에 드는데 담당이 명단에 안 붙는 행 수(행 단위, 중복 없음). */
-export function countUnmatchedApplication(args: {
+/** 다섯 묶음 중 어딘가에 드는데 담당이 명단에 안 붙는 행(행 단위, 중복 없음). 개수는 이 목록의 길이다. */
+export function listUnmatchedApplication(args: {
   rows: readonly ClosingLite[];
   writerNames: ReadonlySet<string>;
   weekStart: string;
   now: Date;
-}): number {
+}): ClosingLite[] {
   const ref = referenceInstant(args.weekStart, args.now);
-  let n = 0;
-  for (const row of args.rows) {
+  return args.rows.filter((row) => {
     const name = row.operator_name?.trim() ?? "";
-    if (name !== "" && args.writerNames.has(name)) continue;
-    const inGroup =
+    if (name !== "" && args.writerNames.has(name)) return false;
+    return (
       phaseOf(row, ref) !== "closed" ||
       opensNextWeek(row.write_start_at, ref) ||
-      endsNextWeek(row.write_end_at, ref);
-    if (inGroup) n += 1;
-  }
-  return n;
+      endsNextWeek(row.write_end_at, ref)
+    );
+  });
+}
+
+export function countUnmatchedApplication(
+  args: Parameters<typeof listUnmatchedApplication>[0],
+): number {
+  return listUnmatchedApplication(args).length;
 }

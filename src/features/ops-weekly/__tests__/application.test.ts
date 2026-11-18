@@ -4,6 +4,7 @@ import {
   buildApplicationGroups,
   countUnmatchedApplication,
   endsNextWeek,
+  listUnmatchedApplication,
   type AutoItem,
   type ClosingLite,
 } from "../auto-lists/application";
@@ -214,5 +215,30 @@ describe("countUnmatchedApplication", () => {
         now: NOW,
       }),
     ).toBe(0);
+  });
+});
+
+describe("listUnmatchedApplication", () => {
+  it("목록의 길이가 곧 개수다 — 두 판정이 갈릴 수 없다", () => {
+    const args = {
+      rows,
+      writerNames: new Set(["운영자A"]),
+      weekStart: "2026-11-16",
+      now: NOW,
+    };
+    const list = listUnmatchedApplication(args);
+    expect(list.length).toBe(countUnmatchedApplication(args));
+    expect(list.length).toBe(2);
+  });
+  it("행 원문(담당자 이름 포함)을 그대로 돌려준다", () => {
+    const row = c(9, "  ", { write_start_at: "2026-11-23T00:00:00Z" });
+    expect(
+      listUnmatchedApplication({
+        rows: [row],
+        writerNames: new Set(["운영자A"]),
+        weekStart: "2026-11-16",
+        now: NOW,
+      }),
+    ).toEqual([row]);
   });
 });

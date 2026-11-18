@@ -109,14 +109,16 @@ export type WeeklyKpis = {
   pims: number;
 };
 
-function kept(
+/** 뺀 건을 뺀 자동 건수 — KPI 와 하위 탭 숫자가 같은 식을 쓴다. */
+export function kept(
   list: readonly AutoItem[],
   overrides: ReadonlyMap<string, ItemOverride>,
 ): number {
   return list.filter((i) => !overrides.get(i.key)?.excluded).length;
 }
 
-function manualCount(
+/** 그 영역·묶음 키들의 직접 추가 건수. */
+export function manualCount(
   manual: readonly ManualItem[],
   area: AutoArea,
   keys: readonly string[],

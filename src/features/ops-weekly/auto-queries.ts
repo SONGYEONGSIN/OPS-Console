@@ -10,6 +10,7 @@ import { phaseOf } from "@/features/closing/phase";
 import {
   buildApplicationGroups,
   countUnmatchedApplication,
+  listUnmatchedApplication,
   sameName,
   type ClosingLite,
 } from "./auto-lists/application";
@@ -21,8 +22,10 @@ import {
 import {
   buildPimsGroups,
   countUnmatchedPims,
+  listUnmatchedPims,
   type PimsLite,
 } from "./auto-lists/pims";
+import type { UnmatchedServices } from "./auto-lists/unmatched";
 import { normEmail } from "./email";
 import { freshDevStages, type DevStatusRow } from "./dev-status";
 import type { AutoSnapshot } from "./merge";
@@ -196,5 +199,40 @@ export async function loadAutoSnapshot(args: {
       }),
       pims: countUnmatchedPims({ rows: pims, writerNames, weekStart }),
     },
+  };
+}
+
+/**
+ * 안 붙은 서비스 목록 — 설정 탭이 보는 주 기준 실시간 값.
+ * 스냅샷의 `unmatched` 개수와 같은 `listUnmatched…` 판정을 쓴다(개수 = 목록 길이).
+ */
+export async function loadUnmatchedServices(args: {
+  weekStart: string;
+  writerNames: ReadonlySet<string>;
+  now: Date;
+}): Promise<UnmatchedServices> {
+  const { weekStart, now } = args;
+  const writerNames = new Set([...args.writerNames].map((n) => n.trim()));
+  const win = weekWindows(weekStart);
+  const startIso = win.startInstant.toISOString();
+  const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
+  const db = createAdminClient();
+  const [closing, pimsRes] = await Promise.all([
+    listOpenClosing(db, startIso),
+    db
+      .from("announcement_services")
+      .select(PIMS_COLUMNS)
+      .gte("last_announce_at", startIso)
+      .lte("last_announce_at", endIso),
+  ]);
+  const pims = rowsOf<PimsLite>("announcement_services", pimsRes);
+  return {
+    application: listUnmatchedApplication({
+      rows: closing,
+      writerNames,
+      weekStart,
+      now,
+    }),
+    pims: listUnmatchedPims({ rows: pims, writerNames, weekStart }),
   };
 }
