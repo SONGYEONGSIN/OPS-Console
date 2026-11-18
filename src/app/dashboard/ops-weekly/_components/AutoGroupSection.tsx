@@ -101,7 +101,7 @@ export function AutoGroupSection(props: Props) {
   return (
     <GroupShell
       title={title}
-      count={items.length + manual.length}
+      count={items.filter((i) => !i.excluded).length + manual.length}
       add={canAdd ? { reportId, area, groupKey } : null}
     >
       {body}

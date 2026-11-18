@@ -35,13 +35,46 @@ export function parseWeekParam(v: string | undefined): string | null {
   return weekRefFromStart(v) === null ? null : v;
 }
 
+/** 원서접수 탭의 하위 탭 키 — 첫 값이 기본이다. 묶음 키(merge)에 `unknown` 이 더해진 어휘. */
+export const APP_SUBS = [
+  "dev",
+  "test",
+  "unknown",
+  "running",
+  "opening",
+  "closing",
+  "other",
+] as const;
+/** PIMS 탭의 하위 탭 키 — 첫 값이 기본이다. */
+export const PIMS_SUBS = ["thisWeek", "nextWeek"] as const;
+export type SubTabArea = "application" | "pims";
+
+const DEFAULT_SUB: Record<SubTabArea, string> = {
+  application: "dev",
+  pims: "thisWeek",
+};
+
+/**
+ * `?sub=` 를 그 탭의 하위 탭 키로 — 없거나, 그 탭의 키가 아니거나, 지금 안 보이는 탭이면 기본값.
+ * `visible` 은 그 탭의 키 목록 중 지금 화면에 있는 것(구분 미확인 0건이면 빠진다).
+ */
+export function parseSub(
+  tab: SubTabArea,
+  raw: string | null,
+  visible: readonly string[],
+): string {
+  return raw !== null && visible.includes(raw) ? raw : DEFAULT_SUB[tab];
+}
+
 export function opsWeeklyHref(
   weekStart: string,
   tab: string,
   op: string | null,
+  sub: string | null = null,
 ): string {
   const base = `${OPS_WEEKLY_PATH}?week=${weekStart}&tab=${tab}`;
-  return op === null ? base : `${base}&op=${encodeURIComponent(op)}`;
+  const withOp = op === null ? base : `${base}&op=${encodeURIComponent(op)}`;
+  return sub === null ? withOp : `${withOp}&sub=${sub}`;
 }
 
 export function buildTabs(args: {

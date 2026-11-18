@@ -9,12 +9,14 @@ import { EMPTY, item, snap } from "./tab-fixtures";
 
 const m = vi.hoisted(() => ({
   loadAutoSnapshot: vi.fn(),
+  loadUnmatchedServices: vi.fn(),
   report: null as unknown,
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/ops-weekly/auto-queries", () => ({
   loadAutoSnapshot: m.loadAutoSnapshot,
+  loadUnmatchedServices: m.loadUnmatchedServices,
 }));
 
 const WEEK: WeekRow = {
@@ -55,7 +57,7 @@ vi.mock("@/features/ops-weekly/note-images", () => ({
   signProjectEntries: async <T>(entries: T) => entries,
 }));
 vi.mock("@/features/ops-weekly/settings-queries", () => ({
-  loadSettingsBundle: async () => null,
+  loadSettingsBundle: async () => ({ marker: "bundle" }),
 }));
 
 import {
@@ -96,6 +98,7 @@ function kindOf(v: OpsWeeklyView) {
 
 beforeEach(() => {
   m.loadAutoSnapshot.mockReset();
+  m.loadUnmatchedServices.mockReset();
 });
 
 describe("loadOpsWeeklyPage — 자동 항목 읽는 규칙", () => {
@@ -123,6 +126,33 @@ describe("loadOpsWeeklyPage — 자동 항목 읽는 규칙", () => {
     const v = await loadOpsWeeklyPage(ME, {}, NOW);
     expect(m.loadAutoSnapshot).not.toHaveBeenCalled();
     expect(kindOf(v).snapshot).toBe(SNAP);
+  });
+});
+
+describe("loadOpsWeeklyPage — 안 붙은 서비스 목록", () => {
+  const ADMIN: CurrentOperator = { ...ME, permission: "admin" };
+  const LIST = { application: [], pims: [] };
+
+  it("관리자의 설정 탭에서만, 그 주·작성 명단 기준으로 읽는다", async () => {
+    m.report = reportOf({ status: "draft", snapshot: snap() });
+    m.loadUnmatchedServices.mockResolvedValue(LIST);
+    const v = await loadOpsWeeklyPage(ADMIN, { tab: "settings" }, NOW);
+    expect(m.loadUnmatchedServices).toHaveBeenCalledTimes(1);
+    const args = m.loadUnmatchedServices.mock.calls[0][0];
+    expect(args.weekStart).toBe("2026-11-16");
+    expect([...args.writerNames]).toEqual(["운영자A"]);
+    expect(args.now).toBe(NOW);
+    expect(kindOf(v).unmatched).toBe(LIST);
+  });
+
+  it("다른 탭이나 비관리자에게는 읽지도 내보내지도 않는다", async () => {
+    m.report = reportOf({ status: "draft", snapshot: snap() });
+    m.loadUnmatchedServices.mockResolvedValue(LIST);
+    const a = await loadOpsWeeklyPage(ADMIN, { tab: "application" }, NOW);
+    const b = await loadOpsWeeklyPage(ME, { tab: "settings" }, NOW);
+    expect(m.loadUnmatchedServices).not.toHaveBeenCalled();
+    expect(kindOf(a).unmatched).toBeNull();
+    expect(kindOf(b).unmatched).toBeNull();
   });
 });
 

@@ -1,7 +1,11 @@
 import "server-only";
 
 import type { CurrentOperator } from "@/features/auth/queries";
-import { loadAutoSnapshot } from "@/features/ops-weekly/auto-queries";
+import type { UnmatchedServices } from "@/features/ops-weekly/auto-lists/unmatched";
+import {
+  loadAutoSnapshot,
+  loadUnmatchedServices,
+} from "@/features/ops-weekly/auto-queries";
 import { normEmail } from "@/features/ops-weekly/email";
 import {
   computeKpis,
@@ -80,6 +84,8 @@ export type OpsWeeklyView =
       finalize: FinalizeCheck | null;
       /** settings 탭에서만 (Task 15) */
       bundle: SettingsBundle | null;
+      /** settings 탭에서만, 이 주 기준 실시간 값 */
+      unmatched: UnmatchedServices | null;
     };
 
 type Sp = { week?: string; tab?: string; op?: string };
@@ -263,6 +269,14 @@ export async function loadOpsWeeklyPage(
   // 설정 번들은 관리자의 설정 탭에서만 읽는다(parseTab 이 비관리자의 settings 를 돌려보낸다).
   const bundle =
     tab === "settings" && actor.isAdmin ? await loadSettingsBundle() : null;
+  const unmatched =
+    bundle === null
+      ? null
+      : await loadUnmatchedServices({
+          weekStart,
+          writerNames: new Set(writers.map((w) => w.name)),
+          now,
+        });
   return {
     kind: "week",
     week,
@@ -284,5 +298,6 @@ export async function loadOpsWeeklyPage(
     projectGroups: status?.projectGroups ?? null,
     finalize: status?.finalize ?? null,
     bundle,
+    unmatched,
   };
 }

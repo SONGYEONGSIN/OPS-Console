@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { buildTabs, parseTab, parseWeekParam } from "../_params";
+import {
+  APP_SUBS,
+  PIMS_SUBS,
+  buildTabs,
+  opsWeeklyHref,
+  parseSub,
+  parseTab,
+  parseWeekParam,
+} from "../_params";
 
 describe("parseTab", () => {
   it("설정은 admin 만", () => {
@@ -60,5 +68,61 @@ describe("buildTabs", () => {
     expect(t[6].href).toBe(
       "/dashboard/ops-weekly?week=2026-11-16&tab=settings",
     );
+  });
+});
+
+describe("parseSub", () => {
+  it("없거나 목록 밖이면 탭별 기본값", () => {
+    expect(parseSub("application", null, APP_SUBS)).toBe("dev");
+    expect(parseSub("application", "nope", APP_SUBS)).toBe("dev");
+    expect(parseSub("pims", null, PIMS_SUBS)).toBe("thisWeek");
+    expect(parseSub("pims", "", PIMS_SUBS)).toBe("thisWeek");
+  });
+  it("다른 탭의 키는 기본값으로 돌린다", () => {
+    expect(parseSub("application", "nextWeek", APP_SUBS)).toBe("dev");
+    expect(parseSub("pims", "running", PIMS_SUBS)).toBe("thisWeek");
+  });
+  it("지금 안 보이는 탭(구분 미확인 0건)은 기본값", () => {
+    const visible = APP_SUBS.filter((k) => k !== "unknown");
+    expect(parseSub("application", "unknown", visible)).toBe("dev");
+    expect(parseSub("application", "unknown", APP_SUBS)).toBe("unknown");
+  });
+  it("보이는 유효 키는 그대로", () => {
+    expect(parseSub("application", "closing", APP_SUBS)).toBe("closing");
+    expect(parseSub("pims", "nextWeek", PIMS_SUBS)).toBe("nextWeek");
+  });
+  it("묶음 키 목록은 merge 의 묶음 키와 같은 어휘다", () => {
+    expect([...APP_SUBS].sort()).toEqual(
+      ["dev", "test", "unknown", "running", "opening", "closing", "other"].sort(),
+    );
+    expect([...PIMS_SUBS]).toEqual(["thisWeek", "nextWeek"]);
+  });
+});
+
+describe("opsWeeklyHref sub", () => {
+  it("sub 가 없으면 기존 모양 그대로", () => {
+    expect(opsWeeklyHref("2026-11-16", "pims", null)).toBe(
+      "/dashboard/ops-weekly?week=2026-11-16&tab=pims",
+    );
+    expect(opsWeeklyHref("2026-11-16", "pims", null, null)).toBe(
+      "/dashboard/ops-weekly?week=2026-11-16&tab=pims",
+    );
+  });
+  it("sub 는 op 뒤에 붙는다", () => {
+    expect(opsWeeklyHref("2026-11-16", "application", null, "test")).toBe(
+      "/dashboard/ops-weekly?week=2026-11-16&tab=application&sub=test",
+    );
+    expect(opsWeeklyHref("2026-11-16", "application", "a@x", "test")).toBe(
+      "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=a%40x&sub=test",
+    );
+  });
+  it("탭 이동 링크(buildTabs)는 sub 를 들고 가지 않는다", () => {
+    const t = buildTabs({
+      weekStart: "2026-11-16",
+      op: null,
+      isAdmin: false,
+      checked: [],
+    });
+    expect(t.every((x) => !x.href.includes("sub="))).toBe(true);
   });
 });
