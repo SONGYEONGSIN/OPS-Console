@@ -48,6 +48,10 @@ export function PimsTab({
       kept(snapshot.pims[g.key], detail.overrides) +
       manualCount(detail.manual, "pims", [g.key]),
   }));
+  const autoCount = GROUPS.reduce(
+    (n, g) => n + kept(snapshot.pims[g.key], detail.overrides),
+    0,
+  );
   const panels = Object.fromEntries(
     GROUPS.map((g) => [
       g.key,
@@ -68,7 +72,7 @@ export function PimsTab({
     <div className="flex flex-col gap-7 p-5 lg:p-7">
       <TabHeading
         title="PIMS"
-        summary={`자동 ${snapshot.pims.thisWeek.length + snapshot.pims.nextWeek.length}건 · 직접 ${
+        summary={`자동 ${autoCount}건 · 직접 ${
           detail.manual.filter((m) => m.area === "pims").length
         }건`}
       >

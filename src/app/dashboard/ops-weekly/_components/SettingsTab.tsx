@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  NO_UNMATCHED,
-  type UnmatchedServices,
-} from "@/features/ops-weekly/auto-lists/unmatched";
+import type { UnmatchedServices } from "@/features/ops-weekly/auto-lists/unmatched";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
 import { ProjectCatalogPanel } from "./ProjectCatalogPanel";
 import { RecipientsPanel } from "./RecipientsPanel";
@@ -13,11 +10,11 @@ import { WriterExclusionPanel } from "./WriterExclusionPanel";
 
 export function SettingsTab({
   bundle,
-  unmatched = NO_UNMATCHED,
+  unmatched,
 }: {
   bundle: SettingsBundle;
-  /** 이 주 기준 안 붙은 서비스(실시간) */
-  unmatched?: UnmatchedServices;
+  /** 이 주 기준 안 붙은 서비스(실시간). null = 읽지 않았다 — 0건으로 그리지 않는다 */
+  unmatched: UnmatchedServices | null;
 }) {
   const excluded = new Set(bundle.excludedWriterEmails);
   // 순번·담당자는 제외를 반영한 명단에서만 고른다(서버도 같은 명단으로 검증한다).

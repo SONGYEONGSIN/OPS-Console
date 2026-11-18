@@ -359,7 +359,7 @@ describe("ApplicationTab — 안 붙은 서비스 안내는 관리자에게만",
     );
     expect(
       screen.getByText(
-        "담당자가 맞지 않아 아무에게도 안 붙은 서비스 4건 — 서비스 마감 메뉴에서 담당자 이름을 확인하세요",
+        "담당자가 맞지 않아 아무에게도 안 붙은 서비스 4건 — 서비스마감 메뉴에서 담당자 이름을 확인하세요",
       ),
     ).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "설정에서 목록 보기" });
@@ -397,5 +397,93 @@ describe("ApplicationTab — 굳는 시점 안내", () => {
       />,
     );
     expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
+  });
+});
+
+describe("ApplicationTab — 숫자 규칙·기본 탭(리뷰 반영)", () => {
+  it("탭 머리 요약 '자동 N건'도 뺀 건을 세지 않는다", () => {
+    const base = snap({ devStatusCollected: true });
+    render(
+      <ApplicationTab
+        {...PROPS}
+        snapshot={{
+          ...base,
+          application: {
+            ...base.application,
+            running: [item("a"), item("b"), item("c")],
+          },
+        }}
+        detail={{
+          ...EMPTY,
+          overrides: new Map([
+            ["b", { item_key: "b", note: "", excluded: true }],
+          ]),
+        }}
+      />,
+    );
+    expect(screen.getByText("자동 2건 · 직접 0건")).toBeInTheDocument();
+    expect(tabCount("운영 중")).toBe("2");
+  });
+
+  it("미수집 문구의 '시작 전 서비스 N건'도 뺀 건을 뺀다", () => {
+    const base = snap({ devStatusCollected: false });
+    render(
+      <ApplicationTab
+        {...PROPS}
+        snapshot={{
+          ...base,
+          application: {
+            ...base.application,
+            unknown: [item("u1"), item("u2"), item("u3")],
+          },
+        }}
+        detail={{
+          ...EMPTY,
+          overrides: new Map([
+            ["u2", { item_key: "u2", note: "", excluded: true }],
+          ]),
+        }}
+      />,
+    );
+    expect(
+      screen.getAllByText(
+        "개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 2건)",
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("구분 미수집 주의 기본 탭은 운영 중, 수집된 주는 개발 중(sub 없음)", () => {
+    const { unmount } = render(
+      <ApplicationTab
+        {...PROPS}
+        snapshot={snap({ devStatusCollected: false })}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: /운영 중/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    unmount();
+    render(
+      <ApplicationTab {...PROPS} snapshot={snap({ devStatusCollected: true })} />,
+    );
+    expect(screen.getByRole("tab", { name: /개발 중/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("URL 의 sub 는 기본값보다 우선한다(수집 전 주에도)", () => {
+    setUrl("?sub=dev");
+    render(
+      <ApplicationTab
+        {...PROPS}
+        snapshot={snap({ devStatusCollected: false })}
+      />,
+    );
+    expect(screen.getByRole("tab", { name: /개발 중/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 });

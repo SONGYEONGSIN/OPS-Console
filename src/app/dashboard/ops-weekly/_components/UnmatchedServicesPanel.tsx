@@ -66,13 +66,15 @@ const nameOf = (n: string | null) =>
 export function UnmatchedServicesPanel({
   unmatched,
 }: {
-  unmatched: UnmatchedServices;
+  /** null = 목록을 읽지 않았다 — 0건('없다')과 갈라 적는다 */
+  unmatched: UnmatchedServices | null;
 }) {
   return (
     <section
       id="unmatched"
       aria-label="안 붙은 서비스"
-      className="flex scroll-mt-4 flex-col gap-3"
+      // 일회성 임의 값: 고정 KPI 바(--ops-kpi-h) 아래에 서도록. 바가 없는 lg 미만은 scroll-mt-4.
+      className="flex scroll-mt-4 flex-col gap-3 lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
     >
       <h2 className="text-xl font-bold text-ink">안 붙은 서비스</h2>
       <p className="text-xs text-muted">
@@ -81,6 +83,10 @@ export function UnmatchedServicesPanel({
         고치세요. 보고서 탭의 숫자는 굳은 값일 수 있어 이 목록(현재 기준)과 다를
         수 있습니다.
       </p>
+      {unmatched === null ? (
+        <p className="text-sm text-muted">목록을 불러오지 않았습니다</p>
+      ) : (
+        <>
       <Group
         title="원서접수"
         tableLabel="원서접수 안 붙은 서비스"
@@ -109,6 +115,8 @@ export function UnmatchedServicesPanel({
           ],
         }))}
       />
+        </>
+      )}
     </section>
   );
 }

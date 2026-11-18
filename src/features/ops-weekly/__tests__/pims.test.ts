@@ -95,4 +95,17 @@ describe("listUnmatchedPims", () => {
     expect(list.map((r) => r.service_id)).toEqual([1, 2]);
     expect(list.length).toBe(countUnmatchedPims(args));
   });
+
+  it("발표일 순으로 정렬해 돌려준다(같으면 서비스ID 순)", () => {
+    const list = listUnmatchedPims({
+      weekStart: "2026-11-16",
+      writerNames: new Set<string>(),
+      rows: [
+        p(5, null, "2026-11-27T01:00:00Z"),
+        p(3, null, "2026-11-20T01:00:00Z"),
+        p(2, null, "2026-11-20T01:00:00Z"),
+      ],
+    });
+    expect(list.map((r) => r.service_id)).toEqual([2, 3, 5]);
+  });
 });

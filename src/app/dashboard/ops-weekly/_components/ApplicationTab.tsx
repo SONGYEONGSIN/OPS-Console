@@ -7,6 +7,7 @@ import {
   type AutoSnapshot,
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
+import { defaultAppSub } from "../_params";
 import { AreaNotes } from "./AreaNotes";
 import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
@@ -60,7 +61,11 @@ export function ApplicationTab({
     app.running,
     app.closing,
   ];
-  const autoCount = shownLists.reduce((n, l) => n + l.length, 0);
+  // 뺀 건은 세지 않는다 — 하위 탭·묶음 머리·KPI 와 같은 식(kept).
+  const autoCount = shownLists.reduce(
+    (n, l) => n + kept(l, detail.overrides),
+    0,
+  );
   const directCount = detail.manual.filter(
     (m) => m.area === "application",
   ).length;
@@ -91,7 +96,7 @@ export function ApplicationTab({
       // 구분이 수집되지 않은 주 — 문구와, 그래도 직접 추가한 건이 있으면 그 목록만.
       <>
         <p className="py-2 text-sm text-muted">
-          {`개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 ${app.unknown.length}건)`}
+          {`개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 ${kept(app.unknown, detail.overrides)}건)`}
         </p>
         {manualCount(detail.manual, "application", [key]) > 0
           ? section(key, title, [], false)
@@ -143,7 +148,7 @@ export function ApplicationTab({
           isAdmin={isAdmin}
           count={unmatched}
           noun="서비스"
-          action="서비스 마감 메뉴에서 담당자 이름을 확인하세요"
+          action="서비스마감 메뉴에서 담당자 이름을 확인하세요"
           settingsHref={settingsHref}
         />
       </TabHeading>
@@ -152,6 +157,7 @@ export function ApplicationTab({
         ariaLabel="원서접수 묶음"
         tabs={tabs}
         panels={panels}
+        defaultKey={defaultAppSub(app.devStatusCollected)}
       />
       <AreaNotes
         reportId={reportId}

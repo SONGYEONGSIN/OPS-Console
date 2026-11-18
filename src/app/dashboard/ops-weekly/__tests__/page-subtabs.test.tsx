@@ -13,7 +13,9 @@ vi.mock("../../_components/page-header/PageHeader", () => ({
   PageHeader: () => null,
 }));
 vi.mock("../_components/WeekHeader", () => ({ WeekHeader: () => null }));
-vi.mock("@/components/common/PageTabs", () => ({ PageTabs: () => null }));
+vi.mock("@/components/common/PageTabs", () => ({
+  PageTabs: () => <nav data-testid="page-tabs" />,
+}));
 vi.mock("@/features/ops-weekly/actions", () => ({
   saveItemOverride: vi.fn(),
   removeManualItem: vi.fn(),
@@ -122,7 +124,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     state.view = viewFor("application", true);
     await renderPage("application");
     expect(
-      screen.getByText(/안 붙은 서비스 3건 — 서비스 마감 메뉴/),
+      screen.getByText(/안 붙은 서비스 3건 — 서비스마감 메뉴/),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "설정에서 목록 보기" }),
@@ -180,5 +182,60 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
       within(region).getByRole("heading", { name: "원서접수 1건" }),
     ).toBeInTheDocument();
     expect(within(region).getByText("대학1")).toBeInTheDocument();
+  });
+
+  it("KPI 바가 있으면 탭 줄 위 간격은 pt-1, 없으면 pt-4", async () => {
+    state.view = viewFor("application", false);
+    const { unmount } = await renderPage("application");
+    expect(screen.getByTestId("page-tabs").parentElement?.className).toBe(
+      "pt-1",
+    );
+    unmount();
+    state.view = viewFor("application", false, { kpis: null });
+    await renderPage("application");
+    expect(screen.getByTestId("page-tabs").parentElement?.className).toBe(
+      "pt-4",
+    );
+  });
+
+  it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {
+    state.view = viewFor("application", false, {
+      snapshot: snap({ devStatusCollected: false }),
+    });
+    await renderPage("application");
+    expect(kpiCard("운영 중")).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("tab", { name: /운영 중/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("sub=unknown 인데 그 탭이 안 보이면 둘 다 개발 중이 활성", async () => {
+    setUrl("?week=2026-11-16&tab=application&sub=unknown");
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    expect(kpiCard("개발 중")).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("tab", { name: /개발 중/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("설정 탭에서 안 붙은 서비스를 못 읽었으면(null) 불러오지 않았다고 적는다", async () => {
+    state.view = viewFor("settings", true, {
+      snapshot: null,
+      detail: null,
+      bundle: {
+        recipients: [],
+        rotation: [],
+        anchorWeekStart: null,
+        excludedWriterEmails: [],
+        writerCandidates: [],
+        projects: [],
+      },
+      unmatched: null,
+    });
+    await renderPage("settings");
+    expect(screen.getByText("목록을 불러오지 않았습니다")).toBeInTheDocument();
   });
 });

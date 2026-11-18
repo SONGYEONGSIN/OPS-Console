@@ -2,11 +2,14 @@ import { describe, it, expect } from "vitest";
 import {
   APP_SUBS,
   PIMS_SUBS,
+  appVisibleSubs,
   buildTabs,
+  defaultAppSub,
   opsWeeklyHref,
   parseSub,
   parseTab,
   parseWeekParam,
+  resolveAppSub,
 } from "../_params";
 
 describe("parseTab", () => {
@@ -124,5 +127,37 @@ describe("opsWeeklyHref sub", () => {
       checked: [],
     });
     expect(t.every((x) => !x.href.includes("sub="))).toBe(true);
+  });
+});
+
+describe("원서접수 하위 탭 해석 — SubTabs·KPI 카드가 같은 함수를 쓴다", () => {
+  it("구분이 수집된 주의 기본은 dev, 수집 전 주의 기본은 running", () => {
+    expect(defaultAppSub(true)).toBe("dev");
+    expect(defaultAppSub(false)).toBe("running");
+  });
+  it("보이는 키: 구분 미확인은 보일 때만", () => {
+    expect(appVisibleSubs(true)).toContain("unknown");
+    expect(appVisibleSubs(false)).not.toContain("unknown");
+  });
+  it("resolveAppSub: 없으면 그 주의 기본, 안 보이는 unknown 도 기본", () => {
+    expect(resolveAppSub(null, { showUnknown: false, collected: true })).toBe(
+      "dev",
+    );
+    expect(resolveAppSub(null, { showUnknown: false, collected: false })).toBe(
+      "running",
+    );
+    expect(
+      resolveAppSub("unknown", { showUnknown: false, collected: true }),
+    ).toBe("dev");
+    expect(
+      resolveAppSub("unknown", { showUnknown: true, collected: true }),
+    ).toBe("unknown");
+    expect(
+      resolveAppSub("closing", { showUnknown: false, collected: false }),
+    ).toBe("closing");
+  });
+  it("parseSub 의 네 번째 인자로 기본값을 바꾼다", () => {
+    expect(parseSub("application", null, APP_SUBS, "running")).toBe("running");
+    expect(parseSub("application", "test", APP_SUBS, "running")).toBe("test");
   });
 });

@@ -111,6 +111,35 @@ async function devStatusCollectedSince(
   );
 }
 
+/** 작성 명단 이름 — 공백을 맞춘다. 스냅샷의 안 붙음 개수와 설정 탭 목록이 같은 규칙을 쓴다. */
+function trimmedNames(names: ReadonlySet<string>): Set<string> {
+  return new Set([...names].map((n) => n.trim()));
+}
+
+/**
+ * 그 주의 원천 행 — 마감 서비스 전부와 금주·차주 발표.
+ * 스냅샷(안 붙음 개수)과 설정 탭 목록이 둘 다 이 함수를 거쳐 기간 창·쿼리가 갈라질 수 없다.
+ */
+async function loadWeekSources(
+  db: ReturnType<typeof createAdminClient>,
+  weekStart: string,
+): Promise<{ closing: ClosingLite[]; pims: PimsLite[] }> {
+  const startIso = weekWindows(weekStart).startInstant.toISOString();
+  const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
+  const [closing, pimsRes] = await Promise.all([
+    listOpenClosing(db, startIso),
+    db
+      .from("announcement_services")
+      .select(PIMS_COLUMNS)
+      .gte("last_announce_at", startIso)
+      .lte("last_announce_at", endIso),
+  ]);
+  return {
+    closing,
+    pims: rowsOf<PimsLite>("announcement_services", pimsRes),
+  };
+}
+
 export async function loadAutoSnapshot(args: {
   weekStart: string;
   operatorEmail: string;
@@ -121,21 +150,16 @@ export async function loadAutoSnapshot(args: {
   const { weekStart, now } = args;
   const operatorName = args.operatorName.trim();
   const operatorEmail = normEmail(args.operatorEmail);
-  const writerNames = new Set([...args.writerNames].map((n) => n.trim()));
+  const writerNames = trimmedNames(args.writerNames);
   const win = weekWindows(weekStart);
   const startIso = win.startInstant.toISOString();
   const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
   const db = createAdminClient();
 
-  const [closing, devStatusCollected, pimsRes, backupRes, scheduleRes] =
+  const [sources, devStatusCollected, backupRes, scheduleRes] =
     await Promise.all([
-      listOpenClosing(db, startIso),
+      loadWeekSources(db, weekStart),
       devStatusCollectedSince(db, startIso),
-      db
-        .from("announcement_services")
-        .select(PIMS_COLUMNS)
-        .gte("last_announce_at", startIso)
-        .lte("last_announce_at", endIso),
       db
         .from("backup_requests")
         .select(BACKUP_COLUMNS)
@@ -148,7 +172,7 @@ export async function loadAutoSnapshot(args: {
         .lte("start_at", endIso)
         .or(`end_at.is.null,end_at.gte.${startIso}`),
     ]);
-  const pims = rowsOf<PimsLite>("announcement_services", pimsRes);
+  const { closing, pims } = sources;
   const backups = rowsOf<BackupLeaveLite>("backup_requests", backupRes);
   const schedules = rowsOf<ScheduleLeaveLite>(
     "schedule_events",
@@ -212,20 +236,8 @@ export async function loadUnmatchedServices(args: {
   now: Date;
 }): Promise<UnmatchedServices> {
   const { weekStart, now } = args;
-  const writerNames = new Set([...args.writerNames].map((n) => n.trim()));
-  const win = weekWindows(weekStart);
-  const startIso = win.startInstant.toISOString();
-  const endIso = weekWindows(shiftWeek(weekStart, 1)).endInstant.toISOString();
-  const db = createAdminClient();
-  const [closing, pimsRes] = await Promise.all([
-    listOpenClosing(db, startIso),
-    db
-      .from("announcement_services")
-      .select(PIMS_COLUMNS)
-      .gte("last_announce_at", startIso)
-      .lte("last_announce_at", endIso),
-  ]);
-  const pims = rowsOf<PimsLite>("announcement_services", pimsRes);
+  const writerNames = trimmedNames(args.writerNames);
+  const { closing, pims } = await loadWeekSources(createAdminClient(), weekStart);
   return {
     application: listUnmatchedApplication({
       rows: closing,

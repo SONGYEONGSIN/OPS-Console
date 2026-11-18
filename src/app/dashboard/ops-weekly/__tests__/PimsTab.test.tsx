@@ -75,7 +75,7 @@ describe("PimsTab", () => {
     ).toEqual(["금주 발표", "차주 발표"]);
     expect(tabCount("금주 발표")).toBe("1");
     expect(tabCount("차주 발표")).toBe("2");
-    expect(screen.getByText("자동 3건 · 직접 1건")).toBeInTheDocument();
+    expect(screen.getByText("자동 2건 · 직접 1건")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "PIMS" }).className).toContain(
       "text-xl",
     );
@@ -195,5 +195,23 @@ describe("PimsTab — 굳는 시점 안내", () => {
       <PimsTab {...PROPS} snapshot={snap()} reportId="r1" editable={false} />,
     );
     expect(screen.queryByText("자동 항목은 최종 보고 때 굳습니다")).toBeNull();
+  });
+});
+
+describe("PimsTab — 요약도 뺀 건을 세지 않는다", () => {
+  it("자동 N건", () => {
+    render(
+      <PimsTab
+        {...PROPS}
+        snapshot={snap({ pimsThis: ["pims:1", "pims:2"], pimsNext: ["pims:3"] })}
+        detail={{
+          ...EMPTY,
+          overrides: new Map([
+            ["pims:2", { item_key: "pims:2", note: "", excluded: true }],
+          ]),
+        }}
+      />,
+    );
+    expect(screen.getByText("자동 2건 · 직접 0건")).toBeInTheDocument();
   });
 });

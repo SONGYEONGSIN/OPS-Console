@@ -10,6 +10,7 @@ import { EMPTY, item, snap } from "./tab-fixtures";
 const m = vi.hoisted(() => ({
   loadAutoSnapshot: vi.fn(),
   loadUnmatchedServices: vi.fn(),
+  loadSettingsBundle: vi.fn(),
   report: null as unknown,
 }));
 
@@ -57,7 +58,7 @@ vi.mock("@/features/ops-weekly/note-images", () => ({
   signProjectEntries: async <T>(entries: T) => entries,
 }));
 vi.mock("@/features/ops-weekly/settings-queries", () => ({
-  loadSettingsBundle: async () => ({ marker: "bundle" }),
+  loadSettingsBundle: m.loadSettingsBundle,
 }));
 
 import {
@@ -99,6 +100,7 @@ function kindOf(v: OpsWeeklyView) {
 beforeEach(() => {
   m.loadAutoSnapshot.mockReset();
   m.loadUnmatchedServices.mockReset();
+  m.loadSettingsBundle.mockReset().mockResolvedValue({ marker: "bundle" });
 });
 
 describe("loadOpsWeeklyPage — 자동 항목 읽는 규칙", () => {
@@ -143,6 +145,24 @@ describe("loadOpsWeeklyPage — 안 붙은 서비스 목록", () => {
     expect([...args.writerNames]).toEqual(["운영자A"]);
     expect(args.now).toBe(NOW);
     expect(kindOf(v).unmatched).toBe(LIST);
+  });
+
+  it("번들과 목록을 순서대로가 아니라 함께 요청한다", async () => {
+    m.report = reportOf({ status: "draft", snapshot: snap() });
+    let release: (v: typeof LIST) => void = () => {};
+    m.loadUnmatchedServices.mockReturnValue(
+      new Promise<typeof LIST>((r) => {
+        release = r;
+      }),
+    );
+    const pending = loadOpsWeeklyPage(ADMIN, { tab: "settings" }, NOW);
+    await vi.waitFor(() =>
+      expect(m.loadUnmatchedServices).toHaveBeenCalledTimes(1),
+    );
+    // 목록이 아직 안 끝났는데도 번들 읽기는 이미 시작됐다 — 직렬이면 여기서 막혀 있다.
+    expect(m.loadSettingsBundle).toHaveBeenCalledTimes(1);
+    release(LIST);
+    await pending;
   });
 
   it("다른 탭이나 비관리자에게는 읽지도 내보내지도 않는다", async () => {

@@ -173,4 +173,78 @@ describe("SubTabs", () => {
       expect(t.className).not.toMatch(/hover:bg-/);
     }
   });
+
+  it("접근 이름에 라벨과 숫자 사이 구분이 있다(개발 중 3)", () => {
+    mount();
+    expect(screen.getByRole("tab", { name: "개발 중 3" })).toBeInTheDocument();
+  });
+
+  it("패널은 탭 순서에 든다(tabIndex 0)", () => {
+    const { container } = mount();
+    for (const p of container.querySelectorAll('[role="tabpanel"]')) {
+      expect(p).toHaveAttribute("tabindex", "0");
+    }
+  });
+
+  it("스크롤 목적지: 고정 KPI 바 높이(--ops-kpi-h)만큼 비켜 선다", () => {
+    mount();
+    const target = document.getElementById("ops-subtabs") as HTMLElement;
+    expect(target.className.split(/\s+/)).toContain(
+      "lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]",
+    );
+  });
+
+  it("defaultKey 로 URL 에 sub 가 없을 때의 기본 탭을 바꾼다", () => {
+    render(
+      <SubTabs
+        tab="application"
+        ariaLabel="원서접수 묶음"
+        tabs={TABS}
+        panels={PANELS}
+        defaultKey="running"
+      />,
+    );
+    expect(selected(/운영 중/)).toBe("true");
+  });
+
+  describe("활성 탭을 줄 안으로 가로 스크롤한다(페이지는 안 움직인다)", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+    function stubRects() {
+      vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+        function (this: Element) {
+          const role = this.getAttribute("role");
+          const box = (left: number, right: number) =>
+            ({ left, right, top: 0, bottom: 0, width: right - left, height: 0, x: left, y: 0, toJSON() {} }) as DOMRect;
+          if (role === "tablist") return box(0, 100);
+          if (this.id === "sub-tab-running") return box(150, 250);
+          if (this.id === "sub-tab-dev") return box(-60, 40);
+          return box(40, 90);
+        },
+      );
+    }
+    it("마운트 때 줄 밖 오른쪽에 있는 활성 탭을 끌어온다", () => {
+      stubRects();
+      setUrl("?sub=running");
+      mount();
+      expect(screen.getByRole("tablist").scrollLeft).toBe(150);
+    });
+    it("활성 탭이 바뀌면 다시 맞춘다(왼쪽으로 벗어난 경우도)", () => {
+      stubRects();
+      setUrl("?sub=running");
+      mount();
+      const list = screen.getByRole("tablist");
+      fireEvent.click(screen.getByRole("tab", { name: /개발 중/ }));
+      expect(list.scrollLeft).toBe(90);
+    });
+    it("scrollIntoView 는 쓰지 않는다 — 페이지가 세로로 움직일 수 있다", () => {
+      const spy = vi.fn();
+      Element.prototype.scrollIntoView = spy;
+      stubRects();
+      setUrl("?sub=running");
+      mount();
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
 });

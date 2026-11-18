@@ -28,7 +28,15 @@ vi.mock("@/features/ops-weekly/settings-actions", () => ({
 }));
 
 import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
-import { SettingsTab } from "../_components/SettingsTab";
+import { SettingsTab as RealSettingsTab } from "../_components/SettingsTab";
+import type { UnmatchedServices } from "@/features/ops-weekly/auto-lists/unmatched";
+
+// 대부분의 테스트는 안 붙은 서비스와 무관하다 — 필수 prop 은 기본 null 로 채운다.
+function SettingsTab(
+  props: { bundle: SettingsBundle } & { unmatched?: UnmatchedServices | null },
+) {
+  return <RealSettingsTab unmatched={null} {...props} />;
+}
 import { SEED_PROJECT_NAMES } from "@/features/ops-weekly/constants";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
 
@@ -277,12 +285,13 @@ describe("SettingsTab", () => {
     ).toBeInTheDocument();
   });
 
-  it("안 붙은 서비스를 안 넘기면 0건 패널(목록이 없는 척하지 않는다)", () => {
-    render(<SettingsTab bundle={bundle()} />);
+  it("안 붙은 서비스를 못 읽었으면(null) 0건이 아니라 불러오지 않았다고 적는다", () => {
+    render(<SettingsTab bundle={bundle()} unmatched={null} />);
     const region = screen.getByRole("region", { name: "안 붙은 서비스" });
     expect(
-      within(region).getByRole("heading", { name: "원서접수 0건" }),
+      within(region).getByText("목록을 불러오지 않았습니다"),
     ).toBeInTheDocument();
+    expect(within(region).queryByText(/0건/)).toBeNull();
   });
 
   it("+ 항목 추가는 제목 오른쪽 표준 헤더 액션이고 표보다 앞이다", () => {

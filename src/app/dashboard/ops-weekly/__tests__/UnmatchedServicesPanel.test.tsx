@@ -154,4 +154,20 @@ describe("UnmatchedServicesPanel", () => {
       screen.getByRole("heading", { level: 3, name: "원서접수 0건" }),
     ).toBeInTheDocument();
   });
+
+  it("목록을 읽지 않았으면(null) 0건이라 말하지 않고 안 불러왔다고 적는다", () => {
+    render(<UnmatchedServicesPanel unmatched={null} />);
+    expect(screen.getByText("목록을 불러오지 않았습니다")).toBeInTheDocument();
+    expect(screen.queryByText("안 붙은 서비스가 없습니다")).toBeNull();
+    expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
+  });
+
+  it("스크롤 목적지: lg 미만은 scroll-mt-4, lg 이상은 고정 KPI 바 높이만큼", () => {
+    render(<UnmatchedServicesPanel unmatched={{ application: [], pims: [] }} />);
+    const t = screen
+      .getByRole("region", { name: "안 붙은 서비스" })
+      .className.split(/\s+/);
+    expect(t).toContain("scroll-mt-4");
+    expect(t).toContain("lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]");
+  });
 });

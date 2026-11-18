@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import type { WeeklyKpis } from "@/features/ops-weekly/merge";
-import { APP_SUBS, opsWeeklyHref, parseSub, type OpsTab } from "../_params";
+import { opsWeeklyHref, resolveAppSub, type OpsTab } from "../_params";
 import { SUB_TABS_ID } from "./SubTabs";
 import { useOpsSub } from "./use-ops-sub";
 
@@ -70,6 +70,7 @@ export function WeeklyKpiRow({
   tab,
   weekStart,
   op,
+  appSubState = { showUnknown: false, collected: true },
 }: {
   kpis: WeeklyKpis;
   /** 이 숫자가 누구의 보고서 것인지 — 제출 현황·설정 탭에서도 카드가 남아 있어 밝혀야 한다 */
@@ -79,9 +80,11 @@ export function WeeklyKpiRow({
   weekStart: string;
   /** 남의 보고서를 보는 중이면 그 이메일 — 링크가 같은 보고서에 머문다 */
   op: string | null;
+  /** 원서접수 하위 탭의 보이는 키·기본값을 정하는 사실 — SubTabs 와 같은 해석을 위해 page 가 넘긴다 */
+  appSubState?: { showUnknown: boolean; collected: boolean };
 }) {
   const { raw, setSub } = useOpsSub();
-  const appSub = parseSub("application", raw, APP_SUBS);
+  const appSub = resolveAppSub(raw, appSubState);
 
   const hrefOf = (t: Target) => opsWeeklyHref(weekStart, t.tab, op, t.sub);
   const isActive = (t: Target) =>
@@ -90,10 +93,12 @@ export function WeeklyKpiRow({
       : tab === "application" && appSub === t.sub;
 
   function onClick(e: MouseEvent<HTMLAnchorElement>, t: Target) {
-    // 다른 탭으로 가거나 하위 탭이 없는 카드는 일반 이동 — 같은 탭 안의 전환만 가로챈다.
-    if (t.tab !== tab || t.sub === null || !isPlainLeftClick(e)) return;
+    // 다른 탭으로 가는 카드는 일반 이동 — 같은 탭 안의 전환만 가로챈다.
+    // 합격자 발표 카드는 href 에 sub 가 없지만(탭 이동은 기본 하위 탭) 같은 탭이면 금주 발표로 돌린다.
+    const clientSub = t.sub ?? "thisWeek";
+    if (t.tab !== tab || !isPlainLeftClick(e)) return;
     e.preventDefault();
-    setSub(t.sub);
+    setSub(clientSub);
     // 붙은 카드 줄 밑에 하위 탭 줄이 가려져 있으면 보이는 자리까지만 내린다(scroll-margin 이 높이를 알려 준다).
     document
       .getElementById(SUB_TABS_ID)

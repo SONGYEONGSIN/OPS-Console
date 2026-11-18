@@ -195,7 +195,9 @@ describe("WeeklyKpiRow", () => {
       expect(dev.className).toContain("border-vermilion");
       expect(dev.className).toContain("bg-vermilion/10");
       expect(screen.getByText("개발 중").className).toContain("text-vermilion");
-      expect(screen.getByText("1").className).toContain("text-ink");
+      const num = screen.getByText("1").className.split(/\s+/);
+      expect(num).toContain("text-ink");
+      expect(num).not.toContain("text-vermilion");
       const test = screen.getByText("테스트 중").closest("a") as HTMLElement;
       expect(test).not.toHaveAttribute("aria-current");
       expect(test.className).toContain("border-line-soft");
@@ -262,6 +264,78 @@ describe("WeeklyKpiRow", () => {
       expect(fireEvent.click(link, { metaKey: true })).toBe(true);
       expect(fireEvent.click(link, { shiftKey: true })).toBe(true);
       expect(window.location.search).not.toContain("sub=running");
+    });
+
+    it("같은 탭 클릭은 하위 탭 줄을 보이는 자리까지 스크롤한다(nearest)", () => {
+      const spy = vi.fn();
+      Element.prototype.scrollIntoView = spy;
+      const target = document.createElement("div");
+      target.id = "ops-subtabs";
+      document.body.appendChild(target);
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      fireEvent.click(screen.getByText("운영 중").closest("a") as HTMLElement);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith({ block: "nearest" });
+      expect(spy.mock.contexts[0]).toBe(target);
+      target.remove();
+    });
+
+    it("PIMS 탭에서 합격자 발표 카드는 서버를 안 거치고 금주 발표로 돌린다", () => {
+      setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
+      render(
+        <WeeklyKpiRow {...BASE} tab="pims" ownerName="홍길동" kpis={KPIS} />,
+      );
+      const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
+      expect(link.getAttribute("href")).toBe(`${W}&tab=pims`);
+      expect(fireEvent.click(link)).toBe(false);
+      expect(window.location.search).toContain("sub=thisWeek");
+    });
+
+    it("구분 미수집 주: 기본 활성은 운영 중, 수집된 주는 개발 중", () => {
+      const { unmount } = render(
+        <WeeklyKpiRow
+          {...BASE}
+          appSubState={{ showUnknown: false, collected: false }}
+          ownerName="홍길동"
+          kpis={KPIS}
+        />,
+      );
+      expect(screen.getByText("운영 중").closest("a")).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+      expect(screen.getByText("개발 중").closest("a")).not.toHaveAttribute(
+        "aria-current",
+      );
+      unmount();
+      render(
+        <WeeklyKpiRow
+          {...BASE}
+          appSubState={{ showUnknown: false, collected: true }}
+          ownerName="홍길동"
+          kpis={KPIS}
+        />,
+      );
+      expect(screen.getByText("개발 중").closest("a")).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+    });
+
+    it("안 보이는 구분 미확인(sub=unknown)이면 SubTabs 와 같이 기본 카드가 활성", () => {
+      setUrl("?week=2026-11-16&tab=application&sub=unknown");
+      render(
+        <WeeklyKpiRow
+          {...BASE}
+          appSubState={{ showUnknown: false, collected: true }}
+          ownerName="홍길동"
+          kpis={KPIS}
+        />,
+      );
+      expect(screen.getByText("개발 중").closest("a")).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
     });
 
     it("다른 탭으로 가는 카드(합격자 발표)는 가로채지 않는다", () => {

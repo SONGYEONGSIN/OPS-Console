@@ -234,6 +234,10 @@ E2E 운영 메모:
 
 **admin 은 정정으로 연 주에서만 남의 보고서를 고친다.** 보고가 끝난 주는 잠긴다.
 
+**원서접수·PIMS 는 칸별 하위 탭이고 선택은 `?sub=` 다.** `history.replaceState` 로 바꾸므로 서버를 안 다녀오고(`router.replace` 는 RSC 를 다시 받는다), 입력 중인 폼이 남도록 비활성 패널도 `hidden` 으로 마운트해 둔다. 주·탭 링크는 `sub` 를 들고 가지 않아 이동하면 기본 칸으로 돌아간다. **Next 16 은 이동 중에 `replaceState` 가 불리면 그 이동을 취소한다** — 이전/다음 주를 누르고 로딩이 끝나기 전에 하위 탭을 누르면 주 이동이 사라진다(다시 누르면 된다). 구분이 수집되기 전 주의 첫 칸은 `개발 중`이 아니라 `운영 중`이다(`defaultAppSub`).
+
+**상단 KPI 줄은 lg 이상에서만 고정된다.** 대시보드 셸의 content div 와 그 그리드가 lg 미만에서도 스크롤 박스라 sticky 가 그 안에 갇힌다. 고정된 줄의 높이는 `StickyKpiBar` 가 스크롤 컨테이너의 `--ops-kpi-h` 로 알리고, 스크롤 목적지(하위 탭 줄·`#unmatched`)는 그만큼 `scroll-mt` 로 비켜 선다 — 안 그러면 카드를 눌러 도착한 자리가 줄 밑에 깔린다.
+
 설계: `docs/superpowers/specs/2026-11-16-ops-weekly-report-design.md` · 계획: `docs/superpowers/plans/2026-11-16-ops-weekly-report-a1.md`
 
 ## /dashboard/tools — 도구 (admin only)

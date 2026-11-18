@@ -6,5 +6,3 @@ export type UnmatchedServices = {
   application: ClosingLite[];
   pims: PimsLite[];
 };
-
-export const NO_UNMATCHED: UnmatchedServices = { application: [], pims: [] };

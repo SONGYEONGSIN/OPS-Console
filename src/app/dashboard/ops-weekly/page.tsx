@@ -112,7 +112,7 @@ function WeekBody({ view }: { view: Week }) {
       <SettingsTab
         key={key}
         bundle={view.bundle}
-        unmatched={view.unmatched ?? undefined}
+        unmatched={view.unmatched}
       />
     );
   }
@@ -171,6 +171,8 @@ function WeekView({ view }: { view: Week }) {
   const op =
     viewed !== null && viewed.email !== actor.email ? viewed.email : null;
   const weekStart = week.week_start;
+  const { kpis } = view;
+  const showKpi = viewed !== null && kpis !== null;
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
       <WeekHeader
@@ -192,19 +194,26 @@ function WeekView({ view }: { view: Week }) {
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
         tab={tab}
       />
-      {viewed !== null && view.kpis !== null ? (
+      {showKpi ? (
         <StickyKpiBar>
           <WeeklyKpiRow
-            kpis={view.kpis}
+            kpis={kpis}
             ownerName={viewed.name}
             unknownCount={unknownCountOf(view)}
             tab={tab}
             weekStart={weekStart}
             op={op}
+            appSubState={{
+              showUnknown:
+                (view.snapshot?.application.devStatusCollected ?? true) &&
+                (view.snapshot?.application.unknown.length ?? 0) > 0,
+              collected: view.snapshot?.application.devStatusCollected ?? true,
+            }}
           />
         </StickyKpiBar>
       ) : null}
-      <div className="pt-1">
+      {/* KPI 바가 없으면 WeekHeader 아래 간격을 이 래퍼가 맡는다 */}
+      <div className={showKpi ? "pt-1" : "pt-4"}>
         <PageTabs
           active={tab}
           size="md"

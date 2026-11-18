@@ -62,13 +62,22 @@ export function listUnmatchedPims(args: {
   weekStart: string;
 }): PimsLite[] {
   const { thisWeek, nextWeek } = weekWindows(args.weekStart);
-  return args.rows.filter((row) => {
-    const ymd = announceYmd(row.last_announce_at);
-    if (ymd === null) return false;
-    if (!ymdInRange(ymd, thisWeek) && !ymdInRange(ymd, nextWeek)) return false;
-    const name = row.operator_name?.trim() ?? "";
-    return name === "" || !args.writerNames.has(name);
-  });
+  return args.rows
+    .filter((row) => {
+      const ymd = announceYmd(row.last_announce_at);
+      if (ymd === null) return false;
+      if (!ymdInRange(ymd, thisWeek) && !ymdInRange(ymd, nextWeek)) {
+        return false;
+      }
+      const name = row.operator_name?.trim() ?? "";
+      return name === "" || !args.writerNames.has(name);
+    })
+    .sort(
+      // 쿼리는 순서를 보장하지 않는다 — 발표일 순, 같으면 서비스ID 순으로 표를 안정시킨다.
+      (a, b) =>
+        Date.parse(a.last_announce_at ?? "") -
+          Date.parse(b.last_announce_at ?? "") || a.service_id - b.service_id,
+    );
 }
 
 export function countUnmatchedPims(

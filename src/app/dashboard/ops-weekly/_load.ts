@@ -266,17 +266,18 @@ export async function loadOpsWeeklyPage(
     tab === "status"
       ? await loadStatusData({ week, actor, writers, reports })
       : null;
-  // 설정 번들은 관리자의 설정 탭에서만 읽는다(parseTab 이 비관리자의 settings 를 돌려보낸다).
-  const bundle =
-    tab === "settings" && actor.isAdmin ? await loadSettingsBundle() : null;
-  const unmatched =
-    bundle === null
-      ? null
-      : await loadUnmatchedServices({
-          weekStart,
-          writerNames: new Set(writers.map((w) => w.name)),
-          now,
-        });
+  // 설정 번들·안 붙은 서비스 목록은 관리자의 설정 탭에서만 읽는다(parseTab 이 비관리자의 settings 를 돌려보낸다).
+  const [bundle, unmatched] =
+    tab === "settings" && actor.isAdmin
+      ? await Promise.all([
+          loadSettingsBundle(),
+          loadUnmatchedServices({
+            weekStart,
+            writerNames: new Set(writers.map((w) => w.name)),
+            now,
+          }),
+        ])
+      : [null, null];
   return {
     kind: "week",
     week,

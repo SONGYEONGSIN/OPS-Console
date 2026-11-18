@@ -366,4 +366,45 @@ describe("loadUnmatchedServices", () => {
       "[ops-weekly] closing_services: boom",
     );
   });
+
+  it("발표 쿼리의 기간 창이 스냅샷 로더와 같다(한 원천을 같이 쓴다)", async () => {
+    mockTables({
+      closing_services: [],
+      announcement_services: [],
+      backup_requests: [],
+      schedule_events: [],
+      ops_weekly_dev_status: [],
+    });
+    await loadAutoSnapshot({
+      ...args,
+      operatorEmail: "a@example.com",
+      operatorName: "운영자A",
+    });
+    const announce = (calls: unknown[][]) =>
+      calls.filter(([col]) => col === "last_announce_at");
+    const snapGte = announce(gteSpy.mock.calls);
+    const snapLte = announce(lteSpy.mock.calls);
+    vi.clearAllMocks();
+    await loadUnmatchedServices(args);
+    expect(announce(gteSpy.mock.calls)).toEqual(snapGte);
+    expect(announce(lteSpy.mock.calls)).toEqual(snapLte);
+    expect(announce(gteSpy.mock.calls)).toEqual([
+      ["last_announce_at", "2026-11-15T15:00:00.000Z"],
+    ]);
+    expect(announce(lteSpy.mock.calls)).toEqual([
+      ["last_announce_at", "2026-11-29T14:59:59.999Z"],
+    ]);
+  });
+
+  it("작성 명단 이름의 앞뒤 공백을 맞춘다(스냅샷과 같은 규칙)", async () => {
+    mockTables({
+      closing_services: [CL_OPENING],
+      announcement_services: [],
+    });
+    const r = await loadUnmatchedServices({
+      ...args,
+      writerNames: new Set([" 운영자A "]),
+    });
+    expect(r.application).toEqual([]);
+  });
 });
