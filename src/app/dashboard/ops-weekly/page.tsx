@@ -15,6 +15,7 @@ import { SettingsTab } from "./_components/SettingsTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
 import { WeekHeader } from "./_components/WeekHeader";
+import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
@@ -107,7 +108,13 @@ function WeekBody({ view }: { view: Week }) {
       op: viewed?.email ?? "",
       tab,
     });
-    return <SettingsTab key={key} bundle={view.bundle} />;
+    return (
+      <SettingsTab
+        key={key}
+        bundle={view.bundle}
+        unmatched={view.unmatched}
+      />
+    );
   }
   if (snapshot !== null && detail !== null) {
     // 쿼리만 바뀌어도 입력 중이던 글이 다른 보고서로 넘어가지 않게 보고서 단위로 다시 만든다.
@@ -123,6 +130,9 @@ function WeekBody({ view }: { view: Week }) {
       reportId: report?.id ?? null,
       editable: view.canEdit && report !== null,
       freezeNotice: view.freezeNotice,
+      // 담당자 이름이 안 맞는 서비스는 관리자가 고칠 일이다 — 비관리자에게는 안내 자체를 안 낸다.
+      isAdmin: view.actor.isAdmin,
+      settingsHref: `${opsWeeklyHref(view.week.week_start, "settings", null)}#unmatched`,
     };
     if (tab === "application") return <ApplicationTab key={key} {...props} />;
     if (tab === "pims") return <PimsTab key={key} {...props} />;
@@ -161,6 +171,8 @@ function WeekView({ view }: { view: Week }) {
   const op =
     viewed !== null && viewed.email !== actor.email ? viewed.email : null;
   const weekStart = week.week_start;
+  const { kpis } = view;
+  const showKpi = viewed !== null && kpis !== null;
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
       <WeekHeader
@@ -182,14 +194,26 @@ function WeekView({ view }: { view: Week }) {
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
         tab={tab}
       />
-      {viewed !== null && view.kpis !== null ? (
-        <WeeklyKpiRow
-          kpis={view.kpis}
-          ownerName={viewed.name}
-          unknownCount={unknownCountOf(view)}
-        />
+      {showKpi ? (
+        <StickyKpiBar>
+          <WeeklyKpiRow
+            kpis={kpis}
+            ownerName={viewed.name}
+            unknownCount={unknownCountOf(view)}
+            tab={tab}
+            weekStart={weekStart}
+            op={op}
+            appSubState={{
+              showUnknown:
+                (view.snapshot?.application.devStatusCollected ?? true) &&
+                (view.snapshot?.application.unknown.length ?? 0) > 0,
+              collected: view.snapshot?.application.devStatusCollected ?? true,
+            }}
+          />
+        </StickyKpiBar>
       ) : null}
-      <div className="pt-4">
+      {/* KPI 바가 없으면 WeekHeader 아래 간격을 이 래퍼가 맡는다 */}
+      <div className={showKpi ? "pt-1" : "pt-4"}>
         <PageTabs
           active={tab}
           size="md"

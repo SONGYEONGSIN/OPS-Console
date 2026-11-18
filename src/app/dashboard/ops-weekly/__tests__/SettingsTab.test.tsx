@@ -28,7 +28,15 @@ vi.mock("@/features/ops-weekly/settings-actions", () => ({
 }));
 
 import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
-import { SettingsTab } from "../_components/SettingsTab";
+import { SettingsTab as RealSettingsTab } from "../_components/SettingsTab";
+import type { UnmatchedServices } from "@/features/ops-weekly/auto-lists/unmatched";
+
+// 대부분의 테스트는 안 붙은 서비스와 무관하다 — 필수 prop 은 기본 null 로 채운다.
+function SettingsTab(
+  props: { bundle: SettingsBundle } & { unmatched?: UnmatchedServices | null },
+) {
+  return <RealSettingsTab unmatched={null} {...props} />;
+}
 import { SEED_PROJECT_NAMES } from "@/features/ops-weekly/constants";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
 
@@ -246,6 +254,44 @@ describe("SettingsTab", () => {
       expect(t).toContain("text-xl");
       expect(t).toContain("font-bold");
     }
+  });
+
+  it("안 붙은 서비스 패널이 맨 아래, 앵커 id 와 함께 있다", () => {
+    render(
+      <SettingsTab
+        bundle={bundle()}
+        unmatched={{
+          application: [
+            {
+              service_id: 1,
+              university_name: "대학1",
+              service_name: "서비스1",
+              operator_name: "퇴사자",
+              write_start_at: "2026-11-23T00:00:00Z",
+              write_end_at: "2026-12-10T00:00:00Z",
+              pay_end_at: null,
+            },
+          ],
+          pims: [],
+        }}
+      />,
+    );
+    const regions = screen.getAllByRole("region");
+    const last = regions[regions.length - 1];
+    expect(last).toHaveAttribute("id", "unmatched");
+    expect(last).toHaveAccessibleName("안 붙은 서비스");
+    expect(
+      within(last).getByRole("heading", { name: "원서접수 1건" }),
+    ).toBeInTheDocument();
+  });
+
+  it("안 붙은 서비스를 못 읽었으면(null) 0건이 아니라 불러오지 않았다고 적는다", () => {
+    render(<SettingsTab bundle={bundle()} unmatched={null} />);
+    const region = screen.getByRole("region", { name: "안 붙은 서비스" });
+    expect(
+      within(region).getByText("목록을 불러오지 않았습니다"),
+    ).toBeInTheDocument();
+    expect(within(region).queryByText(/0건/)).toBeNull();
   });
 
   it("+ 항목 추가는 제목 오른쪽 표준 헤더 액션이고 표보다 앞이다", () => {

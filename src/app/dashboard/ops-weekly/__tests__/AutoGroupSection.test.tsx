@@ -207,6 +207,21 @@ describe("AutoGroupSection", () => {
     expect(tokens(screen.getByText("2건"))).toContain("tabular-nums");
   });
 
+  it("머리 건수는 뺀 건을 세지 않는다 — 하위 탭·KPI 숫자와 같은 식(뺀 행은 목록에 남는다)", () => {
+    render(
+      <AutoGroupSection
+        {...group([
+          view("closing:1"),
+          view("closing:2", { excluded: true }),
+          view("closing:3"),
+        ])}
+        editable
+      />,
+    );
+    expect(screen.getByText("2건")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+  });
+
   it("접힌 묶음(구분 미확인)은 닫힌 채이고 추가 버튼이 없다", () => {
     const { container } = render(
       <AutoGroupSection

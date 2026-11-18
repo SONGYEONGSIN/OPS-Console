@@ -1,10 +1,19 @@
 import type { AutoItem } from "@/features/ops-weekly/auto-lists/application";
-import { applyOverrides, type AutoSnapshot } from "@/features/ops-weekly/merge";
+import {
+  applyOverrides,
+  computeKpis,
+  kept,
+  manualCount,
+  type AutoSnapshot,
+} from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
+import { defaultAppSub } from "../_params";
 import { AreaNotes } from "./AreaNotes";
 import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
+import { SubTabs, type SubTabItem } from "./SubTabs";
 import { TabHeading } from "./TabHeading";
+import { UnmatchedNotice } from "./UnmatchedNotice";
 
 type Props = {
   snapshot: AutoSnapshot;
@@ -12,50 +21,63 @@ type Props = {
   reportId: string | null;
   editable: boolean;
   freezeNotice: boolean;
+  /** 안 붙은 서비스 안내는 관리자에게만 보인다 */
+  isAdmin: boolean;
+  /** 설정 탭의 안 붙은 서비스 패널 주소 */
+  settingsHref: string;
 };
 
-type GroupKey = "dev" | "test" | "opening" | "running" | "closing";
-const DEV_TEST: readonly { key: GroupKey; title: string }[] = [
+type StageKey = "dev" | "test";
+const STAGES: readonly { key: StageKey; title: string }[] = [
   { key: "dev", title: "개발 중" },
   { key: "test", title: "테스트 중" },
 ];
-const AFTER: readonly { key: GroupKey; title: string }[] = [
-  { key: "opening", title: "차주 오픈 예정" },
+const AFTER: readonly {
+  key: "running" | "opening" | "closing";
+  title: string;
+}[] = [
   { key: "running", title: "운영 중" },
+  { key: "opening", title: "차주 오픈 예정" },
   { key: "closing", title: "차주 마감 예정" },
 ];
 
-/** 원서접수 탭 — 개발·테스트·오픈·운영·마감 묶음과 원서접수 외 서비스(직접 추가만). */
+/** 원서접수 탭 — 개발·테스트·운영·오픈·마감 묶음과 원서접수 외 서비스(직접 추가만)를 하위 탭으로 가른다. */
 export function ApplicationTab({
   snapshot,
   detail,
   reportId,
   editable,
   freezeNotice,
+  isAdmin,
+  settingsHref,
 }: Props) {
   const app = snapshot.application;
   const unmatched = snapshot.unmatched.application;
+  // 숫자는 KPI 카드와 같은 식 하나(뺀 건 제외 + 직접)다 — 탭 숫자와 카드가 갈릴 수 없다.
+  const kpis = computeKpis(snapshot, detail.overrides, detail.manual);
   const shownLists = [
     ...(app.devStatusCollected ? [app.dev, app.test, app.unknown] : []),
     app.opening,
     app.running,
     app.closing,
   ];
-  const autoCount = shownLists.reduce((n, l) => n + l.length, 0);
-  // 구분이 수집되지 않은 주에는 개발·테스트 묶음이 안 보이므로 그 묶음의 직접 추가 건도 세지 않는다.
-  const hiddenGroups = app.devStatusCollected ? [] : ["dev", "test"];
-  const manualCount = detail.manual.filter(
-    (m) =>
-      m.area === "application" && !hiddenGroups.includes(m.group_key ?? ""),
+  // 뺀 건은 세지 않는다 — 하위 탭·묶음 머리·KPI 와 같은 식(kept).
+  const autoCount = shownLists.reduce(
+    (n, l) => n + kept(l, detail.overrides),
+    0,
+  );
+  const directCount = detail.manual.filter(
+    (m) => m.area === "application",
   ).length;
+  const showUnknown = app.devStatusCollected && app.unknown.length > 0;
+
   const section = (
     key: string,
     title: string,
     list: AutoItem[],
-    unknownGroup = false,
+    allowAdd = true,
   ) => (
     <AutoGroupSection
-      key={key}
       title={title}
       items={applyOverrides(list, detail.overrides)}
       manual={detail.manual}
@@ -64,46 +86,79 @@ export function ApplicationTab({
       groupKey={key}
       editable={editable}
       emptyText="해당하는 서비스가 없습니다"
-      collapsed={unknownGroup}
-      allowAdd={!unknownGroup}
+      allowAdd={allowAdd}
     />
   );
+  const stage = (key: StageKey, title: string) =>
+    app.devStatusCollected ? (
+      section(key, title, app[key])
+    ) : (
+      // 구분이 수집되지 않은 주 — 문구와, 그래도 직접 추가한 건이 있으면 그 목록만.
+      <>
+        <p className="py-2 text-sm text-muted">
+          {`개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 ${kept(app.unknown, detail.overrides)}건)`}
+        </p>
+        {manualCount(detail.manual, "application", [key]) > 0
+          ? section(key, title, [], false)
+          : null}
+      </>
+    );
+
+  const tabs: SubTabItem[] = [
+    ...STAGES.map((s) => ({
+      key: s.key,
+      label: s.title,
+      count: kpis[s.key],
+    })),
+    ...(showUnknown
+      ? [
+          {
+            key: "unknown",
+            label: "구분 미확인",
+            count: kept(app.unknown, detail.overrides),
+          },
+        ]
+      : []),
+    ...AFTER.map((g) => ({ key: g.key, label: g.title, count: kpis[g.key] })),
+    {
+      key: "other",
+      label: "원서접수 외 서비스",
+      count: manualCount(detail.manual, "application", ["other"]),
+    },
+  ];
+  const panels = {
+    ...Object.fromEntries(STAGES.map((s) => [s.key, stage(s.key, s.title)])),
+    ...(showUnknown
+      ? { unknown: section("unknown", "구분 미확인", app.unknown, false) }
+      : {}),
+    ...Object.fromEntries(
+      AFTER.map((g) => [g.key, section(g.key, g.title, app[g.key])]),
+    ),
+    other: section("other", "원서접수 외 서비스", []),
+  };
+
   return (
     <div className="flex flex-col gap-7 p-5 lg:p-7">
       <TabHeading
         title="원서접수"
-        summary={`자동 ${autoCount}건 · 직접 ${manualCount}건`}
+        summary={`자동 ${autoCount}건 · 직접 ${directCount}건`}
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
-        <p className="text-sm text-muted">
-          {`담당자가 맞지 않아 아무에게도 안 붙은 서비스 ${unmatched}건${
-            unmatched > 0
-              ? " — 서비스 마감 메뉴에서 담당자 이름을 확인하세요"
-              : ""
-          }`}
-        </p>
+        <UnmatchedNotice
+          isAdmin={isAdmin}
+          count={unmatched}
+          noun="서비스"
+          action="서비스마감 메뉴에서 담당자 이름을 확인하세요"
+          settingsHref={settingsHref}
+        />
       </TabHeading>
-      <div className="flex flex-col gap-6">
-        {app.devStatusCollected ? (
-          <>
-            {DEV_TEST.map((g) => section(g.key, g.title, app[g.key]))}
-            {app.unknown.length > 0
-              ? section(
-                  "unknown",
-                  `구분 미확인 ${app.unknown.length}건`,
-                  app.unknown,
-                  true,
-                )
-              : null}
-          </>
-        ) : (
-          <p className="text-sm text-muted">
-            {`개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 ${app.unknown.length}건)`}
-          </p>
-        )}
-        {AFTER.map((g) => section(g.key, g.title, app[g.key]))}
-        {section("other", "원서접수 외 서비스", [])}
-      </div>
+      <SubTabs
+        tab="application"
+        ariaLabel="원서접수 묶음"
+        tabs={tabs}
+        panels={panels}
+        defaultKey={defaultAppSub(app.devStatusCollected)}
+      />
       <AreaNotes
         reportId={reportId}
         area="application"

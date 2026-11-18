@@ -7,7 +7,7 @@ import { BTN_CLASS } from "./styles";
 
 type Props = {
   title: string;
-  /** 자동 + 직접 건수 */
+  /** 뺀 건을 뺀 자동 + 직접 건수 */
   count: number;
   /** 주면 머리 오른쪽에 [+ 직접 추가] 가 생기고, 누르면 폼이 목록 아래에 열린다 */
   add: {
