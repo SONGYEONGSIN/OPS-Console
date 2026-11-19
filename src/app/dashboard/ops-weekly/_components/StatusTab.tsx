@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListSelect } from "@/components/common/ListSelect";
 import { ModalShell } from "@/components/common/ModalShell";
-import type { ActionResult } from "@/features/ops-weekly/actions";
 import { normEmail } from "@/features/ops-weekly/email";
 import type { ProjectGroup } from "@/features/ops-weekly/merge";
 import {
@@ -32,7 +30,7 @@ import { DutySummary } from "./DutySummary";
 import { ProjectOverview } from "./ProjectOverview";
 import { SubmissionTable } from "./SubmissionTable";
 import { BTN_CLASS, FIELD_CLASS } from "./styles";
-import { useSave } from "./use-save";
+import { useWorkflow } from "./use-workflow";
 
 type Props = {
   week: WeekRow;
@@ -51,22 +49,6 @@ type Dialog =
   | null;
 
 const LOCKED_TEXT = "이미 보고된 주입니다";
-
-/** 결과와 상관없이 서버 상태가 바뀌었을 수 있어 늘 새로 읽는다(보고 커밋 뒤 후속 실패 포함). */
-function useWorkflow() {
-  const router = useRouter();
-  const save = useSave();
-  function run(fn: () => Promise<ActionResult>) {
-    save.run(async () => {
-      try {
-        return await fn();
-      } finally {
-        router.refresh();
-      }
-    });
-  }
-  return { pending: save.pending, message: save.error, run };
-}
 
 function whyDisabled(
   check: Exclude<FinalizeCheck, { ok: true }>,
