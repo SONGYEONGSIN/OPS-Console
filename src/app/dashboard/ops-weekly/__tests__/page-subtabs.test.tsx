@@ -117,7 +117,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     state.view = viewFor("application", false);
     await renderPage("application");
     expect(screen.queryByText(/안 붙은 서비스/)).toBeNull();
-    expect(screen.queryByText("설정에서 목록 보기")).toBeNull();
+    expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
   });
 
   it("원서접수 탭: 관리자는 안내와 설정 패널 링크가 보인다", async () => {
@@ -127,10 +127,10 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
       screen.getByText(/안 붙은 서비스 3건 — 서비스마감 메뉴/),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "설정에서 목록 보기" }),
+      screen.getByRole("link", { name: "관리에서 목록 보기" }),
     ).toHaveAttribute(
       "href",
-      "/dashboard/ops-weekly?week=2026-11-16&tab=settings#unmatched",
+      "/dashboard/ops-weekly?week=2026-11-16&tab=settings&section=unmatched",
     );
   });
 
@@ -150,7 +150,9 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   });
 
   it("설정 탭: 안 붙은 서비스 패널이 목록으로 그려진다", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=unmatched");
     state.view = viewFor("settings", true, {
+      overview: [],
       snapshot: null,
       detail: null,
       bundle: {
@@ -222,7 +224,9 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   });
 
   it("설정 탭에서 안 붙은 서비스를 못 읽었으면(null) 불러오지 않았다고 적는다", async () => {
+    setUrl("?week=2026-11-16&tab=settings&section=unmatched");
     state.view = viewFor("settings", true, {
+      overview: [],
       snapshot: null,
       detail: null,
       bundle: {

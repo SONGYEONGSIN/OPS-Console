@@ -126,7 +126,7 @@ describe("PimsTab", () => {
   it("안 붙음 줄 — 비관리자에게는 없다", () => {
     render(<PimsTab {...PROPS} snapshot={snap({ unmatchedPims: 2 })} />);
     expect(screen.queryByText(/안 붙은/)).toBeNull();
-    expect(screen.queryByText("설정에서 목록 보기")).toBeNull();
+    expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
   });
 
   it("안 붙음 줄 — 관리자는 0건도 적고 조치·링크는 n>0 일 때만", () => {
@@ -137,7 +137,7 @@ describe("PimsTab", () => {
       screen.getByText("담당자가 맞지 않아 아무에게도 안 붙은 발표 서비스 0건"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "설정에서 목록 보기" }),
+      screen.queryByRole("link", { name: "관리에서 목록 보기" }),
     ).toBeNull();
     rerender(
       <PimsTab {...PROPS} isAdmin snapshot={snap({ unmatchedPims: 2 })} />,
@@ -148,7 +148,7 @@ describe("PimsTab", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "설정에서 목록 보기" }),
+      screen.getByRole("link", { name: "관리에서 목록 보기" }),
     ).toHaveAttribute("href", SETTINGS);
   });
 });

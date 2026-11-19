@@ -47,12 +47,14 @@ vi.mock("@/features/ops-weekly/week-queries", () => ({
   getWeek: async () => WEEK,
   ensureWeek: async () => WEEK,
   listWriters: async () => [WRITER],
+  listRecentWeeks: async () => [],
 }));
 vi.mock("@/features/ops-weekly/report-queries", () => ({
   ensureReport: async () => m.report,
   listReports: async () => [m.report],
   loadReportDetail: async () => EMPTY,
   listProjectEntriesForWeek: async () => [],
+  listReportStatusesForWeeks: async () => [],
 }));
 vi.mock("@/features/ops-weekly/note-images", () => ({
   signProjectEntries: async <T>(entries: T) => entries,

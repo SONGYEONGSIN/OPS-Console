@@ -11,7 +11,7 @@ import { ApplicationTab } from "./_components/ApplicationTab";
 import { LeaveTab } from "./_components/LeaveTab";
 import { PimsTab } from "./_components/PimsTab";
 import { ProjectTab } from "./_components/ProjectTab";
-import { SettingsTab } from "./_components/SettingsTab";
+import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
 import { WeekHeader } from "./_components/WeekHeader";
@@ -19,7 +19,12 @@ import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
-import { buildTabs, opsWeeklyHref, type OpsTab } from "./_params";
+import {
+  buildTabs,
+  manageHref,
+  opsWeeklyHref,
+  type OpsTab,
+} from "./_params";
 
 const EMPTY_ROSTER =
   "작성 대상 명단이 비어 있습니다 — 관리자 설정을 확인하세요";
@@ -64,7 +69,7 @@ function WeekBody({ view }: { view: Week }) {
           <p>{EMPTY_ROSTER}</p>
           {view.actor.isAdmin ? (
             <Link
-              href={opsWeeklyHref(view.week.week_start, "settings", null)}
+              href={manageHref(view.week.week_start, "exclusions")}
               className="text-xs underline"
             >
               설정 열기
@@ -101,7 +106,7 @@ function WeekBody({ view }: { view: Week }) {
       />
     );
   }
-  if (tab === "settings" && view.bundle !== null) {
+  if (tab === "settings" && view.bundle !== null && view.overview !== null) {
     const key = bodyKeyOf({
       reportId: report?.id ?? null,
       weekStart: view.week.week_start,
@@ -109,10 +114,12 @@ function WeekBody({ view }: { view: Week }) {
       tab,
     });
     return (
-      <SettingsTab
+      <ManageTab
         key={key}
         bundle={view.bundle}
         unmatched={view.unmatched}
+        overview={view.overview}
+        actor={view.actor}
       />
     );
   }
@@ -132,7 +139,7 @@ function WeekBody({ view }: { view: Week }) {
       freezeNotice: view.freezeNotice,
       // 담당자 이름이 안 맞는 서비스는 관리자가 고칠 일이다 — 비관리자에게는 안내 자체를 안 낸다.
       isAdmin: view.actor.isAdmin,
-      settingsHref: `${opsWeeklyHref(view.week.week_start, "settings", null)}#unmatched`,
+      settingsHref: manageHref(view.week.week_start, "unmatched"),
     };
     if (tab === "application") return <ApplicationTab key={key} {...props} />;
     if (tab === "pims") return <PimsTab key={key} {...props} />;
@@ -148,7 +155,7 @@ function WeekBody({ view }: { view: Week }) {
           notes={detail.notes[tab]}
           settingsHref={
             view.actor.isAdmin
-              ? opsWeeklyHref(view.week.week_start, "settings", null)
+              ? manageHref(view.week.week_start, "projects")
               : undefined
           }
         />

@@ -8,6 +8,11 @@ import {
 } from "@/features/ops-weekly/auto-queries";
 import { normEmail } from "@/features/ops-weekly/email";
 import {
+  OVERVIEW_WEEKS,
+  buildWeekOverview,
+  type WeekOverviewRow,
+} from "@/features/ops-weekly/overview";
+import {
   computeKpis,
   groupEntriesByProject,
   type AutoSnapshot,
@@ -25,6 +30,7 @@ import {
 import {
   ensureReport,
   listProjectEntriesForWeek,
+  listReportStatusesForWeeks,
   listReports,
   loadReportDetail,
   type ReportDetail,
@@ -49,6 +55,7 @@ import {
 import {
   ensureWeek,
   getWeek,
+  listRecentWeeks,
   listWriters,
 } from "@/features/ops-weekly/week-queries";
 import { parseTab, parseWeekParam, type OpsTab } from "./_params";
@@ -86,6 +93,8 @@ export type OpsWeeklyView =
       bundle: SettingsBundle | null;
       /** settings 탭에서만, 이 주 기준 실시간 값 */
       unmatched: UnmatchedServices | null;
+      /** settings 탭에서만 — 최근 주 현황(관리 › 전체 현황) */
+      overview: WeekOverviewRow[] | null;
     };
 
 type Sp = { week?: string; tab?: string; op?: string };
@@ -234,6 +243,15 @@ function derive(args: {
   };
 }
 
+/** 관리 › 전체 현황 — 최근 주와 그 주 보고서 제출 상태. */
+async function loadOverview(
+  writers: readonly WriterCandidate[],
+): Promise<WeekOverviewRow[]> {
+  const weeks = await listRecentWeeks(OVERVIEW_WEEKS);
+  const reports = await listReportStatusesForWeeks(weeks.map((w) => w.id));
+  return buildWeekOverview({ weeks, reports, writers });
+}
+
 export async function loadOpsWeeklyPage(
   me: CurrentOperator,
   sp: Sp,
@@ -267,7 +285,7 @@ export async function loadOpsWeeklyPage(
       ? await loadStatusData({ week, actor, writers, reports })
       : null;
   // 설정 번들·안 붙은 서비스 목록은 관리자의 설정 탭에서만 읽는다(parseTab 이 비관리자의 settings 를 돌려보낸다).
-  const [bundle, unmatched] =
+  const [bundle, unmatched, overview] =
     tab === "settings" && actor.isAdmin
       ? await Promise.all([
           loadSettingsBundle(),
@@ -276,8 +294,9 @@ export async function loadOpsWeeklyPage(
             writerNames: new Set(writers.map((w) => w.name)),
             now,
           }),
+          loadOverview(writers),
         ])
-      : [null, null];
+      : [null, null, null];
   return {
     kind: "week",
     week,
@@ -300,5 +319,6 @@ export async function loadOpsWeeklyPage(
     finalize: status?.finalize ?? null,
     bundle,
     unmatched,
+    overview,
   };
 }

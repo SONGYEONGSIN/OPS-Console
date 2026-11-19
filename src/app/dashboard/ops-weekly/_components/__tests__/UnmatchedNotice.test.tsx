@@ -34,7 +34,7 @@ describe("UnmatchedNotice", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "설정에서 목록 보기" }),
+      screen.getByRole("link", { name: "관리에서 목록 보기" }),
     ).toHaveAttribute("href", base.settingsHref);
   });
 });
