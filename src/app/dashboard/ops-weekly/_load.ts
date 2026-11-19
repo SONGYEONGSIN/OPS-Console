@@ -305,11 +305,18 @@ function derive(args: {
   };
 }
 
-/** 관리 › 전체 현황 — 최근 주와 그 주 보고서 제출 상태. */
+/**
+ * 관리 › 전체 현황 — 최근 주와 그 주 보고서 제출 상태.
+ * 보는 주가 최근 목록 밖이면 끝에 덧붙인다 — 오래된 주도 [정정]할 길이 남는다.
+ */
 async function loadOverview(
   writers: readonly WriterCandidate[],
+  viewing: WeekRow,
 ): Promise<WeekOverviewRow[]> {
-  const weeks = await listRecentWeeks(OVERVIEW_WEEKS);
+  const recent = await listRecentWeeks(OVERVIEW_WEEKS);
+  const weeks = recent.some((w) => w.id === viewing.id)
+    ? recent
+    : [...recent, viewing];
   const reports = await listReportStatusesForWeeks(weeks.map((w) => w.id));
   return buildWeekOverview({ weeks, reports, writers });
 }
@@ -322,19 +329,19 @@ type ManageData = {
 
 /** 관리 탭 전용 — 설정 번들·안 붙은 서비스(이 주 기준)·전체 현황을 함께 읽는다. */
 async function loadManageData(args: {
-  weekStart: string;
+  week: WeekRow;
   writers: readonly WriterCandidate[];
   now: Date;
 }): Promise<ManageData> {
-  const { weekStart, writers, now } = args;
+  const { week, writers, now } = args;
   const [bundle, unmatched, overview] = await Promise.all([
     loadSettingsBundle(),
     loadUnmatchedServices({
-      weekStart,
+      weekStart: week.week_start,
       writerNames: new Set(writers.map((w) => w.name)),
       now,
     }),
-    loadOverview(writers),
+    loadOverview(writers, week),
   ]);
   return { bundle, unmatched, overview };
 }
@@ -383,7 +390,7 @@ export async function loadOpsWeeklyPage(
   // 관리 탭은 resolveTab 이 관리 권한이 있을 때만 연다.
   const manage =
     tab === "settings"
-      ? await loadManageData({ weekStart, writers, now })
+      ? await loadManageData({ week, writers, now })
       : null;
   return {
     kind: "week",

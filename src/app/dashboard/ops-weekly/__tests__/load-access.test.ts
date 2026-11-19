@@ -273,6 +273,41 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
     expect(m.listReportStatusesForWeeks).toHaveBeenCalledWith(["w1"]);
   });
 
+  it("관리 › 전체 현황: 보는 주가 최근 8주 밖이면 끝에 덧붙이고 제출 수도 함께 읽는다", async () => {
+    const recent = Array.from({ length: 8 }, (_, i) => ({
+      ...WEEK,
+      id: `r${i}`,
+      week_start: `2027-0${i + 1}-04`,
+    }));
+    m.listRecentWeeks.mockResolvedValue(recent);
+    const v = await load("z@x", "admin", { tab: "settings" });
+    const ids = v.kind === "week" ? (v.overview ?? []).map((r) => r.weekId) : [];
+    expect(ids).toHaveLength(9);
+    expect(ids.at(-1)).toBe("w1");
+    expect(m.listReportStatusesForWeeks).toHaveBeenCalledWith([
+      ...recent.map((w) => w.id),
+      "w1",
+    ]);
+  });
+
+  it("관리 › 전체 현황: 보는 주가 최근 8주 안이면 중복 없이 8개", async () => {
+    const recent = [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        ...WEEK,
+        id: `r${i}`,
+        week_start: `2027-0${i + 1}-04`,
+      })),
+      WEEK,
+    ];
+    m.listRecentWeeks.mockResolvedValue(recent);
+    const v = await load("z@x", "admin", { tab: "settings" });
+    const ids = v.kind === "week" ? (v.overview ?? []).map((r) => r.weekId) : [];
+    expect(ids).toEqual(recent.map((w) => w.id));
+    expect(m.listReportStatusesForWeeks).toHaveBeenCalledWith(
+      recent.map((w) => w.id),
+    );
+  });
+
   it("명단 밖 관리자가 ?op=작성자 로 열면 그 보고서를 보되 탭은 제출 현황·관리 둘", async () => {
     expect(await load("z@x", "admin", { op: "b@x" })).toMatchObject({
       tab: "application",
