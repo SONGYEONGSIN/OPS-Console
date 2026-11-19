@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReportStatus } from "../constants";
-import { buildWeekOverview, weekPhaseOf } from "../overview";
+import { buildWeekOverview, dutyNameOf, weekPhaseOf } from "../overview";
 import type { WriterCandidate } from "../roster";
 import type { WeekRow } from "../schemas";
 import { weekRefFromStart } from "../week";
@@ -70,7 +70,7 @@ describe("buildWeekOverview", () => {
     expect([r.submitted, r.total]).toEqual([1, 2]);
   });
 
-  it("당번 이름 — 대소문자 무시 명단 이름 → 이메일 → null", () => {
+  it("당번 이름 — 대소문자 무시 명단 이름 → 이메일 → 미지정", () => {
     const rows = buildWeekOverview({
       weeks: [
         week({}),
@@ -80,7 +80,13 @@ describe("buildWeekOverview", () => {
       reports: [],
       writers,
     });
-    expect(rows.map((r) => r.dutyName)).toEqual(["당번이", "x@x", null]);
+    expect(rows.map((r) => r.dutyName)).toEqual(["당번이", "x@x", "미지정"]);
+  });
+
+  it("dutyNameOf 는 머리띠·당번 지정이 같이 쓰는 규칙이다", () => {
+    expect(dutyNameOf("D@X", writers)).toBe("당번이");
+    expect(dutyNameOf("x@x", writers)).toBe("x@x");
+    expect(dutyNameOf(null, writers)).toBe("미지정");
   });
 
   it("받은 순서(최근 주 먼저) 그대로, 라벨은 weekRefFromStart", () => {

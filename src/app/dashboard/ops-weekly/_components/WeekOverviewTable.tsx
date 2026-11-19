@@ -109,7 +109,7 @@ export function WeekOverviewTable({ rows, actor }: Props) {
                 <td className={TD}>
                   <span className="tabular-nums">{`${row.submitted}/${row.total}`}</span>
                 </td>
-                <td className={TD}>{row.dutyName ?? "미지정"}</td>
+                <td className={TD}>{row.dutyName}</td>
                 <td className={TD}>
                   <ActionCell
                     row={row}

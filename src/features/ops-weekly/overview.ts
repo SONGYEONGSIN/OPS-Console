@@ -26,14 +26,15 @@ export type WeekOverviewRow = {
   reportedAt: string | null;
   submitted: number;
   total: number;
-  dutyName: string | null;
+  dutyName: string;
 };
 
-function dutyNameOf(
+/** 당번 이름 — 명단 이름 → 명단 밖이면 이메일 → 없으면 '미지정'. 머리띠·당번 지정·전체 현황이 같이 쓴다. */
+export function dutyNameOf(
   dutyEmail: string | null,
   writers: readonly WriterCandidate[],
-): string | null {
-  if (dutyEmail === null) return null;
+): string {
+  if (dutyEmail === null) return "미지정";
   const key = normEmail(dutyEmail);
   return writers.find((w) => w.email === key)?.name ?? dutyEmail;
 }

@@ -18,9 +18,11 @@ vi.mock("../_components/WeekHeader", () => ({
     tab?: string;
     viewingOther: unknown;
     writers: unknown[];
+    dutyName: string | null;
   }) => (
     <div
       data-testid="week-header"
+      data-duty={p.dutyName ?? "(null)"}
       data-picker={p.writers.length > 0 ? "shown" : "none"}
       data-week={JSON.stringify(p.week)}
       data-tab={p.tab}
@@ -366,6 +368,20 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     ).toEqual({ week_start: "2026-11-16", status: "open", reported_at: null });
     expect(container.innerHTML).not.toContain("총평금주문구");
     expect(container.innerHTML).not.toContain("총평차주문구");
+  });
+
+  it("머리띠 당번 — 명단 이름(대소문자 무시) → 명단 밖이면 이메일 → 없으면 미지정", async () => {
+    for (const [duty_email, want] of [
+      ["A@example.com", "홍길동"],
+      ["x@x", "x@x"],
+      [null, "미지정"],
+    ] as const) {
+      const base = viewFor("application", false);
+      state.view = { ...base, week: { ...base.week, duty_email } };
+      const { unmount } = await renderPage("application");
+      expect(screen.getByTestId("week-header").dataset.duty).toBe(want);
+      unmount();
+    }
   });
 
   it("예전 주소(tab=settings&op=…)로 열어도 관리 화면 머리띠에 남의 보고서 표시가 붙지 않는다", async () => {

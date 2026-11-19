@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
-import { normEmail } from "@/features/ops-weekly/email";
+import { dutyNameOf } from "@/features/ops-weekly/overview";
 import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
@@ -54,12 +54,6 @@ function unknownCountOf(v: Week): number {
   const list = v.snapshot?.application.unknown ?? [];
   const overrides = v.detail?.overrides;
   return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
-}
-
-function dutyNameOf(v: Week): string | null {
-  const email = v.week.duty_email;
-  if (email === null) return null;
-  return v.writers.find((w) => w.email === normEmail(email))?.name ?? email;
 }
 
 function WeekBody({ view }: { view: Week }) {
@@ -198,7 +192,7 @@ function WeekView({ view }: { view: Week }) {
         viewedEmail={viewed?.email ?? null}
         submittedCount={view.submittedCount}
         writerCount={view.writers.length}
-        dutyName={dutyNameOf(view)}
+        dutyName={dutyNameOf(week.duty_email, view.writers)}
         canSubmit={view.canSubmit}
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}

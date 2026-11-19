@@ -90,4 +90,28 @@ describe("DutySection", () => {
     expect(screen.queryByLabelText("당번")).toBeNull();
     expect(screen.getByText("미지정")).toBeInTheDocument();
   });
+
+  it("보고된 주: 명단 밖 당번은 미지정이 아니라 이메일로 보인다", () => {
+    renderDuty({ week: { ...WEEK, status: "reported", duty_email: "x@x" } });
+    expect(screen.getByText("x@x")).toBeInTheDocument();
+    expect(screen.queryByText("미지정")).toBeNull();
+  });
+
+  it("열린 주: 명단 밖 당번이면 고르는 상자 옆에 한 줄을 붙인다", () => {
+    renderDuty({ week: { ...WEEK, duty_email: "X@X" } });
+    const picker = screen.getByLabelText("당번");
+    const note = screen.getByText("지금 당번 x@x — 명단 밖");
+    expect(note.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["text-xs", "text-ink-soft"]),
+    );
+    expect(note.closest("div")).toBe(picker.closest("div.flex-wrap"));
+  });
+
+  it("열린 주: 명단 안 당번이거나 당번이 없으면 그 줄이 없다", () => {
+    const { unmount } = renderDuty();
+    expect(screen.queryByText(/명단 밖/)).toBeNull();
+    unmount();
+    renderDuty({ week: { ...WEEK, duty_email: null } });
+    expect(screen.queryByText(/명단 밖/)).toBeNull();
+  });
 });

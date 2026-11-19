@@ -79,8 +79,8 @@ describe("WeekOverviewTable", () => {
     expect(t.className.split(/\s+/)).toContain("tabular-nums");
   });
 
-  it("제출 수는 숫자 정렬, 당번 없으면 미지정", () => {
-    render(<WeekOverviewTable rows={[row({ dutyName: null })]} actor={admin} />);
+  it("제출 수는 숫자 정렬, 당번 칸은 행의 이름 그대로(미지정 포함)", () => {
+    render(<WeekOverviewTable rows={[row({ dutyName: "미지정" })]} actor={admin} />);
     expect(screen.getByText("3/9").className.split(/\s+/)).toContain(
       "tabular-nums",
     );
