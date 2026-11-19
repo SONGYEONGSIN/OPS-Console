@@ -120,6 +120,12 @@ function WeekBody({ view }: { view: Week }) {
         unmatched={view.unmatched}
         overview={view.overview}
         actor={view.actor}
+        week={{
+          id: view.week.id,
+          status: view.week.status,
+          duty_email: view.week.duty_email,
+        }}
+        weekLabel={`${view.weekRef.label} · ${view.weekRef.rangeLabel}`}
       />
     );
   }

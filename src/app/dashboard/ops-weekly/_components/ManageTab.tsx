@@ -8,12 +8,14 @@ import {
 import type { UnmatchedServices } from "@/features/ops-weekly/auto-lists/unmatched";
 import type { WeekOverviewRow } from "@/features/ops-weekly/overview";
 import type { Actor } from "@/features/ops-weekly/permissions";
+import type { WeekRow } from "@/features/ops-weekly/schemas";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
 import {
   MANAGE_SECTION_LABEL,
   parseSection,
   type ManageSection,
 } from "../_params";
+import { DutySection } from "./DutySection";
 import { ProjectCatalogPanel } from "./ProjectCatalogPanel";
 import { RecipientsPanel } from "./RecipientsPanel";
 import { RotationPanel } from "./RotationPanel";
@@ -22,9 +24,9 @@ import { WeekOverviewTable } from "./WeekOverviewTable";
 import { WriterExclusionPanel } from "./WriterExclusionPanel";
 import { replaceOpsQuery, useOpsQueryValue } from "./use-ops-query";
 
-// 당번 지정 칸은 Task 7 이 넣는다.
 const MENU_ORDER: readonly ManageSection[] = [
   "overview",
+  "duty",
   "recipients",
   "rotation",
   "exclusions",
@@ -54,12 +56,17 @@ export function ManageTab({
   unmatched,
   overview,
   actor,
+  week,
+  weekLabel,
 }: {
   bundle: SettingsBundle;
   /** 이 주 기준 안 붙은 서비스(실시간). null = 읽지 않았다 — 0건으로 그리지 않는다 */
   unmatched: UnmatchedServices | null;
   overview: WeekOverviewRow[];
   actor: Actor;
+  /** 클라이언트로 가는 값이라 행 통째가 아니라 이 칸들만 받는다 */
+  week: Pick<WeekRow, "id" | "status" | "duty_email">;
+  weekLabel: string;
 }) {
   const active = parseSection(useOpsQueryValue("section"));
   const excluded = new Set(bundle.excludedWriterEmails);
@@ -85,6 +92,14 @@ export function ManageTab({
             <h2 className="text-xl font-bold text-ink">전체 현황</h2>
             <WeekOverviewTable rows={overview} actor={actor} />
           </section>
+        </Section>
+        <Section name="duty" active={active}>
+          <DutySection
+            week={week}
+            weekLabel={weekLabel}
+            writers={writers}
+            actor={actor}
+          />
         </Section>
         <Section name="recipients" active={active}>
           <RecipientsPanel

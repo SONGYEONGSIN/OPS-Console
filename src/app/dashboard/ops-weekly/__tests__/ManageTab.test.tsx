@@ -19,6 +19,7 @@ const saveRotation = vi.fn();
 const saveExcludedWriters = vi.fn();
 const upsertProject = vi.fn();
 const setProjectOwners = vi.fn();
+const setWeekDuty = vi.fn();
 vi.mock("@/features/ops-weekly/settings-actions", () => ({
   addRecipient: (...a: unknown[]) => addRecipient(...a),
   removeRecipient: (...a: unknown[]) => removeRecipient(...a),
@@ -26,6 +27,7 @@ vi.mock("@/features/ops-weekly/settings-actions", () => ({
   saveExcludedWriters: (...a: unknown[]) => saveExcludedWriters(...a),
   upsertProject: (...a: unknown[]) => upsertProject(...a),
   setProjectOwners: (...a: unknown[]) => setProjectOwners(...a),
+  setWeekDuty: (...a: unknown[]) => setWeekDuty(...a),
 }));
 
 import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
@@ -40,6 +42,8 @@ function ManageTab(props: Partial<ComponentProps<typeof RealManageTab>> & { bund
       unmatched={null}
       overview={[]}
       actor={{ email: "z@x", isAdmin: true }}
+      week={{ id: "w1", status: "open", duty_email: null }}
+      weekLabel="11월 3주"
       {...props}
     />
   );
@@ -264,7 +268,13 @@ describe("ManageTab", () => {
   it("패널 제목은 모두 h2 text-xl font-bold — 숨긴 칸에도 마운트돼 있다", () => {
     setUrl("?week=2026-11-16&tab=settings");
     renderManage();
-    for (const name of ["받는 사람", "당번 순번", "작성 제외", "프로젝트·TF 목록"]) {
+    for (const name of [
+      "당번 지정",
+      "받는 사람",
+      "당번 순번",
+      "작성 제외",
+      "프로젝트·TF 목록",
+    ]) {
       const h = screen.getByRole("heading", { name, hidden: true });
       expect(h.tagName).toBe("H2");
       expect(h.className.split(/\s+/)).toEqual(
@@ -339,7 +349,7 @@ describe("ManageTab", () => {
     ).toBeTruthy();
   });
 
-  it("메뉴 여섯 — 순서와 기본 선택(전체 현황)", () => {
+  it("메뉴 일곱 — 순서와 기본 선택(전체 현황)", () => {
     setUrl("?week=2026-11-16&tab=settings");
     renderManage();
     const nav = screen.getByRole("navigation", { name: "관리 메뉴" });
@@ -349,6 +359,7 @@ describe("ManageTab", () => {
         .map((b) => b.textContent?.replace(/^[◉·]/, "").replace(/\d+$/, "")),
     ).toEqual([
       "전체 현황",
+      "당번 지정",
       "받는 사람",
       "당번 순번표",
       "작성 제외",
@@ -395,5 +406,18 @@ describe("ManageTab", () => {
     expect(
       within(nav2).getByRole("button", { name: /안 붙은 서비스/ }).textContent,
     ).not.toMatch(/\d$/);
+  });
+
+  it("당번 지정 칸은 제외를 뺀 명단에서 고른다", () => {
+    setUrl("?week=2026-11-16&tab=settings&section=duty");
+    render(
+      <ManageTab
+        bundle={bundle({ excludedWriterEmails: ["t@x"] })}
+      />,
+    );
+    const options = within(screen.getByLabelText("당번"))
+      .getAllByRole("option")
+      .map((o) => o.textContent);
+    expect(options).toEqual(["당번 미지정", "운영자A", "운영자B"]);
   });
 });
