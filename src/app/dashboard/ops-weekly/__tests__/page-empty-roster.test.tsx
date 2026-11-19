@@ -92,4 +92,22 @@ describe("안내 화면 — 볼 수 있는 화면이 없을 때", () => {
       "/dashboard/ops-weekly",
     );
   });
+
+  it("첫 줄에 지금 어느 주인지 적는다 — 머리띠 주 라벨과 같은 형식(숫자 정렬)", async () => {
+    for (const emptyRoster of [false, true]) {
+      state.view = noAccess(emptyRoster);
+      const { unmount } = await renderPage();
+      const ref = weekRefFromStart("2026-11-16")!;
+      const label = screen.getByText(`${ref.label} · ${ref.rangeLabel}`);
+      const box = screen.getByText(emptyRoster ? EMPTY_TEXT : NO_ACCESS_TEXT)
+        .parentElement as Element;
+      expect(box.firstElementChild).toBe(label);
+      const t = label.className.split(/\s+/);
+      expect(t).toEqual(
+        expect.arrayContaining(["text-base", "font-bold", "tabular-nums"]),
+      );
+      expect(t).not.toContain("font-mono");
+      unmount();
+    }
+  });
 });

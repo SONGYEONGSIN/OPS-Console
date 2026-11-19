@@ -3,7 +3,7 @@ import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
 import { normEmail } from "@/features/ops-weekly/email";
-import { shiftWeek } from "@/features/ops-weekly/week";
+import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
@@ -258,14 +258,17 @@ function WeekView({ view }: { view: Week }) {
 /** 이 주에 볼 화면이 없는 사람 — 명단이 비었으면 그 사실을, 아니면 누가 보는지를 알린다. */
 function NoAccess({
   weekStart,
+  weekRef,
   emptyRoster,
 }: {
   weekStart: string;
+  weekRef: WeekRef;
   emptyRoster: boolean;
 }) {
   return (
     <div className="p-5 lg:p-7">
       <div className={BOX_CLASS}>
+        <p className="text-base font-bold tabular-nums">{`${weekRef.label} · ${weekRef.rangeLabel}`}</p>
         <p>{emptyRoster ? EMPTY_ROSTER : NO_ACCESS}</p>
         {emptyRoster ? null : (
           <p className="text-xs text-muted">{NO_ACCESS_GUIDE}</p>
@@ -337,6 +340,7 @@ export default async function OpsWeeklyPage({
       ) : view.kind === "no-access" ? (
         <NoAccess
           weekStart={view.week.week_start}
+          weekRef={view.weekRef}
           emptyRoster={view.emptyRoster}
         />
       ) : (
