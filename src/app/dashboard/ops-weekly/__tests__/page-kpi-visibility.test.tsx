@@ -16,7 +16,7 @@ vi.mock("@/components/common/PageTabs", () => ({ PageTabs: () => null }));
 
 import OpsWeeklyPage from "../page";
 
-function viewFor(tab: string) {
+function viewFor(tab: string, over: Record<string, unknown> = {}) {
   return {
     kind: "week",
     week: {
@@ -43,19 +43,34 @@ function viewFor(tab: string) {
     projectGroups: null,
     finalize: null,
     bundle: null,
+    roles: ["report"],
+    statusAccess: null,
+    ...over,
   };
 }
 
-describe("KPI 카드는 모든 탭에서 보이고 누구의 숫자인지 밝힌다", () => {
-  it.each(["application", "pims", "project", "status", "settings"])(
-    "%s 탭",
+describe("KPI 는 내 보고서에서만 — 누구의 숫자인지 밝힌다", () => {
+  it.each(["application", "pims", "project"])("%s 탭", async (tab) => {
+    state.view = viewFor(tab);
+    const { unmount } = render(
+      await OpsWeeklyPage({ searchParams: Promise.resolve({ tab }) }),
+    );
+    expect(screen.getAllByTestId("weekly-kpi-label")).toHaveLength(6);
+    expect(screen.getByText(/^홍길동의 이번 주/)).toBeInTheDocument();
+    unmount();
+  });
+
+  // 0장은 이 픽스처의 kpis: null 에서 나온다 — 제출 현황·관리에서 KPI 를 안 읽는 것은
+  // 로더 몫이고 load-access.test 가 지킨다. 여기서는 kpis 가 없을 때 페이지가 카드를 안 그리는 것만 본다.
+  it.each(["status", "settings"])(
+    "%s 탭: kpis 가 없으면 카드 없음",
     async (tab) => {
-      state.view = viewFor(tab);
+      state.view = viewFor(tab, { kpis: null });
       const { unmount } = render(
         await OpsWeeklyPage({ searchParams: Promise.resolve({ tab }) }),
       );
-      expect(screen.getAllByTestId("weekly-kpi-label")).toHaveLength(6);
-      expect(screen.getByText(/^홍길동의 이번 주/)).toBeInTheDocument();
+      expect(screen.queryAllByTestId("weekly-kpi-label")).toHaveLength(0);
+      expect(screen.queryByText(/^홍길동의 이번 주/)).toBeNull();
       unmount();
     },
   );

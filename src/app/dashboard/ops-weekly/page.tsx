@@ -31,6 +31,9 @@ import {
 
 const EMPTY_ROSTER =
   "작성 대상 명단이 비어 있습니다 — 관리자 설정을 확인하세요";
+const NO_ACCESS = "이 주에 볼 수 있는 화면이 없습니다";
+const NO_ACCESS_GUIDE =
+  "주간업무보고는 작성 대상과 그 주 당번·관리자가 봅니다. 받는 사람은 보고가 끝난 주를 볼 수 있습니다.";
 const BOX_CLASS =
   "flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm text-ink";
 const TAB_TITLE: Record<OpsTab, string> = {
@@ -42,11 +45,6 @@ const TAB_TITLE: Record<OpsTab, string> = {
   status: "제출 현황",
   settings: "설정",
 };
-// 명단이 비어도 열어야 하는 탭 — 명단을 고칠 자리가 설정 탭이다.
-const OPEN_WITHOUT_ROSTER: ReadonlySet<OpsTab> = new Set([
-  "status",
-  "settings",
-]);
 
 type Week = Extract<OpsWeeklyView, { kind: "week" }>;
 
@@ -65,23 +63,6 @@ function dutyNameOf(v: Week): string | null {
 
 function WeekBody({ view }: { view: Week }) {
   const { tab, viewed } = view;
-  if (viewed === null && !OPEN_WITHOUT_ROSTER.has(tab)) {
-    return (
-      <div className="p-5 lg:p-7">
-        <div className={BOX_CLASS}>
-          <p>{EMPTY_ROSTER}</p>
-          {view.actor.isAdmin ? (
-            <Link
-              href={manageHref(view.week.week_start, "exclusions")}
-              className="text-xs underline"
-            >
-              설정 열기
-            </Link>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
   const { snapshot, detail, report } = view;
   if (
     tab === "status" &&
@@ -189,13 +170,18 @@ function WeekView({ view }: { view: Week }) {
   const weekStart = week.week_start;
   const { kpis } = view;
   const showKpi = viewed !== null && kpis !== null;
+  // 작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자에게는 명단을 내리지 않는다.
+  const pickerWriters =
+    view.statusAccess !== null
+      ? view.writers.map((w) => ({ email: w.email, name: w.name }))
+      : [];
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
       <WeekHeader
         weekRef={weekRef}
         week={headerWeekOf(week)}
         viewedName={viewed?.name ?? null}
-        writers={view.writers.map((w) => ({ email: w.email, name: w.name }))}
+        writers={pickerWriters}
         viewedEmail={viewed?.email ?? null}
         submittedCount={view.submittedCount}
         writerCount={view.writers.length}
@@ -255,6 +241,43 @@ function WeekView({ view }: { view: Week }) {
   );
 }
 
+/** 이 주에 볼 화면이 없는 사람 — 명단이 비었으면 그 사실을, 아니면 누가 보는지를 알린다. */
+function NoAccess({
+  weekStart,
+  emptyRoster,
+}: {
+  weekStart: string;
+  emptyRoster: boolean;
+}) {
+  return (
+    <div className="p-5 lg:p-7">
+      <div className={BOX_CLASS}>
+        <p>{emptyRoster ? EMPTY_ROSTER : NO_ACCESS}</p>
+        {emptyRoster ? null : (
+          <p className="text-xs text-muted">{NO_ACCESS_GUIDE}</p>
+        )}
+        <div className="flex flex-wrap gap-3 text-xs">
+          <Link
+            href={opsWeeklyHref(shiftWeek(weekStart, -1), "status", null)}
+            className="underline"
+          >
+            ‹ 이전 주
+          </Link>
+          <Link
+            href={opsWeeklyHref(shiftWeek(weekStart, 1), "status", null)}
+            className="underline"
+          >
+            다음 주 ›
+          </Link>
+          <Link href="/dashboard/ops-weekly" className="underline">
+            이번 주로
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NoWeek({ weekStart }: { weekStart: string }) {
   return (
     <div className="p-5 lg:p-7">
@@ -297,6 +320,11 @@ export default async function OpsWeeklyPage({
       />
       {view.kind === "no-week" ? (
         <NoWeek weekStart={view.weekStart} />
+      ) : view.kind === "no-access" ? (
+        <NoAccess
+          weekStart={view.week.week_start}
+          emptyRoster={view.emptyRoster}
+        />
       ) : (
         <WeekView view={view} />
       )}

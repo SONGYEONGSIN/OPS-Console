@@ -6,7 +6,11 @@ vi.mock(
   async () => (await import("./actions-fixture")).adminModule,
 );
 
-import { listRecipients, loadSettingsBundle } from "../settings-queries";
+import {
+  isRecipient,
+  listRecipients,
+  loadSettingsBundle,
+} from "../settings-queries";
 import { resetFixture, state } from "./actions-fixture";
 import { fakeAdmin, type Row } from "./fake-admin";
 
@@ -150,5 +154,16 @@ describe("listRecipients", () => {
       ],
     });
     expect(await listRecipients()).toEqual(["a@example.com", "b@example.com"]);
+  });
+});
+
+describe("isRecipient", () => {
+  it("isRecipient — 대소문자·공백을 맞춰 본인 하나만 대조, 조회 실패는 던진다", async () => {
+    tables({ ops_weekly_recipients: [{ email: " R@X " }] });
+    expect(await isRecipient("r@x")).toBe(true);
+    expect(await isRecipient(" R@x ")).toBe(true);
+    expect(await isRecipient("z@x")).toBe(false);
+    state.db.failTable("ops_weekly_recipients", "boom");
+    await expect(isRecipient("r@x")).rejects.toThrow(/ops_weekly_recipients/);
   });
 });

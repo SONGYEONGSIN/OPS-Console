@@ -13,9 +13,15 @@ vi.mock("../../_components/page-header/PageHeader", () => ({
   PageHeader: () => null,
 }));
 vi.mock("../_components/WeekHeader", () => ({
-  WeekHeader: (p: { week: unknown; tab?: string; viewingOther: unknown }) => (
+  WeekHeader: (p: {
+    week: unknown;
+    tab?: string;
+    viewingOther: unknown;
+    writers: unknown[];
+  }) => (
     <div
       data-testid="week-header"
+      data-picker={p.writers.length > 0 ? "shown" : "none"}
       data-week={JSON.stringify(p.week)}
       data-tab={p.tab}
       data-other={JSON.stringify(p.viewingOther)}
@@ -77,6 +83,8 @@ function viewFor(tab: string, isAdmin: boolean, over = {}) {
     finalize: null,
     bundle: null,
     unmatched: null,
+    roles: ["report"],
+    statusAccess: null,
     ...over,
   };
 }
@@ -297,6 +305,39 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     state.view = viewFor("application", false);
     await renderPage("application");
     expect(screen.getByTestId("week-header").dataset.other).toBe("null");
+  });
+
+  it("작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자 none, 당번·관리자(manage)·받는 사람(read) shown", async () => {
+    for (const [statusAccess, want] of [
+      [null, "none"],
+      ["manage", "shown"],
+      ["read", "shown"],
+    ] as const) {
+      state.view = viewFor("application", false, { statusAccess });
+      const { unmount } = await renderPage("application");
+      expect(screen.getByTestId("week-header").dataset.picker).toBe(want);
+      unmount();
+    }
+  });
+
+  it("일반 운영자 화면에 당번 총평 문구가 없다 — 머리띠에는 세 칸만 넘어간다", async () => {
+    state.view = viewFor("application", false, {
+      week: {
+        id: "w1",
+        week_start: "2026-11-16",
+        duty_email: null,
+        status: "open",
+        reported_at: null,
+        summary_this: "총평금주문구",
+        summary_next: "총평차주문구",
+      },
+    });
+    const { container } = await renderPage("application");
+    expect(
+      JSON.parse(screen.getByTestId("week-header").dataset.week ?? "null"),
+    ).toEqual({ week_start: "2026-11-16", status: "open", reported_at: null });
+    expect(container.innerHTML).not.toContain("총평금주문구");
+    expect(container.innerHTML).not.toContain("총평차주문구");
   });
 
   it("예전 주소(tab=settings&op=…)로 열어도 관리 화면 머리띠에 남의 보고서 표시가 붙지 않는다", async () => {

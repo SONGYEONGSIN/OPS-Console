@@ -30,12 +30,6 @@ const TAB_LABEL: Record<OpsTab, string> = {
   settings: "설정",
 };
 
-export function parseTab(v: string | undefined, isAdmin: boolean): OpsTab {
-  const tab = OPS_TABS.find((t) => t === v);
-  if (tab === undefined) return "application";
-  return tab === "settings" && !isAdmin ? "application" : tab;
-}
-
 /** 월요일 `YYYY-MM-DD` 만 통과한다. */
 export function parseWeekParam(v: string | undefined): string | null {
   if (v === undefined) return null;

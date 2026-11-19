@@ -15,7 +15,6 @@ import {
   opsWeeklyHref,
   parseSection,
   parseSub,
-  parseTab,
   parseWeekParam,
   resolveAppSub,
   resolveTab,
@@ -23,16 +22,6 @@ import {
   roleTabsOf,
   type TabAccess,
 } from "../_params";
-
-describe("parseTab", () => {
-  it("설정은 admin 만", () => {
-    expect(parseTab("settings", false)).toBe("application");
-    expect(parseTab("settings", true)).toBe("settings");
-    expect(parseTab("xx", true)).toBe("application");
-    expect(parseTab(undefined, true)).toBe("application");
-    expect(parseTab("status", false)).toBe("status");
-  });
-});
 
 describe("parseWeekParam", () => {
   it("월요일만", () => {

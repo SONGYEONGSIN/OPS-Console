@@ -82,6 +82,14 @@ export async function listRecipients(): Promise<string[]> {
     .sort();
 }
 
+/**
+ * 이 사람이 받는 사람인가 — 명단 정규화는 `listRecipients` 한 길로 하고 불리언만 내보낸다
+ * (명단은 화면에 내리지 않는다). 조회 실패는 false 가 아니라 던진다.
+ */
+export async function isRecipient(email: string): Promise<boolean> {
+  return (await listRecipients()).includes(normEmail(email));
+}
+
 type SettingsDbRow = {
   rotation_anchor_week: string | null;
   excluded_writer_emails: string[] | null;
