@@ -3,17 +3,10 @@
 import { useState } from "react";
 import { markTabChecked, saveAreaNote } from "@/features/ops-weekly/actions";
 import type { Area } from "@/features/ops-weekly/constants";
+import { AREA_TAB_LABEL } from "../_params";
 import { SaveStatus } from "./SaveStatus";
 import { BTN_CLASS, ERROR_CLASS, FIELD_CLASS } from "./styles";
 import { useSave } from "./use-save";
-
-const AREA_LABEL: Record<Area, string> = {
-  application: "원서접수",
-  pims: "PIMS",
-  project: "프로젝트",
-  tf: "TF",
-  leave: "휴가·외근",
-};
 
 type Props = {
   reportId: string | null;
@@ -40,7 +33,7 @@ export function AreaNotes(props: Props) {
   const note = useSave({
     track: {
       key: `note:${reportId ?? ""}:${area}`,
-      label: `${AREA_LABEL[area]} 영역 특이사항`,
+      label: `${AREA_TAB_LABEL[area]} 영역 특이사항`,
     },
   });
   const check = useSave();

@@ -68,7 +68,7 @@ describe("PimsTab", () => {
       />,
     );
     expect(
-      screen.getByRole("tablist", { name: "PIMS 묶음" }),
+      screen.getByRole("tablist", { name: "합격자 발표 묶음" }),
     ).toBeInTheDocument();
     expect(
       screen.getAllByRole("tab").map((t) => t.firstChild?.textContent),
@@ -76,7 +76,7 @@ describe("PimsTab", () => {
     expect(tabCount("금주 발표")).toBe("1");
     expect(tabCount("차주 발표")).toBe("2");
     expect(screen.getByText("자동 2건 · 직접 1건")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "PIMS" }).className).toContain(
+    expect(screen.getByRole("heading", { name: "합격자 발표" }).className).toContain(
       "text-xl",
     );
   });

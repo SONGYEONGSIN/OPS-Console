@@ -18,8 +18,14 @@ export const OPS_TABS = [
 ] as const;
 export type OpsTab = (typeof OPS_TABS)[number];
 
-const TAB_LABEL: Record<OpsTab, string> = {
+/** 화면이 영역을 부르는 이름 — 도메인 `AREA_LABEL` 은 그대로 두고 합격자 발표만 다르게 부른다. */
+export const AREA_TAB_LABEL: Record<Area, string> = {
   ...AREA_LABEL,
+  pims: "합격자 발표",
+};
+
+const TAB_LABEL: Record<OpsTab, string> = {
+  ...AREA_TAB_LABEL,
   status: "제출 현황",
   settings: "설정",
 };

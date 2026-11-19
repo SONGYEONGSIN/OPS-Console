@@ -20,6 +20,7 @@ import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
 import {
+  AREA_TAB_LABEL,
   buildTabs,
   manageHref,
   opsWeeklyHref,
@@ -32,7 +33,7 @@ const BOX_CLASS =
   "flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm text-ink";
 const TAB_TITLE: Record<OpsTab, string> = {
   application: "원서접수",
-  pims: "PIMS",
+  pims: AREA_TAB_LABEL.pims,
   project: "프로젝트",
   tf: "TF",
   leave: "휴가·외근",

@@ -139,7 +139,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     const { unmount } = await renderPage("pims");
     expect(screen.queryByText(/안 붙은 발표 서비스/)).toBeNull();
     expect(
-      within(screen.getByRole("tablist", { name: "PIMS 묶음" })).getAllByRole(
+      within(screen.getByRole("tablist", { name: "합격자 발표 묶음" })).getAllByRole(
         "tab",
       ),
     ).toHaveLength(2);

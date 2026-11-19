@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { AREA_LABEL } from "@/features/ops-weekly/constants";
 import {
   APP_SUBS,
+  AREA_TAB_LABEL,
   MANAGE_SECTIONS,
   MANAGE_SECTION_LABEL,
   OPS_TABS,
@@ -51,7 +53,7 @@ describe("buildTabs", () => {
     });
     expect(t.map((x) => x.label)).toEqual([
       "원서접수",
-      "PIMS ✓",
+      "합격자 발표 ✓",
       "프로젝트",
       "TF",
       "휴가·외근",
@@ -229,5 +231,12 @@ describe("관리 메뉴", () => {
     expect(parseSection("unmatched")).toBe("unmatched");
     expect(parseSection("nope")).toBe("overview");
     expect(manageHref(W, "unmatched")).toBe(`/dashboard/ops-weekly?week=${W}&tab=settings&section=unmatched`);
+  });
+});
+
+describe("AREA_TAB_LABEL", () => {
+  it("영역 라벨만 '합격자 발표' — 도메인 AREA_LABEL 은 그대로", () => {
+    expect(AREA_TAB_LABEL).toEqual({ ...AREA_LABEL, pims: "합격자 발표" });
+    expect(AREA_LABEL.pims).toBe("PIMS");
   });
 });

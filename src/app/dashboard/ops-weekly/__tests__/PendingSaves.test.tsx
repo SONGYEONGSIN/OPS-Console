@@ -203,6 +203,18 @@ describe("제출완료 x 자동 저장", () => {
     expect(submitReport).not.toHaveBeenCalled();
   });
 
+  it("합격자 발표 특이사항 저장이 실패하면 그 이름으로 막는다", async () => {
+    saveAreaNote.mockResolvedValue({ ok: false, error: "저장 실패" });
+    render(<Screen area="pims" />);
+    typeThenBlur("x");
+    await screen.findByText("저장 안 됨");
+    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
+    await waitFor(() =>
+      expect(blockedWith("합격자 발표 영역 특이사항")).toBe(true),
+    );
+    expect(blockedWith("PIMS 영역 특이사항")).toBe(false);
+  });
+
   it("언마운트된 뒤에 끝난 실패도 기록되고, 다시 마운트해 저장에 성공하면 풀린다", async () => {
     const d = deferred<{ ok: false; error: string }>();
     saveAreaNote.mockReturnValueOnce(d.promise).mockResolvedValue({ ok: true });
