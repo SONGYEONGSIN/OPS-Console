@@ -1,5 +1,6 @@
 import type { PageTab } from "@/components/common/PageTabs";
 import {
+  AREAS,
   AREA_LABEL,
   OPS_WEEKLY_PATH,
   type Area,
@@ -22,12 +23,6 @@ export type OpsTab = (typeof OPS_TABS)[number];
 export const AREA_TAB_LABEL: Record<Area, string> = {
   ...AREA_LABEL,
   pims: "합격자 발표",
-};
-
-const TAB_LABEL: Record<OpsTab, string> = {
-  ...AREA_TAB_LABEL,
-  status: "제출 현황",
-  settings: "설정",
 };
 
 /** 월요일 `YYYY-MM-DD` 만 통과한다. */
@@ -106,13 +101,12 @@ export function opsWeeklyHref(
 export function buildTabs(args: {
   weekStart: string;
   op: string | null;
-  isAdmin: boolean;
   checked: readonly Area[];
 }): PageTab[] {
   const checked: ReadonlySet<string> = new Set(args.checked);
-  return OPS_TABS.filter((t) => t !== "settings" || args.isAdmin).map((t) => ({
+  return AREAS.map((t) => ({
     key: t,
-    label: checked.has(t) ? `${TAB_LABEL[t]} ✓` : TAB_LABEL[t],
+    label: checked.has(t) ? `${AREA_TAB_LABEL[t]} ✓` : AREA_TAB_LABEL[t],
     href: opsWeeklyHref(args.weekStart, t, args.op),
   }));
 }

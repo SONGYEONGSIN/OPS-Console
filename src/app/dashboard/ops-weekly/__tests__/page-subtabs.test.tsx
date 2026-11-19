@@ -29,7 +29,28 @@ vi.mock("../_components/WeekHeader", () => ({
   ),
 }));
 vi.mock("@/components/common/PageTabs", () => ({
-  PageTabs: () => <nav data-testid="page-tabs" />,
+  PageTabs: ({
+    tabs,
+    active,
+  }: {
+    tabs: { key: string; label: string; href: string }[];
+    active: string;
+  }) => (
+    <nav
+      data-testid={
+        tabs.some((t) => ["report", "status", "manage"].includes(t.key))
+          ? "role-tabs"
+          : "area-tabs"
+      }
+      data-active={active}
+    >
+      {tabs.map((t) => (
+        <a key={t.key} href={t.href}>
+          {t.label}
+        </a>
+      ))}
+    </nav>
+  ),
 }));
 vi.mock("@/features/ops-weekly/actions", () => ({
   saveItemOverride: vi.fn(),
@@ -206,13 +227,13 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   it("KPI 바가 있으면 탭 줄 위 간격은 pt-1, 없으면 pt-4", async () => {
     state.view = viewFor("application", false);
     const { unmount } = await renderPage("application");
-    expect(screen.getByTestId("page-tabs").parentElement?.className).toBe(
+    expect(screen.getByTestId("area-tabs").parentElement?.className).toBe(
       "pt-1",
     );
     unmount();
     state.view = viewFor("application", false, { kpis: null });
     await renderPage("application");
-    expect(screen.getByTestId("page-tabs").parentElement?.className).toBe(
+    expect(screen.getByTestId("area-tabs").parentElement?.className).toBe(
       "pt-4",
     );
   });
@@ -344,5 +365,84 @@ describe("주간업무보고 페이지 — 머리띠", () => {
     state.view = viewFor("settings", true, OTHER);
     await renderPage("settings");
     expect(screen.getByTestId("week-header").dataset.other).toBe("null");
+  });
+});
+
+describe("역할 탭 줄", () => {
+  const ALL = ["report", "status", "manage"];
+  const names = (nav: HTMLElement) =>
+    within(nav)
+      .getAllByRole("link")
+      .map((a) => a.textContent);
+  const B = { email: "b@example.com", name: "김철수" };
+
+  it("일반 운영자(역할 하나)에게는 역할 탭 줄이 없고 지금의 영역 탭 줄 하나뿐", async () => {
+    state.view = viewFor("application", false, { roles: ["report"] });
+    await renderPage("application");
+    expect(screen.queryByTestId("role-tabs")).toBeNull();
+    expect(names(screen.getByTestId("area-tabs"))).toEqual([
+      "원서접수",
+      "합격자 발표",
+      "프로젝트",
+      "TF",
+      "휴가·외근",
+    ]);
+  });
+  it("작성자 관리자: 내 보고서·제출 현황·관리가 머리띠 위, 영역 탭 줄은 머리띠 아래", async () => {
+    state.view = viewFor("application", true, { roles: ALL });
+    await renderPage("application");
+    const nav = screen.getByTestId("role-tabs");
+    expect(names(nav)).toEqual(["내 보고서", "제출 현황", "관리"]);
+    expect(nav.dataset.active).toBe("report");
+    const header = screen.getByTestId("week-header");
+    expect(
+      nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      header.compareDocumentPosition(screen.getByTestId("area-tabs")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+  it("제출 현황·관리에서는 영역 탭 줄이 없다", async () => {
+    for (const [tab, active] of [
+      ["status", "status"],
+      ["settings", "manage"],
+    ] as const) {
+      state.view = viewFor(tab, true, { roles: ALL });
+      const { unmount } = await renderPage(tab);
+      expect(screen.getByTestId("role-tabs").dataset.active).toBe(active);
+      expect(screen.queryByTestId("area-tabs")).toBeNull();
+      unmount();
+    }
+  });
+  it("남의 보고서를 볼 때는 제출 현황이 켜져 보인다", async () => {
+    state.view = viewFor("application", false, {
+      roles: ["report", "status"],
+      writers: [{ email: "a@example.com", name: "홍길동" }, B],
+      viewed: B,
+    });
+    await renderPage("application");
+    expect(screen.getByTestId("role-tabs").dataset.active).toBe("status");
+  });
+  it("예전 주소 ?tab=settings&op=… 로 열면 관리가 켜져 있다", async () => {
+    state.view = viewFor("settings", true, {
+      roles: ALL,
+      writers: [{ email: "a@example.com", name: "홍길동" }, B],
+      viewed: B,
+    });
+    await renderPage("settings");
+    expect(screen.getByTestId("role-tabs").dataset.active).toBe("manage");
+  });
+  it("명단 밖 관리자가 ?op=작성자 로 열면 탭은 제출 현황·관리 둘이고 제출 현황이 켜져 있다", async () => {
+    state.view = viewFor("application", true, {
+      actor: { email: "z@example.com", isAdmin: true },
+      roles: ["status", "manage"],
+      statusAccess: "manage",
+      viewed: { email: "a@example.com", name: "홍길동" },
+    });
+    await renderPage("application");
+    const nav = screen.getByTestId("role-tabs");
+    expect(names(nav)).toEqual(["제출 현황", "관리"]);
+    expect(nav.dataset.active).toBe("status");
   });
 });

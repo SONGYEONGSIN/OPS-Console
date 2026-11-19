@@ -33,11 +33,10 @@ describe("parseWeekParam", () => {
 });
 
 describe("buildTabs", () => {
-  it("확인한 탭에 ✓, 설정은 admin 만, op 를 이어 붙인다", () => {
+  it("확인한 탭에 ✓, op 를 이어 붙인다", () => {
     const t = buildTabs({
       weekStart: "2026-11-16",
       op: "a@x",
-      isAdmin: false,
       checked: ["pims"],
     });
     expect(t.map((x) => x.label)).toEqual([
@@ -46,18 +45,16 @@ describe("buildTabs", () => {
       "프로젝트",
       "TF",
       "휴가·외근",
-      "제출 현황",
     ]);
     expect(t[0].href).toBe(
       "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=a%40x",
     );
   });
 
-  it("admin 은 설정 탭까지, op 가 없으면 붙이지 않는다", () => {
+  it("영역 다섯만 — 제출 현황·설정은 역할 탭 줄로, op 가 없으면 붙이지 않는다", () => {
     const t = buildTabs({
       weekStart: "2026-11-16",
       op: null,
-      isAdmin: true,
       checked: [],
     });
     expect(t.map((x) => x.key)).toEqual([
@@ -66,11 +63,9 @@ describe("buildTabs", () => {
       "project",
       "tf",
       "leave",
-      "status",
-      "settings",
     ]);
-    expect(t[6].href).toBe(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=settings",
+    expect(t[4].href).toBe(
+      "/dashboard/ops-weekly?week=2026-11-16&tab=leave",
     );
   });
 });
@@ -124,7 +119,6 @@ describe("opsWeeklyHref sub", () => {
     const t = buildTabs({
       weekStart: "2026-11-16",
       op: null,
-      isAdmin: false,
       checked: [],
     });
     expect(t.every((x) => !x.href.includes("sub="))).toBe(true);

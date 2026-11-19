@@ -22,6 +22,7 @@ import { headerWeekOf } from "./_header-week";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
 import {
   AREA_TAB_LABEL,
+  buildRoleTabs,
   buildTabs,
   manageHref,
   opsWeeklyHref,
@@ -43,7 +44,7 @@ const TAB_TITLE: Record<OpsTab, string> = {
   tf: "TF",
   leave: "휴가·외근",
   status: "제출 현황",
-  settings: "설정",
+  settings: "관리",
 };
 
 type Week = Extract<OpsWeeklyView, { kind: "week" }>;
@@ -177,6 +178,18 @@ function WeekView({ view }: { view: Week }) {
       : [];
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
+      {view.roles.length > 1 ? (
+        <PageTabs
+          active={
+            roleTabOf(tab) === "report" && op !== null
+              ? "status"
+              : roleTabOf(tab)
+          }
+          size="md"
+          className="px-5 pt-4 lg:px-7"
+          tabs={buildRoleTabs({ weekStart, roles: view.roles })}
+        />
+      ) : null}
       <WeekHeader
         weekRef={weekRef}
         week={headerWeekOf(week)}
@@ -223,19 +236,20 @@ function WeekView({ view }: { view: Week }) {
         </StickyKpiBar>
       ) : null}
       {/* KPI 바가 없으면 WeekHeader 아래 간격을 이 래퍼가 맡는다 */}
-      <div className={showKpi ? "pt-1" : "pt-4"}>
-        <PageTabs
-          active={tab}
-          size="md"
-          className="px-5 lg:px-7"
-          tabs={buildTabs({
-            weekStart,
-            op,
-            isAdmin: actor.isAdmin,
-            checked: report?.checked_tabs ?? [],
-          })}
-        />
-      </div>
+      {roleTabOf(tab) === "report" ? (
+        <div className={showKpi ? "pt-1" : "pt-4"}>
+          <PageTabs
+            active={tab}
+            size="md"
+            className="px-5 lg:px-7"
+            tabs={buildTabs({
+              weekStart,
+              op,
+              checked: report?.checked_tabs ?? [],
+            })}
+          />
+        </div>
+      ) : null}
       <WeekBody view={view} />
     </PendingSavesProvider>
   );
