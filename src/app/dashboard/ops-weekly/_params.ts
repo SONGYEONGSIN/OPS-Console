@@ -4,6 +4,7 @@ import {
   OPS_WEEKLY_PATH,
   type Area,
 } from "@/features/ops-weekly/constants";
+import type { StatusAccess } from "@/features/ops-weekly/permissions";
 import { weekRefFromStart } from "@/features/ops-weekly/week";
 
 export const OPS_TABS = [
@@ -114,4 +115,96 @@ export function buildTabs(args: {
     label: checked.has(t) ? `${TAB_LABEL[t]} ✓` : TAB_LABEL[t],
     href: opsWeeklyHref(args.weekStart, t, args.op),
   }));
+}
+
+export type RoleTab = "report" | "status" | "manage";
+
+export const ROLE_TAB_LABEL: Record<RoleTab, string> = {
+  report: "내 보고서",
+  status: "제출 현황",
+  manage: "관리",
+};
+
+export function roleTabOf(tab: OpsTab): RoleTab {
+  if (tab === "status") return "status";
+  if (tab === "settings") return "manage";
+  return "report";
+}
+
+export type TabAccess = {
+  canReport: boolean;
+  status: StatusAccess;
+  manage: boolean;
+};
+
+/** 주소의 `tab` 을 권한으로 거른다 — 허용된 값은 그대로, 아니면 처음 화면(없으면 null). */
+export function resolveTab(raw: string | undefined, access: TabAccess): OpsTab | null {
+  const tab = OPS_TABS.find((t) => t === raw);
+  if (tab !== undefined) {
+    const role = roleTabOf(tab);
+    const allowed =
+      role === "report"
+        ? access.canReport
+        : role === "status"
+          ? access.status !== null
+          : access.manage;
+    if (allowed) return tab;
+  }
+  if (access.canReport) return "application";
+  return access.status !== null ? "status" : null;
+}
+
+export function roleTabsOf(access: TabAccess): RoleTab[] {
+  const allowed: Record<RoleTab, boolean> = {
+    report: access.canReport,
+    status: access.status !== null,
+    manage: access.manage,
+  };
+  return (["report", "status", "manage"] as const).filter((r) => allowed[r]);
+}
+
+const ROLE_TAB_TARGET: Record<RoleTab, OpsTab> = {
+  report: "application",
+  status: "status",
+  manage: "settings",
+};
+
+export function buildRoleTabs(args: {
+  weekStart: string;
+  roles: readonly RoleTab[];
+}): PageTab[] {
+  return args.roles.map((r) => ({
+    key: r,
+    label: ROLE_TAB_LABEL[r],
+    href: opsWeeklyHref(args.weekStart, ROLE_TAB_TARGET[r], null),
+  }));
+}
+
+export const MANAGE_SECTIONS = [
+  "overview",
+  "duty",
+  "recipients",
+  "rotation",
+  "exclusions",
+  "projects",
+  "unmatched",
+] as const;
+export type ManageSection = (typeof MANAGE_SECTIONS)[number];
+
+export const MANAGE_SECTION_LABEL: Record<ManageSection, string> = {
+  overview: "전체 현황",
+  duty: "당번 지정",
+  recipients: "받는 사람",
+  rotation: "당번 순번표",
+  exclusions: "작성 제외",
+  projects: "프로젝트·TF 목록",
+  unmatched: "안 붙은 서비스",
+};
+
+export function parseSection(raw: string | null): ManageSection {
+  return MANAGE_SECTIONS.find((s) => s === raw) ?? "overview";
+}
+
+export function manageHref(weekStart: string, section: ManageSection): string {
+  return `${opsWeeklyHref(weekStart, "settings", null)}&section=${section}`;
 }

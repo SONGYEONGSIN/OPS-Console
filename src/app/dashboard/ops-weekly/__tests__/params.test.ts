@@ -1,15 +1,25 @@
 import { describe, it, expect } from "vitest";
 import {
   APP_SUBS,
+  MANAGE_SECTIONS,
+  MANAGE_SECTION_LABEL,
+  OPS_TABS,
   PIMS_SUBS,
   appVisibleSubs,
+  buildRoleTabs,
   buildTabs,
   defaultAppSub,
+  manageHref,
   opsWeeklyHref,
+  parseSection,
   parseSub,
   parseTab,
   parseWeekParam,
   resolveAppSub,
+  resolveTab,
+  roleTabOf,
+  roleTabsOf,
+  type TabAccess,
 } from "../_params";
 
 describe("parseTab", () => {
@@ -159,5 +169,65 @@ describe("원서접수 하위 탭 해석 — SubTabs·KPI 카드가 같은 함�
   it("parseSub 의 네 번째 인자로 기본값을 바꾼다", () => {
     expect(parseSub("application", null, APP_SUBS, "running")).toBe("running");
     expect(parseSub("application", "test", APP_SUBS, "running")).toBe("test");
+  });
+});
+
+const W = "2026-11-16";
+const acc = (o: Partial<TabAccess> = {}): TabAccess => ({ canReport: true, status: null, manage: false, ...o });
+
+describe("resolveTab — 주소 어휘 그대로, 권한 없는 값은 처음 화면", () => {
+  it("작성자만: status·settings·모르는 값·빈 값은 원서접수", () => {
+    for (const raw of ["status", "settings", "xx", undefined]) expect(resolveTab(raw, acc())).toBe("application");
+    expect(resolveTab("pims", acc())).toBe("pims");
+    expect(resolveTab("tf", acc())).toBe("tf");
+  });
+  it("명단 밖 당번: 내 보고서 값은 제출 현황으로", () => {
+    const a = acc({ canReport: false, status: "manage" });
+    for (const raw of ["application", "project", "settings", undefined]) expect(resolveTab(raw, a)).toBe("status");
+  });
+  it("관리자는 settings 그대로", () => {
+    expect(resolveTab("settings", acc({ canReport: false, status: "manage", manage: true }))).toBe("settings");
+  });
+  it("받는 사람(보고된 주): status 는 그대로, 나머지는 status", () => {
+    const a = acc({ canReport: false, status: "read" });
+    expect(resolveTab("status", a)).toBe("status");
+    expect(resolveTab("settings", a)).toBe("status");
+  });
+  it("볼 화면이 없으면 null", () => {
+    expect(resolveTab("status", acc({ canReport: false }))).toBeNull();
+    expect(resolveTab(undefined, acc({ canReport: false }))).toBeNull();
+  });
+});
+
+describe("역할 탭", () => {
+  it("roleTabsOf — 일반 운영자 1개, 작성자 당번 2개, 명단 밖 관리자 2개, 작성자 관리자 3개", () => {
+    expect(roleTabsOf(acc())).toEqual(["report"]);
+    expect(roleTabsOf(acc({ status: "manage" }))).toEqual(["report", "status"]);
+    expect(roleTabsOf(acc({ canReport: false, status: "manage", manage: true }))).toEqual(["status", "manage"]);
+    expect(roleTabsOf(acc({ status: "manage", manage: true }))).toEqual(["report", "status", "manage"]);
+  });
+  it("roleTabOf — tab 값 7개를 역할로", () => {
+    expect(OPS_TABS.map(roleTabOf)).toEqual(["report", "report", "report", "report", "report", "status", "manage"]);
+  });
+  it("buildRoleTabs — 라벨·주소, op·sub 를 들고 가지 않는다", () => {
+    const t = buildRoleTabs({ weekStart: W, roles: ["report", "status", "manage"] });
+    expect(t.map((x) => x.label)).toEqual(["내 보고서", "제출 현황", "관리"]);
+    expect(t.map((x) => x.href)).toEqual([
+      `/dashboard/ops-weekly?week=${W}&tab=application`,
+      `/dashboard/ops-weekly?week=${W}&tab=status`,
+      `/dashboard/ops-weekly?week=${W}&tab=settings`,
+    ]);
+  });
+});
+
+describe("관리 메뉴", () => {
+  it("관리 메뉴 일곱 개 순서와 section 해석", () => {
+    expect(MANAGE_SECTIONS.map((s) => MANAGE_SECTION_LABEL[s])).toEqual([
+      "전체 현황", "당번 지정", "받는 사람", "당번 순번표", "작성 제외", "프로젝트·TF 목록", "안 붙은 서비스",
+    ]);
+    expect(parseSection(null)).toBe("overview");
+    expect(parseSection("unmatched")).toBe("unmatched");
+    expect(parseSection("nope")).toBe("overview");
+    expect(manageHref(W, "unmatched")).toBe(`/dashboard/ops-weekly?week=${W}&tab=settings&section=unmatched`);
   });
 });
