@@ -32,9 +32,13 @@ vi.mock("@/components/common/PageTabs", () => ({
   PageTabs: ({
     tabs,
     active,
+    size,
+    className,
   }: {
     tabs: { key: string; label: string; href: string }[];
     active: string;
+    size?: string;
+    className?: string;
   }) => (
     <nav
       data-testid={
@@ -43,6 +47,8 @@ vi.mock("@/components/common/PageTabs", () => ({
           : "area-tabs"
       }
       data-active={active}
+      data-size={size}
+      className={className}
     >
       {tabs.map((t) => (
         <a key={t.key} href={t.href}>
@@ -289,6 +295,7 @@ describe("주간업무보고 페이지 — 머리띠", () => {
       { email: "b@example.com", name: "김철수" },
     ],
     viewed: { email: "b@example.com", name: "김철수" },
+    statusAccess: "manage",
   };
   const otherOf = () =>
     JSON.parse(screen.getByTestId("week-header").dataset.other ?? "null");
@@ -394,6 +401,10 @@ describe("역할 탭 줄", () => {
     const nav = screen.getByTestId("role-tabs");
     expect(names(nav)).toEqual(["내 보고서", "제출 현황", "관리"]);
     expect(nav.dataset.active).toBe("report");
+    expect(nav.dataset.size).toBe("md");
+    expect(nav.className.split(/\s+/).sort()).toEqual(
+      ["lg:px-7", "pt-4", "px-5"],
+    );
     const header = screen.getByTestId("week-header");
     expect(
       nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING,
