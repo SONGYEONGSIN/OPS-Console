@@ -5,6 +5,7 @@ import {
   cleanup,
   fireEvent,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { weekRefFromStart } from "@/features/ops-weekly/week";
@@ -60,6 +61,7 @@ const base = {
   prevHref: "/dashboard/ops-weekly?week=2026-11-09",
   nextHref: "/dashboard/ops-weekly?week=2026-11-23",
   tab: "application",
+  viewingOther: null,
 };
 
 beforeEach(() => {
@@ -298,5 +300,44 @@ describe("WeekHeader", () => {
       expect(t).toContain("min-h-9");
       expect(t).toContain("min-w-9");
     });
+  });
+});
+
+describe("WeekHeader — 남의 보고서", () => {
+  const BACK = "/dashboard/ops-weekly?week=2026-11-16&tab=status";
+  const toks = (el: Element) => el.className.split(/\s+/);
+
+  it("남의 보고서: 누구의 것인지와 제출 현황으로 돌아가는 링크", () => {
+    render(
+      <WeekHeader
+        {...base}
+        viewingOther={{ name: "김철수", backHref: BACK }}
+      />,
+    );
+    const label = screen.getByText("김철수의 보고서");
+    expect(label).toBeInTheDocument();
+    expect(toks(label)).toEqual(
+      expect.arrayContaining(["text-xs", "font-bold", "text-ink", "border-line-soft"]),
+    );
+    const link = screen.getByRole("link", { name: "‹ 제출 현황" });
+    expect(link).toHaveAttribute("href", BACK);
+    expect(toks(link)).toContain("underline");
+  });
+
+  it("본인 보고서면 남의 보고서 줄이 없다", () => {
+    render(<WeekHeader {...base} />);
+    expect(screen.queryByText(/의 보고서$/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "‹ 제출 현황" })).toBeNull();
+  });
+
+  it("본인 보고서가 없으면(viewedEmail null) 작성자 선택 상자는 '작성자 선택' 이고 아무도 골라져 있지 않다", () => {
+    render(<WeekHeader {...base} viewedEmail={null} />);
+    const select = screen.getByLabelText("작성자");
+    expect(
+      within(select)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["작성자 선택", "운영자A", "운영자B"]);
+    expect(select).toHaveValue("");
   });
 });

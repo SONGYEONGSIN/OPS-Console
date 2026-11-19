@@ -18,12 +18,14 @@ import { WeekHeader } from "./_components/WeekHeader";
 import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
+import { headerWeekOf } from "./_header-week";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
 import {
   AREA_TAB_LABEL,
   buildTabs,
   manageHref,
   opsWeeklyHref,
+  roleTabOf,
   type OpsTab,
 } from "./_params";
 
@@ -191,7 +193,7 @@ function WeekView({ view }: { view: Week }) {
     <PendingSavesProvider key={report?.id ?? week.id}>
       <WeekHeader
         weekRef={weekRef}
-        week={week}
+        week={headerWeekOf(week)}
         viewedName={viewed?.name ?? null}
         writers={view.writers.map((w) => ({ email: w.email, name: w.name }))}
         viewedEmail={viewed?.email ?? null}
@@ -206,7 +208,15 @@ function WeekView({ view }: { view: Week }) {
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
-        tab={tab}
+        tab={roleTabOf(tab) === "report" ? tab : "application"}
+        viewingOther={
+          roleTabOf(tab) === "report" && op !== null && viewed !== null
+            ? {
+                name: viewed.name,
+                backHref: opsWeeklyHref(weekStart, "status", null),
+              }
+            : null
+        }
       />
       {showKpi ? (
         <StickyKpiBar>

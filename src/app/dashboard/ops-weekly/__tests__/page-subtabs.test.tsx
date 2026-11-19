@@ -12,7 +12,16 @@ vi.mock("../_load", () => ({ loadOpsWeeklyPage: async () => state.view }));
 vi.mock("../../_components/page-header/PageHeader", () => ({
   PageHeader: () => null,
 }));
-vi.mock("../_components/WeekHeader", () => ({ WeekHeader: () => null }));
+vi.mock("../_components/WeekHeader", () => ({
+  WeekHeader: (p: { week: unknown; tab?: string; viewingOther: unknown }) => (
+    <div
+      data-testid="week-header"
+      data-week={JSON.stringify(p.week)}
+      data-tab={p.tab}
+      data-other={JSON.stringify(p.viewingOther)}
+    />
+  ),
+}));
 vi.mock("@/components/common/PageTabs", () => ({
   PageTabs: () => <nav data-testid="page-tabs" />,
 }));
@@ -241,5 +250,58 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     });
     await renderPage("settings");
     expect(screen.getByText("목록을 불러오지 않았습니다")).toBeInTheDocument();
+  });
+});
+
+describe("주간업무보고 페이지 — 머리띠", () => {
+  const OTHER = {
+    writers: [
+      { email: "a@example.com", name: "홍길동" },
+      { email: "b@example.com", name: "김철수" },
+    ],
+    viewed: { email: "b@example.com", name: "김철수" },
+  };
+  const otherOf = () =>
+    JSON.parse(screen.getByTestId("week-header").dataset.other ?? "null");
+
+  it("머리띠에 넘기는 tab — 작성자를 고르면 가는 영역(제출 현황·관리면 원서접수)", async () => {
+    for (const [tab, want] of [
+      ["pims", "pims"],
+      ["status", "application"],
+      ["settings", "application"],
+    ] as const) {
+      state.view = viewFor(tab, true);
+      const { unmount } = await renderPage(tab);
+      expect(screen.getByTestId("week-header").dataset.tab).toBe(want);
+      unmount();
+    }
+  });
+
+  it("머리띠 week 는 세 칸만 — 당번 총평이 실리지 않는다", async () => {
+    state.view = viewFor("application", false);
+    (state.view.week as Record<string, unknown>).summary_this = "총평";
+    (state.view.week as Record<string, unknown>).summary_next = "차주 총평";
+    await renderPage("application");
+    const week = JSON.parse(screen.getByTestId("week-header").dataset.week ?? "{}");
+    expect(Object.keys(week).sort()).toEqual(["reported_at", "status", "week_start"]);
+  });
+
+  it("남의 보고서면 머리띠가 그 사람 이름과 제출 현황 주소를 받는다 — 본인 보고서면 null", async () => {
+    state.view = viewFor("application", false, OTHER);
+    const { unmount } = await renderPage("application");
+    expect(otherOf()).toEqual({
+      name: "김철수",
+      backHref: "/dashboard/ops-weekly?week=2026-11-16&tab=status",
+    });
+    unmount();
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    expect(screen.getByTestId("week-header").dataset.other).toBe("null");
+  });
+
+  it("예전 주소(tab=settings&op=…)로 열어도 관리 화면 머리띠에 남의 보고서 표시가 붙지 않는다", async () => {
+    state.view = viewFor("settings", true, OTHER);
+    await renderPage("settings");
+    expect(screen.getByTestId("week-header").dataset.other).toBe("null");
   });
 });

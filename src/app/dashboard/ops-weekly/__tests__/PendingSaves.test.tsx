@@ -71,6 +71,7 @@ const header = {
   prevHref: "/p",
   nextHref: "/n",
   tab: "application",
+  viewingOther: null,
 };
 
 function Screen({
