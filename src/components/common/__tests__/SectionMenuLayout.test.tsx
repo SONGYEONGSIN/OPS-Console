@@ -41,6 +41,14 @@ describe("SectionMenuLayout", () => {
     );
   });
 
+  it("선택 표식(◉/·)은 장식이라 aria-hidden", () => {
+    view();
+    const on = within(screen.getByRole("button", { name: /전체 현황/ })).getByText("◉");
+    expect(on).toHaveAttribute("aria-hidden", "true");
+    const off = within(screen.getByRole("button", { name: /안 붙은 서비스/ })).getByText("·");
+    expect(off).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("배지는 이름 뒤 숫자 정렬", () => {
     view();
     const badge = within(screen.getByRole("button", { name: /안 붙은 서비스/ })).getByText("3");

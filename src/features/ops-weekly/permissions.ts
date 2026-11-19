@@ -18,7 +18,7 @@ export function isDuty(actor: Actor, week: WeekState): boolean {
 }
 
 // 제출 현황과 남의 보고서를 여는 사람. 관리자·그 주 당번은 다루고("manage"),
-// 받는 사람은 보고가 끝난 주만 읽는다("read"). 이 판정이 열람의 전부다.
+// 받는 사람은 보고가 끝난 주만 읽는다("read"). 열람은 이 판정에 명단 소속·resolveTab 이 더해져 정해진다.
 export type StatusAccess = "manage" | "read" | null;
 
 export function statusAccess(

@@ -11,6 +11,7 @@ import type { Actor } from "@/features/ops-weekly/permissions";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
 import type { SettingsBundle } from "@/features/ops-weekly/settings-queries";
 import {
+  MANAGE_SECTIONS,
   MANAGE_SECTION_LABEL,
   parseSection,
   type ManageSection,
@@ -23,16 +24,6 @@ import { UnmatchedServicesPanel } from "./UnmatchedServicesPanel";
 import { WeekOverviewTable } from "./WeekOverviewTable";
 import { WriterExclusionPanel } from "./WriterExclusionPanel";
 import { replaceOpsQuery, useOpsQueryValue } from "./use-ops-query";
-
-const MENU_ORDER: readonly ManageSection[] = [
-  "overview",
-  "duty",
-  "recipients",
-  "rotation",
-  "exclusions",
-  "projects",
-  "unmatched",
-];
 
 function Section({
   name,
@@ -72,7 +63,7 @@ export function ManageTab({
   const excluded = new Set(bundle.excludedWriterEmails);
   // 순번·담당자는 제외를 반영한 명단에서만 고른다(서버도 같은 명단으로 검증한다).
   const writers = bundle.writerCandidates.filter((w) => !excluded.has(w.email));
-  const items: SectionMenuItem<ManageSection>[] = MENU_ORDER.map((key) => ({
+  const items: SectionMenuItem<ManageSection>[] = MANAGE_SECTIONS.map((key) => ({
     key,
     label: MANAGE_SECTION_LABEL[key],
     ...(key === "unmatched" && unmatched !== null

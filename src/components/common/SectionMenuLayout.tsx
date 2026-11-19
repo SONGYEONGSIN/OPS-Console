@@ -45,7 +45,9 @@ export function SectionMenuLayout<K extends string>({
                   : "border-transparent text-ink hover:bg-line-soft"
               }`}
             >
-              <span className="text-xs">{selected ? "◉" : "·"}</span>
+              <span aria-hidden="true" className="text-xs">
+                {selected ? "◉" : "·"}
+              </span>
               <span>{item.label}</span>
               {item.badge !== undefined && (
                 <span className="ml-auto text-xs tabular-nums">{item.badge}</span>

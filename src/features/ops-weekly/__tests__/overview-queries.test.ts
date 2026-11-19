@@ -8,6 +8,7 @@ const fromSpy: Mock = vi.fn();
 const orderSpy: Mock = vi.fn();
 const limitSpy: Mock = vi.fn();
 const inSpy: Mock = vi.fn();
+const selectSpy: Mock = vi.fn();
 
 /** 체인 메서드는 자기 자신을 돌려주고, await 하면 그 테이블 응답이 나온다. */
 function chain(table: string) {
@@ -18,7 +19,7 @@ function chain(table: string) {
       spy?.(...a);
       return self;
     };
-  self.select = passthrough();
+  self.select = passthrough(selectSpy);
   self.order = passthrough(orderSpy);
   self.limit = passthrough(limitSpy);
   self.in = passthrough(inSpy);
@@ -58,7 +59,7 @@ const weekRow = (id: string, week_start: string) => ({
 
 beforeEach(() => {
   responses.clear();
-  for (const s of [fromSpy, orderSpy, limitSpy, inSpy]) s.mockClear();
+  for (const s of [fromSpy, orderSpy, limitSpy, inSpy, selectSpy]) s.mockClear();
 });
 
 describe("listRecentWeeks", () => {
@@ -97,6 +98,8 @@ describe("listReportStatusesForWeeks", () => {
     ]);
     expect(inSpy).toHaveBeenCalledTimes(1);
     expect(inSpy).toHaveBeenCalledWith("week_id", ["w1", "w2"]);
+    // 상태 칸만 읽는다 — 8주치 snapshot 같은 본문 칸은 안 읽는다
+    expect(selectSpy).toHaveBeenCalledWith("week_id, operator_email, status");
   });
   it("조회 실패는 던진다", async () => {
     responses.set("ops_weekly_reports", {
