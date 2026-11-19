@@ -70,6 +70,18 @@ export async function getWeek(weekStart: string): Promise<WeekRow | null> {
   return row === null ? null : weekRowSchema.parse(row);
 }
 
+/** 최근 주부터 `limit` 개(week_start 내림차순). 전체 현황 표가 쓴다. */
+export async function listRecentWeeks(limit: number): Promise<WeekRow[]> {
+  const res = await createAdminClient()
+    .from("ops_weekly_weeks")
+    .select("*")
+    .order("week_start", { ascending: false })
+    .limit(limit);
+  return rowsOf<unknown>("ops_weekly_weeks", res).map((r) =>
+    weekRowSchema.parse(r),
+  );
+}
+
 export async function getWeekById(weekId: string): Promise<WeekRow | null> {
   const res = await createAdminClient()
     .from("ops_weekly_weeks")

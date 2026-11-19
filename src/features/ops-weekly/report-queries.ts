@@ -10,6 +10,7 @@ import {
   type Area,
   type ProjectKind,
   type ProjectStage,
+  type ReportStatus,
 } from "./constants";
 import { normEmail } from "./email";
 import type { ItemOverride, ManualItem, ProjectEntryView } from "./merge";
@@ -201,6 +202,32 @@ export async function listReports(weekId: string): Promise<ReportRow[]> {
   return rowsOf<unknown>("ops_weekly_reports", res).map((r) =>
     reportRowSchema.parse(r),
   );
+}
+
+export type ReportStatusRow = {
+  weekId: string;
+  operatorEmail: string;
+  status: ReportStatus;
+};
+
+/** 여러 주의 보고서 상태만 한 번에 읽는다(본문 칸은 안 읽는다). 빈 입력은 쿼리 없이 []. */
+export async function listReportStatusesForWeeks(
+  weekIds: readonly string[],
+): Promise<ReportStatusRow[]> {
+  if (weekIds.length === 0) return [];
+  const res = await createAdminClient()
+    .from("ops_weekly_reports")
+    .select("week_id, operator_email, status")
+    .in("week_id", [...weekIds]);
+  return rowsOf<{
+    week_id: string;
+    operator_email: string;
+    status: ReportStatus;
+  }>("ops_weekly_reports", res).map((r) => ({
+    weekId: r.week_id,
+    operatorEmail: normEmail(r.operator_email),
+    status: r.status,
+  }));
 }
 
 /** 명단 중 제출(`submitted`)하지 않은 사람 — 보고서 행이 없어도 미제출이다. */
