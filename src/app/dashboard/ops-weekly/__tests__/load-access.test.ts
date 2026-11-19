@@ -217,6 +217,26 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
     expect(m.isRecipient).toHaveBeenCalledWith("r@x");
   });
 
+  it("받는 사람: 보고된 주의 [보기](?op=B@X)는 b 의 보고서를 읽기 전용으로 연다", async () => {
+    getWeekMock(REPORTED);
+    isRecipientMock(true);
+    m.listReports.mockResolvedValue([
+      { ...reportFor("w1", "b@x"), status: "submitted" },
+    ]);
+    const v = await load("r@x", "member", { week: "2026-11-16", op: "B@X" });
+    expect(v).toMatchObject({
+      kind: "week",
+      tab: "application",
+      viewed: { email: "b@x" },
+      report: { id: "r-b@x" },
+      statusAccess: "read",
+      roles: ["status"],
+      canEdit: false,
+    });
+    // 보고가 끝난 주라 보고서를 새로 만들지 않는다
+    expect(m.ensureReport).not.toHaveBeenCalled();
+  });
+
   it("받는 사람: 열린 주는 안내 화면", async () => {
     isRecipientMock(true);
     const v = await load("r@x", "member", {
@@ -244,10 +264,13 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
       tab: "status",
       roles: ["status", "manage"],
     });
+    m.listRecentWeeks.mockResolvedValue([WEEK]);
     const s = await load("z@x", "admin", { tab: "settings" });
     expect(s).toMatchObject({ tab: "settings" });
     expect(m.loadSettingsBundle).toHaveBeenCalledTimes(1);
+    expect(m.loadUnmatchedServices).toHaveBeenCalledTimes(1);
     expect(m.listRecentWeeks).toHaveBeenCalledWith(8);
+    expect(m.listReportStatusesForWeeks).toHaveBeenCalledWith(["w1"]);
   });
 
   it("명단 밖 관리자가 ?op=작성자 로 열면 그 보고서를 보되 탭은 제출 현황·관리 둘", async () => {
