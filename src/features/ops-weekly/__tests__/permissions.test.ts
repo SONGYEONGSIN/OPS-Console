@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  type Actor,
   canEditDutySummary,
   canEditReport,
   canManageSettings,
@@ -7,6 +8,8 @@ import {
   canReturnReport,
   canSubmitReport,
   checkFinalize,
+  isDuty,
+  statusAccess,
   type WeekState,
 } from "../permissions";
 
@@ -111,5 +114,39 @@ describe("정정·설정", () => {
   it("설정은 admin 만", () => {
     expect(canManageSettings(user("z@x", true))).toBe(true);
     expect(canManageSettings(user("d@x"))).toBe(false);
+  });
+});
+
+const wk = (o: Partial<WeekState> = {}): WeekState => ({
+  status: "open",
+  dutyEmail: "d@x",
+  reopenedAt: null,
+  ...o,
+});
+const who = (email: string, isAdmin = false): Actor => ({ email, isAdmin });
+
+describe("statusAccess — 제출 현황·남의 보고서를 여는 사람", () => {
+  it.each([
+    ["관리자 · 열린 주", who("z@x", true), wk(), false, "manage"],
+    ["관리자 · 보고된 주", who("z@x", true), wk({ status: "reported" }), false, "manage"],
+    ["그 주 당번", who("d@x"), wk(), false, "manage"],
+    ["다른 사람이 당번인 주", who("d@x"), wk({ dutyEmail: "e@x" }), false, null],
+    ["당번 미지정 주", who("d@x"), wk({ dutyEmail: null }), false, null],
+    ["받는 사람 · 보고된 주", who("r@x"), wk({ status: "reported" }), true, "read"],
+    ["받는 사람 · 열린 주", who("r@x"), wk(), true, null],
+    [
+      "받는 사람 · 정정으로 연 주(open)",
+      who("r@x"),
+      wk({ reopenedAt: "2026-11-20T08:00:00Z" }),
+      true,
+      null,
+    ],
+    ["역할 없음 · 보고된 주", who("n@x"), wk({ status: "reported" }), false, null],
+  ] as const)("%s", (_, actor, week, rec, want) => {
+    expect(statusAccess(actor, week, rec)).toBe(want);
+  });
+  it("isDuty 를 내보낸다 — 당번 미지정이면 false", () => {
+    expect(isDuty(who("d@x"), wk())).toBe(true);
+    expect(isDuty(who("d@x"), wk({ dutyEmail: null }))).toBe(false);
   });
 });
