@@ -259,13 +259,6 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     );
   });
 
-  it("영역 탭 줄(PageTabs) 은 사라졌다 — 영역은 AreaTabs 뿐", async () => {
-    state.view = viewFor("application", false);
-    await renderPage("application");
-    expect(screen.queryByTestId("area-tabs")).toBeNull();
-    expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
-  });
-
   it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {
     state.view = viewFor("application", false, {
       snapshot: snap({ devStatusCollected: false }),
@@ -307,6 +300,24 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     });
     await renderPage("settings");
     expect(screen.getByText("목록을 불러오지 않았습니다")).toBeInTheDocument();
+  });
+});
+
+describe("주간업무보고 페이지 — 직접 추가", () => {
+  it("쓸 수 있는 보고서면 쓸 것 패널에 직접 추가 칸이 있다", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    expect(within(panel).getByRole("region", { name: "직접 추가" })).toBeInTheDocument();
+    expect(screen.getAllByLabelText("직접 추가 제목", { selector: "input" }).length).toBeGreaterThan(0);
+  });
+
+  it("읽기 전용(canEdit=false)이면 직접 추가 칸이 없다", async () => {
+    state.view = viewFor("application", false, { canEdit: false });
+    await renderPage("application");
+    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    expect(within(panel).queryByRole("region", { name: "직접 추가" })).toBeNull();
+    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
   });
 });
 
@@ -378,6 +389,15 @@ describe("주간업무보고 페이지 — 머리띠", () => {
       expect(screen.getByTestId("week-header").dataset.picker).toBe(want);
       unmount();
     }
+  });
+
+  it("작성 대상 명단이 비었으면 권한이 있어도 선택 상자는 없다 — 빈 선택 상자를 안 그린다", async () => {
+    state.view = viewFor("application", true, {
+      statusAccess: "manage",
+      writers: [],
+    });
+    await renderPage("application");
+    expect(screen.getByTestId("week-header").dataset.picker).toBe("none");
   });
 
   it("일반 운영자 화면에 당번 총평 문구가 없다 — 머리띠에는 세 칸만 넘어간다", async () => {

@@ -10,10 +10,9 @@ import { weekRefFromStart } from "@/features/ops-weekly/week";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
 
 const push = vi.fn();
-const refresh = vi.fn();
 vi.mock("next/navigation", async () => ({
   ...(await import("./search-params-mock")).navigationModule,
-  useRouter: () => ({ push, refresh }),
+  useRouter: () => ({ push }),
 }));
 
 import { WeekHeader } from "../_components/WeekHeader";
@@ -60,9 +59,10 @@ const base = {
   viewingOther: null,
 };
 
+const tokens = (el: Element) => el.className.split(/\s+/);
+
 beforeEach(() => {
   push.mockReset();
-  refresh.mockReset();
   setUrl("?week=2026-11-16&tab=application");
 });
 
@@ -168,7 +168,7 @@ describe("WeekHeader", () => {
       <WeekHeader {...base} showReportState checkedCount={2} reportStatus="draft" />,
     );
     expect(screen.getByText("작성 중")).toBeInTheDocument();
-    expect(screen.getByText("확인 2/5").className).toContain("tabular-nums");
+    expect(tokens(screen.getByText("확인 2/5"))).toContain("tabular-nums");
   });
 
   it("제출 현황·관리에서는 배지·확인 수가 없다", () => {
@@ -246,7 +246,6 @@ describe("WeekHeader", () => {
   });
 
   describe("가독성 — 머리줄 모양", () => {
-    const tokens = (el: Element) => el.className.split(/\s+/);
     const climb = (el: Element, token: string): Element | null => {
       for (let n: Element | null = el; n; n = n.parentElement) {
         if (tokens(n).includes(token)) return n;

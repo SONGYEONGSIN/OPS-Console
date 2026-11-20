@@ -173,8 +173,6 @@ describe("LeaveTab", () => {
     expect(h.className).toContain("text-xl");
     expect(screen.getByText("자동 1건 · 직접 1건")).toBeInTheDocument();
     expect(screen.getByText("2건")).toBeInTheDocument();
-    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
-    expect(screen.queryByLabelText("시작일")).toBeNull();
   });
 });
 

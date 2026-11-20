@@ -6,6 +6,7 @@ import {
   appSubStateOf,
   directAddGroups,
 } from "../_groups";
+import { snap } from "./tab-fixtures";
 
 describe("_groups", () => {
   it("directAddGroups — 지금 [+ 직접 추가] 가 붙던 묶음과 같다", () => {
@@ -49,7 +50,7 @@ describe("_groups", () => {
 
   it("appSubStateOf — 수집됐고 미확인이 있을 때만 showUnknown", () => {
     const app = (collected: boolean, n: number) =>
-      ({ devStatusCollected: collected, unknown: new Array(n).fill({}) }) as never;
+      snap({ devStatusCollected: collected, unknown: n }).application;
     expect(appSubStateOf(app(true, 2))).toEqual({
       showUnknown: true,
       collected: true,

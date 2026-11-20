@@ -412,10 +412,6 @@ describe("WeeklyKpiRow", () => {
       ).toHaveLength(2);
       const target = document.getElementById("ops-subtabs-pims") as HTMLElement;
       target.scrollIntoView = vi.fn();
-      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-        cb(0);
-        return 0;
-      });
       fireEvent.click(screen.getByText("합격자 발표").closest("a") as HTMLElement);
       expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
     });
@@ -457,10 +453,6 @@ describe("WeeklyKpiRow", () => {
       const visibleAtCall: boolean[] = [];
       target.scrollIntoView = vi.fn(() => {
         visibleAtCall.push(target.closest("[hidden]") === null);
-      });
-      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-        cb(0);
-        return 0;
       });
       fireEvent.click(screen.getByText("합격자 발표").closest("a") as HTMLElement);
       expect(visibleAtCall).toEqual([true]);

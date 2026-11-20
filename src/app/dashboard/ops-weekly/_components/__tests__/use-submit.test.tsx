@@ -10,7 +10,7 @@ vi.mock("@/features/ops-weekly/workflow-actions", () => ({
   submitReport: (...a: unknown[]) => submitReport(...a),
 }));
 
-import { COMMITTED_PREFIX, useSubmit } from "../use-submit";
+import { useSubmit } from "../use-submit";
 
 beforeEach(() => {
   refresh.mockReset();
@@ -35,9 +35,5 @@ describe("useSubmit", () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(submitReport).toHaveBeenCalledWith({ reportId: "r1" });
     expect(result.current.message).toBeNull();
-  });
-
-  it("후속 실패 문구의 머리말은 '제출은 끝났지만'", () => {
-    expect(COMMITTED_PREFIX).toBe("제출은 끝났지만");
   });
 });
