@@ -176,13 +176,8 @@ describe("DirectAddPanel", () => {
     expect(screen.getByLabelText("직접 추가 제목")).not.toHaveFocus();
   });
 
-  it("RF2 [추가] 저장이 끝나기 전에는 제출이 기다리고, 실패하면 막는다", async () => {
-    let finish: (v: { ok: false; error: string }) => void = () => {};
-    addManualItem.mockReturnValue(
-      new Promise((r) => {
-        finish = r;
-      }),
-    );
+  it("[추가] 가 실패해도 제출을 막지 않는다 — 저장 대기에 등록하지 않는다", async () => {
+    addManualItem.mockResolvedValue({ ok: false, error: "제목을 입력하세요" });
     setUrl("?week=2026-11-16&tab=application&sub=running");
     render(
       <PendingSavesProvider>
@@ -195,24 +190,31 @@ describe("DirectAddPanel", () => {
         />
       </PendingSavesProvider>,
     );
-    fireEvent.change(screen.getByLabelText("직접 추가 제목"), {
-      target: { value: "새 서비스" },
-    });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
-    await waitFor(() => expect(held.registry?.hasPending()).toBe(true));
-    let outcome = "";
-    const settled = held.registry!.settle(5000).then((r) => {
-      outcome = r.status;
-      return r;
-    });
+    expect(await screen.findByText("제목을 입력하세요")).toBeInTheDocument();
+    expect(held.registry?.hasPending()).toBe(false);
+    let status = "";
     await act(async () => {
-      await Promise.resolve();
+      status = (await held.registry!.settle(5000)).status;
     });
-    expect(outcome).toBe("");
-    await act(async () => {
-      finish({ ok: false, error: "서버 거절" });
-      await settled;
-    });
-    expect(outcome).toBe("failed");
+    expect(status).toBe("ok");
+  });
+
+  it("묶음 선택과 [추가] 는 입력창 표준 클래스를 쓴다", () => {
+    setUrl("?week=2026-11-16&tab=application&sub=running");
+    render(
+      <DirectAddPanel
+        area="application"
+        reportId="r"
+        groups={groups}
+        appSubState={st}
+      />,
+    );
+    const select = screen.getByLabelText("묶음").className.split(/\s+/);
+    expect(select).toContain("border-line-soft");
+    expect(select).toContain("bg-field-bg");
+    const btn = screen.getByRole("button", { name: "추가" }).className.split(/\s+/);
+    expect(btn).toContain("hover:bg-ink");
+    expect(btn).toContain("hover:text-cream");
   });
 });

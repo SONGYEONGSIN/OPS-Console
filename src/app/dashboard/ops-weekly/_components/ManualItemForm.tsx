@@ -22,10 +22,7 @@ export function ManualItemForm({ reportId, area, groupKey, leave }: Props) {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [kind, setKind] = useState("");
-  // 저장 중에 제출이 눌려도 기다리고, 실패한 채로는 제출되지 않게 등록한다(영역별 키).
-  const { pending, error, run } = useSave({
-    track: { key: `manual:${reportId}:${area}`, label: "직접 추가" },
-  });
+  const { pending, error, run } = useSave();
 
   function submit() {
     run(async () => {
