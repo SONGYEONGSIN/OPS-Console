@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  within,
+  fireEvent,
+} from "@testing-library/react";
 import { weekRefFromStart } from "@/features/ops-weekly/week";
 import { EMPTY, snap } from "./tab-fixtures";
 
@@ -257,6 +263,23 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
       "aria-selected",
       "true",
     );
+  });
+
+  it("[쓰기]로 연 서랍은 합격자 발표 KPI 카드를 누르면(키보드) 닫힌다 — KPI 줄과 서랍이 같은 Provider 아래", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    const opener = screen.getByRole("button", { name: "프로젝트 쓰기" });
+    fireEvent.click(opener);
+    const aside = screen
+      .getByRole("heading", { name: "프로젝트" })
+      .closest("aside");
+    expect(aside).toHaveAttribute("aria-hidden", "false");
+
+    // click 만 — mousedown 은 InspectorPanel 의 바깥 클릭이 혼자 닫아서 배선을 못 가린다(키보드 경로).
+    fireEvent.click(kpiCard("합격자 발표") as HTMLElement);
+
+    expect(aside).toHaveAttribute("aria-hidden", "true");
+    expect(aside?.querySelector("[inert]")).not.toBeNull();
   });
 
   it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {

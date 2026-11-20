@@ -112,6 +112,12 @@ export function WeeklyKpiRow({
       ? area === "pims"
       : area === "application" && appSub === t.sub;
 
+  // 마우스는 InspectorPanel 의 document mousedown 이 click 보다 먼저 서랍을 닫고 포커스를 연 버튼으로 돌린다 —
+  // 그 전에 연 버튼 기억을 지워 둔다(키보드는 mousedown 이 없어 onClick 의 dismiss 가 맡는다).
+  function onMouseDown(e: MouseEvent<HTMLAnchorElement>) {
+    if (isPlainLeftClick(e)) dismissDrawer();
+  }
+
   function onClick(e: MouseEvent<HTMLAnchorElement>, t: Target) {
     // 수정 키·가운데 클릭은 href 대로(새 탭). 합격자 발표 카드는 href 에 sub 가 없지만(영역 이동은 기본 하위 탭)
     // 클릭하면 금주 발표로 보낸다.
@@ -131,6 +137,7 @@ export function WeeklyKpiRow({
         key={key}
         href={hrefOf(target)}
         aria-current={active ? "true" : undefined}
+        onMouseDown={onMouseDown}
         onClick={(e) => {
           onClick(e, target);
         }}
@@ -182,6 +189,7 @@ export function WeeklyKpiRow({
                     href={hrefOf(target)}
                     data-segment={key}
                     aria-current={active ? "true" : undefined}
+                    onMouseDown={onMouseDown}
                     onClick={(e) => {
                       onClick(e, target);
                     }}

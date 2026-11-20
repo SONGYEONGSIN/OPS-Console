@@ -195,20 +195,20 @@ function WeekView({ view }: { view: Week }) {
         }
       />
       {/* KPI 줄이 [쓰기]로 연 서랍을 닫으려면 서랍과 같은 Provider 아래여야 한다(DOM 이 없어 sticky 에 영향 없다). */}
-      <ProjectDrawerProvider>
-      {showKpi ? (
-        <StickyKpiBar>
-          <WeeklyKpiRow
-            kpis={kpis}
-            ownerName={viewed.name}
-            unknownCount={unknownCountOf(view)}
-            weekStart={weekStart}
-            op={op}
-            appSubState={appSubStateOf(view.snapshot?.application)}
-          />
-        </StickyKpiBar>
-      ) : null}
-      <WeekBody view={view} />
+      <ProjectDrawerProvider key={roleTabOf(tab)}>
+        {showKpi ? (
+          <StickyKpiBar>
+            <WeeklyKpiRow
+              kpis={kpis}
+              ownerName={viewed.name}
+              unknownCount={unknownCountOf(view)}
+              weekStart={weekStart}
+              op={op}
+              appSubState={appSubStateOf(view.snapshot?.application)}
+            />
+          </StickyKpiBar>
+        ) : null}
+        <WeekBody view={view} />
       </ProjectDrawerProvider>
     </PendingSavesProvider>
   );

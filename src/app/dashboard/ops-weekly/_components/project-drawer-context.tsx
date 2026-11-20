@@ -31,8 +31,7 @@ function urlKindOf(tab: string | null): ProjectKind | null {
  * [쓰기]로 연 것은 주소를 안 바꾼다(왼쪽 영역을 잃지 않는다).
  */
 export function ProjectDrawerProvider({ children }: { children: ReactNode }) {
-  const urlTab = useOpsQueryValue("tab");
-  const urlKind = urlKindOf(urlTab);
+  const urlKind = urlKindOf(useOpsQueryValue("tab"));
   const [localKind, setLocalKind] = useState<ProjectKind | null>(null);
   // 연 버튼 — 닫을 때 포커스를 거기로 돌려준다(서랍 안 요소는 inert 가 돼 포커스가 body 로 떨어진다).
   const openerRef = useRef<HTMLElement | null>(null);
@@ -53,9 +52,6 @@ export function ProjectDrawerProvider({ children }: { children: ReactNode }) {
     openerRef.current = null;
     setLocalKind(null);
   }, []);
-  // 서랍은 내 보고서에만 있다 — 제출 현황·관리로 가도 이 Provider 는 남으니 열린 채 따라가지 않게 닫는다.
-  const outsideReport = urlTab === "status" || urlTab === "settings";
-  if (outsideReport && localKind !== null) setLocalKind(null);
   const value = useMemo(
     () => ({ openKind: localKind ?? urlKind, open, close, dismiss }),
     [localKind, urlKind, open, close, dismiss],
@@ -73,7 +69,10 @@ export function useProjectDrawer(): DrawerState {
   return ctx;
 }
 
-/** Provider 밖(제출 현황 등 서랍이 없는 자리)에서는 아무 일도 안 한다. */
+/**
+ * Provider 밖에서는 아무 일도 안 한다. 실제 화면에서 KPI 줄은 늘 Provider 안(page)이고,
+ * Provider 없이 WeeklyKpiRow 를 그리는 곳은 WeeklyKpiRow.test.tsx 뿐이라 그 테스트가 던지지 않게 둔 기본값이다.
+ */
 export function useDismissProjectDrawer(): () => void {
   return useContext(DrawerContext)?.dismiss ?? noop;
 }
