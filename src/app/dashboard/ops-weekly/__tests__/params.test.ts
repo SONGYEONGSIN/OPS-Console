@@ -10,7 +10,6 @@ import {
   PIMS_SUBS,
   appVisibleSubs,
   buildRoleTabs,
-  buildTabs,
   defaultAppSub,
   manageHref,
   opsWeeklyHref,
@@ -31,44 +30,6 @@ describe("parseWeekParam", () => {
     expect(parseWeekParam("2026-11-16")).toBe("2026-11-16");
     expect(parseWeekParam(undefined)).toBeNull();
     expect(parseWeekParam("garbage")).toBeNull();
-  });
-});
-
-describe("buildTabs", () => {
-  it("확인한 탭에 ✓, op 를 이어 붙인다", () => {
-    const t = buildTabs({
-      weekStart: "2026-11-16",
-      op: "a@x",
-      checked: ["pims"],
-    });
-    expect(t.map((x) => x.label)).toEqual([
-      "원서접수",
-      "합격자 발표 ✓",
-      "프로젝트",
-      "TF",
-      "휴가·외근",
-    ]);
-    expect(t[0].href).toBe(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=a%40x",
-    );
-  });
-
-  it("영역 다섯만 — 제출 현황·설정은 역할 탭 줄로, op 가 없으면 붙이지 않는다", () => {
-    const t = buildTabs({
-      weekStart: "2026-11-16",
-      op: null,
-      checked: [],
-    });
-    expect(t.map((x) => x.key)).toEqual([
-      "application",
-      "pims",
-      "project",
-      "tf",
-      "leave",
-    ]);
-    expect(t[4].href).toBe(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=leave",
-    );
   });
 });
 
@@ -116,14 +77,6 @@ describe("opsWeeklyHref sub", () => {
     expect(opsWeeklyHref("2026-11-16", "application", "a@x", "test")).toBe(
       "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=a%40x&sub=test",
     );
-  });
-  it("탭 이동 링크(buildTabs)는 sub 를 들고 가지 않는다", () => {
-    const t = buildTabs({
-      weekStart: "2026-11-16",
-      op: null,
-      checked: [],
-    });
-    expect(t.every((x) => !x.href.includes("sub="))).toBe(true);
   });
 });
 

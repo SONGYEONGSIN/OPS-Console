@@ -1,6 +1,5 @@
 import type { PageTab } from "@/components/common/PageTabs";
 import {
-  AREAS,
   AREA_LABEL,
   OPS_WEEKLY_PATH,
   type Area,
@@ -105,19 +104,6 @@ export function opsWeeklyHref(
   const base = `${OPS_WEEKLY_PATH}?week=${weekStart}&tab=${tab}`;
   const withOp = op === null ? base : `${base}&op=${encodeURIComponent(op)}`;
   return sub === null ? withOp : `${withOp}&sub=${sub}`;
-}
-
-export function buildTabs(args: {
-  weekStart: string;
-  op: string | null;
-  checked: readonly Area[];
-}): PageTab[] {
-  const checked: ReadonlySet<string> = new Set(args.checked);
-  return AREAS.map((t) => ({
-    key: t,
-    label: checked.has(t) ? `${AREA_TAB_LABEL[t]} ✓` : AREA_TAB_LABEL[t],
-    href: opsWeeklyHref(args.weekStart, t, args.op),
-  }));
 }
 
 export type RoleTab = "report" | "status" | "manage";

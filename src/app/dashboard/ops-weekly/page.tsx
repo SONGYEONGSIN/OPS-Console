@@ -8,7 +8,6 @@ import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
 import { ReportView } from "./_components/ReportView";
-import { ProjectTab } from "./_components/ProjectTab";
 import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
@@ -21,8 +20,6 @@ import { loadOpsWeeklyPage, type OpsWeeklyWeekView } from "./_load";
 import {
   AREA_TAB_LABEL,
   buildRoleTabs,
-  buildTabs,
-  manageHref,
   opsWeeklyHref,
   roleTabOf,
   type OpsTab,
@@ -107,15 +104,8 @@ function WeekBody({ view }: { view: Week }) {
     );
   }
   if (snapshot !== null && detail !== null) {
-    // 쿼리만 바뀌어도 입력 중이던 글이 다른 보고서로 넘어가지 않게 보고서 단위로 다시 만든다.
-    const key = bodyKeyOf({
-      reportId: report?.id ?? null,
-      weekStart: view.week.week_start,
-      op: viewed?.email ?? "",
-      tab,
-    });
-    if (tab === "application" || tab === "pims" || tab === "leave") {
-      // 영역이 바뀌어도 다시 마운트하지 않게 key 에 영역을 넣지 않는다.
+    if (roleTabOf(tab) === "report") {
+      // 영역·서랍이 바뀌어도 다시 마운트하지 않게 key 에 영역을 넣지 않는다.
       const reportKey = bodyKeyOf({
         reportId: report?.id ?? null,
         weekStart: view.week.week_start,
@@ -128,23 +118,6 @@ function WeekBody({ view }: { view: Week }) {
           view={view}
           snapshot={snapshot}
           detail={detail}
-        />
-      );
-    }
-    if (tab === "project" || tab === "tf") {
-      return (
-        <ProjectTab
-          key={key}
-          kind={tab}
-          entries={detail.projects}
-          reportId={report?.id ?? null}
-          editable={view.canEdit && report !== null}
-          notes={detail.notes[tab]}
-          settingsHref={
-            view.actor.isAdmin
-              ? manageHref(view.week.week_start, "projects")
-              : undefined
-          }
         />
       );
     }
@@ -230,21 +203,6 @@ function WeekView({ view }: { view: Week }) {
             }}
           />
         </StickyKpiBar>
-      ) : null}
-      {/* KPI 바가 없으면 WeekHeader 아래 간격을 이 래퍼가 맡는다 */}
-      {roleTabOf(tab) === "report" ? (
-        <div className={showKpi ? "pt-1" : "pt-4"}>
-          <PageTabs
-            active={tab}
-            size="md"
-            className="px-5 lg:px-7"
-            tabs={buildTabs({
-              weekStart,
-              op,
-              checked: report?.checked_tabs ?? [],
-            })}
-          />
-        </div>
       ) : null}
       <WeekBody view={view} />
     </PendingSavesProvider>

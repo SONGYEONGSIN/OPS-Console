@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { ProjectKind } from "@/features/ops-weekly/constants";
 import type { AutoSnapshot } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import type { OpsWeeklyWeekView } from "../_load";
@@ -7,6 +8,10 @@ import { ApplicationTab } from "./ApplicationTab";
 import { AreaNotes } from "./AreaNotes";
 import { LeaveTab } from "./LeaveTab";
 import { PimsTab } from "./PimsTab";
+import { ProjectDrawer } from "./ProjectDrawer";
+import { ProjectDrawerProvider } from "./project-drawer-context";
+import { ProjectSummaryCards } from "./ProjectSummaryCards";
+import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
 import { WritePanel } from "./WritePanel";
 
@@ -51,14 +56,53 @@ function notesOf({ view, detail }: Props, editable: boolean): Slots {
   return Object.fromEntries(AREA_TABS.map((k) => [k, note(k)])) as Slots;
 }
 
-/** 내 보고서 — 왼쪽 영역 본문 셋, 오른쪽 쓸 것 패널. snapshot·detail 이 있을 때만 page 가 부른다. */
-export function ReportView(props: Props) {
-  const editable = props.view.canEdit && props.view.report !== null;
-  return (
-    <ReportLayout
-      checked={props.view.report?.checked_tabs ?? []}
-      areas={areasOf(props, editable)}
-      panel={<WritePanel notes={notesOf(props, editable)} />}
+/** 서랍 안 프로젝트·TF — 제목은 서랍 머리가 그린다(hideHeading). */
+function drawerPanelsOf(
+  { view, detail }: Props,
+  editable: boolean,
+): Record<ProjectKind, ReactNode> {
+  const panel = (kind: ProjectKind) => (
+    <ProjectTab
+      kind={kind}
+      hideHeading
+      entries={detail.projects}
+      reportId={view.report?.id ?? null}
+      editable={editable}
+      notes={detail.notes[kind]}
+      settingsHref={
+        view.actor.isAdmin
+          ? manageHref(view.week.week_start, "projects")
+          : undefined
+      }
     />
+  );
+  return { project: panel("project"), tf: panel("tf") };
+}
+
+/** 내 보고서 — 왼쪽 영역 본문 셋, 오른쪽 쓸 것 패널, 프로젝트·TF 서랍. snapshot·detail 이 있을 때만 page 가 부른다. */
+export function ReportView(props: Props) {
+  const { view, detail } = props;
+  const editable = view.canEdit && view.report !== null;
+  const checked = view.report?.checked_tabs ?? [];
+  return (
+    <ProjectDrawerProvider>
+      <ReportLayout
+        checked={checked}
+        areas={areasOf(props, editable)}
+        panel={
+          <WritePanel
+            notes={notesOf(props, editable)}
+            projects={
+              <ProjectSummaryCards
+                entries={detail.projects}
+                checked={checked}
+                editable={editable}
+              />
+            }
+          />
+        }
+      />
+      <ProjectDrawer panels={drawerPanelsOf(props, editable)} />
+    </ProjectDrawerProvider>
   );
 }

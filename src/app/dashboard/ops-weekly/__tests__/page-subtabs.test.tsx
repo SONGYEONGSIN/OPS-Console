@@ -247,18 +247,25 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     expect(within(region).getByText("대학1")).toBeInTheDocument();
   });
 
-  it("KPI 바가 있으면 탭 줄 위 간격은 pt-1, 없으면 pt-4", async () => {
+  it("tab=project: 서랍이 열리고 왼쪽은 원서접수, 프로젝트 제목은 서랍 머리 하나", async () => {
+    setUrl("?week=2026-11-16&tab=project");
+    state.view = viewFor("project", false);
+    await renderPage("project");
+    // 서랍 안 ProjectTab 은 hideHeading, 요약 카드 이름은 제목 요소가 아니다
+    const titles = screen.getAllByRole("heading", { name: "프로젝트" });
+    expect(titles).toHaveLength(1);
+    expect(titles[0].closest("aside")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("tab", { name: "원서접수" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("영역 탭 줄(PageTabs) 은 사라졌다 — 영역은 AreaTabs 뿐", async () => {
     state.view = viewFor("application", false);
-    const { unmount } = await renderPage("application");
-    expect(screen.getByTestId("area-tabs").parentElement?.className).toBe(
-      "pt-1",
-    );
-    unmount();
-    state.view = viewFor("application", false, { kpis: null });
     await renderPage("application");
-    expect(screen.getByTestId("area-tabs").parentElement?.className).toBe(
-      "pt-4",
-    );
+    expect(screen.queryByTestId("area-tabs")).toBeNull();
+    expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
   });
 
   it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {
@@ -414,19 +421,14 @@ describe("역할 탭 줄", () => {
       .map((a) => a.textContent);
   const B = { email: "b@example.com", name: "김철수" };
 
-  it("일반 운영자(역할 하나)에게는 역할 탭 줄이 없고 지금의 영역 탭 줄 하나뿐", async () => {
+  it("일반 운영자에게는 탭 줄이 없고 영역 탭(AreaTabs)만", async () => {
     state.view = viewFor("application", false, { roles: ["report"] });
     await renderPage("application");
     expect(screen.queryByTestId("role-tabs")).toBeNull();
-    expect(names(screen.getByTestId("area-tabs"))).toEqual([
-      "원서접수",
-      "합격자 발표",
-      "프로젝트",
-      "TF",
-      "휴가·외근",
-    ]);
+    expect(screen.queryByTestId("area-tabs")).toBeNull();
+    expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
   });
-  it("작성자 관리자: 내 보고서·제출 현황·관리가 머리띠 위, 영역 탭 줄은 머리띠 아래", async () => {
+  it("작성자 관리자: 내 보고서·제출 현황·관리가 머리띠 위, 영역 탭(AreaTabs)은 머리띠 아래", async () => {
     state.view = viewFor("application", true, { roles: ALL });
     await renderPage("application");
     const nav = screen.getByTestId("role-tabs");
@@ -441,11 +443,11 @@ describe("역할 탭 줄", () => {
       nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      header.compareDocumentPosition(screen.getByTestId("area-tabs")) &
+      header.compareDocumentPosition(screen.getByRole("tablist", { name: "영역" })) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
-  it("제출 현황·관리에서는 영역 탭 줄이 없다", async () => {
+  it("제출 현황·관리에서는 그 역할 탭이 켜진다", async () => {
     for (const [tab, active] of [
       ["status", "status"],
       ["settings", "manage"],
@@ -453,7 +455,7 @@ describe("역할 탭 줄", () => {
       state.view = viewFor(tab, true, { roles: ALL });
       const { unmount } = await renderPage(tab);
       expect(screen.getByTestId("role-tabs").dataset.active).toBe(active);
-      expect(screen.queryByTestId("area-tabs")).toBeNull();
+      expect(screen.queryByRole("tablist", { name: "영역" })).toBeNull();
       unmount();
     }
   });

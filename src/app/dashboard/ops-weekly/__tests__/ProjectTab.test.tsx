@@ -50,6 +50,31 @@ beforeEach(() => {
 });
 
 describe("ProjectTab", () => {
+  it("hideHeading — 서랍 안에서는 자체 제목을 그리지 않는다(서랍 머리가 그 영역의 제목)", () => {
+    render(
+      <ProjectTab
+        kind="tf"
+        entries={[entry("t1", "tf", 10)]}
+        reportId="r"
+        editable
+        notes={N}
+        hideHeading
+      />,
+    );
+    expect(screen.queryByRole("heading", { name: "TF" })).toBeNull();
+    expect(screen.getByText("t1")).toBeInTheDocument();
+  });
+
+  it("바깥 여백은 서랍 body 가 진다 — 자체 p-5 가 없다", () => {
+    const { container } = render(
+      <ProjectTab kind="tf" entries={[]} reportId="r" editable notes={N} />,
+    );
+    const tokens = (container.firstElementChild?.className ?? "").split(/\s+/);
+    expect(tokens).toContain("gap-7");
+    expect(tokens).not.toContain("p-5");
+    expect(tokens).not.toContain("lg:p-7");
+  });
+
   it("TF 탭에는 TF 만, 정렬 순서대로", () => {
     render(
       <ProjectTab
