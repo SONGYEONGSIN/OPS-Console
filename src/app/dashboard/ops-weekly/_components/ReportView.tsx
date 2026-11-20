@@ -15,12 +15,15 @@ import { ProjectDrawerProvider } from "./project-drawer-context";
 import { ProjectSummaryCards } from "./ProjectSummaryCards";
 import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
+import { SubmitBar } from "./SubmitBar";
 import { WritePanel } from "./WritePanel";
 
 type Props = {
   view: OpsWeeklyWeekView;
   snapshot: AutoSnapshot;
   detail: ReportDetail;
+  /** 남의 보고서를 보는 중이면 그 사람 이메일, 본인 보고서면 null. 제출은 본인 것에만 있다. */
+  op: string | null;
 };
 
 type Slots = Record<AreaTab, ReactNode>;
@@ -99,7 +102,7 @@ function drawerPanelsOf(
 
 /** 내 보고서 — 왼쪽 영역 본문 셋, 오른쪽 쓸 것 패널, 프로젝트·TF 서랍. snapshot·detail 이 있을 때만 page 가 부른다. */
 export function ReportView(props: Props) {
-  const { view, detail } = props;
+  const { view, detail, op } = props;
   const editable = view.canEdit && view.report !== null;
   const checked = view.report?.checked_tabs ?? [];
   return (
@@ -111,6 +114,14 @@ export function ReportView(props: Props) {
           <WritePanel
             notes={notesOf(props, editable)}
             directAdd={directAddOf(props, editable)}
+            submit={
+              op === null ? (
+                <SubmitBar
+                  reportId={view.report?.id ?? null}
+                  canSubmit={view.canSubmit}
+                />
+              ) : null
+            }
             projects={
               <ProjectSummaryCards
                 entries={detail.projects}

@@ -32,47 +32,7 @@ import { AreaNotes } from "../_components/AreaNotes";
 import { OverrideControls } from "../_components/OverrideControls";
 import { ProjectTab } from "../_components/ProjectTab";
 import { PendingSavesProvider } from "../_components/pending-saves";
-import { WeekHeader } from "../_components/WeekHeader";
-import { weekRefFromStart } from "@/features/ops-weekly/week";
-import type { WeekRow } from "@/features/ops-weekly/schemas";
-
-const WEEK: WeekRow = {
-  id: "w1",
-  week_start: "2026-11-16",
-  label_year: 2026,
-  label_month: 11,
-  label_week: 3,
-  duty_email: null,
-  summary_this: "",
-  summary_next: "",
-  status: "open",
-  reported_at: null,
-  reported_by: null,
-  reopened_at: null,
-  reopened_by: null,
-};
-const weekRef = weekRefFromStart("2026-11-16");
-if (!weekRef) throw new Error("fixture");
-
-const header = {
-  weekRef,
-  week: WEEK,
-  viewedName: "운영자A",
-  writers: [{ email: "a@example.com", name: "운영자A" }],
-  viewedEmail: "a@example.com",
-  submittedCount: 0,
-  writerCount: 1,
-  dutyName: null,
-  canSubmit: true,
-  reportStatus: "draft" as const,
-  submittedAt: null,
-  reportId: "r1",
-  prevOpen: false,
-  prevHref: "/p",
-  nextHref: "/n",
-  tab: "application",
-  viewingOther: null,
-};
+import { SubmitBar } from "../_components/SubmitBar";
 
 function Screen({
   notes = true,
@@ -85,7 +45,7 @@ function Screen({
 }) {
   return (
     <PendingSavesProvider timeoutMs={timeoutMs}>
-      <WeekHeader {...header} />
+      <SubmitBar reportId="r1" canSubmit />
       {notes ? (
         <AreaNotes
           key={area}
@@ -258,7 +218,7 @@ describe("제출완료 x 자동 저장", () => {
       .mockResolvedValue({ ok: true });
     render(
       <PendingSavesProvider>
-        <WeekHeader {...header} />
+        <SubmitBar reportId="r1" canSubmit />
         <OverrideControls
           reportId="r1"
           itemKey="k"
@@ -301,7 +261,7 @@ describe("제출완료 x 자동 저장", () => {
     function mountProject() {
       render(
         <PendingSavesProvider>
-          <WeekHeader {...header} />
+          <SubmitBar reportId="r1" canSubmit />
           <ProjectTab
             kind="project"
             entries={[entry]}
@@ -379,7 +339,7 @@ describe("제출완료 x 자동 저장", () => {
       .mockResolvedValue({ ok: true });
     render(
       <PendingSavesProvider>
-        <WeekHeader {...header} />
+        <SubmitBar reportId="r1" canSubmit />
         <OverrideControls
           reportId="r1"
           itemKey="k"
@@ -441,7 +401,7 @@ describe("제출완료 x 자동 저장", () => {
   });
 
   it("제공자 밖에서는 기존처럼 바로 제출한다", async () => {
-    render(<WeekHeader {...header} />);
+    render(<SubmitBar reportId="r1" canSubmit />);
     fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
     await waitFor(() => expect(submitReport).toHaveBeenCalledTimes(1));
   });

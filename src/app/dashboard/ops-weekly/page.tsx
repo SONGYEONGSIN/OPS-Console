@@ -52,6 +52,12 @@ function unknownCountOf(v: Week): number {
   return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
 }
 
+/** 남의 보고서를 보는 중이면 그 사람 이메일, 본인 보고서(또는 보고서 없음)면 null. */
+function otherOpOf(view: Week): string | null {
+  const { viewed, actor } = view;
+  return viewed !== null && viewed.email !== actor.email ? viewed.email : null;
+}
+
 function WeekBody({ view }: { view: Week }) {
   const { tab, viewed } = view;
   const { snapshot, detail, report } = view;
@@ -119,6 +125,7 @@ function WeekBody({ view }: { view: Week }) {
           view={view}
           snapshot={snapshot}
           detail={detail}
+          op={otherOpOf(view)}
         />
       );
     }
@@ -135,17 +142,19 @@ function WeekBody({ view }: { view: Week }) {
 }
 
 function WeekView({ view }: { view: Week }) {
-  const { week, weekRef, tab, viewed, report, actor } = view;
-  const op =
-    viewed !== null && viewed.email !== actor.email ? viewed.email : null;
+  const { week, weekRef, tab, viewed, report } = view;
+  const op = otherOpOf(view);
   const weekStart = week.week_start;
   const { kpis } = view;
   const showKpi = viewed !== null && kpis !== null;
   // 작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자에게는 명단을 내리지 않는다.
-  const pickerWriters =
+  const writerPicker =
     view.statusAccess !== null
-      ? view.writers.map((w) => ({ email: w.email, name: w.name }))
-      : [];
+      ? {
+          writers: view.writers.map((w) => ({ email: w.email, name: w.name })),
+          viewedEmail: viewed?.email ?? null,
+        }
+      : null;
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
       {view.roles.length > 1 ? (
@@ -163,21 +172,18 @@ function WeekView({ view }: { view: Week }) {
       <WeekHeader
         weekRef={weekRef}
         week={headerWeekOf(week)}
-        viewedName={viewed?.name ?? null}
-        writers={pickerWriters}
-        viewedEmail={viewed?.email ?? null}
         submittedCount={view.submittedCount}
         writerCount={view.writers.length}
         dutyName={dutyNameOf(week.duty_email, view.writers)}
-        canSubmit={view.canSubmit}
+        showReportState={roleTabOf(tab) === "report"}
+        checkedCount={new Set(report?.checked_tabs ?? []).size}
+        writerPicker={writerPicker}
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}
-        reportId={report?.id ?? null}
         returnReason={report?.return_reason ?? null}
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
-        tab={roleTabOf(tab) === "report" ? tab : "application"}
         viewingOther={
           roleTabOf(tab) === "report" && op !== null && viewed !== null
             ? {

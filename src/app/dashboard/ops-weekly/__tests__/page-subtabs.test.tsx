@@ -15,17 +15,15 @@ vi.mock("../../_components/page-header/PageHeader", () => ({
 vi.mock("../_components/WeekHeader", () => ({
   WeekHeader: (p: {
     week: unknown;
-    tab?: string;
     viewingOther: unknown;
-    writers: unknown[];
+    writerPicker: unknown;
     dutyName: string | null;
   }) => (
     <div
       data-testid="week-header"
       data-duty={p.dutyName ?? "(null)"}
-      data-picker={p.writers.length > 0 ? "shown" : "none"}
+      data-picker={p.writerPicker === null ? "none" : "shown"}
       data-week={JSON.stringify(p.week)}
-      data-tab={p.tab}
       data-other={JSON.stringify(p.viewingOther)}
     />
   ),
@@ -312,6 +310,29 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   });
 });
 
+describe("주간업무보고 페이지 — 제출", () => {
+  it("제출완료 는 정확히 하나 — 쓸 것 패널 안", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    const buttons = screen.getAllByRole("button", { name: "제출완료" });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].closest("aside")).toHaveAccessibleName("쓸 것");
+  });
+
+  it("남의 보고서(op)에서는 제출완료 가 없다", async () => {
+    state.view = viewFor("application", true, {
+      statusAccess: "manage",
+      writers: [
+        { email: "a@example.com", name: "홍길동" },
+        { email: "b@example.com", name: "김철수" },
+      ],
+      viewed: { email: "b@example.com", name: "김철수" },
+    });
+    await renderPage("application");
+    expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
+  });
+});
+
 describe("주간업무보고 페이지 — 머리띠", () => {
   const OTHER = {
     writers: [
@@ -323,19 +344,6 @@ describe("주간업무보고 페이지 — 머리띠", () => {
   };
   const otherOf = () =>
     JSON.parse(screen.getByTestId("week-header").dataset.other ?? "null");
-
-  it("머리띠에 넘기는 tab — 작성자를 고르면 가는 영역(제출 현황·관리면 원서접수)", async () => {
-    for (const [tab, want] of [
-      ["pims", "pims"],
-      ["status", "application"],
-      ["settings", "application"],
-    ] as const) {
-      state.view = viewFor(tab, true);
-      const { unmount } = await renderPage(tab);
-      expect(screen.getByTestId("week-header").dataset.tab).toBe(want);
-      unmount();
-    }
-  });
 
   it("머리띠 week 는 세 칸만 — 당번 총평이 실리지 않는다", async () => {
     state.view = viewFor("application", false);

@@ -4,24 +4,20 @@ import {
   screen,
   cleanup,
   fireEvent,
-  waitFor,
   within,
 } from "@testing-library/react";
-import { HEADER_ACTION_CLASS } from "@/components/common/HeaderActionButton";
 import { weekRefFromStart } from "@/features/ops-weekly/week";
 import type { WeekRow } from "@/features/ops-weekly/schemas";
 
 const push = vi.fn();
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", async () => ({
+  ...(await import("./search-params-mock")).navigationModule,
   useRouter: () => ({ push, refresh }),
-}));
-const submitReport = vi.fn();
-vi.mock("@/features/ops-weekly/workflow-actions", () => ({
-  submitReport: (...a: unknown[]) => submitReport(...a),
 }));
 
 import { WeekHeader } from "../_components/WeekHeader";
+import { setUrl } from "./search-params-mock";
 
 const WEEK: WeekRow = {
   id: "w1",
@@ -44,30 +40,30 @@ if (!weekRef) throw new Error("fixture");
 const base = {
   weekRef,
   week: WEEK,
-  viewedName: "운영자A",
-  writers: [
-    { email: "a@example.com", name: "운영자A" },
-    { email: "b@example.com", name: "운영자B" },
-  ],
-  viewedEmail: "a@example.com",
+  showReportState: true,
+  checkedCount: 0,
+  writerPicker: {
+    writers: [
+      { email: "a@example.com", name: "운영자A" },
+      { email: "b@example.com", name: "운영자B" },
+    ],
+    viewedEmail: "a@example.com" as string | null,
+  },
   submittedCount: 0,
   writerCount: 2,
   dutyName: null,
-  canSubmit: false,
   reportStatus: "draft" as const,
   submittedAt: null,
-  reportId: "r1",
   prevOpen: false,
-  prevHref: "/dashboard/ops-weekly?week=2026-11-09",
-  nextHref: "/dashboard/ops-weekly?week=2026-11-23",
-  tab: "application",
+  prevHref: "/dashboard/ops-weekly?week=2026-11-09&tab=application",
+  nextHref: "/dashboard/ops-weekly?week=2026-11-23&tab=application",
   viewingOther: null,
 };
 
 beforeEach(() => {
   push.mockReset();
   refresh.mockReset();
-  submitReport.mockReset();
+  setUrl("?week=2026-11-16&tab=application");
 });
 
 describe("WeekHeader", () => {
@@ -92,17 +88,12 @@ describe("WeekHeader", () => {
     expect(screen.getByText("당번 미지정")).toBeInTheDocument();
   });
 
-  it("제출 버튼은 본인·열린 주에만, 표준 헤더 액션 모양", () => {
-    render(<WeekHeader {...base} canSubmit />);
-    expect(
-      screen.getByRole("button", { name: "제출완료" }).className,
-    ).toContain(HEADER_ACTION_CLASS);
-    cleanup();
-    render(<WeekHeader {...base} canSubmit={false} />);
+  it("머리띠에는 제출 버튼이 없다", () => {
+    render(<WeekHeader {...base} />);
     expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
   });
 
-  it("이미 제출했으면 버튼 대신 제출 시각", () => {
+  it("이미 제출했으면 제출 시각 배지", () => {
     render(
       <WeekHeader
         {...base}
@@ -110,7 +101,6 @@ describe("WeekHeader", () => {
         submittedAt="2026-11-19T08:05:00Z"
       />,
     );
-    expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
     expect(screen.getByText("제출함 11/19 17:05")).toBeInTheDocument();
   });
 
@@ -153,80 +143,108 @@ describe("WeekHeader", () => {
     );
   });
 
-  it("작성자를 바꾸면 op 를 달아 같은 탭으로 이동", () => {
+  it("작성자를 바꾸면 op 를 달아 지금 영역으로, 제출 현황에서 고르면 원서접수로", () => {
+    setUrl("?week=2026-11-16&tab=pims");
     render(<WeekHeader {...base} />);
     fireEvent.change(screen.getByLabelText("작성자"), {
       target: { value: "운영자B" },
     });
-    expect(push).toHaveBeenCalledWith(
+    expect(push).toHaveBeenLastCalledWith(
+      "/dashboard/ops-weekly?week=2026-11-16&tab=pims&op=b%40example.com",
+    );
+    cleanup();
+    setUrl("?week=2026-11-16&tab=status");
+    render(<WeekHeader {...base} />);
+    fireEvent.change(screen.getByLabelText("작성자"), {
+      target: { value: "운영자B" },
+    });
+    expect(push).toHaveBeenLastCalledWith(
       "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=b%40example.com",
     );
   });
 
-  it("제출 성공 → 새로고침", async () => {
-    submitReport.mockResolvedValue({ ok: true });
-    render(<WeekHeader {...base} canSubmit />);
-    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
-    await waitFor(() => expect(refresh).toHaveBeenCalled());
-    expect(submitReport).toHaveBeenCalledWith({ reportId: "r1" });
-    expect(screen.queryByRole("alert")).toBeNull();
+  it("내 보고서: 상태 배지와 확인 n/5(숫자 정렬)", () => {
+    render(
+      <WeekHeader {...base} showReportState checkedCount={2} reportStatus="draft" />,
+    );
+    expect(screen.getByText("작성 중")).toBeInTheDocument();
+    expect(screen.getByText("확인 2/5").className).toContain("tabular-nums");
   });
 
-  it("제출은 끝났지만 후속 실패 → 새로고침하고 그 문구를 실패로 포장하지 않는다", async () => {
-    submitReport.mockResolvedValue({
-      ok: false,
-      error: "제출은 끝났지만 전원 제출 확인에 실패했습니다: x",
-    });
-    render(<WeekHeader {...base} canSubmit />);
-    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
-    await waitFor(() => expect(refresh).toHaveBeenCalled());
-    expect(
-      screen.getByText("제출은 끝났지만 전원 제출 확인에 실패했습니다: x"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/제출에 실패/)).toBeNull();
+  it("제출 현황·관리에서는 배지·확인 수가 없다", () => {
+    render(
+      <WeekHeader
+        {...base}
+        showReportState={false}
+        checkedCount={2}
+        reportStatus="draft"
+      />,
+    );
+    expect(screen.queryByText("작성 중")).toBeNull();
+    expect(screen.queryByText(/^확인 \d\/5$/)).toBeNull();
   });
 
-  it("제출은 끝났지만 안내는 새로고침으로 제출 상태 props 가 와도 사라지지 않는다", async () => {
-    const msg = "제출은 끝났지만 전원 제출 확인에 실패했습니다: x";
-    submitReport.mockResolvedValue({ ok: false, error: msg });
-    const { rerender } = render(<WeekHeader {...base} canSubmit />);
-    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
-    await waitFor(() => expect(refresh).toHaveBeenCalled());
+  it("작성자 선택 상자는 writerPicker 가 있을 때만 — 선택지는 명단 이름, 본인 보고서가 없으면 '작성자 선택'", () => {
+    const { rerender } = render(<WeekHeader {...base} writerPicker={null} />);
+    expect(screen.queryByLabelText("작성자")).toBeNull();
+    rerender(<WeekHeader {...base} />);
+    const names = () =>
+      within(screen.getByLabelText("작성자"))
+        .getAllByRole("option")
+        .map((o) => o.textContent);
+    expect(names()).toEqual(["운영자A", "운영자B"]);
     rerender(
       <WeekHeader
         {...base}
-        canSubmit={false}
-        reportStatus="submitted"
-        submittedAt="2026-11-19T08:05:00Z"
+        writerPicker={{ ...base.writerPicker, viewedEmail: null }}
       />,
     );
-    expect(screen.getByText("제출함 11/19 17:05")).toBeInTheDocument();
-    expect(screen.getByText(msg)).toBeInTheDocument();
+    expect(names()).toEqual(["작성자 선택", "운영자A", "운영자B"]);
+    expect(screen.getByLabelText("작성자")).toHaveValue("");
   });
 
-  it("진짜 제출 실패도 새로고침해 낡은 화면을 바로잡는다", async () => {
-    submitReport.mockResolvedValue({
-      ok: false,
-      error: "이미 제출한 보고서입니다.",
-    });
-    render(<WeekHeader {...base} canSubmit />);
-    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
-    await waitFor(() => expect(refresh).toHaveBeenCalled());
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "이미 제출한 보고서입니다.",
+  it("주 이동: 이전·다음 링크와 주 표시가 줄바꿈 없는 한 묶음(min-w-0)", () => {
+    render(<WeekHeader {...base} />);
+    const prev = screen.getByRole("link", { name: "이전 주" });
+    const next = screen.getByRole("link", { name: "다음 주" });
+    expect(prev.parentElement).toBe(next.parentElement);
+    const group = (prev.parentElement as Element).className.split(/\s+/);
+    expect(group).toContain("min-w-0");
+    expect(group).not.toContain("flex-wrap");
+    const label = screen.getByText("2026년 11월 3주차 · 11/16~11/20");
+    expect(label.parentElement).toBe(prev.parentElement);
+    expect(label.className.split(/\s+/)).toContain("min-w-0");
+  });
+
+  it("내 보고서에서 주 이동 링크는 지금 영역(URL)을 따라간다 — week·op 순서 유지", () => {
+    setUrl("?week=2026-11-16&tab=pims");
+    render(<WeekHeader {...base} />);
+    const next = screen.getByRole("link", { name: "다음 주" });
+    expect(next.getAttribute("href")).toContain("tab=pims");
+    expect(next.getAttribute("href")).toContain("week=2026-11-23");
+    cleanup();
+    setUrl("?week=2026-11-16&tab=project");
+    render(
+      <WeekHeader
+        {...base}
+        nextHref="/dashboard/ops-weekly?week=2026-11-23&tab=project&op=b%40example.com"
+      />,
+    );
+    // 서랍(tab=project)은 영역이 아니라 원서접수로 푼다 — 서버가 준 낡은 tab 을 그대로 두지 않는다.
+    expect(
+      screen.getByRole("link", { name: "다음 주" }).getAttribute("href"),
+    ).toBe("/dashboard/ops-weekly?week=2026-11-23&tab=application&op=b%40example.com");
+  });
+
+  it("제출 현황·관리(showReportState 없음)에서는 링크를 그대로 둔다", () => {
+    setUrl("?week=2026-11-16&tab=pims");
+    render(<WeekHeader {...base} showReportState={false} />);
+    expect(screen.getByRole("link", { name: "다음 주" })).toHaveAttribute(
+      "href",
+      base.nextHref,
     );
   });
 
-  it("제출 action 이 던져도 페이지를 날리지 않고 안내 + 새로고침", async () => {
-    submitReport.mockRejectedValue(new Error("명단 조회 실패"));
-    render(<WeekHeader {...base} canSubmit />);
-    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
-    await waitFor(() => expect(refresh).toHaveBeenCalled());
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "제출하지 못했습니다 — 잠시 후 다시 시도하세요",
-    );
-    expect(screen.queryByText(/명단 조회 실패/)).toBeNull();
-  });
   describe("가독성 — 머리줄 모양", () => {
     const tokens = (el: Element) => el.className.split(/\s+/);
     const climb = (el: Element, token: string): Element | null => {
@@ -236,30 +254,14 @@ describe("WeekHeader", () => {
       return null;
     };
 
-    it("정보는 왼쪽 · 액션은 오른쪽 묶음, 그 부모 행이 양 끝 정렬", () => {
-      render(<WeekHeader {...base} canSubmit />);
-      const button = screen.getByRole("button", { name: "제출완료" });
-      const right = climb(button, "justify-end");
+    it("정보는 왼쪽 · 상태는 오른쪽 묶음, 그 부모 행이 양 끝 정렬", () => {
+      render(<WeekHeader {...base} />);
+      const right = climb(screen.getByText("제출 0/2"), "justify-end");
       expect(right).not.toBeNull();
       expect(tokens(right?.parentElement as Element)).toContain(
         "justify-between",
       );
       expect(right?.contains(screen.getByLabelText("작성자"))).toBe(false);
-    });
-
-    it("제출 실패 메시지는 머리 행 밖 아래 줄에서 vermilion 으로", async () => {
-      submitReport.mockResolvedValue({ ok: false, error: "이미 제출함" });
-      render(<WeekHeader {...base} canSubmit />);
-      const button = screen.getByRole("button", { name: "제출완료" });
-      fireEvent.click(button);
-      const alert = await screen.findByRole("alert");
-      expect(tokens(alert)).toContain("text-vermilion");
-      expect(alert.parentElement).not.toBe(button.parentElement);
-      expect(climb(button, "justify-end")?.contains(alert)).toBe(false);
-      expect(
-        button.compareDocumentPosition(alert) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
     });
 
     it("상태 배지 — 작성 중 / 제출함(숫자 정렬) / 다시 작성 요청(vermilion)", () => {
@@ -328,16 +330,5 @@ describe("WeekHeader — 남의 보고서", () => {
     render(<WeekHeader {...base} />);
     expect(screen.queryByText(/의 보고서$/)).toBeNull();
     expect(screen.queryByRole("link", { name: "‹ 제출 현황" })).toBeNull();
-  });
-
-  it("본인 보고서가 없으면(viewedEmail null) 작성자 선택 상자는 '작성자 선택' 이고 아무도 골라져 있지 않다", () => {
-    render(<WeekHeader {...base} viewedEmail={null} />);
-    const select = screen.getByLabelText("작성자");
-    expect(
-      within(select)
-        .getAllByRole("option")
-        .map((o) => o.textContent),
-    ).toEqual(["작성자 선택", "운영자A", "운영자B"]);
-    expect(select).toHaveValue("");
   });
 });
