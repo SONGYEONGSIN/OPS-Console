@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import {
   render,
@@ -30,7 +31,10 @@ const st = { showUnknown: true, collected: true };
 
 const held: { registry: SaveRegistry | null } = { registry: null };
 function Probe() {
-  held.registry = usePendingSaves();
+  const registry = usePendingSaves();
+  useEffect(() => {
+    held.registry = registry;
+  }, [registry]);
   return null;
 }
 
