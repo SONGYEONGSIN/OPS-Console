@@ -6,17 +6,17 @@ import { useState, useTransition } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
 import { ListSelect } from "@/components/common/ListSelect";
 import type { ReportStatus } from "@/features/ops-weekly/constants";
-import type { WeekRow } from "@/features/ops-weekly/schemas";
 import type { WeekRef } from "@/features/ops-weekly/week";
 import { submitReport } from "@/features/ops-weekly/workflow-actions";
 import { formatMdHm } from "../_format";
+import type { HeaderWeek } from "../_header-week";
 import { opsWeeklyHref } from "../_params";
 import { usePendingSaves } from "./pending-saves";
 import { BADGE_CLASS } from "./styles";
 
 type Props = {
   weekRef: WeekRef;
-  week: WeekRow;
+  week: HeaderWeek;
   viewedName: string | null;
   writers: { email: string; name: string }[];
   viewedEmail: string | null;
@@ -32,8 +32,10 @@ type Props = {
   prevOpen: boolean;
   prevHref: string;
   nextHref: string;
-  /** 작성자를 바꿔도 같은 탭에 머문다. */
+  /** 작성자를 고르면 가는 영역. */
   tab?: string;
+  /** 남의 보고서를 보는 중이면 그 사람 이름과 제출 현황으로 돌아가는 주소. */
+  viewingOther: { name: string; backHref: string } | null;
 };
 
 // 제출이 이미 커밋된 뒤의 후속 실패(전원 제출 확인 등) 문구의 머리말 — 실패로 포장하지 않는다.
@@ -173,7 +175,21 @@ export function WeekHeader(props: Props) {
               value={viewedName}
               onChange={pickWriter}
               options={writers.map((w) => w.name)}
+              placeholder={viewedEmail === null ? "작성자 선택" : undefined}
             />
+          ) : null}
+          {props.viewingOther !== null ? (
+            <span className="flex items-center gap-2 text-xs">
+              <span className="border border-line-soft px-1.5 py-0.5 text-xs font-bold text-ink">
+                {`${props.viewingOther.name}의 보고서`}
+              </span>
+              <Link
+                href={props.viewingOther.backHref}
+                className="text-ink-soft underline"
+              >
+                ‹ 제출 현황
+              </Link>
+            </span>
           ) : null}
         </div>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2 text-ink-soft">

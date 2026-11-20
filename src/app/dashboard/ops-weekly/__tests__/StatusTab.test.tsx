@@ -15,16 +15,10 @@ vi.mock("next/navigation", () => ({
 const returnReport = vi.fn();
 const saveDutySummary = vi.fn();
 const finalizeWeek = vi.fn();
-const reopenWeek = vi.fn();
 vi.mock("@/features/ops-weekly/workflow-actions", () => ({
   returnReport: (...a: unknown[]) => returnReport(...a),
   saveDutySummary: (...a: unknown[]) => saveDutySummary(...a),
   finalizeWeek: (...a: unknown[]) => finalizeWeek(...a),
-  reopenWeek: (...a: unknown[]) => reopenWeek(...a),
-}));
-const setWeekDuty = vi.fn();
-vi.mock("@/features/ops-weekly/settings-actions", () => ({
-  setWeekDuty: (...a: unknown[]) => setWeekDuty(...a),
 }));
 
 import { StatusTab } from "../_components/StatusTab";
@@ -106,8 +100,6 @@ beforeEach(() => {
   returnReport.mockReset().mockResolvedValue({ ok: true });
   saveDutySummary.mockReset().mockResolvedValue({ ok: true });
   finalizeWeek.mockReset().mockResolvedValue({ ok: true });
-  reopenWeek.mockReset().mockResolvedValue({ ok: true });
-  setWeekDuty.mockReset().mockResolvedValue({ ok: true });
 });
 afterEach(cleanup);
 
@@ -137,7 +129,7 @@ describe("StatusTab", () => {
     ).toBeInTheDocument();
   });
 
-  it("권한이 없으면 이유를 적는다", () => {
+  it("권한이 없으면(forbidden) 최종 보고 아래 안내 문구가 없다", () => {
     render(
       <StatusTab
         {...base}
@@ -146,8 +138,8 @@ describe("StatusTab", () => {
     );
     expect(screen.getByRole("button", { name: "최종 보고" })).toBeDisabled();
     expect(
-      screen.getByText("당번 또는 관리자만 보고할 수 있습니다"),
-    ).toBeInTheDocument();
+      screen.queryByText("당번 또는 관리자만 보고할 수 있습니다"),
+    ).toBeNull();
   });
 
   it("상태 세 가지 + 보고서 행이 없으면 미제출", () => {
@@ -231,39 +223,45 @@ describe("StatusTab", () => {
     });
   });
 
-  it("[정정] 은 admin · 보고된 주에만", () => {
-    const reported = { ...WEEK, status: "reported" as const };
+  it("제출 현황에는 당번 바꾸기·정정이 없다 — 관리자 · 열린 주든 보고된 주든", () => {
     render(
-      <StatusTab
-        {...base}
-        week={reported}
-        actor={{ email: "z@x", isAdmin: true }}
-      />,
+      <StatusTab {...base} actor={{ email: "z@x", isAdmin: true }} />,
     );
-    expect(screen.getByRole("button", { name: "정정" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("당번")).toBeNull();
+    expect(screen.queryByRole("button", { name: "정정" })).toBeNull();
     cleanup();
     render(
       <StatusTab
         {...base}
-        week={reported}
-        actor={{ email: "d@x", isAdmin: false }}
+        actor={{ email: "z@x", isAdmin: true }}
+        week={{
+          ...WEEK,
+          status: "reported",
+          reported_at: "2026-11-20T08:00:00Z",
+        }}
       />,
     );
     expect(screen.queryByRole("button", { name: "정정" })).toBeNull();
+    expect(screen.queryByLabelText("당번")).toBeNull();
   });
 
-  it("[정정] 은 reopenWeek 를 부른다", async () => {
+  it("받는 사람(당번·관리자 아님)이 보고된 주를 열면 버튼이 하나도 없다", () => {
     render(
       <StatusTab
         {...base}
-        week={{ ...WEEK, status: "reported" }}
-        actor={{ email: "z@x", isAdmin: true }}
+        actor={{ email: "r@x", isAdmin: false }}
+        week={{
+          ...WEEK,
+          status: "reported",
+          reported_at: "2026-11-20T08:00:00Z",
+        }}
+        reports={[rep("a@x", "submitted")]}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "정정" }));
-    await waitFor(() => {
-      expect(reopenWeek).toHaveBeenCalledWith({ weekId: "w1" });
-    });
+    for (const name of ["다시 작성", "최종 보고", "정정"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0); // 당번 총평 읽기 전용
   });
 
   it("최종 보고는 확인창을 거쳐 finalizeWeek 를 부른다", async () => {
@@ -310,14 +308,6 @@ describe("StatusTab", () => {
         nextWeek: "",
       });
     });
-  });
-
-  it("당번 바꾸기는 admin · 열린 주에만", () => {
-    render(<StatusTab {...base} actor={{ email: "z@x", isAdmin: true }} />);
-    expect(screen.getByLabelText("당번")).toBeInTheDocument();
-    cleanup();
-    render(<StatusTab {...base} />);
-    expect(screen.queryByLabelText("당번")).toBeNull();
   });
 
   it("프로젝트 모아보기 — 항목 아래 담당자별", () => {
@@ -480,7 +470,7 @@ describe("StatusTab", () => {
       );
       expect(
         screen.getByRole("link", { name: "설정 열기" }),
-      ).toBeInTheDocument();
+      ).toHaveAttribute("href", expect.stringContaining("section=exclusions"));
     });
   });
 });

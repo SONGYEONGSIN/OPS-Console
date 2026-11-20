@@ -1,16 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { HeaderActionButton } from "@/components/common/HeaderActionButton";
-import { ListSelect } from "@/components/common/ListSelect";
 import { ModalShell } from "@/components/common/ModalShell";
-import type { ActionResult } from "@/features/ops-weekly/actions";
 import { normEmail } from "@/features/ops-weekly/email";
 import type { ProjectGroup } from "@/features/ops-weekly/merge";
 import {
   canEditDutySummary,
-  canReopenWeek,
+  canManageSettings,
   canReturnReport,
   type Actor,
   type FinalizeCheck,
@@ -21,18 +18,16 @@ import {
   type ReportRow,
   type WeekRow,
 } from "@/features/ops-weekly/schemas";
-import { setWeekDuty } from "@/features/ops-weekly/settings-actions";
 import {
   finalizeWeek,
-  reopenWeek,
   returnReport,
 } from "@/features/ops-weekly/workflow-actions";
-import { opsWeeklyHref } from "../_params";
+import { manageHref } from "../_params";
 import { DutySummary } from "./DutySummary";
 import { ProjectOverview } from "./ProjectOverview";
 import { SubmissionTable } from "./SubmissionTable";
 import { BTN_CLASS, FIELD_CLASS } from "./styles";
-import { useSave } from "./use-save";
+import { useWorkflow } from "./use-workflow";
 
 type Props = {
   week: WeekRow;
@@ -52,26 +47,10 @@ type Dialog =
 
 const LOCKED_TEXT = "이미 보고된 주입니다";
 
-/** 결과와 상관없이 서버 상태가 바뀌었을 수 있어 늘 새로 읽는다(보고 커밋 뒤 후속 실패 포함). */
-function useWorkflow() {
-  const router = useRouter();
-  const save = useSave();
-  function run(fn: () => Promise<ActionResult>) {
-    save.run(async () => {
-      try {
-        return await fn();
-      } finally {
-        router.refresh();
-      }
-    });
-  }
-  return { pending: save.pending, message: save.error, run };
-}
-
 function whyDisabled(
   check: Exclude<FinalizeCheck, { ok: true }>,
   names: ReadonlyMap<string, string>,
-): string {
+): string | null {
   if (check.reason === "pending") {
     const who = check.pending.map((e) => names.get(normEmail(e)) ?? e);
     return `미제출: ${who.join(", ")}`;
@@ -79,7 +58,7 @@ function whyDisabled(
   if (check.reason === "empty-roster")
     return "작성 대상 명단을 읽지 못했습니다";
   if (check.reason === "locked") return LOCKED_TEXT;
-  return "당번 또는 관리자만 보고할 수 있습니다";
+  return null;
 }
 
 function ReturnDialog(props: {
@@ -153,29 +132,6 @@ function FinalizeDialog(props: { onClose: () => void; onOk: () => void }) {
   );
 }
 
-function DutyPicker(props: {
-  week: WeekRow;
-  writers: readonly WriterCandidate[];
-  onPick: (email: string) => void;
-}) {
-  const { week, writers, onPick } = props;
-  const current = normEmail(week.duty_email ?? "");
-  const value = writers.find((w) => w.email === current)?.name ?? "";
-  return (
-    <ListSelect
-      ariaLabel="당번"
-      className="max-w-full"
-      placeholder="당번 미지정"
-      value={value}
-      options={writers.map((w) => w.name)}
-      onChange={(name) => {
-        const w = writers.find((x) => x.name === name);
-        if (w) onPick(w.email);
-      }}
-    />
-  );
-}
-
 function FinalizeBar(props: {
   finalize: FinalizeCheck;
   names: ReadonlyMap<string, string>;
@@ -183,6 +139,7 @@ function FinalizeBar(props: {
   onClick: () => void;
 }) {
   const { finalize, names } = props;
+  const why = finalize.ok ? null : whyDisabled(finalize, names);
   return (
     <div className="flex flex-col items-end gap-1">
       <HeaderActionButton
@@ -191,10 +148,8 @@ function FinalizeBar(props: {
       >
         최종 보고
       </HeaderActionButton>
-      {finalize.ok ? null : (
-        <p className="max-w-xs text-right text-xs text-ink-soft">
-          {whyDisabled(finalize, names)}
-        </p>
+      {why === null ? null : (
+        <p className="max-w-xs text-right text-xs text-ink-soft">{why}</p>
       )}
     </div>
   );
@@ -207,9 +162,6 @@ export function StatusTab(props: Props) {
   const state = normalizedWeekStateOf(week);
   const names = new Map(writers.map((w) => [normEmail(w.email), w.name]));
   const open = week.status === "open";
-
-  const canReopen = canReopenWeek(actor, state);
-  const canPickDuty = actor.isAdmin && open;
   return (
     <section data-tab="status" className="flex flex-col gap-7 p-5 lg:p-7">
       <div className="flex flex-col gap-3">
@@ -221,36 +173,6 @@ export function StatusTab(props: Props) {
                 {`${props.submittedCount}/${writers.length}명`}
               </span>
             </div>
-            {canPickDuty || canReopen ? (
-              <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
-                {canPickDuty ? (
-                  <>
-                    <span>당번</span>
-                    <DutyPicker
-                      week={week}
-                      writers={writers}
-                      onPick={(email) => {
-                        wf.run(() =>
-                          setWeekDuty({ weekId: week.id, dutyEmail: email }),
-                        );
-                      }}
-                    />
-                  </>
-                ) : null}
-                {canReopen ? (
-                  <button
-                    type="button"
-                    className={BTN_CLASS}
-                    disabled={wf.pending}
-                    onClick={() => {
-                      wf.run(() => reopenWeek({ weekId: week.id }));
-                    }}
-                  >
-                    정정
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
           </div>
           {open ? (
             <div className="ml-auto">
@@ -276,8 +198,8 @@ export function StatusTab(props: Props) {
         writers={writers}
         reports={reports}
         settingsHref={
-          actor.isAdmin
-            ? opsWeeklyHref(week.week_start, "settings", null)
+          canManageSettings(actor)
+            ? manageHref(week.week_start, "exclusions")
             : undefined
         }
         canReturn={(r) => canReturnReport(actor, state, r.status)}

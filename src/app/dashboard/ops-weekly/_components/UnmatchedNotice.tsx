@@ -12,7 +12,7 @@ export function UnmatchedNotice(props: {
   noun: string;
   /** 0 건이 아닐 때 덧붙일 조치 */
   action: string;
-  /** 설정 탭의 안 붙은 서비스 패널 */
+  /** 관리 › 안 붙은 서비스 */
   settingsHref: string;
 }) {
   if (!props.isAdmin) return null;
@@ -26,7 +26,7 @@ export function UnmatchedNotice(props: {
       </p>
       {count > 0 ? (
         <Link href={props.settingsHref} className="text-xs underline">
-          설정에서 목록 보기
+          관리에서 목록 보기
         </Link>
       ) : null}
     </div>

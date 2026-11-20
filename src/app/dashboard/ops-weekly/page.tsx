@@ -2,8 +2,8 @@ import Link from "next/link";
 import { PageTabs } from "@/components/common/PageTabs";
 import { requireMenu } from "@/features/auth/menu-guard";
 import { OPS_WEEKLY_SLUG } from "@/features/ops-weekly/constants";
-import { normEmail } from "@/features/ops-weekly/email";
-import { shiftWeek } from "@/features/ops-weekly/week";
+import { dutyNameOf } from "@/features/ops-weekly/overview";
+import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
@@ -11,34 +11,41 @@ import { ApplicationTab } from "./_components/ApplicationTab";
 import { LeaveTab } from "./_components/LeaveTab";
 import { PimsTab } from "./_components/PimsTab";
 import { ProjectTab } from "./_components/ProjectTab";
-import { SettingsTab } from "./_components/SettingsTab";
+import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
 import { WeekHeader } from "./_components/WeekHeader";
 import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
+import { headerWeekOf } from "./_header-week";
 import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
-import { buildTabs, opsWeeklyHref, type OpsTab } from "./_params";
+import {
+  AREA_TAB_LABEL,
+  buildRoleTabs,
+  buildTabs,
+  manageHref,
+  opsWeeklyHref,
+  roleTabOf,
+  type OpsTab,
+} from "./_params";
 
 const EMPTY_ROSTER =
   "작성 대상 명단이 비어 있습니다 — 관리자 설정을 확인하세요";
+const NO_ACCESS = "이 주에 볼 수 있는 화면이 없습니다";
+const NO_ACCESS_GUIDE =
+  "주간업무보고는 작성 대상과 그 주 당번·관리자가 봅니다. 받는 사람은 보고가 끝난 주를 볼 수 있습니다.";
 const BOX_CLASS =
   "flex flex-col gap-1 border border-line-soft bg-situation-bg px-4 py-6 text-sm text-ink";
 const TAB_TITLE: Record<OpsTab, string> = {
   application: "원서접수",
-  pims: "PIMS",
+  pims: AREA_TAB_LABEL.pims,
   project: "프로젝트",
   tf: "TF",
   leave: "휴가·외근",
   status: "제출 현황",
-  settings: "설정",
+  settings: "관리",
 };
-// 명단이 비어도 열어야 하는 탭 — 명단을 고칠 자리가 설정 탭이다.
-const OPEN_WITHOUT_ROSTER: ReadonlySet<OpsTab> = new Set([
-  "status",
-  "settings",
-]);
 
 type Week = Extract<OpsWeeklyView, { kind: "week" }>;
 
@@ -49,31 +56,8 @@ function unknownCountOf(v: Week): number {
   return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
 }
 
-function dutyNameOf(v: Week): string | null {
-  const email = v.week.duty_email;
-  if (email === null) return null;
-  return v.writers.find((w) => w.email === normEmail(email))?.name ?? email;
-}
-
 function WeekBody({ view }: { view: Week }) {
   const { tab, viewed } = view;
-  if (viewed === null && !OPEN_WITHOUT_ROSTER.has(tab)) {
-    return (
-      <div className="p-5 lg:p-7">
-        <div className={BOX_CLASS}>
-          <p>{EMPTY_ROSTER}</p>
-          {view.actor.isAdmin ? (
-            <Link
-              href={opsWeeklyHref(view.week.week_start, "settings", null)}
-              className="text-xs underline"
-            >
-              설정 열기
-            </Link>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
   const { snapshot, detail, report } = view;
   if (
     tab === "status" &&
@@ -101,7 +85,7 @@ function WeekBody({ view }: { view: Week }) {
       />
     );
   }
-  if (tab === "settings" && view.bundle !== null) {
+  if (tab === "settings" && view.bundle !== null && view.overview !== null) {
     const key = bodyKeyOf({
       reportId: report?.id ?? null,
       weekStart: view.week.week_start,
@@ -109,10 +93,18 @@ function WeekBody({ view }: { view: Week }) {
       tab,
     });
     return (
-      <SettingsTab
+      <ManageTab
         key={key}
         bundle={view.bundle}
         unmatched={view.unmatched}
+        overview={view.overview}
+        actor={view.actor}
+        week={{
+          id: view.week.id,
+          status: view.week.status,
+          duty_email: view.week.duty_email,
+        }}
+        weekLabel={`${view.weekRef.label} · ${view.weekRef.rangeLabel}`}
       />
     );
   }
@@ -132,7 +124,7 @@ function WeekBody({ view }: { view: Week }) {
       freezeNotice: view.freezeNotice,
       // 담당자 이름이 안 맞는 서비스는 관리자가 고칠 일이다 — 비관리자에게는 안내 자체를 안 낸다.
       isAdmin: view.actor.isAdmin,
-      settingsHref: `${opsWeeklyHref(view.week.week_start, "settings", null)}#unmatched`,
+      settingsHref: manageHref(view.week.week_start, "unmatched"),
     };
     if (tab === "application") return <ApplicationTab key={key} {...props} />;
     if (tab === "pims") return <PimsTab key={key} {...props} />;
@@ -148,7 +140,7 @@ function WeekBody({ view }: { view: Week }) {
           notes={detail.notes[tab]}
           settingsHref={
             view.actor.isAdmin
-              ? opsWeeklyHref(view.week.week_start, "settings", null)
+              ? manageHref(view.week.week_start, "projects")
               : undefined
           }
         />
@@ -173,17 +165,34 @@ function WeekView({ view }: { view: Week }) {
   const weekStart = week.week_start;
   const { kpis } = view;
   const showKpi = viewed !== null && kpis !== null;
+  // 작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자에게는 명단을 내리지 않는다.
+  const pickerWriters =
+    view.statusAccess !== null
+      ? view.writers.map((w) => ({ email: w.email, name: w.name }))
+      : [];
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
+      {view.roles.length > 1 ? (
+        <PageTabs
+          active={
+            roleTabOf(tab) === "report" && op !== null
+              ? "status"
+              : roleTabOf(tab)
+          }
+          size="md"
+          className="px-5 pt-4 lg:px-7"
+          tabs={buildRoleTabs({ weekStart, roles: view.roles })}
+        />
+      ) : null}
       <WeekHeader
         weekRef={weekRef}
-        week={week}
+        week={headerWeekOf(week)}
         viewedName={viewed?.name ?? null}
-        writers={view.writers.map((w) => ({ email: w.email, name: w.name }))}
+        writers={pickerWriters}
         viewedEmail={viewed?.email ?? null}
         submittedCount={view.submittedCount}
         writerCount={view.writers.length}
-        dutyName={dutyNameOf(view)}
+        dutyName={dutyNameOf(week.duty_email, view.writers)}
         canSubmit={view.canSubmit}
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}
@@ -192,7 +201,15 @@ function WeekView({ view }: { view: Week }) {
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
-        tab={tab}
+        tab={roleTabOf(tab) === "report" ? tab : "application"}
+        viewingOther={
+          roleTabOf(tab) === "report" && op !== null && viewed !== null
+            ? {
+                name: viewed.name,
+                backHref: opsWeeklyHref(weekStart, "status", null),
+              }
+            : null
+        }
       />
       {showKpi ? (
         <StickyKpiBar>
@@ -213,21 +230,62 @@ function WeekView({ view }: { view: Week }) {
         </StickyKpiBar>
       ) : null}
       {/* KPI 바가 없으면 WeekHeader 아래 간격을 이 래퍼가 맡는다 */}
-      <div className={showKpi ? "pt-1" : "pt-4"}>
-        <PageTabs
-          active={tab}
-          size="md"
-          className="px-5 lg:px-7"
-          tabs={buildTabs({
-            weekStart,
-            op,
-            isAdmin: actor.isAdmin,
-            checked: report?.checked_tabs ?? [],
-          })}
-        />
-      </div>
+      {roleTabOf(tab) === "report" ? (
+        <div className={showKpi ? "pt-1" : "pt-4"}>
+          <PageTabs
+            active={tab}
+            size="md"
+            className="px-5 lg:px-7"
+            tabs={buildTabs({
+              weekStart,
+              op,
+              checked: report?.checked_tabs ?? [],
+            })}
+          />
+        </div>
+      ) : null}
       <WeekBody view={view} />
     </PendingSavesProvider>
+  );
+}
+
+/** 이 주에 볼 화면이 없는 사람 — 명단이 비었으면 그 사실을, 아니면 누가 보는지를 알린다. */
+function NoAccess({
+  weekStart,
+  weekRef,
+  emptyRoster,
+}: {
+  weekStart: string;
+  weekRef: WeekRef;
+  emptyRoster: boolean;
+}) {
+  return (
+    <div className="p-5 lg:p-7">
+      <div className={BOX_CLASS}>
+        <p className="text-base font-bold tabular-nums">{`${weekRef.label} · ${weekRef.rangeLabel}`}</p>
+        <p>{emptyRoster ? EMPTY_ROSTER : NO_ACCESS}</p>
+        {emptyRoster ? null : (
+          <p className="text-xs text-muted">{NO_ACCESS_GUIDE}</p>
+        )}
+        <div className="flex flex-wrap gap-3 text-xs">
+          <Link
+            href={opsWeeklyHref(shiftWeek(weekStart, -1), "status", null)}
+            className="underline"
+          >
+            ‹ 이전 주
+          </Link>
+          <Link
+            href={opsWeeklyHref(shiftWeek(weekStart, 1), "status", null)}
+            className="underline"
+          >
+            다음 주 ›
+          </Link>
+          <Link href="/dashboard/ops-weekly" className="underline">
+            이번 주로
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -273,6 +331,12 @@ export default async function OpsWeeklyPage({
       />
       {view.kind === "no-week" ? (
         <NoWeek weekStart={view.weekStart} />
+      ) : view.kind === "no-access" ? (
+        <NoAccess
+          weekStart={view.week.week_start}
+          weekRef={view.weekRef}
+          emptyRoster={view.emptyRoster}
+        />
       ) : (
         <WeekView view={view} />
       )}

@@ -68,7 +68,7 @@ describe("PimsTab", () => {
       />,
     );
     expect(
-      screen.getByRole("tablist", { name: "PIMS 묶음" }),
+      screen.getByRole("tablist", { name: "합격자 발표 묶음" }),
     ).toBeInTheDocument();
     expect(
       screen.getAllByRole("tab").map((t) => t.firstChild?.textContent),
@@ -76,7 +76,7 @@ describe("PimsTab", () => {
     expect(tabCount("금주 발표")).toBe("1");
     expect(tabCount("차주 발표")).toBe("2");
     expect(screen.getByText("자동 2건 · 직접 1건")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "PIMS" }).className).toContain(
+    expect(screen.getByRole("heading", { name: "합격자 발표" }).className).toContain(
       "text-xl",
     );
   });
@@ -126,7 +126,7 @@ describe("PimsTab", () => {
   it("안 붙음 줄 — 비관리자에게는 없다", () => {
     render(<PimsTab {...PROPS} snapshot={snap({ unmatchedPims: 2 })} />);
     expect(screen.queryByText(/안 붙은/)).toBeNull();
-    expect(screen.queryByText("설정에서 목록 보기")).toBeNull();
+    expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
   });
 
   it("안 붙음 줄 — 관리자는 0건도 적고 조치·링크는 n>0 일 때만", () => {
@@ -137,7 +137,7 @@ describe("PimsTab", () => {
       screen.getByText("담당자가 맞지 않아 아무에게도 안 붙은 발표 서비스 0건"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "설정에서 목록 보기" }),
+      screen.queryByRole("link", { name: "관리에서 목록 보기" }),
     ).toBeNull();
     rerender(
       <PimsTab {...PROPS} isAdmin snapshot={snap({ unmatchedPims: 2 })} />,
@@ -148,7 +148,7 @@ describe("PimsTab", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "설정에서 목록 보기" }),
+      screen.getByRole("link", { name: "관리에서 목록 보기" }),
     ).toHaveAttribute("href", SETTINGS);
   });
 });

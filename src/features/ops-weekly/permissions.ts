@@ -12,8 +12,24 @@ export type WeekState = {
 };
 
 const isOpen = (week: WeekState): boolean => week.status === "open";
-const isDuty = (actor: Actor, week: WeekState): boolean =>
-  week.dutyEmail !== null && actor.email === week.dutyEmail;
+
+export function isDuty(actor: Actor, week: WeekState): boolean {
+  return week.dutyEmail !== null && actor.email === week.dutyEmail;
+}
+
+// 제출 현황과 남의 보고서를 여는 사람. 관리자·그 주 당번은 다루고("manage"),
+// 받는 사람은 보고가 끝난 주만 읽는다("read"). 열람은 이 판정에 명단 소속·resolveTab 이 더해져 정해진다.
+export type StatusAccess = "manage" | "read" | null;
+
+export function statusAccess(
+  actor: Actor,
+  week: WeekState,
+  isRecipient: boolean,
+): StatusAccess {
+  if (actor.isAdmin || isDuty(actor, week)) return "manage";
+  if (isRecipient && week.status === "reported") return "read";
+  return null;
+}
 
 export function canEditReport(
   actor: Actor,

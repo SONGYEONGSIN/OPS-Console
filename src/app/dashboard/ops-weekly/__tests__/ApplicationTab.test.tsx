@@ -328,7 +328,7 @@ describe("ApplicationTab — 안 붙은 서비스 안내는 관리자에게만",
         />,
       );
       expect(screen.queryByText(/안 붙은 서비스/)).toBeNull();
-      expect(screen.queryByText("설정에서 목록 보기")).toBeNull();
+      expect(screen.queryByText("관리에서 목록 보기")).toBeNull();
       unmount();
     }
   });
@@ -345,7 +345,7 @@ describe("ApplicationTab — 안 붙은 서비스 안내는 관리자에게만",
       screen.getByText("담당자가 맞지 않아 아무에게도 안 붙은 서비스 0건"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "설정에서 목록 보기" }),
+      screen.queryByRole("link", { name: "관리에서 목록 보기" }),
     ).toBeNull();
   });
 
@@ -362,7 +362,7 @@ describe("ApplicationTab — 안 붙은 서비스 안내는 관리자에게만",
         "담당자가 맞지 않아 아무에게도 안 붙은 서비스 4건 — 서비스마감 메뉴에서 담당자 이름을 확인하세요",
       ),
     ).toBeInTheDocument();
-    const link = screen.getByRole("link", { name: "설정에서 목록 보기" });
+    const link = screen.getByRole("link", { name: "관리에서 목록 보기" });
     expect(link).toHaveAttribute("href", SETTINGS);
     expect(link.className).toContain("text-xs");
     expect(link.className).toContain("underline");
