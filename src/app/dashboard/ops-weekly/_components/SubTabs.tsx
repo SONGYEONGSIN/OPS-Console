@@ -26,8 +26,11 @@ const TAB_BASE =
 const TAB_ACTIVE = "border-vermilion font-semibold text-vermilion";
 const TAB_IDLE = "border-transparent text-ink-soft hover:text-ink";
 
-/** 하위 탭 줄 id — KPI 카드가 전환 뒤 이 줄로 스크롤한다. */
-export const SUB_TABS_ID = "ops-subtabs";
+/**
+ * 하위 탭 줄 id — KPI 카드가 전환 뒤 그 영역의 줄로 스크롤한다.
+ * 원서접수·합격자 발표 본문을 함께 마운트하므로 영역마다 달라야 한다(같으면 숨은 줄을 가리킨다).
+ */
+export const subTabsIdOf = (tab: SubTabArea): string => `ops-subtabs-${tab}`;
 
 export function neighbour(key: string, index: number, last: number): number | null {
   if (key === "ArrowRight") return index === last ? 0 : index + 1;
@@ -77,7 +80,7 @@ export function SubTabs({ tab, ariaLabel, tabs, panels, defaultKey }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div
-        id={SUB_TABS_ID}
+        id={subTabsIdOf(tab)}
         // 일회성 임의 값: 고정 KPI 바(StickyKpiBar 가 --ops-kpi-h 에 높이를 쓴다) 아래에 서도록. 미측정이면 12rem.
         className="border-b border-line-soft lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]"
       >

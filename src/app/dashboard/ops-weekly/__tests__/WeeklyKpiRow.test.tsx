@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 
 vi.mock(
   "next/navigation",
@@ -20,10 +26,12 @@ vi.mock("next/link", () => ({
 }));
 
 import { WeeklyKpiRow } from "../_components/WeeklyKpiRow";
+import { SubTabs } from "../_components/SubTabs";
+import { useOpsArea } from "../_components/use-ops-area";
 import { setUrl } from "./search-params-mock";
 
-// 모든 호출이 같은 자리(원서접수 탭, 본인 보고서)를 본다.
-const BASE = { tab: "application", weekStart: "2026-11-16", op: null } as const;
+// 모든 호출이 본인 보고서를 본다. 어느 영역인지는 주소(setUrl)가 정한다.
+const BASE = { weekStart: "2026-11-16", op: null } as const;
 const W = "/dashboard/ops-weekly?week=2026-11-16";
 
 const KPIS = { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6 };
@@ -31,7 +39,10 @@ const KPIS = { dev: 1, test: 2, opening: 3, running: 4, closing: 5, pims: 6 };
 beforeEach(() => {
   setUrl("?week=2026-11-16&tab=application");
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("WeeklyKpiRow", () => {
   it("카드 라벨 순서(합격자 발표가 맨 끝) + 수집 전은 '구분 미확인'(0 아님)", () => {
@@ -224,9 +235,7 @@ describe("WeeklyKpiRow", () => {
 
     it("PIMS 탭에서는 합격자 발표만 활성(하위 탭 무관)", () => {
       setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
-      render(
-        <WeeklyKpiRow {...BASE} tab="pims" ownerName="홍길동" kpis={KPIS} />,
-      );
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       expect(screen.getByText("합격자 발표").closest("a")).toHaveAttribute(
         "aria-current",
         "true",
@@ -234,16 +243,6 @@ describe("WeeklyKpiRow", () => {
       expect(screen.getByText("개발 중").closest("a")).not.toHaveAttribute(
         "aria-current",
       );
-    });
-
-    it("제출 현황·설정 탭에서는 어떤 카드도 활성이 아니다", () => {
-      for (const tab of ["status", "settings"] as const) {
-        const { unmount } = render(
-          <WeeklyKpiRow {...BASE} tab={tab} ownerName="홍길동" kpis={KPIS} />,
-        );
-        expect(document.querySelectorAll("[aria-current]")).toHaveLength(0);
-        unmount();
-      }
     });
 
     it("같은 탭 안에서 누르면 이동 없이 URL 의 sub 만 바뀐다", () => {
@@ -270,7 +269,7 @@ describe("WeeklyKpiRow", () => {
       const spy = vi.fn();
       Element.prototype.scrollIntoView = spy;
       const target = document.createElement("div");
-      target.id = "ops-subtabs";
+      target.id = "ops-subtabs-application";
       document.body.appendChild(target);
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       fireEvent.click(screen.getByText("운영 중").closest("a") as HTMLElement);
@@ -282,9 +281,7 @@ describe("WeeklyKpiRow", () => {
 
     it("PIMS 탭에서 합격자 발표 카드는 서버를 안 거치고 금주 발표로 돌린다", () => {
       setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
-      render(
-        <WeeklyKpiRow {...BASE} tab="pims" ownerName="홍길동" kpis={KPIS} />,
-      );
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
       expect(link.getAttribute("href")).toBe(`${W}&tab=pims`);
       expect(fireEvent.click(link)).toBe(false);
@@ -338,18 +335,150 @@ describe("WeeklyKpiRow", () => {
       );
     });
 
-    it("다른 탭으로 가는 카드(합격자 발표)는 가로채지 않는다", () => {
+    it("다른 영역 카드(합격자 발표)도 가로채 tab=pims·sub=thisWeek 로 바꾼다", () => {
+      setUrl("?week=2026-11-16&tab=application&sub=dev");
       render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
-      expect(fireEvent.click(link)).toBe(true);
+      expect(fireEvent.click(link)).toBe(false);
+      expect(window.location.search).toBe(
+        "?week=2026-11-16&tab=pims&sub=thisWeek",
+      );
+      expect(link).toHaveAttribute("aria-current", "true");
     });
 
-    it("제출 현황 탭에서 누르면 원서접수로 일반 이동한다", () => {
-      render(
-        <WeeklyKpiRow {...BASE} tab="status" ownerName="홍길동" kpis={KPIS} />,
-      );
+    it("합격자 발표에서 운영 중 카드 → tab=application·sub=running", () => {
+      setUrl("?week=2026-11-16&tab=pims&sub=nextWeek");
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
       const link = screen.getByText("운영 중").closest("a") as HTMLElement;
-      expect(fireEvent.click(link)).toBe(true);
+      expect(fireEvent.click(link)).toBe(false);
+      expect(window.location.search).toBe(
+        "?week=2026-11-16&tab=application&sub=running",
+      );
+      expect(link).toHaveAttribute("aria-current", "true");
+      expect(screen.getByText("합격자 발표").closest("a")).not.toHaveAttribute(
+        "aria-current",
+      );
+    });
+
+    it("남의 보고서(op)를 보는 중이어도 클릭이 op 를 지우지 않는다", () => {
+      setUrl("?week=2026-11-16&tab=application&op=a%40x");
+      render(
+        <WeeklyKpiRow {...BASE} op="a@x" ownerName="홍길동" kpis={KPIS} />,
+      );
+      fireEvent.click(screen.getByText("합격자 발표").closest("a") as Element);
+      expect(window.location.search).toBe(
+        "?week=2026-11-16&tab=pims&op=a%40x&sub=thisWeek",
+      );
+    });
+
+    it("수정 키 클릭은 다른 영역 카드도 가로채지 않는다", () => {
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      const link = screen.getByText("합격자 발표").closest("a") as HTMLElement;
+      const before = window.location.search;
+      expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+      expect(fireEvent.click(link, { metaKey: true })).toBe(true);
+      expect(window.location.search).toBe(before);
+    });
+
+    // Review Focus 1 — 원서접수·합격자 발표 본문을 함께 마운트하면 하위 탭 줄 id 가 같으면 안 된다.
+    it("RF1 원서접수·합격자 발표 하위 탭을 함께 마운트해도 줄 id 가 다르고, 카드는 그 영역 줄로 스크롤한다", () => {
+      setUrl("?week=2026-11-16&tab=application");
+      render(
+        <>
+          <SubTabs
+            tab="application"
+            ariaLabel="원서접수 묶음"
+            tabs={[{ key: "dev", label: "개발 중", count: 1 }]}
+            panels={{ dev: null }}
+          />
+          <div hidden>
+            <SubTabs
+              tab="pims"
+              ariaLabel="합격자 발표 묶음"
+              tabs={[{ key: "thisWeek", label: "금주 발표", count: 1 }]}
+              panels={{ thisWeek: null }}
+            />
+          </div>
+          <WeeklyKpiRow
+            kpis={KPIS}
+            ownerName="홍길동"
+            weekStart="2026-11-16"
+            op={null}
+          />
+        </>,
+      );
+      expect(
+        document.querySelectorAll("#ops-subtabs-application, #ops-subtabs-pims"),
+      ).toHaveLength(2);
+      const target = document.getElementById("ops-subtabs-pims") as HTMLElement;
+      target.scrollIntoView = vi.fn();
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
+      fireEvent.click(screen.getByText("합격자 발표").closest("a") as HTMLElement);
+      expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    });
+
+    // F3 — 다른 영역 카드의 스크롤은 영역이 커밋돼 그 패널이 hidden 에서 풀린 뒤에 일어난다.
+    // 클릭 핸들러 안에서(또는 rAF 한 번 안에서) 스크롤하면 Next 의 transition 커밋보다 앞서 숨은 줄을 가리킨다.
+    it("F3 다른 영역 카드의 스크롤은 그 영역 패널이 보인 뒤에 한 번 일어난다", () => {
+      function Areas() {
+        const { area } = useOpsArea();
+        return (
+          <>
+            <div hidden={area !== "application"}>
+              <SubTabs
+                tab="application"
+                ariaLabel="원서접수 묶음"
+                tabs={[{ key: "dev", label: "개발 중", count: 1 }]}
+                panels={{ dev: null }}
+              />
+            </div>
+            <div hidden={area !== "pims"}>
+              <SubTabs
+                tab="pims"
+                ariaLabel="합격자 발표 묶음"
+                tabs={[{ key: "thisWeek", label: "금주 발표", count: 1 }]}
+                panels={{ thisWeek: null }}
+              />
+            </div>
+          </>
+        );
+      }
+      setUrl("?week=2026-11-16&tab=application");
+      render(
+        <>
+          <Areas />
+          <WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />
+        </>,
+      );
+      const target = document.getElementById("ops-subtabs-pims") as HTMLElement;
+      const visibleAtCall: boolean[] = [];
+      target.scrollIntoView = vi.fn(() => {
+        visibleAtCall.push(target.closest("[hidden]") === null);
+      });
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+        cb(0);
+        return 0;
+      });
+      fireEvent.click(screen.getByText("합격자 발표").closest("a") as HTMLElement);
+      expect(visibleAtCall).toEqual([true]);
+      expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+    });
+
+    it("F3 영역 탭 등 카드 밖에서 영역이 바뀌어도 스크롤은 일어나지 않는다", () => {
+      setUrl("?week=2026-11-16&tab=application");
+      render(<WeeklyKpiRow {...BASE} ownerName="홍길동" kpis={KPIS} />);
+      const target = document.createElement("div");
+      target.id = "ops-subtabs-pims";
+      target.scrollIntoView = vi.fn();
+      document.body.appendChild(target);
+      act(() => {
+        setUrl("?week=2026-11-16&tab=pims");
+      });
+      expect(target.scrollIntoView).not.toHaveBeenCalled();
+      target.remove();
     });
   });
 

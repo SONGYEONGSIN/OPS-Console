@@ -192,7 +192,6 @@ function WeekView({ view }: { view: Week }) {
             kpis={kpis}
             ownerName={viewed.name}
             unknownCount={unknownCountOf(view)}
-            tab={tab}
             weekStart={weekStart}
             op={op}
             appSubState={{

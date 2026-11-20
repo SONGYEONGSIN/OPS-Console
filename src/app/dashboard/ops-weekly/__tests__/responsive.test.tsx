@@ -68,7 +68,6 @@ describe("주간업무보고 반응형 — 모양 단언", () => {
   it("KPI 는 폰·태블릿 3열, lg 부터 한 줄 6열 — 고아 칸이 없다", () => {
     render(
       <WeeklyKpiRow
-        tab="application"
         weekStart="2026-11-16"
         op={null}
         ownerName="홍길동"
