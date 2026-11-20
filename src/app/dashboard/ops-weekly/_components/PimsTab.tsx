@@ -6,7 +6,6 @@ import {
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { AREA_TAB_LABEL } from "../_params";
-import { AreaNotes } from "./AreaNotes";
 import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { SubTabs } from "./SubTabs";
@@ -70,7 +69,7 @@ export function PimsTab({
     ]),
   );
   return (
-    <div className="flex flex-col gap-7 p-5 lg:p-7">
+    <div className="flex flex-col gap-7">
       <TabHeading
         title={AREA_TAB_LABEL.pims}
         summary={`자동 ${autoCount}건 · 직접 ${
@@ -87,13 +86,6 @@ export function PimsTab({
         />
       </TabHeading>
       <SubTabs tab="pims" ariaLabel={`${AREA_TAB_LABEL.pims} 묶음`} tabs={tabs} panels={panels} />
-      <AreaNotes
-        reportId={reportId}
-        area="pims"
-        thisWeek={detail.notes.pims.thisWeek}
-        nextWeek={detail.notes.pims.nextWeek}
-        editable={editable}
-      />
     </div>
   );
 }

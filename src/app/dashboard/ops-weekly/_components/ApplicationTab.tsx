@@ -8,7 +8,6 @@ import {
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { defaultAppSub } from "../_params";
-import { AreaNotes } from "./AreaNotes";
 import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
 import { SubTabs, type SubTabItem } from "./SubTabs";
@@ -138,7 +137,7 @@ export function ApplicationTab({
   };
 
   return (
-    <div className="flex flex-col gap-7 p-5 lg:p-7">
+    <div className="flex flex-col gap-7">
       <TabHeading
         title="원서접수"
         summary={`자동 ${autoCount}건 · 직접 ${directCount}건`}
@@ -158,13 +157,6 @@ export function ApplicationTab({
         tabs={tabs}
         panels={panels}
         defaultKey={defaultAppSub(app.devStatusCollected)}
-      />
-      <AreaNotes
-        reportId={reportId}
-        area="application"
-        thisWeek={detail.notes.application.thisWeek}
-        nextWeek={detail.notes.application.nextWeek}
-        editable={editable}
       />
     </div>
   );

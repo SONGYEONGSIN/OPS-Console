@@ -197,16 +197,14 @@ describe("ApplicationTab — 하위 탭", () => {
     ).toBeInTheDocument();
   });
 
-  it("영역 특이사항은 패널 밖에서 늘 보인다", () => {
+  it("영역 특이사항은 쓸 것 패널로 옮겨 가 본문에 없다", () => {
     render(
       <ApplicationTab
         {...PROPS}
         snapshot={snap({ devStatusCollected: true })}
       />,
     );
-    const h = screen.getByRole("heading", { name: "영역 특이사항" });
-    expect(h.closest("[role=tabpanel]")).toBeNull();
-    expect(h.closest("[hidden]")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "영역 특이사항" })).toBeNull();
   });
 });
 

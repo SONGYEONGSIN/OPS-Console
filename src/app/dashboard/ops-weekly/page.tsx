@@ -7,9 +7,7 @@ import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
-import { ApplicationTab } from "./_components/ApplicationTab";
-import { LeaveTab } from "./_components/LeaveTab";
-import { PimsTab } from "./_components/PimsTab";
+import { ReportView } from "./_components/ReportView";
 import { ProjectTab } from "./_components/ProjectTab";
 import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
@@ -19,7 +17,7 @@ import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
 import { headerWeekOf } from "./_header-week";
-import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
+import { loadOpsWeeklyPage, type OpsWeeklyWeekView } from "./_load";
 import {
   AREA_TAB_LABEL,
   buildRoleTabs,
@@ -47,7 +45,7 @@ const TAB_TITLE: Record<OpsTab, string> = {
   settings: "관리",
 };
 
-type Week = Extract<OpsWeeklyView, { kind: "week" }>;
+type Week = OpsWeeklyWeekView;
 
 /** 구분(개발/테스트)이 안 된 건수 — 뺀 건은 세지 않는다. */
 function unknownCountOf(v: Week): number {
@@ -116,27 +114,31 @@ function WeekBody({ view }: { view: Week }) {
       op: viewed?.email ?? "",
       tab,
     });
-    const props = {
-      snapshot,
-      detail,
-      reportId: report?.id ?? null,
-      editable: view.canEdit && report !== null,
-      freezeNotice: view.freezeNotice,
-      // 담당자 이름이 안 맞는 서비스는 관리자가 고칠 일이다 — 비관리자에게는 안내 자체를 안 낸다.
-      isAdmin: view.actor.isAdmin,
-      settingsHref: manageHref(view.week.week_start, "unmatched"),
-    };
-    if (tab === "application") return <ApplicationTab key={key} {...props} />;
-    if (tab === "pims") return <PimsTab key={key} {...props} />;
-    if (tab === "leave") return <LeaveTab key={key} {...props} />;
+    if (tab === "application" || tab === "pims" || tab === "leave") {
+      // 영역이 바뀌어도 다시 마운트하지 않게 key 에 영역을 넣지 않는다.
+      const reportKey = bodyKeyOf({
+        reportId: report?.id ?? null,
+        weekStart: view.week.week_start,
+        op: viewed?.email ?? "",
+        tab: "report",
+      });
+      return (
+        <ReportView
+          key={reportKey}
+          view={view}
+          snapshot={snapshot}
+          detail={detail}
+        />
+      );
+    }
     if (tab === "project" || tab === "tf") {
       return (
         <ProjectTab
           key={key}
           kind={tab}
           entries={detail.projects}
-          reportId={props.reportId}
-          editable={props.editable}
+          reportId={report?.id ?? null}
+          editable={view.canEdit && report !== null}
           notes={detail.notes[tab]}
           settingsHref={
             view.actor.isAdmin

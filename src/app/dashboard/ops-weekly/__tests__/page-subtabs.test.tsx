@@ -181,6 +181,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   });
 
   it("PIMS 탭: 관리자만 안내, 하위 탭은 금주·차주", async () => {
+    setUrl("?week=2026-11-16&tab=pims");
     state.view = viewFor("pims", false);
     const { unmount } = await renderPage("pims");
     expect(screen.queryByText(/안 붙은 발표 서비스/)).toBeNull();
@@ -193,6 +194,20 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     state.view = viewFor("pims", true);
     await renderPage("pims");
     expect(screen.getByText(/안 붙은 발표 서비스 2건/)).toBeInTheDocument();
+  });
+
+  it("원서접수: 영역 탭·쓸 것 패널, 특이사항 셋이 모두 마운트된다", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
+    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    // 패널 안으로 좁힌다 — T17 의 서랍(ProjectTab 둘)도 AreaNotes 를 마운트해 화면 전체로는 다섯이 된다
+    expect(
+      within(panel).getAllByRole("heading", {
+        name: "영역 특이사항",
+        hidden: true,
+      }),
+    ).toHaveLength(3);
   });
 
   it("설정 탭: 안 붙은 서비스 패널이 목록으로 그려진다", async () => {

@@ -76,7 +76,42 @@ describe("AreaNotes 자동 저장 표시", () => {
     );
   });
 
-  it("큰 절 구분선과 [이 탭 확인] 설명", () => {
+  it("버튼 이름은 '이 영역 확인'", () => {
+    mount();
+    expect(
+      screen.getByRole("button", { name: "이 영역 확인" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "이 탭 확인" })).toBeNull();
+  });
+
+  it("금주·차주는 컨테이너가 넓을 때만 두 칸", () => {
+    mount();
+    const section = screen
+      .getByRole("heading", { name: "영역 특이사항" })
+      .closest("section") as Element;
+    expect(tokens(section)).toContain("@container");
+    const grid = screen.getByLabelText("금주").closest("div") as Element;
+    expect(tokens(grid)).toContain("@md:grid-cols-2");
+    expect(tokens(grid)).not.toContain("md:grid-cols-2");
+  });
+
+  it("읽기 전용도 같은 컨테이너 기준 두 칸", () => {
+    cleanup();
+    render(
+      <AreaNotes
+        reportId="r"
+        area="application"
+        thisWeek="a"
+        nextWeek="b"
+        editable={false}
+      />,
+    );
+    const grid = screen.getByText("금주").closest("div")?.parentElement as Element;
+    expect(tokens(grid)).toContain("@md:grid-cols-2");
+    expect(tokens(grid)).not.toContain("md:grid-cols-2");
+  });
+
+  it("큰 절 구분선과 [이 영역 확인] 설명", () => {
     mount();
     const section = screen
       .getByRole("heading", { name: "영역 특이사항" })

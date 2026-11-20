@@ -73,6 +73,8 @@ import {
   type TabAccess,
 } from "./_params";
 
+export type OpsWeeklyWeekView = Extract<OpsWeeklyView, { kind: "week" }>;
+
 export type OpsWeeklyView =
   | { kind: "no-week"; weekStart: string }
   /** 이 주에 볼 화면이 없다 — 보고서·목록을 읽지 않았다 */

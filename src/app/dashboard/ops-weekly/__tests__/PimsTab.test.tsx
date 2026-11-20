@@ -114,13 +114,9 @@ describe("PimsTab", () => {
     );
   });
 
-  it("영역 특이사항은 패널 밖에서 늘 보인다", () => {
+  it("영역 특이사항은 쓸 것 패널로 옮겨 가 본문에 없다", () => {
     render(<PimsTab {...PROPS} snapshot={snap()} />);
-    expect(
-      screen
-        .getByRole("heading", { name: "영역 특이사항" })
-        .closest("[role=tabpanel]"),
-    ).toBeNull();
+    expect(screen.queryByRole("heading", { name: "영역 특이사항" })).toBeNull();
   });
 
   it("안 붙음 줄 — 비관리자에게는 없다", () => {

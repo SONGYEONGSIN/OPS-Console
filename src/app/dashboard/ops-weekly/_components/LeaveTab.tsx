@@ -7,7 +7,6 @@ import {
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { formatMdDow } from "../_format";
-import { AreaNotes } from "./AreaNotes";
 import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
@@ -81,7 +80,7 @@ export function LeaveTab({
   const rows = applyOverrides(snapshot.leave, detail.overrides);
   const manual = detail.manual.filter((m) => m.area === "leave");
   return (
-    <div className="flex flex-col gap-7 p-5 lg:p-7">
+    <div className="flex flex-col gap-7">
       <TabHeading
         title="휴가·외근"
         summary={`자동 ${rows.length}건 · 직접 ${manual.length}건`}
@@ -122,13 +121,6 @@ export function LeaveTab({
           </ul>
         )}
       </GroupShell>
-      <AreaNotes
-        reportId={reportId}
-        area="leave"
-        thisWeek={detail.notes.leave.thisWeek}
-        nextWeek={detail.notes.leave.nextWeek}
-        editable={editable}
-      />
     </div>
   );
 }
