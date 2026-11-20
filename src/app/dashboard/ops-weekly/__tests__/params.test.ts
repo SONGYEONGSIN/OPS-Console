@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { AREA_LABEL } from "@/features/ops-weekly/constants";
 import {
   APP_SUBS,
+  AREA_TABS,
   AREA_TAB_LABEL,
   MANAGE_SECTIONS,
   MANAGE_SECTION_LABEL,
@@ -17,6 +18,7 @@ import {
   parseSub,
   parseWeekParam,
   resolveAppSub,
+  resolveArea,
   resolveTab,
   roleTabOf,
   roleTabsOf,
@@ -221,5 +223,21 @@ describe("AREA_TAB_LABEL", () => {
   it("영역 라벨만 '합격자 발표' — 도메인 AREA_LABEL 은 그대로", () => {
     expect(AREA_TAB_LABEL).toEqual({ ...AREA_LABEL, pims: "합격자 발표" });
     expect(AREA_LABEL.pims).toBe("PIMS");
+  });
+});
+
+describe("영역 주소", () => {
+  it("resolveArea — 서랍·역할 탭 값은 원서접수", () => {
+    expect(resolveArea("pims")).toBe("pims");
+    expect(resolveArea("leave")).toBe("leave");
+    for (const raw of ["project", "tf", "status", null])
+      expect(resolveArea(raw)).toBe("application");
+  });
+  it("AREA_TABS — 왼쪽 영역 셋의 순서와 라벨", () => {
+    expect(AREA_TABS.map((a) => AREA_TAB_LABEL[a])).toEqual([
+      "원서접수",
+      "합격자 발표",
+      "휴가·외근",
+    ]);
   });
 });

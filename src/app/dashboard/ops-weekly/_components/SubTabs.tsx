@@ -29,7 +29,7 @@ const TAB_IDLE = "border-transparent text-ink-soft hover:text-ink";
 /** 하위 탭 줄 id — KPI 카드가 전환 뒤 이 줄로 스크롤한다. */
 export const SUB_TABS_ID = "ops-subtabs";
 
-function neighbour(key: string, index: number, last: number): number | null {
+export function neighbour(key: string, index: number, last: number): number | null {
   if (key === "ArrowRight") return index === last ? 0 : index + 1;
   if (key === "ArrowLeft") return index === 0 ? last : index - 1;
   if (key === "Home") return 0;
