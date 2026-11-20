@@ -1,6 +1,5 @@
 import type { PageTab } from "@/components/common/PageTabs";
 import {
-  AREAS,
   AREA_LABEL,
   OPS_WEEKLY_PATH,
   type Area,
@@ -24,6 +23,15 @@ export const AREA_TAB_LABEL: Record<Area, string> = {
   ...AREA_LABEL,
   pims: "합격자 발표",
 };
+
+/** 왼쪽 볼 것 칸의 영역 셋 — 프로젝트·TF 는 서랍이다. */
+export const AREA_TABS = ["application", "pims", "leave"] as const;
+export type AreaTab = (typeof AREA_TABS)[number];
+
+/** 주소의 `tab` 을 영역 탭으로 — 서랍·역할 탭 값이나 없는 값은 원서접수. */
+export function resolveArea(raw: string | null): AreaTab {
+  return AREA_TABS.find((a) => a === raw) ?? "application";
+}
 
 /** 월요일 `YYYY-MM-DD` 만 통과한다. */
 export function parseWeekParam(v: string | undefined): string | null {
@@ -96,19 +104,6 @@ export function opsWeeklyHref(
   const base = `${OPS_WEEKLY_PATH}?week=${weekStart}&tab=${tab}`;
   const withOp = op === null ? base : `${base}&op=${encodeURIComponent(op)}`;
   return sub === null ? withOp : `${withOp}&sub=${sub}`;
-}
-
-export function buildTabs(args: {
-  weekStart: string;
-  op: string | null;
-  checked: readonly Area[];
-}): PageTab[] {
-  const checked: ReadonlySet<string> = new Set(args.checked);
-  return AREAS.map((t) => ({
-    key: t,
-    label: checked.has(t) ? `${AREA_TAB_LABEL[t]} ✓` : AREA_TAB_LABEL[t],
-    href: opsWeeklyHref(args.weekStart, t, args.op),
-  }));
 }
 
 export type RoleTab = "report" | "status" | "manage";

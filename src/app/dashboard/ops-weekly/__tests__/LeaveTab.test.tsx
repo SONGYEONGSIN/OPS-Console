@@ -159,7 +159,7 @@ describe("LeaveTab", () => {
       await screen.findByText("저장하지 못했습니다 — 잠시 후 다시 시도하세요"),
     ).toBeInTheDocument();
   });
-  it("탭 제목(h2)과 건수, 직접 추가 폼은 접혀 있다", () => {
+  it("탭 제목(h2)과 건수, 왼쪽에는 직접 추가 폼이 없다", () => {
     render(
       <LeaveTab
         snapshot={snap({ leave: [leaveItem()] })}
@@ -173,10 +173,6 @@ describe("LeaveTab", () => {
     expect(h.className).toContain("text-xl");
     expect(screen.getByText("자동 1건 · 직접 1건")).toBeInTheDocument();
     expect(screen.getByText("2건")).toBeInTheDocument();
-    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "+ 직접 추가" }));
-    expect(screen.getByLabelText("직접 추가 제목")).toBeInTheDocument();
-    expect(screen.getByLabelText("시작일")).toBeInTheDocument();
   });
 });
 

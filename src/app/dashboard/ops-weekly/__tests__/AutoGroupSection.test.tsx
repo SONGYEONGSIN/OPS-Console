@@ -136,28 +136,6 @@ describe("AutoGroupSection", () => {
     expect(screen.getByText("없음")).toBeInTheDocument();
   });
 
-  it("직접 추가는 접혀 있다가 누르면 열리고 닫기로 접힌다", () => {
-    render(<AutoGroupSection {...group([])} editable />);
-    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
-    const open = screen.getByRole("button", { name: "+ 직접 추가" });
-    expect(open).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(open);
-    expect(screen.getByLabelText("직접 추가 제목")).toHaveFocus();
-    expect(open).toHaveAttribute("aria-expanded", "true");
-    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
-    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
-    expect(open).toHaveAttribute("aria-expanded", "false");
-  });
-
-  it("Esc 로도 직접 추가 폼을 닫는다", () => {
-    render(<AutoGroupSection {...group([])} editable />);
-    fireEvent.click(screen.getByRole("button", { name: "+ 직접 추가" }));
-    fireEvent.keyDown(screen.getByLabelText("직접 추가 제목"), {
-      key: "Escape",
-    });
-    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
-  });
-
   it("묶음은 상자가 아니라 제목 밑줄 + 행 구분선이다", () => {
     const { container } = render(
       <AutoGroupSection {...group([view("closing:1")])} editable />,
@@ -222,18 +200,16 @@ describe("AutoGroupSection", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
   });
 
-  it("접힌 묶음(구분 미확인)은 닫힌 채이고 추가 버튼이 없다", () => {
+  it("접힌 묶음(구분 미확인)은 닫힌 채이다", () => {
     const { container } = render(
       <AutoGroupSection
         {...group([view("closing:1")])}
         title="구분 미확인 1건"
         collapsed
-        allowAdd={false}
         editable
       />,
     );
     expect(container.querySelector("details")).not.toHaveAttribute("open");
-    expect(screen.queryByRole("button", { name: "+ 직접 추가" })).toBeNull();
   });
 
   it("행 호버 면과 액션이 키보드로 닿는다 — 액션은 같은 li 안", () => {

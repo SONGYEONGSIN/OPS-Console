@@ -7,7 +7,7 @@ import {
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { formatMdDow } from "../_format";
-import { AreaNotes } from "./AreaNotes";
+import { LEAVE_GROUP_TITLE } from "../_groups";
 import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
@@ -70,7 +70,7 @@ function LeaveRow(props: {
   );
 }
 
-/** 휴가·외근 탭 — 자동 목록도 건마다 메모·빼기가 있고 직접 추가할 수 있다. */
+/** 휴가·외근 탭 — 자동 목록도 건마다 메모·빼기가 있다. 직접 추가는 쓸 것 패널이다. */
 export function LeaveTab({
   snapshot,
   detail,
@@ -81,22 +81,14 @@ export function LeaveTab({
   const rows = applyOverrides(snapshot.leave, detail.overrides);
   const manual = detail.manual.filter((m) => m.area === "leave");
   return (
-    <div className="flex flex-col gap-7 p-5 lg:p-7">
+    <div className="flex flex-col gap-7">
       <TabHeading
         title="휴가·외근"
         summary={`자동 ${rows.length}건 · 직접 ${manual.length}건`}
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
       </TabHeading>
-      <GroupShell
-        title="휴가·외근 일정"
-        count={rows.length + manual.length}
-        add={
-          editable && reportId !== null
-            ? { reportId, area: "leave", groupKey: null, leave: true }
-            : null
-        }
-      >
+      <GroupShell title={LEAVE_GROUP_TITLE} count={rows.length + manual.length}>
         {rows.length + manual.length === 0 ? (
           <p className="py-2 text-sm text-muted">
             이 주의 휴가·외근이 없습니다
@@ -122,13 +114,6 @@ export function LeaveTab({
           </ul>
         )}
       </GroupShell>
-      <AreaNotes
-        reportId={reportId}
-        area="leave"
-        thisWeek={detail.notes.leave.thisWeek}
-        nextWeek={detail.notes.leave.nextWeek}
-        editable={editable}
-      />
     </div>
   );
 }

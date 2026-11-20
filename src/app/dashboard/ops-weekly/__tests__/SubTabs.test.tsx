@@ -188,10 +188,25 @@ describe("SubTabs", () => {
 
   it("스크롤 목적지: 고정 KPI 바 높이(--ops-kpi-h)만큼 비켜 선다", () => {
     mount();
-    const target = document.getElementById("ops-subtabs") as HTMLElement;
+    const target = document.getElementById(
+      "ops-subtabs-application",
+    ) as HTMLElement;
     expect(target.className.split(/\s+/)).toContain(
       "lg:scroll-mt-[calc(var(--ops-kpi-h,12rem)_+_0.5rem)]",
     );
+  });
+
+  it("줄 id 는 영역별이다 — 합격자 발표 줄은 ops-subtabs-pims", () => {
+    render(
+      <SubTabs
+        tab="pims"
+        ariaLabel="합격자 발표 묶음"
+        tabs={[{ key: "thisWeek", label: "금주 발표", count: 1 }]}
+        panels={{ thisWeek: null }}
+      />,
+    );
+    expect(document.getElementById("ops-subtabs-pims")).not.toBeNull();
+    expect(document.getElementById("ops-subtabs-application")).toBeNull();
   });
 
   it("defaultKey 로 URL 에 sub 가 없을 때의 기본 탭을 바꾼다", () => {

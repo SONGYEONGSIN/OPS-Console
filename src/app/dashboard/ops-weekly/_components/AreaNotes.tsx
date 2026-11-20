@@ -25,7 +25,7 @@ function ReadOnlyNote({ label, text }: { label: string; text: string }) {
   );
 }
 
-/** 영역 특이사항(금주/차주) + [이 탭 확인]. blur 하면 저장한다. */
+/** 영역 특이사항(금주/차주) + [이 영역 확인]. blur 하면 저장한다. */
 export function AreaNotes(props: Props) {
   const { reportId, area, thisWeek, nextWeek, editable } = props;
   const [thisDraft, setThis] = useState(thisWeek);
@@ -54,7 +54,7 @@ export function AreaNotes(props: Props) {
   }
 
   return (
-    <section className="flex flex-col gap-3 border-t border-line pt-6">
+    <section className="@container flex flex-col gap-3 border-t border-line pt-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-bold text-ink">영역 특이사항</h3>
         {editable && reportId !== null ? (
@@ -67,7 +67,7 @@ export function AreaNotes(props: Props) {
       </div>
       {editable && reportId !== null ? (
         <>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 @md:grid-cols-2">
             <label className="flex flex-col gap-1 text-xs font-medium text-muted">
               금주
               <textarea
@@ -103,7 +103,7 @@ export function AreaNotes(props: Props) {
                 check.run(() => markTabChecked({ reportId, area }))
               }
             >
-              이 탭 확인
+              이 영역 확인
             </button>
             <span className="text-xs text-muted">
               확인하면 탭 옆에 확인 표시가 남습니다
@@ -112,7 +112,7 @@ export function AreaNotes(props: Props) {
           </div>
         </>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 @md:grid-cols-2">
           <ReadOnlyNote label="금주" text={thisWeek} />
           <ReadOnlyNote label="차주" text={nextWeek} />
         </div>

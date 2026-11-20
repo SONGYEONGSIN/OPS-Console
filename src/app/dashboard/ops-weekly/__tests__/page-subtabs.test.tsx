@@ -15,17 +15,15 @@ vi.mock("../../_components/page-header/PageHeader", () => ({
 vi.mock("../_components/WeekHeader", () => ({
   WeekHeader: (p: {
     week: unknown;
-    tab?: string;
     viewingOther: unknown;
-    writers: unknown[];
+    writerPicker: unknown;
     dutyName: string | null;
   }) => (
     <div
       data-testid="week-header"
       data-duty={p.dutyName ?? "(null)"}
-      data-picker={p.writers.length > 0 ? "shown" : "none"}
+      data-picker={p.writerPicker === null ? "none" : "shown"}
       data-week={JSON.stringify(p.week)}
-      data-tab={p.tab}
       data-other={JSON.stringify(p.viewingOther)}
     />
   ),
@@ -181,6 +179,7 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   });
 
   it("PIMS 탭: 관리자만 안내, 하위 탭은 금주·차주", async () => {
+    setUrl("?week=2026-11-16&tab=pims");
     state.view = viewFor("pims", false);
     const { unmount } = await renderPage("pims");
     expect(screen.queryByText(/안 붙은 발표 서비스/)).toBeNull();
@@ -193,6 +192,20 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     state.view = viewFor("pims", true);
     await renderPage("pims");
     expect(screen.getByText(/안 붙은 발표 서비스 2건/)).toBeInTheDocument();
+  });
+
+  it("원서접수: 영역 탭·쓸 것 패널, 특이사항 셋이 모두 마운트된다", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
+    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    // 패널 안으로 좁힌다 — T17 의 서랍(ProjectTab 둘)도 AreaNotes 를 마운트해 화면 전체로는 다섯이 된다
+    expect(
+      within(panel).getAllByRole("heading", {
+        name: "영역 특이사항",
+        hidden: true,
+      }),
+    ).toHaveLength(3);
   });
 
   it("설정 탭: 안 붙은 서비스 패널이 목록으로 그려진다", async () => {
@@ -232,17 +245,17 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     expect(within(region).getByText("대학1")).toBeInTheDocument();
   });
 
-  it("KPI 바가 있으면 탭 줄 위 간격은 pt-1, 없으면 pt-4", async () => {
-    state.view = viewFor("application", false);
-    const { unmount } = await renderPage("application");
-    expect(screen.getByTestId("area-tabs").parentElement?.className).toBe(
-      "pt-1",
-    );
-    unmount();
-    state.view = viewFor("application", false, { kpis: null });
-    await renderPage("application");
-    expect(screen.getByTestId("area-tabs").parentElement?.className).toBe(
-      "pt-4",
+  it("tab=project: 서랍이 열리고 왼쪽은 원서접수, 프로젝트 제목은 서랍 머리 하나", async () => {
+    setUrl("?week=2026-11-16&tab=project");
+    state.view = viewFor("project", false);
+    await renderPage("project");
+    // 서랍 안 ProjectTab 은 hideHeading, 요약 카드 이름은 제목 요소가 아니다
+    const titles = screen.getAllByRole("heading", { name: "프로젝트" });
+    expect(titles).toHaveLength(1);
+    expect(titles[0].closest("aside")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("tab", { name: "원서접수" })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 
@@ -290,6 +303,47 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
   });
 });
 
+describe("주간업무보고 페이지 — 직접 추가", () => {
+  it("쓸 수 있는 보고서면 쓸 것 패널에 직접 추가 칸이 있다", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    expect(within(panel).getByRole("region", { name: "직접 추가" })).toBeInTheDocument();
+    expect(screen.getAllByLabelText("직접 추가 제목", { selector: "input" }).length).toBeGreaterThan(0);
+  });
+
+  it("읽기 전용(canEdit=false)이면 직접 추가 칸이 없다", async () => {
+    state.view = viewFor("application", false, { canEdit: false });
+    await renderPage("application");
+    const panel = screen.getByRole("complementary", { name: "쓸 것" });
+    expect(within(panel).queryByRole("region", { name: "직접 추가" })).toBeNull();
+    expect(screen.queryByLabelText("직접 추가 제목")).toBeNull();
+  });
+});
+
+describe("주간업무보고 페이지 — 제출", () => {
+  it("제출완료 는 정확히 하나 — 쓸 것 패널 안", async () => {
+    state.view = viewFor("application", false);
+    await renderPage("application");
+    const buttons = screen.getAllByRole("button", { name: "제출완료" });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].closest("aside")).toHaveAccessibleName("쓸 것");
+  });
+
+  it("남의 보고서(op)에서는 제출완료 가 없다", async () => {
+    state.view = viewFor("application", true, {
+      statusAccess: "manage",
+      writers: [
+        { email: "a@example.com", name: "홍길동" },
+        { email: "b@example.com", name: "김철수" },
+      ],
+      viewed: { email: "b@example.com", name: "김철수" },
+    });
+    await renderPage("application");
+    expect(screen.queryByRole("button", { name: "제출완료" })).toBeNull();
+  });
+});
+
 describe("주간업무보고 페이지 — 머리띠", () => {
   const OTHER = {
     writers: [
@@ -301,19 +355,6 @@ describe("주간업무보고 페이지 — 머리띠", () => {
   };
   const otherOf = () =>
     JSON.parse(screen.getByTestId("week-header").dataset.other ?? "null");
-
-  it("머리띠에 넘기는 tab — 작성자를 고르면 가는 영역(제출 현황·관리면 원서접수)", async () => {
-    for (const [tab, want] of [
-      ["pims", "pims"],
-      ["status", "application"],
-      ["settings", "application"],
-    ] as const) {
-      state.view = viewFor(tab, true);
-      const { unmount } = await renderPage(tab);
-      expect(screen.getByTestId("week-header").dataset.tab).toBe(want);
-      unmount();
-    }
-  });
 
   it("머리띠 week 는 세 칸만 — 당번 총평이 실리지 않는다", async () => {
     state.view = viewFor("application", false);
@@ -348,6 +389,15 @@ describe("주간업무보고 페이지 — 머리띠", () => {
       expect(screen.getByTestId("week-header").dataset.picker).toBe(want);
       unmount();
     }
+  });
+
+  it("작성 대상 명단이 비었으면 권한이 있어도 선택 상자는 없다 — 빈 선택 상자를 안 그린다", async () => {
+    state.view = viewFor("application", true, {
+      statusAccess: "manage",
+      writers: [],
+    });
+    await renderPage("application");
+    expect(screen.getByTestId("week-header").dataset.picker).toBe("none");
   });
 
   it("일반 운영자 화면에 당번 총평 문구가 없다 — 머리띠에는 세 칸만 넘어간다", async () => {
@@ -399,19 +449,14 @@ describe("역할 탭 줄", () => {
       .map((a) => a.textContent);
   const B = { email: "b@example.com", name: "김철수" };
 
-  it("일반 운영자(역할 하나)에게는 역할 탭 줄이 없고 지금의 영역 탭 줄 하나뿐", async () => {
+  it("일반 운영자에게는 탭 줄이 없고 영역 탭(AreaTabs)만", async () => {
     state.view = viewFor("application", false, { roles: ["report"] });
     await renderPage("application");
     expect(screen.queryByTestId("role-tabs")).toBeNull();
-    expect(names(screen.getByTestId("area-tabs"))).toEqual([
-      "원서접수",
-      "합격자 발표",
-      "프로젝트",
-      "TF",
-      "휴가·외근",
-    ]);
+    expect(screen.queryByTestId("area-tabs")).toBeNull();
+    expect(screen.getByRole("tablist", { name: "영역" })).toBeInTheDocument();
   });
-  it("작성자 관리자: 내 보고서·제출 현황·관리가 머리띠 위, 영역 탭 줄은 머리띠 아래", async () => {
+  it("작성자 관리자: 내 보고서·제출 현황·관리가 머리띠 위, 영역 탭(AreaTabs)은 머리띠 아래", async () => {
     state.view = viewFor("application", true, { roles: ALL });
     await renderPage("application");
     const nav = screen.getByTestId("role-tabs");
@@ -426,11 +471,11 @@ describe("역할 탭 줄", () => {
       nav.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      header.compareDocumentPosition(screen.getByTestId("area-tabs")) &
+      header.compareDocumentPosition(screen.getByRole("tablist", { name: "영역" })) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
-  it("제출 현황·관리에서는 영역 탭 줄이 없다", async () => {
+  it("제출 현황·관리에서는 그 역할 탭이 켜진다", async () => {
     for (const [tab, active] of [
       ["status", "status"],
       ["settings", "manage"],
@@ -438,7 +483,7 @@ describe("역할 탭 줄", () => {
       state.view = viewFor(tab, true, { roles: ALL });
       const { unmount } = await renderPage(tab);
       expect(screen.getByTestId("role-tabs").dataset.active).toBe(active);
-      expect(screen.queryByTestId("area-tabs")).toBeNull();
+      expect(screen.queryByRole("tablist", { name: "영역" })).toBeNull();
       unmount();
     }
   });

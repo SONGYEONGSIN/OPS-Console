@@ -7,10 +7,7 @@ import { shiftWeek, type WeekRef } from "@/features/ops-weekly/week";
 import { PageHeader } from "../_components/page-header/PageHeader";
 import { findSidebarMeta } from "../_data";
 import { resolvePageMeta } from "../_data/page-meta-derive";
-import { ApplicationTab } from "./_components/ApplicationTab";
-import { LeaveTab } from "./_components/LeaveTab";
-import { PimsTab } from "./_components/PimsTab";
-import { ProjectTab } from "./_components/ProjectTab";
+import { ReportView } from "./_components/ReportView";
 import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
@@ -18,13 +15,12 @@ import { WeekHeader } from "./_components/WeekHeader";
 import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
+import { appSubStateOf } from "./_groups";
 import { headerWeekOf } from "./_header-week";
-import { loadOpsWeeklyPage, type OpsWeeklyView } from "./_load";
+import { loadOpsWeeklyPage, type OpsWeeklyWeekView } from "./_load";
 import {
   AREA_TAB_LABEL,
   buildRoleTabs,
-  buildTabs,
-  manageHref,
   opsWeeklyHref,
   roleTabOf,
   type OpsTab,
@@ -47,13 +43,19 @@ const TAB_TITLE: Record<OpsTab, string> = {
   settings: "관리",
 };
 
-type Week = Extract<OpsWeeklyView, { kind: "week" }>;
+type Week = OpsWeeklyWeekView;
 
 /** 구분(개발/테스트)이 안 된 건수 — 뺀 건은 세지 않는다. */
 function unknownCountOf(v: Week): number {
   const list = v.snapshot?.application.unknown ?? [];
   const overrides = v.detail?.overrides;
   return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
+}
+
+/** 남의 보고서를 보는 중이면 그 사람 이메일, 본인 보고서(또는 보고서 없음)면 null. */
+function otherOpOf(view: Week): string | null {
+  const { viewed, actor } = view;
+  return viewed !== null && viewed.email !== actor.email ? viewed.email : null;
 }
 
 function WeekBody({ view }: { view: Week }) {
@@ -109,40 +111,21 @@ function WeekBody({ view }: { view: Week }) {
     );
   }
   if (snapshot !== null && detail !== null) {
-    // 쿼리만 바뀌어도 입력 중이던 글이 다른 보고서로 넘어가지 않게 보고서 단위로 다시 만든다.
-    const key = bodyKeyOf({
-      reportId: report?.id ?? null,
-      weekStart: view.week.week_start,
-      op: viewed?.email ?? "",
-      tab,
-    });
-    const props = {
-      snapshot,
-      detail,
-      reportId: report?.id ?? null,
-      editable: view.canEdit && report !== null,
-      freezeNotice: view.freezeNotice,
-      // 담당자 이름이 안 맞는 서비스는 관리자가 고칠 일이다 — 비관리자에게는 안내 자체를 안 낸다.
-      isAdmin: view.actor.isAdmin,
-      settingsHref: manageHref(view.week.week_start, "unmatched"),
-    };
-    if (tab === "application") return <ApplicationTab key={key} {...props} />;
-    if (tab === "pims") return <PimsTab key={key} {...props} />;
-    if (tab === "leave") return <LeaveTab key={key} {...props} />;
-    if (tab === "project" || tab === "tf") {
+    if (roleTabOf(tab) === "report") {
+      // 영역·서랍이 바뀌어도 다시 마운트하지 않게 key 에 영역을 넣지 않는다.
+      const reportKey = bodyKeyOf({
+        reportId: report?.id ?? null,
+        weekStart: view.week.week_start,
+        op: viewed?.email ?? "",
+        tab: "report",
+      });
       return (
-        <ProjectTab
-          key={key}
-          kind={tab}
-          entries={detail.projects}
-          reportId={props.reportId}
-          editable={props.editable}
-          notes={detail.notes[tab]}
-          settingsHref={
-            view.actor.isAdmin
-              ? manageHref(view.week.week_start, "projects")
-              : undefined
-          }
+        <ReportView
+          key={reportKey}
+          view={view}
+          snapshot={snapshot}
+          detail={detail}
+          op={otherOpOf(view)}
         />
       );
     }
@@ -159,17 +142,19 @@ function WeekBody({ view }: { view: Week }) {
 }
 
 function WeekView({ view }: { view: Week }) {
-  const { week, weekRef, tab, viewed, report, actor } = view;
-  const op =
-    viewed !== null && viewed.email !== actor.email ? viewed.email : null;
+  const { week, weekRef, tab, viewed, report } = view;
+  const op = otherOpOf(view);
   const weekStart = week.week_start;
   const { kpis } = view;
   const showKpi = viewed !== null && kpis !== null;
   // 작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자에게는 명단을 내리지 않는다.
-  const pickerWriters =
-    view.statusAccess !== null
-      ? view.writers.map((w) => ({ email: w.email, name: w.name }))
-      : [];
+  const writerPicker =
+    view.statusAccess !== null && view.writers.length > 0
+      ? {
+          writers: view.writers.map((w) => ({ email: w.email, name: w.name })),
+          viewedEmail: viewed?.email ?? null,
+        }
+      : null;
   return (
     <PendingSavesProvider key={report?.id ?? week.id}>
       {view.roles.length > 1 ? (
@@ -187,21 +172,18 @@ function WeekView({ view }: { view: Week }) {
       <WeekHeader
         weekRef={weekRef}
         week={headerWeekOf(week)}
-        viewedName={viewed?.name ?? null}
-        writers={pickerWriters}
-        viewedEmail={viewed?.email ?? null}
         submittedCount={view.submittedCount}
         writerCount={view.writers.length}
         dutyName={dutyNameOf(week.duty_email, view.writers)}
-        canSubmit={view.canSubmit}
+        showReportState={roleTabOf(tab) === "report"}
+        checkedCount={new Set(report?.checked_tabs ?? []).size}
+        writerPicker={writerPicker}
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}
-        reportId={report?.id ?? null}
         returnReason={report?.return_reason ?? null}
         prevOpen={view.prevOpen}
         prevHref={opsWeeklyHref(shiftWeek(weekStart, -1), tab, op)}
         nextHref={opsWeeklyHref(shiftWeek(weekStart, 1), tab, op)}
-        tab={roleTabOf(tab) === "report" ? tab : "application"}
         viewingOther={
           roleTabOf(tab) === "report" && op !== null && viewed !== null
             ? {
@@ -217,32 +199,11 @@ function WeekView({ view }: { view: Week }) {
             kpis={kpis}
             ownerName={viewed.name}
             unknownCount={unknownCountOf(view)}
-            tab={tab}
             weekStart={weekStart}
             op={op}
-            appSubState={{
-              showUnknown:
-                (view.snapshot?.application.devStatusCollected ?? true) &&
-                (view.snapshot?.application.unknown.length ?? 0) > 0,
-              collected: view.snapshot?.application.devStatusCollected ?? true,
-            }}
+            appSubState={appSubStateOf(view.snapshot?.application)}
           />
         </StickyKpiBar>
-      ) : null}
-      {/* KPI 바가 없으면 WeekHeader 아래 간격을 이 래퍼가 맡는다 */}
-      {roleTabOf(tab) === "report" ? (
-        <div className={showKpi ? "pt-1" : "pt-4"}>
-          <PageTabs
-            active={tab}
-            size="md"
-            className="px-5 lg:px-7"
-            tabs={buildTabs({
-              weekStart,
-              op,
-              checked: report?.checked_tabs ?? [],
-            })}
-          />
-        </div>
       ) : null}
       <WeekBody view={view} />
     </PendingSavesProvider>

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { AREA_LABEL } from "@/features/ops-weekly/constants";
 import {
   APP_SUBS,
+  AREA_TABS,
   AREA_TAB_LABEL,
   MANAGE_SECTIONS,
   MANAGE_SECTION_LABEL,
@@ -9,7 +10,6 @@ import {
   PIMS_SUBS,
   appVisibleSubs,
   buildRoleTabs,
-  buildTabs,
   defaultAppSub,
   manageHref,
   opsWeeklyHref,
@@ -17,6 +17,7 @@ import {
   parseSub,
   parseWeekParam,
   resolveAppSub,
+  resolveArea,
   resolveTab,
   roleTabOf,
   roleTabsOf,
@@ -29,44 +30,6 @@ describe("parseWeekParam", () => {
     expect(parseWeekParam("2026-11-16")).toBe("2026-11-16");
     expect(parseWeekParam(undefined)).toBeNull();
     expect(parseWeekParam("garbage")).toBeNull();
-  });
-});
-
-describe("buildTabs", () => {
-  it("확인한 탭에 ✓, op 를 이어 붙인다", () => {
-    const t = buildTabs({
-      weekStart: "2026-11-16",
-      op: "a@x",
-      checked: ["pims"],
-    });
-    expect(t.map((x) => x.label)).toEqual([
-      "원서접수",
-      "합격자 발표 ✓",
-      "프로젝트",
-      "TF",
-      "휴가·외근",
-    ]);
-    expect(t[0].href).toBe(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=a%40x",
-    );
-  });
-
-  it("영역 다섯만 — 제출 현황·설정은 역할 탭 줄로, op 가 없으면 붙이지 않는다", () => {
-    const t = buildTabs({
-      weekStart: "2026-11-16",
-      op: null,
-      checked: [],
-    });
-    expect(t.map((x) => x.key)).toEqual([
-      "application",
-      "pims",
-      "project",
-      "tf",
-      "leave",
-    ]);
-    expect(t[4].href).toBe(
-      "/dashboard/ops-weekly?week=2026-11-16&tab=leave",
-    );
   });
 });
 
@@ -114,14 +77,6 @@ describe("opsWeeklyHref sub", () => {
     expect(opsWeeklyHref("2026-11-16", "application", "a@x", "test")).toBe(
       "/dashboard/ops-weekly?week=2026-11-16&tab=application&op=a%40x&sub=test",
     );
-  });
-  it("탭 이동 링크(buildTabs)는 sub 를 들고 가지 않는다", () => {
-    const t = buildTabs({
-      weekStart: "2026-11-16",
-      op: null,
-      checked: [],
-    });
-    expect(t.every((x) => !x.href.includes("sub="))).toBe(true);
   });
 });
 
@@ -221,5 +176,21 @@ describe("AREA_TAB_LABEL", () => {
   it("영역 라벨만 '합격자 발표' — 도메인 AREA_LABEL 은 그대로", () => {
     expect(AREA_TAB_LABEL).toEqual({ ...AREA_LABEL, pims: "합격자 발표" });
     expect(AREA_LABEL.pims).toBe("PIMS");
+  });
+});
+
+describe("영역 주소", () => {
+  it("resolveArea — 서랍·역할 탭 값은 원서접수", () => {
+    expect(resolveArea("pims")).toBe("pims");
+    expect(resolveArea("leave")).toBe("leave");
+    for (const raw of ["project", "tf", "status", null])
+      expect(resolveArea(raw)).toBe("application");
+  });
+  it("AREA_TABS — 왼쪽 영역 셋의 순서와 라벨", () => {
+    expect(AREA_TABS.map((a) => AREA_TAB_LABEL[a])).toEqual([
+      "원서접수",
+      "합격자 발표",
+      "휴가·외근",
+    ]);
   });
 });
