@@ -13,6 +13,7 @@ import {
   type ProjectStage,
 } from "@/features/ops-weekly/constants";
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
+import { AREA_TAB_LABEL } from "../_params";
 import { AreaNotes } from "./AreaNotes";
 import { usePendingSaves } from "./pending-saves";
 import { SaveStatus } from "./SaveStatus";
@@ -228,7 +229,7 @@ export function ProjectTab(props: Props) {
     <section data-tab={kind} className="flex flex-col gap-7">
       {hideHeading ? null : (
         <TabHeading
-          title={kind === "tf" ? "TF" : "프로젝트"}
+          title={AREA_TAB_LABEL[kind]}
           summary={`${mine.length}건`}
         />
       )}
@@ -258,7 +259,7 @@ export function ProjectTab(props: Props) {
       )}
       <AreaNotes
         reportId={reportId}
-        area={kind === "tf" ? "tf" : "project"}
+        area={kind}
         thisWeek={notes.thisWeek}
         nextWeek={notes.nextWeek}
         editable={editable}

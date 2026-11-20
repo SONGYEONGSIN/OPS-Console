@@ -8,6 +8,7 @@ vi.mock(
   async () => (await import("./search-params-mock")).navigationModule,
 );
 
+import { ProjectDrawer } from "../_components/ProjectDrawer";
 import { ProjectDrawerProvider } from "../_components/project-drawer-context";
 import {
   ProjectSummaryCards,
@@ -74,7 +75,7 @@ describe("ProjectSummaryCards", () => {
     expect(tokens(card)).toEqual(
       expect.arrayContaining(["bg-situation-bg", "border-line-soft"]),
     );
-    const btn = within(card as HTMLElement).getByRole("button", { name: "쓰기" });
+    const btn = within(card as HTMLElement).getByRole("button", { name: "프로젝트 쓰기" });
     expect(tokens(btn)).toEqual(
       expect.arrayContaining(["min-h-9", "hover:bg-ink", "hover:text-cream"]),
     );
@@ -94,14 +95,39 @@ describe("ProjectSummaryCards", () => {
     const card = screen.getByText(/^TF/).closest("div") as HTMLElement;
     expect(card).toHaveTextContent("1건");
     expect(card).not.toHaveTextContent("남음");
-    expect(within(card).getByRole("button", { name: "보기" })).toBeInTheDocument();
-    expect(within(card).queryByRole("button", { name: "쓰기" })).toBeNull();
+    expect(within(card).getByRole("button", { name: "TF 보기" })).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "TF 쓰기" })).toBeNull();
   });
 
   it("[쓰기]는 서랍을 열되 주소는 그대로", () => {
     renderCards({ entries: [], checked: [], editable: true });
     const card = screen.getByText(/^TF/).closest("div") as HTMLElement;
-    fireEvent.click(within(card).getByRole("button", { name: "쓰기" }));
+    fireEvent.click(within(card).getByRole("button", { name: "TF 쓰기" }));
     expect(window.location.search).toBe("?week=2026-11-16&tab=application");
+  });
+
+  it("두 카드의 버튼 이름이 서로 다르다 — 종류가 이름에 들어 있다", () => {
+    renderCards({ entries: [], checked: [], editable: true });
+    expect(screen.getByRole("button", { name: "프로젝트 쓰기" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "TF 쓰기" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "쓰기" })).toBeNull();
+  });
+
+  it("카드의 [쓰기]가 서랍을 연다 — 내용이 inert 에서 풀리고 서랍이 aria-hidden=false", () => {
+    setUrl("?week=2026-11-16&tab=application");
+    render(
+      <ProjectDrawerProvider>
+        <ProjectSummaryCards entries={[]} checked={[]} editable />
+        <ProjectDrawer
+          panels={{ project: <input aria-label="프로젝트 글" />, tf: <input aria-label="TF 글" /> }}
+        />
+      </ProjectDrawerProvider>,
+    );
+    const field = screen.getByLabelText("TF 글");
+    expect(field.closest("[inert]")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "TF 쓰기" }));
+    expect(field.closest("[inert]")).toBeNull();
+    expect(field.closest("[hidden]")).toBeNull();
+    expect(field.closest("aside")).toHaveAttribute("aria-hidden", "false");
   });
 });

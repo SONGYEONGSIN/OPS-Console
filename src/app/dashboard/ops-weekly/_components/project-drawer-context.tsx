@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -30,11 +31,18 @@ function urlKindOf(tab: string | null): ProjectKind | null {
 export function ProjectDrawerProvider({ children }: { children: ReactNode }) {
   const urlKind = urlKindOf(useOpsQueryValue("tab"));
   const [localKind, setLocalKind] = useState<ProjectKind | null>(null);
+  // 연 버튼 — 닫을 때 포커스를 거기로 돌려준다(서랍 안 요소는 inert 가 돼 포커스가 body 로 떨어진다).
+  const openerRef = useRef<HTMLElement | null>(null);
   const open = useCallback((kind: ProjectKind) => {
+    const active = document.activeElement;
+    openerRef.current = active instanceof HTMLElement ? active : null;
     setLocalKind(kind);
   }, []);
   const close = useCallback(() => {
     setLocalKind(null);
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (opener?.isConnected) opener.focus();
     // 주소가 서랍을 가리키고 있으면 그대로 두면 닫아도 다시 열린다 — 처음 영역으로 돌린다.
     if (urlKind !== null) replaceOpsQuery({ tab: "application", sub: null });
   }, [urlKind]);

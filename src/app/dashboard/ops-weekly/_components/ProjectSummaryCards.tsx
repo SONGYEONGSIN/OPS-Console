@@ -1,7 +1,12 @@
 "use client";
 
-import type { Area, ProjectKind } from "@/features/ops-weekly/constants";
+import {
+  PROJECT_KINDS,
+  type Area,
+  type ProjectKind,
+} from "@/features/ops-weekly/constants";
 import type { ProjectEntryView } from "@/features/ops-weekly/merge";
+import { AREA_TAB_LABEL } from "../_params";
 import { useProjectDrawer } from "./project-drawer-context";
 import { ROW_BTN_CLASS } from "./styles";
 
@@ -10,9 +15,6 @@ type Props = {
   checked: readonly Area[];
   editable: boolean;
 };
-
-const KINDS: readonly ProjectKind[] = ["project", "tf"];
-const NAME: Record<ProjectKind, string> = { project: "프로젝트", tf: "TF" };
 
 function isBlank(html: string): boolean {
   if (/<img/i.test(html)) return false;
@@ -37,16 +39,18 @@ function SummaryCard(props: Props & { kind: ProjectKind }) {
   const { open } = useProjectDrawer();
   const total = entries.filter((e) => e.kind === kind).length;
   const left = remainingOf(entries, kind);
+  const name = AREA_TAB_LABEL[kind];
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-2 border border-line-soft bg-situation-bg p-3">
       <span className="text-sm font-bold text-ink">
-        {checked.includes(kind) ? `${NAME[kind]} ✓` : NAME[kind]}
+        {checked.includes(kind) ? `${name} ✓` : name}
       </span>
       <span className="text-xs tabular-nums text-muted">
         {left > 0 ? `${total}건 · ${left}건 남음` : `${total}건`}
       </span>
       <button
         type="button"
+        aria-label={`${name} ${editable ? "쓰기" : "보기"}`}
         onClick={() => {
           open(kind);
         }}
@@ -62,7 +66,7 @@ function SummaryCard(props: Props & { kind: ProjectKind }) {
 export function ProjectSummaryCards(props: Props) {
   return (
     <div className="flex flex-wrap gap-3">
-      {KINDS.map((kind) => (
+      {PROJECT_KINDS.map((kind) => (
         <SummaryCard key={kind} {...props} kind={kind} />
       ))}
     </div>

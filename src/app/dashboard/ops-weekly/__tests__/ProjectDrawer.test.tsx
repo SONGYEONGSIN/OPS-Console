@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { useState } from "react";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 
 vi.mock(
@@ -102,5 +103,75 @@ describe("ProjectDrawer", () => {
     expect(
       screen.getByRole("button", { name: "닫기", hidden: true }).closest("aside"),
     ).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("닫힌 동안 스크롤 칸은 overflow-hidden 이라 보이지 않는 탭 정지가 못 된다", () => {
+    setUrl("?week=2026-11-16&tab=application");
+    renderDrawer();
+    const body = screen.getByRole("heading", { name: "프로젝트", hidden: true })
+      .closest("aside")?.firstElementChild as Element;
+    const t = body.className.split(/\s+/);
+    expect(t).toEqual(expect.arrayContaining(["h-full", "overflow-hidden", "p-5"]));
+    expect(t).not.toContain("overflow-y-auto");
+  });
+
+  it("열려 있으면 스크롤 칸은 기본 클래스(overflow-y-auto)", () => {
+    setUrl("?week=2026-11-16&tab=project");
+    renderDrawer();
+    const body = screen.getByRole("heading", { name: "프로젝트" })
+      .closest("aside")?.firstElementChild as Element;
+    expect(body.className.split(/\s+/)).toContain("overflow-y-auto");
+  });
+
+  it("[열기]로 열면 포커스가 서랍 안으로 가고, [닫기]·Esc 로 닫으면 연 버튼으로 돌아온다", () => {
+    setUrl("?week=2026-11-16&tab=pims");
+    renderDrawer("tf");
+    const opener = screen.getByRole("button", { name: "열기" });
+    opener.focus();
+    fireEvent.click(opener);
+    const aside = screen.getByRole("heading", { name: "TF" }).closest("aside");
+    expect(aside?.contains(document.activeElement)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(opener).toHaveFocus();
+
+    opener.focus();
+    fireEvent.click(opener);
+    expect(aside?.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(opener).toHaveFocus();
+  });
+
+  it("연 버튼이 DOM 에서 사라졌으면 포커스를 옮기려 들지 않는다", () => {
+    setUrl("?week=2026-11-16&tab=pims");
+    function Vanishing() {
+      const { open } = useProjectDrawer();
+      const [gone, setGone] = useState(false);
+      return (
+        <>
+          {gone ? null : (
+            <button type="button" onClick={() => { open("tf"); }}>
+              열기
+            </button>
+          )}
+          <button type="button" onClick={() => { setGone(true); }}>
+            치우기
+          </button>
+        </>
+      );
+    }
+    render(
+      <ProjectDrawerProvider>
+        <Vanishing />
+        <ProjectDrawer panels={panels} />
+      </ProjectDrawerProvider>,
+    );
+    const opener = screen.getByRole("button", { name: "열기" });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole("button", { name: "치우기", hidden: true }));
+    expect(() =>
+      fireEvent.click(screen.getByRole("button", { name: "닫기" })),
+    ).not.toThrow();
+    expect(screen.queryByRole("button", { name: "열기" })).toBeNull();
   });
 });

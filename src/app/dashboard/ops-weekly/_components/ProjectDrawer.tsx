@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import type { ProjectKind } from "@/features/ops-weekly/constants";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  PROJECT_KINDS,
+  type ProjectKind,
+} from "@/features/ops-weekly/constants";
+import { AREA_TAB_LABEL } from "../_params";
 import { InspectorPanel } from "../../_components/inspector/InspectorPanel";
 import { useProjectDrawer } from "./project-drawer-context";
 import { ROW_BTN_CLASS } from "./styles";
-
-const KINDS: readonly ProjectKind[] = ["project", "tf"];
-const TITLE: Record<ProjectKind, string> = { project: "프로젝트", tf: "TF" };
 
 type Props = { panels: Record<ProjectKind, ReactNode> };
 
@@ -22,23 +23,37 @@ export function ProjectDrawer({ panels }: Props) {
   // 닫히는 동안에도 마지막으로 연 쪽을 보여 준다(슬라이드 아웃 중 내용이 바뀌지 않게).
   if (openKind !== null && openKind !== last) setLast(openKind);
   const shown = openKind ?? last;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // 열릴 때 포커스를 서랍 머리로 — 안 옮기면 가려진 카드 버튼에 남는다. inert 는 이 커밋에서 풀린다.
+  const isOpen = openKind !== null;
+  useEffect(() => {
+    if (isOpen) headingRef.current?.focus();
+  }, [isOpen]);
   return (
     <InspectorPanel
       open={openKind !== null}
       onClose={close}
       widthClassName="md:w-[min(48rem,100vw)]"
+      // 닫힌 동안은 스크롤 칸이 키보드 탭 정지가 되지 않게 스크롤을 끈다(내용은 inert).
+      bodyClassName={isOpen ? undefined : "h-full overflow-hidden p-5"}
     >
       <div
         inert={openKind === null ? true : undefined}
         className="flex flex-col gap-5"
       >
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-ink">{TITLE[shown]}</h2>
+          <h2
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-xl font-bold text-ink outline-none"
+          >
+            {AREA_TAB_LABEL[shown]}
+          </h2>
           <button type="button" onClick={close} className={ROW_BTN_CLASS}>
             닫기
           </button>
         </div>
-        {KINDS.map((kind) => (
+        {PROJECT_KINDS.map((kind) => (
           <div key={kind} hidden={shown !== kind}>
             {panels[kind]}
           </div>
