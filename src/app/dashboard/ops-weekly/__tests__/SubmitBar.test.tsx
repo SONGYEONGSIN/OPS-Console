@@ -79,6 +79,27 @@ describe("SubmitBar", () => {
     expect(screen.getByRole("status")).toHaveTextContent(msg);
   });
 
+  it("보일 것이 없으면(제출 불가·대기 없음·안내 없음) 구분선 상자도 그리지 않는다", () => {
+    const { container } = render(<SubmitBar reportId="r1" canSubmit={false} />);
+    expect(container.querySelector(".border-t")).toBeNull();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("안내가 남은 동안은 구분선 상자가 있고 안내는 text-ink-soft", async () => {
+    submitReport.mockResolvedValue({
+      ok: false,
+      error: "제출은 끝났지만 전원 제출 확인에 실패했습니다: x",
+    });
+    const { container, rerender } = render(
+      <SubmitBar reportId="r1" canSubmit />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "제출완료" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    rerender(<SubmitBar reportId="r1" canSubmit={false} />);
+    expect(container.querySelector(".border-t")).not.toBeNull();
+    expect(tokens(screen.getByRole("status"))).toContain("text-ink-soft");
+  });
+
   it("진짜 제출 실패도 새로고침해 낡은 화면을 바로잡는다", async () => {
     submitReport.mockResolvedValue({
       ok: false,

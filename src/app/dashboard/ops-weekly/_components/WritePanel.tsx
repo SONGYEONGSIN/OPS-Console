@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AREA_TABS, type AreaTab } from "../_params";
+import { AREA_TABS, AREA_TAB_LABEL, type AreaTab } from "../_params";
 import { useOpsArea } from "./use-ops-area";
 
 type Props = {
@@ -39,6 +39,7 @@ export function WritePanel({ notes, directAdd, projects, submit }: Props) {
   const { area } = useOpsArea();
   return (
     <div className="flex flex-col gap-5">
+      <p className="text-sm font-bold text-ink">{AREA_TAB_LABEL[area]}</p>
       <section aria-label="특이사항">
         <PerArea slots={notes} area={area} />
       </section>
@@ -48,7 +49,11 @@ export function WritePanel({ notes, directAdd, projects, submit }: Props) {
         </section>
       ) : null}
       {projects ? <section aria-label="프로젝트·TF">{projects}</section> : null}
-      {submit ? <section aria-label="제출">{submit}</section> : null}
+      {submit ? (
+        <section aria-label="제출" className="empty:hidden">
+          {submit}
+        </section>
+      ) : null}
     </div>
   );
 }

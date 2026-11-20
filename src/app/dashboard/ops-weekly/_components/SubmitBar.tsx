@@ -24,6 +24,10 @@ export function SubmitBar(props: {
   canSubmit: boolean;
 }) {
   const submit = useSubmit(props.reportId);
+  // 보일 것이 없으면 빈 구분선 상자를 남기지 않는다 — 컴포넌트는 마운트된 채라 useSubmit 상태는 산다.
+  if (!props.canSubmit && !submit.waiting && submit.message === null) {
+    return null;
+  }
   return (
     <div className="flex flex-col items-stretch gap-2 border-t border-line pt-4">
       {props.canSubmit ? (

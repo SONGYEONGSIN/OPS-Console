@@ -60,4 +60,25 @@ describe("WritePanel", () => {
     });
     expect(screen.getByLabelText("원서 금주")).toHaveValue("쓰던 글");
   });
+  it("패널 맨 위에 지금 쓰는 영역 이름이 있고 주소의 영역을 따른다", () => {
+    setUrl("?week=2026-11-16&tab=application");
+    const notes = { application: slot("A"), pims: slot("B"), leave: slot("C") };
+    render(<WritePanel notes={notes} />);
+    const label = screen.getByText("원서접수", { selector: "p.font-bold" });
+    expect(label.className.split(/\s+/)).toEqual(
+      expect.arrayContaining(["text-sm", "font-bold", "text-ink"]),
+    );
+    act(() => {
+      setUrl("?week=2026-11-16&tab=pims");
+    });
+    expect(screen.getByText("합격자 발표", { selector: "p.font-bold" })).toBeInTheDocument();
+    expect(screen.queryByText("원서접수", { selector: "p.font-bold" })).toBeNull();
+  });
+  it("제출 칸은 비면 숨는다(빈 제출 영역을 남기지 않는다)", () => {
+    setUrl("?week=2026-11-16&tab=application");
+    const notes = { application: slot("A"), pims: slot("B"), leave: slot("C") };
+    render(<WritePanel notes={notes} submit={<></>} />);
+    const region = document.querySelector('section[aria-label="제출"]') as Element;
+    expect(region.className.split(/\s+/)).toContain("empty:hidden");
+  });
 });

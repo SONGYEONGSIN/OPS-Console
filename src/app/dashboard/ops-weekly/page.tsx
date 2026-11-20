@@ -149,7 +149,7 @@ function WeekView({ view }: { view: Week }) {
   const showKpi = viewed !== null && kpis !== null;
   // 작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자에게는 명단을 내리지 않는다.
   const writerPicker =
-    view.statusAccess !== null
+    view.statusAccess !== null && view.writers.length > 0
       ? {
           writers: view.writers.map((w) => ({ email: w.email, name: w.name })),
           viewedEmail: viewed?.email ?? null,
