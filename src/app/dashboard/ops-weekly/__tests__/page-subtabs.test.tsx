@@ -282,6 +282,33 @@ describe("주간업무보고 페이지 — 하위 탭·KPI 고정", () => {
     expect(aside?.querySelector("[inert]")).not.toBeNull();
   });
 
+  it("서랍을 연 채 제출 현황에 갔다 오면 닫혀 있다 — Provider 가 역할 key 로 다시 마운트된다", async () => {
+    state.view = viewFor("application", false);
+    const { rerender } = await renderPage("application");
+    fireEvent.click(screen.getByRole("button", { name: "프로젝트 쓰기" }));
+    expect(
+      screen.getByRole("heading", { name: "프로젝트" }).closest("aside"),
+    ).toHaveAttribute("aria-hidden", "false");
+
+    // 같은 보고서(r1)라 PendingSavesProvider 는 그대로 — 갈리는 것은 역할 key 뿐이다.
+    state.view = viewFor("status", false);
+    rerender(
+      await OpsWeeklyPage({ searchParams: Promise.resolve({ tab: "status" }) }),
+    );
+    state.view = viewFor("application", false);
+    rerender(
+      await OpsWeeklyPage({
+        searchParams: Promise.resolve({ tab: "application" }),
+      }),
+    );
+
+    const aside = screen
+      .getByRole("heading", { name: "프로젝트", hidden: true })
+      .closest("aside");
+    expect(aside).toHaveAttribute("aria-hidden", "true");
+    expect(aside?.querySelector("[inert]")).not.toBeNull();
+  });
+
   it("구분 수집 전 주: KPI 카드와 하위 탭이 같은 기본(운영 중)을 가리킨다", async () => {
     state.view = viewFor("application", false, {
       snapshot: snap({ devStatusCollected: false }),

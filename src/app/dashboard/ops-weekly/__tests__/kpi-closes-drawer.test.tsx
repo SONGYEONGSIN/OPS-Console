@@ -53,6 +53,9 @@ const input = () =>
 const isClosed = () =>
   input().closest("[inert]") !== null &&
   input().closest("aside")?.getAttribute("aria-hidden") === "true";
+const isOpen = () =>
+  input().closest("[inert]") === null &&
+  input().closest("aside")?.getAttribute("aria-hidden") === "false";
 const kpiLink = (label: string) =>
   screen
     .getAllByRole("link")
@@ -75,7 +78,7 @@ describe("KPI 카드는 열린 서랍을 닫는다", () => {
     const opener = screen.getByRole("button", { name: "프로젝트 쓰기" });
     opener.focus();
     fireEvent.click(opener);
-    expect(isClosed()).toBe(false);
+    expect(isOpen()).toBe(true);
 
     const kpi = kpiLink("합격자 발표");
     kpi.focus();
@@ -104,7 +107,7 @@ describe("KPI 카드는 열린 서랍을 닫는다", () => {
   it("이미 보고 있는 영역의 카드(주소가 안 바뀌는 클릭)도 닫는다", () => {
     renderReport();
     fireEvent.click(screen.getByRole("button", { name: "TF 쓰기" }));
-    expect(isClosed()).toBe(false);
+    expect(isOpen()).toBe(true);
     mouseClick(kpiLink("운영 중"));
     expect(isClosed()).toBe(true);
     expect(window.location.search).toContain("tab=application");
@@ -113,7 +116,7 @@ describe("KPI 카드는 열린 서랍을 닫는다", () => {
   it("주소로 연 서랍(tab=project) — 카드를 누르면 주소는 정확히 pims·thisWeek 이고 닫힌다", () => {
     setUrl("?week=2026-11-16&tab=project");
     renderReport();
-    expect(isClosed()).toBe(false);
+    expect(isOpen()).toBe(true);
     mouseClick(kpiLink("합격자 발표"));
     expect(window.location.search).toBe(
       "?week=2026-11-16&tab=pims&sub=thisWeek",
@@ -127,13 +130,13 @@ describe("KPI 카드는 열린 서랍을 닫는다", () => {
     const link = kpiLink("운영 중");
     const notPrevented = fireEvent.click(link, { ctrlKey: true });
     expect(notPrevented).toBe(true);
-    expect(isClosed()).toBe(false);
+    expect(isOpen()).toBe(true);
   });
 
   it("주소가 tab=status 여도(서버는 내 보고서를 그렸다) [쓰기]는 서랍을 연다", () => {
     setUrl("?week=2026-11-16&tab=status");
     renderReport();
     fireEvent.click(screen.getByRole("button", { name: "프로젝트 쓰기" }));
-    expect(isClosed()).toBe(false);
+    expect(isOpen()).toBe(true);
   });
 });
