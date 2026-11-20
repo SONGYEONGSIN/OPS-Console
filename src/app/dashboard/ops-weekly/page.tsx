@@ -11,6 +11,7 @@ import { ReportView } from "./_components/ReportView";
 import { ManageTab } from "./_components/ManageTab";
 import { StatusTab } from "./_components/StatusTab";
 import { PendingSavesProvider } from "./_components/pending-saves";
+import { ProjectDrawerProvider } from "./_components/project-drawer-context";
 import { WeekHeader } from "./_components/WeekHeader";
 import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
@@ -193,19 +194,22 @@ function WeekView({ view }: { view: Week }) {
             : null
         }
       />
-      {showKpi ? (
-        <StickyKpiBar>
-          <WeeklyKpiRow
-            kpis={kpis}
-            ownerName={viewed.name}
-            unknownCount={unknownCountOf(view)}
-            weekStart={weekStart}
-            op={op}
-            appSubState={appSubStateOf(view.snapshot?.application)}
-          />
-        </StickyKpiBar>
-      ) : null}
-      <WeekBody view={view} />
+      {/* KPI 줄이 [쓰기]로 연 서랍을 닫으려면 서랍과 같은 Provider 아래여야 한다(DOM 이 없어 sticky 에 영향 없다). */}
+      <ProjectDrawerProvider key={roleTabOf(tab)}>
+        {showKpi ? (
+          <StickyKpiBar>
+            <WeeklyKpiRow
+              kpis={kpis}
+              ownerName={viewed.name}
+              unknownCount={unknownCountOf(view)}
+              weekStart={weekStart}
+              op={op}
+              appSubState={appSubStateOf(view.snapshot?.application)}
+            />
+          </StickyKpiBar>
+        ) : null}
+        <WeekBody view={view} />
+      </ProjectDrawerProvider>
     </PendingSavesProvider>
   );
 }

@@ -11,7 +11,6 @@ import { DirectAddPanel } from "./DirectAddPanel";
 import { LeaveTab } from "./LeaveTab";
 import { PimsTab } from "./PimsTab";
 import { ProjectDrawer } from "./ProjectDrawer";
-import { ProjectDrawerProvider } from "./project-drawer-context";
 import { ProjectSummaryCards } from "./ProjectSummaryCards";
 import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
@@ -106,7 +105,7 @@ export function ReportView(props: Props) {
   const editable = view.canEdit && view.report !== null;
   const checked = view.report?.checked_tabs ?? [];
   return (
-    <ProjectDrawerProvider>
+    <>
       <ReportLayout
         checked={checked}
         areas={areasOf(props, editable)}
@@ -133,6 +132,6 @@ export function ReportView(props: Props) {
         }
       />
       <ProjectDrawer panels={drawerPanelsOf(props, editable)} />
-    </ProjectDrawerProvider>
+    </>
   );
 }

@@ -16,6 +16,8 @@ type DrawerState = {
   openKind: ProjectKind | null;
   open: (kind: ProjectKind) => void;
   close: () => void;
+  /** 포커스·주소를 건드리지 않고 [쓰기]로 연 서랍만 닫는다 — 밖(KPI 카드)에서 영역을 옮길 때. */
+  dismiss: () => void;
 };
 
 const DrawerContext = createContext<DrawerState | null>(null);
@@ -46,9 +48,13 @@ export function ProjectDrawerProvider({ children }: { children: ReactNode }) {
     // 주소가 서랍을 가리키고 있으면 그대로 두면 닫아도 다시 열린다 — 처음 영역으로 돌린다.
     if (urlKind !== null) replaceOpsQuery({ tab: "application", sub: null });
   }, [urlKind]);
+  const dismiss = useCallback(() => {
+    openerRef.current = null;
+    setLocalKind(null);
+  }, []);
   const value = useMemo(
-    () => ({ openKind: localKind ?? urlKind, open, close }),
-    [localKind, urlKind, open, close],
+    () => ({ openKind: localKind ?? urlKind, open, close, dismiss }),
+    [localKind, urlKind, open, close, dismiss],
   );
   return (
     <DrawerContext.Provider value={value}>{children}</DrawerContext.Provider>
@@ -62,3 +68,13 @@ export function useProjectDrawer(): DrawerState {
   }
   return ctx;
 }
+
+/**
+ * Provider 밖에서는 아무 일도 안 한다. 실제 화면에서 KPI 줄은 늘 Provider 안(page)이고,
+ * Provider 없이 WeeklyKpiRow 를 그리는 곳은 WeeklyKpiRow.test.tsx 뿐이라 그 테스트가 던지지 않게 둔 기본값이다.
+ */
+export function useDismissProjectDrawer(): () => void {
+  return useContext(DrawerContext)?.dismiss ?? noop;
+}
+
+function noop(): void {}
