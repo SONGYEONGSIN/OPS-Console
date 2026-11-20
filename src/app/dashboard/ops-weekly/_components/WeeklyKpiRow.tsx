@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, type MouseEvent } from "react";
 import type { WeeklyKpis } from "@/features/ops-weekly/merge";
 import { opsWeeklyHref, resolveAppSub } from "../_params";
+import { useDismissProjectDrawer } from "./project-drawer-context";
 import { subTabsIdOf } from "./SubTabs";
 import { useOpsArea } from "./use-ops-area";
 import { useOpsSub } from "./use-ops-sub";
@@ -91,6 +92,8 @@ export function WeeklyKpiRow({
 }) {
   const { area, setArea } = useOpsArea();
   const { raw } = useOpsSub();
+  // 카드는 서랍 위에 겹치지 않는다 — [쓰기]로 연 서랍은 주소에 없어 영역만 바꿔서는 안 닫힌다.
+  const dismissDrawer = useDismissProjectDrawer();
   const appSub = resolveAppSub(raw, appSubState);
 
   // 다른 영역 카드의 스크롤은 그 영역이 커밋돼 패널이 `hidden` 에서 풀린 뒤에 한다 — Next 는 주소 갱신을
@@ -114,6 +117,7 @@ export function WeeklyKpiRow({
     // 클릭하면 금주 발표로 보낸다.
     if (!isPlainLeftClick(e)) return;
     e.preventDefault();
+    dismissDrawer();
     setArea(t.tab, t.sub ?? "thisWeek");
     if (t.tab === area) scrollToSubTabs(t.tab);
     else pendingScroll.current = t.tab;
