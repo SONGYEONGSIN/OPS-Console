@@ -18,8 +18,6 @@ type Props = {
   emptyText: string;
   /** 접어서 보여 준다 — 제목이 summary 안에 든다 */
   collapsed?: boolean;
-  /** false 면 직접 추가 폼을 안 낸다 */
-  allowAdd?: boolean;
 };
 
 function AutoRow(props: {
@@ -54,7 +52,7 @@ function AutoRow(props: {
   );
 }
 
-/** 자동 목록 한 묶음 — 건별 메모·빼기, 직접 추가 건, 추가 폼. */
+/** 자동 목록 한 묶음 — 건별 메모·빼기, 직접 추가 건. */
 export function AutoGroupSection(props: Props) {
   const { title, items, reportId, area, groupKey, editable, emptyText } = props;
   const manual = props.manual.filter(
@@ -97,12 +95,10 @@ export function AutoGroupSection(props: Props) {
       </details>
     );
   }
-  const canAdd = editable && reportId !== null && props.allowAdd !== false;
   return (
     <GroupShell
       title={title}
       count={items.filter((i) => !i.excluded).length + manual.length}
-      add={canAdd ? { reportId, area, groupKey } : null}
     >
       {body}
     </GroupShell>

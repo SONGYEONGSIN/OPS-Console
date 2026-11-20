@@ -7,6 +7,7 @@ import {
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import { formatMdDow } from "../_format";
+import { LEAVE_GROUP_TITLE } from "../_groups";
 import { GroupShell } from "./GroupShell";
 import { ManualRow } from "./ManualRow";
 import { OverrideControls } from "./OverrideControls";
@@ -69,7 +70,7 @@ function LeaveRow(props: {
   );
 }
 
-/** 휴가·외근 탭 — 자동 목록도 건마다 메모·빼기가 있고 직접 추가할 수 있다. */
+/** 휴가·외근 탭 — 자동 목록도 건마다 메모·빼기가 있다. 직접 추가는 쓸 것 패널이다. */
 export function LeaveTab({
   snapshot,
   detail,
@@ -87,15 +88,7 @@ export function LeaveTab({
       >
         {freezeNotice ? <AutoFreezeNotice /> : null}
       </TabHeading>
-      <GroupShell
-        title="휴가·외근 일정"
-        count={rows.length + manual.length}
-        add={
-          editable && reportId !== null
-            ? { reportId, area: "leave", groupKey: null, leave: true }
-            : null
-        }
-      >
+      <GroupShell title={LEAVE_GROUP_TITLE} count={rows.length + manual.length}>
         {rows.length + manual.length === 0 ? (
           <p className="py-2 text-sm text-muted">
             이 주의 휴가·외근이 없습니다

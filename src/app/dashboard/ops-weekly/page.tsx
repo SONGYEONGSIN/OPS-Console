@@ -15,6 +15,7 @@ import { WeekHeader } from "./_components/WeekHeader";
 import { StickyKpiBar } from "./_components/StickyKpiBar";
 import { WeeklyKpiRow } from "./_components/WeeklyKpiRow";
 import { bodyKeyOf } from "./_body-key";
+import { appSubStateOf } from "./_groups";
 import { headerWeekOf } from "./_header-week";
 import { loadOpsWeeklyPage, type OpsWeeklyWeekView } from "./_load";
 import {
@@ -194,12 +195,7 @@ function WeekView({ view }: { view: Week }) {
             unknownCount={unknownCountOf(view)}
             weekStart={weekStart}
             op={op}
-            appSubState={{
-              showUnknown:
-                (view.snapshot?.application.devStatusCollected ?? true) &&
-                (view.snapshot?.application.unknown.length ?? 0) > 0,
-              collected: view.snapshot?.application.devStatusCollected ?? true,
-            }}
+            appSubState={appSubStateOf(view.snapshot?.application)}
           />
         </StickyKpiBar>
       ) : null}

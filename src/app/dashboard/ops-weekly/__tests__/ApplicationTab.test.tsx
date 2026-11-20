@@ -102,7 +102,7 @@ describe("ApplicationTab — 하위 탭", () => {
     expect(tabNames()).not.toContain("구분 미확인");
   });
 
-  it("구분 미확인 묶음은 접히지 않고 직접 추가가 없다", () => {
+  it("구분 미확인 묶음은 접히지 않는다", () => {
     setUrl("?sub=unknown");
     const { container } = render(
       <ApplicationTab
@@ -116,9 +116,6 @@ describe("ApplicationTab — 하위 탭", () => {
       within(panel).getByRole("heading", { name: "구분 미확인" }),
     ).toBeInTheDocument();
     expect(within(panel).getByText("2건")).toBeInTheDocument();
-    expect(
-      within(panel).queryByRole("button", { name: "+ 직접 추가" }),
-    ).toBeNull();
   });
 
   it("지금 안 보이는 구분 미확인을 sub 로 부르면 기본 탭(개발 중)", () => {

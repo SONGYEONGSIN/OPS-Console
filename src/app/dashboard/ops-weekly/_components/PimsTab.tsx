@@ -5,6 +5,7 @@ import {
   type AutoSnapshot,
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
+import { PIMS_GROUP_TITLE } from "../_groups";
 import { AREA_TAB_LABEL } from "../_params";
 import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
@@ -25,8 +26,8 @@ type Props = {
 };
 
 const GROUPS = [
-  { key: "thisWeek", title: "금주 발표" },
-  { key: "nextWeek", title: "차주 발표" },
+  { key: "thisWeek", title: PIMS_GROUP_TITLE.thisWeek },
+  { key: "nextWeek", title: PIMS_GROUP_TITLE.nextWeek },
 ] as const;
 
 /** PIMS 탭 — 금주 발표 / 차주 발표를 하위 탭으로 가른다. */

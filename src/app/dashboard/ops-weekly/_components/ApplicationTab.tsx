@@ -7,6 +7,7 @@ import {
   type AutoSnapshot,
 } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
+import { APP_GROUP_TITLE, appSubStateOf } from "../_groups";
 import { defaultAppSub } from "../_params";
 import { AutoGroupSection } from "./AutoGroupSection";
 import { AutoFreezeNotice } from "./AutoFreezeNotice";
@@ -28,16 +29,16 @@ type Props = {
 
 type StageKey = "dev" | "test";
 const STAGES: readonly { key: StageKey; title: string }[] = [
-  { key: "dev", title: "개발 중" },
-  { key: "test", title: "테스트 중" },
+  { key: "dev", title: APP_GROUP_TITLE.dev },
+  { key: "test", title: APP_GROUP_TITLE.test },
 ];
 const AFTER: readonly {
   key: "running" | "opening" | "closing";
   title: string;
 }[] = [
-  { key: "running", title: "운영 중" },
-  { key: "opening", title: "차주 오픈 예정" },
-  { key: "closing", title: "차주 마감 예정" },
+  { key: "running", title: APP_GROUP_TITLE.running },
+  { key: "opening", title: APP_GROUP_TITLE.opening },
+  { key: "closing", title: APP_GROUP_TITLE.closing },
 ];
 
 /** 원서접수 탭 — 개발·테스트·운영·오픈·마감 묶음과 원서접수 외 서비스(직접 추가만)를 하위 탭으로 가른다. */
@@ -68,14 +69,9 @@ export function ApplicationTab({
   const directCount = detail.manual.filter(
     (m) => m.area === "application",
   ).length;
-  const showUnknown = app.devStatusCollected && app.unknown.length > 0;
+  const { showUnknown } = appSubStateOf(app);
 
-  const section = (
-    key: string,
-    title: string,
-    list: AutoItem[],
-    allowAdd = true,
-  ) => (
+  const section = (key: string, title: string, list: AutoItem[]) => (
     <AutoGroupSection
       title={title}
       items={applyOverrides(list, detail.overrides)}
@@ -85,7 +81,6 @@ export function ApplicationTab({
       groupKey={key}
       editable={editable}
       emptyText="해당하는 서비스가 없습니다"
-      allowAdd={allowAdd}
     />
   );
   const stage = (key: StageKey, title: string) =>
@@ -98,7 +93,7 @@ export function ApplicationTab({
           {`개발/테스트 구분이 아직 수집되지 않았습니다 (시작 전 서비스 ${kept(app.unknown, detail.overrides)}건)`}
         </p>
         {manualCount(detail.manual, "application", [key]) > 0
-          ? section(key, title, [], false)
+          ? section(key, title, [])
           : null}
       </>
     );
@@ -113,7 +108,7 @@ export function ApplicationTab({
       ? [
           {
             key: "unknown",
-            label: "구분 미확인",
+            label: APP_GROUP_TITLE.unknown,
             count: kept(app.unknown, detail.overrides),
           },
         ]
@@ -121,19 +116,19 @@ export function ApplicationTab({
     ...AFTER.map((g) => ({ key: g.key, label: g.title, count: kpis[g.key] })),
     {
       key: "other",
-      label: "원서접수 외 서비스",
+      label: APP_GROUP_TITLE.other,
       count: manualCount(detail.manual, "application", ["other"]),
     },
   ];
   const panels = {
     ...Object.fromEntries(STAGES.map((s) => [s.key, stage(s.key, s.title)])),
     ...(showUnknown
-      ? { unknown: section("unknown", "구분 미확인", app.unknown, false) }
+      ? { unknown: section("unknown", APP_GROUP_TITLE.unknown, app.unknown) }
       : {}),
     ...Object.fromEntries(
       AFTER.map((g) => [g.key, section(g.key, g.title, app[g.key])]),
     ),
-    other: section("other", "원서접수 외 서비스", []),
+    other: section("other", APP_GROUP_TITLE.other, []),
   };
 
   return (

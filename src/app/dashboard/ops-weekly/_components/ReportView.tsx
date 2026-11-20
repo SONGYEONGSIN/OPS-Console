@@ -3,9 +3,11 @@ import type { ProjectKind } from "@/features/ops-weekly/constants";
 import type { AutoSnapshot } from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import type { OpsWeeklyWeekView } from "../_load";
+import { appSubStateOf, directAddGroups } from "../_groups";
 import { AREA_TABS, manageHref, type AreaTab } from "../_params";
 import { ApplicationTab } from "./ApplicationTab";
 import { AreaNotes } from "./AreaNotes";
+import { DirectAddPanel } from "./DirectAddPanel";
 import { LeaveTab } from "./LeaveTab";
 import { PimsTab } from "./PimsTab";
 import { ProjectDrawer } from "./ProjectDrawer";
@@ -56,6 +58,22 @@ function notesOf({ view, detail }: Props, editable: boolean): Slots {
   return Object.fromEntries(AREA_TABS.map((k) => [k, note(k)])) as Slots;
 }
 
+/** 직접 추가 셋 — 영역마다 하나, 셋 다 마운트한다. 쓸 수 없는 보고서(보고서 없음·읽기 전용)면 null. */
+function directAddOf({ view, snapshot }: Props, editable: boolean): Slots | null {
+  const reportId = view.report?.id;
+  if (!editable || !reportId) return null;
+  const appSubState = appSubStateOf(snapshot.application);
+  const panel = (area: AreaTab) => (
+    <DirectAddPanel
+      area={area}
+      reportId={reportId}
+      groups={directAddGroups(area, appSubState.collected)}
+      appSubState={appSubState}
+    />
+  );
+  return Object.fromEntries(AREA_TABS.map((k) => [k, panel(k)])) as Slots;
+}
+
 /** 서랍 안 프로젝트·TF — 제목은 서랍 머리가 그린다(hideHeading). */
 function drawerPanelsOf(
   { view, detail }: Props,
@@ -92,6 +110,7 @@ export function ReportView(props: Props) {
         panel={
           <WritePanel
             notes={notesOf(props, editable)}
+            directAdd={directAddOf(props, editable)}
             projects={
               <ProjectSummaryCards
                 entries={detail.projects}
