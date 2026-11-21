@@ -31,6 +31,7 @@ function viewFor(tab: string, over: Record<string, unknown> = {}) {
     actor: { email: "a@example.com", isAdmin: true },
     writers: [{ email: "a@example.com", name: "홍길동" }],
     viewed: { email: "a@example.com", name: "홍길동" },
+    all: null,
     report: null,
     snapshot: null,
     detail: null,

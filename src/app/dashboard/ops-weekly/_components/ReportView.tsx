@@ -1,16 +1,27 @@
 import type { ReactNode } from "react";
 import type { ProjectKind } from "@/features/ops-weekly/constants";
-import type { AutoSnapshot } from "@/features/ops-weekly/merge";
+import type { AllReportsView } from "@/features/ops-weekly/all-view";
+import {
+  groupEntriesByProject,
+  type AutoSnapshot,
+} from "@/features/ops-weekly/merge";
 import type { ReportDetail } from "@/features/ops-weekly/report-queries";
 import type { OpsWeeklyWeekView } from "../_load";
 import { appSubStateOf, directAddGroups } from "../_groups";
-import { AREA_TABS, manageHref, type AreaTab } from "../_params";
+import {
+  AREA_TAB_LABEL,
+  AREA_TABS,
+  manageHref,
+  type AreaTab,
+} from "../_params";
+import { AllAreaNotes } from "./AllAreaNotes";
 import { ApplicationTab } from "./ApplicationTab";
 import { AreaNotes } from "./AreaNotes";
 import { DirectAddPanel } from "./DirectAddPanel";
 import { LeaveTab } from "./LeaveTab";
 import { PimsTab } from "./PimsTab";
 import { ProjectDrawer } from "./ProjectDrawer";
+import { ProjectOverview } from "./ProjectOverview";
 import { ProjectSummaryCards } from "./ProjectSummaryCards";
 import { ProjectTab } from "./ProjectTab";
 import { ReportLayout } from "./ReportLayout";
@@ -99,9 +110,36 @@ function drawerPanelsOf(
   return { project: panel("project"), tf: panel("tf") };
 }
 
+/**
+ * 전체 보고 — 볼 것은 같은 영역 본문(담당자가 실린 합친 목록, 읽기 전용), 쓸 것 패널 자리에 사람별 특이사항,
+ * 아래에 프로젝트·TF 모아보기. 직접 추가·제출·서랍은 없다(누구의 보고서도 아니다).
+ */
+function AllReportsBody(props: Props & { all: AllReportsView }) {
+  const { all, detail } = props;
+  const notes = Object.fromEntries(
+    AREA_TABS.map((k) => [
+      k,
+      <AllAreaNotes key={k} title={AREA_TAB_LABEL[k]} notes={all.notes[k]} />,
+    ]),
+  ) as Slots;
+  return (
+    <>
+      <ReportLayout
+        checked={[]}
+        areas={areasOf(props, false)}
+        panel={<WritePanel notes={notes} directAdd={null} />}
+      />
+      <div className="px-5 pb-7 lg:px-7">
+        <ProjectOverview groups={groupEntriesByProject(detail.projects)} />
+      </div>
+    </>
+  );
+}
+
 /** 내 보고서 — 왼쪽 영역 본문 셋, 오른쪽 쓸 것 패널, 프로젝트·TF 서랍. snapshot·detail 이 있을 때만 page 가 부른다. */
 export function ReportView(props: Props) {
   const { view, detail, op } = props;
+  if (view.all !== null) return <AllReportsBody {...props} all={view.all} />;
   const editable = view.canEdit && view.report !== null;
   const checked = view.report?.checked_tabs ?? [];
   return (

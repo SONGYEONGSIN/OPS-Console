@@ -20,6 +20,7 @@ import { appSubStateOf } from "./_groups";
 import { headerWeekOf } from "./_header-week";
 import { loadOpsWeeklyPage, type OpsWeeklyWeekView } from "./_load";
 import {
+  ALL_OP,
   AREA_TAB_LABEL,
   buildRoleTabs,
   opsWeeklyHref,
@@ -53,8 +54,9 @@ function unknownCountOf(v: Week): number {
   return list.filter((i) => !overrides?.get(i.key)?.excluded).length;
 }
 
-/** 남의 보고서를 보는 중이면 그 사람 이메일, 본인 보고서(또는 보고서 없음)면 null. */
+/** 남의 보고서를 보는 중이면 그 사람 이메일, 전체 보고면 `all`, 본인 보고서(또는 보고서 없음)면 null. */
 function otherOpOf(view: Week): string | null {
+  if (view.all !== null) return ALL_OP;
   const { viewed, actor } = view;
   return viewed !== null && viewed.email !== actor.email ? viewed.email : null;
 }
@@ -147,13 +149,19 @@ function WeekView({ view }: { view: Week }) {
   const op = otherOpOf(view);
   const weekStart = week.week_start;
   const { kpis } = view;
-  const showKpi = viewed !== null && kpis !== null;
-  // 작성자 선택 상자는 남의 보고서를 열 수 있는 사람에게만 — 일반 운영자에게는 명단을 내리지 않는다.
-  const writerPicker =
-    view.statusAccess !== null && view.writers.length > 0
+  const showKpi = (viewed !== null || view.all !== null) && kpis !== null;
+  // 내 보고 | 전체 보고 — 작성자 전원과 남의 보고서를 열 수 있는 사람(전체 보고를 볼 수 있는 사람)에게만.
+  const isWriter = view.roles.includes("report");
+  const scope =
+    isWriter || view.statusAccess !== null
       ? {
-          writers: view.writers.map((w) => ({ email: w.email, name: w.name })),
-          viewedEmail: viewed?.email ?? null,
+          mine: isWriter,
+          active:
+            view.all !== null
+              ? ("all" as const)
+              : roleTabOf(tab) === "report" && op === null
+                ? ("mine" as const)
+                : null,
         }
       : null;
   return (
@@ -161,9 +169,11 @@ function WeekView({ view }: { view: Week }) {
       {view.roles.length > 1 ? (
         <PageTabs
           active={
-            roleTabOf(tab) === "report" && op !== null
-              ? "status"
-              : roleTabOf(tab)
+            roleTabOf(tab) !== "report"
+              ? roleTabOf(tab)
+              : op === null || (op === ALL_OP && isWriter)
+                ? "report"
+                : "status"
           }
           size="md"
           className="px-5 pt-4 lg:px-7"
@@ -178,7 +188,7 @@ function WeekView({ view }: { view: Week }) {
         dutyName={dutyNameOf(week.duty_email, view.writers)}
         showReportState={roleTabOf(tab) === "report"}
         checkedCount={new Set(report?.checked_tabs ?? []).size}
-        writerPicker={writerPicker}
+        scope={scope}
         reportStatus={report?.status ?? null}
         submittedAt={report?.submitted_at ?? null}
         returnReason={report?.return_reason ?? null}
@@ -200,7 +210,7 @@ function WeekView({ view }: { view: Week }) {
           <StickyKpiBar>
             <WeeklyKpiRow
               kpis={kpis}
-              ownerName={viewed.name}
+              ownerName={view.all !== null ? "작성자 전원" : (viewed?.name ?? "")}
               unknownCount={unknownCountOf(view)}
               weekStart={weekStart}
               op={op}

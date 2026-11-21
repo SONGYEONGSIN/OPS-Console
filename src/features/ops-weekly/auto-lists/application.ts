@@ -28,6 +28,8 @@ export type AutoItem = {
   /** 원서접수만 — 표의 대학구분·카테고리 칸. 이 칸이 생기기 전에 굳힌 스냅샷에는 없다 */
   universityType?: string | null;
   category?: string | null;
+  /** 전체 보고에서만 — 이 건을 맡은 작성자 이름(같은 서비스를 여럿이 맡으면 여럿) */
+  owners?: string[];
 };
 
 export type ApplicationGroups = {

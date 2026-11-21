@@ -304,3 +304,58 @@ describe("AutoGroupSection — 표 모양(원서접수)", () => {
     expect(screen.getByText("없음")).toBeInTheDocument();
   });
 });
+
+describe("AutoGroupSection — 전체 보고의 담당자", () => {
+  it("표: 담당자가 실린 건이 있으면 담당자 칸(여럿이면 쉼표)", () => {
+    render(
+      <AutoGroupSection
+        {...group([view("closing:1", { owners: ["가", "나"] })])}
+        editable={false}
+        table={{ atLabel: "오픈" }}
+      />,
+    );
+    const heads = [...document.querySelectorAll("th")].map((h) => h.textContent);
+    expect(heads).toEqual(["대학명", "대학구분", "카테고리", "서비스명", "오픈", "담당자", "메모"]);
+    expect(screen.getByText("가, 나")).toBeInTheDocument();
+  });
+
+  it("표: 담당자가 없으면 칸도 없다(한 사람 보고서)", () => {
+    render(<AutoGroupSection {...group([view("closing:1")])} editable table={{ atLabel: "오픈" }} />);
+    expect([...document.querySelectorAll("th")].map((h) => h.textContent)).not.toContain("담당자");
+  });
+
+  it("목록(발표): 행 끝에 담당자 이름", () => {
+    render(
+      <AutoGroupSection
+        {...group([view("pims:1", { owners: ["가"] })])}
+        area="pims"
+        editable={false}
+      />,
+    );
+    expect(screen.getByText("담당 가")).toBeInTheDocument();
+  });
+
+  it("직접 추가 건도 누가 추가했는지", () => {
+    render(
+      <AutoGroupSection
+        {...group([])}
+        manual={[
+          {
+            id: "m1",
+            area: "application",
+            group_key: "running",
+            title: "수동",
+            note: "",
+            period_start: null,
+            period_end: null,
+            leave_kind: null,
+            owner: "다",
+          },
+        ]}
+        editable={false}
+        table={{ atLabel: "오픈" }}
+      />,
+    );
+    expect(screen.getByText("담당 다")).toBeInTheDocument();
+  });
+});

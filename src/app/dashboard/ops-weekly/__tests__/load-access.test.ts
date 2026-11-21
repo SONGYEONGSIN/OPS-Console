@@ -15,6 +15,8 @@ const m = vi.hoisted(() => ({
   ensureReport: vi.fn(),
   listReports: vi.fn(),
   loadReportDetail: vi.fn(),
+  loadReportDetails: vi.fn(),
+  loadAutoSnapshots: vi.fn(),
   listProjectEntriesForWeek: vi.fn(),
   listReportStatusesForWeeks: vi.fn(),
   loadSettingsBundle: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock("@/features/ops-weekly/report-queries", () => ({
   ensureReport: m.ensureReport,
   listReports: m.listReports,
   loadReportDetail: m.loadReportDetail,
+  loadReportDetails: m.loadReportDetails,
   listProjectEntriesForWeek: m.listProjectEntriesForWeek,
   listReportStatusesForWeeks: m.listReportStatusesForWeeks,
 }));
@@ -43,6 +46,7 @@ vi.mock("@/features/ops-weekly/settings-queries", () => ({
 }));
 vi.mock("@/features/ops-weekly/auto-queries", () => ({
   loadAutoSnapshot: m.loadAutoSnapshot,
+  loadAutoSnapshots: m.loadAutoSnapshots,
   loadUnmatchedServices: m.loadUnmatchedServices,
 }));
 vi.mock("@/features/ops-weekly/note-images", () => ({
@@ -116,6 +120,13 @@ beforeEach(() => {
   isRecipientMock(false);
   m.loadAutoSnapshot.mockResolvedValue(snap());
   m.loadUnmatchedServices.mockResolvedValue({ application: [], pims: [] });
+  m.loadAutoSnapshots.mockImplementation(
+    async ({ writers }: { writers: { email: string }[] }) =>
+      new Map(writers.map((w) => [w.email, snap()])),
+  );
+  m.loadReportDetails.mockImplementation(
+    async (reports: { id: string }[]) => new Map(reports.map((r) => [r.id, EMPTY])),
+  );
 });
 
 const load = (
@@ -348,5 +359,51 @@ describe("loadOpsWeeklyPage — 열람 판정", () => {
     });
     expect(m.loadAutoSnapshot).not.toHaveBeenCalled();
     expect(m.loadReportDetail).not.toHaveBeenCalled();
+  });
+
+  it("전체 보고(?op=all): 작성자는 전원 스냅샷을 한 번에 읽고, 본인 보고서를 만들지 않는다", async () => {
+    const v = await load("a@x", "member", { op: "all" });
+    expect(v).toMatchObject({
+      kind: "week",
+      tab: "application",
+      viewed: null,
+      report: null,
+      roles: ["report"],
+      canEdit: false,
+      canSubmit: false,
+    });
+    expect(v.kind === "week" && v.all !== null).toBe(true);
+    expect(m.loadAutoSnapshots).toHaveBeenCalledTimes(1);
+    expect(m.loadAutoSnapshots.mock.calls[0][0].writers.map((w: { email: string }) => w.email)).toEqual(["a@x", "b@x"]);
+    expect(m.loadAutoSnapshot).not.toHaveBeenCalled();
+    expect(m.ensureReport).not.toHaveBeenCalled();
+  });
+
+  it("전체 보고: 이미 굳은 보고서는 그 스냅샷을 쓰고 새로 계산하지 않는다", async () => {
+    const frozen = { ...reportFor("w1", "b@x"), snapshot: snap() };
+    m.listReports.mockResolvedValue([frozen]);
+    await load("a@x", "member", { op: "all" });
+    const asked = m.loadAutoSnapshots.mock.calls[0][0].writers.map((w: { email: string }) => w.email);
+    expect(asked).toEqual(["a@x"]);
+    expect(m.loadReportDetails).toHaveBeenCalledWith([frozen]);
+  });
+
+  it("전체 보고: 명단 밖 관리자도 연다(탭 줄은 제출 현황·관리)", async () => {
+    const v = await load("z@x", "admin", { op: "all" });
+    expect(v).toMatchObject({ tab: "application", viewed: null, roles: ["status", "manage"] });
+    expect(v.kind === "week" && v.all !== null).toBe(true);
+  });
+
+  it("전체 보고: 작성자도 당번도 관리자도 아니면 안내 화면", async () => {
+    getWeekMock(REPORTED);
+    const v = await load("q@x", "member", { op: "all" });
+    expect(v).toMatchObject({ kind: "no-access" });
+  });
+
+  it("전체 보고라도 제출 현황 탭이면 전원 스냅샷을 읽지 않는다", async () => {
+    getWeekMock({ duty_email: "a@x" });
+    const v = await load("a@x", "member", { tab: "status", op: "all" });
+    expect(v).toMatchObject({ tab: "status", all: null });
+    expect(m.loadAutoSnapshots).not.toHaveBeenCalled();
   });
 });

@@ -59,6 +59,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 import {
   listDevStatuses,
   loadAutoSnapshot,
+  loadAutoSnapshots,
   loadUnmatchedServices,
 } from "../auto-queries";
 
@@ -406,5 +407,45 @@ describe("loadUnmatchedServices", () => {
       writerNames: new Set([" 운영자A "]),
     });
     expect(r.application).toEqual([]);
+  });
+});
+
+describe("loadAutoSnapshots — 전체 보고용 여러 명 한 번에", () => {
+  it("원천은 한 번만 읽고, 사람마다 자기 서비스·자기 백업 요청만 담는다", async () => {
+    mockTables({
+      closing_services: [
+        CL_OPENING,
+        { ...CL_OPENING, service_id: 2, operator_name: "운영자B" },
+      ],
+      announcement_services: [],
+      backup_requests: [
+        {
+          id: "b1",
+          requester_email: "a@example.com",
+          leave_type: "연차",
+          leave_start_date: "2026-11-18",
+          leave_end_date: "2026-11-18",
+          substitute_name: null,
+        },
+      ],
+      schedule_events: [],
+      ops_weekly_dev_status: [],
+    });
+    const map = await loadAutoSnapshots({
+      weekStart: ARGS.weekStart,
+      writers: [
+        { email: "A@Example.com", name: " 운영자A " },
+        { email: "b@example.com", name: "운영자B" },
+      ],
+      writerNames: ARGS.writerNames,
+      now: ARGS.now,
+    });
+    const a = map.get("a@example.com");
+    const b = map.get("b@example.com");
+    expect(a?.application.opening.map((i) => i.key)).toEqual(["closing:1"]);
+    expect(b?.application.opening.map((i) => i.key)).toEqual(["closing:2"]);
+    expect(a?.leave.length).toBe(1);
+    expect(b?.leave.length).toBe(0);
+    expect(fromSpy.mock.calls.filter(([t]) => t === "closing_services")).toHaveLength(1);
   });
 });
