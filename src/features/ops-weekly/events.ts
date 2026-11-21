@@ -1,5 +1,7 @@
 // 주간업무보고 이벤트 훅 — A2(메일)·A3(엑셀·워드)가 `OPS_WEEKLY_HOOKS` 에 등록하는 자리다.
-// A1 은 훅이 비어 있어 아무것도 보내지 않고 쓰지 않는다.
+// A2: 전원 제출·다시 작성 요청·최종 보고 알림(notify/hooks.ts). A3 은 아직 없다.
+
+import { NOTIFY_HOOKS } from "./notify/hooks";
 
 export type OpsWeeklyEvent =
   | {
@@ -29,7 +31,7 @@ export type OpsWeeklyHook = {
   handle: (event: OpsWeeklyEvent) => Promise<void>;
 };
 
-export const OPS_WEEKLY_HOOKS: readonly OpsWeeklyHook[] = [];
+export const OPS_WEEKLY_HOOKS: readonly OpsWeeklyHook[] = [...NOTIFY_HOOKS];
 
 export type HookOutcome = { name: string; ok: boolean; error?: string };
 

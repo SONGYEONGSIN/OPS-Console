@@ -50,6 +50,7 @@ import {
 } from "@/features/ops-weekly/schemas";
 import {
   isRecipient,
+  listRecipients,
   loadSettingsBundle,
   type SettingsBundle,
 } from "@/features/ops-weekly/settings-queries";
@@ -122,6 +123,8 @@ export type OpsWeeklyView =
       projectGroups: ProjectGroup[] | null;
       /** status 탭에서만 (Task 14) */
       finalize: FinalizeCheck | null;
+      /** status 탭에서만 — 받는 사람 수. 명단은 화면에 내리지 않는다 */
+      recipientCount: number | null;
       /** settings 탭에서만 (Task 15) */
       bundle: SettingsBundle | null;
       /** settings 탭에서만, 이 주 기준 실시간 값 */
@@ -325,6 +328,7 @@ function emptyDetail(): ReportDetail {
 type StatusData = {
   projectGroups: ProjectGroup[];
   finalize: FinalizeCheck;
+  recipientCount: number;
 };
 
 /** 제출 현황 탭 전용 — 모아보기(서명된 그림)와 [최종 보고] 가능 여부. */
@@ -341,10 +345,12 @@ async function loadStatusData(args: {
       .filter((r) => r.status === "submitted")
       .map((r) => normEmail(r.operator_email)),
   );
-  const entries = await signProjectEntries(
-    await listProjectEntriesForWeek(week.id),
-  );
+  const [entries, recipients] = await Promise.all([
+    listProjectEntriesForWeek(week.id).then(signProjectEntries),
+    listRecipients(),
+  ]);
   return {
+    recipientCount: recipients.length,
     projectGroups: groupEntriesByProject(entries),
     finalize: checkFinalize(
       actor,
@@ -498,6 +504,7 @@ export async function loadOpsWeeklyPage(
     reports: status === null ? null : reports,
     projectGroups: status?.projectGroups ?? null,
     finalize: status?.finalize ?? null,
+    recipientCount: status?.recipientCount ?? null,
     bundle: manage?.bundle ?? null,
     unmatched: manage?.unmatched ?? null,
     overview: manage?.overview ?? null,

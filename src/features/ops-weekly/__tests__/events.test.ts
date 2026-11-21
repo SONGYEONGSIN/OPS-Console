@@ -1,4 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+vi.mock("../notify/hooks", () => ({
+  NOTIFY_HOOKS: [{ name: "notify", handle: async () => {} }],
+}));
+
 import {
   emitOpsWeeklyEvent,
   OPS_WEEKLY_HOOKS,
@@ -13,12 +19,12 @@ const EV: OpsWeeklyEvent = {
 };
 
 describe("emitOpsWeeklyEvent", () => {
-  it("A1 은 훅이 비어 있다 — 아무것도 보내지 않는다", () => {
-    expect(OPS_WEEKLY_HOOKS).toHaveLength(0);
+  it("A2 알림 훅이 등록돼 있다", () => {
+    expect(OPS_WEEKLY_HOOKS.map((h) => h.name)).toEqual(["notify"]);
   });
 
   it("훅이 없으면 빈 결과로 조용히 끝난다", async () => {
-    expect(await emitOpsWeeklyEvent(EV)).toEqual([]);
+    expect(await emitOpsWeeklyEvent(EV, [])).toEqual([]);
   });
 
   it("한 훅이 던져도 나머지는 돈다", async () => {

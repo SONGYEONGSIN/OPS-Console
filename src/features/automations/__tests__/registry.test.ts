@@ -81,6 +81,20 @@ describe("automation registry", () => {
     });
   });
 
+  it("주간업무보고 발송 잡 둘 — 서버리스 weekly(cron-job.org)", () => {
+    expect(getJob("ops-weekly-request")).toMatchObject({
+      label: "주간업무보고 작성 요청",
+      scheduleInfo: "매주 수요일 10:00 (cron-job.org)",
+      cadence: "weekly",
+    });
+    expect(getJob("ops-weekly-remind")).toMatchObject({
+      label: "주간업무보고 미제출 알림",
+      scheduleInfo: "매주 목요일 12:00·17:00 (cron-job.org)",
+      cadence: "weekly",
+    });
+    expect(getJob("ops-weekly-request")?.localOnly).toBeUndefined();
+  });
+
   it("없는 id는 undefined", () => {
     expect(getJob("nope")).toBeUndefined();
   });
